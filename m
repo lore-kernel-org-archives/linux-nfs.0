@@ -1,53 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:36069 "EHLO
-	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753556Ab2HVMNa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Aug 2012 08:13:30 -0400
-Message-ID: <5034CD02.2010103@gmail.com>
-Date: Wed, 22 Aug 2012 14:13:54 +0200
-From: Sasha Levin <levinsasha928@gmail.com>
+Received: from relay.parallels.com ([195.214.232.42]:60241 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751303Ab2HUO1S convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2012 10:27:18 -0400
+Message-ID: <50339AC2.7000507@parallels.com>
+Date: Tue, 21 Aug 2012 18:27:14 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
 To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
-        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v3 13/17] lockd: use new hashtable implementation
-References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com> <1345602432-27673-14-git-send-email-levinsasha928@gmail.com> <20120822114752.GC20158@fieldses.org>
-In-Reply-To: <20120822114752.GC20158@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Simo Sorce <simo@redhat.com>,
+        "bfields@redhat.com" <bfields@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/4] Add support for new RPCSEC_GSS upcall mechanism for
+ nfsd
+References: <20120710223818.GA6720@fieldses.org> <1341961118.17428.29.camel@lade.trondhjem.org> <20120711170331.GE11432@fieldses.org> <20120711172714.GA13610@fieldses.org> <1342028948.25375.45.camel@lade.trondhjem.org> <20120712221058.GC24162@fieldses.org> <20120713154302.GA32660@fieldses.org> <20120808193659.GA942@fieldses.org> <20120808194359.GB942@fieldses.org> <5022C824.504@parallels.com> <20120821141614.GF9483@fieldses.org>
+In-Reply-To: <20120821141614.GF9483@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/22/2012 01:47 PM, J. Bruce Fields wrote:
-> On Wed, Aug 22, 2012 at 04:27:08AM +0200, Sasha Levin wrote:
->> +static int __init nlm_init(void)
->> +{
->> +	hash_init(nlm_files);
->> +	return 0;
->> +}
->> +
->> +module_init(nlm_init);
-> 
-> That's giving me:
-> 
-> fs/lockd/svcsubs.o: In function `nlm_init':
-> /home/bfields/linux-2.6/fs/lockd/svcsubs.c:454: multiple definition of `init_module'
-> fs/lockd/svc.o:/home/bfields/linux-2.6/fs/lockd/svc.c:606: first defined here
-> make[2]: *** [fs/lockd/lockd.o] Error 1
-> make[1]: *** [fs/lockd] Error 2
-> make[1]: *** Waiting for unfinished jobs....
+21.08.2012 18:16, J. Bruce Fields пишет:
+> One other question for Stanislav: I assume module parameters are global,
+> and that there's no plan to try to make them per-container?
+>
 
-I tested this entire patch set both with linux-next and Linus' latest master,
-and it worked fine in both places.
+Yep, they will remain global. There may be some options, if you can tune them 
+somehow (using sysctl or whatever). But currently I don't think, that module 
+parameters should be containerized.
 
-Is it possible that lockd has a -next tree which isn't pulled into linux-next?
-(there's nothing listed in MAINTAINERS that I could see).
+> --b.
+>
+
+
+-- 
+Best regards,
+Stanislav Kinsbursky
