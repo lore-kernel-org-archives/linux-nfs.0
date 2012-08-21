@@ -1,101 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:44890 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753808Ab2H2OKY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Aug 2012 10:10:24 -0400
-From: Namjae Jeon <linkinjeon@gmail.com>
-To: bfields@fieldses.org, viro@zeniv.linux.org.uk, akpm@linux-foundation.org
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Namjae Jeon <linkinjeon@gmail.com>,
-        Vivek Trivedi <vtrivedi018@gmail.com>
-Subject: [PATCH] exportfs: add FILEID_INVALID to indicate invalid fid_type
-Date: Wed, 29 Aug 2012 10:10:10 -0400
-Message-Id: <1346249410-3515-1-git-send-email-linkinjeon@gmail.com>
+Received: from mail.gnuher.de ([78.47.12.54]:42735 "EHLO mail.gnuher.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751013Ab2HUMwU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Aug 2012 08:52:20 -0400
+Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
+	by mail.gnuher.de (envelope-from
+	<news@geggus.net>)
+	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
+	(Exim 4.72)
+	id 1T3nwQ-0005AV-PF
+	for linux-nfs@vger.kernel.org; Tue, 21 Aug 2012 14:52:18 +0200
+Received: from news  by ultimate100.geggus.net (envelope-from
+	<news@geggus.net>)
+	with local (Exim 4.72)
+	id 1T3nwO-0007go-OC
+	for linux-nfs@vger.kernel.org; Tue, 21 Aug 2012 14:52:16 +0200
+To: linux-nfs@vger.kernel.org
+From: Sven Geggus <lists@fuchsschwanzdomain.de>
+Subject: Re: NFS4ERR_DELAY
+Date: Tue, 21 Aug 2012 12:52:16 +0000 (UTC)
+Message-ID: <k100a0$sm1$1@ultimate100.geggus.net>
+References: <k0vgkt$mm0$1@ultimate100.geggus.net> <k0vjq7$o7l$1@ultimate100.geggus.net> <20120821064100.701ec6e9@corrin.poochiereds.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This commit adds FILEID_INVALID = 0xff in fid_type to
-indicate invalid fid_type
+Jeff Layton <jlayton@redhat.com> wrote:
 
-It avoids using magic number 255
+> It's often the case that this indicates a problem communicating over
+> the callback channel. For instance, the server is trying to recall a
+> delegation but the client isn't responding, so the server has to wait
+> until the recall attempt times out before proceeding.
 
-Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
-Signed-off-by: Vivek Trivedi <vtrivedi018@gmail.com>
----
- fs/exportfs/expfs.c      |    4 ++--
- fs/fhandle.c             |    2 +-
- fs/nfsd/nfsfh.c          |    4 ++--
- include/linux/exportfs.h |    5 +++++
- 4 files changed, 10 insertions(+), 5 deletions(-)
+Hm I'm not shure if I understand this correctly.
 
-diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
-index 29ab099..f1f1c59 100644
---- a/fs/exportfs/expfs.c
-+++ b/fs/exportfs/expfs.c
-@@ -322,10 +322,10 @@ static int export_encode_fh(struct inode *inode, struct fid *fid,
- 
- 	if (parent && (len < 4)) {
- 		*max_len = 4;
--		return 255;
-+		return FILEID_INVALID;
- 	} else if (len < 2) {
- 		*max_len = 2;
--		return 255;
-+		return FILEID_INVALID;
- 	}
- 
- 	len = 2;
-diff --git a/fs/fhandle.c b/fs/fhandle.c
-index a48e4a1..78a7879 100644
---- a/fs/fhandle.c
-+++ b/fs/fhandle.c
-@@ -52,7 +52,7 @@ static long do_sys_name_to_handle(struct path *path,
- 	handle_bytes = handle_dwords * sizeof(u32);
- 	handle->handle_bytes = handle_bytes;
- 	if ((handle->handle_bytes > f_handle.handle_bytes) ||
--	    (retval == 255) || (retval == -ENOSPC)) {
-+	    (retval == FILEID_INVALID) || (retval == -ENOSPC)) {
- 		/* As per old exportfs_encode_fh documentation
- 		 * we could return ENOSPC to indicate overflow
- 		 * But file system returned 255 always. So handle
-diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-index 032af38..814afaa 100644
---- a/fs/nfsd/nfsfh.c
-+++ b/fs/nfsd/nfsfh.c
-@@ -572,7 +572,7 @@ fh_compose(struct svc_fh *fhp, struct svc_export *exp, struct dentry *dentry,
- 
- 		if (inode)
- 			_fh_update(fhp, exp, dentry);
--		if (fhp->fh_handle.fh_fileid_type == 255) {
-+		if (fhp->fh_handle.fh_fileid_type == FILEID_INVALID) {
- 			fh_put(fhp);
- 			return nfserr_opnotsupp;
- 		}
-@@ -603,7 +603,7 @@ fh_update(struct svc_fh *fhp)
- 			goto out;
- 
- 		_fh_update(fhp, fhp->fh_export, dentry);
--		if (fhp->fh_handle.fh_fileid_type == 255)
-+		if (fhp->fh_handle.fh_fileid_type == FILEID_INVALID)
- 			return nfserr_opnotsupp;
- 	}
- out:
-diff --git a/include/linux/exportfs.h b/include/linux/exportfs.h
-index 12291a7..0e14525 100644
---- a/include/linux/exportfs.h
-+++ b/include/linux/exportfs.h
-@@ -83,6 +83,11 @@ enum fid_type {
- 	 * 64 bit parent inode number.
- 	 */
- 	FILEID_NILFS_WITH_PARENT = 0x62,
-+
-+	/*
-+	 * Filesystems must not use 0xff file ID.
-+	 */
-+	FILEID_INVALID = 0xff,
- };
- 
- struct fid {
+I am talking about exactly 3 machines (and one single user for now) here:
+clientA, clientB and the NFS-server.
+
+"user" is logged in on clientA any now opens a shell to ssh to clientB.
+
+The NFS-server is providing the home for the user on both machines.
+
+The ssh is now getting delayed for up to 1 minute because the NFS server
+does not allow for the .Xauthority file to be deleted immediately.
+
+It is probably worth to mention, that I'm currently experimenting with
+btrfs on the server. Is there a chance that this bug will disapper when I
+change the underlaying filesystem of the server to ext4?
+
+Sven
+
 -- 
-1.7.9.5
-
+Trotz der zunehmenden Verbreitung von Linux erfreut sich der Bär,
+und - dank Knut - insbesondere der Eisbär, deutlich größerer
+Beliebtheit als der Pinguin. (Gefunden bei http://telepolis.de/)
+/me is giggls@ircnet, http://sven.gegg.us/ on the Web
