@@ -1,63 +1,134 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx0.aculab.com ([213.249.233.131]:49239 "HELO mx0.aculab.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
-	id S1750923Ab2HOJAa convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Aug 2012 05:00:30 -0400
-Received: from mx0.aculab.com ([127.0.0.1])
- by localhost (mx0.aculab.com [127.0.0.1]) (amavisd-new, port 10024) with SMTP
- id 27367-07 for <linux-nfs@vger.kernel.org>;
- Wed, 15 Aug 2012 10:00:29 +0100 (BST)
-MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
-Subject: RE: [PATCH 02/16] user_ns: use new hashtable implementation
-Date: Wed, 15 Aug 2012 09:46:57 +0100
-Message-ID: <AE90C24D6B3A694183C094C60CF0A2F6026B6FB5@saturn3.aculab.com>
-In-Reply-To: <87obmchmpu.fsf@xmission.com>
-References: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com><1344961490-4068-3-git-send-email-levinsasha928@gmail.com><87txw5hw0s.fsf@xmission.com> <502AF184.4010907@gmail.com><87393phshy.fsf@xmission.com> <502AFCD5.6070104@gmail.com> <87obmchmpu.fsf@xmission.com>
-From: "David Laight" <David.Laight@ACULAB.COM>
-To: "Eric W. Biederman" <ebiederm@xmission.com>,
-        "Sasha Levin" <levinsasha928@gmail.com>
-Cc: <torvalds@linux-foundation.org>, <tj@kernel.org>,
-        <akpm@linux-foundation.org>, <linux-kernel@vger.kernel.org>,
-        <linux-mm@kvack.org>, <paul.gortmaker@windriver.com>,
-        <davem@davemloft.net>, <rostedt@goodmis.org>, <mingo@elte.hu>,
-        <aarcange@redhat.com>, <ericvh@gmail.com>, <netdev@vger.kernel.org>,
-        <josh@joshtriplett.org>, <eric.dumazet@gmail.com>,
-        <mathieu.desnoyers@efficios.com>, <axboe@kernel.dk>, <agk@redhat.com>,
-        <dm-devel@redhat.com>, <neilb@suse.de>, <ccaulfie@redhat.com>,
-        <teigland@redhat.com>, <Trond.Myklebust@netapp.com>,
-        <bfields@fieldses.org>, <fweisbec@gmail.com>, <jesse@nicira.com>,
-        <venkat.x.venkatsubra@oracle.com>, <ejt@redhat.com>,
-        <snitzer@redhat.com>, <edumazet@google.com>,
-        <linux-nfs@vger.kernel.org>, <dev@openvswitch.org>,
-        <rds-devel@oss.oracle.com>, <lw@cn.fujitsu.com>
+Received: from fieldses.org ([174.143.236.118]:46806 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758510Ab2HUU5f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Aug 2012 16:57:35 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 10/14] svcrpc: remove handling of unknown errors from svc_recv
+Date: Tue, 21 Aug 2012 16:57:28 -0400
+Message-Id: <1345582652-18476-11-git-send-email-bfields@redhat.com>
+In-Reply-To: <1345582652-18476-1-git-send-email-bfields@redhat.com>
+References: <1345582652-18476-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> Yes hash_32 seems reasonable for the uid hash.   With those long hash
-> chains I wouldn't like to be on a machine with 10,000 processes with
-> each with a different uid, and a processes calling setuid in the fast
-> path.
-> 
-> The uid hash that we are playing with is one that I sort of wish that
-> the hash table could grow in size, so that we could scale up better.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Since uids are likely to be allocated in dense blocks, maybe an
-unhashed multi-level lookup scheme might be appropriate.
+svc_recv() returns only -EINTR or -EAGAIN.  If we really want to worry
+about the case where it has a bug that causes it to return something
+else, we could stick a WARN() in svc_recv.  But it's silly to require
+every caller to have all this boilerplate to handle that case.
 
-Index an array with the low 8 (say) bits of the uid.
-Each item can be either:  
-  1) NULL => free entry.
-  2) a pointer to a uid structure (check uid value).
-  3) a pointer to an array to index with the next 8 bits.
-(2) and (3) can be differentiated by the low address bit.
-I think that is updateable with cmpxchg.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/lockd/svc.c    |   17 ++---------------
+ fs/nfs/callback.c |   16 ++--------------
+ fs/nfsd/nfssvc.c  |   12 +-----------
+ 3 files changed, 5 insertions(+), 40 deletions(-)
 
-Clearly this is a bad algorithm if uids are all multiples of 2^24
-but that is true or any hash function.
-
-	David
-
-
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 31a63f8..e515569 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -126,7 +126,7 @@ static void restart_grace(void)
+ static int
+ lockd(void *vrqstp)
+ {
+-	int		err = 0, preverr = 0;
++	int		err = 0;
+ 	struct svc_rqst *rqstp = vrqstp;
+ 
+ 	/* try_to_freeze() is called from svc_recv() */
+@@ -165,21 +165,8 @@ lockd(void *vrqstp)
+ 		 * recvfrom routine.
+ 		 */
+ 		err = svc_recv(rqstp, timeout);
+-		if (err == -EAGAIN || err == -EINTR) {
+-			preverr = err;
++		if (err == -EAGAIN || err == -EINTR)
+ 			continue;
+-		}
+-		if (err < 0) {
+-			if (err != preverr) {
+-				printk(KERN_WARNING "%s: unexpected error "
+-					"from svc_recv (%d)\n", __func__, err);
+-				preverr = err;
+-			}
+-			schedule_timeout_interruptible(HZ);
+-			continue;
+-		}
+-		preverr = err;
+-
+ 		dprintk("lockd: request from %s\n",
+ 				svc_print_addr(rqstp, buf, sizeof(buf)));
+ 
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 4c8459e..d9e2a18 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -45,7 +45,7 @@ unsigned short nfs_callback_tcpport6;
+ static int
+ nfs4_callback_svc(void *vrqstp)
+ {
+-	int err, preverr = 0;
++	int err;
+ 	struct svc_rqst *rqstp = vrqstp;
+ 
+ 	set_freezable();
+@@ -55,20 +55,8 @@ nfs4_callback_svc(void *vrqstp)
+ 		 * Listen for a request on the socket
+ 		 */
+ 		err = svc_recv(rqstp, MAX_SCHEDULE_TIMEOUT);
+-		if (err == -EAGAIN || err == -EINTR) {
+-			preverr = err;
++		if (err == -EAGAIN || err == -EINTR)
+ 			continue;
+-		}
+-		if (err < 0) {
+-			if (err != preverr) {
+-				printk(KERN_WARNING "NFS: %s: unexpected error "
+-					"from svc_recv (%d)\n", __func__, err);
+-				preverr = err;
+-			}
+-			schedule_timeout_uninterruptible(HZ);
+-			continue;
+-		}
+-		preverr = err;
+ 		svc_process(rqstp);
+ 	}
+ 	return 0;
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index dd2b734..2013aa00 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -487,7 +487,7 @@ static int
+ nfsd(void *vrqstp)
+ {
+ 	struct svc_rqst *rqstp = (struct svc_rqst *) vrqstp;
+-	int err, preverr = 0;
++	int err;
+ 
+ 	/* Lock module and set up kernel thread */
+ 	mutex_lock(&nfsd_mutex);
+@@ -534,16 +534,6 @@ nfsd(void *vrqstp)
+ 			;
+ 		if (err == -EINTR)
+ 			break;
+-		else if (err < 0) {
+-			if (err != preverr) {
+-				printk(KERN_WARNING "%s: unexpected error "
+-					"from svc_recv (%d)\n", __func__, -err);
+-				preverr = err;
+-			}
+-			schedule_timeout_uninterruptible(HZ);
+-			continue;
+-		}
+-
+ 		validate_process_creds();
+ 		svc_process(rqstp);
+ 		validate_process_creds();
+-- 
+1.7.9.5
 
