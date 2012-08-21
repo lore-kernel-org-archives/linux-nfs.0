@@ -1,168 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from hop-nat-141.emc.com ([168.159.213.141]:27075 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755587Ab2HNKGE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 06:06:04 -0400
-From: "Peng, Tao" <tao.peng@emc.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Tue, 14 Aug 2012 06:05:32 -0400
-Subject: RE: [PATCH-v2 2/3] NFS41: send real write size in layoutget
-Message-ID: <5DFC6BE3BA248842867E85C73BF94B050B18B5484B@MX41A.corp.emc.com>
-References: <1344868776-1739-1-git-send-email-bergwolf@gmail.com>
- <1344868776-1739-2-git-send-email-bergwolf@gmail.com>
- <50299384.7000208@panasas.com>
-In-Reply-To: <50299384.7000208@panasas.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:45707 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758482Ab2HUVmf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Aug 2012 17:42:35 -0400
+Date: Tue, 21 Aug 2012 17:42:33 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 08/14] svcrpc: ignore unknown address type in udp
+ receive
+Message-ID: <20120821214233.GA19185@fieldses.org>
+References: <1345582652-18476-1-git-send-email-bfields@redhat.com>
+ <1345582652-18476-9-git-send-email-bfields@redhat.com>
+ <05C6926C-B688-4A71-AA1C-26F251BBD635@oracle.com>
+ <20120821212431.GC18637@fieldses.org>
+ <822DBA73-7B4C-43CC-B096-9D8B4A219390@oracle.com>
+ <20120821213352.GE18637@fieldses.org>
+ <E2217068-BD91-4428-913A-4CDA910250AE@oracle.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <E2217068-BD91-4428-913A-4CDA910250AE@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBCb2F6IEhhcnJvc2ggW21haWx0
-bzpiaGFycm9zaEBwYW5hc2FzLmNvbV0NCj4gU2VudDogVHVlc2RheSwgQXVndXN0IDE0LCAyMDEy
-IDc6NTQgQU0NCj4gVG86IFBlbmcgVGFvDQo+IENjOiBUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
-bTsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZzsgUGVuZywgVGFvDQo+IFN1YmplY3Q6IFJlOiBb
-UEFUQ0gtdjIgMi8zXSBORlM0MTogc2VuZCByZWFsIHdyaXRlIHNpemUgaW4gbGF5b3V0Z2V0DQo+
-IA0KPiBPbiAwOC8xMy8yMDEyIDA1OjM5IFBNLCBQZW5nIFRhbyB3cm90ZToNCj4gDQo+ID4gRm9y
-IGJ1ZmZlciB3cml0ZSwgdXNlIHBvbGljeSBiYXNlZCBtZWNoYW5pc20gdG8gZGV0ZXJtaW5lIGxh
-eW91dGdldCBzaXplLg0KPiA+IEN1cnJlbnRseSBmaWxlcyB1c2Ugd2hvbGUgZmlsZSBsYXlvdXQs
-IG9iamVjdHMgdXNlIG9mZnNldC10by1pc2l6ZSwgYW5kDQo+ID4gYmxvY2tzIHNlYXJjaCBuZXh0
-IGhvbGUgaW4gaW5vZGUgbWFwcGluZyBhbmQgdXNlIG9mZnNldC10by1ob2xlLg0KPiA+DQo+ID4g
-Rm9yIGRpcmVjdCB3cml0ZSwganVzdCB1c2UgZHJlcS0+Ynl0ZXNfbGVmdC4NCj4gPg0KPiA+IFNp
-Z25lZC1vZmYtYnk6IFBlbmcgVGFvIDx0YW8ucGVuZ0BlbWMuY29tPg0KPiA+IC0tLQ0KPiA+ICBm
-cy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYyB8ICAgIDEgKw0KPiA+ICBmcy9uZnMvZGly
-ZWN0LmMgICAgICAgICAgICAgICAgICB8ICAgIDcgKysrKysNCj4gPiAgZnMvbmZzL2ludGVybmFs
-LmggICAgICAgICAgICAgICAgfCAgICAxICsNCj4gPiAgZnMvbmZzL25mczRmaWxlbGF5b3V0LmMg
-ICAgICAgICAgfCAgICAxICsNCj4gPiAgZnMvbmZzL29iamxheW91dC9vYmppb19vc2QuYyAgICAg
-fCAgICAzICstDQo+ID4gIGZzL25mcy9wbmZzLmMgICAgICAgICAgICAgICAgICAgIHwgICA1MSAr
-KysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrLQ0KPiA+ICBmcy9uZnMvcG5mcy5o
-ICAgICAgICAgICAgICAgICAgICB8ICAgMTMgKysrKysrKysrDQo+ID4gIDcgZmlsZXMgY2hhbmdl
-ZCwgNzUgaW5zZXJ0aW9ucygrKSwgMiBkZWxldGlvbnMoLSkNCj4gPg0KPiA+IGRpZmYgLS1naXQg
-YS9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYyBiL2ZzL25mcy9ibG9ja2xheW91dC9i
-bG9ja2xheW91dC5jDQo+ID4gaW5kZXggMTA5Mzk2OC4uYzQyMTVjZiAxMDA2NDQNCj4gPiAtLS0g
-YS9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuYw0KPiA+ICsrKyBiL2ZzL25mcy9ibG9j
-a2xheW91dC9ibG9ja2xheW91dC5jDQo+ID4gQEAgLTEyNDAsNiArMTI0MCw3IEBAIHN0YXRpYyBj
-b25zdCBzdHJ1Y3QgbmZzX3BhZ2Vpb19vcHMgYmxfcGdfd3JpdGVfb3BzID0gew0KPiA+ICBzdGF0
-aWMgc3RydWN0IHBuZnNfbGF5b3V0ZHJpdmVyX3R5cGUgYmxvY2tsYXlvdXRfdHlwZSA9IHsNCj4g
-PiAgCS5pZAkJCQk9IExBWU9VVF9CTE9DS19WT0xVTUUsDQo+ID4gIAkubmFtZQkJCQk9ICJMQVlP
-VVRfQkxPQ0tfVk9MVU1FIiwNCj4gPiArCS5mbGFncwkJCQk9IFBORlNfTEFZT1VUR0VUX1NFQVJD
-SF9IT0xFLA0KPiA+ICAJLnJlYWRfcGFnZWxpc3QJCQk9IGJsX3JlYWRfcGFnZWxpc3QsDQo+ID4g
-IAkud3JpdGVfcGFnZWxpc3QJCQk9IGJsX3dyaXRlX3BhZ2VsaXN0LA0KPiA+ICAJLmFsbG9jX2xh
-eW91dF9oZHIJCT0gYmxfYWxsb2NfbGF5b3V0X2hkciwNCj4gPiBkaWZmIC0tZ2l0IGEvZnMvbmZz
-L2RpcmVjdC5jIGIvZnMvbmZzL2RpcmVjdC5jDQo+ID4gaW5kZXggYzM5Zjc3NS4uYzE4OTlkZCAx
-MDA2NDQNCj4gPiAtLS0gYS9mcy9uZnMvZGlyZWN0LmMNCj4gPiArKysgYi9mcy9uZnMvZGlyZWN0
-LmMNCj4gPiBAQCAtNDYsNiArNDYsNyBAQA0KPiA+ICAjaW5jbHVkZSA8bGludXgva3JlZi5oPg0K
-PiA+ICAjaW5jbHVkZSA8bGludXgvc2xhYi5oPg0KPiA+ICAjaW5jbHVkZSA8bGludXgvdGFza19p
-b19hY2NvdW50aW5nX29wcy5oPg0KPiA+ICsjaW5jbHVkZSA8bGludXgvbW9kdWxlLmg+DQo+ID4N
-Cj4gPiAgI2luY2x1ZGUgPGxpbnV4L25mc19mcy5oPg0KPiA+ICAjaW5jbHVkZSA8bGludXgvbmZz
-X3BhZ2UuaD4NCj4gPiBAQCAtMTkxLDYgKzE5MiwxMiBAQCBzdGF0aWMgdm9pZCBuZnNfZGlyZWN0
-X3JlcV9yZWxlYXNlKHN0cnVjdCBuZnNfZGlyZWN0X3JlcSAqZHJlcSkNCj4gPiAgCWtyZWZfcHV0
-KCZkcmVxLT5rcmVmLCBuZnNfZGlyZWN0X3JlcV9mcmVlKTsNCj4gPiAgfQ0KPiA+DQo+ID4gK3Nz
-aXplX3QgbmZzX2RyZXFfYnl0ZXNfbGVmdChzdHJ1Y3QgbmZzX2RpcmVjdF9yZXEgKmRyZXEpDQo+
-ID4gK3sNCj4gPiArCXJldHVybiBkcmVxLT5ieXRlc19sZWZ0Ow0KPiA+ICt9DQo+ID4gK0VYUE9S
-VF9TWU1CT0xfR1BMKG5mc19kcmVxX2J5dGVzX2xlZnQpOw0KPiA+ICsNCj4gPiAgLyoNCj4gPiAg
-ICogQ29sbGVjdHMgYW5kIHJldHVybnMgdGhlIGZpbmFsIGVycm9yIHZhbHVlL2J5dGUtY291bnQu
-DQo+ID4gICAqLw0KPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvaW50ZXJuYWwuaCBiL2ZzL25mcy9p
-bnRlcm5hbC5oDQo+ID4gaW5kZXggMzFmZGIwMy4uZTY4ZDMyOSAxMDA2NDQNCj4gPiAtLS0gYS9m
-cy9uZnMvaW50ZXJuYWwuaA0KPiA+ICsrKyBiL2ZzL25mcy9pbnRlcm5hbC5oDQo+ID4gQEAgLTQ2
-NCw2ICs0NjQsNyBAQCBzdGF0aWMgaW5saW5lIHZvaWQgbmZzX2lub2RlX2Rpb193YWl0KHN0cnVj
-dCBpbm9kZSAqaW5vZGUpDQo+ID4gIHsNCj4gPiAgCWlub2RlX2Rpb193YWl0KGlub2RlKTsNCj4g
-PiAgfQ0KPiA+ICtleHRlcm4gc3NpemVfdCBuZnNfZHJlcV9ieXRlc19sZWZ0KHN0cnVjdCBuZnNf
-ZGlyZWN0X3JlcSAqZHJlcSk7DQo+ID4NCj4gPiAgLyogbmZzNHByb2MuYyAqLw0KPiA+ICBleHRl
-cm4gdm9pZCBfX25mczRfcmVhZF9kb25lX2NiKHN0cnVjdCBuZnNfcmVhZF9kYXRhICopOw0KPiA+
-IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNGZpbGVsYXlvdXQuYyBiL2ZzL25mcy9uZnM0ZmlsZWxh
-eW91dC5jDQo+ID4gaW5kZXggNTNmOTRkOS4uZjgxZWRkNyAxMDA2NDQNCj4gPiAtLS0gYS9mcy9u
-ZnMvbmZzNGZpbGVsYXlvdXQuYw0KPiA+ICsrKyBiL2ZzL25mcy9uZnM0ZmlsZWxheW91dC5jDQo+
-ID4gQEAgLTEyODksNiArMTI4OSw3IEBAIGZpbGVsYXlvdXRfZ2V0X2RzX2luZm8oc3RydWN0IGlu
-b2RlICppbm9kZSkNCj4gPiAgc3RhdGljIHN0cnVjdCBwbmZzX2xheW91dGRyaXZlcl90eXBlIGZp
-bGVsYXlvdXRfdHlwZSA9IHsNCj4gPiAgCS5pZAkJCT0gTEFZT1VUX05GU1Y0XzFfRklMRVMsDQo+
-ID4gIAkubmFtZQkJCT0gIkxBWU9VVF9ORlNWNF8xX0ZJTEVTIiwNCj4gPiArCS5mbGFncwkJCT0g
-UE5GU19MQVlPVVRHRVRfQUxMX0ZJTEUsDQo+ID4gIAkub3duZXIJCQk9IFRISVNfTU9EVUxFLA0K
-PiA+ICAJLmFsbG9jX2xheW91dF9oZHIJPSBmaWxlbGF5b3V0X2FsbG9jX2xheW91dF9oZHIsDQo+
-ID4gIAkuZnJlZV9sYXlvdXRfaGRyCT0gZmlsZWxheW91dF9mcmVlX2xheW91dF9oZHIsDQo+ID4g
-ZGlmZiAtLWdpdCBhL2ZzL25mcy9vYmpsYXlvdXQvb2JqaW9fb3NkLmMgYi9mcy9uZnMvb2JqbGF5
-b3V0L29iamlvX29zZC5jDQo+ID4gaW5kZXggZWE2ZDExMS4uZTQ4N2ZiOCAxMDA2NDQNCj4gPiAt
-LS0gYS9mcy9uZnMvb2JqbGF5b3V0L29iamlvX29zZC5jDQo+ID4gKysrIGIvZnMvbmZzL29iamxh
-eW91dC9vYmppb19vc2QuYw0KPiA+IEBAIC02MzgsNyArNjM4LDggQEAgc3RhdGljIHN0cnVjdCBw
-bmZzX2xheW91dGRyaXZlcl90eXBlIG9iamxheW91dF90eXBlID0gew0KPiA+ICAJLmlkID0gTEFZ
-T1VUX09TRDJfT0JKRUNUUywNCj4gPiAgCS5uYW1lID0gIkxBWU9VVF9PU0QyX09CSkVDVFMiLA0K
-PiA+ICAJLmZsYWdzICAgICAgICAgICAgICAgICAgID0gUE5GU19MQVlPVVRSRVRfT05fU0VUQVRU
-UiB8DQo+ID4gLQkJCQkgICBQTkZTX0xBWU9VVFJFVF9PTl9FUlJPUiwNCj4gPiArCQkJCSAgIFBO
-RlNfTEFZT1VUUkVUX09OX0VSUk9SIHwNCj4gPiArCQkJCSAgIFBORlNfTEFZT1VUR0VUX0lTSVpF
-LA0KPiA+DQo+ID4gIAkuYWxsb2NfbGF5b3V0X2hkciAgICAgICAgPSBvYmpsYXlvdXRfYWxsb2Nf
-bGF5b3V0X2hkciwNCj4gPiAgCS5mcmVlX2xheW91dF9oZHIgICAgICAgICA9IG9iamxheW91dF9m
-cmVlX2xheW91dF9oZHIsDQo+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9wbmZzLmMgYi9mcy9uZnMv
-cG5mcy5jDQo+ID4gaW5kZXggMmUwMGZlYS4uZDFkYTIzYSAxMDA2NDQNCj4gPiAtLS0gYS9mcy9u
-ZnMvcG5mcy5jDQo+ID4gKysrIGIvZnMvbmZzL3BuZnMuYw0KPiA+IEBAIC0yOSw2ICsyOSw3IEBA
-DQo+ID4NCj4gPiAgI2luY2x1ZGUgPGxpbnV4L25mc19mcy5oPg0KPiA+ICAjaW5jbHVkZSA8bGlu
-dXgvbmZzX3BhZ2UuaD4NCj4gPiArI2luY2x1ZGUgPGxpbnV4L3BhZ2V2ZWMuaD4NCj4gPiAgI2lu
-Y2x1ZGUgPGxpbnV4L21vZHVsZS5oPg0KPiA+ICAjaW5jbHVkZSAiaW50ZXJuYWwuaCINCj4gPiAg
-I2luY2x1ZGUgInBuZnMuaCINCj4gPiBAQCAtMTE3MiwxOSArMTE3Myw2NyBAQCBwbmZzX2dlbmVy
-aWNfcGdfaW5pdF9yZWFkKHN0cnVjdCBuZnNfcGFnZWlvX2Rlc2NyaXB0b3IgKnBnaW8sIHN0cnVj
-dA0KPiBuZnNfcGFnZSAqcg0KPiA+ICB9DQo+ID4gIEVYUE9SVF9TWU1CT0xfR1BMKHBuZnNfZ2Vu
-ZXJpY19wZ19pbml0X3JlYWQpOw0KPiA+DQo+ID4gKy8qDQo+ID4gKyAqIFJldHVybiB0aGUgbnVt
-YmVyIG9mIGNvbnRpZ3VvdXMgYnl0ZXMgZm9yIGEgZ2l2ZW4gaW5vZGUNCj4gPiArICogc3RhcnRp
-bmcgYXQgcGFnZSBmcmFtZSBpZHguDQo+ID4gKyAqLw0KPiA+ICtzdGF0aWMgdTY0IHBuZnNfbnVt
-X2NvbnRfYnl0ZXMoc3RydWN0IGlub2RlICppbm9kZSwgcGdvZmZfdCBpZHgpDQo+ID4gK3sNCj4g
-PiArCXN0cnVjdCBhZGRyZXNzX3NwYWNlICptYXBwaW5nID0gaW5vZGUtPmlfbWFwcGluZzsNCj4g
-PiArCXBnb2ZmX3QgZW5kOw0KPiA+ICsNCj4gPiArCS8qIE9wdGltaXplIGNvbW1vbiBjYXNlIHRo
-YXQgd3JpdGVzIGZyb20gMCB0byBlbmQgb2YgZmlsZSAqLw0KPiA+ICsJZW5kID0gRElWX1JPVU5E
-X1VQKGlfc2l6ZV9yZWFkKGlub2RlKSwgUEFHRV9DQUNIRV9TSVpFKTsNCj4gPiArCWlmIChlbmQg
-IT0gTkZTX0koaW5vZGUpLT5ucGFnZXMpIHsNCj4gPiArCQlyY3VfcmVhZF9sb2NrKCk7DQo+ID4g
-KwkJZW5kID0gcmFkaXhfdHJlZV9uZXh0X2hvbGUoJm1hcHBpbmctPnBhZ2VfdHJlZSwgaWR4ICsg
-MSwgVUxPTkdfTUFYKTsNCj4gPiArCQlyY3VfcmVhZF91bmxvY2soKTsNCj4gPiArCX0NCj4gPiAr
-DQo+ID4gKwlpZiAoIWVuZCkNCj4gPiArCQlyZXR1cm4gaV9zaXplX3JlYWQoaW5vZGUpIC0gKGlk
-eCA8PCBQQUdFX0NBQ0hFX1NISUZUKTsNCj4gPiArCWVsc2UNCj4gPiArCQlyZXR1cm4gKGVuZCAt
-IGlkeCkgPDwgUEFHRV9DQUNIRV9TSElGVDsNCj4gPiArfQ0KPiA+ICsNCj4gPiAgdm9pZA0KPiA+
-ICBwbmZzX2dlbmVyaWNfcGdfaW5pdF93cml0ZShzdHJ1Y3QgbmZzX3BhZ2Vpb19kZXNjcmlwdG9y
-ICpwZ2lvLCBzdHJ1Y3QgbmZzX3BhZ2UgKnJlcSkNCj4gPiAgew0KPiA+ICsJdTY0IHdiX3NpemU7
-DQo+ID4gKwl1bnNpZ25lZCBwb2xpY3kgPSBORlNfU0VSVkVSKHBnaW8tPnBnX2lub2RlKS0+cG5m
-c19jdXJyX2xkLT5mbGFncyAmDQo+ID4gKwkJCQkJCVBORlNfTEFZT1VUR0VUX1BPTElDWV9NQVNL
-Ow0KPiA+ICsNCj4gPiAgCUJVR19PTihwZ2lvLT5wZ19sc2VnICE9IE5VTEwpOw0KPiA+DQo+ID4g
-IAlpZiAocmVxLT53Yl9vZmZzZXQgIT0gcmVxLT53Yl9wZ2Jhc2UpIHsNCj4gPiAgCQluZnNfcGFn
-ZWlvX3Jlc2V0X3dyaXRlX21kcyhwZ2lvKTsNCj4gPiAgCQlyZXR1cm47DQo+ID4gIAl9DQo+ID4g
-Kw0KPiA+ICsJaWYgKHBnaW8tPnBnX2RyZXEgPT0gTlVMTCkgew0KPiA+ICsJCXN3aXRjaChwb2xp
-Y3kpIHsNCj4gPiArCQljYXNlIFBORlNfTEFZT1VUR0VUX0lTSVpFOg0KPiA+ICsJCQl3Yl9zaXpl
-ID0gaV9zaXplX3JlYWQocGdpby0+cGdfaW5vZGUpIC0gcmVxX29mZnNldChyZXEpOw0KPiA+ICsJ
-CQlicmVhazsNCj4gPiArCQljYXNlIFBORlNfTEFZT1VUR0VUX1NFQVJDSF9IT0xFOg0KPiA+ICsJ
-CQl3Yl9zaXplID0gcG5mc19udW1fY29udF9ieXRlcyhwZ2lvLT5wZ19pbm9kZSwgcmVxLT53Yl9p
-bmRleCk7DQo+ID4gKwkJCWJyZWFrOw0KPiA+ICsJCWNhc2UgUE5GU19MQVlPVVRHRVRfQUxMX0ZJ
-TEU6DQo+ID4gKwkJCXdiX3NpemUgPSBORlM0X01BWF9VSU5UNjQ7DQo+ID4gKwkJCWJyZWFrOw0K
-PiA+ICsJCWRlZmF1bHQ6DQo+ID4gKwkJCVdBUk5fT05DRSgxLCAiaW52YWxpZCBsYXlvdXRnZXQg
-cG9saWN5ICV1IiwgcG9saWN5KTsNCj4gPiArCQkJd2Jfc2l6ZSA9IFBBR0VfQ0FDSEVfU0laRTsN
-Cj4gPiArCQkJYnJlYWs7DQo+ID4gKwkJfQ0KPiA+ICsJfSBlbHNlIHsNCj4gPiArCQl3Yl9zaXpl
-ID0gbmZzX2RyZXFfYnl0ZXNfbGVmdChwZ2lvLT5wZ19kcmVxKTsNCj4gPiArCX0NCj4gPiArDQo+
-ID4gIAlwZ2lvLT5wZ19sc2VnID0gcG5mc191cGRhdGVfbGF5b3V0KHBnaW8tPnBnX2lub2RlLA0K
-PiA+ICAJCQkJCSAgIHJlcS0+d2JfY29udGV4dCwNCj4gPiAgCQkJCQkgICByZXFfb2Zmc2V0KHJl
-cSksDQo+ID4gLQkJCQkJICAgcmVxLT53Yl9ieXRlcywNCj4gPiArCQkJCQkgICB3Yl9zaXplLA0K
-PiA+ICAJCQkJCSAgIElPTU9ERV9SVywNCj4gPiAgCQkJCQkgICBHRlBfTk9GUyk7DQo+ID4gIAkv
-KiBJZiBubyBsc2VnLCBmYWxsIGJhY2sgdG8gd3JpdGUgdGhyb3VnaCBtZHMgKi8NCj4gPiBkaWZm
-IC0tZ2l0IGEvZnMvbmZzL3BuZnMuaCBiL2ZzL25mcy9wbmZzLmgNCj4gPiBpbmRleCA3NDVhYTFi
-Li5jZTg2ODk0IDEwMDY0NA0KPiA+IC0tLSBhL2ZzL25mcy9wbmZzLmgNCj4gPiArKysgYi9mcy9u
-ZnMvcG5mcy5oDQo+ID4gQEAgLTcxLDggKzcxLDIxIEBAIGVudW0gbGF5b3V0ZHJpdmVyX3BvbGlj
-eV9mbGFncyB7DQo+ID4gIAkvKiBTaG91bGQgdGhlIHBORlMgY2xpZW50IGNvbW1pdCBhbmQgcmV0
-dXJuIHRoZSBsYXlvdXQgdXBvbiBhIHNldGF0dHIgKi8NCj4gPiAgCVBORlNfTEFZT1VUUkVUX09O
-X1NFVEFUVFIJPSAxIDw8IDAsDQo+ID4gIAlQTkZTX0xBWU9VVFJFVF9PTl9FUlJPUgkJPSAxIDw8
-IDEsDQo+ID4gKw0KPiA+ICsJLyogTGF5b3V0Z2V0KHdyaXRlKSBsZW5ndGggcG9saWN5Og0KPiA+
-ICsJICogUE5GU19MQVlPVVRHRVRfSVNJWkUsIHVzZSBvZmZzZXQtdG8taXNpemUNCj4gPiArCSAq
-IFBORlNfTEFZT1VUR0VUX1NFQVJDSF9IT0xFLCB1c2Ugb2Zmc2V0LXRvLWhvbGUNCj4gPiArCSAq
-IFBORlNfTEFZT1VUR0VUX0FMTF9GSUxFLCB1c2UgTkZTNF9NQVhfVUlOVDY0DQo+ID4gKwkgKi8N
-Cj4gPiArCVBORlNfTEFZT1VUR0VUX0lTSVpFCQk9IDEgPDwgMiwNCj4gPiArCVBORlNfTEFZT1VU
-R0VUX1NFQVJDSF9IT0xFCT0gMSA8PCAzLA0KPiA+ICsJUE5GU19MQVlPVVRHRVRfQUxMX0ZJTEUJ
-CT0gMSA8PCA0LA0KPiA+ICB9Ow0KPiA+DQo+ID4gKyNkZWZpbmUgUE5GU19MQVlPVVRHRVRfUE9M
-SUNZX01BU0sJKFBORlNfTEFZT1VUR0VUX0lTSVpFIHwJCVwNCj4gPiArCQkJCQkgUE5GU19MQVlP
-VVRHRVRfU0VBUkNIX0hPTEUgfAlcDQo+ID4gKwkJCQkJIFBORlNfTEFZT1VUR0VUX0FMTF9GSUxF
-KQ0KPiA+ICsNCj4gPiAgc3RydWN0IG5mczRfZGV2aWNlaWRfbm9kZTsNCj4gPg0KPiA+ICAvKiBQ
-ZXItbGF5b3V0IGRyaXZlciBzcGVjaWZpYyByZWdpc3RyYXRpb24gc3RydWN0dXJlICovDQo+IA0K
-PiANCj4gQWxsIDMgbG9va3MgdmVyeSBnb29kIG5vdyAoZmFzdCBzY2FuIHRocm91Z2gpLiBIb3dl
-dmVyIHRoZXkgbmVlZCBoZWF2eQ0KPiB0ZXN0aW5nLiBJIHdpbGwgb25seSBnZXQgdG8gdGhlbSBl
-YXJseSBuZXh0IHdlZWsuDQo+IA0KPiBIb3cgZG8gdGhleSBwZXJmb3JtIGZvciB5b3U/IHBsZWFz
-ZSByZXBvcnQgeW91ciBmaW5kaW5nIHdpdGggdGhlIEVNQw0KPiBzZXJ2ZXIgaXQgaXMgaW50ZXJl
-c3RpbmcgdG8ga25vdy4NCj4gDQpXaXRob3V0IG9wdGltaXphdGlvbiBpbiBzZXJ2ZXIsIHRoZSBw
-YXRjaHNldCBtYWtlcyBodWdlIGRpZmZlcmVuY2UgZm9yIHNlcXVlbnRpYWwgSU8uIFdpdGggcHJv
-cGVyIHNlcnZlciBvcHRpbWl6YXRpb24sIEkgc3RpbGwgZ290IG5vdGljZWFibGUgcGVyZm9ybWFu
-Y2UgaW1wcm92ZW1lbnQuIEJsb2NrIGxheW91dCBzZXJ2ZXIgdGVuZHMgbm90IHRvIHByZS1hbGxv
-Y2F0ZSBzZWdtZW50cyB2ZXJ5IGFnZ3Jlc3NpdmVseS4gQW5kIHNlbmRpbmcgcmVhbCBJTyBzaXpl
-IGhlbHBzIHNlcnZlciB0byBtYWtlIGJldHRlciBkZWNpc2lvbnMuDQoNClRoYW5rcywNClRhbw0K
-DQo=
+On Tue, Aug 21, 2012 at 05:38:26PM -0400, Chuck Lever wrote:
+> 
+> On Aug 21, 2012, at 5:33 PM, J. Bruce Fields wrote:
+> 
+> > On Tue, Aug 21, 2012 at 05:29:16PM -0400, Chuck Lever wrote:
+> >> 
+> >> On Aug 21, 2012, at 5:24 PM, J. Bruce Fields wrote:
+> >> 
+> >>> On Tue, Aug 21, 2012 at 05:02:14PM -0400, Chuck Lever wrote:
+> >>>> 
+> >>>> On Aug 21, 2012, at 4:57 PM, J. Bruce Fields wrote:
+> >>>> 
+> >>>>> From: "J. Bruce Fields" <bfields@redhat.com>
+> >>>>> 
+> >>>>> How would this happen?
+> >>>> 
+> >>>> If an unsupported address family is used in the rqstp.
+> >>> 
+> >>> Right, but that's impossible, isn't it?
+> >> 
+> >> The point is to catch this case when someone adds support for new address families.  It won't happen in current code.
+> >> 
+> >>>>> In any case, it appears this would be returned all the way up to the
+> >>>>> caller of svc_recv(), and it's obvious that none of them are equipped to
+> >>>>> handle it, and not clear what they would want to do with it anyway.
+> >>>>> Let's just drop this and return -EAGAIN.
+> >>>> 
+> >>>> EAGAIN is incorrect; the correct error code is EAFNOSUPPORT.  If callers are not prepared for this error return, perhaps BUG_ON() would be more appropriate here.
+> >>> 
+> >>> Yeah.  Actually on a quick check this is the only caller that even
+> >>> checks for this case.  So probably the check should go in svc_addr_len.
+> >>> Maybe we should be nice and make it a warning.
+> >> 
+> >> I normally find BUG pretty harsh, but in this case it's true a software error, and as you say, should be "impossible": thus it should be a BUG.  The code should stop before the zero length is used.
+> > 
+> > Eh, OK, I guess I can live with that.
+> > 
+> > commit 751f877b10f8ce0d12b40d2a102f3b42b26dc08d
+> > Author: J. Bruce Fields <bfields@redhat.com>
+> > Date:   Tue Aug 21 17:22:11 2012 -0400
+> > 
+> >    svcrpc: don't bother checking bad svc_addr_len result
+> > 
+> >    None of the callers should see an unsupported address family (only one
+> >    of them even bothers to check for that case), so just check for the
+> >    buggy case in svc_addr_len and don't bother elsewhere.
+> > 
+> >    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> 
+> Acked-by: Chuck Lever <chuck.lever@oracle.com>
+
+Ok, thanks.--b.
