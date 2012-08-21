@@ -1,79 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:13546 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:46800 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752066Ab2HaOCU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 31 Aug 2012 10:02:20 -0400
-Date: Fri, 31 Aug 2012 07:02:13 -0700
-From: Jeff Layton <jlayton@redhat.com>
-To: gchen <gang.chen@asianux.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [QUESTION] about NFS sub system between Public Kernel and Red
- Hat Kernel.
-Message-ID: <20120831070213.6e350dd1@corrin.poochiereds.net>
-In-Reply-To: <50404E40.3070702@asianux.com>
-References: <50404E40.3070702@asianux.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1758470Ab2HUU5f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Aug 2012 16:57:35 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 09/14] svcrpc: make xpo_recvfrom return only >=0
+Date: Tue, 21 Aug 2012 16:57:27 -0400
+Message-Id: <1345582652-18476-10-git-send-email-bfields@redhat.com>
+In-Reply-To: <1345582652-18476-1-git-send-email-bfields@redhat.com>
+References: <1345582652-18476-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 31 Aug 2012 13:40:16 +0800
-gchen <gang.chen@asianux.com> wrote:
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-> Hi linux-nfs@vger.kernel.org
-> 
-> I have 1 question, and also 2 conclusions which need confirm.
-> 
-> 
-> 1) Question:
-> 
-> Jeff Layton said in Red Hat Bugzilla (bug 848706):
-> "Have configuration where the same host is acting as both NFS client
-> and server. That's a configuration known to cause deadlocks."
-> 
-> Does it mean that the public Linux kernel (not Red Hat) also can cause
-> deadlocks if NFS client and server are under the same machine ?
-> 
+The only errors returned from xpo_recvfrom have been -EAGAIN and
+-EAFNOSUPPORT.  The latter looked incorrect to me, so was removed by a
+previous patch.  That leaves only -EAGAIN, which is treated by the
+caller (svc_recv) identically to 0.
 
-Yes.
+So, just ditch -EAGAIN and return 0 instead.
 
-> 
-> 2) Confirm 1: (better by Jeff Layton)
-> 
-> For function nfs_commit_set_lock in ./fs/nfs/write.c
-> 
-> for latest public kernel version:
-> the parameters of out_of_line_wait_on_bit_lock() are
-> (&nfsi->flags, NFS_INO_COMMIT, nfs_wait_killable, TASK_KILLABLE)
-> for Red Hat kernel version: kernel-2.6.18-308.4.1.el5
-> the parameters of out_of_line_wait_on_bit_lock() are
-> (&nfsi->flags, NFS_INO_COMMIT,
-> nfs_wait_bit_uninterruptible, TASK_UNINTERRUPTIBLE)
-> 
-> It means for red hat version:
-> when deadlock occurs, we can not boot machine in normal way
-> (it is true for my test machine, the deadlock task can not be killed)
-> It means for public kernel version:
-> "Assume deadlock occurs", we can still boot machine in normal way,
-> because the task can be killed.
-> 
-> Is what I said above correct ?
-> 
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/svc_xprt.c |    2 +-
+ net/sunrpc/svcsock.c  |    8 ++++----
+ 2 files changed, 5 insertions(+), 5 deletions(-)
 
-Not sure I understand your question. RHEL5 doesn't have support for
-TASK_KILLABLE, and I didn't backport it, hence the difference in that
-function.
-
-> 
-> 3) Confirm 2:
-> 
-> Is LTP (Linux Test Project) still a suitable test tools for public kernel ?
-> (for ltp-full-20100331.gz stress test, it mounts NFS on local machine,
-> and the latest LTP ltp-full-20120401.bz2 also seems the same).
-> 
-
-That I'm not sure of. All I can tell you is that mounts over loopback
-(or similar configurations) are easily deadlockable under load.
-
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index ee15663..3e31730 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -743,7 +743,7 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+ 	svc_xprt_received(xprt);
+ 
+ 	/* No data, incomplete (TCP) read, or accept() */
+-	if (len == 0 || len == -EAGAIN)
++	if (len <= 0)
+ 		goto out;
+ 
+ 	clear_bit(XPT_OLD, &xprt->xpt_flags);
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 97ce23f..33008f2 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -598,11 +598,11 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 			dprintk("svc: recvfrom returned error %d\n", -err);
+ 			set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+ 		}
+-		return -EAGAIN;
++		return 0;
+ 	}
+ 	len = svc_addr_len(svc_addr(rqstp));
+ 	if (len == 0)
+-		return -EAGAIN;
++		return 0;
+ 	rqstp->rq_addrlen = len;
+ 	if (skb->tstamp.tv64 == 0) {
+ 		skb->tstamp = ktime_get_real();
+@@ -1176,13 +1176,13 @@ error:
+ 	if (len != -EAGAIN)
+ 		goto err_other;
+ 	dprintk("RPC: TCP recvfrom got EAGAIN\n");
+-	return -EAGAIN;
++	return 0;
+ err_other:
+ 	printk(KERN_NOTICE "%s: recvfrom returned errno %d\n",
+ 	       svsk->sk_xprt.xpt_server->sv_name, -len);
+ 	set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+ err_noclose:
+-	return -EAGAIN;	/* record not complete */
++	return 0;	/* record not complete */
+ }
+ 
+ /*
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.9.5
+
