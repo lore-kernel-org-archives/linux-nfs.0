@@ -1,69 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:38437 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750861Ab2HNNyI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Aug 2012 09:54:08 -0400
-Received: by yhmm54 with SMTP id m54so439745yhm.19
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Aug 2012 06:54:07 -0700 (PDT)
-From: Peng Tao <bergwolf@gmail.com>
-To: Trond.Myklebust@netapp.com
-Cc: bharrosh@panasas.com, linux-nfs@vger.kernel.org,
-        Peng Tao <tao.peng@emc.com>
-Subject: [PATCH-v3 1/3] NFS: track direct IO left bytes
-Date: Tue, 14 Aug 2012 21:52:22 +0800
-Message-Id: <1344952344-1435-1-git-send-email-bergwolf@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:46793 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752382Ab2HUU5f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Aug 2012 16:57:35 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 03/14] svcrpc: make svc_create_xprt enqueue on clearing XPT_BUSY
+Date: Tue, 21 Aug 2012 16:57:21 -0400
+Message-Id: <1345582652-18476-4-git-send-email-bfields@redhat.com>
+In-Reply-To: <1345582652-18476-1-git-send-email-bfields@redhat.com>
+References: <1345582652-18476-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Peng Tao <tao.peng@emc.com>
----
- fs/nfs/direct.c |    5 +++++
- 1 files changed, 5 insertions(+), 0 deletions(-)
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 34a6282..c39f775 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -78,6 +78,7 @@ struct nfs_direct_req {
- 	atomic_t		io_count;	/* i/os we're waiting for */
- 	spinlock_t		lock;		/* protect completion state */
- 	ssize_t			count,		/* bytes actually processed */
-+				bytes_left,	/* bytes left to be sent */
- 				error;		/* any reported error */
- 	struct completion	completion;	/* wait for i/o completion */
- 
-@@ -390,6 +391,7 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *de
- 			user_addr += req_len;
- 			pos += req_len;
- 			count -= req_len;
-+			dreq->bytes_left -= req_len;
- 		}
- 		/* The nfs_page now hold references to these pages */
- 		nfs_direct_release_pages(pagevec, npages);
-@@ -456,6 +458,7 @@ static ssize_t nfs_direct_read(struct kiocb *iocb, const struct iovec *iov,
- 		goto out;
- 
- 	dreq->inode = inode;
-+	dreq->bytes_left = iov_length(iov, nr_segs);
- 	dreq->ctx = get_nfs_open_context(nfs_file_open_context(iocb->ki_filp));
- 	dreq->l_ctx = nfs_get_lock_context(dreq->ctx);
- 	if (dreq->l_ctx == NULL)
-@@ -706,6 +709,7 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_pageio_descriptor *d
- 			user_addr += req_len;
- 			pos += req_len;
- 			count -= req_len;
-+			dreq->bytes_left -= req_len;
- 		}
- 		/* The nfs_page now hold references to these pages */
- 		nfs_direct_release_pages(pagevec, npages);
-@@ -855,6 +859,7 @@ static ssize_t nfs_direct_write(struct kiocb *iocb, const struct iovec *iov,
- 		goto out;
- 
- 	dreq->inode = inode;
-+	dreq->bytes_left = count;
- 	dreq->ctx = get_nfs_open_context(nfs_file_open_context(iocb->ki_filp));
- 	dreq->l_ctx = nfs_get_lock_context(dreq->ctx);
- 	if (dreq->l_ctx == NULL)
+The rule is that whever we clear XPT_BUSY we should call
+svc_xprt_enqueue().  Without that we may fail to notice any events (such
+as new connections) that arrived while XPT_BUSY was set.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/svc_xprt.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index e1810b9..4801fda 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -238,7 +238,7 @@ int svc_create_xprt(struct svc_serv *serv, const char *xprt_name,
+ 		list_add(&newxprt->xpt_list, &serv->sv_permsocks);
+ 		spin_unlock_bh(&serv->sv_lock);
+ 		newport = svc_xprt_local_port(newxprt);
+-		clear_bit(XPT_BUSY, &newxprt->xpt_flags);
++		svc_xprt_received(newxprt);
+ 		return newport;
+ 	}
+  err:
 -- 
-1.7.1.262.g5ef3d
+1.7.9.5
 
