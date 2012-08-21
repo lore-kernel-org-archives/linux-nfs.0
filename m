@@ -1,49 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:32162 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754513Ab2HGPoV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Aug 2012 11:44:21 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "joro@8bytes.org" <joro@8bytes.org>,
-        "mdauchy@gmail.com" <mdauchy@gmail.com>
-Subject: Re: [PATCH] NFS: Clear key construction data if the idmap upcall
- fails
-Date: Tue, 7 Aug 2012 15:44:04 +0000
-Message-ID: <1344354243.5781.20.camel@lade.trondhjem.org>
-References: <1344353431-28831-1-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1344353431-28831-1-git-send-email-bjschuma@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from acsinet15.oracle.com ([141.146.126.227]:20261 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758448Ab2HUVik convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2012 17:38:40 -0400
+Subject: Re: [PATCH 08/14] svcrpc: ignore unknown address type in udp receive
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20120821213352.GE18637@fieldses.org>
+Date: Tue, 21 Aug 2012 17:38:26 -0400
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Message-Id: <E2217068-BD91-4428-913A-4CDA910250AE@oracle.com>
+References: <1345582652-18476-1-git-send-email-bfields@redhat.com> <1345582652-18476-9-git-send-email-bfields@redhat.com> <05C6926C-B688-4A71-AA1C-26F251BBD635@oracle.com> <20120821212431.GC18637@fieldses.org> <822DBA73-7B4C-43CC-B096-9D8B4A219390@oracle.com> <20120821213352.GE18637@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA4LTA3IGF0IDExOjMwIC0wNDAwLCBianNjaHVtYUBuZXRhcHAuY29tIHdy
-b3RlOg0KPiBGcm9tOiBCcnlhbiBTY2h1bWFrZXIgPGJqc2NodW1hQG5ldGFwcC5jb20+DQo+IA0K
-PiBpZG1hcF9waXBlX2Rvd25jYWxsIGFscmVhZHkgY2xlYXJzIHRoaXMgZmllbGQgaWYgdGhlIHVw
-Y2FsbCBzdWNjZWVkcywNCj4gYnV0IGlmIGl0IGZhaWxzIChycGMuaWRtYXBkIGlzbid0IHJ1bm5p
-bmcpIHRoZSBmaWVsZCB3aWxsIHN0aWxsIGJlIHNldA0KPiBvbiB0aGUgbmV4dCBjYWxsIHRyaWdn
-ZXJpbmcgYSBCVUdfT04oKS4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IEJyeWFuIFNjaHVtYWtlciA8
-YmpzY2h1bWFAbmV0YXBwLmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvaWRtYXAuYyB8IDE2ICsrKysr
-KysrKy0tLS0tLS0NCj4gIDEgZmlsZSBjaGFuZ2VkLCA5IGluc2VydGlvbnMoKyksIDcgZGVsZXRp
-b25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2lkbWFwLmMgYi9mcy9uZnMvaWRtYXAu
-Yw0KPiBpbmRleCBiNzAxMzU4Li42NDVjZmU3IDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvaWRtYXAu
-Yw0KPiArKysgYi9mcy9uZnMvaWRtYXAuYw0KPiBAQCAtNjgzLDEwICs2ODMsMTIgQEAgc3RhdGlj
-IGludCBuZnNfaWRtYXBfbGVnYWN5X3VwY2FsbChzdHJ1Y3Qga2V5X2NvbnN0cnVjdGlvbiAqY29u
-cywNCj4gIA0KPiAgCXJldCA9IHJwY19xdWV1ZV91cGNhbGwoaWRtYXAtPmlkbWFwX3BpcGUsIG1z
-Zyk7DQo+ICAJaWYgKHJldCA8IDApDQo+IC0JCWdvdG8gb3V0MjsNCj4gKwkJZ290byBvdXQzOw0K
-PiAgDQo+ICAJcmV0dXJuIHJldDsNCj4gIA0KPiArb3V0MzoNCj4gKwlpZG1hcC0+aWRtYXBfa2V5
-X2NvbnMgPSBOVUxMOw0KPiAgb3V0MjoNCj4gIAlrZnJlZShpbSk7DQo+ICBvdXQxOg0KDQpUaGF0
-IGZpeGVzIHJwY19xdWV1ZV91cGNhbGwgZmFpbHVyZSBwYXRoLCBidXQgd2Ugc3RpbGwgbmVlZCB0
-byBkZWFsIHdpdGgNCnRpbWVvdXRzIGFuZCBjbG9zZS4NCg0KSG93IGFib3V0IHRoZSBmb2xsb3dp
-bmcgYWx0ZXJuYXRpdmU6DQoNClNldCBpZG1hcC0+aWRtYXBfa2V5X2NvbnMgYWZ0ZXIgZ3JhYmJp
-bmcgdGhlIG11dGV4IGluDQpuZnNfaWRtYXBfZ2V0X2tleSgpLCB0aGVuIGNsZWFyIGl0IGJlZm9y
-ZSB5b3UgcmVsZWFzZSB0aGF0IG11dGV4LiBUaGF0DQpsZWF2ZXMgb25lIHBvc3NpYmxlIHJhY2Ug
-aW4gd2hpY2ggdGhlIGlkbWFwLT5pZG1hcF9rZXlfY29ucyBpcyBjbGVhcmVkDQp3aGlsZSB3ZSdy
-ZSBpbiBpZG1hcF9waXBlX2Rvd25jYWxsLiBPbmUgd2F5IHRvIHNvbHZlIHRoYXQgcmFjZSBpcyB0
-byB1c2UNCmEgc2Vjb25kIG11dGV4IChzZWUgdGhlIG9yaWdpbmFsIGlkbWFwcGVyIGRlc2lnbiBm
-cm9tIGJlZm9yZSB5b3VyDQpjaGFuZ2VzKSB0byBlbnN1cmUgdGhhdCBub3RoaW5nIGNsZWFycyBp
-ZG1hcF9rZXlfY29ucyB3aGlsZSB3ZSdyZSBpbg0KaWRtYXBfcGlwZV9kb3duY2FsbC4NCg0KLS0g
-DQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHAN
-ClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+
+On Aug 21, 2012, at 5:33 PM, J. Bruce Fields wrote:
+
+> On Tue, Aug 21, 2012 at 05:29:16PM -0400, Chuck Lever wrote:
+>> 
+>> On Aug 21, 2012, at 5:24 PM, J. Bruce Fields wrote:
+>> 
+>>> On Tue, Aug 21, 2012 at 05:02:14PM -0400, Chuck Lever wrote:
+>>>> 
+>>>> On Aug 21, 2012, at 4:57 PM, J. Bruce Fields wrote:
+>>>> 
+>>>>> From: "J. Bruce Fields" <bfields@redhat.com>
+>>>>> 
+>>>>> How would this happen?
+>>>> 
+>>>> If an unsupported address family is used in the rqstp.
+>>> 
+>>> Right, but that's impossible, isn't it?
+>> 
+>> The point is to catch this case when someone adds support for new address families.  It won't happen in current code.
+>> 
+>>>>> In any case, it appears this would be returned all the way up to the
+>>>>> caller of svc_recv(), and it's obvious that none of them are equipped to
+>>>>> handle it, and not clear what they would want to do with it anyway.
+>>>>> Let's just drop this and return -EAGAIN.
+>>>> 
+>>>> EAGAIN is incorrect; the correct error code is EAFNOSUPPORT.  If callers are not prepared for this error return, perhaps BUG_ON() would be more appropriate here.
+>>> 
+>>> Yeah.  Actually on a quick check this is the only caller that even
+>>> checks for this case.  So probably the check should go in svc_addr_len.
+>>> Maybe we should be nice and make it a warning.
+>> 
+>> I normally find BUG pretty harsh, but in this case it's true a software error, and as you say, should be "impossible": thus it should be a BUG.  The code should stop before the zero length is used.
+> 
+> Eh, OK, I guess I can live with that.
+> 
+> commit 751f877b10f8ce0d12b40d2a102f3b42b26dc08d
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Tue Aug 21 17:22:11 2012 -0400
+> 
+>    svcrpc: don't bother checking bad svc_addr_len result
+> 
+>    None of the callers should see an unsupported address family (only one
+>    of them even bothers to check for that case), so just check for the
+>    buggy case in svc_addr_len and don't bother elsewhere.
+> 
+>    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+Acked-by: Chuck Lever <chuck.lever@oracle.com>
+
+> 
+> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+> index b3f64b1..4f3a6ab 100644
+> --- a/include/linux/sunrpc/svc_xprt.h
+> +++ b/include/linux/sunrpc/svc_xprt.h
+> @@ -166,8 +166,7 @@ static inline size_t svc_addr_len(const struct sockaddr *sa)
+> 	case AF_INET6:
+> 		return sizeof(struct sockaddr_in6);
+> 	}
+> -
+> -	return 0;
+> +	BUG();
+> }
+> 
+> static inline unsigned short svc_xprt_local_port(const struct svc_xprt *xprt)
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index 998aa8c..13b005c 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -601,8 +601,6 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
+> 		return -EAGAIN;
+> 	}
+> 	len = svc_addr_len(svc_addr(rqstp));
+> -	if (len == 0)
+> -		return -EAFNOSUPPORT;
+> 	rqstp->rq_addrlen = len;
+> 	if (skb->tstamp.tv64 == 0) {
+> 		skb->tstamp = ktime_get_real();
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
