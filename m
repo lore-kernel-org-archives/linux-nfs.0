@@ -1,110 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:43131 "EHLO
-	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750799Ab2HVC0v (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2012 22:26:51 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH v3 00/17] generic hashtable implementation
-Date: Wed, 22 Aug 2012 04:26:55 +0200
-Message-Id: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:37534 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932252Ab2HUSYU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Aug 2012 14:24:20 -0400
+Date: Tue, 21 Aug 2012 14:24:20 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        David Noveck <david.noveck@emc.com>
+Subject: Re: NFS: Treat NFS4ERR_CLID_INUSE as a fatal error
+Message-ID: <20120821182420.GC16497@fieldses.org>
+References: <24601061-1606-4A0A-940E-FDAFD1A2A2BB@oracle.com>
+ <39FE3A39-4EB2-4F9F-908F-645C79B30E0F@oracle.com>
+ <20120809211340.GB11538@fieldses.org>
+ <6575B2FD-CCE4-40D5-9CBA-82681EC20E17@oracle.com>
+ <20120809213838.GC11538@fieldses.org>
+ <B28F4673-3650-4BA9-ADDA-F9A8E62A0499@oracle.com>
+ <20120810201348.GB17985@fieldses.org>
+ <12DB2C80-31EB-4317-B1E7-96620A8F7374@oracle.com>
+ <20120810203930.GC17985@fieldses.org>
+ <B38BE4A7-1D82-4B0D-9E71-2C35A1EB30D3@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <B38BE4A7-1D82-4B0D-9E71-2C35A1EB30D3@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There are quite a few places in the kernel which implement a hashtable
-in a very similar way. Instead of having implementations of a hashtable
-all over the kernel, we can re-use the code.
+On Fri, Aug 10, 2012 at 05:22:17PM -0400, Chuck Lever wrote:
+> Can you explain why you think its a better idea for the client to
+> remove its lease?  For 4.0, it's never had to do that before.  The
+> case you've hit worked before by establishing an additional lease
+> rather than by zapping the old one, for example.
+> 
+> Moreover, it shouldn't matter much that a client doesn't tell a server
+> when it's done, since the client's leases will quickly expire.
+> Generally the client cleans up everything but the lease and clientid4
+> when it unmounts, unless the client crashes, which is hopefully rare
+> (and couldn't result in an "I'm done" notification anyway).  So, I
+> don't see how leaving a lease could be a significant server-side
+> resource issue, or how it might interfere with the operation of other
+> clients.
 
-Since it looks like all the major issues we're addressed in the RFC phase
-and no major issues were raised with this patch set, I'd be happy to see
-this getting merged so that work could continue on different aspects of
-the hashtable. Some interesting directions include:
+Well, I've only seen the problem in this case.  I'm not seeing why the
+client couldn't clean up its clientid as well, but there's also a server
+problem here: I don't believe it should be returning INUSE when the
+preexisting lease actually has no state associated with it any more.  So
+my server's detection of when a clientid has no state is broken.  I'll
+work on that.
 
- - Introducing a dynamic RCU hashtable such as the one Mathieu Desnoyers
- wrote about out in the userspace RCU.
+For now I'm also dropping the flavor comparison, if this look OK.
 
- - Replacing the rest of the the kernel structures which use the same basec
- hashtable construct to use this new interface.
+--b.
 
- - Same as above, but for non-obvious places (for example, I'm looking into
- using the hashtable to store KVM vcpus instead of the linked list being used
- there now - this should help performance with a large amount of vcpus).
+commit d81a6e088c8c884f9be58dfe3647cbff22e1f112
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Tue Aug 21 12:48:30 2012 -0400
 
+    nfsd4: don't pin clientids to pseudoflavors
+    
+    I added cr_flavor to the data compared in same_creds without any
+    justification, in d5497fc693a446ce9100fcf4117c3f795ddfd0d2 "nfsd4: move
+    rq_flavor into svc_cred".
+    
+    Recent client changes then started making
+    
+    	mount -osec=krb5 server:/export /mnt/
+    	echo "hello" >/mnt/TMP
+    	umount /mnt/
+    	mount -osec=krb5i server:/export /mnt/
+    	echo "hello" >/mnt/TMP
+    
+    to fail due to a clid_inuse on the second open.
+    
+    Mounting sequentially like this with different flavors probably isn't
+    that common outside artificial tests.  Also, the real bug here may be
+    that the server isn't just destroying the former clientid in this case
+    (because it isn't good enough at recognizing when the old state is
+    gone).  But it prompted some discussion and a look back at the spec, and
+    I think the check was probably wrong.  Fix and document.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-Changes since v2:
- - Documentation improvements from Mathieu Desnoyers.
- - Converted the SUNRPC audit code to use hashtables as well. Since that code
- requires a dynamic hashtable this shows off the _size() API usage.
-
-Changes since v1:
-
- - Added missing hash_init in rds and lockd.
- - Addressed the userns comments by Eric Biederman.
- - Ran a small test to confirm hash_32 does a good job for low key
- values (1-10000), which showed it did - this resulted in no changes to the
- code.
-
-Sasha Levin (17):
-  hashtable: introduce a small and naive hashtable
-  userns: use new hashtable implementation
-  mm,ksm: use new hashtable implementation
-  workqueue: use new hashtable implementation
-  mm/huge_memory: use new hashtable implementation
-  tracepoint: use new hashtable implementation
-  net,9p: use new hashtable implementation
-  block,elevator: use new hashtable implementation
-  SUNRPC/cache: use new hashtable implementation
-  dlm: use new hashtable implementation
-  net,l2tp: use new hashtable implementation
-  dm: use new hashtable implementation
-  lockd: use new hashtable implementation
-  net,rds: use new hashtable implementation
-  openvswitch: use new hashtable implementation
-  tracing output: use new hashtable implementation
-  SUNRPC: use new hashtable implementation in auth
-
- block/blk.h                                        |    2 +-
- block/elevator.c                                   |   23 +--
- drivers/md/dm-snap.c                               |   24 +--
- drivers/md/persistent-data/dm-block-manager.c      |    1 -
- .../persistent-data/dm-persistent-data-internal.h  |   19 --
- .../md/persistent-data/dm-transaction-manager.c    |   30 +--
- fs/dlm/lowcomms.c                                  |   47 +---
- fs/lockd/svcsubs.c                                 |   66 +++--
- include/linux/elevator.h                           |    5 +-
- include/linux/hashtable.h                          |  291 ++++++++++++++++++++
- kernel/trace/trace_output.c                        |   20 +-
- kernel/tracepoint.c                                |   27 +-
- kernel/user.c                                      |   33 +--
- kernel/workqueue.c                                 |   86 +-----
- mm/huge_memory.c                                   |   57 +---
- mm/ksm.c                                           |   33 +--
- net/9p/error.c                                     |   21 +-
- net/l2tp/l2tp_core.c                               |  134 ++++------
- net/l2tp/l2tp_core.h                               |    8 +-
- net/l2tp/l2tp_debugfs.c                            |   19 +-
- net/openvswitch/vport.c                            |   30 +--
- net/rds/bind.c                                     |   28 ++-
- net/rds/connection.c                               |  102 +++----
- net/sunrpc/auth.c                                  |   45 ++--
- net/sunrpc/cache.c                                 |   20 +-
- 25 files changed, 617 insertions(+), 554 deletions(-)
- delete mode 100644 drivers/md/persistent-data/dm-persistent-data-internal.h
- create mode 100644 include/linux/hashtable.h
-
--- 
-1.7.8.6
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 6872852..b5058c2 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1223,10 +1223,26 @@ static bool groups_equal(struct group_info *g1, struct group_info *g2)
+ 	return true;
+ }
+ 
++/*
++ * RFC 3530 language requires clid_inuse be returned when the
++ * "principal" associated with a requests differs from that previously
++ * used.  We use uid, gid's, and gss principal string as our best
++ * approximation.  We also don't want to allow non-gss use of a client
++ * established using gss: in theory cr_principal should catch that
++ * change, but in practice cr_principal can be null even in the gss case
++ * since gssd doesn't always pass down a principal string.
++ */
++static bool is_gss_cred(struct svc_cred *cr)
++{
++	/* Is cr_flavor one of the gss "pseudoflavors"?: */
++	return (cr->cr_flavor > RPC_AUTH_MAXFLAVOR);
++}
++
++
+ static bool
+ same_creds(struct svc_cred *cr1, struct svc_cred *cr2)
+ {
+-	if ((cr1->cr_flavor != cr2->cr_flavor)
++	if ((is_gss_cred(cr1) != is_gss_cred(cr2))
+ 		|| (cr1->cr_uid != cr2->cr_uid)
+ 		|| (cr1->cr_gid != cr2->cr_gid)
+ 		|| !groups_equal(cr1->cr_group_info, cr2->cr_group_info))
