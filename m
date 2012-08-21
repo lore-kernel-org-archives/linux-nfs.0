@@ -1,214 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f46.google.com ([209.85.214.46]:35087 "EHLO
-	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756749Ab2HWAYG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Aug 2012 20:24:06 -0400
-Message-ID: <50357840.5020201@gmail.com>
-Date: Thu, 23 Aug 2012 02:24:32 +0200
-From: Sasha Levin <levinsasha928@gmail.com>
-MIME-Version: 1.0
-To: Tejun Heo <tj@kernel.org>
-CC: torvalds@linux-foundation.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
-        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
-        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
-        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive hashtable
-References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com> <1345602432-27673-2-git-send-email-levinsasha928@gmail.com> <20120822180138.GA19212@google.com>
-In-Reply-To: <20120822180138.GA19212@google.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from rcsinet15.oracle.com ([148.87.113.117]:32482 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751943Ab2HUS5O convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2012 14:57:14 -0400
+Subject: Re: NFS: Treat NFS4ERR_CLID_INUSE as a fatal error
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20120821182420.GC16497@fieldses.org>
+Date: Tue, 21 Aug 2012 14:57:03 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        David Noveck <david.noveck@emc.com>
+Message-Id: <286C92E9-17F3-4C7F-B2E6-6BB2F042AA44@oracle.com>
+References: <24601061-1606-4A0A-940E-FDAFD1A2A2BB@oracle.com> <39FE3A39-4EB2-4F9F-908F-645C79B30E0F@oracle.com> <20120809211340.GB11538@fieldses.org> <6575B2FD-CCE4-40D5-9CBA-82681EC20E17@oracle.com> <20120809213838.GC11538@fieldses.org> <B28F4673-3650-4BA9-ADDA-F9A8E62A0499@oracle.com> <20120810201348.GB17985@fieldses.org> <12DB2C80-31EB-4317-B1E7-96620A8F7374@oracle.com> <20120810203930.GC17985@fieldses.org> <B38BE4A7-1D82-4B0D-9E71-2C35A1EB30D3@oracle.com> <20120821182420.GC16497@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Tejun,
 
-On 08/22/2012 08:01 PM, Tejun Heo wrote:
-> Hello, Sasha.
+On Aug 21, 2012, at 2:24 PM, J. Bruce Fields wrote:
+
+> On Fri, Aug 10, 2012 at 05:22:17PM -0400, Chuck Lever wrote:
+>> Can you explain why you think its a better idea for the client to
+>> remove its lease?  For 4.0, it's never had to do that before.  The
+>> case you've hit worked before by establishing an additional lease
+>> rather than by zapping the old one, for example.
+>> 
+>> Moreover, it shouldn't matter much that a client doesn't tell a server
+>> when it's done, since the client's leases will quickly expire.
+>> Generally the client cleans up everything but the lease and clientid4
+>> when it unmounts, unless the client crashes, which is hopefully rare
+>> (and couldn't result in an "I'm done" notification anyway).  So, I
+>> don't see how leaving a lease could be a significant server-side
+>> resource issue, or how it might interfere with the operation of other
+>> clients.
 > 
-> On Wed, Aug 22, 2012 at 04:26:56AM +0200, Sasha Levin wrote:
->> +#define DEFINE_HASHTABLE(name, bits)					\
->> +	struct hlist_head name[HASH_SIZE(bits)];
+> Well, I've only seen the problem in this case.  I'm not seeing why the
+> client couldn't clean up its clientid as well, but there's also a server
+> problem here: I don't believe it should be returning INUSE when the
+> preexisting lease actually has no state associated with it any more.  So
+> my server's detection of when a clientid has no state is broken.  I'll
+> work on that.
+
+Have you tried this optimization with a client that has concurrent mounts with different GSS flavors?  The below patch may make the optimization moot.
+
+> For now I'm also dropping the flavor comparison, if this look OK.
+
+Very interesting, looks plausible.  Commit d5497fc6 is in only 3.5?
+
+With the below change and the current 3.6-rc2 NFS client, does the second open succeed now?
+
+> --b.
 > 
-> Shouldn't this be something like the following?
+> commit d81a6e088c8c884f9be58dfe3647cbff22e1f112
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Tue Aug 21 12:48:30 2012 -0400
 > 
-> #define DEFINE_HASHTABLE(name, bits)					\
-> 	struct hlist_head name[HASH_SIZE(bits)] =			\
-> 		{ [0 ... HASH_SIZE(bits) - 1] = HLIST_HEAD_INIT };
+>    nfsd4: don't pin clientids to pseudoflavors
 > 
-> Also, given that the declaration isn't non-trivial, you'll probably
-> want a matching DECLARE_HASHTABLE() macro too.
-
-I figured we might do a DEFINE_HASHTABLE() to prevent the need from using
-hash_init() on hashtables defined this way, but I preferred not to since we may
-end up wanting a more complex initialization (I'll explain why extensively below).
-
->> +/* Use hash_32 when possible to allow for fast 32bit hashing in 64bit kernels. */
->> +#define hash_min(val, bits) ((sizeof(val)==4) ? hash_32((val), (bits)) : hash_long((val), (bits)))
+>    I added cr_flavor to the data compared in same_creds without any
+>    justification, in d5497fc693a446ce9100fcf4117c3f795ddfd0d2 "nfsd4: move
+>    rq_flavor into svc_cred".
 > 
-> Why is the branching condition sizeof(val) == 4 instead of <= 4?
-
-No reason, will fix.
-
-> Also, no biggie but why isn't this macro in caps?
-
-I had this plan in my mind to move it into linux/hash.h at some stage later, and
-the API there uses low caps even for macros (hash_long()).
-
->> +/**
->> + * hash_add_rcu_size - add an object to a rcu enabled hashtable
->> + * @hashtable: hashtable to add to
->> + * @bits: bit count used for hashing
->> + * @node: the &struct hlist_node of the object to be added
->> + * @key: the key of the object to be added
->> + */
->> +#define hash_add_rcu_size(hashtable, bits, node, key)				\
->> +	hlist_add_head_rcu(node, &hashtable[hash_min(key, bits)]);
->> +
->> +/**
->> + * hash_add_rcu - add an object to a rcu enabled hashtable
->> + * @hashtable: hashtable to add to
->> + * @node: the &struct hlist_node of the object to be added
->> + * @key: the key of the object to be added
->> + */
->> +#define hash_add_rcu(hashtable, node, key)					\
->> +	hash_add_rcu_size(hashtable, HASH_BITS(hashtable), node, key)
+>    Recent client changes then started making
 > 
-> Or maybe we're better off with hash_head_size() and hash_head()?  I'll
-> expand on it later.  Please bear with me.
+>    	mount -osec=krb5 server:/export /mnt/
+>    	echo "hello" >/mnt/TMP
+>    	umount /mnt/
+>    	mount -osec=krb5i server:/export /mnt/
+>    	echo "hello" >/mnt/TMP
 > 
->> +/**
->> + * hash_hashed - check whether an object is in any hashtable
->> + * @node: the &struct hlist_node of the object to be checked
->> + */
->> +#define hash_hashed(node) (!hlist_unhashed(node))
+>    to fail due to a clid_inuse on the second open.
 > 
-> As the 'h' in hlist* stand for hash anyway and I think this type of
-> thin wrappers tend to obfuscate more than anything else.
+>    Mounting sequentially like this with different flavors probably isn't
+>    that common outside artificial tests.  Also, the real bug here may be
+>    that the server isn't just destroying the former clientid in this case
+>    (because it isn't good enough at recognizing when the old state is
+>    gone).  But it prompted some discussion and a look back at the spec, and
+>    I think the check was probably wrong.  Fix and document.
 > 
->> +/**
->> + * hash_del - remove an object from a hashtable
->> + * @node: &struct hlist_node of the object to remove
->> + */
->> +static inline void hash_del(struct hlist_node *node)
->> +{
->> +	hlist_del_init(node);
->> +}
->> +
->> +/**
->> + * hash_del_rcu - remove an object from a rcu enabled hashtable
->> + * @node: &struct hlist_node of the object to remove
->> + */
->> +static inline void hash_del_rcu(struct hlist_node *node)
->> +{
->> +	hlist_del_init_rcu(node);
->> +}
+>    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 > 
-> If we do that, we can remove all these thin wrappers.
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 6872852..b5058c2 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1223,10 +1223,26 @@ static bool groups_equal(struct group_info *g1, struct group_info *g2)
+> 	return true;
+> }
 > 
->> +#define hash_for_each_size(name, bits, bkt, node, obj, member)			\
->> +	for (bkt = 0; bkt < HASH_SIZE(bits); bkt++)				\
->> +		hlist_for_each_entry(obj, node, &name[bkt], member)
-> ..
->> +#define hash_for_each(name, bkt, node, obj, member)				\
->> +	hash_for_each_size(name, HASH_BITS(name), bkt, node, obj, member)
-> ...
->> +#define hash_for_each_rcu_size(name, bits, bkt, node, obj, member)		\
->> +	for (bkt = 0; bkt < HASH_SIZE(bits); bkt++)				\
->> +		hlist_for_each_entry_rcu(obj, node, &name[bkt], member)
-> ...
->> +#define hash_for_each_rcu(name, bkt, node, obj, member)				\
->> +	hash_for_each_rcu_size(name, HASH_BITS(name), bkt, node, obj, member)
-> ...
->> +#define hash_for_each_safe_size(name, bits, bkt, node, tmp, obj, member)	\
->> +	for (bkt = 0; bkt < HASH_SIZE(bits); bkt++)                     	\
->> +		hlist_for_each_entry_safe(obj, node, tmp, &name[bkt], member)
-> ...
->> +#define hash_for_each_safe(name, bkt, node, tmp, obj, member)			\
->> +	hash_for_each_safe_size(name, HASH_BITS(name), bkt, node,		\
->> +				tmp, obj, member)
-> ...
->> +#define hash_for_each_possible_size(name, obj, bits, node, member, key)		\
->> +	hlist_for_each_entry(obj, node,	&name[hash_min(key, bits)], member)
-> ...
->> +#define hash_for_each_possible(name, obj, node, member, key)			\
->> +	hash_for_each_possible_size(name, obj, HASH_BITS(name), node, member, key)
-> ...
->> +#define hash_for_each_possible_rcu_size(name, obj, bits, node, member, key)	\
->> +	hlist_for_each_entry_rcu(obj, node, &name[hash_min(key, bits)], member)
-> ...
->> +#define hash_for_each_possible_rcu(name, obj, node, member, key)		\
->> +	hash_for_each_possible_rcu_size(name, obj, HASH_BITS(name),		\
-> ...
->> +#define hash_for_each_possible_safe_size(name, obj, bits, node, tmp, member, key)\
->> +	hlist_for_each_entry_safe(obj, node, tmp,				\
->> +		&name[hash_min(key, bits)], member)
-> ...
->> +#define hash_for_each_possible_safe(name, obj, node, tmp, member, key)		\
->> +	hash_for_each_possible_safe_size(name, obj, HASH_BITS(name),		\
-> 
-> And also all these.  We'd only need hash_for_each_head() and
-> hash_head().  hash_for_each_possible*() could be nice for convenience,
-> I suppose.
-> 
-> I think the almost trivial nature of hlist hashtables makes this a bit
-> tricky and I'm not very sure but having this combinatory explosion is
-> a bit dazzling when the same functionality can be achieved by simply
-> combining operations which are already defined and named considering
-> hashtable.  I'm not feeling too strong about this tho.  What do others
-> think?
+> +/*
+> + * RFC 3530 language requires clid_inuse be returned when the
+> + * "principal" associated with a requests differs from that previously
+> + * used.  We use uid, gid's, and gss principal string as our best
+> + * approximation.  We also don't want to allow non-gss use of a client
+> + * established using gss: in theory cr_principal should catch that
+> + * change, but in practice cr_principal can be null even in the gss case
+> + * since gssd doesn't always pass down a principal string.
+> + */
+> +static bool is_gss_cred(struct svc_cred *cr)
+> +{
+> +	/* Is cr_flavor one of the gss "pseudoflavors"?: */
+> +	return (cr->cr_flavor > RPC_AUTH_MAXFLAVOR);
+> +}
+> +
+> +
+> static bool
+> same_creds(struct svc_cred *cr1, struct svc_cred *cr2)
+> {
+> -	if ((cr1->cr_flavor != cr2->cr_flavor)
+> +	if ((is_gss_cred(cr1) != is_gss_cred(cr2))
+> 		|| (cr1->cr_uid != cr2->cr_uid)
+> 		|| (cr1->cr_gid != cr2->cr_gid)
+> 		|| !groups_equal(cr1->cr_group_info, cr2->cr_group_info))
 
-I'm thinking that this hashtable API will have 2 purposes: First, it would
-prevent the excessive duplication of hashtable implementations all around the code.
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Second, it will allow more easily interchangeable hashtable implementations to
-find their way into the kernel. There are several maintainers who would be happy
-to see dynamically sized RCU hashtable, and I'm guessing that several more
-variants could be added based on needs in specific modules.
 
-The second reason is why several things you've mentioned look the way they are:
 
- - No DEFINE_HASHTABLE(): I wanted to force the use of hash_init() since
-initialization for other hashtables may be more complicated than the static
-initialization for this implementation, which means that any place that used
-DEFINE_HASHTABLE() and didn't do hash_init() will be buggy.
-
- - hash_hashed(): Different hashtable implementations may not use hlist, so
-letting them assume that doing hlist operations on hashtable objects is wrong.
-
- - Lack of hash_head(): I didn't want to expose the internal structure of the
-hashtable to the user. This might make it hard to implement hashtables that
-resize themselves if we let the user hold a bucket in his hands.
-
-I'm actually tempted in hiding hlist completely from hashtable users, probably
-by simply defining a hash_head/hash_node on top of the hlist_ counterparts.
-
-Now, I know that I mention a lot of these hashtables that might or might not be
-added later on in the kernel, this is mostly due to the interest in dynamic
-resizable hashtables which was shown during the RFC, and the fact that there is
-a solid implementation of a dynamic RCU hashtable in urcu which might be a great
-benefit in the kernel as well (I'm also looking at it while working on this
-hashtable to verify that both could share an API in the future).
-
-Regarding the amount of new macros, we can address this by splitting off any
-dynamic elements into a new hashtable type. This will let us reduce quite a lot
-of macros (removing all the _size() ones at least).
-
-> Also, can you please audit the comments on top of each macro?  They
-> have wrong names and don't differentiate the different variants very
-> well.
-
-Sure, sorry about that.
-
-Thanks,
-Sasha
-
-> Thanks.
-> 
 
