@@ -1,108 +1,29 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:20261 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758448Ab2HUVik convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2012 17:38:40 -0400
-Subject: Re: [PATCH 08/14] svcrpc: ignore unknown address type in udp receive
-Mime-Version: 1.0 (Apple Message framework v1278)
+Received: from mout.perfora.net ([74.208.4.194]:54936 "EHLO mout.perfora.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751692Ab2HUS4y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Aug 2012 14:56:54 -0400
+Date: Tue, 21 Aug 2012 14:42:30 -0400
+From: Jim Rees <rees@umich.edu>
+To: Sven Geggus <lists@fuchsschwanzdomain.de>, linux-nfs@vger.kernel.org
+Subject: Re: NFS4: ssh + unlink(~/.Xauthority) delays
+Message-ID: <20120821184230.GA13357@umich.edu>
+References: <k0vgkt$mm0$1@ultimate100.geggus.net>
+ <20120821125905.GA16550@umich.edu>
+ <k10bib$1fi$1@ultimate100.geggus.net>
+ <20120821170759.GA13076@umich.edu>
+ <20120821180353.GB4561@us.ibm.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20120821213352.GE18637@fieldses.org>
-Date: Tue, 21 Aug 2012 17:38:26 -0400
-Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Message-Id: <E2217068-BD91-4428-913A-4CDA910250AE@oracle.com>
-References: <1345582652-18476-1-git-send-email-bfields@redhat.com> <1345582652-18476-9-git-send-email-bfields@redhat.com> <05C6926C-B688-4A71-AA1C-26F251BBD635@oracle.com> <20120821212431.GC18637@fieldses.org> <822DBA73-7B4C-43CC-B096-9D8B4A219390@oracle.com> <20120821213352.GE18637@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20120821180353.GB4561@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Malahal Naineni wrote:
 
-On Aug 21, 2012, at 5:33 PM, J. Bruce Fields wrote:
+  NFS3 doesn't have delegations and this file placement should not be an
+  issue in NFSv4 either if it is working correctly!
 
-> On Tue, Aug 21, 2012 at 05:29:16PM -0400, Chuck Lever wrote:
->> 
->> On Aug 21, 2012, at 5:24 PM, J. Bruce Fields wrote:
->> 
->>> On Tue, Aug 21, 2012 at 05:02:14PM -0400, Chuck Lever wrote:
->>>> 
->>>> On Aug 21, 2012, at 4:57 PM, J. Bruce Fields wrote:
->>>> 
->>>>> From: "J. Bruce Fields" <bfields@redhat.com>
->>>>> 
->>>>> How would this happen?
->>>> 
->>>> If an unsupported address family is used in the rqstp.
->>> 
->>> Right, but that's impossible, isn't it?
->> 
->> The point is to catch this case when someone adds support for new address families.  It won't happen in current code.
->> 
->>>>> In any case, it appears this would be returned all the way up to the
->>>>> caller of svc_recv(), and it's obvious that none of them are equipped to
->>>>> handle it, and not clear what they would want to do with it anyway.
->>>>> Let's just drop this and return -EAGAIN.
->>>> 
->>>> EAGAIN is incorrect; the correct error code is EAFNOSUPPORT.  If callers are not prepared for this error return, perhaps BUG_ON() would be more appropriate here.
->>> 
->>> Yeah.  Actually on a quick check this is the only caller that even
->>> checks for this case.  So probably the check should go in svc_addr_len.
->>> Maybe we should be nice and make it a warning.
->> 
->> I normally find BUG pretty harsh, but in this case it's true a software error, and as you say, should be "impossible": thus it should be a BUG.  The code should stop before the zero length is used.
-> 
-> Eh, OK, I guess I can live with that.
-> 
-> commit 751f877b10f8ce0d12b40d2a102f3b42b26dc08d
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Tue Aug 21 17:22:11 2012 -0400
-> 
->    svcrpc: don't bother checking bad svc_addr_len result
-> 
->    None of the callers should see an unsupported address family (only one
->    of them even bothers to check for that case), so just check for the
->    buggy case in svc_addr_len and don't bother elsewhere.
-> 
->    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-Acked-by: Chuck Lever <chuck.lever@oracle.com>
-
-> 
-> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-> index b3f64b1..4f3a6ab 100644
-> --- a/include/linux/sunrpc/svc_xprt.h
-> +++ b/include/linux/sunrpc/svc_xprt.h
-> @@ -166,8 +166,7 @@ static inline size_t svc_addr_len(const struct sockaddr *sa)
-> 	case AF_INET6:
-> 		return sizeof(struct sockaddr_in6);
-> 	}
-> -
-> -	return 0;
-> +	BUG();
-> }
-> 
-> static inline unsigned short svc_xprt_local_port(const struct svc_xprt *xprt)
-> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index 998aa8c..13b005c 100644
-> --- a/net/sunrpc/svcsock.c
-> +++ b/net/sunrpc/svcsock.c
-> @@ -601,8 +601,6 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
-> 		return -EAGAIN;
-> 	}
-> 	len = svc_addr_len(svc_addr(rqstp));
-> -	if (len == 0)
-> -		return -EAFNOSUPPORT;
-> 	rqstp->rq_addrlen = len;
-> 	if (skb->tstamp.tv64 == 0) {
-> 		skb->tstamp = ktime_get_real();
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Xauthority doesn't belong in $HOME, it belongs on the local disk.  That has
+nothing to do with NFS v3/v4.  It has to do with limiting distribution and
+exposure of sensitive information.
