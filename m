@@ -1,53 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:53481 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:60735 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751380Ab2H3QCI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Aug 2012 12:02:08 -0400
-Message-ID: <503F8E7C.1030102@netapp.com>
-Date: Thu, 30 Aug 2012 12:02:04 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+	id S932139Ab2HURn6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Aug 2012 13:43:58 -0400
+Date: Tue, 21 Aug 2012 13:43:55 -0400
+To: parafin <parafin@paraf.in>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFS server misbehaving (nfsd eats CPU and returns no data)
+Message-ID: <20120821174355.GB15958@fieldses.org>
+References: <20120508024419.03e585f2@darkhorse.paraf.in>
 MIME-Version: 1.0
-To: =?UTF-8?B?Q2FybG9zIEppbcOpbmV6?= <cjimenez@eneotecnologia.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: Stale NFS file handle - persistent error
-References: <503E131F.2040904@eneotecnologia.com> <503E13BF.6010304@eneotecnologia.com> <20120829171122.GA9983@fieldses.org> <503F0BEF.4020104@eneotecnologia.com>
-In-Reply-To: <503F0BEF.4020104@eneotecnologia.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120508024419.03e585f2@darkhorse.paraf.in>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/30/2012 02:45 AM, Carlos Jiménez wrote:
-> Hi,
-> 
-> Thank you for your reply.
->> Could you be more specific?  What kernel version exactly, and what
->> filesystem are you exporting, and what are the export options?
-> Kernel version: 2.4.27-3-386
+Are you still willing to test patches?  If so, this would be worth a
+try:
 
-2.4.27 is incredibly old, do you have access to the server and can you try a more recent kernel?
+	http://marc.info/?l=linux-nfs&m=134550227125610&w=2
 
-- Bryan
+>From a quick look at your logs it looks likely to address the same
+problem.
 
-> Filesystem exported: ext3
-> Export options: rw,no_root_squash,sync
-> 
-> I've shared/exported to the full network 192.168.180.0/24.
-> The exported directory is /opt/virtual/one and in /opt/virtual it is mounted /dev/cciss/c0d0p4 (with default options), which is a 256GB (8GB used) partition over a 3 disks RAID5.
-> 
->>
->> What version of NFS are you using?
->>
-> Vers 3
-> 
->> I assume you're not doing anything else with either file or directory at
->> the same time?  (E.g., not deleting or renaming the file while it's
->> being copied?)
->>
->>
-> I'm not doing anything else with either file or directory at the same time.
-> 
-> -- 
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Apologies for the delayed response, we finally just happened to get the
+clue necessary to make the problem obvious....
+
+--b.
+
+On Tue, May 08, 2012 at 02:44:19AM +0400, parafin wrote:
+> Hello.
+> I'm having a problem with my NFS share. It's been present for some time
+> now, kernel versions got upgraded, setup has been changed, but since I
+> can't remember for sure when it started, I'll just describe my current
+> configuration. But first the problem itself.
+> Periodically (I would say every GB of data or so) reads from NFS share
+> hang during which nfsd kernel thread on server eats CPU but no data
+> gets sent to the client. After a minute everything comes to norm again
+> (no action on my part is required). First thing I did to debug this is
+> I enabled verbose output in all userspace daemons both on client and
+> server - it produced no output whatsoever during the problematic period
+> of time. Next I dumped network traffic on TCP port 2049 both on client
+> and server - there was no packet drops or any other strange stuff,
+> except that client restarted the TCP connection to 2049 port after a
+> minute of silence from server (which resulted in data flowing again).
+> This was confirmed by kernel debug output from client (echo 65535 | tee
+> nfs_debug nfsd_debug nlm_debug rpc_debug) - NFS client sent a server
+> READ request with 60 seconds timeout, timeout was reached and resulted
+> in dropping and restarting of NFS TCP connection. So this points to NFS
+> server kernel code. Kernel debug output on server is quite large and
+> spikes during the hangs - I've attached deduplicated (by hand) version
+> of it to this email. I couldn't find anything strange in there, but I
+> don't understand most of it anyway.
+> My current setup - both server and client are Linux 3.3.3, NFSv4 with
+> sec=krb5, it runs through local network 192.168.0.0/24 with no
+> firewalls (client has iptables disabled in kernel, server ACCEPTs
+> everything from internal interface). Client uses Wi-Fi, server -
+> Ethernet with VLANs, so traffic goes through AP. But since network dumps
+> on server and client are the same, network configuration IMHO is
+> irrelevant, I just added it for fullness of description. Most common
+> usage (and test case) of this NFS share is watching some videos using
+> mplayer. Underlying filesystem is XFS (though ext4 is used for other
+> shares on the same server).
+> I'm ready to provide additional information or test some patches, since
+> this problem is quite annoying (and IMHO got worse with time).
+
 
