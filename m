@@ -1,42 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:65004 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755191Ab2HVSFG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Aug 2012 14:05:06 -0400
-Date: Wed, 22 Aug 2012 11:05:00 -0700
-From: Tejun Heo <tj@kernel.org>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: torvalds@linux-foundation.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
-        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
-        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
-        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v3 04/17] workqueue: use new hashtable implementation
-Message-ID: <20120822180500.GB19212@google.com>
-References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
- <1345602432-27673-5-git-send-email-levinsasha928@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:45330 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751813Ab2HUOQS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Aug 2012 10:16:18 -0400
+Date: Tue, 21 Aug 2012 10:16:14 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Simo Sorce <simo@redhat.com>,
+        "bfields@redhat.com" <bfields@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/4] Add support for new RPCSEC_GSS upcall mechanism
+ for nfsd
+Message-ID: <20120821141614.GF9483@fieldses.org>
+References: <20120710223818.GA6720@fieldses.org>
+ <1341961118.17428.29.camel@lade.trondhjem.org>
+ <20120711170331.GE11432@fieldses.org>
+ <20120711172714.GA13610@fieldses.org>
+ <1342028948.25375.45.camel@lade.trondhjem.org>
+ <20120712221058.GC24162@fieldses.org>
+ <20120713154302.GA32660@fieldses.org>
+ <20120808193659.GA942@fieldses.org>
+ <20120808194359.GB942@fieldses.org>
+ <5022C824.504@parallels.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1345602432-27673-5-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <5022C824.504@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 22, 2012 at 04:26:59AM +0200, Sasha Levin wrote:
-> Switch workqueues to use the new hashtable implementation. This reduces the amount of
-> generic unrelated code in the workqueues.
-> 
-> Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+One other question for Stanislav: I assume module parameters are global,
+and that there's no plan to try to make them per-container?
 
-Acked-by: Tejun Heo <tj@kernel.org>
-
-Thanks.
-
--- 
-tejun
+--b.
