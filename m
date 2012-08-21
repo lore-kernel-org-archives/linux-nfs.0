@@ -1,81 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:3434 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:35832 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753262Ab2HGPxI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Aug 2012 11:53:08 -0400
-Date: Tue, 7 Aug 2012 11:53:01 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: trivial comment updates
-Message-ID: <20120807115301.1350d865@tlielax.poochiereds.net>
-In-Reply-To: <20120807152318.GB21022@fieldses.org>
-References: <1344265227-22280-1-git-send-email-jlayton@redhat.com>
-	<20120807152318.GB21022@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1758436Ab2HUVYd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Aug 2012 17:24:33 -0400
+Date: Tue, 21 Aug 2012 17:24:31 -0400
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 08/14] svcrpc: ignore unknown address type in udp
+ receive
+Message-ID: <20120821212431.GC18637@fieldses.org>
+References: <1345582652-18476-1-git-send-email-bfields@redhat.com>
+ <1345582652-18476-9-git-send-email-bfields@redhat.com>
+ <05C6926C-B688-4A71-AA1C-26F251BBD635@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <05C6926C-B688-4A71-AA1C-26F251BBD635@oracle.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 7 Aug 2012 11:23:19 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Mon, Aug 06, 2012 at 11:00:27AM -0400, Jeff Layton wrote:
-> > locks.c doesn't use the BKL anymore and there is no fi_perfile field.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  fs/nfsd/nfs4state.c | 6 +-----
-> >  fs/nfsd/state.h     | 6 +-----
-> >  2 files changed, 2 insertions(+), 10 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index cc894ed..d8a7ddf 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -4151,11 +4151,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-> >  	file_lock.fl_end = last_byte_offset(lock->lk_offset, lock->lk_length);
-> >  	nfs4_transform_lock_offset(&file_lock);
-> >  
-> > -	/*
-> > -	* Try to lock the file in the VFS.
-> > -	* Note: locks.c uses the BKL to protect the inode's lock list.
-> > -	*/
-> > -
-> > +	/* Try to lock the file in the VFS. */
+On Tue, Aug 21, 2012 at 05:02:14PM -0400, Chuck Lever wrote:
 > 
-> Thanks, applying, but: mind if I just drop this comment entirely?  "Try
-> to lock the file in the VFS" doesn't add much to "vfs_lock_file()".
+> On Aug 21, 2012, at 4:57 PM, J. Bruce Fields wrote:
 > 
-> --b.
-> 
-
-Totally fine with me.
-
-> >  	err = vfs_lock_file(filp, F_SETLK, &file_lock, &conflock);
-> >  	switch (-err) {
-> >  	case 0: /* success! */
-> > diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-> > index e617314..cce91c8 100644
-> > --- a/fs/nfsd/state.h
-> > +++ b/fs/nfsd/state.h
-> > @@ -374,11 +374,7 @@ static inline struct nfs4_lockowner * lockowner(struct nfs4_stateowner *so)
-> >  	return container_of(so, struct nfs4_lockowner, lo_owner);
-> >  }
-> >  
-> > -/*
-> > -*  nfs4_file: a file opened by some number of (open) nfs4_stateowners.
-> > -*    o fi_perfile list is used to search for conflicting 
-> > -*      share_acces, share_deny on the file.
-> > -*/
-> > +/* nfs4_file: a file opened by some number of (open) nfs4_stateowners. */
-> >  struct nfs4_file {
-> >  	atomic_t		fi_ref;
-> >  	struct list_head        fi_hash;    /* hash by "struct inode *" */
-> > -- 
-> > 1.7.11.2
+> > From: "J. Bruce Fields" <bfields@redhat.com>
 > > 
+> > How would this happen?
+> 
+> If an unsupported address family is used in the rqstp.
 
+Right, but that's impossible, isn't it?
 
--- 
-Jeff Layton <jlayton@redhat.com>
+> > In any case, it appears this would be returned all the way up to the
+> > caller of svc_recv(), and it's obvious that none of them are equipped to
+> > handle it, and not clear what they would want to do with it anyway.
+> > Let's just drop this and return -EAGAIN.
+> 
+> EAGAIN is incorrect; the correct error code is EAFNOSUPPORT.  If callers are not prepared for this error return, perhaps BUG_ON() would be more appropriate here.
+
+Yeah.  Actually on a quick check this is the only caller that even
+checks for this case.  So probably the check should go in svc_addr_len.
+Maybe we should be nice and make it a warning.
+
+--b.
+
+commit 4814e806a44f3dee8f7cae00a7d0240487d62583
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Tue Aug 21 17:22:11 2012 -0400
+
+    svcrpc: don't bother checking bad svc_addr_len result
+    
+    None of the callers should see an unsupported address family (only one
+    of them even bothers to check for that case), so just check for the
+    buggy case in svc_addr_len and don't bother elsewhere.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index b3f64b1..9324008 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -166,7 +166,7 @@ static inline size_t svc_addr_len(const struct sockaddr *sa)
+ 	case AF_INET6:
+ 		return sizeof(struct sockaddr_in6);
+ 	}
+-
++	WARN_ONCE(true, "unknown address family %d\n", sa->sa_family);
+ 	return 0;
+ }
+ 
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 998aa8c..13b005c 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -601,8 +601,6 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
+ 		return -EAGAIN;
+ 	}
+ 	len = svc_addr_len(svc_addr(rqstp));
+-	if (len == 0)
+-		return -EAFNOSUPPORT;
+ 	rqstp->rq_addrlen = len;
+ 	if (skb->tstamp.tv64 == 0) {
+ 		skb->tstamp = ktime_get_real();
