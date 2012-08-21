@@ -1,120 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from [65.55.88.14] ([65.55.88.14]:6529 "EHLO
-	tx2outboundpool.messaging.microsoft.com" rhost-flags-FAIL-FAIL-OK-OK)
-	by vger.kernel.org with ESMTP id S1754521Ab2HQBLO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Aug 2012 21:11:14 -0400
-From: Shai Lazmi <shai.lazmi@qlogic.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: William Dauchy <wdauchy@gmail.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Thu, 16 Aug 2012 18:09:48 -0700
-Subject: RE: [PATCH 1/2] NFS: Clear key construction data if the idmap
- upcall fails
-Message-ID: <21641D3714F5AF449DC483E699E1124E86E64095A8@AVEXMB2.qlogic.org>
-References: <1345148622-10845-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E640957F@AVEXMB2.qlogic.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B542B@SACEXCMBX04-PRD.hq.netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E6409585@AVEXMB2.qlogic.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B54EC@SACEXCMBX04-PRD.hq.netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E640958D@AVEXMB2.qlogic.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B5646@SACEXCMBX04-PRD.hq.netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E6409593@AVEXMB2.qlogic.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA93B56F2@SACEXCMBX04-PRD.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA93B56F2@SACEXCMBX04-PRD.hq.netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:57303 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758453Ab2HUVZW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Aug 2012 17:25:22 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q7LLPMDx006928
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 21 Aug 2012 17:25:22 -0400
+Received: from pad.fieldses.org (vpn-11-55.rdu.redhat.com [10.11.11.55])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id q7LLPMtj026485
+	for <linux-nfs@vger.kernel.org>; Tue, 21 Aug 2012 17:25:22 -0400
+Date: Tue, 21 Aug 2012 17:25:21 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 06/14] nfsd: allow configuring nfsd to listen on 5-digit
+ ports
+Message-ID: <20120821212521.GB28143@pad.fieldses.org>
+References: <1345582652-18476-1-git-send-email-bfields@redhat.com>
+ <1345582652-18476-7-git-send-email-bfields@redhat.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1345582652-18476-7-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SSd2ZSBsb29rZWQgYXQgdGhlIHJlcG8gKGh0dHA6Ly9naXQua2VybmVsLm9yZy8/cD1saW51eC9r
-ZXJuZWwvZ2l0L3RvcnZhbGRzL2xpbnV4LmdpdDthPWJsb2I7Zj1mcy9uZnMvaWRtYXAuYztoPWI3
-MDEzNThjMzljMzUxZDA2MTNkMWRiMjllYmNmMzgyY2E4Y2IwYTY7aGI9ZGRmMzQzZjYzNWZlNDQ0
-MGNhZDUyOGUxMmY5NmYyOGJkNTBhYTA5OSksIHNlZW1zIGp1c3QgbGlrZSB3aGF0IEkgaGF2ZQ0K
-Q2FuIGl0IGJlIGFscmVhZHkgY2hhbmdlZCBvbiB0aGUgdHJlZT8NCg0KLS0tLS1PcmlnaW5hbCBN
-ZXNzYWdlLS0tLS0NCkZyb206IE15a2xlYnVzdCwgVHJvbmQgW21haWx0bzpUcm9uZC5NeWtsZWJ1
-c3RAbmV0YXBwLmNvbV0NClNlbnQ6IFRodXJzZGF5LCBBdWd1c3QgMTYsIDIwMTIgNToyMiBQTQ0K
-VG86IFNoYWkgTGF6bWkNCkNjOiBXaWxsaWFtIERhdWNoeTsgU2NodW1ha2VyLCBCcnlhbjsgbGlu
-dXgtbmZzQHZnZXIua2VybmVsLm9yZw0KU3ViamVjdDogUmU6IFtQQVRDSCAxLzJdIE5GUzogQ2xl
-YXIga2V5IGNvbnN0cnVjdGlvbiBkYXRhIGlmIHRoZSBpZG1hcCB1cGNhbGwgZmFpbHMNCg0KT24g
-VGh1LCAyMDEyLTA4LTE2IGF0IDE3OjE1IC0wNzAwLCBTaGFpIExhem1pIHdyb3RlOg0KPiBnaXQg
-YXBwbHkgLS1jaGVjayAwMDAxLU5GUy1DbGVhci1rZXktY29uc3RydWN0aW9uLWRhdGEtaWYtdGhl
-LWlkbWFwLXVwY2FsbC0ucGF0Y2gNCj4gZXJyb3I6IHBhdGNoIGZhaWxlZDogZnMvbmZzL2lkbWFw
-LmM6NjENCj4gZXJyb3I6IGZzL25mcy9pZG1hcC5jOiBwYXRjaCBkb2VzIG5vdCBhcHBseQ0KPg0K
-Pg0KPiBpZG1hcC5jDQo+IGRlZmluZSBORlNfVUlOVF9NQVhMRU4gMTENCj4NCj4gc3RhdGljIGNv
-bnN0IHN0cnVjdCBjcmVkICppZF9yZXNvbHZlcl9jYWNoZTsNCj4gc3RhdGljIHN0cnVjdCBrZXlf
-dHlwZSBrZXlfdHlwZV9pZF9yZXNvbHZlcl9sZWdhY3k7DQo+DQo+IHN0cnVjdCBpZG1hcCB7DQo+
-ICAgICAgICAgc3RydWN0IHJwY19waXBlICAgICAgICAgKmlkbWFwX3BpcGU7DQo+ICAgICAgICAg
-c3RydWN0IGtleV9jb25zdHJ1Y3Rpb24gKmlkbWFwX2tleV9jb25zOw0KPiAgICAgICAgIHN0cnVj
-dCBtdXRleCAgICAgICAgICAgIGlkbWFwX211dGV4Ow0KPiB9Ow0KDQpUaGF0J3MgaG93IGl0IHNo
-b3VsZCBtb3JlIG9yIGxlc3MgbG9vayBhZnRlciBhcHBseWluZyB0aGUgcGF0Y2guIEknbQ0KZ3Vl
-c3NpbmcgdGhhdCBvbmUgb2YgeW91ciBwcmV2aW91cyBhdHRlbXB0cyBoYXMgcGFydGlhbGx5IHdv
-cmtlZCwgYW5kDQpoYXMgbGVmdCB5b3VyIGNoZWNrZWQgb3V0IGdpdCB0cmVlIGluIGEgImRpcnR5
-IiBzdGF0ZS4NCg0KUGxlYXNlIHRyeSB0aGUgZm9sbG93aW5nOg0KDQokIGdpdCByZXNldCAtLWhh
-cmQgSEVBRA0KJCBnaXQgYXBwbHkgLS1jaGVjayAwMDAxLU5GUy1DbGVhci1rZXktY29uc3RydWN0
-aW9uLWRhdGEtaWYtdGhlLWlkbWFwLXVwY2FsbC0ucGF0Y2gNCiQgZ2l0IGFwcGx5IC0tY2hlY2sg
-MDAwMi1ORlMtcmV0dXJuLUVOT0tFWS13aGVuLXRoZS11cGNhbGwtZmFpbHMtdG8tbWFwLXRoZS1u
-LnBhdGNoDQoNCg0KPg0KPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBNeWts
-ZWJ1c3QsIFRyb25kIFttYWlsdG86VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb21dDQo+IFNlbnQ6
-IFRodXJzZGF5LCBBdWd1c3QgMTYsIDIwMTIgNToxNCBQTQ0KPiBUbzogU2hhaSBMYXptaQ0KPiBD
-YzogV2lsbGlhbSBEYXVjaHk7IFNjaHVtYWtlciwgQnJ5YW47IGxpbnV4LW5mc0B2Z2VyLmtlcm5l
-bC5vcmcNCj4gU3ViamVjdDogUmU6IFtQQVRDSCAxLzJdIE5GUzogQ2xlYXIga2V5IGNvbnN0cnVj
-dGlvbiBkYXRhIGlmIHRoZSBpZG1hcCB1cGNhbGwgZmFpbHMNCj4NCj4gT24gVGh1LCAyMDEyLTA4
-LTE2IGF0IDE3OjA3IC0wNzAwLCBTaGFpIExhem1pIHdyb3RlOg0KPiA+IFNvcnJ5IC0gY29tcGFu
-eSdzIHBvbGljeSAuLi4NCj4gPiBXaGF0IGlkbWFwIHZlcnNpb24gd2FzIHRoaXMgcGF0Y2ggdXNl
-ZCBhZ2FpbnN0PyBUaGUgb25lIEkgaGF2ZSAoYjcwMTM1OGMpIHNlZW1zIHRvIGJlIGEgYml0IGRp
-ZmZlcmVudCAoSSB1c2VkIGxhdGVzdCBwdWxsIGNvbW1pdCBkZGYzNDNmNjM1ZmU0NDQwY2FkNTI4
-ZTEyZjk2ZjI4YmQ1MGFhMDk5KSwgaGVuY2UgdGhlIHBhdGNoIGZhaWxzIGFnYWluDQo+DQo+IEl0
-IHdvcmtzIGZpbmUgZm9yIG1lIGFnYWluc3QgY29tbWl0IGRkZjM0M2Y2MzVmZTQ0NDBjYWQ1Mjhl
-MTJmOTZmMjhiZDUwYWEwOTk6DQo+DQo+IFt0cm9uZG15QGxhZGUgbGludXgtbmZzXSQgZ2l0IGJy
-YW5jaCB0ZXN0LWFwcGx5IGRkZjM0M2Y2MzVmZTQ0NDBjYWQ1MjhlMTJmOTZmMjhiZDUwYWEwOTkN
-Cj4gW3Ryb25kbXlAbGFkZSBsaW51eC1uZnNdJCBnaXQgY2hlY2tvdXQgdGVzdC1hcHBseQ0KPiBT
-d2l0Y2hlZCB0byBicmFuY2ggJ3Rlc3QtYXBwbHknDQo+IFt0cm9uZG15QGxhZGUgbGludXgtbmZz
-XSQgZ2l0IGFtIH4vRGVza3RvcC9mb3Jfc2hhaS8wMDAxLU5GUy1DbGVhci1rZXktY29uc3RydWN0
-aW9uLWRhdGEtaWYtdGhlLWlkbWFwLXVwY2FsbC0ucGF0Y2gNCj4gQXBwbHlpbmc6IE5GUzogQ2xl
-YXIga2V5IGNvbnN0cnVjdGlvbiBkYXRhIGlmIHRoZSBpZG1hcCB1cGNhbGwgZmFpbHMNCj4gW3Ry
-b25kbXlAbGFkZSBsaW51eC1uZnNdJCBnaXQgYW0gfi9EZXNrdG9wL2Zvcl9zaGFpLzAwMDItTkZT
-LXJldHVybi1FTk9LRVktd2hlbi10aGUtdXBjYWxsLWZhaWxzLXRvLW1hcC10aGUtbi5wYXRjaA0K
-PiBBcHBseWluZzogTkZTOiByZXR1cm4gLUVOT0tFWSB3aGVuIHRoZSB1cGNhbGwgZmFpbHMgdG8g
-bWFwIHRoZSBuYW1lDQo+DQo+IFdoYXQgZXJyb3IgbWVzc2FnZXMgYXJlIHlvdSBzZWVpbmc/DQo+
-DQo+IENoZWVycw0KPiAgIFRyb25kDQo+DQo+ID4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0N
-Cj4gPiBGcm9tOiBNeWtsZWJ1c3QsIFRyb25kIFttYWlsdG86VHJvbmQuTXlrbGVidXN0QG5ldGFw
-cC5jb21dDQo+ID4gU2VudDogVGh1cnNkYXksIEF1Z3VzdCAxNiwgMjAxMiA0OjU3IFBNDQo+ID4g
-VG86IFNoYWkgTGF6bWkNCj4gPiBDYzogV2lsbGlhbSBEYXVjaHk7IFNjaHVtYWtlciwgQnJ5YW47
-IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcNCj4gPiBTdWJqZWN0OiBSZTogW1BBVENIIDEvMl0g
-TkZTOiBDbGVhciBrZXkgY29uc3RydWN0aW9uIGRhdGEgaWYgdGhlIGlkbWFwIHVwY2FsbCBmYWls
-cw0KPiA+DQo+ID4gT24gVGh1LCAyMDEyLTA4LTE2IGF0IDE2OjUwIC0wNzAwLCBTaGFpIExhem1p
-IHdyb3RlOg0KPiA+ID4gTVMgb3V0bG9vaw0KPiA+DQo+ID4gRG9uJ3QgZXZlciB1c2UgTG9va091
-dCBmb3IgcGF0Y2hlcy4gSXRzICJJIGp1c3QgcmVmb3JtYXR0ZWQgeW91ciBlbWFpbCINCj4gPiB3
-b25kZXIgZmVhdHVyZSBicmVha3MgYWxsIHRoZSB3aGl0ZXNwYWNlLg0KPiA+DQo+ID4gPiBCZXN0
-IHRoaW5nIGlzIHRvIGF0dGFjaGVkIHRoZSBwYXRjaA0KPiA+DQo+ID4gV2UgZG8gbm90IG5vcm1h
-bGx5IHVzZSBhdHRhY2htZW50cyBvbiB0aGUgbWFpbGluZyBsaXN0IGJlY2F1c2UgaXQgbWFrZXMg
-aXQgaW1wb3NzaWJsZSB0byBjb21tZW50IHRoZSBwYXRjaGVzIGlubGluZS4gQWggd2VsbCwgaGVy
-ZSBnb2VzLi4uDQo+ID4NCj4gPiAtLQ0KPiA+IFRyb25kIE15a2xlYnVzdA0KPiA+IExpbnV4IE5G
-UyBjbGllbnQgbWFpbnRhaW5lcg0KPiA+DQo+ID4gTmV0QXBwDQo+ID4gVHJvbmQuTXlrbGVidXN0
-QG5ldGFwcC5jb20NCj4gPiB3d3cubmV0YXBwLmNvbQ0KPiA+DQo+ID4NCj4gPiBUaGlzIG1lc3Nh
-Z2UgYW5kIGFueSBhdHRhY2hlZCBkb2N1bWVudHMgY29udGFpbiBpbmZvcm1hdGlvbiBmcm9tIFFM
-b2dpYyBDb3Jwb3JhdGlvbiBvciBpdHMgd2hvbGx5LW93bmVkIHN1YnNpZGlhcmllcyB0aGF0IG1h
-eSBiZSBjb25maWRlbnRpYWwuIElmIHlvdSBhcmUgbm90IHRoZSBpbnRlbmRlZCByZWNpcGllbnQs
-IHlvdSBtYXkgbm90IHJlYWQsIGNvcHksIGRpc3RyaWJ1dGUsIG9yIHVzZSB0aGlzIGluZm9ybWF0
-aW9uLiBJZiB5b3UgaGF2ZSByZWNlaXZlZCB0aGlzIHRyYW5zbWlzc2lvbiBpbiBlcnJvciwgcGxl
-YXNlIG5vdGlmeSB0aGUgc2VuZGVyIGltbWVkaWF0ZWx5IGJ5IHJlcGx5IGUtbWFpbCBhbmQgdGhl
-biBkZWxldGUgdGhpcyBtZXNzYWdlLg0KPg0KPiAtLQ0KPiBUcm9uZCBNeWtsZWJ1c3QNCj4gTGlu
-dXggTkZTIGNsaWVudCBtYWludGFpbmVyDQo+DQo+IE5ldEFwcA0KPiBUcm9uZC5NeWtsZWJ1c3RA
-bmV0YXBwLmNvbQ0KPiB3d3cubmV0YXBwLmNvbQ0KPg0KPg0KPiBUaGlzIG1lc3NhZ2UgYW5kIGFu
-eSBhdHRhY2hlZCBkb2N1bWVudHMgY29udGFpbiBpbmZvcm1hdGlvbiBmcm9tIFFMb2dpYyBDb3Jw
-b3JhdGlvbiBvciBpdHMgd2hvbGx5LW93bmVkIHN1YnNpZGlhcmllcyB0aGF0IG1heSBiZSBjb25m
-aWRlbnRpYWwuIElmIHlvdSBhcmUgbm90IHRoZSBpbnRlbmRlZCByZWNpcGllbnQsIHlvdSBtYXkg
-bm90IHJlYWQsIGNvcHksIGRpc3RyaWJ1dGUsIG9yIHVzZSB0aGlzIGluZm9ybWF0aW9uLiBJZiB5
-b3UgaGF2ZSByZWNlaXZlZCB0aGlzIHRyYW5zbWlzc2lvbiBpbiBlcnJvciwgcGxlYXNlIG5vdGlm
-eSB0aGUgc2VuZGVyIGltbWVkaWF0ZWx5IGJ5IHJlcGx5IGUtbWFpbCBhbmQgdGhlbiBkZWxldGUg
-dGhpcyBtZXNzYWdlLg0KDQotLQ0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1h
-aW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFw
-cC5jb20NCg0KDQpUaGlzIG1lc3NhZ2UgYW5kIGFueSBhdHRhY2hlZCBkb2N1bWVudHMgY29udGFp
-biBpbmZvcm1hdGlvbiBmcm9tIFFMb2dpYyBDb3Jwb3JhdGlvbiBvciBpdHMgd2hvbGx5LW93bmVk
-IHN1YnNpZGlhcmllcyB0aGF0IG1heSBiZSBjb25maWRlbnRpYWwuIElmIHlvdSBhcmUgbm90IHRo
-ZSBpbnRlbmRlZCByZWNpcGllbnQsIHlvdSBtYXkgbm90IHJlYWQsIGNvcHksIGRpc3RyaWJ1dGUs
-IG9yIHVzZSB0aGlzIGluZm9ybWF0aW9uLiBJZiB5b3UgaGF2ZSByZWNlaXZlZCB0aGlzIHRyYW5z
-bWlzc2lvbiBpbiBlcnJvciwgcGxlYXNlIG5vdGlmeSB0aGUgc2VuZGVyIGltbWVkaWF0ZWx5IGJ5
-IHJlcGx5IGUtbWFpbCBhbmQgdGhlbiBkZWxldGUgdGhpcyBtZXNzYWdlLg0K
+Second time we've seen a mistake like that recently, so maybe we really
+should add the string-length-of-a-number macro.
 
+--b.
+
+On Tue, Aug 21, 2012 at 04:57:24PM -0400, J. Bruce Fields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> Note a 16-bit value can require up to 5 digits.
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/nfsd/nfsctl.c |    2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index 89be13c..e41a08ff 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -712,7 +712,7 @@ static ssize_t __write_ports_addxprt(char *buf)
+>  	int port, err;
+>  	struct net *net = &init_net;
+>  
+> -	if (sscanf(buf, "%15s %4u", transport, &port) != 2)
+> +	if (sscanf(buf, "%15s %5u", transport, &port) != 2)
+>  		return -EINVAL;
+>  
+>  	if (port < 1 || port > USHRT_MAX)
+> -- 
+> 1.7.9.5
+> 
