@@ -1,56 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:25037 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753313Ab2HONUx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Aug 2012 09:20:53 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Richard Ems <richard.ems@cape-horn-eng.com>
-CC: Jeff Layton <jlayton@redhat.com>, Al Viro <viro@ZenIV.linux.org.uk>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfs_lookup_revalidate BUG ?
-Date: Wed, 15 Aug 2012 13:20:20 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA93AB5CB@SACEXCMBX04-PRD.hq.netapp.com>
-References: <502A21A1.7020206@cape-horn-eng.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA93A4848@SACEXCMBX04-PRD.hq.netapp.com>
-	 <20120814183512.GI23464@ZenIV.linux.org.uk>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA93A4DFC@SACEXCMBX04-PRD.hq.netapp.com>
-	 <20120814151143.30fb9ca9@tlielax.poochiereds.net>
-	 <502B8E9A.9010601@cape-horn-eng.com>
-In-Reply-To: <502B8E9A.9010601@cape-horn-eng.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from rcsinet15.oracle.com ([148.87.113.117]:47682 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755044Ab2HUVCU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2012 17:02:20 -0400
+Subject: Re: [PATCH 08/14] svcrpc: ignore unknown address type in udp receive
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1345582652-18476-9-git-send-email-bfields@redhat.com>
+Date: Tue, 21 Aug 2012 17:02:14 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <05C6926C-B688-4A71-AA1C-26F251BBD635@oracle.com>
+References: <1345582652-18476-1-git-send-email-bfields@redhat.com> <1345582652-18476-9-git-send-email-bfields@redhat.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTA4LTE1IGF0IDEzOjU3ICswMjAwLCBSaWNoYXJkIEVtcyB3cm90ZToNCj4g
-T24gMDgvMTQvMjAxMiAwOToxMSBQTSwgSmVmZiBMYXl0b24gd3JvdGU6DQo+ID4gT25lIHdheSB0
-byBkZXRlcm1pbmUgdGhpcyB3b3VsZCBiZSB0byBmb2xsb3cgdGhlIGluc3RydWN0aW9ucyBoZXJl
-LA0KPiA+IHN1YnN0aXR1dGluZyBuZnMua28gZm9yIGNpZnMua286DQo+ID4gDQo+ID4gICAgIGh0
-dHA6Ly93aWtpLnNhbWJhLm9yZy9pbmRleC5waHAvTGludXhDSUZTX3Ryb3VibGVzaG9vdGluZyNP
-b3BzZXMNCj4gDQo+IEhpIGFsbCwgdGhhbmtzIGZvciB5b3VyIHJlc3BvbnNlcy4gSSBmaXJzdCB0
-cmllZCBKZWZmJ3MgcHJvcG9zYWwsIGhlcmUgYXJlIHRoZSByZXN1bHRzOg0KPiANCj4gYzVuMTI6
-fiAjIGdkYiAvbGliL21vZHVsZXMvMy41LjEtMi1kZWZhdWx0L2tlcm5lbC9mcy9uZnMvbmZzLmtv
-DQo+IA0KPiBHTlUgZ2RiIChHREIpIFNVU0UgKDcuMy00MS4xLjIpDQo+IENvcHlyaWdodCAoQykg
-MjAxMSBGcmVlIFNvZnR3YXJlIEZvdW5kYXRpb24sIEluYy4NCj4gTGljZW5zZSBHUEx2Mys6IEdO
-VSBHUEwgdmVyc2lvbiAzIG9yIGxhdGVyIDxodHRwOi8vZ251Lm9yZy9saWNlbnNlcy9ncGwuaHRt
-bD4NCj4gVGhpcyBpcyBmcmVlIHNvZnR3YXJlOiB5b3UgYXJlIGZyZWUgdG8gY2hhbmdlIGFuZCBy
-ZWRpc3RyaWJ1dGUgaXQuDQo+IFRoZXJlIGlzIE5PIFdBUlJBTlRZLCB0byB0aGUgZXh0ZW50IHBl
-cm1pdHRlZCBieSBsYXcuICBUeXBlICJzaG93IGNvcHlpbmciDQo+IGFuZCAic2hvdyB3YXJyYW50
-eSIgZm9yIGRldGFpbHMuDQo+IFRoaXMgR0RCIHdhcyBjb25maWd1cmVkIGFzICJ4ODZfNjQtc3Vz
-ZS1saW51eCIuDQo+IEZvciBidWcgcmVwb3J0aW5nIGluc3RydWN0aW9ucywgcGxlYXNlIHNlZToN
-Cj4gPGh0dHA6Ly93d3cuZ251Lm9yZy9zb2Z0d2FyZS9nZGIvYnVncy8+Li4uDQo+IFJlYWRpbmcg
-c3ltYm9scyBmcm9tIC9saWIvbW9kdWxlcy8zLjUuMS0yLWRlZmF1bHQva2VybmVsL2ZzL25mcy9u
-ZnMua28uLi5SZWFkaW5nIHN5bWJvbHMgZnJvbSAvdXNyL2xpYi9kZWJ1Zy9saWIvbW9kdWxlcy8z
-LjUuMS0yLWRlZmF1bHQva2VybmVsL2ZzL25mcy9uZnMua28uZGVidWcuLi5kb25lLg0KPiBkb25l
-Lg0KPiANCj4gKGdkYikgbGlzdCAqKG5mc19sb29rdXBfcmV2YWxpZGF0ZSsweDJkKQ0KPiAweDU5
-Y2QgaXMgaW4gbmZzX2xvb2t1cF9yZXZhbGlkYXRlICgvdXNyL3NyYy9kZWJ1Zy9rZXJuZWwtZGVm
-YXVsdC0zLjUuMS9saW51eC0zLjUvZnMvbmZzL2Rpci5jOjExMjkpLg0KPiAxMTI0ICAgICAgICAg
-ICAgc3RydWN0IGRlbnRyeSAqcGFyZW50Ow0KPiAxMTI1ICAgICAgICAgICAgc3RydWN0IG5mc19m
-aCAqZmhhbmRsZSA9IE5VTEw7DQo+IDExMjYgICAgICAgICAgICBzdHJ1Y3QgbmZzX2ZhdHRyICpm
-YXR0ciA9IE5VTEw7DQo+IDExMjcgICAgICAgICAgICBpbnQgZXJyb3I7DQo+IDExMjgNCj4gMTEy
-OSAgICAgICAgICAgIGlmIChuZC0+ZmxhZ3MgJiBMT09LVVBfUkNVKQ0KDQpCdW1tZXIuLi4gV2Ug
-Y2hlY2sgaWYgJ25kJyBpcyBOVUxMIGV2ZXJ5d2hlcmUgZXhjZXB0IGhlcmUuLi4NCg0KT0suIENo
-YW5naW5nIHRoZSBhYm92ZSBsaW5lIHRvDQoNCglpZiAobmQgJiYgKG5kLT5mbGFncyAmIExPT0tV
-UF9SQ1UpKQ0KDQp3aWxsIGZpeCB0aGUgcHJvYmxlbS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QN
-CkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBu
-ZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+
+On Aug 21, 2012, at 4:57 PM, J. Bruce Fields wrote:
+
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> How would this happen?
+
+If an unsupported address family is used in the rqstp.
+
+> In any case, it appears this would be returned all the way up to the
+> caller of svc_recv(), and it's obvious that none of them are equipped to
+> handle it, and not clear what they would want to do with it anyway.
+> Let's just drop this and return -EAGAIN.
+
+EAGAIN is incorrect; the correct error code is EAFNOSUPPORT.  If callers are not prepared for this error return, perhaps BUG_ON() would be more appropriate here.
+
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+> net/sunrpc/svcsock.c |    2 +-
+> 1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index 06ae8a7..97ce23f 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -602,7 +602,7 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
+> 	}
+> 	len = svc_addr_len(svc_addr(rqstp));
+> 	if (len == 0)
+> -		return -EAFNOSUPPORT;
+> +		return -EAGAIN;
+> 	rqstp->rq_addrlen = len;
+> 	if (skb->tstamp.tv64 == 0) {
+> 		skb->tstamp = ktime_get_real();
+> -- 
+> 1.7.9.5
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
