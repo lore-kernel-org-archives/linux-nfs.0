@@ -1,69 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ch1ehsobe005.messaging.microsoft.com ([216.32.181.185]:17934
-	"EHLO ch1outboundpool.messaging.microsoft.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1758633Ab2HQRs7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Aug 2012 13:48:59 -0400
-From: Shai Lazmi <shai.lazmi@qlogic.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: William Dauchy <wdauchy@gmail.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Fri, 17 Aug 2012 10:48:52 -0700
-Subject: RE: [PATCH 1/2] NFS: Clear key construction data if the idmap
- upcall fails
-Message-ID: <21641D3714F5AF449DC483E699E1124E86E640968D@AVEXMB2.qlogic.org>
-References: <1345148622-10845-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E640957F@AVEXMB2.qlogic.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B542B@SACEXCMBX04-PRD.hq.netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E6409585@AVEXMB2.qlogic.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B54EC@SACEXCMBX04-PRD.hq.netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E640958D@AVEXMB2.qlogic.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B5646@SACEXCMBX04-PRD.hq.netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E6409593@AVEXMB2.qlogic.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B56F2@SACEXCMBX04-PRD.hq.netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E6409621@AVEXMB2.qlogic.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA93B79FD@SACEXCMBX04-PRD.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA93B79FD@SACEXCMBX04-PRD.hq.netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:51842 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752930Ab2HUX6X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Aug 2012 19:58:23 -0400
+Date: Tue, 21 Aug 2012 19:58:18 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: remove unused listener-removal interfaces
+Message-ID: <20120821235818.GA20158@fieldses.org>
+References: <20120815234259.GB28054@fieldses.org>
+ <20120821172902.GA15958@fieldses.org>
+ <20120822083308.3bca78f8@notabene.brown>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120822083308.3bca78f8@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-TWlzc2VkIHRoYXQsIGNvIGFuZCByZWJ1aWxkDQoNCi0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0t
-DQpGcm9tOiBNeWtsZWJ1c3QsIFRyb25kIFttYWlsdG86VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
-b21dDQpTZW50OiBGcmlkYXksIEF1Z3VzdCAxNywgMjAxMiAxMDo0NiBBTQ0KVG86IFNoYWkgTGF6
-bWkNCkNjOiBXaWxsaWFtIERhdWNoeTsgU2NodW1ha2VyLCBCcnlhbjsgbGludXgtbmZzQHZnZXIu
-a2VybmVsLm9yZw0KU3ViamVjdDogUmU6IFtQQVRDSCAxLzJdIE5GUzogQ2xlYXIga2V5IGNvbnN0
-cnVjdGlvbiBkYXRhIGlmIHRoZSBpZG1hcCB1cGNhbGwgZmFpbHMNCg0KT24gRnJpLCAyMDEyLTA4
-LTE3IGF0IDA5OjIwIC0wNzAwLCBTaGFpIExhem1pIHdyb3RlOg0KPiBObyBsdWNrIC4uLg0KPiAt
-LS0tLS0tLS0tLS1bIGN1dCBoZXJlIF0tLS0tLS0tLS0tLS0NCj4ga2VybmVsIEJVRyBhdCBmcy9u
-ZnMvaWRtYXAuYzo2ODEhDQoNClRoYXQgc3VnZ2VzdHMgdGhhdCB5b3UgaGF2ZW4ndCBiZWVuIHRl
-c3RpbmcgdGhlIHJpZ2h0IGJyYW5jaC4gVGhlIEJVR19PTg0Kc2hvdWxkIGhhdmUgYmVlbiBtb3Zl
-ZCB0byBsaW5lIDY5MiBhZnRlciB0aGUgcGF0Y2hlcyB3ZXJlIGFwcGxpZWQuDQoNCkRpZCB5b3Ug
-Y29weSB0aGUgZXhhY3QgcHVsbCByZXF1ZXN0IGZyb20gbXkgZW1haWwgKGkuZS4gImdpdCBwdWxs
-DQpnaXQ6Ly9naXQubGludXgtbmZzLm9yZy9wcm9qZWN0cy90cm9uZG15L2xpbnV4LW5mcy5naXQg
-YnVnZml4ZXMiPyBJZiBzbywNCnlvdSBzaG91bGQgaGF2ZSBnb3R0ZW4gYSB2aW0gcGFnZSB3aXRo
-IGEgdGV4dCBvZiB0aGUgZm9ybToNCg0KICAgICAgICBNZXJnZSBicmFuY2ggJ2J1Z2ZpeGVzJyBv
-ZiBnaXQ6Ly9naXQubGludXgtbmZzLm9yZy9wcm9qZWN0cy90cm9uZG15L2xpbnV4LW5mcyBpbg0K
-DQogICAgICAgICMgUGxlYXNlIGVudGVyIGEgY29tbWl0IG1lc3NhZ2UgdG8gZXhwbGFpbiB3aHkg
-dGhpcyBtZXJnZSBpcyBuZWNlc3NhcnksDQogICAgICAgICMgZXNwZWNpYWxseSBpZiBpdCBtZXJn
-ZXMgYW4gdXBkYXRlZCB1cHN0cmVhbSBpbnRvIGEgdG9waWMgYnJhbmNoLg0KICAgICAgICAjDQog
-ICAgICAgICMgTGluZXMgc3RhcnRpbmcgd2l0aCAnIycgd2lsbCBiZSBpZ25vcmVkLCBhbmQgYW4g
-ZW1wdHkgbWVzc2FnZSBhYm9ydHMNCiAgICAgICAgIyB0aGUgY29tbWl0Lg0KDQoNCih3aGljaCB5
-b3UgdGhlbiBmb2xsb3cgdXAgd2l0aCBhICc6d3EnIHRvIGNvbmZpcm0pDQoNCkEgJ2dpdCBsb2cn
-IHNob3VsZCB0aGVuIHNob3cgeW91ciBmaXJzdCBjb21taXQgYXMgYmVpbmcgc29tZXRoaW5nIGFs
-b25nDQp0aGUgbGluZXMgb2Y6DQoNCiAgICAgICAgTWVyZ2U6IGQ5ODc1NjkgMTJkZmQwOA0KICAg
-ICAgICBBdXRob3I6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+
-DQogICAgICAgIERhdGU6ICAgRnJpIEF1ZyAxNyAxMzo0MTowMiAyMDEyIC0wNDAwDQoNCiAgICAg
-ICAgICAgIE1lcmdlIGJyYW5jaCAnYnVnZml4ZXMnIG9mIGdpdDovL2dpdC5saW51eC1uZnMub3Jn
-L3Byb2plY3RzL3Ryb25kbXkvbGludXgtbmYNCg0KDQpJcyB0aGF0IGluZGVlZCB0aGUgY2FzZT8N
-Cg0KDQoNCi0tDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0K
-DQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQoN
-ClRoaXMgbWVzc2FnZSBhbmQgYW55IGF0dGFjaGVkIGRvY3VtZW50cyBjb250YWluIGluZm9ybWF0
-aW9uIGZyb20gUUxvZ2ljIENvcnBvcmF0aW9uIG9yIGl0cyB3aG9sbHktb3duZWQgc3Vic2lkaWFy
-aWVzIHRoYXQgbWF5IGJlIGNvbmZpZGVudGlhbC4gSWYgeW91IGFyZSBub3QgdGhlIGludGVuZGVk
-IHJlY2lwaWVudCwgeW91IG1heSBub3QgcmVhZCwgY29weSwgZGlzdHJpYnV0ZSwgb3IgdXNlIHRo
-aXMgaW5mb3JtYXRpb24uIElmIHlvdSBoYXZlIHJlY2VpdmVkIHRoaXMgdHJhbnNtaXNzaW9uIGlu
-IGVycm9yLCBwbGVhc2Ugbm90aWZ5IHRoZSBzZW5kZXIgaW1tZWRpYXRlbHkgYnkgcmVwbHkgZS1t
-YWlsIGFuZCB0aGVuIGRlbGV0ZSB0aGlzIG1lc3NhZ2UuDQo=
+On Wed, Aug 22, 2012 at 08:33:08AM +1000, NeilBrown wrote:
+> On Tue, 21 Aug 2012 13:29:02 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+> wrote:
+> 
+> > On Wed, Aug 15, 2012 at 07:43:00PM -0400, J. Bruce Fields wrote:
+> > > From: "J. Bruce Fields" <bfields@redhat.com>
+> > > 
+> > > You can use nfsd/portlist to give nfsd additional sockets to listen on.
+> > > In theory you can also remove listening sockets this way.  But nobody's
+> > > ever done that as far as I can tell.
+> > > 
+> > > Also this was partially broken in 2.6.25, by
+> > > a217813f9067b785241cb7f31956e51d2071703a "knfsd: Support adding
+> > > transports by writing portlist file".
+> > > 
+> > > (Note that we decide whether to take the "delfd" case by checking for a
+> > > digit--but what's actually expected in that case is something made by
+> > > svc_one_sock_name(), which won't begin with a digit.)
+> > > 
+> > > So, let's just rip out this stuff.
+> > > 
+> > > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > > ---
+> > >  fs/nfsd/nfsctl.c               |   78 ----------------------------------------
+> > >  include/linux/sunrpc/svcsock.h |    3 --
+> > >  net/sunrpc/svcsock.c           |   51 --------------------------
+> > >  3 files changed, 132 deletions(-)
+> > > 
+> > > OK, maybe this is somewhat of a troll patch--but I don't actually know
+> > > how to fix this interface, so: do we really have a use for it?
+> > 
+> > Neil, was the the "-portname" thing originally yours?  Did you have a
+> > use case in mind?
+> > 
+> 
+> Yes it was mine.  It seemed like a good idea at a time.
+> If you can turn something on, you should be able to turn it off too.
+> 
+> When do ports get closed?  Just on last-server-exit?  As you know, I don't
+> like the idea of things happening on last-server-exit, but it does seem to
+> work.  Mostly.
+>
+> There doesn't seem to be any really need to close sockets independently so we
+> may as well rip this code out.  It can be added again if a need is found.
+> 
+> Acked-by: NeilBrown <neilb@suse.de>
 
+OK, thanks.--b.
