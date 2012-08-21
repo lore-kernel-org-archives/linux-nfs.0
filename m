@@ -1,66 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:21406 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751510Ab2HGRJh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Aug 2012 13:09:37 -0400
-Date: Tue, 7 Aug 2012 13:09:32 -0400
-From: Jeff Layton <jlayton@redhat.com>
+Received: from relay.parallels.com ([195.214.232.42]:47558 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752341Ab2HUJ2G convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2012 05:28:06 -0400
+Message-ID: <503354A0.5010707@parallels.com>
+Date: Tue, 21 Aug 2012 13:28:00 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
 To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: nfs4 mounts failing with 3.6.0-rc1
-Message-ID: <20120807130932.79625d7e@tlielax.poochiereds.net>
-In-Reply-To: <20120804190104.GA2135@fieldses.org>
-References: <20120804000819.GB25558@fieldses.org>
-	<20120803220039.743fe1f0@corrin.poochiereds.net>
-	<20120804190104.GA2135@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>, "neilb@suse.de" <neilb@suse.de>
+Subject: Re: [PATCH v3] SUNRPC: protect service sockets lists during per-net
+ shutdown
+References: <20120703125851.3850.86782.stgit@localhost.localdomain> <20120724194036.GK8570@fieldses.org> <20120816192902.GB4385@fieldses.org> <50321A0D.1020904@parallels.com> <20120820145656.GB1411@fieldses.org> <50325384.9070506@parallels.com> <20120820165852.GF1411@fieldses.org>
+In-Reply-To: <20120820165852.GF1411@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 4 Aug 2012 15:01:04 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+20.08.2012 20:58, J. Bruce Fields пишет:
+> On Mon, Aug 20, 2012 at 07:11:00PM +0400, Stanislav Kinsbursky wrote:
+>> 20.08.2012 18:56, J. Bruce Fields пишет:
+>>> On Mon, Aug 20, 2012 at 03:05:49PM +0400, Stanislav Kinsbursky wrote:
+>>>> 16.08.2012 23:29, J. Bruce Fields пишет:
+>>>>> Looking back at this:
+>>>>>
+>>>>> 	- adding the sv_lock looks like the right thing to do anyway
+>>>>> 	  independent of containers, because svc_age_temp_xprts may
+>>>>> 	  still be running.
+>>>>>
+>>>>> 	- I'm increasingly unhappy about sharing rpc servers between
+>>>>> 	  network namespaces.  Everything would be easier to understand
+>>>>> 	  if they were independent.  Can we figure out how to do that?
+>>>>>
+>>>>
+>>>> Could you, please, elaborate on your your unhappiness?
+>>>
+>>> It seems like you're having to do a lot of work on each individual rpc
+>>> server (callback server, lockd, etc.) to make per-net startup/shutdown
+>>> work.  And then we still don't have it quite right (see the shutdown
+>>> races).)
+>>>
+>>> In general whenever we have the opportunity to have entirely separate
+>>> data structures, I'd expect that to simplify things: it should eliminate
+>>> some locking and reference-counting issues.
+>>>
+>>
+>> Agreed. But current solution still looks like the easies way to me
+>> to implement desired functionality.
+>>
+>>>> I.e. I don't like it too. But the problem here, is that rpc server
+>>>> is tied with kernel threads creation and destruction. And these
+>>>> threads can be only a part of initial pid namespace (because we have
+>>>> only one kthreadd). And we decided do not create new kernel thread
+>>>> per container when were discussing the problem last time.
+>>>
+>>> There really should be some way to create a kernel thread in a specific
+>>> namespace, shouldn't there?
+>>>
+>>
+>>
+>> Kthreads support in a container is rather a "political" problem,
+>> than an implementation problem.
+>
+> Is there a mail thread somewhere with a summary of the objections?
+>
 
-> On Fri, Aug 03, 2012 at 10:00:39PM -0400, Jeff Layton wrote:
-> > On Fri, 3 Aug 2012 20:08:19 -0400
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> > > I'm getting
-> > > 
-> > > 	# mount -tnfs -onfsvers=4 pip1:/exports /mnt/
-> > > 
-> > > (OK, admittedly that's with 3.6.0-rc1 + a few experimental patches, but
-> > > I doubt they're related.)
-> > > 
-> > > Also:
-> > > 
-> > > 	[root@pip2 ~]# modprobe nfs4
-> > > 	[root@pip2 ~]# lsmod|grep nfs4
-> > > 	[root@pip2 ~]# 
-> > > 
-> > > --b.
-> > 
-> > I hit the same problem...
-> > 
-> > Try removing /usr/lib/modprobe.d/nfs.conf (assuming you're running
-> > Fedora).
-> 
-> Oog, right.
-> 
-> But, without testing--won't that make v4 mounts fail on older kernels?
+I can't specify right now. Need to search over lkml history.
+That's all what I've found for now:
+http://us.generation-nt.com/patch-cgroups-disallow-attaching-kthreadd-help-207003852.html
 
-Actually, now that I look, this does not seem to break on older kernels
-as long as you use a syntax like:
+>> Currently, when you call kthread_create(), you add new job to
+>> kthreadd queue. Kthreadd is unique, starts right after init and
+>> lives in global initial environment. So, any kthread inherits
+>> namespaces from it.
+>> Of course, we can start one kthread per environment and change it's
+>> root or even network namespace in kthread function. But pid
+>> namespace of this kthread will remain global.
+>
+> OK.  But the current implementation will leave all the server threads in
+> the initial pid namespace, too.
+>
+>> It looks like not a big problem, when we shutdown kthread by some
+>> variable. But what about killable nfsd kthreads?
+>
+> And we're stuck with that problem either way too, aren't we?
+>
 
-    # mount -t nfs server:/export /mnt/point -o vers=4
+Yes, we are. But at least we are avoiding patching of task subsystem.
 
-...if, however you use a syntax like:
+>> 1) We can't kill them from nested pid namespace.
+>> 2) How we will differ nfsd kthreads in initial pid namespace?
+>
+> I have to admit for my purposes I don't care too much about pid
+> namespaces or about signalling server threads.  It'd be nice to get
+> those things right but it wouldn't bother me that much not to.
+>
+> Another stupid idea: can we do our own implementation of something like
+> kthreadd just for the purpose of starting rpc server threads?  It
+> doesn't seem that complicated.
+>
 
-    # mount -t nfs4 server:/export /mnt/point
+Gm...
+This idea is not stupid. If I understand you right, you suggest to implement a 
+service per network namespace (i.e. not only data, but also threads)?
 
-...then it fails without the above file in place. I guess the question
-we have to answer is: Do we want to continue to support the "-t nfs4"
-mount syntax?
+> --b.
+>
+>> In OpenVZ we have kthreadd per pid hamespace and it allows us to
+>> create kthreads (and thus services) per pid namespace.
+
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Best regards,
+Stanislav Kinsbursky
