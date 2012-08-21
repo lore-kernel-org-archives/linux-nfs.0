@@ -1,34 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:32568 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030363Ab2HIOZn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Aug 2012 10:25:43 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Peng Tao <bergwolf@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Adamson, Andy" <William.Adamson@netapp.com>
-Subject: Re: [PATCH 1/2] NFSv41: fix DIO write_io calculation
-Date: Thu, 9 Aug 2012 14:25:41 +0000
-Message-ID: <1344522340.23523.0.camel@lade.trondhjem.org>
-References: <1344390577-1602-1-git-send-email-bergwolf@gmail.com>
-	 <1344452605.8925.31.camel@lade.trondhjem.org>
-	 <CA+a=Yy5cTSZy2Hboxt177Tc+8pvkuP_yMmKUFG5c74DpAxHr5w@mail.gmail.com>
-In-Reply-To: <CA+a=Yy5cTSZy2Hboxt177Tc+8pvkuP_yMmKUFG5c74DpAxHr5w@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:59788 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757143Ab2HUMCj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2012 08:02:39 -0400
+Received: by yenl14 with SMTP id l14so5720087yen.19
+        for <linux-nfs@vger.kernel.org>; Tue, 21 Aug 2012 05:02:38 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] knfsd: remove bogus BUG_ON() call from nfsd4_locku
+Date: Tue, 21 Aug 2012 08:02:31 -0400
+Message-Id: <1345550551-9683-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA4LTA5IGF0IDEwOjM2ICswODAwLCBQZW5nIFRhbyB3cm90ZToNCj4gT24g
-VGh1LCBBdWcgOSwgMjAxMiBhdCAzOjAzIEFNLCBNeWtsZWJ1c3QsIFRyb25kDQo+IDxUcm9uZC5N
-eWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQo+ID4gT24gV2VkLCAyMDEyLTA4LTA4IGF0IDA5
-OjQ5ICswODAwLCBQZW5nIFRhbyB3cm90ZToNCj4gPj4gcG5mc193aXRoaW5fbWRzdGhyZXNob2xk
-KCkgaXMgY2FsbGVkIGluc2lkZSBwZ19pbml0LiBXZSBuZWVkDQo+ID4+IHRvIHNldCByZWFkX2lv
-L3dyaXRlX2lvIGJlZm9yZSB0aGF0Lg0KPiA+DQo+ID4gV2h5Pw0KPiBJZiB3ZSBkb24ndCBzZXQg
-cmVhZF9pby93cml0ZV9pbyBiZWZvcmUgY2FsbGluZyBwZ19pbml0LCB3ZSBmYWlsDQo+IHBuZnNf
-d2l0aGluX21kc3RocmVzaG9sZCgpIGFuZCBJTyBnb2VzIHRvIE1EUy4NCj4gQSBzaW1wbGUgdGVz
-dCBjYXNlOg0KPiBkZCBpZj1mb28gb2Y9L21udC9wbmZzL2JhciBicz0xME0gY291bnQ9MSBvZmxh
-Zz1kaXJlY3QNCj4gDQoNCk15IHBvaW50IHdhcyB0aGF0IHRoaXMgZXhwbGFuYXRpb24gbmVlZHMg
-dG8gZ28gaW50byB0aGUgY2hhbmdlbG9nIG9mIHRoZQ0KY29tbWl0Lg0KDQotLSANClRyb25kIE15
-a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlr
-bGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+The code checks for a NULL filp and handles it gracefully just before
+this BUG_ON.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfs4state.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 566a9b7..6e12fd5 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4294,7 +4294,6 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		status = nfserr_lock_range;
+ 		goto out;
+ 	}
+-	BUG_ON(!filp);
+ 	locks_init_lock(&file_lock);
+ 	file_lock.fl_type = F_UNLCK;
+ 	file_lock.fl_owner = (fl_owner_t)lockowner(stp->st_stateowner);
+-- 
+1.7.11.4
+
