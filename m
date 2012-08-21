@@ -1,222 +1,187 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:2387 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:44153 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758739Ab2HHPPm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Aug 2012 11:15:42 -0400
-Message-ID: <5022829A.3040209@netapp.com>
-Date: Wed, 08 Aug 2012 11:15:38 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+	id S1758459Ab2HUUwd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Aug 2012 16:52:33 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q7LKqX78020118
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 21 Aug 2012 16:52:33 -0400
+Received: from blade.bos.redhat.com (blade.bos.redhat.com [10.16.184.36])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id q7LKqW16016829
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Tue, 21 Aug 2012 16:52:33 -0400
+Received: from blade.bos.redhat.com (localhost.localdomain [127.0.0.1])
+	by blade.bos.redhat.com (8.14.5/8.14.5) with ESMTP id q7LKqWiA015948
+	for <linux-nfs@vger.kernel.org>; Tue, 21 Aug 2012 16:52:32 -0400
+Received: (from nalin@localhost)
+	by blade.bos.redhat.com (8.14.5/8.14.5/Submit) id q7LKqWnt015947
+	for linux-nfs@vger.kernel.org; Tue, 21 Aug 2012 16:52:32 -0400
+Date: Tue, 21 Aug 2012 16:52:32 -0400
+From: Nalin Dahyabhai <nalin@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/2] Use /run/user/${UID} instead of /run/user/${USER}
+Message-ID: <20120821205232.GE9511@redhat.com>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfs4 mounts failing with 3.6.0-rc1
-References: <20120804000819.GB25558@fieldses.org>   <20120803220039.743fe1f0@corrin.poochiereds.net>   <20120804190104.GA2135@fieldses.org>   <20120807130932.79625d7e@tlielax.poochiereds.net>   <20120807194250.GB22532@fieldses.org> <50217035.5010304@netapp.com>   <20120807195703.GC22532@fieldses.org> <50217649.6010402@netapp.com>   <20120807202523.GD22532@fieldses.org>  <1344374613.8845.3.camel@lade.trondhjem.org> <50227AE9.2020600@netapp.com> <1344438488.3423.9.camel@lade.trondhjem.org>
-In-Reply-To: <1344438488.3423.9.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/08/2012 11:08 AM, Myklebust, Trond wrote:
-> On Wed, 2012-08-08 at 10:42 -0400, Bryan Schumaker wrote:
->> So you're suggesting something like this?  I can split it into two patches for the final submission, one to rename the modules and one to move the nfs4_fs_type back to nfs.ko.
-> 
-> One patch should suffice, since you can't split this up into something
-> that fixes both issues.
-> 
-> Then maybe we can add a separate patch with a MODULE_ALIAS("nfs4") so
-> that distros can start removing the /etc/modprobe.conf alias entries.
+Newer versions of systemd create a /run/user/${UID} directory
+instead of the /run/user/${USER} directory, so switch to
+scanning for that.  To make the per-user directory bit a little
+less magical, change the default to incorporate a "%U", which
+gets dynamically expanded to the user's UID when needed.
 
-Sure.  That goes in the v4 module?
+Signed-off-by: Nalin Dahyabhai <nalin@redhat.com>
+---
+ utils/gssd/gssd.h      |  2 +-
+ utils/gssd/gssd.man    |  9 ++++++---
+ utils/gssd/gssd_proc.c | 36 ++----------------------------------
+ utils/gssd/krb5_util.c | 30 ++++++++++++++++++++++++++----
+ 4 files changed, 35 insertions(+), 42 deletions(-)
 
-> 
->> diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
->> index 8bf3a3f..b7db608 100644
->> --- a/fs/nfs/Makefile
->> +++ b/fs/nfs/Makefile
->> @@ -12,19 +12,19 @@ nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
->>  nfs-$(CONFIG_SYSCTL)	+= sysctl.o
->>  nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
->>  
->> -obj-$(CONFIG_NFS_V2) += nfs2.o
->> -nfs2-y := nfs2super.o proc.o nfs2xdr.o
->> +obj-$(CONFIG_NFS_V2) += nfsv2.o
->> +nfsv2-y := nfs2super.o proc.o nfs2xdr.o
->>  
->> -obj-$(CONFIG_NFS_V3) += nfs3.o
->> -nfs3-y := nfs3super.o nfs3client.o nfs3proc.o nfs3xdr.o
->> -nfs3-$(CONFIG_NFS_V3_ACL) += nfs3acl.o
->> +obj-$(CONFIG_NFS_V3) += nfsv3.o
->> +nfsv3-y := nfs3super.o nfs3client.o nfs3proc.o nfs3xdr.o
->> +nfsv3-$(CONFIG_NFS_V3_ACL) += nfs3acl.o
->>  
->> -obj-$(CONFIG_NFS_V4) += nfs4.o
->> -nfs4-y := nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o nfs4super.o nfs4file.o \
->> +obj-$(CONFIG_NFS_V4) += nfsv4.o
->> +nfsv4-y := nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o nfs4super.o nfs4file.o \
->>  	  delegation.o idmap.o callback.o callback_xdr.o callback_proc.o \
->>  	  nfs4namespace.o nfs4getroot.o nfs4client.o
->> -nfs4-$(CONFIG_SYSCTL)	+= nfs4sysctl.o
->> -nfs4-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
->> +nfsv4-$(CONFIG_SYSCTL)	+= nfs4sysctl.o
->> +nfsv4-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
->>  
->>  obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
->>  nfs_layout_nfsv41_files-y := nfs4filelayout.o nfs4filelayoutdev.o
->> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
->> index 9fc0d9d..9969444 100644
->> --- a/fs/nfs/client.c
->> +++ b/fs/nfs/client.c
->> @@ -105,7 +105,7 @@ struct nfs_subversion *get_nfs_version(unsigned int version)
->>  
->>  	if (IS_ERR(nfs)) {
->>  		mutex_lock(&nfs_version_mutex);
->> -		request_module("nfs%d", version);
->> +		request_module("nfsv%d", version);
->>  		nfs = find_nfs_version(version);
->>  		mutex_unlock(&nfs_version_mutex);
->>  	}
->> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
->> index 19c1a56..43f4971 100644
->> --- a/fs/nfs/nfs4_fs.h
->> +++ b/fs/nfs/nfs4_fs.h
->> @@ -205,6 +205,9 @@ extern const struct dentry_operations nfs4_dentry_operations;
->>  int nfs_atomic_open(struct inode *, struct dentry *, struct file *,
->>  
->> +/* super.c */
->> +extern struct file_system_type nfs4_fs_type;
->> +
->>  /* nfs4namespace.c */
->>  rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *);
->>  struct rpc_clnt *nfs4_create_sec_client(struct rpc_clnt *, struct inode *, struct qstr *);
->> diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
->> index 12a31a9..bd61221 100644
->> --- a/fs/nfs/nfs4super.c
->> +++ b/fs/nfs/nfs4super.c
->> @@ -23,14 +23,6 @@ static struct dentry *nfs4_referral_mount(struct file_system_type *fs_type,
->>  static struct dentry *nfs4_remote_referral_mount(struct file_system_type *fs_type,
->>  	int flags, const char *dev_name, void *raw_data);
->>  
->> -static struct file_system_type nfs4_fs_type = {
->> -	.owner		= THIS_MODULE,
->> -	.name		= "nfs4",
->> -	.mount		= nfs_fs_mount,
->> -	.kill_sb	= nfs_kill_super,
->> -	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
->> -};
->> -
->>  static struct file_system_type nfs4_remote_fs_type = {
->>  	.owner		= THIS_MODULE,
->>  	.name		= "nfs4",
->> @@ -344,14 +336,8 @@ static int __init init_nfs_v4(void)
->>  	if (err)
->>  		goto out1;
->>  
->> -	err = register_filesystem(&nfs4_fs_type);
->> -	if (err < 0)
->> -		goto out2;
->> -
->>  	register_nfs_version(&nfs_v4);
->>  	return 0;
->> -out2:
->> -	nfs4_unregister_sysctl();
->>  out1:
->>  	nfs_idmap_quit();
->>  out:
->> @@ -361,7 +347,6 @@ out:
->>  static void __exit exit_nfs_v4(void)
->>  {
->>  	unregister_nfs_version(&nfs_v4);
->> -	unregister_filesystem(&nfs4_fs_type);
->>  	nfs4_unregister_sysctl();
->>  	nfs_idmap_quit();
->>  }
->> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
->> index ac6a3c5..49b2dfa 100644
->> --- a/fs/nfs/super.c
->> +++ b/fs/nfs/super.c
->> @@ -319,6 +319,15 @@ EXPORT_SYMBOL_GPL(nfs_sops);
->>  static void nfs4_validate_mount_flags(struct nfs_parsed_mount_data *);
->>  static int nfs4_validate_mount_data(void *options,
->>  	struct nfs_parsed_mount_data *args, const char *dev_name);
->> +
->> +struct file_system_type nfs4_fs_type = {
->> +	.owner		= THIS_MODULE,
->> +	.name		= "nfs4",
->> +	.mount		= nfs_fs_mount,
->> +	.kill_sb	= nfs_kill_super,
->> +	.fs_flags	= FS_RENAME_DOES_D_MOVE|FS_REVAL_DOT|FS_BINARY_MOUNTDATA,
->> +};
->> +EXPORT_SYMBOL_GPL(nfs4_fs_type);
->>  #endif
->>  
->>  static struct shrinker acl_shrinker = {
->> @@ -326,6 +335,27 @@ static struct shrinker acl_shrinker = {
->>  	.seeks		= DEFAULT_SEEKS,
->>  };
->>  
->> +#if IS_ENABLED(CONFIG_NFS_V4)
->> +static int __init register_nfs4_fs(void)
->> +{
->> +	return register_filesystem(&nfs4_fs_type);
->> +}
->> +
->> +static void unregister_nfs4_fs(void)
->> +{
->> +	unregister_filesystem(&nfs4_fs_type);
->> +}
->> +#else
->> +static int __init register_nfs4_fs(void)
->> +{
->> +	return 0;
->> +}
->> +
->> +static void unregister_nfs4_fs(void)
->> +{
->> +}
->> +#endif /* CONFIG_NFS_V4 */
-> 
-> Why not put these helpers in the same section as the declaration of
-> nfs4_fs_type?
-
-Because I had scrolled away from that section of code when I was writing these functions.  I'll move them...
-
-- Bryan
-
-> 
->> +
->>  /*
->>   * Register the NFS filesystems
->>   */
->> @@ -337,12 +367,18 @@ int __init register_nfs_fs(void)
->>  	if (ret < 0)
->>  		goto error_0;
->>  
->> -	ret = nfs_register_sysctl();
->> +	ret = register_nfs4_fs();
->>  	if (ret < 0)
->>  		goto error_1;
->> +
->> +	ret = nfs_register_sysctl();
->> +	if (ret < 0)
->> +		goto error_2;
->>  	register_shrinker(&acl_shrinker);
->>  	return 0;
->>  
->> +error_2:
->> +	unregister_nfs4_fs();
->>  error_1:
->>  	unregister_filesystem(&nfs_fs_type);
->>  error_0:
->> @@ -356,6 +392,7 @@ void __exit unregister_nfs_fs(void)
->>  {
->>  	unregister_shrinker(&acl_shrinker);
->>  	nfs_unregister_sysctl();
->> +	unregister_nfs4_fs();
->>  	unregister_filesystem(&nfs_fs_type);
->>  }
->>  
-> 
+diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
+index 1d923d7..86472a1 100644
+--- a/utils/gssd/gssd.h
++++ b/utils/gssd/gssd.h
+@@ -45,7 +45,7 @@
+ #define DNOTIFY_SIGNAL		(SIGRTMIN + 3)
+ 
+ #define GSSD_DEFAULT_CRED_DIR			"/tmp"
+-#define GSSD_USER_CRED_DIR			"/run/user"
++#define GSSD_USER_CRED_DIR			"/run/user/%U"
+ #define GSSD_DEFAULT_CRED_PREFIX		"krb5cc"
+ #define GSSD_DEFAULT_MACHINE_CRED_SUFFIX	"machine"
+ #define GSSD_DEFAULT_KEYTAB_FILE		"/etc/krb5.keytab"
+diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
+index d8138fa..c74b7e8 100644
+--- a/utils/gssd/gssd.man
++++ b/utils/gssd/gssd.man
+@@ -103,9 +103,12 @@ where to look for the rpc_pipefs filesystem.  The default value is
+ .B -d directory
+ Tells
+ .B rpc.gssd
+-where to look for Kerberos credential files.  The default value is "/tmp".
+-This can also be a colon separated list of directories to be searched
+-for Kerberos credential files.  Note that if machine credentials are being
++where to look for Kerberos credential files.  The default value is
++"/tmp:/run/user/%U".
++This can also be a colon separated list of directories to be searched for
++Kerberos credential files.  The sequence "%U", if used, is replaced with
++the UID of the user for whom credentials are being searched.
++Note that if machine credentials are being
+ stored in files, then the first directory on this list is where the
+ machine credentials are stored.
+ .TP
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index e393d59..336f3e9 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -937,23 +937,6 @@ int create_auth_rpc_client(struct clnt_info *clp,
+ 	goto out;
+ }
+ 
+-static char *
+-user_cachedir(char *dirname, uid_t uid)
+-{
+-	struct passwd *pw;
+-	char *ptr;
+-
+-	if ((pw = getpwuid(uid)) == NULL) {
+-		printerr(0, "user_cachedir: Failed to find '%d' uid"
+-			    " for cache directory\n");
+-		return NULL;
+-	}
+-	ptr = malloc(strlen(dirname)+strlen(pw->pw_name)+2);
+-	if (ptr)
+-		sprintf(ptr, "%s/%s", dirname, pw->pw_name);
+-
+-	return ptr;
+-}
+ /*
+  * this code uses the userland rpcsec gss library to create a krb5
+  * context on behalf of the kernel
+@@ -968,7 +951,7 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+ 	gss_buffer_desc		token;
+ 	char			**credlist = NULL;
+ 	char			**ccname;
+-	char			**dirname, *dir, *userdir;
++	char			**dirname;
+ 	int			create_resp = -1;
+ 	int			err, downcall_err = -EACCES;
+ 
+@@ -1011,22 +994,7 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+ 				service == NULL)) {
+ 		/* Tell krb5 gss which credentials cache to use */
+ 		for (dirname = ccachesearch; *dirname != NULL; dirname++) {
+-			/* See if the user name is needed */
+-			if (strncmp(*dirname, GSSD_USER_CRED_DIR, 
+-					strlen(GSSD_USER_CRED_DIR)) == 0) {
+-				userdir = user_cachedir(*dirname, uid);
+-				if (userdir == NULL) 
+-					continue;
+-				dir = userdir;
+-			} else
+-				dir = *dirname;
+-
+-			err = gssd_setup_krb5_user_gss_ccache(uid, clp->servername, dir);
+-
+-			if (userdir) {
+-				free(userdir);
+-				userdir = NULL;
+-			}
++			err = gssd_setup_krb5_user_gss_ccache(uid, clp->servername, *dirname);
+ 			if (err == -EKEYEXPIRED)
+ 				downcall_err = -EKEYEXPIRED;
+ 			else if (!err)
+diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+index 2389276..60ba594 100644
+--- a/utils/gssd/krb5_util.c
++++ b/utils/gssd/krb5_util.c
+@@ -1036,16 +1036,38 @@ err_cache:
+  * Returns 0 if a ccache was found, and a non-zero error code otherwise.
+  */
+ int
+-gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername, char *dirname)
++gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername, char *dirpattern)
+ {
+-	char			buf[MAX_NETOBJ_SZ];
++	char			buf[MAX_NETOBJ_SZ], dirname[PATH_MAX];
+ 	const char		*cctype;
+ 	struct dirent		*d;
+-	int			err;
++	int			err, i, j;
+ 
+ 	printerr(2, "getting credentials for client with uid %u for "
+ 		    "server %s\n", uid, servername);
+-	memset(buf, 0, sizeof(buf));
++
++	for (i = 0, j = 0; dirpattern[i] != '\0'; i++) {
++		switch (dirpattern[i]) {
++		case '%':
++			switch (dirpattern[i + 1]) {
++			case '%':
++				dirname[j++] = dirpattern[i];
++				i++;
++				break;
++			case 'U':
++				j += sprintf(dirname + j, "%lu",
++					     (unsigned long) uid);
++				i++;
++				break;
++			}
++			break;
++		default:
++			dirname[j++] = dirpattern[i];
++			break;
++		}
++	}
++	dirname[j] = '\0';
++
+ 	err = gssd_find_existing_krb5_ccache(uid, dirname, &cctype, &d);
+ 	if (err)
+ 		return err;
+-- 
+1.7.11.5
 
