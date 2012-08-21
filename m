@@ -1,81 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx5.framestore.com ([193.203.83.15]:37643 "EHLO
-	mx5.framestore.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753204Ab2HMQv7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Aug 2012 12:51:59 -0400
-Subject: Re: Your comments, guidance, advice please :)
-From: Jim Vanns <james.vanns@framestore.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Jim Vanns <james.vanns@framestore.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA939D69C@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1344869728.8400.46.camel@sys367.ldn.framestore.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA939D69C@SACEXCMBX04-PRD.hq.netapp.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 13 Aug 2012 17:51:48 +0100
-Message-ID: <1344876708.8400.55.camel@sys367.ldn.framestore.com>
-Mime-Version: 1.0
+Received: from fieldses.org ([174.143.236.118]:46812 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758544Ab2HUU5g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Aug 2012 16:57:36 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 13/14] svcrpc: split up svc_handle_xprt
+Date: Tue, 21 Aug 2012 16:57:31 -0400
+Message-Id: <1345582652-18476-14-git-send-email-bfields@redhat.com>
+In-Reply-To: <1345582652-18476-1-git-send-email-bfields@redhat.com>
+References: <1345582652-18476-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2012-08-13 at 16:40 +0000, Myklebust, Trond wrote:
-> On Mon, 2012-08-13 at 15:55 +0100, Jim Vanns wrote:
-> > Hello NFS hackers. First off, fear not - the attached patch is not
-> > something I wish to submit to the mainline kernel! However, it is
-> > important for me that you pass judgement or comment on it. It is small.
-> > 
-> > Basically, I've written the patch solely to workaround a Bluearc bug
-> > where it duplicates fileids within an fsid and therefore we're not able
-> > to rely on the fsid+fileid to identify distinct files in an NFS
-> > filesystem. Some of our storage indexing and reporting software relies
-> > on this and works happily with other, more RFC-adherent
-> > implementations ;)
-> > 
-> > The functional change is one that modified the received fileid to a hash
-> > of the file handle as that, thankfully, is still unique. As with a
-> > fileid I need this hash to remain consistent for the lifetime of a file.
-> > It is used as a unique identifier in a database.
-> > 
-> > I'd really appreciate it if you could let me know of any problems you
-> > see with it - whether it'll break some client-side code, hash table use
-> > or worse still send back bad data to the server.
-> > 
-> > I've modified what I can see as the least amount of code possible - and
-> > my test VM is working happily as a client with this patch. It is
-> > intended that the patch modifies only client-side code once the Bluearc
-> > RPCs are pulled off the wire. I never want to send back these modified
-> > fileids to the server.
-> 
-> READDIR and READDIRPLUS will continue to return the fileid from the
-> server, so the getdents() and readdir() syscalls will be broken. Since
-> READDIRPLUS does return the filehandle, you might be able to fix that
-> up, but plain READDIR would appear to be unfixable.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Thanks, I'll take a look at that.
+Move initialization of newly accepted socket into a helper.
 
-> Otherwise, your strategy should in principle be OK, but with the caveat
-> that a hash does not suffice to completely prevent collisions even if it
-> is well chosen.
-> IOW: All you are doing is tweaking the probability of a collision.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/svc_xprt.c |   47 +++++++++++++++++++++++++----------------------
+ 1 file changed, 25 insertions(+), 22 deletions(-)
 
-Oh yes, I completely understand that. I've done very little testing but
-I'm confident that this at least reduces the number of collisions
-considerably.
-
-Jim
-
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
-> NrybXǧv^)޺{.n+{"^nrzh&Gh(階ݢj"mzޖfh~m
-
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 6ebc9a9..194d865 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -679,6 +679,23 @@ struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
+ 	return xprt;
+ }
+ 
++void svc_add_new_temp_xprt(struct svc_serv *serv, struct svc_xprt *newxpt)
++{
++	spin_lock_bh(&serv->sv_lock);
++	set_bit(XPT_TEMP, &newxpt->xpt_flags);
++	list_add(&newxpt->xpt_list, &serv->sv_tempsocks);
++	serv->sv_tmpcnt++;
++	if (serv->sv_temptimer.function == NULL) {
++		/* setup timer to age temp transports */
++		setup_timer(&serv->sv_temptimer, svc_age_temp_xprts,
++			    (unsigned long)serv);
++		mod_timer(&serv->sv_temptimer,
++			  jiffies + svc_conn_age_period * HZ);
++	}
++	spin_unlock_bh(&serv->sv_lock);
++	svc_xprt_received(newxpt);
++}
++
+ static int svc_handle_xprt(struct svc_rqst *rqstp, struct svc_xprt *xprt)
+ {
+ 	struct svc_serv *serv = rqstp->rq_server;
+@@ -692,29 +709,15 @@ static int svc_handle_xprt(struct svc_rqst *rqstp, struct svc_xprt *xprt)
+ 	}
+ 	if (test_bit(XPT_LISTENER, &xprt->xpt_flags)) {
+ 		struct svc_xprt *newxpt;
++		/*
++		 * We know this module_get will succeed because the
++		 * listener holds a reference too
++		 */
++		__module_get(xprt->xpt_class->xcl_owner);
++		svc_check_conn_limits(xprt->xpt_server);
+ 		newxpt = xprt->xpt_ops->xpo_accept(xprt);
+-		if (newxpt) {
+-			/*
+-			 * We know this module_get will succeed because the
+-			 * listener holds a reference too
+-			 */
+-			__module_get(newxpt->xpt_class->xcl_owner);
+-			svc_check_conn_limits(xprt->xpt_server);
+-			spin_lock_bh(&serv->sv_lock);
+-			set_bit(XPT_TEMP, &newxpt->xpt_flags);
+-			list_add(&newxpt->xpt_list, &serv->sv_tempsocks);
+-			serv->sv_tmpcnt++;
+-			if (serv->sv_temptimer.function == NULL) {
+-				/* setup timer to age temp transports */
+-				setup_timer(&serv->sv_temptimer,
+-					    svc_age_temp_xprts,
+-					    (unsigned long)serv);
+-				mod_timer(&serv->sv_temptimer,
+-					  jiffies + svc_conn_age_period * HZ);
+-			}
+-			spin_unlock_bh(&serv->sv_lock);
+-			svc_xprt_received(newxpt);
+-		}
++		if (newxpt)
++			svc_add_new_temp_xprt(serv, newxpt);
+ 	} else if (xprt->xpt_ops->xpo_has_wspace(xprt)) {
+ 		/* XPT_DATA|XPT_DEFERRED case: */
+ 		dprintk("svc: server %p, pool %u, transport %p, inuse=%d\n",
 -- 
-Jim Vanns
-Systems Programmer
-Framestore
+1.7.9.5
 
