@@ -1,40 +1,316 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59398 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:48110 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753325Ab2HHToD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Aug 2012 15:44:03 -0400
-Date: Wed, 8 Aug 2012 15:43:59 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Simo Sorce <simo@redhat.com>,
-        "bfields@redhat.com" <bfields@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/4] Add support for new RPCSEC_GSS upcall mechanism
- for nfsd
-Message-ID: <20120808194359.GB942@fieldses.org>
-References: <1341958332.17428.12.camel@lade.trondhjem.org>
- <1341959112.17428.19.camel@lade.trondhjem.org>
- <20120710223818.GA6720@fieldses.org>
- <1341961118.17428.29.camel@lade.trondhjem.org>
- <20120711170331.GE11432@fieldses.org>
- <20120711172714.GA13610@fieldses.org>
- <1342028948.25375.45.camel@lade.trondhjem.org>
- <20120712221058.GC24162@fieldses.org>
- <20120713154302.GA32660@fieldses.org>
- <20120808193659.GA942@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120808193659.GA942@fieldses.org>
+	id S1751536Ab2HUWdp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Aug 2012 18:33:45 -0400
+Date: Wed, 22 Aug 2012 08:33:08 +1000
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: remove unused listener-removal interfaces
+Message-ID: <20120822083308.3bca78f8@notabene.brown>
+In-Reply-To: <20120821172902.GA15958@fieldses.org>
+References: <20120815234259.GB28054@fieldses.org>
+	<20120821172902.GA15958@fieldses.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/4yGImFcW.vNAnuQ/Xd9fDH."; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 08, 2012 at 03:36:59PM -0400, J. Bruce Fields wrote:
-> However, one hangup: figuring out how to switch on gssproxy
-> per-container isn't very interesting until gssproxy can actually work
-> per-container.  I'd *really* like to get the unix socket stuff worked
-> out first.
+--Sig_/4yGImFcW.vNAnuQ/Xd9fDH.
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Stanislav, what's left to be done to get per-container unix sockets?
+On Tue, 21 Aug 2012 13:29:02 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+wrote:
 
---b.
+> On Wed, Aug 15, 2012 at 07:43:00PM -0400, J. Bruce Fields wrote:
+> > From: "J. Bruce Fields" <bfields@redhat.com>
+> >=20
+> > You can use nfsd/portlist to give nfsd additional sockets to listen on.
+> > In theory you can also remove listening sockets this way.  But nobody's
+> > ever done that as far as I can tell.
+> >=20
+> > Also this was partially broken in 2.6.25, by
+> > a217813f9067b785241cb7f31956e51d2071703a "knfsd: Support adding
+> > transports by writing portlist file".
+> >=20
+> > (Note that we decide whether to take the "delfd" case by checking for a
+> > digit--but what's actually expected in that case is something made by
+> > svc_one_sock_name(), which won't begin with a digit.)
+> >=20
+> > So, let's just rip out this stuff.
+> >=20
+> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > ---
+> >  fs/nfsd/nfsctl.c               |   78 --------------------------------=
+--------
+> >  include/linux/sunrpc/svcsock.h |    3 --
+> >  net/sunrpc/svcsock.c           |   51 --------------------------
+> >  3 files changed, 132 deletions(-)
+> >=20
+> > OK, maybe this is somewhat of a troll patch--but I don't actually know
+> > how to fix this interface, so: do we really have a use for it?
+>=20
+> Neil, was the the "-portname" thing originally yours?  Did you have a
+> use case in mind?
+>=20
+
+Yes it was mine.  It seemed like a good idea at a time.
+If you can turn something on, you should be able to turn it off too.
+
+When do ports get closed?  Just on last-server-exit?  As you know, I don't
+like the idea of things happening on last-server-exit, but it does seem to
+work.  Mostly.
+
+There doesn't seem to be any really need to close sockets independently so =
+we
+may as well rip this code out.  It can be added again if a need is found.
+
+Acked-by: NeilBrown <neilb@suse.de>
+
+NeilBrown
+
+
+
+> --b.
+>=20
+> >=20
+> > --b.
+> >=20
+> > diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> > index e41a08ff..dab350d 100644
+> > --- a/fs/nfsd/nfsctl.c
+> > +++ b/fs/nfsd/nfsctl.c
+> > @@ -683,25 +683,6 @@ static ssize_t __write_ports_addfd(char *buf)
+> >  }
+> > =20
+> >  /*
+> > - * A '-' followed by the 'name' of a socket means we close the socket.
+> > - */
+> > -static ssize_t __write_ports_delfd(char *buf)
+> > -{
+> > -	char *toclose;
+> > -	int len =3D 0;
+> > -
+> > -	toclose =3D kstrdup(buf + 1, GFP_KERNEL);
+> > -	if (toclose =3D=3D NULL)
+> > -		return -ENOMEM;
+> > -
+> > -	if (nfsd_serv !=3D NULL)
+> > -		len =3D svc_sock_names(nfsd_serv, buf,
+> > -					SIMPLE_TRANSACTION_LIMIT, toclose);
+> > -	kfree(toclose);
+> > -	return len;
+> > -}
+> > -
+> > -/*
+> >   * A transport listener is added by writing it's transport name and
+> >   * a port number.
+> >   */
+> > @@ -746,31 +727,6 @@ out_err:
+> >  	return err;
+> >  }
+> > =20
+> > -/*
+> > - * A transport listener is removed by writing a "-", it's transport
+> > - * name, and it's port number.
+> > - */
+> > -static ssize_t __write_ports_delxprt(char *buf)
+> > -{
+> > -	struct svc_xprt *xprt;
+> > -	char transport[16];
+> > -	int port;
+> > -
+> > -	if (sscanf(&buf[1], "%15s %4u", transport, &port) !=3D 2)
+> > -		return -EINVAL;
+> > -
+> > -	if (port < 1 || port > USHRT_MAX || nfsd_serv =3D=3D NULL)
+> > -		return -EINVAL;
+> > -
+> > -	xprt =3D svc_find_xprt(nfsd_serv, transport, &init_net, AF_UNSPEC, po=
+rt);
+> > -	if (xprt =3D=3D NULL)
+> > -		return -ENOTCONN;
+> > -
+> > -	svc_close_xprt(xprt);
+> > -	svc_xprt_put(xprt);
+> > -	return 0;
+> > -}
+> > -
+> >  static ssize_t __write_ports(struct file *file, char *buf, size_t size)
+> >  {
+> >  	if (size =3D=3D 0)
+> > @@ -779,15 +735,9 @@ static ssize_t __write_ports(struct file *file, ch=
+ar *buf, size_t size)
+> >  	if (isdigit(buf[0]))
+> >  		return __write_ports_addfd(buf);
+> > =20
+> > -	if (buf[0] =3D=3D '-' && isdigit(buf[1]))
+> > -		return __write_ports_delfd(buf);
+> > -
+> >  	if (isalpha(buf[0]))
+> >  		return __write_ports_addxprt(buf);
+> > =20
+> > -	if (buf[0] =3D=3D '-' && isalpha(buf[1]))
+> > -		return __write_ports_delxprt(buf);
+> > -
+> >  	return -EINVAL;
+> >  }
+> > =20
+> > @@ -825,21 +775,6 @@ static ssize_t __write_ports(struct file *file, ch=
+ar *buf, size_t size)
+> >   * OR
+> >   *
+> >   * Input:
+> > - *			buf:		C string containing a "-" followed
+> > - *					by an integer value representing a
+> > - *					previously passed in socket file
+> > - *					descriptor
+> > - *			size:		non-zero length of C string in @buf
+> > - * Output:
+> > - *	On success:	NFS service no longer listens on that socket;
+> > - *			passed-in buffer filled with a '\n'-terminated C
+> > - *			string containing a unique name of the listener;
+> > - *			return code is the size in bytes of the string
+> > - *	On error:	return code is a negative errno value
+> > - *
+> > - * OR
+> > - *
+> > - * Input:
+> >   *			buf:		C string containing a transport
+> >   *					name and an unsigned integer value
+> >   *					representing the port to listen on,
+> > @@ -848,19 +783,6 @@ static ssize_t __write_ports(struct file *file, ch=
+ar *buf, size_t size)
+> >   * Output:
+> >   *	On success:	returns zero; NFS service is started
+> >   *	On error:	return code is a negative errno value
+> > - *
+> > - * OR
+> > - *
+> > - * Input:
+> > - *			buf:		C string containing a "-" followed
+> > - *					by a transport name and an unsigned
+> > - *					integer value representing the port
+> > - *					to listen on, separated by whitespace
+> > - *			size:		non-zero length of C string in @buf
+> > - * Output:
+> > - *	On success:	returns zero; NFS service no longer listens
+> > - *			on that transport
+> > - *	On error:	return code is a negative errno value
+> >   */
+> >  static ssize_t write_ports(struct file *file, char *buf, size_t size)
+> >  {
+> > diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcs=
+ock.h
+> > index cb4ac69..92ad02f 100644
+> > --- a/include/linux/sunrpc/svcsock.h
+> > +++ b/include/linux/sunrpc/svcsock.h
+> > @@ -39,9 +39,6 @@ int		svc_recv(struct svc_rqst *, long);
+> >  int		svc_send(struct svc_rqst *);
+> >  void		svc_drop(struct svc_rqst *);
+> >  void		svc_sock_update_bufs(struct svc_serv *serv);
+> > -int		svc_sock_names(struct svc_serv *serv, char *buf,
+> > -					const size_t buflen,
+> > -					const char *toclose);
+> >  int		svc_addsock(struct svc_serv *serv, const int fd,
+> >  					char *name_return, const size_t len);
+> >  void		svc_init_xprt_sock(void);
+> > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> > index c7a7b14..42fedbd 100644
+> > --- a/net/sunrpc/svcsock.c
+> > +++ b/net/sunrpc/svcsock.c
+> > @@ -305,57 +305,6 @@ static int svc_one_sock_name(struct svc_sock *svsk=
+, char *buf, int remaining)
+> >  	return len;
+> >  }
+> > =20
+> > -/**
+> > - * svc_sock_names - construct a list of listener names in a string
+> > - * @serv: pointer to RPC service
+> > - * @buf: pointer to a buffer to fill in with socket names
+> > - * @buflen: size of the buffer to be filled
+> > - * @toclose: pointer to '\0'-terminated C string containing the name
+> > - *		of a listener to be closed
+> > - *
+> > - * Fills in @buf with a '\n'-separated list of names of listener
+> > - * sockets.  If @toclose is not NULL, the socket named by @toclose
+> > - * is closed, and is not included in the output list.
+> > - *
+> > - * Returns positive length of the socket name string, or a negative
+> > - * errno value on error.
+> > - */
+> > -int svc_sock_names(struct svc_serv *serv, char *buf, const size_t bufl=
+en,
+> > -		   const char *toclose)
+> > -{
+> > -	struct svc_sock *svsk, *closesk =3D NULL;
+> > -	int len =3D 0;
+> > -
+> > -	if (!serv)
+> > -		return 0;
+> > -
+> > -	spin_lock_bh(&serv->sv_lock);
+> > -	list_for_each_entry(svsk, &serv->sv_permsocks, sk_xprt.xpt_list) {
+> > -		int onelen =3D svc_one_sock_name(svsk, buf + len, buflen - len);
+> > -		if (onelen < 0) {
+> > -			len =3D onelen;
+> > -			break;
+> > -		}
+> > -		if (toclose && strcmp(toclose, buf + len) =3D=3D 0) {
+> > -			closesk =3D svsk;
+> > -			svc_xprt_get(&closesk->sk_xprt);
+> > -		} else
+> > -			len +=3D onelen;
+> > -	}
+> > -	spin_unlock_bh(&serv->sv_lock);
+> > -
+> > -	if (closesk) {
+> > -		/* Should unregister with portmap, but you cannot
+> > -		 * unregister just one protocol...
+> > -		 */
+> > -		svc_close_xprt(&closesk->sk_xprt);
+> > -		svc_xprt_put(&closesk->sk_xprt);
+> > -	} else if (toclose)
+> > -		return -ENOENT;
+> > -	return len;
+> > -}
+> > -EXPORT_SYMBOL_GPL(svc_sock_names);
+> > -
+> >  /*
+> >   * Check input queue length
+> >   */
+> > --=20
+> > 1.7.9.5
+> >=20
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+--Sig_/4yGImFcW.vNAnuQ/Xd9fDH.
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
+
+iQIVAwUBUDQMtTnsnt1WYoG5AQJPyQ/9EmR1N4Lgul+BNsssZfWdadH7l1NFc16M
+sooXFskoia51SJkX73EuvVXpb3wUdnt647L92ABClK2EB73U+jfpv2EJgKSXMTlj
+VhAuhC+Xgj+kVH51UZ+IzJVtBGvxmHoisjt2Vdbvr6MRTIPaeovVK17XEAftJhT6
+6aREyKYK47v56by/p1raECpk020SMA8W9AajgQuSIyBH/bTXtTrL3dco0yaIXWxx
+jTd4Z9QEZNVQeWboY3M4TaaYITPW3dFKekGUlAktQdboO/lStK8Z0ohK2CjNBRky
+zy03qaopEcd6KGHTj5cOp7AlLZTFu9oVRBRyK54K+pJ6R/aE5xNpR6Z9EDy1cdar
+5HCXy1ILE6aJGbkJpbTBLbbZ+izE9nGNegcZXgjyIr9YOW8CullnMM+whNg3vgYi
+Z3AdxdD+s3TqBKWtpWB9XillPEaUJhMwkzTIzL7WXYGjA8JALVH5cghLuhE7GZ0B
+04hWF2wBuz5pF8hh+ke7AzzDTX/M2qavQigofxy+iNJ8Ty9KDQCm6LkSMwihdpMs
+hXo4ZKNhIXhOuW1qTRZjRia3Nn0+dei8X4xyyd6+DKBiQ4Ee3ysnebRQPgZZA9rp
+HLMcGxqgzSq1KRtQtRhqgzTh0UwKQh1pv0iaU7wplq0ZE2BuVdBc5cbQOHA3Kxoc
+k7k03Ert7cI=
+=hY3j
+-----END PGP SIGNATURE-----
+
+--Sig_/4yGImFcW.vNAnuQ/Xd9fDH.--
