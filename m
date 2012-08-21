@@ -1,113 +1,265 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:50212 "EHLO
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:52256 "EHLO
 	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754641Ab2HHByp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Aug 2012 21:54:45 -0400
-Received: by ggnl2 with SMTP id l2so274786ggn.19
-        for <linux-nfs@vger.kernel.org>; Tue, 07 Aug 2012 18:54:44 -0700 (PDT)
-From: Peng Tao <bergwolf@gmail.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/4] Revert "pnfsblock: bail out partial page IO"
-Date: Wed,  8 Aug 2012 09:54:11 +0800
-Message-Id: <1344390854-1771-2-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1344390854-1771-1-git-send-email-bergwolf@gmail.com>
-References: <1344390854-1771-1-git-send-email-bergwolf@gmail.com>
+	with ESMTP id S1757121Ab2HUMDi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2012 08:03:38 -0400
+Received: by ggdk6 with SMTP id k6so5717287ggd.19
+        for <linux-nfs@vger.kernel.org>; Tue, 21 Aug 2012 05:03:37 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: viro@ZenIV.linux.org.uk, linux-nfs@vger.kernel.org
+Subject: [PATCH] knfsd: don't allocate file_locks on the stack
+Date: Tue, 21 Aug 2012 08:03:32 -0400
+Message-Id: <1345550612-9744-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This reverts commit 159e0561e322dd8008fff59e36efff8d2bdd0b0e in favor
-of a complete alignment fix.
+struct file_lock is pretty large and really ought not live on the stack.
+On my x86_64 machine, they're almost 200 bytes each.
 
-Signed-off-by: Peng Tao <tao.peng@emc.com>
+    (gdb) p sizeof(struct file_lock)
+    $1 = 192
+
+...allocate them dynamically instead.
+
+Reported-by: Al Viro <viro@ZenIV.linux.org.uk>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/blocklayout/blocklayout.c |   39 ++-----------------------------------
- 1 files changed, 3 insertions(+), 36 deletions(-)
+ fs/nfsd/nfs4state.c | 118 +++++++++++++++++++++++++++++++++-------------------
+ 1 file changed, 76 insertions(+), 42 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index dd392ed..7ae8a60 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -228,14 +228,6 @@ bl_end_par_io_read(void *data, int unused)
- 	schedule_work(&rdata->task.u.tk_work);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 6e12fd5..07ded6d 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4046,8 +4046,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	struct nfs4_lockowner *lock_sop = NULL;
+ 	struct nfs4_ol_stateid *lock_stp;
+ 	struct file *filp = NULL;
+-	struct file_lock file_lock;
+-	struct file_lock conflock;
++	struct file_lock *file_lock = NULL;
++	struct file_lock *conflock = NULL;
+ 	__be32 status = 0;
+ 	bool new_state = false;
+ 	int lkflg;
+@@ -4117,21 +4117,28 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (!locks_in_grace(SVC_NET(rqstp)) && lock->lk_reclaim)
+ 		goto out;
+ 
+-	locks_init_lock(&file_lock);
++	file_lock = locks_alloc_lock();
++	if (!file_lock) {
++		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
++		status = nfserr_jukebox;
++		goto out;
++	}
++
++	locks_init_lock(file_lock);
+ 	switch (lock->lk_type) {
+ 		case NFS4_READ_LT:
+ 		case NFS4_READW_LT:
+ 			filp = find_readable_file(lock_stp->st_file);
+ 			if (filp)
+ 				get_lock_access(lock_stp, NFS4_SHARE_ACCESS_READ);
+-			file_lock.fl_type = F_RDLCK;
++			file_lock->fl_type = F_RDLCK;
+ 			break;
+ 		case NFS4_WRITE_LT:
+ 		case NFS4_WRITEW_LT:
+ 			filp = find_writeable_file(lock_stp->st_file);
+ 			if (filp)
+ 				get_lock_access(lock_stp, NFS4_SHARE_ACCESS_WRITE);
+-			file_lock.fl_type = F_WRLCK;
++			file_lock->fl_type = F_WRLCK;
+ 			break;
+ 		default:
+ 			status = nfserr_inval;
+@@ -4141,17 +4148,23 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		status = nfserr_openmode;
+ 		goto out;
+ 	}
+-	file_lock.fl_owner = (fl_owner_t)lock_sop;
+-	file_lock.fl_pid = current->tgid;
+-	file_lock.fl_file = filp;
+-	file_lock.fl_flags = FL_POSIX;
+-	file_lock.fl_lmops = &nfsd_posix_mng_ops;
+-
+-	file_lock.fl_start = lock->lk_offset;
+-	file_lock.fl_end = last_byte_offset(lock->lk_offset, lock->lk_length);
+-	nfs4_transform_lock_offset(&file_lock);
++	file_lock->fl_owner = (fl_owner_t)lock_sop;
++	file_lock->fl_pid = current->tgid;
++	file_lock->fl_file = filp;
++	file_lock->fl_flags = FL_POSIX;
++	file_lock->fl_lmops = &nfsd_posix_mng_ops;
++	file_lock->fl_start = lock->lk_offset;
++	file_lock->fl_end = last_byte_offset(lock->lk_offset, lock->lk_length);
++	nfs4_transform_lock_offset(file_lock);
++
++	conflock = locks_alloc_lock();
++	if (!conflock) {
++		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
++		status = nfserr_jukebox;
++		goto out;
++	}
+ 
+-	err = vfs_lock_file(filp, F_SETLK, &file_lock, &conflock);
++	err = vfs_lock_file(filp, F_SETLK, file_lock, conflock);
+ 	switch (-err) {
+ 	case 0: /* success! */
+ 		update_stateid(&lock_stp->st_stid.sc_stateid);
+@@ -4162,7 +4175,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	case (EAGAIN):		/* conflock holds conflicting lock */
+ 		status = nfserr_denied;
+ 		dprintk("NFSD: nfsd4_lock: conflicting lock found!\n");
+-		nfs4_set_lock_denied(&conflock, &lock->lk_denied);
++		nfs4_set_lock_denied(conflock, &lock->lk_denied);
+ 		break;
+ 	case (EDEADLK):
+ 		status = nfserr_deadlock;
+@@ -4177,6 +4190,10 @@ out:
+ 		release_lockowner(lock_sop);
+ 	if (!cstate->replay_owner)
+ 		nfs4_unlock_state();
++	if (file_lock)
++		locks_free_lock(file_lock);
++	if (conflock)
++		locks_free_lock(conflock);
+ 	return status;
  }
  
--static bool
--bl_check_alignment(u64 offset, u32 len, unsigned long blkmask)
--{
--	if ((offset & blkmask) || (len & blkmask))
--		return false;
--	return true;
--}
--
- static enum pnfs_try_status
- bl_read_pagelist(struct nfs_read_data *rdata)
+@@ -4205,7 +4222,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	    struct nfsd4_lockt *lockt)
  {
-@@ -252,9 +244,6 @@ bl_read_pagelist(struct nfs_read_data *rdata)
- 	dprintk("%s enter nr_pages %u offset %lld count %u\n", __func__,
- 	       rdata->pages.npages, f_offset, (unsigned int)rdata->args.count);
+ 	struct inode *inode;
+-	struct file_lock file_lock;
++	struct file_lock *file_lock = NULL;
+ 	struct nfs4_lockowner *lo;
+ 	__be32 status;
+ 	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
+@@ -4226,15 +4243,21 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		goto out;
  
--	if (!bl_check_alignment(f_offset, rdata->args.count, PAGE_CACHE_MASK))
--		goto use_mds;
--
- 	par = alloc_parallel(rdata);
- 	if (!par)
- 		goto use_mds;
-@@ -563,7 +552,7 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
- 	struct bio *bio = NULL;
- 	struct pnfs_block_extent *be = NULL, *cow_read = NULL;
- 	sector_t isect, last_isect = 0, extent_length = 0;
--	struct parallel_io *par = NULL;
-+	struct parallel_io *par;
- 	loff_t offset = wdata->args.offset;
- 	size_t count = wdata->args.count;
- 	struct page **pages = wdata->args.pages;
-@@ -574,10 +563,6 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
- 	    NFS_SERVER(header->inode)->pnfs_blksize >> PAGE_CACHE_SHIFT;
+ 	inode = cstate->current_fh.fh_dentry->d_inode;
+-	locks_init_lock(&file_lock);
++	file_lock = locks_alloc_lock();
++	if (!file_lock) {
++		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
++		status = nfserr_jukebox;
++		goto out;
++	}
++	locks_init_lock(file_lock);
+ 	switch (lockt->lt_type) {
+ 		case NFS4_READ_LT:
+ 		case NFS4_READW_LT:
+-			file_lock.fl_type = F_RDLCK;
++			file_lock->fl_type = F_RDLCK;
+ 		break;
+ 		case NFS4_WRITE_LT:
+ 		case NFS4_WRITEW_LT:
+-			file_lock.fl_type = F_WRLCK;
++			file_lock->fl_type = F_WRLCK;
+ 		break;
+ 		default:
+ 			dprintk("NFSD: nfs4_lockt: bad lock type!\n");
+@@ -4244,25 +4267,27 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
  
- 	dprintk("%s enter, %Zu@%lld\n", __func__, count, offset);
--	/* Check for alignment first */
--	if (!bl_check_alignment(offset, count, PAGE_CACHE_MASK))
--		goto out_mds;
--
- 	/* At this point, wdata->pages is a (sequential) list of nfs_pages.
- 	 * We want to write each, and if there is an error set pnfs_error
- 	 * to have it redone using nfs.
-@@ -1011,32 +996,14 @@ bl_clear_layoutdriver(struct nfs_server *server)
- 	return 0;
+ 	lo = find_lockowner_str(inode, &lockt->lt_clientid, &lockt->lt_owner);
+ 	if (lo)
+-		file_lock.fl_owner = (fl_owner_t)lo;
+-	file_lock.fl_pid = current->tgid;
+-	file_lock.fl_flags = FL_POSIX;
++		file_lock->fl_owner = (fl_owner_t)lo;
++	file_lock->fl_pid = current->tgid;
++	file_lock->fl_flags = FL_POSIX;
+ 
+-	file_lock.fl_start = lockt->lt_offset;
+-	file_lock.fl_end = last_byte_offset(lockt->lt_offset, lockt->lt_length);
++	file_lock->fl_start = lockt->lt_offset;
++	file_lock->fl_end = last_byte_offset(lockt->lt_offset, lockt->lt_length);
+ 
+-	nfs4_transform_lock_offset(&file_lock);
++	nfs4_transform_lock_offset(file_lock);
+ 
+-	status = nfsd_test_lock(rqstp, &cstate->current_fh, &file_lock);
++	status = nfsd_test_lock(rqstp, &cstate->current_fh, file_lock);
+ 	if (status)
+ 		goto out;
+ 
+-	if (file_lock.fl_type != F_UNLCK) {
++	if (file_lock->fl_type != F_UNLCK) {
+ 		status = nfserr_denied;
+-		nfs4_set_lock_denied(&file_lock, &lockt->lt_denied);
++		nfs4_set_lock_denied(file_lock, &lockt->lt_denied);
+ 	}
+ out:
+ 	nfs4_unlock_state();
++	if (file_lock)
++		locks_free_lock(file_lock);
+ 	return status;
  }
  
--static void
--bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
--{
--	if (!bl_check_alignment(req->wb_offset, req->wb_bytes, PAGE_CACHE_MASK))
--		nfs_pageio_reset_read_mds(pgio);
--	else
--		pnfs_generic_pg_init_read(pgio, req);
--}
+@@ -4272,7 +4297,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ {
+ 	struct nfs4_ol_stateid *stp;
+ 	struct file *filp = NULL;
+-	struct file_lock file_lock;
++	struct file_lock *file_lock = NULL;
+ 	__be32 status;
+ 	int err;
+ 						        
+@@ -4294,22 +4319,29 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		status = nfserr_lock_range;
+ 		goto out;
+ 	}
+-	locks_init_lock(&file_lock);
+-	file_lock.fl_type = F_UNLCK;
+-	file_lock.fl_owner = (fl_owner_t)lockowner(stp->st_stateowner);
+-	file_lock.fl_pid = current->tgid;
+-	file_lock.fl_file = filp;
+-	file_lock.fl_flags = FL_POSIX; 
+-	file_lock.fl_lmops = &nfsd_posix_mng_ops;
+-	file_lock.fl_start = locku->lu_offset;
 -
--static void
--bl_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
--{
--	if (!bl_check_alignment(req->wb_offset, req->wb_bytes, PAGE_CACHE_MASK))
--		nfs_pageio_reset_write_mds(pgio);
--	else
--		pnfs_generic_pg_init_write(pgio, req);
--}
--
- static const struct nfs_pageio_ops bl_pg_read_ops = {
--	.pg_init = bl_pg_init_read,
-+	.pg_init = pnfs_generic_pg_init_read,
- 	.pg_test = pnfs_generic_pg_test,
- 	.pg_doio = pnfs_generic_pg_readpages,
- };
+-	file_lock.fl_end = last_byte_offset(locku->lu_offset, locku->lu_length);
+-	nfs4_transform_lock_offset(&file_lock);
++	file_lock = locks_alloc_lock();
++	if (!file_lock) {
++		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
++		status = nfserr_jukebox;
++		goto out;
++	}
++	locks_init_lock(file_lock);
++	file_lock->fl_type = F_UNLCK;
++	file_lock->fl_owner = (fl_owner_t)lockowner(stp->st_stateowner);
++	file_lock->fl_pid = current->tgid;
++	file_lock->fl_file = filp;
++	file_lock->fl_flags = FL_POSIX;
++	file_lock->fl_lmops = &nfsd_posix_mng_ops;
++	file_lock->fl_start = locku->lu_offset;
++
++	file_lock->fl_end = last_byte_offset(locku->lu_offset,
++						locku->lu_length);
++	nfs4_transform_lock_offset(file_lock);
  
- static const struct nfs_pageio_ops bl_pg_write_ops = {
--	.pg_init = bl_pg_init_write,
-+	.pg_init = pnfs_generic_pg_init_write,
- 	.pg_test = pnfs_generic_pg_test,
- 	.pg_doio = pnfs_generic_pg_writepages,
- };
+ 	/*
+ 	*  Try to unlock the file in the VFS.
+ 	*/
+-	err = vfs_lock_file(filp, F_SETLK, &file_lock, NULL);
++	err = vfs_lock_file(filp, F_SETLK, file_lock, NULL);
+ 	if (err) {
+ 		dprintk("NFSD: nfs4_locku: vfs_lock_file failed!\n");
+ 		goto out_nfserr;
+@@ -4323,6 +4355,8 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ out:
+ 	if (!cstate->replay_owner)
+ 		nfs4_unlock_state();
++	if (file_lock)
++		locks_free_lock(file_lock);
+ 	return status;
+ 
+ out_nfserr:
 -- 
-1.7.1.262.g5ef3d
+1.7.11.4
 
