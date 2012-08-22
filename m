@@ -1,93 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:44096 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751254Ab2HIVNl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Aug 2012 17:13:41 -0400
-Date: Thu, 9 Aug 2012 17:13:40 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFS: Treat NFS4ERR_CLID_INUSE as a fatal error
-Message-ID: <20120809211340.GB11538@fieldses.org>
-References: <20120809183557.GA10591@fieldses.org>
- <53272628-CC34-4279-AA69-CD31B86672D5@oracle.com>
- <20120809193743.GD10591@fieldses.org>
- <20120809203838.GA11538@fieldses.org>
- <24601061-1606-4A0A-940E-FDAFD1A2A2BB@oracle.com>
- <39FE3A39-4EB2-4F9F-908F-645C79B30E0F@oracle.com>
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:38593 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751107Ab2HVRc0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Aug 2012 13:32:26 -0400
+Message-ID: <503517C4.5030500@gmail.com>
+Date: Wed, 22 Aug 2012 19:32:52 +0200
+From: Sasha Levin <levinsasha928@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <39FE3A39-4EB2-4F9F-908F-645C79B30E0F@oracle.com>
+To: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, torvalds@linux-foundation.org,
+        tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com, axboe@kernel.dk,
+        agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v3 13/17] lockd: use new hashtable implementation
+References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com> <1345602432-27673-14-git-send-email-levinsasha928@gmail.com> <20120822114752.GC20158@fieldses.org> <5034CD02.2010103@gmail.com> <20120822132243.GA2844@Krystal>
+In-Reply-To: <20120822132243.GA2844@Krystal>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 09, 2012 at 04:52:07PM -0400, Chuck Lever wrote:
+On 08/22/2012 03:22 PM, Mathieu Desnoyers wrote:
+> * Sasha Levin (levinsasha928@gmail.com) wrote:
+>> On 08/22/2012 01:47 PM, J. Bruce Fields wrote:
+>>> On Wed, Aug 22, 2012 at 04:27:08AM +0200, Sasha Levin wrote:
+>>>> +static int __init nlm_init(void)
+>>>> +{
+>>>> +	hash_init(nlm_files);
+>>>> +	return 0;
+>>>> +}
+>>>> +
+>>>> +module_init(nlm_init);
+>>>
+>>> That's giving me:
+>>>
+>>> fs/lockd/svcsubs.o: In function `nlm_init':
+>>> /home/bfields/linux-2.6/fs/lockd/svcsubs.c:454: multiple definition of `init_module'
+>>> fs/lockd/svc.o:/home/bfields/linux-2.6/fs/lockd/svc.c:606: first defined here
+>>> make[2]: *** [fs/lockd/lockd.o] Error 1
+>>> make[1]: *** [fs/lockd] Error 2
+>>> make[1]: *** Waiting for unfinished jobs....
+>>
+>> I tested this entire patch set both with linux-next and Linus' latest master,
+>> and it worked fine in both places.
+>>
+>> Is it possible that lockd has a -next tree which isn't pulled into linux-next?
+>> (there's nothing listed in MAINTAINERS that I could see).
 > 
-> On Aug 9, 2012, at 4:46 PM, Chuck Lever wrote:
+> fs/lockd/Makefile:
 > 
-> > 
-> > On Aug 9, 2012, at 4:38 PM, J. Bruce Fields wrote:
-> > 
-> >> On Thu, Aug 09, 2012 at 03:37:43PM -0400, J. Bruce Fields wrote:
-> >>> On Thu, Aug 09, 2012 at 03:06:00PM -0400, Chuck Lever wrote:
-> >>>> 
-> >>>> On Aug 9, 2012, at 2:35 PM, J. Bruce Fields wrote:
-> >>>> 
-> >>>>> Sorry not to notice this before--the below causes a regression against
-> >>>>> the Linux server; something like:
-> >>>>> 
-> >>>>> 	# mount -osec=krb5i pip1:/exports /mnt/
-> >>>>> 	# echo "test" >/mnt/test
-> >>>>> 	# umount /mnt/
-> >>>>> 	# mount -osec=krb5 pip1:/exports /mnt/
-> >>>>> 	# echo "test" >/mnt/test
-> >>>>> 	bash: /mnt/test: Operation not permitted
-> >>>>> 
-> >>>>> This fails after the below commit on the client, but not before, thanks
-> >>>>> to the server rejecting the second setclientid with CLID_INUSE due to a
-> >>>>> different security flavor.
-> >>>> 
-> >>>> This was part of a series where the last few patches got dropped for other problems.  Testing with this patch by itself was never done since it was part of a series of patches that implement a particular feature.
-> >>>> 
-> >>>> One thought is to put the authentication flavor name back into nfs_client_id4.id string temporarily until we have worked through the issues with full UCS support.  That would prevent the regression, but we'd still have clients who use multiple authentication flavors maintaining multiple leases.
-> >>> 
-> >>> That should work.
-> >> 
-> >> Whoops, no, au_name is just "RPCSEC_GSS" in both cases.
-> > 
-> > Could you confirm that before that commit, the client had to send an additional SETCLIENTID with a new cl_id_uniquifier?
-
-Confirmed.
-
-> > We'll need to distinguish the pseudoflavor as well for GSS,
-> > apparently.
+> obj-$(CONFIG_LOCKD) += lockd.o
 > 
-> The client should present the same principal on both SETCLIENTID
-> requests, shouldn't it?  If the principal is the same, that's all that
-> RFC 3530bis requires.  Maybe I don't understand how GSS principals
-> work.
+> lockd-objs-y := clntlock.o clntproc.o clntxdr.o host.o svc.o svclock.o \
+>                 svcshare.o svcproc.o svcsubs.o mon.o xdr.o grace.o
+> 
+> your patch adds a module_init to svcsubs.c.
+> However, there is already one in svc.c, pulled into the same module.
+> 
+> in your test build, is CONFIG_LOCKD defined as "m" or "y" ? You should
+> always test both.
+> 
+> One solution here is to create a "local" init function in svcsubs.c and
+> expose it to svc.c, so the latter can call it from its module init
+> function.
 
-Which rfc3530bis language are you looking at?
+Ah yes, it was on =y and I didn't notice :/
 
-I remember it being a bit vague.  Looking at the spec....
+I'll fix that.
 
-	"a deliberate change of the principal owner of the id string
-	(such as the case of a client that changes security flavors, and
-	under the new flavor, there is no mapping to the previous owner)
-	will in rare cases result in NFS4ERR_CLID_INUSE."
+> Thanks,
+> 
+> Mathieu
+> 
 
-Which makes it sound like the server can arbitrarily decide how to map
-principals sent with different flavors--which doesn't offer much
-guidance about what to do.
-
-The server could just compare principal strings (and ignore
-pseudoflavors) in the gss case.
-
-If the intention is to ensure that a clientid can't be "hijacked" by
-someone malicious, then you don't want to allow a krb5 setclientid to
-blow away a clientid established with krb5i.  (If sending the
-setclientid with krb5i indicates the client wants protection against
-attacks which replace the body of the rpc, then a later krb5 setclientid
-should be rejected, since it could be the product of such an attack.)
-
---b.
