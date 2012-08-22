@@ -1,97 +1,152 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:43629 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752983Ab2HWQ2v (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Aug 2012 12:28:51 -0400
-Received: by mail-pz0-f46.google.com with SMTP id y13so493174dad.19
-        for <linux-nfs@vger.kernel.org>; Thu, 23 Aug 2012 09:28:50 -0700 (PDT)
-From: Peng Tao <bergwolf@gmail.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH-resend 6/6] pnfsblock: fix non-aligned DIO write
-Date: Fri, 24 Aug 2012 00:27:53 +0800
-Message-Id: <1345739273-2241-7-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1345739273-2241-1-git-send-email-bergwolf@gmail.com>
-References: <1345739273-2241-1-git-send-email-bergwolf@gmail.com>
+Received: from mail-ob0-f174.google.com ([209.85.214.174]:43131 "EHLO
+	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752744Ab2HVC1D (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2012 22:27:03 -0400
+From: Sasha Levin <levinsasha928@gmail.com>
+To: torvalds@linux-foundation.org
+Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
+        Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH v3 02/17] userns: use new hashtable implementation
+Date: Wed, 22 Aug 2012 04:26:57 +0200
+Message-Id: <1345602432-27673-3-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
+References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-For DIO writes, if it is not blocksize aligned, we need to do
-internal serialization. It may slow down writers anyway. So we
-just bail them out and resend to MDS.
+Switch to using the new hashtable implementation to store user structs.
+This reduces the amount of generic unrelated code in kernel/user.c.
 
-Cc: stable <stable@vger.kernel.org> [since v3.4]
-Signed-off-by: Peng Tao <tao.peng@emc.com>
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
 ---
- fs/nfs/blocklayout/blocklayout.c |   34 +++++++++++++++++++++++++++++++---
- 1 files changed, 31 insertions(+), 3 deletions(-)
+ kernel/user.c |   33 +++++++++++++--------------------
+ 1 files changed, 13 insertions(+), 20 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index e5dfef5..1093968 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -685,7 +685,7 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
- 	struct bio *bio = NULL;
- 	struct pnfs_block_extent *be = NULL, *cow_read = NULL;
- 	sector_t isect, last_isect = 0, extent_length = 0;
--	struct parallel_io *par;
-+	struct parallel_io *par = NULL;
- 	loff_t offset = wdata->args.offset;
- 	size_t count = wdata->args.count;
- 	unsigned int pg_offset, pg_len, saved_len;
-@@ -697,6 +697,13 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
- 	    NFS_SERVER(header->inode)->pnfs_blksize >> PAGE_CACHE_SHIFT;
+diff --git a/kernel/user.c b/kernel/user.c
+index b815fef..d10c484 100644
+--- a/kernel/user.c
++++ b/kernel/user.c
+@@ -16,6 +16,7 @@
+ #include <linux/interrupt.h>
+ #include <linux/export.h>
+ #include <linux/user_namespace.h>
++#include <linux/hashtable.h>
  
- 	dprintk("%s enter, %Zu@%lld\n", __func__, count, offset);
-+
-+	if (header->dreq != NULL &&
-+	    (!IS_ALIGNED(offset, NFS_SERVER(header->inode)->pnfs_blksize) ||
-+	     !IS_ALIGNED(count, NFS_SERVER(header->inode)->pnfs_blksize))) {
-+		dprintk("pnfsblock nonblock aligned DIO writes. Resend MDS\n");
-+		goto out_mds;
-+	}
- 	/* At this point, wdata->pages is a (sequential) list of nfs_pages.
- 	 * We want to write each, and if there is an error set pnfs_error
- 	 * to have it redone using nfs.
-@@ -1197,6 +1204,27 @@ bl_pg_test_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 	return pnfs_generic_pg_test(pgio, prev, req);
+ /*
+  * userns count is 1 for root user, 1 for init_uts_ns,
+@@ -52,13 +53,9 @@ EXPORT_SYMBOL_GPL(init_user_ns);
+  */
+ 
+ #define UIDHASH_BITS	(CONFIG_BASE_SMALL ? 3 : 7)
+-#define UIDHASH_SZ	(1 << UIDHASH_BITS)
+-#define UIDHASH_MASK		(UIDHASH_SZ - 1)
+-#define __uidhashfn(uid)	(((uid >> UIDHASH_BITS) + uid) & UIDHASH_MASK)
+-#define uidhashentry(uid)	(uidhash_table + __uidhashfn((__kuid_val(uid))))
+ 
+ static struct kmem_cache *uid_cachep;
+-struct hlist_head uidhash_table[UIDHASH_SZ];
++static DEFINE_HASHTABLE(uidhash_table, UIDHASH_BITS)
+ 
+ /*
+  * The uidhash_lock is mostly taken from process context, but it is
+@@ -84,22 +81,22 @@ struct user_struct root_user = {
+ /*
+  * These routines must be called with the uidhash spinlock held!
+  */
+-static void uid_hash_insert(struct user_struct *up, struct hlist_head *hashent)
++static void uid_hash_insert(struct user_struct *up)
+ {
+-	hlist_add_head(&up->uidhash_node, hashent);
++	hash_add(uidhash_table, &up->uidhash_node, __kuid_val(up->uid));
  }
  
-+void
-+bl_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
-+{
-+	if (pgio->pg_dreq != NULL &&
-+	    !is_aligned_req(req, PAGE_CACHE_SIZE))
-+		nfs_pageio_reset_write_mds(pgio);
-+	else
-+		pnfs_generic_pg_init_write(pgio, req);
-+}
-+
-+static bool
-+bl_pg_test_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
-+		 struct nfs_page *req)
-+{
-+	if (pgio->pg_dreq != NULL &&
-+	    !is_aligned_req(req, PAGE_CACHE_SIZE))
-+		return false;
-+
-+	return pnfs_generic_pg_test(pgio, prev, req);
-+}
-+
- static const struct nfs_pageio_ops bl_pg_read_ops = {
- 	.pg_init = bl_pg_init_read,
- 	.pg_test = bl_pg_test_read,
-@@ -1204,8 +1232,8 @@ static const struct nfs_pageio_ops bl_pg_read_ops = {
- };
+ static void uid_hash_remove(struct user_struct *up)
+ {
+-	hlist_del_init(&up->uidhash_node);
++	hash_del(&up->uidhash_node);
+ }
  
- static const struct nfs_pageio_ops bl_pg_write_ops = {
--	.pg_init = pnfs_generic_pg_init_write,
--	.pg_test = pnfs_generic_pg_test,
-+	.pg_init = bl_pg_init_write,
-+	.pg_test = bl_pg_test_write,
- 	.pg_doio = pnfs_generic_pg_writepages,
- };
+-static struct user_struct *uid_hash_find(kuid_t uid, struct hlist_head *hashent)
++static struct user_struct *uid_hash_find(kuid_t uid)
+ {
+ 	struct user_struct *user;
+ 	struct hlist_node *h;
  
+-	hlist_for_each_entry(user, h, hashent, uidhash_node) {
++	hash_for_each_possible(uidhash_table, user, h, uidhash_node, __kuid_val(uid)) {
+ 		if (uid_eq(user->uid, uid)) {
+ 			atomic_inc(&user->__count);
+ 			return user;
+@@ -135,7 +132,7 @@ struct user_struct *find_user(kuid_t uid)
+ 	unsigned long flags;
+ 
+ 	spin_lock_irqsave(&uidhash_lock, flags);
+-	ret = uid_hash_find(uid, uidhashentry(uid));
++	ret = uid_hash_find(uid);
+ 	spin_unlock_irqrestore(&uidhash_lock, flags);
+ 	return ret;
+ }
+@@ -156,11 +153,10 @@ void free_uid(struct user_struct *up)
+ 
+ struct user_struct *alloc_uid(kuid_t uid)
+ {
+-	struct hlist_head *hashent = uidhashentry(uid);
+ 	struct user_struct *up, *new;
+ 
+ 	spin_lock_irq(&uidhash_lock);
+-	up = uid_hash_find(uid, hashent);
++	up = uid_hash_find(uid);
+ 	spin_unlock_irq(&uidhash_lock);
+ 
+ 	if (!up) {
+@@ -176,13 +172,13 @@ struct user_struct *alloc_uid(kuid_t uid)
+ 		 * on adding the same user already..
+ 		 */
+ 		spin_lock_irq(&uidhash_lock);
+-		up = uid_hash_find(uid, hashent);
++		up = uid_hash_find(uid);
+ 		if (up) {
+ 			key_put(new->uid_keyring);
+ 			key_put(new->session_keyring);
+ 			kmem_cache_free(uid_cachep, new);
+ 		} else {
+-			uid_hash_insert(new, hashent);
++			uid_hash_insert(new);
+ 			up = new;
+ 		}
+ 		spin_unlock_irq(&uidhash_lock);
+@@ -196,17 +192,14 @@ out_unlock:
+ 
+ static int __init uid_cache_init(void)
+ {
+-	int n;
+-
+ 	uid_cachep = kmem_cache_create("uid_cache", sizeof(struct user_struct),
+ 			0, SLAB_HWCACHE_ALIGN|SLAB_PANIC, NULL);
+ 
+-	for(n = 0; n < UIDHASH_SZ; ++n)
+-		INIT_HLIST_HEAD(uidhash_table + n);
++	hash_init(uidhash_table);
+ 
+ 	/* Insert the root user immediately (init already runs as root) */
+ 	spin_lock_irq(&uidhash_lock);
+-	uid_hash_insert(&root_user, uidhashentry(GLOBAL_ROOT_UID));
++	uid_hash_insert(&root_user);
+ 	spin_unlock_irq(&uidhash_lock);
+ 
+ 	return 0;
 -- 
-1.7.1.262.g5ef3d
+1.7.8.6
 
