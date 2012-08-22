@@ -1,100 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:41965 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757317Ab2HIQWa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2012 12:22:30 -0400
-Received: by pbbrr13 with SMTP id rr13so1127646pbb.19
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Aug 2012 09:22:29 -0700 (PDT)
+Received: from mail-ob0-f174.google.com ([209.85.214.174]:36069 "EHLO
+	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753556Ab2HVMNa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Aug 2012 08:13:30 -0400
+Message-ID: <5034CD02.2010103@gmail.com>
+Date: Wed, 22 Aug 2012 14:13:54 +0200
+From: Sasha Levin <levinsasha928@gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <1344526780.25447.6.camel@lade.trondhjem.org>
-References: <1344457310-26442-1-git-send-email-Trond.Myklebust@netapp.com>
- <CA+a=Yy7SX+cPLFiNy552bU9ZMS_rSwvaSpV732_mDwpcPAH5Wg@mail.gmail.com>
- <1344522979.23523.2.camel@lade.trondhjem.org> <CA+a=Yy7tDi0kQGvjPeb=O_9XMnZDm-_31VTkNF7wEW7Pb0BZow@mail.gmail.com>
- <1344526780.25447.6.camel@lade.trondhjem.org>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Fri, 10 Aug 2012 00:22:08 +0800
-Message-ID: <CA+a=Yy5zrdt6xAHFhXk9KypjGRvy2CbWC2DcNnudPDQ4ni=urA@mail.gmail.com>
-Subject: Re: [PATCH] NFSv4.1: Remove a bogus BUG_ON() in nfs4_layoutreturn_done
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        Boaz Harrosh <bharrosh@panasas.com>, Benny Halevy <bhalevy@tonian.com>,
-        "Isaman, Fred" <Fred.Isaman@netapp.com>
-Content-Type: text/plain; charset=UTF-8
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
+        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v3 13/17] lockd: use new hashtable implementation
+References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com> <1345602432-27673-14-git-send-email-levinsasha928@gmail.com> <20120822114752.GC20158@fieldses.org>
+In-Reply-To: <20120822114752.GC20158@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 9, 2012 at 11:39 PM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> On Thu, 2012-08-09 at 23:01 +0800, Peng Tao wrote:
->> On Thu, Aug 9, 2012 at 10:36 PM, Myklebust, Trond
->> <Trond.Myklebust@netapp.com> wrote:
->> > On Thu, 2012-08-09 at 22:30 +0800, Peng Tao wrote:
->> >> On Thu, Aug 9, 2012 at 4:21 AM, Trond Myklebust
->> >> <Trond.Myklebust@netapp.com> wrote:
->> >> > Ever since commit 0a57cdac3f (NFSv4.1 send layoutreturn to fence
->> >> > disconnected data server) we've been sending layoutreturn calls
->> >> > while there is potentially still outstanding I/O to the data
->> >> > servers. The reason we do this is to avoid races between replayed
->> >> > writes to the MDS and the original writes to the DS.
->> >> >
->> >> > When this happens, the BUG_ON() in nfs4_layoutreturn_done can
->> >> > be triggered because it assumes that we would never call
->> >> > layoutreturn without knowing that all I/O to the DS is
->> >> > finished. The fix is to remove the BUG_ON() now that the
->> >> > assumptions behind the test are obsolete.
->> >> >
->> >> Isn't MDS supposed to recall the layout if races are possible between
->> >> outstanding write-to-DS and write-through-MDS?
->> >
->> > Where do you read that in RFC5661?
->> >
->> That's my (maybe mis-)understanding of how server works... But looking
->> at rfc5661 section 18.44.3. layoutreturn implementation.
->> "
->> After this call,
->>    the client MUST NOT use the returned layout(s) and the associated
->>    storage protocol to access the file data.
->> "
->> And given commit 0a57cdac3f, client is using the layout even after
->> layoutreturn, which IMHO is a violation of rfc5661.
->
-> No. It is using the layoutreturn to tell the MDS to fence off I/O to a
-> data server that is not responding. It isn't attempting to use the
-> layout after the layoutreturn: the whole point is that we are attempting
-> write-through-MDS after the attempt to write through the DS timed out.
->
-But it is RFC violation that there is in-flight DS IO when client
-sends layoutreturn, right? Not just in-flight, client is well possible
-to send IO to DS _after_ layoutreturn because some thread can hold
-lseg reference and not yet send IO.
+On 08/22/2012 01:47 PM, J. Bruce Fields wrote:
+> On Wed, Aug 22, 2012 at 04:27:08AM +0200, Sasha Levin wrote:
+>> +static int __init nlm_init(void)
+>> +{
+>> +	hash_init(nlm_files);
+>> +	return 0;
+>> +}
+>> +
+>> +module_init(nlm_init);
+> 
+> That's giving me:
+> 
+> fs/lockd/svcsubs.o: In function `nlm_init':
+> /home/bfields/linux-2.6/fs/lockd/svcsubs.c:454: multiple definition of `init_module'
+> fs/lockd/svc.o:/home/bfields/linux-2.6/fs/lockd/svc.c:606: first defined here
+> make[2]: *** [fs/lockd/lockd.o] Error 1
+> make[1]: *** [fs/lockd] Error 2
+> make[1]: *** Waiting for unfinished jobs....
 
->> >> And it causes data corruption for blocklayout if client returns layout
->> >> while there is in-flight disk IO...
->> >
->> > Then it needs to turn off fast failover to write-through-MDS.
->> >
->> If you still consider it following rfc5661, I'd choose to disable
->> layoutreturn in before write-through-MDS for blocklayout, by adding
->> some flag like PNFS_NO_LAYOUTRET_ON_FALLTHRU similar to objects'
->> PNFS_LAYOUTRET_ON_SETATTR.
->
-> I don't see how that will prevent corruption.
->
-> In fact, IIRC, in NFSv4.2 Sorin's proposed changes specifically use the
-> layoutreturn to communicate to the MDS that the DS is timing out via an
-> error code (like the object layout has done all the time). How can you
-> reconcile that change with a flag such as the one you propose?
-I just intend to use the flag to disable layoutreturn in
-pnfs_ld_write_done. block extents are data access permissions per
-rfc5663. When we don't layoutreturn in pnfs_ld_write_done(), block
-layout works correctly because server can decide if there is data
-access race and if there is, MDS can recall the layout from client
-before applying the MDS writes.
+I tested this entire patch set both with linux-next and Linus' latest master,
+and it worked fine in both places.
 
-Sorin's proposed error code is just a client indication to server that
-there is disk access error. It is not intended to solve the data race
-between write-through-MDS and write-through-DS.
-
-Thanks,
-Tao
+Is it possible that lockd has a -next tree which isn't pulled into linux-next?
+(there's nothing listed in MAINTAINERS that I could see).
