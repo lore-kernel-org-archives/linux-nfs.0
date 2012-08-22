@@ -1,100 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:50085 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932621Ab2HPVGF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Aug 2012 17:06:05 -0400
-Date: Fri, 17 Aug 2012 07:05:51 +1000
-From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "ZUIDAM, Hans" <Hans.Zuidam@philips.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "DE WITTE, PETER" <PETER.DE.WITTE@philips.com>
-Subject: Re: Linux NFS and cached properties
-Message-ID: <20120817070551.6cfc1346@notabene.brown>
-In-Reply-To: <20120816191018.GA4385@fieldses.org>
-References: <D307B3AC0BCD4C419E6B8FA6A2720A9C0C3B2F@011-DB3MPN1-001.MGDPHG.emi.philips.com>
-	<20120724143748.GC8570@fieldses.org>
-	<D307B3AC0BCD4C419E6B8FA6A2720A9C18ABBA@011-DB3MPN1-001.MGDPHG.emi.philips.com>
-	<20120726223607.GA28982@fieldses.org>
-	<20120731150801.0a4b557b@notabene.brown>
-	<20120731122546.GA26737@fieldses.org>
-	<20120802100405.4dfc3169@notabene.brown>
-	<20120816191018.GA4385@fieldses.org>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/S1lvezM2b8p6_3qfpsG/Dqn"; protocol="application/pgp-signature"
+Received: from mail-ob0-f174.google.com ([209.85.214.174]:43131 "EHLO
+	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750799Ab2HVC0v (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2012 22:26:51 -0400
+From: Sasha Levin <levinsasha928@gmail.com>
+To: torvalds@linux-foundation.org
+Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
+        Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH v3 00/17] generic hashtable implementation
+Date: Wed, 22 Aug 2012 04:26:55 +0200
+Message-Id: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/S1lvezM2b8p6_3qfpsG/Dqn
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+There are quite a few places in the kernel which implement a hashtable
+in a very similar way. Instead of having implementations of a hashtable
+all over the kernel, we can re-use the code.
 
-On Thu, 16 Aug 2012 15:10:18 -0400 "J. Bruce Fields" <bfields@fieldses.org>
-wrote:
+Since it looks like all the major issues we're addressed in the RFC phase
+and no major issues were raised with this patch set, I'd be happy to see
+this getting merged so that work could continue on different aspects of
+the hashtable. Some interesting directions include:
 
-> On Thu, Aug 02, 2012 at 10:04:05AM +1000, NeilBrown wrote:
-> > I never liked that fact that stopping the last thread did something ext=
-ra.
-> > So when I added the ability to control the number of threads via sysfs =
-I made
->=20
-> (You meant nfsd, not sysfs, right?  Or is there some interface I'm
-> overlooking?)
+ - Introducing a dynamic RCU hashtable such as the one Mathieu Desnoyers
+ wrote about out in the userspace RCU.
 
-Right.
+ - Replacing the rest of the the kernel structures which use the same basec
+ hashtable construct to use this new interface.
 
->=20
-> > sure that it *only* controlled the number of threads.  However I kept t=
-he
-> > legacy behaviour that sending SIGKILL to the nfsd threads would also un=
-export
-> > things.  Obviously I should have documented this better.
-> >=20
-> > The more I think out it, the more I'd really like to go back to that.  =
-It
-> > really is the *right* thing to do.
-> ...
-> > > > 1/ iterate through all no-sleeping threads setting a flag an increa=
-sing a
-> > > > counter.
-> > > > 2/ when a thread completes current request, if test_and_clear the f=
-lag, it
-> > > > atomic_dec_and_test the counter and then wakes up some wait_queue_h=
-ead.
-> > > > 3/ 'flush'ing thread waits on the waut_queue_head for the counter t=
-o be 0.
-> > > >=20
-> > > > If you don't hate it I could possibly even provide some code.
->=20
-> By the way, are you still looking into one of those approaches?
+ - Same as above, but for non-obvious places (for example, I'm looking into
+ using the hashtable to store KVM vcpus instead of the linked list being used
+ there now - this should help performance with a large amount of vcpus).
 
-Not yet.  Other things got in the way.
 
-I made a note to remind me when room appears in my schedule. :-)
+Changes since v2:
+ - Documentation improvements from Mathieu Desnoyers.
+ - Converted the SUNRPC audit code to use hashtables as well. Since that code
+ requires a dynamic hashtable this shows off the _size() API usage.
 
-NeilBrown
+Changes since v1:
 
---Sig_/S1lvezM2b8p6_3qfpsG/Dqn
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
+ - Added missing hash_init in rds and lockd.
+ - Addressed the userns comments by Eric Biederman.
+ - Ran a small test to confirm hash_32 does a good job for low key
+ values (1-10000), which showed it did - this resulted in no changes to the
+ code.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.18 (GNU/Linux)
+Sasha Levin (17):
+  hashtable: introduce a small and naive hashtable
+  userns: use new hashtable implementation
+  mm,ksm: use new hashtable implementation
+  workqueue: use new hashtable implementation
+  mm/huge_memory: use new hashtable implementation
+  tracepoint: use new hashtable implementation
+  net,9p: use new hashtable implementation
+  block,elevator: use new hashtable implementation
+  SUNRPC/cache: use new hashtable implementation
+  dlm: use new hashtable implementation
+  net,l2tp: use new hashtable implementation
+  dm: use new hashtable implementation
+  lockd: use new hashtable implementation
+  net,rds: use new hashtable implementation
+  openvswitch: use new hashtable implementation
+  tracing output: use new hashtable implementation
+  SUNRPC: use new hashtable implementation in auth
 
-iQIVAwUBUC1grznsnt1WYoG5AQLIiRAAndd23v1EROMn7Y0uGI/gm1AspkS2/mAZ
-nRgUEmb4BYpXZhJ1Dh1DhSWot9CIByjiEAnk3BsbTIfAql9/CYh98WnJWWW4wvqr
-to+BcVonIv1QT7LcDKc4d+MWGQsZWQTrk7ZA7SR5IXvKE8vWVN0Piyeaq4KHCAsw
-4NTe0e/1EpUjpkmONOj4TtxxKexOqDhM1NlD7cbBlDIT0NPDJWBPLPF+U4I28jjb
-uiQE1SazZVYzWSLURodKUT8uL2+p94I4MAxtrjG6QJlWWMa7K/doNfj69KqlFMkm
-/Eg9yRGEJfnOl1NzJ4u1IZPCHbcaDQg/qF1E8B1lSjtEKQcFbuyyfAw9rDxq4V8h
-gw9vcUJh0R/TcUivKfgEBWH5E4N6du6lTafcOjRbuRFdgIl1IRbSIkk3yd0TeYYv
-xSKD6IqE7+FxmBaK5Es6lh/lyPcuHTV+E1r+O3lhI5FoYtmI1TbmHNM+s58ZZxcD
-WtNygzXmWvcTRzd0H94sr1LXhB+LnbGijFpIE0q5on91PS1GJuvVacMTXOit/ZJp
-TYa+1FGyGogNYs1kUWEmpyVKbotsw+Aoba68mnWSxRRT9wlKuoluYCbbHSOD7RcU
-L3qDfu2ie8s5cKotPqoCJqKDSteq8B7YC4ISB+NVXTVg3aBBeJslfXtkkfpZQZdi
-seiKU0EErgA=
-=AV2a
------END PGP SIGNATURE-----
+ block/blk.h                                        |    2 +-
+ block/elevator.c                                   |   23 +--
+ drivers/md/dm-snap.c                               |   24 +--
+ drivers/md/persistent-data/dm-block-manager.c      |    1 -
+ .../persistent-data/dm-persistent-data-internal.h  |   19 --
+ .../md/persistent-data/dm-transaction-manager.c    |   30 +--
+ fs/dlm/lowcomms.c                                  |   47 +---
+ fs/lockd/svcsubs.c                                 |   66 +++--
+ include/linux/elevator.h                           |    5 +-
+ include/linux/hashtable.h                          |  291 ++++++++++++++++++++
+ kernel/trace/trace_output.c                        |   20 +-
+ kernel/tracepoint.c                                |   27 +-
+ kernel/user.c                                      |   33 +--
+ kernel/workqueue.c                                 |   86 +-----
+ mm/huge_memory.c                                   |   57 +---
+ mm/ksm.c                                           |   33 +--
+ net/9p/error.c                                     |   21 +-
+ net/l2tp/l2tp_core.c                               |  134 ++++------
+ net/l2tp/l2tp_core.h                               |    8 +-
+ net/l2tp/l2tp_debugfs.c                            |   19 +-
+ net/openvswitch/vport.c                            |   30 +--
+ net/rds/bind.c                                     |   28 ++-
+ net/rds/connection.c                               |  102 +++----
+ net/sunrpc/auth.c                                  |   45 ++--
+ net/sunrpc/cache.c                                 |   20 +-
+ 25 files changed, 617 insertions(+), 554 deletions(-)
+ delete mode 100644 drivers/md/persistent-data/dm-persistent-data-internal.h
+ create mode 100644 include/linux/hashtable.h
 
---Sig_/S1lvezM2b8p6_3qfpsG/Dqn--
+-- 
+1.7.8.6
+
