@@ -1,356 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:21883 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756220Ab2HASkR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Aug 2012 14:40:17 -0400
-Message-ID: <50196DB0.7090405@RedHat.com>
-Date: Wed, 01 Aug 2012 13:56:00 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Jiri Horky <jiri.horky@gmail.com>
-CC: linux-nfs@vger.kernel.org, du@cesnet.cz
-Subject: Re: [PATCH] libnfsidmap: implementation of client side Static translation
- method.
-References: <1343028020-10587-1-git-send-email-jiri.horky@gmail.com>
-In-Reply-To: <1343028020-10587-1-git-send-email-jiri.horky@gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-ob0-f174.google.com ([209.85.214.174]:43131 "EHLO
+	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750799Ab2HVC11 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2012 22:27:27 -0400
+From: Sasha Levin <levinsasha928@gmail.com>
+To: torvalds@linux-foundation.org
+Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
+        Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH v3 06/17] tracepoint: use new hashtable implementation
+Date: Wed, 22 Aug 2012 04:27:01 +0200
+Message-Id: <1345602432-27673-7-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
+References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Switch tracepoints to use the new hashtable implementation. This reduces the amount of
+generic unrelated code in the tracepoints.
 
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ kernel/tracepoint.c |   27 +++++++++++----------------
+ 1 files changed, 11 insertions(+), 16 deletions(-)
 
-On 07/23/2012 03:20 AM, Jiri Horky wrote:
-> Since the [Static] section in idmapd.conf does not distinguish between user
-> and group mappings we try both cases for each defined mapping. The code caches
-> id->name mappings in the init function
-> 
-> Signed-off-by: Jiri Horky <jiri.horky@gmail.com>
-Committed... My apologizes on taking so long to get this done....
+diff --git a/kernel/tracepoint.c b/kernel/tracepoint.c
+index d96ba22..854df92 100644
+--- a/kernel/tracepoint.c
++++ b/kernel/tracepoint.c
+@@ -26,6 +26,7 @@
+ #include <linux/slab.h>
+ #include <linux/sched.h>
+ #include <linux/static_key.h>
++#include <linux/hashtable.h>
+ 
+ extern struct tracepoint * const __start___tracepoints_ptrs[];
+ extern struct tracepoint * const __stop___tracepoints_ptrs[];
+@@ -49,8 +50,7 @@ static LIST_HEAD(tracepoint_module_list);
+  * Protected by tracepoints_mutex.
+  */
+ #define TRACEPOINT_HASH_BITS 6
+-#define TRACEPOINT_TABLE_SIZE (1 << TRACEPOINT_HASH_BITS)
+-static struct hlist_head tracepoint_table[TRACEPOINT_TABLE_SIZE];
++static DEFINE_HASHTABLE(tracepoint_table, TRACEPOINT_HASH_BITS);
+ 
+ /*
+  * Note about RCU :
+@@ -191,16 +191,15 @@ tracepoint_entry_remove_probe(struct tracepoint_entry *entry,
+  */
+ static struct tracepoint_entry *get_tracepoint(const char *name)
+ {
+-	struct hlist_head *head;
+ 	struct hlist_node *node;
+ 	struct tracepoint_entry *e;
+ 	u32 hash = jhash(name, strlen(name), 0);
+ 
+-	head = &tracepoint_table[hash & (TRACEPOINT_TABLE_SIZE - 1)];
+-	hlist_for_each_entry(e, node, head, hlist) {
++	hash_for_each_possible(tracepoint_table, e, node, hlist, hash) {
+ 		if (!strcmp(name, e->name))
+ 			return e;
+ 	}
++
+ 	return NULL;
+ }
+ 
+@@ -210,19 +209,13 @@ static struct tracepoint_entry *get_tracepoint(const char *name)
+  */
+ static struct tracepoint_entry *add_tracepoint(const char *name)
+ {
+-	struct hlist_head *head;
+-	struct hlist_node *node;
+ 	struct tracepoint_entry *e;
+ 	size_t name_len = strlen(name) + 1;
+ 	u32 hash = jhash(name, name_len-1, 0);
+ 
+-	head = &tracepoint_table[hash & (TRACEPOINT_TABLE_SIZE - 1)];
+-	hlist_for_each_entry(e, node, head, hlist) {
+-		if (!strcmp(name, e->name)) {
+-			printk(KERN_NOTICE
+-				"tracepoint %s busy\n", name);
+-			return ERR_PTR(-EEXIST);	/* Already there */
+-		}
++	if (get_tracepoint(name)) {
++		printk(KERN_NOTICE "tracepoint %s busy\n", name);
++		return ERR_PTR(-EEXIST);	/* Already there */
+ 	}
+ 	/*
+ 	 * Using kmalloc here to allocate a variable length element. Could
+@@ -234,7 +227,7 @@ static struct tracepoint_entry *add_tracepoint(const char *name)
+ 	memcpy(&e->name[0], name, name_len);
+ 	e->funcs = NULL;
+ 	e->refcount = 0;
+-	hlist_add_head(&e->hlist, head);
++	hash_add(tracepoint_table, &e->hlist, hash);
+ 	return e;
+ }
+ 
+@@ -244,7 +237,7 @@ static struct tracepoint_entry *add_tracepoint(const char *name)
+  */
+ static inline void remove_tracepoint(struct tracepoint_entry *e)
+ {
+-	hlist_del(&e->hlist);
++	hash_del(&e->hlist);
+ 	kfree(e);
+ }
+ 
+@@ -722,6 +715,8 @@ struct notifier_block tracepoint_module_nb = {
+ 
+ static int init_tracepoints(void)
+ {
++	hash_init(tracepoint_table);
++
+ 	return register_module_notifier(&tracepoint_module_nb);
+ }
+ __initcall(init_tracepoints);
+-- 
+1.7.8.6
 
-steved.
-
-> ---
->  static.c |  266 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
->  1 files changed, 255 insertions(+), 11 deletions(-)
-> 
-> diff --git a/static.c b/static.c
-> index fffd458..8be87e8 100644
-> --- a/static.c
-> +++ b/static.c
-> @@ -40,6 +40,7 @@
->  #include <grp.h>
->  #include <errno.h>
->  
-> +#include "queue.h"
->  #include "cfg.h"
->  #include "nfsidmap.h"
->  #include "nfsidmap_internal.h"
-> @@ -57,6 +58,40 @@ struct pwbuf {
->  	char buf[1];
->  };
->  
-> +struct grbuf {
-> +	struct group grbuf;
-> +	char buf[1];
-> +};
-> +
-> +struct uid_mapping {
-> +	LIST_ENTRY (uid_mapping) link;
-> +	uid_t uid;
-> +	char * principal;
-> +	char * localname;
-> +};
-> +
-> +struct gid_mapping {
-> +	LIST_ENTRY (gid_mapping) link;
-> +	gid_t gid;
-> +	char * principal;
-> +	char * localgroup;
-> +};
-> +
-> +static __inline__ u_int8_t uid_hash (uid_t uid)
-> +{
-> +	return uid % 256;
-> +}
-> +
-> +static __inline__ u_int8_t gid_hash (gid_t gid)
-> +{
-> +	return gid % 256;
-> +}
-> +
-> +//Hash tables of uid and guids to principals mappings.
-> +//We reuse some queue/hash functions from cfg.c.
-> +LIST_HEAD (uid_mappings, uid_mapping) uid_mappings[256];
-> +LIST_HEAD (gid_mappings, gid_mapping) gid_mappings[256];
-> +
->  static struct passwd *static_getpwnam(const char *name, const char *domain,
->  				      int *err_p)
->  {
-> @@ -75,12 +110,9 @@ static struct passwd *static_getpwnam(const char *name, const char *domain,
->  	localname = conf_get_str("Static", (char *)name);
->  	if (!localname) {
->  		err = ENOENT;
-> -		goto err;
-> +		goto err_free_buf;
->  	}
->  
-> -	IDMAP_LOG(4, ("static_getpwnam: name '%s' mapped to '%s'\n",
-> -		  name, localname));
-> -
->  again:
->  	err = getpwnam_r(localname, &buf->pwbuf, buf->buf, buflen, &pw);
->  
-> @@ -91,12 +123,15 @@ again:
->  		if (err == 0)
->  			err = ENOENT;
->  
-> -		IDMAP_LOG(0, ("static_getpwnam: name '%s' not found\n",
-> -			  localname));
-> +		IDMAP_LOG(0, ("static_getpwnam: localname '%s' for '%s' not found\n",
-> +		  localname, name));
->  
->  		goto err_free_buf;
->  	}
->  
-> +	IDMAP_LOG(4, ("static_getpwnam: name '%s' mapped to '%s'\n",
-> +		  name, localname));
-> +
->  	*err_p = 0;
->  	return pw;
->  
-> @@ -107,6 +142,56 @@ err:
->  	return NULL;
->  }
->  
-> +static struct group *static_getgrnam(const char *name, const char *domain,
-> +				      int *err_p)
-> +{
-> +	struct group *gr;
-> +	struct grbuf *buf;
-> +	size_t buflen = sysconf(_SC_GETGR_R_SIZE_MAX);
-> +	char *localgroup;
-> +	int err;
-> +
-> +	buf = malloc(sizeof(*buf) + buflen);
-> +	if (!buf) {
-> +		err = ENOMEM;
-> +		goto err;
-> +	}
-> +
-> +	localgroup = conf_get_str("Static", (char *)name);
-> +	if (!localgroup) {
-> +		err = ENOENT;
-> +		goto err_free_buf;
-> +	}
-> +
-> +again:
-> +	err = getgrnam_r(localgroup, &buf->grbuf, buf->buf, buflen, &gr);
-> +
-> +	if (err == EINTR)
-> +		goto again;
-> +
-> +	if (!gr) {
-> +		if (err == 0)
-> +			err = ENOENT;
-> +
-> +		IDMAP_LOG(0, ("static_getgrnam: local group '%s' for '%s' not found\n",
-> +			  localgroup, name));
-> +
-> +		goto err_free_buf;
-> +	}
-> +
-> +	IDMAP_LOG(4, ("static_getgrnam: group '%s' mapped to '%s'\n",
-> +		  name, localgroup));
-> +
-> +	*err_p = 0;
-> +	return gr;
-> +
-> +err_free_buf:
-> +	free(buf);
-> +err:
-> +	*err_p = err;
-> +	return NULL;
-> +}
-> +
->  static int static_gss_princ_to_ids(char *secname, char *princ,
->  				   uid_t *uid, uid_t *gid,
->  				   extra_mapping_params **ex)
-> @@ -151,14 +236,173 @@ static int static_gss_princ_to_grouplist(char *secname, char *princ,
->  	return -err;
->  }
->  
-> +static int static_name_to_uid(char *name, uid_t *uid)
-> +{
-> +	struct passwd *pw;
-> +	int err;
-> +
-> +	pw = static_getpwnam(name, NULL, &err);
-> +
-> +	if (pw) {
-> +		*uid = pw->pw_uid;
-> +		free(pw);
-> +	}
-> +
-> +	return -err;
-> +}
-> +
-> +static int static_name_to_gid(char *name, gid_t *gid)
-> +{
-> +	struct group *gr;
-> +	int err;
-> +
-> +	gr = static_getgrnam(name, NULL, &err);
-> +
-> +	if (gr) {
-> +		*gid = gr->gr_gid;
-> +		free(gr);
-> +	}
-> +
-> +	return -err;
-> +}
-> +
-> +static int static_uid_to_name(uid_t uid, char *domain, char *name, size_t len)
-> +{
-> +	struct passwd *pw;
-> +	struct uid_mapping * um;
-> +
-> +	for (um = LIST_FIRST (&uid_mappings[uid_hash (uid)]); um;
-> +		um = LIST_NEXT (um, link)) {
-> +		if (um->uid == uid) {
-> +			strcpy(name, um->principal);
-> +			return 0;
-> +		}
-> +	}
-> +
-> +	return -ENOENT;
-> +}
-> +
-> +static int static_gid_to_name(gid_t gid, char *domain, char *name, size_t len)
-> +{
-> +	struct group *gr;
-> +	struct gid_mapping * gm;
-> +
-> +	for (gm = LIST_FIRST (&gid_mappings[gid_hash (gid)]); gm;
-> +		gm = LIST_NEXT (gm, link)) {
-> +		if (gm->gid == gid) {
-> +			strcpy(name, gm->principal);
-> +			return 0;
-> +		}
-> +	}
-> +
-> +	return -ENOENT;
-> +}
-> +
-> +/*
-> + * We buffer all UID's for which static mappings is defined in advance, so the
-> + * uid_to_name functions will be fast enough.
-> + */
-> +
-> +static int static_init() {	
-> +	int err;
-> +	uid_t uid;
-> +	struct conf_list * princ_list = NULL;
-> +	struct conf_list_node * cln, *next;
-> +	struct uid_mapping * unode;
-> +	struct gid_mapping * gnode;
-> +	struct passwd * pw = NULL;
-> +	struct group * gr = NULL;
-> +	unsigned int i;
-> +
-> +	//init hash_table first
-> +	for (i = 0; i < sizeof uid_mappings / sizeof uid_mappings[0]; i++)
-> +		LIST_INIT (&uid_mappings[i]);
-> +
-> +	//get all principals for which we have mappings
-> +	princ_list = conf_get_tag_list("Static");
-> +
-> +	if (!princ_list) {
-> +		return -ENOENT;
-> +	}
-> +
-> +	/* As we can not distinguish between mappings for users and groups, we try to
-> +	 * resolve all mappings for both cases.
-> +	 */
-> +
-> +	//resolve uid of localname account for all such principals and cache it
-> +	for (cln = TAILQ_FIRST (&princ_list->fields); cln; cln = next) 
-> +	{ 
-> +		next = TAILQ_NEXT (cln, link); 
-> +
-> +		pw = static_getpwnam(cln->field, NULL, &err);
-> +		if (!pw) {
-> +			continue;
-> +		}
-> +		
-> +		unode = calloc (1, sizeof *unode);
-> +		if (!unode)
-> +		{
-> +			warnx("static_init: calloc (1, %lu) failed",
-> +				(unsigned long)sizeof *unode);
-> +			free(pw);
-> +			return -ENOMEM;
-> +		}
-> +		unode->uid = pw->pw_uid;
-> +		unode->principal = strdup(cln->field);
-> +
-> +		unode->localname = conf_get_str("Static", cln->field);
-> +		if (!unode->localname) {
-> +			free(pw);
-> +			return -ENOENT;
-> +		}
-> +
-> +		free(pw);
-> +
-> +		LIST_INSERT_HEAD (&uid_mappings[uid_hash(unode->uid)], unode, link);
-> +	}
-> +
-> +	//resolve gid of localgroup accounts and cache it
-> +	for (cln = TAILQ_FIRST (&princ_list->fields); cln; cln = next) 
-> +	{ 
-> +		next = TAILQ_NEXT (cln, link); 
-> +
-> +		gr = static_getgrnam(cln->field, NULL, &err);
-> +		if (!pw) {
-> +			continue;
-> +		}
-> +		
-> +		gnode = calloc (1, sizeof *gnode);
-> +		if (!gnode)
-> +		{
-> +			warnx("static_init: calloc (1, %lu) failed",
-> +				(unsigned long)sizeof *gnode);
-> +			free(pw);
-> +			return -ENOMEM;
-> +		}
-> +		gnode->gid = pw->pw_uid;
-> +		gnode->principal = strdup(cln->field);
-> +
-> +		gnode->localgroup = conf_get_str("Static", cln->field);
-> +		if (!gnode->localgroup) {
-> +			free(pw);
-> +			return -ENOENT;
-> +		}
-> +
-> +		free(pw);
-> +
-> +		LIST_INSERT_HEAD (&gid_mappings[gid_hash(gnode->gid)], gnode, link);
-> +	}
-> +	return 0;
-> +}
-> +
->  
->  struct trans_func static_trans = {
->  	.name			= "static",
-> -	.init			= NULL,
-> -	.name_to_uid		= NULL,
-> -	.name_to_gid		= NULL,
-> -	.uid_to_name		= NULL,
-> -	.gid_to_name		= NULL,
-> +	.init			= static_init,
-> +	.name_to_uid		= static_name_to_uid,
-> +	.name_to_gid		= static_name_to_gid,
-> +	.uid_to_name		= static_uid_to_name,
-> +	.gid_to_name		= static_gid_to_name,
->  	.princ_to_ids		= static_gss_princ_to_ids,
->  	.gss_princ_to_grouplist	= static_gss_princ_to_grouplist,
->  };
