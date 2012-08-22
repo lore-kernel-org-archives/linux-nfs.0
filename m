@@ -1,206 +1,187 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:52688 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759800Ab2HIXFh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2012 19:05:37 -0400
-Received: by ggdk6 with SMTP id k6so1078491ggd.19
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Aug 2012 16:05:37 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1344539545.25447.63.camel@lade.trondhjem.org>
-References: <CABpMAyL-B9Kqg8O4xxxtj0X8PF7fP4TM+NnLA_Ynhm-_3C6MUg@mail.gmail.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9380987@SACEXCMBX04-PRD.hq.netapp.com>
- <CABpMAyKddCjhWe-LjFOJrikLnC+BJ7GsAMAvieh1rabDPiA=Ug@mail.gmail.com>
- <1344528377.25447.29.camel@lade.trondhjem.org> <CABpMAyL-AnLc1rbPEtaBNONKiwsFayYXsGt+dPnDyua0zfS81w@mail.gmail.com>
- <1344539545.25447.63.camel@lade.trondhjem.org>
-From: Idan Kedar <idank@tonian.com>
-Date: Fri, 10 Aug 2012 02:04:54 +0300
-Message-ID: <CABpMAyKRFjr5Pwr6NVBMN6WqVvnSsGcnCFr2X14k29pMWrbH8g@mail.gmail.com>
-Subject: Re: return layout on error, BUG/deadlock
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Boaz Harrosh <bharrosh@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
-        Benny Halevy <bhalevy@tonian.com>, Peng Tao <bergwolf@gmail.com>
-Content-Type: text/plain; charset=US-ASCII
+Received: from 5350504D.static.ziggozakelijk.nl ([83.80.80.77]:21444 "EHLO
+	ns2.tasking.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754269Ab2HVOLD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Aug 2012 10:11:03 -0400
+Received: from leonino.tasking.nl (nl-fg300a-1-dmz.tasking.nl [172.16.1.8])
+	by ns2.tasking.nl (8.14.5/8.14.5) with ESMTP id q7ME5xgl023275
+	(version=TLSv1/SSLv3 cipher=DHE-DSS-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Wed, 22 Aug 2012 16:05:59 +0200 (MEST)
+Received: from lahti.tasking.nl (lahti.tasking.nl [172.17.2.45])
+	by leonino.tasking.nl (8.14.5/8.14.5) with ESMTP id q7ME5xnr000669
+	for <linux-nfs@vger.kernel.org>; Wed, 22 Aug 2012 16:05:59 +0200 (MEST)
+To: linux-nfs@vger.kernel.org
+Mime-Version: 1.0
+Reply-To: dick.streefland@altium.nl (Dick Streefland)
+From: dick.streefland@altium.nl (Dick Streefland)
+Subject: NFSv3 client hang on many simultanious reads
+Content-Type: text/plain; charset=us-ascii
+Message-ID: <4d25.5034e746.eefd1@altium.nl>
+Date: Wed, 22 Aug 2012 14:05:58 -0000
+From: rnews@altium.nl
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 9, 2012 at 10:12 PM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> On Thu, 2012-08-09 at 19:54 +0300, Idan Kedar wrote:
->> On Thu, Aug 9, 2012 at 7:06 PM, Myklebust, Trond
->> <Trond.Myklebust@netapp.com> wrote:
->> > On Thu, 2012-08-09 at 18:49 +0300, Idan Kedar wrote:
->> >> On Thu, Aug 9, 2012 at 5:05 PM, Myklebust, Trond
->> >> <Trond.Myklebust@netapp.com> wrote:
->> >> >> -----Original Message-----
->> >> >> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
->> >> >> owner@vger.kernel.org] On Behalf Of Idan Kedar
->> >> >> Sent: Thursday, August 09, 2012 9:03 AM
->> >> >> To: Boaz Harrosh; NFS list
->> >> >> Cc: Benny Halevy
->> >> >> Subject: return layout on error, BUG/deadlock
->> >> >>
->> >> >> Hi,
->> >> >>
->> >> >> As a result of some experiments, I wanted to see what happens when I
->> >> >> inject an error (hard coded) to the object layout driver. the patch is at the
->> >> >> bottom of this mail. the reason I did this is because when I inject errors in my
->> >> >> modified version of the object layout driver, I get the same BUG Tigran
->> >> >> reported about yesterday:
->> >> >> nfs4proc.c:6252 :   BUG_ON(!list_empty(&lo->plh_segs));
->> >> >>
->> >> >> In my modified version (based on kernel 3.3), the bug seems to be that
->> >> >> pnfs_ld_write_done calls pnfs_return_layout in the error path, even if there
->> >> >> is in-flight I/O.
->> >> >
->> >> > That is not a bug. It is an intentional change in order to allow the MDS to fence off the outstanding writes (if it can do so) before we retransmit them as write-through-MDS. Otherwise, you risk races between the outstanding writes-to-DS and the new writes-through-MDS.
->> >>
->> >> to what change are you referring?
->> >
->> > As I stated in the changelog of the patch that I sent to the list
->> > yesterday, the behaviour is due to commit 0a57cdac3f.
->> >
->>
->> I'm not sure I'm following. I was talking about the state of the code
->> v3.5, not to any specific patch/change. since the client yelled
->> "BUG!!!" and crashed, there is some bug involved, either because the
->> BUG() is correct or because the presence of the BUG() is the bug
->> itself.
->>
->> >> >
->> >> > See the changelog in the patch that I sent to the list yesterday.
->> >> >
->> >>
->> >> I saw that, and if I'm not mistaken these races apply to object layout
->> >> as well, and in any case they apply in my case. However, it is not
->> >> easy to mess around with LAYOUTRETURN in object layout, and there have
->> >> been several discussions on the issue. In one of these discussions
->> >> Benny clarified that the object layout client must wait for all
->> >> in-flight I/O to end.
->> >
->> > If the problem is that the DS is failing to respond, how does the client
->> > know that the in-flight I/O has ended?
->> >
->>
->> after the last rpc_call_done is called there is no I/O from the
->> client's perspective an the layout can be safely returned, after which
->> I/O can be done through the MDS.
->
-> No. You are confused.
->
-> Being in rpc_call_done just tells you that the client thinks it is done.
-> It tells you nothing about what the DS is doing. It may just slooooowly
-> be processing the WRITE calls for all you know.
->
+I've encountered occasional NFS client lockups, and traced it down to
+a situation where many simultanious processes are reading the same
+directory tree. It is not very easy to reproduce, but when I run the
+following script in an NFS-mounted directory containing a linux-3.5.2
+kernel tree, I usually get a lockup after a few iterations:
 
-That's what I meant by "from the client's perspective". At this point,
-the client can say "I'm not *using* this layout anymore" because even
-if some I/O on its way to the DS originates in the client, the client
-can't do anything about it. The fate of this I/O is meaningless to the
-client at that point. This is the best the client can do to help the
-MDS preserve integrity - keep the layout as long as it has information
-about its I/O.
+#!/bin/sh
+[ -d /tmp/linux-3.5.2 ] || cp -a linux-3.5.2 /tmp/
+while true
+do
+	date
+	for i in $(seq 30)
+	do
+		cp -au linux-3.5.2 /tmp/ &
+		echo -n .
+	done
+	echo
+	wait
+done
 
-> Unless you get a response from the DS saying "I'm done", or you have
-> some other mechanism to guarantee that the DS is done when you time out,
-> then you have no guarantee that it is safe to send to MDS.
->
+When you run "top" in a separate window, you will initially see 30
+"cp" processed competing for the CPU. After the lockup, the processes
+disappear because their state becomes "D". Everything accessing the
+mount points hangs at that moment. Killing all "cp" processes removes
+the lockup. Mounts on other clients are unaffected.
 
-Exactly. What if I don't have such a mechanism? My options are:
-* Ask the MDS to somehow fence in-flight I/O and resend through the MDS.
-* Return an error to the user.
-What if the server does not support fencing? In that case we shouldn't
-send through MDS while there is in-flight I/O. Do we want to assume
-fencing is implemented? And if fencing isn't implemented and we return
-an error to the user - how do we know when it is safe to perform any
-I/O again?
-And even if fencing is implemented, I don't think the client should
-rely on it, because the whole idea beind pNFS is a smart client that
-offloads what it can from the servers.
+The client kernel version is 3.4.7, but the problem also exists in 3.1
+kernels. I cannot reproduce lockups with a 3.0 kernel. The server is
+running Linux 3.1.4. The mount options from /proc/mounts are:
 
->> Is there I/O pending from the DS perspective? maybe, but all you can
->> do is send I/O via MDS and hope it will not race. fencing doesn't
->> really save you, it just improves your odds where applicable, i.e.
->> file layout.
+nfs-doc:/export/doc/ /doc nfs rw,relatime,vers=3,rsize=32768,wsize=32768,namlen=255,hard,proto=udp,timeo=11,retrans=3,sec=sys,mountaddr=172.17.8.66,mountvers=3,mountport=52214,mountproto=udp,local_lock=none,addr=172.17.8.66 0 0
 
-One correction to what I said: Fencing does save you, if it's
-implemented. LAYOUTRETURN doesn't save you (when fencing is not
-implemented).
+The hanging processes are all sitting in "rpc_wait_bit_killable":
 
->
-> Actually, when reading the iSCSI spec, it implies that there is a known
-> session timeout that is negotiated between the initiator and target.
-> After the session expires, you are guaranteed that no further commands
-> are running on the DS.
->
-> The iFCP protocol attaches a timeout value to each frame, and is
-> supposed to enforce that timeout.
->
-> So at least those protocols should have a deterministic behaviour that
-> can be used by the client.
->
->> >> So for file layout it probably makes sense, but object layout (and if
->> >> I understand correctly, block layout as well) something else needs to
->> >> be done. I thought about sync wait when returning the layout on error,
->> >> but according to Boaz it will cause deadlocks (Boaz - can you please
->> >> elaborate?).
->> >
->> > The object layoutreturn has the ability to pass a timeout error value to
->> > the MDS precisely in order to allow the latter to deal with this kind of
->> > issue. See the description of struct pnfs_osd_ioerr4 in rfc5664.
->> >
->> > The block layout is adding the same ability to layoutreturn in NFSv4.2
->> > (see draft-ietf-nfsv4-minorversion2-13.txt) via the struct
->> > layoutreturn_device_error4, so presumably they too have a plan for
->> > dealing with this kind of issue.
->> >
+  PID S WCHAN                    COMMAND
+25547 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25548 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25549 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25550 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25551 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25552 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25553 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25554 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25555 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25556 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25557 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25558 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25559 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25560 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25561 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25562 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25563 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25564 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25565 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25566 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25567 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25568 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25569 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25570 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25571 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25572 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25573 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25574 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25575 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
+25576 D rpc_wait_bit_killable    cp -au linux-3.5.2 /tmp/
 
-Then on layoutreturn we could call a new layout driver method, end_io
-or something returns only when there is no danger of race (either by
-waiting for in-flight I/O to complete/timeout/error out or by fencing)
-and only then return the layout. This works for me. I don't know if it
-works for Boaz though.
+One "cp" process has this stack frame:
 
->>
->> I'll wait for Boaz (or someone else) to explain what exactly is "this
->> kind of issue". I still don't know why sync wait would deadlock.
->>
->> >> And come to think of it, nfs4_proc_setattr also returns the layout
->> >> when there may be I/O in-flight (correct me if i'm wrong). So I guess
->> >> pnfs_return_layout should somehow solve this by itself by saying "if
->> >> this is fencing (a flag which will be set for file layout only), go
->> >> ahead, otherwise make the layout as 'needs to be returned' and when
->> >> the lseg lists gets empty return the layout".
->> >
->> > The only layout type that sets the PNFS_LAYOUTRET_ON_SETATTR flag is
->> > objects, so that question needs to be directed to Boaz.
->> >
->>
->> Yes, this entire thread is mainly directed to Boaz... And IIRC he did
->> want to implement something of that sort, and this thread was
->> basically for asking him "did you?".
->>
->> > --
->> > Trond Myklebust
->> > Linux NFS client maintainer
->> >
->> > NetApp
->> > Trond.Myklebust@netapp.com
->> > www.netapp.com
->> >
->>
->>
->>
->
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
->
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
->
+Aug 22 15:01:40 ivalo kernel: cp              D ee9dbc04     0 25558  25315 0x00000000
+Aug 22 15:01:40 ivalo kernel: ee9dbc5c 00000086 f7bfbef8 ee9dbc04 c1086c00 00000000 f7b8e280 c1c36280
+Aug 22 15:01:40 ivalo kernel: f53dbcc0 00009be4 c1c36280 f7b8e280 f4dc26d0 ee9dbc10 cb104b78 00000001
+Aug 22 15:01:40 ivalo kernel: cb1049c0 f469b22c 00000000 ee9dbc50 ee9dbc34 c1089907 00000001 ee9dbc40
+Aug 22 15:01:40 ivalo kernel: Call Trace:
+Aug 22 15:01:40 ivalo kernel: [<c1086c00>] ? __wake_up+0x40/0x50
+Aug 22 15:01:40 ivalo kernel: [<c1089907>] ? get_parent_ip+0x27/0x40
+Aug 22 15:01:40 ivalo kernel: [<c108995b>] ? sub_preempt_count.part.65+0x3b/0x80
+Aug 22 15:01:40 ivalo kernel: [<c10899bf>] ? sub_preempt_count+0x1f/0x50
+Aug 22 15:01:40 ivalo kernel: [<c1834f7d>] ? _raw_spin_unlock_irqrestore+0x1d/0x40
+Aug 22 15:01:40 ivalo kernel: [<c183429e>] schedule+0x1e/0x50
+Aug 22 15:01:40 ivalo kernel: [<c178efb9>] rpc_wait_bit_killable+0x19/0x30
+Aug 22 15:01:40 ivalo kernel: [<c1832657>] __wait_on_bit+0x47/0x70
+Aug 22 15:01:40 ivalo kernel: [<c178efa0>] ? rpc_release_task+0xb0/0xb0
+Aug 22 15:01:40 ivalo kernel: [<c178efa0>] ? rpc_release_task+0xb0/0xb0
+Aug 22 15:01:40 ivalo kernel: [<c18326dc>] out_of_line_wait_on_bit+0x5c/0x70
+Aug 22 15:01:40 ivalo kernel: [<c107f740>] ? autoremove_wake_function+0x40/0x40
+Aug 22 15:01:40 ivalo kernel: [<c178f78b>] __rpc_execute+0xdb/0x1a0
+Aug 22 15:01:40 ivalo kernel: [<c178fa93>] rpc_execute+0x33/0x40
+Aug 22 15:01:40 ivalo kernel: [<c1788824>] rpc_run_task+0x54/0x70
+Aug 22 15:01:40 ivalo kernel: [<c1788917>] rpc_call_sync+0x37/0x60
+Aug 22 15:01:40 ivalo kernel: [<c11d3e60>] nfs3_rpc_call.constprop.15+0x50/0x80
+Aug 22 15:01:40 ivalo kernel: [<c11d4252>] nfs3_rpc+0x42/0x60
+Aug 22 15:01:40 ivalo kernel: [<c11d447f>] nfs3_proc_getattr+0x3f/0x80
+Aug 22 15:01:40 ivalo kernel: [<c11c5505>] __nfs_revalidate_inode+0x75/0x1f0
+Aug 22 15:01:40 ivalo kernel: [<c11c570c>] ? nfs_revalidate_inode+0x1c/0x50
+Aug 22 15:01:40 ivalo kernel: [<c11c00eb>] nfs_lookup_revalidate+0x1db/0x4a0
+Aug 22 15:01:40 ivalo kernel: [<c11c1474>] ? nfs_permission+0x104/0x200
+Aug 22 15:01:40 ivalo kernel: [<c1089907>] ? get_parent_ip+0x27/0x40
+Aug 22 15:01:40 ivalo kernel: [<c108995b>] ? sub_preempt_count.part.65+0x3b/0x80
+Aug 22 15:01:40 ivalo kernel: [<c10899bf>] ? sub_preempt_count+0x1f/0x50
+Aug 22 15:01:40 ivalo kernel: [<c110b56d>] ? __d_lookup+0x8d/0x170
+Aug 22 15:01:40 ivalo kernel: [<c1102266>] do_lookup+0x166/0x260
+Aug 22 15:01:40 ivalo kernel: [<c1103ab5>] do_last.isra.43+0x115/0x5a0
+Aug 22 15:01:40 ivalo kernel: [<c11040b5>] path_openat+0x95/0x320
+Aug 22 15:01:40 ivalo kernel: [<c1100eb6>] ? getname_flags+0x26/0x120
+Aug 22 15:01:40 ivalo kernel: [<c110442c>] do_filp_open+0x2c/0x80
+Aug 22 15:01:40 ivalo kernel: [<c10899bf>] ? sub_preempt_count+0x1f/0x50
+Aug 22 15:01:40 ivalo kernel: [<c1834f42>] ? _raw_spin_unlock+0x12/0x30
+Aug 22 15:01:40 ivalo kernel: [<c110eef9>] ? alloc_fd+0xa9/0xf0
+Aug 22 15:01:40 ivalo kernel: [<c1100f45>] ? getname_flags+0xb5/0x120
+Aug 22 15:01:40 ivalo kernel: [<c10f6853>] do_sys_open+0xe3/0x1b0
+Aug 22 15:01:40 ivalo kernel: [<c10f694d>] sys_open+0x2d/0x40
+Aug 22 15:01:40 ivalo kernel: [<c1835b1c>] sysenter_do_call+0x12/0x2c
+Aug 22 15:01:40 ivalo kernel: [<c1830000>] ? inet_sk_reselect_saddr+0x146/0x18a
 
+All other "cp" processes have this stack frame:
 
+Aug 22 15:01:40 ivalo kernel: cp              D cb0ec180     0 25559  25315 0x00000000
+Aug 22 15:01:40 ivalo kernel: ee8a7c5c 00000082 cb0ec0c0 cb0ec180 f63c7c60 cb0ec300 f7b8e280 c1c36280
+Aug 22 15:01:40 ivalo kernel: f53d8d80 00009be4 c1c36280 f7b8e280 f56f7020 f63c7c60 f7b8fd78 ee8a7c6c
+Aug 22 15:01:40 ivalo kernel: cb0ec300 f469b22c 00000000 ee8a7c50 ee8a7c34 c1089907 00000001 ee8a7c40
+Aug 22 15:01:40 ivalo kernel: Call Trace:
+Aug 22 15:01:40 ivalo kernel: [<c1089907>] ? get_parent_ip+0x27/0x40
+Aug 22 15:01:40 ivalo kernel: [<c108995b>] ? sub_preempt_count.part.65+0x3b/0x80
+Aug 22 15:01:40 ivalo kernel: [<c10899bf>] ? sub_preempt_count+0x1f/0x50
+Aug 22 15:01:40 ivalo kernel: [<c1834f7d>] ? _raw_spin_unlock_irqrestore+0x1d/0x40
+Aug 22 15:01:40 ivalo kernel: [<c183429e>] schedule+0x1e/0x50
+Aug 22 15:01:40 ivalo kernel: [<c178efb9>] rpc_wait_bit_killable+0x19/0x30
+Aug 22 15:01:40 ivalo kernel: [<c1832657>] __wait_on_bit+0x47/0x70
+Aug 22 15:01:40 ivalo kernel: [<c178efa0>] ? rpc_release_task+0xb0/0xb0
+Aug 22 15:01:40 ivalo kernel: [<c178efa0>] ? rpc_release_task+0xb0/0xb0
+Aug 22 15:01:40 ivalo kernel: [<c18326dc>] out_of_line_wait_on_bit+0x5c/0x70
+Aug 22 15:01:40 ivalo kernel: [<c107f740>] ? autoremove_wake_function+0x40/0x40
+Aug 22 15:01:40 ivalo kernel: [<c178f78b>] __rpc_execute+0xdb/0x1a0
+Aug 22 15:01:40 ivalo kernel: [<c178fa93>] rpc_execute+0x33/0x40
+Aug 22 15:01:40 ivalo kernel: [<c1788824>] rpc_run_task+0x54/0x70
+Aug 22 15:01:40 ivalo kernel: [<c1788917>] rpc_call_sync+0x37/0x60
+Aug 22 15:01:40 ivalo kernel: [<c11d3e60>] nfs3_rpc_call.constprop.15+0x50/0x80
+Aug 22 15:01:40 ivalo kernel: [<c11d4252>] nfs3_rpc+0x42/0x60
+Aug 22 15:01:40 ivalo kernel: [<c11d447f>] nfs3_proc_getattr+0x3f/0x80
+Aug 22 15:01:40 ivalo kernel: [<c11c5505>] __nfs_revalidate_inode+0x75/0x1f0
+Aug 22 15:01:40 ivalo kernel: [<c11c570c>] ? nfs_revalidate_inode+0x1c/0x50
+Aug 22 15:01:40 ivalo kernel: [<c11c00eb>] nfs_lookup_revalidate+0x1db/0x4a0
+Aug 22 15:01:40 ivalo kernel: [<c11c1474>] ? nfs_permission+0x104/0x200
+Aug 22 15:01:40 ivalo kernel: [<c1089907>] ? get_parent_ip+0x27/0x40
+Aug 22 15:01:40 ivalo kernel: [<c108995b>] ? sub_preempt_count.part.65+0x3b/0x80
+Aug 22 15:01:40 ivalo kernel: [<c10899bf>] ? sub_preempt_count+0x1f/0x50
+Aug 22 15:01:40 ivalo kernel: [<c110b56d>] ? __d_lookup+0x8d/0x170
+Aug 22 15:01:40 ivalo kernel: [<c1102266>] do_lookup+0x166/0x260
+Aug 22 15:01:40 ivalo kernel: [<c1103ab5>] do_last.isra.43+0x115/0x5a0
+Aug 22 15:01:40 ivalo kernel: [<c11040b5>] path_openat+0x95/0x320
+Aug 22 15:01:40 ivalo kernel: [<c1100eb6>] ? getname_flags+0x26/0x120
+Aug 22 15:01:40 ivalo kernel: [<c110442c>] do_filp_open+0x2c/0x80
+Aug 22 15:01:40 ivalo kernel: [<c10899bf>] ? sub_preempt_count+0x1f/0x50
+Aug 22 15:01:40 ivalo kernel: [<c1834f42>] ? _raw_spin_unlock+0x12/0x30
+Aug 22 15:01:40 ivalo kernel: [<c110eef9>] ? alloc_fd+0xa9/0xf0
+Aug 22 15:01:40 ivalo kernel: [<c1100f45>] ? getname_flags+0xb5/0x120
+Aug 22 15:01:40 ivalo kernel: [<c10f6853>] do_sys_open+0xe3/0x1b0
+Aug 22 15:01:40 ivalo kernel: [<c10f694d>] sys_open+0x2d/0x40
+Aug 22 15:01:40 ivalo kernel: [<c1835b1c>] sysenter_do_call+0x12/0x2c
 
 -- 
-idank
+Dick
+
