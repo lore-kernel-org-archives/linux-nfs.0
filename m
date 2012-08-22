@@ -1,84 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:48135 "EHLO
+Received: from mail-ob0-f174.google.com ([209.85.214.174]:43131 "EHLO
 	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751210Ab2H1J4f (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Aug 2012 05:56:35 -0400
-Message-ID: <503C95E4.3010000@gmail.com>
-Date: Tue, 28 Aug 2012 11:56:52 +0200
+	with ESMTP id S1754271Ab2HVC1d (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2012 22:27:33 -0400
 From: Sasha Levin <levinsasha928@gmail.com>
-MIME-Version: 1.0
-To: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-CC: Tejun Heo <tj@kernel.org>, torvalds@linux-foundation.org,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+To: torvalds@linux-foundation.org
+Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
         linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
         rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
         aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com, axboe@kernel.dk,
-        agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
-        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
-        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive hashtable
-References: <50357840.5020201@gmail.com> <20120823200456.GD14962@google.com> <5037DA47.9010306@gmail.com> <20120824195941.GC21325@google.com> <5037E00B.6090606@gmail.com> <20120824203332.GF21325@google.com> <5037E9D9.9000605@gmail.com> <20120824212348.GK21325@google.com> <5038074D.300@gmail.com> <20120824230740.GN21325@google.com> <20120825042419.GA27240@Krystal>
-In-Reply-To: <20120825042419.GA27240@Krystal>
-Content-Type: text/plain; charset=ISO-8859-1
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
+        Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH v3 07/17] net,9p: use new hashtable implementation
+Date: Wed, 22 Aug 2012 04:27:02 +0200
+Message-Id: <1345602432-27673-8-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
+References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/25/2012 06:24 AM, Mathieu Desnoyers wrote:
-> * Tejun Heo (tj@kernel.org) wrote:
->> Hello,
->>
->> On Sat, Aug 25, 2012 at 12:59:25AM +0200, Sasha Levin wrote:
->>> Thats the thing, the amount of things of things you can do with a given bucket
->>> is very limited. You can't add entries to any point besides the head (without
->>> walking the entire list).
->>
->> Kinda my point.  We already have all the hlist*() interface to deal
->> with such cases.  Having something which is evidently the trivial
->> hlist hashtable and advertises as such in the interface can be
->> helpful.  I think we need that more than we need anything fancy.
->>
->> Heh, this is a debate about which one is less insignificant.  I can
->> see your point.  I'd really like to hear what others think on this.
->>
->> Guys, do we want something which is evidently trivial hlist hashtable
->> which can use hlist_*() API directly or do we want something better
->> encapsulated?
-> 
-> My 2 cents, FWIW: I think this specific effort should target a trivially
-> understandable API and implementation, for use-cases where one would be
-> tempted to reimplement his own trivial hash table anyway. So here
-> exposing hlist internals, with which kernel developers are already
-> familiar, seems like a good approach in my opinion, because hiding stuff
-> behind new abstraction might make the target users go away.
-> 
-> Then, as we see the need, we can eventually merge a more elaborate hash
-> table with poneys and whatnot, but I would expect that the trivial hash
-> table implementation would still be useful. There are of course very
-> compelling reasons to use a more featureful hash table: automatic
-> resize, RT-aware updates, scalable updates, etc... but I see a purpose
-> for a trivial implementation. Its primary strong points being:
-> 
-> - it's trivially understandable, so anyone how want to be really sure
->   they won't end up debugging the hash table instead of their
->   work-in-progress code can have a full understanding of it,
-> - it has few dependencies, which makes it easier to understand and
->   easier to use in some contexts (e.g. early boot).
-> 
-> So I'm in favor of not overdoing the abstraction for this trivial hash
-> table, and honestly I would rather prefer that this trivial hash table
-> stays trivial. A more elaborate hash table should probably come as a
-> separate API.
-> 
-> Thanks,
-> 
-> Mathieu
-> 
+Switch 9p error table to use the new hashtable implementation. This reduces the amount of
+generic unrelated code in 9p.
 
-Alright, let's keep it simple then.
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ net/9p/error.c |   21 ++++++++++-----------
+ 1 files changed, 10 insertions(+), 11 deletions(-)
 
-I do want to keep the hash_for_each[rcu,safe] family though.
+diff --git a/net/9p/error.c b/net/9p/error.c
+index 2ab2de7..a5cc7dd 100644
+--- a/net/9p/error.c
++++ b/net/9p/error.c
+@@ -34,7 +34,7 @@
+ #include <linux/jhash.h>
+ #include <linux/errno.h>
+ #include <net/9p/9p.h>
+-
++#include <linux/hashtable.h>
+ /**
+  * struct errormap - map string errors from Plan 9 to Linux numeric ids
+  * @name: string sent over 9P
+@@ -50,8 +50,8 @@ struct errormap {
+ 	struct hlist_node list;
+ };
+ 
+-#define ERRHASHSZ		32
+-static struct hlist_head hash_errmap[ERRHASHSZ];
++#define ERR_HASH_BITS 5
++static DEFINE_HASHTABLE(hash_errmap, ERR_HASH_BITS);
+ 
+ /* FixMe - reduce to a reasonable size */
+ static struct errormap errmap[] = {
+@@ -193,18 +193,17 @@ static struct errormap errmap[] = {
+ int p9_error_init(void)
+ {
+ 	struct errormap *c;
+-	int bucket;
++	u32 hash;
+ 
+ 	/* initialize hash table */
+-	for (bucket = 0; bucket < ERRHASHSZ; bucket++)
+-		INIT_HLIST_HEAD(&hash_errmap[bucket]);
++	hash_init(hash_errmap);
+ 
+ 	/* load initial error map into hash table */
+ 	for (c = errmap; c->name != NULL; c++) {
+ 		c->namelen = strlen(c->name);
+-		bucket = jhash(c->name, c->namelen, 0) % ERRHASHSZ;
++		hash = jhash(c->name, c->namelen, 0);
+ 		INIT_HLIST_NODE(&c->list);
+-		hlist_add_head(&c->list, &hash_errmap[bucket]);
++		hash_add(hash_errmap, &c->list, hash);
+ 	}
+ 
+ 	return 1;
+@@ -223,13 +222,13 @@ int p9_errstr2errno(char *errstr, int len)
+ 	int errno;
+ 	struct hlist_node *p;
+ 	struct errormap *c;
+-	int bucket;
++	u32 hash;
+ 
+ 	errno = 0;
+ 	p = NULL;
+ 	c = NULL;
+-	bucket = jhash(errstr, len, 0) % ERRHASHSZ;
+-	hlist_for_each_entry(c, p, &hash_errmap[bucket], list) {
++	hash = jhash(errstr, len, 0);
++	hash_for_each_possible(hash_errmap, c, p, list, hash) {
+ 		if (c->namelen == len && !memcmp(c->name, errstr, len)) {
+ 			errno = c->val;
+ 			break;
+-- 
+1.7.8.6
 
