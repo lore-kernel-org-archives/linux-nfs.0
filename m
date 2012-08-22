@@ -1,32 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:21538 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:36106 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752114Ab2HJQRF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 10 Aug 2012 12:17:05 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: William Dauchy <wdauchy@gmail.com>
-CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/3] NFS: Use kzalloc() instead of kmalloc() in the
- idmapper
-Date: Fri, 10 Aug 2012 16:16:33 +0000
-Message-ID: <1344615387.7696.1.camel@lade.trondhjem.org>
-References: <1344535551-4412-1-git-send-email-bjschuma@netapp.com>
-	 <1344535551-4412-3-git-send-email-bjschuma@netapp.com>
-	 <CAJ75kXaYhQ8_Vw72j1Am5AxhHATsoEaOzh6JXA=buqeN38-8xA@mail.gmail.com>
-In-Reply-To: <CAJ75kXaYhQ8_Vw72j1Am5AxhHATsoEaOzh6JXA=buqeN38-8xA@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+	id S932507Ab2HVNNB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Aug 2012 09:13:01 -0400
+Date: Wed, 22 Aug 2012 09:12:25 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Sasha Levin <levinsasha928@gmail.com>
+Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
+        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v3 13/17] lockd: use new hashtable implementation
+Message-ID: <20120822131225.GD20158@fieldses.org>
+References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
+ <1345602432-27673-14-git-send-email-levinsasha928@gmail.com>
+ <20120822114752.GC20158@fieldses.org>
+ <5034CD02.2010103@gmail.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5034CD02.2010103@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTA4LTEwIGF0IDEyOjEwICswMjAwLCBXaWxsaWFtIERhdWNoeSB3cm90ZToN
-Cj4gT24gVGh1LCBBdWcgOSwgMjAxMiBhdCA4OjA1IFBNLCAgPGJqc2NodW1hQG5ldGFwcC5jb20+
-IHdyb3RlOg0KPiA+IFRoaXMgd2lsbCBhbGxvY2F0ZSBtZW1vcnkgdGhhdCBoYXMgYWxyZWFkeSBi
-ZWVuIHplcm9lZCwgYWxsb3dpbmcgdXMgdG8NCj4gPiByZW1vdmUgdGhlIG1lbXNldCBsYXRlciBv
-bi4NCj4gPg0KPiA+IFNpZ25lZC1vZmYtYnk6IEJyeWFuIFNjaHVtYWtlciA8YmpjaHVtYUBuZXRh
-cHAuY29tPg0KPiANCj4gVGVzdGVkLWJ5OiBXaWxsaWFtIERhdWNoeSA8d2RhdWNoeUBnbWFpbC5j
-b20+DQo+IENjOiBzdGFibGVAdmdlci5rZXJuZWwub3JnDQo+IA0KDQpOby4gVGhpcyBpcyBhIGNs
-ZWFudXAgYW5kIHNvIGlzIG5vdCBzdGFibGUga2VybmVsIG1hdGVyaWFsLg0KDQotLSANClRyb25k
-IE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQu
-TXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+On Wed, Aug 22, 2012 at 02:13:54PM +0200, Sasha Levin wrote:
+> On 08/22/2012 01:47 PM, J. Bruce Fields wrote:
+> > On Wed, Aug 22, 2012 at 04:27:08AM +0200, Sasha Levin wrote:
+> >> +static int __init nlm_init(void)
+> >> +{
+> >> +	hash_init(nlm_files);
+> >> +	return 0;
+> >> +}
+> >> +
+> >> +module_init(nlm_init);
+> > 
+> > That's giving me:
+> > 
+> > fs/lockd/svcsubs.o: In function `nlm_init':
+> > /home/bfields/linux-2.6/fs/lockd/svcsubs.c:454: multiple definition of `init_module'
+> > fs/lockd/svc.o:/home/bfields/linux-2.6/fs/lockd/svc.c:606: first defined here
+> > make[2]: *** [fs/lockd/lockd.o] Error 1
+> > make[1]: *** [fs/lockd] Error 2
+> > make[1]: *** Waiting for unfinished jobs....
+> 
+> I tested this entire patch set both with linux-next and Linus' latest master,
+> and it worked fine in both places.
+> 
+> Is it possible that lockd has a -next tree which isn't pulled into linux-next?
+> (there's nothing listed in MAINTAINERS that I could see).
+
+No, there's the same problem with Linus's latest.
+
+I'm applying just patches 1 and 13--but doesn't look like your earlier
+patches touch lockd.
+
+Are you actually building lockd?  (CONFIG_LOCKD).
+
+--b.
