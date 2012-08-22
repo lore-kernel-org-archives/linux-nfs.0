@@ -1,123 +1,213 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga11.intel.com ([192.55.52.93]:48898 "EHLO mga11.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757314Ab2HUNFH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Aug 2012 09:05:07 -0400
-Date: Tue, 21 Aug 2012 21:04:58 +0800
-From: Fengguang Wu <fengguang.wu@intel.com>
-To: Namjae Jeon <linkinjeon@gmail.com>
-Cc: akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        Namjae Jeon <namjae.jeon@samsung.com>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 3/3] writeback: add dirty_ratio_time per bdi variable
- (NFS write performance)
-Message-ID: <20120821130458.GD22321@localhost>
-References: <1345283402-7889-1-git-send-email-linkinjeon@gmail.com>
- <20120819025724.GC16796@localhost>
- <CAKYAXd83r3RNi3Rn5s3DAEE=34YYbk_hUWcG6R3Zu3JwUw74aA@mail.gmail.com>
- <20120820145032.GA7469@localhost>
- <CAKYAXd9L5Kwj3SEHO=a60c65OXRt73q+-w-Uux6OJ=6Q-3jvYQ@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <CAKYAXd9L5Kwj3SEHO=a60c65OXRt73q+-w-Uux6OJ=6Q-3jvYQ@mail.gmail.com>
+Received: from mail-ob0-f174.google.com ([209.85.214.174]:43131 "EHLO
+	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752744Ab2HVC1P (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2012 22:27:15 -0400
+From: Sasha Levin <levinsasha928@gmail.com>
+To: torvalds@linux-foundation.org
+Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
+        Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH v3 04/17] workqueue: use new hashtable implementation
+Date: Wed, 22 Aug 2012 04:26:59 +0200
+Message-Id: <1345602432-27673-5-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
+References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 21, 2012 at 03:00:13PM +0900, Namjae Jeon wrote:
-> 2012/8/20, Fengguang Wu <fengguang.wu@intel.com>:
-> > On Mon, Aug 20, 2012 at 09:48:42AM +0900, Namjae Jeon wrote:
-> >> 2012/8/19, Fengguang Wu <fengguang.wu@intel.com>:
-> >> > On Sat, Aug 18, 2012 at 05:50:02AM -0400, Namjae Jeon wrote:
-> >> >> From: Namjae Jeon <namjae.jeon@samsung.com>
-> >> >>
-> >> >> This patch is based on suggestion by Wu Fengguang:
-> >> >> https://lkml.org/lkml/2011/8/19/19
-> >> >>
-> >> >> kernel has mechanism to do writeback as per dirty_ratio and
-> >> >> dirty_background
-> >> >> ratio. It also maintains per task dirty rate limit to keep balance of
-> >> >> dirty pages at any given instance by doing bdi bandwidth estimation.
-> >> >>
-> >> >> Kernel also has max_ratio/min_ratio tunables to specify percentage of
-> >> >> writecache
-> >> >> to control per bdi dirty limits and task throtelling.
-> >> >>
-> >> >> However, there might be a usecase where user wants a writeback tuning
-> >> >> parameter to flush dirty data at desired/tuned time interval.
-> >> >>
-> >> >> dirty_background_time provides an interface where user can tune
-> >> >> background
-> >> >> writeback start time using /sys/block/sda/bdi/dirty_background_time
-> >> >>
-> >> >> dirty_background_time is used alongwith average bdi write bandwidth
-> >> >> estimation
-> >> >> to start background writeback.
-> >> >
-> >> > Here lies my major concern about dirty_background_time: the write
-> >> > bandwidth estimation is an _estimation_ and will sure become wildly
-> >> > wrong in some cases. So the dirty_background_time implementation based
-> >> > on it will not always work to the user expectations.
-> >> >
-> >> > One important case is, some users (eg. Dave Chinner) explicitly take
-> >> > advantage of the existing behavior to quickly create & delete a big
-> >> > 1GB temp file without worrying about triggering unnecessary IOs.
-> >> >
-> >> Hi. Wu.
-> >> Okay, I have a question.
-> >>
-> >> If making dirty_writeback_interval per bdi to tune short interval
-> >> instead of background_time, We can get similar performance
-> >> improvement.
-> >> /sys/block/<device>/bdi/dirty_writeback_interval
-> >> /sys/block/<device>/bdi/dirty_expire_interval
-> >>
-> >> NFS write performance improvement is just one usecase.
-> >>
-> >> If we can set interval/time per bdi,  other usecases will be created
-> >> by applying.
-> >
-> > Per-bdi interval/time tunables, if there comes such a need, will in
-> > essential be for data caching and safety. If turning them into some
-> > requirement for better performance, the users will potential be
-> > stretched on choosing the "right" value for balanced data cache,
-> > safety and performance.  Hmm, not a comfortable prospection.
-> Hi Wu.
-> First, Thanks for shared information.
-> 
-> I change writeback interval on NFS server only.
+Switch workqueues to use the new hashtable implementation. This reduces the amount of
+generic unrelated code in the workqueues.
 
-OK..sorry for missing that part!
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ kernel/workqueue.c |   86 +++++++++-------------------------------------------
+ 1 files changed, 15 insertions(+), 71 deletions(-)
 
-> I think that this does not affect data cache/page behaviour(caching)
-> change on NFS client. NFS client will start sending write requests as
-> per default NFS/writeback logic. So, no change in NFS client data
-> caching behaviour.
-> 
-> Also, on NFS server it does not make change in system-wide caching
-> behaviour. It only modifies caching/writeback behaviour of a
-> particular “bdi” on NFS server so that NFS client could see better
-> WRITE speed.
+diff --git a/kernel/workqueue.c b/kernel/workqueue.c
+index 11723c5..fca751e 100644
+--- a/kernel/workqueue.c
++++ b/kernel/workqueue.c
+@@ -41,6 +41,7 @@
+ #include <linux/debug_locks.h>
+ #include <linux/lockdep.h>
+ #include <linux/idr.h>
++#include <linux/hashtable.h>
+ 
+ #include "workqueue_sched.h"
+ 
+@@ -82,8 +83,6 @@ enum {
+ 	NR_WORKER_POOLS		= 2,		/* # worker pools per gcwq */
+ 
+ 	BUSY_WORKER_HASH_ORDER	= 6,		/* 64 pointers */
+-	BUSY_WORKER_HASH_SIZE	= 1 << BUSY_WORKER_HASH_ORDER,
+-	BUSY_WORKER_HASH_MASK	= BUSY_WORKER_HASH_SIZE - 1,
+ 
+ 	MAX_IDLE_WORKERS_RATIO	= 4,		/* 1/4 of busy can be idle */
+ 	IDLE_WORKER_TIMEOUT	= 300 * HZ,	/* keep idle ones for 5 mins */
+@@ -180,7 +179,7 @@ struct global_cwq {
+ 	unsigned int		flags;		/* L: GCWQ_* flags */
+ 
+ 	/* workers are chained either in busy_hash or pool idle_list */
+-	struct hlist_head	busy_hash[BUSY_WORKER_HASH_SIZE];
++	DEFINE_HASHTABLE(busy_hash, BUSY_WORKER_HASH_ORDER);
+ 						/* L: hash of busy workers */
+ 
+ 	struct worker_pool	pools[2];	/* normal and highpri pools */
+@@ -288,8 +287,7 @@ EXPORT_SYMBOL_GPL(system_nrt_freezable_wq);
+ 	     (pool) < &(gcwq)->pools[NR_WORKER_POOLS]; (pool)++)
+ 
+ #define for_each_busy_worker(worker, i, pos, gcwq)			\
+-	for (i = 0; i < BUSY_WORKER_HASH_SIZE; i++)			\
+-		hlist_for_each_entry(worker, pos, &gcwq->busy_hash[i], hentry)
++	hash_for_each(gcwq->busy_hash, i, pos, worker, hentry)
+ 
+ static inline int __next_gcwq_cpu(int cpu, const struct cpumask *mask,
+ 				  unsigned int sw)
+@@ -845,63 +843,6 @@ static inline void worker_clr_flags(struct worker *worker, unsigned int flags)
+ }
+ 
+ /**
+- * busy_worker_head - return the busy hash head for a work
+- * @gcwq: gcwq of interest
+- * @work: work to be hashed
+- *
+- * Return hash head of @gcwq for @work.
+- *
+- * CONTEXT:
+- * spin_lock_irq(gcwq->lock).
+- *
+- * RETURNS:
+- * Pointer to the hash head.
+- */
+-static struct hlist_head *busy_worker_head(struct global_cwq *gcwq,
+-					   struct work_struct *work)
+-{
+-	const int base_shift = ilog2(sizeof(struct work_struct));
+-	unsigned long v = (unsigned long)work;
+-
+-	/* simple shift and fold hash, do we need something better? */
+-	v >>= base_shift;
+-	v += v >> BUSY_WORKER_HASH_ORDER;
+-	v &= BUSY_WORKER_HASH_MASK;
+-
+-	return &gcwq->busy_hash[v];
+-}
+-
+-/**
+- * __find_worker_executing_work - find worker which is executing a work
+- * @gcwq: gcwq of interest
+- * @bwh: hash head as returned by busy_worker_head()
+- * @work: work to find worker for
+- *
+- * Find a worker which is executing @work on @gcwq.  @bwh should be
+- * the hash head obtained by calling busy_worker_head() with the same
+- * work.
+- *
+- * CONTEXT:
+- * spin_lock_irq(gcwq->lock).
+- *
+- * RETURNS:
+- * Pointer to worker which is executing @work if found, NULL
+- * otherwise.
+- */
+-static struct worker *__find_worker_executing_work(struct global_cwq *gcwq,
+-						   struct hlist_head *bwh,
+-						   struct work_struct *work)
+-{
+-	struct worker *worker;
+-	struct hlist_node *tmp;
+-
+-	hlist_for_each_entry(worker, tmp, bwh, hentry)
+-		if (worker->current_work == work)
+-			return worker;
+-	return NULL;
+-}
+-
+-/**
+  * find_worker_executing_work - find worker which is executing a work
+  * @gcwq: gcwq of interest
+  * @work: work to find worker for
+@@ -920,8 +861,14 @@ static struct worker *__find_worker_executing_work(struct global_cwq *gcwq,
+ static struct worker *find_worker_executing_work(struct global_cwq *gcwq,
+ 						 struct work_struct *work)
+ {
+-	return __find_worker_executing_work(gcwq, busy_worker_head(gcwq, work),
+-					    work);
++	struct worker *worker;
++	struct hlist_node *tmp;
++
++	hash_for_each_possible(gcwq->busy_hash, worker, tmp, hentry, (unsigned long)work)
++		if (worker->current_work == work)
++			return worker;
++
++	return NULL;
+ }
+ 
+ /**
+@@ -2120,7 +2067,6 @@ __acquires(&gcwq->lock)
+ 	struct cpu_workqueue_struct *cwq = get_work_cwq(work);
+ 	struct worker_pool *pool = worker->pool;
+ 	struct global_cwq *gcwq = pool->gcwq;
+-	struct hlist_head *bwh = busy_worker_head(gcwq, work);
+ 	bool cpu_intensive = cwq->wq->flags & WQ_CPU_INTENSIVE;
+ 	work_func_t f = work->func;
+ 	int work_color;
+@@ -2152,7 +2098,7 @@ __acquires(&gcwq->lock)
+ 	 * already processing the work.  If so, defer the work to the
+ 	 * currently executing one.
+ 	 */
+-	collision = __find_worker_executing_work(gcwq, bwh, work);
++	collision = find_worker_executing_work(gcwq, work);
+ 	if (unlikely(collision)) {
+ 		move_linked_works(work, &collision->scheduled, NULL);
+ 		return;
+@@ -2160,7 +2106,7 @@ __acquires(&gcwq->lock)
+ 
+ 	/* claim and dequeue */
+ 	debug_work_deactivate(work);
+-	hlist_add_head(&worker->hentry, bwh);
++	hash_add(gcwq->busy_hash, &worker->hentry, (unsigned long)worker);
+ 	worker->current_work = work;
+ 	worker->current_cwq = cwq;
+ 	work_color = get_work_color(work);
+@@ -2223,7 +2169,7 @@ __acquires(&gcwq->lock)
+ 		worker_clr_flags(worker, WORKER_CPU_INTENSIVE);
+ 
+ 	/* we're done with it, release */
+-	hlist_del_init(&worker->hentry);
++	hash_del(&worker->hentry);
+ 	worker->current_work = NULL;
+ 	worker->current_cwq = NULL;
+ 	cwq_dec_nr_in_flight(cwq, work_color, false);
+@@ -3855,7 +3801,6 @@ out_unlock:
+ static int __init init_workqueues(void)
+ {
+ 	unsigned int cpu;
+-	int i;
+ 
+ 	/* make sure we have enough bits for OFFQ CPU number */
+ 	BUILD_BUG_ON((1LU << (BITS_PER_LONG - WORK_OFFQ_CPU_SHIFT)) <
+@@ -3873,8 +3818,7 @@ static int __init init_workqueues(void)
+ 		gcwq->cpu = cpu;
+ 		gcwq->flags |= GCWQ_DISASSOCIATED;
+ 
+-		for (i = 0; i < BUSY_WORKER_HASH_SIZE; i++)
+-			INIT_HLIST_HEAD(&gcwq->busy_hash[i]);
++		hash_init(gcwq->busy_hash);
+ 
+ 		for_each_worker_pool(pool, gcwq) {
+ 			pool->gcwq = gcwq;
+-- 
+1.7.8.6
 
-But would you default to dirty_background_time=0, where the special
-value 0 means no change of the original behavior? That will address
-David's very reasonable concern. Otherwise quite a few users are going
-to be surprised by the new behavior after upgrading kernel.
-
-> I will share several performancetest results as Dave's opinion.
-> 
-> >
-> >> >The numbers are impressive! FYI, I tried another NFS specific approach
-> >> >to avoid big NFS COMMITs, which achieved similar performance gains:
-> >>
-> >> >nfs: writeback pages wait queue
-> >> >https://lkml.org/lkml/2011/10/20/235
-> This patch looks client side optimization to me.(need to check more)
-
-Yes.
-
-> Do we need the optimization of server side as Bruce's opinion ?
-
-Sure.
-
-Thanks,
-Fengguang
