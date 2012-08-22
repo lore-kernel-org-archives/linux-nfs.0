@@ -1,93 +1,167 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f53.google.com ([209.85.216.53]:42325 "EHLO
-	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754686Ab2HONjd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Aug 2012 09:39:33 -0400
-Message-ID: <502BA6B4.9020106@gmail.com>
-Date: Wed, 15 Aug 2012 15:40:04 +0200
+Received: from mail-ob0-f174.google.com ([209.85.214.174]:43131 "EHLO
+	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754585Ab2HVC1k (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2012 22:27:40 -0400
 From: Sasha Levin <levinsasha928@gmail.com>
-MIME-Version: 1.0
-To: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-CC: "Eric W. Biederman" <ebiederm@xmission.com>, torvalds@linux-foundation.org,
-        tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+To: torvalds@linux-foundation.org
+Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
         linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
         dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
         teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
         fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
         ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
         linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH 02/16] user_ns: use new hashtable implementation
-References: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com> <1344961490-4068-3-git-send-email-levinsasha928@gmail.com> <87txw5hw0s.fsf@xmission.com> <502AF184.4010907@gmail.com> <87393phshy.fsf@xmission.com> <502AFCD5.6070104@gmail.com> <87obmchmpu.fsf@xmission.com> <20120815033155.GA32653@Krystal>
-In-Reply-To: <20120815033155.GA32653@Krystal>
-Content-Type: text/plain; charset=ISO-8859-1
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
+        Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH v3 08/17] block,elevator: use new hashtable implementation
+Date: Wed, 22 Aug 2012 04:27:03 +0200
+Message-Id: <1345602432-27673-9-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
+References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/15/2012 05:31 AM, Mathieu Desnoyers wrote:
-> * Eric W. Biederman (ebiederm@xmission.com) wrote:
->> Sasha Levin <levinsasha928@gmail.com> writes:
->>
->>> On 08/15/2012 03:08 AM, Eric W. Biederman wrote:
->>>>> I can offer the following: I'll write a small module that will hash 1...10000
->>>>>> into a hashtable which uses 7 bits (just like user_ns) and post the distribution
->>>>>> we'll get.
->>>> That won't hurt.  I think 1-100 then 1000-1100 may actually be more
->>>> representative.  Not that I would mind seeing the larger range.
->>>> Especially since I am in the process of encouraging the use of more
->>>> uids.
->>>>
->>>
->>> Alrighty, the results are in (numbers are objects in bucket):
->>>
->>> For the 0...10000 range:
->>>
->>> Average: 78.125
->>> Std dev: 1.4197704151
->>> Min: 75
->>> Max: 80
->>>
->>>
->>> For the 1...100 range:
->>>
->>> Average: 0.78125
->>> Std dev: 0.5164613088
->>> Min: 0
->>> Max: 2
->>>
->>>
->>> For the 1000...1100 range:
->>>
->>> Average: 0.7890625
->>> Std dev: 0.4964812206
->>> Min: 0
->>> Max: 2
->>>
->>>
->>> Looks like hash_32 is pretty good with small numbers.
->>
->> Yes hash_32 seems reasonable for the uid hash.   With those long hash
->> chains I wouldn't like to be on a machine with 10,000 processes with
->> each with a different uid, and a processes calling setuid in the fast
->> path.
->>
->> The uid hash that we are playing with is one that I sort of wish that
->> the hash table could grow in size, so that we could scale up better.
-> 
-> Hi Eric,
-> 
-> If you want to try out something that has more features than a basic
-> hash table, already exists and is available for you to play with, you
-> might want to have a look at the RCU lock-free resizable hash table.
-> It's initially done in userspace, but shares the same RCU semantic as
-> the kernel, and has chunk-based kernel-friendly index backends (thanks
-> to Lai Jiangshan), very useful to integrate with the kernel page
-> allocator.
+Switch elevator to use the new hashtable implementation. This reduces the amount of
+generic unrelated code in the elevator.
 
-I'm guessing that once this static hashtable is stable, a
-DEFINE_DYNAMIC_HASHTABLE() will get introduced which will evolve into something
-similar to what Mathieu has pointed out in the urcu.
+This also removes the dymanic allocation of the hash table. The size of the table is
+constant so there's no point in paying the price of an extra dereference when accessing
+it.
+
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ block/blk.h              |    2 +-
+ block/elevator.c         |   23 ++++-------------------
+ include/linux/elevator.h |    5 ++++-
+ 3 files changed, 9 insertions(+), 21 deletions(-)
+
+diff --git a/block/blk.h b/block/blk.h
+index 2a0ea32..5650d48 100644
+--- a/block/blk.h
++++ b/block/blk.h
+@@ -61,7 +61,7 @@ static inline void blk_clear_rq_complete(struct request *rq)
+ /*
+  * Internal elevator interface
+  */
+-#define ELV_ON_HASH(rq)		(!hlist_unhashed(&(rq)->hash))
++#define ELV_ON_HASH(rq) hash_hashed(&(rq)->hash)
+ 
+ void blk_insert_flush(struct request *rq);
+ void blk_abort_flushes(struct request_queue *q);
+diff --git a/block/elevator.c b/block/elevator.c
+index 6a55d41..f462a83 100644
+--- a/block/elevator.c
++++ b/block/elevator.c
+@@ -46,11 +46,6 @@ static LIST_HEAD(elv_list);
+ /*
+  * Merge hash stuff.
+  */
+-static const int elv_hash_shift = 6;
+-#define ELV_HASH_BLOCK(sec)	((sec) >> 3)
+-#define ELV_HASH_FN(sec)	\
+-		(hash_long(ELV_HASH_BLOCK((sec)), elv_hash_shift))
+-#define ELV_HASH_ENTRIES	(1 << elv_hash_shift)
+ #define rq_hash_key(rq)		(blk_rq_pos(rq) + blk_rq_sectors(rq))
+ 
+ /*
+@@ -142,7 +137,6 @@ static struct elevator_queue *elevator_alloc(struct request_queue *q,
+ 				  struct elevator_type *e)
+ {
+ 	struct elevator_queue *eq;
+-	int i;
+ 
+ 	eq = kmalloc_node(sizeof(*eq), GFP_KERNEL | __GFP_ZERO, q->node);
+ 	if (unlikely(!eq))
+@@ -151,14 +145,7 @@ static struct elevator_queue *elevator_alloc(struct request_queue *q,
+ 	eq->type = e;
+ 	kobject_init(&eq->kobj, &elv_ktype);
+ 	mutex_init(&eq->sysfs_lock);
+-
+-	eq->hash = kmalloc_node(sizeof(struct hlist_head) * ELV_HASH_ENTRIES,
+-					GFP_KERNEL, q->node);
+-	if (!eq->hash)
+-		goto err;
+-
+-	for (i = 0; i < ELV_HASH_ENTRIES; i++)
+-		INIT_HLIST_HEAD(&eq->hash[i]);
++	hash_init(eq->hash);
+ 
+ 	return eq;
+ err:
+@@ -173,7 +160,6 @@ static void elevator_release(struct kobject *kobj)
+ 
+ 	e = container_of(kobj, struct elevator_queue, kobj);
+ 	elevator_put(e->type);
+-	kfree(e->hash);
+ 	kfree(e);
+ }
+ 
+@@ -240,7 +226,7 @@ EXPORT_SYMBOL(elevator_exit);
+ 
+ static inline void __elv_rqhash_del(struct request *rq)
+ {
+-	hlist_del_init(&rq->hash);
++	hash_del(&rq->hash);
+ }
+ 
+ static void elv_rqhash_del(struct request_queue *q, struct request *rq)
+@@ -254,7 +240,7 @@ static void elv_rqhash_add(struct request_queue *q, struct request *rq)
+ 	struct elevator_queue *e = q->elevator;
+ 
+ 	BUG_ON(ELV_ON_HASH(rq));
+-	hlist_add_head(&rq->hash, &e->hash[ELV_HASH_FN(rq_hash_key(rq))]);
++	hash_add(e->hash, &rq->hash, rq_hash_key(rq));
+ }
+ 
+ static void elv_rqhash_reposition(struct request_queue *q, struct request *rq)
+@@ -266,11 +252,10 @@ static void elv_rqhash_reposition(struct request_queue *q, struct request *rq)
+ static struct request *elv_rqhash_find(struct request_queue *q, sector_t offset)
+ {
+ 	struct elevator_queue *e = q->elevator;
+-	struct hlist_head *hash_list = &e->hash[ELV_HASH_FN(offset)];
+ 	struct hlist_node *entry, *next;
+ 	struct request *rq;
+ 
+-	hlist_for_each_entry_safe(rq, entry, next, hash_list, hash) {
++	hash_for_each_possible_safe(e->hash, rq, entry, next, hash, offset) {
+ 		BUG_ON(!ELV_ON_HASH(rq));
+ 
+ 		if (unlikely(!rq_mergeable(rq))) {
+diff --git a/include/linux/elevator.h b/include/linux/elevator.h
+index c03af76..20b539c 100644
+--- a/include/linux/elevator.h
++++ b/include/linux/elevator.h
+@@ -2,6 +2,7 @@
+ #define _LINUX_ELEVATOR_H
+ 
+ #include <linux/percpu.h>
++#include <linux/hashtable.h>
+ 
+ #ifdef CONFIG_BLOCK
+ 
+@@ -96,6 +97,8 @@ struct elevator_type
+ 	struct list_head list;
+ };
+ 
++#define ELV_HASH_BITS 6
++
+ /*
+  * each queue has an elevator_queue associated with it
+  */
+@@ -105,7 +108,7 @@ struct elevator_queue
+ 	void *elevator_data;
+ 	struct kobject kobj;
+ 	struct mutex sysfs_lock;
+-	struct hlist_head *hash;
++	DEFINE_HASHTABLE(hash, ELV_HASH_BITS);
+ 	unsigned int registered:1;
+ };
+ 
+-- 
+1.7.8.6
 
