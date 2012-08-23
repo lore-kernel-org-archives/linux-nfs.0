@@ -1,160 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:63594 "EHLO
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:39908 "EHLO
 	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751105Ab2HAQtx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Aug 2012 12:49:53 -0400
-Received: by pbbrp8 with SMTP id rp8so1347455pbb.19
-        for <linux-nfs@vger.kernel.org>; Wed, 01 Aug 2012 09:49:52 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] rpc.gssd: don't call poll(2) twice a second
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 01 Aug 2012 12:49:48 -0400
-Message-ID: <20120801164738.27815.94008.stgit@seurat.1015granger.net>
+	with ESMTP id S1752667Ab2HWUFB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Aug 2012 16:05:01 -0400
+Date: Thu, 23 Aug 2012 13:04:56 -0700
+From: Tejun Heo <tj@kernel.org>
+To: Sasha Levin <levinsasha928@gmail.com>
+Cc: torvalds@linux-foundation.org, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
+        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
+        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
+        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive
+ hashtable
+Message-ID: <20120823200456.GD14962@google.com>
+References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
+ <1345602432-27673-2-git-send-email-levinsasha928@gmail.com>
+ <20120822180138.GA19212@google.com>
+ <50357840.5020201@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <50357840.5020201@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use ppoll() instead.
+Hello, Sasha.
 
-[ cel Wed Aug  1 11:44:46 EDT 2012 - autoconfiscated Bruce's version ]
+On Thu, Aug 23, 2012 at 02:24:32AM +0200, Sasha Levin wrote:
+> > I think the almost trivial nature of hlist hashtables makes this a bit
+> > tricky and I'm not very sure but having this combinatory explosion is
+> > a bit dazzling when the same functionality can be achieved by simply
+> > combining operations which are already defined and named considering
+> > hashtable.  I'm not feeling too strong about this tho.  What do others
+> > think?
+> 
+> I'm thinking that this hashtable API will have 2 purposes: First, it would
+> prevent the excessive duplication of hashtable implementations all around the code.
+> 
+> Second, it will allow more easily interchangeable hashtable implementations to
+> find their way into the kernel. There are several maintainers who would be happy
+> to see dynamically sized RCU hashtable, and I'm guessing that several more
+> variants could be added based on needs in specific modules.
+> 
+> The second reason is why several things you've mentioned look the way they are:
+> 
+>  - No DEFINE_HASHTABLE(): I wanted to force the use of hash_init() since
+> initialization for other hashtables may be more complicated than the static
+> initialization for this implementation, which means that any place that used
+> DEFINE_HASHTABLE() and didn't do hash_init() will be buggy.
 
-Related clean-up: Since we're pulling the poll/ppoll call out into a
-separate function, note that the second argument of poll(2) and
-ppoll(2) is not an int, it's an unsigned long.  The nfds_t typedef
-is a recent invention, so use the raw type for compatibility with
-older glibc headers.
+I think this is problematic.  It looks exactly like other existing
+DEFINE macros yet what its semantics is different.  I don't think
+that's a good idea.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+> I'm actually tempted in hiding hlist completely from hashtable users, probably
+> by simply defining a hash_head/hash_node on top of the hlist_ counterparts.
 
-Bruce-
+I think that it would be best to keep this one simple & obvious, which
+already has enough in-kernel users to justify its existence.  There
+are significant benefits in being trivially understandable and
+expectable.  If we want more advanced ones - say resizing, hybrid or
+what not, let's make that a separate one.  No need to complicate the
+common straight-forward case for that.
 
-How does this strike you?  I've build-tested both arms of the
-HAVE_PPOLL #ifdef, but otherwise have done no further testing.
+So, I think it would be best to keep this one as straight-forward and
+trivial as possible.  Helper macros to help its users are fine but
+let's please not go for full encapsulation.
 
+Thanks.
 
- configure.ac                |    2 +-
- utils/gssd/gssd_main_loop.c |   56 +++++++++++++++++++++++++++++++------------
- utils/gssd/gssd_proc.c      |    2 +-
- 3 files changed, 42 insertions(+), 18 deletions(-)
-
-diff --git a/configure.ac b/configure.ac
-index b408f1b..18ee11a 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -392,7 +392,7 @@ AC_CHECK_FUNCS([alarm atexit dup2 fdatasync ftruncate getcwd \
-                gethostbyaddr gethostbyname gethostname getmntent \
-                getnameinfo getrpcbyname getifaddrs \
-                gettimeofday hasmntopt inet_ntoa innetgr memset mkdir pathconf \
--               realpath rmdir select socket strcasecmp strchr strdup \
-+               ppoll realpath rmdir select socket strcasecmp strchr strdup \
-                strerror strrchr strtol strtoul sigprocmask])
- 
- 
-diff --git a/utils/gssd/gssd_main_loop.c b/utils/gssd/gssd_main_loop.c
-index cec09ea..22e082f 100644
---- a/utils/gssd/gssd_main_loop.c
-+++ b/utils/gssd/gssd_main_loop.c
-@@ -55,7 +55,7 @@
- #include "err_util.h"
- 
- extern struct pollfd *pollarray;
--extern int pollsize;
-+extern unsigned long pollsize;
- 
- #define POLL_MILLISECS	500
- 
-@@ -99,7 +99,7 @@ scan_poll_results(int ret)
- 				break;
- 		}
- 	}
--};
-+}
- 
- static int
- topdirs_add_entry(struct dirent *dent)
-@@ -175,10 +175,46 @@ out_err:
- 	return -1;
- }
- 
-+#ifdef HAVE_PPOLL
-+static void gssd_poll(struct pollfd *fds, unsigned long nfds)
-+{
-+	sigset_t emptyset;
-+	int ret;
-+
-+	sigemptyset(&emptyset);
-+	ret = ppoll(fds, nfds, NULL, &emptyset);
-+	if (ret < 0) {
-+		if (errno != EINTR)
-+			printerr(0, "WARNING: error return from poll\n");
-+	} else if (ret == 0) {
-+		printerr(0, "WARNING: unexpected timeout\n");
-+	} else {
-+		scan_poll_results(ret);
-+	}
-+}
-+#else	/* !HAVE_PPOLL */
-+static void gssd_poll(struct pollfd *fds, unsigned long nfds)
-+{
-+	int ret;
-+
-+	/* race condition here: dir_changed could be set before we
-+	 * enter the poll, and we'd never notice if it weren't for the
-+	 * timeout. */
-+	ret = poll(fds, nfds, POLL_MILLISECS);
-+	if (ret < 0) {
-+		if (errno != EINTR)
-+			printerr(0, "WARNING: error return from poll\n");
-+	} else if (ret == 0) {
-+		/* timeout */
-+	} else { /* ret > 0 */
-+		scan_poll_results(ret);
-+	}
-+}
-+#endif	/* !HAVE_PPOLL */
-+
- void
- gssd_run()
- {
--	int			ret;
- 	struct sigaction	dn_act;
- 	sigset_t		set;
- 
-@@ -207,19 +243,7 @@ gssd_run()
- 				exit(1);
- 			}
- 		}
--		/* race condition here: dir_changed could be set before we
--		 * enter the poll, and we'd never notice if it weren't for the
--		 * timeout. */
--		ret = poll(pollarray, pollsize, POLL_MILLISECS);
--		if (ret < 0) {
--			if (errno != EINTR)
--				printerr(0,
--					 "WARNING: error return from poll\n");
--		} else if (ret == 0) {
--			/* timeout */
--		} else { /* ret > 0 */
--			scan_poll_results(ret);
--		}
-+		gssd_poll(pollarray, pollsize);
- 	}
- 	topdirs_free_list();
- 
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index aa39435..bda0249 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -104,7 +104,7 @@
- 
- struct pollfd * pollarray;
- 
--int pollsize;  /* the size of pollaray (in pollfd's) */
-+unsigned long pollsize;  /* the size of pollaray (in pollfd's) */
- 
- /*
-  * convert a presentation address string to a sockaddr_storage struct. Returns
-
+-- 
+tejun
