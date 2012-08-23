@@ -1,51 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46029 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932107Ab2HPTKU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Aug 2012 15:10:20 -0400
-Date: Thu, 16 Aug 2012 15:10:18 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: "ZUIDAM, Hans" <Hans.Zuidam@philips.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "DE WITTE, PETER" <PETER.DE.WITTE@philips.com>
-Subject: Re: Linux NFS and cached properties
-Message-ID: <20120816191018.GA4385@fieldses.org>
-References: <D307B3AC0BCD4C419E6B8FA6A2720A9C0C3B2F@011-DB3MPN1-001.MGDPHG.emi.philips.com>
- <20120724143748.GC8570@fieldses.org>
- <D307B3AC0BCD4C419E6B8FA6A2720A9C18ABBA@011-DB3MPN1-001.MGDPHG.emi.philips.com>
- <20120726223607.GA28982@fieldses.org>
- <20120731150801.0a4b557b@notabene.brown>
- <20120731122546.GA26737@fieldses.org>
- <20120802100405.4dfc3169@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120802100405.4dfc3169@notabene.brown>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:45127 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752323Ab2HWQ2k (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Aug 2012 12:28:40 -0400
+Received: by mail-pb0-f46.google.com with SMTP id rr13so1767813pbb.19
+        for <linux-nfs@vger.kernel.org>; Thu, 23 Aug 2012 09:28:40 -0700 (PDT)
+From: Peng Tao <bergwolf@gmail.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH-resend 3/6] Revert "pnfsblock: bail out partial page IO"
+Date: Fri, 24 Aug 2012 00:27:50 +0800
+Message-Id: <1345739273-2241-4-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1345739273-2241-1-git-send-email-bergwolf@gmail.com>
+References: <1345739273-2241-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 02, 2012 at 10:04:05AM +1000, NeilBrown wrote:
-> I never liked that fact that stopping the last thread did something extra.
-> So when I added the ability to control the number of threads via sysfs I made
+This reverts commit 159e0561e322dd8008fff59e36efff8d2bdd0b0e, in favor
+of a more complete fix to the alignment issue.
 
-(You meant nfsd, not sysfs, right?  Or is there some interface I'm
-overlooking?)
+Signed-off-by: Peng Tao <tao.peng@emc.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |   39 ++-----------------------------------
+ 1 files changed, 3 insertions(+), 36 deletions(-)
 
-> sure that it *only* controlled the number of threads.  However I kept the
-> legacy behaviour that sending SIGKILL to the nfsd threads would also unexport
-> things.  Obviously I should have documented this better.
-> 
-> The more I think out it, the more I'd really like to go back to that.  It
-> really is the *right* thing to do.
-...
-> > > 1/ iterate through all no-sleeping threads setting a flag an increasing a
-> > > counter.
-> > > 2/ when a thread completes current request, if test_and_clear the flag, it
-> > > atomic_dec_and_test the counter and then wakes up some wait_queue_head.
-> > > 3/ 'flush'ing thread waits on the waut_queue_head for the counter to be 0.
-> > > 
-> > > If you don't hate it I could possibly even provide some code.
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index dd392ed..7ae8a60 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -228,14 +228,6 @@ bl_end_par_io_read(void *data, int unused)
+ 	schedule_work(&rdata->task.u.tk_work);
+ }
+ 
+-static bool
+-bl_check_alignment(u64 offset, u32 len, unsigned long blkmask)
+-{
+-	if ((offset & blkmask) || (len & blkmask))
+-		return false;
+-	return true;
+-}
+-
+ static enum pnfs_try_status
+ bl_read_pagelist(struct nfs_read_data *rdata)
+ {
+@@ -252,9 +244,6 @@ bl_read_pagelist(struct nfs_read_data *rdata)
+ 	dprintk("%s enter nr_pages %u offset %lld count %u\n", __func__,
+ 	       rdata->pages.npages, f_offset, (unsigned int)rdata->args.count);
+ 
+-	if (!bl_check_alignment(f_offset, rdata->args.count, PAGE_CACHE_MASK))
+-		goto use_mds;
+-
+ 	par = alloc_parallel(rdata);
+ 	if (!par)
+ 		goto use_mds;
+@@ -563,7 +552,7 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
+ 	struct bio *bio = NULL;
+ 	struct pnfs_block_extent *be = NULL, *cow_read = NULL;
+ 	sector_t isect, last_isect = 0, extent_length = 0;
+-	struct parallel_io *par = NULL;
++	struct parallel_io *par;
+ 	loff_t offset = wdata->args.offset;
+ 	size_t count = wdata->args.count;
+ 	struct page **pages = wdata->args.pages;
+@@ -574,10 +563,6 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
+ 	    NFS_SERVER(header->inode)->pnfs_blksize >> PAGE_CACHE_SHIFT;
+ 
+ 	dprintk("%s enter, %Zu@%lld\n", __func__, count, offset);
+-	/* Check for alignment first */
+-	if (!bl_check_alignment(offset, count, PAGE_CACHE_MASK))
+-		goto out_mds;
+-
+ 	/* At this point, wdata->pages is a (sequential) list of nfs_pages.
+ 	 * We want to write each, and if there is an error set pnfs_error
+ 	 * to have it redone using nfs.
+@@ -1011,32 +996,14 @@ bl_clear_layoutdriver(struct nfs_server *server)
+ 	return 0;
+ }
+ 
+-static void
+-bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+-{
+-	if (!bl_check_alignment(req->wb_offset, req->wb_bytes, PAGE_CACHE_MASK))
+-		nfs_pageio_reset_read_mds(pgio);
+-	else
+-		pnfs_generic_pg_init_read(pgio, req);
+-}
+-
+-static void
+-bl_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+-{
+-	if (!bl_check_alignment(req->wb_offset, req->wb_bytes, PAGE_CACHE_MASK))
+-		nfs_pageio_reset_write_mds(pgio);
+-	else
+-		pnfs_generic_pg_init_write(pgio, req);
+-}
+-
+ static const struct nfs_pageio_ops bl_pg_read_ops = {
+-	.pg_init = bl_pg_init_read,
++	.pg_init = pnfs_generic_pg_init_read,
+ 	.pg_test = pnfs_generic_pg_test,
+ 	.pg_doio = pnfs_generic_pg_readpages,
+ };
+ 
+ static const struct nfs_pageio_ops bl_pg_write_ops = {
+-	.pg_init = bl_pg_init_write,
++	.pg_init = pnfs_generic_pg_init_write,
+ 	.pg_test = pnfs_generic_pg_test,
+ 	.pg_doio = pnfs_generic_pg_writepages,
+ };
+-- 
+1.7.1.262.g5ef3d
 
-By the way, are you still looking into one of those approaches?
-
---b.
