@@ -1,175 +1,183 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60301 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:40448 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751682Ab2HQQBB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Aug 2012 12:01:01 -0400
-Date: Fri, 17 Aug 2012 12:00:57 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Michael Tokarev <mjt@tls.msk.ru>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Linux-kernel <linux-kernel@vger.kernel.org>,
-        Eric Dumazet <eric.dumazet@gmail.com>
-Subject: Re: 3.0+ NFS issues (bisected)
-Message-ID: <20120817160057.GE11172@fieldses.org>
-References: <20120530132518.GA13794@fieldses.org>
- <4FC713ED.5040807@msgid.tls.msk.ru>
- <1338469169.2420.7.camel@lade.trondhjem.org>
- <4FC77128.9090206@msgid.tls.msk.ru>
- <1338471975.7732.5.camel@lade.trondhjem.org>
- <4FC77755.5060606@msgid.tls.msk.ru>
- <4FFC2573.8040804@msgid.tls.msk.ru>
- <20120712125303.GC16822@fieldses.org>
- <502DA4E8.9050800@msgid.tls.msk.ru>
- <20120817145616.GC11172@fieldses.org>
+	id S1751079Ab2HWQe3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Aug 2012 12:34:29 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q7NGYTq9027300
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 23 Aug 2012 12:34:29 -0400
+Message-ID: <50365BC0.1090604@RedHat.com>
+Date: Thu, 23 Aug 2012 12:35:12 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120817145616.GC11172@fieldses.org>
+To: Nalin Dahyabhai <nalin@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] Use /run/user/${UID} instead of /run/user/${USER}
+References: <20120821205232.GE9511@redhat.com>
+In-Reply-To: <20120821205232.GE9511@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 17, 2012 at 10:56:16AM -0400, J. Bruce Fields wrote:
-> On Fri, Aug 17, 2012 at 05:56:56AM +0400, Michael Tokarev wrote:
-> > On 12.07.2012 16:53, J. Bruce Fields wrote:
-> > > On Tue, Jul 10, 2012 at 04:52:03PM +0400, Michael Tokarev wrote:
-> > >> I tried to debug this again, maybe to reproduce in a virtual machine,
-> > >> and found out that it is only 32bit server code shows this issue:
-> > >> after updating the kernel on the server to 64bit (the same version)
-> > >> I can't reproduce this issue anymore.  Rebooting back to 32bit,
-> > >> and voila, it is here again.
-> > >>
-> > >> Something apparenlty isn't right on 32bits... ;)
-> > >>
-> > >> (And yes, the prob is still present and is very annoying :)
-> > > 
-> > > OK, that's very useful, thanks.  So probably a bug got introduced in the
-> > > 32-bit case between 2.6.32 and 3.0.
-> > > 
-> > > My personal upstream testing is normally all x86_64 only.  I'll kick off
-> > > a 32-bit install and see if I can reproduce this quickly.
-> > 
-> > Actually it has nothing to do with 32 vs 64 bits as I
-> > initially thought.  It happens on 64bits too, but takes
-> > more time (or data to transfer) to trigger.
-> 
-> That makes it sound like some kind of leak: you're hitting this case
-> eventually either way, but it takes longer in the case where you have
-> more (low) memory.
-> 
-> I wish I was more familiar with the tcp code.... What number exactly is
-> being compared against those limits, and how could we watch it from
-> userspace?
 
-Uh, if I grepped my way through this right: it looks like it's the
-"memory" column of the "TCP" row of /proc/net/protocols; might be
-interesting to see how that's changing over time.
 
+On 08/21/2012 04:52 PM, Nalin Dahyabhai wrote:
+> Newer versions of systemd create a /run/user/${UID} directory
+> instead of the /run/user/${USER} directory, so switch to
+> scanning for that.  To make the per-user directory bit a little
+> less magical, change the default to incorporate a "%U", which
+> gets dynamically expanded to the user's UID when needed.
 > 
-> --b.
+> Signed-off-by: Nalin Dahyabhai <nalin@redhat.com>
+Committed...
+
+steved.
+> ---
+>  utils/gssd/gssd.h      |  2 +-
+>  utils/gssd/gssd.man    |  9 ++++++---
+>  utils/gssd/gssd_proc.c | 36 ++----------------------------------
+>  utils/gssd/krb5_util.c | 30 ++++++++++++++++++++++++++----
+>  4 files changed, 35 insertions(+), 42 deletions(-)
 > 
-> > 
-> > 
-> > > Let me know if you're able to narrow this down any more.
-> > 
-> > I bisected this issue to the following commit:
-> > 
-> > commit f03d78db65085609938fdb686238867e65003181
-> > Author: Eric Dumazet <eric.dumazet@gmail.com>
-> > Date:   Thu Jul 7 00:27:05 2011 -0700
-> > 
-> >     net: refine {udp|tcp|sctp}_mem limits
-> > 
-> >     Current tcp/udp/sctp global memory limits are not taking into account
-> >     hugepages allocations, and allow 50% of ram to be used by buffers of a
-> >     single protocol [ not counting space used by sockets / inodes ...]
-> > 
-> >     Lets use nr_free_buffer_pages() and allow a default of 1/8 of kernel ram
-> >     per protocol, and a minimum of 128 pages.
-> >     Heavy duty machines sysadmins probably need to tweak limits anyway.
-> > 
-> > 
-> > Reverting this commit on top of 3.0 (or any later 3.x kernel) fixes
-> > the behavour here.
-> > 
-> > This machine has 4Gb of memory.  On 3.0, with this patch applied
-> > (as it is part of 3.0), tcp_mem is like this:
-> > 
-> >   21228     28306   42456
-> > 
-> > with this patch reverted, tcp_mem shows:
-> > 
-> >   81216     108288  162432
-> > 
-> > and with these values, it works fine.
-> > 
-> > So it looks like something else goes wrong there,
-> > which lead to all nfsds fighting with each other
-> > for something and eating 100% of available CPU
-> > instead of servicing clients.
-> > 
-> > For added fun, when setting tcp_mem to the "good" value
-> > from "bad" value (after booting into kernel with that
-> > patch applied), the problem is _not_ fixed.
-> > 
-> > Any further hints?
-> > 
-> > Thanks,
-> > 
-> > /mjt
-> > 
-> > >> On 31.05.2012 17:51, Michael Tokarev wrote:
-> > >>> On 31.05.2012 17:46, Myklebust, Trond wrote:
-> > >>>> On Thu, 2012-05-31 at 17:24 +0400, Michael Tokarev wrote:
-> > >>> []
-> > >>>>> I started tcpdump:
-> > >>>>>
-> > >>>>>  tcpdump -npvi br0 -s 0 host 192.168.88.4 and \( proto ICMP or port 2049 \) -w nfsdump
-> > >>>>>
-> > >>>>> on the client (192.168.88.2).  Next I mounted a directory on the client,
-> > >>>>> and started reading (tar'ing) a directory into /dev/null.  It captured a
-> > >>>>> few stalls.  Tcpdump shows number of packets it got, the stalls are at
-> > >>>>> packet counts 58090, 97069 and 97071.  I cancelled the capture after that.
-> > >>>>>
-> > >>>>> The resulting file is available at http://www.corpit.ru/mjt/tmp/nfsdump.xz ,
-> > >>>>> it is 220Mb uncompressed and 1.3Mb compressed.  The source files are
-> > >>>>> 10 files of 1Gb each, all made by using `truncate' utility, so does not
-> > >>>>> take place on disk at all.  This also makes it obvious that the issue
-> > >>>>> does not depend on the speed of disk on the server (since in this case,
-> > >>>>> the server disk isn't even in use).
-> > >>>>
-> > >>>> OK. So from the above file it looks as if the traffic is mainly READ
-> > >>>> requests.
-> > >>>
-> > >>> The issue here happens only with reads.
-> > >>>
-> > >>>> In 2 places the server stops responding. In both cases, the client seems
-> > >>>> to be sending a single TCP frame containing several COMPOUNDS containing
-> > >>>> READ requests (which should be legal) just prior to the hang. When the
-> > >>>> server doesn't respond, the client pings it with a RENEW, before it ends
-> > >>>> up severing the TCP connection and then retransmitting.
-> > >>>
-> > >>> And sometimes -- speaking only from the behavour I've seen, not from the
-> > >>> actual frames sent -- server does not respond to the RENEW too, in which
-> > >>> case the client reports "nfs server no responding", and on the next
-> > >>> renew it may actually respond.  This happens too, but much more rare.
-> > >>>
-> > >>> During these stalls, ie, when there's no network activity at all,
-> > >>> the server NFSD threads are busy eating all available CPU.
-> > >>>
-> > >>> What does it all tell us? :)
-> > >>>
-> > >>> Thank you!
-> > >>>
-> > >>> /mjt
-> > >>> --
-> > >>> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> > >>> the body of a message to majordomo@vger.kernel.org
-> > >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > >>> Please read the FAQ at  http://www.tux.org/lkml/
-> > >>
-> > > --
-> > > To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > > Please read the FAQ at  http://www.tux.org/lkml/
-> > 
+> diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
+> index 1d923d7..86472a1 100644
+> --- a/utils/gssd/gssd.h
+> +++ b/utils/gssd/gssd.h
+> @@ -45,7 +45,7 @@
+>  #define DNOTIFY_SIGNAL		(SIGRTMIN + 3)
+>  
+>  #define GSSD_DEFAULT_CRED_DIR			"/tmp"
+> -#define GSSD_USER_CRED_DIR			"/run/user"
+> +#define GSSD_USER_CRED_DIR			"/run/user/%U"
+>  #define GSSD_DEFAULT_CRED_PREFIX		"krb5cc"
+>  #define GSSD_DEFAULT_MACHINE_CRED_SUFFIX	"machine"
+>  #define GSSD_DEFAULT_KEYTAB_FILE		"/etc/krb5.keytab"
+> diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
+> index d8138fa..c74b7e8 100644
+> --- a/utils/gssd/gssd.man
+> +++ b/utils/gssd/gssd.man
+> @@ -103,9 +103,12 @@ where to look for the rpc_pipefs filesystem.  The default value is
+>  .B -d directory
+>  Tells
+>  .B rpc.gssd
+> -where to look for Kerberos credential files.  The default value is "/tmp".
+> -This can also be a colon separated list of directories to be searched
+> -for Kerberos credential files.  Note that if machine credentials are being
+> +where to look for Kerberos credential files.  The default value is
+> +"/tmp:/run/user/%U".
+> +This can also be a colon separated list of directories to be searched for
+> +Kerberos credential files.  The sequence "%U", if used, is replaced with
+> +the UID of the user for whom credentials are being searched.
+> +Note that if machine credentials are being
+>  stored in files, then the first directory on this list is where the
+>  machine credentials are stored.
+>  .TP
+> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+> index e393d59..336f3e9 100644
+> --- a/utils/gssd/gssd_proc.c
+> +++ b/utils/gssd/gssd_proc.c
+> @@ -937,23 +937,6 @@ int create_auth_rpc_client(struct clnt_info *clp,
+>  	goto out;
+>  }
+>  
+> -static char *
+> -user_cachedir(char *dirname, uid_t uid)
+> -{
+> -	struct passwd *pw;
+> -	char *ptr;
+> -
+> -	if ((pw = getpwuid(uid)) == NULL) {
+> -		printerr(0, "user_cachedir: Failed to find '%d' uid"
+> -			    " for cache directory\n");
+> -		return NULL;
+> -	}
+> -	ptr = malloc(strlen(dirname)+strlen(pw->pw_name)+2);
+> -	if (ptr)
+> -		sprintf(ptr, "%s/%s", dirname, pw->pw_name);
+> -
+> -	return ptr;
+> -}
+>  /*
+>   * this code uses the userland rpcsec gss library to create a krb5
+>   * context on behalf of the kernel
+> @@ -968,7 +951,7 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+>  	gss_buffer_desc		token;
+>  	char			**credlist = NULL;
+>  	char			**ccname;
+> -	char			**dirname, *dir, *userdir;
+> +	char			**dirname;
+>  	int			create_resp = -1;
+>  	int			err, downcall_err = -EACCES;
+>  
+> @@ -1011,22 +994,7 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+>  				service == NULL)) {
+>  		/* Tell krb5 gss which credentials cache to use */
+>  		for (dirname = ccachesearch; *dirname != NULL; dirname++) {
+> -			/* See if the user name is needed */
+> -			if (strncmp(*dirname, GSSD_USER_CRED_DIR, 
+> -					strlen(GSSD_USER_CRED_DIR)) == 0) {
+> -				userdir = user_cachedir(*dirname, uid);
+> -				if (userdir == NULL) 
+> -					continue;
+> -				dir = userdir;
+> -			} else
+> -				dir = *dirname;
+> -
+> -			err = gssd_setup_krb5_user_gss_ccache(uid, clp->servername, dir);
+> -
+> -			if (userdir) {
+> -				free(userdir);
+> -				userdir = NULL;
+> -			}
+> +			err = gssd_setup_krb5_user_gss_ccache(uid, clp->servername, *dirname);
+>  			if (err == -EKEYEXPIRED)
+>  				downcall_err = -EKEYEXPIRED;
+>  			else if (!err)
+> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+> index 2389276..60ba594 100644
+> --- a/utils/gssd/krb5_util.c
+> +++ b/utils/gssd/krb5_util.c
+> @@ -1036,16 +1036,38 @@ err_cache:
+>   * Returns 0 if a ccache was found, and a non-zero error code otherwise.
+>   */
+>  int
+> -gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername, char *dirname)
+> +gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername, char *dirpattern)
+>  {
+> -	char			buf[MAX_NETOBJ_SZ];
+> +	char			buf[MAX_NETOBJ_SZ], dirname[PATH_MAX];
+>  	const char		*cctype;
+>  	struct dirent		*d;
+> -	int			err;
+> +	int			err, i, j;
+>  
+>  	printerr(2, "getting credentials for client with uid %u for "
+>  		    "server %s\n", uid, servername);
+> -	memset(buf, 0, sizeof(buf));
+> +
+> +	for (i = 0, j = 0; dirpattern[i] != '\0'; i++) {
+> +		switch (dirpattern[i]) {
+> +		case '%':
+> +			switch (dirpattern[i + 1]) {
+> +			case '%':
+> +				dirname[j++] = dirpattern[i];
+> +				i++;
+> +				break;
+> +			case 'U':
+> +				j += sprintf(dirname + j, "%lu",
+> +					     (unsigned long) uid);
+> +				i++;
+> +				break;
+> +			}
+> +			break;
+> +		default:
+> +			dirname[j++] = dirpattern[i];
+> +			break;
+> +		}
+> +	}
+> +	dirname[j] = '\0';
+> +
+>  	err = gssd_find_existing_krb5_ccache(uid, dirname, &cctype, &d);
+>  	if (err)
+>  		return err;
