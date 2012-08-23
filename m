@@ -1,44 +1,38 @@
-From: "Allen and Violet Large" <mjiriarte-kHEsxn/QvRTzm0FIeTAcxA@public.gmane.org>
-Subject: (unknown)
-Date: Wed, 29 Aug 2012 17:24:42 +0200
-Message-ID: <69c10bc54ff3af207d63414138f11162.squirrel__46593.0790211589$1346254527$gmane$org@correo.uned.es>
-Reply-To: allen-violetlarge11-W+jws2TpwOvR7s880joybQ@public.gmane.org
+From: Tai Bei <info-puGfsi27rH1aa/9Udqfwiw@public.gmane.org>
+Subject: Proposal.
+Date: Thu, 23 Aug 2012 23:55:22 +0100
+Message-ID: <077134233b42efbd44ed2f63961b7a2b__1008.21227902106$1345771903$gmane$org@fce.uncu.edu.ar>
+Reply-To: <tai02@9.cn>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-To: unlisted-recipients:; (no To-header on input)
+Content-Type: text/plain; charset=UTF-8;
+ format=flowed
+To: undisclosed-recipients:;
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-out-diez.uned.es ([62.204.192.124]:60918 "EHLO
-	smtp-out-diez.uned.es" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753955Ab2H2Pe6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Aug 2012 11:34:58 -0400
-Subject: 
+Received: from fce.uncu.edu.ar ([190.220.130.146]:42142 "EHLO
+	mail.fce.uncu.edu.ar" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753064Ab2HXBb2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Aug 2012 21:31:28 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Good-day To You,
 
 
-
-Dear Sir/Madam,
-
-This is my fifth times of writting you this email since last year till
-date but no response from you.Hope you get this one, as this is a personal
-email directed to you. My wife and I won a Jackpot Lotteryof $11.3 million
-in July and have voluntarily decided to donate the sum of $500,000.00 USD
-to you as part of our own charity project to improve the lot of 10 lucky
-individuals all over the world. If you have received this email then you
-are one of the lucky recipients and all you have to do is get back with us
-so that we can send your details to the payout bank.Please note that you
-have to contact my private email for more
-informations(allen-violetlarge11-W+jws2TpwOvR7s880joybQ@public.gmane.org)
-
-You can verify this by visiting the web pages below.
+It is understandable that you might be a little bit apprehensive 
+because you do not know me but I have a lucrative business proposal of 
+mutual interest to share with you. I got your reference in my search for 
+someone who suits my proposed business relationship. I am Mr. Tai Bei, 
+officer with the International bank of Taipei (Bank SinoPac). I will 
+need you to assist me in executing a business project from Taiwan to 
+your country. It involves the transfer of money, Everything concerning 
+this transaction shall be legally done without hitch.
 
 
+Once the funds have been successfully transferred into your account, we 
+shall share in the ratio to be agreed by both of us. I shall furnish you 
+with more information about this operation immediately I receive a 
+positive response from you.
 
-http://www.dailymail.co.uk/news/article-1326473/Canadian-couple-Allen-Violet-Large-away-entire-11-2m-lottery-win.html
 
-
-Goodluck,
-Allen and Violet Large
-allen-violetlarge11-W+jws2TpwOvR7s880joybQ@public.gmane.org
-
+Kind Regards,
+Tai Bei
