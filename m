@@ -1,99 +1,191 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:22705 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:57474 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752446Ab2HNOxv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Aug 2012 10:53:51 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Peng Tao <bergwolf@gmail.com>
-CC: Benny Halevy <bhalevy@tonian.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        Boaz Harrosh <bharrosh@panasas.com>,
-        "Isaman, Fred" <Fred.Isaman@netapp.com>,
-        Idan Keidar <idank@tonian.com>, Lev Solomonov <solo@tonian.com>
-Subject: Re: [PATCH] NFSv4.1: Remove a bogus BUG_ON() in
- nfs4_layoutreturn_done
-Date: Tue, 14 Aug 2012 14:53:19 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA93A3B3C@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1344457310-26442-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <CA+a=Yy7SX+cPLFiNy552bU9ZMS_rSwvaSpV732_mDwpcPAH5Wg@mail.gmail.com>
-	 <1344522979.23523.2.camel@lade.trondhjem.org>
-	 <CA+a=Yy7tDi0kQGvjPeb=O_9XMnZDm-_31VTkNF7wEW7Pb0BZow@mail.gmail.com>
-	 <1344526780.25447.6.camel@lade.trondhjem.org> <502A02B2.2020700@tonian.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA93A372D@SACEXCMBX04-PRD.hq.netapp.com>
-	 <CA+a=Yy7SgNGeVzM1VNvn+nGAVTpJT6uOLn=AfNsvQJsu6Au1Wg@mail.gmail.com>
-In-Reply-To: <CA+a=Yy7SgNGeVzM1VNvn+nGAVTpJT6uOLn=AfNsvQJsu6Au1Wg@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1751079Ab2HWQeO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Aug 2012 12:34:14 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q7NGYD7A027261
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 23 Aug 2012 12:34:13 -0400
+Message-ID: <50365BB0.4000706@RedHat.com>
+Date: Thu, 23 Aug 2012 12:34:56 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: Nalin Dahyabhai <nalin@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] scan for DIR: ccaches, too
+References: <20120821205137.GD9511@redhat.com>
+In-Reply-To: <20120821205137.GD9511@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA4LTE0IGF0IDIyOjMwICswODAwLCBQZW5nIFRhbyB3cm90ZToNCj4gT24g
-VHVlLCBBdWcgMTQsIDIwMTIgYXQgOTo0NSBQTSwgTXlrbGVidXN0LCBUcm9uZA0KPiA8VHJvbmQu
-TXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+IE9uIFR1ZSwgMjAxMi0wOC0xNCBhdCAx
-MDo0OCArMDMwMCwgQmVubnkgSGFsZXZ5IHdyb3RlOg0KPiA+PiBPbiAyMDEyLTA4LTA5IDE4OjM5
-LCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+PiA+IE9uIFRodSwgMjAxMi0wOC0wOSBhdCAy
-MzowMSArMDgwMCwgUGVuZyBUYW8gd3JvdGU6DQo+ID4+ID4+IE9uIFRodSwgQXVnIDksIDIwMTIg
-YXQgMTA6MzYgUE0sIE15a2xlYnVzdCwgVHJvbmQNCj4gPj4gPj4gPFRyb25kLk15a2xlYnVzdEBu
-ZXRhcHAuY29tPiB3cm90ZToNCj4gPj4gPj4+IE9uIFRodSwgMjAxMi0wOC0wOSBhdCAyMjozMCAr
-MDgwMCwgUGVuZyBUYW8gd3JvdGU6DQo+ID4+ID4+Pj4gT24gVGh1LCBBdWcgOSwgMjAxMiBhdCA0
-OjIxIEFNLCBUcm9uZCBNeWtsZWJ1c3QNCj4gPj4gPj4+PiA8VHJvbmQuTXlrbGVidXN0QG5ldGFw
-cC5jb20+IHdyb3RlOg0KPiA+PiA+Pj4+PiBFdmVyIHNpbmNlIGNvbW1pdCAwYTU3Y2RhYzNmIChO
-RlN2NC4xIHNlbmQgbGF5b3V0cmV0dXJuIHRvIGZlbmNlDQo+ID4+ID4+Pj4+IGRpc2Nvbm5lY3Rl
-ZCBkYXRhIHNlcnZlcikgd2UndmUgYmVlbiBzZW5kaW5nIGxheW91dHJldHVybiBjYWxscw0KPiA+
-PiA+Pj4+PiB3aGlsZSB0aGVyZSBpcyBwb3RlbnRpYWxseSBzdGlsbCBvdXRzdGFuZGluZyBJL08g
-dG8gdGhlIGRhdGENCj4gPj4gPj4+Pj4gc2VydmVycy4gVGhlIHJlYXNvbiB3ZSBkbyB0aGlzIGlz
-IHRvIGF2b2lkIHJhY2VzIGJldHdlZW4gcmVwbGF5ZWQNCj4gPj4gPj4+Pj4gd3JpdGVzIHRvIHRo
-ZSBNRFMgYW5kIHRoZSBvcmlnaW5hbCB3cml0ZXMgdG8gdGhlIERTLg0KPiA+PiA+Pj4+Pg0KPiA+
-PiA+Pj4+PiBXaGVuIHRoaXMgaGFwcGVucywgdGhlIEJVR19PTigpIGluIG5mczRfbGF5b3V0cmV0
-dXJuX2RvbmUgY2FuDQo+ID4+ID4+Pj4+IGJlIHRyaWdnZXJlZCBiZWNhdXNlIGl0IGFzc3VtZXMg
-dGhhdCB3ZSB3b3VsZCBuZXZlciBjYWxsDQo+ID4+ID4+Pj4+IGxheW91dHJldHVybiB3aXRob3V0
-IGtub3dpbmcgdGhhdCBhbGwgSS9PIHRvIHRoZSBEUyBpcw0KPiA+PiA+Pj4+PiBmaW5pc2hlZC4g
-VGhlIGZpeCBpcyB0byByZW1vdmUgdGhlIEJVR19PTigpIG5vdyB0aGF0IHRoZQ0KPiA+PiA+Pj4+
-PiBhc3N1bXB0aW9ucyBiZWhpbmQgdGhlIHRlc3QgYXJlIG9ic29sZXRlLg0KPiA+PiA+Pj4+Pg0K
-PiA+PiA+Pj4+IElzbid0IE1EUyBzdXBwb3NlZCB0byByZWNhbGwgdGhlIGxheW91dCBpZiByYWNl
-cyBhcmUgcG9zc2libGUgYmV0d2Vlbg0KPiA+PiA+Pj4+IG91dHN0YW5kaW5nIHdyaXRlLXRvLURT
-IGFuZCB3cml0ZS10aHJvdWdoLU1EUz8NCj4gPj4gPj4+DQo+ID4+ID4+PiBXaGVyZSBkbyB5b3Ug
-cmVhZCB0aGF0IGluIFJGQzU2NjE/DQo+ID4+ID4+Pg0KPiA+PiA+PiBUaGF0J3MgbXkgKG1heWJl
-IG1pcy0pdW5kZXJzdGFuZGluZyBvZiBob3cgc2VydmVyIHdvcmtzLi4uIEJ1dCBsb29raW5nDQo+
-ID4+ID4+IGF0IHJmYzU2NjEgc2VjdGlvbiAxOC40NC4zLiBsYXlvdXRyZXR1cm4gaW1wbGVtZW50
-YXRpb24uDQo+ID4+ID4+ICINCj4gPj4gPj4gQWZ0ZXIgdGhpcyBjYWxsLA0KPiA+PiA+PiAgICB0
-aGUgY2xpZW50IE1VU1QgTk9UIHVzZSB0aGUgcmV0dXJuZWQgbGF5b3V0KHMpIGFuZCB0aGUgYXNz
-b2NpYXRlZA0KPiA+PiA+PiAgICBzdG9yYWdlIHByb3RvY29sIHRvIGFjY2VzcyB0aGUgZmlsZSBk
-YXRhLg0KPiA+PiA+PiAiDQo+ID4+ID4+IEFuZCBnaXZlbiBjb21taXQgMGE1N2NkYWMzZiwgY2xp
-ZW50IGlzIHVzaW5nIHRoZSBsYXlvdXQgZXZlbiBhZnRlcg0KPiA+PiA+PiBsYXlvdXRyZXR1cm4s
-IHdoaWNoIElNSE8gaXMgYSB2aW9sYXRpb24gb2YgcmZjNTY2MS4NCj4gPj4gPg0KPiA+PiA+IE5v
-LiBJdCBpcyB1c2luZyB0aGUgbGF5b3V0cmV0dXJuIHRvIHRlbGwgdGhlIE1EUyB0byBmZW5jZSBv
-ZmYgSS9PIHRvIGENCj4gPj4gPiBkYXRhIHNlcnZlciB0aGF0IGlzIG5vdCByZXNwb25kaW5nLiBJ
-dCBpc24ndCBhdHRlbXB0aW5nIHRvIHVzZSB0aGUNCj4gPj4gPiBsYXlvdXQgYWZ0ZXIgdGhlIGxh
-eW91dHJldHVybjogdGhlIHdob2xlIHBvaW50IGlzIHRoYXQgd2UgYXJlIGF0dGVtcHRpbmcNCj4g
-Pj4gPiB3cml0ZS10aHJvdWdoLU1EUyBhZnRlciB0aGUgYXR0ZW1wdCB0byB3cml0ZSB0aHJvdWdo
-IHRoZSBEUyB0aW1lZCBvdXQuDQo+ID4+ID4NCj4gPj4NCj4gPj4gSSBoZWFyIHlvdSwgYnV0IHRo
-aXMgdXNlIGNhc2UgaXMgdmFsaWQgYWZ0ZXIgYSB0aW1lIG91dCAvIGRpc2Nvbm5lY3QNCj4gPj4g
-KHdoaWNoIHdpbGwgdHJhbnNsYXRlIHRvIFBORlNfT1NEX0VSUl9VTlJFQUNIQUJMRSBmb3IgdGhl
-IG9iamVjdHMgbGF5b3V0KQ0KPiA+PiBJbiBvdGhlciBjYXNlcywgSS9PcyB0byB0aGUgRFMgbWln
-aHQgb2J2aW91c2x5IGJlIGluIGZsaWdodCBhbmQgdGhlIEJVR19PTg0KPiA+PiBpbmRpY2F0ZXMg
-dGhhdC4NCj4gPj4NCj4gPj4gSU1PLCB0aGUgcmlnaHQgd2F5IHRvIGltcGxlbWVudCB0aGF0IGlz
-IHRvIGluaXRpYWxseSBtYXJrIHRoZSBsc2VncyBpbnZhbGlkDQo+ID4+IGFuZCBpbmNyZW1lbnQg
-cGxoX2Jsb2NrX2xnZXRzLCBhcyB3ZSBkbyB0b2RheSBpbiBfcG5mc19yZXR1cm5fbGF5b3V0DQo+
-ID4+IGJ1dCBhY3R1YWxseSBzZW5kIHRoZSBsYXlvdXQgcmV0dXJuIG9ubHkgd2hlbiB0aGUgbGFz
-dCBzZWdtZW50IGlzIGRlcmVmZXJlbmNlZC4NCj4gPg0KPiA+IFRoaXMgaXMgd2hhdCB3ZSBkbyBm
-b3Igb2JqZWN0IGFuZCBibG9jayBsYXlvdXQgdHlwZXMsIHNvIHlvdXINCj4gPiBvYmplY3RzLXNw
-ZWNpZmljIG9iamVjdGlvbiBpcyB1bmZvdW5kZWQuDQo+ID4NCj4gb2JqZWN0IGxheW91dCBpcyBh
-bHNvIGRvaW5nIGxheW91dCByZXR1cm4gb24gSU8gZXJyb3IgKGNvbW1pdA0KPiBmZTBmZTgzNTg1
-ZjgpLiBBbmQgaXQgZG9lc24ndCB0YWtlIGNhcmUgb2YgZHJhaW5pbmcgY29uY3VycmVudA0KPiBp
-bi1mbGlnaHQgSU8uIEkgZ3Vlc3MgdGhhdCdzIHdoeSBCb2F6IHNhdyB0aGUgc2FtZSBCVUdfT04u
-DQoNClllcy4gSSBkaWQgbm90aWNlIHRoYXQgY29kZSB3aGVuIEkgd2FzIGxvb2tpbmcgaW50byB0
-aGlzLiBIb3dldmVyIHRoYXQncw0KQm9heidzIG93biBwYXRjaCwgYW5kIGl0IF9vbmx5XyBhcHBs
-aWVzIHRvIHRoZSBvYmplY3RzIGxheW91dCB0eXBlLiBJDQphc3N1bWVkIHRoYXQgaGUgaGFkIHRl
-c3RlZCBpdCB3aGVuIEkgYXBwbGllZCBpdC4uLg0KDQpPbmUgd2F5IHRvIGZpeCB0aGF0IHdvdWxk
-IGJlIHRvIGtlZXAgYSBjb3VudCBvZiAib3V0c3RhbmRpbmcNCnJlYWQvd3JpdGVzIiBpbiB0aGUg
-bGF5b3V0LCBzbyB0aGF0IHdoZW4gdGhlIGVycm9yIG9jY3VycywgYW5kIHdlIHdhbnQNCnRvIGZh
-bGwgYmFjayB0byBNRFMsIHdlIGp1c3QgaW5jcmVtZW50IHBsaF9ibG9ja19sZ2V0cywgaW52YWxp
-ZGF0ZSB0aGUNCmxheW91dCwgYW5kIHRoZW4gbGV0IHRoZSBvdXRzdGFuZGluZyByZWFkL3dyaXRl
-cyBmYWxsIHRvIHplcm8gYmVmb3JlDQpzZW5kaW5nIHRoZSBsYXlvdXRyZXR1cm4uDQpJZiB0aGUg
-b2JqZWN0cyBsYXlvdXQgd2FudHMgdG8gZG8gdGhhdCwgdGhlbiBJIGhhdmUgbm8gb2JqZWN0aW9u
-LiBBcw0KSSd2ZSBzYWlkIG11bHRpcGxlIHRpbWVzLCB0aG91Z2gsIEknbSBub3QgY29udmluY2Vk
-IHdlIHdhbnQgdG8gZG8gdGhhdA0KZm9yIHRoZSBmaWxlcyBsYXlvdXQuDQoNCi0tIA0KVHJvbmQg
-TXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5N
-eWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
+
+
+On 08/21/2012 04:51 PM, Nalin Dahyabhai wrote:
+> In addition to matching "FILE:krb5cc_*" in the specified directory or
+> directories, also match "DIR:krb5cc*", if we find subdirectories with
+> names that match the search pattern.
+> 
+> Signed-off-by: Nalin Dahyabhai <nalin@redhat.com>
+Committed...
+
+steved.
+> ---
+>  utils/gssd/gssd.h      |  2 +-
+>  utils/gssd/krb5_util.c | 50 ++++++++++++++++++++++++++++++++------------------
+>  2 files changed, 33 insertions(+), 19 deletions(-)
+> 
+> diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
+> index 71a140b..1d923d7 100644
+> --- a/utils/gssd/gssd.h
+> +++ b/utils/gssd/gssd.h
+> @@ -46,7 +46,7 @@
+>  
+>  #define GSSD_DEFAULT_CRED_DIR			"/tmp"
+>  #define GSSD_USER_CRED_DIR			"/run/user"
+> -#define GSSD_DEFAULT_CRED_PREFIX		"krb5cc_"
+> +#define GSSD_DEFAULT_CRED_PREFIX		"krb5cc"
+>  #define GSSD_DEFAULT_MACHINE_CRED_SUFFIX	"machine"
+>  #define GSSD_DEFAULT_KEYTAB_FILE		"/etc/krb5.keytab"
+>  #define GSSD_SERVICE_NAME			"nfs"
+> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+> index 887d118..2389276 100644
+> --- a/utils/gssd/krb5_util.c
+> +++ b/utils/gssd/krb5_util.c
+> @@ -139,7 +139,7 @@ int limit_to_legacy_enctypes = 0;
+>  
+>  static int select_krb5_ccache(const struct dirent *d);
+>  static int gssd_find_existing_krb5_ccache(uid_t uid, char *dirname,
+> -		struct dirent **d);
+> +		const char **cctype, struct dirent **d);
+>  static int gssd_get_single_krb5_cred(krb5_context context,
+>  		krb5_keytab kt, struct gssd_k5_kt_princ *ple, int nocache);
+>  static int query_krb5_ccache(const char* cred_cache, char **ret_princname,
+> @@ -178,7 +178,8 @@ select_krb5_ccache(const struct dirent *d)
+>   * code otherwise.
+>   */
+>  static int
+> -gssd_find_existing_krb5_ccache(uid_t uid, char *dirname, struct dirent **d)
+> +gssd_find_existing_krb5_ccache(uid_t uid, char *dirname,
+> +			       const char **cctype, struct dirent **d)
+>  {
+>  	struct dirent **namelist;
+>  	int n;
+> @@ -192,6 +193,7 @@ gssd_find_existing_krb5_ccache(uid_t uid, char *dirname, struct dirent **d)
+>  	int score, best_match_score = 0, err = -EACCES;
+>  
+>  	memset(&best_match_stat, 0, sizeof(best_match_stat));
+> +	*cctype = NULL;
+>  	*d = NULL;
+>  	n = scandir(dirname, &namelist, select_krb5_ccache, 0);
+>  	if (n < 0) {
+> @@ -203,41 +205,51 @@ gssd_find_existing_krb5_ccache(uid_t uid, char *dirname, struct dirent **d)
+>  		for (i = 0; i < n; i++) {
+>  			snprintf(statname, sizeof(statname),
+>  				 "%s/%s", dirname, namelist[i]->d_name);
+> -			printerr(3, "CC file '%s' being considered, "
+> +			printerr(3, "CC '%s' being considered, "
+>  				 "with preferred realm '%s'\n",
+>  				 statname, preferred_realm ?
+>  					preferred_realm : "<none selected>");
+> -			snprintf(buf, sizeof(buf), "FILE:%s/%s", dirname, 
+> -					namelist[i]->d_name);
+>  			if (lstat(statname, &tmp_stat)) {
+> -				printerr(0, "Error doing stat on file '%s'\n",
+> +				printerr(0, "Error doing stat on '%s'\n",
+>  					 statname);
+>  				free(namelist[i]);
+>  				continue;
+>  			}
+>  			/* Only pick caches owned by the user (uid) */
+>  			if (tmp_stat.st_uid != uid) {
+> -				printerr(3, "CC file '%s' owned by %u, not %u\n",
+> +				printerr(3, "CC '%s' owned by %u, not %u\n",
+>  					 statname, tmp_stat.st_uid, uid);
+>  				free(namelist[i]);
+>  				continue;
+>  			}
+> -			if (!S_ISREG(tmp_stat.st_mode)) {
+> -				printerr(3, "CC file '%s' is not a regular file\n",
+> +			if (!S_ISREG(tmp_stat.st_mode) &&
+> +			    !S_ISDIR(tmp_stat.st_mode)) {
+> +				printerr(3, "CC '%s' is not a regular "
+> +					 "file or directory\n",
+>  					 statname);
+>  				free(namelist[i]);
+>  				continue;
+>  			}
+>  			if (uid == 0 && !root_uses_machine_creds && 
+>  				strstr(namelist[i]->d_name, "_machine_")) {
+> -				printerr(3, "CC file '%s' not available to root\n",
+> +				printerr(3, "CC '%s' not available to root\n",
+>  					 statname);
+>  				free(namelist[i]);
+>  				continue;
+>  			}
+> +			if (S_ISDIR(tmp_stat.st_mode)) {
+> +				*cctype = "DIR";
+> +			} else
+> +			if (S_ISREG(tmp_stat.st_mode)) {
+> +				*cctype = "FILE";
+> +			} else {
+> +				continue;
+> +			}
+> +			snprintf(buf, sizeof(buf), "%s:%s/%s", *cctype,
+> +				 dirname, namelist[i]->d_name);
+>  			if (!query_krb5_ccache(buf, &princname, &realm)) {
+> -				printerr(3, "CC file '%s' is expired or corrupt\n",
+> -					 statname);
+> +				printerr(3, "CC '%s' is expired or corrupt\n",
+> +					 buf);
+>  				free(namelist[i]);
+>  				err = -EKEYEXPIRED;
+>  				continue;
+> @@ -248,9 +260,9 @@ gssd_find_existing_krb5_ccache(uid_t uid, char *dirname, struct dirent **d)
+>  					strcmp(realm, preferred_realm) == 0) 
+>  				score++;
+>  
+> -			printerr(3, "CC file '%s'(%s@%s) passed all checks and"
+> +			printerr(3, "CC '%s'(%s@%s) passed all checks and"
+>  				    " has mtime of %u\n",
+> -				 statname, princname, realm, 
+> +				 buf, princname, realm, 
+>  				 tmp_stat.st_mtime);
+>  			/*
+>  			 * if more than one match is found, return the most
+> @@ -284,10 +296,11 @@ gssd_find_existing_krb5_ccache(uid_t uid, char *dirname, struct dirent **d)
+>  				else {
+>  					free(namelist[i]);
+>  				}
+> -				printerr(3, "CC file '%s/%s' is our "
+> +				printerr(3, "CC '%s:%s/%s' is our "
+>  					    "current best match "
+>  					    "with mtime of %u\n",
+> -					 dirname, best_match_dir->d_name,
+> +					 cctype, dirname,
+> +					 best_match_dir->d_name,
+>  					 best_match_stat.st_mtime);
+>  			}
+>  			free(princname);
+> @@ -1026,17 +1039,18 @@ int
+>  gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername, char *dirname)
+>  {
+>  	char			buf[MAX_NETOBJ_SZ];
+> +	const char		*cctype;
+>  	struct dirent		*d;
+>  	int			err;
+>  
+>  	printerr(2, "getting credentials for client with uid %u for "
+>  		    "server %s\n", uid, servername);
+>  	memset(buf, 0, sizeof(buf));
+> -	err = gssd_find_existing_krb5_ccache(uid, dirname, &d);
+> +	err = gssd_find_existing_krb5_ccache(uid, dirname, &cctype, &d);
+>  	if (err)
+>  		return err;
+>  
+> -	snprintf(buf, sizeof(buf), "FILE:%s/%s", dirname, d->d_name);
+> +	snprintf(buf, sizeof(buf), "%s:%s/%s", cctype, dirname, d->d_name);
+>  	free(d);
+>  
+>  	printerr(2, "using %s as credentials cache for client with "
