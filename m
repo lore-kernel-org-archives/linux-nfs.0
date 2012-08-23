@@ -1,41 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from minas.ics.muni.cz ([147.251.4.40]:56818 "EHLO minas.ics.muni.cz"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756080Ab2HIQ3e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Aug 2012 12:29:34 -0400
-Date: Thu, 9 Aug 2012 18:28:01 +0200
-From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Zdenek Salvet <salvet@ics.muni.cz>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4 backchannel authentication
-Message-ID: <20120809162801.GM11089@ics.muni.cz>
-References: <20120806135517.GS25979@ics.muni.cz>
- <20120807154114.GA21460@fieldses.org>
- <1344355148.5781.31.camel@lade.trondhjem.org>
- <20120808075813.GW604@horn.ics.muni.cz>
- <1344431887.3423.4.camel@lade.trondhjem.org>
- <20120809080642.GE604@horn.ics.muni.cz>
- <20120809144530.GB6592@fieldses.org>
- <1344527573.25447.17.camel@lade.trondhjem.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-2
-In-Reply-To: <1344527573.25447.17.camel@lade.trondhjem.org>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:45127 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751767Ab2HWQ2c (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Aug 2012 12:28:32 -0400
+Received: by mail-pb0-f46.google.com with SMTP id rr13so1767813pbb.19
+        for <linux-nfs@vger.kernel.org>; Thu, 23 Aug 2012 09:28:32 -0700 (PDT)
+From: Peng Tao <bergwolf@gmail.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH-resend 1/6] NFSv41: fix DIO write_io calculation
+Date: Fri, 24 Aug 2012 00:27:48 +0800
+Message-Id: <1345739273-2241-2-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1345739273-2241-1-git-send-email-bergwolf@gmail.com>
+References: <1345739273-2241-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 09, 2012 at 03:53:01PM +0000, Myklebust, Trond wrote:
-> How is this any different to requiring that the user start rpc.statd
-> before launching an NFSv3 mount? Just document the requirement if it
-> isn't already clear enough, and we can move on.
-> 
-> The other source of confusion here, was that the rpc.svcgssd was
-> delivered through a nfs-kernel-server package, which indicates that we
-> first and foremost need to educate the distro packagers.
+pnfs_within_mdsthreshold() is called inside pg_init. We need to set
+read_io/write_io before that. Otherwise we fail pnfs_within_mdsthreshold()
+and IO goes to MDS.
+A simple test case:
+dd if=foo of=/mnt/pnfs/bar bs=10M count=1 oflag=direct
 
-hmm, if both rpc.gssd and rpc.svcgssd are needed on clients and servers, isn't
-it worth of merging them into a single process?
+Signed-off-by: Peng Tao <tao.peng@emc.com>
+---
+ fs/nfs/direct.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 1ba385b..34a6282 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -463,10 +463,10 @@ static ssize_t nfs_direct_read(struct kiocb *iocb, const struct iovec *iov,
+ 	if (!is_sync_kiocb(iocb))
+ 		dreq->iocb = iocb;
+ 
++	NFS_I(inode)->read_io += iov_length(iov, nr_segs);
+ 	result = nfs_direct_read_schedule_iovec(dreq, iov, nr_segs, pos, uio);
+ 	if (!result)
+ 		result = nfs_direct_wait(dreq);
+-	NFS_I(inode)->read_io += result;
+ out_release:
+ 	nfs_direct_req_release(dreq);
+ out:
+@@ -814,6 +814,7 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ 	get_dreq(dreq);
+ 	atomic_inc(&inode->i_dio_count);
+ 
++	NFS_I(dreq->inode)->write_io += iov_length(iov, nr_segs);
+ 	for (seg = 0; seg < nr_segs; seg++) {
+ 		const struct iovec *vec = &iov[seg];
+ 		result = nfs_direct_write_schedule_segment(&desc, vec, pos, uio);
+@@ -825,7 +826,6 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ 		pos += vec->iov_len;
+ 	}
+ 	nfs_pageio_complete(&desc);
+-	NFS_I(dreq->inode)->write_io += desc.pg_bytes_written;
+ 
+ 	/*
+ 	 * If no bytes were started, return the error, and let the
 -- 
-Luká¹ Hejtmánek
+1.7.1.262.g5ef3d
+
