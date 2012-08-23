@@ -1,111 +1,315 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:34253 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759423Ab2HITbp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Aug 2012 15:31:45 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Peng Tao <bergwolf@gmail.com>
-CC: Idan Kedar <idank@tonian.com>, Boaz Harrosh <bharrosh@panasas.com>,
-        "NFS list" <linux-nfs@vger.kernel.org>,
-        Benny Halevy <bhalevy@tonian.com>
-Subject: Re: return layout on error, BUG/deadlock
-Date: Thu, 9 Aug 2012 19:31:43 +0000
-Message-ID: <1344540702.25447.67.camel@lade.trondhjem.org>
-References: <CABpMAyL-B9Kqg8O4xxxtj0X8PF7fP4TM+NnLA_Ynhm-_3C6MUg@mail.gmail.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9380987@SACEXCMBX04-PRD.hq.netapp.com>
-	 <CABpMAyKddCjhWe-LjFOJrikLnC+BJ7GsAMAvieh1rabDPiA=Ug@mail.gmail.com>
-	 <1344528377.25447.29.camel@lade.trondhjem.org>
-	 <CA+a=Yy5cE1v=nG_epkaKE2W--M=HAbtrySc9_+f6dvJVbusPJw@mail.gmail.com>
-	 <1344530243.25447.36.camel@lade.trondhjem.org>
-	 <CA+a=Yy5xZiegbQczkD1F2AaCKLO4cwHijQpNTTTRQzHj6JJ+WQ@mail.gmail.com>
-In-Reply-To: <CA+a=Yy5xZiegbQczkD1F2AaCKLO4cwHijQpNTTTRQzHj6JJ+WQ@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:45127 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751935Ab2HWQ2n (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Aug 2012 12:28:43 -0400
+Received: by mail-pb0-f46.google.com with SMTP id rr13so1767813pbb.19
+        for <linux-nfs@vger.kernel.org>; Thu, 23 Aug 2012 09:28:43 -0700 (PDT)
+From: Peng Tao <bergwolf@gmail.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH-resend 4/6] pnfsblock: fix partial page buffer wirte
+Date: Fri, 24 Aug 2012 00:27:51 +0800
+Message-Id: <1345739273-2241-5-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1345739273-2241-1-git-send-email-bergwolf@gmail.com>
+References: <1345739273-2241-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTA4LTEwIGF0IDAwOjQ4ICswODAwLCBQZW5nIFRhbyB3cm90ZToNCj4gT24g
-RnJpLCBBdWcgMTAsIDIwMTIgYXQgMTI6MzcgQU0sIE15a2xlYnVzdCwgVHJvbmQNCj4gPFRyb25k
-Lk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPiBPbiBGcmksIDIwMTItMDgtMTAgYXQg
-MDA6MzQgKzA4MDAsIFBlbmcgVGFvIHdyb3RlOg0KPiA+PiBPbiBGcmksIEF1ZyAxMCwgMjAxMiBh
-dCAxMjowNiBBTSwgTXlrbGVidXN0LCBUcm9uZA0KPiA+PiA8VHJvbmQuTXlrbGVidXN0QG5ldGFw
-cC5jb20+IHdyb3RlOg0KPiA+PiA+IE9uIFRodSwgMjAxMi0wOC0wOSBhdCAxODo0OSArMDMwMCwg
-SWRhbiBLZWRhciB3cm90ZToNCj4gPj4gPj4gT24gVGh1LCBBdWcgOSwgMjAxMiBhdCA1OjA1IFBN
-LCBNeWtsZWJ1c3QsIFRyb25kDQo+ID4+ID4+IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4g
-d3JvdGU6DQo+ID4+ID4+ID4+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+ID4+ID4+ID4+
-IEZyb206IGxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmcgW21haWx0bzpsaW51eC1uZnMt
-DQo+ID4+ID4+ID4+IG93bmVyQHZnZXIua2VybmVsLm9yZ10gT24gQmVoYWxmIE9mIElkYW4gS2Vk
-YXINCj4gPj4gPj4gPj4gU2VudDogVGh1cnNkYXksIEF1Z3VzdCAwOSwgMjAxMiA5OjAzIEFNDQo+
-ID4+ID4+ID4+IFRvOiBCb2F6IEhhcnJvc2g7IE5GUyBsaXN0DQo+ID4+ID4+ID4+IENjOiBCZW5u
-eSBIYWxldnkNCj4gPj4gPj4gPj4gU3ViamVjdDogcmV0dXJuIGxheW91dCBvbiBlcnJvciwgQlVH
-L2RlYWRsb2NrDQo+ID4+ID4+ID4+DQo+ID4+ID4+ID4+IEhpLA0KPiA+PiA+PiA+Pg0KPiA+PiA+
-PiA+PiBBcyBhIHJlc3VsdCBvZiBzb21lIGV4cGVyaW1lbnRzLCBJIHdhbnRlZCB0byBzZWUgd2hh
-dCBoYXBwZW5zIHdoZW4gSQ0KPiA+PiA+PiA+PiBpbmplY3QgYW4gZXJyb3IgKGhhcmQgY29kZWQp
-IHRvIHRoZSBvYmplY3QgbGF5b3V0IGRyaXZlci4gdGhlIHBhdGNoIGlzIGF0IHRoZQ0KPiA+PiA+
-PiA+PiBib3R0b20gb2YgdGhpcyBtYWlsLiB0aGUgcmVhc29uIEkgZGlkIHRoaXMgaXMgYmVjYXVz
-ZSB3aGVuIEkgaW5qZWN0IGVycm9ycyBpbiBteQ0KPiA+PiA+PiA+PiBtb2RpZmllZCB2ZXJzaW9u
-IG9mIHRoZSBvYmplY3QgbGF5b3V0IGRyaXZlciwgSSBnZXQgdGhlIHNhbWUgQlVHIFRpZ3Jhbg0K
-PiA+PiA+PiA+PiByZXBvcnRlZCBhYm91dCB5ZXN0ZXJkYXk6DQo+ID4+ID4+ID4+IG5mczRwcm9j
-LmM6NjI1MiA6ICAgQlVHX09OKCFsaXN0X2VtcHR5KCZsby0+cGxoX3NlZ3MpKTsNCj4gPj4gPj4g
-Pj4NCj4gPj4gPj4gPj4gSW4gbXkgbW9kaWZpZWQgdmVyc2lvbiAoYmFzZWQgb24ga2VybmVsIDMu
-MyksIHRoZSBidWcgc2VlbXMgdG8gYmUgdGhhdA0KPiA+PiA+PiA+PiBwbmZzX2xkX3dyaXRlX2Rv
-bmUgY2FsbHMgcG5mc19yZXR1cm5fbGF5b3V0IGluIHRoZSBlcnJvciBwYXRoLCBldmVuIGlmIHRo
-ZXJlDQo+ID4+ID4+ID4+IGlzIGluLWZsaWdodCBJL08uDQo+ID4+ID4+ID4NCj4gPj4gPj4gPiBU
-aGF0IGlzIG5vdCBhIGJ1Zy4gSXQgaXMgYW4gaW50ZW50aW9uYWwgY2hhbmdlIGluIG9yZGVyIHRv
-IGFsbG93IHRoZSBNRFMgdG8gZmVuY2Ugb2ZmIHRoZSBvdXRzdGFuZGluZyB3cml0ZXMgKGlmIGl0
-IGNhbiBkbyBzbykgYmVmb3JlIHdlIHJldHJhbnNtaXQgdGhlbSBhcyB3cml0ZS10aHJvdWdoLU1E
-Uy4gT3RoZXJ3aXNlLCB5b3UgcmlzayByYWNlcyBiZXR3ZWVuIHRoZSBvdXRzdGFuZGluZyB3cml0
-ZXMtdG8tRFMgYW5kIHRoZSBuZXcgd3JpdGVzLXRocm91Z2gtTURTLg0KPiA+PiA+Pg0KPiA+PiA+
-PiB0byB3aGF0IGNoYW5nZSBhcmUgeW91IHJlZmVycmluZz8NCj4gPj4gPg0KPiA+PiA+IEFzIEkg
-c3RhdGVkIGluIHRoZSBjaGFuZ2Vsb2cgb2YgdGhlIHBhdGNoIHRoYXQgSSBzZW50IHRvIHRoZSBs
-aXN0DQo+ID4+ID4geWVzdGVyZGF5LCB0aGUgYmVoYXZpb3VyIGlzIGR1ZSB0byBjb21taXQgMGE1
-N2NkYWMzZi4NCj4gPj4gPg0KPiA+PiA+PiA+DQo+ID4+ID4+ID4gU2VlIHRoZSBjaGFuZ2Vsb2cg
-aW4gdGhlIHBhdGNoIHRoYXQgSSBzZW50IHRvIHRoZSBsaXN0IHllc3RlcmRheS4NCj4gPj4gPj4g
-Pg0KPiA+PiA+Pg0KPiA+PiA+PiBJIHNhdyB0aGF0LCBhbmQgaWYgSSdtIG5vdCBtaXN0YWtlbiB0
-aGVzZSByYWNlcyBhcHBseSB0byBvYmplY3QgbGF5b3V0DQo+ID4+ID4+IGFzIHdlbGwsIGFuZCBp
-biBhbnkgY2FzZSB0aGV5IGFwcGx5IGluIG15IGNhc2UuIEhvd2V2ZXIsIGl0IGlzIG5vdA0KPiA+
-PiA+PiBlYXN5IHRvIG1lc3MgYXJvdW5kIHdpdGggTEFZT1VUUkVUVVJOIGluIG9iamVjdCBsYXlv
-dXQsIGFuZCB0aGVyZSBoYXZlDQo+ID4+ID4+IGJlZW4gc2V2ZXJhbCBkaXNjdXNzaW9ucyBvbiB0
-aGUgaXNzdWUuIEluIG9uZSBvZiB0aGVzZSBkaXNjdXNzaW9ucw0KPiA+PiA+PiBCZW5ueSBjbGFy
-aWZpZWQgdGhhdCB0aGUgb2JqZWN0IGxheW91dCBjbGllbnQgbXVzdCB3YWl0IGZvciBhbGwNCj4g
-Pj4gPj4gaW4tZmxpZ2h0IEkvTyB0byBlbmQuDQo+ID4+ID4NCj4gPj4gPiBJZiB0aGUgcHJvYmxl
-bSBpcyB0aGF0IHRoZSBEUyBpcyBmYWlsaW5nIHRvIHJlc3BvbmQsIGhvdyBkb2VzIHRoZSBjbGll
-bnQNCj4gPj4gPiBrbm93IHRoYXQgdGhlIGluLWZsaWdodCBJL08gaGFzIGVuZGVkPw0KPiA+PiA+
-DQo+ID4+ID4+IFNvIGZvciBmaWxlIGxheW91dCBpdCBwcm9iYWJseSBtYWtlcyBzZW5zZSwgYnV0
-IG9iamVjdCBsYXlvdXQgKGFuZCBpZg0KPiA+PiA+PiBJIHVuZGVyc3RhbmQgY29ycmVjdGx5LCBi
-bG9jayBsYXlvdXQgYXMgd2VsbCkgc29tZXRoaW5nIGVsc2UgbmVlZHMgdG8NCj4gPj4gPj4gYmUg
-ZG9uZS4gSSB0aG91Z2h0IGFib3V0IHN5bmMgd2FpdCB3aGVuIHJldHVybmluZyB0aGUgbGF5b3V0
-IG9uIGVycm9yLA0KPiA+PiA+PiBidXQgYWNjb3JkaW5nIHRvIEJvYXogaXQgd2lsbCBjYXVzZSBk
-ZWFkbG9ja3MgKEJvYXogLSBjYW4geW91IHBsZWFzZQ0KPiA+PiA+PiBlbGFib3JhdGU/KS4NCj4g
-Pj4gPg0KPiA+PiA+IFRoZSBvYmplY3QgbGF5b3V0cmV0dXJuIGhhcyB0aGUgYWJpbGl0eSB0byBw
-YXNzIGEgdGltZW91dCBlcnJvciB2YWx1ZSB0bw0KPiA+PiA+IHRoZSBNRFMgcHJlY2lzZWx5IGlu
-IG9yZGVyIHRvIGFsbG93IHRoZSBsYXR0ZXIgdG8gZGVhbCB3aXRoIHRoaXMga2luZCBvZg0KPiA+
-PiA+IGlzc3VlLiBTZWUgdGhlIGRlc2NyaXB0aW9uIG9mIHN0cnVjdCBwbmZzX29zZF9pb2VycjQg
-aW4gcmZjNTY2NC4NCj4gPj4gPg0KPiA+PiA+IFRoZSBibG9jayBsYXlvdXQgaXMgYWRkaW5nIHRo
-ZSBzYW1lIGFiaWxpdHkgdG8gbGF5b3V0cmV0dXJuIGluIE5GU3Y0LjINCj4gPj4gPiAoc2VlIGRy
-YWZ0LWlldGYtbmZzdjQtbWlub3J2ZXJzaW9uMi0xMy50eHQpIHZpYSB0aGUgc3RydWN0DQo+ID4+
-ID4gbGF5b3V0cmV0dXJuX2RldmljZV9lcnJvcjQsIHNvIHByZXN1bWFibHkgdGhleSB0b28gaGF2
-ZSBhIHBsYW4gZm9yDQo+ID4+ID4gZGVhbGluZyB3aXRoIHRoaXMga2luZCBvZiBpc3N1ZS4NCj4g
-Pj4gSXQgaXMgb25lIHRoaW5nIHRvIHRlbGwgTURTIHRoYXQgdGhlcmUgaXMgRFMgYWNjZXNzIGVy
-cm9yIGJ5IHNlbmRpbmcNCj4gPj4gbGF5b3V0cmV0dXJuLCBhbmQgaXQgaXMgYW5vdGhlciB0aGlu
-ZyB0byByZXR1cm4gYSBsYXlvdXQgZXZlbiBpZiB0aGVyZQ0KPiA+PiBpcyBvdmVybGFwcGluZyBp
-bi1mbGlnaHQgRFMgSU8uLi4NCj4gPj4NCj4gPj4gSSBjZXJ0YWlubHkgYWdyZWUgdGhhdCBjbGll
-bnQgaXMgZW50aXRsZWQgdG8gcmV0dXJuIGxheW91dCB0byBpbmZvcm0NCj4gPj4gTURTIGFib3V0
-IERTIGVycm9ycyBhbmQgYWxzbyBhdm9pZCBwb3NzaWJsZSBjYl9sYXlvdXRyZWNhbGwuIEJ1dCBp
-dCBpcw0KPiA+PiBqdXN0IGFuIG9wdGltaXphdGlvbiBhbmQgc2hvdWxkIG9ubHkgYmUgZG9uZSB3
-aGVuIHRoZXJlIGlzIG5vDQo+ID4+IGluLWZsaWdodCBJTyAoYXQgbGVhc3QgZm9yIGJsb2NrIGxh
-eW91dCkgSU1ITy4NCj4gPg0KPiA+IEhPVyBETyBZT1UgR1VBUkFOVEVFIE5PIElOLUZMSUdIVCBJ
-Tz8NCj4gPg0KPiBJIGRvbid0LiBUaGF0J3Mgd2h5IEkgZG9uJ3QgcmV0dXJuIGxheW91dCBpbiBw
-bmZzX2xkX3dyaXRlX2RvbmUoKS4gQW5kDQo+IGZvciBsYXlvdXRyZXR1cm4gdXBvbiBjYl9sYXlv
-dXRyZXR1cm4sIGJsb2NrIGxheW91dCBjbGllbnQgbmVlZHMgdG8gZG8NCj4gdGltZWQtbGVhc2Ug
-SU8gZmVuY2luZyBwZXIgcmZjNTY2MywgYnV0IGl0IGlzIG5vdCBpbXBsZW1lbnRlZCBpbiBMaW51
-eA0KPiBjbGllbnQuDQoNClRoZSB0aW1lZC1sZWFzZSBJTyBmZW5jaW5nIGRlc2NyaWJlZCBpbiBy
-ZmM1NjYzIGlzIGFib3V0IGluZm9ybWluZyB0aGUNCnNlcnZlciBhYm91dCBob3cgbG9uZyB0aGUg
-Y2xpZW50IGV4cGVjdHMgYSBjb21tYW5kIHRvIHN1Y2NlZWQgb3IgZmFpbC4NCkl0IGRvZXNuJ3Qg
-b2ZmZXIgYW55IGFkdmljZSBmb3IgaG93IHRoZSBjbGllbnQgaXMgdG8gZGVhbCB3aXRoIGFuDQp1
-bnJlc3BvbnNpdmUgRFMuDQoNCldoYXQgeW91IG5lZWQgaGVyZSBpcyBoZWxwIGZyb20gdGhlIHVu
-ZGVybHlpbmcgdHJhbnNwb3J0IHByb3RvY29sLiBBcyBJDQpzYWlkIGluIHRoZSBlbWFpbCB0byBJ
-ZGFuLCB3aGVuIHJlc2VhcmNoaW5nIGlTQ1NJIGFuZCBpRkNQLCBJIGZvdW5kIHdoYXQNCmFwcGVh
-cnMgdG8gYmUgbWVjaGFuaXNtcyBmb3IgcmVsaWFibHkgdGltaW5nIG91dC4NCg0KLS0gDQpUcm9u
-ZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25k
-Lk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+If applications use flock to protect its write range, generic NFS
+will not do read-modify-write cycle at page cache level. Therefore
+LD should know how to handle non-sector aligned writes. Otherwise
+there will be data corruption.
+
+Cc: stable <stable@vger.kernel.org>
+Signed-off-by: Peng Tao <tao.peng@emc.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |  177 +++++++++++++++++++++++++++++++++++---
+ fs/nfs/blocklayout/blocklayout.h |    1 +
+ 2 files changed, 166 insertions(+), 12 deletions(-)
+
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 7ae8a60..39fa002 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -162,25 +162,39 @@ static struct bio *bl_alloc_init_bio(int npg, sector_t isect,
+ 	return bio;
+ }
+ 
+-static struct bio *bl_add_page_to_bio(struct bio *bio, int npg, int rw,
++static struct bio *do_add_page_to_bio(struct bio *bio, int npg, int rw,
+ 				      sector_t isect, struct page *page,
+ 				      struct pnfs_block_extent *be,
+ 				      void (*end_io)(struct bio *, int err),
+-				      struct parallel_io *par)
++				      struct parallel_io *par,
++				      unsigned int offset, int len)
+ {
++	isect = isect + (offset >> SECTOR_SHIFT);
++	dprintk("%s: npg %d rw %d isect %llu offset %u len %d\n", __func__,
++		npg, rw, (unsigned long long)isect, offset, len);
+ retry:
+ 	if (!bio) {
+ 		bio = bl_alloc_init_bio(npg, isect, be, end_io, par);
+ 		if (!bio)
+ 			return ERR_PTR(-ENOMEM);
+ 	}
+-	if (bio_add_page(bio, page, PAGE_CACHE_SIZE, 0) < PAGE_CACHE_SIZE) {
++	if (bio_add_page(bio, page, len, offset) < len) {
+ 		bio = bl_submit_bio(rw, bio);
+ 		goto retry;
+ 	}
+ 	return bio;
+ }
+ 
++static struct bio *bl_add_page_to_bio(struct bio *bio, int npg, int rw,
++				      sector_t isect, struct page *page,
++				      struct pnfs_block_extent *be,
++				      void (*end_io)(struct bio *, int err),
++				      struct parallel_io *par)
++{
++	return do_add_page_to_bio(bio, npg, rw, isect, page, be,
++				  end_io, par, 0, PAGE_CACHE_SIZE);
++}
++
+ /* This is basically copied from mpage_end_io_read */
+ static void bl_end_io_read(struct bio *bio, int err)
+ {
+@@ -450,6 +464,106 @@ map_block(struct buffer_head *bh, sector_t isect, struct pnfs_block_extent *be)
+ 	return;
+ }
+ 
++static void
++bl_read_single_end_io(struct bio *bio, int error)
++{
++	struct bio_vec *bvec = bio->bi_io_vec + bio->bi_vcnt - 1;
++	struct page *page = bvec->bv_page;
++
++	/* Only one page in bvec */
++	unlock_page(page);
++}
++
++static int
++bl_do_readpage_sync(struct page *page, struct pnfs_block_extent *be,
++		    unsigned int offset, unsigned int len)
++{
++	struct bio *bio;
++	struct page *shadow_page;
++	sector_t isect;
++	char *kaddr, *kshadow_addr;
++	int ret = 0;
++
++	dprintk("%s: offset %u len %u\n", __func__, offset, len);
++
++	shadow_page = alloc_page(GFP_NOFS | __GFP_HIGHMEM);
++	if (shadow_page == NULL)
++		return -ENOMEM;
++
++	bio = bio_alloc(GFP_NOIO, 1);
++	if (bio == NULL)
++		return -ENOMEM;
++
++	isect = (page->index << PAGE_CACHE_SECTOR_SHIFT) +
++		(offset / SECTOR_SIZE);
++
++	bio->bi_sector = isect - be->be_f_offset + be->be_v_offset;
++	bio->bi_bdev = be->be_mdev;
++	bio->bi_end_io = bl_read_single_end_io;
++
++	lock_page(shadow_page);
++	if (bio_add_page(bio, shadow_page,
++			 SECTOR_SIZE, round_down(offset, SECTOR_SIZE)) == 0) {
++		unlock_page(shadow_page);
++		bio_put(bio);
++		return -EIO;
++	}
++
++	submit_bio(READ, bio);
++	wait_on_page_locked(shadow_page);
++	if (unlikely(!test_bit(BIO_UPTODATE, &bio->bi_flags))) {
++		ret = -EIO;
++	} else {
++		kaddr = kmap_atomic(page);
++		kshadow_addr = kmap_atomic(shadow_page);
++		memcpy(kaddr + offset, kshadow_addr + offset, len);
++		kunmap_atomic(kshadow_addr);
++		kunmap_atomic(kaddr);
++	}
++	__free_page(shadow_page);
++	bio_put(bio);
++
++	return ret;
++}
++
++static int
++bl_read_partial_page_sync(struct page *page, struct pnfs_block_extent *be,
++			  unsigned int dirty_offset, unsigned int dirty_len,
++			  bool full_page)
++{
++	int ret = 0;
++	unsigned int start, end;
++
++	if (full_page) {
++		start = 0;
++		end = PAGE_CACHE_SIZE;
++	} else {
++		start = round_down(dirty_offset, SECTOR_SIZE);
++		end = round_up(dirty_offset + dirty_len, SECTOR_SIZE);
++	}
++
++	dprintk("%s: offset %u len %d\n", __func__, dirty_offset, dirty_len);
++	if (!be) {
++		zero_user_segments(page, start, dirty_offset,
++				   dirty_offset + dirty_len, end);
++		if (start == 0 && end == PAGE_CACHE_SIZE &&
++		    trylock_page(page)) {
++			SetPageUptodate(page);
++			unlock_page(page);
++		}
++		return ret;
++	}
++
++	if (start != dirty_offset)
++		ret = bl_do_readpage_sync(page, be, start, dirty_offset - start);
++
++	if (!ret && (dirty_offset + dirty_len < end))
++		ret = bl_do_readpage_sync(page, be, dirty_offset + dirty_len,
++					  end - dirty_offset - dirty_len);
++
++	return ret;
++}
++
+ /* Given an unmapped page, zero it or read in page for COW, page is locked
+  * by caller.
+  */
+@@ -483,7 +597,6 @@ init_page_for_write(struct page *page, struct pnfs_block_extent *cow_read)
+ 	SetPageUptodate(page);
+ 
+ cleanup:
+-	bl_put_extent(cow_read);
+ 	if (bh)
+ 		free_buffer_head(bh);
+ 	if (ret) {
+@@ -555,6 +668,7 @@ bl_write_pagelist(struct nfs_write_data *wdata, int sync)
+ 	struct parallel_io *par;
+ 	loff_t offset = wdata->args.offset;
+ 	size_t count = wdata->args.count;
++	unsigned int pg_offset, pg_len, saved_len;
+ 	struct page **pages = wdata->args.pages;
+ 	struct page *page;
+ 	pgoff_t index;
+@@ -659,10 +773,11 @@ next_page:
+ 		if (!extent_length) {
+ 			/* We've used up the previous extent */
+ 			bl_put_extent(be);
++			bl_put_extent(cow_read);
+ 			bio = bl_submit_bio(WRITE, bio);
+ 			/* Get the next one */
+ 			be = bl_find_get_extent(BLK_LSEG2EXT(header->lseg),
+-					     isect, NULL);
++					     isect, &cow_read);
+ 			if (!be || !is_writable(be, isect)) {
+ 				header->pnfs_error = -EINVAL;
+ 				goto out;
+@@ -679,7 +794,26 @@ next_page:
+ 			extent_length = be->be_length -
+ 			    (isect - be->be_f_offset);
+ 		}
+-		if (be->be_state == PNFS_BLOCK_INVALID_DATA) {
++
++		dprintk("%s offset %lld count %Zu\n", __func__, offset, count);
++		pg_offset = offset & ~PAGE_CACHE_MASK;
++		if (pg_offset + count > PAGE_CACHE_SIZE)
++			pg_len = PAGE_CACHE_SIZE - pg_offset;
++		else
++			pg_len = count;
++
++		saved_len = pg_len;
++		if (be->be_state == PNFS_BLOCK_INVALID_DATA &&
++		    !bl_is_sector_init(be->be_inval, isect)) {
++			ret = bl_read_partial_page_sync(pages[i], cow_read,
++							pg_offset, pg_len, true);
++			if (ret) {
++				dprintk("%s bl_read_partial_page_sync fail %d\n",
++					__func__, ret);
++				header->pnfs_error = ret;
++				goto out;
++			}
++
+ 			ret = bl_mark_sectors_init(be->be_inval, isect,
+ 						       PAGE_CACHE_SECTORS);
+ 			if (unlikely(ret)) {
+@@ -688,15 +822,35 @@ next_page:
+ 				header->pnfs_error = ret;
+ 				goto out;
+ 			}
++
++			/* Expand to full page write */
++			pg_offset = 0;
++			pg_len = PAGE_CACHE_SIZE;
++		} else if  ((pg_offset & (SECTOR_SIZE - 1)) ||
++			    (pg_len & (SECTOR_SIZE - 1))){
++			/* ahh, nasty case. We have to do sync full sector
++			 * read-modify-write cycles.
++			 */
++			unsigned int saved_offset = pg_offset;
++			ret = bl_read_partial_page_sync(pages[i], be, pg_offset,
++							pg_len, false);
++			pg_offset = round_down(pg_offset, SECTOR_SIZE);
++			pg_len = round_up(saved_offset + pg_len, SECTOR_SIZE)
++				 - pg_offset;
+ 		}
+-		bio = bl_add_page_to_bio(bio, wdata->pages.npages - i, WRITE,
++
++
++		bio = do_add_page_to_bio(bio, wdata->pages.npages - i, WRITE,
+ 					 isect, pages[i], be,
+-					 bl_end_io_write, par);
++					 bl_end_io_write, par,
++					 pg_offset, pg_len);
+ 		if (IS_ERR(bio)) {
+ 			header->pnfs_error = PTR_ERR(bio);
+ 			bio = NULL;
+ 			goto out;
+ 		}
++		offset += saved_len;
++		count -= saved_len;
+ 		isect += PAGE_CACHE_SECTORS;
+ 		last_isect = isect;
+ 		extent_length -= PAGE_CACHE_SECTORS;
+@@ -714,17 +868,16 @@ next_page:
+ 	}
+ 
+ write_done:
+-	wdata->res.count = (last_isect << SECTOR_SHIFT) - (offset);
+-	if (count < wdata->res.count) {
+-		wdata->res.count = count;
+-	}
++	wdata->res.count = wdata->args.count;
+ out:
+ 	bl_put_extent(be);
++	bl_put_extent(cow_read);
+ 	bl_submit_bio(WRITE, bio);
+ 	put_parallel(par);
+ 	return PNFS_ATTEMPTED;
+ out_mds:
+ 	bl_put_extent(be);
++	bl_put_extent(cow_read);
+ 	kfree(par);
+ 	return PNFS_NOT_ATTEMPTED;
+ }
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 0335069..39bb51a 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -41,6 +41,7 @@
+ 
+ #define PAGE_CACHE_SECTORS (PAGE_CACHE_SIZE >> SECTOR_SHIFT)
+ #define PAGE_CACHE_SECTOR_SHIFT (PAGE_CACHE_SHIFT - SECTOR_SHIFT)
++#define SECTOR_SIZE (1 << SECTOR_SHIFT)
+ 
+ struct block_mount_id {
+ 	spinlock_t			bm_lock;    /* protects list */
+-- 
+1.7.1.262.g5ef3d
+
