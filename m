@@ -1,118 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:38635 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751859Ab2HPNaG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Aug 2012 09:30:06 -0400
-Message-ID: <1345123774.23681.10.camel@localhost>
-Subject: Re: [PATCH 1/3] NFSv4: Fix pointer arithmetic in decode_getacl
-From: Sachin Prabhu <sprabhu@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Dros Adamson <Weston.Adamson@netapp.com>,
-        Andy Adamson <William.Adamson@netapp.com>, linux-nfs@vger.kernel.org
-Date: Thu, 16 Aug 2012 14:29:34 +0100
-In-Reply-To: <1344984447-17804-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1344984447-17804-1-git-send-email-Trond.Myklebust@netapp.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:51389 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757692Ab2HXTqw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Aug 2012 15:46:52 -0400
+Message-ID: <5037DA47.9010306@gmail.com>
+Date: Fri, 24 Aug 2012 21:47:19 +0200
+From: Sasha Levin <levinsasha928@gmail.com>
+MIME-Version: 1.0
+To: Tejun Heo <tj@kernel.org>
+CC: torvalds@linux-foundation.org, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
+        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
+        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
+        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive hashtable
+References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com> <1345602432-27673-2-git-send-email-levinsasha928@gmail.com> <20120822180138.GA19212@google.com> <50357840.5020201@gmail.com> <20120823200456.GD14962@google.com>
+In-Reply-To: <20120823200456.GD14962@google.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2012-08-14 at 18:47 -0400, Trond Myklebust wrote:
-> Resetting the cursor xdr->p to a previous value is not a safe
-> practice: if the xdr_stream has crossed out of the initial iovec,
-> then a bunch of other fields would need to be reset too.
+On 08/23/2012 10:04 PM, Tejun Heo wrote:
+> Hello, Sasha.
 > 
-> Fix this issue by using xdr_enter_page() so that the buffer gets
-> page aligned at the bitmap _before_ we decode it.
+> On Thu, Aug 23, 2012 at 02:24:32AM +0200, Sasha Levin wrote:
+>>> I think the almost trivial nature of hlist hashtables makes this a bit
+>>> tricky and I'm not very sure but having this combinatory explosion is
+>>> a bit dazzling when the same functionality can be achieved by simply
+>>> combining operations which are already defined and named considering
+>>> hashtable.  I'm not feeling too strong about this tho.  What do others
+>>> think?
+>>
+>> I'm thinking that this hashtable API will have 2 purposes: First, it would
+>> prevent the excessive duplication of hashtable implementations all around the code.
+>>
+>> Second, it will allow more easily interchangeable hashtable implementations to
+>> find their way into the kernel. There are several maintainers who would be happy
+>> to see dynamically sized RCU hashtable, and I'm guessing that several more
+>> variants could be added based on needs in specific modules.
+>>
+>> The second reason is why several things you've mentioned look the way they are:
+>>
+>>  - No DEFINE_HASHTABLE(): I wanted to force the use of hash_init() since
+>> initialization for other hashtables may be more complicated than the static
+>> initialization for this implementation, which means that any place that used
+>> DEFINE_HASHTABLE() and didn't do hash_init() will be buggy.
 > 
-> Also fix the confusion of the ACL length with the page buffer length
-> by not adding the base offset to the ACL length...
+> I think this is problematic.  It looks exactly like other existing
+> DEFINE macros yet what its semantics is different.  I don't think
+> that's a good idea.
+
+I can switch that to be DECLARE_HASHTABLE() if the issue is semantics.
+
+>> I'm actually tempted in hiding hlist completely from hashtable users, probably
+>> by simply defining a hash_head/hash_node on top of the hlist_ counterparts.
 > 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Cc: stable@vger.kernel.org
-> ---
->  fs/nfs/nfs4proc.c |  2 +-
->  fs/nfs/nfs4xdr.c  | 21 +++++++--------------
->  2 files changed, 8 insertions(+), 15 deletions(-)
+> I think that it would be best to keep this one simple & obvious, which
+> already has enough in-kernel users to justify its existence.  There
+> are significant benefits in being trivially understandable and
+> expectable.  If we want more advanced ones - say resizing, hybrid or
+> what not, let's make that a separate one.  No need to complicate the
+> common straight-forward case for that.
 > 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index c77d296..286ab70 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -3819,7 +3819,7 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
->  	if (ret)
->  		goto out_free;
->  
-> -	acl_len = res.acl_len - res.acl_data_offset;
-> +	acl_len = res.acl_len;
->  	if (acl_len > args.acl_len)
->  		nfs4_write_cached_acl(inode, NULL, 0, acl_len);
->  	else
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index ca13483..54d3f5a 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -5049,18 +5049,14 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
->  	uint32_t attrlen,
->  		 bitmap[3] = {0};
->  	int status;
-> -	size_t page_len = xdr->buf->page_len;
->  
->  	res->acl_len = 0;
->  	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
->  		goto out;
->  
-> +	xdr_enter_page(xdr, xdr->buf->page_len);
-> +
->  	bm_p = xdr->p;
-> -	res->acl_data_offset = be32_to_cpup(bm_p) + 2;
-> -	res->acl_data_offset <<= 2;
-> -	/* Check if the acl data starts beyond the allocated buffer */
-> -	if (res->acl_data_offset > page_len)
-> -		return -ERANGE;
->  
->  	if ((status = decode_attr_bitmap(xdr, bitmap)) != 0)
->  		goto out;
-> @@ -5074,23 +5070,20 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
->  		/* The bitmap (xdr len + bitmaps) and the attr xdr len words
->  		 * are stored with the acl data to handle the problem of
->  		 * variable length bitmaps.*/
-> -		xdr->p = bm_p;
-> +		res->acl_data_offset = (xdr->p - bm_p) << 2;
+> So, I think it would be best to keep this one as straight-forward and
+> trivial as possible.  Helper macros to help its users are fine but
+> let's please not go for full encapsulation.
 
-The problem here is with an unbounded bitmap. In the case where the
-server decides to send a large bitmap and the value of bitmap array + 2
-(for the acl length attribute) is greater than the buffer allocated, we
-will move to the tail section of the xdr and the pointer arithmetic here
-will be wrong. 
+What if we cut off the dynamic allocated (but not resizable) hashtable out for
+the moment, and focus on the most common statically allocated hashtable case?
 
-Maybe we are better off setting res->acl_data_offset as in the earlier
-block. We will not need the variable bm_p in that case.
+The benefits would be:
 
-Sachin Prabhu
->  
->  		/* We ignore &savep and don't do consistency checks on
->  		 * the attr length.  Let userspace figure it out.... */
-> -		attrlen += res->acl_data_offset;
-> -		if (attrlen > page_len) {
-> +		res->acl_len = attrlen;
-> +		if (attrlen + res->acl_data_offset > xdr->buf->page_len) {
->  			if (res->acl_flags & NFS4_ACL_LEN_REQUEST) {
->  				/* getxattr interface called with a NULL buf */
-> -				res->acl_len = attrlen;
->  				goto out;
->  			}
-> -			dprintk("NFS: acl reply: attrlen %u > page_len %zu\n",
-> -					attrlen, page_len);
-> +			dprintk("NFS: acl reply: attrlen %u > page_len %u\n",
-> +					attrlen, xdr->buf->page_len);
->  			return -EINVAL;
->  		}
-> -		xdr_read_pages(xdr, attrlen);
-> -		res->acl_len = attrlen;
->  	} else
->  		status = -EOPNOTSUPP;
->  
+ - Getting rid of all the _size() macros, which will make the amount of helpers
+here reasonable.
+ - Dynamically allocated hashtable can be easily added as a separate
+implementation using the same API. We already have some of those in the kernel...
+ - When that's ready, I feel it's a shame to lose full encapsulation just due to
+hash_hashed().
 
 
+Thanks,
+Sasha
+
+> 
+> Thanks.
+> 
 
