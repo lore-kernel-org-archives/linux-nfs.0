@@ -1,182 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53878 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:55604 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758871Ab2HISf6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Aug 2012 14:35:58 -0400
-Date: Thu, 9 Aug 2012 14:35:57 -0400
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: NFS: Treat NFS4ERR_CLID_INUSE as a fatal error
-Message-ID: <20120809183557.GA10591@fieldses.org>
+	id S933261Ab2HXUaA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Aug 2012 16:30:00 -0400
+Date: Fri, 24 Aug 2012 16:29:56 -0400
+To: Andreas Heinlein <aheinlein@gmx.com>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: Kernel NFSd CPU hog?
+Message-ID: <20120824202956.GA21832@fieldses.org>
+References: <4FF16D54.6090200@gmx.com>
+ <20120702150758.66893d08@tlielax.poochiereds.net>
+ <4FF2E710.5010804@gmx.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FF2E710.5010804@gmx.com>
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sorry not to notice this before--the below causes a regression against
-the Linux server; something like:
+By the way if possible it would also be worth testing
 
-	# mount -osec=krb5i pip1:/exports /mnt/
-	# echo "test" >/mnt/test
-	# umount /mnt/
-	# mount -osec=krb5 pip1:/exports /mnt/
-	# echo "test" >/mnt/test
-	bash: /mnt/test: Operation not permitted
+	git://linux-nfs.org/~bfields/linux.git for-3.6
 
-This fails after the below commit on the client, but not before, thanks
-to the server rejecting the second setclientid with CLID_INUSE due to a
-different security flavor.
+(which will probably also be included in 3.6-rc4).  I suspect this bug
+is fixed....--b.
 
-I haven't really thought through who's at fault here.  The second
-setclientid does lack some level of security that the former had, so I
-think the server's within its rights to complain.
-
---b.
-
-commit de734831224e74fcaf8917386e33644c4243db95
-Author: Chuck Lever <chuck.lever@oracle.com>
-Date:   Wed Jul 11 16:30:50 2012 -0400
-
-    NFS: Treat NFS4ERR_CLID_INUSE as a fatal error
-    
-    For NFSv4 minor version 0, currently the cl_id_uniquifier allows the
-    Linux client to generate a unique nfs_client_id4 string whenever a
-    server replies with NFS4ERR_CLID_INUSE.
-    
-    This implementation seems to be based on a flawed reading of RFC
-    3530.  NFS4ERR_CLID_INUSE actually means that the client has presented
-    this nfs_client_id4 string with a different principal at some time in
-    the past, and that lease is still in use on the server.
-    
-    For a Linux client this might be rather difficult to achieve: the
-    authentication flavor is named right in the nfs_client_id4.id
-    string.  If we change flavors, we change strings automatically.
-    
-    So, practically speaking, NFS4ERR_CLID_INUSE means there is some other
-    client using our string.  There is not much that can be done to
-    recover automatically.  Let's make it a permanent error.
-    
-    Remove the recovery logic in nfs4_proc_setclientid(), and remove the
-    cl_id_uniquifier field from the nfs_client data structure.  And,
-    remove the authentication flavor from the nfs_client_id4 string.
-    
-    Keeping the authentication flavor in the nfs_client_id4.id string
-    means that we could have a separate lease for each authentication
-    flavor used by mounts on the client.  But we want just one lease for
-    all the mounts on this client.
-    
-    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 74dcd85..1148081 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4029,42 +4029,28 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 		.rpc_resp = res,
- 		.rpc_cred = cred,
- 	};
--	int loop = 0;
--	int status;
- 
-+	/* nfs_client_id4 */
- 	nfs4_init_boot_verifier(clp, &sc_verifier);
--
--	for(;;) {
--		rcu_read_lock();
--		setclientid.sc_name_len = scnprintf(setclientid.sc_name,
--				sizeof(setclientid.sc_name), "%s/%s %s %s %u",
--				clp->cl_ipaddr,
--				rpc_peeraddr2str(clp->cl_rpcclient,
--							RPC_DISPLAY_ADDR),
--				rpc_peeraddr2str(clp->cl_rpcclient,
--							RPC_DISPLAY_PROTO),
--				clp->cl_rpcclient->cl_auth->au_ops->au_name,
--				clp->cl_id_uniquifier);
--		setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
-+	rcu_read_lock();
-+	setclientid.sc_name_len = scnprintf(setclientid.sc_name,
-+			sizeof(setclientid.sc_name), "%s/%s %s",
-+			clp->cl_ipaddr,
-+			rpc_peeraddr2str(clp->cl_rpcclient,
-+						RPC_DISPLAY_ADDR),
-+			rpc_peeraddr2str(clp->cl_rpcclient,
-+						RPC_DISPLAY_PROTO));
-+	/* cb_client4 */
-+	setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
- 				sizeof(setclientid.sc_netid),
- 				rpc_peeraddr2str(clp->cl_rpcclient,
- 							RPC_DISPLAY_NETID));
--		setclientid.sc_uaddr_len = scnprintf(setclientid.sc_uaddr,
-+	rcu_read_unlock();
-+	setclientid.sc_uaddr_len = scnprintf(setclientid.sc_uaddr,
- 				sizeof(setclientid.sc_uaddr), "%s.%u.%u",
- 				clp->cl_ipaddr, port >> 8, port & 255);
--		rcu_read_unlock();
- 
--		status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
--		if (status != -NFS4ERR_CLID_INUSE)
--			break;
--		if (loop != 0) {
--			++clp->cl_id_uniquifier;
--			break;
--		}
--		++loop;
--		ssleep(clp->cl_lease_time / HZ + 1);
--	}
--	return status;
-+	return rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
- }
- 
- int nfs4_proc_setclientid_confirm(struct nfs_client *clp,
-@@ -5262,10 +5248,9 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 	nfs4_init_boot_verifier(clp, &verifier);
- 
- 	args.id_len = scnprintf(args.id, sizeof(args.id),
--				"%s/%s/%u",
-+				"%s/%s",
- 				clp->cl_ipaddr,
--				clp->cl_rpcclient->cl_nodename,
--				clp->cl_rpcclient->cl_auth->au_flavor);
-+				clp->cl_rpcclient->cl_nodename);
- 
- 	res.server_owner = kzalloc(sizeof(struct nfs41_server_owner),
- 					GFP_NOFS);
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 1cfc460..81eabcd 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1606,10 +1606,15 @@ static int nfs4_handle_reclaim_lease_error(struct nfs_client *clp, int status)
- 			return -ESERVERFAULT;
- 		/* Lease confirmation error: retry after purging the lease */
- 		ssleep(1);
--	case -NFS4ERR_CLID_INUSE:
- 	case -NFS4ERR_STALE_CLIENTID:
- 		clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
- 		break;
-+	case -NFS4ERR_CLID_INUSE:
-+		pr_err("NFS: Server %s reports our clientid is in use\n",
-+			clp->cl_hostname);
-+		nfs_mark_client_ready(clp, -EPERM);
-+		clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
-+		return -EPERM;
- 	case -EACCES:
- 		if (clp->cl_machine_cred == NULL)
- 			return -EACCES;
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index f58325a..6532765 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -69,10 +69,9 @@ struct nfs_client {
- 	struct idmap *		cl_idmap;
- 
- 	/* Our own IP address, as a null-terminated string.
--	 * This is used to generate the clientid, and the callback address.
-+	 * This is used to generate the mv0 callback address.
- 	 */
- 	char			cl_ipaddr[48];
--	unsigned char		cl_id_uniquifier;
- 	u32			cl_cb_ident;	/* v4.0 callback identifier */
- 	const struct nfs4_minor_version_ops *cl_mvops;
- 
+On Tue, Jul 03, 2012 at 02:35:28PM +0200, Andreas Heinlein wrote:
+> On 02.07.2012 21:07, Jeff Layton wrote:
+> >On Mon, 02 Jul 2012 11:43:48 +0200
+> >Andreas Heinlein <aheinlein@gmx.com> wrote:
+> >
+> >>Hello,
+> >>
+> >>we have a strange NFS problem with a newly setup Linux server, and I
+> >>hope someone here can help.
+> >>
+> >>The symptom is that, slowly over time (speaking of several days up to 2
+> >>weeks), the kernel nfsd processes/threads consume more and more CPU
+> >>until the system finally becomes unresponsive. We recorded system
+> >>activity with sar, which shows that CPU (system) usage slowly rises
+> >>after reboot from about 1% to nearly 100% over the course of several
+> >>days. Load averages stay around 0.1-0.3 until 100% are reached, up to
+> >>this point the problem is almost not noticable from the clients. Then
+> >>load averages climb up to 30.0; at this point the system becomes more or
+> >>less unusable and has to be restarted. 'top' output shows the CPU usage
+> >>evenly distributed across all nfsd threads.
+> >>
+> >>The system is a fairly recent, though entry level server with a Core i3
+> >>and 4G RAM, hosting the home directories for about 15-20 clients. CPU
+> >>activity does not drop at night, when no clients are connected. It is
+> >>running Debian 6.0 with linux 3.2.0 (from the backports repository),
+> >>with nfs-utils 1.2.5 (also from the backports repository). I suspect
+> >>that these backports might be the culprit, but since we need this kernel
+> >>for other purposes, and I cannot reboot that machine during office
+> >>hours, I'd rather not try going back to the official Debian kernel
+> >>without good reasons. If there are known problems, I'd give it a try.
+> >>
+> >Find the pid of one of the nfsd threads that's spinning, then get a
+> >stack trace from it:
+> >
+> >     # cat /proc/<pidofnfsd>/stack
+> >
+> >...that should give us some idea of what it's doing.
+> >
+> >--
+> >Jeff Layton <jlayton@redhat.com>
+> >--
+> >To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >the body of a message to majordomo@vger.kernel.org
+> >More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Hello,
+> 
+> I've run into the problem again, and did a 'watch cat
+> /proc/<pidofnfsd>/stack'. It actually seems to be doing something,
+> because the stack trace changes every now and then, but mostly looks
+> like
+> 
+> [<c1038be2>] try_to_wake_up+0x144/0x14d
+> [<c1045d26>] lock_timer_base+0x19/0x34
+> [<c10462fd>] __mod_timer+0x10c/0x116
+> [<c1045d41>] process_timeout+0x0/0x5
+> [<f858a243>] svc_recv+0x2e2/0x698 [sunrpc]
+> [<c1038beb>] default_wake_function+0x0/0x8
+> [<f8640748>] nfsd+0x90/0x108 [nfsd]
+> [<f86406b8>] nfsd+0x0/0x108 [nfsd]
+> [<c105176b>] kthread+0x63/0x68
+> [<c1051708>] kthread+0x0/0x68
+> [<c12dadbe>] kernel_thread_helper+0x6/0x10
+> [<ffffffff>] 0xffffffff
+> 
+> Meanwhile, I've found a quite recent thread on this list named "3.0+
+> NFS issues", and within two links to Ubuntu bug reports
+> (https://bugs.launchpad.net/ubuntu/+source/nfs-utils/+bug/879334 and
+> https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1006446) and
+> again to a kernel bug
+> (https://bugzilla.kernel.org/show_bug.cgi?id=40912), all suggesting
+> that this is indeed a kernel 3.0 problem.
+> 
+> So I will try going back to 2.6.32 and hope this issue gets fixed soon.
+> 
+> Thanks for your help!
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
