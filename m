@@ -1,124 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:53633 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751060Ab2HJCrJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2012 22:47:09 -0400
-Received: by yhmm54 with SMTP id m54so1204390yhm.19
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Aug 2012 19:47:08 -0700 (PDT)
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:41691 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933442Ab2HXUv2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Aug 2012 16:51:28 -0400
+Received: by eekc1 with SMTP id c1so359874eek.19
+        for <linux-nfs@vger.kernel.org>; Fri, 24 Aug 2012 13:51:27 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <1344540702.25447.67.camel@lade.trondhjem.org>
-References: <CABpMAyL-B9Kqg8O4xxxtj0X8PF7fP4TM+NnLA_Ynhm-_3C6MUg@mail.gmail.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9380987@SACEXCMBX04-PRD.hq.netapp.com>
- <CABpMAyKddCjhWe-LjFOJrikLnC+BJ7GsAMAvieh1rabDPiA=Ug@mail.gmail.com>
- <1344528377.25447.29.camel@lade.trondhjem.org> <CA+a=Yy5cE1v=nG_epkaKE2W--M=HAbtrySc9_+f6dvJVbusPJw@mail.gmail.com>
- <1344530243.25447.36.camel@lade.trondhjem.org> <CA+a=Yy5xZiegbQczkD1F2AaCKLO4cwHijQpNTTTRQzHj6JJ+WQ@mail.gmail.com>
- <1344540702.25447.67.camel@lade.trondhjem.org>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Fri, 10 Aug 2012 10:46:47 +0800
-Message-ID: <CA+a=Yy4O-xKf9iKK2F1+sGV4b8OGUG7NA1MD2KMt0m2cvPyK4g@mail.gmail.com>
-Subject: Re: return layout on error, BUG/deadlock
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Idan Kedar <idank@tonian.com>, Boaz Harrosh <bharrosh@panasas.com>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        Benny Halevy <bhalevy@tonian.com>
-Content-Type: text/plain; charset=UTF-8
+Date: Fri, 24 Aug 2012 22:51:26 +0200
+Message-ID: <CALS3df3f-H=UKP2kARY4p0qtK2VaEMVQgZM-omBU-LJZejOT8w@mail.gmail.com>
+Subject: Unprivileged port and ERR_PERM
+From: Pawel Dziepak <pdziepak@quarnos.org>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-2
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 10, 2012 at 3:31 AM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> On Fri, 2012-08-10 at 00:48 +0800, Peng Tao wrote:
->> On Fri, Aug 10, 2012 at 12:37 AM, Myklebust, Trond
->> <Trond.Myklebust@netapp.com> wrote:
->> > On Fri, 2012-08-10 at 00:34 +0800, Peng Tao wrote:
->> >> On Fri, Aug 10, 2012 at 12:06 AM, Myklebust, Trond
->> >> <Trond.Myklebust@netapp.com> wrote:
->> >> > On Thu, 2012-08-09 at 18:49 +0300, Idan Kedar wrote:
->> >> >> On Thu, Aug 9, 2012 at 5:05 PM, Myklebust, Trond
->> >> >> <Trond.Myklebust@netapp.com> wrote:
->> >> >> >> -----Original Message-----
->> >> >> >> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
->> >> >> >> owner@vger.kernel.org] On Behalf Of Idan Kedar
->> >> >> >> Sent: Thursday, August 09, 2012 9:03 AM
->> >> >> >> To: Boaz Harrosh; NFS list
->> >> >> >> Cc: Benny Halevy
->> >> >> >> Subject: return layout on error, BUG/deadlock
->> >> >> >>
->> >> >> >> Hi,
->> >> >> >>
->> >> >> >> As a result of some experiments, I wanted to see what happens when I
->> >> >> >> inject an error (hard coded) to the object layout driver. the patch is at the
->> >> >> >> bottom of this mail. the reason I did this is because when I inject errors in my
->> >> >> >> modified version of the object layout driver, I get the same BUG Tigran
->> >> >> >> reported about yesterday:
->> >> >> >> nfs4proc.c:6252 :   BUG_ON(!list_empty(&lo->plh_segs));
->> >> >> >>
->> >> >> >> In my modified version (based on kernel 3.3), the bug seems to be that
->> >> >> >> pnfs_ld_write_done calls pnfs_return_layout in the error path, even if there
->> >> >> >> is in-flight I/O.
->> >> >> >
->> >> >> > That is not a bug. It is an intentional change in order to allow the MDS to fence off the outstanding writes (if it can do so) before we retransmit them as write-through-MDS. Otherwise, you risk races between the outstanding writes-to-DS and the new writes-through-MDS.
->> >> >>
->> >> >> to what change are you referring?
->> >> >
->> >> > As I stated in the changelog of the patch that I sent to the list
->> >> > yesterday, the behaviour is due to commit 0a57cdac3f.
->> >> >
->> >> >> >
->> >> >> > See the changelog in the patch that I sent to the list yesterday.
->> >> >> >
->> >> >>
->> >> >> I saw that, and if I'm not mistaken these races apply to object layout
->> >> >> as well, and in any case they apply in my case. However, it is not
->> >> >> easy to mess around with LAYOUTRETURN in object layout, and there have
->> >> >> been several discussions on the issue. In one of these discussions
->> >> >> Benny clarified that the object layout client must wait for all
->> >> >> in-flight I/O to end.
->> >> >
->> >> > If the problem is that the DS is failing to respond, how does the client
->> >> > know that the in-flight I/O has ended?
->> >> >
->> >> >> So for file layout it probably makes sense, but object layout (and if
->> >> >> I understand correctly, block layout as well) something else needs to
->> >> >> be done. I thought about sync wait when returning the layout on error,
->> >> >> but according to Boaz it will cause deadlocks (Boaz - can you please
->> >> >> elaborate?).
->> >> >
->> >> > The object layoutreturn has the ability to pass a timeout error value to
->> >> > the MDS precisely in order to allow the latter to deal with this kind of
->> >> > issue. See the description of struct pnfs_osd_ioerr4 in rfc5664.
->> >> >
->> >> > The block layout is adding the same ability to layoutreturn in NFSv4.2
->> >> > (see draft-ietf-nfsv4-minorversion2-13.txt) via the struct
->> >> > layoutreturn_device_error4, so presumably they too have a plan for
->> >> > dealing with this kind of issue.
->> >> It is one thing to tell MDS that there is DS access error by sending
->> >> layoutreturn, and it is another thing to return a layout even if there
->> >> is overlapping in-flight DS IO...
->> >>
->> >> I certainly agree that client is entitled to return layout to inform
->> >> MDS about DS errors and also avoid possible cb_layoutrecall. But it is
->> >> just an optimization and should only be done when there is no
->> >> in-flight IO (at least for block layout) IMHO.
->> >
->> > HOW DO YOU GUARANTEE NO IN-FLIGHT IO?
->> >
->> I don't. That's why I don't return layout in pnfs_ld_write_done(). And
->> for layoutreturn upon cb_layoutreturn, block layout client needs to do
->> timed-lease IO fencing per rfc5663, but it is not implemented in Linux
->> client.
->
-> The timed-lease IO fencing described in rfc5663 is about informing the
-> server about how long the client expects a command to succeed or fail.
-> It doesn't offer any advice for how the client is to deal with an
-> unresponsive DS.
->
-> What you need here is help from the underlying transport protocol. As I
-> said in the email to Idan, when researching iSCSI and iFCP, I found what
-> appears to be mechanisms for reliably timing out.
-Just checked and found that the layoutreturn-on-error behavior only
-affects object and file layout. So block layout stays out and safe.
-That's all I would ask for. Thanks for your explanation.
+I have noticed that when a client issues a request from insecure port
+(involving an object from export that does not allow that) nfsd
+returns ERR_PERM. This does not seem to conform to the either NFS or
+RPC specification. First of all, NFS4 specification states that only
+CREATE, OPEN and SETATTR operations may return ERR_PERM, in situation
+when:
 
-Best,
-Tao
+"Not owner. The operation was not allowed
+because the caller is either not a privileged
+user (root) or not the owner of the target of
+the operation."
+
+Moreover, definition of ERR_ACCESS points out the difference between
+these two error codes.
+
+"Contrast this with NFS4ERR_PERM,
+which restricts itself to owner or privileged
+user permission failures."
+
+I believe that ERR_ACCESS is more suitable error code when access is
+denied due to insecure port, at least no client will get unexpected
+ERR_PERM.
+However, rejecting RPC request and setting rejection reason to
+AUTH_TOOWEAK seems to be the best solution. In appendix A RPC version
+2 specification suggests that using privileged transport addresses may
+be a part of client authentication.
+
+"The authentication provided by this scheme can be considered
+legitimate only when applications using this scheme and the network
+can be secured externally, and privileged transport addresses are
+used for the communicating end-points (an example of this is the use
+of privileged TCP/UDP ports in UNIX systems -- note that not all
+systems enforce privileged transport address mechanisms)."
+
+Hence, AUTH_TOOWEAK would clearly state that access was denied due to
+authentication problem, use of insecure port in this case. IIRC this
+is the way nfsportmon behaves.
+
+Pawe³ Dziepak
