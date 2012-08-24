@@ -1,130 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:43131 "EHLO
-	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750799Ab2HVC11 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2012 22:27:27 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH v3 06/17] tracepoint: use new hashtable implementation
-Date: Wed, 22 Aug 2012 04:27:01 +0200
-Message-Id: <1345602432-27673-7-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
-References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:47278 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756246Ab2HXPIO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Aug 2012 11:08:14 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Sachin Prabhu <sprabhu@redhat.com>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Avoid array overflow in __nfs4_get_acl_uncached
+Date: Fri, 24 Aug 2012 15:07:45 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F4AF1E@SACEXCMBX01-PRD.hq.netapp.com>
+References: <1345817768-23511-1-git-send-email-sprabhu@redhat.com>
+In-Reply-To: <1345817768-23511-1-git-send-email-sprabhu@redhat.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch tracepoints to use the new hashtable implementation. This reduces the amount of
-generic unrelated code in the tracepoints.
-
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
----
- kernel/tracepoint.c |   27 +++++++++++----------------
- 1 files changed, 11 insertions(+), 16 deletions(-)
-
-diff --git a/kernel/tracepoint.c b/kernel/tracepoint.c
-index d96ba22..854df92 100644
---- a/kernel/tracepoint.c
-+++ b/kernel/tracepoint.c
-@@ -26,6 +26,7 @@
- #include <linux/slab.h>
- #include <linux/sched.h>
- #include <linux/static_key.h>
-+#include <linux/hashtable.h>
- 
- extern struct tracepoint * const __start___tracepoints_ptrs[];
- extern struct tracepoint * const __stop___tracepoints_ptrs[];
-@@ -49,8 +50,7 @@ static LIST_HEAD(tracepoint_module_list);
-  * Protected by tracepoints_mutex.
-  */
- #define TRACEPOINT_HASH_BITS 6
--#define TRACEPOINT_TABLE_SIZE (1 << TRACEPOINT_HASH_BITS)
--static struct hlist_head tracepoint_table[TRACEPOINT_TABLE_SIZE];
-+static DEFINE_HASHTABLE(tracepoint_table, TRACEPOINT_HASH_BITS);
- 
- /*
-  * Note about RCU :
-@@ -191,16 +191,15 @@ tracepoint_entry_remove_probe(struct tracepoint_entry *entry,
-  */
- static struct tracepoint_entry *get_tracepoint(const char *name)
- {
--	struct hlist_head *head;
- 	struct hlist_node *node;
- 	struct tracepoint_entry *e;
- 	u32 hash = jhash(name, strlen(name), 0);
- 
--	head = &tracepoint_table[hash & (TRACEPOINT_TABLE_SIZE - 1)];
--	hlist_for_each_entry(e, node, head, hlist) {
-+	hash_for_each_possible(tracepoint_table, e, node, hlist, hash) {
- 		if (!strcmp(name, e->name))
- 			return e;
- 	}
-+
- 	return NULL;
- }
- 
-@@ -210,19 +209,13 @@ static struct tracepoint_entry *get_tracepoint(const char *name)
-  */
- static struct tracepoint_entry *add_tracepoint(const char *name)
- {
--	struct hlist_head *head;
--	struct hlist_node *node;
- 	struct tracepoint_entry *e;
- 	size_t name_len = strlen(name) + 1;
- 	u32 hash = jhash(name, name_len-1, 0);
- 
--	head = &tracepoint_table[hash & (TRACEPOINT_TABLE_SIZE - 1)];
--	hlist_for_each_entry(e, node, head, hlist) {
--		if (!strcmp(name, e->name)) {
--			printk(KERN_NOTICE
--				"tracepoint %s busy\n", name);
--			return ERR_PTR(-EEXIST);	/* Already there */
--		}
-+	if (get_tracepoint(name)) {
-+		printk(KERN_NOTICE "tracepoint %s busy\n", name);
-+		return ERR_PTR(-EEXIST);	/* Already there */
- 	}
- 	/*
- 	 * Using kmalloc here to allocate a variable length element. Could
-@@ -234,7 +227,7 @@ static struct tracepoint_entry *add_tracepoint(const char *name)
- 	memcpy(&e->name[0], name, name_len);
- 	e->funcs = NULL;
- 	e->refcount = 0;
--	hlist_add_head(&e->hlist, head);
-+	hash_add(tracepoint_table, &e->hlist, hash);
- 	return e;
- }
- 
-@@ -244,7 +237,7 @@ static struct tracepoint_entry *add_tracepoint(const char *name)
-  */
- static inline void remove_tracepoint(struct tracepoint_entry *e)
- {
--	hlist_del(&e->hlist);
-+	hash_del(&e->hlist);
- 	kfree(e);
- }
- 
-@@ -722,6 +715,8 @@ struct notifier_block tracepoint_module_nb = {
- 
- static int init_tracepoints(void)
- {
-+	hash_init(tracepoint_table);
-+
- 	return register_module_notifier(&tracepoint_module_nb);
- }
- __initcall(init_tracepoints);
--- 
-1.7.8.6
-
+T24gRnJpLCAyMDEyLTA4LTI0IGF0IDE1OjE2ICswMTAwLCBTYWNoaW4gUHJhYmh1IHdyb3RlOg0K
+PiBUaGlzIGZpeGVzIGEgYnVnIGludHJvZHVjZWQgYnkgY29tbWl0DQo+IDVhMDA2ODk5MzBhYjk3
+NWZkZDFiMzdiMDM0NDc1MDE3ZTQ2MGNmMmENCj4gVGhlIHBhdGNoIGFkZHMgYW4gZXh0cmEgcGFn
+ZSB0byBucGFnZXMgdG8gaG9sZCB0aGUgYml0bWFwIHJldHVybmVkIGJ5DQo+IHRoZSBzZXJ2ZXIu
+DQo+IA0KPiBCcnVjZSBGaWVsZHMgcG9pbnRlZCBvdXQgdGhhdCB0aGUgY2hhbmdlcyBpbnRyb2R1
+Y2VkIGJ5IHRoZSBwYXRjaCB3aWxsDQo+IGNhdXNlIHRoZSBhcnJheSBucGFnZXMgdG8gb3ZlcmZs
+b3cgaWYgYSBidWZmZXIgb2Ygc2l6ZSBncmVhdGVyIHRoYW4gb3INCj4gZXF1YWwgdG8gWEFUVFJf
+U0laRV9NQVggaXMgcGFzc2VkIHRvIF9fbmZzNF9nZXRfYWNsX3VuY2FjaGVkKCkNCg0KSSdkIHRo
+aW5rIHRoYXQgdGhlIHJpZ2h0IHRoaW5nIHRvIGRvIGhlcmUgaXMgcmF0aGVyIHRvIGFkZCBhcHBy
+b3ByaWF0ZQ0KYnVmZmVyIG92ZXJmbG93IGNoZWNrcy4gSG93IGFib3V0IHNvbWV0aGluZyBsaWtl
+IHRoZSBmb2xsb3dpbmc/DQoNCjg8LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCkZyb20gN2MzNWNlMjIwOTI0MTgyMjg0YWVhOWY4
+YWVjMzliMGQ5OTE2MDBkZiBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCkZyb206IFRyb25kIE15
+a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQpEYXRlOiBGcmksIDI0IEF1ZyAy
+MDEyIDEwOjU5OjI1IC0wNDAwDQpTdWJqZWN0OiBbUEFUQ0hdIE5GU3Y0OiBGaXggcmFuZ2UgY2hl
+Y2tpbmcgaW4gX19uZnM0X2dldF9hY2xfdW5jYWNoZWQgYW5kDQogX19uZnM0X3Byb2Nfc2V0X2Fj
+bA0KDQpFbnN1cmUgdGhhdCB0aGUgdXNlciBzdXBwbGllZCBidWZmZXIgc2l6ZSBkb2Vzbid0IGNh
+dXNlIHVzIHRvIG92ZXJmbG93DQp0aGUgJ3BhZ2VzJyBhcnJheS4NCg0KQWxzbyBmaXggdXAgc29t
+ZSBjb25mdXNpb24gYmV0d2VlbiB0aGUgdXNlIG9mIFBBR0VfU0laRSBhbmQNClBBR0VfQ0FDSEVf
+U0laRSB3aGVuIGNhbGN1bGF0aW5nIGJ1ZmZlciBzaXplcy4gV2UncmUgbm90IHVzaW5nDQp0aGUg
+cGFnZSBjYWNoZSBmb3IgYW55dGhpbmcgaGVyZS4NCg0KU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlr
+bGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCi0tLQ0KIGZzL25mcy9uZnM0cHJv
+Yy5jIHwgMjAgKysrKysrKysrKystLS0tLS0tLS0NCiAxIGZpbGUgY2hhbmdlZCwgMTEgaW5zZXJ0
+aW9ucygrKSwgOSBkZWxldGlvbnMoLSkNCg0KZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0cHJvYy5j
+IGIvZnMvbmZzL25mczRwcm9jLmMNCmluZGV4IDYzNTI3NDEuLjY1NGRjMzggMTAwNjQ0DQotLS0g
+YS9mcy9uZnMvbmZzNHByb2MuYw0KKysrIGIvZnMvbmZzL25mczRwcm9jLmMNCkBAIC0zNjUzLDEx
+ICszNjUzLDExIEBAIHN0YXRpYyBpbmxpbmUgaW50IG5mczRfc2VydmVyX3N1cHBvcnRzX2FjbHMo
+c3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlcikNCiAJCSYmIChzZXJ2ZXItPmFjbF9iaXRtYXNrICYg
+QUNMNF9TVVBQT1JUX0RFTllfQUNMKTsNCiB9DQogDQotLyogQXNzdW1pbmcgdGhhdCBYQVRUUl9T
+SVpFX01BWCBpcyBhIG11bHRpcGxlIG9mIFBBR0VfQ0FDSEVfU0laRSwgYW5kIHRoYXQNCi0gKiBp
+dCdzIE9LIHRvIHB1dCBzaXplb2Yodm9pZCkgKiAoWEFUVFJfU0laRV9NQVgvUEFHRV9DQUNIRV9T
+SVpFKSBieXRlcyBvbg0KKy8qIEFzc3VtaW5nIHRoYXQgWEFUVFJfU0laRV9NQVggaXMgYSBtdWx0
+aXBsZSBvZiBQQUdFX1NJWkUsIGFuZCB0aGF0DQorICogaXQncyBPSyB0byBwdXQgc2l6ZW9mKHZv
+aWQpICogKFhBVFRSX1NJWkVfTUFYL1BBR0VfU0laRSkgYnl0ZXMgb24NCiAgKiB0aGUgc3RhY2su
+DQogICovDQotI2RlZmluZSBORlM0QUNMX01BWFBBR0VTIChYQVRUUl9TSVpFX01BWCA+PiBQQUdF
+X0NBQ0hFX1NISUZUKQ0KKyNkZWZpbmUgTkZTNEFDTF9NQVhQQUdFUyBESVZfUk9VTkRfVVAoWEFU
+VFJfU0laRV9NQVgsIFBBR0VfU0laRSkNCiANCiBzdGF0aWMgaW50IGJ1Zl90b19wYWdlc19ub3Ns
+YWIoY29uc3Qgdm9pZCAqYnVmLCBzaXplX3QgYnVmbGVuLA0KIAkJc3RydWN0IHBhZ2UgKipwYWdl
+cywgdW5zaWduZWQgaW50ICpwZ2Jhc2UpDQpAQCAtMzY2OCw3ICszNjY4LDcgQEAgc3RhdGljIGlu
+dCBidWZfdG9fcGFnZXNfbm9zbGFiKGNvbnN0IHZvaWQgKmJ1Ziwgc2l6ZV90IGJ1ZmxlbiwNCiAJ
+c3BhZ2VzID0gcGFnZXM7DQogDQogCWRvIHsNCi0JCWxlbiA9IG1pbl90KHNpemVfdCwgUEFHRV9D
+QUNIRV9TSVpFLCBidWZsZW4pOw0KKwkJbGVuID0gbWluX3Qoc2l6ZV90LCBQQUdFX1NJWkUsIGJ1
+Zmxlbik7DQogCQluZXdwYWdlID0gYWxsb2NfcGFnZShHRlBfS0VSTkVMKTsNCiANCiAJCWlmIChu
+ZXdwYWdlID09IE5VTEwpDQpAQCAtMzc4MiwxNyArMzc4MiwxNiBAQCBzdGF0aWMgc3NpemVfdCBf
+X25mczRfZ2V0X2FjbF91bmNhY2hlZChzdHJ1Y3QgaW5vZGUgKmlub2RlLCB2b2lkICpidWYsIHNp
+emVfdCBidQ0KIAkJLnJwY19hcmdwID0gJmFyZ3MsDQogCQkucnBjX3Jlc3AgPSAmcmVzLA0KIAl9
+Ow0KLQlpbnQgcmV0ID0gLUVOT01FTSwgbnBhZ2VzLCBpOw0KKwl1bnNpZ25lZCBpbnQgbnBhZ2Vz
+ID0gRElWX1JPVU5EX1VQKGJ1ZmxlbiwgUEFHRV9TSVpFKTsNCisJaW50IHJldCA9IC1FTk9NRU0s
+IGk7DQogCXNpemVfdCBhY2xfbGVuID0gMDsNCiANCi0JbnBhZ2VzID0gKGJ1ZmxlbiArIFBBR0Vf
+U0laRSAtIDEpID4+IFBBR0VfU0hJRlQ7DQogCS8qIEFzIGxvbmcgYXMgd2UncmUgZG9pbmcgYSBy
+b3VuZCB0cmlwIHRvIHRoZSBzZXJ2ZXIgYW55d2F5LA0KIAkgKiBsZXQncyBiZSBwcmVwYXJlZCBm
+b3IgYSBwYWdlIG9mIGFjbCBkYXRhLiAqLw0KIAlpZiAobnBhZ2VzID09IDApDQogCQlucGFnZXMg
+PSAxOw0KLQ0KLQkvKiBBZGQgYW4gZXh0cmEgcGFnZSB0byBoYW5kbGUgdGhlIGJpdG1hcCByZXR1
+cm5lZCAqLw0KLQlucGFnZXMrKzsNCisJaWYgKG5wYWdlcyA+IEFSUkFZX1NJWkUocGFnZXMpKQ0K
+KwkJcmV0dXJuIC1FUkFOR0U7DQogDQogCWZvciAoaSA9IDA7IGkgPCBucGFnZXM7IGkrKykgew0K
+IAkJcGFnZXNbaV0gPSBhbGxvY19wYWdlKEdGUF9LRVJORUwpOw0KQEAgLTM4OTEsMTAgKzM4OTAs
+MTMgQEAgc3RhdGljIGludCBfX25mczRfcHJvY19zZXRfYWNsKHN0cnVjdCBpbm9kZSAqaW5vZGUs
+IGNvbnN0IHZvaWQgKmJ1Ziwgc2l6ZV90IGJ1ZmwNCiAJCS5ycGNfYXJncAk9ICZhcmcsDQogCQku
+cnBjX3Jlc3AJPSAmcmVzLA0KIAl9Ow0KKwl1bnNpZ25lZCBpbnQgbnBhZ2VzID0gRElWX1JPVU5E
+X1VQKGJ1ZmxlbiwgUEFHRV9TSVpFKTsNCiAJaW50IHJldCwgaTsNCiANCiAJaWYgKCFuZnM0X3Nl
+cnZlcl9zdXBwb3J0c19hY2xzKHNlcnZlcikpDQogCQlyZXR1cm4gLUVPUE5PVFNVUFA7DQorCWlm
+IChucGFnZXMgPiBBUlJBWV9TSVpFKHBhZ2VzKSkNCisJCXJldHVybiAtRVJBTkdFOw0KIAlpID0g
+YnVmX3RvX3BhZ2VzX25vc2xhYihidWYsIGJ1ZmxlbiwgYXJnLmFjbF9wYWdlcywgJmFyZy5hY2xf
+cGdiYXNlKTsNCiAJaWYgKGkgPCAwKQ0KIAkJcmV0dXJuIGk7DQotLSANCjEuNy4xMS40DQoNCg0K
+LS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRB
+cHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
