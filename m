@@ -1,133 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailout-de.gmx.net ([213.165.64.22]:46496 "HELO
-	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753189Ab2HJNAh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Aug 2012 09:00:37 -0400
-Cc: linux-nfs@vger.kernel.org, tao.peng@emc.com
-Content-Type: text/plain; charset="utf-8"
-Date: Fri, 10 Aug 2012 15:00:34 +0200
-From: "Johannes Schild" <JSchild@gmx.de>
-In-Reply-To: <20120810121808.GA9817@umich.edu>
-Message-ID: <20120810130034.177360@gmx.net>
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:53440 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755176Ab2HXW7D (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Aug 2012 18:59:03 -0400
+Message-ID: <5038074D.300@gmail.com>
+Date: Sat, 25 Aug 2012 00:59:25 +0200
+From: Sasha Levin <levinsasha928@gmail.com>
 MIME-Version: 1.0
-References: <20120808182622.177380@gmx.net> <20120809084236.177380@gmx.net>
- <5DFC6BE3BA248842867E85C73BF94B050B17B698CF@MX41A.corp.emc.com>
- <20120809152744.149360@gmx.net>
- <CA+a=Yy7rH7kFKJvS3eOae+Mb0C1p+N01h+Zqz7jVzGE+HXHt9g@mail.gmail.com>
- <20120810074818.119500@gmx.net>
- <CA+a=Yy6C-d82MR6Lun4sRcJ0euBBpf0Ra3cHDnQ8eKENi5eU2Q@mail.gmail.com>
- <20120810092016.177360@gmx.net>
- <CA+a=Yy58ZgG1zoUP4633u6uuZ22hnpuqjS1xa4j3S8R=9=zEUA@mail.gmail.com>
- <20120810120635.268340@gmx.net> <20120810121808.GA9817@umich.edu>
-Subject: Re: RE: Blocklayout
-To: Jim Rees <rees@umich.edu>
+To: Tejun Heo <tj@kernel.org>
+CC: torvalds@linux-foundation.org, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
+        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
+        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
+        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive hashtable
+References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com> <1345602432-27673-2-git-send-email-levinsasha928@gmail.com> <20120822180138.GA19212@google.com> <50357840.5020201@gmail.com> <20120823200456.GD14962@google.com> <5037DA47.9010306@gmail.com> <20120824195941.GC21325@google.com> <5037E00B.6090606@gmail.com> <20120824203332.GF21325@google.com> <5037E9D9.9000605@gmail.com> <20120824212348.GK21325@google.com>
+In-Reply-To: <20120824212348.GK21325@google.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Jim,
-
-thanks for trying to help me:
-
-
->   
->   [root@fedorapnfs2 sbin]# /root/ctl/ctl -u
->   [root@fedorapnfs2 sbin]# Processing: MSG_VERS    : Version: 8
->   Processing: MSG_VERS    : Version: 8
->   Processing: MSG_DMCHK   : DM Volume: True
->   Processing: MSG_DMGET   : Vol info: 0 6291456 striped 2 128 8:17 2048
-> 8:33 2048
->       major 8, minor 17
->       major 8, minor 33
->   Processing: MSG_GETSIG  : get_sig: 8:17: get_sig: Got sig at: 1, within
-> sector 56, len 16
->       e9 91 e5 1c d7 cb 20 41   ad d1 61 f9 a7 30 5e fb   
->   Processing: MSG_GETSLICE: get_slice: 8:17: Dev: 8:17, Start: 34, Length:
-> 4196285
->   Processing: MSG_GETSIG  : get_sig: 8:33: get_sig: Got sig at: 1, within
-> sector 56, len 16
->       9b 0d 30 b8 42 68 0a 4c   95 52 ed 5f d7 46 49 ed   
->   Processing: MSG_GETSLICE: get_slice: 8:33: Dev: 8:33, Start: 34, Length:
-> 4196285
+>> Why do we need hash_head/hash_for_each_head()? I haven't stumbled on a place yet
+>> that needed direct access to the bucket itself.
 > 
-> I'm not familiar with this server, but all I see here is slices from two
-> disks.  The blkmapd output shows the same thing.  Normally these would be
-> striped or catenated to form the file system device.  What device topology
-> do you think you're exporting?
+> Because whole hash table walking is much less common and we can avoid
+> another full set of iterators.
 
+I don't agree. Out of 32 places which now use a hashtable iterator of some kind,
+12 of them (38%) walk the entire table.
 
-I use LVM and iSCSI to export my device:
-LVM for Striping (because ctl needs it), iSCSI for transport.
+The thing is that usually data structures are indexable by more than one key, so
+usually hashtables are fully walked in cold paths to look for different keys.
 
-i created a volume "testserver":
+Take kernel/workqueue.c for example: There are 4 places which do a key lookup
+(find_worker_executing_work()) and 3 places which fully walk the entire table
+(for_each_busy_worker()).
 
-[root@fedorapnfs2 server]# pvs
-  PV         VG              Fmt  Attr PSize  PFree  
-  /dev/sda3  vg_createfedora lvm2 a--  19.50g      0 
-  /dev/sdb1  testserver      lvm2 a--   2.00g 508.00m
-  /dev/sdc1  testserver      lvm2 a--   2.00g 508.00m
+>> This basically means 11 macros/functions that would let us have full
+>> encapsulation and will make it very easy for future implementations to work with
+>> this API instead of making up a new one. It's also not significantly (+~2-3)
+>> more than the ones you listed.
+> 
+> I'm not sure whether full encapsulation is a good idea for trivial
+> hashtable.  For higher level stuff, sure but at this level I think
+> benefits coming from known obvious implementation can be larger.
+> e.g. suppose the caller knows certain entries to be way colder than
+> others and wants to put them at the end of the chain.
 
-[root@fedorapnfs2 server]# dmsetup ls --target striped
-testserver-share	(253, 2)
+Thats the thing, the amount of things of things you can do with a given bucket
+is very limited. You can't add entries to any point besides the head (without
+walking the entire list).
 
-[root@fedorapnfs2 server]# dmsetup table
-vg_createfedora-lv_swap: 0 4128768 linear 8:3 2048
-vg_createfedora-lv_root: 0 36765696 linear 8:3 4130816
-testserver-share: 0 6291456 striped 2 128 8:17 2048 8:33 2048
+Basically you can do only two things with a bucket:
 
+ - Add something to it at a very specific place.
+ - Walk it
 
-The following output is from my iSCSI-targets which i export:
+So I don't understand whats the point in exposing the internal structure of the
+hashtable if there's nothing significant that can be gained from it by the user.
 
-[root@fedorapnfs2 server]# tgtadm --lld iscsi --mode target --op show
-Target 1: iqn.2012-04.fedorapnfs2:dev01
-    System information:
-        Driver: iscsi
-        State: ready
-    I_T nexus information:
-        I_T nexus: 2
-            Initiator: iqn.1994-05.com.redhat:f1b658ea7af8
-            Connection: 0
-                IP Address: 192.168.0.13
-    LUN information:
-        LUN: 0
-            Type: controller
-            SCSI ID: IET     00010000
-            SCSI SN: beaf10
-            Size: 0 MB, Block size: 1
-            Online: Yes
-            Removable media: No
-            Readonly: No
-            Backing store type: null
-            Backing store path: None
-            Backing store flags: 
-        LUN: 1
-            Type: disk
-            SCSI ID: IET     00010001
-            SCSI SN: beaf11
-            Size: 2149 MB, Block size: 512
-            Online: Yes
-            Removable media: No
-            Readonly: No
-            Backing store type: rdwr
-            Backing store path: /dev/sdb
-            Backing store flags: 
-        LUN: 2
-            Type: disk
-            SCSI ID: IET     00010002
-            SCSI SN: beaf12
-            Size: 2149 MB, Block size: 512
-            Online: Yes
-            Removable media: No
-            Readonly: No
-            Backing store type: rdwr
-            Backing store path: /dev/sdc
-            Backing store flags: 
-    Account information:
-    ACL information:
-        ALL
+> 
+> So, I think implmenting the minimal set of helpers which reflect the
+> underlying trivial implementation explicitly could actually be better
+> even when discounting the reduced number of wrappers.
+> 
+> Thanks.
+> 
 
-
-
-Thanks for your help.
-
-
-Johannes
