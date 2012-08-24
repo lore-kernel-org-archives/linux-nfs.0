@@ -1,84 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:37597 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:36174 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751663Ab2HNNp6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Aug 2012 09:45:58 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Benny Halevy <bhalevy@tonian.com>
-CC: Peng Tao <bergwolf@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        Boaz Harrosh <bharrosh@panasas.com>,
-        "Isaman, Fred" <Fred.Isaman@netapp.com>,
-        Idan Keidar <idank@tonian.com>, Lev Solomonov <solo@tonian.com>
-Subject: Re: [PATCH] NFSv4.1: Remove a bogus BUG_ON() in
- nfs4_layoutreturn_done
-Date: Tue, 14 Aug 2012 13:45:08 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA93A372D@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1344457310-26442-1-git-send-email-Trond.Myklebust@netapp.com>
-	  <CA+a=Yy7SX+cPLFiNy552bU9ZMS_rSwvaSpV732_mDwpcPAH5Wg@mail.gmail.com>
-	  <1344522979.23523.2.camel@lade.trondhjem.org>
-	  <CA+a=Yy7tDi0kQGvjPeb=O_9XMnZDm-_31VTkNF7wEW7Pb0BZow@mail.gmail.com>
-	 <1344526780.25447.6.camel@lade.trondhjem.org> <502A02B2.2020700@tonian.com>
-In-Reply-To: <502A02B2.2020700@tonian.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1760143Ab2HXWCV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Aug 2012 18:02:21 -0400
+Date: Fri, 24 Aug 2012 18:02:19 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Rick Macklem <rmacklem@uoguelph.ca>
+Cc: linux-nfs@vger.kernel.org,
+        Norbert Aschendorff <norbert.aschendorff@yahoo.de>,
+        Trond Myklebust <trond@netapp.com>
+Subject: Re: NFSv4, Name (string) mapping vs. raw UID, idmapd and Kernels
+ >= 3.3
+Message-ID: <20120824220219.GB21832@fieldses.org>
+References: <20120823144605.GA6923@fieldses.org>
+ <900847353.1046192.1345767936102.JavaMail.root@erie.cs.uoguelph.ca>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <900847353.1046192.1345767936102.JavaMail.root@erie.cs.uoguelph.ca>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA4LTE0IGF0IDEwOjQ4ICswMzAwLCBCZW5ueSBIYWxldnkgd3JvdGU6DQo+
-IE9uIDIwMTItMDgtMDkgMTg6MzksIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4gT24gVGh1
-LCAyMDEyLTA4LTA5IGF0IDIzOjAxICswODAwLCBQZW5nIFRhbyB3cm90ZToNCj4gPj4gT24gVGh1
-LCBBdWcgOSwgMjAxMiBhdCAxMDozNiBQTSwgTXlrbGVidXN0LCBUcm9uZA0KPiA+PiA8VHJvbmQu
-TXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+Pj4gT24gVGh1LCAyMDEyLTA4LTA5IGF0
-IDIyOjMwICswODAwLCBQZW5nIFRhbyB3cm90ZToNCj4gPj4+PiBPbiBUaHUsIEF1ZyA5LCAyMDEy
-IGF0IDQ6MjEgQU0sIFRyb25kIE15a2xlYnVzdA0KPiA+Pj4+IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
-YXBwLmNvbT4gd3JvdGU6DQo+ID4+Pj4+IEV2ZXIgc2luY2UgY29tbWl0IDBhNTdjZGFjM2YgKE5G
-U3Y0LjEgc2VuZCBsYXlvdXRyZXR1cm4gdG8gZmVuY2UNCj4gPj4+Pj4gZGlzY29ubmVjdGVkIGRh
-dGEgc2VydmVyKSB3ZSd2ZSBiZWVuIHNlbmRpbmcgbGF5b3V0cmV0dXJuIGNhbGxzDQo+ID4+Pj4+
-IHdoaWxlIHRoZXJlIGlzIHBvdGVudGlhbGx5IHN0aWxsIG91dHN0YW5kaW5nIEkvTyB0byB0aGUg
-ZGF0YQ0KPiA+Pj4+PiBzZXJ2ZXJzLiBUaGUgcmVhc29uIHdlIGRvIHRoaXMgaXMgdG8gYXZvaWQg
-cmFjZXMgYmV0d2VlbiByZXBsYXllZA0KPiA+Pj4+PiB3cml0ZXMgdG8gdGhlIE1EUyBhbmQgdGhl
-IG9yaWdpbmFsIHdyaXRlcyB0byB0aGUgRFMuDQo+ID4+Pj4+DQo+ID4+Pj4+IFdoZW4gdGhpcyBo
-YXBwZW5zLCB0aGUgQlVHX09OKCkgaW4gbmZzNF9sYXlvdXRyZXR1cm5fZG9uZSBjYW4NCj4gPj4+
-Pj4gYmUgdHJpZ2dlcmVkIGJlY2F1c2UgaXQgYXNzdW1lcyB0aGF0IHdlIHdvdWxkIG5ldmVyIGNh
-bGwNCj4gPj4+Pj4gbGF5b3V0cmV0dXJuIHdpdGhvdXQga25vd2luZyB0aGF0IGFsbCBJL08gdG8g
-dGhlIERTIGlzDQo+ID4+Pj4+IGZpbmlzaGVkLiBUaGUgZml4IGlzIHRvIHJlbW92ZSB0aGUgQlVH
-X09OKCkgbm93IHRoYXQgdGhlDQo+ID4+Pj4+IGFzc3VtcHRpb25zIGJlaGluZCB0aGUgdGVzdCBh
-cmUgb2Jzb2xldGUuDQo+ID4+Pj4+DQo+ID4+Pj4gSXNuJ3QgTURTIHN1cHBvc2VkIHRvIHJlY2Fs
-bCB0aGUgbGF5b3V0IGlmIHJhY2VzIGFyZSBwb3NzaWJsZSBiZXR3ZWVuDQo+ID4+Pj4gb3V0c3Rh
-bmRpbmcgd3JpdGUtdG8tRFMgYW5kIHdyaXRlLXRocm91Z2gtTURTPw0KPiA+Pj4NCj4gPj4+IFdo
-ZXJlIGRvIHlvdSByZWFkIHRoYXQgaW4gUkZDNTY2MT8NCj4gPj4+DQo+ID4+IFRoYXQncyBteSAo
-bWF5YmUgbWlzLSl1bmRlcnN0YW5kaW5nIG9mIGhvdyBzZXJ2ZXIgd29ya3MuLi4gQnV0IGxvb2tp
-bmcNCj4gPj4gYXQgcmZjNTY2MSBzZWN0aW9uIDE4LjQ0LjMuIGxheW91dHJldHVybiBpbXBsZW1l
-bnRhdGlvbi4NCj4gPj4gIg0KPiA+PiBBZnRlciB0aGlzIGNhbGwsDQo+ID4+ICAgIHRoZSBjbGll
-bnQgTVVTVCBOT1QgdXNlIHRoZSByZXR1cm5lZCBsYXlvdXQocykgYW5kIHRoZSBhc3NvY2lhdGVk
-DQo+ID4+ICAgIHN0b3JhZ2UgcHJvdG9jb2wgdG8gYWNjZXNzIHRoZSBmaWxlIGRhdGEuDQo+ID4+
-ICINCj4gPj4gQW5kIGdpdmVuIGNvbW1pdCAwYTU3Y2RhYzNmLCBjbGllbnQgaXMgdXNpbmcgdGhl
-IGxheW91dCBldmVuIGFmdGVyDQo+ID4+IGxheW91dHJldHVybiwgd2hpY2ggSU1ITyBpcyBhIHZp
-b2xhdGlvbiBvZiByZmM1NjYxLg0KPiA+IA0KPiA+IE5vLiBJdCBpcyB1c2luZyB0aGUgbGF5b3V0
-cmV0dXJuIHRvIHRlbGwgdGhlIE1EUyB0byBmZW5jZSBvZmYgSS9PIHRvIGENCj4gPiBkYXRhIHNl
-cnZlciB0aGF0IGlzIG5vdCByZXNwb25kaW5nLiBJdCBpc24ndCBhdHRlbXB0aW5nIHRvIHVzZSB0
-aGUNCj4gPiBsYXlvdXQgYWZ0ZXIgdGhlIGxheW91dHJldHVybjogdGhlIHdob2xlIHBvaW50IGlz
-IHRoYXQgd2UgYXJlIGF0dGVtcHRpbmcNCj4gPiB3cml0ZS10aHJvdWdoLU1EUyBhZnRlciB0aGUg
-YXR0ZW1wdCB0byB3cml0ZSB0aHJvdWdoIHRoZSBEUyB0aW1lZCBvdXQuDQo+ID4gDQo+IA0KPiBJ
-IGhlYXIgeW91LCBidXQgdGhpcyB1c2UgY2FzZSBpcyB2YWxpZCBhZnRlciBhIHRpbWUgb3V0IC8g
-ZGlzY29ubmVjdA0KPiAod2hpY2ggd2lsbCB0cmFuc2xhdGUgdG8gUE5GU19PU0RfRVJSX1VOUkVB
-Q0hBQkxFIGZvciB0aGUgb2JqZWN0cyBsYXlvdXQpDQo+IEluIG90aGVyIGNhc2VzLCBJL09zIHRv
-IHRoZSBEUyBtaWdodCBvYnZpb3VzbHkgYmUgaW4gZmxpZ2h0IGFuZCB0aGUgQlVHX09ODQo+IGlu
-ZGljYXRlcyB0aGF0Lg0KPiANCj4gSU1PLCB0aGUgcmlnaHQgd2F5IHRvIGltcGxlbWVudCB0aGF0
-IGlzIHRvIGluaXRpYWxseSBtYXJrIHRoZSBsc2VncyBpbnZhbGlkDQo+IGFuZCBpbmNyZW1lbnQg
-cGxoX2Jsb2NrX2xnZXRzLCBhcyB3ZSBkbyB0b2RheSBpbiBfcG5mc19yZXR1cm5fbGF5b3V0DQo+
-IGJ1dCBhY3R1YWxseSBzZW5kIHRoZSBsYXlvdXQgcmV0dXJuIG9ubHkgd2hlbiB0aGUgbGFzdCBz
-ZWdtZW50IGlzIGRlcmVmZXJlbmNlZC4NCg0KVGhpcyBpcyB3aGF0IHdlIGRvIGZvciBvYmplY3Qg
-YW5kIGJsb2NrIGxheW91dCB0eXBlcywgc28geW91cg0Kb2JqZWN0cy1zcGVjaWZpYyBvYmplY3Rp
-b24gaXMgdW5mb3VuZGVkLg0KDQpBcyBJIHVuZGVyc3RhbmQgaXQsIGlTQ1NJIGhhcyBkaWZmZXJl
-bnQgc2VtYW50aWNzIHcuci50LiBkaXNjb25uZWN0IGFuZA0KdGltZW91dCwgd2hpY2ggbWVhbnMg
-dGhhdCB0aGUgY2xpZW50IGNhbiBpbiBwcmluY2lwbGUgcmVseSBvbiBhIHRpbWVvdXQNCmxlYXZp
-bmcgdGhlIERTIGluIGEga25vd24gc3RhdGUuIERpdHRvIGZvciBGQ1AuDQpJJ3ZlIG5vIGlkZWEg
-YWJvdXQgb3RoZXIgYmxvY2svb2JqZWN0IHRyYW5zcG9ydCB0eXBlcywgYnV0IEkgYXNzdW1lDQp0
-aG9zZSB0aGF0IHN1cHBvcnQgbXVsdGktcGF0aGluZyBpbXBsZW1lbnQgc2ltaWxhciBkZXZpY2Vz
-Lg0KDQpUaGUgcHJvYmxlbSBpcyB0aGF0IFJQQyBkb2VzIG5vdCwgc28gdGhlIGZpbGVzIGxheW91
-dCBuZWVkcyB0byBiZQ0KdHJlYXRlZCBkaWZmZXJlbnRseS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1
-c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVz
-dEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+On Thu, Aug 23, 2012 at 08:25:36PM -0400, Rick Macklem wrote:
+> Then on the next page:
+> 
+>    To provide a greater degree of compatibility with previous versions
+>    of NFS (i.e., v2 and v3), which identified users and groups by 32-bit
+>    unsigned uid's and gid's, owner and group strings that consist of
+>    decimal numeric values with no leading zeros can be given a special
+>    interpretation by clients and servers which choose to provide such
+>    support.  
+>    ** The receiver may treat such a user or group string as
+>    representing the same user as would be represented by a v2/v3 uid or
+>    gid having the corresponding numeric value.  A server is not
+>    obligated to accept such a string, but may return an NFS4ERR_BADOWNER
+>    instead.  
+>    --> To avoid this mechanism being used to subvert user and
+>    group translation, so that a client might pass all of the owners and
+>    groups in numeric form, a server SHOULD return an NFS4ERR_BADOWNER
+>    error when there is a valid translation for the user or owner
+>    designated in this way.  In that case, the client must use the
+>    appropriate name@domain string and not the special form for
+>    compatibility.
+> 
+> The sentence at "**" says a receiver "may" recognize the numeric uid/gid#
+> string. This would suggest that a client isn't expected/required to do so,
+> as I read it. (This page seems to be very confusing w.r.t. what clients/servers
+> are expected/required to support.)
+> The sentence at "-->" is a SHOULD (not a MUST, I admit) that seems to
+> say a server should only allow numeric uid/gid# strings when there isn't
+> a name<->uid/gid# translation and should avoid allowing clients to just
+> use uid/gid# strings?
+
+Yeah, I thought I remembered some stronger requirement on the client,
+but the strongest I can get out of this is: "well, it says the server
+MAY return numeric id's, so that effectively means the client MUST
+handle them"... but that doesn't really require the client to do
+anything in particular with them.
+
+Cc'ing Trond in case he remember some language we overlooked.  Of course
+3530bis is different:
+
+	http://tools.ietf.org/html/draft-ietf-nfsv4-rfc3530bis-18#section-5.9
+
+	"The client MUST always accept numeric values if the security
+	mechanism is not RPCSEC_GSS."
+
+> Anyhow, I do plan to re-enable support for numeric uid/gid# strings in
+> the FreeBSD NFSv4 client, but it won't be released until 9.2 at the
+> earliest. (I, personally, have no problem with numeric uid/gid# strings.
+> I disabled support for them because I had thought the working group
+> didn't want them supported.)
+
+OK.  Yes it's been confusing!
+
+--b.
