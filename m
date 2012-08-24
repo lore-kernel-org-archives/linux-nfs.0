@@ -1,96 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:39317 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758359Ab2HHNVs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Aug 2012 09:21:48 -0400
-Received: by ggdk6 with SMTP id k6so15227ggd.19
-        for <linux-nfs@vger.kernel.org>; Wed, 08 Aug 2012 06:21:47 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v5 00/19] vfs: add the ability to retry on ESTALE to several syscalls
-Date: Wed,  8 Aug 2012 09:21:23 -0400
-Message-Id: <1344432102-22312-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:60660 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751704Ab2HXVjX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Aug 2012 17:39:23 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Sachin Prabhu <sprabhu@redhat.com>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Avoid array overflow in __nfs4_get_acl_uncached
+Date: Fri, 24 Aug 2012 21:38:52 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F5842F@SACEXCMBX01-PRD.hq.netapp.com>
+References: <1345817768-23511-1-git-send-email-sprabhu@redhat.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F4AF1E@SACEXCMBX01-PRD.hq.netapp.com>
+	 <1345843866.2279.6.camel@localhost>
+In-Reply-To: <1345843866.2279.6.camel@localhost>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patchset is a respin of the one I sent on July 26th. The main
-reason for the resend is to deal with some recent changes in namei.c
-that created some merge conflicts.
-
-This series depends on the "audit" series that I also sent on July 26th.
-That set didn't need any changes, so I'm not planning to resend it.
-
-This set is also available via the "estale" branch of my git tree:
-
-    git://git.samba.org/jlayton/linux.git estale
-
-I'd like to see this go in for 3.7 if at all possible.
-
-The original cover letter text follows:
-
-ESTALE errors are a source of pain for many users, primarily those who
-are doing work on NFS. When userspace provides a path to a syscall, then
-there's really little excuse for returning ESTALE. If userspace gave us
-a path that we had to lookup in order to do the call, then it's not
-particularly helpful to return ESTALE just because that path went stale
-before we could do the actual operation.
-
-We can and should do better here. The kernel should instead catch that
-error and retry the lookup and call, while forcing a revalidation of all
-dentries involved.
-
-Unfortunately fixing this requires touching the syscalls themselves, or
-at least their immediate helper functions. Not all syscalls can be
-retried -- only those that take a pathname as an argument.
-
-With this patchset, I've decided to take the relatively less
-controversial approach of just having the kernel retry once when it gets
-an ESTALE error. I still think that it's not as strong as it should be,
-but it should improve the situation in many common cases.
-
-I've also tried to engineer this in such a way that if we do decide that
-we need to retry more than once, then it should be easy to change that
-later. This should cover all of the syscalls in fs/stat.c and
-fs/namei.c, and a few from fs/open.c.
-
-Once these are merged, I'll look at adding similar handling to other
-path-based syscalls in a later set. A quick look shows that we have
-about 50-odd path-based syscalls that will need similar handling, so
-this is just a start.
-
-Jeff Layton (19):
-  vfs: add a retry_estale helper function to handle retries on ESTALE
-  vfs: add a kern_path_at function
-  vfs: make fstatat retry on ESTALE errors from getattr call
-  vfs: fix readlinkat to retry on ESTALE
-  vfs: remove user_path_at_empty
-  vfs: turn "empty" arg in getname_flags into a bool
-  vfs: add new "reval" argument to kern_path_create
-  vfs: fix mknodat to retry on ESTALE errors
-  vfs: fix mkdir to retry on ESTALE errors
-  vfs: fix symlinkat to retry on ESTALE errors
-  vfs: fix linkat to retry on ESTALE errors
-  vfs: make rmdir retry on ESTALE errors
-  vfs: make do_unlinkat retry on ESTALE errors
-  vfs: fix renameat to retry on ESTALE errors
-  vfs: remove user_path_parent
-  vfs: have do_sys_truncate retry once on an ESTALE error
-  vfs: have faccessat retry once on an ESTALE error
-  vfs: have chdir retry lookup and call once on ESTALE error
-  vfs: make chroot retry once on ESTALE error
-
- drivers/base/devtmpfs.c |   7 +-
- fs/namei.c              | 357 ++++++++++++++++++++++++++++++------------------
- fs/open.c               | 234 ++++++++++++++++++-------------
- fs/stat.c               |  44 ++++--
- include/linux/fs.h      |  22 +++
- include/linux/namei.h   |   4 +-
- net/unix/af_unix.c      |   2 +-
- 7 files changed, 422 insertions(+), 248 deletions(-)
-
--- 
-1.7.11.2
-
+T24gRnJpLCAyMDEyLTA4LTI0IGF0IDIyOjMxICswMTAwLCBTYWNoaW4gUHJhYmh1IHdyb3RlOg0K
+PiBPbiBGcmksIDIwMTItMDgtMjQgYXQgMTU6MDcgKzAwMDAsIE15a2xlYnVzdCwgVHJvbmQgd3Jv
+dGU6DQo+ID4gT24gRnJpLCAyMDEyLTA4LTI0IGF0IDE1OjE2ICswMTAwLCBTYWNoaW4gUHJhYmh1
+IHdyb3RlOg0KPiA+ID4gVGhpcyBmaXhlcyBhIGJ1ZyBpbnRyb2R1Y2VkIGJ5IGNvbW1pdA0KPiA+
+ID4gNWEwMDY4OTkzMGFiOTc1ZmRkMWIzN2IwMzQ0NzUwMTdlNDYwY2YyYQ0KPiA+ID4gVGhlIHBh
+dGNoIGFkZHMgYW4gZXh0cmEgcGFnZSB0byBucGFnZXMgdG8gaG9sZCB0aGUgYml0bWFwIHJldHVy
+bmVkIGJ5DQo+ID4gPiB0aGUgc2VydmVyLg0KPiA+ID4gDQo+ID4gPiBCcnVjZSBGaWVsZHMgcG9p
+bnRlZCBvdXQgdGhhdCB0aGUgY2hhbmdlcyBpbnRyb2R1Y2VkIGJ5IHRoZSBwYXRjaCB3aWxsDQo+
+ID4gPiBjYXVzZSB0aGUgYXJyYXkgbnBhZ2VzIHRvIG92ZXJmbG93IGlmIGEgYnVmZmVyIG9mIHNp
+emUgZ3JlYXRlciB0aGFuIG9yDQo+ID4gPiBlcXVhbCB0byBYQVRUUl9TSVpFX01BWCBpcyBwYXNz
+ZWQgdG8gX19uZnM0X2dldF9hY2xfdW5jYWNoZWQoKQ0KPiA+IA0KPiA+IEknZCB0aGluayB0aGF0
+IHRoZSByaWdodCB0aGluZyB0byBkbyBoZXJlIGlzIHJhdGhlciB0byBhZGQgYXBwcm9wcmlhdGUN
+Cj4gPiBidWZmZXIgb3ZlcmZsb3cgY2hlY2tzLiBIb3cgYWJvdXQgc29tZXRoaW5nIGxpa2UgdGhl
+IGZvbGxvd2luZz8NCj4gPiANCj4gPiA4PC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+ID4gRnJvbSA3YzM1Y2UyMjA5MjQxODIy
+ODRhZWE5ZjhhZWMzOWIwZDk5MTYwMGRmIE1vbiBTZXAgMTcgMDA6MDA6MDAgMjAwMQ0KPiA+IEZy
+b206IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQo+ID4gRGF0
+ZTogRnJpLCAyNCBBdWcgMjAxMiAxMDo1OToyNSAtMDQwMA0KPiA+IFN1YmplY3Q6IFtQQVRDSF0g
+TkZTdjQ6IEZpeCByYW5nZSBjaGVja2luZyBpbiBfX25mczRfZ2V0X2FjbF91bmNhY2hlZCBhbmQN
+Cj4gPiAgX19uZnM0X3Byb2Nfc2V0X2FjbA0KPiA+IA0KPiA+IEVuc3VyZSB0aGF0IHRoZSB1c2Vy
+IHN1cHBsaWVkIGJ1ZmZlciBzaXplIGRvZXNuJ3QgY2F1c2UgdXMgdG8gb3ZlcmZsb3cNCj4gPiB0
+aGUgJ3BhZ2VzJyBhcnJheS4NCj4gPiANCj4gPiBBbHNvIGZpeCB1cCBzb21lIGNvbmZ1c2lvbiBi
+ZXR3ZWVuIHRoZSB1c2Ugb2YgUEFHRV9TSVpFIGFuZA0KPiA+IFBBR0VfQ0FDSEVfU0laRSB3aGVu
+IGNhbGN1bGF0aW5nIGJ1ZmZlciBzaXplcy4gV2UncmUgbm90IHVzaW5nDQo+ID4gdGhlIHBhZ2Ug
+Y2FjaGUgZm9yIGFueXRoaW5nIGhlcmUuDQo+ID4gDQo+ID4gU2lnbmVkLW9mZi1ieTogVHJvbmQg
+TXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCj4gDQo+IFRoaXMgcGF0Y2gg
+aXMgc3VzY2VwdGlibGUgdG8gdGhlIHByb2JsZW0gZGVzY3JpYmVkIGluIGNvbW1pdA0KPiA1YTAw
+Njg5OTMwYWI5NzVmZGQxYjM3YjAzNDQ3NTAxN2U0NjBjZjJhDQo+IA0KPiBUaGlzIGNhbiBiZSBk
+ZW1vbnN0cmF0ZWQgYnkgdGhlIGZvbGxvd2luZyBwYXRjaCB0byBweW5mcyB3aGljaCBwYWRzIHRo
+ZQ0KPiBiaXRtYXAgd2l0aCAxMDAwIGV4dHJhIGVsZW1lbnRzLg0KPiANCj4gVG8gcmVwcm9kdWNl
+LCBvbiB0aGUgc2VydmVyDQo+IGNkIG5ld3B5bmZzL25mczQuMC8NCj4gLi9zZXR1cC5weSBidWls
+ZF9leHQgLS1pbnBsYWNlDQo+IC4vbmZzNHNlcnZlci5weQ0KPiANCj4gb24gdGhlIGNsaWVudCwg
+DQo+IG1vdW50IC1vIHZlcnM9NCBTRVJWRVI6LyAvbW50DQo+IHRvdWNoIC9tbnQvYQ0KPiBuZnM0
+X2dldGZhY2wgL21udC9hDQo+IA0KPiBXaXRoIHRoaXMgbmV3IHBhdGNoLCB5b3Ugd2lsbCBnZXQg
+YSBnZW5lcmFsIHByb3RlY3Rpb24gZmF1bHQgaW4NCj4gX2NvcHlfZnJvbV9wYWdlcygpLg0KDQpJ
+cyB0aGlzIG9uIGEga2VybmVsIHdpdGggY29tbWl0IDUxOWQzOTU5ZTMwYTk4ZjhlMTM1ZTdhMTY2
+NDdjMTBhZjVhZDYzZDUNCihORlN2NDogRml4IHBvaW50ZXIgYXJpdGhtZXRpYyBpbiBkZWNvZGVf
+Z2V0YWNsKSBhcHBsaWVkPw0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVu
+dCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5u
+ZXRhcHAuY29tDQoNCg==
