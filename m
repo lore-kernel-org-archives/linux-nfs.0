@@ -1,69 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:41449 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1030935Ab2HIPBZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2012 11:01:25 -0400
-Received: by yhmm54 with SMTP id m54so530360yhm.19
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Aug 2012 08:01:24 -0700 (PDT)
+Received: from mx2.netapp.com ([216.240.18.37]:58821 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758962Ab2HXWCb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Aug 2012 18:02:31 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Sachin Prabhu <sprabhu@redhat.com>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Avoid array overflow in __nfs4_get_acl_uncached
+Date: Fri, 24 Aug 2012 22:02:01 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F5859F@SACEXCMBX01-PRD.hq.netapp.com>
+References: <1345817768-23511-1-git-send-email-sprabhu@redhat.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F4AF1E@SACEXCMBX01-PRD.hq.netapp.com>
+	 <1345843866.2279.6.camel@localhost>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F5842F@SACEXCMBX01-PRD.hq.netapp.com>
+	 <1345845062.32200.1.camel@localhost>
+In-Reply-To: <1345845062.32200.1.camel@localhost>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <1344522979.23523.2.camel@lade.trondhjem.org>
-References: <1344457310-26442-1-git-send-email-Trond.Myklebust@netapp.com>
- <CA+a=Yy7SX+cPLFiNy552bU9ZMS_rSwvaSpV732_mDwpcPAH5Wg@mail.gmail.com> <1344522979.23523.2.camel@lade.trondhjem.org>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Thu, 9 Aug 2012 23:01:03 +0800
-Message-ID: <CA+a=Yy7tDi0kQGvjPeb=O_9XMnZDm-_31VTkNF7wEW7Pb0BZow@mail.gmail.com>
-Subject: Re: [PATCH] NFSv4.1: Remove a bogus BUG_ON() in nfs4_layoutreturn_done
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        Boaz Harrosh <bharrosh@panasas.com>, Benny Halevy <bhalevy@tonian.com>,
-        "Isaman, Fred" <Fred.Isaman@netapp.com>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 9, 2012 at 10:36 PM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> On Thu, 2012-08-09 at 22:30 +0800, Peng Tao wrote:
->> On Thu, Aug 9, 2012 at 4:21 AM, Trond Myklebust
->> <Trond.Myklebust@netapp.com> wrote:
->> > Ever since commit 0a57cdac3f (NFSv4.1 send layoutreturn to fence
->> > disconnected data server) we've been sending layoutreturn calls
->> > while there is potentially still outstanding I/O to the data
->> > servers. The reason we do this is to avoid races between replayed
->> > writes to the MDS and the original writes to the DS.
->> >
->> > When this happens, the BUG_ON() in nfs4_layoutreturn_done can
->> > be triggered because it assumes that we would never call
->> > layoutreturn without knowing that all I/O to the DS is
->> > finished. The fix is to remove the BUG_ON() now that the
->> > assumptions behind the test are obsolete.
->> >
->> Isn't MDS supposed to recall the layout if races are possible between
->> outstanding write-to-DS and write-through-MDS?
->
-> Where do you read that in RFC5661?
->
-That's my (maybe mis-)understanding of how server works... But looking
-at rfc5661 section 18.44.3. layoutreturn implementation.
-"
-After this call,
-   the client MUST NOT use the returned layout(s) and the associated
-   storage protocol to access the file data.
-"
-And given commit 0a57cdac3f, client is using the layout even after
-layoutreturn, which IMHO is a violation of rfc5661.
-
->> And it causes data corruption for blocklayout if client returns layout
->> while there is in-flight disk IO...
->
-> Then it needs to turn off fast failover to write-through-MDS.
->
-If you still consider it following rfc5661, I'd choose to disable
-layoutreturn in before write-through-MDS for blocklayout, by adding
-some flag like PNFS_NO_LAYOUTRET_ON_FALLTHRU similar to objects'
-PNFS_LAYOUTRET_ON_SETATTR.
-
--- 
-Thanks,
-Tao
+T24gRnJpLCAyMDEyLTA4LTI0IGF0IDIyOjUxICswMTAwLCBTYWNoaW4gUHJhYmh1IHdyb3RlOg0K
+PiBPbiBGcmksIDIwMTItMDgtMjQgYXQgMjE6MzggKzAwMDAsIE15a2xlYnVzdCwgVHJvbmQgd3Jv
+dGU6DQo+ID4gT24gRnJpLCAyMDEyLTA4LTI0IGF0IDIyOjMxICswMTAwLCBTYWNoaW4gUHJhYmh1
+IHdyb3RlOg0KPiA+ID4gT24gRnJpLCAyMDEyLTA4LTI0IGF0IDE1OjA3ICswMDAwLCBNeWtsZWJ1
+c3QsIFRyb25kIHdyb3RlOg0KPiA+ID4gPiBPbiBGcmksIDIwMTItMDgtMjQgYXQgMTU6MTYgKzAx
+MDAsIFNhY2hpbiBQcmFiaHUgd3JvdGU6DQo+ID4gPiA+ID4gVGhpcyBmaXhlcyBhIGJ1ZyBpbnRy
+b2R1Y2VkIGJ5IGNvbW1pdA0KPiA+ID4gPiA+IDVhMDA2ODk5MzBhYjk3NWZkZDFiMzdiMDM0NDc1
+MDE3ZTQ2MGNmMmENCj4gPiA+ID4gPiBUaGUgcGF0Y2ggYWRkcyBhbiBleHRyYSBwYWdlIHRvIG5w
+YWdlcyB0byBob2xkIHRoZSBiaXRtYXAgcmV0dXJuZWQgYnkNCj4gPiA+ID4gPiB0aGUgc2VydmVy
+Lg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IEJydWNlIEZpZWxkcyBwb2ludGVkIG91dCB0aGF0IHRo
+ZSBjaGFuZ2VzIGludHJvZHVjZWQgYnkgdGhlIHBhdGNoIHdpbGwNCj4gPiA+ID4gPiBjYXVzZSB0
+aGUgYXJyYXkgbnBhZ2VzIHRvIG92ZXJmbG93IGlmIGEgYnVmZmVyIG9mIHNpemUgZ3JlYXRlciB0
+aGFuIG9yDQo+ID4gPiA+ID4gZXF1YWwgdG8gWEFUVFJfU0laRV9NQVggaXMgcGFzc2VkIHRvIF9f
+bmZzNF9nZXRfYWNsX3VuY2FjaGVkKCkNCj4gPiA+ID4gDQo+ID4gPiA+IEknZCB0aGluayB0aGF0
+IHRoZSByaWdodCB0aGluZyB0byBkbyBoZXJlIGlzIHJhdGhlciB0byBhZGQgYXBwcm9wcmlhdGUN
+Cj4gPiA+ID4gYnVmZmVyIG92ZXJmbG93IGNoZWNrcy4gSG93IGFib3V0IHNvbWV0aGluZyBsaWtl
+IHRoZSBmb2xsb3dpbmc/DQo+ID4gPiA+IA0KPiA+ID4gPiA4PC0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+ID4gPiA+IEZyb20g
+N2MzNWNlMjIwOTI0MTgyMjg0YWVhOWY4YWVjMzliMGQ5OTE2MDBkZiBNb24gU2VwIDE3IDAwOjAw
+OjAwIDIwMDENCj4gPiA+ID4gRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RA
+bmV0YXBwLmNvbT4NCj4gPiA+ID4gRGF0ZTogRnJpLCAyNCBBdWcgMjAxMiAxMDo1OToyNSAtMDQw
+MA0KPiA+ID4gPiBTdWJqZWN0OiBbUEFUQ0hdIE5GU3Y0OiBGaXggcmFuZ2UgY2hlY2tpbmcgaW4g
+X19uZnM0X2dldF9hY2xfdW5jYWNoZWQgYW5kDQo+ID4gPiA+ICBfX25mczRfcHJvY19zZXRfYWNs
+DQo+ID4gPiA+IA0KPiA+ID4gPiBFbnN1cmUgdGhhdCB0aGUgdXNlciBzdXBwbGllZCBidWZmZXIg
+c2l6ZSBkb2Vzbid0IGNhdXNlIHVzIHRvIG92ZXJmbG93DQo+ID4gPiA+IHRoZSAncGFnZXMnIGFy
+cmF5Lg0KPiA+ID4gPiANCj4gPiA+ID4gQWxzbyBmaXggdXAgc29tZSBjb25mdXNpb24gYmV0d2Vl
+biB0aGUgdXNlIG9mIFBBR0VfU0laRSBhbmQNCj4gPiA+ID4gUEFHRV9DQUNIRV9TSVpFIHdoZW4g
+Y2FsY3VsYXRpbmcgYnVmZmVyIHNpemVzLiBXZSdyZSBub3QgdXNpbmcNCj4gPiA+ID4gdGhlIHBh
+Z2UgY2FjaGUgZm9yIGFueXRoaW5nIGhlcmUuDQo+ID4gPiA+IA0KPiA+ID4gPiBTaWduZWQtb2Zm
+LWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KPiA+ID4g
+DQo+ID4gPiBUaGlzIHBhdGNoIGlzIHN1c2NlcHRpYmxlIHRvIHRoZSBwcm9ibGVtIGRlc2NyaWJl
+ZCBpbiBjb21taXQNCj4gPiA+IDVhMDA2ODk5MzBhYjk3NWZkZDFiMzdiMDM0NDc1MDE3ZTQ2MGNm
+MmENCj4gPiA+IA0KPiA+ID4gVGhpcyBjYW4gYmUgZGVtb25zdHJhdGVkIGJ5IHRoZSBmb2xsb3dp
+bmcgcGF0Y2ggdG8gcHluZnMgd2hpY2ggcGFkcyB0aGUNCj4gPiA+IGJpdG1hcCB3aXRoIDEwMDAg
+ZXh0cmEgZWxlbWVudHMuDQo+ID4gPiANCj4gPiA+IFRvIHJlcHJvZHVjZSwgb24gdGhlIHNlcnZl
+cg0KPiA+ID4gY2QgbmV3cHluZnMvbmZzNC4wLw0KPiA+ID4gLi9zZXR1cC5weSBidWlsZF9leHQg
+LS1pbnBsYWNlDQo+ID4gPiAuL25mczRzZXJ2ZXIucHkNCj4gPiA+IA0KPiA+ID4gb24gdGhlIGNs
+aWVudCwgDQo+ID4gPiBtb3VudCAtbyB2ZXJzPTQgU0VSVkVSOi8gL21udA0KPiA+ID4gdG91Y2gg
+L21udC9hDQo+ID4gPiBuZnM0X2dldGZhY2wgL21udC9hDQo+ID4gPiANCj4gPiA+IFdpdGggdGhp
+cyBuZXcgcGF0Y2gsIHlvdSB3aWxsIGdldCBhIGdlbmVyYWwgcHJvdGVjdGlvbiBmYXVsdCBpbg0K
+PiA+ID4gX2NvcHlfZnJvbV9wYWdlcygpLg0KPiA+IA0KPiA+IElzIHRoaXMgb24gYSBrZXJuZWwg
+d2l0aCBjb21taXQgNTE5ZDM5NTllMzBhOThmOGUxMzVlN2ExNjY0N2MxMGFmNWFkNjNkNQ0KPiA+
+IChORlN2NDogRml4IHBvaW50ZXIgYXJpdGhtZXRpYyBpbiBkZWNvZGVfZ2V0YWNsKSBhcHBsaWVk
+Pw0KPiA+IA0KPiANCj4gWWVzLg0KDQpPSywgc28gY2FuIHlvdSBsb29rIGludG8gd2hpY2ggcGFy
+YW1ldGVycyBhcmUgaW5jb3JyZWN0IGFuZCB3aHk/IFRoZQ0KY2hlY2tzIGluIGRlY29kZV9nZXRh
+Y2wgYXJlIHN1cHBvc2VkIGVuc3VyZSB0aGF0IHdlIGRvbid0IG92ZXJmbG93IHRoZQ0KeGRyLT5i
+dWYtPnBhZ2VfbGVuLCBzbyBpZiB0aG9zZSBhcmUgaW5zdWZmaWNpZW50LCB0aGVuIEknZCBsaWtl
+IHRvDQp1bmRlcnN0YW5kIHdoeS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBj
+bGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3
+d3cubmV0YXBwLmNvbQ0KDQo=
