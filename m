@@ -1,86 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:14070 "EHLO
-	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752415Ab2H3AUK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Aug 2012 20:20:10 -0400
-Date: Wed, 29 Aug 2012 17:20:06 -0700
-From: Nick Pasich <Nick@NickAndBarb.net>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: WARNING: at fs/inode.c:280 drop_nlink+0x31/0x33()
-Message-ID: <20120830002006.GA23484@NickAndBarb.net>
-References: <20120829162527.GA3635@NickAndBarb.net>
- <20120829151641.20cde4bc@corrin.poochiereds.net>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:52225 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752426Ab2HXXHq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Aug 2012 19:07:46 -0400
+Date: Fri, 24 Aug 2012 16:07:40 -0700
+From: Tejun Heo <tj@kernel.org>
+To: Sasha Levin <levinsasha928@gmail.com>
+Cc: torvalds@linux-foundation.org, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
+        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
+        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
+        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive
+ hashtable
+Message-ID: <20120824230740.GN21325@google.com>
+References: <20120822180138.GA19212@google.com>
+ <50357840.5020201@gmail.com>
+ <20120823200456.GD14962@google.com>
+ <5037DA47.9010306@gmail.com>
+ <20120824195941.GC21325@google.com>
+ <5037E00B.6090606@gmail.com>
+ <20120824203332.GF21325@google.com>
+ <5037E9D9.9000605@gmail.com>
+ <20120824212348.GK21325@google.com>
+ <5038074D.300@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120829151641.20cde4bc@corrin.poochiereds.net>
+In-Reply-To: <5038074D.300@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks for replying Jeff...
+Hello,
 
-Yes, it sure would be great to have 3.5.z  patch...
+On Sat, Aug 25, 2012 at 12:59:25AM +0200, Sasha Levin wrote:
+> Thats the thing, the amount of things of things you can do with a given bucket
+> is very limited. You can't add entries to any point besides the head (without
+> walking the entire list).
 
+Kinda my point.  We already have all the hlist*() interface to deal
+with such cases.  Having something which is evidently the trivial
+hlist hashtable and advertises as such in the interface can be
+helpful.  I think we need that more than we need anything fancy.
 
---( Nick Pasich )--
+Heh, this is a debate about which one is less insignificant.  I can
+see your point.  I'd really like to hear what others think on this.
 
+Guys, do we want something which is evidently trivial hlist hashtable
+which can use hlist_*() API directly or do we want something better
+encapsulated?
 
+Thanks.
 
-On Wed, Aug 29, 2012 at 03:16:41PM -0700, Jeff Layton wrote:
-> On Wed, 29 Aug 2012 09:25:27 -0700
-> Nick Pasich <Nick@NickAndBarb.net> wrote:
-> 
-> > 
-> > I'm using kernel 3.5.3 ... 
-> > 
-> > It happens on 3.5.1 and 3.5.2 also.
-> > 
-> > I know that Nick Bowler has already reported this...
-> > 
-> > I'm experiencing the same thing.
-> > 
-> > It happens when moving files from one directory to another
-> > on the same partition (NFS). 
-> > 
-> >   --( Nick Pasich )--
-> > 
-> > 
-> > #############################################################################
-> > ##
-> > ## Happens when PSTs are moved from one directory to another on the ISCSI ...
-> > ##
-> > #############################################################################
-> > 
-> > Aug 29 08:06:16 localhost kernel: ------------[ cut here ]------------
-> > Aug 29 08:06:16 localhost kernel: WARNING: at fs/inode.c:280 drop_nlink+0x31/0x33()
-> > Aug 29 08:06:16 localhost kernel: Hardware name: To Be Filled By O.E.M.
-> > Aug 29 08:06:16 localhost kernel: Modules linked in: ecb md4 cifs w83627hf eeprom asb100 hwmon_vid hwmon nfsd exportfs ipv6 psmouse usb_storage io_edgeport usbserial sg r8169 mii evdev intel_agp uhci_hcd i2c_i801 i2c_core shpchp intel_gtt agpgart ehci_hcd microcode serio_raw
-> > Aug 29 08:06:16 localhost kernel: Pid: 31477, comm: rm Tainted: G        W    3.5.3 #1
-> > Aug 29 08:06:16 localhost kernel: Call Trace:
-> > Aug 29 08:06:16 localhost kernel:  [<c10a53e2>] ? drop_nlink+0x31/0x33
-> > Aug 29 08:06:16 localhost kernel:  [<c1025dd2>] ? warn_slowpath_common+0x7b/0x90
-> > Aug 29 08:06:16 localhost kernel:  [<c10a53e2>] ? drop_nlink+0x31/0x33
-> > Aug 29 08:06:16 localhost kernel:  [<c1025e02>] ? warn_slowpath_null+0x1b/0x1f
-> > Aug 29 08:06:16 localhost kernel:  [<c10a53e2>] ? drop_nlink+0x31/0x33
-> > Aug 29 08:06:16 localhost kernel:  [<f83dfa81>] ? cifs_unlink+0x134/0x63d [cifs]
-> > Aug 29 08:06:16 localhost kernel:  [<c10a37d4>] ? dput+0x11/0x117
-> > Aug 29 08:06:16 localhost kernel:  [<c10a87d4>] ? mntput_no_expire+0xf/0xf7
-> > Aug 29 08:06:16 localhost kernel:  [<c109ca9b>] ? vfs_unlink+0x4e/0xb6
-> > Aug 29 08:06:16 localhost kernel:  [<c109b333>] ? __lookup_hash+0x54/0xac
-> > Aug 29 08:06:16 localhost kernel:  [<c109e8c2>] ? do_unlinkat+0x10a/0x12d
-> > Aug 29 08:06:16 localhost kernel:  [<c10a0124>] ? sys_ioctl+0x34/0x57
-> > Aug 29 08:06:16 localhost kernel:  [<c140a8ed>] ? syscall_call+0x7/0xb
-> > Aug 29 08:06:16 localhost kernel: ---[ end trace 756b427e3bd671f9 ]---
-> > 
-> 
-> (cc'ing linux-cifs ml)
-> 
-> This stack trace comes from cifs, not nfs.
-> 
-> Steve French has a patch queued in his tree to silence this warning
-> that I believe he intends to send to Linus for 3.6. Perhaps we should
-> consider backporting it for 3.5.z too?
-> 
-> -- 
-> Jeff Layton <jlayton@redhat.com>
-
+-- 
+tejun
