@@ -1,88 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35948 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:48947 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754019Ab2HISBO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Aug 2012 14:01:14 -0400
-Date: Thu, 9 Aug 2012 14:01:03 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: steved@redhat.com
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Zdenek Salvet <salvet@ics.muni.cz>,
-        Lukas Hejtmanek <xhejtman@ics.muni.cz>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH] README: note gssd/svcgssd may be needed on both sides
-Message-ID: <20120809180103.GA9914@fieldses.org>
-References: <20120806135517.GS25979@ics.muni.cz>
- <20120807154114.GA21460@fieldses.org>
- <1344355148.5781.31.camel@lade.trondhjem.org>
- <20120808075813.GW604@horn.ics.muni.cz>
- <1344431887.3423.4.camel@lade.trondhjem.org>
- <20120809080642.GE604@horn.ics.muni.cz>
- <20120809144530.GB6592@fieldses.org>
- <1344527573.25447.17.camel@lade.trondhjem.org>
- <20120809165035.GB8230@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120809165035.GB8230@fieldses.org>
+	id S1753829Ab2HXOQN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Aug 2012 10:16:13 -0400
+From: Sachin Prabhu <sprabhu@redhat.com>
+To: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Cc: Trond Myklebust <trond.myklebust@netapp.com>
+Subject: [PATCH] Avoid array overflow in __nfs4_get_acl_uncached
+Date: Fri, 24 Aug 2012 15:16:08 +0100
+Message-Id: <1345817768-23511-1-git-send-email-sprabhu@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+This fixes a bug introduced by commit
+5a00689930ab975fdd1b37b034475017e460cf2a
+The patch adds an extra page to npages to hold the bitmap returned by
+the server.
 
-Administrators and distributors have been confused about this.
+Bruce Fields pointed out that the changes introduced by the patch will
+cause the array npages to overflow if a buffer of size greater than or
+equal to XATTR_SIZE_MAX is passed to __nfs4_get_acl_uncached()
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Sachin Prabhu <sprabhu@redhat.com>
 ---
- README |   18 +++++++++++++-----
- 1 file changed, 13 insertions(+), 5 deletions(-)
+ fs/nfs/nfs4proc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/README b/README
-index e55b2dd..9bb69d7 100644
---- a/README
-+++ b/README
-@@ -71,18 +71,21 @@ scripts can be written to work correctly.
- 
- 
-    A/  mount -t nfsd /proc/fs/nfsd
--      This filesystem needs to be mount before most daemons,
-+      This filesystem needs to be mounted before most daemons,
-       particularly exportfs, mountd, svcgssd, idmapd.
-       It could be mounted once, or the script that starts each daemon
-       could test if it is mounted and mount it if not.
- 
--   B/ svcgssd ; idmapd
-+   B/ svcgssd ; gssd; idmapd
-        These supply services to nfsd and so should be started before
-        rpc.nfsd.  Where they come between mounting the nfsd filesystem
-        and starting the nfsd server is not important.
-        idmapd is only needed for NFSv4 support.
--       svcgssd is only needed if exportfs NFS filesystem with crypto-
--       security (Kerberos).
-+       svcgssd is needed to export filesystems with Kerberos.
-+       gssd should also be started to support granting delegations to
-+       NFSv4.0 clients using Kerberos.  However, if it is not started
-+       this will only mean that delegations will not be granted.  This
-+       will not prevent NFSv4.0 clients from functioning normally.
- 
-    C/ exportfs -av ; rpc.mountd
-        It is important that exportfs be run before mountd so that
-@@ -148,10 +151,15 @@ scripts can be written to work correctly.
-       filesystems can be mounted with "-o nolock" before sm-notify.
-       This is appropriate for '/', '/usr', and '/var'.
- 
--   B/ gssd ; idmapd
-+   B/ gssd ; svcgssd; idmapd
-       idmapd should be started before mounting any NFSv4 filesystems.
-       gssd should be started before mounting any NFS filesystems
-       securely (with Kerberos).
-+      Before mounting any NFSv4.0 filesystems with Kerberos, svcgssd should
-+      also be started to support the callbacks required for delegations.
-+      However, a failure to start svcgssd will only mean that delegations
-+      are turned off, and will not prevent such a mount from working
-+      correctly.
- 
-    C/ statd should be run before any NFSv2 or NFSv3 filesystem is
-       mounted with remote locking (i.e. without -o nolock).
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 6352741..86333b8 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3768,7 +3768,7 @@ out:
+  */
+ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t buflen)
+ {
+-	struct page *pages[NFS4ACL_MAXPAGES] = {NULL, };
++	struct page *pages[NFS4ACL_MAXPAGES+1] = {NULL, };
+ 	struct nfs_getaclargs args = {
+ 		.fh = NFS_FH(inode),
+ 		.acl_pages = pages,
 -- 
-1.7.9.5
+1.7.11.4
 
