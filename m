@@ -1,205 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:37149 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759066Ab2HITGM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2012 15:06:12 -0400
-Subject: Re: NFS: Treat NFS4ERR_CLID_INUSE as a fatal error
-Mime-Version: 1.0 (Apple Message framework v1278)
+Received: from mail.openrapids.net ([64.15.138.104]:35389 "EHLO
+	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751124Ab2HYEYW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 25 Aug 2012 00:24:22 -0400
+Date: Sat, 25 Aug 2012 00:24:19 -0400
+From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+To: Tejun Heo <tj@kernel.org>
+Cc: Sasha Levin <levinsasha928@gmail.com>, torvalds@linux-foundation.org,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com, axboe@kernel.dk,
+        agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
+        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
+        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive
+	hashtable
+Message-ID: <20120825042419.GA27240@Krystal>
+References: <50357840.5020201@gmail.com> <20120823200456.GD14962@google.com> <5037DA47.9010306@gmail.com> <20120824195941.GC21325@google.com> <5037E00B.6090606@gmail.com> <20120824203332.GF21325@google.com> <5037E9D9.9000605@gmail.com> <20120824212348.GK21325@google.com> <5038074D.300@gmail.com> <20120824230740.GN21325@google.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20120809183557.GA10591@fieldses.org>
-Date: Thu, 9 Aug 2012 15:06:00 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <53272628-CC34-4279-AA69-CD31B86672D5@oracle.com>
-References: <20120809183557.GA10591@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20120824230740.GN21325@google.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+* Tejun Heo (tj@kernel.org) wrote:
+> Hello,
+> 
+> On Sat, Aug 25, 2012 at 12:59:25AM +0200, Sasha Levin wrote:
+> > Thats the thing, the amount of things of things you can do with a given bucket
+> > is very limited. You can't add entries to any point besides the head (without
+> > walking the entire list).
+> 
+> Kinda my point.  We already have all the hlist*() interface to deal
+> with such cases.  Having something which is evidently the trivial
+> hlist hashtable and advertises as such in the interface can be
+> helpful.  I think we need that more than we need anything fancy.
+> 
+> Heh, this is a debate about which one is less insignificant.  I can
+> see your point.  I'd really like to hear what others think on this.
+> 
+> Guys, do we want something which is evidently trivial hlist hashtable
+> which can use hlist_*() API directly or do we want something better
+> encapsulated?
 
-On Aug 9, 2012, at 2:35 PM, J. Bruce Fields wrote:
+My 2 cents, FWIW: I think this specific effort should target a trivially
+understandable API and implementation, for use-cases where one would be
+tempted to reimplement his own trivial hash table anyway. So here
+exposing hlist internals, with which kernel developers are already
+familiar, seems like a good approach in my opinion, because hiding stuff
+behind new abstraction might make the target users go away.
 
-> Sorry not to notice this before--the below causes a regression against
-> the Linux server; something like:
-> 
-> 	# mount -osec=krb5i pip1:/exports /mnt/
-> 	# echo "test" >/mnt/test
-> 	# umount /mnt/
-> 	# mount -osec=krb5 pip1:/exports /mnt/
-> 	# echo "test" >/mnt/test
-> 	bash: /mnt/test: Operation not permitted
-> 
-> This fails after the below commit on the client, but not before, thanks
-> to the server rejecting the second setclientid with CLID_INUSE due to a
-> different security flavor.
+Then, as we see the need, we can eventually merge a more elaborate hash
+table with poneys and whatnot, but I would expect that the trivial hash
+table implementation would still be useful. There are of course very
+compelling reasons to use a more featureful hash table: automatic
+resize, RT-aware updates, scalable updates, etc... but I see a purpose
+for a trivial implementation. Its primary strong points being:
 
-This was part of a series where the last few patches got dropped for other problems.  Testing with this patch by itself was never done since it was part of a series of patches that implement a particular feature.
+- it's trivially understandable, so anyone how want to be really sure
+  they won't end up debugging the hash table instead of their
+  work-in-progress code can have a full understanding of it,
+- it has few dependencies, which makes it easier to understand and
+  easier to use in some contexts (e.g. early boot).
 
-One thought is to put the authentication flavor name back into nfs_client_id4.id string temporarily until we have worked through the issues with full UCS support.  That would prevent the regression, but we'd still have clients who use multiple authentication flavors maintaining multiple leases.
+So I'm in favor of not overdoing the abstraction for this trivial hash
+table, and honestly I would rather prefer that this trivial hash table
+stays trivial. A more elaborate hash table should probably come as a
+separate API.
 
-> I haven't really thought through who's at fault here.  The second
-> setclientid does lack some level of security that the former had, so I
-> think the server's within its rights to complain.
+Thanks,
 
-I don't think the second _lacks_ a level of security: I think the second is using a _different_ security flavor with the same nfs_client_id4.id string.  NFS4ERR_CLID_INUSE is the correct server response in this case.
-
-> --b.
-> 
-> commit de734831224e74fcaf8917386e33644c4243db95
-> Author: Chuck Lever <chuck.lever@oracle.com>
-> Date:   Wed Jul 11 16:30:50 2012 -0400
-> 
->    NFS: Treat NFS4ERR_CLID_INUSE as a fatal error
-> 
->    For NFSv4 minor version 0, currently the cl_id_uniquifier allows the
->    Linux client to generate a unique nfs_client_id4 string whenever a
->    server replies with NFS4ERR_CLID_INUSE.
-> 
->    This implementation seems to be based on a flawed reading of RFC
->    3530.  NFS4ERR_CLID_INUSE actually means that the client has presented
->    this nfs_client_id4 string with a different principal at some time in
->    the past, and that lease is still in use on the server.
-> 
->    For a Linux client this might be rather difficult to achieve: the
->    authentication flavor is named right in the nfs_client_id4.id
->    string.  If we change flavors, we change strings automatically.
-> 
->    So, practically speaking, NFS4ERR_CLID_INUSE means there is some other
->    client using our string.  There is not much that can be done to
->    recover automatically.  Let's make it a permanent error.
-> 
->    Remove the recovery logic in nfs4_proc_setclientid(), and remove the
->    cl_id_uniquifier field from the nfs_client data structure.  And,
->    remove the authentication flavor from the nfs_client_id4 string.
-> 
->    Keeping the authentication flavor in the nfs_client_id4.id string
->    means that we could have a separate lease for each authentication
->    flavor used by mounts on the client.  But we want just one lease for
->    all the mounts on this client.
-> 
->    Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 74dcd85..1148081 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -4029,42 +4029,28 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
-> 		.rpc_resp = res,
-> 		.rpc_cred = cred,
-> 	};
-> -	int loop = 0;
-> -	int status;
-> 
-> +	/* nfs_client_id4 */
-> 	nfs4_init_boot_verifier(clp, &sc_verifier);
-> -
-> -	for(;;) {
-> -		rcu_read_lock();
-> -		setclientid.sc_name_len = scnprintf(setclientid.sc_name,
-> -				sizeof(setclientid.sc_name), "%s/%s %s %s %u",
-> -				clp->cl_ipaddr,
-> -				rpc_peeraddr2str(clp->cl_rpcclient,
-> -							RPC_DISPLAY_ADDR),
-> -				rpc_peeraddr2str(clp->cl_rpcclient,
-> -							RPC_DISPLAY_PROTO),
-> -				clp->cl_rpcclient->cl_auth->au_ops->au_name,
-> -				clp->cl_id_uniquifier);
-> -		setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
-> +	rcu_read_lock();
-> +	setclientid.sc_name_len = scnprintf(setclientid.sc_name,
-> +			sizeof(setclientid.sc_name), "%s/%s %s",
-> +			clp->cl_ipaddr,
-> +			rpc_peeraddr2str(clp->cl_rpcclient,
-> +						RPC_DISPLAY_ADDR),
-> +			rpc_peeraddr2str(clp->cl_rpcclient,
-> +						RPC_DISPLAY_PROTO));
-> +	/* cb_client4 */
-> +	setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
-> 				sizeof(setclientid.sc_netid),
-> 				rpc_peeraddr2str(clp->cl_rpcclient,
-> 							RPC_DISPLAY_NETID));
-> -		setclientid.sc_uaddr_len = scnprintf(setclientid.sc_uaddr,
-> +	rcu_read_unlock();
-> +	setclientid.sc_uaddr_len = scnprintf(setclientid.sc_uaddr,
-> 				sizeof(setclientid.sc_uaddr), "%s.%u.%u",
-> 				clp->cl_ipaddr, port >> 8, port & 255);
-> -		rcu_read_unlock();
-> 
-> -		status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
-> -		if (status != -NFS4ERR_CLID_INUSE)
-> -			break;
-> -		if (loop != 0) {
-> -			++clp->cl_id_uniquifier;
-> -			break;
-> -		}
-> -		++loop;
-> -		ssleep(clp->cl_lease_time / HZ + 1);
-> -	}
-> -	return status;
-> +	return rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
-> }
-> 
-> int nfs4_proc_setclientid_confirm(struct nfs_client *clp,
-> @@ -5262,10 +5248,9 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
-> 	nfs4_init_boot_verifier(clp, &verifier);
-> 
-> 	args.id_len = scnprintf(args.id, sizeof(args.id),
-> -				"%s/%s/%u",
-> +				"%s/%s",
-> 				clp->cl_ipaddr,
-> -				clp->cl_rpcclient->cl_nodename,
-> -				clp->cl_rpcclient->cl_auth->au_flavor);
-> +				clp->cl_rpcclient->cl_nodename);
-> 
-> 	res.server_owner = kzalloc(sizeof(struct nfs41_server_owner),
-> 					GFP_NOFS);
-> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-> index 1cfc460..81eabcd 100644
-> --- a/fs/nfs/nfs4state.c
-> +++ b/fs/nfs/nfs4state.c
-> @@ -1606,10 +1606,15 @@ static int nfs4_handle_reclaim_lease_error(struct nfs_client *clp, int status)
-> 			return -ESERVERFAULT;
-> 		/* Lease confirmation error: retry after purging the lease */
-> 		ssleep(1);
-> -	case -NFS4ERR_CLID_INUSE:
-> 	case -NFS4ERR_STALE_CLIENTID:
-> 		clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
-> 		break;
-> +	case -NFS4ERR_CLID_INUSE:
-> +		pr_err("NFS: Server %s reports our clientid is in use\n",
-> +			clp->cl_hostname);
-> +		nfs_mark_client_ready(clp, -EPERM);
-> +		clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
-> +		return -EPERM;
-> 	case -EACCES:
-> 		if (clp->cl_machine_cred == NULL)
-> 			return -EACCES;
-> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-> index f58325a..6532765 100644
-> --- a/include/linux/nfs_fs_sb.h
-> +++ b/include/linux/nfs_fs_sb.h
-> @@ -69,10 +69,9 @@ struct nfs_client {
-> 	struct idmap *		cl_idmap;
-> 
-> 	/* Our own IP address, as a null-terminated string.
-> -	 * This is used to generate the clientid, and the callback address.
-> +	 * This is used to generate the mv0 callback address.
-> 	 */
-> 	char			cl_ipaddr[48];
-> -	unsigned char		cl_id_uniquifier;
-> 	u32			cl_cb_ident;	/* v4.0 callback identifier */
-> 	const struct nfs4_minor_version_ops *cl_mvops;
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Mathieu
 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Mathieu Desnoyers
+Operating System Efficiency R&D Consultant
+EfficiOS Inc.
+http://www.efficios.com
