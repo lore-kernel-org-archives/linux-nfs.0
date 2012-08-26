@@ -1,284 +1,132 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga11.intel.com ([192.55.52.93]:1635 "EHLO mga11.intel.com"
+Received: from mx2.netapp.com ([216.240.18.37]:9763 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754008Ab2HSC5q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 18 Aug 2012 22:57:46 -0400
-Date: Sun, 19 Aug 2012 10:57:24 +0800
-From: Fengguang Wu <fengguang.wu@intel.com>
-To: Namjae Jeon <linkinjeon@gmail.com>
-Cc: akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        Namjae Jeon <namjae.jeon@samsung.com>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/3] writeback: add dirty_ratio_time per bdi variable
- (NFS write performance)
-Message-ID: <20120819025724.GC16796@localhost>
-References: <1345283402-7889-1-git-send-email-linkinjeon@gmail.com>
+	id S1752155Ab2HZS5d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 26 Aug 2012 14:57:33 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Sachin Prabhu <sprabhu@redhat.com>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Avoid array overflow in __nfs4_get_acl_uncached
+Date: Sun, 26 Aug 2012 18:57:16 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F69340@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1345817768-23511-1-git-send-email-sprabhu@redhat.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F4AF1E@SACEXCMBX01-PRD.hq.netapp.com>
+	 <1345843866.2279.6.camel@localhost>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F5842F@SACEXCMBX01-PRD.hq.netapp.com>
+	 <1345845062.32200.1.camel@localhost>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F5859F@SACEXCMBX01-PRD.hq.netapp.com>
+	 <1345937503.4943.17.camel@localhost>
+In-Reply-To: <1345937503.4943.17.camel@localhost>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1345283402-7889-1-git-send-email-linkinjeon@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Aug 18, 2012 at 05:50:02AM -0400, Namjae Jeon wrote:
-> From: Namjae Jeon <namjae.jeon@samsung.com>
-> 
-> This patch is based on suggestion by Wu Fengguang:
-> https://lkml.org/lkml/2011/8/19/19
-> 
-> kernel has mechanism to do writeback as per dirty_ratio and dirty_background
-> ratio. It also maintains per task dirty rate limit to keep balance of
-> dirty pages at any given instance by doing bdi bandwidth estimation.
-> 
-> Kernel also has max_ratio/min_ratio tunables to specify percentage of writecache
-> to control per bdi dirty limits and task throtelling.
-> 
-> However, there might be a usecase where user wants a writeback tuning
-> parameter to flush dirty data at desired/tuned time interval.
-> 
-> dirty_background_time provides an interface where user can tune background
-> writeback start time using /sys/block/sda/bdi/dirty_background_time
-> 
-> dirty_background_time is used alongwith average bdi write bandwidth estimation
-> to start background writeback.
-
-Here lies my major concern about dirty_background_time: the write
-bandwidth estimation is an _estimation_ and will sure become wildly
-wrong in some cases. So the dirty_background_time implementation based
-on it will not always work to the user expectations.
-
-One important case is, some users (eg. Dave Chinner) explicitly take
-advantage of the existing behavior to quickly create & delete a big
-1GB temp file without worrying about triggering unnecessary IOs.
-
-> One of the use case to demonstrate the patch functionality can be
-> on NFS setup:-
-> We have a NFS setup with ethernet line of 100Mbps, while the USB
-> disk is attached to server, which has a local speed of 25MBps. Server
-> and client both are arm target boards.
-> 
-> Now if we perform a write operation over NFS (client to server), as
-> per the network speed, data can travel at max speed of 100Mbps. But
-> if we check the default write speed of USB hdd over NFS it comes
-> around to 8MB/sec, far below the speed of network.
-> 
-> Reason being is as per the NFS logic, during write operation, initially
-> pages are dirtied on NFS client side, then after reaching the dirty
-> threshold/writeback limit (or in case of sync) data is actually sent
-> to NFS server (so now again pages are dirtied on server side). This
-> will be done in COMMIT call from client to server i.e if 100MB of data
-> is dirtied and sent then it will take minimum 100MB/10Mbps ~ 8-9 seconds.
-> 
-> After the data is received, now it will take approx 100/25 ~4 Seconds to
-> write the data to USB Hdd on server side. Hence making the overall time
-> to write this much of data ~12 seconds, which in practically comes out to
-> be near 7 to 8MB/second. After this a COMMIT response will be sent to NFS
-> client.
-> 
-> However we may improve this write performace by making the use of NFS
-> server idle time i.e while data is being received from the client,
-> simultaneously initiate the writeback thread on server side. So instead
-> of waiting for the complete data to come and then start the writeback,
-> we can work in parallel while the network is still busy in receiving the
-> data. Hence in this way overall performace will be improved.
-> 
-> If we tune dirty_background_time, we can see there
-> is increase in the performace and it comes out to be ~ 11MB/seconds.
-> Results are:-
-> ==========================================================
-> Case:1 - Normal setup without any changes
-> ./performancetest_arm ./100MB write
-> 
->  RecSize  WriteSpeed   RanWriteSpeed
-> 
->  10485760  7.93MB/sec   8.11MB/sec
->   1048576  8.21MB/sec   7.80MB/sec
->    524288  8.71MB/sec   8.39MB/sec
->    262144  8.91MB/sec   7.83MB/sec
->    131072  8.91MB/sec   8.95MB/sec
->     65536  8.95MB/sec   8.90MB/sec
->     32768  8.76MB/sec   8.93MB/sec
->     16384  8.78MB/sec   8.67MB/sec
->      8192  8.90MB/sec   8.52MB/sec
->      4096  8.89MB/sec   8.28MB/sec
-> 
-> Average speed is near 8MB/seconds.
-> 
-> Case:2 - Modified the dirty_background_time
-> ./performancetest_arm ./100MB write
-> 
->  RecSize  WriteSpeed   RanWriteSpeed
-> 
->  10485760  10.56MB/sec  10.37MB/sec
->   1048576  10.43MB/sec  10.33MB/sec
->    524288  10.32MB/sec  10.02MB/sec
->    262144  10.52MB/sec  10.19MB/sec
->    131072  10.34MB/sec  10.07MB/sec
->     65536  10.31MB/sec  10.06MB/sec
->     32768  10.27MB/sec  10.24MB/sec
->     16384  10.54MB/sec  10.03MB/sec
->      8192  10.41MB/sec  10.38MB/sec
->      4096  10.34MB/sec  10.12MB/sec
-> 
-> we can see, average write speed is increased to ~10-11MB/sec.
-> ============================================================
-
-The numbers are impressive! FYI, I tried another NFS specific approach
-to avoid big NFS COMMITs, which achieved similar performance gains:
-
-nfs: writeback pages wait queue
-https://lkml.org/lkml/2011/10/20/235
-
-Thanks,
-Fengguang
-
-> Now to make this working we need to make change in dirty_[wirteback|expire]
-> _interval so that flusher threads will be awaken up more early. But if we
-> modify these values it will impact the overall system performace, while our
-> requirement is to modify these parameters for the device used in NFS interface.
-> 
-> This patch provides the changes per block devices. So that we may modify the
-> intervals as per the device and overall system is not impacted by the changes
-> and we get improved
-> 
-> The above mentioned is one of the use case to use this patch.
-> 
-> Original-patch-by: Wu Fengguang <fengguang.wu@intel.com>
-> Signed-off-by: Namjae Jeon <namjae.jeon@samsung.com>
-> Tested-by: Vivek Trivedi <t.vivek@samsung.com>
-> ---
->  fs/fs-writeback.c           |   18 ++++++++++++++++--
->  include/linux/backing-dev.h |    1 +
->  include/linux/writeback.h   |    1 +
->  mm/backing-dev.c            |   22 ++++++++++++++++++++++
->  mm/page-writeback.c         |    3 ++-
->  5 files changed, 42 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/fs-writeback.c b/fs/fs-writeback.c
-> index be3efc4..75fda1d 100644
-> --- a/fs/fs-writeback.c
-> +++ b/fs/fs-writeback.c
-> @@ -769,6 +769,19 @@ static bool over_bground_thresh(struct backing_dev_info *bdi)
->  	return false;
->  }
->  
-> +bool over_dirty_bground_time(struct backing_dev_info *bdi)
-> +{
-> +	unsigned long background_thresh;
-> +
-> +	background_thresh = bdi->avg_write_bandwidth *
-> +		bdi->dirty_background_time / 1000;
-> +
-> +	if (bdi_stat(bdi, BDI_RECLAIMABLE) > background_thresh)
-> +		return true;
-> +
-> +	return false;
-> +}
-> +
->  /*
->   * Called under wb->list_lock. If there are multiple wb per bdi,
->   * only the flusher working on the first wb should do it.
-> @@ -828,7 +841,8 @@ static long wb_writeback(struct bdi_writeback *wb,
->  		 * For background writeout, stop when we are below the
->  		 * background dirty threshold
->  		 */
-> -		if (work->for_background && !over_bground_thresh(wb->bdi))
-> +		if (work->for_background && !over_bground_thresh(wb->bdi) &&
-> +			!over_dirty_bground_time(wb->bdi))
->  			break;
->  
->  		/*
-> @@ -920,7 +934,7 @@ static unsigned long get_nr_dirty_pages(void)
->  
->  static long wb_check_background_flush(struct bdi_writeback *wb)
->  {
-> -	if (over_bground_thresh(wb->bdi)) {
-> +	if (over_bground_thresh(wb->bdi) || over_dirty_bground_time(wb->bdi)) {
->  
->  		struct wb_writeback_work work = {
->  			.nr_pages	= LONG_MAX,
-> diff --git a/include/linux/backing-dev.h b/include/linux/backing-dev.h
-> index 2a9a9ab..ad83783 100644
-> --- a/include/linux/backing-dev.h
-> +++ b/include/linux/backing-dev.h
-> @@ -95,6 +95,7 @@ struct backing_dev_info {
->  
->  	unsigned int min_ratio;
->  	unsigned int max_ratio, max_prop_frac;
-> +	unsigned int dirty_background_time;
->  
->  	struct bdi_writeback wb;  /* default writeback info for this bdi */
->  	spinlock_t wb_lock;	  /* protects work_list */
-> diff --git a/include/linux/writeback.h b/include/linux/writeback.h
-> index b82a83a..433cd09 100644
-> --- a/include/linux/writeback.h
-> +++ b/include/linux/writeback.h
-> @@ -96,6 +96,7 @@ long writeback_inodes_wb(struct bdi_writeback *wb, long nr_pages,
->  long wb_do_writeback(struct bdi_writeback *wb, int force_wait);
->  void wakeup_flusher_threads(long nr_pages, enum wb_reason reason);
->  void inode_wait_for_writeback(struct inode *inode);
-> +bool over_dirty_bground_time(struct backing_dev_info *bdi);
->  
->  /* writeback.h requires fs.h; it, too, is not included from here. */
->  static inline void wait_on_inode(struct inode *inode)
-> diff --git a/mm/backing-dev.c b/mm/backing-dev.c
-> index b41823c..0f9f798 100644
-> --- a/mm/backing-dev.c
-> +++ b/mm/backing-dev.c
-> @@ -219,12 +219,33 @@ static ssize_t max_ratio_store(struct device *dev,
->  }
->  BDI_SHOW(max_ratio, bdi->max_ratio)
->  
-> +static ssize_t dirty_background_time_store(struct device *dev,
-> +		struct device_attribute *attr, const char *buf, size_t count)
-> +{
-> +	struct backing_dev_info *bdi = dev_get_drvdata(dev);
-> +	char *end;
-> +	unsigned int msec;
-> +	ssize_t ret = -EINVAL;
-> +
-> +	msec = simple_strtoul(buf, &end, 10);
-> +	if (*buf && (end[0] == '\0' || (end[0] == '\n' && end[1] == '\0'))) {
-> +		bdi->dirty_background_time = msec;
-> +		ret = count;
-> +
-> +		if (over_dirty_bground_time(bdi))
-> +			bdi_start_background_writeback(bdi);
-> +	}
-> +	return ret;
-> +}
-> +BDI_SHOW(dirty_background_time, bdi->dirty_background_time)
-> +
->  #define __ATTR_RW(attr) __ATTR(attr, 0644, attr##_show, attr##_store)
->  
->  static struct device_attribute bdi_dev_attrs[] = {
->  	__ATTR_RW(read_ahead_kb),
->  	__ATTR_RW(min_ratio),
->  	__ATTR_RW(max_ratio),
-> +	__ATTR_RW(dirty_background_time),
->  	__ATTR_NULL,
->  };
->  
-> @@ -626,6 +647,7 @@ int bdi_init(struct backing_dev_info *bdi)
->  	bdi->min_ratio = 0;
->  	bdi->max_ratio = 100;
->  	bdi->max_prop_frac = FPROP_FRAC_BASE;
-> +	bdi->dirty_background_time = 10000;
->  	spin_lock_init(&bdi->wb_lock);
->  	INIT_LIST_HEAD(&bdi->bdi_list);
->  	INIT_LIST_HEAD(&bdi->work_list);
-> diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-> index 73a7a06..f51a252 100644
-> --- a/mm/page-writeback.c
-> +++ b/mm/page-writeback.c
-> @@ -1403,7 +1403,8 @@ pause:
->  	if (laptop_mode)
->  		return;
->  
-> -	if (nr_reclaimable > background_thresh)
-> +	if (nr_reclaimable > background_thresh ||
-> +		over_dirty_bground_time(bdi))
->  		bdi_start_background_writeback(bdi);
->  }
->  
-> -- 
-> 1.7.9.5
+T24gU3VuLCAyMDEyLTA4LTI2IGF0IDAwOjMxICswMTAwLCBTYWNoaW4gUHJhYmh1IHdyb3RlOg0K
+PiBPbiBGcmksIDIwMTItMDgtMjQgYXQgMjI6MDIgKzAwMDAsIE15a2xlYnVzdCwgVHJvbmQgd3Jv
+dGU6DQo+ID4gT24gRnJpLCAyMDEyLTA4LTI0IGF0IDIyOjUxICswMTAwLCBTYWNoaW4gUHJhYmh1
+IHdyb3RlOg0KPiA+ID4gT24gRnJpLCAyMDEyLTA4LTI0IGF0IDIxOjM4ICswMDAwLCBNeWtsZWJ1
+c3QsIFRyb25kIHdyb3RlOg0KPiA+ID4gPiBPbiBGcmksIDIwMTItMDgtMjQgYXQgMjI6MzEgKzAx
+MDAsIFNhY2hpbiBQcmFiaHUgd3JvdGU6DQo+ID4gPiA+ID4gT24gRnJpLCAyMDEyLTA4LTI0IGF0
+IDE1OjA3ICswMDAwLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+ID4gPiA+ID4gT24gRnJp
+LCAyMDEyLTA4LTI0IGF0IDE1OjE2ICswMTAwLCBTYWNoaW4gUHJhYmh1IHdyb3RlOg0KPiA+ID4g
+PiA+ID4gPiBUaGlzIGZpeGVzIGEgYnVnIGludHJvZHVjZWQgYnkgY29tbWl0DQo+ID4gPiA+ID4g
+PiA+IDVhMDA2ODk5MzBhYjk3NWZkZDFiMzdiMDM0NDc1MDE3ZTQ2MGNmMmENCj4gPiA+ID4gPiA+
+ID4gVGhlIHBhdGNoIGFkZHMgYW4gZXh0cmEgcGFnZSB0byBucGFnZXMgdG8gaG9sZCB0aGUgYml0
+bWFwIHJldHVybmVkIGJ5DQo+ID4gPiA+ID4gPiA+IHRoZSBzZXJ2ZXIuDQo+ID4gPiA+ID4gPiA+
+IA0KPiA+ID4gPiA+ID4gPiBCcnVjZSBGaWVsZHMgcG9pbnRlZCBvdXQgdGhhdCB0aGUgY2hhbmdl
+cyBpbnRyb2R1Y2VkIGJ5IHRoZSBwYXRjaCB3aWxsDQo+ID4gPiA+ID4gPiA+IGNhdXNlIHRoZSBh
+cnJheSBucGFnZXMgdG8gb3ZlcmZsb3cgaWYgYSBidWZmZXIgb2Ygc2l6ZSBncmVhdGVyIHRoYW4g
+b3INCj4gPiA+ID4gPiA+ID4gZXF1YWwgdG8gWEFUVFJfU0laRV9NQVggaXMgcGFzc2VkIHRvIF9f
+bmZzNF9nZXRfYWNsX3VuY2FjaGVkKCkNCj4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gSSdkIHRo
+aW5rIHRoYXQgdGhlIHJpZ2h0IHRoaW5nIHRvIGRvIGhlcmUgaXMgcmF0aGVyIHRvIGFkZCBhcHBy
+b3ByaWF0ZQ0KPiA+ID4gPiA+ID4gYnVmZmVyIG92ZXJmbG93IGNoZWNrcy4gSG93IGFib3V0IHNv
+bWV0aGluZyBsaWtlIHRoZSBmb2xsb3dpbmc/DQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IDg8
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0NCj4gPiA+ID4gPiA+IEZyb20gN2MzNWNlMjIwOTI0MTgyMjg0YWVhOWY4YWVjMzliMGQ5
+OTE2MDBkZiBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCj4gPiA+ID4gPiA+IEZyb206IFRyb25k
+IE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQo+ID4gPiA+ID4gPiBEYXRl
+OiBGcmksIDI0IEF1ZyAyMDEyIDEwOjU5OjI1IC0wNDAwDQo+ID4gPiA+ID4gPiBTdWJqZWN0OiBb
+UEFUQ0hdIE5GU3Y0OiBGaXggcmFuZ2UgY2hlY2tpbmcgaW4gX19uZnM0X2dldF9hY2xfdW5jYWNo
+ZWQgYW5kDQo+ID4gPiA+ID4gPiAgX19uZnM0X3Byb2Nfc2V0X2FjbA0KPiA+ID4gPiA+ID4gDQo+
+ID4gPiA+ID4gPiBFbnN1cmUgdGhhdCB0aGUgdXNlciBzdXBwbGllZCBidWZmZXIgc2l6ZSBkb2Vz
+bid0IGNhdXNlIHVzIHRvIG92ZXJmbG93DQo+ID4gPiA+ID4gPiB0aGUgJ3BhZ2VzJyBhcnJheS4N
+Cj4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gQWxzbyBmaXggdXAgc29tZSBjb25mdXNpb24gYmV0
+d2VlbiB0aGUgdXNlIG9mIFBBR0VfU0laRSBhbmQNCj4gPiA+ID4gPiA+IFBBR0VfQ0FDSEVfU0la
+RSB3aGVuIGNhbGN1bGF0aW5nIGJ1ZmZlciBzaXplcy4gV2UncmUgbm90IHVzaW5nDQo+ID4gPiA+
+ID4gPiB0aGUgcGFnZSBjYWNoZSBmb3IgYW55dGhpbmcgaGVyZS4NCj4gPiA+ID4gPiA+IA0KPiA+
+ID4gPiA+ID4gU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RA
+bmV0YXBwLmNvbT4NCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBUaGlzIHBhdGNoIGlzIHN1c2NlcHRp
+YmxlIHRvIHRoZSBwcm9ibGVtIGRlc2NyaWJlZCBpbiBjb21taXQNCj4gPiA+ID4gPiA1YTAwNjg5
+OTMwYWI5NzVmZGQxYjM3YjAzNDQ3NTAxN2U0NjBjZjJhDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4g
+VGhpcyBjYW4gYmUgZGVtb25zdHJhdGVkIGJ5IHRoZSBmb2xsb3dpbmcgcGF0Y2ggdG8gcHluZnMg
+d2hpY2ggcGFkcyB0aGUNCj4gPiA+ID4gPiBiaXRtYXAgd2l0aCAxMDAwIGV4dHJhIGVsZW1lbnRz
+Lg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IFRvIHJlcHJvZHVjZSwgb24gdGhlIHNlcnZlcg0KPiA+
+ID4gPiA+IGNkIG5ld3B5bmZzL25mczQuMC8NCj4gPiA+ID4gPiAuL3NldHVwLnB5IGJ1aWxkX2V4
+dCAtLWlucGxhY2UNCj4gPiA+ID4gPiAuL25mczRzZXJ2ZXIucHkNCj4gPiA+ID4gPiANCj4gPiA+
+ID4gPiBvbiB0aGUgY2xpZW50LCANCj4gPiA+ID4gPiBtb3VudCAtbyB2ZXJzPTQgU0VSVkVSOi8g
+L21udA0KPiA+ID4gPiA+IHRvdWNoIC9tbnQvYQ0KPiA+ID4gPiA+IG5mczRfZ2V0ZmFjbCAvbW50
+L2ENCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBXaXRoIHRoaXMgbmV3IHBhdGNoLCB5b3Ugd2lsbCBn
+ZXQgYSBnZW5lcmFsIHByb3RlY3Rpb24gZmF1bHQgaW4NCj4gPiA+ID4gPiBfY29weV9mcm9tX3Bh
+Z2VzKCkuDQo+ID4gPiA+IA0KPiA+ID4gPiBJcyB0aGlzIG9uIGEga2VybmVsIHdpdGggY29tbWl0
+IDUxOWQzOTU5ZTMwYTk4ZjhlMTM1ZTdhMTY2NDdjMTBhZjVhZDYzZDUNCj4gPiA+ID4gKE5GU3Y0
+OiBGaXggcG9pbnRlciBhcml0aG1ldGljIGluIGRlY29kZV9nZXRhY2wpIGFwcGxpZWQ/DQo+ID4g
+PiA+IA0KPiA+ID4gDQo+ID4gPiBZZXMuDQo+ID4gDQo+ID4gT0ssIHNvIGNhbiB5b3UgbG9vayBp
+bnRvIHdoaWNoIHBhcmFtZXRlcnMgYXJlIGluY29ycmVjdCBhbmQgd2h5PyBUaGUNCj4gPiBjaGVj
+a3MgaW4gZGVjb2RlX2dldGFjbCBhcmUgc3VwcG9zZWQgZW5zdXJlIHRoYXQgd2UgZG9uJ3Qgb3Zl
+cmZsb3cgdGhlDQo+ID4geGRyLT5idWYtPnBhZ2VfbGVuLCBzbyBpZiB0aG9zZSBhcmUgaW5zdWZm
+aWNpZW50LCB0aGVuIEknZCBsaWtlIHRvDQo+ID4gdW5kZXJzdGFuZCB3aHkuDQo+ID4gDQo+IA0K
+PiBUaGUgcHJvYmxlbSBpcyBzZWVuIGJlY2F1c2Ugd2UgZG8gbm90IGNoZWNrIHRvIHNlZSBpZiB0
+aGUgYWNsX2xlbiArDQo+IGJpdG1hcCBzaXplIGlzIGNvbnRhaW5lZCB3aXRoaW4gdGhlIHBhZ2Ug
+YnVmZmVyIHdlIGFsbG9jYXRlIGZvciBpdC4gDQo+IA0KPiBJdCB3aWxsIGZhaWwgaWYNCj4gYml0
+bWFwIGFycmF5IHNpemUgKyBhY2wgbGVuZ3RoIGF0dHJpYnV0ZSBzaXplICsgQUNMcyA+IHBhZ2Vz
+IGFsbG9jYXRlZA0KPiBmb3IgaXQuICANCj4gDQo+IEluIHRoaXMgY2FzZSwgd2hlbiB3ZSBjYWxs
+IG5mczRfd3JpdGVfY2FjaGVkX2FjbCgpIHRvIHdyaXRlIHRoZSByZXR1cm5lZA0KPiBBQ0xzIGlu
+dG8gY2FjaGUsIHdlIGNhbGwgX2NvcHlfZnJvbV9wYWdlcygpIHRvIHJlYWQgZnJvbSANCj4gaWUu
+IFdlIGNhbGwgbmZzNF93cml0ZV9jYWNoZWRfYWNsDQo+ICAgICAgICAgICAgICAgICBuZnM0X3dy
+aXRlX2NhY2hlZF9hY2woaW5vZGUsIHBhZ2VzLCByZXMuYWNsX2RhdGFfb2Zmc2V0LA0KPiAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGFjbF9sZW4pOw0KPiB3aGljaCBpbiB0
+dXJuIGNhbGxzDQo+IHN0YXRpYyB2b2lkIG5mczRfd3JpdGVfY2FjaGVkX2FjbChzdHJ1Y3QgaW5v
+ZGUgKmlub2RlLCBzdHJ1Y3QgcGFnZQ0KPiAqKnBhZ2VzLCBzaXplX3QgcGdiYXNlLCBzaXplX3Qg
+YWNsX2xlbikNCj4gew0KPiAuLg0KPiAgICAgICAgICAgICAgICAgX2NvcHlfZnJvbV9wYWdlcyhh
+Y2wtPmRhdGEsIHBhZ2VzLCBwZ2Jhc2UsIGFjbF9sZW4pOw0KPiAuLg0KPiB9DQoNClJpZ2h0LiBU
+aGF0IGlzIGJhc2ljYWxseSBkdWUgdG8gaW5jb21wbGV0ZSBidWZmZXIgY2hlY2tpbmcgaW4NCm5m
+czRfd3JpdGVfY2FjaGVkX2FjbCgpIGl0c2VsZi4gV2UgY2FuJ3QgY2F0Y2ggdGhhdCBjYXNlIHdo
+ZW4NCk5GUzRfQUNMX0xFTl9SRVFVRVNUIGlzIHNldCwgYmVjYXVzZSBkZWNvZGVfYWNsIGlnbm9y
+ZXMgdGhlIGNoZWNrLg0KDQpPSy4gSG93IGFib3V0IHRoaXMgcGF0Y2gsIHdoaWNoIGFwcGxpZXMg
+b24gdG9wIG9mIHRoZSBvbmUgSSBzZW50IHlvdT8NCjg8LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCkZyb20gMjJjOWUyNDc1
+NTYwZWRkYTkyNWY5NzFhMmEwMmJhYzU4NTM2NDE0YiBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDEN
+CkZyb206IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQpEYXRl
+OiBTdW4sIDI2IEF1ZyAyMDEyIDExOjQ0OjQzIC0wNzAwDQpTdWJqZWN0OiBbUEFUQ0hdIE5GU3Y0
+OiBBZGQgYnVmZmVyIG92ZXJmbG93IGNoZWNraW5nIHRvIG5mczRfd3JpdGVfY2FjaGVkX2FjbA0K
+DQpDdXJyZW50bHksIHRoZSBidWZmZXIgb3ZlcmZsb3cgY2hlY2tpbmcgaXMgZG9uZSBpbmNvcnJl
+Y3RseSBieSB0aGUNCmNhbGxlci4gTW92ZSB0aGUgb3ZlcmZsb3cgY2hlY2tpbmcgaW50byBuZnM0
+X3dyaXRlX2NhY2hlZF9hY2wgaXRzZWxmDQpmb3Igcm9idXN0bmVzcywgYW5kIGZpeCB0aGUgb3Zl
+cmZsb3cgY2FsY3VsYXRpb24gdG8gdGFrZSBpbnRvIGFjY291bnQNCnRoZSAncGdiYXNlJyBhcmd1
+bWVudCB0byBfY29weV9mcm9tX3BhZ2VzLg0KDQpTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1
+c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KLS0tDQogZnMvbmZzL25mczRwcm9jLmMg
+fCAxMiArKysrKy0tLS0tLS0NCiAxIGZpbGUgY2hhbmdlZCwgNSBpbnNlcnRpb25zKCspLCA3IGRl
+bGV0aW9ucygtKQ0KDQpkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRwcm9jLmMgYi9mcy9uZnMvbmZz
+NHByb2MuYw0KaW5kZXggNjU0ZGMzOC4uYWY0ZWJjMyAxMDA2NDQNCi0tLSBhL2ZzL25mcy9uZnM0
+cHJvYy5jDQorKysgYi9mcy9uZnMvbmZzNHByb2MuYw0KQEAgLTM3MzQsMTIgKzM3MzQsMTMgQEAg
+b3V0Og0KIAlyZXR1cm4gcmV0Ow0KIH0NCiANCi1zdGF0aWMgdm9pZCBuZnM0X3dyaXRlX2NhY2hl
+ZF9hY2woc3RydWN0IGlub2RlICppbm9kZSwgc3RydWN0IHBhZ2UgKipwYWdlcywgc2l6ZV90IHBn
+YmFzZSwgc2l6ZV90IGFjbF9sZW4pDQorc3RhdGljIHZvaWQgbmZzNF93cml0ZV9jYWNoZWRfYWNs
+KHN0cnVjdCBpbm9kZSAqaW5vZGUsIHN0cnVjdCBwYWdlICoqcGFnZXMsDQorCQlzaXplX3Qgc3Jj
+bGVuLCBzaXplX3QgcGdiYXNlLCBzaXplX3QgYWNsX2xlbikNCiB7DQogCXN0cnVjdCBuZnM0X2Nh
+Y2hlZF9hY2wgKmFjbDsNCiAJc2l6ZV90IGJ1ZmxlbiA9IHNpemVvZigqYWNsKSArIGFjbF9sZW47
+DQogDQotCWlmIChwYWdlcyAmJiBidWZsZW4gPD0gUEFHRV9TSVpFKSB7DQorCWlmIChidWZsZW4g
+PD0gUEFHRV9TSVpFICYmIHNyY2xlbiA8PSBwZ2Jhc2UgKyBhY2xfbGVuKSB7DQogCQlhY2wgPSBr
+bWFsbG9jKGJ1ZmxlbiwgR0ZQX0tFUk5FTCk7DQogCQlpZiAoYWNsID09IE5VTEwpDQogCQkJZ290
+byBvdXQ7DQpAQCAtMzgyMCwxMSArMzgyMSw4IEBAIHN0YXRpYyBzc2l6ZV90IF9fbmZzNF9nZXRf
+YWNsX3VuY2FjaGVkKHN0cnVjdCBpbm9kZSAqaW5vZGUsIHZvaWQgKmJ1Ziwgc2l6ZV90IGJ1DQog
+CQlnb3RvIG91dF9mcmVlOw0KIA0KIAlhY2xfbGVuID0gcmVzLmFjbF9sZW47DQotCWlmIChhY2xf
+bGVuID4gYXJncy5hY2xfbGVuKQ0KLQkJbmZzNF93cml0ZV9jYWNoZWRfYWNsKGlub2RlLCBOVUxM
+LCAwLCBhY2xfbGVuKTsNCi0JZWxzZQ0KLQkJbmZzNF93cml0ZV9jYWNoZWRfYWNsKGlub2RlLCBw
+YWdlcywgcmVzLmFjbF9kYXRhX29mZnNldCwNCi0JCQkJICAgICAgYWNsX2xlbik7DQorCW5mczRf
+d3JpdGVfY2FjaGVkX2FjbChpbm9kZSwgcGFnZXMsIGFyZ3MuYWNsX2xlbiwNCisJCQlyZXMuYWNs
+X2RhdGFfb2Zmc2V0LCByZXMuYWNsX2xlbik7DQogCWlmIChidWYpIHsNCiAJCXJldCA9IC1FUkFO
+R0U7DQogCQlpZiAoYWNsX2xlbiA+IGJ1ZmxlbikNCi0tIA0KMS43LjExLjQNCg0KDQotLSANClRy
+b25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJv
+bmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
