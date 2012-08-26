@@ -1,79 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:57872 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:33287 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752630Ab2HIB5X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Aug 2012 21:57:23 -0400
-Date: Thu, 9 Aug 2012 11:57:06 +1000
-From: NeilBrown <neilb@suse.de>
-To: Al Viro <viro@zeniv.linux.org.uk>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: NFS <linux-nfs@vger.kernel.org>, lkml <linux-kernel@vger.kernel.org>
-Subject: [PATCH] VFS: d_obtain_alias needs to use "/" as default name.
-Message-ID: <20120809115706.260a1e4b@notabene.brown>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/aUhv.Dbm7uu3iPFz_s_lI_v"; protocol="application/pgp-signature"
+	id S1752443Ab2HZA6D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 25 Aug 2012 20:58:03 -0400
+Date: Sat, 25 Aug 2012 20:58:00 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: parafin <parafin@paraf.in>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFS server misbehaving (nfsd eats CPU and returns no data)
+Message-ID: <20120826005800.GE21832@fieldses.org>
+References: <20120508024419.03e585f2@darkhorse.paraf.in>
+ <20120821174355.GB15958@fieldses.org>
+ <20120821225423.7465a987@darkhorse.paraf.in>
+ <20120821210116.GB18637@fieldses.org>
+ <20120826011141.3d8077c7@darkhorse.paraf.in>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120826011141.3d8077c7@darkhorse.paraf.in>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/aUhv.Dbm7uu3iPFz_s_lI_v
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Sun, Aug 26, 2012 at 01:11:41AM +0400, parafin wrote:
+> I've applied linked patch and rebooted (I'm still running kernel
+> version 3.3.3). So far so good, everything looks fine, so I guess my
+> issue is fixed by that patch, big thanx.
 
+Good, thanks.--b.
 
-NFS appears to use d_obtain_alias() to create the root dentry rather
-than d_make_root.  This can cause 'prepend_path()' to complain that the
-root has a weird name if an NFS filesystem is lazily unmounted.
-e.g. if "/mnt" is an NFS mount then
-
- { cd /mnt; umount -l /mnt ; ls -l /proc/self/cwd; }
-
-will cause a WARN message like
-   WARNING: at /home/git/linux/fs/dcache.c:2624 prepend_path+0x1d7/0x1e0()
-   ...
-   Root dentry has weird name <>
-
-to appear in kernel logs.
-
-So change d_obtain_alias() to use "/" rather than "" as the anonymous
-name.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
-
-diff --git a/fs/dcache.c b/fs/dcache.c
-index 8086636..c959e41 100644
---- a/fs/dcache.c
-+++ b/fs/dcache.c
-@@ -1579,7 +1579,7 @@ EXPORT_SYMBOL(d_find_any_alias);
-  */
- struct dentry *d_obtain_alias(struct inode *inode)
- {
--	static const struct qstr anonstring =3D { .name =3D "" };
-+	static const struct qstr anonstring =3D QSTR_INIT("/", 1);
- 	struct dentry *tmp;
- 	struct dentry *res;
-=20
-
---Sig_/aUhv.Dbm7uu3iPFz_s_lI_v
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.18 (GNU/Linux)
-
-iQIVAwUBUCMY8jnsnt1WYoG5AQIJvA/9FgTPiFxUp/e3Jd971qIK2IYynyDGMSKU
-g2R7iyZp1qPEH4A0qDvd7/B9asWlLuhaNOQjXPPyWCKdc6q12UREnw0bluJDfetI
-FeM+oKU+kzytuvAE+pVixtsS+A6vE7DLV4uRW4fYSfdhZoWcQ3UQwvitdAQOQcV9
-fWySE5oBRmp1bmb2MDICM7+BtvJGBW4NyHjdHc/oLmWgCeb1naEilAraralpqCpA
-fnOyvl8VYJ5qIm7lyOUdqEMxCN9wkapmtKnAQGciCXQtbjtUPK3CDVqfNytykWpw
-VWzTTqA7p5vws6i6eQYw22iY1laDhak+4GDfFhzzhpFDnGz/OUyUt7SGopqVO9RL
-TVVkiHeIDaELYCvEhC6+TLfaz8SNJA1Tg2Fp0HpWylYu7RrIG9XWJ4vk+tAZ6VcT
-Grn/WuDknzB0k9ykk8qVeMkK90RBCuaMx+cqFVBsyxb/kndxum8PfB6Lo6UYUd74
-UqAxvCtCCtDK4sE/zunxe1P6tft2C9j6O1GFUM4mzjGJcNku/Y+YvwIyWRCDD+Bo
-bUrP/ZNie7LV+60ckEEAvc+ZaNj7lwn+1A4CWipdBpiW+XDL2eN6Ey+dkNbh9SyA
-KMKd/L+272s4yCcwkQNRppST8bM45e5Gd4vX9s4+kvgBeSzHpimNlPouUoBm9CKh
-JqV9s/VptgA=
-=VhnA
------END PGP SIGNATURE-----
-
---Sig_/aUhv.Dbm7uu3iPFz_s_lI_v--
+> 
+> On Tue, 21 Aug 2012 17:01:16 -0400
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> 
+> > On Tue, Aug 21, 2012 at 10:54:23PM +0400, parafin wrote:
+> > > I somewhat mitigated the problem by mount option timeo=10, but this
+> > > issue still heavily affects NFS throughput. So yes, I'm willing to test,
+> > > just have to find some free time to do it. I will report as soon as I
+> > > get results.
+> > 
+> > OK, thanks.
+> > 
+> > > Thanks for reply, I thought my message was lost forever :)
+> > 
+> > In general feel free to retry every now and then (like after a week or
+> > so, not every day please!) if you get ignored.  We all get overloaded an
+> > drop things occasionally.
+> > 
+> > --b.
+> > 
+> > > 
+> > > On Tue, 21 Aug 2012 13:43:55 -0400
+> > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > 
+> > > > Are you still willing to test patches?  If so, this would be worth a
+> > > > try:
+> > > > 
+> > > > 	http://marc.info/?l=linux-nfs&m=134550227125610&w=2
+> > > > 
+> > > > >From a quick look at your logs it looks likely to address the same
+> > > > problem.
+> > > > 
+> > > > Apologies for the delayed response, we finally just happened to get the
+> > > > clue necessary to make the problem obvious....
+> > > > 
+> > > > --b.
+> > > > 
+> > > > On Tue, May 08, 2012 at 02:44:19AM +0400, parafin wrote:
+> > > > > Hello.
+> > > > > I'm having a problem with my NFS share. It's been present for some time
+> > > > > now, kernel versions got upgraded, setup has been changed, but since I
+> > > > > can't remember for sure when it started, I'll just describe my current
+> > > > > configuration. But first the problem itself.
+> > > > > Periodically (I would say every GB of data or so) reads from NFS share
+> > > > > hang during which nfsd kernel thread on server eats CPU but no data
+> > > > > gets sent to the client. After a minute everything comes to norm again
+> > > > > (no action on my part is required). First thing I did to debug this is
+> > > > > I enabled verbose output in all userspace daemons both on client and
+> > > > > server - it produced no output whatsoever during the problematic period
+> > > > > of time. Next I dumped network traffic on TCP port 2049 both on client
+> > > > > and server - there was no packet drops or any other strange stuff,
+> > > > > except that client restarted the TCP connection to 2049 port after a
+> > > > > minute of silence from server (which resulted in data flowing again).
+> > > > > This was confirmed by kernel debug output from client (echo 65535 | tee
+> > > > > nfs_debug nfsd_debug nlm_debug rpc_debug) - NFS client sent a server
+> > > > > READ request with 60 seconds timeout, timeout was reached and resulted
+> > > > > in dropping and restarting of NFS TCP connection. So this points to NFS
+> > > > > server kernel code. Kernel debug output on server is quite large and
+> > > > > spikes during the hangs - I've attached deduplicated (by hand) version
+> > > > > of it to this email. I couldn't find anything strange in there, but I
+> > > > > don't understand most of it anyway.
+> > > > > My current setup - both server and client are Linux 3.3.3, NFSv4 with
+> > > > > sec=krb5, it runs through local network 192.168.0.0/24 with no
+> > > > > firewalls (client has iptables disabled in kernel, server ACCEPTs
+> > > > > everything from internal interface). Client uses Wi-Fi, server -
+> > > > > Ethernet with VLANs, so traffic goes through AP. But since network dumps
+> > > > > on server and client are the same, network configuration IMHO is
+> > > > > irrelevant, I just added it for fullness of description. Most common
+> > > > > usage (and test case) of this NFS share is watching some videos using
+> > > > > mplayer. Underlying filesystem is XFS (though ext4 is used for other
+> > > > > shares on the same server).
+> > > > > I'm ready to provide additional information or test some patches, since
+> > > > > this problem is quite annoying (and IMHO got worse with time).
+> > > > 
+> > > > 
+> > > --
+> > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > > the body of a message to majordomo@vger.kernel.org
+> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
