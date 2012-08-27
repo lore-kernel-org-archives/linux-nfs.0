@@ -1,70 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51938 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752982Ab2H2RLY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Aug 2012 13:11:24 -0400
-Date: Wed, 29 Aug 2012 13:11:23 -0400
-To: Carlos =?utf-8?Q?Jim=C3=A9nez?= <cjimenez@eneotecnologia.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Stale NFS file handle - persistent error
-Message-ID: <20120829171122.GA9983@fieldses.org>
-References: <503E131F.2040904@eneotecnologia.com>
- <503E13BF.6010304@eneotecnologia.com>
+Received: from peace.netnation.com ([204.174.223.2]:57894 "EHLO
+	peace.netnation.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754322Ab2H0WCg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Aug 2012 18:02:36 -0400
+Received: from sim by peace.netnation.com with local (Exim 4.77)
+	(envelope-from <sim@netnation.com>)
+	id 1T67H4-0001JM-Rk
+	for linux-nfs@vger.kernel.org; Mon, 27 Aug 2012 14:55:10 -0700
+Date: Mon, 27 Aug 2012 14:55:10 -0700
+From: Simon Kirby <sim@hostway.ca>
+To: linux-nfs@vger.kernel.org
+Subject: [3.6-rc3] rdirplus broken? (EBUSY)
+Message-ID: <20120827215510.GL24761@hostway.ca>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <503E13BF.6010304@eneotecnologia.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 29, 2012 at 03:06:07PM +0200, Carlos Jiménez wrote:
-> I have a computer acting as an NFS Server running a Debian based
-> distro
+Hello!
 
-Could you be more specific?  What kernel version exactly, and what
-filesystem are you exporting, and what are the export options?
+Something seems broiken in 3.6-rc[123] which was fine in 3.5 and earlier.
+This is a 3.4.1 knfsd server with ext3 and XFS-based NFS exports:
 
-What version of NFS are you using?
+/	192.168.13.0/24(rw,no_root_squash,no_subtree_check,async)
+/pics	192.168.13.0/24(rw,no_root_squash,no_subtree_check,async)
+/raid	192.168.13.0/24(rw,no_root_squash,no_subtree_check,async)
 
-> and several hosts running CentOS 6.2 acting as NFS clients
-> (for a virtualization environment). Every time more often "Stale NFS
-> file handle" errors appear when trying to copy a file from one
-> directory to another (both in the nfs shared directory).
+and a 3.6-rc3 client with this in fstab:
 
-I assume you're not doing anything else with either file or directory at
-the same time?  (E.g., not deleting or renaming the file while it's
-being copied?)
+flick:/		/flick		nfs	rw,vers=3
+flick:/raid	/flick/raid	nfs	rw,vers=3
+flick:/pics	/flick/pics	nfs	rw,vers=3
 
---b.
+This seems to fail now as follows:
 
-> In the server side there are no related information in the logs, but
-> this is the output of one of the nfs clients:
-> 
-> Wed Aug 29 11:52:57 2012 [TM][E]: clone: Command "cd
-> /var/lib/one/datastores/0/32; cp -r
-> ../../1/5c0455eb494fd43b5c7c576e0c642fbe
-> /var/lib/one/datastores/0/32/disk.0" failed: cp: reading
-> `../../1/5c0455eb494fd43b5c7c576e0c642fbe': Stale NFS file handle
-> 
-> I've checked that path and filenames are correct. The file itself is
-> a 300MG sized and the error appears aprox. 30 minutes after the
-> start of the copy, so I guess that it doesn't finish the file copy.
-> I usually tried unmounting and remounting the shared directory. In
-> fact, initially it was enough and it was possible to fully copy the
-> file (after aprox. 30 minutes), moreover because the error took
-> place from time to time. But now, the problem persists after doing
-> it (even after rebooting the clients).
-> Additionally, I've tried doing the same operation (to copy the same
-> file from a directory to another) locally in the NFS Server and it
-> takes just a minute (aprox.).
-> 
-> Could you give me advice on troubleshooting it?
-> 
-> 
-> Thanks in advance.
-> 
-> Carlos.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+[sroot@oof:/]# mount flick
+[sroot@oof:/]# mount flick/raid
+[sroot@oof:/]# mount flick/pics
+[sroot@oof:/]# ls -l flick
+ls: cannot access flick/pics: Device or resource busy
+ls: cannot access flick/raid: Device or resource busy
+total 2180
+drwxr-xr-x  45 root root    4096 Jun 18 14:19 ./
+drwxr-xr-x  58 root root    4096 Jul  3 22:24 ../
+...
+??????????   ? ?    ?          ?            ? pics
+??????????   ? ?    ?          ?            ? raid
+...
+[sroot@oof:/]# cd flick/pics
+flick/pics: Device or resource busy.
+
+These mount points are now stuck and cannot be unmounted until
+I reboot (umount -l fails with EBUSY).
+
+If I mount with "nordirplus", I can't seem to get it to break. However,
+sometimes it will work regardless. I can bisect this if it would help..
+
+Simon-
