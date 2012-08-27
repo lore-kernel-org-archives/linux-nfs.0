@@ -1,191 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.openrapids.net ([64.15.138.104]:37919 "EHLO
-	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751149Ab2H1XAy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Aug 2012 19:00:54 -0400
-Date: Tue, 28 Aug 2012 19:00:50 -0400
-From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: Tejun Heo <tj@kernel.org>, torvalds@linux-foundation.org,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com, axboe@kernel.dk,
-        agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
-        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
-        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive
-	hashtable
-Message-ID: <20120828230050.GA3337@Krystal>
-References: <20120824203332.GF21325@google.com> <5037E9D9.9000605@gmail.com> <20120824212348.GK21325@google.com> <5038074D.300@gmail.com> <20120824230740.GN21325@google.com> <20120825042419.GA27240@Krystal> <503C95E4.3010000@gmail.com> <20120828101148.GA21683@Krystal> <503CAB1E.5010408@gmail.com> <20120828115638.GC23818@Krystal>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120828115638.GC23818@Krystal>
+Received: from shadbolt.e.decadent.org.uk ([88.96.1.126]:39008 "EHLO
+	shadbolt.e.decadent.org.uk" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754443Ab2H0Ve5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Aug 2012 17:34:57 -0400
+Message-ID: <1346103286.20840.59.camel@deadeye.wl.decadent.org.uk>
+Subject: Re: [PATCH] NFS: Fix Oopses in nfs_lookup_revalidate and
+ nfs4_lookup_revalidate
+From: Ben Hutchings <ben@decadent.org.uk>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Greg KH <gregkh@linuxfoundation.org>,
+        "stable@vger.kernel.org" <stable@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Date: Mon, 27 Aug 2012 14:34:46 -0700
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA908F6E388@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1345666097-14815-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <20120827200949.GA4732@kroah.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F6E388@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: multipart/signed; micalg="pgp-sha512";
+	protocol="application/pgp-signature"; boundary="=-LMb84OwrZBHFyX+2UwtM"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* Mathieu Desnoyers (mathieu.desnoyers@efficios.com) wrote:
-> * Sasha Levin (levinsasha928@gmail.com) wrote:
-> > On 08/28/2012 12:11 PM, Mathieu Desnoyers wrote:
-> > > * Sasha Levin (levinsasha928@gmail.com) wrote:
-> > >> On 08/25/2012 06:24 AM, Mathieu Desnoyers wrote:
-> > >>> * Tejun Heo (tj@kernel.org) wrote:
-> > >>>> Hello,
-> > >>>>
-> > >>>> On Sat, Aug 25, 2012 at 12:59:25AM +0200, Sasha Levin wrote:
-> > >>>>> Thats the thing, the amount of things of things you can do with a given bucket
-> > >>>>> is very limited. You can't add entries to any point besides the head (without
-> > >>>>> walking the entire list).
-> > >>>>
-> > >>>> Kinda my point.  We already have all the hlist*() interface to deal
-> > >>>> with such cases.  Having something which is evidently the trivial
-> > >>>> hlist hashtable and advertises as such in the interface can be
-> > >>>> helpful.  I think we need that more than we need anything fancy.
-> > >>>>
-> > >>>> Heh, this is a debate about which one is less insignificant.  I can
-> > >>>> see your point.  I'd really like to hear what others think on this.
-> > >>>>
-> > >>>> Guys, do we want something which is evidently trivial hlist hashtable
-> > >>>> which can use hlist_*() API directly or do we want something better
-> > >>>> encapsulated?
-> > >>>
-> > >>> My 2 cents, FWIW: I think this specific effort should target a trivially
-> > >>> understandable API and implementation, for use-cases where one would be
-> > >>> tempted to reimplement his own trivial hash table anyway. So here
-> > >>> exposing hlist internals, with which kernel developers are already
-> > >>> familiar, seems like a good approach in my opinion, because hiding stuff
-> > >>> behind new abstraction might make the target users go away.
-> > >>>
-> > >>> Then, as we see the need, we can eventually merge a more elaborate hash
-> > >>> table with poneys and whatnot, but I would expect that the trivial hash
-> > >>> table implementation would still be useful. There are of course very
-> > >>> compelling reasons to use a more featureful hash table: automatic
-> > >>> resize, RT-aware updates, scalable updates, etc... but I see a purpose
-> > >>> for a trivial implementation. Its primary strong points being:
-> > >>>
-> > >>> - it's trivially understandable, so anyone how want to be really sure
-> > >>>   they won't end up debugging the hash table instead of their
-> > >>>   work-in-progress code can have a full understanding of it,
-> > >>> - it has few dependencies, which makes it easier to understand and
-> > >>>   easier to use in some contexts (e.g. early boot).
-> > >>>
-> > >>> So I'm in favor of not overdoing the abstraction for this trivial hash
-> > >>> table, and honestly I would rather prefer that this trivial hash table
-> > >>> stays trivial. A more elaborate hash table should probably come as a
-> > >>> separate API.
-> > >>>
-> > >>> Thanks,
-> > >>>
-> > >>> Mathieu
-> > >>>
-> > >>
-> > >> Alright, let's keep it simple then.
-> > >>
-> > >> I do want to keep the hash_for_each[rcu,safe] family though.
-> > > 
-> > > Just a thought: if the API offered by the simple hash table focus on
-> > > providing a mechanism to find the hash bucket to which belongs the hash
-> > > chain containing the key looked up, and then expects the user to use the
-> > > hlist API to iterate on the chain (with or without the hlist _rcu
-> > > variant), then it might seem consistent that a helper providing
-> > > iteration over the entire table would actually just provide iteration on
-> > > all buckets, and let the user call the hlist for each iterator for each
-> > > node within the bucket, e.g.:
-> > > 
-> > > struct hlist_head *head;
-> > > struct hlist_node *pos;
-> > > 
-> > > hash_for_each_bucket(ht, head) {
-> > >         hlist_for_each(pos, head) {
-> > >                 ...
-> > >         }
-> > > }
-> > > 
-> > > That way you only have to provide one single macro
-> > > (hash_for_each_bucket), and rely on the already existing:
-> > > 
-> > > - hlist_for_each_entry
-> > > - hlist_for_each_safe
-> > > - hlist_for_each_entry_rcu
-> > > - hlist_for_each_safe_rcu
-> > >   .....
-> > > 
-> > > and various flavors that can appear in the future without duplicating
-> > > this API. So you won't even have to create _rcu, _safe, nor _safe_rcu
-> > > versions of the hash_for_each_bucket macro.
-> > > 
-> > > Thoughts ?
-> > 
-> > In my opinion, the downside here is that it'll require 2 function calls and 2
-> > levels of nesting for a simple hash iteration.
-> 
-> Those are macros, not functions. No function call is required. But I see
-> your point about nesting.
-> 
-> > 
-> > hash_for_each_bucket() will always be followed by an iteration of that
-> > bucket, so splitting a hash_for_each() which does both into 2
-> > different functions which will almost always must be called in that
-> > given order sounds unintuitive to me.
-> > 
-> > It's also just 3 different possible iterators:
-> > 
-> >  - hlist_for_each_entry
-> >  - hlist_for_each_entry_safe
-> >  - hlist_for_each_entry_rcu
-> > 
-> > So I think that it's a good price to pay - 2 extra macro definitions
-> > in the header to save a macro call + nesting level in each place that
-> > uses a hashtable.
-> 
-> I must admin I don't care that much one way or another.
 
-Looking again at:
+--=-LMb84OwrZBHFyX+2UwtM
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-+#define hash_for_each_size(name, bits, bkt, node, obj, member)                 \
-+       for (bkt = 0; bkt < HASH_SIZE(bits); bkt++)                             \
-+               hlist_for_each_entry(obj, node, &name[bkt], member)
+On Mon, 2012-08-27 at 20:16 +0000, Myklebust, Trond wrote:
+> On Mon, 2012-08-27 at 13:09 -0700, Greg KH wrote:
+> > On Wed, Aug 22, 2012 at 04:08:17PM -0400, Trond Myklebust wrote:
+> > > Fix the following Oops in 3.5.1:
+[...]
+> > > This Oops affects 3.5 kernels and older, and is due to lookup_one_len=
+()
+> > > calling down to the dentry revalidation code with a NULL pointer
+> > > to struct nameidata.
+> > >=20
+> > > It is fixed upstream by commit 0b728e1911c (stop passing nameidata *
+> > > to ->d_revalidate())
+> >=20
+> > So this is just a nfs-only backport of the larger patch 0b728e1911c,
+> > right?  Should we also do this for other filesystems as well?  Or just
+> > backport the whole commit?
+>=20
+> The larger patch involves a VFS api change (the atomic open code) which
+> has a bunch of pre- and post-requirements. I'd assume that is a too
+> large change for stable. I think that the smaller per-filesystem changes
+> are probably more appropriate. The list of filesystems that care are
+> likely to be small. Off the top of my head, I can only think of NFS,
+> CIFS, FUSE and possibly ceph.
 
-you will notice that a "break" or "continue" in the inner loop will not
-affect the outer loop, which is certainly not what the programmer would
-expect!
+What is the earliest version that needs this fix?
 
-I advise strongly against creating such error-prone construct.
+Ben.
 
-Thanks,
+--=20
+Ben Hutchings
+One of the nice things about standards is that there are so many of them.
 
-Mathieu
+--=-LMb84OwrZBHFyX+2UwtM
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
 
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.12 (GNU/Linux)
 
+iQIVAwUAUDvn9ue/yOyVhhEJAQrvmw//cUsRuWeMbVN+YIqsTx4JXDK+S/4BGIyP
+s98ldeAvMCCMuJtj6cccSqemOFtn7tpomOenof9rl2q9uA2DTifZRY8+U6o644Nn
+QZ7Qa2C65lZb8JZRB55Dw2EKAqyEL8pscCEqJRl3W2x8QvUWRDcc6mGP6aBT0PCN
+d8I2k7AhINu4vXptWr+3HbGNwUAz2VkzZ5nROhCp0JjH+iz97viEZD6h8z1INx6g
+mDepdlJZF2FcUF6oDFjnD8UUxPQI7hXRx3K7gJWE0Z3soJQ7RfUZS9R+H+FwVDx6
+XJJiTV4RGkeHJfra85hBURB3xwlQPac3IHM1dv+uwr4QL6rw3FYlT7GuR0ZV9rxs
+kjCMmM199t/mkXtbzkxhUj+8eIvQtXCkXnlxMeVM/RyUB8RBlhTDXvEm9ZuHNlUX
+T0oaIqUgosc4bzixADKNyGxTXDYtKOGfs3qkPlf/FqsQJ9kYTdXwRciEvFVIg9Zy
+NsSGKEy1i7tY55Xq8XimPFUVliiyorXf/W1JmncGvmLTTh+wU9gA8MwPqXkckJty
+41X453dgL30/+iMbNX2dV6uvPkWG4G7P2gyxz+NtVxxWXV6pDYSpMji0z1buQwdY
+6uMOObBk45CQNR8m4vsZQ+0fTIjLG2fG7QgufLC4DH2WV5PdJNS4/2115SH3xnHC
+z8XZ2JuGFOA=
+=J28w
+-----END PGP SIGNATURE-----
 
-> 
-> Thanks,
-> 
-> Mathieu
-> 
-> > 
-> > 
-> > Thanks,
-> > Sasha
-> > 
-> > > Thanks,
-> > > 
-> > > Mathieu
-> > > 
-> > 
-> 
-> -- 
-> Mathieu Desnoyers
-> Operating System Efficiency R&D Consultant
-> EfficiOS Inc.
-> http://www.efficios.com
-
--- 
-Mathieu Desnoyers
-Operating System Efficiency R&D Consultant
-EfficiOS Inc.
-http://www.efficios.com
+--=-LMb84OwrZBHFyX+2UwtM--
