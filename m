@@ -1,62 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:52225 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752426Ab2HXXHq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Aug 2012 19:07:46 -0400
-Date: Fri, 24 Aug 2012 16:07:40 -0700
-From: Tejun Heo <tj@kernel.org>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: torvalds@linux-foundation.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
-        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
-        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
-        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive
- hashtable
-Message-ID: <20120824230740.GN21325@google.com>
-References: <20120822180138.GA19212@google.com>
- <50357840.5020201@gmail.com>
- <20120823200456.GD14962@google.com>
- <5037DA47.9010306@gmail.com>
- <20120824195941.GC21325@google.com>
- <5037E00B.6090606@gmail.com>
- <20120824203332.GF21325@google.com>
- <5037E9D9.9000605@gmail.com>
- <20120824212348.GK21325@google.com>
- <5038074D.300@gmail.com>
+Received: from mail-pz0-f46.google.com ([209.85.210.46]:45558 "EHLO
+	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754220Ab2H0UJx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Aug 2012 16:09:53 -0400
+Received: by dady13 with SMTP id y13so2769492dad.19
+        for <linux-nfs@vger.kernel.org>; Mon, 27 Aug 2012 13:09:53 -0700 (PDT)
+Date: Mon, 27 Aug 2012 13:09:49 -0700
+From: Greg KH <gregkh@linuxfoundation.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: stable@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] NFS: Fix Oopses in nfs_lookup_revalidate and
+ nfs4_lookup_revalidate
+Message-ID: <20120827200949.GA4732@kroah.com>
+References: <1345666097-14815-1-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5038074D.300@gmail.com>
+In-Reply-To: <1345666097-14815-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On Wed, Aug 22, 2012 at 04:08:17PM -0400, Trond Myklebust wrote:
+> Fix the following Oops in 3.5.1:
+> 
+>  BUG: unable to handle kernel NULL pointer dereference at 0000000000000038
+>  IP: [<ffffffffa03789cd>] nfs_lookup_revalidate+0x2d/0x480 [nfs]
+>  PGD 337c63067 PUD 0
+>  Oops: 0000 [#1] SMP
+>  CPU 5
+>  Modules linked in: nfs fscache nfsd lockd nfs_acl auth_rpcgss sunrpc af_packet binfmt_misc cpufreq_conservative cpufreq_userspace cpufreq_powersave dm_mod acpi_cpufreq mperf coretemp gpio_ich kvm_intel joydev kvm ioatdma hid_generic igb lpc_ich i7core_edac edac_core ptp serio_raw dca pcspkr i2c_i801 mfd_core sg pps_core usbhid crc32c_intel microcode button autofs4 uhci_hcd ttm drm_kms_helper drm i2c_algo_bit sysimgblt sysfillrect syscopyarea ehci_hcd usbcore usb_common scsi_dh_rdac scsi_dh_emc scsi_dh_hp_sw scsi_dh_alua scsi_dh edd fan ata_piix thermal processor thermal_sys
+> 
+>  Pid: 30431, comm: java Not tainted 3.5.1-2-default #1 Supermicro X8DTT/X8DTT
+>  RIP: 0010:[<ffffffffa03789cd>]  [<ffffffffa03789cd>] nfs_lookup_revalidate+0x2d/0x480 [nfs]
+>  RSP: 0018:ffff8801b418bd38  EFLAGS: 00010292
+>  RAX: 00000000fffffff6 RBX: ffff88032016d800 RCX: 0000000000000020
+>  RDX: ffffffff00000000 RSI: 0000000000000000 RDI: ffff8801824a7b00
+>  RBP: ffff8801b418bdf8 R08: 7fffff0034323030 R09: fffffffff04c03ed
+>  R10: ffff8801824a7b00 R11: 0000000000000002 R12: ffff8801824a7b00
+>  R13: ffff8801824a7b00 R14: 0000000000000000 R15: ffff8803201725d0
+>  FS:  00002b53a46cb700(0000) GS:ffff88033fc20000(0000) knlGS:0000000000000000
+>  CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+>  CR2: 0000000000000038 CR3: 000000020a426000 CR4: 00000000000007e0
+>  DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+>  DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+>  Process java (pid: 30431, threadinfo ffff8801b418a000, task ffff8801b5d20600)
+>  Stack:
+>   ffff8801b418be44 ffff88032016d800 ffff8801b418bdf8 0000000000000000
+>   ffff8801824a7b00 ffff8801b418bdd7 ffff8803201725d0 ffffffff8116a9c0
+>   ffff8801b5c38dc0 0000000000000007 ffff88032016d800 0000000000000000
+>  Call Trace:
+>   [<ffffffff8116a9c0>] lookup_dcache+0x80/0xe0
+>   [<ffffffff8116aa43>] __lookup_hash+0x23/0x90
+>   [<ffffffff8116b4a5>] lookup_one_len+0xc5/0x100
+>   [<ffffffffa03869a3>] nfs_sillyrename+0xe3/0x210 [nfs]
+>   [<ffffffff8116cadf>] vfs_unlink.part.25+0x7f/0xe0
+>   [<ffffffff8116f22c>] do_unlinkat+0x1ac/0x1d0
+>   [<ffffffff815717b9>] system_call_fastpath+0x16/0x1b
+>   [<00002b5348b5f527>] 0x2b5348b5f526
+>  Code: ec 38 b8 f6 ff ff ff 4c 89 64 24 18 4c 89 74 24 28 49 89 fc 48 89 5c 24 08 48 89 6c 24 10 49 89 f6 4c 89 6c 24 20 4c 89 7c 24 30 <f6> 46 38 40 0f 85 d1 00 00 00 e8 c4 c4 df e0 48 8b 58 30 49 89
+>  RIP  [<ffffffffa03789cd>] nfs_lookup_revalidate+0x2d/0x480 [nfs]
+>   RSP <ffff8801b418bd38>
+>  CR2: 0000000000000038
+>  ---[ end trace 845113ed191985dd ]---
+> 
+> This Oops affects 3.5 kernels and older, and is due to lookup_one_len()
+> calling down to the dentry revalidation code with a NULL pointer
+> to struct nameidata.
+> 
+> It is fixed upstream by commit 0b728e1911c (stop passing nameidata *
+> to ->d_revalidate())
 
-On Sat, Aug 25, 2012 at 12:59:25AM +0200, Sasha Levin wrote:
-> Thats the thing, the amount of things of things you can do with a given bucket
-> is very limited. You can't add entries to any point besides the head (without
-> walking the entire list).
+So this is just a nfs-only backport of the larger patch 0b728e1911c,
+right?  Should we also do this for other filesystems as well?  Or just
+backport the whole commit?
 
-Kinda my point.  We already have all the hlist*() interface to deal
-with such cases.  Having something which is evidently the trivial
-hlist hashtable and advertises as such in the interface can be
-helpful.  I think we need that more than we need anything fancy.
+thanks,
 
-Heh, this is a debate about which one is less insignificant.  I can
-see your point.  I'd really like to hear what others think on this.
-
-Guys, do we want something which is evidently trivial hlist hashtable
-which can use hlist_*() API directly or do we want something better
-encapsulated?
-
-Thanks.
-
--- 
-tejun
+greg k-h
