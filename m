@@ -1,89 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:44657 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:39167 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751892Ab2HNXZ6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Aug 2012 19:25:58 -0400
-Date: Wed, 15 Aug 2012 09:25:23 +1000
-From: NeilBrown <neilb@suse.de>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
-        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
-        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
-        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH 01/16] hashtable: introduce a small and naive hashtable
-Message-ID: <20120815092523.00a909ef@notabene.brown>
-In-Reply-To: <1344961490-4068-2-git-send-email-levinsasha928@gmail.com>
-References: <1344961490-4068-1-git-send-email-levinsasha928@gmail.com>
-	<1344961490-4068-2-git-send-email-levinsasha928@gmail.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/WaPYDSkmDZTaSUO/RNup8tR"; protocol="application/pgp-signature"
+	id S1754227Ab2H0UQM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Aug 2012 16:16:12 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Greg KH <gregkh@linuxfoundation.org>
+CC: "stable@vger.kernel.org" <stable@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] NFS: Fix Oopses in nfs_lookup_revalidate and
+ nfs4_lookup_revalidate
+Date: Mon, 27 Aug 2012 20:16:09 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F6E388@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1345666097-14815-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <20120827200949.GA4732@kroah.com>
+In-Reply-To: <20120827200949.GA4732@kroah.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/WaPYDSkmDZTaSUO/RNup8tR
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
-
-On Tue, 14 Aug 2012 18:24:35 +0200 Sasha Levin <levinsasha928@gmail.com>
-wrote:
-
-
-> +static inline void hash_init_size(struct hlist_head *hashtable, int bits)
-> +{
-> +	int i;
-> +
-> +	for (i =3D 0; i < HASH_SIZE(bits); i++)
-> +		INIT_HLIST_HEAD(hashtable + i);
-> +}
-
-This seems like an inefficient way to do "memset(hashtable, 0, ...);".
-And in many cases it isn't needed as the hash table is static and initialis=
-ed
-to zero.
-I note that in the SUNRPC/cache patch you call hash_init(), but in the lockd
-patch you don't.  You don't actually need to in either case.
-
-I realise that any optimisation here is for code that is only executed once
-per boot, so no big deal, and even the presence of extra code making the
-kernel bigger is unlikely to be an issue.  But I'd at least like to see
-consistency: Either use hash_init everywhere, even when not needed, or only
-use it where absolutely needed which might be no-where because static tables
-are already initialised, and dynamic tables can use GFP_ZERO.
-
-And if you keep hash_init_size I would rather see a memset(0)....
-
-Thanks,
-NeilBrown
-
---Sig_/WaPYDSkmDZTaSUO/RNup8tR
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.18 (GNU/Linux)
-
-iQIVAwUBUCreYznsnt1WYoG5AQJjuA//cxInQBsHXHRtWYyYJpxwOX9hqpSDNaZ2
-37aTlFSGjdhr1yn+RcwmtWh9nEj+oHEFlds46gW/woLpGFSXuCPD85CDtZDjPSpL
-7VNXdZ1i3+EEPR0K2vjMaUs1cpdz2KIx8KZjIXfQVnARaZNfts7EuaTCpGM+5bac
-G4CX6uoFtPc/A4LVEiYbowLzhUG+GmxcofMjd9ZJ4Ug0Xg4sl8xXtYg8YDkSn3LJ
-zef9ltlJ1WxLSTtBm6+jyH25Xlb31P7TT3BUgNcStSz9Jak2wdggbUE79iOb3GJL
-sP6/meXapGELz7IE8PVo/cdYdfBcskH6M8ai8pNNYTguSh/2VSRnjR1hPqXhgUYn
-FDKLL8galmS5OxQMwv4mb3zhUIHIiTT7tWBq6eYXo3xUzInU5VufAyLIcpRX3fXm
-VNLnnDOyaoWJCP/fUDrmHskSWPhLQA5/1YtiSI1NYwbY2C+OCybFHYixcWe5CT4w
-YvQ2TTweApDjk5JRndjiO0/j4++kAYvQ8KwC7oo7CUK13dH/9h8rxzV3H4zAhxkh
-4F6FzPEagR1CzKpSkJEA46DJQNIdAbbyCM0VkHORy7gTUa0MA3MsjW8dOKSnBnux
-xsx1GI08WW16NEf1TyGrkqdE/caa4WtDDoLNG3cpwLTZNlMACcZOHXQmgeQu3Ija
-TqL1y22gF/Q=
-=lYgD
------END PGP SIGNATURE-----
-
---Sig_/WaPYDSkmDZTaSUO/RNup8tR--
+T24gTW9uLCAyMDEyLTA4LTI3IGF0IDEzOjA5IC0wNzAwLCBHcmVnIEtIIHdyb3RlOg0KPiBPbiBX
+ZWQsIEF1ZyAyMiwgMjAxMiBhdCAwNDowODoxN1BNIC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3Jv
+dGU6DQo+ID4gRml4IHRoZSBmb2xsb3dpbmcgT29wcyBpbiAzLjUuMToNCj4gPiANCj4gPiAgQlVH
+OiB1bmFibGUgdG8gaGFuZGxlIGtlcm5lbCBOVUxMIHBvaW50ZXIgZGVyZWZlcmVuY2UgYXQgMDAw
+MDAwMDAwMDAwMDAzOA0KPiA+ICBJUDogWzxmZmZmZmZmZmEwMzc4OWNkPl0gbmZzX2xvb2t1cF9y
+ZXZhbGlkYXRlKzB4MmQvMHg0ODAgW25mc10NCj4gPiAgUEdEIDMzN2M2MzA2NyBQVUQgMA0KPiA+
+ICBPb3BzOiAwMDAwIFsjMV0gU01QDQo+ID4gIENQVSA1DQo+ID4gIE1vZHVsZXMgbGlua2VkIGlu
+OiBuZnMgZnNjYWNoZSBuZnNkIGxvY2tkIG5mc19hY2wgYXV0aF9ycGNnc3Mgc3VucnBjIGFmX3Bh
+Y2tldCBiaW5mbXRfbWlzYyBjcHVmcmVxX2NvbnNlcnZhdGl2ZSBjcHVmcmVxX3VzZXJzcGFjZSBj
+cHVmcmVxX3Bvd2Vyc2F2ZSBkbV9tb2QgYWNwaV9jcHVmcmVxIG1wZXJmIGNvcmV0ZW1wIGdwaW9f
+aWNoIGt2bV9pbnRlbCBqb3lkZXYga3ZtIGlvYXRkbWEgaGlkX2dlbmVyaWMgaWdiIGxwY19pY2gg
+aTdjb3JlX2VkYWMgZWRhY19jb3JlIHB0cCBzZXJpb19yYXcgZGNhIHBjc3BrciBpMmNfaTgwMSBt
+ZmRfY29yZSBzZyBwcHNfY29yZSB1c2JoaWQgY3JjMzJjX2ludGVsIG1pY3JvY29kZSBidXR0b24g
+YXV0b2ZzNCB1aGNpX2hjZCB0dG0gZHJtX2ttc19oZWxwZXIgZHJtIGkyY19hbGdvX2JpdCBzeXNp
+bWdibHQgc3lzZmlsbHJlY3Qgc3lzY29weWFyZWEgZWhjaV9oY2QgdXNiY29yZSB1c2JfY29tbW9u
+IHNjc2lfZGhfcmRhYyBzY3NpX2RoX2VtYyBzY3NpX2RoX2hwX3N3IHNjc2lfZGhfYWx1YSBzY3Np
+X2RoIGVkZCBmYW4gYXRhX3BpaXggdGhlcm1hbCBwcm9jZXNzb3IgdGhlcm1hbF9zeXMNCj4gPiAN
+Cj4gPiAgUGlkOiAzMDQzMSwgY29tbTogamF2YSBOb3QgdGFpbnRlZCAzLjUuMS0yLWRlZmF1bHQg
+IzEgU3VwZXJtaWNybyBYOERUVC9YOERUVA0KPiA+ICBSSVA6IDAwMTA6WzxmZmZmZmZmZmEwMzc4
+OWNkPl0gIFs8ZmZmZmZmZmZhMDM3ODljZD5dIG5mc19sb29rdXBfcmV2YWxpZGF0ZSsweDJkLzB4
+NDgwIFtuZnNdDQo+ID4gIFJTUDogMDAxODpmZmZmODgwMWI0MThiZDM4ICBFRkxBR1M6IDAwMDEw
+MjkyDQo+ID4gIFJBWDogMDAwMDAwMDBmZmZmZmZmNiBSQlg6IGZmZmY4ODAzMjAxNmQ4MDAgUkNY
+OiAwMDAwMDAwMDAwMDAwMDIwDQo+ID4gIFJEWDogZmZmZmZmZmYwMDAwMDAwMCBSU0k6IDAwMDAw
+MDAwMDAwMDAwMDAgUkRJOiBmZmZmODgwMTgyNGE3YjAwDQo+ID4gIFJCUDogZmZmZjg4MDFiNDE4
+YmRmOCBSMDg6IDdmZmZmZjAwMzQzMjMwMzAgUjA5OiBmZmZmZmZmZmYwNGMwM2VkDQo+ID4gIFIx
+MDogZmZmZjg4MDE4MjRhN2IwMCBSMTE6IDAwMDAwMDAwMDAwMDAwMDIgUjEyOiBmZmZmODgwMTgy
+NGE3YjAwDQo+ID4gIFIxMzogZmZmZjg4MDE4MjRhN2IwMCBSMTQ6IDAwMDAwMDAwMDAwMDAwMDAg
+UjE1OiBmZmZmODgwMzIwMTcyNWQwDQo+ID4gIEZTOiAgMDAwMDJiNTNhNDZjYjcwMCgwMDAwKSBH
+UzpmZmZmODgwMzNmYzIwMDAwKDAwMDApIGtubEdTOjAwMDAwMDAwMDAwMDAwMDANCj4gPiAgQ1M6
+ICAwMDEwIERTOiAwMDAwIEVTOiAwMDAwIENSMDogMDAwMDAwMDA4MDA1MDAzMw0KPiA+ICBDUjI6
+IDAwMDAwMDAwMDAwMDAwMzggQ1IzOiAwMDAwMDAwMjBhNDI2MDAwIENSNDogMDAwMDAwMDAwMDAw
+MDdlMA0KPiA+ICBEUjA6IDAwMDAwMDAwMDAwMDAwMDAgRFIxOiAwMDAwMDAwMDAwMDAwMDAwIERS
+MjogMDAwMDAwMDAwMDAwMDAwMA0KPiA+ICBEUjM6IDAwMDAwMDAwMDAwMDAwMDAgRFI2OiAwMDAw
+MDAwMGZmZmYwZmYwIERSNzogMDAwMDAwMDAwMDAwMDQwMA0KPiA+ICBQcm9jZXNzIGphdmEgKHBp
+ZDogMzA0MzEsIHRocmVhZGluZm8gZmZmZjg4MDFiNDE4YTAwMCwgdGFzayBmZmZmODgwMWI1ZDIw
+NjAwKQ0KPiA+ICBTdGFjazoNCj4gPiAgIGZmZmY4ODAxYjQxOGJlNDQgZmZmZjg4MDMyMDE2ZDgw
+MCBmZmZmODgwMWI0MThiZGY4IDAwMDAwMDAwMDAwMDAwMDANCj4gPiAgIGZmZmY4ODAxODI0YTdi
+MDAgZmZmZjg4MDFiNDE4YmRkNyBmZmZmODgwMzIwMTcyNWQwIGZmZmZmZmZmODExNmE5YzANCj4g
+PiAgIGZmZmY4ODAxYjVjMzhkYzAgMDAwMDAwMDAwMDAwMDAwNyBmZmZmODgwMzIwMTZkODAwIDAw
+MDAwMDAwMDAwMDAwMDANCj4gPiAgQ2FsbCBUcmFjZToNCj4gPiAgIFs8ZmZmZmZmZmY4MTE2YTlj
+MD5dIGxvb2t1cF9kY2FjaGUrMHg4MC8weGUwDQo+ID4gICBbPGZmZmZmZmZmODExNmFhNDM+XSBf
+X2xvb2t1cF9oYXNoKzB4MjMvMHg5MA0KPiA+ICAgWzxmZmZmZmZmZjgxMTZiNGE1Pl0gbG9va3Vw
+X29uZV9sZW4rMHhjNS8weDEwMA0KPiA+ICAgWzxmZmZmZmZmZmEwMzg2OWEzPl0gbmZzX3NpbGx5
+cmVuYW1lKzB4ZTMvMHgyMTAgW25mc10NCj4gPiAgIFs8ZmZmZmZmZmY4MTE2Y2FkZj5dIHZmc191
+bmxpbmsucGFydC4yNSsweDdmLzB4ZTANCj4gPiAgIFs8ZmZmZmZmZmY4MTE2ZjIyYz5dIGRvX3Vu
+bGlua2F0KzB4MWFjLzB4MWQwDQo+ID4gICBbPGZmZmZmZmZmODE1NzE3Yjk+XSBzeXN0ZW1fY2Fs
+bF9mYXN0cGF0aCsweDE2LzB4MWINCj4gPiAgIFs8MDAwMDJiNTM0OGI1ZjUyNz5dIDB4MmI1MzQ4
+YjVmNTI2DQo+ID4gIENvZGU6IGVjIDM4IGI4IGY2IGZmIGZmIGZmIDRjIDg5IDY0IDI0IDE4IDRj
+IDg5IDc0IDI0IDI4IDQ5IDg5IGZjIDQ4IDg5IDVjIDI0IDA4IDQ4IDg5IDZjIDI0IDEwIDQ5IDg5
+IGY2IDRjIDg5IDZjIDI0IDIwIDRjIDg5IDdjIDI0IDMwIDxmNj4gNDYgMzggNDAgMGYgODUgZDEg
+MDAgMDAgMDAgZTggYzQgYzQgZGYgZTAgNDggOGIgNTggMzAgNDkgODkNCj4gPiAgUklQICBbPGZm
+ZmZmZmZmYTAzNzg5Y2Q+XSBuZnNfbG9va3VwX3JldmFsaWRhdGUrMHgyZC8weDQ4MCBbbmZzXQ0K
+PiA+ICAgUlNQIDxmZmZmODgwMWI0MThiZDM4Pg0KPiA+ICBDUjI6IDAwMDAwMDAwMDAwMDAwMzgN
+Cj4gPiAgLS0tWyBlbmQgdHJhY2UgODQ1MTEzZWQxOTE5ODVkZCBdLS0tDQo+ID4gDQo+ID4gVGhp
+cyBPb3BzIGFmZmVjdHMgMy41IGtlcm5lbHMgYW5kIG9sZGVyLCBhbmQgaXMgZHVlIHRvIGxvb2t1
+cF9vbmVfbGVuKCkNCj4gPiBjYWxsaW5nIGRvd24gdG8gdGhlIGRlbnRyeSByZXZhbGlkYXRpb24g
+Y29kZSB3aXRoIGEgTlVMTCBwb2ludGVyDQo+ID4gdG8gc3RydWN0IG5hbWVpZGF0YS4NCj4gPiAN
+Cj4gPiBJdCBpcyBmaXhlZCB1cHN0cmVhbSBieSBjb21taXQgMGI3MjhlMTkxMWMgKHN0b3AgcGFz
+c2luZyBuYW1laWRhdGEgKg0KPiA+IHRvIC0+ZF9yZXZhbGlkYXRlKCkpDQo+IA0KPiBTbyB0aGlz
+IGlzIGp1c3QgYSBuZnMtb25seSBiYWNrcG9ydCBvZiB0aGUgbGFyZ2VyIHBhdGNoIDBiNzI4ZTE5
+MTFjLA0KPiByaWdodD8gIFNob3VsZCB3ZSBhbHNvIGRvIHRoaXMgZm9yIG90aGVyIGZpbGVzeXN0
+ZW1zIGFzIHdlbGw/ICBPciBqdXN0DQo+IGJhY2twb3J0IHRoZSB3aG9sZSBjb21taXQ/DQoNClRo
+ZSBsYXJnZXIgcGF0Y2ggaW52b2x2ZXMgYSBWRlMgYXBpIGNoYW5nZSAodGhlIGF0b21pYyBvcGVu
+IGNvZGUpIHdoaWNoDQpoYXMgYSBidW5jaCBvZiBwcmUtIGFuZCBwb3N0LXJlcXVpcmVtZW50cy4g
+SSdkIGFzc3VtZSB0aGF0IGlzIGEgdG9vDQpsYXJnZSBjaGFuZ2UgZm9yIHN0YWJsZS4gSSB0aGlu
+ayB0aGF0IHRoZSBzbWFsbGVyIHBlci1maWxlc3lzdGVtIGNoYW5nZXMNCmFyZSBwcm9iYWJseSBt
+b3JlIGFwcHJvcHJpYXRlLiBUaGUgbGlzdCBvZiBmaWxlc3lzdGVtcyB0aGF0IGNhcmUgYXJlDQps
+aWtlbHkgdG8gYmUgc21hbGwuIE9mZiB0aGUgdG9wIG9mIG15IGhlYWQsIEkgY2FuIG9ubHkgdGhp
+bmsgb2YgTkZTLA0KQ0lGUywgRlVTRSBhbmQgcG9zc2libHkgY2VwaC4NCg0KQ2hlZXJzDQogIFRy
+b25kDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIN
+Cg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
