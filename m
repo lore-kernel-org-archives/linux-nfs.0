@@ -1,230 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:39317 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752435Ab2HMUOD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Aug 2012 16:14:03 -0400
-Message-ID: <50295FF9.3020604@panasas.com>
-Date: Mon, 13 Aug 2012 23:13:45 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Peng Tao <bergwolf@gmail.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH RFC 2/3] NFS41: send real write size in layoutget
-References: <1344391392-1948-1-git-send-email-bergwolf@gmail.com> <1344391392-1948-3-git-send-email-bergwolf@gmail.com> <5027F63F.8070107@panasas.com> <CA+a=Yy5cG74RhVUYVQTYOCrwOWfuz2OfsCGpuMXW-8hoOgfKLw@mail.gmail.com>
-In-Reply-To: <CA+a=Yy5cG74RhVUYVQTYOCrwOWfuz2OfsCGpuMXW-8hoOgfKLw@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:36626 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751202Ab2H1Mtr convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Aug 2012 08:49:47 -0400
+Received: by ialo24 with SMTP id o24so10553229ial.19
+        for <linux-nfs@vger.kernel.org>; Tue, 28 Aug 2012 05:49:46 -0700 (PDT)
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.0 \(1486\))
+Subject: Re: kernel BUG at fs/nfs/idmap.c:684!
+From: Frank Nicholas <frank@nicholasfamilycentral.com>
+In-Reply-To: <DE540E0D-0D1E-45CE-9968-DA9950497B07@nicholasfamilycentral.com>
+Date: Tue, 28 Aug 2012 08:49:49 -0400
+Message-Id: <0DDD46E4-9D32-4BA4-8BD8-22F347FC9E9B@nicholasfamilycentral.com>
+References: <DE540E0D-0D1E-45CE-9968-DA9950497B07@nicholasfamilycentral.com>
+To: linux-nfs@vger.kernel.org,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/13/2012 12:44 PM, Peng Tao wrote:
+Additional information I probably should have included:
 
-> On Mon, Aug 13, 2012 at 2:30 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
->> On 08/08/2012 05:03 AM, Peng Tao wrote:
->>
->>> From: Peng Tao <tao.peng@emc.com>
->>>
->>> For bufferred write, scan dirty pages to find out longest continuous
->>> dirty pages. In this case, also allow layout driver to specify a
->>> maximum layoutget size which is useful to avoid busy scanning dirty pages
->>> for block layout client.
->>>
->>> For direct write, just use dreq->bytes_left.
->>>
->>> Signed-off-by: Peng Tao <tao.peng@emc.com>
->>> ---
->>>  fs/nfs/direct.c   |    7 ++++++
->>>  fs/nfs/internal.h |    1 +
->>>  fs/nfs/pnfs.c     |   58 +++++++++++++++++++++++++++++++++++++++++++++++++++-
->>>  3 files changed, 64 insertions(+), 2 deletions(-)
->>>
->>> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
->>> index c39f775..c1899dd 100644
->>> --- a/fs/nfs/direct.c
->>> +++ b/fs/nfs/direct.c
->>> @@ -46,6 +46,7 @@
->>>  #include <linux/kref.h>
->>>  #include <linux/slab.h>
->>>  #include <linux/task_io_accounting_ops.h>
->>> +#include <linux/module.h>
->>>
->>>  #include <linux/nfs_fs.h>
->>>  #include <linux/nfs_page.h>
->>> @@ -191,6 +192,12 @@ static void nfs_direct_req_release(struct nfs_direct_req *dreq)
->>>       kref_put(&dreq->kref, nfs_direct_req_free);
->>>  }
->>>
->>> +ssize_t nfs_dreq_bytes_left(struct nfs_direct_req *dreq)
->>> +{
->>> +     return dreq->bytes_left;
->>> +}
->>> +EXPORT_SYMBOL_GPL(nfs_dreq_bytes_left);
->>> +
->>>  /*
->>>   * Collects and returns the final error value/byte-count.
->>>   */
->>> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
->>> index 31fdb03..e68d329 100644
->>> --- a/fs/nfs/internal.h
->>> +++ b/fs/nfs/internal.h
->>> @@ -464,6 +464,7 @@ static inline void nfs_inode_dio_wait(struct inode *inode)
->>>  {
->>>       inode_dio_wait(inode);
->>>  }
->>> +extern ssize_t nfs_dreq_bytes_left(struct nfs_direct_req *dreq);
->>>
->>
->>
->> Why is this an EXPORT_SYMBOL_GPL at .c file. Why not just an inline
->> here ?
->>
->>>  /* nfs4proc.c */
->>>  extern void __nfs4_read_done_cb(struct nfs_read_data *);
->>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->>> index 2e00fea..e61a373 100644
->>> --- a/fs/nfs/pnfs.c
->>> +++ b/fs/nfs/pnfs.c
->>> @@ -29,6 +29,7 @@
->>>
->>>  #include <linux/nfs_fs.h>
->>>  #include <linux/nfs_page.h>
->>> +#include <linux/pagevec.h>
->>>  #include <linux/module.h>
->>>  #include "internal.h"
->>>  #include "pnfs.h"
->>> @@ -1172,19 +1173,72 @@ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *r
->>>  }
->>>  EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_read);
->>>
->>> +/*
->>> + * Return the number of contiguous bytes in dirty pages for a given inode
->>> + * starting at page frame idx.
->>> + */
->>> +static u64 pnfs_num_dirty_bytes(struct inode *inode, pgoff_t idx)
->>> +{
->>> +     struct address_space *mapping = inode->i_mapping;
->>> +     pgoff_t index;
->>> +     struct pagevec pvec;
->>> +     pgoff_t num = 1; /* self */
->>> +     int i, done = 0;
->>> +
->>> +     pagevec_init(&pvec, 0);
->>> +     idx++; /* self */
->>> +     while (!done) {
->>> +             index = idx;
->>> +             pagevec_lookup_tag(&pvec, mapping, &index,
->>> +                                PAGECACHE_TAG_DIRTY, (pgoff_t)PAGEVEC_SIZE);
->>> +             if (pagevec_count(&pvec) == 0)
->>> +                     break;
->>> +
->>> +             for (i = 0; i < pagevec_count(&pvec); i++) {
->>> +                     struct page *page = pvec.pages[i];
->>> +
->>> +                     lock_page(page);
->>> +                     if (unlikely(page->mapping != mapping) ||
->>> +                         !PageDirty(page) ||
->>> +                         PageWriteback(page) ||
->>> +                         page->index != idx) {
->>> +                             done = 1;
->>> +                             unlock_page(page);
->>> +                             break;
->>> +                     }
->>> +                     unlock_page(page);
->>> +                     if (done)
->>> +                             break;
->>> +                     idx++;
->>> +                     num++;
->>> +             }
->>> +             pagevec_release(&pvec);
->>> +     }
->>> +     return num << PAGE_CACHE_SHIFT;
->>> +}
->>> +
->>
->>
->> Same as what Trond said. radix_tree_next_hole() should be nicer. We need never
->> do any locking this is just an hint, and not a transaction guaranty. Best first
->> guess approximation is all we need.
->>
->> Also you might want to optimize for the most common case of a linear write from
->> zero. This you can do by comparing i_size / PAGE_SIZE and the number of dirty
->> pages, if they are the same you know there are no holes, and need not scan.
->>
->>>  void
->>> -pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
->>> +pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
->>> +                        struct nfs_page *req)
->>
->>
->> Nothing changed here, please don't do this
->>
->>>  {
->>> +     u64 wb_size;
->>> +
->>>       BUG_ON(pgio->pg_lseg != NULL);
->>>
->>>       if (req->wb_offset != req->wb_pgbase) {
->>>               nfs_pageio_reset_write_mds(pgio);
->>>               return;
->>>       }
->>> +
->>> +     if (pgio->pg_dreq == NULL)
->>> +             wb_size = pnfs_num_dirty_bytes(pgio->pg_inode, req->wb_index);
->>> +     else
->>> +             wb_size = nfs_dreq_bytes_left(pgio->pg_dreq);
->>> +
->>>       pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
->>>                                          req->wb_context,
->>>                                          req_offset(req),
->>> -                                        req->wb_bytes,
->>> +                                        wb_size?:req->wb_bytes,
->>
->>
->> wb_size is always set above in the if() or else. No need to check here.
->>
->>>                                          IOMODE_RW,
->>>                                          GFP_NOFS);
->>>       /* If no lseg, fall back to write through mds */
->>
->>
->>
->> But No!
->>
->> much much better then last time, thank you for working on this
->> but it is not optimum for objects and files
->> (when "files" supports segments)
->>
->> For blocks, Yes radix_tree_next_hole() is the perfect fit. But for
->> objects (and files) it is i_size_read(). The objects/files server usually
->> determines it's topology according to file-size. And it does not have any
->> bigger resources because of holes or no holes. (The files example I think of
->> is CEPH)
->>
->> So for objects the wasting factor is the actual i_size extending as a cause
->> of layout_get, and not the number of pages served. So for us the gain is if
->> client, that has a much newer information about i_size, sends it on first
->> layout_get. Though extending file size only once on first layout_get and
->> not on every layout_get.
->>
->> So the small change I want is:
->>
->> +enum pnfs_layout_get_strategy {
->> +       PLGS_USE_ISIZE,
->> +       PLGS_SEARCH_FIRST_HOLE,
->> +       PLGS_ALL_FILE,
->> +};
->>
-> Just a second thought, since each layout driver would use one
-> strategy, it is more reasonable to set the strategy in
-> pnfs_curr_ld->flags instead of changing pg_init API to pass it in. I
-> will do it this way.
+Linux martin 3.5.2-gentoo #1 SMP Fri Aug 24 09:35:54 EDT 2012 x86_64 Intel(R) Core(TM) i5-2400 CPU @ 3.10GHz GenuineIntel GNU/Linux
+ 
+Gnu C                  4.6.3
+Gnu make               3.82
+binutils               2.22.90.20120727
+util-linux             2.21.2
+mount                  support
+module-init-tools      9
+e2fsprogs              1.42.5
+reiserfsprogs          3.6.21
+Linux C Library        2.15
+Dynamic linker (ldd)   2.15
+Procps                 UNKNOWN
+Net-tools              1.60_p20120127084908
+Kbd                    1.15.3wip
+Sh-utils               8.19
+Modules Loaded         vboxnetadp vboxnetflt vboxdrv
+
+On Aug 28, 2012, at 8:42 AM, Frank Nicholas <frank@nicholasfamilycentral.com> wrote:
+
+> The information included below is per the URL:
+> http://www.kernel.org/pub/linux/docs/lkml/reporting-bugs.html
 > 
+> If different or additional information is needed, please let me know.
+> 
+> Kernel version:
+> Linux martin 3.5.2-gentoo #1 SMP Fri Aug 24 09:35:54 EDT 2012 x86_64 Intel(R) Core(TM) i5-2400 CPU @ 3.10GHz GenuineIntel GNU/Linux
+> Linux version 3.5.2-gentoo (root@martin) (gcc version 4.6.3 (Gentoo 4.6.3 p1.3, pie-0.5.2) ) #1 SMP Fri Aug 24 09:35:54 EDT 2012
+> Problem also occurred in 3.5.1-gentoo.
+> 
+> Modules:
+> Module                  Size  Used by
+> vboxnetadp             17542  0 
+> vboxnetflt             14893  0 
+> vboxdrv              1775582  2 vboxnetadp,vboxnetflt
+> 
+> Bug trigger:
+> Solaris 11/11 (patched as of July, 2012) is serving NFS V4 to a Gentoo Linux system.  IDMAP is being used to manage users/groups.  "/etc/idmap.conf" is fairly generic except for the domain name.
+> The Gentoo "portage" tree is shared via NFS.  I initiate an 'emerge --sync'  and the condition occurs.  NFS no longer works.  The system will not restart or shut down due to the hang in NFS.  The system has to be hard powered off to clear the condition.  The bug does not trigger reliably.  The Solaris 11/11 NFS server & Gentoo Linux NFS client have been configured this way for more than a year.  
+> 
+> Kernel log:
+> [160372.303310] ------------[ cut here ]------------
+> [160372.303353] kernel BUG at fs/nfs/idmap.c:684!
+> [160372.303392] invalid opcode: 0000 [#1] SMP 
+> [160372.303431] CPU 2 
+> [160372.303437] Modules linked in: vboxnetadp(O) vboxnetflt(O) vboxdrv(O)
+> [160372.303541] 
+> [160372.303572] Pid: 12852, comm: mount.nfs Tainted: G           O 3.5.2-gentoo #1 Gigabyte Technology Co., Ltd. Z68A-D3H-B3/Z68A-D3H-B3
+> [160372.303655] RIP: 0010:[<ffffffff81187e03>]  [<ffffffff81187e03>] nfs_idmap_legacy_upcall+0x323/0x330
+> [160372.303736] RSP: 0018:ffff8802421af5f8  EFLAGS: 00010282
+> [160372.303777] RAX: 0000000000000015 RBX: ffff8802ed9e5000 RCX: 0000000000000000
+> [160372.303847] RDX: 0000000000000005 RSI: ffff88026af757b9 RDI: ffff8802ed9e5017
+> [160372.303917] RBP: ffff88040d524740 R08: 000000000000003a R09: ffffffff81187b35
+> [160372.303987] R10: 00000000139c5e77 R11: 000000006138df6f R12: ffff88040b568410
+> [160372.304056] R13: ffff88040c3e5700 R14: 0000000000000015 R15: 0000000000000000
+> [160372.304128] FS:  00007f35102ca700(0000) GS:ffff88041fb00000(0000) knlGS:0000000000000000
+> [160372.304200] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+> [160372.304240] CR2: 00007f37a2b09880 CR3: 0000000236eae000 CR4: 00000000000407e0
+> [160372.304311] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> [160372.304382] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> [160372.304453] Process mount.nfs (pid: 12852, threadinfo ffff8802421ae000, task ffff8803e789be90)
+> [160372.304525] Stack:
+> [160372.304558]  ffff88026af757a4 ffff88026af757b9 ffff88040b568410 ffff8802ed9e59c0
+> [160372.304632]  ffff8802ed9e5540 ffffffff81526c0e 0000000000000000 ffffffff811ad2de
+> [160372.304707]  0000000000000000 ffff88040d53ae40 ffff88040c3e5700 ffff88040d53ae40
+> [160372.304781] Call Trace:
+> [160372.304819]  [<ffffffff811ad2de>] ? request_key_and_link+0x31e/0x450
+> [160372.304864]  [<ffffffff811ad465>] ? request_key_with_auxdata+0x15/0x60
+> [160372.304908]  [<ffffffff81187eeb>] ? nfs_idmap_request_key+0xdb/0x1c0
+> [160372.304951]  [<ffffffff811881a0>] ? nfs_idmap_lookup_id+0xe0/0x100
+> [160372.304995]  [<ffffffff811883a9>] ? nfs_map_string_to_numeric+0x29/0x90
+> [160372.305039]  [<ffffffff81182fcc>] ? decode_getfattr_attrs+0xb2c/0xb50
+> [160372.305082]  [<ffffffff8118307d>] ? decode_getfattr_generic.constprop.96+0x8d/0xe0
+> [160372.305155]  [<ffffffff811834b0>] ? nfs4_xdr_dec_link+0xf0/0xf0
+> [160372.305197]  [<ffffffff81183529>] ? nfs4_xdr_dec_lookup_root+0x79/0x80
+> [160372.305240]  [<ffffffff811834b0>] ? nfs4_xdr_dec_link+0xf0/0xf0
+> [160372.305285]  [<ffffffff81414d68>] ? rpcauth_unwrap_resp+0x58/0x60
+> [160372.305328]  [<ffffffff8140bed3>] ? call_decode+0x333/0x430
+> [160372.305370]  [<ffffffff81413776>] ? __rpc_execute+0x46/0x1e0
+> [160372.305412]  [<ffffffff810571f8>] ? wake_up_bit+0x18/0x40
+> [160372.305454]  [<ffffffff8140d529>] ? rpc_run_task+0x69/0x90
+> [160372.305496]  [<ffffffff8140d65f>] ? rpc_call_sync+0x3f/0x70
+> [160372.306028]  [<ffffffff81174e5e>] ? _nfs4_lookup_root.isra.42+0xae/0xd0
+> [160372.306072]  [<ffffffff81174ec7>] ? nfs4_lookup_root+0x47/0x80
+> [160372.306115]  [<ffffffff81179c10>] ? nfs4_proc_get_rootfh+0x30/0xd0
+> [160372.306158]  [<ffffffff8115e148>] ? nfs4_get_rootfh+0x28/0xc0
+> [160372.306200]  [<ffffffff8140cd21>] ? rpc_register_client+0x41/0x70
+> [160372.306243]  [<ffffffff81413fdb>] ? rpciod_up+0xb/0x20
+> [160372.306283]  [<ffffffff8140ce97>] ? rpc_clone_client+0x147/0x1c0
+> [160372.306326]  [<ffffffff81158290>] ? nfs4_server_common_setup+0x90/0x170
+> [160372.306369]  [<ffffffff811594fe>] ? nfs4_create_server+0x14e/0x2b0
+> [160372.306413]  [<ffffffff811625df>] ? nfs4_remote_mount+0x3f/0x90
+> [160372.306457]  [<ffffffff810d17da>] ? mount_fs+0x1a/0xd0
+> [160372.306500]  [<ffffffff810e92a3>] ? vfs_kern_mount+0x73/0x120
+> [160372.306542]  [<ffffffff81162720>] ? nfs_do_root_mount+0x90/0xe0
+> [160372.306584]  [<ffffffff81163bdf>] ? nfs_fs_mount+0x75f/0x970
+> [160372.306626]  [<ffffffff81163240>] ? nfs_fill_super+0x1d0/0x1d0
+> [160372.306669]  [<ffffffff81160720>] ? nfs_destroy_inode+0x20/0x20
+> [160372.306712]  [<ffffffff810d17da>] ? mount_fs+0x1a/0xd0
+> [160372.306753]  [<ffffffff810e92a3>] ? vfs_kern_mount+0x73/0x120
+> [160372.306795]  [<ffffffff810e9a93>] ? do_kern_mount+0x53/0x120
+> [160372.306838]  [<ffffffff810eb662>] ? do_mount+0x532/0x8a0
+> [160372.306880]  [<ffffffff810eb05a>] ? copy_mount_options+0xca/0x160
+> [160372.306922]  [<ffffffff810ebb0a>] ? sys_mount+0x9a/0x100
+> [160372.306965]  [<ffffffff8143e922>] ? system_call_fastpath+0x16/0x1b
+> [160372.307006] Code: b2 2f e9 c5 fd ff ff 90 66 c7 07 00 00 83 ea 02 48 83 c7 02 e9 72 fd ff ff 0f 1f 80 00 00 00 00 41 be f4 ff ff ff e9 22 fe ff ff <0f> 0b 66 66 2e 0f 1f 84 00 00 00 00 00 48 83 ec 58 48 89 7c 24 
+> [160372.307191] RIP  [<ffffffff81187e03>] nfs_idmap_legacy_upcall+0x323/0x330
+> [160372.307236]  RSP <ffff8802421af5f8>
+> [160372.307672] ---[ end trace fefc21185a0edeb6 ]---
 
-
-It's fine, as you see fit. I think it's more flexible this way but
-both ways will work for now.
-
-Please note that for files, once it will support segments, it would
-want to use i_size like objects.
-
-Thanks
-Boaz
