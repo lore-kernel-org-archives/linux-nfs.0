@@ -1,89 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:5476 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756594Ab2HTOCd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Aug 2012 10:02:33 -0400
-Subject: [PATCH v4 08/10] NFS: make nfs_callback_tcpport6 per network context
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Mon, 20 Aug 2012 18:00:41 +0400
-Message-ID: <20120820140041.17404.60283.stgit@localhost.localdomain>
-In-Reply-To: <20120820134734.17404.53946.stgit@localhost.localdomain>
-References: <20120820134734.17404.53946.stgit@localhost.localdomain>
+Received: from mail-ob0-f174.google.com ([209.85.214.174]:48135 "EHLO
+	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751210Ab2H1J4f (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Aug 2012 05:56:35 -0400
+Message-ID: <503C95E4.3010000@gmail.com>
+Date: Tue, 28 Aug 2012 11:56:52 +0200
+From: Sasha Levin <levinsasha928@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+CC: Tejun Heo <tj@kernel.org>, torvalds@linux-foundation.org,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com, axboe@kernel.dk,
+        agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
+        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
+        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive hashtable
+References: <50357840.5020201@gmail.com> <20120823200456.GD14962@google.com> <5037DA47.9010306@gmail.com> <20120824195941.GC21325@google.com> <5037E00B.6090606@gmail.com> <20120824203332.GF21325@google.com> <5037E9D9.9000605@gmail.com> <20120824212348.GK21325@google.com> <5038074D.300@gmail.com> <20120824230740.GN21325@google.com> <20120825042419.GA27240@Krystal>
+In-Reply-To: <20120825042419.GA27240@Krystal>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfs/callback.c  |    6 ++----
- fs/nfs/callback.h  |    1 -
- fs/nfs/netns.h     |    1 +
- fs/nfs/nfs4state.c |    2 +-
- 4 files changed, 4 insertions(+), 6 deletions(-)
+On 08/25/2012 06:24 AM, Mathieu Desnoyers wrote:
+> * Tejun Heo (tj@kernel.org) wrote:
+>> Hello,
+>>
+>> On Sat, Aug 25, 2012 at 12:59:25AM +0200, Sasha Levin wrote:
+>>> Thats the thing, the amount of things of things you can do with a given bucket
+>>> is very limited. You can't add entries to any point besides the head (without
+>>> walking the entire list).
+>>
+>> Kinda my point.  We already have all the hlist*() interface to deal
+>> with such cases.  Having something which is evidently the trivial
+>> hlist hashtable and advertises as such in the interface can be
+>> helpful.  I think we need that more than we need anything fancy.
+>>
+>> Heh, this is a debate about which one is less insignificant.  I can
+>> see your point.  I'd really like to hear what others think on this.
+>>
+>> Guys, do we want something which is evidently trivial hlist hashtable
+>> which can use hlist_*() API directly or do we want something better
+>> encapsulated?
+> 
+> My 2 cents, FWIW: I think this specific effort should target a trivially
+> understandable API and implementation, for use-cases where one would be
+> tempted to reimplement his own trivial hash table anyway. So here
+> exposing hlist internals, with which kernel developers are already
+> familiar, seems like a good approach in my opinion, because hiding stuff
+> behind new abstraction might make the target users go away.
+> 
+> Then, as we see the need, we can eventually merge a more elaborate hash
+> table with poneys and whatnot, but I would expect that the trivial hash
+> table implementation would still be useful. There are of course very
+> compelling reasons to use a more featureful hash table: automatic
+> resize, RT-aware updates, scalable updates, etc... but I see a purpose
+> for a trivial implementation. Its primary strong points being:
+> 
+> - it's trivially understandable, so anyone how want to be really sure
+>   they won't end up debugging the hash table instead of their
+>   work-in-progress code can have a full understanding of it,
+> - it has few dependencies, which makes it easier to understand and
+>   easier to use in some contexts (e.g. early boot).
+> 
+> So I'm in favor of not overdoing the abstraction for this trivial hash
+> table, and honestly I would rather prefer that this trivial hash table
+> stays trivial. A more elaborate hash table should probably come as a
+> separate API.
+> 
+> Thanks,
+> 
+> Mathieu
+> 
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 94aa9d8..baafa0f 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -38,8 +38,6 @@ static struct nfs_callback_data nfs_callback_info[NFS4_MAX_MINOR_VERSION + 1];
- static DEFINE_MUTEX(nfs_callback_mutex);
- static struct svc_program nfs4_callback_program;
- 
--unsigned short nfs_callback_tcpport6;
--
- static int nfs4_callback_up_net(struct svc_serv *serv, struct net *net)
- {
- 	int ret;
-@@ -56,9 +54,9 @@ static int nfs4_callback_up_net(struct svc_serv *serv, struct net *net)
- 	ret = svc_create_xprt(serv, "tcp", net, PF_INET6,
- 				nfs_callback_set_tcpport, SVC_SOCK_ANONYMOUS);
- 	if (ret > 0) {
--		nfs_callback_tcpport6 = ret;
-+		nn->nfs_callback_tcpport6 = ret;
- 		dprintk("NFS: Callback listener port = %u (af %u, net %p)\n",
--				nfs_callback_tcpport6, PF_INET6, net);
-+				nn->nfs_callback_tcpport6, PF_INET6, net);
- 	} else if (ret != -EAFNOSUPPORT)
- 		goto out_err;
- 	return 0;
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index 1c167d1..c07a8d4 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -208,6 +208,5 @@ extern int nfs4_set_callback_sessionid(struct nfs_client *clp);
- #define NFS41_BC_MAX_CALLBACKS 1
- 
- extern unsigned int nfs_callback_set_tcpport;
--extern unsigned short nfs_callback_tcpport6;
- 
- #endif /* __LINUX_FS_NFS_CALLBACK_H */
-diff --git a/fs/nfs/netns.h b/fs/nfs/netns.h
-index 1538d3a..137238b 100644
---- a/fs/nfs/netns.h
-+++ b/fs/nfs/netns.h
-@@ -23,6 +23,7 @@ struct nfs_net {
- #if IS_ENABLED(CONFIG_NFS_V4)
- 	struct idr cb_ident_idr; /* Protected by nfs_client_lock */
- 	unsigned short nfs_callback_tcpport;
-+	unsigned short nfs_callback_tcpport6;
- #endif
- 	spinlock_t nfs_client_lock;
- 	struct timespec boot_time;
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index afd06b4..2042bf0 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -80,7 +80,7 @@ int nfs4_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
- 		goto do_confirm;
- 	port = nn->nfs_callback_tcpport;
- 	if (clp->cl_addr.ss_family == AF_INET6)
--		port = nfs_callback_tcpport6;
-+		port = nn->nfs_callback_tcpport6;
- 
- 	status = nfs4_proc_setclientid(clp, NFS4_CALLBACK, port, cred, &clid);
- 	if (status != 0)
+Alright, let's keep it simple then.
+
+I do want to keep the hash_for_each[rcu,safe] family though.
 
