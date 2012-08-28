@@ -1,115 +1,144 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37534 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932252Ab2HUSYU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Aug 2012 14:24:20 -0400
-Date: Tue, 21 Aug 2012 14:24:20 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        David Noveck <david.noveck@emc.com>
-Subject: Re: NFS: Treat NFS4ERR_CLID_INUSE as a fatal error
-Message-ID: <20120821182420.GC16497@fieldses.org>
-References: <24601061-1606-4A0A-940E-FDAFD1A2A2BB@oracle.com>
- <39FE3A39-4EB2-4F9F-908F-645C79B30E0F@oracle.com>
- <20120809211340.GB11538@fieldses.org>
- <6575B2FD-CCE4-40D5-9CBA-82681EC20E17@oracle.com>
- <20120809213838.GC11538@fieldses.org>
- <B28F4673-3650-4BA9-ADDA-F9A8E62A0499@oracle.com>
- <20120810201348.GB17985@fieldses.org>
- <12DB2C80-31EB-4317-B1E7-96620A8F7374@oracle.com>
- <20120810203930.GC17985@fieldses.org>
- <B38BE4A7-1D82-4B0D-9E71-2C35A1EB30D3@oracle.com>
+Received: from mail-bk0-f46.google.com ([209.85.214.46]:45629 "EHLO
+	mail-bk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751637Ab2H1L1H (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Aug 2012 07:27:07 -0400
+Message-ID: <503CAB1E.5010408@gmail.com>
+Date: Tue, 28 Aug 2012 13:27:26 +0200
+From: Sasha Levin <levinsasha928@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <B38BE4A7-1D82-4B0D-9E71-2C35A1EB30D3@oracle.com>
+To: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+CC: Tejun Heo <tj@kernel.org>, torvalds@linux-foundation.org,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com, axboe@kernel.dk,
+        agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
+        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
+        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive hashtable
+References: <5037DA47.9010306@gmail.com> <20120824195941.GC21325@google.com> <5037E00B.6090606@gmail.com> <20120824203332.GF21325@google.com> <5037E9D9.9000605@gmail.com> <20120824212348.GK21325@google.com> <5038074D.300@gmail.com> <20120824230740.GN21325@google.com> <20120825042419.GA27240@Krystal> <503C95E4.3010000@gmail.com> <20120828101148.GA21683@Krystal>
+In-Reply-To: <20120828101148.GA21683@Krystal>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 10, 2012 at 05:22:17PM -0400, Chuck Lever wrote:
-> Can you explain why you think its a better idea for the client to
-> remove its lease?  For 4.0, it's never had to do that before.  The
-> case you've hit worked before by establishing an additional lease
-> rather than by zapping the old one, for example.
+On 08/28/2012 12:11 PM, Mathieu Desnoyers wrote:
+> * Sasha Levin (levinsasha928@gmail.com) wrote:
+>> On 08/25/2012 06:24 AM, Mathieu Desnoyers wrote:
+>>> * Tejun Heo (tj@kernel.org) wrote:
+>>>> Hello,
+>>>>
+>>>> On Sat, Aug 25, 2012 at 12:59:25AM +0200, Sasha Levin wrote:
+>>>>> Thats the thing, the amount of things of things you can do with a given bucket
+>>>>> is very limited. You can't add entries to any point besides the head (without
+>>>>> walking the entire list).
+>>>>
+>>>> Kinda my point.  We already have all the hlist*() interface to deal
+>>>> with such cases.  Having something which is evidently the trivial
+>>>> hlist hashtable and advertises as such in the interface can be
+>>>> helpful.  I think we need that more than we need anything fancy.
+>>>>
+>>>> Heh, this is a debate about which one is less insignificant.  I can
+>>>> see your point.  I'd really like to hear what others think on this.
+>>>>
+>>>> Guys, do we want something which is evidently trivial hlist hashtable
+>>>> which can use hlist_*() API directly or do we want something better
+>>>> encapsulated?
+>>>
+>>> My 2 cents, FWIW: I think this specific effort should target a trivially
+>>> understandable API and implementation, for use-cases where one would be
+>>> tempted to reimplement his own trivial hash table anyway. So here
+>>> exposing hlist internals, with which kernel developers are already
+>>> familiar, seems like a good approach in my opinion, because hiding stuff
+>>> behind new abstraction might make the target users go away.
+>>>
+>>> Then, as we see the need, we can eventually merge a more elaborate hash
+>>> table with poneys and whatnot, but I would expect that the trivial hash
+>>> table implementation would still be useful. There are of course very
+>>> compelling reasons to use a more featureful hash table: automatic
+>>> resize, RT-aware updates, scalable updates, etc... but I see a purpose
+>>> for a trivial implementation. Its primary strong points being:
+>>>
+>>> - it's trivially understandable, so anyone how want to be really sure
+>>>   they won't end up debugging the hash table instead of their
+>>>   work-in-progress code can have a full understanding of it,
+>>> - it has few dependencies, which makes it easier to understand and
+>>>   easier to use in some contexts (e.g. early boot).
+>>>
+>>> So I'm in favor of not overdoing the abstraction for this trivial hash
+>>> table, and honestly I would rather prefer that this trivial hash table
+>>> stays trivial. A more elaborate hash table should probably come as a
+>>> separate API.
+>>>
+>>> Thanks,
+>>>
+>>> Mathieu
+>>>
+>>
+>> Alright, let's keep it simple then.
+>>
+>> I do want to keep the hash_for_each[rcu,safe] family though.
 > 
-> Moreover, it shouldn't matter much that a client doesn't tell a server
-> when it's done, since the client's leases will quickly expire.
-> Generally the client cleans up everything but the lease and clientid4
-> when it unmounts, unless the client crashes, which is hopefully rare
-> (and couldn't result in an "I'm done" notification anyway).  So, I
-> don't see how leaving a lease could be a significant server-side
-> resource issue, or how it might interfere with the operation of other
-> clients.
+> Just a thought: if the API offered by the simple hash table focus on
+> providing a mechanism to find the hash bucket to which belongs the hash
+> chain containing the key looked up, and then expects the user to use the
+> hlist API to iterate on the chain (with or without the hlist _rcu
+> variant), then it might seem consistent that a helper providing
+> iteration over the entire table would actually just provide iteration on
+> all buckets, and let the user call the hlist for each iterator for each
+> node within the bucket, e.g.:
+> 
+> struct hlist_head *head;
+> struct hlist_node *pos;
+> 
+> hash_for_each_bucket(ht, head) {
+>         hlist_for_each(pos, head) {
+>                 ...
+>         }
+> }
+> 
+> That way you only have to provide one single macro
+> (hash_for_each_bucket), and rely on the already existing:
+> 
+> - hlist_for_each_entry
+> - hlist_for_each_safe
+> - hlist_for_each_entry_rcu
+> - hlist_for_each_safe_rcu
+>   .....
+> 
+> and various flavors that can appear in the future without duplicating
+> this API. So you won't even have to create _rcu, _safe, nor _safe_rcu
+> versions of the hash_for_each_bucket macro.
+> 
+> Thoughts ?
 
-Well, I've only seen the problem in this case.  I'm not seeing why the
-client couldn't clean up its clientid as well, but there's also a server
-problem here: I don't believe it should be returning INUSE when the
-preexisting lease actually has no state associated with it any more.  So
-my server's detection of when a clientid has no state is broken.  I'll
-work on that.
+In my opinion, the downside here is that it'll require 2 function calls and 2
+levels of nesting for a simple hash iteration.
 
-For now I'm also dropping the flavor comparison, if this look OK.
+hash_for_each_bucket() will always be followed by an iteration of that bucket,
+so splitting a hash_for_each() which does both into 2 different functions which
+will almost always must be called in that given order sounds unintuitive to me.
 
---b.
+It's also just 3 different possible iterators:
 
-commit d81a6e088c8c884f9be58dfe3647cbff22e1f112
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Tue Aug 21 12:48:30 2012 -0400
+ - hlist_for_each_entry
+ - hlist_for_each_entry_safe
+ - hlist_for_each_entry_rcu
 
-    nfsd4: don't pin clientids to pseudoflavors
-    
-    I added cr_flavor to the data compared in same_creds without any
-    justification, in d5497fc693a446ce9100fcf4117c3f795ddfd0d2 "nfsd4: move
-    rq_flavor into svc_cred".
-    
-    Recent client changes then started making
-    
-    	mount -osec=krb5 server:/export /mnt/
-    	echo "hello" >/mnt/TMP
-    	umount /mnt/
-    	mount -osec=krb5i server:/export /mnt/
-    	echo "hello" >/mnt/TMP
-    
-    to fail due to a clid_inuse on the second open.
-    
-    Mounting sequentially like this with different flavors probably isn't
-    that common outside artificial tests.  Also, the real bug here may be
-    that the server isn't just destroying the former clientid in this case
-    (because it isn't good enough at recognizing when the old state is
-    gone).  But it prompted some discussion and a look back at the spec, and
-    I think the check was probably wrong.  Fix and document.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+So I think that it's a good price to pay - 2 extra macro definitions in the
+header to save a macro call + nesting level in each place that uses a hashtable.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 6872852..b5058c2 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1223,10 +1223,26 @@ static bool groups_equal(struct group_info *g1, struct group_info *g2)
- 	return true;
- }
- 
-+/*
-+ * RFC 3530 language requires clid_inuse be returned when the
-+ * "principal" associated with a requests differs from that previously
-+ * used.  We use uid, gid's, and gss principal string as our best
-+ * approximation.  We also don't want to allow non-gss use of a client
-+ * established using gss: in theory cr_principal should catch that
-+ * change, but in practice cr_principal can be null even in the gss case
-+ * since gssd doesn't always pass down a principal string.
-+ */
-+static bool is_gss_cred(struct svc_cred *cr)
-+{
-+	/* Is cr_flavor one of the gss "pseudoflavors"?: */
-+	return (cr->cr_flavor > RPC_AUTH_MAXFLAVOR);
-+}
-+
-+
- static bool
- same_creds(struct svc_cred *cr1, struct svc_cred *cr2)
- {
--	if ((cr1->cr_flavor != cr2->cr_flavor)
-+	if ((is_gss_cred(cr1) != is_gss_cred(cr2))
- 		|| (cr1->cr_uid != cr2->cr_uid)
- 		|| (cr1->cr_gid != cr2->cr_gid)
- 		|| !groups_equal(cr1->cr_group_info, cr2->cr_group_info))
+
+Thanks,
+Sasha
+
+> Thanks,
+> 
+> Mathieu
+> 
+
