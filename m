@@ -1,131 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:43131 "EHLO
-	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754596Ab2HVC23 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Aug 2012 22:28:29 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH v3 15/17] openvswitch: use new hashtable implementation
-Date: Wed, 22 Aug 2012 04:27:10 +0200
-Message-Id: <1345602432-27673-16-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
-References: <1345602432-27673-1-git-send-email-levinsasha928@gmail.com>
+Received: from mout.perfora.net ([74.208.4.195]:58174 "EHLO mout.perfora.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751351Ab2H1Rna (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Aug 2012 13:43:30 -0400
+Date: Tue, 28 Aug 2012 13:43:14 -0400
+From: Jim Rees <rees@umich.edu>
+To: Frank Nicholas <frank@nicholasfamilycentral.com>
+Cc: Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>
+Subject: Re: kernel BUG at fs/nfs/idmap.c:684!
+Message-ID: <20120828174314.GA2202@umich.edu>
+References: <DE540E0D-0D1E-45CE-9968-DA9950497B07@nicholasfamilycentral.com>
+ <0DDD46E4-9D32-4BA4-8BD8-22F347FC9E9B@nicholasfamilycentral.com>
+ <503CD925.7050000@netapp.com>
+ <F5B43205-C11E-4ED7-A530-DCE49B911BE6@nicholasfamilycentral.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <F5B43205-C11E-4ED7-A530-DCE49B911BE6@nicholasfamilycentral.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch openvswitch to use the new hashtable implementation. This reduces the amount of
-generic unrelated code in openvswitch.
+Frank Nicholas wrote:
 
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
----
- net/openvswitch/vport.c |   30 +++++++++++++-----------------
- 1 files changed, 13 insertions(+), 17 deletions(-)
+  Thanks for the quick reply.
+  
+  The patches applied cleanly.  I've rebuilt my kernel.  The reboot will
+  have to wait until I have physical access to the machine to do a hard
+  power off…  Unless you know of some way to clean up the hung NFS items so
+  I can do a reboot.  Currently if I try a 'shutdown -r now', the system
+  hangs on trying to clean up the NFS items.
 
-diff --git a/net/openvswitch/vport.c b/net/openvswitch/vport.c
-index 6140336..3484120 100644
---- a/net/openvswitch/vport.c
-+++ b/net/openvswitch/vport.c
-@@ -27,6 +27,7 @@
- #include <linux/rcupdate.h>
- #include <linux/rtnetlink.h>
- #include <linux/compat.h>
-+#include <linux/hashtable.h>
- 
- #include "vport.h"
- #include "vport-internal_dev.h"
-@@ -39,8 +40,8 @@ static const struct vport_ops *vport_ops_list[] = {
- };
- 
- /* Protected by RCU read lock for reading, RTNL lock for writing. */
--static struct hlist_head *dev_table;
--#define VPORT_HASH_BUCKETS 1024
-+#define VPORT_HASH_BITS 10
-+static DEFINE_HASHTABLE(dev_table, VPORT_HASH_BITS);
- 
- /**
-  *	ovs_vport_init - initialize vport subsystem
-@@ -49,10 +50,7 @@ static struct hlist_head *dev_table;
-  */
- int ovs_vport_init(void)
- {
--	dev_table = kzalloc(VPORT_HASH_BUCKETS * sizeof(struct hlist_head),
--			    GFP_KERNEL);
--	if (!dev_table)
--		return -ENOMEM;
-+	hash_init(dev_table);
- 
- 	return 0;
- }
-@@ -67,12 +65,6 @@ void ovs_vport_exit(void)
- 	kfree(dev_table);
- }
- 
--static struct hlist_head *hash_bucket(const char *name)
--{
--	unsigned int hash = full_name_hash(name, strlen(name));
--	return &dev_table[hash & (VPORT_HASH_BUCKETS - 1)];
--}
--
- /**
-  *	ovs_vport_locate - find a port that has already been created
-  *
-@@ -82,11 +74,11 @@ static struct hlist_head *hash_bucket(const char *name)
-  */
- struct vport *ovs_vport_locate(const char *name)
- {
--	struct hlist_head *bucket = hash_bucket(name);
- 	struct vport *vport;
- 	struct hlist_node *node;
-+	int key = full_name_hash(name, strlen(name));
- 
--	hlist_for_each_entry_rcu(vport, node, bucket, hash_node)
-+	hash_for_each_possible_rcu(dev_table, vport, node, hash_node, key)
- 		if (!strcmp(name, vport->ops->get_name(vport)))
- 			return vport;
- 
-@@ -170,14 +162,18 @@ struct vport *ovs_vport_add(const struct vport_parms *parms)
- 
- 	for (i = 0; i < ARRAY_SIZE(vport_ops_list); i++) {
- 		if (vport_ops_list[i]->type == parms->type) {
-+			int key;
-+			const char *name;
-+
- 			vport = vport_ops_list[i]->create(parms);
- 			if (IS_ERR(vport)) {
- 				err = PTR_ERR(vport);
- 				goto out;
- 			}
- 
--			hlist_add_head_rcu(&vport->hash_node,
--					   hash_bucket(vport->ops->get_name(vport)));
-+			name = vport->ops->get_name(vport);
-+			key = full_name_hash(name, strlen(name));
-+			hash_add_rcu(dev_table, &vport->hash_node, key);
- 			return vport;
- 		}
- 	}
-@@ -218,7 +214,7 @@ void ovs_vport_del(struct vport *vport)
- {
- 	ASSERT_RTNL();
- 
--	hlist_del_rcu(&vport->hash_node);
-+	hash_del_rcu(&vport->hash_node);
- 
- 	vport->ops->destroy(vport);
- }
--- 
-1.7.8.6
-
+Did you try "reboot -f"?
