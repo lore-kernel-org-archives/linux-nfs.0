@@ -1,50 +1,165 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.gnuher.de ([78.47.12.54]:34442 "EHLO mail.gnuher.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755136Ab2HUJTG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Aug 2012 05:19:06 -0400
-Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
-	by mail.gnuher.de (envelope-from
-	<news@geggus.net>)
-	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.72)
-	id 1T3kc4-0006xO-GA
-	for linux-nfs@vger.kernel.org; Tue, 21 Aug 2012 11:19:04 +0200
-Received: from news  by ultimate100.geggus.net (envelope-from
-	<news@geggus.net>)
-	with local (Exim 4.72)
-	id 1T3kc3-0006Si-Rf
-	for linux-nfs@vger.kernel.org; Tue, 21 Aug 2012 11:19:03 +0200
-To: linux-nfs@vger.kernel.org
-From: Sven Geggus <lists@fuchsschwanzdomain.de>
-Subject: NFS4ERR_DELAY (was: NFS4: ssh + unlink(~/.Xauthority) delays)
-Date: Tue, 21 Aug 2012 09:19:03 +0000 (UTC)
-Message-ID: <k0vjq7$o7l$1@ultimate100.geggus.net>
-References: <k0vgkt$mm0$1@ultimate100.geggus.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail.openrapids.net ([64.15.138.104]:37549 "EHLO
+	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752171Ab2H1L4m (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Aug 2012 07:56:42 -0400
+Date: Tue, 28 Aug 2012 07:56:38 -0400
+From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+To: Sasha Levin <levinsasha928@gmail.com>
+Cc: Tejun Heo <tj@kernel.org>, torvalds@linux-foundation.org,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com, axboe@kernel.dk,
+        agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
+        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
+        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive
+	hashtable
+Message-ID: <20120828115638.GC23818@Krystal>
+References: <5037E00B.6090606@gmail.com> <20120824203332.GF21325@google.com> <5037E9D9.9000605@gmail.com> <20120824212348.GK21325@google.com> <5038074D.300@gmail.com> <20120824230740.GN21325@google.com> <20120825042419.GA27240@Krystal> <503C95E4.3010000@gmail.com> <20120828101148.GA21683@Krystal> <503CAB1E.5010408@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <503CAB1E.5010408@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sven Geggus <lists@fuchsschwanzdomain.de> wrote:
+* Sasha Levin (levinsasha928@gmail.com) wrote:
+> On 08/28/2012 12:11 PM, Mathieu Desnoyers wrote:
+> > * Sasha Levin (levinsasha928@gmail.com) wrote:
+> >> On 08/25/2012 06:24 AM, Mathieu Desnoyers wrote:
+> >>> * Tejun Heo (tj@kernel.org) wrote:
+> >>>> Hello,
+> >>>>
+> >>>> On Sat, Aug 25, 2012 at 12:59:25AM +0200, Sasha Levin wrote:
+> >>>>> Thats the thing, the amount of things of things you can do with a given bucket
+> >>>>> is very limited. You can't add entries to any point besides the head (without
+> >>>>> walking the entire list).
+> >>>>
+> >>>> Kinda my point.  We already have all the hlist*() interface to deal
+> >>>> with such cases.  Having something which is evidently the trivial
+> >>>> hlist hashtable and advertises as such in the interface can be
+> >>>> helpful.  I think we need that more than we need anything fancy.
+> >>>>
+> >>>> Heh, this is a debate about which one is less insignificant.  I can
+> >>>> see your point.  I'd really like to hear what others think on this.
+> >>>>
+> >>>> Guys, do we want something which is evidently trivial hlist hashtable
+> >>>> which can use hlist_*() API directly or do we want something better
+> >>>> encapsulated?
+> >>>
+> >>> My 2 cents, FWIW: I think this specific effort should target a trivially
+> >>> understandable API and implementation, for use-cases where one would be
+> >>> tempted to reimplement his own trivial hash table anyway. So here
+> >>> exposing hlist internals, with which kernel developers are already
+> >>> familiar, seems like a good approach in my opinion, because hiding stuff
+> >>> behind new abstraction might make the target users go away.
+> >>>
+> >>> Then, as we see the need, we can eventually merge a more elaborate hash
+> >>> table with poneys and whatnot, but I would expect that the trivial hash
+> >>> table implementation would still be useful. There are of course very
+> >>> compelling reasons to use a more featureful hash table: automatic
+> >>> resize, RT-aware updates, scalable updates, etc... but I see a purpose
+> >>> for a trivial implementation. Its primary strong points being:
+> >>>
+> >>> - it's trivially understandable, so anyone how want to be really sure
+> >>>   they won't end up debugging the hash table instead of their
+> >>>   work-in-progress code can have a full understanding of it,
+> >>> - it has few dependencies, which makes it easier to understand and
+> >>>   easier to use in some contexts (e.g. early boot).
+> >>>
+> >>> So I'm in favor of not overdoing the abstraction for this trivial hash
+> >>> table, and honestly I would rather prefer that this trivial hash table
+> >>> stays trivial. A more elaborate hash table should probably come as a
+> >>> separate API.
+> >>>
+> >>> Thanks,
+> >>>
+> >>> Mathieu
+> >>>
+> >>
+> >> Alright, let's keep it simple then.
+> >>
+> >> I do want to keep the hash_for_each[rcu,safe] family though.
+> > 
+> > Just a thought: if the API offered by the simple hash table focus on
+> > providing a mechanism to find the hash bucket to which belongs the hash
+> > chain containing the key looked up, and then expects the user to use the
+> > hlist API to iterate on the chain (with or without the hlist _rcu
+> > variant), then it might seem consistent that a helper providing
+> > iteration over the entire table would actually just provide iteration on
+> > all buckets, and let the user call the hlist for each iterator for each
+> > node within the bucket, e.g.:
+> > 
+> > struct hlist_head *head;
+> > struct hlist_node *pos;
+> > 
+> > hash_for_each_bucket(ht, head) {
+> >         hlist_for_each(pos, head) {
+> >                 ...
+> >         }
+> > }
+> > 
+> > That way you only have to provide one single macro
+> > (hash_for_each_bucket), and rely on the already existing:
+> > 
+> > - hlist_for_each_entry
+> > - hlist_for_each_safe
+> > - hlist_for_each_entry_rcu
+> > - hlist_for_each_safe_rcu
+> >   .....
+> > 
+> > and various flavors that can appear in the future without duplicating
+> > this API. So you won't even have to create _rcu, _safe, nor _safe_rcu
+> > versions of the hash_for_each_bucket macro.
+> > 
+> > Thoughts ?
+> 
+> In my opinion, the downside here is that it'll require 2 function calls and 2
+> levels of nesting for a simple hash iteration.
 
-> So the question is what cases hangs in NFS4 based Linux systems in general
-> an in this particular case?
+Those are macros, not functions. No function call is required. But I see
+your point about nesting.
 
-Digging this down a little bit further using wireshark I figured out that
-the server responds to the REMOVE .Xauthority call with an NFS4ERR_DELAY for
-whatever reason.
+> 
+> hash_for_each_bucket() will always be followed by an iteration of that
+> bucket, so splitting a hash_for_each() which does both into 2
+> different functions which will almost always must be called in that
+> given order sounds unintuitive to me.
+> 
+> It's also just 3 different possible iterators:
+> 
+>  - hlist_for_each_entry
+>  - hlist_for_each_entry_safe
+>  - hlist_for_each_entry_rcu
+> 
+> So I think that it's a good price to pay - 2 extra macro definitions
+> in the header to save a macro call + nesting level in each place that
+> uses a hashtable.
 
-This is a currently a test-machine with one single user and next to zero
-load.
+I must admin I don't care that much one way or another.
 
-So I will probably need a hint on how to debug the server behaviour, as a
-NFS4ERR_DELAY response is definitely not expected in this case.
+Thanks,
 
-Sven
+Mathieu
+
+> 
+> 
+> Thanks,
+> Sasha
+> 
+> > Thanks,
+> > 
+> > Mathieu
+> > 
+> 
 
 -- 
-"Das Einzige wovor wir Angst haben müssen ist die Angst selbst"
-						(Franklin D. Roosevelt)
-
-/me is giggls@ircnet, http://sven.gegg.us/ on the Web
+Mathieu Desnoyers
+Operating System Efficiency R&D Consultant
+EfficiOS Inc.
+http://www.efficios.com
