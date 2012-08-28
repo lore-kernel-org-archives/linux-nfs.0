@@ -1,95 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46820 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754273Ab2HUVBX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Aug 2012 17:01:23 -0400
-Date: Tue, 21 Aug 2012 17:01:16 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: parafin <parafin@paraf.in>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFS server misbehaving (nfsd eats CPU and returns no data)
-Message-ID: <20120821210116.GB18637@fieldses.org>
-References: <20120508024419.03e585f2@darkhorse.paraf.in>
- <20120821174355.GB15958@fieldses.org>
- <20120821225423.7465a987@darkhorse.paraf.in>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120821225423.7465a987@darkhorse.paraf.in>
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:53239 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751982Ab2H1Rqn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Aug 2012 13:46:43 -0400
+Received: by ialo24 with SMTP id o24so11189464ial.19
+        for <linux-nfs@vger.kernel.org>; Tue, 28 Aug 2012 10:46:43 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 6.0 \(1486\))
+Subject: Re: kernel BUG at fs/nfs/idmap.c:684!
+From: Frank Nicholas <frank@nicholasfamilycentral.com>
+In-Reply-To: <20120828174314.GA2202@umich.edu>
+Date: Tue, 28 Aug 2012 13:46:40 -0400
+Cc: Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>
+Message-Id: <CDF28CCA-4DFC-4CF7-880A-49E795E3389E@nicholasfamilycentral.com>
+References: <DE540E0D-0D1E-45CE-9968-DA9950497B07@nicholasfamilycentral.com> <0DDD46E4-9D32-4BA4-8BD8-22F347FC9E9B@nicholasfamilycentral.com> <503CD925.7050000@netapp.com> <F5B43205-C11E-4ED7-A530-DCE49B911BE6@nicholasfamilycentral.com> <20120828174314.GA2202@umich.edu>
+To: Jim Rees <rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 21, 2012 at 10:54:23PM +0400, parafin wrote:
-> I somewhat mitigated the problem by mount option timeo=10, but this
-> issue still heavily affects NFS throughput. So yes, I'm willing to test,
-> just have to find some free time to do it. I will report as soon as I
-> get results.
 
-OK, thanks.
+On Aug 28, 2012, at 1:43 PM, Jim Rees <rees@umich.edu> wrote:
 
-> Thanks for reply, I thought my message was lost forever :)
-
-In general feel free to retry every now and then (like after a week or
-so, not every day please!) if you get ignored.  We all get overloaded an
-drop things occasionally.
-
---b.
-
+> Frank Nicholas wrote:
 > 
-> On Tue, 21 Aug 2012 13:43:55 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+>  Thanks for the quick reply.
 > 
-> > Are you still willing to test patches?  If so, this would be worth a
-> > try:
-> > 
-> > 	http://marc.info/?l=linux-nfs&m=134550227125610&w=2
-> > 
-> > >From a quick look at your logs it looks likely to address the same
-> > problem.
-> > 
-> > Apologies for the delayed response, we finally just happened to get the
-> > clue necessary to make the problem obvious....
-> > 
-> > --b.
-> > 
-> > On Tue, May 08, 2012 at 02:44:19AM +0400, parafin wrote:
-> > > Hello.
-> > > I'm having a problem with my NFS share. It's been present for some time
-> > > now, kernel versions got upgraded, setup has been changed, but since I
-> > > can't remember for sure when it started, I'll just describe my current
-> > > configuration. But first the problem itself.
-> > > Periodically (I would say every GB of data or so) reads from NFS share
-> > > hang during which nfsd kernel thread on server eats CPU but no data
-> > > gets sent to the client. After a minute everything comes to norm again
-> > > (no action on my part is required). First thing I did to debug this is
-> > > I enabled verbose output in all userspace daemons both on client and
-> > > server - it produced no output whatsoever during the problematic period
-> > > of time. Next I dumped network traffic on TCP port 2049 both on client
-> > > and server - there was no packet drops or any other strange stuff,
-> > > except that client restarted the TCP connection to 2049 port after a
-> > > minute of silence from server (which resulted in data flowing again).
-> > > This was confirmed by kernel debug output from client (echo 65535 | tee
-> > > nfs_debug nfsd_debug nlm_debug rpc_debug) - NFS client sent a server
-> > > READ request with 60 seconds timeout, timeout was reached and resulted
-> > > in dropping and restarting of NFS TCP connection. So this points to NFS
-> > > server kernel code. Kernel debug output on server is quite large and
-> > > spikes during the hangs - I've attached deduplicated (by hand) version
-> > > of it to this email. I couldn't find anything strange in there, but I
-> > > don't understand most of it anyway.
-> > > My current setup - both server and client are Linux 3.3.3, NFSv4 with
-> > > sec=krb5, it runs through local network 192.168.0.0/24 with no
-> > > firewalls (client has iptables disabled in kernel, server ACCEPTs
-> > > everything from internal interface). Client uses Wi-Fi, server -
-> > > Ethernet with VLANs, so traffic goes through AP. But since network dumps
-> > > on server and client are the same, network configuration IMHO is
-> > > irrelevant, I just added it for fullness of description. Most common
-> > > usage (and test case) of this NFS share is watching some videos using
-> > > mplayer. Underlying filesystem is XFS (though ext4 is used for other
-> > > shares on the same server).
-> > > I'm ready to provide additional information or test some patches, since
-> > > this problem is quite annoying (and IMHO got worse with time).
-> > 
-> > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>  The patches applied cleanly.  I've rebuilt my kernel.  The reboot will
+>  have to wait until I have physical access to the machine to do a hard
+>  power off…  Unless you know of some way to clean up the hung NFS items so
+>  I can do a reboot.  Currently if I try a 'shutdown -r now', the system
+>  hangs on trying to clean up the NFS items.
+> 
+> Did you try "reboot -f"?
+
+
+Yep - Remembering back to the old Solaris days, 'sync ; sync ; sync ; reboot -f'.
+
+That got it.  The 'emerge --sync' ran fine & the VM's that are using stores from NFS shares are working ok.  So far no NFS issues.  
+
+Thanks.
+
