@@ -1,102 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:22525 "EHLO mx2.netapp.com"
+Received: from mail.gnuher.de ([78.47.12.54]:51041 "EHLO mail.gnuher.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752479Ab2HQAWA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Aug 2012 20:22:00 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Shai Lazmi <shai.lazmi@qlogic.com>
-CC: William Dauchy <wdauchy@gmail.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFS: Clear key construction data if the idmap
- upcall fails
-Date: Fri, 17 Aug 2012 00:21:48 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA93B56F2@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1345148622-10845-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E640957F@AVEXMB2.qlogic.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B542B@SACEXCMBX04-PRD.hq.netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E6409585@AVEXMB2.qlogic.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B54EC@SACEXCMBX04-PRD.hq.netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E640958D@AVEXMB2.qlogic.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA93B5646@SACEXCMBX04-PRD.hq.netapp.com>
-	 <21641D3714F5AF449DC483E699E1124E86E6409593@AVEXMB2.qlogic.org>
-In-Reply-To: <21641D3714F5AF449DC483E699E1124E86E6409593@AVEXMB2.qlogic.org>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1750977Ab2H1JAI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Aug 2012 05:00:08 -0400
+Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
+	by mail.gnuher.de (envelope-from
+	<news@geggus.net>)
+	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
+	(Exim 4.72)
+	id 1T6HeZ-0001Ya-4G
+	for linux-nfs@vger.kernel.org; Tue, 28 Aug 2012 11:00:07 +0200
+Received: from news  by ultimate100.geggus.net (envelope-from
+	<news@geggus.net>)
+	with local (Exim 4.72)
+	id 1T6HeY-0007UR-G9
+	for linux-nfs@vger.kernel.org; Tue, 28 Aug 2012 11:00:06 +0200
+To: linux-nfs@vger.kernel.org
+From: Sven Geggus <lists@fuchsschwanzdomain.de>
+Subject: NFS4 and quota is rpc.rquotad still needed?
+Date: Tue, 28 Aug 2012 09:00:06 +0000 (UTC)
+Message-ID: <k1i1am$rtl$1@ultimate100.geggus.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA4LTE2IGF0IDE3OjE1IC0wNzAwLCBTaGFpIExhem1pIHdyb3RlOg0KPiBn
-aXQgYXBwbHkgLS1jaGVjayAwMDAxLU5GUy1DbGVhci1rZXktY29uc3RydWN0aW9uLWRhdGEtaWYt
-dGhlLWlkbWFwLXVwY2FsbC0ucGF0Y2gNCj4gZXJyb3I6IHBhdGNoIGZhaWxlZDogZnMvbmZzL2lk
-bWFwLmM6NjENCj4gZXJyb3I6IGZzL25mcy9pZG1hcC5jOiBwYXRjaCBkb2VzIG5vdCBhcHBseQ0K
-PiANCj4gDQo+IGlkbWFwLmMNCj4gZGVmaW5lIE5GU19VSU5UX01BWExFTiAxMQ0KPiANCj4gc3Rh
-dGljIGNvbnN0IHN0cnVjdCBjcmVkICppZF9yZXNvbHZlcl9jYWNoZTsNCj4gc3RhdGljIHN0cnVj
-dCBrZXlfdHlwZSBrZXlfdHlwZV9pZF9yZXNvbHZlcl9sZWdhY3k7DQo+IA0KPiBzdHJ1Y3QgaWRt
-YXAgew0KPiAgICAgICAgIHN0cnVjdCBycGNfcGlwZSAgICAgICAgICppZG1hcF9waXBlOw0KPiAg
-ICAgICAgIHN0cnVjdCBrZXlfY29uc3RydWN0aW9uICppZG1hcF9rZXlfY29uczsNCj4gICAgICAg
-ICBzdHJ1Y3QgbXV0ZXggICAgICAgICAgICBpZG1hcF9tdXRleDsNCj4gfTsNCg0KVGhhdCdzIGhv
-dyBpdCBzaG91bGQgbW9yZSBvciBsZXNzIGxvb2sgYWZ0ZXIgYXBwbHlpbmcgdGhlIHBhdGNoLiBJ
-J20NCmd1ZXNzaW5nIHRoYXQgb25lIG9mIHlvdXIgcHJldmlvdXMgYXR0ZW1wdHMgaGFzIHBhcnRp
-YWxseSB3b3JrZWQsIGFuZA0KaGFzIGxlZnQgeW91ciBjaGVja2VkIG91dCBnaXQgdHJlZSBpbiBh
-ICJkaXJ0eSIgc3RhdGUuDQoNClBsZWFzZSB0cnkgdGhlIGZvbGxvd2luZzoNCg0KJCBnaXQgcmVz
-ZXQgLS1oYXJkIEhFQUQNCiQgZ2l0IGFwcGx5IC0tY2hlY2sgMDAwMS1ORlMtQ2xlYXIta2V5LWNv
-bnN0cnVjdGlvbi1kYXRhLWlmLXRoZS1pZG1hcC11cGNhbGwtLnBhdGNoDQokIGdpdCBhcHBseSAt
-LWNoZWNrIDAwMDItTkZTLXJldHVybi1FTk9LRVktd2hlbi10aGUtdXBjYWxsLWZhaWxzLXRvLW1h
-cC10aGUtbi5wYXRjaA0KDQoNCj4gDQo+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+IEZy
-b206IE15a2xlYnVzdCwgVHJvbmQgW21haWx0bzpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbV0N
-Cj4gU2VudDogVGh1cnNkYXksIEF1Z3VzdCAxNiwgMjAxMiA1OjE0IFBNDQo+IFRvOiBTaGFpIExh
-em1pDQo+IENjOiBXaWxsaWFtIERhdWNoeTsgU2NodW1ha2VyLCBCcnlhbjsgbGludXgtbmZzQHZn
-ZXIua2VybmVsLm9yZw0KPiBTdWJqZWN0OiBSZTogW1BBVENIIDEvMl0gTkZTOiBDbGVhciBrZXkg
-Y29uc3RydWN0aW9uIGRhdGEgaWYgdGhlIGlkbWFwIHVwY2FsbCBmYWlscw0KPiANCj4gT24gVGh1
-LCAyMDEyLTA4LTE2IGF0IDE3OjA3IC0wNzAwLCBTaGFpIExhem1pIHdyb3RlOg0KPiA+IFNvcnJ5
-IC0gY29tcGFueSdzIHBvbGljeSAuLi4NCj4gPiBXaGF0IGlkbWFwIHZlcnNpb24gd2FzIHRoaXMg
-cGF0Y2ggdXNlZCBhZ2FpbnN0PyBUaGUgb25lIEkgaGF2ZSAoYjcwMTM1OGMpIHNlZW1zIHRvIGJl
-IGEgYml0IGRpZmZlcmVudCAoSSB1c2VkIGxhdGVzdCBwdWxsIGNvbW1pdCBkZGYzNDNmNjM1ZmU0
-NDQwY2FkNTI4ZTEyZjk2ZjI4YmQ1MGFhMDk5KSwgaGVuY2UgdGhlIHBhdGNoIGZhaWxzIGFnYWlu
-DQo+IA0KPiBJdCB3b3JrcyBmaW5lIGZvciBtZSBhZ2FpbnN0IGNvbW1pdCBkZGYzNDNmNjM1ZmU0
-NDQwY2FkNTI4ZTEyZjk2ZjI4YmQ1MGFhMDk5Og0KPiANCj4gW3Ryb25kbXlAbGFkZSBsaW51eC1u
-ZnNdJCBnaXQgYnJhbmNoIHRlc3QtYXBwbHkgZGRmMzQzZjYzNWZlNDQ0MGNhZDUyOGUxMmY5NmYy
-OGJkNTBhYTA5OQ0KPiBbdHJvbmRteUBsYWRlIGxpbnV4LW5mc10kIGdpdCBjaGVja291dCB0ZXN0
-LWFwcGx5DQo+IFN3aXRjaGVkIHRvIGJyYW5jaCAndGVzdC1hcHBseScNCj4gW3Ryb25kbXlAbGFk
-ZSBsaW51eC1uZnNdJCBnaXQgYW0gfi9EZXNrdG9wL2Zvcl9zaGFpLzAwMDEtTkZTLUNsZWFyLWtl
-eS1jb25zdHJ1Y3Rpb24tZGF0YS1pZi10aGUtaWRtYXAtdXBjYWxsLS5wYXRjaA0KPiBBcHBseWlu
-ZzogTkZTOiBDbGVhciBrZXkgY29uc3RydWN0aW9uIGRhdGEgaWYgdGhlIGlkbWFwIHVwY2FsbCBm
-YWlscw0KPiBbdHJvbmRteUBsYWRlIGxpbnV4LW5mc10kIGdpdCBhbSB+L0Rlc2t0b3AvZm9yX3No
-YWkvMDAwMi1ORlMtcmV0dXJuLUVOT0tFWS13aGVuLXRoZS11cGNhbGwtZmFpbHMtdG8tbWFwLXRo
-ZS1uLnBhdGNoDQo+IEFwcGx5aW5nOiBORlM6IHJldHVybiAtRU5PS0VZIHdoZW4gdGhlIHVwY2Fs
-bCBmYWlscyB0byBtYXAgdGhlIG5hbWUNCj4gDQo+IFdoYXQgZXJyb3IgbWVzc2FnZXMgYXJlIHlv
-dSBzZWVpbmc/DQo+IA0KPiBDaGVlcnMNCj4gICBUcm9uZA0KPiANCj4gPiAtLS0tLU9yaWdpbmFs
-IE1lc3NhZ2UtLS0tLQ0KPiA+IEZyb206IE15a2xlYnVzdCwgVHJvbmQgW21haWx0bzpUcm9uZC5N
-eWtsZWJ1c3RAbmV0YXBwLmNvbV0NCj4gPiBTZW50OiBUaHVyc2RheSwgQXVndXN0IDE2LCAyMDEy
-IDQ6NTcgUE0NCj4gPiBUbzogU2hhaSBMYXptaQ0KPiA+IENjOiBXaWxsaWFtIERhdWNoeTsgU2No
-dW1ha2VyLCBCcnlhbjsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiA+IFN1YmplY3Q6IFJl
-OiBbUEFUQ0ggMS8yXSBORlM6IENsZWFyIGtleSBjb25zdHJ1Y3Rpb24gZGF0YSBpZiB0aGUgaWRt
-YXAgdXBjYWxsIGZhaWxzDQo+ID4NCj4gPiBPbiBUaHUsIDIwMTItMDgtMTYgYXQgMTY6NTAgLTA3
-MDAsIFNoYWkgTGF6bWkgd3JvdGU6DQo+ID4gPiBNUyBvdXRsb29rDQo+ID4NCj4gPiBEb24ndCBl
-dmVyIHVzZSBMb29rT3V0IGZvciBwYXRjaGVzLiBJdHMgIkkganVzdCByZWZvcm1hdHRlZCB5b3Vy
-IGVtYWlsIg0KPiA+IHdvbmRlciBmZWF0dXJlIGJyZWFrcyBhbGwgdGhlIHdoaXRlc3BhY2UuDQo+
-ID4NCj4gPiA+IEJlc3QgdGhpbmcgaXMgdG8gYXR0YWNoZWQgdGhlIHBhdGNoDQo+ID4NCj4gPiBX
-ZSBkbyBub3Qgbm9ybWFsbHkgdXNlIGF0dGFjaG1lbnRzIG9uIHRoZSBtYWlsaW5nIGxpc3QgYmVj
-YXVzZSBpdCBtYWtlcyBpdCBpbXBvc3NpYmxlIHRvIGNvbW1lbnQgdGhlIHBhdGNoZXMgaW5saW5l
-LiBBaCB3ZWxsLCBoZXJlIGdvZXMuLi4NCj4gPg0KPiA+IC0tDQo+ID4gVHJvbmQgTXlrbGVidXN0
-DQo+ID4gTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQo+ID4NCj4gPiBOZXRBcHANCj4gPiBU
-cm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0KPiA+IHd3dy5uZXRhcHAuY29tDQo+ID4NCj4gPg0K
-PiA+IFRoaXMgbWVzc2FnZSBhbmQgYW55IGF0dGFjaGVkIGRvY3VtZW50cyBjb250YWluIGluZm9y
-bWF0aW9uIGZyb20gUUxvZ2ljIENvcnBvcmF0aW9uIG9yIGl0cyB3aG9sbHktb3duZWQgc3Vic2lk
-aWFyaWVzIHRoYXQgbWF5IGJlIGNvbmZpZGVudGlhbC4gSWYgeW91IGFyZSBub3QgdGhlIGludGVu
-ZGVkIHJlY2lwaWVudCwgeW91IG1heSBub3QgcmVhZCwgY29weSwgZGlzdHJpYnV0ZSwgb3IgdXNl
-IHRoaXMgaW5mb3JtYXRpb24uIElmIHlvdSBoYXZlIHJlY2VpdmVkIHRoaXMgdHJhbnNtaXNzaW9u
-IGluIGVycm9yLCBwbGVhc2Ugbm90aWZ5IHRoZSBzZW5kZXIgaW1tZWRpYXRlbHkgYnkgcmVwbHkg
-ZS1tYWlsIGFuZCB0aGVuIGRlbGV0ZSB0aGlzIG1lc3NhZ2UuDQo+IA0KPiAtLQ0KPiBUcm9uZCBN
-eWtsZWJ1c3QNCj4gTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQo+IA0KPiBOZXRBcHANCj4g
-VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCj4gd3d3Lm5ldGFwcC5jb20NCj4gDQo+IA0KPiBU
-aGlzIG1lc3NhZ2UgYW5kIGFueSBhdHRhY2hlZCBkb2N1bWVudHMgY29udGFpbiBpbmZvcm1hdGlv
-biBmcm9tIFFMb2dpYyBDb3Jwb3JhdGlvbiBvciBpdHMgd2hvbGx5LW93bmVkIHN1YnNpZGlhcmll
-cyB0aGF0IG1heSBiZSBjb25maWRlbnRpYWwuIElmIHlvdSBhcmUgbm90IHRoZSBpbnRlbmRlZCBy
-ZWNpcGllbnQsIHlvdSBtYXkgbm90IHJlYWQsIGNvcHksIGRpc3RyaWJ1dGUsIG9yIHVzZSB0aGlz
-IGluZm9ybWF0aW9uLiBJZiB5b3UgaGF2ZSByZWNlaXZlZCB0aGlzIHRyYW5zbWlzc2lvbiBpbiBl
-cnJvciwgcGxlYXNlIG5vdGlmeSB0aGUgc2VuZGVyIGltbWVkaWF0ZWx5IGJ5IHJlcGx5IGUtbWFp
-bCBhbmQgdGhlbiBkZWxldGUgdGhpcyBtZXNzYWdlLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0K
-TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5l
-dGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+Hello,
+
+unfortunately I could not find a reference to weather rpc.rquotad is still
+needed for using disk-quota over NFS4 or not.
+
+So using NFS4 what would I need to do on the server to enable quota (besides
+enabling it on the underlaying filesystem of course)?
+
+Regards
+
+Sven
+
+-- 
+"Dynamische IP-Nummern sind Security-Homöopathie."
+						(Kristian Köhntopp)
+
+/me is giggls@ircnet, http://sven.gegg.us/ on the Web
