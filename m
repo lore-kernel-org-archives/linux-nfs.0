@@ -1,148 +1,131 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from isrv.corpit.ru ([86.62.121.231]:52466 "EHLO isrv.corpit.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:14027 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756144Ab2HQB47 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Aug 2012 21:56:59 -0400
-Message-ID: <502DA4E8.9050800@msgid.tls.msk.ru>
-Date: Fri, 17 Aug 2012 05:56:56 +0400
-From: Michael Tokarev <mjt@tls.msk.ru>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Linux-kernel <linux-kernel@vger.kernel.org>,
-        Eric Dumazet <eric.dumazet@gmail.com>
-Subject: Re: 3.0+ NFS issues (bisected)
-References: <4FBF2C57.3070203@msgid.tls.msk.ru> <20120529152416.GC3441@fieldses.org> <4FC5C82E.4020806@msgid.tls.msk.ru> <20120530132518.GA13794@fieldses.org> <4FC713ED.5040807@msgid.tls.msk.ru> <1338469169.2420.7.camel@lade.trondhjem.org> <4FC77128.9090206@msgid.tls.msk.ru> <1338471975.7732.5.camel@lade.trondhjem.org> <4FC77755.5060606@msgid.tls.msk.ru> <4FFC2573.8040804@msgid.tls.msk.ru> <20120712125303.GC16822@fieldses.org>
-In-Reply-To: <20120712125303.GC16822@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1751311Ab2H1OJ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Aug 2012 10:09:29 -0400
+Message-ID: <1346162966.2554.3.camel@localhost>
+Subject: Re: [PATCH] Avoid array overflow in __nfs4_get_acl_uncached
+From: Sachin Prabhu <sprabhu@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Date: Tue, 28 Aug 2012 15:09:26 +0100
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA908F69340@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1345817768-23511-1-git-send-email-sprabhu@redhat.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F4AF1E@SACEXCMBX01-PRD.hq.netapp.com>
+	 <1345843866.2279.6.camel@localhost>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F5842F@SACEXCMBX01-PRD.hq.netapp.com>
+	 <1345845062.32200.1.camel@localhost>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F5859F@SACEXCMBX01-PRD.hq.netapp.com>
+	 <1345937503.4943.17.camel@localhost>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F69340@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 12.07.2012 16:53, J. Bruce Fields wrote:
-> On Tue, Jul 10, 2012 at 04:52:03PM +0400, Michael Tokarev wrote:
->> I tried to debug this again, maybe to reproduce in a virtual machine,
->> and found out that it is only 32bit server code shows this issue:
->> after updating the kernel on the server to 64bit (the same version)
->> I can't reproduce this issue anymore.  Rebooting back to 32bit,
->> and voila, it is here again.
->>
->> Something apparenlty isn't right on 32bits... ;)
->>
->> (And yes, the prob is still present and is very annoying :)
+> OK. How about this patch, which applies on top of the one I sent you?
+> 8<-----------------------------------------------------------------
+> From 22c9e2475560edda925f971a2a02bac58536414b Mon Sep 17 00:00:00 2001
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Date: Sun, 26 Aug 2012 11:44:43 -0700
+> Subject: [PATCH] NFSv4: Add buffer overflow checking to nfs4_write_cached_acl
 > 
-> OK, that's very useful, thanks.  So probably a bug got introduced in the
-> 32-bit case between 2.6.32 and 3.0.
+> Currently, the buffer overflow checking is done incorrectly by the
+> caller. Move the overflow checking into nfs4_write_cached_acl itself
+> for robustness, and fix the overflow calculation to take into account
+> the 'pgbase' argument to _copy_from_pages.
 > 
-> My personal upstream testing is normally all x86_64 only.  I'll kick off
-> a 32-bit install and see if I can reproduce this quickly.
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+>  fs/nfs/nfs4proc.c | 12 +++++-------
+>  1 file changed, 5 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 654dc38..af4ebc3 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -3734,12 +3734,13 @@ out:
+>  	return ret;
+>  }
+>  
+> -static void nfs4_write_cached_acl(struct inode *inode, struct page **pages, size_t pgbase, size_t acl_len)
+> +static void nfs4_write_cached_acl(struct inode *inode, struct page **pages,
+> +		size_t srclen, size_t pgbase, size_t acl_len)
+>  {
+>  	struct nfs4_cached_acl *acl;
+>  	size_t buflen = sizeof(*acl) + acl_len;
+>  
+> -	if (pages && buflen <= PAGE_SIZE) {
+> +	if (buflen <= PAGE_SIZE && srclen <= pgbase + acl_len) {
+>  		acl = kmalloc(buflen, GFP_KERNEL);
+>  		if (acl == NULL)
+>  			goto out;
+> @@ -3820,11 +3821,8 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
+>  		goto out_free;
+>  
+>  	acl_len = res.acl_len;
+> -	if (acl_len > args.acl_len)
+> -		nfs4_write_cached_acl(inode, NULL, 0, acl_len);
+> -	else
+> -		nfs4_write_cached_acl(inode, pages, res.acl_data_offset,
+> -				      acl_len);
+> +	nfs4_write_cached_acl(inode, pages, args.acl_len,
+> +			res.acl_data_offset, res.acl_len);
+>  	if (buf) {
+>  		ret = -ERANGE;
+>  		if (acl_len > buflen)
+> -- 
+> 1.7.11.4
 
-Actually it has nothing to do with 32 vs 64 bits as I
-initially thought.  It happens on 64bits too, but takes
-more time (or data to transfer) to trigger.
+I encountered 2 problems. 
+1) The if condition should be srclen >= pgbase + acl_len
+2) There is a second _copy_from_pages which copies to the the acl to the
+passed buffer in __nfs4_get_acl_uncached().
+
+I've attached a patch below.
+-----
+
+>From ec84527625b3847a0623410d532253dd919e119a Mon Sep 17 00:00:00 2001
+From: Sachin Prabhu <sprabhu@redhat.com>
+Date: Tue, 28 Aug 2012 15:01:13 +0100
+Subject: [PATCH] NFSv4: Check for buffer overflow in __nfs4_get_acl_uncached
+
+Check for buffer overflow in __nfs4_get_acl_uncached when using
+_copy_from_pages to copy to the buffer passed in the argument.
+
+Also fix if condition in nfs4_write_cached_acl() from the previous post.
+
+Signed-off-by: Sachin Prabhu
+---
+ fs/nfs/nfs4proc.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 580b0b1..cb8748d 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3740,7 +3740,7 @@ static void nfs4_write_cached_acl(struct inode *inode, struct page **pages,
+ 	struct nfs4_cached_acl *acl;
+ 	size_t buflen = sizeof(*acl) + acl_len;
+ 
+-	if (buflen <= PAGE_SIZE && srclen <= pgbase + acl_len) {
++	if (buflen <= PAGE_SIZE && srclen >= pgbase + acl_len) {
+ 		acl = kmalloc(buflen, GFP_KERNEL);
+ 		if (acl == NULL)
+ 			goto out;
+@@ -3825,7 +3825,7 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
+ 			res.acl_data_offset, res.acl_len);
+ 	if (buf) {
+ 		ret = -ERANGE;
+-		if (acl_len > buflen)
++		if (acl_len > buflen || args.acl_len < res.acl_data_offset + res.acl_len)
+ 			goto out_free;
+ 		_copy_from_pages(buf, pages, res.acl_data_offset,
+ 				acl_len);
+-- 
+1.7.11.4
 
 
-> Let me know if you're able to narrow this down any more.
-
-I bisected this issue to the following commit:
-
-commit f03d78db65085609938fdb686238867e65003181
-Author: Eric Dumazet <eric.dumazet@gmail.com>
-Date:   Thu Jul 7 00:27:05 2011 -0700
-
-    net: refine {udp|tcp|sctp}_mem limits
-
-    Current tcp/udp/sctp global memory limits are not taking into account
-    hugepages allocations, and allow 50% of ram to be used by buffers of a
-    single protocol [ not counting space used by sockets / inodes ...]
-
-    Lets use nr_free_buffer_pages() and allow a default of 1/8 of kernel ram
-    per protocol, and a minimum of 128 pages.
-    Heavy duty machines sysadmins probably need to tweak limits anyway.
 
 
-Reverting this commit on top of 3.0 (or any later 3.x kernel) fixes
-the behavour here.
-
-This machine has 4Gb of memory.  On 3.0, with this patch applied
-(as it is part of 3.0), tcp_mem is like this:
-
-  21228     28306   42456
-
-with this patch reverted, tcp_mem shows:
-
-  81216     108288  162432
-
-and with these values, it works fine.
-
-So it looks like something else goes wrong there,
-which lead to all nfsds fighting with each other
-for something and eating 100% of available CPU
-instead of servicing clients.
-
-For added fun, when setting tcp_mem to the "good" value
-from "bad" value (after booting into kernel with that
-patch applied), the problem is _not_ fixed.
-
-Any further hints?
-
-Thanks,
-
-/mjt
-
->> On 31.05.2012 17:51, Michael Tokarev wrote:
->>> On 31.05.2012 17:46, Myklebust, Trond wrote:
->>>> On Thu, 2012-05-31 at 17:24 +0400, Michael Tokarev wrote:
->>> []
->>>>> I started tcpdump:
->>>>>
->>>>>  tcpdump -npvi br0 -s 0 host 192.168.88.4 and \( proto ICMP or port 2049 \) -w nfsdump
->>>>>
->>>>> on the client (192.168.88.2).  Next I mounted a directory on the client,
->>>>> and started reading (tar'ing) a directory into /dev/null.  It captured a
->>>>> few stalls.  Tcpdump shows number of packets it got, the stalls are at
->>>>> packet counts 58090, 97069 and 97071.  I cancelled the capture after that.
->>>>>
->>>>> The resulting file is available at http://www.corpit.ru/mjt/tmp/nfsdump.xz ,
->>>>> it is 220Mb uncompressed and 1.3Mb compressed.  The source files are
->>>>> 10 files of 1Gb each, all made by using `truncate' utility, so does not
->>>>> take place on disk at all.  This also makes it obvious that the issue
->>>>> does not depend on the speed of disk on the server (since in this case,
->>>>> the server disk isn't even in use).
->>>>
->>>> OK. So from the above file it looks as if the traffic is mainly READ
->>>> requests.
->>>
->>> The issue here happens only with reads.
->>>
->>>> In 2 places the server stops responding. In both cases, the client seems
->>>> to be sending a single TCP frame containing several COMPOUNDS containing
->>>> READ requests (which should be legal) just prior to the hang. When the
->>>> server doesn't respond, the client pings it with a RENEW, before it ends
->>>> up severing the TCP connection and then retransmitting.
->>>
->>> And sometimes -- speaking only from the behavour I've seen, not from the
->>> actual frames sent -- server does not respond to the RENEW too, in which
->>> case the client reports "nfs server no responding", and on the next
->>> renew it may actually respond.  This happens too, but much more rare.
->>>
->>> During these stalls, ie, when there's no network activity at all,
->>> the server NFSD threads are busy eating all available CPU.
->>>
->>> What does it all tell us? :)
->>>
->>> Thank you!
->>>
->>> /mjt
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>> Please read the FAQ at  http://www.tux.org/lkml/
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
 
