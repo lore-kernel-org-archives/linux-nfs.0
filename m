@@ -1,149 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:36347 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755970Ab2HIVbU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2012 17:31:20 -0400
-Received: by ghrr11 with SMTP id r11so1001521ghr.19
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Aug 2012 14:31:20 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/3] SUNRPC: Prepare gss_pipes_dentries_create() for sharing
- pipe data
-To: linux-nfs@vger.kernel.org
-Cc: skinsbursky@parallels.com
-Date: Thu, 09 Aug 2012 17:31:18 -0400
-Message-ID: <20120809213117.12984.99824.stgit@degas.1015granger.net>
-In-Reply-To: <20120809205748.12984.88991.stgit@degas.1015granger.net>
-References: <20120809205748.12984.88991.stgit@degas.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:43417 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752260Ab2H1S4c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Aug 2012 14:56:32 -0400
+Date: Tue, 28 Aug 2012 11:56:27 -0700
+From: Jeff Layton <jlayton@redhat.com>
+To: Greg KH <gregkh@linuxfoundation.org>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "stable@vger.kernel.org" <stable@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] NFS: Fix Oopses in nfs_lookup_revalidate and
+ nfs4_lookup_revalidate
+Message-ID: <20120828115627.46c4626e@corrin.poochiereds.net>
+In-Reply-To: <20120827202311.GA16556@kroah.com>
+References: <1345666097-14815-1-git-send-email-Trond.Myklebust@netapp.com>
+	<20120827200949.GA4732@kroah.com>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA908F6E388@SACEXCMBX04-PRD.hq.netapp.com>
+	<20120827202311.GA16556@kroah.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We are about to make pipe data shareable. gss_pipes_dentries_create()
-and gss_pipes_dentries_destroy() have to be more careful when dealing
-with their dentry pointers.  Namely:
+On Mon, 27 Aug 2012 13:23:11 -0700
+Greg KH <gregkh@linuxfoundation.org> wrote:
 
-  1. When asked to create a dentry, don't write over possibly valid
-     pointers, but instead preserve an existing dentry
+> On Mon, Aug 27, 2012 at 08:16:09PM +0000, Myklebust, Trond wrote:
+> > On Mon, 2012-08-27 at 13:09 -0700, Greg KH wrote:
+> > > On Wed, Aug 22, 2012 at 04:08:17PM -0400, Trond Myklebust wrote:
+> > > > Fix the following Oops in 3.5.1:
+> > > > 
+> > > >  BUG: unable to handle kernel NULL pointer dereference at 0000000000000038
+> > > >  IP: [<ffffffffa03789cd>] nfs_lookup_revalidate+0x2d/0x480 [nfs]
+> > > >  PGD 337c63067 PUD 0
+> > > >  Oops: 0000 [#1] SMP
+> > > >  CPU 5
+> > > >  Modules linked in: nfs fscache nfsd lockd nfs_acl auth_rpcgss sunrpc af_packet binfmt_misc cpufreq_conservative cpufreq_userspace cpufreq_powersave dm_mod acpi_cpufreq mperf coretemp gpio_ich kvm_intel joydev kvm ioatdma hid_generic igb lpc_ich i7core_edac edac_core ptp serio_raw dca pcspkr i2c_i801 mfd_core sg pps_core usbhid crc32c_intel microcode button autofs4 uhci_hcd ttm drm_kms_helper drm i2c_algo_bit sysimgblt sysfillrect syscopyarea ehci_hcd usbcore usb_common scsi_dh_rdac scsi_dh_emc scsi_dh_hp_sw scsi_dh_alua scsi_dh edd fan ata_piix thermal processor thermal_sys
+> > > > 
+> > > >  Pid: 30431, comm: java Not tainted 3.5.1-2-default #1 Supermicro X8DTT/X8DTT
+> > > >  RIP: 0010:[<ffffffffa03789cd>]  [<ffffffffa03789cd>] nfs_lookup_revalidate+0x2d/0x480 [nfs]
+> > > >  RSP: 0018:ffff8801b418bd38  EFLAGS: 00010292
+> > > >  RAX: 00000000fffffff6 RBX: ffff88032016d800 RCX: 0000000000000020
+> > > >  RDX: ffffffff00000000 RSI: 0000000000000000 RDI: ffff8801824a7b00
+> > > >  RBP: ffff8801b418bdf8 R08: 7fffff0034323030 R09: fffffffff04c03ed
+> > > >  R10: ffff8801824a7b00 R11: 0000000000000002 R12: ffff8801824a7b00
+> > > >  R13: ffff8801824a7b00 R14: 0000000000000000 R15: ffff8803201725d0
+> > > >  FS:  00002b53a46cb700(0000) GS:ffff88033fc20000(0000) knlGS:0000000000000000
+> > > >  CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> > > >  CR2: 0000000000000038 CR3: 000000020a426000 CR4: 00000000000007e0
+> > > >  DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> > > >  DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> > > >  Process java (pid: 30431, threadinfo ffff8801b418a000, task ffff8801b5d20600)
+> > > >  Stack:
+> > > >   ffff8801b418be44 ffff88032016d800 ffff8801b418bdf8 0000000000000000
+> > > >   ffff8801824a7b00 ffff8801b418bdd7 ffff8803201725d0 ffffffff8116a9c0
+> > > >   ffff8801b5c38dc0 0000000000000007 ffff88032016d800 0000000000000000
+> > > >  Call Trace:
+> > > >   [<ffffffff8116a9c0>] lookup_dcache+0x80/0xe0
+> > > >   [<ffffffff8116aa43>] __lookup_hash+0x23/0x90
+> > > >   [<ffffffff8116b4a5>] lookup_one_len+0xc5/0x100
+> > > >   [<ffffffffa03869a3>] nfs_sillyrename+0xe3/0x210 [nfs]
+> > > >   [<ffffffff8116cadf>] vfs_unlink.part.25+0x7f/0xe0
+> > > >   [<ffffffff8116f22c>] do_unlinkat+0x1ac/0x1d0
+> > > >   [<ffffffff815717b9>] system_call_fastpath+0x16/0x1b
+> > > >   [<00002b5348b5f527>] 0x2b5348b5f526
+> > > >  Code: ec 38 b8 f6 ff ff ff 4c 89 64 24 18 4c 89 74 24 28 49 89 fc 48 89 5c 24 08 48 89 6c 24 10 49 89 f6 4c 89 6c 24 20 4c 89 7c 24 30 <f6> 46 38 40 0f 85 d1 00 00 00 e8 c4 c4 df e0 48 8b 58 30 49 89
+> > > >  RIP  [<ffffffffa03789cd>] nfs_lookup_revalidate+0x2d/0x480 [nfs]
+> > > >   RSP <ffff8801b418bd38>
+> > > >  CR2: 0000000000000038
+> > > >  ---[ end trace 845113ed191985dd ]---
+> > > > 
+> > > > This Oops affects 3.5 kernels and older, and is due to lookup_one_len()
+> > > > calling down to the dentry revalidation code with a NULL pointer
+> > > > to struct nameidata.
+> > > > 
+> > > > It is fixed upstream by commit 0b728e1911c (stop passing nameidata *
+> > > > to ->d_revalidate())
+> > > 
+> > > So this is just a nfs-only backport of the larger patch 0b728e1911c,
+> > > right?  Should we also do this for other filesystems as well?  Or just
+> > > backport the whole commit?
+> > 
+> > The larger patch involves a VFS api change (the atomic open code) which
+> > has a bunch of pre- and post-requirements. I'd assume that is a too
+> > large change for stable. I think that the smaller per-filesystem changes
+> > are probably more appropriate. The list of filesystems that care are
+> > likely to be small. Off the top of my head, I can only think of NFS,
+> > CIFS, FUSE and possibly ceph.
+> 
+> Ok, I'll take this one for NFS, care to break this up also for FUSE and
+> CIFS and send me a patch for it?
+> 
 
-  2. When unlinking a dentry, make sure the ->dentry pointer is NULL
+A similar problem was already fixed quite some time ago in cifs in
+commit f5bc1e755d, shortly after the RCU lookup code went in.
 
-  3. If creating a dentry fails, don't leak the ERR_PTR value, make
-     sure the ->dentry pointer is NULL
-
-2. and 3. are needed so that 1. can recognize when a new dentry
-should be created.
-
-This is clean up, mostly.  But it's necessary because unmounting a
-pipe FS can cause pipe dentries, but not the pipe data, to be
-released (via ->pipes_destroy).
-
-The functions that manage pipe data for gss_create() have to be
-prepared for finding an existing shared rpc_pipe_data object that
-has a dentry, or doesn't, and then do the correct thing in either
-case.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
-
- net/sunrpc/auth_gss/auth_gss.c |   67 +++++++++++++++++++++++++++++-----------
- 1 files changed, 49 insertions(+), 18 deletions(-)
-
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index f5147ef..dfe7825 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -757,42 +757,73 @@ gss_pipe_destroy_msg(struct rpc_pipe_msg *msg)
- 	}
- }
- 
-+static void gss_pipe_dentry_destroy(struct rpc_pipe *pipe)
-+{
-+	if (pipe->dentry != NULL) {
-+		rpc_unlink(pipe->dentry);
-+		pipe->dentry = NULL;
-+	}
-+}
-+
-+/*
-+ * Release existing pipe dentries, but leave the rpc_pipe data
-+ * ready to receive fresh dentries if subsequently needed.
-+ */
- static void gss_pipes_dentries_destroy(struct rpc_auth *auth)
- {
- 	struct gss_auth *gss_auth;
- 
- 	gss_auth = container_of(auth, struct gss_auth, rpc_auth);
--	if (gss_auth->pipe[0]->dentry)
--		rpc_unlink(gss_auth->pipe[0]->dentry);
--	if (gss_auth->pipe[1]->dentry)
--		rpc_unlink(gss_auth->pipe[1]->dentry);
-+
-+	dprintk("RPC:       %s auth=%p, clnt=%p\n",
-+		__func__, auth, gss_auth->client);
-+
-+	gss_pipe_dentry_destroy(gss_auth->pipe[0]);
-+	gss_pipe_dentry_destroy(gss_auth->pipe[1]);
- }
- 
-+/*
-+ * On success, zero is returned and both elements of the rpc_pipe
-+ * array are populated with valid dentries.  Otherwise an error value
-+ * is returned, the dentries are freed, and both ->dentry pointers are
-+ * set to NULL.
-+ */
- static int gss_pipes_dentries_create(struct rpc_auth *auth)
- {
--	int err;
-+	int err = 0;
- 	struct gss_auth *gss_auth;
- 	struct rpc_clnt *clnt;
- 
- 	gss_auth = container_of(auth, struct gss_auth, rpc_auth);
- 	clnt = gss_auth->client;
- 
--	gss_auth->pipe[1]->dentry = rpc_mkpipe_dentry(clnt->cl_dentry,
--						      "gssd",
--						      clnt, gss_auth->pipe[1]);
--	if (IS_ERR(gss_auth->pipe[1]->dentry))
--		return PTR_ERR(gss_auth->pipe[1]->dentry);
--	gss_auth->pipe[0]->dentry = rpc_mkpipe_dentry(clnt->cl_dentry,
--						      gss_auth->mech->gm_name,
--						      clnt, gss_auth->pipe[0]);
--	if (IS_ERR(gss_auth->pipe[0]->dentry)) {
--		err = PTR_ERR(gss_auth->pipe[0]->dentry);
--		goto err_unlink_pipe_1;
-+	if (gss_auth->pipe[1]->dentry == NULL) {
-+		gss_auth->pipe[1]->dentry =
-+			rpc_mkpipe_dentry(clnt->cl_dentry, "gssd", clnt,
-+							gss_auth->pipe[1]);
-+		if (IS_ERR(gss_auth->pipe[1]->dentry)) {
-+			err = PTR_ERR(gss_auth->pipe[1]->dentry);
-+			gss_auth->pipe[1]->dentry = NULL;
-+			goto out_err;
-+		}
- 	}
-+
-+	if (gss_auth->pipe[0]->dentry == NULL) {
-+		gss_auth->pipe[0]->dentry =
-+			rpc_mkpipe_dentry(clnt->cl_dentry,
-+						gss_auth->mech->gm_name,
-+						clnt, gss_auth->pipe[0]);
-+		if (IS_ERR(gss_auth->pipe[0]->dentry)) {
-+			err = PTR_ERR(gss_auth->pipe[0]->dentry);
-+			gss_auth->pipe[0]->dentry = NULL;
-+			goto out_err;
-+		}
-+	}
-+
- 	return 0;
- 
--err_unlink_pipe_1:
--	rpc_unlink(gss_auth->pipe[1]->dentry);
-+out_err:
-+	gss_pipes_dentries_destroy(auth);
- 	return err;
- }
- 
-
+-- 
+Jeff Layton <jlayton@redhat.com>
