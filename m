@@ -1,191 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:57474 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751079Ab2HWQeO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Aug 2012 12:34:14 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q7NGYD7A027261
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 23 Aug 2012 12:34:13 -0400
-Message-ID: <50365BB0.4000706@RedHat.com>
-Date: Thu, 23 Aug 2012 12:34:56 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-lpp01m010-f46.google.com ([209.85.215.46]:39624 "EHLO
+	mail-lpp01m010-f46.google.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751110Ab2H1RJQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Aug 2012 13:09:16 -0400
+Received: by lagy9 with SMTP id y9so3444240lag.19
+        for <linux-nfs@vger.kernel.org>; Tue, 28 Aug 2012 10:09:15 -0700 (PDT)
 MIME-Version: 1.0
-To: Nalin Dahyabhai <nalin@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] scan for DIR: ccaches, too
-References: <20120821205137.GD9511@redhat.com>
-In-Reply-To: <20120821205137.GD9511@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+In-Reply-To: <CAHVgHyXBu5Ocb+MiAjbL_tn3CVx19+usbnDr1R-n4S9PCjK78A@mail.gmail.com>
+References: <CAFtxgO5if9qDf9Lex+=hPjrQBgy9ZOnQDr+CWvGY2U7dpC3dOQ@mail.gmail.com>
+	<CAHVgHyX9aDLjYH0QwUCjx8tXwjsdm=MqH2GPY_68P6XHkYGhVQ@mail.gmail.com>
+	<CAFtxgO6FNuqOcvXvu_Y_-NmojpyC2GHiX5rpMQuY4u4zYYbwWg@mail.gmail.com>
+	<CAHVgHyXBu5Ocb+MiAjbL_tn3CVx19+usbnDr1R-n4S9PCjK78A@mail.gmail.com>
+Date: Tue, 28 Aug 2012 13:09:14 -0400
+Message-ID: <CAFtxgO7qM+FDMEMUOVe1Z+LcYHmtQAPUdxd1zeGqtpidFo1wfQ@mail.gmail.com>
+Subject: Re: [NFS v4.1] State manager error 22?
+From: Jeff Garzik <jeff@garzik.org>
+To: Andy Adamson <androsadamson@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Aug 28, 2012 at 12:31 PM, Andy Adamson <androsadamson@gmail.com> wrote:
+> nfs4_verify_fore_channel_attrs and nfs4_verify_back_channel_attrs was
+> what I was looking at. I would also check the server responses (and
+> the client reaction!) against rfc5661.
+>
+> Have you turned on client debugging to /var/log/messages?  This turns
+> it all on which for a mount failure is ok.
+>
+> # rpcdebug -v -m nfs -s all
 
+Will give that a try.  But it looks like I need to rebuild with
+CONFIG_NFS_DEBUG...
 
-On 08/21/2012 04:51 PM, Nalin Dahyabhai wrote:
-> In addition to matching "FILE:krb5cc_*" in the specified directory or
-> directories, also match "DIR:krb5cc*", if we find subdirectories with
-> names that match the search pattern.
-> 
-> Signed-off-by: Nalin Dahyabhai <nalin@redhat.com>
-Committed...
-
-steved.
-> ---
->  utils/gssd/gssd.h      |  2 +-
->  utils/gssd/krb5_util.c | 50 ++++++++++++++++++++++++++++++++------------------
->  2 files changed, 33 insertions(+), 19 deletions(-)
-> 
-> diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
-> index 71a140b..1d923d7 100644
-> --- a/utils/gssd/gssd.h
-> +++ b/utils/gssd/gssd.h
-> @@ -46,7 +46,7 @@
->  
->  #define GSSD_DEFAULT_CRED_DIR			"/tmp"
->  #define GSSD_USER_CRED_DIR			"/run/user"
-> -#define GSSD_DEFAULT_CRED_PREFIX		"krb5cc_"
-> +#define GSSD_DEFAULT_CRED_PREFIX		"krb5cc"
->  #define GSSD_DEFAULT_MACHINE_CRED_SUFFIX	"machine"
->  #define GSSD_DEFAULT_KEYTAB_FILE		"/etc/krb5.keytab"
->  #define GSSD_SERVICE_NAME			"nfs"
-> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-> index 887d118..2389276 100644
-> --- a/utils/gssd/krb5_util.c
-> +++ b/utils/gssd/krb5_util.c
-> @@ -139,7 +139,7 @@ int limit_to_legacy_enctypes = 0;
->  
->  static int select_krb5_ccache(const struct dirent *d);
->  static int gssd_find_existing_krb5_ccache(uid_t uid, char *dirname,
-> -		struct dirent **d);
-> +		const char **cctype, struct dirent **d);
->  static int gssd_get_single_krb5_cred(krb5_context context,
->  		krb5_keytab kt, struct gssd_k5_kt_princ *ple, int nocache);
->  static int query_krb5_ccache(const char* cred_cache, char **ret_princname,
-> @@ -178,7 +178,8 @@ select_krb5_ccache(const struct dirent *d)
->   * code otherwise.
->   */
->  static int
-> -gssd_find_existing_krb5_ccache(uid_t uid, char *dirname, struct dirent **d)
-> +gssd_find_existing_krb5_ccache(uid_t uid, char *dirname,
-> +			       const char **cctype, struct dirent **d)
->  {
->  	struct dirent **namelist;
->  	int n;
-> @@ -192,6 +193,7 @@ gssd_find_existing_krb5_ccache(uid_t uid, char *dirname, struct dirent **d)
->  	int score, best_match_score = 0, err = -EACCES;
->  
->  	memset(&best_match_stat, 0, sizeof(best_match_stat));
-> +	*cctype = NULL;
->  	*d = NULL;
->  	n = scandir(dirname, &namelist, select_krb5_ccache, 0);
->  	if (n < 0) {
-> @@ -203,41 +205,51 @@ gssd_find_existing_krb5_ccache(uid_t uid, char *dirname, struct dirent **d)
->  		for (i = 0; i < n; i++) {
->  			snprintf(statname, sizeof(statname),
->  				 "%s/%s", dirname, namelist[i]->d_name);
-> -			printerr(3, "CC file '%s' being considered, "
-> +			printerr(3, "CC '%s' being considered, "
->  				 "with preferred realm '%s'\n",
->  				 statname, preferred_realm ?
->  					preferred_realm : "<none selected>");
-> -			snprintf(buf, sizeof(buf), "FILE:%s/%s", dirname, 
-> -					namelist[i]->d_name);
->  			if (lstat(statname, &tmp_stat)) {
-> -				printerr(0, "Error doing stat on file '%s'\n",
-> +				printerr(0, "Error doing stat on '%s'\n",
->  					 statname);
->  				free(namelist[i]);
->  				continue;
->  			}
->  			/* Only pick caches owned by the user (uid) */
->  			if (tmp_stat.st_uid != uid) {
-> -				printerr(3, "CC file '%s' owned by %u, not %u\n",
-> +				printerr(3, "CC '%s' owned by %u, not %u\n",
->  					 statname, tmp_stat.st_uid, uid);
->  				free(namelist[i]);
->  				continue;
->  			}
-> -			if (!S_ISREG(tmp_stat.st_mode)) {
-> -				printerr(3, "CC file '%s' is not a regular file\n",
-> +			if (!S_ISREG(tmp_stat.st_mode) &&
-> +			    !S_ISDIR(tmp_stat.st_mode)) {
-> +				printerr(3, "CC '%s' is not a regular "
-> +					 "file or directory\n",
->  					 statname);
->  				free(namelist[i]);
->  				continue;
->  			}
->  			if (uid == 0 && !root_uses_machine_creds && 
->  				strstr(namelist[i]->d_name, "_machine_")) {
-> -				printerr(3, "CC file '%s' not available to root\n",
-> +				printerr(3, "CC '%s' not available to root\n",
->  					 statname);
->  				free(namelist[i]);
->  				continue;
->  			}
-> +			if (S_ISDIR(tmp_stat.st_mode)) {
-> +				*cctype = "DIR";
-> +			} else
-> +			if (S_ISREG(tmp_stat.st_mode)) {
-> +				*cctype = "FILE";
-> +			} else {
-> +				continue;
-> +			}
-> +			snprintf(buf, sizeof(buf), "%s:%s/%s", *cctype,
-> +				 dirname, namelist[i]->d_name);
->  			if (!query_krb5_ccache(buf, &princname, &realm)) {
-> -				printerr(3, "CC file '%s' is expired or corrupt\n",
-> -					 statname);
-> +				printerr(3, "CC '%s' is expired or corrupt\n",
-> +					 buf);
->  				free(namelist[i]);
->  				err = -EKEYEXPIRED;
->  				continue;
-> @@ -248,9 +260,9 @@ gssd_find_existing_krb5_ccache(uid_t uid, char *dirname, struct dirent **d)
->  					strcmp(realm, preferred_realm) == 0) 
->  				score++;
->  
-> -			printerr(3, "CC file '%s'(%s@%s) passed all checks and"
-> +			printerr(3, "CC '%s'(%s@%s) passed all checks and"
->  				    " has mtime of %u\n",
-> -				 statname, princname, realm, 
-> +				 buf, princname, realm, 
->  				 tmp_stat.st_mtime);
->  			/*
->  			 * if more than one match is found, return the most
-> @@ -284,10 +296,11 @@ gssd_find_existing_krb5_ccache(uid_t uid, char *dirname, struct dirent **d)
->  				else {
->  					free(namelist[i]);
->  				}
-> -				printerr(3, "CC file '%s/%s' is our "
-> +				printerr(3, "CC '%s:%s/%s' is our "
->  					    "current best match "
->  					    "with mtime of %u\n",
-> -					 dirname, best_match_dir->d_name,
-> +					 cctype, dirname,
-> +					 best_match_dir->d_name,
->  					 best_match_stat.st_mtime);
->  			}
->  			free(princname);
-> @@ -1026,17 +1039,18 @@ int
->  gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername, char *dirname)
->  {
->  	char			buf[MAX_NETOBJ_SZ];
-> +	const char		*cctype;
->  	struct dirent		*d;
->  	int			err;
->  
->  	printerr(2, "getting credentials for client with uid %u for "
->  		    "server %s\n", uid, servername);
->  	memset(buf, 0, sizeof(buf));
-> -	err = gssd_find_existing_krb5_ccache(uid, dirname, &d);
-> +	err = gssd_find_existing_krb5_ccache(uid, dirname, &cctype, &d);
->  	if (err)
->  		return err;
->  
-> -	snprintf(buf, sizeof(buf), "FILE:%s/%s", dirname, d->d_name);
-> +	snprintf(buf, sizeof(buf), "%s:%s/%s", cctype, dirname, d->d_name);
->  	free(d);
->  
->  	printerr(2, "using %s as credentials cache for client with "
+     Jeff
