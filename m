@@ -1,92 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:49819 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756822Ab2HTPLE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Aug 2012 11:11:04 -0400
-Message-ID: <50325384.9070506@parallels.com>
-Date: Mon, 20 Aug 2012 19:11:00 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>, "neilb@suse.de" <neilb@suse.de>
-Subject: Re: [PATCH v3] SUNRPC: protect service sockets lists during per-net
- shutdown
-References: <20120703125851.3850.86782.stgit@localhost.localdomain> <20120724194036.GK8570@fieldses.org> <20120816192902.GB4385@fieldses.org> <50321A0D.1020904@parallels.com> <20120820145656.GB1411@fieldses.org>
-In-Reply-To: <20120820145656.GB1411@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Received: from mail-iy0-f174.google.com ([209.85.210.174]:62672 "EHLO
+	mail-iy0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751686Ab2H1SBS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Aug 2012 14:01:18 -0400
+Received: by ialo24 with SMTP id o24so11222123ial.19
+        for <linux-nfs@vger.kernel.org>; Tue, 28 Aug 2012 11:01:17 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 6.0 \(1486\))
+Subject: Re: kernel BUG at fs/nfs/idmap.c:684!
+From: Frank Nicholas <frank@nicholasfamilycentral.com>
+In-Reply-To: <CDF28CCA-4DFC-4CF7-880A-49E795E3389E@nicholasfamilycentral.com>
+Date: Tue, 28 Aug 2012 14:01:15 -0400
+Cc: Bryan Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>
+Message-Id: <C9C62063-74C8-4B58-98B1-E2ED28FC63D1@nicholasfamilycentral.com>
+References: <DE540E0D-0D1E-45CE-9968-DA9950497B07@nicholasfamilycentral.com> <0DDD46E4-9D32-4BA4-8BD8-22F347FC9E9B@nicholasfamilycentral.com> <503CD925.7050000@netapp.com> <F5B43205-C11E-4ED7-A530-DCE49B911BE6@nicholasfamilycentral.com> <20120828174314.GA2202@umich.edu> <CDF28CCA-4DFC-4CF7-880A-49E795E3389E@nicholasfamilycentral.com>
+To: Jim Rees <rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-20.08.2012 18:56, J. Bruce Fields пишет:
-> On Mon, Aug 20, 2012 at 03:05:49PM +0400, Stanislav Kinsbursky wrote:
->> 16.08.2012 23:29, J. Bruce Fields пишет:
->>> Looking back at this:
->>>
->>> 	- adding the sv_lock looks like the right thing to do anyway
->>> 	  independent of containers, because svc_age_temp_xprts may
->>> 	  still be running.
->>>
->>> 	- I'm increasingly unhappy about sharing rpc servers between
->>> 	  network namespaces.  Everything would be easier to understand
->>> 	  if they were independent.  Can we figure out how to do that?
->>>
->>
->> Could you, please, elaborate on your your unhappiness?
->
-> It seems like you're having to do a lot of work on each individual rpc
-> server (callback server, lockd, etc.) to make per-net startup/shutdown
-> work.  And then we still don't have it quite right (see the shutdown
-> races).)
->
-> In general whenever we have the opportunity to have entirely separate
-> data structures, I'd expect that to simplify things: it should eliminate
-> some locking and reference-counting issues.
->
+On Aug 28, 2012, at 1:46 PM, Frank Nicholas <frank@nicholasfamilycentral.com> wrote:
 
-Agreed. But current solution still looks like the easies way to me to implement 
-desired functionality.
+> 
+> On Aug 28, 2012, at 1:43 PM, Jim Rees <rees@umich.edu> wrote:
+> 
+>> Frank Nicholas wrote:
+>> 
+>> Thanks for the quick reply.
+>> 
+>> The patches applied cleanly.  I've rebuilt my kernel.  The reboot will
+>> have to wait until I have physical access to the machine to do a hard
+>> power off�  Unless you know of some way to clean up the hung NFS items so
+>> I can do a reboot.  Currently if I try a 'shutdown -r now', the system
+>> hangs on trying to clean up the NFS items.
+>> 
+>> Did you try "reboot -f"?
+> 
+> 
+> Yep - Remembering back to the old Solaris days, 'sync ; sync ; sync ; reboot -f'.
+> 
+> That got it.  The 'emerge --sync' ran fine & the VM's that are using stores from NFS shares are working ok.  So far no NFS issues.  
+> 
+> Thanks.
+> 
 
->> I.e. I don't like it too. But the problem here, is that rpc server
->> is tied with kernel threads creation and destruction. And these
->> threads can be only a part of initial pid namespace (because we have
->> only one kthreadd). And we decided do not create new kernel thread
->> per container when were discussing the problem last time.
->
-> There really should be some way to create a kernel thread in a specific
-> namespace, shouldn't there?
->
+After the reboot, doing an 'emerge --sync' & starting a VM, I have the following in my syslog:
 
+Aug 28 13:52:09 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
+Aug 28 13:52:19 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
+Aug 28 13:52:19 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
+Aug 28 13:52:19 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
+Aug 28 13:52:19 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
+Aug 28 13:52:19 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
+Aug 28 13:52:19 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
+Aug 28 13:52:19 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
+Aug 28 13:54:05 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
+Aug 28 13:54:05 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
+Aug 28 13:54:05 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
+Aug 28 13:54:05 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
+Aug 28 13:54:05 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
+Aug 28 13:54:05 martin rpc.idmapd[2899]: nfscb: write(/var/lib/nfs/rpc_pipefs//nfs/clnt0/idmap): No space left on device
 
-Kthreads support in a container is rather a "political" problem, than an 
-implementation problem.
+I believe each group of these (by date/time) were when I did the 'emerge --sync' & when I started the VM who has a virtual drive on an NFS share.  I don't remember seeing anything like this before.  Is this due to the patch?  Should I be concerned?  I know this is a pipe, but I've confirmed there is plenty of free disk space everywhere.  The pipe does exist on the file system.  There is plenty of free memory.  Any suggestions?
 
-Currently, when you call kthread_create(), you add new job to kthreadd queue. 
-Kthreadd is unique, starts right after init and lives in global initial 
-environment. So, any kthread inherits namespaces from it.
-Of course, we can start one kthread per environment and change it's root or even 
-network namespace in kthread function. But pid namespace of this kthread will 
-remain global.
-It looks like not a big problem, when we shutdown kthread by some variable. But 
-what about killable nfsd kthreads?
-1) We can't kill them from nested pid namespace.
-2) How we will differ nfsd kthreads in initial pid namespace?
-
-In OpenVZ we have kthreadd per pid hamespace and it allows us to create kthreads 
-(and thus services) per pid namespace.
-
-> Until we have that, could the threads be taught to fix their namespace
-> on startup?
->
-
-Unfortunately, changing of pid namespace for kthreads doesn't look like an easy 
-trick.
-
-> --b.
->
-
-
--- 
-Best regards,
-Stanislav Kinsbursky
+Thanks.
