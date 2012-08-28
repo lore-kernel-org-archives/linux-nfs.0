@@ -1,49 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:29681 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:59497 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754767Ab2HGOgu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Aug 2012 10:36:50 -0400
-Message-ID: <502127EF.3030209@netapp.com>
-Date: Tue, 07 Aug 2012 10:36:31 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+	id S1750942Ab2H1Boo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Aug 2012 21:44:44 -0400
+Date: Mon, 27 Aug 2012 21:44:36 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Julia Lawall <Julia.Lawall@lip6.fr>
+Cc: kernel-janitors@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 1/6] fs/nfsd/nfs4idmap.c: adjust inconsistent IS_ERR
+ and PTR_ERR
+Message-ID: <20120828014436.GB20035@fieldses.org>
+References: <1345924629-16584-1-git-send-email-Julia.Lawall@lip6.fr>
+ <1345924629-16584-2-git-send-email-Julia.Lawall@lip6.fr>
 MIME-Version: 1.0
-To: Joerg Roedel <joro@8bytes.org>
-CC: Joerg Roedel <joerg.roedel@amd.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        wdauchy@gmail.com
-Subject: Re: kernel BUG at /data/lemmy/linux.trees.git/fs/nfs/idmap.c:681!
-References: <20120807134156.GP1996@amd.com> <50211E42.6040808@netapp.com> <20120807141548.GG1917@8bytes.org> <5021237D.1010107@netapp.com> <20120807142707.GH1917@8bytes.org>
-In-Reply-To: <20120807142707.GH1917@8bytes.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1345924629-16584-2-git-send-email-Julia.Lawall@lip6.fr>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/07/2012 10:27 AM, Joerg Roedel wrote:
-> On Tue, Aug 07, 2012 at 10:17:33AM -0400, Bryan Schumaker wrote:
->> On 08/07/2012 10:15 AM, Joerg Roedel wrote:
->>> Yes, it reproduces pretty reliable here with Ubuntu 11.10 Server on an
->>> Intel box with an NFSv3 directory mounted at boot. This is the only box
->>> I have seen this so far, probably it depends on the config. I attach the
->>> config of the failing box.
->>
->> Interesting.  Are you mounting v4, too?  This code shouldn't be
->> running for v3... maybe that's why I haven't been able to hit it.
+On Sat, Aug 25, 2012 at 09:57:04PM +0200, Julia Lawall wrote:
+> From: Julia Lawall <Julia.Lawall@lip6.fr>
 > 
-> No, I am not using NFSv4 on the box where the BUG happens. I have
-> another box mounting the same directory where the BUG does not trigger
-> with v3.6-rc1. A difference I spotted between the kernels is, that on
-> the failing box NFS is compiled as a module whereas it is compiled into
-> the kernel on the box that works fine. Not sure if that has anything to
-> do with the problem...
-> 
+> Change the call to PTR_ERR to access the value just tested by IS_ERR.
 
-Your stack trace is showing v4 calls on the failing box, those definitely shouldn't be happening if you're using v3.  Can you double check /etc/fstab and /proc/mounts on a working kernel to be sure?
-
-My VM has nfs as a module, so I don't think that's the issue... I just started compiling your config to test on my own.
+Applying for 3.7, thanks.--b.
 
 > 
-> 	Joerg
+> The semantic match that finds this problem is as follows:
+> (http://coccinelle.lip6.fr/)
 > 
+> // <smpl>
+> @@
+> expression e,e1;
+> @@
 > 
-
+> (
+> if (IS_ERR(e)) { ... PTR_ERR(e) ... }
+> |
+> if (IS_ERR(e=e1)) { ... PTR_ERR(e) ... }
+> |
+> *if (IS_ERR(e))
+>  { ...
+> *  PTR_ERR(e1)
+>    ... }
+> )
+> // </smpl>
+> 
+> Signed-off-by: Julia Lawall <Julia.Lawall@lip6.fr>
+> 
+> ---
+>  fs/nfsd/nfs4idmap.c |    2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
+> index fdc91a6..11df4ac 100644
+> --- a/fs/nfsd/nfs4idmap.c
+> +++ b/fs/nfsd/nfs4idmap.c
+> @@ -478,7 +478,7 @@ nfsd_idmap_init(struct net *net)
+>  		goto destroy_idtoname_cache;
+>  	nn->nametoid_cache = cache_create_net(&nametoid_cache_template, net);
+>  	if (IS_ERR(nn->nametoid_cache)) {
+> -		rv = PTR_ERR(nn->idtoname_cache);
+> +		rv = PTR_ERR(nn->nametoid_cache);
+>  		goto unregister_idtoname_cache;
+>  	}
+>  	rv = cache_register_net(nn->nametoid_cache, net);
+> 
