@@ -1,54 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:8068 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756474Ab2HFOWv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Aug 2012 10:22:51 -0400
-Message-ID: <501FD333.3080704@RedHat.com>
-Date: Mon, 06 Aug 2012 10:22:43 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:41369 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752337Ab2H2NGN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Aug 2012 09:06:13 -0400
+Received: by eekc1 with SMTP id c1so216455eek.19
+        for <linux-nfs@vger.kernel.org>; Wed, 29 Aug 2012 06:06:11 -0700 (PDT)
+Message-ID: <503E13BF.6010304@eneotecnologia.com>
+Date: Wed, 29 Aug 2012 15:06:07 +0200
+From: =?ISO-8859-1?Q?Carlos_Jim=E9nez?= <cjimenez@eneotecnologia.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@redhat.com>
-CC: Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/4] rpc.gssd: don't call printerr from signal handler
-References: <20120731205931.GA32161@fieldses.org> <1343768449-32205-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1343768449-32205-2-git-send-email-bfields@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
+Subject: Stale NFS file handle - persistent error
+References: <503E131F.2040904@eneotecnologia.com>
+In-Reply-To: <503E131F.2040904@eneotecnologia.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hello everybody,
+
+I have a computer acting as an NFS Server running a Debian based distro 
+and several hosts running CentOS 6.2 acting as NFS clients (for a 
+virtualization environment). Every time more often "Stale NFS file 
+handle" errors appear when trying to copy a file from one directory to 
+another (both in the nfs shared directory).
+In the server side there are no related information in the logs, but 
+this is the output of one of the nfs clients:
+
+Wed Aug 29 11:52:57 2012 [TM][E]: clone: Command "cd 
+/var/lib/one/datastores/0/32; cp -r 
+../../1/5c0455eb494fd43b5c7c576e0c642fbe 
+/var/lib/one/datastores/0/32/disk.0" failed: cp: reading 
+`../../1/5c0455eb494fd43b5c7c576e0c642fbe': Stale NFS file handle
+
+I've checked that path and filenames are correct. The file itself is a 
+300MG sized and the error appears aprox. 30 minutes after the start of 
+the copy, so I guess that it doesn't finish the file copy.
+I usually tried unmounting and remounting the shared directory. In fact, 
+initially it was enough and it was possible to fully copy the file 
+(after aprox. 30 minutes), moreover because the error took place from 
+time to time. But now, the problem persists after doing it (even after 
+rebooting the clients).
+Additionally, I've tried doing the same operation (to copy the same file 
+from a directory to another) locally in the NFS Server and it takes just 
+a minute (aprox.).
+
+Could you give me advice on troubleshooting it?
 
 
-On 07/31/2012 05:00 PM, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> printerr() isn't actually safe to call from a signal handler.  It might
-> be possible to make it so, but I think this is the only case in
-> nfs-utils where we try to, and I'm not convince it's worth it.
-> 
-> This fixes a bug that would eventually cause mounts to hang when gssd
-> is run with -vv.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-Committed...
+Thanks in advance.
 
-steved.
-> ---
->  utils/gssd/gssd_main_loop.c |    4 +---
->  1 file changed, 1 insertion(+), 3 deletions(-)
-> 
-> diff --git a/utils/gssd/gssd_main_loop.c b/utils/gssd/gssd_main_loop.c
-> index 9954ffb..6914687 100644
-> --- a/utils/gssd/gssd_main_loop.c
-> +++ b/utils/gssd/gssd_main_loop.c
-> @@ -61,10 +61,8 @@ extern int pollsize;
->  
->  static volatile int dir_changed = 1;
->  
-> -static void dir_notify_handler(int sig)
-> +static void dir_notify_handler(__attribute__((unused))int sig)
->  {
-> -	printerr(2, "dir_notify_handler: sig %d\n", sig);
-> -
->  	dir_changed = 1;
->  }
->  
+Carlos.
