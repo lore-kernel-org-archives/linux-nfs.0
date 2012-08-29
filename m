@@ -1,45 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:40596 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1030204Ab2HIOah (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Aug 2012 10:30:37 -0400
-Received: by ggdk6 with SMTP id k6so486139ggd.19
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Aug 2012 07:30:37 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1344457310-26442-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1344457310-26442-1-git-send-email-Trond.Myklebust@netapp.com>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Thu, 9 Aug 2012 22:30:16 +0800
-Message-ID: <CA+a=Yy7SX+cPLFiNy552bU9ZMS_rSwvaSpV732_mDwpcPAH5Wg@mail.gmail.com>
-Subject: Re: [PATCH] NFSv4.1: Remove a bogus BUG_ON() in nfs4_layoutreturn_done
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        Boaz Harrosh <bharrosh@panasas.com>, Benny Halevy <bhalevy@tonian.com>,
-        Fred Isaman <Fred.Isaman@netapp.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from 5350504D.static.ziggozakelijk.nl ([83.80.80.77]:10410 "EHLO
+	ns2.tasking.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752793Ab2H2MLV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Aug 2012 08:11:21 -0400
+Received: from leonino.tasking.nl (nl-fg300a-1-dmz.tasking.nl [172.16.1.8])
+	by ns2.tasking.nl (8.14.5/8.14.5) with ESMTP id q7TCBJ27020373
+	(version=TLSv1/SSLv3 cipher=DHE-DSS-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Wed, 29 Aug 2012 14:11:20 +0200 (MEST)
+Received: from lahti.tasking.nl (lahti.tasking.nl [172.17.2.45])
+	by leonino.tasking.nl (8.14.5/8.14.5) with ESMTP id q7TCBJ4G024313
+	for <linux-nfs@vger.kernel.org>; Wed, 29 Aug 2012 14:11:19 +0200 (MEST)
+To: linux-nfs@vger.kernel.org
+Mime-Version: 1.0
+Reply-To: dick.streefland@altium.nl (Dick Streefland)
+References: <4d25.5034e746.eefd1@altium.nl> <4d25.5034e746.eefd1@altium.nl> <503609BF.60809@panasas.com> <2bd0.50368cb9.925d7@altium.nl>
+From: dick.streefland@altium.nl (Dick Streefland)
+Subject: Re: NFSv3 client hang on many simultanious reads
+Content-Type: text/plain; charset=us-ascii
+Message-ID: <6876.503e06e7.53da5@altium.nl>
+Date: Wed, 29 Aug 2012 12:11:19 -0000
+From: rnews@altium.nl
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 9, 2012 at 4:21 AM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-> Ever since commit 0a57cdac3f (NFSv4.1 send layoutreturn to fence
-> disconnected data server) we've been sending layoutreturn calls
-> while there is potentially still outstanding I/O to the data
-> servers. The reason we do this is to avoid races between replayed
-> writes to the MDS and the original writes to the DS.
->
-> When this happens, the BUG_ON() in nfs4_layoutreturn_done can
-> be triggered because it assumes that we would never call
-> layoutreturn without knowing that all I/O to the DS is
-> finished. The fix is to remove the BUG_ON() now that the
-> assumptions behind the test are obsolete.
->
-Isn't MDS supposed to recall the layout if races are possible between
-outstanding write-to-DS and write-through-MDS?
+dick.streefland@altium.nl (Dick Streefland) wrote:
+| Could this chunk cause a deadlock?
+| 
+| @@ -1001,10 +1004,25 @@ void xprt_reserve(struct rpc_task *task)
+|  {
+|  	struct rpc_xprt	*xprt = task->tk_xprt;
+|  
+| +	task->tk_status = 0;
+| +	if (task->tk_rqstp != NULL)
+| +		return;
+| +
+| +	/* Note: grabbing the xprt_lock_write() here is not strictly needed,
+| +	 * but ensures that we throttle new slot allocation if the transport
+| +	 * is congested (e.g. if reconnecting or if we're out of socket
+| +	 * write buffer space).
+| +	 */
+| +	task->tk_timeout = 0;
+| +	task->tk_status = -EAGAIN;
+| +	if (!xprt_lock_write(xprt, task))
+| +		return;
+| +
+|  	task->tk_status = -EIO;
+|  	spin_lock(&xprt->reserve_lock);
+|  	xprt_alloc_slot(task);
+|  	spin_unlock(&xprt->reserve_lock);
+| +	xprt_release_write(xprt, task);
+|  }
 
-And it causes data corruption for blocklayout if client returns layout
-while there is in-flight disk IO...
+I doublechecked, and this chunk does indeed cause the hang.
+According to the comment, the lock is not strictly needed.
+So how about simply reverting this?
 
 -- 
-Thanks,
-Tao
+Dick
+
