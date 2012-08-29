@@ -1,60 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54358 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:11122 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755702Ab2HTVta (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Aug 2012 17:49:30 -0400
-Received: from bfields by fieldses.org with local (Exim 4.72)
-	(envelope-from <bfields@fieldses.org>)
-	id 1T3Zqk-00026k-6r
-	for linux-nfs@vger.kernel.org; Mon, 20 Aug 2012 17:49:30 -0400
-Date: Mon, 20 Aug 2012 17:49:30 -0400
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] svcrpc: fix BUG() in svc_tcp_clear_pages
-Message-ID: <20120820214930.GI5779@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1752453Ab2H2WQt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Aug 2012 18:16:49 -0400
+Date: Wed, 29 Aug 2012 15:16:41 -0700
+From: Jeff Layton <jlayton@redhat.com>
+To: Nick Pasich <Nick@NickAndBarb.net>, linux-cifs@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: WARNING: at fs/inode.c:280 drop_nlink+0x31/0x33()
+Message-ID: <20120829151641.20cde4bc@corrin.poochiereds.net>
+In-Reply-To: <20120829162527.GA3635@NickAndBarb.net>
+References: <20120829162527.GA3635@NickAndBarb.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Wed, 29 Aug 2012 09:25:27 -0700
+Nick Pasich <Nick@NickAndBarb.net> wrote:
 
-Examination of svc_tcp_clear_pages shows that it assumes sk_tcplen is
-consistent with sk_pages[] (in particular, sk_pages[n] can't be NULL if
-sk_tcplen would lead us to expect n pages of data).
+> 
+> I'm using kernel 3.5.3 ... 
+> 
+> It happens on 3.5.1 and 3.5.2 also.
+> 
+> I know that Nick Bowler has already reported this...
+> 
+> I'm experiencing the same thing.
+> 
+> It happens when moving files from one directory to another
+> on the same partition (NFS). 
+> 
+>   --( Nick Pasich )--
+> 
+> 
+> #############################################################################
+> ##
+> ## Happens when PSTs are moved from one directory to another on the ISCSI ...
+> ##
+> #############################################################################
+> 
+> Aug 29 08:06:16 localhost kernel: ------------[ cut here ]------------
+> Aug 29 08:06:16 localhost kernel: WARNING: at fs/inode.c:280 drop_nlink+0x31/0x33()
+> Aug 29 08:06:16 localhost kernel: Hardware name: To Be Filled By O.E.M.
+> Aug 29 08:06:16 localhost kernel: Modules linked in: ecb md4 cifs w83627hf eeprom asb100 hwmon_vid hwmon nfsd exportfs ipv6 psmouse usb_storage io_edgeport usbserial sg r8169 mii evdev intel_agp uhci_hcd i2c_i801 i2c_core shpchp intel_gtt agpgart ehci_hcd microcode serio_raw
+> Aug 29 08:06:16 localhost kernel: Pid: 31477, comm: rm Tainted: G        W    3.5.3 #1
+> Aug 29 08:06:16 localhost kernel: Call Trace:
+> Aug 29 08:06:16 localhost kernel:  [<c10a53e2>] ? drop_nlink+0x31/0x33
+> Aug 29 08:06:16 localhost kernel:  [<c1025dd2>] ? warn_slowpath_common+0x7b/0x90
+> Aug 29 08:06:16 localhost kernel:  [<c10a53e2>] ? drop_nlink+0x31/0x33
+> Aug 29 08:06:16 localhost kernel:  [<c1025e02>] ? warn_slowpath_null+0x1b/0x1f
+> Aug 29 08:06:16 localhost kernel:  [<c10a53e2>] ? drop_nlink+0x31/0x33
+> Aug 29 08:06:16 localhost kernel:  [<f83dfa81>] ? cifs_unlink+0x134/0x63d [cifs]
+> Aug 29 08:06:16 localhost kernel:  [<c10a37d4>] ? dput+0x11/0x117
+> Aug 29 08:06:16 localhost kernel:  [<c10a87d4>] ? mntput_no_expire+0xf/0xf7
+> Aug 29 08:06:16 localhost kernel:  [<c109ca9b>] ? vfs_unlink+0x4e/0xb6
+> Aug 29 08:06:16 localhost kernel:  [<c109b333>] ? __lookup_hash+0x54/0xac
+> Aug 29 08:06:16 localhost kernel:  [<c109e8c2>] ? do_unlinkat+0x10a/0x12d
+> Aug 29 08:06:16 localhost kernel:  [<c10a0124>] ? sys_ioctl+0x34/0x57
+> Aug 29 08:06:16 localhost kernel:  [<c140a8ed>] ? syscall_call+0x7/0xb
+> Aug 29 08:06:16 localhost kernel: ---[ end trace 756b427e3bd671f9 ]---
+> 
 
-svc_tcp_restore_pages zeroes out sk_pages[] while leaving sk_tcplen.
-This is OK, since both functions are serialized by XPT_BUSY.  However,
-that means the inconsistency must be repaired before dropping XPT_BUSY.
+(cc'ing linux-cifs ml)
 
-Therefore we should be ensuring that svc_tcp_save_pages repairs the
-problem before exiting svc_tcp_recv_record on error.
+This stack trace comes from cifs, not nfs.
 
-Symptoms were a BUG() in svc_tcp_clear_pages.
+Steve French has a patch queued in his tree to silence this warning
+that I believe he intends to send to Linus for 3.6. Perhaps we should
+consider backporting it for 3.5.z too?
 
-Cc: stable@vger.kernel.org
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- net/sunrpc/svcsock.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-Sending in for 3.6 soon absent objections.--b.
-
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 18bc130..998aa8c 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1129,9 +1129,9 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 	if (len >= 0)
- 		svsk->sk_tcplen += len;
- 	if (len != want) {
-+		svc_tcp_save_pages(svsk, rqstp);
- 		if (len < 0 && len != -EAGAIN)
- 			goto err_other;
--		svc_tcp_save_pages(svsk, rqstp);
- 		dprintk("svc: incomplete TCP record (%d of %d)\n",
- 			svsk->sk_tcplen, svsk->sk_reclen);
- 		goto err_noclose;
 -- 
-1.7.9.5
-
+Jeff Layton <jlayton@redhat.com>
