@@ -1,154 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34337 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755891Ab2HGUZZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Aug 2012 16:25:25 -0400
-Date: Tue, 7 Aug 2012 16:25:23 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Bryan Schumaker <bjschuma@netapp.com>
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: nfs4 mounts failing with 3.6.0-rc1
-Message-ID: <20120807202523.GD22532@fieldses.org>
-References: <20120804000819.GB25558@fieldses.org>
- <20120803220039.743fe1f0@corrin.poochiereds.net>
- <20120804190104.GA2135@fieldses.org>
- <20120807130932.79625d7e@tlielax.poochiereds.net>
- <20120807194250.GB22532@fieldses.org>
- <50217035.5010304@netapp.com>
- <20120807195703.GC22532@fieldses.org>
- <50217649.6010402@netapp.com>
+Received: from mail-vb0-f46.google.com ([209.85.212.46]:53300 "EHLO
+	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752798Ab2H3Wy3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Aug 2012 18:54:29 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <50217649.6010402@netapp.com>
+In-Reply-To: <20120830203125.GA23478@fieldses.org>
+References: <1346249410-3515-1-git-send-email-linkinjeon@gmail.com>
+	<20120830203125.GA23478@fieldses.org>
+Date: Fri, 31 Aug 2012 07:54:29 +0900
+Message-ID: <CAKYAXd_BNh1FgUoe5k-DJMTs0d-e21zM5Z1R0pbOspyEQ_a7EA@mail.gmail.com>
+Subject: Re: [PATCH] exportfs: add FILEID_INVALID to indicate invalid fid_type
+From: Namjae Jeon <linkinjeon@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: viro@zeniv.linux.org.uk, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Vivek Trivedi <vtrivedi018@gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 07, 2012 at 04:10:49PM -0400, Bryan Schumaker wrote:
-> On 08/07/2012 03:57 PM, J. Bruce Fields wrote:
-> > On Tue, Aug 07, 2012 at 03:44:53PM -0400, Bryan Schumaker wrote:
-> >> On 08/07/2012 03:42 PM, J. Bruce Fields wrote:
-> >>> On Tue, Aug 07, 2012 at 01:09:32PM -0400, Jeff Layton wrote:
-> >>>> On Sat, 4 Aug 2012 15:01:04 -0400
-> >>>> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> >>>>
-> >>>>> On Fri, Aug 03, 2012 at 10:00:39PM -0400, Jeff Layton wrote:
-> >>>>>> On Fri, 3 Aug 2012 20:08:19 -0400
-> >>>>>> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> >>>>>>
-> >>>>>>> I'm getting
-> >>>>>>>
-> >>>>>>> 	# mount -tnfs -onfsvers=4 pip1:/exports /mnt/
-> >>>>>>>
-> >>>>>>> (OK, admittedly that's with 3.6.0-rc1 + a few experimental patches, but
-> >>>>>>> I doubt they're related.)
-> >>>>>>>
-> >>>>>>> Also:
-> >>>>>>>
-> >>>>>>> 	[root@pip2 ~]# modprobe nfs4
-> >>>>>>> 	[root@pip2 ~]# lsmod|grep nfs4
-> >>>>>>> 	[root@pip2 ~]# 
-> >>>>>>>
-> >>>>>>> --b.
-> >>>>>>
-> >>>>>> I hit the same problem...
-> >>>>>>
-> >>>>>> Try removing /usr/lib/modprobe.d/nfs.conf (assuming you're running
-> >>>>>> Fedora).
-> >>>>>
-> >>>>> Oog, right.
-> >>>>>
-> >>>>> But, without testing--won't that make v4 mounts fail on older kernels?
-> >>>>
-> >>>> Actually, now that I look, this does not seem to break on older kernels
-> >>>> as long as you use a syntax like:
-> >>>>
-> >>>>     # mount -t nfs server:/export /mnt/point -o vers=4
-> >>>>
-> >>>> ...if, however you use a syntax like:
-> >>>>
-> >>>>     # mount -t nfs4 server:/export /mnt/point
-> >>>>
-> >>>> ...then it fails without the above file in place. I guess the question
-> >>>> we have to answer is: Do we want to continue to support the "-t nfs4"
-> >>>> mount syntax?
-> >>>
-> >>> I think you're right that we want to deprecate it.
-> >>>
-> >>> Though this is a bit of a harsh way to do it--would have been nice to
-> >>> have some transition period with a warning or something.
-> >>
-> >> I didn't expect this to be broken, both ways of mounting still work on my VMs so I expected them to work for everybody else too.
-> > 
-> > Huh.  Just checked on an old kernel without an "alias nfs4 nfs" in
-> > modprobe configuration, and sure enough I get "No such device".
-> > 
-> > Maybe you have some initscripts or something else that's loading the
-> > nfs module for you before the mount?
-> 
-> My nfs-common daemon script loads sunrpc, nfs
-
-Yep, that's why you're not seeing it.
-
-> and nfsd but not nfs2, nfs3 or nfs4.
-> 
-> Could we rename the module to avoid the alias name collision?  Something like this (untested) maybe?
-
-I don't think that will help.
-
---b.
-
-> 
-> 
-> 
-> diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-> index 8bf3a3f..b7db608 100644
-> --- a/fs/nfs/Makefile
-> +++ b/fs/nfs/Makefile
-> @@ -12,19 +12,19 @@ nfs-$(CONFIG_ROOT_NFS)      += nfsroot.o
->  nfs-$(CONFIG_SYSCTL)   += sysctl.o
->  nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
->  
-> -obj-$(CONFIG_NFS_V2) += nfs2.o
-> -nfs2-y := nfs2super.o proc.o nfs2xdr.o
-> +obj-$(CONFIG_NFS_V2) += nfsv2.o
-> +nfsv2-y := nfs2super.o proc.o nfs2xdr.o
->  
-> -obj-$(CONFIG_NFS_V3) += nfs3.o
-> -nfs3-y := nfs3super.o nfs3client.o nfs3proc.o nfs3xdr.o
-> -nfs3-$(CONFIG_NFS_V3_ACL) += nfs3acl.o
-> +obj-$(CONFIG_NFS_V3) += nfsv3.o
-> +nfsv3-y := nfs3super.o nfs3client.o nfs3proc.o nfs3xdr.o
-> +nfsv3-$(CONFIG_NFS_V3_ACL) += nfs3acl.o
->  
-> -obj-$(CONFIG_NFS_V4) += nfs4.o
-> -nfs4-y := nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o nfs4super.o nfs4file.o \
-> +obj-$(CONFIG_NFS_V4) += nfsv4.o
-> +nfsv4-y := nfs4proc.o nfs4xdr.o nfs4state.o nfs4renewd.o nfs4super.o nfs4file.o \
->           delegation.o idmap.o callback.o callback_xdr.o callback_proc.o \
->           nfs4namespace.o nfs4getroot.o nfs4client.o
-> -nfs4-$(CONFIG_SYSCTL)  += nfs4sysctl.o
-> -nfs4-$(CONFIG_NFS_V4_1)        += pnfs.o pnfs_dev.o
-> +nfsv4-$(CONFIG_SYSCTL) += nfs4sysctl.o
-> +nfsv4-$(CONFIG_NFS_V4_1)       += pnfs.o pnfs_dev.o
->  
->  obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
->  nfs_layout_nfsv41_files-y := nfs4filelayout.o nfs4filelayoutdev.o
-> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> index 9fc0d9d..9969444 100644
-> --- a/fs/nfs/client.c
-> +++ b/fs/nfs/client.c
-> @@ -105,7 +105,7 @@ struct nfs_subversion *get_nfs_version(unsigned int version)
->  
->         if (IS_ERR(nfs)) {
->                 mutex_lock(&nfs_version_mutex);
-> -               request_module("nfs%d", version);
-> +               request_module("nfsv%d", version);
->                 nfs = find_nfs_version(version);
->                 mutex_unlock(&nfs_version_mutex);
->         }
-> 
-> 
-> > 
-> > --b.
-> > 
-> 
+2012/8/31, J. Bruce Fields <bfields@fieldses.org>:
+> On Wed, Aug 29, 2012 at 10:10:10AM -0400, Namjae Jeon wrote:
+>> This commit adds FILEID_INVALID = 0xff in fid_type to
+>> indicate invalid fid_type
+>
+> OK, applying for 3.7.
+>
+> Looks like this shows up in a lot of filesystems too as just "255".  Are
+> you planning to patch up the filesystems afterwards?
+Hi Bruce.
+Yes, I will fix these from next patches.
+Thanks.
+>
+> --b.
+>
+>>
+>> It avoids using magic number 255
+>>
+>> Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
+>> Signed-off-by: Vivek Trivedi <vtrivedi018@gmail.com>
+>> ---
+>>  fs/exportfs/expfs.c      |    4 ++--
+>>  fs/fhandle.c             |    2 +-
+>>  fs/nfsd/nfsfh.c          |    4 ++--
+>>  include/linux/exportfs.h |    5 +++++
+>>  4 files changed, 10 insertions(+), 5 deletions(-)
+>>
+>> diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
+>> index 29ab099..f1f1c59 100644
+>> --- a/fs/exportfs/expfs.c
+>> +++ b/fs/exportfs/expfs.c
+>> @@ -322,10 +322,10 @@ static int export_encode_fh(struct inode *inode,
+>> struct fid *fid,
+>>
+>>  	if (parent && (len < 4)) {
+>>  		*max_len = 4;
+>> -		return 255;
+>> +		return FILEID_INVALID;
+>>  	} else if (len < 2) {
+>>  		*max_len = 2;
+>> -		return 255;
+>> +		return FILEID_INVALID;
+>>  	}
+>>
+>>  	len = 2;
+>> diff --git a/fs/fhandle.c b/fs/fhandle.c
+>> index a48e4a1..78a7879 100644
+>> --- a/fs/fhandle.c
+>> +++ b/fs/fhandle.c
+>> @@ -52,7 +52,7 @@ static long do_sys_name_to_handle(struct path *path,
+>>  	handle_bytes = handle_dwords * sizeof(u32);
+>>  	handle->handle_bytes = handle_bytes;
+>>  	if ((handle->handle_bytes > f_handle.handle_bytes) ||
+>> -	    (retval == 255) || (retval == -ENOSPC)) {
+>> +	    (retval == FILEID_INVALID) || (retval == -ENOSPC)) {
+>>  		/* As per old exportfs_encode_fh documentation
+>>  		 * we could return ENOSPC to indicate overflow
+>>  		 * But file system returned 255 always. So handle
+>> diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+>> index 032af38..814afaa 100644
+>> --- a/fs/nfsd/nfsfh.c
+>> +++ b/fs/nfsd/nfsfh.c
+>> @@ -572,7 +572,7 @@ fh_compose(struct svc_fh *fhp, struct svc_export *exp,
+>> struct dentry *dentry,
+>>
+>>  		if (inode)
+>>  			_fh_update(fhp, exp, dentry);
+>> -		if (fhp->fh_handle.fh_fileid_type == 255) {
+>> +		if (fhp->fh_handle.fh_fileid_type == FILEID_INVALID) {
+>>  			fh_put(fhp);
+>>  			return nfserr_opnotsupp;
+>>  		}
+>> @@ -603,7 +603,7 @@ fh_update(struct svc_fh *fhp)
+>>  			goto out;
+>>
+>>  		_fh_update(fhp, fhp->fh_export, dentry);
+>> -		if (fhp->fh_handle.fh_fileid_type == 255)
+>> +		if (fhp->fh_handle.fh_fileid_type == FILEID_INVALID)
+>>  			return nfserr_opnotsupp;
+>>  	}
+>>  out:
+>> diff --git a/include/linux/exportfs.h b/include/linux/exportfs.h
+>> index 12291a7..0e14525 100644
+>> --- a/include/linux/exportfs.h
+>> +++ b/include/linux/exportfs.h
+>> @@ -83,6 +83,11 @@ enum fid_type {
+>>  	 * 64 bit parent inode number.
+>>  	 */
+>>  	FILEID_NILFS_WITH_PARENT = 0x62,
+>> +
+>> +	/*
+>> +	 * Filesystems must not use 0xff file ID.
+>> +	 */
+>> +	FILEID_INVALID = 0xff,
+>>  };
+>>
+>>  struct fid {
+>> --
+>> 1.7.9.5
+>>
+>
