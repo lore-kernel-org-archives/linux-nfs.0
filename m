@@ -1,83 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37009 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:53481 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932307Ab2HPVJS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Aug 2012 17:09:18 -0400
-Date: Thu, 16 Aug 2012 17:09:17 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: v3.5 nfsd4 regression; utime sometimes takes 40+ seconds to
- return
-Message-ID: <20120816210916.GA6108@fieldses.org>
-References: <20120815061115.GC32347@cucamonga.audible.transient.net>
- <20120815135854.GI32347@cucamonga.audible.transient.net>
- <20120815150251.GB16057@fieldses.org>
- <20120816201838.GA4282@cucamonga.audible.transient.net>
- <20120816204208.GE4385@fieldses.org>
+	id S1751380Ab2H3QCI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Aug 2012 12:02:08 -0400
+Message-ID: <503F8E7C.1030102@netapp.com>
+Date: Thu, 30 Aug 2012 12:02:04 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120816204208.GE4385@fieldses.org>
+To: =?UTF-8?B?Q2FybG9zIEppbcOpbmV6?= <cjimenez@eneotecnologia.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: Stale NFS file handle - persistent error
+References: <503E131F.2040904@eneotecnologia.com> <503E13BF.6010304@eneotecnologia.com> <20120829171122.GA9983@fieldses.org> <503F0BEF.4020104@eneotecnologia.com>
+In-Reply-To: <503F0BEF.4020104@eneotecnologia.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 16, 2012 at 04:42:08PM -0400, J. Bruce Fields wrote:
-> Hm, weird.  In the good case the cb_recall's done with auth_unix, in the
-> bad case with auth_null.  OK, that should be enough to go on....
+On 08/30/2012 02:45 AM, Carlos Jiménez wrote:
+> Hi,
 > 
-> Thanks for digging into this!
+> Thank you for your reply.
+>> Could you be more specific?  What kernel version exactly, and what
+>> filesystem are you exporting, and what are the export options?
+> Kernel version: 2.4.27-3-386
 
-This should fix it--could you confirm?
+2.4.27 is incredibly old, do you have access to the server and can you try a more recent kernel?
 
---b.
+- Bryan
 
-commit e950bebdac1f17121f972728489cdba43734d56d
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Thu Aug 16 17:01:21 2012 -0400
+> Filesystem exported: ext3
+> Export options: rw,no_root_squash,sync
+> 
+> I've shared/exported to the full network 192.168.180.0/24.
+> The exported directory is /opt/virtual/one and in /opt/virtual it is mounted /dev/cciss/c0d0p4 (with default options), which is a 256GB (8GB used) partition over a 3 disks RAID5.
+> 
+>>
+>> What version of NFS are you using?
+>>
+> Vers 3
+> 
+>> I assume you're not doing anything else with either file or directory at
+>> the same time?  (E.g., not deleting or renaming the file while it's
+>> being copied?)
+>>
+>>
+> I'm not doing anything else with either file or directory at the same time.
+> 
+> -- 
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-    nfsd4: fix security flavor of NFSv4.0 callback
-    
-    Commit d5497fc693a446ce9100fcf4117c3f795ddfd0d2 "nfsd4: move rq_flavor
-    into svc_cred" forgot to remove cl_flavor from the client, leaving two
-    places (cl_flavor and cl_cred.cr_flavor) for the flavor to be stored.
-    After that patch, the latter was the one that was updated, but the
-    former was the one that the callback used.
-    
-    Symptoms were a long delay on utime().  This is because the utime()
-    generated a setattr which recalled a delegation, but the cb_recall was
-    ignored by the client because it had the wrong security flavor.
-    
-    Cc: stable@vger.kernel.org
-    Reported-by: Jamie Heilman <jamie@audible.transient.net>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index cbaf4f8..4c7bd35 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -651,12 +651,12 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
- 
- 	if (clp->cl_minorversion == 0) {
- 		if (!clp->cl_cred.cr_principal &&
--				(clp->cl_flavor >= RPC_AUTH_GSS_KRB5))
-+				(clp->cl_cred.cr_flavor >= RPC_AUTH_GSS_KRB5))
- 			return -EINVAL;
- 		args.client_name = clp->cl_cred.cr_principal;
- 		args.prognumber	= conn->cb_prog,
- 		args.protocol = XPRT_TRANSPORT_TCP;
--		args.authflavor = clp->cl_flavor;
-+		args.authflavor = clp->cl_cred.cr_flavor;
- 		clp->cl_cb_ident = conn->cb_ident;
- 	} else {
- 		if (!conn->cb_xprt)
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 167d7d8..9db0bb5 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -231,7 +231,6 @@ struct nfs4_client {
- 	nfs4_verifier		cl_verifier; 	/* generated by client */
- 	time_t                  cl_time;        /* time of last lease renewal */
- 	struct sockaddr_storage	cl_addr; 	/* client ipaddress */
--	u32			cl_flavor;	/* setclientid pseudoflavor */
- 	struct svc_cred		cl_cred; 	/* setclientid principal */
- 	clientid_t		cl_clientid;	/* generated by server */
- 	nfs4_verifier		cl_confirm;	/* generated by server */
