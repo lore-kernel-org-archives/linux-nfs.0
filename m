@@ -1,134 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46806 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758510Ab2HUU5f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Aug 2012 16:57:35 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 10/14] svcrpc: remove handling of unknown errors from svc_recv
-Date: Tue, 21 Aug 2012 16:57:28 -0400
-Message-Id: <1345582652-18476-11-git-send-email-bfields@redhat.com>
-In-Reply-To: <1345582652-18476-1-git-send-email-bfields@redhat.com>
-References: <1345582652-18476-1-git-send-email-bfields@redhat.com>
+Received: from cdptpa-omtalb.mail.rr.com ([75.180.132.120]:14070 "EHLO
+	cdptpa-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752415Ab2H3AUK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Aug 2012 20:20:10 -0400
+Date: Wed, 29 Aug 2012 17:20:06 -0700
+From: Nick Pasich <Nick@NickAndBarb.net>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: WARNING: at fs/inode.c:280 drop_nlink+0x31/0x33()
+Message-ID: <20120830002006.GA23484@NickAndBarb.net>
+References: <20120829162527.GA3635@NickAndBarb.net>
+ <20120829151641.20cde4bc@corrin.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120829151641.20cde4bc@corrin.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Thanks for replying Jeff...
 
-svc_recv() returns only -EINTR or -EAGAIN.  If we really want to worry
-about the case where it has a bug that causes it to return something
-else, we could stick a WARN() in svc_recv.  But it's silly to require
-every caller to have all this boilerplate to handle that case.
+Yes, it sure would be great to have 3.5.z  patch...
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/lockd/svc.c    |   17 ++---------------
- fs/nfs/callback.c |   16 ++--------------
- fs/nfsd/nfssvc.c  |   12 +-----------
- 3 files changed, 5 insertions(+), 40 deletions(-)
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 31a63f8..e515569 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -126,7 +126,7 @@ static void restart_grace(void)
- static int
- lockd(void *vrqstp)
- {
--	int		err = 0, preverr = 0;
-+	int		err = 0;
- 	struct svc_rqst *rqstp = vrqstp;
- 
- 	/* try_to_freeze() is called from svc_recv() */
-@@ -165,21 +165,8 @@ lockd(void *vrqstp)
- 		 * recvfrom routine.
- 		 */
- 		err = svc_recv(rqstp, timeout);
--		if (err == -EAGAIN || err == -EINTR) {
--			preverr = err;
-+		if (err == -EAGAIN || err == -EINTR)
- 			continue;
--		}
--		if (err < 0) {
--			if (err != preverr) {
--				printk(KERN_WARNING "%s: unexpected error "
--					"from svc_recv (%d)\n", __func__, err);
--				preverr = err;
--			}
--			schedule_timeout_interruptible(HZ);
--			continue;
--		}
--		preverr = err;
--
- 		dprintk("lockd: request from %s\n",
- 				svc_print_addr(rqstp, buf, sizeof(buf)));
- 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 4c8459e..d9e2a18 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -45,7 +45,7 @@ unsigned short nfs_callback_tcpport6;
- static int
- nfs4_callback_svc(void *vrqstp)
- {
--	int err, preverr = 0;
-+	int err;
- 	struct svc_rqst *rqstp = vrqstp;
- 
- 	set_freezable();
-@@ -55,20 +55,8 @@ nfs4_callback_svc(void *vrqstp)
- 		 * Listen for a request on the socket
- 		 */
- 		err = svc_recv(rqstp, MAX_SCHEDULE_TIMEOUT);
--		if (err == -EAGAIN || err == -EINTR) {
--			preverr = err;
-+		if (err == -EAGAIN || err == -EINTR)
- 			continue;
--		}
--		if (err < 0) {
--			if (err != preverr) {
--				printk(KERN_WARNING "NFS: %s: unexpected error "
--					"from svc_recv (%d)\n", __func__, err);
--				preverr = err;
--			}
--			schedule_timeout_uninterruptible(HZ);
--			continue;
--		}
--		preverr = err;
- 		svc_process(rqstp);
- 	}
- 	return 0;
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index dd2b734..2013aa00 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -487,7 +487,7 @@ static int
- nfsd(void *vrqstp)
- {
- 	struct svc_rqst *rqstp = (struct svc_rqst *) vrqstp;
--	int err, preverr = 0;
-+	int err;
- 
- 	/* Lock module and set up kernel thread */
- 	mutex_lock(&nfsd_mutex);
-@@ -534,16 +534,6 @@ nfsd(void *vrqstp)
- 			;
- 		if (err == -EINTR)
- 			break;
--		else if (err < 0) {
--			if (err != preverr) {
--				printk(KERN_WARNING "%s: unexpected error "
--					"from svc_recv (%d)\n", __func__, -err);
--				preverr = err;
--			}
--			schedule_timeout_uninterruptible(HZ);
--			continue;
--		}
--
- 		validate_process_creds();
- 		svc_process(rqstp);
- 		validate_process_creds();
--- 
-1.7.9.5
+--( Nick Pasich )--
+
+
+
+On Wed, Aug 29, 2012 at 03:16:41PM -0700, Jeff Layton wrote:
+> On Wed, 29 Aug 2012 09:25:27 -0700
+> Nick Pasich <Nick@NickAndBarb.net> wrote:
+> 
+> > 
+> > I'm using kernel 3.5.3 ... 
+> > 
+> > It happens on 3.5.1 and 3.5.2 also.
+> > 
+> > I know that Nick Bowler has already reported this...
+> > 
+> > I'm experiencing the same thing.
+> > 
+> > It happens when moving files from one directory to another
+> > on the same partition (NFS). 
+> > 
+> >   --( Nick Pasich )--
+> > 
+> > 
+> > #############################################################################
+> > ##
+> > ## Happens when PSTs are moved from one directory to another on the ISCSI ...
+> > ##
+> > #############################################################################
+> > 
+> > Aug 29 08:06:16 localhost kernel: ------------[ cut here ]------------
+> > Aug 29 08:06:16 localhost kernel: WARNING: at fs/inode.c:280 drop_nlink+0x31/0x33()
+> > Aug 29 08:06:16 localhost kernel: Hardware name: To Be Filled By O.E.M.
+> > Aug 29 08:06:16 localhost kernel: Modules linked in: ecb md4 cifs w83627hf eeprom asb100 hwmon_vid hwmon nfsd exportfs ipv6 psmouse usb_storage io_edgeport usbserial sg r8169 mii evdev intel_agp uhci_hcd i2c_i801 i2c_core shpchp intel_gtt agpgart ehci_hcd microcode serio_raw
+> > Aug 29 08:06:16 localhost kernel: Pid: 31477, comm: rm Tainted: G        W    3.5.3 #1
+> > Aug 29 08:06:16 localhost kernel: Call Trace:
+> > Aug 29 08:06:16 localhost kernel:  [<c10a53e2>] ? drop_nlink+0x31/0x33
+> > Aug 29 08:06:16 localhost kernel:  [<c1025dd2>] ? warn_slowpath_common+0x7b/0x90
+> > Aug 29 08:06:16 localhost kernel:  [<c10a53e2>] ? drop_nlink+0x31/0x33
+> > Aug 29 08:06:16 localhost kernel:  [<c1025e02>] ? warn_slowpath_null+0x1b/0x1f
+> > Aug 29 08:06:16 localhost kernel:  [<c10a53e2>] ? drop_nlink+0x31/0x33
+> > Aug 29 08:06:16 localhost kernel:  [<f83dfa81>] ? cifs_unlink+0x134/0x63d [cifs]
+> > Aug 29 08:06:16 localhost kernel:  [<c10a37d4>] ? dput+0x11/0x117
+> > Aug 29 08:06:16 localhost kernel:  [<c10a87d4>] ? mntput_no_expire+0xf/0xf7
+> > Aug 29 08:06:16 localhost kernel:  [<c109ca9b>] ? vfs_unlink+0x4e/0xb6
+> > Aug 29 08:06:16 localhost kernel:  [<c109b333>] ? __lookup_hash+0x54/0xac
+> > Aug 29 08:06:16 localhost kernel:  [<c109e8c2>] ? do_unlinkat+0x10a/0x12d
+> > Aug 29 08:06:16 localhost kernel:  [<c10a0124>] ? sys_ioctl+0x34/0x57
+> > Aug 29 08:06:16 localhost kernel:  [<c140a8ed>] ? syscall_call+0x7/0xb
+> > Aug 29 08:06:16 localhost kernel: ---[ end trace 756b427e3bd671f9 ]---
+> > 
+> 
+> (cc'ing linux-cifs ml)
+> 
+> This stack trace comes from cifs, not nfs.
+> 
+> Steve French has a patch queued in his tree to silence this warning
+> that I believe he intends to send to Linus for 3.6. Perhaps we should
+> consider backporting it for 3.5.z too?
+> 
+> -- 
+> Jeff Layton <jlayton@redhat.com>
 
