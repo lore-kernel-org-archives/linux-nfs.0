@@ -1,250 +1,163 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pz0-f46.google.com ([209.85.210.46]:47653 "EHLO
-	mail-pz0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754336Ab2HaQrO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Aug 2012 12:47:14 -0400
-From: Namjae Jeon <linkinjeon@gmail.com>
-To: bfields@fieldses.org, akpm@linux-foundation.org, viro@zeniv.linux.org.uk,
-        chris.mason@fusionio.com, sage@inktank.com, miklos@szeredi.hu,
-        swhiteho@redhat.com, konishi.ryusuke@lab.ntt.co.jp, mfasheh@suse.com,
-        jlbec@ejvilplan.org, jack@suse.cz, bpm@sgi.com, elder@kernel.org
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        linux-nilfs@vger.kernel.org, reiserfs-devel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Namjae Jeon <linkinjeon@gmail.com>,
-        Vivek Trivedi <vtrivedi018@gmail.com>
-Subject: [PATCH] fs: encode_fh: return FILEID_INVALID if invalid fid_type
-Date: Fri, 31 Aug 2012 12:46:41 -0400
-Message-Id: <1346431601-3477-1-git-send-email-linkinjeon@gmail.com>
+Received: from cpe-75-80-152-117.san.res.rr.com ([75.80.152.117]:60106 "EHLO
+	NickAndBarb2.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754007Ab2HaPiS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Aug 2012 11:38:18 -0400
+Date: Fri, 31 Aug 2012 08:32:06 -0700
+From: Nick Pasich <Nick@NickAndBarb.net>
+To: Pavel Shilovsky <piastryyy@gmail.com>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: WARNING: at fs/inode.c:280 drop_nlink+0x31/0x33()
+Message-ID: <20120831153206.GA28908@NICK2>
+References: <20120829162527.GA3635@NickAndBarb.net> <20120829151641.20cde4bc@corrin.poochiereds.net> <20120831043352.GA23663@NickAndBarb.net> <CAKywueSY+NOV3irDm9YxepeCyJJhh82o2mgmDLogr+hJPbaYig@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAKywueSY+NOV3irDm9YxepeCyJJhh82o2mgmDLogr+hJPbaYig@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch is a follow up on below patch:
+On Fri, Aug 31, 2012 at 12:00:26PM +0400, Pavel Shilovsky wrote:
+> 2012/8/31 Nick Pasich <Nick@nickandbarb.net>:
+> > Jeff,
+> >
+> > I applied this patch to Kernel 3.5.3 from Pavel and the
+> > the warning is gone with no problems.
+> >
+> > Thanks,
+> >
+> > --( Nick Pasich
+> >
+> > ##########################################################
+> >
+> > From df2d6b1fbf2401c5ee04f2ac143ea0954e3a87a6 Mon Sep 17 00:00:00 2001
+> > From: Pavel Shilovsky <pshilovsky@samba.org>
+> > Date: Fri, 13 Jul 2012 11:59:45 +0400
+> > Subject: [PATCH] CIFS: Protect i_nlink from being negative
+> >
+> > that can cause warning messages.
+> >
+> > Signed-off-by: Pavel Shilovsky <pshilovsky@samba.org>
+> > ---
+> >  fs/cifs/inode.c |   13 +++++++++++--
+> >  1 files changed, 11 insertions(+), 2 deletions(-)
+> >
+> > diff --git a/fs/cifs/inode.c b/fs/cifs/inode.c
+> > index 7354877..88afb1a 100644
+> > --- a/fs/cifs/inode.c
+> > +++ b/fs/cifs/inode.c
+> > @@ -1110,6 +1110,15 @@ undo_setattr:
+> >                 goto out_close;
+> >  }
+> >
+> > +/* copied from fs/nfs/dir.c with small changes */
+> > +static void
+> > +cifs_drop_nlink(struct inode *inode)
+> > +{
+> > +       spin_lock(&inode->i_lock);
+> > +       if (inode->i_nlink > 0)
+> > +               drop_nlink(inode);
+> > +       spin_unlock(&inode->i_lock);
+> > +}
+> >
+> >  /*
+> >   * If dentry->d_inode is null (usually meaning the cached dentry
+> > @@ -1166,13 +1175,13 @@ retry_std_delete:
+> >  psx_del_no_retry:
+> >                 if (!rc) {
+> >                                 if (inode)
+> > -                       drop_nlink(inode);
+> > +                       cifs_drop_nlink(inode);
+> >                 } else if (rc == -ENOENT) {
+> >                                 d_drop(dentry);
+> >                 } else if (rc == -ETXTBSY) {
+> >                                 rc = cifs_rename_pending_delete(full_path, dentry, xid);
+> >                                 if (rc == 0)
+> > -                       drop_nlink(inode);
+> > +                       cifs_drop_nlink(inode);
+> >                 } else if ((rc == -EACCES) && (dosattr == 0) && inode) {
+> >                                 attrs = kzalloc(sizeof(*attrs), GFP_KERNEL);
+> >                                 if (attrs == NULL) {
+> > --
+> > 1.7.3.3
+> >
+> > ##########################################################
+> >
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-cifs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> This one fixes only a part of the problem. Now we have another patch
+> for this problem:
+> 
+> https://git.samba.org/sfrench/?p=sfrench/cifs-2.6.git;a=commitdiff;h=b7ca69289680cf631fb20b7d436467c4ec1153cd;hp=6dab7ede9390d4d937cb89feca932e4fd575d2da
+> 
+> -- 
+> Best regards,
+> Pavel Shilovsky.
 
-[PATCH] exportfs: add FILEID_INVALID to indicate invalid fid_type
-https://patchwork.kernel.org/patch/1385131/
 
-Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
-Signed-off-by: Vivek Trivedi <vtrivedi018@gmail.com>
----
- fs/btrfs/export.c   |    4 ++--
- fs/ceph/export.c    |    4 ++--
- fs/fuse/inode.c     |    2 +-
- fs/gfs2/export.c    |    4 ++--
- fs/isofs/export.c   |    4 ++--
- fs/nilfs2/namei.c   |    4 ++--
- fs/ocfs2/export.c   |    4 ++--
- fs/reiserfs/inode.c |    4 ++--
- fs/udf/namei.c      |    4 ++--
- fs/xfs/xfs_export.c |    4 ++--
- mm/cleancache.c     |    2 +-
- mm/shmem.c          |    2 +-
- 12 files changed, 21 insertions(+), 21 deletions(-)
 
-diff --git a/fs/btrfs/export.c b/fs/btrfs/export.c
-index 614f34a..81ee29e 100644
---- a/fs/btrfs/export.c
-+++ b/fs/btrfs/export.c
-@@ -22,10 +22,10 @@ static int btrfs_encode_fh(struct inode *inode, u32 *fh, int *max_len,
- 
- 	if (parent && (len < BTRFS_FID_SIZE_CONNECTABLE)) {
- 		*max_len = BTRFS_FID_SIZE_CONNECTABLE;
--		return 255;
-+		return FILEID_INVALID;
- 	} else if (len < BTRFS_FID_SIZE_NON_CONNECTABLE) {
- 		*max_len = BTRFS_FID_SIZE_NON_CONNECTABLE;
--		return 255;
-+		return FILEID_INVALID;
- 	}
- 
- 	len  = BTRFS_FID_SIZE_NON_CONNECTABLE;
-diff --git a/fs/ceph/export.c b/fs/ceph/export.c
-index 8e1b60e..98bde89 100644
---- a/fs/ceph/export.c
-+++ b/fs/ceph/export.c
-@@ -79,7 +79,7 @@ static int ceph_encode_fh(struct inode *inode, u32 *rawfh, int *max_len,
- 		if (parent_inode) {
- 			/* nfsd wants connectable */
- 			*max_len = connected_handle_length;
--			type = 255;
-+			type = FILEID_INVALID;
- 		} else {
- 			dout("encode_fh %p\n", dentry);
- 			fh->ino = ceph_ino(inode);
-@@ -88,7 +88,7 @@ static int ceph_encode_fh(struct inode *inode, u32 *rawfh, int *max_len,
- 		}
- 	} else {
- 		*max_len = handle_length;
--		type = 255;
-+		type = FILEID_INVALID;
- 	}
- 	return type;
- }
-diff --git a/fs/fuse/inode.c b/fs/fuse/inode.c
-index 2690a76..b787a6f 100644
---- a/fs/fuse/inode.c
-+++ b/fs/fuse/inode.c
-@@ -672,7 +672,7 @@ static int fuse_encode_fh(struct inode *inode, u32 *fh, int *max_len,
- 
- 	if (*max_len < len) {
- 		*max_len = len;
--		return  255;
-+		return  FILEID_INVALID;
- 	}
- 
- 	nodeid = get_fuse_inode(inode)->nodeid;
-diff --git a/fs/gfs2/export.c b/fs/gfs2/export.c
-index e8ed6d4..f7a8092 100644
---- a/fs/gfs2/export.c
-+++ b/fs/gfs2/export.c
-@@ -37,10 +37,10 @@ static int gfs2_encode_fh(struct inode *inode, __u32 *p, int *len,
- 
- 	if (parent && (*len < GFS2_LARGE_FH_SIZE)) {
- 		*len = GFS2_LARGE_FH_SIZE;
--		return 255;
-+		return FILEID_INVALID;
- 	} else if (*len < GFS2_SMALL_FH_SIZE) {
- 		*len = GFS2_SMALL_FH_SIZE;
--		return 255;
-+		return FILEID_INVALID;
- 	}
- 
- 	fh[0] = cpu_to_be32(ip->i_no_formal_ino >> 32);
-diff --git a/fs/isofs/export.c b/fs/isofs/export.c
-index 1d38044..5e693b3 100644
---- a/fs/isofs/export.c
-+++ b/fs/isofs/export.c
-@@ -125,10 +125,10 @@ isofs_export_encode_fh(struct inode *inode,
- 	 */
- 	if (parent && (len < 5)) {
- 		*max_len = 5;
--		return 255;
-+		return FILEID_INVALID;
- 	} else if (len < 3) {
- 		*max_len = 3;
--		return 255;
-+		return FILEID_INVALID;
- 	}
- 
- 	len = 3;
-diff --git a/fs/nilfs2/namei.c b/fs/nilfs2/namei.c
-index 1d0c0b8..9de78f0 100644
---- a/fs/nilfs2/namei.c
-+++ b/fs/nilfs2/namei.c
-@@ -517,11 +517,11 @@ static int nilfs_encode_fh(struct inode *inode, __u32 *fh, int *lenp,
- 
- 	if (parent && *lenp < NILFS_FID_SIZE_CONNECTABLE) {
- 		*lenp = NILFS_FID_SIZE_CONNECTABLE;
--		return 255;
-+		return FILEID_INVALID;
- 	}
- 	if (*lenp < NILFS_FID_SIZE_NON_CONNECTABLE) {
- 		*lenp = NILFS_FID_SIZE_NON_CONNECTABLE;
--		return 255;
-+		return FILEID_INVALID;
- 	}
- 
- 	fid->cno = root->cno;
-diff --git a/fs/ocfs2/export.c b/fs/ocfs2/export.c
-index 322216a..2965116 100644
---- a/fs/ocfs2/export.c
-+++ b/fs/ocfs2/export.c
-@@ -195,11 +195,11 @@ static int ocfs2_encode_fh(struct inode *inode, u32 *fh_in, int *max_len,
- 
- 	if (parent && (len < 6)) {
- 		*max_len = 6;
--		type = 255;
-+		type = FILEID_INVALID;
- 		goto bail;
- 	} else if (len < 3) {
- 		*max_len = 3;
--		type = 255;
-+		type = FILEID_INVALID;
- 		goto bail;
- 	}
- 
-diff --git a/fs/reiserfs/inode.c b/fs/reiserfs/inode.c
-index 855da58..1a212ed 100644
---- a/fs/reiserfs/inode.c
-+++ b/fs/reiserfs/inode.c
-@@ -1599,10 +1599,10 @@ int reiserfs_encode_fh(struct inode *inode, __u32 * data, int *lenp,
- 
- 	if (parent && (maxlen < 5)) {
- 		*lenp = 5;
--		return 255;
-+		return FILEID_INVALID;
- 	} else if (maxlen < 3) {
- 		*lenp = 3;
--		return 255;
-+		return FILEID_INVALID;
- 	}
- 
- 	data[0] = inode->i_ino;
-diff --git a/fs/udf/namei.c b/fs/udf/namei.c
-index 95fee27..102c072 100644
---- a/fs/udf/namei.c
-+++ b/fs/udf/namei.c
-@@ -1270,10 +1270,10 @@ static int udf_encode_fh(struct inode *inode, __u32 *fh, int *lenp,
- 
- 	if (parent && (len < 5)) {
- 		*lenp = 5;
--		return 255;
-+		return FILEID_INVALID;
- 	} else if (len < 3) {
- 		*lenp = 3;
--		return 255;
-+		return FILEID_INVALID;
- 	}
- 
- 	*lenp = 3;
-diff --git a/fs/xfs/xfs_export.c b/fs/xfs/xfs_export.c
-index 4267922..a5a4e52 100644
---- a/fs/xfs/xfs_export.c
-+++ b/fs/xfs/xfs_export.c
-@@ -47,7 +47,7 @@ static int xfs_fileid_length(int fileid_type)
- 	case FILEID_INO32_GEN_PARENT | XFS_FILEID_TYPE_64FLAG:
- 		return 6;
- 	}
--	return 255; /* invalid */
-+	return FILEID_INVALID; /* invalid */
- }
- 
- STATIC int
-@@ -89,7 +89,7 @@ xfs_fs_encode_fh(
- 	len = xfs_fileid_length(fileid_type);
- 	if (*max_len < len) {
- 		*max_len = len;
--		return 255;
-+		return FILEID_INVALID;
- 	}
- 	*max_len = len;
- 
-diff --git a/mm/cleancache.c b/mm/cleancache.c
-index 32e6f41..d76ba74 100644
---- a/mm/cleancache.c
-+++ b/mm/cleancache.c
-@@ -89,7 +89,7 @@ static int cleancache_get_key(struct inode *inode,
- 		fhfn = sb->s_export_op->encode_fh;
- 		if  (fhfn) {
- 			len = (*fhfn)(inode, &key->u.fh[0], &maxlen, NULL);
--			if (len <= 0 || len == 255)
-+			if (len <= FILEID_ROOT || len == FILEID_INVALID)
- 				return -1;
- 			if (maxlen > CLEANCACHE_KEY_MAX)
- 				return -1;
-diff --git a/mm/shmem.c b/mm/shmem.c
-index 1d04904..5cbae30 100644
---- a/mm/shmem.c
-+++ b/mm/shmem.c
-@@ -2386,7 +2386,7 @@ static int shmem_encode_fh(struct inode *inode, __u32 *fh, int *len,
- {
- 	if (*len < 3) {
- 		*len = 3;
--		return 255;
-+		return FILEID_INVALID;
- 	}
- 
- 	if (inode_unhashed(inode)) {
--- 
-1.7.9.5
+Since I'm using kernel 3.5.3 , I get an error on hunk 7 of the patch.
+
+I can do it by hand... But I want to check with you first.
+
+Thanks,
+
+--( Nick Pasich )--
+
+
+####################################################################
+
+Hmm...  Looks like a unified diff to me...
+The text leading up to this was:
+--------------------------
+|From b7ca69289680cf631fb20b7d436467c4ec1153cd Mon Sep 17 00:00:00 2001
+|From: Steve French <smfrench@gmail.com>
+|Date: Fri, 3 Aug 2012 08:43:01 -0500
+|Subject: [PATCH 1/1] CIFS: Protect i_nlink from being negative
+|
+|that can cause warning messages.  Pavel had initially
+|suggested a smaller patch around drop_nlink, after
+|a similar problem was discovered NFS.  Protecting
+|additional places where nlink is touched was
+|suggested by Jeff Layton and is included in this.
+|
+|Reviewed-by: Pavel Shilovsky <pshilovsky@samba.org>
+|Reviewed-by: Jeff Layton <jlayton@redhat.com>
+|Signed-off-by: Steve French <sfrench@us.ibm.com>
+|Signed-off-by: Steve French <smfrench@gmail.com>
+|---
+| fs/cifs/inode.c |   24 ++++++++++++++++--------
+| fs/cifs/link.c  |    2 ++
+| 2 files changed, 18 insertions(+), 8 deletions(-)
+|
+|diff --git a/fs/cifs/inode.c b/fs/cifs/inode.c
+|index 7354877..cb79c7e 100644
+|--- a/fs/cifs/inode.c
+|+++ b/fs/cifs/inode.c
+--------------------------
+Patching file fs/cifs/inode.c using Plan A...
+Hunk #1 succeeded at 124.
+Hunk #2 succeeded at 148.
+Hunk #3 succeeded at 155.
+Hunk #4 succeeded at 905 (offset 50 lines).
+Hunk #5 succeeded at 1107 (offset -1 lines).
+Hunk #6 succeeded at 1224 (offset 51 lines).
+Hunk #7 FAILED at 1299.
+1 out of 7 hunks FAILED -- saving rejects to file fs/cifs/inode.c.rej
+Hmm...  The next patch looks like a unified diff to me...
+The text leading up to this was:
+--------------------------
+|diff --git a/fs/cifs/link.c b/fs/cifs/link.c
+|index 09e4b3a..e6ce3b1 100644
+|--- a/fs/cifs/link.c
+|+++ b/fs/cifs/link.c
+--------------------------
+Patching file fs/cifs/link.c using Plan A...
+Hunk #1 succeeded at 433.
+Hmm...  Ignoring the trailing garbage.
+done
+
 
