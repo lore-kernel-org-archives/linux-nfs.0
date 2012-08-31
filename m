@@ -1,79 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:50320 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753048Ab2HWQhJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Aug 2012 12:37:09 -0400
-Received: by mail-pb0-f46.google.com with SMTP id rr13so1781864pbb.19
-        for <linux-nfs@vger.kernel.org>; Thu, 23 Aug 2012 09:37:09 -0700 (PDT)
-From: Peng Tao <bergwolf@gmail.com>
-To: SteveD@redhat.com
-Cc: linux-nfs@vger.kernel.org, Peng Tao <tao.peng@emc.com>
-Subject: [PATCH-Resend 2/2] blkmapd: proper signal handling
-Date: Fri, 24 Aug 2012 00:36:32 +0800
-Message-Id: <1345739792-2385-2-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1345739792-2385-1-git-send-email-bergwolf@gmail.com>
-References: <1345739792-2385-1-git-send-email-bergwolf@gmail.com>
+Received: from mail-wg0-f44.google.com ([74.125.82.44]:35634 "EHLO
+	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751238Ab2HaGKK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Aug 2012 02:10:10 -0400
+Received: by wgbdr13 with SMTP id dr13so2208308wgb.1
+        for <linux-nfs@vger.kernel.org>; Thu, 30 Aug 2012 23:10:08 -0700 (PDT)
+Message-ID: <50405532.9070100@eneotecnologia.com>
+Date: Fri, 31 Aug 2012 08:09:54 +0200
+From: =?UTF-8?B?Q2FybG9zIEppbcOpbmV6?= <cjimenez@eneotecnologia.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Bryan Schumaker <bjschuma@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Stale NFS file handle - persistent error
+References: <503E131F.2040904@eneotecnologia.com> <503E13BF.6010304@eneotecnologia.com> <20120829171122.GA9983@fieldses.org> <503F0BEF.4020104@eneotecnologia.com> <503F8E7C.1030102@netapp.com> <20120830185937.GA23140@fieldses.org>
+In-Reply-To: <20120830185937.GA23140@fieldses.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Peng Tao <tao.peng@emc.com>
----
- utils/blkmapd/device-discovery.c |   18 +++++++++++++++++-
- 1 files changed, 17 insertions(+), 1 deletions(-)
+Ok, you are right.
+Certainly, it is a very old kernel because we had problems with the SCSI 
+controller in new distros with 2.6-3 kernel. I think there is another 
+computer available, so I think the best choice will be to try to move to 
+that one.
 
-diff --git a/utils/blkmapd/device-discovery.c b/utils/blkmapd/device-discovery.c
-index 8eddf50..df4627e 100644
---- a/utils/blkmapd/device-discovery.c
-+++ b/utils/blkmapd/device-discovery.c
-@@ -36,6 +36,7 @@
- #include <scsi/scsi.h>
- #include <scsi/scsi_ioctl.h>
- #include <scsi/sg.h>
-+#include <signal.h>
- 
- #include <stdlib.h>
- #include <stdio.h>
-@@ -61,6 +62,7 @@
- 
- struct bl_disk *visible_disk_list;
- int    bl_watch_fd, bl_pipe_fd, nfs_pipedir_wfd, rpc_pipedir_wfd;
-+int    pidfd = -1;
- 
- struct bl_disk_path *bl_get_path(const char *filepath,
- 				 struct bl_disk_path *paths)
-@@ -431,10 +433,20 @@ static int bl_event_helper(void)
- 	return ret;
- }
- 
-+void sig_die(int signal)
-+{
-+	if (pidfd >= 0) {
-+		close(pidfd);
-+		unlink(PID_FILE);
-+	}
-+	BL_LOG_ERR("exit on signal(%d)\n", signal);
-+	exit(1);
-+}
-+
- /* Daemon */
- int main(int argc, char **argv)
- {
--	int pidfd = -1, opt, dflag = 0, fg = 0, ret = 1;
-+	int opt, dflag = 0, fg = 0, ret = 1;
- 	struct stat statbuf;
- 	char pidbuf[64];
- 
-@@ -479,6 +491,10 @@ int main(int argc, char **argv)
- 		write(pidfd, pidbuf, strlen(pidbuf));
- 	}
- 
-+	signal(SIGINT, sig_die);
-+	signal(SIGTERM, sig_die);
-+	signal(SIGHUP, SIG_IGN);
-+
- 	if (dflag) {
- 		bl_discover_devices();
- 		exit(0);
--- 
-1.7.1.262.g5ef3d
+Thanks guys for your fast replies and your time.
+
+Carlos.
+
+On 08/30/2012 08:59 PM, J. Bruce Fields wrote:
+> On Thu, Aug 30, 2012 at 12:02:04PM -0400, Bryan Schumaker wrote:
+>> On 08/30/2012 02:45 AM, Carlos Jiménez wrote:
+>>> Hi,
+>>>
+>>> Thank you for your reply.
+>>>> Could you be more specific?  What kernel version exactly, and what
+>>>> filesystem are you exporting, and what are the export options?
+>>> Kernel version: 2.4.27-3-386
+>> 2.4.27 is incredibly old, do you have access to the server and can you try a more recent kernel?
+> Yes, we can't make much use of 2.4 bug reports at this point; you should
+> probably report this to your distro, or try a more recent kernel.
+>
+> --b.
+>
+>> - Bryan
+>>
+>>> Filesystem exported: ext3
+>>> Export options: rw,no_root_squash,sync
+>>>
+>>> I've shared/exported to the full network 192.168.180.0/24.
+>>> The exported directory is /opt/virtual/one and in /opt/virtual it is mounted /dev/cciss/c0d0p4 (with default options), which is a 256GB (8GB used) partition over a 3 disks RAID5.
+>>>
+>>>> What version of NFS are you using?
+>>>>
+>>> Vers 3
+>>>
+>>>> I assume you're not doing anything else with either file or directory at
+>>>> the same time?  (E.g., not deleting or renaming the file while it's
+>>>> being copied?)
+>>>>
+>>>>
+>>> I'm not doing anything else with either file or directory at the same time.
+>>>
+>>> -- 
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
