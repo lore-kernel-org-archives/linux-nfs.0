@@ -1,34 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:38289 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753475Ab2HVPvg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Aug 2012 11:51:36 -0400
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q7MFpZxw012492
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 22 Aug 2012 11:51:35 -0400
-Received: from badhat.bos.devel.redhat.com (dhcp-10-16-62-177.boston.devel.redhat.com [10.16.62.177])
-	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id q7MFpZf5020975
-	for <linux-nfs@vger.kernel.org>; Wed, 22 Aug 2012 11:51:35 -0400
-Message-ID: <50350032.3010003@RedHat.com>
-Date: Wed, 22 Aug 2012 11:52:18 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from intranet.asianux.com ([58.214.24.6]:29422 "EHLO
+	intranet.asianux.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751120Ab2HaGGd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Aug 2012 02:06:33 -0400
+Message-ID: <50404E40.3070702@asianux.com>
+Date: Fri, 31 Aug 2012 13:40:16 +0800
+From: gchen <gang.chen@asianux.com>
 MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Linux pNFS status meeting 08/23/12
-Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
+CC: linux-kernel@vger.kernel.org, jlayton@redhat.com
+Subject: [QUESTION] about NFS sub system between Public Kernel and Red Hat
+ Kernel.
+Content-Type: text/plain; charset=GB2312
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A quick reminder....  There will be a status meeting tomorrow (Thur Aug 23)
+Hi linux-nfs@vger.kernel.org
 
-Time: 9:30 AM PST (12:30 PM EST)
+I have 1 question, and also 2 conclusions which need confirm.
 
-The call in numbers are:
-U.S. and Canada: (800) 451-8679
-International dial-in number: (212) 729-5016
-Israel Toll-Free: 1-809-462-557
-Conference code: 564.272.1552
 
-steved.
+1) Question:
 
+Jeff Layton said in Red Hat Bugzilla (bug 848706):
+"Have configuration where the same host is acting as both NFS client
+and server. That's a configuration known to cause deadlocks."
+
+Does it mean that the public Linux kernel (not Red Hat) also can cause
+deadlocks if NFS client and server are under the same machine ?
+
+
+2) Confirm 1: (better by Jeff Layton)
+
+For function nfs_commit_set_lock in ./fs/nfs/write.c
+
+for latest public kernel version:
+the parameters of out_of_line_wait_on_bit_lock() are
+(&nfsi->flags, NFS_INO_COMMIT, nfs_wait_killable, TASK_KILLABLE)
+for Red Hat kernel version: kernel-2.6.18-308.4.1.el5
+the parameters of out_of_line_wait_on_bit_lock() are
+(&nfsi->flags, NFS_INO_COMMIT,
+nfs_wait_bit_uninterruptible, TASK_UNINTERRUPTIBLE)
+
+It means for red hat version:
+when deadlock occurs, we can not boot machine in normal way
+(it is true for my test machine, the deadlock task can not be killed)
+It means for public kernel version:
+"Assume deadlock occurs", we can still boot machine in normal way,
+because the task can be killed.
+
+Is what I said above correct ?
+
+
+3) Confirm 2:
+
+Is LTP (Linux Test Project) still a suitable test tools for public kernel ?
+(for ltp-full-20100331.gz stress test, it mounts NFS on local machine,
+and the latest LTP ltp-full-20120401.bz2 also seems the same).
+
+
+
+thanks.
+
+gchen
+
+Asianux Corporation
