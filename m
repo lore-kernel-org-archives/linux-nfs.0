@@ -1,98 +1,238 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:56269 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756080Ab2HIQaR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Aug 2012 12:30:17 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Peng Tao <bergwolf@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        Boaz Harrosh <bharrosh@panasas.com>, Benny Halevy <bhalevy@tonian.com>,
-        "Isaman, Fred" <Fred.Isaman@netapp.com>
-Subject: Re: [PATCH] NFSv4.1: Remove a bogus BUG_ON() in
- nfs4_layoutreturn_done
-Date: Thu, 9 Aug 2012 16:29:44 +0000
-Message-ID: <1344529783.25447.32.camel@lade.trondhjem.org>
-References: <1344457310-26442-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <CA+a=Yy7SX+cPLFiNy552bU9ZMS_rSwvaSpV732_mDwpcPAH5Wg@mail.gmail.com>
-	 <1344522979.23523.2.camel@lade.trondhjem.org>
-	 <CA+a=Yy7tDi0kQGvjPeb=O_9XMnZDm-_31VTkNF7wEW7Pb0BZow@mail.gmail.com>
-	 <1344526780.25447.6.camel@lade.trondhjem.org>
-	 <CA+a=Yy5zrdt6xAHFhXk9KypjGRvy2CbWC2DcNnudPDQ4ni=urA@mail.gmail.com>
-In-Reply-To: <CA+a=Yy5zrdt6xAHFhXk9KypjGRvy2CbWC2DcNnudPDQ4ni=urA@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from cpe-75-80-152-117.san.res.rr.com ([75.80.152.117]:60151 "EHLO
+	NickAndBarb2.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754275Ab2HaSDs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Aug 2012 14:03:48 -0400
+Date: Fri, 31 Aug 2012 11:03:45 -0700
+From: Nick Pasich <Nick@NickAndBarb.net>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Pavel Shilovsky <piastryyy@gmail.com>, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: WARNING: at fs/inode.c:280 drop_nlink+0x31/0x33()
+Message-ID: <20120831180345.GA10907@NICK2>
+References: <20120829162527.GA3635@NickAndBarb.net> <20120829151641.20cde4bc@corrin.poochiereds.net> <20120831043352.GA23663@NickAndBarb.net> <CAKywueSY+NOV3irDm9YxepeCyJJhh82o2mgmDLogr+hJPbaYig@mail.gmail.com> <20120831153206.GA28908@NICK2> <20120831092138.47668603@corrin.poochiereds.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120831092138.47668603@corrin.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTA4LTEwIGF0IDAwOjIyICswODAwLCBQZW5nIFRhbyB3cm90ZToNCj4gT24g
-VGh1LCBBdWcgOSwgMjAxMiBhdCAxMTozOSBQTSwgTXlrbGVidXN0LCBUcm9uZA0KPiA8VHJvbmQu
-TXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+IE9uIFRodSwgMjAxMi0wOC0wOSBhdCAy
-MzowMSArMDgwMCwgUGVuZyBUYW8gd3JvdGU6DQo+ID4+IE9uIFRodSwgQXVnIDksIDIwMTIgYXQg
-MTA6MzYgUE0sIE15a2xlYnVzdCwgVHJvbmQNCj4gPj4gPFRyb25kLk15a2xlYnVzdEBuZXRhcHAu
-Y29tPiB3cm90ZToNCj4gPj4gPiBPbiBUaHUsIDIwMTItMDgtMDkgYXQgMjI6MzAgKzA4MDAsIFBl
-bmcgVGFvIHdyb3RlOg0KPiA+PiA+PiBPbiBUaHUsIEF1ZyA5LCAyMDEyIGF0IDQ6MjEgQU0sIFRy
-b25kIE15a2xlYnVzdA0KPiA+PiA+PiA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3Rl
-Og0KPiA+PiA+PiA+IEV2ZXIgc2luY2UgY29tbWl0IDBhNTdjZGFjM2YgKE5GU3Y0LjEgc2VuZCBs
-YXlvdXRyZXR1cm4gdG8gZmVuY2UNCj4gPj4gPj4gPiBkaXNjb25uZWN0ZWQgZGF0YSBzZXJ2ZXIp
-IHdlJ3ZlIGJlZW4gc2VuZGluZyBsYXlvdXRyZXR1cm4gY2FsbHMNCj4gPj4gPj4gPiB3aGlsZSB0
-aGVyZSBpcyBwb3RlbnRpYWxseSBzdGlsbCBvdXRzdGFuZGluZyBJL08gdG8gdGhlIGRhdGENCj4g
-Pj4gPj4gPiBzZXJ2ZXJzLiBUaGUgcmVhc29uIHdlIGRvIHRoaXMgaXMgdG8gYXZvaWQgcmFjZXMg
-YmV0d2VlbiByZXBsYXllZA0KPiA+PiA+PiA+IHdyaXRlcyB0byB0aGUgTURTIGFuZCB0aGUgb3Jp
-Z2luYWwgd3JpdGVzIHRvIHRoZSBEUy4NCj4gPj4gPj4gPg0KPiA+PiA+PiA+IFdoZW4gdGhpcyBo
-YXBwZW5zLCB0aGUgQlVHX09OKCkgaW4gbmZzNF9sYXlvdXRyZXR1cm5fZG9uZSBjYW4NCj4gPj4g
-Pj4gPiBiZSB0cmlnZ2VyZWQgYmVjYXVzZSBpdCBhc3N1bWVzIHRoYXQgd2Ugd291bGQgbmV2ZXIg
-Y2FsbA0KPiA+PiA+PiA+IGxheW91dHJldHVybiB3aXRob3V0IGtub3dpbmcgdGhhdCBhbGwgSS9P
-IHRvIHRoZSBEUyBpcw0KPiA+PiA+PiA+IGZpbmlzaGVkLiBUaGUgZml4IGlzIHRvIHJlbW92ZSB0
-aGUgQlVHX09OKCkgbm93IHRoYXQgdGhlDQo+ID4+ID4+ID4gYXNzdW1wdGlvbnMgYmVoaW5kIHRo
-ZSB0ZXN0IGFyZSBvYnNvbGV0ZS4NCj4gPj4gPj4gPg0KPiA+PiA+PiBJc24ndCBNRFMgc3VwcG9z
-ZWQgdG8gcmVjYWxsIHRoZSBsYXlvdXQgaWYgcmFjZXMgYXJlIHBvc3NpYmxlIGJldHdlZW4NCj4g
-Pj4gPj4gb3V0c3RhbmRpbmcgd3JpdGUtdG8tRFMgYW5kIHdyaXRlLXRocm91Z2gtTURTPw0KPiA+
-PiA+DQo+ID4+ID4gV2hlcmUgZG8geW91IHJlYWQgdGhhdCBpbiBSRkM1NjYxPw0KPiA+PiA+DQo+
-ID4+IFRoYXQncyBteSAobWF5YmUgbWlzLSl1bmRlcnN0YW5kaW5nIG9mIGhvdyBzZXJ2ZXIgd29y
-a3MuLi4gQnV0IGxvb2tpbmcNCj4gPj4gYXQgcmZjNTY2MSBzZWN0aW9uIDE4LjQ0LjMuIGxheW91
-dHJldHVybiBpbXBsZW1lbnRhdGlvbi4NCj4gPj4gIg0KPiA+PiBBZnRlciB0aGlzIGNhbGwsDQo+
-ID4+ICAgIHRoZSBjbGllbnQgTVVTVCBOT1QgdXNlIHRoZSByZXR1cm5lZCBsYXlvdXQocykgYW5k
-IHRoZSBhc3NvY2lhdGVkDQo+ID4+ICAgIHN0b3JhZ2UgcHJvdG9jb2wgdG8gYWNjZXNzIHRoZSBm
-aWxlIGRhdGEuDQo+ID4+ICINCj4gPj4gQW5kIGdpdmVuIGNvbW1pdCAwYTU3Y2RhYzNmLCBjbGll
-bnQgaXMgdXNpbmcgdGhlIGxheW91dCBldmVuIGFmdGVyDQo+ID4+IGxheW91dHJldHVybiwgd2hp
-Y2ggSU1ITyBpcyBhIHZpb2xhdGlvbiBvZiByZmM1NjYxLg0KPiA+DQo+ID4gTm8uIEl0IGlzIHVz
-aW5nIHRoZSBsYXlvdXRyZXR1cm4gdG8gdGVsbCB0aGUgTURTIHRvIGZlbmNlIG9mZiBJL08gdG8g
-YQ0KPiA+IGRhdGEgc2VydmVyIHRoYXQgaXMgbm90IHJlc3BvbmRpbmcuIEl0IGlzbid0IGF0dGVt
-cHRpbmcgdG8gdXNlIHRoZQ0KPiA+IGxheW91dCBhZnRlciB0aGUgbGF5b3V0cmV0dXJuOiB0aGUg
-d2hvbGUgcG9pbnQgaXMgdGhhdCB3ZSBhcmUgYXR0ZW1wdGluZw0KPiA+IHdyaXRlLXRocm91Z2gt
-TURTIGFmdGVyIHRoZSBhdHRlbXB0IHRvIHdyaXRlIHRocm91Z2ggdGhlIERTIHRpbWVkIG91dC4N
-Cj4gPg0KPiBCdXQgaXQgaXMgUkZDIHZpb2xhdGlvbiB0aGF0IHRoZXJlIGlzIGluLWZsaWdodCBE
-UyBJTyB3aGVuIGNsaWVudA0KPiBzZW5kcyBsYXlvdXRyZXR1cm4sIHJpZ2h0PyBOb3QganVzdCBp
-bi1mbGlnaHQsIGNsaWVudCBpcyB3ZWxsIHBvc3NpYmxlDQo+IHRvIHNlbmQgSU8gdG8gRFMgX2Fm
-dGVyXyBsYXlvdXRyZXR1cm4gYmVjYXVzZSBzb21lIHRocmVhZCBjYW4gaG9sZA0KPiBsc2VnIHJl
-ZmVyZW5jZSBhbmQgbm90IHlldCBzZW5kIElPLg0KDQpPbmNlIHRoZSB3cml0ZSBoYXMgYmVlbiBz
-ZW50LCBob3cgZG8geW91IGtub3cgdGhhdCBpdCBpcyBubyBsb25nZXINCidpbi1mbGlnaHQnIHVu
-bGVzcyB0aGUgRFMgcmVzcG9uZHM/DQoNCj4gPj4gPj4gQW5kIGl0IGNhdXNlcyBkYXRhIGNvcnJ1
-cHRpb24gZm9yIGJsb2NrbGF5b3V0IGlmIGNsaWVudCByZXR1cm5zIGxheW91dA0KPiA+PiA+PiB3
-aGlsZSB0aGVyZSBpcyBpbi1mbGlnaHQgZGlzayBJTy4uLg0KPiA+PiA+DQo+ID4+ID4gVGhlbiBp
-dCBuZWVkcyB0byB0dXJuIG9mZiBmYXN0IGZhaWxvdmVyIHRvIHdyaXRlLXRocm91Z2gtTURTLg0K
-PiA+PiA+DQo+ID4+IElmIHlvdSBzdGlsbCBjb25zaWRlciBpdCBmb2xsb3dpbmcgcmZjNTY2MSwg
-SSdkIGNob29zZSB0byBkaXNhYmxlDQo+ID4+IGxheW91dHJldHVybiBpbiBiZWZvcmUgd3JpdGUt
-dGhyb3VnaC1NRFMgZm9yIGJsb2NrbGF5b3V0LCBieSBhZGRpbmcNCj4gPj4gc29tZSBmbGFnIGxp
-a2UgUE5GU19OT19MQVlPVVRSRVRfT05fRkFMTFRIUlUgc2ltaWxhciB0byBvYmplY3RzJw0KPiA+
-PiBQTkZTX0xBWU9VVFJFVF9PTl9TRVRBVFRSLg0KPiA+DQo+ID4gSSBkb24ndCBzZWUgaG93IHRo
-YXQgd2lsbCBwcmV2ZW50IGNvcnJ1cHRpb24uDQo+ID4NCj4gPiBJbiBmYWN0LCBJSVJDLCBpbiBO
-RlN2NC4yIFNvcmluJ3MgcHJvcG9zZWQgY2hhbmdlcyBzcGVjaWZpY2FsbHkgdXNlIHRoZQ0KPiA+
-IGxheW91dHJldHVybiB0byBjb21tdW5pY2F0ZSB0byB0aGUgTURTIHRoYXQgdGhlIERTIGlzIHRp
-bWluZyBvdXQgdmlhIGFuDQo+ID4gZXJyb3IgY29kZSAobGlrZSB0aGUgb2JqZWN0IGxheW91dCBo
-YXMgZG9uZSBhbGwgdGhlIHRpbWUpLiBIb3cgY2FuIHlvdQ0KPiA+IHJlY29uY2lsZSB0aGF0IGNo
-YW5nZSB3aXRoIGEgZmxhZyBzdWNoIGFzIHRoZSBvbmUgeW91IHByb3Bvc2U/DQo+IEkganVzdCBp
-bnRlbmQgdG8gdXNlIHRoZSBmbGFnIHRvIGRpc2FibGUgbGF5b3V0cmV0dXJuIGluDQo+IHBuZnNf
-bGRfd3JpdGVfZG9uZS4gYmxvY2sgZXh0ZW50cyBhcmUgZGF0YSBhY2Nlc3MgcGVybWlzc2lvbnMg
-cGVyDQo+IHJmYzU2NjMuIFdoZW4gd2UgZG9uJ3QgbGF5b3V0cmV0dXJuIGluIHBuZnNfbGRfd3Jp
-dGVfZG9uZSgpLCBibG9jaw0KPiBsYXlvdXQgd29ya3MgY29ycmVjdGx5IGJlY2F1c2Ugc2VydmVy
-IGNhbiBkZWNpZGUgaWYgdGhlcmUgaXMgZGF0YQ0KPiBhY2Nlc3MgcmFjZSBhbmQgaWYgdGhlcmUg
-aXMsIE1EUyBjYW4gcmVjYWxsIHRoZSBsYXlvdXQgZnJvbSBjbGllbnQNCj4gYmVmb3JlIGFwcGx5
-aW5nIHRoZSBNRFMgd3JpdGVzLg0KPiANCj4gU29yaW4ncyBwcm9wb3NlZCBlcnJvciBjb2RlIGlz
-IGp1c3QgYSBjbGllbnQgaW5kaWNhdGlvbiB0byBzZXJ2ZXIgdGhhdA0KPiB0aGVyZSBpcyBkaXNr
-IGFjY2VzcyBlcnJvci4gSXQgaXMgbm90IGludGVuZGVkIHRvIHNvbHZlIHRoZSBkYXRhIHJhY2UN
-Cj4gYmV0d2VlbiB3cml0ZS10aHJvdWdoLU1EUyBhbmQgd3JpdGUtdGhyb3VnaC1EUy4NCg0KVGhl
-biBob3cgZG8geW91IHNvbHZlIHRoYXQgcmFjZSBvbiBhIGJsb2NrIGRldmljZT8NCg0KLS0gDQpU
-cm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRy
-b25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+On Fri, Aug 31, 2012 at 09:21:38AM -0700, Jeff Layton wrote:
+> On Fri, 31 Aug 2012 08:32:06 -0700
+> Nick Pasich <Nick@NickAndBarb.net> wrote:
+> 
+> > On Fri, Aug 31, 2012 at 12:00:26PM +0400, Pavel Shilovsky wrote:
+> > > 2012/8/31 Nick Pasich <Nick@nickandbarb.net>:
+> > > > Jeff,
+> > > >
+> > > > I applied this patch to Kernel 3.5.3 from Pavel and the
+> > > > the warning is gone with no problems.
+> > > >
+> > > > Thanks,
+> > > >
+> > > > --( Nick Pasich
+> > > >
+> > > > ##########################################################
+> > > >
+> > > > From df2d6b1fbf2401c5ee04f2ac143ea0954e3a87a6 Mon Sep 17 00:00:00 2001
+> > > > From: Pavel Shilovsky <pshilovsky@samba.org>
+> > > > Date: Fri, 13 Jul 2012 11:59:45 +0400
+> > > > Subject: [PATCH] CIFS: Protect i_nlink from being negative
+> > > >
+> > > > that can cause warning messages.
+> > > >
+> > > > Signed-off-by: Pavel Shilovsky <pshilovsky@samba.org>
+> > > > ---
+> > > >  fs/cifs/inode.c |   13 +++++++++++--
+> > > >  1 files changed, 11 insertions(+), 2 deletions(-)
+> > > >
+> > > > diff --git a/fs/cifs/inode.c b/fs/cifs/inode.c
+> > > > index 7354877..88afb1a 100644
+> > > > --- a/fs/cifs/inode.c
+> > > > +++ b/fs/cifs/inode.c
+> > > > @@ -1110,6 +1110,15 @@ undo_setattr:
+> > > >                 goto out_close;
+> > > >  }
+> > > >
+> > > > +/* copied from fs/nfs/dir.c with small changes */
+> > > > +static void
+> > > > +cifs_drop_nlink(struct inode *inode)
+> > > > +{
+> > > > +       spin_lock(&inode->i_lock);
+> > > > +       if (inode->i_nlink > 0)
+> > > > +               drop_nlink(inode);
+> > > > +       spin_unlock(&inode->i_lock);
+> > > > +}
+> > > >
+> > > >  /*
+> > > >   * If dentry->d_inode is null (usually meaning the cached dentry
+> > > > @@ -1166,13 +1175,13 @@ retry_std_delete:
+> > > >  psx_del_no_retry:
+> > > >                 if (!rc) {
+> > > >                                 if (inode)
+> > > > -                       drop_nlink(inode);
+> > > > +                       cifs_drop_nlink(inode);
+> > > >                 } else if (rc == -ENOENT) {
+> > > >                                 d_drop(dentry);
+> > > >                 } else if (rc == -ETXTBSY) {
+> > > >                                 rc = cifs_rename_pending_delete(full_path, dentry, xid);
+> > > >                                 if (rc == 0)
+> > > > -                       drop_nlink(inode);
+> > > > +                       cifs_drop_nlink(inode);
+> > > >                 } else if ((rc == -EACCES) && (dosattr == 0) && inode) {
+> > > >                                 attrs = kzalloc(sizeof(*attrs), GFP_KERNEL);
+> > > >                                 if (attrs == NULL) {
+> > > > --
+> > > > 1.7.3.3
+> > > >
+> > > > ##########################################################
+> > > >
+> > > > --
+> > > > To unsubscribe from this list: send the line "unsubscribe linux-cifs" in
+> > > > the body of a message to majordomo@vger.kernel.org
+> > > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > > 
+> > > This one fixes only a part of the problem. Now we have another patch
+> > > for this problem:
+> > > 
+> > > https://git.samba.org/sfrench/?p=sfrench/cifs-2.6.git;a=commitdiff;h=b7ca69289680cf631fb20b7d436467c4ec1153cd;hp=6dab7ede9390d4d937cb89feca932e4fd575d2da
+> > > 
+> > > -- 
+> > > Best regards,
+> > > Pavel Shilovsky.
+> > 
+> > 
+> > 
+> > Since I'm using kernel 3.5.3 , I get an error on hunk 7 of the patch.
+> > 
+> > I can do it by hand... But I want to check with you first.
+> > 
+> > Thanks,
+> > 
+> > --( Nick Pasich )--
+> > 
+> 
+> If you fix it up by hand, consider submitting it as a backport for the
+> stable series as well.
+> 
+> -- 
+> Jeff Layton <jlayton@redhat.com>
+
+Jeff / Pavel,
+
+Here are my changes on hunk #7 that allow patching 3.5.3
+
+Check it out....
+
+--( Nick Pasich )--
+
+
+
+##############################################################################
+
+diff -u a/fs/cifs/inode.c b/fs/cifs/inode.c
+--- a/fs/cifs/inode.c
++++ b/fs/cifs/inode.c
+@@ -124,10 +124,10 @@
+ {
+ 	struct cifsInodeInfo *cifs_i = CIFS_I(inode);
+ 	struct cifs_sb_info *cifs_sb = CIFS_SB(inode->i_sb);
+-	unsigned long oldtime = cifs_i->time;
+ 
+ 	cifs_revalidate_cache(inode, fattr);
+ 
++	spin_lock(&inode->i_lock);
+ 	inode->i_atime = fattr->cf_atime;
+ 	inode->i_mtime = fattr->cf_mtime;
+ 	inode->i_ctime = fattr->cf_ctime;
+@@ -148,9 +148,6 @@
+ 	else
+ 		cifs_i->time = jiffies;
+ 
+-	cFYI(1, "inode 0x%p old_time=%ld new_time=%ld", inode,
+-		 oldtime, cifs_i->time);
+-
+ 	cifs_i->delete_pending = fattr->cf_flags & CIFS_FATTR_DELETE_PENDING;
+ 
+ 	cifs_i->server_eof = fattr->cf_eof;
+@@ -158,7 +155,6 @@
+ 	 * Can't safely change the file size here if the client is writing to
+ 	 * it due to potential races.
+ 	 */
+-	spin_lock(&inode->i_lock);
+ 	if (is_size_safe_to_change(cifs_i, fattr->cf_eof)) {
+ 		i_size_write(inode, fattr->cf_eof);
+ 
+@@ -909,12 +905,14 @@
+ 
+ 	if (rc && tcon->ipc) {
+ 		cFYI(1, "ipc connection - fake read inode");
++		spin_lock(&inode->i_lock);
+ 		inode->i_mode |= S_IFDIR;
+ 		set_nlink(inode, 2);
+ 		inode->i_op = &cifs_ipc_inode_ops;
+ 		inode->i_fop = &simple_dir_operations;
+ 		inode->i_uid = cifs_sb->mnt_uid;
+ 		inode->i_gid = cifs_sb->mnt_gid;
++		spin_unlock(&inode->i_lock);
+ 	} else if (rc) {
+ 		iget_failed(inode);
+ 		inode = ERR_PTR(rc);
+@@ -1159,6 +1157,15 @@
+ 	goto out_close;
+ }
+ 
++/* copied from fs/nfs/dir.c with small changes */
++static void
++cifs_drop_nlink(struct inode *inode)
++{
++	spin_lock(&inode->i_lock);
++	if (inode->i_nlink > 0)
++		drop_nlink(inode);
++	spin_unlock(&inode->i_lock);
++}
+ 
+ /*
+  * If dentry->d_inode is null (usually meaning the cached dentry
+@@ -1216,13 +1223,13 @@
+ psx_del_no_retry:
+ 	if (!rc) {
+ 		if (inode)
+-			drop_nlink(inode);
++			cifs_drop_nlink(inode);
+ 	} else if (rc == -ENOENT) {
+ 		d_drop(dentry);
+ 	} else if (rc == -ETXTBSY) {
+ 		rc = cifs_rename_pending_delete(full_path, dentry, xid);
+ 		if (rc == 0)
+-			drop_nlink(inode);
++			cifs_drop_nlink(inode);
+ 	} else if ((rc == -EACCES) && (dosattr == 0) && inode) {
+ 		attrs = kzalloc(sizeof(*attrs), GFP_KERNEL);
+ 		if (attrs == NULL) {
+@@ -1369,9 +1376,10 @@
+ 		d_instantiate(direntry, newinode);
+ 		 /* setting nlink not necessary except in cases where we
+ 		  * failed to get it from the server or was set bogus */
++	 	spin_lock(&direntry->d_inode->i_lock);
+ 		if ((direntry->d_inode) && (direntry->d_inode->i_nlink < 2))
+ 			set_nlink(direntry->d_inode, 2);
+-
++	 	spin_unlock(&direntry->d_inode->i_lock);
+ 		mode &= ~current_umask();
+ 		/* must turn on setgid bit if parent dir has it */
+ 		if (inode->i_mode & S_ISGID)
+diff -u a/fs/cifs/link.c b/fs/cifs/link.c
+--- a/fs/cifs/link.c
++++ b/fs/cifs/link.c
+@@ -433,7 +433,9 @@
+ 	if (old_file->d_inode) {
+ 		cifsInode = CIFS_I(old_file->d_inode);
+ 		if (rc == 0) {
++			spin_lock(&old_file->d_inode->i_lock);
+ 			inc_nlink(old_file->d_inode);
++			spin_unlock(&old_file->d_inode->i_lock);
+ /* BB should we make this contingent on superblock flag NOATIME? */
+ /*			old_file->d_inode->i_ctime = CURRENT_TIME;*/
+ 			/* parent dir timestamps will update from srv
+##############################################################################
