@@ -1,52 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:23060 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:13546 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752746Ab2HCKwd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 Aug 2012 06:52:33 -0400
-Date: Fri, 3 Aug 2012 06:52:31 -0400
+	id S1752066Ab2HaOCU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 31 Aug 2012 10:02:20 -0400
+Date: Fri, 31 Aug 2012 07:02:13 -0700
 From: Jeff Layton <jlayton@redhat.com>
-To: Andrei Warkentin <awarkentin@vmware.com>
-Cc: linux-nfs@vger.kernel.org, Ed Goggin <egoggin@vmware.com>
-Subject: Re: stale or not stale
-Message-ID: <20120803065231.2e64ec8d@corrin.poochiereds.net>
-In-Reply-To: <1592211005.4733808.1343960954717.JavaMail.root@vmware.com>
-References: <1781697815.4540720.1343959078882.JavaMail.root@vmware.com>
-	<1592211005.4733808.1343960954717.JavaMail.root@vmware.com>
+To: gchen <gang.chen@asianux.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [QUESTION] about NFS sub system between Public Kernel and Red
+ Hat Kernel.
+Message-ID: <20120831070213.6e350dd1@corrin.poochiereds.net>
+In-Reply-To: <50404E40.3070702@asianux.com>
+References: <50404E40.3070702@asianux.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2 Aug 2012 19:29:14 -0700 (PDT)
-Andrei Warkentin <awarkentin@vmware.com> wrote:
+On Fri, 31 Aug 2012 13:40:16 +0800
+gchen <gang.chen@asianux.com> wrote:
 
-> ----- Original Message -----
-> > From: "Ed Goggin" <egoggin@vmware.com>
-> > To: linux-nfs@vger.kernel.org
-> > Sent: Thursday, August 2, 2012 9:57:58 PM
-> > Subject: stale or not stale
-> > 
-> > 
-> > It seems that nfsd can return reply attributes with a link count of
-> > zero but without an NFS3ERR_STALE status.  We've seen this actually
-> > happen for a write request to a file with a single link that  is
-> > concurrently being removed without NLM lock protection.  What is the
-> > proper behavior here?
+> Hi linux-nfs@vger.kernel.org
 > 
-> I think it would be worthwhile to add here that the the remove was not concurrent with the write, and at the time of the NFS write a new file with the same name existed, yet fh decoding picked up the old inode instead of reporting -ESTALE. FS was ext4.
+> I have 1 question, and also 2 conclusions which need confirm.
 > 
-> In fact seen two things happen - n_link = 0 and n_link = 1, and in both cases we knew the file was unlink()ed and re-creat()ed.
+> 
+> 1) Question:
+> 
+> Jeff Layton said in Red Hat Bugzilla (bug 848706):
+> "Have configuration where the same host is acting as both NFS client
+> and server. That's a configuration known to cause deadlocks."
+> 
+> Does it mean that the public Linux kernel (not Red Hat) also can cause
+> deadlocks if NFS client and server are under the same machine ?
 > 
 
-That's entirely valid behavior.
+Yes.
 
-ESTALE from the server is its way of saying: "I don't recognize that
-filehandle". It can't figure out how to match that filehandle to an
-inode.
+> 
+> 2) Confirm 1: (better by Jeff Layton)
+> 
+> For function nfs_commit_set_lock in ./fs/nfs/write.c
+> 
+> for latest public kernel version:
+> the parameters of out_of_line_wait_on_bit_lock() are
+> (&nfsi->flags, NFS_INO_COMMIT, nfs_wait_killable, TASK_KILLABLE)
+> for Red Hat kernel version: kernel-2.6.18-308.4.1.el5
+> the parameters of out_of_line_wait_on_bit_lock() are
+> (&nfsi->flags, NFS_INO_COMMIT,
+> nfs_wait_bit_uninterruptible, TASK_UNINTERRUPTIBLE)
+> 
+> It means for red hat version:
+> when deadlock occurs, we can not boot machine in normal way
+> (it is true for my test machine, the deadlock task can not be killed)
+> It means for public kernel version:
+> "Assume deadlock occurs", we can still boot machine in normal way,
+> because the task can be killed.
+> 
+> Is what I said above correct ?
+> 
 
-An i_nlink count of 0 means that there are no more hardlinks attached
-to the inode. It's deleted from the namespace, but the inode still
-exists until there are no more i_count references held on it.
+Not sure I understand your question. RHEL5 doesn't have support for
+TASK_KILLABLE, and I didn't backport it, hence the difference in that
+function.
+
+> 
+> 3) Confirm 2:
+> 
+> Is LTP (Linux Test Project) still a suitable test tools for public kernel ?
+> (for ltp-full-20100331.gz stress test, it mounts NFS on local machine,
+> and the latest LTP ltp-full-20120401.bz2 also seems the same).
+> 
+
+That I'm not sure of. All I can tell you is that mounts over loopback
+(or similar configurations) are easily deadlockable under load.
 
 -- 
 Jeff Layton <jlayton@redhat.com>
