@@ -1,43 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:7569 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:47288 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755984Ab2IZTZ4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 26 Sep 2012 15:25:56 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 2/2] NFS: Always use the open stateid when checking for expired opens
-Date: Wed, 26 Sep 2012 15:25:53 -0400
-Message-Id: <1348687553-8461-2-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1348687553-8461-1-git-send-email-bjschuma@netapp.com>
-References: <1348687553-8461-1-git-send-email-bjschuma@netapp.com>
+	id S1755068Ab2IBXdU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 2 Sep 2012 19:33:20 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jason Kelley <jasonkelley94@gmail.com>
+CC: "bfields@redhat.com" <bfields@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] - Sunrpc: fix sparse warnings by adding static's to
+ variables
+Date: Sun, 2 Sep 2012 23:33:19 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F7F5EE@SACEXCMBX04-PRD.hq.netapp.com>
+References: <CAF8Z354aEevnGw4B==VSs52ytaCPN4fHpxn-oY3ryOmzcpa8hg@mail.gmail.com>
+In-Reply-To: <CAF8Z354aEevnGw4B==VSs52ytaCPN4fHpxn-oY3ryOmzcpa8hg@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
-
-If we are reading through a delegation, and the delegation is OK then
-state->stateid will still point to a delegation stateid and not an open
-stateid.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/nfs4proc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 1d49168..f35c243 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1794,7 +1794,7 @@ static void nfs41_clear_delegation_stateid(struct nfs4_state *state)
- static int nfs41_check_open_stateid(struct nfs4_state *state)
- {
- 	struct nfs_server *server = NFS_SERVER(state->inode);
--	nfs4_stateid *stateid = &state->stateid;
-+	nfs4_stateid *stateid = &state->open_stateid;
- 	int status;
- 
- 	/* If a state reset has been done, test_stateid is unneeded */
--- 
-1.7.12.1
-
+T24gRnJpLCAyMDEyLTA4LTMxIGF0IDE0OjQwIC0wNzAwLCBKYXNvbiBLZWxsZXkgd3JvdGU6DQo+
+IA0KPiBHb29kIEFmdGVybm9vbiwNCj4gDQo+IEkgYW0gYSBIaWdoIFNjaG9vbCBJbnRlcm4gbGVh
+cm5pbmcgYWJvdXQgb3BlbiBzb3VyY2UgZGV2ZWxvcG1lbnQNCj4gaW5jbHVkaW5nIHRoZSBMaW51
+eCBrZXJuZWwuIEFzIHBhcnQgb2YgbXkgaW50ZXJuc2hpcCBJIGFtIHdvcmtpbmcgb24NCj4gd3Jp
+dGluZyBhIHBhdGNoIGZvciB0aGUgbGludXgtMy41IGtlcm5lbC4gSSBwbGFuIHRvIHVzZSB0aGlz
+DQo+IGV4cGVyaWVuY2UsIHdyaXRpbmcgYSBwYXRjaCwgYmV5b25kIG15IGludGVybnNoaXAgaGVy
+ZSBhdCBJQk0sIHNvIHRoYXQNCj4gSSBtYXkgY29udGludWUgdG8gY29udHJpYnV0ZQ0KPiB0byB0
+aGUgb3Blbi1zb3VyY2UgY29tbXVuaXR5Lg0KPiANCj4gLS0NCj4gDQo+IEZyb206IEphc29uIEtl
+bGxleSA8amFzb25rZWxsZXk5NEBnbWFpbC5jb20+DQo+IA0KPiBNYWtlIHJwY19kZWJ1ZywgbmZz
+X2RlYnVnLCBuZnNkX2RlYnVnLCBhbmQgbmxtX2RlYnVnIHN0YXRpYyB0byByZW1vdmUNCj4gdGhl
+IGZvbGxvd2luZyBzcGFyc2Ugd2FybmluZ3M6DQo+ICogbmV0L3N1bnJwYy9zeXNjdGwuYyB3YXJu
+aW5nOiBzeW1ib2wgJ3JwY19kZWJ1Zycgd2FzIG5vdCBkZWNsYXJlZC4NCj4gU2hvdWxkIGl0IGJl
+IHN0YXRpYz8NCj4gKiBuZXQvc3VucnBjL3N5c2N0bC5jIHdhcm5pbmc6IHN5bWJvbCAnbmZzX2Rl
+YnVnJyB3YXMgbm90IGRlY2xhcmVkLg0KPiBTaG91bGQgaXQgYmUgc3RhdGljPw0KPiAqIG5ldC9z
+dW5ycGMvc3lzY3RsLmMgd2FybmluZzogc3ltYm9sICduZnNkX2RlYnVnJyB3YXMgbm90IGRlY2xh
+cmVkLg0KPiBTaG91bGQgaXQgYmUgc3RhdGljPw0KPiAqIG5ldC9zdW5ycGMvc3lzY3RsLmMgd2Fy
+bmluZzogc3ltYm9sICdubG1fZGVidWcnIHdhcyBub3QgZGVjbGFyZWQuDQo+IFNob3VsZCBpdCBi
+ZSBzdGF0aWM/DQo+IA0KPiBUZXN0ZWQgYnkgYnVpbGRpbmcgYW5kIGJvb3RpbmcgdGhlIHBhdGNo
+ZWQga2VybmVsIHdpdGggQ09ORklHX1NVTlJQQw0KPiBlbmFibGVkLg0KDQpIaSBKYXNvbiwNCg0K
+SWYgQ09ORklHX1NVTlJQQyBpcyBkZWZpbmVkLCB0aGVuIGluY2x1ZGUvbGludXgvc3VucnBjL2Rl
+YnVnLmggd2lsbA0KZGVjbGFyZSBhbGwgdGhlc2UgdmFyaWFibGVzIGFzICdleHRlcm4nLCB3aGlj
+aCBjb25mbGljdHMgd2l0aCB5b3VyDQpzdGF0aWMgZGVjbGFyYXRpb24uIFRoZSByZWFzb24gd2h5
+IHRoZXkgbmVlZCB0byBiZSAnZXh0ZXJuJyBzaG91bGQgYmUNCm9idmlvdXMgaWYgeW91IGxvb2sg
+YXQgaG93IHRoZXkgYXJlIHVzZWQgaW4gdGhlIHZhcmlvdXMgJ2lmZGVidWcnIG1hY3JvDQpkZWZp
+bml0aW9uczogdGhvc2UgbWFjcm9zIG1lYW4gdGhhdCB0aGUgdmFyaWFibGVzIGNhbiBiZSBhY2Nl
+c3NlZCBmcm9tDQphbGwgb3ZlciB0aGUgbmZzL25mc2Qvc3VucnBjLy4uLiBjb2RlIGFzIHBhcnQg
+b2YgYSAnZHByaW50aygpJyBjYWxsLg0KDQpUaGUgcmlnaHQgdGhpbmcgdG8gZG8gaGVyZSBpcyB0
+aGVyZWZvcmUgcmF0aGVyIHRvIG1vdmUgdGhlIGRlY2xhcmF0aW9ucw0KaW4gbmV0L3N1bnJwYy9z
+eXNjdGwuYyBpbnRvIHRoZSAnI2lmZGVmIFJQQ19ERUJVRycgc2VjdGlvbiwgc28gdGhhdCB0aGUN
+CndheSB0aGF0IHRoZXkgYXJlIGRlY2xhcmVkIG1hdGNoZXMgdGhlIGRlY2xhcmF0aW9ucyBpbg0K
+aW5jbHVkZS9saW51eC9zdW5ycGMvZGVidWcuaA0KDQpDaGVlcnMNCiAgVHJvbmQNCg0KDQotLSAN
+ClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0K
+VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
