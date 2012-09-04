@@ -1,61 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from kms.syseleven.de ([176.74.58.26]:43765 "EHLO kms.syseleven.de"
+Received: from mx1.redhat.com ([209.132.183.28]:19748 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751672Ab2ICJBm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Sep 2012 05:01:42 -0400
-Subject: Re: KVM disk problem with NFS over RDMA
-Mime-Version: 1.0 (Apple Message framework v1278)
-Content-Type: text/plain; charset=us-ascii
-From: Andrew Holway <a.holway@syseleven.de>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA908F7F604@SACEXCMBX04-PRD.hq.netapp.com>
-Date: Mon, 3 Sep 2012 11:01:34 +0200
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <585413CA-234C-4F55-9165-D5D1CE5885F0@syseleven.de>
-References: <BF836CCD-701A-40F6-B776-01B49742943C@syseleven.de> <4FA345DA4F4AE44899BD2B03EEEC2FA908F7F604@SACEXCMBX04-PRD.hq.netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+	id S1757135Ab2IDQbM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Sep 2012 12:31:12 -0400
+Message-ID: <50462C99.5000007@redhat.com>
+Date: Tue, 04 Sep 2012 17:30:17 +0100
+From: Pedro Alves <palves@redhat.com>
+MIME-Version: 1.0
+To: Steven Rostedt <rostedt@goodmis.org>
+CC: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
+        Sasha Levin <levinsasha928@gmail.com>, Tejun Heo <tj@kernel.org>,
+        torvalds@linux-foundation.org, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, mingo@elte.hu,
+        ebiederm@xmission.com, aarcange@redhat.com, ericvh@gmail.com,
+        netdev@vger.kernel.org, josh@joshtriplett.org, eric.dumazet@gmail.com,
+        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
+        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
+        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive hashtable
+References: <20120824203332.GF21325@google.com> <5037E9D9.9000605@gmail.com>  <20120824212348.GK21325@google.com> <5038074D.300@gmail.com>  <20120824230740.GN21325@google.com> <20120825042419.GA27240@Krystal>  <503C95E4.3010000@gmail.com> <20120828101148.GA21683@Krystal>  <503CAB1E.5010408@gmail.com> <20120828115638.GC23818@Krystal>  <20120828230050.GA3337@Krystal> <1346772948.27919.9.camel@gandalf.local.home>
+In-Reply-To: <1346772948.27919.9.camel@gandalf.local.home>
+Content-Type: text/plain; charset=ISO-8859-15
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Sep 3, 2012, at 1:35 AM, Myklebust, Trond wrote:
-
-> On Sun, 2012-09-02 at 12:46 +0200, Andrew Holway wrote:
->> Hi,
->> 
->> I am trying to host KVM machines on an NFSoRDMA mount.
->> 
->> This works:
->> 
->> -drive file=/mnt/vm001.img,if=none,id=drive-virtio-disk0,format=raw -device virtio-blk-pci,scsi=off,bus=pci.0,addr=0x5,drive=drive-virtio-disk0,id=virtio-disk0
->> 
->> This Doesn't!
->> 
->> -drive file=/mnt/vm001.img,if=none,id=drive-virtio-disk0,format=raw,cache=none -device virtio-blk-pci,scsi=off,bus=pci.0,addr=0x5,drive=drive-virtio-disk0,id=virtio-disk0,bootindex=2
->> 
->> Any ideas why this could be? I have tried various kernel / ofed combinations.
+On 09/04/2012 04:35 PM, Steven Rostedt wrote:
+> On Tue, 2012-08-28 at 19:00 -0400, Mathieu Desnoyers wrote:
 > 
-> I'm guessing that the NFSoRDMA code is broken for the case of O_DIRECT,
-> and has been for a while. Unfortunately the RDMA code gets little
-> testing these days.
+>> Looking again at:
+>>
+>> +#define hash_for_each_size(name, bits, bkt, node, obj, member)                 \
+>> +       for (bkt = 0; bkt < HASH_SIZE(bits); bkt++)                             \
+>> +               hlist_for_each_entry(obj, node, &name[bkt], member)
+>>
+>> you will notice that a "break" or "continue" in the inner loop will not
+>> affect the outer loop, which is certainly not what the programmer would
+>> expect!
+>>
+>> I advise strongly against creating such error-prone construct.
+>>
 > 
-> Do all the other 'cache=' options work?
-
-Yes, Writeback cache also works.
-
-When I test writethrough and do lots of heavy DIRECT_IO with iozone this seems to work correctly.
-
-ta
-
-Andrew
-
+> A few existing loop macros do this. But they require a do { } while ()
+> approach, and all have a comment.
 > 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
+> It's used by do_each_thread() in sched.h and ftrace does this as well.
+> Look at kernel/trace/ftrace.c at do_for_each_ftrace_rec().
 > 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
+> Yes it breaks 'break' but it does not break 'continue' as it would just
+> go to the next item that would have been found (like a normal for
+> would).
 
+/*
+ * This is a double for. Do not use 'break' to break out of the loop,
+ * you must use a goto.
+ */
+#define do_for_each_ftrace_rec(pg, rec)                                 \
+        for (pg = ftrace_pages_start; pg; pg = pg->next) {              \
+                int _____i;                                             \
+                for (_____i = 0; _____i < pg->index; _____i++) {        \
+                        rec = &pg->records[_____i];
+
+
+
+You can make 'break' also work as expected if you can embed a little knowledge
+of the inner loop's condition in the outer loop's condition.  Sometimes it's
+trivial, most often when the inner loop's iterator is a pointer that goes
+NULL at the end, but other times not so much.  Something like (completely untested):
+
+#define do_for_each_ftrace_rec(pg, rec)                                 \
+        for (pg = ftrace_pages_start, rec = &pg->records[pg->index];    \
+             pg && rec == &pg->records[pg->index];                      \
+             pg = pg->next) {                                           \
+                int _____i;                                             \
+                for (_____i = 0; _____i < pg->index; _____i++) {        \
+                        rec = &pg->records[_____i];
+
+(other variants possible)
+
+IOW, the outer loop only iterates if the inner loop completes.  If there's
+a break in the inner loop, then the outer loop breaks too.  Of course, it
+all depends on whether the generated code looks sane or hideous, if
+the uses of the macro care for it over bug avoidance.
+
+-- 
+Pedro Alves
 
