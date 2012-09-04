@@ -1,52 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:20980 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757684Ab2IRJpF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 18 Sep 2012 05:45:05 -0400
-Subject: [PATCH v2 0/3] lockd: use per-net refrence-counted NSM clients
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, devel@openvz.org,
-        linux-kernel@vger.kernel.org, jlayton@redhat.com
-Date: Tue, 18 Sep 2012 13:37:06 +0400
-Message-ID: <20120918093612.2469.94393.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from hrndva-omtalb.mail.rr.com ([71.74.56.122]:9138 "EHLO
+	hrndva-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932181Ab2IDPfv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Sep 2012 11:35:51 -0400
+Message-ID: <1346772948.27919.9.camel@gandalf.local.home>
+Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive
+ hashtable
+From: Steven Rostedt <rostedt@goodmis.org>
+To: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+Cc: Sasha Levin <levinsasha928@gmail.com>, Tejun Heo <tj@kernel.org>,
+        torvalds@linux-foundation.org, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, mingo@elte.hu,
+        ebiederm@xmission.com, aarcange@redhat.com, ericvh@gmail.com,
+        netdev@vger.kernel.org, josh@joshtriplett.org, eric.dumazet@gmail.com,
+        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
+        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
+        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Date: Tue, 04 Sep 2012 11:35:48 -0400
+In-Reply-To: <20120828230050.GA3337@Krystal>
+References: <20120824203332.GF21325@google.com> <5037E9D9.9000605@gmail.com>
+	 <20120824212348.GK21325@google.com> <5038074D.300@gmail.com>
+	 <20120824230740.GN21325@google.com> <20120825042419.GA27240@Krystal>
+	 <503C95E4.3010000@gmail.com> <20120828101148.GA21683@Krystal>
+	 <503CAB1E.5010408@gmail.com> <20120828115638.GC23818@Krystal>
+	 <20120828230050.GA3337@Krystal>
+Content-Type: text/plain; charset="ISO-8859-15"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v2:
-1) NSM transport is TCP based now. And all RPC tasks now called with
-RPC_TASK_SOFTCONN. The advantage of this is that the kernel could discover
-when statd is not running and fail the upcall immediately, rather than waiting
-possibly many seconds for each upcall RPC to time out.
-2) XDR layer violation (reference to upper RPC client cl_hostname) was
-replaced by passing the string as a part of nlm_args structure.
+On Tue, 2012-08-28 at 19:00 -0400, Mathieu Desnoyers wrote:
 
-This is a bug fix for https://bugzilla.redhat.com/show_bug.cgi?id=830862.
+> Looking again at:
+> 
+> +#define hash_for_each_size(name, bits, bkt, node, obj, member)                 \
+> +       for (bkt = 0; bkt < HASH_SIZE(bits); bkt++)                             \
+> +               hlist_for_each_entry(obj, node, &name[bkt], member)
+> 
+> you will notice that a "break" or "continue" in the inner loop will not
+> affect the outer loop, which is certainly not what the programmer would
+> expect!
+> 
+> I advise strongly against creating such error-prone construct.
+> 
 
-The problem is that with NFSv4 mount in container (with separated mount
-namesapce) and active lock on it, dying child reaped of this container will
-try to umount NFS and doing this will try to create RPC client to send
-unmonitor request to statd.
-But creation of RCP client requires valid current->nsproxy (for operation with
-utsname()) and during umount on child reaper exit it's equal to zero.
+A few existing loop macros do this. But they require a do { } while ()
+approach, and all have a comment.
 
-Proposed solution is to introduce refrence-counter per-net NSM client, which
-is created on fist monitor call and destroyed after the lst monitor call.
+It's used by do_each_thread() in sched.h and ftrace does this as well.
+Look at kernel/trace/ftrace.c at do_for_each_ftrace_rec().
 
-The following series implements...
+Yes it breaks 'break' but it does not break 'continue' as it would just
+go to the next item that would have been found (like a normal for
+would).
 
----
+-- Steve
 
-Stanislav Kinsbursky (3):
-      lockd: per-net NSM client creation and destruction helpers introduced
-      lockd: use rpc client's cl_nodename for id encoding
-      lockd: create and use per-net NSM RPC clients on MON/UNMON requests
-
-
- fs/lockd/mon.c   |   86 +++++++++++++++++++++++++++++++++++++++++++-----------
- fs/lockd/netns.h |    4 +++
- fs/lockd/svc.c   |    1 +
- 3 files changed, 74 insertions(+), 17 deletions(-)
 
