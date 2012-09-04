@@ -1,98 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:58062 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:54117 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753603Ab2IUBgF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Sep 2012 21:36:05 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 05/14] NFSv4.1: Get rid of pNFS layout state "NFS_LAYOUT_INVALID"
-Date: Thu, 20 Sep 2012 21:35:48 -0400
-Message-Id: <1348191357-44503-5-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1348191357-44503-4-git-send-email-Trond.Myklebust@netapp.com>
-References: <1348191357-44503-1-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-2-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-3-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-4-git-send-email-Trond.Myklebust@netapp.com>
+	id S1756773Ab2IDMEe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Sep 2012 08:04:34 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Andrew Holway <a.holway@syseleven.de>
+CC: "kvm@vger.kernel.org" <kvm@vger.kernel.org>,
+        "libvir-list@redhat.com" <libvir-list@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFS over RDMA small block DIRECT_IO bug
+Date: Tue, 4 Sep 2012 12:04:31 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F82C6C@SACEXCMBX04-PRD.hq.netapp.com>
+References: <F416961E-A33A-44D3-A788-5EF598A0AAFE@syseleven.de>
+In-Reply-To: <F416961E-A33A-44D3-A788-5EF598A0AAFE@syseleven.de>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In all cases where we set NFS_LAYOUT_INVALID, we also set NFS_LAYOUT_DESTROYED.
-Furthermore, in all cases where we test for NFS_LAYOUT_INVALID, we should
-also be testing for NFS_LAYOUT_DESTROYED, since the latter means that
-we hold no valid layout segments.
-Ergo the two are redundant.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4filelayout.c | 4 +---
- fs/nfs/nfs4filelayout.h | 6 ------
- fs/nfs/pnfs.h           | 7 ++++++-
- 3 files changed, 7 insertions(+), 10 deletions(-)
-
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index dac2162..6cce57e 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -190,8 +190,6 @@ static int filelayout_async_handle_error(struct rpc_task *task,
- 		 * i/o and all i/o waiting on the slot table to the MDS until
- 		 * layout is destroyed and a new valid layout is obtained.
- 		 */
--		set_bit(NFS_LAYOUT_INVALID,
--				&NFS_I(inode)->layout->plh_flags);
- 		pnfs_destroy_layout(NFS_I(inode));
- 		rpc_wake_up(&tbl->slot_tbl_waitq);
- 		goto reset;
-@@ -281,7 +279,7 @@ filelayout_reset_to_mds(struct pnfs_layout_segment *lseg)
- {
- 	struct nfs4_deviceid_node *node = FILELAYOUT_DEVID_NODE(lseg);
- 
--	return filelayout_test_layout_invalid(lseg->pls_layout) ||
-+	return pnfs_test_layout_destroyed(lseg->pls_layout) ||
- 		filelayout_test_devid_unavailable(node);
- }
- 
-diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
-index 10b0f13..dca47d78 100644
---- a/fs/nfs/nfs4filelayout.h
-+++ b/fs/nfs/nfs4filelayout.h
-@@ -129,12 +129,6 @@ filelayout_mark_devid_invalid(struct nfs4_deviceid_node *node)
- }
- 
- static inline bool
--filelayout_test_layout_invalid(struct pnfs_layout_hdr *lo)
--{
--	return test_bit(NFS_LAYOUT_INVALID, &lo->plh_flags);
--}
--
--static inline bool
- filelayout_test_devid_invalid(struct nfs4_deviceid_node *node)
- {
- 	return test_bit(NFS_DEVICEID_INVALID, &node->flags);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index aa9fa1b..aacda7f 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -63,7 +63,6 @@ enum {
- 	NFS_LAYOUT_BULK_RECALL,		/* bulk recall affecting layout */
- 	NFS_LAYOUT_ROC,			/* some lseg had roc bit set */
- 	NFS_LAYOUT_DESTROYED,		/* no new use of layout allowed */
--	NFS_LAYOUT_INVALID,		/* layout is being destroyed */
- 	NFS_LAYOUT_RETURNED,		/* layout has already been returned */
- };
- 
-@@ -279,6 +278,12 @@ pnfs_test_layout_returned(struct pnfs_layout_hdr *lo)
- 	return test_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
- }
- 
-+static inline bool
-+pnfs_test_layout_destroyed(struct pnfs_layout_hdr *lo)
-+{
-+	return test_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags);
-+}
-+
- static inline struct pnfs_layout_segment *
- pnfs_get_lseg(struct pnfs_layout_segment *lseg)
- {
--- 
-1.7.11.4
-
+T24gVHVlLCAyMDEyLTA5LTA0IGF0IDExOjMxICswMjAwLCBBbmRyZXcgSG9sd2F5IHdyb3RlOg0K
+PiBIZWxsby4NCj4gDQo+ICMgQXZpIEtpdml0eSBhdmkoYSlyZWRoYXQgcmVjb21tZW5kZWQgSSBj
+b3B5IGt2bSBpbiBvbiB0aGlzLiBJdCB3b3VsZCBhbHNvIHNlZW0gcmVsZXZlbnQgdG8gbGlidmly
+dC4gIw0KPiANCj4gSSBoYXZlIGEgQ2VudG9zIDYuMiBzZXJ2ZXIgYW5kIENlbnRvcyA2LjIgY2xp
+ZW50Lg0KPiANCj4gW3Jvb3RAc3RvcmUgfl0jIGNhdCAvZXRjL2V4cG9ydHMgDQo+IC9kZXYvc2ht
+CQkJCTEwLjE0OS4wLjAvMTYocncsZnNpZD0xLG5vX3Jvb3Rfc3F1YXNoLGluc2VjdXJlKSAgICAo
+SSBoYXZlIHRyaWVkIHdpdGggbm9uIHRlbXBmcyB0YXJnZXRzIGFsc28pDQo+IA0KPiANCj4gW3Jv
+b3RAbm9kZTAwMSB+XSMgY2F0IC9ldGMvZnN0YWIgDQo+IHN0b3JlLmlibmV0Oi9kZXYvc2htICAg
+ICAgICAgICAgIC9tbnQgICAgICAgICAgICAgICAgIG5mcyAgICAgICAgICByZG1hLHBvcnQ9MjA1
+MCxkZWZhdWx0cyAwIDANCj4gDQo+IA0KPiBJIHdyb3RlIGEgbGl0dGxlIGZvciBsb29wIG9uZSBs
+aW5lciB0aGF0IGRkJ2QgdGhlIGNlbnRvcyBuZXQgaW5zdGFsbCBpbWFnZSB0byBhIGZpbGUgY2Fs
+bGVkICdoZWxsbycgdGhlbiBjaGVja3N1bW1lZCB0aGF0IGZpbGUuIEVhY2ggaXRlcmF0aW9uIHVz
+ZXMgYSBkaWZmZXJlbnQgYmxvY2sgc2l6ZS4NCj4gDQo+IE5vbiBESVJFQ1RfSU8gc2VlbXMgdG8g
+d29yayBmaW5lLiBESVJFQ1RfSU8gd2l0aCA1MTJieXRlLCAxSyBhbmQgMksgYmxvY2sgc2l6ZXMg
+Z2V0IGNvcnJ1cHRlZC4NCg0KDQpUaGF0IGlzIGV4cGVjdGVkIGJlaGF2aW91ci4gRElSRUNUX0lP
+IG92ZXIgUkRNQSBuZWVkcyB0byBiZSBwYWdlIGFsaWduZWQNCnNvIHRoYXQgaXQgY2FuIHVzZSB0
+aGUgbW9yZSBlZmZpY2llbnQgUkRNQSBSRUFEIGFuZCBSRE1BIFdSSVRFIG1lbW9yeQ0Kc2VtYW50
+aWNzIChpbnN0ZWFkIG9mIHRoZSBTRU5EL1JFQ0VJVkUgY2hhbm5lbCBzZW1hbnRpY3MpLg0KDQo+
+IEkgd2FudCB0byBydW4gbXkgS1ZNIGd1ZXN0cyBvbiB0b3Agb2YgTkZTIG92ZXIgUkRNQS4gTXkg
+Z3Vlc3RzIGNhbm5vdCBjcmVhdGUgZmlsZXN5c3RlbXMuDQo+IA0KPiBUaGFua3MsDQo+IA0KPiBB
+bmRyZXcuDQo+IA0KPiBidWcgcmVwb3J0OiBodHRwczovL2J1Z3ppbGxhLmxpbnV4LW5mcy5vcmcv
+c2hvd19idWcuY2dpP2lkPTIyOA0KPiANCj4gW3Jvb3RAbm9kZTAwMSBtbnRdIyBmb3IgZiBpbiA1
+MTIgMTAyNCAyMDQ4IDQwOTYgODE5MiAxNjM4NCAzMjc2OCA2NTUzNiAxMzEwNzI7IGRvIGRkIGJz
+PSIkZiIgaWY9Q2VudE9TLTYuMy14ODZfNjQtbmV0aW5zdGFsbC5pc28gb2Y9aGVsbG8gaWZsYWc9
+ZGlyZWN0IG9mbGFnPWRpcmVjdCAmJiBtZDVzdW0gaGVsbG8gJiYgcm0gLWYgaGVsbG87IGRvbmUN
+Cj4gDQo+IDQwOTYwMCswIHJlY29yZHMgaW4NCj4gNDA5NjAwKzAgcmVjb3JkcyBvdXQNCj4gMjA5
+NzE1MjAwIGJ5dGVzICgyMTAgTUIpIGNvcGllZCwgNjIuMzY0OSBzLCAzLjQgTUIvcw0KPiBhYWRk
+MGZmZTNjOWRmYTM1ZDgzNTRlOTllY2FjOTI3NiAgaGVsbG8gLS0gNTEyIGJ5dGUgYmxvY2sgDQo+
+IA0KPiAyMDQ4MDArMCByZWNvcmRzIGluDQo+IDIwNDgwMCswIHJlY29yZHMgb3V0DQo+IDIwOTcx
+NTIwMCBieXRlcyAoMjEwIE1CKSBjb3BpZWQsIDQxLjM4NzYgcywgNS4xIE1CL3MNCj4gMzM2ZjZk
+YTc4ZjkzZGFiNTkxZWRjMThkYTgxZjAwMmUgIGhlbGxvIC0tIDFLIGJsb2NrDQo+IA0KPiAxMDI0
+MDArMCByZWNvcmRzIGluDQo+IDEwMjQwMCswIHJlY29yZHMgb3V0DQo+IDIwOTcxNTIwMCBieXRl
+cyAoMjEwIE1CKSBjb3BpZWQsIDIxLjE3MTIgcywgOS45IE1CL3MNCj4gZjRjZWZlMGEwNWM5YjQ3
+YmE2OGVmZmRiMTdkYzk1ZDYgIGhlbGxvIC0tIDJrIGJsb2NrDQo+IA0KPiA1MTIwMCswIHJlY29y
+ZHMgaW4NCj4gNTEyMDArMCByZWNvcmRzIG91dA0KPiAyMDk3MTUyMDAgYnl0ZXMgKDIxMCBNQikg
+Y29waWVkLCAxMC45NjMxIHMsIDE5LjEgTUIvcw0KPiA2OTAxMzg5MDhkZTUxNmI2ZTVkN2QxODBk
+MDg1YzNmMyAgaGVsbG8gLS0gNGsgYmxvY2sNCj4gDQo+IDI1NjAwKzAgcmVjb3JkcyBpbg0KPiAy
+NTYwMCswIHJlY29yZHMgb3V0DQo+IDIwOTcxNTIwMCBieXRlcyAoMjEwIE1CKSBjb3BpZWQsIDUu
+NDEzNiBzLCAzOC43IE1CL3MNCj4gNjkwMTM4OTA4ZGU1MTZiNmU1ZDdkMTgwZDA4NWMzZjMgIGhl
+bGxvDQo+IA0KPiAxMjgwMCswIHJlY29yZHMgaW4NCj4gMTI4MDArMCByZWNvcmRzIG91dA0KPiAy
+MDk3MTUyMDAgYnl0ZXMgKDIxMCBNQikgY29waWVkLCAzLjE0NDggcywgNjYuNyBNQi9zDQo+IDY5
+MDEzODkwOGRlNTE2YjZlNWQ3ZDE4MGQwODVjM2YzICBoZWxsbw0KPiANCj4gNjQwMCswIHJlY29y
+ZHMgaW4NCj4gNjQwMCswIHJlY29yZHMgb3V0DQo+IDIwOTcxNTIwMCBieXRlcyAoMjEwIE1CKSBj
+b3BpZWQsIDEuNzczMDQgcywgMTE4IE1CL3MNCj4gNjkwMTM4OTA4ZGU1MTZiNmU1ZDdkMTgwZDA4
+NWMzZjMgIGhlbGxvDQo+IA0KPiAzMjAwKzAgcmVjb3JkcyBpbg0KPiAzMjAwKzAgcmVjb3JkcyBv
+dXQNCj4gMjA5NzE1MjAwIGJ5dGVzICgyMTAgTUIpIGNvcGllZCwgMS40MzMxIHMsIDE0NiBNQi9z
+DQo+IDY5MDEzODkwOGRlNTE2YjZlNWQ3ZDE4MGQwODVjM2YzICBoZWxsbw0KPiANCj4gMTYwMCsw
+IHJlY29yZHMgaW4NCj4gMTYwMCswIHJlY29yZHMgb3V0DQo+IDIwOTcxNTIwMCBieXRlcyAoMjEw
+IE1CKSBjb3BpZWQsIDAuOTIyMTY3IHMsIDIyNyBNQi9zDQo+IDY5MDEzODkwOGRlNTE2YjZlNWQ3
+ZDE4MGQwODVjM2YzICBoZWxsbw0KPiANCj4gDQo+IC0tDQo+IFRvIHVuc3Vic2NyaWJlIGZyb20g
+dGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiIGluDQo+IHRo
+ZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnDQo+IE1vcmUg
+bWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8u
+aHRtbA0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVy
+DQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoN
+Cg==
