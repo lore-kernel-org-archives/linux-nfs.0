@@ -1,81 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40064 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752001Ab2IERWC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Sep 2012 13:22:02 -0400
-Date: Wed, 5 Sep 2012 13:21:58 -0400
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Diego Moreno <Diego.Moreno-Lazaro@bull.net>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv3 caching vs NFSv4
-Message-ID: <20120905172158.GA9002@fieldses.org>
-References: <50474858.1020801@bull.net>
- <4FA345DA4F4AE44899BD2B03EEEC2FA908F8612E@SACEXCMBX04-PRD.hq.netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA908F8612E@SACEXCMBX04-PRD.hq.netapp.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from hrndva-omtalb.mail.rr.com ([71.74.56.122]:32524 "EHLO
+	hrndva-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757586Ab2IDU7K (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Sep 2012 16:59:10 -0400
+Message-ID: <1346792345.27919.18.camel@gandalf.local.home>
+Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive
+ hashtable
+From: Steven Rostedt <rostedt@goodmis.org>
+To: Pedro Alves <palves@redhat.com>
+Cc: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
+        Sasha Levin <levinsasha928@gmail.com>, Tejun Heo <tj@kernel.org>,
+        torvalds@linux-foundation.org, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, mingo@elte.hu,
+        ebiederm@xmission.com, aarcange@redhat.com, ericvh@gmail.com,
+        netdev@vger.kernel.org, josh@joshtriplett.org, eric.dumazet@gmail.com,
+        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
+        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
+        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Date: Tue, 04 Sep 2012 16:59:05 -0400
+In-Reply-To: <50463883.8080706@redhat.com>
+References: <20120824203332.GF21325@google.com> <5037E9D9.9000605@gmail.com>
+	   <20120824212348.GK21325@google.com> <5038074D.300@gmail.com>
+	   <20120824230740.GN21325@google.com> <20120825042419.GA27240@Krystal>
+	   <503C95E4.3010000@gmail.com> <20120828101148.GA21683@Krystal>
+	   <503CAB1E.5010408@gmail.com> <20120828115638.GC23818@Krystal>
+	   <20120828230050.GA3337@Krystal>
+	  <1346772948.27919.9.camel@gandalf.local.home>
+	 <50462C99.5000007@redhat.com>  <50462EE8.1090903@redhat.com>
+	 <1346779027.27919.15.camel@gandalf.local.home>
+	 <50463883.8080706@redhat.com>
+Content-Type: text/plain; charset="ISO-8859-15"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 05, 2012 at 02:49:18PM +0000, Myklebust, Trond wrote:
-> On Wed, 2012-09-05 at 14:40 +0200, Diego Moreno wrote:
-> > Hello everyone,
+On Tue, 2012-09-04 at 18:21 +0100, Pedro Alves wrote:
+> On 09/04/2012 06:17 PM, Steven Rostedt wrote:
+> > On Tue, 2012-09-04 at 17:40 +0100, Pedro Alves wrote:
 > > 
-> > Performing some attribute caching tests I think I found some 
-> > inconsistencies between nfsv3 and nfsv4. Running a kernel based on 
-> > rhel6.3 (2.6.32-279.el6.x86_64) I found nfsv4 doesn't manage a file 
-> > modified on the server side (even with the noac mount option) while 
-> > nfsv3 does.
+> >> BTW, you can also go a step further and remove the need to close with double }},
+> >> with something like:
+> >>
+> >> #define do_for_each_ftrace_rec(pg, rec)                                          \
+> >>         for (pg = ftrace_pages_start, rec = &pg->records[pg->index];             \
+> >>              pg && rec == &pg->records[pg->index];                               \
+> >>              pg = pg->next)                                                      \
+> >>           for (rec = pg->records; rec < &pg->records[pg->index]; rec++)
+> >>
 > > 
-> > My test will be modifying a file every second on the server mount point:
-> > 
-> > [root@nfs ~]#  FILE=/tmp/nfs_server/myfile ;  while true ; do sleep 1 ; 
-> > sed -i 's/text1/text2/g' $FILE ; cat $FILE ; sleep 1; sed -i 
-> > 's/text2/text1/g' $FILE ; cat $FILE ; done
-> > text2
-> > text1
-> > text2
-> > text1
-> > text2
-> > (and so on...)
-> > 
-> > Meanwhile, the client (which BTW is the same machine) will read the file 
-> > every second :
-> > 
-> > With NFSv4:
-> > 
-> > [root@nfs ~]# mount -o noac,vers=4 nfs:/tmp/nfs_server/ /tmp/nfs_client/
-> > [root@nfs ~]# for i in 1 2 3 4 5 ; do cat /tmp/nfs_client/myfile; sleep 
-> > 1 ; done
-> > text2
-> > text1
-> > text1
-> > text1
-> > text1
-> > 
-> > With NFSv3:
-> > [root@nfs ~]# mount -o noac,vers=3 nfs:/tmp/nfs_server/ /tmp/nfs_client/
-> > [root@nfs ~]# for i in 1 2 3 4 5 ; do cat /tmp/nfs_client/myfile; sleep 
-> > 1 ; done
-> > text1
-> > text2
-> > text1
-> > text2
-> > text1
-> > 
-> > I can see in the tcpdump traces how the new change attribute and the 
-> > FATTR4_TIME_MODIFY attributes are well received but it's as if the nfs 
-> > client were ignoring these changes. I've been searching in the NFS list 
-> > but I didn't find anything similar. Is this a bug or just a normal 
-> > behavior? Sorry if it has been already pointed out.
+> > Yeah, but why bother? It's hidden in a macro, and the extra '{ }' shows
+> > that this is something "special".
 > 
-> ]If you can reproduce the same issues on the upstream kernel, then it is
-> on topic for this list, otherwise it is a question for Red Hat.
+> The point of both changes is that there's nothing special in the end
+> at all.  It all just works...
+> 
 
-I believe sed -i is actually doing a rename not a file modification.  So
-the problem is likely another symptom of the bug that delegations aren't
-revoked on rename/link/unlink.  Hoping to post the latest draft of
-patches to fix that later today.
+It would still fail on a 'break'. The 'while' macro tells us that it is
+special, because in the end, it wont work.
 
---b.
+-- Steve
+
+
