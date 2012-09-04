@@ -1,94 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:44616 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751683Ab2IPXFl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 16 Sep 2012 19:05:41 -0400
-Received: from relay1.suse.de (unknown [195.135.220.254])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by mx2.suse.de (Postfix) with ESMTP id 0EC229D938
-	for <linux-nfs@vger.kernel.org>; Mon, 17 Sep 2012 01:05:40 +0200 (CEST)
-Date: Mon, 17 Sep 2012 09:05:37 +1000
-From: NeilBrown <neilb@suse.de>
-To: linux-nfs@vger.kernel.org
-Subject: What is NFSv4 READDIR doesn't return a filehandle....
-Message-ID: <20120917090537.20e38026@notabene.brown>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/VjR8x_bHVt1EjXYd8JWG/42"; protocol="application/pgp-signature"
+Received: from mail.openrapids.net ([64.15.138.104]:42295 "EHLO
+	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1757086Ab2IDQcX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Sep 2012 12:32:23 -0400
+Date: Tue, 4 Sep 2012 12:32:20 -0400
+From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+To: Steven Rostedt <rostedt@goodmis.org>
+Cc: Sasha Levin <levinsasha928@gmail.com>, Tejun Heo <tj@kernel.org>,
+        torvalds@linux-foundation.org, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, mingo@elte.hu,
+        ebiederm@xmission.com, aarcange@redhat.com, ericvh@gmail.com,
+        netdev@vger.kernel.org, josh@joshtriplett.org, eric.dumazet@gmail.com,
+        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
+        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
+        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive
+	hashtable
+Message-ID: <20120904163220.GA31698@Krystal>
+References: <20120824212348.GK21325@google.com> <5038074D.300@gmail.com> <20120824230740.GN21325@google.com> <20120825042419.GA27240@Krystal> <503C95E4.3010000@gmail.com> <20120828101148.GA21683@Krystal> <503CAB1E.5010408@gmail.com> <20120828115638.GC23818@Krystal> <20120828230050.GA3337@Krystal> <1346772948.27919.9.camel@gandalf.local.home>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1346772948.27919.9.camel@gandalf.local.home>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/VjR8x_bHVt1EjXYd8JWG/42
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+* Steven Rostedt (rostedt@goodmis.org) wrote:
+> On Tue, 2012-08-28 at 19:00 -0400, Mathieu Desnoyers wrote:
+> 
+> > Looking again at:
+> > 
+> > +#define hash_for_each_size(name, bits, bkt, node, obj, member)                 \
+> > +       for (bkt = 0; bkt < HASH_SIZE(bits); bkt++)                             \
+> > +               hlist_for_each_entry(obj, node, &name[bkt], member)
+> > 
+> > you will notice that a "break" or "continue" in the inner loop will not
+> > affect the outer loop, which is certainly not what the programmer would
+> > expect!
+> > 
+> > I advise strongly against creating such error-prone construct.
+> > 
+> 
+> A few existing loop macros do this. But they require a do { } while ()
+> approach, and all have a comment.
+> 
+> It's used by do_each_thread() in sched.h 
+
+Yes. It's worth noting that it is a do_each_thread() /
+while_each_thread() pair.
 
 
-In NFSv4, the server can report which attributes it chose to return in a
-READDIR reply.
+> and ftrace does this as well.
+> Look at kernel/trace/ftrace.c at do_for_each_ftrace_rec().
 
-A customer has come across a server which does not return the filehandle
-information (is that allowed?).
+Same here.
 
-A consequence of this is that Linux/NFS gets confused.
-nfs_readdir_page_filler calls nfs_prime_dcache() (because it was a readdir
-plus request that was sent) and nfs_prime_dcache goes ahead and creates an
-inode based on the filehandle that it has.
-However decode_attr_filehandle() had happily decoded nothing as the
-FATTR4_WORD0_FILEHANDLE bit wasn't set.
-So the inode gets created with a zero-length filehandle and when this gets
-sent back to the server to act on the inode, it gets NFS4ERR_BADHANDLE to
-the PUTFH op.
+> 
+> Yes it breaks 'break' but it does not break 'continue' as it would just
+> go to the next item that would have been found (like a normal for
+> would).
 
-So should nfs_prime_dcache() abort if the filehandle doesn't exist (patch
-below) or should nfs_fhget() return an error if the filehandle is empty?
+Good point.
 
-Or maybe this behaviour should be detected and readdir should be disabled f=
-or
-that server?
+So would changing hash_for_each_size() to a
 
-Suggestions?
+do_each_hash_size()/while_each_hash_size() make it clearer that this
+contains a double-loop ? (along with an appropriate comment about
+break).
 
 Thanks,
-NeilBrown
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 627f108..148d09c 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -442,6 +442,10 @@ void nfs_prime_dcache(struct dentry *parent, struct nf=
-s_entry *entry)
- 		if (filename.len =3D=3D 2 && filename.name[1] =3D=3D '.')
- 			return;
- 	}
-+	if (entry->fh.size =3D=3D 0)
-+		/* Server didn't return a filehandle */
-+		return;
-+
- 	filename.hash =3D full_name_hash(filename.name, filename.len);
-=20
- 	dentry =3D d_lookup(parent, &filename);
+Mathieu
 
---Sig_/VjR8x_bHVt1EjXYd8JWG/42
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
+> 
+> -- Steve
+> 
+> 
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.18 (GNU/Linux)
-
-iQIVAwUBUFZbQjnsnt1WYoG5AQKWnA/+PsqspN5pRZOQDvdCEoI2yEcuW2U1NkEw
-NA43ME3USO3tz9GowbF1S8gBC+BACEtEXXtQNBrnl8ZFBnwi6Pqu2/M8SILCa7SL
-gDDcb1qjPNqTgDDcdrTkAe59WY6vyJSmq1KlrH7XqmoysUgV1PPGAnkZzlrfmGk+
-nchhFVFmk3EnB/UkPDBkz0ce9iuhhVTW3TMf8hyayPtwHvW6uKCflvH4/6+u3Rmg
-uhJSy6OoG/Djco1wuDW80DnkXaosHRUC7Gb23j4J7OJFLDoPUaGbGjcwFKXKkYXj
-M5LqVVsMIz+jvY/HpVeMUJ1g50vVS8+9Y1rFu/VObBBYfQLKS6bbemmbit8FxMdW
-IdHhUBHkdBbNI1XjgHZnYPDmpqZpf6IXNSyj1yAGKEMkqUw0NkN2+c5ldwtFzeYI
-1Hu4za9XoLKA15mjGwg36k54VVle2pcAW5r4VjxY759TwfW5FFZOr0viBAurS69S
-PW5I5TlQPmFIuqARQdBM0l6ajwi5hF7sJFqizCCIdQC6iw1lstcG7md/uLr9MVE7
-e6DX8Wvd51wF6vlVAEj4R6qRZKhl0zB8w01PCBJIrMszCJntAv9Gk9HoiQvYJ9ZK
-uEfpHT4i9fdenEGqhzqqSIgC0dZIBexX2MyCiD0GBlqJ4oLnEpIaqB15h8Mgd3ys
-kY3Nwb9JGjA=
-=iGsr
------END PGP SIGNATURE-----
-
---Sig_/VjR8x_bHVt1EjXYd8JWG/42--
+-- 
+Mathieu Desnoyers
+Operating System Efficiency R&D Consultant
+EfficiOS Inc.
+http://www.efficios.com
