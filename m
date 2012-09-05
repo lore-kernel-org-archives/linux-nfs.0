@@ -1,56 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:5074 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:53081 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754201Ab2IMSJ0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Sep 2012 14:09:26 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "Adamson, Andy" <William.Adamson@netapp.com>,
-        Jeff Layton <jlayton@redhat.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/4] RFC Avoid expired credential keys for buffered
- writes
-Date: Thu, 13 Sep 2012 18:09:05 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908FA4EBD@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1346961251-2554-1-git-send-email-andros@netapp.com>
-	 <20120910145732.4d800f5b@corrin.poochiereds.net>
-	 <7851A663D3BF5E41B9E166C2C7A42145102B2F5A@SACEXCMBX02-PRD.hq.netapp.com>
-	 <20120910160858.552bec1b@corrin.poochiereds.net>
-	 <7851A663D3BF5E41B9E166C2C7A42145102B48E8@SACEXCMBX02-PRD.hq.netapp.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F9DD4F@SACEXCMBX04-PRD.hq.netapp.com>
-	 <7851A663D3BF5E41B9E166C2C7A42145102B4C9F@SACEXCMBX02-PRD.hq.netapp.com>
-	 <20120913175754.GA6566@fieldses.org>
-In-Reply-To: <20120913175754.GA6566@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1754723Ab2IEUz1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Sep 2012 16:55:27 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [RFC PATCH 00/13] Implement NFSv4 delegations, take 4
+Date: Wed,  5 Sep 2012 16:55:10 -0400
+Message-Id: <1346878524-10585-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA5LTEzIGF0IDEzOjU3IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IE9uIFdlZCwgU2VwIDEyLCAyMDEyIGF0IDA0OjE0OjM4UE0gKzAwMDAsIEFkYW1zb24sIEFu
-ZHkgd3JvdGU6DQo+ID4gDQo+ID4gT24gU2VwIDEyLCAyMDEyLCBhdCAxMToyMSBBTSwgTXlrbGVi
-dXN0LCBUcm9uZCB3cm90ZToNCj4gPiANCj4gPiA+IE9uIFdlZCwgMjAxMi0wOS0xMiBhdCAxNTox
-MyArMDAwMCwgQWRhbXNvbiwgQW5keSB3cm90ZToNCj4gPiA+PiBBZnRlciBkb2luZyBtb3JlIHRl
-c3QgdmVyaWZpY2F0aW9uLCBoZXJlIGFyZSB0aGUgcmVhc29ucyBmb3IgdGhlIGxvdyB3YXRlcm1h
-cmsuIFJlYXNvbiAjMiBpcyB0aGUgc3Ryb25nZXN0IGp1c3RpZmljYXRpb24uDQo+IA0KPiAxIGFu
-ZCAyIGRvbid0IHNvdW5kIHJpZ2h0LiAgV2hhdCBleGFjdGx5IHdlcmUgdGhlIHRlc3QgZmFpbHVy
-ZXM/DQo+IA0KPiBUaGUgY2xpZW50IGFuZCBzZXJ2ZXIncyBnc3MgY29kZSBhbHJlYWR5IGNoZWNr
-IHRoZSBjb250ZXh0IGV4cGlyeSBmb3INCj4gdXMtLXdlIGRvbid0IHdhbnQgYW4gZXh0cmEgY2hl
-Y2sgaW4gYW4gdXBwZXIgbGF5ZXIgb24gdGhlIGNsaWVudC4NCj4gDQo+IFRoZSBjb250ZXh0ICp3
-aWxsKiBleHBpcmUgdW5leHBlY3RlZGx5IHNvbWV0aW1lcywgYW5kIHdlIGRvIGhhdmUgdG8NCj4g
-aGFuZGxlIHRoYXQuICAoVGhlIHNlcnZlcidzIGNsb2NrIGNvdWxkIGJlIGEgdGFkIGZhc3RlciB0
-aGFuIHRoZQ0KPiBzZXJ2ZXIncywgb3IgdGhlIHNlcnZlciBjb3VsZCByZWJvb3QsIGV0Yy4sIGV0
-Yy4pDQo+IA0KPiBJIGFncmVlIHdpdGggYWxsIHRoZSBzdWdnZXN0aW9ucyBmb3IgdHJ5aW5nIHRv
-IGFudGljaXBhdGUgZXhwaXJ5IGluIHRoZQ0KPiBub3JtYWwgY2FzZXMgYW5kIHByZXBhcmluZyB0
-byBtaW5pbWl6ZSB0aGUgZGFtYWdlLCB0aGF0J3MgZmluZS4gIEJ1dA0KPiBvbmNlIHRoZSBleHBp
-cnkgZmluYWxseSBjb21lcyB3ZSBzaG91bGQgbGVhdmUgdGhlIGV4aXN0aW5nIG1lY2hhbmlzbXMg
-dG8NCj4gZG8gdGhlaXIgam9iLg0KDQpSaWdodCwgYnV0IHRoZSBwcm9ibGVtIHRoYXQgdGhlIGV4
-aXN0aW5nIG1lY2hhbmlzbXMgaGF2ZSBpcyB0aGF0IGR1ZSB0bw0KYXN5bmNocm9ub3VzIHJlYWRz
-IGFuZCB3cml0ZXMsIHRoZSBhcHBsaWNhdGlvbiBjYW4gZW5kIHVwIGVhdGluZw0Kc2l6ZWFibGUg
-Y2h1bmtzIG9mIG1lbW9yeS4gSXQgY2FuIGFsc28gZW5kIHVwIGdyYWJiaW5nIGxvY2tzIHdpdGhv
-dXQNCmJlaW5nIGFibGUgdG8gZnJlZSB0aGVtIGFmdGVyd2FyZHMuDQoNClNQNF9NQUNIX0NSRUQg
-c29sdmVzIG1vc3Qgb2YgdGhlc2UgaXNzdWVzLCBidXQgTkZTdjQuMSBpcyBsZXNzIHBlcnZhc2l2
-ZQ0KdGhhbiBORlN2NCBhdCB0aGlzIHBvaW50LCBzbyBpdCB3b3VsZCBiZSBuaWNlIHRvIGhhdmUg
-YSBzb2x1dGlvbiBmb3IgdGhlDQpsYXR0ZXIgdG9vLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0K
-TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5l
-dGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+Older NFS clients can only find out about changes to a file by polling.
+NFSv4 instead allows a client to get a "delegation" on a file and then
+operate on a file without talking to the server.  Consistency is
+maintained by requiring the server to recall the delegation before
+allowing any conflicting operation.
+
+But our kfsd doesn't always recall delegations on conflicting operations
+from local (non-NFS) users of an exported filesystem.
+
+This patch series fixes that by defining a new lock type to represent a
+delegation.  This new lock type isn't available to userspace for
+now--nfsd is the only user.
+
+Delegations come in both "read" and "write" flavors, but I'm only
+implementing read delegations for now.
+
+Delegations are similar to leases.  The main difference is that
+delegations need to be broken on any operation that changes a file's
+attributes or the set of links pointing to it (like link, unlink, and
+rename).
+
+Such operations take several locks (including at least one i_mutex on a
+directory).  Delegations can take a long time (about a minute) to recall
+when NFS clients are unresponsive.  To avoid blocking a lot of unrelated
+operations, this version of the patches drops all of those locks before
+waiting.
+
+To that end, I'm passing an extra inode ** to functions like vfs_unlink.
+When vfs_unlink finds a delegation it can then pass back the offending
+inode so that the caller can wait for the delegation recall.  If the
+caller passes in NULL, then it instead gets -EWOULDBLOCK on encountering
+a delegation.
+
+In fact, callers outside the vfs are mostly passing in NULL:
+
+	- nfsd wants to imediately return NFS4ERR_DELAY to callers on
+	  encountering a delegation, instead of waiting.
+	- I assume that anyone exporting the fileystem underlying an
+	  ecryptfs mount is making a mistake, and that it's better to
+	  return an error than to wait.
+	- Ditto for fscache.
+
+But those other callers could be taught to wait as well if necessary.
+
+At least in the link case, these patches may currently have the same
+problem Jeff Layton's ESTALE patches hit (some code paths that look safe
+to retry aren't, due to some audit code).
+
+I think this is about the 4th version posted.  The previous version
+didn't drop locks before waiting.
+
+--b.
+
+J. Bruce Fields (12):
+  vfs: pull ext4's double-i_mutex-locking into common code
+  vfs: don't use PARENT/CHILD lock classes for non-directories
+  vfs: rename I_MUTEX_QUOTA now that it's not used for quotas
+  vfs: take i_mutex on renamed file
+  locks: introduce new FL_DELEG lock flag
+  locks: implement delegations
+  namei: minor vfs_unlink cleanup
+  locks: break delegations on unlink
+  locks: helper functions for delegation breaking
+  locks: break delegations on rename
+  locks: break delegations on link
+  locks: break delegations on any attribute modification
+
+Jan Kara (1):
+  gfs2: Get rid of I_MUTEX_QUOTA usage
+
+ Documentation/filesystems/directory-locking |   30 +++++++----
+ drivers/base/devtmpfs.c                     |    6 +--
+ fs/attr.c                                   |    5 +-
+ fs/cachefiles/interface.c                   |    4 +-
+ fs/cachefiles/namei.c                       |    4 +-
+ fs/ecryptfs/inode.c                         |    6 +--
+ fs/ext4/move_extent.c                       |   21 +-------
+ fs/gfs2/ops_fstype.c                        |    8 +++
+ fs/gfs2/quota.c                             |    2 +-
+ fs/hpfs/namei.c                             |    2 +-
+ fs/inode.c                                  |   42 ++++++++++++++-
+ fs/locks.c                                  |   51 ++++++++++++++----
+ fs/namei.c                                  |   74 ++++++++++++++++++++-------
+ fs/nfsd/nfs4state.c                         |    2 +-
+ fs/nfsd/vfs.c                               |   14 +++--
+ fs/open.c                                   |   21 ++++++--
+ fs/utimes.c                                 |    9 +++-
+ include/linux/fs.h                          |   72 +++++++++++++++++++++-----
+ ipc/mqueue.c                                |    2 +-
+ 19 files changed, 280 insertions(+), 95 deletions(-)
+
+-- 
+1.7.9.5
+
