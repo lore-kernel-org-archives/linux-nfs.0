@@ -1,42 +1,156 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:44849 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:43946 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754347Ab2IMNcQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Sep 2012 09:32:16 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Yan-Pai Chen <yanpai.chen@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [3.2.5] NFSv3 CLOSE_WAIT hang
-Date: Thu, 13 Sep 2012 13:32:15 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908FA24DB@SACEXCMBX04-PRD.hq.netapp.com>
-References: <loom.20120905T093214-245@post.gmane.org>
-	  <4FA345DA4F4AE44899BD2B03EEEC2FA908F86381@SACEXCMBX04-PRD.hq.netapp.com>
-	  <6cb9.5049fd40.b47c1@altium.nl> <6cb9.5049fd40.b47c1@altium.nl>
-	  <4FA345DA4F4AE44899BD2B03EEEC2FA908F8E302@SACEXCMBX04-PRD.hq.netapp.com>
-	  <447c.504a05c9.dd0a9@altium.nl> <447c.504a05c9.dd0a9@altium.nl>
-	  <4FA345DA4F4AE44899BD2B03EEEC2FA908F8E833@SACEXCMBX04-PRD.hq.netapp.com>
-	  <74c7.504b9d45.a5956@altium.nl> <loom.20120910T105944-416@post.gmane.org>
-	  <20120911194051.GB11160@hostway.ca>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F9BDDD@SACEXCMBX04-PRD.hq.netapp.com>
-	 <loom.20120913T072025-998@post.gmane.org>
-In-Reply-To: <loom.20120913T072025-998@post.gmane.org>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1759456Ab2IEUzg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Sep 2012 16:55:36 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        David Howells <dhowells@redhat.com>
+Subject: [RFC PATCH 11/13] locks: break delegations on rename
+Date: Wed,  5 Sep 2012 16:55:21 -0400
+Message-Id: <1346878524-10585-12-git-send-email-bfields@redhat.com>
+In-Reply-To: <1346878524-10585-1-git-send-email-bfields@redhat.com>
+References: <1346878524-10585-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA5LTEzIGF0IDA1OjIyICswMDAwLCBZYW4tUGFpIENoZW4gd3JvdGU6DQo+
-IE15a2xlYnVzdCwgVHJvbmQgPFRyb25kLk15a2xlYnVzdEAuLi4+IHdyaXRlczoNCj4gDQo+ID4g
-PiANCj4gPiA+IEkgc3VwcG9zZSB3ZSBjb3VsZCB0cnkgMy41IGF0IHRoaXMgcG9pbnQuDQo+ID4g
-DQo+ID4gSWYgeW91J3ZlIGJlZW4ga2VlcGluZyB1cCB3aXRoIHRoZSAzLjIgc3RhYmxlIHJlbGVh
-c2VzLCB0aGVuIEkgd291bGRuJ3QNCj4gPiBleHBlY3QgYW55IG1ham9yIGRpZmZlcmVuY2VzIHRv
-IHRoZSBzdW5ycGMgY29kZSwgYnV0IGl0IG1pZ2h0IGJlIHdvcnRoIGENCj4gPiB0cnkgaW4gY2Fz
-ZSB0aGUgbmV0d29ya2luZyBsYXllciBoYXMgY2hhbmdlZC4NCj4gPiANCj4gDQo+IEhpIFRyb25k
-LA0KPiANCj4gSSBnb3QgdGhlIHNhbWUgcHJvYmxlbSBvbiBrZXJuZWwgMy41IHdoZW4gdXNpbmcg
-VENQIG1vdW50cy4NCj4gVGhlIGh1bmcgdGFzayBpbmZvIGFuZCBycGNfZGVidWcgbWVzc2FnZXMg
-d2VyZSBqdXN0IHRoZSBzYW1lIGFzIHdoYXQNCj4gSSBnb3Qgb24ga2VybmVsIDMuMy4NCg0KVGhh
-bmtzLiBDYW4geW91IHRyeSB1c2luZyB0aGUgcGF0Y2ggdGhhdCBJIHBvc3RlZCBvbiB0aGUgbGlz
-dCB5ZXN0ZXJkYXk/DQpJdCBzaG91bGQgYXBwbHkgY2xlYW5seSB0byB0aGUgbGF0ZXN0IDMuNS54
-IGtlcm5lbC4NCg0KQ2hlZXJzDQogIFRyb25kDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXgg
-TkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
-b20NCnd3dy5uZXRhcHAuY29tDQo=
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+Cc: David Howells <dhowells@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/cachefiles/namei.c |    2 +-
+ fs/namei.c            |   26 ++++++++++++++++++++++----
+ fs/nfsd/vfs.c         |    2 +-
+ include/linux/fs.h    |    2 +-
+ 4 files changed, 25 insertions(+), 7 deletions(-)
+
+diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
+index 10cf5c6..ef23d2a 100644
+--- a/fs/cachefiles/namei.c
++++ b/fs/cachefiles/namei.c
+@@ -397,7 +397,7 @@ try_again:
+ 		cachefiles_io_error(cache, "Rename security error %d", ret);
+ 	} else {
+ 		ret = vfs_rename(dir->d_inode, rep,
+-				 cache->graveyard->d_inode, grave);
++				 cache->graveyard->d_inode, grave, NULL);
+ 		if (ret != 0 && ret != -ENOMEM)
+ 			cachefiles_io_error(cache,
+ 					    "Rename failed with error %d", ret);
+diff --git a/fs/namei.c b/fs/namei.c
+index eef4806..c7318ae 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3666,7 +3666,8 @@ out:
+ }
+ 
+ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
+-			    struct inode *new_dir, struct dentry *new_dentry)
++			    struct inode *new_dir, struct dentry *new_dentry,
++			    struct inode **delegated_inode)
+ {
+ 	struct inode *target = new_dentry->d_inode;
+ 	struct inode *source = old_dentry->d_inode;
+@@ -3683,6 +3684,14 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
+ 	if (d_mountpoint(old_dentry)||d_mountpoint(new_dentry))
+ 		goto out;
+ 
++	error = try_break_deleg(source, delegated_inode);
++	if (error)
++		goto out;
++	if (target) {
++		error = try_break_deleg(target, delegated_inode);
++		if (error)
++			goto out;
++	}
+ 	error = old_dir->i_op->rename(old_dir, old_dentry, new_dir, new_dentry);
+ 	if (error)
+ 		goto out;
+@@ -3698,7 +3707,8 @@ out:
+ }
+ 
+ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+-	       struct inode *new_dir, struct dentry *new_dentry)
++	       struct inode *new_dir, struct dentry *new_dentry,
++	       struct inode **delegated_inode)
+ {
+ 	int error;
+ 	int is_dir = S_ISDIR(old_dentry->d_inode->i_mode);
+@@ -3726,7 +3736,7 @@ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	if (is_dir)
+ 		error = vfs_rename_dir(old_dir,old_dentry,new_dir,new_dentry);
+ 	else
+-		error = vfs_rename_other(old_dir,old_dentry,new_dir,new_dentry);
++		error = vfs_rename_other(old_dir,old_dentry,new_dir,new_dentry,delegated_inode);
+ 	if (!error)
+ 		fsnotify_move(old_dir, new_dir, old_name, is_dir,
+ 			      new_dentry->d_inode, old_dentry);
+@@ -3742,6 +3752,7 @@ SYSCALL_DEFINE4(renameat, int, olddfd, const char __user *, oldname,
+ 	struct dentry *old_dentry, *new_dentry;
+ 	struct dentry *trap;
+ 	struct nameidata oldnd, newnd;
++	struct inode *delegated_inode = NULL;
+ 	char *from;
+ 	char *to;
+ 	int error;
+@@ -3775,6 +3786,7 @@ SYSCALL_DEFINE4(renameat, int, olddfd, const char __user *, oldname,
+ 	newnd.flags &= ~LOOKUP_PARENT;
+ 	newnd.flags |= LOOKUP_RENAME_TARGET;
+ 
++retry_deleg:
+ 	trap = lock_rename(new_dir, old_dir);
+ 
+ 	old_dentry = lookup_hash(&oldnd);
+@@ -3811,13 +3823,19 @@ SYSCALL_DEFINE4(renameat, int, olddfd, const char __user *, oldname,
+ 	if (error)
+ 		goto exit5;
+ 	error = vfs_rename(old_dir->d_inode, old_dentry,
+-				   new_dir->d_inode, new_dentry);
++				   new_dir->d_inode, new_dentry,
++				   &delegated_inode);
+ exit5:
+ 	dput(new_dentry);
+ exit4:
+ 	dput(old_dentry);
+ exit3:
+ 	unlock_rename(new_dir, old_dir);
++	if (delegated_inode) {
++		error = break_deleg_wait(&delegated_inode);
++		if (!error)
++			goto retry_deleg;
++	}
+ 	mnt_drop_write(oldnd.path.mnt);
+ exit2:
+ 	path_put(&newnd.path);
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 9c39d26..c8f5e74 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1820,7 +1820,7 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
+ 		if (host_err)
+ 			goto out_dput_new;
+ 	}
+-	host_err = vfs_rename(fdir, odentry, tdir, ndentry);
++	host_err = vfs_rename(fdir, odentry, tdir, ndentry, NULL);
+ 	if (!host_err) {
+ 		host_err = commit_metadata(tfhp);
+ 		if (!host_err)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 4c0fa4f..ad9df65e 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1724,7 +1724,7 @@ extern int vfs_symlink(struct inode *, struct dentry *, const char *);
+ extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
+ extern int vfs_rmdir(struct inode *, struct dentry *);
+ extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
+-extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *);
++extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *, struct inode **);
+ 
+ /*
+  * VFS dentry helper functions.
+-- 
+1.7.9.5
+
