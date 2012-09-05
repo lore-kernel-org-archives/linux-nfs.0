@@ -1,123 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:52150 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:53089 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752600Ab2ISBgE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 18 Sep 2012 21:36:04 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 6/8] NFSv4.1: Add helpers for setting/reading the I/O fail bit
-Date: Tue, 18 Sep 2012 21:35:52 -0400
-Message-Id: <1348018554-63137-6-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1348018554-63137-5-git-send-email-Trond.Myklebust@netapp.com>
-References: <1348018554-63137-1-git-send-email-Trond.Myklebust@netapp.com>
- <1348018554-63137-2-git-send-email-Trond.Myklebust@netapp.com>
- <1348018554-63137-3-git-send-email-Trond.Myklebust@netapp.com>
- <1348018554-63137-4-git-send-email-Trond.Myklebust@netapp.com>
- <1348018554-63137-5-git-send-email-Trond.Myklebust@netapp.com>
+	id S1759385Ab2IEUzd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Sep 2012 16:55:33 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>
+Subject: [RFC PATCH 02/13] vfs: pull ext4's double-i_mutex-locking into common code
+Date: Wed,  5 Sep 2012 16:55:12 -0400
+Message-Id: <1346878524-10585-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1346878524-10585-1-git-send-email-bfields@redhat.com>
+References: <1346878524-10585-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...and make them local to the pnfs.c file.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+We want to do this elsewhere as well.
+
+Also, compare pointers instead of inode numbers.
+
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/pnfs.c | 37 ++++++++++++++++++++++++++-----------
- fs/nfs/pnfs.h |  6 ------
- 2 files changed, 26 insertions(+), 17 deletions(-)
+ fs/ext4/move_extent.c |   21 ++-------------------
+ fs/inode.c            |   36 ++++++++++++++++++++++++++++++++++++
+ include/linux/fs.h    |    3 +++
+ 3 files changed, 41 insertions(+), 19 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 44c2c85..a4713f9 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -238,6 +238,27 @@ put_layout_hdr(struct pnfs_layout_hdr *lo)
- 	}
- }
- 
-+static int
-+pnfs_iomode_to_fail_bit(u32 iomode)
-+{
-+	return iomode == IOMODE_RW ?
-+		NFS_LAYOUT_RW_FAILED : NFS_LAYOUT_RO_FAILED;
-+}
-+
-+static void
-+pnfs_layout_io_set_failed(struct pnfs_layout_hdr *lo, u32 iomode)
-+{
-+	set_bit(pnfs_iomode_to_fail_bit(iomode), &lo->plh_flags);
-+	dprintk("%s Setting layout IOMODE_%s fail bit\n", __func__,
-+			iomode == IOMODE_RW ?  "RW" : "READ");
-+}
-+
-+static bool
-+pnfs_layout_io_test_failed(struct pnfs_layout_hdr *lo, u32 iomode)
-+{
-+	return test_bit(pnfs_iomode_to_fail_bit(iomode), &lo->plh_flags) != 0;
-+}
-+
- static void
- init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
- {
-@@ -612,7 +633,7 @@ send_layoutget(struct pnfs_layout_hdr *lo,
- 			break;
- 		default:
- 			/* remember that LAYOUTGET failed and suspend trying */
--			set_bit(lo_fail_bit(range->iomode), &lo->plh_flags);
-+			pnfs_layout_io_set_failed(lo, range->iomode);
- 		}
- 		return NULL;
- 	}
-@@ -669,8 +690,8 @@ _pnfs_return_layout(struct inode *ino)
- 	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
- 	if (unlikely(lrp == NULL)) {
- 		status = -ENOMEM;
--		set_bit(NFS_LAYOUT_RW_FAILED, &lo->plh_flags);
--		set_bit(NFS_LAYOUT_RO_FAILED, &lo->plh_flags);
-+		pnfs_layout_io_set_failed(lo, IOMODE_RW);
-+		pnfs_layout_io_set_failed(lo, IOMODE_READ);
- 		pnfs_clear_layout_returned(lo);
- 		pnfs_put_layout_hdr(lo);
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index c5826c6..b87d94a 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -1086,19 +1086,7 @@ mext_inode_double_lock(struct inode *inode1, struct inode *inode2)
+ 	if (ret < 0)
  		goto out;
-@@ -1046,7 +1067,7 @@ pnfs_update_layout(struct inode *ino,
- 	}
  
- 	/* if LAYOUTGET already failed once we don't try again */
--	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->plh_flags))
-+	if (pnfs_layout_io_test_failed(nfsi->layout, iomode))
- 		goto out_unlock;
- 
- 	/* Check to see if the layout for the given range already exists */
-@@ -1581,13 +1602,7 @@ static void pnfs_list_write_lseg(struct inode *inode, struct list_head *listp)
- 
- void pnfs_set_lo_fail(struct pnfs_layout_segment *lseg)
- {
--	if (lseg->pls_range.iomode == IOMODE_RW) {
--		dprintk("%s Setting layout IOMODE_RW fail bit\n", __func__);
--		set_bit(lo_fail_bit(IOMODE_RW), &lseg->pls_layout->plh_flags);
--	} else {
--		dprintk("%s Setting layout IOMODE_READ fail bit\n", __func__);
--		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
+-	if (inode1 == inode2) {
+-		mutex_lock(&inode1->i_mutex);
+-		goto out;
 -	}
-+	pnfs_layout_io_set_failed(lseg->pls_layout, lseg->pls_range.iomode);
- }
- EXPORT_SYMBOL_GPL(pnfs_set_lo_fail);
- 
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 0495879..e3eb7d1 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -274,12 +274,6 @@ pnfs_test_layout_returned(struct pnfs_layout_hdr *lo)
- 	return test_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
- }
- 
--static inline int lo_fail_bit(u32 iomode)
--{
--	return iomode == IOMODE_RW ?
--			 NFS_LAYOUT_RW_FAILED : NFS_LAYOUT_RO_FAILED;
--}
 -
- static inline struct pnfs_layout_segment *
- pnfs_get_lseg(struct pnfs_layout_segment *lseg)
- {
+-	if (inode1->i_ino < inode2->i_ino) {
+-		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
+-		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
+-	} else {
+-		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
+-		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
+-	}
+-
++	lock_two_nondirectories(inode1, inode2);
+ out:
+ 	return ret;
+ }
+@@ -1123,12 +1111,7 @@ mext_inode_double_unlock(struct inode *inode1, struct inode *inode2)
+ 	if (ret < 0)
+ 		goto out;
+ 
+-	if (inode1)
+-		mutex_unlock(&inode1->i_mutex);
+-
+-	if (inode2 && inode2 != inode1)
+-		mutex_unlock(&inode2->i_mutex);
+-
++	unlock_two_nondirectories(inode1, inode2);
+ out:
+ 	return ret;
+ }
+diff --git a/fs/inode.c b/fs/inode.c
+index ac8d904..582843d 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -969,6 +969,42 @@ void unlock_new_inode(struct inode *inode)
+ EXPORT_SYMBOL(unlock_new_inode);
+ 
+ /**
++ * lock_two_nondirectories - take two i_mutexes on non-directory objects
++ * @inode1: first inode to lock; must be non-NULL
++ * @inode2: second inode to lock; optional, may equal first or be NULL.
++ */
++void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
++{
++	if (inode1 == inode2 || inode2 == NULL)
++		mutex_lock(&inode1->i_mutex);
++	else if (inode1 < inode2) {
++		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
++		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
++
++	} else {
++		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
++		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
++	}
++}
++EXPORT_SYMBOL(lock_two_nondirectories);
++
++/**
++ * lock_two_nondirectories - release locks from lock_two_nondirectories()
++ * @inode1: first inode to unlock
++ * @inode2: second inode to lock
++ *
++ * Arguments must be same as those given to corresponding
++ * lock_two_nondirectories() call.
++ */
++void unlock_two_nondirectories(struct inode *inode1, struct inode *inode2)
++{
++	mutex_unlock(&inode1->i_mutex);
++	if (inode2 && inode2 != inode1)
++		mutex_unlock(&inode2->i_mutex);
++}
++EXPORT_SYMBOL(unlock_two_nondirectories);
++
++/**
+  * iget5_locked - obtain an inode from a mounted file system
+  * @sb:		super block of file system
+  * @hashval:	hash value (usually inode number) to get
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index aa11047..a179b69 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -895,6 +895,9 @@ enum inode_i_mutex_lock_class
+ 	I_MUTEX_QUOTA
+ };
+ 
++void lock_two_nondirectories(struct inode *, struct inode*);
++void unlock_two_nondirectories(struct inode *, struct inode*);
++
+ /*
+  * NOTE: in a 32bit arch with a preemptable kernel and
+  * an UP compile the i_size_read/write must be atomic
 -- 
-1.7.11.4
+1.7.9.5
 
