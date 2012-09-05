@@ -1,15 +1,15 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53095 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:43933 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759432Ab2IEUze (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Sep 2012 16:55:34 -0400
+	id S1759440Ab2IEUzf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Sep 2012 16:55:35 -0400
 From: "J. Bruce Fields" <bfields@redhat.com>
 To: Al Viro <viro@zeniv.linux.org.uk>
 Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [RFC PATCH 04/13] vfs: rename I_MUTEX_QUOTA now that it's not used for quotas
-Date: Wed,  5 Sep 2012 16:55:14 -0400
-Message-Id: <1346878524-10585-5-git-send-email-bfields@redhat.com>
+Subject: [RFC PATCH 08/13] namei: minor vfs_unlink cleanup
+Date: Wed,  5 Sep 2012 16:55:18 -0400
+Message-Id: <1346878524-10585-9-git-send-email-bfields@redhat.com>
 In-Reply-To: <1346878524-10585-1-git-send-email-bfields@redhat.com>
 References: <1346878524-10585-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -17,65 +17,48 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-I_MUTEX_QUOTA is now just being used whenever we want to lock two
-non-directories.  So the name isn't right.  I_MUTEX_NONDIR2 isn't
-especially elegant but it's the best I could think of.
-
-Also fix some outdated documentation.
+We'll be using dentry->d_inode in one more place.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/inode.c         |    4 ++--
- include/linux/fs.h |    9 ++++++---
- 2 files changed, 8 insertions(+), 5 deletions(-)
+ fs/namei.c |    7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/fs/inode.c b/fs/inode.c
-index 44179ce..4ab9516 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -979,11 +979,11 @@ void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
- 		mutex_lock(&inode1->i_mutex);
- 	else if (inode1 < inode2) {
- 		mutex_lock(&inode1->i_mutex);
--		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_QUOTA);
-+		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_NONDIR2);
+diff --git a/fs/namei.c b/fs/namei.c
+index 6156135..10d6622 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3307,6 +3307,7 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
  
- 	} else {
- 		mutex_lock(&inode2->i_mutex);
--		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_QUOTA);
-+		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_NONDIR2);
- 	}
- }
- EXPORT_SYMBOL(lock_two_nondirectories);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index a179b69..017070e 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -881,10 +881,13 @@ static inline int inode_unhashed(struct inode *inode)
-  * 0: the object of the current VFS operation
-  * 1: parent
-  * 2: child/target
-- * 3: quota file
-+ * 3: xattr
-+ * 4: second non-directory
-+ * The last is for certain operations (such as rename) which lock two
-+ * non-directories at once.
-  *
-  * The locking order between these classes is
-- * parent -> child -> normal -> xattr -> quota
-+ * parent -> child -> normal -> xattr -> second non-directory
-  */
- enum inode_i_mutex_lock_class
+ int vfs_unlink(struct inode *dir, struct dentry *dentry)
  {
-@@ -892,7 +895,7 @@ enum inode_i_mutex_lock_class
- 	I_MUTEX_PARENT,
- 	I_MUTEX_CHILD,
- 	I_MUTEX_XATTR,
--	I_MUTEX_QUOTA
-+	I_MUTEX_NONDIR2
- };
++	struct inode *target = dentry->d_inode;
+ 	int error = may_delete(dir, dentry, 0);
  
- void lock_two_nondirectories(struct inode *, struct inode*);
+ 	if (error)
+@@ -3315,7 +3316,7 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
+ 	if (!dir->i_op->unlink)
+ 		return -EPERM;
+ 
+-	mutex_lock(&dentry->d_inode->i_mutex);
++	mutex_lock(&target->i_mutex);
+ 	if (d_mountpoint(dentry))
+ 		error = -EBUSY;
+ 	else {
+@@ -3326,11 +3327,11 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
+ 				dont_mount(dentry);
+ 		}
+ 	}
+-	mutex_unlock(&dentry->d_inode->i_mutex);
++	mutex_unlock(&target->i_mutex);
+ 
+ 	/* We don't d_delete() NFS sillyrenamed files--they still exist. */
+ 	if (!error && !(dentry->d_flags & DCACHE_NFSFS_RENAMED)) {
+-		fsnotify_link_count(dentry->d_inode);
++		fsnotify_link_count(target);
+ 		d_delete(dentry);
+ 	}
+ 
 -- 
 1.7.9.5
 
