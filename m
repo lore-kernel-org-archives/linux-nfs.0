@@ -1,68 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:47005 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:43965 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932087Ab2IRBzC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Sep 2012 21:55:02 -0400
-Received: from relay1.suse.de (unknown [195.135.220.254])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by mx2.suse.de (Postfix) with ESMTP id 9FB82A2FD7
-	for <linux-nfs@vger.kernel.org>; Tue, 18 Sep 2012 03:55:01 +0200 (CEST)
-Date: Tue, 18 Sep 2012 11:54:50 +1000
-From: NeilBrown <neilb@suse.de>
-To: NFS <linux-nfs@vger.kernel.org>
-Subject: Should "mount -o proto=udp" be usable against an IPv6 only server?
-Message-ID: <20120918115450.5c65973f@notabene.brown>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/DRKTZPHBFHoQ=G/uJi./ZH0"; protocol="application/pgp-signature"
+	id S1753937Ab2IEU7V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Sep 2012 16:59:21 -0400
+Date: Wed, 5 Sep 2012 16:59:20 -0400
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.cz>,
+        Steven Whitehouse <swhiteho@redhat.com>
+Subject: Re: [RFC PATCH 01/13] gfs2: Get rid of I_MUTEX_QUOTA usage
+Message-ID: <20120905205920.GA10724@fieldses.org>
+References: <1346878524-10585-1-git-send-email-bfields@redhat.com>
+ <1346878524-10585-2-git-send-email-bfields@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1346878524-10585-2-git-send-email-bfields@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/DRKTZPHBFHoQ=G/uJi./ZH0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Wed, Sep 05, 2012 at 04:55:11PM -0400, J. Bruce Fields wrote:
+> From: Jan Kara <jack@suse.cz>
+> 
+> GFS2 uses i_mutex on its system quota inode to synchronize writes to
+> quota file. Since this is an internal inode to GFS2 (not part of directory
+> hiearchy or visible by user) we are safe to define locking rules for it. So
+> let's just get it its own locking class to make it clear.
 
+By the way, Steve, is there any reason you haven't taken this through
+the gfs2 tree?
 
+--b.
 
-It seems that with current nfs-utils, "proto=3Dudp" (either
-in /etc/nfsmount.conf or on the command line) restricts the mount to using
-IPv4, not IPv6.
-For IPv6 you need "udp6".
-
-This isn't made crystal clear by the documentation.  I could fix the
-documentation, but first I wanted to check if this really is appropriate.
-Is there a good reason for this, or should we make "udp" mean "udp4 or udp6"
-and require either "udp4" or "udp6" if we want a particular IP version.
-
-i.e. instead of treating the "proto=3D" value as a "netid", should we treat=
- it
-as a "protoname" and match any "netid" in /etc/netconfig with that
-"protoname"??
-
-Thanks,
-NeilBrown=20
-
---Sig_/DRKTZPHBFHoQ=G/uJi./ZH0
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.18 (GNU/Linux)
-
-iQIVAwUBUFfUajnsnt1WYoG5AQINTA/9FAQygy/hWipp4CoyCR+hL6JOzmUuvrZx
-qs3UVGXcsNH0QxP9Gq3DC4RnoAgfWYeecfxDh/uE88cNADv2E0LYlFpKP3TCNi4W
-8Q7lKaOuC01wa6ynePsy3DAo2rqZmgmNGwL51ox0FjHMAvRAsQIDn9qt2LjJepxt
-l1fMp0q2NIK9c7mwVPvVwJeSdUJpVXOuJdoDnY+L5N+9O3uAhKJ4RsVb5e8v6mHR
-NL1lqRksaJkXGDwra5uIw0J+joUqmNlR/EQM1ZCaojYNWLGKknDgZeD+AtKvOVM6
-kGv1ZtSIOf61pi0nCMTg+FYnwL4qwc5NN3uRvbzDd2fohOGpiYHjEwS1ePqVtv82
-76B/ztG+IVQYXd5AfQV7GkSIbatbPqAG270mX2BsOxu9xUhSxh39o6LxImCr0Umz
-AG32BlOyZxe0lVNHi4HdXWTZVOwRMCB5jtpV0zrH578AUTXqY7YPv4QH4QbH6tb3
-kuZKty1eDXw7Mazh0h+m/Xad89ruKwyqtIFe2kOPYNgfWXr4ARZhviOkDkf+gvnG
-Rvmb23OF5z/tLEakzyXmnuLXxOnUgCdvtz824/FsdHSp6Nz7+M05ugkJyFEN0OAQ
-Gdld0r2phJqwfOOOoaxhJg5DB1EeR7F59IdXZPih0XK1EmaLORHg4q833XFERtHW
-uM7FG+1ZYmk=
-=VRue
------END PGP SIGNATURE-----
-
---Sig_/DRKTZPHBFHoQ=G/uJi./ZH0--
+> 
+> CC: Steven Whitehouse <swhiteho@redhat.com>
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/gfs2/ops_fstype.c |    8 ++++++++
+>  fs/gfs2/quota.c      |    2 +-
+>  2 files changed, 9 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/gfs2/ops_fstype.c b/fs/gfs2/ops_fstype.c
+> index e5af9dc..e443966 100644
+> --- a/fs/gfs2/ops_fstype.c
+> +++ b/fs/gfs2/ops_fstype.c
+> @@ -19,6 +19,7 @@
+>  #include <linux/mount.h>
+>  #include <linux/gfs2_ondisk.h>
+>  #include <linux/quotaops.h>
+> +#include <linux/lockdep.h>
+>  
+>  #include "gfs2.h"
+>  #include "incore.h"
+> @@ -766,6 +767,7 @@ fail:
+>  	return error;
+>  }
+>  
+> +static struct lock_class_key gfs2_quota_imutex_key;
+>  
+>  static int init_inodes(struct gfs2_sbd *sdp, int undo)
+>  {
+> @@ -803,6 +805,12 @@ static int init_inodes(struct gfs2_sbd *sdp, int undo)
+>  		fs_err(sdp, "can't get quota file inode: %d\n", error);
+>  		goto fail_rindex;
+>  	}
+> +	/*
+> +	 * i_mutex on quota files is special. Since this inode is hidden system
+> +	 * file, we are safe to define locking ourselves.
+> +	 */
+> +	lockdep_set_class(&sdp->sd_quota_inode->i_mutex,
+> +			  &gfs2_quota_imutex_key);
+>  
+>  	error = gfs2_rindex_update(sdp);
+>  	if (error)
+> diff --git a/fs/gfs2/quota.c b/fs/gfs2/quota.c
+> index a3bde91..3d9c989 100644
+> --- a/fs/gfs2/quota.c
+> +++ b/fs/gfs2/quota.c
+> @@ -781,7 +781,7 @@ static int do_sync(unsigned int num_qd, struct gfs2_quota_data **qda)
+>  		return -ENOMEM;
+>  
+>  	sort(qda, num_qd, sizeof(struct gfs2_quota_data *), sort_qd, NULL);
+> -	mutex_lock_nested(&ip->i_inode.i_mutex, I_MUTEX_QUOTA);
+> +	mutex_lock(&ip->i_inode.i_mutex);
+>  	for (qx = 0; qx < num_qd; qx++) {
+>  		error = gfs2_glock_nq_init(qda[qx]->qd_gl, LM_ST_EXCLUSIVE,
+>  					   GL_NOCACHE, &ghs[qx]);
+> -- 
+> 1.7.9.5
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
