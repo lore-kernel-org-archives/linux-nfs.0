@@ -1,63 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from hrndva-omtalb.mail.rr.com ([71.74.56.122]:9138 "EHLO
-	hrndva-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932181Ab2IDPfv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Sep 2012 11:35:51 -0400
-Message-ID: <1346772948.27919.9.camel@gandalf.local.home>
-Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive
- hashtable
-From: Steven Rostedt <rostedt@goodmis.org>
-To: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-Cc: Sasha Levin <levinsasha928@gmail.com>, Tejun Heo <tj@kernel.org>,
-        torvalds@linux-foundation.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, mingo@elte.hu,
-        ebiederm@xmission.com, aarcange@redhat.com, ericvh@gmail.com,
-        netdev@vger.kernel.org, josh@joshtriplett.org, eric.dumazet@gmail.com,
-        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
-        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
-        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Date: Tue, 04 Sep 2012 11:35:48 -0400
-In-Reply-To: <20120828230050.GA3337@Krystal>
-References: <20120824203332.GF21325@google.com> <5037E9D9.9000605@gmail.com>
-	 <20120824212348.GK21325@google.com> <5038074D.300@gmail.com>
-	 <20120824230740.GN21325@google.com> <20120825042419.GA27240@Krystal>
-	 <503C95E4.3010000@gmail.com> <20120828101148.GA21683@Krystal>
-	 <503CAB1E.5010408@gmail.com> <20120828115638.GC23818@Krystal>
-	 <20120828230050.GA3337@Krystal>
-Content-Type: text/plain; charset="ISO-8859-15"
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:16215 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752469Ab2IEOCw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Sep 2012 10:02:52 -0400
+Message-ID: <50475B77.7090304@redhat.com>
+Date: Wed, 05 Sep 2012 17:02:31 +0300
+From: Avi Kivity <avi@redhat.com>
+MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Andrew Holway <a.holway@syseleven.de>,
+        "kvm@vger.kernel.org" <kvm@vger.kernel.org>,
+        "libvir-list@redhat.com" <libvir-list@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFS over RDMA small block DIRECT_IO bug
+References: <F416961E-A33A-44D3-A788-5EF598A0AAFE@syseleven.de> <4FA345DA4F4AE44899BD2B03EEEC2FA908F82C6C@SACEXCMBX04-PRD.hq.netapp.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA908F82C6C@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2012-08-28 at 19:00 -0400, Mathieu Desnoyers wrote:
-
-> Looking again at:
+On 09/04/2012 03:04 PM, Myklebust, Trond wrote:
+> On Tue, 2012-09-04 at 11:31 +0200, Andrew Holway wrote:
+>> Hello.
+>> 
+>> # Avi Kivity avi(a)redhat recommended I copy kvm in on this. It would also seem relevent to libvirt. #
+>> 
+>> I have a Centos 6.2 server and Centos 6.2 client.
+>> 
+>> [root@store ~]# cat /etc/exports 
+>> /dev/shm				10.149.0.0/16(rw,fsid=1,no_root_squash,insecure)    (I have tried with non tempfs targets also)
+>> 
+>> 
+>> [root@node001 ~]# cat /etc/fstab 
+>> store.ibnet:/dev/shm             /mnt                 nfs          rdma,port=2050,defaults 0 0
+>> 
+>> 
+>> I wrote a little for loop one liner that dd'd the centos net install image to a file called 'hello' then checksummed that file. Each iteration uses a different block size.
+>> 
+>> Non DIRECT_IO seems to work fine. DIRECT_IO with 512byte, 1K and 2K block sizes get corrupted.
 > 
-> +#define hash_for_each_size(name, bits, bkt, node, obj, member)                 \
-> +       for (bkt = 0; bkt < HASH_SIZE(bits); bkt++)                             \
-> +               hlist_for_each_entry(obj, node, &name[bkt], member)
 > 
-> you will notice that a "break" or "continue" in the inner loop will not
-> affect the outer loop, which is certainly not what the programmer would
-> expect!
-> 
-> I advise strongly against creating such error-prone construct.
-> 
+> That is expected behaviour. DIRECT_IO over RDMA needs to be page aligned
+> so that it can use the more efficient RDMA READ and RDMA WRITE memory
+> semantics (instead of the SEND/RECEIVE channel semantics).
 
-A few existing loop macros do this. But they require a do { } while ()
-approach, and all have a comment.
+Shouldn't subpage requests fail then?  O_DIRECT block requests fail for
+subsector writes, instead of corrupting your data.
 
-It's used by do_each_thread() in sched.h and ftrace does this as well.
-Look at kernel/trace/ftrace.c at do_for_each_ftrace_rec().
+Hopefully this is documented somewhere.
 
-Yes it breaks 'break' but it does not break 'continue' as it would just
-go to the next item that would have been found (like a normal for
-would).
-
--- Steve
-
-
+-- 
+error compiling committee.c: too many arguments to function
