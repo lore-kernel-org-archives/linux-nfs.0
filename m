@@ -1,100 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:38872 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:53095 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753786Ab2ITQLQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Sep 2012 12:11:16 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: William Dauchy <wdauchy@gmail.com>,
-        "dhowells@redhat.com" <dhowells@redhat.com>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: wait_for_key_construction oops
-Date: Thu, 20 Sep 2012 16:11:14 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908FDB502@SACEXCMBX04-PRD.hq.netapp.com>
-References: <CAJ75kXapMH7daNwgcW18t+OjYkgQehHTzKZ0xZAy9pKfAP2G8Q@mail.gmail.com>
-In-Reply-To: <CAJ75kXapMH7daNwgcW18t+OjYkgQehHTzKZ0xZAy9pKfAP2G8Q@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1759432Ab2IEUze (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Sep 2012 16:55:34 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [RFC PATCH 04/13] vfs: rename I_MUTEX_QUOTA now that it's not used for quotas
+Date: Wed,  5 Sep 2012 16:55:14 -0400
+Message-Id: <1346878524-10585-5-git-send-email-bfields@redhat.com>
+In-Reply-To: <1346878524-10585-1-git-send-email-bfields@redhat.com>
+References: <1346878524-10585-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA5LTIwIGF0IDE2OjI3ICswMjAwLCBXaWxsaWFtIERhdWNoeSB3cm90ZToN
-Cj4gSGVsbG8sDQo+IA0KPiBJJ20gc3RpbGwgaGl0dGluZyBhIGtlcm5lbCBOVUxMIGRlcmVmZXJl
-bmNlIG9uDQo+IHdhaXRfZm9yX2tleV9jb25zdHJ1Y3Rpb24gd2l0aCBhIDMuNC43IHg4Nl82NCBr
-ZXJuZWwuDQo+IE15IGJ1aWxkIGFsc28gaW5jbHVkZXMgdGhvc2UgTkZTIHBhdGNoZXM6DQo+IA0K
-PiBhNDI3YjllICMgTkZTOiBGaXggYSBudW1iZXIgb2YgYnVncyBpbiB0aGUgaWRtYXBwZXINCj4g
-YzUwNjY5NCAjIE5GUzogQ2xlYXIga2V5IGNvbnN0cnVjdGlvbiBkYXRhIGlmIHRoZSBpZG1hcCB1
-cGNhbGwgZmFpbHMNCj4gMTJkZmQwOCAjIE5GUzogcmV0dXJuIC1FTk9LRVkgd2hlbiB0aGUgdXBj
-YWxsIGZhaWxzIHRvIG1hcCB0aGUgbmFtZQ0KPiA1Y2YwMmQwICMgbmZzOiBza2lwIGNvbW1pdCBp
-biByZWxlYXNlcGFnZSBpZiB3ZSdyZSBmcmVlaW5nIG1lbW9yeSBmb3INCj4gZnMtcmVsYXRlZCBy
-ZWFzb25zDQo+IGNhZWEzM2QgIyBTVU5SUEM6IHJldHVybiBuZWdhdGl2ZSB2YWx1ZSBpbiBjYXNl
-IHJwY2JpbmQgY2xpZW50IGNyZWF0aW9uIGVycm9yDQo+IGNhYzVkMDcgIyBzdW5ycGM6IGNsbnQ6
-IEFkZCBtaXNzaW5nIGJyYWNlcw0KPiAwODY2MDA0ICMgTkZTdjM6IEVuc3VyZSB0aGF0IGRvX3By
-b2NfZ2V0X3Jvb3QoKSByZXBvcnRzIGVycm9ycyBjb3JyZWN0bHkNCj4gDQo+IFNpbmNlIEknbSBu
-b3QgYWJsZSB0byByZXByb2R1Y2UgaXQgZWFzaWx5LCBJIGRvbid0IGtub3cgZXhhY3RseSB3aGVu
-DQo+IGl0J3MgaGFwcGVuaW5nLg0KPiBBbnkgaWRlYT8gb3IgbWF5YmUgYW0gSSBtaXNzaW5nIHNv
-bWUgb3RoZXIgcGF0Y2hlcz8NCj4gSSdtIHVzaW5nIHRoZSBvbGQgbmZzIHVzZXJsYW5kLg0KPiAN
-Cj4gUmVnYXJkcywNCj4gDQo+IEJVRzogdW5hYmxlIHRvIGhhbmRsZSBrZXJuZWwgTlVMTCBwb2lu
-dGVyIGRlcmVmZXJlbmNlIGF0IDAwMDAwMDAwMDAwMDAwNzANCj4gSVA6IFs8ZmZmZmZmZmY4MTFh
-NTI0OD5dIHdhaXRfZm9yX2tleV9jb25zdHJ1Y3Rpb24rMHgyOC8weDcwDQo+IFBHRCAzMTM4OTIw
-MDANCj4gT29wczogMDAwMCBbIzFdIFBSRUVNUFQgU01QDQo+IENQVSAyMA0KPiBQaWQ6IDIzMjYx
-LCBjb21tOiBrd29ya2VyLzIwOjEyIFRhaW50ZWQ6IEcgICAgICAgIFcgICAgMy40LjcNCj4gUklQ
-OiAwMDEwOls8ZmZmZmZmZmY4MTFhNTI0OD5dICBbPGZmZmZmZmZmODExYTUyNDg+XQ0KPiB3YWl0
-X2Zvcl9rZXlfY29uc3RydWN0aW9uKzB4MjgvMHg3MA0KPiBSU1A6IDAwMTg6ZmZmZjg4MDg5ZTZl
-MWE3MCAgRUZMQUdTOiAwMDAxMDI0Ng0KPiBSQVg6IGZmZmZmZmZmODExYTUyYTAgUkJYOiAwMDAw
-MDAwMDAwMDAwMDAwIFJDWDogMDAwMDAwMDAwMDAwMDAwMg0KPiBSRFg6IGZmZmZmZmZmODExYTUy
-OTAgUlNJOiAwMDAwMDAwMDAwMDAwMDAwIFJESTogMDAwMDAwMDAwMDAwMDA3MA0KPiBSQlA6IGZm
-ZmY4ODA0YWM1ZDQ4MDAgUjA4OiBmZmZmODgwYmYyMzRjNmMxIFIwOTogMDAwMDAwMDAwMDAwMDAw
-MA0KPiBSMTA6IDAwMDAwMDAwNTA1YTg1MjYgUjExOiAwMDAwMDAwMDAwMDAwMDAwIFIxMjogZmZm
-ZmZmZmY4MTZhYmNkMQ0KPiBSMTM6IGZmZmY4ODA4ODc1OTBhNDggUjE0OiAwMDAwMDAwMDAwMDAw
-MDFiIFIxNTogZmZmZjg4MDRhYzVkNDgwMw0KPiBGUzogIDAwMDAwMDAwMDAwMDAwMDAoMDAwMCkg
-R1M6ZmZmZjg4MGMzZmQwMDAwMCgwMDAwKSBrbmxHUzowMDAwMDAwMDAwMDAwMDAwDQo+IENTOiAg
-MDAxMCBEUzogMDAwMCBFUzogMDAwMCBDUjA6IDAwMDAwMDAwODAwNTAwM2INCj4gQ1IyOiAwMDAw
-MDAwMDAwMDAwMDcwIENSMzogMDAwMDAwMDAwMTQ5ZTAwMCBDUjQ6IDAwMDAwMDAwMDAwMDA3ZjAN
-Cj4gRFIwOiAwMDAwMDAwMDAwMDAwMDAwIERSMTogMDAwMDAwMDAwMDAwMDAwMCBEUjI6IDAwMDAw
-MDAwMDAwMDAwMDANCj4gRFIzOiAwMDAwMDAwMDAwMDAwMDAwIERSNjogMDAwMDAwMDBmZmZmMGZm
-MCBEUjc6IDAwMDAwMDAwMDAwMDA0MDANCj4gUHJvY2VzcyBrd29ya2VyLzIwOjEyIChwaWQ6IDIz
-MjYxLCB0aHJlYWRpbmZvIGZmZmY4ODA4ZTlkZTc5NTAsIHRhc2sNCj4gZmZmZjg4MDhlOWRlNzUw
-MCkNCj4gU3RhY2s6DQo+IDAwMDAwMDAwMDAwMDAwMDAgZmZmZmZmZmY4MTFhNTk1ZiAwMDAwMDAw
-MDAwMDAwMDAwIGZmZmZmZmZmODEwZGYzY2QNCj4gZmZmZjg4MDhlOWRlNzUwMCAwMDAwMDAwMDAw
-MDAwMDE2IGZmZmY4ODA4OGNkYzk4YzAgZmZmZmZmZmY4MTZiZTdjMA0KPiBmZmZmODgwNGFjNWQ0
-ODAwIGZmZmZmZmZmODExODU2NGIgMDAwMDAwMDAwMDAwMDAxYiBmZmZmZmZmZjgxOTM1YzQwDQo+
-IENhbGwgVHJhY2U6DQo+IFs8ZmZmZmZmZmY4MTFhNTk1Zj5dID8gcmVxdWVzdF9rZXkrMHg1Zi8w
-eGEwDQoNCkkgY2FuJ3Qgc2VlIGhvdyB0aGlzIGNhbiBiZSBhbiBORlMgYnVnLiBJdCBsb29rcyB0
-byBtZSBhcyBpZg0KcmVxdWVzdF9rZXkoKSBpcyBwYXNzaW5nIGEgTlVMTCAna2V5JyBwb2ludGVy
-IHRvDQp3YWl0X2Zvcl9rZXlfY29uc3RydWN0aW9uKCksIHdoaWNoIGltcGxpZXMgdGhhdCByZXF1
-ZXN0X2tleV9hbmRfbGluaygpDQppcyBzb21laG93IHByb2R1Y2luZyBhbiBpbnZhbGlkIHJldHVy
-biB2YWx1ZS4NCg0KRGF2aWQ/DQoNCj4gWzxmZmZmZmZmZjgxMGRmM2NkPl0gPyBfX2ttYWxsb2Mr
-MHgyZC8weDEyMA0KPiBbPGZmZmZmZmZmODExODU2NGI+XSA/IG5mc19pZG1hcF9yZXF1ZXN0X2tl
-eSsweDFhYi8weDFjMA0KPiBbPGZmZmZmZmZmODExODU2Yjc+XSA/IG5mc19pZG1hcF9nZXRfa2V5
-KzB4NTcvMHhlMA0KPiBbPGZmZmZmZmZmODExODU5NGU+XSA/IG5mc19tYXBfc3RyaW5nX3RvX251
-bWVyaWMrMHgzZS8weGMwDQo+IFs8ZmZmZmZmZmY4MTE4NTlmZj5dID8gbmZzX2lkbWFwX2xvb2t1
-cF9pZCsweDJmLzB4ODANCj4gWzxmZmZmZmZmZjgxMTg1YjE5Pl0gPyBuZnNfbWFwX25hbWVfdG9f
-dWlkKzB4MzkvMHg5MA0KPiBbPGZmZmZmZmZmODExN2U1NmI+XSA/IGRlY29kZV9nZXRmYXR0cl9h
-dHRycysweDk0Yi8weGExMA0KPiBbPGZmZmZmZmZmODExN2ZlMDY+XSA/IFQuMTYwNysweDk2LzB4
-ZTANCj4gWzxmZmZmZmZmZjgxMTdmZWUyPl0gPyBuZnM0X3hkcl9kZWNfZGVsZWdyZXR1cm4rMHg3
-Mi8weDgwDQo+IFs8ZmZmZmZmZmY4MTA1ZjE2MD5dID8gY3B1YWNjdF9jaGFyZ2UrMHgyMC8weDcw
-DQo+IFs8ZmZmZmZmZmY4MTE3ZmU3MD5dID8gZGVjb2RlX2dldGZhdHRyKzB4MjAvMHgyMA0KPiBb
-PGZmZmZmZmZmODE0NDU5Njk+XSA/IHJwY2F1dGhfdW53cmFwX3Jlc3ArMHg3OS8weDgwDQo+IFs8
-ZmZmZmZmZmY4MTE3ZmU3MD5dID8gZGVjb2RlX2dldGZhdHRyKzB4MjAvMHgyMA0KPiBbPGZmZmZm
-ZmZmODE0M2Q3YzM+XSA/IGNhbGxfZGVjb2RlKzB4MmEzLzB4NDAwDQo+IFs8ZmZmZmZmZmY4MTQ0
-NGQ0Nj5dID8gX19ycGNfZXhlY3V0ZSsweDQ2LzB4MWIwDQo+IFs8ZmZmZmZmZmY4MTA2NGE0Nz5d
-ID8gdHJ5X3RvX3dha2VfdXArMHgxZDcvMHgyOTANCj4gWzxmZmZmZmZmZjgxNDQ0ZWZkPl0gPyBy
-cGNfYXN5bmNfc2NoZWR1bGUrMHgxZC8weDMwDQo+IFs8ZmZmZmZmZmY4MTA1MDNiOD5dID8gcHJv
-Y2Vzc19vbmVfd29yaysweDEwOC8weDNhMA0KPiBbPGZmZmZmZmZmODE0NDRlZTA+XSA/IHJwY19l
-eGVjdXRlKzB4MzAvMHgzMA0KPiBbPGZmZmZmZmZmODEwNTBhYTE+XSA/IHdvcmtlcl90aHJlYWQr
-MHgxNTEvMHg0MjANCj4gWzxmZmZmZmZmZjgxMDUwOTUwPl0gPyByZXNjdWVyX3RocmVhZCsweDMw
-MC8weDMwMA0KPiBbPGZmZmZmZmZmODEwNTA5NTA+XSA/IHJlc2N1ZXJfdGhyZWFkKzB4MzAwLzB4
-MzAwDQo+IFs8ZmZmZmZmZmY4MTA1NGViZT5dID8ga3RocmVhZCsweDllLzB4YjANCj4gWzxmZmZm
-ZmZmZjgxNDdiYmI0Pl0gPyBrZXJuZWxfdGhyZWFkX2hlbHBlcisweDQvMHgxMA0KPiBbPGZmZmZm
-ZmZmODE0NzllNzg+XSA/IHJldGludF9yZXN0b3JlX2FyZ3MrMHg2LzB4Ng0KPiBbPGZmZmZmZmZm
-ODEwNTRlMjA+XSA/IGt0aHJlYWRfZnJlZXphYmxlX3Nob3VsZF9zdG9wKzB4NjAvMHg2MA0KPiBb
-PGZmZmZmZmZmODE0N2JiYjA+XSA/IGdzX2NoYW5nZSsweGIvMHhiDQo+IENvZGU6IDAwIDAwIDAw
-IDQwIDgwIGZlIDAxIDUzIDE5IGM5IDQ4IDg5IGZiIDQ4IGM3IGMwIGEwIDUyIDFhIDgxIGY3DQo+
-IGQxIDQ4IGM3IGMyIDkwIDUyIDFhIDgxIDgzIGMxIDAyIDQ4IDhkIDdmIDcwIDQwIDg0IGY2IDQ4
-IDBmIDQ1IGQwIDw0OD4NCj4gOGIgNDMgNzAgYTggMTAgNzUgMjAgNDggOGIgNDMgNzAgYTggMjAg
-NzQgMDggOGIgODMgODAgMDAgMDANCj4gUklQICBbPGZmZmZmZmZmODExYTUyNDg+XSB3YWl0X2Zv
-cl9rZXlfY29uc3RydWN0aW9uKzB4MjgvMHg3MA0KPiBSU1AgPGZmZmY4ODA4OWU2ZTFhNzA+DQo+
-IENSMjogMDAwMDAwMDAwMDAwMDA3MA0KPiAtLS1bIGVuZCB0cmFjZSBjNzMzNzcwYTJiYTViODcz
-IF0tLS0NCj4gDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50
-YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5j
-b20NCg==
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+I_MUTEX_QUOTA is now just being used whenever we want to lock two
+non-directories.  So the name isn't right.  I_MUTEX_NONDIR2 isn't
+especially elegant but it's the best I could think of.
+
+Also fix some outdated documentation.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/inode.c         |    4 ++--
+ include/linux/fs.h |    9 ++++++---
+ 2 files changed, 8 insertions(+), 5 deletions(-)
+
+diff --git a/fs/inode.c b/fs/inode.c
+index 44179ce..4ab9516 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -979,11 +979,11 @@ void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
+ 		mutex_lock(&inode1->i_mutex);
+ 	else if (inode1 < inode2) {
+ 		mutex_lock(&inode1->i_mutex);
+-		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_QUOTA);
++		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_NONDIR2);
+ 
+ 	} else {
+ 		mutex_lock(&inode2->i_mutex);
+-		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_QUOTA);
++		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_NONDIR2);
+ 	}
+ }
+ EXPORT_SYMBOL(lock_two_nondirectories);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index a179b69..017070e 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -881,10 +881,13 @@ static inline int inode_unhashed(struct inode *inode)
+  * 0: the object of the current VFS operation
+  * 1: parent
+  * 2: child/target
+- * 3: quota file
++ * 3: xattr
++ * 4: second non-directory
++ * The last is for certain operations (such as rename) which lock two
++ * non-directories at once.
+  *
+  * The locking order between these classes is
+- * parent -> child -> normal -> xattr -> quota
++ * parent -> child -> normal -> xattr -> second non-directory
+  */
+ enum inode_i_mutex_lock_class
+ {
+@@ -892,7 +895,7 @@ enum inode_i_mutex_lock_class
+ 	I_MUTEX_PARENT,
+ 	I_MUTEX_CHILD,
+ 	I_MUTEX_XATTR,
+-	I_MUTEX_QUOTA
++	I_MUTEX_NONDIR2
+ };
+ 
+ void lock_two_nondirectories(struct inode *, struct inode*);
+-- 
+1.7.9.5
+
