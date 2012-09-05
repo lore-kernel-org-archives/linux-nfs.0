@@ -1,121 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:52131 "EHLO mx1.redhat.com"
+Received: from plane.gmane.org ([80.91.229.3]:40252 "EHLO plane.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753369Ab2IFLB3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Sep 2012 07:01:29 -0400
-Date: Thu, 6 Sep 2012 07:01:22 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Tyler Hicks <tyhicks@canonical.com>,
-        Dustin Kirkland <dustin.kirkland@gazzang.com>
-Subject: Re: [RFC PATCH 12/13] locks: break delegations on link
-Message-ID: <20120906070122.58c21013@corrin.poochiereds.net>
-In-Reply-To: <20120905210206.GB10724@fieldses.org>
-References: <1346878524-10585-1-git-send-email-bfields@redhat.com>
-	<1346878524-10585-13-git-send-email-bfields@redhat.com>
-	<20120905210206.GB10724@fieldses.org>
+	id S1751128Ab2IEHzG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Sep 2012 03:55:06 -0400
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1T9ARz-000202-IJ
+	for linux-nfs@vger.kernel.org; Wed, 05 Sep 2012 09:55:05 +0200
+Received: from 59-124-179-67.HINET-IP.hinet.net ([59.124.179.67])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Wed, 05 Sep 2012 09:55:03 +0200
+Received: from yanpai.chen by 59-124-179-67.HINET-IP.hinet.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Wed, 05 Sep 2012 09:55:03 +0200
+To: linux-nfs@vger.kernel.org
+From: Yan-Pai Chen <yanpai.chen@gmail.com>
+Subject: Re: [3.2.5] NFSv3 =?utf-8?b?Q0xPU0VfV0FJVA==?= hang
+Date: Wed, 5 Sep 2012 07:49:27 +0000 (UTC)
+Message-ID: <loom.20120905T093214-245@post.gmane.org>
+References: <20110909194509.GB6195@hostway.ca> <1315610322.17611.112.camel@lade.trondhjem.org> <20111020190334.GA22772@hostway.ca> <20120301225524.GB27595@hostway.ca> <20120302002511.GA4495@hostway.ca> <20120302184918.GA20702@hostway.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 5 Sep 2012 17:02:06 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+Simon Kirby <sim@...> writes:
 
-> Oops, I meant to cc this to Jeff:
 > 
-> On Wed, Sep 05, 2012 at 04:55:22PM -0400, J. Bruce Fields wrote:
-> > @@ -3556,6 +3560,7 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
-> >  	if (error)
-> >  		return error;
-> >  
-> > +retry_deleg:
-> >  	new_dentry = user_path_create(newdfd, newname, &new_path, 0);
-> >  	error = PTR_ERR(new_dentry);
-> >  	if (IS_ERR(new_dentry))
-> > @@ -3570,9 +3575,14 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
-> >  	error = security_path_link(old_path.dentry, &new_path, new_dentry);
-> >  	if (error)
-> >  		goto out_dput;
-> > -	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry);
-> > +	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry, &delegated_inode);
-> >  out_dput:
-> >  	done_path_create(&new_path, new_dentry);
-> > +	if (delegated_inode) {
-> > +		error = break_deleg_wait(&delegated_inode);
-> > +		if (!error)
-> > +			goto retry_deleg;
-> > +	}
-> >  out:
-> >  	path_put(&old_path);
-> >  
-> 
-> I think this will get me into trouble with the audit code, right?
-> 
-> (On a quick skim I think I'm retrying from a point after the getname()
-> in rename and unlink, so I think those are OK, but I may be missing
-> something....)
-> 
-> --b.
-> 
+> Here's another CLOSE_WAIT hang, 3.2.5 client, 3.2.2 knfsd server, NFSv3.
+> Not sure why these are all happening again now. This cluster seems to
+> have a set of customers that are good at breaking things. ;)
 
-tl;dr: this patch is OK, but the unlink and rename patches will be
-problematic.
+Hi all,
 
-Longer explanation:
+I have the same problem in 3.3 kernel (client).
+After applying the following modification as suggested by Dick in
+http://www.spinics.net/lists/linux-nfs/msg32407.html, the problem
+is just gone.
 
-The big problem is multiple calls into audit_inode_child(), which will
-give you duplicate audit records when you retry the call. That function
-mostly gets called from the fsnotify_* calls, but is also called from
-may_delete().
+Does anyone know if they are related?
+Thanks.
 
-In the create case (like this one), you're safe since we only call
-fsnotify_* after the create succeeds. In the may_delete() case, we have
-to call that function before the actual operation. A quick look at your
-patches looks like you'll end up with multiple calls into may_delete on
-a retry. That'll give you multiple audit records for each.
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index c64c0ef..f979e9f 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1071,24 +1071,9 @@ void xprt_reserve(struct rpc_task *task)
+ {
+        struct rpc_xprt *xprt = task->tk_xprt;
 
-The good news is that if and when my audit_names overhaul patches go
-in, that problem should go away. At that point audit_inode_child() will
-know how to update existing records instead of creating new ones in
-this case. I'm hoping those will go in for 3.7, so you may just want to
-try to ensure that these patches go in after those.
-
-> > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> > index c8f5e74..2a77b28 100644
-> > --- a/fs/nfsd/vfs.c
-> > +++ b/fs/nfsd/vfs.c
-> > @@ -1717,7 +1717,7 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
-> >  		err = nfserrno(host_err);
-> >  		goto out_dput;
-> >  	}
-> > -	host_err = vfs_link(dold, dirp, dnew);
-> > +	host_err = vfs_link(dold, dirp, dnew, NULL);
-> >  	if (!host_err) {
-> >  		err = nfserrno(commit_metadata(ffhp));
-> >  		if (!err)
-> > diff --git a/include/linux/fs.h b/include/linux/fs.h
-> > index ad9df65e..52b8c67 100644
-> > --- a/include/linux/fs.h
-> > +++ b/include/linux/fs.h
-> > @@ -1721,7 +1721,7 @@ extern int vfs_create(struct inode *, struct dentry *, umode_t, bool);
-> >  extern int vfs_mkdir(struct inode *, struct dentry *, umode_t);
-> >  extern int vfs_mknod(struct inode *, struct dentry *, umode_t, dev_t);
-> >  extern int vfs_symlink(struct inode *, struct dentry *, const char *);
-> > -extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
-> > +extern int vfs_link(struct dentry *, struct inode *, struct dentry *, struct inode **);
-> >  extern int vfs_rmdir(struct inode *, struct dentry *);
-> >  extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
-> >  extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *, struct inode **);
-> > -- 
-> > 1.7.9.5
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-       task->tk_status = 0;
+-       if (task->tk_rqstp != NULL)
+-               return;
+-
+-       /* Note: grabbing the xprt_lock_write() here is not strictly needed,
+-        * but ensures that we throttle new slot allocation if the transport
+-        * is congested (e.g. if reconnecting or if we're out of socket
+-        * write buffer space).
+-        */
+-       task->tk_timeout = 0;
+-       task->tk_status = -EAGAIN;
+-       if (!xprt_lock_write(xprt, task))
+-               return;
+-
+        spin_lock(&xprt->reserve_lock);
+        xprt_alloc_slot(task);
+        spin_unlock(&xprt->reserve_lock);
+-       xprt_release_write(xprt, task);
+ }
 
 
--- 
-Jeff Layton <jlayton@redhat.com>
+
+
