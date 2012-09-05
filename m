@@ -1,155 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:25189 "EHLO relay.sw.ru"
+Received: from odin2.bull.net ([129.184.85.11]:43165 "EHLO odin2.bull.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757740Ab2IRJpR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 18 Sep 2012 05:45:17 -0400
-Subject: [PATCH v2 3/3] lockd: create and use per-net NSM RPC clients on
-	MON/UNMON requests
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, devel@openvz.org,
-        linux-kernel@vger.kernel.org, jlayton@redhat.com
-Date: Tue, 18 Sep 2012 13:37:23 +0400
-Message-ID: <20120918093723.2469.47300.stgit@localhost.localdomain>
-In-Reply-To: <20120918093612.2469.94393.stgit@localhost.localdomain>
-References: <20120918093612.2469.94393.stgit@localhost.localdomain>
+	id S1750981Ab2IENDn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Sep 2012 09:03:43 -0400
+Received: from MSGC-003.bull.fr (MSGC-003.frcl.bull.fr [129.184.87.131])
+	by odin2.bull.net (Bull S.A.) with ESMTP id 1907118144
+	for <linux-nfs@vger.kernel.org>; Wed,  5 Sep 2012 14:39:46 +0200 (CEST)
+Message-ID: <50474858.1020801@bull.net>
+Date: Wed, 05 Sep 2012 14:40:56 +0200
+From: Diego Moreno <Diego.Moreno-Lazaro@bull.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: linux-nfs@vger.kernel.org
+Subject: NFSv3 caching vs NFSv4
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NSM RPC client can be required on NFSv3 umount, when child reaper is dying
-(and destroying it's mount namespace). It means, that current nsproxy is set
-to NULL already, but creation of RPC client requires UTS namespace for gaining
-hostname string.
+Hello everyone,
 
-This patch creates reference-counted per-net NSM client on first monitor
-request and destroys it after last unmonitor request.
+Performing some attribute caching tests I think I found some 
+inconsistencies between nfsv3 and nfsv4. Running a kernel based on 
+rhel6.3 (2.6.32-279.el6.x86_64) I found nfsv4 doesn't manage a file 
+modified on the server side (even with the noac mount option) while 
+nfsv3 does.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: <stable@vger.kernel.org>
----
- fs/lockd/mon.c |   37 ++++++++++++++++++++-----------------
- 1 files changed, 20 insertions(+), 17 deletions(-)
+My test will be modifying a file every second on the server mount point:
 
-diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index e0bc36e..e4fb3ba 100644
---- a/fs/lockd/mon.c
-+++ b/fs/lockd/mon.c
-@@ -7,7 +7,6 @@
-  */
- 
- #include <linux/types.h>
--#include <linux/utsname.h>
- #include <linux/kernel.h>
- #include <linux/ktime.h>
- #include <linux/slab.h>
-@@ -86,7 +85,7 @@ static struct rpc_clnt *nsm_create(struct net *net)
- 	return rpc_create(&args);
- }
- 
--__maybe_unused static struct rpc_clnt *nsm_client_get(struct net *net)
-+static struct rpc_clnt *nsm_client_get(struct net *net)
- {
- 	static DEFINE_MUTEX(nsm_create_mutex);
- 	struct rpc_clnt	*clnt;
-@@ -113,7 +112,7 @@ out:
- 	return clnt;
- }
- 
--__maybe_unused static void nsm_client_put(struct net *net)
-+static void nsm_client_put(struct net *net)
- {
- 	struct lockd_net *ln = net_generic(net, lockd_net_id);
- 	struct rpc_clnt	*clnt = ln->nsm_clnt;
-@@ -132,9 +131,8 @@ __maybe_unused static void nsm_client_put(struct net *net)
- }
- 
- static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res,
--			 struct net *net)
-+			 struct rpc_clnt *clnt)
- {
--	struct rpc_clnt	*clnt;
- 	int		status;
- 	struct nsm_args args = {
- 		.priv		= &nsm->sm_priv,
-@@ -142,20 +140,14 @@ static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res,
- 		.vers		= 3,
- 		.proc		= NLMPROC_NSM_NOTIFY,
- 		.mon_name	= nsm->sm_mon_name,
--		.nodename	= utsname()->nodename,
-+		.nodename	= clnt->cl_nodename,
- 	};
- 	struct rpc_message msg = {
- 		.rpc_argp	= &args,
- 		.rpc_resp	= res,
- 	};
- 
--	clnt = nsm_create(net);
--	if (IS_ERR(clnt)) {
--		status = PTR_ERR(clnt);
--		dprintk("lockd: failed to create NSM upcall transport, "
--				"status=%d\n", status);
--		goto out;
--	}
-+	BUG_ON(clnt == NULL);
- 
- 	memset(res, 0, sizeof(*res));
- 
-@@ -166,8 +158,6 @@ static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res,
- 				status);
- 	else
- 		status = 0;
--	rpc_shutdown_client(clnt);
-- out:
- 	return status;
- }
- 
-@@ -187,6 +177,7 @@ int nsm_monitor(const struct nlm_host *host)
- 	struct nsm_handle *nsm = host->h_nsmhandle;
- 	struct nsm_res	res;
- 	int		status;
-+	struct rpc_clnt *clnt;
- 
- 	dprintk("lockd: nsm_monitor(%s)\n", nsm->sm_name);
- 
-@@ -199,7 +190,15 @@ int nsm_monitor(const struct nlm_host *host)
- 	 */
- 	nsm->sm_mon_name = nsm_use_hostnames ? nsm->sm_name : nsm->sm_addrbuf;
- 
--	status = nsm_mon_unmon(nsm, NSMPROC_MON, &res, host->net);
-+	clnt = nsm_client_get(host->net);
-+	if (IS_ERR(clnt)) {
-+		status = PTR_ERR(clnt);
-+		dprintk("lockd: failed to create NSM upcall transport, "
-+				"status=%d, net=%p\n", status, host->net);
-+		return status;
-+	}
-+
-+	status = nsm_mon_unmon(nsm, NSMPROC_MON, &res, clnt);
- 	if (unlikely(res.status != 0))
- 		status = -EIO;
- 	if (unlikely(status < 0)) {
-@@ -231,9 +230,11 @@ void nsm_unmonitor(const struct nlm_host *host)
- 
- 	if (atomic_read(&nsm->sm_count) == 1
- 	 && nsm->sm_monitored && !nsm->sm_sticky) {
-+		struct lockd_net *ln = net_generic(host->net, lockd_net_id);
-+
- 		dprintk("lockd: nsm_unmonitor(%s)\n", nsm->sm_name);
- 
--		status = nsm_mon_unmon(nsm, NSMPROC_UNMON, &res, host->net);
-+		status = nsm_mon_unmon(nsm, NSMPROC_UNMON, &res, ln->nsm_clnt);
- 		if (res.status != 0)
- 			status = -EIO;
- 		if (status < 0)
-@@ -241,6 +242,8 @@ void nsm_unmonitor(const struct nlm_host *host)
- 					nsm->sm_name);
- 		else
- 			nsm->sm_monitored = 0;
-+
-+		nsm_client_put(host->net);
- 	}
- }
- 
+[root@nfs ~]#  FILE=/tmp/nfs_server/myfile ;  while true ; do sleep 1 ; 
+sed -i 's/text1/text2/g' $FILE ; cat $FILE ; sleep 1; sed -i 
+'s/text2/text1/g' $FILE ; cat $FILE ; done
+text2
+text1
+text2
+text1
+text2
+(and so on...)
 
+Meanwhile, the client (which BTW is the same machine) will read the file 
+every second :
+
+With NFSv4:
+
+[root@nfs ~]# mount -o noac,vers=4 nfs:/tmp/nfs_server/ /tmp/nfs_client/
+[root@nfs ~]# for i in 1 2 3 4 5 ; do cat /tmp/nfs_client/myfile; sleep 
+1 ; done
+text2
+text1
+text1
+text1
+text1
+
+With NFSv3:
+[root@nfs ~]# mount -o noac,vers=3 nfs:/tmp/nfs_server/ /tmp/nfs_client/
+[root@nfs ~]# for i in 1 2 3 4 5 ; do cat /tmp/nfs_client/myfile; sleep 
+1 ; done
+text1
+text2
+text1
+text2
+text1
+
+I can see in the tcpdump traces how the new change attribute and the 
+FATTR4_TIME_MODIFY attributes are well received but it's as if the nfs 
+client were ignoring these changes. I've been searching in the NFS list 
+but I didn't find anything similar. Is this a bug or just a normal 
+behavior? Sorry if it has been already pointed out.
+
+Regards,
+
+Diego Moreno
