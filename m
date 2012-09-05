@@ -1,86 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:31093 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751529Ab2INTKR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Sep 2012 15:10:17 -0400
-Subject: Re: [PATCH 0/3] lockd: use per-net refrence-counted NSM clients
-Mime-Version: 1.0 (Apple Message framework v1278)
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA908FA7F55@SACEXCMBX04-PRD.hq.netapp.com>
-Date: Fri, 14 Sep 2012 15:10:02 -0400
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "jlayton@redhat.com" <jlayton@redhat.com>
-Message-Id: <DA466953-BF79-44F7-8870-AC2FD5E3FEC2@oracle.com>
-References: <20120914140811.10835.81465.stgit@localhost.localdomain> <4030B8F9-5C67-4AE7-826E-B4B6AD4FAD01@oracle.com> <4FA345DA4F4AE44899BD2B03EEEC2FA908FA7F55@SACEXCMBX04-PRD.hq.netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mail.linguamatics.com ([188.39.80.203]:47489 "EHLO
+	mail.linguamatics.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751164Ab2IEOxe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Sep 2012 10:53:34 -0400
+Received: from [10.252.10.232] (random.linguamatics.com [10.252.10.232])
+	by mail.linguamatics.com (Postfix) with ESMTPSA id F03CCEFB451
+	for <linux-nfs@vger.kernel.org>; Wed,  5 Sep 2012 15:53:33 +0100 (BST)
+Message-ID: <5047676E.3050000@linguamatics.com>
+Date: Wed, 05 Sep 2012 15:53:34 +0100
+From: =?ISO-8859-1?Q?Attila_Bog=E1r?= <attila.bogar@linguamatics.com>
+MIME-Version: 1.0
+To: linux-nfs@vger.kernel.org
+Subject: NFS client: RPCSEC_GSS w/ Kerberos over TCP
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi,
 
-On Sep 14, 2012, at 1:38 PM, Myklebust, Trond wrote:
+I'm new on this list, this is my first post.
 
-> On Fri, 2012-09-14 at 13:01 -0400, Chuck Lever wrote:
->> What happens if statd is restarted?
-> 
-> Nothing unusual. Why?
+I can see some interoperability problems between FreeBSD 8 and 9 stable 
+NFS servers and some Linux NFS clients when using Kerberized NFS.
 
-The NSM upcall transport is a potential application for TCP + softconn, now that a persistent rpc_clnt is used.  It just depends on what failure mode we'd like to optimize for.
+I noticed that around nfs-utils 1.2.3 something must have changed on the 
+Linux side or the Linux became more agile to trigger a bug with the FreeBSD.
 
-> 
->> Sent from my iPhone
->> 
->> On Sep 14, 2012, at 10:25 AM, Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
->> 
->>> This is a bug fix for https://bugzilla.redhat.com/show_bug.cgi?id=830862.
->>> 
->>> The problem is that with NFSv4 mount in container (with separated mount
->>> namesapce) and active lock on it, dying child reaped of this container will
->>> try to umount NFS and doing this will try to create RPC client to send
->>> unmonitor request to statd.
->>> But creation of RCP client requires valid current->nsproxy (for operation with
->>> utsname()) and during umount on child reaper exit it's equal to zero.
->>> 
->>> Proposed solution is to introduce refrence-counter per-net NSM client, which
->>> is created on fist monitor call and destroyed after the lst monitor call.
->>> 
->>> The following series implements...
->>> 
->>> ---
->>> 
->>> Stanislav Kinsbursky (3):
->>>     lockd: use rpc client's cl_nodename for id encoding
->>>     lockd: per-net NSM client creation and destruction helpers introduced
->>>     lockd: create and use per-net NSM RPC clients on MON/UNMON requests
->>> 
->>> 
->>> fs/lockd/mon.c   |   91 +++++++++++++++++++++++++++++++++++++++++++-----------
->>> fs/lockd/netns.h |    4 ++
->>> fs/lockd/svc.c   |    1 +
->>> 3 files changed, 77 insertions(+), 19 deletions(-)
->>> 
->>> 
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
+Maybe these issues have been reported or fixed, but on a current RHEL 
+6.3 and Ubuntu 12.04 LTS they still do exist.
+
+When the Linux clients mount a FreeBSD NFS share (v3 or v4) sec=krb5*, 
+they sometimes get an access denied.
+If they are able to mount anyway, then subsequent NFS I/O errors continue.
+
+So far:
+http://lists.freebsd.org/pipermail/freebsd-fs/2012-August/015047.html
+http://lists.freebsd.org/pipermail/freebsd-fs/2012-September/015050.html
+
+I have some questions.  As this is an interop problem, I'd like to 
+clarify a few things.
+
+This what I see on the wireshark trace during an NFSv4 mount -o 
+proto=tcp,sec=krb5:
+The client is EL6 with a patched nfs-utils package as per: 
+https://bugzilla.redhat.com/show_bug.cgi?id=802469 and gssd started with 
+-l (legacy) option
+
+TCP0: -> Linux NFS AUTH_NULL
+TCP0: <- FreeBSD responds
+
+TCP1: -> Linux sends RPCSEC_GSS_INIT
+TCP1: <- FreeBSD responds by establishing GSS Context (it's a 16 byte token)
+
+TCP1: -> Linux sends RPCSEC_GSS_DESTROY using the received 16 byte token
+TCP0: -> Linux sends NFS:PUTROOTFS|GETATTR using the same 16 byte received gss context token
+
+
+Re-using the gss context on the other tcp connection and immediately 
+destroying it looks like a bug in the Linux NFS layer?
+
+Another worry I see, is that the RPCSEC_GSS_DESTROY when validated on 
+the FreeBSD side gss_verify_mic returns maj_stat = GSS_S_DEFECTIVE_TOKEN 
+- which is quite strange (this still can be a FreeBSD bug).
+
+Kind regards,
+   Attila
 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+Attila Bogár
+Systems Administrator
+Linguamatics - Cambridge, UK
+http://www.linguamatics.com/
 
