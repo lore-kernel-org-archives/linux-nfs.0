@@ -1,119 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:36152 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753254Ab2IMXiS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Sep 2012 19:38:18 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@tonian.com>, NFS list <linux-nfs@vger.kernel.org>,
-        open-osd <osd-dev@open-osd.org>
-CC: Sachin Bhamare <sbhamare@panasas.com>
-Subject: [PATCH 08/10] SQUASHME: pnfsd-exofs: Autologin XDR also encode URI in device_info
-Date: Fri, 14 Sep 2012 02:38:06 +0300
-Message-ID: <1347579486-21684-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <50526B39.3000802@panasas.com>
-References: <50526B39.3000802@panasas.com>
+Received: from mx2.netapp.com ([216.240.18.37]:44620 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750961Ab2IEOtV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Sep 2012 10:49:21 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Diego Moreno <Diego.Moreno-Lazaro@bull.net>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv3 caching vs NFSv4
+Date: Wed, 5 Sep 2012 14:49:18 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F8612E@SACEXCMBX04-PRD.hq.netapp.com>
+References: <50474858.1020801@bull.net>
+In-Reply-To: <50474858.1020801@bull.net>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Sachin Bhamare <sbhamare@panasas.com>
-
-Add the missing bits to encode the autologin info strings
-
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/exportfs/pnfs_osd_xdr_srv.c | 45 +++++++++++++++++++++++++++++++++++++++---
- include/linux/pnfs_osd_xdr.h   |  5 +++++
- 2 files changed, 47 insertions(+), 3 deletions(-)
-
-diff --git a/fs/exportfs/pnfs_osd_xdr_srv.c b/fs/exportfs/pnfs_osd_xdr_srv.c
-index 35b3d32..04a3681 100644
---- a/fs/exportfs/pnfs_osd_xdr_srv.c
-+++ b/fs/exportfs/pnfs_osd_xdr_srv.c
-@@ -178,6 +178,42 @@ static enum nfsstat4 _encode_string(struct exp_xdr_stream *xdr,
- 	return 0;
- }
- 
-+/* struct pnfs_osd_targetaddr {
-+ *	u32				ota_available;
-+ *	struct pnfs_osd_net_addr	ota_netaddr;
-+ * };
-+ */
-+static inline enum nfsstat4 pnfs_osd_xdr_encode_targetaddr(
-+	struct exp_xdr_stream *xdr,
-+	struct pnfs_osd_targetaddr *taddr)
-+{
-+	__be32 *p;
-+
-+	/* ota_available */
-+	p = exp_xdr_reserve_space(xdr, 4);
-+	if (!p)
-+		return NFS4ERR_TOOSMALL;
-+	p = exp_xdr_encode_u32(p, taddr->ota_available);
-+
-+	/* encode r_netid */
-+	p = exp_xdr_reserve_space(xdr, 4 + taddr->ota_netaddr.r_netid.len);
-+	if (!p)
-+		return NFS4ERR_TOOSMALL;
-+
-+	p = exp_xdr_encode_opaque(p,
-+				taddr->ota_netaddr.r_netid.data,
-+				taddr->ota_netaddr.r_netid.len);
-+
-+	/* encode r_addr */
-+	p = exp_xdr_reserve_space(xdr, 4 + taddr->ota_netaddr.r_addr.len);
-+	if (!p)
-+		return NFS4ERR_TOOSMALL;
-+	p = exp_xdr_encode_opaque(p,
-+				taddr->ota_netaddr.r_addr.data,
-+				taddr->ota_netaddr.r_addr.len);
-+	return 0;
-+}
-+
- /* struct pnfs_osd_deviceaddr {
-  *	struct pnfs_osd_targetid	oda_targetid;
-  *	struct pnfs_osd_targetaddr	oda_targetaddr;
-@@ -193,17 +229,20 @@ enum nfsstat4 pnfs_osd_xdr_encode_deviceaddr(
- 	__be32 *p;
- 	enum nfsstat4 err;
- 
--	p = exp_xdr_reserve_space(xdr, 4 + 4 + sizeof(devaddr->oda_lun));
-+	p = exp_xdr_reserve_space(xdr, sizeof(u32));
- 	if (!p)
- 		return NFS4ERR_TOOSMALL;
- 
- 	/* Empty oda_targetid */
- 	p = exp_xdr_encode_u32(p, OBJ_TARGET_ANON);
- 
--	/* Empty oda_targetaddr for now */
--	p = exp_xdr_encode_u32(p, 0);
-+	/* oda_targetaddr */
-+	err = pnfs_osd_xdr_encode_targetaddr(xdr, &devaddr->oda_targetaddr);
-+	if (err)
-+		return err;
- 
- 	/* oda_lun */
-+	p = exp_xdr_reserve_space(xdr, sizeof(devaddr->oda_lun));
- 	exp_xdr_encode_bytes(p, devaddr->oda_lun, sizeof(devaddr->oda_lun));
- 
- 	err = _encode_string(xdr, &devaddr->oda_systemid);
-diff --git a/include/linux/pnfs_osd_xdr.h b/include/linux/pnfs_osd_xdr.h
-index 435dd5f..3aab6e2 100644
---- a/include/linux/pnfs_osd_xdr.h
-+++ b/include/linux/pnfs_osd_xdr.h
-@@ -148,6 +148,11 @@ enum pnfs_osd_targetid_type {
- 	OBJ_TARGET_SCSI_DEVICE_ID = 3,
- };
- 
-+enum pnfs_osd_target_ota {
-+	OBJ_OTA_UNAVAILABLE = 0,
-+	OBJ_OTA_AVAILABLE = 1,
-+};
-+
- /*   union pnfs_osd_targetid4 switch (pnfs_osd_targetid_type4 oti_type) {
-  *       case OBJ_TARGET_SCSI_NAME:
-  *           string              oti_scsi_name<>;
--- 
-1.7.10.2.677.gb6bc67f
-
+T24gV2VkLCAyMDEyLTA5LTA1IGF0IDE0OjQwICswMjAwLCBEaWVnbyBNb3Jlbm8gd3JvdGU6DQo+
+IEhlbGxvIGV2ZXJ5b25lLA0KPiANCj4gUGVyZm9ybWluZyBzb21lIGF0dHJpYnV0ZSBjYWNoaW5n
+IHRlc3RzIEkgdGhpbmsgSSBmb3VuZCBzb21lIA0KPiBpbmNvbnNpc3RlbmNpZXMgYmV0d2VlbiBu
+ZnN2MyBhbmQgbmZzdjQuIFJ1bm5pbmcgYSBrZXJuZWwgYmFzZWQgb24gDQo+IHJoZWw2LjMgKDIu
+Ni4zMi0yNzkuZWw2Lng4Nl82NCkgSSBmb3VuZCBuZnN2NCBkb2Vzbid0IG1hbmFnZSBhIGZpbGUg
+DQo+IG1vZGlmaWVkIG9uIHRoZSBzZXJ2ZXIgc2lkZSAoZXZlbiB3aXRoIHRoZSBub2FjIG1vdW50
+IG9wdGlvbikgd2hpbGUgDQo+IG5mc3YzIGRvZXMuDQo+IA0KPiBNeSB0ZXN0IHdpbGwgYmUgbW9k
+aWZ5aW5nIGEgZmlsZSBldmVyeSBzZWNvbmQgb24gdGhlIHNlcnZlciBtb3VudCBwb2ludDoNCj4g
+DQo+IFtyb290QG5mcyB+XSMgIEZJTEU9L3RtcC9uZnNfc2VydmVyL215ZmlsZSA7ICB3aGlsZSB0
+cnVlIDsgZG8gc2xlZXAgMSA7IA0KPiBzZWQgLWkgJ3MvdGV4dDEvdGV4dDIvZycgJEZJTEUgOyBj
+YXQgJEZJTEUgOyBzbGVlcCAxOyBzZWQgLWkgDQo+ICdzL3RleHQyL3RleHQxL2cnICRGSUxFIDsg
+Y2F0ICRGSUxFIDsgZG9uZQ0KPiB0ZXh0Mg0KPiB0ZXh0MQ0KPiB0ZXh0Mg0KPiB0ZXh0MQ0KPiB0
+ZXh0Mg0KPiAoYW5kIHNvIG9uLi4uKQ0KPiANCj4gTWVhbndoaWxlLCB0aGUgY2xpZW50ICh3aGlj
+aCBCVFcgaXMgdGhlIHNhbWUgbWFjaGluZSkgd2lsbCByZWFkIHRoZSBmaWxlIA0KPiBldmVyeSBz
+ZWNvbmQgOg0KPiANCj4gV2l0aCBORlN2NDoNCj4gDQo+IFtyb290QG5mcyB+XSMgbW91bnQgLW8g
+bm9hYyx2ZXJzPTQgbmZzOi90bXAvbmZzX3NlcnZlci8gL3RtcC9uZnNfY2xpZW50Lw0KPiBbcm9v
+dEBuZnMgfl0jIGZvciBpIGluIDEgMiAzIDQgNSA7IGRvIGNhdCAvdG1wL25mc19jbGllbnQvbXlm
+aWxlOyBzbGVlcCANCj4gMSA7IGRvbmUNCj4gdGV4dDINCj4gdGV4dDENCj4gdGV4dDENCj4gdGV4
+dDENCj4gdGV4dDENCj4gDQo+IFdpdGggTkZTdjM6DQo+IFtyb290QG5mcyB+XSMgbW91bnQgLW8g
+bm9hYyx2ZXJzPTMgbmZzOi90bXAvbmZzX3NlcnZlci8gL3RtcC9uZnNfY2xpZW50Lw0KPiBbcm9v
+dEBuZnMgfl0jIGZvciBpIGluIDEgMiAzIDQgNSA7IGRvIGNhdCAvdG1wL25mc19jbGllbnQvbXlm
+aWxlOyBzbGVlcCANCj4gMSA7IGRvbmUNCj4gdGV4dDENCj4gdGV4dDINCj4gdGV4dDENCj4gdGV4
+dDINCj4gdGV4dDENCj4gDQo+IEkgY2FuIHNlZSBpbiB0aGUgdGNwZHVtcCB0cmFjZXMgaG93IHRo
+ZSBuZXcgY2hhbmdlIGF0dHJpYnV0ZSBhbmQgdGhlIA0KPiBGQVRUUjRfVElNRV9NT0RJRlkgYXR0
+cmlidXRlcyBhcmUgd2VsbCByZWNlaXZlZCBidXQgaXQncyBhcyBpZiB0aGUgbmZzIA0KPiBjbGll
+bnQgd2VyZSBpZ25vcmluZyB0aGVzZSBjaGFuZ2VzLiBJJ3ZlIGJlZW4gc2VhcmNoaW5nIGluIHRo
+ZSBORlMgbGlzdCANCj4gYnV0IEkgZGlkbid0IGZpbmQgYW55dGhpbmcgc2ltaWxhci4gSXMgdGhp
+cyBhIGJ1ZyBvciBqdXN0IGEgbm9ybWFsIA0KPiBiZWhhdmlvcj8gU29ycnkgaWYgaXQgaGFzIGJl
+ZW4gYWxyZWFkeSBwb2ludGVkIG91dC4NCg0KXUlmIHlvdSBjYW4gcmVwcm9kdWNlIHRoZSBzYW1l
+IGlzc3VlcyBvbiB0aGUgdXBzdHJlYW0ga2VybmVsLCB0aGVuIGl0IGlzDQpvbiB0b3BpYyBmb3Ig
+dGhpcyBsaXN0LCBvdGhlcndpc2UgaXQgaXMgYSBxdWVzdGlvbiBmb3IgUmVkIEhhdC4NCg0KQ2hl
+ZXJzDQogIFRyb25kDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWlu
+dGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAu
+Y29tDQoNCg==
