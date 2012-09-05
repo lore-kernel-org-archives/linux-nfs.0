@@ -1,87 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.openrapids.net ([64.15.138.104]:42295 "EHLO
-	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1757086Ab2IDQcX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Sep 2012 12:32:23 -0400
-Date: Tue, 4 Sep 2012 12:32:20 -0400
-From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-To: Steven Rostedt <rostedt@goodmis.org>
-Cc: Sasha Levin <levinsasha928@gmail.com>, Tejun Heo <tj@kernel.org>,
-        torvalds@linux-foundation.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, mingo@elte.hu,
-        ebiederm@xmission.com, aarcange@redhat.com, ericvh@gmail.com,
-        netdev@vger.kernel.org, josh@joshtriplett.org, eric.dumazet@gmail.com,
-        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
-        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
-        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive
-	hashtable
-Message-ID: <20120904163220.GA31698@Krystal>
-References: <20120824212348.GK21325@google.com> <5038074D.300@gmail.com> <20120824230740.GN21325@google.com> <20120825042419.GA27240@Krystal> <503C95E4.3010000@gmail.com> <20120828101148.GA21683@Krystal> <503CAB1E.5010408@gmail.com> <20120828115638.GC23818@Krystal> <20120828230050.GA3337@Krystal> <1346772948.27919.9.camel@gandalf.local.home>
+Received: from mail-qa0-f53.google.com ([209.85.216.53]:59678 "EHLO
+	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751238Ab2IEGiE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Sep 2012 02:38:04 -0400
+Received: by qaas11 with SMTP id s11so318081qaa.19
+        for <linux-nfs@vger.kernel.org>; Tue, 04 Sep 2012 23:38:03 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1346772948.27919.9.camel@gandalf.local.home>
+Date: Wed, 5 Sep 2012 14:38:03 +0800
+Message-ID: <CAPgLHd8a+6FGVDScg25XGKc8bAZDdkS6aU4tmknyDMKvZ-DgDg@mail.gmail.com>
+Subject: [PATCH] pnfsblock: use list_move_tail instead of list_del/list_add_tail
+From: Wei Yongjun <weiyj.lk@gmail.com>
+To: Trond.Myklebust@netapp.com
+Cc: yongjun_wei@trendmicro.com.cn, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* Steven Rostedt (rostedt@goodmis.org) wrote:
-> On Tue, 2012-08-28 at 19:00 -0400, Mathieu Desnoyers wrote:
-> 
-> > Looking again at:
-> > 
-> > +#define hash_for_each_size(name, bits, bkt, node, obj, member)                 \
-> > +       for (bkt = 0; bkt < HASH_SIZE(bits); bkt++)                             \
-> > +               hlist_for_each_entry(obj, node, &name[bkt], member)
-> > 
-> > you will notice that a "break" or "continue" in the inner loop will not
-> > affect the outer loop, which is certainly not what the programmer would
-> > expect!
-> > 
-> > I advise strongly against creating such error-prone construct.
-> > 
-> 
-> A few existing loop macros do this. But they require a do { } while ()
-> approach, and all have a comment.
-> 
-> It's used by do_each_thread() in sched.h 
+From: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
 
-Yes. It's worth noting that it is a do_each_thread() /
-while_each_thread() pair.
+Using list_move_tail() instead of list_del() + list_add_tail().
+
+spatch with a semantic match is used to found this problem.
+(http://coccinelle.lip6.fr/)
+
+Signed-off-by: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
+---
+ fs/nfs/blocklayout/extents.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+index 1f9a603..9c3e117 100644
+--- a/fs/nfs/blocklayout/extents.c
++++ b/fs/nfs/blocklayout/extents.c
+@@ -683,8 +683,7 @@ encode_pnfs_block_layoutupdate(struct pnfs_block_layout *bl,
+ 		p = xdr_encode_hyper(p, lce->bse_length << SECTOR_SHIFT);
+ 		p = xdr_encode_hyper(p, 0LL);
+ 		*p++ = cpu_to_be32(PNFS_BLOCK_READWRITE_DATA);
+-		list_del(&lce->bse_node);
+-		list_add_tail(&lce->bse_node, &bl->bl_committing);
++		list_move_tail(&lce->bse_node, &bl->bl_committing);
+ 		bl->bl_count--;
+ 		count++;
+ 	}
 
 
-> and ftrace does this as well.
-> Look at kernel/trace/ftrace.c at do_for_each_ftrace_rec().
-
-Same here.
-
-> 
-> Yes it breaks 'break' but it does not break 'continue' as it would just
-> go to the next item that would have been found (like a normal for
-> would).
-
-Good point.
-
-So would changing hash_for_each_size() to a
-
-do_each_hash_size()/while_each_hash_size() make it clearer that this
-contains a double-loop ? (along with an appropriate comment about
-break).
-
-Thanks,
-
-Mathieu
-
-> 
-> -- Steve
-> 
-> 
-
--- 
-Mathieu Desnoyers
-Operating System Efficiency R&D Consultant
-EfficiOS Inc.
-http://www.efficios.com
