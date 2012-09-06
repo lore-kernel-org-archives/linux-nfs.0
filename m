@@ -1,91 +1,158 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:19748 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:33647 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757135Ab2IDQbM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Sep 2012 12:31:12 -0400
-Message-ID: <50462C99.5000007@redhat.com>
-Date: Tue, 04 Sep 2012 17:30:17 +0100
-From: Pedro Alves <palves@redhat.com>
-MIME-Version: 1.0
-To: Steven Rostedt <rostedt@goodmis.org>
-CC: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
-        Sasha Levin <levinsasha928@gmail.com>, Tejun Heo <tj@kernel.org>,
-        torvalds@linux-foundation.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, mingo@elte.hu,
-        ebiederm@xmission.com, aarcange@redhat.com, ericvh@gmail.com,
-        netdev@vger.kernel.org, josh@joshtriplett.org, eric.dumazet@gmail.com,
-        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
-        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
-        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive hashtable
-References: <20120824203332.GF21325@google.com> <5037E9D9.9000605@gmail.com>  <20120824212348.GK21325@google.com> <5038074D.300@gmail.com>  <20120824230740.GN21325@google.com> <20120825042419.GA27240@Krystal>  <503C95E4.3010000@gmail.com> <20120828101148.GA21683@Krystal>  <503CAB1E.5010408@gmail.com> <20120828115638.GC23818@Krystal>  <20120828230050.GA3337@Krystal> <1346772948.27919.9.camel@gandalf.local.home>
-In-Reply-To: <1346772948.27919.9.camel@gandalf.local.home>
-Content-Type: text/plain; charset=ISO-8859-15
+	id S1752182Ab2IFTyI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Sep 2012 15:54:08 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 0/4] RFC Avoid expired credential keys for buffered writes
+Date: Thu,  6 Sep 2012 15:54:07 -0400
+Message-Id: <1346961251-2554-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/04/2012 04:35 PM, Steven Rostedt wrote:
-> On Tue, 2012-08-28 at 19:00 -0400, Mathieu Desnoyers wrote:
-> 
->> Looking again at:
->>
->> +#define hash_for_each_size(name, bits, bkt, node, obj, member)                 \
->> +       for (bkt = 0; bkt < HASH_SIZE(bits); bkt++)                             \
->> +               hlist_for_each_entry(obj, node, &name[bkt], member)
->>
->> you will notice that a "break" or "continue" in the inner loop will not
->> affect the outer loop, which is certainly not what the programmer would
->> expect!
->>
->> I advise strongly against creating such error-prone construct.
->>
-> 
-> A few existing loop macros do this. But they require a do { } while ()
-> approach, and all have a comment.
-> 
-> It's used by do_each_thread() in sched.h and ftrace does this as well.
-> Look at kernel/trace/ftrace.c at do_for_each_ftrace_rec().
-> 
-> Yes it breaks 'break' but it does not break 'continue' as it would just
-> go to the next item that would have been found (like a normal for
-> would).
+From: Andy Adamson <andros@netapp.com>
 
-/*
- * This is a double for. Do not use 'break' to break out of the loop,
- * you must use a goto.
- */
-#define do_for_each_ftrace_rec(pg, rec)                                 \
-        for (pg = ftrace_pages_start; pg; pg = pg->next) {              \
-                int _____i;                                             \
-                for (_____i = 0; _____i < pg->index; _____i++) {        \
-                        rec = &pg->records[_____i];
+This patch set is a Request for Comments: I think it does a fair job of
+handling the issue - but it is complicated, and other brains might find a
+better way to get the job done.
 
+We must avoid buffering a WRITE that is using a credential key (e.g. a GSS
+context key) that is about to expire or has expired.  We currently will
+paint ourselves into a corner by returning success to the applciation
+for such a buffered WRITE, only to discover that we do not have permission when
+we attempt to flush the WRITE (and potentially associated COMMIT) to disk.
+This results in data corruption.
 
+First, a couple of "setup" patches:
+1) Patch SUNRPC handle EKEYEXPIRED in call_refreshresult returns EACCES to the
+application on an expired or non-existent gss context when the users (Kerberos)
+credentials have also expired or are non-existent. Current behavior is to
+retry upcalls to GSSD forever. Please see patch comment for detail.
 
-You can make 'break' also work as expected if you can embed a little knowledge
-of the inner loop's condition in the outer loop's condition.  Sometimes it's
-trivial, most often when the inner loop's iterator is a pointer that goes
-NULL at the end, but other times not so much.  Something like (completely untested):
+2) Patch SUNRPC set gss gc_expiry to full lifetime works in conjunction with
+the gssd patch "0001-GSSD-Pass-GSS_context-lifetime-to-the-kernel". The
+gssd patch passes the actual remaining TGT lifetime in the downcall, and
+this kernel patch sets the gss context gc_expiry to this lifetime.
 
-#define do_for_each_ftrace_rec(pg, rec)                                 \
-        for (pg = ftrace_pages_start, rec = &pg->records[pg->index];    \
-             pg && rec == &pg->records[pg->index];                      \
-             pg = pg->next) {                                           \
-                int _____i;                                             \
-                for (_____i = 0; _____i < pg->index; _____i++) {        \
-                        rec = &pg->records[_____i];
+Then the two patches that avoid using an expired credential key:
+3) Patch SUNRPC new rpc_credops to test credential expiry is the heart of this
+work. It provides the RPC layer helper functions to allow NFS to manage
+data in the face of expired credentials
 
-(other variants possible)
+4) Patch NFS avoid expired credential keys for buffered writes calls the
+RPC helper functions.
 
-IOW, the outer loop only iterates if the inner loop completes.  If there's
-a break in the inner loop, then the outer loop breaks too.  Of course, it
-all depends on whether the generated code looks sane or hideous, if
-the uses of the macro care for it over bug avoidance.
+Pages for buffered WRITEs are allocated in nfs_write_begin where we have an
+nfs_open_context and associated rpc_cred. This is a generic rpc_cred, NOT
+the gss_cred used in the actual WRITE RPC. Each WRITE RPC call takes the generic
+rpc_cred (or uses the 'current_cred') uid and uses it to lookup the associated
+gss_cred and gss_context in the call_refresh RPC state. So, there is a
+one-to-one association between the nfs_open_context generic_cred and a
+gss_cred with a matching uid and a valid non expired gss context.
+
+We need to check the nfs_open_context generic cred 'underlying' gss_cred
+gss_context gc_expiry in nfs_write_begin to determine if there is enough time
+left in the gss_context lifetime to complete the buffered WRITE.
+
+I started by adding a "key_timeout" rpc_authops routine only set by the generic
+auth to do this work, called by rpcauth_key_timeout_notify, called from
+nfs_write_begin. It does the lookup of the gss_cred (see the patch for
+fast-tracking of non-gss underlying creds) and then tests the gss_context
+gc_expiry against timeouts by calling a new crkey_timeout rpc_credops set
+only for the gss_cred.
+
+I came up with the idea of two credential key timeout watermarks:
+1) A high watermark, RPC_KEY_EXPIRE_TIMEO set to 90 seconds.
+2) A low watermark, RPC_KEY_EXPIRE_FAIL set to 30 seconds.
+NOTE: these timeouts are guesses that work in a VM environment. We may want to
+make them adjustable via module parameters.
+
+If key_timeout is called on a credential with an underlying credential key that
+will expire within high watermark seconds, we set the RPC_CRED_KEY_EXPIRE_SOON
+flag in the generic_cred acred so that the NFS layer can clean up prior to
+key expiration It does this by calling a new crkey_to_expire rpc_credop set
+only for generic creds that tests for the RPC_CRED_KEY_EXPIRE_SOON flag.
+
+If the RPC_CRED_KEY_EXPIRE_SOON flag is set in the nfs_open_context generic
+cred (the acred portion), then nfs_write_end will call nfs_wb_all
+on EVERY WRITE CALL it sees, and nfs_write_rpcsetup will send NFS_FILE_SYNC
+WRITEs.  The idea of the high watermark is to give time to flush all buffered
+WRITEs and COMMITs, as well as to continue to WRITE, but only with
+NFS_FILE_SYNC, allowing the application to try to finish writing before the
+gss context expires. NOTE that this means EACH WRITE within the high watermark
+timeout is a singe PAGE of NFS_FILE_SYNC. I think this is fine, because we are
+in a failure mode - the most important thing is to NOT fail a buffered WRITE..
+
+If key_timeout is called on a credential key that will expire within low
+watermark seconds, we return EACCES from nfs_write_begin to stop
+the buffered WRITE using the credential key.
+
+Checking a generic credential's underlying credential involves a cred lookup.
+To avoid this lookup in the normal case when the underlying credential has
+a key that is valid (before the high watermark), a notify flag is set in
+the generic credential the first time the key_timeout is called. The
+generic credential then stops checking the underlying credential key expiry, and
+the underlying credential (gss_cred) match routine then checks the key
+expiration upon each normal use and sets a flag in the associated generic
+credential only when the key expiration is within the high watermark.
+This in turn signals the generic credential key_timeout to perform the extra
+credetial lookup thereafter.
+
+TING:
+
+I have tested these patches with a TGT of 5 minutes, and a modified
+Connectathon special test: bigfile.c that only writes and never flushes.
+I also increased the file size to 524288000 bytes to give me time.
+I named the test buffered-write.
+
+I kinit, and run 6 instances of buffered write with the first and maybe second
+test completing prior to TGT expiration, and the third/fourth tests spanning
+the high water mark. The fifth test starts within the high water mark, and the
+sixth test starts within the low water mark.
+
+I have seen the expected behavior: test 1,2 succeed. Tests 3-6 fail with
+Permission Denied. Tests 3 and 4 start with normal buffered UNSTABLE writes
+then switch to single page NFS_FILE_SYNC writes with a COMMIT for the
+normal buffered writes. Test 5 has only single page NFS_FILE_SYNC writes,
+test 6 simply fails.
+
+None of the WRITEs fail.
+
+ISSUES
+1) Once in a while I see "short write" instead of "Permission
+denied". I cannot reproduce this. Even then wireshark shows all writes succeeding.
+
+2) Although I have tested re-establishing Kerberos credentials after the
+test run, I have not done any testing re-estabishing Kerberos credentials 
+during the a test run that is within the high watermark.
+
+3) General corner case and other testing
+
+-->Andy
+
+Andy Adamson (4):
+  SUNRPC handle EKEYEXPIRED in call_refreshresult
+  SUNRPC set gss gc_expiry to full lifetime
+  SUNRPC new rpc_credops to test credential expiry
+  NFS avoid expired credential keys for buffered writes
+
+ fs/nfs/file.c                  |   10 ++++
+ fs/nfs/internal.h              |    2 +
+ fs/nfs/nfs3proc.c              |    6 +-
+ fs/nfs/nfs4filelayout.c        |    1 -
+ fs/nfs/nfs4proc.c              |   18 --------
+ fs/nfs/nfs4state.c             |   22 ---------
+ fs/nfs/proc.c                  |   43 ------------------
+ fs/nfs/write.c                 |   29 ++++++++++++
+ include/linux/sunrpc/auth.h    |   27 ++++++++++++
+ net/sunrpc/auth.c              |   21 +++++++++
+ net/sunrpc/auth_generic.c      |   93 ++++++++++++++++++++++++++++++++++++++++
+ net/sunrpc/auth_gss/auth_gss.c |   51 +++++++++++++++++++---
+ net/sunrpc/clnt.c              |    1 +
+ 13 files changed, 231 insertions(+), 93 deletions(-)
 
 -- 
-Pedro Alves
+1.7.7.6
 
