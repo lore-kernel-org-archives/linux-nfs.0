@@ -1,79 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f172.google.com ([209.85.212.172]:50252 "EHLO
-	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750888Ab2I0Q7f (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Sep 2012 12:59:35 -0400
+Received: from mx2.netapp.com ([216.240.18.37]:41140 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754475Ab2IFNpp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Sep 2012 09:45:45 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Andrew Holway <a.holway@syseleven.de>
+CC: Avi Kivity <avi@redhat.com>, "kvm@vger.kernel.org" <kvm@vger.kernel.org>,
+        "libvir-list@redhat.com" <libvir-list@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFS over RDMA small block DIRECT_IO bug
+Date: Thu, 6 Sep 2012 13:45:43 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F8A8E9@SACEXCMBX04-PRD.hq.netapp.com>
+References: <F416961E-A33A-44D3-A788-5EF598A0AAFE@syseleven.de>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F82C6C@SACEXCMBX04-PRD.hq.netapp.com>
+	 <50475B77.7090304@redhat.com>
+	 <6F777077-D7FC-4F51-8806-C89A5F973DFA@syseleven.de>
+In-Reply-To: <6F777077-D7FC-4F51-8806-C89A5F973DFA@syseleven.de>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA908FEF7A3@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20120807134156.GP1996@amd.com> <20120927145217.GA18962@8bytes.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA908FEF572@SACEXCMBX04-PRD.hq.netapp.com>
- <20120927153928.GB18962@8bytes.org> <4FA345DA4F4AE44899BD2B03EEEC2FA908FEF7A3@SACEXCMBX04-PRD.hq.netapp.com>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Thu, 27 Sep 2012 09:59:13 -0700
-Message-ID: <CA+55aFx5CtDDpXTunJDtkDQWPX7sY0hYMRyekuPErC+s5yXpWw@mail.gmail.com>
-Subject: Re: kernel BUG at /data/lemmy/linux.trees.git/fs/nfs/idmap.c:681!
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Joerg Roedel <joro@8bytes.org>, Joerg Roedel <joerg.roedel@amd.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 27, 2012 at 9:16 AM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
->
-> I cannot see how that BUG_ON can be triggered in the current code, given
-> that the only place where idmap->idmap_key_cons is set to a non-NULL
-> value is covered by a mutex, and that it is always cleared before we
-> release said mutex.
-
-Quite frankly, the "I cannot see" thing is *never* an excuse for a BUG_ON().
-
-We don't do kernel-killing asserts in Linux. Never.
-
-The only excuse for a BUG_ON() is "I cannot possibly continue, I don't
-even have an error path I can take".
-
-If it's a fundamentally impossible situation, the BUG_ON() should
-never have been there in the first place!
-
-And if it's a "I don't see how it could happen", then it should have
-been something like
-
-    if (WARN_ON_ONCE(condition))
-        goto cleanup;
-
-rather than a BUG_ON().
-
-We have too many f*cking BUG_ON's in the kernel, and the fact that one
-triggers and it has taken a month and a half without it even being
-resolved is a problem.
-
-Get rid of the thing, already, dammit. If you cannot figure out how it
-can happen, then the *last* thing you want to do is then kill the
-machine so that it's impossible to debug it sanely.
-
-Besides, as far as I can tell, idmap_key_cons locking is suspect
-anyway. Stuff like this:
-
-                cons = ACCESS_ONCE(idmap->idmap_key_cons);
-                idmap->idmap_key_cons = NULL;
-
-is an almost certain example of "the code is racy, and we did it
-wrong". The above is basically *never* correct.
-
-If the access is properly locked, then the ACCESS_ONCE() is a bug.
-
-And if the access *isn't* properly locked, then setting things to NULL
-afterwards is in no way safe.
-
-IOW, either way, it's broken. And there's at least two of those
-clearly buggy code-sequences involving that field.
-
-So get rid of the BUG_ON() (possibly replacing it with the
-WARN_ON_ONCE), and please look at those ACCESS_ONCE() sequences and
-fix them. Either they happen under a lock, or they don't. None of this
-crazy racy crap, please.
-
-                   Linus
+T24gVGh1LCAyMDEyLTA5LTA2IGF0IDEyOjE0ICswMjAwLCBBbmRyZXcgSG9sd2F5IHdyb3RlOg0K
+PiBPbiBTZXAgNSwgMjAxMiwgYXQgNDowMiBQTSwgQXZpIEtpdml0eSB3cm90ZToNCj4gDQo+ID4g
+T24gMDkvMDQvMjAxMiAwMzowNCBQTSwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4gPj4gT24g
+VHVlLCAyMDEyLTA5LTA0IGF0IDExOjMxICswMjAwLCBBbmRyZXcgSG9sd2F5IHdyb3RlOg0KPiA+
+Pj4gSGVsbG8uDQo+ID4+PiANCj4gPj4+ICMgQXZpIEtpdml0eSBhdmkoYSlyZWRoYXQgcmVjb21t
+ZW5kZWQgSSBjb3B5IGt2bSBpbiBvbiB0aGlzLiBJdCB3b3VsZCBhbHNvIHNlZW0gcmVsZXZlbnQg
+dG8gbGlidmlydC4gIw0KPiA+Pj4gDQo+ID4+PiBJIGhhdmUgYSBDZW50b3MgNi4yIHNlcnZlciBh
+bmQgQ2VudG9zIDYuMiBjbGllbnQuDQo+ID4+PiANCj4gPj4+IFtyb290QHN0b3JlIH5dIyBjYXQg
+L2V0Yy9leHBvcnRzIA0KPiA+Pj4gL2Rldi9zaG0JCQkJMTAuMTQ5LjAuMC8xNihydyxmc2lkPTEs
+bm9fcm9vdF9zcXVhc2gsaW5zZWN1cmUpICAgIChJIGhhdmUgdHJpZWQgd2l0aCBub24gdGVtcGZz
+IHRhcmdldHMgYWxzbykNCj4gPj4+IA0KPiA+Pj4gDQo+ID4+PiBbcm9vdEBub2RlMDAxIH5dIyBj
+YXQgL2V0Yy9mc3RhYiANCj4gPj4+IHN0b3JlLmlibmV0Oi9kZXYvc2htICAgICAgICAgICAgIC9t
+bnQgICAgICAgICAgICAgICAgIG5mcyAgICAgICAgICByZG1hLHBvcnQ9MjA1MCxkZWZhdWx0cyAw
+IDANCj4gPj4+IA0KPiA+Pj4gDQo+ID4+PiBJIHdyb3RlIGEgbGl0dGxlIGZvciBsb29wIG9uZSBs
+aW5lciB0aGF0IGRkJ2QgdGhlIGNlbnRvcyBuZXQgaW5zdGFsbCBpbWFnZSB0byBhIGZpbGUgY2Fs
+bGVkICdoZWxsbycgdGhlbiBjaGVja3N1bW1lZCB0aGF0IGZpbGUuIEVhY2ggaXRlcmF0aW9uIHVz
+ZXMgYSBkaWZmZXJlbnQgYmxvY2sgc2l6ZS4NCj4gPj4+IA0KPiA+Pj4gTm9uIERJUkVDVF9JTyBz
+ZWVtcyB0byB3b3JrIGZpbmUuIERJUkVDVF9JTyB3aXRoIDUxMmJ5dGUsIDFLIGFuZCAySyBibG9j
+ayBzaXplcyBnZXQgY29ycnVwdGVkLg0KPiA+PiANCj4gPj4gDQo+ID4+IFRoYXQgaXMgZXhwZWN0
+ZWQgYmVoYXZpb3VyLiBESVJFQ1RfSU8gb3ZlciBSRE1BIG5lZWRzIHRvIGJlIHBhZ2UgYWxpZ25l
+ZA0KPiA+PiBzbyB0aGF0IGl0IGNhbiB1c2UgdGhlIG1vcmUgZWZmaWNpZW50IFJETUEgUkVBRCBh
+bmQgUkRNQSBXUklURSBtZW1vcnkNCj4gPj4gc2VtYW50aWNzIChpbnN0ZWFkIG9mIHRoZSBTRU5E
+L1JFQ0VJVkUgY2hhbm5lbCBzZW1hbnRpY3MpLg0KPiA+IA0KPiA+IFNob3VsZG4ndCBzdWJwYWdl
+IHJlcXVlc3RzIGZhaWwgdGhlbj8gIE9fRElSRUNUIGJsb2NrIHJlcXVlc3RzIGZhaWwgZm9yDQo+
+ID4gc3Vic2VjdG9yIHdyaXRlcywgaW5zdGVhZCBvZiBjb3JydXB0aW5nIHlvdXIgZGF0YS4NCj4g
+DQo+IEJ1dCBzaWxlbnQgZGF0YSBjb3JydXB0aW9uIGlzIHNvIG11Y2ggZnVuISENCg0KQSBjb3Vw
+bGUgb2YgUkRNQSBmb2xrcyBhcmUgbG9va2luZyBpbnRvIHdoeSB0aGlzIGlzIGhhcHBlbmluZy4g
+SSdtDQpob3BpbmcgdGhleSB3aWxsIGdldCBiYWNrIHRvIG1lIHNvb24uDQoNCi0tIA0KVHJvbmQg
+TXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5N
+eWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg0K
