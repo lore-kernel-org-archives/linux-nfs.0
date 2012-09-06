@@ -1,61 +1,129 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga11.intel.com ([192.55.52.93]:22950 "EHLO mga11.intel.com"
+Received: from fieldses.org ([174.143.236.118]:34435 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750824Ab2IZBip (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 Sep 2012 21:38:45 -0400
-Date: Wed, 26 Sep 2012 09:38:39 +0800
-From: Fengguang Wu <fengguang.wu@intel.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Yuanhan Liu <yuanhan.liu@intel.com>, kernel-janitors@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: [nfs:devel 17/39] fs/nfs/pnfs.c:1043:20: warning: unused variable
- 'nfsi'
-Message-ID: <20120926013839.GD8522@localhost>
+	id S1753471Ab2IFNdE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Sep 2012 09:33:04 -0400
+Date: Thu, 6 Sep 2012 09:33:00 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, Tyler Hicks <tyhicks@canonical.com>,
+        Dustin Kirkland <dustin.kirkland@gazzang.com>
+Subject: Re: [RFC PATCH 12/13] locks: break delegations on link
+Message-ID: <20120906133300.GA13054@fieldses.org>
+References: <1346878524-10585-1-git-send-email-bfields@redhat.com>
+ <1346878524-10585-13-git-send-email-bfields@redhat.com>
+ <20120905210206.GB10724@fieldses.org>
+ <20120906070122.58c21013@corrin.poochiereds.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120906070122.58c21013@corrin.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
+On Thu, Sep 06, 2012 at 07:01:22AM -0400, Jeff Layton wrote:
+> On Wed, 5 Sep 2012 17:02:06 -0400
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> 
+> > Oops, I meant to cc this to Jeff:
+> > 
+> > On Wed, Sep 05, 2012 at 04:55:22PM -0400, J. Bruce Fields wrote:
+> > > @@ -3556,6 +3560,7 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
+> > >  	if (error)
+> > >  		return error;
+> > >  
+> > > +retry_deleg:
+> > >  	new_dentry = user_path_create(newdfd, newname, &new_path, 0);
+> > >  	error = PTR_ERR(new_dentry);
+> > >  	if (IS_ERR(new_dentry))
+> > > @@ -3570,9 +3575,14 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
+> > >  	error = security_path_link(old_path.dentry, &new_path, new_dentry);
+> > >  	if (error)
+> > >  		goto out_dput;
+> > > -	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry);
+> > > +	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry, &delegated_inode);
+> > >  out_dput:
+> > >  	done_path_create(&new_path, new_dentry);
+> > > +	if (delegated_inode) {
+> > > +		error = break_deleg_wait(&delegated_inode);
+> > > +		if (!error)
+> > > +			goto retry_deleg;
+> > > +	}
+> > >  out:
+> > >  	path_put(&old_path);
+> > >  
+> > 
+> > I think this will get me into trouble with the audit code, right?
+> > 
+> > (On a quick skim I think I'm retrying from a point after the getname()
+> > in rename and unlink, so I think those are OK, but I may be missing
+> > something....)
+> > 
+> > --b.
+> > 
+> 
+> tl;dr: this patch is OK, but the unlink and rename patches will be
+> problematic.
+> 
+> Longer explanation:
+> 
+> The big problem is multiple calls into audit_inode_child(), which will
+> give you duplicate audit records when you retry the call. That function
+> mostly gets called from the fsnotify_* calls, but is also called from
+> may_delete().
+> 
+> In the create case (like this one), you're safe since we only call
+> fsnotify_* after the create succeeds. In the may_delete() case, we have
+> to call that function before the actual operation. A quick look at your
+> patches looks like you'll end up with multiple calls into may_delete on
+> a retry. That'll give you multiple audit records for each.
+> 
+> The good news is that if and when my audit_names overhaul patches go
+> in, that problem should go away. At that point audit_inode_child() will
+> know how to update existing records instead of creating new ones in
+> this case. I'm hoping those will go in for 3.7, so you may just want to
+> try to ensure that these patches go in after those.
 
-FYI, there are new compile warnings show up in
+OK, thanks for the explanation, I'll keep an eye on the audit_names
+overhaul.
 
-tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git devel
-head:   f743c735b817547b590d36a6e275235c7beb8600
-commit: a9c310af706112f44c15cf5172e81ba3ee755cab [17/39] NFSv4.1: Add helpers for setting/reading the I/O fail bit
+--b.
 
-All warnings:
-
-fs/nfs/pnfs.c: In function 'pnfs_update_layout':
-fs/nfs/pnfs.c:1043:20: warning: unused variable 'nfsi' [-Wunused-variable]
-
-vim +1043 fs/nfs/pnfs.c
-  1027	 * The appropriate layout segment is referenced and returned to the caller.
-  1028	 */
-  1029	struct pnfs_layout_segment *
-  1030	pnfs_update_layout(struct inode *ino,
-  1031			   struct nfs_open_context *ctx,
-  1032			   loff_t pos,
-  1033			   u64 count,
-  1034			   enum pnfs_iomode iomode,
-  1035			   gfp_t gfp_flags)
-  1036	{
-  1037		struct pnfs_layout_range arg = {
-  1038			.iomode = iomode,
-  1039			.offset = pos,
-  1040			.length = count,
-  1041		};
-  1042		unsigned pg_offset;
-> 1043		struct nfs_inode *nfsi = NFS_I(ino);
-  1044		struct nfs_server *server = NFS_SERVER(ino);
-  1045		struct nfs_client *clp = server->nfs_client;
-  1046		struct pnfs_layout_hdr *lo;
-  1047		struct pnfs_layout_segment *lseg = NULL;
-  1048		bool first = false;
-  1049	
-  1050		if (!pnfs_enabled_sb(NFS_SERVER(ino)))
-  1051			return NULL;
-
----
-0-DAY kernel build testing backend         Open Source Technology Centre
-Fengguang Wu, Yuanhan Liu                              Intel Corporation
+> 
+> > > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> > > index c8f5e74..2a77b28 100644
+> > > --- a/fs/nfsd/vfs.c
+> > > +++ b/fs/nfsd/vfs.c
+> > > @@ -1717,7 +1717,7 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
+> > >  		err = nfserrno(host_err);
+> > >  		goto out_dput;
+> > >  	}
+> > > -	host_err = vfs_link(dold, dirp, dnew);
+> > > +	host_err = vfs_link(dold, dirp, dnew, NULL);
+> > >  	if (!host_err) {
+> > >  		err = nfserrno(commit_metadata(ffhp));
+> > >  		if (!err)
+> > > diff --git a/include/linux/fs.h b/include/linux/fs.h
+> > > index ad9df65e..52b8c67 100644
+> > > --- a/include/linux/fs.h
+> > > +++ b/include/linux/fs.h
+> > > @@ -1721,7 +1721,7 @@ extern int vfs_create(struct inode *, struct dentry *, umode_t, bool);
+> > >  extern int vfs_mkdir(struct inode *, struct dentry *, umode_t);
+> > >  extern int vfs_mknod(struct inode *, struct dentry *, umode_t, dev_t);
+> > >  extern int vfs_symlink(struct inode *, struct dentry *, const char *);
+> > > -extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
+> > > +extern int vfs_link(struct dentry *, struct inode *, struct dentry *, struct inode **);
+> > >  extern int vfs_rmdir(struct inode *, struct dentry *);
+> > >  extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
+> > >  extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *, struct inode **);
+> > > -- 
+> > > 1.7.9.5
+> > > 
+> > > --
+> > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > > the body of a message to majordomo@vger.kernel.org
+> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 
+> -- 
+> Jeff Layton <jlayton@redhat.com>
