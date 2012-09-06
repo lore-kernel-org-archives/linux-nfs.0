@@ -1,76 +1,255 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:45426 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:53576 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756122Ab2IUUwV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Sep 2012 16:52:21 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 16/26] NFSv4.1: Remove redundant reference to the pnfs_layout_hdr
-Date: Fri, 21 Sep 2012 16:50:11 -0400
-Message-Id: <1348260621-10294-16-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1348260621-10294-15-git-send-email-Trond.Myklebust@netapp.com>
-References: <1348260621-10294-1-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-2-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-3-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-4-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-5-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-6-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-7-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-8-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-9-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-10-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-11-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-12-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-13-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-14-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-15-git-send-email-Trond.Myklebust@netapp.com>
+	id S1751208Ab2IFL6f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Sep 2012 07:58:35 -0400
+Date: Thu, 6 Sep 2012 07:58:31 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Nick Pasich <Nick@NickAndBarb.net>
+Cc: Pavel Shilovsky <piastryyy@gmail.com>, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: WARNING: at fs/inode.c:280 drop_nlink+0x31/0x33()
+Message-ID: <20120906075831.0a1164f5@corrin.poochiereds.net>
+In-Reply-To: <20120831180345.GA10907@NICK2>
+References: <20120829162527.GA3635@NickAndBarb.net>
+	<20120829151641.20cde4bc@corrin.poochiereds.net>
+	<20120831043352.GA23663@NickAndBarb.net>
+	<CAKywueSY+NOV3irDm9YxepeCyJJhh82o2mgmDLogr+hJPbaYig@mail.gmail.com>
+	<20120831153206.GA28908@NICK2>
+	<20120831092138.47668603@corrin.poochiereds.net>
+	<20120831180345.GA10907@NICK2>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Each layout segment already holds a reference to the pnfs_layout_hdr,
-so there is no need to hold an extra reference that is released once
-the last layout segment is freed.
+On Fri, 31 Aug 2012 11:03:45 -0700
+Nick Pasich <Nick@NickAndBarb.net> wrote:
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/pnfs.c | 9 ++-------
- 1 file changed, 2 insertions(+), 7 deletions(-)
+> On Fri, Aug 31, 2012 at 09:21:38AM -0700, Jeff Layton wrote:
+> > On Fri, 31 Aug 2012 08:32:06 -0700
+> > Nick Pasich <Nick@NickAndBarb.net> wrote:
+> > 
+> > > On Fri, Aug 31, 2012 at 12:00:26PM +0400, Pavel Shilovsky wrote:
+> > > > 2012/8/31 Nick Pasich <Nick@nickandbarb.net>:
+> > > > > Jeff,
+> > > > >
+> > > > > I applied this patch to Kernel 3.5.3 from Pavel and the
+> > > > > the warning is gone with no problems.
+> > > > >
+> > > > > Thanks,
+> > > > >
+> > > > > --( Nick Pasich
+> > > > >
+> > > > > ##########################################################
+> > > > >
+> > > > > From df2d6b1fbf2401c5ee04f2ac143ea0954e3a87a6 Mon Sep 17 00:00:00 2001
+> > > > > From: Pavel Shilovsky <pshilovsky@samba.org>
+> > > > > Date: Fri, 13 Jul 2012 11:59:45 +0400
+> > > > > Subject: [PATCH] CIFS: Protect i_nlink from being negative
+> > > > >
+> > > > > that can cause warning messages.
+> > > > >
+> > > > > Signed-off-by: Pavel Shilovsky <pshilovsky@samba.org>
+> > > > > ---
+> > > > >  fs/cifs/inode.c |   13 +++++++++++--
+> > > > >  1 files changed, 11 insertions(+), 2 deletions(-)
+> > > > >
+> > > > > diff --git a/fs/cifs/inode.c b/fs/cifs/inode.c
+> > > > > index 7354877..88afb1a 100644
+> > > > > --- a/fs/cifs/inode.c
+> > > > > +++ b/fs/cifs/inode.c
+> > > > > @@ -1110,6 +1110,15 @@ undo_setattr:
+> > > > >                 goto out_close;
+> > > > >  }
+> > > > >
+> > > > > +/* copied from fs/nfs/dir.c with small changes */
+> > > > > +static void
+> > > > > +cifs_drop_nlink(struct inode *inode)
+> > > > > +{
+> > > > > +       spin_lock(&inode->i_lock);
+> > > > > +       if (inode->i_nlink > 0)
+> > > > > +               drop_nlink(inode);
+> > > > > +       spin_unlock(&inode->i_lock);
+> > > > > +}
+> > > > >
+> > > > >  /*
+> > > > >   * If dentry->d_inode is null (usually meaning the cached dentry
+> > > > > @@ -1166,13 +1175,13 @@ retry_std_delete:
+> > > > >  psx_del_no_retry:
+> > > > >                 if (!rc) {
+> > > > >                                 if (inode)
+> > > > > -                       drop_nlink(inode);
+> > > > > +                       cifs_drop_nlink(inode);
+> > > > >                 } else if (rc == -ENOENT) {
+> > > > >                                 d_drop(dentry);
+> > > > >                 } else if (rc == -ETXTBSY) {
+> > > > >                                 rc = cifs_rename_pending_delete(full_path, dentry, xid);
+> > > > >                                 if (rc == 0)
+> > > > > -                       drop_nlink(inode);
+> > > > > +                       cifs_drop_nlink(inode);
+> > > > >                 } else if ((rc == -EACCES) && (dosattr == 0) && inode) {
+> > > > >                                 attrs = kzalloc(sizeof(*attrs), GFP_KERNEL);
+> > > > >                                 if (attrs == NULL) {
+> > > > > --
+> > > > > 1.7.3.3
+> > > > >
+> > > > > ##########################################################
+> > > > >
+> > > > > --
+> > > > > To unsubscribe from this list: send the line "unsubscribe linux-cifs" in
+> > > > > the body of a message to majordomo@vger.kernel.org
+> > > > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > > > 
+> > > > This one fixes only a part of the problem. Now we have another patch
+> > > > for this problem:
+> > > > 
+> > > > https://git.samba.org/sfrench/?p=sfrench/cifs-2.6.git;a=commitdiff;h=b7ca69289680cf631fb20b7d436467c4ec1153cd;hp=6dab7ede9390d4d937cb89feca932e4fd575d2da
+> > > > 
+> > > > -- 
+> > > > Best regards,
+> > > > Pavel Shilovsky.
+> > > 
+> > > 
+> > > 
+> > > Since I'm using kernel 3.5.3 , I get an error on hunk 7 of the patch.
+> > > 
+> > > I can do it by hand... But I want to check with you first.
+> > > 
+> > > Thanks,
+> > > 
+> > > --( Nick Pasich )--
+> > > 
+> > 
+> > If you fix it up by hand, consider submitting it as a backport for the
+> > stable series as well.
+> > 
+> > -- 
+> > Jeff Layton <jlayton@redhat.com>
+> 
+> Jeff / Pavel,
+> 
+> Here are my changes on hunk #7 that allow patching 3.5.3
+> 
+> Check it out....
+> 
+> --( Nick Pasich )--
+> 
+> 
+> 
+> ##############################################################################
+> 
+> diff -u a/fs/cifs/inode.c b/fs/cifs/inode.c
+> --- a/fs/cifs/inode.c
+> +++ b/fs/cifs/inode.c
+> @@ -124,10 +124,10 @@
+>  {
+>  	struct cifsInodeInfo *cifs_i = CIFS_I(inode);
+>  	struct cifs_sb_info *cifs_sb = CIFS_SB(inode->i_sb);
+> -	unsigned long oldtime = cifs_i->time;
+>  
+>  	cifs_revalidate_cache(inode, fattr);
+>  
+> +	spin_lock(&inode->i_lock);
+>  	inode->i_atime = fattr->cf_atime;
+>  	inode->i_mtime = fattr->cf_mtime;
+>  	inode->i_ctime = fattr->cf_ctime;
+> @@ -148,9 +148,6 @@
+>  	else
+>  		cifs_i->time = jiffies;
+>  
+> -	cFYI(1, "inode 0x%p old_time=%ld new_time=%ld", inode,
+> -		 oldtime, cifs_i->time);
+> -
+>  	cifs_i->delete_pending = fattr->cf_flags & CIFS_FATTR_DELETE_PENDING;
+>  
+>  	cifs_i->server_eof = fattr->cf_eof;
+> @@ -158,7 +155,6 @@
+>  	 * Can't safely change the file size here if the client is writing to
+>  	 * it due to potential races.
+>  	 */
+> -	spin_lock(&inode->i_lock);
+>  	if (is_size_safe_to_change(cifs_i, fattr->cf_eof)) {
+>  		i_size_write(inode, fattr->cf_eof);
+>  
+> @@ -909,12 +905,14 @@
+>  
+>  	if (rc && tcon->ipc) {
+>  		cFYI(1, "ipc connection - fake read inode");
+> +		spin_lock(&inode->i_lock);
+>  		inode->i_mode |= S_IFDIR;
+>  		set_nlink(inode, 2);
+>  		inode->i_op = &cifs_ipc_inode_ops;
+>  		inode->i_fop = &simple_dir_operations;
+>  		inode->i_uid = cifs_sb->mnt_uid;
+>  		inode->i_gid = cifs_sb->mnt_gid;
+> +		spin_unlock(&inode->i_lock);
+>  	} else if (rc) {
+>  		iget_failed(inode);
+>  		inode = ERR_PTR(rc);
+> @@ -1159,6 +1157,15 @@
+>  	goto out_close;
+>  }
+>  
+> +/* copied from fs/nfs/dir.c with small changes */
+> +static void
+> +cifs_drop_nlink(struct inode *inode)
+> +{
+> +	spin_lock(&inode->i_lock);
+> +	if (inode->i_nlink > 0)
+> +		drop_nlink(inode);
+> +	spin_unlock(&inode->i_lock);
+> +}
+>  
+>  /*
+>   * If dentry->d_inode is null (usually meaning the cached dentry
+> @@ -1216,13 +1223,13 @@
+>  psx_del_no_retry:
+>  	if (!rc) {
+>  		if (inode)
+> -			drop_nlink(inode);
+> +			cifs_drop_nlink(inode);
+>  	} else if (rc == -ENOENT) {
+>  		d_drop(dentry);
+>  	} else if (rc == -ETXTBSY) {
+>  		rc = cifs_rename_pending_delete(full_path, dentry, xid);
+>  		if (rc == 0)
+> -			drop_nlink(inode);
+> +			cifs_drop_nlink(inode);
+>  	} else if ((rc == -EACCES) && (dosattr == 0) && inode) {
+>  		attrs = kzalloc(sizeof(*attrs), GFP_KERNEL);
+>  		if (attrs == NULL) {
+> @@ -1369,9 +1376,10 @@
+>  		d_instantiate(direntry, newinode);
+>  		 /* setting nlink not necessary except in cases where we
+>  		  * failed to get it from the server or was set bogus */
+> +	 	spin_lock(&direntry->d_inode->i_lock);
+>  		if ((direntry->d_inode) && (direntry->d_inode->i_nlink < 2))
+>  			set_nlink(direntry->d_inode, 2);
+> -
+> +	 	spin_unlock(&direntry->d_inode->i_lock);
+>  		mode &= ~current_umask();
+>  		/* must turn on setgid bit if parent dir has it */
+>  		if (inode->i_mode & S_ISGID)
+> diff -u a/fs/cifs/link.c b/fs/cifs/link.c
+> --- a/fs/cifs/link.c
+> +++ b/fs/cifs/link.c
+> @@ -433,7 +433,9 @@
+>  	if (old_file->d_inode) {
+>  		cifsInode = CIFS_I(old_file->d_inode);
+>  		if (rc == 0) {
+> +			spin_lock(&old_file->d_inode->i_lock);
+>  			inc_nlink(old_file->d_inode);
+> +			spin_unlock(&old_file->d_inode->i_lock);
+>  /* BB should we make this contingent on superblock flag NOATIME? */
+>  /*			old_file->d_inode->i_ctime = CURRENT_TIME;*/
+>  			/* parent dir timestamps will update from srv
+> ##############################################################################
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-cifs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 142d0f4..767c748 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -306,11 +306,8 @@ pnfs_layout_remove_lseg(struct pnfs_layout_hdr *lo,
- 
- 	WARN_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
- 	list_del_init(&lseg->pls_list);
--	if (list_empty(&lo->plh_segs)) {
-+	if (list_empty(&lo->plh_segs))
- 		set_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags);
--		/* Matched by initial refcount set in alloc_init_layout_hdr */
--		pnfs_put_layout_hdr_locked(lo);
--	}
- 	rpc_wake_up(&NFS_SERVER(inode)->roc_rpcwaitq);
- }
- 
-@@ -443,8 +440,7 @@ pnfs_mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
- 	dprintk("%s:Begin lo %p\n", __func__, lo);
- 
- 	if (list_empty(&lo->plh_segs)) {
--		if (!test_and_set_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags))
--			pnfs_put_layout_hdr_locked(lo);
-+		set_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags);
- 		return 0;
- 	}
- 	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list)
-@@ -1102,7 +1098,6 @@ pnfs_update_layout(struct inode *ino,
- 		goto out_unlock;
- 	atomic_inc(&lo->plh_outstanding);
- 
--	pnfs_get_layout_hdr(lo);
- 	if (list_empty(&lo->plh_segs))
- 		first = true;
- 
--- 
-1.7.11.4
+Looks good to me. You can add:
 
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
