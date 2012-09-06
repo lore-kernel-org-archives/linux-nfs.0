@@ -1,114 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:36118 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759038Ab2IMXhr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Sep 2012 19:37:47 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@tonian.com>, NFS list <linux-nfs@vger.kernel.org>,
-        open-osd <osd-dev@open-osd.org>
-Subject: [PATCH 07/10] SQUASHME: pnfsd: Something very wrong with layout_recall(RETURN_FILE)
-Date: Fri, 14 Sep 2012 02:37:34 +0300
-Message-ID: <1347579454-21650-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <50526B39.3000802@panasas.com>
-References: <50526B39.3000802@panasas.com>
+Received: from relay4-d.mail.gandi.net ([217.70.183.196]:41585 "EHLO
+	relay4-d.mail.gandi.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754768Ab2IFOz7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Sep 2012 10:55:59 -0400
+Date: Thu, 6 Sep 2012 07:55:46 -0700
+From: Josh Triplett <josh@joshtriplett.org>
+To: Sasha Levin <levinsasha928@gmail.com>
+Cc: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
+        Pedro Alves <palves@redhat.com>, Steven Rostedt <rostedt@goodmis.org>,
+        Tejun Heo <tj@kernel.org>, torvalds@linux-foundation.org,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, eric.dumazet@gmail.com,
+        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
+        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
+        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive hashtable
+Message-ID: <20120906145545.GA17332@leaf>
+References: <503C95E4.3010000@gmail.com>
+ <20120828101148.GA21683@Krystal>
+ <503CAB1E.5010408@gmail.com>
+ <20120828115638.GC23818@Krystal>
+ <20120828230050.GA3337@Krystal>
+ <1346772948.27919.9.camel@gandalf.local.home>
+ <50462C99.5000007@redhat.com>
+ <50462EE8.1090903@redhat.com>
+ <20120904170138.GB31934@Krystal>
+ <5048AAF6.5090101@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5048AAF6.5090101@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In patch:
-	pnfsd: layout recall layout state
+On Thu, Sep 06, 2012 at 03:53:58PM +0200, Sasha Levin wrote:
+> On 09/04/2012 07:01 PM, Mathieu Desnoyers wrote:
+> >> #define do_for_each_ftrace_rec(pg, rec)                                          \
+> >> >         for (pg = ftrace_pages_start, rec = &pg->records[pg->index];             \
+> >> >              pg && rec == &pg->records[pg->index];                               \
+> >> >              pg = pg->next)                                                      \
+> >> >           for (rec = pg->records; rec < &pg->records[pg->index]; rec++)
+> > Maybe in some cases there might be ways to combine the two loops into
+> > one ? I'm not seeing exactly how to do it for this one, but it should
+> > not be impossible. If the inner loop condition can be moved to the outer
+> > loop, and if we use (blah ? loop1_conf : loop2_cond) to test for
+> > different conditions depending on the context, and do the same for the
+> > 3rd argument of the for() loop. The details elude me for now though, so
+> > maybe it's complete non-sense ;)
+> > 
+> > It might not be that useful for do_for_each_ftrace_rec, but if we can do
+> > it for the hash table iterator, it might be worth it.
+> 
+> So I think that for the hash iterator it might actually be simpler.
+> 
+> My solution to making 'break' work in the iterator is:
+> 
+> 	for (bkt = 0, node = NULL; bkt < HASH_SIZE(name) && node == NULL; bkt++)
+> 		hlist_for_each_entry(obj, node, &name[bkt], member)
+> 
+> We initialize our node loop cursor with NULL in the external loop, and the
+> external loop will have a new condition to loop while that cursor is NULL.
+> 
+> My logic is that we can only 'break' when we are iterating over an object in the
+> internal loop. If we're iterating over an object in that loop then 'node != NULL'.
+> 
+> This way, if we broke from within the internal loop, the external loop will see
+> node as not NULL, and so it will stop looping itself. On the other hand, if the
+> internal loop has actually ended, then node will be NULL, and the outer loop
+> will keep running.
+> 
+> Is there anything I've missed?
 
-the cl_has_file_layout() is no longer inspecting the layout structures added per file
-but is inspecting if file has layout_state.
+Looks reasonable.  However, it would break (or rather, not break) on
+code like this:
 
-So it is counting layout_states and not layouts
+	hash_for_each_entry(...) {
+		if (...) {
+			foo(node);
+			node = NULL;
+			break;
+		}
+	}
 
-This is bad because the addition of the layout_states on the file is done before the
-call to the filesystem so if the FS does a recall, the nfsd is confused thinking
-it already has a layout and issues a recall. Instead of returning -ENOENT, ie list
-is empty. The client then truly returns nomaching_layout and when the lo_return(s) are
-emulated the system gets stuck is some reference miss-match. (UML so no crash trace)
+Hiding the double loop still seems error-prone.
 
-Now lets say that the state should be set before the call to the FS. Then I don't
-see where the state is removed in the case of an ERROR return from FS->layout_get.
-Meaning cl_has_file_layout() will always think it has some count.
-
-Also When a layout is returned it is the layout list that is inspected and freed,
-so how is the cl_has_file_layout() emptied ?
-
-In any way. I do not agree that it is the state that is needed to be searched
-in cl_has_file_layout() but it is layouts that are needed, otherwise the all
-layout <---> recall very delicate dance is totally broken.
-
-What was the meaning of the Poet?
-
-I reverted the cl_has_file_layout() to historical processing.
-
-Also cl_has_file_layout() returns true for any layout on a file, but we must
-inspect IO_MODE and LSEG for a partial-match, as well.
-
-The below works for me. State also looks good. I can now safely call
-cb_recall, from within a layout_get operation.
-
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/nfsd/nfs4pnfsd.c | 29 ++++++++++++++++-------------
- 1 file changed, 16 insertions(+), 13 deletions(-)
-
-diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-index e8e7709..523d3d0 100644
---- a/fs/nfsd/nfs4pnfsd.c
-+++ b/fs/nfsd/nfs4pnfsd.c
-@@ -1177,24 +1177,27 @@ out:
- }
- 
- static bool
--cl_has_file_layout(struct nfs4_client *clp, struct nfs4_file *fp, stateid_t *lsid)
-+cl_has_file_layout(struct nfs4_client *clp, struct nfs4_file *fp,
-+		   stateid_t *lsid, struct nfsd4_pnfs_cb_layout *cbl)
- {
--	struct nfs4_layout_state *ls;
-+	struct nfs4_layout *lo;
-+	bool ret = false;
- 
- 	spin_lock(&layout_lock);
--	list_for_each_entry (ls, &fp->fi_layout_states, ls_perfile)
--		if (same_clid(&ls->ls_stid.sc_stateid.si_opaque.so_clid,
--			      &clp->cl_clientid)) {
-+	list_for_each_entry(lo, &fp->fi_layouts, lo_perfile) {
-+		if (same_clid(&lo->lo_client->cl_clientid, &clp->cl_clientid) &&
-+		    lo_seg_overlapping(&cbl->cbl_seg, &lo->lo_seg) &&
-+		    (cbl->cbl_seg.iomode & lo->lo_seg.iomode))
- 			goto found;
--		}
--	spin_unlock(&layout_lock);
--	return false;
--
-+	}
-+	goto unlock;
- found:
--	update_layout_stateid_locked(ls, lsid);
-+	/* Im going to send a recall on this latout update state */
-+	update_layout_stateid_locked(lo->lo_state, lsid);
-+	ret = true;
-+unlock:
- 	spin_unlock(&layout_lock);
--
--	return true;
-+	return ret;
- }
- 
- static int
-@@ -1226,7 +1229,7 @@ cl_has_layout(struct nfs4_client *clp, struct nfsd4_pnfs_cb_layout *cbl,
- {
- 	switch (cbl->cbl_recall_type) {
- 	case RETURN_FILE:
--		return cl_has_file_layout(clp, lrfile, lsid);
-+		return cl_has_file_layout(clp, lrfile, lsid, cbl);
- 	case RETURN_FSID:
- 		return cl_has_fsid_layout(clp, &cbl->cbl_fsid);
- 	default:
--- 
-1.7.10.2.677.gb6bc67f
-
+- Josh Triplett
