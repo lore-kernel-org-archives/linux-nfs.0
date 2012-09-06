@@ -1,74 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vb0-f46.google.com ([209.85.212.46]:48299 "EHLO
-	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760763Ab2IGOTE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Sep 2012 10:19:04 -0400
-Received: by mail-vb0-f46.google.com with SMTP id ff1so3363912vbb.19
-        for <linux-nfs@vger.kernel.org>; Fri, 07 Sep 2012 07:19:04 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v6 18/20] vfs: make fchownat retry once on ESTALE errors
-Date: Fri,  7 Sep 2012 10:18:25 -0400
-Message-Id: <1347027507-20956-19-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1347027507-20956-1-git-send-email-jlayton@redhat.com>
-References: <1347027507-20956-1-git-send-email-jlayton@redhat.com>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:52141 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753130Ab2IFRA4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Sep 2012 13:00:56 -0400
+Message-ID: <5048D6DE.8090805@gmail.com>
+Date: Thu, 06 Sep 2012 19:01:18 +0200
+From: Sasha Levin <levinsasha928@gmail.com>
+MIME-Version: 1.0
+To: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+CC: Steven Rostedt <rostedt@goodmis.org>,
+        Josh Triplett <josh@joshtriplett.org>, Pedro Alves <palves@redhat.com>,
+        Tejun Heo <tj@kernel.org>, torvalds@linux-foundation.org,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, eric.dumazet@gmail.com,
+        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
+        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
+        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive hashtable
+References: <20120828230050.GA3337@Krystal> <1346772948.27919.9.camel@gandalf.local.home> <50462C99.5000007@redhat.com> <50462EE8.1090903@redhat.com> <20120904170138.GB31934@Krystal> <5048AAF6.5090101@gmail.com> <20120906145545.GA17332@leaf> <5048C615.4070204@gmail.com> <1346947206.1680.36.camel@gandalf.local.home> <5048CDA2.10300@gmail.com> <20120906165055.GC7385@Krystal>
+In-Reply-To: <20120906165055.GC7385@Krystal>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/open.c | 29 +++++++++++++++++------------
- 1 file changed, 17 insertions(+), 12 deletions(-)
+On 09/06/2012 06:50 PM, Mathieu Desnoyers wrote:
+> * Sasha Levin (levinsasha928@gmail.com) wrote:
+>> On 09/06/2012 06:00 PM, Steven Rostedt wrote:
+>>>>> I think that that code doesn't make sense. The users of hlist_for_each_* aren't
+>>>>> supposed to be changing the loop cursor.
+>>> I totally agree. Modifying the 'node' pointer is just asking for issues.
+>>> Yes that is error prone, but not due to the double loop. It's due to the
+>>> modifying of the node pointer that is used internally by the loop
+>>> counter. Don't do that :-)
+>>
+>> While we're on this subject, I haven't actually seen hlist_for_each_entry() code
+>> that even *touches* 'pos'.
+>>
+>> Will people yell at me loudly if I change the prototype of those macros to be:
+>>
+>> 	hlist_for_each_entry(tpos, head, member)
+>>
+>> (Dropping the 'pos' parameter), and updating anything that calls those macros to
+>> drop it as well?
+> 
+> I think the intent there is to keep hlist macros and list macros
+> slightly in sync. Given those are vastly used, I'm not sure you want to
+> touch them. But hey, that's just my 2 cents.
 
-diff --git a/fs/open.c b/fs/open.c
-index 232cbfb..1bdfd9a 100644
---- a/fs/open.c
-+++ b/fs/open.c
-@@ -567,24 +567,29 @@ SYSCALL_DEFINE5(fchownat, int, dfd, const char __user *, filename, uid_t, user,
- 	struct path path;
- 	int error = -EINVAL;
- 	int lookup_flags;
-+	unsigned int try = 0;
- 
- 	if ((flag & ~(AT_SYMLINK_NOFOLLOW | AT_EMPTY_PATH)) != 0)
--		goto out;
-+		return error;
- 
- 	lookup_flags = (flag & AT_SYMLINK_NOFOLLOW) ? 0 : LOOKUP_FOLLOW;
- 	if (flag & AT_EMPTY_PATH)
- 		lookup_flags |= LOOKUP_EMPTY;
--	error = user_path_at(dfd, filename, lookup_flags, &path);
--	if (error)
--		goto out;
--	error = mnt_want_write(path.mnt);
--	if (error)
--		goto out_release;
--	error = chown_common(&path, user, group);
--	mnt_drop_write(path.mnt);
--out_release:
--	path_put(&path);
--out:
-+
-+	do {
-+		error = user_path_at(dfd, filename, lookup_flags, &path);
-+		if (error)
-+			break;
-+
-+		error = mnt_want_write(path.mnt);
-+		if (!error) {
-+			error = chown_common(&path, user, group);
-+			mnt_drop_write(path.mnt);
-+		}
-+
-+		path_put(&path);
-+		lookup_flags |= LOOKUP_REVAL;
-+	} while (retry_estale(error, try++));
- 	return error;
- }
- 
--- 
-1.7.11.4
+Actually, the corresponding list macro looks like this:
 
+	list_for_each_entry(pos, head, member)
+
+With 'pos' being the equivalent of 'tpos' in the hlist macros (the type *).
+Changing hlist macro will make them both look as follows:
+
+	hlist_for_each_entry(pos, head, member)
+	list_for_each_entry(pos, head, member)
+
+So following this suggesting will actually bring them back to sync...
+
+The only issue I can see is that as you've said, they're used almost everywhere,
+so doing something to change that will require some coordination.
+
+
+Thanks,
+Sasha
