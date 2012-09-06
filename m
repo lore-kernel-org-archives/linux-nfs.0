@@ -1,184 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:18554 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751012Ab2IXT5S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Sep 2012 15:57:18 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 01/28] NFS: Clean up the pNFS layoutget interface
-Date: Mon, 24 Sep 2012 15:56:19 -0400
-Message-Id: <1348516606-22721-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-ey0-f174.google.com ([209.85.215.174]:56149 "EHLO
+	mail-ey0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753588Ab2IFNxf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Sep 2012 09:53:35 -0400
+Message-ID: <5048AAF6.5090101@gmail.com>
+Date: Thu, 06 Sep 2012 15:53:58 +0200
+From: Sasha Levin <levinsasha928@gmail.com>
+MIME-Version: 1.0
+To: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+CC: Pedro Alves <palves@redhat.com>, Steven Rostedt <rostedt@goodmis.org>,
+        Tejun Heo <tj@kernel.org>, torvalds@linux-foundation.org,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive hashtable
+References: <20120824230740.GN21325@google.com> <20120825042419.GA27240@Krystal> <503C95E4.3010000@gmail.com> <20120828101148.GA21683@Krystal> <503CAB1E.5010408@gmail.com> <20120828115638.GC23818@Krystal> <20120828230050.GA3337@Krystal> <1346772948.27919.9.camel@gandalf.local.home> <50462C99.5000007@redhat.com> <50462EE8.1090903@redhat.com> <20120904170138.GB31934@Krystal>
+In-Reply-To: <20120904170138.GB31934@Krystal>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that we do return errors from nfs4_proc_layoutget() and that we
-don't mark the layout as having failed if the error was due to a
-signal or resource problem on the client side.
+On 09/04/2012 07:01 PM, Mathieu Desnoyers wrote:
+>> #define do_for_each_ftrace_rec(pg, rec)                                          \
+>> >         for (pg = ftrace_pages_start, rec = &pg->records[pg->index];             \
+>> >              pg && rec == &pg->records[pg->index];                               \
+>> >              pg = pg->next)                                                      \
+>> >           for (rec = pg->records; rec < &pg->records[pg->index]; rec++)
+> Maybe in some cases there might be ways to combine the two loops into
+> one ? I'm not seeing exactly how to do it for this one, but it should
+> not be impossible. If the inner loop condition can be moved to the outer
+> loop, and if we use (blah ? loop1_conf : loop2_cond) to test for
+> different conditions depending on the context, and do the same for the
+> 3rd argument of the for() loop. The details elude me for now though, so
+> maybe it's complete non-sense ;)
+> 
+> It might not be that useful for do_for_each_ftrace_rec, but if we can do
+> it for the hash table iterator, it might be worth it.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c       | 14 +++++++++-----
- fs/nfs/pnfs.c           | 25 ++++++++++++++++---------
- fs/nfs/pnfs.h           |  4 ++--
- include/linux/nfs_xdr.h |  1 -
- 4 files changed, 27 insertions(+), 17 deletions(-)
+So I think that for the hash iterator it might actually be simpler.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 645c450..b738577 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6286,7 +6286,8 @@ static const struct rpc_call_ops nfs4_layoutget_call_ops = {
- 	.rpc_release = nfs4_layoutget_release,
- };
- 
--void nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
-+struct pnfs_layout_segment *
-+nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
- {
- 	struct nfs_server *server = NFS_SERVER(lgp->args.inode);
- 	size_t max_pages = max_response_pages(server);
-@@ -6303,6 +6304,7 @@ void nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
- 		.callback_data = lgp,
- 		.flags = RPC_TASK_ASYNC,
- 	};
-+	struct pnfs_layout_segment *lseg = NULL;
- 	int status = 0;
- 
- 	dprintk("--> %s\n", __func__);
-@@ -6310,7 +6312,7 @@ void nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
- 	lgp->args.layout.pages = nfs4_alloc_pages(max_pages, gfp_flags);
- 	if (!lgp->args.layout.pages) {
- 		nfs4_layoutget_release(lgp);
--		return;
-+		return ERR_PTR(-ENOMEM);
- 	}
- 	lgp->args.layout.pglen = max_pages * PAGE_SIZE;
- 
-@@ -6319,15 +6321,17 @@ void nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
- 	nfs41_init_sequence(&lgp->args.seq_args, &lgp->res.seq_res, 0);
- 	task = rpc_run_task(&task_setup_data);
- 	if (IS_ERR(task))
--		return;
-+		return ERR_CAST(task);
- 	status = nfs4_wait_for_completion_rpc_task(task);
- 	if (status == 0)
- 		status = task->tk_status;
- 	if (status == 0)
--		status = pnfs_layout_process(lgp);
-+		lseg = pnfs_layout_process(lgp);
- 	rpc_put_task(task);
- 	dprintk("<-- %s status=%d\n", __func__, status);
--	return;
-+	if (status)
-+		return ERR_PTR(status);
-+	return lseg;
- }
- 
- static void
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 2e00fea..3a7ac97 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -582,7 +582,7 @@ send_layoutget(struct pnfs_layout_hdr *lo,
- 	struct inode *ino = lo->plh_inode;
- 	struct nfs_server *server = NFS_SERVER(ino);
- 	struct nfs4_layoutget *lgp;
--	struct pnfs_layout_segment *lseg = NULL;
-+	struct pnfs_layout_segment *lseg;
- 
- 	dprintk("--> %s\n", __func__);
- 
-@@ -599,16 +599,22 @@ send_layoutget(struct pnfs_layout_hdr *lo,
- 	lgp->args.type = server->pnfs_curr_ld->id;
- 	lgp->args.inode = ino;
- 	lgp->args.ctx = get_nfs_open_context(ctx);
--	lgp->lsegpp = &lseg;
- 	lgp->gfp_flags = gfp_flags;
- 
- 	/* Synchronously retrieve layout information from server and
- 	 * store in lseg.
- 	 */
--	nfs4_proc_layoutget(lgp, gfp_flags);
--	if (!lseg) {
--		/* remember that LAYOUTGET failed and suspend trying */
--		set_bit(lo_fail_bit(range->iomode), &lo->plh_flags);
-+	lseg = nfs4_proc_layoutget(lgp, gfp_flags);
-+	if (IS_ERR(lseg)) {
-+		switch (PTR_ERR(lseg)) {
-+		case -ENOMEM:
-+		case -ERESTARTSYS:
-+			break;
-+		default:
-+			/* remember that LAYOUTGET failed and suspend trying */
-+			set_bit(lo_fail_bit(range->iomode), &lo->plh_flags);
-+		}
-+		return NULL;
- 	}
- 
- 	return lseg;
-@@ -1096,7 +1102,7 @@ out_unlock:
- }
- EXPORT_SYMBOL_GPL(pnfs_update_layout);
- 
--int
-+struct pnfs_layout_segment *
- pnfs_layout_process(struct nfs4_layoutget *lgp)
- {
- 	struct pnfs_layout_hdr *lo = NFS_I(lgp->args.inode)->layout;
-@@ -1129,7 +1135,7 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
- 	}
- 	init_lseg(lo, lseg);
- 	lseg->pls_range = res->range;
--	*lgp->lsegpp = get_lseg(lseg);
-+	get_lseg(lseg);
- 	pnfs_insert_layout(lo, lseg);
- 
- 	if (res->return_on_close) {
-@@ -1140,8 +1146,9 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
- 	/* Done processing layoutget. Set the layout stateid */
- 	pnfs_set_layout_stateid(lo, &res->stateid, false);
- 	spin_unlock(&ino->i_lock);
-+	return lseg;
- out:
--	return status;
-+	return ERR_PTR(status);
- 
- out_forget_reply:
- 	spin_unlock(&ino->i_lock);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 745aa1b..d51ef88 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -172,7 +172,7 @@ extern int nfs4_proc_getdevicelist(struct nfs_server *server,
- 				   struct pnfs_devicelist *devlist);
- extern int nfs4_proc_getdeviceinfo(struct nfs_server *server,
- 				   struct pnfs_device *dev);
--extern void nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags);
-+extern struct pnfs_layout_segment* nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags);
- extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
- 
- /* pnfs.c */
-@@ -192,7 +192,7 @@ void pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *, struct nfs_page
- int pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc);
- bool pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev, struct nfs_page *req);
- void pnfs_set_lo_fail(struct pnfs_layout_segment *lseg);
--int pnfs_layout_process(struct nfs4_layoutget *lgp);
-+struct pnfs_layout_segment *pnfs_layout_process(struct nfs4_layoutget *lgp);
- void pnfs_free_lseg_list(struct list_head *tmp_list);
- void pnfs_destroy_layout(struct nfs_inode *);
- void pnfs_destroy_all_layouts(struct nfs_client *);
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index be9cf3c..5da789f 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -251,7 +251,6 @@ struct nfs4_layoutget_res {
- struct nfs4_layoutget {
- 	struct nfs4_layoutget_args args;
- 	struct nfs4_layoutget_res res;
--	struct pnfs_layout_segment **lsegpp;
- 	gfp_t gfp_flags;
- };
- 
--- 
-1.7.11.4
+My solution to making 'break' work in the iterator is:
 
+	for (bkt = 0, node = NULL; bkt < HASH_SIZE(name) && node == NULL; bkt++)
+		hlist_for_each_entry(obj, node, &name[bkt], member)
+
+We initialize our node loop cursor with NULL in the external loop, and the
+external loop will have a new condition to loop while that cursor is NULL.
+
+My logic is that we can only 'break' when we are iterating over an object in the
+internal loop. If we're iterating over an object in that loop then 'node != NULL'.
+
+This way, if we broke from within the internal loop, the external loop will see
+node as not NULL, and so it will stop looping itself. On the other hand, if the
+internal loop has actually ended, then node will be NULL, and the outer loop
+will keep running.
+
+Is there anything I've missed?
+
+
+Thanks,
+Sasha
