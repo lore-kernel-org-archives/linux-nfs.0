@@ -1,53 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e8.ny.us.ibm.com ([32.97.182.138]:56688 "EHLO e8.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752199Ab2IIPZy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 9 Sep 2012 11:25:54 -0400
-Received: from /spool/local
-	by e8.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Sun, 9 Sep 2012 11:25:53 -0400
-Received: from d01relay07.pok.ibm.com (d01relay07.pok.ibm.com [9.56.227.147])
-	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id C8DD638C803B
-	for <linux-nfs@vger.kernel.org>; Sun,  9 Sep 2012 11:25:49 -0400 (EDT)
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q89FPn3X37093512
-	for <linux-nfs@vger.kernel.org>; Sun, 9 Sep 2012 11:25:49 -0400
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q89FPmTr002121
-	for <linux-nfs@vger.kernel.org>; Sun, 9 Sep 2012 11:25:48 -0400
-Received: from malahal (malahal.austin.ibm.com [9.41.105.170])
-	by d01av01.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id q89FPmw6002093
-	for <linux-nfs@vger.kernel.org>; Sun, 9 Sep 2012 11:25:48 -0400
-From: Malahal Naineni <malahal@us.ibm.com>
+Received: from mailservice.tudelft.nl ([130.161.131.5]:35482 "EHLO
+	mailservice.tudelft.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753875Ab2IFHaZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Sep 2012 03:30:25 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by amavis (Postfix) with ESMTP id D47BE2B8038
+	for <linux-nfs@vger.kernel.org>; Thu,  6 Sep 2012 09:30:23 +0200 (CEST)
+Received: from mailservice.tudelft.nl ([130.161.131.73])
+	by localhost (tudelft.nl [127.0.0.1]) (amavisd-new, port 10026)
+	with ESMTP id hqg7j6-FnAFn for <linux-nfs@vger.kernel.org>;
+	Thu,  6 Sep 2012 09:30:23 +0200 (CEST)
+Received: from smtp-a.tudelft.nl (smtp-a.tudelft.nl [130.161.180.7])
+	by mx2.tudelft.nl (Postfix) with ESMTP id 11DEA2B801A
+	for <linux-nfs@vger.kernel.org>; Thu,  6 Sep 2012 09:30:23 +0200 (CEST)
+Received: from pc-rsmits.ws.tudelft.net (x081242.tudelft.net [131.180.81.242])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by smtp-a.tudelft.nl (Postfix) with ESMTP id 05BD8B3A62
+	for <linux-nfs@vger.kernel.org>; Thu,  6 Sep 2012 09:30:22 +0200 (CEST)
+Message-ID: <5048510E.4080407@tudelft.nl>
+Date: Thu, 06 Sep 2012 09:30:22 +0200
+From: Richard Smits <R.Smits@tudelft.nl>
+MIME-Version: 1.0
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSD: pass null terminated buf to kstrtouint()
-Date: Sun,  9 Sep 2012 10:25:47 -0500
-Message-Id: <1347204347-23706-1-git-send-email-malahal@us.ibm.com>
+Subject: Re: nfsv4 state id errors
+References: <503B49E4.2050409@tudelft.nl>
+In-Reply-To: <503B49E4.2050409@tudelft.nl>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The 'buf' is prepared with null termination with intention of using it for
-this purpose, but 'name' is passed instead!
+Anyone any ideas ? Or should we open a case at Netapp ?
 
-Signed-off-by: Malahal Naineni <malahal@us.ibm.com>
----
- fs/nfsd/nfs4idmap.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+Greetings.
 
-diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
-index fdc91a6..ccfe0d0 100644
---- a/fs/nfsd/nfs4idmap.c
-+++ b/fs/nfsd/nfs4idmap.c
-@@ -598,7 +598,7 @@ numeric_name_to_id(struct svc_rqst *rqstp, int type, const char *name, u32 namel
- 	/* Just to make sure it's null-terminated: */
- 	memcpy(buf, name, namelen);
- 	buf[namelen] = '\0';
--	ret = kstrtouint(name, 10, id);
-+	ret = kstrtouint(buf, 10, id);
- 	return ret == 0;
- }
- 
--- 
-1.7.0.4
-
+On 08/27/2012 12:20 PM, Robbert Eggermont wrote:
+> Hello,
+>
+>> A couple of weeks agoo we upgraded our Netapp filer to 8.1.1RC1. We have
+>> always had trouble with NFS and state id's. Resulting in hanging clients.
+>
+> (Client: SLED11 SP2, 3.0.34-0.7-default x86_64)
+>
+> The "hanging" seems to be caused by the server returning an
+> NFS4ERR_BAD_STATEID(10025) status for PUTFH;LOCK and PUTFH;WRITE;GETATTR
+> calls. The client is making several hundreds of these identical (same
+> filehandle) calls each second.
+>
+> The problem seems to be triggered by (write) actions on an open file
+> when the Kerberos ticket has expired (especially for .xsession-errors
+> and files opened by Firefox or Thunderbird).
+>
+> When (after some time) a new valid ticket is obtained, the kernel
+> reports this error:
+> nfs4_reclaim_open_state: unhandled error -10026. Zeroing state
+>
+> Is this a client or a server problem (and is there by any chance a fix)?
+>
+> Robbert
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at http://vger.kernel.org/majordomo-info.html
