@@ -1,128 +1,121 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:24479 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:52131 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752278Ab2IQNCM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Sep 2012 09:02:12 -0400
-Message-ID: <50571F51.9080100@netapp.com>
-Date: Mon, 17 Sep 2012 09:02:09 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
-MIME-Version: 1.0
-To: Nick Bowler <nbowler@elliptictech.com>
-CC: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: PROBLEM: kernel BUG at fs/nfs/idmap.c:684!
-References: <20120914192056.GA15530@elliptictech.com>
-In-Reply-To: <20120914192056.GA15530@elliptictech.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1753369Ab2IFLB3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Sep 2012 07:01:29 -0400
+Date: Thu, 6 Sep 2012 07:01:22 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, Tyler Hicks <tyhicks@canonical.com>,
+        Dustin Kirkland <dustin.kirkland@gazzang.com>
+Subject: Re: [RFC PATCH 12/13] locks: break delegations on link
+Message-ID: <20120906070122.58c21013@corrin.poochiereds.net>
+In-Reply-To: <20120905210206.GB10724@fieldses.org>
+References: <1346878524-10585-1-git-send-email-bfields@redhat.com>
+	<1346878524-10585-13-git-send-email-bfields@redhat.com>
+	<20120905210206.GB10724@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Nick,
+On Wed, 5 Sep 2012 17:02:06 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-Two questions:
-1) How sure are you that you're using v3?  Make sure you're using the 'vers=3' mount option.  I'm not sure which version of nfs-utils Debian uses, but recent versions set v4 as the default.
-2) Can you try Linux 3.5.4?  Patches for the idmapper issue have already been accepted.
-
-- Bryan
-
-On 09/14/2012 03:20 PM, Nick Bowler wrote:
-> Hi folks,
+> Oops, I meant to cc this to Jeff:
 > 
-> I just upgraded an NFSv3 client machine to Linux 3.5.3 and am seeing the
-> following BUG.  It occurs reproducibly a short time after the first
-> login in to the machine after boot (within one minute).  There's a lot
-> of nfs4-looking functions in backtrace, which is weird as there are
-> absolutely no NFSv4 mounts.  The system still mostly works, although
-> tab completion in my shell seems to either not complete anything or
-> hang forever, which could be related as there are NFS-mounted
-> directories in my PATH.
+> On Wed, Sep 05, 2012 at 04:55:22PM -0400, J. Bruce Fields wrote:
+> > @@ -3556,6 +3560,7 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
+> >  	if (error)
+> >  		return error;
+> >  
+> > +retry_deleg:
+> >  	new_dentry = user_path_create(newdfd, newname, &new_path, 0);
+> >  	error = PTR_ERR(new_dentry);
+> >  	if (IS_ERR(new_dentry))
+> > @@ -3570,9 +3575,14 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
+> >  	error = security_path_link(old_path.dentry, &new_path, new_dentry);
+> >  	if (error)
+> >  		goto out_dput;
+> > -	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry);
+> > +	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry, &delegated_inode);
+> >  out_dput:
+> >  	done_path_create(&new_path, new_dentry);
+> > +	if (delegated_inode) {
+> > +		error = break_deleg_wait(&delegated_inode);
+> > +		if (!error)
+> > +			goto retry_deleg;
+> > +	}
+> >  out:
+> >  	path_put(&old_path);
+> >  
 > 
-> Curiously, there are other machines on the same network running this
-> same kernel version that do *not* have this problem.  A couple unique
-> things about the crashing machine that immediately come to mind...
+> I think this will get me into trouble with the audit code, right?
 > 
->  - Userspace is running Debian stable (so tends to be pretty old).
->  - Its onboard network is quite different from our other machines
->    (it has a Marvell chipset using the sky2 driver).
+> (On a quick skim I think I'm retrying from a point after the getname()
+> in rename and unlink, so I think those are OK, but I may be missing
+> something....)
 > 
-> Please let me know if you need any more info.
-> 
-> ------------[ cut here ]------------
-> kernel BUG at fs/nfs/idmap.c:684!
-> invalid opcode: 0000 [#1] PREEMPT SMP 
-> CPU 0 
-> Modules linked in: ah4 xfrm4_mode_transport nfs lockd auth_rpcgss nfs_acl sunrpc autofs4 acpi_cpufreq mperf deflate zlib_deflate ctr aes_x86_64 aes_generic des_generic cbc sha512_generic sha256_generic sha1_ssse3 sha1_generic md5 hmac crypto_null af_key xfrm_algo ipv6 loop snd_hda_codec_realtek snd_hda_intel snd_hda_codec snd_pcm snd_seq snd_timer snd_seq_device snd soundcore snd_page_alloc i2c_i801 skge coretemp hwmon lpc_ich evdev mfd_core sky2
-> 
-> Pid: 2450, comm: mount.nfs Not tainted 3.5.3 #15 LENOVO 0841A5U/LENOVO
-> RIP: 0010:[<ffffffffa01d8081>]  [<ffffffffa01d8081>] nfs_idmap_legacy_upcall+0x10c/0x15e [nfs]
-> RSP: 0018:ffff8800755c53f8  EFLAGS: 00010286
-> RAX: 0000000000000015 RBX: ffff880078d4ba80 RCX: 0000000000000000
-> RDX: 0000000000000080 RSI: ffff880076e40ed9 RDI: ffff880078d4ba97
-> RBP: ffff8800755c5448 R08: ffff880078d4ba82 R09: 0000000000000015
-> R10: ffff88007f40b000 R11: ffff8800755c5288 R12: ffff880078dfe880
-> R13: ffff880076dc1f40 R14: ffff880078dfebc0 R15: ffff880078d4b780
-> FS:  00007fb0bc00d700(0000) GS:ffff88007f400000(0000) knlGS:0000000000000000
-> CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> CR2: 0000000000dd9000 CR3: 00000000755b8000 CR4: 00000000000407f0
-> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> Process mount.nfs (pid: 2450, threadinfo ffff8800755c4000, task ffff88007b838000)
-> Stack:
->  0031396364396565 ffffffff81364e2a ffff880076e40ec4 ffff880076e40ed9
->  ffffffff81625be0 ffff880078d4b780 ffff880076dc1f40 ffff880078d4bb40
->  ffff880076c16600 ffff880076c166c0 ffff8800755c54e8 ffffffff8115bb02
-> Call Trace:
->  [<ffffffff81364e2a>] ? kmemleak_alloc+0x21/0x3e
->  [<ffffffff8115bb02>] request_key_and_link+0x306/0x389
->  [<ffffffff810c5378>] ? create_object+0x27e/0x290
->  [<ffffffff8115bbd7>] request_key_with_auxdata+0x1b/0x4c
->  [<ffffffffa01d81a0>] nfs_idmap_request_key+0xcd/0x187 [nfs]
->  [<ffffffffa01d82d4>] nfs_idmap_get_key+0x7a/0x99 [nfs]
->  [<ffffffffa01d84ac>] nfs_idmap_lookup_id+0x23/0x52 [nfs]
->  [<ffffffffa01d852e>] nfs_map_group_to_gid+0x53/0x5a [nfs]
->  [<ffffffffa01d28cf>] decode_getfattr_attrs+0x591/0xa0c [nfs]
->  [<ffffffff81001624>] ? __switch_to+0x2d/0x355
->  [<ffffffffa01d472d>] T.1600+0x78/0xab [nfs]
->  [<ffffffffa01d476e>] decode_getfattr+0xe/0x10 [nfs]
->  [<ffffffffa01d4988>] nfs4_xdr_dec_lookup_root+0x54/0x5d [nfs]
->  [<ffffffffa016e707>] ? rpc_queue_empty+0x29/0x29 [sunrpc]
->  [<ffffffffa01d4934>] ? nfs4_xdr_dec_link+0xa9/0xa9 [nfs]
->  [<ffffffffa016f60c>] rpcauth_unwrap_resp+0x56/0x61 [sunrpc]
->  [<ffffffffa016e707>] ? rpc_queue_empty+0x29/0x29 [sunrpc]
->  [<ffffffffa01d4934>] ? nfs4_xdr_dec_link+0xa9/0xa9 [nfs]
->  [<ffffffffa0168d80>] call_decode+0x2c3/0x31b [sunrpc]
->  [<ffffffffa016ec9d>] __rpc_execute+0x51/0x179 [sunrpc]
->  [<ffffffff8104574b>] ? wake_up_bit+0x20/0x25
->  [<ffffffffa016edec>] rpc_execute+0x27/0x2b [sunrpc]
->  [<ffffffffa01693cd>] rpc_run_task+0x79/0x81 [sunrpc]
->  [<ffffffffa01694b3>] rpc_call_sync+0x3f/0x60 [sunrpc]
->  [<ffffffffa01ca253>] _nfs4_call_sync+0xe/0x10 [nfs]
->  [<ffffffffa01cbc74>] _nfs4_lookup_root+0x9a/0xa8 [nfs]
->  [<ffffffffa01cbcb9>] nfs4_lookup_root+0x37/0x62 [nfs]
->  [<ffffffffa01cbd07>] nfs4_proc_get_rootfh+0x23/0x95 [nfs]
->  [<ffffffffa01bb87a>] nfs4_get_rootfh+0x36/0xb6 [nfs]
->  [<ffffffff81364e2a>] ? kmemleak_alloc+0x21/0x3e
->  [<ffffffff810bdd8e>] ? kmem_cache_alloc+0xc9/0xd8
->  [<ffffffffa01b7111>] nfs4_server_common_setup+0x57/0xc7 [nfs]
->  [<ffffffffa01b7c87>] nfs4_create_server+0x1d7/0x202 [nfs]
->  [<ffffffff81364dd8>] ? kmemleak_alloc_percpu+0x63/0x94
->  [<ffffffffa01bf7f2>] nfs4_remote_mount+0x36/0x5f [nfs]
->  [<ffffffff810c96b2>] mount_fs+0x6b/0x14f
->  [<ffffffff810a7824>] ? __alloc_percpu+0xb/0xd
->  [<ffffffff810e0385>] vfs_kern_mount+0x66/0xdf
->  [<ffffffffa01bfadb>] nfs_do_root_mount+0x96/0xb5 [nfs]
->  [<ffffffffa01c060a>] nfs_fs_mount+0x7bf/0x8f8 [nfs]
->  [<ffffffffa01bf52e>] ? nfs_fill_super+0xc4/0xc4 [nfs]
->  [<ffffffffa01be8dd>] ? nfs_request_mount+0x1b2/0x1b2 [nfs]
->  [<ffffffff810c96b2>] mount_fs+0x6b/0x14f
->  [<ffffffff810a7824>] ? __alloc_percpu+0xb/0xd
->  [<ffffffff810e0385>] vfs_kern_mount+0x66/0xdf
->  [<ffffffff810e0468>] do_kern_mount+0x48/0xd8
->  [<ffffffff810e0c10>] do_mount+0x718/0x77b
->  [<ffffffff810e0cf6>] sys_mount+0x83/0xbd
->  [<ffffffff81376522>] system_call_fastpath+0x16/0x1b
-> Code: b3 84 00 00 00 48 8d 7d c0 c6 43 01 00 e8 59 1e fb e0 85 c0 49 89 5c 24 10 49 c7 44 24 18 8c 00 00 00 78 1e 49 83 7e 08 00 74 04 <0f> 0b eb fe 49 8b 3e 4d 89 6e 08 4c 89 e6 e8 1f 27 fa ff 85 c0 
-> RIP  [<ffffffffa01d8081>] nfs_idmap_legacy_upcall+0x10c/0x15e [nfs]
->  RSP <ffff8800755c53f8>
-> ---[ end trace ee7d4fa42e626e1f ]---
+> --b.
 > 
 
+tl;dr: this patch is OK, but the unlink and rename patches will be
+problematic.
+
+Longer explanation:
+
+The big problem is multiple calls into audit_inode_child(), which will
+give you duplicate audit records when you retry the call. That function
+mostly gets called from the fsnotify_* calls, but is also called from
+may_delete().
+
+In the create case (like this one), you're safe since we only call
+fsnotify_* after the create succeeds. In the may_delete() case, we have
+to call that function before the actual operation. A quick look at your
+patches looks like you'll end up with multiple calls into may_delete on
+a retry. That'll give you multiple audit records for each.
+
+The good news is that if and when my audit_names overhaul patches go
+in, that problem should go away. At that point audit_inode_child() will
+know how to update existing records instead of creating new ones in
+this case. I'm hoping those will go in for 3.7, so you may just want to
+try to ensure that these patches go in after those.
+
+> > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> > index c8f5e74..2a77b28 100644
+> > --- a/fs/nfsd/vfs.c
+> > +++ b/fs/nfsd/vfs.c
+> > @@ -1717,7 +1717,7 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
+> >  		err = nfserrno(host_err);
+> >  		goto out_dput;
+> >  	}
+> > -	host_err = vfs_link(dold, dirp, dnew);
+> > +	host_err = vfs_link(dold, dirp, dnew, NULL);
+> >  	if (!host_err) {
+> >  		err = nfserrno(commit_metadata(ffhp));
+> >  		if (!err)
+> > diff --git a/include/linux/fs.h b/include/linux/fs.h
+> > index ad9df65e..52b8c67 100644
+> > --- a/include/linux/fs.h
+> > +++ b/include/linux/fs.h
+> > @@ -1721,7 +1721,7 @@ extern int vfs_create(struct inode *, struct dentry *, umode_t, bool);
+> >  extern int vfs_mkdir(struct inode *, struct dentry *, umode_t);
+> >  extern int vfs_mknod(struct inode *, struct dentry *, umode_t, dev_t);
+> >  extern int vfs_symlink(struct inode *, struct dentry *, const char *);
+> > -extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
+> > +extern int vfs_link(struct dentry *, struct inode *, struct dentry *, struct inode **);
+> >  extern int vfs_rmdir(struct inode *, struct dentry *);
+> >  extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
+> >  extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *, struct inode **);
+> > -- 
+> > 1.7.9.5
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+-- 
+Jeff Layton <jlayton@redhat.com>
