@@ -1,97 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:14252 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759284Ab2INI0F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 Sep 2012 04:26:05 -0400
-Subject: [PATCH 2/2] NFSd: set nfsd_serv to NULL after service destruction
-To: stable@vger.kernel.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, bfields@redhat.com, viro@zeniv.linux.org.uk,
-        jbottomley@parallels.com
-Date: Fri, 14 Sep 2012 12:25:56 +0400
-Message-ID: <20120914082550.14353.46041.stgit@localhost6.localdomain6>
-In-Reply-To: <20120914082201.14353.83847.stgit@localhost6.localdomain6>
-References: <20120914082201.14353.83847.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from hrndva-omtalb.mail.rr.com ([71.74.56.122]:30872 "EHLO
+	hrndva-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758283Ab2IFQAK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Sep 2012 12:00:10 -0400
+Message-ID: <1346947206.1680.36.camel@gandalf.local.home>
+Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive
+ hashtable
+From: Steven Rostedt <rostedt@goodmis.org>
+To: Sasha Levin <levinsasha928@gmail.com>
+Cc: Josh Triplett <josh@joshtriplett.org>,
+        Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
+        Pedro Alves <palves@redhat.com>, Tejun Heo <tj@kernel.org>,
+        torvalds@linux-foundation.org, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, mingo@elte.hu,
+        ebiederm@xmission.com, aarcange@redhat.com, ericvh@gmail.com,
+        netdev@vger.kernel.org, eric.dumazet@gmail.com, axboe@kernel.dk,
+        agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
+        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
+        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Date: Thu, 06 Sep 2012 12:00:06 -0400
+In-Reply-To: <5048C615.4070204@gmail.com>
+References: <503C95E4.3010000@gmail.com> <20120828101148.GA21683@Krystal>
+	 <503CAB1E.5010408@gmail.com> <20120828115638.GC23818@Krystal>
+	 <20120828230050.GA3337@Krystal>
+	 <1346772948.27919.9.camel@gandalf.local.home> <50462C99.5000007@redhat.com>
+	 <50462EE8.1090903@redhat.com> <20120904170138.GB31934@Krystal>
+	 <5048AAF6.5090101@gmail.com> <20120906145545.GA17332@leaf>
+	 <5048C615.4070204@gmail.com>
+Content-Type: text/plain; charset="ISO-8859-15"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-upstream commit 57c8b13e3cd0f94944c9691ce7f58e5fcef8a12d
+On Thu, 2012-09-06 at 17:49 +0200, Sasha Levin wrote:
+>  
+> > Looks reasonable.  However, it would break (or rather, not break) on
+> > code like this:
+> > 
+> > 	hash_for_each_entry(...) {
+> > 		if (...) {
+> > 			foo(node);
+> > 			node = NULL;
 
-In nfsd_destroy():
+ug, I didn't even notice this. Ignore my last email :-p
 
-	if (destroy)
-		svc_shutdown_net(nfsd_serv, net);
-	svc_destroy(nfsd_server);
+/me needs to wake-up a bit more.
 
-svc_shutdown_net(nfsd_serv, net) calls nfsd_last_thread(), which sets
-nfsd_serv to NULL, causing a NULL dereference on the following line.
+> > 			break;
+> > 		}
+> > 	}
+> > 
+> > Hiding the double loop still seems error-prone.
+> 
+> I think that that code doesn't make sense. The users of hlist_for_each_* aren't
+> supposed to be changing the loop cursor.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfsd.h   |    2 ++
- fs/nfsd/nfssvc.c |   10 +++++-----
- 2 files changed, 7 insertions(+), 5 deletions(-)
+I totally agree. Modifying the 'node' pointer is just asking for issues.
+Yes that is error prone, but not due to the double loop. It's due to the
+modifying of the node pointer that is used internally by the loop
+counter. Don't do that :-)
 
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index e3339ca..1336a65 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -80,6 +80,8 @@ static inline void nfsd_destroy(struct net *net)
- 	if (destroy)
- 		svc_shutdown_net(nfsd_serv, net);
- 	svc_destroy(nfsd_serv);
-+	if (destroy)
-+		nfsd_serv = NULL;
- }
- 
- #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index e866af4..5f4b8f2 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -256,8 +256,6 @@ static void nfsd_shutdown(void)
- 
- static void nfsd_last_thread(struct svc_serv *serv, struct net *net)
- {
--	/* When last nfsd thread exits we need to do some clean-up */
--	nfsd_serv = NULL;
- 	nfsd_shutdown();
- 
- 	svc_rpcb_cleanup(serv, net);
-@@ -334,6 +332,7 @@ static int nfsd_get_default_max_blksize(void)
- int nfsd_create_serv(void)
- {
- 	int error;
-+	struct net *net = current->nsproxy->net_ns;
- 
- 	WARN_ON(!mutex_is_locked(&nfsd_mutex));
- 	if (nfsd_serv) {
-@@ -348,7 +347,7 @@ int nfsd_create_serv(void)
- 	if (nfsd_serv == NULL)
- 		return -ENOMEM;
- 
--	error = svc_bind(nfsd_serv, current->nsproxy->net_ns);
-+	error = svc_bind(nfsd_serv, net);
- 	if (error < 0) {
- 		svc_destroy(nfsd_serv);
- 		return error;
-@@ -559,12 +558,13 @@ nfsd(void *vrqstp)
- 	nfsdstats.th_cnt --;
- 
- out:
--	if (rqstp->rq_server->sv_nrthreads == 1)
--		svc_shutdown_net(rqstp->rq_server, &init_net);
-+	rqstp->rq_server = NULL;
- 
- 	/* Release the thread */
- 	svc_exit_thread(rqstp);
- 
-+	nfsd_destroy(&init_net);
-+
- 	/* Release module */
- 	mutex_unlock(&nfsd_mutex);
- 	module_put_and_exit(0);
+
+> 
+> We have three options here:
+> 
+>  1. Stuff everything into a single for(). While not too difficult, it will make
+> the readability of the code difficult as it will force us to abandon using
+> hlist_for_each_* macros.
+> 
+>  2. Over-complicate everything, and check for 'node == NULL && obj &&
+> obj->member.next == NULL' instead. That one will fail only if the user has
+> specifically set the object as the last object in the list and the node as NULL.
+> 
+>  3. Use 2 loops which might not work properly if the user does something odd,
+> with a big fat warning above them.
+> 
+> 
+> To sum it up, I'd rather go with 3 and let anyone who does things he shouldn't
+> be doing break.
+
+I agree, the double loop itself is not error prone. If you are modifying
+'node' you had better know what the hell you are doing.
+
+Actually, it may be something that is legitimate. That is, if you want
+to skip to the next bucket, just set node to NULL and do the break (as
+Josh had done). This would break if the macro loop changed later on, but
+hey, like I said, it's error prone ;-) If you really want to do that,
+then hand coding the double loop would be a better bet. IOW, don't use
+the macro loop.
+
+-- Steve
+
 
