@@ -1,106 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:34163 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752208Ab2IYF1i (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 Sep 2012 01:27:38 -0400
-Date: Tue, 25 Sep 2012 15:27:31 +1000
-From: NeilBrown <neilb@suse.de>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: WARNING: at fs/inode.c:280 drop_nlink+0x31/0x33()
-Message-ID: <20120925152731.52528dca@notabene.brown>
-In-Reply-To: <20120829151641.20cde4bc@corrin.poochiereds.net>
-References: <20120829162527.GA3635@NickAndBarb.net>
- <20120829151641.20cde4bc@corrin.poochiereds.net>
+Received: from hrndva-omtalb.mail.rr.com ([71.74.56.122]:22407 "EHLO
+	hrndva-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756813Ab2IFPLh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Sep 2012 11:11:37 -0400
+Message-ID: <1346944293.1680.26.camel@gandalf.local.home>
+Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive
+ hashtable
+From: Steven Rostedt <rostedt@goodmis.org>
+To: Josh Triplett <josh@joshtriplett.org>
+Cc: Sasha Levin <levinsasha928@gmail.com>,
+        Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
+        Pedro Alves <palves@redhat.com>, Tejun Heo <tj@kernel.org>,
+        torvalds@linux-foundation.org, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, mingo@elte.hu,
+        ebiederm@xmission.com, aarcange@redhat.com, ericvh@gmail.com,
+        netdev@vger.kernel.org, eric.dumazet@gmail.com, axboe@kernel.dk,
+        agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
+        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
+        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Date: Thu, 06 Sep 2012 11:11:33 -0400
+In-Reply-To: <20120906145545.GA17332@leaf>
+References: <503C95E4.3010000@gmail.com> <20120828101148.GA21683@Krystal>
+	 <503CAB1E.5010408@gmail.com> <20120828115638.GC23818@Krystal>
+	 <20120828230050.GA3337@Krystal>
+	 <1346772948.27919.9.camel@gandalf.local.home> <50462C99.5000007@redhat.com>
+	 <50462EE8.1090903@redhat.com> <20120904170138.GB31934@Krystal>
+	 <5048AAF6.5090101@gmail.com> <20120906145545.GA17332@leaf>
+Content-Type: text/plain; charset="ISO-8859-15"
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/Gt_xaRBbM3TLI8nbCFsrySF"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/Gt_xaRBbM3TLI8nbCFsrySF
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Thu, 2012-09-06 at 07:55 -0700, Josh Triplett wrote:
 
-On Wed, 29 Aug 2012 15:16:41 -0700 Jeff Layton <jlayton@redhat.com> wrote:
+> > My solution to making 'break' work in the iterator is:
+> > 
+> > 	for (bkt = 0, node = NULL; bkt < HASH_SIZE(name) && node == NULL; bkt++)
+> > 		hlist_for_each_entry(obj, node, &name[bkt], member)
+> > 
+> 
+> Looks reasonable.  However, it would break (or rather, not break) on
+> code like this:
+> 
+> 	hash_for_each_entry(...) {
+> 		if (...) {
+> 			foo(node);
+> 			node = NULL;
+> 			break;
+> 		}
+> 	}
+> 
+> Hiding the double loop still seems error-prone.
 
+We've already had this conversation ;-)  A guess a big comment is in
+order:
 
-> This stack trace comes from cifs, not nfs.
+/*
+ * NOTE!  Although this is a double loop, 'break' still works because of
+ *        the 'node == NULL' condition in the outer loop. On break of
+ *        the inner loop, node will be !NULL, and the outer loop will
+ *        exit as well.
+ */
 
-It's quite easy to trigger on NFS too.
-
- mount server:/path /mnt; exec 3>& /mnt/foo ; rm /mnt/foo; rm /mnt/.nfs* ;
- exec 3>&-
-
-[634155.004438] WARNING:
-at /home/abuild/rpmbuild/BUILD/kernel-desktop-3.5.0/lin [634155.004442]
-Hardware name: Latitude E6510 [634155.004577]  crc_itu_t crc32c_intel
-snd_hwdep snd_pcm snd_timer snd soundcor [634155.004609] Pid: 13402, comm:
-bash Tainted: G        W    3.5.0-36-desktop # [634155.004611] Call Trace:
-[634155.004630]  [<ffffffff8100444a>] dump_trace+0xaa/0x2b0
-[634155.004641]  [<ffffffff815a23dc>] dump_stack+0x69/0x6f
-[634155.004653]  [<ffffffff81041a0b>] warn_slowpath_common+0x7b/0xc0
-[634155.004662]  [<ffffffff811832e4>] drop_nlink+0x34/0x40
-[634155.004687]  [<ffffffffa05bb6c3>] nfs_dentry_iput+0x33/0x70 [nfs]
-[634155.004714]  [<ffffffff8118049e>] dput+0x12e/0x230
-[634155.004726]  [<ffffffff8116b230>] __fput+0x170/0x230
-[634155.004735]  [<ffffffff81167c0f>] filp_close+0x5f/0x90
-[634155.004743]  [<ffffffff81167cd7>] sys_close+0x97/0x100
-[634155.004754]  [<ffffffff815c3b39>] system_call_fastpath+0x16/0x1b
-[634155.004767]  [<00007f2a73a0d110>] 0x7f2a73a0d10f
-
-Is this suitable for -stable?  It seems like it is just a harmless warning.
-
-NeilBrown
+-- Steve
 
 
-Subject: NFS: avoid warning from nfs_drop_nlink
-
-If you remove a file which is open, NFS will 'silly-rename' it to a
-hidden file.
-If you then remove that hidden file, and then close the open file,
-then nfs_dentry_iput will perform an extra drop_nlink().
-Since 3.3-rc1, this has produced a warning.
-The simplest way to suppress it is to use "nfs_drop_nlink" which
-checks for i_nlink being zero.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 627f108..268af03 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1174,7 +1174,7 @@ static void nfs_dentry_iput(struct dentry *dentry,
-struct inode *inode) NFS_I(inode)->cache_validity |=3D NFS_INO_INVALID_DATA;
-=20
- 	if (dentry->d_flags & DCACHE_NFSFS_RENAMED) {
--		drop_nlink(inode);
-+		nfs_drop_nlink(inode);
- 		nfs_complete_unlink(dentry, inode);
- 	}
- 	iput(inode);
-
---Sig_/Gt_xaRBbM3TLI8nbCFsrySF
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.18 (GNU/Linux)
-
-iQIVAwUBUGFAwznsnt1WYoG5AQJ4gQ/+MOJkXAyaRn8svj6Tp6Jh46YVG3Eo3T4N
-PR7SRlvm4VOiz73X+xTsvC0258QEOtooB9MWm0Pwt1ETcW7d4sLS7uyCwqlVOhJt
-DD1IUgWXD/LJpnVQVGpUChFdwyjtphoS9T3J8Atpsx1kY5YLz9HfN48+tdqjgJaa
-n3+u+vgxeS5bxIo94ujJPB9saoGBS5Ly6mreMjJ5jJ2EIulHe+1fA2NPJBeO47qn
-1k2R9/629y2mJ6B7i4wwcpL6j/CET0a/35SEIWx+ngcS3zyZCuJYZGXRi3ksvU8B
-zd89lCwEIW+hJhVYMfmH8kKilI0EAg6gtwL+Wl8ZrgcPOslir33IATLqDyoz+GeM
-Hrwl4VcnFcRfS/0gwus2HEwB0ETNF87dyE0CxF9JEpf9TBgYQPSDKCoDDIQ78Yxu
-To2r6b4aPD/8jNNP1/+jbNdiQ/fWLe2TRpIeAUHhNgHCzi9aQnIGTGzwDIitNTEz
-khckuxp/TdSHgGsWGTPzxSEdTRfl7tS69Sy3bTsq76JlQIvB4R3o4WNOYIKH5Ihz
-qVhfZ2RM7YMj4t+SZs8sqFXjFrJIK2O/Jqf4IFe7EkS8bj8RCksI98dM8CPevHH0
-EukMl+o+y2dCqBUNhabssmjQuSm9XhVO2xX7bJoPPMBtoJW6OM//EhFuGkGlMJDj
-U2hskMfN9ws=
-=jxV7
------END PGP SIGNATURE-----
-
---Sig_/Gt_xaRBbM3TLI8nbCFsrySF--
