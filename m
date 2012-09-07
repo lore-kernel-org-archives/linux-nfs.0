@@ -1,55 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from hrndva-omtalb.mail.rr.com ([71.74.56.122]:32317 "EHLO
-	hrndva-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751154Ab2IDX1L (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Sep 2012 19:27:11 -0400
-Message-ID: <1346801227.27919.40.camel@gandalf.local.home>
-Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive
- hashtable
-From: Steven Rostedt <rostedt@goodmis.org>
-To: Pedro Alves <palves@redhat.com>
-Cc: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
-        Sasha Levin <levinsasha928@gmail.com>, Tejun Heo <tj@kernel.org>,
-        torvalds@linux-foundation.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, mingo@elte.hu,
-        ebiederm@xmission.com, aarcange@redhat.com, ericvh@gmail.com,
-        netdev@vger.kernel.org, josh@joshtriplett.org, eric.dumazet@gmail.com,
-        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
-        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
-        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Date: Tue, 04 Sep 2012 19:27:07 -0400
-In-Reply-To: <50468778.5000207@redhat.com>
-References: <20120824203332.GF21325@google.com> <5037E9D9.9000605@gmail.com>
-	     <20120824212348.GK21325@google.com> <5038074D.300@gmail.com>
-	     <20120824230740.GN21325@google.com> <20120825042419.GA27240@Krystal>
-	     <503C95E4.3010000@gmail.com> <20120828101148.GA21683@Krystal>
-	     <503CAB1E.5010408@gmail.com> <20120828115638.GC23818@Krystal>
-	     <20120828230050.GA3337@Krystal>
-	    <1346772948.27919.9.camel@gandalf.local.home>
-	   <50462C99.5000007@redhat.com>  <50462EE8.1090903@redhat.com>
-	   <1346779027.27919.15.camel@gandalf.local.home>
-	   <50463883.8080706@redhat.com>
-	  <1346792345.27919.18.camel@gandalf.local.home>
-	  <504677C8.3050801@redhat.com>
-	 <1346798509.27919.25.camel@gandalf.local.home>
-	 <50468778.5000207@redhat.com>
-Content-Type: text/plain; charset="ISO-8859-15"
-Mime-Version: 1.0
+Received: from mail-vb0-f46.google.com ([209.85.212.46]:42139 "EHLO
+	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760685Ab2IGOSp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Sep 2012 10:18:45 -0400
+Received: by vbbff1 with SMTP id ff1so3363913vbb.19
+        for <linux-nfs@vger.kernel.org>; Fri, 07 Sep 2012 07:18:45 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v6 01/20] vfs: add a retry_estale helper function to handle retries on ESTALE
+Date: Fri,  7 Sep 2012 10:18:08 -0400
+Message-Id: <1347027507-20956-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1347027507-20956-1-git-send-email-jlayton@redhat.com>
+References: <1347027507-20956-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2012-09-04 at 23:58 +0100, Pedro Alves wrote:
+This function is expected to be called from path-based syscalls to help
+them decide whether to try the lookup and call again in the event that
+they got an -ESTALE return back on an earier try.
 
-> Not true.  The comma operator introduces a sequence point.  It's the comma
-> that separates function parameters that doesn't guarantee ordering.
+Currently, we only retry the call once on an ESTALE error, but in the
+event that we decide that that's not enough in the future, we should be
+able to change the logic in this helper without too much effort.
 
-Bah! C language is almost as confusing as English.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ include/linux/fs.h | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
 
--- Steve
-
-
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index a3c2c17..78e8639 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2221,6 +2221,27 @@ extern int finish_open(struct file *file, struct dentry *dentry,
+ 			int *opened);
+ extern int finish_no_open(struct file *file, struct dentry *dentry);
+ 
++/**
++ * retry_estale - determine whether the caller should retry an operation
++ *
++ * @error: the error we'll be returning
++ * @try: number of retries already performed
++ *
++ * Check to see if the error code was -ESTALE, and then determine whether
++ * to retry the call based on the number of retries so far. Currently, we only
++ * retry the call once.
++ *
++ * Returns true if the caller should try again.
++ */
++static inline bool
++retry_estale(const long error, const unsigned int try)
++{
++	if (likely(error != -ESTALE))
++		return false;
++
++	return !try;
++}
++
+ /* fs/ioctl.c */
+ 
+ extern int ioctl_preallocate(struct file *filp, void __user *argp);
+-- 
+1.7.11.4
 
