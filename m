@@ -1,52 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from earth.cora.nwra.com ([4.28.99.180]:41080 "EHLO
-	mail.cora.nwra.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755607Ab2IYULV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Sep 2012 16:11:21 -0400
-Message-ID: <50620FE7.9020103@cora.nwra.com>
-Date: Tue, 25 Sep 2012 14:11:19 -0600
-From: Orion Poplawski <orion@cora.nwra.com>
-MIME-Version: 1.0
-To: Jim Rees <rees@umich.edu>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Any way to allow setuid daemon to access krb5 automounted nfs
- directories?
-References: <5061DF69.8030606@cora.nwra.com> <20120925175025.GA8020@umich.edu>
-In-Reply-To: <20120925175025.GA8020@umich.edu>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:38668 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932117Ab2IGO01 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Sep 2012 10:26:27 -0400
+Received: by ggdk6 with SMTP id k6so543330ggd.19
+        for <linux-nfs@vger.kernel.org>; Fri, 07 Sep 2012 07:26:26 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v6 20/20] vfs: convert do_file_open_root to use retry_estale helper
+Date: Fri,  7 Sep 2012 10:18:27 -0400
+Message-Id: <1347027507-20956-21-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1347027507-20956-1-git-send-email-jlayton@redhat.com>
+References: <1347027507-20956-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/25/2012 11:50 AM, Jim Rees wrote:
-> Orion Poplawski wrote:
->
->    Is there any way to allow setuid daemon to access krb5 automounted
->    nfs directories?  Specifically I'm looking to run spamassassin's
->    spamd on a remote server and access user's home directories via krb5
->    nfs4.  spamd changes user to the user receiving the email being
->    processes and needs to modify files in the user's home directory.
->    Is there any reasonably secure way to give this daemon the ability
->    to do this?  Any way to tell rpc.gssd to use a specific credential
->    cache for this type of access rather than the default for that
->    effective uid?
->
-> You don't want to give spamd the user's credentials. You want to acl the
-> user's files so that spamd can do what it wants. Spamd will need its own
-> krb5 principal.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/namei.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-Hmm, okay, I may be able to run spamd in non-setuid mode and get it to work. 
-Thanks.
-
-> But I hope you're not planning to deliver mail over nfs. I think that would
-> be a mistake.
->
-
-Oh no, but my mail host at the moment is woefully under-powered so I've moved 
-spam scanning off of it.
-
+diff --git a/fs/namei.c b/fs/namei.c
+index 66b24fa..870352d 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3027,6 +3027,7 @@ struct file *do_file_open_root(struct dentry *dentry, struct vfsmount *mnt,
+ 	struct nameidata nd;
+ 	struct file *file;
+ 	struct getname_info ginfo = { .name = name };
++	unsigned int try = 0;
+ 
+ 	nd.root.mnt = mnt;
+ 	nd.root.dentry = dentry;
+@@ -3039,7 +3040,7 @@ struct file *do_file_open_root(struct dentry *dentry, struct vfsmount *mnt,
+ 	file = path_openat(-1, &ginfo, &nd, op, flags | LOOKUP_RCU);
+ 	if (unlikely(file == ERR_PTR(-ECHILD)))
+ 		file = path_openat(-1, &ginfo, &nd, op, flags);
+-	if (unlikely(file == ERR_PTR(-ESTALE)))
++	while (retry_estale(PTR_ERR(file), try++))
+ 		file = path_openat(-1, &ginfo, &nd, op, flags | LOOKUP_REVAL);
+ 	return file;
+ }
 -- 
-Orion Poplawski
-Technical Manager                     303-415-9701 x222
-NWRA, Boulder Office                  FAX: 303-415-9702
-3380 Mitchell Lane                       orion@nwra.com
-Boulder, CO 80301                   http://www.nwra.com
+1.7.11.4
+
