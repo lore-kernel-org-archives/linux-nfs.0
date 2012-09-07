@@ -1,45 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from plane.gmane.org ([80.91.229.3]:50688 "EHLO plane.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756410Ab2IUHbB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Sep 2012 03:31:01 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1TExhW-0006rE-DM
-	for linux-nfs@vger.kernel.org; Fri, 21 Sep 2012 09:31:03 +0200
-Received: from 59-124-179-67.HINET-IP.hinet.net ([59.124.179.67])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Sep 2012 09:31:02 +0200
-Received: from yanpai.chen by 59-124-179-67.HINET-IP.hinet.net with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Sep 2012 09:31:02 +0200
-To: linux-nfs@vger.kernel.org
-From: Yan-Pai Chen <yanpai.chen@gmail.com>
-Subject: Re: [3.2.5] NFSv3 =?utf-8?b?Q0xPU0VfV0FJVA==?= hang
-Date: Fri, 21 Sep 2012 07:30:45 +0000 (UTC)
-Message-ID: <loom.20120921T085632-603@post.gmane.org>
-References: <loom.20120905T093214-245@post.gmane.org>   <4FA345DA4F4AE44899BD2B03EEEC2FA908F86381@SACEXCMBX04-PRD.hq.netapp.com>   <6cb9.5049fd40.b47c1@altium.nl> <6cb9.5049fd40.b47c1@altium.nl>   <4FA345DA4F4AE44899BD2B03EEEC2FA908F8E302@SACEXCMBX04-PRD.hq.netapp.com>   <447c.504a05c9.dd0a9@altium.nl> <447c.504a05c9.dd0a9@altium.nl>   <4FA345DA4F4AE44899BD2B03EEEC2FA908F8E833@SACEXCMBX04-PRD.hq.netapp.com>   <74c7.504b9d45.a5956@altium.nl> <loom.20120910T105944-416@post.gmane.org>   <20120911194051.GB11160@hostway.ca>  <4FA345DA4F4AE44899BD2B03EEEC2FA908F9BDDD@SACEXCMBX04-PRD.hq.netapp.com>  <loom.20120913T072025-998@post.gmane.org> <4FA345DA4F4AE44899BD2B03EEEC2FA908FA24DB@SACEXCMBX04-PRD.hq.netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-vb0-f46.google.com ([209.85.212.46]:43357 "EHLO
+	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760781Ab2IGOTH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Sep 2012 10:19:07 -0400
+Received: by mail-vb0-f46.google.com with SMTP id ff1so3363754vbb.19
+        for <linux-nfs@vger.kernel.org>; Fri, 07 Sep 2012 07:19:06 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v6 11/20] vfs: make do_unlinkat retry on ESTALE errors
+Date: Fri,  7 Sep 2012 10:18:18 -0400
+Message-Id: <1347027507-20956-12-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1347027507-20956-1-git-send-email-jlayton@redhat.com>
+References: <1347027507-20956-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Myklebust, Trond <Trond.Myklebust@...> writes:
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/namei.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
 
-> 
-> Thanks. Can you try using the patch that I posted on the list yesterday?
-> It should apply cleanly to the latest 3.5.x kernel.
-> 
-> Cheers
->   Trond
-
-Hi Trond,
-
-I can reproduce the same problem after applying your latest patch
-on 3.5.0 kernel. But it works for the later 3.5.x kernel (fbcbe2b3c9).
-
---
-Regards,
-Andrew
+diff --git a/fs/namei.c b/fs/namei.c
+index a9dd63f..77c2b1055 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3446,8 +3446,11 @@ static long do_unlinkat(int dfd, const char __user *pathname)
+ 	struct dentry *dentry;
+ 	struct nameidata nd;
+ 	struct inode *inode = NULL;
++	unsigned int try = 0;
++	unsigned int lookup_flags = LOOKUP_PARENT;
+ 
+-	name = user_path_parent(dfd, pathname, &nd, 0);
++retry:
++	name = user_path_parent(dfd, pathname, &nd, try);
+ 	if (IS_ERR(name))
+ 		return PTR_ERR(name);
+ 
+@@ -3485,6 +3488,10 @@ exit2:
+ exit1:
+ 	path_put(&nd.path);
+ 	putname(name);
++	if (retry_estale(error, try++)) {
++		lookup_flags |= LOOKUP_REVAL;
++		goto retry;
++	}
+ 	return error;
+ 
+ slashes:
+-- 
+1.7.11.4
 
