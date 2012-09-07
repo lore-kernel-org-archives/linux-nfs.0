@@ -1,91 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vb0-f46.google.com ([209.85.212.46]:42139 "EHLO
-	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760797Ab2IGOTI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Sep 2012 10:19:08 -0400
-Received: by mail-vb0-f46.google.com with SMTP id ff1so3363913vbb.19
-        for <linux-nfs@vger.kernel.org>; Fri, 07 Sep 2012 07:19:08 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v6 09/20] vfs: add a reval argument to user_path_parent
-Date: Fri,  7 Sep 2012 10:18:16 -0400
-Message-Id: <1347027507-20956-10-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1347027507-20956-1-git-send-email-jlayton@redhat.com>
-References: <1347027507-20956-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:29443 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757683Ab2IGWcj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Sep 2012 18:32:39 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v2] SUNRPC: check current nsproxy before set of node
+ name on client creation
+Date: Fri, 7 Sep 2012 22:32:16 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F90888@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20120813113731.9629.31906.stgit@localhost.localdomain>
+	 <20120813081054.0ee39037@corrin.poochiereds.net>
+In-Reply-To: <20120813081054.0ee39037@corrin.poochiereds.net>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...so we can tell it when to set LOOKUP_REVAL.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/namei.c | 17 +++++++++++------
- 1 file changed, 11 insertions(+), 6 deletions(-)
-
-diff --git a/fs/namei.c b/fs/namei.c
-index e05d6ee..51841ec 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -2183,15 +2183,20 @@ int user_path_at(int dfd, const char __user *name, unsigned flags,
-  *     path-walking is complete.
-  */
- static struct getname_info *
--user_path_parent(int dfd, const char __user *path, struct nameidata *nd)
-+user_path_parent(int dfd, const char __user *path, struct nameidata *nd,
-+		 unsigned int reval)
- {
- 	struct getname_info *s = getname(path);
- 	int error;
-+	unsigned int flags = LOOKUP_PARENT;
-+
-+	if (reval)
-+		flags |= LOOKUP_REVAL;
- 
- 	if (IS_ERR(s))
- 		return s;
- 
--	error = ginfo_lookup(dfd, s, LOOKUP_PARENT, nd);
-+	error = ginfo_lookup(dfd, s, flags, nd);
- 	if (error) {
- 		putname(s);
- 		return ERR_PTR(error);
-@@ -3339,7 +3344,7 @@ static long do_rmdir(int dfd, const char __user *pathname)
- 	struct dentry *dentry;
- 	struct nameidata nd;
- 
--	name = user_path_parent(dfd, pathname, &nd);
-+	name = user_path_parent(dfd, pathname, &nd, 0);
- 	if (IS_ERR(name))
- 		return PTR_ERR(name);
- 
-@@ -3435,7 +3440,7 @@ static long do_unlinkat(int dfd, const char __user *pathname)
- 	struct nameidata nd;
- 	struct inode *inode = NULL;
- 
--	name = user_path_parent(dfd, pathname, &nd);
-+	name = user_path_parent(dfd, pathname, &nd, 0);
- 	if (IS_ERR(name))
- 		return PTR_ERR(name);
- 
-@@ -3830,13 +3835,13 @@ SYSCALL_DEFINE4(renameat, int, olddfd, const char __user *, oldname,
- 	struct getname_info *to;
- 	int error;
- 
--	from = user_path_parent(olddfd, oldname, &oldnd);
-+	from = user_path_parent(olddfd, oldname, &oldnd, 0);
- 	if (IS_ERR(from)) {
- 		error = PTR_ERR(from);
- 		goto exit;
- 	}
- 
--	to = user_path_parent(newdfd, newname, &newnd);
-+	to = user_path_parent(newdfd, newname, &newnd, 0);
- 	if (IS_ERR(to)) {
- 		error = PTR_ERR(to);
- 		goto exit1;
--- 
-1.7.11.4
-
+T24gTW9uLCAyMDEyLTA4LTEzIGF0IDA4OjEwIC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
+T24gTW9uLCAxMyBBdWcgMjAxMiAxNTozNzozMSArMDQwMA0KPiBTdGFuaXNsYXYgS2luc2J1cnNr
+eSA8c2tpbnNidXJza3lAcGFyYWxsZWxzLmNvbT4gd3JvdGU6DQo+IA0KPiA+IHYyOg0KPiA+IDEp
+IHJwY19jbG50X3NldF9ub2RlbmFtZSgpIHByb3RvdHlwZSB1cGRhdGVkLg0KPiA+IDIpIGZpeGVk
+IGVycm9ycyBpbiBjb21tZW50Lg0KPiA+IA0KPiA+IFdoZW4gY2hpbGQgcmVhcGVyIGV4aXRzLCBp
+dCBjYW4gZGVzdHJveSBtb3VudCBuYW1lc3BhY2UgaXQgYmVsb25ncyB0bywgYW5kIGlmDQo+ID4g
+dGhlcmUgYXJlIE5GUyBtb3VudHMgaW5zaWRlLCB0aGVuIGl0IHdpbGwgdHJ5IHRvIHVtb3VudCB0
+aGVtLiBCdXQgaW4gdGhpcw0KPiA+IHBvaW50IGN1cnJlbnQtPm5zcHJveHkgaXMgc2V0IHRvIE5V
+TEwgYW5kIGFsbCBuYW1lc3BhY2VzIHdpbGwgYmUgZGVzdHJveWVkIG9uZQ0KPiA+IGJ5IG9uZS4g
+SS5lLiB3ZSBjYW4ndCBkZXJlZmVyZW5jZSBjdXJyZW50LT5uc3Byb3h5IHRvIG9idGFpbiB1dHMg
+bmFtZXNwYWNlLg0KPiA+IA0KPiA+IFNpZ25lZC1vZmYtYnk6IFN0YW5pc2xhdiBLaW5zYnVyc2t5
+IDxza2luc2J1cnNreUBwYXJhbGxlbHMuY29tPg0KPiA+IC0tLQ0KPiA+ICBuZXQvc3VucnBjL2Ns
+bnQuYyB8ICAgMTYgKysrKysrKysrKysrKy0tLQ0KPiA+ICAxIGZpbGVzIGNoYW5nZWQsIDEzIGlu
+c2VydGlvbnMoKyksIDMgZGVsZXRpb25zKC0pDQo+ID4gDQo+ID4gZGlmZiAtLWdpdCBhL25ldC9z
+dW5ycGMvY2xudC5jIGIvbmV0L3N1bnJwYy9jbG50LmMNCj4gPiBpbmRleCA5YTk2NzZlLi44ZmJj
+YmM4IDEwMDY0NA0KPiA+IC0tLSBhL25ldC9zdW5ycGMvY2xudC5jDQo+ID4gKysrIGIvbmV0L3N1
+bnJwYy9jbG50LmMNCj4gPiBAQCAtMjc3LDggKzI3NywxOCBAQCB2b2lkIHJwY19jbGllbnRzX25v
+dGlmaWVyX3VucmVnaXN0ZXIodm9pZCkNCj4gPiAgCXJldHVybiBycGNfcGlwZWZzX25vdGlmaWVy
+X3VucmVnaXN0ZXIoJnJwY19jbGllbnRzX2Jsb2NrKTsNCj4gPiAgfQ0KPiA+ICANCj4gPiAtc3Rh
+dGljIHZvaWQgcnBjX2NsbnRfc2V0X25vZGVuYW1lKHN0cnVjdCBycGNfY2xudCAqY2xudCwgY29u
+c3QgY2hhciAqbm9kZW5hbWUpDQo+ID4gK3N0YXRpYyB2b2lkIHJwY19jbG50X3NldF9ub2RlbmFt
+ZShzdHJ1Y3QgcnBjX2NsbnQgKmNsbnQpDQo+ID4gIHsNCj4gPiArCWNvbnN0IGNoYXIgKm5vZGVu
+YW1lOw0KPiA+ICsNCj4gPiArCS8qDQo+ID4gKwkgKiBXZSBoYXZlIHRvIHByb3RlY3QgYWdhaW5z
+dCBkeWluZyBjaGlsZCByZWFwZXIsIHdoaWNoIGhhcyByZWxlYXNlZA0KPiA+ICsJICogaXRzIG5z
+cHJveHkgYWxyZWFkeSBhbmQgaXMgdHJ5aW5nIHRvIGRlc3Ryb3kgbW91bnQgbmFtZXNwYWNlLg0K
+PiA+ICsJICovDQo+ID4gKwlpZiAoY3VycmVudC0+bnNwcm94eSA9PSBOVUxMKQ0KPiA+ICsJCXJl
+dHVybjsNCj4gPiArDQo+ID4gKwlub2RlbmFtZSA9IHV0c25hbWUoKS0+bm9kZW5hbWU7DQo+ID4g
+IAljbG50LT5jbF9ub2RlbGVuID0gc3RybGVuKG5vZGVuYW1lKTsNCj4gPiAgCWlmIChjbG50LT5j
+bF9ub2RlbGVuID4gVU5YX01BWE5PREVOQU1FKQ0KPiA+ICAJCWNsbnQtPmNsX25vZGVsZW4gPSBV
+TlhfTUFYTk9ERU5BTUU7DQo+ID4gQEAgLTM2NSw3ICszNzUsNyBAQCBzdGF0aWMgc3RydWN0IHJw
+Y19jbG50ICogcnBjX25ld19jbGllbnQoY29uc3Qgc3RydWN0IHJwY19jcmVhdGVfYXJncyAqYXJn
+cywgc3RydQ0KPiA+ICAJfQ0KPiA+ICANCj4gPiAgCS8qIHNhdmUgdGhlIG5vZGVuYW1lICovDQo+
+ID4gLQlycGNfY2xudF9zZXRfbm9kZW5hbWUoY2xudCwgdXRzbmFtZSgpLT5ub2RlbmFtZSk7DQo+
+ID4gKwlycGNfY2xudF9zZXRfbm9kZW5hbWUoY2xudCk7DQo+ID4gIAlycGNfcmVnaXN0ZXJfY2xp
+ZW50KGNsbnQpOw0KPiA+ICAJcmV0dXJuIGNsbnQ7DQo+ID4gIA0KPiA+IEBAIC01MjQsNyArNTM0
+LDcgQEAgcnBjX2Nsb25lX2NsaWVudChzdHJ1Y3QgcnBjX2NsbnQgKmNsbnQpDQo+ID4gIAllcnIg
+PSBycGNfc2V0dXBfcGlwZWRpcihuZXcsIGNsbnQtPmNsX3Byb2dyYW0tPnBpcGVfZGlyX25hbWUp
+Ow0KPiA+ICAJaWYgKGVyciAhPSAwKQ0KPiA+ICAJCWdvdG8gb3V0X25vX3BhdGg7DQo+ID4gLQly
+cGNfY2xudF9zZXRfbm9kZW5hbWUobmV3LCB1dHNuYW1lKCktPm5vZGVuYW1lKTsNCj4gPiArCXJw
+Y19jbG50X3NldF9ub2RlbmFtZShuZXcpOw0KPiA+ICAJaWYgKG5ldy0+Y2xfYXV0aCkNCj4gPiAg
+CQlhdG9taWNfaW5jKCZuZXctPmNsX2F1dGgtPmF1X2NvdW50KTsNCj4gPiAgCWF0b21pY19pbmMo
+JmNsbnQtPmNsX2NvdW50KTsNCj4gPiANCj4gPiAtLQ0KPiA+IFRvIHVuc3Vic2NyaWJlIGZyb20g
+dGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiIGluDQo+ID4g
+dGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4gPiBN
+b3JlIG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1p
+bmZvLmh0bWwNCj4gDQo+IEFja2VkLWJ5OiBKZWZmIExheXRvbiA8amxheXRvbkByZWRoYXQuY29t
+Pg0KDQpPSywgY29sb3VyIG1lIGNvbmZ1c2VkIChhZ2FpbikuIFdoeSBzaG91bGQgYSB1bW91bnQg
+dHJpZ2dlciBhbg0KcnBjX2NyZWF0ZSgpIG9yIHJwY19jbG9uZV9jbGllbnQoKT8NCg0KLS0gDQpU
+cm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRy
+b25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
