@@ -1,138 +1,140 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:40062 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932090Ab2IXT7m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Sep 2012 15:59:42 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 24/28] NFSv4.1: Get rid of the NFS_LAYOUT_DESTROYED state
-Date: Mon, 24 Sep 2012 15:56:42 -0400
-Message-Id: <1348516606-22721-24-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1348516606-22721-23-git-send-email-Trond.Myklebust@netapp.com>
-References: <1348516606-22721-1-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-2-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-3-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-4-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-5-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-6-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-7-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-8-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-9-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-10-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-11-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-12-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-13-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-14-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-15-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-16-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-17-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-18-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-19-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-20-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-21-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-22-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-23-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:49735 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760581Ab2IGOS4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Sep 2012 10:18:56 -0400
+Received: by yenl14 with SMTP id l14so546098yen.19
+        for <linux-nfs@vger.kernel.org>; Fri, 07 Sep 2012 07:18:56 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v6 13/20] vfs: have do_sys_truncate retry once on an ESTALE error
+Date: Fri,  7 Sep 2012 10:18:20 -0400
+Message-Id: <1347027507-20956-14-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1347027507-20956-1-git-send-email-jlayton@redhat.com>
+References: <1347027507-20956-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We already have a mechanism for blocking LAYOUTGET by means of the
-plh_block_lgets counter. The only "service" that NFS_LAYOUT_DESTROYED
-provides at this point is to block layoutget once the layout segment
-list is empty, which basically means that you have to wait until
-the pnfs_layout_hdr is destroyed before you can do pNFS on that file
-again.
-
-This patch enables the reuse of the pnfs_layout_hdr if the layout
-segment list is empty.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/nfs4filelayout.c | 3 +--
- fs/nfs/pnfs.c           | 9 +--------
- fs/nfs/pnfs.h           | 7 -------
- 3 files changed, 2 insertions(+), 17 deletions(-)
+ fs/open.c | 86 +++++++++++++++++++++++++++++++++------------------------------
+ 1 file changed, 45 insertions(+), 41 deletions(-)
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 6cce57e..52d8472 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -279,8 +279,7 @@ filelayout_reset_to_mds(struct pnfs_layout_segment *lseg)
- {
- 	struct nfs4_deviceid_node *node = FILELAYOUT_DEVID_NODE(lseg);
+diff --git a/fs/open.c b/fs/open.c
+index d0f225e..5dcee00 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -66,62 +66,66 @@ static long do_sys_truncate(const char __user *pathname, loff_t length)
+ 	struct path path;
+ 	struct inode *inode;
+ 	int error;
++	unsigned int lookup_flags = LOOKUP_FOLLOW;
++	unsigned int try = 0;
  
--	return pnfs_test_layout_destroyed(lseg->pls_layout) ||
--		filelayout_test_devid_unavailable(node);
-+	return filelayout_test_devid_unavailable(node);
+-	error = -EINVAL;
+ 	if (length < 0)	/* sorry, but loff_t says... */
+-		goto out;
++		return -EINVAL;
+ 
+-	error = user_path(pathname, &path);
+-	if (error)
+-		goto out;
+-	inode = path.dentry->d_inode;
++	do {
++		error = user_path_at(AT_FDCWD, pathname, lookup_flags, &path);
++		if (error)
++			break;
++		inode = path.dentry->d_inode;
+ 
+-	/* For directories it's -EISDIR, for other non-regulars - -EINVAL */
+-	error = -EISDIR;
+-	if (S_ISDIR(inode->i_mode))
+-		goto dput_and_out;
++		/* For dirs, -EISDIR. For other non-regulars, -EINVAL */
++		error = -EISDIR;
++		if (S_ISDIR(inode->i_mode))
++			goto dput_and_out;
+ 
+-	error = -EINVAL;
+-	if (!S_ISREG(inode->i_mode))
+-		goto dput_and_out;
++		error = -EINVAL;
++		if (!S_ISREG(inode->i_mode))
++			goto dput_and_out;
+ 
+-	error = mnt_want_write(path.mnt);
+-	if (error)
+-		goto dput_and_out;
++		error = mnt_want_write(path.mnt);
++		if (error)
++			goto dput_and_out;
+ 
+-	error = inode_permission(inode, MAY_WRITE);
+-	if (error)
+-		goto mnt_drop_write_and_out;
++		error = inode_permission(inode, MAY_WRITE);
++		if (error)
++			goto mnt_drop_write_and_out;
+ 
+-	error = -EPERM;
+-	if (IS_APPEND(inode))
+-		goto mnt_drop_write_and_out;
++		error = -EPERM;
++		if (IS_APPEND(inode))
++			goto mnt_drop_write_and_out;
+ 
+-	error = get_write_access(inode);
+-	if (error)
+-		goto mnt_drop_write_and_out;
++		error = get_write_access(inode);
++		if (error)
++			goto mnt_drop_write_and_out;
+ 
+-	/*
+-	 * Make sure that there are no leases.  get_write_access() protects
+-	 * against the truncate racing with a lease-granting setlease().
+-	 */
+-	error = break_lease(inode, O_WRONLY);
+-	if (error)
+-		goto put_write_and_out;
++		/*
++		 * Make sure that there are no leases. get_write_access()
++		 * protects against the truncate racing with a lease-granting
++		 * setlease().
++		 */
++		error = break_lease(inode, O_WRONLY);
++		if (error)
++			goto put_write_and_out;
+ 
+-	error = locks_verify_truncate(inode, NULL, length);
+-	if (!error)
+-		error = security_path_truncate(&path);
+-	if (!error)
+-		error = do_truncate(path.dentry, length, 0, NULL);
++		error = locks_verify_truncate(inode, NULL, length);
++		if (!error)
++			error = security_path_truncate(&path);
++		if (!error)
++			error = do_truncate(path.dentry, length, 0, NULL);
+ 
+ put_write_and_out:
+-	put_write_access(inode);
++		put_write_access(inode);
+ mnt_drop_write_and_out:
+-	mnt_drop_write(path.mnt);
++		mnt_drop_write(path.mnt);
+ dput_and_out:
+-	path_put(&path);
+-out:
++		path_put(&path);
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
+ 	return error;
  }
  
- /*
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index b8dac08..791eda9 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -331,8 +331,6 @@ pnfs_layout_remove_lseg(struct pnfs_layout_hdr *lo,
- 	list_del_init(&lseg->pls_list);
- 	/* Matched by pnfs_get_layout_hdr in pnfs_layout_insert_lseg */
- 	atomic_dec(&lo->plh_refcount);
--	if (list_empty(&lo->plh_segs))
--		set_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags);
- 	rpc_wake_up(&NFS_SERVER(inode)->roc_rpcwaitq);
- }
- 
-@@ -463,10 +461,8 @@ pnfs_mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
- 
- 	dprintk("%s:Begin lo %p\n", __func__, lo);
- 
--	if (list_empty(&lo->plh_segs)) {
--		set_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags);
-+	if (list_empty(&lo->plh_segs))
- 		return 0;
--	}
- 	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list)
- 		if (!recall_range ||
- 		    should_free_lseg(&lseg->pls_range, recall_range)) {
-@@ -590,7 +586,6 @@ pnfs_layoutgets_blocked(struct pnfs_layout_hdr *lo, nfs4_stateid *stateid,
- 	    (int)(lo->plh_barrier - be32_to_cpu(stateid->seqid)) >= 0)
- 		return true;
- 	return lo->plh_block_lgets ||
--		test_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags) ||
- 		test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags) ||
- 		(list_empty(&lo->plh_segs) &&
- 		 (atomic_read(&lo->plh_outstanding) > lget));
-@@ -912,8 +907,6 @@ pnfs_find_alloc_layout(struct inode *ino,
- 	dprintk("%s Begin ino=%p layout=%p\n", __func__, ino, nfsi->layout);
- 
- 	if (nfsi->layout) {
--		if (test_bit(NFS_LAYOUT_DESTROYED, &nfsi->layout->plh_flags))
--			return NULL;
- 		pnfs_get_layout_hdr(nfsi->layout);
- 		return nfsi->layout;
- 	}
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index aacda7f..92f6ce6 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -62,7 +62,6 @@ enum {
- 	NFS_LAYOUT_RW_FAILED,		/* get rw layout failed stop trying */
- 	NFS_LAYOUT_BULK_RECALL,		/* bulk recall affecting layout */
- 	NFS_LAYOUT_ROC,			/* some lseg had roc bit set */
--	NFS_LAYOUT_DESTROYED,		/* no new use of layout allowed */
- 	NFS_LAYOUT_RETURNED,		/* layout has already been returned */
- };
- 
-@@ -278,12 +277,6 @@ pnfs_test_layout_returned(struct pnfs_layout_hdr *lo)
- 	return test_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
- }
- 
--static inline bool
--pnfs_test_layout_destroyed(struct pnfs_layout_hdr *lo)
--{
--	return test_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags);
--}
--
- static inline struct pnfs_layout_segment *
- pnfs_get_lseg(struct pnfs_layout_segment *lseg)
- {
 -- 
 1.7.11.4
 
