@@ -1,284 +1,200 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:55468 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755345Ab2INVLe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 Sep 2012 17:11:34 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 2 1/5] SUNRPC handle EKEYEXPIRED in call_refreshresult
-Date: Fri, 14 Sep 2012 17:11:45 -0400
-Message-Id: <1347657109-2180-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1347657109-2180-1-git-send-email-andros@netapp.com>
-References: <1347657109-2180-1-git-send-email-andros@netapp.com>
+Received: from mail-vb0-f46.google.com ([209.85.212.46]:38547 "EHLO
+	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760658Ab2IGOSm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Sep 2012 10:18:42 -0400
+Received: by vbbff1 with SMTP id ff1so3363795vbb.19
+        for <linux-nfs@vger.kernel.org>; Fri, 07 Sep 2012 07:18:41 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v6 04/20] vfs: add new "reval" argument to kern_path_create and user_path_create
+Date: Fri,  7 Sep 2012 10:18:11 -0400
+Message-Id: <1347027507-20956-5-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1347027507-20956-1-git-send-email-jlayton@redhat.com>
+References: <1347027507-20956-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+...for now, all of the callers pass in "false". Eventually, we'll set
+that to "true" when we retry the lookup after getting back an ESTALE on
+a call.
 
-Currently, when an RPCSEC_GSS context has expired or is non-existent
-and the users (Kerberos) credentials have also expired or are non-existent,
-the client receives the -EKEYEXPIRED error and tries to refresh the context
-forever.  If an application is performing I/O, or other work against the share,
-the application hangs, and the user is not prompted to refresh/establish their
-credentials. This can result in a denial of service for other users.
+While we're at it, change the is_dir arg to a bool since that's how it's
+used currently.
 
-Users are expected to manage their Kerberos credential lifetimes to mitigate
-this issue.
-
-Move the -EKEYEXPIRED handling into the RPC layer. Try tk_cred_retry number
-of times to refresh the gss_context, and then return -EACCES to the application.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/nfs3proc.c       |    6 +++---
- fs/nfs/nfs4filelayout.c |    1 -
- fs/nfs/nfs4proc.c       |   18 ------------------
- fs/nfs/nfs4state.c      |   22 ----------------------
- fs/nfs/proc.c           |   43 -------------------------------------------
- net/sunrpc/clnt.c       |    1 +
- 6 files changed, 4 insertions(+), 87 deletions(-)
+ arch/powerpc/platforms/cell/spufs/syscalls.c |  2 +-
+ drivers/base/devtmpfs.c                      |  7 ++++---
+ fs/namei.c                                   | 23 +++++++++++++++--------
+ fs/ocfs2/refcounttree.c                      |  3 ++-
+ include/linux/namei.h                        |  4 ++--
+ net/unix/af_unix.c                           |  2 +-
+ 6 files changed, 25 insertions(+), 16 deletions(-)
 
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index 6932209..70efb63 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -24,14 +24,14 @@
+diff --git a/arch/powerpc/platforms/cell/spufs/syscalls.c b/arch/powerpc/platforms/cell/spufs/syscalls.c
+index 5b7d8ff..cb4acc7 100644
+--- a/arch/powerpc/platforms/cell/spufs/syscalls.c
++++ b/arch/powerpc/platforms/cell/spufs/syscalls.c
+@@ -66,7 +66,7 @@ static long do_spu_create(const char __user *pathname, unsigned int flags,
+ 	struct dentry *dentry;
+ 	int ret;
  
- #define NFSDBG_FACILITY		NFSDBG_PROC
+-	dentry = user_path_create(AT_FDCWD, pathname, &path, 1);
++	dentry = user_path_create(AT_FDCWD, pathname, &path, true, false);
+ 	ret = PTR_ERR(dentry);
+ 	if (!IS_ERR(dentry)) {
+ 		ret = spufs_create(&path, dentry, flags, mode, neighbor);
+diff --git a/drivers/base/devtmpfs.c b/drivers/base/devtmpfs.c
+index deb4a45..2124437 100644
+--- a/drivers/base/devtmpfs.c
++++ b/drivers/base/devtmpfs.c
+@@ -148,7 +148,7 @@ static int dev_mkdir(const char *name, umode_t mode)
+ 	struct path path;
+ 	int err;
  
--/* A wrapper to handle the EJUKEBOX and EKEYEXPIRED error messages */
-+/* A wrapper to handle the EJUKEBOX error messages */
- static int
- nfs3_rpc_wrapper(struct rpc_clnt *clnt, struct rpc_message *msg, int flags)
- {
- 	int res;
- 	do {
- 		res = rpc_call_sync(clnt, msg, flags);
--		if (res != -EJUKEBOX && res != -EKEYEXPIRED)
-+		if (res != -EJUKEBOX)
- 			break;
- 		freezable_schedule_timeout_killable(NFS_JUKEBOX_RETRY_TIME);
- 		res = -ERESTARTSYS;
-@@ -44,7 +44,7 @@ nfs3_rpc_wrapper(struct rpc_clnt *clnt, struct rpc_message *msg, int flags)
- static int
- nfs3_async_handle_jukebox(struct rpc_task *task, struct inode *inode)
- {
--	if (task->tk_status != -EJUKEBOX && task->tk_status != -EKEYEXPIRED)
-+	if (task->tk_status != -EJUKEBOX)
- 		return 0;
- 	if (task->tk_status == -EJUKEBOX)
- 		nfs_inc_stats(inode, NFSIOS_DELAY);
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 53f94d9..000e01e 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -169,7 +169,6 @@ static int filelayout_async_handle_error(struct rpc_task *task,
- 		break;
- 	case -NFS4ERR_DELAY:
- 	case -NFS4ERR_GRACE:
--	case -EKEYEXPIRED:
- 		rpc_delay(task, FILELAYOUT_POLL_RETRY_MAX);
- 		break;
- 	case -NFS4ERR_RETRY_UNCACHED_REP:
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 1e50326..16c5b18 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -344,7 +344,6 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
- 			}
- 		case -NFS4ERR_GRACE:
- 		case -NFS4ERR_DELAY:
--		case -EKEYEXPIRED:
- 			ret = nfs4_delay(server->client, &exception->timeout);
- 			if (ret != 0)
- 				break;
-@@ -1374,13 +1373,6 @@ int nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs4_state
- 				nfs_inode_find_state_and_recover(state->inode,
- 						stateid);
- 				nfs4_schedule_stateid_recovery(server, state);
--			case -EKEYEXPIRED:
--				/*
--				 * User RPCSEC_GSS context has expired.
--				 * We cannot recover this stateid now, so
--				 * skip it and allow recovery thread to
--				 * proceed.
--				 */
- 			case -ENOMEM:
- 				err = 0;
- 				goto out;
-@@ -3970,7 +3962,6 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
- 		case -NFS4ERR_DELAY:
- 			nfs_inc_server_stats(server, NFSIOS_DELAY);
- 		case -NFS4ERR_GRACE:
--		case -EKEYEXPIRED:
- 			rpc_delay(task, NFS4_POLL_RETRY_MAX);
- 			task->tk_status = 0;
- 			return -EAGAIN;
-@@ -4944,15 +4935,6 @@ int nfs4_lock_delegation_recall(struct nfs4_state *state, struct file_lock *fl)
- 				nfs4_schedule_stateid_recovery(server, state);
- 				err = 0;
- 				goto out;
--			case -EKEYEXPIRED:
--				/*
--				 * User RPCSEC_GSS context has expired.
--				 * We cannot recover this stateid now, so
--				 * skip it and allow recovery thread to
--				 * proceed.
--				 */
--				err = 0;
--				goto out;
- 			case -ENOMEM:
- 			case -NFS4ERR_DENIED:
- 				/* kill_proc(fl->fl_pid, SIGLOST, 1); */
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 55148de..8e7207e 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1315,14 +1315,6 @@ restart:
- 				/* Mark the file as being 'closed' */
- 				state->state = 0;
- 				break;
--			case -EKEYEXPIRED:
--				/*
--				 * User RPCSEC_GSS context has expired.
--				 * We cannot recover this stateid now, so
--				 * skip it and allow recovery thread to
--				 * proceed.
--				 */
--				break;
- 			case -NFS4ERR_ADMIN_REVOKED:
- 			case -NFS4ERR_STALE_STATEID:
- 			case -NFS4ERR_BAD_STATEID:
-@@ -1475,14 +1467,6 @@ static void nfs4_state_start_reclaim_nograce(struct nfs_client *clp)
- 	nfs4_state_mark_reclaim_helper(clp, nfs4_state_mark_reclaim_nograce);
+-	dentry = kern_path_create(AT_FDCWD, name, &path, 1);
++	dentry = kern_path_create(AT_FDCWD, name, &path, true, false);
+ 	if (IS_ERR(dentry))
+ 		return PTR_ERR(dentry);
+ 
+@@ -193,10 +193,11 @@ static int handle_create(const char *nodename, umode_t mode, struct device *dev)
+ 	struct path path;
+ 	int err;
+ 
+-	dentry = kern_path_create(AT_FDCWD, nodename, &path, 0);
++	dentry = kern_path_create(AT_FDCWD, nodename, &path, false, false);
+ 	if (dentry == ERR_PTR(-ENOENT)) {
+ 		create_path(nodename);
+-		dentry = kern_path_create(AT_FDCWD, nodename, &path, 0);
++		dentry = kern_path_create(AT_FDCWD, nodename, &path,
++								false, false);
+ 	}
+ 	if (IS_ERR(dentry))
+ 		return PTR_ERR(dentry);
+diff --git a/fs/namei.c b/fs/namei.c
+index 6f9040c..d71be0b 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3038,12 +3038,18 @@ struct file *do_file_open_root(struct dentry *dentry, struct vfsmount *mnt,
+ 	return file;
  }
  
--static void nfs4_warn_keyexpired(const char *s)
--{
--	printk_ratelimited(KERN_WARNING "Error: state manager"
--			" encountered RPCSEC_GSS session"
--			" expired against NFSv4 server %s.\n",
--			s);
--}
--
- static int nfs4_recovery_handle_error(struct nfs_client *clp, int error)
+-struct dentry *kern_path_create(int dfd, const char *pathname, struct path *path, int is_dir)
++struct dentry *kern_path_create(int dfd, const char *pathname, struct path *path, bool is_dir, bool reval)
  {
- 	switch (error) {
-@@ -1516,10 +1500,6 @@ static int nfs4_recovery_handle_error(struct nfs_client *clp, int error)
- 		case -NFS4ERR_CONN_NOT_BOUND_TO_SESSION:
- 			set_bit(NFS4CLNT_BIND_CONN_TO_SESSION, &clp->cl_state);
- 			break;
--		case -EKEYEXPIRED:
--			/* Nothing we can do */
--			nfs4_warn_keyexpired(clp->cl_hostname);
--			break;
- 		default:
- 			dprintk("%s: failed to handle error %d for server %s\n",
- 					__func__, error, clp->cl_hostname);
-@@ -1632,8 +1612,6 @@ static int nfs4_handle_reclaim_lease_error(struct nfs_client *clp, int status)
- 		dprintk("%s: exit with error %d for server %s\n",
- 				__func__, -EPROTONOSUPPORT, clp->cl_hostname);
- 		return -EPROTONOSUPPORT;
--	case -EKEYEXPIRED:
--		nfs4_warn_keyexpired(clp->cl_hostname);
- 	case -NFS4ERR_NOT_SAME: /* FixMe: implement recovery
- 				 * in nfs4_exchange_id */
- 	default:
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index 50a88c3..f084dac 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -47,39 +47,6 @@
- #define NFSDBG_FACILITY		NFSDBG_PROC
+ 	struct dentry *dentry = ERR_PTR(-EEXIST);
+ 	struct nameidata nd;
+ 	int err2;
+-	int error = do_path_lookup(dfd, pathname, LOOKUP_PARENT, &nd);
++	int error;
++	unsigned int lookup_flags = LOOKUP_PARENT;
++
++	if (reval)
++		lookup_flags |= LOOKUP_REVAL;
++
++	error = do_path_lookup(dfd, pathname, lookup_flags, &nd);
+ 	if (error)
+ 		return ERR_PTR(error);
  
- /*
-- * wrapper to handle the -EKEYEXPIRED error message. This should generally
-- * only happen if using krb5 auth and a user's TGT expires. NFSv2 doesn't
-- * support the NFSERR_JUKEBOX error code, but we handle this situation in the
-- * same way that we handle that error with NFSv3.
-- */
--static int
--nfs_rpc_wrapper(struct rpc_clnt *clnt, struct rpc_message *msg, int flags)
--{
--	int res;
--	do {
--		res = rpc_call_sync(clnt, msg, flags);
--		if (res != -EKEYEXPIRED)
--			break;
--		freezable_schedule_timeout_killable(NFS_JUKEBOX_RETRY_TIME);
--		res = -ERESTARTSYS;
--	} while (!fatal_signal_pending(current));
--	return res;
--}
--
--#define rpc_call_sync(clnt, msg, flags)	nfs_rpc_wrapper(clnt, msg, flags)
--
--static int
--nfs_async_handle_expired_key(struct rpc_task *task)
--{
--	if (task->tk_status != -EKEYEXPIRED)
--		return 0;
--	task->tk_status = 0;
--	rpc_restart_call(task);
--	rpc_delay(task, NFS_JUKEBOX_RETRY_TIME);
--	return 1;
--}
--
--/*
-  * Bare-bones access to getattr: this is for nfs_read_super.
-  */
- static int
-@@ -364,8 +331,6 @@ static void nfs_proc_unlink_rpc_prepare(struct rpc_task *task, struct nfs_unlink
- 
- static int nfs_proc_unlink_done(struct rpc_task *task, struct inode *dir)
- {
--	if (nfs_async_handle_expired_key(task))
--		return 0;
- 	nfs_mark_for_revalidate(dir);
- 	return 1;
+@@ -3107,13 +3113,14 @@ void done_path_create(struct path *path, struct dentry *dentry)
  }
-@@ -385,8 +350,6 @@ static int
- nfs_proc_rename_done(struct rpc_task *task, struct inode *old_dir,
- 		     struct inode *new_dir)
- {
--	if (nfs_async_handle_expired_key(task))
--		return 0;
- 	nfs_mark_for_revalidate(old_dir);
- 	nfs_mark_for_revalidate(new_dir);
- 	return 1;
-@@ -642,9 +605,6 @@ static int nfs_read_done(struct rpc_task *task, struct nfs_read_data *data)
- {
- 	struct inode *inode = data->header->inode;
+ EXPORT_SYMBOL(done_path_create);
  
--	if (nfs_async_handle_expired_key(task))
--		return -EAGAIN;
--
- 	nfs_invalidate_atime(inode);
- 	if (task->tk_status >= 0) {
- 		nfs_refresh_inode(inode, data->res.fattr);
-@@ -671,9 +631,6 @@ static int nfs_write_done(struct rpc_task *task, struct nfs_write_data *data)
+-struct dentry *user_path_create(int dfd, const char __user *pathname, struct path *path, int is_dir)
++struct dentry *user_path_create(int dfd, const char __user *pathname,
++				struct path *path, bool is_dir, bool reval)
  {
- 	struct inode *inode = data->header->inode;
+ 	struct getname_info *tmp = getname(pathname);
+ 	struct dentry *res;
+ 	if (IS_ERR(tmp))
+ 		return ERR_CAST(tmp);
+-	res = kern_path_create(dfd, tmp->name, path, is_dir);
++	res = kern_path_create(dfd, tmp->name, path, is_dir, reval);
+ 	putname(tmp);
+ 	return res;
+ }
+@@ -3174,7 +3181,7 @@ SYSCALL_DEFINE4(mknodat, int, dfd, const char __user *, filename, umode_t, mode,
+ 	if (error)
+ 		return error;
  
--	if (nfs_async_handle_expired_key(task))
--		return -EAGAIN;
--
- 	if (task->tk_status >= 0)
- 		nfs_post_op_update_inode_force_wcc(inode, data->res.fattr);
- 	return 0;
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index fa48c60..a15b96c 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -1343,6 +1343,7 @@ call_refreshresult(struct rpc_task *task)
- 		return;
- 	case -ETIMEDOUT:
- 		rpc_delay(task, 3*HZ);
-+	case -EKEYEXPIRED:
- 	case -EAGAIN:
- 		status = -EACCES;
- 		if (!task->tk_cred_retry)
+-	dentry = user_path_create(dfd, filename, &path, 0);
++	dentry = user_path_create(dfd, filename, &path, false, false);
+ 	if (IS_ERR(dentry))
+ 		return PTR_ERR(dentry);
+ 
+@@ -3236,7 +3243,7 @@ SYSCALL_DEFINE3(mkdirat, int, dfd, const char __user *, pathname, umode_t, mode)
+ 	struct path path;
+ 	int error;
+ 
+-	dentry = user_path_create(dfd, pathname, &path, 1);
++	dentry = user_path_create(dfd, pathname, &path, true, false);
+ 	if (IS_ERR(dentry))
+ 		return PTR_ERR(dentry);
+ 
+@@ -3512,7 +3519,7 @@ SYSCALL_DEFINE3(symlinkat, const char __user *, oldname,
+ 	if (IS_ERR(from))
+ 		return PTR_ERR(from);
+ 
+-	dentry = user_path_create(newdfd, newname, &path, 0);
++	dentry = user_path_create(newdfd, newname, &path, false, false);
+ 	error = PTR_ERR(dentry);
+ 	if (IS_ERR(dentry))
+ 		goto out_putname;
+@@ -3612,7 +3619,7 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
+ 	if (error)
+ 		return error;
+ 
+-	new_dentry = user_path_create(newdfd, newname, &new_path, 0);
++	new_dentry = user_path_create(newdfd, newname, &new_path, false, false);
+ 	error = PTR_ERR(new_dentry);
+ 	if (IS_ERR(new_dentry))
+ 		goto out;
+diff --git a/fs/ocfs2/refcounttree.c b/fs/ocfs2/refcounttree.c
+index 30a0550..645e225 100644
+--- a/fs/ocfs2/refcounttree.c
++++ b/fs/ocfs2/refcounttree.c
+@@ -4453,7 +4453,8 @@ int ocfs2_reflink_ioctl(struct inode *inode,
+ 		return error;
+ 	}
+ 
+-	new_dentry = user_path_create(AT_FDCWD, newname, &new_path, 0);
++	new_dentry = user_path_create(AT_FDCWD, newname, &new_path,
++					false, false);
+ 	error = PTR_ERR(new_dentry);
+ 	if (IS_ERR(new_dentry)) {
+ 		mlog_errno(error);
+diff --git a/include/linux/namei.h b/include/linux/namei.h
+index 4bf19d8..2202740 100644
+--- a/include/linux/namei.h
++++ b/include/linux/namei.h
+@@ -65,8 +65,8 @@ extern int user_path_at_empty(int, const char __user *, unsigned, struct path *,
+ 
+ extern int kern_path(const char *, unsigned, struct path *);
+ 
+-extern struct dentry *kern_path_create(int, const char *, struct path *, int);
+-extern struct dentry *user_path_create(int, const char __user *, struct path *, int);
++extern struct dentry *kern_path_create(int, const char *, struct path *, bool, bool);
++extern struct dentry *user_path_create(int, const char __user *, struct path *, bool, bool);
+ extern void done_path_create(struct path *, struct dentry *);
+ extern struct dentry *kern_path_locked(const char *, struct path *);
+ extern int vfs_path_lookup(struct dentry *, struct vfsmount *,
+diff --git a/net/unix/af_unix.c b/net/unix/af_unix.c
+index c5ee4ff..f15b0ff 100644
+--- a/net/unix/af_unix.c
++++ b/net/unix/af_unix.c
+@@ -832,7 +832,7 @@ static int unix_mknod(const char *sun_path, umode_t mode, struct path *res)
+ 	 * Get the parent directory, calculate the hash for last
+ 	 * component.
+ 	 */
+-	dentry = kern_path_create(AT_FDCWD, sun_path, &path, 0);
++	dentry = kern_path_create(AT_FDCWD, sun_path, &path, false, false);
+ 	err = PTR_ERR(dentry);
+ 	if (IS_ERR(dentry))
+ 		return err;
 -- 
-1.7.7.6
+1.7.11.4
 
