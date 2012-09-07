@@ -1,91 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay4-d.mail.gandi.net ([217.70.183.196]:41585 "EHLO
-	relay4-d.mail.gandi.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754768Ab2IFOz7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Sep 2012 10:55:59 -0400
-Date: Thu, 6 Sep 2012 07:55:46 -0700
-From: Josh Triplett <josh@joshtriplett.org>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
-        Pedro Alves <palves@redhat.com>, Steven Rostedt <rostedt@goodmis.org>,
-        Tejun Heo <tj@kernel.org>, torvalds@linux-foundation.org,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, eric.dumazet@gmail.com,
-        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
-        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
-        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive hashtable
-Message-ID: <20120906145545.GA17332@leaf>
-References: <503C95E4.3010000@gmail.com>
- <20120828101148.GA21683@Krystal>
- <503CAB1E.5010408@gmail.com>
- <20120828115638.GC23818@Krystal>
- <20120828230050.GA3337@Krystal>
- <1346772948.27919.9.camel@gandalf.local.home>
- <50462C99.5000007@redhat.com>
- <50462EE8.1090903@redhat.com>
- <20120904170138.GB31934@Krystal>
- <5048AAF6.5090101@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5048AAF6.5090101@gmail.com>
+Received: from mail-vb0-f46.google.com ([209.85.212.46]:41835 "EHLO
+	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760649Ab2IGOZk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Sep 2012 10:25:40 -0400
+Received: by vbbff1 with SMTP id ff1so3375822vbb.19
+        for <linux-nfs@vger.kernel.org>; Fri, 07 Sep 2012 07:25:39 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v6 16/20] vfs: make chroot retry once on ESTALE error
+Date: Fri,  7 Sep 2012 10:18:23 -0400
+Message-Id: <1347027507-20956-17-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1347027507-20956-1-git-send-email-jlayton@redhat.com>
+References: <1347027507-20956-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 06, 2012 at 03:53:58PM +0200, Sasha Levin wrote:
-> On 09/04/2012 07:01 PM, Mathieu Desnoyers wrote:
-> >> #define do_for_each_ftrace_rec(pg, rec)                                          \
-> >> >         for (pg = ftrace_pages_start, rec = &pg->records[pg->index];             \
-> >> >              pg && rec == &pg->records[pg->index];                               \
-> >> >              pg = pg->next)                                                      \
-> >> >           for (rec = pg->records; rec < &pg->records[pg->index]; rec++)
-> > Maybe in some cases there might be ways to combine the two loops into
-> > one ? I'm not seeing exactly how to do it for this one, but it should
-> > not be impossible. If the inner loop condition can be moved to the outer
-> > loop, and if we use (blah ? loop1_conf : loop2_cond) to test for
-> > different conditions depending on the context, and do the same for the
-> > 3rd argument of the for() loop. The details elude me for now though, so
-> > maybe it's complete non-sense ;)
-> > 
-> > It might not be that useful for do_for_each_ftrace_rec, but if we can do
-> > it for the hash table iterator, it might be worth it.
-> 
-> So I think that for the hash iterator it might actually be simpler.
-> 
-> My solution to making 'break' work in the iterator is:
-> 
-> 	for (bkt = 0, node = NULL; bkt < HASH_SIZE(name) && node == NULL; bkt++)
-> 		hlist_for_each_entry(obj, node, &name[bkt], member)
-> 
-> We initialize our node loop cursor with NULL in the external loop, and the
-> external loop will have a new condition to loop while that cursor is NULL.
-> 
-> My logic is that we can only 'break' when we are iterating over an object in the
-> internal loop. If we're iterating over an object in that loop then 'node != NULL'.
-> 
-> This way, if we broke from within the internal loop, the external loop will see
-> node as not NULL, and so it will stop looping itself. On the other hand, if the
-> internal loop has actually ended, then node will be NULL, and the outer loop
-> will keep running.
-> 
-> Is there anything I've missed?
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/open.c | 37 +++++++++++++++++++++----------------
+ 1 file changed, 21 insertions(+), 16 deletions(-)
 
-Looks reasonable.  However, it would break (or rather, not break) on
-code like this:
+diff --git a/fs/open.c b/fs/open.c
+index 81ba325..a015cb8 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -437,27 +437,32 @@ SYSCALL_DEFINE1(chroot, const char __user *, filename)
+ {
+ 	struct path path;
+ 	int error;
++	int lookup_flags = LOOKUP_FOLLOW | LOOKUP_DIRECTORY;
++	unsigned int try = 0;
+ 
+-	error = user_path_dir(filename, &path);
+-	if (error)
+-		goto out;
++	do {
++		error = user_path_at(AT_FDCWD, filename, lookup_flags, &path);
++		if (error)
++			break;
+ 
+-	error = inode_permission(path.dentry->d_inode, MAY_EXEC | MAY_CHDIR);
+-	if (error)
+-		goto dput_and_out;
++		error = inode_permission(path.dentry->d_inode,
++					 MAY_EXEC | MAY_CHDIR);
++		if (error)
++			goto dput_and_out;
+ 
+-	error = -EPERM;
+-	if (!capable(CAP_SYS_CHROOT))
+-		goto dput_and_out;
+-	error = security_path_chroot(&path);
+-	if (error)
+-		goto dput_and_out;
++		error = -EPERM;
++		if (!capable(CAP_SYS_CHROOT))
++			goto dput_and_out;
++		error = security_path_chroot(&path);
++		if (error)
++			goto dput_and_out;
+ 
+-	set_fs_root(current->fs, &path);
+-	error = 0;
++		set_fs_root(current->fs, &path);
++		error = 0;
+ dput_and_out:
+-	path_put(&path);
+-out:
++		path_put(&path);
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
+ 	return error;
+ }
+ 
+-- 
+1.7.11.4
 
-	hash_for_each_entry(...) {
-		if (...) {
-			foo(node);
-			node = NULL;
-			break;
-		}
-	}
-
-Hiding the double loop still seems error-prone.
-
-- Josh Triplett
