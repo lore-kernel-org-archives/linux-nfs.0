@@ -1,98 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:22500 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756260Ab2IXTuE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Sep 2012 15:50:04 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Andy Adamson <androsadamson@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 10/26] NFSv4.1: pnfs_layout_io_test_failed must clear
- invalid lsegs before a retry
-Date: Mon, 24 Sep 2012 19:50:02 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908FE5F02@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1348260621-10294-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <1348260621-10294-2-git-send-email-Trond.Myklebust@netapp.com>
-	 <1348260621-10294-3-git-send-email-Trond.Myklebust@netapp.com>
-	 <1348260621-10294-4-git-send-email-Trond.Myklebust@netapp.com>
-	 <1348260621-10294-5-git-send-email-Trond.Myklebust@netapp.com>
-	 <1348260621-10294-6-git-send-email-Trond.Myklebust@netapp.com>
-	 <1348260621-10294-7-git-send-email-Trond.Myklebust@netapp.com>
-	 <1348260621-10294-8-git-send-email-Trond.Myklebust@netapp.com>
-	 <1348260621-10294-9-git-send-email-Trond.Myklebust@netapp.com>
-	 <1348260621-10294-10-git-send-email-Trond.Myklebust@netapp.com>
-	 <CAHVgHyVmAERb8ndXiUTG=6TBuCQOBWtn0h5ps0fix5aAcu2+WA@mail.gmail.com>
-In-Reply-To: <CAHVgHyVmAERb8ndXiUTG=6TBuCQOBWtn0h5ps0fix5aAcu2+WA@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from 5350504D.static.ziggozakelijk.nl ([83.80.80.77]:33577 "EHLO
+	ns2.tasking.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756733Ab2IGN5W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Sep 2012 09:57:22 -0400
+Received: from leonino.tasking.nl (nl-fg300a-1-dmz.tasking.nl [172.16.1.8])
+	by ns2.tasking.nl (8.14.5/8.14.5) with ESMTP id q87DvLOK032188
+	(version=TLSv1/SSLv3 cipher=DHE-DSS-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Fri, 7 Sep 2012 15:57:21 +0200 (MEST)
+Received: from lahti.tasking.nl (lahti.tasking.nl [172.17.2.45])
+	by leonino.tasking.nl (8.14.5/8.14.5) with ESMTP id q87DvLqk024796
+	for <linux-nfs@vger.kernel.org>; Fri, 7 Sep 2012 15:57:21 +0200 (MEST)
+To: linux-nfs@vger.kernel.org
+Mime-Version: 1.0
+Reply-To: dick.streefland@altium.nl (Dick Streefland)
+References: <20110909194509.GB6195@hostway.ca> <1315610322.17611.112.camel@lade.trondhjem.org> <20111020190334.GA22772@hostway.ca> <20120301225524.GB27595@hostway.ca> <20120302002511.GA4495@hostway.ca> <20120302184918.GA20702@hostway.ca> <loom.20120905T093214-245@post.gmane.org> <loom.20120905T093214-245@post.gmane.org> <4FA345DA4F4AE44899BD2B03EEEC2FA908F86381@SACEXCMBX04-PRD.hq.netapp.com>
+From: dick.streefland@altium.nl (Dick Streefland)
+Subject: Re: [3.2.5] NFSv3 CLOSE_WAIT hang
+Content-Type: text/plain; charset=us-ascii
+Message-ID: <6cb9.5049fd40.b47c1@altium.nl>
+Date: Fri, 07 Sep 2012 13:57:20 -0000
+From: rnews@altium.nl
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA5LTI0IGF0IDEwOjQ3IC0wNDAwLCBBbmR5IEFkYW1zb24gd3JvdGU6DQo+
-IE9uIEZyaSwgU2VwIDIxLCAyMDEyIGF0IDQ6NTAgUE0sIFRyb25kIE15a2xlYnVzdA0KPiA8VHJv
-bmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+IElmIHBuZnNfbGF5b3V0X2lvX3Rl
-c3RfZmFpbGVkKCkgYXV0aG9yaXNlcyBhIHJldHJ5IG9mIHRoZSBmYWlsZWQgbGF5b3V0Z2V0cywN
-Cj4gPiBpdCBzaG91bGQgZmlyc3QgY2xlYXIgdGhlIGV4aXN0aW5nIGxheW91dCBzZWdtZW50cyBz
-byB0aGF0IHdlIHN0YXJ0IGFmcmVzaC4NCj4gPg0KPiA+IFNpZ25lZC1vZmYtYnk6IFRyb25kIE15
-a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQo+ID4gLS0tDQo+ID4gIGZzL25m
-cy9wbmZzLmMgfCA4ICsrKysrKy0tDQo+ID4gIDEgZmlsZSBjaGFuZ2VkLCA2IGluc2VydGlvbnMo
-KyksIDIgZGVsZXRpb25zKC0pDQo+ID4NCj4gPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL3BuZnMuYyBi
-L2ZzL25mcy9wbmZzLmMNCj4gPiBpbmRleCBjYmJiMGZjLi44MGFhYWJhIDEwMDY0NA0KPiA+IC0t
-LSBhL2ZzL25mcy9wbmZzLmMNCj4gPiArKysgYi9mcy9uZnMvcG5mcy5jDQo+ID4gQEAgLTI1Niw3
-ICsyNTYsOCBAQCBwbmZzX2xheW91dF9pb19zZXRfZmFpbGVkKHN0cnVjdCBwbmZzX2xheW91dF9o
-ZHIgKmxvLCB1MzIgaW9tb2RlKQ0KPiA+ICB9DQo+ID4NCj4gPiAgc3RhdGljIGJvb2wNCj4gPiAt
-cG5mc19sYXlvdXRfaW9fdGVzdF9mYWlsZWQoc3RydWN0IHBuZnNfbGF5b3V0X2hkciAqbG8sIHUz
-MiBpb21vZGUpDQo+ID4gK3BuZnNfbGF5b3V0X2lvX3Rlc3RfZmFpbGVkKHN0cnVjdCBwbmZzX2xh
-eW91dF9oZHIgKmxvLCB1MzIgaW9tb2RlLA0KPiA+ICsgICAgICAgICAgICAgICBzdHJ1Y3QgbGlz
-dF9oZWFkICpoZWFkKQ0KPiA+ICB7DQo+ID4gICAgICAgICB1bnNpZ25lZCBsb25nIHN0YXJ0LCBl
-bmQ7DQo+ID4gICAgICAgICBpZiAodGVzdF9iaXQocG5mc19pb21vZGVfdG9fZmFpbF9iaXQoaW9t
-b2RlKSwgJmxvLT5wbGhfZmxhZ3MpID09IDApDQo+ID4gQEAgLTI2Nyw2ICsyNjgsNyBAQCBwbmZz
-X2xheW91dF9pb190ZXN0X2ZhaWxlZChzdHJ1Y3QgcG5mc19sYXlvdXRfaGRyICpsbywgdTMyIGlv
-bW9kZSkNCj4gPiAgICAgICAgICAgICAgICAgLyogSXQgaXMgdGltZSB0byByZXRyeSB0aGUgZmFp
-bGVkIGxheW91dGdldHMgKi8NCj4gPiAgICAgICAgICAgICAgICAgY2xlYXJfYml0KE5GU19MQVlP
-VVRfUldfRkFJTEVELCAmbG8tPnBsaF9mbGFncyk7DQo+ID4gICAgICAgICAgICAgICAgIGNsZWFy
-X2JpdChORlNfTEFZT1VUX1JPX0ZBSUxFRCwgJmxvLT5wbGhfZmxhZ3MpOw0KPiA+ICsgICAgICAg
-ICAgICAgICBwbmZzX21hcmtfbWF0Y2hpbmdfbHNlZ3NfaW52YWxpZChsbywgaGVhZCwgTlVMTCk7
-DQo+IA0KPiBCeSBjbGVhcmluZyBhbGwgaW9tb2RlIGZhaWxlZCBiaXRzIGFuZCBwYXNzaW5nIGEg
-TlVMTCBhcyB0aGUNCj4gcmVjYWxsX3JhbmdlIHRvIHBuZnNfbWFya19tYXRjaGluZ19sc2Vncywg
-eW91IGFyZSBkaXNjYXJkaW5nIGxheW91dHMNCj4gbm90IGF1dGhvcml6ZWQgYnkgdGhlIGlvbW9k
-ZSBwYXNzZWQgaW50byBwbmZzX2xheW91dF9pb190ZXN0X2ZhaWxlZC4NCj4gV2h5IG5vdCBjbGVh
-ciBqdXN0IHRoZSBmYWlsZWQgYml0IGFuZCBzZXR1cCBhIHBuZnNfbGF5b3V0X3JhbmdlDQo+IHN0
-cnVjdHVyZSAoZm9yIHRoZSB3aG9sZSBmaWxlKSBhbmQgcGFzcyB0aGUgYXV0aG9yaXplZCBmYWls
-ZWQgaW9tb2RlDQo+IHRvIHBuZnNfbWFya19tYXRjaGluZ19sc2VncyBzbyBhcyB0byByZW1vdmUg
-b25seSB0aGUgZmFpbGVkIGlvbW9kZQ0KPiBsYXlvdXQgc2VnbWVudHM/DQoNClRoZXJlIHdlcmUg
-b3RoZXIgcmVhc29ucyBmb3IgY2hhbmdpbmcgdGhpcyBwYXJ0IG9mIHRoZSBjb2RlIHRvby4gVGhl
-DQptYWluIHByb2JsZW0gaXMgdGhhdCBpZiB0aGUgZmlyc3QgbGF5b3V0Z2V0IGZhaWxzLCBzbyB0
-aGF0IHdlIG5ldmVyDQphc3NvY2lhdGUgYW4gbHNlZyB0byB0aGUgcG5mc19sYXlvdXRfaGRyLCB0
-aGVuIHRoZSBwbGhfcmVmY291bnQgd2lsbCBnbw0KdG8gemVybywgYW5kIHdlIGVuZCB1cCBub3Qg
-Y2FjaGluZyB0aGUgZmFpbCBiaXQuDQoNClZlcnNpb24gMyBvZiB0aGVzZSBwYXRjaGVzIHRoZXJl
-Zm9yZSBjaGFuZ2UgdGhlIGNvZGUgaW4gdGhpcyByZWdpb24gc28NCnRoYXQgd2Uga2VlcCBhIHJl
-ZmVyZW5jZSB0byB0aGUgcG5mc19sYXlvdXRfaGRyIHdpdGggdGhlIGZhaWwgYml0LiBUaGVuDQpp
-dCBjbGVhcnMgb3V0IHRoZSBleGlzdGluZyBsc2VncyAobWF0Y2hpbmcgaW9tb2RlcykgaW4NCnBu
-ZnNfbGF5b3V0X2lvX3NldF9mYWlsZWQuDQoNCj4gLS0+QW5keQ0KPiANCj4gDQo+ID4gICAgICAg
-ICAgICAgICAgIHJldHVybiBmYWxzZTsNCj4gPiAgICAgICAgIH0NCj4gPiAgICAgICAgIHJldHVy
-biB0cnVlOw0KPiA+IEBAIC0xMDU4LDYgKzEwNjAsNyBAQCBwbmZzX3VwZGF0ZV9sYXlvdXQoc3Ry
-dWN0IGlub2RlICppbm8sDQo+ID4gICAgICAgICBzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwID0gc2Vy
-dmVyLT5uZnNfY2xpZW50Ow0KPiA+ICAgICAgICAgc3RydWN0IHBuZnNfbGF5b3V0X2hkciAqbG87
-DQo+ID4gICAgICAgICBzdHJ1Y3QgcG5mc19sYXlvdXRfc2VnbWVudCAqbHNlZyA9IE5VTEw7DQo+
-ID4gKyAgICAgICBMSVNUX0hFQUQodG1wX2xpc3QpOw0KPiA+ICAgICAgICAgYm9vbCBmaXJzdCA9
-IGZhbHNlOw0KPiA+DQo+ID4gICAgICAgICBpZiAoIXBuZnNfZW5hYmxlZF9zYihORlNfU0VSVkVS
-KGlubykpKQ0KPiA+IEBAIC0xMDgxLDcgKzEwODQsNyBAQCBwbmZzX3VwZGF0ZV9sYXlvdXQoc3Ry
-dWN0IGlub2RlICppbm8sDQo+ID4gICAgICAgICB9DQo+ID4NCj4gPiAgICAgICAgIC8qIGlmIExB
-WU9VVEdFVCBhbHJlYWR5IGZhaWxlZCBvbmNlIHdlIGRvbid0IHRyeSBhZ2FpbiAqLw0KPiA+IC0g
-ICAgICAgaWYgKHBuZnNfbGF5b3V0X2lvX3Rlc3RfZmFpbGVkKG5mc2ktPmxheW91dCwgaW9tb2Rl
-KSkNCj4gPiArICAgICAgIGlmIChwbmZzX2xheW91dF9pb190ZXN0X2ZhaWxlZChuZnNpLT5sYXlv
-dXQsIGlvbW9kZSwgJnRtcF9saXN0KSkNCj4gPiAgICAgICAgICAgICAgICAgZ290byBvdXRfdW5s
-b2NrOw0KPiA+DQo+ID4gICAgICAgICAvKiBDaGVjayB0byBzZWUgaWYgdGhlIGxheW91dCBmb3Ig
-dGhlIGdpdmVuIHJhbmdlIGFscmVhZHkgZXhpc3RzICovDQo+ID4gQEAgLTExMjcsNiArMTEzMCw3
-IEBAIHBuZnNfdXBkYXRlX2xheW91dChzdHJ1Y3QgaW5vZGUgKmlubywNCj4gPiAgICAgICAgIH0N
-Cj4gPiAgICAgICAgIGF0b21pY19kZWMoJmxvLT5wbGhfb3V0c3RhbmRpbmcpOw0KPiA+ICBvdXQ6
-DQo+ID4gKyAgICAgICBwbmZzX2ZyZWVfbHNlZ19saXN0KCZ0bXBfbGlzdCk7DQo+ID4gICAgICAg
-ICBwbmZzX3B1dF9sYXlvdXRfaGRyKGxvKTsNCj4gPiAgICAgICAgIGRwcmludGsoIiVzIGVuZCwg
-c3RhdGUgMHglbHggbHNlZyAlcFxuIiwgX19mdW5jX18sDQo+ID4gICAgICAgICAgICAgICAgIG5m
-c2ktPmxheW91dCA/IG5mc2ktPmxheW91dC0+cGxoX2ZsYWdzIDogLTEsIGxzZWcpOw0KPiA+IC0t
-DQo+ID4gMS43LjExLjQNCj4gPg0KPiA+IC0tDQo+ID4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlz
-IGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIgaW4NCj4gPiB0aGUg
-Ym9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0KPiA+IE1vcmUg
-bWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8u
-aHRtbA0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVy
-DQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+| Clearly the comment is misleading and should be removed. That write lock
+| 
+| _is_ needed in order to throttle slots on TCP.
+| 
+| As far as I know, kernel 3.3 is not in stable support any more, so I
+| can't help that. Can you reproduce the problem on a 3.5 kernel or
+| higher?
+
+I can easily reproduce the hang on the latest kernel (eeea3ac912)
+with my script (http://permalink.gmane.org/gmane.linux.nfs/51833).
+With this change, it doesn't hang:
+
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index a5a402a..6e739bf 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1083,20 +1083,9 @@ void xprt_reserve(struct rpc_task *task)
+ 	if (task->tk_rqstp != NULL)
+ 		return;
+ 
+-	/* Note: grabbing the xprt_lock_write() here is not strictly needed,
+-	 * but ensures that we throttle new slot allocation if the transport
+-	 * is congested (e.g. if reconnecting or if we're out of socket
+-	 * write buffer space).
+-	 */
+-	task->tk_timeout = 0;
+-	task->tk_status = -EAGAIN;
+-	if (!xprt_lock_write(xprt, task))
+-		return;
+-
+ 	spin_lock(&xprt->reserve_lock);
+ 	xprt_alloc_slot(task);
+ 	spin_unlock(&xprt->reserve_lock);
+-	xprt_release_write(xprt, task);
+ }
+ 
+ static inline __be32 xprt_alloc_xid(struct rpc_xprt *xprt)
+
+-- 
+Dick
+
