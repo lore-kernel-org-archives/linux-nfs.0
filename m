@@ -1,51 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from hop-nat-141.emc.com ([168.159.213.141]:37379 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756749Ab2IJCIa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 9 Sep 2012 22:08:30 -0400
-From: "Peng, Tao" <tao.peng@emc.com>
-To: Wei Yongjun <weiyj.lk@gmail.com>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
-CC: "yongjun_wei@trendmicro.com.cn" <yongjun_wei@trendmicro.com.cn>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Sun, 9 Sep 2012 22:08:01 -0400
-Subject: RE: [PATCH] pnfsblock: use list_move_tail instead of
- list_del/list_add_tail
-Message-ID: <5DFC6BE3BA248842867E85C73BF94B050B18D1F1F3@MX41A.corp.emc.com>
-References: <CAPgLHd8a+6FGVDScg25XGKc8bAZDdkS6aU4tmknyDMKvZ-DgDg@mail.gmail.com>
-In-Reply-To: <CAPgLHd8a+6FGVDScg25XGKc8bAZDdkS6aU4tmknyDMKvZ-DgDg@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:38112 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755560Ab2IGOSf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Sep 2012 10:18:35 -0400
+Received: by ghrr11 with SMTP id r11so545787ghr.19
+        for <linux-nfs@vger.kernel.org>; Fri, 07 Sep 2012 07:18:35 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v6 00/20] vfs: add the ability to retry on ESTALE to several syscalls
+Date: Fri,  7 Sep 2012 10:18:07 -0400
+Message-Id: <1347027507-20956-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
-ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10gT24g
-QmVoYWxmIE9mIFdlaQ0KPiBZb25nanVuDQo+IFNlbnQ6IFdlZG5lc2RheSwgU2VwdGVtYmVyIDA1
-LCAyMDEyIDI6MzggUE0NCj4gVG86IFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQo+IENjOiB5
-b25nanVuX3dlaUB0cmVuZG1pY3JvLmNvbS5jbjsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0K
-PiBTdWJqZWN0OiBbUEFUQ0hdIHBuZnNibG9jazogdXNlIGxpc3RfbW92ZV90YWlsIGluc3RlYWQg
-b2YgbGlzdF9kZWwvbGlzdF9hZGRfdGFpbA0KPiANCj4gRnJvbTogV2VpIFlvbmdqdW4gPHlvbmdq
-dW5fd2VpQHRyZW5kbWljcm8uY29tLmNuPg0KPiANCj4gVXNpbmcgbGlzdF9tb3ZlX3RhaWwoKSBp
-bnN0ZWFkIG9mIGxpc3RfZGVsKCkgKyBsaXN0X2FkZF90YWlsKCkuDQo+IA0KPiBzcGF0Y2ggd2l0
-aCBhIHNlbWFudGljIG1hdGNoIGlzIHVzZWQgdG8gZm91bmQgdGhpcyBwcm9ibGVtLg0KPiAoaHR0
-cDovL2NvY2NpbmVsbGUubGlwNi5mci8pDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBXZWkgWW9uZ2p1
-biA8eW9uZ2p1bl93ZWlAdHJlbmRtaWNyby5jb20uY24+DQpUaGlzIGxvb2tzIGdvb2QuIFRoYW5r
-cyENCg0KUmV2aWV3ZWQtYnk6IFBlbmcgVGFvIDx0YW8ucGVuZ0BlbWMuY29tPg0KPiAtLS0NCj4g
-IGZzL25mcy9ibG9ja2xheW91dC9leHRlbnRzLmMgfCAzICstLQ0KPiAgMSBmaWxlIGNoYW5nZWQs
-IDEgaW5zZXJ0aW9uKCspLCAyIGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25m
-cy9ibG9ja2xheW91dC9leHRlbnRzLmMgYi9mcy9uZnMvYmxvY2tsYXlvdXQvZXh0ZW50cy5jDQo+
-IGluZGV4IDFmOWE2MDMuLjljM2UxMTcgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9ibG9ja2xheW91
-dC9leHRlbnRzLmMNCj4gKysrIGIvZnMvbmZzL2Jsb2NrbGF5b3V0L2V4dGVudHMuYw0KPiBAQCAt
-NjgzLDggKzY4Myw3IEBAIGVuY29kZV9wbmZzX2Jsb2NrX2xheW91dHVwZGF0ZShzdHJ1Y3QgcG5m
-c19ibG9ja19sYXlvdXQgKmJsLA0KPiAgCQlwID0geGRyX2VuY29kZV9oeXBlcihwLCBsY2UtPmJz
-ZV9sZW5ndGggPDwgU0VDVE9SX1NISUZUKTsNCj4gIAkJcCA9IHhkcl9lbmNvZGVfaHlwZXIocCwg
-MExMKTsNCj4gIAkJKnArKyA9IGNwdV90b19iZTMyKFBORlNfQkxPQ0tfUkVBRFdSSVRFX0RBVEEp
-Ow0KPiAtCQlsaXN0X2RlbCgmbGNlLT5ic2Vfbm9kZSk7DQo+IC0JCWxpc3RfYWRkX3RhaWwoJmxj
-ZS0+YnNlX25vZGUsICZibC0+YmxfY29tbWl0dGluZyk7DQo+ICsJCWxpc3RfbW92ZV90YWlsKCZs
-Y2UtPmJzZV9ub2RlLCAmYmwtPmJsX2NvbW1pdHRpbmcpOw0KPiAgCQlibC0+YmxfY291bnQtLTsN
-Cj4gIAkJY291bnQrKzsNCj4gIAl9DQo+IA0KPiANCj4gLS0NCj4gVG8gdW5zdWJzY3JpYmUgZnJv
-bSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIgaW4NCj4g
-dGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4gTW9y
-ZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5m
-by5odG1sDQoNCg==
+This patchset is a respin of the one I sent on August 8th. The main
+reason is to respin this series on top of my getname/putname overhaul,
+which simplifies the set greatly and doesn't require so many getname
+callers.
+
+This series depends on the "getname" series that I sent earlier today.
+
+This set (and the prerequiste patches) are also available via the
+"estale" branch of my git tree:
+
+    git://git.samba.org/jlayton/linux.git estale
+
+I'd like to see this go in for 3.7 if at all possible.
+
+The original cover letter text follows:
+
+ESTALE errors are a source of pain for many users, primarily those who
+are doing work on NFS. When userspace provides a path to a syscall, then
+there's really little excuse for returning ESTALE. If userspace gave us
+a path that we had to lookup in order to do the call, then it's not
+particularly helpful to return ESTALE just because that path went stale
+before we could do the actual operation.
+
+We can and should do better here. The kernel should instead catch that
+error and retry the lookup and call, while forcing a revalidation of all
+dentries involved.
+
+Unfortunately fixing this requires touching the syscalls themselves, or
+at least their immediate helper functions. Not all syscalls can be
+retried -- only those that take a pathname as an argument.
+
+With this patchset, I've decided to take the relatively less
+controversial approach of just having the kernel retry once when it gets
+an ESTALE error. I still think that it's not as strong as it should be,
+but it should improve the situation in many common cases.
+
+I've also tried to engineer this in such a way that if we do decide that
+we need to retry more than once, then it should be easy to change that
+later. This should cover all of the syscalls in fs/stat.c and
+fs/namei.c, and most of fs/open.c.
+
+Once these are merged, I'll look at adding similar handling to other
+path-based syscalls in a later set. A quick look shows that we have
+about 50-odd path-based syscalls that will need similar handling, so
+this is just a start.
+
+Jeff Layton (20):
+  vfs: add a retry_estale helper function to handle retries on ESTALE
+  vfs: make fstatat retry on ESTALE errors from getattr call
+  vfs: fix readlinkat to retry on ESTALE
+  vfs: add new "reval" argument to kern_path_create and
+    user_path_create
+  vfs: fix mknodat to retry on ESTALE errors
+  vfs: fix mkdir to retry on ESTALE errors
+  vfs: fix symlinkat to retry on ESTALE errors
+  vfs: fix linkat to retry on ESTALE errors
+  vfs: add a reval argument to user_path_parent
+  vfs: make rmdir retry on ESTALE errors
+  vfs: make do_unlinkat retry on ESTALE errors
+  vfs: fix renameat to retry on ESTALE errors
+  vfs: have do_sys_truncate retry once on an ESTALE error
+  vfs: have faccessat retry once on an ESTALE error
+  vfs: have chdir retry lookup and call once on ESTALE error
+  vfs: make chroot retry once on ESTALE error
+  vfs: make fchmodat retry once on ESTALE errors
+  vfs: make fchownat retry once on ESTALE errors
+  vfs: convert do_filp_open to use retry_estale helper
+  vfs: convert do_file_open_root to use retry_estale helper
+
+ arch/powerpc/platforms/cell/spufs/syscalls.c |   2 +-
+ drivers/base/devtmpfs.c                      |   7 +-
+ fs/namei.c                                   | 265 ++++++++++++++++-----------
+ fs/ocfs2/refcounttree.c                      |   3 +-
+ fs/open.c                                    | 252 +++++++++++++------------
+ fs/stat.c                                    |  32 +++-
+ include/linux/fs.h                           |  21 +++
+ include/linux/namei.h                        |   4 +-
+ net/unix/af_unix.c                           |   2 +-
+ 9 files changed, 352 insertions(+), 236 deletions(-)
+
+-- 
+1.7.11.4
+
