@@ -1,83 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:48605 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:47026 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757873Ab2IUUvR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Sep 2012 16:51:17 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 05/26] NFSv4.1: Replace get_device_info() with filelayout_get_device_info()
-Date: Fri, 21 Sep 2012 16:50:00 -0400
-Message-Id: <1348260621-10294-5-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1348260621-10294-4-git-send-email-Trond.Myklebust@netapp.com>
-References: <1348260621-10294-1-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-2-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-3-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-4-git-send-email-Trond.Myklebust@netapp.com>
+	id S1752518Ab2IGONG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Sep 2012 10:13:06 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Dick Streefland <dick.streefland@altium.nl>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: [3.2.5] NFSv3 CLOSE_WAIT hang
+Date: Fri, 7 Sep 2012 14:13:04 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F8E302@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20110909194509.GB6195@hostway.ca>
+ <1315610322.17611.112.camel@lade.trondhjem.org>
+ <20111020190334.GA22772@hostway.ca> <20120301225524.GB27595@hostway.ca>
+ <20120302002511.GA4495@hostway.ca> <20120302184918.GA20702@hostway.ca>
+ <loom.20120905T093214-245@post.gmane.org>
+ <loom.20120905T093214-245@post.gmane.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA908F86381@SACEXCMBX04-PRD.hq.netapp.com>
+ <6cb9.5049fd40.b47c1@altium.nl>
+In-Reply-To: <6cb9.5049fd40.b47c1@altium.nl>
+Content-Type: text/plain; charset="Windows-1252"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fix the namespace pollution issue.
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> owner@vger.kernel.org] On Behalf Of Dick Streefland
+> Sent: Friday, September 07, 2012 9:57 AM
+> To: linux-nfs@vger.kernel.org
+> Subject: Re: [3.2.5] NFSv3 CLOSE_WAIT hang
+> 
+> "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+> | Clearly the comment is misleading and should be removed. That write
+> | lock
+> |
+> | _is_ needed in order to throttle slots on TCP.
+> |
+> | As far as I know, kernel 3.3 is not in stable support any more, so I
+> | can't help that. Can you reproduce the problem on a 3.5 kernel or
+> | higher?
+> 
+> I can easily reproduce the hang on the latest kernel (eeea3ac912) with my
+> script (http://permalink.gmane.org/gmane.linux.nfs/51833).
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/blocklayout/blocklayout.c | 2 +-
- fs/nfs/nfs4filelayout.c          | 2 +-
- fs/nfs/nfs4filelayout.h          | 2 +-
- fs/nfs/nfs4filelayoutdev.c       | 2 +-
- 4 files changed, 4 insertions(+), 4 deletions(-)
+On TCP?
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index dd392ed..329bfbf 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -874,7 +874,7 @@ static void free_blk_mountid(struct block_mount_id *mid)
- 	}
- }
- 
--/* This is mostly copied from the filelayout's get_device_info function.
-+/* This is mostly copied from the filelayout_get_device_info function.
-  * It seems much of this should be at the generic pnfs level.
-  */
- static struct pnfs_block_dev *
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 77cd115..af6ee4a 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -608,7 +608,7 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
- 	d = nfs4_find_get_deviceid(NFS_SERVER(lo->plh_inode)->pnfs_curr_ld,
- 				   NFS_SERVER(lo->plh_inode)->nfs_client, id);
- 	if (d == NULL) {
--		dsaddr = get_device_info(lo->plh_inode, id, gfp_flags);
-+		dsaddr = filelayout_get_device_info(lo->plh_inode, id, gfp_flags);
- 		if (dsaddr == NULL)
- 			goto out;
- 	} else
-diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
-index 43fe802..11053c4 100644
---- a/fs/nfs/nfs4filelayout.h
-+++ b/fs/nfs/nfs4filelayout.h
-@@ -158,7 +158,7 @@ struct nfs4_pnfs_ds *nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg,
- extern void nfs4_fl_put_deviceid(struct nfs4_file_layout_dsaddr *dsaddr);
- extern void nfs4_fl_free_deviceid(struct nfs4_file_layout_dsaddr *dsaddr);
- struct nfs4_file_layout_dsaddr *
--get_device_info(struct inode *inode, struct nfs4_deviceid *dev_id, gfp_t gfp_flags);
-+filelayout_get_device_info(struct inode *inode, struct nfs4_deviceid *dev_id, gfp_t gfp_flags);
- void nfs4_ds_disconnect(struct nfs_client *clp);
- 
- #endif /* FS_NFS_NFS4FILELAYOUT_H */
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index f81231f..b85a29d 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -690,7 +690,7 @@ decode_and_add_device(struct inode *inode, struct pnfs_device *dev, gfp_t gfp_fl
-  * of available devices, and return it.
-  */
- struct nfs4_file_layout_dsaddr *
--get_device_info(struct inode *inode, struct nfs4_deviceid *dev_id, gfp_t gfp_flags)
-+filelayout_get_device_info(struct inode *inode, struct nfs4_deviceid *dev_id, gfp_t gfp_flags)
- {
- 	struct pnfs_device *pdev = NULL;
- 	u32 max_resp_sz;
--- 
-1.7.11.4
+> With this change, it doesn't hang:
 
+It doesn't matter as long as that change is wrong. That code _is_ needed for TCP.
+
+Now if UDP is broken, then we can talk about a fix for that issue, but that's not going to be the one you propose.
+
+Trond
