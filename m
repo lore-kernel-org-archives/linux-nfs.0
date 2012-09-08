@@ -1,74 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.linguamatics.com ([188.39.80.203]:47489 "EHLO
-	mail.linguamatics.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751164Ab2IEOxe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Sep 2012 10:53:34 -0400
-Received: from [10.252.10.232] (random.linguamatics.com [10.252.10.232])
-	by mail.linguamatics.com (Postfix) with ESMTPSA id F03CCEFB451
-	for <linux-nfs@vger.kernel.org>; Wed,  5 Sep 2012 15:53:33 +0100 (BST)
-Message-ID: <5047676E.3050000@linguamatics.com>
-Date: Wed, 05 Sep 2012 15:53:34 +0100
-From: =?ISO-8859-1?Q?Attila_Bog=E1r?= <attila.bogar@linguamatics.com>
+Received: from mx2.netapp.com ([216.240.18.37]:63349 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754117Ab2IHOdN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 8 Sep 2012 10:33:13 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+CC: Jeff Layton <jlayton@redhat.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v2] SUNRPC: check current nsproxy before set of node
+ name on client creation
+Date: Sat, 8 Sep 2012 14:33:09 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F914D4@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20120813113731.9629.31906.stgit@localhost.localdomain>
+	  <20120813081054.0ee39037@corrin.poochiereds.net>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F90888@SACEXCMBX04-PRD.hq.netapp.com>
+	 <504ADED9.2020607@parallels.com>
+In-Reply-To: <504ADED9.2020607@parallels.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: NFS client: RPCSEC_GSS w/ Kerberos over TCP
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
-
-I'm new on this list, this is my first post.
-
-I can see some interoperability problems between FreeBSD 8 and 9 stable 
-NFS servers and some Linux NFS clients when using Kerberized NFS.
-
-I noticed that around nfs-utils 1.2.3 something must have changed on the 
-Linux side or the Linux became more agile to trigger a bug with the FreeBSD.
-
-Maybe these issues have been reported or fixed, but on a current RHEL 
-6.3 and Ubuntu 12.04 LTS they still do exist.
-
-When the Linux clients mount a FreeBSD NFS share (v3 or v4) sec=krb5*, 
-they sometimes get an access denied.
-If they are able to mount anyway, then subsequent NFS I/O errors continue.
-
-So far:
-http://lists.freebsd.org/pipermail/freebsd-fs/2012-August/015047.html
-http://lists.freebsd.org/pipermail/freebsd-fs/2012-September/015050.html
-
-I have some questions.  As this is an interop problem, I'd like to 
-clarify a few things.
-
-This what I see on the wireshark trace during an NFSv4 mount -o 
-proto=tcp,sec=krb5:
-The client is EL6 with a patched nfs-utils package as per: 
-https://bugzilla.redhat.com/show_bug.cgi?id=802469 and gssd started with 
--l (legacy) option
-
-TCP0: -> Linux NFS AUTH_NULL
-TCP0: <- FreeBSD responds
-
-TCP1: -> Linux sends RPCSEC_GSS_INIT
-TCP1: <- FreeBSD responds by establishing GSS Context (it's a 16 byte token)
-
-TCP1: -> Linux sends RPCSEC_GSS_DESTROY using the received 16 byte token
-TCP0: -> Linux sends NFS:PUTROOTFS|GETATTR using the same 16 byte received gss context token
-
-
-Re-using the gss context on the other tcp connection and immediately 
-destroying it looks like a bug in the Linux NFS layer?
-
-Another worry I see, is that the RPCSEC_GSS_DESTROY when validated on 
-the FreeBSD side gss_verify_mic returns maj_stat = GSS_S_DEFECTIVE_TOKEN 
-- which is quite strange (this still can be a FreeBSD bug).
-
-Kind regards,
-   Attila
-
--- 
-Attila Bogár
-Systems Administrator
-Linguamatics - Cambridge, UK
-http://www.linguamatics.com/
-
+T24gU2F0LCAyMDEyLTA5LTA4IGF0IDA4OjU5ICswMzAwLCBTdGFuaXNsYXYgS2luc2J1cnNreSB3
+cm90ZToNCj4gMDguMDkuMjAxMiAwMTozMiwgTXlrbGVidXN0LCBUcm9uZCDQv9C40YjQtdGCOg0K
+PiA+IE9uIE1vbiwgMjAxMi0wOC0xMyBhdCAwODoxMCAtMDQwMCwgSmVmZiBMYXl0b24gd3JvdGU6
+DQo+ID4+IE9uIE1vbiwgMTMgQXVnIDIwMTIgMTU6Mzc6MzEgKzA0MDANCj4gPj4gU3RhbmlzbGF2
+IEtpbnNidXJza3kgPHNraW5zYnVyc2t5QHBhcmFsbGVscy5jb20+IHdyb3RlOg0KPiA+Pg0KPiA+
+Pj4gdjI6DQo+ID4+PiAxKSBycGNfY2xudF9zZXRfbm9kZW5hbWUoKSBwcm90b3R5cGUgdXBkYXRl
+ZC4NCj4gPj4+IDIpIGZpeGVkIGVycm9ycyBpbiBjb21tZW50Lg0KPiA+Pj4NCj4gPj4+IFdoZW4g
+Y2hpbGQgcmVhcGVyIGV4aXRzLCBpdCBjYW4gZGVzdHJveSBtb3VudCBuYW1lc3BhY2UgaXQgYmVs
+b25ncyB0bywgYW5kIGlmDQo+ID4+PiB0aGVyZSBhcmUgTkZTIG1vdW50cyBpbnNpZGUsIHRoZW4g
+aXQgd2lsbCB0cnkgdG8gdW1vdW50IHRoZW0uIEJ1dCBpbiB0aGlzDQo+ID4+PiBwb2ludCBjdXJy
+ZW50LT5uc3Byb3h5IGlzIHNldCB0byBOVUxMIGFuZCBhbGwgbmFtZXNwYWNlcyB3aWxsIGJlIGRl
+c3Ryb3llZCBvbmUNCj4gPj4+IGJ5IG9uZS4gSS5lLiB3ZSBjYW4ndCBkZXJlZmVyZW5jZSBjdXJy
+ZW50LT5uc3Byb3h5IHRvIG9idGFpbiB1dHMgbmFtZXNwYWNlLg0KPiA+Pj4NCj4gPj4+IFNpZ25l
+ZC1vZmYtYnk6IFN0YW5pc2xhdiBLaW5zYnVyc2t5IDxza2luc2J1cnNreUBwYXJhbGxlbHMuY29t
+Pg0KPiA+Pj4gLS0tDQo+ID4+PiAgIG5ldC9zdW5ycGMvY2xudC5jIHwgICAxNiArKysrKysrKysr
+KysrLS0tDQo+ID4+PiAgIDEgZmlsZXMgY2hhbmdlZCwgMTMgaW5zZXJ0aW9ucygrKSwgMyBkZWxl
+dGlvbnMoLSkNCj4gPj4+DQo+ID4+PiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy9jbG50LmMgYi9u
+ZXQvc3VucnBjL2NsbnQuYw0KPiA+Pj4gaW5kZXggOWE5Njc2ZS4uOGZiY2JjOCAxMDA2NDQNCj4g
+Pj4+IC0tLSBhL25ldC9zdW5ycGMvY2xudC5jDQo+ID4+PiArKysgYi9uZXQvc3VucnBjL2NsbnQu
+Yw0KPiA+Pj4gQEAgLTI3Nyw4ICsyNzcsMTggQEAgdm9pZCBycGNfY2xpZW50c19ub3RpZmllcl91
+bnJlZ2lzdGVyKHZvaWQpDQo+ID4+PiAgIAlyZXR1cm4gcnBjX3BpcGVmc19ub3RpZmllcl91bnJl
+Z2lzdGVyKCZycGNfY2xpZW50c19ibG9jayk7DQo+ID4+PiAgIH0NCj4gPj4+ICAgDQo+ID4+PiAt
+c3RhdGljIHZvaWQgcnBjX2NsbnRfc2V0X25vZGVuYW1lKHN0cnVjdCBycGNfY2xudCAqY2xudCwg
+Y29uc3QgY2hhciAqbm9kZW5hbWUpDQo+ID4+PiArc3RhdGljIHZvaWQgcnBjX2NsbnRfc2V0X25v
+ZGVuYW1lKHN0cnVjdCBycGNfY2xudCAqY2xudCkNCj4gPj4+ICAgew0KPiA+Pj4gKwljb25zdCBj
+aGFyICpub2RlbmFtZTsNCj4gPj4+ICsNCj4gPj4+ICsJLyoNCj4gPj4+ICsJICogV2UgaGF2ZSB0
+byBwcm90ZWN0IGFnYWluc3QgZHlpbmcgY2hpbGQgcmVhcGVyLCB3aGljaCBoYXMgcmVsZWFzZWQN
+Cj4gPj4+ICsJICogaXRzIG5zcHJveHkgYWxyZWFkeSBhbmQgaXMgdHJ5aW5nIHRvIGRlc3Ryb3kg
+bW91bnQgbmFtZXNwYWNlLg0KPiA+Pj4gKwkgKi8NCj4gPj4+ICsJaWYgKGN1cnJlbnQtPm5zcHJv
+eHkgPT0gTlVMTCkNCj4gPj4+ICsJCXJldHVybjsNCj4gPj4+ICsNCj4gPj4+ICsJbm9kZW5hbWUg
+PSB1dHNuYW1lKCktPm5vZGVuYW1lOw0KPiA+Pj4gICAJY2xudC0+Y2xfbm9kZWxlbiA9IHN0cmxl
+bihub2RlbmFtZSk7DQo+ID4+PiAgIAlpZiAoY2xudC0+Y2xfbm9kZWxlbiA+IFVOWF9NQVhOT0RF
+TkFNRSkNCj4gPj4+ICAgCQljbG50LT5jbF9ub2RlbGVuID0gVU5YX01BWE5PREVOQU1FOw0KPiA+
+Pj4gQEAgLTM2NSw3ICszNzUsNyBAQCBzdGF0aWMgc3RydWN0IHJwY19jbG50ICogcnBjX25ld19j
+bGllbnQoY29uc3Qgc3RydWN0IHJwY19jcmVhdGVfYXJncyAqYXJncywgc3RydQ0KPiA+Pj4gICAJ
+fQ0KPiA+Pj4gICANCj4gPj4+ICAgCS8qIHNhdmUgdGhlIG5vZGVuYW1lICovDQo+ID4+PiAtCXJw
+Y19jbG50X3NldF9ub2RlbmFtZShjbG50LCB1dHNuYW1lKCktPm5vZGVuYW1lKTsNCj4gPj4+ICsJ
+cnBjX2NsbnRfc2V0X25vZGVuYW1lKGNsbnQpOw0KPiA+Pj4gICAJcnBjX3JlZ2lzdGVyX2NsaWVu
+dChjbG50KTsNCj4gPj4+ICAgCXJldHVybiBjbG50Ow0KPiA+Pj4gICANCj4gPj4+IEBAIC01MjQs
+NyArNTM0LDcgQEAgcnBjX2Nsb25lX2NsaWVudChzdHJ1Y3QgcnBjX2NsbnQgKmNsbnQpDQo+ID4+
+PiAgIAllcnIgPSBycGNfc2V0dXBfcGlwZWRpcihuZXcsIGNsbnQtPmNsX3Byb2dyYW0tPnBpcGVf
+ZGlyX25hbWUpOw0KPiA+Pj4gICAJaWYgKGVyciAhPSAwKQ0KPiA+Pj4gICAJCWdvdG8gb3V0X25v
+X3BhdGg7DQo+ID4+PiAtCXJwY19jbG50X3NldF9ub2RlbmFtZShuZXcsIHV0c25hbWUoKS0+bm9k
+ZW5hbWUpOw0KPiA+Pj4gKwlycGNfY2xudF9zZXRfbm9kZW5hbWUobmV3KTsNCj4gPj4+ICAgCWlm
+IChuZXctPmNsX2F1dGgpDQo+ID4+PiAgIAkJYXRvbWljX2luYygmbmV3LT5jbF9hdXRoLT5hdV9j
+b3VudCk7DQo+ID4+PiAgIAlhdG9taWNfaW5jKCZjbG50LT5jbF9jb3VudCk7DQo+ID4+Pg0KPiA+
+Pj4gLS0NCj4gPj4+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5l
+ICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiIGluDQo+ID4+PiB0aGUgYm9keSBvZiBhIG1lc3NhZ2Ug
+dG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0KPiA+Pj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBh
+dCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQo+ID4+IEFja2Vk
+LWJ5OiBKZWZmIExheXRvbiA8amxheXRvbkByZWRoYXQuY29tPg0KPiA+IE9LLCBjb2xvdXIgbWUg
+Y29uZnVzZWQgKGFnYWluKS4NCj4gDQo+IFdoYXQgY29sb3I/DQo+IA0KPiA+IFdoeSBzaG91bGQg
+YSB1bW91bnQgdHJpZ2dlciBhbg0KPiA+IHJwY19jcmVhdGUoKSBvciBycGNfY2xvbmVfY2xpZW50
+KCk/DQo+IA0KPiBJdCBjYWxscyBuc21fY3JlYXRlKCkuDQo+IEhlcmUgaXMgdGhlIHRyYWNlICho
+dHRwczovL2J1Z3ppbGxhLnJlZGhhdC5jb20vc2hvd19idWcuY2dpP2lkPTgzMDg2MiwgDQo+IGNv
+bW1lbnQgNjgpOg0KDQpSaWdodCwgYnV0IGlmIHdlJ3JlIHVzaW5nIE5GU3YzIGxvY2sgbW9uaXRv
+cmluZywgd2Uga25vdyBpbiBhZHZhbmNlIHRoYXQNCndlJ3JlIGdvaW5nIHRvIG5lZWQgYW4gbnNt
+IGNhbGwgdG8gbG9jYWxob3N0LiBXaHkgY2FuJ3Qgd2UganVzdCBjYWNoZQ0KdGhlIG9uZSB0aGF0
+IHdlIHVzZWQgdG8gc3RhcnQgbG9jayBtb25pdG9yaW5nIGluIHRoZSBmaXJzdCBwbGFjZT8NCg0K
+LS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRB
+cHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
