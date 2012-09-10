@@ -1,74 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:29443 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757683Ab2IGWcj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Sep 2012 18:32:39 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH v2] SUNRPC: check current nsproxy before set of node
- name on client creation
-Date: Fri, 7 Sep 2012 22:32:16 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F90888@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20120813113731.9629.31906.stgit@localhost.localdomain>
-	 <20120813081054.0ee39037@corrin.poochiereds.net>
-In-Reply-To: <20120813081054.0ee39037@corrin.poochiereds.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from e23smtp02.au.ibm.com ([202.81.31.144]:58644 "EHLO
+	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754220Ab2IJClL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 9 Sep 2012 22:41:11 -0400
+Received: from /spool/local
+	by e23smtp02.au.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <yan@linux.vnet.ibm.com>;
+	Mon, 10 Sep 2012 12:39:34 +1000
+Date: Mon, 10 Sep 2012 10:40:51 +0800
+From: Guo Chao <yan@linux.vnet.ibm.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: [RFC PATCH 05/13] vfs: take i_mutex on renamed file
+Message-ID: <20120910024051.GA10405@yanx>
+References: <1346878524-10585-1-git-send-email-bfields@redhat.com>
+ <1346878524-10585-6-git-send-email-bfields@redhat.com>
+ <20120906030526.GB6679@yanx>
+ <20120906175118.GC21736@fieldses.org>
+ <20120907022705.GA20453@yanx>
+ <20120907213901.GA5927@fieldses.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120907213901.GA5927@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA4LTEzIGF0IDA4OjEwIC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-T24gTW9uLCAxMyBBdWcgMjAxMiAxNTozNzozMSArMDQwMA0KPiBTdGFuaXNsYXYgS2luc2J1cnNr
-eSA8c2tpbnNidXJza3lAcGFyYWxsZWxzLmNvbT4gd3JvdGU6DQo+IA0KPiA+IHYyOg0KPiA+IDEp
-IHJwY19jbG50X3NldF9ub2RlbmFtZSgpIHByb3RvdHlwZSB1cGRhdGVkLg0KPiA+IDIpIGZpeGVk
-IGVycm9ycyBpbiBjb21tZW50Lg0KPiA+IA0KPiA+IFdoZW4gY2hpbGQgcmVhcGVyIGV4aXRzLCBp
-dCBjYW4gZGVzdHJveSBtb3VudCBuYW1lc3BhY2UgaXQgYmVsb25ncyB0bywgYW5kIGlmDQo+ID4g
-dGhlcmUgYXJlIE5GUyBtb3VudHMgaW5zaWRlLCB0aGVuIGl0IHdpbGwgdHJ5IHRvIHVtb3VudCB0
-aGVtLiBCdXQgaW4gdGhpcw0KPiA+IHBvaW50IGN1cnJlbnQtPm5zcHJveHkgaXMgc2V0IHRvIE5V
-TEwgYW5kIGFsbCBuYW1lc3BhY2VzIHdpbGwgYmUgZGVzdHJveWVkIG9uZQ0KPiA+IGJ5IG9uZS4g
-SS5lLiB3ZSBjYW4ndCBkZXJlZmVyZW5jZSBjdXJyZW50LT5uc3Byb3h5IHRvIG9idGFpbiB1dHMg
-bmFtZXNwYWNlLg0KPiA+IA0KPiA+IFNpZ25lZC1vZmYtYnk6IFN0YW5pc2xhdiBLaW5zYnVyc2t5
-IDxza2luc2J1cnNreUBwYXJhbGxlbHMuY29tPg0KPiA+IC0tLQ0KPiA+ICBuZXQvc3VucnBjL2Ns
-bnQuYyB8ICAgMTYgKysrKysrKysrKysrKy0tLQ0KPiA+ICAxIGZpbGVzIGNoYW5nZWQsIDEzIGlu
-c2VydGlvbnMoKyksIDMgZGVsZXRpb25zKC0pDQo+ID4gDQo+ID4gZGlmZiAtLWdpdCBhL25ldC9z
-dW5ycGMvY2xudC5jIGIvbmV0L3N1bnJwYy9jbG50LmMNCj4gPiBpbmRleCA5YTk2NzZlLi44ZmJj
-YmM4IDEwMDY0NA0KPiA+IC0tLSBhL25ldC9zdW5ycGMvY2xudC5jDQo+ID4gKysrIGIvbmV0L3N1
-bnJwYy9jbG50LmMNCj4gPiBAQCAtMjc3LDggKzI3NywxOCBAQCB2b2lkIHJwY19jbGllbnRzX25v
-dGlmaWVyX3VucmVnaXN0ZXIodm9pZCkNCj4gPiAgCXJldHVybiBycGNfcGlwZWZzX25vdGlmaWVy
-X3VucmVnaXN0ZXIoJnJwY19jbGllbnRzX2Jsb2NrKTsNCj4gPiAgfQ0KPiA+ICANCj4gPiAtc3Rh
-dGljIHZvaWQgcnBjX2NsbnRfc2V0X25vZGVuYW1lKHN0cnVjdCBycGNfY2xudCAqY2xudCwgY29u
-c3QgY2hhciAqbm9kZW5hbWUpDQo+ID4gK3N0YXRpYyB2b2lkIHJwY19jbG50X3NldF9ub2RlbmFt
-ZShzdHJ1Y3QgcnBjX2NsbnQgKmNsbnQpDQo+ID4gIHsNCj4gPiArCWNvbnN0IGNoYXIgKm5vZGVu
-YW1lOw0KPiA+ICsNCj4gPiArCS8qDQo+ID4gKwkgKiBXZSBoYXZlIHRvIHByb3RlY3QgYWdhaW5z
-dCBkeWluZyBjaGlsZCByZWFwZXIsIHdoaWNoIGhhcyByZWxlYXNlZA0KPiA+ICsJICogaXRzIG5z
-cHJveHkgYWxyZWFkeSBhbmQgaXMgdHJ5aW5nIHRvIGRlc3Ryb3kgbW91bnQgbmFtZXNwYWNlLg0K
-PiA+ICsJICovDQo+ID4gKwlpZiAoY3VycmVudC0+bnNwcm94eSA9PSBOVUxMKQ0KPiA+ICsJCXJl
-dHVybjsNCj4gPiArDQo+ID4gKwlub2RlbmFtZSA9IHV0c25hbWUoKS0+bm9kZW5hbWU7DQo+ID4g
-IAljbG50LT5jbF9ub2RlbGVuID0gc3RybGVuKG5vZGVuYW1lKTsNCj4gPiAgCWlmIChjbG50LT5j
-bF9ub2RlbGVuID4gVU5YX01BWE5PREVOQU1FKQ0KPiA+ICAJCWNsbnQtPmNsX25vZGVsZW4gPSBV
-TlhfTUFYTk9ERU5BTUU7DQo+ID4gQEAgLTM2NSw3ICszNzUsNyBAQCBzdGF0aWMgc3RydWN0IHJw
-Y19jbG50ICogcnBjX25ld19jbGllbnQoY29uc3Qgc3RydWN0IHJwY19jcmVhdGVfYXJncyAqYXJn
-cywgc3RydQ0KPiA+ICAJfQ0KPiA+ICANCj4gPiAgCS8qIHNhdmUgdGhlIG5vZGVuYW1lICovDQo+
-ID4gLQlycGNfY2xudF9zZXRfbm9kZW5hbWUoY2xudCwgdXRzbmFtZSgpLT5ub2RlbmFtZSk7DQo+
-ID4gKwlycGNfY2xudF9zZXRfbm9kZW5hbWUoY2xudCk7DQo+ID4gIAlycGNfcmVnaXN0ZXJfY2xp
-ZW50KGNsbnQpOw0KPiA+ICAJcmV0dXJuIGNsbnQ7DQo+ID4gIA0KPiA+IEBAIC01MjQsNyArNTM0
-LDcgQEAgcnBjX2Nsb25lX2NsaWVudChzdHJ1Y3QgcnBjX2NsbnQgKmNsbnQpDQo+ID4gIAllcnIg
-PSBycGNfc2V0dXBfcGlwZWRpcihuZXcsIGNsbnQtPmNsX3Byb2dyYW0tPnBpcGVfZGlyX25hbWUp
-Ow0KPiA+ICAJaWYgKGVyciAhPSAwKQ0KPiA+ICAJCWdvdG8gb3V0X25vX3BhdGg7DQo+ID4gLQly
-cGNfY2xudF9zZXRfbm9kZW5hbWUobmV3LCB1dHNuYW1lKCktPm5vZGVuYW1lKTsNCj4gPiArCXJw
-Y19jbG50X3NldF9ub2RlbmFtZShuZXcpOw0KPiA+ICAJaWYgKG5ldy0+Y2xfYXV0aCkNCj4gPiAg
-CQlhdG9taWNfaW5jKCZuZXctPmNsX2F1dGgtPmF1X2NvdW50KTsNCj4gPiAgCWF0b21pY19pbmMo
-JmNsbnQtPmNsX2NvdW50KTsNCj4gPiANCj4gPiAtLQ0KPiA+IFRvIHVuc3Vic2NyaWJlIGZyb20g
-dGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiIGluDQo+ID4g
-dGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4gPiBN
-b3JlIG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1p
-bmZvLmh0bWwNCj4gDQo+IEFja2VkLWJ5OiBKZWZmIExheXRvbiA8amxheXRvbkByZWRoYXQuY29t
-Pg0KDQpPSywgY29sb3VyIG1lIGNvbmZ1c2VkIChhZ2FpbikuIFdoeSBzaG91bGQgYSB1bW91bnQg
-dHJpZ2dlciBhbg0KcnBjX2NyZWF0ZSgpIG9yIHJwY19jbG9uZV9jbGllbnQoKT8NCg0KLS0gDQpU
-cm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRy
-b25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+On Fri, Sep 07, 2012 at 05:39:01PM -0400, J. Bruce Fields wrote:
+> On Fri, Sep 07, 2012 at 10:27:05AM +0800, Guo Chao wrote:
+> > On Thu, Sep 06, 2012 at 01:51:18PM -0400, J. Bruce Fields wrote:
+> > > On Thu, Sep 06, 2012 at 11:05:26AM +0800, Guo Chao wrote:
+> > > > On Wed, Sep 05, 2012 at 04:55:15PM -0400, J. Bruce Fields wrote:
+> > > > > From: "J. Bruce Fields" <bfields@redhat.com>
+> > > > > diff --git a/fs/namei.c b/fs/namei.c
+> > > > > index 1b46439..6156135 100644
+> > > > > --- a/fs/namei.c
+> > > > > +++ b/fs/namei.c
+> > > > > @@ -3658,6 +3658,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
+> > > > >  			    struct inode *new_dir, struct dentry *new_dentry)
+> > > > >  {
+> > > > >  	struct inode *target = new_dentry->d_inode;
+> > > > > +	struct inode *source = old_dentry->d_inode;
+> > > > >  	int error;
+> > > > > 
+> > > > >  	error = security_inode_rename(old_dir, old_dentry, new_dir, new_dentry);
+> > > > > @@ -3665,8 +3666,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
+> > > > >  		return error;
+> > > > > 
+> > > > >  	dget(new_dentry);
+> > > > > -	if (target)
+> > > > > -		mutex_lock(&target->i_mutex);
+> > > > > +	lock_two_nondirectories(source, target);
+> > > > > 
+> > > > >  	error = -EBUSY;
+> > > > >  	if (d_mountpoint(old_dentry)||d_mountpoint(new_dentry))
+> > > > > @@ -3681,8 +3681,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
+> > > > >  	if (!(old_dir->i_sb->s_type->fs_flags & FS_RENAME_DOES_D_MOVE))
+> > > > >  		d_move(old_dentry, new_dentry);
+> > > > >  out:
+> > > > > -	if (target)
+> > > > > -		mutex_unlock(&target->i_mutex);
+> > > > > +	unlock_two_nondirectories(source, target);
+> > > > >  	dput(new_dentry);
+> > > > >  	return error;
+> > > > >  }
+> > > > >
+> > > > 
+> > > > This change also fixes a race between rename and mount.
+> > > > 
+> > > > Apparently we avoid to rename source or target if they are
+> > > > mountpoint. But nothing prevents source being the mountpoint 
+> > > > after d_mountpoint check because we do not hold its i_mutex.
+> > > > 
+> > > > Thus we are actually able to rename a mountpoint.
+> > > > 
+> > > > Rename directory should also need this care.
+> > > 
+> > > Do you have any practical way to reproduce that race?
+> > > 
+> > > --b.
+> > 
+> > Rename a mountpoint? Of course.
+> > 
+> > One script ...
+> > 
+> > #!/bin/bash
+> > while true
+> > do
+> > 	mount -t sysfs nodev mnt && umount mnt
+> > done
+> > 
+> > 
+> > 
+> > The other ...
+> > 
+> > #!/bin/bash
+> > while true
+> > do
+> > 	mv mnt mnt2 && mv mnt2 mnt
+> > done
+> > 
+> > 
+> > 
+> > Run them simultaneously in two consoles. When mount keeps reporting 
+> > 'mount point mnt does not exist', stop them, then you will see the 
+> > familiar sysfs under mnt2.
+> 
+> Oh, thanks, for some reason I assumed it would be more difficult to
+> reproduce.
+> 
+> I think we can do this--I don't think it even requires any care to the
+> locking order of the renamed vs the victim directory, though I can't
+> completely convince myself of that.
+> 
+> Is it necessary to fix this, though?  Does it cause any problems other
+> than unexpected behavior?
+> 
+> --b.
+> --
+
+Hard to say whether it's a bug or what's problems of being able to rename 
+mountpoint.
+
+Anyway, this patch closes this race when mountpoint is a file. Thus we get 
+different behaviour when deal with files and directories. It's apparently 
+not well-defined, but again, is it a problem? Not sure ... ...
+
+
+
