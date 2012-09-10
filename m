@@ -1,51 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-da0-f46.google.com ([209.85.210.46]:61632 "EHLO
-	mail-da0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752232Ab2I1AVR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Sep 2012 20:21:17 -0400
-Received: by dady13 with SMTP id y13so515951dad.19
-        for <linux-nfs@vger.kernel.org>; Thu, 27 Sep 2012 17:21:17 -0700 (PDT)
-Date: Thu, 27 Sep 2012 17:21:13 -0700
-From: "gregkh@linuxfoundation.org" <gregkh@linuxfoundation.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Richard Ems <richard.ems@cape-horn-eng.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: Re: [PATCH] NFS: Fix Oopses in nfs_lookup_revalidate and
- nfs4_lookup_revalidate
-Message-ID: <20120928002113.GN29949@kroah.com>
-References: <503361AF.8030707@cape-horn-eng.com>
- <5059A9F0.2070409@cape-horn-eng.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA908FD7706@SACEXCMBX04-PRD.hq.netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA908FD7706@SACEXCMBX04-PRD.hq.netapp.com>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:63560 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752923Ab2IJAuk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 9 Sep 2012 20:50:40 -0400
+From: ycnian@gmail.com
+To: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Cc: Yanchuan Nian <ycnian@gmail.com>
+Subject: [PATCH] NFS: Remove unnecessary semicolons (fs/nfs/client.c)
+Date: Mon, 10 Sep 2012 08:40:16 +0800
+Message-Id: <1347237616-3835-1-git-send-email-ycnian@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 19, 2012 at 01:16:41PM +0000, Myklebust, Trond wrote:
-> > -----Original Message-----
-> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> > owner@vger.kernel.org] On Behalf Of Richard Ems
-> > Sent: Wednesday, September 19, 2012 7:18 AM
-> > To: Myklebust, Trond
-> > Cc: linux-nfs@vger.kernel.org; linux-kernel@vger.kernel.org;
-> > gregkh@linuxfoundation.org
-> > Subject: Fwd: Re: [PATCH] NFS: Fix Oopses in nfs_lookup_revalidate and
-> > nfs4_lookup_revalidate
-> > 
-> > Hi all,
-> > 
-> > I still don't see this patch in the 3.5.x series.
-> > Will it make it into 3.5.5?
-> > 
-> > Thanks,
-> > Richard
->  
-> Hi Greg,
-> 
-> I believe you said that you would take this patch. Do you want me to resend?
+From: Yanchuan Nian <ycnian@gmail.com>
 
-I have it now, thanks, am finally catching up on stable patches...
+There are some unnecessary semicolons in function find_nfs_version. Just remove them.
 
-greg k-h
+Signed-off-by: Yanchuan Nian <ycnian@gmail.com>
+---
+ fs/nfs/client.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 9969444..d2e1612 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -93,10 +93,10 @@ static struct nfs_subversion *find_nfs_version(unsigned int version)
+ 			spin_unlock(&nfs_version_lock);
+ 			return nfs;
+ 		}
+-	};
++	}
+ 
+ 	spin_unlock(&nfs_version_lock);
+-	return ERR_PTR(-EPROTONOSUPPORT);;
++	return ERR_PTR(-EPROTONOSUPPORT);
+ }
+ 
+ struct nfs_subversion *get_nfs_version(unsigned int version)
+-- 
+1.7.4.4
+
