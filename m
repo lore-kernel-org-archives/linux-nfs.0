@@ -1,44 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from hop-nat-141.emc.com ([168.159.213.141]:36829 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753567Ab2ITCUr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Sep 2012 22:20:47 -0400
-From: "Peng, Tao" <tao.peng@emc.com>
-To: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Wed, 19 Sep 2012 22:20:33 -0400
-Subject: RE: [PATCH-resend 0/6] NFS41 and pnfsblock bugfixes
-Message-ID: <5DFC6BE3BA248842867E85C73BF94B050B18DB8153@MX41A.corp.emc.com>
-References: <1345739273-2241-1-git-send-email-bergwolf@gmail.com>
-In-Reply-To: <1345739273-2241-1-git-send-email-bergwolf@gmail.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:54851 "EHLO e6.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751200Ab2IJH2P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Sep 2012 03:28:15 -0400
+Received: from /spool/local
+	by e6.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <linuxram@us.ibm.com>;
+	Mon, 10 Sep 2012 03:28:14 -0400
+Date: Mon, 10 Sep 2012 15:27:32 +0800
+From: Ram Pai <linuxram@us.ibm.com>
+To: Guo Chao <yan@linux.vnet.ibm.com>
+Cc: Ram Pai <linuxram@us.ibm.com>, "J. Bruce Fields" <bfields@fieldses.org>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [RFC PATCH 05/13] vfs: take i_mutex on renamed file
+Message-ID: <20120910072732.GL2387@ram-ThinkPad-T61>
+Reply-To: Ram Pai <linuxram@us.ibm.com>
+References: <1346878524-10585-1-git-send-email-bfields@redhat.com>
+ <1346878524-10585-6-git-send-email-bfields@redhat.com>
+ <20120906030526.GB6679@yanx>
+ <20120906175118.GC21736@fieldses.org>
+ <20120907022705.GA20453@yanx>
+ <20120907213901.GA5927@fieldses.org>
+ <20120910024051.GA10405@yanx>
+ <20120910051037.GA2466@ram-ThinkPad-T61>
+ <20120910063724.GA6272@yanx>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120910063724.GA6272@yanx>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgVHJvbmQsDQoNCkFueSBjb21tZW50cyBvbiBiZWxvdyBwYXRjaGVzPyBJIHN0aWxsIGRvbuKA
-mXQgc2VlIHRoZW0gaW4geW91ciB0cmVlIGFuZCAzLjYgaXMgcmVhY2hpbmcgbGFzdCBSQy4uLg0K
-DQpUaGFua3MsDQpUYW8NCg0KPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBs
-aW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZn
-ZXIua2VybmVsLm9yZ10gT24gQmVoYWxmIE9mIFBlbmcgVGFvDQo+IFNlbnQ6IEZyaWRheSwgQXVn
-dXN0IDI0LCAyMDEyIDEyOjI4IEFNDQo+IFRvOiBUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0K
-PiBDYzogbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiBTdWJqZWN0OiBbUEFUQ0gtcmVzZW5k
-IDAvNl0gTkZTNDEgYW5kIHBuZnNibG9jayBidWdmaXhlcw0KPiANCj4gVHJvbmQsIGhpLA0KPiAN
-Cj4gVGhlIDYgcGF0Y2hlcyB3ZXJlIHNlbnQgYmVmb3JlLiBUaGV5IGFyZSBhbGwgYnVnZml4ZXMg
-YW5kIDQgb2YgdGhlbQ0KPiBhcmUgbmVlZGVkIGluIHN0YWJsZSBhcyB3ZWxsLiBQbGVhc2Ugc2Vl
-IGlmIHRoZXkgYXJlIE9LIHRvIGJlIG1lcmdlZA0KPiBpbiBvbmUgb2YgdGhlIHJjIHB1c2hlcy4N
-Cj4gDQo+IFRoYW5rcywNCj4gVGFvDQo+IA0KPiBQZW5nIFRhbyAoNik6DQo+ICAgTkZTdjQxOiBm
-aXggRElPIHdyaXRlX2lvIGNhbGN1bGF0aW9uDQo+ICAgTkZTNDE6IGZpeCBlcnJvciBvZiBzZXR0
-aW5nIGJsb2NrbGF5b3V0ZHJpdmVyDQo+ICAgUmV2ZXJ0ICJwbmZzYmxvY2s6IGJhaWwgb3V0IHBh
-cnRpYWwgcGFnZSBJTyINCj4gICBwbmZzYmxvY2s6IGZpeCBwYXJ0aWFsIHBhZ2UgYnVmZmVyIHdp
-cnRlDQo+ICAgcG5mc2Jsb2NrOiBmaXggbm9uLWFsaWduZWQgRElPIHJlYWQNCj4gICBwbmZzYmxv
-Y2s6IGZpeCBub24tYWxpZ25lZCBESU8gd3JpdGUNCj4gDQo+ICBmcy9uZnMvYmxvY2tsYXlvdXQv
-YmxvY2tsYXlvdXQuYyB8ICAyNzAgKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKystLS0t
-LQ0KPiAgZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmggfCAgICAxICsNCj4gIGZzL25m
-cy9jbGllbnQuYyAgICAgICAgICAgICAgICAgIHwgICAgMSAtDQo+ICBmcy9uZnMvZGlyZWN0LmMg
-ICAgICAgICAgICAgICAgICB8ICAgIDQgKy0NCj4gIGZzL25mcy9uZnM0cHJvYy5jICAgICAgICAg
-ICAgICAgIHwgICAgNSArLQ0KPiAgNSBmaWxlcyBjaGFuZ2VkLCAyNDAgaW5zZXJ0aW9ucygrKSwg
-NDEgZGVsZXRpb25zKC0pDQo+IA0KPiAtLQ0KPiBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlz
-dDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBpbg0KPiB0aGUgYm9keSBv
-ZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0KPiBNb3JlIG1ham9yZG9t
-byBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCg0K
+On Mon, Sep 10, 2012 at 02:37:24PM +0800, Guo Chao wrote:
+> On Mon, Sep 10, 2012 at 01:10:37PM +0800, Ram Pai wrote:
+> > On Mon, Sep 10, 2012 at 10:40:51AM +0800, Guo Chao wrote:
+> > > 
+> > > Hard to say whether it's a bug or what's problems of being able to rename 
+> > > mountpoint.
+> > 
+> > 'man 2 rename' says it is ok to rename a directory that is already
+> > mounted.
+> > 
+> > EBUSY The rename fails because oldpath or newpath is a directory that is
+> > in use by some process (perhaps as current working directory, or as root
+> > directory, or beacuse it was open for reading) or is in use by the
+> > system (for example as mount point), while the system considers this an
+> > error. (Note that there is no requirement to return EBUSY in such
+> > cases-- there is nothing wrong with doing the rename anyway -- but is
+> > 	^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> > allowed to return EBUSY if the system cannot otherwise handle such
+> > situations)
+> > 
+> > RP
+> 
+> Erhh, good point. 
+> 
+> However, current implementation seems to return EBUSY unconditionally, 
+> instead of considering whether it can handle this situation. It can be 
+> descripted as 'it may return EBUSY or not, depends on whether you are 
+> luck enough to rush into the race'.
+> 
+> This seems still conform to the statement in the manual, in a weird way 
+> though.
+
+I think the code that checks if the new dentry or the old dentry is a
+mount point can be safely removed. It does not serve any purpose AFAICT.
+
+RP
+
