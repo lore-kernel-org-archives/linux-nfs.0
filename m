@@ -1,57 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:65034 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932102Ab2IXT6G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Sep 2012 15:58:06 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 09/28] NFSv4.1: Fix a reference leak in pnfs_update_layout
-Date: Mon, 24 Sep 2012 15:56:27 -0400
-Message-Id: <1348516606-22721-9-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1348516606-22721-8-git-send-email-Trond.Myklebust@netapp.com>
-References: <1348516606-22721-1-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-2-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-3-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-4-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-5-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-6-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-7-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-8-git-send-email-Trond.Myklebust@netapp.com>
+Received: from hop-nat-141.emc.com ([168.159.213.141]:37379 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1756749Ab2IJCIa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 9 Sep 2012 22:08:30 -0400
+From: "Peng, Tao" <tao.peng@emc.com>
+To: Wei Yongjun <weiyj.lk@gmail.com>,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
+CC: "yongjun_wei@trendmicro.com.cn" <yongjun_wei@trendmicro.com.cn>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Sun, 9 Sep 2012 22:08:01 -0400
+Subject: RE: [PATCH] pnfsblock: use list_move_tail instead of
+ list_del/list_add_tail
+Message-ID: <5DFC6BE3BA248842867E85C73BF94B050B18D1F1F3@MX41A.corp.emc.com>
+References: <CAPgLHd8a+6FGVDScg25XGKc8bAZDdkS6aU4tmknyDMKvZ-DgDg@mail.gmail.com>
+In-Reply-To: <CAPgLHd8a+6FGVDScg25XGKc8bAZDdkS6aU4tmknyDMKvZ-DgDg@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If we exit after the call to pnfs_find_alloc_layout(), we have to ensure
-that we put the struct pnfs_layout_hdr.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/pnfs.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 0b5387b..a9c9291 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1070,7 +1070,8 @@ pnfs_update_layout(struct inode *ino,
- 	lo = pnfs_find_alloc_layout(ino, ctx, gfp_flags);
- 	if (lo == NULL) {
- 		dprintk("%s ERROR: can't get pnfs_layout_hdr\n", __func__);
--		goto out_unlock;
-+		spin_unlock(&ino->i_lock);
-+		return NULL;
- 	}
- 
- 	/* Do we even need to bother with this? */
-@@ -1125,8 +1126,8 @@ pnfs_update_layout(struct inode *ino,
- 		spin_unlock(&clp->cl_lock);
- 	}
- 	atomic_dec(&lo->plh_outstanding);
--	pnfs_put_layout_hdr(lo);
- out:
-+	pnfs_put_layout_hdr(lo);
- 	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
- 		nfsi->layout ? nfsi->layout->plh_flags : -1, lseg);
- 	return lseg;
--- 
-1.7.11.4
-
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
+ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10gT24g
+QmVoYWxmIE9mIFdlaQ0KPiBZb25nanVuDQo+IFNlbnQ6IFdlZG5lc2RheSwgU2VwdGVtYmVyIDA1
+LCAyMDEyIDI6MzggUE0NCj4gVG86IFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQo+IENjOiB5
+b25nanVuX3dlaUB0cmVuZG1pY3JvLmNvbS5jbjsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0K
+PiBTdWJqZWN0OiBbUEFUQ0hdIHBuZnNibG9jazogdXNlIGxpc3RfbW92ZV90YWlsIGluc3RlYWQg
+b2YgbGlzdF9kZWwvbGlzdF9hZGRfdGFpbA0KPiANCj4gRnJvbTogV2VpIFlvbmdqdW4gPHlvbmdq
+dW5fd2VpQHRyZW5kbWljcm8uY29tLmNuPg0KPiANCj4gVXNpbmcgbGlzdF9tb3ZlX3RhaWwoKSBp
+bnN0ZWFkIG9mIGxpc3RfZGVsKCkgKyBsaXN0X2FkZF90YWlsKCkuDQo+IA0KPiBzcGF0Y2ggd2l0
+aCBhIHNlbWFudGljIG1hdGNoIGlzIHVzZWQgdG8gZm91bmQgdGhpcyBwcm9ibGVtLg0KPiAoaHR0
+cDovL2NvY2NpbmVsbGUubGlwNi5mci8pDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBXZWkgWW9uZ2p1
+biA8eW9uZ2p1bl93ZWlAdHJlbmRtaWNyby5jb20uY24+DQpUaGlzIGxvb2tzIGdvb2QuIFRoYW5r
+cyENCg0KUmV2aWV3ZWQtYnk6IFBlbmcgVGFvIDx0YW8ucGVuZ0BlbWMuY29tPg0KPiAtLS0NCj4g
+IGZzL25mcy9ibG9ja2xheW91dC9leHRlbnRzLmMgfCAzICstLQ0KPiAgMSBmaWxlIGNoYW5nZWQs
+IDEgaW5zZXJ0aW9uKCspLCAyIGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25m
+cy9ibG9ja2xheW91dC9leHRlbnRzLmMgYi9mcy9uZnMvYmxvY2tsYXlvdXQvZXh0ZW50cy5jDQo+
+IGluZGV4IDFmOWE2MDMuLjljM2UxMTcgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9ibG9ja2xheW91
+dC9leHRlbnRzLmMNCj4gKysrIGIvZnMvbmZzL2Jsb2NrbGF5b3V0L2V4dGVudHMuYw0KPiBAQCAt
+NjgzLDggKzY4Myw3IEBAIGVuY29kZV9wbmZzX2Jsb2NrX2xheW91dHVwZGF0ZShzdHJ1Y3QgcG5m
+c19ibG9ja19sYXlvdXQgKmJsLA0KPiAgCQlwID0geGRyX2VuY29kZV9oeXBlcihwLCBsY2UtPmJz
+ZV9sZW5ndGggPDwgU0VDVE9SX1NISUZUKTsNCj4gIAkJcCA9IHhkcl9lbmNvZGVfaHlwZXIocCwg
+MExMKTsNCj4gIAkJKnArKyA9IGNwdV90b19iZTMyKFBORlNfQkxPQ0tfUkVBRFdSSVRFX0RBVEEp
+Ow0KPiAtCQlsaXN0X2RlbCgmbGNlLT5ic2Vfbm9kZSk7DQo+IC0JCWxpc3RfYWRkX3RhaWwoJmxj
+ZS0+YnNlX25vZGUsICZibC0+YmxfY29tbWl0dGluZyk7DQo+ICsJCWxpc3RfbW92ZV90YWlsKCZs
+Y2UtPmJzZV9ub2RlLCAmYmwtPmJsX2NvbW1pdHRpbmcpOw0KPiAgCQlibC0+YmxfY291bnQtLTsN
+Cj4gIAkJY291bnQrKzsNCj4gIAl9DQo+IA0KPiANCj4gLS0NCj4gVG8gdW5zdWJzY3JpYmUgZnJv
+bSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIgaW4NCj4g
+dGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4gTW9y
+ZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5m
+by5odG1sDQoNCg==
