@@ -1,123 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:17067 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757965Ab2IXT5s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Sep 2012 15:57:48 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 06/28] NFSv4.1: Add helpers for setting/reading the I/O fail bit
-Date: Mon, 24 Sep 2012 15:56:24 -0400
-Message-Id: <1348516606-22721-6-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1348516606-22721-5-git-send-email-Trond.Myklebust@netapp.com>
-References: <1348516606-22721-1-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-2-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-3-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-4-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-5-git-send-email-Trond.Myklebust@netapp.com>
+Received: from e28smtp09.in.ibm.com ([122.248.162.9]:43008 "EHLO
+	e28smtp09.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750706Ab2IJGhh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Sep 2012 02:37:37 -0400
+Received: from /spool/local
+	by e28smtp09.in.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <yan@linux.vnet.ibm.com>;
+	Mon, 10 Sep 2012 12:07:33 +0530
+Date: Mon, 10 Sep 2012 14:37:24 +0800
+From: Guo Chao <yan@linux.vnet.ibm.com>
+To: Ram Pai <linuxram@us.ibm.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [RFC PATCH 05/13] vfs: take i_mutex on renamed file
+Message-ID: <20120910063724.GA6272@yanx>
+References: <1346878524-10585-1-git-send-email-bfields@redhat.com>
+ <1346878524-10585-6-git-send-email-bfields@redhat.com>
+ <20120906030526.GB6679@yanx>
+ <20120906175118.GC21736@fieldses.org>
+ <20120907022705.GA20453@yanx>
+ <20120907213901.GA5927@fieldses.org>
+ <20120910024051.GA10405@yanx>
+ <20120910051037.GA2466@ram-ThinkPad-T61>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120910051037.GA2466@ram-ThinkPad-T61>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...and make them local to the pnfs.c file.
+On Mon, Sep 10, 2012 at 01:10:37PM +0800, Ram Pai wrote:
+> On Mon, Sep 10, 2012 at 10:40:51AM +0800, Guo Chao wrote:
+> > 
+> > Hard to say whether it's a bug or what's problems of being able to rename 
+> > mountpoint.
+> 
+> 'man 2 rename' says it is ok to rename a directory that is already
+> mounted.
+> 
+> EBUSY The rename fails because oldpath or newpath is a directory that is
+> in use by some process (perhaps as current working directory, or as root
+> directory, or beacuse it was open for reading) or is in use by the
+> system (for example as mount point), while the system considers this an
+> error. (Note that there is no requirement to return EBUSY in such
+> cases-- there is nothing wrong with doing the rename anyway -- but is
+> 	^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> allowed to return EBUSY if the system cannot otherwise handle such
+> situations)
+> 
+> RP
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/pnfs.c | 37 ++++++++++++++++++++++++++-----------
- fs/nfs/pnfs.h |  6 ------
- 2 files changed, 26 insertions(+), 17 deletions(-)
+Erhh, good point. 
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 498af87..d6fa244 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -238,6 +238,27 @@ pnfs_put_layout_hdr(struct pnfs_layout_hdr *lo)
- 	}
- }
- 
-+static int
-+pnfs_iomode_to_fail_bit(u32 iomode)
-+{
-+	return iomode == IOMODE_RW ?
-+		NFS_LAYOUT_RW_FAILED : NFS_LAYOUT_RO_FAILED;
-+}
-+
-+static void
-+pnfs_layout_io_set_failed(struct pnfs_layout_hdr *lo, u32 iomode)
-+{
-+	set_bit(pnfs_iomode_to_fail_bit(iomode), &lo->plh_flags);
-+	dprintk("%s Setting layout IOMODE_%s fail bit\n", __func__,
-+			iomode == IOMODE_RW ?  "RW" : "READ");
-+}
-+
-+static bool
-+pnfs_layout_io_test_failed(struct pnfs_layout_hdr *lo, u32 iomode)
-+{
-+	return test_bit(pnfs_iomode_to_fail_bit(iomode), &lo->plh_flags) != 0;
-+}
-+
- static void
- init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
- {
-@@ -612,7 +633,7 @@ send_layoutget(struct pnfs_layout_hdr *lo,
- 			break;
- 		default:
- 			/* remember that LAYOUTGET failed and suspend trying */
--			set_bit(lo_fail_bit(range->iomode), &lo->plh_flags);
-+			pnfs_layout_io_set_failed(lo, range->iomode);
- 		}
- 		return NULL;
- 	}
-@@ -669,8 +690,8 @@ _pnfs_return_layout(struct inode *ino)
- 	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
- 	if (unlikely(lrp == NULL)) {
- 		status = -ENOMEM;
--		set_bit(NFS_LAYOUT_RW_FAILED, &lo->plh_flags);
--		set_bit(NFS_LAYOUT_RO_FAILED, &lo->plh_flags);
-+		pnfs_layout_io_set_failed(lo, IOMODE_RW);
-+		pnfs_layout_io_set_failed(lo, IOMODE_READ);
- 		pnfs_clear_layout_returned(lo);
- 		pnfs_put_layout_hdr(lo);
- 		goto out;
-@@ -1046,7 +1067,7 @@ pnfs_update_layout(struct inode *ino,
- 	}
- 
- 	/* if LAYOUTGET already failed once we don't try again */
--	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->plh_flags))
-+	if (pnfs_layout_io_test_failed(lo, iomode))
- 		goto out_unlock;
- 
- 	/* Check to see if the layout for the given range already exists */
-@@ -1581,13 +1602,7 @@ static void pnfs_list_write_lseg(struct inode *inode, struct list_head *listp)
- 
- void pnfs_set_lo_fail(struct pnfs_layout_segment *lseg)
- {
--	if (lseg->pls_range.iomode == IOMODE_RW) {
--		dprintk("%s Setting layout IOMODE_RW fail bit\n", __func__);
--		set_bit(lo_fail_bit(IOMODE_RW), &lseg->pls_layout->plh_flags);
--	} else {
--		dprintk("%s Setting layout IOMODE_READ fail bit\n", __func__);
--		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
--	}
-+	pnfs_layout_io_set_failed(lseg->pls_layout, lseg->pls_range.iomode);
- }
- EXPORT_SYMBOL_GPL(pnfs_set_lo_fail);
- 
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 0495879..e3eb7d1 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -274,12 +274,6 @@ pnfs_test_layout_returned(struct pnfs_layout_hdr *lo)
- 	return test_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
- }
- 
--static inline int lo_fail_bit(u32 iomode)
--{
--	return iomode == IOMODE_RW ?
--			 NFS_LAYOUT_RW_FAILED : NFS_LAYOUT_RO_FAILED;
--}
--
- static inline struct pnfs_layout_segment *
- pnfs_get_lseg(struct pnfs_layout_segment *lseg)
- {
--- 
-1.7.11.4
+However, current implementation seems to return EBUSY unconditionally, 
+instead of considering whether it can handle this situation. It can be 
+descripted as 'it may return EBUSY or not, depends on whether you are 
+luck enough to rush into the race'.
+
+This seems still conform to the statement in the manual, in a weird way 
+though.
+
 
