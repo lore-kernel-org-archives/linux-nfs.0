@@ -1,63 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39057 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:42351 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750828Ab2IMSV7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Sep 2012 14:21:59 -0400
-Date: Thu, 13 Sep 2012 14:21:52 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
-        Jeff Layton <jlayton@redhat.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/4] RFC Avoid expired credential keys for buffered writes
-Message-ID: <20120913182152.GB6566@fieldses.org>
-References: <1346961251-2554-1-git-send-email-andros@netapp.com>
- <20120910145732.4d800f5b@corrin.poochiereds.net>
- <7851A663D3BF5E41B9E166C2C7A42145102B2F5A@SACEXCMBX02-PRD.hq.netapp.com>
- <20120910160858.552bec1b@corrin.poochiereds.net>
- <7851A663D3BF5E41B9E166C2C7A42145102B48E8@SACEXCMBX02-PRD.hq.netapp.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA908F9DD4F@SACEXCMBX04-PRD.hq.netapp.com>
- <7851A663D3BF5E41B9E166C2C7A42145102B4C9F@SACEXCMBX02-PRD.hq.netapp.com>
- <20120913175754.GA6566@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA908FA4EBD@SACEXCMBX04-PRD.hq.netapp.com>
+	id S1757362Ab2IJP1Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Sep 2012 11:27:24 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+CC: Jeff Layton <jlayton@redhat.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v2] SUNRPC: check current nsproxy before set of node
+ name on client creation
+Date: Mon, 10 Sep 2012 15:27:20 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F9547B@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20120813113731.9629.31906.stgit@localhost.localdomain>
+	   <20120813081054.0ee39037@corrin.poochiereds.net>
+	  <4FA345DA4F4AE44899BD2B03EEEC2FA908F90888@SACEXCMBX04-PRD.hq.netapp.com>
+	  <504ADED9.2020607@parallels.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F914D4@SACEXCMBX04-PRD.hq.netapp.com>
+	 <504DA833.60301@parallels.com>
+In-Reply-To: <504DA833.60301@parallels.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA908FA4EBD@SACEXCMBX04-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 13, 2012 at 06:09:05PM +0000, Myklebust, Trond wrote:
-> On Thu, 2012-09-13 at 13:57 -0400, J. Bruce Fields wrote:
-> > On Wed, Sep 12, 2012 at 04:14:38PM +0000, Adamson, Andy wrote:
-> > > 
-> > > On Sep 12, 2012, at 11:21 AM, Myklebust, Trond wrote:
-> > > 
-> > > > On Wed, 2012-09-12 at 15:13 +0000, Adamson, Andy wrote:
-> > > >> After doing more test verification, here are the reasons for the low watermark. Reason #2 is the strongest justification.
-> > 
-> > 1 and 2 don't sound right.  What exactly were the test failures?
-> > 
-> > The client and server's gss code already check the context expiry for
-> > us--we don't want an extra check in an upper layer on the client.
-> > 
-> > The context *will* expire unexpectedly sometimes, and we do have to
-> > handle that.  (The server's clock could be a tad faster than the
-> > server's, or the server could reboot, etc., etc.)
-> > 
-> > I agree with all the suggestions for trying to anticipate expiry in the
-> > normal cases and preparing to minimize the damage, that's fine.  But
-> > once the expiry finally comes we should leave the existing mechanisms to
-> > do their job.
-> 
-> Right, but the problem that the existing mechanisms have is that due to
-> asynchronous reads and writes, the application can end up eating
-> sizeable chunks of memory. It can also end up grabbing locks without
-> being able to free them afterwards.
-> 
-> SP4_MACH_CRED solves most of these issues, but NFSv4.1 is less pervasive
-> than NFSv4 at this point, so it would be nice to have a solution for the
-> latter too.
-
-Yep, understood.
-
---b.
+T24gTW9uLCAyMDEyLTA5LTEwIGF0IDEyOjQzICswNDAwLCBTdGFuaXNsYXYgS2luc2J1cnNreSB3
+cm90ZToNCj4gMDguMDkuMjAxMiAxODozMywgTXlrbGVidXN0LCBUcm9uZCDQv9C40YjQtdGCOg0K
+PiA+IE9uIFNhdCwgMjAxMi0wOS0wOCBhdCAwODo1OSArMDMwMCwgU3RhbmlzbGF2IEtpbnNidXJz
+a3kgd3JvdGU6DQo+ID4+IDA4LjA5LjIwMTIgMDE6MzIsIE15a2xlYnVzdCwgVHJvbmQg0L/QuNGI
+0LXRgjoNCj4gPj4+IE9uIE1vbiwgMjAxMi0wOC0xMyBhdCAwODoxMCAtMDQwMCwgSmVmZiBMYXl0
+b24gd3JvdGU6DQo+ID4+Pj4gT24gTW9uLCAxMyBBdWcgMjAxMiAxNTozNzozMSArMDQwMA0KPiA+
+Pj4+IFN0YW5pc2xhdiBLaW5zYnVyc2t5IDxza2luc2J1cnNreUBwYXJhbGxlbHMuY29tPiB3cm90
+ZToNCj4gPj4+Pg0KPiA+Pj4+PiB2MjoNCj4gPj4+Pj4gMSkgcnBjX2NsbnRfc2V0X25vZGVuYW1l
+KCkgcHJvdG90eXBlIHVwZGF0ZWQuDQo+ID4+Pj4+IDIpIGZpeGVkIGVycm9ycyBpbiBjb21tZW50
+Lg0KPiA+Pj4+Pg0KPiA+Pj4+PiBXaGVuIGNoaWxkIHJlYXBlciBleGl0cywgaXQgY2FuIGRlc3Ry
+b3kgbW91bnQgbmFtZXNwYWNlIGl0IGJlbG9uZ3MgdG8sIGFuZCBpZg0KPiA+Pj4+PiB0aGVyZSBh
+cmUgTkZTIG1vdW50cyBpbnNpZGUsIHRoZW4gaXQgd2lsbCB0cnkgdG8gdW1vdW50IHRoZW0uIEJ1
+dCBpbiB0aGlzDQo+ID4+Pj4+IHBvaW50IGN1cnJlbnQtPm5zcHJveHkgaXMgc2V0IHRvIE5VTEwg
+YW5kIGFsbCBuYW1lc3BhY2VzIHdpbGwgYmUgZGVzdHJveWVkIG9uZQ0KPiA+Pj4+PiBieSBvbmUu
+IEkuZS4gd2UgY2FuJ3QgZGVyZWZlcmVuY2UgY3VycmVudC0+bnNwcm94eSB0byBvYnRhaW4gdXRz
+IG5hbWVzcGFjZS4NCj4gPj4+Pj4NCj4gPj4+Pj4gU2lnbmVkLW9mZi1ieTogU3RhbmlzbGF2IEtp
+bnNidXJza3kgPHNraW5zYnVyc2t5QHBhcmFsbGVscy5jb20+DQo+ID4+Pj4+IC0tLQ0KPiA+Pj4+
+PiAgICBuZXQvc3VucnBjL2NsbnQuYyB8ICAgMTYgKysrKysrKysrKysrKy0tLQ0KPiA+Pj4+PiAg
+ICAxIGZpbGVzIGNoYW5nZWQsIDEzIGluc2VydGlvbnMoKyksIDMgZGVsZXRpb25zKC0pDQo+ID4+
+Pj4+DQo+ID4+Pj4+IGRpZmYgLS1naXQgYS9uZXQvc3VucnBjL2NsbnQuYyBiL25ldC9zdW5ycGMv
+Y2xudC5jDQo+ID4+Pj4+IGluZGV4IDlhOTY3NmUuLjhmYmNiYzggMTAwNjQ0DQo+ID4+Pj4+IC0t
+LSBhL25ldC9zdW5ycGMvY2xudC5jDQo+ID4+Pj4+ICsrKyBiL25ldC9zdW5ycGMvY2xudC5jDQo+
+ID4+Pj4+IEBAIC0yNzcsOCArMjc3LDE4IEBAIHZvaWQgcnBjX2NsaWVudHNfbm90aWZpZXJfdW5y
+ZWdpc3Rlcih2b2lkKQ0KPiA+Pj4+PiAgICAJcmV0dXJuIHJwY19waXBlZnNfbm90aWZpZXJfdW5y
+ZWdpc3RlcigmcnBjX2NsaWVudHNfYmxvY2spOw0KPiA+Pj4+PiAgICB9DQo+ID4+Pj4+DQo+ID4+
+Pj4+IC1zdGF0aWMgdm9pZCBycGNfY2xudF9zZXRfbm9kZW5hbWUoc3RydWN0IHJwY19jbG50ICpj
+bG50LCBjb25zdCBjaGFyICpub2RlbmFtZSkNCj4gPj4+Pj4gK3N0YXRpYyB2b2lkIHJwY19jbG50
+X3NldF9ub2RlbmFtZShzdHJ1Y3QgcnBjX2NsbnQgKmNsbnQpDQo+ID4+Pj4+ICAgIHsNCj4gPj4+
+Pj4gKwljb25zdCBjaGFyICpub2RlbmFtZTsNCj4gPj4+Pj4gKw0KPiA+Pj4+PiArCS8qDQo+ID4+
+Pj4+ICsJICogV2UgaGF2ZSB0byBwcm90ZWN0IGFnYWluc3QgZHlpbmcgY2hpbGQgcmVhcGVyLCB3
+aGljaCBoYXMgcmVsZWFzZWQNCj4gPj4+Pj4gKwkgKiBpdHMgbnNwcm94eSBhbHJlYWR5IGFuZCBp
+cyB0cnlpbmcgdG8gZGVzdHJveSBtb3VudCBuYW1lc3BhY2UuDQo+ID4+Pj4+ICsJICovDQo+ID4+
+Pj4+ICsJaWYgKGN1cnJlbnQtPm5zcHJveHkgPT0gTlVMTCkNCj4gPj4+Pj4gKwkJcmV0dXJuOw0K
+PiA+Pj4+PiArDQo+ID4+Pj4+ICsJbm9kZW5hbWUgPSB1dHNuYW1lKCktPm5vZGVuYW1lOw0KPiA+
+Pj4+PiAgICAJY2xudC0+Y2xfbm9kZWxlbiA9IHN0cmxlbihub2RlbmFtZSk7DQo+ID4+Pj4+ICAg
+IAlpZiAoY2xudC0+Y2xfbm9kZWxlbiA+IFVOWF9NQVhOT0RFTkFNRSkNCj4gPj4+Pj4gICAgCQlj
+bG50LT5jbF9ub2RlbGVuID0gVU5YX01BWE5PREVOQU1FOw0KPiA+Pj4+PiBAQCAtMzY1LDcgKzM3
+NSw3IEBAIHN0YXRpYyBzdHJ1Y3QgcnBjX2NsbnQgKiBycGNfbmV3X2NsaWVudChjb25zdCBzdHJ1
+Y3QgcnBjX2NyZWF0ZV9hcmdzICphcmdzLCBzdHJ1DQo+ID4+Pj4+ICAgIAl9DQo+ID4+Pj4+DQo+
+ID4+Pj4+ICAgIAkvKiBzYXZlIHRoZSBub2RlbmFtZSAqLw0KPiA+Pj4+PiAtCXJwY19jbG50X3Nl
+dF9ub2RlbmFtZShjbG50LCB1dHNuYW1lKCktPm5vZGVuYW1lKTsNCj4gPj4+Pj4gKwlycGNfY2xu
+dF9zZXRfbm9kZW5hbWUoY2xudCk7DQo+ID4+Pj4+ICAgIAlycGNfcmVnaXN0ZXJfY2xpZW50KGNs
+bnQpOw0KPiA+Pj4+PiAgICAJcmV0dXJuIGNsbnQ7DQo+ID4+Pj4+DQo+ID4+Pj4+IEBAIC01MjQs
+NyArNTM0LDcgQEAgcnBjX2Nsb25lX2NsaWVudChzdHJ1Y3QgcnBjX2NsbnQgKmNsbnQpDQo+ID4+
+Pj4+ICAgIAllcnIgPSBycGNfc2V0dXBfcGlwZWRpcihuZXcsIGNsbnQtPmNsX3Byb2dyYW0tPnBp
+cGVfZGlyX25hbWUpOw0KPiA+Pj4+PiAgICAJaWYgKGVyciAhPSAwKQ0KPiA+Pj4+PiAgICAJCWdv
+dG8gb3V0X25vX3BhdGg7DQo+ID4+Pj4+IC0JcnBjX2NsbnRfc2V0X25vZGVuYW1lKG5ldywgdXRz
+bmFtZSgpLT5ub2RlbmFtZSk7DQo+ID4+Pj4+ICsJcnBjX2NsbnRfc2V0X25vZGVuYW1lKG5ldyk7
+DQo+ID4+Pj4+ICAgIAlpZiAobmV3LT5jbF9hdXRoKQ0KPiA+Pj4+PiAgICAJCWF0b21pY19pbmMo
+Jm5ldy0+Y2xfYXV0aC0+YXVfY291bnQpOw0KPiA+Pj4+PiAgICAJYXRvbWljX2luYygmY2xudC0+
+Y2xfY291bnQpOw0KPiA+Pj4+Pg0KPiA+Pj4+PiAtLQ0KPiA+Pj4+PiBUbyB1bnN1YnNjcmliZSBm
+cm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBpbg0K
+PiA+Pj4+PiB0aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9y
+Zw0KPiA+Pj4+PiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3Jn
+L21ham9yZG9tby1pbmZvLmh0bWwNCj4gPj4+PiBBY2tlZC1ieTogSmVmZiBMYXl0b24gPGpsYXl0
+b25AcmVkaGF0LmNvbT4NCj4gPj4+IE9LLCBjb2xvdXIgbWUgY29uZnVzZWQgKGFnYWluKS4NCj4g
+Pj4NCj4gPj4gV2hhdCBjb2xvcj8NCj4gPj4NCj4gPj4+IFdoeSBzaG91bGQgYSB1bW91bnQgdHJp
+Z2dlciBhbg0KPiA+Pj4gcnBjX2NyZWF0ZSgpIG9yIHJwY19jbG9uZV9jbGllbnQoKT8NCj4gPj4N
+Cj4gPj4gSXQgY2FsbHMgbnNtX2NyZWF0ZSgpLg0KPiA+PiBIZXJlIGlzIHRoZSB0cmFjZSAoaHR0
+cHM6Ly9idWd6aWxsYS5yZWRoYXQuY29tL3Nob3dfYnVnLmNnaT9pZD04MzA4NjIsDQo+ID4+IGNv
+bW1lbnQgNjgpOg0KPiA+DQo+ID4gUmlnaHQsIGJ1dCBpZiB3ZSdyZSB1c2luZyBORlN2MyBsb2Nr
+IG1vbml0b3JpbmcsIHdlIGtub3cgaW4gYWR2YW5jZSB0aGF0DQo+ID4gd2UncmUgZ29pbmcgdG8g
+bmVlZCBhbiBuc20gY2FsbCB0byBsb2NhbGhvc3QuIFdoeSBjYW4ndCB3ZSBqdXN0IGNhY2hlDQo+
+ID4gdGhlIG9uZSB0aGF0IHdlIHVzZWQgdG8gc3RhcnQgbG9jayBtb25pdG9yaW5nIGluIHRoZSBm
+aXJzdCBwbGFjZT8NCj4gPg0KPiANCj4gRG8geW91IHN1Z2dlc3QgdG8gY2FjaGUgdGhlIGNhbGwg
+b3IgdGhlIGNsaWVudCBmb3IgdGhlIGNhbGw/DQoNCkhpIFN0YW5pc2xhdiwNCg0KU29ycnksIEkg
+YWdyZWUgdGhhdCB0aGUgYWJvdmUgd2FzIHVuY2xlYXIuIE15IGludGVudGlvbiB3YXMgdG8gc3Vn
+Z2VzdA0KdGhhdCB3ZSBzaG91bGQgY2FjaGUgYSByZWZlcmVuY2UgdG8gdGhlIHJwYyBjbGllbnQg
+dGhhdCB3ZSB1c2VkIHRvDQpjb25uZWN0IHRvIHJwYy5zdGF0ZCB3aGVuIGluaXRpYXRpbmcgbG9j
+ayBtb25pdG9yaW5nLg0KDQpCYXNpY2FsbHksIEknbSBzdWdnZXN0aW5nIHRoYXQgd2Ugc2hvdWxk
+IGRvIHNvbWV0aGluZyBzaW1pbGFyIHRvIHRoZQ0KcnBjYmluZCBycGNfY2xpZW50IGNhY2hpbmcg
+c2NoZW1lIGluIG5ldC9zdW5ycGMvcnBjYl9jbG50LmMuDQoNCkNoZWVycw0KICBUcm9uZA0KDQot
+LSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFw
+cA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
