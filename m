@@ -1,54 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f53.google.com ([209.85.216.53]:53495 "EHLO
-	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752864Ab2IYFnc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Sep 2012 01:43:32 -0400
-Received: by qaat11 with SMTP id t11so1499091qaa.19
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Sep 2012 22:43:32 -0700 (PDT)
+Received: from mx2.netapp.com ([216.240.18.37]:35233 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751577Ab2IKWR1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Sep 2012 18:17:27 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Simon Kirby <sim@hostway.ca>
+CC: Yan-Pai Chen <yanpai.chen@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [3.2.5] NFSv3 CLOSE_WAIT hang
+Date: Tue, 11 Sep 2012 22:17:25 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F9BDDD@SACEXCMBX04-PRD.hq.netapp.com>
+References: <loom.20120905T093214-245@post.gmane.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F86381@SACEXCMBX04-PRD.hq.netapp.com>
+	 <6cb9.5049fd40.b47c1@altium.nl> <6cb9.5049fd40.b47c1@altium.nl>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F8E302@SACEXCMBX04-PRD.hq.netapp.com>
+	 <447c.504a05c9.dd0a9@altium.nl> <447c.504a05c9.dd0a9@altium.nl>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F8E833@SACEXCMBX04-PRD.hq.netapp.com>
+	 <74c7.504b9d45.a5956@altium.nl> <loom.20120910T105944-416@post.gmane.org>
+	 <20120911194051.GB11160@hostway.ca>
+In-Reply-To: <20120911194051.GB11160@hostway.ca>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Date: Tue, 25 Sep 2012 13:43:32 +0800
-Message-ID: <CAPgLHd__m_A5gqBP1GgUJb=_fib7bOiJunVoNZn2HCiKyXVjrw@mail.gmail.com>
-Subject: [PATCH] NFS: fix the return value of nfs4_blkdev_get()
-From: Wei Yongjun <weiyj.lk@gmail.com>
-To: Trond.Myklebust@netapp.com
-Cc: yongjun_wei@trendmicro.com.cn, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
-
-In case of error, the function nfs4_blkdev_get() return NULL pointer.
-But the user nfs4_blk_decode_device() check the return value by using
-IS_ERR() and get error code from the return value. So we should better
-change the return value of nfs4_blkdev_get() to return ERR_PTR().
-
-dpatch engine is used to auto generate this patch.
-(https://github.com/weiyj/dpatch)
-
-Signed-off-by: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
----
- fs/nfs/blocklayout/blocklayoutdev.c | 7 ++-----
- 1 file changed, 2 insertions(+), 5 deletions(-)
-
-diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
-index c965542..8c51518 100644
---- a/fs/nfs/blocklayout/blocklayoutdev.c
-+++ b/fs/nfs/blocklayout/blocklayoutdev.c
-@@ -61,12 +61,9 @@ struct block_device *nfs4_blkdev_get(dev_t dev)
- 	dprintk("%s enter\n", __func__);
- 	bd = blkdev_get_by_dev(dev, FMODE_READ, NULL);
- 	if (IS_ERR(bd))
--		goto fail;
-+		dprintk("%s failed to open device : %ld\n",
-+				__func__, PTR_ERR(bd));
- 	return bd;
--fail:
--	dprintk("%s failed to open device : %ld\n",
--			__func__, PTR_ERR(bd));
--	return NULL;
- }
- 
- /*
-
-
+T24gVHVlLCAyMDEyLTA5LTExIGF0IDEyOjQwIC0wNzAwLCBTaW1vbiBLaXJieSB3cm90ZToNCj4g
+T24gTW9uLCBTZXAgMTAsIDIwMTIgYXQgMDk6MDA6MzdBTSArMDAwMCwgWWFuLVBhaSBDaGVuIHdy
+b3RlOg0KPiANCj4gPiBIaSBUcm9uZCwNCj4gPiANCj4gPiBBcG9sb2dpZXMgZm9yIG15IGxhdGUg
+cmVzcG9uc2UuDQo+ID4gVXBncmFkaW5nIHRvIGtlcm5lbCAzLjUgcmVxdWlyZXMgc29tZSBlZmZv
+cnQuIEkgYW0gc3RpbGwgd29ya2luZyBvbiBpdC4NCj4gPiANCj4gPiBBZnRlciBhcHBseWluZyB5
+b3VyIHBhdGNoIG9uIDMuMyBrZXJuZWwsIHRoZSBwcm9ibGVtIGlzIGdvbmUgd2hlbiB1c2luZyBV
+RFAgDQo+ID4gbW91bnRzLg0KPiA+IEJ1dCBpdCByZW1haW5zIGhhbmcgaW4gdGhlIGNhc2Ugb2Yg
+TkZTIG92ZXIgVENQIG1vdW50cy4gDQo+ID4gDQo+ID4gSSByZXByb2R1Y2VkIHRoZSBwcm9ibGVt
+IGJ5IGV4ZWN1dGluZyBtbS9tdGVzdDA2XzMgKGkuZS4gbW1hcDMpIGluIHRoZSBMVFAgdGVzdCAN
+Cj4gPiBzdWl0ZSByZXBlYXRlZGx5Lg0KPiA+IEFib3V0IGxlc3MgdGhhbiAyMDAgdGltZXMsIGl0
+IGV2ZW50dWFsbHkgcmFuIGludG8gdGhlIENMT1NFX1dBSVQgaGFuZy4NCj4gPiBJIGdvdCB0aGUg
+Zm9sbG93aW5nIG1lc3NhZ2VzIGFmdGVyIGVuYWJsaW5nIHJwY19kZWJ1ZyAmIG5mc19kZWJ1ZzoN
+Cj4gPiANCj4gPiA0Nzk5MSAwMDAxICAgIC0xMSBjZjI5MTBlMCAgIChudWxsKSAgICAgICAgMCBj
+MDI0M2Y0MCBuZnN2MyBXUklURSANCj4gPiBhOmNhbGxfcmVzZXJ2ZXJlc3VsdCBxOnhwcnRfc2Vu
+ZGluZw0KPiA+IDQ3OTkyIDAwMDEgICAgLTExIGNmMjkxMGUwICAgKG51bGwpICAgICAgICAwIGMw
+MjQzZjQwIG5mc3YzIFdSSVRFIA0KPiA+IGE6Y2FsbF9yZXNlcnZlcmVzdWx0IHE6eHBydF9zZW5k
+aW5nDQo+ID4gNDc5OTMgMDAwMSAgICAtMTEgY2YyOTEwZTAgICAobnVsbCkgICAgICAgIDAgYzAy
+NDNmNDAgbmZzdjMgV1JJVEUgDQo+ID4gYTpjYWxsX3Jlc2VydmVyZXN1bHQgcTp4cHJ0X3NlbmRp
+bmcNCj4gPiA0Nzk5NCAwMDAxICAgIC0xMSBjZjI5MTBlMCAgIChudWxsKSAgICAgICAgMCBjMDI0
+M2Y0MCBuZnN2MyBXUklURSANCj4gPiBhOmNhbGxfcmVzZXJ2ZXJlc3VsdCBxOnhwcnRfc2VuZGlu
+Zw0KPiA+IDQ3OTk1IDAwMDEgICAgLTExIGNmMjkxMGUwICAgKG51bGwpICAgICAgICAwIGMwMjQz
+ZjQwIG5mc3YzIFdSSVRFIA0KPiA+IGE6Y2FsbF9yZXNlcnZlcmVzdWx0IHE6eHBydF9zZW5kaW5n
+DQo+ID4gLi4uDQo+IA0KPiBIZWxsbyENCj4gDQo+IFRoaXMgcHJvYmxlbSBzdGlsbCBiaXRlcyB1
+cyByYXJlbHksIGFuZCB3ZSd2ZSBiZWVuIHVzaW5nIFRDUCBORlMgZm9yIHNvbWUNCj4gdGltZS4g
+SG93ZXZlciwgb3VyIGNhc2Ugc2VlbXMgdG8gYmUgbmFycm93ZWQgaXQgZG93biB0byBhIHZlcnkg
+bG9uZw0KPiBzdG9yYWdlIGhhbmcgb24gdGhlIGtuZnNkIHNpZGUuIElmIHN0b3JhZ2UgbmV2ZXIg
+aGFzIGFueSBwcm9ibGVtcywgd2UNCj4gZG9uJ3Qgc2VlIHRoZSBORlMgY2xpZW50IGhhbmcuIEkg
+d2FzIGdvaW5nIHRvIHRyeSB0byBtYWtlIGEgdGVzdC1jYXNlIGJ5DQo+IGZvcmNpbmcgdGhlIHNl
+cnZlciB0byBoYW5nLCBidXQgSSBuZXZlciBnb3QgYXJvdW5kIHRvIHRoaXMuIE1lYW53aGlsZSwN
+Cj4gSSd2ZSBiZWVuIHJ1bm5pbmcgdGhlIGNsaWVudHMgd2l0aCB0aGUgZGVidWdnaW5nIHBhdGNo
+ZXMgSSBwb3N0ZWQNCj4gZWFybGllciwgYW5kIGl0IGFsd2F5cyBwcmludHMgdGhlICd4cHJ0X2Zv
+cmNlX2Rpc2Nvbm5lY3QoKTogc2V0dGluZw0KPiBYUFJUX0NMT1NFX1dBSVQiIHdhcm5pbmcgYmVm
+b3JlIGhhbmdpbmcuIElmIEFwYWNoZSBpcyBpbiBzZW5kZmlsZSgpIGF0DQo+IHRoZSB0aW1lLCBp
+dCBzZWVtcyB0byBnZXQgc3R1Y2sgZm9yZXZlcjsgb3RoZXJ3aXNlLCBpdCBtaWdodCByZWNvdmVy
+Lg0KDQpEb2VzIHRoZSAiaWYgKHRlc3RfYW5kX3NldF9iaXQoWFBSVF9MT0NLKSA9PSAwKSIgY29u
+ZGl0aW9uIGltbWVkaWF0ZWx5DQpmb2xsb3dpbmcgdGhhdCBzdWNjZWVkIHNvIHRoYXQgcXVldWVf
+d29yaygpIGlzIGNhbGxlZD8NCg0KPiBodHRwOi8vd3d3LnNwaW5pY3MubmV0L2xpc3RzL2xpbnV4
+LW5mcy9tc2cyOTQ5NS5odG1sDQo+IGh0dHA6Ly8weC5jYS9zaW0vcmVmLzMuMi4xMC9kbWVzZw0K
+PiANCj4gSSBzdXBwb3NlIHdlIGNvdWxkIHRyeSAzLjUgYXQgdGhpcyBwb2ludC4NCg0KSWYgeW91
+J3ZlIGJlZW4ga2VlcGluZyB1cCB3aXRoIHRoZSAzLjIgc3RhYmxlIHJlbGVhc2VzLCB0aGVuIEkg
+d291bGRuJ3QNCmV4cGVjdCBhbnkgbWFqb3IgZGlmZmVyZW5jZXMgdG8gdGhlIHN1bnJwYyBjb2Rl
+LCBidXQgaXQgbWlnaHQgYmUgd29ydGggYQ0KdHJ5IGluIGNhc2UgdGhlIG5ldHdvcmtpbmcgbGF5
+ZXIgaGFzIGNoYW5nZWQuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50
+IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5l
+dGFwcC5jb20NCg==
