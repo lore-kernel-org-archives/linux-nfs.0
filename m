@@ -1,231 +1,296 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:44282 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:29824 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756255Ab2IXT5a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Sep 2012 15:57:30 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 03/28] NFSv4.1: Cleanup; add "pnfs_" prefix to get_layout_hdr() and put_layout_hdr()
-Date: Mon, 24 Sep 2012 15:56:21 -0400
-Message-Id: <1348516606-22721-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1348516606-22721-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1348516606-22721-1-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-2-git-send-email-Trond.Myklebust@netapp.com>
+	id S1757644Ab2ILQOm convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Sep 2012 12:14:42 -0400
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Adamson, Andy" <William.Adamson@netapp.com>,
+        Jeff Layton <jlayton@redhat.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/4] RFC Avoid expired credential keys for buffered
+ writes
+Date: Wed, 12 Sep 2012 16:14:38 +0000
+Message-ID: <7851A663D3BF5E41B9E166C2C7A42145102B4C9F@SACEXCMBX02-PRD.hq.netapp.com>
+References: <1346961251-2554-1-git-send-email-andros@netapp.com>
+ <20120910145732.4d800f5b@corrin.poochiereds.net>
+ <7851A663D3BF5E41B9E166C2C7A42145102B2F5A@SACEXCMBX02-PRD.hq.netapp.com>
+ <20120910160858.552bec1b@corrin.poochiereds.net>
+ <7851A663D3BF5E41B9E166C2C7A42145102B48E8@SACEXCMBX02-PRD.hq.netapp.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA908F9DD4F@SACEXCMBX04-PRD.hq.netapp.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA908F9DD4F@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset="Windows-1252"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/callback_proc.c |  8 ++++----
- fs/nfs/nfs4proc.c      |  2 +-
- fs/nfs/pnfs.c          | 30 +++++++++++++++---------------
- fs/nfs/pnfs.h          |  4 ++--
- 4 files changed, 22 insertions(+), 22 deletions(-)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 57b8bda..24252fe 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -122,7 +122,7 @@ static struct pnfs_layout_hdr * get_layout_by_fh_locked(struct nfs_client *clp,
- 			ino = igrab(lo->plh_inode);
- 			if (!ino)
- 				continue;
--			get_layout_hdr(lo);
-+			pnfs_get_layout_hdr(lo);
- 			return lo;
- 		}
- 	}
-@@ -166,7 +166,7 @@ static u32 initiate_file_draining(struct nfs_client *clp,
- 	pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
- 	spin_unlock(&ino->i_lock);
- 	pnfs_free_lseg_list(&free_me_list);
--	put_layout_hdr(lo);
-+	pnfs_put_layout_hdr(lo);
- 	iput(ino);
- 	return rv;
- }
-@@ -198,7 +198,7 @@ static u32 initiate_bulk_draining(struct nfs_client *clp,
- 		list_for_each_entry(lo, &server->layouts, plh_layouts) {
- 			if (!igrab(lo->plh_inode))
- 				continue;
--			get_layout_hdr(lo);
-+			pnfs_get_layout_hdr(lo);
- 			BUG_ON(!list_empty(&lo->plh_bulk_recall));
- 			list_add(&lo->plh_bulk_recall, &recall_list);
- 		}
-@@ -216,7 +216,7 @@ static u32 initiate_bulk_draining(struct nfs_client *clp,
- 		list_del_init(&lo->plh_bulk_recall);
- 		spin_unlock(&ino->i_lock);
- 		pnfs_free_lseg_list(&free_me_list);
--		put_layout_hdr(lo);
-+		pnfs_put_layout_hdr(lo);
- 		iput(ino);
- 	}
- 	return rv;
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index b738577..20f1229 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6375,7 +6375,7 @@ static void nfs4_layoutreturn_release(void *calldata)
- 	struct nfs4_layoutreturn *lrp = calldata;
- 
- 	dprintk("--> %s\n", __func__);
--	put_layout_hdr(lrp->args.layout);
-+	pnfs_put_layout_hdr(lrp->args.layout);
- 	kfree(calldata);
- 	dprintk("<-- %s\n", __func__);
- }
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index aea2e52..512c863 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -190,7 +190,7 @@ EXPORT_SYMBOL_GPL(pnfs_unregister_layoutdriver);
- 
- /* Need to hold i_lock if caller does not already hold reference */
- void
--get_layout_hdr(struct pnfs_layout_hdr *lo)
-+pnfs_get_layout_hdr(struct pnfs_layout_hdr *lo)
- {
- 	atomic_inc(&lo->plh_refcount);
- }
-@@ -221,14 +221,14 @@ destroy_layout_hdr(struct pnfs_layout_hdr *lo)
- }
- 
- static void
--put_layout_hdr_locked(struct pnfs_layout_hdr *lo)
-+pnfs_put_layout_hdr_locked(struct pnfs_layout_hdr *lo)
- {
- 	if (atomic_dec_and_test(&lo->plh_refcount))
- 		destroy_layout_hdr(lo);
- }
- 
- void
--put_layout_hdr(struct pnfs_layout_hdr *lo)
-+pnfs_put_layout_hdr(struct pnfs_layout_hdr *lo)
- {
- 	struct inode *inode = lo->plh_inode;
- 
-@@ -254,8 +254,8 @@ static void free_lseg(struct pnfs_layout_segment *lseg)
- 	struct inode *ino = lseg->pls_layout->plh_inode;
- 
- 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
--	/* Matched by get_layout_hdr in pnfs_insert_layout */
--	put_layout_hdr(NFS_I(ino)->layout);
-+	/* Matched by pnfs_get_layout_hdr in pnfs_insert_layout */
-+	pnfs_put_layout_hdr(NFS_I(ino)->layout);
- }
- 
- static void
-@@ -268,7 +268,7 @@ put_lseg_common(struct pnfs_layout_segment *lseg)
- 	if (list_empty(&lseg->pls_layout->plh_segs)) {
- 		set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
- 		/* Matched by initial refcount set in alloc_init_layout_hdr */
--		put_layout_hdr_locked(lseg->pls_layout);
-+		pnfs_put_layout_hdr_locked(lseg->pls_layout);
- 	}
- 	rpc_wake_up(&NFS_SERVER(inode)->roc_rpcwaitq);
- }
-@@ -404,7 +404,7 @@ pnfs_mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
- 		NFS_I(lo->plh_inode)->write_io = 0;
- 		NFS_I(lo->plh_inode)->read_io = 0;
- 		if (!test_and_set_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags))
--			put_layout_hdr_locked(lo);
-+			pnfs_put_layout_hdr_locked(lo);
- 		return 0;
- 	}
- 	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list)
-@@ -649,13 +649,13 @@ _pnfs_return_layout(struct inode *ino)
- 	}
- 	stateid = nfsi->layout->plh_stateid;
- 	/* Reference matched in nfs4_layoutreturn_release */
--	get_layout_hdr(lo);
-+	pnfs_get_layout_hdr(lo);
- 	empty = list_empty(&lo->plh_segs);
- 	pnfs_mark_matching_lsegs_invalid(lo, &tmp_list, NULL);
- 	/* Don't send a LAYOUTRETURN if list was initially empty */
- 	if (empty) {
- 		spin_unlock(&ino->i_lock);
--		put_layout_hdr(lo);
-+		pnfs_put_layout_hdr(lo);
- 		dprintk("NFS: %s no layout segments to return\n", __func__);
- 		goto out;
- 	}
-@@ -672,7 +672,7 @@ _pnfs_return_layout(struct inode *ino)
- 		set_bit(NFS_LAYOUT_RW_FAILED, &lo->plh_flags);
- 		set_bit(NFS_LAYOUT_RO_FAILED, &lo->plh_flags);
- 		pnfs_clear_layout_returned(lo);
--		put_layout_hdr(lo);
-+		pnfs_put_layout_hdr(lo);
- 		goto out;
- 	}
- 
-@@ -709,7 +709,7 @@ bool pnfs_roc(struct inode *ino)
- 	if (!found)
- 		goto out_nolayout;
- 	lo->plh_block_lgets++;
--	get_layout_hdr(lo); /* matched in pnfs_roc_release */
-+	pnfs_get_layout_hdr(lo); /* matched in pnfs_roc_release */
- 	spin_unlock(&ino->i_lock);
- 	pnfs_free_lseg_list(&tmp_list);
- 	return true;
-@@ -726,7 +726,7 @@ void pnfs_roc_release(struct inode *ino)
- 	spin_lock(&ino->i_lock);
- 	lo = NFS_I(ino)->layout;
- 	lo->plh_block_lgets--;
--	put_layout_hdr_locked(lo);
-+	pnfs_put_layout_hdr_locked(lo);
- 	spin_unlock(&ino->i_lock);
- }
- 
-@@ -819,7 +819,7 @@ pnfs_insert_layout(struct pnfs_layout_hdr *lo,
- 		__func__, lseg, lseg->pls_range.iomode,
- 		lseg->pls_range.offset, lseg->pls_range.length);
- out:
--	get_layout_hdr(lo);
-+	pnfs_get_layout_hdr(lo);
- 
- 	dprintk("%s:Return\n", __func__);
- }
-@@ -1058,7 +1058,7 @@ pnfs_update_layout(struct inode *ino,
- 		goto out_unlock;
- 	atomic_inc(&lo->plh_outstanding);
- 
--	get_layout_hdr(lo);
-+	pnfs_get_layout_hdr(lo);
- 	if (list_empty(&lo->plh_segs))
- 		first = true;
- 
-@@ -1091,7 +1091,7 @@ pnfs_update_layout(struct inode *ino,
- 		spin_unlock(&clp->cl_lock);
- 	}
- 	atomic_dec(&lo->plh_outstanding);
--	put_layout_hdr(lo);
-+	pnfs_put_layout_hdr(lo);
- out:
- 	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
- 		nfsi->layout ? nfsi->layout->plh_flags : -1, lseg);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 6af5189..2af681f 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -176,7 +176,7 @@ extern struct pnfs_layout_segment* nfs4_proc_layoutget(struct nfs4_layoutget *lg
- extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
- 
- /* pnfs.c */
--void get_layout_hdr(struct pnfs_layout_hdr *lo);
-+void pnfs_get_layout_hdr(struct pnfs_layout_hdr *lo);
- void put_lseg(struct pnfs_layout_segment *lseg);
- 
- void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
-@@ -196,7 +196,7 @@ struct pnfs_layout_segment *pnfs_layout_process(struct nfs4_layoutget *lgp);
- void pnfs_free_lseg_list(struct list_head *tmp_list);
- void pnfs_destroy_layout(struct nfs_inode *);
- void pnfs_destroy_all_layouts(struct nfs_client *);
--void put_layout_hdr(struct pnfs_layout_hdr *lo);
-+void pnfs_put_layout_hdr(struct pnfs_layout_hdr *lo);
- void pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
- 			     const nfs4_stateid *new,
- 			     bool update_barrier);
--- 
-1.7.11.4
+On Sep 12, 2012, at 11:21 AM, Myklebust, Trond wrote:
+
+> On Wed, 2012-09-12 at 15:13 +0000, Adamson, Andy wrote:
+>> On Sep 10, 2012, at 4:08 PM, Jeff Layton wrote:
+>> 
+>>> On Mon, 10 Sep 2012 19:52:35 +0000
+>>> "Adamson, Andy" <William.Adamson@netapp.com> wrote:
+>>> 
+>>>> 
+>>>> On Sep 10, 2012, at 2:57 PM, Jeff Layton wrote:
+>>>> 
+>>>>> On Thu,  6 Sep 2012 15:54:07 -0400
+>>>>> andros@netapp.com wrote:
+>>>>> 
+>>>>>> From: Andy Adamson <andros@netapp.com>
+>>>>>> 
+>>>>>> This patch set is a Request for Comments: I think it does a fair job of
+>>>>>> handling the issue - but it is complicated, and other brains might find a
+>>>>>> better way to get the job done.
+>>>>>> 
+>>>>>> We must avoid buffering a WRITE that is using a credential key (e.g. a GSS
+>>>>>> context key) that is about to expire or has expired.  We currently will
+>>>>>> paint ourselves into a corner by returning success to the applciation
+>>>>>> for such a buffered WRITE, only to discover that we do not have permission when
+>>>>>> we attempt to flush the WRITE (and potentially associated COMMIT) to disk.
+>>>>>> This results in data corruption.
+>>>>>> 
+>>>>>> First, a couple of "setup" patches:
+>>>>>> 1) Patch SUNRPC handle EKEYEXPIRED in call_refreshresult returns EACCES to the
+>>>>>> application on an expired or non-existent gss context when the users (Kerberos)
+>>>>>> credentials have also expired or are non-existent. Current behavior is to
+>>>>>> retry upcalls to GSSD forever. Please see patch comment for detail.
+>>>>>> 
+>>>>>> 2) Patch SUNRPC set gss gc_expiry to full lifetime works in conjunction with
+>>>>>> the gssd patch "0001-GSSD-Pass-GSS_context-lifetime-to-the-kernel". The
+>>>>>> gssd patch passes the actual remaining TGT lifetime in the downcall, and
+>>>>>> this kernel patch sets the gss context gc_expiry to this lifetime.
+>>>>>> 
+>>>>>> Then the two patches that avoid using an expired credential key:
+>>>>>> 3) Patch SUNRPC new rpc_credops to test credential expiry is the heart of this
+>>>>>> work. It provides the RPC layer helper functions to allow NFS to manage
+>>>>>> data in the face of expired credentials
+>>>>>> 
+>>>>>> 4) Patch NFS avoid expired credential keys for buffered writes calls the
+>>>>>> RPC helper functions.
+>>>>>> 
+>>>>>> Pages for buffered WRITEs are allocated in nfs_write_begin where we have an
+>>>>>> nfs_open_context and associated rpc_cred. This is a generic rpc_cred, NOT
+>>>>>> the gss_cred used in the actual WRITE RPC. Each WRITE RPC call takes the generic
+>>>>>> rpc_cred (or uses the 'current_cred') uid and uses it to lookup the associated
+>>>>>> gss_cred and gss_context in the call_refresh RPC state. So, there is a
+>>>>>> one-to-one association between the nfs_open_context generic_cred and a
+>>>>>> gss_cred with a matching uid and a valid non expired gss context.
+>>>>>> 
+>>>>>> We need to check the nfs_open_context generic cred 'underlying' gss_cred
+>>>>>> gss_context gc_expiry in nfs_write_begin to determine if there is enough time
+>>>>>> left in the gss_context lifetime to complete the buffered WRITE.
+>>>>>> 
+>>>>>> I started by adding a "key_timeout" rpc_authops routine only set by the generic
+>>>>>> auth to do this work, called by rpcauth_key_timeout_notify, called from
+>>>>>> nfs_write_begin. It does the lookup of the gss_cred (see the patch for
+>>>>>> fast-tracking of non-gss underlying creds) and then tests the gss_context
+>>>>>> gc_expiry against timeouts by calling a new crkey_timeout rpc_credops set
+>>>>>> only for the gss_cred.
+>>>>>> 
+>>>>>> I came up with the idea of two credential key timeout watermarks:
+>>>>>> 1) A high watermark, RPC_KEY_EXPIRE_TIMEO set to 90 seconds.
+>>>>>> 2) A low watermark, RPC_KEY_EXPIRE_FAIL set to 30 seconds.
+>>>>>> NOTE: these timeouts are guesses that work in a VM environment. We may want to
+>>>>>> make them adjustable via module parameters.
+>>>>>> 
+>>>>>> If key_timeout is called on a credential with an underlying credential key that
+>>>>>> will expire within high watermark seconds, we set the RPC_CRED_KEY_EXPIRE_SOON
+>>>>>> flag in the generic_cred acred so that the NFS layer can clean up prior to
+>>>>>> key expiration It does this by calling a new crkey_to_expire rpc_credop set
+>>>>>> only for generic creds that tests for the RPC_CRED_KEY_EXPIRE_SOON flag.
+>>>>>> 
+>>>>>> If the RPC_CRED_KEY_EXPIRE_SOON flag is set in the nfs_open_context generic
+>>>>>> cred (the acred portion), then nfs_write_end will call nfs_wb_all
+>>>>>> on EVERY WRITE CALL it sees, and nfs_write_rpcsetup will send NFS_FILE_SYNC
+>>>>>> WRITEs.  The idea of the high watermark is to give time to flush all buffered
+>>>>>> WRITEs and COMMITs, as well as to continue to WRITE, but only with
+>>>>>> NFS_FILE_SYNC, allowing the application to try to finish writing before the
+>>>>>> gss context expires. NOTE that this means EACH WRITE within the high watermark
+>>>>>> timeout is a singe PAGE of NFS_FILE_SYNC. I think this is fine, because we are
+>>>>>> in a failure mode - the most important thing is to NOT fail a buffered WRITE..
+>>>>>> 
+>>>>>> If key_timeout is called on a credential key that will expire within low
+>>>>>> watermark seconds, we return EACCES from nfs_write_begin to stop
+>>>>>> the buffered WRITE using the credential key.
+>>>>>> 
+>>>>>> Checking a generic credential's underlying credential involves a cred lookup.
+>>>>>> To avoid this lookup in the normal case when the underlying credential has
+>>>>>> a key that is valid (before the high watermark), a notify flag is set in
+>>>>>> the generic credential the first time the key_timeout is called. The
+>>>>>> generic credential then stops checking the underlying credential key expiry, and
+>>>>>> the underlying credential (gss_cred) match routine then checks the key
+>>>>>> expiration upon each normal use and sets a flag in the associated generic
+>>>>>> credential only when the key expiration is within the high watermark.
+>>>>>> This in turn signals the generic credential key_timeout to perform the extra
+>>>>>> credetial lookup thereafter.
+>>>>>> 
+>>>>>> TING:
+>>>>>> 
+>>>>>> I have tested these patches with a TGT of 5 minutes, and a modified
+>>>>>> Connectathon special test: bigfile.c that only writes and never flushes.
+>>>>>> I also increased the file size to 524288000 bytes to give me time.
+>>>>>> I named the test buffered-write.
+>>>>>> 
+>>>>>> I kinit, and run 6 instances of buffered write with the first and maybe second
+>>>>>> test completing prior to TGT expiration, and the third/fourth tests spanning
+>>>>>> the high water mark. The fifth test starts within the high water mark, and the
+>>>>>> sixth test starts within the low water mark.
+>>>>>> 
+>>>>>> I have seen the expected behavior: test 1,2 succeed. Tests 3-6 fail with
+>>>>>> Permission Denied. Tests 3 and 4 start with normal buffered UNSTABLE writes
+>>>>>> then switch to single page NFS_FILE_SYNC writes with a COMMIT for the
+>>>>>> normal buffered writes. Test 5 has only single page NFS_FILE_SYNC writes,
+>>>>>> test 6 simply fails.
+>>>>>> 
+>>>>>> None of the WRITEs fail.
+>>>>>> 
+>>>>>> ISSUES
+>>>>>> 1) Once in a while I see "short write" instead of "Permission
+>>>>>> denied". I cannot reproduce this. Even then wireshark shows all writes succeeding.
+>>>>>> 
+>>>>>> 2) Although I have tested re-establishing Kerberos credentials after the
+>>>>>> test run, I have not done any testing re-estabishing Kerberos credentials 
+>>>>>> during the a test run that is within the high watermark.
+>>>>>> 
+>>>>>> 3) General corner case and other testing
+>>>>>> 
+>>>>>> -->Andy
+>>>>>> 
+>>>>>> Andy Adamson (4):
+>>>>>> SUNRPC handle EKEYEXPIRED in call_refreshresult
+>>>>>> SUNRPC set gss gc_expiry to full lifetime
+>>>>>> SUNRPC new rpc_credops to test credential expiry
+>>>>>> NFS avoid expired credential keys for buffered writes
+>>>>>> 
+>>>>>> fs/nfs/file.c                  |   10 ++++
+>>>>>> fs/nfs/internal.h              |    2 +
+>>>>>> fs/nfs/nfs3proc.c              |    6 +-
+>>>>>> fs/nfs/nfs4filelayout.c        |    1 -
+>>>>>> fs/nfs/nfs4proc.c              |   18 --------
+>>>>>> fs/nfs/nfs4state.c             |   22 ---------
+>>>>>> fs/nfs/proc.c                  |   43 ------------------
+>>>>>> fs/nfs/write.c                 |   29 ++++++++++++
+>>>>>> include/linux/sunrpc/auth.h    |   27 ++++++++++++
+>>>>>> net/sunrpc/auth.c              |   21 +++++++++
+>>>>>> net/sunrpc/auth_generic.c      |   93 ++++++++++++++++++++++++++++++++++++++++
+>>>>>> net/sunrpc/auth_gss/auth_gss.c |   51 +++++++++++++++++++---
+>>>>>> net/sunrpc/clnt.c              |    1 +
+>>>>>> 13 files changed, 231 insertions(+), 93 deletions(-)
+>>>>>> 
+>>>>> 
+>>>>> In general, I like this set...
+>>>>> 
+>>>>> My only concern is this behavior described in the last patch:
+>>>>> 
+>>>>> "If the buffered WRITE is using a credential key that will expire
+>>>>> within low watermark seconds, fail the WRITE in nfs_write_begin
+>>>>> _before_ the WRITE is buffered and return -EACCES to the application."
+>>>>> 
+>>>>> Shouldn't rejecting the write attempt be the purview of the server?
+>>>> 
+>>>> The TGT lifetime is shared by the client and the server - it's the same, so I don't think we'd gain anything by doing that.
+>>>> 
+>>>>> 
+>>>>> It seems to me that we'd be best off just switching to synchronous
+>>>>> writes when we start approaching credential expiration, and letting the
+>>>>> server handle the case where the credential expires.
+>>>> 
+>>>> You mean switching to direct IO? I believe that means taking a different path in the VFS layer which I found difficult to do from nfs_write_begin. But maybe I just didn't see a good way to do this.
+>>>> 
+>>>> 
+>>>>> It seems to me that the client should just be in the business of
+>>>>> recognizing when the credential might be about to expire and attempt to
+>>>>> ensure that we don't end up with a bunch of buffered data in that case.
+>>>> 
+>>>> Yes.
+>>>> 
+>>>> -->Andy
+>>>> 
+>>>>> 
+>>>>> -- 
+>>>>> Jeff Layton <jlayton@redhat.com>
+>>>> 
+>>> 
+>>> 
+>>> I meant that I didn't really see the point of the two different states
+>>> when we're approaching ticket expiry.
+>>> 
+>>> IIUC, at the "high watermark", you'll switch to synchronous writes, and
+>>> presumably will start syncing out any buffered data. At that point,
+>>> what are you buying by rejecting writes altogether with EACCES at the
+>>> low watermark?
+>>> 
+>>> It seems to me that the high watermark should be all you need to deal
+>>> with as a client. Once you're past that point you can just let the
+>>> client attempt the writes. If they fail, then no big deal -- you were
+>>> doing synchronous writes already so you've already avoided having a
+>>> bunch of data buffered up.
+>> 
+>> Hi Jeff
+>> 
+>> After doing more test verification, here are the reasons for the low watermark. Reason #2 is the strongest justification.
+>> 
+>> 1) It's a bad idea to "just let the client attempt the writes".
+>> 
+>> The client needs a valid GSS context to send an RPCSEC_GSS RPC because of the checksum of the RPC header (up to and including the credential) that is computed using the GSS_GetMIC() call with enctype and the QOP from the GSS context.
+>> 
+>> Plus, the client and the server see the same TGT lifetime, and thus the same GSS context expiration.
+>> 
+>> Therefore, the only time the client can send an RPCSEC_GSS Kerberos GSS security mechanism RPC to the server and have it reject the RPC with -EACCES (or the RPC level RPCSEC_GSS_CTXPROBLEM) is in the case where the GSS context expires while the RPC is in flight or prior to the RPCSEC_GSS processing by the server.  99.999% of the time, the client determines whether or not the RPCSEC_GSS  call fails prior to putting an RPC on the wire based on it's GSS context expiry.  So it is not an option to wait for the server to reject the RPC.
+> 
+> NACK. That's not an acceptable strategy.
+
+> 
+> Neither the NFS client nor the RPC client knows whether or not the TGT
+> has been renewed until it tries to establish a new RPCSEC_GSS session.
+
+Well, it is unknown until an upcall to GSSD is done which currently is only triggered by trying to establish a new RPCSEC_GSS session. 
+
+> 
+> If we don't attempt the WRITE, then we don't know if it will succeed or
+> fail.
+
+I disagree with that strategy, because of all the reasons stated as justification of the low watermark.
+
+I propose that we provide a strategy of checking  for the renewal of the TGT once we are within the watermark(s) independent from the current "refresh only if it's failed" in the RPC layer.  Once we are in the watermark(s) we are preparing to FAIL. If we find the TGT refreshed, then we can back off the nfs_wb_all/NFS_FILE_SYNC in the high watermark.
+
+For starters, I propose that we do a refresh upcall once the first time we see we are within the high water mark, and once the first time we see we are in the the low water mark prior to setting -EACCES. This could simply be a flag that triggers a refresh upcall in generic_key_timeout.
+
+> 
+>> 2) It's a really really good idea to give the client time to clean up by sending a CLOSE to let the server know what is going on. Note for pNFS the CLOSE also carries an implicit LAYOUTRETURN for the return_on_close case.  Without the CLOSE, the server simply sees WRITEs stop.  BTW this is a good reason to do the same for READ.
+> 
+> No. This too is a bad idea. You're pre-empting any action that the
+> application or user may take.
+
+So does letting the GSS context expire prior to close. If the application gets an -EACCES on a write and is coded to clean up after such a failure e.g. call CLOSE, and then CLOSE fails due to expired GSS context which mean all UNLOCKs also fail…  This pre-empts the action of recovery that the application wants to take. 
+
+Applications are written for AUTH_SYS. They are not used to not being able to clean up after an error.
+
+I think at least a short (5-10 sec) low water mark makes sense along with the proposed additional refresh up calls.
+
+I guess what we really need is a way for TGT renewal (kinit) to notify the RPC layer.  I'll think about this WRT using the keyring.
+
+> 
+>> 3) Extra time to flush buffered data. With my patch set, data is allowed to be buffered, but then flushed prior to nfs_write_end's return. IIUC, a (multithreaded) application can be writing a very large amount of data, which during the high water mark is sent 1 PAGE at a time NFS_FILE_SYNC.  This takes significantly longer than coalesced buffered UNSTABLE WRITEs and many more RPCs (not continuations).   The purpose of this code is to totally drain the buffered writes. The low water mark provides a period of no new WRITEs giving more RPC resources to the exiting single PAGE draining.  I suspect that we will need to make the watermark(s) tunable via module parameters for different workloads.
+> 
+> Flushing the buffer if we think that the GSS session is about to fail
+> _is_ a good strategy. I'm fine with this part of the patches.
+
+Well, that part of the patches does not work by simply removing the low water mark. I'll find out why i'm never seeing any return other than 0 from nfs_wb_all(). Do you know why?
+
+I'll leave the low water mark in for my testing, and include the ability of setting the water marks via module parameter - so I can include setting the low water mark to 0.  Then we can see how various applications actually respond to having the rug pulled out from under them with/without an opportunity to recover.
+
+-->Andy
+
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
 
