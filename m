@@ -1,76 +1,154 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from hop-nat-141.emc.com ([168.159.213.141]:38420 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751601Ab2IYHMg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Sep 2012 03:12:36 -0400
-From: "Peng, Tao" <tao.peng@emc.com>
-To: Wei Yongjun <weiyj.lk@gmail.com>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
-CC: "yongjun_wei@trendmicro.com.cn" <yongjun_wei@trendmicro.com.cn>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Tue, 25 Sep 2012 03:11:58 -0400
-Subject: RE: [PATCH] NFS: fix the return value of nfs4_blkdev_get()
-Message-ID: <5DFC6BE3BA248842867E85C73BF94B050B18E564AB@MX41A.corp.emc.com>
-References: <CAPgLHd__m_A5gqBP1GgUJb=_fib7bOiJunVoNZn2HCiKyXVjrw@mail.gmail.com>
-In-Reply-To: <CAPgLHd__m_A5gqBP1GgUJb=_fib7bOiJunVoNZn2HCiKyXVjrw@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mx2.netapp.com ([216.240.18.37]:40792 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750726Ab2ILTIo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Sep 2012 15:08:44 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] NFS: Fix fdatasync/fsync() when confronted with a server reboot
+Date: Wed, 12 Sep 2012 15:08:36 -0400
+Message-Id: <1347476917-34642-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
-ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10gT24g
-QmVoYWxmIE9mIFdlaQ0KPiBZb25nanVuDQo+IFNlbnQ6IFR1ZXNkYXksIFNlcHRlbWJlciAyNSwg
-MjAxMiAxOjQ0IFBNDQo+IFRvOiBUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0KPiBDYzogeW9u
-Z2p1bl93ZWlAdHJlbmRtaWNyby5jb20uY247IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcNCj4g
-U3ViamVjdDogW1BBVENIXSBORlM6IGZpeCB0aGUgcmV0dXJuIHZhbHVlIG9mIG5mczRfYmxrZGV2
-X2dldCgpDQo+IA0KPiBGcm9tOiBXZWkgWW9uZ2p1biA8eW9uZ2p1bl93ZWlAdHJlbmRtaWNyby5j
-b20uY24+DQo+IA0KPiBJbiBjYXNlIG9mIGVycm9yLCB0aGUgZnVuY3Rpb24gbmZzNF9ibGtkZXZf
-Z2V0KCkgcmV0dXJuIE5VTEwgcG9pbnRlci4NCj4gQnV0IHRoZSB1c2VyIG5mczRfYmxrX2RlY29k
-ZV9kZXZpY2UoKSBjaGVjayB0aGUgcmV0dXJuIHZhbHVlIGJ5IHVzaW5nDQo+IElTX0VSUigpIGFu
-ZCBnZXQgZXJyb3IgY29kZSBmcm9tIHRoZSByZXR1cm4gdmFsdWUuIFNvIHdlIHNob3VsZCBiZXR0
-ZXINCj4gY2hhbmdlIHRoZSByZXR1cm4gdmFsdWUgb2YgbmZzNF9ibGtkZXZfZ2V0KCkgdG8gcmV0
-dXJuIEVSUl9QVFIoKS4NCj4gDQpZZWFoLCBpdCBpcyBtZXJlbHkgbWVzcyBhbmQgc2hvdWxkIGJl
-IGp1c3QgcmVtb3ZlZC4uLiBIb3cgYWJvdXQgZm9sbG93aW5nIHBhdGNoPw0KDQpGcm9tIGUyNjhm
-MWE1OTEzYjAwNWQxMGVlZGI4MmI0ZDUzNTIxZDU2ZDYyMWUgTW9uIFNlcCAxNyAwMDowMDowMCAy
-MDAxDQpGcm9tOiBQZW5nIFRhbyA8YmVyZ3dvbGZAZ21haWwuY29tPg0KRGF0ZTogVHVlLCAyNSBT
-ZXAgMjAxMiAxNDo1NTo1NyArMDgwMA0KU3ViamVjdDogW1BBVENIXSBwbmZzYmxvY2s6IGNsZWFu
-dXAgbmZzNF9ibGtkZXZfZ2V0DQoNCkl0IGlzIG5vdCBuZWVkZWQgYXQgYWxsIGFuZCBpdCBpcyBt
-ZXNzaW5nIHdpdGggcmV0dXJuIHZhbHVlcy4uLg0KDQpSZXBvcnRlZC1ieTogV2VpIFlvbmdqdW4g
-PHlvbmdqdW5fd2VpQHRyZW5kbWljcm8uY29tLmNuPg0KU2lnbmVkLW9mZi1ieTogUGVuZyBUYW8g
-PHRhby5wZW5nQGVtYy5jb20+DQotLS0NCiBmcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQu
-aCAgICB8ICAgIDEgLQ0KIGZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xheW91dGRldi5jIHwgICAy
-NSArKysrKy0tLS0tLS0tLS0tLS0tLS0tLS0tDQogMiBmaWxlcyBjaGFuZ2VkLCA1IGluc2VydGlv
-bnMoKyksIDIxIGRlbGV0aW9ucygtKQ0KDQpkaWZmIC0tZ2l0IGEvZnMvbmZzL2Jsb2NrbGF5b3V0
-L2Jsb2NrbGF5b3V0LmggYi9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuaA0KaW5kZXgg
-MDMzNTA2OS4uZWQ5NmY3NCAxMDA2NDQNCi0tLSBhL2ZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xh
-eW91dC5oDQorKysgYi9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXQuaA0KQEAgLTE3Miw3
-ICsxNzIsNiBAQCBzdHJ1Y3QgYmxfbXNnX2hkciB7DQogLyogYmxvY2tsYXlvdXRkZXYuYyAqLw0K
-IHNzaXplX3QgYmxfcGlwZV9kb3duY2FsbChzdHJ1Y3QgZmlsZSAqLCBjb25zdCBjaGFyIF9fdXNl
-ciAqLCBzaXplX3QpOw0KIHZvaWQgYmxfcGlwZV9kZXN0cm95X21zZyhzdHJ1Y3QgcnBjX3BpcGVf
-bXNnICopOw0KLXN0cnVjdCBibG9ja19kZXZpY2UgKm5mczRfYmxrZGV2X2dldChkZXZfdCBkZXYp
-Ow0KIGludCBuZnM0X2Jsa2Rldl9wdXQoc3RydWN0IGJsb2NrX2RldmljZSAqYmRldik7DQogc3Ry
-dWN0IHBuZnNfYmxvY2tfZGV2ICpuZnM0X2Jsa19kZWNvZGVfZGV2aWNlKHN0cnVjdCBuZnNfc2Vy
-dmVyICpzZXJ2ZXIsDQogCQkJCQkJc3RydWN0IHBuZnNfZGV2aWNlICpkZXYpOw0KZGlmZiAtLWdp
-dCBhL2ZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xheW91dGRldi5jIGIvZnMvbmZzL2Jsb2NrbGF5
-b3V0L2Jsb2NrbGF5b3V0ZGV2LmMNCmluZGV4IGM5NjU1NDIuLmE4NmM1YmQgMTAwNjQ0DQotLS0g
-YS9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXRkZXYuYw0KKysrIGIvZnMvbmZzL2Jsb2Nr
-bGF5b3V0L2Jsb2NrbGF5b3V0ZGV2LmMNCkBAIC01MywyMiArNTMsNiBAQCBzdGF0aWMgaW50IGRl
-Y29kZV9zZWN0b3JfbnVtYmVyKF9fYmUzMiAqKnJwLCBzZWN0b3JfdCAqc3ApDQogCXJldHVybiAw
-Ow0KIH0NCiANCi0vKiBPcGVuIGEgYmxvY2tfZGV2aWNlIGJ5IGRldmljZSBudW1iZXIuICovDQot
-c3RydWN0IGJsb2NrX2RldmljZSAqbmZzNF9ibGtkZXZfZ2V0KGRldl90IGRldikNCi17DQotCXN0
-cnVjdCBibG9ja19kZXZpY2UgKmJkOw0KLQ0KLQlkcHJpbnRrKCIlcyBlbnRlclxuIiwgX19mdW5j
-X18pOw0KLQliZCA9IGJsa2Rldl9nZXRfYnlfZGV2KGRldiwgRk1PREVfUkVBRCwgTlVMTCk7DQot
-CWlmIChJU19FUlIoYmQpKQ0KLQkJZ290byBmYWlsOw0KLQlyZXR1cm4gYmQ7DQotZmFpbDoNCi0J
-ZHByaW50aygiJXMgZmFpbGVkIHRvIG9wZW4gZGV2aWNlIDogJWxkXG4iLA0KLQkJCV9fZnVuY19f
-LCBQVFJfRVJSKGJkKSk7DQotCXJldHVybiBOVUxMOw0KLX0NCi0NCiAvKg0KICAqIFJlbGVhc2Ug
-dGhlIGJsb2NrIGRldmljZQ0KICAqLw0KQEAgLTE3MiwxMSArMTU2LDEyIEBAIG5mczRfYmxrX2Rl
-Y29kZV9kZXZpY2Uoc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZlciwNCiAJCWdvdG8gb3V0Ow0KIAl9
-DQogDQotCWJkID0gbmZzNF9ibGtkZXZfZ2V0KE1LREVWKHJlcGx5LT5tYWpvciwgcmVwbHktPm1p
-bm9yKSk7DQorCWJkID0gYmxrZGV2X2dldF9ieV9kZXYoTUtERVYocmVwbHktPm1ham9yLCByZXBs
-eS0+bWlub3IpLA0KKwkJCSAgICAgICBGTU9ERV9SRUFELCBOVUxMKTsNCiAJaWYgKElTX0VSUihi
-ZCkpIHsNCi0JCXJjID0gUFRSX0VSUihiZCk7DQotCQlkcHJpbnRrKCIlcyBmYWlsZWQgdG8gb3Bl
-biBkZXZpY2UgOiAlZFxuIiwgX19mdW5jX18sIHJjKTsNCi0JCXJ2ID0gRVJSX1BUUihyYyk7DQor
-CQlkcHJpbnRrKCIlcyBmYWlsZWQgdG8gb3BlbiBkZXZpY2UgOiAlbGRcbiIsIF9fZnVuY19fLA0K
-KwkJCVBUUl9FUlIoYmQpKTsNCisJCXJ2ID0gRVJSX0NBU1QoYmQpOw0KIAkJZ290byBvdXQ7DQog
-CX0NCiANCi0tIA0KMS43LjcuNg0KDQoNCg0K
+If the server reboots before it can commit the unstable writes to disk,
+then nfs_commit_release_pages() will detect this when it compares the
+verifier returned by COMMIT to the one returned by WRITE. When this
+happens, the client needs to resend those writes in order to guarantee
+that they make it to stable storage.
+
+This patch adds a signalling mechanism to notify fsync() that it
+needs to retry all writes before it can exit.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/file.c          | 34 ++++++++++++++++++++++------------
+ fs/nfs/nfs4file.c      | 22 ++++++++++++----------
+ fs/nfs/write.c         |  1 +
+ include/linux/nfs_fs.h |  1 +
+ 4 files changed, 36 insertions(+), 22 deletions(-)
+
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 6a7fcab..cc9b566 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -259,7 +259,7 @@ nfs_file_fsync_commit(struct file *file, loff_t start, loff_t end, int datasync)
+ 	struct dentry *dentry = file->f_path.dentry;
+ 	struct nfs_open_context *ctx = nfs_file_open_context(file);
+ 	struct inode *inode = dentry->d_inode;
+-	int have_error, status;
++	int have_error, do_resend, status;
+ 	int ret = 0;
+ 
+ 	dprintk("NFS: fsync file(%s/%s) datasync %d\n",
+@@ -267,15 +267,23 @@ nfs_file_fsync_commit(struct file *file, loff_t start, loff_t end, int datasync)
+ 			datasync);
+ 
+ 	nfs_inc_stats(inode, NFSIOS_VFSFSYNC);
++	do_resend = test_and_clear_bit(NFS_CONTEXT_RESEND_WRITES, &ctx->flags);
+ 	have_error = test_and_clear_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
+ 	status = nfs_commit_inode(inode, FLUSH_SYNC);
+-	if (status >= 0 && ret < 0)
+-		status = ret;
+ 	have_error |= test_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
+-	if (have_error)
++	if (have_error) {
+ 		ret = xchg(&ctx->error, 0);
+-	if (!ret && status < 0)
++		if (ret)
++			goto out;
++	}
++	if (status < 0) {
+ 		ret = status;
++		goto out;
++	}
++	do_resend |= test_bit(NFS_CONTEXT_RESEND_WRITES, &ctx->flags);
++	if (do_resend)
++		ret = -EAGAIN;
++out:
+ 	return ret;
+ }
+ EXPORT_SYMBOL_GPL(nfs_file_fsync_commit);
+@@ -286,13 +294,15 @@ nfs_file_fsync(struct file *file, loff_t start, loff_t end, int datasync)
+ 	int ret;
+ 	struct inode *inode = file->f_path.dentry->d_inode;
+ 
+-	ret = filemap_write_and_wait_range(inode->i_mapping, start, end);
+-	if (ret != 0)
+-		goto out;
+-	mutex_lock(&inode->i_mutex);
+-	ret = nfs_file_fsync_commit(file, start, end, datasync);
+-	mutex_unlock(&inode->i_mutex);
+-out:
++	do {
++		ret = filemap_write_and_wait_range(inode->i_mapping, start, end);
++		if (ret != 0)
++			break;
++		mutex_lock(&inode->i_mutex);
++		ret = nfs_file_fsync_commit(file, start, end, datasync);
++		mutex_unlock(&inode->i_mutex);
++	} while (ret == -EAGAIN);
++
+ 	return ret;
+ }
+ 
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index eb5eb8e..eef1b38 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -95,16 +95,18 @@ nfs4_file_fsync(struct file *file, loff_t start, loff_t end, int datasync)
+ 	int ret;
+ 	struct inode *inode = file->f_path.dentry->d_inode;
+ 
+-	ret = filemap_write_and_wait_range(inode->i_mapping, start, end);
+-	if (ret != 0)
+-		goto out;
+-	mutex_lock(&inode->i_mutex);
+-	ret = nfs_file_fsync_commit(file, start, end, datasync);
+-	if (!ret && !datasync)
+-		/* application has asked for meta-data sync */
+-		ret = pnfs_layoutcommit_inode(inode, true);
+-	mutex_unlock(&inode->i_mutex);
+-out:
++	do {
++		ret = filemap_write_and_wait_range(inode->i_mapping, start, end);
++		if (ret != 0)
++			break;
++		mutex_lock(&inode->i_mutex);
++		ret = nfs_file_fsync_commit(file, start, end, datasync);
++		if (!ret && !datasync)
++			/* application has asked for meta-data sync */
++			ret = pnfs_layoutcommit_inode(inode, true);
++		mutex_unlock(&inode->i_mutex);
++	} while (ret == -EAGAIN);
++
+ 	return ret;
+ }
+ 
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index e1b5fe4..9347ab7 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1580,6 +1580,7 @@ static void nfs_commit_release_pages(struct nfs_commit_data *data)
+ 		/* We have a mismatch. Write the page again */
+ 		dprintk(" mismatch\n");
+ 		nfs_mark_request_dirty(req);
++		set_bit(NFS_CONTEXT_RESEND_WRITES, &req->wb_context->flags);
+ 	next:
+ 		nfs_unlock_and_release_request(req);
+ 	}
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 869eac0..383f331 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -103,6 +103,7 @@ struct nfs_open_context {
+ 
+ 	unsigned long flags;
+ #define NFS_CONTEXT_ERROR_WRITE		(0)
++#define NFS_CONTEXT_RESEND_WRITES	(1)
+ 	int error;
+ 
+ 	struct list_head list;
+-- 
+1.7.11.4
+
