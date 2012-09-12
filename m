@@ -1,79 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53976 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:17856 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759091Ab2IER1D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Sep 2012 13:27:03 -0400
-Date: Wed, 5 Sep 2012 13:27:01 -0400
-To: Attila =?utf-8?B?Qm9nw6Fy?= <attila.bogar@linguamatics.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFS client: RPCSEC_GSS w/ Kerberos over TCP
-Message-ID: <20120905172701.GB9002@fieldses.org>
-References: <5047676E.3050000@linguamatics.com>
+	id S1751026Ab2ILTTj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Sep 2012 15:19:39 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+CC: Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
+        "Linux NFS mailing list" <linux-nfs@vger.kernel.org>
+Subject: [GIT PULL] Please pull NFS client bugfixes
+Date: Wed, 12 Sep 2012 19:19:37 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F9F0CD@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <5047676E.3050000@linguamatics.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 05, 2012 at 03:53:34PM +0100, Attila Bogár wrote:
-> Hi,
-> 
-> I'm new on this list, this is my first post.
-> 
-> I can see some interoperability problems between FreeBSD 8 and 9
-> stable NFS servers and some Linux NFS clients when using Kerberized
-> NFS.
-> 
-> I noticed that around nfs-utils 1.2.3 something must have changed on
-> the Linux side or the Linux became more agile to trigger a bug with
-> the FreeBSD.
-> 
-> Maybe these issues have been reported or fixed, but on a current
-> RHEL 6.3 and Ubuntu 12.04 LTS they still do exist.
-> 
-> When the Linux clients mount a FreeBSD NFS share (v3 or v4)
-> sec=krb5*, they sometimes get an access denied.
-> If they are able to mount anyway, then subsequent NFS I/O errors continue.
-> 
-> So far:
-> http://lists.freebsd.org/pipermail/freebsd-fs/2012-August/015047.html
-> http://lists.freebsd.org/pipermail/freebsd-fs/2012-September/015050.html
-> 
-> I have some questions.  As this is an interop problem, I'd like to
-> clarify a few things.
-> 
-> This what I see on the wireshark trace during an NFSv4 mount -o
-> proto=tcp,sec=krb5:
-> The client is EL6 with a patched nfs-utils package as per:
-> https://bugzilla.redhat.com/show_bug.cgi?id=802469 and gssd started
-> with -l (legacy) option
-> 
-> TCP0: -> Linux NFS AUTH_NULL
-> TCP0: <- FreeBSD responds
-> 
-> TCP1: -> Linux sends RPCSEC_GSS_INIT
-> TCP1: <- FreeBSD responds by establishing GSS Context (it's a 16 byte token)
-> 
-> TCP1: -> Linux sends RPCSEC_GSS_DESTROY using the received 16 byte token
-> TCP0: -> Linux sends NFS:PUTROOTFS|GETATTR using the same 16 byte received gss context token
-> 
-> 
-> Re-using the gss context on the other tcp connection and immediately
-> destroying it looks like a bug in the Linux NFS layer?
-
-Yes.
-
-Might be worth either reporting to redhat or retesting with the most
-recent upstream kernel.
-
-> Another worry I see, is that the RPCSEC_GSS_DESTROY when validated
-> on the FreeBSD side gss_verify_mic returns maj_stat =
-> GSS_S_DEFECTIVE_TOKEN - which is quite strange (this still can be a
-> FreeBSD bug).
-
-Right, we'd have to look closer to be sure.  Might be worth grepping the
-freebsd code for returns of GSS_S_DEFECTIVE_TOKEN and seeing if that
-helps pin down what its complaint is.
-
---b.
+SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgMDg2NjAwNDMw
+NDkzZTA0YjgwMmJlZTZlNWIzY2UwNDU4ZTRlYjc3ZjoNCg0KICBORlN2MzogRW5zdXJlIHRoYXQg
+ZG9fcHJvY19nZXRfcm9vdCgpIHJlcG9ydHMgZXJyb3JzIGNvcnJlY3RseSAoMjAxMi0wOC0yMCAx
+Mjo1Mjo0MiAtMDQwMCkNCg0KYXJlIGF2YWlsYWJsZSBpbiB0aGUgZ2l0IHJlcG9zaXRvcnkgYXQ6
+DQoNCiAgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9saW51eC1uZnMu
+Z2l0IHRhZ3MvbmZzLWZvci0zLjYtNA0KDQpmb3IgeW91IHRvIGZldGNoIGNoYW5nZXMgdXAgdG8g
+N2IyODFlZTAyNjU1MmYxMDg2MmI2MTdhMmE1MWFjZjQ5YzgyOTU1NDoNCg0KICBORlM6IGZzeW5j
+KCkgbXVzdCBleGl0IHdpdGggYW4gZXJyb3IgaWYgcGFnZSB3cml0ZWJhY2sgZmFpbGVkICgyMDEy
+LTA5LTExIDE1OjM4OjMyIC0wNDAwKQ0KDQotLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpORlMgY2xpZW50IGJ1Z2ZpeGVzIGZv
+ciBMaW51eCAzLjYNCg0KLSBGaW5hbCAoaG9wZWZ1bGx5KSBmaXggZm9yIHRoZSByYW5nZSBjaGVj
+a2luZyBjb2RlIGluIE5GU3Y0IGdldGFjbC4gVGhpcw0KICBzaG91bGQgZml4IHRoZSBPb3BzZXMg
+YmVpbmcgc2VlbiB3aGVuIHRoZSBhY2wgc2l6ZSBpcyBjbG9zZSB0byBQQUdFX1NJWkUuDQotIEZp
+eCBhIHJlZ3Jlc3Npb24gd2l0aCB0aGUgbGVnYWN5IGJpbmFyeSBtb3VudCBjb2RlDQotIEZpeCBh
+IHJlZ3Jlc3Npb24gaW4gdGhlIHJlYWRkaXIgY29va2lldmVyZiBpbml0aWFsaXNhdGlvbg0KLSBG
+aXggYW4gUlBDIG92ZXIgVURQIHJlZ3Jlc3Npb24NCi0gRW5zdXJlIHRoYXQgd2UgcmVwb3J0IGFs
+bCBlcnJvcnMgaW4gdGhlIE5GU3Y0IG9wZW4gY29kZQ0KLSBFbnN1cmUgdGhhdCBmc3luYygpIHJl
+cG9ydHMgYWxsIHJlbGV2YW50IHN5bmNocm9uaXNhdGlvbiBlcnJvcnMuDQoNCi0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NClRy
+b25kIE15a2xlYnVzdCAoNik6DQogICAgICBORlM6IEZpeCB0aGUgaW5pdGlhbGlzYXRpb24gb2Yg
+dGhlIHJlYWRkaXIgJ2Nvb2tpZXZlcmYnIGFycmF5DQogICAgICBORlM6IEZpeCBhIHByb2JsZW0g
+d2l0aCB0aGUgbGVnYWN5IGJpbmFyeSBtb3VudCBjb2RlDQogICAgICBORlN2NDogRml4IHJhbmdl
+IGNoZWNraW5nIGluIF9fbmZzNF9nZXRfYWNsX3VuY2FjaGVkIGFuZCBfX25mczRfcHJvY19zZXRf
+YWNsDQogICAgICBORlN2NDogRml4IGJ1ZmZlciBvdmVyZmxvdyBjaGVja2luZyBpbiBfX25mczRf
+Z2V0X2FjbF91bmNhY2hlZA0KICAgICAgU1VOUlBDOiBGaXggYSBVRFAgdHJhbnNwb3J0IHJlZ3Jl
+c3Npb24NCiAgICAgIE5GUzogZnN5bmMoKSBtdXN0IGV4aXQgd2l0aCBhbiBlcnJvciBpZiBwYWdl
+IHdyaXRlYmFjayBmYWlsZWQNCg0KV2VzdG9uIEFuZHJvcyBBZGFtc29uICgxKToNCiAgICAgIE5G
+UzogcmV0dXJuIGVycm9yIGZyb20gZGVjb2RlX2dldGZoIGluIGRlY29kZSBvcGVuDQoNCiBmcy9u
+ZnMvZmlsZS5jICAgICAgICAgICAgICAgICAgIHwgIDQgKystDQogZnMvbmZzL2lub2RlLmMgICAg
+ICAgICAgICAgICAgICB8ICAyICstDQogZnMvbmZzL25mczNwcm9jLmMgICAgICAgICAgICAgICB8
+ICAyICstDQogZnMvbmZzL25mczRmaWxlLmMgICAgICAgICAgICAgICB8ICA0ICsrLQ0KIGZzL25m
+cy9uZnM0cHJvYy5jICAgICAgICAgICAgICAgfCA1NSArKysrKysrKysrKysrKysrKysrLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLQ0KIGZzL25mcy9uZnM0eGRyLmMgICAgICAgICAgICAgICAgfCAxNyAr
+KysrKystLS0tLS0tDQogZnMvbmZzL3N1cGVyLmMgICAgICAgICAgICAgICAgICB8ICAyICsrDQog
+aW5jbHVkZS9saW51eC9uZnNfZnMuaCAgICAgICAgICB8ICA1IC0tLS0NCiBpbmNsdWRlL2xpbnV4
+L25mc194ZHIuaCAgICAgICAgIHwgIDIgKy0NCiBpbmNsdWRlL2xpbnV4L3N1bnJwYy94cHJ0Lmgg
+ICAgIHwgIDMgKysrDQogbmV0L3N1bnJwYy94cHJ0LmMgICAgICAgICAgICAgICB8IDM0ICsrKysr
+KysrKysrKysrLS0tLS0tLS0tLS0NCiBuZXQvc3VucnBjL3hwcnRyZG1hL3RyYW5zcG9ydC5jIHwg
+IDEgKw0KIG5ldC9zdW5ycGMveHBydHNvY2suYyAgICAgICAgICAgfCAgMyArKysNCiAxMyBmaWxl
+cyBjaGFuZ2VkLCA3MCBpbnNlcnRpb25zKCspLCA2NCBkZWxldGlvbnMoLSkNCg0KLS0gDQpUcm9u
+ZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25k
+Lk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
