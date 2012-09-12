@@ -1,74 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from kms.syseleven.de ([176.74.58.26]:58184 "EHLO kms.syseleven.de"
+Received: from mx2.netapp.com ([216.240.18.37]:40792 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757676Ab2IRODs convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Sep 2012 10:03:48 -0400
-Subject: Re: NFS over RDMA small block DIRECT_IO bug
-Mime-Version: 1.0 (Apple Message framework v1278)
-Content-Type: text/plain; charset=US-ASCII
-From: Andrew Holway <a.holway@syseleven.de>
-In-Reply-To: <504F6EE9.5070908@RedHat.com>
-Date: Tue, 18 Sep 2012 16:03:39 +0200
-Cc: kvm@vger.kernel.org, libvir-list@redhat.com, linux-nfs@vger.kernel.org
-Message-Id: <72D13AE7-98F6-4582-9C64-66AAEE0BB4D8@syseleven.de>
-References: <F416961E-A33A-44D3-A788-5EF598A0AAFE@syseleven.de> <504F6EE9.5070908@RedHat.com>
-To: Steve Dickson <SteveD@redhat.com>
+	id S1750737Ab2ILTIp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Sep 2012 15:08:45 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/2] NFS: Write the entire file if a server reboot occurs during fsync()
+Date: Wed, 12 Sep 2012 15:08:37 -0400
+Message-Id: <1347476917-34642-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1347476917-34642-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1347476917-34642-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Steve,
+This is to ensure that we don't clear the NFS_CONTEXT_RESEND_WRITES
+flag while there are still writes that haven't been resent.
 
-Do you think these patches will make their way into the redhat kernel sometime soon?
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/file.c     | 7 +++++++
+ fs/nfs/nfs4file.c | 7 +++++++
+ 2 files changed, 14 insertions(+)
 
-What is the state of support for NFS over RDMA support at redhat?
-
-Thanks,
-
-Andrew
-
-
-On Sep 11, 2012, at 7:03 PM, Steve Dickson wrote:
-
-> 
-> 
-> On 09/04/2012 05:31 AM, Andrew Holway wrote:
->> Hello.
->> 
->> # Avi Kivity avi(a)redhat recommended I copy kvm in on this. It would also seem relevent to libvirt. #
->> 
->> I have a Centos 6.2 server and Centos 6.2 client.
->> 
->> [root@store ~]# cat /etc/exports 
->> /dev/shm				10.149.0.0/16(rw,fsid=1,no_root_squash,insecure)    (I have tried with non tempfs targets also)
->> 
->> 
->> [root@node001 ~]# cat /etc/fstab 
->> store.ibnet:/dev/shm             /mnt                 nfs          rdma,port=2050,defaults 0 0
->> 
->> 
->> I wrote a little for loop one liner that dd'd the centos net install image to a file called 'hello' then checksummed that file. Each iteration uses a different block size.
->> 
->> Non DIRECT_IO seems to work fine. DIRECT_IO with 512byte, 1K and 2K block sizes get corrupted.
->> 
->> I want to run my KVM guests on top of NFS over RDMA. My guests cannot create filesystems.
->> 
->> Thanks,
->> 
->> Andrew.
->> 
->> bug report: https://bugzilla.linux-nfs.org/show_bug.cgi?id=228
-> Well it appears the RHEL6 kernels are lacking a couple patches that might
-> help with this....
-> 
-> 5c635e09 RPCRDMA: Fix FRMR registration/invalidate handling.
-> 9b78145c xprtrdma: Remove assumption that each segment is <= PAGE_SIZE
-> 
-> I can only image that Centos 6.2 might me lacking these too... ;-)
-> 
-> steved.
-> --
-> To unsubscribe from this list: send the line "unsubscribe kvm" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index cc9b566..c814666 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -301,6 +301,13 @@ nfs_file_fsync(struct file *file, loff_t start, loff_t end, int datasync)
+ 		mutex_lock(&inode->i_mutex);
+ 		ret = nfs_file_fsync_commit(file, start, end, datasync);
+ 		mutex_unlock(&inode->i_mutex);
++		/*
++		 * If nfs_file_fsync_commit detected a server reboot, then
++		 * resend all dirty pages that might have been covered by
++		 * the NFS_CONTEXT_RESEND_WRITES flag
++		 */
++		start = 0;
++		end = LLONG_MAX;
+ 	} while (ret == -EAGAIN);
+ 
+ 	return ret;
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index eef1b38..afddd66 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -105,6 +105,13 @@ nfs4_file_fsync(struct file *file, loff_t start, loff_t end, int datasync)
+ 			/* application has asked for meta-data sync */
+ 			ret = pnfs_layoutcommit_inode(inode, true);
+ 		mutex_unlock(&inode->i_mutex);
++		/*
++		 * If nfs_file_fsync_commit detected a server reboot, then
++		 * resend all dirty pages that might have been covered by
++		 * the NFS_CONTEXT_RESEND_WRITES flag
++		 */
++		start = 0;
++		end = LLONG_MAX;
+ 	} while (ret == -EAGAIN);
+ 
+ 	return ret;
+-- 
+1.7.11.4
 
