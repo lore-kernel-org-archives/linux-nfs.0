@@ -1,35 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from earth.cora.nwra.com ([4.28.99.180]:36251 "EHLO
-	mail.cora.nwra.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757207Ab2IYQuM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Sep 2012 12:50:12 -0400
-Received: from orca.cora.nwra.com (orca.cora.nwra.com [10.10.20.2])
-	(authenticated bits=0)
-	by mail.cora.nwra.com (8.13.8/8.13.8) with ESMTP id q8PGiLB7016236
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Tue, 25 Sep 2012 10:44:21 -0600
-Message-ID: <5061DF69.8030606@cora.nwra.com>
-Date: Tue, 25 Sep 2012 10:44:25 -0600
-From: Orion Poplawski <orion@cora.nwra.com>
+Received: from mx2.netapp.com ([216.240.18.37]:13579 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753330Ab2ILUyP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Sep 2012 16:54:15 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Simon Kirby <sim@hostway.ca>
+CC: Yan-Pai Chen <yanpai.chen@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [3.2.5] NFSv3 CLOSE_WAIT hang
+Date: Wed, 12 Sep 2012 20:54:14 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F9F734@SACEXCMBX04-PRD.hq.netapp.com>
+References: <loom.20120905T093214-245@post.gmane.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F86381@SACEXCMBX04-PRD.hq.netapp.com>
+	 <6cb9.5049fd40.b47c1@altium.nl> <6cb9.5049fd40.b47c1@altium.nl>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F8E302@SACEXCMBX04-PRD.hq.netapp.com>
+	 <447c.504a05c9.dd0a9@altium.nl> <447c.504a05c9.dd0a9@altium.nl>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F8E833@SACEXCMBX04-PRD.hq.netapp.com>
+	 <74c7.504b9d45.a5956@altium.nl> <loom.20120910T105944-416@post.gmane.org>
+	 <20120911194051.GB11160@hostway.ca>
+	 <1347401844.15208.17.camel@lade.trondhjem.org>
+In-Reply-To: <1347401844.15208.17.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Any way to allow setuid daemon to access krb5 automounted nfs directories?
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Is there any way to allow setuid daemon to access krb5 automounted nfs 
-directories?  Specifically I'm looking to run spamassassin's spamd on a remote 
-server and access user's home directories via krb5 nfs4.  spamd changes user 
-to the user receiving the email being processes and needs to modify files in 
-the user's home directory.  Is there any reasonably secure way to give this 
-daemon the ability to do this?  Any way to tell rpc.gssd to use a specific 
-credential cache for this type of access rather than the default for that 
-effective uid?
-
--- 
-Orion Poplawski
-Technical Manager                     303-415-9701 x222
-NWRA, Boulder Office                  FAX: 303-415-9702
-3380 Mitchell Lane                       orion@nwra.com
-Boulder, CO 80301                   http://www.nwra.com
+T24gVHVlLCAyMDEyLTA5LTExIGF0IDE4OjE3IC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
+DQo+IE9uIFR1ZSwgMjAxMi0wOS0xMSBhdCAxMjo0MCAtMDcwMCwgU2ltb24gS2lyYnkgd3JvdGU6
+DQo+ID4gSGVsbG8hDQo+ID4gDQo+ID4gVGhpcyBwcm9ibGVtIHN0aWxsIGJpdGVzIHVzIHJhcmVs
+eSwgYW5kIHdlJ3ZlIGJlZW4gdXNpbmcgVENQIE5GUyBmb3Igc29tZQ0KPiA+IHRpbWUuIEhvd2V2
+ZXIsIG91ciBjYXNlIHNlZW1zIHRvIGJlIG5hcnJvd2VkIGl0IGRvd24gdG8gYSB2ZXJ5IGxvbmcN
+Cj4gPiBzdG9yYWdlIGhhbmcgb24gdGhlIGtuZnNkIHNpZGUuIElmIHN0b3JhZ2UgbmV2ZXIgaGFz
+IGFueSBwcm9ibGVtcywgd2UNCj4gPiBkb24ndCBzZWUgdGhlIE5GUyBjbGllbnQgaGFuZy4gSSB3
+YXMgZ29pbmcgdG8gdHJ5IHRvIG1ha2UgYSB0ZXN0LWNhc2UgYnkNCj4gPiBmb3JjaW5nIHRoZSBz
+ZXJ2ZXIgdG8gaGFuZywgYnV0IEkgbmV2ZXIgZ290IGFyb3VuZCB0byB0aGlzLiBNZWFud2hpbGUs
+DQo+ID4gSSd2ZSBiZWVuIHJ1bm5pbmcgdGhlIGNsaWVudHMgd2l0aCB0aGUgZGVidWdnaW5nIHBh
+dGNoZXMgSSBwb3N0ZWQNCj4gPiBlYXJsaWVyLCBhbmQgaXQgYWx3YXlzIHByaW50cyB0aGUgJ3hw
+cnRfZm9yY2VfZGlzY29ubmVjdCgpOiBzZXR0aW5nDQo+ID4gWFBSVF9DTE9TRV9XQUlUIiB3YXJu
+aW5nIGJlZm9yZSBoYW5naW5nLiBJZiBBcGFjaGUgaXMgaW4gc2VuZGZpbGUoKSBhdA0KPiA+IHRo
+ZSB0aW1lLCBpdCBzZWVtcyB0byBnZXQgc3R1Y2sgZm9yZXZlcjsgb3RoZXJ3aXNlLCBpdCBtaWdo
+dCByZWNvdmVyLg0KPiANCj4gRG9lcyB0aGUgImlmICh0ZXN0X2FuZF9zZXRfYml0KFhQUlRfTE9D
+SykgPT0gMCkiIGNvbmRpdGlvbiBpbW1lZGlhdGVseQ0KPiBmb2xsb3dpbmcgdGhhdCBzdWNjZWVk
+IHNvIHRoYXQgcXVldWVfd29yaygpIGlzIGNhbGxlZD8NCj4gDQo+ID4gaHR0cDovL3d3dy5zcGlu
+aWNzLm5ldC9saXN0cy9saW51eC1uZnMvbXNnMjk0OTUuaHRtbA0KPiA+IGh0dHA6Ly8weC5jYS9z
+aW0vcmVmLzMuMi4xMC9kbWVzZw0KPiA+IA0KPiA+IEkgc3VwcG9zZSB3ZSBjb3VsZCB0cnkgMy41
+IGF0IHRoaXMgcG9pbnQuDQo+IA0KPiBJZiB5b3UndmUgYmVlbiBrZWVwaW5nIHVwIHdpdGggdGhl
+IDMuMiBzdGFibGUgcmVsZWFzZXMsIHRoZW4gSSB3b3VsZG4ndA0KPiBleHBlY3QgYW55IG1ham9y
+IGRpZmZlcmVuY2VzIHRvIHRoZSBzdW5ycGMgY29kZSwgYnV0IGl0IG1pZ2h0IGJlIHdvcnRoIGEN
+Cj4gdHJ5IGluIGNhc2UgdGhlIG5ldHdvcmtpbmcgbGF5ZXIgaGFzIGNoYW5nZWQuDQoNCkhpIFNp
+bW9uLA0KDQpDYW4geW91IHRyeSB0aGUgZm9sbG93aW5nIHBhdGNoLCBhbmQgc2VlIGlmIGl0IGFk
+ZHJlc3NlcyB0aGUgVENQICJzZXJ2ZXINCmhhbmdzIiBjYXNlPw0KDQpDaGVlcnMNCiAgVHJvbmQN
+Cjg8LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLQ0KRnJvbSA5OTMzMGQwOWNjMTA3NGZiZGM2NDA4OWZhMGEzZjhkYmRj
+NzRkYWFmIE1vbiBTZXAgMTcgMDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxU
+cm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCkRhdGU6IFdlZCwgMTIgU2VwIDIwMTIgMTY6NDk6
+MTUgLTA0MDANClN1YmplY3Q6IFtQQVRDSF0gU1VOUlBDOiBFbnN1cmUgdGhhdCB0aGUgVENQIHNv
+Y2tldCBpcyBjbG9zZWQgd2hlbiBpbg0KIENMT1NFX1dBSVQNCg0KSW5zdGVhZCBvZiBkb2luZyBh
+IHNodXRkb3duKCkgY2FsbCwgd2UgbmVlZCB0byBkbyBhbiBhY3R1YWwgY2xvc2UoKS4NCkRpdHRv
+IGlmL3doZW4gdGhlIHNlcnZlciBpcyBzZW5kaW5nIHVzIGp1bmsgUlBDIGhlYWRlcnMuDQoNClNp
+Z25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+
+DQotLS0NCiBuZXQvc3VucnBjL3hwcnRzb2NrLmMgfCAyMSArKysrKysrKysrKysrKysrLS0tLS0N
+CiAxIGZpbGUgY2hhbmdlZCwgMTYgaW5zZXJ0aW9ucygrKSwgNSBkZWxldGlvbnMoLSkNCg0KZGlm
+ZiAtLWdpdCBhL25ldC9zdW5ycGMveHBydHNvY2suYyBiL25ldC9zdW5ycGMveHBydHNvY2suYw0K
+aW5kZXggYTM1YjhlNS4uZDE5ODhjZiAxMDA2NDQNCi0tLSBhL25ldC9zdW5ycGMveHBydHNvY2su
+Yw0KKysrIGIvbmV0L3N1bnJwYy94cHJ0c29jay5jDQpAQCAtMTAyNSw2ICsxMDI1LDE2IEBAIHN0
+YXRpYyB2b2lkIHhzX3VkcF9kYXRhX3JlYWR5KHN0cnVjdCBzb2NrICpzaywgaW50IGxlbikNCiAJ
+cmVhZF91bmxvY2tfYmgoJnNrLT5za19jYWxsYmFja19sb2NrKTsNCiB9DQogDQorLyoNCisgKiBI
+ZWxwZXIgZnVuY3Rpb24gdG8gZm9yY2UgYSBUQ1AgY2xvc2UgaWYgdGhlIHNlcnZlciBpcyBzZW5k
+aW5nDQorICoganVuayBhbmQvb3IgaXQgaGFzIHB1dCB1cyBpbiBDTE9TRV9XQUlUDQorICovDQor
+c3RhdGljIHZvaWQgeHNfdGNwX2ZvcmNlX2Nsb3NlKHN0cnVjdCBycGNfeHBydCAqeHBydCkNCit7
+DQorCXNldF9iaXQoWFBSVF9DT05ORUNUSU9OX0NMT1NFLCAmeHBydC0+c3RhdGUpOw0KKwl4cHJ0
+X2ZvcmNlX2Rpc2Nvbm5lY3QoeHBydCk7DQorfQ0KKw0KIHN0YXRpYyBpbmxpbmUgdm9pZCB4c190
+Y3BfcmVhZF9mcmFnaGRyKHN0cnVjdCBycGNfeHBydCAqeHBydCwgc3RydWN0IHhkcl9za2JfcmVh
+ZGVyICpkZXNjKQ0KIHsNCiAJc3RydWN0IHNvY2tfeHBydCAqdHJhbnNwb3J0ID0gY29udGFpbmVy
+X29mKHhwcnQsIHN0cnVjdCBzb2NrX3hwcnQsIHhwcnQpOw0KQEAgLTEwNTEsNyArMTA2MSw3IEBA
+IHN0YXRpYyBpbmxpbmUgdm9pZCB4c190Y3BfcmVhZF9mcmFnaGRyKHN0cnVjdCBycGNfeHBydCAq
+eHBydCwgc3RydWN0IHhkcl9za2JfcmVhDQogCS8qIFNhbml0eSBjaGVjayBvZiB0aGUgcmVjb3Jk
+IGxlbmd0aCAqLw0KIAlpZiAodW5saWtlbHkodHJhbnNwb3J0LT50Y3BfcmVjbGVuIDwgOCkpIHsN
+CiAJCWRwcmludGsoIlJQQzogICAgICAgaW52YWxpZCBUQ1AgcmVjb3JkIGZyYWdtZW50IGxlbmd0
+aFxuIik7DQotCQl4cHJ0X2ZvcmNlX2Rpc2Nvbm5lY3QoeHBydCk7DQorCQl4c190Y3BfZm9yY2Vf
+Y2xvc2UoeHBydCk7DQogCQlyZXR1cm47DQogCX0NCiAJZHByaW50aygiUlBDOiAgICAgICByZWFk
+aW5nIFRDUCByZWNvcmQgZnJhZ21lbnQgb2YgbGVuZ3RoICVkXG4iLA0KQEAgLTExMzIsNyArMTE0
+Miw3IEBAIHN0YXRpYyBpbmxpbmUgdm9pZCB4c190Y3BfcmVhZF9jYWxsZGlyKHN0cnVjdCBzb2Nr
+X3hwcnQgKnRyYW5zcG9ydCwNCiAJCWJyZWFrOw0KIAlkZWZhdWx0Og0KIAkJZHByaW50aygiUlBD
+OiAgICAgICBpbnZhbGlkIHJlcXVlc3QgbWVzc2FnZSB0eXBlXG4iKTsNCi0JCXhwcnRfZm9yY2Vf
+ZGlzY29ubmVjdCgmdHJhbnNwb3J0LT54cHJ0KTsNCisJCXhzX3RjcF9mb3JjZV9jbG9zZSgmdHJh
+bnNwb3J0LT54cHJ0KTsNCiAJfQ0KIAl4c190Y3BfY2hlY2tfZnJhZ2hkcih0cmFuc3BvcnQpOw0K
+IH0NCkBAIC0xNDU1LDYgKzE0NjUsOCBAQCBzdGF0aWMgdm9pZCB4c190Y3BfY2FuY2VsX2xpbmdl
+cl90aW1lb3V0KHN0cnVjdCBycGNfeHBydCAqeHBydCkNCiBzdGF0aWMgdm9pZCB4c19zb2NrX21h
+cmtfY2xvc2VkKHN0cnVjdCBycGNfeHBydCAqeHBydCkNCiB7DQogCXNtcF9tYl9fYmVmb3JlX2Ns
+ZWFyX2JpdCgpOw0KKwljbGVhcl9iaXQoWFBSVF9DT05ORUNUSU9OX0FCT1JULCAmeHBydC0+c3Rh
+dGUpOw0KKwljbGVhcl9iaXQoWFBSVF9DT05ORUNUSU9OX0NMT1NFLCAmeHBydC0+c3RhdGUpOw0K
+IAljbGVhcl9iaXQoWFBSVF9DTE9TRV9XQUlULCAmeHBydC0+c3RhdGUpOw0KIAljbGVhcl9iaXQo
+WFBSVF9DTE9TSU5HLCAmeHBydC0+c3RhdGUpOw0KIAlzbXBfbWJfX2FmdGVyX2NsZWFyX2JpdCgp
+Ow0KQEAgLTE1MTIsOCArMTUyNCw4IEBAIHN0YXRpYyB2b2lkIHhzX3RjcF9zdGF0ZV9jaGFuZ2Uo
+c3RydWN0IHNvY2sgKnNrKQ0KIAkJYnJlYWs7DQogCWNhc2UgVENQX0NMT1NFX1dBSVQ6DQogCQkv
+KiBUaGUgc2VydmVyIGluaXRpYXRlZCBhIHNodXRkb3duIG9mIHRoZSBzb2NrZXQgKi8NCi0JCXhw
+cnRfZm9yY2VfZGlzY29ubmVjdCh4cHJ0KTsNCiAJCXhwcnQtPmNvbm5lY3RfY29va2llKys7DQor
+CQl4c190Y3BfZm9yY2VfY2xvc2UoeHBydCk7DQogCWNhc2UgVENQX0NMT1NJTkc6DQogCQkvKg0K
+IAkJICogSWYgdGhlIHNlcnZlciBjbG9zZWQgZG93biB0aGUgY29ubmVjdGlvbiwgbWFrZSBzdXJl
+IHRoYXQNCkBAIC0yMTk5LDggKzIyMTEsNyBAQCBzdGF0aWMgdm9pZCB4c190Y3Bfc2V0dXBfc29j
+a2V0KHN0cnVjdCB3b3JrX3N0cnVjdCAqd29yaykNCiAJCS8qIFdlJ3JlIHByb2JhYmx5IGluIFRJ
+TUVfV0FJVC4gR2V0IHJpZCBvZiBleGlzdGluZyBzb2NrZXQsDQogCQkgKiBhbmQgcmV0cnkNCiAJ
+CSAqLw0KLQkJc2V0X2JpdChYUFJUX0NPTk5FQ1RJT05fQ0xPU0UsICZ4cHJ0LT5zdGF0ZSk7DQot
+CQl4cHJ0X2ZvcmNlX2Rpc2Nvbm5lY3QoeHBydCk7DQorCQl4c190Y3BfZm9yY2VfY2xvc2UoeHBy
+dCk7DQogCQlicmVhazsNCiAJY2FzZSAtRUNPTk5SRUZVU0VEOg0KIAljYXNlIC1FQ09OTlJFU0VU
+Og0KLS0gDQoxLjcuMTEuNA0KDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xp
+ZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3
+Lm5ldGFwcC5jb20NCg==
