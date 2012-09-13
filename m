@@ -1,57 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:24605 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755538Ab2IXRjE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Sep 2012 13:39:04 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] SUNRPC: Set alloc_slot for backchannel tcp ops
-Date: Mon, 24 Sep 2012 13:39:01 -0400
-Message-Id: <1348508341-19642-1-git-send-email-bjschuma@netapp.com>
+Received: from natasha.panasas.com ([67.152.220.90]:36152 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753254Ab2IMXiS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Sep 2012 19:38:18 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@tonian.com>, NFS list <linux-nfs@vger.kernel.org>,
+        open-osd <osd-dev@open-osd.org>
+CC: Sachin Bhamare <sbhamare@panasas.com>
+Subject: [PATCH 08/10] SQUASHME: pnfsd-exofs: Autologin XDR also encode URI in device_info
+Date: Fri, 14 Sep 2012 02:38:06 +0300
+Message-ID: <1347579486-21684-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <50526B39.3000802@panasas.com>
+References: <50526B39.3000802@panasas.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+From: Sachin Bhamare <sbhamare@panasas.com>
 
-f39c1bfb5a03e2d255451bff05be0d7255298fa4 (SUNRPC: Fix a UDP transport
-regression) introduced the "alloc_slot" function for xprt operations,
-but never created one for the backchannel operations.  This patch fixes
-a null pointer dereference when mounting NFS over v4.1.
+Add the missing bits to encode the autologin info strings
 
-Call Trace:
- [<ffffffffa0207957>] ? xprt_reserve+0x47/0x50 [sunrpc]
- [<ffffffffa02023a4>] call_reserve+0x34/0x60 [sunrpc]
- [<ffffffffa020e280>] __rpc_execute+0x90/0x400 [sunrpc]
- [<ffffffffa020e61a>] rpc_async_schedule+0x2a/0x40 [sunrpc]
- [<ffffffff81073589>] process_one_work+0x139/0x500
- [<ffffffff81070e70>] ? alloc_worker+0x70/0x70
- [<ffffffffa020e5f0>] ? __rpc_execute+0x400/0x400 [sunrpc]
- [<ffffffff81073d1e>] worker_thread+0x15e/0x460
- [<ffffffff8145c839>] ? preempt_schedule+0x49/0x70
- [<ffffffff81073bc0>] ? rescuer_thread+0x230/0x230
- [<ffffffff81079603>] kthread+0x93/0xa0
- [<ffffffff81465d04>] kernel_thread_helper+0x4/0x10
- [<ffffffff81079570>] ? kthread_freezable_should_stop+0x70/0x70
- [<ffffffff81465d00>] ? gs_change+0x13/0x13
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
- net/sunrpc/xprtsock.c | 1 +
- 1 file changed, 1 insertion(+)
+ fs/exportfs/pnfs_osd_xdr_srv.c | 45 +++++++++++++++++++++++++++++++++++++++---
+ include/linux/pnfs_osd_xdr.h   |  5 +++++
+ 2 files changed, 47 insertions(+), 3 deletions(-)
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 86b7777..aaaadfb 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2521,6 +2521,7 @@ static struct rpc_xprt_ops xs_tcp_ops = {
- static struct rpc_xprt_ops bc_tcp_ops = {
- 	.reserve_xprt		= xprt_reserve_xprt,
- 	.release_xprt		= xprt_release_xprt,
-+	.alloc_slot		= xprt_alloc_slot,
- 	.rpcbind		= xs_local_rpcbind,
- 	.buf_alloc		= bc_malloc,
- 	.buf_free		= bc_free,
+diff --git a/fs/exportfs/pnfs_osd_xdr_srv.c b/fs/exportfs/pnfs_osd_xdr_srv.c
+index 35b3d32..04a3681 100644
+--- a/fs/exportfs/pnfs_osd_xdr_srv.c
++++ b/fs/exportfs/pnfs_osd_xdr_srv.c
+@@ -178,6 +178,42 @@ static enum nfsstat4 _encode_string(struct exp_xdr_stream *xdr,
+ 	return 0;
+ }
+ 
++/* struct pnfs_osd_targetaddr {
++ *	u32				ota_available;
++ *	struct pnfs_osd_net_addr	ota_netaddr;
++ * };
++ */
++static inline enum nfsstat4 pnfs_osd_xdr_encode_targetaddr(
++	struct exp_xdr_stream *xdr,
++	struct pnfs_osd_targetaddr *taddr)
++{
++	__be32 *p;
++
++	/* ota_available */
++	p = exp_xdr_reserve_space(xdr, 4);
++	if (!p)
++		return NFS4ERR_TOOSMALL;
++	p = exp_xdr_encode_u32(p, taddr->ota_available);
++
++	/* encode r_netid */
++	p = exp_xdr_reserve_space(xdr, 4 + taddr->ota_netaddr.r_netid.len);
++	if (!p)
++		return NFS4ERR_TOOSMALL;
++
++	p = exp_xdr_encode_opaque(p,
++				taddr->ota_netaddr.r_netid.data,
++				taddr->ota_netaddr.r_netid.len);
++
++	/* encode r_addr */
++	p = exp_xdr_reserve_space(xdr, 4 + taddr->ota_netaddr.r_addr.len);
++	if (!p)
++		return NFS4ERR_TOOSMALL;
++	p = exp_xdr_encode_opaque(p,
++				taddr->ota_netaddr.r_addr.data,
++				taddr->ota_netaddr.r_addr.len);
++	return 0;
++}
++
+ /* struct pnfs_osd_deviceaddr {
+  *	struct pnfs_osd_targetid	oda_targetid;
+  *	struct pnfs_osd_targetaddr	oda_targetaddr;
+@@ -193,17 +229,20 @@ enum nfsstat4 pnfs_osd_xdr_encode_deviceaddr(
+ 	__be32 *p;
+ 	enum nfsstat4 err;
+ 
+-	p = exp_xdr_reserve_space(xdr, 4 + 4 + sizeof(devaddr->oda_lun));
++	p = exp_xdr_reserve_space(xdr, sizeof(u32));
+ 	if (!p)
+ 		return NFS4ERR_TOOSMALL;
+ 
+ 	/* Empty oda_targetid */
+ 	p = exp_xdr_encode_u32(p, OBJ_TARGET_ANON);
+ 
+-	/* Empty oda_targetaddr for now */
+-	p = exp_xdr_encode_u32(p, 0);
++	/* oda_targetaddr */
++	err = pnfs_osd_xdr_encode_targetaddr(xdr, &devaddr->oda_targetaddr);
++	if (err)
++		return err;
+ 
+ 	/* oda_lun */
++	p = exp_xdr_reserve_space(xdr, sizeof(devaddr->oda_lun));
+ 	exp_xdr_encode_bytes(p, devaddr->oda_lun, sizeof(devaddr->oda_lun));
+ 
+ 	err = _encode_string(xdr, &devaddr->oda_systemid);
+diff --git a/include/linux/pnfs_osd_xdr.h b/include/linux/pnfs_osd_xdr.h
+index 435dd5f..3aab6e2 100644
+--- a/include/linux/pnfs_osd_xdr.h
++++ b/include/linux/pnfs_osd_xdr.h
+@@ -148,6 +148,11 @@ enum pnfs_osd_targetid_type {
+ 	OBJ_TARGET_SCSI_DEVICE_ID = 3,
+ };
+ 
++enum pnfs_osd_target_ota {
++	OBJ_OTA_UNAVAILABLE = 0,
++	OBJ_OTA_AVAILABLE = 1,
++};
++
+ /*   union pnfs_osd_targetid4 switch (pnfs_osd_targetid_type4 oti_type) {
+  *       case OBJ_TARGET_SCSI_NAME:
+  *           string              oti_scsi_name<>;
 -- 
-1.7.12.1
+1.7.10.2.677.gb6bc67f
 
