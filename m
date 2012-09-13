@@ -1,30 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mxout11.netvision.net.il ([194.90.6.39]:42783 "EHLO
-	mxout11.netvision.net.il" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754083Ab2IER0Q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Sep 2012 13:26:16 -0400
-MIME-version: 1.0
-Content-type: text/plain; CHARSET=US-ASCII
-Reply-to: mail.info187@ok.net
-From: "DR.NED OKOH" <infomail@ok.net>
-Subject: REPLY NEEDED
-Date: Wed, 05 Sep 2012 10:10:31 -0700
-Message-id: <SERVERm0fwYdka0fIQT00004992@offline.co.il>
-To: unlisted-recipients:; (no To-header on input)
+Received: from plane.gmane.org ([80.91.229.3]:41857 "EHLO plane.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752411Ab2IMFWq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Sep 2012 01:22:46 -0400
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1TC1t1-0000Yk-Dh
+	for linux-nfs@vger.kernel.org; Thu, 13 Sep 2012 07:22:48 +0200
+Received: from 59-124-179-67.HINET-IP.hinet.net ([59.124.179.67])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Thu, 13 Sep 2012 07:22:47 +0200
+Received: from yanpai.chen by 59-124-179-67.HINET-IP.hinet.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Thu, 13 Sep 2012 07:22:47 +0200
+To: linux-nfs@vger.kernel.org
+From: Yan-Pai Chen <yanpai.chen@gmail.com>
+Subject: Re: [3.2.5] NFSv3 =?utf-8?b?Q0xPU0VfV0FJVA==?= hang
+Date: Thu, 13 Sep 2012 05:22:32 +0000 (UTC)
+Message-ID: <loom.20120913T072025-998@post.gmane.org>
+References: <loom.20120905T093214-245@post.gmane.org>  <4FA345DA4F4AE44899BD2B03EEEC2FA908F86381@SACEXCMBX04-PRD.hq.netapp.com>  <6cb9.5049fd40.b47c1@altium.nl> <6cb9.5049fd40.b47c1@altium.nl>  <4FA345DA4F4AE44899BD2B03EEEC2FA908F8E302@SACEXCMBX04-PRD.hq.netapp.com>  <447c.504a05c9.dd0a9@altium.nl> <447c.504a05c9.dd0a9@altium.nl>  <4FA345DA4F4AE44899BD2B03EEEC2FA908F8E833@SACEXCMBX04-PRD.hq.netapp.com>  <74c7.504b9d45.a5956@altium.nl> <loom.20120910T105944-416@post.gmane.org>  <20120911194051.GB11160@hostway.ca> <4FA345DA4F4AE44899BD2B03EEEC2FA908F9BDDD@SACEXCMBX04-PRD.hq.netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Good day my dear,
-I am writing to acknowledged you that this is the second time we are notifying you about your payment worth of US$16.5m USD,with foreign Remittance payment department office which is due to be released into your Account As we begin the first fiscal payment of the year 2012.Please send the information below as needed for your fund release to you OK.
+Myklebust, Trond <Trond.Myklebust@...> writes:
 
-1)Your Full Name__________________________ _____________
-2)Your Address_______________________ ______________________________
-3)Your Age___________________________ _______________________
-4)Your Direct Telephone Number________________________ ________________
-5)Fax Number________________________ _________________
-6)Occupation____________________ __________________________
+> > 
+> > I suppose we could try 3.5 at this point.
+> 
+> If you've been keeping up with the 3.2 stable releases, then I wouldn't
+> expect any major differences to the sunrpc code, but it might be worth a
+> try in case the networking layer has changed.
+> 
 
-We sincerely apologies for our late contact with you, We are committed to serve you better OK and you have been advice to get back to me immediately for more details OK.
+Hi Trond,
 
-Yours in service
-Dr.Ned Okoh
+I got the same problem on kernel 3.5 when using TCP mounts.
+The hung task info and rpc_debug messages were just the same as what
+I got on kernel 3.3.
+
+--
+Regards,
+Andrew
+
+
