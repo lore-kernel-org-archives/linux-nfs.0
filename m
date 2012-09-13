@@ -1,62 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f53.google.com ([209.85.216.53]:50146 "EHLO
-	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751369Ab2IUE1m (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Sep 2012 00:27:42 -0400
-Received: by qaas11 with SMTP id s11so971335qaa.19
-        for <linux-nfs@vger.kernel.org>; Thu, 20 Sep 2012 21:27:41 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:34516 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754991Ab2IMR55 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Sep 2012 13:57:57 -0400
+Date: Thu, 13 Sep 2012 13:57:54 -0400
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Jeff Layton <jlayton@redhat.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/4] RFC Avoid expired credential keys for buffered writes
+Message-ID: <20120913175754.GA6566@fieldses.org>
+References: <1346961251-2554-1-git-send-email-andros@netapp.com>
+ <20120910145732.4d800f5b@corrin.poochiereds.net>
+ <7851A663D3BF5E41B9E166C2C7A42145102B2F5A@SACEXCMBX02-PRD.hq.netapp.com>
+ <20120910160858.552bec1b@corrin.poochiereds.net>
+ <7851A663D3BF5E41B9E166C2C7A42145102B48E8@SACEXCMBX02-PRD.hq.netapp.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA908F9DD4F@SACEXCMBX04-PRD.hq.netapp.com>
+ <7851A663D3BF5E41B9E166C2C7A42145102B4C9F@SACEXCMBX02-PRD.hq.netapp.com>
 MIME-Version: 1.0
-Date: Fri, 21 Sep 2012 12:27:41 +0800
-Message-ID: <CAPgLHd8trgEhEOedSt5AKtBUhpcZSF2_JWeVPHPMUzT1zTFeUA@mail.gmail.com>
-Subject: [PATCH] NFS: fix the return value check by using IS_ERR
-From: Wei Yongjun <weiyj.lk@gmail.com>
-To: Trond.Myklebust@netapp.com
-Cc: yongjun_wei@trendmicro.com.cn, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <7851A663D3BF5E41B9E166C2C7A42145102B4C9F@SACEXCMBX02-PRD.hq.netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
+On Wed, Sep 12, 2012 at 04:14:38PM +0000, Adamson, Andy wrote:
+> 
+> On Sep 12, 2012, at 11:21 AM, Myklebust, Trond wrote:
+> 
+> > On Wed, 2012-09-12 at 15:13 +0000, Adamson, Andy wrote:
+> >> After doing more test verification, here are the reasons for the low watermark. Reason #2 is the strongest justification.
 
-In case of error, the function rpcauth_create() returns ERR_PTR()
-and never returns NULL pointer. The NULL test in the return value
-check should be replaced with IS_ERR().
+1 and 2 don't sound right.  What exactly were the test failures?
 
-dpatch engine is used to auto generated this patch.
-(https://github.com/weiyj/dpatch)
+The client and server's gss code already check the context expiry for
+us--we don't want an extra check in an upper layer on the client.
 
-Signed-off-by: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
----
- fs/nfs/nfs4proc.c      | 2 +-
- fs/nfs/nfs4namespace.c | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+The context *will* expire unexpectedly sometimes, and we do have to
+handle that.  (The server's clock could be a tad faster than the
+server's, or the server could reboot, etc., etc.)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 1e50326..ddfebb1 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2399,7 +2399,7 @@ static int nfs4_lookup_root_sec(struct nfs_server *server, struct nfs_fh *fhandl
- 	int ret;
- 
- 	auth = rpcauth_create(flavor, server->client);
--	if (!auth) {
-+	if (IS_ERR(auth)) {
- 		ret = -EIO;
- 		goto out;
- 	}
+I agree with all the suggestions for trying to anticipate expiry in the
+normal cases and preparing to minimize the damage, that's fine.  But
+once the expiry finally comes we should leave the existing mechanisms to
+do their job.
 
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index 017b4b0..398d5fd 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -205,7 +205,7 @@ struct rpc_clnt *nfs4_create_sec_client(struct rpc_clnt *clnt, struct inode *ino
- 		return clone;
- 
- 	auth = rpcauth_create(flavor, clone);
--	if (!auth) {
-+	if (IS_ERR(auth)) {
- 		rpc_shutdown_client(clone);
- 		clone = ERR_PTR(-EIO);
- 	}
-
-
+--b.
