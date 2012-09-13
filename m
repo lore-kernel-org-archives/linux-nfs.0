@@ -1,64 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:26053 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754723Ab2IUBgK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Sep 2012 21:36:10 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 13/14] NFSv4.1: Get rid of pNFS spin lock debugging asserts...
-Date: Thu, 20 Sep 2012 21:35:56 -0400
-Message-Id: <1348191357-44503-13-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1348191357-44503-12-git-send-email-Trond.Myklebust@netapp.com>
-References: <1348191357-44503-1-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-2-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-3-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-4-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-5-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-6-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-7-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-8-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-9-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-10-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-11-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-12-git-send-email-Trond.Myklebust@netapp.com>
+Received: from natasha.panasas.com ([67.152.220.90]:36013 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756032Ab2IMXfJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Sep 2012 19:35:09 -0400
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Benny Halevy <bhalevy@tonian.com>, NFS list <linux-nfs@vger.kernel.org>,
+        open-osd <osd-dev@open-osd.org>
+Subject: [PATCH 03/10] SQUASHME: pnfsd: Pass less arguments to init_layout()
+Date: Fri, 14 Sep 2012 02:34:57 +0300
+Message-ID: <1347579297-21513-1-git-send-email-bharrosh@panasas.com>
+In-Reply-To: <50526B39.3000802@panasas.com>
+References: <50526B39.3000802@panasas.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These are all in static declared functions that are called only once.
+Instead of passing all parameters individually, of which
+one was unused. Pass the structures these originate from.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
- fs/nfs/pnfs.c | 3 ---
- 1 file changed, 3 deletions(-)
+ fs/nfsd/nfs4pnfsd.c | 11 +++++------
+ 1 file changed, 5 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 9c5320c..bbdce87 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -829,7 +829,6 @@ pnfs_layout_insert_lseg(struct pnfs_layout_hdr *lo,
+diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+index 509b260..f0e193a 100644
+--- a/fs/nfsd/nfs4pnfsd.c
++++ b/fs/nfsd/nfs4pnfsd.c
+@@ -301,9 +301,8 @@ init_layout(struct nfs4_layout *lp,
+ 	    struct nfs4_layout_state *ls,
+ 	    struct nfs4_file *fp,
+ 	    struct nfs4_client *clp,
+-	    struct svc_fh *current_fh,
+-	    struct nfsd4_layout_seg *seg,
+-	    stateid_t *stateid)
++	    struct nfsd4_pnfs_layoutget *lgp,
++	    struct nfsd4_pnfs_layoutget_res *res)
+ {
+ 	dprintk("pNFS %s: lp %p ls %p clp %p fp %p ino %p\n", __func__,
+ 		lp, ls, clp, fp, fp->fi_inode);
+@@ -311,10 +310,10 @@ init_layout(struct nfs4_layout *lp,
+ 	get_nfs4_file(fp);
+ 	lp->lo_client = clp;
+ 	lp->lo_file = fp;
+-	memcpy(&lp->lo_seg, seg, sizeof(lp->lo_seg));
++	memcpy(&lp->lo_seg, &res->lg_seg, sizeof(lp->lo_seg));
+ 	get_layout_state(ls);		/* put on destroy_layout */
+ 	lp->lo_state = ls;
+-	update_layout_stateid(ls, stateid);
++	update_layout_stateid(ls, &lgp->lg_sid);
+ 	list_add_tail(&lp->lo_perclnt, &clp->cl_layouts);
+ 	list_add_tail(&lp->lo_perfile, &fp->fi_layouts);
+ 	dprintk("pNFS %s end\n", __func__);
+@@ -829,7 +828,7 @@ nfs4_pnfs_get_layout(struct nfsd4_pnfs_layoutget *lgp,
+ 		goto out_freelayout;
  
- 	dprintk("%s:Begin\n", __func__);
- 
--	assert_spin_locked(&lo->plh_inode->i_lock);
- 	list_for_each_entry(lp, &lo->plh_segs, pls_list) {
- 		if (cmp_layout(&lseg->pls_range, &lp->pls_range) > 0)
- 			continue;
-@@ -883,7 +882,6 @@ pnfs_find_alloc_layout(struct inode *ino,
- 
- 	dprintk("%s Begin ino=%p layout=%p\n", __func__, ino, nfsi->layout);
- 
--	assert_spin_locked(&ino->i_lock);
- 	if (nfsi->layout) {
- 		if (test_bit(NFS_LAYOUT_DESTROYED, &nfsi->layout->plh_flags))
- 			return NULL;
-@@ -940,7 +938,6 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo,
- 
- 	dprintk("%s:Begin\n", __func__);
- 
--	assert_spin_locked(&lo->plh_inode->i_lock);
- 	list_for_each_entry(lseg, &lo->plh_segs, pls_list) {
- 		if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags) &&
- 		    is_matching_lseg(&lseg->pls_range, range)) {
+ 	/* Can't merge, so let's initialize this new layout */
+-	init_layout(lp, ls, fp, clp, lgp->lg_fhp, &res.lg_seg, &lgp->lg_sid);
++	init_layout(lp, ls, fp, clp, lgp, &res);
+ out_unlock:
+ 	if (ls)
+ 		put_layout_state(ls);
 -- 
-1.7.11.4
+1.7.10.2.677.gb6bc67f
 
