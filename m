@@ -1,74 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53093 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:7421 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759428Ab2IEUzd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Sep 2012 16:55:33 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [RFC PATCH 06/13] locks: introduce new FL_DELEG lock flag
-Date: Wed,  5 Sep 2012 16:55:16 -0400
-Message-Id: <1346878524-10585-7-git-send-email-bfields@redhat.com>
-In-Reply-To: <1346878524-10585-1-git-send-email-bfields@redhat.com>
-References: <1346878524-10585-1-git-send-email-bfields@redhat.com>
+	id S1758672Ab2IMSMh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Sep 2012 14:12:37 -0400
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "Adamson, Andy" <William.Adamson@netapp.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Jeff Layton <jlayton@redhat.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/4] RFC Avoid expired credential keys for buffered
+ writes
+Date: Thu, 13 Sep 2012 18:12:36 +0000
+Message-ID: <7851A663D3BF5E41B9E166C2C7A42145102C06E1@SACEXCMBX02-PRD.hq.netapp.com>
+References: <1346961251-2554-1-git-send-email-andros@netapp.com>
+ <20120910145732.4d800f5b@corrin.poochiereds.net>
+ <7851A663D3BF5E41B9E166C2C7A42145102B2F5A@SACEXCMBX02-PRD.hq.netapp.com>
+ <20120910160858.552bec1b@corrin.poochiereds.net>
+ <7851A663D3BF5E41B9E166C2C7A42145102B48E8@SACEXCMBX02-PRD.hq.netapp.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA908F9DD4F@SACEXCMBX04-PRD.hq.netapp.com>
+ <7851A663D3BF5E41B9E166C2C7A42145102B4C9F@SACEXCMBX02-PRD.hq.netapp.com>
+ <20120913175754.GA6566@fieldses.org>
+In-Reply-To: <20120913175754.GA6566@fieldses.org>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
 
-For now FL_DELEG is just a synonym for FL_LEASE.  So this patch doesn't
-change behavior.
+On Sep 13, 2012, at 1:57 PM, J. Bruce Fields wrote:
 
-Next we'll modify break_lease to treat FL_DELEG leases differently, to
-account for the fact that NFSv4 delegations should be broken in more
-situations than Windows oplocks.
+> On Wed, Sep 12, 2012 at 04:14:38PM +0000, Adamson, Andy wrote:
+>> 
+>> On Sep 12, 2012, at 11:21 AM, Myklebust, Trond wrote:
+>> 
+>>> On Wed, 2012-09-12 at 15:13 +0000, Adamson, Andy wrote:
+>>>> After doing more test verification, here are the reasons for the low watermark. Reason #2 is the strongest justification.
+> 
+> 1 and 2 don't sound right.  What exactly were the test failures?
+> 
+> The client and server's gss code already check the context expiry for
+> us--we don't want an extra check in an upper layer on the client.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/locks.c          |    2 +-
- fs/nfsd/nfs4state.c |    2 +-
- include/linux/fs.h  |    1 +
- 3 files changed, 3 insertions(+), 2 deletions(-)
+Yeah, I agree that another upcall is not really the right way to go.
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 669911e..6ee1943 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -131,7 +131,7 @@
- 
- #define IS_POSIX(fl)	(fl->fl_flags & FL_POSIX)
- #define IS_FLOCK(fl)	(fl->fl_flags & FL_FLOCK)
--#define IS_LEASE(fl)	(fl->fl_flags & FL_LEASE)
-+#define IS_LEASE(fl)	(fl->fl_flags & (FL_LEASE|FL_DELEG))
- 
- static bool lease_breaking(struct file_lock *fl)
- {
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 5f1a91a..015267a 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2811,7 +2811,7 @@ static struct file_lock *nfs4_alloc_init_lease(struct nfs4_delegation *dp, int f
- 		return NULL;
- 	locks_init_lock(fl);
- 	fl->fl_lmops = &nfsd_lease_mng_ops;
--	fl->fl_flags = FL_LEASE;
-+	fl->fl_flags = FL_DELEG;
- 	fl->fl_type = flag == NFS4_OPEN_DELEGATE_READ? F_RDLCK: F_WRLCK;
- 	fl->fl_end = OFFSET_MAX;
- 	fl->fl_owner = (fl_owner_t)(dp->dl_file);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 017070e..c43c893 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1139,6 +1139,7 @@ static inline int file_check_writeable(struct file *filp)
- 
- #define FL_POSIX	1
- #define FL_FLOCK	2
-+#define FL_DELEG	4	/* NFSv4 delegation */
- #define FL_ACCESS	8	/* not trying to lock, just looking */
- #define FL_EXISTS	16	/* when unlocking, test for existence */
- #define FL_LEASE	32	/* lease held on this file */
--- 
-1.7.9.5
+What we want is to be notified (on the client) when a user's credential has changed - either destroyed or renewed.  I have some ideas which I will propose after these patches are resolved.
+
+> 
+> The context *will* expire unexpectedly sometimes, and we do have to
+> handle that.  (The server's clock could be a tad faster than the
+> server's, or the server could reboot, etc., etc.)
+
+Agreed, and the patch set needs to recognize (handle) this. But this is not the normal case.
+
+> 
+> I agree with all the suggestions for trying to anticipate expiry in the
+> normal cases and preparing to minimize the damage, that's fine.  But
+> once the expiry finally comes we should leave the existing mechanisms to
+> do their job.
+
+I'm not changing what happens at GSS context expiry, but what happens just before the context expires.
+
+I do hear the arguments against the low watermark, and will submit patches with a single (the so-called high) watermark. We can then proceed from there. :)
+
+-->Andy
+
+> 
+> --b.
 
