@@ -1,95 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:52792 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:44085 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932555Ab2IQUQZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Sep 2012 16:16:25 -0400
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 05/10] NFSD: Clean up forgetting openowners
-Date: Mon, 17 Sep 2012 16:16:14 -0400
-Message-Id: <1347912979-20603-6-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1347912979-20603-1-git-send-email-bjschuma@netapp.com>
-References: <1347912979-20603-1-git-send-email-bjschuma@netapp.com>
+	id S1752752Ab2IMNa1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Sep 2012 09:30:27 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+CC: Jeff Layton <jlayton@redhat.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v2] SUNRPC: check current nsproxy before set of node
+ name on client creation
+Date: Thu, 13 Sep 2012 13:30:25 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908FA249D@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20120813113731.9629.31906.stgit@localhost.localdomain>
+	     <20120813081054.0ee39037@corrin.poochiereds.net>
+	    <4FA345DA4F4AE44899BD2B03EEEC2FA908F90888@SACEXCMBX04-PRD.hq.netapp.com>
+	    <504ADED9.2020607@parallels.com>
+	   <4FA345DA4F4AE44899BD2B03EEEC2FA908F914D4@SACEXCMBX04-PRD.hq.netapp.com>
+	   <504DA833.60301@parallels.com>
+	  <4FA345DA4F4AE44899BD2B03EEEC2FA908F9547B@SACEXCMBX04-PRD.hq.netapp.com>
+	  <504E0930.5050408@parallels.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F96556@SACEXCMBX04-PRD.hq.netapp.com>
+	 <5051CD5C.1000902@parallels.com>
+In-Reply-To: <5051CD5C.1000902@parallels.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
-
-Using "forget_n_state()" forces me to implement the code needed to
-forget a specific client's openowners.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfsd/nfs4state.c | 41 ++++++++++++++++-------------------------
- 1 file changed, 16 insertions(+), 25 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 631c16b..611a827 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4564,6 +4564,20 @@ static u64 nfsd_forget_client_locks(struct nfs4_client *clp, u64 max)
- 	return count;
- }
- 
-+static u64 nfsd_forget_client_openowners(struct nfs4_client *clp, u64 max)
-+{
-+	struct nfs4_openowner *oop, *next;
-+	u64 count = 0;
-+
-+	list_for_each_entry_safe(oop, next, &clp->cl_openowners, oo_perclient) {
-+		release_openowner(oop);
-+		if (++count == max)
-+			break;
-+	}
-+
-+	return count;
-+}
-+
- static u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
- {
- 	struct nfs4_client *clp, *next;
-@@ -4584,29 +4598,6 @@ void nfsd_forget_clients(u64 num)
- 	printk(KERN_INFO "NFSD: Forgot %llu clients", count);
- }
- 
--static void release_openowner_sop(struct nfs4_stateowner *sop)
--{
--	release_openowner(openowner(sop));
--}
--
--static int nfsd_release_n_owners(u64 num, bool is_open_owner,
--				void (*release_sop)(struct nfs4_stateowner *))
--{
--	int i, count = 0;
--	struct nfs4_stateowner *sop, *next;
--
--	for (i = 0; i < OWNER_HASH_SIZE; i++) {
--		list_for_each_entry_safe(sop, next, &ownerstr_hashtbl[i], so_strhash) {
--			if (sop->so_is_open_owner != is_open_owner)
--				continue;
--			release_sop(sop);
--			if (++count == num)
--				return count;
--		}
--	}
--	return count;
--}
--
- void nfsd_forget_locks(u64 num)
- {
- 	u64 count = nfsd_for_n_state(num, nfsd_forget_client_locks);
-@@ -4615,8 +4606,8 @@ void nfsd_forget_locks(u64 num)
- 
- void nfsd_forget_openowners(u64 num)
- {
--	int count = nfsd_release_n_owners(num, true, release_openowner_sop);
--	printk(KERN_INFO "NFSD: Forgot %d open owners", count);
-+	u64 count = nfsd_for_n_state(num, nfsd_forget_client_openowners);
-+	printk(KERN_INFO "NFSD: Forgot %llu open owners", count);
- }
- 
- static int nfsd_process_n_delegations(u64 num, struct list_head *list)
--- 
-1.7.12
-
+T24gVGh1LCAyMDEyLTA5LTEzIGF0IDE2OjExICswNDAwLCBTdGFuaXNsYXYgS2luc2J1cnNreSB3
+cm90ZToNCj4gMTAuMDkuMjAxMiAxOTo0MSwgTXlrbGVidXN0LCBUcm9uZCDQv9C40YjQtdGCOg0K
+PiA+IE9uIE1vbiwgMjAxMi0wOS0xMCBhdCAxOTozNyArMDQwMCwgU3RhbmlzbGF2IEtpbnNidXJz
+a3kgd3JvdGU6DQo+ID4+IEhpLCBUcm9uZC4NCj4gPj4gU28sIGlmIEkgdW5kZXJzdGFuZCB5b3Ug
+cmlnaHQsIHdlIGNhbiBjcmVhdGUgcnBjIGNsaWVudCAob3IgaW5jcmVhc2UgdXNhZ2UNCj4gPj4g
+Y291bnRlcikgb24gTlNNUFJPQ19NT04gY2FsbCBhbmQgZGVzdHJveSAob3IgZGVjcmVhc2UgdXNh
+Z2UgY291bnRlcikgb24NCj4gPj4gTlNNUFJPQ19VTk1PTiBjYWxsLg0KPiA+PiBXaWxsIHRoaXMg
+c29sdXRpb24gd29ya3M/DQo+ID4NCj4gPiBUaGUgcnBjIGNsaWVudChzKSB3aWxsIG5lZWQgdG8g
+YmUgcGVyLW5ldC1uYW1lc3BhY2UsIHdoaWNoIGNvbXBsaWNhdGVzDQo+ID4gbWF0dGVycyBhIGxp
+dHRsZSBiaXQsIGJ1dCB5ZXMsIGNyZWF0aW9uIGF0IE5TTVBST0NfTU9OLCBhbmQgZGVzdHJ1Y3Rp
+b24NCj4gPiBhdCBOU01QUk9DX1VOTU9OIHNob3VsZCB3b3JrLg0KPiA+DQo+IA0KPiBIaSwgVHJv
+bmQuDQo+IFdpdGggcmVmZXJlbmNlLWNvdW50ZWQgTlNNIGNsaWVudCBJIGdvdCB0aGlzOg0KPiAN
+Cj4gQlVHOiB1bmFibGUgdG8gaGFuZGxlIGtlcm5lbCBOVUxMIHBvaW50ZXIgZGVyZWZlcmVuY2Ug
+YXQgMDAwMDAwMDAwMDAwMDAwOA0KPiBJUDogWzxmZmZmZmZmZmEwMGMwZDdmPl0gZW5jb2RlX21v
+bl9pZCsweDJlLzB4NjQgW2xvY2tkXQ0KPiBQR0QgMA0KPiBPb3BzOiAwMDAwIFsjMV0gU01QIERF
+QlVHX1BBR0VBTExPQw0KPiBNb2R1bGVzIGxpbmtlZCBpbjogbmZzdjMgbmZzX2FjbCBuZnMgbG9j
+a2QgdmV0aCBzdW5ycGMgYnJpZGdlIHN0cCBsbGMgaTJjX3BpaXg0IA0KPiBpMmNfY29yZSB2aXJ0
+aW9fYmxrIHZpcnRpb19uZXQgZmxvcHB5IHZpcnRpb19wY2kgdmlydGlvX3JpbmcgdmlydGlvDQo+
+IENQVSAxDQo+IFBpZDogMTE3NCwgY29tbTogYmFzaCBOb3QgdGFpbnRlZCAzLjUuMC1raXRjaGVu
+c2luaysgIzQ0IEJvY2hzIEJvY2hzDQo+IFJJUDogMDAxMDpbPGZmZmZmZmZmYTAwYzBkN2Y+XSAg
+WzxmZmZmZmZmZmEwMGMwZDdmPl0gZW5jb2RlX21vbl9pZCsweDJlLzB4NjQgW2xvY2tkXQ0KPiBS
+U1A6IDAwMTg6ZmZmZjg4MDAxZDBmMWEwOCAgRUZMQUdTOiAwMDAxMDI0Ng0KPiBSQVg6IDAwMDAw
+MDAwMDAwMDAwMDAgUkJYOiBmZmZmODgwMDFkMGYxYzM4IFJDWDogMDAwMDAwMDAwMDAwMDAwMA0K
+PiBSRFg6IGZmZmY4ODAwMWM4NTgwM2YgUlNJOiBmZmZmODgwMDFkMjNiMjA0IFJESTogZmZmZjg4
+MDAxZDBmMWE0OA0KPiBSQlA6IGZmZmY4ODAwMWQwZjFhMTggUjA4OiBmZmZmODgwMDFjODU4MDQw
+IFIwOTogMDAwMDAwMDAwMDAwMDAwMw0KPiBSMTA6IGZmZmY4ODAwMWE1YWJhMTAgUjExOiBmZmZm
+ODgwMDFkMGYxYWM4IFIxMjogZmZmZjg4MDAxZDBmMWE0OA0KPiBSMTM6IGZmZmY4ODAwMWE4YTMx
+MzggUjE0OiBmZmZmZmZmZmEwMDhkNTgwIFIxNTogZmZmZmZmZmZhMDBjMGRiNQ0KPiBGUzogIDAw
+MDA3ZjBkNjBlZWE3MDAoMDAwMCkgR1M6ZmZmZjg4MDAxZjcwMDAwMCgwMDAwKSBrbmxHUzowMDAw
+MDAwMDAwMDAwMDAwDQo+IENTOiAgMDAxMCBEUzogMDAwMCBFUzogMDAwMCBDUjA6IDAwMDAwMDAw
+ODAwNTAwM2INCj4gQ1IyOiAwMDAwMDAwMDAwMDAwMDA4IENSMzogMDAwMDAwMDAxZGIzZDAwMCBD
+UjQ6IDAwMDAwMDAwMDAwMDA2ZTANCj4gRFIwOiAwMDAwMDAwMDAwMDAwMDAwIERSMTogMDAwMDAw
+MDAwMDAwMDAwMCBEUjI6IDAwMDAwMDAwMDAwMDAwMDANCj4gRFIzOiAwMDAwMDAwMDAwMDAwMDAw
+IERSNjogMDAwMDAwMDBmZmZmMGZmMCBEUjc6IDAwMDAwMDAwMDAwMDA0MDANCj4gUHJvY2VzcyBi
+YXNoIChwaWQ6IDExNzQsIHRocmVhZGluZm8gZmZmZjg4MDAxZDBmMDAwMCwgdGFzayBmZmZmODgw
+MDFkMWY0MTYwKQ0KPiBTdGFjazoNCj4gICBmZmZmODgwMDFkMGYxYTQ4IGZmZmY4ODAwMWM4NTgw
+MzAgZmZmZjg4MDAxZDBmMWEyOCBmZmZmZmZmZmEwMGMwZGM5DQo+ICAgZmZmZjg4MDAxZDBmMWFi
+OCBmZmZmZmZmZmEwMDczMWEwIGZmZmY4ODAwMWE1YWJhMTAgZmZmZjg4MDAxZDBmMWMzOA0KPiAg
+IGZmZmY4ODAwMWM4NTgwNDAgZmZmZjg4MDAxYThhMzE0MCBmZmZmODgwMDFjODU4ODU0IGZmZmY4
+ODAwMWE4YTMxNDANCj4gQ2FsbCBUcmFjZToNCj4gICBbPGZmZmZmZmZmYTAwYzBkYzk+XSBuc21f
+eGRyX2VuY191bm1vbisweDE0LzB4MTYgW2xvY2tkXQ0KPiAgIFs8ZmZmZmZmZmZhMDA3MzFhMD5d
+IHJwY2F1dGhfd3JhcF9yZXErMHhhMS8weGIyIFtzdW5ycGNdDQo+ICAgWzxmZmZmZmZmZmEwMDZi
+ODNmPl0gPyB4cHJ0X3ByZXBhcmVfdHJhbnNtaXQrMHg4My8weDkzIFtzdW5ycGNdDQo+ICAgWzxm
+ZmZmZmZmZmEwMDY4ZTU0Pl0gY2FsbF90cmFuc21pdCsweDFlNC8weDI2MyBbc3VucnBjXQ0KPiAg
+IFs8ZmZmZmZmZmZhMDA3MjhlMj5dIF9fcnBjX2V4ZWN1dGUrMHhlNy8weDMxMyBbc3VucnBjXQ0K
+PiAgIFs8ZmZmZmZmZmZhMDA2OGM3MD5dID8gY2FsbF90cmFuc21pdF9zdGF0dXMrMHhiOC8weGI4
+IFtzdW5ycGNdDQo+ICAgWzxmZmZmZmZmZjgxMDU1ZWQ5Pl0gPyB3YWtlX3VwX2JpdCsweDI1LzB4
+MmENCj4gICBbPGZmZmZmZmZmYTAwNzJiZTA+XSBycGNfZXhlY3V0ZSsweDlkLzB4YTUgW3N1bnJw
+Y10NCj4gICBbPGZmZmZmZmZmYTAwNmE2YWU+XSBycGNfcnVuX3Rhc2srMHg3ZS8weDg2IFtzdW5y
+cGNdDQo+ICAgWzxmZmZmZmZmZmEwMDZhN2EzPl0gcnBjX2NhbGxfc3luYysweDQ0LzB4NjUgW3N1
+bnJwY10NCj4gICBbPGZmZmZmZmZmYTAwYzA4ODM+XSBuc21fbW9uX3VubW9uKzB4ODEvMHhhZCBb
+bG9ja2RdDQo+ICAgWzxmZmZmZmZmZmEwMGMwOTMxPl0gbnNtX3VubW9uaXRvcisweDgyLzB4MTNh
+IFtsb2NrZF0NCj4gICBbPGZmZmZmZmZmYTAwYmMyNTE+XSBubG1fZGVzdHJveV9ob3N0X2xvY2tl
+ZCsweDkzLzB4YzkgW2xvY2tkXQ0KPiAgIFs8ZmZmZmZmZmZhMDBiYzMzYT5dIG5sbWNsbnRfcmVs
+ZWFzZV9ob3N0KzB4YjMvMHhjMyBbbG9ja2RdDQo+ICAgWzxmZmZmZmZmZmEwMGJhMDlmPl0gbmxt
+Y2xudF9kb25lKzB4MWEvMHgyNiBbbG9ja2RdDQo+ICAgWzxmZmZmZmZmZmEwMGQ1ODNlPl0gbmZz
+X2Rlc3Ryb3lfc2VydmVyKzB4MjQvMHgyNiBbbmZzXQ0KPiAgIFs8ZmZmZmZmZmZhMDBkNWQ4NT5d
+IG5mc19mcmVlX3NlcnZlcisweGFkLzB4MTM0IFtuZnNdDQo+ICAgWzxmZmZmZmZmZmEwMGRkNWZm
+Pl0gbmZzX2tpbGxfc3VwZXIrMHgyMi8weDI2IFtuZnNdDQo+ICAgWzxmZmZmZmZmZjgxMTJiMjc4
+Pl0gZGVhY3RpdmF0ZV9sb2NrZWRfc3VwZXIrMHgyNi8weDU3DQo+ICAgWzxmZmZmZmZmZjgxMTJi
+ZDg5Pl0gZGVhY3RpdmF0ZV9zdXBlcisweDQ1LzB4NGMNCj4gICBbPGZmZmZmZmZmODExNDIzZWM+
+XSBtbnRwdXRfbm9fZXhwaXJlKzB4MTEwLzB4MTE5DQo+ICAgWzxmZmZmZmZmZjgxMTQyNDFmPl0g
+bW50cHV0KzB4MmEvMHgyYw0KPiAgIFs8ZmZmZmZmZmY4MTE0MjYwNT5dIHJlbGVhc2VfbW91bnRz
+KzB4NzIvMHg4NA0KPiAgIFs8ZmZmZmZmZmY4MTE0MjdjZj5dIHB1dF9tbnRfbnMrMHg2Zi8weDdl
+DQo+ICAgWzxmZmZmZmZmZjgxMDVhM2RiPl0gZnJlZV9uc3Byb3h5KzB4MWYvMHg4Nw0KPiAgIFs8
+ZmZmZmZmZmY4MTA1YTQ5Zj5dIHN3aXRjaF90YXNrX25hbWVzcGFjZXMrMHg1Yy8weDY1DQo+ICAg
+WzxmZmZmZmZmZjgxMDVhNGI4Pl0gZXhpdF90YXNrX25hbWVzcGFjZXMrMHgxMC8weDEyDQo+ICAg
+WzxmZmZmZmZmZjgxMDNjMjMyPl0gZG9fZXhpdCsweDY5Yi8weDg0Zg0KPiAgIFs8ZmZmZmZmZmY4
+MTAzYzQ2OT5dIGRvX2dyb3VwX2V4aXQrMHg4My8weGFlDQo+ICAgWzxmZmZmZmZmZjgxMDNjNGFi
+Pl0gc3lzX2V4aXRfZ3JvdXArMHgxNy8weDFiDQo+ICAgWzxmZmZmZmZmZjgxNDY1N2U5Pl0gc3lz
+dGVtX2NhbGxfZmFzdHBhdGgrMHgxNi8weDFiDQo+IENvZGU6IGU1IDQxIDU0IDUzIDY2IDY2IDY2
+IDY2IDkwIDQ4IDg5IGYzIDQ5IDg5IGZjIDQ4IDhiIDc2IDE4IGU4IDkzIGZmIGZmIGZmIDRjIA0K
+PiA4OSBlNyA2NSA0OCA4YiAwNCAyNSBjMCBiOSAwMCAwMCA0OCA4YiA4MCAwMCAwNSAwMCAwMCA8
+NDg+IDhiIDcwIDA4IDQ4IDgzIGM2IDQ1IA0KPiBlOCA3MyBmZiBmZiBmZiA0YyA4OSBlNyBiZSAw
+YyAwMCAwMCAwMA0KPiBSSVAgIFs8ZmZmZmZmZmZhMDBjMGQ3Zj5dIGVuY29kZV9tb25faWQrMHgy
+ZS8weDY0IFtsb2NrZF0NCj4gDQo+IA0KPiBUaGVyZSBhcmUgbW9yZSBwbGFjZXMsIHdoZXJlIE5G
+UyBhbmQgTG9ja2QgY29kZSBkZXJlZmVyZW5jZSB1dHNuYW1lKCkuDQo+IEluIFhEUiBsYXllciwg
+Zm9yIGluc3RhbmNlLg0KPiANCj4gU28sIHByb2JhYmx5LCB3ZSBoYXZlIHRvIHRpZSBORlMgdG8g
+dXRzbnMgYXMgd2VsbCBhcyB0byBuZXRucy4NCj4gQWRkIG9uZSBtb3JlIG5zIHRvIHhwcnQ/IFdo
+YXQgZG8geW91IHRoaW5rPw0KPiANCg0KV2UndmUgYWxyZWFkeSBzYXZlZCB0aGUgdXRzbmFtZSBp
+biB0aGUgcnBjX2NsaWVudCBhcyBjbG50LT5jbF9ub2RlbmFtZS4NCkFsbCBYRFIgdXNlcnMgY2Fu
+IGJlIHRyaXZpYWxseSBjb252ZXJ0ZWQgdG8gdXNlIHRoYXQuDQoNCkNoZWVycw0KICBUcm9uZA0K
+LS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRB
+cHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
