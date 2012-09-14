@@ -1,102 +1,160 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:42351 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:60918 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757362Ab2IJP1Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Sep 2012 11:27:24 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-CC: Jeff Layton <jlayton@redhat.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH v2] SUNRPC: check current nsproxy before set of node
- name on client creation
-Date: Mon, 10 Sep 2012 15:27:20 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F9547B@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20120813113731.9629.31906.stgit@localhost.localdomain>
-	   <20120813081054.0ee39037@corrin.poochiereds.net>
-	  <4FA345DA4F4AE44899BD2B03EEEC2FA908F90888@SACEXCMBX04-PRD.hq.netapp.com>
-	  <504ADED9.2020607@parallels.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F914D4@SACEXCMBX04-PRD.hq.netapp.com>
-	 <504DA833.60301@parallels.com>
-In-Reply-To: <504DA833.60301@parallels.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1755331Ab2INVLe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 14 Sep 2012 17:11:34 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 2 0/5] RFC Avoid expired credential keys for buffered writes
+Date: Fri, 14 Sep 2012 17:11:44 -0400
+Message-Id: <1347657109-2180-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTA5LTEwIGF0IDEyOjQzICswNDAwLCBTdGFuaXNsYXYgS2luc2J1cnNreSB3
-cm90ZToNCj4gMDguMDkuMjAxMiAxODozMywgTXlrbGVidXN0LCBUcm9uZCDQv9C40YjQtdGCOg0K
-PiA+IE9uIFNhdCwgMjAxMi0wOS0wOCBhdCAwODo1OSArMDMwMCwgU3RhbmlzbGF2IEtpbnNidXJz
-a3kgd3JvdGU6DQo+ID4+IDA4LjA5LjIwMTIgMDE6MzIsIE15a2xlYnVzdCwgVHJvbmQg0L/QuNGI
-0LXRgjoNCj4gPj4+IE9uIE1vbiwgMjAxMi0wOC0xMyBhdCAwODoxMCAtMDQwMCwgSmVmZiBMYXl0
-b24gd3JvdGU6DQo+ID4+Pj4gT24gTW9uLCAxMyBBdWcgMjAxMiAxNTozNzozMSArMDQwMA0KPiA+
-Pj4+IFN0YW5pc2xhdiBLaW5zYnVyc2t5IDxza2luc2J1cnNreUBwYXJhbGxlbHMuY29tPiB3cm90
-ZToNCj4gPj4+Pg0KPiA+Pj4+PiB2MjoNCj4gPj4+Pj4gMSkgcnBjX2NsbnRfc2V0X25vZGVuYW1l
-KCkgcHJvdG90eXBlIHVwZGF0ZWQuDQo+ID4+Pj4+IDIpIGZpeGVkIGVycm9ycyBpbiBjb21tZW50
-Lg0KPiA+Pj4+Pg0KPiA+Pj4+PiBXaGVuIGNoaWxkIHJlYXBlciBleGl0cywgaXQgY2FuIGRlc3Ry
-b3kgbW91bnQgbmFtZXNwYWNlIGl0IGJlbG9uZ3MgdG8sIGFuZCBpZg0KPiA+Pj4+PiB0aGVyZSBh
-cmUgTkZTIG1vdW50cyBpbnNpZGUsIHRoZW4gaXQgd2lsbCB0cnkgdG8gdW1vdW50IHRoZW0uIEJ1
-dCBpbiB0aGlzDQo+ID4+Pj4+IHBvaW50IGN1cnJlbnQtPm5zcHJveHkgaXMgc2V0IHRvIE5VTEwg
-YW5kIGFsbCBuYW1lc3BhY2VzIHdpbGwgYmUgZGVzdHJveWVkIG9uZQ0KPiA+Pj4+PiBieSBvbmUu
-IEkuZS4gd2UgY2FuJ3QgZGVyZWZlcmVuY2UgY3VycmVudC0+bnNwcm94eSB0byBvYnRhaW4gdXRz
-IG5hbWVzcGFjZS4NCj4gPj4+Pj4NCj4gPj4+Pj4gU2lnbmVkLW9mZi1ieTogU3RhbmlzbGF2IEtp
-bnNidXJza3kgPHNraW5zYnVyc2t5QHBhcmFsbGVscy5jb20+DQo+ID4+Pj4+IC0tLQ0KPiA+Pj4+
-PiAgICBuZXQvc3VucnBjL2NsbnQuYyB8ICAgMTYgKysrKysrKysrKysrKy0tLQ0KPiA+Pj4+PiAg
-ICAxIGZpbGVzIGNoYW5nZWQsIDEzIGluc2VydGlvbnMoKyksIDMgZGVsZXRpb25zKC0pDQo+ID4+
-Pj4+DQo+ID4+Pj4+IGRpZmYgLS1naXQgYS9uZXQvc3VucnBjL2NsbnQuYyBiL25ldC9zdW5ycGMv
-Y2xudC5jDQo+ID4+Pj4+IGluZGV4IDlhOTY3NmUuLjhmYmNiYzggMTAwNjQ0DQo+ID4+Pj4+IC0t
-LSBhL25ldC9zdW5ycGMvY2xudC5jDQo+ID4+Pj4+ICsrKyBiL25ldC9zdW5ycGMvY2xudC5jDQo+
-ID4+Pj4+IEBAIC0yNzcsOCArMjc3LDE4IEBAIHZvaWQgcnBjX2NsaWVudHNfbm90aWZpZXJfdW5y
-ZWdpc3Rlcih2b2lkKQ0KPiA+Pj4+PiAgICAJcmV0dXJuIHJwY19waXBlZnNfbm90aWZpZXJfdW5y
-ZWdpc3RlcigmcnBjX2NsaWVudHNfYmxvY2spOw0KPiA+Pj4+PiAgICB9DQo+ID4+Pj4+DQo+ID4+
-Pj4+IC1zdGF0aWMgdm9pZCBycGNfY2xudF9zZXRfbm9kZW5hbWUoc3RydWN0IHJwY19jbG50ICpj
-bG50LCBjb25zdCBjaGFyICpub2RlbmFtZSkNCj4gPj4+Pj4gK3N0YXRpYyB2b2lkIHJwY19jbG50
-X3NldF9ub2RlbmFtZShzdHJ1Y3QgcnBjX2NsbnQgKmNsbnQpDQo+ID4+Pj4+ICAgIHsNCj4gPj4+
-Pj4gKwljb25zdCBjaGFyICpub2RlbmFtZTsNCj4gPj4+Pj4gKw0KPiA+Pj4+PiArCS8qDQo+ID4+
-Pj4+ICsJICogV2UgaGF2ZSB0byBwcm90ZWN0IGFnYWluc3QgZHlpbmcgY2hpbGQgcmVhcGVyLCB3
-aGljaCBoYXMgcmVsZWFzZWQNCj4gPj4+Pj4gKwkgKiBpdHMgbnNwcm94eSBhbHJlYWR5IGFuZCBp
-cyB0cnlpbmcgdG8gZGVzdHJveSBtb3VudCBuYW1lc3BhY2UuDQo+ID4+Pj4+ICsJICovDQo+ID4+
-Pj4+ICsJaWYgKGN1cnJlbnQtPm5zcHJveHkgPT0gTlVMTCkNCj4gPj4+Pj4gKwkJcmV0dXJuOw0K
-PiA+Pj4+PiArDQo+ID4+Pj4+ICsJbm9kZW5hbWUgPSB1dHNuYW1lKCktPm5vZGVuYW1lOw0KPiA+
-Pj4+PiAgICAJY2xudC0+Y2xfbm9kZWxlbiA9IHN0cmxlbihub2RlbmFtZSk7DQo+ID4+Pj4+ICAg
-IAlpZiAoY2xudC0+Y2xfbm9kZWxlbiA+IFVOWF9NQVhOT0RFTkFNRSkNCj4gPj4+Pj4gICAgCQlj
-bG50LT5jbF9ub2RlbGVuID0gVU5YX01BWE5PREVOQU1FOw0KPiA+Pj4+PiBAQCAtMzY1LDcgKzM3
-NSw3IEBAIHN0YXRpYyBzdHJ1Y3QgcnBjX2NsbnQgKiBycGNfbmV3X2NsaWVudChjb25zdCBzdHJ1
-Y3QgcnBjX2NyZWF0ZV9hcmdzICphcmdzLCBzdHJ1DQo+ID4+Pj4+ICAgIAl9DQo+ID4+Pj4+DQo+
-ID4+Pj4+ICAgIAkvKiBzYXZlIHRoZSBub2RlbmFtZSAqLw0KPiA+Pj4+PiAtCXJwY19jbG50X3Nl
-dF9ub2RlbmFtZShjbG50LCB1dHNuYW1lKCktPm5vZGVuYW1lKTsNCj4gPj4+Pj4gKwlycGNfY2xu
-dF9zZXRfbm9kZW5hbWUoY2xudCk7DQo+ID4+Pj4+ICAgIAlycGNfcmVnaXN0ZXJfY2xpZW50KGNs
-bnQpOw0KPiA+Pj4+PiAgICAJcmV0dXJuIGNsbnQ7DQo+ID4+Pj4+DQo+ID4+Pj4+IEBAIC01MjQs
-NyArNTM0LDcgQEAgcnBjX2Nsb25lX2NsaWVudChzdHJ1Y3QgcnBjX2NsbnQgKmNsbnQpDQo+ID4+
-Pj4+ICAgIAllcnIgPSBycGNfc2V0dXBfcGlwZWRpcihuZXcsIGNsbnQtPmNsX3Byb2dyYW0tPnBp
-cGVfZGlyX25hbWUpOw0KPiA+Pj4+PiAgICAJaWYgKGVyciAhPSAwKQ0KPiA+Pj4+PiAgICAJCWdv
-dG8gb3V0X25vX3BhdGg7DQo+ID4+Pj4+IC0JcnBjX2NsbnRfc2V0X25vZGVuYW1lKG5ldywgdXRz
-bmFtZSgpLT5ub2RlbmFtZSk7DQo+ID4+Pj4+ICsJcnBjX2NsbnRfc2V0X25vZGVuYW1lKG5ldyk7
-DQo+ID4+Pj4+ICAgIAlpZiAobmV3LT5jbF9hdXRoKQ0KPiA+Pj4+PiAgICAJCWF0b21pY19pbmMo
-Jm5ldy0+Y2xfYXV0aC0+YXVfY291bnQpOw0KPiA+Pj4+PiAgICAJYXRvbWljX2luYygmY2xudC0+
-Y2xfY291bnQpOw0KPiA+Pj4+Pg0KPiA+Pj4+PiAtLQ0KPiA+Pj4+PiBUbyB1bnN1YnNjcmliZSBm
-cm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBpbg0K
-PiA+Pj4+PiB0aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9y
-Zw0KPiA+Pj4+PiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3Jn
-L21ham9yZG9tby1pbmZvLmh0bWwNCj4gPj4+PiBBY2tlZC1ieTogSmVmZiBMYXl0b24gPGpsYXl0
-b25AcmVkaGF0LmNvbT4NCj4gPj4+IE9LLCBjb2xvdXIgbWUgY29uZnVzZWQgKGFnYWluKS4NCj4g
-Pj4NCj4gPj4gV2hhdCBjb2xvcj8NCj4gPj4NCj4gPj4+IFdoeSBzaG91bGQgYSB1bW91bnQgdHJp
-Z2dlciBhbg0KPiA+Pj4gcnBjX2NyZWF0ZSgpIG9yIHJwY19jbG9uZV9jbGllbnQoKT8NCj4gPj4N
-Cj4gPj4gSXQgY2FsbHMgbnNtX2NyZWF0ZSgpLg0KPiA+PiBIZXJlIGlzIHRoZSB0cmFjZSAoaHR0
-cHM6Ly9idWd6aWxsYS5yZWRoYXQuY29tL3Nob3dfYnVnLmNnaT9pZD04MzA4NjIsDQo+ID4+IGNv
-bW1lbnQgNjgpOg0KPiA+DQo+ID4gUmlnaHQsIGJ1dCBpZiB3ZSdyZSB1c2luZyBORlN2MyBsb2Nr
-IG1vbml0b3JpbmcsIHdlIGtub3cgaW4gYWR2YW5jZSB0aGF0DQo+ID4gd2UncmUgZ29pbmcgdG8g
-bmVlZCBhbiBuc20gY2FsbCB0byBsb2NhbGhvc3QuIFdoeSBjYW4ndCB3ZSBqdXN0IGNhY2hlDQo+
-ID4gdGhlIG9uZSB0aGF0IHdlIHVzZWQgdG8gc3RhcnQgbG9jayBtb25pdG9yaW5nIGluIHRoZSBm
-aXJzdCBwbGFjZT8NCj4gPg0KPiANCj4gRG8geW91IHN1Z2dlc3QgdG8gY2FjaGUgdGhlIGNhbGwg
-b3IgdGhlIGNsaWVudCBmb3IgdGhlIGNhbGw/DQoNCkhpIFN0YW5pc2xhdiwNCg0KU29ycnksIEkg
-YWdyZWUgdGhhdCB0aGUgYWJvdmUgd2FzIHVuY2xlYXIuIE15IGludGVudGlvbiB3YXMgdG8gc3Vn
-Z2VzdA0KdGhhdCB3ZSBzaG91bGQgY2FjaGUgYSByZWZlcmVuY2UgdG8gdGhlIHJwYyBjbGllbnQg
-dGhhdCB3ZSB1c2VkIHRvDQpjb25uZWN0IHRvIHJwYy5zdGF0ZCB3aGVuIGluaXRpYXRpbmcgbG9j
-ayBtb25pdG9yaW5nLg0KDQpCYXNpY2FsbHksIEknbSBzdWdnZXN0aW5nIHRoYXQgd2Ugc2hvdWxk
-IGRvIHNvbWV0aGluZyBzaW1pbGFyIHRvIHRoZQ0KcnBjYmluZCBycGNfY2xpZW50IGNhY2hpbmcg
-c2NoZW1lIGluIG5ldC9zdW5ycGMvcnBjYl9jbG50LmMuDQoNCkNoZWVycw0KICBUcm9uZA0KDQot
-LSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFw
-cA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+From: Andy Adamson <andros@netapp.com>
+
+-------------
+Version 2, responded to comments:
+1) Just use high water mark
+2) Move expiration testing into nfs_file_write
+3) Added a patch to clean up rpc_verify_header error processing
+
+NOTE: Often "Input/output error" is returned instead of
+"Permission Denied". This is because of nfs_wb_all(). The NFS layer returns
+-EACCES, but it gets mapped to -EIO (I believe via AG_EIO).
+I would like to have Permision Denied always be returned...
+
+NOTE: I will add a patch for directIO and look into mmaped I/O as well after
+this patch set is done.
+
+-------------
+ 
+We must avoid buffering a WRITE that is using a credential key (e.g. a GSS
+context key) that is about to expire or has expired.  We currently will
+paint ourselves into a corner by returning success to the applciation
+for such a buffered WRITE, only to discover that we do not have permission when
+we attempt to flush the WRITE (and potentially associated COMMIT) to disk.
+This results in data corruption.
+
+First, a couple of "setup" patches:
+1) Patch SUNRPC handle EKEYEXPIRED in call_refreshresult returns EACCES to the
+application on an expired or non-existent gss context when the users (Kerberos)
+credentials have also expired or are non-existent. Current behavior is to
+retry upcalls to GSSD forever. Please see patch comment for detail.
+
+2) Patch SUNRPC set gss gc_expiry to full lifetime works in conjunction with
+the gssd patch "0001-GSSD-Pass-GSS_context-lifetime-to-the-kernel". The
+gssd patch passes the actual remaining TGT lifetime in the downcall, and
+this kernel patch sets the gss context gc_expiry to this lifetime.
+
+Then the two patches that avoid using an expired credential key:
+3) Patch SUNRPC new rpc_credops to test credential expiry is the heart of this
+work. It provides the RPC layer helper functions to allow NFS to manage
+data in the face of expired credentials
+
+4) Patch NFS avoid expired credential keys for buffered writes calls the
+RPC helper functions.
+
+5) Patch SUNRPC Fix rpc_verify_header error returns changes a -EIO return to
+a -EACCES return when there is an auth error.
+
+Pages for buffered WRITEs are allocated in nfs_write_begin where we have an
+nfs_open_context and associated rpc_cred. This is a generic rpc_cred, NOT
+the gss_cred used in the actual WRITE RPC. Each WRITE RPC call takes the generic
+rpc_cred (or uses the 'current_cred') uid and uses it to lookup the associated
+gss_cred and gss_context in the call_refresh RPC state. So, there is a
+one-to-one association between the nfs_open_context generic_cred and a
+gss_cred with a matching uid and a valid non expired gss context.
+
+We need to check the nfs_open_context generic cred 'underlying' gss_cred
+gss_context gc_expiry prior to nfs_write_begin in nfs_file_write to determine
+if there is enough time left in the gss_context lifetime to complete the
+buffered WRITEs.
+
+I started by adding a "key_timeout" rpc_authops routine only set by the generic
+auth to do this work, called by rpcauth_key_timeout_notify, called from
+nfs_write_begin. It does the lookup of the gss_cred (see the patch for
+fast-tracking of non-gss underlying creds) and then tests the gss_context
+gc_expiry against timeouts by calling a new crkey_timeout rpc_credops set
+only for the gss_cred.
+
+I coded a water mark, RPC_KEY_EXPIRE_TIMEO set to 90 seconds.
+NOTE: this timeout is a guess that works in a VM environment. We may want to
+make it adjustable via a module parameter.
+
+If key_timeout is called on a credential with an underlying credential key that
+will expire within watermark seconds, we set the RPC_CRED_KEY_EXPIRE_SOON
+flag in the generic_cred acred so that the NFS layer can clean up prior to
+key expiration It does this by calling a new crkey_to_expire rpc_credop set
+only for generic creds that tests for the RPC_CRED_KEY_EXPIRE_SOON flag.
+
+If the RPC_CRED_KEY_EXPIRE_SOON flag is set in the nfs_open_context generic
+cred (the acred portion), then nfs_file_write will call vfs_fsync
+on EVERY WRITE CALL it sees, and will send NFS_FILE_SYNC WRITEs.  The idea
+of the watermark is to give time to flush all buffered WRITEs and COMMITs,
+as well as to continue to WRITE, but only with NFS_FILE_SYNC, allowing the
+application to try to finish writing before the gss context expires.
+NOTE that this means EACH WRITE within the watermark
+timeout is a singe PAGE of NFS_FILE_SYNC. I think this is fine, because we are
+in a failure mode - the most important thing is to NOT fail a buffered WRITE..
+
+Checking a generic credential's underlying credential involves a cred lookup.
+To avoid this lookup in the normal case when the underlying credential has
+a key that is valid (before the watermark), a notify flag is set in
+the generic credential the first time the key_timeout is called. The
+generic credential then stops checking the underlying credential key expiry, and
+the underlying credential (gss_cred) match routine then checks the key
+expiration upon each normal use and sets a flag in the associated generic
+credential only when the key expiration is within the watermark.
+This in turn signals the generic credential key_timeout to perform the extra
+credetial lookup thereafter.
+
+TESTING:
+
+I have tested these patches with a TGT of 5 minutes, and a modified
+Connectathon special test: bigfile.c that only writes and never flushes.
+I also increased the file size to 524288000 bytes to give me time.
+I named the test buffered-write.
+
+I kinit, and run 5 instances of buffered write with the first and maybe second
+test completing prior to TGT expiration, and the third/fourth tests spanning
+the water mark. The fifth test starts within the water mark.
+
+I have seen the expected behavior: test 1,2 succeed. Tests 3-5 fail with
+Permission Denied. Tests 3 and 4 start with normal buffered UNSTABLE writes
+then switch to single page NFS_FILE_SYNC writes with a COMMIT for the
+normal buffered writes. Test 5 has only single page NFS_FILE_SYNC writes.
+
+None of the WRITEs fail on the wire, no failed WRITEs are returned as
+successful to the application.
+
+The only issue is once in a while I see "Input/Output Error" instead of
+"Permission denied".
+
+-->Andy
+
+  SUNRPC handle EKEYEXPIRED in call_refreshresult
+  SUNRPC set gss gc_expiry to full lifetime
+  SUNRPC new rpc_credops to test credential expiry
+  NFS avoid expired credential keys for buffered writes
+  SUNRPC Fix rpc_verify_header error returns
+
+ fs/nfs/file.c                  |   15 +++++++-
+ fs/nfs/internal.h              |    2 +
+ fs/nfs/nfs3proc.c              |    6 +-
+ fs/nfs/nfs4filelayout.c        |    1 -
+ fs/nfs/nfs4proc.c              |   18 --------
+ fs/nfs/nfs4state.c             |   22 ----------
+ fs/nfs/proc.c                  |   43 --------------------
+ fs/nfs/write.c                 |   27 +++++++++++++
+ include/linux/sunrpc/auth.h    |   21 ++++++++++
+ net/sunrpc/auth.c              |   21 ++++++++++
+ net/sunrpc/auth_generic.c      |   84 ++++++++++++++++++++++++++++++++++++++++
+ net/sunrpc/auth_gss/auth_gss.c |   59 +++++++++++++++++++++++++---
+ net/sunrpc/clnt.c              |   11 +++--
+ 13 files changed, 232 insertions(+), 98 deletions(-)
+
+-- 
+1.7.7.6
+
