@@ -1,55 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:11316 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754084Ab2IQQ4L convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Sep 2012 12:56:11 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: readdir cookies
-Date: Mon, 17 Sep 2012 16:56:10 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908FC9F10@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20120917155426.GK30673@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA908FC8D4C@SACEXCMBX04-PRD.hq.netapp.com>
- <20120917165126.GL30673@fieldses.org>
-In-Reply-To: <20120917165126.GL30673@fieldses.org>
-Content-Type: text/plain; charset="Windows-1252"
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:54524 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756124Ab2INVX1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Sep 2012 17:23:27 -0400
+Received: by ggdk6 with SMTP id k6so1097291ggd.19
+        for <linux-nfs@vger.kernel.org>; Fri, 14 Sep 2012 14:23:26 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 02/10] NFS: Slow down state manager after an unhandled error
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 14 Sep 2012 17:23:23 -0400
+Message-ID: <20120914212323.1635.78058.stgit@degas.1015granger.net>
+In-Reply-To: <20120914211053.1635.74063.stgit@degas.1015granger.net>
+References: <20120914211053.1635.74063.stgit@degas.1015granger.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> Sent: Monday, September 17, 2012 12:51 PM
-> To: Myklebust, Trond
-> Cc: Schumaker, Bryan; linux-nfs@vger.kernel.org
-> Subject: Re: readdir cookies
-> 
-> On Mon, Sep 17, 2012 at 04:05:10PM +0000, Myklebust, Trond wrote:
-> > > -----Original Message-----
-> > > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> > > owner@vger.kernel.org] On Behalf Of J. Bruce Fields
-> > > Sent: Monday, September 17, 2012 11:54 AM
-> > > To: Myklebust, Trond; Schumaker, Bryan
-> > > Cc: linux-nfs@vger.kernel.org
-> > > Subject: readdir cookies
-> > >
-> > > How does the nfs client decide what directory cookies to return?
-> > > (As the d_off field to readdir, for example).
-> > >
-> > > I'd assumed it would return the server's cookie, but testing shows
-> > > it returns a simple integer sequence.
-> >
-> > We cache the cookies and use them to figure out where the readdir cursor
-> is after a directory update, but we use positive integers for telldir()/seekdir().
-> The reason is that too many servers return cookies that use > 32 bits (NFSv2-
-> incompatible) or are unsigned.
-> 
-> Ok--so the tradeoff is that telldir/seekdir cookies may not be good
-> indefinitely?
+If the state manager thread is not actually able to fully recover from
+some situation, it wakes up waiters, who kick off a new state manager
+thread.  Quite often the fresh invocation of the state manager is just
+as successful.
 
-Yes. Most apps don't care about telldir()/seekdir(), so it isn't really much of an issue. However, glibc has a bunch of assumptions about the 'd_offs' entries returned by getdents()/getdents64() and will do "sanity checks" on them that often end up failing when we just shove in the raw NFS cookies.
+This results in a livelock as the client dumps thousands of NFS
+requests a second on the network in a vain attempt to recover.  Not
+very friendly.
 
-Cheers
-  Trond
+To mitigate this situation, add a delay in the state manager after
+an unhandled error, so that the client sends just a few requests
+every second in this case.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ fs/nfs/nfs4state.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 55148de..d6e0d63 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -2008,6 +2008,7 @@ out_error:
+ 	pr_warn_ratelimited("NFS: state manager%s%s failed on NFSv4 server %s"
+ 			" with error %d\n", section_sep, section,
+ 			clp->cl_hostname, -status);
++	ssleep(1);
+ 	nfs4_end_drain_session(clp);
+ 	nfs4_clear_state_manager_bit(clp);
+ }
+
