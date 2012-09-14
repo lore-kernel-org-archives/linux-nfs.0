@@ -1,73 +1,139 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:18079 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753603Ab2IUBgD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Sep 2012 21:36:03 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 02/14] NFSv4.1: pnfs_layout_io_test_failed must clear invalid lsegs before a retry
-Date: Thu, 20 Sep 2012 21:35:45 -0400
-Message-Id: <1348191357-44503-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1348191357-44503-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1348191357-44503-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:34623 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756190Ab2INVXz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Sep 2012 17:23:55 -0400
+Received: by mail-yx0-f174.google.com with SMTP id m15so315385yen.19
+        for <linux-nfs@vger.kernel.org>; Fri, 14 Sep 2012 14:23:54 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 05/10] SUNRPC: Refactor rpc_clone_client()
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 14 Sep 2012 17:23:52 -0400
+Message-ID: <20120914212352.1635.44061.stgit@degas.1015granger.net>
+In-Reply-To: <20120914211053.1635.74063.stgit@degas.1015granger.net>
+References: <20120914211053.1635.74063.stgit@degas.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If pnfs_layout_io_test_failed() authorises a retry of the failed layoutgets,
-it should first clear the existing layout segments so that we start afresh.
+rpc_clone_client() does most of the same tasks as rpc_new_client(),
+so there is an opportunity for code re-use.  Create a generic helper
+that makes it easy to clone an RPC client while replacing any of the
+clnt's parameters.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/pnfs.c | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index cbbb0fc..80aaaba 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -256,7 +256,8 @@ pnfs_layout_io_set_failed(struct pnfs_layout_hdr *lo, u32 iomode)
- }
- 
- static bool
--pnfs_layout_io_test_failed(struct pnfs_layout_hdr *lo, u32 iomode)
-+pnfs_layout_io_test_failed(struct pnfs_layout_hdr *lo, u32 iomode,
-+		struct list_head *head)
+ net/sunrpc/clnt.c |   83 +++++++++++++++++++++++++++--------------------------
+ 1 files changed, 43 insertions(+), 40 deletions(-)
+
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index fa48c60..afbeefa 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -490,59 +490,62 @@ EXPORT_SYMBOL_GPL(rpc_create);
+  * same transport while varying parameters such as the authentication
+  * flavour.
+  */
+-struct rpc_clnt *
+-rpc_clone_client(struct rpc_clnt *clnt)
++static struct rpc_clnt *__rpc_clone_client(struct rpc_create_args *args,
++					   struct rpc_clnt *clnt)
  {
- 	unsigned long start, end;
- 	if (test_bit(pnfs_iomode_to_fail_bit(iomode), &lo->plh_flags) == 0)
-@@ -267,6 +268,7 @@ pnfs_layout_io_test_failed(struct pnfs_layout_hdr *lo, u32 iomode)
- 		/* It is time to retry the failed layoutgets */
- 		clear_bit(NFS_LAYOUT_RW_FAILED, &lo->plh_flags);
- 		clear_bit(NFS_LAYOUT_RO_FAILED, &lo->plh_flags);
-+		pnfs_mark_matching_lsegs_invalid(lo, head, NULL);
- 		return false;
- 	}
- 	return true;
-@@ -1058,6 +1060,7 @@ pnfs_update_layout(struct inode *ino,
- 	struct nfs_client *clp = server->nfs_client;
- 	struct pnfs_layout_hdr *lo;
- 	struct pnfs_layout_segment *lseg = NULL;
-+	LIST_HEAD(tmp_list);
- 	bool first = false;
+-	struct rpc_clnt *new;
+ 	struct rpc_xprt *xprt;
+-	int err = -ENOMEM;
++	struct rpc_clnt *new;
++	int err;
  
- 	if (!pnfs_enabled_sb(NFS_SERVER(ino)))
-@@ -1081,7 +1084,7 @@ pnfs_update_layout(struct inode *ino,
- 	}
+-	new = kmemdup(clnt, sizeof(*new), GFP_KERNEL);
+-	if (!new)
+-		goto out_no_clnt;
+-	new->cl_parent = clnt;
+-	/* Turn off autobind on clones */
+-	new->cl_autobind = 0;
+-	INIT_LIST_HEAD(&new->cl_tasks);
+-	spin_lock_init(&new->cl_lock);
+-	rpc_init_rtt(&new->cl_rtt_default, clnt->cl_timeout->to_initval);
+-	new->cl_metrics = rpc_alloc_iostats(clnt);
+-	if (new->cl_metrics == NULL)
+-		goto out_no_stats;
+-	if (clnt->cl_principal) {
+-		new->cl_principal = kstrdup(clnt->cl_principal, GFP_KERNEL);
+-		if (new->cl_principal == NULL)
+-			goto out_no_principal;
+-	}
++	err = -ENOMEM;
+ 	rcu_read_lock();
+ 	xprt = xprt_get(rcu_dereference(clnt->cl_xprt));
+ 	rcu_read_unlock();
+ 	if (xprt == NULL)
+-		goto out_no_transport;
+-	rcu_assign_pointer(new->cl_xprt, xprt);
+-	atomic_set(&new->cl_count, 1);
+-	err = rpc_setup_pipedir(new, clnt->cl_program->pipe_dir_name);
+-	if (err != 0)
+-		goto out_no_path;
+-	rpc_clnt_set_nodename(new, utsname()->nodename);
+-	if (new->cl_auth)
+-		atomic_inc(&new->cl_auth->au_count);
++		goto out_err;
++	args->servername = xprt->servername;
++
++	new = rpc_new_client(args, xprt);
++	if (IS_ERR(new)) {
++		err = PTR_ERR(new);
++		goto out_put;
++	}
++
+ 	atomic_inc(&clnt->cl_count);
+-	rpc_register_client(new);
+-	rpciod_up();
++	new->cl_parent = clnt;
++
++	/* Turn off autobind on clones */
++	new->cl_autobind = 0;
++	new->cl_softrtry = clnt->cl_softrtry;
++	new->cl_discrtry = clnt->cl_discrtry;
++	new->cl_chatty = clnt->cl_chatty;
+ 	return new;
+-out_no_path:
++
++out_put:
+ 	xprt_put(xprt);
+-out_no_transport:
+-	kfree(new->cl_principal);
+-out_no_principal:
+-	rpc_free_iostats(new->cl_metrics);
+-out_no_stats:
+-	kfree(new);
+-out_no_clnt:
++out_err:
+ 	dprintk("RPC:       %s: returned error %d\n", __func__, err);
+ 	return ERR_PTR(err);
+ }
++
++/**
++ * rpc_clone_client - Clone an RPC client structure
++ *
++ * @clnt: RPC client whose parameters are copied
++ *
++ * Returns a fresh RPC client or an ERR_PTR.
++ */
++struct rpc_clnt *rpc_clone_client(struct rpc_clnt *clnt)
++{
++	struct rpc_create_args args = {
++		.program	= clnt->cl_program,
++		.prognumber	= clnt->cl_prog,
++		.version	= clnt->cl_vers,
++		.authflavor	= clnt->cl_auth->au_flavor,
++		.client_name	= clnt->cl_principal,
++	};
++	return __rpc_clone_client(&args, clnt);
++}
+ EXPORT_SYMBOL_GPL(rpc_clone_client);
  
- 	/* if LAYOUTGET already failed once we don't try again */
--	if (pnfs_layout_io_test_failed(nfsi->layout, iomode))
-+	if (pnfs_layout_io_test_failed(nfsi->layout, iomode, &tmp_list))
- 		goto out_unlock;
- 
- 	/* Check to see if the layout for the given range already exists */
-@@ -1127,6 +1130,7 @@ pnfs_update_layout(struct inode *ino,
- 	}
- 	atomic_dec(&lo->plh_outstanding);
- out:
-+	pnfs_free_lseg_list(&tmp_list);
- 	pnfs_put_layout_hdr(lo);
- 	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
- 		nfsi->layout ? nfsi->layout->plh_flags : -1, lseg);
--- 
-1.7.11.4
+ /*
 
