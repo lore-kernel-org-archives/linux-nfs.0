@@ -1,186 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:64423 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754409Ab2INVYo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Sep 2012 17:24:44 -0400
-Received: by yenm15 with SMTP id m15so315684yen.19
-        for <linux-nfs@vger.kernel.org>; Fri, 14 Sep 2012 14:24:44 -0700 (PDT)
+Received: from acsinet15.oracle.com ([141.146.126.227]:30558 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758684Ab2INTJC convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Sep 2012 15:09:02 -0400
+Subject: Re: [PATCH 1/3] lockd: use rpc client's cl_nodename for id encoding
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=us-ascii
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 10/10] NFS: Add nfs4_unique_id boot parameter
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 14 Sep 2012 17:24:41 -0400
-Message-ID: <20120914212441.1635.55575.stgit@degas.1015granger.net>
-In-Reply-To: <20120914211053.1635.74063.stgit@degas.1015granger.net>
-References: <20120914211053.1635.74063.stgit@degas.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <20120914142555.10835.53544.stgit@localhost.localdomain>
+Date: Fri, 14 Sep 2012 15:08:42 -0400
+Cc: Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        linux-nfs@vger.kernel.org, devel@openvz.org,
+        linux-kernel@vger.kernel.org, jlayton@redhat.com
+Message-Id: <1800C13C-A771-4CA6-B241-4B4DEA207684@oracle.com>
+References: <20120914140811.10835.81465.stgit@localhost.localdomain> <20120914142555.10835.53544.stgit@localhost.localdomain>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-An optional boot parameter is introduced to allow client
-administrators to specify a string that the Linux NFS client can
-insert into its nfs_client_id4 id string, to make it both more
-globally unique, and to ensure that it doesn't change even if the
-client's nodename changes.
+Hi-
 
-If this boot parameter is not specified, the client's nodename is
-used, as before.
+On Sep 14, 2012, at 10:25 AM, Stanislav Kinsbursky wrote:
 
-Client installation procedures can create a unique string (typically,
-a UUID) which remains unchanged during the lifetime of that client
-instance.  This works just like creating a UUID for the label of the
-system's root and boot volumes.
+> Taking hostname from uts namespace if not safe, because this cuold be
+> performind during umount operation on child reaper death. And in this case
+> current->nsproxy is NULL already.
+> 
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> Cc: <stable@vger.kernel.org>
+> ---
+> fs/lockd/mon.c |   14 ++++++++------
+> 1 files changed, 8 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+> index 7ef14b3..c6186fb 100644
+> --- a/fs/lockd/mon.c
+> +++ b/fs/lockd/mon.c
+> @@ -426,11 +426,12 @@ static void encode_mon_name(struct xdr_stream *xdr, const struct nsm_args *argp)
+>  * (via the NLMPROC_SM_NOTIFY call) that the state of host "mon_name"
+>  * has changed.
+>  */
+> -static void encode_my_id(struct xdr_stream *xdr, const struct nsm_args *argp)
+> +static void encode_my_id(struct xdr_stream *xdr, const struct nsm_args *argp,
+> +			 char *nodename)
+> {
+> 	__be32 *p;
+> 
+> -	encode_nsm_string(xdr, utsname()->nodename);
+> +	encode_nsm_string(xdr, nodename);
+> 	p = xdr_reserve_space(xdr, 4 + 4 + 4);
+> 	*p++ = cpu_to_be32(argp->prog);
+> 	*p++ = cpu_to_be32(argp->vers);
+> @@ -441,10 +442,11 @@ static void encode_my_id(struct xdr_stream *xdr, const struct nsm_args *argp)
+>  * The "mon_id" argument specifies the non-private arguments
+>  * of an NSMPROC_MON or NSMPROC_UNMON call.
+>  */
+> -static void encode_mon_id(struct xdr_stream *xdr, const struct nsm_args *argp)
+> +static void encode_mon_id(struct xdr_stream *xdr, const struct nsm_args *argp,
+> +			  char *nodename)
+> {
+> 	encode_mon_name(xdr, argp);
+> -	encode_my_id(xdr, argp);
+> +	encode_my_id(xdr, argp, nodename);
+> }
+> 
+> /*
+> @@ -463,14 +465,14 @@ static void encode_priv(struct xdr_stream *xdr, const struct nsm_args *argp)
+> static void nsm_xdr_enc_mon(struct rpc_rqst *req, struct xdr_stream *xdr,
+> 			    const struct nsm_args *argp)
+> {
+> -	encode_mon_id(xdr, argp);
+> +	encode_mon_id(xdr, argp, req->rq_task->tk_client->cl_nodename);
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+IMO you should get the cl_nodename in nsm_mon_unmon() from clnt->cl_nodename, and pass it in as part of *argp .  The choice of which nodename to use is clearly a decision for an "upper layer" not a choice for the XDR functions.
 
- Documentation/filesystems/nfs/nfs.txt |   44 +++++++++++++++++++++++++++++++--
- Documentation/kernel-parameters.txt   |    5 ++++
- fs/nfs/nfs4_fs.h                      |    3 ++
- fs/nfs/nfs4proc.c                     |    6 ++++-
- fs/nfs/super.c                        |    5 ++++
- 5 files changed, 59 insertions(+), 4 deletions(-)
+Long ago I had patches which fixed this layering violation for a very similar purpose as yours, but they were never applied.
 
-diff --git a/Documentation/filesystems/nfs/nfs.txt b/Documentation/filesystems/nfs/nfs.txt
-index f50f26c..f2571c8 100644
---- a/Documentation/filesystems/nfs/nfs.txt
-+++ b/Documentation/filesystems/nfs/nfs.txt
-@@ -12,9 +12,47 @@ and work is in progress on adding support for minor version 1 of the NFSv4
- protocol.
- 
- The purpose of this document is to provide information on some of the
--upcall interfaces that are used in order to provide the NFS client with
--some of the information that it requires in order to fully comply with
--the NFS spec.
-+special features of the NFS client that can be configured by system
-+administrators.
-+
-+
-+The nfs4_unique_id parameter
-+============================
-+
-+NFSv4 requires clients to identify themselves to servers with a unique
-+string.  File open and lock state shared between one client and one server
-+is associated with this identity.  To support robust NFSv4 state recovery
-+and transparent state migration, this identity string must not change
-+across client reboots.
-+
-+Without any other intervention, the Linux client uses a string that contains
-+the local system's node name.  System administrators, however, often do not
-+take care to ensure that node names are fully qualified and do not change
-+over the lifetime of a client system.  Node names can have other
-+administrative requirements that require particular behavior that does not
-+work well as part of an nfs_client_id4 string.
-+
-+The nfs.nfs4_unique_id boot parameter specifies a unique string that can be
-+used instead of a system's node name when an NFS client identifies itself to
-+a server.  Thus, if the system's node name is not unique, or it changes, its
-+nfs.nfs4_unique_id stays the same, preventing collision with other clients
-+or loss of state during NFS reboot recovery or transparent state migration.
-+
-+The nfs.nfs4_unique_id string is typically a UUID, though it can contain
-+anything that is believed to be unique across all NFS clients.  An
-+nfs4_unique_id string should be chosen when a client system is installed,
-+just as a system's root file system gets a fresh UUID in its label at
-+install time.
-+
-+The string should remain fixed for the lifetime of the client.  It can be
-+changed safely if care is taken that the client shuts down cleanly and all
-+outstanding NFSv4 state has expired, to prevent loss of NFSv4 state.
-+
-+This string can be stored in an NFS client's grub.conf, or it can be provided
-+via a net boot facility such as PXE.  It may also be specified as an nfs.ko
-+module parameter.  Specifying a uniquifier string is not support for NFS
-+clients running in containers.
-+
- 
- The DNS resolver
- ================
-diff --git a/Documentation/kernel-parameters.txt b/Documentation/kernel-parameters.txt
-index ad7e2e5..396a1e6 100644
---- a/Documentation/kernel-parameters.txt
-+++ b/Documentation/kernel-parameters.txt
-@@ -1719,6 +1719,11 @@ bytes respectively. Such letter suffixes can also be entirely omitted.
- 			will be autodetected by the client, and it will fall
- 			back to using the idmapper.
- 			To turn off this behaviour, set the value to '0'.
-+	nfs.nfs4_unique_id=
-+			[NFS4] Specify an additional fixed unique ident-
-+			ification string that NFSv4 clients can insert into
-+			their nfs_client_id4 string.  This is typically a
-+			UUID that is generated at system install time.
- 
- 	nfs.send_implementation_id =
- 			[NFSv4.1] Send client implementation identification
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index c8e0998..bf54671 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -380,6 +380,9 @@ extern bool nfs4_disable_idmapping;
- extern unsigned short max_session_slots;
- extern unsigned short send_implementation_id;
- 
-+#define NFS4_CLIENT_ID_UNIQ_LEN		(64)
-+extern char nfs4_client_id_uniquifier[NFS4_CLIENT_ID_UNIQ_LEN];
-+
- /* nfs4sysctl.c */
- #ifdef CONFIG_SYSCTL
- int nfs4_register_sysctl(void);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index e344f13..f456f5f 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4033,9 +4033,13 @@ static unsigned int
- nfs4_init_uniform_client_string(const struct nfs_client *clp,
- 				char *buf, size_t len)
- {
-+	char *nodename = clp->cl_rpcclient->cl_nodename;
-+
-+	if (nfs4_client_id_uniquifier[0] != '\0')
-+		nodename = nfs4_client_id_uniquifier;
- 	return scnprintf(buf, len, "Linux NFSv%u.%u %s",
- 				clp->rpc_ops->version, clp->cl_minorversion,
--				clp->cl_rpcclient->cl_nodename);
-+				nodename);
- }
- 
- /**
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 4aabf19..77d95d0 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2660,6 +2660,7 @@ unsigned int nfs_idmap_cache_timeout = 600;
- bool nfs4_disable_idmapping = true;
- unsigned short max_session_slots = NFS4_DEF_SLOT_TABLE_SIZE;
- unsigned short send_implementation_id = 1;
-+char nfs4_client_id_uniquifier[NFS4_CLIENT_ID_UNIQ_LEN] = "";
- 
- EXPORT_SYMBOL_GPL(nfs_callback_set_tcpport);
- EXPORT_SYMBOL_GPL(nfs_callback_tcpport);
-@@ -2667,6 +2668,7 @@ EXPORT_SYMBOL_GPL(nfs_idmap_cache_timeout);
- EXPORT_SYMBOL_GPL(nfs4_disable_idmapping);
- EXPORT_SYMBOL_GPL(max_session_slots);
- EXPORT_SYMBOL_GPL(send_implementation_id);
-+EXPORT_SYMBOL_GPL(nfs4_client_id_uniquifier);
- 
- #define NFS_CALLBACK_MAXPORTNR (65535U)
- 
-@@ -2692,6 +2694,8 @@ static struct kernel_param_ops param_ops_portnr = {
- module_param_named(callback_tcpport, nfs_callback_set_tcpport, portnr, 0644);
- module_param(nfs_idmap_cache_timeout, int, 0644);
- module_param(nfs4_disable_idmapping, bool, 0644);
-+module_param_string(nfs4_unique_id, nfs4_client_id_uniquifier,
-+			NFS4_CLIENT_ID_UNIQ_LEN, 0600);
- MODULE_PARM_DESC(nfs4_disable_idmapping,
- 		"Turn off NFSv4 idmapping when using 'sec=sys'");
- module_param(max_session_slots, ushort, 0644);
-@@ -2700,6 +2704,7 @@ MODULE_PARM_DESC(max_session_slots, "Maximum number of outstanding NFSv4.1 "
- module_param(send_implementation_id, ushort, 0644);
- MODULE_PARM_DESC(send_implementation_id,
- 		"Send implementation ID with NFSv4.1 exchange_id");
-+MODULE_PARM_DESC(nfs4_unique_id, "nfs_client_id4 uniquifier string");
- MODULE_ALIAS("nfs4");
- 
- #endif /* CONFIG_NFS_V4 */
+> 	encode_priv(xdr, argp);
+> }
+> 
+> static void nsm_xdr_enc_unmon(struct rpc_rqst *req, struct xdr_stream *xdr,
+> 			      const struct nsm_args *argp)
+> {
+> -	encode_mon_id(xdr, argp);
+> +	encode_mon_id(xdr, argp, req->rq_task->tk_client->cl_nodename);
+
+Ditto.
+
+> }
+> 
+> static int nsm_xdr_dec_stat_res(struct rpc_rqst *rqstp,
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
