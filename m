@@ -1,126 +1,144 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:58062 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754166Ab2IUBgD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Sep 2012 21:36:03 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 03/14] NFSv4.1: Fix a race in the pNFS return-on-close code
-Date: Thu, 20 Sep 2012 21:35:46 -0400
-Message-Id: <1348191357-44503-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1348191357-44503-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1348191357-44503-1-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-2-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-yw0-f46.google.com ([209.85.213.46]:43958 "EHLO
+	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754351Ab2INVYZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Sep 2012 17:24:25 -0400
+Received: by mail-yw0-f46.google.com with SMTP id m54so1133966yhm.19
+        for <linux-nfs@vger.kernel.org>; Fri, 14 Sep 2012 14:24:25 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 08/10] NFS: Use the same nfs_client_id4 for every server
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 14 Sep 2012 17:24:21 -0400
+Message-ID: <20120914212420.1635.7475.stgit@degas.1015granger.net>
+In-Reply-To: <20120914211053.1635.74063.stgit@degas.1015granger.net>
+References: <20120914211053.1635.74063.stgit@degas.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If we sleep after dropping the inode->i_lock, then we are no longer
-atomic with respect to the rpc_wake_up() call in pnfs_layout_remove_lseg().
+Currently, when identifying itself to NFS servers, the Linux NFS
+client uses a unique nfs_client_id4.id string for each server IP
+address it talks with.  For example, when client A talks to server X,
+the client identifies itself using a string like "AX".  The
+requirements for these strings are specified in detail by RFC 3530
+(and bis).
 
+This form of client identification presents a problem for Transparent
+State Migration.  When client A's state on server X is migrated to
+server Y, it continues to be associated with string "AX."  But,
+according to the rules of client string construction above, client
+A will present string "AY" when communicating with server Y.
+
+Server Y thus has no way to know that client A should be associated
+with the state migrated from server X.  "AX" is all but abandoned,
+interfering with establishing fresh state for client A on server Y.
+
+To support transparent state migration, then, NFSv4.0 clients must
+instead use the same nfs_client_id4.id string to identify themselves
+to every NFS server; something like "A".
+
+Now a client identifies itself as "A" to server X.  When a file
+system on server X transitions to server Y, and client A identifies
+itself as "A" to server Y, Y will know immediately that the state
+associated with "A," whether it is native or migrated, is owned by
+the client, and can merge both into a single lease.
+
+As a pre-requisite to adding support for NFSv4 migration to the Linux
+NFS client, this patch changes the way Linux identifies itself to NFS
+servers via the SETCLIENTID (NFSv4 minor version 0) and EXCHANGE_ID
+(NFSv4 minor version 1) operations.
+
+In addition to removing the server's IP address from nfs_client_id4,
+the Linux NFS client will also no longer use its own source IP address
+as part of the nfs_client_id4 string.  On multi-homed clients, the
+value of this address depends on the address family and network
+routing used to contact the server, thus it can be different for each
+server.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/nfs4proc.c |  8 +++-----
- fs/nfs/pnfs.c     | 22 ++++++++++++----------
- fs/nfs/pnfs.h     |  4 ++--
- 3 files changed, 17 insertions(+), 17 deletions(-)
+
+ fs/nfs/nfs4proc.c |   51 +++++++++++++++++++++++++++++++++++++++------------
+ 1 files changed, 39 insertions(+), 12 deletions(-)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 87702a0..49d5c7d 100644
+index 6352741..80aadcc 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -2137,6 +2137,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
- {
- 	struct nfs4_closedata *calldata = data;
- 	struct nfs4_state *state = calldata->state;
-+	struct inode *inode = calldata->inode;
- 	int call_close = 0;
- 
- 	dprintk("%s: begin!\n", __func__);
-@@ -2170,16 +2171,13 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
- 	if (calldata->arg.fmode == 0) {
- 		task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CLOSE];
- 		if (calldata->roc &&
--		    pnfs_roc_drain(calldata->inode, &calldata->roc_barrier)) {
--			rpc_sleep_on(&NFS_SERVER(calldata->inode)->roc_rpcwaitq,
--				     task, NULL);
-+		    pnfs_roc_drain(inode, &calldata->roc_barrier, task))
- 			goto out;
--		}
- 	}
- 
- 	nfs_fattr_init(calldata->res.fattr);
- 	calldata->timestamp = jiffies;
--	if (nfs4_setup_sequence(NFS_SERVER(calldata->inode),
-+	if (nfs4_setup_sequence(NFS_SERVER(inode),
- 				&calldata->arg.seq_args,
- 				&calldata->res.seq_res,
- 				task))
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 80aaaba..f3acb68 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -777,27 +777,29 @@ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier)
- 	spin_unlock(&ino->i_lock);
+@@ -4012,6 +4012,32 @@ static void nfs4_init_boot_verifier(const struct nfs_client *clp,
+ 	memcpy(bootverf->data, verf, sizeof(bootverf->data));
  }
  
--bool pnfs_roc_drain(struct inode *ino, u32 *barrier)
-+bool pnfs_roc_drain(struct inode *ino, u32 *barrier, struct rpc_task *task)
- {
- 	struct nfs_inode *nfsi = NFS_I(ino);
-+	struct pnfs_layout_hdr *lo;
- 	struct pnfs_layout_segment *lseg;
-+	u32 current_seqid;
- 	bool found = false;
++static unsigned int
++nfs4_init_nonuniform_client_string(const struct nfs_client *clp,
++				   char *buf, size_t len)
++{
++	unsigned int result;
++
++	rcu_read_lock();
++	result = scnprintf(buf, len, "Linux NFSv4.0 %s/%s %s",
++				clp->cl_ipaddr,
++				rpc_peeraddr2str(clp->cl_rpcclient,
++							RPC_DISPLAY_ADDR),
++				rpc_peeraddr2str(clp->cl_rpcclient,
++							RPC_DISPLAY_PROTO));
++	rcu_read_unlock();
++	return result;
++}
++
++static unsigned int
++nfs4_init_uniform_client_string(const struct nfs_client *clp,
++				char *buf, size_t len)
++{
++	return scnprintf(buf, len, "Linux NFSv%u.%u %s",
++				clp->rpc_ops->version, clp->cl_minorversion,
++				clp->cl_rpcclient->cl_nodename);
++}
++
+ /**
+  * nfs4_proc_setclientid - Negotiate client ID
+  * @clp: state data structure
+@@ -4042,15 +4068,18 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
  
- 	spin_lock(&ino->i_lock);
- 	list_for_each_entry(lseg, &nfsi->layout->plh_segs, pls_list)
- 		if (test_bit(NFS_LSEG_ROC, &lseg->pls_flags)) {
-+			rpc_sleep_on(&NFS_SERVER(ino)->roc_rpcwaitq, task, NULL);
- 			found = true;
--			break;
-+			goto out;
- 		}
--	if (!found) {
--		struct pnfs_layout_hdr *lo = nfsi->layout;
--		u32 current_seqid = be32_to_cpu(lo->plh_stateid.seqid);
-+	lo = nfsi->layout;
-+	current_seqid = be32_to_cpu(lo->plh_stateid.seqid);
+ 	/* nfs_client_id4 */
+ 	nfs4_init_boot_verifier(clp, &sc_verifier);
+-	rcu_read_lock();
+-	setclientid.sc_name_len = scnprintf(setclientid.sc_name,
+-			sizeof(setclientid.sc_name), "%s/%s %s",
+-			clp->cl_ipaddr,
+-			rpc_peeraddr2str(clp->cl_rpcclient,
+-						RPC_DISPLAY_ADDR),
+-			rpc_peeraddr2str(clp->cl_rpcclient,
+-						RPC_DISPLAY_PROTO));
++	if (test_bit(NFS_CS_MIGRATION, &clp->cl_flags))
++		setclientid.sc_name_len =
++				nfs4_init_uniform_client_string(clp,
++						setclientid.sc_name,
++						sizeof(setclientid.sc_name));
++	else
++		setclientid.sc_name_len =
++				nfs4_init_nonuniform_client_string(clp,
++						setclientid.sc_name,
++						sizeof(setclientid.sc_name));
+ 	/* cb_client4 */
++	rcu_read_lock();
+ 	setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
+ 				sizeof(setclientid.sc_netid),
+ 				rpc_peeraddr2str(clp->cl_rpcclient,
+@@ -5272,10 +5301,8 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
+ 	};
  
--		/* Since close does not return a layout stateid for use as
--		 * a barrier, we choose the worst-case barrier.
--		 */
--		*barrier = current_seqid + atomic_read(&lo->plh_outstanding);
--	}
-+	/* Since close does not return a layout stateid for use as
-+	 * a barrier, we choose the worst-case barrier.
-+	 */
-+	*barrier = current_seqid + atomic_read(&lo->plh_outstanding);
-+out:
- 	spin_unlock(&ino->i_lock);
- 	return found;
- }
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 9735031..aa9fa1b 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -210,7 +210,7 @@ int pnfs_mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
- bool pnfs_roc(struct inode *ino);
- void pnfs_roc_release(struct inode *ino);
- void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
--bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
-+bool pnfs_roc_drain(struct inode *ino, u32 *barrier, struct rpc_task *task);
- void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
- void pnfs_cleanup_layoutcommit(struct nfs4_layoutcommit_data *data);
- int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
-@@ -442,7 +442,7 @@ pnfs_roc_set_barrier(struct inode *ino, u32 barrier)
- }
- 
- static inline bool
--pnfs_roc_drain(struct inode *ino, u32 *barrier)
-+pnfs_roc_drain(struct inode *ino, u32 *barrier, struct rpc_task *task)
- {
- 	return false;
- }
--- 
-1.7.11.4
+ 	nfs4_init_boot_verifier(clp, &verifier);
+-	args.id_len = scnprintf(args.id, sizeof(args.id),
+-				"%s/%s",
+-				clp->cl_ipaddr,
+-				clp->cl_rpcclient->cl_nodename);
++	args.id_len = nfs4_init_uniform_client_string(clp, args.id,
++							sizeof(args.id));
+ 	dprintk("NFS call  exchange_id auth=%s, '%.*s'\n",
+ 		clp->cl_rpcclient->cl_auth->au_ops->au_name,
+ 		args.id_len, args.id);
 
