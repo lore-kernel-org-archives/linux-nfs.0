@@ -1,66 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:33402 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760734Ab2IGOS7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Sep 2012 10:18:59 -0400
-Received: by ggdk6 with SMTP id k6so539998ggd.19
-        for <linux-nfs@vger.kernel.org>; Fri, 07 Sep 2012 07:18:59 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v6 15/20] vfs: have chdir retry lookup and call once on ESTALE error
-Date: Fri,  7 Sep 2012 10:18:22 -0400
-Message-Id: <1347027507-20956-16-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1347027507-20956-1-git-send-email-jlayton@redhat.com>
-References: <1347027507-20956-1-git-send-email-jlayton@redhat.com>
+Received: from acsinet15.oracle.com ([141.146.126.227]:31093 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751529Ab2INTKR convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Sep 2012 15:10:17 -0400
+Subject: Re: [PATCH 0/3] lockd: use per-net refrence-counted NSM clients
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA908FA7F55@SACEXCMBX04-PRD.hq.netapp.com>
+Date: Fri, 14 Sep 2012 15:10:02 -0400
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "jlayton@redhat.com" <jlayton@redhat.com>
+Message-Id: <DA466953-BF79-44F7-8870-AC2FD5E3FEC2@oracle.com>
+References: <20120914140811.10835.81465.stgit@localhost.localdomain> <4030B8F9-5C67-4AE7-826E-B4B6AD4FAD01@oracle.com> <4FA345DA4F4AE44899BD2B03EEEC2FA908FA7F55@SACEXCMBX04-PRD.hq.netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/open.c | 25 +++++++++++++------------
- 1 file changed, 13 insertions(+), 12 deletions(-)
 
-diff --git a/fs/open.c b/fs/open.c
-index a5a5c9a..81ba325 100644
---- a/fs/open.c
-+++ b/fs/open.c
-@@ -389,20 +389,21 @@ SYSCALL_DEFINE1(chdir, const char __user *, filename)
- {
- 	struct path path;
- 	int error;
-+	int lookup_flags = LOOKUP_FOLLOW | LOOKUP_DIRECTORY;
-+	unsigned int try = 0;
- 
--	error = user_path_dir(filename, &path);
--	if (error)
--		goto out;
--
--	error = inode_permission(path.dentry->d_inode, MAY_EXEC | MAY_CHDIR);
--	if (error)
--		goto dput_and_out;
--
--	set_fs_pwd(current->fs, &path);
-+	do {
-+		error = user_path_at(AT_FDCWD, filename, lookup_flags, &path);
-+		if (error)
-+			break;
- 
--dput_and_out:
--	path_put(&path);
--out:
-+		error = inode_permission(path.dentry->d_inode,
-+					 MAY_EXEC | MAY_CHDIR);
-+		if (!error)
-+			set_fs_pwd(current->fs, &path);
-+		path_put(&path);
-+		lookup_flags |= LOOKUP_REVAL;
-+	} while (retry_estale(error, try++));
- 	return error;
- }
- 
+On Sep 14, 2012, at 1:38 PM, Myklebust, Trond wrote:
+
+> On Fri, 2012-09-14 at 13:01 -0400, Chuck Lever wrote:
+>> What happens if statd is restarted?
+> 
+> Nothing unusual. Why?
+
+The NSM upcall transport is a potential application for TCP + softconn, now that a persistent rpc_clnt is used.  It just depends on what failure mode we'd like to optimize for.
+
+> 
+>> Sent from my iPhone
+>> 
+>> On Sep 14, 2012, at 10:25 AM, Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+>> 
+>>> This is a bug fix for https://bugzilla.redhat.com/show_bug.cgi?id=830862.
+>>> 
+>>> The problem is that with NFSv4 mount in container (with separated mount
+>>> namesapce) and active lock on it, dying child reaped of this container will
+>>> try to umount NFS and doing this will try to create RPC client to send
+>>> unmonitor request to statd.
+>>> But creation of RCP client requires valid current->nsproxy (for operation with
+>>> utsname()) and during umount on child reaper exit it's equal to zero.
+>>> 
+>>> Proposed solution is to introduce refrence-counter per-net NSM client, which
+>>> is created on fist monitor call and destroyed after the lst monitor call.
+>>> 
+>>> The following series implements...
+>>> 
+>>> ---
+>>> 
+>>> Stanislav Kinsbursky (3):
+>>>     lockd: use rpc client's cl_nodename for id encoding
+>>>     lockd: per-net NSM client creation and destruction helpers introduced
+>>>     lockd: create and use per-net NSM RPC clients on MON/UNMON requests
+>>> 
+>>> 
+>>> fs/lockd/mon.c   |   91 +++++++++++++++++++++++++++++++++++++++++++-----------
+>>> fs/lockd/netns.h |    4 ++
+>>> fs/lockd/svc.c   |    1 +
+>>> 3 files changed, 77 insertions(+), 19 deletions(-)
+>>> 
+>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+
 -- 
-1.7.11.4
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
