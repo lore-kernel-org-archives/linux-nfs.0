@@ -1,85 +1,140 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:22169 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:55468 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755113Ab2IUCoM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Sep 2012 22:44:12 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: NeilBrown <neilb@suse.de>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: What is NFSv4 READDIR doesn't return a filehandle....
-Date: Fri, 21 Sep 2012 02:44:10 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908FDDEDC@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20120917090537.20e38026@notabene.brown>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908FC54E3@SACEXCMBX04-PRD.hq.netapp.com>
-	 <20120918120417.4251733d@notabene.brown>
-In-Reply-To: <20120918120417.4251733d@notabene.brown>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1755375Ab2INVLg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 14 Sep 2012 17:11:36 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 2 4/5] NFS avoid expired credential keys for buffered writes
+Date: Fri, 14 Sep 2012 17:11:48 -0400
+Message-Id: <1347657109-2180-5-git-send-email-andros@netapp.com>
+In-Reply-To: <1347657109-2180-1-git-send-email-andros@netapp.com>
+References: <1347657109-2180-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA5LTE4IGF0IDEyOjA0ICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IE9u
-IE1vbiwgMTcgU2VwIDIwMTIgMTI6NTE6MzMgKzAwMDAgIk15a2xlYnVzdCwgVHJvbmQiDQo+IDxU
-cm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQo+IA0KPiA+ID4gLS0tLS1PcmlnaW5h
-bCBNZXNzYWdlLS0tLS0NCj4gPiA+IEZyb206IGxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5v
-cmcgW21haWx0bzpsaW51eC1uZnMtDQo+ID4gPiBvd25lckB2Z2VyLmtlcm5lbC5vcmddIE9uIEJl
-aGFsZiBPZiBOZWlsQnJvd24NCj4gPiA+IFNlbnQ6IFN1bmRheSwgU2VwdGVtYmVyIDE2LCAyMDEy
-IDc6MDYgUE0NCj4gPiA+IFRvOiBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnDQo+ID4gPiBTdWJq
-ZWN0OiBXaGF0IGlzIE5GU3Y0IFJFQURESVIgZG9lc24ndCByZXR1cm4gYSBmaWxlaGFuZGxlLi4u
-Lg0KPiA+ID4gDQo+ID4gPiANCj4gPiA+IEluIE5GU3Y0LCB0aGUgc2VydmVyIGNhbiByZXBvcnQg
-d2hpY2ggYXR0cmlidXRlcyBpdCBjaG9zZSB0byByZXR1cm4gaW4gYQ0KPiA+ID4gUkVBRERJUiBy
-ZXBseS4NCj4gPiA+IA0KPiA+ID4gQSBjdXN0b21lciBoYXMgY29tZSBhY3Jvc3MgYSBzZXJ2ZXIg
-d2hpY2ggZG9lcyBub3QgcmV0dXJuIHRoZSBmaWxlaGFuZGxlDQo+ID4gPiBpbmZvcm1hdGlvbiAo
-aXMgdGhhdCBhbGxvd2VkPykuDQo+ID4gDQo+ID4gVGhlIGZpbGVoYW5kbGUgYXR0cmlidXRlIGlz
-IGEgbWFuZGF0b3J5IGF0dHJpYnV0ZSBhY2NvcmRpbmcgdG8gUkZDMzUzMCwgc28gSSBiZWxpZXZl
-IHRoYXQgdGhlIGFuc3dlciBpcyAibm8iLg0KPiA+IA0KPiA+ID4gQSBjb25zZXF1ZW5jZSBvZiB0
-aGlzIGlzIHRoYXQgTGludXgvTkZTIGdldHMgY29uZnVzZWQuDQo+ID4gPiBuZnNfcmVhZGRpcl9w
-YWdlX2ZpbGxlciBjYWxscyBuZnNfcHJpbWVfZGNhY2hlKCkgKGJlY2F1c2UgaXQgd2FzIGEgcmVh
-ZGRpcg0KPiA+ID4gcGx1cyByZXF1ZXN0IHRoYXQgd2FzIHNlbnQpIGFuZCBuZnNfcHJpbWVfZGNh
-Y2hlIGdvZXMgYWhlYWQgYW5kIGNyZWF0ZXMNCj4gPiA+IGFuIGlub2RlIGJhc2VkIG9uIHRoZSBm
-aWxlaGFuZGxlIHRoYXQgaXQgaGFzLg0KPiA+ID4gSG93ZXZlciBkZWNvZGVfYXR0cl9maWxlaGFu
-ZGxlKCkgaGFkIGhhcHBpbHkgZGVjb2RlZCBub3RoaW5nIGFzIHRoZQ0KPiA+ID4gRkFUVFI0X1dP
-UkQwX0ZJTEVIQU5ETEUgYml0IHdhc24ndCBzZXQuDQo+ID4gPiBTbyB0aGUgaW5vZGUgZ2V0cyBj
-cmVhdGVkIHdpdGggYSB6ZXJvLWxlbmd0aCBmaWxlaGFuZGxlIGFuZCB3aGVuIHRoaXMgZ2V0cw0K
-PiA+ID4gc2VudCBiYWNrIHRvIHRoZSBzZXJ2ZXIgdG8gYWN0IG9uIHRoZSBpbm9kZSwgaXQgZ2V0
-cyBORlM0RVJSX0JBREhBTkRMRSB0bw0KPiA+ID4gdGhlIFBVVEZIIG9wLg0KPiA+ID4gDQo+ID4g
-PiBTbyBzaG91bGQgbmZzX3ByaW1lX2RjYWNoZSgpIGFib3J0IGlmIHRoZSBmaWxlaGFuZGxlIGRv
-ZXNuJ3QgZXhpc3QgKHBhdGNoDQo+ID4gPiBiZWxvdykgb3Igc2hvdWxkIG5mc19maGdldCgpIHJl
-dHVybiBhbiBlcnJvciBpZiB0aGUgZmlsZWhhbmRsZSBpcyBlbXB0eT8NCj4gPiA+IA0KPiA+ID4g
-T3IgbWF5YmUgdGhpcyBiZWhhdmlvdXIgc2hvdWxkIGJlIGRldGVjdGVkIGFuZCByZWFkZGlyIHNo
-b3VsZCBiZSBkaXNhYmxlZA0KPiA+ID4gZm9yIHRoYXQgc2VydmVyPw0KPiA+ID4gDQo+ID4gDQo+
-ID4gSSBkb24ndCB3YW50IHRvIGhhdmUgdG8gY29kZSB0aGUgY2xpZW50IHRvIGRlYWwgd2l0aCBi
-cm9rZW4gc2VydmVycy4gSWYgd2Ugc3RhcnQgZG93biB0aGF0IHBhdGgsIHRoZW4gd2UnbGwgZW5k
-IHVwIGRvaW5nIG5vdGhpbmcgZWxzZS4NCj4gPiANCj4gPiBJIGNhbiwgaG93ZXZlciwgc2VlIGEg
-Y2FzZSBmb3IgZXh0ZW5kaW5nIHRoZSAibm9yZGlycGx1cyIgbW91bnQgb3B0aW9uIHRvIGNvdmVy
-IE5GU3Y0LiBDdXJyZW50bHkgaXQgb25seSBhY3RzIG9uIE5GU3YzIG1vdW50cy4uLg0KPiA+IA0K
-PiA+DQo+IA0KPiBUaGFua3MgVHJvbmQuDQo+IEknbSBoYXBweSB3aXRoIHRoaXMgcG9zaXRpb24g
-LSBsZXNzIHdvcmsgZm9yIG1lIDotKQ0KPiANCj4gQXMgaXQgaGFwcGVucywgbm9yZGlycGx1cyAq
-ZG9lcyogd29yayBmb3IgTkZTdjQgYW5kIGN1c3RvbWVyIGhhZCBhbHJlYWR5DQo+IGZvdW5kIHRo
-YXQgdGhpcyBpcyBhIHN1Y2Nlc3NmdWwgd29yayBhcm91bmQuICBUaGV5IGRpZG4ndCB3YW50IHRv
-IGhhdmUgdG8gdXNlDQo+IGl0IHRob3VnaC4gIEkndmUgcG9pbnRlZCBvdXQgdGhhdCBpcyByZWFs
-bHkgaXNuJ3Qgb3VyIHByb2JsZW0uDQoNCkdvb2QhIEkgd2FzIHdvcnJpZWQgdGhhdCBub3JkaXJw
-bHVzIHdhc24ndCB3b3JraW5nIGZvciBORlN2NC4NCg0KSWYgdGhlcmUgaXMgYW4gZXhpc3Rpbmcg
-d29ya2Fyb3VuZCwgdGhlbiBJIGRvIG5vdCBhdCBhbGwgYWNjZXB0IHRoZQ0KYXJndW1lbnQgdGhh
-dCB3ZSBuZWVkIHRvIGFkZCBjbGllbnQtc2lkZSBwYXRjaGVzIHRvIGFjY29tbW9kYXRlDQpicm9r
-ZW5uZXNzIG9uIHRoZSBORlMgc2VydmVycy4NCg0KSWYgdGhlcmUgaXMgbm8gZXhpc3Rpbmcgd29y
-a2Fyb3VuZCwgdGhlbiBJJ20gd2lsbGluZyB0byBoZWxwIHBlb3BsZSB3aXRoDQphIHRlbXBvcmFy
-eSBmaXggd2hpbGUgdGhleSB3YWl0IGZvciB0aGUgc2VydmVyIHZlbmRvcnMgdG8gZ2V0IHRoZWly
-IGFjdA0KdG9nZXRoZXIuIEhvd2V2ZXIgdWx0aW1hdGVseSwgSSBkb24ndCBiZWxpZXZlIGluIGZp
-eGluZyBzZXJ2ZXIgYnVncyBvbg0KdGhlIGNsaWVudDogdGhvc2UgdGVtcG9yYXJ5IGZpeGVzIHNo
-b3VsZCBjZXJ0YWlubHkgbm90IGJlIGZpbmRpbmcgdGhlaXINCndheSBpbnRvIHRoZSB1cHN0cmVh
-bSBrZXJuZWwsIGFuZCBhcyBhIGNvbnNlcXVlbmNlIHRoZXkgc2hvdWxkIHByb2JhYmx5DQpub3Qg
-Z28gaW50byBkaXN0cmlidXRpb24ga2VybmVscyBlaXRoZXIgKGFsdGhvdWdoIHRoYXQgaXMgeW91
-ciBjYWxsLCBhbmQNCm5vdCBtaW5lIDotKSkuDQoNCj4gSnVzdCBhIHRob3VnaHQ6IHdoaWxlIGNv
-cGluZyB3aXRoIGJyb2tlbiBzZXJ2ZXJzIHdvdWxkIG5vdCBiZSBhIGdvb2QgcGF0aCB0bw0KPiBm
-b2xsb3csIGRldGVjdGluZyBwcm90b2NvbCB2aW9sYXRpb25zIGFuZCByZXBvcnRpbmcgYW4gZXJy
-b3IgbWlnaHQgYmUuLi4NCj4gc2hvdWxkIHRoZSBORlMgY2xpZW50IHRyZWF0IGEgbWlzc2luZyBm
-aWxlaGFuZGxlIGFuZCBhIG1hbGZvcm1lZCByZXBseT8NCg0KTXkgY29uY2VybiBpcyB0aGF0IHRo
-ZSBjbGllbnQgY2FuJ3Qgb2JqZWN0aXZlbHkganVkZ2Ugd2hhdCBjb25zdGl0dXRlcyBhDQp2YWxp
-ZCBmaWxlaGFuZGxlIGFuZCB3aGF0IGRvZXMgbm90IHVudGlsIGl0IHRyaWVzIHRvIHVzZSBpdCBp
-biBhbiBSUEMNCmNhbGwuDQpHaXZlbiB0aGF0IHByZW1pc2UsIGl0IG1ha2VzIG1vcmUgc2Vuc2Ug
-dG8gY29uY2VudHJhdGUgb24gaGFuZGxpbmcgdGhlDQpjYXNlcyB3aGVyZSB0aGUgdXNhZ2UgZmFp
-bHMuIEplZmYgTGF5dG9uJ3MgdmZzIEVTVEFMRSBwYXRjaGVzIGFyZSBhIGdvb2QNCmNhc2UgaW4g
-cG9pbnQuDQoNCkNoZWVycw0KICBUcm9uZA0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXgg
-TkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
-b20NCnd3dy5uZXRhcHAuY29tDQo=
+From: Andy Adamson <andros@netapp.com>
+
+We must avoid buffering a WRITE that is using a credential key (e.g. a GSS
+context key) that is about to expire or has expired.  We currently will
+paint ourselves into a corner by returning success to the applciation
+for such a buffered WRITE, only to discover that we do not have permission when
+we attempt to flush the WRITE (and potentially associated COMMIT) to disk.
+
+Use the RPC layer credential key timeout and expire routines which use a
+a watermark, RPC_KEY_EXPIRE_TIMEO. We test the key in nfs_file_write.
+
+If a WRITE is using a credential with a key that will expire within
+watermark seconds, flush the inode in nfs_write_end and send only
+NFS_FILE_SYNC WRITEs by adding nfs_ctx_key_to_expire to nfs_need_sync_write.
+Note that this results in single page NFS_FILE_SYNC WRITEs.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/file.c     |   15 ++++++++++++++-
+ fs/nfs/internal.h |    2 ++
+ fs/nfs/write.c    |   27 +++++++++++++++++++++++++++
+ 3 files changed, 43 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 6a7fcab..e2937f2 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -389,6 +389,7 @@ static int nfs_write_end(struct file *file, struct address_space *mapping,
+ 			struct page *page, void *fsdata)
+ {
+ 	unsigned offset = pos & (PAGE_CACHE_SIZE - 1);
++	struct nfs_open_context *ctx = nfs_file_open_context(file);
+ 	int status;
+ 
+ 	dfprintk(PAGECACHE, "NFS: write_end(%s/%s(%ld), %u@%lld)\n",
+@@ -424,6 +425,13 @@ static int nfs_write_end(struct file *file, struct address_space *mapping,
+ 	if (status < 0)
+ 		return status;
+ 	NFS_I(mapping->host)->write_io += copied;
++
++	if (nfs_ctx_key_to_expire(ctx)) {
++		status = nfs_wb_all(mapping->host);
++		if (status < 0)
++			return status;
++	}
++
+ 	return copied;
+ }
+ 
+@@ -587,7 +595,8 @@ static int nfs_need_sync_write(struct file *filp, struct inode *inode)
+ 	if (IS_SYNC(inode) || (filp->f_flags & O_DSYNC))
+ 		return 1;
+ 	ctx = nfs_file_open_context(filp);
+-	if (test_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags))
++	if (test_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags) ||
++	    nfs_ctx_key_to_expire(ctx))
+ 		return 1;
+ 	return 0;
+ }
+@@ -601,6 +610,10 @@ ssize_t nfs_file_write(struct kiocb *iocb, const struct iovec *iov,
+ 	ssize_t result;
+ 	size_t count = iov_length(iov, nr_segs);
+ 
++	result = nfs_key_timeout_notify(iocb->ki_filp);
++	if (result)
++		return result;
++
+ 	if (iocb->ki_filp->f_flags & O_DIRECT)
+ 		return nfs_file_direct_write(iocb, iov, nr_segs, pos, true);
+ 
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 31fdb03..52e06e0 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -449,6 +449,8 @@ void nfs_request_remove_commit_list(struct nfs_page *req,
+ void nfs_init_cinfo(struct nfs_commit_info *cinfo,
+ 		    struct inode *inode,
+ 		    struct nfs_direct_req *dreq);
++int nfs_key_timeout_notify(struct file *filp);
++bool nfs_ctx_key_to_expire(struct nfs_open_context *ctx);
+ 
+ #ifdef CONFIG_MIGRATION
+ extern int nfs_migrate_page(struct address_space *,
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index e3b5537..1029c07 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -872,6 +872,33 @@ int nfs_flush_incompatible(struct file *file, struct page *page)
+ }
+ 
+ /*
++ * Avoid buffered writes when a open context credential's key would
++ * expire soon.
++ *
++ * Returns -EACCES if the key will expire within RPC_KEY_EXPIRE_FAIL.
++ *
++ * Return 0 and set a credential flag which triggers the inode to flush
++ * and performs  NFS_FILE_SYNC writes if the key will expired within
++ * RPC_KEY_EXPIRE_TIMEO.
++ */
++int
++nfs_key_timeout_notify(struct file *filp)
++{
++	struct nfs_open_context *ctx = nfs_file_open_context(filp);
++	struct rpc_auth *auth = NFS_SERVER(ctx->state->inode)->client->cl_auth;
++
++	return rpcauth_key_timeout_notify(auth, ctx->cred);
++}
++
++/*
++ * Test if the open context credential key is marked to expire soon.
++ */
++bool nfs_ctx_key_to_expire(struct nfs_open_context *ctx)
++{
++	return rpcauth_cred_key_to_expire(ctx->cred);
++}
++
++/*
+  * If the page cache is marked as unsafe or invalid, then we can't rely on
+  * the PageUptodate() flag. In this case, we will need to turn off
+  * write optimisations that depend on the page contents being correct.
+-- 
+1.7.7.6
+
