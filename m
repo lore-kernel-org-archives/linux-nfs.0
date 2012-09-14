@@ -1,97 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:53187 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:16651 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755375Ab2ILMqQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Sep 2012 08:46:16 -0400
-From: David Howells <dhowells@redhat.com>
-To: Bryan Schumaker <bjschuma@netapp.com>
-cc: dhowells@redhat.com, linux-nfs@vger.kernel.org,
-        Markus Rothe <markus@unixforces.net>
-Subject: FWD: Kernel panic after df4c3fd716e3565c6ab83ec4b6617cc180f062a1
+	id S1757454Ab2INOdA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 14 Sep 2012 10:33:00 -0400
+Subject: [PATCH 2/3] lockd: per-net NSM client creation and destruction
+	helpers introduced
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, devel@openvz.org,
+        linux-kernel@vger.kernel.org, jlayton@redhat.com
+Date: Fri, 14 Sep 2012 18:26:00 +0400
+Message-ID: <20120914142600.10835.70696.stgit@localhost.localdomain>
+In-Reply-To: <20120914140811.10835.81465.stgit@localhost.localdomain>
+References: <20120914140811.10835.81465.stgit@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-=-="
-Date: Wed, 12 Sep 2012 13:46:09 +0100
-Message-ID: <6241.1347453969@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
+NSM RPC client can be required on NFSv3 umount, when child reaper is dying (and
+destroying it's mount namespace). It means, that current nsproxy is set to
+NULL already, but creation of RPC client requires UTS namespace for gaining
+hostname string.
+This patch introduces reference counted NFS RPC clients creation and
+destruction helpers (similar to RPCBIND RPC clients).
 
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: <stable@vger.kernel.org>
+---
+ fs/lockd/mon.c   |   47 +++++++++++++++++++++++++++++++++++++++++++++++
+ fs/lockd/netns.h |    4 ++++
+ fs/lockd/svc.c   |    1 +
+ 3 files changed, 52 insertions(+), 0 deletions(-)
 
-Hi Bryan,
+diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+index c6186fb..77e07fe 100644
+--- a/fs/lockd/mon.c
++++ b/fs/lockd/mon.c
+@@ -19,6 +19,8 @@
+ 
+ #include <asm/unaligned.h>
+ 
++#include "netns.h"
++
+ #define NLMDBG_FACILITY		NLMDBG_MONITOR
+ #define NSM_PROGRAM		100024
+ #define NSM_VERSION		1
+@@ -83,6 +85,51 @@ static struct rpc_clnt *nsm_create(struct net *net)
+ 	return rpc_create(&args);
+ }
+ 
++__maybe_unused static struct rpc_clnt *nsm_client_get(struct net *net)
++{
++	static DEFINE_MUTEX(nsm_create_mutex);
++	struct rpc_clnt	*clnt;
++	struct lockd_net *ln = net_generic(net, lockd_net_id);
++
++	spin_lock(&ln->nsm_clnt_lock);
++	if (ln->nsm_users) {
++		ln->nsm_users++;
++		clnt = ln->nsm_clnt;
++		spin_unlock(&ln->nsm_clnt_lock);
++		goto out;
++	}
++	spin_unlock(&ln->nsm_clnt_lock);
++
++	mutex_lock(&nsm_create_mutex);
++	clnt = nsm_create(net);
++	if (!IS_ERR(clnt)) {
++		ln->nsm_clnt = clnt;
++		smp_wmb();
++		ln->nsm_users = 1;
++	}
++	mutex_unlock(&nsm_create_mutex);
++out:
++	return clnt;
++}
++
++__maybe_unused static void nsm_client_put(struct net *net)
++{
++	struct lockd_net *ln = net_generic(net, lockd_net_id);
++	struct rpc_clnt	*clnt = ln->nsm_clnt;
++	int shutdown = 0;
++
++	spin_lock(&ln->nsm_clnt_lock);
++	if (ln->nsm_users) {
++		if (--ln->nsm_users)
++			ln->nsm_clnt = NULL;
++		shutdown = !ln->nsm_users;
++	}
++	spin_unlock(&ln->nsm_clnt_lock);
++
++	if (shutdown)
++		rpc_shutdown_client(clnt);
++}
++
+ static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res,
+ 			 struct net *net)
+ {
+diff --git a/fs/lockd/netns.h b/fs/lockd/netns.h
+index 4eee248..5010b55 100644
+--- a/fs/lockd/netns.h
++++ b/fs/lockd/netns.h
+@@ -12,6 +12,10 @@ struct lockd_net {
+ 	struct delayed_work grace_period_end;
+ 	struct lock_manager lockd_manager;
+ 	struct list_head grace_list;
++
++	spinlock_t nsm_clnt_lock;
++	unsigned int nsm_users;
++	struct rpc_clnt *nsm_clnt;
+ };
+ 
+ extern int lockd_net_id;
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 31a63f8..7e35587 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -596,6 +596,7 @@ static int lockd_init_net(struct net *net)
+ 
+ 	INIT_DELAYED_WORK(&ln->grace_period_end, grace_ender);
+ 	INIT_LIST_HEAD(&ln->grace_list);
++	spin_lock_init(&ln->nsm_clnt_lock);
+ 	return 0;
+ }
+ 
 
-Here's another idmapper bug, in screenshot form.  We may not yet have fixed
-this as Markus said it's still present in 3.5.3.
-
-David
-
-
---=-=-=
-Content-Type: message/rfc822
-Content-Disposition: inline; filename=21941
-
-Return-Path: markus@unixforces.net
-Received: from mail.corp.redhat.com [10.5.5.52]
-	by warthog.procyon.org.uk with IMAP (fetchmail-6.3.21)
-	for <dhowells@localhost> (single-drop); Sat, 18 Aug 2012 17:58:51 +0100 (BST)
-Received: from zmta05.collab.prod.int.phx2.redhat.com (LHLO
- zmta05.collab.prod.int.phx2.redhat.com) (10.5.81.12) by
- zmail16.collab.prod.int.phx2.redhat.com with LMTP; Sat, 18 Aug 2012
- 12:58:46 -0400 (EDT)
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by zmta05.collab.prod.int.phx2.redhat.com (Postfix) with ESMTP id 41F3FF2530
-	for <dhowells@mail.corp.redhat.com>; Sat, 18 Aug 2012 12:58:46 -0400 (EDT)
-Received: from mx1.redhat.com (ext-mx14.extmail.prod.ext.phx2.redhat.com [10.5.110.19])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id q7IGwjFl024991
-	for <dhowells@redhat.com>; Sat, 18 Aug 2012 12:58:46 -0400
-Received: from mail-vc0-f174.google.com (mail-vc0-f174.google.com [209.85.220.174])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q7IGwhXn006495
-	for <dhowells@redhat.com>; Sat, 18 Aug 2012 12:58:44 -0400
-Received: by vcbfk26 with SMTP id fk26so4812599vcb.33
-        for <dhowells@redhat.com>; Sat, 18 Aug 2012 09:58:43 -0700 (PDT)
-X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
-        d=google.com; s=20120113;
-        h=mime-version:x-originating-ip:from:date:message-id:subject:to
-         :content-type:x-gm-message-state;
-        bh=wFZEhAVq0PDLr1K2Jk4H+PTivzCabJ6zyEJm+gr8MdI=;
-        b=hYaQIH3Ro7zRI0BgT7D83hTlWqiW81IleotBF2feecRgTSREUi8MfmKQ34Jf0O4o4d
-         8/UZ0vVoBhPdyCNEP5JVufY0r0WS9lVSLjpC0lX8mRkuUAbNwlwkJyJi+jgbgheMrtRj
-         Wp4Sa3wO4seK/0Jr8R3R+FvfRtMN3vEcf4rw9XvDFTtv6gf2BZKfOH3FN40VmpRTXqZR
-         TTMd9NRJimWLBugW2mtlvllP75/g+V0YprRJ/4HLxvBVPzYvxq819fNbiHDacCEd++Cy
-         A95DrlnLaFIj8E7OegGXc2leUEnfY+fCA6NOsnXC3MQcuhmjWv6/TR7N4T4LBxmmIS/p
-         H2dA==
-Received: by 10.52.70.116 with SMTP id l20mr4863756vdu.74.1345309122941; Sat,
- 18 Aug 2012 09:58:42 -0700 (PDT)
-MIME-Version: 1.0
-Received: by 10.58.136.8 with HTTP; Sat, 18 Aug 2012 09:58:12 -0700 (PDT)
-X-Originating-IP: [88.152.168.191]
-From: Markus Rothe <markus@unixforces.net>
-Date: Sat, 18 Aug 2012 18:58:12 +0200
-Message-ID: <CALi3HZpfH3Wxjd9mW9H=oku-h0zO0gceqc34D4-CbXn8USRjLw@mail.gmail.com>
-Subject: Kernel panic after df4c3fd716e3565c6ab83ec4b6617cc180f062a1
-To: David Howells <dhowells@redhat.com>
-Content-Type: text/plain; charset=UTF-8
-X-Gm-Message-State: ALoCoQnbnbDlfCnth07TUQLRli8CjYcS168DUHk4mVl7FQMnlHqBKyMEFq3U3hvkPYOD/yKMiK4H
-X-RedHat-Spam-Score: -2.6  (BAYES_00,RCVD_IN_DNSWL_LOW)
-X-Scanned-By: MIMEDefang 2.67 on 10.5.11.12
-X-Scanned-By: MIMEDefang 2.68 on 10.5.110.19
-
-Hello,
-
-after upgrading from 3.5.0 to 3.5.1 I am getting a kernel panic once I
-try to mount an nfs share. See [1]. Sorry, I don't know how to get the
-text in this state.
-
-I have bisected the problem to
-df4c3fd716e3565c6ab83ec4b6617cc180f062a1 in linux-stable. Reverting
-that patch fixes the problem for me.
-
-Could you please check what is going on.
-
-Thanks, Markus
-
-[1] http://pics.mrothe.de/IMG_20120818_180356.jpg
-
-
---=-=-=--
