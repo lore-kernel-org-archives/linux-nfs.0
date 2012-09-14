@@ -1,82 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53084 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759378Ab2IEUzc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Sep 2012 16:55:32 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Jan Kara <jack@suse.cz>, Steven Whitehouse <swhiteho@redhat.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [RFC PATCH 01/13] gfs2: Get rid of I_MUTEX_QUOTA usage
-Date: Wed,  5 Sep 2012 16:55:11 -0400
-Message-Id: <1346878524-10585-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1346878524-10585-1-git-send-email-bfields@redhat.com>
-References: <1346878524-10585-1-git-send-email-bfields@redhat.com>
+Received: from avasout04.plus.net ([212.159.14.19]:51806 "EHLO
+	avasout04.plus.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759284Ab2INIfj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Sep 2012 04:35:39 -0400
+Message-ID: <5052EAEB.7060309@plus.net>
+Date: Fri, 14 Sep 2012 09:29:31 +0100
+From: Richard Allen <rallen@plus.net>
+MIME-Version: 1.0
+To: linux-nfs@vger.kernel.org
+Subject: Debian and Netapp NFSv4 locks/owner exhaustion
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Jan Kara <jack@suse.cz>
+Hi all,
 
-GFS2 uses i_mutex on its system quota inode to synchronize writes to
-quota file. Since this is an internal inode to GFS2 (not part of directory
-hiearchy or visible by user) we are safe to define locking rules for it. So
-let's just get it its own locking class to make it clear.
+We're currently having a highly intermittent (and seemingly random) 
+problem with our 20 Debian clients running courier POP3 and IMAPd 
+connecting to a Netapp filer using NFSv4, whereby locks/owner objects 
+are being maxed out on the filer, causing the clients to start to have 
+very high load.
 
-CC: Steven Whitehouse <swhiteho@redhat.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Netapp think that this is a bug with the implementation of NFS in our 
+Debian kernel - please see part of an email they sent us below:
+
 ---
- fs/gfs2/ops_fstype.c |    8 ++++++++
- fs/gfs2/quota.c      |    2 +-
- 2 files changed, 9 insertions(+), 1 deletion(-)
+"Thanks for providing all the  data
+from the sync core and the lock status data provided indicated you have 
+a linux client bug. equivalent to redhat bugzilla > 620502/621304 .
 
-diff --git a/fs/gfs2/ops_fstype.c b/fs/gfs2/ops_fstype.c
-index e5af9dc..e443966 100644
---- a/fs/gfs2/ops_fstype.c
-+++ b/fs/gfs2/ops_fstype.c
-@@ -19,6 +19,7 @@
- #include <linux/mount.h>
- #include <linux/gfs2_ondisk.h>
- #include <linux/quotaops.h>
-+#include <linux/lockdep.h>
- 
- #include "gfs2.h"
- #include "incore.h"
-@@ -766,6 +767,7 @@ fail:
- 	return error;
- }
- 
-+static struct lock_class_key gfs2_quota_imutex_key;
- 
- static int init_inodes(struct gfs2_sbd *sdp, int undo)
- {
-@@ -803,6 +805,12 @@ static int init_inodes(struct gfs2_sbd *sdp, int undo)
- 		fs_err(sdp, "can't get quota file inode: %d\n", error);
- 		goto fail_rindex;
- 	}
-+	/*
-+	 * i_mutex on quota files is special. Since this inode is hidden system
-+	 * file, we are safe to define locking ourselves.
-+	 */
-+	lockdep_set_class(&sdp->sd_quota_inode->i_mutex,
-+			  &gfs2_quota_imutex_key);
- 
- 	error = gfs2_rindex_update(sdp);
- 	if (error)
-diff --git a/fs/gfs2/quota.c b/fs/gfs2/quota.c
-index a3bde91..3d9c989 100644
---- a/fs/gfs2/quota.c
-+++ b/fs/gfs2/quota.c
-@@ -781,7 +781,7 @@ static int do_sync(unsigned int num_qd, struct gfs2_quota_data **qda)
- 		return -ENOMEM;
- 
- 	sort(qda, num_qd, sizeof(struct gfs2_quota_data *), sort_qd, NULL);
--	mutex_lock_nested(&ip->i_inode.i_mutex, I_MUTEX_QUOTA);
-+	mutex_lock(&ip->i_inode.i_mutex);
- 	for (qx = 0; qx < num_qd; qx++) {
- 		error = gfs2_glock_nq_init(qda[qx]->qd_gl, LM_ST_EXCLUSIVE,
- 					   GL_NOCACHE, &ghs[qx]);
--- 
-1.7.9.5
+https://bugzilla.redhat.com/show_bug.cgi?id=620502  2.6.18 kernel
+https://bugzilla.redhat.com/show_bug.cgi?id=621304  2.6.32 kernel.
+
+Basically there is a know linux kernel bug where it request a new owner 
+id everytime a new lock request is submitted. There are linux upstream 
+fixed that prevents new owner lock id and reuse existing ones.
+
+Analyses from the sync core
+
+As previously mentioned NFSv4 has 4 items StateID/ClientID and OwnerID 
+limits.
+
+StateID
+kgdb-amd64-7.4-54) p v4lock_states_free_count
+$8 = {16789, 32768}
+ >>>>>>There are free states available.
+
+ClientID
+(kgdb-amd64-7.4-54) p v4lock_clients_free[0]
+$10 = {{cqh_first = 0xffffff04cd2cda00, cqh_last = 0xffffff04cd4caf00}
+ >>> there are free clients
+
+OwnerID
+(kgdb-amd64-7.4-54) p v4lock_owners_free[0]
+$9 = {{cqh_first = 0xffffffffa25f2640, cqh_last = 0xffffffffa25f2640}
+ >>>there are no free owners
+
+(kgdb-amd64-7.4-54) print_owner_htab_count
+total:10240
+ >>>>total owner objects in use:10240
+
+(kgdb-amd64-7.4-54) p v4owner_table_size/2
+$527 = 10240
+ >>>>per node max owners value reached
+
+
+Lets correlate this to the lock status output provided.
+
+(fed15:samuell:/x/eng/cs-data/2003058003/20120821_sync_core/mailstorage04> 
+grep "Free owners" mailstorage04-lock-v*
+mailstorage04-lock-v-201208210605:Free owners 3; In-Use Owners 10237 *
+mailstorage04-lock-v-201208210610:Free owners -3; In-Use Owners 10243 *
+mailstorage04-lock-v-201208210615:Free owners -2; In-Use Owners 10242
+mailstorage04-lock-v-201208210620:Free owners 0; In-Use Owners 10240
+mailstorage04-lock-v-201208210625:Free owners 3; In-Use Owners 10237
+mailstorage04-lock-v-201208210630:Free owners -7; In-Use Owners 10247
+mailstorage04-lock-v-201208210635:Free owners 1; In-Use Owners 10239
+mailstorage04-lock-v-201208210640:Free owners -3; In-Use Owners 10243
+mailstorage04-lock-v-201208210645:Free owners 4; In-Use Owners 10236
+mailstorage04-lock-v-201208210650:Free owners -1; In-Use Owners 10241
+mailstorage04-lock-v-201208210655:Free owners 4; In-Use Owners 10236
+mailstorage04-lock-v-201208210700:Free owners -1; In-Use Owners 10241
+mailstorage04-lock-v-201208210705:Free owners -4; In-Use Owners 10244
+
+As you can see the filer is reporting MAX of 10240 and in some event it 
+was over subscribed.
+
+Corrective action is to make sure you use a kernel release from your 
+distro that has upstream patch
+
+The diff can be found here
+https://bugzilla.redhat.com/attachment.cgi?id=436801&action=diff
+
+
+Redhat has provided an errata fix int he kernel patch
+
+http://rhn.redhat.com/errata/RHSA-2011-0542.html"
+---
+
+Some info on our platform:
+
+Clients:
+20 of, running Squeeze 6.0.1, but with backported kernel 
+3.2.0-0.bpo.1-amd64.
+nfs-common 1:1.2.2-4
+The application is courier IMAP and POP3.
+
+Server:
+Netapp FAS3170 running 8.0.1P1 7-Mode
+
+The main question I have is whether the bugs Netapp mentioned in the 
+Redhat kernel have been fixed in the backported Debian kernel we are 
+running, and if so, what version the fixes have been introduced in (and 
+if not, what version the fixes *will* be introduced in)?
+
+Otherwise, if anyone has any other suggestions as to what else the 
+problem could be, I'd be happy to hear them
+
+Thanks,
+
+Richard
 
