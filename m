@@ -1,297 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:17067 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:14252 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751235Ab2IXT5h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Sep 2012 15:57:37 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 04/28] NFSv4.1: Cleanup; add "pnfs_" prefix to put_lseg() and get_lseg()
-Date: Mon, 24 Sep 2012 15:56:22 -0400
-Message-Id: <1348516606-22721-4-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1348516606-22721-3-git-send-email-Trond.Myklebust@netapp.com>
-References: <1348516606-22721-1-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-2-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-3-git-send-email-Trond.Myklebust@netapp.com>
+	id S1759284Ab2INI0F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 14 Sep 2012 04:26:05 -0400
+Subject: [PATCH 2/2] NFSd: set nfsd_serv to NULL after service destruction
+To: stable@vger.kernel.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, bfields@redhat.com, viro@zeniv.linux.org.uk,
+        jbottomley@parallels.com
+Date: Fri, 14 Sep 2012 12:25:56 +0400
+Message-ID: <20120914082550.14353.46041.stgit@localhost6.localdomain6>
+In-Reply-To: <20120914082201.14353.83847.stgit@localhost6.localdomain6>
+References: <20120914082201.14353.83847.stgit@localhost6.localdomain6>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4filelayout.c | 16 ++++++++--------
- fs/nfs/nfs4proc.c       |  2 +-
- fs/nfs/pnfs.c           | 36 ++++++++++++++++++------------------
- fs/nfs/pnfs.h           |  8 ++++----
- 4 files changed, 31 insertions(+), 31 deletions(-)
+upstream commit 57c8b13e3cd0f94944c9691ce7f58e5fcef8a12d
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 53f94d9..77cd115 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -453,7 +453,7 @@ static void filelayout_commit_release(void *calldata)
- 	struct nfs_commit_data *data = calldata;
- 
- 	data->completion_ops->completion(data);
--	put_lseg(data->lseg);
-+	pnfs_put_lseg(data->lseg);
- 	nfs_put_client(data->ds_clp);
- 	nfs_commitdata_release(data);
- }
-@@ -931,7 +931,7 @@ filelayout_pg_init_write(struct nfs_pageio_descriptor *pgio,
- 	nfs_init_cinfo(&cinfo, pgio->pg_inode, pgio->pg_dreq);
- 	status = filelayout_alloc_commit_info(pgio->pg_lseg, &cinfo, GFP_NOFS);
- 	if (status < 0) {
--		put_lseg(pgio->pg_lseg);
-+		pnfs_put_lseg(pgio->pg_lseg);
- 		pgio->pg_lseg = NULL;
- 		goto out_mds;
- 	}
-@@ -985,7 +985,7 @@ filelayout_clear_request_commit(struct nfs_page *req,
- out:
- 	nfs_request_remove_commit_list(req, cinfo);
- 	spin_unlock(cinfo->lock);
--	put_lseg(freeme);
-+	pnfs_put_lseg(freeme);
+In nfsd_destroy():
+
+	if (destroy)
+		svc_shutdown_net(nfsd_serv, net);
+	svc_destroy(nfsd_server);
+
+svc_shutdown_net(nfsd_serv, net) calls nfsd_last_thread(), which sets
+nfsd_serv to NULL, causing a NULL dereference on the following line.
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfsd.h   |    2 ++
+ fs/nfsd/nfssvc.c |   10 +++++-----
+ 2 files changed, 7 insertions(+), 5 deletions(-)
+
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index e3339ca..1336a65 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -80,6 +80,8 @@ static inline void nfsd_destroy(struct net *net)
+ 	if (destroy)
+ 		svc_shutdown_net(nfsd_serv, net);
+ 	svc_destroy(nfsd_serv);
++	if (destroy)
++		nfsd_serv = NULL;
  }
  
- static struct list_head *
-@@ -1018,7 +1018,7 @@ filelayout_choose_commit_list(struct nfs_page *req,
- 		 * off due to a rewrite, in which case it will be done in
- 		 * filelayout_clear_request_commit
- 		 */
--		buckets[i].wlseg = get_lseg(lseg);
-+		buckets[i].wlseg = pnfs_get_lseg(lseg);
- 	}
- 	set_bit(PG_COMMIT_TO_DS, &req->wb_flags);
- 	cinfo->ds->nwritten++;
-@@ -1128,7 +1128,7 @@ filelayout_scan_ds_commit_list(struct pnfs_commit_bucket *bucket,
- 		if (list_empty(src))
- 			bucket->wlseg = NULL;
- 		else
--			get_lseg(bucket->clseg);
-+			pnfs_get_lseg(bucket->clseg);
- 	}
- 	return ret;
- }
-@@ -1159,12 +1159,12 @@ static void filelayout_recover_commit_reqs(struct list_head *dst,
+ #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index e866af4..5f4b8f2 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -256,8 +256,6 @@ static void nfsd_shutdown(void)
  
- 	/* NOTE cinfo->lock is NOT held, relying on fact that this is
- 	 * only called on single thread per dreq.
--	 * Can't take the lock because need to do put_lseg
-+	 * Can't take the lock because need to do pnfs_put_lseg
- 	 */
- 	for (i = 0, b = cinfo->ds->buckets; i < cinfo->ds->nbuckets; i++, b++) {
- 		if (transfer_commit_list(&b->written, dst, cinfo, 0)) {
- 			BUG_ON(!list_empty(&b->written));
--			put_lseg(b->wlseg);
-+			pnfs_put_lseg(b->wlseg);
- 			b->wlseg = NULL;
- 		}
- 	}
-@@ -1200,7 +1200,7 @@ alloc_ds_commits(struct nfs_commit_info *cinfo, struct list_head *list)
- 		if (list_empty(&bucket->committing))
- 			continue;
- 		nfs_retry_commit(&bucket->committing, bucket->clseg, cinfo);
--		put_lseg(bucket->clseg);
-+		pnfs_put_lseg(bucket->clseg);
- 		bucket->clseg = NULL;
- 	}
- 	/* Caller will clean up entries put on list */
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 20f1229..87702a0 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6549,7 +6549,7 @@ static void nfs4_layoutcommit_release(void *calldata)
- 		list_del_init(&lseg->pls_lc_list);
- 		if (test_and_clear_bit(NFS_LSEG_LAYOUTCOMMIT,
- 				       &lseg->pls_flags))
--			put_lseg(lseg);
-+			pnfs_put_lseg(lseg);
- 	}
- 
- 	clear_bit_unlock(NFS_INO_LAYOUTCOMMITTING, bitlock);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 512c863..498af87 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -259,7 +259,7 @@ static void free_lseg(struct pnfs_layout_segment *lseg)
- }
- 
- static void
--put_lseg_common(struct pnfs_layout_segment *lseg)
-+pnfs_put_lseg_common(struct pnfs_layout_segment *lseg)
+ static void nfsd_last_thread(struct svc_serv *serv, struct net *net)
  {
- 	struct inode *inode = lseg->pls_layout->plh_inode;
+-	/* When last nfsd thread exits we need to do some clean-up */
+-	nfsd_serv = NULL;
+ 	nfsd_shutdown();
  
-@@ -274,7 +274,7 @@ put_lseg_common(struct pnfs_layout_segment *lseg)
- }
- 
- void
--put_lseg(struct pnfs_layout_segment *lseg)
-+pnfs_put_lseg(struct pnfs_layout_segment *lseg)
+ 	svc_rpcb_cleanup(serv, net);
+@@ -334,6 +332,7 @@ static int nfsd_get_default_max_blksize(void)
+ int nfsd_create_serv(void)
  {
- 	struct inode *inode;
+ 	int error;
++	struct net *net = current->nsproxy->net_ns;
  
-@@ -288,13 +288,13 @@ put_lseg(struct pnfs_layout_segment *lseg)
- 	if (atomic_dec_and_lock(&lseg->pls_refcount, &inode->i_lock)) {
- 		LIST_HEAD(free_me);
- 
--		put_lseg_common(lseg);
-+		pnfs_put_lseg_common(lseg);
- 		list_add(&lseg->pls_list, &free_me);
- 		spin_unlock(&inode->i_lock);
- 		pnfs_free_lseg_list(&free_me);
- 	}
- }
--EXPORT_SYMBOL_GPL(put_lseg);
-+EXPORT_SYMBOL_GPL(pnfs_put_lseg);
- 
- static inline u64
- end_offset(u64 start, u64 len)
-@@ -378,7 +378,7 @@ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
- 		dprintk("%s: lseg %p ref %d\n", __func__, lseg,
- 			atomic_read(&lseg->pls_refcount));
- 		if (atomic_dec_and_test(&lseg->pls_refcount)) {
--			put_lseg_common(lseg);
-+			pnfs_put_lseg_common(lseg);
- 			list_add(&lseg->pls_list, tmp_list);
- 			rv = 1;
- 		}
-@@ -914,7 +914,7 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo,
- 	list_for_each_entry(lseg, &lo->plh_segs, pls_list) {
- 		if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags) &&
- 		    is_matching_lseg(&lseg->pls_range, range)) {
--			ret = get_lseg(lseg);
-+			ret = pnfs_get_lseg(lseg);
- 			break;
- 		}
- 		if (lseg->pls_range.offset > range->offset)
-@@ -1135,7 +1135,7 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
- 	}
- 	init_lseg(lo, lseg);
- 	lseg->pls_range = res->range;
--	get_lseg(lseg);
-+	pnfs_get_lseg(lseg);
- 	pnfs_insert_layout(lo, lseg);
- 
- 	if (res->return_on_close) {
-@@ -1369,12 +1369,12 @@ pnfs_do_multiple_writes(struct nfs_pageio_descriptor *desc, struct list_head *he
- 		if (trypnfs == PNFS_NOT_ATTEMPTED)
- 			pnfs_write_through_mds(desc, data);
- 	}
--	put_lseg(lseg);
-+	pnfs_put_lseg(lseg);
- }
- 
- static void pnfs_writehdr_free(struct nfs_pgio_header *hdr)
- {
--	put_lseg(hdr->lseg);
-+	pnfs_put_lseg(hdr->lseg);
- 	nfs_writehdr_free(hdr);
- }
- EXPORT_SYMBOL_GPL(pnfs_writehdr_free);
-@@ -1389,17 +1389,17 @@ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
- 	whdr = nfs_writehdr_alloc();
- 	if (!whdr) {
- 		desc->pg_completion_ops->error_cleanup(&desc->pg_list);
--		put_lseg(desc->pg_lseg);
-+		pnfs_put_lseg(desc->pg_lseg);
- 		desc->pg_lseg = NULL;
+ 	WARN_ON(!mutex_is_locked(&nfsd_mutex));
+ 	if (nfsd_serv) {
+@@ -348,7 +347,7 @@ int nfsd_create_serv(void)
+ 	if (nfsd_serv == NULL)
  		return -ENOMEM;
- 	}
- 	hdr = &whdr->header;
- 	nfs_pgheader_init(desc, hdr, pnfs_writehdr_free);
--	hdr->lseg = get_lseg(desc->pg_lseg);
-+	hdr->lseg = pnfs_get_lseg(desc->pg_lseg);
- 	atomic_inc(&hdr->refcnt);
- 	ret = nfs_generic_flush(desc, hdr);
- 	if (ret != 0) {
--		put_lseg(desc->pg_lseg);
-+		pnfs_put_lseg(desc->pg_lseg);
- 		desc->pg_lseg = NULL;
- 	} else
- 		pnfs_do_multiple_writes(desc, &hdr->rpc_list, desc->pg_ioflags);
-@@ -1524,12 +1524,12 @@ pnfs_do_multiple_reads(struct nfs_pageio_descriptor *desc, struct list_head *hea
- 		if (trypnfs == PNFS_NOT_ATTEMPTED)
- 			pnfs_read_through_mds(desc, data);
- 	}
--	put_lseg(lseg);
-+	pnfs_put_lseg(lseg);
- }
  
- static void pnfs_readhdr_free(struct nfs_pgio_header *hdr)
- {
--	put_lseg(hdr->lseg);
-+	pnfs_put_lseg(hdr->lseg);
- 	nfs_readhdr_free(hdr);
- }
- EXPORT_SYMBOL_GPL(pnfs_readhdr_free);
-@@ -1545,17 +1545,17 @@ pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
- 	if (!rhdr) {
- 		desc->pg_completion_ops->error_cleanup(&desc->pg_list);
- 		ret = -ENOMEM;
--		put_lseg(desc->pg_lseg);
-+		pnfs_put_lseg(desc->pg_lseg);
- 		desc->pg_lseg = NULL;
- 		return ret;
- 	}
- 	hdr = &rhdr->header;
- 	nfs_pgheader_init(desc, hdr, pnfs_readhdr_free);
--	hdr->lseg = get_lseg(desc->pg_lseg);
-+	hdr->lseg = pnfs_get_lseg(desc->pg_lseg);
- 	atomic_inc(&hdr->refcnt);
- 	ret = nfs_generic_pagein(desc, hdr);
- 	if (ret != 0) {
--		put_lseg(desc->pg_lseg);
-+		pnfs_put_lseg(desc->pg_lseg);
- 		desc->pg_lseg = NULL;
- 	} else
- 		pnfs_do_multiple_reads(desc, &hdr->rpc_list);
-@@ -1608,7 +1608,7 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
- 	}
- 	if (!test_and_set_bit(NFS_LSEG_LAYOUTCOMMIT, &hdr->lseg->pls_flags)) {
- 		/* references matched in nfs4_layoutcommit_release */
--		get_lseg(hdr->lseg);
-+		pnfs_get_lseg(hdr->lseg);
- 	}
- 	if (end_pos > nfsi->layout->plh_lwb)
- 		nfsi->layout->plh_lwb = end_pos;
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 2af681f..0495879 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -177,7 +177,7 @@ extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
+-	error = svc_bind(nfsd_serv, current->nsproxy->net_ns);
++	error = svc_bind(nfsd_serv, net);
+ 	if (error < 0) {
+ 		svc_destroy(nfsd_serv);
+ 		return error;
+@@ -559,12 +558,13 @@ nfsd(void *vrqstp)
+ 	nfsdstats.th_cnt --;
  
- /* pnfs.c */
- void pnfs_get_layout_hdr(struct pnfs_layout_hdr *lo);
--void put_lseg(struct pnfs_layout_segment *lseg);
-+void pnfs_put_lseg(struct pnfs_layout_segment *lseg);
+ out:
+-	if (rqstp->rq_server->sv_nrthreads == 1)
+-		svc_shutdown_net(rqstp->rq_server, &init_net);
++	rqstp->rq_server = NULL;
  
- void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
- 			   const struct nfs_pgio_completion_ops *);
-@@ -281,7 +281,7 @@ static inline int lo_fail_bit(u32 iomode)
- }
+ 	/* Release the thread */
+ 	svc_exit_thread(rqstp);
  
- static inline struct pnfs_layout_segment *
--get_lseg(struct pnfs_layout_segment *lseg)
-+pnfs_get_lseg(struct pnfs_layout_segment *lseg)
- {
- 	if (lseg) {
- 		atomic_inc(&lseg->pls_refcount);
-@@ -406,12 +406,12 @@ static inline void pnfs_destroy_layout(struct nfs_inode *nfsi)
- }
- 
- static inline struct pnfs_layout_segment *
--get_lseg(struct pnfs_layout_segment *lseg)
-+pnfs_get_lseg(struct pnfs_layout_segment *lseg)
- {
- 	return NULL;
- }
- 
--static inline void put_lseg(struct pnfs_layout_segment *lseg)
-+static inline void pnfs_put_lseg(struct pnfs_layout_segment *lseg)
- {
- }
- 
--- 
-1.7.11.4
++	nfsd_destroy(&init_net);
++
+ 	/* Release module */
+ 	mutex_unlock(&nfsd_mutex);
+ 	module_put_and_exit(0);
 
