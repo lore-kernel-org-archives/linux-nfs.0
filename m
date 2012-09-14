@@ -1,71 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:35233 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:19830 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751577Ab2IKWR1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Sep 2012 18:17:27 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Simon Kirby <sim@hostway.ca>
-CC: Yan-Pai Chen <yanpai.chen@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [3.2.5] NFSv3 CLOSE_WAIT hang
-Date: Tue, 11 Sep 2012 22:17:25 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F9BDDD@SACEXCMBX04-PRD.hq.netapp.com>
-References: <loom.20120905T093214-245@post.gmane.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F86381@SACEXCMBX04-PRD.hq.netapp.com>
-	 <6cb9.5049fd40.b47c1@altium.nl> <6cb9.5049fd40.b47c1@altium.nl>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F8E302@SACEXCMBX04-PRD.hq.netapp.com>
-	 <447c.504a05c9.dd0a9@altium.nl> <447c.504a05c9.dd0a9@altium.nl>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F8E833@SACEXCMBX04-PRD.hq.netapp.com>
-	 <74c7.504b9d45.a5956@altium.nl> <loom.20120910T105944-416@post.gmane.org>
-	 <20120911194051.GB11160@hostway.ca>
-In-Reply-To: <20120911194051.GB11160@hostway.ca>
-Content-Type: text/plain; charset="utf-8"
+	id S1758200Ab2INIZy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 14 Sep 2012 04:25:54 -0400
+Subject: [PATCH 1/2] NFSd: introduce nfsd_destroy() helper
+To: stable@vger.kernel.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, bfields@redhat.com, viro@zeniv.linux.org.uk,
+        jbottomley@parallels.com
+Date: Fri, 14 Sep 2012 12:25:45 +0400
+Message-ID: <20120914082522.14353.59479.stgit@localhost6.localdomain6>
+In-Reply-To: <20120914082201.14353.83847.stgit@localhost6.localdomain6>
+References: <20120914082201.14353.83847.stgit@localhost6.localdomain6>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA5LTExIGF0IDEyOjQwIC0wNzAwLCBTaW1vbiBLaXJieSB3cm90ZToNCj4g
-T24gTW9uLCBTZXAgMTAsIDIwMTIgYXQgMDk6MDA6MzdBTSArMDAwMCwgWWFuLVBhaSBDaGVuIHdy
-b3RlOg0KPiANCj4gPiBIaSBUcm9uZCwNCj4gPiANCj4gPiBBcG9sb2dpZXMgZm9yIG15IGxhdGUg
-cmVzcG9uc2UuDQo+ID4gVXBncmFkaW5nIHRvIGtlcm5lbCAzLjUgcmVxdWlyZXMgc29tZSBlZmZv
-cnQuIEkgYW0gc3RpbGwgd29ya2luZyBvbiBpdC4NCj4gPiANCj4gPiBBZnRlciBhcHBseWluZyB5
-b3VyIHBhdGNoIG9uIDMuMyBrZXJuZWwsIHRoZSBwcm9ibGVtIGlzIGdvbmUgd2hlbiB1c2luZyBV
-RFAgDQo+ID4gbW91bnRzLg0KPiA+IEJ1dCBpdCByZW1haW5zIGhhbmcgaW4gdGhlIGNhc2Ugb2Yg
-TkZTIG92ZXIgVENQIG1vdW50cy4gDQo+ID4gDQo+ID4gSSByZXByb2R1Y2VkIHRoZSBwcm9ibGVt
-IGJ5IGV4ZWN1dGluZyBtbS9tdGVzdDA2XzMgKGkuZS4gbW1hcDMpIGluIHRoZSBMVFAgdGVzdCAN
-Cj4gPiBzdWl0ZSByZXBlYXRlZGx5Lg0KPiA+IEFib3V0IGxlc3MgdGhhbiAyMDAgdGltZXMsIGl0
-IGV2ZW50dWFsbHkgcmFuIGludG8gdGhlIENMT1NFX1dBSVQgaGFuZy4NCj4gPiBJIGdvdCB0aGUg
-Zm9sbG93aW5nIG1lc3NhZ2VzIGFmdGVyIGVuYWJsaW5nIHJwY19kZWJ1ZyAmIG5mc19kZWJ1ZzoN
-Cj4gPiANCj4gPiA0Nzk5MSAwMDAxICAgIC0xMSBjZjI5MTBlMCAgIChudWxsKSAgICAgICAgMCBj
-MDI0M2Y0MCBuZnN2MyBXUklURSANCj4gPiBhOmNhbGxfcmVzZXJ2ZXJlc3VsdCBxOnhwcnRfc2Vu
-ZGluZw0KPiA+IDQ3OTkyIDAwMDEgICAgLTExIGNmMjkxMGUwICAgKG51bGwpICAgICAgICAwIGMw
-MjQzZjQwIG5mc3YzIFdSSVRFIA0KPiA+IGE6Y2FsbF9yZXNlcnZlcmVzdWx0IHE6eHBydF9zZW5k
-aW5nDQo+ID4gNDc5OTMgMDAwMSAgICAtMTEgY2YyOTEwZTAgICAobnVsbCkgICAgICAgIDAgYzAy
-NDNmNDAgbmZzdjMgV1JJVEUgDQo+ID4gYTpjYWxsX3Jlc2VydmVyZXN1bHQgcTp4cHJ0X3NlbmRp
-bmcNCj4gPiA0Nzk5NCAwMDAxICAgIC0xMSBjZjI5MTBlMCAgIChudWxsKSAgICAgICAgMCBjMDI0
-M2Y0MCBuZnN2MyBXUklURSANCj4gPiBhOmNhbGxfcmVzZXJ2ZXJlc3VsdCBxOnhwcnRfc2VuZGlu
-Zw0KPiA+IDQ3OTk1IDAwMDEgICAgLTExIGNmMjkxMGUwICAgKG51bGwpICAgICAgICAwIGMwMjQz
-ZjQwIG5mc3YzIFdSSVRFIA0KPiA+IGE6Y2FsbF9yZXNlcnZlcmVzdWx0IHE6eHBydF9zZW5kaW5n
-DQo+ID4gLi4uDQo+IA0KPiBIZWxsbyENCj4gDQo+IFRoaXMgcHJvYmxlbSBzdGlsbCBiaXRlcyB1
-cyByYXJlbHksIGFuZCB3ZSd2ZSBiZWVuIHVzaW5nIFRDUCBORlMgZm9yIHNvbWUNCj4gdGltZS4g
-SG93ZXZlciwgb3VyIGNhc2Ugc2VlbXMgdG8gYmUgbmFycm93ZWQgaXQgZG93biB0byBhIHZlcnkg
-bG9uZw0KPiBzdG9yYWdlIGhhbmcgb24gdGhlIGtuZnNkIHNpZGUuIElmIHN0b3JhZ2UgbmV2ZXIg
-aGFzIGFueSBwcm9ibGVtcywgd2UNCj4gZG9uJ3Qgc2VlIHRoZSBORlMgY2xpZW50IGhhbmcuIEkg
-d2FzIGdvaW5nIHRvIHRyeSB0byBtYWtlIGEgdGVzdC1jYXNlIGJ5DQo+IGZvcmNpbmcgdGhlIHNl
-cnZlciB0byBoYW5nLCBidXQgSSBuZXZlciBnb3QgYXJvdW5kIHRvIHRoaXMuIE1lYW53aGlsZSwN
-Cj4gSSd2ZSBiZWVuIHJ1bm5pbmcgdGhlIGNsaWVudHMgd2l0aCB0aGUgZGVidWdnaW5nIHBhdGNo
-ZXMgSSBwb3N0ZWQNCj4gZWFybGllciwgYW5kIGl0IGFsd2F5cyBwcmludHMgdGhlICd4cHJ0X2Zv
-cmNlX2Rpc2Nvbm5lY3QoKTogc2V0dGluZw0KPiBYUFJUX0NMT1NFX1dBSVQiIHdhcm5pbmcgYmVm
-b3JlIGhhbmdpbmcuIElmIEFwYWNoZSBpcyBpbiBzZW5kZmlsZSgpIGF0DQo+IHRoZSB0aW1lLCBp
-dCBzZWVtcyB0byBnZXQgc3R1Y2sgZm9yZXZlcjsgb3RoZXJ3aXNlLCBpdCBtaWdodCByZWNvdmVy
-Lg0KDQpEb2VzIHRoZSAiaWYgKHRlc3RfYW5kX3NldF9iaXQoWFBSVF9MT0NLKSA9PSAwKSIgY29u
-ZGl0aW9uIGltbWVkaWF0ZWx5DQpmb2xsb3dpbmcgdGhhdCBzdWNjZWVkIHNvIHRoYXQgcXVldWVf
-d29yaygpIGlzIGNhbGxlZD8NCg0KPiBodHRwOi8vd3d3LnNwaW5pY3MubmV0L2xpc3RzL2xpbnV4
-LW5mcy9tc2cyOTQ5NS5odG1sDQo+IGh0dHA6Ly8weC5jYS9zaW0vcmVmLzMuMi4xMC9kbWVzZw0K
-PiANCj4gSSBzdXBwb3NlIHdlIGNvdWxkIHRyeSAzLjUgYXQgdGhpcyBwb2ludC4NCg0KSWYgeW91
-J3ZlIGJlZW4ga2VlcGluZyB1cCB3aXRoIHRoZSAzLjIgc3RhYmxlIHJlbGVhc2VzLCB0aGVuIEkg
-d291bGRuJ3QNCmV4cGVjdCBhbnkgbWFqb3IgZGlmZmVyZW5jZXMgdG8gdGhlIHN1bnJwYyBjb2Rl
-LCBidXQgaXQgbWlnaHQgYmUgd29ydGggYQ0KdHJ5IGluIGNhc2UgdGhlIG5ldHdvcmtpbmcgbGF5
-ZXIgaGFzIGNoYW5nZWQuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50
-IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5l
-dGFwcC5jb20NCg==
+upstream commit 19f7e2ca44dfc3c1b3f499fc46801f98d403500f
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfsctl.c |    8 ++------
+ fs/nfsd/nfsd.h   |    9 +++++++++
+ fs/nfsd/nfssvc.c |   14 +++-----------
+ 3 files changed, 14 insertions(+), 17 deletions(-)
+
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index c55298e..fa49cff 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -673,9 +673,7 @@ static ssize_t __write_ports_addfd(char *buf)
+ 
+ 	err = svc_addsock(nfsd_serv, fd, buf, SIMPLE_TRANSACTION_LIMIT);
+ 	if (err < 0) {
+-		if (nfsd_serv->sv_nrthreads == 1)
+-			svc_shutdown_net(nfsd_serv, net);
+-		svc_destroy(nfsd_serv);
++		nfsd_destroy(net);
+ 		return err;
+ 	}
+ 
+@@ -744,9 +742,7 @@ out_close:
+ 		svc_xprt_put(xprt);
+ 	}
+ out_err:
+-	if (nfsd_serv->sv_nrthreads == 1)
+-		svc_shutdown_net(nfsd_serv, net);
+-	svc_destroy(nfsd_serv);
++	nfsd_destroy(net);
+ 	return err;
+ }
+ 
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 1671429..e3339ca 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -73,6 +73,15 @@ int		nfsd_nrpools(void);
+ int		nfsd_get_nrthreads(int n, int *);
+ int		nfsd_set_nrthreads(int n, int *);
+ 
++static inline void nfsd_destroy(struct net *net)
++{
++	int destroy = (nfsd_serv->sv_nrthreads == 1);
++
++	if (destroy)
++		svc_shutdown_net(nfsd_serv, net);
++	svc_destroy(nfsd_serv);
++}
++
+ #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
+ #ifdef CONFIG_NFSD_V2_ACL
+ extern struct svc_version nfsd_acl_version2;
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index d63c097..e866af4 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -429,11 +429,7 @@ int nfsd_set_nrthreads(int n, int *nthreads)
+ 		if (err)
+ 			break;
+ 	}
+-
+-	if (nfsd_serv->sv_nrthreads == 1)
+-		svc_shutdown_net(nfsd_serv, net);
+-	svc_destroy(nfsd_serv);
+-
++	nfsd_destroy(net);
+ 	return err;
+ }
+ 
+@@ -480,9 +476,7 @@ out_shutdown:
+ 	if (error < 0 && !nfsd_up_before)
+ 		nfsd_shutdown();
+ out_destroy:
+-	if (nfsd_serv->sv_nrthreads == 1)
+-		svc_shutdown_net(nfsd_serv, net);
+-	svc_destroy(nfsd_serv);		/* Release server */
++	nfsd_destroy(net);		/* Release server */
+ out:
+ 	mutex_unlock(&nfsd_mutex);
+ 	return error;
+@@ -684,9 +678,7 @@ int nfsd_pool_stats_release(struct inode *inode, struct file *file)
+ 
+ 	mutex_lock(&nfsd_mutex);
+ 	/* this function really, really should have been called svc_put() */
+-	if (nfsd_serv->sv_nrthreads == 1)
+-		svc_shutdown_net(nfsd_serv, net);
+-	svc_destroy(nfsd_serv);
++	nfsd_destroy(net);
+ 	mutex_unlock(&nfsd_mutex);
+ 	return ret;
+ }
+
