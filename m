@@ -1,123 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:23541 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:44616 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757988Ab2IUUvX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Sep 2012 16:51:23 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+	id S1751683Ab2IPXFl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 16 Sep 2012 19:05:41 -0400
+Received: from relay1.suse.de (unknown [195.135.220.254])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx2.suse.de (Postfix) with ESMTP id 0EC229D938
+	for <linux-nfs@vger.kernel.org>; Mon, 17 Sep 2012 01:05:40 +0200 (CEST)
+Date: Mon, 17 Sep 2012 09:05:37 +1000
+From: NeilBrown <neilb@suse.de>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 06/26] NFSv4.1: Add helpers for setting/reading the I/O fail bit
-Date: Fri, 21 Sep 2012 16:50:01 -0400
-Message-Id: <1348260621-10294-6-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1348260621-10294-5-git-send-email-Trond.Myklebust@netapp.com>
-References: <1348260621-10294-1-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-2-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-3-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-4-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-5-git-send-email-Trond.Myklebust@netapp.com>
+Subject: What is NFSv4 READDIR doesn't return a filehandle....
+Message-ID: <20120917090537.20e38026@notabene.brown>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/VjR8x_bHVt1EjXYd8JWG/42"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...and make them local to the pnfs.c file.
+--Sig_/VjR8x_bHVt1EjXYd8JWG/42
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/pnfs.c | 37 ++++++++++++++++++++++++++-----------
- fs/nfs/pnfs.h |  6 ------
- 2 files changed, 26 insertions(+), 17 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 498af87..f85cc4c 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -238,6 +238,27 @@ pnfs_put_layout_hdr(struct pnfs_layout_hdr *lo)
- 	}
- }
- 
-+static int
-+pnfs_iomode_to_fail_bit(u32 iomode)
-+{
-+	return iomode == IOMODE_RW ?
-+		NFS_LAYOUT_RW_FAILED : NFS_LAYOUT_RO_FAILED;
-+}
-+
-+static void
-+pnfs_layout_io_set_failed(struct pnfs_layout_hdr *lo, u32 iomode)
-+{
-+	set_bit(pnfs_iomode_to_fail_bit(iomode), &lo->plh_flags);
-+	dprintk("%s Setting layout IOMODE_%s fail bit\n", __func__,
-+			iomode == IOMODE_RW ?  "RW" : "READ");
-+}
-+
-+static bool
-+pnfs_layout_io_test_failed(struct pnfs_layout_hdr *lo, u32 iomode)
-+{
-+	return test_bit(pnfs_iomode_to_fail_bit(iomode), &lo->plh_flags) != 0;
-+}
-+
- static void
- init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
- {
-@@ -612,7 +633,7 @@ send_layoutget(struct pnfs_layout_hdr *lo,
- 			break;
- 		default:
- 			/* remember that LAYOUTGET failed and suspend trying */
--			set_bit(lo_fail_bit(range->iomode), &lo->plh_flags);
-+			pnfs_layout_io_set_failed(lo, range->iomode);
- 		}
- 		return NULL;
- 	}
-@@ -669,8 +690,8 @@ _pnfs_return_layout(struct inode *ino)
- 	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
- 	if (unlikely(lrp == NULL)) {
- 		status = -ENOMEM;
--		set_bit(NFS_LAYOUT_RW_FAILED, &lo->plh_flags);
--		set_bit(NFS_LAYOUT_RO_FAILED, &lo->plh_flags);
-+		pnfs_layout_io_set_failed(lo, IOMODE_RW);
-+		pnfs_layout_io_set_failed(lo, IOMODE_READ);
- 		pnfs_clear_layout_returned(lo);
- 		pnfs_put_layout_hdr(lo);
- 		goto out;
-@@ -1046,7 +1067,7 @@ pnfs_update_layout(struct inode *ino,
- 	}
- 
- 	/* if LAYOUTGET already failed once we don't try again */
--	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->plh_flags))
-+	if (pnfs_layout_io_test_failed(nfsi->layout, iomode))
- 		goto out_unlock;
- 
- 	/* Check to see if the layout for the given range already exists */
-@@ -1581,13 +1602,7 @@ static void pnfs_list_write_lseg(struct inode *inode, struct list_head *listp)
- 
- void pnfs_set_lo_fail(struct pnfs_layout_segment *lseg)
- {
--	if (lseg->pls_range.iomode == IOMODE_RW) {
--		dprintk("%s Setting layout IOMODE_RW fail bit\n", __func__);
--		set_bit(lo_fail_bit(IOMODE_RW), &lseg->pls_layout->plh_flags);
--	} else {
--		dprintk("%s Setting layout IOMODE_READ fail bit\n", __func__);
--		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
--	}
-+	pnfs_layout_io_set_failed(lseg->pls_layout, lseg->pls_range.iomode);
- }
- EXPORT_SYMBOL_GPL(pnfs_set_lo_fail);
- 
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 0495879..e3eb7d1 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -274,12 +274,6 @@ pnfs_test_layout_returned(struct pnfs_layout_hdr *lo)
- 	return test_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
- }
- 
--static inline int lo_fail_bit(u32 iomode)
--{
--	return iomode == IOMODE_RW ?
--			 NFS_LAYOUT_RW_FAILED : NFS_LAYOUT_RO_FAILED;
--}
--
- static inline struct pnfs_layout_segment *
- pnfs_get_lseg(struct pnfs_layout_segment *lseg)
- {
--- 
-1.7.11.4
+In NFSv4, the server can report which attributes it chose to return in a
+READDIR reply.
 
+A customer has come across a server which does not return the filehandle
+information (is that allowed?).
+
+A consequence of this is that Linux/NFS gets confused.
+nfs_readdir_page_filler calls nfs_prime_dcache() (because it was a readdir
+plus request that was sent) and nfs_prime_dcache goes ahead and creates an
+inode based on the filehandle that it has.
+However decode_attr_filehandle() had happily decoded nothing as the
+FATTR4_WORD0_FILEHANDLE bit wasn't set.
+So the inode gets created with a zero-length filehandle and when this gets
+sent back to the server to act on the inode, it gets NFS4ERR_BADHANDLE to
+the PUTFH op.
+
+So should nfs_prime_dcache() abort if the filehandle doesn't exist (patch
+below) or should nfs_fhget() return an error if the filehandle is empty?
+
+Or maybe this behaviour should be detected and readdir should be disabled f=
+or
+that server?
+
+Suggestions?
+
+Thanks,
+NeilBrown
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 627f108..148d09c 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -442,6 +442,10 @@ void nfs_prime_dcache(struct dentry *parent, struct nf=
+s_entry *entry)
+ 		if (filename.len =3D=3D 2 && filename.name[1] =3D=3D '.')
+ 			return;
+ 	}
++	if (entry->fh.size =3D=3D 0)
++		/* Server didn't return a filehandle */
++		return;
++
+ 	filename.hash =3D full_name_hash(filename.name, filename.len);
+=20
+ 	dentry =3D d_lookup(parent, &filename);
+
+--Sig_/VjR8x_bHVt1EjXYd8JWG/42
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
+
+iQIVAwUBUFZbQjnsnt1WYoG5AQKWnA/+PsqspN5pRZOQDvdCEoI2yEcuW2U1NkEw
+NA43ME3USO3tz9GowbF1S8gBC+BACEtEXXtQNBrnl8ZFBnwi6Pqu2/M8SILCa7SL
+gDDcb1qjPNqTgDDcdrTkAe59WY6vyJSmq1KlrH7XqmoysUgV1PPGAnkZzlrfmGk+
+nchhFVFmk3EnB/UkPDBkz0ce9iuhhVTW3TMf8hyayPtwHvW6uKCflvH4/6+u3Rmg
+uhJSy6OoG/Djco1wuDW80DnkXaosHRUC7Gb23j4J7OJFLDoPUaGbGjcwFKXKkYXj
+M5LqVVsMIz+jvY/HpVeMUJ1g50vVS8+9Y1rFu/VObBBYfQLKS6bbemmbit8FxMdW
+IdHhUBHkdBbNI1XjgHZnYPDmpqZpf6IXNSyj1yAGKEMkqUw0NkN2+c5ldwtFzeYI
+1Hu4za9XoLKA15mjGwg36k54VVle2pcAW5r4VjxY759TwfW5FFZOr0viBAurS69S
+PW5I5TlQPmFIuqARQdBM0l6ajwi5hF7sJFqizCCIdQC6iw1lstcG7md/uLr9MVE7
+e6DX8Wvd51wF6vlVAEj4R6qRZKhl0zB8w01PCBJIrMszCJntAv9Gk9HoiQvYJ9ZK
+uEfpHT4i9fdenEGqhzqqSIgC0dZIBexX2MyCiD0GBlqJ4oLnEpIaqB15h8Mgd3ys
+kY3Nwb9JGjA=
+=iGsr
+-----END PGP SIGNATURE-----
+
+--Sig_/VjR8x_bHVt1EjXYd8JWG/42--
