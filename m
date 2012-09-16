@@ -1,60 +1,144 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:42936 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932580Ab2IDVvs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Sep 2012 17:51:48 -0400
-Message-ID: <504677C8.3050801@redhat.com>
-Date: Tue, 04 Sep 2012 22:51:04 +0100
-From: Pedro Alves <palves@redhat.com>
-MIME-Version: 1.0
-To: Steven Rostedt <rostedt@goodmis.org>
-CC: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
-        Sasha Levin <levinsasha928@gmail.com>, Tejun Heo <tj@kernel.org>,
-        torvalds@linux-foundation.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, mingo@elte.hu,
-        ebiederm@xmission.com, aarcange@redhat.com, ericvh@gmail.com,
-        netdev@vger.kernel.org, josh@joshtriplett.org, eric.dumazet@gmail.com,
-        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
-        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
-        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive hashtable
-References: <20120824203332.GF21325@google.com> <5037E9D9.9000605@gmail.com>    <20120824212348.GK21325@google.com> <5038074D.300@gmail.com>    <20120824230740.GN21325@google.com> <20120825042419.GA27240@Krystal>    <503C95E4.3010000@gmail.com> <20120828101148.GA21683@Krystal>    <503CAB1E.5010408@gmail.com> <20120828115638.GC23818@Krystal>    <20120828230050.GA3337@Krystal>   <1346772948.27919.9.camel@gandalf.local.home>  <50462C99.5000007@redhat.com>  <50462EE8.1090903@redhat.com>  <1346779027.27919.15.camel@gandalf.local.home>  <50463883.8080706@redhat.com> <1346792345.27919.18.camel@gandalf.local.home>
-In-Reply-To: <1346792345.27919.18.camel@gandalf.local.home>
-Content-Type: text/plain; charset=ISO-8859-15
+Received: from riis.snl.salk.edu ([198.202.70.55]:55592 "EHLO
+	riis.snl.salk.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751263Ab2IPUlb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 16 Sep 2012 16:41:31 -0400
+Subject: Re: Bug#669314: NFS: kernel forces trailing slash for export in /proc/self/mounts
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: multipart/signed; boundary="Apple-Mail=_AEB92D0E-0D9F-486A-AF2E-1E9A90BECDCE"; protocol="application/pkcs7-signature"; micalg=sha1
+From: Chris Hiestand <chiestand@salk.edu>
+In-Reply-To: <1347804028.13258.267.camel@deadeye.wl.decadent.org.uk>
+Date: Sun, 16 Sep 2012 13:41:31 -0700
+Cc: 669314@bugs.debian.org, viro@zeniv.linux.org.uk,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Micheal Waltz <mwaltz@qualcomm.com>,
+        Gabriel Evanoff <gevanoff@salk.edu>
+Message-Id: <FB3CAE84-FDFE-4345-9F54-3295BDE2AD81@salk.edu>
+References: <8F8193BD-84C6-4905-8789-DE7EB2579A4E@salk.edu> <1347762073.13258.188.camel@deadeye.wl.decadent.org.uk> <254E1AAA-BDE2-41A8-94D8-6E677860AD72@salk.edu> <1347804028.13258.267.camel@deadeye.wl.decadent.org.uk>
+To: Ben Hutchings <ben@decadent.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/04/2012 09:59 PM, Steven Rostedt wrote:
-> On Tue, 2012-09-04 at 18:21 +0100, Pedro Alves wrote:
->> On 09/04/2012 06:17 PM, Steven Rostedt wrote:
->>> On Tue, 2012-09-04 at 17:40 +0100, Pedro Alves wrote:
->>>
->>>> BTW, you can also go a step further and remove the need to close with double }},
->>>> with something like:
->>>>
->>>> #define do_for_each_ftrace_rec(pg, rec)                                          \
->>>>         for (pg = ftrace_pages_start, rec = &pg->records[pg->index];             \
->>>>              pg && rec == &pg->records[pg->index];                               \
->>>>              pg = pg->next)                                                      \
->>>>           for (rec = pg->records; rec < &pg->records[pg->index]; rec++)
->>>>
->>>
->>> Yeah, but why bother? It's hidden in a macro, and the extra '{ }' shows
->>> that this is something "special".
->>
->> The point of both changes is that there's nothing special in the end
->> at all.  It all just works...
->>
-> 
-> It would still fail on a 'break'. The 'while' macro tells us that it is
-> special, because in the end, it wont work.
 
-Please explain why it would fail on a 'break'.
+--Apple-Mail=_AEB92D0E-0D9F-486A-AF2E-1E9A90BECDCE
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
--- 
-Pedro Alves
 
+On Sep 16, 2012, at 7:00 AM, Ben Hutchings wrote:
+
+> This was my first thought - but what if userland provides a device =
+name
+> with a slash on the end?  I think we have to report it back with the
+> slash in that case.
+
+
+That is a great point. We could not find any standard as to whether or =
+not there should be a trailing slash.
+And from all the examples I could find, there seems to be a convention =
+of omitting a trailing slash.
+However, if userland provides a trailing slash, it would seem =
+appropriate to retain it.
+
+As a point of comparison, matching the given input is the behavior of =
+2.6.32-5 in Debian Squeeze.
+So I think your approach is better.
+
+-Chris=
+
+--Apple-Mail=_AEB92D0E-0D9F-486A-AF2E-1E9A90BECDCE
+Content-Disposition: attachment;
+	filename=smime.p7s
+Content-Type: application/pkcs7-signature;
+	name=smime.p7s
+Content-Transfer-Encoding: base64
+
+MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIO1TCCBIow
+ggNyoAMCAQICECf06hH0eobEbp27bqkXBwcwDQYJKoZIhvcNAQEFBQAwbzELMAkGA1UEBhMCU0Ux
+FDASBgNVBAoTC0FkZFRydXN0IEFCMSYwJAYDVQQLEx1BZGRUcnVzdCBFeHRlcm5hbCBUVFAgTmV0
+d29yazEiMCAGA1UEAxMZQWRkVHJ1c3QgRXh0ZXJuYWwgQ0EgUm9vdDAeFw0wNTA2MDcwODA5MTBa
+Fw0yMDA1MzAxMDQ4MzhaMIGuMQswCQYDVQQGEwJVUzELMAkGA1UECBMCVVQxFzAVBgNVBAcTDlNh
+bHQgTGFrZSBDaXR5MR4wHAYDVQQKExVUaGUgVVNFUlRSVVNUIE5ldHdvcmsxITAfBgNVBAsTGGh0
+dHA6Ly93d3cudXNlcnRydXN0LmNvbTE2MDQGA1UEAxMtVVROLVVTRVJGaXJzdC1DbGllbnQgQXV0
+aGVudGljYXRpb24gYW5kIEVtYWlsMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsjmF
+pPJ9q0E7YkY3rs3BYHW8OWX5ShpHornMSMxqmNVNNRm5pELlzkniii8efNIxB8dOtINknS4p1aJk
+xIW9hVE1eaROaJB7HHqkkqgX8pgV8pPMyaQylbsMTzC9mKALi+VuG6JG+ni8om+rWV6lL8/K2m2q
+L+usobNqqrcuZzWLeeEeaYji5kbNoKXqvgvOdjp6Dpvq/NonWz1zHyLmSGHGTPNpsaguG7bUMSAs
+vIKKjqQOpdeJQ/wWWq8dcdcRWdq6hw2v+vPhwvCkxWeM1tZUOt4KpLoDd7NlyP0e03RiqhjKaJMe
+oYV+9Udly/hNVyh00jT/MLbu9mIwFIws6wIDAQABo4HhMIHeMB8GA1UdIwQYMBaAFK29mHo0tCb3
++sQmVO8DveAky1QaMB0GA1UdDgQWBBSJgmd9xJ0mcABLtFBIfN49rgRufTAOBgNVHQ8BAf8EBAMC
+AQYwDwYDVR0TAQH/BAUwAwEB/zB7BgNVHR8EdDByMDigNqA0hjJodHRwOi8vY3JsLmNvbW9kb2Nh
+LmNvbS9BZGRUcnVzdEV4dGVybmFsQ0FSb290LmNybDA2oDSgMoYwaHR0cDovL2NybC5jb21vZG8u
+bmV0L0FkZFRydXN0RXh0ZXJuYWxDQVJvb3QuY3JsMA0GCSqGSIb3DQEBBQUAA4IBAQAZ2IkRbyis
+pgCi54fBm5AD236hEv0e8+LwAamUVEJrmgnEoG3XkJIEA2Z5Q3H8+G+v23ZF4jcaPd3kWQR4rBz0
+g0bzes9bhHIt5UbBuhgRKfPLSXmHPLptBZ2kbWhPrXIUNqi5sf2/z3/wpGqUNVCPz4FtVbHdWTBK
+322gnGQfSXzvNrv042n0+DmPWq1LhTq3Du3Tzw1EovsEv+QvcI4l+1pUBrPQxLxtjftzMizpm4Qk
+LdZ/kXpoAlAfDj9N6cz1u2fo3BwuO/xOzf4CjuOoEwqlJkRl6RDyTVKnrtw+ymsyXEFs/vVdoOr/
+0fqbhlhtPZZH5f4ulQTCAMyOofK7MIIFGjCCBAKgAwIBAgIQbRnqpxlPajMi5iIyeqpx3jANBgkq
+hkiG9w0BAQUFADCBrjELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAlVUMRcwFQYDVQQHEw5TYWx0IExh
+a2UgQ2l0eTEeMBwGA1UEChMVVGhlIFVTRVJUUlVTVCBOZXR3b3JrMSEwHwYDVQQLExhodHRwOi8v
+d3d3LnVzZXJ0cnVzdC5jb20xNjA0BgNVBAMTLVVUTi1VU0VSRmlyc3QtQ2xpZW50IEF1dGhlbnRp
+Y2F0aW9uIGFuZCBFbWFpbDAeFw0xMTA0MjgwMDAwMDBaFw0yMDA1MzAxMDQ4MzhaMIGTMQswCQYD
+VQQGEwJHQjEbMBkGA1UECBMSR3JlYXRlciBNYW5jaGVzdGVyMRAwDgYDVQQHEwdTYWxmb3JkMRow
+GAYDVQQKExFDT01PRE8gQ0EgTGltaXRlZDE5MDcGA1UEAxMwQ09NT0RPIENsaWVudCBBdXRoZW50
+aWNhdGlvbiBhbmQgU2VjdXJlIEVtYWlsIENBMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKC
+AQEAkoSEW0tXmNReL4uk4UDIo1NYX2Zl8TJO958yfVXQeExVt0KU4PkncQfFxmmkuTLE8UAakMwn
+VmJ/F7Vxaa7lIBvky2NeYMqiQfZq4aP/uN8fSG1lQ4wqLitjOHffsReswtqCAtbUMmrUZ28gE49c
+NfrlVICv2HEKHTcKAlBTbJUdqRAUtJmVWRIx/wmi0kzcUtve4kABW0ho3cVKtODtJB86r3FfB+Os
+vxQ7sCVxaD30D9YXWEYVgTxoi4uDD216IVfmNLDbMn7jSuGlUnJkJpFOpZIP/+CxYP0ab2hRmWON
+GoulzEKbm30iY9OpoPzOnpDfRBn0XFs1uhbzp5v/wQIDAQABo4IBSzCCAUcwHwYDVR0jBBgwFoAU
+iYJnfcSdJnAAS7RQSHzePa4Ebn0wHQYDVR0OBBYEFHoTTgB0W8Z4Y2QnwS/ioFu8ecV7MA4GA1Ud
+DwEB/wQEAwIBBjASBgNVHRMBAf8ECDAGAQH/AgEAMBEGA1UdIAQKMAgwBgYEVR0gADBYBgNVHR8E
+UTBPME2gS6BJhkdodHRwOi8vY3JsLnVzZXJ0cnVzdC5jb20vVVROLVVTRVJGaXJzdC1DbGllbnRB
+dXRoZW50aWNhdGlvbmFuZEVtYWlsLmNybDB0BggrBgEFBQcBAQRoMGYwPQYIKwYBBQUHMAKGMWh0
+dHA6Ly9jcnQudXNlcnRydXN0LmNvbS9VVE5BZGRUcnVzdENsaWVudF9DQS5jcnQwJQYIKwYBBQUH
+MAGGGWh0dHA6Ly9vY3NwLnVzZXJ0cnVzdC5jb20wDQYJKoZIhvcNAQEFBQADggEBAIXWvnhXVW0z
+f0RS/kLVBqgBA4CK+w2y/Uq/9q9BSfUbWsXSrRtzbj7pJnzmTJjBMCjfy/tCPKElPgp11tA9OYZm
+0aGbtU2bb68obB2v5ep0WqjascDxdXovnrqTecr+4pEeVnSy+I3T4ENyG+2P/WA5IEf7i686ZUg8
+mD2lJb+972DgSeUWyOs/Q4Pw4O4NwdPNM1+b0L1garM7/vrUyTo8H+2b/5tJM75CKTmD7jNpLoKd
+RU2oadqAGx490hpdfEeZpZsIbRKZhtZdVwcbpzC+S0lEuJB+ytF5OOu0M/qgOl0mWJ5hVRi0IdWZ
+1eBDQEIwvuql55TSsP7zdfl/bucwggUlMIIEDaADAgECAhAJi8lShk8jTNMgVo7nXaDGMA0GCSqG
+SIb3DQEBBQUAMIGTMQswCQYDVQQGEwJHQjEbMBkGA1UECBMSR3JlYXRlciBNYW5jaGVzdGVyMRAw
+DgYDVQQHEwdTYWxmb3JkMRowGAYDVQQKExFDT01PRE8gQ0EgTGltaXRlZDE5MDcGA1UEAxMwQ09N
+T0RPIENsaWVudCBBdXRoZW50aWNhdGlvbiBhbmQgU2VjdXJlIEVtYWlsIENBMB4XDTEyMDgxNDAw
+MDAwMFoXDTEzMDgxNDIzNTk1OVowIzEhMB8GCSqGSIb3DQEJARYSY2hpZXN0YW5kQHNhbGsuZWR1
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtqz/Yy0csi37dTvyoNn8MNtPRvG2D7E3
+pwSsuXFnBML17AZU1wpAKsQpggGoznvsFQvvOzJyWRBWKdF0deds1xpFGhe7+/GzMhnQKwFDeVZs
+9hTXKWEERVVaBmyIbj0BP3D5VrUo/7eaybMALnxEjrteg9jyuFTSrGDc8qJ+c1Ps5vlH0v+Fvp4V
+HoI8bW/+auu4mNT1E0nzpm3eWCsF1Rif2FVDetoDaArW1uTJh+g6oV3d1eJeGiqRnc+k7Q+ShfHj
+wehOQT7dvYRE1CqArv69m2BBue+gHXQXWFgfaHx7/9mJapJG/ALpmqaHU8x9bMaBcZcIQHqEQV9E
+3yOWpQIDAQABo4IB4jCCAd4wHwYDVR0jBBgwFoAUehNOAHRbxnhjZCfBL+KgW7x5xXswHQYDVR0O
+BBYEFGOY5NfMgoO8duC6gWVGeskIkDbrMA4GA1UdDwEB/wQEAwIFoDAMBgNVHRMBAf8EAjAAMCAG
+A1UdJQQZMBcGCCsGAQUFBwMEBgsrBgEEAbIxAQMFAjARBglghkgBhvhCAQEEBAMCBSAwRgYDVR0g
+BD8wPTA7BgwrBgEEAbIxAQIBAQEwKzApBggrBgEFBQcCARYdaHR0cHM6Ly9zZWN1cmUuY29tb2Rv
+Lm5ldC9DUFMwVwYDVR0fBFAwTjBMoEqgSIZGaHR0cDovL2NybC5jb21vZG9jYS5jb20vQ09NT0RP
+Q2xpZW50QXV0aGVudGljYXRpb25hbmRTZWN1cmVFbWFpbENBLmNybDCBiAYIKwYBBQUHAQEEfDB6
+MFIGCCsGAQUFBzAChkZodHRwOi8vY3J0LmNvbW9kb2NhLmNvbS9DT01PRE9DbGllbnRBdXRoZW50
+aWNhdGlvbmFuZFNlY3VyZUVtYWlsQ0EuY3J0MCQGCCsGAQUFBzABhhhodHRwOi8vb2NzcC5jb21v
+ZG9jYS5jb20wHQYDVR0RBBYwFIESY2hpZXN0YW5kQHNhbGsuZWR1MA0GCSqGSIb3DQEBBQUAA4IB
+AQCHpk5ZpwS5faNtGTJxlHTy9hQm4NwJZhatrTz7xq23Q93RjLxwVn9tFG/YuPB1iN1aEA1DZWwP
+Xi5OMbYxEb4Icw7/QGbJGwdHn6IDkU6IR2UOx5RzQJ84Fl6jUKCvlnJ3/UbZuzYG3fCyqi5GhUk1
+PN4l/qwbxmsZKLwZep45lrbmea5XmqIO5NB4F02NLFYZWmEByKEi92aHLfgsvULq1CfNJMKIIYD2
+/AW96vDQmk/liJHld+gkQQkIlTTzZmOYbHKtkeN8B8kFkB5OmdUZJvWoDMDMLLHhPkfRBBYuS7WO
+jQY521z50tPATaS3yDZUYlcFyXjns8Wew/gv/XT5MYIDqzCCA6cCAQEwgagwgZMxCzAJBgNVBAYT
+AkdCMRswGQYDVQQIExJHcmVhdGVyIE1hbmNoZXN0ZXIxEDAOBgNVBAcTB1NhbGZvcmQxGjAYBgNV
+BAoTEUNPTU9ETyBDQSBMaW1pdGVkMTkwNwYDVQQDEzBDT01PRE8gQ2xpZW50IEF1dGhlbnRpY2F0
+aW9uIGFuZCBTZWN1cmUgRW1haWwgQ0ECEAmLyVKGTyNM0yBWjuddoMYwCQYFKw4DAhoFAKCCAdcw
+GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTIwOTE2MjA0MTMxWjAj
+BgkqhkiG9w0BCQQxFgQUIRnUjlhYWSsysezhL7GeVZukIwwwgbkGCSsGAQQBgjcQBDGBqzCBqDCB
+kzELMAkGA1UEBhMCR0IxGzAZBgNVBAgTEkdyZWF0ZXIgTWFuY2hlc3RlcjEQMA4GA1UEBxMHU2Fs
+Zm9yZDEaMBgGA1UEChMRQ09NT0RPIENBIExpbWl0ZWQxOTA3BgNVBAMTMENPTU9ETyBDbGllbnQg
+QXV0aGVudGljYXRpb24gYW5kIFNlY3VyZSBFbWFpbCBDQQIQCYvJUoZPI0zTIFaO512gxjCBuwYL
+KoZIhvcNAQkQAgsxgauggagwgZMxCzAJBgNVBAYTAkdCMRswGQYDVQQIExJHcmVhdGVyIE1hbmNo
+ZXN0ZXIxEDAOBgNVBAcTB1NhbGZvcmQxGjAYBgNVBAoTEUNPTU9ETyBDQSBMaW1pdGVkMTkwNwYD
+VQQDEzBDT01PRE8gQ2xpZW50IEF1dGhlbnRpY2F0aW9uIGFuZCBTZWN1cmUgRW1haWwgQ0ECEAmL
+yVKGTyNM0yBWjuddoMYwDQYJKoZIhvcNAQEBBQAEggEAWAvQOz4KFOoRx4LFY69zlj4vLrqMtgmQ
+WqQNN1ENKdtPrfVFuhkdN6Q0mLZh+0IKsBOutNZ3JpLluyk9tdeZEO/OEOYjZW7l5Cwrji56RHR3
+2jm6sK3AmFaW3OMnEjX3qtntMFkSYodzFo4lA1RJr4esuSSDoAh1b2awf4KsLJJ7rd/FV1Pq9/GL
+qtYHvl5jkm2oWzUt4txTNh1Lrc6zljGTVPfiu3K4qTIJItZAKx3BhckkpydGDRp/c5cS8qcJV3B5
+fRgkC055T0ZSqwQVfikPfKsMbSG0pnRmnoTv4dyqtG9U2AQoccQdOxjSQD6VfkwrM1L50ST5ehvj
+NANXCAAAAAAAAA==
+
+--Apple-Mail=_AEB92D0E-0D9F-486A-AF2E-1E9A90BECDCE--
