@@ -1,107 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:19856 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:24479 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932119Ab2IXT6h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Sep 2012 15:58:37 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 14/28] NFSv4.1: Get rid of pNFS layout state "NFS_LAYOUT_INVALID"
-Date: Mon, 24 Sep 2012 15:56:32 -0400
-Message-Id: <1348516606-22721-14-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1348516606-22721-13-git-send-email-Trond.Myklebust@netapp.com>
-References: <1348516606-22721-1-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-2-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-3-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-4-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-5-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-6-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-7-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-8-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-9-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-10-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-11-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-12-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-13-git-send-email-Trond.Myklebust@netapp.com>
+	id S1752278Ab2IQNCM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Sep 2012 09:02:12 -0400
+Message-ID: <50571F51.9080100@netapp.com>
+Date: Mon, 17 Sep 2012 09:02:09 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+MIME-Version: 1.0
+To: Nick Bowler <nbowler@elliptictech.com>
+CC: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: PROBLEM: kernel BUG at fs/nfs/idmap.c:684!
+References: <20120914192056.GA15530@elliptictech.com>
+In-Reply-To: <20120914192056.GA15530@elliptictech.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In all cases where we set NFS_LAYOUT_INVALID, we also set NFS_LAYOUT_DESTROYED.
-Furthermore, in all cases where we test for NFS_LAYOUT_INVALID, we should
-also be testing for NFS_LAYOUT_DESTROYED, since the latter means that
-we hold no valid layout segments.
-Ergo the two are redundant.
+Hi Nick,
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4filelayout.c | 4 +---
- fs/nfs/nfs4filelayout.h | 6 ------
- fs/nfs/pnfs.h           | 7 ++++++-
- 3 files changed, 7 insertions(+), 10 deletions(-)
+Two questions:
+1) How sure are you that you're using v3?  Make sure you're using the 'vers=3' mount option.  I'm not sure which version of nfs-utils Debian uses, but recent versions set v4 as the default.
+2) Can you try Linux 3.5.4?  Patches for the idmapper issue have already been accepted.
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index dac2162..6cce57e 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -190,8 +190,6 @@ static int filelayout_async_handle_error(struct rpc_task *task,
- 		 * i/o and all i/o waiting on the slot table to the MDS until
- 		 * layout is destroyed and a new valid layout is obtained.
- 		 */
--		set_bit(NFS_LAYOUT_INVALID,
--				&NFS_I(inode)->layout->plh_flags);
- 		pnfs_destroy_layout(NFS_I(inode));
- 		rpc_wake_up(&tbl->slot_tbl_waitq);
- 		goto reset;
-@@ -281,7 +279,7 @@ filelayout_reset_to_mds(struct pnfs_layout_segment *lseg)
- {
- 	struct nfs4_deviceid_node *node = FILELAYOUT_DEVID_NODE(lseg);
- 
--	return filelayout_test_layout_invalid(lseg->pls_layout) ||
-+	return pnfs_test_layout_destroyed(lseg->pls_layout) ||
- 		filelayout_test_devid_unavailable(node);
- }
- 
-diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
-index 10b0f13..dca47d78 100644
---- a/fs/nfs/nfs4filelayout.h
-+++ b/fs/nfs/nfs4filelayout.h
-@@ -129,12 +129,6 @@ filelayout_mark_devid_invalid(struct nfs4_deviceid_node *node)
- }
- 
- static inline bool
--filelayout_test_layout_invalid(struct pnfs_layout_hdr *lo)
--{
--	return test_bit(NFS_LAYOUT_INVALID, &lo->plh_flags);
--}
--
--static inline bool
- filelayout_test_devid_invalid(struct nfs4_deviceid_node *node)
- {
- 	return test_bit(NFS_DEVICEID_INVALID, &node->flags);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index aa9fa1b..aacda7f 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -63,7 +63,6 @@ enum {
- 	NFS_LAYOUT_BULK_RECALL,		/* bulk recall affecting layout */
- 	NFS_LAYOUT_ROC,			/* some lseg had roc bit set */
- 	NFS_LAYOUT_DESTROYED,		/* no new use of layout allowed */
--	NFS_LAYOUT_INVALID,		/* layout is being destroyed */
- 	NFS_LAYOUT_RETURNED,		/* layout has already been returned */
- };
- 
-@@ -279,6 +278,12 @@ pnfs_test_layout_returned(struct pnfs_layout_hdr *lo)
- 	return test_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
- }
- 
-+static inline bool
-+pnfs_test_layout_destroyed(struct pnfs_layout_hdr *lo)
-+{
-+	return test_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags);
-+}
-+
- static inline struct pnfs_layout_segment *
- pnfs_get_lseg(struct pnfs_layout_segment *lseg)
- {
--- 
-1.7.11.4
+- Bryan
+
+On 09/14/2012 03:20 PM, Nick Bowler wrote:
+> Hi folks,
+> 
+> I just upgraded an NFSv3 client machine to Linux 3.5.3 and am seeing the
+> following BUG.  It occurs reproducibly a short time after the first
+> login in to the machine after boot (within one minute).  There's a lot
+> of nfs4-looking functions in backtrace, which is weird as there are
+> absolutely no NFSv4 mounts.  The system still mostly works, although
+> tab completion in my shell seems to either not complete anything or
+> hang forever, which could be related as there are NFS-mounted
+> directories in my PATH.
+> 
+> Curiously, there are other machines on the same network running this
+> same kernel version that do *not* have this problem.  A couple unique
+> things about the crashing machine that immediately come to mind...
+> 
+>  - Userspace is running Debian stable (so tends to be pretty old).
+>  - Its onboard network is quite different from our other machines
+>    (it has a Marvell chipset using the sky2 driver).
+> 
+> Please let me know if you need any more info.
+> 
+> ------------[ cut here ]------------
+> kernel BUG at fs/nfs/idmap.c:684!
+> invalid opcode: 0000 [#1] PREEMPT SMP 
+> CPU 0 
+> Modules linked in: ah4 xfrm4_mode_transport nfs lockd auth_rpcgss nfs_acl sunrpc autofs4 acpi_cpufreq mperf deflate zlib_deflate ctr aes_x86_64 aes_generic des_generic cbc sha512_generic sha256_generic sha1_ssse3 sha1_generic md5 hmac crypto_null af_key xfrm_algo ipv6 loop snd_hda_codec_realtek snd_hda_intel snd_hda_codec snd_pcm snd_seq snd_timer snd_seq_device snd soundcore snd_page_alloc i2c_i801 skge coretemp hwmon lpc_ich evdev mfd_core sky2
+> 
+> Pid: 2450, comm: mount.nfs Not tainted 3.5.3 #15 LENOVO 0841A5U/LENOVO
+> RIP: 0010:[<ffffffffa01d8081>]  [<ffffffffa01d8081>] nfs_idmap_legacy_upcall+0x10c/0x15e [nfs]
+> RSP: 0018:ffff8800755c53f8  EFLAGS: 00010286
+> RAX: 0000000000000015 RBX: ffff880078d4ba80 RCX: 0000000000000000
+> RDX: 0000000000000080 RSI: ffff880076e40ed9 RDI: ffff880078d4ba97
+> RBP: ffff8800755c5448 R08: ffff880078d4ba82 R09: 0000000000000015
+> R10: ffff88007f40b000 R11: ffff8800755c5288 R12: ffff880078dfe880
+> R13: ffff880076dc1f40 R14: ffff880078dfebc0 R15: ffff880078d4b780
+> FS:  00007fb0bc00d700(0000) GS:ffff88007f400000(0000) knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+> CR2: 0000000000dd9000 CR3: 00000000755b8000 CR4: 00000000000407f0
+> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> Process mount.nfs (pid: 2450, threadinfo ffff8800755c4000, task ffff88007b838000)
+> Stack:
+>  0031396364396565 ffffffff81364e2a ffff880076e40ec4 ffff880076e40ed9
+>  ffffffff81625be0 ffff880078d4b780 ffff880076dc1f40 ffff880078d4bb40
+>  ffff880076c16600 ffff880076c166c0 ffff8800755c54e8 ffffffff8115bb02
+> Call Trace:
+>  [<ffffffff81364e2a>] ? kmemleak_alloc+0x21/0x3e
+>  [<ffffffff8115bb02>] request_key_and_link+0x306/0x389
+>  [<ffffffff810c5378>] ? create_object+0x27e/0x290
+>  [<ffffffff8115bbd7>] request_key_with_auxdata+0x1b/0x4c
+>  [<ffffffffa01d81a0>] nfs_idmap_request_key+0xcd/0x187 [nfs]
+>  [<ffffffffa01d82d4>] nfs_idmap_get_key+0x7a/0x99 [nfs]
+>  [<ffffffffa01d84ac>] nfs_idmap_lookup_id+0x23/0x52 [nfs]
+>  [<ffffffffa01d852e>] nfs_map_group_to_gid+0x53/0x5a [nfs]
+>  [<ffffffffa01d28cf>] decode_getfattr_attrs+0x591/0xa0c [nfs]
+>  [<ffffffff81001624>] ? __switch_to+0x2d/0x355
+>  [<ffffffffa01d472d>] T.1600+0x78/0xab [nfs]
+>  [<ffffffffa01d476e>] decode_getfattr+0xe/0x10 [nfs]
+>  [<ffffffffa01d4988>] nfs4_xdr_dec_lookup_root+0x54/0x5d [nfs]
+>  [<ffffffffa016e707>] ? rpc_queue_empty+0x29/0x29 [sunrpc]
+>  [<ffffffffa01d4934>] ? nfs4_xdr_dec_link+0xa9/0xa9 [nfs]
+>  [<ffffffffa016f60c>] rpcauth_unwrap_resp+0x56/0x61 [sunrpc]
+>  [<ffffffffa016e707>] ? rpc_queue_empty+0x29/0x29 [sunrpc]
+>  [<ffffffffa01d4934>] ? nfs4_xdr_dec_link+0xa9/0xa9 [nfs]
+>  [<ffffffffa0168d80>] call_decode+0x2c3/0x31b [sunrpc]
+>  [<ffffffffa016ec9d>] __rpc_execute+0x51/0x179 [sunrpc]
+>  [<ffffffff8104574b>] ? wake_up_bit+0x20/0x25
+>  [<ffffffffa016edec>] rpc_execute+0x27/0x2b [sunrpc]
+>  [<ffffffffa01693cd>] rpc_run_task+0x79/0x81 [sunrpc]
+>  [<ffffffffa01694b3>] rpc_call_sync+0x3f/0x60 [sunrpc]
+>  [<ffffffffa01ca253>] _nfs4_call_sync+0xe/0x10 [nfs]
+>  [<ffffffffa01cbc74>] _nfs4_lookup_root+0x9a/0xa8 [nfs]
+>  [<ffffffffa01cbcb9>] nfs4_lookup_root+0x37/0x62 [nfs]
+>  [<ffffffffa01cbd07>] nfs4_proc_get_rootfh+0x23/0x95 [nfs]
+>  [<ffffffffa01bb87a>] nfs4_get_rootfh+0x36/0xb6 [nfs]
+>  [<ffffffff81364e2a>] ? kmemleak_alloc+0x21/0x3e
+>  [<ffffffff810bdd8e>] ? kmem_cache_alloc+0xc9/0xd8
+>  [<ffffffffa01b7111>] nfs4_server_common_setup+0x57/0xc7 [nfs]
+>  [<ffffffffa01b7c87>] nfs4_create_server+0x1d7/0x202 [nfs]
+>  [<ffffffff81364dd8>] ? kmemleak_alloc_percpu+0x63/0x94
+>  [<ffffffffa01bf7f2>] nfs4_remote_mount+0x36/0x5f [nfs]
+>  [<ffffffff810c96b2>] mount_fs+0x6b/0x14f
+>  [<ffffffff810a7824>] ? __alloc_percpu+0xb/0xd
+>  [<ffffffff810e0385>] vfs_kern_mount+0x66/0xdf
+>  [<ffffffffa01bfadb>] nfs_do_root_mount+0x96/0xb5 [nfs]
+>  [<ffffffffa01c060a>] nfs_fs_mount+0x7bf/0x8f8 [nfs]
+>  [<ffffffffa01bf52e>] ? nfs_fill_super+0xc4/0xc4 [nfs]
+>  [<ffffffffa01be8dd>] ? nfs_request_mount+0x1b2/0x1b2 [nfs]
+>  [<ffffffff810c96b2>] mount_fs+0x6b/0x14f
+>  [<ffffffff810a7824>] ? __alloc_percpu+0xb/0xd
+>  [<ffffffff810e0385>] vfs_kern_mount+0x66/0xdf
+>  [<ffffffff810e0468>] do_kern_mount+0x48/0xd8
+>  [<ffffffff810e0c10>] do_mount+0x718/0x77b
+>  [<ffffffff810e0cf6>] sys_mount+0x83/0xbd
+>  [<ffffffff81376522>] system_call_fastpath+0x16/0x1b
+> Code: b3 84 00 00 00 48 8d 7d c0 c6 43 01 00 e8 59 1e fb e0 85 c0 49 89 5c 24 10 49 c7 44 24 18 8c 00 00 00 78 1e 49 83 7e 08 00 74 04 <0f> 0b eb fe 49 8b 3e 4d 89 6e 08 4c 89 e6 e8 1f 27 fa ff 85 c0 
+> RIP  [<ffffffffa01d8081>] nfs_idmap_legacy_upcall+0x10c/0x15e [nfs]
+>  RSP <ffff8800755c53f8>
+> ---[ end trace ee7d4fa42e626e1f ]---
+> 
 
