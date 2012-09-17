@@ -1,179 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:60601 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:52812 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752697Ab2I0Ubr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 27 Sep 2012 16:31:47 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH 2/2] NFSv4: Ensure that idmap_pipe_downcall sanity-checks the downcall data
-Date: Thu, 27 Sep 2012 16:31:40 -0400
-Message-Id: <1348777900-44647-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1348777900-44647-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1348777900-44647-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S932564Ab2IQUQ2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Sep 2012 16:16:28 -0400
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 10/10] NFSD: Forget state for a specific client
+Date: Mon, 17 Sep 2012 16:16:19 -0400
+Message-Id: <1347912979-20603-11-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1347912979-20603-1-git-send-email-bjschuma@netapp.com>
+References: <1347912979-20603-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use the idmapper upcall data to verify that the legacy idmapper daemon
-is indeed responding to an upcall that we sent.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Bryan Schumaker <bjschuma@netapp.com>
+Write the client's ip address to any state file and all appropriate
+state for that client will be forgotten.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfs/idmap.c | 62 +++++++++++++++++++++++++++++++++++-----------------------
- 1 file changed, 37 insertions(+), 25 deletions(-)
+ fs/nfsd/fault_inject.c | 31 +++++++++++++++++++++++++++----
+ fs/nfsd/nfs4state.c    | 11 +++++++++++
+ fs/nfsd/state.h        |  1 +
+ 3 files changed, 39 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index 7c7072a..34d3072 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -55,19 +55,20 @@
- static const struct cred *id_resolver_cache;
- static struct key_type key_type_id_resolver_legacy;
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index 19b3348..bb6b487 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -8,6 +8,8 @@
+ #include <linux/fs.h>
+ #include <linux/debugfs.h>
+ #include <linux/module.h>
++#include <linux/nsproxy.h>
++#include <linux/sunrpc/clnt.h>
+ #include <asm/uaccess.h>
+ #include "state.h"
  
--struct idmap {
--	struct rpc_pipe		*idmap_pipe;
--	struct key_construction	*idmap_key_cons;
--	struct mutex		idmap_mutex;
--	struct mutex		idmap_downcall_mutex;
--};
--
- struct idmap_legacy_upcalldata {
- 	struct rpc_pipe_msg pipe_msg;
- 	struct idmap_msg idmap_msg;
-+	struct key_construction	*key_cons;
- 	struct idmap *idmap;
- };
+@@ -63,6 +65,19 @@ static void nfsd_inject_set(struct nfsd_fault_inject_op *op, u64 val)
+ 	printk(KERN_INFO "NFSD: %s: found %llu", op->file, count);
+ }
  
-+struct idmap {
-+	struct rpc_pipe		*idmap_pipe;
-+	struct idmap_legacy_upcalldata *idmap_upcall_data;
-+	struct mutex		idmap_mutex;
-+	struct mutex		idmap_downcall_mutex;
-+};
++static void nfsd_inject_set_client(struct nfsd_fault_inject_op *op,
++				   struct sockaddr_storage *addr,
++				   size_t addr_size)
++{
++	struct nfs4_client *clp;
 +
- /**
-  * nfs_fattr_init_names - initialise the nfs_fattr owner_name/group_name fields
-  * @fattr: fully initialised struct nfs_fattr
-@@ -668,26 +669,27 @@ out:
- 
- static void
- nfs_idmap_prepare_pipe_upcall(struct idmap *idmap,
--		struct key_construction *cons)
-+		struct idmap_legacy_upcalldata *data)
- {
- 	mutex_lock(&idmap->idmap_downcall_mutex);
--	WARN_ON_ONCE(idmap->idmap_key_cons != NULL);
--	idmap->idmap_key_cons = cons;
-+	WARN_ON_ONCE(idmap->idmap_upcall_data != NULL);
-+	idmap->idmap_upcall_data = data;
- 	mutex_unlock(&idmap->idmap_downcall_mutex);
- }
- 
- static void
- nfs_idmap_complete_pipe_upcall_locked(struct idmap *idmap, int ret)
- {
--	complete_request_key(idmap->idmap_key_cons, ret);
--	idmap->idmap_key_cons = NULL;
-+	complete_request_key(idmap->idmap_upcall_data->key_cons, ret);
-+	kfree(idmap->idmap_upcall_data);
-+	idmap->idmap_upcall_data = NULL;
- }
- 
- static void
- nfs_idmap_abort_pipe_upcall(struct idmap *idmap, int ret)
- {
- 	mutex_lock(&idmap->idmap_downcall_mutex);
--	if (idmap->idmap_key_cons != NULL)
-+	if (idmap->idmap_upcall_data != NULL)
- 		nfs_idmap_complete_pipe_upcall_locked(idmap, ret);
- 	mutex_unlock(&idmap->idmap_downcall_mutex);
- }
-@@ -716,12 +718,10 @@ static int nfs_idmap_legacy_upcall(struct key_construction *cons,
- 	if (ret < 0)
- 		goto out2;
- 
--	nfs_idmap_prepare_pipe_upcall(idmap, cons);
-+	nfs_idmap_prepare_pipe_upcall(idmap, data);
- 	ret = rpc_queue_upcall(idmap->idmap_pipe, msg);
--	if (ret < 0) {
-+	if (ret < 0)
- 		nfs_idmap_abort_pipe_upcall(idmap, ret);
--		kfree(data);
--	}
- 
- 	return ret;
- out2:
-@@ -738,21 +738,32 @@ static int nfs_idmap_instantiate(struct key *key, struct key *authkey, char *dat
- 					authkey);
- }
- 
--static int nfs_idmap_read_message(struct idmap_msg *im, struct key *key, struct key *authkey)
-+static int nfs_idmap_read_and_verify_message(struct idmap_msg *im,
-+		struct idmap_msg *upcall,
-+		struct key *key, struct key *authkey)
- {
- 	char id_str[NFS_UINT_MAXLEN];
--	int ret = -EINVAL;
-+	int ret = -ENOKEY;
- 
-+	/* ret = -ENOKEY */
-+	if (upcall->im_type != im->im_type || upcall->im_conv != im->im_conv)
-+		goto out;
- 	switch (im->im_conv) {
- 	case IDMAP_CONV_NAMETOID:
-+		if (strcmp(upcall->im_name, im->im_name) != 0)
-+			break;
- 		sprintf(id_str, "%d", im->im_id);
- 		ret = nfs_idmap_instantiate(key, authkey, id_str);
- 		break;
- 	case IDMAP_CONV_IDTONAME:
-+		if (upcall->im_id != im->im_id)
-+			break;
- 		ret = nfs_idmap_instantiate(key, authkey, im->im_name);
- 		break;
-+	default:
-+		ret = -EINVAL;
- 	}
--
-+out:
- 	return ret;
- }
- 
-@@ -771,10 +782,11 @@ idmap_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
- 	 * idmap_key_cons - so after this point we may no longer touch it.
- 	 */
- 	mutex_lock(&idmap->idmap_downcall_mutex);
--	cons = idmap->idmap_key_cons;
--	if (cons == NULL)
-+	if (idmap->idmap_upcall_data == NULL)
- 		goto out_unlock;
- 
-+	cons = idmap->idmap_upcall_data->key_cons;
++	nfs4_lock_state();
++	clp = nfsd_find_client(addr, addr_size);
++	if (clp)
++		op->forget(clp, 0);
++	nfs4_unlock_state();
++}
 +
- 	if (mlen != sizeof(im)) {
- 		ret = -ENOSPC;
- 		goto out;
-@@ -796,7 +808,9 @@ idmap_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
- 		goto out;
- 	}
+ static void nfsd_inject_get(struct nfsd_fault_inject_op *op, u64 *val)
+ {
+ 	nfs4_lock_state();
+@@ -99,15 +114,23 @@ static ssize_t fault_inject_read(struct file *file, char __user *buf,
+ static ssize_t fault_inject_write(struct file *file, const char __user *buf,
+ 				  size_t len, loff_t *ppos)
+ {
+-	char write_buf[24];
++	char write_buf[INET6_ADDRSTRLEN];
+ 	size_t size = min(sizeof(write_buf), len) - 1;
++	struct net *net = current->nsproxy->net_ns;
++	struct sockaddr_storage sa;
+ 	u64 val;
  
--	ret = nfs_idmap_read_message(&im, cons->key, cons->authkey);
-+	ret = nfs_idmap_read_and_verify_message(&im,
-+			&idmap->idmap_upcall_data->idmap_msg,
-+			cons->key, cons->authkey);
- 	if (ret >= 0) {
- 		key_set_timeout(cons->key, nfs_idmap_cache_timeout);
- 		ret = mlen;
-@@ -818,8 +832,6 @@ idmap_pipe_destroy_msg(struct rpc_pipe_msg *msg)
- 	struct idmap *idmap = data->idmap;
- 	if (msg->errno)
- 		nfs_idmap_abort_pipe_upcall(idmap, msg->errno);
--	/* Free memory allocated in nfs_idmap_legacy_upcall() */
--	kfree(data);
+ 	if (copy_from_user(write_buf, buf, size))
+ 		return -EFAULT;
+-
+-	val = simple_strtoll(write_buf, NULL, 0);
+-	nfsd_inject_set(file->f_dentry->d_inode->i_private, val);
++	write_buf[size] = '\0';
++
++	size = rpc_pton(net, write_buf, size, (struct sockaddr *)&sa, sizeof(sa));
++	if (size > 0)
++		nfsd_inject_set_client(file->f_dentry->d_inode->i_private, &sa, size);
++	else {
++		val = simple_strtoll(write_buf, NULL, 0);
++		nfsd_inject_set(file->f_dentry->d_inode->i_private, val);
++	}
+ 	return len; /* on success, claim we got the whole input */
  }
  
- static void
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index a5a3b46d..9dd145e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4696,6 +4696,17 @@ u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
+ 	return count;
+ }
+ 
++struct nfs4_client *nfsd_find_client(struct sockaddr_storage *addr, size_t addr_size)
++{
++	struct nfs4_client *clp;
++
++	list_for_each_entry(clp, &client_lru, cl_lru) {
++		if (memcmp(&clp->cl_addr, addr, addr_size) == 0)
++			return clp;
++	}
++	return NULL;
++}
++
+ #endif /* CONFIG_NFSD_FAULT_INJECTION */
+ 
+ /* initialization to perform at module load time: */
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 881781a..17435d9 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -487,6 +487,7 @@ extern void nfsd4_record_grace_done(struct net *net, time_t boot_time);
+ int nfsd_fault_inject_init(void);
+ void nfsd_fault_inject_cleanup(void);
+ u64 nfsd_for_n_state(u64, u64 (*)(struct nfs4_client *, u64));
++struct nfs4_client *nfsd_find_client(struct sockaddr_storage *, size_t);
+ 
+ u64 nfsd_forget_client(struct nfs4_client *, u64);
+ u64 nfsd_forget_client_locks(struct nfs4_client*, u64);
 -- 
-1.7.11.4
+1.7.12
 
