@@ -1,52 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:42695 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:11316 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757871Ab2IDW6y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Sep 2012 18:58:54 -0400
-Message-ID: <50468778.5000207@redhat.com>
-Date: Tue, 04 Sep 2012 23:58:00 +0100
-From: Pedro Alves <palves@redhat.com>
+	id S1754084Ab2IQQ4L convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Sep 2012 12:56:11 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: readdir cookies
+Date: Mon, 17 Sep 2012 16:56:10 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908FC9F10@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20120917155426.GK30673@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA908FC8D4C@SACEXCMBX04-PRD.hq.netapp.com>
+ <20120917165126.GL30673@fieldses.org>
+In-Reply-To: <20120917165126.GL30673@fieldses.org>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-To: Steven Rostedt <rostedt@goodmis.org>
-CC: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
-        Sasha Levin <levinsasha928@gmail.com>, Tejun Heo <tj@kernel.org>,
-        torvalds@linux-foundation.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, mingo@elte.hu,
-        ebiederm@xmission.com, aarcange@redhat.com, ericvh@gmail.com,
-        netdev@vger.kernel.org, josh@joshtriplett.org, eric.dumazet@gmail.com,
-        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
-        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
-        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive hashtable
-References: <20120824203332.GF21325@google.com> <5037E9D9.9000605@gmail.com>     <20120824212348.GK21325@google.com> <5038074D.300@gmail.com>     <20120824230740.GN21325@google.com> <20120825042419.GA27240@Krystal>     <503C95E4.3010000@gmail.com> <20120828101148.GA21683@Krystal>     <503CAB1E.5010408@gmail.com> <20120828115638.GC23818@Krystal>     <20120828230050.GA3337@Krystal>    <1346772948.27919.9.camel@gandalf.local.home>   <50462C99.5000007@redhat.com>  <50462EE8.1090903@redhat.com>   <1346779027.27919.15.camel@gandalf.local.home>   <50463883.8080706@redhat.com>  <1346792345.27919.18.camel@gandalf.local.home>  <504677C8.3050801@redhat.com> <1346798509.27919.25.camel@gandalf.local.home>
-In-Reply-To: <1346798509.27919.25.camel@gandalf.local.home>
-Content-Type: text/plain; charset=ISO-8859-15
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/04/2012 11:41 PM, Steven Rostedt wrote:
-> Ah, I missed the condition with the rec == &pg->records[pg->index]. But
-> if ftrace_pages_start is NULL, the rec = &pg->records[pg->index] will
-> fault.
-
-Right.
-
+> -----Original Message-----
+> From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> Sent: Monday, September 17, 2012 12:51 PM
+> To: Myklebust, Trond
+> Cc: Schumaker, Bryan; linux-nfs@vger.kernel.org
+> Subject: Re: readdir cookies
 > 
-> You could do something like rec = pg ? &pg->records[pg->index] : NULL,
+> On Mon, Sep 17, 2012 at 04:05:10PM +0000, Myklebust, Trond wrote:
+> > > -----Original Message-----
+> > > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> > > owner@vger.kernel.org] On Behalf Of J. Bruce Fields
+> > > Sent: Monday, September 17, 2012 11:54 AM
+> > > To: Myklebust, Trond; Schumaker, Bryan
+> > > Cc: linux-nfs@vger.kernel.org
+> > > Subject: readdir cookies
+> > >
+> > > How does the nfs client decide what directory cookies to return?
+> > > (As the d_off field to readdir, for example).
+> > >
+> > > I'd assumed it would return the server's cookie, but testing shows
+> > > it returns a simple integer sequence.
+> >
+> > We cache the cookies and use them to figure out where the readdir cursor
+> is after a directory update, but we use positive integers for telldir()/seekdir().
+> The reason is that too many servers return cookies that use > 32 bits (NFSv2-
+> incompatible) or are unsigned.
+> 
+> Ok--so the tradeoff is that telldir/seekdir cookies may not be good
+> indefinitely?
 
-Right.
+Yes. Most apps don't care about telldir()/seekdir(), so it isn't really much of an issue. However, glibc has a bunch of assumptions about the 'd_offs' entries returned by getdents()/getdents64() and will do "sanity checks" on them that often end up failing when we just shove in the raw NFS cookies.
 
-> but IIRC, the comma operator does not guarantee order evaluation. That
-> is, the compiler is allowed to process "a , b" as "b; a;" and not "a;
-> b;".
-
-Not true.  The comma operator introduces a sequence point.  It's the comma
-that separates function parameters that doesn't guarantee ordering.
-
--- 
-Pedro Alves
-
+Cheers
+  Trond
