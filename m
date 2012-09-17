@@ -1,71 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e28smtp02.in.ibm.com ([122.248.162.2]:50630 "EHLO
-	e28smtp02.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759424Ab2IFDFh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Sep 2012 23:05:37 -0400
-Received: from /spool/local
-	by e28smtp02.in.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <yan@linux.vnet.ibm.com>;
-	Thu, 6 Sep 2012 08:35:34 +0530
-Date: Thu, 6 Sep 2012 11:05:26 +0800
-From: Guo Chao <yan@linux.vnet.ibm.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [RFC PATCH 05/13] vfs: take i_mutex on renamed file
-Message-ID: <20120906030526.GB6679@yanx>
-References: <1346878524-10585-1-git-send-email-bfields@redhat.com>
- <1346878524-10585-6-git-send-email-bfields@redhat.com>
+Received: from relay.parallels.com ([195.214.232.42]:35820 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753863Ab2IQKuG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Sep 2012 06:50:06 -0400
+Message-ID: <50570052.8050205@parallels.com>
+Date: Mon, 17 Sep 2012 14:49:54 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1346878524-10585-6-git-send-email-bfields@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "jlayton@redhat.com" <jlayton@redhat.com>
+Subject: Re: [PATCH 0/3] lockd: use per-net refrence-counted NSM clients
+References: <20120914140811.10835.81465.stgit@localhost.localdomain> <4030B8F9-5C67-4AE7-826E-B4B6AD4FAD01@oracle.com> <4FA345DA4F4AE44899BD2B03EEEC2FA908FA7F55@SACEXCMBX04-PRD.hq.netapp.com> <DA466953-BF79-44F7-8870-AC2FD5E3FEC2@oracle.com>
+In-Reply-To: <DA466953-BF79-44F7-8870-AC2FD5E3FEC2@oracle.com>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 05, 2012 at 04:55:15PM -0400, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> diff --git a/fs/namei.c b/fs/namei.c
-> index 1b46439..6156135 100644
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -3658,6 +3658,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
->  			    struct inode *new_dir, struct dentry *new_dentry)
->  {
->  	struct inode *target = new_dentry->d_inode;
-> +	struct inode *source = old_dentry->d_inode;
->  	int error;
-> 
->  	error = security_inode_rename(old_dir, old_dentry, new_dir, new_dentry);
-> @@ -3665,8 +3666,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
->  		return error;
-> 
->  	dget(new_dentry);
-> -	if (target)
-> -		mutex_lock(&target->i_mutex);
-> +	lock_two_nondirectories(source, target);
-> 
->  	error = -EBUSY;
->  	if (d_mountpoint(old_dentry)||d_mountpoint(new_dentry))
-> @@ -3681,8 +3681,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
->  	if (!(old_dir->i_sb->s_type->fs_flags & FS_RENAME_DOES_D_MOVE))
->  		d_move(old_dentry, new_dentry);
->  out:
-> -	if (target)
-> -		mutex_unlock(&target->i_mutex);
-> +	unlock_two_nondirectories(source, target);
->  	dput(new_dentry);
->  	return error;
->  }
+14.09.2012 23:10, Chuck Lever пишет:
+>
+> On Sep 14, 2012, at 1:38 PM, Myklebust, Trond wrote:
+>
+>> On Fri, 2012-09-14 at 13:01 -0400, Chuck Lever wrote:
+>>> What happens if statd is restarted?
+>>
+>> Nothing unusual. Why?
+>
+> The NSM upcall transport is a potential application for TCP + softconn, now that a persistent rpc_clnt is used.  It just depends on what failure mode we'd like to optimize for.
 >
 
-This change also fixes a race between rename and mount.
+I don't understand, where the problem is.
+Could you be more specific, please?
 
-Apparently we avoid to rename source or target if they are
-mountpoint. But nothing prevents source being the mountpoint 
-after d_mountpoint check because we do not hold its i_mutex.
-
-Thus we are actually able to rename a mountpoint.
-
-Rename directory should also need this care.
-
-
+-- 
+Best regards,
+Stanislav Kinsbursky
