@@ -1,74 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:23846 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:54768 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757617Ab2IFTyJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Sep 2012 15:54:09 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 2/4] SUNRPC set gss gc_expiry to full lifetime
-Date: Thu,  6 Sep 2012 15:54:09 -0400
-Message-Id: <1346961251-2554-3-git-send-email-andros@netapp.com>
-In-Reply-To: <1346961251-2554-1-git-send-email-andros@netapp.com>
-References: <1346961251-2554-1-git-send-email-andros@netapp.com>
+	id S1757136Ab2IQSD2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Sep 2012 14:03:28 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: readdir cookies
+Date: Mon, 17 Sep 2012 18:03:26 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908FCA350@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20120917155426.GK30673@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA908FC8D4C@SACEXCMBX04-PRD.hq.netapp.com>
+ <20120917165126.GL30673@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA908FC9F10@SACEXCMBX04-PRD.hq.netapp.com>
+ <20120917175004.GA9672@fieldses.org>
+In-Reply-To: <20120917175004.GA9672@fieldses.org>
+Content-Type: text/plain; charset="Windows-1252"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+> -----Original Message-----
+> From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> Sent: Monday, September 17, 2012 1:50 PM
+> To: Myklebust, Trond
+> Cc: Schumaker, Bryan; linux-nfs@vger.kernel.org
+> Subject: Re: readdir cookies
+> 
+> On Mon, Sep 17, 2012 at 04:56:10PM +0000, Myklebust, Trond wrote:
+> > > -----Original Message-----
+> > > From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> > > Sent: Monday, September 17, 2012 12:51 PM
+> > > To: Myklebust, Trond
+> > > Cc: Schumaker, Bryan; linux-nfs@vger.kernel.org
+> > > Subject: Re: readdir cookies
+> > >
+> > > On Mon, Sep 17, 2012 at 04:05:10PM +0000, Myklebust, Trond wrote:
+> > > > > -----Original Message-----
+> > > > > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> > > > > owner@vger.kernel.org] On Behalf Of J. Bruce Fields
+> > > > > Sent: Monday, September 17, 2012 11:54 AM
+> > > > > To: Myklebust, Trond; Schumaker, Bryan
+> > > > > Cc: linux-nfs@vger.kernel.org
+> > > > > Subject: readdir cookies
+> > > > >
+> > > > > How does the nfs client decide what directory cookies to return?
+> > > > > (As the d_off field to readdir, for example).
+> > > > >
+> > > > > I'd assumed it would return the server's cookie, but testing
+> > > > > shows it returns a simple integer sequence.
+> > > >
+> > > > We cache the cookies and use them to figure out where the readdir
+> > > > cursor
+> > > is after a directory update, but we use positive integers for
+> telldir()/seekdir().
+> > > The reason is that too many servers return cookies that use > 32
+> > > bits (NFSv2-
+> > > incompatible) or are unsigned.
+> > >
+> > > Ok--so the tradeoff is that telldir/seekdir cookies may not be good
+> > > indefinitely?
+> >
+> > Yes. Most apps don't care about telldir()/seekdir(), so it isn't really much of
+> an issue. However, glibc has a bunch of assumptions about the 'd_offs'
+> entries returned by getdents()/getdents64() and will do "sanity checks" on
+> them that often end up failing when we just shove in the raw NFS cookies.
+> 
+> OK, thanks.  When did the client start doing that?
 
-Only use the default GSSD_MIN_TIMEOUT if the gss downcall timeout is zero.
-Store the full lifetime in gc_expiry (not 3/4 of the lifetime) as subsequent
-patches will use the gc_expiry to determine buffered WRITE behavior in the
-face of expired or soon to be expired gss credentials.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- net/sunrpc/auth_gss/auth_gss.c |   15 +++++++++++----
- 1 files changed, 11 insertions(+), 4 deletions(-)
-
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 34c5220..c59f5ed 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -192,17 +192,21 @@ gss_fill_context(const void *p, const void *end, struct gss_cl_ctx *ctx, struct
- 	const void *q;
- 	unsigned int seclen;
- 	unsigned int timeout;
-+	unsigned long now = jiffies;
- 	u32 window_size;
- 	int ret;
+Years ago. You want to look at commit 00a2642 (NFS: Hide NFS server-generated readdir cookies from userland) which dates back to Linux-2.6.13.
  
--	/* First unsigned int gives the lifetime (in seconds) of the cred */
-+	/* First unsigned int gives the remaining lifetime in seconds of the
-+	 * credential - e.g. the remaining TGT lifetime for Kerberos or
-+	 * the -t value passed to GSSD. */
- 	p = simple_get_bytes(p, end, &timeout, sizeof(timeout));
- 	if (IS_ERR(p))
- 		goto err;
- 	if (timeout == 0)
- 		timeout = GSSD_MIN_TIMEOUT;
--	ctx->gc_expiry = jiffies + (unsigned long)timeout * HZ * 3 / 4;
--	/* Sequence number window. Determines the maximum number of simultaneous requests */
-+	ctx->gc_expiry = now + ((unsigned long)timeout * HZ);
-+	/* Sequence number window. Determines the maximum number of
-+	 * simultaneous requests */
- 	p = simple_get_bytes(p, end, &window_size, sizeof(window_size));
- 	if (IS_ERR(p))
- 		goto err;
-@@ -237,9 +241,12 @@ gss_fill_context(const void *p, const void *end, struct gss_cl_ctx *ctx, struct
- 		p = ERR_PTR(ret);
- 		goto err;
- 	}
-+	dprintk("RPC:       %s Success. gc_expiry %lu now %lu timeout %u\n",
-+		__func__, ctx->gc_expiry, now, timeout);
- 	return q;
- err:
--	dprintk("RPC:       gss_fill_context returning %ld\n", -PTR_ERR(p));
-+	dprintk("RPC:       %s returns %ld gc_expiry %lu now %lu timeout %u\n",
-+		__func__, -PTR_ERR(p), ctx->gc_expiry, now, timeout);
- 	return p;
- }
- 
--- 
-1.7.7.6
+> (And do you remember any details about the libc problems?  ext4 is
+> returning 64-bit cookies now in some cases, and we've seen a few problems
+> elsewhere, but none with glibc.)
 
+IIRC: At one point, in glibc-2(.1?), they started using getdents64() instead of getdents() in order to avoid the problem of mismatched 'struct dirent' sizes on 32-bit ix86 platforms. Whenever the getdents64() interface returned a 64-bit cookie (or a 32-bit negative cookie), glibc would generate an EOVERFLOW error.
+
+Cheers
+  Trond
