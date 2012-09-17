@@ -1,43 +1,187 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:16446 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756567Ab2IZRNJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 26 Sep 2012 13:13:09 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] NFS: Always use the open stateid when checking for expired opens
-Date: Wed, 26 Sep 2012 13:12:59 -0400
-Message-Id: <1348679579-7888-2-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1348679579-7888-1-git-send-email-bjschuma@netapp.com>
-References: <1348679579-7888-1-git-send-email-bjschuma@netapp.com>
+Received: from mail.windriver.com ([147.11.1.11]:55161 "EHLO
+	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757157Ab2IQTID (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Sep 2012 15:08:03 -0400
+Received: from ALA-HCA.corp.ad.wrs.com (ala-hca.corp.ad.wrs.com [147.11.189.40])
+	by mail.windriver.com (8.14.5/8.14.3) with ESMTP id q8HJ83cc003466
+	(version=TLSv1/SSLv3 cipher=AES128-SHA bits=128 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Mon, 17 Sep 2012 12:08:03 -0700 (PDT)
+Message-ID: <50577508.90004@windriver.com>
+Date: Mon, 17 Sep 2012 15:07:52 -0400
+From: Yao Zhao <yao.zhao@windriver.com>
+MIME-Version: 1.0
+To: <linux-nfs@vger.kernel.org>
+Subject: [PATCH]fix bugs and compiling warnings in libgssglue
+Content-Type: multipart/mixed;
+	boundary="------------000209030406030208020403"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+--------------000209030406030208020403
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Content-Transfer-Encoding: 7bit
 
-If we are reading through a delegation, and the delegation is OK then
-state->stateid will still point to a delegation stateid and not an open
-stateid.
+Hi,
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/nfs4proc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+The 4 attached patches fixed a couple of warnings and bug found when 
+compiling libgssglue.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index e47ec55..df7e1a3 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1792,7 +1792,7 @@ static void nfs41_clear_delegation_stateid(struct nfs4_state *state)
- static int nfs41_check_open_stateid(struct nfs4_state *state)
- {
- 	struct nfs_server *server = NFS_SERVER(state->inode);
--	nfs4_stateid *stateid = &state->stateid;
-+	nfs4_stateid *stateid = &state->open_stateid;
- 	int status;
+thanks,
+yao
+
+--------------000209030406030208020403
+Content-Type: text/x-patch; name="libgssglue-canon-name.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment; filename="libgssglue-canon-name.patch"
+
+--- a/src/g_canon_name.c
++++ b/src/g_canon_name.c
+fix the bug:
+g_canon_name.c:125:5: warning: passing argument 2 of '__gss_copy_namebuf' from incompatible pointer type [enabled by default]
+
+the 2nd argument of __gss_copy_namebuf should be address of *gss_buffer_t, \
+but a *gss_buffer_t is assigned.
+
+what __gss_copy_namebuf does is to alloc memory for a gss_buffer_desc and \
+copy from src and return its address.
+
+if following code failed, gss_release_name will free \
+union_canon_name->external_name.value if it is not NULL.
+
+OM_uint32 __gss_copy_namebuf(src, dest)
+    gss_buffer_t   src;
+    gss_buffer_t   *dest;
+
+typedef struct gss_union_name_t {
+	gss_mechanism		gss_mech;
+	gss_OID			name_type;
+	gss_buffer_desc		external_name;
+	/*
+	 * These last two fields are only filled in for mechanism
+	 * names.
+	 */
+	gss_OID			mech_type;
+	gss_name_t		mech_name;
+} gss_union_name_desc, *gss_union_name_t;
+
+typedef struct gss_buffer_desc_struct {
+      size_t length;
+      void FAR *value;
+} gss_buffer_desc, FAR *gss_buffer_t;
+
+Upstream-Status: Pending
+Signed-off-by: Yao Zhao <yao.zhao@windriver.com>
+
+@@ -121,11 +121,17 @@ gss_canonicalize_name (OM_uint32 *minor_
  
- 	/* If a state reset has been done, test_stateid is unneeded */
--- 
-1.7.12.1
+     union_canon_name->mech_name = mech_name;
+ 
+-    status = __gss_copy_namebuf(&union_input_name->external_name,
+-				&union_canon_name->external_name);
+-    if (status != GSS_S_COMPLETE)
+-	goto failure;
++    union_canon_name->external_name.value = (void*) malloc(
++                      union_input_name->external_name.length + 1);
++    if (!union_canon_name->external_name.value)
++        goto failure;
+ 
++    memcpy(union_canon_name->external_name.value, 
++           union_input_name->external_name.value, 
++           union_input_name->external_name.length);
++    union_canon_name->external_name.length = 
++                      union_input_name->external_name.length; 
++   
+     if (union_input_name->name_type != GSS_C_NO_OID) {
+ 	status = generic_gss_copy_oid(minor_status,
+ 				      union_input_name->name_type,
 
+--------------000209030406030208020403
+Content-Type: text/x-patch; name="libgssglue-g-initialize.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment; filename="libgssglue-g-initialize.patch"
+
+diff --git a/src/g_initialize.c b/src1/g_initialize.c
+index 82fcce1..200f173 100644
+--- a/src/g_initialize.c
++++ b/src/g_initialize.c
+
+Fix the warning for getuid, geteuid
+g_initialize.c: In function 'linux_initialize':
+g_initialize.c:275:5: warning: implicit declaration of function 'getuid' [-Wimplicit-function-declaration]
+g_initialize.c:275:5: warning: implicit declaration of function 'geteuid' [-Wimplicit-function-declaration]
+
+Upstream-Status: Pending
+Signed-off-by: Yao Zhao <yao.zhao@windriver.com>
+
+@@ -29,6 +29,8 @@
+ #include "mglueP.h"
+ #include <stdlib.h>
+ 
++#include <unistd.h>   /*getuid, geteuid */
++#include <sys/types.h>
+ #include <stdio.h>
+ #include <string.h>
+ #include <ctype.h>
+
+--------------000209030406030208020403
+Content-Type: text/x-patch; name="libgssglue-gss-inq-cred.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment; filename="libgssglue-gss-inq-cred.patch"
+
+--- a/src/g_inq_cred.c
++++ b/src/g_inq_cred.c
+1) add free if malloc failed for (*mechanisms)->elements
+2) g_inq_cred.c: In function 'gss_inquire_cred':
+g_inq_cred.c:161:8: warning: passing argument 3 of 'generic_gss_copy_oid' from incompatible pointer type [enabled by default]
+
+Upstream-Status: Pending
+Signed-off-by: Yao Zhao <yao.zhao@windriver.com>
+
+@@ -152,13 +152,15 @@ gss_OID_set *		mechanisms;
+ 			     union_cred->count);
+ 	if ((*mechanisms)->elements == NULL) {
+ 	    *minor_status = ENOMEM;
++	    free(*mechanisms);
++	    *mechanisms = GSS_C_NO_OID_SET;
+ 	    return (GSS_S_FAILURE);
+ 	}
+ 
+ 	for (i=0; i < union_cred->count; i++) {
+-	    status = generic_gss_copy_oid(minor_status,
++	    status = generic_gss_add_oid_set_member(minor_status,
+ 	    				  &union_cred->mechs_array[i],
+-					  &((*mechanisms)->elements[i]));
++					  mechanisms);
+ 	    if (status != GSS_S_COMPLETE)
+ 	        break;
+ 	}
+
+--------------000209030406030208020403
+Content-Type: text/x-patch; name="libgssglue-mglueP.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment; filename="libgssglue-mglueP.patch"
+
+--- a/src/mglueP.h
++++ b/src/mglueP.h
+fix the warning:
+warning: implicit declaration of function 'generic_gss_copy_oid_set' [-Wimplicit-function-declaration]
+
+Upstream-Status: Pending
+Signed-off-by: Yao Zhao <yao.zhao@windriver.com>
+
+@@ -447,6 +447,12 @@ OM_uint32 generic_gss_copy_oid
+ 	    gss_OID *		/* new_oid */
+ 	    );
+ 
++OM_uint32 generic_gss_copy_oid_set
++	   (OM_uint32 *minor_status,	/* minor_status */
++	    const gss_OID_set_desc * const oidset,	/* oid */
++	    gss_OID_set *new_oidset			/* new_oid */
++	   );
++
+ OM_uint32 generic_gss_create_empty_oid_set
+ 	   (OM_uint32 *,	/* minor_status */
+ 	    gss_OID_set *	/* oid_set */
+
+--------------000209030406030208020403--
