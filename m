@@ -1,38 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f178.google.com ([209.85.212.178]:63149 "EHLO
-	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756194Ab2I1CEy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Sep 2012 22:04:54 -0400
-MIME-Version: 1.0
-In-Reply-To: <3BDA9E62-7031-42D6-8CA9-5327B61700F5@suse.de>
-References: <3BDA9E62-7031-42D6-8CA9-5327B61700F5@suse.de>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Thu, 27 Sep 2012 19:04:32 -0700
-Message-ID: <CA+55aFyXwB1QcXE4Z_FAGnXROSgvP2x2+wjnX9OWPa4Dfaaf0A@mail.gmail.com>
-Subject: Re: [REGRESSION] nfsd crashing with 3.6.0-rc7 on PowerPC
-To: Alexander Graf <agraf@suse.de>
-Cc: LKML List <linux-kernel@vger.kernel.org>,
-        linuxppc-dev <linuxppc-dev@lists.ozlabs.org>,
-        Benjamin Herrenschmidt <benh@kernel.crashing.org>,
-        linux-nfs@vger.kernel.org, Jan Kara <jack@suse.cz>,
-        skinsbursky@parallels.com, bfields@redhat.com
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:52792 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932238Ab2IQUQY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Sep 2012 16:16:24 -0400
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 04/10] NFSD: Clean up forgetting locks
+Date: Mon, 17 Sep 2012 16:16:13 -0400
+Message-Id: <1347912979-20603-5-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1347912979-20603-1-git-send-email-bjschuma@netapp.com>
+References: <1347912979-20603-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 27, 2012 at 6:55 PM, Alexander Graf <agraf@suse.de> wrote:
->
-> Below are OOPS excerpts from different rc's I tried. All of them crashed - all the way up to current Linus' master branch. I haven't cross-checked, but I don't remember any such behavior from pre-3.6 releases.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Since you seem to be able to reproduce it easily (and apparently
-reliably), any chance you could just bisect it?
+I use the new "forget_n_state()" function to iterate through each client
+first when searching for locks.  This may slow down forgetting locks a
+little bit, but it implements most of the code needed to forget a
+specified client's locks.
 
-Since I assume v3.5 is fine, and apparently -rc1 is already busted, a simple
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfsd/nfs4state.c | 27 ++++++++++++++++++++-------
+ 1 file changed, 20 insertions(+), 7 deletions(-)
 
-   git bisect start
-   git bisect good v3.5
-   git bisect bad v3.6-rc1
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 6321dc3..631c16b 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4546,6 +4546,24 @@ static u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
+ 	return 1;
+ }
+ 
++static u64 nfsd_forget_client_locks(struct nfs4_client *clp, u64 max)
++{
++	struct nfs4_stateowner *sop, *next;
++	u64 count = 0;
++	int i;
++
++	for (i = 0; i < OWNER_HASH_SIZE; i++) {
++		list_for_each_entry_safe(sop, next, &ownerstr_hashtbl[i], so_strhash) {
++			if (!sop->so_is_open_owner && (sop->so_client == clp)) {
++				release_lockowner(lockowner(sop));
++				count++;
++			}
++		}
++	}
++
++	return count;
++}
++
+ static u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
+ {
+ 	struct nfs4_client *clp, *next;
+@@ -4566,11 +4584,6 @@ void nfsd_forget_clients(u64 num)
+ 	printk(KERN_INFO "NFSD: Forgot %llu clients", count);
+ }
+ 
+-static void release_lockowner_sop(struct nfs4_stateowner *sop)
+-{
+-	release_lockowner(lockowner(sop));
+-}
+-
+ static void release_openowner_sop(struct nfs4_stateowner *sop)
+ {
+ 	release_openowner(openowner(sop));
+@@ -4596,8 +4609,8 @@ static int nfsd_release_n_owners(u64 num, bool is_open_owner,
+ 
+ void nfsd_forget_locks(u64 num)
+ {
+-	int count = nfsd_release_n_owners(num, false, release_lockowner_sop);
+-	printk(KERN_INFO "NFSD: Forgot %d locks", count);
++	u64 count = nfsd_for_n_state(num, nfsd_forget_client_locks);
++	printk(KERN_INFO "NFSD: Forgot %llu locks", count);
+ }
+ 
+ void nfsd_forget_openowners(u64 num)
+-- 
+1.7.12
 
-will get you started on your adventure..
-
-          Linus
