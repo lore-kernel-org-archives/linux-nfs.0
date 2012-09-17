@@ -1,254 +1,209 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:48290 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:52812 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752847Ab2ILPNI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Sep 2012 11:13:08 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/4] RFC Avoid expired credential keys for buffered
- writes
-Date: Wed, 12 Sep 2012 15:13:06 +0000
-Message-ID: <7851A663D3BF5E41B9E166C2C7A42145102B48E8@SACEXCMBX02-PRD.hq.netapp.com>
-References: <1346961251-2554-1-git-send-email-andros@netapp.com>
- <20120910145732.4d800f5b@corrin.poochiereds.net>
- <7851A663D3BF5E41B9E166C2C7A42145102B2F5A@SACEXCMBX02-PRD.hq.netapp.com>
- <20120910160858.552bec1b@corrin.poochiereds.net>
-In-Reply-To: <20120910160858.552bec1b@corrin.poochiereds.net>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+	id S932555Ab2IQUQ0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Sep 2012 16:16:26 -0400
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 07/10] NFSD: Fault injection operations take a per-client forget function
+Date: Mon, 17 Sep 2012 16:16:16 -0400
+Message-Id: <1347912979-20603-8-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1347912979-20603-1-git-send-email-bjschuma@netapp.com>
+References: <1347912979-20603-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-On Sep 10, 2012, at 4:08 PM, Jeff Layton wrote:
+The eventual goal is to forget state based on ip address, so it makes
+sense to call this function in a for-each-client loop until the correct
+amount of state is forgotten.  I also use this patch as an opportunity
+to rename the forget function from "func()" to "forget()".
 
-> On Mon, 10 Sep 2012 19:52:35 +0000
-> "Adamson, Andy" <William.Adamson@netapp.com> wrote:
-> 
->> 
->> On Sep 10, 2012, at 2:57 PM, Jeff Layton wrote:
->> 
->>> On Thu,  6 Sep 2012 15:54:07 -0400
->>> andros@netapp.com wrote:
->>> 
->>>> From: Andy Adamson <andros@netapp.com>
->>>> 
->>>> This patch set is a Request for Comments: I think it does a fair job of
->>>> handling the issue - but it is complicated, and other brains might find a
->>>> better way to get the job done.
->>>> 
->>>> We must avoid buffering a WRITE that is using a credential key (e.g. a GSS
->>>> context key) that is about to expire or has expired.  We currently will
->>>> paint ourselves into a corner by returning success to the applciation
->>>> for such a buffered WRITE, only to discover that we do not have permission when
->>>> we attempt to flush the WRITE (and potentially associated COMMIT) to disk.
->>>> This results in data corruption.
->>>> 
->>>> First, a couple of "setup" patches:
->>>> 1) Patch SUNRPC handle EKEYEXPIRED in call_refreshresult returns EACCES to the
->>>> application on an expired or non-existent gss context when the users (Kerberos)
->>>> credentials have also expired or are non-existent. Current behavior is to
->>>> retry upcalls to GSSD forever. Please see patch comment for detail.
->>>> 
->>>> 2) Patch SUNRPC set gss gc_expiry to full lifetime works in conjunction with
->>>> the gssd patch "0001-GSSD-Pass-GSS_context-lifetime-to-the-kernel". The
->>>> gssd patch passes the actual remaining TGT lifetime in the downcall, and
->>>> this kernel patch sets the gss context gc_expiry to this lifetime.
->>>> 
->>>> Then the two patches that avoid using an expired credential key:
->>>> 3) Patch SUNRPC new rpc_credops to test credential expiry is the heart of this
->>>> work. It provides the RPC layer helper functions to allow NFS to manage
->>>> data in the face of expired credentials
->>>> 
->>>> 4) Patch NFS avoid expired credential keys for buffered writes calls the
->>>> RPC helper functions.
->>>> 
->>>> Pages for buffered WRITEs are allocated in nfs_write_begin where we have an
->>>> nfs_open_context and associated rpc_cred. This is a generic rpc_cred, NOT
->>>> the gss_cred used in the actual WRITE RPC. Each WRITE RPC call takes the generic
->>>> rpc_cred (or uses the 'current_cred') uid and uses it to lookup the associated
->>>> gss_cred and gss_context in the call_refresh RPC state. So, there is a
->>>> one-to-one association between the nfs_open_context generic_cred and a
->>>> gss_cred with a matching uid and a valid non expired gss context.
->>>> 
->>>> We need to check the nfs_open_context generic cred 'underlying' gss_cred
->>>> gss_context gc_expiry in nfs_write_begin to determine if there is enough time
->>>> left in the gss_context lifetime to complete the buffered WRITE.
->>>> 
->>>> I started by adding a "key_timeout" rpc_authops routine only set by the generic
->>>> auth to do this work, called by rpcauth_key_timeout_notify, called from
->>>> nfs_write_begin. It does the lookup of the gss_cred (see the patch for
->>>> fast-tracking of non-gss underlying creds) and then tests the gss_context
->>>> gc_expiry against timeouts by calling a new crkey_timeout rpc_credops set
->>>> only for the gss_cred.
->>>> 
->>>> I came up with the idea of two credential key timeout watermarks:
->>>> 1) A high watermark, RPC_KEY_EXPIRE_TIMEO set to 90 seconds.
->>>> 2) A low watermark, RPC_KEY_EXPIRE_FAIL set to 30 seconds.
->>>> NOTE: these timeouts are guesses that work in a VM environment. We may want to
->>>> make them adjustable via module parameters.
->>>> 
->>>> If key_timeout is called on a credential with an underlying credential key that
->>>> will expire within high watermark seconds, we set the RPC_CRED_KEY_EXPIRE_SOON
->>>> flag in the generic_cred acred so that the NFS layer can clean up prior to
->>>> key expiration It does this by calling a new crkey_to_expire rpc_credop set
->>>> only for generic creds that tests for the RPC_CRED_KEY_EXPIRE_SOON flag.
->>>> 
->>>> If the RPC_CRED_KEY_EXPIRE_SOON flag is set in the nfs_open_context generic
->>>> cred (the acred portion), then nfs_write_end will call nfs_wb_all
->>>> on EVERY WRITE CALL it sees, and nfs_write_rpcsetup will send NFS_FILE_SYNC
->>>> WRITEs.  The idea of the high watermark is to give time to flush all buffered
->>>> WRITEs and COMMITs, as well as to continue to WRITE, but only with
->>>> NFS_FILE_SYNC, allowing the application to try to finish writing before the
->>>> gss context expires. NOTE that this means EACH WRITE within the high watermark
->>>> timeout is a singe PAGE of NFS_FILE_SYNC. I think this is fine, because we are
->>>> in a failure mode - the most important thing is to NOT fail a buffered WRITE..
->>>> 
->>>> If key_timeout is called on a credential key that will expire within low
->>>> watermark seconds, we return EACCES from nfs_write_begin to stop
->>>> the buffered WRITE using the credential key.
->>>> 
->>>> Checking a generic credential's underlying credential involves a cred lookup.
->>>> To avoid this lookup in the normal case when the underlying credential has
->>>> a key that is valid (before the high watermark), a notify flag is set in
->>>> the generic credential the first time the key_timeout is called. The
->>>> generic credential then stops checking the underlying credential key expiry, and
->>>> the underlying credential (gss_cred) match routine then checks the key
->>>> expiration upon each normal use and sets a flag in the associated generic
->>>> credential only when the key expiration is within the high watermark.
->>>> This in turn signals the generic credential key_timeout to perform the extra
->>>> credetial lookup thereafter.
->>>> 
->>>> TING:
->>>> 
->>>> I have tested these patches with a TGT of 5 minutes, and a modified
->>>> Connectathon special test: bigfile.c that only writes and never flushes.
->>>> I also increased the file size to 524288000 bytes to give me time.
->>>> I named the test buffered-write.
->>>> 
->>>> I kinit, and run 6 instances of buffered write with the first and maybe second
->>>> test completing prior to TGT expiration, and the third/fourth tests spanning
->>>> the high water mark. The fifth test starts within the high water mark, and the
->>>> sixth test starts within the low water mark.
->>>> 
->>>> I have seen the expected behavior: test 1,2 succeed. Tests 3-6 fail with
->>>> Permission Denied. Tests 3 and 4 start with normal buffered UNSTABLE writes
->>>> then switch to single page NFS_FILE_SYNC writes with a COMMIT for the
->>>> normal buffered writes. Test 5 has only single page NFS_FILE_SYNC writes,
->>>> test 6 simply fails.
->>>> 
->>>> None of the WRITEs fail.
->>>> 
->>>> ISSUES
->>>> 1) Once in a while I see "short write" instead of "Permission
->>>> denied". I cannot reproduce this. Even then wireshark shows all writes succeeding.
->>>> 
->>>> 2) Although I have tested re-establishing Kerberos credentials after the
->>>> test run, I have not done any testing re-estabishing Kerberos credentials 
->>>> during the a test run that is within the high watermark.
->>>> 
->>>> 3) General corner case and other testing
->>>> 
->>>> -->Andy
->>>> 
->>>> Andy Adamson (4):
->>>> SUNRPC handle EKEYEXPIRED in call_refreshresult
->>>> SUNRPC set gss gc_expiry to full lifetime
->>>> SUNRPC new rpc_credops to test credential expiry
->>>> NFS avoid expired credential keys for buffered writes
->>>> 
->>>> fs/nfs/file.c                  |   10 ++++
->>>> fs/nfs/internal.h              |    2 +
->>>> fs/nfs/nfs3proc.c              |    6 +-
->>>> fs/nfs/nfs4filelayout.c        |    1 -
->>>> fs/nfs/nfs4proc.c              |   18 --------
->>>> fs/nfs/nfs4state.c             |   22 ---------
->>>> fs/nfs/proc.c                  |   43 ------------------
->>>> fs/nfs/write.c                 |   29 ++++++++++++
->>>> include/linux/sunrpc/auth.h    |   27 ++++++++++++
->>>> net/sunrpc/auth.c              |   21 +++++++++
->>>> net/sunrpc/auth_generic.c      |   93 ++++++++++++++++++++++++++++++++++++++++
->>>> net/sunrpc/auth_gss/auth_gss.c |   51 +++++++++++++++++++---
->>>> net/sunrpc/clnt.c              |    1 +
->>>> 13 files changed, 231 insertions(+), 93 deletions(-)
->>>> 
->>> 
->>> In general, I like this set...
->>> 
->>> My only concern is this behavior described in the last patch:
->>> 
->>> "If the buffered WRITE is using a credential key that will expire
->>> within low watermark seconds, fail the WRITE in nfs_write_begin
->>> _before_ the WRITE is buffered and return -EACCES to the application."
->>> 
->>> Shouldn't rejecting the write attempt be the purview of the server?
->> 
->> The TGT lifetime is shared by the client and the server - it's the same, so I don't think we'd gain anything by doing that.
->> 
->>> 
->>> It seems to me that we'd be best off just switching to synchronous
->>> writes when we start approaching credential expiration, and letting the
->>> server handle the case where the credential expires.
->> 
->> You mean switching to direct IO? I believe that means taking a different path in the VFS layer which I found difficult to do from nfs_write_begin. But maybe I just didn't see a good way to do this.
->> 
->> 
->>> It seems to me that the client should just be in the business of
->>> recognizing when the credential might be about to expire and attempt to
->>> ensure that we don't end up with a bunch of buffered data in that case.
->> 
->> Yes.
->> 
->> -->Andy
->> 
->>> 
->>> -- 
->>> Jeff Layton <jlayton@redhat.com>
->> 
-> 
-> 
-> I meant that I didn't really see the point of the two different states
-> when we're approaching ticket expiry.
-> 
-> IIUC, at the "high watermark", you'll switch to synchronous writes, and
-> presumably will start syncing out any buffered data. At that point,
-> what are you buying by rejecting writes altogether with EACCES at the
-> low watermark?
-> 
-> It seems to me that the high watermark should be all you need to deal
-> with as a client. Once you're past that point you can just let the
-> client attempt the writes. If they fail, then no big deal -- you were
-> doing synchronous writes already so you've already avoided having a
-> bunch of data buffered up.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfsd/fault_inject.c | 16 +++++++++-------
+ fs/nfsd/nfs4state.c    | 42 ++++++------------------------------------
+ fs/nfsd/state.h        | 12 +++++++-----
+ 3 files changed, 22 insertions(+), 48 deletions(-)
 
-Hi Jeff
-
-After doing more test verification, here are the reasons for the low watermark. Reason #2 is the strongest justification.
-
-1) It's a bad idea to "just let the client attempt the writes".
-
-The client needs a valid GSS context to send an RPCSEC_GSS RPC because of the checksum of the RPC header (up to and including the credential) that is computed using the GSS_GetMIC() call with enctype and the QOP from the GSS context.
-
-Plus, the client and the server see the same TGT lifetime, and thus the same GSS context expiration.
-
-Therefore, the only time the client can send an RPCSEC_GSS Kerberos GSS security mechanism RPC to the server and have it reject the RPC with -EACCES (or the RPC level RPCSEC_GSS_CTXPROBLEM) is in the case where the GSS context expires while the RPC is in flight or prior to the RPCSEC_GSS processing by the server.  99.999% of the time, the client determines whether or not the RPCSEC_GSS  call fails prior to putting an RPC on the wire based on it's GSS context expiry.  So it is not an option to wait for the server to reject the RPC.
-
-"The client attempting writes" means that with my patch set, the buffered write is assigned pages in nfs_write_begin, and we don't find out that the client can't send the WRITE until nfs_write_end calls nfs_wb_all() which tries to flush the newly assigned pages, and the RPC layer fails to find a valid GSS context, so performs multiple up calls to GSSD which all fail, and nfs_wb_all()  returns an error - which I have not seen ever it do - so that nfs_write_end fails with -EACCES. Then the pages need to be cleaned up ….
-
-We might as well fail the call in nfs_write_begin before the pages are assigned, it's a lot cleaner as we save a bunch of up calls  to GSSD and we don't have to clean up any pages nor ensure that nfs_write_end returns -EACCES.
-
-With the low water mark, we fail in nfs_write_begin, and we're not hitting corner cases in the GSS code such as a GSS context being assigned with a lifetime of 0 ( I think a GSS context creation can succeed with the resultant lifetime of 0 because there was a lifetime of 1 when the context was created, but it fell to 0 by the time GSSD called gss_inquire_context ).
-
-2) It's a really really good idea to give the client time to clean up by sending a CLOSE to let the server know what is going on. Note for pNFS the CLOSE also carries an implicit LAYOUTRETURN for the return_on_close case.  Without the CLOSE, the server simply sees WRITEs stop.  BTW this is a good reason to do the same for READ.
-
-3) Extra time to flush buffered data. With my patch set, data is allowed to be buffered, but then flushed prior to nfs_write_end's return. IIUC, a (multithreaded) application can be writing a very large amount of data, which during the high water mark is sent 1 PAGE at a time NFS_FILE_SYNC.  This takes significantly longer than coalesced buffered UNSTABLE WRITEs and many more RPCs (not continuations).   The purpose of this code is to totally drain the buffered writes. The low water mark provides a period of no new WRITEs giving more RPC resources to the exiting single PAGE draining.  I suspect that we will need to make the watermark(s) tunable via module parameters for different workloads.
-
--->Andy
-
-> 
-> -- 
-> Jeff Layton <jlayton@redhat.com>
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index 3dac486..09feb80 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -12,29 +12,29 @@
+ 
+ struct nfsd_fault_inject_op {
+ 	char *file;
+-	void (*func)(u64);
++	u64 (*forget)(struct nfs4_client *, u64);
+ };
+ 
+ static struct nfsd_fault_inject_op inject_ops[] = {
+ 	{
+ 		.file   = "forget_clients",
+-		.func   = nfsd_forget_clients,
++		.forget = nfsd_forget_client,
+ 	},
+ 	{
+ 		.file   = "forget_locks",
+-		.func   = nfsd_forget_locks,
++		.forget = nfsd_forget_client_locks,
+ 	},
+ 	{
+ 		.file   = "forget_openowners",
+-		.func   = nfsd_forget_openowners,
++		.forget = nfsd_forget_client_openowners,
+ 	},
+ 	{
+ 		.file   = "forget_delegations",
+-		.func   = nfsd_forget_delegations,
++		.forget = nfsd_forget_client_delegations,
+ 	},
+ 	{
+ 		.file   = "recall_delegations",
+-		.func   = nfsd_recall_delegations,
++		.forget = nfsd_recall_client_delegations,
+ 	},
+ };
+ 
+@@ -43,6 +43,7 @@ static struct dentry *debug_dir;
+ 
+ static int nfsd_inject_set(void *op_ptr, u64 val)
+ {
++	u64 count = 0;
+ 	struct nfsd_fault_inject_op *op = op_ptr;
+ 
+ 	if (val == 0)
+@@ -51,8 +52,9 @@ static int nfsd_inject_set(void *op_ptr, u64 val)
+ 		printk(KERN_INFO "NFSD Fault Injection: %s (n = %llu)", op->file, val);
+ 
+ 	nfs4_lock_state();
+-	op->func(val);
++	count = nfsd_for_n_state(val, op->forget);
+ 	nfs4_unlock_state();
++	printk(KERN_INFO "NFSD: %s: found %llu", op->file, count);
+ 	return 0;
+ }
+ 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index c91aae8..fee5c96 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4539,14 +4539,14 @@ nfs4_check_open_reclaim(clientid_t *clid)
+ 
+ #ifdef CONFIG_NFSD_FAULT_INJECTION
+ 
+-static u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
++u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
+ {
+ 	nfsd4_client_record_remove(clp);
+ 	expire_client(clp);
+ 	return 1;
+ }
+ 
+-static u64 nfsd_forget_client_locks(struct nfs4_client *clp, u64 max)
++u64 nfsd_forget_client_locks(struct nfs4_client *clp, u64 max)
+ {
+ 	struct nfs4_stateowner *sop, *next;
+ 	u64 count = 0;
+@@ -4564,7 +4564,7 @@ static u64 nfsd_forget_client_locks(struct nfs4_client *clp, u64 max)
+ 	return count;
+ }
+ 
+-static u64 nfsd_forget_client_openowners(struct nfs4_client *clp, u64 max)
++u64 nfsd_forget_client_openowners(struct nfs4_client *clp, u64 max)
+ {
+ 	struct nfs4_openowner *oop, *next;
+ 	u64 count = 0;
+@@ -4592,7 +4592,7 @@ static u64 nfsd_find_n_delegations(struct nfs4_client *clp, u64 max,
+ 	return count;
+ }
+ 
+-static u64 nfsd_forget_client_delegations(struct nfs4_client *clp, u64 max)
++u64 nfsd_forget_client_delegations(struct nfs4_client *clp, u64 max)
+ {
+ 	struct nfs4_delegation *dp, *next;
+ 	LIST_HEAD(victims);
+@@ -4608,7 +4608,7 @@ static u64 nfsd_forget_client_delegations(struct nfs4_client *clp, u64 max)
+ 	return count;
+ }
+ 
+-static u64 nfsd_recall_client_delegations(struct nfs4_client *clp, u64 max)
++u64 nfsd_recall_client_delegations(struct nfs4_client *clp, u64 max)
+ {
+ 	struct nfs4_delegation *dp, *next;
+ 	LIST_HEAD(victims);
+@@ -4624,7 +4624,7 @@ static u64 nfsd_recall_client_delegations(struct nfs4_client *clp, u64 max)
+ 	return count;
+ }
+ 
+-static u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
++u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
+ {
+ 	struct nfs4_client *clp, *next;
+ 	u64 count = 0;
+@@ -4638,36 +4638,6 @@ static u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
+ 	return count;
+ }
+ 
+-void nfsd_forget_clients(u64 num)
+-{
+-	u64 count = nfsd_for_n_state(num, nfsd_forget_client);
+-	printk(KERN_INFO "NFSD: Forgot %llu clients", count);
+-}
+-
+-void nfsd_forget_locks(u64 num)
+-{
+-	u64 count = nfsd_for_n_state(num, nfsd_forget_client_locks);
+-	printk(KERN_INFO "NFSD: Forgot %llu locks", count);
+-}
+-
+-void nfsd_forget_openowners(u64 num)
+-{
+-	u64 count = nfsd_for_n_state(num, nfsd_forget_client_openowners);
+-	printk(KERN_INFO "NFSD: Forgot %llu open owners", count);
+-}
+-
+-void nfsd_forget_delegations(u64 num)
+-{
+-	u64 count = nfsd_for_n_state(num, nfsd_forget_client_delegations);
+-	printk(KERN_INFO "NFSD: Forgot %llu delegations", count);
+-}
+-
+-void nfsd_recall_delegations(u64 num)
+-{
+-	u64 count = nfsd_for_n_state(num, nfsd_recall_client_delegations);
+-	printk(KERN_INFO "NFSD: Recalled %llu delegations", count);
+-}
+-
+ #endif /* CONFIG_NFSD_FAULT_INJECTION */
+ 
+ /* initialization to perform at module load time: */
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index f25fee2..5628a33 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -486,11 +486,13 @@ extern void nfsd4_record_grace_done(struct net *net, time_t boot_time);
+ #ifdef CONFIG_NFSD_FAULT_INJECTION
+ int nfsd_fault_inject_init(void);
+ void nfsd_fault_inject_cleanup(void);
+-void nfsd_forget_clients(u64);
+-void nfsd_forget_locks(u64);
+-void nfsd_forget_openowners(u64);
+-void nfsd_forget_delegations(u64);
+-void nfsd_recall_delegations(u64);
++u64 nfsd_for_n_state(u64, u64 (*)(struct nfs4_client *, u64));
++
++u64 nfsd_forget_client(struct nfs4_client *, u64);
++u64 nfsd_forget_client_locks(struct nfs4_client*, u64);
++u64 nfsd_forget_client_openowners(struct nfs4_client *, u64);
++u64 nfsd_forget_client_delegations(struct nfs4_client *, u64);
++u64 nfsd_recall_client_delegations(struct nfs4_client *, u64);
+ #else /* CONFIG_NFSD_FAULT_INJECTION */
+ static inline int nfsd_fault_inject_init(void) { return 0; }
+ static inline void nfsd_fault_inject_cleanup(void) {}
+-- 
+1.7.12
 
