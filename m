@@ -1,81 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:35100 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932378Ab2IUUwp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Sep 2012 16:52:45 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 20/26] NFSv4.1: Balance pnfs_layout_hdr refcount in pnfs_layout_(insert|remove)_lseg
-Date: Fri, 21 Sep 2012 16:50:15 -0400
-Message-Id: <1348260621-10294-20-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1348260621-10294-19-git-send-email-Trond.Myklebust@netapp.com>
-References: <1348260621-10294-1-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-2-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-3-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-4-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-5-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-6-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-7-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-8-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-9-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-10-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-11-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-12-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-13-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-14-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-15-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-16-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-17-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-18-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-19-git-send-email-Trond.Myklebust@netapp.com>
+Received: from relay.parallels.com ([195.214.232.42]:35269 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754638Ab2IQKsS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Sep 2012 06:48:18 -0400
+Message-ID: <5056FFE5.7030205@parallels.com>
+Date: Mon, 17 Sep 2012 14:48:05 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "jlayton@redhat.com" <jlayton@redhat.com>
+Subject: Re: [PATCH 1/3] lockd: use rpc client's cl_nodename for id encoding
+References: <20120914140811.10835.81465.stgit@localhost.localdomain> <20120914142555.10835.53544.stgit@localhost.localdomain> <1800C13C-A771-4CA6-B241-4B4DEA207684@oracle.com>
+In-Reply-To: <1800C13C-A771-4CA6-B241-4B4DEA207684@oracle.com>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that the reference count for pnfs_layout_hdr reverts to the
-original value after a call to pnfs_layout_remove_lseg().
+14.09.2012 23:08, Chuck Lever пишет:
+> Hi-
+>
+> On Sep 14, 2012, at 10:25 AM, Stanislav Kinsbursky wrote:
+>
+>> Taking hostname from uts namespace if not safe, because this cuold be
+>> performind during umount operation on child reaper death. And in this case
+>> current->nsproxy is NULL already.
+>>
+>> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+>> Cc: <stable@vger.kernel.org>
+>> ---
+>> fs/lockd/mon.c |   14 ++++++++------
+>> 1 files changed, 8 insertions(+), 6 deletions(-)
+>>
+>> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+>> index 7ef14b3..c6186fb 100644
+>> --- a/fs/lockd/mon.c
+>> +++ b/fs/lockd/mon.c
+>> @@ -426,11 +426,12 @@ static void encode_mon_name(struct xdr_stream *xdr, const struct nsm_args *argp)
+>>   * (via the NLMPROC_SM_NOTIFY call) that the state of host "mon_name"
+>>   * has changed.
+>>   */
+>> -static void encode_my_id(struct xdr_stream *xdr, const struct nsm_args *argp)
+>> +static void encode_my_id(struct xdr_stream *xdr, const struct nsm_args *argp,
+>> +			 char *nodename)
+>> {
+>> 	__be32 *p;
+>>
+>> -	encode_nsm_string(xdr, utsname()->nodename);
+>> +	encode_nsm_string(xdr, nodename);
+>> 	p = xdr_reserve_space(xdr, 4 + 4 + 4);
+>> 	*p++ = cpu_to_be32(argp->prog);
+>> 	*p++ = cpu_to_be32(argp->vers);
+>> @@ -441,10 +442,11 @@ static void encode_my_id(struct xdr_stream *xdr, const struct nsm_args *argp)
+>>   * The "mon_id" argument specifies the non-private arguments
+>>   * of an NSMPROC_MON or NSMPROC_UNMON call.
+>>   */
+>> -static void encode_mon_id(struct xdr_stream *xdr, const struct nsm_args *argp)
+>> +static void encode_mon_id(struct xdr_stream *xdr, const struct nsm_args *argp,
+>> +			  char *nodename)
+>> {
+>> 	encode_mon_name(xdr, argp);
+>> -	encode_my_id(xdr, argp);
+>> +	encode_my_id(xdr, argp, nodename);
+>> }
+>>
+>> /*
+>> @@ -463,14 +465,14 @@ static void encode_priv(struct xdr_stream *xdr, const struct nsm_args *argp)
+>> static void nsm_xdr_enc_mon(struct rpc_rqst *req, struct xdr_stream *xdr,
+>> 			    const struct nsm_args *argp)
+>> {
+>> -	encode_mon_id(xdr, argp);
+>> +	encode_mon_id(xdr, argp, req->rq_task->tk_client->cl_nodename);
+>
+> IMO you should get the cl_nodename in nsm_mon_unmon() from clnt->cl_nodename, and pass it in as part of *argp .  The choice of which nodename to use is clearly a decision for an "upper layer" not a choice for the XDR functions.
+>
+> Long ago I had patches which fixed this layering violation for a very similar purpose as yours, but they were never applied.
+>
 
-Note that the caller is expected to hold a reference to the struct
-pnfs_layout_hdr.
+I like it. Thanks.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/pnfs.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index ed8d674..9c5320c 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -295,8 +295,6 @@ static void pnfs_free_lseg(struct pnfs_layout_segment *lseg)
- 	struct inode *ino = lseg->pls_layout->plh_inode;
- 
- 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
--	/* Matched by pnfs_get_layout_hdr in pnfs_layout_insert_lseg */
--	pnfs_put_layout_hdr(NFS_I(ino)->layout);
- }
- 
- static void
-@@ -307,6 +305,8 @@ pnfs_layout_remove_lseg(struct pnfs_layout_hdr *lo,
- 
- 	WARN_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
- 	list_del_init(&lseg->pls_list);
-+	/* Matched by pnfs_get_layout_hdr in pnfs_layout_insert_lseg */
-+	atomic_dec(&lo->plh_refcount);
- 	if (list_empty(&lo->plh_segs))
- 		set_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags);
- 	rpc_wake_up(&NFS_SERVER(inode)->roc_rpcwaitq);
-@@ -327,9 +327,11 @@ pnfs_put_lseg(struct pnfs_layout_segment *lseg)
- 	lo = lseg->pls_layout;
- 	inode = lo->plh_inode;
- 	if (atomic_dec_and_lock(&lseg->pls_refcount, &inode->i_lock)) {
-+		pnfs_get_layout_hdr(lo);
- 		pnfs_layout_remove_lseg(lo, lseg);
- 		spin_unlock(&inode->i_lock);
- 		pnfs_free_lseg(lseg);
-+		pnfs_put_layout_hdr(lo);
- 	}
- }
- EXPORT_SYMBOL_GPL(pnfs_put_lseg);
 -- 
-1.7.11.4
-
+Best regards,
+Stanislav Kinsbursky
