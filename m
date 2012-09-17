@@ -1,67 +1,147 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:42107 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:52812 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758456Ab2I1PfE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Sep 2012 11:35:04 -0400
-Subject: Re: [REGRESSION] nfsd crashing with 3.6.0-rc7 on PowerPC
-Mime-Version: 1.0 (Apple Message framework v1278)
-Content-Type: text/plain; charset=us-ascii
-From: Alexander Graf <agraf@suse.de>
-In-Reply-To: <20120928151043.GA19102@fieldses.org>
-Date: Fri, 28 Sep 2012 17:34:50 +0200
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-        LKML List <linux-kernel@vger.kernel.org>,
-        linuxppc-dev <linuxppc-dev@lists.ozlabs.org>,
-        Benjamin Herrenschmidt <benh@kernel.crashing.org>,
-        linux-nfs@vger.kernel.org, Jan Kara <jack@suse.cz>,
-        skinsbursky@parallels.com, bfields@redhat.com
-Message-Id: <3EC6FEEF-33B0-4B8B-83E6-64A5E50AB731@suse.de>
-References: <3BDA9E62-7031-42D6-8CA9-5327B61700F5@suse.de> <CA+55aFyXwB1QcXE4Z_FAGnXROSgvP2x2+wjnX9OWPa4Dfaaf0A@mail.gmail.com> <DC545CD9-8745-47DD-B13B-3385C0EB5B27@suse.de> <20120928151043.GA19102@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+	id S932556Ab2IQUQ0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Sep 2012 16:16:26 -0400
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 06/10] NFSD: Clean up forgetting and recalling delegations
+Date: Mon, 17 Sep 2012 16:16:15 -0400
+Message-Id: <1347912979-20603-7-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1347912979-20603-1-git-send-email-bjschuma@netapp.com>
+References: <1347912979-20603-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-On 28.09.2012, at 17:10, J. Bruce Fields wrote:
+Once I have a client, I can easily use its delegation list rather than
+searching the file hash table for delegations to remove.
 
-> On Fri, Sep 28, 2012 at 04:19:55AM +0200, Alexander Graf wrote:
->> 
->> On 28.09.2012, at 04:04, Linus Torvalds wrote:
->> 
->>> On Thu, Sep 27, 2012 at 6:55 PM, Alexander Graf <agraf@suse.de> wrote:
->>>> 
->>>> Below are OOPS excerpts from different rc's I tried. All of them crashed - all the way up to current Linus' master branch. I haven't cross-checked, but I don't remember any such behavior from pre-3.6 releases.
->>> 
->>> Since you seem to be able to reproduce it easily (and apparently
->>> reliably), any chance you could just bisect it?
->>> 
->>> Since I assume v3.5 is fine, and apparently -rc1 is already busted, a simple
->>> 
->>>  git bisect start
->>>  git bisect good v3.5
->>>  git bisect bad v3.6-rc1
->>> 
->>> will get you started on your adventure..
->> 
->> Heh, will give it a try :). The thing really does look quite bisectable.
->> 
->> 
->> It might take a few hours though - the machine isn't exactly fast by today's standards and it's getting late here. But I'll keep you updated.
-> 
-> I doubt it's anything special about that workload, but just for kicks I
-> tried a "git clone -ls" (cloning my linux tree to another directory on
-> the same nfs filesystem), with server on 3.6.0-rc7, and didn't see
-> anything interesting (just an xfs lockdep warning that looks like this
-> one jlayton already reported:
-> http://oss.sgi.com/archives/xfs/2012-09/msg00088.html
-> )
-> 
-> Any (even partial) bisection results would certainly be useful, thanks.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfsd/nfs4state.c | 94 ++++++++++++++++++++++++++++-------------------------
+ 1 file changed, 50 insertions(+), 44 deletions(-)
 
-Yeah, still trying. Running the same workload in a PPC VM didn't show any badness. Then I tried again to bisect on the machine it broken on, and that commit failed even more badly on me than the previous ones, destroying my local git tree.
-
-Trying to narrow down now in a slightly more contained environment :).
-
-
-Alex
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 611a827..c91aae8 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4578,6 +4578,52 @@ static u64 nfsd_forget_client_openowners(struct nfs4_client *clp, u64 max)
+ 	return count;
+ }
+ 
++static u64 nfsd_find_n_delegations(struct nfs4_client *clp, u64 max,
++				   struct list_head *victims)
++{
++	struct nfs4_delegation *dp, *next;
++	u64 count = 0;
++
++	list_for_each_entry_safe(dp, next, &clp->cl_delegations, dl_perclnt) {
++		list_move(&dp->dl_recall_lru, victims);
++		if (++count == max)
++			break;
++	}
++	return count;
++}
++
++static u64 nfsd_forget_client_delegations(struct nfs4_client *clp, u64 max)
++{
++	struct nfs4_delegation *dp, *next;
++	LIST_HEAD(victims);
++	u64 count;
++
++	spin_lock(&recall_lock);
++	count = nfsd_find_n_delegations(clp, max, &victims);
++	spin_unlock(&recall_lock);
++
++	list_for_each_entry_safe(dp, next, &victims, dl_recall_lru)
++		unhash_delegation(dp);
++
++	return count;
++}
++
++static u64 nfsd_recall_client_delegations(struct nfs4_client *clp, u64 max)
++{
++	struct nfs4_delegation *dp, *next;
++	LIST_HEAD(victims);
++	u64 count;
++
++	spin_lock(&recall_lock);
++
++	count = nfsd_find_n_delegations(clp, max, &victims);
++	list_for_each_entry_safe(dp, next, &victims, dl_recall_lru)
++		nfsd_break_one_deleg(dp);
++
++	spin_unlock(&recall_lock);
++	return count;
++}
++
+ static u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
+ {
+ 	struct nfs4_client *clp, *next;
+@@ -4610,56 +4656,16 @@ void nfsd_forget_openowners(u64 num)
+ 	printk(KERN_INFO "NFSD: Forgot %llu open owners", count);
+ }
+ 
+-static int nfsd_process_n_delegations(u64 num, struct list_head *list)
+-{
+-	int i, count = 0;
+-	struct nfs4_file *fp, *fnext;
+-	struct nfs4_delegation *dp, *dnext;
+-
+-	for (i = 0; i < FILE_HASH_SIZE; i++) {
+-		list_for_each_entry_safe(fp, fnext, &file_hashtbl[i], fi_hash) {
+-			list_for_each_entry_safe(dp, dnext, &fp->fi_delegations, dl_perfile) {
+-				list_move(&dp->dl_recall_lru, list);
+-				if (++count == num)
+-					return count;
+-			}
+-		}
+-	}
+-
+-	return count;
+-}
+-
+ void nfsd_forget_delegations(u64 num)
+ {
+-	unsigned int count;
+-	LIST_HEAD(victims);
+-	struct nfs4_delegation *dp, *dnext;
+-
+-	spin_lock(&recall_lock);
+-	count = nfsd_process_n_delegations(num, &victims);
+-	spin_unlock(&recall_lock);
+-
+-	list_for_each_entry_safe(dp, dnext, &victims, dl_recall_lru)
+-		unhash_delegation(dp);
+-
+-	printk(KERN_INFO "NFSD: Forgot %d delegations", count);
++	u64 count = nfsd_for_n_state(num, nfsd_forget_client_delegations);
++	printk(KERN_INFO "NFSD: Forgot %llu delegations", count);
+ }
+ 
+ void nfsd_recall_delegations(u64 num)
+ {
+-	unsigned int count;
+-	LIST_HEAD(victims);
+-	struct nfs4_delegation *dp, *dnext;
+-
+-	spin_lock(&recall_lock);
+-	count = nfsd_process_n_delegations(num, &victims);
+-	list_for_each_entry_safe(dp, dnext, &victims, dl_recall_lru) {
+-		list_del(&dp->dl_recall_lru);
+-		nfsd_break_one_deleg(dp);
+-	}
+-	spin_unlock(&recall_lock);
+-
+-	printk(KERN_INFO "NFSD: Recalled %d delegations", count);
++	u64 count = nfsd_for_n_state(num, nfsd_recall_client_delegations);
++	printk(KERN_INFO "NFSD: Recalled %llu delegations", count);
+ }
+ 
+ #endif /* CONFIG_NFSD_FAULT_INJECTION */
+-- 
+1.7.12
 
