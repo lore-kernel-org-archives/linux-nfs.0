@@ -1,93 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:60227 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757570Ab2IXUAO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Sep 2012 16:00:14 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 28/28] NFSv4.1: nfs4_proc_layoutreturn must always drop the plh_block_lgets count
-Date: Mon, 24 Sep 2012 15:56:46 -0400
-Message-Id: <1348516606-22721-28-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1348516606-22721-27-git-send-email-Trond.Myklebust@netapp.com>
-References: <1348516606-22721-1-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-2-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-3-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-4-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-5-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-6-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-7-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-8-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-9-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-10-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-11-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-12-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-13-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-14-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-15-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-16-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-17-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-18-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-19-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-20-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-21-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-22-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-23-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-24-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-25-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-26-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-27-git-send-email-Trond.Myklebust@netapp.com>
+Received: from acsinet15.oracle.com ([141.146.126.227]:45876 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751837Ab2IQPKo convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Sep 2012 11:10:44 -0400
+Subject: Re: [PATCH 0/3] lockd: use per-net refrence-counted NSM clients
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=utf-8
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <50570052.8050205@parallels.com>
+Date: Mon, 17 Sep 2012 11:10:30 -0400
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "jlayton@redhat.com" <jlayton@redhat.com>
+Message-Id: <D4B752F3-1883-490E-AA5D-B9666472FFF3@oracle.com>
+References: <20120914140811.10835.81465.stgit@localhost.localdomain> <4030B8F9-5C67-4AE7-826E-B4B6AD4FAD01@oracle.com> <4FA345DA4F4AE44899BD2B03EEEC2FA908FA7F55@SACEXCMBX04-PRD.hq.netapp.com> <DA466953-BF79-44F7-8870-AC2FD5E3FEC2@oracle.com> <50570052.8050205@parallels.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently it does not do so if the RPC call failed to start. Fix is to
-move the decrement of plh_block_lgets into nfs4_layoutreturn_release.
 
-Also remove a redundant test of task->tk_status in nfs4_layoutreturn_done:
-if lrp->res.lrs_present is set, then obviously the RPC call succeeded.
+On Sep 17, 2012, at 6:49 AM, Stanislav Kinsbursky wrote:
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+> 14.09.2012 23:10, Chuck Lever пишет:
+>> 
+>> On Sep 14, 2012, at 1:38 PM, Myklebust, Trond wrote:
+>> 
+>>> On Fri, 2012-09-14 at 13:01 -0400, Chuck Lever wrote:
+>>>> What happens if statd is restarted?
+>>> 
+>>> Nothing unusual. Why?
+>> 
+>> The NSM upcall transport is a potential application for TCP + softconn, now that a persistent rpc_clnt is used.  It just depends on what failure mode we'd like to optimize for.
+>> 
+> 
+> I don't understand, where the problem is.
+> Could you be more specific, please?
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index d9d67b3..6e95b20 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6346,7 +6346,6 @@ static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
- {
- 	struct nfs4_layoutreturn *lrp = calldata;
- 	struct nfs_server *server;
--	struct pnfs_layout_hdr *lo = lrp->args.layout;
- 
- 	dprintk("--> %s\n", __func__);
- 
-@@ -6358,19 +6357,20 @@ static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
- 		rpc_restart_call_prepare(task);
- 		return;
- 	}
--	spin_lock(&lo->plh_inode->i_lock);
--	if (task->tk_status == 0 && lrp->res.lrs_present)
--		pnfs_set_layout_stateid(lo, &lrp->res.stateid, true);
--	lo->plh_block_lgets--;
--	spin_unlock(&lo->plh_inode->i_lock);
- 	dprintk("<-- %s\n", __func__);
- }
- 
- static void nfs4_layoutreturn_release(void *calldata)
- {
- 	struct nfs4_layoutreturn *lrp = calldata;
-+	struct pnfs_layout_hdr *lo = lrp->args.layout;
- 
- 	dprintk("--> %s\n", __func__);
-+	spin_lock(&lo->plh_inode->i_lock);
-+	if (lrp->res.lrs_present)
-+		pnfs_set_layout_stateid(lo, &lrp->res.stateid, true);
-+	lo->plh_block_lgets--;
-+	spin_unlock(&lo->plh_inode->i_lock);
- 	pnfs_put_layout_hdr(lrp->args.layout);
- 	kfree(calldata);
- 	dprintk("<-- %s\n", __func__);
+I'm suggesting an enhancement.
+
+The change is to use TCP for the NSM upcall transport, and set RPC_TASK_SOFTCONN on the individual RPCs.  The advantage of this is that the kernel could discover when statd is not running and fail the upcall immediately, rather than waiting possibly many seconds for each upcall RPC to time out.
+
+The client already has a check in the mount.nfs command to see that statd is running, likely to avoid this lengthly timeout.  Since the client already has long-standing logic to avoid it, I think the benefit would be mostly on the server side.
+
+But this change can be done at some later point.
+
 -- 
-1.7.11.4
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
