@@ -1,72 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f174.google.com ([74.125.82.174]:33713 "EHLO
-	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753205Ab2ITRxp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Sep 2012 13:53:45 -0400
-Received: by weyx8 with SMTP id x8so1453740wey.19
-        for <linux-nfs@vger.kernel.org>; Thu, 20 Sep 2012 10:53:44 -0700 (PDT)
+Received: from mx2.netapp.com ([216.240.18.37]:47313 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932325Ab2IQQFM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Sep 2012 12:05:12 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: readdir cookies
+Date: Mon, 17 Sep 2012 16:05:10 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908FC8D4C@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20120917155426.GK30673@fieldses.org>
+In-Reply-To: <20120917155426.GK30673@fieldses.org>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-In-Reply-To: <CAHVgHyXDs7=rafH2_pQ7T0cwzoO-LGgtVB+8E_btt5E0v9YTdg@mail.gmail.com>
-References: <CAJ75kXZuM_p3qknD4RgdjLLWd393u02S5FKQyu3Q8y8NwmfiVw@mail.gmail.com>
-	<CAJ75kXagDP6TPO+7pCCcUyac+ViPgKVThTsuehHNi_xwTpnGiQ@mail.gmail.com>
-	<CAHVgHyXMR=Bf02pWe=McHZPu+iNTZvhs6vHVx1ie404QebF86g@mail.gmail.com>
-	<20120920161716.GB4521@fieldses.org>
-	<CAHVgHyXDs7=rafH2_pQ7T0cwzoO-LGgtVB+8E_btt5E0v9YTdg@mail.gmail.com>
-Date: Thu, 20 Sep 2012 13:53:44 -0400
-Message-ID: <CAHVgHyUqNWakh6h18wZDGB91GJo-crtpPjmUUB+00HTMvePRNg@mail.gmail.com>
-Subject: Re: unhandled error -10026
-From: Andy Adamson <androsadamson@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: William Dauchy <wdauchy@gmail.com>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        R.Eggermont@tudelft.nl
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 20, 2012 at 1:47 PM, Andy Adamson <androsadamson@gmail.com> wrote:
-> On Thu, Sep 20, 2012 at 12:17 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
->> On Thu, Sep 20, 2012 at 12:06:48PM -0400, Andy Adamson wrote:
->>> On Thu, Sep 20, 2012 at 10:34 AM, William Dauchy <wdauchy@gmail.com> wrote:
->>> > On Tue, Sep 18, 2012 at 11:49 AM, William Dauchy <wdauchy@gmail.com> wrote:
->>> >> I'm getting a trace following an unhandled error on a linux nfs client
->>> >> 3.4.7 x86_64.
->>> >> NFS: nfs4_reclaim_open_state: unhandled error -10026. Zeroing state
->>> >
->>> > For the moment I don't know if the error is coming from a bad server
->>> > implementation or if it's on client side. Should I assume that this an
->>> > error that should never hit the client?
->>>
->>> Yes.
->>>
->>> The client only sends OPEN reclaims after noting the server has
->>> rebooted due to previously receiving an NFS4ERR_STALE_CLIENTID or
->>> NFS4ERR_STALE_STATEID error from a state-full operation  (RENEW, OPEN,
->>> OPEN_DOWNGRADE, OPEN_CONFIRM, CLOSE, LOCK, LOCKU) which triggers the
->>> client to establish a new clientid via
->>> SETCLIENTID/SETCLIENTID_CONFIRM.
->>>
->>> Upon server reboot, all state that the previous server instance had is
->>> invalid - including OPEN seqid's. So, the server returning
->>> NFS4ERR_BAD_SEQID (10026) on an OPEN reclaim is illegal.
->>
->> Wait, but couldn't there be multiple reclaims using the same open owner,
->> in which case later reclaims could in theory hit BAD_SEQID?
->
-> Nope.
->
-> 3530 section 9.1.6.  Sequencing of Lock Requests
->
->    Note that for requests that contain a sequence number, for each
->    state-owner, there should be no more than one outstanding request.
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> owner@vger.kernel.org] On Behalf Of J. Bruce Fields
+> Sent: Monday, September 17, 2012 11:54 AM
+> To: Myklebust, Trond; Schumaker, Bryan
+> Cc: linux-nfs@vger.kernel.org
+> Subject: readdir cookies
+> 
+> How does the nfs client decide what directory cookies to return?  (As the
+> d_off field to readdir, for example).
+> 
+> I'd assumed it would return the server's cookie, but testing shows it returns a
+> simple integer sequence.
 
-Well - I sent this too soon :) .  Yes, a buggy client could send
-(serialized) reclaims with a bad seqid, and get NFS4ERR_BAD_SEQ.
-Tough to do with the above constraint, but possible.
+We cache the cookies and use them to figure out where the readdir cursor is after a directory update, but we use positive integers for telldir()/seekdir(). The reason is that too many servers return cookies that use > 32 bits (NFSv2-incompatible) or are unsigned.
 
--->Andy
-
->
-> -->Andy
->>
->> --b.
+Cheers
+  Trond
