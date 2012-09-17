@@ -1,48 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35437 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:52792 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756127Ab2IQPBH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Sep 2012 11:01:07 -0400
-Date: Mon, 17 Sep 2012 11:01:05 -0400
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: stable@vger.kernel.org, linux-nfs@vger.kernel.org, bfields@redhat.com,
-        viro@zeniv.linux.org.uk, jbottomley@parallels.com
-Subject: Re: [PATCH 0/2] nfsd: backport fixes for 3.5 kernel
-Message-ID: <20120917150105.GJ30673@fieldses.org>
-References: <20120914082201.14353.83847.stgit@localhost6.localdomain6>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120914082201.14353.83847.stgit@localhost6.localdomain6>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S932555Ab2IQUQZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Sep 2012 16:16:25 -0400
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 05/10] NFSD: Clean up forgetting openowners
+Date: Mon, 17 Sep 2012 16:16:14 -0400
+Message-Id: <1347912979-20603-6-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1347912979-20603-1-git-send-email-bjschuma@netapp.com>
+References: <1347912979-20603-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 14, 2012 at 12:25:17PM +0400, Stanislav Kinsbursky wrote:
-> Hello.
-> These two patches fixes existent NULL pointer dereference problem in 3.5.3
-> kernel in case of some error occured during NFSd service start.
-> 
-> Upstream commits:
-> 19f7e2ca44dfc3c1b3f499fc46801f98d403500f 
-> 57c8b13e3cd0f94944c9691ce7f58e5fcef8a12d
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Thanks.  Ack to including both of these in stable releases.
+Using "forget_n_state()" forces me to implement the code needed to
+forget a specific client's openowners.
 
---b.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfsd/nfs4state.c | 41 ++++++++++++++++-------------------------
+ 1 file changed, 16 insertions(+), 25 deletions(-)
 
-> 
-> 
-> The following series implements...
-> 
-> ---
-> 
-> Stanislav Kinsbursky (2):
->       NFSd: introduce nfsd_destroy() helper
->       NFSd: set nfsd_serv to NULL after service destruction
-> 
-> 
->  fs/nfsd/nfsctl.c |    8 ++------
->  fs/nfsd/nfsd.h   |   11 +++++++++++
->  fs/nfsd/nfssvc.c |   24 ++++++++----------------
->  3 files changed, 21 insertions(+), 22 deletions(-)
-> 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 631c16b..611a827 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4564,6 +4564,20 @@ static u64 nfsd_forget_client_locks(struct nfs4_client *clp, u64 max)
+ 	return count;
+ }
+ 
++static u64 nfsd_forget_client_openowners(struct nfs4_client *clp, u64 max)
++{
++	struct nfs4_openowner *oop, *next;
++	u64 count = 0;
++
++	list_for_each_entry_safe(oop, next, &clp->cl_openowners, oo_perclient) {
++		release_openowner(oop);
++		if (++count == max)
++			break;
++	}
++
++	return count;
++}
++
+ static u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
+ {
+ 	struct nfs4_client *clp, *next;
+@@ -4584,29 +4598,6 @@ void nfsd_forget_clients(u64 num)
+ 	printk(KERN_INFO "NFSD: Forgot %llu clients", count);
+ }
+ 
+-static void release_openowner_sop(struct nfs4_stateowner *sop)
+-{
+-	release_openowner(openowner(sop));
+-}
+-
+-static int nfsd_release_n_owners(u64 num, bool is_open_owner,
+-				void (*release_sop)(struct nfs4_stateowner *))
+-{
+-	int i, count = 0;
+-	struct nfs4_stateowner *sop, *next;
+-
+-	for (i = 0; i < OWNER_HASH_SIZE; i++) {
+-		list_for_each_entry_safe(sop, next, &ownerstr_hashtbl[i], so_strhash) {
+-			if (sop->so_is_open_owner != is_open_owner)
+-				continue;
+-			release_sop(sop);
+-			if (++count == num)
+-				return count;
+-		}
+-	}
+-	return count;
+-}
+-
+ void nfsd_forget_locks(u64 num)
+ {
+ 	u64 count = nfsd_for_n_state(num, nfsd_forget_client_locks);
+@@ -4615,8 +4606,8 @@ void nfsd_forget_locks(u64 num)
+ 
+ void nfsd_forget_openowners(u64 num)
+ {
+-	int count = nfsd_release_n_owners(num, true, release_openowner_sop);
+-	printk(KERN_INFO "NFSD: Forgot %d open owners", count);
++	u64 count = nfsd_for_n_state(num, nfsd_forget_client_openowners);
++	printk(KERN_INFO "NFSD: Forgot %llu open owners", count);
+ }
+ 
+ static int nfsd_process_n_delegations(u64 num, struct list_head *list)
+-- 
+1.7.12
+
