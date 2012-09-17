@@ -1,67 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:51248 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756123Ab2INVXR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Sep 2012 17:23:17 -0400
-Received: by ghbg15 with SMTP id g15so1131724ghb.19
-        for <linux-nfs@vger.kernel.org>; Fri, 14 Sep 2012 14:23:16 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 01/10] NFS: nfs_parsed_mount_options can use unsigned int
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 14 Sep 2012 17:23:14 -0400
-Message-ID: <20120914212313.1635.16943.stgit@degas.1015granger.net>
-In-Reply-To: <20120914211053.1635.74063.stgit@degas.1015granger.net>
-References: <20120914211053.1635.74063.stgit@degas.1015granger.net>
+Received: from mx2.netapp.com ([216.240.18.37]:12801 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752206Ab2IQMvg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Sep 2012 08:51:36 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: NeilBrown <neilb@suse.de>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: What is NFSv4 READDIR doesn't return a filehandle....
+Date: Mon, 17 Sep 2012 12:51:33 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908FC54E3@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20120917090537.20e38026@notabene.brown>
+In-Reply-To: <20120917090537.20e38026@notabene.brown>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-fs/nfs/super.c: In function ‘nfs_compare_remount_data’:
-fs/nfs/super.c:2042:18: warning: comparison between signed and
-    unsigned integer expressions [-Wsign-compare]
-fs/nfs/super.c:2043:18: warning: comparison between signed and
-    unsigned integer expressions [-Wsign-compare]
-fs/nfs/super.c:2044:20: warning: comparison between signed and
-    unsigned integer expressions [-Wsign-compare]
-fs/nfs/super.c:2046:21: warning: comparison between signed and
-    unsigned integer expressions [-Wsign-compare]
-fs/nfs/super.c:2047:21: warning: comparison between signed and
-    unsigned integer expressions [-Wsign-compare]
-fs/nfs/super.c:2048:21: warning: comparison between signed and
-    unsigned integer expressions [-Wsign-compare]
-fs/nfs/super.c:2049:21: warning: comparison between signed and
-    unsigned integer expressions [-Wsign-compare]
-fs/nfs/super.c:2050:18: warning: comparison between signed and
-    unsigned integer expressions [-Wsign-compare]
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> owner@vger.kernel.org] On Behalf Of NeilBrown
+> Sent: Sunday, September 16, 2012 7:06 PM
+> To: linux-nfs@vger.kernel.org
+> Subject: What is NFSv4 READDIR doesn't return a filehandle....
+> 
+> 
+> In NFSv4, the server can report which attributes it chose to return in a
+> READDIR reply.
+> 
+> A customer has come across a server which does not return the filehandle
+> information (is that allowed?).
 
-Seen with gcc (GCC) 4.6.3 20120306 (Red Hat 4.6.3-2).
+The filehandle attribute is a mandatory attribute according to RFC3530, so I believe that the answer is "no".
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+> A consequence of this is that Linux/NFS gets confused.
+> nfs_readdir_page_filler calls nfs_prime_dcache() (because it was a readdir
+> plus request that was sent) and nfs_prime_dcache goes ahead and creates
+> an inode based on the filehandle that it has.
+> However decode_attr_filehandle() had happily decoded nothing as the
+> FATTR4_WORD0_FILEHANDLE bit wasn't set.
+> So the inode gets created with a zero-length filehandle and when this gets
+> sent back to the server to act on the inode, it gets NFS4ERR_BADHANDLE to
+> the PUTFH op.
+> 
+> So should nfs_prime_dcache() abort if the filehandle doesn't exist (patch
+> below) or should nfs_fhget() return an error if the filehandle is empty?
+> 
+> Or maybe this behaviour should be detected and readdir should be disabled
+> for that server?
+> 
 
- fs/nfs/internal.h |    8 ++++----
- 1 files changed, 4 insertions(+), 4 deletions(-)
+I don't want to have to code the client to deal with broken servers. If we start down that path, then we'll end up doing nothing else.
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 31fdb03..89560be 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -101,11 +101,11 @@ struct nfs_client_initdata {
-  */
- struct nfs_parsed_mount_data {
- 	int			flags;
--	int			rsize, wsize;
--	int			timeo, retrans;
--	int			acregmin, acregmax,
-+	unsigned int		rsize, wsize;
-+	unsigned int		timeo, retrans;
-+	unsigned int		acregmin, acregmax,
- 				acdirmin, acdirmax;
--	int			namlen;
-+	unsigned int		namlen;
- 	unsigned int		options;
- 	unsigned int		bsize;
- 	unsigned int		auth_flavor_len;
+I can, however, see a case for extending the "nordirplus" mount option to cover NFSv4. Currently it only acts on NFSv3 mounts...
 
+Cheers
+  Trond
