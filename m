@@ -1,66 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:36163 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759055Ab2IMXis (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Sep 2012 19:38:48 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@tonian.com>, NFS list <linux-nfs@vger.kernel.org>,
-        open-osd <osd-dev@open-osd.org>
-CC: Sachin Bhamare <sbhamare@panasas.com>
-Subject: [PATCH 09/10] SQUASHME: pnfsd-exofs: Autologin support to get_device_info
-Date: Fri, 14 Sep 2012 02:38:36 +0300
-Message-ID: <1347579516-21717-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <50526B39.3000802@panasas.com>
-References: <50526B39.3000802@panasas.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mx2.netapp.com ([216.240.18.37]:52792 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932238Ab2IQUQW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Sep 2012 16:16:22 -0400
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 02/10] NFSD: Lock state before calling fault injection function
+Date: Mon, 17 Sep 2012 16:16:11 -0400
+Message-Id: <1347912979-20603-3-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1347912979-20603-1-git-send-email-bjschuma@netapp.com>
+References: <1347912979-20603-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Sachin Bhamare <sbhamare@panasas.com>
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-In exofs_get_device_info also send the URI string set by the
-user-mode mounter associated with each device, to enable
-autologin in the client.
+Each function touches state in some way, so getting the lock earlier
+can help simplify code.
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/exofs/export.c | 8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
+ fs/nfsd/fault_inject.c |  2 ++
+ fs/nfsd/nfs4state.c    | 18 ++----------------
+ 2 files changed, 4 insertions(+), 16 deletions(-)
 
-diff --git a/fs/exofs/export.c b/fs/exofs/export.c
-index 809fa19..c5712f3 100644
---- a/fs/exofs/export.c
-+++ b/fs/exofs/export.c
-@@ -324,6 +324,7 @@ int exofs_get_device_info(struct super_block *sb, struct exp_xdr_stream *xdr,
- {
- 	struct exofs_sb_info *sbi = sb->s_fs_info;
- 	struct pnfs_osd_deviceaddr devaddr;
-+	struct exofs_dev *edev;
- 	const struct osd_dev_info *odi;
- 	u64 devno = devid->devid;
- 	__be32 *start;
-@@ -337,7 +338,8 @@ int exofs_get_device_info(struct super_block *sb, struct exp_xdr_stream *xdr,
- 		return -ENODEV;
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index ae94da1..3dac486 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -50,7 +50,9 @@ static int nfsd_inject_set(void *op_ptr, u64 val)
+ 	else
+ 		printk(KERN_INFO "NFSD Fault Injection: %s (n = %llu)", op->file, val);
+ 
++	nfs4_lock_state();
+ 	op->func(val);
++	nfs4_unlock_state();
+ 	return 0;
+ }
+ 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index d024ffd..f7278d7 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4544,14 +4544,12 @@ void nfsd_forget_clients(u64 num)
+ 	struct nfs4_client *clp, *next;
+ 	int count = 0;
+ 
+-	nfs4_lock_state();
+ 	list_for_each_entry_safe(clp, next, &client_lru, cl_lru) {
+ 		nfsd4_client_record_remove(clp);
+ 		expire_client(clp);
+ 		if (++count == num)
+ 			break;
  	}
+-	nfs4_unlock_state();
  
--	odi = osduld_device_info(sbi->oc.ods[devno]->od);
-+	edev = container_of(sbi->oc.ods[devno], typeof(*edev), ored);
-+	odi = osduld_device_info(edev->ored.od);
+ 	printk(KERN_INFO "NFSD: Forgot %d clients", count);
+ }
+@@ -4586,23 +4584,13 @@ static int nfsd_release_n_owners(u64 num, bool is_open_owner,
  
- 	devaddr.oda_systemid.len = odi->systemid_len;
- 	devaddr.oda_systemid.data = (void *)odi->systemid; /* !const cast */
-@@ -345,6 +347,10 @@ int exofs_get_device_info(struct super_block *sb, struct exp_xdr_stream *xdr,
- 	devaddr.oda_osdname.len = odi->osdname_len ;
- 	devaddr.oda_osdname.data = (void *)odi->osdname;/* !const cast */
+ void nfsd_forget_locks(u64 num)
+ {
+-	int count;
+-
+-	nfs4_lock_state();
+-	count = nfsd_release_n_owners(num, false, release_lockowner_sop);
+-	nfs4_unlock_state();
+-
++	int count = nfsd_release_n_owners(num, false, release_lockowner_sop);
+ 	printk(KERN_INFO "NFSD: Forgot %d locks", count);
+ }
  
-+	devaddr.oda_targetaddr.ota_available = OBJ_OTA_AVAILABLE;
-+	devaddr.oda_targetaddr.ota_netaddr.r_addr.data = (void *)edev->uri;
-+	devaddr.oda_targetaddr.ota_netaddr.r_addr.len = edev->urilen;
-+
- 	/* skip opaque size, will be filled-in later */
- 	start = exp_xdr_reserve_qwords(xdr, 1);
- 	if (!start) {
+ void nfsd_forget_openowners(u64 num)
+ {
+-	int count;
+-
+-	nfs4_lock_state();
+-	count = nfsd_release_n_owners(num, true, release_openowner_sop);
+-	nfs4_unlock_state();
+-
++	int count = nfsd_release_n_owners(num, true, release_openowner_sop);
+ 	printk(KERN_INFO "NFSD: Forgot %d open owners", count);
+ }
+ 
+@@ -4635,10 +4623,8 @@ void nfsd_forget_delegations(u64 num)
+ 	count = nfsd_process_n_delegations(num, &victims);
+ 	spin_unlock(&recall_lock);
+ 
+-	nfs4_lock_state();
+ 	list_for_each_entry_safe(dp, dnext, &victims, dl_recall_lru)
+ 		unhash_delegation(dp);
+-	nfs4_unlock_state();
+ 
+ 	printk(KERN_INFO "NFSD: Forgot %d delegations", count);
+ }
 -- 
-1.7.10.2.677.gb6bc67f
+1.7.12
 
