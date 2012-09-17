@@ -1,48 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:22532 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:52792 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757900Ab2IZTHT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 26 Sep 2012 15:07:19 -0400
-Received: from vmwexceht03-prd.hq.netapp.com (vmwexceht03-prd.hq.netapp.com [10.106.76.241])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q8QJ7I7s014365
-	for <linux-nfs@vger.kernel.org>; Wed, 26 Sep 2012 12:07:18 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFS: Remove bad delegations during open recovery
-Date: Wed, 26 Sep 2012 19:07:16 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908FECD3A@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1348679579-7888-1-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1348679579-7888-1-git-send-email-bjschuma@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1757275Ab2IQUQV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Sep 2012 16:16:21 -0400
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 00/10] NFSD: Improve fault injection
+Date: Mon, 17 Sep 2012 16:16:09 -0400
+Message-Id: <1347912979-20603-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTA5LTI2IGF0IDEzOjEyIC0wNDAwLCBianNjaHVtYUBuZXRhcHAuY29tIHdy
-b3RlOg0KPiBGcm9tOiBCcnlhbiBTY2h1bWFrZXIgPGJqc2NodW1hQG5ldGFwcC5jb20+DQo+IA0K
-PiBJIHB1dCB0aGUgY2xpZW50IGludG8gYW4gb3BlbiByZWNvdmVyeSBsb29wIGJ5Og0KPiAJQ2xp
-ZW50OiBPcGVuIGZpbGUNCj4gCQlyZWFkIGhhbGYNCj4gCVNlcnZlcjogRXhwaXJlIGNsaWVudCAo
-ZWNobyAwID4gL3N5cy9rZXJuZWwvZGVidWcvbmZzZC9mb3JnZXRfY2xpZW50cykNCj4gCUNsaWVu
-dDogRHJvcCB2bSBjYWNoZSAoZWNobyAzID4gL3Byb2Mvc3lzL3ZtL2Ryb3BfY2FjaGVzKQ0KPiAJ
-CWZpbmlzaCByZWFkaW5nIGZpbGUNCj4gDQo+IFRoaXMgY2F1c2VzIGEgbG9vcCBiZWNhdXNlIHRo
-ZSBjbGllbnQgbmV2ZXIgdXBkYXRlcyB0aGUgbmZzNF9zdGF0ZSBhZnRlcg0KPiBkaXNjb3Zlcmlu
-ZyB0aGF0IHRoZSBkZWxlZ2F0aW9uIGlzIGludmFsaWQuICBUaGlzIG1lYW5zIGl0IHdpbGwga2Vl
-cA0KPiB0cnlpbmcgdG8gcmVhZCB1c2luZyB0aGUgYmFkIGRlbGVnYXRpb24gcmF0aGVyIHRoYW4g
-YXR0ZW1wdGluZyB0byByZS1vcGVuDQo+IHRoZSBmaWxlLg0KPiANCj4gU2lnbmVkLW9mZi1ieTog
-QnJ5YW4gU2NodW1ha2VyIDxianNjaHVtYUBuZXRhcHAuY29tPg0KPiAtLS0NCj4gIGZzL25mcy9u
-ZnM0cHJvYy5jIHwgMiArKw0KPiAgMSBmaWxlIGNoYW5nZWQsIDIgaW5zZXJ0aW9ucygrKQ0KPiAN
-Cj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0cHJvYy5jIGIvZnMvbmZzL25mczRwcm9jLmMNCj4g
-aW5kZXggMWU1MDMyNi4uZTQ3ZWM1NSAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL25mczRwcm9jLmMN
-Cj4gKysrIGIvZnMvbmZzL25mczRwcm9jLmMNCj4gQEAgLTE3NzQsNyArMTc3NCw5IEBAIHN0YXRp
-YyB2b2lkIG5mczQxX2NsZWFyX2RlbGVnYXRpb25fc3RhdGVpZChzdHJ1Y3QgbmZzNF9zdGF0ZSAq
-c3RhdGUpDQo+ICAJCSAqIGluZm9ybXMgdXMgdGhlIHN0YXRlaWQgaXMgdW5yZWNvZ25pemVkLiAq
-Lw0KPiAgCQlpZiAoc3RhdHVzICE9IC1ORlM0RVJSX0JBRF9TVEFURUlEKQ0KPiAgCQkJbmZzNDFf
-ZnJlZV9zdGF0ZWlkKHNlcnZlciwgc3RhdGVpZCk7DQo+ICsJCW5mc19yZW1vdmVfYmFkX2RlbGVn
-YXRpb24oc3RhdGUtPmlub2RlKTsNCj4gIA0KPiArCQluZnM0X3N0YXRlaWRfY29weSgmc3RhdGUt
-PnN0YXRlaWQsICZzdGF0ZS0+b3Blbl9zdGF0ZWlkKTsNCg0KbmZzNF9zdGF0ZWlkX2NvcHkgbmVl
-ZHMgdG8gYmUgd3JpdGUtcHJvdGVjdGVkIGJ5IHRoZSBzdGF0ZS0+c2VxbG9jaw0KaGVyZS4NCg0K
-PiAgCQljbGVhcl9iaXQoTkZTX0RFTEVHQVRFRF9TVEFURSwgJnN0YXRlLT5mbGFncyk7DQo+ICAJ
-fQ0KPiAgfQ0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFp
-bmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29t
-DQo=
+From: Bryan Schumaker <bjschuma@netapp.com>
+
+While working on p2p-nfs, I discovered that I sometimes need to clear
+state for a specific client to test all possible error recovery conditions.
+The current fault injection code deletes state as it find it, so it can
+be difficult to guess which state will be forgotten.  In addition, I
+currently print out the amount of state forgotten but I don't give details
+like "Forgot 3 locks from client w.x.y.z".  These patches set out to
+improve that.
+
+The first 7 patches clean up the current code and prepare it for specific
+client state removal.  Patch 8 adds prints information to the server's logs
+when a fault injection file is read (such as "Client w.x.y.z has 3 open
+files").  Patch 9 adds in a custom file operations structure so users can
+write strings to fault injection files in addition to u64s.  Finally, patch
+10 allows users to remove state by writing a client's IP address to one of
+the files.
+
+Questions, comments and suggestions are appreciated!
+
+- Bryan
+
+Bryan Schumaker (10):
+  NFSD: Fold fault_inject.h into state.h
+  NFSD: Lock state before calling fault injection function
+  NFSD: Clean up forgetting clients
+  NFSD: Clean up forgetting locks
+  NFSD: Clean up forgetting openowners
+  NFSD: Clean up forgetting and recalling delegations
+  NFSD: Fault injection operations take a per-client forget function
+  NFSD: Reading a fault injection file prints a state count
+  NFSD: Add a custom file operations structure for fault injection
+  NFSD: Forget state for a specific client
+
+ fs/nfsd/fault_inject.c | 108 ++++++++++++++++++++++++-----
+ fs/nfsd/fault_inject.h |  28 --------
+ fs/nfsd/nfs4state.c    | 182 +++++++++++++++++++++++++++++++------------------
+ fs/nfsd/nfsctl.c       |   2 +-
+ fs/nfsd/state.h        |  23 +++++++
+ 5 files changed, 230 insertions(+), 113 deletions(-)
+ delete mode 100644 fs/nfsd/fault_inject.h
+
+-- 
+1.7.12
+
