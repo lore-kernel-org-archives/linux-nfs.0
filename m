@@ -1,42 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-da0-f46.google.com ([209.85.210.46]:46690 "EHLO
-	mail-da0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751637Ab2I3VXu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 30 Sep 2012 17:23:50 -0400
-Date: Sun, 30 Sep 2012 14:23:41 -0700
-From: Jonathan Nieder <jrnieder@gmail.com>
-To: Chris Hiestand <chiestand@salk.edu>
-Cc: Ben Hutchings <ben@decadent.org.uk>, 669314@bugs.debian.org,
-        viro@zeniv.linux.org.uk, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Micheal Waltz <mwaltz@qualcomm.com>,
-        Gabriel Evanoff <gevanoff@salk.edu>
-Subject: Re: NFS: kernel forces trailing slash for export in /proc/self/mounts
-Message-ID: <20120930212341.GA32505@elie.Belkin>
-References: <8F8193BD-84C6-4905-8789-DE7EB2579A4E@salk.edu>
- <1347762073.13258.188.camel@deadeye.wl.decadent.org.uk>
- <254E1AAA-BDE2-41A8-94D8-6E677860AD72@salk.edu>
- <1347804028.13258.267.camel@deadeye.wl.decadent.org.uk>
- <FB3CAE84-FDFE-4345-9F54-3295BDE2AD81@salk.edu>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <FB3CAE84-FDFE-4345-9F54-3295BDE2AD81@salk.edu>
+Received: from cantor2.suse.de ([195.135.220.15]:47005 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932087Ab2IRBzC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Sep 2012 21:55:02 -0400
+Received: from relay1.suse.de (unknown [195.135.220.254])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mx2.suse.de (Postfix) with ESMTP id 9FB82A2FD7
+	for <linux-nfs@vger.kernel.org>; Tue, 18 Sep 2012 03:55:01 +0200 (CEST)
+Date: Tue, 18 Sep 2012 11:54:50 +1000
+From: NeilBrown <neilb@suse.de>
+To: NFS <linux-nfs@vger.kernel.org>
+Subject: Should "mount -o proto=udp" be usable against an IPv6 only server?
+Message-ID: <20120918115450.5c65973f@notabene.brown>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/DRKTZPHBFHoQ=G/uJi./ZH0"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Chris,
+--Sig_/DRKTZPHBFHoQ=G/uJi./ZH0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Chris Hiestand wrote:
-> On Sep 16, 2012, at 7:00 AM, Ben Hutchings wrote:
 
->> This was my first thought - but what if userland provides a device name
->> with a slash on the end?  I think we have to report it back with the
->> slash in that case.
-[...]
-> As a point of comparison, matching the given input is the behavior of 2.6.32-5 in Debian Squeeze.
-> So I think your approach is better.
 
-Thanks for looking it over.  Did you get a chance to test Ben's patch?
+It seems that with current nfs-utils, "proto=3Dudp" (either
+in /etc/nfsmount.conf or on the command line) restricts the mount to using
+IPv4, not IPv6.
+For IPv6 you need "udp6".
 
-Curious,
-Jonathan
+This isn't made crystal clear by the documentation.  I could fix the
+documentation, but first I wanted to check if this really is appropriate.
+Is there a good reason for this, or should we make "udp" mean "udp4 or udp6"
+and require either "udp4" or "udp6" if we want a particular IP version.
+
+i.e. instead of treating the "proto=3D" value as a "netid", should we treat=
+ it
+as a "protoname" and match any "netid" in /etc/netconfig with that
+"protoname"??
+
+Thanks,
+NeilBrown=20
+
+--Sig_/DRKTZPHBFHoQ=G/uJi./ZH0
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
+
+iQIVAwUBUFfUajnsnt1WYoG5AQINTA/9FAQygy/hWipp4CoyCR+hL6JOzmUuvrZx
+qs3UVGXcsNH0QxP9Gq3DC4RnoAgfWYeecfxDh/uE88cNADv2E0LYlFpKP3TCNi4W
+8Q7lKaOuC01wa6ynePsy3DAo2rqZmgmNGwL51ox0FjHMAvRAsQIDn9qt2LjJepxt
+l1fMp0q2NIK9c7mwVPvVwJeSdUJpVXOuJdoDnY+L5N+9O3uAhKJ4RsVb5e8v6mHR
+NL1lqRksaJkXGDwra5uIw0J+joUqmNlR/EQM1ZCaojYNWLGKknDgZeD+AtKvOVM6
+kGv1ZtSIOf61pi0nCMTg+FYnwL4qwc5NN3uRvbzDd2fohOGpiYHjEwS1ePqVtv82
+76B/ztG+IVQYXd5AfQV7GkSIbatbPqAG270mX2BsOxu9xUhSxh39o6LxImCr0Umz
+AG32BlOyZxe0lVNHi4HdXWTZVOwRMCB5jtpV0zrH578AUTXqY7YPv4QH4QbH6tb3
+kuZKty1eDXw7Mazh0h+m/Xad89ruKwyqtIFe2kOPYNgfWXr4ARZhviOkDkf+gvnG
+Rvmb23OF5z/tLEakzyXmnuLXxOnUgCdvtz824/FsdHSp6Nz7+M05ugkJyFEN0OAQ
+Gdld0r2phJqwfOOOoaxhJg5DB1EeR7F59IdXZPih0XK1EmaLORHg4q833XFERtHW
+uM7FG+1ZYmk=
+=VRue
+-----END PGP SIGNATURE-----
+
+--Sig_/DRKTZPHBFHoQ=G/uJi./ZH0--
