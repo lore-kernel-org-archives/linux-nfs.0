@@ -1,65 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:37996 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:20589 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751076Ab2IJVD7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Sep 2012 17:03:59 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Jim Rees <rees@umich.edu>, Jeff Layton <jlayton@redhat.com>,
-        "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/4] RFC Avoid expired credential keys for buffered
- writes
-Date: Mon, 10 Sep 2012 21:03:51 +0000
-Message-ID: <7851A663D3BF5E41B9E166C2C7A42145102B312E@SACEXCMBX02-PRD.hq.netapp.com>
-References: <1346961251-2554-1-git-send-email-andros@netapp.com>
- <20120910145732.4d800f5b@corrin.poochiereds.net>
- <20120910195650.GA3095@umich.edu>
- <4FA345DA4F4AE44899BD2B03EEEC2FA908F97C34@SACEXCMBX04-PRD.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA908F97C34@SACEXCMBX04-PRD.hq.netapp.com>
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+	id S1755159Ab2IRU20 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 Sep 2012 16:28:26 -0400
+From: andros@netapp.com
+To: iisaman@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 1/1] SRVR: set OPEN4_RESULT_LOCKTYPE_POSIX on open
+Date: Tue, 18 Sep 2012 16:28:19 -0400
+Message-Id: <1348000099-13413-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jeff, Jim, Trond - Thanks for all the comments.  I'm looking again at the code and will incorporate your suggestions and do some more testing. Should have results and a modified patch set tomorrow.
+From: Andy Adamson <andros@netapp.com>
 
--->Andy
+Enable POSIX locking on the NFSv4.1 pynfs server
 
-On Sep 10, 2012, at 4:14 PM, Myklebust, Trond wrote:
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ nfs4.1/nfs4server.py |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-> On Mon, 2012-09-10 at 15:56 -0400, Jim Rees wrote:
->> Jeff Layton wrote:
->> 
->>  My only concern is this behavior described in the last patch:
->> 
->>  "If the buffered WRITE is using a credential key that will expire
->>  within low watermark seconds, fail the WRITE in nfs_write_begin
->>  _before_ the WRITE is buffered and return -EACCES to the application."
->> 
->>  Shouldn't rejecting the write attempt be the purview of the server?
->> 
->>  It seems to me that we'd be best off just switching to synchronous
->>  writes when we start approaching credential expiration, and letting the
->>  server handle the case where the credential expires.
->> 
->>  It seems to me that the client should just be in the business of
->>  recognizing when the credential might be about to expire and attempt to
->>  ensure that we don't end up with a bunch of buffered data in that case.
->> 
->> I don't like it.  It's easy to understand why writes might fail if the creds
->> are getting stale.  It's not so easy to understand why client behavior
->> changes in a subtle way, with performance implications.
-> 
-> We don't know that the creds are stale. We just know that the GSS
-> session is about to expire.
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
+diff --git a/nfs4.1/nfs4server.py b/nfs4.1/nfs4server.py
+index b279292..bcb6c17 100755
+--- a/nfs4.1/nfs4server.py
++++ b/nfs4.1/nfs4server.py
+@@ -1435,7 +1435,8 @@ class NFS4Server(rpc.Server):
+             # where should it be in relation to above code?
+             if self.is_mds:
+                 file.layout_open_hook()
+-        return sid, deleg, 0
++	# we support posix locking
++        return sid, deleg, OPEN4_RESULT_LOCKTYPE_POSIX
+ 
+     def get_attributes(self, obj, attrs, ignore=True):
+         # XXX This really should be a FSObject method, but having trouble
+-- 
+1.7.5.1
 
