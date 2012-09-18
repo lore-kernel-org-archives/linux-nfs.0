@@ -1,83 +1,155 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from hrndva-omtalb.mail.rr.com ([71.74.56.122]:22147 "EHLO
-	hrndva-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757824Ab2IDWlx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Sep 2012 18:41:53 -0400
-Message-ID: <1346798509.27919.25.camel@gandalf.local.home>
-Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive
- hashtable
-From: Steven Rostedt <rostedt@goodmis.org>
-To: Pedro Alves <palves@redhat.com>
-Cc: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
-        Sasha Levin <levinsasha928@gmail.com>, Tejun Heo <tj@kernel.org>,
-        torvalds@linux-foundation.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, mingo@elte.hu,
-        ebiederm@xmission.com, aarcange@redhat.com, ericvh@gmail.com,
-        netdev@vger.kernel.org, josh@joshtriplett.org, eric.dumazet@gmail.com,
-        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
-        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
-        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Date: Tue, 04 Sep 2012 18:41:49 -0400
-In-Reply-To: <504677C8.3050801@redhat.com>
-References: <20120824203332.GF21325@google.com> <5037E9D9.9000605@gmail.com>
-	    <20120824212348.GK21325@google.com> <5038074D.300@gmail.com>
-	    <20120824230740.GN21325@google.com> <20120825042419.GA27240@Krystal>
-	    <503C95E4.3010000@gmail.com> <20120828101148.GA21683@Krystal>
-	    <503CAB1E.5010408@gmail.com> <20120828115638.GC23818@Krystal>
-	    <20120828230050.GA3337@Krystal>
-	   <1346772948.27919.9.camel@gandalf.local.home>
-	  <50462C99.5000007@redhat.com>  <50462EE8.1090903@redhat.com>
-	  <1346779027.27919.15.camel@gandalf.local.home>
-	  <50463883.8080706@redhat.com>
-	 <1346792345.27919.18.camel@gandalf.local.home>
-	 <504677C8.3050801@redhat.com>
-Content-Type: text/plain; charset="ISO-8859-15"
-Mime-Version: 1.0
+Received: from mailhub.sw.ru ([195.214.232.25]:25189 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757740Ab2IRJpR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 Sep 2012 05:45:17 -0400
+Subject: [PATCH v2 3/3] lockd: create and use per-net NSM RPC clients on
+	MON/UNMON requests
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, devel@openvz.org,
+        linux-kernel@vger.kernel.org, jlayton@redhat.com
+Date: Tue, 18 Sep 2012 13:37:23 +0400
+Message-ID: <20120918093723.2469.47300.stgit@localhost.localdomain>
+In-Reply-To: <20120918093612.2469.94393.stgit@localhost.localdomain>
+References: <20120918093612.2469.94393.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2012-09-04 at 22:51 +0100, Pedro Alves wrote:
-> On 09/04/2012 09:59 PM, Steven Rostedt wrote:
-> > On Tue, 2012-09-04 at 18:21 +0100, Pedro Alves wrote:
-> >> On 09/04/2012 06:17 PM, Steven Rostedt wrote:
-> >>> On Tue, 2012-09-04 at 17:40 +0100, Pedro Alves wrote:
-> >>>
-> >>>> BTW, you can also go a step further and remove the need to close with double }},
-> >>>> with something like:
-> >>>>
-> >>>> #define do_for_each_ftrace_rec(pg, rec)                                          \
-> >>>>         for (pg = ftrace_pages_start, rec = &pg->records[pg->index];             \
-> >>>>              pg && rec == &pg->records[pg->index];                               \
-> >>>>              pg = pg->next)                                                      \
-> >>>>           for (rec = pg->records; rec < &pg->records[pg->index]; rec++)
-> >>>>
-> >>>
-> >>> Yeah, but why bother? It's hidden in a macro, and the extra '{ }' shows
-> >>> that this is something "special".
-> >>
-> >> The point of both changes is that there's nothing special in the end
-> >> at all.  It all just works...
-> >>
-> > 
-> > It would still fail on a 'break'. The 'while' macro tells us that it is
-> > special, because in the end, it wont work.
-> 
-> Please explain why it would fail on a 'break'.
-> 
+NSM RPC client can be required on NFSv3 umount, when child reaper is dying
+(and destroying it's mount namespace). It means, that current nsproxy is set
+to NULL already, but creation of RPC client requires UTS namespace for gaining
+hostname string.
 
-Ah, I missed the condition with the rec == &pg->records[pg->index]. But
-if ftrace_pages_start is NULL, the rec = &pg->records[pg->index] will
-fault.
+This patch creates reference-counted per-net NSM client on first monitor
+request and destroys it after last unmonitor request.
 
-You could do something like rec = pg ? &pg->records[pg->index] : NULL,
-but IIRC, the comma operator does not guarantee order evaluation. That
-is, the compiler is allowed to process "a , b" as "b; a;" and not "a;
-b;".
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: <stable@vger.kernel.org>
+---
+ fs/lockd/mon.c |   37 ++++++++++++++++++++-----------------
+ 1 files changed, 20 insertions(+), 17 deletions(-)
 
--- Steve
-
+diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+index e0bc36e..e4fb3ba 100644
+--- a/fs/lockd/mon.c
++++ b/fs/lockd/mon.c
+@@ -7,7 +7,6 @@
+  */
+ 
+ #include <linux/types.h>
+-#include <linux/utsname.h>
+ #include <linux/kernel.h>
+ #include <linux/ktime.h>
+ #include <linux/slab.h>
+@@ -86,7 +85,7 @@ static struct rpc_clnt *nsm_create(struct net *net)
+ 	return rpc_create(&args);
+ }
+ 
+-__maybe_unused static struct rpc_clnt *nsm_client_get(struct net *net)
++static struct rpc_clnt *nsm_client_get(struct net *net)
+ {
+ 	static DEFINE_MUTEX(nsm_create_mutex);
+ 	struct rpc_clnt	*clnt;
+@@ -113,7 +112,7 @@ out:
+ 	return clnt;
+ }
+ 
+-__maybe_unused static void nsm_client_put(struct net *net)
++static void nsm_client_put(struct net *net)
+ {
+ 	struct lockd_net *ln = net_generic(net, lockd_net_id);
+ 	struct rpc_clnt	*clnt = ln->nsm_clnt;
+@@ -132,9 +131,8 @@ __maybe_unused static void nsm_client_put(struct net *net)
+ }
+ 
+ static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res,
+-			 struct net *net)
++			 struct rpc_clnt *clnt)
+ {
+-	struct rpc_clnt	*clnt;
+ 	int		status;
+ 	struct nsm_args args = {
+ 		.priv		= &nsm->sm_priv,
+@@ -142,20 +140,14 @@ static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res,
+ 		.vers		= 3,
+ 		.proc		= NLMPROC_NSM_NOTIFY,
+ 		.mon_name	= nsm->sm_mon_name,
+-		.nodename	= utsname()->nodename,
++		.nodename	= clnt->cl_nodename,
+ 	};
+ 	struct rpc_message msg = {
+ 		.rpc_argp	= &args,
+ 		.rpc_resp	= res,
+ 	};
+ 
+-	clnt = nsm_create(net);
+-	if (IS_ERR(clnt)) {
+-		status = PTR_ERR(clnt);
+-		dprintk("lockd: failed to create NSM upcall transport, "
+-				"status=%d\n", status);
+-		goto out;
+-	}
++	BUG_ON(clnt == NULL);
+ 
+ 	memset(res, 0, sizeof(*res));
+ 
+@@ -166,8 +158,6 @@ static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res,
+ 				status);
+ 	else
+ 		status = 0;
+-	rpc_shutdown_client(clnt);
+- out:
+ 	return status;
+ }
+ 
+@@ -187,6 +177,7 @@ int nsm_monitor(const struct nlm_host *host)
+ 	struct nsm_handle *nsm = host->h_nsmhandle;
+ 	struct nsm_res	res;
+ 	int		status;
++	struct rpc_clnt *clnt;
+ 
+ 	dprintk("lockd: nsm_monitor(%s)\n", nsm->sm_name);
+ 
+@@ -199,7 +190,15 @@ int nsm_monitor(const struct nlm_host *host)
+ 	 */
+ 	nsm->sm_mon_name = nsm_use_hostnames ? nsm->sm_name : nsm->sm_addrbuf;
+ 
+-	status = nsm_mon_unmon(nsm, NSMPROC_MON, &res, host->net);
++	clnt = nsm_client_get(host->net);
++	if (IS_ERR(clnt)) {
++		status = PTR_ERR(clnt);
++		dprintk("lockd: failed to create NSM upcall transport, "
++				"status=%d, net=%p\n", status, host->net);
++		return status;
++	}
++
++	status = nsm_mon_unmon(nsm, NSMPROC_MON, &res, clnt);
+ 	if (unlikely(res.status != 0))
+ 		status = -EIO;
+ 	if (unlikely(status < 0)) {
+@@ -231,9 +230,11 @@ void nsm_unmonitor(const struct nlm_host *host)
+ 
+ 	if (atomic_read(&nsm->sm_count) == 1
+ 	 && nsm->sm_monitored && !nsm->sm_sticky) {
++		struct lockd_net *ln = net_generic(host->net, lockd_net_id);
++
+ 		dprintk("lockd: nsm_unmonitor(%s)\n", nsm->sm_name);
+ 
+-		status = nsm_mon_unmon(nsm, NSMPROC_UNMON, &res, host->net);
++		status = nsm_mon_unmon(nsm, NSMPROC_UNMON, &res, ln->nsm_clnt);
+ 		if (res.status != 0)
+ 			status = -EIO;
+ 		if (status < 0)
+@@ -241,6 +242,8 @@ void nsm_unmonitor(const struct nlm_host *host)
+ 					nsm->sm_name);
+ 		else
+ 			nsm->sm_monitored = 0;
++
++		nsm_client_put(host->net);
+ 	}
+ }
+ 
 
