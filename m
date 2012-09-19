@@ -1,359 +1,297 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:33647 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:52150 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757652Ab2IFTyL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Sep 2012 15:54:11 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 3/4] SUNRPC new rpc_credops to test credential expiry
-Date: Thu,  6 Sep 2012 15:54:10 -0400
-Message-Id: <1346961251-2554-4-git-send-email-andros@netapp.com>
-In-Reply-To: <1346961251-2554-1-git-send-email-andros@netapp.com>
-References: <1346961251-2554-1-git-send-email-andros@netapp.com>
+	id S1752646Ab2ISBgD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 Sep 2012 21:36:03 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 4/8] NFSv4.1: Cleanup; add "pnfs_" prefix to put_lseg() and get_lseg()
+Date: Tue, 18 Sep 2012 21:35:50 -0400
+Message-Id: <1348018554-63137-4-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1348018554-63137-3-git-send-email-Trond.Myklebust@netapp.com>
+References: <1348018554-63137-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1348018554-63137-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1348018554-63137-3-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
-
-This patch provides the RPC layer helper functions to allow NFS to manage
-data in the face of expired credentials - such as avoiding buffered WRITEs
-and COMMITs when the gss context will expire before the WRITEs are flushed
-and COMMITs are sent.
-
-These helper functions enable checking the expiration of an underlying
-credential key for a generic rpc credential, e.g. the gss_cred gss context
-gc_expiry which for Kerberos is set to the remaining TGT lifetime.
-
-A new rpc_authops key_timeout is only defined for the generic auth.
-A new rpc_credops crkey_to_expire is only defined for the generic cred.
-A new rpc_credops crkey_timeout is only defined for the gss cred.
-
-Set two credential key expiry watermarks:
-1) A high watermark, RPC_KEY_EXPIRE_TIMEO set to 90 seconds.
-2) A low watermark, RPC_KEY_EXPIRE_FAIL set to 30 seconds.
-NOTE: these timeouts are guesses that work in a VM environment. We may want to
-make them adjustable via module parameters.
-
-If key_timeout is called on a credential with an underlying credential key that
-will expire within high watermark seconds, we set the RPC_CRED_KEY_EXPIRE_SOON
-flag in the generic_cred acred so that the NFS layer can clean up prior to
-key expiration.
-
-If key_timeout is called on a credential key that will expire within low
-watermark seconds, we return EACCES to allow NFS to stop any new data
-operations on the credential key.
-
-Checking a generic credential's underlying credential involves a cred lookup.
-To avoid this lookup in the normal case when the underlying credential has
-a key that is valid (before the high watermark), a notify flag is set in
-the generic credential the first time the key_timeout is called. The
-generic credential then stops checking the underlying credential key expiry, and
-the underlying credential (gss_cred) match routine then checks the key
-expiration upon each normal use and sets a flag in the associated generic
-credential only when the key expiration is within the high watermark.
-This in turn signals the generic credential key_timeout to perform the extra
-credetial lookup thereafter.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- include/linux/sunrpc/auth.h    |   27 ++++++++++++
- net/sunrpc/auth.c              |   21 +++++++++
- net/sunrpc/auth_generic.c      |   93 ++++++++++++++++++++++++++++++++++++++++
- net/sunrpc/auth_gss/auth_gss.c |   36 ++++++++++++++-
- 4 files changed, 175 insertions(+), 2 deletions(-)
+ fs/nfs/nfs4filelayout.c | 16 ++++++++--------
+ fs/nfs/nfs4proc.c       |  2 +-
+ fs/nfs/pnfs.c           | 36 ++++++++++++++++++------------------
+ fs/nfs/pnfs.h           |  8 ++++----
+ 4 files changed, 31 insertions(+), 31 deletions(-)
 
-diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
-index f25ba92..cd01476 100644
---- a/include/linux/sunrpc/auth.h
-+++ b/include/linux/sunrpc/auth.h
-@@ -21,12 +21,30 @@
- /* size of the nodename buffer */
- #define UNX_MAXNODENAME	32
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 53f94d9..77cd115 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -453,7 +453,7 @@ static void filelayout_commit_release(void *calldata)
+ 	struct nfs_commit_data *data = calldata;
  
-+/* Set RPC_CRED_KEY_EXPIRE_SOON auth_cred flag if called RPC_CRED_EXPIRE_TIMEO
-+ * miliseconds before the credential key will expire */
-+#define RPC_KEY_EXPIRE_TIMEO	(90 * HZ)
-+
-+/* Return -EACCES if called RPC_CRED_EXPIRE_FAIL
-+ * miliseconds before the credential key will expire */
-+#define RPC_KEY_EXPIRE_FAIL	 (30 * HZ)
-+
-+/* auth_cred ac_flags bits */
-+enum {
-+	RPC_CRED_NO_CRKEY_TIMEOUT = 0, /* underlying cred has no key timeout */
-+	RPC_CRED_KEY_EXPIRE_SOON = 1, /* underlying cred key will expire soon */
-+	RPC_CRED_NOTIFY_TIMEOUT = 2,   /* nofity generic cred when underlying
-+					key will expire soon */
-+};
-+
-+
- /* Work around the lack of a VFS credential */
- struct auth_cred {
- 	uid_t	uid;
- 	gid_t	gid;
- 	struct group_info *group_info;
- 	const char *principal;
-+	unsigned long ac_flags;
- 	unsigned char machine_cred : 1;
- };
- 
-@@ -102,6 +120,8 @@ struct rpc_authops {
- 	int			(*pipes_create)(struct rpc_auth *);
- 	void			(*pipes_destroy)(struct rpc_auth *);
- 	int			(*list_pseudoflavors)(rpc_authflavor_t *, int);
-+	int			(*key_timeout)(struct rpc_auth *,
-+					      struct rpc_cred *);
- };
- 
- struct rpc_credops {
-@@ -118,6 +138,9 @@ struct rpc_credops {
- 						void *, __be32 *, void *);
- 	int			(*crunwrap_resp)(struct rpc_task *, kxdrdproc_t,
- 						void *, __be32 *, void *);
-+	int			(*crkey_timeout)(struct rpc_cred *,
-+						unsigned long);
-+	bool			(*crkey_to_expire)(struct rpc_cred *);
- };
- 
- extern const struct rpc_authops	authunix_ops;
-@@ -152,6 +175,10 @@ int			rpcauth_uptodatecred(struct rpc_task *);
- int			rpcauth_init_credcache(struct rpc_auth *);
- void			rpcauth_destroy_credcache(struct rpc_auth *);
- void			rpcauth_clear_credcache(struct rpc_cred_cache *);
-+int			rpcauth_key_timeout_notify(struct rpc_auth *,
-+						struct rpc_cred *);
-+bool			rpcauth_cred_key_to_expire(struct rpc_cred *);
-+
- 
- static inline
- struct rpc_cred *	get_rpccred(struct rpc_cred *cred)
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index b5c067b..841facb 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -270,6 +270,27 @@ out_nocache:
- EXPORT_SYMBOL_GPL(rpcauth_init_credcache);
- 
- /*
-+ * Setup a credential key lifetime timeout notification
-+ */
-+int
-+rpcauth_key_timeout_notify(struct rpc_auth *auth, struct rpc_cred *cred)
-+{
-+	if (!cred->cr_auth->au_ops->key_timeout)
-+		return 0;
-+	return cred->cr_auth->au_ops->key_timeout(auth, cred);
-+}
-+EXPORT_SYMBOL_GPL(rpcauth_key_timeout_notify);
-+
-+bool
-+rpcauth_cred_key_to_expire(struct rpc_cred *cred)
-+{
-+	if (!cred->cr_ops->crkey_to_expire)
-+		return false;
-+	return cred->cr_ops->crkey_to_expire(cred);
-+}
-+EXPORT_SYMBOL_GPL(rpcauth_cred_key_to_expire);
-+
-+/*
-  * Destroy a list of credentials
-  */
- static inline
-diff --git a/net/sunrpc/auth_generic.c b/net/sunrpc/auth_generic.c
-index 6ed6f20..cc44b70 100644
---- a/net/sunrpc/auth_generic.c
-+++ b/net/sunrpc/auth_generic.c
-@@ -89,6 +89,7 @@ generic_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags)
- 	gcred->acred.uid = acred->uid;
- 	gcred->acred.gid = acred->gid;
- 	gcred->acred.group_info = acred->group_info;
-+	gcred->acred.ac_flags = 0;
- 	if (gcred->acred.group_info != NULL)
- 		get_group_info(gcred->acred.group_info);
- 	gcred->acred.machine_cred = acred->machine_cred;
-@@ -180,11 +181,88 @@ void rpc_destroy_generic_auth(void)
- 	rpcauth_destroy_credcache(&generic_auth);
+ 	data->completion_ops->completion(data);
+-	put_lseg(data->lseg);
++	pnfs_put_lseg(data->lseg);
+ 	nfs_put_client(data->ds_clp);
+ 	nfs_commitdata_release(data);
  }
- 
-+/*
-+ * Test the the current time (now) against the underlying credential key expiry
-+ * minus a timeout and setup notification.
-+ *
-+ * The normal case:
-+ * If 'now' is before the key expiry minus RPC_KEY_EXPIRE_TIMEO, set
-+ * the RPC_CRED_NOTIFY_TIMEOUT flag to setup the underlying credential
-+ * rpc_credops crmatch routine to notify this generic cred when it's key
-+ * expiration is within RPC_KEY_EXPIRE_TIMEO, and return 0.
-+ *
-+ * The error case:
-+ * If 'now' is within key expiry minus RPC_KEY_EXPIRE_FAIL, or the underlying
-+ * cred lookup fails, return -EACCES.
-+ *
-+ * The 'almost' error case:
-+ * If 'now' is within key expiry minus RPC_KEY_EXPIRE_TIMEO, but not within
-+ * key expiry minus RPC_KEY_EXPIRE_FAIL, set the RPC_CRED_EXPIRE_SOON bit
-+ * on the acred ac_flags and return 0.
-+ */
-+static int
-+generic_key_timeout(struct rpc_auth *auth, struct rpc_cred *cred)
-+{
-+	struct auth_cred *acred = &container_of(cred, struct generic_cred,
-+						gc_base)->acred;
-+	struct rpc_cred *tcred;
-+	int ret = 0;
-+
-+
-+	dprintk("--> %s cred %p acred %p acred->ac_flags %lu\n", __func__,
-+		cred, acred, acred->ac_flags);
-+
-+	/* Fast track for non crkey_timeout (no key) underlying credentials */
-+	if (test_bit(RPC_CRED_NO_CRKEY_TIMEOUT, &acred->ac_flags))
-+		return 0;
-+
-+	/* Fast track for the normal case */
-+	if (test_bit(RPC_CRED_NOTIFY_TIMEOUT, &acred->ac_flags))
-+		return 0;
-+
-+	/* lookup_cred either returns a valid referenced rpc_cred, or PTR_ERR */
-+	tcred = auth->au_ops->lookup_cred(auth, acred, 0);
-+	if (IS_ERR(tcred))
-+		return -EACCES;
-+
-+	if (!tcred->cr_ops->crkey_timeout) {
-+		set_bit(RPC_CRED_NO_CRKEY_TIMEOUT, &acred->ac_flags);
-+		ret = 0;
-+		goto out_put;
-+	}
-+
-+	/* Test for the error case */
-+	ret = tcred->cr_ops->crkey_timeout(tcred, RPC_KEY_EXPIRE_FAIL);
-+	if (ret != 0) { /* -EACCESS */
-+		ret = -EACCES;
-+		goto out_put;
-+	}
-+
-+	/* Test for the almost error case */
-+	ret = tcred->cr_ops->crkey_timeout(tcred, RPC_KEY_EXPIRE_TIMEO);
-+	if (ret != 0) {
-+		set_bit(RPC_CRED_KEY_EXPIRE_SOON, &acred->ac_flags);
-+		ret = 0;
-+	} else {
-+		/* In case underlying cred key has been reset */
-+		test_and_clear_bit(RPC_CRED_KEY_EXPIRE_SOON, &acred->ac_flags);
-+		/* set up fasttrack for the normal case */
-+		set_bit(RPC_CRED_NOTIFY_TIMEOUT, &acred->ac_flags);
-+	}
-+
-+out_put:
-+	put_rpccred(tcred);
-+	dprintk("%s return %d acred->ac_flags %lu\n", __func__, ret,
-+		acred->ac_flags);
-+	return ret;
-+}
-+
- static const struct rpc_authops generic_auth_ops = {
- 	.owner = THIS_MODULE,
- 	.au_name = "Generic",
- 	.lookup_cred = generic_lookup_cred,
- 	.crcreate = generic_create_cred,
-+	.key_timeout = generic_key_timeout,
- };
- 
- static struct rpc_auth generic_auth = {
-@@ -192,9 +270,24 @@ static struct rpc_auth generic_auth = {
- 	.au_count = ATOMIC_INIT(0),
- };
- 
-+static bool generic_key_to_expire(struct rpc_cred *cred)
-+{
-+	struct auth_cred *acred = &container_of(cred, struct generic_cred,
-+						gc_base)->acred;
-+	bool ret;
-+
-+	get_rpccred(cred);
-+	ret = test_bit(RPC_CRED_KEY_EXPIRE_SOON, &acred->ac_flags);
-+	put_rpccred(cred);
-+
-+	return ret;
-+}
-+
- static const struct rpc_credops generic_credops = {
- 	.cr_name = "Generic cred",
- 	.crdestroy = generic_destroy_cred,
- 	.crbind = generic_bind_cred,
- 	.crmatch = generic_match,
-+	.crkey_to_expire = generic_key_to_expire,
- };
-+
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index c59f5ed..51307a2 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -1093,10 +1093,24 @@ gss_cred_init(struct rpc_auth *auth, struct rpc_cred *cred)
- 	return err;
- }
- 
-+/* Returns -EACCES if GSS context will expire within timeout (miliseconds) */
-+static int
-+gss_key_timeout(struct rpc_cred *rc, unsigned long timeout)
-+{
-+	struct gss_cred *gss_cred = container_of(rc, struct gss_cred, gc_base);
-+	unsigned long now = jiffies;
-+	unsigned long expire = gss_cred->gc_ctx->gc_expiry - timeout;
-+
-+	if (time_after(now, expire))
-+		return -EACCES;
-+	return 0;
-+}
-+
- static int
- gss_match(struct auth_cred *acred, struct rpc_cred *rc, int flags)
- {
- 	struct gss_cred *gss_cred = container_of(rc, struct gss_cred, gc_base);
-+	int ret;
- 
- 	if (test_bit(RPCAUTH_CRED_NEW, &rc->cr_flags))
- 		goto out;
-@@ -1109,11 +1123,28 @@ out:
- 	if (acred->principal != NULL) {
- 		if (gss_cred->gc_principal == NULL)
- 			return 0;
--		return strcmp(acred->principal, gss_cred->gc_principal) == 0;
-+		ret = strcmp(acred->principal, gss_cred->gc_principal) == 0;
-+		goto check_expire;
+@@ -931,7 +931,7 @@ filelayout_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 	nfs_init_cinfo(&cinfo, pgio->pg_inode, pgio->pg_dreq);
+ 	status = filelayout_alloc_commit_info(pgio->pg_lseg, &cinfo, GFP_NOFS);
+ 	if (status < 0) {
+-		put_lseg(pgio->pg_lseg);
++		pnfs_put_lseg(pgio->pg_lseg);
+ 		pgio->pg_lseg = NULL;
+ 		goto out_mds;
  	}
- 	if (gss_cred->gc_principal != NULL)
- 		return 0;
--	return rc->cr_uid == acred->uid;
-+	ret = rc->cr_uid == acred->uid;
-+
-+check_expire:
-+	if (ret == 0)
-+		return ret;
-+
-+	/* Notify acred users of GSS context expiration timeout */
-+	if (test_bit(RPC_CRED_NOTIFY_TIMEOUT, &acred->ac_flags) &&
-+	    (gss_key_timeout(rc, RPC_KEY_EXPIRE_TIMEO) != 0)) {
-+		/* test will now be done from generic cred */
-+		test_and_clear_bit(RPC_CRED_NOTIFY_TIMEOUT, &acred->ac_flags);
-+		/* tell NFS layer that key will expire soon */
-+		set_bit(RPC_CRED_KEY_EXPIRE_SOON, &acred->ac_flags);
-+		pr_warn("RPC: GSS context %p to expire within %d ms.\n",
-+			gss_cred->gc_ctx, RPC_KEY_EXPIRE_TIMEO);
-+	}
-+	return ret;
+@@ -985,7 +985,7 @@ filelayout_clear_request_commit(struct nfs_page *req,
+ out:
+ 	nfs_request_remove_commit_list(req, cinfo);
+ 	spin_unlock(cinfo->lock);
+-	put_lseg(freeme);
++	pnfs_put_lseg(freeme);
  }
  
- /*
-@@ -1640,6 +1671,7 @@ static const struct rpc_credops gss_credops = {
- 	.crvalidate	= gss_validate,
- 	.crwrap_req	= gss_wrap_req,
- 	.crunwrap_resp	= gss_unwrap_resp,
-+	.crkey_timeout	= gss_key_timeout,
- };
+ static struct list_head *
+@@ -1018,7 +1018,7 @@ filelayout_choose_commit_list(struct nfs_page *req,
+ 		 * off due to a rewrite, in which case it will be done in
+ 		 * filelayout_clear_request_commit
+ 		 */
+-		buckets[i].wlseg = get_lseg(lseg);
++		buckets[i].wlseg = pnfs_get_lseg(lseg);
+ 	}
+ 	set_bit(PG_COMMIT_TO_DS, &req->wb_flags);
+ 	cinfo->ds->nwritten++;
+@@ -1128,7 +1128,7 @@ filelayout_scan_ds_commit_list(struct pnfs_commit_bucket *bucket,
+ 		if (list_empty(src))
+ 			bucket->wlseg = NULL;
+ 		else
+-			get_lseg(bucket->clseg);
++			pnfs_get_lseg(bucket->clseg);
+ 	}
+ 	return ret;
+ }
+@@ -1159,12 +1159,12 @@ static void filelayout_recover_commit_reqs(struct list_head *dst,
  
- static const struct rpc_credops gss_nullops = {
+ 	/* NOTE cinfo->lock is NOT held, relying on fact that this is
+ 	 * only called on single thread per dreq.
+-	 * Can't take the lock because need to do put_lseg
++	 * Can't take the lock because need to do pnfs_put_lseg
+ 	 */
+ 	for (i = 0, b = cinfo->ds->buckets; i < cinfo->ds->nbuckets; i++, b++) {
+ 		if (transfer_commit_list(&b->written, dst, cinfo, 0)) {
+ 			BUG_ON(!list_empty(&b->written));
+-			put_lseg(b->wlseg);
++			pnfs_put_lseg(b->wlseg);
+ 			b->wlseg = NULL;
+ 		}
+ 	}
+@@ -1200,7 +1200,7 @@ alloc_ds_commits(struct nfs_commit_info *cinfo, struct list_head *list)
+ 		if (list_empty(&bucket->committing))
+ 			continue;
+ 		nfs_retry_commit(&bucket->committing, bucket->clseg, cinfo);
+-		put_lseg(bucket->clseg);
++		pnfs_put_lseg(bucket->clseg);
+ 		bucket->clseg = NULL;
+ 	}
+ 	/* Caller will clean up entries put on list */
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 20f1229..87702a0 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6549,7 +6549,7 @@ static void nfs4_layoutcommit_release(void *calldata)
+ 		list_del_init(&lseg->pls_lc_list);
+ 		if (test_and_clear_bit(NFS_LSEG_LAYOUTCOMMIT,
+ 				       &lseg->pls_flags))
+-			put_lseg(lseg);
++			pnfs_put_lseg(lseg);
+ 	}
+ 
+ 	clear_bit_unlock(NFS_INO_LAYOUTCOMMITTING, bitlock);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 58b06c1..44c2c85 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -259,7 +259,7 @@ static void free_lseg(struct pnfs_layout_segment *lseg)
+ }
+ 
+ static void
+-put_lseg_common(struct pnfs_layout_segment *lseg)
++pnfs_put_lseg_common(struct pnfs_layout_segment *lseg)
+ {
+ 	struct inode *inode = lseg->pls_layout->plh_inode;
+ 
+@@ -274,7 +274,7 @@ put_lseg_common(struct pnfs_layout_segment *lseg)
+ }
+ 
+ void
+-put_lseg(struct pnfs_layout_segment *lseg)
++pnfs_put_lseg(struct pnfs_layout_segment *lseg)
+ {
+ 	struct inode *inode;
+ 
+@@ -288,13 +288,13 @@ put_lseg(struct pnfs_layout_segment *lseg)
+ 	if (atomic_dec_and_lock(&lseg->pls_refcount, &inode->i_lock)) {
+ 		LIST_HEAD(free_me);
+ 
+-		put_lseg_common(lseg);
++		pnfs_put_lseg_common(lseg);
+ 		list_add(&lseg->pls_list, &free_me);
+ 		spin_unlock(&inode->i_lock);
+ 		pnfs_free_lseg_list(&free_me);
+ 	}
+ }
+-EXPORT_SYMBOL_GPL(put_lseg);
++EXPORT_SYMBOL_GPL(pnfs_put_lseg);
+ 
+ static inline u64
+ end_offset(u64 start, u64 len)
+@@ -378,7 +378,7 @@ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
+ 		dprintk("%s: lseg %p ref %d\n", __func__, lseg,
+ 			atomic_read(&lseg->pls_refcount));
+ 		if (atomic_dec_and_test(&lseg->pls_refcount)) {
+-			put_lseg_common(lseg);
++			pnfs_put_lseg_common(lseg);
+ 			list_add(&lseg->pls_list, tmp_list);
+ 			rv = 1;
+ 		}
+@@ -914,7 +914,7 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo,
+ 	list_for_each_entry(lseg, &lo->plh_segs, pls_list) {
+ 		if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags) &&
+ 		    is_matching_lseg(&lseg->pls_range, range)) {
+-			ret = get_lseg(lseg);
++			ret = pnfs_get_lseg(lseg);
+ 			break;
+ 		}
+ 		if (lseg->pls_range.offset > range->offset)
+@@ -1135,7 +1135,7 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 	}
+ 	init_lseg(lo, lseg);
+ 	lseg->pls_range = res->range;
+-	get_lseg(lseg);
++	pnfs_get_lseg(lseg);
+ 	pnfs_insert_layout(lo, lseg);
+ 
+ 	if (res->return_on_close) {
+@@ -1369,12 +1369,12 @@ pnfs_do_multiple_writes(struct nfs_pageio_descriptor *desc, struct list_head *he
+ 		if (trypnfs == PNFS_NOT_ATTEMPTED)
+ 			pnfs_write_through_mds(desc, data);
+ 	}
+-	put_lseg(lseg);
++	pnfs_put_lseg(lseg);
+ }
+ 
+ static void pnfs_writehdr_free(struct nfs_pgio_header *hdr)
+ {
+-	put_lseg(hdr->lseg);
++	pnfs_put_lseg(hdr->lseg);
+ 	nfs_writehdr_free(hdr);
+ }
+ EXPORT_SYMBOL_GPL(pnfs_writehdr_free);
+@@ -1389,17 +1389,17 @@ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
+ 	whdr = nfs_writehdr_alloc();
+ 	if (!whdr) {
+ 		desc->pg_completion_ops->error_cleanup(&desc->pg_list);
+-		put_lseg(desc->pg_lseg);
++		pnfs_put_lseg(desc->pg_lseg);
+ 		desc->pg_lseg = NULL;
+ 		return -ENOMEM;
+ 	}
+ 	hdr = &whdr->header;
+ 	nfs_pgheader_init(desc, hdr, pnfs_writehdr_free);
+-	hdr->lseg = get_lseg(desc->pg_lseg);
++	hdr->lseg = pnfs_get_lseg(desc->pg_lseg);
+ 	atomic_inc(&hdr->refcnt);
+ 	ret = nfs_generic_flush(desc, hdr);
+ 	if (ret != 0) {
+-		put_lseg(desc->pg_lseg);
++		pnfs_put_lseg(desc->pg_lseg);
+ 		desc->pg_lseg = NULL;
+ 	} else
+ 		pnfs_do_multiple_writes(desc, &hdr->rpc_list, desc->pg_ioflags);
+@@ -1524,12 +1524,12 @@ pnfs_do_multiple_reads(struct nfs_pageio_descriptor *desc, struct list_head *hea
+ 		if (trypnfs == PNFS_NOT_ATTEMPTED)
+ 			pnfs_read_through_mds(desc, data);
+ 	}
+-	put_lseg(lseg);
++	pnfs_put_lseg(lseg);
+ }
+ 
+ static void pnfs_readhdr_free(struct nfs_pgio_header *hdr)
+ {
+-	put_lseg(hdr->lseg);
++	pnfs_put_lseg(hdr->lseg);
+ 	nfs_readhdr_free(hdr);
+ }
+ EXPORT_SYMBOL_GPL(pnfs_readhdr_free);
+@@ -1545,17 +1545,17 @@ pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
+ 	if (!rhdr) {
+ 		desc->pg_completion_ops->error_cleanup(&desc->pg_list);
+ 		ret = -ENOMEM;
+-		put_lseg(desc->pg_lseg);
++		pnfs_put_lseg(desc->pg_lseg);
+ 		desc->pg_lseg = NULL;
+ 		return ret;
+ 	}
+ 	hdr = &rhdr->header;
+ 	nfs_pgheader_init(desc, hdr, pnfs_readhdr_free);
+-	hdr->lseg = get_lseg(desc->pg_lseg);
++	hdr->lseg = pnfs_get_lseg(desc->pg_lseg);
+ 	atomic_inc(&hdr->refcnt);
+ 	ret = nfs_generic_pagein(desc, hdr);
+ 	if (ret != 0) {
+-		put_lseg(desc->pg_lseg);
++		pnfs_put_lseg(desc->pg_lseg);
+ 		desc->pg_lseg = NULL;
+ 	} else
+ 		pnfs_do_multiple_reads(desc, &hdr->rpc_list);
+@@ -1608,7 +1608,7 @@ pnfs_set_layoutcommit(struct nfs_write_data *wdata)
+ 	}
+ 	if (!test_and_set_bit(NFS_LSEG_LAYOUTCOMMIT, &hdr->lseg->pls_flags)) {
+ 		/* references matched in nfs4_layoutcommit_release */
+-		get_lseg(hdr->lseg);
++		pnfs_get_lseg(hdr->lseg);
+ 	}
+ 	if (end_pos > nfsi->layout->plh_lwb)
+ 		nfsi->layout->plh_lwb = end_pos;
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 2af681f..0495879 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -177,7 +177,7 @@ extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
+ 
+ /* pnfs.c */
+ void pnfs_get_layout_hdr(struct pnfs_layout_hdr *lo);
+-void put_lseg(struct pnfs_layout_segment *lseg);
++void pnfs_put_lseg(struct pnfs_layout_segment *lseg);
+ 
+ void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
+ 			   const struct nfs_pgio_completion_ops *);
+@@ -281,7 +281,7 @@ static inline int lo_fail_bit(u32 iomode)
+ }
+ 
+ static inline struct pnfs_layout_segment *
+-get_lseg(struct pnfs_layout_segment *lseg)
++pnfs_get_lseg(struct pnfs_layout_segment *lseg)
+ {
+ 	if (lseg) {
+ 		atomic_inc(&lseg->pls_refcount);
+@@ -406,12 +406,12 @@ static inline void pnfs_destroy_layout(struct nfs_inode *nfsi)
+ }
+ 
+ static inline struct pnfs_layout_segment *
+-get_lseg(struct pnfs_layout_segment *lseg)
++pnfs_get_lseg(struct pnfs_layout_segment *lseg)
+ {
+ 	return NULL;
+ }
+ 
+-static inline void put_lseg(struct pnfs_layout_segment *lseg)
++static inline void pnfs_put_lseg(struct pnfs_layout_segment *lseg)
+ {
+ }
+ 
 -- 
-1.7.7.6
+1.7.11.4
 
