@@ -1,60 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:26053 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754736Ab2IUBgL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Sep 2012 21:36:11 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 14/14] NFSv4.1: Remove unused 'default allocation' for pnfs_alloc_layout_hdr()
-Date: Thu, 20 Sep 2012 21:35:57 -0400
-Message-Id: <1348191357-44503-14-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1348191357-44503-13-git-send-email-Trond.Myklebust@netapp.com>
-References: <1348191357-44503-1-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-2-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-3-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-4-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-5-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-6-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-7-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-8-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-9-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-10-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-11-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-12-git-send-email-Trond.Myklebust@netapp.com>
- <1348191357-44503-13-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-wi0-f172.google.com ([209.85.212.172]:43341 "EHLO
+	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751643Ab2ISONU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Sep 2012 10:13:20 -0400
+Received: by wibhi8 with SMTP id hi8so5630904wib.1
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Sep 2012 07:13:19 -0700 (PDT)
+Date: Wed, 19 Sep 2012 13:52:25 +0100
+From: Greg KH <gregkh@linuxfoundation.org>
+To: Richard Ems <richard.ems@cape-horn-eng.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-kernel@vger.kernel.org
+Subject: Re: Fwd: Re: [PATCH] NFS: Fix Oopses in nfs_lookup_revalidate and
+ nfs4_lookup_revalidate
+Message-ID: <20120919125225.GA18953@kroah.com>
+References: <503361AF.8030707@cape-horn-eng.com>
+ <5059A9F0.2070409@cape-horn-eng.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5059A9F0.2070409@cape-horn-eng.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...and ditto for pnfs_free_layout_hdr()
+On Wed, Sep 19, 2012 at 01:18:08PM +0200, Richard Ems wrote:
+> Hi all,
+> 
+> I still don't see this patch in the 3.5.x series.
+> Will it make it into 3.5.5?
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/pnfs.c | 5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
+I can not guarantee any release number, but it will show up eventually,
+don't worry.
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index bbdce87..196b8bb 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -200,8 +200,7 @@ static struct pnfs_layout_hdr *
- pnfs_alloc_layout_hdr(struct inode *ino, gfp_t gfp_flags)
- {
- 	struct pnfs_layoutdriver_type *ld = NFS_SERVER(ino)->pnfs_curr_ld;
--	return ld->alloc_layout_hdr ? ld->alloc_layout_hdr(ino, gfp_flags) :
--		kzalloc(sizeof(struct pnfs_layout_hdr), gfp_flags);
-+	return ld->alloc_layout_hdr(ino, gfp_flags);
- }
- 
- static void
-@@ -218,7 +217,7 @@ pnfs_free_layout_hdr(struct pnfs_layout_hdr *lo)
- 		spin_unlock(&clp->cl_lock);
- 	}
- 	put_rpccred(lo->plh_lc_cred);
--	return ld->alloc_layout_hdr ? ld->free_layout_hdr(lo) : kfree(lo);
-+	return ld->free_layout_hdr(lo);
- }
- 
- static void
--- 
-1.7.11.4
+thanks,
 
+greg "buried under email" k-h
