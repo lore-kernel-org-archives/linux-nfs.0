@@ -1,42 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 8bytes.org ([85.214.48.195]:44577 "EHLO mail.8bytes.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755344Ab2I0Pjb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 27 Sep 2012 11:39:31 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by mail.8bytes.org (Postfix) with SMTP id 62F3312AFA1
-	for <linux-nfs@vger.kernel.org>; Thu, 27 Sep 2012 17:39:29 +0200 (CEST)
-Date: Thu, 27 Sep 2012 17:39:28 +0200
-From: Joerg Roedel <joro@8bytes.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Joerg Roedel <joerg.roedel@amd.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
-Subject: Re: kernel BUG at /data/lemmy/linux.trees.git/fs/nfs/idmap.c:681!
-Message-ID: <20120927153928.GB18962@8bytes.org>
-References: <20120807134156.GP1996@amd.com>
- <20120927145217.GA18962@8bytes.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA908FEF572@SACEXCMBX04-PRD.hq.netapp.com>
+Received: from smtprelay02.ispgateway.de ([80.67.31.29]:54758 "EHLO
+	smtprelay02.ispgateway.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752140Ab2ISLSM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Sep 2012 07:18:12 -0400
+Message-ID: <5059A9F0.2070409@cape-horn-eng.com>
+Date: Wed, 19 Sep 2012 13:18:08 +0200
+From: Richard Ems <richard.ems@cape-horn-eng.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA908FEF572@SACEXCMBX04-PRD.hq.netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-kernel@vger.kernel.org, gregkh@linuxfoundation.org
+Subject: Fwd: Re: [PATCH] NFS: Fix Oopses in nfs_lookup_revalidate and nfs4_lookup_revalidate
+References: <503361AF.8030707@cape-horn-eng.com>
+In-Reply-To: <503361AF.8030707@cape-horn-eng.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 27, 2012 at 03:32:02PM +0000, Myklebust, Trond wrote:
+Hi all,
 
-> Does your checked out copy of 3.6-rc7 contain commit c50669 (NFS:
-> Clear key construction data if the idmap upcall fails)? The latter was
-> merged in3.6-rc3, and is reported to fix the problem for the other
-> testers.
+I still don't see this patch in the 3.5.x series.
+Will it make it into 3.5.5?
 
-Yes, it contains that commit. I was about to test plain v3.6-rc7 without
-my patches (not nfs related, of cource) on-top, but unfortunatly the
-disk with the root-fs died :-/
-I am about to set up the box again and test plain -rc7.
+Thanks,
+Richard
 
 
-	Joerg
+-------- Original Message --------
+Subject: Re: [PATCH] NFS: Fix Oopses in nfs_lookup_revalidate and
+nfs4_lookup_revalidate
+Date: Tue, 21 Aug 2012 12:23:43 +0200
+From: Richard Ems <richard.ems@cape-horn-eng.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org
+
+On 08/15/2012 10:49 PM, Trond Myklebust wrote:
+> This Oops affects 3.5 kernels and older, and is due to lookup_one_len()
+> calling down to the dentry revalidation code with a NULL pointer
+> to struct nameidata.
+> 
+> It is fixed upstream by commit 0b728e1911c (stop passing nameidata *
+> to ->d_revalidate())
+> 
+> Reported-by: Richard Ems <richard.ems@cape-horn-eng.com>
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+
+Hi Trond,
+
+I don't see this patch going into 3.5.3 at
+http://www.kernel.org/pub/linux/kernel/v3.0/stable-review/patch-3.5.3-rc1.gz
+.
+Shouldn't it be included in 3.5.3 ?
+
+Thanks,
+Richard
+
+
+-- 
+Richard Ems       mail: Richard.Ems@Cape-Horn-Eng.com
+
+Cape Horn Engineering S.L.
+C/ Dr. J.J. Dómine 1, 5º piso
+46011 Valencia
+Tel : +34 96 3242923 / Fax 924
+http://www.cape-horn-eng.com
 
 
