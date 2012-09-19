@@ -1,72 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45340 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:33806 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757330Ab2IXRmt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Sep 2012 13:42:49 -0400
-Date: Mon, 24 Sep 2012 13:42:46 -0400
-To: bjschuma@netapp.com
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] SUNRPC: Set alloc_slot for backchannel tcp ops
-Message-ID: <20120924174246.GA12238@fieldses.org>
-References: <1348508341-19642-1-git-send-email-bjschuma@netapp.com>
+	id S1753017Ab2ISNQn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Sep 2012 09:16:43 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Richard Ems <richard.ems@cape-horn-eng.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "gregkh@linuxfoundation.org" <gregkh@linuxfoundation.org>
+Subject: RE: Re: [PATCH] NFS: Fix Oopses in nfs_lookup_revalidate and
+ nfs4_lookup_revalidate
+Date: Wed, 19 Sep 2012 13:16:41 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908FD7706@SACEXCMBX04-PRD.hq.netapp.com>
+References: <503361AF.8030707@cape-horn-eng.com>
+ <5059A9F0.2070409@cape-horn-eng.com>
+In-Reply-To: <5059A9F0.2070409@cape-horn-eng.com>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1348508341-19642-1-git-send-email-bjschuma@netapp.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 24, 2012 at 01:39:01PM -0400, bjschuma@netapp.com wrote:
-> From: Bryan Schumaker <bjschuma@netapp.com>
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> owner@vger.kernel.org] On Behalf Of Richard Ems
+> Sent: Wednesday, September 19, 2012 7:18 AM
+> To: Myklebust, Trond
+> Cc: linux-nfs@vger.kernel.org; linux-kernel@vger.kernel.org;
+> gregkh@linuxfoundation.org
+> Subject: Fwd: Re: [PATCH] NFS: Fix Oopses in nfs_lookup_revalidate and
+> nfs4_lookup_revalidate
 > 
-> f39c1bfb5a03e2d255451bff05be0d7255298fa4 (SUNRPC: Fix a UDP transport
-> regression) introduced the "alloc_slot" function for xprt operations,
-> but never created one for the backchannel operations.  This patch fixes
-> a null pointer dereference when mounting NFS over v4.1.
+> Hi all,
+> 
+> I still don't see this patch in the 3.5.x series.
+> Will it make it into 3.5.5?
+> 
+> Thanks,
+> Richard
+ 
+Hi Greg,
 
-Thanks, I just rebased some of my work to 3.6 and ran across that!  It
-crashes the 4.1 server very quickly....
+I believe you said that you would take this patch. Do you want me to resend?
 
---b.
-
+Cheers,
+   Trond
+ 
+> -------- Original Message --------
+> Subject: Re: [PATCH] NFS: Fix Oopses in nfs_lookup_revalidate and
+> nfs4_lookup_revalidate
+> Date: Tue, 21 Aug 2012 12:23:43 +0200
+> From: Richard Ems <richard.ems@cape-horn-eng.com>
+> To: Trond Myklebust <Trond.Myklebust@netapp.com>
+> CC: linux-nfs@vger.kernel.org
 > 
-> Call Trace:
->  [<ffffffffa0207957>] ? xprt_reserve+0x47/0x50 [sunrpc]
->  [<ffffffffa02023a4>] call_reserve+0x34/0x60 [sunrpc]
->  [<ffffffffa020e280>] __rpc_execute+0x90/0x400 [sunrpc]
->  [<ffffffffa020e61a>] rpc_async_schedule+0x2a/0x40 [sunrpc]
->  [<ffffffff81073589>] process_one_work+0x139/0x500
->  [<ffffffff81070e70>] ? alloc_worker+0x70/0x70
->  [<ffffffffa020e5f0>] ? __rpc_execute+0x400/0x400 [sunrpc]
->  [<ffffffff81073d1e>] worker_thread+0x15e/0x460
->  [<ffffffff8145c839>] ? preempt_schedule+0x49/0x70
->  [<ffffffff81073bc0>] ? rescuer_thread+0x230/0x230
->  [<ffffffff81079603>] kthread+0x93/0xa0
->  [<ffffffff81465d04>] kernel_thread_helper+0x4/0x10
->  [<ffffffff81079570>] ? kthread_freezable_should_stop+0x70/0x70
->  [<ffffffff81465d00>] ? gs_change+0x13/0x13
+> On 08/15/2012 10:49 PM, Trond Myklebust wrote:
+> > This Oops affects 3.5 kernels and older, and is due to
+> > lookup_one_len() calling down to the dentry revalidation code with a
+> > NULL pointer to struct nameidata.
+> >
+> > It is fixed upstream by commit 0b728e1911c (stop passing nameidata *
+> > to ->d_revalidate())
+> >
+> > Reported-by: Richard Ems <richard.ems@cape-horn-eng.com>
+> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 > 
-> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-> ---
->  net/sunrpc/xprtsock.c | 1 +
->  1 file changed, 1 insertion(+)
 > 
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index 86b7777..aaaadfb 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -2521,6 +2521,7 @@ static struct rpc_xprt_ops xs_tcp_ops = {
->  static struct rpc_xprt_ops bc_tcp_ops = {
->  	.reserve_xprt		= xprt_reserve_xprt,
->  	.release_xprt		= xprt_release_xprt,
-> +	.alloc_slot		= xprt_alloc_slot,
->  	.rpcbind		= xs_local_rpcbind,
->  	.buf_alloc		= bc_malloc,
->  	.buf_free		= bc_free,
-> -- 
-> 1.7.12.1
+> Hi Trond,
+> 
+> I don't see this patch going into 3.5.3 at
+> http://www.kernel.org/pub/linux/kernel/v3.0/stable-review/patch-3.5.3-
+> rc1.gz
+> .
+> Shouldn't it be included in 3.5.3 ?
+> 
+> Thanks,
+> Richard
+> 
 > 
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Richard Ems       mail: Richard.Ems@Cape-Horn-Eng.com
+> 
+> Cape Horn Engineering S.L.
+> C/ Dr. J.J. Dómine 1, 5º piso
+> 46011 Valencia
+> Tel : +34 96 3242923 / Fax 924
+> http://www.cape-horn-eng.com
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the
+> body of a message to majordomo@vger.kernel.org More majordomo info at
+> http://vger.kernel.org/majordomo-info.html
