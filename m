@@ -1,158 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:51651 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:52146 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751737Ab2IGPqc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Sep 2012 11:46:32 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Dick Streefland <dick.streefland@altium.nl>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [3.2.5] NFSv3 CLOSE_WAIT hang
-Date: Fri, 7 Sep 2012 15:46:29 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F8E833@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1315610322.17611.112.camel@lade.trondhjem.org>
-	 <20111020190334.GA22772@hostway.ca> <20120301225524.GB27595@hostway.ca>
-	 <20120302002511.GA4495@hostway.ca> <20120302184918.GA20702@hostway.ca>
-	 <loom.20120905T093214-245@post.gmane.org>
-	 <loom.20120905T093214-245@post.gmane.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F86381@SACEXCMBX04-PRD.hq.netapp.com>
-	 <6cb9.5049fd40.b47c1@altium.nl> <6cb9.5049fd40.b47c1@altium.nl>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F8E302@SACEXCMBX04-PRD.hq.netapp.com>
-	 <447c.504a05c9.dd0a9@altium.nl>
-In-Reply-To: <447c.504a05c9.dd0a9@altium.nl>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1752449Ab2ISBgE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 Sep 2012 21:36:04 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 5/8] NFSv4.1: Replace get_device_info() with filelayout_get_device_info()
+Date: Tue, 18 Sep 2012 21:35:51 -0400
+Message-Id: <1348018554-63137-5-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1348018554-63137-4-git-send-email-Trond.Myklebust@netapp.com>
+References: <1348018554-63137-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1348018554-63137-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1348018554-63137-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1348018554-63137-4-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTA5LTA3IGF0IDE0OjMzICswMDAwLCBEaWNrIFN0cmVlZmxhbmQgd3JvdGU6
-DQo+ICJNeWtsZWJ1c3QsIFRyb25kIiA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3Rl
-Og0KPiB8ID4gSSBjYW4gZWFzaWx5IHJlcHJvZHVjZSB0aGUgaGFuZyBvbiB0aGUgbGF0ZXN0IGtl
-cm5lbCAoZWVlYTNhYzkxMikgd2l0aCBteQ0KPiB8ID4gc2NyaXB0IChodHRwOi8vcGVybWFsaW5r
-LmdtYW5lLm9yZy9nbWFuZS5saW51eC5uZnMvNTE4MzMpLg0KPiB8IA0KPiB8IE9uIFRDUD8NCj4g
-DQo+IE5vLCBvbiBVRFAgKG1vdW50IG9wdGlvbnMgYXJlIGluIHRoYXQgZmlyc3QgZW1haWwpLg0K
-PiANCj4gfCA+IFdpdGggdGhpcyBjaGFuZ2UsIGl0IGRvZXNuJ3QgaGFuZzoNCj4gfCANCj4gfCBJ
-dCBkb2Vzbid0IG1hdHRlciBhcyBsb25nIGFzIHRoYXQgY2hhbmdlIGlzIHdyb25nLiBUaGF0IGNv
-ZGUgX2lzXyBuZWVkZWQgZm9yIFRDUC4NCj4gfCANCj4gfCBOb3cgaWYgVURQIGlzIGJyb2tlbiwg
-dGhlbiB3ZSBjYW4gdGFsayBhYm91dCBhIGZpeCBmb3IgdGhhdCBpc3N1ZSwgYnV0IHRoYXQncyBu
-b3QgZ29pbmcgdG8gYmUgdGhlIG9uZSB5b3UgcHJvcG9zZS4NCj4gDQo+IE9LLCBmaW5lIHdpdGgg
-bWUuIE15IHByb3Bvc2FsIHRvIHJldmVydCB0aGlzIGNoYW5nZSB3YXMgb25seSBiYXNlZCBvbg0K
-PiB0aGUgcmVtYXJrIGluIHRoZSBjb21tZW50IHRoYXQgaXQgaXMgbm90IHN0cmljdGx5IG5lZWRl
-ZC4gU28gd2UgbmVlZA0KPiB0byBkaWZmZXJlbnRpYXRlIGJldHdlZW4gVURQIGFuZCBUQ1AgdGhl
-bj8NCg0KWWVzLiBDYW4geW91IHBsZWFzZSBzZWUgaWYgdGhlIGZvbGxvd2luZyBwYXRjaCBmaXhl
-cyB0aGUgVURQIGhhbmc/DQoNCjg8LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpGcm9tIGYzOWMxYmZiNWEwM2UyZDI1
-NTQ1MWJmZjA1YmUwZDcyNTUyOThmYTQgTW9uIFNlcCAxNyAwMDowMDowMCAyMDAxDQpGcm9tOiBU
-cm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPg0KRGF0ZTogRnJpLCA3
-IFNlcCAyMDEyIDExOjA4OjUwIC0wNDAwDQpTdWJqZWN0OiBbUEFUQ0hdIFNVTlJQQzogRml4IGEg
-VURQIHRyYW5zcG9ydCByZWdyZXNzaW9uDQoNCkNvbW1pdCA0M2NlZGJmMGU4ZGZiOWM1NjEwZWI3
-OTg1ZDVmMjEyNjNlMzEzODAyIChTVU5SUEM6IEVuc3VyZSB0aGF0DQp3ZSBncmFiIHRoZSBYUFJU
-X0xPQ0sgYmVmb3JlIGNhbGxpbmcgeHBydF9hbGxvY19zbG90KSBpcyBjYXVzaW5nDQpoYW5ncyBp
-biB0aGUgY2FzZSBvZiBORlMgb3ZlciBVRFAgbW91bnRzLg0KDQpTaW5jZSBuZWl0aGVyIHRoZSBV
-RFAgb3IgdGhlIFJETUEgdHJhbnNwb3J0IG1lY2hhbmlzbSB1c2UgZHluYW1pYyBzbG90DQphbGxv
-Y2F0aW9uLCB3ZSBjYW4gc2tpcCBncmFiYmluZyB0aGUgc29ja2V0IGxvY2sgZm9yIHRob3NlIHRy
-YW5zcG9ydHMuDQpBZGQgYSBuZXcgcnBjX3hwcnRfb3AgdG8gYWxsb3cgc3dpdGNoaW5nIGJldHdl
-ZW4gdGhlIFRDUCBhbmQgVURQL1JETUENCmNhc2UuDQoNCk5vdGUgdGhhdCB0aGUgTkZTdjQuMSBi
-YWNrIGNoYW5uZWwgYXNzaWducyB0aGUgc2xvdCBkaXJlY3RseQ0KdGhyb3VnaCBycGNfcnVuX2Jj
-X3Rhc2ssIHNvIHdlIGNhbiBpZ25vcmUgdGhhdCBjYXNlLg0KDQpSZXBvcnRlZC1ieTogRGljayBT
-dHJlZWZsYW5kIDxkaWNrLnN0cmVlZmxhbmRAYWx0aXVtLm5sPg0KU2lnbmVkLW9mZi1ieTogVHJv
-bmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCkNjOiBzdGFibGVAdmdl
-ci5rZXJuZWwub3JnIFs+PSAzLjFdDQotLS0NCiBpbmNsdWRlL2xpbnV4L3N1bnJwYy94cHJ0Lmgg
-ICAgIHwgIDMgKysrDQogbmV0L3N1bnJwYy94cHJ0LmMgICAgICAgICAgICAgICB8IDM0ICsrKysr
-KysrKysrKysrKysrKysrLS0tLS0tLS0tLS0tLS0NCiBuZXQvc3VucnBjL3hwcnRyZG1hL3RyYW5z
-cG9ydC5jIHwgIDEgKw0KIG5ldC9zdW5ycGMveHBydHNvY2suYyAgICAgICAgICAgfCAgMyArKysN
-CiA0IGZpbGVzIGNoYW5nZWQsIDI3IGluc2VydGlvbnMoKyksIDE0IGRlbGV0aW9ucygtKQ0KDQpk
-aWZmIC0tZ2l0IGEvaW5jbHVkZS9saW51eC9zdW5ycGMveHBydC5oIGIvaW5jbHVkZS9saW51eC9z
-dW5ycGMveHBydC5oDQppbmRleCBjZmY0MGFhLi5iZjhjNDlmIDEwMDY0NA0KLS0tIGEvaW5jbHVk
-ZS9saW51eC9zdW5ycGMveHBydC5oDQorKysgYi9pbmNsdWRlL2xpbnV4L3N1bnJwYy94cHJ0LmgN
-CkBAIC0xMTQsNiArMTE0LDcgQEAgc3RydWN0IHJwY194cHJ0X29wcyB7DQogCXZvaWQJCSgqc2V0
-X2J1ZmZlcl9zaXplKShzdHJ1Y3QgcnBjX3hwcnQgKnhwcnQsIHNpemVfdCBzbmRzaXplLCBzaXpl
-X3QgcmN2c2l6ZSk7DQogCWludAkJKCpyZXNlcnZlX3hwcnQpKHN0cnVjdCBycGNfeHBydCAqeHBy
-dCwgc3RydWN0IHJwY190YXNrICp0YXNrKTsNCiAJdm9pZAkJKCpyZWxlYXNlX3hwcnQpKHN0cnVj
-dCBycGNfeHBydCAqeHBydCwgc3RydWN0IHJwY190YXNrICp0YXNrKTsNCisJdm9pZAkJKCphbGxv
-Y19zbG90KShzdHJ1Y3QgcnBjX3hwcnQgKnhwcnQsIHN0cnVjdCBycGNfdGFzayAqdGFzayk7DQog
-CXZvaWQJCSgqcnBjYmluZCkoc3RydWN0IHJwY190YXNrICp0YXNrKTsNCiAJdm9pZAkJKCpzZXRf
-cG9ydCkoc3RydWN0IHJwY194cHJ0ICp4cHJ0LCB1bnNpZ25lZCBzaG9ydCBwb3J0KTsNCiAJdm9p
-ZAkJKCpjb25uZWN0KShzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2spOw0KQEAgLTI4MSw2ICsyODIsOCBA
-QCB2b2lkCQkJeHBydF9jb25uZWN0KHN0cnVjdCBycGNfdGFzayAqdGFzayk7DQogdm9pZAkJCXhw
-cnRfcmVzZXJ2ZShzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2spOw0KIGludAkJCXhwcnRfcmVzZXJ2ZV94
-cHJ0KHN0cnVjdCBycGNfeHBydCAqeHBydCwgc3RydWN0IHJwY190YXNrICp0YXNrKTsNCiBpbnQJ
-CQl4cHJ0X3Jlc2VydmVfeHBydF9jb25nKHN0cnVjdCBycGNfeHBydCAqeHBydCwgc3RydWN0IHJw
-Y190YXNrICp0YXNrKTsNCit2b2lkCQkJeHBydF9hbGxvY19zbG90KHN0cnVjdCBycGNfeHBydCAq
-eHBydCwgc3RydWN0IHJwY190YXNrICp0YXNrKTsNCit2b2lkCQkJeHBydF9sb2NrX2FuZF9hbGxv
-Y19zbG90KHN0cnVjdCBycGNfeHBydCAqeHBydCwgc3RydWN0IHJwY190YXNrICp0YXNrKTsNCiBp
-bnQJCQl4cHJ0X3ByZXBhcmVfdHJhbnNtaXQoc3RydWN0IHJwY190YXNrICp0YXNrKTsNCiB2b2lk
-CQkJeHBydF90cmFuc21pdChzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2spOw0KIHZvaWQJCQl4cHJ0X2Vu
-ZF90cmFuc21pdChzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2spOw0KZGlmZiAtLWdpdCBhL25ldC9zdW5y
-cGMveHBydC5jIGIvbmV0L3N1bnJwYy94cHJ0LmMNCmluZGV4IGE1YTQwMmEuLjVkN2Y2MWQgMTAw
-NjQ0DQotLS0gYS9uZXQvc3VucnBjL3hwcnQuYw0KKysrIGIvbmV0L3N1bnJwYy94cHJ0LmMNCkBA
-IC05NjksMTEgKzk2OSwxMSBAQCBzdGF0aWMgYm9vbCB4cHJ0X2R5bmFtaWNfZnJlZV9zbG90KHN0
-cnVjdCBycGNfeHBydCAqeHBydCwgc3RydWN0IHJwY19ycXN0ICpyZXEpDQogCXJldHVybiBmYWxz
-ZTsNCiB9DQogDQotc3RhdGljIHZvaWQgeHBydF9hbGxvY19zbG90KHN0cnVjdCBycGNfdGFzayAq
-dGFzaykNCit2b2lkIHhwcnRfYWxsb2Nfc2xvdChzdHJ1Y3QgcnBjX3hwcnQgKnhwcnQsIHN0cnVj
-dCBycGNfdGFzayAqdGFzaykNCiB7DQotCXN0cnVjdCBycGNfeHBydAkqeHBydCA9IHRhc2stPnRr
-X3hwcnQ7DQogCXN0cnVjdCBycGNfcnFzdCAqcmVxOw0KIA0KKwlzcGluX2xvY2soJnhwcnQtPnJl
-c2VydmVfbG9jayk7DQogCWlmICghbGlzdF9lbXB0eSgmeHBydC0+ZnJlZSkpIHsNCiAJCXJlcSA9
-IGxpc3RfZW50cnkoeHBydC0+ZnJlZS5uZXh0LCBzdHJ1Y3QgcnBjX3Jxc3QsIHJxX2xpc3QpOw0K
-IAkJbGlzdF9kZWwoJnJlcS0+cnFfbGlzdCk7DQpAQCAtOTk0LDEyICs5OTQsMjkgQEAgc3RhdGlj
-IHZvaWQgeHBydF9hbGxvY19zbG90KHN0cnVjdCBycGNfdGFzayAqdGFzaykNCiAJZGVmYXVsdDoN
-CiAJCXRhc2stPnRrX3N0YXR1cyA9IC1FQUdBSU47DQogCX0NCisJc3Bpbl91bmxvY2soJnhwcnQt
-PnJlc2VydmVfbG9jayk7DQogCXJldHVybjsNCiBvdXRfaW5pdF9yZXE6DQogCXRhc2stPnRrX3N0
-YXR1cyA9IDA7DQogCXRhc2stPnRrX3Jxc3RwID0gcmVxOw0KIAl4cHJ0X3JlcXVlc3RfaW5pdCh0
-YXNrLCB4cHJ0KTsNCisJc3Bpbl91bmxvY2soJnhwcnQtPnJlc2VydmVfbG9jayk7DQorfQ0KK0VY
-UE9SVF9TWU1CT0xfR1BMKHhwcnRfYWxsb2Nfc2xvdCk7DQorDQordm9pZCB4cHJ0X2xvY2tfYW5k
-X2FsbG9jX3Nsb3Qoc3RydWN0IHJwY194cHJ0ICp4cHJ0LCBzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2sp
-DQorew0KKwkvKiBOb3RlOiBncmFiYmluZyB0aGUgeHBydF9sb2NrX3dyaXRlKCkgZW5zdXJlcyB0
-aGF0IHdlIHRocm90dGxlDQorCSAqIG5ldyBzbG90IGFsbG9jYXRpb24gaWYgdGhlIHRyYW5zcG9y
-dCBpcyBjb25nZXN0ZWQgKGkuZS4gd2hlbg0KKwkgKiByZWNvbm5lY3RpbmcgYSBzdHJlYW0gdHJh
-bnNwb3J0IG9yIHdoZW4gb3V0IG9mIHNvY2tldCB3cml0ZQ0KKwkgKiBidWZmZXIgc3BhY2UpLg0K
-KwkgKi8NCisJaWYgKHhwcnRfbG9ja193cml0ZSh4cHJ0LCB0YXNrKSkgew0KKwkJeHBydF9hbGxv
-Y19zbG90KHhwcnQsIHRhc2spOw0KKwkJeHBydF9yZWxlYXNlX3dyaXRlKHhwcnQsIHRhc2spOw0K
-Kwl9DQogfQ0KK0VYUE9SVF9TWU1CT0xfR1BMKHhwcnRfbG9ja19hbmRfYWxsb2Nfc2xvdCk7DQog
-DQogc3RhdGljIHZvaWQgeHBydF9mcmVlX3Nsb3Qoc3RydWN0IHJwY194cHJ0ICp4cHJ0LCBzdHJ1
-Y3QgcnBjX3Jxc3QgKnJlcSkNCiB7DQpAQCAtMTA4MywyMCArMTEwMCw5IEBAIHZvaWQgeHBydF9y
-ZXNlcnZlKHN0cnVjdCBycGNfdGFzayAqdGFzaykNCiAJaWYgKHRhc2stPnRrX3Jxc3RwICE9IE5V
-TEwpDQogCQlyZXR1cm47DQogDQotCS8qIE5vdGU6IGdyYWJiaW5nIHRoZSB4cHJ0X2xvY2tfd3Jp
-dGUoKSBoZXJlIGlzIG5vdCBzdHJpY3RseSBuZWVkZWQsDQotCSAqIGJ1dCBlbnN1cmVzIHRoYXQg
-d2UgdGhyb3R0bGUgbmV3IHNsb3QgYWxsb2NhdGlvbiBpZiB0aGUgdHJhbnNwb3J0DQotCSAqIGlz
-IGNvbmdlc3RlZCAoZS5nLiBpZiByZWNvbm5lY3Rpbmcgb3IgaWYgd2UncmUgb3V0IG9mIHNvY2tl
-dA0KLQkgKiB3cml0ZSBidWZmZXIgc3BhY2UpLg0KLQkgKi8NCiAJdGFzay0+dGtfdGltZW91dCA9
-IDA7DQogCXRhc2stPnRrX3N0YXR1cyA9IC1FQUdBSU47DQotCWlmICgheHBydF9sb2NrX3dyaXRl
-KHhwcnQsIHRhc2spKQ0KLQkJcmV0dXJuOw0KLQ0KLQlzcGluX2xvY2soJnhwcnQtPnJlc2VydmVf
-bG9jayk7DQotCXhwcnRfYWxsb2Nfc2xvdCh0YXNrKTsNCi0Jc3Bpbl91bmxvY2soJnhwcnQtPnJl
-c2VydmVfbG9jayk7DQotCXhwcnRfcmVsZWFzZV93cml0ZSh4cHJ0LCB0YXNrKTsNCisJeHBydC0+
-b3BzLT5hbGxvY19zbG90KHhwcnQsIHRhc2spOw0KIH0NCiANCiBzdGF0aWMgaW5saW5lIF9fYmUz
-MiB4cHJ0X2FsbG9jX3hpZChzdHJ1Y3QgcnBjX3hwcnQgKnhwcnQpDQpkaWZmIC0tZ2l0IGEvbmV0
-L3N1bnJwYy94cHJ0cmRtYS90cmFuc3BvcnQuYyBiL25ldC9zdW5ycGMveHBydHJkbWEvdHJhbnNw
-b3J0LmMNCmluZGV4IDA2Y2RiZmYuLjVkOTIwMmQgMTAwNjQ0DQotLS0gYS9uZXQvc3VucnBjL3hw
-cnRyZG1hL3RyYW5zcG9ydC5jDQorKysgYi9uZXQvc3VucnBjL3hwcnRyZG1hL3RyYW5zcG9ydC5j
-DQpAQCAtNzEzLDYgKzcxMyw3IEBAIHN0YXRpYyB2b2lkIHhwcnRfcmRtYV9wcmludF9zdGF0cyhz
-dHJ1Y3QgcnBjX3hwcnQgKnhwcnQsIHN0cnVjdCBzZXFfZmlsZSAqc2VxKQ0KIHN0YXRpYyBzdHJ1
-Y3QgcnBjX3hwcnRfb3BzIHhwcnRfcmRtYV9wcm9jcyA9IHsNCiAJLnJlc2VydmVfeHBydAkJPSB4
-cHJ0X3JkbWFfcmVzZXJ2ZV94cHJ0LA0KIAkucmVsZWFzZV94cHJ0CQk9IHhwcnRfcmVsZWFzZV94
-cHJ0X2NvbmcsIC8qIHN1bnJwYy94cHJ0LmMgKi8NCisJLmFsbG9jX3Nsb3QJCT0geHBydF9hbGxv
-Y19zbG90LA0KIAkucmVsZWFzZV9yZXF1ZXN0CT0geHBydF9yZWxlYXNlX3Jxc3RfY29uZywgICAg
-ICAgLyogZGl0dG8gKi8NCiAJLnNldF9yZXRyYW5zX3RpbWVvdXQJPSB4cHJ0X3NldF9yZXRyYW5z
-X3RpbWVvdXRfZGVmLCAvKiBkaXR0byAqLw0KIAkucnBjYmluZAkJPSBycGNiX2dldHBvcnRfYXN5
-bmMsCS8qIHN1bnJwYy9ycGNiX2NsbnQuYyAqLw0KZGlmZiAtLWdpdCBhL25ldC9zdW5ycGMveHBy
-dHNvY2suYyBiL25ldC9zdW5ycGMveHBydHNvY2suYw0KaW5kZXggNDAwNTY3Mi4uYTM1YjhlNSAx
-MDA2NDQNCi0tLSBhL25ldC9zdW5ycGMveHBydHNvY2suYw0KKysrIGIvbmV0L3N1bnJwYy94cHJ0
-c29jay5jDQpAQCAtMjQ3Myw2ICsyNDczLDcgQEAgc3RhdGljIHZvaWQgYmNfZGVzdHJveShzdHJ1
-Y3QgcnBjX3hwcnQgKnhwcnQpDQogc3RhdGljIHN0cnVjdCBycGNfeHBydF9vcHMgeHNfbG9jYWxf
-b3BzID0gew0KIAkucmVzZXJ2ZV94cHJ0CQk9IHhwcnRfcmVzZXJ2ZV94cHJ0LA0KIAkucmVsZWFz
-ZV94cHJ0CQk9IHhzX3RjcF9yZWxlYXNlX3hwcnQsDQorCS5hbGxvY19zbG90CQk9IHhwcnRfYWxs
-b2Nfc2xvdCwNCiAJLnJwY2JpbmQJCT0geHNfbG9jYWxfcnBjYmluZCwNCiAJLnNldF9wb3J0CQk9
-IHhzX2xvY2FsX3NldF9wb3J0LA0KIAkuY29ubmVjdAkJPSB4c19jb25uZWN0LA0KQEAgLTI0ODks
-NiArMjQ5MCw3IEBAIHN0YXRpYyBzdHJ1Y3QgcnBjX3hwcnRfb3BzIHhzX3VkcF9vcHMgPSB7DQog
-CS5zZXRfYnVmZmVyX3NpemUJPSB4c191ZHBfc2V0X2J1ZmZlcl9zaXplLA0KIAkucmVzZXJ2ZV94
-cHJ0CQk9IHhwcnRfcmVzZXJ2ZV94cHJ0X2NvbmcsDQogCS5yZWxlYXNlX3hwcnQJCT0geHBydF9y
-ZWxlYXNlX3hwcnRfY29uZywNCisJLmFsbG9jX3Nsb3QJCT0geHBydF9hbGxvY19zbG90LA0KIAku
-cnBjYmluZAkJPSBycGNiX2dldHBvcnRfYXN5bmMsDQogCS5zZXRfcG9ydAkJPSB4c19zZXRfcG9y
-dCwNCiAJLmNvbm5lY3QJCT0geHNfY29ubmVjdCwNCkBAIC0yNTA2LDYgKzI1MDgsNyBAQCBzdGF0
-aWMgc3RydWN0IHJwY194cHJ0X29wcyB4c191ZHBfb3BzID0gew0KIHN0YXRpYyBzdHJ1Y3QgcnBj
-X3hwcnRfb3BzIHhzX3RjcF9vcHMgPSB7DQogCS5yZXNlcnZlX3hwcnQJCT0geHBydF9yZXNlcnZl
-X3hwcnQsDQogCS5yZWxlYXNlX3hwcnQJCT0geHNfdGNwX3JlbGVhc2VfeHBydCwNCisJLmFsbG9j
-X3Nsb3QJCT0geHBydF9sb2NrX2FuZF9hbGxvY19zbG90LA0KIAkucnBjYmluZAkJPSBycGNiX2dl
-dHBvcnRfYXN5bmMsDQogCS5zZXRfcG9ydAkJPSB4c19zZXRfcG9ydCwNCiAJLmNvbm5lY3QJCT0g
-eHNfY29ubmVjdCwNCi0tIA0KMS43LjExLjQNCg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGlu
-dXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFw
-cC5jb20NCnd3dy5uZXRhcHAuY29tDQoNCg==
+Fix the namespace pollution issue.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/blocklayout/blocklayout.c | 2 +-
+ fs/nfs/nfs4filelayout.c          | 2 +-
+ fs/nfs/nfs4filelayout.h          | 2 +-
+ fs/nfs/nfs4filelayoutdev.c       | 2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index dd392ed..329bfbf 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -874,7 +874,7 @@ static void free_blk_mountid(struct block_mount_id *mid)
+ 	}
+ }
+ 
+-/* This is mostly copied from the filelayout's get_device_info function.
++/* This is mostly copied from the filelayout_get_device_info function.
+  * It seems much of this should be at the generic pnfs level.
+  */
+ static struct pnfs_block_dev *
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 77cd115..af6ee4a 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -608,7 +608,7 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
+ 	d = nfs4_find_get_deviceid(NFS_SERVER(lo->plh_inode)->pnfs_curr_ld,
+ 				   NFS_SERVER(lo->plh_inode)->nfs_client, id);
+ 	if (d == NULL) {
+-		dsaddr = get_device_info(lo->plh_inode, id, gfp_flags);
++		dsaddr = filelayout_get_device_info(lo->plh_inode, id, gfp_flags);
+ 		if (dsaddr == NULL)
+ 			goto out;
+ 	} else
+diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
+index 43fe802..11053c4 100644
+--- a/fs/nfs/nfs4filelayout.h
++++ b/fs/nfs/nfs4filelayout.h
+@@ -158,7 +158,7 @@ struct nfs4_pnfs_ds *nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg,
+ extern void nfs4_fl_put_deviceid(struct nfs4_file_layout_dsaddr *dsaddr);
+ extern void nfs4_fl_free_deviceid(struct nfs4_file_layout_dsaddr *dsaddr);
+ struct nfs4_file_layout_dsaddr *
+-get_device_info(struct inode *inode, struct nfs4_deviceid *dev_id, gfp_t gfp_flags);
++filelayout_get_device_info(struct inode *inode, struct nfs4_deviceid *dev_id, gfp_t gfp_flags);
+ void nfs4_ds_disconnect(struct nfs_client *clp);
+ 
+ #endif /* FS_NFS_NFS4FILELAYOUT_H */
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index f81231f..b85a29d 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -690,7 +690,7 @@ decode_and_add_device(struct inode *inode, struct pnfs_device *dev, gfp_t gfp_fl
+  * of available devices, and return it.
+  */
+ struct nfs4_file_layout_dsaddr *
+-get_device_info(struct inode *inode, struct nfs4_deviceid *dev_id, gfp_t gfp_flags)
++filelayout_get_device_info(struct inode *inode, struct nfs4_deviceid *dev_id, gfp_t gfp_flags)
+ {
+ 	struct pnfs_device *pdev = NULL;
+ 	u32 max_resp_sz;
+-- 
+1.7.11.4
+
