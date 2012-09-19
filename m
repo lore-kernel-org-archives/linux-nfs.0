@@ -1,92 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:53744 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:45776 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932102Ab2IXT64 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Sep 2012 15:58:56 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 17/28] NFSv4.1: Remove redundant reference to the pnfs_layout_hdr
-Date: Mon, 24 Sep 2012 15:56:35 -0400
-Message-Id: <1348516606-22721-17-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1348516606-22721-16-git-send-email-Trond.Myklebust@netapp.com>
-References: <1348516606-22721-1-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-2-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-3-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-4-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-5-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-6-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-7-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-8-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-9-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-10-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-11-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-12-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-13-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-14-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-15-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-16-git-send-email-Trond.Myklebust@netapp.com>
+	id S1756487Ab2ISPuV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Sep 2012 11:50:21 -0400
+Message-ID: <5059E9E0.80606@RedHat.com>
+Date: Wed, 19 Sep 2012 11:50:56 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Andrew Holway <a.holway@syseleven.de>
+CC: kvm@vger.kernel.org, libvir-list@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: NFS over RDMA small block DIRECT_IO bug
+References: <F416961E-A33A-44D3-A788-5EF598A0AAFE@syseleven.de> <504F6EE9.5070908@RedHat.com> <72D13AE7-98F6-4582-9C64-66AAEE0BB4D8@syseleven.de>
+In-Reply-To: <72D13AE7-98F6-4582-9C64-66AAEE0BB4D8@syseleven.de>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Each layout segment already holds a reference to the pnfs_layout_hdr,
-so there is no need to hold an extra reference that is released once
-the last layout segment is freed.
 
-Ensure that pnfs_find_alloc_layout() always returns a reference
-to the pnfs_layout_hdr, which will be matched by the final call to
-pnfs_put_layout_hdr() in pnfs_update_layout().
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/pnfs.c | 13 ++++---------
- 1 file changed, 4 insertions(+), 9 deletions(-)
+On 09/18/2012 10:03 AM, Andrew Holway wrote:
+> Hi Steve,
+> 
+> Do you think these patches will make their way into the redhat kernel sometime soon?
+The process would start by opening a bz at bugzilla.redhat.com... If you like, you
+can send me the pointer to the bz and I'll make sure it gets noticed... 
+> 
+> What is the state of support for NFS over RDMA support at redhat?
+In theory its supported, but in reality that post is currently unnamed 
+which seems to be the case in upstream as well... 
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index e434bd1..d4b55bf 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -331,11 +331,8 @@ pnfs_layout_remove_lseg(struct pnfs_layout_hdr *lo,
- 
- 	WARN_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
- 	list_del_init(&lseg->pls_list);
--	if (list_empty(&lo->plh_segs)) {
-+	if (list_empty(&lo->plh_segs))
- 		set_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags);
--		/* Matched by initial refcount set in alloc_init_layout_hdr */
--		pnfs_put_layout_hdr_locked(lo);
--	}
- 	rpc_wake_up(&NFS_SERVER(inode)->roc_rpcwaitq);
- }
- 
-@@ -468,8 +465,7 @@ pnfs_mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
- 	dprintk("%s:Begin lo %p\n", __func__, lo);
- 
- 	if (list_empty(&lo->plh_segs)) {
--		if (!test_and_set_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags))
--			pnfs_put_layout_hdr_locked(lo);
-+		set_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags);
- 		return 0;
- 	}
- 	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list)
-@@ -929,8 +925,8 @@ pnfs_find_alloc_layout(struct inode *ino,
- 	if (nfsi->layout) {
- 		if (test_bit(NFS_LAYOUT_DESTROYED, &nfsi->layout->plh_flags))
- 			return NULL;
--		else
--			return nfsi->layout;
-+		pnfs_get_layout_hdr(nfsi->layout);
-+		return nfsi->layout;
- 	}
- 	spin_unlock(&ino->i_lock);
- 	new = alloc_init_layout_hdr(ino, ctx, gfp_flags);
-@@ -1131,7 +1127,6 @@ pnfs_update_layout(struct inode *ino,
- 		goto out_unlock;
- 	atomic_inc(&lo->plh_outstanding);
- 
--	pnfs_get_layout_hdr(lo);
- 	if (list_empty(&lo->plh_segs))
- 		first = true;
- 
--- 
-1.7.11.4
+steved.
 
+> 
+> Thanks,
+> 
+> Andrew
+> 
+> 
+> On Sep 11, 2012, at 7:03 PM, Steve Dickson wrote:
+> 
+>>
+>>
+>> On 09/04/2012 05:31 AM, Andrew Holway wrote:
+>>> Hello.
+>>>
+>>> # Avi Kivity avi(a)redhat recommended I copy kvm in on this. It would also seem relevent to libvirt. #
+>>>
+>>> I have a Centos 6.2 server and Centos 6.2 client.
+>>>
+>>> [root@store ~]# cat /etc/exports 
+>>> /dev/shm				10.149.0.0/16(rw,fsid=1,no_root_squash,insecure)    (I have tried with non tempfs targets also)
+>>>
+>>>
+>>> [root@node001 ~]# cat /etc/fstab 
+>>> store.ibnet:/dev/shm             /mnt                 nfs          rdma,port=2050,defaults 0 0
+>>>
+>>>
+>>> I wrote a little for loop one liner that dd'd the centos net install image to a file called 'hello' then checksummed that file. Each iteration uses a different block size.
+>>>
+>>> Non DIRECT_IO seems to work fine. DIRECT_IO with 512byte, 1K and 2K block sizes get corrupted.
+>>>
+>>> I want to run my KVM guests on top of NFS over RDMA. My guests cannot create filesystems.
+>>>
+>>> Thanks,
+>>>
+>>> Andrew.
+>>>
+>>> bug report: https://bugzilla.linux-nfs.org/show_bug.cgi?id=228
+>> Well it appears the RHEL6 kernels are lacking a couple patches that might
+>> help with this....
+>>
+>> 5c635e09 RPCRDMA: Fix FRMR registration/invalidate handling.
+>> 9b78145c xprtrdma: Remove assumption that each segment is <= PAGE_SIZE
+>>
+>> I can only image that Centos 6.2 might me lacking these too... ;-)
+>>
+>> steved.
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe kvm" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
