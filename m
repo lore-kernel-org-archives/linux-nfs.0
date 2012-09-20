@@ -1,59 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:42517 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755458Ab2IFOUi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Sep 2012 10:20:38 -0400
-Message-ID: <5048B0F5.9040000@redhat.com>
-Date: Thu, 06 Sep 2012 15:19:33 +0100
-From: Pedro Alves <palves@redhat.com>
+Received: from mail-we0-f174.google.com ([74.125.82.174]:33713 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753205Ab2ITRxp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Sep 2012 13:53:45 -0400
+Received: by weyx8 with SMTP id x8so1453740wey.19
+        for <linux-nfs@vger.kernel.org>; Thu, 20 Sep 2012 10:53:44 -0700 (PDT)
 MIME-Version: 1.0
-To: Sasha Levin <levinsasha928@gmail.com>
-CC: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
-        Steven Rostedt <rostedt@goodmis.org>, Tejun Heo <tj@kernel.org>,
-        torvalds@linux-foundation.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, mingo@elte.hu,
-        ebiederm@xmission.com, aarcange@redhat.com, ericvh@gmail.com,
-        netdev@vger.kernel.org, josh@joshtriplett.org, eric.dumazet@gmail.com,
-        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
-        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
-        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive hashtable
-References: <20120824230740.GN21325@google.com> <20120825042419.GA27240@Krystal> <503C95E4.3010000@gmail.com> <20120828101148.GA21683@Krystal> <503CAB1E.5010408@gmail.com> <20120828115638.GC23818@Krystal> <20120828230050.GA3337@Krystal> <1346772948.27919.9.camel@gandalf.local.home> <50462C99.5000007@redhat.com> <50462EE8.1090903@redhat.com> <20120904170138.GB31934@Krystal> <5048AAF6.5090101@gmail.com>
-In-Reply-To: <5048AAF6.5090101@gmail.com>
+In-Reply-To: <CAHVgHyXDs7=rafH2_pQ7T0cwzoO-LGgtVB+8E_btt5E0v9YTdg@mail.gmail.com>
+References: <CAJ75kXZuM_p3qknD4RgdjLLWd393u02S5FKQyu3Q8y8NwmfiVw@mail.gmail.com>
+	<CAJ75kXagDP6TPO+7pCCcUyac+ViPgKVThTsuehHNi_xwTpnGiQ@mail.gmail.com>
+	<CAHVgHyXMR=Bf02pWe=McHZPu+iNTZvhs6vHVx1ie404QebF86g@mail.gmail.com>
+	<20120920161716.GB4521@fieldses.org>
+	<CAHVgHyXDs7=rafH2_pQ7T0cwzoO-LGgtVB+8E_btt5E0v9YTdg@mail.gmail.com>
+Date: Thu, 20 Sep 2012 13:53:44 -0400
+Message-ID: <CAHVgHyUqNWakh6h18wZDGB91GJo-crtpPjmUUB+00HTMvePRNg@mail.gmail.com>
+Subject: Re: unhandled error -10026
+From: Andy Adamson <androsadamson@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: William Dauchy <wdauchy@gmail.com>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        R.Eggermont@tudelft.nl
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/06/2012 02:53 PM, Sasha Levin wrote:
+On Thu, Sep 20, 2012 at 1:47 PM, Andy Adamson <androsadamson@gmail.com> wrote:
+> On Thu, Sep 20, 2012 at 12:17 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>> On Thu, Sep 20, 2012 at 12:06:48PM -0400, Andy Adamson wrote:
+>>> On Thu, Sep 20, 2012 at 10:34 AM, William Dauchy <wdauchy@gmail.com> wrote:
+>>> > On Tue, Sep 18, 2012 at 11:49 AM, William Dauchy <wdauchy@gmail.com> wrote:
+>>> >> I'm getting a trace following an unhandled error on a linux nfs client
+>>> >> 3.4.7 x86_64.
+>>> >> NFS: nfs4_reclaim_open_state: unhandled error -10026. Zeroing state
+>>> >
+>>> > For the moment I don't know if the error is coming from a bad server
+>>> > implementation or if it's on client side. Should I assume that this an
+>>> > error that should never hit the client?
+>>>
+>>> Yes.
+>>>
+>>> The client only sends OPEN reclaims after noting the server has
+>>> rebooted due to previously receiving an NFS4ERR_STALE_CLIENTID or
+>>> NFS4ERR_STALE_STATEID error from a state-full operation  (RENEW, OPEN,
+>>> OPEN_DOWNGRADE, OPEN_CONFIRM, CLOSE, LOCK, LOCKU) which triggers the
+>>> client to establish a new clientid via
+>>> SETCLIENTID/SETCLIENTID_CONFIRM.
+>>>
+>>> Upon server reboot, all state that the previous server instance had is
+>>> invalid - including OPEN seqid's. So, the server returning
+>>> NFS4ERR_BAD_SEQID (10026) on an OPEN reclaim is illegal.
+>>
+>> Wait, but couldn't there be multiple reclaims using the same open owner,
+>> in which case later reclaims could in theory hit BAD_SEQID?
+>
+> Nope.
+>
+> 3530 section 9.1.6.  Sequencing of Lock Requests
+>
+>    Note that for requests that contain a sequence number, for each
+>    state-owner, there should be no more than one outstanding request.
 
-> So I think that for the hash iterator it might actually be simpler.
-> 
-> My solution to making 'break' work in the iterator is:
-> 
-> 	for (bkt = 0, node = NULL; bkt < HASH_SIZE(name) && node == NULL; bkt++)
-> 		hlist_for_each_entry(obj, node, &name[bkt], member)
-> 
-> We initialize our node loop cursor with NULL in the external loop, and the
-> external loop will have a new condition to loop while that cursor is NULL.
-> 
-> My logic is that we can only 'break' when we are iterating over an object in the
-> internal loop. If we're iterating over an object in that loop then 'node != NULL'.
-> 
-> This way, if we broke from within the internal loop, the external loop will see
-> node as not NULL, and so it will stop looping itself. On the other hand, if the
-> internal loop has actually ended, then node will be NULL, and the outer loop
-> will keep running.
-> 
-> Is there anything I've missed?
+Well - I sent this too soon :) .  Yes, a buggy client could send
+(serialized) reclaims with a bad seqid, and get NFS4ERR_BAD_SEQ.
+Tough to do with the above constraint, but possible.
 
-Looks right to me, from a cursory look at hlist_for_each_entry.  That's exactly
-what I meant with this most often being trivial when the inner loop's iterator
-is a pointer that goes NULL at the end.
+-->Andy
 
--- 
-Pedro Alves
-
+>
+> -->Andy
+>>
+>> --b.
