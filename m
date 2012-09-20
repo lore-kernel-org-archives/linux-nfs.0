@@ -1,61 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:60958 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756492Ab2IFOxO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Sep 2012 10:53:14 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Sachin Prabhu <sprabhu@redhat.com>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Avoid array overflow in __nfs4_get_acl_uncached
-Date: Thu, 6 Sep 2012 14:53:12 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F8B010@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1345817768-23511-1-git-send-email-sprabhu@redhat.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F4AF1E@SACEXCMBX01-PRD.hq.netapp.com>
-	 <1345843866.2279.6.camel@localhost>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F5842F@SACEXCMBX01-PRD.hq.netapp.com>
-	 <1345845062.32200.1.camel@localhost>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F5859F@SACEXCMBX01-PRD.hq.netapp.com>
-	 <1345937503.4943.17.camel@localhost>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F69340@SACEXCMBX04-PRD.hq.netapp.com>
-	 <1346162966.2554.3.camel@localhost>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F81C4A@SACEXCMBX04-PRD.hq.netapp.com>
-	 <1346942761.2562.7.camel@localhost>
-In-Reply-To: <1346942761.2562.7.camel@localhost>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-wi0-f172.google.com ([209.85.212.172]:37032 "EHLO
+	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751817Ab2ITRra (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Sep 2012 13:47:30 -0400
+Received: by wibhi8 with SMTP id hi8so1058298wib.1
+        for <linux-nfs@vger.kernel.org>; Thu, 20 Sep 2012 10:47:29 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <20120920161716.GB4521@fieldses.org>
+References: <CAJ75kXZuM_p3qknD4RgdjLLWd393u02S5FKQyu3Q8y8NwmfiVw@mail.gmail.com>
+	<CAJ75kXagDP6TPO+7pCCcUyac+ViPgKVThTsuehHNi_xwTpnGiQ@mail.gmail.com>
+	<CAHVgHyXMR=Bf02pWe=McHZPu+iNTZvhs6vHVx1ie404QebF86g@mail.gmail.com>
+	<20120920161716.GB4521@fieldses.org>
+Date: Thu, 20 Sep 2012 13:47:28 -0400
+Message-ID: <CAHVgHyXDs7=rafH2_pQ7T0cwzoO-LGgtVB+8E_btt5E0v9YTdg@mail.gmail.com>
+Subject: Re: unhandled error -10026
+From: Andy Adamson <androsadamson@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: William Dauchy <wdauchy@gmail.com>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        R.Eggermont@tudelft.nl
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTA5LTA2IGF0IDE1OjQ2ICswMTAwLCBTYWNoaW4gUHJhYmh1IHdyb3RlOg0K
-PiBPbiBNb24sIDIwMTItMDktMDMgYXQgMTk6MTEgKzAwMDAsIE15a2xlYnVzdCwgVHJvbmQgd3Jv
-dGU6DQo+ID4gPiBJIGVuY291bnRlcmVkIDIgcHJvYmxlbXMuIA0KPiA+ID4gMSkgVGhlIGlmIGNv
-bmRpdGlvbiBzaG91bGQgYmUgc3JjbGVuID49IHBnYmFzZSArIGFjbF9sZW4NCj4gPiA+IDIpIFRo
-ZXJlIGlzIGEgc2Vjb25kIF9jb3B5X2Zyb21fcGFnZXMgd2hpY2ggY29waWVzIHRvIHRoZSB0aGUg
-YWNsIHRvIHRoZQ0KPiA+ID4gcGFzc2VkIGJ1ZmZlciBpbiBfX25mczRfZ2V0X2FjbF91bmNhY2hl
-ZCgpLg0KPiA+IA0KPiA+IFRoZSBzZWNvbmQgY29weSBmcm9tIHBhZ2VzIHNob3VsZCBhbHJlYWR5
-IGJlIGNvdmVyZWQgYnkgdGhlIGNoZWNrcyBpbg0KPiA+IGRlY29kZV9nZXRhY2wuIEFscmlnaHQs
-IHNpbmNlIHRoaXMgaXMgbm90IG9idmlvdXMsIHRoZW4gY2xlYXJseSB3ZSBuZWVkDQo+ID4gdG8g
-bWFrZSBpdCBzby4gSG93IGFib3V0IHRoZSBmb2xsb3dpbmc/DQo+IA0KPiBJIGNvdWxkIHJlcHJv
-ZHVjZSB0aGUgY3Jhc2ggd2l0aCB0aGUgc2Vjb25kIF9jb3B5X2Zyb21fcGFnZXMgdXNpbmcgdGhl
-DQo+IHBhdGNoIHRvIFB5TkZTIGZyb20NCj4gaHR0cDovL3d3dy5zcGluaWNzLm5ldC9saXN0cy9s
-aW51eC1uZnMvbXNnMzIzNTkuaHRtbA0KPiANCj4gVGhlIHBhdGNoIGJlbG93IHdvcmtzIGZpbmUg
-Zm9yIGJvdGggY2FzZXMgYXBhcnQgZnJvbSBhIHNtYWxsIGJ1ZyB3aGljaA0KPiBJJ3ZlIHBvaW50
-ZWQgdG8gYmVsb3cuDQo+IA0KPiA+IDg8LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+ID4gRnJvbSA1MDQwMjQwMjQ1YTA0
-NmJkNThjMzgzODA2YjNmMTYxZWU4YjU4MjNiIE1vbiBTZXAgMTcgMDA6MDA6MDAgMjAwMQ0KPiA+
-IEZyb206IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQo+ID4g
-RGF0ZTogU3VuLCAyNiBBdWcgMjAxMiAxMTo0NDo0MyAtMDcwMA0KPiA+IFN1YmplY3Q6IFtQQVRD
-SF0gTkZTdjQ6IEZpeCBidWZmZXIgb3ZlcmZsb3cgY2hlY2tpbmcgaW4NCj4gPiAgX19uZnM0X2dl
-dF9hY2xfdW5jYWNoZWQNCg0KPiA+ICsJCS8qIENoZWNrIGZvciByZWNlaXZlIGJ1ZmZlciBvdmVy
-ZmxvdyAqLw0KPiA+ICsJCWlmIChhdHRybGVuID4gKHhkci0+bndvcmRzIDw8IDIpIHx8DQo+ID4g
-KwkJICAgIGF0dHJsZW4gKyBwZ19vZmZzZXQgPiB4ZHItPmJ1Zi0+cGFnZV9sZW4pIHsNCj4gDQo+
-IEhlcmUgd2UgbmVlZCB0byB1c2UgcmVzLT5hY2xfZGF0YV9vZmZzZXQgd2hpY2ggcG9pbnRzIHRv
-IHRoZSBzdGFydCBvZg0KPiB0aGUgQUNMIGRhdGEgaW5zdGVhZCBvZiBwZ19vZmZzZXQgd2hpY2gg
-cG9pbnRzIHRvIHRoZSBzdGFydCBvZiB0aGUgcGFnZXMNCj4gc2VjdGlvbiBvZiB0aGUgeGRyX2J1
-Zi4NCj4gDQo+IE9uY2UgSSBjaGFuZ2VkIHRoaXMgaWYgY29uZGl0aW9uLCBJIHdhcyBhYmxlIHRv
-IHN1Y2Nlc3NmdWxseSB0ZXN0IHdpdGgNCj4gbXkgcmVwcm9kdWNlci4NCg0KT29wcy4uLiBZZXMs
-IG9mIGNvdXJzZSB5b3UgYXJlIHJpZ2h0LiBJJ2xsIG1ha2UgdGhlIG1vZGlmaWNhdGlvbiBhbmQN
-CnB1c2ggb3V0IHRoZSBjaGFuZ2VkIHBhdGNoLg0KDQpUaGFua3MgdmVyeSBtdWNoIGZvciB0ZXN0
-aW5nISBEbyB5b3Ugd2FudCBtZSB0byBhZGQgYSAiVGVzdGVkLWJ5OiIgbGluZT8NCg0KLS0gDQpU
-cm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRy
-b25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+On Thu, Sep 20, 2012 at 12:17 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Thu, Sep 20, 2012 at 12:06:48PM -0400, Andy Adamson wrote:
+>> On Thu, Sep 20, 2012 at 10:34 AM, William Dauchy <wdauchy@gmail.com> wrote:
+>> > On Tue, Sep 18, 2012 at 11:49 AM, William Dauchy <wdauchy@gmail.com> wrote:
+>> >> I'm getting a trace following an unhandled error on a linux nfs client
+>> >> 3.4.7 x86_64.
+>> >> NFS: nfs4_reclaim_open_state: unhandled error -10026. Zeroing state
+>> >
+>> > For the moment I don't know if the error is coming from a bad server
+>> > implementation or if it's on client side. Should I assume that this an
+>> > error that should never hit the client?
+>>
+>> Yes.
+>>
+>> The client only sends OPEN reclaims after noting the server has
+>> rebooted due to previously receiving an NFS4ERR_STALE_CLIENTID or
+>> NFS4ERR_STALE_STATEID error from a state-full operation  (RENEW, OPEN,
+>> OPEN_DOWNGRADE, OPEN_CONFIRM, CLOSE, LOCK, LOCKU) which triggers the
+>> client to establish a new clientid via
+>> SETCLIENTID/SETCLIENTID_CONFIRM.
+>>
+>> Upon server reboot, all state that the previous server instance had is
+>> invalid - including OPEN seqid's. So, the server returning
+>> NFS4ERR_BAD_SEQID (10026) on an OPEN reclaim is illegal.
+>
+> Wait, but couldn't there be multiple reclaims using the same open owner,
+> in which case later reclaims could in theory hit BAD_SEQID?
+
+Nope.
+
+3530 section 9.1.6.  Sequencing of Lock Requests
+
+   Note that for requests that contain a sequence number, for each
+   state-owner, there should be no more than one outstanding request.
+
+-->Andy
+>
+> --b.
