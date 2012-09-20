@@ -1,34 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:22649 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:32814 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752469Ab2IEOhz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Sep 2012 10:37:55 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q85EbsX7022952
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 5 Sep 2012 10:37:55 -0400
-Received: from badhat.bos.devel.redhat.com (badhat.boston.devel.redhat.com [10.16.60.49])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id q85EbsrF028018
-	for <linux-nfs@vger.kernel.org>; Wed, 5 Sep 2012 10:37:54 -0400
-Message-ID: <504763F2.6070104@RedHat.com>
-Date: Wed, 05 Sep 2012 10:38:42 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1755986Ab2ITQRU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Sep 2012 12:17:20 -0400
+Date: Thu, 20 Sep 2012 12:17:16 -0400
+To: Andy Adamson <androsadamson@gmail.com>
+Cc: William Dauchy <wdauchy@gmail.com>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        R.Eggermont@tudelft.nl
+Subject: Re: unhandled error -10026
+Message-ID: <20120920161716.GB4521@fieldses.org>
+References: <CAJ75kXZuM_p3qknD4RgdjLLWd393u02S5FKQyu3Q8y8NwmfiVw@mail.gmail.com>
+ <CAJ75kXagDP6TPO+7pCCcUyac+ViPgKVThTsuehHNi_xwTpnGiQ@mail.gmail.com>
+ <CAHVgHyXMR=Bf02pWe=McHZPu+iNTZvhs6vHVx1ie404QebF86g@mail.gmail.com>
 MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Linux pNFS status meeting 09/06/12
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAHVgHyXMR=Bf02pWe=McHZPu+iNTZvhs6vHVx1ie404QebF86g@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A reminder....  There will be a status meeting tomorrow (Thur Aug 06)
+On Thu, Sep 20, 2012 at 12:06:48PM -0400, Andy Adamson wrote:
+> On Thu, Sep 20, 2012 at 10:34 AM, William Dauchy <wdauchy@gmail.com> wrote:
+> > On Tue, Sep 18, 2012 at 11:49 AM, William Dauchy <wdauchy@gmail.com> wrote:
+> >> I'm getting a trace following an unhandled error on a linux nfs client
+> >> 3.4.7 x86_64.
+> >> NFS: nfs4_reclaim_open_state: unhandled error -10026. Zeroing state
+> >
+> > For the moment I don't know if the error is coming from a bad server
+> > implementation or if it's on client side. Should I assume that this an
+> > error that should never hit the client?
+> 
+> Yes.
+> 
+> The client only sends OPEN reclaims after noting the server has
+> rebooted due to previously receiving an NFS4ERR_STALE_CLIENTID or
+> NFS4ERR_STALE_STATEID error from a state-full operation  (RENEW, OPEN,
+> OPEN_DOWNGRADE, OPEN_CONFIRM, CLOSE, LOCK, LOCKU) which triggers the
+> client to establish a new clientid via
+> SETCLIENTID/SETCLIENTID_CONFIRM.
+> 
+> Upon server reboot, all state that the previous server instance had is
+> invalid - including OPEN seqid's. So, the server returning
+> NFS4ERR_BAD_SEQID (10026) on an OPEN reclaim is illegal.
 
-Time: 9:30 AM PST (12:30 PM EST)
+Wait, but couldn't there be multiple reclaims using the same open owner,
+in which case later reclaims could in theory hit BAD_SEQID?
 
-The call in numbers are:
-U.S. and Canada: (800) 451-8679
-International dial-in number: (212) 729-5016
-Israel Toll-Free: 1-809-462-557
-Conference code: 564.272.1552
-
-steved.
-
+--b.
