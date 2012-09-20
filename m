@@ -1,134 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:13469 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:57279 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932421Ab2IUUvw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Sep 2012 16:51:52 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 11/26] NFSv4.1: Fix a race in the pNFS return-on-close code
-Date: Fri, 21 Sep 2012 16:50:06 -0400
-Message-Id: <1348260621-10294-11-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1348260621-10294-10-git-send-email-Trond.Myklebust@netapp.com>
-References: <1348260621-10294-1-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-2-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-3-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-4-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-5-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-6-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-7-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-8-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-9-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-10-git-send-email-Trond.Myklebust@netapp.com>
+	id S1755636Ab2ITTdv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Sep 2012 15:33:51 -0400
+Date: Thu, 20 Sep 2012 15:33:49 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Andy Adamson <androsadamson@gmail.com>
+Cc: William Dauchy <wdauchy@gmail.com>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        R.Eggermont@tudelft.nl
+Subject: Re: unhandled error -10026
+Message-ID: <20120920193349.GA18143@fieldses.org>
+References: <CAJ75kXZuM_p3qknD4RgdjLLWd393u02S5FKQyu3Q8y8NwmfiVw@mail.gmail.com>
+ <CAJ75kXagDP6TPO+7pCCcUyac+ViPgKVThTsuehHNi_xwTpnGiQ@mail.gmail.com>
+ <CAHVgHyXMR=Bf02pWe=McHZPu+iNTZvhs6vHVx1ie404QebF86g@mail.gmail.com>
+ <20120920161716.GB4521@fieldses.org>
+ <CAHVgHyXDs7=rafH2_pQ7T0cwzoO-LGgtVB+8E_btt5E0v9YTdg@mail.gmail.com>
+ <CAHVgHyUqNWakh6h18wZDGB91GJo-crtpPjmUUB+00HTMvePRNg@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAHVgHyUqNWakh6h18wZDGB91GJo-crtpPjmUUB+00HTMvePRNg@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If we sleep after dropping the inode->i_lock, then we are no longer
-atomic with respect to the rpc_wake_up() call in pnfs_layout_remove_lseg().
+On Thu, Sep 20, 2012 at 01:53:44PM -0400, Andy Adamson wrote:
+> On Thu, Sep 20, 2012 at 1:47 PM, Andy Adamson <androsadamson@gmail.com> wrote:
+> > On Thu, Sep 20, 2012 at 12:17 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> >> On Thu, Sep 20, 2012 at 12:06:48PM -0400, Andy Adamson wrote:
+> >>> On Thu, Sep 20, 2012 at 10:34 AM, William Dauchy <wdauchy@gmail.com> wrote:
+> >>> > On Tue, Sep 18, 2012 at 11:49 AM, William Dauchy <wdauchy@gmail.com> wrote:
+> >>> >> I'm getting a trace following an unhandled error on a linux nfs client
+> >>> >> 3.4.7 x86_64.
+> >>> >> NFS: nfs4_reclaim_open_state: unhandled error -10026. Zeroing state
+> >>> >
+> >>> > For the moment I don't know if the error is coming from a bad server
+> >>> > implementation or if it's on client side. Should I assume that this an
+> >>> > error that should never hit the client?
+> >>>
+> >>> Yes.
+> >>>
+> >>> The client only sends OPEN reclaims after noting the server has
+> >>> rebooted due to previously receiving an NFS4ERR_STALE_CLIENTID or
+> >>> NFS4ERR_STALE_STATEID error from a state-full operation  (RENEW, OPEN,
+> >>> OPEN_DOWNGRADE, OPEN_CONFIRM, CLOSE, LOCK, LOCKU) which triggers the
+> >>> client to establish a new clientid via
+> >>> SETCLIENTID/SETCLIENTID_CONFIRM.
+> >>>
+> >>> Upon server reboot, all state that the previous server instance had is
+> >>> invalid - including OPEN seqid's. So, the server returning
+> >>> NFS4ERR_BAD_SEQID (10026) on an OPEN reclaim is illegal.
+> >>
+> >> Wait, but couldn't there be multiple reclaims using the same open owner,
+> >> in which case later reclaims could in theory hit BAD_SEQID?
+> >
+> > Nope.
+> >
+> > 3530 section 9.1.6.  Sequencing of Lock Requests
+> >
+> >    Note that for requests that contain a sequence number, for each
+> >    state-owner, there should be no more than one outstanding request.
+> 
+> Well - I sent this too soon :) .  Yes, a buggy client could send
+> (serialized) reclaims with a bad seqid, and get NFS4ERR_BAD_SEQ.
+> Tough to do with the above constraint, but possible.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c |  8 +++-----
- fs/nfs/pnfs.c     | 22 ++++++++++++----------
- fs/nfs/pnfs.h     |  4 ++--
- 3 files changed, 17 insertions(+), 17 deletions(-)
+William, is this easy to reproduce?  Would it be possible to get a
+network trace covering the problem?
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 87702a0..49d5c7d 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2137,6 +2137,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
- {
- 	struct nfs4_closedata *calldata = data;
- 	struct nfs4_state *state = calldata->state;
-+	struct inode *inode = calldata->inode;
- 	int call_close = 0;
- 
- 	dprintk("%s: begin!\n", __func__);
-@@ -2170,16 +2171,13 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
- 	if (calldata->arg.fmode == 0) {
- 		task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CLOSE];
- 		if (calldata->roc &&
--		    pnfs_roc_drain(calldata->inode, &calldata->roc_barrier)) {
--			rpc_sleep_on(&NFS_SERVER(calldata->inode)->roc_rpcwaitq,
--				     task, NULL);
-+		    pnfs_roc_drain(inode, &calldata->roc_barrier, task))
- 			goto out;
--		}
- 	}
- 
- 	nfs_fattr_init(calldata->res.fattr);
- 	calldata->timestamp = jiffies;
--	if (nfs4_setup_sequence(NFS_SERVER(calldata->inode),
-+	if (nfs4_setup_sequence(NFS_SERVER(inode),
- 				&calldata->arg.seq_args,
- 				&calldata->res.seq_res,
- 				task))
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 80aaaba..f3acb68 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -777,27 +777,29 @@ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier)
- 	spin_unlock(&ino->i_lock);
- }
- 
--bool pnfs_roc_drain(struct inode *ino, u32 *barrier)
-+bool pnfs_roc_drain(struct inode *ino, u32 *barrier, struct rpc_task *task)
- {
- 	struct nfs_inode *nfsi = NFS_I(ino);
-+	struct pnfs_layout_hdr *lo;
- 	struct pnfs_layout_segment *lseg;
-+	u32 current_seqid;
- 	bool found = false;
- 
- 	spin_lock(&ino->i_lock);
- 	list_for_each_entry(lseg, &nfsi->layout->plh_segs, pls_list)
- 		if (test_bit(NFS_LSEG_ROC, &lseg->pls_flags)) {
-+			rpc_sleep_on(&NFS_SERVER(ino)->roc_rpcwaitq, task, NULL);
- 			found = true;
--			break;
-+			goto out;
- 		}
--	if (!found) {
--		struct pnfs_layout_hdr *lo = nfsi->layout;
--		u32 current_seqid = be32_to_cpu(lo->plh_stateid.seqid);
-+	lo = nfsi->layout;
-+	current_seqid = be32_to_cpu(lo->plh_stateid.seqid);
- 
--		/* Since close does not return a layout stateid for use as
--		 * a barrier, we choose the worst-case barrier.
--		 */
--		*barrier = current_seqid + atomic_read(&lo->plh_outstanding);
--	}
-+	/* Since close does not return a layout stateid for use as
-+	 * a barrier, we choose the worst-case barrier.
-+	 */
-+	*barrier = current_seqid + atomic_read(&lo->plh_outstanding);
-+out:
- 	spin_unlock(&ino->i_lock);
- 	return found;
- }
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 9735031..aa9fa1b 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -210,7 +210,7 @@ int pnfs_mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
- bool pnfs_roc(struct inode *ino);
- void pnfs_roc_release(struct inode *ino);
- void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
--bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
-+bool pnfs_roc_drain(struct inode *ino, u32 *barrier, struct rpc_task *task);
- void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
- void pnfs_cleanup_layoutcommit(struct nfs4_layoutcommit_data *data);
- int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
-@@ -442,7 +442,7 @@ pnfs_roc_set_barrier(struct inode *ino, u32 barrier)
- }
- 
- static inline bool
--pnfs_roc_drain(struct inode *ino, u32 *barrier)
-+pnfs_roc_drain(struct inode *ino, u32 *barrier, struct rpc_task *task)
- {
- 	return false;
- }
--- 
-1.7.11.4
+(tcpdump -s0 -wtmp.pcap, then send us tmp.pcap.  And also feel free to
+take a look at tmp.pcap with wireshark yourself--you may be able to find
+the call that's returning BAD_SEQID.  What we'll be curious about is
+what the sequence id sent on that call was, and what the sequence id was
+on any preceding operations using the same open owner).
 
+--b.
