@@ -1,25 +1,44 @@
-From: sonia <sonialife2@yahoo.com>
-Subject: hii
-Date: Sat, 18 Aug 2012 15:33:22 +0200 (CEST)
-Message-ID: <11103526.7711651345296802125.JavaMail.defaultUser__41532.0319043987$1345296845$gmane$org@defaultHost>
-Reply-To: sonia <sonialife2@yahoo.com>
-Mime-Version: 1.0
-Content-Type: text/plain;charset="UTF-8"
-To: sonialife2@yahoo.com
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from outrelay02.libero.it ([212.52.84.102]:52112 "EHLO
-	outrelay02.libero.it" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755406Ab2HRNdY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Aug 2012 09:33:24 -0400
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from hop-nat-141.emc.com ([168.159.213.141]:36829 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753567Ab2ITCUr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Sep 2012 22:20:47 -0400
+From: "Peng, Tao" <tao.peng@emc.com>
+To: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Wed, 19 Sep 2012 22:20:33 -0400
+Subject: RE: [PATCH-resend 0/6] NFS41 and pnfsblock bugfixes
+Message-ID: <5DFC6BE3BA248842867E85C73BF94B050B18DB8153@MX41A.corp.emc.com>
+References: <1345739273-2241-1-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <1345739273-2241-1-git-send-email-bergwolf@gmail.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello my dear
- How was your living life today i hope all is well, am Sonia by name i just
-went into your profile at this site  linux-archive.org  and saw how you have 
-pest
-your explanation over it i feel to know who your are so that we can shear one
-thing or the
-other from there i can send you my photo you can know who am ok . i am waiting
-for your reply yours Sonia
-
+SGkgVHJvbmQsDQoNCkFueSBjb21tZW50cyBvbiBiZWxvdyBwYXRjaGVzPyBJIHN0aWxsIGRvbuKA
+mXQgc2VlIHRoZW0gaW4geW91ciB0cmVlIGFuZCAzLjYgaXMgcmVhY2hpbmcgbGFzdCBSQy4uLg0K
+DQpUaGFua3MsDQpUYW8NCg0KPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBs
+aW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZn
+ZXIua2VybmVsLm9yZ10gT24gQmVoYWxmIE9mIFBlbmcgVGFvDQo+IFNlbnQ6IEZyaWRheSwgQXVn
+dXN0IDI0LCAyMDEyIDEyOjI4IEFNDQo+IFRvOiBUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0K
+PiBDYzogbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiBTdWJqZWN0OiBbUEFUQ0gtcmVzZW5k
+IDAvNl0gTkZTNDEgYW5kIHBuZnNibG9jayBidWdmaXhlcw0KPiANCj4gVHJvbmQsIGhpLA0KPiAN
+Cj4gVGhlIDYgcGF0Y2hlcyB3ZXJlIHNlbnQgYmVmb3JlLiBUaGV5IGFyZSBhbGwgYnVnZml4ZXMg
+YW5kIDQgb2YgdGhlbQ0KPiBhcmUgbmVlZGVkIGluIHN0YWJsZSBhcyB3ZWxsLiBQbGVhc2Ugc2Vl
+IGlmIHRoZXkgYXJlIE9LIHRvIGJlIG1lcmdlZA0KPiBpbiBvbmUgb2YgdGhlIHJjIHB1c2hlcy4N
+Cj4gDQo+IFRoYW5rcywNCj4gVGFvDQo+IA0KPiBQZW5nIFRhbyAoNik6DQo+ICAgTkZTdjQxOiBm
+aXggRElPIHdyaXRlX2lvIGNhbGN1bGF0aW9uDQo+ICAgTkZTNDE6IGZpeCBlcnJvciBvZiBzZXR0
+aW5nIGJsb2NrbGF5b3V0ZHJpdmVyDQo+ICAgUmV2ZXJ0ICJwbmZzYmxvY2s6IGJhaWwgb3V0IHBh
+cnRpYWwgcGFnZSBJTyINCj4gICBwbmZzYmxvY2s6IGZpeCBwYXJ0aWFsIHBhZ2UgYnVmZmVyIHdp
+cnRlDQo+ICAgcG5mc2Jsb2NrOiBmaXggbm9uLWFsaWduZWQgRElPIHJlYWQNCj4gICBwbmZzYmxv
+Y2s6IGZpeCBub24tYWxpZ25lZCBESU8gd3JpdGUNCj4gDQo+ICBmcy9uZnMvYmxvY2tsYXlvdXQv
+YmxvY2tsYXlvdXQuYyB8ICAyNzAgKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKystLS0t
+LQ0KPiAgZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0LmggfCAgICAxICsNCj4gIGZzL25m
+cy9jbGllbnQuYyAgICAgICAgICAgICAgICAgIHwgICAgMSAtDQo+ICBmcy9uZnMvZGlyZWN0LmMg
+ICAgICAgICAgICAgICAgICB8ICAgIDQgKy0NCj4gIGZzL25mcy9uZnM0cHJvYy5jICAgICAgICAg
+ICAgICAgIHwgICAgNSArLQ0KPiAgNSBmaWxlcyBjaGFuZ2VkLCAyNDAgaW5zZXJ0aW9ucygrKSwg
+NDEgZGVsZXRpb25zKC0pDQo+IA0KPiAtLQ0KPiBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlz
+dDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBpbg0KPiB0aGUgYm9keSBv
+ZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0KPiBNb3JlIG1ham9yZG9t
+byBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCg0K
