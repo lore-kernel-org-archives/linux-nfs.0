@@ -1,668 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:43958 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754409Ab2INVYe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Sep 2012 17:24:34 -0400
-Received: by mail-yw0-f46.google.com with SMTP id m54so1133966yhm.19
-        for <linux-nfs@vger.kernel.org>; Fri, 14 Sep 2012 14:24:34 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 09/10] NFS: Discover NFSv4 server trunking when mounting
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 14 Sep 2012 17:24:32 -0400
-Message-ID: <20120914212432.1635.23026.stgit@degas.1015granger.net>
-In-Reply-To: <20120914211053.1635.74063.stgit@degas.1015granger.net>
-References: <20120914211053.1635.74063.stgit@degas.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mx2.netapp.com ([216.240.18.37]:35100 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932378Ab2IUUwp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Sep 2012 16:52:45 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 20/26] NFSv4.1: Balance pnfs_layout_hdr refcount in pnfs_layout_(insert|remove)_lseg
+Date: Fri, 21 Sep 2012 16:50:15 -0400
+Message-Id: <1348260621-10294-20-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1348260621-10294-19-git-send-email-Trond.Myklebust@netapp.com>
+References: <1348260621-10294-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-12-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-13-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-14-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-15-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-16-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-17-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-18-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-19-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-"Server trunking" is a fancy named for a multi-homed NFS server.
-Trunking might occur if a client sends NFS requests for a single
-workload to multiple network interfaces on the same server.  There
-are some implications for NFSv4 state management that make it useful
-for a client to know if a single NFSv4 server instance is
-multi-homed.  (Note this is only a consideration for NFSv4, not for
-legacy versions of NFS, which are stateless).
+Ensure that the reference count for pnfs_layout_hdr reverts to the
+original value after a call to pnfs_layout_remove_lseg().
 
-If a client cares about server trunking, no NFSv4 operations can
-proceed until that client determines who it is talking to.  Thus
-server IP trunking discovery must be done when the client first
-encounters an unfamiliar server IP address.
+Note that the caller is expected to hold a reference to the struct
+pnfs_layout_hdr.
 
-The nfs_get_client() function walks the nfs_client_list and matches
-on server IP address.  The outcome of that walk tells us immediately
-if we have an unfamiliar server IP address.  It invokes
-nfs_init_client() in this case.  Thus, nfs4_init_client() is a good
-spot to perform trunking discovery.
-
-Discovery requires a client to establish a fresh client ID, so our
-client will now send SETCLIENTID or EXCHANGE_ID as the first NFS
-operation after a successful ping, rather than waiting for an
-application to perform an operation that requires NFSv4 state.
-
-The exact process for detecting trunking is different for NFSv4.0 and
-NFSv4.1, so a minorversion-specific init_client callout method is
-introduced.
-
-CLID_INUSE recovery is important for the trunking discovery process.
-CLID_INUSE is a sign the server recognizes the client's nfs_client_id4
-id string, but the client is using the wrong principal this time for
-the SETCLIENTID operation.  The SETCLIENTID must be retried with a
-series of different principals until one works, and then the rest of
-trunking discovery can proceed.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
+ fs/nfs/pnfs.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
- fs/nfs/client.c           |    3 -
- fs/nfs/internal.h         |    6 +
- fs/nfs/nfs4_fs.h          |    8 +
- fs/nfs/nfs4client.c       |  253 +++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/nfs4proc.c         |    4 +
- fs/nfs/nfs4state.c        |  182 ++++++++++++++++++++++++++++++++
- include/linux/nfs_fs_sb.h |    1 
- 7 files changed, 455 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 92aed2e..57d2a5c 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -498,7 +498,8 @@ nfs_get_client(const struct nfs_client_initdata *cl_init,
- 			return nfs_found_client(cl_init, clp);
- 		}
- 		if (new) {
--			list_add(&new->cl_share_link, &nn->nfs_client_list);
-+			list_add_tail(&new->cl_share_link,
-+					&nn->nfs_client_list);
- 			spin_unlock(&nn->nfs_client_lock);
- 			new->cl_flags = cl_init->init_flags;
- 			return rpc_ops->init_client(new, timeparms, ip_addr,
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 89560be..89a795d 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -483,6 +483,12 @@ extern int _nfs4_call_sync_session(struct rpc_clnt *clnt,
- 				   struct nfs4_sequence_args *args,
- 				   struct nfs4_sequence_res *res,
- 				   int cache_reply);
-+extern int nfs40_walk_client_list(struct nfs_client *clp,
-+				struct nfs_client **result,
-+				struct rpc_cred *cred);
-+extern int nfs41_walk_client_list(struct nfs_client *clp,
-+				struct nfs_client **result,
-+				struct rpc_cred *cred);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index ed8d674..9c5320c 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -295,8 +295,6 @@ static void pnfs_free_lseg(struct pnfs_layout_segment *lseg)
+ 	struct inode *ino = lseg->pls_layout->plh_inode;
  
- /*
-  * Determine the device name as a string
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index da0618a..c8e0998 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -191,6 +191,8 @@ struct nfs4_state_recovery_ops {
- 	int (*establish_clid)(struct nfs_client *, struct rpc_cred *);
- 	struct rpc_cred * (*get_clid_cred)(struct nfs_client *);
- 	int (*reclaim_complete)(struct nfs_client *);
-+	int (*detect_trunking)(struct nfs_client *, struct nfs_client **,
-+		struct rpc_cred *);
- };
- 
- struct nfs4_state_maintenance_ops {
-@@ -320,9 +322,15 @@ extern void nfs4_renew_state(struct work_struct *);
- /* nfs4state.c */
- struct rpc_cred *nfs4_get_setclientid_cred(struct nfs_client *clp);
- struct rpc_cred *nfs4_get_renew_cred_locked(struct nfs_client *clp);
-+int nfs4_discover_server_trunking(struct nfs_client *clp,
-+			struct nfs_client **);
-+int nfs40_discover_server_trunking(struct nfs_client *clp,
-+			struct nfs_client **, struct rpc_cred *);
- #if defined(CONFIG_NFS_V4_1)
- struct rpc_cred *nfs4_get_machine_cred_locked(struct nfs_client *clp);
- struct rpc_cred *nfs4_get_exchange_id_cred(struct nfs_client *clp);
-+int nfs41_discover_server_trunking(struct nfs_client *clp,
-+			struct nfs_client **, struct rpc_cred *);
- extern void nfs4_schedule_session_recovery(struct nfs4_session *, int);
- #else
- static inline void nfs4_schedule_session_recovery(struct nfs4_session *session, int err)
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 24eb663..739b328 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -185,6 +185,7 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
- 				    rpc_authflavor_t authflavour)
- {
- 	char buf[INET6_ADDRSTRLEN + 1];
-+	struct nfs_client *old;
- 	int error;
- 
- 	if (clp->cl_cons_state == NFS_CS_READY) {
-@@ -230,6 +231,17 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
- 
- 	if (!nfs4_has_session(clp))
- 		nfs_mark_client_ready(clp, NFS_CS_READY);
-+
-+	error = nfs4_discover_server_trunking(clp, &old);
-+	if (error < 0)
-+		goto error;
-+	if (clp != old) {
-+		clp->cl_preserve_clid = true;
-+		nfs_put_client(clp);
-+		clp = old;
-+		atomic_inc(&clp->cl_count);
-+	}
-+
- 	return clp;
- 
- error:
-@@ -239,6 +251,247 @@ error:
- 	return ERR_PTR(error);
+ 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+-	/* Matched by pnfs_get_layout_hdr in pnfs_layout_insert_lseg */
+-	pnfs_put_layout_hdr(NFS_I(ino)->layout);
  }
  
-+/*
-+ * Returns true if the client IDs match
-+ */
-+static bool nfs4_match_clientids(struct nfs_client *a, struct nfs_client *b)
-+{
-+	if (a->cl_clientid != b->cl_clientid) {
-+		dprintk("NFS: --> %s client ID %llx does not match %llx\n",
-+			__func__, a->cl_clientid, b->cl_clientid);
-+		return false;
-+	}
-+	dprintk("NFS: --> %s client ID %llx matches %llx\n",
-+		__func__, a->cl_clientid, b->cl_clientid);
-+	return true;
-+}
-+
-+/*
-+ * SETCLIENTID just did a callback update with the callback ident in
-+ * "drop," but server trunking discovery claims "drop" and "keep" are
-+ * actually the same server.  Swap the callback IDs so that "keep"
-+ * will continue to use the callback ident the server now knows about,
-+ * and so that "keep"'s original callback ident is destroyed when
-+ * "drop" is freed.
-+ */
-+static void nfs4_swap_callback_idents(struct nfs_client *keep,
-+				      struct nfs_client *drop)
-+{
-+	struct nfs_net *nn = net_generic(keep->cl_net, nfs_net_id);
-+	unsigned int save = keep->cl_cb_ident;
-+
-+	if (keep->cl_cb_ident == drop->cl_cb_ident)
-+		return;
-+
-+	dprintk("%s: keeping callback ident %u and dropping ident %u\n",
-+		__func__, keep->cl_cb_ident, drop->cl_cb_ident);
-+
-+	spin_lock(&nn->nfs_client_lock);
-+
-+	idr_replace(&nn->cb_ident_idr, keep, drop->cl_cb_ident);
-+	keep->cl_cb_ident = drop->cl_cb_ident;
-+
-+	idr_replace(&nn->cb_ident_idr, drop, save);
-+	drop->cl_cb_ident = save;
-+
-+	spin_unlock(&nn->nfs_client_lock);
-+}
-+
-+/**
-+ * nfs40_walk_client_list - Find server that recognizes a client ID
-+ *
-+ * @new: nfs_client with client ID to test
-+ * @result: OUT: found nfs_client, or new
-+ * @cred: credential to use for trunking test
-+ *
-+ * Returns zero, a negative errno, or a negative NFS4ERR status.
-+ * If zero is returned, an nfs_client pointer is planted in "result."
-+ *
-+ * NB: nfs40_walk_client_list() relies on the new nfs_client being
-+ *     the last nfs_client on the list.
-+ */
-+int nfs40_walk_client_list(struct nfs_client *new,
-+			   struct nfs_client **result,
-+			   struct rpc_cred *cred)
-+{
-+	struct nfs_net *nn = net_generic(new->cl_net, nfs_net_id);
-+	struct nfs_client *pos, *n, *prev = NULL;
-+	struct nfs4_setclientid_res clid = {
-+		.clientid	= new->cl_clientid,
-+		.confirm	= new->cl_confirm,
-+	};
-+	int status;
-+
-+	spin_lock(&nn->nfs_client_lock);
-+	list_for_each_entry_safe(pos, n, &nn->nfs_client_list, cl_share_link) {
-+		/* If "pos" isn't marked ready, we can't trust the
-+		 * remaining fields in "pos" */
-+		if (pos->cl_cons_state < NFS_CS_READY)
-+			continue;
-+
-+		if (pos->rpc_ops != new->rpc_ops)
-+			continue;
-+
-+		if (pos->cl_proto != new->cl_proto)
-+			continue;
-+
-+		if (pos->cl_minorversion != new->cl_minorversion)
-+			continue;
-+
-+		if (pos->cl_clientid != new->cl_clientid)
-+			continue;
-+
-+		atomic_inc(&pos->cl_count);
-+		spin_unlock(&nn->nfs_client_lock);
-+
-+		if (prev)
-+			nfs_put_client(prev);
-+
-+		status = nfs4_proc_setclientid_confirm(pos, &clid, cred);
-+		if (status == 0) {
-+			nfs4_swap_callback_idents(pos, new);
-+
-+			nfs_put_client(pos);
-+			*result = pos;
-+			dprintk("NFS: <-- %s using nfs_client = %p ({%d})\n",
-+				__func__, pos, atomic_read(&pos->cl_count));
-+			return 0;
-+		}
-+		if (status != -NFS4ERR_STALE_CLIENTID) {
-+			nfs_put_client(pos);
-+			dprintk("NFS: <-- %s status = %d, no result\n",
-+				__func__, status);
-+			return status;
-+		}
-+
-+		spin_lock(&nn->nfs_client_lock);
-+		prev = pos;
-+	}
-+
-+	/*
-+	 * No matching nfs_client found.  This should be impossible,
-+	 * because the new nfs_client has already been added to
-+	 * nfs_client_list by nfs_get_client().
-+	 *
-+	 * Don't BUG(), since the caller is holding a mutex.
-+	 */
-+	if (prev)
-+		nfs_put_client(prev);
-+	spin_unlock(&nn->nfs_client_lock);
-+	pr_err("NFS: %s Error: no matching nfs_client found\n", __func__);
-+	return -NFS4ERR_STALE_CLIENTID;
-+}
-+
-+#ifdef CONFIG_NFS_V4_1
-+/*
-+ * Returns true if the server owners match
-+ */
-+static bool
-+nfs4_match_serverowners(struct nfs_client *a, struct nfs_client *b)
-+{
-+	struct nfs41_server_owner *o1 = a->cl_serverowner;
-+	struct nfs41_server_owner *o2 = b->cl_serverowner;
-+
-+	if (o1->minor_id != o2->minor_id) {
-+		dprintk("NFS: --> %s server owner minor IDs do not match\n",
-+			__func__);
-+		return false;
-+	}
-+
-+	if (o1->major_id_sz != o2->major_id_sz)
-+		goto out_major_mismatch;
-+	if (memcmp(o1->major_id, o2->major_id, o1->major_id_sz) != 0)
-+		goto out_major_mismatch;
-+
-+	dprintk("NFS: --> %s server owners match\n", __func__);
-+	return true;
-+
-+out_major_mismatch:
-+	dprintk("NFS: --> %s server owner major IDs do not match\n",
-+		__func__);
-+	return false;
-+}
-+
-+/**
-+ * nfs41_walk_client_list - Find nfs_client that matches a client/server owner
-+ *
-+ * @new: nfs_client with client ID to test
-+ * @result: OUT: found nfs_client, or new
-+ * @cred: credential to use for trunking test
-+ *
-+ * Returns zero, a negative errno, or a negative NFS4ERR status.
-+ * If zero is returned, an nfs_client pointer is planted in "result."
-+ *
-+ * NB: nfs41_walk_client_list() relies on the new nfs_client being
-+ *     the last nfs_client on the list.
-+ */
-+int nfs41_walk_client_list(struct nfs_client *new,
-+			   struct nfs_client **result,
-+			   struct rpc_cred *cred)
-+{
-+	struct nfs_net *nn = net_generic(new->cl_net, nfs_net_id);
-+	struct nfs_client *pos, *n, *prev = NULL;
-+	int error;
-+
-+	spin_lock(&nn->nfs_client_lock);
-+	list_for_each_entry_safe(pos, n, &nn->nfs_client_list, cl_share_link) {
-+		/* If "pos" isn't marked ready, we can't trust the
-+		 * remaining fields in "pos", especially the client
-+		 * ID and serverowner fields.  Wait for CREATE_SESSION
-+		 * to finish. */
-+		if (pos->cl_cons_state < NFS_CS_READY) {
-+			atomic_inc(&pos->cl_count);
-+			spin_unlock(&nn->nfs_client_lock);
-+
-+			if (prev)
-+				nfs_put_client(prev);
-+			prev = pos;
-+
-+			error = nfs_wait_client_init_complete(pos);
-+			if (error < 0) {
-+				nfs_put_client(pos);
-+				continue;
-+			}
-+
-+			spin_lock(&nn->nfs_client_lock);
-+		}
-+
-+		if (pos->rpc_ops != new->rpc_ops)
-+			continue;
-+
-+		if (pos->cl_proto != new->cl_proto)
-+			continue;
-+
-+		if (pos->cl_minorversion != new->cl_minorversion)
-+			continue;
-+
-+		if (!nfs4_match_clientids(pos, new))
-+			continue;
-+
-+		if (!nfs4_match_serverowners(pos, new))
-+			continue;
-+
-+		spin_unlock(&nn->nfs_client_lock);
-+		dprintk("NFS: <-- %s using nfs_client = %p ({%d})\n",
-+			__func__, pos, atomic_read(&pos->cl_count));
-+
-+		*result = pos;
-+		return 0;
-+	}
-+
-+	/*
-+	 * No matching nfs_client found.  This should be impossible,
-+	 * because the new nfs_client has already been added to
-+	 * nfs_client_list by nfs_get_client().
-+	 *
-+	 * Don't BUG(), since the caller is holding a mutex.
-+	 */
-+	spin_unlock(&nn->nfs_client_lock);
-+	pr_err("NFS: %s Error: no matching nfs_client found\n", __func__);
-+	return -NFS4ERR_STALE_CLIENTID;
-+}
-+#endif	/* CONFIG_NFS_V4_1 */
-+
- static void nfs4_destroy_server(struct nfs_server *server)
- {
- 	nfs_server_return_all_delegations(server);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 80aadcc..e344f13 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5423,6 +5423,8 @@ int nfs4_destroy_clientid(struct nfs_client *clp)
- 		goto out;
- 	if (clp->cl_exchange_flags == 0)
- 		goto out;
-+	if (clp->cl_preserve_clid)
-+		goto out;
- 	cred = nfs4_get_exchange_id_cred(clp);
- 	ret = nfs4_proc_destroy_clientid(clp, cred);
- 	if (cred)
-@@ -6832,6 +6834,7 @@ static const struct nfs4_state_recovery_ops nfs40_reboot_recovery_ops = {
- 	.recover_lock	= nfs4_lock_reclaim,
- 	.establish_clid = nfs4_init_clientid,
- 	.get_clid_cred	= nfs4_get_setclientid_cred,
-+	.detect_trunking = nfs40_discover_server_trunking,
- };
+ static void
+@@ -307,6 +305,8 @@ pnfs_layout_remove_lseg(struct pnfs_layout_hdr *lo,
  
- #if defined(CONFIG_NFS_V4_1)
-@@ -6843,6 +6846,7 @@ static const struct nfs4_state_recovery_ops nfs41_reboot_recovery_ops = {
- 	.establish_clid = nfs41_init_clientid,
- 	.get_clid_cred	= nfs4_get_exchange_id_cred,
- 	.reclaim_complete = nfs41_proc_reclaim_complete,
-+	.detect_trunking = nfs41_discover_server_trunking,
- };
- #endif /* CONFIG_NFS_V4_1 */
- 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index d6e0d63..2893a87 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -51,6 +51,8 @@
- #include <linux/bitops.h>
- #include <linux/jiffies.h>
- 
-+#include <linux/sunrpc/clnt.h>
-+
- #include "nfs4_fs.h"
- #include "callback.h"
- #include "delegation.h"
-@@ -62,7 +64,7 @@
- #define OPENOWNER_POOL_SIZE	8
- 
- const nfs4_stateid zero_stateid;
--
-+static DEFINE_MUTEX(nfs_clid_init_mutex);
- static LIST_HEAD(nfs4_clientid_list);
- 
- int nfs4_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
-@@ -96,6 +98,55 @@ out:
- 	return status;
+ 	WARN_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
+ 	list_del_init(&lseg->pls_list);
++	/* Matched by pnfs_get_layout_hdr in pnfs_layout_insert_lseg */
++	atomic_dec(&lo->plh_refcount);
+ 	if (list_empty(&lo->plh_segs))
+ 		set_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags);
+ 	rpc_wake_up(&NFS_SERVER(inode)->roc_rpcwaitq);
+@@ -327,9 +327,11 @@ pnfs_put_lseg(struct pnfs_layout_segment *lseg)
+ 	lo = lseg->pls_layout;
+ 	inode = lo->plh_inode;
+ 	if (atomic_dec_and_lock(&lseg->pls_refcount, &inode->i_lock)) {
++		pnfs_get_layout_hdr(lo);
+ 		pnfs_layout_remove_lseg(lo, lseg);
+ 		spin_unlock(&inode->i_lock);
+ 		pnfs_free_lseg(lseg);
++		pnfs_put_layout_hdr(lo);
+ 	}
  }
- 
-+/**
-+ * nfs40_discover_server_trunking - Detect server IP address trunking (mv0)
-+ *
-+ * @clp: nfs_client under test
-+ * @result: OUT: found nfs_client, or clp
-+ * @cred: credential to use for trunking test
-+ *
-+ * Returns zero, a negative errno, or a negative NFS4ERR status.
-+ * If zero is returned, an nfs_client pointer is planted in
-+ * "result".
-+ *
-+ * Note: The returned client may not yet be marked ready.
-+ */
-+int nfs40_discover_server_trunking(struct nfs_client *clp,
-+				   struct nfs_client **result,
-+				   struct rpc_cred *cred)
-+{
-+	struct nfs4_setclientid_res clid = {
-+		.clientid = clp->cl_clientid,
-+		.confirm = clp->cl_confirm,
-+	};
-+	unsigned short port;
-+	int status;
-+
-+	port = nfs_callback_tcpport;
-+	if (clp->cl_addr.ss_family == AF_INET6)
-+		port = nfs_callback_tcpport6;
-+
-+	status = nfs4_proc_setclientid(clp, NFS4_CALLBACK, port, cred, &clid);
-+	if (status != 0)
-+		goto out;
-+	clp->cl_clientid = clid.clientid;
-+	clp->cl_confirm = clid.confirm;
-+
-+	status = nfs40_walk_client_list(clp, result, cred);
-+	switch (status) {
-+	case -NFS4ERR_STALE_CLIENTID:
-+		set_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
-+	case 0:
-+		/* Sustain the lease, even if it's empty.  If the clientid4
-+		 * goes stale it's of no use for trunking discovery. */
-+		nfs4_schedule_state_renewal(*result);
-+		break;
-+	}
-+
-+out:
-+	return status;
-+}
-+
- struct rpc_cred *nfs4_get_machine_cred_locked(struct nfs_client *clp)
- {
- 	struct rpc_cred *cred = NULL;
-@@ -275,6 +326,32 @@ out:
- 	return status;
- }
- 
-+/**
-+ * nfs41_discover_server_trunking - Detect server IP address trunking (mv1)
-+ *
-+ * @clp: nfs_client under test
-+ * @result: OUT: found nfs_client, or clp
-+ * @cred: credential to use for trunking test
-+ *
-+ * Returns NFS4_OK, a negative errno, or a negative NFS4ERR status.
-+ * If NFS4_OK is returned, an nfs_client pointer is planted in
-+ * "result".
-+ *
-+ * Note: The returned client may not yet be marked ready.
-+ */
-+int nfs41_discover_server_trunking(struct nfs_client *clp,
-+				   struct nfs_client **result,
-+				   struct rpc_cred *cred)
-+{
-+	int status;
-+
-+	status = nfs4_proc_exchange_id(clp, cred);
-+	if (status != NFS4_OK)
-+		return status;
-+
-+	return nfs41_walk_client_list(clp, result, cred);
-+}
-+
- struct rpc_cred *nfs4_get_exchange_id_cred(struct nfs_client *clp)
- {
- 	struct rpc_cred *cred;
-@@ -1698,6 +1775,109 @@ static int nfs4_purge_lease(struct nfs_client *clp)
- 	return 0;
- }
- 
-+/**
-+ * nfs4_discover_server_trunking - Detect server IP address trunking
-+ *
-+ * @clp: nfs_client under test
-+ * @result: OUT: found nfs_client, or clp
-+ *
-+ * Returns zero or a negative errno.  If zero is returned,
-+ * an nfs_client pointer is planted in "result".
-+ *
-+ * Note: since we are invoked in process context, and
-+ * not from inside the state manager, we cannot use
-+ * nfs4_handle_reclaim_lease_error().
-+ */
-+int nfs4_discover_server_trunking(struct nfs_client *clp,
-+				  struct nfs_client **result)
-+{
-+	const struct nfs4_state_recovery_ops *ops =
-+				clp->cl_mvops->reboot_recovery_ops;
-+	rpc_authflavor_t *flavors, flav, save;
-+	struct rpc_clnt *clnt;
-+	struct rpc_cred *cred;
-+	int i, len, status;
-+
-+	dprintk("NFS: %s: testing '%s'\n", __func__, clp->cl_hostname);
-+
-+	len = NFS_MAX_SECFLAVORS;
-+	flavors = kcalloc(len, sizeof(*flavors), GFP_KERNEL);
-+	if (flavors == NULL) {
-+		status = -ENOMEM;
-+		goto out;
-+	}
-+	len = rpcauth_list_flavors(flavors, len);
-+	if (len < 0) {
-+		status = len;
-+		goto out_free;
-+	}
-+	clnt = clp->cl_rpcclient;
-+	save = clnt->cl_auth->au_flavor;
-+	i = 0;
-+
-+	mutex_lock(&nfs_clid_init_mutex);
-+	status  = -ENOENT;
-+again:
-+	cred = ops->get_clid_cred(clp);
-+	if (cred == NULL)
-+		goto out_unlock;
-+
-+	status = ops->detect_trunking(clp, result, cred);
-+	put_rpccred(cred);
-+	switch (status) {
-+	case 0:
-+		break;
-+
-+	case -EACCES:
-+		if (clp->cl_machine_cred == NULL)
-+			break;
-+		/* Handle case where the user hasn't set up machine creds */
-+		nfs4_clear_machine_cred(clp);
-+	case -NFS4ERR_DELAY:
-+	case -ETIMEDOUT:
-+	case -EAGAIN:
-+		ssleep(1);
-+		dprintk("NFS: %s after status %d, retrying\n",
-+			__func__, status);
-+		goto again;
-+
-+	case -NFS4ERR_CLID_INUSE:
-+	case -NFS4ERR_WRONGSEC:
-+		status = -EPERM;
-+		if (i >= len)
-+			break;
-+
-+		flav = flavors[i++];
-+		if (flav == save)
-+			flav = flavors[i++];
-+		clnt = rpc_clone_client_set_auth(clnt, flav);
-+		if (IS_ERR(clnt)) {
-+			status = PTR_ERR(clnt);
-+			break;
-+		}
-+		clp->cl_rpcclient = clnt;
-+		goto again;
-+
-+	case -NFS4ERR_MINOR_VERS_MISMATCH:
-+		status = -EPROTONOSUPPORT;
-+		break;
-+
-+	case -EKEYEXPIRED:
-+		nfs4_warn_keyexpired(clp->cl_hostname);
-+	case -NFS4ERR_NOT_SAME: /* FixMe: implement recovery
-+				 * in nfs4_exchange_id */
-+		status = -EKEYEXPIRED;
-+	}
-+
-+out_unlock:
-+	mutex_unlock(&nfs_clid_init_mutex);
-+out_free:
-+	kfree(flavors);
-+out:
-+	dprintk("NFS: %s: status = %d\n", __func__, status);
-+	return status;
-+}
-+
- #ifdef CONFIG_NFS_V4_1
- void nfs4_schedule_session_recovery(struct nfs4_session *session, int err)
- {
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 2e22fc7..a9e76ee 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -82,6 +82,7 @@ struct nfs_client {
- 	/* The flags used for obtaining the clientid during EXCHANGE_ID */
- 	u32			cl_exchange_flags;
- 	struct nfs4_session	*cl_session;	/* shared session */
-+	bool			cl_preserve_clid;
- 	struct nfs41_server_owner *cl_serverowner;
- 	struct nfs41_server_scope *cl_serverscope;
- 	struct nfs41_impl_id	*cl_implid;
+ EXPORT_SYMBOL_GPL(pnfs_put_lseg);
+-- 
+1.7.11.4
 
