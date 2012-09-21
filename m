@@ -1,62 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33404 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:45426 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756930Ab2IQRuM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Sep 2012 13:50:12 -0400
-Date: Mon, 17 Sep 2012 13:50:04 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: readdir cookies
-Message-ID: <20120917175004.GA9672@fieldses.org>
-References: <20120917155426.GK30673@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA908FC8D4C@SACEXCMBX04-PRD.hq.netapp.com>
- <20120917165126.GL30673@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA908FC9F10@SACEXCMBX04-PRD.hq.netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA908FC9F10@SACEXCMBX04-PRD.hq.netapp.com>
+	id S1757872Ab2IUUwQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Sep 2012 16:52:16 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 15/26] NFSv4.1: Rename the pnfs_put_lseg_common to pnfs_layout_remove_lseg
+Date: Fri, 21 Sep 2012 16:50:10 -0400
+Message-Id: <1348260621-10294-15-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1348260621-10294-14-git-send-email-Trond.Myklebust@netapp.com>
+References: <1348260621-10294-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-12-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-13-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-14-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 17, 2012 at 04:56:10PM +0000, Myklebust, Trond wrote:
-> > -----Original Message-----
-> > From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> > Sent: Monday, September 17, 2012 12:51 PM
-> > To: Myklebust, Trond
-> > Cc: Schumaker, Bryan; linux-nfs@vger.kernel.org
-> > Subject: Re: readdir cookies
-> > 
-> > On Mon, Sep 17, 2012 at 04:05:10PM +0000, Myklebust, Trond wrote:
-> > > > -----Original Message-----
-> > > > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> > > > owner@vger.kernel.org] On Behalf Of J. Bruce Fields
-> > > > Sent: Monday, September 17, 2012 11:54 AM
-> > > > To: Myklebust, Trond; Schumaker, Bryan
-> > > > Cc: linux-nfs@vger.kernel.org
-> > > > Subject: readdir cookies
-> > > >
-> > > > How does the nfs client decide what directory cookies to return?
-> > > > (As the d_off field to readdir, for example).
-> > > >
-> > > > I'd assumed it would return the server's cookie, but testing shows
-> > > > it returns a simple integer sequence.
-> > >
-> > > We cache the cookies and use them to figure out where the readdir cursor
-> > is after a directory update, but we use positive integers for telldir()/seekdir().
-> > The reason is that too many servers return cookies that use > 32 bits (NFSv2-
-> > incompatible) or are unsigned.
-> > 
-> > Ok--so the tradeoff is that telldir/seekdir cookies may not be good
-> > indefinitely?
-> 
-> Yes. Most apps don't care about telldir()/seekdir(), so it isn't really much of an issue. However, glibc has a bunch of assumptions about the 'd_offs' entries returned by getdents()/getdents64() and will do "sanity checks" on them that often end up failing when we just shove in the raw NFS cookies.
+The latter name is more descriptive of the actual function.
+Also rename pnfs_insert_layout to pnfs_layout_insert_lseg.
 
-OK, thanks.  When did the client start doing that?
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/pnfs.c | 27 +++++++++++++++------------
+ 1 file changed, 15 insertions(+), 12 deletions(-)
 
-(And do you remember any details about the libc problems?  ext4 is
-returning 64-bit cookies now in some cases, and we've seen a few
-problems elsewhere, but none with glibc.)
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 8633b78..142d0f4 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -294,21 +294,22 @@ static void free_lseg(struct pnfs_layout_segment *lseg)
+ 	struct inode *ino = lseg->pls_layout->plh_inode;
+ 
+ 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+-	/* Matched by pnfs_get_layout_hdr in pnfs_insert_layout */
++	/* Matched by pnfs_get_layout_hdr in pnfs_layout_insert_lseg */
+ 	pnfs_put_layout_hdr(NFS_I(ino)->layout);
+ }
+ 
+ static void
+-pnfs_put_lseg_common(struct pnfs_layout_segment *lseg)
++pnfs_layout_remove_lseg(struct pnfs_layout_hdr *lo,
++		struct pnfs_layout_segment *lseg)
+ {
+-	struct inode *inode = lseg->pls_layout->plh_inode;
++	struct inode *inode = lo->plh_inode;
+ 
+ 	WARN_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
+ 	list_del_init(&lseg->pls_list);
+-	if (list_empty(&lseg->pls_layout->plh_segs)) {
+-		set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
++	if (list_empty(&lo->plh_segs)) {
++		set_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags);
+ 		/* Matched by initial refcount set in alloc_init_layout_hdr */
+-		pnfs_put_layout_hdr_locked(lseg->pls_layout);
++		pnfs_put_layout_hdr_locked(lo);
+ 	}
+ 	rpc_wake_up(&NFS_SERVER(inode)->roc_rpcwaitq);
+ }
+@@ -316,6 +317,7 @@ pnfs_put_lseg_common(struct pnfs_layout_segment *lseg)
+ void
+ pnfs_put_lseg(struct pnfs_layout_segment *lseg)
+ {
++	struct pnfs_layout_hdr *lo;
+ 	struct inode *inode;
+ 
+ 	if (!lseg)
+@@ -324,13 +326,14 @@ pnfs_put_lseg(struct pnfs_layout_segment *lseg)
+ 	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
+ 		atomic_read(&lseg->pls_refcount),
+ 		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
+-	inode = lseg->pls_layout->plh_inode;
++	lo = lseg->pls_layout;
++	inode = lo->plh_inode;
+ 	if (atomic_dec_and_lock(&lseg->pls_refcount, &inode->i_lock)) {
+ 		LIST_HEAD(free_me);
+ 
+-		pnfs_put_lseg_common(lseg);
+-		list_add(&lseg->pls_list, &free_me);
++		pnfs_layout_remove_lseg(lo, lseg);
+ 		spin_unlock(&inode->i_lock);
++		list_add(&lseg->pls_list, &free_me);
+ 		pnfs_free_lseg_list(&free_me);
+ 	}
+ }
+@@ -418,7 +421,7 @@ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
+ 		dprintk("%s: lseg %p ref %d\n", __func__, lseg,
+ 			atomic_read(&lseg->pls_refcount));
+ 		if (atomic_dec_and_test(&lseg->pls_refcount)) {
+-			pnfs_put_lseg_common(lseg);
++			pnfs_layout_remove_lseg(lseg->pls_layout, lseg);
+ 			list_add(&lseg->pls_list, tmp_list);
+ 			rv = 1;
+ 		}
+@@ -831,7 +834,7 @@ cmp_layout(struct pnfs_layout_range *l1,
+ }
+ 
+ static void
+-pnfs_insert_layout(struct pnfs_layout_hdr *lo,
++pnfs_layout_insert_lseg(struct pnfs_layout_hdr *lo,
+ 		   struct pnfs_layout_segment *lseg)
+ {
+ 	struct pnfs_layout_segment *lp;
+@@ -1178,7 +1181,7 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 	init_lseg(lo, lseg);
+ 	lseg->pls_range = res->range;
+ 	pnfs_get_lseg(lseg);
+-	pnfs_insert_layout(lo, lseg);
++	pnfs_layout_insert_lseg(lo, lseg);
+ 
+ 	if (res->return_on_close) {
+ 		set_bit(NFS_LSEG_ROC, &lseg->pls_flags);
+-- 
+1.7.11.4
 
---b.
