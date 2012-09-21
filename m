@@ -1,263 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:36215 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:23541 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751876Ab2IELYe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Sep 2012 07:24:34 -0400
-Subject: Re: [PATCH] fs: encode_fh: return FILEID_INVALID if invalid
- fid_type
-From: Steven Whitehouse <swhiteho@redhat.com>
-To: Namjae Jeon <linkinjeon@gmail.com>
-Cc: bfields@fieldses.org, akpm@linux-foundation.org, viro@zeniv.linux.org.uk,
-        chris.mason@fusionio.com, sage@inktank.com, miklos@szeredi.hu,
-        konishi.ryusuke@lab.ntt.co.jp, mfasheh@suse.com, jlbec@ejvilplan.org,
-        jack@suse.cz, bpm@sgi.com, elder@kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        linux-nilfs@vger.kernel.org, reiserfs-devel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Vivek Trivedi <vtrivedi018@gmail.com>
-In-Reply-To: <1346431601-3477-1-git-send-email-linkinjeon@gmail.com>
-References: <1346431601-3477-1-git-send-email-linkinjeon@gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 05 Sep 2012 12:22:57 +0100
-Message-ID: <1346844177.2799.82.camel@menhir>
-Mime-Version: 1.0
+	id S1757988Ab2IUUvX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Sep 2012 16:51:23 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 06/26] NFSv4.1: Add helpers for setting/reading the I/O fail bit
+Date: Fri, 21 Sep 2012 16:50:01 -0400
+Message-Id: <1348260621-10294-6-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1348260621-10294-5-git-send-email-Trond.Myklebust@netapp.com>
+References: <1348260621-10294-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-5-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+...and make them local to the pnfs.c file.
 
-On Fri, 2012-08-31 at 12:46 -0400, Namjae Jeon wrote:
-> This patch is a follow up on below patch:
-> 
-> [PATCH] exportfs: add FILEID_INVALID to indicate invalid fid_type
-> https://patchwork.kernel.org/patch/1385131/
-> 
-> Signed-off-by: Namjae Jeon <linkinjeon@gmail.com>
-> Signed-off-by: Vivek Trivedi <vtrivedi018@gmail.com>
-Acked-by: Steven Whitehouse <swhiteho@redhat.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/pnfs.c | 37 ++++++++++++++++++++++++++-----------
+ fs/nfs/pnfs.h |  6 ------
+ 2 files changed, 26 insertions(+), 17 deletions(-)
 
-for the gfs2 bits,
-
-Steve.
-
-> ---
->  fs/btrfs/export.c   |    4 ++--
->  fs/ceph/export.c    |    4 ++--
->  fs/fuse/inode.c     |    2 +-
->  fs/gfs2/export.c    |    4 ++--
->  fs/isofs/export.c   |    4 ++--
->  fs/nilfs2/namei.c   |    4 ++--
->  fs/ocfs2/export.c   |    4 ++--
->  fs/reiserfs/inode.c |    4 ++--
->  fs/udf/namei.c      |    4 ++--
->  fs/xfs/xfs_export.c |    4 ++--
->  mm/cleancache.c     |    2 +-
->  mm/shmem.c          |    2 +-
->  12 files changed, 21 insertions(+), 21 deletions(-)
-> 
-> diff --git a/fs/btrfs/export.c b/fs/btrfs/export.c
-> index 614f34a..81ee29e 100644
-> --- a/fs/btrfs/export.c
-> +++ b/fs/btrfs/export.c
-> @@ -22,10 +22,10 @@ static int btrfs_encode_fh(struct inode *inode, u32 *fh, int *max_len,
->  
->  	if (parent && (len < BTRFS_FID_SIZE_CONNECTABLE)) {
->  		*max_len = BTRFS_FID_SIZE_CONNECTABLE;
-> -		return 255;
-> +		return FILEID_INVALID;
->  	} else if (len < BTRFS_FID_SIZE_NON_CONNECTABLE) {
->  		*max_len = BTRFS_FID_SIZE_NON_CONNECTABLE;
-> -		return 255;
-> +		return FILEID_INVALID;
->  	}
->  
->  	len  = BTRFS_FID_SIZE_NON_CONNECTABLE;
-> diff --git a/fs/ceph/export.c b/fs/ceph/export.c
-> index 8e1b60e..98bde89 100644
-> --- a/fs/ceph/export.c
-> +++ b/fs/ceph/export.c
-> @@ -79,7 +79,7 @@ static int ceph_encode_fh(struct inode *inode, u32 *rawfh, int *max_len,
->  		if (parent_inode) {
->  			/* nfsd wants connectable */
->  			*max_len = connected_handle_length;
-> -			type = 255;
-> +			type = FILEID_INVALID;
->  		} else {
->  			dout("encode_fh %p\n", dentry);
->  			fh->ino = ceph_ino(inode);
-> @@ -88,7 +88,7 @@ static int ceph_encode_fh(struct inode *inode, u32 *rawfh, int *max_len,
->  		}
->  	} else {
->  		*max_len = handle_length;
-> -		type = 255;
-> +		type = FILEID_INVALID;
->  	}
->  	return type;
->  }
-> diff --git a/fs/fuse/inode.c b/fs/fuse/inode.c
-> index 2690a76..b787a6f 100644
-> --- a/fs/fuse/inode.c
-> +++ b/fs/fuse/inode.c
-> @@ -672,7 +672,7 @@ static int fuse_encode_fh(struct inode *inode, u32 *fh, int *max_len,
->  
->  	if (*max_len < len) {
->  		*max_len = len;
-> -		return  255;
-> +		return  FILEID_INVALID;
->  	}
->  
->  	nodeid = get_fuse_inode(inode)->nodeid;
-> diff --git a/fs/gfs2/export.c b/fs/gfs2/export.c
-> index e8ed6d4..f7a8092 100644
-> --- a/fs/gfs2/export.c
-> +++ b/fs/gfs2/export.c
-> @@ -37,10 +37,10 @@ static int gfs2_encode_fh(struct inode *inode, __u32 *p, int *len,
->  
->  	if (parent && (*len < GFS2_LARGE_FH_SIZE)) {
->  		*len = GFS2_LARGE_FH_SIZE;
-> -		return 255;
-> +		return FILEID_INVALID;
->  	} else if (*len < GFS2_SMALL_FH_SIZE) {
->  		*len = GFS2_SMALL_FH_SIZE;
-> -		return 255;
-> +		return FILEID_INVALID;
->  	}
->  
->  	fh[0] = cpu_to_be32(ip->i_no_formal_ino >> 32);
-> diff --git a/fs/isofs/export.c b/fs/isofs/export.c
-> index 1d38044..5e693b3 100644
-> --- a/fs/isofs/export.c
-> +++ b/fs/isofs/export.c
-> @@ -125,10 +125,10 @@ isofs_export_encode_fh(struct inode *inode,
->  	 */
->  	if (parent && (len < 5)) {
->  		*max_len = 5;
-> -		return 255;
-> +		return FILEID_INVALID;
->  	} else if (len < 3) {
->  		*max_len = 3;
-> -		return 255;
-> +		return FILEID_INVALID;
->  	}
->  
->  	len = 3;
-> diff --git a/fs/nilfs2/namei.c b/fs/nilfs2/namei.c
-> index 1d0c0b8..9de78f0 100644
-> --- a/fs/nilfs2/namei.c
-> +++ b/fs/nilfs2/namei.c
-> @@ -517,11 +517,11 @@ static int nilfs_encode_fh(struct inode *inode, __u32 *fh, int *lenp,
->  
->  	if (parent && *lenp < NILFS_FID_SIZE_CONNECTABLE) {
->  		*lenp = NILFS_FID_SIZE_CONNECTABLE;
-> -		return 255;
-> +		return FILEID_INVALID;
->  	}
->  	if (*lenp < NILFS_FID_SIZE_NON_CONNECTABLE) {
->  		*lenp = NILFS_FID_SIZE_NON_CONNECTABLE;
-> -		return 255;
-> +		return FILEID_INVALID;
->  	}
->  
->  	fid->cno = root->cno;
-> diff --git a/fs/ocfs2/export.c b/fs/ocfs2/export.c
-> index 322216a..2965116 100644
-> --- a/fs/ocfs2/export.c
-> +++ b/fs/ocfs2/export.c
-> @@ -195,11 +195,11 @@ static int ocfs2_encode_fh(struct inode *inode, u32 *fh_in, int *max_len,
->  
->  	if (parent && (len < 6)) {
->  		*max_len = 6;
-> -		type = 255;
-> +		type = FILEID_INVALID;
->  		goto bail;
->  	} else if (len < 3) {
->  		*max_len = 3;
-> -		type = 255;
-> +		type = FILEID_INVALID;
->  		goto bail;
->  	}
->  
-> diff --git a/fs/reiserfs/inode.c b/fs/reiserfs/inode.c
-> index 855da58..1a212ed 100644
-> --- a/fs/reiserfs/inode.c
-> +++ b/fs/reiserfs/inode.c
-> @@ -1599,10 +1599,10 @@ int reiserfs_encode_fh(struct inode *inode, __u32 * data, int *lenp,
->  
->  	if (parent && (maxlen < 5)) {
->  		*lenp = 5;
-> -		return 255;
-> +		return FILEID_INVALID;
->  	} else if (maxlen < 3) {
->  		*lenp = 3;
-> -		return 255;
-> +		return FILEID_INVALID;
->  	}
->  
->  	data[0] = inode->i_ino;
-> diff --git a/fs/udf/namei.c b/fs/udf/namei.c
-> index 95fee27..102c072 100644
-> --- a/fs/udf/namei.c
-> +++ b/fs/udf/namei.c
-> @@ -1270,10 +1270,10 @@ static int udf_encode_fh(struct inode *inode, __u32 *fh, int *lenp,
->  
->  	if (parent && (len < 5)) {
->  		*lenp = 5;
-> -		return 255;
-> +		return FILEID_INVALID;
->  	} else if (len < 3) {
->  		*lenp = 3;
-> -		return 255;
-> +		return FILEID_INVALID;
->  	}
->  
->  	*lenp = 3;
-> diff --git a/fs/xfs/xfs_export.c b/fs/xfs/xfs_export.c
-> index 4267922..a5a4e52 100644
-> --- a/fs/xfs/xfs_export.c
-> +++ b/fs/xfs/xfs_export.c
-> @@ -47,7 +47,7 @@ static int xfs_fileid_length(int fileid_type)
->  	case FILEID_INO32_GEN_PARENT | XFS_FILEID_TYPE_64FLAG:
->  		return 6;
->  	}
-> -	return 255; /* invalid */
-> +	return FILEID_INVALID; /* invalid */
->  }
->  
->  STATIC int
-> @@ -89,7 +89,7 @@ xfs_fs_encode_fh(
->  	len = xfs_fileid_length(fileid_type);
->  	if (*max_len < len) {
->  		*max_len = len;
-> -		return 255;
-> +		return FILEID_INVALID;
->  	}
->  	*max_len = len;
->  
-> diff --git a/mm/cleancache.c b/mm/cleancache.c
-> index 32e6f41..d76ba74 100644
-> --- a/mm/cleancache.c
-> +++ b/mm/cleancache.c
-> @@ -89,7 +89,7 @@ static int cleancache_get_key(struct inode *inode,
->  		fhfn = sb->s_export_op->encode_fh;
->  		if  (fhfn) {
->  			len = (*fhfn)(inode, &key->u.fh[0], &maxlen, NULL);
-> -			if (len <= 0 || len == 255)
-> +			if (len <= FILEID_ROOT || len == FILEID_INVALID)
->  				return -1;
->  			if (maxlen > CLEANCACHE_KEY_MAX)
->  				return -1;
-> diff --git a/mm/shmem.c b/mm/shmem.c
-> index 1d04904..5cbae30 100644
-> --- a/mm/shmem.c
-> +++ b/mm/shmem.c
-> @@ -2386,7 +2386,7 @@ static int shmem_encode_fh(struct inode *inode, __u32 *fh, int *len,
->  {
->  	if (*len < 3) {
->  		*len = 3;
-> -		return 255;
-> +		return FILEID_INVALID;
->  	}
->  
->  	if (inode_unhashed(inode)) {
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 498af87..f85cc4c 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -238,6 +238,27 @@ pnfs_put_layout_hdr(struct pnfs_layout_hdr *lo)
+ 	}
+ }
+ 
++static int
++pnfs_iomode_to_fail_bit(u32 iomode)
++{
++	return iomode == IOMODE_RW ?
++		NFS_LAYOUT_RW_FAILED : NFS_LAYOUT_RO_FAILED;
++}
++
++static void
++pnfs_layout_io_set_failed(struct pnfs_layout_hdr *lo, u32 iomode)
++{
++	set_bit(pnfs_iomode_to_fail_bit(iomode), &lo->plh_flags);
++	dprintk("%s Setting layout IOMODE_%s fail bit\n", __func__,
++			iomode == IOMODE_RW ?  "RW" : "READ");
++}
++
++static bool
++pnfs_layout_io_test_failed(struct pnfs_layout_hdr *lo, u32 iomode)
++{
++	return test_bit(pnfs_iomode_to_fail_bit(iomode), &lo->plh_flags) != 0;
++}
++
+ static void
+ init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
+ {
+@@ -612,7 +633,7 @@ send_layoutget(struct pnfs_layout_hdr *lo,
+ 			break;
+ 		default:
+ 			/* remember that LAYOUTGET failed and suspend trying */
+-			set_bit(lo_fail_bit(range->iomode), &lo->plh_flags);
++			pnfs_layout_io_set_failed(lo, range->iomode);
+ 		}
+ 		return NULL;
+ 	}
+@@ -669,8 +690,8 @@ _pnfs_return_layout(struct inode *ino)
+ 	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
+ 	if (unlikely(lrp == NULL)) {
+ 		status = -ENOMEM;
+-		set_bit(NFS_LAYOUT_RW_FAILED, &lo->plh_flags);
+-		set_bit(NFS_LAYOUT_RO_FAILED, &lo->plh_flags);
++		pnfs_layout_io_set_failed(lo, IOMODE_RW);
++		pnfs_layout_io_set_failed(lo, IOMODE_READ);
+ 		pnfs_clear_layout_returned(lo);
+ 		pnfs_put_layout_hdr(lo);
+ 		goto out;
+@@ -1046,7 +1067,7 @@ pnfs_update_layout(struct inode *ino,
+ 	}
+ 
+ 	/* if LAYOUTGET already failed once we don't try again */
+-	if (test_bit(lo_fail_bit(iomode), &nfsi->layout->plh_flags))
++	if (pnfs_layout_io_test_failed(nfsi->layout, iomode))
+ 		goto out_unlock;
+ 
+ 	/* Check to see if the layout for the given range already exists */
+@@ -1581,13 +1602,7 @@ static void pnfs_list_write_lseg(struct inode *inode, struct list_head *listp)
+ 
+ void pnfs_set_lo_fail(struct pnfs_layout_segment *lseg)
+ {
+-	if (lseg->pls_range.iomode == IOMODE_RW) {
+-		dprintk("%s Setting layout IOMODE_RW fail bit\n", __func__);
+-		set_bit(lo_fail_bit(IOMODE_RW), &lseg->pls_layout->plh_flags);
+-	} else {
+-		dprintk("%s Setting layout IOMODE_READ fail bit\n", __func__);
+-		set_bit(lo_fail_bit(IOMODE_READ), &lseg->pls_layout->plh_flags);
+-	}
++	pnfs_layout_io_set_failed(lseg->pls_layout, lseg->pls_range.iomode);
+ }
+ EXPORT_SYMBOL_GPL(pnfs_set_lo_fail);
+ 
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 0495879..e3eb7d1 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -274,12 +274,6 @@ pnfs_test_layout_returned(struct pnfs_layout_hdr *lo)
+ 	return test_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
+ }
+ 
+-static inline int lo_fail_bit(u32 iomode)
+-{
+-	return iomode == IOMODE_RW ?
+-			 NFS_LAYOUT_RW_FAILED : NFS_LAYOUT_RO_FAILED;
+-}
+-
+ static inline struct pnfs_layout_segment *
+ pnfs_get_lseg(struct pnfs_layout_segment *lseg)
+ {
+-- 
+1.7.11.4
 
