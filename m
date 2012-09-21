@@ -1,59 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:52792 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:18079 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757275Ab2IQUQV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Sep 2012 16:16:21 -0400
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 00/10] NFSD: Improve fault injection
-Date: Mon, 17 Sep 2012 16:16:09 -0400
-Message-Id: <1347912979-20603-1-git-send-email-bjschuma@netapp.com>
+	id S1753603Ab2IUBgD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Sep 2012 21:36:03 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 02/14] NFSv4.1: pnfs_layout_io_test_failed must clear invalid lsegs before a retry
+Date: Thu, 20 Sep 2012 21:35:45 -0400
+Message-Id: <1348191357-44503-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1348191357-44503-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1348191357-44503-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+If pnfs_layout_io_test_failed() authorises a retry of the failed layoutgets,
+it should first clear the existing layout segments so that we start afresh.
 
-While working on p2p-nfs, I discovered that I sometimes need to clear
-state for a specific client to test all possible error recovery conditions.
-The current fault injection code deletes state as it find it, so it can
-be difficult to guess which state will be forgotten.  In addition, I
-currently print out the amount of state forgotten but I don't give details
-like "Forgot 3 locks from client w.x.y.z".  These patches set out to
-improve that.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/pnfs.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-The first 7 patches clean up the current code and prepare it for specific
-client state removal.  Patch 8 adds prints information to the server's logs
-when a fault injection file is read (such as "Client w.x.y.z has 3 open
-files").  Patch 9 adds in a custom file operations structure so users can
-write strings to fault injection files in addition to u64s.  Finally, patch
-10 allows users to remove state by writing a client's IP address to one of
-the files.
-
-Questions, comments and suggestions are appreciated!
-
-- Bryan
-
-Bryan Schumaker (10):
-  NFSD: Fold fault_inject.h into state.h
-  NFSD: Lock state before calling fault injection function
-  NFSD: Clean up forgetting clients
-  NFSD: Clean up forgetting locks
-  NFSD: Clean up forgetting openowners
-  NFSD: Clean up forgetting and recalling delegations
-  NFSD: Fault injection operations take a per-client forget function
-  NFSD: Reading a fault injection file prints a state count
-  NFSD: Add a custom file operations structure for fault injection
-  NFSD: Forget state for a specific client
-
- fs/nfsd/fault_inject.c | 108 ++++++++++++++++++++++++-----
- fs/nfsd/fault_inject.h |  28 --------
- fs/nfsd/nfs4state.c    | 182 +++++++++++++++++++++++++++++++------------------
- fs/nfsd/nfsctl.c       |   2 +-
- fs/nfsd/state.h        |  23 +++++++
- 5 files changed, 230 insertions(+), 113 deletions(-)
- delete mode 100644 fs/nfsd/fault_inject.h
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index cbbb0fc..80aaaba 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -256,7 +256,8 @@ pnfs_layout_io_set_failed(struct pnfs_layout_hdr *lo, u32 iomode)
+ }
+ 
+ static bool
+-pnfs_layout_io_test_failed(struct pnfs_layout_hdr *lo, u32 iomode)
++pnfs_layout_io_test_failed(struct pnfs_layout_hdr *lo, u32 iomode,
++		struct list_head *head)
+ {
+ 	unsigned long start, end;
+ 	if (test_bit(pnfs_iomode_to_fail_bit(iomode), &lo->plh_flags) == 0)
+@@ -267,6 +268,7 @@ pnfs_layout_io_test_failed(struct pnfs_layout_hdr *lo, u32 iomode)
+ 		/* It is time to retry the failed layoutgets */
+ 		clear_bit(NFS_LAYOUT_RW_FAILED, &lo->plh_flags);
+ 		clear_bit(NFS_LAYOUT_RO_FAILED, &lo->plh_flags);
++		pnfs_mark_matching_lsegs_invalid(lo, head, NULL);
+ 		return false;
+ 	}
+ 	return true;
+@@ -1058,6 +1060,7 @@ pnfs_update_layout(struct inode *ino,
+ 	struct nfs_client *clp = server->nfs_client;
+ 	struct pnfs_layout_hdr *lo;
+ 	struct pnfs_layout_segment *lseg = NULL;
++	LIST_HEAD(tmp_list);
+ 	bool first = false;
+ 
+ 	if (!pnfs_enabled_sb(NFS_SERVER(ino)))
+@@ -1081,7 +1084,7 @@ pnfs_update_layout(struct inode *ino,
+ 	}
+ 
+ 	/* if LAYOUTGET already failed once we don't try again */
+-	if (pnfs_layout_io_test_failed(nfsi->layout, iomode))
++	if (pnfs_layout_io_test_failed(nfsi->layout, iomode, &tmp_list))
+ 		goto out_unlock;
+ 
+ 	/* Check to see if the layout for the given range already exists */
+@@ -1127,6 +1130,7 @@ pnfs_update_layout(struct inode *ino,
+ 	}
+ 	atomic_dec(&lo->plh_outstanding);
+ out:
++	pnfs_free_lseg_list(&tmp_list);
+ 	pnfs_put_layout_hdr(lo);
+ 	dprintk("%s end, state 0x%lx lseg %p\n", __func__,
+ 		nfsi->layout ? nfsi->layout->plh_flags : -1, lseg);
 -- 
-1.7.12
+1.7.11.4
 
