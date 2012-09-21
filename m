@@ -1,146 +1,134 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:7893 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:13469 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757588Ab2IRJpF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 18 Sep 2012 05:45:05 -0400
-Subject: [PATCH v2 1/3] lockd: per-net NSM client creation and destruction
-	helpers introduced
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, devel@openvz.org,
-        linux-kernel@vger.kernel.org, jlayton@redhat.com
-Date: Tue, 18 Sep 2012 13:37:12 +0400
-Message-ID: <20120918093712.2469.50298.stgit@localhost.localdomain>
-In-Reply-To: <20120918093612.2469.94393.stgit@localhost.localdomain>
-References: <20120918093612.2469.94393.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S932421Ab2IUUvw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Sep 2012 16:51:52 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 11/26] NFSv4.1: Fix a race in the pNFS return-on-close code
+Date: Fri, 21 Sep 2012 16:50:06 -0400
+Message-Id: <1348260621-10294-11-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1348260621-10294-10-git-send-email-Trond.Myklebust@netapp.com>
+References: <1348260621-10294-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-10-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NSM RPC client can be required on NFSv3 umount, when child reaper is dying (and
-destroying it's mount namespace). It means, that current nsproxy is set to
-NULL already, but creation of RPC client requires UTS namespace for gaining
-hostname string.
-This patch introduces reference counted NFS RPC clients creation and
-destruction helpers (similar to RPCBIND RPC clients).
+If we sleep after dropping the inode->i_lock, then we are no longer
+atomic with respect to the rpc_wake_up() call in pnfs_layout_remove_lseg().
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: <stable@vger.kernel.org>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/lockd/mon.c   |   51 +++++++++++++++++++++++++++++++++++++++++++++++++--
- fs/lockd/netns.h |    4 ++++
- fs/lockd/svc.c   |    1 +
- 3 files changed, 54 insertions(+), 2 deletions(-)
+ fs/nfs/nfs4proc.c |  8 +++-----
+ fs/nfs/pnfs.c     | 22 ++++++++++++----------
+ fs/nfs/pnfs.h     |  4 ++--
+ 3 files changed, 17 insertions(+), 17 deletions(-)
 
-diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index 7ef14b3..38f240e 100644
---- a/fs/lockd/mon.c
-+++ b/fs/lockd/mon.c
-@@ -19,6 +19,8 @@
- 
- #include <asm/unaligned.h>
- 
-+#include "netns.h"
-+
- #define NLMDBG_FACILITY		NLMDBG_MONITOR
- #define NSM_PROGRAM		100024
- #define NSM_VERSION		1
-@@ -70,7 +72,7 @@ static struct rpc_clnt *nsm_create(struct net *net)
- 	};
- 	struct rpc_create_args args = {
- 		.net			= net,
--		.protocol		= XPRT_TRANSPORT_UDP,
-+		.protocol		= XPRT_TRANSPORT_TCP,
- 		.address		= (struct sockaddr *)&sin,
- 		.addrsize		= sizeof(sin),
- 		.servername		= "rpc.statd",
-@@ -83,6 +85,51 @@ static struct rpc_clnt *nsm_create(struct net *net)
- 	return rpc_create(&args);
- }
- 
-+__maybe_unused static struct rpc_clnt *nsm_client_get(struct net *net)
-+{
-+	static DEFINE_MUTEX(nsm_create_mutex);
-+	struct rpc_clnt	*clnt;
-+	struct lockd_net *ln = net_generic(net, lockd_net_id);
-+
-+	spin_lock(&ln->nsm_clnt_lock);
-+	if (ln->nsm_users) {
-+		ln->nsm_users++;
-+		clnt = ln->nsm_clnt;
-+		spin_unlock(&ln->nsm_clnt_lock);
-+		goto out;
-+	}
-+	spin_unlock(&ln->nsm_clnt_lock);
-+
-+	mutex_lock(&nsm_create_mutex);
-+	clnt = nsm_create(net);
-+	if (!IS_ERR(clnt)) {
-+		ln->nsm_clnt = clnt;
-+		smp_wmb();
-+		ln->nsm_users = 1;
-+	}
-+	mutex_unlock(&nsm_create_mutex);
-+out:
-+	return clnt;
-+}
-+
-+__maybe_unused static void nsm_client_put(struct net *net)
-+{
-+	struct lockd_net *ln = net_generic(net, lockd_net_id);
-+	struct rpc_clnt	*clnt = ln->nsm_clnt;
-+	int shutdown = 0;
-+
-+	spin_lock(&ln->nsm_clnt_lock);
-+	if (ln->nsm_users) {
-+		if (--ln->nsm_users)
-+			ln->nsm_clnt = NULL;
-+		shutdown = !ln->nsm_users;
-+	}
-+	spin_unlock(&ln->nsm_clnt_lock);
-+
-+	if (shutdown)
-+		rpc_shutdown_client(clnt);
-+}
-+
- static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res,
- 			 struct net *net)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 87702a0..49d5c7d 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2137,6 +2137,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
  {
-@@ -111,7 +158,7 @@ static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res,
- 	memset(res, 0, sizeof(*res));
+ 	struct nfs4_closedata *calldata = data;
+ 	struct nfs4_state *state = calldata->state;
++	struct inode *inode = calldata->inode;
+ 	int call_close = 0;
  
- 	msg.rpc_proc = &clnt->cl_procinfo[proc];
--	status = rpc_call_sync(clnt, &msg, 0);
-+	status = rpc_call_sync(clnt, &msg, RPC_TASK_SOFTCONN);
- 	if (status < 0)
- 		dprintk("lockd: NSM upcall RPC failed, status=%d\n",
- 				status);
-diff --git a/fs/lockd/netns.h b/fs/lockd/netns.h
-index 4eee248..5010b55 100644
---- a/fs/lockd/netns.h
-+++ b/fs/lockd/netns.h
-@@ -12,6 +12,10 @@ struct lockd_net {
- 	struct delayed_work grace_period_end;
- 	struct lock_manager lockd_manager;
- 	struct list_head grace_list;
-+
-+	spinlock_t nsm_clnt_lock;
-+	unsigned int nsm_users;
-+	struct rpc_clnt *nsm_clnt;
- };
+ 	dprintk("%s: begin!\n", __func__);
+@@ -2170,16 +2171,13 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+ 	if (calldata->arg.fmode == 0) {
+ 		task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CLOSE];
+ 		if (calldata->roc &&
+-		    pnfs_roc_drain(calldata->inode, &calldata->roc_barrier)) {
+-			rpc_sleep_on(&NFS_SERVER(calldata->inode)->roc_rpcwaitq,
+-				     task, NULL);
++		    pnfs_roc_drain(inode, &calldata->roc_barrier, task))
+ 			goto out;
+-		}
+ 	}
  
- extern int lockd_net_id;
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 31a63f8..7e35587 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -596,6 +596,7 @@ static int lockd_init_net(struct net *net)
- 
- 	INIT_DELAYED_WORK(&ln->grace_period_end, grace_ender);
- 	INIT_LIST_HEAD(&ln->grace_list);
-+	spin_lock_init(&ln->nsm_clnt_lock);
- 	return 0;
+ 	nfs_fattr_init(calldata->res.fattr);
+ 	calldata->timestamp = jiffies;
+-	if (nfs4_setup_sequence(NFS_SERVER(calldata->inode),
++	if (nfs4_setup_sequence(NFS_SERVER(inode),
+ 				&calldata->arg.seq_args,
+ 				&calldata->res.seq_res,
+ 				task))
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 80aaaba..f3acb68 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -777,27 +777,29 @@ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier)
+ 	spin_unlock(&ino->i_lock);
  }
  
+-bool pnfs_roc_drain(struct inode *ino, u32 *barrier)
++bool pnfs_roc_drain(struct inode *ino, u32 *barrier, struct rpc_task *task)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(ino);
++	struct pnfs_layout_hdr *lo;
+ 	struct pnfs_layout_segment *lseg;
++	u32 current_seqid;
+ 	bool found = false;
+ 
+ 	spin_lock(&ino->i_lock);
+ 	list_for_each_entry(lseg, &nfsi->layout->plh_segs, pls_list)
+ 		if (test_bit(NFS_LSEG_ROC, &lseg->pls_flags)) {
++			rpc_sleep_on(&NFS_SERVER(ino)->roc_rpcwaitq, task, NULL);
+ 			found = true;
+-			break;
++			goto out;
+ 		}
+-	if (!found) {
+-		struct pnfs_layout_hdr *lo = nfsi->layout;
+-		u32 current_seqid = be32_to_cpu(lo->plh_stateid.seqid);
++	lo = nfsi->layout;
++	current_seqid = be32_to_cpu(lo->plh_stateid.seqid);
+ 
+-		/* Since close does not return a layout stateid for use as
+-		 * a barrier, we choose the worst-case barrier.
+-		 */
+-		*barrier = current_seqid + atomic_read(&lo->plh_outstanding);
+-	}
++	/* Since close does not return a layout stateid for use as
++	 * a barrier, we choose the worst-case barrier.
++	 */
++	*barrier = current_seqid + atomic_read(&lo->plh_outstanding);
++out:
+ 	spin_unlock(&ino->i_lock);
+ 	return found;
+ }
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 9735031..aa9fa1b 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -210,7 +210,7 @@ int pnfs_mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+ bool pnfs_roc(struct inode *ino);
+ void pnfs_roc_release(struct inode *ino);
+ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier);
+-bool pnfs_roc_drain(struct inode *ino, u32 *barrier);
++bool pnfs_roc_drain(struct inode *ino, u32 *barrier, struct rpc_task *task);
+ void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
+ void pnfs_cleanup_layoutcommit(struct nfs4_layoutcommit_data *data);
+ int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
+@@ -442,7 +442,7 @@ pnfs_roc_set_barrier(struct inode *ino, u32 barrier)
+ }
+ 
+ static inline bool
+-pnfs_roc_drain(struct inode *ino, u32 *barrier)
++pnfs_roc_drain(struct inode *ino, u32 *barrier, struct rpc_task *task)
+ {
+ 	return false;
+ }
+-- 
+1.7.11.4
 
