@@ -1,87 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:63349 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:26053 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754117Ab2IHOdN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 8 Sep 2012 10:33:13 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-CC: Jeff Layton <jlayton@redhat.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH v2] SUNRPC: check current nsproxy before set of node
- name on client creation
-Date: Sat, 8 Sep 2012 14:33:09 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F914D4@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20120813113731.9629.31906.stgit@localhost.localdomain>
-	  <20120813081054.0ee39037@corrin.poochiereds.net>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F90888@SACEXCMBX04-PRD.hq.netapp.com>
-	 <504ADED9.2020607@parallels.com>
-In-Reply-To: <504ADED9.2020607@parallels.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1754736Ab2IUBgL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Sep 2012 21:36:11 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 14/14] NFSv4.1: Remove unused 'default allocation' for pnfs_alloc_layout_hdr()
+Date: Thu, 20 Sep 2012 21:35:57 -0400
+Message-Id: <1348191357-44503-14-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1348191357-44503-13-git-send-email-Trond.Myklebust@netapp.com>
+References: <1348191357-44503-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1348191357-44503-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1348191357-44503-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1348191357-44503-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1348191357-44503-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1348191357-44503-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1348191357-44503-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1348191357-44503-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1348191357-44503-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1348191357-44503-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1348191357-44503-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1348191357-44503-12-git-send-email-Trond.Myklebust@netapp.com>
+ <1348191357-44503-13-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU2F0LCAyMDEyLTA5LTA4IGF0IDA4OjU5ICswMzAwLCBTdGFuaXNsYXYgS2luc2J1cnNreSB3
-cm90ZToNCj4gMDguMDkuMjAxMiAwMTozMiwgTXlrbGVidXN0LCBUcm9uZCDQv9C40YjQtdGCOg0K
-PiA+IE9uIE1vbiwgMjAxMi0wOC0xMyBhdCAwODoxMCAtMDQwMCwgSmVmZiBMYXl0b24gd3JvdGU6
-DQo+ID4+IE9uIE1vbiwgMTMgQXVnIDIwMTIgMTU6Mzc6MzEgKzA0MDANCj4gPj4gU3RhbmlzbGF2
-IEtpbnNidXJza3kgPHNraW5zYnVyc2t5QHBhcmFsbGVscy5jb20+IHdyb3RlOg0KPiA+Pg0KPiA+
-Pj4gdjI6DQo+ID4+PiAxKSBycGNfY2xudF9zZXRfbm9kZW5hbWUoKSBwcm90b3R5cGUgdXBkYXRl
-ZC4NCj4gPj4+IDIpIGZpeGVkIGVycm9ycyBpbiBjb21tZW50Lg0KPiA+Pj4NCj4gPj4+IFdoZW4g
-Y2hpbGQgcmVhcGVyIGV4aXRzLCBpdCBjYW4gZGVzdHJveSBtb3VudCBuYW1lc3BhY2UgaXQgYmVs
-b25ncyB0bywgYW5kIGlmDQo+ID4+PiB0aGVyZSBhcmUgTkZTIG1vdW50cyBpbnNpZGUsIHRoZW4g
-aXQgd2lsbCB0cnkgdG8gdW1vdW50IHRoZW0uIEJ1dCBpbiB0aGlzDQo+ID4+PiBwb2ludCBjdXJy
-ZW50LT5uc3Byb3h5IGlzIHNldCB0byBOVUxMIGFuZCBhbGwgbmFtZXNwYWNlcyB3aWxsIGJlIGRl
-c3Ryb3llZCBvbmUNCj4gPj4+IGJ5IG9uZS4gSS5lLiB3ZSBjYW4ndCBkZXJlZmVyZW5jZSBjdXJy
-ZW50LT5uc3Byb3h5IHRvIG9idGFpbiB1dHMgbmFtZXNwYWNlLg0KPiA+Pj4NCj4gPj4+IFNpZ25l
-ZC1vZmYtYnk6IFN0YW5pc2xhdiBLaW5zYnVyc2t5IDxza2luc2J1cnNreUBwYXJhbGxlbHMuY29t
-Pg0KPiA+Pj4gLS0tDQo+ID4+PiAgIG5ldC9zdW5ycGMvY2xudC5jIHwgICAxNiArKysrKysrKysr
-KysrLS0tDQo+ID4+PiAgIDEgZmlsZXMgY2hhbmdlZCwgMTMgaW5zZXJ0aW9ucygrKSwgMyBkZWxl
-dGlvbnMoLSkNCj4gPj4+DQo+ID4+PiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy9jbG50LmMgYi9u
-ZXQvc3VucnBjL2NsbnQuYw0KPiA+Pj4gaW5kZXggOWE5Njc2ZS4uOGZiY2JjOCAxMDA2NDQNCj4g
-Pj4+IC0tLSBhL25ldC9zdW5ycGMvY2xudC5jDQo+ID4+PiArKysgYi9uZXQvc3VucnBjL2NsbnQu
-Yw0KPiA+Pj4gQEAgLTI3Nyw4ICsyNzcsMTggQEAgdm9pZCBycGNfY2xpZW50c19ub3RpZmllcl91
-bnJlZ2lzdGVyKHZvaWQpDQo+ID4+PiAgIAlyZXR1cm4gcnBjX3BpcGVmc19ub3RpZmllcl91bnJl
-Z2lzdGVyKCZycGNfY2xpZW50c19ibG9jayk7DQo+ID4+PiAgIH0NCj4gPj4+ICAgDQo+ID4+PiAt
-c3RhdGljIHZvaWQgcnBjX2NsbnRfc2V0X25vZGVuYW1lKHN0cnVjdCBycGNfY2xudCAqY2xudCwg
-Y29uc3QgY2hhciAqbm9kZW5hbWUpDQo+ID4+PiArc3RhdGljIHZvaWQgcnBjX2NsbnRfc2V0X25v
-ZGVuYW1lKHN0cnVjdCBycGNfY2xudCAqY2xudCkNCj4gPj4+ICAgew0KPiA+Pj4gKwljb25zdCBj
-aGFyICpub2RlbmFtZTsNCj4gPj4+ICsNCj4gPj4+ICsJLyoNCj4gPj4+ICsJICogV2UgaGF2ZSB0
-byBwcm90ZWN0IGFnYWluc3QgZHlpbmcgY2hpbGQgcmVhcGVyLCB3aGljaCBoYXMgcmVsZWFzZWQN
-Cj4gPj4+ICsJICogaXRzIG5zcHJveHkgYWxyZWFkeSBhbmQgaXMgdHJ5aW5nIHRvIGRlc3Ryb3kg
-bW91bnQgbmFtZXNwYWNlLg0KPiA+Pj4gKwkgKi8NCj4gPj4+ICsJaWYgKGN1cnJlbnQtPm5zcHJv
-eHkgPT0gTlVMTCkNCj4gPj4+ICsJCXJldHVybjsNCj4gPj4+ICsNCj4gPj4+ICsJbm9kZW5hbWUg
-PSB1dHNuYW1lKCktPm5vZGVuYW1lOw0KPiA+Pj4gICAJY2xudC0+Y2xfbm9kZWxlbiA9IHN0cmxl
-bihub2RlbmFtZSk7DQo+ID4+PiAgIAlpZiAoY2xudC0+Y2xfbm9kZWxlbiA+IFVOWF9NQVhOT0RF
-TkFNRSkNCj4gPj4+ICAgCQljbG50LT5jbF9ub2RlbGVuID0gVU5YX01BWE5PREVOQU1FOw0KPiA+
-Pj4gQEAgLTM2NSw3ICszNzUsNyBAQCBzdGF0aWMgc3RydWN0IHJwY19jbG50ICogcnBjX25ld19j
-bGllbnQoY29uc3Qgc3RydWN0IHJwY19jcmVhdGVfYXJncyAqYXJncywgc3RydQ0KPiA+Pj4gICAJ
-fQ0KPiA+Pj4gICANCj4gPj4+ICAgCS8qIHNhdmUgdGhlIG5vZGVuYW1lICovDQo+ID4+PiAtCXJw
-Y19jbG50X3NldF9ub2RlbmFtZShjbG50LCB1dHNuYW1lKCktPm5vZGVuYW1lKTsNCj4gPj4+ICsJ
-cnBjX2NsbnRfc2V0X25vZGVuYW1lKGNsbnQpOw0KPiA+Pj4gICAJcnBjX3JlZ2lzdGVyX2NsaWVu
-dChjbG50KTsNCj4gPj4+ICAgCXJldHVybiBjbG50Ow0KPiA+Pj4gICANCj4gPj4+IEBAIC01MjQs
-NyArNTM0LDcgQEAgcnBjX2Nsb25lX2NsaWVudChzdHJ1Y3QgcnBjX2NsbnQgKmNsbnQpDQo+ID4+
-PiAgIAllcnIgPSBycGNfc2V0dXBfcGlwZWRpcihuZXcsIGNsbnQtPmNsX3Byb2dyYW0tPnBpcGVf
-ZGlyX25hbWUpOw0KPiA+Pj4gICAJaWYgKGVyciAhPSAwKQ0KPiA+Pj4gICAJCWdvdG8gb3V0X25v
-X3BhdGg7DQo+ID4+PiAtCXJwY19jbG50X3NldF9ub2RlbmFtZShuZXcsIHV0c25hbWUoKS0+bm9k
-ZW5hbWUpOw0KPiA+Pj4gKwlycGNfY2xudF9zZXRfbm9kZW5hbWUobmV3KTsNCj4gPj4+ICAgCWlm
-IChuZXctPmNsX2F1dGgpDQo+ID4+PiAgIAkJYXRvbWljX2luYygmbmV3LT5jbF9hdXRoLT5hdV9j
-b3VudCk7DQo+ID4+PiAgIAlhdG9taWNfaW5jKCZjbG50LT5jbF9jb3VudCk7DQo+ID4+Pg0KPiA+
-Pj4gLS0NCj4gPj4+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5l
-ICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiIGluDQo+ID4+PiB0aGUgYm9keSBvZiBhIG1lc3NhZ2Ug
-dG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0KPiA+Pj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBh
-dCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQo+ID4+IEFja2Vk
-LWJ5OiBKZWZmIExheXRvbiA8amxheXRvbkByZWRoYXQuY29tPg0KPiA+IE9LLCBjb2xvdXIgbWUg
-Y29uZnVzZWQgKGFnYWluKS4NCj4gDQo+IFdoYXQgY29sb3I/DQo+IA0KPiA+IFdoeSBzaG91bGQg
-YSB1bW91bnQgdHJpZ2dlciBhbg0KPiA+IHJwY19jcmVhdGUoKSBvciBycGNfY2xvbmVfY2xpZW50
-KCk/DQo+IA0KPiBJdCBjYWxscyBuc21fY3JlYXRlKCkuDQo+IEhlcmUgaXMgdGhlIHRyYWNlICho
-dHRwczovL2J1Z3ppbGxhLnJlZGhhdC5jb20vc2hvd19idWcuY2dpP2lkPTgzMDg2MiwgDQo+IGNv
-bW1lbnQgNjgpOg0KDQpSaWdodCwgYnV0IGlmIHdlJ3JlIHVzaW5nIE5GU3YzIGxvY2sgbW9uaXRv
-cmluZywgd2Uga25vdyBpbiBhZHZhbmNlIHRoYXQNCndlJ3JlIGdvaW5nIHRvIG5lZWQgYW4gbnNt
-IGNhbGwgdG8gbG9jYWxob3N0LiBXaHkgY2FuJ3Qgd2UganVzdCBjYWNoZQ0KdGhlIG9uZSB0aGF0
-IHdlIHVzZWQgdG8gc3RhcnQgbG9jayBtb25pdG9yaW5nIGluIHRoZSBmaXJzdCBwbGFjZT8NCg0K
-LS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRB
-cHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0KDQo=
+...and ditto for pnfs_free_layout_hdr()
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/pnfs.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index bbdce87..196b8bb 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -200,8 +200,7 @@ static struct pnfs_layout_hdr *
+ pnfs_alloc_layout_hdr(struct inode *ino, gfp_t gfp_flags)
+ {
+ 	struct pnfs_layoutdriver_type *ld = NFS_SERVER(ino)->pnfs_curr_ld;
+-	return ld->alloc_layout_hdr ? ld->alloc_layout_hdr(ino, gfp_flags) :
+-		kzalloc(sizeof(struct pnfs_layout_hdr), gfp_flags);
++	return ld->alloc_layout_hdr(ino, gfp_flags);
+ }
+ 
+ static void
+@@ -218,7 +217,7 @@ pnfs_free_layout_hdr(struct pnfs_layout_hdr *lo)
+ 		spin_unlock(&clp->cl_lock);
+ 	}
+ 	put_rpccred(lo->plh_lc_cred);
+-	return ld->alloc_layout_hdr ? ld->free_layout_hdr(lo) : kfree(lo);
++	return ld->free_layout_hdr(lo);
+ }
+ 
+ static void
+-- 
+1.7.11.4
+
