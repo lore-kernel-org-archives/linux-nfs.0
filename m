@@ -1,67 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from peace.netnation.com ([204.174.223.2]:36426 "EHLO
-	peace.netnation.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754165Ab2IKTZY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Sep 2012 15:25:24 -0400
-Received: from sim by peace.netnation.com with local (Exim 4.80)
-	(envelope-from <sim@netnation.com>)
-	id 1TBW5L-0004be-Fr
-	for linux-nfs@vger.kernel.org; Tue, 11 Sep 2012 12:25:23 -0700
-Date: Tue, 11 Sep 2012 12:25:23 -0700
-From: Simon Kirby <sim@hostway.ca>
+Received: from mx2.netapp.com ([216.240.18.37]:27235 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757991Ab2IUUwE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Sep 2012 16:52:04 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
-Subject: Re: [3.6-rc3] rdirplus broken? (EBUSY)
-Message-ID: <20120911192523.GA11160@hostway.ca>
-References: <20120827215510.GL24761@hostway.ca>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120827215510.GL24761@hostway.ca>
+Subject: [PATCH v2 13/26] NFSv4.1: Get rid of pNFS layout state "NFS_LAYOUT_INVALID"
+Date: Fri, 21 Sep 2012 16:50:08 -0400
+Message-Id: <1348260621-10294-13-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1348260621-10294-12-git-send-email-Trond.Myklebust@netapp.com>
+References: <1348260621-10294-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-12-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 27, 2012 at 02:55:10PM -0700, Simon Kirby wrote:
+In all cases where we set NFS_LAYOUT_INVALID, we also set NFS_LAYOUT_DESTROYED.
+Furthermore, in all cases where we test for NFS_LAYOUT_INVALID, we should
+also be testing for NFS_LAYOUT_DESTROYED, since the latter means that
+we hold no valid layout segments.
+Ergo the two are redundant.
 
-> Hello!
-> 
-> Something seems broiken in 3.6-rc[123] which was fine in 3.5 and earlier.
-> This is a 3.4.1 knfsd server with ext3 and XFS-based NFS exports:
-> 
-> /	192.168.13.0/24(rw,no_root_squash,no_subtree_check,async)
-> /pics	192.168.13.0/24(rw,no_root_squash,no_subtree_check,async)
-> /raid	192.168.13.0/24(rw,no_root_squash,no_subtree_check,async)
-> 
-> and a 3.6-rc3 client with this in fstab:
-> 
-> flick:/		/flick		nfs	rw,vers=3
-> flick:/raid	/flick/raid	nfs	rw,vers=3
-> flick:/pics	/flick/pics	nfs	rw,vers=3
-> 
-> This seems to fail now as follows:
-> 
-> [sroot@oof:/]# mount flick
-> [sroot@oof:/]# mount flick/raid
-> [sroot@oof:/]# mount flick/pics
-> [sroot@oof:/]# ls -l flick
-> ls: cannot access flick/pics: Device or resource busy
-> ls: cannot access flick/raid: Device or resource busy
-> total 2180
-> drwxr-xr-x  45 root root    4096 Jun 18 14:19 ./
-> drwxr-xr-x  58 root root    4096 Jul  3 22:24 ../
-> ...
-> ??????????   ? ?    ?          ?            ? pics
-> ??????????   ? ?    ?          ?            ? raid
-> ...
-> [sroot@oof:/]# cd flick/pics
-> flick/pics: Device or resource busy.
-> 
-> These mount points are now stuck and cannot be unmounted until
-> I reboot (umount -l fails with EBUSY).
-> 
-> If I mount with "nordirplus", I can't seem to get it to break. However,
-> sometimes it will work regardless. I can bisect this if it would help..
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c | 4 +---
+ fs/nfs/nfs4filelayout.h | 6 ------
+ fs/nfs/pnfs.h           | 7 ++++++-
+ 3 files changed, 7 insertions(+), 10 deletions(-)
 
-This is still the case with 3.6-rc5. I hadn't noticed any problem since
-mounting with nordirplus, and it broke immediately after removing the
-option again. I will bisect.
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index dac2162..6cce57e 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -190,8 +190,6 @@ static int filelayout_async_handle_error(struct rpc_task *task,
+ 		 * i/o and all i/o waiting on the slot table to the MDS until
+ 		 * layout is destroyed and a new valid layout is obtained.
+ 		 */
+-		set_bit(NFS_LAYOUT_INVALID,
+-				&NFS_I(inode)->layout->plh_flags);
+ 		pnfs_destroy_layout(NFS_I(inode));
+ 		rpc_wake_up(&tbl->slot_tbl_waitq);
+ 		goto reset;
+@@ -281,7 +279,7 @@ filelayout_reset_to_mds(struct pnfs_layout_segment *lseg)
+ {
+ 	struct nfs4_deviceid_node *node = FILELAYOUT_DEVID_NODE(lseg);
+ 
+-	return filelayout_test_layout_invalid(lseg->pls_layout) ||
++	return pnfs_test_layout_destroyed(lseg->pls_layout) ||
+ 		filelayout_test_devid_unavailable(node);
+ }
+ 
+diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
+index 10b0f13..dca47d78 100644
+--- a/fs/nfs/nfs4filelayout.h
++++ b/fs/nfs/nfs4filelayout.h
+@@ -129,12 +129,6 @@ filelayout_mark_devid_invalid(struct nfs4_deviceid_node *node)
+ }
+ 
+ static inline bool
+-filelayout_test_layout_invalid(struct pnfs_layout_hdr *lo)
+-{
+-	return test_bit(NFS_LAYOUT_INVALID, &lo->plh_flags);
+-}
+-
+-static inline bool
+ filelayout_test_devid_invalid(struct nfs4_deviceid_node *node)
+ {
+ 	return test_bit(NFS_DEVICEID_INVALID, &node->flags);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index aa9fa1b..aacda7f 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -63,7 +63,6 @@ enum {
+ 	NFS_LAYOUT_BULK_RECALL,		/* bulk recall affecting layout */
+ 	NFS_LAYOUT_ROC,			/* some lseg had roc bit set */
+ 	NFS_LAYOUT_DESTROYED,		/* no new use of layout allowed */
+-	NFS_LAYOUT_INVALID,		/* layout is being destroyed */
+ 	NFS_LAYOUT_RETURNED,		/* layout has already been returned */
+ };
+ 
+@@ -279,6 +278,12 @@ pnfs_test_layout_returned(struct pnfs_layout_hdr *lo)
+ 	return test_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
+ }
+ 
++static inline bool
++pnfs_test_layout_destroyed(struct pnfs_layout_hdr *lo)
++{
++	return test_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags);
++}
++
+ static inline struct pnfs_layout_segment *
+ pnfs_get_lseg(struct pnfs_layout_segment *lseg)
+ {
+-- 
+1.7.11.4
 
-Simon-
