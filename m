@@ -1,126 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:52812 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:28407 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932564Ab2IQUQ2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Sep 2012 16:16:28 -0400
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 10/10] NFSD: Forget state for a specific client
-Date: Mon, 17 Sep 2012 16:16:19 -0400
-Message-Id: <1347912979-20603-11-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1347912979-20603-1-git-send-email-bjschuma@netapp.com>
-References: <1347912979-20603-1-git-send-email-bjschuma@netapp.com>
+	id S932372Ab2IUUv6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Sep 2012 16:51:58 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 12/26] NFSv4.1: Simplify the pNFS return-on-close code
+Date: Fri, 21 Sep 2012 16:50:07 -0400
+Message-Id: <1348260621-10294-12-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1348260621-10294-11-git-send-email-Trond.Myklebust@netapp.com>
+References: <1348260621-10294-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-11-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Confine it to the nfs4_do_close() code.
 
-Write the client's ip address to any state file and all appropriate
-state for that client will be forgotten.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfsd/fault_inject.c | 31 +++++++++++++++++++++++++++----
- fs/nfsd/nfs4state.c    | 11 +++++++++++
- fs/nfsd/state.h        |  1 +
- 3 files changed, 39 insertions(+), 4 deletions(-)
+ fs/nfs/nfs4_fs.h   | 2 +-
+ fs/nfs/nfs4proc.c  | 6 ++----
+ fs/nfs/nfs4state.c | 7 ++-----
+ 3 files changed, 5 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-index 19b3348..bb6b487 100644
---- a/fs/nfsd/fault_inject.c
-+++ b/fs/nfsd/fault_inject.c
-@@ -8,6 +8,8 @@
- #include <linux/fs.h>
- #include <linux/debugfs.h>
- #include <linux/module.h>
-+#include <linux/nsproxy.h>
-+#include <linux/sunrpc/clnt.h>
- #include <asm/uaccess.h>
- #include "state.h"
- 
-@@ -63,6 +65,19 @@ static void nfsd_inject_set(struct nfsd_fault_inject_op *op, u64 val)
- 	printk(KERN_INFO "NFSD: %s: found %llu", op->file, count);
- }
- 
-+static void nfsd_inject_set_client(struct nfsd_fault_inject_op *op,
-+				   struct sockaddr_storage *addr,
-+				   size_t addr_size)
-+{
-+	struct nfs4_client *clp;
-+
-+	nfs4_lock_state();
-+	clp = nfsd_find_client(addr, addr_size);
-+	if (clp)
-+		op->forget(clp, 0);
-+	nfs4_unlock_state();
-+}
-+
- static void nfsd_inject_get(struct nfsd_fault_inject_op *op, u64 *val)
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 71d407f..9cacc13 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -223,7 +223,7 @@ extern int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred);
+ extern int nfs4_destroy_clientid(struct nfs_client *clp);
+ extern int nfs4_init_clientid(struct nfs_client *, struct rpc_cred *);
+ extern int nfs41_init_clientid(struct nfs_client *, struct rpc_cred *);
+-extern int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait, bool roc);
++extern int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait);
+ extern int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle);
+ extern int nfs4_proc_fs_locations(struct rpc_clnt *, struct inode *, const struct qstr *,
+ 				  struct nfs4_fs_locations *, struct page *);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 49d5c7d..d9d67b3 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2204,7 +2204,7 @@ static const struct rpc_call_ops nfs4_close_ops = {
+  *
+  * NOTE: Caller must be holding the sp->so_owner semaphore!
+  */
+-int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait, bool roc)
++int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait)
  {
- 	nfs4_lock_state();
-@@ -99,15 +114,23 @@ static ssize_t fault_inject_read(struct file *file, char __user *buf,
- static ssize_t fault_inject_write(struct file *file, const char __user *buf,
- 				  size_t len, loff_t *ppos)
- {
--	char write_buf[24];
-+	char write_buf[INET6_ADDRSTRLEN];
- 	size_t size = min(sizeof(write_buf), len) - 1;
-+	struct net *net = current->nsproxy->net_ns;
-+	struct sockaddr_storage sa;
- 	u64 val;
+ 	struct nfs_server *server = NFS_SERVER(state->inode);
+ 	struct nfs4_closedata *calldata;
+@@ -2240,7 +2240,7 @@ int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait, bool roc)
+ 	calldata->res.fattr = &calldata->fattr;
+ 	calldata->res.seqid = calldata->arg.seqid;
+ 	calldata->res.server = server;
+-	calldata->roc = roc;
++	calldata->roc = pnfs_roc(state->inode);
+ 	nfs_sb_active(calldata->inode->i_sb);
  
- 	if (copy_from_user(write_buf, buf, size))
- 		return -EFAULT;
+ 	msg.rpc_argp = &calldata->arg;
+@@ -2257,8 +2257,6 @@ int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait, bool roc)
+ out_free_calldata:
+ 	kfree(calldata);
+ out:
+-	if (roc)
+-		pnfs_roc_release(state->inode);
+ 	nfs4_put_open_state(state);
+ 	nfs4_put_state_owner(sp);
+ 	return status;
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index fc6cfe6..a5331ec 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -729,11 +729,8 @@ static void __nfs4_close(struct nfs4_state *state,
+ 	if (!call_close) {
+ 		nfs4_put_open_state(state);
+ 		nfs4_put_state_owner(owner);
+-	} else {
+-		bool roc = pnfs_roc(state->inode);
 -
--	val = simple_strtoll(write_buf, NULL, 0);
--	nfsd_inject_set(file->f_dentry->d_inode->i_private, val);
-+	write_buf[size] = '\0';
-+
-+	size = rpc_pton(net, write_buf, size, (struct sockaddr *)&sa, sizeof(sa));
-+	if (size > 0)
-+		nfsd_inject_set_client(file->f_dentry->d_inode->i_private, &sa, size);
-+	else {
-+		val = simple_strtoll(write_buf, NULL, 0);
-+		nfsd_inject_set(file->f_dentry->d_inode->i_private, val);
-+	}
- 	return len; /* on success, claim we got the whole input */
+-		nfs4_do_close(state, gfp_mask, wait, roc);
+-	}
++	} else
++		nfs4_do_close(state, gfp_mask, wait);
  }
  
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index a5a3b46d..9dd145e 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4696,6 +4696,17 @@ u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
- 	return count;
- }
- 
-+struct nfs4_client *nfsd_find_client(struct sockaddr_storage *addr, size_t addr_size)
-+{
-+	struct nfs4_client *clp;
-+
-+	list_for_each_entry(clp, &client_lru, cl_lru) {
-+		if (memcmp(&clp->cl_addr, addr, addr_size) == 0)
-+			return clp;
-+	}
-+	return NULL;
-+}
-+
- #endif /* CONFIG_NFSD_FAULT_INJECTION */
- 
- /* initialization to perform at module load time: */
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 881781a..17435d9 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -487,6 +487,7 @@ extern void nfsd4_record_grace_done(struct net *net, time_t boot_time);
- int nfsd_fault_inject_init(void);
- void nfsd_fault_inject_cleanup(void);
- u64 nfsd_for_n_state(u64, u64 (*)(struct nfs4_client *, u64));
-+struct nfs4_client *nfsd_find_client(struct sockaddr_storage *, size_t);
- 
- u64 nfsd_forget_client(struct nfs4_client *, u64);
- u64 nfsd_forget_client_locks(struct nfs4_client*, u64);
+ void nfs4_close_state(struct nfs4_state *state, fmode_t fmode)
 -- 
-1.7.12
+1.7.11.4
 
