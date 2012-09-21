@@ -1,67 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:36013 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756032Ab2IMXfJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Sep 2012 19:35:09 -0400
-From: Boaz Harrosh <bharrosh@panasas.com>
-To: Benny Halevy <bhalevy@tonian.com>, NFS list <linux-nfs@vger.kernel.org>,
-        open-osd <osd-dev@open-osd.org>
-Subject: [PATCH 03/10] SQUASHME: pnfsd: Pass less arguments to init_layout()
-Date: Fri, 14 Sep 2012 02:34:57 +0300
-Message-ID: <1347579297-21513-1-git-send-email-bharrosh@panasas.com>
-In-Reply-To: <50526B39.3000802@panasas.com>
-References: <50526B39.3000802@panasas.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mx2.netapp.com ([216.240.18.37]:51959 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753359Ab2IUUxN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Sep 2012 16:53:13 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 25/26] NFSv4.1: Clear NFS_LAYOUT_BULK_RECALL when the layout segments are freed
+Date: Fri, 21 Sep 2012 16:50:20 -0400
+Message-Id: <1348260621-10294-25-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1348260621-10294-24-git-send-email-Trond.Myklebust@netapp.com>
+References: <1348260621-10294-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-12-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-13-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-14-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-15-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-16-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-17-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-18-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-19-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-20-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-21-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-22-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-23-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-24-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Instead of passing all parameters individually, of which
-one was unused. Pass the structures these originate from.
+Once all the affected layout segments have been freed up, clear the
+NFS_LAYOUT_BULK_RECALL flag so that we can reuse the pnfs_layout_hdr
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfsd/nfs4pnfsd.c | 11 +++++------
- 1 file changed, 5 insertions(+), 6 deletions(-)
+ fs/nfs/pnfs.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-index 509b260..f0e193a 100644
---- a/fs/nfsd/nfs4pnfsd.c
-+++ b/fs/nfsd/nfs4pnfsd.c
-@@ -301,9 +301,8 @@ init_layout(struct nfs4_layout *lp,
- 	    struct nfs4_layout_state *ls,
- 	    struct nfs4_file *fp,
- 	    struct nfs4_client *clp,
--	    struct svc_fh *current_fh,
--	    struct nfsd4_layout_seg *seg,
--	    stateid_t *stateid)
-+	    struct nfsd4_pnfs_layoutget *lgp,
-+	    struct nfsd4_pnfs_layoutget_res *res)
- {
- 	dprintk("pNFS %s: lp %p ls %p clp %p fp %p ino %p\n", __func__,
- 		lp, ls, clp, fp, fp->fi_inode);
-@@ -311,10 +310,10 @@ init_layout(struct nfs4_layout *lp,
- 	get_nfs4_file(fp);
- 	lp->lo_client = clp;
- 	lp->lo_file = fp;
--	memcpy(&lp->lo_seg, seg, sizeof(lp->lo_seg));
-+	memcpy(&lp->lo_seg, &res->lg_seg, sizeof(lp->lo_seg));
- 	get_layout_state(ls);		/* put on destroy_layout */
- 	lp->lo_state = ls;
--	update_layout_stateid(ls, stateid);
-+	update_layout_stateid(ls, &lgp->lg_sid);
- 	list_add_tail(&lp->lo_perclnt, &clp->cl_layouts);
- 	list_add_tail(&lp->lo_perfile, &fp->fi_layouts);
- 	dprintk("pNFS %s end\n", __func__);
-@@ -829,7 +828,7 @@ nfs4_pnfs_get_layout(struct nfsd4_pnfs_layoutget *lgp,
- 		goto out_freelayout;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 8ba7c35..a5edf27 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -306,6 +306,8 @@ pnfs_layout_remove_lseg(struct pnfs_layout_hdr *lo,
+ 	list_del_init(&lseg->pls_list);
+ 	/* Matched by pnfs_get_layout_hdr in pnfs_layout_insert_lseg */
+ 	atomic_dec(&lo->plh_refcount);
++	if (list_empty(&lo->plh_segs))
++		clear_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags);
+ 	rpc_wake_up(&NFS_SERVER(inode)->roc_rpcwaitq);
+ }
  
- 	/* Can't merge, so let's initialize this new layout */
--	init_layout(lp, ls, fp, clp, lgp->lg_fhp, &res.lg_seg, &lgp->lg_sid);
-+	init_layout(lp, ls, fp, clp, lgp, &res);
- out_unlock:
- 	if (ls)
- 		put_layout_state(ls);
 -- 
-1.7.10.2.677.gb6bc67f
+1.7.11.4
 
