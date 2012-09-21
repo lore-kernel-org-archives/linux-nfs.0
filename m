@@ -1,52 +1,149 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:44620 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:11088 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750961Ab2IEOtV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Sep 2012 10:49:21 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Diego Moreno <Diego.Moreno-Lazaro@bull.net>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv3 caching vs NFSv4
-Date: Wed, 5 Sep 2012 14:49:18 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F8612E@SACEXCMBX04-PRD.hq.netapp.com>
-References: <50474858.1020801@bull.net>
-In-Reply-To: <50474858.1020801@bull.net>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S932081Ab2IUUwe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Sep 2012 16:52:34 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 18/26] NFSv4.1: Clean up the removal of pnfs_layout_hdr from the server list
+Date: Fri, 21 Sep 2012 16:50:13 -0400
+Message-Id: <1348260621-10294-18-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1348260621-10294-17-git-send-email-Trond.Myklebust@netapp.com>
+References: <1348260621-10294-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-12-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-13-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-14-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-15-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-16-git-send-email-Trond.Myklebust@netapp.com>
+ <1348260621-10294-17-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTA5LTA1IGF0IDE0OjQwICswMjAwLCBEaWVnbyBNb3Jlbm8gd3JvdGU6DQo+
-IEhlbGxvIGV2ZXJ5b25lLA0KPiANCj4gUGVyZm9ybWluZyBzb21lIGF0dHJpYnV0ZSBjYWNoaW5n
-IHRlc3RzIEkgdGhpbmsgSSBmb3VuZCBzb21lIA0KPiBpbmNvbnNpc3RlbmNpZXMgYmV0d2VlbiBu
-ZnN2MyBhbmQgbmZzdjQuIFJ1bm5pbmcgYSBrZXJuZWwgYmFzZWQgb24gDQo+IHJoZWw2LjMgKDIu
-Ni4zMi0yNzkuZWw2Lng4Nl82NCkgSSBmb3VuZCBuZnN2NCBkb2Vzbid0IG1hbmFnZSBhIGZpbGUg
-DQo+IG1vZGlmaWVkIG9uIHRoZSBzZXJ2ZXIgc2lkZSAoZXZlbiB3aXRoIHRoZSBub2FjIG1vdW50
-IG9wdGlvbikgd2hpbGUgDQo+IG5mc3YzIGRvZXMuDQo+IA0KPiBNeSB0ZXN0IHdpbGwgYmUgbW9k
-aWZ5aW5nIGEgZmlsZSBldmVyeSBzZWNvbmQgb24gdGhlIHNlcnZlciBtb3VudCBwb2ludDoNCj4g
-DQo+IFtyb290QG5mcyB+XSMgIEZJTEU9L3RtcC9uZnNfc2VydmVyL215ZmlsZSA7ICB3aGlsZSB0
-cnVlIDsgZG8gc2xlZXAgMSA7IA0KPiBzZWQgLWkgJ3MvdGV4dDEvdGV4dDIvZycgJEZJTEUgOyBj
-YXQgJEZJTEUgOyBzbGVlcCAxOyBzZWQgLWkgDQo+ICdzL3RleHQyL3RleHQxL2cnICRGSUxFIDsg
-Y2F0ICRGSUxFIDsgZG9uZQ0KPiB0ZXh0Mg0KPiB0ZXh0MQ0KPiB0ZXh0Mg0KPiB0ZXh0MQ0KPiB0
-ZXh0Mg0KPiAoYW5kIHNvIG9uLi4uKQ0KPiANCj4gTWVhbndoaWxlLCB0aGUgY2xpZW50ICh3aGlj
-aCBCVFcgaXMgdGhlIHNhbWUgbWFjaGluZSkgd2lsbCByZWFkIHRoZSBmaWxlIA0KPiBldmVyeSBz
-ZWNvbmQgOg0KPiANCj4gV2l0aCBORlN2NDoNCj4gDQo+IFtyb290QG5mcyB+XSMgbW91bnQgLW8g
-bm9hYyx2ZXJzPTQgbmZzOi90bXAvbmZzX3NlcnZlci8gL3RtcC9uZnNfY2xpZW50Lw0KPiBbcm9v
-dEBuZnMgfl0jIGZvciBpIGluIDEgMiAzIDQgNSA7IGRvIGNhdCAvdG1wL25mc19jbGllbnQvbXlm
-aWxlOyBzbGVlcCANCj4gMSA7IGRvbmUNCj4gdGV4dDINCj4gdGV4dDENCj4gdGV4dDENCj4gdGV4
-dDENCj4gdGV4dDENCj4gDQo+IFdpdGggTkZTdjM6DQo+IFtyb290QG5mcyB+XSMgbW91bnQgLW8g
-bm9hYyx2ZXJzPTMgbmZzOi90bXAvbmZzX3NlcnZlci8gL3RtcC9uZnNfY2xpZW50Lw0KPiBbcm9v
-dEBuZnMgfl0jIGZvciBpIGluIDEgMiAzIDQgNSA7IGRvIGNhdCAvdG1wL25mc19jbGllbnQvbXlm
-aWxlOyBzbGVlcCANCj4gMSA7IGRvbmUNCj4gdGV4dDENCj4gdGV4dDINCj4gdGV4dDENCj4gdGV4
-dDINCj4gdGV4dDENCj4gDQo+IEkgY2FuIHNlZSBpbiB0aGUgdGNwZHVtcCB0cmFjZXMgaG93IHRo
-ZSBuZXcgY2hhbmdlIGF0dHJpYnV0ZSBhbmQgdGhlIA0KPiBGQVRUUjRfVElNRV9NT0RJRlkgYXR0
-cmlidXRlcyBhcmUgd2VsbCByZWNlaXZlZCBidXQgaXQncyBhcyBpZiB0aGUgbmZzIA0KPiBjbGll
-bnQgd2VyZSBpZ25vcmluZyB0aGVzZSBjaGFuZ2VzLiBJJ3ZlIGJlZW4gc2VhcmNoaW5nIGluIHRo
-ZSBORlMgbGlzdCANCj4gYnV0IEkgZGlkbid0IGZpbmQgYW55dGhpbmcgc2ltaWxhci4gSXMgdGhp
-cyBhIGJ1ZyBvciBqdXN0IGEgbm9ybWFsIA0KPiBiZWhhdmlvcj8gU29ycnkgaWYgaXQgaGFzIGJl
-ZW4gYWxyZWFkeSBwb2ludGVkIG91dC4NCg0KXUlmIHlvdSBjYW4gcmVwcm9kdWNlIHRoZSBzYW1l
-IGlzc3VlcyBvbiB0aGUgdXBzdHJlYW0ga2VybmVsLCB0aGVuIGl0IGlzDQpvbiB0b3BpYyBmb3Ig
-dGhpcyBsaXN0LCBvdGhlcndpc2UgaXQgaXMgYSBxdWVzdGlvbiBmb3IgUmVkIEhhdC4NCg0KQ2hl
-ZXJzDQogIFRyb25kDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWlu
-dGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAu
-Y29tDQoNCg==
+Move the code into pnfs_free_layout_hdr(), and add checks to
+get_layout_by_fh_locked to ensure that they don't reference a layout
+that is being freed.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/callback_proc.c | 19 ++++++++++++++++++-
+ fs/nfs/pnfs.c          | 29 ++++++++++-------------------
+ 2 files changed, 28 insertions(+), 20 deletions(-)
+
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 24252fe..76b4a7a 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -122,7 +122,15 @@ static struct pnfs_layout_hdr * get_layout_by_fh_locked(struct nfs_client *clp,
+ 			ino = igrab(lo->plh_inode);
+ 			if (!ino)
+ 				continue;
++			spin_lock(&ino->i_lock);
++			/* Is this layout in the process of being freed? */
++			if (NFS_I(ino)->layout != lo) {
++				spin_unlock(&ino->i_lock);
++				iput(ino);
++				continue;
++			}
+ 			pnfs_get_layout_hdr(lo);
++			spin_unlock(&ino->i_lock);
+ 			return lo;
+ 		}
+ 	}
+@@ -196,9 +204,18 @@ static u32 initiate_bulk_draining(struct nfs_client *clp,
+ 			continue;
+ 
+ 		list_for_each_entry(lo, &server->layouts, plh_layouts) {
+-			if (!igrab(lo->plh_inode))
++			ino = igrab(lo->plh_inode);
++			if (ino)
++				continue;
++			spin_lock(&ino->i_lock);
++			/* Is this layout in the process of being freed? */
++			if (NFS_I(ino)->layout != lo) {
++				spin_unlock(&ino->i_lock);
++				iput(ino);
+ 				continue;
++			}
+ 			pnfs_get_layout_hdr(lo);
++			spin_unlock(&ino->i_lock);
+ 			BUG_ON(!list_empty(&lo->plh_bulk_recall));
+ 			list_add(&lo->plh_bulk_recall, &recall_list);
+ 		}
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 1827cae..557faaf 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -207,7 +207,16 @@ pnfs_alloc_layout_hdr(struct inode *ino, gfp_t gfp_flags)
+ static void
+ pnfs_free_layout_hdr(struct pnfs_layout_hdr *lo)
+ {
+-	struct pnfs_layoutdriver_type *ld = NFS_SERVER(lo->plh_inode)->pnfs_curr_ld;
++	struct nfs_server *server = NFS_SERVER(lo->plh_inode);
++	struct pnfs_layoutdriver_type *ld = server->pnfs_curr_ld;
++
++	if (!list_empty(&lo->plh_layouts)) {
++		struct nfs_client *clp = server->nfs_client;
++
++		spin_lock(&clp->cl_lock);
++		list_del_init(&lo->plh_layouts);
++		spin_unlock(&clp->cl_lock);
++	}
+ 	put_rpccred(lo->plh_lc_cred);
+ 	return ld->alloc_layout_hdr ? ld->free_layout_hdr(lo) : kfree(lo);
+ }
+@@ -217,7 +226,6 @@ pnfs_detach_layout_hdr(struct pnfs_layout_hdr *lo)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(lo->plh_inode);
+ 	dprintk("%s: freeing layout cache %p\n", __func__, lo);
+-	BUG_ON(!list_empty(&lo->plh_layouts));
+ 	nfsi->layout = NULL;
+ 	/* Reset MDS Threshold I/O counters */
+ 	nfsi->write_io = 0;
+@@ -455,22 +463,10 @@ void
+ pnfs_free_lseg_list(struct list_head *free_me)
+ {
+ 	struct pnfs_layout_segment *lseg, *tmp;
+-	struct pnfs_layout_hdr *lo;
+ 
+ 	if (list_empty(free_me))
+ 		return;
+ 
+-	lo = list_first_entry(free_me, struct pnfs_layout_segment,
+-			      pls_list)->pls_layout;
+-
+-	if (test_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags)) {
+-		struct nfs_client *clp;
+-
+-		clp = NFS_SERVER(lo->plh_inode)->nfs_client;
+-		spin_lock(&clp->cl_lock);
+-		list_del_init(&lo->plh_layouts);
+-		spin_unlock(&clp->cl_lock);
+-	}
+ 	list_for_each_entry_safe(lseg, tmp, free_me, pls_list) {
+ 		list_del(&lseg->pls_list);
+ 		free_lseg(lseg);
+@@ -1121,11 +1117,6 @@ pnfs_update_layout(struct inode *ino,
+ 		arg.length = PAGE_CACHE_ALIGN(arg.length);
+ 
+ 	lseg = send_layoutget(lo, ctx, &arg, gfp_flags);
+-	if (!lseg && first) {
+-		spin_lock(&clp->cl_lock);
+-		list_del_init(&lo->plh_layouts);
+-		spin_unlock(&clp->cl_lock);
+-	}
+ 	atomic_dec(&lo->plh_outstanding);
+ out:
+ 	pnfs_free_lseg_list(&tmp_list);
+-- 
+1.7.11.4
+
