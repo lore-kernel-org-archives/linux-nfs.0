@@ -1,124 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:51959 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:58062 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753818Ab2IUUxT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Sep 2012 16:53:19 -0400
+	id S1753603Ab2IUBgF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Sep 2012 21:36:05 -0400
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 26/26] NFSv4.1: Remove the NFS_LAYOUT_RETURNED state
-Date: Fri, 21 Sep 2012 16:50:21 -0400
-Message-Id: <1348260621-10294-26-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1348260621-10294-25-git-send-email-Trond.Myklebust@netapp.com>
-References: <1348260621-10294-1-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-2-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-3-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-4-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-5-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-6-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-7-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-8-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-9-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-10-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-11-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-12-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-13-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-14-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-15-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-16-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-17-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-18-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-19-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-20-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-21-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-22-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-23-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-24-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-25-git-send-email-Trond.Myklebust@netapp.com>
+Subject: [PATCH 05/14] NFSv4.1: Get rid of pNFS layout state "NFS_LAYOUT_INVALID"
+Date: Thu, 20 Sep 2012 21:35:48 -0400
+Message-Id: <1348191357-44503-5-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1348191357-44503-4-git-send-email-Trond.Myklebust@netapp.com>
+References: <1348191357-44503-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1348191357-44503-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1348191357-44503-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1348191357-44503-4-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It serves no purpose that the test for whether or not we have valid
-layout segments doesn't already serve.
+In all cases where we set NFS_LAYOUT_INVALID, we also set NFS_LAYOUT_DESTROYED.
+Furthermore, in all cases where we test for NFS_LAYOUT_INVALID, we should
+also be testing for NFS_LAYOUT_DESTROYED, since the latter means that
+we hold no valid layout segments.
+Ergo the two are redundant.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/pnfs.c |  7 +------
- fs/nfs/pnfs.h | 19 -------------------
- 2 files changed, 1 insertion(+), 25 deletions(-)
+ fs/nfs/nfs4filelayout.c | 4 +---
+ fs/nfs/nfs4filelayout.h | 6 ------
+ fs/nfs/pnfs.h           | 7 ++++++-
+ 3 files changed, 7 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index a5edf27..f0872f5 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -662,7 +662,7 @@ _pnfs_return_layout(struct inode *ino)
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index dac2162..6cce57e 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -190,8 +190,6 @@ static int filelayout_async_handle_error(struct rpc_task *task,
+ 		 * i/o and all i/o waiting on the slot table to the MDS until
+ 		 * layout is destroyed and a new valid layout is obtained.
+ 		 */
+-		set_bit(NFS_LAYOUT_INVALID,
+-				&NFS_I(inode)->layout->plh_flags);
+ 		pnfs_destroy_layout(NFS_I(inode));
+ 		rpc_wake_up(&tbl->slot_tbl_waitq);
+ 		goto reset;
+@@ -281,7 +279,7 @@ filelayout_reset_to_mds(struct pnfs_layout_segment *lseg)
+ {
+ 	struct nfs4_deviceid_node *node = FILELAYOUT_DEVID_NODE(lseg);
  
- 	spin_lock(&ino->i_lock);
- 	lo = nfsi->layout;
--	if (!lo || pnfs_test_layout_returned(lo)) {
-+	if (!lo) {
- 		spin_unlock(&ino->i_lock);
- 		dprintk("NFS: %s no layout to return\n", __func__);
- 		goto out;
-@@ -680,7 +680,6 @@ _pnfs_return_layout(struct inode *ino)
- 		goto out;
- 	}
- 	lo->plh_block_lgets++;
--	pnfs_mark_layout_returned(lo);
- 	spin_unlock(&ino->i_lock);
- 	pnfs_free_lseg_list(&tmp_list);
+-	return filelayout_test_layout_invalid(lseg->pls_layout) ||
++	return pnfs_test_layout_destroyed(lseg->pls_layout) ||
+ 		filelayout_test_devid_unavailable(node);
+ }
  
-@@ -691,7 +690,6 @@ _pnfs_return_layout(struct inode *ino)
- 		status = -ENOMEM;
- 		pnfs_layout_io_set_failed(lo, IOMODE_RW);
- 		pnfs_layout_io_set_failed(lo, IOMODE_READ);
--		pnfs_clear_layout_returned(lo);
- 		pnfs_put_layout_hdr(lo);
- 		goto out;
- 	}
-@@ -1084,9 +1082,6 @@ pnfs_update_layout(struct inode *ino,
- 	if (list_empty(&lo->plh_segs))
- 		first = true;
+diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
+index 10b0f13..dca47d78 100644
+--- a/fs/nfs/nfs4filelayout.h
++++ b/fs/nfs/nfs4filelayout.h
+@@ -129,12 +129,6 @@ filelayout_mark_devid_invalid(struct nfs4_deviceid_node *node)
+ }
  
--	/* Enable LAYOUTRETURNs */
--	pnfs_clear_layout_returned(lo);
--
- 	spin_unlock(&ino->i_lock);
- 	if (first) {
- 		/* The lo must be on the clp list if there is any
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 92f6ce6..6cede2c 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -62,7 +62,6 @@ enum {
- 	NFS_LAYOUT_RW_FAILED,		/* get rw layout failed stop trying */
- 	NFS_LAYOUT_BULK_RECALL,		/* bulk recall affecting layout */
- 	NFS_LAYOUT_ROC,			/* some lseg had roc bit set */
--	NFS_LAYOUT_RETURNED,		/* layout has already been returned */
- };
- 
- enum layoutdriver_policy_flags {
-@@ -259,24 +258,6 @@ void nfs4_mark_deviceid_unavailable(struct nfs4_deviceid_node *node);
- bool nfs4_test_deviceid_unavailable(struct nfs4_deviceid_node *node);
- void nfs4_deviceid_purge_client(const struct nfs_client *);
- 
--static inline void
--pnfs_mark_layout_returned(struct pnfs_layout_hdr *lo)
+ static inline bool
+-filelayout_test_layout_invalid(struct pnfs_layout_hdr *lo)
 -{
--	set_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
--}
--
--static inline void
--pnfs_clear_layout_returned(struct pnfs_layout_hdr *lo)
--{
--	clear_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
+-	return test_bit(NFS_LAYOUT_INVALID, &lo->plh_flags);
 -}
 -
 -static inline bool
--pnfs_test_layout_returned(struct pnfs_layout_hdr *lo)
--{
--	return test_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
--}
--
+ filelayout_test_devid_invalid(struct nfs4_deviceid_node *node)
+ {
+ 	return test_bit(NFS_DEVICEID_INVALID, &node->flags);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index aa9fa1b..aacda7f 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -63,7 +63,6 @@ enum {
+ 	NFS_LAYOUT_BULK_RECALL,		/* bulk recall affecting layout */
+ 	NFS_LAYOUT_ROC,			/* some lseg had roc bit set */
+ 	NFS_LAYOUT_DESTROYED,		/* no new use of layout allowed */
+-	NFS_LAYOUT_INVALID,		/* layout is being destroyed */
+ 	NFS_LAYOUT_RETURNED,		/* layout has already been returned */
+ };
+ 
+@@ -279,6 +278,12 @@ pnfs_test_layout_returned(struct pnfs_layout_hdr *lo)
+ 	return test_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
+ }
+ 
++static inline bool
++pnfs_test_layout_destroyed(struct pnfs_layout_hdr *lo)
++{
++	return test_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags);
++}
++
  static inline struct pnfs_layout_segment *
  pnfs_get_lseg(struct pnfs_layout_segment *lseg)
  {
