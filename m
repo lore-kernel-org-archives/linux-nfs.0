@@ -1,125 +1,184 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:45426 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:20836 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757872Ab2IUUwQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Sep 2012 16:52:16 -0400
+	id S1756903Ab2IUUuy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Sep 2012 16:50:54 -0400
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 15/26] NFSv4.1: Rename the pnfs_put_lseg_common to pnfs_layout_remove_lseg
-Date: Fri, 21 Sep 2012 16:50:10 -0400
-Message-Id: <1348260621-10294-15-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1348260621-10294-14-git-send-email-Trond.Myklebust@netapp.com>
-References: <1348260621-10294-1-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-2-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-3-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-4-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-5-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-6-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-7-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-8-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-9-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-10-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-11-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-12-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-13-git-send-email-Trond.Myklebust@netapp.com>
- <1348260621-10294-14-git-send-email-Trond.Myklebust@netapp.com>
+Subject: [PATCH v2 01/26] NFS: Clean up the pNFS layoutget interface
+Date: Fri, 21 Sep 2012 16:49:56 -0400
+Message-Id: <1348260621-10294-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The latter name is more descriptive of the actual function.
-Also rename pnfs_insert_layout to pnfs_layout_insert_lseg.
+Ensure that we do return errors from nfs4_proc_layoutget() and that we
+don't mark the layout as having failed if the error was due to a
+signal or resource problem on the client side.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/pnfs.c | 27 +++++++++++++++------------
- 1 file changed, 15 insertions(+), 12 deletions(-)
+ fs/nfs/nfs4proc.c       | 14 +++++++++-----
+ fs/nfs/pnfs.c           | 25 ++++++++++++++++---------
+ fs/nfs/pnfs.h           |  4 ++--
+ include/linux/nfs_xdr.h |  1 -
+ 4 files changed, 27 insertions(+), 17 deletions(-)
 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 645c450..b738577 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6286,7 +6286,8 @@ static const struct rpc_call_ops nfs4_layoutget_call_ops = {
+ 	.rpc_release = nfs4_layoutget_release,
+ };
+ 
+-void nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
++struct pnfs_layout_segment *
++nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
+ {
+ 	struct nfs_server *server = NFS_SERVER(lgp->args.inode);
+ 	size_t max_pages = max_response_pages(server);
+@@ -6303,6 +6304,7 @@ void nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
+ 		.callback_data = lgp,
+ 		.flags = RPC_TASK_ASYNC,
+ 	};
++	struct pnfs_layout_segment *lseg = NULL;
+ 	int status = 0;
+ 
+ 	dprintk("--> %s\n", __func__);
+@@ -6310,7 +6312,7 @@ void nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
+ 	lgp->args.layout.pages = nfs4_alloc_pages(max_pages, gfp_flags);
+ 	if (!lgp->args.layout.pages) {
+ 		nfs4_layoutget_release(lgp);
+-		return;
++		return ERR_PTR(-ENOMEM);
+ 	}
+ 	lgp->args.layout.pglen = max_pages * PAGE_SIZE;
+ 
+@@ -6319,15 +6321,17 @@ void nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
+ 	nfs41_init_sequence(&lgp->args.seq_args, &lgp->res.seq_res, 0);
+ 	task = rpc_run_task(&task_setup_data);
+ 	if (IS_ERR(task))
+-		return;
++		return ERR_CAST(task);
+ 	status = nfs4_wait_for_completion_rpc_task(task);
+ 	if (status == 0)
+ 		status = task->tk_status;
+ 	if (status == 0)
+-		status = pnfs_layout_process(lgp);
++		lseg = pnfs_layout_process(lgp);
+ 	rpc_put_task(task);
+ 	dprintk("<-- %s status=%d\n", __func__, status);
+-	return;
++	if (status)
++		return ERR_PTR(status);
++	return lseg;
+ }
+ 
+ static void
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 8633b78..142d0f4 100644
+index 2e00fea..3a7ac97 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -294,21 +294,22 @@ static void free_lseg(struct pnfs_layout_segment *lseg)
- 	struct inode *ino = lseg->pls_layout->plh_inode;
+@@ -582,7 +582,7 @@ send_layoutget(struct pnfs_layout_hdr *lo,
+ 	struct inode *ino = lo->plh_inode;
+ 	struct nfs_server *server = NFS_SERVER(ino);
+ 	struct nfs4_layoutget *lgp;
+-	struct pnfs_layout_segment *lseg = NULL;
++	struct pnfs_layout_segment *lseg;
  
- 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
--	/* Matched by pnfs_get_layout_hdr in pnfs_insert_layout */
-+	/* Matched by pnfs_get_layout_hdr in pnfs_layout_insert_lseg */
- 	pnfs_put_layout_hdr(NFS_I(ino)->layout);
- }
+ 	dprintk("--> %s\n", __func__);
  
- static void
--pnfs_put_lseg_common(struct pnfs_layout_segment *lseg)
-+pnfs_layout_remove_lseg(struct pnfs_layout_hdr *lo,
-+		struct pnfs_layout_segment *lseg)
- {
--	struct inode *inode = lseg->pls_layout->plh_inode;
-+	struct inode *inode = lo->plh_inode;
+@@ -599,16 +599,22 @@ send_layoutget(struct pnfs_layout_hdr *lo,
+ 	lgp->args.type = server->pnfs_curr_ld->id;
+ 	lgp->args.inode = ino;
+ 	lgp->args.ctx = get_nfs_open_context(ctx);
+-	lgp->lsegpp = &lseg;
+ 	lgp->gfp_flags = gfp_flags;
  
- 	WARN_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
- 	list_del_init(&lseg->pls_list);
--	if (list_empty(&lseg->pls_layout->plh_segs)) {
--		set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
-+	if (list_empty(&lo->plh_segs)) {
-+		set_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags);
- 		/* Matched by initial refcount set in alloc_init_layout_hdr */
--		pnfs_put_layout_hdr_locked(lseg->pls_layout);
-+		pnfs_put_layout_hdr_locked(lo);
+ 	/* Synchronously retrieve layout information from server and
+ 	 * store in lseg.
+ 	 */
+-	nfs4_proc_layoutget(lgp, gfp_flags);
+-	if (!lseg) {
+-		/* remember that LAYOUTGET failed and suspend trying */
+-		set_bit(lo_fail_bit(range->iomode), &lo->plh_flags);
++	lseg = nfs4_proc_layoutget(lgp, gfp_flags);
++	if (IS_ERR(lseg)) {
++		switch (PTR_ERR(lseg)) {
++		case -ENOMEM:
++		case -ERESTARTSYS:
++			break;
++		default:
++			/* remember that LAYOUTGET failed and suspend trying */
++			set_bit(lo_fail_bit(range->iomode), &lo->plh_flags);
++		}
++		return NULL;
  	}
- 	rpc_wake_up(&NFS_SERVER(inode)->roc_rpcwaitq);
+ 
+ 	return lseg;
+@@ -1096,7 +1102,7 @@ out_unlock:
  }
-@@ -316,6 +317,7 @@ pnfs_put_lseg_common(struct pnfs_layout_segment *lseg)
- void
- pnfs_put_lseg(struct pnfs_layout_segment *lseg)
+ EXPORT_SYMBOL_GPL(pnfs_update_layout);
+ 
+-int
++struct pnfs_layout_segment *
+ pnfs_layout_process(struct nfs4_layoutget *lgp)
  {
-+	struct pnfs_layout_hdr *lo;
- 	struct inode *inode;
- 
- 	if (!lseg)
-@@ -324,13 +326,14 @@ pnfs_put_lseg(struct pnfs_layout_segment *lseg)
- 	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
- 		atomic_read(&lseg->pls_refcount),
- 		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
--	inode = lseg->pls_layout->plh_inode;
-+	lo = lseg->pls_layout;
-+	inode = lo->plh_inode;
- 	if (atomic_dec_and_lock(&lseg->pls_refcount, &inode->i_lock)) {
- 		LIST_HEAD(free_me);
- 
--		pnfs_put_lseg_common(lseg);
--		list_add(&lseg->pls_list, &free_me);
-+		pnfs_layout_remove_lseg(lo, lseg);
- 		spin_unlock(&inode->i_lock);
-+		list_add(&lseg->pls_list, &free_me);
- 		pnfs_free_lseg_list(&free_me);
+ 	struct pnfs_layout_hdr *lo = NFS_I(lgp->args.inode)->layout;
+@@ -1129,7 +1135,7 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
  	}
- }
-@@ -418,7 +421,7 @@ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
- 		dprintk("%s: lseg %p ref %d\n", __func__, lseg,
- 			atomic_read(&lseg->pls_refcount));
- 		if (atomic_dec_and_test(&lseg->pls_refcount)) {
--			pnfs_put_lseg_common(lseg);
-+			pnfs_layout_remove_lseg(lseg->pls_layout, lseg);
- 			list_add(&lseg->pls_list, tmp_list);
- 			rv = 1;
- 		}
-@@ -831,7 +834,7 @@ cmp_layout(struct pnfs_layout_range *l1,
- }
- 
- static void
--pnfs_insert_layout(struct pnfs_layout_hdr *lo,
-+pnfs_layout_insert_lseg(struct pnfs_layout_hdr *lo,
- 		   struct pnfs_layout_segment *lseg)
- {
- 	struct pnfs_layout_segment *lp;
-@@ -1178,7 +1181,7 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
  	init_lseg(lo, lseg);
  	lseg->pls_range = res->range;
- 	pnfs_get_lseg(lseg);
--	pnfs_insert_layout(lo, lseg);
-+	pnfs_layout_insert_lseg(lo, lseg);
+-	*lgp->lsegpp = get_lseg(lseg);
++	get_lseg(lseg);
+ 	pnfs_insert_layout(lo, lseg);
  
  	if (res->return_on_close) {
- 		set_bit(NFS_LSEG_ROC, &lseg->pls_flags);
+@@ -1140,8 +1146,9 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 	/* Done processing layoutget. Set the layout stateid */
+ 	pnfs_set_layout_stateid(lo, &res->stateid, false);
+ 	spin_unlock(&ino->i_lock);
++	return lseg;
+ out:
+-	return status;
++	return ERR_PTR(status);
+ 
+ out_forget_reply:
+ 	spin_unlock(&ino->i_lock);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 745aa1b..d51ef88 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -172,7 +172,7 @@ extern int nfs4_proc_getdevicelist(struct nfs_server *server,
+ 				   struct pnfs_devicelist *devlist);
+ extern int nfs4_proc_getdeviceinfo(struct nfs_server *server,
+ 				   struct pnfs_device *dev);
+-extern void nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags);
++extern struct pnfs_layout_segment* nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags);
+ extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
+ 
+ /* pnfs.c */
+@@ -192,7 +192,7 @@ void pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *, struct nfs_page
+ int pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc);
+ bool pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev, struct nfs_page *req);
+ void pnfs_set_lo_fail(struct pnfs_layout_segment *lseg);
+-int pnfs_layout_process(struct nfs4_layoutget *lgp);
++struct pnfs_layout_segment *pnfs_layout_process(struct nfs4_layoutget *lgp);
+ void pnfs_free_lseg_list(struct list_head *tmp_list);
+ void pnfs_destroy_layout(struct nfs_inode *);
+ void pnfs_destroy_all_layouts(struct nfs_client *);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index be9cf3c..5da789f 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -251,7 +251,6 @@ struct nfs4_layoutget_res {
+ struct nfs4_layoutget {
+ 	struct nfs4_layoutget_args args;
+ 	struct nfs4_layoutget_res res;
+-	struct pnfs_layout_segment **lsegpp;
+ 	gfp_t gfp_flags;
+ };
+ 
 -- 
 1.7.11.4
 
