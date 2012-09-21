@@ -1,76 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:54117 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:26053 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756773Ab2IDMEe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Sep 2012 08:04:34 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Andrew Holway <a.holway@syseleven.de>
-CC: "kvm@vger.kernel.org" <kvm@vger.kernel.org>,
-        "libvir-list@redhat.com" <libvir-list@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFS over RDMA small block DIRECT_IO bug
-Date: Tue, 4 Sep 2012 12:04:31 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908F82C6C@SACEXCMBX04-PRD.hq.netapp.com>
-References: <F416961E-A33A-44D3-A788-5EF598A0AAFE@syseleven.de>
-In-Reply-To: <F416961E-A33A-44D3-A788-5EF598A0AAFE@syseleven.de>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1754682Ab2IUBgH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Sep 2012 21:36:07 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 08/14] NFSv4.1: Remove redundant reference to the pnfs_layout_hdr
+Date: Thu, 20 Sep 2012 21:35:51 -0400
+Message-Id: <1348191357-44503-8-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1348191357-44503-7-git-send-email-Trond.Myklebust@netapp.com>
+References: <1348191357-44503-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1348191357-44503-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1348191357-44503-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1348191357-44503-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1348191357-44503-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1348191357-44503-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1348191357-44503-7-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTA5LTA0IGF0IDExOjMxICswMjAwLCBBbmRyZXcgSG9sd2F5IHdyb3RlOg0K
-PiBIZWxsby4NCj4gDQo+ICMgQXZpIEtpdml0eSBhdmkoYSlyZWRoYXQgcmVjb21tZW5kZWQgSSBj
-b3B5IGt2bSBpbiBvbiB0aGlzLiBJdCB3b3VsZCBhbHNvIHNlZW0gcmVsZXZlbnQgdG8gbGlidmly
-dC4gIw0KPiANCj4gSSBoYXZlIGEgQ2VudG9zIDYuMiBzZXJ2ZXIgYW5kIENlbnRvcyA2LjIgY2xp
-ZW50Lg0KPiANCj4gW3Jvb3RAc3RvcmUgfl0jIGNhdCAvZXRjL2V4cG9ydHMgDQo+IC9kZXYvc2ht
-CQkJCTEwLjE0OS4wLjAvMTYocncsZnNpZD0xLG5vX3Jvb3Rfc3F1YXNoLGluc2VjdXJlKSAgICAo
-SSBoYXZlIHRyaWVkIHdpdGggbm9uIHRlbXBmcyB0YXJnZXRzIGFsc28pDQo+IA0KPiANCj4gW3Jv
-b3RAbm9kZTAwMSB+XSMgY2F0IC9ldGMvZnN0YWIgDQo+IHN0b3JlLmlibmV0Oi9kZXYvc2htICAg
-ICAgICAgICAgIC9tbnQgICAgICAgICAgICAgICAgIG5mcyAgICAgICAgICByZG1hLHBvcnQ9MjA1
-MCxkZWZhdWx0cyAwIDANCj4gDQo+IA0KPiBJIHdyb3RlIGEgbGl0dGxlIGZvciBsb29wIG9uZSBs
-aW5lciB0aGF0IGRkJ2QgdGhlIGNlbnRvcyBuZXQgaW5zdGFsbCBpbWFnZSB0byBhIGZpbGUgY2Fs
-bGVkICdoZWxsbycgdGhlbiBjaGVja3N1bW1lZCB0aGF0IGZpbGUuIEVhY2ggaXRlcmF0aW9uIHVz
-ZXMgYSBkaWZmZXJlbnQgYmxvY2sgc2l6ZS4NCj4gDQo+IE5vbiBESVJFQ1RfSU8gc2VlbXMgdG8g
-d29yayBmaW5lLiBESVJFQ1RfSU8gd2l0aCA1MTJieXRlLCAxSyBhbmQgMksgYmxvY2sgc2l6ZXMg
-Z2V0IGNvcnJ1cHRlZC4NCg0KDQpUaGF0IGlzIGV4cGVjdGVkIGJlaGF2aW91ci4gRElSRUNUX0lP
-IG92ZXIgUkRNQSBuZWVkcyB0byBiZSBwYWdlIGFsaWduZWQNCnNvIHRoYXQgaXQgY2FuIHVzZSB0
-aGUgbW9yZSBlZmZpY2llbnQgUkRNQSBSRUFEIGFuZCBSRE1BIFdSSVRFIG1lbW9yeQ0Kc2VtYW50
-aWNzIChpbnN0ZWFkIG9mIHRoZSBTRU5EL1JFQ0VJVkUgY2hhbm5lbCBzZW1hbnRpY3MpLg0KDQo+
-IEkgd2FudCB0byBydW4gbXkgS1ZNIGd1ZXN0cyBvbiB0b3Agb2YgTkZTIG92ZXIgUkRNQS4gTXkg
-Z3Vlc3RzIGNhbm5vdCBjcmVhdGUgZmlsZXN5c3RlbXMuDQo+IA0KPiBUaGFua3MsDQo+IA0KPiBB
-bmRyZXcuDQo+IA0KPiBidWcgcmVwb3J0OiBodHRwczovL2J1Z3ppbGxhLmxpbnV4LW5mcy5vcmcv
-c2hvd19idWcuY2dpP2lkPTIyOA0KPiANCj4gW3Jvb3RAbm9kZTAwMSBtbnRdIyBmb3IgZiBpbiA1
-MTIgMTAyNCAyMDQ4IDQwOTYgODE5MiAxNjM4NCAzMjc2OCA2NTUzNiAxMzEwNzI7IGRvIGRkIGJz
-PSIkZiIgaWY9Q2VudE9TLTYuMy14ODZfNjQtbmV0aW5zdGFsbC5pc28gb2Y9aGVsbG8gaWZsYWc9
-ZGlyZWN0IG9mbGFnPWRpcmVjdCAmJiBtZDVzdW0gaGVsbG8gJiYgcm0gLWYgaGVsbG87IGRvbmUN
-Cj4gDQo+IDQwOTYwMCswIHJlY29yZHMgaW4NCj4gNDA5NjAwKzAgcmVjb3JkcyBvdXQNCj4gMjA5
-NzE1MjAwIGJ5dGVzICgyMTAgTUIpIGNvcGllZCwgNjIuMzY0OSBzLCAzLjQgTUIvcw0KPiBhYWRk
-MGZmZTNjOWRmYTM1ZDgzNTRlOTllY2FjOTI3NiAgaGVsbG8gLS0gNTEyIGJ5dGUgYmxvY2sgDQo+
-IA0KPiAyMDQ4MDArMCByZWNvcmRzIGluDQo+IDIwNDgwMCswIHJlY29yZHMgb3V0DQo+IDIwOTcx
-NTIwMCBieXRlcyAoMjEwIE1CKSBjb3BpZWQsIDQxLjM4NzYgcywgNS4xIE1CL3MNCj4gMzM2ZjZk
-YTc4ZjkzZGFiNTkxZWRjMThkYTgxZjAwMmUgIGhlbGxvIC0tIDFLIGJsb2NrDQo+IA0KPiAxMDI0
-MDArMCByZWNvcmRzIGluDQo+IDEwMjQwMCswIHJlY29yZHMgb3V0DQo+IDIwOTcxNTIwMCBieXRl
-cyAoMjEwIE1CKSBjb3BpZWQsIDIxLjE3MTIgcywgOS45IE1CL3MNCj4gZjRjZWZlMGEwNWM5YjQ3
-YmE2OGVmZmRiMTdkYzk1ZDYgIGhlbGxvIC0tIDJrIGJsb2NrDQo+IA0KPiA1MTIwMCswIHJlY29y
-ZHMgaW4NCj4gNTEyMDArMCByZWNvcmRzIG91dA0KPiAyMDk3MTUyMDAgYnl0ZXMgKDIxMCBNQikg
-Y29waWVkLCAxMC45NjMxIHMsIDE5LjEgTUIvcw0KPiA2OTAxMzg5MDhkZTUxNmI2ZTVkN2QxODBk
-MDg1YzNmMyAgaGVsbG8gLS0gNGsgYmxvY2sNCj4gDQo+IDI1NjAwKzAgcmVjb3JkcyBpbg0KPiAy
-NTYwMCswIHJlY29yZHMgb3V0DQo+IDIwOTcxNTIwMCBieXRlcyAoMjEwIE1CKSBjb3BpZWQsIDUu
-NDEzNiBzLCAzOC43IE1CL3MNCj4gNjkwMTM4OTA4ZGU1MTZiNmU1ZDdkMTgwZDA4NWMzZjMgIGhl
-bGxvDQo+IA0KPiAxMjgwMCswIHJlY29yZHMgaW4NCj4gMTI4MDArMCByZWNvcmRzIG91dA0KPiAy
-MDk3MTUyMDAgYnl0ZXMgKDIxMCBNQikgY29waWVkLCAzLjE0NDggcywgNjYuNyBNQi9zDQo+IDY5
-MDEzODkwOGRlNTE2YjZlNWQ3ZDE4MGQwODVjM2YzICBoZWxsbw0KPiANCj4gNjQwMCswIHJlY29y
-ZHMgaW4NCj4gNjQwMCswIHJlY29yZHMgb3V0DQo+IDIwOTcxNTIwMCBieXRlcyAoMjEwIE1CKSBj
-b3BpZWQsIDEuNzczMDQgcywgMTE4IE1CL3MNCj4gNjkwMTM4OTA4ZGU1MTZiNmU1ZDdkMTgwZDA4
-NWMzZjMgIGhlbGxvDQo+IA0KPiAzMjAwKzAgcmVjb3JkcyBpbg0KPiAzMjAwKzAgcmVjb3JkcyBv
-dXQNCj4gMjA5NzE1MjAwIGJ5dGVzICgyMTAgTUIpIGNvcGllZCwgMS40MzMxIHMsIDE0NiBNQi9z
-DQo+IDY5MDEzODkwOGRlNTE2YjZlNWQ3ZDE4MGQwODVjM2YzICBoZWxsbw0KPiANCj4gMTYwMCsw
-IHJlY29yZHMgaW4NCj4gMTYwMCswIHJlY29yZHMgb3V0DQo+IDIwOTcxNTIwMCBieXRlcyAoMjEw
-IE1CKSBjb3BpZWQsIDAuOTIyMTY3IHMsIDIyNyBNQi9zDQo+IDY5MDEzODkwOGRlNTE2YjZlNWQ3
-ZDE4MGQwODVjM2YzICBoZWxsbw0KPiANCj4gDQo+IC0tDQo+IFRvIHVuc3Vic2NyaWJlIGZyb20g
-dGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiIGluDQo+IHRo
-ZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnDQo+IE1vcmUg
-bWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8u
-aHRtbA0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVy
-DQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQoN
-Cg==
+Each layout segment already holds a reference to the pnfs_layout_hdr,
+so there is no need to hold an extra reference that is released once
+the last layout segment is freed.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/pnfs.c | 9 ++-------
+ 1 file changed, 2 insertions(+), 7 deletions(-)
+
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 142d0f4..767c748 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -306,11 +306,8 @@ pnfs_layout_remove_lseg(struct pnfs_layout_hdr *lo,
+ 
+ 	WARN_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
+ 	list_del_init(&lseg->pls_list);
+-	if (list_empty(&lo->plh_segs)) {
++	if (list_empty(&lo->plh_segs))
+ 		set_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags);
+-		/* Matched by initial refcount set in alloc_init_layout_hdr */
+-		pnfs_put_layout_hdr_locked(lo);
+-	}
+ 	rpc_wake_up(&NFS_SERVER(inode)->roc_rpcwaitq);
+ }
+ 
+@@ -443,8 +440,7 @@ pnfs_mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+ 	dprintk("%s:Begin lo %p\n", __func__, lo);
+ 
+ 	if (list_empty(&lo->plh_segs)) {
+-		if (!test_and_set_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags))
+-			pnfs_put_layout_hdr_locked(lo);
++		set_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags);
+ 		return 0;
+ 	}
+ 	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list)
+@@ -1102,7 +1098,6 @@ pnfs_update_layout(struct inode *ino,
+ 		goto out_unlock;
+ 	atomic_inc(&lo->plh_outstanding);
+ 
+-	pnfs_get_layout_hdr(lo);
+ 	if (list_empty(&lo->plh_segs))
+ 		first = true;
+ 
+-- 
+1.7.11.4
+
