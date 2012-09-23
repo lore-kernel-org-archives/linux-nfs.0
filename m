@@ -1,133 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:52792 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757277Ab2IQUQW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Sep 2012 16:16:22 -0400
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 01/10] NFSD: Fold fault_inject.h into state.h
-Date: Mon, 17 Sep 2012 16:16:10 -0400
-Message-Id: <1347912979-20603-2-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1347912979-20603-1-git-send-email-bjschuma@netapp.com>
-References: <1347912979-20603-1-git-send-email-bjschuma@netapp.com>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:46915 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751207Ab2IWNuh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Sep 2012 09:50:37 -0400
+Received: by pbbrr4 with SMTP id rr4so5643550pbb.19
+        for <linux-nfs@vger.kernel.org>; Sun, 23 Sep 2012 06:50:37 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20120920193349.GA18143@fieldses.org>
+References: <CAJ75kXZuM_p3qknD4RgdjLLWd393u02S5FKQyu3Q8y8NwmfiVw@mail.gmail.com>
+ <CAJ75kXagDP6TPO+7pCCcUyac+ViPgKVThTsuehHNi_xwTpnGiQ@mail.gmail.com>
+ <CAHVgHyXMR=Bf02pWe=McHZPu+iNTZvhs6vHVx1ie404QebF86g@mail.gmail.com>
+ <20120920161716.GB4521@fieldses.org> <CAHVgHyXDs7=rafH2_pQ7T0cwzoO-LGgtVB+8E_btt5E0v9YTdg@mail.gmail.com>
+ <CAHVgHyUqNWakh6h18wZDGB91GJo-crtpPjmUUB+00HTMvePRNg@mail.gmail.com> <20120920193349.GA18143@fieldses.org>
+From: William Dauchy <wdauchy@gmail.com>
+Date: Sun, 23 Sep 2012 15:50:16 +0200
+Message-ID: <CAJ75kXYbup8Z0Bw3LQxQk+B7P_u+J8zwef-6BQYrYH=TgnB4Ow@mail.gmail.com>
+Subject: Re: unhandled error -10026
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Andy Adamson <androsadamson@gmail.com>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        R.Eggermont@tudelft.nl
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Thu, Sep 20, 2012 at 9:33 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> William, is this easy to reproduce?  Would it be possible to get a
+> network trace covering the problem?
 
-There were only a small number of functions in this file and since they
-all affect stored state I think it makes sense to put them in state.h
-instead.  I also dropped most static inline declarations since there are
-no callers when fault injection is not enabled.
+Unfortunately not. The issue doesn't appear to be reproduced often so
+it is difficult for me to debug; but if I find a way to reproduce it,
+I will come back with some more information.
+I will also dig on server side code and check the cases it could
+answer this error.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfsd/fault_inject.c |  2 --
- fs/nfsd/fault_inject.h | 28 ----------------------------
- fs/nfsd/nfs4state.c    |  1 -
- fs/nfsd/nfsctl.c       |  2 +-
- fs/nfsd/state.h        | 15 +++++++++++++++
- 5 files changed, 16 insertions(+), 32 deletions(-)
- delete mode 100644 fs/nfsd/fault_inject.h
-
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-index e6c3815..ae94da1 100644
---- a/fs/nfsd/fault_inject.c
-+++ b/fs/nfsd/fault_inject.c
-@@ -8,9 +8,7 @@
- #include <linux/fs.h>
- #include <linux/debugfs.h>
- #include <linux/module.h>
--
- #include "state.h"
--#include "fault_inject.h"
- 
- struct nfsd_fault_inject_op {
- 	char *file;
-diff --git a/fs/nfsd/fault_inject.h b/fs/nfsd/fault_inject.h
-deleted file mode 100644
-index 90bd057..0000000
---- a/fs/nfsd/fault_inject.h
-+++ /dev/null
-@@ -1,28 +0,0 @@
--/*
-- * Copyright (c) 2011 Bryan Schumaker <bjschuma@netapp.com>
-- *
-- * Function definitions for fault injection
-- */
--
--#ifndef LINUX_NFSD_FAULT_INJECT_H
--#define LINUX_NFSD_FAULT_INJECT_H
--
--#ifdef CONFIG_NFSD_FAULT_INJECTION
--int nfsd_fault_inject_init(void);
--void nfsd_fault_inject_cleanup(void);
--void nfsd_forget_clients(u64);
--void nfsd_forget_locks(u64);
--void nfsd_forget_openowners(u64);
--void nfsd_forget_delegations(u64);
--void nfsd_recall_delegations(u64);
--#else /* CONFIG_NFSD_FAULT_INJECTION */
--static inline int nfsd_fault_inject_init(void) { return 0; }
--static inline void nfsd_fault_inject_cleanup(void) {}
--static inline void nfsd_forget_clients(u64 num) {}
--static inline void nfsd_forget_locks(u64 num) {}
--static inline void nfsd_forget_openowners(u64 num) {}
--static inline void nfsd_forget_delegations(u64 num) {}
--static inline void nfsd_recall_delegations(u64 num) {}
--#endif /* CONFIG_NFSD_FAULT_INJECTION */
--
--#endif /* LINUX_NFSD_FAULT_INJECT_H */
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 5122e17..d024ffd 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -44,7 +44,6 @@
- #include "xdr4.h"
- #include "vfs.h"
- #include "current_stateid.h"
--#include "fault_inject.h"
- 
- #include "netns.h"
- 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index dab350d..7e0d6db 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -19,7 +19,7 @@
- #include "idmap.h"
- #include "nfsd.h"
- #include "cache.h"
--#include "fault_inject.h"
-+#include "state.h"
- #include "netns.h"
- 
- /*
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index ec513fd..f25fee2 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -481,4 +481,19 @@ extern void nfsd4_client_record_create(struct nfs4_client *clp);
- extern void nfsd4_client_record_remove(struct nfs4_client *clp);
- extern int nfsd4_client_record_check(struct nfs4_client *clp);
- extern void nfsd4_record_grace_done(struct net *net, time_t boot_time);
-+
-+/* nfs fault injection functions */
-+#ifdef CONFIG_NFSD_FAULT_INJECTION
-+int nfsd_fault_inject_init(void);
-+void nfsd_fault_inject_cleanup(void);
-+void nfsd_forget_clients(u64);
-+void nfsd_forget_locks(u64);
-+void nfsd_forget_openowners(u64);
-+void nfsd_forget_delegations(u64);
-+void nfsd_recall_delegations(u64);
-+#else /* CONFIG_NFSD_FAULT_INJECTION */
-+static inline int nfsd_fault_inject_init(void) { return 0; }
-+static inline void nfsd_fault_inject_cleanup(void) {}
-+#endif /* CONFIG_NFSD_FAULT_INJECTION */
-+
- #endif   /* NFSD4_STATE_H */
+Thank you for all this information,
 -- 
-1.7.12
-
+William
