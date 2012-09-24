@@ -1,76 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57279 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:58045 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755636Ab2ITTdv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Sep 2012 15:33:51 -0400
-Date: Thu, 20 Sep 2012 15:33:49 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Andy Adamson <androsadamson@gmail.com>
-Cc: William Dauchy <wdauchy@gmail.com>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        R.Eggermont@tudelft.nl
-Subject: Re: unhandled error -10026
-Message-ID: <20120920193349.GA18143@fieldses.org>
-References: <CAJ75kXZuM_p3qknD4RgdjLLWd393u02S5FKQyu3Q8y8NwmfiVw@mail.gmail.com>
- <CAJ75kXagDP6TPO+7pCCcUyac+ViPgKVThTsuehHNi_xwTpnGiQ@mail.gmail.com>
- <CAHVgHyXMR=Bf02pWe=McHZPu+iNTZvhs6vHVx1ie404QebF86g@mail.gmail.com>
- <20120920161716.GB4521@fieldses.org>
- <CAHVgHyXDs7=rafH2_pQ7T0cwzoO-LGgtVB+8E_btt5E0v9YTdg@mail.gmail.com>
- <CAHVgHyUqNWakh6h18wZDGB91GJo-crtpPjmUUB+00HTMvePRNg@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAHVgHyUqNWakh6h18wZDGB91GJo-crtpPjmUUB+00HTMvePRNg@mail.gmail.com>
+	id S932102Ab2IXT6u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Sep 2012 15:58:50 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 16/28] NFSv4.1: Rename the pnfs_put_lseg_common to pnfs_layout_remove_lseg
+Date: Mon, 24 Sep 2012 15:56:34 -0400
+Message-Id: <1348516606-22721-16-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1348516606-22721-15-git-send-email-Trond.Myklebust@netapp.com>
+References: <1348516606-22721-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-12-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-13-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-14-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-15-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 20, 2012 at 01:53:44PM -0400, Andy Adamson wrote:
-> On Thu, Sep 20, 2012 at 1:47 PM, Andy Adamson <androsadamson@gmail.com> wrote:
-> > On Thu, Sep 20, 2012 at 12:17 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >> On Thu, Sep 20, 2012 at 12:06:48PM -0400, Andy Adamson wrote:
-> >>> On Thu, Sep 20, 2012 at 10:34 AM, William Dauchy <wdauchy@gmail.com> wrote:
-> >>> > On Tue, Sep 18, 2012 at 11:49 AM, William Dauchy <wdauchy@gmail.com> wrote:
-> >>> >> I'm getting a trace following an unhandled error on a linux nfs client
-> >>> >> 3.4.7 x86_64.
-> >>> >> NFS: nfs4_reclaim_open_state: unhandled error -10026. Zeroing state
-> >>> >
-> >>> > For the moment I don't know if the error is coming from a bad server
-> >>> > implementation or if it's on client side. Should I assume that this an
-> >>> > error that should never hit the client?
-> >>>
-> >>> Yes.
-> >>>
-> >>> The client only sends OPEN reclaims after noting the server has
-> >>> rebooted due to previously receiving an NFS4ERR_STALE_CLIENTID or
-> >>> NFS4ERR_STALE_STATEID error from a state-full operation  (RENEW, OPEN,
-> >>> OPEN_DOWNGRADE, OPEN_CONFIRM, CLOSE, LOCK, LOCKU) which triggers the
-> >>> client to establish a new clientid via
-> >>> SETCLIENTID/SETCLIENTID_CONFIRM.
-> >>>
-> >>> Upon server reboot, all state that the previous server instance had is
-> >>> invalid - including OPEN seqid's. So, the server returning
-> >>> NFS4ERR_BAD_SEQID (10026) on an OPEN reclaim is illegal.
-> >>
-> >> Wait, but couldn't there be multiple reclaims using the same open owner,
-> >> in which case later reclaims could in theory hit BAD_SEQID?
-> >
-> > Nope.
-> >
-> > 3530 section 9.1.6.  Sequencing of Lock Requests
-> >
-> >    Note that for requests that contain a sequence number, for each
-> >    state-owner, there should be no more than one outstanding request.
-> 
-> Well - I sent this too soon :) .  Yes, a buggy client could send
-> (serialized) reclaims with a bad seqid, and get NFS4ERR_BAD_SEQ.
-> Tough to do with the above constraint, but possible.
+The latter name is more descriptive of the actual function.
+Also rename pnfs_insert_layout to pnfs_layout_insert_lseg.
 
-William, is this easy to reproduce?  Would it be possible to get a
-network trace covering the problem?
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/pnfs.c | 27 +++++++++++++++------------
+ 1 file changed, 15 insertions(+), 12 deletions(-)
 
-(tcpdump -s0 -wtmp.pcap, then send us tmp.pcap.  And also feel free to
-take a look at tmp.pcap with wireshark yourself--you may be able to find
-the call that's returning BAD_SEQID.  What we'll be curious about is
-what the sequence id sent on that call was, and what the sequence id was
-on any preceding operations using the same open owner).
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 098624d..e434bd1 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -319,21 +319,22 @@ static void free_lseg(struct pnfs_layout_segment *lseg)
+ 	struct inode *ino = lseg->pls_layout->plh_inode;
+ 
+ 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
+-	/* Matched by pnfs_get_layout_hdr in pnfs_insert_layout */
++	/* Matched by pnfs_get_layout_hdr in pnfs_layout_insert_lseg */
+ 	pnfs_put_layout_hdr(NFS_I(ino)->layout);
+ }
+ 
+ static void
+-pnfs_put_lseg_common(struct pnfs_layout_segment *lseg)
++pnfs_layout_remove_lseg(struct pnfs_layout_hdr *lo,
++		struct pnfs_layout_segment *lseg)
+ {
+-	struct inode *inode = lseg->pls_layout->plh_inode;
++	struct inode *inode = lo->plh_inode;
+ 
+ 	WARN_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
+ 	list_del_init(&lseg->pls_list);
+-	if (list_empty(&lseg->pls_layout->plh_segs)) {
+-		set_bit(NFS_LAYOUT_DESTROYED, &lseg->pls_layout->plh_flags);
++	if (list_empty(&lo->plh_segs)) {
++		set_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags);
+ 		/* Matched by initial refcount set in alloc_init_layout_hdr */
+-		pnfs_put_layout_hdr_locked(lseg->pls_layout);
++		pnfs_put_layout_hdr_locked(lo);
+ 	}
+ 	rpc_wake_up(&NFS_SERVER(inode)->roc_rpcwaitq);
+ }
+@@ -341,6 +342,7 @@ pnfs_put_lseg_common(struct pnfs_layout_segment *lseg)
+ void
+ pnfs_put_lseg(struct pnfs_layout_segment *lseg)
+ {
++	struct pnfs_layout_hdr *lo;
+ 	struct inode *inode;
+ 
+ 	if (!lseg)
+@@ -349,13 +351,14 @@ pnfs_put_lseg(struct pnfs_layout_segment *lseg)
+ 	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
+ 		atomic_read(&lseg->pls_refcount),
+ 		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
+-	inode = lseg->pls_layout->plh_inode;
++	lo = lseg->pls_layout;
++	inode = lo->plh_inode;
+ 	if (atomic_dec_and_lock(&lseg->pls_refcount, &inode->i_lock)) {
+ 		LIST_HEAD(free_me);
+ 
+-		pnfs_put_lseg_common(lseg);
+-		list_add(&lseg->pls_list, &free_me);
++		pnfs_layout_remove_lseg(lo, lseg);
+ 		spin_unlock(&inode->i_lock);
++		list_add(&lseg->pls_list, &free_me);
+ 		pnfs_free_lseg_list(&free_me);
+ 	}
+ }
+@@ -443,7 +446,7 @@ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
+ 		dprintk("%s: lseg %p ref %d\n", __func__, lseg,
+ 			atomic_read(&lseg->pls_refcount));
+ 		if (atomic_dec_and_test(&lseg->pls_refcount)) {
+-			pnfs_put_lseg_common(lseg);
++			pnfs_layout_remove_lseg(lseg->pls_layout, lseg);
+ 			list_add(&lseg->pls_list, tmp_list);
+ 			rv = 1;
+ 		}
+@@ -861,7 +864,7 @@ cmp_layout(struct pnfs_layout_range *l1,
+ }
+ 
+ static void
+-pnfs_insert_layout(struct pnfs_layout_hdr *lo,
++pnfs_layout_insert_lseg(struct pnfs_layout_hdr *lo,
+ 		   struct pnfs_layout_segment *lseg)
+ {
+ 	struct pnfs_layout_segment *lp;
+@@ -1206,7 +1209,7 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 	init_lseg(lo, lseg);
+ 	lseg->pls_range = res->range;
+ 	pnfs_get_lseg(lseg);
+-	pnfs_insert_layout(lo, lseg);
++	pnfs_layout_insert_lseg(lo, lseg);
+ 
+ 	if (res->return_on_close) {
+ 		set_bit(NFS_LSEG_ROC, &lseg->pls_flags);
+-- 
+1.7.11.4
 
---b.
