@@ -1,46 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:20396 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:33515 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753587Ab2I0SPX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 27 Sep 2012 14:15:23 -0400
-Message-ID: <506497B9.3030601@netapp.com>
-Date: Thu, 27 Sep 2012 14:15:21 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+	id S1757761Ab2IXTbl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Sep 2012 15:31:41 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] SUNRPC: Set alloc_slot for backchannel tcp ops
+Date: Mon, 24 Sep 2012 19:31:23 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908FE5E31@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1348508341-19642-1-git-send-email-bjschuma@netapp.com>
+	 <20120924174246.GA12238@fieldses.org> <50609DF3.2060204@netapp.com>
+In-Reply-To: <50609DF3.2060204@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Joerg Roedel <joerg.roedel@amd.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Joerg Roedel <joro@8bytes.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
-Subject: Re: kernel BUG at /data/lemmy/linux.trees.git/fs/nfs/idmap.c:681!
-References: <20120807134156.GP1996@amd.com> <20120927145217.GA18962@8bytes.org> <4FA345DA4F4AE44899BD2B03EEEC2FA908FEF572@SACEXCMBX04-PRD.hq.netapp.com> <20120927153928.GB18962@8bytes.org> <4FA345DA4F4AE44899BD2B03EEEC2FA908FEF7A3@SACEXCMBX04-PRD.hq.netapp.com> <20120927175623.GG10549@amd.com>
-In-Reply-To: <20120927175623.GG10549@amd.com>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/27/2012 01:56 PM, Joerg Roedel wrote:
-> On Thu, Sep 27, 2012 at 04:16:25PM +0000, Myklebust, Trond wrote:
->>> Yes, it contains that commit. I was about to test plain v3.6-rc7 without
->>> my patches (not nfs related, of cource) on-top, but unfortunatly the
->>> disk with the root-fs died :-/
->>> I am about to set up the box again and test plain -rc7.
->>
->> Please do.
-> 
-> Okay, the box is running again and the bug does not reproduce anymore
-> with the new installation. Unfortunatly the old kernel configuration is
-> gone together with the previous version of the nfs-utils :-/ I'll try to
-> play around with the kernel config a little bit more and see if it
-> reproduces again.
-
-Double check that you're using the legacy idmapper, and not the keyring based one (/etc/request-key.conf shouldn't have the "create id_resolver * * /usr/bin/nfsidmap %k %d" line).
-
-- Bryan
-
-> 
-> 
-> 	Joerg
-> 
-
+T24gTW9uLCAyMDEyLTA5LTI0IGF0IDEzOjUyIC0wNDAwLCBCcnlhbiBTY2h1bWFrZXIgd3JvdGU6
+DQo+IE9uIDA5LzI0LzIwMTIgMDE6NDIgUE0sIEouIEJydWNlIEZpZWxkcyB3cm90ZToNCj4gPiBP
+biBNb24sIFNlcCAyNCwgMjAxMiBhdCAwMTozOTowMVBNIC0wNDAwLCBianNjaHVtYUBuZXRhcHAu
+Y29tIHdyb3RlOg0KPiA+PiBGcm9tOiBCcnlhbiBTY2h1bWFrZXIgPGJqc2NodW1hQG5ldGFwcC5j
+b20+DQo+ID4+DQo+ID4+IGYzOWMxYmZiNWEwM2UyZDI1NTQ1MWJmZjA1YmUwZDcyNTUyOThmYTQg
+KFNVTlJQQzogRml4IGEgVURQIHRyYW5zcG9ydA0KPiA+PiByZWdyZXNzaW9uKSBpbnRyb2R1Y2Vk
+IHRoZSAiYWxsb2Nfc2xvdCIgZnVuY3Rpb24gZm9yIHhwcnQgb3BlcmF0aW9ucywNCj4gPj4gYnV0
+IG5ldmVyIGNyZWF0ZWQgb25lIGZvciB0aGUgYmFja2NoYW5uZWwgb3BlcmF0aW9ucy4gIFRoaXMg
+cGF0Y2ggZml4ZXMNCj4gPj4gYSBudWxsIHBvaW50ZXIgZGVyZWZlcmVuY2Ugd2hlbiBtb3VudGlu
+ZyBORlMgb3ZlciB2NC4xLg0KPiA+IA0KPiA+IFRoYW5rcywgSSBqdXN0IHJlYmFzZWQgc29tZSBv
+ZiBteSB3b3JrIHRvIDMuNiBhbmQgcmFuIGFjcm9zcyB0aGF0ISAgSXQNCj4gPiBjcmFzaGVzIHRo
+ZSA0LjEgc2VydmVyIHZlcnkgcXVpY2tseS4uLi4NCj4gDQo+IFRoYXQgc291bmRzIGxpa2UgbXkg
+c3RvcnkuICBJdCBnb3QgbXkgcGVlci10by1wZWVyIHNlcnZlciByaWdodCBhd2F5LCB0b28uDQo+
+IA0KPiAtIEJyeWFuDQo+IA0KPiA+IA0KPiA+IC0tYi4NCj4gPiANCj4gPj4NCj4gPj4gQ2FsbCBU
+cmFjZToNCj4gPj4gIFs8ZmZmZmZmZmZhMDIwNzk1Nz5dID8geHBydF9yZXNlcnZlKzB4NDcvMHg1
+MCBbc3VucnBjXQ0KPiA+PiAgWzxmZmZmZmZmZmEwMjAyM2E0Pl0gY2FsbF9yZXNlcnZlKzB4MzQv
+MHg2MCBbc3VucnBjXQ0KPiA+PiAgWzxmZmZmZmZmZmEwMjBlMjgwPl0gX19ycGNfZXhlY3V0ZSsw
+eDkwLzB4NDAwIFtzdW5ycGNdDQo+ID4+ICBbPGZmZmZmZmZmYTAyMGU2MWE+XSBycGNfYXN5bmNf
+c2NoZWR1bGUrMHgyYS8weDQwIFtzdW5ycGNdDQo+ID4+ICBbPGZmZmZmZmZmODEwNzM1ODk+XSBw
+cm9jZXNzX29uZV93b3JrKzB4MTM5LzB4NTAwDQo+ID4+ICBbPGZmZmZmZmZmODEwNzBlNzA+XSA/
+IGFsbG9jX3dvcmtlcisweDcwLzB4NzANCj4gPj4gIFs8ZmZmZmZmZmZhMDIwZTVmMD5dID8gX19y
+cGNfZXhlY3V0ZSsweDQwMC8weDQwMCBbc3VucnBjXQ0KPiA+PiAgWzxmZmZmZmZmZjgxMDczZDFl
+Pl0gd29ya2VyX3RocmVhZCsweDE1ZS8weDQ2MA0KPiA+PiAgWzxmZmZmZmZmZjgxNDVjODM5Pl0g
+PyBwcmVlbXB0X3NjaGVkdWxlKzB4NDkvMHg3MA0KPiA+PiAgWzxmZmZmZmZmZjgxMDczYmMwPl0g
+PyByZXNjdWVyX3RocmVhZCsweDIzMC8weDIzMA0KPiA+PiAgWzxmZmZmZmZmZjgxMDc5NjAzPl0g
+a3RocmVhZCsweDkzLzB4YTANCj4gPj4gIFs8ZmZmZmZmZmY4MTQ2NWQwND5dIGtlcm5lbF90aHJl
+YWRfaGVscGVyKzB4NC8weDEwDQo+ID4+ICBbPGZmZmZmZmZmODEwNzk1NzA+XSA/IGt0aHJlYWRf
+ZnJlZXphYmxlX3Nob3VsZF9zdG9wKzB4NzAvMHg3MA0KPiA+PiAgWzxmZmZmZmZmZjgxNDY1ZDAw
+Pl0gPyBnc19jaGFuZ2UrMHgxMy8weDEzDQo+ID4+DQo+ID4+IFNpZ25lZC1vZmYtYnk6IEJyeWFu
+IFNjaHVtYWtlciA8YmpzY2h1bWFAbmV0YXBwLmNvbT4NCj4gPj4gLS0tDQo+ID4+ICBuZXQvc3Vu
+cnBjL3hwcnRzb2NrLmMgfCAxICsNCj4gPj4gIDEgZmlsZSBjaGFuZ2VkLCAxIGluc2VydGlvbigr
+KQ0KPiA+Pg0KPiA+PiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy94cHJ0c29jay5jIGIvbmV0L3N1
+bnJwYy94cHJ0c29jay5jDQo+ID4+IGluZGV4IDg2Yjc3NzcuLmFhYWFkZmIgMTAwNjQ0DQo+ID4+
+IC0tLSBhL25ldC9zdW5ycGMveHBydHNvY2suYw0KPiA+PiArKysgYi9uZXQvc3VucnBjL3hwcnRz
+b2NrLmMNCj4gPj4gQEAgLTI1MjEsNiArMjUyMSw3IEBAIHN0YXRpYyBzdHJ1Y3QgcnBjX3hwcnRf
+b3BzIHhzX3RjcF9vcHMgPSB7DQo+ID4+ICBzdGF0aWMgc3RydWN0IHJwY194cHJ0X29wcyBiY190
+Y3Bfb3BzID0gew0KPiA+PiAgCS5yZXNlcnZlX3hwcnQJCT0geHBydF9yZXNlcnZlX3hwcnQsDQo+
+ID4+ICAJLnJlbGVhc2VfeHBydAkJPSB4cHJ0X3JlbGVhc2VfeHBydCwNCj4gPj4gKwkuYWxsb2Nf
+c2xvdAkJPSB4cHJ0X2FsbG9jX3Nsb3QsDQo+ID4+ICAJLnJwY2JpbmQJCT0geHNfbG9jYWxfcnBj
+YmluZCwNCj4gPj4gIAkuYnVmX2FsbG9jCQk9IGJjX21hbGxvYywNCj4gPj4gIAkuYnVmX2ZyZWUJ
+CT0gYmNfZnJlZSwNCj4gPj4gLS0gDQo+ID4+IDEuNy4xMi4xDQo+ID4+DQo+ID4+IC0tDQo+ID4+
+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmli
+ZSBsaW51eC1uZnMiIGluDQo+ID4+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9A
+dmdlci5rZXJuZWwub3JnDQo+ID4+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2Vy
+Lmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KPiANCg0KQXJnaC4uLiBTb3JyeSwgdGhh
+dCB3YXMgZW50aXJlbHkgbXkgZmF1bHQuIEkgdHJhY2VkIHRoZSBjbGllbnQgc2lkZQ0KYmFja2No
+YW5uZWwgY29kZSwgYW5kIGZvdW5kIGl0IHdhcyBhbGxvY2F0aW5nIHNsb3RzIHVzaW5nIGl0cyBv
+d24NCm1lY2hhbmlzbSwgdGhlbiB0aG91Z2h0IHRoYXQgYXBwbGllZCB0byBiY190Y3Bfb3BzLg0K
+DQpJIGZpbmQgdGhlIE5GU3Y0LjEgYmFja2NoYW5uZWwgY29kZSB0byBiZSBldmVuIG1vcmUgY29u
+ZnVzaW5nIHRoYW4NCmxvY2tkLg0KDQouLi5hbmQgQlRXIHRoZSAucnBjYmluZCBoYWNrIGFib3Zl
+IGlzIGEgcHJpbWUgZXhhbXBsZS4gQnJ1Y2UsIHdoeSBkbyB5b3UNCm5lZWQgdGhhdD8gVGhlIHNl
+cnZlciBiYWNrIGNoYW5uZWwgc2V0cyB4cHJ0X3NldF9ib3VuZCgpIGluDQp4c19zZXR1cF9iY190
+Y3AoKSBhbmQgc2hvdWxkIG5ldmVyIGNsZWFyIGl0Lg0KDQotLSANClRyb25kIE15a2xlYnVzdA0K
+TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5l
+dGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
