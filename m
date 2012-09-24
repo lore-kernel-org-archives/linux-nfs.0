@@ -1,41 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:23903 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:24605 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756667Ab2IFTyc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Sep 2012 15:54:32 -0400
-From: Weston Andros Adamson <dros@netapp.com>
+	id S1755538Ab2IXRjE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Sep 2012 13:39:04 -0400
+From: bjschuma@netapp.com
 To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>,
-        stable@vger.kernel.org
-Subject: [PATCH 1/2] NFS: return error from decode_getfh in decode open
-Date: Thu,  6 Sep 2012 15:54:27 -0400
-Message-Id: <1346961268-15864-1-git-send-email-dros@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] SUNRPC: Set alloc_slot for backchannel tcp ops
+Date: Mon, 24 Sep 2012 13:39:01 -0400
+Message-Id: <1348508341-19642-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If decode_getfh failed, nfs4_xdr_dec_open would return 0 since the last
-decode_* call must have succeeded.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Cc: stable@vger.kernel.org
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+f39c1bfb5a03e2d255451bff05be0d7255298fa4 (SUNRPC: Fix a UDP transport
+regression) introduced the "alloc_slot" function for xprt operations,
+but never created one for the backchannel operations.  This patch fixes
+a null pointer dereference when mounting NFS over v4.1.
+
+Call Trace:
+ [<ffffffffa0207957>] ? xprt_reserve+0x47/0x50 [sunrpc]
+ [<ffffffffa02023a4>] call_reserve+0x34/0x60 [sunrpc]
+ [<ffffffffa020e280>] __rpc_execute+0x90/0x400 [sunrpc]
+ [<ffffffffa020e61a>] rpc_async_schedule+0x2a/0x40 [sunrpc]
+ [<ffffffff81073589>] process_one_work+0x139/0x500
+ [<ffffffff81070e70>] ? alloc_worker+0x70/0x70
+ [<ffffffffa020e5f0>] ? __rpc_execute+0x400/0x400 [sunrpc]
+ [<ffffffff81073d1e>] worker_thread+0x15e/0x460
+ [<ffffffff8145c839>] ? preempt_schedule+0x49/0x70
+ [<ffffffff81073bc0>] ? rescuer_thread+0x230/0x230
+ [<ffffffff81079603>] kthread+0x93/0xa0
+ [<ffffffff81465d04>] kernel_thread_helper+0x4/0x10
+ [<ffffffff81079570>] ? kthread_freezable_should_stop+0x70/0x70
+ [<ffffffff81465d00>] ? gs_change+0x13/0x13
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfs/nfs4xdr.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ net/sunrpc/xprtsock.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 1bfbd67..f505726 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -6229,7 +6229,8 @@ static int nfs4_xdr_dec_open(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
- 	status = decode_open(xdr, res);
- 	if (status)
- 		goto out;
--	if (decode_getfh(xdr, &res->fh) != 0)
-+	status = decode_getfh(xdr, &res->fh);
-+	if (status)
- 		goto out;
- 	decode_getfattr(xdr, res->f_attr, res->server);
- out:
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 86b7777..aaaadfb 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2521,6 +2521,7 @@ static struct rpc_xprt_ops xs_tcp_ops = {
+ static struct rpc_xprt_ops bc_tcp_ops = {
+ 	.reserve_xprt		= xprt_reserve_xprt,
+ 	.release_xprt		= xprt_release_xprt,
++	.alloc_slot		= xprt_alloc_slot,
+ 	.rpcbind		= xs_local_rpcbind,
+ 	.buf_alloc		= bc_malloc,
+ 	.buf_free		= bc_free,
 -- 
-1.7.9.6 (Apple Git-31.1)
+1.7.12.1
 
