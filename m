@@ -1,128 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:16651 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:60227 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757454Ab2INOdA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 Sep 2012 10:33:00 -0400
-Subject: [PATCH 2/3] lockd: per-net NSM client creation and destruction
-	helpers introduced
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, devel@openvz.org,
-        linux-kernel@vger.kernel.org, jlayton@redhat.com
-Date: Fri, 14 Sep 2012 18:26:00 +0400
-Message-ID: <20120914142600.10835.70696.stgit@localhost.localdomain>
-In-Reply-To: <20120914140811.10835.81465.stgit@localhost.localdomain>
-References: <20120914140811.10835.81465.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1757570Ab2IXUAO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Sep 2012 16:00:14 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 28/28] NFSv4.1: nfs4_proc_layoutreturn must always drop the plh_block_lgets count
+Date: Mon, 24 Sep 2012 15:56:46 -0400
+Message-Id: <1348516606-22721-28-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1348516606-22721-27-git-send-email-Trond.Myklebust@netapp.com>
+References: <1348516606-22721-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-12-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-13-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-14-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-15-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-16-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-17-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-18-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-19-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-20-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-21-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-22-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-23-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-24-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-25-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-26-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-27-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NSM RPC client can be required on NFSv3 umount, when child reaper is dying (and
-destroying it's mount namespace). It means, that current nsproxy is set to
-NULL already, but creation of RPC client requires UTS namespace for gaining
-hostname string.
-This patch introduces reference counted NFS RPC clients creation and
-destruction helpers (similar to RPCBIND RPC clients).
+Currently it does not do so if the RPC call failed to start. Fix is to
+move the decrement of plh_block_lgets into nfs4_layoutreturn_release.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: <stable@vger.kernel.org>
+Also remove a redundant test of task->tk_status in nfs4_layoutreturn_done:
+if lrp->res.lrs_present is set, then obviously the RPC call succeeded.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/lockd/mon.c   |   47 +++++++++++++++++++++++++++++++++++++++++++++++
- fs/lockd/netns.h |    4 ++++
- fs/lockd/svc.c   |    1 +
- 3 files changed, 52 insertions(+), 0 deletions(-)
+ fs/nfs/nfs4proc.c | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index c6186fb..77e07fe 100644
---- a/fs/lockd/mon.c
-+++ b/fs/lockd/mon.c
-@@ -19,6 +19,8 @@
- 
- #include <asm/unaligned.h>
- 
-+#include "netns.h"
-+
- #define NLMDBG_FACILITY		NLMDBG_MONITOR
- #define NSM_PROGRAM		100024
- #define NSM_VERSION		1
-@@ -83,6 +85,51 @@ static struct rpc_clnt *nsm_create(struct net *net)
- 	return rpc_create(&args);
- }
- 
-+__maybe_unused static struct rpc_clnt *nsm_client_get(struct net *net)
-+{
-+	static DEFINE_MUTEX(nsm_create_mutex);
-+	struct rpc_clnt	*clnt;
-+	struct lockd_net *ln = net_generic(net, lockd_net_id);
-+
-+	spin_lock(&ln->nsm_clnt_lock);
-+	if (ln->nsm_users) {
-+		ln->nsm_users++;
-+		clnt = ln->nsm_clnt;
-+		spin_unlock(&ln->nsm_clnt_lock);
-+		goto out;
-+	}
-+	spin_unlock(&ln->nsm_clnt_lock);
-+
-+	mutex_lock(&nsm_create_mutex);
-+	clnt = nsm_create(net);
-+	if (!IS_ERR(clnt)) {
-+		ln->nsm_clnt = clnt;
-+		smp_wmb();
-+		ln->nsm_users = 1;
-+	}
-+	mutex_unlock(&nsm_create_mutex);
-+out:
-+	return clnt;
-+}
-+
-+__maybe_unused static void nsm_client_put(struct net *net)
-+{
-+	struct lockd_net *ln = net_generic(net, lockd_net_id);
-+	struct rpc_clnt	*clnt = ln->nsm_clnt;
-+	int shutdown = 0;
-+
-+	spin_lock(&ln->nsm_clnt_lock);
-+	if (ln->nsm_users) {
-+		if (--ln->nsm_users)
-+			ln->nsm_clnt = NULL;
-+		shutdown = !ln->nsm_users;
-+	}
-+	spin_unlock(&ln->nsm_clnt_lock);
-+
-+	if (shutdown)
-+		rpc_shutdown_client(clnt);
-+}
-+
- static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res,
- 			 struct net *net)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index d9d67b3..6e95b20 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6346,7 +6346,6 @@ static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
  {
-diff --git a/fs/lockd/netns.h b/fs/lockd/netns.h
-index 4eee248..5010b55 100644
---- a/fs/lockd/netns.h
-+++ b/fs/lockd/netns.h
-@@ -12,6 +12,10 @@ struct lockd_net {
- 	struct delayed_work grace_period_end;
- 	struct lock_manager lockd_manager;
- 	struct list_head grace_list;
-+
-+	spinlock_t nsm_clnt_lock;
-+	unsigned int nsm_users;
-+	struct rpc_clnt *nsm_clnt;
- };
+ 	struct nfs4_layoutreturn *lrp = calldata;
+ 	struct nfs_server *server;
+-	struct pnfs_layout_hdr *lo = lrp->args.layout;
  
- extern int lockd_net_id;
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 31a63f8..7e35587 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -596,6 +596,7 @@ static int lockd_init_net(struct net *net)
+ 	dprintk("--> %s\n", __func__);
  
- 	INIT_DELAYED_WORK(&ln->grace_period_end, grace_ender);
- 	INIT_LIST_HEAD(&ln->grace_list);
-+	spin_lock_init(&ln->nsm_clnt_lock);
- 	return 0;
+@@ -6358,19 +6357,20 @@ static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
+ 		rpc_restart_call_prepare(task);
+ 		return;
+ 	}
+-	spin_lock(&lo->plh_inode->i_lock);
+-	if (task->tk_status == 0 && lrp->res.lrs_present)
+-		pnfs_set_layout_stateid(lo, &lrp->res.stateid, true);
+-	lo->plh_block_lgets--;
+-	spin_unlock(&lo->plh_inode->i_lock);
+ 	dprintk("<-- %s\n", __func__);
  }
  
+ static void nfs4_layoutreturn_release(void *calldata)
+ {
+ 	struct nfs4_layoutreturn *lrp = calldata;
++	struct pnfs_layout_hdr *lo = lrp->args.layout;
+ 
+ 	dprintk("--> %s\n", __func__);
++	spin_lock(&lo->plh_inode->i_lock);
++	if (lrp->res.lrs_present)
++		pnfs_set_layout_stateid(lo, &lrp->res.stateid, true);
++	lo->plh_block_lgets--;
++	spin_unlock(&lo->plh_inode->i_lock);
+ 	pnfs_put_layout_hdr(lrp->args.layout);
+ 	kfree(calldata);
+ 	dprintk("<-- %s\n", __func__);
+-- 
+1.7.11.4
 
