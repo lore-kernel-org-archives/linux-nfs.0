@@ -1,144 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e37.co.us.ibm.com ([32.97.110.158]:56697 "EHLO
-	e37.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751233Ab2IJFLH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Sep 2012 01:11:07 -0400
-Received: from /spool/local
-	by e37.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <linuxram@us.ibm.com>;
-	Sun, 9 Sep 2012 23:11:06 -0600
-Date: Mon, 10 Sep 2012 13:10:37 +0800
-From: Ram Pai <linuxram@us.ibm.com>
-To: Guo Chao <yan@linux.vnet.ibm.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [RFC PATCH 05/13] vfs: take i_mutex on renamed file
-Message-ID: <20120910051037.GA2466@ram-ThinkPad-T61>
-Reply-To: Ram Pai <linuxram@us.ibm.com>
-References: <1346878524-10585-1-git-send-email-bfields@redhat.com>
- <1346878524-10585-6-git-send-email-bfields@redhat.com>
- <20120906030526.GB6679@yanx>
- <20120906175118.GC21736@fieldses.org>
- <20120907022705.GA20453@yanx>
- <20120907213901.GA5927@fieldses.org>
- <20120910024051.GA10405@yanx>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120910024051.GA10405@yanx>
+Received: from mx2.netapp.com ([216.240.18.37]:53744 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932102Ab2IXT64 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Sep 2012 15:58:56 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 17/28] NFSv4.1: Remove redundant reference to the pnfs_layout_hdr
+Date: Mon, 24 Sep 2012 15:56:35 -0400
+Message-Id: <1348516606-22721-17-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1348516606-22721-16-git-send-email-Trond.Myklebust@netapp.com>
+References: <1348516606-22721-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-12-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-13-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-14-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-15-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-16-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 10, 2012 at 10:40:51AM +0800, Guo Chao wrote:
-> On Fri, Sep 07, 2012 at 05:39:01PM -0400, J. Bruce Fields wrote:
-> > On Fri, Sep 07, 2012 at 10:27:05AM +0800, Guo Chao wrote:
-> > > On Thu, Sep 06, 2012 at 01:51:18PM -0400, J. Bruce Fields wrote:
-> > > > On Thu, Sep 06, 2012 at 11:05:26AM +0800, Guo Chao wrote:
-> > > > > On Wed, Sep 05, 2012 at 04:55:15PM -0400, J. Bruce Fields wrote:
-> > > > > > From: "J. Bruce Fields" <bfields@redhat.com>
-> > > > > > diff --git a/fs/namei.c b/fs/namei.c
-> > > > > > index 1b46439..6156135 100644
-> > > > > > --- a/fs/namei.c
-> > > > > > +++ b/fs/namei.c
-> > > > > > @@ -3658,6 +3658,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
-> > > > > >  			    struct inode *new_dir, struct dentry *new_dentry)
-> > > > > >  {
-> > > > > >  	struct inode *target = new_dentry->d_inode;
-> > > > > > +	struct inode *source = old_dentry->d_inode;
-> > > > > >  	int error;
-> > > > > > 
-> > > > > >  	error = security_inode_rename(old_dir, old_dentry, new_dir, new_dentry);
-> > > > > > @@ -3665,8 +3666,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
-> > > > > >  		return error;
-> > > > > > 
-> > > > > >  	dget(new_dentry);
-> > > > > > -	if (target)
-> > > > > > -		mutex_lock(&target->i_mutex);
-> > > > > > +	lock_two_nondirectories(source, target);
-> > > > > > 
-> > > > > >  	error = -EBUSY;
-> > > > > >  	if (d_mountpoint(old_dentry)||d_mountpoint(new_dentry))
-> > > > > > @@ -3681,8 +3681,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
-> > > > > >  	if (!(old_dir->i_sb->s_type->fs_flags & FS_RENAME_DOES_D_MOVE))
-> > > > > >  		d_move(old_dentry, new_dentry);
-> > > > > >  out:
-> > > > > > -	if (target)
-> > > > > > -		mutex_unlock(&target->i_mutex);
-> > > > > > +	unlock_two_nondirectories(source, target);
-> > > > > >  	dput(new_dentry);
-> > > > > >  	return error;
-> > > > > >  }
-> > > > > >
-> > > > > 
-> > > > > This change also fixes a race between rename and mount.
-> > > > > 
-> > > > > Apparently we avoid to rename source or target if they are
-> > > > > mountpoint. But nothing prevents source being the mountpoint 
-> > > > > after d_mountpoint check because we do not hold its i_mutex.
-> > > > > 
-> > > > > Thus we are actually able to rename a mountpoint.
-> > > > > 
-> > > > > Rename directory should also need this care.
-> > > > 
-> > > > Do you have any practical way to reproduce that race?
-> > > > 
-> > > > --b.
-> > > 
-> > > Rename a mountpoint? Of course.
-> > > 
-> > > One script ...
-> > > 
-> > > #!/bin/bash
-> > > while true
-> > > do
-> > > 	mount -t sysfs nodev mnt && umount mnt
-> > > done
-> > > 
-> > > 
-> > > 
-> > > The other ...
-> > > 
-> > > #!/bin/bash
-> > > while true
-> > > do
-> > > 	mv mnt mnt2 && mv mnt2 mnt
-> > > done
-> > > 
-> > > 
-> > > 
-> > > Run them simultaneously in two consoles. When mount keeps reporting 
-> > > 'mount point mnt does not exist', stop them, then you will see the 
-> > > familiar sysfs under mnt2.
-> > 
-> > Oh, thanks, for some reason I assumed it would be more difficult to
-> > reproduce.
-> > 
-> > I think we can do this--I don't think it even requires any care to the
-> > locking order of the renamed vs the victim directory, though I can't
-> > completely convince myself of that.
-> > 
-> > Is it necessary to fix this, though?  Does it cause any problems other
-> > than unexpected behavior?
-> > 
-> > --b.
-> > --
-> 
-> Hard to say whether it's a bug or what's problems of being able to rename 
-> mountpoint.
+Each layout segment already holds a reference to the pnfs_layout_hdr,
+so there is no need to hold an extra reference that is released once
+the last layout segment is freed.
 
-'man 2 rename' says it is ok to rename a directory that is already
-mounted.
+Ensure that pnfs_find_alloc_layout() always returns a reference
+to the pnfs_layout_hdr, which will be matched by the final call to
+pnfs_put_layout_hdr() in pnfs_update_layout().
 
-EBUSY The rename fails because oldpath or newpath is a directory that is
-in use by some process (perhaps as current working directory, or as root
-directory, or beacuse it was open for reading) or is in use by the
-system (for example as mount point), while the system considers this an
-error. (Note that there is no requirement to return EBUSY in such
-cases-- there is nothing wrong with doing the rename anyway -- but is
-	^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-allowed to return EBUSY if the system cannot otherwise handle such
-situations)
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/pnfs.c | 13 ++++---------
+ 1 file changed, 4 insertions(+), 9 deletions(-)
 
-RP
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index e434bd1..d4b55bf 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -331,11 +331,8 @@ pnfs_layout_remove_lseg(struct pnfs_layout_hdr *lo,
+ 
+ 	WARN_ON(test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
+ 	list_del_init(&lseg->pls_list);
+-	if (list_empty(&lo->plh_segs)) {
++	if (list_empty(&lo->plh_segs))
+ 		set_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags);
+-		/* Matched by initial refcount set in alloc_init_layout_hdr */
+-		pnfs_put_layout_hdr_locked(lo);
+-	}
+ 	rpc_wake_up(&NFS_SERVER(inode)->roc_rpcwaitq);
+ }
+ 
+@@ -468,8 +465,7 @@ pnfs_mark_matching_lsegs_invalid(struct pnfs_layout_hdr *lo,
+ 	dprintk("%s:Begin lo %p\n", __func__, lo);
+ 
+ 	if (list_empty(&lo->plh_segs)) {
+-		if (!test_and_set_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags))
+-			pnfs_put_layout_hdr_locked(lo);
++		set_bit(NFS_LAYOUT_DESTROYED, &lo->plh_flags);
+ 		return 0;
+ 	}
+ 	list_for_each_entry_safe(lseg, next, &lo->plh_segs, pls_list)
+@@ -929,8 +925,8 @@ pnfs_find_alloc_layout(struct inode *ino,
+ 	if (nfsi->layout) {
+ 		if (test_bit(NFS_LAYOUT_DESTROYED, &nfsi->layout->plh_flags))
+ 			return NULL;
+-		else
+-			return nfsi->layout;
++		pnfs_get_layout_hdr(nfsi->layout);
++		return nfsi->layout;
+ 	}
+ 	spin_unlock(&ino->i_lock);
+ 	new = alloc_init_layout_hdr(ino, ctx, gfp_flags);
+@@ -1131,7 +1127,6 @@ pnfs_update_layout(struct inode *ino,
+ 		goto out_unlock;
+ 	atomic_inc(&lo->plh_outstanding);
+ 
+-	pnfs_get_layout_hdr(lo);
+ 	if (list_empty(&lo->plh_segs))
+ 		first = true;
+ 
+-- 
+1.7.11.4
 
