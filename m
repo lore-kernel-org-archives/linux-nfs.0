@@ -1,184 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:52146 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:22500 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752449Ab2ISBgB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 18 Sep 2012 21:36:01 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/8] NFS: Clean up the pNFS layoutget interface
-Date: Tue, 18 Sep 2012 21:35:47 -0400
-Message-Id: <1348018554-63137-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1756260Ab2IXTuE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Sep 2012 15:50:04 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Andy Adamson <androsadamson@gmail.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 10/26] NFSv4.1: pnfs_layout_io_test_failed must clear
+ invalid lsegs before a retry
+Date: Mon, 24 Sep 2012 19:50:02 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908FE5F02@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1348260621-10294-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1348260621-10294-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <1348260621-10294-3-git-send-email-Trond.Myklebust@netapp.com>
+	 <1348260621-10294-4-git-send-email-Trond.Myklebust@netapp.com>
+	 <1348260621-10294-5-git-send-email-Trond.Myklebust@netapp.com>
+	 <1348260621-10294-6-git-send-email-Trond.Myklebust@netapp.com>
+	 <1348260621-10294-7-git-send-email-Trond.Myklebust@netapp.com>
+	 <1348260621-10294-8-git-send-email-Trond.Myklebust@netapp.com>
+	 <1348260621-10294-9-git-send-email-Trond.Myklebust@netapp.com>
+	 <1348260621-10294-10-git-send-email-Trond.Myklebust@netapp.com>
+	 <CAHVgHyVmAERb8ndXiUTG=6TBuCQOBWtn0h5ps0fix5aAcu2+WA@mail.gmail.com>
+In-Reply-To: <CAHVgHyVmAERb8ndXiUTG=6TBuCQOBWtn0h5ps0fix5aAcu2+WA@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that we do return errors from nfs4_proc_layoutget() and that we
-don't mark the layout as having failed if the error was due to a
-signal or resource problem on the client side.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c       | 14 +++++++++-----
- fs/nfs/pnfs.c           | 25 ++++++++++++++++---------
- fs/nfs/pnfs.h           |  4 ++--
- include/linux/nfs_xdr.h |  1 -
- 4 files changed, 27 insertions(+), 17 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 645c450..b738577 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6286,7 +6286,8 @@ static const struct rpc_call_ops nfs4_layoutget_call_ops = {
- 	.rpc_release = nfs4_layoutget_release,
- };
- 
--void nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
-+struct pnfs_layout_segment *
-+nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
- {
- 	struct nfs_server *server = NFS_SERVER(lgp->args.inode);
- 	size_t max_pages = max_response_pages(server);
-@@ -6303,6 +6304,7 @@ void nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
- 		.callback_data = lgp,
- 		.flags = RPC_TASK_ASYNC,
- 	};
-+	struct pnfs_layout_segment *lseg = NULL;
- 	int status = 0;
- 
- 	dprintk("--> %s\n", __func__);
-@@ -6310,7 +6312,7 @@ void nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
- 	lgp->args.layout.pages = nfs4_alloc_pages(max_pages, gfp_flags);
- 	if (!lgp->args.layout.pages) {
- 		nfs4_layoutget_release(lgp);
--		return;
-+		return ERR_PTR(-ENOMEM);
- 	}
- 	lgp->args.layout.pglen = max_pages * PAGE_SIZE;
- 
-@@ -6319,15 +6321,17 @@ void nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
- 	nfs41_init_sequence(&lgp->args.seq_args, &lgp->res.seq_res, 0);
- 	task = rpc_run_task(&task_setup_data);
- 	if (IS_ERR(task))
--		return;
-+		return ERR_CAST(task);
- 	status = nfs4_wait_for_completion_rpc_task(task);
- 	if (status == 0)
- 		status = task->tk_status;
- 	if (status == 0)
--		status = pnfs_layout_process(lgp);
-+		lseg = pnfs_layout_process(lgp);
- 	rpc_put_task(task);
- 	dprintk("<-- %s status=%d\n", __func__, status);
--	return;
-+	if (status)
-+		return ERR_PTR(status);
-+	return lseg;
- }
- 
- static void
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 2e00fea..3a7ac97 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -582,7 +582,7 @@ send_layoutget(struct pnfs_layout_hdr *lo,
- 	struct inode *ino = lo->plh_inode;
- 	struct nfs_server *server = NFS_SERVER(ino);
- 	struct nfs4_layoutget *lgp;
--	struct pnfs_layout_segment *lseg = NULL;
-+	struct pnfs_layout_segment *lseg;
- 
- 	dprintk("--> %s\n", __func__);
- 
-@@ -599,16 +599,22 @@ send_layoutget(struct pnfs_layout_hdr *lo,
- 	lgp->args.type = server->pnfs_curr_ld->id;
- 	lgp->args.inode = ino;
- 	lgp->args.ctx = get_nfs_open_context(ctx);
--	lgp->lsegpp = &lseg;
- 	lgp->gfp_flags = gfp_flags;
- 
- 	/* Synchronously retrieve layout information from server and
- 	 * store in lseg.
- 	 */
--	nfs4_proc_layoutget(lgp, gfp_flags);
--	if (!lseg) {
--		/* remember that LAYOUTGET failed and suspend trying */
--		set_bit(lo_fail_bit(range->iomode), &lo->plh_flags);
-+	lseg = nfs4_proc_layoutget(lgp, gfp_flags);
-+	if (IS_ERR(lseg)) {
-+		switch (PTR_ERR(lseg)) {
-+		case -ENOMEM:
-+		case -ERESTARTSYS:
-+			break;
-+		default:
-+			/* remember that LAYOUTGET failed and suspend trying */
-+			set_bit(lo_fail_bit(range->iomode), &lo->plh_flags);
-+		}
-+		return NULL;
- 	}
- 
- 	return lseg;
-@@ -1096,7 +1102,7 @@ out_unlock:
- }
- EXPORT_SYMBOL_GPL(pnfs_update_layout);
- 
--int
-+struct pnfs_layout_segment *
- pnfs_layout_process(struct nfs4_layoutget *lgp)
- {
- 	struct pnfs_layout_hdr *lo = NFS_I(lgp->args.inode)->layout;
-@@ -1129,7 +1135,7 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
- 	}
- 	init_lseg(lo, lseg);
- 	lseg->pls_range = res->range;
--	*lgp->lsegpp = get_lseg(lseg);
-+	get_lseg(lseg);
- 	pnfs_insert_layout(lo, lseg);
- 
- 	if (res->return_on_close) {
-@@ -1140,8 +1146,9 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
- 	/* Done processing layoutget. Set the layout stateid */
- 	pnfs_set_layout_stateid(lo, &res->stateid, false);
- 	spin_unlock(&ino->i_lock);
-+	return lseg;
- out:
--	return status;
-+	return ERR_PTR(status);
- 
- out_forget_reply:
- 	spin_unlock(&ino->i_lock);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 745aa1b..d51ef88 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -172,7 +172,7 @@ extern int nfs4_proc_getdevicelist(struct nfs_server *server,
- 				   struct pnfs_devicelist *devlist);
- extern int nfs4_proc_getdeviceinfo(struct nfs_server *server,
- 				   struct pnfs_device *dev);
--extern void nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags);
-+extern struct pnfs_layout_segment* nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags);
- extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
- 
- /* pnfs.c */
-@@ -192,7 +192,7 @@ void pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *, struct nfs_page
- int pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc);
- bool pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev, struct nfs_page *req);
- void pnfs_set_lo_fail(struct pnfs_layout_segment *lseg);
--int pnfs_layout_process(struct nfs4_layoutget *lgp);
-+struct pnfs_layout_segment *pnfs_layout_process(struct nfs4_layoutget *lgp);
- void pnfs_free_lseg_list(struct list_head *tmp_list);
- void pnfs_destroy_layout(struct nfs_inode *);
- void pnfs_destroy_all_layouts(struct nfs_client *);
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index be9cf3c..5da789f 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -251,7 +251,6 @@ struct nfs4_layoutget_res {
- struct nfs4_layoutget {
- 	struct nfs4_layoutget_args args;
- 	struct nfs4_layoutget_res res;
--	struct pnfs_layout_segment **lsegpp;
- 	gfp_t gfp_flags;
- };
- 
--- 
-1.7.11.4
-
+T24gTW9uLCAyMDEyLTA5LTI0IGF0IDEwOjQ3IC0wNDAwLCBBbmR5IEFkYW1zb24gd3JvdGU6DQo+
+IE9uIEZyaSwgU2VwIDIxLCAyMDEyIGF0IDQ6NTAgUE0sIFRyb25kIE15a2xlYnVzdA0KPiA8VHJv
+bmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+IElmIHBuZnNfbGF5b3V0X2lvX3Rl
+c3RfZmFpbGVkKCkgYXV0aG9yaXNlcyBhIHJldHJ5IG9mIHRoZSBmYWlsZWQgbGF5b3V0Z2V0cywN
+Cj4gPiBpdCBzaG91bGQgZmlyc3QgY2xlYXIgdGhlIGV4aXN0aW5nIGxheW91dCBzZWdtZW50cyBz
+byB0aGF0IHdlIHN0YXJ0IGFmcmVzaC4NCj4gPg0KPiA+IFNpZ25lZC1vZmYtYnk6IFRyb25kIE15
+a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQo+ID4gLS0tDQo+ID4gIGZzL25m
+cy9wbmZzLmMgfCA4ICsrKysrKy0tDQo+ID4gIDEgZmlsZSBjaGFuZ2VkLCA2IGluc2VydGlvbnMo
+KyksIDIgZGVsZXRpb25zKC0pDQo+ID4NCj4gPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL3BuZnMuYyBi
+L2ZzL25mcy9wbmZzLmMNCj4gPiBpbmRleCBjYmJiMGZjLi44MGFhYWJhIDEwMDY0NA0KPiA+IC0t
+LSBhL2ZzL25mcy9wbmZzLmMNCj4gPiArKysgYi9mcy9uZnMvcG5mcy5jDQo+ID4gQEAgLTI1Niw3
+ICsyNTYsOCBAQCBwbmZzX2xheW91dF9pb19zZXRfZmFpbGVkKHN0cnVjdCBwbmZzX2xheW91dF9o
+ZHIgKmxvLCB1MzIgaW9tb2RlKQ0KPiA+ICB9DQo+ID4NCj4gPiAgc3RhdGljIGJvb2wNCj4gPiAt
+cG5mc19sYXlvdXRfaW9fdGVzdF9mYWlsZWQoc3RydWN0IHBuZnNfbGF5b3V0X2hkciAqbG8sIHUz
+MiBpb21vZGUpDQo+ID4gK3BuZnNfbGF5b3V0X2lvX3Rlc3RfZmFpbGVkKHN0cnVjdCBwbmZzX2xh
+eW91dF9oZHIgKmxvLCB1MzIgaW9tb2RlLA0KPiA+ICsgICAgICAgICAgICAgICBzdHJ1Y3QgbGlz
+dF9oZWFkICpoZWFkKQ0KPiA+ICB7DQo+ID4gICAgICAgICB1bnNpZ25lZCBsb25nIHN0YXJ0LCBl
+bmQ7DQo+ID4gICAgICAgICBpZiAodGVzdF9iaXQocG5mc19pb21vZGVfdG9fZmFpbF9iaXQoaW9t
+b2RlKSwgJmxvLT5wbGhfZmxhZ3MpID09IDApDQo+ID4gQEAgLTI2Nyw2ICsyNjgsNyBAQCBwbmZz
+X2xheW91dF9pb190ZXN0X2ZhaWxlZChzdHJ1Y3QgcG5mc19sYXlvdXRfaGRyICpsbywgdTMyIGlv
+bW9kZSkNCj4gPiAgICAgICAgICAgICAgICAgLyogSXQgaXMgdGltZSB0byByZXRyeSB0aGUgZmFp
+bGVkIGxheW91dGdldHMgKi8NCj4gPiAgICAgICAgICAgICAgICAgY2xlYXJfYml0KE5GU19MQVlP
+VVRfUldfRkFJTEVELCAmbG8tPnBsaF9mbGFncyk7DQo+ID4gICAgICAgICAgICAgICAgIGNsZWFy
+X2JpdChORlNfTEFZT1VUX1JPX0ZBSUxFRCwgJmxvLT5wbGhfZmxhZ3MpOw0KPiA+ICsgICAgICAg
+ICAgICAgICBwbmZzX21hcmtfbWF0Y2hpbmdfbHNlZ3NfaW52YWxpZChsbywgaGVhZCwgTlVMTCk7
+DQo+IA0KPiBCeSBjbGVhcmluZyBhbGwgaW9tb2RlIGZhaWxlZCBiaXRzIGFuZCBwYXNzaW5nIGEg
+TlVMTCBhcyB0aGUNCj4gcmVjYWxsX3JhbmdlIHRvIHBuZnNfbWFya19tYXRjaGluZ19sc2Vncywg
+eW91IGFyZSBkaXNjYXJkaW5nIGxheW91dHMNCj4gbm90IGF1dGhvcml6ZWQgYnkgdGhlIGlvbW9k
+ZSBwYXNzZWQgaW50byBwbmZzX2xheW91dF9pb190ZXN0X2ZhaWxlZC4NCj4gV2h5IG5vdCBjbGVh
+ciBqdXN0IHRoZSBmYWlsZWQgYml0IGFuZCBzZXR1cCBhIHBuZnNfbGF5b3V0X3JhbmdlDQo+IHN0
+cnVjdHVyZSAoZm9yIHRoZSB3aG9sZSBmaWxlKSBhbmQgcGFzcyB0aGUgYXV0aG9yaXplZCBmYWls
+ZWQgaW9tb2RlDQo+IHRvIHBuZnNfbWFya19tYXRjaGluZ19sc2VncyBzbyBhcyB0byByZW1vdmUg
+b25seSB0aGUgZmFpbGVkIGlvbW9kZQ0KPiBsYXlvdXQgc2VnbWVudHM/DQoNClRoZXJlIHdlcmUg
+b3RoZXIgcmVhc29ucyBmb3IgY2hhbmdpbmcgdGhpcyBwYXJ0IG9mIHRoZSBjb2RlIHRvby4gVGhl
+DQptYWluIHByb2JsZW0gaXMgdGhhdCBpZiB0aGUgZmlyc3QgbGF5b3V0Z2V0IGZhaWxzLCBzbyB0
+aGF0IHdlIG5ldmVyDQphc3NvY2lhdGUgYW4gbHNlZyB0byB0aGUgcG5mc19sYXlvdXRfaGRyLCB0
+aGVuIHRoZSBwbGhfcmVmY291bnQgd2lsbCBnbw0KdG8gemVybywgYW5kIHdlIGVuZCB1cCBub3Qg
+Y2FjaGluZyB0aGUgZmFpbCBiaXQuDQoNClZlcnNpb24gMyBvZiB0aGVzZSBwYXRjaGVzIHRoZXJl
+Zm9yZSBjaGFuZ2UgdGhlIGNvZGUgaW4gdGhpcyByZWdpb24gc28NCnRoYXQgd2Uga2VlcCBhIHJl
+ZmVyZW5jZSB0byB0aGUgcG5mc19sYXlvdXRfaGRyIHdpdGggdGhlIGZhaWwgYml0LiBUaGVuDQpp
+dCBjbGVhcnMgb3V0IHRoZSBleGlzdGluZyBsc2VncyAobWF0Y2hpbmcgaW9tb2RlcykgaW4NCnBu
+ZnNfbGF5b3V0X2lvX3NldF9mYWlsZWQuDQoNCj4gLS0+QW5keQ0KPiANCj4gDQo+ID4gICAgICAg
+ICAgICAgICAgIHJldHVybiBmYWxzZTsNCj4gPiAgICAgICAgIH0NCj4gPiAgICAgICAgIHJldHVy
+biB0cnVlOw0KPiA+IEBAIC0xMDU4LDYgKzEwNjAsNyBAQCBwbmZzX3VwZGF0ZV9sYXlvdXQoc3Ry
+dWN0IGlub2RlICppbm8sDQo+ID4gICAgICAgICBzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwID0gc2Vy
+dmVyLT5uZnNfY2xpZW50Ow0KPiA+ICAgICAgICAgc3RydWN0IHBuZnNfbGF5b3V0X2hkciAqbG87
+DQo+ID4gICAgICAgICBzdHJ1Y3QgcG5mc19sYXlvdXRfc2VnbWVudCAqbHNlZyA9IE5VTEw7DQo+
+ID4gKyAgICAgICBMSVNUX0hFQUQodG1wX2xpc3QpOw0KPiA+ICAgICAgICAgYm9vbCBmaXJzdCA9
+IGZhbHNlOw0KPiA+DQo+ID4gICAgICAgICBpZiAoIXBuZnNfZW5hYmxlZF9zYihORlNfU0VSVkVS
+KGlubykpKQ0KPiA+IEBAIC0xMDgxLDcgKzEwODQsNyBAQCBwbmZzX3VwZGF0ZV9sYXlvdXQoc3Ry
+dWN0IGlub2RlICppbm8sDQo+ID4gICAgICAgICB9DQo+ID4NCj4gPiAgICAgICAgIC8qIGlmIExB
+WU9VVEdFVCBhbHJlYWR5IGZhaWxlZCBvbmNlIHdlIGRvbid0IHRyeSBhZ2FpbiAqLw0KPiA+IC0g
+ICAgICAgaWYgKHBuZnNfbGF5b3V0X2lvX3Rlc3RfZmFpbGVkKG5mc2ktPmxheW91dCwgaW9tb2Rl
+KSkNCj4gPiArICAgICAgIGlmIChwbmZzX2xheW91dF9pb190ZXN0X2ZhaWxlZChuZnNpLT5sYXlv
+dXQsIGlvbW9kZSwgJnRtcF9saXN0KSkNCj4gPiAgICAgICAgICAgICAgICAgZ290byBvdXRfdW5s
+b2NrOw0KPiA+DQo+ID4gICAgICAgICAvKiBDaGVjayB0byBzZWUgaWYgdGhlIGxheW91dCBmb3Ig
+dGhlIGdpdmVuIHJhbmdlIGFscmVhZHkgZXhpc3RzICovDQo+ID4gQEAgLTExMjcsNiArMTEzMCw3
+IEBAIHBuZnNfdXBkYXRlX2xheW91dChzdHJ1Y3QgaW5vZGUgKmlubywNCj4gPiAgICAgICAgIH0N
+Cj4gPiAgICAgICAgIGF0b21pY19kZWMoJmxvLT5wbGhfb3V0c3RhbmRpbmcpOw0KPiA+ICBvdXQ6
+DQo+ID4gKyAgICAgICBwbmZzX2ZyZWVfbHNlZ19saXN0KCZ0bXBfbGlzdCk7DQo+ID4gICAgICAg
+ICBwbmZzX3B1dF9sYXlvdXRfaGRyKGxvKTsNCj4gPiAgICAgICAgIGRwcmludGsoIiVzIGVuZCwg
+c3RhdGUgMHglbHggbHNlZyAlcFxuIiwgX19mdW5jX18sDQo+ID4gICAgICAgICAgICAgICAgIG5m
+c2ktPmxheW91dCA/IG5mc2ktPmxheW91dC0+cGxoX2ZsYWdzIDogLTEsIGxzZWcpOw0KPiA+IC0t
+DQo+ID4gMS43LjExLjQNCj4gPg0KPiA+IC0tDQo+ID4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlz
+IGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIgaW4NCj4gPiB0aGUg
+Ym9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0KPiA+IE1vcmUg
+bWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8u
+aHRtbA0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVy
+DQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
