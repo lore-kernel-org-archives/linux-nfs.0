@@ -1,64 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e28smtp09.in.ibm.com ([122.248.162.9]:43008 "EHLO
-	e28smtp09.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750706Ab2IJGhh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Sep 2012 02:37:37 -0400
-Received: from /spool/local
-	by e28smtp09.in.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <yan@linux.vnet.ibm.com>;
-	Mon, 10 Sep 2012 12:07:33 +0530
-Date: Mon, 10 Sep 2012 14:37:24 +0800
-From: Guo Chao <yan@linux.vnet.ibm.com>
-To: Ram Pai <linuxram@us.ibm.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [RFC PATCH 05/13] vfs: take i_mutex on renamed file
-Message-ID: <20120910063724.GA6272@yanx>
-References: <1346878524-10585-1-git-send-email-bfields@redhat.com>
- <1346878524-10585-6-git-send-email-bfields@redhat.com>
- <20120906030526.GB6679@yanx>
- <20120906175118.GC21736@fieldses.org>
- <20120907022705.GA20453@yanx>
- <20120907213901.GA5927@fieldses.org>
- <20120910024051.GA10405@yanx>
- <20120910051037.GA2466@ram-ThinkPad-T61>
+Received: from mail-wi0-f178.google.com ([209.85.212.178]:35220 "EHLO
+	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754107Ab2IXOrm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Sep 2012 10:47:42 -0400
+Received: by wibhr14 with SMTP id hr14so4973508wib.1
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Sep 2012 07:47:41 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120910051037.GA2466@ram-ThinkPad-T61>
+In-Reply-To: <1348260621-10294-10-git-send-email-Trond.Myklebust@netapp.com>
+References: <1348260621-10294-1-git-send-email-Trond.Myklebust@netapp.com>
+	<1348260621-10294-2-git-send-email-Trond.Myklebust@netapp.com>
+	<1348260621-10294-3-git-send-email-Trond.Myklebust@netapp.com>
+	<1348260621-10294-4-git-send-email-Trond.Myklebust@netapp.com>
+	<1348260621-10294-5-git-send-email-Trond.Myklebust@netapp.com>
+	<1348260621-10294-6-git-send-email-Trond.Myklebust@netapp.com>
+	<1348260621-10294-7-git-send-email-Trond.Myklebust@netapp.com>
+	<1348260621-10294-8-git-send-email-Trond.Myklebust@netapp.com>
+	<1348260621-10294-9-git-send-email-Trond.Myklebust@netapp.com>
+	<1348260621-10294-10-git-send-email-Trond.Myklebust@netapp.com>
+Date: Mon, 24 Sep 2012 10:47:41 -0400
+Message-ID: <CAHVgHyVmAERb8ndXiUTG=6TBuCQOBWtn0h5ps0fix5aAcu2+WA@mail.gmail.com>
+Subject: Re: [PATCH v2 10/26] NFSv4.1: pnfs_layout_io_test_failed must clear
+ invalid lsegs before a retry
+From: Andy Adamson <androsadamson@gmail.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 10, 2012 at 01:10:37PM +0800, Ram Pai wrote:
-> On Mon, Sep 10, 2012 at 10:40:51AM +0800, Guo Chao wrote:
-> > 
-> > Hard to say whether it's a bug or what's problems of being able to rename 
-> > mountpoint.
-> 
-> 'man 2 rename' says it is ok to rename a directory that is already
-> mounted.
-> 
-> EBUSY The rename fails because oldpath or newpath is a directory that is
-> in use by some process (perhaps as current working directory, or as root
-> directory, or beacuse it was open for reading) or is in use by the
-> system (for example as mount point), while the system considers this an
-> error. (Note that there is no requirement to return EBUSY in such
-> cases-- there is nothing wrong with doing the rename anyway -- but is
-> 	^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-> allowed to return EBUSY if the system cannot otherwise handle such
-> situations)
-> 
-> RP
+On Fri, Sep 21, 2012 at 4:50 PM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+> If pnfs_layout_io_test_failed() authorises a retry of the failed layoutgets,
+> it should first clear the existing layout segments so that we start afresh.
+>
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+>  fs/nfs/pnfs.c | 8 ++++++--
+>  1 file changed, 6 insertions(+), 2 deletions(-)
+>
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index cbbb0fc..80aaaba 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -256,7 +256,8 @@ pnfs_layout_io_set_failed(struct pnfs_layout_hdr *lo, u32 iomode)
+>  }
+>
+>  static bool
+> -pnfs_layout_io_test_failed(struct pnfs_layout_hdr *lo, u32 iomode)
+> +pnfs_layout_io_test_failed(struct pnfs_layout_hdr *lo, u32 iomode,
+> +               struct list_head *head)
+>  {
+>         unsigned long start, end;
+>         if (test_bit(pnfs_iomode_to_fail_bit(iomode), &lo->plh_flags) == 0)
+> @@ -267,6 +268,7 @@ pnfs_layout_io_test_failed(struct pnfs_layout_hdr *lo, u32 iomode)
+>                 /* It is time to retry the failed layoutgets */
+>                 clear_bit(NFS_LAYOUT_RW_FAILED, &lo->plh_flags);
+>                 clear_bit(NFS_LAYOUT_RO_FAILED, &lo->plh_flags);
+> +               pnfs_mark_matching_lsegs_invalid(lo, head, NULL);
 
-Erhh, good point. 
+By clearing all iomode failed bits and passing a NULL as the
+recall_range to pnfs_mark_matching_lsegs, you are discarding layouts
+not authorized by the iomode passed into pnfs_layout_io_test_failed.
+Why not clear just the failed bit and setup a pnfs_layout_range
+structure (for the whole file) and pass the authorized failed iomode
+to pnfs_mark_matching_lsegs so as to remove only the failed iomode
+layout segments?
 
-However, current implementation seems to return EBUSY unconditionally, 
-instead of considering whether it can handle this situation. It can be 
-descripted as 'it may return EBUSY or not, depends on whether you are 
-luck enough to rush into the race'.
-
-This seems still conform to the statement in the manual, in a weird way 
-though.
+-->Andy
 
 
+>                 return false;
+>         }
+>         return true;
+> @@ -1058,6 +1060,7 @@ pnfs_update_layout(struct inode *ino,
+>         struct nfs_client *clp = server->nfs_client;
+>         struct pnfs_layout_hdr *lo;
+>         struct pnfs_layout_segment *lseg = NULL;
+> +       LIST_HEAD(tmp_list);
+>         bool first = false;
+>
+>         if (!pnfs_enabled_sb(NFS_SERVER(ino)))
+> @@ -1081,7 +1084,7 @@ pnfs_update_layout(struct inode *ino,
+>         }
+>
+>         /* if LAYOUTGET already failed once we don't try again */
+> -       if (pnfs_layout_io_test_failed(nfsi->layout, iomode))
+> +       if (pnfs_layout_io_test_failed(nfsi->layout, iomode, &tmp_list))
+>                 goto out_unlock;
+>
+>         /* Check to see if the layout for the given range already exists */
+> @@ -1127,6 +1130,7 @@ pnfs_update_layout(struct inode *ino,
+>         }
+>         atomic_dec(&lo->plh_outstanding);
+>  out:
+> +       pnfs_free_lseg_list(&tmp_list);
+>         pnfs_put_layout_hdr(lo);
+>         dprintk("%s end, state 0x%lx lseg %p\n", __func__,
+>                 nfsi->layout ? nfsi->layout->plh_flags : -1, lseg);
+> --
+> 1.7.11.4
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
