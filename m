@@ -1,85 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.openrapids.net ([64.15.138.104]:43854 "EHLO
-	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1756311Ab2IFOdX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Sep 2012 10:33:23 -0400
-Date: Thu, 6 Sep 2012 10:33:20 -0400
-From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: Pedro Alves <palves@redhat.com>, Steven Rostedt <rostedt@goodmis.org>,
-        Tejun Heo <tj@kernel.org>, torvalds@linux-foundation.org,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive
-	hashtable
-Message-ID: <20120906143320.GA4513@Krystal>
-References: <503C95E4.3010000@gmail.com> <20120828101148.GA21683@Krystal> <503CAB1E.5010408@gmail.com> <20120828115638.GC23818@Krystal> <20120828230050.GA3337@Krystal> <1346772948.27919.9.camel@gandalf.local.home> <50462C99.5000007@redhat.com> <50462EE8.1090903@redhat.com> <20120904170138.GB31934@Krystal> <5048AAF6.5090101@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5048AAF6.5090101@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:46480 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932072Ab2IXT7B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Sep 2012 15:59:01 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 18/28] NFSv4.1: Free the pnfs_layout_hdr outside the inode->i_lock
+Date: Mon, 24 Sep 2012 15:56:36 -0400
+Message-Id: <1348516606-22721-18-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1348516606-22721-17-git-send-email-Trond.Myklebust@netapp.com>
+References: <1348516606-22721-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-12-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-13-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-14-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-15-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-16-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-17-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* Sasha Levin (levinsasha928@gmail.com) wrote:
-> On 09/04/2012 07:01 PM, Mathieu Desnoyers wrote:
-> >> #define do_for_each_ftrace_rec(pg, rec)                                          \
-> >> >         for (pg = ftrace_pages_start, rec = &pg->records[pg->index];             \
-> >> >              pg && rec == &pg->records[pg->index];                               \
-> >> >              pg = pg->next)                                                      \
-> >> >           for (rec = pg->records; rec < &pg->records[pg->index]; rec++)
-> > Maybe in some cases there might be ways to combine the two loops into
-> > one ? I'm not seeing exactly how to do it for this one, but it should
-> > not be impossible. If the inner loop condition can be moved to the outer
-> > loop, and if we use (blah ? loop1_conf : loop2_cond) to test for
-> > different conditions depending on the context, and do the same for the
-> > 3rd argument of the for() loop. The details elude me for now though, so
-> > maybe it's complete non-sense ;)
-> > 
-> > It might not be that useful for do_for_each_ftrace_rec, but if we can do
-> > it for the hash table iterator, it might be worth it.
-> 
-> So I think that for the hash iterator it might actually be simpler.
-> 
-> My solution to making 'break' work in the iterator is:
-> 
-> 	for (bkt = 0, node = NULL; bkt < HASH_SIZE(name) && node == NULL; bkt++)
-> 		hlist_for_each_entry(obj, node, &name[bkt], member)
-> 
-> We initialize our node loop cursor with NULL in the external loop, and the
-> external loop will have a new condition to loop while that cursor is NULL.
-> 
-> My logic is that we can only 'break' when we are iterating over an object in the
-> internal loop. If we're iterating over an object in that loop then 'node != NULL'.
-> 
-> This way, if we broke from within the internal loop, the external loop will see
-> node as not NULL, and so it will stop looping itself. On the other hand, if the
-> internal loop has actually ended, then node will be NULL, and the outer loop
-> will keep running.
-> 
-> Is there anything I've missed?
+None of the existing pNFS layout drivers seem to require the inode
+to be locked while they free the layout header.
 
-This sounds good. Unless I'm missing something too.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/pnfs.c | 21 +++++++++------------
+ 1 file changed, 9 insertions(+), 12 deletions(-)
 
-Thanks!
-
-Mathieu
-
-> 
-> 
-> Thanks,
-> Sasha
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index d4b55bf..c16c805 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -213,7 +213,7 @@ pnfs_free_layout_hdr(struct pnfs_layout_hdr *lo)
+ }
+ 
+ static void
+-destroy_layout_hdr(struct pnfs_layout_hdr *lo)
++pnfs_detach_layout_hdr(struct pnfs_layout_hdr *lo)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(lo->plh_inode);
+ 	dprintk("%s: freeing layout cache %p\n", __func__, lo);
+@@ -222,14 +222,6 @@ destroy_layout_hdr(struct pnfs_layout_hdr *lo)
+ 	/* Reset MDS Threshold I/O counters */
+ 	nfsi->write_io = 0;
+ 	nfsi->read_io = 0;
+-	pnfs_free_layout_hdr(lo);
+-}
+-
+-static void
+-pnfs_put_layout_hdr_locked(struct pnfs_layout_hdr *lo)
+-{
+-	if (atomic_dec_and_test(&lo->plh_refcount))
+-		destroy_layout_hdr(lo);
+ }
+ 
+ void
+@@ -238,8 +230,9 @@ pnfs_put_layout_hdr(struct pnfs_layout_hdr *lo)
+ 	struct inode *inode = lo->plh_inode;
+ 
+ 	if (atomic_dec_and_lock(&lo->plh_refcount, &inode->i_lock)) {
+-		destroy_layout_hdr(lo);
++		pnfs_detach_layout_hdr(lo);
+ 		spin_unlock(&inode->i_lock);
++		pnfs_free_layout_hdr(lo);
+ 	}
+ }
+ 
+@@ -792,8 +785,12 @@ void pnfs_roc_release(struct inode *ino)
+ 	spin_lock(&ino->i_lock);
+ 	lo = NFS_I(ino)->layout;
+ 	lo->plh_block_lgets--;
+-	pnfs_put_layout_hdr_locked(lo);
+-	spin_unlock(&ino->i_lock);
++	if (atomic_dec_and_test(&lo->plh_refcount)) {
++		pnfs_detach_layout_hdr(lo);
++		spin_unlock(&ino->i_lock);
++		pnfs_free_layout_hdr(lo);
++	} else
++		spin_unlock(&ino->i_lock);
+ }
+ 
+ void pnfs_roc_set_barrier(struct inode *ino, u32 barrier)
 -- 
-Mathieu Desnoyers
-Operating System Efficiency R&D Consultant
-EfficiOS Inc.
-http://www.efficios.com
+1.7.11.4
+
