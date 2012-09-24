@@ -1,46 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 5350504D.static.ziggozakelijk.nl ([83.80.80.77]:16524 "EHLO
-	ns2.tasking.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932400Ab2IGOdr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Sep 2012 10:33:47 -0400
-Received: from leonino.tasking.nl (nl-fg300a-1-dmz.tasking.nl [172.16.1.8])
-	by ns2.tasking.nl (8.14.5/8.14.5) with ESMTP id q87EXkYs001633
-	(version=TLSv1/SSLv3 cipher=DHE-DSS-AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Fri, 7 Sep 2012 16:33:46 +0200 (MEST)
-Received: from lahti.tasking.nl (lahti.tasking.nl [172.17.2.45])
-	by leonino.tasking.nl (8.14.5/8.14.5) with ESMTP id q87EXkKl009064
-	for <linux-nfs@vger.kernel.org>; Fri, 7 Sep 2012 16:33:46 +0200 (MEST)
+Received: from mx2.netapp.com ([216.240.18.37]:40043 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932090Ab2IXT7f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Sep 2012 15:59:35 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
-Mime-Version: 1.0
-Reply-To: dick.streefland@altium.nl (Dick Streefland)
-References: <1315610322.17611.112.camel@lade.trondhjem.org> <20111020190334.GA22772@hostway.ca> <20120301225524.GB27595@hostway.ca> <20120302002511.GA4495@hostway.ca> <20120302184918.GA20702@hostway.ca> <loom.20120905T093214-245@post.gmane.org> <loom.20120905T093214-245@post.gmane.org> <4FA345DA4F4AE44899BD2B03EEEC2FA908F86381@SACEXCMBX04-PRD.hq.netapp.com> <6cb9.5049fd40.b47c1@altium.nl> <6cb9.5049fd40.b47c1@altium.nl> <4FA345DA4F4AE44899BD2B03EEEC2FA908F8E302@SACEXCMBX04-PRD.hq.netapp.com>
-From: dick.streefland@altium.nl (Dick Streefland)
-Subject: Re: [3.2.5] NFSv3 CLOSE_WAIT hang
-Content-Type: text/plain; charset=us-ascii
-Message-ID: <447c.504a05c9.dd0a9@altium.nl>
-Date: Fri, 07 Sep 2012 14:33:45 -0000
-From: rnews@altium.nl
+Subject: [PATCH v3 23/28] NFSv4.1: Remove unused 'default allocation' for pnfs_alloc_layout_hdr()
+Date: Mon, 24 Sep 2012 15:56:41 -0400
+Message-Id: <1348516606-22721-23-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1348516606-22721-22-git-send-email-Trond.Myklebust@netapp.com>
+References: <1348516606-22721-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-12-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-13-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-14-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-15-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-16-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-17-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-18-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-19-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-20-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-21-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-22-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-| > I can easily reproduce the hang on the latest kernel (eeea3ac912) with my
-| > script (http://permalink.gmane.org/gmane.linux.nfs/51833).
-| 
-| On TCP?
+...and ditto for pnfs_free_layout_hdr()
 
-No, on UDP (mount options are in that first email).
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/pnfs.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-| > With this change, it doesn't hang:
-| 
-| It doesn't matter as long as that change is wrong. That code _is_ needed for TCP.
-| 
-| Now if UDP is broken, then we can talk about a fix for that issue, but that's not going to be the one you propose.
-
-OK, fine with me. My proposal to revert this change was only based on
-the remark in the comment that it is not strictly needed. So we need
-to differentiate between UDP and TCP then?
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index bf99ace..b8dac08 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -200,8 +200,7 @@ static struct pnfs_layout_hdr *
+ pnfs_alloc_layout_hdr(struct inode *ino, gfp_t gfp_flags)
+ {
+ 	struct pnfs_layoutdriver_type *ld = NFS_SERVER(ino)->pnfs_curr_ld;
+-	return ld->alloc_layout_hdr ? ld->alloc_layout_hdr(ino, gfp_flags) :
+-		kzalloc(sizeof(struct pnfs_layout_hdr), gfp_flags);
++	return ld->alloc_layout_hdr(ino, gfp_flags);
+ }
+ 
+ static void
+@@ -218,7 +217,7 @@ pnfs_free_layout_hdr(struct pnfs_layout_hdr *lo)
+ 		spin_unlock(&clp->cl_lock);
+ 	}
+ 	put_rpccred(lo->plh_lc_cred);
+-	return ld->alloc_layout_hdr ? ld->free_layout_hdr(lo) : kfree(lo);
++	return ld->free_layout_hdr(lo);
+ }
+ 
+ static void
 -- 
-Dick
+1.7.11.4
 
