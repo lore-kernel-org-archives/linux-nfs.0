@@ -1,93 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:33806 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:4877 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753017Ab2ISNQn convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Sep 2012 09:16:43 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Richard Ems <richard.ems@cape-horn-eng.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "gregkh@linuxfoundation.org" <gregkh@linuxfoundation.org>
-Subject: RE: Re: [PATCH] NFS: Fix Oopses in nfs_lookup_revalidate and
- nfs4_lookup_revalidate
-Date: Wed, 19 Sep 2012 13:16:41 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908FD7706@SACEXCMBX04-PRD.hq.netapp.com>
-References: <503361AF.8030707@cape-horn-eng.com>
- <5059A9F0.2070409@cape-horn-eng.com>
-In-Reply-To: <5059A9F0.2070409@cape-horn-eng.com>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+	id S932119Ab2IXT6b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Sep 2012 15:58:31 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 13/28] NFSv4.1: Simplify the pNFS return-on-close code
+Date: Mon, 24 Sep 2012 15:56:31 -0400
+Message-Id: <1348516606-22721-13-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1348516606-22721-12-git-send-email-Trond.Myklebust@netapp.com>
+References: <1348516606-22721-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-12-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> owner@vger.kernel.org] On Behalf Of Richard Ems
-> Sent: Wednesday, September 19, 2012 7:18 AM
-> To: Myklebust, Trond
-> Cc: linux-nfs@vger.kernel.org; linux-kernel@vger.kernel.org;
-> gregkh@linuxfoundation.org
-> Subject: Fwd: Re: [PATCH] NFS: Fix Oopses in nfs_lookup_revalidate and
-> nfs4_lookup_revalidate
-> 
-> Hi all,
-> 
-> I still don't see this patch in the 3.5.x series.
-> Will it make it into 3.5.5?
-> 
-> Thanks,
-> Richard
- 
-Hi Greg,
+Confine it to the nfs4_do_close() code.
 
-I believe you said that you would take this patch. Do you want me to resend?
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4_fs.h   | 2 +-
+ fs/nfs/nfs4proc.c  | 6 ++----
+ fs/nfs/nfs4state.c | 7 ++-----
+ 3 files changed, 5 insertions(+), 10 deletions(-)
 
-Cheers,
-   Trond
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 71d407f..9cacc13 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -223,7 +223,7 @@ extern int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred);
+ extern int nfs4_destroy_clientid(struct nfs_client *clp);
+ extern int nfs4_init_clientid(struct nfs_client *, struct rpc_cred *);
+ extern int nfs41_init_clientid(struct nfs_client *, struct rpc_cred *);
+-extern int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait, bool roc);
++extern int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait);
+ extern int nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle);
+ extern int nfs4_proc_fs_locations(struct rpc_clnt *, struct inode *, const struct qstr *,
+ 				  struct nfs4_fs_locations *, struct page *);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 49d5c7d..d9d67b3 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2204,7 +2204,7 @@ static const struct rpc_call_ops nfs4_close_ops = {
+  *
+  * NOTE: Caller must be holding the sp->so_owner semaphore!
+  */
+-int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait, bool roc)
++int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait)
+ {
+ 	struct nfs_server *server = NFS_SERVER(state->inode);
+ 	struct nfs4_closedata *calldata;
+@@ -2240,7 +2240,7 @@ int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait, bool roc)
+ 	calldata->res.fattr = &calldata->fattr;
+ 	calldata->res.seqid = calldata->arg.seqid;
+ 	calldata->res.server = server;
+-	calldata->roc = roc;
++	calldata->roc = pnfs_roc(state->inode);
+ 	nfs_sb_active(calldata->inode->i_sb);
  
-> -------- Original Message --------
-> Subject: Re: [PATCH] NFS: Fix Oopses in nfs_lookup_revalidate and
-> nfs4_lookup_revalidate
-> Date: Tue, 21 Aug 2012 12:23:43 +0200
-> From: Richard Ems <richard.ems@cape-horn-eng.com>
-> To: Trond Myklebust <Trond.Myklebust@netapp.com>
-> CC: linux-nfs@vger.kernel.org
-> 
-> On 08/15/2012 10:49 PM, Trond Myklebust wrote:
-> > This Oops affects 3.5 kernels and older, and is due to
-> > lookup_one_len() calling down to the dentry revalidation code with a
-> > NULL pointer to struct nameidata.
-> >
-> > It is fixed upstream by commit 0b728e1911c (stop passing nameidata *
-> > to ->d_revalidate())
-> >
-> > Reported-by: Richard Ems <richard.ems@cape-horn-eng.com>
-> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> 
-> 
-> Hi Trond,
-> 
-> I don't see this patch going into 3.5.3 at
-> http://www.kernel.org/pub/linux/kernel/v3.0/stable-review/patch-3.5.3-
-> rc1.gz
-> .
-> Shouldn't it be included in 3.5.3 ?
-> 
-> Thanks,
-> Richard
-> 
-> 
-> --
-> Richard Ems       mail: Richard.Ems@Cape-Horn-Eng.com
-> 
-> Cape Horn Engineering S.L.
-> C/ Dr. J.J. Dómine 1, 5º piso
-> 46011 Valencia
-> Tel : +34 96 3242923 / Fax 924
-> http://www.cape-horn-eng.com
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the
-> body of a message to majordomo@vger.kernel.org More majordomo info at
-> http://vger.kernel.org/majordomo-info.html
+ 	msg.rpc_argp = &calldata->arg;
+@@ -2257,8 +2257,6 @@ int nfs4_do_close(struct nfs4_state *state, gfp_t gfp_mask, int wait, bool roc)
+ out_free_calldata:
+ 	kfree(calldata);
+ out:
+-	if (roc)
+-		pnfs_roc_release(state->inode);
+ 	nfs4_put_open_state(state);
+ 	nfs4_put_state_owner(sp);
+ 	return status;
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index fc6cfe6..a5331ec 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -729,11 +729,8 @@ static void __nfs4_close(struct nfs4_state *state,
+ 	if (!call_close) {
+ 		nfs4_put_open_state(state);
+ 		nfs4_put_state_owner(owner);
+-	} else {
+-		bool roc = pnfs_roc(state->inode);
+-
+-		nfs4_do_close(state, gfp_mask, wait, roc);
+-	}
++	} else
++		nfs4_do_close(state, gfp_mask, wait);
+ }
+ 
+ void nfs4_close_state(struct nfs4_state *state, fmode_t fmode)
+-- 
+1.7.11.4
+
