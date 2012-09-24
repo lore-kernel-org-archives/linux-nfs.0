@@ -1,54 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:57954 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:40093 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752879Ab2IZOrU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 26 Sep 2012 10:47:20 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Fengguang Wu <fengguang.wu@intel.com>
-CC: Yuanhan Liu <yuanhan.liu@intel.com>,
-        "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [nfs:devel 17/39] fs/nfs/pnfs.c:1043:20: warning: unused
- variable 'nfsi'
-Date: Wed, 26 Sep 2012 14:47:18 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908FEC301@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20120926013839.GD8522@localhost>
-In-Reply-To: <20120926013839.GD8522@localhost>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S932090Ab2IXT7y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Sep 2012 15:59:54 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 26/28] NFSv4.1: Remove the NFS_LAYOUT_RETURNED state
+Date: Mon, 24 Sep 2012 15:56:44 -0400
+Message-Id: <1348516606-22721-26-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1348516606-22721-25-git-send-email-Trond.Myklebust@netapp.com>
+References: <1348516606-22721-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-12-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-13-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-14-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-15-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-16-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-17-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-18-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-19-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-20-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-21-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-22-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-23-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-24-git-send-email-Trond.Myklebust@netapp.com>
+ <1348516606-22721-25-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTA5LTI2IGF0IDA5OjM4ICswODAwLCBGZW5nZ3VhbmcgV3Ugd3JvdGU6DQo+
-IEhpIFRyb25kLA0KPiANCj4gRllJLCB0aGVyZSBhcmUgbmV3IGNvbXBpbGUgd2FybmluZ3Mgc2hv
-dyB1cCBpbg0KPiANCj4gdHJlZTogICBnaXQ6Ly9naXQubGludXgtbmZzLm9yZy9wcm9qZWN0cy90
-cm9uZG15L2xpbnV4LW5mcy5naXQgZGV2ZWwNCj4gaGVhZDogICBmNzQzYzczNWI4MTc1NDdiNTkw
-ZDM2YTZlMjc1MjM1YzdiZWI4NjAwDQo+IGNvbW1pdDogYTljMzEwYWY3MDYxMTJmNDRjMTVjZjUx
-NzJlODFiYTNlZTc1NWNhYiBbMTcvMzldIE5GU3Y0LjE6IEFkZCBoZWxwZXJzIGZvciBzZXR0aW5n
-L3JlYWRpbmcgdGhlIEkvTyBmYWlsIGJpdA0KPiANCj4gQWxsIHdhcm5pbmdzOg0KPiANCj4gZnMv
-bmZzL3BuZnMuYzogSW4gZnVuY3Rpb24gJ3BuZnNfdXBkYXRlX2xheW91dCc6DQo+IGZzL25mcy9w
-bmZzLmM6MTA0MzoyMDogd2FybmluZzogdW51c2VkIHZhcmlhYmxlICduZnNpJyBbLVd1bnVzZWQt
-dmFyaWFibGVdDQo+IA0KPiB2aW0gKzEwNDMgZnMvbmZzL3BuZnMuYw0KPiAgIDEwMjcJICogVGhl
-IGFwcHJvcHJpYXRlIGxheW91dCBzZWdtZW50IGlzIHJlZmVyZW5jZWQgYW5kIHJldHVybmVkIHRv
-IHRoZSBjYWxsZXIuDQo+ICAgMTAyOAkgKi8NCj4gICAxMDI5CXN0cnVjdCBwbmZzX2xheW91dF9z
-ZWdtZW50ICoNCj4gICAxMDMwCXBuZnNfdXBkYXRlX2xheW91dChzdHJ1Y3QgaW5vZGUgKmlubywN
-Cj4gICAxMDMxCQkJICAgc3RydWN0IG5mc19vcGVuX2NvbnRleHQgKmN0eCwNCj4gICAxMDMyCQkJ
-ICAgbG9mZl90IHBvcywNCj4gICAxMDMzCQkJICAgdTY0IGNvdW50LA0KPiAgIDEwMzQJCQkgICBl
-bnVtIHBuZnNfaW9tb2RlIGlvbW9kZSwNCj4gICAxMDM1CQkJICAgZ2ZwX3QgZ2ZwX2ZsYWdzKQ0K
-PiAgIDEwMzYJew0KPiAgIDEwMzcJCXN0cnVjdCBwbmZzX2xheW91dF9yYW5nZSBhcmcgPSB7DQo+
-ICAgMTAzOAkJCS5pb21vZGUgPSBpb21vZGUsDQo+ICAgMTAzOQkJCS5vZmZzZXQgPSBwb3MsDQo+
-ICAgMTA0MAkJCS5sZW5ndGggPSBjb3VudCwNCj4gICAxMDQxCQl9Ow0KPiAgIDEwNDIJCXVuc2ln
-bmVkIHBnX29mZnNldDsNCj4gPiAxMDQzCQlzdHJ1Y3QgbmZzX2lub2RlICpuZnNpID0gTkZTX0ko
-aW5vKTsNCj4gICAxMDQ0CQlzdHJ1Y3QgbmZzX3NlcnZlciAqc2VydmVyID0gTkZTX1NFUlZFUihp
-bm8pOw0KPiAgIDEwNDUJCXN0cnVjdCBuZnNfY2xpZW50ICpjbHAgPSBzZXJ2ZXItPm5mc19jbGll
-bnQ7DQo+ICAgMTA0NgkJc3RydWN0IHBuZnNfbGF5b3V0X2hkciAqbG87DQo+ICAgMTA0NwkJc3Ry
-dWN0IHBuZnNfbGF5b3V0X3NlZ21lbnQgKmxzZWcgPSBOVUxMOw0KPiAgIDEwNDgJCWJvb2wgZmly
-c3QgPSBmYWxzZTsNCj4gICAxMDQ5CQ0KPiAgIDEwNTAJCWlmICghcG5mc19lbmFibGVkX3NiKE5G
-U19TRVJWRVIoaW5vKSkpDQo+ICAgMTA1MQkJCXJldHVybiBOVUxMOw0KDQpIaSBGZW5nZ3Vhbmcs
-DQoNClllcywgSSBjYW4gc2VlIGhvdyB0aGUgYWJvdmUgd2lsbCBoYXBwZW4gaWYgeW91IGRpc2Fi
-bGUgZHByaW50aygpLg0KDQpGcm9tIHdoYXQgSSBjYW4gc2VlLCB0aGUgZHByaW50aygpIGluIHF1
-ZXN0aW9uIGlzIGJ1Z2d5IGFzIGhlbGwgYW55d2F5Og0KaXQgZGVyZWZlcmVuY2VzIG5mc2ktPmxh
-eW91dCB1c2luZyB3aXRob3V0IGFueSBwcm90ZWN0aW9uLiBJJ2xsIHJlbW92ZQ0KaXQgaW4gYSBz
-ZXBhcmF0ZSBwYXRjaC4NCg0KVGhhbmtzIQ0KICAgVHJvbmQNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1
-c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVz
-dEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+It serves no purpose that the test for whether or not we have valid
+layout segments doesn't already serve.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/pnfs.c |  7 +------
+ fs/nfs/pnfs.h | 19 -------------------
+ 2 files changed, 1 insertion(+), 25 deletions(-)
+
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 86d95bf..28f7126 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -692,7 +692,7 @@ _pnfs_return_layout(struct inode *ino)
+ 
+ 	spin_lock(&ino->i_lock);
+ 	lo = nfsi->layout;
+-	if (!lo || pnfs_test_layout_returned(lo)) {
++	if (!lo) {
+ 		spin_unlock(&ino->i_lock);
+ 		dprintk("NFS: %s no layout to return\n", __func__);
+ 		goto out;
+@@ -710,7 +710,6 @@ _pnfs_return_layout(struct inode *ino)
+ 		goto out;
+ 	}
+ 	lo->plh_block_lgets++;
+-	pnfs_mark_layout_returned(lo);
+ 	spin_unlock(&ino->i_lock);
+ 	pnfs_free_lseg_list(&tmp_list);
+ 
+@@ -721,7 +720,6 @@ _pnfs_return_layout(struct inode *ino)
+ 		status = -ENOMEM;
+ 		pnfs_layout_io_set_failed(lo, IOMODE_RW);
+ 		pnfs_layout_io_set_failed(lo, IOMODE_READ);
+-		pnfs_clear_layout_returned(lo);
+ 		pnfs_put_layout_hdr(lo);
+ 		goto out;
+ 	}
+@@ -1113,9 +1111,6 @@ pnfs_update_layout(struct inode *ino,
+ 	if (list_empty(&lo->plh_segs))
+ 		first = true;
+ 
+-	/* Enable LAYOUTRETURNs */
+-	pnfs_clear_layout_returned(lo);
+-
+ 	spin_unlock(&ino->i_lock);
+ 	if (first) {
+ 		/* The lo must be on the clp list if there is any
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 92f6ce6..6cede2c 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -62,7 +62,6 @@ enum {
+ 	NFS_LAYOUT_RW_FAILED,		/* get rw layout failed stop trying */
+ 	NFS_LAYOUT_BULK_RECALL,		/* bulk recall affecting layout */
+ 	NFS_LAYOUT_ROC,			/* some lseg had roc bit set */
+-	NFS_LAYOUT_RETURNED,		/* layout has already been returned */
+ };
+ 
+ enum layoutdriver_policy_flags {
+@@ -259,24 +258,6 @@ void nfs4_mark_deviceid_unavailable(struct nfs4_deviceid_node *node);
+ bool nfs4_test_deviceid_unavailable(struct nfs4_deviceid_node *node);
+ void nfs4_deviceid_purge_client(const struct nfs_client *);
+ 
+-static inline void
+-pnfs_mark_layout_returned(struct pnfs_layout_hdr *lo)
+-{
+-	set_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
+-}
+-
+-static inline void
+-pnfs_clear_layout_returned(struct pnfs_layout_hdr *lo)
+-{
+-	clear_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
+-}
+-
+-static inline bool
+-pnfs_test_layout_returned(struct pnfs_layout_hdr *lo)
+-{
+-	return test_bit(NFS_LAYOUT_RETURNED, &lo->plh_flags);
+-}
+-
+ static inline struct pnfs_layout_segment *
+ pnfs_get_lseg(struct pnfs_layout_segment *lseg)
+ {
+-- 
+1.7.11.4
+
