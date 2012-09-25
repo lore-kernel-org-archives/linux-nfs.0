@@ -1,48 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from plane.gmane.org ([80.91.229.3]:41857 "EHLO plane.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752411Ab2IMFWq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Sep 2012 01:22:46 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1TC1t1-0000Yk-Dh
-	for linux-nfs@vger.kernel.org; Thu, 13 Sep 2012 07:22:48 +0200
-Received: from 59-124-179-67.HINET-IP.hinet.net ([59.124.179.67])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Thu, 13 Sep 2012 07:22:47 +0200
-Received: from yanpai.chen by 59-124-179-67.HINET-IP.hinet.net with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Thu, 13 Sep 2012 07:22:47 +0200
-To: linux-nfs@vger.kernel.org
-From: Yan-Pai Chen <yanpai.chen@gmail.com>
-Subject: Re: [3.2.5] NFSv3 =?utf-8?b?Q0xPU0VfV0FJVA==?= hang
-Date: Thu, 13 Sep 2012 05:22:32 +0000 (UTC)
-Message-ID: <loom.20120913T072025-998@post.gmane.org>
-References: <loom.20120905T093214-245@post.gmane.org>  <4FA345DA4F4AE44899BD2B03EEEC2FA908F86381@SACEXCMBX04-PRD.hq.netapp.com>  <6cb9.5049fd40.b47c1@altium.nl> <6cb9.5049fd40.b47c1@altium.nl>  <4FA345DA4F4AE44899BD2B03EEEC2FA908F8E302@SACEXCMBX04-PRD.hq.netapp.com>  <447c.504a05c9.dd0a9@altium.nl> <447c.504a05c9.dd0a9@altium.nl>  <4FA345DA4F4AE44899BD2B03EEEC2FA908F8E833@SACEXCMBX04-PRD.hq.netapp.com>  <74c7.504b9d45.a5956@altium.nl> <loom.20120910T105944-416@post.gmane.org>  <20120911194051.GB11160@hostway.ca> <4FA345DA4F4AE44899BD2B03EEEC2FA908F9BDDD@SACEXCMBX04-PRD.hq.netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from earth.cora.nwra.com ([4.28.99.180]:41080 "EHLO
+	mail.cora.nwra.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755607Ab2IYULV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Sep 2012 16:11:21 -0400
+Message-ID: <50620FE7.9020103@cora.nwra.com>
+Date: Tue, 25 Sep 2012 14:11:19 -0600
+From: Orion Poplawski <orion@cora.nwra.com>
+MIME-Version: 1.0
+To: Jim Rees <rees@umich.edu>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Any way to allow setuid daemon to access krb5 automounted nfs
+ directories?
+References: <5061DF69.8030606@cora.nwra.com> <20120925175025.GA8020@umich.edu>
+In-Reply-To: <20120925175025.GA8020@umich.edu>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Myklebust, Trond <Trond.Myklebust@...> writes:
+On 09/25/2012 11:50 AM, Jim Rees wrote:
+> Orion Poplawski wrote:
+>
+>    Is there any way to allow setuid daemon to access krb5 automounted
+>    nfs directories?  Specifically I'm looking to run spamassassin's
+>    spamd on a remote server and access user's home directories via krb5
+>    nfs4.  spamd changes user to the user receiving the email being
+>    processes and needs to modify files in the user's home directory.
+>    Is there any reasonably secure way to give this daemon the ability
+>    to do this?  Any way to tell rpc.gssd to use a specific credential
+>    cache for this type of access rather than the default for that
+>    effective uid?
+>
+> You don't want to give spamd the user's credentials. You want to acl the
+> user's files so that spamd can do what it wants. Spamd will need its own
+> krb5 principal.
 
-> > 
-> > I suppose we could try 3.5 at this point.
-> 
-> If you've been keeping up with the 3.2 stable releases, then I wouldn't
-> expect any major differences to the sunrpc code, but it might be worth a
-> try in case the networking layer has changed.
-> 
+Hmm, okay, I may be able to run spamd in non-setuid mode and get it to work. 
+Thanks.
 
-Hi Trond,
+> But I hope you're not planning to deliver mail over nfs. I think that would
+> be a mistake.
+>
 
-I got the same problem on kernel 3.5 when using TCP mounts.
-The hung task info and rpc_debug messages were just the same as what
-I got on kernel 3.3.
+Oh no, but my mail host at the moment is woefully under-powered so I've moved 
+spam scanning off of it.
 
---
-Regards,
-Andrew
-
-
+-- 
+Orion Poplawski
+Technical Manager                     303-415-9701 x222
+NWRA, Boulder Office                  FAX: 303-415-9702
+3380 Mitchell Lane                       orion@nwra.com
+Boulder, CO 80301                   http://www.nwra.com
