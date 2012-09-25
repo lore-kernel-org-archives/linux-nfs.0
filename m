@@ -1,160 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:60918 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:18217 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755331Ab2INVLe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 Sep 2012 17:11:34 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 2 0/5] RFC Avoid expired credential keys for buffered writes
-Date: Fri, 14 Sep 2012 17:11:44 -0400
-Message-Id: <1347657109-2180-1-git-send-email-andros@netapp.com>
+	id S1751771Ab2IYKWC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Sep 2012 06:22:02 -0400
+Date: Tue, 25 Sep 2012 06:21:55 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: NeilBrown <neilb@suse.de>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: WARNING: at fs/inode.c:280 drop_nlink+0x31/0x33()
+Message-ID: <20120925062155.57360ee2@tlielax.poochiereds.net>
+In-Reply-To: <20120925152731.52528dca@notabene.brown>
+References: <20120829162527.GA3635@NickAndBarb.net>
+	<20120829151641.20cde4bc@corrin.poochiereds.net>
+	<20120925152731.52528dca@notabene.brown>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/aeYNxA1nSwnQnXAtu+TfonA"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+--Sig_/aeYNxA1nSwnQnXAtu+TfonA
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
--------------
-Version 2, responded to comments:
-1) Just use high water mark
-2) Move expiration testing into nfs_file_write
-3) Added a patch to clean up rpc_verify_header error processing
+On Tue, 25 Sep 2012 15:27:31 +1000
+NeilBrown <neilb@suse.de> wrote:
 
-NOTE: Often "Input/output error" is returned instead of
-"Permission Denied". This is because of nfs_wb_all(). The NFS layer returns
--EACCES, but it gets mapped to -EIO (I believe via AG_EIO).
-I would like to have Permision Denied always be returned...
+> On Wed, 29 Aug 2012 15:16:41 -0700 Jeff Layton <jlayton@redhat.com> wrote:
+>=20
+>=20
+> > This stack trace comes from cifs, not nfs.
+>=20
+> It's quite easy to trigger on NFS too.
+>=20
+>  mount server:/path /mnt; exec 3>& /mnt/foo ; rm /mnt/foo; rm /mnt/.nfs* ;
+>  exec 3>&-
+>=20
+> [634155.004438] WARNING:
+> at /home/abuild/rpmbuild/BUILD/kernel-desktop-3.5.0/lin [634155.004442]
+> Hardware name: Latitude E6510 [634155.004577]  crc_itu_t crc32c_intel
+> snd_hwdep snd_pcm snd_timer snd soundcor [634155.004609] Pid: 13402, comm:
+> bash Tainted: G        W    3.5.0-36-desktop # [634155.004611] Call Trace:
+> [634155.004630]  [<ffffffff8100444a>] dump_trace+0xaa/0x2b0
+> [634155.004641]  [<ffffffff815a23dc>] dump_stack+0x69/0x6f
+> [634155.004653]  [<ffffffff81041a0b>] warn_slowpath_common+0x7b/0xc0
+> [634155.004662]  [<ffffffff811832e4>] drop_nlink+0x34/0x40
+> [634155.004687]  [<ffffffffa05bb6c3>] nfs_dentry_iput+0x33/0x70 [nfs]
+> [634155.004714]  [<ffffffff8118049e>] dput+0x12e/0x230
+> [634155.004726]  [<ffffffff8116b230>] __fput+0x170/0x230
+> [634155.004735]  [<ffffffff81167c0f>] filp_close+0x5f/0x90
+> [634155.004743]  [<ffffffff81167cd7>] sys_close+0x97/0x100
+> [634155.004754]  [<ffffffff815c3b39>] system_call_fastpath+0x16/0x1b
+> [634155.004767]  [<00007f2a73a0d110>] 0x7f2a73a0d10f
+>=20
+> Is this suitable for -stable?  It seems like it is just a harmless warnin=
+g.
+>=20
+> NeilBrown
+>=20
+>=20
+> Subject: NFS: avoid warning from nfs_drop_nlink
+>=20
+> If you remove a file which is open, NFS will 'silly-rename' it to a
+> hidden file.
+> If you then remove that hidden file, and then close the open file,
+> then nfs_dentry_iput will perform an extra drop_nlink().
+> Since 3.3-rc1, this has produced a warning.
+> The simplest way to suppress it is to use "nfs_drop_nlink" which
+> checks for i_nlink being zero.
+>=20
+> Signed-off-by: NeilBrown <neilb@suse.de>
+>=20
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index 627f108..268af03 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -1174,7 +1174,7 @@ static void nfs_dentry_iput(struct dentry *dentry,
+> struct inode *inode) NFS_I(inode)->cache_validity |=3D NFS_INO_INVALID_DA=
+TA;
+> =20
+>  	if (dentry->d_flags & DCACHE_NFSFS_RENAMED) {
+> -		drop_nlink(inode);
+> +		nfs_drop_nlink(inode);
+>  		nfs_complete_unlink(dentry, inode);
+>  	}
+>  	iput(inode);
 
-NOTE: I will add a patch for directIO and look into mmaped I/O as well after
-this patch set is done.
+That looks reasonable to me. I agree that it's a harmless warning but
+it looks scary to users...
 
--------------
- 
-We must avoid buffering a WRITE that is using a credential key (e.g. a GSS
-context key) that is about to expire or has expired.  We currently will
-paint ourselves into a corner by returning success to the applciation
-for such a buffered WRITE, only to discover that we do not have permission when
-we attempt to flush the WRITE (and potentially associated COMMIT) to disk.
-This results in data corruption.
+Just for the sake of argument though, I wonder whether NFS or CIFS has
+any business manipulating the nlink count like this. It seems like it's
+possible to end up with these manipulations racing with attribute
+updates.
 
-First, a couple of "setup" patches:
-1) Patch SUNRPC handle EKEYEXPIRED in call_refreshresult returns EACCES to the
-application on an expired or non-existent gss context when the users (Kerberos)
-credentials have also expired or are non-existent. Current behavior is to
-retry upcalls to GSSD forever. Please see patch comment for detail.
+Would it make more sense to replace these drop_nlink calls with a call
+to mark the attributes as invalid? We would need to come up with a new
+way to deal with drop_inode however...
 
-2) Patch SUNRPC set gss gc_expiry to full lifetime works in conjunction with
-the gssd patch "0001-GSSD-Pass-GSS_context-lifetime-to-the-kernel". The
-gssd patch passes the actual remaining TGT lifetime in the downcall, and
-this kernel patch sets the gss context gc_expiry to this lifetime.
+In any case, you can add this to the patch above if you like:
 
-Then the two patches that avoid using an expired credential key:
-3) Patch SUNRPC new rpc_credops to test credential expiry is the heart of this
-work. It provides the RPC layer helper functions to allow NFS to manage
-data in the face of expired credentials
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
 
-4) Patch NFS avoid expired credential keys for buffered writes calls the
-RPC helper functions.
+--Sig_/aeYNxA1nSwnQnXAtu+TfonA
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
 
-5) Patch SUNRPC Fix rpc_verify_header error returns changes a -EIO return to
-a -EACCES return when there is an auth error.
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
 
-Pages for buffered WRITEs are allocated in nfs_write_begin where we have an
-nfs_open_context and associated rpc_cred. This is a generic rpc_cred, NOT
-the gss_cred used in the actual WRITE RPC. Each WRITE RPC call takes the generic
-rpc_cred (or uses the 'current_cred') uid and uses it to lookup the associated
-gss_cred and gss_context in the call_refresh RPC state. So, there is a
-one-to-one association between the nfs_open_context generic_cred and a
-gss_cred with a matching uid and a valid non expired gss context.
+iQIcBAEBAgAGBQJQYYXDAAoJEAAOaEEZVoIVrxIQAMVPVKc3vXIu21QZYzQ4/6Ha
+5yf4tEIVvwrJTzHoptmsBlvtR5n0L4pkS+hOU+O837NIfvoop9E0D4dRqKCZ8Jeh
+3ONSRkrK9BF5sBqCvVhbDoCvuyFkCM16SUyIjyGUomOLeZRqzfnsHqO3/nwf6XwB
+RBeZ4BHfRZb9pdGw9eC5hJJez5iDi7APQEhu+2y1WKASYcBr/od6Bb4qqbNWXac+
+ik5pA6ujK/5xkSwWdDTnjQkOE0RPDDMTB2pouDDTx41EbB36yxz4/M12rFfVIWS7
+0uaCVHLopcO753aUjpWZzwrlTG64BDmgQhQpTyc4g2jHGRxeXiCuCANrSp5spiAf
+n/66S5juITSxTszdY9nLx/+n1yBzVgQcN4o97iZprLU/m5uva2XeMW/VCJpcRhc8
+7wAwconHKPh1W63rE8qOUMDSDGnJ1z5eP8UnKnMkdWZMxBtaxXMVCO35CQScis2I
+svWG2ubYMrAy6POYuBBLq2NLzOZpF7g8d/91qaIoTFDZZdbN4aQrDhQaPgQ2pO0d
+e1+YTYAFnMMaXP/lqxU179ll5vmRE4Hbtgc7YE53EKzNB9BPUMqfRV6Il8JP7mVe
+GVXf2e4aCG4c6odA23TuXMuFefgjiqa+qX+xJJ9o+r/Mh8+fuVjoAbkHbXyJovr+
+B9BERV1W+mdM+J35HlkA
+=1uo2
+-----END PGP SIGNATURE-----
 
-We need to check the nfs_open_context generic cred 'underlying' gss_cred
-gss_context gc_expiry prior to nfs_write_begin in nfs_file_write to determine
-if there is enough time left in the gss_context lifetime to complete the
-buffered WRITEs.
-
-I started by adding a "key_timeout" rpc_authops routine only set by the generic
-auth to do this work, called by rpcauth_key_timeout_notify, called from
-nfs_write_begin. It does the lookup of the gss_cred (see the patch for
-fast-tracking of non-gss underlying creds) and then tests the gss_context
-gc_expiry against timeouts by calling a new crkey_timeout rpc_credops set
-only for the gss_cred.
-
-I coded a water mark, RPC_KEY_EXPIRE_TIMEO set to 90 seconds.
-NOTE: this timeout is a guess that works in a VM environment. We may want to
-make it adjustable via a module parameter.
-
-If key_timeout is called on a credential with an underlying credential key that
-will expire within watermark seconds, we set the RPC_CRED_KEY_EXPIRE_SOON
-flag in the generic_cred acred so that the NFS layer can clean up prior to
-key expiration It does this by calling a new crkey_to_expire rpc_credop set
-only for generic creds that tests for the RPC_CRED_KEY_EXPIRE_SOON flag.
-
-If the RPC_CRED_KEY_EXPIRE_SOON flag is set in the nfs_open_context generic
-cred (the acred portion), then nfs_file_write will call vfs_fsync
-on EVERY WRITE CALL it sees, and will send NFS_FILE_SYNC WRITEs.  The idea
-of the watermark is to give time to flush all buffered WRITEs and COMMITs,
-as well as to continue to WRITE, but only with NFS_FILE_SYNC, allowing the
-application to try to finish writing before the gss context expires.
-NOTE that this means EACH WRITE within the watermark
-timeout is a singe PAGE of NFS_FILE_SYNC. I think this is fine, because we are
-in a failure mode - the most important thing is to NOT fail a buffered WRITE..
-
-Checking a generic credential's underlying credential involves a cred lookup.
-To avoid this lookup in the normal case when the underlying credential has
-a key that is valid (before the watermark), a notify flag is set in
-the generic credential the first time the key_timeout is called. The
-generic credential then stops checking the underlying credential key expiry, and
-the underlying credential (gss_cred) match routine then checks the key
-expiration upon each normal use and sets a flag in the associated generic
-credential only when the key expiration is within the watermark.
-This in turn signals the generic credential key_timeout to perform the extra
-credetial lookup thereafter.
-
-TESTING:
-
-I have tested these patches with a TGT of 5 minutes, and a modified
-Connectathon special test: bigfile.c that only writes and never flushes.
-I also increased the file size to 524288000 bytes to give me time.
-I named the test buffered-write.
-
-I kinit, and run 5 instances of buffered write with the first and maybe second
-test completing prior to TGT expiration, and the third/fourth tests spanning
-the water mark. The fifth test starts within the water mark.
-
-I have seen the expected behavior: test 1,2 succeed. Tests 3-5 fail with
-Permission Denied. Tests 3 and 4 start with normal buffered UNSTABLE writes
-then switch to single page NFS_FILE_SYNC writes with a COMMIT for the
-normal buffered writes. Test 5 has only single page NFS_FILE_SYNC writes.
-
-None of the WRITEs fail on the wire, no failed WRITEs are returned as
-successful to the application.
-
-The only issue is once in a while I see "Input/Output Error" instead of
-"Permission denied".
-
--->Andy
-
-  SUNRPC handle EKEYEXPIRED in call_refreshresult
-  SUNRPC set gss gc_expiry to full lifetime
-  SUNRPC new rpc_credops to test credential expiry
-  NFS avoid expired credential keys for buffered writes
-  SUNRPC Fix rpc_verify_header error returns
-
- fs/nfs/file.c                  |   15 +++++++-
- fs/nfs/internal.h              |    2 +
- fs/nfs/nfs3proc.c              |    6 +-
- fs/nfs/nfs4filelayout.c        |    1 -
- fs/nfs/nfs4proc.c              |   18 --------
- fs/nfs/nfs4state.c             |   22 ----------
- fs/nfs/proc.c                  |   43 --------------------
- fs/nfs/write.c                 |   27 +++++++++++++
- include/linux/sunrpc/auth.h    |   21 ++++++++++
- net/sunrpc/auth.c              |   21 ++++++++++
- net/sunrpc/auth_generic.c      |   84 ++++++++++++++++++++++++++++++++++++++++
- net/sunrpc/auth_gss/auth_gss.c |   59 +++++++++++++++++++++++++---
- net/sunrpc/clnt.c              |   11 +++--
- 13 files changed, 232 insertions(+), 98 deletions(-)
-
--- 
-1.7.7.6
-
+--Sig_/aeYNxA1nSwnQnXAtu+TfonA--
