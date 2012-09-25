@@ -1,62 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:32913 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752409Ab2INRBm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Sep 2012 13:01:42 -0400
-References: <20120914140811.10835.81465.stgit@localhost.localdomain>
-In-Reply-To: <20120914140811.10835.81465.stgit@localhost.localdomain>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Message-Id: <4030B8F9-5C67-4AE7-826E-B4B6AD4FAD01@oracle.com>
-Cc: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "jlayton@redhat.com" <jlayton@redhat.com>
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 0/3] lockd: use per-net refrence-counted NSM clients
-Date: Fri, 14 Sep 2012 13:01:21 -0400
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from mail-qa0-f53.google.com ([209.85.216.53]:53495 "EHLO
+	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752864Ab2IYFnc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Sep 2012 01:43:32 -0400
+Received: by qaat11 with SMTP id t11so1499091qaa.19
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Sep 2012 22:43:32 -0700 (PDT)
+MIME-Version: 1.0
+Date: Tue, 25 Sep 2012 13:43:32 +0800
+Message-ID: <CAPgLHd__m_A5gqBP1GgUJb=_fib7bOiJunVoNZn2HCiKyXVjrw@mail.gmail.com>
+Subject: [PATCH] NFS: fix the return value of nfs4_blkdev_get()
+From: Wei Yongjun <weiyj.lk@gmail.com>
+To: Trond.Myklebust@netapp.com
+Cc: yongjun_wei@trendmicro.com.cn, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-What happens if statd is restarted?
+From: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
 
-Sent from my iPhone
+In case of error, the function nfs4_blkdev_get() return NULL pointer.
+But the user nfs4_blk_decode_device() check the return value by using
+IS_ERR() and get error code from the return value. So we should better
+change the return value of nfs4_blkdev_get() to return ERR_PTR().
 
-On Sep 14, 2012, at 10:25 AM, Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+dpatch engine is used to auto generate this patch.
+(https://github.com/weiyj/dpatch)
 
-> This is a bug fix for https://bugzilla.redhat.com/show_bug.cgi?id=830862.
-> 
-> The problem is that with NFSv4 mount in container (with separated mount
-> namesapce) and active lock on it, dying child reaped of this container will
-> try to umount NFS and doing this will try to create RPC client to send
-> unmonitor request to statd.
-> But creation of RCP client requires valid current->nsproxy (for operation with
-> utsname()) and during umount on child reaper exit it's equal to zero.
-> 
-> Proposed solution is to introduce refrence-counter per-net NSM client, which
-> is created on fist monitor call and destroyed after the lst monitor call.
-> 
-> The following series implements...
-> 
-> ---
-> 
-> Stanislav Kinsbursky (3):
->      lockd: use rpc client's cl_nodename for id encoding
->      lockd: per-net NSM client creation and destruction helpers introduced
->      lockd: create and use per-net NSM RPC clients on MON/UNMON requests
-> 
-> 
-> fs/lockd/mon.c   |   91 +++++++++++++++++++++++++++++++++++++++++++-----------
-> fs/lockd/netns.h |    4 ++
-> fs/lockd/svc.c   |    1 +
-> 3 files changed, 77 insertions(+), 19 deletions(-)
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
+---
+ fs/nfs/blocklayout/blocklayoutdev.c | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
+
+diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
+index c965542..8c51518 100644
+--- a/fs/nfs/blocklayout/blocklayoutdev.c
++++ b/fs/nfs/blocklayout/blocklayoutdev.c
+@@ -61,12 +61,9 @@ struct block_device *nfs4_blkdev_get(dev_t dev)
+ 	dprintk("%s enter\n", __func__);
+ 	bd = blkdev_get_by_dev(dev, FMODE_READ, NULL);
+ 	if (IS_ERR(bd))
+-		goto fail;
++		dprintk("%s failed to open device : %ld\n",
++				__func__, PTR_ERR(bd));
+ 	return bd;
+-fail:
+-	dprintk("%s failed to open device : %ld\n",
+-			__func__, PTR_ERR(bd));
+-	return NULL;
+ }
+ 
+ /*
+
+
