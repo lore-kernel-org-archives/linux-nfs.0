@@ -1,96 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43965 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:56579 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753937Ab2IEU7V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Sep 2012 16:59:21 -0400
-Date: Wed, 5 Sep 2012 16:59:20 -0400
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Jan Kara <jack@suse.cz>,
-        Steven Whitehouse <swhiteho@redhat.com>
-Subject: Re: [RFC PATCH 01/13] gfs2: Get rid of I_MUTEX_QUOTA usage
-Message-ID: <20120905205920.GA10724@fieldses.org>
-References: <1346878524-10585-1-git-send-email-bfields@redhat.com>
- <1346878524-10585-2-git-send-email-bfields@redhat.com>
+	id S1753105Ab2IYKKi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Sep 2012 06:10:38 -0400
+Date: Tue, 25 Sep 2012 12:10:31 +0200
+From: Karel Zak <kzak@redhat.com>
+To: chenditang <chendt.fnst@cn.fujitsu.com>
+Cc: util-linux@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [QUESTION]about libmount library performance problems
+Message-ID: <20120925101031.GB22639@x2.net.home>
+References: <505FBE77.8030802@cn.fujitsu.com>
+ <5061076C.2080707@cn.fujitsu.com>
+ <506110BB.2070408@cn.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1346878524-10585-2-git-send-email-bfields@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <506110BB.2070408@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 05, 2012 at 04:55:11PM -0400, J. Bruce Fields wrote:
-> From: Jan Kara <jack@suse.cz>
+On Tue, Sep 25, 2012 at 10:02:35AM +0800, chenditang wrote:
+> I have 1 question which need confirm.
 > 
-> GFS2 uses i_mutex on its system quota inode to synchronize writes to
-> quota file. Since this is an internal inode to GFS2 (not part of directory
-> hiearchy or visible by user) we are safe to define locking rules for it. So
-> let's just get it its own locking class to make it clear.
+>   in the RHEL7.0alpha version
+> 	nfs-utils-1.2.5-3.el7.x86_64  --> use mount_libmount.c
+> 	util-linux-2.20.1-2.el7.x86_64
+>   when umount a NFS directory, the mnt_table_parse_mtab() function will merge user options(/run/mount/utab) 
+> into mountinfo(/proc/self/mountinfo)from kernel. if the mount number is large, leading to umount a directory
+> time-consuming. the complexity of the algorithm is O(n(n+1)/2).
 
-By the way, Steve, is there any reason you haven't taken this through
-the gfs2 tree?
+ Yes, maybe we can somehow improve the file format and the algorithm,
+ suggestions?
 
---b.
+>     but in the old version(RHEL6.3GA/nfs-utils-1.2.3-26.el6.x86_64(use mount.c)), only according to the parameters of umount command, 
+> find the corresponding record in the /etc/mtab file
 
-> 
-> CC: Steven Whitehouse <swhiteho@redhat.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/gfs2/ops_fstype.c |    8 ++++++++
->  fs/gfs2/quota.c      |    2 +-
->  2 files changed, 9 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/gfs2/ops_fstype.c b/fs/gfs2/ops_fstype.c
-> index e5af9dc..e443966 100644
-> --- a/fs/gfs2/ops_fstype.c
-> +++ b/fs/gfs2/ops_fstype.c
-> @@ -19,6 +19,7 @@
->  #include <linux/mount.h>
->  #include <linux/gfs2_ondisk.h>
->  #include <linux/quotaops.h>
-> +#include <linux/lockdep.h>
->  
->  #include "gfs2.h"
->  #include "incore.h"
-> @@ -766,6 +767,7 @@ fail:
->  	return error;
->  }
->  
-> +static struct lock_class_key gfs2_quota_imutex_key;
->  
->  static int init_inodes(struct gfs2_sbd *sdp, int undo)
->  {
-> @@ -803,6 +805,12 @@ static int init_inodes(struct gfs2_sbd *sdp, int undo)
->  		fs_err(sdp, "can't get quota file inode: %d\n", error);
->  		goto fail_rindex;
->  	}
-> +	/*
-> +	 * i_mutex on quota files is special. Since this inode is hidden system
-> +	 * file, we are safe to define locking ourselves.
-> +	 */
-> +	lockdep_set_class(&sdp->sd_quota_inode->i_mutex,
-> +			  &gfs2_quota_imutex_key);
->  
->  	error = gfs2_rindex_update(sdp);
->  	if (error)
-> diff --git a/fs/gfs2/quota.c b/fs/gfs2/quota.c
-> index a3bde91..3d9c989 100644
-> --- a/fs/gfs2/quota.c
-> +++ b/fs/gfs2/quota.c
-> @@ -781,7 +781,7 @@ static int do_sync(unsigned int num_qd, struct gfs2_quota_data **qda)
->  		return -ENOMEM;
->  
->  	sort(qda, num_qd, sizeof(struct gfs2_quota_data *), sort_qd, NULL);
-> -	mutex_lock_nested(&ip->i_inode.i_mutex, I_MUTEX_QUOTA);
-> +	mutex_lock(&ip->i_inode.i_mutex);
->  	for (qx = 0; qx < num_qd; qx++) {
->  		error = gfs2_glock_nq_init(qda[qx]->qd_gl, LM_ST_EXCLUSIVE,
->  					   GL_NOCACHE, &ghs[qx]);
-> -- 
-> 1.7.9.5
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ But we don't have mtab file in RHEL7 anymore, so we have to store the
+ userspace specific mount options somewhere... (/run/mount/utab).  The
+ solution is to minimize number of information we have to maintain in
+ userspace.
+
+ Unfortunately it seems that for example on my system we duplicate the
+ information:
+
+      utab:  retrans=20,addr=192.168.111.1
+
+ mountinfo:  rw,vers=3,rsize=131072,wsize=131072,namlen=255,hard,proto=tcp,timeo=600,
+             retrans=20,sec=sys,mountaddr=192.168.111.1,mountvers=3,mountport=39755,
+             mountproto=udp,local_lock=none,addr=192.168.111.1
+
+ (see retrans= and addr=)
+
+ Maybe we can detect this situation and don't store duplicate options
+ in userspace. The question is what happen with retrans= and addr=
+ after remount. If I good remember there was any reason to maintain
+ these stuff in userspace. Chuck?
+
+>   Question)*:* merg the tow file are necessary for umount a dir?
+
+ I guess nfs umount needs the addr= info.
+
+    Karel
+
+-- 
+ Karel Zak  <kzak@redhat.com>
+ http://karelzak.blogspot.com
