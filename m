@@ -1,224 +1,168 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:57405 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:34648 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757659Ab2IXT6A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Sep 2012 15:58:00 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 08/28] NFSv4.1: pNFS data servers may be temporarily offline
-Date: Mon, 24 Sep 2012 15:56:26 -0400
-Message-Id: <1348516606-22721-8-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1348516606-22721-7-git-send-email-Trond.Myklebust@netapp.com>
-References: <1348516606-22721-1-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-2-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-3-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-4-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-5-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-6-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-7-git-send-email-Trond.Myklebust@netapp.com>
+	id S1751327Ab2IYFzK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Sep 2012 01:55:10 -0400
+Date: Tue, 25 Sep 2012 15:54:57 +1000
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, Michael Tokarev <mjt@tls.msk.ru>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH] svcrpc: fix svc_xprt_enqueue/svc_recv busy-looping
+Message-ID: <20120925155457.44428c06@notabene.brown>
+In-Reply-To: <20120820224915.GM5779@fieldses.org>
+References: <20120820223746.GL5779@fieldses.org>
+	<20120820224915.GM5779@fieldses.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/TU6CpmIv64VYesfjYGCa7V8"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In cases where the pNFS data server is just temporarily out of service,
-we want to mark it as such, and then try again later. Typically that will
-be in cases of network connection errors etc.
-This patch allows us to mark the devices as being "unavailable" for such
-transient errors, and will make them available for retries after a
-2 minute timeout period.
+--Sig_/TU6CpmIv64VYesfjYGCa7V8
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4filelayout.c    | 22 +++++++++++++++++++---
- fs/nfs/nfs4filelayout.h    |  8 ++------
- fs/nfs/nfs4filelayoutdev.c | 15 +++++++--------
- fs/nfs/pnfs.h              |  4 ++++
- fs/nfs/pnfs_dev.c          | 27 +++++++++++++++++++++++++++
- 5 files changed, 59 insertions(+), 17 deletions(-)
+On Mon, 20 Aug 2012 18:49:15 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+wrote:
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index af6ee4a..dac2162 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -205,7 +205,7 @@ static int filelayout_async_handle_error(struct rpc_task *task,
- 	case -EPIPE:
- 		dprintk("%s DS connection error %d\n", __func__,
- 			task->tk_status);
--		filelayout_mark_devid_invalid(devid);
-+		nfs4_mark_deviceid_unavailable(devid);
- 		clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags);
- 		_pnfs_return_layout(inode);
- 		rpc_wake_up(&tbl->slot_tbl_waitq);
-@@ -269,6 +269,22 @@ filelayout_set_layoutcommit(struct nfs_write_data *wdata)
- 		(unsigned long) NFS_I(hdr->inode)->layout->plh_lwb);
- }
- 
-+bool
-+filelayout_test_devid_unavailable(struct nfs4_deviceid_node *node)
-+{
-+	return filelayout_test_devid_invalid(node) ||
-+		nfs4_test_deviceid_unavailable(node);
-+}
-+
-+static bool
-+filelayout_reset_to_mds(struct pnfs_layout_segment *lseg)
-+{
-+	struct nfs4_deviceid_node *node = FILELAYOUT_DEVID_NODE(lseg);
-+
-+	return filelayout_test_layout_invalid(lseg->pls_layout) ||
-+		filelayout_test_devid_unavailable(node);
-+}
-+
- /*
-  * Call ops for the async read/write cases
-  * In the case of dense layouts, the offset needs to be reset to its
-@@ -613,8 +629,8 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
- 			goto out;
- 	} else
- 		dsaddr = container_of(d, struct nfs4_file_layout_dsaddr, id_node);
--	/* Found deviceid is being reaped */
--	if (test_bit(NFS_DEVICEID_INVALID, &dsaddr->id_node.flags))
-+	/* Found deviceid is unavailable */
-+	if (filelayout_test_devid_unavailable(&dsaddr->id_node))
- 			goto out_put;
- 
- 	fl->dsaddr = dsaddr;
-diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
-index 11053c4..10b0f13 100644
---- a/fs/nfs/nfs4filelayout.h
-+++ b/fs/nfs/nfs4filelayout.h
-@@ -140,12 +140,8 @@ filelayout_test_devid_invalid(struct nfs4_deviceid_node *node)
- 	return test_bit(NFS_DEVICEID_INVALID, &node->flags);
- }
- 
--static inline bool
--filelayout_reset_to_mds(struct pnfs_layout_segment *lseg)
--{
--	return filelayout_test_devid_invalid(FILELAYOUT_DEVID_NODE(lseg)) ||
--		filelayout_test_layout_invalid(lseg->pls_layout);
--}
-+extern bool
-+filelayout_test_devid_unavailable(struct nfs4_deviceid_node *node);
- 
- extern struct nfs_fh *
- nfs4_fl_select_ds_fh(struct pnfs_layout_segment *lseg, u32 j);
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-index b85a29d..3336d5e 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/nfs4filelayoutdev.c
-@@ -804,13 +804,14 @@ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
- 	struct nfs4_pnfs_ds *ds = dsaddr->ds_list[ds_idx];
- 	struct nfs4_deviceid_node *devid = FILELAYOUT_DEVID_NODE(lseg);
- 
--	if (filelayout_test_devid_invalid(devid))
-+	if (filelayout_test_devid_unavailable(devid))
- 		return NULL;
- 
- 	if (ds == NULL) {
- 		printk(KERN_ERR "NFS: %s: No data server for offset index %d\n",
- 			__func__, ds_idx);
--		goto mark_dev_invalid;
-+		filelayout_mark_devid_invalid(devid);
-+		return NULL;
- 	}
- 
- 	if (!ds->ds_clp) {
-@@ -818,14 +819,12 @@ nfs4_fl_prepare_ds(struct pnfs_layout_segment *lseg, u32 ds_idx)
- 		int err;
- 
- 		err = nfs4_ds_connect(s, ds);
--		if (err)
--			goto mark_dev_invalid;
-+		if (err) {
-+			nfs4_mark_deviceid_unavailable(devid);
-+			return NULL;
-+		}
- 	}
- 	return ds;
--
--mark_dev_invalid:
--	filelayout_mark_devid_invalid(devid);
--	return NULL;
- }
- 
- module_param(dataserver_retrans, uint, 0644);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index bc8e500..9735031 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -234,6 +234,7 @@ struct nfs4_threshold *pnfs_mdsthreshold_alloc(void);
- /* nfs4_deviceid_flags */
- enum {
- 	NFS_DEVICEID_INVALID = 0,       /* set when MDS clientid recalled */
-+	NFS_DEVICEID_UNAVAILABLE,	/* device temporarily unavailable */
- };
- 
- /* pnfs_dev.c */
-@@ -243,6 +244,7 @@ struct nfs4_deviceid_node {
- 	const struct pnfs_layoutdriver_type *ld;
- 	const struct nfs_client		*nfs_client;
- 	unsigned long 			flags;
-+	unsigned long			timestamp_unavailable;
- 	struct nfs4_deviceid		deviceid;
- 	atomic_t			ref;
- };
-@@ -255,6 +257,8 @@ void nfs4_init_deviceid_node(struct nfs4_deviceid_node *,
- 			     const struct nfs4_deviceid *);
- struct nfs4_deviceid_node *nfs4_insert_deviceid_node(struct nfs4_deviceid_node *);
- bool nfs4_put_deviceid_node(struct nfs4_deviceid_node *);
-+void nfs4_mark_deviceid_unavailable(struct nfs4_deviceid_node *node);
-+bool nfs4_test_deviceid_unavailable(struct nfs4_deviceid_node *node);
- void nfs4_deviceid_purge_client(const struct nfs_client *);
- 
- static inline void
-diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
-index 73f701f..d35b62e 100644
---- a/fs/nfs/pnfs_dev.c
-+++ b/fs/nfs/pnfs_dev.c
-@@ -40,6 +40,8 @@
- #define NFS4_DEVICE_ID_HASH_SIZE	(1 << NFS4_DEVICE_ID_HASH_BITS)
- #define NFS4_DEVICE_ID_HASH_MASK	(NFS4_DEVICE_ID_HASH_SIZE - 1)
- 
-+#define PNFS_DEVICE_RETRY_TIMEOUT (120*HZ)
-+
- static struct hlist_head nfs4_deviceid_cache[NFS4_DEVICE_ID_HASH_SIZE];
- static DEFINE_SPINLOCK(nfs4_deviceid_lock);
- 
-@@ -218,6 +220,30 @@ nfs4_put_deviceid_node(struct nfs4_deviceid_node *d)
- }
- EXPORT_SYMBOL_GPL(nfs4_put_deviceid_node);
- 
-+void
-+nfs4_mark_deviceid_unavailable(struct nfs4_deviceid_node *node)
-+{
-+	node->timestamp_unavailable = jiffies;
-+	set_bit(NFS_DEVICEID_UNAVAILABLE, &node->flags);
-+}
-+EXPORT_SYMBOL_GPL(nfs4_mark_deviceid_unavailable);
-+
-+bool
-+nfs4_test_deviceid_unavailable(struct nfs4_deviceid_node *node)
-+{
-+	if (test_bit(NFS_DEVICEID_UNAVAILABLE, &node->flags)) {
-+		unsigned long start, end;
-+
-+		end = jiffies;
-+		start = end - PNFS_DEVICE_RETRY_TIMEOUT;
-+		if (time_in_range(node->timestamp_unavailable, start, end))
-+			return true;
-+		clear_bit(NFS_DEVICEID_UNAVAILABLE, &node->flags);
-+	}
-+	return false;
-+}
-+EXPORT_SYMBOL_GPL(nfs4_test_deviceid_unavailable);
-+
- static void
- _deviceid_purge_client(const struct nfs_client *clp, long hash)
- {
-@@ -276,3 +302,4 @@ nfs4_deviceid_mark_client_invalid(struct nfs_client *clp)
- 	}
- 	rcu_read_unlock();
- }
-+
--- 
-1.7.11.4
+> On Mon, Aug 20, 2012 at 06:37:47PM -0400, bfields wrote:
+> > From: "J. Bruce Fields" <bfields@redhat.com>
+> >=20
+> > The rpc server tries to ensure that there will be room to send a reply
+> > before it receives a request.
+> >=20
+> > It does this by tracking, in xpt_reserved, an upper bound on the total
+> > size of the replies that is has already committed to for the socket.
+> >=20
+> > Currently it is adding in the estimate for a new reply *before* it
+> > checks whether there is space available.  If it finds that there is not
+> > space, it then subtracts the estimate back out.
+> >=20
+> > This may lead the subsequent svc_xprt_enqueue to decide that there is
+> > space after all.
+> >=20
+> > The results is a svc_recv() that will repeatedly return -EAGAIN, causing
+> > server threads to loop without doing any actual work.
+> >=20
+> > Cc: stable@vger.kernel.org
+> > Reported-by: Michael Tokarev <mjt@tls.msk.ru>
+> > Tested-by: Michael Tokarev <mjt@tls.msk.ru>
+> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > ---
+> >  net/sunrpc/svc_xprt.c |    7 ++-----
+> >  1 file changed, 2 insertions(+), 5 deletions(-)
+> >=20
+> > Queuing up for 3.6 absent any objections.--b.
+>=20
+> By the way, one thing I'm still curious about is how this got
+> introduced.  mjt bisected it to f03d78db65085609938fdb686238867e65003181
+> "net: refine {udp|tcp|sctp}_mem limits", which looks like it just made
+> the problem a little more likely.
+>=20
+> The last substantive change to has_wspace logic was Trond's
+> 47fcb03fefee2501e79176932a4184fc24d6f8ec, but I have a tough time
+> figuring out whether that would have affected it one way or the other.
+>=20
+> As far as I can tell we've always added to xpt_reserved in this way, so
+> that svc_recv and svc_xprt_enqueue are comparing different things, and
+> surely this was always wrong even if the problem must have been harder
+> to trigger before.
+>=20
+> But some of the wspace logic I don't understand, so cc'ing Neil and
+> Trond in case they see any other problem I missed.
 
+Hi Bruce et al.
+
+My guess is that=20
+commit 9c335c0b8daf56b9f73479d00b1dd726e1fcca09
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Tue Oct 26 11:32:03 2010 -0400
+
+    svcrpc: fix wspace-checking race
+
+introduced this problem.  It moved the test for 'do we have enough space'
+from before we add in the requirements of a new request, to after.
+
+But I think your patch looks good.
+
+Thanks,
+NeilBrown
+
+
+>=20
+> --b.
+>=20
+> >=20
+> > diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> > index 0d693a8..bac973a 100644
+> > --- a/net/sunrpc/svc_xprt.c
+> > +++ b/net/sunrpc/svc_xprt.c
+> > @@ -316,7 +316,6 @@ static bool svc_xprt_has_something_to_do(struct svc=
+_xprt *xprt)
+> >   */
+> >  void svc_xprt_enqueue(struct svc_xprt *xprt)
+> >  {
+> > -	struct svc_serv	*serv =3D xprt->xpt_server;
+> >  	struct svc_pool *pool;
+> >  	struct svc_rqst	*rqstp;
+> >  	int cpu;
+> > @@ -362,8 +361,6 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
+> >  				rqstp, rqstp->rq_xprt);
+> >  		rqstp->rq_xprt =3D xprt;
+> >  		svc_xprt_get(xprt);
+> > -		rqstp->rq_reserved =3D serv->sv_max_mesg;
+> > -		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
+> >  		pool->sp_stats.threads_woken++;
+> >  		wake_up(&rqstp->rq_wait);
+> >  	} else {
+> > @@ -640,8 +637,6 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+> >  	if (xprt) {
+> >  		rqstp->rq_xprt =3D xprt;
+> >  		svc_xprt_get(xprt);
+> > -		rqstp->rq_reserved =3D serv->sv_max_mesg;
+> > -		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
+> > =20
+> >  		/* As there is a shortage of threads and this request
+> >  		 * had to be queued, don't allow the thread to wait so
+> > @@ -738,6 +733,8 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+> >  		else
+> >  			len =3D xprt->xpt_ops->xpo_recvfrom(rqstp);
+> >  		dprintk("svc: got len=3D%d\n", len);
+> > +		rqstp->rq_reserved =3D serv->sv_max_mesg;
+> > +		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
+> >  	}
+> >  	svc_xprt_received(xprt);
+> > =20
+> > --=20
+> > 1.7.9.5
+> >=20
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+--Sig_/TU6CpmIv64VYesfjYGCa7V8
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
+
+iQIVAwUBUGFHMTnsnt1WYoG5AQK1Wg//azG96GdLYlULzrtD7wOGp6b4AiAMlhMQ
+6xKeTze7cTmKbdq0Ay90ItE498JGvS4DngMhc9zSEHyDWG07GAO9sndY+Ssa5Bq6
+FDhio1mKeqeHCZiGkIMNNRFjHPAOZ3bPhBXhHASwisnjPxboXch2NeNVkE8Di2/t
+WUt63AKkqurEDd5PXBljWwMS7faCDNX0L11L9x4ymDqZNbH7B5oYmel0l+Nw4uYo
+I8t8ydA0NTj6Hlml2LcKDQ+VR5f45X7pRoJSCX/2TuACIQIKZc1li73xdDdauXTF
+uJG4dkPcpD4hond3Ujs1fVGS2ZMfEBpJ7XPgSEstxhfT2AYTF+SsE5AIxM8QL5+u
+gKFEcL7/2/atmNuC12awGuvdtu0Q1P2JTT1OHxZszmn4E2jWcq4hi7lIf2XVPWas
+vTfNiXFvtW+I7HwBXXJAn2HyER2qg9xq5MjGWa9gvhnhMe2CMIFQYGnIpVqKY30D
+mxQ8z5imWgwYgsjDgo/IfTEbeNSr/NJKDtlWb/zznROYxN5wgUdcCGwurpJBjAU+
+wVkRxer+JKG9tjIlXQDwIA6HxmFRcJtHVPMNnqXiH8bqpZkY6WiudYWDW7uwC9zl
+rRmwE4KpVKNiRBVsetuGxyV+wlYWT1i8ilxrN6BULGfi6qB68C+rElj3LPpweSJP
+rfOTQjm+Cus=
+=rtQ1
+-----END PGP SIGNATURE-----
+
+--Sig_/TU6CpmIv64VYesfjYGCa7V8--
