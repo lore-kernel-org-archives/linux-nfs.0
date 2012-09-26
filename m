@@ -1,76 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:24720 "EHLO mx1.redhat.com"
+Received: from mga11.intel.com ([192.55.52.93]:22950 "EHLO mga11.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756295Ab2IFPFn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Sep 2012 11:05:43 -0400
-Message-ID: <1346943940.2562.9.camel@localhost>
-Subject: Re: [PATCH] Avoid array overflow in __nfs4_get_acl_uncached
-From: Sachin Prabhu <sprabhu@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Date: Thu, 06 Sep 2012 16:05:40 +0100
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA908F8B010@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1345817768-23511-1-git-send-email-sprabhu@redhat.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F4AF1E@SACEXCMBX01-PRD.hq.netapp.com>
-	 <1345843866.2279.6.camel@localhost>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F5842F@SACEXCMBX01-PRD.hq.netapp.com>
-	 <1345845062.32200.1.camel@localhost>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F5859F@SACEXCMBX01-PRD.hq.netapp.com>
-	 <1345937503.4943.17.camel@localhost>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F69340@SACEXCMBX04-PRD.hq.netapp.com>
-	 <1346162966.2554.3.camel@localhost>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F81C4A@SACEXCMBX04-PRD.hq.netapp.com>
-	 <1346942761.2562.7.camel@localhost>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA908F8B010@SACEXCMBX04-PRD.hq.netapp.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1750824Ab2IZBip (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Sep 2012 21:38:45 -0400
+Date: Wed, 26 Sep 2012 09:38:39 +0800
+From: Fengguang Wu <fengguang.wu@intel.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Yuanhan Liu <yuanhan.liu@intel.com>, kernel-janitors@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: [nfs:devel 17/39] fs/nfs/pnfs.c:1043:20: warning: unused variable
+ 'nfsi'
+Message-ID: <20120926013839.GD8522@localhost>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2012-09-06 at 14:53 +0000, Myklebust, Trond wrote:
-> On Thu, 2012-09-06 at 15:46 +0100, Sachin Prabhu wrote:
-> > On Mon, 2012-09-03 at 19:11 +0000, Myklebust, Trond wrote:
-> > > > I encountered 2 problems. 
-> > > > 1) The if condition should be srclen >= pgbase + acl_len
-> > > > 2) There is a second _copy_from_pages which copies to the the acl to the
-> > > > passed buffer in __nfs4_get_acl_uncached().
-> > > 
-> > > The second copy from pages should already be covered by the checks in
-> > > decode_getacl. Alright, since this is not obvious, then clearly we need
-> > > to make it so. How about the following?
-> > 
-> > I could reproduce the crash with the second _copy_from_pages using the
-> > patch to PyNFS from
-> > http://www.spinics.net/lists/linux-nfs/msg32359.html
-> > 
-> > The patch below works fine for both cases apart from a small bug which
-> > I've pointed to below.
-> > 
-> > > 8<------------------------------------------------------------------
-> > > From 5040240245a046bd58c383806b3f161ee8b5823b Mon Sep 17 00:00:00 2001
-> > > From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > > Date: Sun, 26 Aug 2012 11:44:43 -0700
-> > > Subject: [PATCH] NFSv4: Fix buffer overflow checking in
-> > >  __nfs4_get_acl_uncached
-> 
-> > > +		/* Check for receive buffer overflow */
-> > > +		if (attrlen > (xdr->nwords << 2) ||
-> > > +		    attrlen + pg_offset > xdr->buf->page_len) {
-> > 
-> > Here we need to use res->acl_data_offset which points to the start of
-> > the ACL data instead of pg_offset which points to the start of the pages
-> > section of the xdr_buf.
-> > 
-> > Once I changed this if condition, I was able to successfully test with
-> > my reproducer.
-> 
-> Oops... Yes, of course you are right. I'll make the modification and
-> push out the changed patch.
-> 
-> Thanks very much for testing! Do you want me to add a "Tested-by:" line?
-> 
+Hi Trond,
 
-Fine by me.
+FYI, there are new compile warnings show up in
 
-Sachin Prabhu
+tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git devel
+head:   f743c735b817547b590d36a6e275235c7beb8600
+commit: a9c310af706112f44c15cf5172e81ba3ee755cab [17/39] NFSv4.1: Add helpers for setting/reading the I/O fail bit
 
+All warnings:
+
+fs/nfs/pnfs.c: In function 'pnfs_update_layout':
+fs/nfs/pnfs.c:1043:20: warning: unused variable 'nfsi' [-Wunused-variable]
+
+vim +1043 fs/nfs/pnfs.c
+  1027	 * The appropriate layout segment is referenced and returned to the caller.
+  1028	 */
+  1029	struct pnfs_layout_segment *
+  1030	pnfs_update_layout(struct inode *ino,
+  1031			   struct nfs_open_context *ctx,
+  1032			   loff_t pos,
+  1033			   u64 count,
+  1034			   enum pnfs_iomode iomode,
+  1035			   gfp_t gfp_flags)
+  1036	{
+  1037		struct pnfs_layout_range arg = {
+  1038			.iomode = iomode,
+  1039			.offset = pos,
+  1040			.length = count,
+  1041		};
+  1042		unsigned pg_offset;
+> 1043		struct nfs_inode *nfsi = NFS_I(ino);
+  1044		struct nfs_server *server = NFS_SERVER(ino);
+  1045		struct nfs_client *clp = server->nfs_client;
+  1046		struct pnfs_layout_hdr *lo;
+  1047		struct pnfs_layout_segment *lseg = NULL;
+  1048		bool first = false;
+  1049	
+  1050		if (!pnfs_enabled_sb(NFS_SERVER(ino)))
+  1051			return NULL;
+
+---
+0-DAY kernel build testing backend         Open Source Technology Centre
+Fengguang Wu, Yuanhan Liu                              Intel Corporation
