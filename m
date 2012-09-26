@@ -1,75 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:62753 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755560Ab2IGOSy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Sep 2012 10:18:54 -0400
-Received: by mail-yx0-f174.google.com with SMTP id l14so545956yen.19
-        for <linux-nfs@vger.kernel.org>; Fri, 07 Sep 2012 07:18:54 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v6 12/20] vfs: fix renameat to retry on ESTALE errors
-Date: Fri,  7 Sep 2012 10:18:19 -0400
-Message-Id: <1347027507-20956-13-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1347027507-20956-1-git-send-email-jlayton@redhat.com>
-References: <1347027507-20956-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:22532 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757900Ab2IZTHT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 26 Sep 2012 15:07:19 -0400
+Received: from vmwexceht03-prd.hq.netapp.com (vmwexceht03-prd.hq.netapp.com [10.106.76.241])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q8QJ7I7s014365
+	for <linux-nfs@vger.kernel.org>; Wed, 26 Sep 2012 12:07:18 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] NFS: Remove bad delegations during open recovery
+Date: Wed, 26 Sep 2012 19:07:16 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908FECD3A@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1348679579-7888-1-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1348679579-7888-1-git-send-email-bjschuma@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...as always, rename is the messiest of the bunch. We have to track
-whether to retry or not via a separate flag since the error handling
-is already quite complex.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/namei.c | 13 +++++++++++--
- 1 file changed, 11 insertions(+), 2 deletions(-)
-
-diff --git a/fs/namei.c b/fs/namei.c
-index 77c2b1055..010d428 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3847,15 +3847,18 @@ SYSCALL_DEFINE4(renameat, int, olddfd, const char __user *, oldname,
- 	struct nameidata oldnd, newnd;
- 	struct getname_info *from;
- 	struct getname_info *to;
-+	unsigned int try = 0;
-+	bool should_retry = false;
- 	int error;
- 
--	from = user_path_parent(olddfd, oldname, &oldnd, 0);
-+retry:
-+	from = user_path_parent(olddfd, oldname, &oldnd, try);
- 	if (IS_ERR(from)) {
- 		error = PTR_ERR(from);
- 		goto exit;
- 	}
- 
--	to = user_path_parent(newdfd, newname, &newnd, 0);
-+	to = user_path_parent(newdfd, newname, &newnd, try);
- 	if (IS_ERR(to)) {
- 		error = PTR_ERR(to);
- 		goto exit1;
-@@ -3927,11 +3930,17 @@ exit3:
- 	unlock_rename(new_dir, old_dir);
- 	mnt_drop_write(oldnd.path.mnt);
- exit2:
-+	if (retry_estale(error, try++))
-+		should_retry = true;
- 	path_put(&newnd.path);
- 	putname(to);
- exit1:
- 	path_put(&oldnd.path);
- 	putname(from);
-+	if (should_retry) {
-+		should_retry = false;
-+		goto retry;
-+	}
- exit:
- 	return error;
- }
--- 
-1.7.11.4
-
+T24gV2VkLCAyMDEyLTA5LTI2IGF0IDEzOjEyIC0wNDAwLCBianNjaHVtYUBuZXRhcHAuY29tIHdy
+b3RlOg0KPiBGcm9tOiBCcnlhbiBTY2h1bWFrZXIgPGJqc2NodW1hQG5ldGFwcC5jb20+DQo+IA0K
+PiBJIHB1dCB0aGUgY2xpZW50IGludG8gYW4gb3BlbiByZWNvdmVyeSBsb29wIGJ5Og0KPiAJQ2xp
+ZW50OiBPcGVuIGZpbGUNCj4gCQlyZWFkIGhhbGYNCj4gCVNlcnZlcjogRXhwaXJlIGNsaWVudCAo
+ZWNobyAwID4gL3N5cy9rZXJuZWwvZGVidWcvbmZzZC9mb3JnZXRfY2xpZW50cykNCj4gCUNsaWVu
+dDogRHJvcCB2bSBjYWNoZSAoZWNobyAzID4gL3Byb2Mvc3lzL3ZtL2Ryb3BfY2FjaGVzKQ0KPiAJ
+CWZpbmlzaCByZWFkaW5nIGZpbGUNCj4gDQo+IFRoaXMgY2F1c2VzIGEgbG9vcCBiZWNhdXNlIHRo
+ZSBjbGllbnQgbmV2ZXIgdXBkYXRlcyB0aGUgbmZzNF9zdGF0ZSBhZnRlcg0KPiBkaXNjb3Zlcmlu
+ZyB0aGF0IHRoZSBkZWxlZ2F0aW9uIGlzIGludmFsaWQuICBUaGlzIG1lYW5zIGl0IHdpbGwga2Vl
+cA0KPiB0cnlpbmcgdG8gcmVhZCB1c2luZyB0aGUgYmFkIGRlbGVnYXRpb24gcmF0aGVyIHRoYW4g
+YXR0ZW1wdGluZyB0byByZS1vcGVuDQo+IHRoZSBmaWxlLg0KPiANCj4gU2lnbmVkLW9mZi1ieTog
+QnJ5YW4gU2NodW1ha2VyIDxianNjaHVtYUBuZXRhcHAuY29tPg0KPiAtLS0NCj4gIGZzL25mcy9u
+ZnM0cHJvYy5jIHwgMiArKw0KPiAgMSBmaWxlIGNoYW5nZWQsIDIgaW5zZXJ0aW9ucygrKQ0KPiAN
+Cj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0cHJvYy5jIGIvZnMvbmZzL25mczRwcm9jLmMNCj4g
+aW5kZXggMWU1MDMyNi4uZTQ3ZWM1NSAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL25mczRwcm9jLmMN
+Cj4gKysrIGIvZnMvbmZzL25mczRwcm9jLmMNCj4gQEAgLTE3NzQsNyArMTc3NCw5IEBAIHN0YXRp
+YyB2b2lkIG5mczQxX2NsZWFyX2RlbGVnYXRpb25fc3RhdGVpZChzdHJ1Y3QgbmZzNF9zdGF0ZSAq
+c3RhdGUpDQo+ICAJCSAqIGluZm9ybXMgdXMgdGhlIHN0YXRlaWQgaXMgdW5yZWNvZ25pemVkLiAq
+Lw0KPiAgCQlpZiAoc3RhdHVzICE9IC1ORlM0RVJSX0JBRF9TVEFURUlEKQ0KPiAgCQkJbmZzNDFf
+ZnJlZV9zdGF0ZWlkKHNlcnZlciwgc3RhdGVpZCk7DQo+ICsJCW5mc19yZW1vdmVfYmFkX2RlbGVn
+YXRpb24oc3RhdGUtPmlub2RlKTsNCj4gIA0KPiArCQluZnM0X3N0YXRlaWRfY29weSgmc3RhdGUt
+PnN0YXRlaWQsICZzdGF0ZS0+b3Blbl9zdGF0ZWlkKTsNCg0KbmZzNF9zdGF0ZWlkX2NvcHkgbmVl
+ZHMgdG8gYmUgd3JpdGUtcHJvdGVjdGVkIGJ5IHRoZSBzdGF0ZS0+c2VxbG9jaw0KaGVyZS4NCg0K
+PiAgCQljbGVhcl9iaXQoTkZTX0RFTEVHQVRFRF9TVEFURSwgJnN0YXRlLT5mbGFncyk7DQo+ICAJ
+fQ0KPiAgfQ0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFp
+bmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29t
+DQo=
