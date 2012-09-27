@@ -1,69 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:40043 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:13767 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932090Ab2IXT7f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Sep 2012 15:59:35 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 23/28] NFSv4.1: Remove unused 'default allocation' for pnfs_alloc_layout_hdr()
-Date: Mon, 24 Sep 2012 15:56:41 -0400
-Message-Id: <1348516606-22721-23-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1348516606-22721-22-git-send-email-Trond.Myklebust@netapp.com>
-References: <1348516606-22721-1-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-2-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-3-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-4-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-5-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-6-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-7-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-8-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-9-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-10-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-11-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-12-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-13-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-14-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-15-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-16-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-17-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-18-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-19-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-20-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-21-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-22-git-send-email-Trond.Myklebust@netapp.com>
+	id S1752697Ab2I0VWB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Sep 2012 17:22:01 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+CC: Joerg Roedel <joro@8bytes.org>, Joerg Roedel <joerg.roedel@amd.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: kernel BUG at /data/lemmy/linux.trees.git/fs/nfs/idmap.c:681!
+Date: Thu, 27 Sep 2012 21:21:59 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908FF0BA2@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20120807134156.GP1996@amd.com>
+	 <20120927145217.GA18962@8bytes.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA908FEF572@SACEXCMBX04-PRD.hq.netapp.com>
+	 <20120927153928.GB18962@8bytes.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA908FEF7A3@SACEXCMBX04-PRD.hq.netapp.com>
+	 <CA+55aFx5CtDDpXTunJDtkDQWPX7sY0hYMRyekuPErC+s5yXpWw@mail.gmail.com>
+In-Reply-To: <CA+55aFx5CtDDpXTunJDtkDQWPX7sY0hYMRyekuPErC+s5yXpWw@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...and ditto for pnfs_free_layout_hdr()
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/pnfs.c | 5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index bf99ace..b8dac08 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -200,8 +200,7 @@ static struct pnfs_layout_hdr *
- pnfs_alloc_layout_hdr(struct inode *ino, gfp_t gfp_flags)
- {
- 	struct pnfs_layoutdriver_type *ld = NFS_SERVER(ino)->pnfs_curr_ld;
--	return ld->alloc_layout_hdr ? ld->alloc_layout_hdr(ino, gfp_flags) :
--		kzalloc(sizeof(struct pnfs_layout_hdr), gfp_flags);
-+	return ld->alloc_layout_hdr(ino, gfp_flags);
- }
- 
- static void
-@@ -218,7 +217,7 @@ pnfs_free_layout_hdr(struct pnfs_layout_hdr *lo)
- 		spin_unlock(&clp->cl_lock);
- 	}
- 	put_rpccred(lo->plh_lc_cred);
--	return ld->alloc_layout_hdr ? ld->free_layout_hdr(lo) : kfree(lo);
-+	return ld->free_layout_hdr(lo);
- }
- 
- static void
--- 
-1.7.11.4
-
+T24gVGh1LCAyMDEyLTA5LTI3IGF0IDA5OjU5IC0wNzAwLCBMaW51cyBUb3J2YWxkcyB3cm90ZToN
+Cj4gT24gVGh1LCBTZXAgMjcsIDIwMTIgYXQgOToxNiBBTSwgTXlrbGVidXN0LCBUcm9uZA0KPiA8
+VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+DQo+ID4gSSBjYW5ub3Qgc2Vl
+IGhvdyB0aGF0IEJVR19PTiBjYW4gYmUgdHJpZ2dlcmVkIGluIHRoZSBjdXJyZW50IGNvZGUsIGdp
+dmVuDQo+ID4gdGhhdCB0aGUgb25seSBwbGFjZSB3aGVyZSBpZG1hcC0+aWRtYXBfa2V5X2NvbnMg
+aXMgc2V0IHRvIGEgbm9uLU5VTEwNCj4gPiB2YWx1ZSBpcyBjb3ZlcmVkIGJ5IGEgbXV0ZXgsIGFu
+ZCB0aGF0IGl0IGlzIGFsd2F5cyBjbGVhcmVkIGJlZm9yZSB3ZQ0KPiA+IHJlbGVhc2Ugc2FpZCBt
+dXRleC4NCj4gDQo+IFF1aXRlIGZyYW5rbHksIHRoZSAiSSBjYW5ub3Qgc2VlIiB0aGluZyBpcyAq
+bmV2ZXIqIGFuIGV4Y3VzZSBmb3IgYSBCVUdfT04oKS4NCj4gDQo+IFdlIGRvbid0IGRvIGtlcm5l
+bC1raWxsaW5nIGFzc2VydHMgaW4gTGludXguIE5ldmVyLg0KPiANCj4gVGhlIG9ubHkgZXhjdXNl
+IGZvciBhIEJVR19PTigpIGlzICJJIGNhbm5vdCBwb3NzaWJseSBjb250aW51ZSwgSSBkb24ndA0K
+PiBldmVuIGhhdmUgYW4gZXJyb3IgcGF0aCBJIGNhbiB0YWtlIi4NCj4gDQo+IElmIGl0J3MgYSBm
+dW5kYW1lbnRhbGx5IGltcG9zc2libGUgc2l0dWF0aW9uLCB0aGUgQlVHX09OKCkgc2hvdWxkDQo+
+IG5ldmVyIGhhdmUgYmVlbiB0aGVyZSBpbiB0aGUgZmlyc3QgcGxhY2UhDQo+IA0KPiBBbmQgaWYg
+aXQncyBhICJJIGRvbid0IHNlZSBob3cgaXQgY291bGQgaGFwcGVuIiwgdGhlbiBpdCBzaG91bGQg
+aGF2ZQ0KPiBiZWVuIHNvbWV0aGluZyBsaWtlDQo+IA0KPiAgICAgaWYgKFdBUk5fT05fT05DRShj
+b25kaXRpb24pKQ0KPiAgICAgICAgIGdvdG8gY2xlYW51cDsNCj4gDQo+IHJhdGhlciB0aGFuIGEg
+QlVHX09OKCkuDQo+IA0KPiBXZSBoYXZlIHRvbyBtYW55IGYqY2tpbmcgQlVHX09OJ3MgaW4gdGhl
+IGtlcm5lbCwgYW5kIHRoZSBmYWN0IHRoYXQgb25lDQo+IHRyaWdnZXJzIGFuZCBpdCBoYXMgdGFr
+ZW4gYSBtb250aCBhbmQgYSBoYWxmIHdpdGhvdXQgaXQgZXZlbiBiZWluZw0KPiByZXNvbHZlZCBp
+cyBhIHByb2JsZW0uDQo+IA0KPiBHZXQgcmlkIG9mIHRoZSB0aGluZywgYWxyZWFkeSwgZGFtbWl0
+LiBJZiB5b3UgY2Fubm90IGZpZ3VyZSBvdXQgaG93IGl0DQo+IGNhbiBoYXBwZW4sIHRoZW4gdGhl
+ICpsYXN0KiB0aGluZyB5b3Ugd2FudCB0byBkbyBpcyB0aGVuIGtpbGwgdGhlDQo+IG1hY2hpbmUg
+c28gdGhhdCBpdCdzIGltcG9zc2libGUgdG8gZGVidWcgaXQgc2FuZWx5Lg0KPiANCj4gQmVzaWRl
+cywgYXMgZmFyIGFzIEkgY2FuIHRlbGwsIGlkbWFwX2tleV9jb25zIGxvY2tpbmcgaXMgc3VzcGVj
+dA0KPiBhbnl3YXkuIFN0dWZmIGxpa2UgdGhpczoNCj4gDQo+ICAgICAgICAgICAgICAgICBjb25z
+ID0gQUNDRVNTX09OQ0UoaWRtYXAtPmlkbWFwX2tleV9jb25zKTsNCj4gICAgICAgICAgICAgICAg
+IGlkbWFwLT5pZG1hcF9rZXlfY29ucyA9IE5VTEw7DQo+IA0KPiBpcyBhbiBhbG1vc3QgY2VydGFp
+biBleGFtcGxlIG9mICJ0aGUgY29kZSBpcyByYWN5LCBhbmQgd2UgZGlkIGl0DQo+IHdyb25nIi4g
+VGhlIGFib3ZlIGlzIGJhc2ljYWxseSAqbmV2ZXIqIGNvcnJlY3QuDQo+IA0KPiBJZiB0aGUgYWNj
+ZXNzIGlzIHByb3Blcmx5IGxvY2tlZCwgdGhlbiB0aGUgQUNDRVNTX09OQ0UoKSBpcyBhIGJ1Zy4N
+Cj4gDQo+IEFuZCBpZiB0aGUgYWNjZXNzICppc24ndCogcHJvcGVybHkgbG9ja2VkLCB0aGVuIHNl
+dHRpbmcgdGhpbmdzIHRvIE5VTEwNCj4gYWZ0ZXJ3YXJkcyBpcyBpbiBubyB3YXkgc2FmZS4NCj4g
+DQo+IElPVywgZWl0aGVyIHdheSwgaXQncyBicm9rZW4uIEFuZCB0aGVyZSdzIGF0IGxlYXN0IHR3
+byBvZiB0aG9zZQ0KPiBjbGVhcmx5IGJ1Z2d5IGNvZGUtc2VxdWVuY2VzIGludm9sdmluZyB0aGF0
+IGZpZWxkLg0KPiANCj4gU28gZ2V0IHJpZCBvZiB0aGUgQlVHX09OKCkgKHBvc3NpYmx5IHJlcGxh
+Y2luZyBpdCB3aXRoIHRoZQ0KPiBXQVJOX09OX09OQ0UpLCBhbmQgcGxlYXNlIGxvb2sgYXQgdGhv
+c2UgQUNDRVNTX09OQ0UoKSBzZXF1ZW5jZXMgYW5kDQo+IGZpeCB0aGVtLiBFaXRoZXIgdGhleSBo
+YXBwZW4gdW5kZXIgYSBsb2NrLCBvciB0aGV5IGRvbid0LiBOb25lIG9mIHRoaXMNCj4gY3Jhenkg
+cmFjeSBjcmFwLCBwbGVhc2UuDQoNClRoZSBBQ0NFU1NfT05DRSBpcyBhIGJ1Zy4gSXQgaXNuJ3Qg
+bmVlZGVkLCBzaW5jZSB0aGUgd2hvbGUgdXBjYWxsIGlzDQpjb3ZlcmVkIGJ5IHRoZSBpZG1hcF9t
+dXRleC4gSSdsbCByZW1vdmUgaXQgYW5kIHRoZSBCVUdfT04oKSBjb21lIHRoZQ0KbWVyZ2Ugd2lu
+ZG93IChvciBJIGNhbiBzZW5kIGEgcGF0Y2ggc29vbmVyIGlmIHlvdSBjYXJlKS4NCg0KVGhlIGRv
+d25jYWxsIGlzIG9yZGVyZWQgdy5yLnQuIGlkbWFwX3BpcGVfZGVzdHJveV9tc2coKSAod2hpY2gg
+Y2xlYXJzDQppZG1hcC0+aWRtYXBfa2V5X2NvbnMgb25seSBvbiB1cGNhbGwgZmFpbHVyZSkuIFRo
+ZSBkb3duY2FsbCBpcyBhbHNvDQpwcm90ZWN0ZWQgYWdhaW5zdCBjb2xsaXNpb25zIHdpdGggaWRt
+YXBfcmVsZWFzZV9waXBlKCkgYnkgbWVhbnMgb2YgdGhlDQppbm9kZS0+aV9tdXRleC4gRmluYWxs
+eSwgdGhlIGNhbGwgdG8gcmVxdWVzdF9rZXkoKSAoZHVyaW5nIHdoaWNoIHRoZQ0KaWRtYXBfbXV0
+ZXggaXMgaGVsZCkgd2lsbCBhbHdheXMgZG8gYW4gdW5pbnRlcnJ1cHRpYmxlIHdhaXQgZm9yIG9u
+ZSBvZg0KdGhvc2UgMyBmdW5jdGlvbnMgdG8gY29tcGxldGUuDQpJT1c6IGFsbCB0aGUgZnVuY3Rp
+b25zIHRoYXQgbWFuaXB1bGF0ZSBpZG1hcC0+aWRtYXBfa2V5X2NvbnMgYXJlDQp0aGVvcmV0aWNh
+bGx5IG9yZGVyZWQgdy5yLnQuIGVhY2ggb3RoZXIuIFRoYXQncyB3aGF0IEkgbWVhbiB3aGVuIEkg
+c2F5DQp0aGF0IEkgcmVhbGx5IGRvbid0IHVuZGVyc3RhbmQgd2h5IHRoaXMgaXMgaGFwcGVuaW5n
+Lg0KDQpTbyB0aGUgZmlyc3QgdGhpbmcgdG8gZG8gaXMgdG8gdHJ5IGEgX3ZhbmlsbGFfIDMuNi1y
+YzcsIGFuZCBzZWUgaWYgdGhlDQpwcm9ibGVtIGlzIHJlcHJvZHVjaWJsZSB3aXRob3V0IEpvZXJn
+J3MgZXh0cmEgcGF0Y2hlcy4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGll
+bnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cu
+bmV0YXBwLmNvbQ0K
