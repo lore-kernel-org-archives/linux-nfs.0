@@ -1,103 +1,167 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:44532 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:60601 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932415Ab2IDQkx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Sep 2012 12:40:53 -0400
-Message-ID: <50462EE8.1090903@redhat.com>
-Date: Tue, 04 Sep 2012 17:40:08 +0100
-From: Pedro Alves <palves@redhat.com>
-MIME-Version: 1.0
-CC: Steven Rostedt <rostedt@goodmis.org>,
-        Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
-        Sasha Levin <levinsasha928@gmail.com>, Tejun Heo <tj@kernel.org>,
-        torvalds@linux-foundation.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, mingo@elte.hu,
-        ebiederm@xmission.com, aarcange@redhat.com, ericvh@gmail.com,
-        netdev@vger.kernel.org, josh@joshtriplett.org, eric.dumazet@gmail.com,
-        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
-        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
-        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive hashtable
-References: <20120824203332.GF21325@google.com> <5037E9D9.9000605@gmail.com>  <20120824212348.GK21325@google.com> <5038074D.300@gmail.com>  <20120824230740.GN21325@google.com> <20120825042419.GA27240@Krystal>  <503C95E4.3010000@gmail.com> <20120828101148.GA21683@Krystal>  <503CAB1E.5010408@gmail.com> <20120828115638.GC23818@Krystal>  <20120828230050.GA3337@Krystal> <1346772948.27919.9.camel@gandalf.local.home> <50462C99.5000007@redhat.com>
-In-Reply-To: <50462C99.5000007@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-15
-To: unlisted-recipients:; (no To-header on input)
+	id S1751522Ab2I0Ubq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Sep 2012 16:31:46 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Bryan Schumaker <bjschuma@netapp.com>
+Subject: [PATCH 1/2] NFSv4: Fix the legacy idmapper upcall locking
+Date: Thu, 27 Sep 2012 16:31:39 -0400
+Message-Id: <1348777900-44647-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/04/2012 05:30 PM, Pedro Alves wrote:
-> On 09/04/2012 04:35 PM, Steven Rostedt wrote:
->> On Tue, 2012-08-28 at 19:00 -0400, Mathieu Desnoyers wrote:
->>
->>> Looking again at:
->>>
->>> +#define hash_for_each_size(name, bits, bkt, node, obj, member)                 \
->>> +       for (bkt = 0; bkt < HASH_SIZE(bits); bkt++)                             \
->>> +               hlist_for_each_entry(obj, node, &name[bkt], member)
->>>
->>> you will notice that a "break" or "continue" in the inner loop will not
->>> affect the outer loop, which is certainly not what the programmer would
->>> expect!
->>>
->>> I advise strongly against creating such error-prone construct.
->>>
->>
->> A few existing loop macros do this. But they require a do { } while ()
->> approach, and all have a comment.
->>
->> It's used by do_each_thread() in sched.h and ftrace does this as well.
->> Look at kernel/trace/ftrace.c at do_for_each_ftrace_rec().
->>
->> Yes it breaks 'break' but it does not break 'continue' as it would just
->> go to the next item that would have been found (like a normal for
->> would).
-> 
-> /*
->  * This is a double for. Do not use 'break' to break out of the loop,
->  * you must use a goto.
->  */
-> #define do_for_each_ftrace_rec(pg, rec)                                 \
->         for (pg = ftrace_pages_start; pg; pg = pg->next) {              \
->                 int _____i;                                             \
->                 for (_____i = 0; _____i < pg->index; _____i++) {        \
->                         rec = &pg->records[_____i];
-> 
-> 
-> 
-> You can make 'break' also work as expected if you can embed a little knowledge
-> of the inner loop's condition in the outer loop's condition.  Sometimes it's
-> trivial, most often when the inner loop's iterator is a pointer that goes
-> NULL at the end, but other times not so much.  Something like (completely untested):
-> 
-> #define do_for_each_ftrace_rec(pg, rec)                                 \
->         for (pg = ftrace_pages_start, rec = &pg->records[pg->index];    \
->              pg && rec == &pg->records[pg->index];                      \
->              pg = pg->next) {                                           \
->                 int _____i;                                             \
->                 for (_____i = 0; _____i < pg->index; _____i++) {        \
->                         rec = &pg->records[_____i];
->
-> 
-> (other variants possible)
-> 
-> IOW, the outer loop only iterates if the inner loop completes.  If there's
-> a break in the inner loop, then the outer loop breaks too.  Of course, it
-> all depends on whether the generated code looks sane or hideous, if
-> the uses of the macro care for it over bug avoidance.
-> 
+We must not touch the idmap->idmap_key_cons field when a downcall
+is in progress. Set up a mutex and helper functions to ensure that
+we wait until the downcall is finished.
 
-BTW, you can also go a step further and remove the need to close with double }},
-with something like:
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/idmap.c | 65 ++++++++++++++++++++++++++++++++++++++++------------------
+ 1 file changed, 45 insertions(+), 20 deletions(-)
 
-#define do_for_each_ftrace_rec(pg, rec)                                          \
-        for (pg = ftrace_pages_start, rec = &pg->records[pg->index];             \
-             pg && rec == &pg->records[pg->index];                               \
-             pg = pg->next)                                                      \
-          for (rec = pg->records; rec < &pg->records[pg->index]; rec++)
-
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index a850079..7c7072a 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -59,6 +59,7 @@ struct idmap {
+ 	struct rpc_pipe		*idmap_pipe;
+ 	struct key_construction	*idmap_key_cons;
+ 	struct mutex		idmap_mutex;
++	struct mutex		idmap_downcall_mutex;
+ };
+ 
+ struct idmap_legacy_upcalldata {
+@@ -330,7 +331,6 @@ static ssize_t nfs_idmap_get_key(const char *name, size_t namelen,
+ 		ret = nfs_idmap_request_key(&key_type_id_resolver_legacy,
+ 					    name, namelen, type, data,
+ 					    data_size, idmap);
+-		idmap->idmap_key_cons = NULL;
+ 		mutex_unlock(&idmap->idmap_mutex);
+ 	}
+ 	return ret;
+@@ -485,6 +485,7 @@ nfs_idmap_new(struct nfs_client *clp)
+ 	}
+ 	idmap->idmap_pipe = pipe;
+ 	mutex_init(&idmap->idmap_mutex);
++	mutex_init(&idmap->idmap_downcall_mutex);
+ 
+ 	clp->cl_idmap = idmap;
+ 	return 0;
+@@ -665,6 +666,32 @@ out:
+ 	return ret;
+ }
+ 
++static void
++nfs_idmap_prepare_pipe_upcall(struct idmap *idmap,
++		struct key_construction *cons)
++{
++	mutex_lock(&idmap->idmap_downcall_mutex);
++	WARN_ON_ONCE(idmap->idmap_key_cons != NULL);
++	idmap->idmap_key_cons = cons;
++	mutex_unlock(&idmap->idmap_downcall_mutex);
++}
++
++static void
++nfs_idmap_complete_pipe_upcall_locked(struct idmap *idmap, int ret)
++{
++	complete_request_key(idmap->idmap_key_cons, ret);
++	idmap->idmap_key_cons = NULL;
++}
++
++static void
++nfs_idmap_abort_pipe_upcall(struct idmap *idmap, int ret)
++{
++	mutex_lock(&idmap->idmap_downcall_mutex);
++	if (idmap->idmap_key_cons != NULL)
++		nfs_idmap_complete_pipe_upcall_locked(idmap, ret);
++	mutex_unlock(&idmap->idmap_downcall_mutex);
++}
++
+ static int nfs_idmap_legacy_upcall(struct key_construction *cons,
+ 				   const char *op,
+ 				   void *aux)
+@@ -689,17 +716,14 @@ static int nfs_idmap_legacy_upcall(struct key_construction *cons,
+ 	if (ret < 0)
+ 		goto out2;
+ 
+-	BUG_ON(idmap->idmap_key_cons != NULL);
+-	idmap->idmap_key_cons = cons;
+-
++	nfs_idmap_prepare_pipe_upcall(idmap, cons);
+ 	ret = rpc_queue_upcall(idmap->idmap_pipe, msg);
+-	if (ret < 0)
+-		goto out3;
++	if (ret < 0) {
++		nfs_idmap_abort_pipe_upcall(idmap, ret);
++		kfree(data);
++	}
+ 
+ 	return ret;
+-
+-out3:
+-	idmap->idmap_key_cons = NULL;
+ out2:
+ 	kfree(data);
+ out1:
+@@ -740,14 +764,16 @@ idmap_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+ 	struct key_construction *cons;
+ 	struct idmap_msg im;
+ 	size_t namelen_in;
+-	int ret;
++	int ret = -ENOKEY;
+ 
+ 	/* If instantiation is successful, anyone waiting for key construction
+ 	 * will have been woken up and someone else may now have used
+ 	 * idmap_key_cons - so after this point we may no longer touch it.
+ 	 */
+-	cons = ACCESS_ONCE(idmap->idmap_key_cons);
+-	idmap->idmap_key_cons = NULL;
++	mutex_lock(&idmap->idmap_downcall_mutex);
++	cons = idmap->idmap_key_cons;
++	if (cons == NULL)
++		goto out_unlock;
+ 
+ 	if (mlen != sizeof(im)) {
+ 		ret = -ENOSPC;
+@@ -777,7 +803,9 @@ idmap_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+ 	}
+ 
+ out:
+-	complete_request_key(cons, ret);
++	nfs_idmap_complete_pipe_upcall_locked(idmap, ret);
++out_unlock:
++	mutex_unlock(&idmap->idmap_downcall_mutex);
+ 	return ret;
+ }
+ 
+@@ -788,12 +816,8 @@ idmap_pipe_destroy_msg(struct rpc_pipe_msg *msg)
+ 			struct idmap_legacy_upcalldata,
+ 			pipe_msg);
+ 	struct idmap *idmap = data->idmap;
+-	struct key_construction *cons;
+-	if (msg->errno) {
+-		cons = ACCESS_ONCE(idmap->idmap_key_cons);
+-		idmap->idmap_key_cons = NULL;
+-		complete_request_key(cons, msg->errno);
+-	}
++	if (msg->errno)
++		nfs_idmap_abort_pipe_upcall(idmap, msg->errno);
+ 	/* Free memory allocated in nfs_idmap_legacy_upcall() */
+ 	kfree(data);
+ }
+@@ -803,7 +827,8 @@ idmap_release_pipe(struct inode *inode)
+ {
+ 	struct rpc_inode *rpci = RPC_I(inode);
+ 	struct idmap *idmap = (struct idmap *)rpci->private;
+-	idmap->idmap_key_cons = NULL;
++
++	nfs_idmap_abort_pipe_upcall(idmap, -EPIPE);
+ }
+ 
+ int nfs_map_name_to_uid(const struct nfs_server *server, const char *name, size_t namelen, __u32 *uid)
 -- 
-Pedro Alves
+1.7.11.4
+
