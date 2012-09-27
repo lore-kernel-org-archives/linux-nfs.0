@@ -1,80 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:4624 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:20396 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757659Ab2IXT7N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Sep 2012 15:59:13 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 20/28] NFSv4.1: Clean up pnfs_put_lseg()
-Date: Mon, 24 Sep 2012 15:56:38 -0400
-Message-Id: <1348516606-22721-20-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1348516606-22721-19-git-send-email-Trond.Myklebust@netapp.com>
-References: <1348516606-22721-1-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-2-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-3-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-4-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-5-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-6-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-7-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-8-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-9-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-10-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-11-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-12-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-13-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-14-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-15-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-16-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-17-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-18-git-send-email-Trond.Myklebust@netapp.com>
- <1348516606-22721-19-git-send-email-Trond.Myklebust@netapp.com>
+	id S1753587Ab2I0SPX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Sep 2012 14:15:23 -0400
+Message-ID: <506497B9.3030601@netapp.com>
+Date: Thu, 27 Sep 2012 14:15:21 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
+MIME-Version: 1.0
+To: Joerg Roedel <joerg.roedel@amd.com>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Joerg Roedel <joro@8bytes.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
+Subject: Re: kernel BUG at /data/lemmy/linux.trees.git/fs/nfs/idmap.c:681!
+References: <20120807134156.GP1996@amd.com> <20120927145217.GA18962@8bytes.org> <4FA345DA4F4AE44899BD2B03EEEC2FA908FEF572@SACEXCMBX04-PRD.hq.netapp.com> <20120927153928.GB18962@8bytes.org> <4FA345DA4F4AE44899BD2B03EEEC2FA908FEF7A3@SACEXCMBX04-PRD.hq.netapp.com> <20120927175623.GG10549@amd.com>
+In-Reply-To: <20120927175623.GG10549@amd.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There is no longer a need to use pnfs_free_lseg_list(). Just call
-pnfs_free_lseg() directly.
+On 09/27/2012 01:56 PM, Joerg Roedel wrote:
+> On Thu, Sep 27, 2012 at 04:16:25PM +0000, Myklebust, Trond wrote:
+>>> Yes, it contains that commit. I was about to test plain v3.6-rc7 without
+>>> my patches (not nfs related, of cource) on-top, but unfortunatly the
+>>> disk with the root-fs died :-/
+>>> I am about to set up the box again and test plain -rc7.
+>>
+>> Please do.
+> 
+> Okay, the box is running again and the bug does not reproduce anymore
+> with the new installation. Unfortunatly the old kernel configuration is
+> gone together with the previous version of the nfs-utils :-/ I'll try to
+> play around with the kernel config a little bit more and see if it
+> reproduces again.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/pnfs.c | 9 +++------
- 1 file changed, 3 insertions(+), 6 deletions(-)
+Double check that you're using the legacy idmapper, and not the keyring based one (/etc/request-key.conf shouldn't have the "create id_resolver * * /usr/bin/nfsidmap %k %d" line).
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index cc1d403..7b4741f 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -315,7 +315,7 @@ init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg)
- 	lseg->pls_layout = lo;
- }
- 
--static void free_lseg(struct pnfs_layout_segment *lseg)
-+static void pnfs_free_lseg(struct pnfs_layout_segment *lseg)
- {
- 	struct inode *ino = lseg->pls_layout->plh_inode;
- 
-@@ -352,12 +352,9 @@ pnfs_put_lseg(struct pnfs_layout_segment *lseg)
- 	lo = lseg->pls_layout;
- 	inode = lo->plh_inode;
- 	if (atomic_dec_and_lock(&lseg->pls_refcount, &inode->i_lock)) {
--		LIST_HEAD(free_me);
--
- 		pnfs_layout_remove_lseg(lo, lseg);
- 		spin_unlock(&inode->i_lock);
--		list_add(&lseg->pls_list, &free_me);
--		pnfs_free_lseg_list(&free_me);
-+		pnfs_free_lseg(lseg);
- 	}
- }
- EXPORT_SYMBOL_GPL(pnfs_put_lseg);
-@@ -494,7 +491,7 @@ pnfs_free_lseg_list(struct list_head *free_me)
- 
- 	list_for_each_entry_safe(lseg, tmp, free_me, pls_list) {
- 		list_del(&lseg->pls_list);
--		free_lseg(lseg);
-+		pnfs_free_lseg(lseg);
- 	}
- }
- 
--- 
-1.7.11.4
+- Bryan
+
+> 
+> 
+> 	Joerg
+> 
 
