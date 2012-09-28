@@ -1,37 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 8bytes.org ([85.214.48.195]:44503 "EHLO mail.8bytes.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754568Ab2I0PBg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 27 Sep 2012 11:01:36 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by mail.8bytes.org (Postfix) with SMTP id 2B4B112AFA1
-	for <linux-nfs@vger.kernel.org>; Thu, 27 Sep 2012 16:52:19 +0200 (CEST)
-Date: Thu, 27 Sep 2012 16:52:18 +0200
-From: Joerg Roedel <joro@8bytes.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Joerg Roedel <joerg.roedel@amd.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, torvalds@linux-foundation.org
+Received: from tx2ehsobe002.messaging.microsoft.com ([65.55.88.12]:4974 "EHLO
+	tx2outboundpool.messaging.microsoft.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757247Ab2I1Nef (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Sep 2012 09:34:35 -0400
+Date: Fri, 28 Sep 2012 15:34:24 +0200
+From: Joerg Roedel <joerg.roedel@amd.com>
+To: Bryan Schumaker <bjschuma@netapp.com>
+CC: Joerg Roedel <joro@8bytes.org>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
 Subject: Re: kernel BUG at /data/lemmy/linux.trees.git/fs/nfs/idmap.c:681!
-Message-ID: <20120927145217.GA18962@8bytes.org>
+Message-ID: <20120928133424.GA4009@amd.com>
 References: <20120807134156.GP1996@amd.com>
+ <20120927145217.GA18962@8bytes.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA908FEF572@SACEXCMBX04-PRD.hq.netapp.com>
+ <20120927153928.GB18962@8bytes.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA908FEF7A3@SACEXCMBX04-PRD.hq.netapp.com>
+ <20120927175623.GG10549@amd.com>
+ <506497B9.3030601@netapp.com>
+ <20120928121733.GD18962@8bytes.org>
+ <5065A456.4070007@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120807134156.GP1996@amd.com>
+Content-Type: text/plain; charset="us-ascii"
+In-Reply-To: <5065A456.4070007@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 07, 2012 at 03:41:56PM +0200, Joerg Roedel wrote:
-> starting with Linux 3.6-rc1 I experience this BUG on one of my test
-> machines. Please let me know if you need any additional information.
-> 
-> [   20.271810] ------------[ cut here ]------------
-> [   20.276869] kernel BUG at /data/lemmy/linux.trees.git/fs/nfs/idmap.c:681!
-> [   20.284306] invalid opcode: 0000 [#1] SMP
-> [   20.288806] Modules linked in: nfs4 auth_rpcgss nfs fscache lockd sunrpc kvm_intel radeon kvm ttm drm_kms_helper i7core_edac drm edac_core joydev hpilo psmouse hid_generic i2c_algo_bit serio_raw usbhid hid bnx2
+On Fri, Sep 28, 2012 at 09:21:26AM -0400, Bryan Schumaker wrote:
+> On 09/28/2012 08:17 AM, Joerg Roedel wrote:
 
-I still see this BUG with 3.6-rc7. Any fix in sight?
+> Maybe it's mounting over v3 now?  Can you retry using "vers=4" in your mount options?
+
+Tried that, mounting fails with 'No such file or directory'.
 
 
 	Joerg
 
+-- 
+AMD Operating System Research Center
+
+Advanced Micro Devices GmbH Einsteinring 24 85609 Dornach
+General Managers: Alberto Bozzo
+Registration: Dornach, Landkr. Muenchen; Registerger. Muenchen, HRB Nr. 43632
 
