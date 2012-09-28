@@ -1,123 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from avasout04.plus.net ([212.159.14.19]:51806 "EHLO
-	avasout04.plus.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759284Ab2INIfj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Sep 2012 04:35:39 -0400
-Message-ID: <5052EAEB.7060309@plus.net>
-Date: Fri, 14 Sep 2012 09:29:31 +0100
-From: Richard Allen <rallen@plus.net>
-MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: Debian and Netapp NFSv4 locks/owner exhaustion
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from cantor2.suse.de ([195.135.220.15]:42107 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758456Ab2I1PfE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Sep 2012 11:35:04 -0400
+Subject: Re: [REGRESSION] nfsd crashing with 3.6.0-rc7 on PowerPC
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=us-ascii
+From: Alexander Graf <agraf@suse.de>
+In-Reply-To: <20120928151043.GA19102@fieldses.org>
+Date: Fri, 28 Sep 2012 17:34:50 +0200
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        LKML List <linux-kernel@vger.kernel.org>,
+        linuxppc-dev <linuxppc-dev@lists.ozlabs.org>,
+        Benjamin Herrenschmidt <benh@kernel.crashing.org>,
+        linux-nfs@vger.kernel.org, Jan Kara <jack@suse.cz>,
+        skinsbursky@parallels.com, bfields@redhat.com
+Message-Id: <3EC6FEEF-33B0-4B8B-83E6-64A5E50AB731@suse.de>
+References: <3BDA9E62-7031-42D6-8CA9-5327B61700F5@suse.de> <CA+55aFyXwB1QcXE4Z_FAGnXROSgvP2x2+wjnX9OWPa4Dfaaf0A@mail.gmail.com> <DC545CD9-8745-47DD-B13B-3385C0EB5B27@suse.de> <20120928151043.GA19102@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi all,
 
-We're currently having a highly intermittent (and seemingly random) 
-problem with our 20 Debian clients running courier POP3 and IMAPd 
-connecting to a Netapp filer using NFSv4, whereby locks/owner objects 
-are being maxed out on the filer, causing the clients to start to have 
-very high load.
+On 28.09.2012, at 17:10, J. Bruce Fields wrote:
 
-Netapp think that this is a bug with the implementation of NFS in our 
-Debian kernel - please see part of an email they sent us below:
+> On Fri, Sep 28, 2012 at 04:19:55AM +0200, Alexander Graf wrote:
+>> 
+>> On 28.09.2012, at 04:04, Linus Torvalds wrote:
+>> 
+>>> On Thu, Sep 27, 2012 at 6:55 PM, Alexander Graf <agraf@suse.de> wrote:
+>>>> 
+>>>> Below are OOPS excerpts from different rc's I tried. All of them crashed - all the way up to current Linus' master branch. I haven't cross-checked, but I don't remember any such behavior from pre-3.6 releases.
+>>> 
+>>> Since you seem to be able to reproduce it easily (and apparently
+>>> reliably), any chance you could just bisect it?
+>>> 
+>>> Since I assume v3.5 is fine, and apparently -rc1 is already busted, a simple
+>>> 
+>>>  git bisect start
+>>>  git bisect good v3.5
+>>>  git bisect bad v3.6-rc1
+>>> 
+>>> will get you started on your adventure..
+>> 
+>> Heh, will give it a try :). The thing really does look quite bisectable.
+>> 
+>> 
+>> It might take a few hours though - the machine isn't exactly fast by today's standards and it's getting late here. But I'll keep you updated.
+> 
+> I doubt it's anything special about that workload, but just for kicks I
+> tried a "git clone -ls" (cloning my linux tree to another directory on
+> the same nfs filesystem), with server on 3.6.0-rc7, and didn't see
+> anything interesting (just an xfs lockdep warning that looks like this
+> one jlayton already reported:
+> http://oss.sgi.com/archives/xfs/2012-09/msg00088.html
+> )
+> 
+> Any (even partial) bisection results would certainly be useful, thanks.
 
----
-"Thanks for providing all the  data
-from the sync core and the lock status data provided indicated you have 
-a linux client bug. equivalent to redhat bugzilla > 620502/621304 .
+Yeah, still trying. Running the same workload in a PPC VM didn't show any badness. Then I tried again to bisect on the machine it broken on, and that commit failed even more badly on me than the previous ones, destroying my local git tree.
 
-https://bugzilla.redhat.com/show_bug.cgi?id=620502  2.6.18 kernel
-https://bugzilla.redhat.com/show_bug.cgi?id=621304  2.6.32 kernel.
-
-Basically there is a know linux kernel bug where it request a new owner 
-id everytime a new lock request is submitted. There are linux upstream 
-fixed that prevents new owner lock id and reuse existing ones.
-
-Analyses from the sync core
-
-As previously mentioned NFSv4 has 4 items StateID/ClientID and OwnerID 
-limits.
-
-StateID
-kgdb-amd64-7.4-54) p v4lock_states_free_count
-$8 = {16789, 32768}
- >>>>>>There are free states available.
-
-ClientID
-(kgdb-amd64-7.4-54) p v4lock_clients_free[0]
-$10 = {{cqh_first = 0xffffff04cd2cda00, cqh_last = 0xffffff04cd4caf00}
- >>> there are free clients
-
-OwnerID
-(kgdb-amd64-7.4-54) p v4lock_owners_free[0]
-$9 = {{cqh_first = 0xffffffffa25f2640, cqh_last = 0xffffffffa25f2640}
- >>>there are no free owners
-
-(kgdb-amd64-7.4-54) print_owner_htab_count
-total:10240
- >>>>total owner objects in use:10240
-
-(kgdb-amd64-7.4-54) p v4owner_table_size/2
-$527 = 10240
- >>>>per node max owners value reached
+Trying to narrow down now in a slightly more contained environment :).
 
 
-Lets correlate this to the lock status output provided.
-
-(fed15:samuell:/x/eng/cs-data/2003058003/20120821_sync_core/mailstorage04> 
-grep "Free owners" mailstorage04-lock-v*
-mailstorage04-lock-v-201208210605:Free owners 3; In-Use Owners 10237 *
-mailstorage04-lock-v-201208210610:Free owners -3; In-Use Owners 10243 *
-mailstorage04-lock-v-201208210615:Free owners -2; In-Use Owners 10242
-mailstorage04-lock-v-201208210620:Free owners 0; In-Use Owners 10240
-mailstorage04-lock-v-201208210625:Free owners 3; In-Use Owners 10237
-mailstorage04-lock-v-201208210630:Free owners -7; In-Use Owners 10247
-mailstorage04-lock-v-201208210635:Free owners 1; In-Use Owners 10239
-mailstorage04-lock-v-201208210640:Free owners -3; In-Use Owners 10243
-mailstorage04-lock-v-201208210645:Free owners 4; In-Use Owners 10236
-mailstorage04-lock-v-201208210650:Free owners -1; In-Use Owners 10241
-mailstorage04-lock-v-201208210655:Free owners 4; In-Use Owners 10236
-mailstorage04-lock-v-201208210700:Free owners -1; In-Use Owners 10241
-mailstorage04-lock-v-201208210705:Free owners -4; In-Use Owners 10244
-
-As you can see the filer is reporting MAX of 10240 and in some event it 
-was over subscribed.
-
-Corrective action is to make sure you use a kernel release from your 
-distro that has upstream patch
-
-The diff can be found here
-https://bugzilla.redhat.com/attachment.cgi?id=436801&action=diff
-
-
-Redhat has provided an errata fix int he kernel patch
-
-http://rhn.redhat.com/errata/RHSA-2011-0542.html"
----
-
-Some info on our platform:
-
-Clients:
-20 of, running Squeeze 6.0.1, but with backported kernel 
-3.2.0-0.bpo.1-amd64.
-nfs-common 1:1.2.2-4
-The application is courier IMAP and POP3.
-
-Server:
-Netapp FAS3170 running 8.0.1P1 7-Mode
-
-The main question I have is whether the bugs Netapp mentioned in the 
-Redhat kernel have been fixed in the backported Debian kernel we are 
-running, and if so, what version the fixes have been introduced in (and 
-if not, what version the fixes *will* be introduced in)?
-
-Otherwise, if anyone has any other suggestions as to what else the 
-problem could be, I'd be happy to hear them
-
-Thanks,
-
-Richard
+Alex
 
