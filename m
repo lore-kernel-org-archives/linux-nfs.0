@@ -1,58 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:39693 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756889Ab2IQPYD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Sep 2012 11:24:03 -0400
-Message-ID: <50574085.90104@parallels.com>
-Date: Mon, 17 Sep 2012 19:23:49 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:59757 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752726Ab2I1AOI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Sep 2012 20:14:08 -0400
+Received: by mail-pb0-f46.google.com with SMTP id rr4so4328254pbb.19
+        for <linux-nfs@vger.kernel.org>; Thu, 27 Sep 2012 17:14:08 -0700 (PDT)
+Date: Thu, 27 Sep 2012 17:13:57 -0700
+From: Greg KH <gregkh@linuxfoundation.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>, stable@vger.kernel.org,
+        linux-nfs@vger.kernel.org, bfields@redhat.com, viro@zeniv.linux.org.uk,
+        jbottomley@parallels.com
+Subject: Re: [PATCH 0/2] nfsd: backport fixes for 3.5 kernel
+Message-ID: <20120928001357.GK29949@kroah.com>
+References: <20120914082201.14353.83847.stgit@localhost6.localdomain6>
+ <20120917150105.GJ30673@fieldses.org>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "jlayton@redhat.com" <jlayton@redhat.com>
-Subject: Re: [PATCH 0/3] lockd: use per-net refrence-counted NSM clients
-References: <20120914140811.10835.81465.stgit@localhost.localdomain> <4030B8F9-5C67-4AE7-826E-B4B6AD4FAD01@oracle.com> <4FA345DA4F4AE44899BD2B03EEEC2FA908FA7F55@SACEXCMBX04-PRD.hq.netapp.com> <DA466953-BF79-44F7-8870-AC2FD5E3FEC2@oracle.com> <50570052.8050205@parallels.com> <D4B752F3-1883-490E-AA5D-B9666472FFF3@oracle.com>
-In-Reply-To: <D4B752F3-1883-490E-AA5D-B9666472FFF3@oracle.com>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120917150105.GJ30673@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-17.09.2012 19:10, Chuck Lever пишет:
->
-> On Sep 17, 2012, at 6:49 AM, Stanislav Kinsbursky wrote:
->
->> 14.09.2012 23:10, Chuck Lever пишет:
->>>
->>> On Sep 14, 2012, at 1:38 PM, Myklebust, Trond wrote:
->>>
->>>> On Fri, 2012-09-14 at 13:01 -0400, Chuck Lever wrote:
->>>>> What happens if statd is restarted?
->>>>
->>>> Nothing unusual. Why?
->>>
->>> The NSM upcall transport is a potential application for TCP + softconn, now that a persistent rpc_clnt is used.  It just depends on what failure mode we'd like to optimize for.
->>>
->>
->> I don't understand, where the problem is.
->> Could you be more specific, please?
->
-> I'm suggesting an enhancement.
->
-> The change is to use TCP for the NSM upcall transport, and set RPC_TASK_SOFTCONN on the individual RPCs.  The advantage of this is that the kernel could discover when statd is not running and fail the upcall immediately, rather than waiting possibly many seconds for each upcall RPC to time out.
->
-> The client already has a check in the mount.nfs command to see that statd is running, likely to avoid this lengthly timeout.  Since the client already has long-standing logic to avoid it, I think the benefit would be mostly on the server side.
->
-> But this change can be done at some later point.
->
+On Mon, Sep 17, 2012 at 11:01:05AM -0400, J. Bruce Fields wrote:
+> On Fri, Sep 14, 2012 at 12:25:17PM +0400, Stanislav Kinsbursky wrote:
+> > Hello.
+> > These two patches fixes existent NULL pointer dereference problem in 3.5.3
+> > kernel in case of some error occured during NFSd service start.
+> > 
+> > Upstream commits:
+> > 19f7e2ca44dfc3c1b3f499fc46801f98d403500f 
+> > 57c8b13e3cd0f94944c9691ce7f58e5fcef8a12d
+> 
+> Thanks.  Ack to including both of these in stable releases.
 
-Ok, thanks.
-Sounds reasonable to me.
-I'll do so.
+Now applied, also to the 3.4.y stable series.
 
--- 
-Best regards,
-Stanislav Kinsbursky
+greg k-h
