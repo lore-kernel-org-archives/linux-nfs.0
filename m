@@ -1,68 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.openrapids.net ([64.15.138.104]:43971 "EHLO
-	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1758973Ab2IFQu6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Sep 2012 12:50:58 -0400
-Date: Thu, 6 Sep 2012 12:50:55 -0400
-From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: Steven Rostedt <rostedt@goodmis.org>,
-        Josh Triplett <josh@joshtriplett.org>, Pedro Alves <palves@redhat.com>,
-        Tejun Heo <tj@kernel.org>, torvalds@linux-foundation.org,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, eric.dumazet@gmail.com,
-        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
-        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
-        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v3 01/17] hashtable: introduce a small and naive
-	hashtable
-Message-ID: <20120906165055.GC7385@Krystal>
-References: <20120828230050.GA3337@Krystal> <1346772948.27919.9.camel@gandalf.local.home> <50462C99.5000007@redhat.com> <50462EE8.1090903@redhat.com> <20120904170138.GB31934@Krystal> <5048AAF6.5090101@gmail.com> <20120906145545.GA17332@leaf> <5048C615.4070204@gmail.com> <1346947206.1680.36.camel@gandalf.local.home> <5048CDA2.10300@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:36971 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754505Ab2I1NVa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 Sep 2012 09:21:30 -0400
+Message-ID: <5065A456.4070007@netapp.com>
+Date: Fri, 28 Sep 2012 09:21:26 -0400
+From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5048CDA2.10300@gmail.com>
+To: Joerg Roedel <joro@8bytes.org>
+CC: Joerg Roedel <joerg.roedel@amd.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
+Subject: Re: kernel BUG at /data/lemmy/linux.trees.git/fs/nfs/idmap.c:681!
+References: <20120807134156.GP1996@amd.com> <20120927145217.GA18962@8bytes.org> <4FA345DA4F4AE44899BD2B03EEEC2FA908FEF572@SACEXCMBX04-PRD.hq.netapp.com> <20120927153928.GB18962@8bytes.org> <4FA345DA4F4AE44899BD2B03EEEC2FA908FEF7A3@SACEXCMBX04-PRD.hq.netapp.com> <20120927175623.GG10549@amd.com> <506497B9.3030601@netapp.com> <20120928121733.GD18962@8bytes.org>
+In-Reply-To: <20120928121733.GD18962@8bytes.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* Sasha Levin (levinsasha928@gmail.com) wrote:
-> On 09/06/2012 06:00 PM, Steven Rostedt wrote:
-> >> > I think that that code doesn't make sense. The users of hlist_for_each_* aren't
-> >> > supposed to be changing the loop cursor.
-> > I totally agree. Modifying the 'node' pointer is just asking for issues.
-> > Yes that is error prone, but not due to the double loop. It's due to the
-> > modifying of the node pointer that is used internally by the loop
-> > counter. Don't do that :-)
+On 09/28/2012 08:17 AM, Joerg Roedel wrote:
+> On Thu, Sep 27, 2012 at 02:15:21PM -0400, Bryan Schumaker wrote:
 > 
-> While we're on this subject, I haven't actually seen hlist_for_each_entry() code
-> that even *touches* 'pos'.
+>> Double check that you're using the legacy idmapper, and not the
+>> keyring based one (/etc/request-key.conf shouldn't have the "create
+>> id_resolver * * /usr/bin/nfsidmap %k %d" line).
 > 
-> Will people yell at me loudly if I change the prototype of those macros to be:
-> 
-> 	hlist_for_each_entry(tpos, head, member)
-> 
-> (Dropping the 'pos' parameter), and updating anything that calls those macros to
-> drop it as well?
+> That should only be relevant for NFSv4, no? I am using v3 only (without
+> explicitly setting the version as mount option).
 
-I think the intent there is to keep hlist macros and list macros
-slightly in sync. Given those are vastly used, I'm not sure you want to
-touch them. But hey, that's just my 2 cents.
+Any idmapper problem is only relevant to v4, so if you're seeing a problem that means you're not using NFS v3.
 
-Thanks,
+> 
+> Anyway, I had no luck on reproducing the failure again after
+> re-installation of the box, either with of with-out my patches on-top. I
+> tried a few different config settings for NFS too, but the BUG didn't
+> trigger again :-/
 
-Mathieu
+Maybe it's mounting over v3 now?  Can you retry using "vers=4" in your mount options?
+
+- Bryan
 
 > 
 > 
-> Thanks,
-> Sasha
+> 	Joerg
+> 
+> 
 
--- 
-Mathieu Desnoyers
-Operating System Efficiency R&D Consultant
-EfficiOS Inc.
-http://www.efficios.com
