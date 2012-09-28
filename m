@@ -1,144 +1,620 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yw0-f46.google.com ([209.85.213.46]:43958 "EHLO
-	mail-yw0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754351Ab2INVYZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Sep 2012 17:24:25 -0400
-Received: by mail-yw0-f46.google.com with SMTP id m54so1133966yhm.19
-        for <linux-nfs@vger.kernel.org>; Fri, 14 Sep 2012 14:24:25 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 08/10] NFS: Use the same nfs_client_id4 for every server
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 14 Sep 2012 17:24:21 -0400
-Message-ID: <20120914212420.1635.7475.stgit@degas.1015granger.net>
-In-Reply-To: <20120914211053.1635.74063.stgit@degas.1015granger.net>
-References: <20120914211053.1635.74063.stgit@degas.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from cantor2.suse.de ([195.135.220.15]:41661 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756719Ab2I1B4H convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Sep 2012 21:56:07 -0400
+From: Alexander Graf <agraf@suse.de>
+Content-Type: text/plain; charset=us-ascii
+Subject: [REGRESSION] nfsd crashing with 3.6.0-rc7 on PowerPC
+Date: Fri, 28 Sep 2012 03:55:56 +0200
+Message-Id: <3BDA9E62-7031-42D6-8CA9-5327B61700F5@suse.de>
+Cc: linuxppc-dev <linuxppc-dev@lists.ozlabs.org>,
+        Benjamin Herrenschmidt <benh@kernel.crashing.org>,
+        linux-nfs@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Jan Kara <jack@suse.cz>, skinsbursky@parallels.com, bfields@redhat.com
+To: LKML List <linux-kernel@vger.kernel.org>
+Mime-Version: 1.0 (Apple Message framework v1278)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, when identifying itself to NFS servers, the Linux NFS
-client uses a unique nfs_client_id4.id string for each server IP
-address it talks with.  For example, when client A talks to server X,
-the client identifies itself using a string like "AX".  The
-requirements for these strings are specified in detail by RFC 3530
-(and bis).
+Howdy,
 
-This form of client identification presents a problem for Transparent
-State Migration.  When client A's state on server X is migrated to
-server Y, it continues to be associated with string "AX."  But,
-according to the rules of client string construction above, client
-A will present string "AY" when communicating with server Y.
+While running 3.6.0-rcX I am having a few issues with nfsd on my PPC970 based system. For some reason every time I actually end up accessing an NFS share on it, it crashes away at random points. It looks a lot like corrupted pointers in all logs. I also can't reproduce the oopses without nfsd in the game. Doing the same workload that crashes over NFS locally on the box (git clone -ls) works just fine.
 
-Server Y thus has no way to know that client A should be associated
-with the state migrated from server X.  "AX" is all but abandoned,
-interfering with establishing fresh state for client A on server Y.
+The mount was done simply without parameters:
 
-To support transparent state migration, then, NFSv4.0 clients must
-instead use the same nfs_client_id4.id string to identify themselves
-to every NFS server; something like "A".
+  lychee:/home/agraf/release on /abuild/agraf/autotest_e500/lychee type nfs (rw,addr=10.10.1.189)
 
-Now a client identifies itself as "A" to server X.  When a file
-system on server X transitions to server Y, and client A identifies
-itself as "A" to server Y, Y will know immediately that the state
-associated with "A," whether it is native or migrated, is owned by
-the client, and can merge both into a single lease.
+My exports on the host is also quite simple:
 
-As a pre-requisite to adding support for NFSv4 migration to the Linux
-NFS client, this patch changes the way Linux identifies itself to NFS
-servers via the SETCLIENTID (NFSv4 minor version 0) and EXCHANGE_ID
-(NFSv4 minor version 1) operations.
+  /home/agraf/release *(async,rw)
 
-In addition to removing the server's IP address from nfs_client_id4,
-the Linux NFS client will also no longer use its own source IP address
-as part of the nfs_client_id4 string.  On multi-homed clients, the
-value of this address depends on the address family and network
-routing used to contact the server, thus it can be different for each
-server.
+Below are OOPS excerpts from different rc's I tried. All of them crashed - all the way up to current Linus' master branch. I haven't cross-checked, but I don't remember any such behavior from pre-3.6 releases.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
 
- fs/nfs/nfs4proc.c |   51 +++++++++++++++++++++++++++++++++++++++------------
- 1 files changed, 39 insertions(+), 12 deletions(-)
+Alex
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6352741..80aadcc 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4012,6 +4012,32 @@ static void nfs4_init_boot_verifier(const struct nfs_client *clp,
- 	memcpy(bootverf->data, verf, sizeof(bootverf->data));
- }
- 
-+static unsigned int
-+nfs4_init_nonuniform_client_string(const struct nfs_client *clp,
-+				   char *buf, size_t len)
-+{
-+	unsigned int result;
-+
-+	rcu_read_lock();
-+	result = scnprintf(buf, len, "Linux NFSv4.0 %s/%s %s",
-+				clp->cl_ipaddr,
-+				rpc_peeraddr2str(clp->cl_rpcclient,
-+							RPC_DISPLAY_ADDR),
-+				rpc_peeraddr2str(clp->cl_rpcclient,
-+							RPC_DISPLAY_PROTO));
-+	rcu_read_unlock();
-+	return result;
-+}
-+
-+static unsigned int
-+nfs4_init_uniform_client_string(const struct nfs_client *clp,
-+				char *buf, size_t len)
-+{
-+	return scnprintf(buf, len, "Linux NFSv%u.%u %s",
-+				clp->rpc_ops->version, clp->cl_minorversion,
-+				clp->cl_rpcclient->cl_nodename);
-+}
-+
- /**
-  * nfs4_proc_setclientid - Negotiate client ID
-  * @clp: state data structure
-@@ -4042,15 +4068,18 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 
- 	/* nfs_client_id4 */
- 	nfs4_init_boot_verifier(clp, &sc_verifier);
--	rcu_read_lock();
--	setclientid.sc_name_len = scnprintf(setclientid.sc_name,
--			sizeof(setclientid.sc_name), "%s/%s %s",
--			clp->cl_ipaddr,
--			rpc_peeraddr2str(clp->cl_rpcclient,
--						RPC_DISPLAY_ADDR),
--			rpc_peeraddr2str(clp->cl_rpcclient,
--						RPC_DISPLAY_PROTO));
-+	if (test_bit(NFS_CS_MIGRATION, &clp->cl_flags))
-+		setclientid.sc_name_len =
-+				nfs4_init_uniform_client_string(clp,
-+						setclientid.sc_name,
-+						sizeof(setclientid.sc_name));
-+	else
-+		setclientid.sc_name_len =
-+				nfs4_init_nonuniform_client_string(clp,
-+						setclientid.sc_name,
-+						sizeof(setclientid.sc_name));
- 	/* cb_client4 */
-+	rcu_read_lock();
- 	setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
- 				sizeof(setclientid.sc_netid),
- 				rpc_peeraddr2str(clp->cl_rpcclient,
-@@ -5272,10 +5301,8 @@ int nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred)
- 	};
- 
- 	nfs4_init_boot_verifier(clp, &verifier);
--	args.id_len = scnprintf(args.id, sizeof(args.id),
--				"%s/%s",
--				clp->cl_ipaddr,
--				clp->cl_rpcclient->cl_nodename);
-+	args.id_len = nfs4_init_uniform_client_string(clp, args.id,
-+							sizeof(args.id));
- 	dprintk("NFS call  exchange_id auth=%s, '%.*s'\n",
- 		clp->cl_rpcclient->cl_auth->au_ops->au_name,
- 		args.id_len, args.id);
+
+############################################################################
+#                              3.6.0-rc1                                   #
+############################################################################
+
+
+Oops: Kernel access of bad area, sig: 11 [#1]
+PREEMPT SMP NR_CPUS=32 Maple
+Modules linked in: nfsd autofs4 exportfs binfmt_misc tg3 uninorth_agp agpgart hwmon
+NIP: c00000000016a330 LR: c000000000608794 CTR: c00000000063fe78
+REGS: c000000071b832f0 TRAP: 0300   Not tainted  (3.6.0-rc1-00220-gb645f8b)
+MSR: 9000000000009032 <SF,HV,EE,ME,IR,DR,RI>  CR: 22002044  XER: 20000000
+SOFTE: 1
+DAR: 4e375f30f9fae38f, DSISR: 40000000
+TASK = c00000007b3a0000[6061] 'nfsd' THREAD: c000000071b80000 CPU: 3
+GPR00: 0000000000000000 c000000071b83570 c000000000b8e2a8 0000000000000280 
+GPR04: 00000000000102d0 c000000000609844 c00000000065418c c000000000ec55e0 
+GPR08: 000000000036ac63 0000000000477000 c000000000a91758 c000000000a4e5e0 
+GPR12: 0000000022000048 c00000000fff2680 0000000000010000 0000000000000010 
+GPR16: 0000000000000000 0000000000000001 00000000000005a8 0000000000000d10 
+GPR20: 0000000000008000 c000000071d39608 0000000000000d10 00000000000002f0 
+GPR24: c000000000609844 00000000000102d0 0000000000000280 0000000000000280 
+GPR28: c000000000609844 4e375f30f9fae38f c000000000adb9c8 c00000007b002b00 
+NIP [c00000000016a330] .__kmalloc_track_caller+0x120/0x2ac
+LR [c000000000608794] .__kmalloc_reserve+0x44/0xbc
+Call Trace:
+[c000000071b83570] [c00000000016a370] .__kmalloc_track_caller+0x160/0x2ac (unreliable)
+[c000000071b83620] [c000000000608794] .__kmalloc_reserve+0x44/0xbc
+[c000000071b836c0] [c000000000609844] .__alloc_skb+0xb8/0x1d0
+[c000000071b83780] [c00000000065418c] .sk_stream_alloc_skb+0x48/0x154
+[c000000071b83810] [c000000000655308] .tcp_sendpage+0x1d0/0x7a0
+[c000000071b83920] [c00000000067b864] .inet_sendpage+0x100/0x158
+[c000000071b839d0] [c0000000005fb294] .kernel_sendpage+0x7c/0xc8
+[c000000071b83a70] [c0000000006b72b4] .svc_send_common+0xc8/0x1a8
+[c000000071b83b40] [c0000000006b74c8] .svc_sendto+0x134/0x15c
+[c000000071b83c40] [c0000000006b7590] .svc_tcp_sendto+0x3c/0xc0
+[c000000071b83cd0] [c0000000006c46dc] .svc_send+0xb0/0x118
+[c000000071b83d70] [c0000000006b41a0] .svc_process+0x784/0x7c0
+[c000000071b83e40] [d000000003032e34] .nfsd+0x138/0x1ec [nfsd]
+[c000000071b83ed0] [c00000000009d050] .kthread+0xb0/0xbc
+[c000000071b83f90] [c00000000001e9b0] .kernel_thread+0x54/0x70
+Instruction dump:
+2bbf0010 41fd000c 7fe3fb78 48000180 e92d0040 e97f0000 7ceb4a14 e9070008 
+7fab482a 2fbd0000 419e0034 e81f0022 <7f7d002a> 38000000 886d01f2 980d01f2 
+---[ end trace 9af22fc4dfe9499b ]---
+
+Unable to handle kernel paging request for data at address 0x4e375f30f9fae38f
+Faulting instruction address: 0xc00000000016a330
+Oops: Kernel access of bad area, sig: 11 [#2]
+PREEMPT SMP NR_CPUS=32 Maple
+Modules linked in: nfsd autofs4 exportfs binfmt_misc tg3 uninorth_agp agpgart hwmon
+NIP: c00000000016a330 LR: c000000000608794 CTR: c0000000006a1b7c
+REGS: c000000079e1b300 TRAP: 0300   Tainted: G      D       (3.6.0-rc1-00220-gb645f8b)
+MSR: 9000000000009032 <SF,HV,EE,ME,IR,DR,RI>  CR: 24082444  XER: 20000000
+SOFTE: 1
+DAR: 4e375f30f9fae38f, DSISR: 40000000
+TASK = c000000073d80000[10885] 'dhcpcd' THREAD: c000000079e18000 CPU: 3
+GPR00: 0000000000000000 c000000079e1b580 c000000000b8e2a8 0000000000000300 
+GPR04: 00000000000106d0 c000000000609844 c000000000601c60 c000000000ec55e0 
+GPR08: 000000000036ac63 0000000000477000 c000000000a91758 c000000000a4e5e0 
+GPR12: 0000000000000000 c00000000fff2680 00000000201e6ad8 c000000079e1b930 
+GPR16: 0000000000000158 0000000000000000 0000000000000001 0000000000000004 
+GPR20: c000000079e1b818 c0000000711350f8 c0000000711350c0 0000000000000000 
+GPR24: c000000000609844 00000000000106d0 0000000000000300 0000000000000300 
+GPR28: c000000000609844 4e375f30f9fae38f c000000000adb9c8 c00000007b002b00 
+NIP [c00000000016a330] .__kmalloc_track_caller+0x120/0x2ac
+LR [c000000000608794] .__kmalloc_reserve+0x44/0xbc
+Call Trace:
+[c000000079e1b630] [c000000000608794] .__kmalloc_reserve+0x44/0xbc
+[c000000079e1b6d0] [c000000000609844] .__alloc_skb+0xb8/0x1d0
+[c000000079e1b790] [c000000000601c60] .sock_alloc_send_pskb+0x124/0x410
+[c000000079e1b8c0] [c0000000006a246c] .packet_sendmsg+0x8f0/0xc48
+[c000000079e1ba10] [c0000000005fc024] .sock_sendmsg+0xbc/0x100
+[c000000079e1bc10] [c0000000005fca54] .SyS_sendto+0xf4/0x13c
+[c000000079e1bd90] [c00000000063321c] .compat_sys_socketcall+0x16c/0x288
+[c000000079e1be30] [c0000000000098e0] syscall_exit+0x0/0x94
+Instruction dump:
+2bbf0010 41fd000c 7fe3fb78 48000180 e92d0040 e97f0000 7ceb4a14 e9070008 
+7fab482a 2fbd0000 419e0034 e81f0022 <7f7d002a> 38000000 886d01f2 980d01f2 
+---[ end trace 9af22fc4dfe9499c ]---
+
+Unable to handle kernel paging request for data at address 0x4e375f30f9fae38f
+Faulting instruction address: 0xc00000000016a330
+Oops: Kernel access of bad area, sig: 11 [#3]
+PREEMPT SMP NR_CPUS=32 Maple
+Modules linked in: nfsd autofs4 exportfs binfmt_misc tg3 uninorth_agp agpgart hwmon
+NIP: c00000000016a330 LR: c000000000608794 CTR: 0000000000000000
+REGS: c000000079e5b290 TRAP: 0300   Tainted: G      D       (3.6.0-rc1-00220-gb645f8b)
+MSR: 9000000000009032 <SF,HV,EE,ME,IR,DR,RI>  CR: 24024244  XER: 20000000
+SOFTE: 1
+DAR: 4e375f30f9fae38f, DSISR: 40000000
+TASK = c000000079bc1a30[4552] 'console-kit-dae' THREAD: c000000079e58000 CPU: 3
+GPR00: 0000000000000000 c000000079e5b510 c000000000b8e2a8 0000000000000280 
+GPR04: 00000000000106d0 c000000000609844 c000000000601c60 c000000000ec55e0 
+GPR08: 000000000036ac63 0000000000477000 c000000000a91758 c000000000a4e5e0 
+GPR12: 100000000000d032 c00000000fff2680 0000000010146d80 c000000079e5b8c0 
+GPR16: 0000000000000094 0000000000000000 0000000000000001 0000000000000004 
+GPR20: c000000079e5b7a8 c000000077e02af8 c000000077e02ac0 0000000000000000 
+GPR24: c000000000609844 00000000000106d0 0000000000000280 0000000000000280 
+GPR28: c000000000609844 4e375f30f9fae38f c000000000adb9c8 c00000007b002b00 
+NIP [c00000000016a330] .__kmalloc_track_caller+0x120/0x2ac
+LR [c000000000608794] .__kmalloc_reserve+0x44/0xbc
+Call Trace:
+[c000000079e5b510] [c000000079e58080] 0xc000000079e58080 (unreliable)
+[c000000079e5b5c0] [c000000000608794] .__kmalloc_reserve+0x44/0xbc
+[c000000079e5b660] [c000000000609844] .__alloc_skb+0xb8/0x1d0
+[c000000079e5b720] [c000000000601c60] .sock_alloc_send_pskb+0x124/0x410
+[c000000079e5b850] [c00000000069e284] .unix_stream_sendmsg+0x190/0x4e0
+[c000000079e5b970] [c0000000005fb130] .sock_aio_write+0x16c/0x1a4
+[c000000079e5baa0] [c000000000172bcc] .do_sync_readv_writev+0xb4/0x124
+[c000000079e5bc40] [c0000000001c9070] .compat_do_readv_writev+0xf4/0x21c
+[c000000079e5bd80] [c0000000001c932c] .compat_sys_writev+0x8c/0xe0
+[c000000079e5be30] [c0000000000098e0] syscall_exit+0x0/0x94
+Instruction dump:
+2bbf0010 41fd000c 7fe3fb78 48000180 e92d0040 e97f0000 7ceb4a14 e9070008 
+7fab482a 2fbd0000 419e0034 e81f0022 <7f7d002a> 38000000 886d01f2 980d01f2 
+---[ end trace 9af22fc4dfe9499d ]---
+
+Unable to handle kernel paging request for data at address 0x4e375f30f9fae38f
+Faulting instruction address: 0xc00000000016a330
+Oops: Kernel access of bad area, sig: 11 [#4]
+PREEMPT SMP NR_CPUS=32 Maple
+Modules linked in: nfsd autofs4 exportfs binfmt_misc tg3 uninorth_agp agpgart hwmon
+NIP: c00000000016a330 LR: c000000000608794 CTR: c00000000063fe78
+REGS: c000000077e2b470 TRAP: 0300   Tainted: G      D       (3.6.0-rc1-00220-gb645f8b)
+MSR: 9000000000009032 <SF,HV,EE,ME,IR,DR,RI>  CR: 24000084  XER: 20000000
+SOFTE: 1
+DAR: 4e375f30f9fae38f, DSISR: 40000000
+TASK = c000000072df1a30[24367] 'kworker/3:2' THREAD: c000000077e28000 CPU: 3
+GPR00: 0000000000000000 c000000077e2b6f0 c000000000b8e2a8 0000000000000280 
+GPR04: 0000000000010220 c000000000609844 c000000000665550 c000000000ec55e0 
+GPR08: 000000000036ac63 0000000000477000 c000000000a91758 c000000000a4e5e0 
+GPR12: c00000007b0c7c70 c00000000fff2680 0000000000051b63 0000000000051a41 
+GPR16: 0000000000051b5b 0000000000d00000 c00000000090f038 c00000000092eca7 
+GPR20: 0000000000000001 c000000077e2be58 c000000000ec6c05 0000000000000000 
+GPR24: c000000000609844 0000000000010220 0000000000000280 0000000000000280 
+GPR28: c000000000609844 4e375f30f9fae38f c000000000adb9c8 c00000007b002b00 
+NIP [c00000000016a330] .__kmalloc_track_caller+0x120/0x2ac
+LR [c000000000608794] .__kmalloc_reserve+0x44/0xbc
+Call Trace:
+[c000000077e2b6f0] [c000000077e2b770] 0xc000000077e2b770 (unreliable)
+[c000000077e2b7a0] [c000000000608794] .__kmalloc_reserve+0x44/0xbc
+[c000000077e2b840] [c000000000609844] .__alloc_skb+0xb8/0x1d0
+[c000000077e2b900] [c000000000665550] .tcp_send_fin+0x90/0x210
+[c000000077e2b990] [c000000000652f84] .tcp_close+0x260/0x4f4
+[c000000077e2ba30] [c00000000067c1fc] .inet_release+0xd0/0xf4
+[c000000077e2bac0] [c0000000005ff0d0] .sock_release+0x4c/0xf0
+[c000000077e2bb50] [c0000000006ac94c] .xs_reset_transport+0x9c/0xc4
+[c000000077e2bbf0] [c0000000006ac98c] .xs_close+0x18/0x88
+[c000000077e2bc80] [c0000000006a9500] .xprt_autoclose+0x40/0xbc
+[c000000077e2bd10] [c000000000094360] .process_one_work+0x34c/0x56c
+[c000000077e2bdd0] [c000000000094b88] .worker_thread+0x32c/0x4b8
+[c000000077e2bed0] [c00000000009d050] .kthread+0xb0/0xbc
+[c000000077e2bf90] [c00000000001e9b0] .kernel_thread+0x54/0x70
+Instruction dump:
+2bbf0010 41fd000c 7fe3fb78 48000180 e92d0040 e97f0000 7ceb4a14 e9070008 
+7fab482a 2fbd0000 419e0034 e81f0022 <7f7d002a> 38000000 886d01f2 980d01f2 
+---[ end trace 9af22fc4dfe9499e ]---
+
+Unable to handle kernel paging request for data at address 0xfffffffffffffff8
+Faulting instruction address: 0xc00000000009c9e8
+Oops: Kernel access of bad area, sig: 11 [#5]
+PREEMPT SMP NR_CPUS=32 Maple
+Modules linked in: nfsd autofs4 exportfs binfmt_misc tg3 uninorth_agp agpgart hwmon
+NIP: c00000000009c9e8 LR: c000000000097cf0 CTR: c0000000000b4ea0
+REGS: c000000077e2ac70 TRAP: 0300   Tainted: G      D       (3.6.0-rc1-00220-gb645f8b)
+MSR: 9000000000009032 <SF,HV,EE,ME,IR,DR,RI>  CR: 44000042  XER: 00000000
+SOFTE: 0
+DAR: fffffffffffffff8, DSISR: 40010000
+TASK = c000000072df1a30[24367] 'kworker/3:2' THREAD: c000000077e28000 CPU: 3
+GPR00: c0000000006d1c3c c000000077e2aef0 c000000000b8e2a8 c000000072df1a30 
+GPR04: 0000000000000003 0000000000000001 0000000000000000 c000000000a50370 
+GPR08: 000000898953db8d 0000000000000000 0000000000000000 0000000000000001 
+GPR12: c00000007b0c7c70 c00000000fff2680 0000000000051b63 0000000000051a41 
+GPR16: 0000000000051b5b 0000000000000001 0000000000000004 c000000077e2aff0 
+GPR20: c00000000007b7a0 c000000077e28080 0000000000000000 c000000077e28000 
+GPR24: 0000000000000003 c000000000ec4800 c000000072df1cd0 c000000072df1db8 
+GPR28: 0000000000000003 c000000000ec4800 c000000000ad6338 c000000072df1a30 
+NIP [c00000000009c9e8] .kthread_data+0x4/0xc
+LR [c000000000097cf0] .wq_worker_sleeping+0x20/0xd0
+Call Trace:
+[c000000077e2aef0] [c0000000000afac4] .dequeue_task+0xd0/0xf4 (unreliable)
+[c000000077e2af80] [c0000000006d1c3c] .__schedule+0x1c4/0x888
+[c000000077e2b1d0] [c00000000007b7a0] .do_exit+0x8b4/0x8c0
+[c000000077e2b2d0] [c00000000001c310] .die+0x3b4/0x3e4
+[c000000077e2b380] [c000000000033014] .bad_page_fault+0xf0/0x10c
+[c000000077e2b400] [c000000000005c04] handle_page_fault+0x2c/0x30
+--- Exception: 300 at .__kmalloc_track_caller+0x120/0x2ac
+    LR = .__kmalloc_reserve+0x44/0xbc
+[c000000077e2b6f0] [c000000077e2b770] 0xc000000077e2b770 (unreliable)
+[c000000077e2b7a0] [c000000000608794] .__kmalloc_reserve+0x44/0xbc
+[c000000077e2b840] [c000000000609844] .__alloc_skb+0xb8/0x1d0
+[c000000077e2b900] [c000000000665550] .tcp_send_fin+0x90/0x210
+[c000000077e2b990] [c000000000652f84] .tcp_close+0x260/0x4f4
+[c000000077e2ba30] [c00000000067c1fc] .inet_release+0xd0/0xf4
+[c000000077e2bac0] [c0000000005ff0d0] .sock_release+0x4c/0xf0
+[c000000077e2bb50] [c0000000006ac94c] .xs_reset_transport+0x9c/0xc4
+[c000000077e2bbf0] [c0000000006ac98c] .xs_close+0x18/0x88
+[c000000077e2bc80] [c0000000006a9500] .xprt_autoclose+0x40/0xbc
+[c000000077e2bd10] [c000000000094360] .process_one_work+0x34c/0x56c
+[c000000077e2bdd0] [c000000000094b88] .worker_thread+0x32c/0x4b8
+[c000000077e2bed0] [c00000000009d050] .kthread+0xb0/0xbc
+[c000000077e2bf90] [c00000000001e9b0] .kernel_thread+0x54/0x70
+Instruction dump:
+e8010010 eb61ffd8 eb81ffe0 eba1ffe8 ebe1fff8 7c0803a6 4e800020 e92d01c8 
+e9290340 e869fff2 4e800020 e9230340 <e869fff8> 4e800020 38600000 4e800020 
+---[ end trace 9af22fc4dfe9499f ]---
+
+Fixing recursive fault but reboot is needed!
+
+
+
+
+
+############################################################################
+#                              3.6.0-rc3                                   #
+############################################################################
+
+
+
+
+
+
+Oops: Kernel access of bad area, sig: 11 [#1]
+PREEMPT SMP NR_CPUS=32 Maple
+Modules linked in: nfsd autofs4 exportfs binfmt_misc tg3 uninorth_agp agpgart hwmon
+NIP: c00000000016a570 LR: c000000000608fe4 CTR: c000000000640bc4
+REGS: c0000000787e7170 TRAP: 0300   Not tainted  (3.6.0-rc3-00363-g7d3c5fb-dirty)
+MSR: 9000000000009032 <SF,HV,EE,ME,IR,DR,RI>  CR: 22002044  XER: 20000000
+SOFTE: 1
+DAR: 4146dc88b8105444, DSISR: 40000000
+TASK = c000000078613460[6321] 'nfsd' THREAD: c0000000787e4000 CPU: 2
+GPR00: 0000000000000000 c0000000787e73f0 c000000000b90428 0000000000000280 
+GPR04: 0000000000010220 c00000000060a094 c000000000654f74 c000000000e855e0 
+GPR08: 000000000016e882 0000000000435000 c000000000a93758 c000000000a505e0 
+GPR12: 0000000042002042 c00000000fff1f00 0000000000000000 0000000000000000 
+GPR16: fffffffffffffff6 0000000000000000 0000000000000001 0000000000010000 
+GPR20: 00000000000005a8 0000000000000003 c00000007b755bf8 c00000007b755c08 
+GPR24: c00000000060a094 0000000000010220 0000000000000280 0000000000000280 
+GPR28: c00000000060a094 4146dc88b8105444 c000000000add9f8 c00000007b002b00 
+NIP [c00000000016a570] .__kmalloc_track_caller+0x120/0x2ac
+LR [c000000000608fe4] .__kmalloc_reserve+0x44/0xbc
+Call Trace:
+[c0000000787e74a0] [c000000000608fe4] .__kmalloc_reserve+0x44/0xbc
+[c0000000787e7540] [c00000000060a094] .__alloc_skb+0xb8/0x1d0
+[c0000000787e7600] [c000000000654f74] .sk_stream_alloc_skb+0x48/0x154
+[c0000000787e7690] [c0000000006660a4] .tcp_write_xmit+0x89c/0xb8c
+[c0000000787e7790] [c000000000666408] .__tcp_push_pending_frames+0x40/0xb0
+[c0000000787e7810] [c000000000656624] .tcp_sendpage+0x704/0x7a0
+[c0000000787e7920] [c00000000067c744] .inet_sendpage+0x100/0x158
+[c0000000787e79d0] [c0000000005fbad0] .kernel_sendpage+0x7c/0xc8
+[c0000000787e7a70] [c0000000006b81f0] .svc_send_common+0xc8/0x1a8
+[c0000000787e7b40] [c0000000006b8404] .svc_sendto+0x134/0x15c
+[c0000000787e7c40] [c0000000006b84cc] .svc_tcp_sendto+0x3c/0xc0
+[c0000000787e7cd0] [c0000000006c55f8] .svc_send+0xb8/0x128
+[c0000000787e7d70] [c0000000006b50e4] .svc_process+0x784/0x7c0
+[c0000000787e7e40] [d000000003033e34] .nfsd+0x138/0x1ec [nfsd]
+[c0000000787e7ed0] [c00000000009d090] .kthread+0xb0/0xbc
+[c0000000787e7f90] [c00000000001e9b0] .kernel_thread+0x54/0x70
+Instruction dump:
+2bbf0010 41fd000c 7fe3fb78 48000180 e92d0040 e97f0000 7ceb4a14 e9070008 
+7fab482a 2fbd0000 419e0034 e81f0022 <7f7d002a> 38000000 886d01f2 980d01f2 
+---[ end trace 64544462a57c5991 ]---
+
+Unable to handle kernel paging request for data at address 0x4146dc88b8105444
+Faulting instruction address: 0xc00000000016acc8
+Oops: Kernel access of bad area, sig: 11 [#2]
+PREEMPT SMP NR_CPUS=32 Maple
+Modules linked in: nfsd autofs4 exportfs binfmt_misc tg3 uninorth_agp agpgart hwmon
+NIP: c00000000016acc8 LR: c0000000001afe14 CTR: 0000000000000000
+REGS: c00000007836eb50 TRAP: 0300   Tainted: G      D       (3.6.0-rc3-00363-g7d3c5fb-dirty)
+MSR: 9000000000009032 <SF,HV,EE,ME,IR,DR,RI>  CR: 24000084  XER: 20000000
+SOFTE: 1
+DAR: 4146dc88b8105444, DSISR: 40000000
+TASK = c000000078eace90[6322] 'nfsd' THREAD: c00000007836c000 CPU: 2
+GPR00: 0000000000000000 c00000007836edd0 c000000000b90428 c00000007b002b00 
+GPR04: 0000000000011280 c00000007836ef80 c00000007b004860 c000000000e855e0 
+GPR08: 000000000016e882 0000000000435000 c000000000a93758 c000000000a505e0 
+GPR12: 0000000024000084 c00000000fff1f00 c00000007836f298 c000000000b2d0d8 
+GPR16: 0000000000000000 c00000007836f150 000000000000000c c00000007a2980e0 
+GPR20: c00000007a550000 00000000008473f0 0000000000001000 000000000000000c 
+GPR24: c0000000001afe14 0000000000011280 00000000000000d0 c00000007b002b00 
+GPR28: c00000007b004860 4146dc88b8105444 c000000000add9f8 c00000007836ef80 
+NIP [c00000000016acc8] .kmem_cache_alloc+0x5c/0x1ec
+LR [c0000000001afe14] .bvec_alloc_bs+0xe0/0x124
+Call Trace:
+[c00000007836edd0] [c00000007836ee60] 0xc00000007836ee60 (unreliable)
+[c00000007836ee80] [c0000000001afe14] .bvec_alloc_bs+0xe0/0x124
+[c00000007836ef10] [c0000000001afef4] .bio_alloc_bioset+0x9c/0x114
+[c00000007836efc0] [c0000000001afffc] .bio_alloc+0x24/0x48
+[c00000007836f040] [c0000000001b6260] .mpage_alloc+0x3c/0xbc
+[c00000007836f0e0] [c0000000001b70e0] .do_mpage_readpage+0x508/0x668
+[c00000007836f220] [c0000000001b73bc] .mpage_readpages+0xfc/0x198
+[c00000007836f380] [c0000000002260dc] .ext3_readpages+0x28/0x40
+[c00000007836f400] [c00000000012e544] .__do_page_cache_readahead+0x1b8/0x2c4
+[c00000007836f520] [c00000000012e678] .ra_submit+0x28/0x38
+[c00000007836f590] [c0000000001a62c0] .__generic_file_splice_read+0x260/0x4d4
+[c00000007836f840] [c0000000001a6590] .generic_file_splice_read+0x5c/0xac
+[c00000007836f8d0] [c0000000001a4544] .do_splice_to+0xb0/0xdc
+[c00000007836f970] [c0000000001a4e68] .splice_direct_to_actor+0xd0/0x230
+[c00000007836fa50] [d000000003038f0c] .nfsd_vfs_read+0xa4/0x1b0 [nfsd]
+[c00000007836fb30] [d000000003039a7c] .nfsd_read+0x290/0x35c [nfsd]
+[c00000007836fc30] [d000000003041f38] .nfsd3_proc_read+0xd4/0x12c [nfsd]
+[c00000007836fcd0] [d000000003033528] .nfsd_dispatch+0xd4/0x1fc [nfsd]
+[c00000007836fd70] [c0000000006b4e54] .svc_process+0x4f4/0x7c0
+[c00000007836fe40] [d000000003033e34] .nfsd+0x138/0x1ec [nfsd]
+[c00000007836fed0] [c00000000009d090] .kthread+0xb0/0xbc
+[c00000007836ff90] [c00000000001e9b0] .kernel_thread+0x54/0x70
+Instruction dump:
+f821ff51 ebc2b608 7c7b1b78 7c992378 e92d0040 e97b0000 7ceb4a14 e9070008 
+7fab482a 2fbd0000 419e0034 e81b0022 <7f9d002a> 38000000 886d01f2 980d01f2 
+---[ end trace 64544462a57c5992 ]---
+
+Unable to handle kernel paging request for data at address 0x4146dc88b8105444
+Faulting instruction address: 0xc00000000016a570
+Oops: Kernel access of bad area, sig: 11 [#3]
+PREEMPT SMP NR_CPUS=32 Maple
+Modules linked in: nfsd autofs4 exportfs binfmt_misc tg3 uninorth_agp agpgart hwmon
+NIP: c00000000016a570 LR: c000000000608fe4 CTR: c0000000006a2ab8
+REGS: c000000077fe3300 TRAP: 0300   Tainted: G      D       (3.6.0-rc3-00363-g7d3c5fb-dirty)
+MSR: 9000000000009032 <SF,HV,EE,ME,IR,DR,RI>  CR: 24082444  XER: 20000000
+SOFTE: 1
+DAR: 4146dc88b8105444, DSISR: 40000000
+TASK = c000000077ccb460[7508] 'dhcpcd' THREAD: c000000077fe0000 CPU: 2
+GPR00: 0000000000000000 c000000077fe3580 c000000000b90428 0000000000000300 
+GPR04: 00000000000106d0 c00000000060a094 c0000000006024a4 c000000000e855e0 
+GPR08: 000000000016e882 0000000000435000 c000000000a93758 c000000000a505e0 
+GPR12: 0000000000000000 c00000000fff1f00 0000000020107ad8 c000000077fe3930 
+GPR16: 0000000000000158 0000000000000000 0000000000000001 0000000000000004 
+GPR20: c000000077fe3818 c00000007869e0f8 c00000007869e0c0 0000000000000000 
+GPR24: c00000000060a094 00000000000106d0 0000000000000300 0000000000000300 
+GPR28: c00000000060a094 4146dc88b8105444 c000000000add9f8 c00000007b002b00 
+NIP [c00000000016a570] .__kmalloc_track_caller+0x120/0x2ac
+LR [c000000000608fe4] .__kmalloc_reserve+0x44/0xbc
+Call Trace:
+[c000000077fe3630] [c000000000608fe4] .__kmalloc_reserve+0x44/0xbc
+[c000000077fe36d0] [c00000000060a094] .__alloc_skb+0xb8/0x1d0
+[c000000077fe3790] [c0000000006024a4] .sock_alloc_send_pskb+0x124/0x410
+[c000000077fe38c0] [c0000000006a33a8] .packet_sendmsg+0x8f0/0xc48
+[c000000077fe3a10] [c0000000005fc860] .sock_sendmsg+0xbc/0x100
+[c000000077fe3c10] [c0000000005fd290] .SyS_sendto+0xf4/0x13c
+[c000000077fe3d90] [c000000000633f08] .compat_sys_socketcall+0x16c/0x288
+[c000000077fe3e30] [c0000000000098e0] syscall_exit+0x0/0x94
+Instruction dump:
+2bbf0010 41fd000c 7fe3fb78 48000180 e92d0040 e97f0000 7ceb4a14 e9070008 
+7fab482a 2fbd0000 419e0034 e81f0022 <7f7d002a> 38000000 886d01f2 980d01f2 
+---[ end trace 64544462a57c5993 ]---
+
+Unable to handle kernel paging request for data at address 0x4146dc88b8105444
+Faulting instruction address: 0xc00000000016a570
+Oops: Kernel access of bad area, sig: 11 [#4]
+PREEMPT SMP NR_CPUS=32 Maple
+Modules linked in: nfsd autofs4 exportfs binfmt_misc tg3 uninorth_agp agpgart hwmon
+NIP: c00000000016a570 LR: c000000000608fe4 CTR: 0000000000000000
+REGS: c000000077f4b290 TRAP: 0300   Tainted: G      D       (3.6.0-rc3-00363-g7d3c5fb-dirty)
+MSR: 9000000000009032 <SF,HV,EE,ME,IR,DR,RI>  CR: 24024244  XER: 20000000
+SOFTE: 1
+DAR: 4146dc88b8105444, DSISR: 40000000
+TASK = c00000007b348000[4536] 'console-kit-dae' THREAD: c000000077f48000 CPU: 2
+GPR00: 0000000000000000 c000000077f4b510 c000000000b90428 0000000000000280 
+GPR04: 00000000000106d0 c00000000060a094 c0000000006024a4 c000000000e855e0 
+GPR08: 000000000016e882 0000000000435000 c000000000a93758 c000000000a505e0 
+GPR12: 100000000000d032 c00000000fff1f00 00000000102f4db0 c000000077f4b8c0 
+GPR16: 0000000000000094 0000000000000000 0000000000000001 0000000000000004 
+GPR20: c000000077f4b7a8 c0000000782a0ef8 c0000000782a0ec0 0000000000000000 
+GPR24: c00000000060a094 00000000000106d0 0000000000000280 0000000000000280 
+GPR28: c00000000060a094 4146dc88b8105444 c000000000add9f8 c00000007b002b00 
+NIP [c00000000016a570] .__kmalloc_track_caller+0x120/0x2ac
+LR [c000000000608fe4] .__kmalloc_reserve+0x44/0xbc
+Call Trace:
+[c000000077f4b510] [c000000077f48080] 0xc000000077f48080 (unreliable)
+[c000000077f4b5c0] [c000000000608fe4] .__kmalloc_reserve+0x44/0xbc
+[c000000077f4b660] [c00000000060a094] .__alloc_skb+0xb8/0x1d0
+[c000000077f4b720] [c0000000006024a4] .sock_alloc_send_pskb+0x124/0x410
+[c000000077f4b850] [c00000000069f1e8] .unix_stream_sendmsg+0x190/0x4e0
+[c000000077f4b970] [c0000000005fb96c] .sock_aio_write+0x16c/0x1a4
+[c000000077f4baa0] [c000000000172e40] .do_sync_readv_writev+0xb4/0x124
+[c000000077f4bc40] [c0000000001c9354] .compat_do_readv_writev+0xf4/0x21c
+[c000000077f4bd80] [c0000000001c9618] .compat_sys_writev+0x94/0xf0
+[c000000077f4be30] [c0000000000098e0] syscall_exit+0x0/0x94
+Instruction dump:
+2bbf0010 41fd000c 7fe3fb78 48000180 e92d0040 e97f0000 7ceb4a14 e9070008 
+7fab482a 2fbd0000 419e0034 e81f0022 <7f7d002a> 38000000 886d01f2 980d01f2 
+---[ end trace 64544462a57c5994 ]---
+
+Unable to handle kernel paging request for data at address 0x4146dc88b8105444
+Faulting instruction address: 0xc00000000016acc8
+Oops: Kernel access of bad area, sig: 11 [#5]
+PREEMPT SMP NR_CPUS=32 Maple
+Modules linked in: nfsd autofs4 exportfs binfmt_misc tg3 uninorth_agp agpgart hwmon
+NIP: c00000000016acc8 LR: c000000000072738 CTR: 0000000000000000
+REGS: c00000007b0ab3a0 TRAP: 0300   Tainted: G      D       (3.6.0-rc3-00363-g7d3c5fb-dirty)
+MSR: 9000000000009032 <SF,HV,EE,ME,IR,DR,RI>  CR: 24002024  XER: 00000000
+SOFTE: 1
+DAR: 4146dc88b8105444, DSISR: 40000000
+TASK = c00000007b099a30[6] 'kworker/u:0' THREAD: c00000007b0a8000 CPU: 2
+GPR00: 0000000000000000 c00000007b0ab620 c000000000b90428 c00000007b002b00 
+GPR04: 00000000000080d0 0000000000000000 0000000000000000 c000000000e855e0 
+GPR08: 000000000016e882 0000000000435000 c000000000a93758 c000000000a505e0 
+GPR12: 0000000084002022 c00000000fff1f00 0000000000051b63 0000000000051a41 
+GPR16: 0000000000000000 0000000000000000 c00000007b0ab990 c00000007b0abc10 
+GPR20: 0000000000000000 c0000000000134f4 c0000000780bd140 0000000000000000 
+GPR24: c000000000072738 00000000000080d0 c000000000cb7b80 c00000007b002b00 
+GPR28: c0000000780bce90 4146dc88b8105444 c000000000add9f8 c000000000a61468 
+NIP [c00000000016acc8] .kmem_cache_alloc+0x5c/0x1ec
+LR [c000000000072738] .copy_process+0x634/0x1114
+Call Trace:
+[c00000007b0ab620] [c00000000016ad48] .kmem_cache_alloc+0xdc/0x1ec (unreliable)
+[c00000007b0ab6d0] [c000000000072738] .copy_process+0x634/0x1114
+[c00000007b0ab7d0] [c000000000073510] .do_fork+0x118/0x400
+[c00000007b0ab8b0] [c000000000012d14] .sys_clone+0x58/0x70
+[c00000007b0ab920] [c000000000009b08] .ppc_clone+0x8/0xc
+--- Exception: c00 at .kernel_thread+0x28/0x70
+    LR = .__call_usermodehelper+0x50/0x11c
+[c00000007b0abc10] [c00000007b0abc90] 0xc00000007b0abc90 (unreliable)
+[c00000007b0abc80] [c00000007b0abd10] 0xc00000007b0abd10
+[c00000007b0abd10] [c000000000094370] .process_one_work+0x34c/0x56c
+[c00000007b0abdd0] [c000000000094b98] .worker_thread+0x32c/0x4b8
+[c00000007b0abed0] [c00000000009d090] .kthread+0xb0/0xbc
+[c00000007b0abf90] [c00000000001e9b0] .kernel_thread+0x54/0x70
+Instruction dump:
+f821ff51 ebc2b608 7c7b1b78 7c992378 e92d0040 e97b0000 7ceb4a14 e9070008 
+7fab482a 2fbd0000 419e0034 e81b0022 <7f9d002a> 38000000 886d01f2 980d01f2 
+---[ end trace 64544462a57c5995 ]---
+
+Unable to handle kernel paging request for data at address 0xfffffffffffffff8
+
+
+
+
+
+
+############################################################################
+#                              3.6.0-rc5                                   #
+############################################################################
+
+
+
+
+
+
+Oops: Kernel access of bad area, sig: 11 [#1]
+PREEMPT SMP NR_CPUS=32 Maple
+Modules linked in: nfsd autofs4 exportfs binfmt_misc tg3 hwmon uninorth_agp agpgart
+NIP: c0000000001b6a40 LR: c0000000001ade18 CTR: c0000000001b69b0
+REGS: c00000000ffdf600 TRAP: 0300   Not tainted  (3.6.0-rc5-00153-g518cd6a)
+MSR: 9000000000009032 <SF,HV,EE,ME,IR,DR,RI>  CR: 28ff4f48  XER: 00000000
+SOFTE: 1
+DAR: e0d668aeabc0e0eb, DSISR: 40000000
+TASK = c00000007b0bb460[0] 'swapper/3' THREAD: c00000007b0c4000 CPU: 3
+GPR00: 0000000000000000 c00000000ffdf880 c000000000b90460 e0d668aeabc0e0eb 
+GPR04: 0000000000000000 0000000000040000 0000000000040000 000000000000ba41 
+GPR08: 0000000000000200 0000000000000000 0000000000000001 c0000000786d3800 
+GPR12: 0000000048ffff48 c00000000fff2680 c00000007b0c7f90 0000000000000000 
+GPR16: 0000000000000000 0000000000000000 0000000000000000 0000000000200040 
+GPR20: c000000000a4f680 0000000000000003 c00000007872b170 0000000000000000 
+GPR24: 0000000000000000 0000000000040000 0000000002000000 0000000000000002 
+GPR28: 0000000000000008 c00000007929ce00 c000000000ae86f0 c0000000786d3be0 
+NIP [c0000000001b6a40] .mpage_end_io+0x90/0x150
+LR [c0000000001ade18] .bio_endio+0x64/0x78
+Call Trace:
+[c00000000ffdf880] [c00000007872b170] 0xc00000007872b170 (unreliable)
+[c00000000ffdf920] [c0000000001ade18] .bio_endio+0x64/0x78
+[c00000000ffdf990] [c0000000003617b4] .req_bio_endio+0xe0/0x104
+[c00000000ffdfa20] [c000000000361a64] .blk_update_request+0x28c/0x568
+[c00000000ffdfae0] [c000000000361d68] .blk_update_bidi_request+0x28/0x98
+[c00000000ffdfb70] [c00000000036396c] .blk_end_bidi_request+0x2c/0x8c
+[c00000000ffdfc10] [c0000000004944e8] .scsi_io_completion+0x22c/0x5b8
+[c00000000ffdfce0] [c00000000048c258] .scsi_finish_command+0xfc/0x120
+[c00000000ffdfd80] [c0000000004949b4] .scsi_softirq_done+0x138/0x15c
+[c00000000ffdfe10] [c00000000036a3ac] .blk_done_softirq+0xc4/0xf8
+[c00000000ffdfeb0] [c00000000007ed50] .__do_softirq+0x1c8/0x398
+[c00000000ffdff90] [c00000000001e6c8] .call_do_softirq+0x14/0x24
+[c00000007b0c78f0] [c00000000000f51c] .do_softirq+0xac/0x154
+[c00000007b0c7990] [c00000000007e7e4] .irq_exit+0x94/0x14c
+[c00000007b0c7a20] [c00000000000f0b8] .do_IRQ+0x278/0x340
+[c00000007b0c7ae0] [c000000000003b78] hardware_interrupt_common+0x178/0x180
+--- Exception: 501 at .arch_local_irq_restore+0x74/0x98
+    LR = .arch_local_irq_restore+0x74/0x98
+[c00000007b0c7dd0] [c00000000000f438] .arch_local_irq_restore+0x60/0x98 (unreliable)
+[c00000007b0c7e40] [c000000000015144] .cpu_idle+0x18c/0x2bc
+[c00000007b0c7ee0] [c0000000006da7ac] .start_secondary+0x378/0x384
+[c00000007b0c7f90] [c0000000000093f0] .start_secondary_prolog+0x10/0x14
+Instruction dump:
+3bfffff0 7fbf0040 419c0014 e81f0000 2fa00000 419e0008 7c0001ec e81d0020 
+780907e1 4082004c 4192001c 7c2004ac <7c0018a8> 7c00e378 7c0019ad 40c2fff4 
+---[ end trace 21d19d3ed703ad1c ]---
+
+Kernel panic - not syncing: Fatal exception in interrupt
+Rebooting in 9 seconds..
+
+
+
+
+
+
+############################################################################
+#                              3.6.0-rc7                                   #
+############################################################################
+
+
+
+
+
+
+Oops: Kernel access of bad area, sig: 11 [#1]
+PREEMPT SMP NR_CPUS=32 Maple
+Modules linked in: nfsd autofs4 exportfs binfmt_misc uninorth_agp tg3 agpgart hwmon
+NIP: c00000000016a5bc LR: c00000000060910c CTR: c000000000640ca8
+REGS: c00000007918b170 TRAP: 0300   Not tainted  (3.6.0-rc7-00128-ge333037)
+MSR: 9000000000009032 <SF,HV,EE,ME,IR,DR,RI>  CR: 22002048  XER: 20000000
+SOFTE: 1
+DAR: ce66ff186f457e7b, DSISR: 40010000
+TASK = c000000079f18000[5953] 'nfsd' THREAD: c000000079188000 CPU: 3
+GPR00: 0000000000000000 c00000007918b3f0 c000000000b914b0 0000000000000280 
+GPR04: 0000000000010220 c00000000060a1bc c000000000654f30 c000000000ec55e0 
+GPR08: 0000000000035f23 0000000000474000 c000000000a94758 c000000000a515e0 
+GPR12: 0000000042002048 c00000000fff2680 0000000000000000 0000000000000000 
+GPR16: fffffffffffffff6 0000000000000000 0000000000000001 0000000000010000 
+GPR20: 00000000000005a8 0000000000000003 c00000007b5962f8 c00000007b596308 
+GPR24: c00000000060a1bc 0000000000010220 0000000000000280 0000000000000280 
+GPR28: c00000000060a1bc ce66ff186f457e7b c000000000ade9d0 c00000007b002b00 
+NIP [c00000000016a5bc] .__kmalloc_track_caller+0x120/0x2ac
+LR [c00000000060910c] .__kmalloc_reserve+0x44/0xbc
+Call Trace:
+[c00000007918b3f0] [c00000000016a63c] .__kmalloc_track_caller+0x1a0/0x2ac (unreliable)
+[c00000007918b4a0] [c00000000060910c] .__kmalloc_reserve+0x44/0xbc
+[c00000007918b540] [c00000000060a1bc] .__alloc_skb+0xb8/0x1d0
+[c00000007918b600] [c000000000654f30] .sk_stream_alloc_skb+0x48/0x154
+[c00000007918b690] [c000000000666070] .tcp_write_xmit+0x89c/0xb8c
+[c00000007918b790] [c0000000006663d4] .__tcp_push_pending_frames+0x40/0xb0
+[c00000007918b810] [c0000000006565e0] .tcp_sendpage+0x704/0x7a0
+[c00000007918b920] [c00000000067c788] .inet_sendpage+0x100/0x158
+[c00000007918b9d0] [c0000000005fbbac] .kernel_sendpage+0x7c/0xc8
+[c00000007918ba70] [c0000000006b8328] .svc_send_common+0xc8/0x1a8
+[c00000007918bb40] [c0000000006b853c] .svc_sendto+0x134/0x15c
+[c00000007918bc40] [c0000000006b8604] .svc_tcp_sendto+0x3c/0xc0
+[c00000007918bcd0] [c0000000006c5730] .svc_send+0xb8/0x128
+[c00000007918bd70] [c0000000006b521c] .svc_process+0x784/0x7c0
+[c00000007918be40] [d000000003033e34] .nfsd+0x138/0x1ec [nfsd]
+[c00000007918bed0] [c00000000009d040] .kthread+0xb0/0xbc
+[c00000007918bf90] [c00000000001e9d0] .kernel_thread+0x54/0x70
+Instruction dump:
+2bbf0010 41fd000c 7fe3fb78 48000180 e92d0040 e97f0000 7ceb4a14 e9070008 
+7fab482a 2fbd0000 419e0034 e81f0022 <7f7d002a> 38000000 886d01f2 980d01f2 
+---[ end trace fe59661bbe31413f ]---
+
+Unable to handle kernel paging request for data at address 0xce66ff186f457e7b
+Faulting instruction address: 0xc00000000016a5bc
+Oops: Kernel access of bad area, sig: 11 [#2]
+PREEMPT SMP NR_CPUS=32 Maple
+Modules linked in: nfsd autofs4 exportfs binfmt_misc uninorth_agp tg3 agpgart hwmon
+NIP: c00000000016a5bc LR: c00000000060910c CTR: c0000000006a2b68
+REGS: c00000007b6c3300 TRAP: 0300   Tainted: G      D       (3.6.0-rc7-00128-ge333037)
+MSR: 9000000000009032 <SF,HV,EE,ME,IR,DR,RI>  CR: 24082448  XER: 20000000
+SOFTE: 1
+DAR: ce66ff186f457e7b, DSISR: 40010000
+TASK = c0000000797a3460[5195] 'dhcpcd' THREAD: c00000007b6c0000 CPU: 3
+GPR00: 0000000000000000 c00000007b6c3580 c000000000b914b0 0000000000000300 
+GPR04: 00000000000106d0 c00000000060a1bc c000000000602580 c000000000ec55e0 
+GPR08: 0000000000035f63 0000000000474000 c000000000a94758 c000000000a515e0 
+GPR12: 0000000000000000 c00000000fff2680 0000000020170ad8 c00000007b6c3930 
+GPR16: 0000000000000158 0000000000000000 0000000000000001 0000000000000004 
+GPR20: c00000007b6c3818 c0000000782c88f8 c0000000782c88c0 0000000000000000 
+GPR24: c00000000060a1bc 00000000000106d0 0000000000000300 0000000000000300 
+GPR28: c00000000060a1bc ce66ff186f457e7b c000000000ade9d0 c00000007b002b00 
+NIP [c00000000016a5bc] .__kmalloc_track_caller+0x120/0x2ac
+LR [c00000000060910c] .__kmalloc_reserve+0x44/0xbc
+Call Trace:
+[c00000007b6c3630] [c00000000060910c] .__kmalloc_reserve+0x44/0xbc
+[c00000007b6c36d0] [c00000000060a1bc] .__alloc_skb+0xb8/0x1d0
+[c00000007b6c3790] [c000000000602580] .sock_alloc_send_pskb+0x124/0x410
+[c00000007b6c38c0] [c0000000006a3458] .packet_sendmsg+0x8f0/0xc48
+[c00000007b6c3a10] [c0000000005fc93c] .sock_sendmsg+0xbc/0x100
+[c00000007b6c3c10] [c0000000005fd36c] .SyS_sendto+0xf4/0x13c
+[c00000007b6c3d90] [c000000000633fc4] .compat_sys_socketcall+0x16c/0x288
+[c00000007b6c3e30] [c0000000000098e0] syscall_exit+0x0/0x94
+Instruction dump:
+2bbf0010 41fd000c 7fe3fb78 48000180 e92d0040 e97f0000 7ceb4a14 e9070008 
+7fab482a 2fbd0000 419e0034 e81f0022 <7f7d002a> 38000000 886d01f2 980d01f2 
+---[ end trace fe59661bbe314140 ]---
+
 
