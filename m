@@ -1,129 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34435 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:50479 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753471Ab2IFNdE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Sep 2012 09:33:04 -0400
-Date: Thu, 6 Sep 2012 09:33:00 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Tyler Hicks <tyhicks@canonical.com>,
-        Dustin Kirkland <dustin.kirkland@gazzang.com>
-Subject: Re: [RFC PATCH 12/13] locks: break delegations on link
-Message-ID: <20120906133300.GA13054@fieldses.org>
-References: <1346878524-10585-1-git-send-email-bfields@redhat.com>
- <1346878524-10585-13-git-send-email-bfields@redhat.com>
- <20120905210206.GB10724@fieldses.org>
- <20120906070122.58c21013@corrin.poochiereds.net>
+	id S1758501Ab2I1PKv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 Sep 2012 11:10:51 -0400
+Date: Fri, 28 Sep 2012 11:10:43 -0400
+To: Alexander Graf <agraf@suse.de>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        LKML List <linux-kernel@vger.kernel.org>,
+        linuxppc-dev <linuxppc-dev@lists.ozlabs.org>,
+        Benjamin Herrenschmidt <benh@kernel.crashing.org>,
+        linux-nfs@vger.kernel.org, Jan Kara <jack@suse.cz>,
+        skinsbursky@parallels.com, bfields@redhat.com
+Subject: Re: [REGRESSION] nfsd crashing with 3.6.0-rc7 on PowerPC
+Message-ID: <20120928151043.GA19102@fieldses.org>
+References: <3BDA9E62-7031-42D6-8CA9-5327B61700F5@suse.de>
+ <CA+55aFyXwB1QcXE4Z_FAGnXROSgvP2x2+wjnX9OWPa4Dfaaf0A@mail.gmail.com>
+ <DC545CD9-8745-47DD-B13B-3385C0EB5B27@suse.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120906070122.58c21013@corrin.poochiereds.net>
+In-Reply-To: <DC545CD9-8745-47DD-B13B-3385C0EB5B27@suse.de>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 06, 2012 at 07:01:22AM -0400, Jeff Layton wrote:
-> On Wed, 5 Sep 2012 17:02:06 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+On Fri, Sep 28, 2012 at 04:19:55AM +0200, Alexander Graf wrote:
 > 
-> > Oops, I meant to cc this to Jeff:
+> On 28.09.2012, at 04:04, Linus Torvalds wrote:
+> 
+> > On Thu, Sep 27, 2012 at 6:55 PM, Alexander Graf <agraf@suse.de> wrote:
+> >> 
+> >> Below are OOPS excerpts from different rc's I tried. All of them crashed - all the way up to current Linus' master branch. I haven't cross-checked, but I don't remember any such behavior from pre-3.6 releases.
 > > 
-> > On Wed, Sep 05, 2012 at 04:55:22PM -0400, J. Bruce Fields wrote:
-> > > @@ -3556,6 +3560,7 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
-> > >  	if (error)
-> > >  		return error;
-> > >  
-> > > +retry_deleg:
-> > >  	new_dentry = user_path_create(newdfd, newname, &new_path, 0);
-> > >  	error = PTR_ERR(new_dentry);
-> > >  	if (IS_ERR(new_dentry))
-> > > @@ -3570,9 +3575,14 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
-> > >  	error = security_path_link(old_path.dentry, &new_path, new_dentry);
-> > >  	if (error)
-> > >  		goto out_dput;
-> > > -	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry);
-> > > +	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry, &delegated_inode);
-> > >  out_dput:
-> > >  	done_path_create(&new_path, new_dentry);
-> > > +	if (delegated_inode) {
-> > > +		error = break_deleg_wait(&delegated_inode);
-> > > +		if (!error)
-> > > +			goto retry_deleg;
-> > > +	}
-> > >  out:
-> > >  	path_put(&old_path);
-> > >  
+> > Since you seem to be able to reproduce it easily (and apparently
+> > reliably), any chance you could just bisect it?
 > > 
-> > I think this will get me into trouble with the audit code, right?
+> > Since I assume v3.5 is fine, and apparently -rc1 is already busted, a simple
 > > 
-> > (On a quick skim I think I'm retrying from a point after the getname()
-> > in rename and unlink, so I think those are OK, but I may be missing
-> > something....)
+> >   git bisect start
+> >   git bisect good v3.5
+> >   git bisect bad v3.6-rc1
 > > 
-> > --b.
-> > 
+> > will get you started on your adventure..
 > 
-> tl;dr: this patch is OK, but the unlink and rename patches will be
-> problematic.
+> Heh, will give it a try :). The thing really does look quite bisectable.
 > 
-> Longer explanation:
 > 
-> The big problem is multiple calls into audit_inode_child(), which will
-> give you duplicate audit records when you retry the call. That function
-> mostly gets called from the fsnotify_* calls, but is also called from
-> may_delete().
-> 
-> In the create case (like this one), you're safe since we only call
-> fsnotify_* after the create succeeds. In the may_delete() case, we have
-> to call that function before the actual operation. A quick look at your
-> patches looks like you'll end up with multiple calls into may_delete on
-> a retry. That'll give you multiple audit records for each.
-> 
-> The good news is that if and when my audit_names overhaul patches go
-> in, that problem should go away. At that point audit_inode_child() will
-> know how to update existing records instead of creating new ones in
-> this case. I'm hoping those will go in for 3.7, so you may just want to
-> try to ensure that these patches go in after those.
+> It might take a few hours though - the machine isn't exactly fast by today's standards and it's getting late here. But I'll keep you updated.
 
-OK, thanks for the explanation, I'll keep an eye on the audit_names
-overhaul.
+I doubt it's anything special about that workload, but just for kicks I
+tried a "git clone -ls" (cloning my linux tree to another directory on
+the same nfs filesystem), with server on 3.6.0-rc7, and didn't see
+anything interesting (just an xfs lockdep warning that looks like this
+one jlayton already reported:
+http://oss.sgi.com/archives/xfs/2012-09/msg00088.html
+)
+
+Any (even partial) bisection results would certainly be useful, thanks.
 
 --b.
-
-> 
-> > > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> > > index c8f5e74..2a77b28 100644
-> > > --- a/fs/nfsd/vfs.c
-> > > +++ b/fs/nfsd/vfs.c
-> > > @@ -1717,7 +1717,7 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
-> > >  		err = nfserrno(host_err);
-> > >  		goto out_dput;
-> > >  	}
-> > > -	host_err = vfs_link(dold, dirp, dnew);
-> > > +	host_err = vfs_link(dold, dirp, dnew, NULL);
-> > >  	if (!host_err) {
-> > >  		err = nfserrno(commit_metadata(ffhp));
-> > >  		if (!err)
-> > > diff --git a/include/linux/fs.h b/include/linux/fs.h
-> > > index ad9df65e..52b8c67 100644
-> > > --- a/include/linux/fs.h
-> > > +++ b/include/linux/fs.h
-> > > @@ -1721,7 +1721,7 @@ extern int vfs_create(struct inode *, struct dentry *, umode_t, bool);
-> > >  extern int vfs_mkdir(struct inode *, struct dentry *, umode_t);
-> > >  extern int vfs_mknod(struct inode *, struct dentry *, umode_t, dev_t);
-> > >  extern int vfs_symlink(struct inode *, struct dentry *, const char *);
-> > > -extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
-> > > +extern int vfs_link(struct dentry *, struct inode *, struct dentry *, struct inode **);
-> > >  extern int vfs_rmdir(struct inode *, struct dentry *);
-> > >  extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
-> > >  extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *, struct inode **);
-> > > -- 
-> > > 1.7.9.5
-> > > 
-> > > --
-> > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
-> -- 
-> Jeff Layton <jlayton@redhat.com>
