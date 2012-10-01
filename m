@@ -1,63 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:60605 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755157Ab2JVQGI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Oct 2012 12:06:08 -0400
-Received: by mail-ie0-f174.google.com with SMTP id k13so3828544iea.19
-        for <linux-nfs@vger.kernel.org>; Mon, 22 Oct 2012 09:06:07 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 03/10] mountd: Eliminate unnecessary type conversions
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 22 Oct 2012 12:06:04 -0400
-Message-ID: <20121022160604.4552.21104.stgit@lebasque.1015granger.net>
-In-Reply-To: <20121022160140.4552.34477.stgit@lebasque.1015granger.net>
-References: <20121022160140.4552.34477.stgit@lebasque.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-yh0-f46.google.com ([209.85.213.46]:34601 "EHLO
+	mail-yh0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751821Ab2JALwv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2012 07:52:51 -0400
+Received: by yhmm54 with SMTP id m54so314425yhm.19
+        for <linux-nfs@vger.kernel.org>; Mon, 01 Oct 2012 04:52:50 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/6] nfsdcltrack: create a new usermodehelper upcall program for tracking clients
+Date: Mon,  1 Oct 2012 07:52:39 -0400
+Message-Id: <1349092365-23920-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up compiler warnings:
+This is a companion patchset to the kernel set posted earlier. It adds a
+new callout program for the kernel that handles client ID tracking.
 
-cache.c:332:16: warning: conversion to ‘int’ from ‘size_t’ may alter
-  its value [-Wconversion]
-cache.c:339:9: warning: conversion to ‘size_t’ from ‘int’ may change
-  the sign of the result [-Wsign-conversion]
-cache.c: In function ‘subexport’:
-cache.c:354:17: warning: conversion to ‘int’ from ‘size_t’ may alter
-  its value [-Wconversion]
-cache.c:357:9: warning: conversion to ‘size_t’ from ‘int’ may change
-  the sign of the result [-Wsign-conversion]
+The nfsdcld directory is first renamed to something more generic and then
+a new program is added to handle the callout. The storage backend for
+the program is identical to the one used by nfsdcld. This program is
+really just a new frontend for that.
 
-Seen with gcc version 4.6.3 20120306 (Red Hat 4.6.3-2) (GCC) .
+We could even (in principle) have them use the same db directory, but
+for now I've made this program use a separate one.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Comments and suggestions welcome...
 
- utils/mountd/cache.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+Jeff Layton (6):
+  nfsdcltrack: rename the nfsdcld directory and options to nfsdcltrack
+  nfsdcltrack: remove pointless sqlite_topdir variable
+  nfsdcltrack: break out a function to open the database handle
+  nfsdcltrack: add a new "one-shot" program for manipulating the client
+    tracking db
+  nfsdcltrack: add a manpage for nfsdcltrack
+  nfsdcltrack: update the README about server startup order
 
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index 6de05f1..70e1aa4 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -329,7 +329,7 @@ static char *next_mnt(void **v, char *p)
- {
- 	FILE *f;
- 	struct mntent *me;
--	int l = strlen(p);
-+	size_t l = strlen(p);
- 	if (*v == NULL) {
- 		f = setmntent("/etc/mtab", "r");
- 		*v = f;
-@@ -351,7 +351,7 @@ static char *next_mnt(void **v, char *p)
- static bool subexport(struct exportent *e1, struct exportent *e2)
- {
- 	char *p1 = e1->e_path, *p2 = e2->e_path;
--	int l2 = strlen(p2);
-+	size_t l2 = strlen(p2);
- 
- 	return e2->e_flags & NFSEXP_CROSSMOUNT
- 	       && strncmp(p1, p2, l2) == 0
+ README                                     |  12 +-
+ configure.ac                               |  20 +-
+ utils/Makefile.am                          |   4 +-
+ utils/{nfsdcld => nfsdcltrack}/Makefile.am |   8 +-
+ utils/{nfsdcld => nfsdcltrack}/nfsdcld.c   |   0
+ utils/{nfsdcld => nfsdcltrack}/nfsdcld.man |   0
+ utils/nfsdcltrack/nfsdcltrack.c            | 435 +++++++++++++++++++++++++++++
+ utils/nfsdcltrack/nfsdcltrack.man          | 194 +++++++++++++
+ utils/{nfsdcld => nfsdcltrack}/sqlite.c    |  58 ++--
+ utils/{nfsdcld => nfsdcltrack}/sqlite.h    |   3 +-
+ 10 files changed, 693 insertions(+), 41 deletions(-)
+ rename utils/{nfsdcld => nfsdcltrack}/Makefile.am (59%)
+ rename utils/{nfsdcld => nfsdcltrack}/nfsdcld.c (100%)
+ rename utils/{nfsdcld => nfsdcltrack}/nfsdcld.man (100%)
+ create mode 100644 utils/nfsdcltrack/nfsdcltrack.c
+ create mode 100644 utils/nfsdcltrack/nfsdcltrack.man
+ rename utils/{nfsdcld => nfsdcltrack}/sqlite.c (94%)
+ rename utils/{nfsdcld => nfsdcltrack}/sqlite.h (92%)
+
+-- 
+1.7.11.4
 
