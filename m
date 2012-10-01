@@ -1,109 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from intranet.asianux.com ([58.214.24.6]:45672 "EHLO
-	intranet.asianux.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755923Ab2JQBgt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Oct 2012 21:36:49 -0400
-Message-ID: <507E0BF0.7050207@asianux.com>
-Date: Wed, 17 Oct 2012 09:37:52 +0800
-From: Chen Gang <gang.chen@asianux.com>
+Received: from fieldses.org ([174.143.236.118]:57839 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752350Ab2JAVkL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Oct 2012 17:40:11 -0400
+Date: Mon, 1 Oct 2012 17:40:09 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfsd4: don't pin clientids to pseudoflavors
+Message-ID: <20121001214009.GB3378@fieldses.org>
+References: <20121001173616.GB29803@fieldses.org>
+ <DA1B8EAE-0C49-4E45-A69C-AD2B1E4C3869@oracle.com>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [Bug fix] nfs-client: fix nfs_inode_attrs_need_update for async
- read_done comes during truncating to smaller size
-References: <507B70F1.7040903@asianux.com> <4FA345DA4F4AE44899BD2B03EEEC2FA909236BB5@SACEXCMBX04-PRD.hq.netapp.com> <507B968A.9090104@asianux.com> <4FA345DA4F4AE44899BD2B03EEEC2FA90923F1C4@SACEXCMBX04-PRD.hq.netapp.com> <507CBA3F.6000204@asianux.com> <4FA345DA4F4AE44899BD2B03EEEC2FA909253103@SACEXCMBX04-PRD.hq.netapp.com> <507CDEF2.2060809@asianux.com> <20121016063348.7b225bfb@tlielax.poochiereds.net> <507D48A6.3070601@asianux.com> <20121016081320.74fccc5b@tlielax.poochiereds.net>
-In-Reply-To: <20121016081320.74fccc5b@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <DA1B8EAE-0C49-4E45-A69C-AD2B1E4C3869@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-于 2012年10月16日 20:13, Jeff Layton 写道:
->>
->> 2) but, are we truly no ways to solve this issue ?  (I do not think so).
->>
+On Mon, Oct 01, 2012 at 10:53:22AM -0700, Chuck Lever wrote:
+> Cc: stable ?
+
+OK, will do.--b.
+
 > 
-> Not that I see, but don't let me stop you from trying to find one. ;)
+> Sent from my iPhone
 > 
-
-we can divide the issue to 2 separate parts:
-
-1) the inconsistent attribute by time delay between client and server:
-
-   A) it is the nfs v2/v3 design issue, the "user" can understand (not
-implementation mistake)
-   B) we need make the time delay as shorter as we can. (this is the
-reason why I call it "performance", although this "word" is still not
-quit suitable)
-   C) "user" can understand, not mean can bear (such as skipping writing
-operation attribute changes)
-
-2) the inconsistent attribute by a client itself:
-
-   A) it is implementation issue, the "user" can not understand (it is
-an implementation mistake)
-   B) we need solve it (so I call it "correctness" issue).
-   C) "user" can not understand, not mean can not bear (such as current
-issue which I report)
-
-at last, for maintainer:
-   A) for "performance", we need try our best to do;
-   B) for "correctness", we need fix it completely;
-
->> 3) I think an executable way (but maybe not a good way) is :
->>
->>    A) for each client, check each task id of the client its own (such as
->> rpc task xid), so can know the order of tasks of the client its own.
->>
+> On Oct 1, 2012, at 10:36 AM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
 > 
-> We do something like this already. That's what the gencount thing is
-> all about. It's still possible though to fool that check if two calls
-> are scheduled closely enough.
->
-
-1) I think gencount is not equal to sequence number, the sequence number
-can mark all relative tasks of one client in order.
-
-2) I also think, it is not quite complex to make a client itself in
-consistency. (it is implementation issue, not design issue)
-
-
-> Also note that it's not just the reordering of replies that you have to
-> concern yourself with. The requests themselves can be reordered on the
-> network. The server is also under no obligation to execute calls in the
-> order received.
-> 
-
-1) I agree with you, in nfs_inode_attrs_need_update(), it need consider
-this situation (the tasks from server return is not in order).
-
-2) I do not think it can not be accomplished if the tasks of client
-itself have sequence number.  (maybe, it would be enough to only judge
-which task is later between the 2 tasks by sequence number).
-
-
->>    B) maybe also need another some synchronization code, but I think it
->> does not have much negative effect with performance.
->>
-> 
-> Yeah, serializing things to fix this is probably a non-starter. NFSv2
-> and UDP transports are basically legacy code at this point, so there's
-> not a lot of incentive to do anything drastic here.
-> 
-
-1) I agree with what you said above, but maybe you misunderstand of what
-I said for the "item B)"
-
-2) the "item B)" is for the completion of "item A)". when we fix this
-issue, maybe have to add additional synchronization code which maybe can
-cause negative effect with performance, but I think it is not much
-("user" can bear).
-
-At last, I suggest we need think of how to fix this implementation bug
-in nfs-client region.
-
--- 
-Chen Gang
-
-Asianux Corporation
+> > For 3.7.--b.
+> > 
+> > commit 4f01f198b0b3da95f17d96dd54431b02d98c65d3
+> > Author: J. Bruce Fields <bfields@redhat.com>
+> > Date:   Tue Aug 21 12:48:30 2012 -0400
+> > 
+> >    nfsd4: don't pin clientids to pseudoflavors
+> > 
+> >    I added cr_flavor to the data compared in same_creds without any
+> >    justification, in d5497fc693a446ce9100fcf4117c3f795ddfd0d2 "nfsd4: move
+> >    rq_flavor into svc_cred".
+> > 
+> >    Recent client changes then started making
+> > 
+> >        mount -osec=krb5 server:/export /mnt/
+> >        echo "hello" >/mnt/TMP
+> >        umount /mnt/
+> >        mount -osec=krb5i server:/export /mnt/
+> >        echo "hello" >/mnt/TMP
+> > 
+> >    to fail due to a clid_inuse on the second open.
+> > 
+> >    Mounting sequentially like this with different flavors probably isn't
+> >    that common outside artificial tests.  Also, the real bug here may be
+> >    that the server isn't just destroying the former clientid in this case
+> >    (because it isn't good enough at recognizing when the old state is
+> >    gone).  But it prompted some discussion and a look back at the spec, and
+> >    I think the check was probably wrong.  Fix and document.
+> > 
+> >    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > 
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > index 5122e17..0f8d7e7 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+> > @@ -1223,10 +1223,26 @@ static bool groups_equal(struct group_info *g1, struct group_info *g2)
+> >    return true;
+> > }
+> > 
+> > +/*
+> > + * RFC 3530 language requires clid_inuse be returned when the
+> > + * "principal" associated with a requests differs from that previously
+> > + * used.  We use uid, gid's, and gss principal string as our best
+> > + * approximation.  We also don't want to allow non-gss use of a client
+> > + * established using gss: in theory cr_principal should catch that
+> > + * change, but in practice cr_principal can be null even in the gss case
+> > + * since gssd doesn't always pass down a principal string.
+> > + */
+> > +static bool is_gss_cred(struct svc_cred *cr)
+> > +{
+> > +    /* Is cr_flavor one of the gss "pseudoflavors"?: */
+> > +    return (cr->cr_flavor > RPC_AUTH_MAXFLAVOR);
+> > +}
+> > +
+> > +
+> > static bool
+> > same_creds(struct svc_cred *cr1, struct svc_cred *cr2)
+> > {
+> > -    if ((cr1->cr_flavor != cr2->cr_flavor)
+> > +    if ((is_gss_cred(cr1) != is_gss_cred(cr2))
+> >        || (cr1->cr_uid != cr2->cr_uid)
+> >        || (cr1->cr_gid != cr2->cr_gid)
+> >        || !groups_equal(cr1->cr_group_info, cr2->cr_group_info))
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
