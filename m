@@ -1,107 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.openrapids.net ([64.15.138.104]:58737 "EHLO
-	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1759844Ab2J2QHN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 12:07:13 -0400
-Date: Mon, 29 Oct 2012 12:07:10 -0400
-From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v7 10/16] dlm: use new hashtable implementation
-Message-ID: <20121029160710.GA18944@Krystal>
-References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com> <1351450948-15618-10-git-send-email-levinsasha928@gmail.com> <20121029124655.GD11733@Krystal> <20121029130736.GF11733@Krystal> <CA+1xoqfxgB+8BybPpf+jwT-ObfGPxnbKvkz1MUMuJuR8NDSNaw@mail.gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:22624 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752429Ab2JAWPg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Oct 2012 18:15:36 -0400
+Received: from vmwexceht01-prd.hq.netapp.com (vmwexceht01-prd.hq.netapp.com [10.106.76.239])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q91MFLY4025286
+	for <linux-nfs@vger.kernel.org>; Mon, 1 Oct 2012 15:15:21 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] NFSv4.0 reclaim reboot state when re-establishing
+ clientid
+Date: Mon, 1 Oct 2012 22:15:20 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908FFAAF9@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1348866309-2049-1-git-send-email-andros@netapp.com>
+	 <1348866309-2049-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1348866309-2049-2-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CA+1xoqfxgB+8BybPpf+jwT-ObfGPxnbKvkz1MUMuJuR8NDSNaw@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* Sasha Levin (levinsasha928@gmail.com) wrote:
-> On Mon, Oct 29, 2012 at 9:07 AM, Mathieu Desnoyers
-> <mathieu.desnoyers@efficios.com> wrote:
-> > * Mathieu Desnoyers (mathieu.desnoyers@efficios.com) wrote:
-> >> * Sasha Levin (levinsasha928@gmail.com) wrote:
-> >> [...]
-> >> > @@ -158,34 +159,21 @@ static int dlm_allow_conn;
-> >> >  static struct workqueue_struct *recv_workqueue;
-> >> >  static struct workqueue_struct *send_workqueue;
-> >> >
-> >> > -static struct hlist_head connection_hash[CONN_HASH_SIZE];
-> >> > +static struct hlist_head connection_hash[CONN_HASH_BITS];
-> >> >  static DEFINE_MUTEX(connections_lock);
-> >> >  static struct kmem_cache *con_cache;
-> >> >
-> >> >  static void process_recv_sockets(struct work_struct *work);
-> >> >  static void process_send_sockets(struct work_struct *work);
-> >> >
-> >> > -
-> >> > -/* This is deliberately very simple because most clusters have simple
-> >> > -   sequential nodeids, so we should be able to go straight to a connection
-> >> > -   struct in the array */
-> >> > -static inline int nodeid_hash(int nodeid)
-> >> > -{
-> >> > -   return nodeid & (CONN_HASH_SIZE-1);
-> >> > -}
-> >>
-> >> There is one thing I dislike about this change: you remove a useful
-> >> comment. It's good to be informed of the reason why a direct mapping
-> >> "value -> hash" without any dispersion function is preferred here.
-> 
-> Yes, I've removed the comment because it's no longer true with the patch :)
-> 
-> > And now that I come to think of it: you're changing the behavior : you
-> > will now use a dispersion function on the key, which goes against the
-> > intent expressed in this comment.
-> 
-> The comment gave us the information that nodeids are mostly
-> sequential, we no longer need to rely on that.
-
-I'm fine with turning a direct + modulo mapping into a dispersed hash as
-long as there are no underlying assumptions about sequentiality of value
-accesses.
-
-If the access pattern would happen to be typically sequential, then
-adding dispersion could hurt performances significantly, turning a
-frequent L1 access into a L2 access for instance.
-
-> 
-> > It might be good to change hash_add(), hash_add_rcu(),
-> > hash_for_each_possible*() key parameter for a "hash" parameter, and let
-> > the caller provide the hash value computed by the function they like as
-> > parameter, rather than enforcing hash_32/hash_64.
-> 
-> Why? We already proved that hash_32() is more than enough as a hashing
-> function, why complicate things?
-> 
-> Even doing hash_32() on top of another hash is probably a good idea to
-> keep things simple.
-
-All I'm asking is: have you made sure that this hash table is not
-deliberately kept sequential (without dispersion) to accelerate specific
-access patterns ? This should at least be documented in the changelog.
-
-Thanks,
-
-Mathieu
-
-
-> 
-> Thanks,
-> Sasha
-
--- 
-Mathieu Desnoyers
-Operating System Efficiency R&D Consultant
-EfficiOS Inc.
-http://www.efficios.com
+T24gRnJpLCAyMDEyLTA5LTI4IGF0IDE3OjA1IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
+ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFdlIHNo
+b3VsZCBhbHdheXMgcmVjbGFpbSBzdGF0ZSB3aGVuIHRoZSBsZWFzZSBhbmQgdGhlcmVmb3JlIHRo
+ZSBjbGllbnRpZA0KPiBpcyBleHBpcmVkLg0KPiANCj4gU2lnbmVkLW9mZi1ieTogQW5keSBBZGFt
+c29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvbmZzNHN0YXRlLmMgfCAg
+ICA2ICsrKystLQ0KPiAgMSBmaWxlcyBjaGFuZ2VkLCA0IGluc2VydGlvbnMoKyksIDIgZGVsZXRp
+b25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRzdGF0ZS5jIGIvZnMvbmZzL25m
+czRzdGF0ZS5jDQo+IGluZGV4IGE1MzMxZWMuLjEzNDMyM2EgMTAwNjQ0DQo+IC0tLSBhL2ZzL25m
+cy9uZnM0c3RhdGUuYw0KPiArKysgYi9mcy9uZnMvbmZzNHN0YXRlLmMNCj4gQEAgLTE2MDAsOCAr
+MTYwMCw4IEBAIG91dDoNCj4gIAlyZXR1cm4gbmZzNF9yZWNvdmVyeV9oYW5kbGVfZXJyb3IoY2xw
+LCBzdGF0dXMpOw0KPiAgfQ0KPiAgDQo+IC0vKiBTZXQgTkZTNENMTlRfTEVBU0VfRVhQSVJFRCBm
+b3IgYWxsIHY0LjAgZXJyb3JzIGFuZCBmb3IgcmVjb3ZlcmFibGUgZXJyb3JzDQo+IC0gKiBvbiBF
+WENIQU5HRV9JRCBmb3IgdjQuMQ0KPiArLyogU2V0IE5GUzRDTE5UX0xFQVNFX0VYUElSRUQgYW5k
+IHJlY2xhaW0gcmVib290IHN0YXRlIGZvciBhbGwgdjQuMCBlcnJvcnMNCj4gKyAqIGFuZCBmb3Ig
+cmVjb3ZlcmFibGUgZXJyb3JzIG9uIEVYQ0hBTkdFX0lEIGZvciB2NC4xDQo+ICAgKi8NCj4gIHN0
+YXRpYyBpbnQgbmZzNF9oYW5kbGVfcmVjbGFpbV9sZWFzZV9lcnJvcihzdHJ1Y3QgbmZzX2NsaWVu
+dCAqY2xwLCBpbnQgc3RhdHVzKQ0KPiAgew0KPiBAQCAtMTY0Nyw2ICsxNjQ3LDggQEAgc3RhdGlj
+IGludCBuZnM0X2hhbmRsZV9yZWNsYWltX2xlYXNlX2Vycm9yKHN0cnVjdCBuZnNfY2xpZW50ICpj
+bHAsIGludCBzdGF0dXMpDQo+ICAJCXJldHVybiBzdGF0dXM7DQo+ICAJfQ0KPiAgCXNldF9iaXQo
+TkZTNENMTlRfTEVBU0VfRVhQSVJFRCwgJmNscC0+Y2xfc3RhdGUpOw0KPiArCW5mczRfc3RhdGVf
+Y2xlYXJfcmVjbGFpbV9yZWJvb3QoY2xwKTsNCj4gKwluZnM0X3N0YXRlX3N0YXJ0X3JlY2xhaW1f
+cmVib290KGNscCk7DQoNClRoaXMgaXMgcHJvYmFibHkgY29ycmVjdCBmb3IgTkZTNEVSUl9TVEFM
+RV9DTElFTlRJRCwgYnV0IGNlcnRhaW5seSBub3QNCmZvciBORlM0RVJSX1NFUV9NSVNPUkRFUkVE
+LCBvciBORlM0RVJSX0RFTEFZLi4uDQoNCj4gIAlkcHJpbnRrKCIlczogaGFuZGxlZCBlcnJvciAl
+ZCBmb3Igc2VydmVyICVzXG4iLCBfX2Z1bmNfXywgc3RhdHVzLA0KPiAgCQkJY2xwLT5jbF9ob3N0
+bmFtZSk7DQo+ICAJcmV0dXJuIDA7DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMg
+Y2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0K
+d3d3Lm5ldGFwcC5jb20NCg==
