@@ -1,96 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f46.google.com ([209.85.213.46]:65280 "EHLO
-	mail-yh0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754889Ab2J0MeD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 08:34:03 -0400
-Received: by mail-yh0-f46.google.com with SMTP id m54so690985yhm.19
-        for <linux-nfs@vger.kernel.org>; Sat, 27 Oct 2012 05:34:03 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v8 08/32] vfs: fix linkat to retry on ESTALE errors
-Date: Sat, 27 Oct 2012 08:33:15 -0400
-Message-Id: <1351341219-17837-9-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
-References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:49156 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751551Ab2JARfO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Oct 2012 13:35:14 -0400
+Received: from bfields by fieldses.org with local (Exim 4.76)
+	(envelope-from <bfields@fieldses.org>)
+	id 1TIjti-0007lV-4S
+	for linux-nfs@vger.kernel.org; Mon, 01 Oct 2012 13:35:14 -0400
+Date: Mon, 1 Oct 2012 13:35:14 -0400
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd: stricter endianness in reply cache hash
+Message-ID: <20121001173513.GA29803@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/namei.c | 46 ++++++++++++++++++++++++++--------------------
- 1 file changed, 26 insertions(+), 20 deletions(-)
+Just a dumb patch to make u32/__be32 use more consistent, queuing for
+3.7.--b.
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 7def44b..d542a19 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3613,6 +3613,7 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
- 	struct path old_path, new_path;
- 	int how = 0;
- 	int error;
-+	unsigned int try = 0;
- 
- 	if ((flags & ~(AT_SYMLINK_FOLLOW | AT_EMPTY_PATH)) != 0)
- 		return -EINVAL;
-@@ -3630,30 +3631,35 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
- 	if (flags & AT_SYMLINK_FOLLOW)
- 		how |= LOOKUP_FOLLOW;
- 
--	error = user_path_at(olddfd, oldname, how, &old_path);
--	if (error)
--		return error;
-+	do {
-+		error = user_path_at(olddfd, oldname, how, &old_path);
-+		if (error)
-+			break;
- 
--	new_dentry = user_path_create(newdfd, newname, &new_path, false, false);
--	error = PTR_ERR(new_dentry);
--	if (IS_ERR(new_dentry))
--		goto out;
-+		new_dentry = user_path_create(newdfd, newname, &new_path,
-+						false, false);
-+		error = PTR_ERR(new_dentry);
-+		if (IS_ERR(new_dentry))
-+			goto out;
- 
--	error = -EXDEV;
--	if (old_path.mnt != new_path.mnt)
--		goto out_dput;
--	error = may_linkat(&old_path);
--	if (unlikely(error))
--		goto out_dput;
--	error = security_path_link(old_path.dentry, &new_path, new_dentry);
--	if (error)
--		goto out_dput;
--	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry);
-+		error = -EXDEV;
-+		if (old_path.mnt != new_path.mnt)
-+			goto out_dput;
-+		error = may_linkat(&old_path);
-+		if (unlikely(error))
-+			goto out_dput;
-+		error = security_path_link(old_path.dentry, &new_path,
-+						new_dentry);
-+		if (error)
-+			goto out_dput;
-+		error = vfs_link(old_path.dentry, new_path.dentry->d_inode,
-+						new_dentry);
- out_dput:
--	done_path_create(&new_path, new_dentry);
-+		done_path_create(&new_path, new_dentry);
- out:
--	path_put(&old_path);
--
-+		path_put(&old_path);
-+		how |= LOOKUP_REVAL;
-+	} while (retry_estale(error, try++));
- 	return error;
+commit 46056c57875540e945b9fc84042f2e4d7777b2d3
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Fri Jul 27 11:57:00 2012 -0400
+
+    nfsd: stricter endianness in reply cache hash
+    
+    Admittedly this is just to shut up sparse; the byte-swapping has no
+    effect on the result.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index 2cbac34..6e5b8a8 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -29,10 +29,10 @@ static int			cache_disabled = 1;
+ /*
+  * Calculate the hash index from an XID.
+  */
+-static inline u32 request_hash(u32 xid)
++static inline u32 request_hash(__be32 xid)
+ {
+-	u32 h = xid;
+-	h ^= (xid >> 24);
++	u32 h = ntohl(xid);
++	h ^= (h >> 24);
+ 	return h & (HASHSIZE-1);
  }
  
--- 
-1.7.11.7
-
