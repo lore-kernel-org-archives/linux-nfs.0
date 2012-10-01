@@ -1,22 +1,24 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:46900 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965435Ab2JZQjy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Oct 2012 12:39:54 -0400
-Received: by mail-ie0-f174.google.com with SMTP id k13so4013812iea.19
-        for <linux-nfs@vger.kernel.org>; Fri, 26 Oct 2012 09:39:52 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <k6ebva$1kf$1@ultimate100.geggus.net>
-References: <k6ebva$1kf$1@ultimate100.geggus.net>
-Date: Fri, 26 Oct 2012 09:39:52 -0700
-Message-ID: <CAA7C2qgNxnFQ2Sp5jwmNF1gFvqQJeNrnE-BMV-Ni+A2WhJKw-g@mail.gmail.com>
-Subject: Re: Kernel update 3.5.7 -> 3.6.3 breaks NFS4
-From: VDR User <user.vdr@gmail.com>
-To: Sven Geggus <lists@fuchsschwanzdomain.de>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Received: from fieldses.org ([174.143.236.118]:43319 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751620Ab2JARnw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Oct 2012 13:43:52 -0400
+Received: from bfields by fieldses.org with local (Exim 4.76)
+	(envelope-from <bfields@fieldses.org>)
+	id 1TIk23-0007sA-Ky
+	for linux-nfs@vger.kernel.org; Mon, 01 Oct 2012 13:43:51 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: nfsd: pin clients to 4.0/4.1
+Date: Mon,  1 Oct 2012 13:43:46 -0400
+Message-Id: <1349113428-30173-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I use debian testing here and NFSv4. My clients are running kernel
-3.6.3, server is running 3.6.2.  No problems here.
+The following patches should prevent clients from mixing 4.0 and 4.1
+compounds, closing out another minor 4.1 todo.  (Though it would
+probably be a good idea to write some pynfs tests for some of these odd
+cases.)
+
+--b.
+
