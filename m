@@ -1,63 +1,239 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.openrapids.net ([64.15.138.104]:59041 "EHLO
-	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1750931Ab2J2TKp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 15:10:45 -0400
-Date: Mon, 29 Oct 2012 15:10:42 -0400
-From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-To: Tejun Heo <tj@kernel.org>
-Cc: Sasha Levin <levinsasha928@gmail.com>,
-        Josh Triplett <josh@joshtriplett.org>, torvalds@linux-foundation.org,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v7 06/16] tracepoint: use new hashtable implementation
-Message-ID: <20121029191042.GA21864@Krystal>
-References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com> <1351450948-15618-6-git-send-email-levinsasha928@gmail.com> <20121029113515.GB9115@Krystal> <CA+1xoqce6uJ6wy3+2CBwsLHKnsz4wD0vt8MBEGKCFfXTvuC0Hg@mail.gmail.com> <20121029183157.GC3097@jtriplet-mobl1> <CA+1xoqfMrn9zDFMJNFfA0NA86wE_DedD97cP1yJ2UQdTjs3uyQ@mail.gmail.com> <20121029185319.GA21546@Krystal> <20121029185814.GC4066@htj.dyndns.org> <20121029190107.GD4066@htj.dyndns.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20121029190107.GD4066@htj.dyndns.org>
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:37792 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752375Ab2JALw4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2012 07:52:56 -0400
+Received: by ggnr5 with SMTP id r5so1332689ggn.19
+        for <linux-nfs@vger.kernel.org>; Mon, 01 Oct 2012 04:52:56 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 5/6] nfsdcltrack: add a manpage for nfsdcltrack
+Date: Mon,  1 Oct 2012 07:52:44 -0400
+Message-Id: <1349092365-23920-6-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1349092365-23920-1-git-send-email-jlayton@redhat.com>
+References: <1349092365-23920-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* Tejun Heo (tj@kernel.org) wrote:
-> On Mon, Oct 29, 2012 at 11:58:14AM -0700, Tejun Heo wrote:
-> > On Mon, Oct 29, 2012 at 02:53:19PM -0400, Mathieu Desnoyers wrote:
-> > > The argument about hash_init being useful to add magic values in the
-> > > future only works for the cases where a hash table is declared with
-> > > DECLARE_HASHTABLE(). It's completely pointless with DEFINE_HASHTABLE(),
-> > > because we could initialize any debugging variables from within
-> > > DEFINE_HASHTABLE().
-> > 
-> > You can do that with [0 .. HASH_SIZE - 1] initializer.
-> 
-> And in general, let's please try not to do optimizations which are
-> pointless.  Just stick to the usual semantics.  You have an abstract
-> data structure - invoke the initializer before using it.  Sure,
-> optimize it if it shows up somewhere.  And here, if we do the
-> initializers properly, it shouldn't cause any more actual overhead -
-> ie. DEFINE_HASHTABLE() will basicallly boil down to all zero
-> assignments and the compiler will put the whole thing in .bss anyway.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/nfsdcltrack/Makefile.am     |   2 +-
+ utils/nfsdcltrack/nfsdcltrack.man | 194 ++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 195 insertions(+), 1 deletion(-)
+ create mode 100644 utils/nfsdcltrack/nfsdcltrack.man
 
-Yes, agreed. I was going too far in optimization land by proposing
-assumptions on zeroed memory. All I actually really care about is that
-we don't end up calling hash_init() on a statically defined (and thus
-already initialized) hash table.
-
-Thanks,
-
-Mathieu
-
+diff --git a/utils/nfsdcltrack/Makefile.am b/utils/nfsdcltrack/Makefile.am
+index afae455..1746a25 100644
+--- a/utils/nfsdcltrack/Makefile.am
++++ b/utils/nfsdcltrack/Makefile.am
+@@ -1,6 +1,6 @@
+ ## Process this file with automake to produce Makefile.in
+ 
+-man8_MANS	= nfsdcld.man
++man8_MANS	= nfsdcld.man nfsdcltrack.man
+ EXTRA_DIST	= $(man8_MANS)
+ 
+ AM_CFLAGS	+= -D_LARGEFILE64_SOURCE
+diff --git a/utils/nfsdcltrack/nfsdcltrack.man b/utils/nfsdcltrack/nfsdcltrack.man
+new file mode 100644
+index 0000000..bf64dc6
+--- /dev/null
++++ b/utils/nfsdcltrack/nfsdcltrack.man
+@@ -0,0 +1,194 @@
++.\" Automatically generated by Pod::Man 2.25 (Pod::Simple 3.16)
++.\"
++.\" Standard preamble:
++.\" ========================================================================
++.de Sp \" Vertical space (when we can't use .PP)
++.if t .sp .5v
++.if n .sp
++..
++.de Vb \" Begin verbatim text
++.ft CW
++.nf
++.ne \\$1
++..
++.de Ve \" End verbatim text
++.ft R
++.fi
++..
++.\" Set up some character translations and predefined strings.  \*(-- will
++.\" give an unbreakable dash, \*(PI will give pi, \*(L" will give a left
++.\" double quote, and \*(R" will give a right double quote.  \*(C+ will
++.\" give a nicer C++.  Capital omega is used to do unbreakable dashes and
++.\" therefore won't be available.  \*(C` and \*(C' expand to `' in nroff,
++.\" nothing in troff, for use with C<>.
++.tr \(*W-
++.ds C+ C\v'-.1v'\h'-1p'\s-2+\h'-1p'+\s0\v'.1v'\h'-1p'
++.ie n \{\
++.    ds -- \(*W-
++.    ds PI pi
++.    if (\n(.H=4u)&(1m=24u) .ds -- \(*W\h'-12u'\(*W\h'-12u'-\" diablo 10 pitch
++.    if (\n(.H=4u)&(1m=20u) .ds -- \(*W\h'-12u'\(*W\h'-8u'-\"  diablo 12 pitch
++.    ds L" ""
++.    ds R" ""
++.    ds C` ""
++.    ds C' ""
++'br\}
++.el\{\
++.    ds -- \|\(em\|
++.    ds PI \(*p
++.    ds L" ``
++.    ds R" ''
++'br\}
++.\"
++.\" Escape single quotes in literal strings from groff's Unicode transform.
++.ie \n(.g .ds Aq \(aq
++.el       .ds Aq '
++.\"
++.\" If the F register is turned on, we'll generate index entries on stderr for
++.\" titles (.TH), headers (.SH), subsections (.SS), items (.Ip), and index
++.\" entries marked with X<> in POD.  Of course, you'll have to process the
++.\" output yourself in some meaningful fashion.
++.ie \nF \{\
++.    de IX
++.    tm Index:\\$1\t\\n%\t"\\$2"
++..
++.    nr % 0
++.    rr F
++.\}
++.el \{\
++.    de IX
++..
++.\}
++.\"
++.\" Accent mark definitions (@(#)ms.acc 1.5 88/02/08 SMI; from UCB 4.2).
++.\" Fear.  Run.  Save yourself.  No user-serviceable parts.
++.    \" fudge factors for nroff and troff
++.if n \{\
++.    ds #H 0
++.    ds #V .8m
++.    ds #F .3m
++.    ds #[ \f1
++.    ds #] \fP
++.\}
++.if t \{\
++.    ds #H ((1u-(\\\\n(.fu%2u))*.13m)
++.    ds #V .6m
++.    ds #F 0
++.    ds #[ \&
++.    ds #] \&
++.\}
++.    \" simple accents for nroff and troff
++.if n \{\
++.    ds ' \&
++.    ds ` \&
++.    ds ^ \&
++.    ds , \&
++.    ds ~ ~
++.    ds /
++.\}
++.if t \{\
++.    ds ' \\k:\h'-(\\n(.wu*8/10-\*(#H)'\'\h"|\\n:u"
++.    ds ` \\k:\h'-(\\n(.wu*8/10-\*(#H)'\`\h'|\\n:u'
++.    ds ^ \\k:\h'-(\\n(.wu*10/11-\*(#H)'^\h'|\\n:u'
++.    ds , \\k:\h'-(\\n(.wu*8/10)',\h'|\\n:u'
++.    ds ~ \\k:\h'-(\\n(.wu-\*(#H-.1m)'~\h'|\\n:u'
++.    ds / \\k:\h'-(\\n(.wu*8/10-\*(#H)'\z\(sl\h'|\\n:u'
++.\}
++.    \" troff and (daisy-wheel) nroff accents
++.ds : \\k:\h'-(\\n(.wu*8/10-\*(#H+.1m+\*(#F)'\v'-\*(#V'\z.\h'.2m+\*(#F'.\h'|\\n:u'\v'\*(#V'
++.ds 8 \h'\*(#H'\(*b\h'-\*(#H'
++.ds o \\k:\h'-(\\n(.wu+\w'\(de'u-\*(#H)/2u'\v'-.3n'\*(#[\z\(de\v'.3n'\h'|\\n:u'\*(#]
++.ds d- \h'\*(#H'\(pd\h'-\w'~'u'\v'-.25m'\f2\(hy\fP\v'.25m'\h'-\*(#H'
++.ds D- D\\k:\h'-\w'D'u'\v'-.11m'\z\(hy\v'.11m'\h'|\\n:u'
++.ds th \*(#[\v'.3m'\s+1I\s-1\v'-.3m'\h'-(\w'I'u*2/3)'\s-1o\s+1\*(#]
++.ds Th \*(#[\s+2I\s-2\h'-\w'I'u*3/5'\v'-.3m'o\v'.3m'\*(#]
++.ds ae a\h'-(\w'a'u*4/10)'e
++.ds Ae A\h'-(\w'A'u*4/10)'E
++.    \" corrections for vroff
++.if v .ds ~ \\k:\h'-(\\n(.wu*9/10-\*(#H)'\s-2\u~\d\s+2\h'|\\n:u'
++.if v .ds ^ \\k:\h'-(\\n(.wu*10/11-\*(#H)'\v'-.4m'^\v'.4m'\h'|\\n:u'
++.    \" for low resolution devices (crt and lpr)
++.if \n(.H>23 .if \n(.V>19 \
++\{\
++.    ds : e
++.    ds 8 ss
++.    ds o a
++.    ds d- d\h'-1'\(ga
++.    ds D- D\h'-1'\(hy
++.    ds th \o'bp'
++.    ds Th \o'LP'
++.    ds ae ae
++.    ds Ae AE
++.\}
++.rm #[ #] #H #V #F C
++.\" ========================================================================
++.\"
++.IX Title "NFSDCLTRACK 8"
++.TH NFSDCLTRACK 8 "2012-10-01" "" ""
++.\" For nroff, turn off justification.  Always turn off hyphenation; it makes
++.\" way too many mistakes in technical documents.
++.if n .ad l
++.nh
++.SH "NAME"
++nfsdcltrack \- NFSv4 Client Tracking Callout Program
++.SH "SYNOPSIS"
++.IX Header "SYNOPSIS"
++nfsdcltrack [\-d] [\-f] [\-s stable storage dir] <command> <args...>
++.SH "DESCRIPTION"
++.IX Header "DESCRIPTION"
++nfsdcltack is the NFSv4 client tracking callout program. It is not necessary
++to install this daemon on machines that are not acting as NFSv4 servers.
++.PP
++When a network partition is combined with a server reboot, there are
++edge conditions that can cause the server to grant lock reclaims when
++other clients have taken conflicting locks in the interim. A more detailed
++explanation of this issue is described in \s-1RFC\s0 3530, section 8.6.3.
++.PP
++In order to prevent these problems, the server must track a small amount
++of per-client information on stable storage. This program provides the
++userspace piece of that functionality. When the kernel needs to manipulate
++the database that stores this info, it will execute this program to handle
++it.
++.SH "OPTIONS"
++.IX Header "OPTIONS"
++.IP "\fB\-d\fR, \fB\-\-debug\fR" 4
++.IX Item "-d, --debug"
++Enable debug level logging.
++.IP "\fB\-f\fR, \fB\-\-foreground\fR" 4
++.IX Item "-f, --foreground"
++Log to stderr instead of syslog.
++.IP "\fB\-s\fR \fIstoragedir\fR, \fB\-\-storagedir\fR=\fIstorage_dir\fR" 4
++.IX Item "-s storagedir, --storagedir=storage_dir"
++Directory where stable storage information should be kept. The default
++value is \fI/var/lib/nfs/nfsdcltrack\fR.
++.SH "COMMANDS"
++.IX Header "COMMANDS"
++nfsdcltrack requires a command for each invocation. Supported commands
++are:
++.IP "\fBinit\fR" 4
++.IX Item "init"
++Initialize the database. This command requires no argument.
++.IP "\fBcreate\fR" 4
++.IX Item "create"
++Create a new client record (or update the timestamp on an existing one). This command requires a hex-encoded nfs_client_id4 as an argument.
++.IP "\fBremove\fR" 4
++.IX Item "remove"
++Remove a client record from the database. This command requires a hex-encoded nfs_client_id4 as an argument.
++.IP "\fBcheck\fR" 4
++.IX Item "check"
++Check to see if a nfs_client_id4 is allowed to reclaim. This command requires a hex-encoded nfs_client_id4 as an argument.
++.IP "\fBgracedone\fR" 4
++.IX Item "gracedone"
++Remove any unreclaimed client records from the database. This command requires a epoch boot time as an argument.
++.SH "NOTES"
++.IX Header "NOTES"
++The Linux kernel NFSv4 server has historically tracked this information
++on stable storage by manipulating information on the filesystem
++directly, in the directory to which \fI/proc/fs/nfsd/nfsv4recoverydir\fR
++points.
++.PP
++This program requires a kernel that supports the nfsdcltrack usermodehelper
++upcall. This support was first added in mainline kernel 3.7.
++.SH "AUTHORS"
++.IX Header "AUTHORS"
++nfsdcltrack was developed by Jeff Layton <jlayton@redhat.com>.
 -- 
-Mathieu Desnoyers
-Operating System Efficiency R&D Consultant
-EfficiOS Inc.
-http://www.efficios.com
+1.7.11.4
+
