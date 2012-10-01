@@ -1,58 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:44994 "EHLO mx1.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:49773 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932176Ab2JXNES convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Oct 2012 09:04:18 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chris Perl <chris.perl@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: RPC Race Condition
-Date: Wed, 24 Oct 2012 13:04:16 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90928F571@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20121022180339.GC24763@nyc-qws-132.nyc.delacy.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA909289403@SACEXCMBX04-PRD.hq.netapp.com>
- <20121022202611.GA27191@nyc-qws-132.nyc.delacy.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA90928AB39@SACEXCMBX04-PRD.hq.netapp.com>
- <20121023134551.GB27191@nyc-qws-132.nyc.delacy.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA90928C74A@SACEXCMBX04-PRD.hq.netapp.com>
- <20121023200855.GC27191@nyc-qws-132.nyc.delacy.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA90928DCDD@SACEXCMBX04-PRD.hq.netapp.com>
- <20121024124047.GD27191@nyc-qws-132.nyc.delacy.com>
-In-Reply-To: <20121024124047.GD27191@nyc-qws-132.nyc.delacy.com>
-Content-Type: text/plain; charset="Windows-1252"
+	id S1751729Ab2JAPnL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Oct 2012 11:43:11 -0400
+Date: Mon, 1 Oct 2012 11:43:10 -0400
+To: NeilBrown <neilb@suse.de>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: Inconsistency when mounting a directory that 'world' cannot
+ access.
+Message-ID: <20121001154309.GD18400@fieldses.org>
+References: <20120918112329.7d88ed9e@notabene.brown>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120918112329.7d88ed9e@notabene.brown>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> owner@vger.kernel.org] On Behalf Of Chris Perl
-> Sent: Wednesday, October 24, 2012 8:41 AM
-> To: Myklebust, Trond
-> Cc: linux-nfs@vger.kernel.org
-> Subject: Re: RPC Race Condition
+On Tue, Sep 18, 2012 at 11:23:29AM +1000, NeilBrown wrote:
 > 
-> On Tue, Oct 23, 2012 at 09:58:35PM +0000, Myklebust, Trond wrote:
-> > The only problem there would be the call to xs_sock_mark_closed() in
-> > xs_abort_connection. As far as I can tell, all we want to do there is
-> > clear all those flags.
-> >
-> > How about the following?
+> Suppose that on an NFS server I have a directory
+>    /foo/bar/baz
 > 
-> Looks good!  With all 4 patches applied things recover correctly and I no
-> longer see anything racing.
+> which I export, and that /foo/bar does not have world access.  e.g.
+> permissions are '750' and everyone who owns files in there is a member of the
+> group which owns /foo/bar.
 > 
-> Just to be clear, I took your patches and integrated them into the CentOS
-> 2.6.32-279.5.2.el6.centos.plus kernel.  Basically everything was the same
-> except the offsets and perhaps a little of the surrounding context.  I do not
-> believe the meaning of the patches was changed at all.
+> Then with NFSv3 I can
+>   mount server:/foo/bar/baz  /somewhere
+> because the lookup of /foo/bar/baz happens as root on the server in mountd.
+> 
+> With NFSv4 using 'sec=sys' I can only do this if I export with
+> "no_root_squash", as the lookup happens on the client as root, and if root
+> were squashed, it wouldn't have access beyond /foo/bar.
+> 
+> But if I use NFSv4 using 'sec=krb5', the lookup happens on the client using a
+> machine credential which gets mapped to 'nobody/nogroup' (or whatever anonuid
+> and anongid are set to for the export).  So I cannot perform the mount at all.
+> 
+> This is - at best - inconsistent and can cause confusion (hey - I was
+> confused for a while there).
+> 
+> Should something be done?  Can anything be done?
 
-Cool! Would you mind if I add "Tested-by" tags?
+I think nfsd_lookup_dentry() would need a special exception for the
+NFSEXP_V4ROOT case.
 
-> If you want me to test your latest git where these commits live, I can, just
-> point me at the git repo url.
+Looks like the directory permission check is actually done in
+lookup_one_len(), so we'd need to either call something else or
+temporarily swap credentials?
 
-Sure. I'll let you know as soon as I push them out later today...
+--b.
 
-Thanks!
-   Trond
+> 
+> I lean towards thinking that the most restrictive behaviour is most correct
+> (though I have a customer who feels that it is too restrictive).
+> 
+> Should the NFSv4 client always use an anon credential when performing the
+> 'mount'?  Is that even possible for auth_sys?
+> Should rpc.mountd use set_fsuid before doing the path lookup to ensure that
+> everyone has access to the exported directory?
+> 
+> Or is there some way 'mount' lookups for krb5 could be treated as being
+> performed by root?
+> 
+> Any ideas?
