@@ -1,507 +1,148 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f174.google.com ([209.85.220.174]:62426 "EHLO
-	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934911Ab2JXP0P (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Oct 2012 11:26:15 -0400
-Received: by mail-vc0-f174.google.com with SMTP id fk26so666919vcb.19
-        for <linux-nfs@vger.kernel.org>; Wed, 24 Oct 2012 08:26:14 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 05/10] nfsdcltrack: add a new "one-shot" program for manipulating the client tracking db
-Date: Wed, 24 Oct 2012 11:25:54 -0400
-Message-Id: <1351092359-25842-6-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1351092359-25842-1-git-send-email-jlayton@redhat.com>
-References: <1351092359-25842-1-git-send-email-jlayton@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:43335 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751646Ab2JARqz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Oct 2012 13:46:55 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 6/8] nfsd4: separate session allocation and initialization
+Date: Mon,  1 Oct 2012 13:46:50 -0400
+Message-Id: <1349113612-30374-7-git-send-email-bfields@redhat.com>
+In-Reply-To: <1349113612-30374-1-git-send-email-bfields@redhat.com>
+References: <1349113612-30374-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Usermode helper upcalls are all the rage these days for infrequent
-upcalls, since they make it rather idiot-proof. No running daemon is
-required, so there's really no setup beyond ensuring that the callout
-exists and is runnable.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-This program adds a callout program to nfs-utils for that purpose. The
-storage engine on the backend is identical to the one used by nfsdcld.
-This just adds a new frontend for it.
+This will allow some further simplification.
 
-For now, building with --enable-nfsdcltrack gives you both nfsdcld and
-nfsdcltrack programs. A later patch will remove nfsdcld altogether.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- utils/nfsdcltrack/Makefile.am   |   6 +-
- utils/nfsdcltrack/nfsdcltrack.c | 441 ++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 445 insertions(+), 2 deletions(-)
- create mode 100644 utils/nfsdcltrack/nfsdcltrack.c
+ fs/nfsd/nfs4state.c |   46 +++++++++++++++++++++++-----------------------
+ 1 file changed, 23 insertions(+), 23 deletions(-)
 
-diff --git a/utils/nfsdcltrack/Makefile.am b/utils/nfsdcltrack/Makefile.am
-index 073a71b..afae455 100644
---- a/utils/nfsdcltrack/Makefile.am
-+++ b/utils/nfsdcltrack/Makefile.am
-@@ -4,11 +4,13 @@ man8_MANS	= nfsdcld.man
- EXTRA_DIST	= $(man8_MANS)
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 79f1fdb..1cd80d5 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -946,21 +946,10 @@ static struct nfsd4_session *alloc_session(struct nfsd4_channel_attrs *fchan)
+ 	return new;
+ }
  
- AM_CFLAGS	+= -D_LARGEFILE64_SOURCE
--sbin_PROGRAMS	= nfsdcld
-+sbin_PROGRAMS	= nfsdcld nfsdcltrack
+-static struct nfsd4_session *alloc_init_session(struct svc_rqst *rqstp, struct nfs4_client *clp, struct nfsd4_create_session *cses)
++static struct nfsd4_session *init_session(struct svc_rqst *rqstp, struct nfsd4_session *new, struct nfs4_client *clp, struct nfsd4_create_session *cses)
+ {
+-	struct nfsd4_session *new;
+-	struct nfsd4_conn *conn;
+ 	int idx;
  
- nfsdcld_SOURCES = nfsdcld.c sqlite.c
+-	new = alloc_session(&cses->fore_channel);
+-	if (!new)
+-		return NULL;
 -
- nfsdcld_LDADD = ../../support/nfs/libnfs.a $(LIBEVENT) $(LIBSQLITE) $(LIBCAP)
+-	conn = alloc_conn_from_crses(rqstp, cses);
+-	if (!conn) {
+-		__free_session(new);
+-		return NULL;
+-	}
+ 	new->se_client = clp;
+ 	gen_sessionid(new);
  
-+nfsdcltrack_SOURCES = nfsdcltrack.c sqlite.c
-+nfsdcltrack_LDADD = ../../support/nfs/libnfs.a $(LIBSQLITE) $(LIBCAP)
-+
- MAINTAINERCLEANFILES = Makefile.in
+@@ -978,7 +967,6 @@ static struct nfsd4_session *alloc_init_session(struct svc_rqst *rqstp, struct n
+ 	spin_unlock(&clp->cl_lock);
+ 	spin_unlock(&client_lock);
  
-diff --git a/utils/nfsdcltrack/nfsdcltrack.c b/utils/nfsdcltrack/nfsdcltrack.c
-new file mode 100644
-index 0000000..f8c3810
---- /dev/null
-+++ b/utils/nfsdcltrack/nfsdcltrack.c
-@@ -0,0 +1,441 @@
-+/*
-+ * nfsdcltrack.c -- NFSv4 client name tracking program
-+ *
-+ * Copyright (C) 2012 Jeff Layton <jlayton@redhat.com>
-+ *
-+ * This program is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU General Public License
-+ * as published by the Free Software Foundation; either version 2
-+ * of the License, or (at your option) any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public License
-+ * along with this program; if not, write to the Free Software
-+ * Foundation, Inc., 51 Franklin Street, Fifth Floor,
-+ * Boston, MA 02110-1301, USA.
-+ */
-+
-+#ifdef HAVE_CONFIG_H
-+#include "config.h"
-+#endif /* HAVE_CONFIG_H */
-+
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <ctype.h>
-+#include <errno.h>
-+#include <stdbool.h>
-+#include <getopt.h>
-+#include <string.h>
-+#include <sys/stat.h>
-+#include <sys/types.h>
-+#include <fcntl.h>
-+#include <unistd.h>
-+#include <libgen.h>
-+#include <sys/inotify.h>
-+#ifdef HAVE_SYS_CAPABILITY_H
-+#include <sys/prctl.h>
-+#include <sys/capability.h>
-+#endif
-+
-+#include "xlog.h"
-+#include "sqlite.h"
-+
-+#ifndef CLD_DEFAULT_STORAGEDIR
-+#define CLD_DEFAULT_STORAGEDIR NFS_STATEDIR "/nfsdcltrack"
-+#endif
-+
-+/* defined by RFC 3530 */
-+#define NFS4_OPAQUE_LIMIT	1024
-+
-+/* private data structures */
-+struct cltrack_cmd {
-+	char *name;
-+	bool needs_arg;
-+	int (*func)(const char *arg);
-+};
-+
-+/* forward declarations */
-+static int cltrack_init(const char *unused);
-+static int cltrack_create(const char *id);
-+static int cltrack_remove(const char *id);
-+static int cltrack_check(const char *id);
-+static int cltrack_gracedone(const char *gracetime);
-+
-+/* global variables */
-+static struct option longopts[] =
-+{
-+	{ "help", 0, NULL, 'h' },
-+	{ "debug", 0, NULL, 'd' },
-+	{ "foreground", 0, NULL, 'f' },
-+	{ "storagedir", 1, NULL, 's' },
-+	{ NULL, 0, 0, 0 },
-+};
-+
-+static struct cltrack_cmd commands[] =
-+{
-+	{ "init", false, cltrack_init },
-+	{ "create", true, cltrack_create },
-+	{ "remove", true, cltrack_remove },
-+	{ "check", true, cltrack_check },
-+	{ "gracedone", true, cltrack_gracedone },
-+	{ NULL, false, NULL },
-+};
-+
-+static char *storagedir = CLD_DEFAULT_STORAGEDIR;
-+
-+/* common buffer for holding id4 blobs */
-+static unsigned char blob[NFS4_OPAQUE_LIMIT];
-+
-+static void
-+usage(char *progname)
-+{
-+	printf("%s [ -hfd ] [ -s dir ] < cmd > < arg >\n", progname);
-+	printf("Where < cmd > is one of the following and takes the following < arg >:\n");
-+	printf("    init\n");
-+	printf("    create <nfs_client_id4>\n");
-+	printf("    remove <nfs_client_id4>\n");
-+	printf("    check  <nfs_client_id4>\n");
-+	printf("    gracedone <epoch time>\n");
-+}
-+
-+
-+/**
-+ * hex_to_bin - convert a hex digit to its real value
-+ * @ch: ascii character represents hex digit
-+ *
-+ * hex_to_bin() converts one hex digit to its actual value or -1 in case of bad
-+ * input.
-+ *
-+ * Note: borrowed from lib/hexdump.c in the Linux kernel sources.
-+ */
-+static int
-+hex_to_bin(char ch)
-+{
-+	if ((ch >= '0') && (ch <= '9'))
-+		return ch - '0';
-+	ch = tolower(ch);
-+	if ((ch >= 'a') && (ch <= 'f'))
-+		return ch - 'a' + 10;
-+	return -1;
-+}
-+
-+/**
-+ * hex_str_to_bin - convert a hexidecimal string into a binary blob
-+ *
-+ * @src: string of hex digit pairs
-+ * @dst: destination buffer to hold binary data
-+ * @dstsize: size of the destination buffer
-+ *
-+ * Walk a string of hex digit pairs and convert them into binary data. Returns
-+ * the resulting length of the binary data or a negative error code. If the
-+ * data will not fit in the buffer, it returns -ENOBUFS (but will likely have
-+ * clobbered the dst buffer in the process of determining that). If there are
-+ * non-hexidecimal characters in the src, or an odd number of them then it
-+ * returns -EINVAL.
-+ */
-+static ssize_t
-+hex_str_to_bin(const char *src, unsigned char *dst, ssize_t dstsize)
-+{
-+	unsigned char *tmpdst = dst;
-+
-+	while (*src) {
-+		int hi, lo;
-+
-+		/* make sure we don't overrun the dst buffer */
-+		if ((tmpdst - dst) >= dstsize)
-+			return -ENOBUFS;
-+
-+		hi = hex_to_bin(*src++);
-+
-+		/* did we get an odd number of characters? */
-+		if (!*src)
-+			return -EINVAL;
-+		lo = hex_to_bin(*src++);
-+
-+		/* one of the characters isn't a hex digit */
-+		if (hi < 0 || lo < 0)
-+			return -EINVAL;
-+
-+		/* now place it in the dst buffer */
-+		*tmpdst++ = (hi << 4) | lo;
-+	}
-+
-+	return (ssize_t)(tmpdst - dst);
-+}
-+
-+/*
-+ * This program will almost always be run with root privileges since the
-+ * kernel will call out to run it. Drop all capabilities prior to doing
-+ * anything important to limit the exposure to potential compromise.
-+ *
-+ * FIXME: should we setuid to a different user early on instead?
-+ */
-+static int
-+cltrack_set_caps(void)
-+{
-+	int ret = 0;
-+#ifdef HAVE_SYS_CAPABILITY_H
-+	unsigned long i;
-+	cap_t caps;
-+
-+	/* prune the bounding set to nothing */
-+	for (i = 0; prctl(PR_CAPBSET_READ, i, 0, 0, 0) >= 0 ; ++i) {
-+		ret = prctl(PR_CAPBSET_DROP, i, 0, 0, 0);
-+		if (ret) {
-+			xlog(L_ERROR, "Unable to prune capability %lu from "
-+				      "bounding set: %m", i);
-+			return -errno;
-+		}
-+	}
-+
-+	/* get a blank capset */
-+	caps = cap_init();
-+	if (caps == NULL) {
-+		xlog(L_ERROR, "Unable to get blank capability set: %m");
-+		return -errno;
-+	}
-+
-+	/* reset the process capabilities */
-+	if (cap_set_proc(caps) != 0) {
-+		xlog(L_ERROR, "Unable to set process capabilities: %m");
-+		ret = -errno;
-+	}
-+	cap_free(caps);
-+#endif
-+	return ret;
-+}
-+
-+static int
-+cltrack_init(const char __attribute__((unused)) *unused)
-+{
-+	int ret;
-+
-+	/*
-+	 * see if the storagedir is writable by root w/o CAP_DAC_OVERRIDE.
-+	 * If it isn't then give the user a warning but proceed as if
-+	 * everything is OK. If the DB has already been created, then
-+	 * everything might still work. If it doesn't exist at all, then
-+	 * assume that the maindb init will be able to create it. Fail on
-+	 * anything else.
-+	 */
-+	if (access(storagedir, W_OK) == -1) {
-+		switch (errno) {
-+		case EACCES:
-+			xlog(L_WARNING, "Storage directory %s is not writable. "
-+					"Should be owned by root and writable "
-+					"by owner!", storagedir);
-+			break;
-+		case ENOENT:
-+			/* ignore and assume that we can create dir as root */
-+			break;
-+		default:
-+			xlog(L_ERROR, "Unexpected error when checking access "
-+				      "on %s: %m", storagedir);
-+			return -errno;
-+		}
-+	}
-+
-+	/* set up storage db */
-+	ret = sqlite_maindb_init(storagedir);
-+	if (ret) {
-+		xlog(L_ERROR, "Failed to init database: %d", ret);
-+		/*
-+		 * Convert any error here into -EACCES. It's not truly
-+		 * accurate in all cases, but it should cause the kernel to
-+		 * stop upcalling until the problem is resolved.
-+		 */
-+		ret = -EACCES;
-+	}
-+	return ret;
-+}
-+
-+static int
-+cltrack_create(const char *id)
-+{
-+	int ret;
-+	ssize_t len;
-+
-+	xlog(D_GENERAL, "%s: create client record.", __func__);
-+
-+	ret = sqlite_prepare_dbh(storagedir);
-+	if (ret)
-+		return ret;
-+
-+	len = hex_str_to_bin(id, blob, sizeof(blob));
-+	if (len < 0)
-+		return (int)len;
-+
-+	ret = sqlite_insert_client(blob, len);
-+
-+	return ret ? -EREMOTEIO : ret;
-+}
-+
-+static int
-+cltrack_remove(const char *id)
-+{
-+	int ret;
-+	ssize_t len;
-+
-+	xlog(D_GENERAL, "%s: remove client record.", __func__);
-+
-+	ret = sqlite_prepare_dbh(storagedir);
-+	if (ret)
-+		return ret;
-+
-+	len = hex_str_to_bin(id, blob, sizeof(blob));
-+	if (len < 0)
-+		return (int)len;
-+
-+	ret = sqlite_remove_client(blob, len);
-+
-+	return ret ? -EREMOTEIO : ret;
-+}
-+
-+static int
-+cltrack_check(const char *id)
-+{
-+	int ret;
-+	ssize_t len;
-+
-+	xlog(D_GENERAL, "%s: check client record", __func__);
-+
-+	ret = sqlite_prepare_dbh(storagedir);
-+	if (ret)
-+		return ret;
-+
-+	len = hex_str_to_bin(id, blob, sizeof(blob));
-+	if (len < 0)
-+		return (int)len;
-+
-+	ret = sqlite_check_client(blob, len);
-+
-+	return ret ? -EPERM : ret;
-+}
-+
-+static int
-+cltrack_gracedone(const char *timestr)
-+{
-+	int ret;
-+	char *tail;
-+	time_t gracetime;
-+
-+
-+	ret = sqlite_prepare_dbh(storagedir);
-+	if (ret)
-+		return ret;
-+
-+	errno = 0;
-+	gracetime = strtol(timestr, &tail, 0);
-+
-+	/* did the resulting value overflow? (Probably -ERANGE here) */
-+	if (errno)
-+		return -errno;
-+
-+	/* string wasn't fully converted */
-+	if (*tail)
-+		return -EINVAL;
-+
-+	xlog(D_GENERAL, "%s: grace done. gracetime=%ld", __func__, gracetime);
-+
-+	ret = sqlite_remove_unreclaimed(gracetime);
-+
-+	return ret ? -EREMOTEIO : ret;
-+}
-+
-+static struct cltrack_cmd *
-+find_cmd(char *cmdname)
-+{
-+	struct cltrack_cmd *current = &commands[0];
-+
-+	while (current->name) {
-+		if (!strcmp(cmdname, current->name))
-+			return current;
-+		++current;
-+	}
-+
-+	xlog(L_ERROR, "%s: '%s' doesn't match any known command",
-+			__func__, cmdname);
-+	return NULL;
-+}
-+
-+int
-+main(int argc, char **argv)
-+{
-+	char arg;
-+	int rc = 0;
-+	char *progname, *cmdarg = NULL;
-+	struct cltrack_cmd *cmd;
-+
-+	progname = strdup(basename(argv[0]));
-+	if (!progname) {
-+		fprintf(stderr, "%s: unable to allocate memory.\n", argv[0]);
-+		return 1;
-+	}
-+
-+	xlog_syslog(1);
-+	xlog_stderr(0);
-+
-+	/* process command-line options */
-+	while ((arg = getopt_long(argc, argv, "hdfs:", longopts,
-+				  NULL)) != EOF) {
-+		switch (arg) {
-+		case 'd':
-+			xlog_config(D_ALL, 1);
-+		case 'f':
-+			xlog_syslog(0);
-+			xlog_stderr(1);
-+			break;
-+		case 's':
-+			storagedir = optarg;
-+			break;
-+		default:
-+			usage(progname);
-+			return 0;
-+		}
-+	}
-+
-+	xlog_open(progname);
-+
-+	/* we expect a command, at least */
-+	if (optind >= argc) {
-+		xlog(L_ERROR, "Missing command name\n");
-+		rc = -EINVAL;
-+		goto out;
-+	}
-+
-+	/* drop all capabilities */
-+	rc = cltrack_set_caps();
-+	if (rc)
-+		goto out;
-+
-+	cmd = find_cmd(argv[optind]);
-+	if (!cmd) {
-+		/*
-+		 * In the event that we get a command that we don't understand
-+		 * then return a distinct error. The kernel can use this to
-+		 * determine a new kernel/old userspace situation and cope
-+		 * with it.
-+		 */
-+		rc = -ENOSYS;
-+		goto out;
-+	}
-+
-+	/* populate arg var if command needs it */
-+	if (cmd->needs_arg) {
-+		if (optind + 1 >= argc) {
-+			xlog(L_ERROR, "Command %s requires an argument\n",
-+				cmd->name);
-+			rc = -EINVAL;
-+			goto out;
-+		}
-+		cmdarg = argv[optind + 1];
-+	}
-+	rc = cmd->func(cmdarg);
-+out:
-+	free(progname);
-+	return rc;
-+}
+-	nfsd4_init_conn(rqstp, conn, new);
+ 	if (cses->flags & SESSION4_BACK_CHAN) {
+ 		struct sockaddr *sa = svc_addr(rqstp);
+ 		/*
+@@ -1766,6 +1754,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 	struct sockaddr *sa = svc_addr(rqstp);
+ 	struct nfs4_client *conf, *unconf;
+ 	struct nfsd4_session *new;
++	struct nfsd4_conn *conn;
+ 	struct nfsd4_clid_slot *cs_slot = NULL;
+ 	bool confirm_me = false;
+ 	__be32 status = 0;
+@@ -1774,6 +1763,13 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 		return nfserr_inval;
+ 	if (check_forechannel_attrs(cr_ses->fore_channel))
+ 		return nfserr_toosmall;
++	new = alloc_session(&cr_ses->fore_channel);
++	if (!new)
++		return nfserr_jukebox;
++	status = nfserr_jukebox;
++	conn = alloc_conn_from_crses(rqstp, cr_ses);
++	if (!conn)
++		goto out_free_session;
+ 
+ 	nfs4_lock_state();
+ 	unconf = find_unconfirmed_client(&cr_ses->clientid, true);
+@@ -1784,41 +1780,40 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 		status = check_slot_seqid(cr_ses->seqid, cs_slot->sl_seqid, 0);
+ 		if (status == nfserr_replay_cache) {
+ 			status = nfsd4_replay_create_session(cr_ses, cs_slot);
+-			goto out;
++			goto out_free_conn;
+ 		} else if (cr_ses->seqid != cs_slot->sl_seqid + 1) {
+ 			status = nfserr_seq_misordered;
+-			goto out;
++			goto out_free_conn;
+ 		}
+ 	} else if (unconf) {
+ 		if (!same_creds(&unconf->cl_cred, &rqstp->rq_cred) ||
+ 		    !rpc_cmp_addr(sa, (struct sockaddr *) &unconf->cl_addr)) {
+ 			status = nfserr_clid_inuse;
+-			goto out;
++			goto out_free_conn;
+ 		}
+ 		cs_slot = &unconf->cl_cs_slot;
+ 		status = check_slot_seqid(cr_ses->seqid, cs_slot->sl_seqid, 0);
+ 		if (status) {
+ 			/* an unconfirmed replay returns misordered */
+ 			status = nfserr_seq_misordered;
+-			goto out;
++			goto out_free_conn;
+ 		}
+ 		confirm_me = true;
+ 		conf = unconf;
+ 	} else {
+ 		status = nfserr_stale_clientid;
+-		goto out;
++		goto out_free_conn;
+ 	}
++	status = nfs_ok;
+ 	/*
+ 	 * We do not support RDMA or persistent sessions
+ 	 */
+ 	cr_ses->flags &= ~SESSION4_PERSIST;
+ 	cr_ses->flags &= ~SESSION4_RDMA;
+ 
+-	status = nfserr_jukebox;
+-	new = alloc_init_session(rqstp, conf, cr_ses);
+-	if (!new)
+-		goto out;
+-	status = nfs_ok;
++	init_session(rqstp, new, conf, cr_ses);
++	nfsd4_init_conn(rqstp, conn, new);
++
+ 	memcpy(cr_ses->sessionid.data, new->se_sessionid.data,
+ 	       NFS4_MAX_SESSIONID_LEN);
+ 	memcpy(&cr_ses->fore_channel, &new->se_fchannel,
+@@ -1840,6 +1835,11 @@ out:
+ 	nfs4_unlock_state();
+ 	dprintk("%s returns %d\n", __func__, ntohl(status));
+ 	return status;
++out_free_conn:
++	free_conn(conn);
++out_free_session:
++	__free_session(new);
++	goto out;
+ }
+ 
+ static bool nfsd4_last_compound_op(struct svc_rqst *rqstp)
 -- 
-1.7.11.7
+1.7.9.5
 
