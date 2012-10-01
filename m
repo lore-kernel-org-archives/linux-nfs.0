@@ -1,41 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:52206 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757154Ab2JWOxf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Oct 2012 10:53:35 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 21/25] SUNRPC: remove BUG_ON in svc_register
-Date: Tue, 23 Oct 2012 10:43:45 -0400
-Message-Id: <1351003429-18887-22-git-send-email-dros@netapp.com>
-In-Reply-To: <1351003429-18887-1-git-send-email-dros@netapp.com>
-References: <1351003429-18887-1-git-send-email-dros@netapp.com>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:27544 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751493Ab2JARxh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2012 13:53:37 -0400
+References: <20121001173616.GB29803@fieldses.org>
+Mime-Version: 1.0 (1.0)
+In-Reply-To: <20121001173616.GB29803@fieldses.org>
+Content-Type: text/plain;
+	charset=us-ascii
+Message-Id: <DA1B8EAE-0C49-4E45-A69C-AD2B1E4C3869@oracle.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH] nfsd4: don't pin clientids to pseudoflavors
+Date: Mon, 1 Oct 2012 10:53:22 -0700
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Instead of calling BUG_ON(), do a WARN_ON_ONCE() and return -EINVAL.
+Cc: stable ?
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- net/sunrpc/svc.c |    4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+Sent from my iPhone
 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 3bf5a54..dfa4ba6 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -950,7 +950,9 @@ int svc_register(const struct svc_serv *serv, struct net *net,
- 	unsigned int		i;
- 	int			error = 0;
- 
--	BUG_ON(proto == 0 && port == 0);
-+	WARN_ON_ONCE(proto == 0 && port == 0);
-+	if (proto == 0 && port == 0)
-+		return -EINVAL;
- 
- 	for (progp = serv->sv_program; progp; progp = progp->pg_next) {
- 		for (i = 0; i < progp->pg_nvers; i++) {
--- 
-1.7.9.6 (Apple Git-31.1)
+On Oct 1, 2012, at 10:36 AM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
 
+> For 3.7.--b.
+> 
+> commit 4f01f198b0b3da95f17d96dd54431b02d98c65d3
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Tue Aug 21 12:48:30 2012 -0400
+> 
+>    nfsd4: don't pin clientids to pseudoflavors
+> 
+>    I added cr_flavor to the data compared in same_creds without any
+>    justification, in d5497fc693a446ce9100fcf4117c3f795ddfd0d2 "nfsd4: move
+>    rq_flavor into svc_cred".
+> 
+>    Recent client changes then started making
+> 
+>        mount -osec=krb5 server:/export /mnt/
+>        echo "hello" >/mnt/TMP
+>        umount /mnt/
+>        mount -osec=krb5i server:/export /mnt/
+>        echo "hello" >/mnt/TMP
+> 
+>    to fail due to a clid_inuse on the second open.
+> 
+>    Mounting sequentially like this with different flavors probably isn't
+>    that common outside artificial tests.  Also, the real bug here may be
+>    that the server isn't just destroying the former clientid in this case
+>    (because it isn't good enough at recognizing when the old state is
+>    gone).  But it prompted some discussion and a look back at the spec, and
+>    I think the check was probably wrong.  Fix and document.
+> 
+>    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 5122e17..0f8d7e7 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1223,10 +1223,26 @@ static bool groups_equal(struct group_info *g1, struct group_info *g2)
+>    return true;
+> }
+> 
+> +/*
+> + * RFC 3530 language requires clid_inuse be returned when the
+> + * "principal" associated with a requests differs from that previously
+> + * used.  We use uid, gid's, and gss principal string as our best
+> + * approximation.  We also don't want to allow non-gss use of a client
+> + * established using gss: in theory cr_principal should catch that
+> + * change, but in practice cr_principal can be null even in the gss case
+> + * since gssd doesn't always pass down a principal string.
+> + */
+> +static bool is_gss_cred(struct svc_cred *cr)
+> +{
+> +    /* Is cr_flavor one of the gss "pseudoflavors"?: */
+> +    return (cr->cr_flavor > RPC_AUTH_MAXFLAVOR);
+> +}
+> +
+> +
+> static bool
+> same_creds(struct svc_cred *cr1, struct svc_cred *cr2)
+> {
+> -    if ((cr1->cr_flavor != cr2->cr_flavor)
+> +    if ((is_gss_cred(cr1) != is_gss_cred(cr2))
+>        || (cr1->cr_uid != cr2->cr_uid)
+>        || (cr1->cr_gid != cr2->cr_gid)
+>        || !groups_equal(cr1->cr_group_info, cr2->cr_group_info))
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
