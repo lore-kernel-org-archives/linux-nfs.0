@@ -1,76 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53635 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751439Ab2JBOdf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Oct 2012 10:33:35 -0400
-Date: Tue, 2 Oct 2012 10:33:34 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: Inconsistency when mounting a directory that 'world' cannot
- access.
-Message-ID: <20121002143334.GA1435@fieldses.org>
-References: <20120918112329.7d88ed9e@notabene.brown>
- <20121001154309.GD18400@fieldses.org>
- <20121002123810.15bd1ee2@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20121002123810.15bd1ee2@notabene.brown>
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:44068 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751821Ab2JALwx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2012 07:52:53 -0400
+Received: by ggnr5 with SMTP id r5so1332667ggn.19
+        for <linux-nfs@vger.kernel.org>; Mon, 01 Oct 2012 04:52:52 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/6] nfsdcltrack: remove pointless sqlite_topdir variable
+Date: Mon,  1 Oct 2012 07:52:41 -0400
+Message-Id: <1349092365-23920-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1349092365-23920-1-git-send-email-jlayton@redhat.com>
+References: <1349092365-23920-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 02, 2012 at 12:38:10PM +1000, NeilBrown wrote:
-> On Mon, 1 Oct 2012 11:43:10 -0400 "J. Bruce Fields" <bfields@fieldses.org>
-> wrote:
-> 
-> > On Tue, Sep 18, 2012 at 11:23:29AM +1000, NeilBrown wrote:
-> > > 
-> > > Suppose that on an NFS server I have a directory
-> > >    /foo/bar/baz
-> > > 
-> > > which I export, and that /foo/bar does not have world access.  e.g.
-> > > permissions are '750' and everyone who owns files in there is a member of the
-> > > group which owns /foo/bar.
-> > > 
-> > > Then with NFSv3 I can
-> > >   mount server:/foo/bar/baz  /somewhere
-> > > because the lookup of /foo/bar/baz happens as root on the server in mountd.
-> > > 
-> > > With NFSv4 using 'sec=sys' I can only do this if I export with
-> > > "no_root_squash", as the lookup happens on the client as root, and if root
-> > > were squashed, it wouldn't have access beyond /foo/bar.
-> > > 
-> > > But if I use NFSv4 using 'sec=krb5', the lookup happens on the client using a
-> > > machine credential which gets mapped to 'nobody/nogroup' (or whatever anonuid
-> > > and anongid are set to for the export).  So I cannot perform the mount at all.
-> > > 
-> > > This is - at best - inconsistent and can cause confusion (hey - I was
-> > > confused for a while there).
-> > > 
-> > > Should something be done?  Can anything be done?
-> > 
-> > I think nfsd_lookup_dentry() would need a special exception for the
-> > NFSEXP_V4ROOT case.
-> 
-> I don't think that would help in general.
-> If I export /foo and want to mount /foo/bar/baz, then for the last lookup at
-> least, NFSEXP_V4ROOT isn't set anywhere near.
+This is holdover from an earlier version of the code and doesn't really
+provide any benefit. Also, mark the topdir and dirname arguments const
+since they should never be changed.
 
-I'm not entirely clear why mountd even allows that, but no point trying
-to change it now anyway.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/nfsdcltrack/sqlite.c | 13 ++++---------
+ utils/nfsdcltrack/sqlite.h |  2 +-
+ 2 files changed, 5 insertions(+), 10 deletions(-)
 
-> An exception would need to be made for every 'nfs4_lookup_dentry', provided
-> it found a directory, or nothing (or a symlink...).  Possibly this could only
-> be done for anonymous credentials (as are used by the nfs4 mount operation).
+diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
+index fc882c6..c19af7e 100644
+--- a/utils/nfsdcltrack/sqlite.c
++++ b/utils/nfsdcltrack/sqlite.c
+@@ -61,9 +61,6 @@
+ 
+ /* global variables */
+ 
+-/* top level DB directory */
+-static char *sqlite_topdir;
+-
+ /* reusable pathname and sql command buffer */
+ static char buf[PATH_MAX];
+ 
+@@ -74,7 +71,7 @@ static sqlite3 *dbh;
+ 
+ /* make a directory, ignoring EEXIST errors unless it's not a directory */
+ static int
+-mkdir_if_not_exist(char *dirname)
++mkdir_if_not_exist(const char *dirname)
+ {
+ 	int ret;
+ 	struct stat statbuf;
+@@ -102,19 +99,17 @@ mkdir_if_not_exist(char *dirname)
+  * the "clients" table.
+  */
+ int
+-sqlite_maindb_init(char *topdir)
++sqlite_maindb_init(const char *topdir)
+ {
+ 	int ret;
+ 	char *err = NULL;
+ 	sqlite3_stmt *stmt = NULL;
+ 
+-	sqlite_topdir = topdir;
+-
+-	ret = mkdir_if_not_exist(sqlite_topdir);
++	ret = mkdir_if_not_exist(topdir);
+ 	if (ret)
+ 		return ret;
+ 
+-	ret = snprintf(buf, PATH_MAX - 1, "%s/main.sqlite", sqlite_topdir);
++	ret = snprintf(buf, PATH_MAX - 1, "%s/main.sqlite", topdir);
+ 	if (ret < 0)
+ 		return ret;
+ 
+diff --git a/utils/nfsdcltrack/sqlite.h b/utils/nfsdcltrack/sqlite.h
+index c85e7d6..8748948 100644
+--- a/utils/nfsdcltrack/sqlite.h
++++ b/utils/nfsdcltrack/sqlite.h
+@@ -20,7 +20,7 @@
+ #ifndef _SQLITE_H_
+ #define _SQLITE_H_
+ 
+-int sqlite_maindb_init(char *topdir);
++int sqlite_maindb_init(const char *topdir);
+ int sqlite_insert_client(const unsigned char *clname, const size_t namelen);
+ int sqlite_remove_client(const unsigned char *clname, const size_t namelen);
+ int sqlite_check_client(const unsigned char *clname, const size_t namelen);
+-- 
+1.7.11.4
 
-Yuch.
-
-> It would be nice if we could clearly differentiate a mount-time lookup from a
-> regular lookup, but I don't think the protocol allows for that.
-
-I guess you're right.  So it starts to sound more like: "you have a
-confusing setup.  Your export configuration says one thing, and your
-filesystem permissions say another.  Under NFSv3 the confusion didn't
-matter, but now it does--time to fix it."
-
---b.
