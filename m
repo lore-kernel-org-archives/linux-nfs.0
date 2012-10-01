@@ -1,60 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga11.intel.com ([192.55.52.93]:50666 "EHLO mga11.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752259Ab2JBCRX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Oct 2012 22:17:23 -0400
-Date: Tue, 2 Oct 2012 10:17:18 +0800
-From: Fengguang Wu <fengguang.wu@intel.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: kernel-janitors@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: [nfs:testing 69/83] fs/nfs/nfs4state.c:127:9: error:
- 'nfs_callback_tcpport' undeclared
-Message-ID: <20121002021718.GB6691@localhost>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-yx0-f174.google.com ([209.85.213.174]:39480 "EHLO
+	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751821Ab2JALvp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2012 07:51:45 -0400
+Received: by yenm12 with SMTP id m12so1356415yen.19
+        for <linux-nfs@vger.kernel.org>; Mon, 01 Oct 2012 04:51:45 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, bharrosh@panasas.com, steved@redhat.com,
+        skinsbursky@parallels.com
+Subject: [PATCH 0/2] nfsd: add a usermodehelper upcall for client id tracking
+Date: Mon,  1 Oct 2012 07:51:36 -0400
+Message-Id: <1349092298-23872-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Chuck,
+A few months ago I did some patches to add an upcall to replace the
+legacy clientid tracking scheme in nfsd. At the time, several people
+including Boaz and Steve expressed that they would prefer an upcall that
+used call_usermodehelper instead of requiring a running daemon.
 
-FYI, kernel build failed on
+While I'm loath to add yet another upcall to the kernel, I must admit
+that they have a good point. Yet another running daemon for something as
+infrequently called as this is less than ideal. The idiot-proofness of a
+usermodehelper upcall is hard to beat for the "just works" factor.
 
-tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git testing
-head:   2afdfa5a846246de50e1881f71ba5c0aac0b415f
-commit: 05f4c350ee02e9461c6ae3a880ea326a06835e37 [69/83] NFS: Discover NFSv4 server trunking when mounting
-config: x86_64-allyesconfig
+This patchset adds a new set of client tracking ops to the kernel that
+use call_usermodehelper to exec a program in userland to do its bidding.
+I'll also be posting a set of nfs-utils patches soon to add the callout
+program for this.
 
-All error/warnings:
+This seems to work as expected and is fairly simple. There are a couple
+of lingering issues.
 
-fs/nfs/nfs4state.c: In function 'nfs40_discover_server_trunking':
-fs/nfs/nfs4state.c:127:9: error: 'nfs_callback_tcpport' undeclared (first use in this function)
-fs/nfs/nfs4state.c:127:9: note: each undeclared identifier is reported only once for each function it appears in
-fs/nfs/nfs4state.c:129:10: error: 'nfs_callback_tcpport6' undeclared (first use in this function)
+- Do we need to switch to a different mount namespace somehow based on
+  the net namespace? Eventually we want to allow nfsd to run in a
+  container. At some point we'll need a mechanism to ensure that the
+  upcall runs within the correct container. Stanislav, I'd appreciate
+  your input here...
 
-vim +127 fs/nfs/nfs4state.c
+- What about nfsdcld? I don't believe any distros have deployed it yet,
+  and there aren't a lot of compelling reasons to stick with it if this
+  patchset seems reasonable. I suggest we plan to deprecate it in a couple
+  of releases unless there are objections.
 
-05f4c350 (Chuck Lever 2012-09-14  115)  */
-05f4c350 (Chuck Lever 2012-09-14  116) int nfs40_discover_server_trunking(struct nfs_client *clp,
-05f4c350 (Chuck Lever 2012-09-14  117) 				   struct nfs_client **result,
-05f4c350 (Chuck Lever 2012-09-14  118) 				   struct rpc_cred *cred)
-05f4c350 (Chuck Lever 2012-09-14  119) {
-05f4c350 (Chuck Lever 2012-09-14  120) 	struct nfs4_setclientid_res clid = {
-05f4c350 (Chuck Lever 2012-09-14  121) 		.clientid = clp->cl_clientid,
-05f4c350 (Chuck Lever 2012-09-14  122) 		.confirm = clp->cl_confirm,
-05f4c350 (Chuck Lever 2012-09-14  123) 	};
-05f4c350 (Chuck Lever 2012-09-14  124) 	unsigned short port;
-05f4c350 (Chuck Lever 2012-09-14  125) 	int status;
-05f4c350 (Chuck Lever 2012-09-14  126) 
-05f4c350 (Chuck Lever 2012-09-14 @127) 	port = nfs_callback_tcpport;
-05f4c350 (Chuck Lever 2012-09-14  128) 	if (clp->cl_addr.ss_family == AF_INET6)
-05f4c350 (Chuck Lever 2012-09-14  129) 		port = nfs_callback_tcpport6;
-05f4c350 (Chuck Lever 2012-09-14  130) 
-05f4c350 (Chuck Lever 2012-09-14  131) 	status = nfs4_proc_setclientid(clp, NFS4_CALLBACK, port, cred, &clid);
-05f4c350 (Chuck Lever 2012-09-14  132) 	if (status != 0)
-05f4c350 (Chuck Lever 2012-09-14  133) 		goto out;
+Unless anyone sees major problems with this approach, I think these
+patches are reasonable for 3.7.
 
----
-0-DAY kernel build testing backend         Open Source Technology Centre
-Fengguang Wu, Yuanhan Liu                              Intel Corporation
+Jeff Layton (2):
+  nfsd: add a usermodehelper upcall for NFSv4 client ID tracking
+  nfsd: change algorithm for selecting the client_tracking_ops
+
+ fs/nfsd/nfs4recover.c | 174 +++++++++++++++++++++++++++++++++++++++++++++++---
+ 1 file changed, 164 insertions(+), 10 deletions(-)
+
+-- 
+1.7.11.4
+
