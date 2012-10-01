@@ -1,49 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:15938 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755057Ab2JPQbE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Oct 2012 12:31:04 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 09/25] SUNRPC: remove two BUG_ON() asserts
-Date: Tue, 16 Oct 2012 12:30:27 -0400
-Message-Id: <1350405043-39316-9-git-send-email-dros@netapp.com>
-In-Reply-To: <1350405043-39316-1-git-send-email-dros@netapp.com>
-References: <1350405043-39316-1-git-send-email-dros@netapp.com>
+Received: from relay.parallels.com ([195.214.232.42]:52178 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751390Ab2JAOaf convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2012 10:30:35 -0400
+Message-ID: <5069A8FA.1060401@parallels.com>
+Date: Mon, 1 Oct 2012 18:30:18 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+CC: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "bharrosh@panasas.com" <bharrosh@panasas.com>,
+        "steved@redhat.com" <steved@redhat.com>
+Subject: Re: [PATCH 0/2] nfsd: add a usermodehelper upcall for client id tracking
+References: <1349092298-23872-1-git-send-email-jlayton@redhat.com> <5069A345.3060807@parallels.com> <20121001141239.GA18400@fieldses.org>
+In-Reply-To: <20121001141239.GA18400@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Replace two BUG_ON() calls checking the RPC_BC_PA_IN_USE flag with
-WARN_ON_ONCE().
+01.10.2012 18:12, bfields@fieldses.org пишет:
+> On Mon, Oct 01, 2012 at 06:05:57PM +0400, Stanislav Kinsbursky wrote:
+>> 01.10.2012 15:51, Jeff Layton пишет:
+>>> - Do we need to switch to a different mount namespace somehow based on
+>>>    the net namespace? Eventually we want to allow nfsd to run in a
+>>>    container. At some point we'll need a mechanism to ensure that the
+>>>    upcall runs within the correct container. Stanislav, I'd appreciate
+>>>    your input here...
+>>
+>> Hello, Jeff.
+>> As far as I can see - yes, we have to switch to desired mount
+>> namespace in kernel (because we can't do this in user namespace).
+>> Moreover, for NFSd mount namespace looks even more important than
+>> net namespace. I.e. we can't share one NFSd between mount namespaces
+>> (at least, I don't understand how to do this safely).
+>> So, if we are going to have NFSd per container, we have to tie NFSd
+>> and mount namespace somehow.
+>> Having one NFSd for more than one network namespace looks feasible.
+>> But we have some races with creation and destruction of service
+>> per-net transports, and Bruce was suggesting to think about maybe we
+>> can just simplify all that stuff and create service per network
+>> namespace.
+>>
+>> BTW, is it possible to split service (trasports, etc.) and it's
+>> "executors" (kernel threads)? If we could do it, then it would be
+>> really easy to create as many services (with it's unique namespaces
+>> combination) as required and teach "executors" to switch to desired
+>> namespaces while handling service requests.
+>
+> I'm sure it is possible, and would be more efficient than requiring
+> (number of containers) * (number of threads per container) threads.
+>
+> But I think it's also a little more complicated to do, and that to start
+> off we'd be better off just keeping the services entirely separate.
+>
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- net/sunrpc/backchannel_rqst.c |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+At first sight, this two solutions (split of service/threads and service per 
+namespace) doesn't look like they can share a lot of code base.
+I believe, that we have to think about mount namespaces during NFSd 
+containerization. And, if I understand you right, when you say about "entirely 
+separated services", you mean separated by networks namespace.
+Separations per mount namespace as a second step will take actually the same 
+time and amount of code, as it would be a first step.
 
-diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
-index 5a3d675..7567bcd 100644
---- a/net/sunrpc/backchannel_rqst.c
-+++ b/net/sunrpc/backchannel_rqst.c
-@@ -59,7 +59,7 @@ static void xprt_free_allocation(struct rpc_rqst *req)
- 	struct xdr_buf *xbufp;
- 
- 	dprintk("RPC:        free allocations for req= %p\n", req);
--	BUG_ON(test_bit(RPC_BC_PA_IN_USE, &req->rq_bc_pa_state));
-+	WARN_ON_ONCE(test_bit(RPC_BC_PA_IN_USE, &req->rq_bc_pa_state));
- 	xbufp = &req->rq_private_buf;
- 	free_page((unsigned long)xbufp->head[0].iov_base);
- 	xbufp = &req->rq_snd_buf;
-@@ -255,7 +255,7 @@ void xprt_free_bc_request(struct rpc_rqst *req)
- 	dprintk("RPC:       free backchannel req=%p\n", req);
- 
- 	smp_mb__before_clear_bit();
--	BUG_ON(!test_bit(RPC_BC_PA_IN_USE, &req->rq_bc_pa_state));
-+	WARN_ON_ONCE(!test_bit(RPC_BC_PA_IN_USE, &req->rq_bc_pa_state));
- 	clear_bit(RPC_BC_PA_IN_USE, &req->rq_bc_pa_state);
- 	smp_mb__after_clear_bit();
- 
+So, as I can see it, the real question is: do we really want limited (only 
+per-net) NFSd containerisation as soon as possible (and in this case it's much 
+simpler to create NFSd/Lockd service and it's threads per network namespace) or 
+we should skip this step and concentrate on proper implementation from the very 
+beginning (split of service and it's threads and tie NFSd to mount namespace)?
+
+> --b.
+>
+
+
 -- 
-1.7.9.6 (Apple Git-31.1)
-
+Best regards,
+Stanislav Kinsbursky
