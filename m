@@ -1,83 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:48583 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932486Ab2J2PyQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 11:54:16 -0400
-MIME-Version: 1.0
-In-Reply-To: <20121029130736.GF11733@Krystal>
-References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
- <1351450948-15618-10-git-send-email-levinsasha928@gmail.com>
- <20121029124655.GD11733@Krystal> <20121029130736.GF11733@Krystal>
-From: Sasha Levin <levinsasha928@gmail.com>
-Date: Mon, 29 Oct 2012 11:53:54 -0400
-Message-ID: <CA+1xoqfxgB+8BybPpf+jwT-ObfGPxnbKvkz1MUMuJuR8NDSNaw@mail.gmail.com>
-Subject: Re: [PATCH v7 10/16] dlm: use new hashtable implementation
-To: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:43331 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751629Ab2JARqz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Oct 2012 13:46:55 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 3/8] nfsd4: new_conn_from_crses should only allocate
+Date: Mon,  1 Oct 2012 13:46:47 -0400
+Message-Id: <1349113612-30374-4-git-send-email-bfields@redhat.com>
+In-Reply-To: <1349113612-30374-1-git-send-email-bfields@redhat.com>
+References: <1349113612-30374-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 29, 2012 at 9:07 AM, Mathieu Desnoyers
-<mathieu.desnoyers@efficios.com> wrote:
-> * Mathieu Desnoyers (mathieu.desnoyers@efficios.com) wrote:
->> * Sasha Levin (levinsasha928@gmail.com) wrote:
->> [...]
->> > @@ -158,34 +159,21 @@ static int dlm_allow_conn;
->> >  static struct workqueue_struct *recv_workqueue;
->> >  static struct workqueue_struct *send_workqueue;
->> >
->> > -static struct hlist_head connection_hash[CONN_HASH_SIZE];
->> > +static struct hlist_head connection_hash[CONN_HASH_BITS];
->> >  static DEFINE_MUTEX(connections_lock);
->> >  static struct kmem_cache *con_cache;
->> >
->> >  static void process_recv_sockets(struct work_struct *work);
->> >  static void process_send_sockets(struct work_struct *work);
->> >
->> > -
->> > -/* This is deliberately very simple because most clusters have simple
->> > -   sequential nodeids, so we should be able to go straight to a connection
->> > -   struct in the array */
->> > -static inline int nodeid_hash(int nodeid)
->> > -{
->> > -   return nodeid & (CONN_HASH_SIZE-1);
->> > -}
->>
->> There is one thing I dislike about this change: you remove a useful
->> comment. It's good to be informed of the reason why a direct mapping
->> "value -> hash" without any dispersion function is preferred here.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Yes, I've removed the comment because it's no longer true with the patch :)
+Do the initialization in the caller, and clarify that the only failure
+ever possible here was due to allocation.
 
-> And now that I come to think of it: you're changing the behavior : you
-> will now use a dispersion function on the key, which goes against the
-> intent expressed in this comment.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   26 ++++++++++----------------
+ 1 file changed, 10 insertions(+), 16 deletions(-)
 
-The comment gave us the information that nodeids are mostly
-sequential, we no longer need to rely on that.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 101ccd8..8b7f8f8 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -852,7 +852,7 @@ static int nfsd4_register_conn(struct nfsd4_conn *conn)
+ 	return register_xpt_user(conn->cn_xprt, &conn->cn_xpt_user);
+ }
+ 
+-static void nfsd4_init_conn(struct svc_rqst *rqstp, struct nfsd4_conn *conn, struct nfsd4_session *ses, u32 dir)
++static void nfsd4_init_conn(struct svc_rqst *rqstp, struct nfsd4_conn *conn, struct nfsd4_session *ses)
+ {
+ 	int ret;
+ 
+@@ -862,25 +862,19 @@ static void nfsd4_init_conn(struct svc_rqst *rqstp, struct nfsd4_conn *conn, str
+ 		/* oops; xprt is already down: */
+ 		nfsd4_conn_lost(&conn->cn_xpt_user);
+ 	if (ses->se_client->cl_cb_state == NFSD4_CB_DOWN &&
+-		dir & NFS4_CDFC4_BACK) {
++			conn->cn_flags & NFS4_CDFC4_BACK) {
+ 		/* callback channel may be back up */
+ 		nfsd4_probe_callback(ses->se_client);
+ 	}
+ }
+ 
+-static __be32 nfsd4_new_conn_from_crses(struct svc_rqst *rqstp, struct nfsd4_session *ses)
++static struct nfsd4_conn *alloc_conn_from_crses(struct svc_rqst *rqstp, struct nfsd4_create_session *cses)
+ {
+-	struct nfsd4_conn *conn;
+ 	u32 dir = NFS4_CDFC4_FORE;
+ 
+-	if (ses->se_flags & SESSION4_BACK_CHAN)
++	if (cses->flags & SESSION4_BACK_CHAN)
+ 		dir |= NFS4_CDFC4_BACK;
+-
+-	conn = alloc_conn(rqstp, dir);
+-	if (!conn)
+-		return nfserr_jukebox;
+-	nfsd4_init_conn(rqstp, conn, ses, dir);
+-	return nfs_ok;
++	return alloc_conn(rqstp, dir);
+ }
+ 
+ /* must be called under client_lock */
+@@ -929,9 +923,9 @@ void nfsd4_put_session(struct nfsd4_session *ses)
+ static struct nfsd4_session *alloc_init_session(struct svc_rqst *rqstp, struct nfs4_client *clp, struct nfsd4_create_session *cses)
+ {
+ 	struct nfsd4_session *new;
++	struct nfsd4_conn *conn;
+ 	struct nfsd4_channel_attrs *fchan = &cses->fore_channel;
+ 	int numslots, slotsize;
+-	__be32 status;
+ 	int idx;
+ 
+ 	/*
+@@ -970,14 +964,14 @@ static struct nfsd4_session *alloc_init_session(struct svc_rqst *rqstp, struct n
+ 	spin_unlock(&clp->cl_lock);
+ 	spin_unlock(&client_lock);
+ 
+-	status = nfsd4_new_conn_from_crses(rqstp, new);
+-	/* whoops: benny points out, status is ignored! (err, or bogus) */
+-	if (status) {
++	conn = alloc_conn_from_crses(rqstp, cses);
++	if (!conn) {
+ 		spin_lock(&client_lock);
+ 		free_session(&new->se_ref);
+ 		spin_unlock(&client_lock);
+ 		return NULL;
+ 	}
++	nfsd4_init_conn(rqstp, conn, new);
+ 	if (cses->flags & SESSION4_BACK_CHAN) {
+ 		struct sockaddr *sa = svc_addr(rqstp);
+ 		/*
+@@ -1890,7 +1884,7 @@ __be32 nfsd4_bind_conn_to_session(struct svc_rqst *rqstp,
+ 	conn = alloc_conn(rqstp, bcts->dir);
+ 	if (!conn)
+ 		return nfserr_jukebox;
+-	nfsd4_init_conn(rqstp, conn, cstate->session, bcts->dir);
++	nfsd4_init_conn(rqstp, conn, cstate->session);
+ 	return nfs_ok;
+ }
+ 
+-- 
+1.7.9.5
 
-> It might be good to change hash_add(), hash_add_rcu(),
-> hash_for_each_possible*() key parameter for a "hash" parameter, and let
-> the caller provide the hash value computed by the function they like as
-> parameter, rather than enforcing hash_32/hash_64.
-
-Why? We already proved that hash_32() is more than enough as a hashing
-function, why complicate things?
-
-Even doing hash_32() on top of another hash is probably a good idea to
-keep things simple.
-
-Thanks,
-Sasha
