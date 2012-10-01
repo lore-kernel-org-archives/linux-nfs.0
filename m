@@ -1,134 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.openrapids.net ([64.15.138.104]:58530 "EHLO
-	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1756543Ab2J2NX0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 09:23:26 -0400
-Date: Mon, 29 Oct 2012 09:23:23 -0400
-From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v7 13/16] lockd: use new hashtable implementation
-Message-ID: <20121029132323.GA16391@Krystal>
-References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com> <1351450948-15618-13-git-send-email-levinsasha928@gmail.com>
+Received: from relay.parallels.com ([195.214.232.42]:38973 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752479Ab2JAPt7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2012 11:49:59 -0400
+Message-ID: <5069BB98.7020600@parallels.com>
+Date: Mon, 1 Oct 2012 19:49:44 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1351450948-15618-13-git-send-email-levinsasha928@gmail.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "bharrosh@panasas.com" <bharrosh@panasas.com>,
+        "steved@redhat.com" <steved@redhat.com>
+Subject: Re: [PATCH 0/2] nfsd: add a usermodehelper upcall for client id tracking
+References: <1349092298-23872-1-git-send-email-jlayton@redhat.com> <5069A345.3060807@parallels.com>	<20121001141239.GA18400@fieldses.org> <5069A8FA.1060401@parallels.com> <20121001105219.4272fd90@corrin.poochiereds.net>
+In-Reply-To: <20121001105219.4272fd90@corrin.poochiereds.net>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* Sasha Levin (levinsasha928@gmail.com) wrote:
-> Switch lockd to use the new hashtable implementation. This reduces the amount of
-> generic unrelated code in lockd.
-> 
-> Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
-> ---
->  fs/lockd/svcsubs.c | 66 +++++++++++++++++++++++++++++-------------------------
->  1 file changed, 36 insertions(+), 30 deletions(-)
-> 
-> diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
-> index 0deb5f6..d223a1f 100644
-> --- a/fs/lockd/svcsubs.c
-> +++ b/fs/lockd/svcsubs.c
-> @@ -20,6 +20,7 @@
->  #include <linux/lockd/share.h>
->  #include <linux/module.h>
->  #include <linux/mount.h>
-> +#include <linux/hashtable.h>
->  
->  #define NLMDBG_FACILITY		NLMDBG_SVCSUBS
->  
-> @@ -28,8 +29,7 @@
->   * Global file hash table
->   */
->  #define FILE_HASH_BITS		7
-> -#define FILE_NRHASH		(1<<FILE_HASH_BITS)
-> -static struct hlist_head	nlm_files[FILE_NRHASH];
-> +static DEFINE_HASHTABLE(nlm_files, FILE_HASH_BITS);
->  static DEFINE_MUTEX(nlm_file_mutex);
->  
->  #ifdef NFSD_DEBUG
-> @@ -68,7 +68,7 @@ static inline unsigned int file_hash(struct nfs_fh *f)
->  	int i;
->  	for (i=0; i<NFS2_FHSIZE;i++)
->  		tmp += f->data[i];
-> -	return tmp & (FILE_NRHASH - 1);
-> +	return tmp;
->  }
->  
->  /*
-> @@ -86,17 +86,17 @@ nlm_lookup_file(struct svc_rqst *rqstp, struct nlm_file **result,
->  {
->  	struct hlist_node *pos;
->  	struct nlm_file	*file;
-> -	unsigned int	hash;
-> +	unsigned int	key;
->  	__be32		nfserr;
->  
->  	nlm_debug_print_fh("nlm_lookup_file", f);
->  
-> -	hash = file_hash(f);
-> +	key = file_hash(f);
->  
->  	/* Lock file table */
->  	mutex_lock(&nlm_file_mutex);
->  
-> -	hlist_for_each_entry(file, pos, &nlm_files[hash], f_list)
-> +	hash_for_each_possible(nlm_files, file, pos, f_list, file_hash(f))
+01.10.2012 18:52, Jeff Layton пишет:
+> On Mon, 1 Oct 2012 18:30:18 +0400
+> Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+>
+>> 01.10.2012 18:12, bfields@fieldses.org пишет:
+>>> On Mon, Oct 01, 2012 at 06:05:57PM +0400, Stanislav Kinsbursky wrote:
+>>>> 01.10.2012 15:51, Jeff Layton пишет:
+>>>>> - Do we need to switch to a different mount namespace somehow based on
+>>>>>     the net namespace? Eventually we want to allow nfsd to run in a
+>>>>>     container. At some point we'll need a mechanism to ensure that the
+>>>>>     upcall runs within the correct container. Stanislav, I'd appreciate
+>>>>>     your input here...
+>>>>
+>>>> Hello, Jeff.
+>>>> As far as I can see - yes, we have to switch to desired mount
+>>>> namespace in kernel (because we can't do this in user namespace).
+>>>> Moreover, for NFSd mount namespace looks even more important than
+>>>> net namespace. I.e. we can't share one NFSd between mount namespaces
+>>>> (at least, I don't understand how to do this safely).
+>>>> So, if we are going to have NFSd per container, we have to tie NFSd
+>>>> and mount namespace somehow.
+>>>> Having one NFSd for more than one network namespace looks feasible.
+>>>> But we have some races with creation and destruction of service
+>>>> per-net transports, and Bruce was suggesting to think about maybe we
+>>>> can just simplify all that stuff and create service per network
+>>>> namespace.
+>>>>
+>>>> BTW, is it possible to split service (trasports, etc.) and it's
+>>>> "executors" (kernel threads)? If we could do it, then it would be
+>>>> really easy to create as many services (with it's unique namespaces
+>>>> combination) as required and teach "executors" to switch to desired
+>>>> namespaces while handling service requests.
+>>>
+>>> I'm sure it is possible, and would be more efficient than requiring
+>>> (number of containers) * (number of threads per container) threads.
+>>>
+>>> But I think it's also a little more complicated to do, and that to start
+>>> off we'd be better off just keeping the services entirely separate.
+>>>
+>>
+>> At first sight, this two solutions (split of service/threads and service per
+>> namespace) doesn't look like they can share a lot of code base.
+>> I believe, that we have to think about mount namespaces during NFSd
+>> containerization. And, if I understand you right, when you say about "entirely
+>> separated services", you mean separated by networks namespace.
+>> Separations per mount namespace as a second step will take actually the same
+>> time and amount of code, as it would be a first step.
+>>
+>> So, as I can see it, the real question is: do we really want limited (only
+>> per-net) NFSd containerisation as soon as possible (and in this case it's much
+>> simpler to create NFSd/Lockd service and it's threads per network namespace) or
+>> we should skip this step and concentrate on proper implementation from the very
+>> beginning (split of service and it's threads and tie NFSd to mount namespace)?
+>>
+>
+> Ok, to bring the discussion back around, I'll note that the current
+> legacy clientid tracking code doesn't pay any attention to namespaces
+> either. So I don't think we're missing much by punting on that just
+> yet.
+>
 
-we have a nice example of weirdness about key vs hash here:
+Have nothing to object to.
 
-1) "key" is computed from file_hash(f)
-2) file_hash(f) is computed again and again in hash_for_each_possible()
+> Once you've hashed out the mount namespace design, we should be able to
+> make it pay attention to that that without too much trouble.
+>
 
->  		if (!nfs_compare_fh(&file->f_handle, f))
->  			goto found;
->  
-> @@ -123,7 +123,7 @@ nlm_lookup_file(struct svc_rqst *rqstp, struct nlm_file **result,
->  		goto out_free;
->  	}
->  
-> -	hlist_add_head(&file->f_list, &nlm_files[hash]);
-> +	hash_add(nlm_files, &file->f_list, key);
-
-3) then we use "key" as parameter to hash_add.
-
-Moreover, we're adding dispersion to the file_hash() with the hash_32()
-called under the hook within hashtable.h. Is it an intended behavior ?
-This should at the very least be documented in the changelog.
-
-[...]
-
-> +static int __init nlm_init(void)
-> +{
-> +	hash_init(nlm_files);
-
-Useless.
-
-Thanks,
-
-Mathieu
-
-> +	return 0;
-> +}
-> +
-> +module_init(nlm_init);
-> -- 
-> 1.7.12.4
-> 
+Thanks. Now I've realised, that I'm the one who has to do it. :)
 
 -- 
-Mathieu Desnoyers
-Operating System Efficiency R&D Consultant
-EfficiOS Inc.
-http://www.efficios.com
+Best regards,
+Stanislav Kinsbursky
