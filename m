@@ -1,69 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.openrapids.net ([64.15.138.104]:58361 "EHLO
-	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1757311Ab2J2MUz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 08:20:55 -0400
-Date: Mon, 29 Oct 2012 08:20:52 -0400
-From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v7 08/16] block,elevator: use new hashtable
-	implementation
-Message-ID: <20121029122052.GB11733@Krystal>
-References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com> <1351450948-15618-8-git-send-email-levinsasha928@gmail.com>
-MIME-Version: 1.0
+Received: from cantor2.suse.de ([195.135.220.15]:36962 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751445Ab2JAODT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2012 10:03:19 -0400
+Subject: Re: [REGRESSION] nfsd crashing with 3.6.0-rc7 on PowerPC
+Mime-Version: 1.0 (Apple Message framework v1278)
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1351450948-15618-8-git-send-email-levinsasha928@gmail.com>
+From: Alexander Graf <agraf@suse.de>
+In-Reply-To: <20120928151043.GA19102@fieldses.org>
+Date: Mon, 1 Oct 2012 16:03:06 +0200
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        LKML List <linux-kernel@vger.kernel.org>,
+        linuxppc-dev <linuxppc-dev@lists.ozlabs.org>,
+        Benjamin Herrenschmidt <benh@kernel.crashing.org>,
+        linux-nfs@vger.kernel.org, Jan Kara <jack@suse.cz>,
+        skinsbursky@parallels.com, bfields@redhat.com, anton@samba.org
+Message-Id: <2A52FC96-148C-4F7A-9950-E152E0C6698D@suse.de>
+References: <3BDA9E62-7031-42D6-8CA9-5327B61700F5@suse.de> <CA+55aFyXwB1QcXE4Z_FAGnXROSgvP2x2+wjnX9OWPa4Dfaaf0A@mail.gmail.com> <DC545CD9-8745-47DD-B13B-3385C0EB5B27@suse.de> <20120928151043.GA19102@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* Sasha Levin (levinsasha928@gmail.com) wrote:
-[...]
-> @@ -96,6 +97,8 @@ struct elevator_type
->  	struct list_head list;
->  };
->  
-> +#define ELV_HASH_BITS 6
-> +
->  /*
->   * each queue has an elevator_queue associated with it
->   */
-> @@ -105,7 +108,7 @@ struct elevator_queue
->  	void *elevator_data;
->  	struct kobject kobj;
->  	struct mutex sysfs_lock;
-> -	struct hlist_head *hash;
-> +	DECLARE_HASHTABLE(hash, ELV_HASH_BITS);
->  	unsigned int registered:1;
 
-Hrm, so this is moving "registered" out of the elevator_queue first
-cache-line by turning the pointer into a 256 or 512 bytes hash table.
+On 28.09.2012, at 17:10, J. Bruce Fields wrote:
 
-Maybe we should consider moving "registered" before the "hash" field ?
-
-Thanks,
-
-Mathieu
-
->  };
->  
-> -- 
-> 1.7.12.4
+> On Fri, Sep 28, 2012 at 04:19:55AM +0200, Alexander Graf wrote:
+>> 
+>> On 28.09.2012, at 04:04, Linus Torvalds wrote:
+>> 
+>>> On Thu, Sep 27, 2012 at 6:55 PM, Alexander Graf <agraf@suse.de> wrote:
+>>>> 
+>>>> Below are OOPS excerpts from different rc's I tried. All of them crashed - all the way up to current Linus' master branch. I haven't cross-checked, but I don't remember any such behavior from pre-3.6 releases.
+>>> 
+>>> Since you seem to be able to reproduce it easily (and apparently
+>>> reliably), any chance you could just bisect it?
+>>> 
+>>> Since I assume v3.5 is fine, and apparently -rc1 is already busted, a simple
+>>> 
+>>>  git bisect start
+>>>  git bisect good v3.5
+>>>  git bisect bad v3.6-rc1
+>>> 
+>>> will get you started on your adventure..
+>> 
+>> Heh, will give it a try :). The thing really does look quite bisectable.
+>> 
+>> 
+>> It might take a few hours though - the machine isn't exactly fast by today's standards and it's getting late here. But I'll keep you updated.
 > 
+> I doubt it's anything special about that workload, but just for kicks I
+> tried a "git clone -ls" (cloning my linux tree to another directory on
+> the same nfs filesystem), with server on 3.6.0-rc7, and didn't see
+> anything interesting (just an xfs lockdep warning that looks like this
+> one jlayton already reported:
+> http://oss.sgi.com/archives/xfs/2012-09/msg00088.html
+> )
+> 
+> Any (even partial) bisection results would certainly be useful, thanks.
 
--- 
-Mathieu Desnoyers
-Operating System Efficiency R&D Consultant
-EfficiOS Inc.
-http://www.efficios.com
+Phew. Here we go :). It looks to be more of a PPC specific problem than it appeared as at first:
+
+
+b4c3a8729ae57b4f84d661e16a192f828eca1d03 is first bad commit
+commit b4c3a8729ae57b4f84d661e16a192f828eca1d03
+Author: Anton Blanchard <anton@samba.org>
+Date:   Thu Jun 7 18:14:48 2012 +0000
+
+    powerpc/iommu: Implement IOMMU pools to improve multiqueue adapter performance
+    
+    At the moment all queues in a multiqueue adapter will serialise
+    against the IOMMU table lock. This is proving to be a big issue,
+    especially with 10Gbit ethernet.
+    
+    This patch creates 4 pools and tries to spread the load across
+    them. If the table is under 1GB in size we revert back to the
+    original behaviour of 1 pool and 1 largealloc pool.
+    
+    We create a hash to map CPUs to pools. Since we prefer interrupts to
+    be affinitised to primary CPUs, without some form of hashing we are
+    very likely to end up using the same pool. As an example, POWER7
+    has 4 way SMT and with 4 pools all primary threads will map to the
+    same pool.
+    
+    The largealloc pool is reduced from 1/2 to 1/4 of the space to
+    partially offset the overhead of breaking the table up into pools.
+    
+    Some performance numbers were obtained with a Chelsio T3 adapter on
+    two POWER7 boxes, running a 100 session TCP round robin test.
+    
+    Performance improved 69% with this patch applied.
+    
+    Signed-off-by: Anton Blanchard <anton@samba.org>
+    Signed-off-by: Benjamin Herrenschmidt <benh@kernel.crashing.org>
+
+:040000 040000 039ae3cbdcfded9c6b13e58a3fc67609f1b587b0 6755a8c4a690cc80dcf834d1127f21db925476d6 M	arch
+
+
+Alex
+
