@@ -1,124 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.openrapids.net ([64.15.138.104]:58917 "EHLO
-	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S932181Ab2J2SQv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 14:16:51 -0400
-Date: Mon, 29 Oct 2012 14:16:48 -0400
-From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v7 15/16] openvswitch: use new hashtable implementation
-Message-ID: <20121029181648.GB20796@Krystal>
-References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com> <1351450948-15618-15-git-send-email-levinsasha928@gmail.com> <20121029132931.GC16391@Krystal> <CA+1xoqfRGhPaBEVh228O5_295bWh8FmcyLSOwq8VE5Dm7i3JHg@mail.gmail.com> <20121029155957.GB18834@Krystal> <CA+1xoqcr5xmOkDfqL3P84CNdotOALOhiLRkJjsPCZzijSQUF6w@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CA+1xoqcr5xmOkDfqL3P84CNdotOALOhiLRkJjsPCZzijSQUF6w@mail.gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:3337 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751548Ab2JAOwb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2012 10:52:31 -0400
+Date: Mon, 1 Oct 2012 10:52:19 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "bharrosh@panasas.com" <bharrosh@panasas.com>,
+        "steved@redhat.com" <steved@redhat.com>
+Subject: Re: [PATCH 0/2] nfsd: add a usermodehelper upcall for client id
+ tracking
+Message-ID: <20121001105219.4272fd90@corrin.poochiereds.net>
+In-Reply-To: <5069A8FA.1060401@parallels.com>
+References: <1349092298-23872-1-git-send-email-jlayton@redhat.com>
+	<5069A345.3060807@parallels.com>
+	<20121001141239.GA18400@fieldses.org>
+	<5069A8FA.1060401@parallels.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* Sasha Levin (levinsasha928@gmail.com) wrote:
-> On Mon, Oct 29, 2012 at 11:59 AM, Mathieu Desnoyers
-> <mathieu.desnoyers@efficios.com> wrote:
-> > * Sasha Levin (levinsasha928@gmail.com) wrote:
-> >> Hi Mathieu,
+On Mon, 1 Oct 2012 18:30:18 +0400
+Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+
+> 01.10.2012 18:12, bfields@fieldses.org пишет:
+> > On Mon, Oct 01, 2012 at 06:05:57PM +0400, Stanislav Kinsbursky wrote:
+> >> 01.10.2012 15:51, Jeff Layton пишет:
+> >>> - Do we need to switch to a different mount namespace somehow based on
+> >>>    the net namespace? Eventually we want to allow nfsd to run in a
+> >>>    container. At some point we'll need a mechanism to ensure that the
+> >>>    upcall runs within the correct container. Stanislav, I'd appreciate
+> >>>    your input here...
 > >>
-> >> On Mon, Oct 29, 2012 at 9:29 AM, Mathieu Desnoyers
-> >> <mathieu.desnoyers@efficios.com> wrote:
-> >> > * Sasha Levin (levinsasha928@gmail.com) wrote:
-> >> > [...]
-> >> >> -static struct hlist_head *hash_bucket(struct net *net, const char *name)
-> >> >> -{
-> >> >> -     unsigned int hash = jhash(name, strlen(name), (unsigned long) net);
-> >> >> -     return &dev_table[hash & (VPORT_HASH_BUCKETS - 1)];
-> >> >> -}
-> >> >> -
-> >> >>  /**
-> >> >>   *   ovs_vport_locate - find a port that has already been created
-> >> >>   *
-> >> >> @@ -84,13 +76,12 @@ static struct hlist_head *hash_bucket(struct net *net, const char *name)
-> >> >>   */
-> >> >>  struct vport *ovs_vport_locate(struct net *net, const char *name)
-> >> >>  {
-> >> >> -     struct hlist_head *bucket = hash_bucket(net, name);
-> >> >>       struct vport *vport;
-> >> >>       struct hlist_node *node;
-> >> >> +     int key = full_name_hash(name, strlen(name));
-> >> >>
-> >> >> -     hlist_for_each_entry_rcu(vport, node, bucket, hash_node)
-> >> >> -             if (!strcmp(name, vport->ops->get_name(vport)) &&
-> >> >> -                 net_eq(ovs_dp_get_net(vport->dp), net))
-> >> >> +     hash_for_each_possible_rcu(dev_table, vport, node, hash_node, key)
-> >> >
-> >> > Is applying hash_32() on top of full_name_hash() needed and expected ?
+> >> Hello, Jeff.
+> >> As far as I can see - yes, we have to switch to desired mount
+> >> namespace in kernel (because we can't do this in user namespace).
+> >> Moreover, for NFSd mount namespace looks even more important than
+> >> net namespace. I.e. we can't share one NFSd between mount namespaces
+> >> (at least, I don't understand how to do this safely).
+> >> So, if we are going to have NFSd per container, we have to tie NFSd
+> >> and mount namespace somehow.
+> >> Having one NFSd for more than one network namespace looks feasible.
+> >> But we have some races with creation and destruction of service
+> >> per-net transports, and Bruce was suggesting to think about maybe we
+> >> can just simplify all that stuff and create service per network
+> >> namespace.
 > >>
-> >> Since this was pointed out in several of the patches, I'll answer it
-> >> just once here.
-> >>
-> >> I've intentionally "allowed" double hashing with hash_32 to keep the
-> >> code simple.
-> >>
-> >> hash_32() is pretty simple and gcc optimizes it to be almost nothing,
-> >> so doing that costs us a multiplication and a shift. On the other
-> >> hand, we benefit from keeping our code simple - how would we avoid
-> >> doing this double hash? adding a different hashtable function for
-> >> strings? or a new function for already hashed keys? I think we benefit
-> >> a lot from having to mul/shr instead of adding extra lines of code
-> >> here.
+> >> BTW, is it possible to split service (trasports, etc.) and it's
+> >> "executors" (kernel threads)? If we could do it, then it would be
+> >> really easy to create as many services (with it's unique namespaces
+> >> combination) as required and teach "executors" to switch to desired
+> >> namespaces while handling service requests.
 > >
-> > This could be done, as I pointed out in another email within this
-> > thread, by changing the "key" argument from add/for_each_possible to an
-> > expected "hash" value, and let the caller invoke hash_32() if they want.
-> > I doubt this would add a significant amount of complexity for users of
-> > this API, but would allow much more flexibility to choose hash
-> > functions.
+> > I'm sure it is possible, and would be more efficient than requiring
+> > (number of containers) * (number of threads per container) threads.
+> >
+> > But I think it's also a little more complicated to do, and that to start
+> > off we'd be better off just keeping the services entirely separate.
+> >
 > 
-> Most callers do need to do the hashing though, so why add an
-> additional step for all callers instead of doing another hash_32 for
-> the ones that don't really need it?
+> At first sight, this two solutions (split of service/threads and service per 
+> namespace) doesn't look like they can share a lot of code base.
+> I believe, that we have to think about mount namespaces during NFSd 
+> containerization. And, if I understand you right, when you say about "entirely 
+> separated services", you mean separated by networks namespace.
+> Separations per mount namespace as a second step will take actually the same 
+> time and amount of code, as it would be a first step.
 > 
-> Another question is why do you need flexibility? I think that
-> simplicity wins over flexibility here.
+> So, as I can see it, the real question is: do we really want limited (only 
+> per-net) NFSd containerisation as soon as possible (and in this case it's much 
+> simpler to create NFSd/Lockd service and it's threads per network namespace) or 
+> we should skip this step and concentrate on proper implementation from the very 
+> beginning (split of service and it's threads and tie NFSd to mount namespace)?
+> 
 
-I usually try to make things as simple as possible, but not simplistic
-compared to the problem tackled. In this case, I would ask the following
-question: by standardizing the hash function of all those pieces of
-kernel infrastructure to "hash_32()", including submodules part of the
-kernel network infrastructure, parts of the kernel that can be fed
-values coming from user-space (through the VFS), how can you guarantee
-that hash_32() won't be the cause of a DoS attack based on the fact that
-this algorithm is a) known by an attacker, and b) does not have any
-randomness. It's been a recent trend to perform DoS attacks on poorly
-implemented hashing functions.
+Ok, to bring the discussion back around, I'll note that the current
+legacy clientid tracking code doesn't pay any attention to namespaces
+either. So I don't think we're missing much by punting on that just
+yet.
 
-This is just one example in an attempt to show why different hash table
-users may have different constraints: for a hash table entirely
-populated by keys generated internally by the kernel, a random seed
-might not be required, but for cases where values are fed by user-space
-and from the NIC, I would argue that flexibility to implement a
-randomizable hash function beats implementation simplicity any time.
-
-And you could keep the basic use-case simple by providing hints to the
-hash_32()/hash_64()/hash_ulong() helpers in comments.
-
-Thoughts ?
-
-Thanks,
-
-Mathieu
-
+Once you've hashed out the mount namespace design, we should be able to
+make it pay attention to that that without too much trouble.
 -- 
-Mathieu Desnoyers
-Operating System Efficiency R&D Consultant
-EfficiOS Inc.
-http://www.efficios.com
+Jeff Layton <jlayton@redhat.com>
