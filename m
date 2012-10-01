@@ -1,141 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:18137 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754646Ab2JBPtr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Oct 2012 11:49:47 -0400
-Received: from vmwexceht04-prd.hq.netapp.com (vmwexceht04-prd.hq.netapp.com [10.106.77.34])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q92Fnl22000406
-	for <linux-nfs@vger.kernel.org>; Tue, 2 Oct 2012 08:49:47 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 2 1/1] NFSv4 reduce attribute requests for open
- reclaim
-Date: Tue, 2 Oct 2012 15:49:45 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA908FFD85E@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1349192044-2242-1-git-send-email-andros@netapp.com>
-In-Reply-To: <1349192044-2242-1-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from relay.parallels.com ([195.214.232.42]:38377 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752469Ab2JAPre convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2012 11:47:34 -0400
+Message-ID: <5069BB04.7050509@parallels.com>
+Date: Mon, 1 Oct 2012 19:47:16 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+CC: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "bharrosh@panasas.com" <bharrosh@panasas.com>,
+        "steved@redhat.com" <steved@redhat.com>
+Subject: Re: [PATCH 0/2] nfsd: add a usermodehelper upcall for client id tracking
+References: <1349092298-23872-1-git-send-email-jlayton@redhat.com> <5069A345.3060807@parallels.com> <20121001141239.GA18400@fieldses.org> <5069A8FA.1060401@parallels.com> <20121001144836.GB18400@fieldses.org>
+In-Reply-To: <20121001144836.GB18400@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTEwLTAyIGF0IDExOjM0IC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
-ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFdlIGN1
-cnJlbnRseSBtYWtlIG5vIGRpc3RpbmN0aW9uIGluIGF0dHJpYnV0ZSByZXF1ZXN0cyBiZXR3ZWVu
-IG5vcm1hbCBPUEVOcw0KPiBhbmQgT1BFTiB3aXRoIENMQUlNX1BSRVZJT1VTLiAgVGhpcyBvZmZl
-cnMgbW9yZSBwb3NzaWJpbGl0eSBvZiBmYWlsdXJlcyBpbg0KPiB0aGUgR0VUQVRUUiByZXNwb25z
-ZSB3aGljaCBmb2lscyBPUEVOIHJlY2xhaW0gYXR0ZW1wdHMuDQo+IA0KPiBSZWR1Y2UgdGhlIHJl
-cXVlc3RlZCBhdHRyaWJ1dGVzIHRvIHRoZSBiYXJlIG1pbmltdW0gbmVlZGVkIHRvIHVwZGF0ZSB0
-aGUNCj4gcmVjbGFpbSBvcGVuIHN0YXRlaWQgYW5kIHNwbGl0IG5mczRfb3BlbmRhdGFfdG9fbmZz
-NF9zdGF0ZSBwcm9jZXNzaW5nDQo+IGFjY29yZGluZ2x5Lg0KPiANCj4gU2lnbmVkLW9mZi1ieTog
-QW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gLS0tDQo+IA0KPiBWZXJzaW9uIDI6
-DQo+IEFzIHBlciBUcm9uZHMgc3VnZ2VzdGlvbiwgdXNlIG5mc19yZWZyZXNoX2lub2RlIGluc3Rl
-YWQgb2YgbmZzX3VwZGF0ZV9pbm9kZS4NCj4gDQo+ICBmcy9uZnMvbmZzNHByb2MuYyB8ICAxMDgg
-KysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKy0tLS0tLS0tLS0tLS0NCj4g
-IGZzL25mcy9uZnM0eGRyLmMgIHwgICAgMiArLQ0KPiAgMiBmaWxlcyBjaGFuZ2VkLCA4MyBpbnNl
-cnRpb25zKCspLCAyNyBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZz
-NHByb2MuYyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+IGluZGV4IDUwZTc5YzkuLjA0Mzc3MDMgMTAw
-NjQ0DQo+IC0tLSBhL2ZzL25mcy9uZnM0cHJvYy5jDQo+ICsrKyBiL2ZzL25mcy9uZnM0cHJvYy5j
-DQo+IEBAIC0xNTIsNiArMTUyLDEyIEBAIHN0YXRpYyBjb25zdCB1MzIgbmZzNF9wbmZzX29wZW5f
-Yml0bWFwWzNdID0gew0KPiAgCUZBVFRSNF9XT1JEMl9NRFNUSFJFU0hPTEQNCj4gIH07DQo+ICAN
-Cj4gK3N0YXRpYyBjb25zdCB1MzIgbmZzNF9vcGVuX25vYXR0cl9iaXRtYXBbM10gPSB7DQo+ICsJ
-RkFUVFI0X1dPUkQwX1RZUEUNCj4gKwl8IEZBVFRSNF9XT1JEMF9DSEFOR0UNCj4gKwl8IEZBVFRS
-NF9XT1JEMF9GSUxFSUQsDQo+ICt9Ow0KPiArDQo+ICBjb25zdCB1MzIgbmZzNF9zdGF0ZnNfYml0
-bWFwWzJdID0gew0KPiAgCUZBVFRSNF9XT1JEMF9GSUxFU19BVkFJTA0KPiAgCXwgRkFUVFI0X1dP
-UkQwX0ZJTEVTX0ZSRUUNCj4gQEAgLTExMjAsMTEgKzExMjYsNzQgQEAgb3V0X3JldHVybl9zdGF0
-ZToNCj4gIAlyZXR1cm4gc3RhdGU7DQo+ICB9DQo+ICANCj4gLXN0YXRpYyBzdHJ1Y3QgbmZzNF9z
-dGF0ZSAqbmZzNF9vcGVuZGF0YV90b19uZnM0X3N0YXRlKHN0cnVjdCBuZnM0X29wZW5kYXRhICpk
-YXRhKQ0KPiArc3RhdGljIHZvaWQNCj4gK25mczRfb3BlbmRhdGFfY2hlY2tfZGVsZWcoc3RydWN0
-IG5mczRfb3BlbmRhdGEgKmRhdGEsIHN0cnVjdCBuZnM0X3N0YXRlICpzdGF0ZSkNCj4gK3sNCj4g
-KwlzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwID0gTkZTX1NFUlZFUihzdGF0ZS0+aW5vZGUpLT5uZnNf
-Y2xpZW50Ow0KPiArCXN0cnVjdCBuZnNfZGVsZWdhdGlvbiAqZGVsZWdhdGlvbjsNCj4gKwlpbnQg
-ZGVsZWdhdGlvbl9mbGFncyA9IDA7DQo+ICsNCj4gKwlyY3VfcmVhZF9sb2NrKCk7DQo+ICsJZGVs
-ZWdhdGlvbiA9IHJjdV9kZXJlZmVyZW5jZShORlNfSShzdGF0ZS0+aW5vZGUpLT5kZWxlZ2F0aW9u
-KTsNCj4gKwlpZiAoZGVsZWdhdGlvbikNCj4gKwkJZGVsZWdhdGlvbl9mbGFncyA9IGRlbGVnYXRp
-b24tPmZsYWdzOw0KPiArCXJjdV9yZWFkX3VubG9jaygpOw0KPiArCWlmIChkYXRhLT5vX2FyZy5j
-bGFpbSA9PSBORlM0X09QRU5fQ0xBSU1fREVMRUdBVEVfQ1VSKSB7DQo+ICsJCXByX2Vycl9yYXRl
-bGltaXRlZCgiTkZTOiBCcm9rZW4gTkZTdjQgc2VydmVyICVzIGlzICINCj4gKwkJCQkgICAicmV0
-dXJuaW5nIGEgZGVsZWdhdGlvbiBmb3IgIg0KPiArCQkJCSAgICJPUEVOKENMQUlNX0RFTEVHQVRF
-X0NVUilcbiIsDQo+ICsJCQkJICAgY2xwLT5jbF9ob3N0bmFtZSk7DQo+ICsJfSBlbHNlIGlmICgo
-ZGVsZWdhdGlvbl9mbGFncyAmIDFVTDw8TkZTX0RFTEVHQVRJT05fTkVFRF9SRUNMQUlNKSA9PSAw
-KQ0KPiArCQluZnNfaW5vZGVfc2V0X2RlbGVnYXRpb24oc3RhdGUtPmlub2RlLA0KPiArCQkJCQkg
-ZGF0YS0+b3duZXItPnNvX2NyZWQsDQo+ICsJCQkJCSAmZGF0YS0+b19yZXMpOw0KPiArCWVsc2UN
-Cj4gKwkJbmZzX2lub2RlX3JlY2xhaW1fZGVsZWdhdGlvbihzdGF0ZS0+aW5vZGUsDQo+ICsJCQkJ
-CSAgICAgZGF0YS0+b3duZXItPnNvX2NyZWQsDQo+ICsJCQkJCSAgICAgJmRhdGEtPm9fcmVzKTsN
-Cj4gK30NCj4gKw0KPiArLyoNCj4gKyAqIENoZWNrIHRoZSBpbm9kZSBhdHRyaWJ1dGVzIGFnYWlu
-c3QgdGhlIENMQUlNX1BSRVZJT1VTIHJldHVybmVkIGF0dHJpYnV0ZXMNCj4gKyAqIGFuZCB1cGRh
-dGUgdGhlIG5mczRfc3RhdGUuDQo+ICsgKi8NCj4gK3N0YXRpYyBzdHJ1Y3QgbmZzNF9zdGF0ZSAq
-DQo+ICtfbmZzNF9vcGVuZGF0YV9yZWNsYWltX3RvX25mczRfc3RhdGUoc3RydWN0IG5mczRfb3Bl
-bmRhdGEgKmRhdGEpDQo+ICt7DQo+ICsJc3RydWN0IGlub2RlICppbm9kZSA9IGRhdGEtPnN0YXRl
-LT5pbm9kZTsNCj4gKwlzdHJ1Y3QgbmZzNF9zdGF0ZSAqc3RhdGUgPSBkYXRhLT5zdGF0ZTsNCj4g
-KwlpbnQgcmV0ID0gLUVTVEFMRTsNCj4gKw0KPiArCWlmICghZGF0YS0+cnBjX2RvbmUgfHwgIShk
-YXRhLT5mX2F0dHIudmFsaWQgJiBORlNfQVRUUl9GQVRUUikgfHwNCg0KSXNuJ3QgdGhlIHRlc3Qg
-Zm9yIE5GU19BVFRSX0ZBVFRSIHJlZHVuZGFudCBpZiB3ZSBwYXNzIGFueSBvbmUgb2YgdGhlDQpi
-ZWxvdz8NCg0KPiArCSAgICAhKGRhdGEtPmZfYXR0ci52YWxpZCAmIE5GU19BVFRSX0ZBVFRSX1RZ
-UEUpIHx8DQo+ICsJICAgICEoZGF0YS0+Zl9hdHRyLnZhbGlkICYgTkZTX0FUVFJfRkFUVFJfQ0hB
-TkdFKSB8fA0KPiArCSAgICAhKGRhdGEtPmZfYXR0ci52YWxpZCAmIE5GU19BVFRSX0ZBVFRSX0ZJ
-TEVJRCkpDQo+ICsJCWdvdG8gZXJyOw0KDQpJZiAhZGF0YS0+cnBjX2RvbmUsIHdlIGRvbid0IHJl
-YWxseSB3YW50IHRvIHJldHVybiBFU1RBTEUuDQoNCj4gKw0KPiArCXJldCA9IC1FTk9NRU07DQo+
-ICsJc3RhdGUgPSBuZnM0X2dldF9vcGVuX3N0YXRlKGlub2RlLCBkYXRhLT5vd25lcik7DQo+ICsJ
-aWYgKHN0YXRlID09IE5VTEwpDQo+ICsJCWdvdG8gZXJyOw0KPiArDQo+ICsJcmV0ID0gbmZzX3Jl
-ZnJlc2hfaW5vZGUoaW5vZGUsICZkYXRhLT5mX2F0dHIpOw0KPiArCWlmIChyZXQpDQo+ICsJCWdv
-dG8gZXJyOw0KPiArCWlmIChkYXRhLT5vX3Jlcy5kZWxlZ2F0aW9uX3R5cGUgIT0gMCkNCj4gKwkJ
-bmZzNF9vcGVuZGF0YV9jaGVja19kZWxlZyhkYXRhLCBzdGF0ZSk7DQo+ICsJdXBkYXRlX29wZW5f
-c3RhdGVpZChzdGF0ZSwgJmRhdGEtPm9fcmVzLnN0YXRlaWQsIE5VTEwsDQo+ICsJCQkgICAgZGF0
-YS0+b19hcmcuZm1vZGUpOw0KPiArDQo+ICsJcmV0dXJuIHN0YXRlOw0KPiArZXJyOg0KPiArCXJl
-dHVybiBFUlJfUFRSKHJldCk7DQo+ICsNCj4gK30NCj4gKw0KPiArc3RhdGljIHN0cnVjdCBuZnM0
-X3N0YXRlICoNCj4gK19uZnM0X29wZW5kYXRhX3RvX25mczRfc3RhdGUoc3RydWN0IG5mczRfb3Bl
-bmRhdGEgKmRhdGEpDQo+ICB7DQo+ICAJc3RydWN0IGlub2RlICppbm9kZTsNCj4gIAlzdHJ1Y3Qg
-bmZzNF9zdGF0ZSAqc3RhdGUgPSBOVUxMOw0KPiAtCXN0cnVjdCBuZnNfZGVsZWdhdGlvbiAqZGVs
-ZWdhdGlvbjsNCj4gIAlpbnQgcmV0Ow0KPiAgDQo+ICAJaWYgKCFkYXRhLT5ycGNfZG9uZSkgew0K
-PiBAQCAtMTE0MywzMCArMTIxMiw4IEBAIHN0YXRpYyBzdHJ1Y3QgbmZzNF9zdGF0ZSAqbmZzNF9v
-cGVuZGF0YV90b19uZnM0X3N0YXRlKHN0cnVjdCBuZnM0X29wZW5kYXRhICpkYXRhDQo+ICAJc3Rh
-dGUgPSBuZnM0X2dldF9vcGVuX3N0YXRlKGlub2RlLCBkYXRhLT5vd25lcik7DQo+ICAJaWYgKHN0
-YXRlID09IE5VTEwpDQo+ICAJCWdvdG8gZXJyX3B1dF9pbm9kZTsNCj4gLQlpZiAoZGF0YS0+b19y
-ZXMuZGVsZWdhdGlvbl90eXBlICE9IDApIHsNCj4gLQkJc3RydWN0IG5mc19jbGllbnQgKmNscCA9
-IE5GU19TRVJWRVIoaW5vZGUpLT5uZnNfY2xpZW50Ow0KPiAtCQlpbnQgZGVsZWdhdGlvbl9mbGFn
-cyA9IDA7DQo+IC0NCj4gLQkJcmN1X3JlYWRfbG9jaygpOw0KPiAtCQlkZWxlZ2F0aW9uID0gcmN1
-X2RlcmVmZXJlbmNlKE5GU19JKGlub2RlKS0+ZGVsZWdhdGlvbik7DQo+IC0JCWlmIChkZWxlZ2F0
-aW9uKQ0KPiAtCQkJZGVsZWdhdGlvbl9mbGFncyA9IGRlbGVnYXRpb24tPmZsYWdzOw0KPiAtCQly
-Y3VfcmVhZF91bmxvY2soKTsNCj4gLQkJaWYgKGRhdGEtPm9fYXJnLmNsYWltID09IE5GUzRfT1BF
-Tl9DTEFJTV9ERUxFR0FURV9DVVIpIHsNCj4gLQkJCXByX2Vycl9yYXRlbGltaXRlZCgiTkZTOiBC
-cm9rZW4gTkZTdjQgc2VydmVyICVzIGlzICINCj4gLQkJCQkJInJldHVybmluZyBhIGRlbGVnYXRp
-b24gZm9yICINCj4gLQkJCQkJIk9QRU4oQ0xBSU1fREVMRUdBVEVfQ1VSKVxuIiwNCj4gLQkJCQkJ
-Y2xwLT5jbF9ob3N0bmFtZSk7DQo+IC0JCX0gZWxzZSBpZiAoKGRlbGVnYXRpb25fZmxhZ3MgJiAx
-VUw8PE5GU19ERUxFR0FUSU9OX05FRURfUkVDTEFJTSkgPT0gMCkNCj4gLQkJCW5mc19pbm9kZV9z
-ZXRfZGVsZWdhdGlvbihzdGF0ZS0+aW5vZGUsDQo+IC0JCQkJCWRhdGEtPm93bmVyLT5zb19jcmVk
-LA0KPiAtCQkJCQkmZGF0YS0+b19yZXMpOw0KPiAtCQllbHNlDQo+IC0JCQluZnNfaW5vZGVfcmVj
-bGFpbV9kZWxlZ2F0aW9uKHN0YXRlLT5pbm9kZSwNCj4gLQkJCQkJZGF0YS0+b3duZXItPnNvX2Ny
-ZWQsDQo+IC0JCQkJCSZkYXRhLT5vX3Jlcyk7DQo+IC0JfQ0KPiAtDQo+ICsJaWYgKGRhdGEtPm9f
-cmVzLmRlbGVnYXRpb25fdHlwZSAhPSAwKQ0KPiArCQluZnM0X29wZW5kYXRhX2NoZWNrX2RlbGVn
-KGRhdGEsIHN0YXRlKTsNCj4gIAl1cGRhdGVfb3Blbl9zdGF0ZWlkKHN0YXRlLCAmZGF0YS0+b19y
-ZXMuc3RhdGVpZCwgTlVMTCwNCj4gIAkJCWRhdGEtPm9fYXJnLmZtb2RlKTsNCj4gIAlpcHV0KGlu
-b2RlKTsNCj4gQEAgLTExNzgsNiArMTIyNSwxNCBAQCBlcnI6DQo+ICAJcmV0dXJuIEVSUl9QVFIo
-cmV0KTsNCj4gIH0NCj4gIA0KPiArc3RhdGljIHN0cnVjdCBuZnM0X3N0YXRlICoNCj4gK25mczRf
-b3BlbmRhdGFfdG9fbmZzNF9zdGF0ZShzdHJ1Y3QgbmZzNF9vcGVuZGF0YSAqZGF0YSkNCj4gK3sN
-Cj4gKwlpZiAoZGF0YS0+b19hcmcuY2xhaW0gPT0gTkZTNF9PUEVOX0NMQUlNX1BSRVZJT1VTKQ0K
-PiArCQlyZXR1cm4gX25mczRfb3BlbmRhdGFfcmVjbGFpbV90b19uZnM0X3N0YXRlKGRhdGEpOw0K
-PiArCXJldHVybiBfbmZzNF9vcGVuZGF0YV90b19uZnM0X3N0YXRlKGRhdGEpOw0KPiArfQ0KPiAr
-DQo+ICBzdGF0aWMgc3RydWN0IG5mc19vcGVuX2NvbnRleHQgKm5mczRfc3RhdGVfZmluZF9vcGVu
-X2NvbnRleHQoc3RydWN0IG5mczRfc3RhdGUgKnN0YXRlKQ0KPiAgew0KPiAgCXN0cnVjdCBuZnNf
-aW5vZGUgKm5mc2kgPSBORlNfSShzdGF0ZS0+aW5vZGUpOw0KPiBAQCAtMTQ5OSw2ICsxNTU0LDcg
-QEAgc3RhdGljIHZvaWQgbmZzNF9vcGVuX3ByZXBhcmUoc3RydWN0IHJwY190YXNrICp0YXNrLCB2
-b2lkICpjYWxsZGF0YSkNCj4gIAlkYXRhLT5vX2FyZy5jbGllbnRpZCA9IHNwLT5zb19zZXJ2ZXIt
-Pm5mc19jbGllbnQtPmNsX2NsaWVudGlkOw0KPiAgCWlmIChkYXRhLT5vX2FyZy5jbGFpbSA9PSBO
-RlM0X09QRU5fQ0xBSU1fUFJFVklPVVMpIHsNCj4gIAkJdGFzay0+dGtfbXNnLnJwY19wcm9jID0g
-Jm5mczRfcHJvY2VkdXJlc1tORlNQUk9DNF9DTE5UX09QRU5fTk9BVFRSXTsNCj4gKwkJZGF0YS0+
-b19hcmcub3Blbl9iaXRtYXAgPSAmbmZzNF9vcGVuX25vYXR0cl9iaXRtYXBbMF07DQo+ICAJCW5m
-c19jb3B5X2ZoKCZkYXRhLT5vX3Jlcy5maCwgZGF0YS0+b19hcmcuZmgpOw0KPiAgCX0NCj4gIAlk
-YXRhLT50aW1lc3RhbXAgPSBqaWZmaWVzOw0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczR4ZHIu
-YyBiL2ZzL25mcy9uZnM0eGRyLmMNCj4gaW5kZXggNjU3NDgzYy4uYmE1YjE5NSAxMDA2NDQNCj4g
-LS0tIGEvZnMvbmZzL25mczR4ZHIuYw0KPiArKysgYi9mcy9uZnMvbmZzNHhkci5jDQo+IEBAIC0y
-MjYyLDcgKzIyNjIsNyBAQCBzdGF0aWMgdm9pZCBuZnM0X3hkcl9lbmNfb3Blbl9ub2F0dHIoc3Ry
-dWN0IHJwY19ycXN0ICpyZXEsDQo+ICAJZW5jb2RlX3B1dGZoKHhkciwgYXJncy0+ZmgsICZoZHIp
-Ow0KPiAgCWVuY29kZV9vcGVuKHhkciwgYXJncywgJmhkcik7DQo+ICAJZW5jb2RlX2FjY2Vzcyh4
-ZHIsIGFyZ3MtPmFjY2VzcywgJmhkcik7DQo+IC0JZW5jb2RlX2dldGZhdHRyKHhkciwgYXJncy0+
-Yml0bWFzaywgJmhkcik7DQo+ICsJZW5jb2RlX2dldGZhdHRyX29wZW4oeGRyLCBhcmdzLT5iaXRt
-YXNrLCBhcmdzLT5vcGVuX2JpdG1hcCwgJmhkcik7DQo+ICAJZW5jb2RlX25vcHMoJmhkcik7DQo+
-ICB9DQo+ICANCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRh
-aW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNv
-bQ0K
+01.10.2012 18:48, bfields@fieldses.org пишет:
+> On Mon, Oct 01, 2012 at 06:30:18PM +0400, Stanislav Kinsbursky wrote:
+>> 01.10.2012 18:12, bfields@fieldses.org пишет:
+>>> On Mon, Oct 01, 2012 at 06:05:57PM +0400, Stanislav Kinsbursky wrote:
+>>>> 01.10.2012 15:51, Jeff Layton пишет:
+>>>>> - Do we need to switch to a different mount namespace somehow based on
+>>>>>    the net namespace? Eventually we want to allow nfsd to run in a
+>>>>>    container. At some point we'll need a mechanism to ensure that the
+>>>>>    upcall runs within the correct container. Stanislav, I'd appreciate
+>>>>>    your input here...
+>>>>
+>>>> Hello, Jeff.
+>>>> As far as I can see - yes, we have to switch to desired mount
+>>>> namespace in kernel (because we can't do this in user namespace).
+>>>> Moreover, for NFSd mount namespace looks even more important than
+>>>> net namespace. I.e. we can't share one NFSd between mount namespaces
+>>>> (at least, I don't understand how to do this safely).
+>>>> So, if we are going to have NFSd per container, we have to tie NFSd
+>>>> and mount namespace somehow.
+>>>> Having one NFSd for more than one network namespace looks feasible.
+>>>> But we have some races with creation and destruction of service
+>>>> per-net transports, and Bruce was suggesting to think about maybe we
+>>>> can just simplify all that stuff and create service per network
+>>>> namespace.
+>>>>
+>>>> BTW, is it possible to split service (trasports, etc.) and it's
+>>>> "executors" (kernel threads)? If we could do it, then it would be
+>>>> really easy to create as many services (with it's unique namespaces
+>>>> combination) as required and teach "executors" to switch to desired
+>>>> namespaces while handling service requests.
+>>>
+>>> I'm sure it is possible, and would be more efficient than requiring
+>>> (number of containers) * (number of threads per container) threads.
+>>>
+>>> But I think it's also a little more complicated to do, and that to start
+>>> off we'd be better off just keeping the services entirely separate.
+>>>
+>>
+>> At first sight, this two solutions (split of service/threads and
+>> service per namespace) doesn't look like they can share a lot of
+>> code base.
+>> I believe, that we have to think about mount namespaces during NFSd
+>> containerization. And, if I understand you right, when you say about
+>> "entirely separated services", you mean separated by networks
+>> namespace.
+>> Separations per mount namespace as a second step will take actually
+>> the same time and amount of code, as it would be a first step.
+>>
+>> So, as I can see it, the real question is: do we really want limited
+>> (only per-net) NFSd containerisation as soon as possible (and in
+>> this case it's much simpler to create NFSd/Lockd service and it's
+>> threads per network namespace) or we should skip this step and
+>> concentrate on proper implementation from the very beginning (split
+>> of service and it's threads and tie NFSd to mount namespace)?
+>
+> Sorry, I'm not following you:
+>
+> 	- tying to network namespace vs tying to mount namespace is a
+> 	  completely separate issue from splitting service and threads,
+> 	  right?
+
+Not really, I guess. I.e. we already tied service to network namespace. All we 
+need to implement fully separated per network namespace services is to drop 
+service per-net resources allocation and replace it by full service per-net 
+creation network namespace (including staring new kthreads).
+
+> 	- in detail, what would be the difference between tying to
+> 	  network namespace and mount namespace?  How do you see
+> 	  tying to mount namespace working, and why is that better?
+>
+
+If we want to tie NFSd also (!) to mount namespace, then we can't do that 
+easily. And the simplest (and currently looks suitable) way I see so far is to:
+
+1) separate service network part from service process part and
+2) tie service network part to mount (!) namespace, leaving service process part 
+in main pid namespace.
+
+The issue is not in mount namespace itself,  but in second namespace to tie to. 
+And it looks like for NFSd mount namespace is more important, because we can 
+share it between service instances.
+This means also, that one mount namespace could be used by more that one NFSd 
+service in case their network namespaces are different.
+
+> --b.
+>
+
+
+-- 
+Best regards,
+Stanislav Kinsbursky
