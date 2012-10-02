@@ -1,97 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:56868 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754698Ab2JOVbp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Oct 2012 17:31:45 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] NFSv4.1: Do not call pnfs_return_layout() from an rpciod context
-Date: Mon, 15 Oct 2012 17:30:54 -0400
-Message-Id: <1350336667-18770-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1350336667-18770-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1350336667-18770-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:32885 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751153Ab2JBDdH convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2012 23:33:07 -0400
+Subject: Re: [nfs:testing 69/83] fs/nfs/nfs4state.c:127:9: error: 'nfs_callback_tcpport' undeclared
+Mime-Version: 1.0 (Apple Message framework v1283)
+Content-Type: text/plain; charset=us-ascii
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20121002021718.GB6691@localhost>
+Date: Mon, 1 Oct 2012 20:32:57 -0700
+Cc: kernel-janitors@vger.kernel.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Message-Id: <F56D55B2-7999-4AA4-8A8F-495AAE9728B0@oracle.com>
+References: <20121002021718.GB6691@localhost>
+To: Fengguang Wu <fengguang.wu@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Move the call to pnfs_return_layout() to the read and write rpc_release()
-callbacks, so that it gets called from nfsiod, which is a more appropriate
-context.
+Hi-
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4filelayout.c | 18 +++++++++++++++---
- fs/nfs/pnfs.h           |  1 +
- 2 files changed, 16 insertions(+), 3 deletions(-)
+That appears to be a merge error.  I believe it was fixed today in the "testing" branch.  If not, we'll get it addressed tomorrow.
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 816c2d0..e7aee56 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -122,12 +122,21 @@ static void filelayout_reset_read(struct nfs_read_data *data)
- 	}
- }
- 
-+static void filelayout_fenceme(struct inode *inode, struct pnfs_layout_hdr *lo)
-+{
-+	if (!test_and_clear_bit(NFS_LAYOUT_RETURN, &lo->plh_flags))
-+		return;
-+	clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags);
-+	pnfs_return_layout(inode);
-+}
-+
- static int filelayout_async_handle_error(struct rpc_task *task,
- 					 struct nfs4_state *state,
- 					 struct nfs_client *clp,
- 					 struct pnfs_layout_segment *lseg)
- {
--	struct inode *inode = lseg->pls_layout->plh_inode;
-+	struct pnfs_layout_hdr *lo = lseg->pls_layout;
-+	struct inode *inode = lo->plh_inode;
- 	struct nfs_server *mds_server = NFS_SERVER(inode);
- 	struct nfs4_deviceid_node *devid = FILELAYOUT_DEVID_NODE(lseg);
- 	struct nfs_client *mds_client = mds_server->nfs_client;
-@@ -204,8 +213,7 @@ static int filelayout_async_handle_error(struct rpc_task *task,
- 		dprintk("%s DS connection error %d\n", __func__,
- 			task->tk_status);
- 		nfs4_mark_deviceid_unavailable(devid);
--		clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags);
--		_pnfs_return_layout(inode);
-+		set_bit(NFS_LAYOUT_RETURN, &lo->plh_flags);
- 		rpc_wake_up(&tbl->slot_tbl_waitq);
- 		/* fall through */
- 	default:
-@@ -330,7 +338,9 @@ static void filelayout_read_count_stats(struct rpc_task *task, void *data)
- static void filelayout_read_release(void *data)
- {
- 	struct nfs_read_data *rdata = data;
-+	struct pnfs_layout_hdr *lo = rdata->header->lseg->pls_layout;
- 
-+	filelayout_fenceme(lo->plh_inode, lo);
- 	nfs_put_client(rdata->ds_clp);
- 	rdata->header->mds_ops->rpc_release(data);
- }
-@@ -428,7 +438,9 @@ static void filelayout_write_count_stats(struct rpc_task *task, void *data)
- static void filelayout_write_release(void *data)
- {
- 	struct nfs_write_data *wdata = data;
-+	struct pnfs_layout_hdr *lo = wdata->header->lseg->pls_layout;
- 
-+	filelayout_fenceme(lo->plh_inode, lo);
- 	nfs_put_client(wdata->ds_clp);
- 	wdata->header->mds_ops->rpc_release(data);
- }
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 2d722db..dbf7bba 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -62,6 +62,7 @@ enum {
- 	NFS_LAYOUT_RW_FAILED,		/* get rw layout failed stop trying */
- 	NFS_LAYOUT_BULK_RECALL,		/* bulk recall affecting layout */
- 	NFS_LAYOUT_ROC,			/* some lseg had roc bit set */
-+	NFS_LAYOUT_RETURN,		/* Return this layout ASAP */
- };
- 
- enum layoutdriver_policy_flags {
--- 
-1.7.11.7
+
+On Oct 1, 2012, at 7:17 PM, Fengguang Wu wrote:
+
+> Hi Chuck,
+> 
+> FYI, kernel build failed on
+> 
+> tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git testing
+> head:   2afdfa5a846246de50e1881f71ba5c0aac0b415f
+> commit: 05f4c350ee02e9461c6ae3a880ea326a06835e37 [69/83] NFS: Discover NFSv4 server trunking when mounting
+> config: x86_64-allyesconfig
+> 
+> All error/warnings:
+> 
+> fs/nfs/nfs4state.c: In function 'nfs40_discover_server_trunking':
+> fs/nfs/nfs4state.c:127:9: error: 'nfs_callback_tcpport' undeclared (first use in this function)
+> fs/nfs/nfs4state.c:127:9: note: each undeclared identifier is reported only once for each function it appears in
+> fs/nfs/nfs4state.c:129:10: error: 'nfs_callback_tcpport6' undeclared (first use in this function)
+> 
+> vim +127 fs/nfs/nfs4state.c
+> 
+> 05f4c350 (Chuck Lever 2012-09-14  115)  */
+> 05f4c350 (Chuck Lever 2012-09-14  116) int nfs40_discover_server_trunking(struct nfs_client *clp,
+> 05f4c350 (Chuck Lever 2012-09-14  117) 				   struct nfs_client **result,
+> 05f4c350 (Chuck Lever 2012-09-14  118) 				   struct rpc_cred *cred)
+> 05f4c350 (Chuck Lever 2012-09-14  119) {
+> 05f4c350 (Chuck Lever 2012-09-14  120) 	struct nfs4_setclientid_res clid = {
+> 05f4c350 (Chuck Lever 2012-09-14  121) 		.clientid = clp->cl_clientid,
+> 05f4c350 (Chuck Lever 2012-09-14  122) 		.confirm = clp->cl_confirm,
+> 05f4c350 (Chuck Lever 2012-09-14  123) 	};
+> 05f4c350 (Chuck Lever 2012-09-14  124) 	unsigned short port;
+> 05f4c350 (Chuck Lever 2012-09-14  125) 	int status;
+> 05f4c350 (Chuck Lever 2012-09-14  126) 
+> 05f4c350 (Chuck Lever 2012-09-14 @127) 	port = nfs_callback_tcpport;
+> 05f4c350 (Chuck Lever 2012-09-14  128) 	if (clp->cl_addr.ss_family == AF_INET6)
+> 05f4c350 (Chuck Lever 2012-09-14  129) 		port = nfs_callback_tcpport6;
+> 05f4c350 (Chuck Lever 2012-09-14  130) 
+> 05f4c350 (Chuck Lever 2012-09-14  131) 	status = nfs4_proc_setclientid(clp, NFS4_CALLBACK, port, cred, &clid);
+> 05f4c350 (Chuck Lever 2012-09-14  132) 	if (status != 0)
+> 05f4c350 (Chuck Lever 2012-09-14  133) 		goto out;
+> 
+> ---
+> 0-DAY kernel build testing backend         Open Source Technology Centre
+> Fengguang Wu, Yuanhan Liu                              Intel Corporation
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
