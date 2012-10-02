@@ -1,41 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:43458 "EHLO mx12.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:29612 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756958Ab2JWOxa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Oct 2012 10:53:30 -0400
-From: Weston Andros Adamson <dros@netapp.com>
+	id S1754473Ab2JBKSp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Oct 2012 06:18:45 -0400
+Subject: [PATCH 0/5] nfs: few cleanup patches inspired by sparse
 To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 16/25] SUNRPC: remove BUG_ON in svc_xprt_received
-Date: Tue, 23 Oct 2012 10:43:40 -0400
-Message-Id: <1351003429-18887-17-git-send-email-dros@netapp.com>
-In-Reply-To: <1351003429-18887-1-git-send-email-dros@netapp.com>
-References: <1351003429-18887-1-git-send-email-dros@netapp.com>
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, devel@openvz.org,
+        linux-kernel@vger.kernel.org, jlayton@redhat.com
+Date: Tue, 02 Oct 2012 14:18:43 +0400
+Message-ID: <20121002101649.15507.50466.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Replace BUG_ON() with a WARN_ON_ONCE() and early return.
+First two patched fixes problems reported by Fengguang Wu
+<fengguang.wu@intel.com>.
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+The following series implements...
+
 ---
- net/sunrpc/svc_xprt.c |    4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 194d865..be89bb6 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -218,7 +218,9 @@ static struct svc_xprt *__svc_xpo_create(struct svc_xprt_class *xcl,
-  */
- static void svc_xprt_received(struct svc_xprt *xprt)
- {
--	BUG_ON(!test_bit(XPT_BUSY, &xprt->xpt_flags));
-+	WARN_ON_ONCE(!test_bit(XPT_BUSY, &xprt->xpt_flags));
-+	if (!test_bit(XPT_BUSY, &xprt->xpt_flags))
-+		return;
- 	/* As soon as we clear busy, the xprt could be closed and
- 	 * 'put', so we need a reference to call svc_xprt_enqueue with:
- 	 */
--- 
-1.7.9.6 (Apple Git-31.1)
+Stanislav Kinsbursky (5):
+      nfs: include NFSv4 header in netns.h
+      nfs: declare nfs_callback_tcp_port in header
+      nfs: declare nfs_xdev_mount as static
+      nfs: include nfs4_fh.h in nfs4sysctl.c
+      nfs: include internah.h in getroot.h
+
+
+ fs/nfs/callback.h   |    1 +
+ fs/nfs/getroot.c    |    2 ++
+ fs/nfs/netns.h      |    1 +
+ fs/nfs/nfs4sysctl.c |    1 +
+ fs/nfs/super.c      |    2 +-
+ 5 files changed, 6 insertions(+), 1 deletions(-)
 
