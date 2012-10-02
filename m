@@ -1,86 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:50394 "EHLO e2.ny.us.ibm.com"
+Received: from mx2.netapp.com ([216.240.18.37]:41939 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753202Ab2JHPaQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Oct 2012 11:30:16 -0400
-Received: from /spool/local
-	by e2.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Mon, 8 Oct 2012 11:30:10 -0400
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q98FQrrb174506
-	for <linux-nfs@vger.kernel.org>; Mon, 8 Oct 2012 11:26:53 -0400
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q98FQmXC021449
-	for <linux-nfs@vger.kernel.org>; Mon, 8 Oct 2012 09:26:48 -0600
-Date: Mon, 8 Oct 2012 10:26:47 -0500
-From: Malahal Naineni <malahal@us.ibm.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: NeilBrown <neilb@suse.de>, "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        NFS <linux-nfs@vger.kernel.org>
-Subject: Re: Inconsistency when mounting a directory that 'world' cannot
- access.
-Message-ID: <20121008152647.GA15534@us.ibm.com>
-References: <20121002143334.GA1435@fieldses.org>
- <20121003134629.72557522@notabene.brown>
- <20121003151349.GD14313@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA909001D77@SACEXCMBX04-PRD.hq.netapp.com>
- <20121003162728.GE14313@fieldses.org>
- <20121004084659.38632320@notabene.brown>
- <20121004160739.GA4693@fieldses.org>
- <20121008170304.37dc6ae9@notabene.brown>
- <20121008135452.GA14785@us.ibm.com>
- <20121008141839.GA27230@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20121008141839.GA27230@fieldses.org>
+	id S1751121Ab2JBSdY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Oct 2012 14:33:24 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com,
+        Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH] NFSv4.1: don't do two EXCHANGE_IDs on mount
+Date: Tue,  2 Oct 2012 11:33:22 -0700
+Message-Id: <1349202802-21250-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields [bfields@fieldses.org] wrote:
-> On Mon, Oct 08, 2012 at 08:54:52AM -0500, Malahal Naineni wrote:
-> > NeilBrown [neilb@suse.de] wrote:
-> > > Mount with NFSv4 and it takes about the same.  However:
-> > > 
-> > > .....
-> > > drwxr-xr-x 2 4294967294 root 4096 Oct  8 16:19 2974
-> > > drwxr-xr-x 2 4294967294 root 4096 Oct  8 16:19 2975
-> > > drwxr-xr-x 2 4294967294 root 4096 Oct  8 16:19 2976
-> > > drwxr-xr-x 2 4294967294 root 4096 Oct  8 16:19 2977
-> > > drwxr-xr-x 2 4294967294 root 4096 Oct  8 16:19 2978
-> > > drwxr-xr-x 2 u2979      root 4096 Oct  8 16:19 2979
-> > > drwxr-xr-x 2 u2980      root 4096 Oct  8 16:19 2980
-> > > drwxr-xr-x 2 4294967294 root 4096 Oct  8 16:19 2981
-> > > drwxr-xr-x 2 4294967294 root 4096 Oct  8 16:19 2982
-> > > drwxr-xr-x 2 4294967294 root 4096 Oct  8 16:19 2983
-> > > drwxr-xr-x 2 4294967294 root 4096 Oct  8 16:19 2984
-> > > drwxr-xr-x 2 4294967294 root 4096 Oct  8 16:19 2985
-> > > drwxr-xr-x 2 4294967294 root 4096 Oct  8 16:19 2986
-> > > ....
-> > > 
-> > > 
-> > > tcpdump shows the server is returning the write stuff, but something if going
-> > > wrong on the client.  I've tried unmounting/remounting and killing/restarting
-> > > rpc.idmapd.
-> > 
-> > As you know 4294967294 is (-2, nfs nobody), I have seen this issue with NFS
-> > server sending numeric ids by default in AUTH_SYS (commit
-> > e9541ce8efc22c233a045f091c2b969923709038), but the client can't handle
-> > them (lack of commit 5cf36cfdc8caa2724738ad0842c5c3dd02f309dc in client
-> > code).
-> > 
-> > I hand patched server commit, but my client was an older one. That is
-> > how I got into my issue. Not sure, if you are running into a similar
-> > issue.
-> 
-> Oh, could be--but then why would some of the id's still be mapped
-> correctly?
+Since the addition of NFSv4 server trunking detection the mount context
+calls nfs4_proc_exchange_id then schedules the state manager, which also
+calls nfs4_proc_exchange_id. Setting the NFS4CLNT_LEASE_CONFIRM bit
+makes the state manager skip the unneeded EXCHANGE_ID and continue on
+with session creation.
 
-Wild guess, those objects are created by client and didn't get their
-attributes updated yet from server???
+Reported-by: Jorge Mora <mora@netapp.com>
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ fs/nfs/nfs4state.c |    1 +
+ 1 file changed, 1 insertion(+)
 
-FYI, a co-worker here had RHEL6.3 server and RHEL6.2 client that
-exhibited this nobody issue with NFSv4.
-
-Regards, Malahal.
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 24a3ab4..c351e6b 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -351,6 +351,7 @@ int nfs41_discover_server_trunking(struct nfs_client *clp,
+ 	status = nfs4_proc_exchange_id(clp, cred);
+ 	if (status != NFS4_OK)
+ 		return status;
++	set_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
+ 
+ 	return nfs41_walk_client_list(clp, result, cred);
+ }
+-- 
+1.7.9.6 (Apple Git-31.1)
 
