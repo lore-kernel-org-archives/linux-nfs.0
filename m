@@ -1,49 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:42076 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753394Ab2JCMkj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Oct 2012 08:40:39 -0400
-Received: by yenm12 with SMTP id m12so1960937yen.19
-        for <linux-nfs@vger.kernel.org>; Wed, 03 Oct 2012 05:40:38 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 0/3] nfsd: add a usermodehelper upcall for client id tracking
-Date: Wed,  3 Oct 2012 08:40:28 -0400
-Message-Id: <1349268031-16498-1-git-send-email-jlayton@redhat.com>
+Received: from mga11.intel.com ([192.55.52.93]:50666 "EHLO mga11.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752259Ab2JBCRX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Oct 2012 22:17:23 -0400
+Date: Tue, 2 Oct 2012 10:17:18 +0800
+From: Fengguang Wu <fengguang.wu@intel.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: kernel-janitors@vger.kernel.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: [nfs:testing 69/83] fs/nfs/nfs4state.c:127:9: error:
+ 'nfs_callback_tcpport' undeclared
+Message-ID: <20121002021718.GB6691@localhost>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a respin of the set with the same title that I sent on Monday
-(Oct 1st). This one has a few bugfixes, and adds some code to allow the
-upcall program to convert from the legacy database to the new one. I'll
-also be posting a respin of the companion nfs-utils set too.
+Hi Chuck,
 
-The idea here is to allow a one-way conversion from the legacy clientid
-tracking code to the new one, which should allow for seamless kernel and
-nfs-utils upgrades.
+FYI, kernel build failed on
 
-In order to handle that, this set also changes the heuristic that the
-kernel uses to decide what client tracker to use. We now must now try
-the usermodehelper upcall first and only fall back to other schemes if
-its initialization fails.
+tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git testing
+head:   2afdfa5a846246de50e1881f71ba5c0aac0b415f
+commit: 05f4c350ee02e9461c6ae3a880ea326a06835e37 [69/83] NFS: Discover NFSv4 server trunking when mounting
+config: x86_64-allyesconfig
 
-Note that I'm not 100% sold on the idea to convert from the legacy db
-format. It's doable but somewhat "fiddly" to handle. There are probably
-corner cases where it will fall down, so it may be best not to even try
-to do that. I won't be offended if you decide not to take the last
-patch.
+All error/warnings:
 
-Comments? Discuss!
+fs/nfs/nfs4state.c: In function 'nfs40_discover_server_trunking':
+fs/nfs/nfs4state.c:127:9: error: 'nfs_callback_tcpport' undeclared (first use in this function)
+fs/nfs/nfs4state.c:127:9: note: each undeclared identifier is reported only once for each function it appears in
+fs/nfs/nfs4state.c:129:10: error: 'nfs_callback_tcpport6' undeclared (first use in this function)
 
-Jeff Layton (3):
-  nfsd: add a usermodehelper upcall for NFSv4 client ID tracking
-  nfsd: change heuristic for selecting the client_tracking_ops
-  nfsd: pass info about the legacy recoverydir in environment variables
+vim +127 fs/nfs/nfs4state.c
 
- fs/nfsd/nfs4recover.c | 250 ++++++++++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 240 insertions(+), 10 deletions(-)
+05f4c350 (Chuck Lever 2012-09-14  115)  */
+05f4c350 (Chuck Lever 2012-09-14  116) int nfs40_discover_server_trunking(struct nfs_client *clp,
+05f4c350 (Chuck Lever 2012-09-14  117) 				   struct nfs_client **result,
+05f4c350 (Chuck Lever 2012-09-14  118) 				   struct rpc_cred *cred)
+05f4c350 (Chuck Lever 2012-09-14  119) {
+05f4c350 (Chuck Lever 2012-09-14  120) 	struct nfs4_setclientid_res clid = {
+05f4c350 (Chuck Lever 2012-09-14  121) 		.clientid = clp->cl_clientid,
+05f4c350 (Chuck Lever 2012-09-14  122) 		.confirm = clp->cl_confirm,
+05f4c350 (Chuck Lever 2012-09-14  123) 	};
+05f4c350 (Chuck Lever 2012-09-14  124) 	unsigned short port;
+05f4c350 (Chuck Lever 2012-09-14  125) 	int status;
+05f4c350 (Chuck Lever 2012-09-14  126) 
+05f4c350 (Chuck Lever 2012-09-14 @127) 	port = nfs_callback_tcpport;
+05f4c350 (Chuck Lever 2012-09-14  128) 	if (clp->cl_addr.ss_family == AF_INET6)
+05f4c350 (Chuck Lever 2012-09-14  129) 		port = nfs_callback_tcpport6;
+05f4c350 (Chuck Lever 2012-09-14  130) 
+05f4c350 (Chuck Lever 2012-09-14  131) 	status = nfs4_proc_setclientid(clp, NFS4_CALLBACK, port, cred, &clid);
+05f4c350 (Chuck Lever 2012-09-14  132) 	if (status != 0)
+05f4c350 (Chuck Lever 2012-09-14  133) 		goto out;
 
--- 
-1.7.11.4
-
+---
+0-DAY kernel build testing backend         Open Source Technology Centre
+Fengguang Wu, Yuanhan Liu                              Intel Corporation
