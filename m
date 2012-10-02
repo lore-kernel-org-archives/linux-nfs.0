@@ -1,116 +1,200 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34821 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:62696 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751776Ab2JARtI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Oct 2012 13:49:08 -0400
-Received: from bfields by fieldses.org with local (Exim 4.76)
-	(envelope-from <bfields@fieldses.org>)
-	id 1TIk79-0007xu-UY
-	for linux-nfs@vger.kernel.org; Mon, 01 Oct 2012 13:49:07 -0400
-Date: Mon, 1 Oct 2012 13:49:07 -0400
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd4: don't allow reclaims of expired clients
-Message-ID: <20121001174907.GA30556@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1753545Ab2JBPeO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Oct 2012 11:34:14 -0400
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 2 1/1] NFSv4 reduce attribute requests for open reclaim
+Date: Tue,  2 Oct 2012 11:34:04 -0400
+Message-Id: <1349192044-2242-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-One more patch for 3.7--we were being a little inconsistent about
-stable-storage records for 4.1 clients, with the result that reclaims
-might be permitted in a few minor cases when they shouldn't be.  Fix
-that and do a little cleanup.
+From: Andy Adamson <andros@netapp.com>
 
---b.
+We currently make no distinction in attribute requests between normal OPENs
+and OPEN with CLAIM_PREVIOUS.  This offers more possibility of failures in
+the GETATTR response which foils OPEN reclaim attempts.
 
-commit 2047128b38fca41482d1ce4c7b760f80866de712
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Wed Sep 26 11:36:16 2012 -0400
+Reduce the requested attributes to the bare minimum needed to update the
+reclaim open stateid and split nfs4_opendata_to_nfs4_state processing
+accordingly.
 
-    nfsd4: don't allow reclaims of expired clients
-    
-    When a confirmed client expires, we normally also need to expire any
-    stable storage record which would allow that client to reclaim state on
-    the next boot.  We forgot to do this in some cases.  (For example, in
-    destroy_clientid, and in the cases in exchange_id and create_session
-    that destroy and existing confirmed client.)
-    
-    But in most other cases, there's really no harm to calling
-    nfsd4_client_record_remove(), because it is a no-op in the case the
-    client doesn't have an existing
-    
-    The single exception is destroying a client on shutdown, when we want to
-    keep the stable storage records so we can recognize which clients will
-    be allowed to reclaim when we come back up.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 773b903..412b888 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1118,7 +1118,7 @@ unhash_client_locked(struct nfs4_client *clp)
+Version 2:
+As per Tronds suggestion, use nfs_refresh_inode instead of nfs_update_inode.
+
+ fs/nfs/nfs4proc.c |  108 ++++++++++++++++++++++++++++++++++++++++-------------
+ fs/nfs/nfs4xdr.c  |    2 +-
+ 2 files changed, 83 insertions(+), 27 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 50e79c9..0437703 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -152,6 +152,12 @@ static const u32 nfs4_pnfs_open_bitmap[3] = {
+ 	FATTR4_WORD2_MDSTHRESHOLD
+ };
+ 
++static const u32 nfs4_open_noattr_bitmap[3] = {
++	FATTR4_WORD0_TYPE
++	| FATTR4_WORD0_CHANGE
++	| FATTR4_WORD0_FILEID,
++};
++
+ const u32 nfs4_statfs_bitmap[2] = {
+ 	FATTR4_WORD0_FILES_AVAIL
+ 	| FATTR4_WORD0_FILES_FREE
+@@ -1120,11 +1126,74 @@ out_return_state:
+ 	return state;
  }
  
- static void
--expire_client(struct nfs4_client *clp)
-+destroy_client(struct nfs4_client *clp)
- {
- 	struct nfs4_openowner *oo;
- 	struct nfs4_delegation *dp;
-@@ -1152,6 +1152,12 @@ expire_client(struct nfs4_client *clp)
- 	spin_unlock(&client_lock);
- }
- 
-+static void expire_client(struct nfs4_client *clp)
+-static struct nfs4_state *nfs4_opendata_to_nfs4_state(struct nfs4_opendata *data)
++static void
++nfs4_opendata_check_deleg(struct nfs4_opendata *data, struct nfs4_state *state)
 +{
-+	nfsd4_client_record_remove(clp);
-+	destroy_client(clp);
++	struct nfs_client *clp = NFS_SERVER(state->inode)->nfs_client;
++	struct nfs_delegation *delegation;
++	int delegation_flags = 0;
++
++	rcu_read_lock();
++	delegation = rcu_dereference(NFS_I(state->inode)->delegation);
++	if (delegation)
++		delegation_flags = delegation->flags;
++	rcu_read_unlock();
++	if (data->o_arg.claim == NFS4_OPEN_CLAIM_DELEGATE_CUR) {
++		pr_err_ratelimited("NFS: Broken NFSv4 server %s is "
++				   "returning a delegation for "
++				   "OPEN(CLAIM_DELEGATE_CUR)\n",
++				   clp->cl_hostname);
++	} else if ((delegation_flags & 1UL<<NFS_DELEGATION_NEED_RECLAIM) == 0)
++		nfs_inode_set_delegation(state->inode,
++					 data->owner->so_cred,
++					 &data->o_res);
++	else
++		nfs_inode_reclaim_delegation(state->inode,
++					     data->owner->so_cred,
++					     &data->o_res);
 +}
 +
- static void copy_verf(struct nfs4_client *target, nfs4_verifier *source)
++/*
++ * Check the inode attributes against the CLAIM_PREVIOUS returned attributes
++ * and update the nfs4_state.
++ */
++static struct nfs4_state *
++_nfs4_opendata_reclaim_to_nfs4_state(struct nfs4_opendata *data)
++{
++	struct inode *inode = data->state->inode;
++	struct nfs4_state *state = data->state;
++	int ret = -ESTALE;
++
++	if (!data->rpc_done || !(data->f_attr.valid & NFS_ATTR_FATTR) ||
++	    !(data->f_attr.valid & NFS_ATTR_FATTR_TYPE) ||
++	    !(data->f_attr.valid & NFS_ATTR_FATTR_CHANGE) ||
++	    !(data->f_attr.valid & NFS_ATTR_FATTR_FILEID))
++		goto err;
++
++	ret = -ENOMEM;
++	state = nfs4_get_open_state(inode, data->owner);
++	if (state == NULL)
++		goto err;
++
++	ret = nfs_refresh_inode(inode, &data->f_attr);
++	if (ret)
++		goto err;
++	if (data->o_res.delegation_type != 0)
++		nfs4_opendata_check_deleg(data, state);
++	update_open_stateid(state, &data->o_res.stateid, NULL,
++			    data->o_arg.fmode);
++
++	return state;
++err:
++	return ERR_PTR(ret);
++
++}
++
++static struct nfs4_state *
++_nfs4_opendata_to_nfs4_state(struct nfs4_opendata *data)
  {
- 	memcpy(target->cl_verifier.data, source->data,
-@@ -2273,10 +2279,8 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
- 		unsigned int hash = clientstr_hashval(unconf->cl_recdir);
+ 	struct inode *inode;
+ 	struct nfs4_state *state = NULL;
+-	struct nfs_delegation *delegation;
+ 	int ret;
  
- 		conf = find_confirmed_client_by_str(unconf->cl_recdir, hash);
--		if (conf) {
--			nfsd4_client_record_remove(conf);
-+		if (conf)
- 			expire_client(conf);
--		}
- 		move_to_confirmed(unconf);
- 		nfsd4_probe_callback(unconf);
- 	}
-@@ -3191,7 +3195,6 @@ nfs4_laundromat(void)
- 		clp = list_entry(pos, struct nfs4_client, cl_lru);
- 		dprintk("NFSD: purging unused client (clientid %08x)\n",
- 			clp->cl_clientid.cl_id);
--		nfsd4_client_record_remove(clp);
- 		expire_client(clp);
- 	}
- 	spin_lock(&recall_lock);
-@@ -4562,7 +4565,6 @@ void nfsd_forget_clients(u64 num)
+ 	if (!data->rpc_done) {
+@@ -1143,30 +1212,8 @@ static struct nfs4_state *nfs4_opendata_to_nfs4_state(struct nfs4_opendata *data
+ 	state = nfs4_get_open_state(inode, data->owner);
+ 	if (state == NULL)
+ 		goto err_put_inode;
+-	if (data->o_res.delegation_type != 0) {
+-		struct nfs_client *clp = NFS_SERVER(inode)->nfs_client;
+-		int delegation_flags = 0;
+-
+-		rcu_read_lock();
+-		delegation = rcu_dereference(NFS_I(inode)->delegation);
+-		if (delegation)
+-			delegation_flags = delegation->flags;
+-		rcu_read_unlock();
+-		if (data->o_arg.claim == NFS4_OPEN_CLAIM_DELEGATE_CUR) {
+-			pr_err_ratelimited("NFS: Broken NFSv4 server %s is "
+-					"returning a delegation for "
+-					"OPEN(CLAIM_DELEGATE_CUR)\n",
+-					clp->cl_hostname);
+-		} else if ((delegation_flags & 1UL<<NFS_DELEGATION_NEED_RECLAIM) == 0)
+-			nfs_inode_set_delegation(state->inode,
+-					data->owner->so_cred,
+-					&data->o_res);
+-		else
+-			nfs_inode_reclaim_delegation(state->inode,
+-					data->owner->so_cred,
+-					&data->o_res);
+-	}
+-
++	if (data->o_res.delegation_type != 0)
++		nfs4_opendata_check_deleg(data, state);
+ 	update_open_stateid(state, &data->o_res.stateid, NULL,
+ 			data->o_arg.fmode);
+ 	iput(inode);
+@@ -1178,6 +1225,14 @@ err:
+ 	return ERR_PTR(ret);
+ }
  
- 	nfs4_lock_state();
- 	list_for_each_entry_safe(clp, next, &client_lru, cl_lru) {
--		nfsd4_client_record_remove(clp);
- 		expire_client(clp);
- 		if (++count == num)
- 			break;
-@@ -4787,11 +4789,11 @@ __nfs4_state_shutdown(void)
- 	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
- 		while (!list_empty(&conf_id_hashtbl[i])) {
- 			clp = list_entry(conf_id_hashtbl[i].next, struct nfs4_client, cl_idhash);
--			expire_client(clp);
-+			destroy_client(clp);
- 		}
- 		while (!list_empty(&unconf_str_hashtbl[i])) {
- 			clp = list_entry(unconf_str_hashtbl[i].next, struct nfs4_client, cl_strhash);
--			expire_client(clp);
-+			destroy_client(clp);
- 		}
++static struct nfs4_state *
++nfs4_opendata_to_nfs4_state(struct nfs4_opendata *data)
++{
++	if (data->o_arg.claim == NFS4_OPEN_CLAIM_PREVIOUS)
++		return _nfs4_opendata_reclaim_to_nfs4_state(data);
++	return _nfs4_opendata_to_nfs4_state(data);
++}
++
+ static struct nfs_open_context *nfs4_state_find_open_context(struct nfs4_state *state)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(state->inode);
+@@ -1499,6 +1554,7 @@ static void nfs4_open_prepare(struct rpc_task *task, void *calldata)
+ 	data->o_arg.clientid = sp->so_server->nfs_client->cl_clientid;
+ 	if (data->o_arg.claim == NFS4_OPEN_CLAIM_PREVIOUS) {
+ 		task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_OPEN_NOATTR];
++		data->o_arg.open_bitmap = &nfs4_open_noattr_bitmap[0];
+ 		nfs_copy_fh(&data->o_res.fh, data->o_arg.fh);
  	}
- 	INIT_LIST_HEAD(&reaplist);
+ 	data->timestamp = jiffies;
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 657483c..ba5b195 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -2262,7 +2262,7 @@ static void nfs4_xdr_enc_open_noattr(struct rpc_rqst *req,
+ 	encode_putfh(xdr, args->fh, &hdr);
+ 	encode_open(xdr, args, &hdr);
+ 	encode_access(xdr, args->access, &hdr);
+-	encode_getfattr(xdr, args->bitmask, &hdr);
++	encode_getfattr_open(xdr, args->bitmask, args->open_bitmap, &hdr);
+ 	encode_nops(&hdr);
+ }
+ 
+-- 
+1.7.7.6
+
