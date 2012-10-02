@@ -1,60 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.perfora.net ([74.208.4.194]:60859 "EHLO mout.perfora.net"
+Received: from mailhub.sw.ru ([195.214.232.25]:35811 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754190Ab2JaAxV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Oct 2012 20:53:21 -0400
-Date: Tue, 30 Oct 2012 20:51:28 -0400
-From: Jim Rees <rees@umich.edu>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: Tejun Heo <tj@kernel.org>, torvalds@linux-foundation.org,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v8 01/16] hashtable: introduce a small and naive hashtable
-Message-ID: <20121031005128.GA30251@umich.edu>
-References: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
- <20121030214257.GB2681@htj.dyndns.org>
- <CA+1xoqeCKS2E4TWCUCELjDqV2pWS4v6EyV6K-=w-GRi_K6quiQ@mail.gmail.com>
+	id S1754310Ab2JBKSo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Oct 2012 06:18:44 -0400
+Subject: [PATCH 2/5] nfs: declare nfs_callback_tcp_port in header
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, devel@openvz.org,
+        linux-kernel@vger.kernel.org, jlayton@redhat.com
+Date: Tue, 02 Oct 2012 14:18:59 +0400
+Message-ID: <20121002101859.15507.9493.stgit@localhost.localdomain>
+In-Reply-To: <20121002101649.15507.50466.stgit@localhost.localdomain>
+References: <20121002101649.15507.50466.stgit@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CA+1xoqeCKS2E4TWCUCELjDqV2pWS4v6EyV6K-=w-GRi_K6quiQ@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sasha Levin wrote:
+Sparse warning:
+fs/nfs/super.c:2638:16: sparse: symbol 'nfs_callback_tcpport' was not
+declared. Should it be static?
 
-  On Tue, Oct 30, 2012 at 5:42 PM, Tejun Heo <tj@kernel.org> wrote:
-  > Hello,
-  >
-  > Just some nitpicks.
-  >
-  > On Tue, Oct 30, 2012 at 02:45:57PM -0400, Sasha Levin wrote:
-  >> +/* Use hash_32 when possible to allow for fast 32bit hashing in 64bit kernels. */
-  >> +#define hash_min(val, bits)                                                  \
-  >> +({                                                                           \
-  >> +     sizeof(val) <= 4 ?                                                      \
-  >> +     hash_32(val, bits) :                                                    \
-  >> +     hash_long(val, bits);                                                   \
-  >> +})
-  >
-  > Doesn't the above fit in 80 column.  Why is it broken into multiple
-  > lines?  Also, you probably want () around at least @val.  In general,
-  > it's a good idea to add () around any macro argument to avoid nasty
-  > surprises.
-  
-  It was broken to multiple lines because it looks nicer that way (IMO).
-  
-  If we wrap it with () it's going to go over 80, so it's going to stay
-  broken down either way :)
+Reported-by: Fengguang Wu <fengguang.wu@intel.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfs/callback.h |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-I would prefer the body be all on one line too. But shouldn't this be a
-static inline function?
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index c07a8d4..4251c2a 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -208,5 +208,6 @@ extern int nfs4_set_callback_sessionid(struct nfs_client *clp);
+ #define NFS41_BC_MAX_CALLBACKS 1
+ 
+ extern unsigned int nfs_callback_set_tcpport;
++extern unsigned short nfs_callback_tcpport;
+ 
+ #endif /* __LINUX_FS_NFS_CALLBACK_H */
+
