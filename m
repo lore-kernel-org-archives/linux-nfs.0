@@ -1,92 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:46466 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753746Ab2JMQZZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 13 Oct 2012 12:25:25 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
-Subject: Re: [PATCH] nfs-utils: Backgrounding mount broken with NFS versions <4
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20121012120030.18411.qmail@md.dent.med.uni-muenchen.de>
-Date: Sat, 13 Oct 2012 12:23:18 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <6AB50360-BADE-4544-85CF-700C63A44FDE@oracle.com>
-References: <20121012120030.18411.qmail@md.dent.med.uni-muenchen.de>
-To: Wolfram Gloger <wmglo@dent.med.uni-muenchen.de>
+Received: from mga01.intel.com ([192.55.52.88]:50640 "EHLO mga01.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751897Ab2JBFfY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Oct 2012 01:35:24 -0400
+Date: Tue, 2 Oct 2012 13:09:51 +0800
+From: Fengguang Wu <fengguang.wu@intel.com>
+To: Peng Tao <bergwolf@gmail.com>
+Cc: kernel-janitors@vger.kernel.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: [nfs:nfs-for-next 76/83] fs/nfs/blocklayout/blocklayout.c:1208:1:
+ sparse: symbol 'bl_pg_init_write' was not declared. Should it be static?
+Message-ID: <20121002050951.GA18119@localhost>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="GvXjxJ+pjyke8COw"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Oct 12, 2012, at 8:00 AM, Wolfram Gloger <wmglo@dent.med.uni-muenchen.de> wrote:
+--GvXjxJ+pjyke8COw
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-> When the NFS version isn't specified in the mount options, mount.nfs
-> attempts V4 first and appends 'vers=4' to the extra_options string in
-> the mount options.  If the server isn't immediately reachable, this
-> attempt fails.  However, if the background option is specified and the
-> server comes up later on, the extra_options are used again for all
-> further attempts and thus they fail if the server only supports
-> vers<4.
-> 
-> Fix this by only amending extra_options on a successful vers=4 mount.
-> 
-> This is now Debian bug #690181 and has apparently been around for
-> ages.
-> 
-> Signed-off-by: Wolfram Gloger <bugzilla1@malloc.de>
-> 
-> --- utils/mount/stropts.c.orig	2012-08-23 19:41:56.000000000 +0200
-> +++ utils/mount/stropts.c	2012-10-11 13:46:25.000000000 +0200
-> @@ -680,6 +680,7 @@
-> {
-> 	struct mount_options *options = po_dup(mi->options);
-> 	int result = 0;
-> +	char *extra_opts = NULL;
-> 
-> 	if (!options) {
-> 		errno = ENOMEM;
-> @@ -715,20 +716,26 @@
-> 		goto out_fail;
-> 	}
-> 
-> -	/*
-> -	 * Update option string to be recorded in /etc/mtab.
-> -	 */
-> -	if (po_join(options, mi->extra_opts) == PO_FAILED) {
-> +	if (po_join(options, &extra_opts) == PO_FAILED) {
+Hi Peng,
 
-This doesn't look right to me, but I haven't had time to test it.  Doesn't this hunk cause the mount system call to ignore what's in mi->extra_opts?
+FYI, there are new sparse warnings show up in
 
-> 		errno = ENOMEM;
-> 		goto out_fail;
-> 	}
-> 
-> 	if (verbose)
-> 		printf(_("%s: trying text-based options '%s'\n"),
-> -			progname, *mi->extra_opts);
-> +			progname, extra_opts);
+tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git nfs-for-next
+head:   2afdfa5a846246de50e1881f71ba5c0aac0b415f
+commit: 96c9eae638765c2bf2ca4f5a6325484f9bb69aa7 [76/83] pnfsblock: fix non-aligned DIO write
 
-> 	result = nfs_sys_mount(mi, options);
-> 
-> +	/*
-> +	 * If success, update option string to be recorded in /etc/mtab.
-> +	 */
-> +	if (result) {
-> +	    free(*mi->extra_opts);
-> +	    *mi->extra_opts = extra_opts;
-> +	} else
-> +	    free(extra_opts);
-> +
-> out_fail:
-> 	po_destroy(options);
-> 	return result;
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
++ fs/nfs/blocklayout/blocklayout.c:1208:1: sparse: symbol 'bl_pg_init_write' was not declared. Should it be static?
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+vim +1208 fs/nfs/blocklayout/blocklayout.c
 
+155e7524 (Fred Isaman 2011-07-30  1176) 	return 0;
+155e7524 (Fred Isaman 2011-07-30  1177) }
+155e7524 (Fred Isaman 2011-07-30  1178) 
+f742dc4a (Peng Tao    2012-08-24  1179) static bool
+f742dc4a (Peng Tao    2012-08-24  1180) is_aligned_req(struct nfs_page *req, unsigned int alignment)
+f742dc4a (Peng Tao    2012-08-24  1181) {
+f742dc4a (Peng Tao    2012-08-24  1182) 	return IS_ALIGNED(req->wb_offset, alignment) &&
+f742dc4a (Peng Tao    2012-08-24  1183) 	       IS_ALIGNED(req->wb_bytes, alignment);
+f742dc4a (Peng Tao    2012-08-24  1184) }
+f742dc4a (Peng Tao    2012-08-24  1185) 
+f742dc4a (Peng Tao    2012-08-24  1186) static void
+f742dc4a (Peng Tao    2012-08-24  1187) bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+f742dc4a (Peng Tao    2012-08-24  1188) {
+f742dc4a (Peng Tao    2012-08-24  1189) 	if (pgio->pg_dreq != NULL &&
+f742dc4a (Peng Tao    2012-08-24  1190) 	    !is_aligned_req(req, SECTOR_SIZE))
+f742dc4a (Peng Tao    2012-08-24  1191) 		nfs_pageio_reset_read_mds(pgio);
+f742dc4a (Peng Tao    2012-08-24  1192) 	else
+f742dc4a (Peng Tao    2012-08-24  1193) 		pnfs_generic_pg_init_read(pgio, req);
+f742dc4a (Peng Tao    2012-08-24  1194) }
+f742dc4a (Peng Tao    2012-08-24  1195) 
+f742dc4a (Peng Tao    2012-08-24  1196) static bool
+f742dc4a (Peng Tao    2012-08-24  1197) bl_pg_test_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+f742dc4a (Peng Tao    2012-08-24  1198) 		struct nfs_page *req)
+f742dc4a (Peng Tao    2012-08-24  1199) {
+f742dc4a (Peng Tao    2012-08-24  1200) 	if (pgio->pg_dreq != NULL &&
+f742dc4a (Peng Tao    2012-08-24  1201) 	    !is_aligned_req(req, SECTOR_SIZE))
+f742dc4a (Peng Tao    2012-08-24  1202) 		return false;
+f742dc4a (Peng Tao    2012-08-24  1203) 
+f742dc4a (Peng Tao    2012-08-24  1204) 	return pnfs_generic_pg_test(pgio, prev, req);
+f742dc4a (Peng Tao    2012-08-24  1205) }
+f742dc4a (Peng Tao    2012-08-24  1206) 
+96c9eae6 (Peng Tao    2012-08-24  1207) void
+96c9eae6 (Peng Tao    2012-08-24 @1208) bl_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+96c9eae6 (Peng Tao    2012-08-24  1209) {
+96c9eae6 (Peng Tao    2012-08-24  1210) 	if (pgio->pg_dreq != NULL &&
+96c9eae6 (Peng Tao    2012-08-24  1211) 	    !is_aligned_req(req, PAGE_CACHE_SIZE))
+96c9eae6 (Peng Tao    2012-08-24  1212) 		nfs_pageio_reset_write_mds(pgio);
+96c9eae6 (Peng Tao    2012-08-24  1213) 	else
+96c9eae6 (Peng Tao    2012-08-24  1214) 		pnfs_generic_pg_init_write(pgio, req);
+96c9eae6 (Peng Tao    2012-08-24  1215) }
+96c9eae6 (Peng Tao    2012-08-24  1216) 
+96c9eae6 (Peng Tao    2012-08-24  1217) static bool
+96c9eae6 (Peng Tao    2012-08-24  1218) bl_pg_test_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+96c9eae6 (Peng Tao    2012-08-24  1219) 		 struct nfs_page *req)
+96c9eae6 (Peng Tao    2012-08-24  1220) {
+96c9eae6 (Peng Tao    2012-08-24  1221) 	if (pgio->pg_dreq != NULL &&
+96c9eae6 (Peng Tao    2012-08-24  1222) 	    !is_aligned_req(req, PAGE_CACHE_SIZE))
+96c9eae6 (Peng Tao    2012-08-24  1223) 		return false;
+96c9eae6 (Peng Tao    2012-08-24  1224) 
 
+Please consider folding the attached diff :-)
 
+---
+0-DAY kernel build testing backend         Open Source Technology Centre
+Fengguang Wu, Yuanhan Liu                              Intel Corporation
+
+--GvXjxJ+pjyke8COw
+Content-Type: text/x-diff; charset=us-ascii
+Content-Disposition: attachment; filename="make-it-static-96c9eae.diff"
+
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index af3ef0e..a34014a 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -1204,7 +1204,7 @@ bl_pg_test_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 	return pnfs_generic_pg_test(pgio, prev, req);
+ }
+ 
+-void
++static void
+ bl_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+ {
+ 	if (pgio->pg_dreq != NULL &&
+
+--GvXjxJ+pjyke8COw--
