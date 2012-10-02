@@ -1,71 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ia0-f174.google.com ([209.85.210.174]:37423 "EHLO
-	mail-ia0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932341Ab2JaBPu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Oct 2012 21:15:50 -0400
-MIME-Version: 1.0
-In-Reply-To: <20121031005128.GA30251@umich.edu>
-References: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
- <20121030214257.GB2681@htj.dyndns.org> <CA+1xoqeCKS2E4TWCUCELjDqV2pWS4v6EyV6K-=w-GRi_K6quiQ@mail.gmail.com>
- <20121031005128.GA30251@umich.edu>
-From: Sasha Levin <levinsasha928@gmail.com>
-Date: Tue, 30 Oct 2012 21:15:29 -0400
-Message-ID: <CA+1xoqd9CMP4_CET38LTm6vVXwbButn3hJNbcFs6Darkh1EJSg@mail.gmail.com>
-Subject: Re: [PATCH v8 01/16] hashtable: introduce a small and naive hashtable
-To: Jim Rees <rees@umich.edu>
-Cc: Tejun Heo <tj@kernel.org>, torvalds@linux-foundation.org,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from cantor2.suse.de ([195.135.220.15]:49602 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754010Ab2JBWbQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Oct 2012 18:31:16 -0400
+Subject: Re: [REGRESSION] nfsd crashing with 3.6.0-rc7 on PowerPC
+Mime-Version: 1.0 (Apple Message framework v1278)
+Content-Type: text/plain; charset=us-ascii
+From: Alexander Graf <agraf@suse.de>
+In-Reply-To: <20121002221736.GB29218@linux.vnet.ibm.com>
+Date: Wed, 3 Oct 2012 00:31:09 +0200
+Cc: Benjamin Herrenschmidt <benh@kernel.crashing.org>,
+        linux-nfs@vger.kernel.org, Jan Kara <jack@suse.cz>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        LKML List <linux-kernel@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>, anton@samba.org,
+        skinsbursky@parallels.com, bfields@redhat.com,
+        linuxppc-dev <linuxppc-dev@lists.ozlabs.org>
+Message-Id: <E141CA01-F58C-47B1-8ED5-A314D1DEC968@suse.de>
+References: <3BDA9E62-7031-42D6-8CA9-5327B61700F5@suse.de> <CA+55aFyXwB1QcXE4Z_FAGnXROSgvP2x2+wjnX9OWPa4Dfaaf0A@mail.gmail.com> <DC545CD9-8745-47DD-B13B-3385C0EB5B27@suse.de> <20120928151043.GA19102@fieldses.org> <2A52FC96-148C-4F7A-9950-E152E0C6698D@suse.de> <1349139509.3847.2.camel@pasglop> <20121002214327.GA29218@linux.vnet.ibm.com> <9257E705-4EF9-4347-945C-B4A7582C427F@suse.de> <20121002221736.GB29218@linux.vnet.ibm.com>
+To: Nishanth Aravamudan <nacc@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 30, 2012 at 8:51 PM, Jim Rees <rees@umich.edu> wrote:
-> Sasha Levin wrote:
->
->   On Tue, Oct 30, 2012 at 5:42 PM, Tejun Heo <tj@kernel.org> wrote:
->   > Hello,
->   >
->   > Just some nitpicks.
->   >
->   > On Tue, Oct 30, 2012 at 02:45:57PM -0400, Sasha Levin wrote:
->   >> +/* Use hash_32 when possible to allow for fast 32bit hashing in 64bit kernels. */
->   >> +#define hash_min(val, bits)                                                  \
->   >> +({                                                                           \
->   >> +     sizeof(val) <= 4 ?                                                      \
->   >> +     hash_32(val, bits) :                                                    \
->   >> +     hash_long(val, bits);                                                   \
->   >> +})
->   >
->   > Doesn't the above fit in 80 column.  Why is it broken into multiple
->   > lines?  Also, you probably want () around at least @val.  In general,
->   > it's a good idea to add () around any macro argument to avoid nasty
->   > surprises.
->
->   It was broken to multiple lines because it looks nicer that way (IMO).
->
->   If we wrap it with () it's going to go over 80, so it's going to stay
->   broken down either way :)
->
-> I would prefer the body be all on one line too. But shouldn't this be a
-> static inline function?
 
-We want sizeof(val), which wouldn't work in a static inline. We can
-either wrap a static inline __hash_min() with a macro and pass that
-size to it, but that's quite an overkill here, or we can add a size
-parameter to hash_min(), but it would look awkward considering how
-hash_32()/hash_64()/hash_long() look like.
+On 03.10.2012, at 00:17, Nishanth Aravamudan wrote:
+
+> On 02.10.2012 [23:47:39 +0200], Alexander Graf wrote:
+>> 
+>> On 02.10.2012, at 23:43, Nishanth Aravamudan wrote:
+>> 
+>>> Hi Ben,
+>>> 
+>>> On 02.10.2012 [10:58:29 +1000], Benjamin Herrenschmidt wrote:
+>>>> On Mon, 2012-10-01 at 16:03 +0200, Alexander Graf wrote:
+>>>>> Phew. Here we go :). It looks to be more of a PPC specific problem
+>>>>> than it appeared as at first:
+>>>> 
+>>>> Ok, so I suspect the problem is the pushing down of the locks which
+>>>> breaks with iommu backends that have a separate flush callback. In
+>>>> that case, the flush moves out of the allocator lock.
+>>>> 
+>>>> Now we do call flush before we return, still, but it becomes racy
+>>>> I suspect, but somebody needs to give it a closer look. I'm hoping
+>>>> Anton or Nish will later today.
+>>> 
+>>> Started looking into this. If your suspicion were accurate, wouldn't the
+>>> bisection have stopped at 0e4bc95d87394364f408627067238453830bdbf3
+>>> ("powerpc/iommu: Reduce spinlock coverage in iommu_alloc and
+>>> iommu_free")?
+>>> 
+>>> Alex, the error is reproducible, right?
+>> 
+>> Yes. I'm having a hard time to figure out if the reason my U4 based G5
+>> Mac crashes and fails reading data is the same since I don't have a
+>> serial connection there, but I assume so.
+> 
+> Ok, great, thanks. Yeah, that would imply (I think) that the I would
+> have thought the lock pushdown in the above commit (or even in one of
+> the others in Anton's series) would have been the real source if it was
+> a lock-based race. But that's just my first sniff at what Ben was
+> suggesting. Still reading/understanding the code.
+> 
+>>> Does it go away by reverting
+>>> that commit against mainline? Just trying to narrow down my focus.
+>> 
+>> The patch doesn't revert that easily. Mind to provide a revert patch
+>> so I can try?
+> 
+> The following at least builds on defconfig here:
+
+Yes. With that patch applied, things work for me again.
 
 
-Thanks,
-Sasha
+Alex
+
