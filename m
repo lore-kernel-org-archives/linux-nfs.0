@@ -1,502 +1,258 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f174.google.com ([209.85.220.174]:60763 "EHLO
-	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S2992448Ab2JYRV7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Oct 2012 13:21:59 -0400
-Received: by mail-vc0-f174.google.com with SMTP id fk26so2132362vcb.19
-        for <linux-nfs@vger.kernel.org>; Thu, 25 Oct 2012 10:21:59 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 5/9] nfsdcltrack: add a new "one-shot" program for manipulating the client tracking db
-Date: Thu, 25 Oct 2012 13:21:39 -0400
-Message-Id: <1351185703-14191-6-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1351185703-14191-1-git-send-email-jlayton@redhat.com>
-References: <1351185703-14191-1-git-send-email-jlayton@redhat.com>
+Received: from cantor2.suse.de ([195.135.220.15]:38259 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750753Ab2JBFYj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Oct 2012 01:24:39 -0400
+Date: Tue, 2 Oct 2012 15:24:40 +1000
+From: NeilBrown <neilb@suse.de>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: Should "mount -o proto=udp" be usable against an IPv6 only
+ server?
+Message-ID: <20121002152440.2e6a0c04@notabene.brown>
+In-Reply-To: <ECD54A5F-C684-4057-96F5-1D29E7A9A551@oracle.com>
+References: <20120918115450.5c65973f@notabene.brown>
+	<F8762BC2-F211-482E-8B5A-A2E991E3F937@oracle.com>
+	<20120918162948.47840d42@notabene.brown>
+	<ECDC5BA9-29CC-4867-8737-CA1110E6C4C6@oracle.com>
+	<20120919091904.624ee54b@notabene.brown>
+	<ECD54A5F-C684-4057-96F5-1D29E7A9A551@oracle.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/kWpSVpOXHP6SwzvSX+FGM.D"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Usermode helper upcalls are all the rage these days for infrequent
-upcalls, since they make it rather idiot-proof. No running daemon is
-required, so there's really no setup beyond ensuring that the callout
-exists and is runnable.
+--Sig_/kWpSVpOXHP6SwzvSX+FGM.D
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-This program adds a callout program to nfs-utils for that purpose. The
-storage engine on the backend is identical to the one used by nfsdcld.
-This just adds a new frontend for it.
+On Tue, 18 Sep 2012 21:00:01 -0400 Chuck Lever <chuck.lever@oracle.com> wro=
+te:
 
-For now, building with --enable-nfsdcltrack gives you both nfsdcld and
-nfsdcltrack programs. A later patch will remove nfsdcld altogether.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- utils/nfsdcltrack/Makefile.am   |   6 +-
- utils/nfsdcltrack/nfsdcltrack.c | 436 ++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 440 insertions(+), 2 deletions(-)
- create mode 100644 utils/nfsdcltrack/nfsdcltrack.c
+> Out of interest, do you have a use case that could make positive use of a=
+ "please use UDP but I don't care whether its IPv4 or IPv6" setting?
 
-diff --git a/utils/nfsdcltrack/Makefile.am b/utils/nfsdcltrack/Makefile.am
-index 073a71b..afae455 100644
---- a/utils/nfsdcltrack/Makefile.am
-+++ b/utils/nfsdcltrack/Makefile.am
-@@ -4,11 +4,13 @@ man8_MANS	= nfsdcld.man
- EXTRA_DIST	= $(man8_MANS)
- 
- AM_CFLAGS	+= -D_LARGEFILE64_SOURCE
--sbin_PROGRAMS	= nfsdcld
-+sbin_PROGRAMS	= nfsdcld nfsdcltrack
- 
- nfsdcld_SOURCES = nfsdcld.c sqlite.c
--
- nfsdcld_LDADD = ../../support/nfs/libnfs.a $(LIBEVENT) $(LIBSQLITE) $(LIBCAP)
- 
-+nfsdcltrack_SOURCES = nfsdcltrack.c sqlite.c
-+nfsdcltrack_LDADD = ../../support/nfs/libnfs.a $(LIBSQLITE) $(LIBCAP)
-+
- MAINTAINERCLEANFILES = Makefile.in
- 
-diff --git a/utils/nfsdcltrack/nfsdcltrack.c b/utils/nfsdcltrack/nfsdcltrack.c
-new file mode 100644
-index 0000000..1d262a2
---- /dev/null
-+++ b/utils/nfsdcltrack/nfsdcltrack.c
-@@ -0,0 +1,436 @@
-+/*
-+ * nfsdcltrack.c -- NFSv4 client name tracking program
-+ *
-+ * Copyright (C) 2012 Jeff Layton <jlayton@redhat.com>
-+ *
-+ * This program is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU General Public License
-+ * as published by the Free Software Foundation; either version 2
-+ * of the License, or (at your option) any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public License
-+ * along with this program; if not, write to the Free Software
-+ * Foundation, Inc., 51 Franklin Street, Fifth Floor,
-+ * Boston, MA 02110-1301, USA.
-+ */
-+
-+#ifdef HAVE_CONFIG_H
-+#include "config.h"
-+#endif /* HAVE_CONFIG_H */
-+
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <ctype.h>
-+#include <errno.h>
-+#include <stdbool.h>
-+#include <getopt.h>
-+#include <string.h>
-+#include <sys/stat.h>
-+#include <sys/types.h>
-+#include <fcntl.h>
-+#include <unistd.h>
-+#include <libgen.h>
-+#include <sys/inotify.h>
-+#ifdef HAVE_SYS_CAPABILITY_H
-+#include <sys/prctl.h>
-+#include <sys/capability.h>
-+#endif
-+
-+#include "xlog.h"
-+#include "sqlite.h"
-+
-+#ifndef CLD_DEFAULT_STORAGEDIR
-+#define CLD_DEFAULT_STORAGEDIR NFS_STATEDIR "/nfsdcltrack"
-+#endif
-+
-+/* defined by RFC 3530 */
-+#define NFS4_OPAQUE_LIMIT	1024
-+
-+/* private data structures */
-+struct cltrack_cmd {
-+	char *name;
-+	bool needs_arg;
-+	int (*func)(const char *arg);
-+};
-+
-+/* forward declarations */
-+static int cltrack_init(const char *unused);
-+static int cltrack_create(const char *id);
-+static int cltrack_remove(const char *id);
-+static int cltrack_check(const char *id);
-+static int cltrack_gracedone(const char *gracetime);
-+
-+/* global variables */
-+static struct option longopts[] =
-+{
-+	{ "help", 0, NULL, 'h' },
-+	{ "debug", 0, NULL, 'd' },
-+	{ "foreground", 0, NULL, 'f' },
-+	{ "storagedir", 1, NULL, 's' },
-+	{ NULL, 0, 0, 0 },
-+};
-+
-+static struct cltrack_cmd commands[] =
-+{
-+	{ "init", false, cltrack_init },
-+	{ "create", true, cltrack_create },
-+	{ "remove", true, cltrack_remove },
-+	{ "check", true, cltrack_check },
-+	{ "gracedone", true, cltrack_gracedone },
-+	{ NULL, false, NULL },
-+};
-+
-+static char *storagedir = CLD_DEFAULT_STORAGEDIR;
-+
-+/* common buffer for holding id4 blobs */
-+static unsigned char blob[NFS4_OPAQUE_LIMIT];
-+
-+static void
-+usage(char *progname)
-+{
-+	printf("%s [ -hfd ] [ -s dir ] < cmd > < arg >\n", progname);
-+	printf("Where < cmd > is one of the following and takes the following < arg >:\n");
-+	printf("    init\n");
-+	printf("    create <nfs_client_id4>\n");
-+	printf("    remove <nfs_client_id4>\n");
-+	printf("    check  <nfs_client_id4>\n");
-+	printf("    gracedone <epoch time>\n");
-+}
-+
-+
-+/**
-+ * hex_to_bin - convert a hex digit to its real value
-+ * @ch: ascii character represents hex digit
-+ *
-+ * hex_to_bin() converts one hex digit to its actual value or -1 in case of bad
-+ * input.
-+ *
-+ * Note: borrowed from lib/hexdump.c in the Linux kernel sources.
-+ */
-+static int
-+hex_to_bin(char ch)
-+{
-+	if ((ch >= '0') && (ch <= '9'))
-+		return ch - '0';
-+	ch = tolower(ch);
-+	if ((ch >= 'a') && (ch <= 'f'))
-+		return ch - 'a' + 10;
-+	return -1;
-+}
-+
-+/**
-+ * hex_str_to_bin - convert a hexidecimal string into a binary blob
-+ *
-+ * @src: string of hex digit pairs
-+ * @dst: destination buffer to hold binary data
-+ * @dstsize: size of the destination buffer
-+ *
-+ * Walk a string of hex digit pairs and convert them into binary data. Returns
-+ * the resulting length of the binary data or a negative error code. If the
-+ * data will not fit in the buffer, it returns -ENOBUFS (but will likely have
-+ * clobbered the dst buffer in the process of determining that). If there are
-+ * non-hexidecimal characters in the src, or an odd number of them then it
-+ * returns -EINVAL.
-+ */
-+static ssize_t
-+hex_str_to_bin(const char *src, unsigned char *dst, ssize_t dstsize)
-+{
-+	unsigned char *tmpdst = dst;
-+
-+	while (*src) {
-+		int hi, lo;
-+
-+		/* make sure we don't overrun the dst buffer */
-+		if ((tmpdst - dst) >= dstsize)
-+			return -ENOBUFS;
-+
-+		hi = hex_to_bin(*src++);
-+
-+		/* did we get an odd number of characters? */
-+		if (!*src)
-+			return -EINVAL;
-+		lo = hex_to_bin(*src++);
-+
-+		/* one of the characters isn't a hex digit */
-+		if (hi < 0 || lo < 0)
-+			return -EINVAL;
-+
-+		/* now place it in the dst buffer */
-+		*tmpdst++ = (hi << 4) | lo;
-+	}
-+
-+	return (ssize_t)(tmpdst - dst);
-+}
-+
-+/*
-+ * This program will almost always be run with root privileges since the
-+ * kernel will call out to run it. Drop all capabilities prior to doing
-+ * anything important to limit the exposure to potential compromise.
-+ *
-+ * FIXME: should we setuid to a different user early on instead?
-+ */
-+static int
-+cltrack_set_caps(void)
-+{
-+	int ret = 0;
-+#ifdef HAVE_SYS_CAPABILITY_H
-+	unsigned long i;
-+	cap_t caps;
-+
-+	/* prune the bounding set to nothing */
-+	for (i = 0; prctl(PR_CAPBSET_READ, i, 0, 0, 0) >= 0 ; ++i) {
-+		ret = prctl(PR_CAPBSET_DROP, i, 0, 0, 0);
-+		if (ret) {
-+			xlog(L_ERROR, "Unable to prune capability %lu from "
-+				      "bounding set: %m", i);
-+			return -errno;
-+		}
-+	}
-+
-+	/* get a blank capset */
-+	caps = cap_init();
-+	if (caps == NULL) {
-+		xlog(L_ERROR, "Unable to get blank capability set: %m");
-+		return -errno;
-+	}
-+
-+	/* reset the process capabilities */
-+	if (cap_set_proc(caps) != 0) {
-+		xlog(L_ERROR, "Unable to set process capabilities: %m");
-+		ret = -errno;
-+	}
-+	cap_free(caps);
-+#endif
-+	return ret;
-+}
-+
-+static int
-+cltrack_init(const char __attribute__((unused)) *unused)
-+{
-+	int ret;
-+
-+	/*
-+	 * see if the storagedir is writable by root w/o CAP_DAC_OVERRIDE.
-+	 * If it isn't then give the user a warning but proceed as if
-+	 * everything is OK. If the DB has already been created, then
-+	 * everything might still work. If it doesn't exist at all, then
-+	 * assume that the maindb init will be able to create it. Fail on
-+	 * anything else.
-+	 */
-+	if (access(storagedir, W_OK) == -1) {
-+		switch (errno) {
-+		case EACCES:
-+			xlog(L_WARNING, "Storage directory %s is not writable. "
-+					"Should be owned by root and writable "
-+					"by owner!", storagedir);
-+			break;
-+		case ENOENT:
-+			/* ignore and assume that we can create dir as root */
-+			break;
-+		default:
-+			xlog(L_ERROR, "Unexpected error when checking access "
-+				      "on %s: %m", storagedir);
-+			return -errno;
-+		}
-+	}
-+
-+	/* set up storage db */
-+	ret = sqlite_maindb_init(storagedir);
-+	if (ret) {
-+		xlog(L_ERROR, "Failed to init database: %d", ret);
-+		/*
-+		 * Convert any error here into -EACCES. It's not truly
-+		 * accurate in all cases, but it should cause the kernel to
-+		 * stop upcalling until the problem is resolved.
-+		 */
-+		ret = -EACCES;
-+	}
-+	return ret;
-+}
-+
-+static int
-+cltrack_create(const char *id)
-+{
-+	int ret;
-+	ssize_t len;
-+
-+	xlog(D_GENERAL, "%s: create client record.", __func__);
-+
-+	ret = sqlite_prepare_dbh(storagedir);
-+	if (ret)
-+		return ret;
-+
-+	len = hex_str_to_bin(id, blob, sizeof(blob));
-+	if (len < 0)
-+		return (int)len;
-+
-+	ret = sqlite_insert_client(blob, len);
-+
-+	return ret ? -EREMOTEIO : ret;
-+}
-+
-+static int
-+cltrack_remove(const char *id)
-+{
-+	int ret;
-+	ssize_t len;
-+
-+	xlog(D_GENERAL, "%s: remove client record.", __func__);
-+
-+	ret = sqlite_prepare_dbh(storagedir);
-+	if (ret)
-+		return ret;
-+
-+	len = hex_str_to_bin(id, blob, sizeof(blob));
-+	if (len < 0)
-+		return (int)len;
-+
-+	ret = sqlite_remove_client(blob, len);
-+
-+	return ret ? -EREMOTEIO : ret;
-+}
-+
-+static int
-+cltrack_check(const char *id)
-+{
-+	int ret;
-+	ssize_t len;
-+
-+	xlog(D_GENERAL, "%s: check client record", __func__);
-+
-+	ret = sqlite_prepare_dbh(storagedir);
-+	if (ret)
-+		return ret;
-+
-+	len = hex_str_to_bin(id, blob, sizeof(blob));
-+	if (len < 0)
-+		return (int)len;
-+
-+	ret = sqlite_check_client(blob, len);
-+
-+	return ret ? -EPERM : ret;
-+}
-+
-+static int
-+cltrack_gracedone(const char *timestr)
-+{
-+	int ret;
-+	char *tail;
-+	time_t gracetime;
-+
-+
-+	ret = sqlite_prepare_dbh(storagedir);
-+	if (ret)
-+		return ret;
-+
-+	errno = 0;
-+	gracetime = strtol(timestr, &tail, 0);
-+
-+	/* did the resulting value overflow? (Probably -ERANGE here) */
-+	if (errno)
-+		return -errno;
-+
-+	/* string wasn't fully converted */
-+	if (*tail)
-+		return -EINVAL;
-+
-+	xlog(D_GENERAL, "%s: grace done. gracetime=%ld", __func__, gracetime);
-+
-+	ret = sqlite_remove_unreclaimed(gracetime);
-+
-+	return ret ? -EREMOTEIO : ret;
-+}
-+
-+static struct cltrack_cmd *
-+find_cmd(char *cmdname)
-+{
-+	struct cltrack_cmd *current = &commands[0];
-+
-+	while (current->name) {
-+		if (!strcmp(cmdname, current->name))
-+			return current;
-+		++current;
-+	}
-+
-+	xlog(L_ERROR, "%s: '%s' doesn't match any known command",
-+			__func__, cmdname);
-+	return NULL;
-+}
-+
-+int
-+main(int argc, char **argv)
-+{
-+	char arg;
-+	int rc = 0;
-+	char *progname, *cmdarg = NULL;
-+	struct cltrack_cmd *cmd;
-+
-+	progname = basename(argv[0]);
-+
-+	xlog_syslog(1);
-+	xlog_stderr(0);
-+
-+	/* process command-line options */
-+	while ((arg = getopt_long(argc, argv, "hdfs:", longopts,
-+				  NULL)) != EOF) {
-+		switch (arg) {
-+		case 'd':
-+			xlog_config(D_ALL, 1);
-+		case 'f':
-+			xlog_syslog(0);
-+			xlog_stderr(1);
-+			break;
-+		case 's':
-+			storagedir = optarg;
-+			break;
-+		default:
-+			usage(progname);
-+			return 0;
-+		}
-+	}
-+
-+	xlog_open(progname);
-+
-+	/* we expect a command, at least */
-+	if (optind >= argc) {
-+		xlog(L_ERROR, "Missing command name\n");
-+		rc = -EINVAL;
-+		goto out;
-+	}
-+
-+	/* drop all capabilities */
-+	rc = cltrack_set_caps();
-+	if (rc)
-+		goto out;
-+
-+	cmd = find_cmd(argv[optind]);
-+	if (!cmd) {
-+		/*
-+		 * In the event that we get a command that we don't understand
-+		 * then return a distinct error. The kernel can use this to
-+		 * determine a new kernel/old userspace situation and cope
-+		 * with it.
-+		 */
-+		rc = -ENOSYS;
-+		goto out;
-+	}
-+
-+	/* populate arg var if command needs it */
-+	if (cmd->needs_arg) {
-+		if (optind + 1 >= argc) {
-+			xlog(L_ERROR, "Command %s requires an argument\n",
-+				cmd->name);
-+			rc = -EINVAL;
-+			goto out;
-+		}
-+		cmdarg = argv[optind + 1];
-+	}
-+	rc = cmd->func(cmdarg);
-+out:
-+	return rc;
-+}
--- 
-1.7.11.7
+No, but that isn't really the point.
+The point is that to anyone not well verse in the lore of TI-RPC, "proto=3D=
+udp"
+looks like it means "set the protocol to UDP", not "set the protocol to UDP
+and the protocol family to IPv4".
+One way to clear up the confusion would be to change the meaning of
+"proto=3Dudp" to match what most people would epxect it to mean.
+The other it to document the non-obvious semantics thoroughly.  I wanted to
+consider both options.
 
+> > +A
+> > +.I netid
+> > +determines both the
+> > +.I transport
+> > +and
+> > +.I network
+> > +protocols, so for example
+>=20
+> "determines both the protocol family and transport" are closer to how the=
+se terms are defined in netconfig(5), and I prefer that formulation.  I sti=
+ll believe a citation of netconfig(5) would be correct and helpful.  A cita=
+tion in the SEE ALSO section should also be added.
+
+(SEE ALSO already mentions netconfig(5).)
+
+Don't you love standards....
+
+ISO OSI seems to use "network" for layer 3 and "transport" for layer 4, whi=
+ch
+is where I got that names I used.
+
+netconfig(5) uses "protocol family" and "protocol" respectively, and
+"transport" to identify the combination of the two (which is also the
+network_id).
+
+socket(2) also uses "protocol family" and "protocol", but uses AF as the
+prefix for "protocol family" aka "address family" :-)
+
+This does serve to highlight the inappropriateness of using "proto=3D" to
+specify the "transport", and the netconfig usage treats the "protocol" as a
+just part of the "transport" (but allows e.g. "udp" to be both a protocol a=
+nd
+a transport depending on context).
+
+It looks like  "protocol" and "protocol family" are the most appropriate
+terms in the Unix world, and the examples can clear up any uncertainty:
+
+------------
+A
+.I netid
+determines both the
+.I protocol
+and
+.IR "protocol family" .
+So for example
+.B udp
+selects UDP over IPv4 while
+.B tcp6
+selects TCP over IPv6.
+-----------------
+>=20
+> As a matter of word smithing, I think starting a new sentence at "so for =
+example" would be easier to read.
+
+Agreed.
+
+So how about this.
+
+Thanks,
+NeilBrown
+
+
+From: Neil Brown <neilb@suse.de>
+Date: Tue, 2 Oct 2012 15:21:46 +1000
+Subject: [PATCH] mount.nfs mapage: clear up confusion between 'proto' and
+ 'transport'
+
+The mount option "proto=3D" actually set the "transport" which in
+netconfig usage is the paring of a protocol (e.g. UDP, TCP) with
+a protocol family (e.g. INET, INET6).
+
+This can cause confusion if people naively except "proto=3Dudp" to work
+equally well on IPv6.
+
+So add some text to both nfs(5) and nfsmount.conf(5) to hopefully
+clarify this.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
+
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index da6d6d3..2741a60 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -1,5 +1,5 @@
+ .\"@(#)nfs.5"
+-.TH NFS 5 "2 November 2007"
++.TH NFS 5 "19 September 2012"
+ .SH NAME
+ nfs \- fstab format and options for the
+ .B nfs
+@@ -474,9 +474,17 @@ for NFS versions 2 and 3 only.
+ .BI proto=3D netid
+ The transport protocol name and protocol family the NFS client uses
+ to transmit requests to the NFS server for this mount point.
+-If an NFS server has both an IPv4 and an IPv6 address, using a specific
+-netid will force the use of IPv4 or IPv6 networking to communicate
+-with that server.
++A
++.I netid
++determines both the
++.I protocol
++and
++.IR "protocol family" .
++So for example
++.B udp
++selects UDP over IPv4 while
++.B tcp6
++selects TCP over IPv6.
+ .IP
+ If support for TI-RPC is built into the
+ .B mount.nfs
+@@ -775,9 +783,17 @@ for NFS version 4 and newer.
+ .BI proto=3D netid
+ The transport protocol name and protocol family the NFS client uses
+ to transmit requests to the NFS server for this mount point.
+-If an NFS server has both an IPv4 and an IPv6 address, using a specific
+-netid will force the use of IPv4 or IPv6 networking to communicate
+-with that server.
++A
++.I netid
++determines both the
++.I transport
++and
++.I network
++protocols, so for example
++.B udp
++selects UDP over IPv4 while
++.B tcp6
++selects TCP over IPv6.
+ .IP
+ If support for TI-RPC is built into the
+ .B mount.nfs
+@@ -851,6 +867,8 @@ The DATA AND METADATA COHERENCE section discusses
+ the behavior of this option in more detail.
+ .TP 1.5i
+ .BI clientaddr=3D n.n.n.n
++.TP 1.5i
++.BI clientaddr=3D n:n: ... :n
+ Specifies a single IPv4 address (in dotted-quad form),
+ or a non-link-local IPv6 address,
+ that the NFS client advertises to allow servers
+diff --git a/utils/mount/nfsmount.conf.man b/utils/mount/nfsmount.conf.man
+index 12a3fe7..2258296 100644
+--- a/utils/mount/nfsmount.conf.man
++++ b/utils/mount/nfsmount.conf.man
+@@ -1,5 +1,5 @@
+ .\"@(#)nfsmount.conf.5"
+-.TH NFSMOUNT.CONF 5 "9 Mar 2008"
++.TH NFSMOUNT.CONF 5 "19 September 2012"
+ .SH NAME
+ nfsmount.conf - Configuration file for NFS mounts
+ .SH SYNOPSIS
+@@ -18,6 +18,10 @@ to particular variables using the
+ .BR =3D=20
+ operator, as in=20
+ .BR Proto=3DTcp .
++The variables that can be assigned are exactly the set of NFS specific
++mount options listed in
++.BR nfs (5).
++.PP
+ Sections are broken up into three basic categories:
+ Global options, Server options and Mount Point options.
+ .HP
+@@ -54,7 +58,7 @@ are defined in the configuration file.
+     Proto=3DTcp
+ .RS
+ .HP
+-The TCP protocol will be used on every NFS mount.
++The TCP/IPv4 protocol will be used on every NFS mount.
+ .HP
+ .RE
+ [ Server \(lqnfsserver.foo.com\(rq ]
+@@ -62,10 +66,13 @@ The TCP protocol will be used on every NFS mount.
+     rsize=3D32k
+ .br
+     wsize=3D32k
++.br
++    proto=3Dudp6
+ .HP
+ .RS
+-A 33k (32768 bytes) block size will be used as the read and write
+-size on all mounts to the 'nfsserver.foo.com' server.
++A 32k (32768 bytes) block size will be used as the read and write
++size on all mounts to the 'nfsserver.foo.com' server.  UDP/IPv6
++is the protocol to be used.
+ .HP
+ .RE
+ .BR=20
+
+--Sig_/kWpSVpOXHP6SwzvSX+FGM.D
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
+
+iQIVAwUBUGp6mDnsnt1WYoG5AQLRHxAAqd0+KFcGNDO5B7jKPMe6V+JM7PH7ahsV
+oxro7Wwc6jRWAqGptNKM2X1ThKD6H2tJAy/mJl0BNKz9ayh7j44MOdmO7s4/dBsm
+L+uSZ5bByiWlGLCRekYwoiKsoBIXDDGoPmE7711CvHoqLJWwFtNRDGSQjfCPAnwR
+itFZOVLS9yRn44gaWm7FyyRWsndVo03XmS5T1xF4k/T1lDFz/7pX9ahBk8HY80gD
+nrcB7Mu4ZNiJBNeE0BfjqIOEeXLjJklK3fqtFfONf/tsrny+pDL/VXG1lmEuhfpp
+RrbsfQ8nn2P9vNxLXyxg+RfmKGdy2SahSpyAwWUlLKPo4j5/WM2Dh96Ub68nKve4
+3vNyOY1XnWKVJHroTA5BisUDOUcNC6MwujMFBxDigjtyLDyj8nlX6sPg+0IQmUnJ
+fRbzIC9gLILEiX1SdqGEJMz4RiXuEezquPxFOXIy5G0sUnaHyCX4sWJNPo8iO4jO
+X1YonbklCbcWsnl1SZXM0xY97rSNMHdbKR7LuJpIJn1ve2h8a1fhVHoWVR+wROQR
+3zBut+E7rhp/9SXXp+GRtce5NdqNRc3JGZdc3cyNarmWjImRftX7wfW7a9VJ0NXC
+Q/iQ5mEY0W4zCNmEjR/nvBM4+rxBTOryksYV0vdoooeMHAKPo8WhNDdRpq82vAWm
+igbeSAjBgjA=
+=BJNr
+-----END PGP SIGNATURE-----
+
+--Sig_/kWpSVpOXHP6SwzvSX+FGM.D--
