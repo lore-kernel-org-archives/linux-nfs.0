@@ -1,41 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vb0-f46.google.com ([209.85.212.46]:53649 "EHLO
-	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934800Ab2JXP0H (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Oct 2012 11:26:07 -0400
-Received: by mail-vb0-f46.google.com with SMTP id ff1so663972vbb.19
-        for <linux-nfs@vger.kernel.org>; Wed, 24 Oct 2012 08:26:06 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
+Received: from mx2.netapp.com ([216.240.18.37]:22993 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752158Ab2JBUBk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Oct 2012 16:01:40 -0400
+From: bjschuma@netapp.com
+To: Trond.Myklebust@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 01/10] nfsdcltrack: fix segfault in sqlite debug logging
-Date: Wed, 24 Oct 2012 11:25:50 -0400
-Message-Id: <1351092359-25842-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1351092359-25842-1-git-send-email-jlayton@redhat.com>
-References: <1351092359-25842-1-git-send-email-jlayton@redhat.com>
+Subject: [PATCH] NFS: Set key construction data for the legacy upcall
+Date: Tue,  2 Oct 2012 16:01:38 -0400
+Message-Id: <1349208098-18997-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-One too few arguments...
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+This prevents a null pointer dereference when
+nfs_idmap_complete_pipe_upcall_locked() calls complete_request_key().
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- utils/nfsdcld/sqlite.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfs/idmap.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/utils/nfsdcld/sqlite.c b/utils/nfsdcld/sqlite.c
-index bb2519d..fc882c6 100644
---- a/utils/nfsdcld/sqlite.c
-+++ b/utils/nfsdcld/sqlite.c
-@@ -320,7 +320,7 @@ sqlite_check_client(const unsigned char *clname, const size_t namelen)
- 	}
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index 675b389c..9cc4a3f 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -707,6 +707,7 @@ static int nfs_idmap_legacy_upcall(struct key_construction *cons,
+ 	msg = &data->pipe_msg;
+ 	im = &data->idmap_msg;
+ 	data->idmap = idmap;
++	data->key_cons = cons;
  
- 	ret = sqlite3_column_int(stmt, 0);
--	xlog(D_GENERAL, "%s: select returned %d rows", ret);
-+	xlog(D_GENERAL, "%s: select returned %d rows", __func__, ret);
- 	if (ret != 1) {
- 		ret = -EACCES;
- 		goto out_err;
+ 	ret = nfs_idmap_prepare_message(key->description, idmap, im, msg);
+ 	if (ret < 0)
 -- 
-1.7.11.7
+1.7.12.2
 
