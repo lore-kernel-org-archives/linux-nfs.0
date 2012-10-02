@@ -1,87 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ipcop.bitmover.com ([192.132.92.15]:49650 "EHLO
-	mail.bitmover.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751727Ab2JMCnN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Oct 2012 22:43:13 -0400
-Date: Fri, 12 Oct 2012 19:43:12 -0700
-From: Larry McVoy <lm@bitmover.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+Received: from gate.crashing.org ([63.228.1.57]:39594 "EHLO gate.crashing.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751142Ab2JBA75 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Oct 2012 20:59:57 -0400
+Message-ID: <1349139509.3847.2.camel@pasglop>
+Subject: Re: [REGRESSION] nfsd crashing with 3.6.0-rc7 on PowerPC
+From: Benjamin Herrenschmidt <benh@kernel.crashing.org>
+To: Alexander Graf <agraf@suse.de>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
         Linus Torvalds <torvalds@linux-foundation.org>,
-        Bruce Fields <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Larry McVoy <lm@bitmover.com>
-Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
-Message-ID: <20121013024312.GK23247@bitmover.com>
-References: <20121012211701.GA8301@bitmover.com>
- <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
- <5078D17C.9090002@panasas.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9091FDFA9@SACEXCMBX04-PRD.hq.netapp.com>
- <5078D45A.3090801@panasas.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5078D45A.3090801@panasas.com>
+        LKML List <linux-kernel@vger.kernel.org>,
+        linuxppc-dev <linuxppc-dev@lists.ozlabs.org>,
+        linux-nfs@vger.kernel.org, Jan Kara <jack@suse.cz>,
+        skinsbursky@parallels.com, bfields@redhat.com, anton@samba.org
+Date: Tue, 02 Oct 2012 10:58:29 +1000
+In-Reply-To: <2A52FC96-148C-4F7A-9950-E152E0C6698D@suse.de>
+References: <3BDA9E62-7031-42D6-8CA9-5327B61700F5@suse.de>
+	 <CA+55aFyXwB1QcXE4Z_FAGnXROSgvP2x2+wjnX9OWPa4Dfaaf0A@mail.gmail.com>
+	 <DC545CD9-8745-47DD-B13B-3385C0EB5B27@suse.de>
+	 <20120928151043.GA19102@fieldses.org>
+	 <2A52FC96-148C-4F7A-9950-E152E0C6698D@suse.de>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I could go in on a weekend and bang on things if that helps.  Here's some
-other info:  we use old systems so we are forward compat.  The mac was
-/ is running MacOS 10.4:
+On Mon, 2012-10-01 at 16:03 +0200, Alexander Graf wrote:
+> Phew. Here we go :). It looks to be more of a PPC specific problem than it appeared as at first:
 
-macos-x86:~ uname -a
-Darwin macos-x86.bitmover.com 8.11.1 Darwin Kernel Version 8.11.1: Wed Oct 10
-18:23:28 PDT 2007; root:xnu-792.25.20~1/RELEASE_I386 i386 i386
+Ok, so I suspect the problem is the pushing down of the locks which
+breaks with iommu backends that have a separate flush callback. In
+that case, the flush moves out of the allocator lock.
 
-No idea if they fucked up NFS, certainly possible.
+Now we do call flush before we return, still, but it becomes racy
+I suspect, but somebody needs to give it a closer look. I'm hoping
+Anton or Nish will later today.
 
-The way to make it happen is to have your home directory mounted on that
-machine and fire up skype.  It tries to do some locking thing and barfs.
+Cheers,
+Ben.
 
-How do I figure out which NFS version macos is using?
-
-macos-x86:~ mount
-/dev/disk0s2 on / (local, journaled)
-devfs on /dev (local)
-fdesc on /dev (union)
-<volfs> on /.vol
-automount -nsl [144] on /Network (automounted)
-automount -fstab [148] on /automount/Servers (automounted)
-automount -static [148] on /automount/static (automounted)
-10.3.9.1:/home on /private/var/automount/home (automounted)
-
-On Fri, Oct 12, 2012 at 07:39:22PM -0700, Boaz Harrosh wrote:
-> On 10/12/2012 07:32 PM, Myklebust, Trond wrote:
-> > On Fri, 2012-10-12 at 19:27 -0700, Boaz Harrosh wrote:
-> >> On 10/12/2012 04:52 PM, Linus Torvalds wrote:
-> >>> Guys, check this report from Larry out.
-> >>>
-> >>> Also, why the *HELL* is that a BUG_ON() in the first place? Who was
-> >>> the less-than-gifted person who decided "if this thing can happen,
-> >>> let's just kill the whole machine"?
-> >>>
-> >>
-> >> Something is trivially weird
-> >>
-> >> fs/lockd/clntxdr.c:226 is in this static function:
-> >> 	encode_nlm_stat()
-> >>
-> >> encode_nlm_stat() is called in two places
-> >> 	static void nlm_xdr_enc_res(...)
-> >>   and
-> >> 	static void nlm_xdr_enc_testres(...)
-> >>
-> >> But these two are not called anywhere. In-fact a Kernel wide grep
-> >> returns a single occurrence of both
-> > 
-> > They are used in the nlm_procedures[] array as TEST_RES, LOCK_RES,
-> > CANCEL_RES, UNLOCK_RES and GRANTED_RES xdr encoding procedures.
-> > 
 > 
-> Ha, sorry that was impossible to find. OK I'll have a look
+> b4c3a8729ae57b4f84d661e16a192f828eca1d03 is first bad commit
+> commit b4c3a8729ae57b4f84d661e16a192f828eca1d03
+> Author: Anton Blanchard <anton@samba.org>
+> Date:   Thu Jun 7 18:14:48 2012 +0000
 > 
-> Thanks
-> Boaz
+>     powerpc/iommu: Implement IOMMU pools to improve multiqueue adapter performance
+>     
+>     At the moment all queues in a multiqueue adapter will serialise
+>     against the IOMMU table lock. This is proving to be a big issue,
+>     especially with 10Gbit ethernet.
+>     
+>     This patch creates 4 pools and tries to spread the load across
+>     them. If the table is under 1GB in size we revert back to the
+>     original behaviour of 1 pool and 1 largealloc pool.
+>     
+>     We create a hash to map CPUs to pools. Since we prefer interrupts to
+>     be affinitised to primary CPUs, without some form of hashing we are
+>     very likely to end up using the same pool. As an example, POWER7
+>     has 4 way SMT and with 4 pools all primary threads will map to the
+>     same pool.
+>     
+>     The largealloc pool is reduced from 1/2 to 1/4 of the space to
+>     partially offset the overhead of breaking the table up into pools.
+>     
+>     Some performance numbers were obtained with a Chelsio T3 adapter on
+>     two POWER7 boxes, running a 100 session TCP round robin test.
+>     
+>     Performance improved 69% with this patch applied.
+>     
+>     Signed-off-by: Anton Blanchard <anton@samba.org>
+>     Signed-off-by: Benjamin Herrenschmidt <benh@kernel.crashing.org>
+> 
+> :040000 040000 039ae3cbdcfded9c6b13e58a3fc67609f1b587b0 6755a8c4a690cc80dcf834d1127f21db925476d6 M	arch
+> 
+> 
+> Alex
 
--- 
----
-Larry McVoy                lm at bitmover.com           http://www.bitkeeper.com
+
