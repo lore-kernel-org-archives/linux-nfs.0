@@ -1,151 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f46.google.com ([209.85.216.46]:59446 "EHLO
-	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965317Ab2J3SrB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Oct 2012 14:47:01 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH v8 02/16] userns: use new hashtable implementation
-Date: Tue, 30 Oct 2012 14:45:58 -0400
-Message-Id: <1351622772-16400-2-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
-References: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:33197 "EHLO e3.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932392Ab2JBVnj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Oct 2012 17:43:39 -0400
+Received: from /spool/local
+	by e3.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <nacc@linux.vnet.ibm.com>;
+	Tue, 2 Oct 2012 17:43:38 -0400
+Date: Tue, 2 Oct 2012 14:43:27 -0700
+From: Nishanth Aravamudan <nacc@linux.vnet.ibm.com>
+To: Benjamin Herrenschmidt <benh@kernel.crashing.org>
+Cc: Alexander Graf <agraf@suse.de>, linux-nfs@vger.kernel.org,
+        Jan Kara <jack@suse.cz>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        LKML List <linux-kernel@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>, anton@samba.org,
+        skinsbursky@parallels.com, bfields@redhat.com,
+        linuxppc-dev <linuxppc-dev@lists.ozlabs.org>
+Subject: Re: [REGRESSION] nfsd crashing with 3.6.0-rc7 on PowerPC
+Message-ID: <20121002214327.GA29218@linux.vnet.ibm.com>
+References: <3BDA9E62-7031-42D6-8CA9-5327B61700F5@suse.de>
+ <CA+55aFyXwB1QcXE4Z_FAGnXROSgvP2x2+wjnX9OWPa4Dfaaf0A@mail.gmail.com>
+ <DC545CD9-8745-47DD-B13B-3385C0EB5B27@suse.de>
+ <20120928151043.GA19102@fieldses.org>
+ <2A52FC96-148C-4F7A-9950-E152E0C6698D@suse.de>
+ <1349139509.3847.2.camel@pasglop>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1349139509.3847.2.camel@pasglop>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch to using the new hashtable implementation to store user structs.
-This reduces the amount of generic unrelated code in kernel/user.c.
+Hi Ben,
 
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
----
- kernel/user.c | 33 ++++++++++++---------------------
- 1 file changed, 12 insertions(+), 21 deletions(-)
+On 02.10.2012 [10:58:29 +1000], Benjamin Herrenschmidt wrote:
+> On Mon, 2012-10-01 at 16:03 +0200, Alexander Graf wrote:
+> > Phew. Here we go :). It looks to be more of a PPC specific problem
+> > than it appeared as at first:
+> 
+> Ok, so I suspect the problem is the pushing down of the locks which
+> breaks with iommu backends that have a separate flush callback. In
+> that case, the flush moves out of the allocator lock.
+> 
+> Now we do call flush before we return, still, but it becomes racy
+> I suspect, but somebody needs to give it a closer look. I'm hoping
+> Anton or Nish will later today.
 
-diff --git a/kernel/user.c b/kernel/user.c
-index 750acff..f010389 100644
---- a/kernel/user.c
-+++ b/kernel/user.c
-@@ -16,6 +16,7 @@
- #include <linux/interrupt.h>
- #include <linux/export.h>
- #include <linux/user_namespace.h>
-+#include <linux/hashtable.h>
- 
- /*
-  * userns count is 1 for root user, 1 for init_uts_ns,
-@@ -60,13 +61,9 @@ EXPORT_SYMBOL_GPL(init_user_ns);
-  */
- 
- #define UIDHASH_BITS	(CONFIG_BASE_SMALL ? 3 : 7)
--#define UIDHASH_SZ	(1 << UIDHASH_BITS)
--#define UIDHASH_MASK		(UIDHASH_SZ - 1)
--#define __uidhashfn(uid)	(((uid >> UIDHASH_BITS) + uid) & UIDHASH_MASK)
--#define uidhashentry(uid)	(uidhash_table + __uidhashfn((__kuid_val(uid))))
- 
- static struct kmem_cache *uid_cachep;
--struct hlist_head uidhash_table[UIDHASH_SZ];
-+static DEFINE_HASHTABLE(uidhash_table, UIDHASH_BITS);
- 
- /*
-  * The uidhash_lock is mostly taken from process context, but it is
-@@ -92,22 +89,22 @@ struct user_struct root_user = {
- /*
-  * These routines must be called with the uidhash spinlock held!
-  */
--static void uid_hash_insert(struct user_struct *up, struct hlist_head *hashent)
-+static void uid_hash_insert(struct user_struct *up)
- {
--	hlist_add_head(&up->uidhash_node, hashent);
-+	hash_add(uidhash_table, &up->uidhash_node, __kuid_val(up->uid));
- }
- 
- static void uid_hash_remove(struct user_struct *up)
- {
--	hlist_del_init(&up->uidhash_node);
-+	hash_del(&up->uidhash_node);
- }
- 
--static struct user_struct *uid_hash_find(kuid_t uid, struct hlist_head *hashent)
-+static struct user_struct *uid_hash_find(kuid_t uid)
- {
- 	struct user_struct *user;
- 	struct hlist_node *h;
- 
--	hlist_for_each_entry(user, h, hashent, uidhash_node) {
-+	hash_for_each_possible(uidhash_table, user, h, uidhash_node, __kuid_val(uid)) {
- 		if (uid_eq(user->uid, uid)) {
- 			atomic_inc(&user->__count);
- 			return user;
-@@ -143,7 +140,7 @@ struct user_struct *find_user(kuid_t uid)
- 	unsigned long flags;
- 
- 	spin_lock_irqsave(&uidhash_lock, flags);
--	ret = uid_hash_find(uid, uidhashentry(uid));
-+	ret = uid_hash_find(uid);
- 	spin_unlock_irqrestore(&uidhash_lock, flags);
- 	return ret;
- }
-@@ -164,11 +161,10 @@ void free_uid(struct user_struct *up)
- 
- struct user_struct *alloc_uid(kuid_t uid)
- {
--	struct hlist_head *hashent = uidhashentry(uid);
- 	struct user_struct *up, *new;
- 
- 	spin_lock_irq(&uidhash_lock);
--	up = uid_hash_find(uid, hashent);
-+	up = uid_hash_find(uid);
- 	spin_unlock_irq(&uidhash_lock);
- 
- 	if (!up) {
-@@ -184,13 +180,13 @@ struct user_struct *alloc_uid(kuid_t uid)
- 		 * on adding the same user already..
- 		 */
- 		spin_lock_irq(&uidhash_lock);
--		up = uid_hash_find(uid, hashent);
-+		up = uid_hash_find(uid);
- 		if (up) {
- 			key_put(new->uid_keyring);
- 			key_put(new->session_keyring);
- 			kmem_cache_free(uid_cachep, new);
- 		} else {
--			uid_hash_insert(new, hashent);
-+			uid_hash_insert(new);
- 			up = new;
- 		}
- 		spin_unlock_irq(&uidhash_lock);
-@@ -204,17 +200,12 @@ out_unlock:
- 
- static int __init uid_cache_init(void)
- {
--	int n;
--
- 	uid_cachep = kmem_cache_create("uid_cache", sizeof(struct user_struct),
- 			0, SLAB_HWCACHE_ALIGN|SLAB_PANIC, NULL);
- 
--	for(n = 0; n < UIDHASH_SZ; ++n)
--		INIT_HLIST_HEAD(uidhash_table + n);
--
- 	/* Insert the root user immediately (init already runs as root) */
- 	spin_lock_irq(&uidhash_lock);
--	uid_hash_insert(&root_user, uidhashentry(GLOBAL_ROOT_UID));
-+	uid_hash_insert(&root_user);
- 	spin_unlock_irq(&uidhash_lock);
- 
- 	return 0;
--- 
-1.7.12.4
+Started looking into this. If your suspicion were accurate, wouldn't the
+bisection have stopped at 0e4bc95d87394364f408627067238453830bdbf3
+("powerpc/iommu: Reduce spinlock coverage in iommu_alloc and
+iommu_free")?
+
+Alex, the error is reproducible, right? Does it go away by reverting
+that commit against mainline? Just trying to narrow down my focus.
+
+Thanks,
+Nish
 
