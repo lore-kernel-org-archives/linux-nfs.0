@@ -1,55 +1,23 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:50421 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750947Ab2JMCIn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Oct 2012 22:08:43 -0400
-Message-ID: <5078CD16.6030201@panasas.com>
-Date: Fri, 12 Oct 2012 19:08:22 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Jim Rees <rees@umich.edu>
-CC: Linus Torvalds <torvalds@linux-foundation.org>,
-        Larry McVoy <lm@bitmover.com>, Bruce Fields <bfields@fieldses.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
-References: <20121012211701.GA8301@bitmover.com> <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com> <20121013002100.GB23247@bitmover.com> <CA+55aFwKn+rp4qTk3dLgN8n=M-Aw1GYYpOfevDJaJhnK-U5VOg@mail.gmail.com> <20121013013613.GA11272@umich.edu>
-In-Reply-To: <20121013013613.GA11272@umich.edu>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mx2.netapp.com ([216.240.18.37]:51119 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932392Ab2JBVt4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Oct 2012 17:49:56 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/2] NFSv4: fix corner cases with ACCESS in OPEN
+Date: Tue,  2 Oct 2012 14:49:50 -0700
+Message-Id: <1349214592-11717-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/12/2012 06:36 PM, Jim Rees wrote:
-> Linus Torvalds wrote:
-> 
->   Doing a kernel compile really isn't that bad. The only nasty piece is
->   getting the kernel configuration right, but you can just use the
->   distro config. It's much too big and contains everything, but it will
->   work, and gets you as similar a kernel as possible. Of course, Ubuntu
->   has made installing your own kernel stupidly complicated (you have to
->   build a package and install it using the package manager), but while
->   it's an annoying extra step or two (compared to just doing a "make
->   modules_install install"), it's not rocket surgery.
-> 
-> I install kernels on Ubuntu every day of the week and twice on Sundays, and
-> never jump through their silly hoops.  The only magic is making the
-> initramfs, if you use one.
-> 
-> make install modules_install
-> update-initramfs -c -k 3.6.1 (or whatever)
+My recent "ACCESS in OPEN" patch that fixed permissions due to OPEN operations
+having no way to differentiate between READ and EXEC had several issues:
 
-I thought "make install" is suppose to call a distro specific
-driver script to do exactly that initramfs thing.
+ - when files are opened O_EXCL, ACCESS will always return permission denied 
+   for all bits until close is called.
 
-Some good sole should just fix it up on Broken ubuntu. I would
-but I don't use ubuntu I use Fedora.
+ - POSIX allows processes to write to files without write permissions if
+   that process created the file
 
-Just "which installkernel" usually /sbin/installkernel and fix
-in there, I think.
-
-> update-grub
-
-And that too, it's a new grub2 thing, right
-
-Cheers
-Boaz
