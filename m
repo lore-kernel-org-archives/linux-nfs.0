@@ -1,92 +1,159 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:27544 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751493Ab2JARxh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2012 13:53:37 -0400
-References: <20121001173616.GB29803@fieldses.org>
-Mime-Version: 1.0 (1.0)
-In-Reply-To: <20121001173616.GB29803@fieldses.org>
-Content-Type: text/plain;
-	charset=us-ascii
-Message-Id: <DA1B8EAE-0C49-4E45-A69C-AD2B1E4C3869@oracle.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] nfsd4: don't pin clientids to pseudoflavors
-Date: Mon, 1 Oct 2012 10:53:22 -0700
+Received: from cantor2.suse.de ([195.135.220.15]:38740 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932105Ab2JCWrA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Oct 2012 18:47:00 -0400
+Date: Thu, 4 Oct 2012 08:46:59 +1000
+From: NeilBrown <neilb@suse.de>
 To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        NFS <linux-nfs@vger.kernel.org>
+Subject: Re: Inconsistency when mounting a directory that 'world' cannot
+ access.
+Message-ID: <20121004084659.38632320@notabene.brown>
+In-Reply-To: <20121003162728.GE14313@fieldses.org>
+References: <20120918112329.7d88ed9e@notabene.brown>
+	<20121001154309.GD18400@fieldses.org>
+	<20121002123810.15bd1ee2@notabene.brown>
+	<20121002143334.GA1435@fieldses.org>
+	<20121003134629.72557522@notabene.brown>
+	<20121003151349.GD14313@fieldses.org>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA909001D77@SACEXCMBX04-PRD.hq.netapp.com>
+	<20121003162728.GE14313@fieldses.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/pE9oCS9GHbA30fCSIG=w5k7"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Cc: stable ?
+--Sig_/pE9oCS9GHbA30fCSIG=w5k7
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Sent from my iPhone
+On Wed, 3 Oct 2012 12:27:28 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+wrote:
 
-On Oct 1, 2012, at 10:36 AM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> On Wed, Oct 03, 2012 at 03:48:43PM +0000, Myklebust, Trond wrote:
+> > On Wed, 2012-10-03 at 11:13 -0400, J. Bruce Fields wrote:
+> > > On Wed, Oct 03, 2012 at 01:46:29PM +1000, NeilBrown wrote:
+> > > > On Tue, 2 Oct 2012 10:33:34 -0400 "J. Bruce Fields" <bfields@fields=
+es.org>
+> > > > wrote:
+> > > >=20
+> > > > > I guess you're right.  So it starts to sound more like: "you have=
+ a
+> > > > > confusing setup.  Your export configuration says one thing, and y=
+our
+> > > > > filesystem permissions say another.  Under NFSv3 the confusion di=
+dn't
+> > > > > matter, but now it does--time to fix it."
+> > > > >=20
+> > > >=20
+> > > > That's the best I could come to - I'm glad to have it confirmed.  T=
+hanks!
+> > > >=20
+> > > > It is unfortunate that Linux NFS uses an anon credential to mount w=
+hen krb5
+> > > > is in use, and uses 'root' when auth_sys is used (which might be an=
+on if
+> > > > "root_squash" is active, but might not).
+> > > > I wonder if it would work to use auth_none for the mount-time looku=
+p, just
+> > > > for consistency..
+> > > >=20
+> > > > Is the following appropriate?  Is there somewhere better to put thi=
+s caveat?
+> > >=20
+> > > Unfortunately, it's more complicated than this, as it depends on clie=
+nt
+> > > implementation and configuration details.
+> > >=20
+> > > Something like this would be more accurate but possibly too long:
+> > >=20
+> > > 	Note that under NFSv2 and NFSv3, the mount path is traversed by
+> > > 	mountd acting as root, but under NFSv4 the mount path is looked
+> > > 	up using the client's credentials.  This means that, for
+> > > 	example, if a client mounts using a krb5 credential that the
+> > > 	server maps to an "anonmyous" user, then the mount will only
+> > > 	succeed if that directory and all its parents allow eXecute
+> > > 	permissions.
+> >=20
+> > So you're listing this as a "feature" rather than a bug? There should be
+> > no reason to constrain the pseudofs to use the permission checks from
+> > the underlying filesystem.
+>=20
+> I'd be fine with that.
+>=20
+> (That still leaves some subtle v3/v4 difference in the case of mount
+> paths underneath an export?
+>=20
+> What *is* the existing mountd behavior there, exactly?  I'm inclined to
+> think allowing mounts of arbitrary subdirectories is a bug, but maybe
+> there's some historical reason for it or maybe someone already depends
+> on it.)
+>=20
+> --b.
 
-> For 3.7.--b.
-> 
-> commit 4f01f198b0b3da95f17d96dd54431b02d98c65d3
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Tue Aug 21 12:48:30 2012 -0400
-> 
->    nfsd4: don't pin clientids to pseudoflavors
-> 
->    I added cr_flavor to the data compared in same_creds without any
->    justification, in d5497fc693a446ce9100fcf4117c3f795ddfd0d2 "nfsd4: move
->    rq_flavor into svc_cred".
-> 
->    Recent client changes then started making
-> 
->        mount -osec=krb5 server:/export /mnt/
->        echo "hello" >/mnt/TMP
->        umount /mnt/
->        mount -osec=krb5i server:/export /mnt/
->        echo "hello" >/mnt/TMP
-> 
->    to fail due to a clid_inuse on the second open.
-> 
->    Mounting sequentially like this with different flavors probably isn't
->    that common outside artificial tests.  Also, the real bug here may be
->    that the server isn't just destroying the former clientid in this case
->    (because it isn't good enough at recognizing when the old state is
->    gone).  But it prompted some discussion and a look back at the spec, and
->    I think the check was probably wrong.  Fix and document.
-> 
->    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 5122e17..0f8d7e7 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1223,10 +1223,26 @@ static bool groups_equal(struct group_info *g1, struct group_info *g2)
->    return true;
-> }
-> 
-> +/*
-> + * RFC 3530 language requires clid_inuse be returned when the
-> + * "principal" associated with a requests differs from that previously
-> + * used.  We use uid, gid's, and gss principal string as our best
-> + * approximation.  We also don't want to allow non-gss use of a client
-> + * established using gss: in theory cr_principal should catch that
-> + * change, but in practice cr_principal can be null even in the gss case
-> + * since gssd doesn't always pass down a principal string.
-> + */
-> +static bool is_gss_cred(struct svc_cred *cr)
-> +{
-> +    /* Is cr_flavor one of the gss "pseudoflavors"?: */
-> +    return (cr->cr_flavor > RPC_AUTH_MAXFLAVOR);
-> +}
-> +
-> +
-> static bool
-> same_creds(struct svc_cred *cr1, struct svc_cred *cr2)
-> {
-> -    if ((cr1->cr_flavor != cr2->cr_flavor)
-> +    if ((is_gss_cred(cr1) != is_gss_cred(cr2))
->        || (cr1->cr_uid != cr2->cr_uid)
->        || (cr1->cr_gid != cr2->cr_gid)
->        || !groups_equal(cr1->cr_group_info, cr2->cr_group_info))
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The behaviour is simple that you mount a filehandle (typically belonging to=
+ a
+directory) and that filehandle can be anything inside any exported filesyst=
+em.
+Yes, please do depend on being able to mount filehandles that aren't to root
+of a filesystem.
+
+The case the brought this issue to my attention involved the server having
+a directory containing hundreds of home directories.  This directory is
+exported.
+
+If they mount that top level directory they get horrible performance.  If
+they use an automounter to just mount the homes that are accessed it works
+better.  They weren't able to explain why but my guess is that some tools
+(GUI filesystem browser) would occasionally do the equivalent of "ls  -l" of
+the top level directory which would hammer nfs-idmapd and probably ldap....
+though you would think that would get cached and not be a problem for long.
+So maybe it is more subtle than that.
+
+I've built similar setups before.  There is something attractive about
+everyone's home directory being /home/$USERNAME even though they are on
+different servers and different filesystems.
+
+In the particular problem scenario, local policy requires that the 'staff'
+directory on the server to not be world-accessible, but they still want to
+mount the individual home directories from there onto client machines as
+required.
+I cannot easily justify that policy, but the point is that it works with
+NFSv3 and with AUTH_SYS/no_root_squash, but not with NFSv4/kerb5.  I don't
+think we can fix this inconsistency but maybe we can explain it.
+
+I think your text is more accurate than mine, but also a little more vague =
+so
+the important may not be immediately obvious.  That might be a price we have
+to pay for accuracy.
+
+Thanks,
+NeilBrown
+
+
+--Sig_/pE9oCS9GHbA30fCSIG=w5k7
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
+
+iQIVAwUBUGzAYznsnt1WYoG5AQIAhA//VR49h/WxBKiC4EhUZHVE9/gnag7cUgZD
+vPGbLl8H/OuzrKcZ1XDDEEOZ1kzq1K5eKO8Esar9o1pKZe/RrlRPDqrUPqZ6w7vm
+FjmSHwMMyog2iOdY3YfhUoIeRZYQtdXVWOSdxN2OWZhfYO8uZU0+m4OwD7hRQ0I5
+8smIckecxxhFpZzgkBvekYPpz9CG13HpnhP8wpGDmiH1ZnLNxyPV0GE8yQXqBWoD
+/Il9LNx/Y0KCdL1YJkQadZ4m8IhwV+YhsF0VU8lHyvh840LfeD9/fsw8fFmS6Ekr
+HYTVtXemtzan4WzthFDjuUgViRwF8ZK/W3DQe+fZbFLHkOl0/omeNAcff5oL1sZc
+FqDwQ5yvdkWs3cE08XLa853+nH/Mr4xahuCMWihPl6KEGoF6XS/YcPzzl35zDaVX
+m1z487uQ6hnIr+wz8XsevKq50lRk74sV6zkzM3VDktvbxvDvGUZDrDVW9NMA1hal
+UXF4iPi+5nTZHcFOWgeFL/G4Uch6yklJhJbtn5c4WqI3D8GOywiGKcMGE4U4ATSF
+HoyGFBMzMYtc1HLptnzHl2ShIwx75Uqa2lBgG6evHW/vM4cIz8jsoVYkkolXo05E
+8NqaFppScVt14Kt8JHUkmylJ9cTMwRa68CRbCmKq6KIC6nSIAWzp4KixDD/NmV7I
+dCuy4hyO32Q=
+=KPaO
+-----END PGP SIGNATURE-----
+
+--Sig_/pE9oCS9GHbA30fCSIG=w5k7--
