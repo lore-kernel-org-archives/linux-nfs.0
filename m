@@ -1,118 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f44.google.com ([74.125.82.44]:52082 "EHLO
-	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755502Ab2JaWTh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Oct 2012 18:19:37 -0400
-Received: by mail-wg0-f44.google.com with SMTP id dr13so1270999wgb.1
-        for <linux-nfs@vger.kernel.org>; Wed, 31 Oct 2012 15:19:35 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <CAHVgHyXWk86GGJ0Fip3uE5SG94aUpcfuh1A4R+UWr442Q2P5Nw@mail.gmail.com>
-References: <1351627595-6462-1-git-send-email-bjschuma@netapp.com>
-	<CAHVgHyXWk86GGJ0Fip3uE5SG94aUpcfuh1A4R+UWr442Q2P5Nw@mail.gmail.com>
-Date: Wed, 31 Oct 2012 18:19:35 -0400
-Message-ID: <CAHVgHyXWhedeQdQEOx37WQwEmxGE3KWs4L5Z1_GFDAOLYPaY6Q@mail.gmail.com>
-Subject: Re: [PATCH] NFS: Wait for session recovery to finish before returning
-From: Andy Adamson <androsadamson@gmail.com>
-To: bjschuma@netapp.com
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from cantor2.suse.de ([195.135.220.15]:56633 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753265Ab2JCDq2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Oct 2012 23:46:28 -0400
+Date: Wed, 3 Oct 2012 13:46:29 +1000
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: Inconsistency when mounting a directory that 'world' cannot
+ access.
+Message-ID: <20121003134629.72557522@notabene.brown>
+In-Reply-To: <20121002143334.GA1435@fieldses.org>
+References: <20120918112329.7d88ed9e@notabene.brown>
+	<20121001154309.GD18400@fieldses.org>
+	<20121002123810.15bd1ee2@notabene.brown>
+	<20121002143334.GA1435@fieldses.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/=lV.DAzHlMz_pAAl+iUoMcU"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 31, 2012 at 6:14 PM, Andy Adamson <androsadamson@gmail.com> wrote:
-> On Tue, Oct 30, 2012 at 4:06 PM,  <bjschuma@netapp.com> wrote:
->> From: Bryan Schumaker <bjschuma@netapp.com>
->>
->> Currently, we will schedule session recovery and then return to the
->> caller of nfs4_handle_exception.  This works for most cases, but causes
->> a hang on the following test case:
->>
->>         Client                          Server
->>         ------                          ------
->>         Open file over NFS v4.1
->>         Write to file
->>                                         Expire client
->>         Try to lock file
->>
->> The server will return NFS4ERR_BADSESSION, prompting the client to
->> schedule recovery.  However, the client will continue placing lock
->> attempts and the open recovery never seems to be scheduled.
->
-> I need more detail. Is this what is happening?
->
-> When the first NFS4ERR_BADSESSION error arrives, session recovery
-> starts by setting the NFS4_SESSION_DRAINING bit which places all non
-> RPC_PRIORITY_PRIVILEGED tasks with OP_SEQUENCE on the slot_tbl_waitq,
-> so the lock requests should be placed on the slot_tbl_waitq and not go
-> on the wire.
->
-> Once the session is drained,  DESTROY_SESSION and CREATE_SESSION are
-> called and one will return with NFS4ERR_STALE_CLIENTID kicking off the
-> EXCHANGE_ID / CREATE_SESSION to establish a new clientid.
->
-> Do you see the clientid being recovered?
->
-> Once the new session is created, it inherits the slot_tbl_waitq of the
-> old session, and all the lock requests and any other tasks piled up on
-> the slot_tbl_waitq will run. At the same time, the state_manager
-> thread is running recovery for any OPENs established under the old
-> clientid, and then their associated LOCKs.
->
-> The OPEN and LOCK recovery tasks run with RPC_PRIORITY_PRIVILEGE which
-> should mean that they get run before the RPC tasks with lower
-> priority.
->
-> So my question (finally!): How is open recovery starvation happening?
-> nfs41_sequence_free_slot => nfs4_check_drain_fc_complete =>
-> rpc_wake_up_first on the session slot_tbl_waitq, which in turn calls
-> __rpc_find_next_queued_priority which should choose
-> RPC_PRIORITY_PRIVILEGE tasks over lower privileged tasks on the
-> session slot_tbl_waitq.
->
-> So even with a bunch of slots, when the first one returns and and free
-> it's slot, the priority tasks (e.g. open recovery) should run.
->
->
-> -->Andy
->
->
->> The
->> simplest solution is to wait for session recovery to run before retrying
->> the lock.
->
-> If on the wire RPCs return with NFS4ERR_BADSESSION, and then wait for
-> session recovery in the exception handler, they will not call their
-> rpc_release function
+--Sig_/=lV.DAzHlMz_pAAl+iUoMcU
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Please ignore the above sentence - it was early thinking....
+On Tue, 2 Oct 2012 10:33:34 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+wrote:
 
--->Andy
+> I guess you're right.  So it starts to sound more like: "you have a
+> confusing setup.  Your export configuration says one thing, and your
+> filesystem permissions say another.  Under NFSv3 the confusion didn't
+> matter, but now it does--time to fix it."
+>=20
 
->
->>
->> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
->> ---
->>  fs/nfs/nfs4proc.c | 3 +--
->>  1 file changed, 1 insertion(+), 2 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index 8b04d14..70e0c47 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -338,8 +338,7 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
->>                         dprintk("%s ERROR: %d Reset session\n", __func__,
->>                                 errorcode);
->>                         nfs4_schedule_session_recovery(clp->cl_session, errorcode);
->> -                       exception->retry = 1;
->> -                       break;
->> +                       goto wait_on_recovery;
->>  #endif /* defined(CONFIG_NFS_V4_1) */
->>                 case -NFS4ERR_FILE_OPEN:
->>                         if (exception->timeout > HZ) {
->> --
->> 1.8.0
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+That's the best I could come to - I'm glad to have it confirmed.  Thanks!
+
+It is unfortunate that Linux NFS uses an anon credential to mount when krb5
+is in use, and uses 'root' when auth_sys is used (which might be anon if
+"root_squash" is active, but might not).
+I wonder if it would work to use auth_none for the mount-time lookup, just
+for consistency..
+
+Is the following appropriate?  Is there somewhere better to put this caveat?
+
+Thanks,
+NeilBrown
+
+
+diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
+index bc1de73..91e4b9c 100644
+--- a/utils/exportfs/exports.man
++++ b/utils/exportfs/exports.man
+@@ -126,6 +126,10 @@ will be enforced only for access using flavors listed =
+in the immediately
+ preceding sec=3D option.  The only options that are permitted to vary in
+ this way are ro, rw, no_root_squash, root_squash, and all_squash.
+ .PP
++When RPCSEC_GSS is used with NFSv4, a client will only be able to mount a
++directory if that directory and all its ancestors give eXecute access
++to "world".
++.PP
+ .SS General Options
+ .BR exportfs
+ understands the following export options:
+
+--Sig_/=lV.DAzHlMz_pAAl+iUoMcU
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
+
+iQIVAwUBUGu1FTnsnt1WYoG5AQLzLw//aJlbMWx/fsOZxO5hlAxIneo0GigmoRo6
+wQgBLKC4c41yB9wvsSzAv6nZkkgpwrUDhwtJXM7kto2Wbc/R+6qjAVx3FrM/kXUH
+HS1tzjTQBFpqGk/EmSYHpAMPQ86WuMKM0OwVPX/yjyEvjeFLE71ZBYutNrCMY/Qx
+D8mvRmaww3VTjl5rHLwsfhphKupCSkx0UHPNXTUJ9FaRJcRttwdi+VOF1YhLHPZa
+bKSv5yLGTf3M7NlXj4T4k53rxg1Qv5khMHKGlRdllJV4TDfj09W89UcsgvP9PGNs
+oeSyGepe1nEzc4uR6Al8Yph/cPKuBg0HDLBTSF8vHDEBHHfT+tzROWt92rrhOpl3
+80kPdoXSeIL/NlBS/17cjetI3JYNwHnIm/BIHCaVErFVZfis+zTkAwoli59KmyT9
+cKbqVTQ3Bk0EDbbvGx54WssjmnjiVuOOxkbrBp0FfXnpAYc82X/JHEvTrm24u0DL
+nw/ffkzN7OG83bN6vk0DhEBp/Rvn+v6pQt2Pq80xAO2NOLc9znRhRRmkqBRsMh97
+P7A8P+oD0RO8t/ugLuAw/cdPTw4QUrqesZ4yZbuvtJu+HSWiArt9BnC9YS+0y7/m
+PUrS+6MJBmULV0o9JhGLspHaOZukTZypdzbutgVeA9jjXp+3T/PGnAvY2U5lQsDj
+djtey0OjkPA=
+=B7do
+-----END PGP SIGNATURE-----
+
+--Sig_/=lV.DAzHlMz_pAAl+iUoMcU--
