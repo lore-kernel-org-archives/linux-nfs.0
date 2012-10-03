@@ -1,200 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:35875 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754440Ab2J0Md4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 08:33:56 -0400
-Received: by mail-gh0-f174.google.com with SMTP id g15so699669ghb.19
-        for <linux-nfs@vger.kernel.org>; Sat, 27 Oct 2012 05:33:56 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v8 04/32] vfs: add new "reval" argument to kern_path_create and user_path_create
-Date: Sat, 27 Oct 2012 08:33:11 -0400
-Message-Id: <1351341219-17837-5-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
-References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:38768 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932536Ab2JCPNw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Oct 2012 11:13:52 -0400
+Date: Wed, 3 Oct 2012 11:13:50 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: Inconsistency when mounting a directory that 'world' cannot
+ access.
+Message-ID: <20121003151349.GD14313@fieldses.org>
+References: <20120918112329.7d88ed9e@notabene.brown>
+ <20121001154309.GD18400@fieldses.org>
+ <20121002123810.15bd1ee2@notabene.brown>
+ <20121002143334.GA1435@fieldses.org>
+ <20121003134629.72557522@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121003134629.72557522@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...for now, all of the callers pass in "false". Eventually, we'll set
-that to "true" when we retry the lookup after getting back an ESTALE on
-a call.
+On Wed, Oct 03, 2012 at 01:46:29PM +1000, NeilBrown wrote:
+> On Tue, 2 Oct 2012 10:33:34 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+> wrote:
+> 
+> > I guess you're right.  So it starts to sound more like: "you have a
+> > confusing setup.  Your export configuration says one thing, and your
+> > filesystem permissions say another.  Under NFSv3 the confusion didn't
+> > matter, but now it does--time to fix it."
+> > 
+> 
+> That's the best I could come to - I'm glad to have it confirmed.  Thanks!
+> 
+> It is unfortunate that Linux NFS uses an anon credential to mount when krb5
+> is in use, and uses 'root' when auth_sys is used (which might be anon if
+> "root_squash" is active, but might not).
+> I wonder if it would work to use auth_none for the mount-time lookup, just
+> for consistency..
+> 
+> Is the following appropriate?  Is there somewhere better to put this caveat?
 
-While we're at it, change the is_dir arg to a bool since that's how it's
-used currently.
+Unfortunately, it's more complicated than this, as it depends on client
+implementation and configuration details.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- arch/powerpc/platforms/cell/spufs/syscalls.c |  2 +-
- drivers/base/devtmpfs.c                      |  7 ++++---
- fs/namei.c                                   | 23 +++++++++++++++--------
- fs/ocfs2/refcounttree.c                      |  3 ++-
- include/linux/namei.h                        |  4 ++--
- net/unix/af_unix.c                           |  2 +-
- 6 files changed, 25 insertions(+), 16 deletions(-)
+Something like this would be more accurate but possibly too long:
 
-diff --git a/arch/powerpc/platforms/cell/spufs/syscalls.c b/arch/powerpc/platforms/cell/spufs/syscalls.c
-index 5b7d8ff..cb4acc7 100644
---- a/arch/powerpc/platforms/cell/spufs/syscalls.c
-+++ b/arch/powerpc/platforms/cell/spufs/syscalls.c
-@@ -66,7 +66,7 @@ static long do_spu_create(const char __user *pathname, unsigned int flags,
- 	struct dentry *dentry;
- 	int ret;
- 
--	dentry = user_path_create(AT_FDCWD, pathname, &path, 1);
-+	dentry = user_path_create(AT_FDCWD, pathname, &path, true, false);
- 	ret = PTR_ERR(dentry);
- 	if (!IS_ERR(dentry)) {
- 		ret = spufs_create(&path, dentry, flags, mode, neighbor);
-diff --git a/drivers/base/devtmpfs.c b/drivers/base/devtmpfs.c
-index 147d1a4..128e156 100644
---- a/drivers/base/devtmpfs.c
-+++ b/drivers/base/devtmpfs.c
-@@ -148,7 +148,7 @@ static int dev_mkdir(const char *name, umode_t mode)
- 	struct path path;
- 	int err;
- 
--	dentry = kern_path_create(AT_FDCWD, name, &path, 1);
-+	dentry = kern_path_create(AT_FDCWD, name, &path, true, false);
- 	if (IS_ERR(dentry))
- 		return PTR_ERR(dentry);
- 
-@@ -193,10 +193,11 @@ static int handle_create(const char *nodename, umode_t mode, struct device *dev)
- 	struct path path;
- 	int err;
- 
--	dentry = kern_path_create(AT_FDCWD, nodename, &path, 0);
-+	dentry = kern_path_create(AT_FDCWD, nodename, &path, false, false);
- 	if (dentry == ERR_PTR(-ENOENT)) {
- 		create_path(nodename);
--		dentry = kern_path_create(AT_FDCWD, nodename, &path, 0);
-+		dentry = kern_path_create(AT_FDCWD, nodename, &path,
-+								false, false);
- 	}
- 	if (IS_ERR(dentry))
- 		return PTR_ERR(dentry);
-diff --git a/fs/namei.c b/fs/namei.c
-index d1895f3..a2bb283 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3039,12 +3039,18 @@ struct file *do_file_open_root(struct dentry *dentry, struct vfsmount *mnt,
- 	return file;
- }
- 
--struct dentry *kern_path_create(int dfd, const char *pathname, struct path *path, int is_dir)
-+struct dentry *kern_path_create(int dfd, const char *pathname, struct path *path, bool is_dir, bool reval)
- {
- 	struct dentry *dentry = ERR_PTR(-EEXIST);
- 	struct nameidata nd;
- 	int err2;
--	int error = do_path_lookup(dfd, pathname, LOOKUP_PARENT, &nd);
-+	int error;
-+	unsigned int lookup_flags = LOOKUP_PARENT;
-+
-+	if (reval)
-+		lookup_flags |= LOOKUP_REVAL;
-+
-+	error = do_path_lookup(dfd, pathname, lookup_flags, &nd);
- 	if (error)
- 		return ERR_PTR(error);
- 
-@@ -3108,13 +3114,14 @@ void done_path_create(struct path *path, struct dentry *dentry)
- }
- EXPORT_SYMBOL(done_path_create);
- 
--struct dentry *user_path_create(int dfd, const char __user *pathname, struct path *path, int is_dir)
-+struct dentry *user_path_create(int dfd, const char __user *pathname,
-+				struct path *path, bool is_dir, bool reval)
- {
- 	struct filename *tmp = getname(pathname);
- 	struct dentry *res;
- 	if (IS_ERR(tmp))
- 		return ERR_CAST(tmp);
--	res = kern_path_create(dfd, tmp->name, path, is_dir);
-+	res = kern_path_create(dfd, tmp->name, path, is_dir, reval);
- 	putname(tmp);
- 	return res;
- }
-@@ -3175,7 +3182,7 @@ SYSCALL_DEFINE4(mknodat, int, dfd, const char __user *, filename, umode_t, mode,
- 	if (error)
- 		return error;
- 
--	dentry = user_path_create(dfd, filename, &path, 0);
-+	dentry = user_path_create(dfd, filename, &path, false, false);
- 	if (IS_ERR(dentry))
- 		return PTR_ERR(dentry);
- 
-@@ -3237,7 +3244,7 @@ SYSCALL_DEFINE3(mkdirat, int, dfd, const char __user *, pathname, umode_t, mode)
- 	struct path path;
- 	int error;
- 
--	dentry = user_path_create(dfd, pathname, &path, 1);
-+	dentry = user_path_create(dfd, pathname, &path, true, false);
- 	if (IS_ERR(dentry))
- 		return PTR_ERR(dentry);
- 
-@@ -3513,7 +3520,7 @@ SYSCALL_DEFINE3(symlinkat, const char __user *, oldname,
- 	if (IS_ERR(from))
- 		return PTR_ERR(from);
- 
--	dentry = user_path_create(newdfd, newname, &path, 0);
-+	dentry = user_path_create(newdfd, newname, &path, false, false);
- 	error = PTR_ERR(dentry);
- 	if (IS_ERR(dentry))
- 		goto out_putname;
-@@ -3613,7 +3620,7 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
- 	if (error)
- 		return error;
- 
--	new_dentry = user_path_create(newdfd, newname, &new_path, 0);
-+	new_dentry = user_path_create(newdfd, newname, &new_path, false, false);
- 	error = PTR_ERR(new_dentry);
- 	if (IS_ERR(new_dentry))
- 		goto out;
-diff --git a/fs/ocfs2/refcounttree.c b/fs/ocfs2/refcounttree.c
-index 30a0550..645e225 100644
---- a/fs/ocfs2/refcounttree.c
-+++ b/fs/ocfs2/refcounttree.c
-@@ -4453,7 +4453,8 @@ int ocfs2_reflink_ioctl(struct inode *inode,
- 		return error;
- 	}
- 
--	new_dentry = user_path_create(AT_FDCWD, newname, &new_path, 0);
-+	new_dentry = user_path_create(AT_FDCWD, newname, &new_path,
-+					false, false);
- 	error = PTR_ERR(new_dentry);
- 	if (IS_ERR(new_dentry)) {
- 		mlog_errno(error);
-diff --git a/include/linux/namei.h b/include/linux/namei.h
-index 4bf19d8..2202740 100644
---- a/include/linux/namei.h
-+++ b/include/linux/namei.h
-@@ -65,8 +65,8 @@ extern int user_path_at_empty(int, const char __user *, unsigned, struct path *,
- 
- extern int kern_path(const char *, unsigned, struct path *);
- 
--extern struct dentry *kern_path_create(int, const char *, struct path *, int);
--extern struct dentry *user_path_create(int, const char __user *, struct path *, int);
-+extern struct dentry *kern_path_create(int, const char *, struct path *, bool, bool);
-+extern struct dentry *user_path_create(int, const char __user *, struct path *, bool, bool);
- extern void done_path_create(struct path *, struct dentry *);
- extern struct dentry *kern_path_locked(const char *, struct path *);
- extern int vfs_path_lookup(struct dentry *, struct vfsmount *,
-diff --git a/net/unix/af_unix.c b/net/unix/af_unix.c
-index 5b5c876..8ce6209 100644
---- a/net/unix/af_unix.c
-+++ b/net/unix/af_unix.c
-@@ -829,7 +829,7 @@ static int unix_mknod(const char *sun_path, umode_t mode, struct path *res)
- 	 * Get the parent directory, calculate the hash for last
- 	 * component.
- 	 */
--	dentry = kern_path_create(AT_FDCWD, sun_path, &path, 0);
-+	dentry = kern_path_create(AT_FDCWD, sun_path, &path, false, false);
- 	err = PTR_ERR(dentry);
- 	if (IS_ERR(dentry))
- 		return err;
--- 
-1.7.11.7
+	Note that under NFSv2 and NFSv3, the mount path is traversed by
+	mountd acting as root, but under NFSv4 the mount path is looked
+	up using the client's credentials.  This means that, for
+	example, if a client mounts using a krb5 credential that the
+	server maps to an "anonmyous" user, then the mount will only
+	succeed if that directory and all its parents allow eXecute
+	permissions.
+
+--b.
+
+> 
+> Thanks,
+> NeilBrown
+> 
+> 
+> diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
+> index bc1de73..91e4b9c 100644
+> --- a/utils/exportfs/exports.man
+> +++ b/utils/exportfs/exports.man
+> @@ -126,6 +126,10 @@ will be enforced only for access using flavors listed in the immediately
+>  preceding sec= option.  The only options that are permitted to vary in
+>  this way are ro, rw, no_root_squash, root_squash, and all_squash.
+>  .PP
+> +When RPCSEC_GSS is used with NFSv4, a client will only be able to mount a
+> +directory if that directory and all its ancestors give eXecute access
+> +to "world".
+> +.PP
+>  .SS General Options
+>  .BR exportfs
+>  understands the following export options:
+
 
