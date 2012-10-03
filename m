@@ -1,47 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from icebox.esperi.org.uk ([81.187.191.129]:40349 "EHLO
-	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S966492Ab2JZVTa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Oct 2012 17:19:30 -0400
-From: Nix <nix@esperi.org.uk>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
-        Bryan Schumaker <bjschuma@netapp.com>, Peng Tao <bergwolf@gmail.com>,
-        Trond.Myklebust@netapp.com, gregkh@linuxfoundation.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3 (and other stable branches?)
-References: <87objupjlr.fsf@spindle.srvr.nix>
-	<20121023013343.GB6370@fieldses.org> <87mwzdnuww.fsf@spindle.srvr.nix>
-	<20121023143019.GA3040@fieldses.org>
-	<874nllxi7e.fsf_-_@spindle.srvr.nix>
-	<87pq48nbyz.fsf_-_@spindle.srvr.nix> <508AF3FA.4020506@redhat.com>
-	<87wqydx957.fsf@spindle.srvr.nix> <20121026205618.GC8614@thunk.org>
-	<87objpx84k.fsf@spindle.srvr.nix> <20121026211542.GE8614@thunk.org>
-Date: Fri, 26 Oct 2012 22:19:21 +0100
-In-Reply-To: <20121026211542.GE8614@thunk.org> (Theodore Ts'o's message of
-	"Fri, 26 Oct 2012 17:15:42 -0400")
-Message-ID: <87haphx76u.fsf@spindle.srvr.nix>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mx1.redhat.com ([209.132.183.28]:25745 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756016Ab2JCNyW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Oct 2012 09:54:22 -0400
+Date: Wed, 3 Oct 2012 09:54:19 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Scott Lovenberg <scott.lovenberg@gmail.com>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 7/6] nfsdcltrack: add a legacy transition mechanism
+Message-ID: <20121003095419.5c8d9018@tlielax.poochiereds.net>
+In-Reply-To: <CAFB9KM3xDcvth1pOg-eDAPzM7Gu48A_ExY9vUk0Sb524aencGA@mail.gmail.com>
+References: <1349092365-23920-1-git-send-email-jlayton@redhat.com>
+	<1349268173-16574-1-git-send-email-jlayton@redhat.com>
+	<CAFB9KM1xNQYJFS=hE=cFdTkZE9Da8qfhYRLSEJ2xVvwWzxJo1Q@mail.gmail.com>
+	<20121003094035.1f7245a4@tlielax.poochiereds.net>
+	<CAFB9KM3xDcvth1pOg-eDAPzM7Gu48A_ExY9vUk0Sb524aencGA@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 26 Oct 2012, Theodore Ts'o uttered the following:
+On Wed, 3 Oct 2012 09:52:02 -0400
+Scott Lovenberg <scott.lovenberg@gmail.com> wrote:
 
-> The plan is that eventually, we will have checksums on a
-> per-journalled block basis, instead of a per-commit basis, and when we
-> get a failed checksum, we skip the replay of that block,
+> On Wed, Oct 3, 2012 at 9:40 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> > On Wed, 3 Oct 2012 09:34:36 -0400
+> > Scott Lovenberg <scott.lovenberg@gmail.com> wrote:
+> >
+> >> On Wed, Oct 3, 2012 at 8:42 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> >> [snip]
+> >> > +               /* if there's a problem, then skip this entry */
+> >> > +               if (len < 0 || (size_t)len >= sizeof(blob)) {
+> >> > +                       xlog(L_WARNING, "%s: unable to build filename for %s!",
+> >> > +                               __func__, entry->d_name);
+> >> > +                       continue;
+> >> > +               }
+> >>
+> >> Is a len == 0 not a problem?
+> >>
+> >
+> > I'm not sure -- under what circumstances would it return 0?
+> >
+> > --
+> > Jeff Layton <jlayton@redhat.com>
+> 
+> I guess the only case would be if sizeof(blob) was 0, then snprintf
+> would return a value < 1 according to the SUSv2.  Apparently C99 says
+> the return value will be > 0.  I guess this is a non-issue?
+> 
 
-But not of everything it implies, since that's quite tricky to track
-down (it's basically the same work needed for softupdates, but in
-reverse). Hence the e2fsck check, I suppose.
-
-> prevent unwary civilians from coming across the feature and saying,
-> "oooh, shiny!" and turning it on.  :-(
-
-Or having it turned on by default either, which seems to be the case
-now.
+I think so, yes. The main worry here is overrunning the buffer and I
+think the error checking I'm doing has that covered.
 
 -- 
-NULL && (void)
+Jeff Layton <jlayton@redhat.com>
