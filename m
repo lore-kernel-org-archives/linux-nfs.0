@@ -1,96 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:45194 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:57837 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756339Ab2J3Tpi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Oct 2012 15:45:38 -0400
-Date: Tue, 30 Oct 2012 15:45:20 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        michael.brantley@deshaw.com, hch@infradead.org, miklos@szeredi.hu,
-        pstaubach@exagrid.com
-Subject: Re: [PATCH v8 11/32] vfs: make do_unlinkat retry on ESTALE errors
-Message-ID: <20121030154520.4f3503e8@tlielax.poochiereds.net>
-In-Reply-To: <20121030192809.GE24618@fieldses.org>
-References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
-	<1351341219-17837-12-git-send-email-jlayton@redhat.com>
-	<20121030161429.GD24618@fieldses.org>
-	<20121030123355.5c404373@tlielax.poochiereds.net>
-	<20121030192809.GE24618@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S932474Ab2JCQ1b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Oct 2012 12:27:31 -0400
+Date: Wed, 3 Oct 2012 12:27:28 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: NeilBrown <neilb@suse.de>, NFS <linux-nfs@vger.kernel.org>
+Subject: Re: Inconsistency when mounting a directory that 'world' cannot
+ access.
+Message-ID: <20121003162728.GE14313@fieldses.org>
+References: <20120918112329.7d88ed9e@notabene.brown>
+ <20121001154309.GD18400@fieldses.org>
+ <20121002123810.15bd1ee2@notabene.brown>
+ <20121002143334.GA1435@fieldses.org>
+ <20121003134629.72557522@notabene.brown>
+ <20121003151349.GD14313@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA909001D77@SACEXCMBX04-PRD.hq.netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA909001D77@SACEXCMBX04-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 30 Oct 2012 15:28:09 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Tue, Oct 30, 2012 at 12:33:55PM -0400, Jeff Layton wrote:
-> > On Tue, 30 Oct 2012 12:14:29 -0400
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> > > On Sat, Oct 27, 2012 at 08:33:18AM -0400, Jeff Layton wrote:
-> > > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > > > ---
-> > > >  fs/namei.c | 12 ++++++++++--
-> > > >  1 file changed, 10 insertions(+), 2 deletions(-)
+On Wed, Oct 03, 2012 at 03:48:43PM +0000, Myklebust, Trond wrote:
+> On Wed, 2012-10-03 at 11:13 -0400, J. Bruce Fields wrote:
+> > On Wed, Oct 03, 2012 at 01:46:29PM +1000, NeilBrown wrote:
+> > > On Tue, 2 Oct 2012 10:33:34 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+> > > wrote:
+> > > 
+> > > > I guess you're right.  So it starts to sound more like: "you have a
+> > > > confusing setup.  Your export configuration says one thing, and your
+> > > > filesystem permissions say another.  Under NFSv3 the confusion didn't
+> > > > matter, but now it does--time to fix it."
 > > > > 
-> > > > diff --git a/fs/namei.c b/fs/namei.c
-> > > > index 7c9bb50..467b9f1 100644
-> > > > --- a/fs/namei.c
-> > > > +++ b/fs/namei.c
-> > > > @@ -3446,9 +3446,13 @@ static long do_unlinkat(int dfd, const char __user *pathname)
-> > > >  	struct filename *name;
-> > > >  	struct dentry *dentry;
-> > > >  	struct nameidata nd;
-> > > > -	struct inode *inode = NULL;
-> > > > +	struct inode *inode;
-> > > > +	unsigned int try = 0;
-> > > > +	unsigned int lookup_flags = LOOKUP_PARENT;
-> > > >  
-> > > > -	name = user_path_parent(dfd, pathname, &nd, 0);
-> > > > +retry:
-> > > > +	inode = NULL;
 > > > 
-> > > So, you fail after "inode" was set (say vfs_unlink returned an error)
-> > > the first time, then before "inode" was set (lookup_hash returns an
-> > > error), and you end up incorrectly doing another iput() the second time
-> > > through if you don't reset inode here?
+> > > That's the best I could come to - I'm glad to have it confirmed.  Thanks!
 > > > 
-> > > (I think I made the same mistake in another patch, actually....)
+> > > It is unfortunate that Linux NFS uses an anon credential to mount when krb5
+> > > is in use, and uses 'root' when auth_sys is used (which might be anon if
+> > > "root_squash" is active, but might not).
+> > > I wonder if it would work to use auth_none for the mount-time lookup, just
+> > > for consistency..
 > > > 
-> > > --b.
-> > > 
+> > > Is the following appropriate?  Is there somewhere better to put this caveat?
 > > 
-> > Correct. That's a new delta in this patch, btw. The original patch
-> > didn't do that and it was causing a busy inodes on umount bug in
-> > testing.
+> > Unfortunately, it's more complicated than this, as it depends on client
+> > implementation and configuration details.
 > > 
-> > It would occasionally hit an ESTALE error in this function and
-> > because "inode" wasn't reset to NULL, it would do a double-put of the
-> > inode and cause the counter to underflow.
+> > Something like this would be more accurate but possibly too long:
 > > 
-> > It might be good to restructure this code to make those sorts of bugs
-> > less likely, but the error handling in here is already so hairy that I
-> > decided to punt on that for now...
+> > 	Note that under NFSv2 and NFSv3, the mount path is traversed by
+> > 	mountd acting as root, but under NFSv4 the mount path is looked
+> > 	up using the client's credentials.  This means that, for
+> > 	example, if a client mounts using a krb5 credential that the
+> > 	server maps to an "anonmyous" user, then the mount will only
+> > 	succeed if that directory and all its parents allow eXecute
+> > 	permissions.
 > 
-> Understood.  I might find it just a little more obvious why we're doing
-> this if the assignment was next to the final iput:
-> 
-> 	if (inode)
-> 		iput(inode);
-> 	inode = NULL;
-> 	...
-> 
+> So you're listing this as a "feature" rather than a bug? There should be
+> no reason to constrain the pseudofs to use the permission checks from
+> the underlying filesystem.
 
-Yeah, my initial patch did something similar (but inside the "if"
-block). Ultimately, though I figured it was best to avoid setting
-"inode" unless it was needed.
+I'd be fine with that.
 
-The patch I've got basically does that, but it's not as obvious as the
-other way. Maybe I should just go ahead and try to clean up that logic
-after all. Unrolling the error handling there is pretty nasty though.
+(That still leaves some subtle v3/v4 difference in the case of mount
+paths underneath an export?
 
--- 
-Jeff Layton <jlayton@redhat.com>
+What *is* the existing mountd behavior there, exactly?  I'm inclined to
+think allowing mounts of arbitrary subdirectories is a bug, but maybe
+there's some historical reason for it or maybe someone already depends
+on it.)
+
+--b.
