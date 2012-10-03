@@ -1,93 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:64939 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757156Ab2JKPLC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Oct 2012 11:11:02 -0400
-Received: by mail-ie0-f174.google.com with SMTP id k13so3136165iea.19
-        for <linux-nfs@vger.kernel.org>; Thu, 11 Oct 2012 08:11:01 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/8] mountd: Use static buffer when constructing junction
- export options
-To: steved@redhat.com
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-Date: Thu, 11 Oct 2012 11:10:59 -0400
-Message-ID: <20121011151059.4665.71119.stgit@lebasque.1015granger.net>
-In-Reply-To: <20121011150421.4665.35964.stgit@lebasque.1015granger.net>
-References: <20121011150421.4665.35964.stgit@lebasque.1015granger.net>
-MIME-Version: 1.0
+Received: from mx2.netapp.com ([216.240.18.37]:59494 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932427Ab2JCPsp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Oct 2012 11:48:45 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: NeilBrown <neilb@suse.de>, NFS <linux-nfs@vger.kernel.org>
+Subject: Re: Inconsistency when mounting a directory that 'world' cannot
+ access.
+Date: Wed, 3 Oct 2012 15:48:43 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA909001D77@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20120918112329.7d88ed9e@notabene.brown>
+	 <20121001154309.GD18400@fieldses.org>
+	 <20121002123810.15bd1ee2@notabene.brown>
+	 <20121002143334.GA1435@fieldses.org>
+	 <20121003134629.72557522@notabene.brown>
+	 <20121003151349.GD14313@fieldses.org>
+In-Reply-To: <20121003151349.GD14313@fieldses.org>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Simplify locations_to_export() by constructing a junction's
-export options in a static buffer.
-
-We can do this because all of this code is called serially, in one
-thread, and the result is thrown away immediately after the caller
-is finished.  The returned exportent itself is static.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- utils/mountd/cache.c |   36 +++++-------------------------------
- 1 files changed, 5 insertions(+), 31 deletions(-)
-
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index 942fdbd..8de2eac 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -917,14 +917,15 @@ out_false:
-  *
-  * Returned exportent points to static memory.
-  */
--static struct exportent *do_locations_to_export(struct jp_ops *ops,
--		nfs_fsloc_set_t locations, const char *junction,
--		char *options, size_t options_len)
-+static struct exportent *locations_to_export(struct jp_ops *ops,
-+		nfs_fsloc_set_t locations, const char *junction)
- {
-+	static char options[BUFSIZ];
- 	struct exportent *exp;
- 	int ttl;
- 
--	if (!locations_to_options(ops, locations, options, options_len, &ttl))
-+	options[0] = '\0';
-+	if (!locations_to_options(ops, locations, options, sizeof(options), &ttl))
- 		return NULL;
- 
- 	exp = mkexportent("*", (char *)junction, options);
-@@ -939,33 +940,6 @@ static struct exportent *do_locations_to_export(struct jp_ops *ops,
- }
- 
- /*
-- * Convert set of FS locations to an exportent.  Returns pointer to
-- * an exportent if "junction" refers to a junction.
-- *
-- * Returned exportent points to static memory.
-- */
--static struct exportent *locations_to_export(struct jp_ops *ops,
--		nfs_fsloc_set_t locations, const char *junction)
--{
--	struct exportent *exp;
--	char *options;
--
--	options = malloc(BUFSIZ);
--	if (options == NULL) {
--		xlog(D_GENERAL, "%s: failed to allocate options buffer",
--			__func__);
--		return NULL;
--	}
--	options[0] = '\0';
--
--	exp = do_locations_to_export(ops, locations, junction,
--						options, BUFSIZ);
--
--	free(options);
--	return exp;
--}
--
--/*
-  * Retrieve locations information in "junction" and dump it to the
-  * kernel.  Returns pointer to an exportent if "junction" refers
-  * to a junction.
-
+T24gV2VkLCAyMDEyLTEwLTAzIGF0IDExOjEzIC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIFdlZCwgT2N0IDAzLCAyMDEyIGF0IDAxOjQ2OjI5UE0gKzEwMDAsIE5laWxCcm93biB3
+cm90ZToNCj4gPiBPbiBUdWUsIDIgT2N0IDIwMTIgMTA6MzM6MzQgLTA0MDAgIkouIEJydWNlIEZp
+ZWxkcyIgPGJmaWVsZHNAZmllbGRzZXMub3JnPg0KPiA+IHdyb3RlOg0KPiA+IA0KPiA+ID4gSSBn
+dWVzcyB5b3UncmUgcmlnaHQuICBTbyBpdCBzdGFydHMgdG8gc291bmQgbW9yZSBsaWtlOiAieW91
+IGhhdmUgYQ0KPiA+ID4gY29uZnVzaW5nIHNldHVwLiAgWW91ciBleHBvcnQgY29uZmlndXJhdGlv
+biBzYXlzIG9uZSB0aGluZywgYW5kIHlvdXINCj4gPiA+IGZpbGVzeXN0ZW0gcGVybWlzc2lvbnMg
+c2F5IGFub3RoZXIuICBVbmRlciBORlN2MyB0aGUgY29uZnVzaW9uIGRpZG4ndA0KPiA+ID4gbWF0
+dGVyLCBidXQgbm93IGl0IGRvZXMtLXRpbWUgdG8gZml4IGl0LiINCj4gPiA+IA0KPiA+IA0KPiA+
+IFRoYXQncyB0aGUgYmVzdCBJIGNvdWxkIGNvbWUgdG8gLSBJJ20gZ2xhZCB0byBoYXZlIGl0IGNv
+bmZpcm1lZC4gIFRoYW5rcyENCj4gPiANCj4gPiBJdCBpcyB1bmZvcnR1bmF0ZSB0aGF0IExpbnV4
+IE5GUyB1c2VzIGFuIGFub24gY3JlZGVudGlhbCB0byBtb3VudCB3aGVuIGtyYjUNCj4gPiBpcyBp
+biB1c2UsIGFuZCB1c2VzICdyb290JyB3aGVuIGF1dGhfc3lzIGlzIHVzZWQgKHdoaWNoIG1pZ2h0
+IGJlIGFub24gaWYNCj4gPiAicm9vdF9zcXVhc2giIGlzIGFjdGl2ZSwgYnV0IG1pZ2h0IG5vdCku
+DQo+ID4gSSB3b25kZXIgaWYgaXQgd291bGQgd29yayB0byB1c2UgYXV0aF9ub25lIGZvciB0aGUg
+bW91bnQtdGltZSBsb29rdXAsIGp1c3QNCj4gPiBmb3IgY29uc2lzdGVuY3kuLg0KPiA+IA0KPiA+
+IElzIHRoZSBmb2xsb3dpbmcgYXBwcm9wcmlhdGU/ICBJcyB0aGVyZSBzb21ld2hlcmUgYmV0dGVy
+IHRvIHB1dCB0aGlzIGNhdmVhdD8NCj4gDQo+IFVuZm9ydHVuYXRlbHksIGl0J3MgbW9yZSBjb21w
+bGljYXRlZCB0aGFuIHRoaXMsIGFzIGl0IGRlcGVuZHMgb24gY2xpZW50DQo+IGltcGxlbWVudGF0
+aW9uIGFuZCBjb25maWd1cmF0aW9uIGRldGFpbHMuDQo+IA0KPiBTb21ldGhpbmcgbGlrZSB0aGlz
+IHdvdWxkIGJlIG1vcmUgYWNjdXJhdGUgYnV0IHBvc3NpYmx5IHRvbyBsb25nOg0KPiANCj4gCU5v
+dGUgdGhhdCB1bmRlciBORlN2MiBhbmQgTkZTdjMsIHRoZSBtb3VudCBwYXRoIGlzIHRyYXZlcnNl
+ZCBieQ0KPiAJbW91bnRkIGFjdGluZyBhcyByb290LCBidXQgdW5kZXIgTkZTdjQgdGhlIG1vdW50
+IHBhdGggaXMgbG9va2VkDQo+IAl1cCB1c2luZyB0aGUgY2xpZW50J3MgY3JlZGVudGlhbHMuICBU
+aGlzIG1lYW5zIHRoYXQsIGZvcg0KPiAJZXhhbXBsZSwgaWYgYSBjbGllbnQgbW91bnRzIHVzaW5n
+IGEga3JiNSBjcmVkZW50aWFsIHRoYXQgdGhlDQo+IAlzZXJ2ZXIgbWFwcyB0byBhbiAiYW5vbm15
+b3VzIiB1c2VyLCB0aGVuIHRoZSBtb3VudCB3aWxsIG9ubHkNCj4gCXN1Y2NlZWQgaWYgdGhhdCBk
+aXJlY3RvcnkgYW5kIGFsbCBpdHMgcGFyZW50cyBhbGxvdyBlWGVjdXRlDQo+IAlwZXJtaXNzaW9u
+cy4NCg0KU28geW91J3JlIGxpc3RpbmcgdGhpcyBhcyBhICJmZWF0dXJlIiByYXRoZXIgdGhhbiBh
+IGJ1Zz8gVGhlcmUgc2hvdWxkIGJlDQpubyByZWFzb24gdG8gY29uc3RyYWluIHRoZSBwc2V1ZG9m
+cyB0byB1c2UgdGhlIHBlcm1pc3Npb24gY2hlY2tzIGZyb20NCnRoZSB1bmRlcmx5aW5nIGZpbGVz
+eXN0ZW0uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWlu
+ZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20N
+Cg==
