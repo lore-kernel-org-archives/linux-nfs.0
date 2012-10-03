@@ -1,93 +1,170 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:38973 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752479Ab2JAPt7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2012 11:49:59 -0400
-Message-ID: <5069BB98.7020600@parallels.com>
-Date: Mon, 1 Oct 2012 19:49:44 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "bharrosh@panasas.com" <bharrosh@panasas.com>,
-        "steved@redhat.com" <steved@redhat.com>
-Subject: Re: [PATCH 0/2] nfsd: add a usermodehelper upcall for client id tracking
-References: <1349092298-23872-1-git-send-email-jlayton@redhat.com> <5069A345.3060807@parallels.com>	<20121001141239.GA18400@fieldses.org> <5069A8FA.1060401@parallels.com> <20121001105219.4272fd90@corrin.poochiereds.net>
-In-Reply-To: <20121001105219.4272fd90@corrin.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:45988 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753057Ab2JCMnA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Oct 2012 08:43:00 -0400
+Received: by ggnr5 with SMTP id r5so1928603ggn.19
+        for <linux-nfs@vger.kernel.org>; Wed, 03 Oct 2012 05:42:59 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 7/6] nfsdcltrack: add a legacy transition mechanism
+Date: Wed,  3 Oct 2012 08:42:53 -0400
+Message-Id: <1349268173-16574-1-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1349092365-23920-1-git-send-email-jlayton@redhat.com>
+References: <1349092365-23920-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-01.10.2012 18:52, Jeff Layton пишет:
-> On Mon, 1 Oct 2012 18:30:18 +0400
-> Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
->
->> 01.10.2012 18:12, bfields@fieldses.org пишет:
->>> On Mon, Oct 01, 2012 at 06:05:57PM +0400, Stanislav Kinsbursky wrote:
->>>> 01.10.2012 15:51, Jeff Layton пишет:
->>>>> - Do we need to switch to a different mount namespace somehow based on
->>>>>     the net namespace? Eventually we want to allow nfsd to run in a
->>>>>     container. At some point we'll need a mechanism to ensure that the
->>>>>     upcall runs within the correct container. Stanislav, I'd appreciate
->>>>>     your input here...
->>>>
->>>> Hello, Jeff.
->>>> As far as I can see - yes, we have to switch to desired mount
->>>> namespace in kernel (because we can't do this in user namespace).
->>>> Moreover, for NFSd mount namespace looks even more important than
->>>> net namespace. I.e. we can't share one NFSd between mount namespaces
->>>> (at least, I don't understand how to do this safely).
->>>> So, if we are going to have NFSd per container, we have to tie NFSd
->>>> and mount namespace somehow.
->>>> Having one NFSd for more than one network namespace looks feasible.
->>>> But we have some races with creation and destruction of service
->>>> per-net transports, and Bruce was suggesting to think about maybe we
->>>> can just simplify all that stuff and create service per network
->>>> namespace.
->>>>
->>>> BTW, is it possible to split service (trasports, etc.) and it's
->>>> "executors" (kernel threads)? If we could do it, then it would be
->>>> really easy to create as many services (with it's unique namespaces
->>>> combination) as required and teach "executors" to switch to desired
->>>> namespaces while handling service requests.
->>>
->>> I'm sure it is possible, and would be more efficient than requiring
->>> (number of containers) * (number of threads per container) threads.
->>>
->>> But I think it's also a little more complicated to do, and that to start
->>> off we'd be better off just keeping the services entirely separate.
->>>
->>
->> At first sight, this two solutions (split of service/threads and service per
->> namespace) doesn't look like they can share a lot of code base.
->> I believe, that we have to think about mount namespaces during NFSd
->> containerization. And, if I understand you right, when you say about "entirely
->> separated services", you mean separated by networks namespace.
->> Separations per mount namespace as a second step will take actually the same
->> time and amount of code, as it would be a first step.
->>
->> So, as I can see it, the real question is: do we really want limited (only
->> per-net) NFSd containerisation as soon as possible (and in this case it's much
->> simpler to create NFSd/Lockd service and it's threads per network namespace) or
->> we should skip this step and concentrate on proper implementation from the very
->> beginning (split of service and it's threads and tie NFSd to mount namespace)?
->>
->
-> Ok, to bring the discussion back around, I'll note that the current
-> legacy clientid tracking code doesn't pay any attention to namespaces
-> either. So I don't think we're missing much by punting on that just
-> yet.
->
+If the kernel passes the legacy recdir path in the environment, then we
+can use that to transition from the old legacy tracker to the new one.
 
-Have nothing to object to.
+On a "check" operation, if there is no record of the client in the
+database, check to see if there is a matching recoverydir. If there
+isn't then just refuse the reclaim. If there is, then insert a new
+record for this client into the db, and remove the legacy recoverydir.
+If either of those operations fail, then refuse the reclaim.
 
-> Once you've hashed out the mount namespace design, we should be able to
-> make it pay attention to that that without too much trouble.
->
+On a "gracedone" operation, clean out the entire legacy recoverydir
+after purging any unreclaimed records from the db. There's not much
+we can do if this fails, so just log a warning if it does.
 
-Thanks. Now I've realised, that I'm the one who has to do it. :)
+Note that this is a one-way conversion. If the user later boots back
+into an older kernel, it will have no knowledge of the new database.
 
+In principle, we could create a tool that would walk the clients
+table, md5 hash the clientids and create directories in the
+v4recovery dir. Trying to do that automatically would be a mess
+though...
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/nfsdcltrack/nfsdcltrack.c | 87 +++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 87 insertions(+)
+
+diff --git a/utils/nfsdcltrack/nfsdcltrack.c b/utils/nfsdcltrack/nfsdcltrack.c
+index db7e534..7c2625a 100644
+--- a/utils/nfsdcltrack/nfsdcltrack.c
++++ b/utils/nfsdcltrack/nfsdcltrack.c
+@@ -36,6 +36,7 @@
+ #include <unistd.h>
+ #include <libgen.h>
+ #include <sys/inotify.h>
++#include <dirent.h>
+ #ifdef HAVE_SYS_CAPABILITY_H
+ #include <sys/prctl.h>
+ #include <sys/capability.h>
+@@ -296,6 +297,50 @@ cltrack_remove(const char *id)
+ }
+ 
+ static int
++cltrack_check_legacy(const unsigned char *blob, const ssize_t len)
++{
++	int ret;
++	char *recdir;
++	struct stat st;
++
++	/* see if the legacy recdir exists */
++	recdir = getenv("NFSDCLTRACK_LEGACY_RECDIR");
++	if (!recdir) {
++		xlog(D_GENERAL, "No NFSDCLTRACK_LEGACY_RECDIR env var");
++		return -EOPNOTSUPP;
++	}
++
++	/* fail recovery on any stat failure */
++	ret = stat(recdir, &st);
++	if (ret) {
++		xlog(D_GENERAL, "Unable to stat %s: %d", recdir, errno);
++		return -errno;
++	}
++
++	/* fail if it isn't a directory */
++	if (!S_ISDIR(st.st_mode)) {
++		xlog(D_GENERAL, "%s is not a directory: mode=0%o", recdir
++				, st.st_mode);
++		return -ENOTDIR;
++	}
++
++	/* Dir exists, try to insert record into db */
++	ret = sqlite_insert_client(blob, len);
++	if (ret) {
++		xlog(D_GENERAL, "Failed to insert client: %d", ret);
++		return -EREMOTEIO;
++	}
++
++	/* remove the legacy recoverydir */
++	ret = rmdir(recdir);
++	if (ret) {
++		xlog(D_GENERAL, "Failed to rmdir %s: %d", recdir, errno);
++		return -errno;
++	}
++	return 0;
++}
++
++static int
+ cltrack_check(const char *id)
+ {
+ 	int ret;
+@@ -312,10 +357,50 @@ cltrack_check(const char *id)
+ 		return (int)len;
+ 
+ 	ret = sqlite_check_client(blob, len);
++	if (ret)
++		ret = cltrack_check_legacy(blob, len);
+ 
+ 	return ret ? -EPERM : ret;
+ }
+ 
++/* Clean out the v4recoverydir -- best effort here */
++static void
++cltrack_legacy_gracedone(void)
++{
++	char *dirname = getenv("NFSDCLTRACK_LEGACY_TOPDIR");
++	DIR *v4recovery;
++	struct dirent *entry;
++
++	if (!dirname)
++		return;
++
++	v4recovery = opendir(dirname);
++	if (!v4recovery)
++		return;
++
++	while ((entry = readdir(v4recovery))) {
++		int len;
++
++		/* borrow the clientid blob for this */
++		len = snprintf((char *)blob, sizeof(blob), "%s/%s", dirname,
++				entry->d_name);
++
++		/* if there's a problem, then skip this entry */
++		if (len < 0 || (size_t)len >= sizeof(blob)) {
++			xlog(L_WARNING, "%s: unable to build filename for %s!",
++				__func__, entry->d_name);
++			continue;
++		}
++
++		len = rmdir((char *)blob);
++		if (len)
++			xlog(L_WARNING, "%s: unable to rmdir %s: %d", __func__,
++				(char *)blob, len);
++	}
++
++	closedir(v4recovery);
++}
++
+ static int
+ cltrack_gracedone(const char *timestr)
+ {
+@@ -343,6 +428,8 @@ cltrack_gracedone(const char *timestr)
+ 
+ 	ret = sqlite_remove_unreclaimed(gracetime);
+ 
++	cltrack_legacy_gracedone();
++
+ 	return ret ? -EREMOTEIO : ret;
+ }
+ 
 -- 
-Best regards,
-Stanislav Kinsbursky
+1.7.11.4
+
