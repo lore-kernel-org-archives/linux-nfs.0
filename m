@@ -1,51 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:52375 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751032Ab2J2TND (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 15:13:03 -0400
-Date: Mon, 29 Oct 2012 12:12:56 -0700
-From: Tejun Heo <tj@kernel.org>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
-        Josh Triplett <josh@joshtriplett.org>, torvalds@linux-foundation.org,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v7 06/16] tracepoint: use new hashtable implementation
-Message-ID: <20121029191256.GE4066@htj.dyndns.org>
-References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
- <1351450948-15618-6-git-send-email-levinsasha928@gmail.com>
- <20121029113515.GB9115@Krystal>
- <CA+1xoqce6uJ6wy3+2CBwsLHKnsz4wD0vt8MBEGKCFfXTvuC0Hg@mail.gmail.com>
- <20121029183157.GC3097@jtriplet-mobl1>
- <CA+1xoqfMrn9zDFMJNFfA0NA86wE_DedD97cP1yJ2UQdTjs3uyQ@mail.gmail.com>
- <20121029185319.GA21546@Krystal>
- <CA+1xoqcSx04JEXy2aPu4Qt7Zb4iSqXBSjARgMae_FusgzpgnaQ@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CA+1xoqcSx04JEXy2aPu4Qt7Zb4iSqXBSjARgMae_FusgzpgnaQ@mail.gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:8749 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932497Ab2JCXIr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Oct 2012 19:08:47 -0400
+From: Fred Isaman <iisaman@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH 1/1] NFS: dont revalidate the inode when using local locks
+Date: Wed,  3 Oct 2012 19:08:44 -0400
+Message-Id: <1349305724-28173-1-git-send-email-iisaman@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 29, 2012 at 03:09:36PM -0400, Sasha Levin wrote:
-> The other thing is whether hash_init() should be called for hashtables
-> that were created with DEFINE_HASHTABLE(). That point was raised by
-> Neil Brown last time this series went around, and it seems that no one
-> objected to the point that it should be consistent across the code.
+This drastically improves performance when using lock-heavy workloads that are amenable to using local locks.
 
-Hmmm?  If something is DEFINE_XXX()'d, you definitely shouldn't be
-calling XXX_init() on it.  That's how it is with most other abstract
-data types and you need *VERY* strong rationale to deviate from that.
+Signed-off-by: Fred Isaman <iisaman@netapp.com>
+---
+ fs/nfs/file.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-Thanks.
-
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index a6708e6..fd0155f 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -765,7 +765,7 @@ do_setlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+ 	 * This makes locking act as a cache coherency point.
+ 	 */
+ 	nfs_sync_mapping(filp->f_mapping);
+-	if (!nfs_have_delegation(inode, FMODE_READ)) {
++	if ((!is_local) && !nfs_have_delegation(inode, FMODE_READ)) {
+ 		if (is_time_granular(&NFS_SERVER(inode)->time_delta))
+ 			__nfs_revalidate_inode(NFS_SERVER(inode), inode);
+ 		else
 -- 
-tejun
+1.7.1
+
