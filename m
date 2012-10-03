@@ -1,43 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:3670 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:48738 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1161028Ab2JXSLe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Oct 2012 14:11:34 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q9OIBYG7005936
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 24 Oct 2012 14:11:34 -0400
-Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id q9OIBWSG020176
-	for <linux-nfs@vger.kernel.org>; Wed, 24 Oct 2012 14:11:34 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 4/5] Fixed warnings in src/g_mit_krb5_mech.c
-Date: Wed, 24 Oct 2012 14:08:43 -0400
-Message-Id: <1351102124-24036-5-git-send-email-steved@redhat.com>
-In-Reply-To: <1351102124-24036-1-git-send-email-steved@redhat.com>
-References: <1351102124-24036-1-git-send-email-steved@redhat.com>
+	id S1752822Ab2JDF3o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Oct 2012 01:29:44 -0400
+From: Jorge Mora <mora@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Jorge Mora <mora@netapp.com>
+Subject: [PATCH] NFSv4.1: Use correct stateid for read/write
+Date: Tue,  2 Oct 2012 17:35:49 -0700
+Message-Id: <1349224549-11194-1-git-send-email-mora@cyclsvl29.eng.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-g_mit_krb5_mech.c:209:1: warning: label 'out' defined but not used [-Wunused-label]
+From: Jorge Mora <mora@netapp.com>
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
+On pNFS, the correct stateid for read/write should not
+be the LOCK stateid when the file has a byte range lock.
+
+Signed-off-by: Jorge Mora <mora@netapp.com>
 ---
- src/g_mit_krb5_mech.c | 1 -
- 1 file changed, 1 deletion(-)
+Fixes bug on Trond's testing branch
+ fs/nfs/nfs4state.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/src/g_mit_krb5_mech.c b/src/g_mit_krb5_mech.c
-index b2ad784..aa7433a 100644
---- a/src/g_mit_krb5_mech.c
-+++ b/src/g_mit_krb5_mech.c
-@@ -206,6 +206,5 @@ internal_krb5_gss_initialize(void *dl)
- 		krb5_mechanism.gss_free_lucid_sec_context = p;
- 	}
- 	krb5_mech_ptr = &krb5_mechanism;
--out:
- 	return (krb5_mech_ptr);
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index c351e6b..681e659 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1036,7 +1036,8 @@ void nfs4_select_rw_stateid(nfs4_stateid *dst, struct nfs4_state *state,
+ {
+ 	if (nfs4_copy_delegation_stateid(dst, state->inode, fmode))
+ 		return;
+-	if (nfs4_copy_lock_stateid(dst, state, lockowner))
++	if (pnfs_get_ds_info(state->inode) == NULL &&
++	    nfs4_copy_lock_stateid(dst, state, lockowner))
+ 		return;
+ 	nfs4_copy_open_stateid(dst, state);
  }
 -- 
-1.7.11.7
+1.7.11.4
 
