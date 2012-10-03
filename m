@@ -1,87 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:22869 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756836Ab2JWSXv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Oct 2012 14:23:51 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Nix <nix@esperi.org.uk>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, "Ted Ts'o" <tytso@mit.edu>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        Peng Tao <bergwolf@gmail.com>,
-        "gregkh@linuxfoundation.org" <gregkh@linuxfoundation.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>
-Subject: Re: Heads-up: 3.6.2 / 3.6.3 NFS server oops: 3.6.2+ regression?
- (also an unrelated ext4 data loss bug)
-Date: Tue, 23 Oct 2012 18:23:48 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90928CF49@SACEXCMBX04-PRD.hq.netapp.com>
-References: <87objupjlr.fsf@spindle.srvr.nix>
-	 <20121023013343.GB6370@fieldses.org> <87mwzdnuww.fsf@spindle.srvr.nix>
-	 <20121023143019.GA3040@fieldses.org>	<874nllxi7e.fsf_-_@spindle.srvr.nix>
-	 <20121023164621.GC3040@fieldses.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA90928CA6F@SACEXCMBX04-PRD.hq.netapp.com>
-	 <87vce1w241.fsf@spindle.srvr.nix> <87r4opw0og.fsf@spindle.srvr.nix>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA90928CD7F@SACEXCMBX04-PRD.hq.netapp.com>
-	 <1351015039.4622.23.camel@lade.trondhjem.org>
-In-Reply-To: <1351015039.4622.23.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:59236 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754704Ab2JCMkl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Oct 2012 08:40:41 -0400
+Received: by ggnr5 with SMTP id r5so1927997ggn.19
+        for <linux-nfs@vger.kernel.org>; Wed, 03 Oct 2012 05:40:41 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 2/3] nfsd: change heuristic for selecting the client_tracking_ops
+Date: Wed,  3 Oct 2012 08:40:30 -0400
+Message-Id: <1349268031-16498-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1349268031-16498-1-git-send-email-jlayton@redhat.com>
+References: <1349268031-16498-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTEwLTIzIGF0IDEzOjU3IC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+IE9uIFR1ZSwgMjAxMi0xMC0yMyBhdCAxNzo0NCArMDAwMCwgTXlrbGVidXN0LCBUcm9uZCB3
-cm90ZToNCj4gPiBZb3UgY2FuJ3QgaG9sZCBhIHNwaW5sb2NrIHdoaWxlIHNsZWVwaW5nLiBCb3Ro
-IG11dGV4X2xvY2soKSBhbmQgbnNtX2NyZWF0ZSgpIGNhbiBkZWZpbml0ZWx5IHNsZWVwLg0KPiA+
-IA0KPiA+IFRoZSBjb3JyZWN0IHdheSB0byBkbyB0aGlzIGlzIHRvIGdyYWIgdGhlIHNwaW5sb2Nr
-IGFuZCByZWNoZWNrIHRoZSB2YWx1ZSBvZiBsbi0+bnNtX3VzZXJzIGluc2lkZSB0aGUgJ2lmICgh
-SVNfRVJSKCkpJyBjb25kaXRpb24uIElmIGl0IGlzIHN0aWxsIHplcm8sIGJ1bXAgaXQgYW5kIHNl
-dCBsbi0+bnNtX2NsbnQsIG90aGVyd2lzZSBidW1wIGl0LCBnZXQgdGhlIGV4aXN0aW5nIGxuLT5u
-c21fY2xudCBhbmQgY2FsbCBycGNfc2h1dGRvd25fY2xudCgpIG9uIHRoZSByZWR1bmRhbnQgbnNt
-IGNsaWVudCBhZnRlciBkcm9wcGluZyB0aGUgc3BpbmxvY2suDQo+ID4gDQo+ID4gQ2hlZXJzDQo+
-ID4gICBUcm9uZA0KPiANCj4gQ2FuIHlvdSBwbGVhc2UgY2hlY2sgaWYgdGhlIGZvbGxvd2luZyBw
-YXRjaCBmaXhlcyB0aGUgaXNzdWU/DQo+IA0KPiBDaGVlcnMNCj4gICBUcm9uZA0KPiANCk1laC4u
-LiBUaGlzIG9uZSBnZXRzIHJpZCBvZiB0aGUgMTAwJSByZWR1bmRhbnQgbXV0ZXguLi4NCg0KODwt
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LQ0KRnJvbSA0MTg3YzgxNmExNWRmMTI1NDRlYmNmYTZiOTYxZmNlOTY0NThlMjQ0IE1vbiBTZXAg
-MTcgMDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RA
-bmV0YXBwLmNvbT4NCkRhdGU6IFR1ZSwgMjMgT2N0IDIwMTIgMTM6NTE6NTggLTA0MDANClN1Ympl
-Y3Q6IFtQQVRDSF0gTE9DS0Q6IGZpeCByYWNlcyBpbiBuc21fY2xpZW50X2dldA0KDQpDb21taXQg
-ZTk0MDZkYjIwZmVjYmZjYWI2NDZiYWQxNTdiNGNmZGM3Y2FkZGRmYiAobG9ja2Q6IHBlci1uZXQN
-Ck5TTSBjbGllbnQgY3JlYXRpb24gYW5kIGRlc3RydWN0aW9uIGhlbHBlcnMgaW50cm9kdWNlZCkg
-Y29udGFpbnMNCmEgbmFzdHkgcmFjZSBvbiBpbml0aWFsaXNhdGlvbiBvZiB0aGUgcGVyLW5ldCBO
-U00gY2xpZW50IGJlY2F1c2UNCml0IGRvZXNuJ3QgY2hlY2sgd2hldGhlciBvciBub3QgdGhlIGNs
-aWVudCBpcyBzZXQgYWZ0ZXIgZ3JhYmJpbmcNCnRoZSBuc21fY3JlYXRlX211dGV4Lg0KDQpSZXBv
-cnRlZC1ieTogTml4IDxuaXhAZXNwZXJpLm9yZy51az4NClNpZ25lZC1vZmYtYnk6IFRyb25kIE15
-a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQpDYzogc3RhYmxlQHZnZXIua2Vy
-bmVsLm9yZw0KLS0tDQogZnMvbG9ja2QvbW9uLmMgfCA0MyArKysrKysrKysrKysrKysrKysrKysr
-KysrKy0tLS0tLS0tLS0tLS0tLS0tDQogMSBmaWxlIGNoYW5nZWQsIDI2IGluc2VydGlvbnMoKyks
-IDE3IGRlbGV0aW9ucygtKQ0KDQpkaWZmIC0tZ2l0IGEvZnMvbG9ja2QvbW9uLmMgYi9mcy9sb2Nr
-ZC9tb24uYw0KaW5kZXggZTRmYjNiYS4uZmU2OTU2MCAxMDA2NDQNCi0tLSBhL2ZzL2xvY2tkL21v
-bi5jDQorKysgYi9mcy9sb2NrZC9tb24uYw0KQEAgLTg1LDI5ICs4NSwzOCBAQCBzdGF0aWMgc3Ry
-dWN0IHJwY19jbG50ICpuc21fY3JlYXRlKHN0cnVjdCBuZXQgKm5ldCkNCiAJcmV0dXJuIHJwY19j
-cmVhdGUoJmFyZ3MpOw0KIH0NCiANCitzdGF0aWMgc3RydWN0IHJwY19jbG50ICpuc21fY2xpZW50
-X3NldChzdHJ1Y3QgbG9ja2RfbmV0ICpsbiwNCisJCXN0cnVjdCBycGNfY2xudCAqY2xudCkNCit7
-DQorCXNwaW5fbG9jaygmbG4tPm5zbV9jbG50X2xvY2spOw0KKwlpZiAobG4tPm5zbV91c2VycyA9
-PSAwKSB7DQorCQlpZiAoY2xudCA9PSBOVUxMKQ0KKwkJCWdvdG8gb3V0Ow0KKwkJbG4tPm5zbV9j
-bG50ID0gY2xudDsNCisJfQ0KKwljbG50ID0gbG4tPm5zbV9jbG50Ow0KKwlsbi0+bnNtX3VzZXJz
-Kys7DQorb3V0Og0KKwlzcGluX3VubG9jaygmbG4tPm5zbV9jbG50X2xvY2spOw0KKwlyZXR1cm4g
-Y2xudDsNCit9DQorDQogc3RhdGljIHN0cnVjdCBycGNfY2xudCAqbnNtX2NsaWVudF9nZXQoc3Ry
-dWN0IG5ldCAqbmV0KQ0KIHsNCi0Jc3RhdGljIERFRklORV9NVVRFWChuc21fY3JlYXRlX211dGV4
-KTsNCi0Jc3RydWN0IHJwY19jbG50CSpjbG50Ow0KKwlzdHJ1Y3QgcnBjX2NsbnQJKmNsbnQsICpu
-ZXc7DQogCXN0cnVjdCBsb2NrZF9uZXQgKmxuID0gbmV0X2dlbmVyaWMobmV0LCBsb2NrZF9uZXRf
-aWQpOw0KIA0KLQlzcGluX2xvY2soJmxuLT5uc21fY2xudF9sb2NrKTsNCi0JaWYgKGxuLT5uc21f
-dXNlcnMpIHsNCi0JCWxuLT5uc21fdXNlcnMrKzsNCi0JCWNsbnQgPSBsbi0+bnNtX2NsbnQ7DQot
-CQlzcGluX3VubG9jaygmbG4tPm5zbV9jbG50X2xvY2spOw0KKwljbG50ID0gbnNtX2NsaWVudF9z
-ZXQobG4sIE5VTEwpOw0KKwlpZiAoY2xudCAhPSBOVUxMKQ0KIAkJZ290byBvdXQ7DQotCX0NCi0J
-c3Bpbl91bmxvY2soJmxuLT5uc21fY2xudF9sb2NrKTsNCiANCi0JbXV0ZXhfbG9jaygmbnNtX2Ny
-ZWF0ZV9tdXRleCk7DQotCWNsbnQgPSBuc21fY3JlYXRlKG5ldCk7DQotCWlmICghSVNfRVJSKGNs
-bnQpKSB7DQotCQlsbi0+bnNtX2NsbnQgPSBjbG50Ow0KLQkJc21wX3dtYigpOw0KLQkJbG4tPm5z
-bV91c2VycyA9IDE7DQotCX0NCi0JbXV0ZXhfdW5sb2NrKCZuc21fY3JlYXRlX211dGV4KTsNCisJ
-Y2xudCA9IG5ldyA9IG5zbV9jcmVhdGUobmV0KTsNCisJaWYgKElTX0VSUihjbG50KSkNCisJCWdv
-dG8gb3V0Ow0KKw0KKwljbG50ID0gbnNtX2NsaWVudF9zZXQobG4sIG5ldyk7DQorCWlmIChjbG50
-ICE9IG5ldykNCisJCXJwY19zaHV0ZG93bl9jbGllbnQobmV3KTsNCiBvdXQ6DQogCXJldHVybiBj
-bG50Ow0KIH0NCi0tIA0KMS43LjExLjcNCg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXgg
-TkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
-b20NCnd3dy5uZXRhcHAuY29tDQo=
+First, try to use the new usermodehelper upcall. It should succeed or
+fail quickly, so there's little cost to doing so.
+
+If it fails, and the legacy tracking dir exists, use that. If it
+doesn't exist then fall back to using nfsdcld.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfs4recover.c | 36 +++++++++++++++++++++++++++---------
+ 1 file changed, 27 insertions(+), 9 deletions(-)
+
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index 481cb3e..5a74037 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -1068,17 +1068,35 @@ nfsd4_client_tracking_init(struct net *net)
+ 	int status;
+ 	struct path path;
+ 
+-	if (!client_tracking_ops) {
+-		client_tracking_ops = &nfsd4_cld_tracking_ops;
+-		status = kern_path(nfs4_recoverydir(), LOOKUP_FOLLOW, &path);
+-		if (!status) {
+-			if (S_ISDIR(path.dentry->d_inode->i_mode))
+-				client_tracking_ops =
+-						&nfsd4_legacy_tracking_ops;
+-			path_put(&path);
+-		}
++	/* just run the init if it the method is already decided */
++	if (client_tracking_ops)
++		goto do_init;
++
++	/*
++	 * First, try a UMH upcall. It should succeed or fail quickly, so
++	 * there's little harm in trying that first.
++	 */
++	client_tracking_ops = &nfsd4_umh_tracking_ops;
++	status = client_tracking_ops->init(net);
++	if (!status)
++		return status;
++
++	/*
++	 * See if the recoverydir exists and is a directory. If it is,
++	 * then use the legacy ops.
++	 */
++	client_tracking_ops = &nfsd4_legacy_tracking_ops;
++	status = kern_path(nfs4_recoverydir(), LOOKUP_FOLLOW, &path);
++	if (!status) {
++		status = S_ISDIR(path.dentry->d_inode->i_mode);
++		path_put(&path);
++		if (status)
++			goto do_init;
+ 	}
+ 
++	/* Finally, try to use nfsdcld */
++	client_tracking_ops = &nfsd4_cld_tracking_ops;
++do_init:
+ 	status = client_tracking_ops->init(net);
+ 	if (status) {
+ 		printk(KERN_WARNING "NFSD: Unable to initialize client "
+-- 
+1.7.11.4
+
