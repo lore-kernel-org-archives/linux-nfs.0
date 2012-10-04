@@ -1,49 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vb0-f46.google.com ([209.85.212.46]:41974 "EHLO
-	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755194Ab2JXMkw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Oct 2012 08:40:52 -0400
-Received: by mail-vb0-f46.google.com with SMTP id ff1so456540vbb.19
-        for <linux-nfs@vger.kernel.org>; Wed, 24 Oct 2012 05:40:51 -0700 (PDT)
-Date: Wed, 24 Oct 2012 08:40:47 -0400
-From: Chris Perl <chris.perl@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: RPC Race Condition
-Message-ID: <20121024124047.GD27191@nyc-qws-132.nyc.delacy.com>
-References: <20121022180339.GC24763@nyc-qws-132.nyc.delacy.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA909289403@SACEXCMBX04-PRD.hq.netapp.com>
- <20121022202611.GA27191@nyc-qws-132.nyc.delacy.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA90928AB39@SACEXCMBX04-PRD.hq.netapp.com>
- <20121023134551.GB27191@nyc-qws-132.nyc.delacy.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA90928C74A@SACEXCMBX04-PRD.hq.netapp.com>
- <20121023200855.GC27191@nyc-qws-132.nyc.delacy.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA90928DCDD@SACEXCMBX04-PRD.hq.netapp.com>
-MIME-Version: 1.0
+Received: from cantor2.suse.de ([195.135.220.15]:57991 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754194Ab2JDKy6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Oct 2012 06:54:58 -0400
+Subject: Re: [PATCH] powerpc/iommu: Fix multiple issues with IOMMU pools code
+Mime-Version: 1.0 (Apple Message framework v1278)
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90928DCDD@SACEXCMBX04-PRD.hq.netapp.com>
+From: Alexander Graf <agraf@suse.de>
+In-Reply-To: <20121004145710.2cf95dcd@kryten>
+Date: Thu, 4 Oct 2012 12:54:45 +0200
+Cc: Nishanth Aravamudan <nacc@linux.vnet.ibm.com>,
+        Benjamin Herrenschmidt <benh@kernel.crashing.org>,
+        linux-nfs@vger.kernel.org, Jan Kara <jack@suse.cz>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        LKML List <linux-kernel@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>, skinsbursky@parallels.com,
+        bfields@redhat.com, linuxppc-dev <linuxppc-dev@lists.ozlabs.org>
+Message-Id: <96119AB6-3DCC-460E-BD40-98DC3BB8D4B4@suse.de>
+References: <3BDA9E62-7031-42D6-8CA9-5327B61700F5@suse.de> <CA+55aFyXwB1QcXE4Z_FAGnXROSgvP2x2+wjnX9OWPa4Dfaaf0A@mail.gmail.com> <DC545CD9-8745-47DD-B13B-3385C0EB5B27@suse.de> <20120928151043.GA19102@fieldses.org> <2A52FC96-148C-4F7A-9950-E152E0C6698D@suse.de> <1349139509.3847.2.camel@pasglop> <20121002214327.GA29218@linux.vnet.ibm.com> <9257E705-4EF9-4347-945C-B4A7582C427F@suse.de> <20121002221736.GB29218@linux.vnet.ibm.com> <E141CA01-F58C-47B1-8ED5-A314D1DEC968@suse.de> <20121004145710.2cf95dcd@kryten>
+To: Anton Blanchard <anton@samba.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 23, 2012 at 09:58:35PM +0000, Myklebust, Trond wrote:
-> The only problem there would be the call to xs_sock_mark_closed() in
-> xs_abort_connection. As far as I can tell, all we want to do there is
-> clear all those flags.
+Hi Anton,
+
+On 04.10.2012, at 06:57, Anton Blanchard wrote:
+
 > 
-> How about the following?
+> Hi Alex,
+> 
+> Looks to be a preempt issue with the iommu pools code. I did find a
+> couple more bugs along the way too.
+> 
+> Anton
+> --
+> 
+> There are a number of issues in the recent IOMMU pools code:
+> 
+> - On a preempt kernel we might switch CPUs in the middle of building
+>  a scatter gather list. When this happens the handle hint passed in
+>  no longer falls within the local CPU's pool. Check for this and
+>  fall back to the pool hint.
+> 
+> - We were missing a spin_unlock/spin_lock in one spot where we
+>  switch pools.
+> 
+> - We need to provide locking around dart_tlb_invalidate_all and
+>  dart_tlb_invalidate_one now that the global lock is gone.
+> 
+> Reported-by: Alexander Graf <agraf@suse.de>
+> Signed-off-by: Anton Blanchard <anton@samba.org>
+> ---
+> 
+> There is still an issue with the lazy u3 flushing, but I wanted
+> to get this out for testing.
 
-Looks good!  With all 4 patches applied things recover correctly and I
-no longer see anything racing.
+Yup. It fixes the nfs problem on my U4 based machine.
 
-Just to be clear, I took your patches and integrated them into the
-CentOS 2.6.32-279.5.2.el6.centos.plus kernel.  Basically everything was
-the same except the offsets and perhaps a little of the surrounding
-context.  I do not believe the meaning of the patches was changed at
-all.
+Tested-by: Alexander Graf <agraf@suse.de>
 
-If you want me to test your latest git where these commits live, I can,
-just point me at the git repo url.
+Alex
 
-Thanks for the help!
-
-Chris
