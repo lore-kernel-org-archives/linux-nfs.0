@@ -1,87 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:43467 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:4455 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754757Ab2JOUz0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Oct 2012 16:55:26 -0400
-Message-ID: <507C6D9B.9070009@RedHat.com>
-Date: Mon, 15 Oct 2012 16:10:03 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S965287Ab2JDOv4 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Oct 2012 10:51:56 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Marek Vasut <marex@denx.de>, Fabio Estevam <fabio.estevam@freescale.com>
+CC: "davem@davemloft.net" <davem@davemloft.net>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: [PATCH] net: sunrpc: xdr: Change message to pr_debug level
+Date: Thu, 4 Oct 2012 14:51:54 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9090049AD@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1349360495-29325-1-git-send-email-fabio.estevam@freescale.com>
+ <201210041625.23710.marex@denx.de>
+In-Reply-To: <201210041625.23710.marex@denx.de>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-To: Wolfram Gloger <wmglo@dent.med.uni-muenchen.de>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs-utils: Backgrounding mount broken with NFS versions
- <4
-References: <20121012120030.18411.qmail@md.dent.med.uni-muenchen.de>
-In-Reply-To: <20121012120030.18411.qmail@md.dent.med.uni-muenchen.de>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+> -----Original Message-----
+> From: Marek Vasut [mailto:marex@denx.de]
+> Sent: Thursday, October 04, 2012 7:25 AM
+> To: Fabio Estevam
+> Cc: davem@davemloft.net; Myklebust, Trond; netdev@vger.kernel.org;
+> linux-nfs@vger.kernel.org
+> Subject: Re: [PATCH] net: sunrpc: xdr: Change message to pr_debug level
+> 
+> Dear Fabio Estevam,
+> 
+> > commit 49f6189 (SUNRPC: Optimise away unnecessary data moves in
+> > xdr_align_pages) has added a pr_info that floods dmesg when booting
+> > via NFS.
+> >
+> > There is also a note in the commit log: "Warning! Contains debugging
+> > printks!"
+> >
 
+...which meant that it contained debugging code, and was obviously not appropriate for merging upstream. The final version has already dropped the debugging printks.
 
-On 12/10/12 08:00, Wolfram Gloger wrote:
-> When the NFS version isn't specified in the mount options, mount.nfs
-> attempts V4 first and appends 'vers=4' to the extra_options string in
-> the mount options.  If the server isn't immediately reachable, this
-> attempt fails.  However, if the background option is specified and the
-> server comes up later on, the extra_options are used again for all
-> further attempts and thus they fail if the server only supports
-> vers<4.
-> 
-> Fix this by only amending extra_options on a successful vers=4 mount.
-> 
-> This is now Debian bug #690181 and has apparently been around for
-> ages.
-> 
-> Signed-off-by: Wolfram Gloger <bugzilla1@malloc.de>
-Committed....
-
-steved.
-> 
-> --- utils/mount/stropts.c.orig	2012-08-23 19:41:56.000000000 +0200
-> +++ utils/mount/stropts.c	2012-10-11 13:46:25.000000000 +0200
-> @@ -680,6 +680,7 @@
->  {
->  	struct mount_options *options = po_dup(mi->options);
->  	int result = 0;
-> +	char *extra_opts = NULL;
->  
->  	if (!options) {
->  		errno = ENOMEM;
-> @@ -715,20 +716,26 @@
->  		goto out_fail;
->  	}
->  
-> -	/*
-> -	 * Update option string to be recorded in /etc/mtab.
-> -	 */
-> -	if (po_join(options, mi->extra_opts) == PO_FAILED) {
-> +	if (po_join(options, &extra_opts) == PO_FAILED) {
->  		errno = ENOMEM;
->  		goto out_fail;
->  	}
->  
->  	if (verbose)
->  		printf(_("%s: trying text-based options '%s'\n"),
-> -			progname, *mi->extra_opts);
-> +			progname, extra_opts);
->  
->  	result = nfs_sys_mount(mi, options);
->  
-> +	/*
-> +	 * If success, update option string to be recorded in /etc/mtab.
-> +	 */
-> +	if (result) {
-> +	    free(*mi->extra_opts);
-> +	    *mi->extra_opts = extra_opts;
-> +	} else
-> +	    free(extra_opts);
-> +
->  out_fail:
->  	po_destroy(options);
->  	return result;
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Trond
