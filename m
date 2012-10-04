@@ -1,59 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:49433 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934915Ab2JXO45 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Oct 2012 10:56:57 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chris Perl <chris.perl@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: RPC Race Condition
-Date: Wed, 24 Oct 2012 14:56:55 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90928F920@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20121022180339.GC24763@nyc-qws-132.nyc.delacy.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA909289403@SACEXCMBX04-PRD.hq.netapp.com>
- <20121022202611.GA27191@nyc-qws-132.nyc.delacy.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA90928AB39@SACEXCMBX04-PRD.hq.netapp.com>
- <20121023134551.GB27191@nyc-qws-132.nyc.delacy.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA90928C74A@SACEXCMBX04-PRD.hq.netapp.com>
- <20121023200855.GC27191@nyc-qws-132.nyc.delacy.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA90928DCDD@SACEXCMBX04-PRD.hq.netapp.com>
- <20121024124047.GD27191@nyc-qws-132.nyc.delacy.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA90928F571@SACEXCMBX04-PRD.hq.netapp.com>
- <20121024142333.GE27191@nyc-qws-132.nyc.delacy.com>
-In-Reply-To: <20121024142333.GE27191@nyc-qws-132.nyc.delacy.com>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+Received: from acsinet15.oracle.com ([141.146.126.227]:34241 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750712Ab2JDEPZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Oct 2012 00:15:25 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Subject: Re: Should "mount -o proto=udp" be usable against an IPv6 only server?
+Date: Wed, 3 Oct 2012 21:15:16 -0700
+Message-Id: <11D4587E-7739-4D31-836D-D63177D13302@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Neil Brown <neilb@suse.de>
+Mime-Version: 1.0 (Apple Message framework v1283)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: Chris Perl [mailto:chris.perl@gmail.com]
-> Sent: Wednesday, October 24, 2012 10:24 AM
-> To: Myklebust, Trond
-> Cc: linux-nfs@vger.kernel.org
-> Subject: Re: RPC Race Condition
-> 
-> On Wed, Oct 24, 2012 at 01:04:16PM +0000, Myklebust, Trond wrote:
-> > Cool! Would you mind if I add "Tested-by" tags?
-> 
-> Wouldn't mind at all.
-> 
-> I've also run several of the filebench [1] workload personalities with this
-> patched kernel for ten minutes a piece (i.e. the `fileserver' and `networkfs'
-> personalities) and experienced no problems.  During the tests I also added
-> the blackhole route to the server several times (along with restarting the NFS
-> server) and it recovered each time.  I did this for filebench running
-> SCHED_OTHER and SCHED_RR with a priority of 50.
-> 
-> > Sure. I'll let you know as soon as I push them out later today...
-> 
-> Cool, I'll keep an eye out.
+Hi-
 
-OK, I've now posted the patches in the "bugfixes" branch of
+Unfortunately our corporate e-mail server lost your e-mail from yesterday.  I read it last night and was going to reply this morning, but it was gone from my mailbox.  I'm not sure how to preserve the thread structure at this point.
 
-       git://git.linux-nfs.org/projects/trondmy/linux-nfs.git
+I'm OK with the nfsmount.conf() changes, and the addition of IPv6 syntax to the clientaddr= option.
 
-By the way, you said that you were using a set of systemtap scripts to debug these races? If you'd be OK sharing those scripts, I'd love to see them. Debugging this kind of race is always difficult...
+>> The protocol and protocol family the NFS client uses to transmit requests to the NFS server for this mount point.  For example, udp selects UDP over IPv4, while tcp6 selects TCP over IPv6.  If an NFS server has both an IPv4 and an IPv6 address, using a specific netid forces the use of IPv4 or IPv6 networking to communicate with that server.
+> 
+> I still don't like that last sentence.
 
-Cheers
-  Trond
+Can you say why?
+
+While that sentence could be made more precise, this is one of the key reasons NFS with netids works the way it does.  Dual-stack NFS servers will be pervasive for some time to come.
+
+Other comments:
+
+  o "rdma6" is not supported, and should not be explicitly listed.
+
+  o "mountproto=rdma[6]" is not supported.
+
+  o We discourage the use of UDP with NFSv4 (in fact it may no longer be supported).  The NFSv4 proto= language should not list "udp" or "udp6."
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
