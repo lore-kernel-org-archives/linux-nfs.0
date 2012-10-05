@@ -1,79 +1,202 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f172.google.com ([209.85.212.172]:50831 "EHLO
-	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751311Ab2JNWyX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Oct 2012 18:54:23 -0400
-Received: by mail-wi0-f172.google.com with SMTP id hq12so1362859wib.1
-        for <linux-nfs@vger.kernel.org>; Sun, 14 Oct 2012 15:54:22 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:43272 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751986Ab2JEOgL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Oct 2012 10:36:11 -0400
+Date: Fri, 5 Oct 2012 10:36:10 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 1/3] nfsd: add a usermodehelper upcall for NFSv4
+ client ID tracking
+Message-ID: <20121005143610.GB15134@fieldses.org>
+References: <1349268031-16498-1-git-send-email-jlayton@redhat.com>
+ <1349268031-16498-2-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <F6AF04FD-1849-408B-A964-DDC386CA4654@oracle.com>
-References: <20121012211701.GA8301@bitmover.com> <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
- <20121013002100.GB23247@bitmover.com> <CA+55aFwKn+rp4qTk3dLgN8n=M-Aw1GYYpOfevDJaJhnK-U5VOg@mail.gmail.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9091FDED5@SACEXCMBX04-PRD.hq.netapp.com>
- <20121014193905.GC32420@fieldses.org> <2CAF58DA-E925-47F5-B1FD-DC86EF565125@oracle.com>
- <CA+55aFz=1yFc-i4gmfGbyATvSNmPheedb6qF38ditHrdvtbdFQ@mail.gmail.com> <F6AF04FD-1849-408B-A964-DDC386CA4654@oracle.com>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Sun, 14 Oct 2012 15:54:02 -0700
-Message-ID: <CA+55aFx-4FNQpmtLsVmVNufk0nVxqvJ=3wNrfAt2aK9=F7U8Cg@mail.gmail.com>
-Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Bruce Fields <bfields@fieldses.org>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Larry McVoy <lm@bitmover.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1349268031-16498-2-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Oct 14, 2012 at 3:32 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->
-> The client-side XDR encoder functions don't return a return value.  Upper layers can not find out there was a problem if marshalling fails.  That's why we use BUG_ON here
+On Wed, Oct 03, 2012 at 08:40:29AM -0400, Jeff Layton wrote:
+> Add a new client tracker upcall type that uses call_usermodehelper to
+> call out to a program. This seems to be the preferred method of
+> calling out to usermode these days for seldom-called upcalls. It's
+> simple and doesn't require a running daemon, so it should "just work"
+> as long as the binary is installed.
+> 
+> The client tracking exit operation is also changed to check for a
+> NULL pointer before running. The UMH upcall doesn't need to do anything
+> at module teardown time.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/nfsd/nfs4recover.c | 139 +++++++++++++++++++++++++++++++++++++++++++++++++-
+>  1 file changed, 138 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+> index 43295d4..481cb3e 100644
+> --- a/fs/nfsd/nfs4recover.c
+> +++ b/fs/nfsd/nfs4recover.c
+> @@ -926,6 +926,142 @@ static struct nfsd4_client_tracking_ops nfsd4_cld_tracking_ops = {
+>  	.grace_done	= nfsd4_cld_grace_done,
+>  };
+>  
+> +/* upcall via usermodehelper */
+> +static char cltrack_prog[PATH_MAX] = "/sbin/nfsdcltrack";
+> +module_param_string(cltrack_prog, cltrack_prog, sizeof(cltrack_prog),
+> +			S_IRUGO|S_IWUSR);
+> +MODULE_PARM_DESC(cltrack_prog, "Path to the nfsdcltrack upcall program");
+> +
+> +static int
+> +nfsd4_cltrack_upcall(char *cmd, char *arg)
+> +{
+> +	char *envp[] = { "HOME=/",
+> +			"TERM=linux",
+> +			"PATH=/sbin:/usr/sbin:/bin:/usr/bin",
 
-The above is STILL pure bull.
+Dumb question: why does the upcall program need these environment
+variables?
 
-Use a WARN_ON_ONCE() so that people can actually *report* the bugs
-sanely (see this very thread about why BUG_ON causes problems for
-reporters).
+--b.
 
-If you are so damned certain that you mustn't continue, make the damn
-function return the error code, and stop marshalling. If you don't do
-error handling, that's no excuse for BUG_ON.
-
-And if you think the code gets too complicated from that, then that
-*still* isn't a reason to do BUG_ON(). See above.
-
-What part of this thread do you have problems acknowledging? The
-undeniable *facts* (that you seem to be in total denial about) from
-this very thread are:
-
- - the BUG_ON() caused an otherwise *benign* bug to result in a unusable system.
-
-   Your "to avoid crapping on other parts of memory or posting data"
-argument is pretty much f*cked up, when you instead cause a fatal
-error!
-
- - the BUG_ON() caused the debug data to be almost totally useless.
-
-   Look at the screen shots. Look at the lack of debug info. Just look at it.
-
-Why are you denying reality, and bringing up arguments that are purely
-theoretical and shown to be wrong in reality?
-
-BUG_ON() in a filesystem or random service is pure and utter garbage.
-There is no way it is ever the right thing to do. Get rid of them, and
-stop posting excuses for them.
-
-Christ, we had THIS VERY SAME issue not more than a month or two ago,
-when the locking code had a BUG() in it that turned what should have
-been a simple error return into a DoS attack by normal users. See
-commit 8d657eb3b438.
-
-The whole "it's better to BUG_ON() than do something unexpected" is a
-disease. It may be well-intentioned, but the road to hell is paved
-with good intentions, and saying "I don't want to do odd things" is
-stupid to do, when the BUG_ON() itself just causes *different*
-catastrophic odd things to happen.
-
-Really: killing the machine IS NOT ANY BETTER than sending out odd packets.
-
-             Linus
+> +			NULL
+> +	};
+> +	char *argv[4];
+> +	int ret;
+> +
+> +	if (unlikely(!cltrack_prog[0])) {
+> +		dprintk("%s: cltrack_prog is disabled\n", __func__);
+> +		return -EACCES;
+> +	}
+> +
+> +	dprintk("%s: cmd: %s\n", __func__, cmd);
+> +	dprintk("%s: arg: %s\n", __func__, arg ? arg : "(null)");
+> +
+> +	argv[0] = (char *)cltrack_prog;
+> +	argv[1] = cmd;
+> +	argv[2] = arg;
+> +	argv[3] = NULL;
+> +
+> +	ret = call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
+> +	/*
+> +	 * Disable the upcall mechanism if we're getting an ENOENT
+> +	 * error. The admin can re-enable it on the fly by using sysfs
+> +	 * once the problem has been fixed.
+> +	 */
+> +	if (ret == -ENOENT || ret == -EACCES) {
+> +		printk(KERN_ERR "NFSD: %s was not found or isn't executable. "
+> +			"Please reset nfsd.cltrack_prog module parameter "
+> +			"once problem is resolved (%d)!\n",
+> +			cltrack_prog, ret);
+> +		cltrack_prog[0] = '\0';
+> +	}
+> +	dprintk("%s: %s return value: %d\n", __func__, cltrack_prog, ret);
+> +
+> +	return ret;
+> +}
+> +
+> +static char *
+> +bin_to_hex_dup(const unsigned char *src, int srclen)
+> +{
+> +	int i;
+> +	char *buf, *hex;
+> +
+> +	/* +1 for terminating NULL */
+> +	buf = kmalloc((srclen * 2) + 1, GFP_KERNEL);
+> +	if (!buf)
+> +		return buf;
+> +
+> +	hex = buf;
+> +	for (i = 0; i < srclen; i++) {
+> +		sprintf(hex, "%2.2x", *src++);
+> +		hex += 2;
+> +	}
+> +	return buf;
+> +}
+> +
+> +static int
+> +nfsd4_umh_cltrack_init(struct net __attribute__((unused)) *net)
+> +{
+> +	return nfsd4_cltrack_upcall("init", NULL);
+> +}
+> +
+> +static void
+> +nfsd4_umh_cltrack_create(struct nfs4_client *clp)
+> +{
+> +	char *hexid;
+> +
+> +	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
+> +	if (!hexid) {
+> +		dprintk("%s: can't allocate memory for upcall!\n", __func__);
+> +		return;
+> +	}
+> +	nfsd4_cltrack_upcall("create", hexid);
+> +	kfree(hexid);
+> +}
+> +
+> +static void
+> +nfsd4_umh_cltrack_remove(struct nfs4_client *clp)
+> +{
+> +	char *hexid;
+> +
+> +	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
+> +	if (!hexid) {
+> +		dprintk("%s: can't allocate memory for upcall!\n", __func__);
+> +		return;
+> +	}
+> +	nfsd4_cltrack_upcall("remove", hexid);
+> +	kfree(hexid);
+> +}
+> +
+> +static int
+> +nfsd4_umh_cltrack_check(struct nfs4_client *clp)
+> +{
+> +	int ret;
+> +	char *hexid;
+> +
+> +	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
+> +	if (!hexid) {
+> +		dprintk("%s: can't allocate memory for upcall!\n", __func__);
+> +		return -ENOMEM;
+> +	}
+> +	ret = nfsd4_cltrack_upcall("check", hexid);
+> +	kfree(hexid);
+> +	return ret;
+> +}
+> +
+> +static void
+> +nfsd4_umh_cltrack_grace_done(struct net __attribute__((unused)) *net,
+> +				time_t boot_time)
+> +{
+> +	char timestr[22]; /* FIXME: better way to determine max size? */
+> +
+> +	sprintf(timestr, "%ld", boot_time);
+> +	nfsd4_cltrack_upcall("gracedone", timestr);
+> +}
+> +
+> +static struct nfsd4_client_tracking_ops nfsd4_umh_tracking_ops = {
+> +	.init		= nfsd4_umh_cltrack_init,
+> +	.exit		= NULL,
+> +	.create		= nfsd4_umh_cltrack_create,
+> +	.remove		= nfsd4_umh_cltrack_remove,
+> +	.check		= nfsd4_umh_cltrack_check,
+> +	.grace_done	= nfsd4_umh_cltrack_grace_done,
+> +};
+> +
+>  int
+>  nfsd4_client_tracking_init(struct net *net)
+>  {
+> @@ -956,7 +1092,8 @@ void
+>  nfsd4_client_tracking_exit(struct net *net)
+>  {
+>  	if (client_tracking_ops) {
+> -		client_tracking_ops->exit(net);
+> +		if (client_tracking_ops->exit)
+> +			client_tracking_ops->exit(net);
+>  		client_tracking_ops = NULL;
+>  	}
+>  }
+> -- 
+> 1.7.11.4
+> 
