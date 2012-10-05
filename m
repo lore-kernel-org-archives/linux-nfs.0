@@ -1,94 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.openrapids.net ([64.15.138.104]:58831 "EHLO
-	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S932647Ab2J2Q3I (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 12:29:08 -0400
-Date: Mon, 29 Oct 2012 12:29:04 -0400
-From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v7 01/16] hashtable: introduce a small and naive
-	hashtable
-Message-ID: <20121029162904.GA19509@Krystal>
-References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com> <20121029112907.GA9115@Krystal> <CA+1xoqfQn92igbFS1TtrpYuSiy7+Ro02ar=axgqSOJOuE_EVuA@mail.gmail.com> <20121029161412.GB18944@Krystal> <CA+1xoqfBXM4sjvcZtUncnWAaUxA9_YBod3Hjx3ZO=K1oJO_j7g@mail.gmail.com>
+Received: from fieldses.org ([174.143.236.118]:57008 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754566Ab2JEU2r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 5 Oct 2012 16:28:47 -0400
+Date: Fri, 5 Oct 2012 16:28:45 -0400
+To: Emmanuel Florac <eflorac@intellique.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFS daemon statistics in /proc/net/rpc/nfsd
+Message-ID: <20121005202845.GB30139@fieldses.org>
+References: <20121005184856.4472a72e@harpe.intellique.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CA+1xoqfBXM4sjvcZtUncnWAaUxA9_YBod3Hjx3ZO=K1oJO_j7g@mail.gmail.com>
+In-Reply-To: <20121005184856.4472a72e@harpe.intellique.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* Sasha Levin (levinsasha928@gmail.com) wrote:
-> On Mon, Oct 29, 2012 at 12:14 PM, Mathieu Desnoyers
-> <mathieu.desnoyers@efficios.com> wrote:
-> > * Sasha Levin (levinsasha928@gmail.com) wrote:
-> >> On Mon, Oct 29, 2012 at 7:29 AM, Mathieu Desnoyers
-> >> <mathieu.desnoyers@efficios.com> wrote:
-> >> > * Sasha Levin (levinsasha928@gmail.com) wrote:
-> >> >> +
-> >> >> +     for (i = 0; i < sz; i++)
-> >> >> +             INIT_HLIST_HEAD(&ht[sz]);
-> >> >
-> >> > ouch. How did this work ? Has it been tested at all ?
-> >> >
-> >> > sz -> i
-> >>
-> >> Funny enough, it works perfectly. Generally as a test I boot the
-> >> kernel in a VM and let it fuzz with trinity for a bit, doing that with
-> >> the code above worked flawlessly.
-> >>
-> >> While it works, it's obviously wrong. Why does it work though? Usually
-> >> there's a list op happening pretty soon after that which brings the
-> >> list into proper state.
-> >>
-> >> I've been playing with a patch that adds a magic value into list_head
-> >> if CONFIG_DEBUG_LIST is set, and checks that magic in the list debug
-> >> code in lib/list_debug.c.
-> >>
-> >> Does it sound like something useful? If so I'll send that patch out.
-> >
-> > Most of the calls to this initialization function apply it on zeroed
-> > memory (static/kzalloc'd...), which makes it useless. I'd actually be in
-> > favor of removing those redundant calls (as I pointed out in another
-> > email), and document that zeroed memory don't need to be explicitly
-> > initialized.
+On Fri, Oct 05, 2012 at 06:48:56PM +0200, Emmanuel Florac wrote:
 > 
-> Why would that make it useless? The idea is that the init functions
-> will set the magic field to something random, like:
+> I noticed a long time ago that the thread information in
+> /proc/net/rpc/nfsd isn't updated anymore since somewhere between the
+> 2.629 (information present) and 2.6.32 (information missing). It's
+> quite easy to check:
 > 
-> .magic = 0xBADBEEF0;
+> # grep th /proc/net/rpc/nfsd
+> th 8 0 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000
 > 
-> And have list_add() and friends WARN(.magic != 0xBADBEEF0, "Using an
-> uninitialized list\n");
+> All values are perpetually at zero. Unsurprising, because the
+> update_thread_usage function in fs/nfsd/nfssvc.c isn't present anymore.
 > 
-> This way we'll catch all places that don't go through list initialization code.
+> I can't find any information about why this information was dropped;
 
-As I replied to Tejun Heo already, I agree that keeping the
-initialization in place makes sense for future-proofness. This intent
-should probably be documented in a comment about the initialization
-function though, just to make sure nobody will try to skip it.
+The trick to answering a question like this is:
 
-Thanks,
+	git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux-2.6.git
+	cd linux
+	got log -p fs/nfsd/nfssvc.c
 
-Mathieu
+Then type "/update_thread_usage" to search for references to that
+function.
 
-> 
-> 
-> Thanks,
-> Sasha
+The changelog on the commit that removed it follows.
 
--- 
-Mathieu Desnoyers
-Operating System Efficiency R&D Consultant
-EfficiOS Inc.
-http://www.efficios.com
+> I personnally found it useful to tune properly the number of nfs
+> threads on loaded servers. Did it use up too many resources? In that
+> case, could there be a mechanism to enable or disable therad
+> information gathering, for instance through writing to some /proc
+> file?
+
+There's a file /proc/fs/nfsd/pool_stats that should be useful for the
+same purpose; see the discussion in
+Documentation/filesystems/nfs/knfsd-stats.txt.
+
+(But note the overloads-avoided number mentioned there had to be removed
+due to reports of a performance regression; we should figure out what to
+do about that.)
+
+--b.
+
+commit 8bbfa9f3889b643fc7de82c0c761ef17097f8faf
+Author: Greg Banks <gnb@sgi.com>
+Date:   Tue Jan 13 21:26:34 2009 +1100
+
+    knfsd: remove the nfsd thread busy histogram
+    
+    Stop gathering the data that feeds the 'th' line in /proc/net/rpc/nfsd
+    because the questionable data provided is not worth the scalability
+    impact of calculating it.  Instead, always report zeroes.  The current
+    approach suffers from three major issues:
+    
+    1. update_thread_usage() increments buckets by call service
+       time or call arrival time...in jiffies.  On lightly loaded
+       machines, call service times are usually < 1 jiffy; on
+       heavily loaded machines call arrival times will be << 1 jiffy.
+       So a large portion of the updates to the buckets are rounded
+       down to zero, and the histogram is undercounting.
+    
+    2. As seen previously on the nfs mailing list, the format in which
+       the histogram is presented is cryptic, difficult to explain,
+       and difficult to use.
+    
+    3. Updating the histogram requires taking a global spinlock and
+       dirtying the global variables nfsd_last_call, nfsd_busy, and
+       nfsdstats *twice* on every RPC call, which is a significant
+       scaling limitation.
+    
+    Testing on a 4 CPU 4 NIC Altix using 4 IRIX clients each doing
+    1K streaming reads at full line rate, shows the stats update code
+    (inlined into nfsd()) takes about 1.7% of each CPU.  This patch drops
+    the contribution from nfsd() into the profile noise.
+    
+    This patch is a forward-ported version of knfsd-remove-nfsd-threadstats
+    which has been shipping in the SGI "Enhanced NFS" product since 2006.
+    In that time, exactly one customer has noticed that the threadstats
+    were missing.  It has been previously posted:
+    
+    http://article.gmane.org/gmane.linux.nfs/10376
+    
+    and more recently requested to be posted again.
+    
+    Signed-off-by: Greg Banks <gnb@sgi.com>
+    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+
