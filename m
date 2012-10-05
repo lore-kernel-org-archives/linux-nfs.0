@@ -1,64 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailservice.tudelft.nl ([130.161.131.5]:36427 "EHLO
-	mailservice.tudelft.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752402Ab2JXNYr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Oct 2012 09:24:47 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by amavis (Postfix) with ESMTP id 9DB5C108C0E0
-	for <linux-nfs@vger.kernel.org>; Wed, 24 Oct 2012 15:04:57 +0200 (CEST)
-Received: from mailservice.tudelft.nl ([130.161.131.74])
-	by localhost (tudelft.nl [127.0.0.1]) (amavisd-new, port 10026)
-	with ESMTP id OotX87riz33D for <linux-nfs@vger.kernel.org>;
-	Wed, 24 Oct 2012 15:04:57 +0200 (CEST)
-Received: from smtp-a.tudelft.nl (smtp-a.tudelft.nl [130.161.180.7])
-	by mx3.tudelft.nl (Postfix) with ESMTP id 3E58B108C039
-	for <linux-nfs@vger.kernel.org>; Wed, 24 Oct 2012 15:04:57 +0200 (CEST)
-Received: from pc-rsmits.ws.tudelft.net (x049176.tudelft.net [131.180.49.176])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by smtp-a.tudelft.nl (Postfix) with ESMTP id 32922B3A62
-	for <linux-nfs@vger.kernel.org>; Wed, 24 Oct 2012 15:04:57 +0200 (CEST)
-Message-ID: <5087E778.4040909@tudelft.nl>
-Date: Wed, 24 Oct 2012 15:04:56 +0200
-From: Richard Smits <R.Smits@tudelft.nl>
-MIME-Version: 1.0
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: nfs4 state id errors
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail-wi0-f172.google.com ([209.85.212.172]:36644 "EHLO
+	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753114Ab2JEXOs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Oct 2012 19:14:48 -0400
+Received: by mail-wi0-f172.google.com with SMTP id hq12so1436417wib.1
+        for <linux-nfs@vger.kernel.org>; Fri, 05 Oct 2012 16:14:46 -0700 (PDT)
+From: =?UTF-8?q?Mantas=20Mikul=C4=97nas?= <grawity@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: =?UTF-8?q?Mantas=20Mikul=C4=97nas?= <grawity@gmail.com>
+Subject: [PATCH] utils: Return status 0 on clean exits
+Date: Sat,  6 Oct 2012 02:14:26 +0300
+Message-Id: <1349478866-680992-1-git-send-email-grawity@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+Some init systems actually expect daemons to return 0 on success.
+---
+ utils/gssd/gssd.c     | 2 +-
+ utils/gssd/svcgssd.c  | 2 +-
+ utils/mountd/mountd.c | 3 ++-
+ utils/statd/statd.c   | 3 ++-
+ 4 files changed, 6 insertions(+), 4 deletions(-)
 
-We have a open support case at Netapp for this but I hope someone 
-recognizes these errors and can give us a clue how to solve this.
+diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+index 7825255..a3292c9 100644
+--- a/utils/gssd/gssd.c
++++ b/utils/gssd/gssd.c
+@@ -71,7 +71,7 @@ sig_die(int signal)
+ 	if (root_uses_machine_creds)
+ 		gssd_destroy_krb5_machine_creds();
+ 	printerr(1, "exiting on signal %d\n", signal);
+-	exit(1);
++	exit(0);
+ }
+ 
+ void
+diff --git a/utils/gssd/svcgssd.c b/utils/gssd/svcgssd.c
+index 1afff9e..8aee3b2 100644
+--- a/utils/gssd/svcgssd.c
++++ b/utils/gssd/svcgssd.c
+@@ -153,7 +153,7 @@ sig_die(int signal)
+ {
+ 	/* destroy krb5 machine creds */
+ 	printerr(1, "exiting on signal %d\n", signal);
+-	exit(1);
++	exit(0);
+ }
+ 
+ void
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index bcf5080..993b6e6 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -196,7 +196,8 @@ killer (int sig)
+ 		wait_for_workers();
+ 	}
+ 	cleanup_lockfiles();
+-	xlog (L_FATAL, "Caught signal %d, un-registering and exiting.", sig);
++	xlog (L_NOTICE, "Caught signal %d, un-registering and exiting.", sig);
++	exit(0);
+ }
+ 
+ static void
+diff --git a/utils/statd/statd.c b/utils/statd/statd.c
+index 01fdb41..652546c 100644
+--- a/utils/statd/statd.c
++++ b/utils/statd/statd.c
+@@ -99,7 +99,8 @@ static void
+ killer (int sig)
+ {
+ 	statd_unregister ();
+-	xlog_err ("Caught signal %d, un-registering and exiting", sig);
++	xlog(D_GENERAL, "Caught signal %d, un-registering and exiting", sig);
++	exit(0);
+ }
+ 
+ static void
+-- 
+1.7.12.2
 
-We have a Netapp 3170 NFS4 server with krb5 security. Our Suse 11.2 
-clients give these errors.
-
----------------------------------------
-RPC call returned error 13
-NFS: v4 server returned a bad sequence-id error on an unconfirmed 
-sequence ffff88020d80de20!
-
-nfs4_reclaim_locks: unhandled error -10026. Zeroing state
-nfs4_reclaim_open_state: unhandled error -10026. Zeroing state
-NFS: v4 server srvxxx  returned a bad sequence-id error!
----------------------------------------
-
-After the last line (zeroing state) the client goes into a hang.
-
-Client versions :
-
-nfs-client-1.2.3-18.23.1
-krb5-client-1.6.3-133.48.48.1
-
-Kernel : 3.0.38-0.5-default
-
-I have reported this earlier on this list, but i hope someone reads it 
-who recognises it. Will save us a lot of headaches....
-
-Greetings, Richard Smits
-ICT, Technical University Delft.
-The Netherlands
-R.Smits@tudelft.nl
