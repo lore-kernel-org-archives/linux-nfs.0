@@ -1,99 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:57592 "EHLO mx2.netapp.com"
+Received: from smtp3-g21.free.fr ([212.27.42.3]:34792 "EHLO smtp3-g21.free.fr"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751271Ab2J3Uu6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Oct 2012 16:50:58 -0400
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
+	id S932275Ab2JEVDb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Oct 2012 17:03:31 -0400
+Date: Fri, 5 Oct 2012 23:03:02 +0200
+From: Emmanuel Florac <eflorac@intellique.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 02/10] NFSD: Lock state before calling fault injection function
-Date: Tue, 30 Oct 2012 16:50:46 -0400
-Message-Id: <1351630254-26166-3-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
-References: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
+Subject: Re: NFS daemon statistics in /proc/net/rpc/nfsd
+Message-ID: <20121005230302.15ff87a8@galadriel.home>
+In-Reply-To: <20121005202845.GB30139@fieldses.org>
+References: <20121005184856.4472a72e@harpe.intellique.com>
+	<20121005202845.GB30139@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Le Fri, 5 Oct 2012 16:28:45 -0400 vous écriviez:
 
-Each function touches state in some way, so getting the lock earlier
-can help simplify code.
+> The trick to answering a question like this is:
+> 
+> 	git clone
+> git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux-2.6.git
+> cd linux got log -p fs/nfsd/nfssvc.c
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfsd/fault_inject.c |  2 ++
- fs/nfsd/nfs4state.c    | 18 ++----------------
- 2 files changed, 4 insertions(+), 16 deletions(-)
+Yes, I realise there are several ways to search through the git
+history, alas my git-fu is extremely limited because I'm still a
+sectator of subversion :)
 
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-index 0278112..4b385a1 100644
---- a/fs/nfsd/fault_inject.c
-+++ b/fs/nfsd/fault_inject.c
-@@ -51,7 +51,9 @@ static int nfsd_inject_set(void *op_ptr, u64 val)
- 	else
- 		printk(KERN_INFO "NFSD Fault Injection: %s (n = %llu)", op->file, val);
- 
-+	nfs4_lock_state();
- 	op->func(val);
-+	nfs4_unlock_state();
- 	return 0;
- }
- 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 14c3b70..cf79c3b 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4561,13 +4561,11 @@ void nfsd_forget_clients(u64 num)
- 	struct nfs4_client *clp, *next;
- 	int count = 0;
- 
--	nfs4_lock_state();
- 	list_for_each_entry_safe(clp, next, &client_lru, cl_lru) {
- 		expire_client(clp);
- 		if (++count == num)
- 			break;
- 	}
--	nfs4_unlock_state();
- 
- 	printk(KERN_INFO "NFSD: Forgot %d clients", count);
- }
-@@ -4602,23 +4600,13 @@ static int nfsd_release_n_owners(u64 num, bool is_open_owner,
- 
- void nfsd_forget_locks(u64 num)
- {
--	int count;
--
--	nfs4_lock_state();
--	count = nfsd_release_n_owners(num, false, release_lockowner_sop);
--	nfs4_unlock_state();
--
-+	int count = nfsd_release_n_owners(num, false, release_lockowner_sop);
- 	printk(KERN_INFO "NFSD: Forgot %d locks", count);
- }
- 
- void nfsd_forget_openowners(u64 num)
- {
--	int count;
--
--	nfs4_lock_state();
--	count = nfsd_release_n_owners(num, true, release_openowner_sop);
--	nfs4_unlock_state();
--
-+	int count = nfsd_release_n_owners(num, true, release_openowner_sop);
- 	printk(KERN_INFO "NFSD: Forgot %d open owners", count);
- }
- 
-@@ -4651,10 +4639,8 @@ void nfsd_forget_delegations(u64 num)
- 	count = nfsd_process_n_delegations(num, &victims);
- 	spin_unlock(&recall_lock);
- 
--	nfs4_lock_state();
- 	list_for_each_entry_safe(dp, dnext, &victims, dl_recall_lru)
- 		unhash_delegation(dp);
--	nfs4_unlock_state();
- 
- 	printk(KERN_INFO "NFSD: Forgot %d delegations", count);
- }
+> There's a file /proc/fs/nfsd/pool_stats that should be useful for the
+> same purpose; see the discussion in
+> Documentation/filesystems/nfs/knfsd-stats.txt.
+> 
+> (But note the overloads-avoided number mentioned there had to be
+> removed due to reports of a performance regression; we should figure
+> out what to do about that.)
+> 
+
+Thank you very much, this looks very promising, and makes definitely
+more sense than the bizarre decile-distribution of thread usage from
+the old system.
+
 -- 
-1.8.0
-
+------------------------------------------------------------------------
+Emmanuel Florac     |   Direction technique
+                    |   Intellique
+                    |	<eflorac@intellique.com>
+                    |   +33 1 78 94 84 02
+------------------------------------------------------------------------
