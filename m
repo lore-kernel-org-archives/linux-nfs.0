@@ -1,131 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from intranet.asianux.com ([58.214.24.6]:10637 "EHLO
-	intranet.asianux.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751398Ab2JOEv0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Oct 2012 00:51:26 -0400
-Message-ID: <507B968A.9090104@asianux.com>
-Date: Mon, 15 Oct 2012 12:52:26 +0800
-From: Chen Gang <gang.chen@asianux.com>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [Bug fix] nfs-client: fix nfs_inode_attrs_need_update for async
- read_done comes during truncating to smaller size
-References: <507B70F1.7040903@asianux.com> <4FA345DA4F4AE44899BD2B03EEEC2FA909236BB5@SACEXCMBX04-PRD.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA909236BB5@SACEXCMBX04-PRD.hq.netapp.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:18330 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754409Ab2JHRwQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Oct 2012 13:52:16 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 4/4] NFSv4.1: pNFS has no business touching the slot table wait queue...
+Date: Mon,  8 Oct 2012 13:50:30 -0400
+Message-Id: <1349718630-26008-4-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1349718630-26008-3-git-send-email-Trond.Myklebust@netapp.com>
+References: <1349718630-26008-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1349718630-26008-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1349718630-26008-3-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-于 2012年10月15日 12:27, Myklebust, Trond 写道:
-> nfs_size_need_update is not about performance. It is a heuristic that is
-> entirely about ensuring correctness when faced with the fact that most
-> Linux filesystems are utterly incapable of reporting with modifications
-> that occur within < 1 second intervals because their mtime/ctime is
-> limited to 1 second resolutions.
-> 
+Aside from it being a layering violation, there is no point in doing so:
+- If slots are available, then the waitqueue will be empty.
+- If no slots are available, then the wake up just causes waitqueue churn.
+- If the slot table is being drained, then the state recovery machinery
+  will manage the waitqueue using the calls to nfs4_begin/end_drain_session.
 
-if truly it was for correctness, why not use "!=" instead of '>' ?
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c | 3 ---
+ 1 file changed, 3 deletions(-)
 
-> Now, what are the conditions of your test setup? The above bug report is
-> meaningless unless it includes a description of what is being exported
-> by the server (including a proper listing of the contents
-> of /etc/exports and /proc/mounts). It should also include a description
-> of the NFS client mount options (see /proc/mounts on the client).
-
-they are below, if you need additional information, please tell me again.
-
-for server:
-(nfsx-linux using rsh auto exportfs in cmd line, not in /etc/exports)
---------------------------------------------------------------------
-root@dhcp122:~# exportfs
-/tmp/fsx18251.testdir
-		<world>
-/tmp          	<world>
-root@dhcp122:~#
-root@dhcp122:~# cat /etc/exports
-# /etc/exports: the access control list for filesystems which may be
-exported
-#		to NFS clients.  See exports(5).
-#
-# Example for NFSv2 and NFSv3:
-# /srv/homes       hostname1(rw,sync,no_subtree_check)
-hostname2(ro,sync,no_subtree_check)
-#
-# Example for NFSv4:
-# /srv/nfs4        gss/krb5i(rw,sync,fsid=0,crossmnt,no_subtree_check)
-# /srv/nfs4/homes  gss/krb5i(rw,sync,no_subtree_check)
-#
-/tmp *(rw,sync,no_root_squash,no_subtree_check)
-root@dhcp122:~#
-root@dhcp122:~# cat /proc/mounts
-rootfs / rootfs rw 0 0
-sysfs /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0
-proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0
-udev /dev devtmpfs rw,relatime,size=1229628k,nr_inodes=189901,mode=755 0 0
-devpts /dev/pts devpts
-rw,nosuid,noexec,relatime,gid=5,mode=620,ptmxmode=000 0 0
-tmpfs /run tmpfs rw,nosuid,relatime,size=516280k,mode=755 0 0
-/dev/disk/by-uuid/e843c57e-98ce-44cc-8e02-6d8e8d8a01b6 / ext4
-rw,relatime,errors=remount-ro,data=ordered 0 0
-cgroup /sys/fs/cgroup tmpfs rw,relatime,mode=755 0 0
-cgroup /sys/fs/cgroup/cpuset cgroup rw,relatime,cpuset 0 0
-cgroup /sys/fs/cgroup/cpu cgroup rw,relatime,cpu 0 0
-cgroup /sys/fs/cgroup/cpuacct cgroup rw,relatime,cpuacct 0 0
-cgroup /sys/fs/cgroup/devices cgroup rw,relatime,devices 0 0
-cgroup /sys/fs/cgroup/freezer cgroup rw,relatime,freezer 0 0
-cgroup /sys/fs/cgroup/blkio cgroup rw,relatime,blkio 0 0
-cgroup /sys/fs/cgroup/perf_event cgroup rw,relatime,perf_event 0 0
-none /sys/fs/fuse/connections fusectl rw,relatime 0 0
-none /sys/kernel/debug debugfs rw,relatime 0 0
-none /sys/kernel/security securityfs rw,relatime 0 0
-none /run/lock tmpfs rw,nosuid,nodev,noexec,relatime,size=5120k 0 0
-none /run/shm tmpfs rw,nosuid,nodev,relatime 0 0
-rpc_pipefs /run/rpc_pipefs rpc_pipefs rw,relatime 0 0
-nfsd /proc/fs/nfsd nfsd rw,relatime 0 0
-root@dhcp122:~#
------------------------------------------------------------------------
-
-for client:
------------------------------------------------------------------------
-
-root@dhcp159:/opt/ltp/testscripts# cat /proc/mounts
-rootfs / rootfs rw 0 0
-sysfs /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0
-proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0
-udev /dev devtmpfs rw,relatime,size=1103700k,nr_inodes=190392,mode=755 0 0
-devpts /dev/pts devpts
-rw,nosuid,noexec,relatime,gid=5,mode=620,ptmxmode=000 0 0
-tmpfs /run tmpfs rw,nosuid,relatime,size=465908k,mode=755 0 0
-/dev/disk/by-uuid/418ec1f1-ed9d-4cae-9336-6c742accf538 / ext4
-rw,relatime,errors=remount-ro,data=ordered 0 0
-cgroup /sys/fs/cgroup tmpfs rw,relatime,mode=755 0 0
-cgroup /sys/fs/cgroup/cpuset cgroup rw,relatime,cpuset 0 0
-cgroup /sys/fs/cgroup/cpu cgroup rw,relatime,cpu 0 0
-cgroup /sys/fs/cgroup/cpuacct cgroup rw,relatime,cpuacct 0 0
-cgroup /sys/fs/cgroup/devices cgroup rw,relatime,devices 0 0
-cgroup /sys/fs/cgroup/freezer cgroup rw,relatime,freezer 0 0
-cgroup /sys/fs/cgroup/blkio cgroup rw,relatime,blkio 0 0
-cgroup /sys/fs/cgroup/perf_event cgroup rw,relatime,perf_event 0 0
-none /sys/fs/fuse/connections fusectl rw,relatime 0 0
-none /sys/kernel/debug debugfs rw,relatime 0 0
-none /sys/kernel/security securityfs rw,relatime 0 0
-none /run/lock tmpfs rw,nosuid,nodev,noexec,relatime,size=5120k 0 0
-none /run/shm tmpfs rw,nosuid,nodev,relatime 0 0
-rpc_pipefs /run/rpc_pipefs rpc_pipefs rw,relatime 0 0
-nfsd /proc/fs/nfsd nfsd rw,relatime 0 0
-/dev/sda1 /mnt/sda1 ext3
-rw,relatime,errors=continue,user_xattr,acl,barrier=1,data=ordered 0 0
-dhcp122.asianux.net:/tmp/fsx18251.testdir/
-/opt/ltp/testcases/bin/fsx18251 nfs
-rw,relatime,vers=2,rsize=8192,wsize=8192,namlen=255,hard,proto=udp,timeo=11,retrans=3,sec=sys,mountaddr=10.1.0.139,mountvers=1,mountport=39973,mountproto=udp,local_lock=none,addr=10.1.0.139
-0 0
-root@dhcp159:/opt/ltp/testscripts#
-
-
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 52d8472..368f11f 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -131,7 +131,6 @@ static int filelayout_async_handle_error(struct rpc_task *task,
+ 	struct nfs_server *mds_server = NFS_SERVER(inode);
+ 	struct nfs4_deviceid_node *devid = FILELAYOUT_DEVID_NODE(lseg);
+ 	struct nfs_client *mds_client = mds_server->nfs_client;
+-	struct nfs4_slot_table *tbl = &clp->cl_session->fc_slot_table;
+ 
+ 	if (task->tk_status >= 0)
+ 		return 0;
+@@ -191,7 +190,6 @@ static int filelayout_async_handle_error(struct rpc_task *task,
+ 		 * layout is destroyed and a new valid layout is obtained.
+ 		 */
+ 		pnfs_destroy_layout(NFS_I(inode));
+-		rpc_wake_up(&tbl->slot_tbl_waitq);
+ 		goto reset;
+ 	/* RPC connection errors */
+ 	case -ECONNREFUSED:
+@@ -206,7 +204,6 @@ static int filelayout_async_handle_error(struct rpc_task *task,
+ 		nfs4_mark_deviceid_unavailable(devid);
+ 		clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags);
+ 		_pnfs_return_layout(inode);
+-		rpc_wake_up(&tbl->slot_tbl_waitq);
+ 		nfs4_ds_disconnect(clp);
+ 		/* fall through */
+ 	default:
 -- 
-Chen Gang
+1.7.11.4
 
-Asianux Corporation
