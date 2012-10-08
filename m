@@ -1,59 +1,152 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga01.intel.com ([192.55.52.88]:50640 "EHLO mga01.intel.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:29524 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751897Ab2JBFfV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Oct 2012 01:35:21 -0400
-Date: Tue, 2 Oct 2012 13:13:51 +0800
-From: Fengguang Wu <fengguang.wu@intel.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: kernel-janitors@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: [nfs:nfs-for-next 54/83] fs/nfs/super.c:2638:16: sparse: symbol
- 'nfs_callback_tcpport' was not declared. Should it be static?
-Message-ID: <20121002051351.GB18119@localhost>
+	id S1750833Ab2JHKy2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Oct 2012 06:54:28 -0400
+Subject: [PATCH v3] SUNRPC: set desired file system root before connecting
+	local transports
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Mon, 08 Oct 2012 14:56:32 +0400
+Message-ID: <20121008105437.18668.99905.stgit@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Stanislav,
+Today, there is a problem in connecting of local SUNRPC thansports. These
+transports uses UNIX sockets and connection itself is done by rpciod
+workqueue.
+But all local transports are connecting in rpciod context. I.e. UNIX sockets
+lookup is done in context of process file system root.
+This works nice until we will try to mount NFS from process with other root -
+for example in container. This container can have it's own (nested) root and
+rcpbind process, listening on it's own unix sockets. But NFS mount attempt in
+this container will register new service (Lockd for example) in global rpcbind
+- not containers's one.
+This patch solves the problem by switching rpciod kernel thread's file system
+root to the right one (stored on transport) while connecting of local
+transports.
 
-FYI, there are new sparse warnings show up in
-
-tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git nfs-for-next
-head:   2afdfa5a846246de50e1881f71ba5c0aac0b415f
-commit: bbe0a3aa4e227c8aae02a484ce1c0b655cd19055 [54/83] NFS: make nfs_callback_tcpport per network context
-
-? fs/nfs/super.c:2638:16: sparse: symbol 'nfs_callback_tcpport' was not declared. Should it be static?
-
-Shall we also remove the two related lines below?
-
-vim +2638 fs/nfs/super.c
-
-fac1e8e4 (Bryan Schumaker   2012-07-30  2633) /*
-fac1e8e4 (Bryan Schumaker   2012-07-30  2634)  * NFS v4 module parameters need to stay in the
-fac1e8e4 (Bryan Schumaker   2012-07-30  2635)  * NFS client for backwards compatibility
-fac1e8e4 (Bryan Schumaker   2012-07-30  2636)  */
-fac1e8e4 (Bryan Schumaker   2012-07-30  2637) unsigned int nfs_callback_set_tcpport;
-fac1e8e4 (Bryan Schumaker   2012-07-30 @2638) unsigned short nfs_callback_tcpport;
-fac1e8e4 (Bryan Schumaker   2012-07-30  2639) /* Default cache timeout is 10 minutes */
-fac1e8e4 (Bryan Schumaker   2012-07-30  2640) unsigned int nfs_idmap_cache_timeout = 600;
-fac1e8e4 (Bryan Schumaker   2012-07-30  2641) /* Turn off NFSv4 uid/gid mapping when using AUTH_SYS */
-fac1e8e4 (Bryan Schumaker   2012-07-30  2642) bool nfs4_disable_idmapping = true;
-fac1e8e4 (Bryan Schumaker   2012-07-30  2643) unsigned short max_session_slots = NFS4_DEF_SLOT_TABLE_SIZE;
-fac1e8e4 (Bryan Schumaker   2012-07-30  2644) unsigned short send_implementation_id = 1;
-fac1e8e4 (Bryan Schumaker   2012-07-30  2645) 
-89d77c8f (Bryan Schumaker   2012-07-30  2646) EXPORT_SYMBOL_GPL(nfs_callback_set_tcpport);
-89d77c8f (Bryan Schumaker   2012-07-30 @2647) EXPORT_SYMBOL_GPL(nfs_callback_tcpport);
-89d77c8f (Bryan Schumaker   2012-07-30  2648) EXPORT_SYMBOL_GPL(nfs_idmap_cache_timeout);
-89d77c8f (Bryan Schumaker   2012-07-30  2649) EXPORT_SYMBOL_GPL(nfs4_disable_idmapping);
-89d77c8f (Bryan Schumaker   2012-07-30  2650) EXPORT_SYMBOL_GPL(max_session_slots);
-89d77c8f (Bryan Schumaker   2012-07-30  2651) EXPORT_SYMBOL_GPL(send_implementation_id);
-89d77c8f (Bryan Schumaker   2012-07-30  2652) 
-fac1e8e4 (Bryan Schumaker   2012-07-30  2653) #define NFS_CALLBACK_MAXPORTNR (65535U)
-fac1e8e4 (Bryan Schumaker   2012-07-30  2654) 
-
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 ---
-0-DAY kernel build testing backend         Open Source Technology Centre
-Fengguang Wu, Yuanhan Liu                              Intel Corporation
+ net/sunrpc/xprtsock.c |   52 +++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 files changed, 50 insertions(+), 2 deletions(-)
+
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index aaaadfb..ecbced1 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -37,6 +37,7 @@
+ #include <linux/sunrpc/svcsock.h>
+ #include <linux/sunrpc/xprtsock.h>
+ #include <linux/file.h>
++#include <linux/fs_struct.h>
+ #ifdef CONFIG_SUNRPC_BACKCHANNEL
+ #include <linux/sunrpc/bc_xprt.h>
+ #endif
+@@ -255,6 +256,11 @@ struct sock_xprt {
+ 	void			(*old_state_change)(struct sock *);
+ 	void			(*old_write_space)(struct sock *);
+ 	void			(*old_error_report)(struct sock *);
++
++	/*
++	 * Saved transport creator root. Required for local transports only.
++	 */
++	struct path		root;
+ };
+ 
+ /*
+@@ -1876,6 +1882,30 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
+ 	return kernel_connect(sock, xs_addr(xprt), xprt->addrlen, 0);
+ }
+ 
++/*
++ * __xs_local_swap_root - swap current root to tranport's root helper.
++ * @new_root - path to set to current fs->root.
++ * @old_root - optinal paoinet to save current root to
++ *
++ * This routine is requieed to connecting unix sockets to absolute path in
++ * proper root environment.
++ * Note: no path_get() will be called. I.e. caller have to hold reference to
++ * new_root.
++ */
++static void __xs_local_swap_root(struct path *new_root, struct path *old_root)
++{
++	struct fs_struct *fs = current->fs;
++
++	spin_lock(&fs->lock);
++	write_seqcount_begin(&fs->seq);
++	if (old_root)
++		*old_root = fs->root;
++	fs->root = *new_root;
++	write_seqcount_end(&fs->seq);
++	spin_unlock(&fs->lock);
++}
++
++
+ /**
+  * xs_local_setup_socket - create AF_LOCAL socket, connect to a local endpoint
+  * @xprt: RPC transport to connect
+@@ -1891,6 +1921,7 @@ static void xs_local_setup_socket(struct work_struct *work)
+ 	struct rpc_xprt *xprt = &transport->xprt;
+ 	struct socket *sock;
+ 	int status = -EIO;
++	struct path root;
+ 
+ 	current->flags |= PF_FSTRANS;
+ 
+@@ -1907,7 +1938,10 @@ static void xs_local_setup_socket(struct work_struct *work)
+ 	dprintk("RPC:       worker connecting xprt %p via AF_LOCAL to %s\n",
+ 			xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
+ 
++	__xs_local_swap_root(&transport->root, &root);
+ 	status = xs_local_finish_connecting(xprt, sock);
++	__xs_local_swap_root(&root, NULL);
++
+ 	switch (status) {
+ 	case 0:
+ 		dprintk("RPC:       xprt %p connected to %s\n",
+@@ -2256,6 +2290,18 @@ static void xs_connect(struct rpc_task *task)
+ 	}
+ }
+ 
++static void xs_local_destroy(struct rpc_xprt *xprt)
++{
++	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
++	struct path root = transport->root;
++
++	dprintk("RPC:       xs_local_destroy xprt %p\n", xprt);
++
++	xs_destroy(xprt);
++
++	path_put(&root);
++}
++
+ /**
+  * xs_local_print_stats - display AF_LOCAL socket-specifc stats
+  * @xprt: rpc_xprt struct containing statistics
+@@ -2475,7 +2521,7 @@ static struct rpc_xprt_ops xs_local_ops = {
+ 	.send_request		= xs_local_send_request,
+ 	.set_retrans_timeout	= xprt_set_retrans_timeout_def,
+ 	.close			= xs_close,
+-	.destroy		= xs_destroy,
++	.destroy		= xs_local_destroy,
+ 	.print_stats		= xs_local_print_stats,
+ };
+ 
+@@ -2654,8 +2700,10 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
+ 	dprintk("RPC:       set up xprt to %s via AF_LOCAL\n",
+ 			xprt->address_strings[RPC_DISPLAY_ADDR]);
+ 
+-	if (try_module_get(THIS_MODULE))
++	if (try_module_get(THIS_MODULE)) {
++		get_fs_root(current->fs, &transport->root);
+ 		return xprt;
++	}
+ 	ret = ERR_PTR(-EINVAL);
+ out_err:
+ 	xprt_free(xprt);
+
