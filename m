@@ -1,43 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ipcop.bitmover.com ([192.132.92.15]:59186 "EHLO
-	mail.bitmover.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752625Ab2JMC4B (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Oct 2012 22:56:01 -0400
-Date: Fri, 12 Oct 2012 19:56:00 -0700
-From: Larry McVoy <lm@bitmover.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Larry McVoy <lm@bitmover.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Bruce Fields <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
-Message-ID: <20121013025600.GL23247@bitmover.com>
-References: <20121012211701.GA8301@bitmover.com>
- <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
- <20121013002100.GB23247@bitmover.com>
- <CA+55aFwKn+rp4qTk3dLgN8n=M-Aw1GYYpOfevDJaJhnK-U5VOg@mail.gmail.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9091FDED5@SACEXCMBX04-PRD.hq.netapp.com>
- <20121013023147.GJ23247@bitmover.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9091FE478@SACEXCMBX04-PRD.hq.netapp.com>
+Received: from mx2.netapp.com ([216.240.18.37]:53974 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755050Ab2JHVZd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Oct 2012 17:25:33 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Andy Adamson <androsadamson@gmail.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 4/4] NFSv4.1: pNFS has no business touching the slot
+ table wait queue...
+Date: Mon, 8 Oct 2012 21:25:30 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90900F43F@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1349718630-26008-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1349718630-26008-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <1349718630-26008-3-git-send-email-Trond.Myklebust@netapp.com>
+	 <1349718630-26008-4-git-send-email-Trond.Myklebust@netapp.com>
+	 <CAHVgHyV7aW8TArsu0xi0Nz6AhO98bO2qVzAvY9XZYx7hQZcx4w@mail.gmail.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA90900EFF1@SACEXCMBX04-PRD.hq.netapp.com>
+	 <CAHVgHyUrm_nprthmLE4NjsyTBNYS-HjiKwFOi7DLjiOTyPJinw@mail.gmail.com>
+In-Reply-To: <CAHVgHyUrm_nprthmLE4NjsyTBNYS-HjiKwFOi7DLjiOTyPJinw@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9091FE478@SACEXCMBX04-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Oct 13, 2012 at 02:52:51AM +0000, Myklebust, Trond wrote:
-> On Fri, 2012-10-12 at 19:31 -0700, Larry McVoy wrote:
-> > As I've said, debugging this is going to be hard, it means stopping my
-> > company.  We can do one more crash, you guys can tell me what to do,
-> > but that's about it.
-> 
-> Do you have a reproducer? 
-
-Oh yeah, it happens every time.  Run skype on a mac w/ your home dir NFS
-mounted.  Skype tries to do some lock operation and the machine panics.
-
-We've done it 4 times in a row to be sure we weren't smoking crack.  No
-crack.  Just panics.
--- 
----
-Larry McVoy                lm at bitmover.com           http://www.bitkeeper.com
+T24gTW9uLCAyMDEyLTEwLTA4IGF0IDE2OjI0IC0wNDAwLCBBbmR5IEFkYW1zb24gd3JvdGU6DQo+
+IE9uIE1vbiwgT2N0IDgsIDIwMTIgYXQgNDowNCBQTSwgTXlrbGVidXN0LCBUcm9uZA0KPiA8VHJv
+bmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+IE9uIE1vbiwgMjAxMi0xMC0wOCBh
+dCAxNTo1OSAtMDQwMCwgQW5keSBBZGFtc29uIHdyb3RlOg0KPiA+PiBPbiBNb24sIE9jdCA4LCAy
+MDEyIGF0IDE6NTAgUE0sIFRyb25kIE15a2xlYnVzdA0KPiA+PiA8VHJvbmQuTXlrbGVidXN0QG5l
+dGFwcC5jb20+IHdyb3RlOg0KPiA+PiA+IEFzaWRlIGZyb20gaXQgYmVpbmcgYSBsYXllcmluZyB2
+aW9sYXRpb24sIHRoZXJlIGlzIG5vIHBvaW50IGluIGRvaW5nIHNvOg0KPiA+PiA+IC0gSWYgc2xv
+dHMgYXJlIGF2YWlsYWJsZSwgdGhlbiB0aGUgd2FpdHF1ZXVlIHdpbGwgYmUgZW1wdHkuDQo+ID4+
+ID4gLSBJZiBubyBzbG90cyBhcmUgYXZhaWxhYmxlLCB0aGVuIHRoZSB3YWtlIHVwIGp1c3QgY2F1
+c2VzIHdhaXRxdWV1ZSBjaHVybg0KPiA+Pg0KPiA+PiBXZSBjYWxsIHJwY193YWtlX3VwIHNvIHRo
+YXQgSS9PIHdhaXRpbmcgb24gdGhlIERTIHNlc3Npb24sIGFsbCBvZg0KPiA+PiB3aGljaCBuZWVk
+cyB0byBiZSByZS1kaXJlY3RlZCB0byB0aGUgTURTIChub3QgdmlhIHRoZSBzdGF0ZSByZWNvdmVy
+eQ0KPiA+PiBtYWNoaW5lcnkpLCB3aWxsIGJ5LXBhc3MgdGhlIFJQQyBtYWNoaW5lICJ0cnkgZWFj
+aCB0YXNrIG9uZSBhdCBhIHRpbWUNCj4gPj4gYW5kIHJlZGlyZWN0IG9uIGZhaWx1cmUiIHdoaWNo
+IGluY2x1ZGVzIHRoZSA2MCBzZWNvbmQgVENQIHRpbWVvdXQgb24NCj4gPj4gRFMgY29ubmVjdGlv
+biBmYWlsdXJlcy4NCj4gPj4NCj4gPj4gU28sIGl0IGRvZXNuJ3QganVzdCBjYXVzZSB3YWl0cXVl
+dWUgY2h1cm4sIGl0IHNpZ25pZmljYW50bHkgcmVkdWNlcw0KPiA+PiB0aGUgdGltZSBpdCB0YWtl
+cyB0byByZWNvdmVyIHRvIHRoZSBNRFMuDQo+ID4+DQo+ID4NCj4gPiBBbGwgaXQgZG9lcyBpcyBh
+IHdha2UgdXAuLi4gVGhhdCB3aWxsIGhhcHBlbiBfQU5ZV0FZXyBhcyBzb29uIGFzIGEgc2xvdA0K
+PiA+IGlzIG1hZGUgYXZhaWxhYmxlLg0KPiANCj4gVGhhdCBpcyB0cnVlLiBCdXQgd2h5IHdhaXQ/
+IEVzcGVjaWFsbHkgd2hlbiBhbGwgdGFza3MgYXJlIEkvTywgYW5kIGlmDQo+IHRoZSBhcHBsaWNh
+dGlvbiBoYXBwZW5zIHRvIGJlIGRvaW5nIGEgaGVhdnkgSS9PIHdvcmtsb2FkLCB0aGVyZSBjYW4g
+YmUNCj4gaHVuZHJlZHMgb2YgdGFza3Mgb24gdGhhdCB3YWl0IHF1ZXVlLg0KPiANCj4gV2UgZG9u
+J3QgY2FyZSBpZiBhbnkgRFMgc2xvdHMgYXJlIGF2YWlsYWJsZS4gV2UgaGF2ZSBnaXZlbiB1cCBh
+bmQgcmUNCj4gcmVkaXJlY3RpbmcgdGhlc2UgdGFza3MgdG8gdGhlIE1EUyBzZXNzaW9uLiBUaGUg
+c29vbmVyLCB0aGUgYmV0dGVyLg0KDQpZb3UgYXJlbid0IGp1c3QgcmVkaXJlY3RpbmcgdGhvc2Ug
+dGFza3MsIHlvdSBhcmUgd2FraW5nIHVwIF9hbGxfIHRhc2tzDQpvbiB0aGF0IG5mc19jbGllbnQn
+cyBzZXNzaW9uLg0KDQpUaGF0IF9tYXlfIGJlIGFjY2VwdGFibGUgaW4gdGhlIGNhc2Ugd2hlcmUg
+d2UgY2FsbA0KbmZzNF9tYXJrX2RldmljZWlkX3VuYXZhaWxhYmxlKCksIF9pZl8gdGhlIG5mc19j
+bGllbnQgaXMgYSBwdXJlIGRhdGENCnNlcnZlciBhbmQgaXNuJ3QgYWxzbyBhY3RpbmcgYXMgYW4g
+TURTIGZvciBzb21lIGZpbGVzeXN0ZW0uDQoNCkl0IGlzIGNsZWFybHkgb3ZlcmtpbGwgaW4gdGhl
+IGNhc2Ugd2hlcmUgdGhlIERTIGlzIHJldHVybmluZyANCk5GUzRFUlJfRkhFWFBJUkVEIG9yIHNv
+bWUgc3VjaCBlcnJvciB0aGF0IGFwcGxpZXMgb25seSB0byB0aGlzIG9uZQ0KbGF5b3V0Lg0KDQo+
+IEknbGwgcmUtcnVuIHNvbWUgdGVzdHMgYW5kIGRlbW9uc3RyYXRlIHRoZSB0aW1lIGRpZmZlcmVu
+Y2UNCj4gd2l0aC93aXRob3V0IHRoZSBycGNfd2FrZV91cC4NCg0KDQotLSANClRyb25kIE15a2xl
+YnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVi
+dXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
