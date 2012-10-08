@@ -1,35 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:32874 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932571Ab2JYPtv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 25 Oct 2012 11:49:51 -0400
-Date: Thu, 25 Oct 2012 11:49:47 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 1/4] nfsd: add a usermodehelper upcall for NFSv4
- client ID tracking
-Message-ID: <20121025154947.GD6846@fieldses.org>
-References: <1351089018-24551-1-git-send-email-jlayton@redhat.com>
- <1351089018-24551-2-git-send-email-jlayton@redhat.com>
- <20121024210310.GG6697@fieldses.org>
- <20121025073936.4a57cf24@tlielax.poochiereds.net>
- <20121025150608.GB6846@fieldses.org>
- <20121025112706.086ab02a@corrin.poochiereds.net>
+Received: from mail-la0-f46.google.com ([209.85.215.46]:56213 "EHLO
+	mail-la0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750953Ab2JHUY6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Oct 2012 16:24:58 -0400
+Received: by mail-la0-f46.google.com with SMTP id h6so2537006lag.19
+        for <linux-nfs@vger.kernel.org>; Mon, 08 Oct 2012 13:24:56 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20121025112706.086ab02a@corrin.poochiereds.net>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90900EFF1@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1349718630-26008-1-git-send-email-Trond.Myklebust@netapp.com>
+	<1349718630-26008-2-git-send-email-Trond.Myklebust@netapp.com>
+	<1349718630-26008-3-git-send-email-Trond.Myklebust@netapp.com>
+	<1349718630-26008-4-git-send-email-Trond.Myklebust@netapp.com>
+	<CAHVgHyV7aW8TArsu0xi0Nz6AhO98bO2qVzAvY9XZYx7hQZcx4w@mail.gmail.com>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA90900EFF1@SACEXCMBX04-PRD.hq.netapp.com>
+Date: Mon, 8 Oct 2012 16:24:56 -0400
+Message-ID: <CAHVgHyUrm_nprthmLE4NjsyTBNYS-HjiKwFOi7DLjiOTyPJinw@mail.gmail.com>
+Subject: Re: [PATCH 4/4] NFSv4.1: pNFS has no business touching the slot table
+ wait queue...
+From: Andy Adamson <androsadamson@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 25, 2012 at 11:27:06AM -0400, Jeff Layton wrote:
-> What disadvantages do you see in doing it the way I've proposed?
+On Mon, Oct 8, 2012 at 4:04 PM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> On Mon, 2012-10-08 at 15:59 -0400, Andy Adamson wrote:
+>> On Mon, Oct 8, 2012 at 1:50 PM, Trond Myklebust
+>> <Trond.Myklebust@netapp.com> wrote:
+>> > Aside from it being a layering violation, there is no point in doing so:
+>> > - If slots are available, then the waitqueue will be empty.
+>> > - If no slots are available, then the wake up just causes waitqueue churn
+>>
+>> We call rpc_wake_up so that I/O waiting on the DS session, all of
+>> which needs to be re-directed to the MDS (not via the state recovery
+>> machinery), will by-pass the RPC machine "try each task one at a time
+>> and redirect on failure" which includes the 60 second TCP timeout on
+>> DS connection failures.
+>>
+>> So, it doesn't just cause waitqueue churn, it significantly reduces
+>> the time it takes to recover to the MDS.
+>>
+>
+> All it does is a wake up... That will happen _ANYWAY_ as soon as a slot
+> is made available.
 
-Just a vague feeling, along the lines of: APIs can outlast
-implementations, and it'll take longer to rip this out if it has to be
-removed from both sides....
+That is true. But why wait? Especially when all tasks are I/O, and if
+the application happens to be doing a heavy I/O workload, there can be
+hundreds of tasks on that wait queue.
 
-But it's just an environment variable, easy to ignore, I agree.  I can
-live with it.
+We don't care if any DS slots are available. We have given up and re
+redirecting these tasks to the MDS session. The sooner, the better.
 
---b.
+I'll re-run some tests and demonstrate the time difference
+with/without the rpc_wake_up.
+
+-->Andy
+
+>
+> So yes, it is pure churn...
+>
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+>
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
