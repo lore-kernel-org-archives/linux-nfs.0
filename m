@@ -1,48 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:56043 "EHLO
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:36028 "EHLO
 	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754164Ab2JaO2M (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Oct 2012 10:28:12 -0400
-Received: by mail-ie0-f174.google.com with SMTP id k13so2108663iea.19
-        for <linux-nfs@vger.kernel.org>; Wed, 31 Oct 2012 07:28:11 -0700 (PDT)
+	with ESMTP id S1754043Ab2JHQrc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Oct 2012 12:47:32 -0400
+Received: by mail-ie0-f174.google.com with SMTP id k13so97632iea.19
+        for <linux-nfs@vger.kernel.org>; Mon, 08 Oct 2012 09:47:31 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <k6r6ur$eva$2@ultimate100.geggus.net>
-References: <k6ebva$1kf$1@ultimate100.geggus.net>
-	<20121026171549.GA11806@fieldses.org>
-	<20121029094038.GA14836@geggus.net>
-	<20121029150203.GB9502@fieldses.org>
-	<20121029163323.GA24345@geggus.net>
-	<k6r6ur$eva$2@ultimate100.geggus.net>
-Date: Wed, 31 Oct 2012 07:28:11 -0700
-Message-ID: <CAA7C2qiiHzwMmkm5fUyNCffejxACtsDu0Pb1qgYJPCfgcaZU-w@mail.gmail.com>
-Subject: Re: Kernel update 3.5.7 -> 3.6.3 breaks NFS4
+In-Reply-To: <5072B1E5.9060808@RedHat.com>
+References: <CAA7C2qiZhHD7-RHP93LCVOBGCmp4JxyJwRLa0AR8a=oi4fi2Gg@mail.gmail.com>
+	<5072B1E5.9060808@RedHat.com>
+Date: Mon, 8 Oct 2012 09:47:31 -0700
+Message-ID: <CAA7C2qjRPs3pb66s2HDJqEyn0yGfGS_88+yvJNo0fhFQ9M6S3g@mail.gmail.com>
+Subject: Re: Problem with rpcbind
 From: VDR User <user.vdr@gmail.com>
-To: Sven Geggus <lists@fuchsschwanzdomain.de>
+To: Steve Dickson <SteveD@redhat.com>
 Cc: linux-nfs@vger.kernel.org
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 31, 2012 at 5:52 AM, Sven Geggus
-<lists@fuchsschwanzdomain.de> wrote:
->>> I'd be curious to understand what changed on the server to make a
->>> difference.
+On Mon, Oct 8, 2012 at 3:58 AM, Steve Dickson <SteveD@redhat.com> wrote:
+>> Per Aníbal Salazar, I'm sending this to the nfs mailing list..
 >>
->> Nothing but the kernel. I'm currently dual booting either 3.5.7 or 3.6.3
->> vanilla kernels on the same system.
+>> ==========
+>>
+>> Hi. I would like to know who I can talk to about having the rpcbind's
+>> timeout value settable on the command line by the user. In many cases
+>> the timeout is too long, requiring hackish solutions. It would be
+>> best, and makes sense, that the user should be able to set the timeout
+>> to something other than the default value if he chooses. If you could
+>> direct me to the right person to talk to about it, I'd appreciate it.
 >
-> I did some further investigation on this using a freshly installed
-> system on virtualbox with either kernel.
->
-> Same odd behaviour. Everything work using Kernel 3.5.7. Server does not work using
-> Kernel 3.6.3.
->
-> There are even different filesystems on the vm (ext4) and on the real server
-> (xfs).
->
-> Looks like I need to cherry-pick nfs4 server changes between 3.5.7 and 3.6.3 now :(
+> What timeout are you referring to? The one given to poll()?
 
-In case you missed my previous message, "I use debian testing here and
-NFSv4. My clients are running kernel
-3.6.3, server is running 3.6.2.  No problems here". It would seem you
-only need to cherry-pick server changes between 3.6.2 and 3.6.3...?
+Hi. I guess so but not really sure. I'm talking about the timeout that
+happens when rpcbind is waiting for a response. Sounds like poll()
+could be it. We have an nfs server on .100 and the response happens
+immediately.
+
+$ rpcinfo -t 192.168.1.100 nfs
+program 100003 version 2 ready and waiting
+program 100003 version 3 ready and waiting
+program 100003 version 4 ready and waiting
+
+but there's no server on say .101 so if we run the same command on
+that ip, the timeout takes a very long time. It's this timeout that
+should be user-definable on the command line in my opinion. Any
+thoughts about it?
+
+Cheers
