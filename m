@@ -1,170 +1,163 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from intranet.asianux.com ([58.214.24.6]:55956 "EHLO
-	intranet.asianux.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753617Ab2JOC3z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Oct 2012 22:29:55 -0400
-Message-ID: <507B70F1.7040903@asianux.com>
-Date: Mon, 15 Oct 2012 10:12:01 +0800
-From: Chen Gang <gang.chen@asianux.com>
+Received: from fieldses.org ([174.143.236.118]:38765 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756686Ab2JITfL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Oct 2012 15:35:11 -0400
+Date: Tue, 9 Oct 2012 15:35:06 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, devel@openvz.org,
+        "Eric W. Biederman" <ebiederm@xmission.com>
+Subject: Re: [PATCH v3] SUNRPC: set desired file system root before
+ connecting local transports
+Message-ID: <20121009193506.GA19680@fieldses.org>
+References: <20121008105437.18668.99905.stgit@localhost.localdomain>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>, Trond.Myklebust@netapp.com,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [Bug fix] nfs-client: fix nfs_inode_attrs_need_update for async read_done
- comes during truncating to smaller size
-Content-Type: text/plain; charset=GB2312
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121008105437.18668.99905.stgit@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello Trond Myklebust, Jeff Layton:
+Cc'ing Eric since I seem to recall he suggested doing it this way?
 
-1) Root Cause:
-   A) begin truncate to smaller, after async read finish starting.
-   B) async read done come, after truncate operation change inode size.
-   C) in nfs_inode_attrs_need_update, nfs_size_need_update return true.
-      i)   the bigger size is the original old size of client itself.
-      ii)  the smaller size is the current true size.
-      iii) nfs_inode_attrs_need_update not consider this situation.
+Seems OK to me, but maybe that swap_root should be in common code?  (Or
+maybe we could use set_fs_root()?)
 
-2) Fix nfs_size_need_update:
-   A) delete it:
-      i)   it is for performance, not necessary (not for correctness).
-      ii)  if it was necessary, it should use "!=" instead of '>'.
-      iii) it is the simplest way to fix this bug (maybe not best way).
-   B) consider this situation in it:
-      i)   it is the best way.
-      ii)  it is a little complex (need think of)
-      iii) sorry for I do not know how to fix it (at least now).
-   C) not touch it:
-      i)   correct another place (such as nfs_update_inode)
-      ii)  it is a bad idea (at least, I think it is)
-      iii) we need keep the source code as clearer as possible.
+I'm assuming it's up to Trond to take this.--b.
 
-3) Test Result:
-   A) it is one client and one server separately, under 3.6-rc5 x86_32.
-   B) use one process (fsx-linux) test (only one user mode thread).
-   C) only use read, truncate, llseek, fstat operation for one file.
-
-   Before delete nfs_size_need_update, it causes issue.
-   After delete nfs_size_need_update, it is ok.
-
-
-User Mode Log:
--------------------------------------------------------------------------
-<<<test_start>>>
-tag=nfsx-linux stime=1350202875
-cmdline="export VERSION SOCKET_TYPE; TCbin=$LTPROOT/testcases/bin fsx.sh"
-contacts=""
-analysis=exit
-<<<test_output>>>
-
-Test Options:
- VERSION: 2
- RHOST: dhcp122.asianux.net
- ITERATIONS: 50000
- SOCKET_TYPE: udp
- NFS_TYPE: nfs
-Setting up remote machine: dhcp122.asianux.net
-Mounting NFS filesystem dhcp122.asianux.net:/tmp/fsx1447.testdir on
-/opt/ltp/testcases/bin/fsx1447 with options '-o proto=udp,vers=2 '
-fsx-linux -N 50000 /opt/ltp/testcases/bin/fsx1447/testfile Starting
-truncating to largest ever: 0x13e76
-truncating to largest ever: 0x2e52c
-truncating to largest ever: 0x3c2c2
-truncating to largest ever: 0x3f15f
-truncating to largest ever: 0x3fcb9
-truncating to largest ever: 0x3fe96
-truncating to largest ever: 0x3ff9d
-Size error: expected 0x36ef9 stat 0x3bbca seek 0x36ef9
-LOG DUMP (5652 total operations):
-
-...
-
-5636: 1350203089.781599 READ     0x143b6 thru 0x21ccb (0xd916 bytes)
-5637: 1350203090.028214 READ     0x2a629 thru 0x2d0a1 (0x2a79 bytes)
-5638: 1350203090.072029 TRUNCATE DOWN   from 0x2d0a2 to 0x1bb35
-5639: 1350203090.087401 READ     0x11a05 thru 0x1bb34 (0xa130 bytes)
-5640: 1350203090.223985 READ     0x508c thru 0xa9da (0x594f bytes)
-5641: 1350203090.245717 TRUNCATE DOWN   from 0x1bb35 to 0x8830
-5642: 1350203090.353502 READ     0x548f thru 0x882f (0x33a1 bytes)
-5643: 1350203090.366596 READ     0x5802 thru 0x882f (0x302e bytes)
-5644: 1350203090.366629 TRUNCATE UP     from 0x8830 to 0x20011
-5645: 1350203090.379476 TRUNCATE DOWN   from 0x20011 to 0x134f4
-5646: 1350203090.396234 READ     0x124a0 thru 0x134f3 (0x1054 bytes)
-5647: 1350203090.401805 READ     0x880b thru 0x1189d (0x9093 bytes)
-5648: 1350203090.532050 READ     0x134c7 thru 0x134f3 (0x2d bytes)
-5649: 1350203090.532057 TRUNCATE UP     from 0x134f4 to 0x3bbca
-5650: 1350203090.546373 READ     0x2944c thru 0x2c1d6 (0x2d8b bytes)
-5651: 1350203090.561228 READ     0xdbe1 thru 0x16260 (0x8680 bytes)
-5652: 1350203090.751937 TRUNCATE DOWN   from 0x3bbca to 0x36ef9
-Correct content saved for comparison
-(maybe hexdump "/opt/ltp/testcases/bin/fsx1447/testfile" vs
-"/opt/ltp/testcases/bin/fsx1447/testfile.fsxgood")
-fsx-linux -N 50000 /opt/ltp/testcases/bin/fsx1447/testfile Finished
-Cleaning up testcase
-Unmounting /opt/ltp/testcases/bin/fsx1447
-Test Failed: Errors have resulted from this test
-incrementing stop
-<<<execution_status>>>
-initiation_status="ok"
-duration=218 termination_type=exited termination_id=1 corefile=no
-cutime=43 cstime=82
-<<<test_end>>>
-
-
--------------------------------------------------------------------------
-
-
-Kernel Mode Log: (using printk which I add)
--------------------------------------------------------------------------
-Time:          My Mark:   Task ptr:  comments (include function name):
-[  280.883701] gchen_tag: f5c30000, nfs_read_done call
-nfs_refresh_inode, cur=0x3bbca, new=0x3bbca
-[  280.890677] gchen_tag: f5c30000, nfs_read_done call
-nfs_refresh_inode, cur=0x3bbca, new=0x3bbca
-[  280.897437] gchen_tag: f5c30000, nfs_read_done call
-nfs_refresh_inode, cur=0x3bbca, new=0x3bbca
-[  280.897441] gchen_tag: f5e48c90, nfs_setattr_update_inode, cur=3bbca,
-new=36ef9
-[  280.897450] gchen_tag: f5e48c90, nfs_setattr
-[  280.897462] gchen_tag: hit, f5c30000, nfs_refresh_inode_locked,
-cur=36ef9, new=3bbca
-[  280.897469] gchen_tag: f5c30000, nfs_update_inode, change size,
-cur=36ef9, new=3bbca
-[  280.898129] gchen_tag: f5e48c90, nfs_update_inode, change size,
-cur=3bbca, new=36ef9
-[  280.977915] gchen_tag: f5c30000, nfs_update_inode, not change size,
-cur=36ef9, new=2000, pages=55
-[  281.019879] gchen_tag: f5c30000, nfs_update_inode, not change size,
-cur=36ef9, new=a000, pages=53
-[  281.070325] gchen_tag: f5c30000, nfs_update_inode, not change size,
-cur=36ef9, new=e000, pages=45
-[  281.087103] gchen_tag: f5c30000, nfs_update_inode, not change size,
-cur=36ef9, new=12000, pages=43
-[  281.129061] gchen_tag: f5c30000, nfs_update_inode, not change size,
-cur=36ef9, new=16000, pages=41
-[  281.163012] gchen_tag: f5c30000, nfs_update_inode, not change size,
-cur=36ef9, new=18000, pages=37
-[  281.213481] gchen_tag: f5c30000, nfs_update_inode, not change size,
-cur=36ef9, new=1c000, pages=33
-[  281.255727] gchen_tag: f5c30000, nfs_update_inode, not change size,
-cur=36ef9, new=22000, pages=31
-[  281.306177] gchen_tag: f5c30000, nfs_update_inode, not change size,
-cur=36ef9, new=24000, pages=27
-[  281.356888] gchen_tag: f5c30000, nfs_update_inode, not change size,
-cur=36ef9, new=2e000, pages=21
-[  281.398859] gchen_tag: f5c30000, nfs_update_inode, not change size,
-cur=36ef9, new=36000, pages=19
-[  281.585491] gchen_tag: f5c30000, nfs_update_inode, not change size,
-cur=104d8, new=2000, pages=17
-[  281.644207] gchen_tag: f5c30000, nfs_update_inode, not change size,
-cur=104d8, new=10000, pages=15
--------------------------------------------------------------------------
-
-
-Thanks.
-
---
-Chen Gang
-
-Asianux Corporation
-
+On Mon, Oct 08, 2012 at 02:56:32PM +0400, Stanislav Kinsbursky wrote:
+> Today, there is a problem in connecting of local SUNRPC thansports. These
+> transports uses UNIX sockets and connection itself is done by rpciod
+> workqueue.
+> But all local transports are connecting in rpciod context. I.e. UNIX sockets
+> lookup is done in context of process file system root.
+> This works nice until we will try to mount NFS from process with other root -
+> for example in container. This container can have it's own (nested) root and
+> rcpbind process, listening on it's own unix sockets. But NFS mount attempt in
+> this container will register new service (Lockd for example) in global rpcbind
+> - not containers's one.
+> This patch solves the problem by switching rpciod kernel thread's file system
+> root to the right one (stored on transport) while connecting of local
+> transports.
+> 
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> ---
+>  net/sunrpc/xprtsock.c |   52 +++++++++++++++++++++++++++++++++++++++++++++++--
+>  1 files changed, 50 insertions(+), 2 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index aaaadfb..ecbced1 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -37,6 +37,7 @@
+>  #include <linux/sunrpc/svcsock.h>
+>  #include <linux/sunrpc/xprtsock.h>
+>  #include <linux/file.h>
+> +#include <linux/fs_struct.h>
+>  #ifdef CONFIG_SUNRPC_BACKCHANNEL
+>  #include <linux/sunrpc/bc_xprt.h>
+>  #endif
+> @@ -255,6 +256,11 @@ struct sock_xprt {
+>  	void			(*old_state_change)(struct sock *);
+>  	void			(*old_write_space)(struct sock *);
+>  	void			(*old_error_report)(struct sock *);
+> +
+> +	/*
+> +	 * Saved transport creator root. Required for local transports only.
+> +	 */
+> +	struct path		root;
+>  };
+>  
+>  /*
+> @@ -1876,6 +1882,30 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
+>  	return kernel_connect(sock, xs_addr(xprt), xprt->addrlen, 0);
+>  }
+>  
+> +/*
+> + * __xs_local_swap_root - swap current root to tranport's root helper.
+> + * @new_root - path to set to current fs->root.
+> + * @old_root - optinal paoinet to save current root to
+> + *
+> + * This routine is requieed to connecting unix sockets to absolute path in
+> + * proper root environment.
+> + * Note: no path_get() will be called. I.e. caller have to hold reference to
+> + * new_root.
+> + */
+> +static void __xs_local_swap_root(struct path *new_root, struct path *old_root)
+> +{
+> +	struct fs_struct *fs = current->fs;
+> +
+> +	spin_lock(&fs->lock);
+> +	write_seqcount_begin(&fs->seq);
+> +	if (old_root)
+> +		*old_root = fs->root;
+> +	fs->root = *new_root;
+> +	write_seqcount_end(&fs->seq);
+> +	spin_unlock(&fs->lock);
+> +}
+> +
+> +
+>  /**
+>   * xs_local_setup_socket - create AF_LOCAL socket, connect to a local endpoint
+>   * @xprt: RPC transport to connect
+> @@ -1891,6 +1921,7 @@ static void xs_local_setup_socket(struct work_struct *work)
+>  	struct rpc_xprt *xprt = &transport->xprt;
+>  	struct socket *sock;
+>  	int status = -EIO;
+> +	struct path root;
+>  
+>  	current->flags |= PF_FSTRANS;
+>  
+> @@ -1907,7 +1938,10 @@ static void xs_local_setup_socket(struct work_struct *work)
+>  	dprintk("RPC:       worker connecting xprt %p via AF_LOCAL to %s\n",
+>  			xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
+>  
+> +	__xs_local_swap_root(&transport->root, &root);
+>  	status = xs_local_finish_connecting(xprt, sock);
+> +	__xs_local_swap_root(&root, NULL);
+> +
+>  	switch (status) {
+>  	case 0:
+>  		dprintk("RPC:       xprt %p connected to %s\n",
+> @@ -2256,6 +2290,18 @@ static void xs_connect(struct rpc_task *task)
+>  	}
+>  }
+>  
+> +static void xs_local_destroy(struct rpc_xprt *xprt)
+> +{
+> +	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+> +	struct path root = transport->root;
+> +
+> +	dprintk("RPC:       xs_local_destroy xprt %p\n", xprt);
+> +
+> +	xs_destroy(xprt);
+> +
+> +	path_put(&root);
+> +}
+> +
+>  /**
+>   * xs_local_print_stats - display AF_LOCAL socket-specifc stats
+>   * @xprt: rpc_xprt struct containing statistics
+> @@ -2475,7 +2521,7 @@ static struct rpc_xprt_ops xs_local_ops = {
+>  	.send_request		= xs_local_send_request,
+>  	.set_retrans_timeout	= xprt_set_retrans_timeout_def,
+>  	.close			= xs_close,
+> -	.destroy		= xs_destroy,
+> +	.destroy		= xs_local_destroy,
+>  	.print_stats		= xs_local_print_stats,
+>  };
+>  
+> @@ -2654,8 +2700,10 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
+>  	dprintk("RPC:       set up xprt to %s via AF_LOCAL\n",
+>  			xprt->address_strings[RPC_DISPLAY_ADDR]);
+>  
+> -	if (try_module_get(THIS_MODULE))
+> +	if (try_module_get(THIS_MODULE)) {
+> +		get_fs_root(current->fs, &transport->root);
+>  		return xprt;
+> +	}
+>  	ret = ERR_PTR(-EINVAL);
+>  out_err:
+>  	xprt_free(xprt);
+> 
