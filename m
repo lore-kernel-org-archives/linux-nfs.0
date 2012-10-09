@@ -1,241 +1,272 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:20580 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:49637 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751607Ab2JBBM2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Oct 2012 21:12:28 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/1] NFSv4 reduce attribute requests for open reclaim
-Date: Mon,  1 Oct 2012 21:12:22 -0400
-Message-Id: <1349140342-2408-1-git-send-email-andros@netapp.com>
+	id S1751100Ab2JIAas (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Oct 2012 20:30:48 -0400
+Date: Tue, 9 Oct 2012 11:30:54 +1100
+From: NeilBrown <neilb@suse.de>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        NFS <linux-nfs@vger.kernel.org>
+Subject: Re: Inconsistency when mounting a directory that 'world' cannot
+ access.
+Message-ID: <20121009113054.610c8675@notabene.brown>
+In-Reply-To: <5072BC2A.1060100@RedHat.com>
+References: <20120918112329.7d88ed9e@notabene.brown>
+	<20121001154309.GD18400@fieldses.org>
+	<20121002123810.15bd1ee2@notabene.brown>
+	<20121002143334.GA1435@fieldses.org>
+	<20121003134629.72557522@notabene.brown>
+	<20121003151349.GD14313@fieldses.org>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA909001D77@SACEXCMBX04-PRD.hq.netapp.com>
+	<20121003162728.GE14313@fieldses.org>
+	<20121004084659.38632320@notabene.brown>
+	<20121004160739.GA4693@fieldses.org>
+	<20121008170304.37dc6ae9@notabene.brown>
+	<5072BC2A.1060100@RedHat.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/ZevjVlOXQ45li81Ez03orvr"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+--Sig_/ZevjVlOXQ45li81Ez03orvr
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-We currently make no distinction in attribute requests between normal OPENs
-and OPEN with CLAIM_PREVIOUS.  This offers more possibility of failures in
-the GETATTR response which foils OPEN reclaim attempts.
+On Mon, 08 Oct 2012 07:42:34 -0400 Steve Dickson <SteveD@redhat.com> wrote:
 
-Reduce the requested attributes to the bare minimum needed to update the
-reclaim open stateid and split nfs4_opendata_to_nfs4_state processing
-accordingly.
+>=20
+>=20
+> On 08/10/12 02:03, NeilBrown wrote:
+> > On Thu, 4 Oct 2012 12:07:39 -0400 "J. Bruce Fields" <bfields@fieldses.o=
+rg>
+> > wrote:
+> >=20
+> >> On Thu, Oct 04, 2012 at 08:46:59AM +1000, NeilBrown wrote:
+> >>> On Wed, 3 Oct 2012 12:27:28 -0400 "J. Bruce Fields" <bfields@fieldses=
+.org>
+> >>> wrote:
+> >>>
+> >>>> On Wed, Oct 03, 2012 at 03:48:43PM +0000, Myklebust, Trond wrote:
+> >>>>> On Wed, 2012-10-03 at 11:13 -0400, J. Bruce Fields wrote:
+> >>>>>> On Wed, Oct 03, 2012 at 01:46:29PM +1000, NeilBrown wrote:
+> >>>>>>> On Tue, 2 Oct 2012 10:33:34 -0400 "J. Bruce Fields" <bfields@fiel=
+dses.org>
+> >>>>>>> wrote:
+> >>>>>>>
+> >>>>>>>> I guess you're right.  So it starts to sound more like: "you hav=
+e a
+> >>>>>>>> confusing setup.  Your export configuration says one thing, and =
+your
+> >>>>>>>> filesystem permissions say another.  Under NFSv3 the confusion d=
+idn't
+> >>>>>>>> matter, but now it does--time to fix it."
+> >>>>>>>>
+> >>>>>>>
+> >>>>>>> That's the best I could come to - I'm glad to have it confirmed. =
+ Thanks!
+> >>>>>>>
+> >>>>>>> It is unfortunate that Linux NFS uses an anon credential to mount=
+ when krb5
+> >>>>>>> is in use, and uses 'root' when auth_sys is used (which might be =
+anon if
+> >>>>>>> "root_squash" is active, but might not).
+> >>>>>>> I wonder if it would work to use auth_none for the mount-time loo=
+kup, just
+> >>>>>>> for consistency..
+> >>>>>>>
+> >>>>>>> Is the following appropriate?  Is there somewhere better to put t=
+his caveat?
+> >>>>>>
+> >>>>>> Unfortunately, it's more complicated than this, as it depends on c=
+lient
+> >>>>>> implementation and configuration details.
+> >>>>>>
+> >>>>>> Something like this would be more accurate but possibly too long:
+> >>>>>>
+> >>>>>> 	Note that under NFSv2 and NFSv3, the mount path is traversed by
+> >>>>>> 	mountd acting as root, but under NFSv4 the mount path is looked
+> >>>>>> 	up using the client's credentials.  This means that, for
+> >>>>>> 	example, if a client mounts using a krb5 credential that the
+> >>>>>> 	server maps to an "anonmyous" user, then the mount will only
+> >>>>>> 	succeed if that directory and all its parents allow eXecute
+> >>>>>> 	permissions.
+> >>>>>
+> >>>>> So you're listing this as a "feature" rather than a bug? There shou=
+ld be
+> >>>>> no reason to constrain the pseudofs to use the permission checks fr=
+om
+> >>>>> the underlying filesystem.
+> >>>>
+> >>>> I'd be fine with that.
+> >>>>
+> >>>> (That still leaves some subtle v3/v4 difference in the case of mount
+> >>>> paths underneath an export?
+> >>>>
+> >>>> What *is* the existing mountd behavior there, exactly?  I'm inclined=
+ to
+> >>>> think allowing mounts of arbitrary subdirectories is a bug, but maybe
+> >>>> there's some historical reason for it or maybe someone already depen=
+ds
+> >>>> on it.)
+> >>>>
+> >>>> --b.
+> >>>
+> >>> The behaviour is simple that you mount a filehandle (typically belong=
+ing to a
+> >>> directory) and that filehandle can be anything inside any exported fi=
+lesystem.
+> >>
+> >> It's not the nfsd behavior that bothers me--there's nothing we can do
+> >> about the fact that access by filehandle can bypass directory
+> >> permissions.
+> >>
+> >> What bothers is that mountd will apparently allow anyone to do a lookup
+> >> anywhere in an exported filesystem.
+> >=20
+> > Not anyone - it requires a privileged source port from a known host.
+> > So it is only "anyone who can get 'root'".
+> >=20
+> >>
+> >> I don't know--maybe I shouldn't be so concerned about the possibility a
+> >> rogue user could figure out that my "Music" directory includes an
+> >> unreasonable number of Miles Davis titles.
+> >>
+> >>> Yes, please do depend on being able to mount filehandles that aren't =
+to root
+> >>> of a filesystem.
+> >>>
+> >>> The case the brought this issue to my attention involved the server h=
+aving
+> >>> a directory containing hundreds of home directories.  This directory =
+is
+> >>> exported.
+> >>>
+> >>> If they mount that top level directory they get horrible performance.=
+  If
+> >>> they use an automounter to just mount the homes that are accessed it =
+works
+> >>> better.  They weren't able to explain why but my guess is that some t=
+ools
+> >>> (GUI filesystem browser) would occasionally do the equivalent of "ls =
+ -l" of
+> >>> the top level directory which would hammer nfs-idmapd and probably ld=
+ap....
+> >>> though you would think that would get cached and not be a problem for=
+ long.
+> >>> So maybe it is more subtle than that.
+> >>
+> >> Getting all the id->name mappings for a 100-entry directory is going to
+> >> require a 100 serialized upcalls to idmapd (and then possibly ldap), a=
+nd
+> >> by default it looks like the idmapd cache will go cold after 10
+> >> minutes....  Not hard to imagine that could be a problem.
+> >>
+> >> Running multiple idmapd process would be easy and might help?  Though
+> >> not if the client's just giving us the getattrs one at a time.
+> >>
+> >> Or maybe the problem's somewhere else entirely, but that's a real bug =
+if
+> >> we aren't giving good performance on /home.
+> >=20
+> > I did some experimenting..
+> > On both 'client' and 'server':
+> >   for i in `seq 2000 3000`; do echo u$i:x:$i:1000::/nohome:/bin/false; =
+done
+> >>> /etc/passwd
+> >=20
+> > On server in suitable directory
+> >=20
+> >   for i in `seq 2000 3000`; do mkdir $i ; chown u$i $i ; done
+> >=20
+> > Mount that directory onto the client with NFSv3 and "time ls -l" takes a
+> > little under 4 seconds.
+> > Mount with NFSv4 and it takes about the same.  However:
+> >=20
+> > .....
+> > drwxr-xr-x 2 4294967294 root 4096 Oct  8 16:19 2974
+> > drwxr-xr-x 2 4294967294 root 4096 Oct  8 16:19 2975
+> > drwxr-xr-x 2 4294967294 root 4096 Oct  8 16:19 2976
+> > drwxr-xr-x 2 4294967294 root 4096 Oct  8 16:19 2977
+> > drwxr-xr-x 2 4294967294 root 4096 Oct  8 16:19 2978
+> > drwxr-xr-x 2 u2979      root 4096 Oct  8 16:19 2979
+> > drwxr-xr-x 2 u2980      root 4096 Oct  8 16:19 2980
+> > drwxr-xr-x 2 4294967294 root 4096 Oct  8 16:19 2981
+> > drwxr-xr-x 2 4294967294 root 4096 Oct  8 16:19 2982
+> > drwxr-xr-x 2 4294967294 root 4096 Oct  8 16:19 2983
+> > drwxr-xr-x 2 4294967294 root 4096 Oct  8 16:19 2984
+> > drwxr-xr-x 2 4294967294 root 4096 Oct  8 16:19 2985
+> > drwxr-xr-x 2 4294967294 root 4096 Oct  8 16:19 2986
+> > ....
+> >=20
+> >=20
+> > tcpdump shows the server is returning the write stuff, but something if=
+ going
+> > wrong on the client.  I've tried unmounting/remounting and killing/rest=
+arting
+> > rpc.idmapd.
+> > I had some config problems previously .. is there any chance that these
+> > unknown entries are in a cache?  Any easy way to view or flush the cach=
+e?
+> Assuming you are using the keyring based idmapper, "nfsidmap -cv" will
+> clear the keyring of user and group ids. See nfsidmap(5).
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/inode.c    |    4 +-
- fs/nfs/internal.h |    1 +
- fs/nfs/nfs4proc.c |  110 ++++++++++++++++++++++++++++++++++++++++------------
- fs/nfs/nfs4xdr.c  |    2 +-
- 4 files changed, 88 insertions(+), 29 deletions(-)
+Thanks... though I'm running some ancient system which only has nfs-utils
+1.2.5 and so "nfsidmap -cv" returns silently, but does nothing.
+That's OK, I have source -- build, copy, test...
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 126a4cb..8bf3cdf 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -61,7 +61,6 @@
- static bool enable_ino64 = NFS_64_BIT_INODE_NUMBERS_ENABLED;
- 
- static void nfs_invalidate_inode(struct inode *);
--static int nfs_update_inode(struct inode *, struct nfs_fattr *);
- 
- static struct kmem_cache * nfs_inode_cachep;
- 
-@@ -1292,7 +1291,7 @@ EXPORT_SYMBOL_GPL(nfs_post_op_update_inode_force_wcc);
-  *
-  * A very similar scenario holds for the dir cache.
-  */
--static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
-+int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- {
- 	struct nfs_server *server;
- 	struct nfs_inode *nfsi = NFS_I(inode);
-@@ -1495,6 +1494,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 	nfs_invalidate_inode(inode);
- 	return -ESTALE;
- }
-+EXPORT_SYMBOL_GPL(nfs_update_inode);
- 
- struct inode *nfs_alloc_inode(struct super_block *sb)
- {
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 89a795d..aff4399 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -323,6 +323,7 @@ extern void nfs_clear_inode(struct inode *);
- extern void nfs_evict_inode(struct inode *);
- void nfs_zap_acl_cache(struct inode *inode);
- extern int nfs_wait_bit_killable(void *word);
-+int nfs_update_inode(struct inode *, struct nfs_fattr *);
- 
- /* super.c */
- extern const struct super_operations nfs_sops;
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 50e79c9..fc5670f 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -152,6 +152,12 @@ static const u32 nfs4_pnfs_open_bitmap[3] = {
- 	FATTR4_WORD2_MDSTHRESHOLD
- };
- 
-+static const u32 nfs4_open_noattr_bitmap[3] = {
-+	FATTR4_WORD0_TYPE
-+	| FATTR4_WORD0_CHANGE
-+	| FATTR4_WORD0_FILEID,
-+};
-+
- const u32 nfs4_statfs_bitmap[2] = {
- 	FATTR4_WORD0_FILES_AVAIL
- 	| FATTR4_WORD0_FILES_FREE
-@@ -1120,11 +1126,76 @@ out_return_state:
- 	return state;
- }
- 
--static struct nfs4_state *nfs4_opendata_to_nfs4_state(struct nfs4_opendata *data)
-+static void
-+nfs4_opendata_check_deleg(struct nfs4_opendata *data, struct nfs4_state *state)
-+{
-+	struct nfs_client *clp = NFS_SERVER(state->inode)->nfs_client;
-+	struct nfs_delegation *delegation;
-+	int delegation_flags = 0;
-+
-+	rcu_read_lock();
-+	delegation = rcu_dereference(NFS_I(state->inode)->delegation);
-+	if (delegation)
-+		delegation_flags = delegation->flags;
-+	rcu_read_unlock();
-+	if (data->o_arg.claim == NFS4_OPEN_CLAIM_DELEGATE_CUR) {
-+		pr_err_ratelimited("NFS: Broken NFSv4 server %s is "
-+				   "returning a delegation for "
-+				   "OPEN(CLAIM_DELEGATE_CUR)\n",
-+				   clp->cl_hostname);
-+	} else if ((delegation_flags & 1UL<<NFS_DELEGATION_NEED_RECLAIM) == 0)
-+		nfs_inode_set_delegation(state->inode,
-+					 data->owner->so_cred,
-+					 &data->o_res);
-+	else
-+		nfs_inode_reclaim_delegation(state->inode,
-+					     data->owner->so_cred,
-+					     &data->o_res);
-+}
-+
-+/*
-+ * Check the inode attributes against the CLAIM_PREVIOUS returned attributes
-+ * and update the nfs4_state.
-+ */
-+static struct nfs4_state *
-+_nfs4_opendata_reclaim_to_nfs4_state(struct nfs4_opendata *data)
-+{
-+	struct inode *inode = data->state->inode;
-+	struct nfs4_state *state = data->state;
-+	int ret = -ESTALE;
-+
-+	if (!data->rpc_done || !(data->f_attr.valid & NFS_ATTR_FATTR) ||
-+	    !(data->f_attr.valid & NFS_ATTR_FATTR_TYPE) ||
-+	    !(data->f_attr.valid & NFS_ATTR_FATTR_CHANGE) ||
-+	    !(data->f_attr.valid & NFS_ATTR_FATTR_FILEID))
-+		goto err;
-+
-+	ret = -ENOMEM;
-+	state = nfs4_get_open_state(inode, data->owner);
-+	if (state == NULL)
-+		goto err;
-+
-+	spin_lock(&inode->i_lock);
-+	ret = nfs_update_inode(inode, &data->f_attr);
-+	spin_unlock(&inode->i_lock);
-+	if (ret)
-+		goto err;
-+	if (data->o_res.delegation_type != 0)
-+		nfs4_opendata_check_deleg(data, state);
-+	update_open_stateid(state, &data->o_res.stateid, NULL,
-+			    data->o_arg.fmode);
-+
-+	return state;
-+err:
-+	return ERR_PTR(ret);
-+
-+}
-+
-+static struct nfs4_state *
-+_nfs4_opendata_to_nfs4_state(struct nfs4_opendata *data)
- {
- 	struct inode *inode;
- 	struct nfs4_state *state = NULL;
--	struct nfs_delegation *delegation;
- 	int ret;
- 
- 	if (!data->rpc_done) {
-@@ -1143,30 +1214,8 @@ static struct nfs4_state *nfs4_opendata_to_nfs4_state(struct nfs4_opendata *data
- 	state = nfs4_get_open_state(inode, data->owner);
- 	if (state == NULL)
- 		goto err_put_inode;
--	if (data->o_res.delegation_type != 0) {
--		struct nfs_client *clp = NFS_SERVER(inode)->nfs_client;
--		int delegation_flags = 0;
--
--		rcu_read_lock();
--		delegation = rcu_dereference(NFS_I(inode)->delegation);
--		if (delegation)
--			delegation_flags = delegation->flags;
--		rcu_read_unlock();
--		if (data->o_arg.claim == NFS4_OPEN_CLAIM_DELEGATE_CUR) {
--			pr_err_ratelimited("NFS: Broken NFSv4 server %s is "
--					"returning a delegation for "
--					"OPEN(CLAIM_DELEGATE_CUR)\n",
--					clp->cl_hostname);
--		} else if ((delegation_flags & 1UL<<NFS_DELEGATION_NEED_RECLAIM) == 0)
--			nfs_inode_set_delegation(state->inode,
--					data->owner->so_cred,
--					&data->o_res);
--		else
--			nfs_inode_reclaim_delegation(state->inode,
--					data->owner->so_cred,
--					&data->o_res);
--	}
--
-+	if (data->o_res.delegation_type != 0)
-+		nfs4_opendata_check_deleg(data, state);
- 	update_open_stateid(state, &data->o_res.stateid, NULL,
- 			data->o_arg.fmode);
- 	iput(inode);
-@@ -1178,6 +1227,14 @@ err:
- 	return ERR_PTR(ret);
- }
- 
-+static struct nfs4_state *
-+nfs4_opendata_to_nfs4_state(struct nfs4_opendata *data)
-+{
-+	if (data->o_arg.claim == NFS4_OPEN_CLAIM_PREVIOUS)
-+		return _nfs4_opendata_reclaim_to_nfs4_state(data);
-+	return _nfs4_opendata_to_nfs4_state(data);
-+}
-+
- static struct nfs_open_context *nfs4_state_find_open_context(struct nfs4_state *state)
- {
- 	struct nfs_inode *nfsi = NFS_I(state->inode);
-@@ -1499,6 +1556,7 @@ static void nfs4_open_prepare(struct rpc_task *task, void *calldata)
- 	data->o_arg.clientid = sp->so_server->nfs_client->cl_clientid;
- 	if (data->o_arg.claim == NFS4_OPEN_CLAIM_PREVIOUS) {
- 		task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_OPEN_NOATTR];
-+		data->o_arg.open_bitmap = &nfs4_open_noattr_bitmap[0];
- 		nfs_copy_fh(&data->o_res.fh, data->o_arg.fh);
- 	}
- 	data->timestamp = jiffies;
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 657483c..ba5b195 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -2262,7 +2262,7 @@ static void nfs4_xdr_enc_open_noattr(struct rpc_rqst *req,
- 	encode_putfh(xdr, args->fh, &hdr);
- 	encode_open(xdr, args, &hdr);
- 	encode_access(xdr, args->access, &hdr);
--	encode_getfattr(xdr, args->bitmask, &hdr);
-+	encode_getfattr_open(xdr, args->bitmask, args->open_bitmap, &hdr);
- 	encode_nops(&hdr);
- }
- 
--- 
-1.7.7.6
+# /tmp/nfsidmap -cv
+nfsidmap: fopen(/proc/keys) failed: No such file or directory
 
+
+Hmm, not what I was expecting ... grep grep ahhh:
+
+config KEYS_DEBUG_PROC_KEYS
+        bool "Enable the /proc/keys file by which keys may be viewed"
+
+# zcat /proc/config.gz | grep KEYS_DEBUG_PROC
+# CONFIG_KEYS_DEBUG_PROC_KEYS is not set
+
+
+That explains it then - we need a debug option set or we cannot flush the
+idmap cache.  I guess flushing a cache is a debugging operation, but its a
+bit surprising.  And in my case: annoying.
+
+Would you expect distros to enable CONFIG_KEYS_DEBUG_PROC_KEYS?  If so I'll
+get it enabled for SUSE (it is enabled in the 'debug' kernel, but not
+'desktop' or 'default).  If not, the man page maybe should safe that -c and
+-r require a kernel with debugging enabled.
+
+But I set up another machine as the client and configured it properly before
+testing, and everything works fine and reasonably fast.  So my guess that
+id lookup for thousands of different ids caused slowness was probably wrong.
+
+
+Thanks,
+NeilBrown
+
+--Sig_/ZevjVlOXQ45li81Ez03orvr
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
+
+iQIVAwUBUHNwPjnsnt1WYoG5AQKb4Q//VRJAX8TqOQfXAbLLeTkUGB6Ci4K+yf0e
+gIfg9Zb8vZr6gNLOF8eHbV7ghEA1QMrEd7SjyxonBx+i2nehRKB7Al6HdGgAwQWr
+JhDPK4EBzST6ydOsaquCkl0i2MGFTYjmy0Y5FJq9buE6yoBQp1Kr89+CRMue4zub
+e2A3ssmCw5twwrHTCu71aTJZdUeq9m7LFHFJgLUDSyOAZeLwaRcBjH9kkwZxVDqs
+SXT5/NwQl593pBdlY1EolA1JVLLKpzcBInc4+VVwD2dvqynfVc2ynMzJ9DZiuaPP
+3NiqEeTWPYLvDUUX3noClAbIDZHORpJXplgBey4jBV9Y/LVsEkalFOi0qd3/6V7a
+/NkdxBtZ/p/SVSMGfYyYVJreDigGTXHyFbNspJ7nkKl42lM5ZnMURWhtpsF2JfX9
+zV+W+JsNGHkCdgYI8TPfN1THdhkW+wPdvm1BftxSly/353PTIkQuLPFfI1xytGqO
+NpGhWVjzzaA+iFX5w8zha0AmP7aW6MGNilelgq9kPOrcpQMtd2cFeRpconW3RbGy
+jlhD4Pujw2d4/Pc1ViaZupL7G34wdZB4tc/hOxZ2XqA4b+Qum6m8P6GRjQlAdjhn
+1RHYfeiKLry3vkwLOvE/7W4HTchM1qWDvXv6XTXx5PYi1zB/BhyRuy0nS0GwhRMG
+gmZtXnDqhos=
+=dfQx
+-----END PGP SIGNATURE-----
+
+--Sig_/ZevjVlOXQ45li81Ez03orvr--
