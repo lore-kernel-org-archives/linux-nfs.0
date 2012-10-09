@@ -1,58 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:30809 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754273Ab2J2BDy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Oct 2012 21:03:54 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain; charset=us-ascii
-Subject: Legacy NFS client DNS resolver fails since 2.6.37
-Date: Sun, 28 Oct 2012 21:03:45 -0400
-Message-Id: <6F448C67-E729-41E7-A09C-A49D15B50D5E@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Neil Brown <neilb@suse.de>
-Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
+Received: from out03.mta.xmission.com ([166.70.13.233]:56713 "EHLO
+	out03.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755833Ab2JIWrw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Oct 2012 18:47:52 -0400
+From: ebiederm@xmission.com (Eric W. Biederman)
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "Myklebust\, Trond" <Trond.Myklebust@netapp.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel\@openvz.org" <devel@openvz.org>
+References: <20121008105437.18668.99905.stgit@localhost.localdomain>
+	<20121009193506.GA19680@fieldses.org>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA90901A143@SACEXCMBX04-PRD.hq.netapp.com>
+	<87txu3bdnj.fsf@xmission.com> <20121009223139.GA25826@fieldses.org>
+Date: Tue, 09 Oct 2012 15:47:42 -0700
+In-Reply-To: <20121009223139.GA25826@fieldses.org> (J. Bruce Fields's message
+	of "Tue, 9 Oct 2012 18:31:39 -0400")
+Message-ID: <87bogb1cvl.fsf@xmission.com>
+MIME-Version: 1.0
+Content-Type: text/plain
+Subject: Re: [PATCH v3] SUNRPC: set desired file system root before connecting local transports
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Neil-
+"J. Bruce Fields" <bfields@fieldses.org> writes:
 
-To use the legacy DNS resolver for resolving hostnames in NFSv4 referrals, I've installed the /sbin/nfs_cache_getent script on my NFS client "degas."  I've confirmed it works with a 2.6.36 kernel.
+> On Tue, Oct 09, 2012 at 01:20:48PM -0700, Eric W. Biederman wrote:
+>> "Myklebust, Trond" <Trond.Myklebust@netapp.com> writes:
+>> 
+>> > On Tue, 2012-10-09 at 15:35 -0400, J. Bruce Fields wrote:
+>> >> Cc'ing Eric since I seem to recall he suggested doing it this way?
+>> 
+>> Yes.  On second look setting fs->root won't work. We need to change fs.
+>> The problem is that by default all kernel threads share fs so changing
+>> fs->root will have non-local consequences.
+>
+> Oh, huh.  And we can't "unshare" it somehow?
 
-However, since 2.6.37 commit c5b29f885afe890f953f7f23424045cdad31d3e4 "sunrpc: use seconds since boot in expiry cache" the legacy DNS resolver appears not to work.  When attempting to follow a referral that uses a server hostname, the client fails 100% of the time to mount the referred to server with an error such as:
+I don't fully understand how nfs uses kernel threads and work queues.
+My general understanding is work queues reuse their kernel threads
+between different users.  So it is mostly a don't pollute your
+environment thing.  If there was a dedicated kernel thread for each
+environment this would be trivial.
 
-  [cel@degas example.net]$ ls home
-  ls: cannot open directory home: No such file or directory
+What I was suggesting here is changing task->fs instead of
+task->fs.root.  That should just require task_lock().
 
-The contents of the dns_resolve cache appear to indicate that there are resolution results in the cache, but the CACHE_VALID flag is not set for that entry:
+> Or, previously you suggested:
+>
+> 	- introduce sockaddr_fd that can be applied to AF_UNIX sockets,
+> 	  and teach unix_bind and unix_connect how to deal with a second
+> 	  type of sockaddr, AT_FD:
+> 	  struct sockaddr_fd { short fd_family; short pad; int fd; }
+>
+> 	- introduce sockaddr_unix_at that takes a directory file
+> 	  descriptor as well as a unix path, and teach unix_bind and
+> 	  unix_connect to deal with a second sockaddr type, AF_UNIX_AT:
+> 	  struct sockaddr_unix_at { short family; short pad; int dfd; char path[102]; }
+>
+> Any other options?
 
-  [root@degas dns_resolve]# cat content 
-  # ip address      hostname        ttl
-  #               , klimt.example.net 48
+I am still half hoping we don't have to change the userspace API/ABI.
+There is sanity checking on that path that no one seems interested in to
+solve this problem.
 
-klimt.example.net is the hostname that is contained in the referral.
+This is a weird issue as we are dealing with both the vfs and the
+networking stack.  Fundamentally we need to change task->fs.root or
+we need to capitialize on the openat functionality in the kernel, so
+that we don't create mountains of special cases to support this.
 
-I have a second referral called "ip-address" in the same directory (domainroot), with the same content except the IP address of klimt is used instead of its hostname.  Following that second referral always works.
+I think swapping task->fs instead of task->fs.root is effecitely the
+same complexity.
 
-I've tried every stable.0 release up to 3.6.0, and the behavior is roughly the same for each, which suggests that there is no upstream fix for this issue thus far.
+>> I very much believe we want if at all possible to perform a local
+>> modification.
+>> 
+>> Changing fs isn't all that different from what devtmpfs is doing.
+>
+> Sorry, I don't know much about devtmpfs, are you suggesting it as a
+> model?  What exactly should we look at?
 
-Since I've never seen a problem like this reported, I'm wondering if anyone else can confirm this issue.
+Roughly all I meant was that devtmpsfsd is a kernel thread that runs
+with an unshared fs struct.  Although I admit devtmpfsd is for all
+practical purposes a userspace daemon that just happens to run in kernel
+space.
 
-I have a narrow interest in fixing the legacy DNS server in stable kernels, but there may also be a latent problem with the RPC cache implementation that could spell trouble for other consumers, even post-3.6.
-
-A rough outline of how you might reproduce this:
-
-  + Build and install a 2.6.37 or later kernel for your NFS client with CONFIG_NFS_USE_LEGACY_DNS=y.
-
-  + Set up an NFS server with "refer=" exports.  man exports(5)
-
-  + On your client, mount the server directory that contains the exports, then try to "cd" through one of the referrals.
-
-If you don't feel up to replicating the above arrangement, can you suggest cache debugging instrumentation that can be added to my client to help nail this?  Thanks for any advice!
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+Eric
 
