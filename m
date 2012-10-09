@@ -1,46 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f44.google.com ([74.125.82.44]:50817 "EHLO
-	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752307Ab2JMChY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Oct 2012 22:37:24 -0400
-Received: by mail-wg0-f44.google.com with SMTP id dr13so2895314wgb.1
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Oct 2012 19:37:22 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <5078D17C.9090002@panasas.com>
-References: <20121012211701.GA8301@bitmover.com> <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
- <5078D17C.9090002@panasas.com>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Sat, 13 Oct 2012 11:37:01 +0900
-Message-ID: <CA+55aFyreSgqjkc5_hFjcX2PkWp0TXjMccPydO6wMj+hwC5Qqw@mail.gmail.com>
-Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Bruce Fields <bfields@fieldses.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Larry McVoy <lm@bitmover.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from smtp3-g21.free.fr ([212.27.42.3]:59563 "EHLO smtp3-g21.free.fr"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752473Ab2JITo5 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Oct 2012 15:44:57 -0400
+Date: Tue, 9 Oct 2012 21:44:37 +0200
+From: Emmanuel Florac <eflorac@intellique.com>
+To: David Werner <david.werner@iws.uni-stuttgart.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Problem with NFSv4 (server: NetApp-Filer, client openSUSE-11.4,
+ 12.1 and 12.2)
+Message-ID: <20121009214437.7a01c1cf@galadriel.home>
+In-Reply-To: <20121009192724.GA12172@tindra.iws.uni-stuttgart.de>
+References: <20121009135919.GA16012@tindra.iws.uni-stuttgart.de>
+	<20121009162126.432516c2@harpe.intellique.com>
+	<20121009150958.GB16012@tindra.iws.uni-stuttgart.de>
+	<20121009181511.09686f13@harpe.intellique.com>
+	<20121009192724.GA12172@tindra.iws.uni-stuttgart.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Oct 13, 2012 at 11:27 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
->
-> I suspect the BUG_ON() belongs else where.
-> Perhaps we should add __func__ to the BUG_ON macro exactly for times
-> that source and Kernel get out of sync.
+Le Tue, 9 Oct 2012 21:27:24 +0200 vous écriviez:
 
-BUG_ON already does the whole "line and file" thing, so the exact
-BUG_ON() should be very well pinpointed.
+> The first line contains our netgroups and is the directory we mount.
 
-Sometimes various distro changes do make the lines move around, but
-clntxdr.c has been very stable, and line 226 has the same BUG_ON in it
-in both 3.2 and 3.6, so I seriously doubt that's the case.
+Yes, nothing special apparently.
 
-And that function is definitely called, it's just that you missed the
-magic cpp stuff. See the preprocessor using it like this:
+> I think some deduplication is enabled.
+> Today I made a test with ubuntu-12.04.1 client, with the same problem.
+> 
 
-  .p_encode    = (kxdreproc_t)nlm_xdr_enc_##argtype,
+So this may be a kernel bug. I'll have a quick look.
 
-so the nlm_xdr_enc_res() function ends up being used as the .p_encode
-function for the 'res' argtype.. (and same for testres)
-
-             Linus
+-- 
+------------------------------------------------------------------------
+Emmanuel Florac     |   Direction technique
+                    |   Intellique
+                    |	<eflorac@intellique.com>
+                    |   +33 1 78 94 84 02
+------------------------------------------------------------------------
