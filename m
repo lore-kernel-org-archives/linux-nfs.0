@@ -1,66 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from zep00a03.dent.med.uni-muenchen.de ([138.246.161.8]:54112 "HELO
-	md.dent.med.uni-muenchen.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1754170Ab2JMVqz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 13 Oct 2012 17:46:55 -0400
-Date: 13 Oct 2012 23:46:52 +0200
-Message-ID: <20121013214652.23089.qmail@md.dent.med.uni-muenchen.de>
-From: Wolfram Gloger <wmglo@dent.med.uni-muenchen.de>
-To: chuck.lever@oracle.com
-CC: linux-nfs@vger.kernel.org
-In-reply-to: <F5C4FA78-A467-4306-BC57-0A50D8F0A8A9@oracle.com> (message from
-	Chuck Lever on Sat, 13 Oct 2012 13:25:57 -0400)
-Subject: Re: [PATCH] nfs-utils: Backgrounding mount broken with NFS versions <4
-References: <20121012120030.18411.qmail@md.dent.med.uni-muenchen.de> <6AB50360-BADE-4544-85CF-700C63A44FDE@oracle.com> <20121013171856.10814.qmail@md.dent.med.uni-muenchen.de> <F5C4FA78-A467-4306-BC57-0A50D8F0A8A9@oracle.com>
+Received: from charon.rus.uni-stuttgart.de ([129.69.1.54]:41397 "EHLO
+	charon.rus.uni-stuttgart.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755686Ab2JIOHV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Oct 2012 10:07:21 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by charon.rus.uni-stuttgart.de (Postfix) with ESMTP id 23EBA5FDA8
+	for <linux-nfs@vger.kernel.org>; Tue,  9 Oct 2012 15:59:21 +0200 (CEST)
+Received: from charon.rus.uni-stuttgart.de ([127.0.0.1])
+	by localhost (charon.rus.uni-stuttgart.de [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id NHyV8LZjqO45 for <linux-nfs@vger.kernel.org>;
+	Tue,  9 Oct 2012 15:59:19 +0200 (CEST)
+Received: from tindra.iws.uni-stuttgart.de (tindra.iws.uni-stuttgart.de [129.69.98.190])
+	by charon.rus.uni-stuttgart.de (Postfix) with ESMTP
+	for <linux-nfs@vger.kernel.org>; Tue,  9 Oct 2012 15:59:19 +0200 (CEST)
+Date: Tue, 9 Oct 2012 15:59:19 +0200
+From: David Werner <david.werner@iws.uni-stuttgart.de>
+To: linux-nfs@vger.kernel.org
+Subject: Problem with NFSv4 (server: NetApp-Filer, client openSUSE-11.4,
+ 12.1 and 12.2)
+Message-ID: <20121009135919.GA16012@tindra.iws.uni-stuttgart.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+Hi, 
 
-> >>> 	result = nfs_sys_mount(mi, options);
-> > 
-> > No, nfs_sys_mount() does not use mi->extra_opts at all, only the
-> > binary options.
-> 
-> This is the text-based code, which I wrote.  nfs_sys_mount() passes an options string (NUL-terminated C string) to the kernel, not a binary object.  That string contains all the FS-specific mount options specified by the user.
-> 
-> But your patch makes that string empty, by my reading.  I think this is incorrect.
+We have a serious problem to use NFS v4 with recent openSUSE versions.
+Provided that I have write permission to the directory I touch, I can do
+the following for getting a stale file handle:
 
-Ok, I'm happy to go through this line-by-line.
+> touch .. 
+> ls
+ls: cannot open directory .: Stale NFS file handle
 
-static int nfs_sys_mount(struct nfsmount_info *mi, struct mount_options *opts)
-{
-        char *options = NULL;
-        int result;
+This makes the filesystem quite unusable, as anything which touches a
+directory above (like writing a file) can stop an application.
+If I leave the directory and cd into it again, it content is listable.
+>From our computing center that the server runs I got the information
+that it is NetApp ONTAP 7.3.6P4. 
+I observed the problem here with openSUSE-11.4 (kernel: 2.6.37.6-0.20-desktop),
+openSUSE-12.1 (kernel: 3.4.4-1-desktop), openSUSE-12.2 (kernel: 3.4.6-2.10-desktop)
+and  all x86_64 architecture but _not_ with openSUSE-11.3 (kernel: 2.6.34.10-0.6-desktop).
+We use NFSv4 without encryption and userdata from NIS.
+I'm looking for suggestions to resolve this problem.
 
-        if (mi->fake)
-                return 1;
 
-        if (po_join(opts, &options) == PO_FAILED) { // HERE
-                errno = EIO;
-                return 0;
-        }
+Best regards, David
 
-        result = mount(mi->spec, mi->node, mi->type,
-                        mi->flags & ~(MS_USER|MS_USERS), options);
-...
-}
-
-nfs_sys_mount() constructs the text options _itself_ purely from the
-opts (2nd) argument HERE -- po_join has opts as input and options as
-output.
-
-My patch only changes the first argument (mi).  So, no functional change
-within nfs_sys_mount() at all.
-
-The functional change is that with my patch, mi->extra_opts is kept
-unchanged unless the system call is successful.  mi->extra_opts is
-actually reused later throughout the mount program, because
-nfsmount_string() has extra_opts as an input _and_ output argument,
-and propagates mi->extra_opts into the extra_opts variable in main.c.
-
-I have actually tested this patch extensively and it fixes the
-problem.
-
-Regards,
-Wolfram.
+-- 
+David Werner
+Universitaet Stuttgart
+Institut für Wasser- und Umweltsystemmodellierung
+Lehrstuhl fuer Hydromechanik &  Hydrosystemmodellierung
+Pfaffenwaldring 61 ** 70569 Stuttgart
+Tel.: ++49-711-685 67010 ** Fax: ++49-711-685 60430
+david.werner@iws.uni-stuttgart.de
+http://www.hydrosys.uni-stuttgart.de/
