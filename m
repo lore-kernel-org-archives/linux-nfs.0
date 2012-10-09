@@ -1,146 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:51526 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:55423 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755247Ab2JOVbv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Oct 2012 17:31:51 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 02/13] NFS: Remove asserts from the NFS XDR code
-Date: Mon, 15 Oct 2012 17:30:55 -0400
-Message-Id: <1350336667-18770-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1350336667-18770-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1350336667-18770-1-git-send-email-Trond.Myklebust@netapp.com>
- <1350336667-18770-2-git-send-email-Trond.Myklebust@netapp.com>
+	id S1752391Ab2JIONe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Oct 2012 10:13:34 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: David Howells <dhowells@redhat.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [GIT PULL] Disintegrate UAPI for nfs
+Date: Tue, 9 Oct 2012 14:13:30 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90901876D@SACEXCMBX04-PRD.hq.netapp.com>
+References: <30732.1349789436@warthog.procyon.org.uk>
+In-Reply-To: <30732.1349789436@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Convert the ones that are not trivial to check into WARN_ON_ONCE().
-Remove checks for things such as NFS2_MAXPATHLEN, which are trivially
-done by the caller.
-
-Add a comment to the case of nfs3_xdr_enc_setacl3args. What is being
-done there is just wrong...
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs2xdr.c | 4 +---
- fs/nfs/nfs3xdr.c | 7 +++----
- fs/nfs/nfs4xdr.c | 6 ++----
- 3 files changed, 6 insertions(+), 11 deletions(-)
-
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index d04f0df..06b9df4 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -195,7 +195,6 @@ static void encode_fhandle(struct xdr_stream *xdr, const struct nfs_fh *fh)
- {
- 	__be32 *p;
- 
--	BUG_ON(fh->size != NFS2_FHSIZE);
- 	p = xdr_reserve_space(xdr, NFS2_FHSIZE);
- 	memcpy(p, fh->data, NFS2_FHSIZE);
- }
-@@ -388,7 +387,7 @@ static void encode_filename(struct xdr_stream *xdr,
- {
- 	__be32 *p;
- 
--	BUG_ON(length > NFS2_MAXNAMLEN);
-+	WARN_ON_ONCE(length > NFS2_MAXNAMLEN);
- 	p = xdr_reserve_space(xdr, 4 + length);
- 	xdr_encode_opaque(p, name, length);
- }
-@@ -428,7 +427,6 @@ static void encode_path(struct xdr_stream *xdr, struct page **pages, u32 length)
- {
- 	__be32 *p;
- 
--	BUG_ON(length > NFS2_MAXPATHLEN);
- 	p = xdr_reserve_space(xdr, 4);
- 	*p = cpu_to_be32(length);
- 	xdr_write_pages(xdr, pages, 0, length);
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index 6cbe894..bffc324 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -198,7 +198,7 @@ static void encode_filename3(struct xdr_stream *xdr,
- {
- 	__be32 *p;
- 
--	BUG_ON(length > NFS3_MAXNAMLEN);
-+	WARN_ON_ONCE(length > NFS3_MAXNAMLEN);
- 	p = xdr_reserve_space(xdr, 4 + length);
- 	xdr_encode_opaque(p, name, length);
- }
-@@ -238,7 +238,6 @@ out_overflow:
- static void encode_nfspath3(struct xdr_stream *xdr, struct page **pages,
- 			    const u32 length)
- {
--	BUG_ON(length > NFS3_MAXPATHLEN);
- 	encode_uint32(xdr, length);
- 	xdr_write_pages(xdr, pages, 0, length);
- }
-@@ -388,7 +387,6 @@ out_overflow:
-  */
- static void encode_ftype3(struct xdr_stream *xdr, const u32 type)
- {
--	BUG_ON(type > NF3FIFO);
- 	encode_uint32(xdr, type);
- }
- 
-@@ -443,7 +441,7 @@ static void encode_nfs_fh3(struct xdr_stream *xdr, const struct nfs_fh *fh)
- {
- 	__be32 *p;
- 
--	BUG_ON(fh->size > NFS3_FHSIZE);
-+	WARN_ON_ONCE(fh->size > NFS3_FHSIZE);
- 	p = xdr_reserve_space(xdr, 4 + fh->size);
- 	xdr_encode_opaque(p, fh->data, fh->size);
- }
-@@ -1339,6 +1337,7 @@ static void nfs3_xdr_enc_setacl3args(struct rpc_rqst *req,
- 	error = nfsacl_encode(xdr->buf, base, args->inode,
- 			    (args->mask & NFS_ACL) ?
- 			    args->acl_access : NULL, 1, 0);
-+	/* FIXME: this is just broken */
- 	BUG_ON(error < 0);
- 	error = nfsacl_encode(xdr->buf, base + error, args->inode,
- 			    (args->mask & NFS_DFACL) ?
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 40836ee..672d9b0 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -936,7 +936,7 @@ static void encode_compound_hdr(struct xdr_stream *xdr,
- 	 * but this is not required as a MUST for the server to do so. */
- 	hdr->replen = RPC_REPHDRSIZE + auth->au_rslack + 3 + hdr->taglen;
- 
--	BUG_ON(hdr->taglen > NFS4_MAXTAGLEN);
-+	WARN_ON_ONCE(hdr->taglen > NFS4_MAXTAGLEN);
- 	encode_string(xdr, hdr->taglen, hdr->tag);
- 	p = reserve_space(xdr, 8);
- 	*p++ = cpu_to_be32(hdr->minorversion);
-@@ -955,7 +955,7 @@ static void encode_op_hdr(struct xdr_stream *xdr, enum nfs_opnum4 op,
- 
- static void encode_nops(struct compound_hdr *hdr)
- {
--	BUG_ON(hdr->nops > NFS4_MAX_OPS);
-+	WARN_ON_ONCE(hdr->nops > NFS4_MAX_OPS);
- 	*hdr->nops_p = htonl(hdr->nops);
- }
- 
-@@ -1403,7 +1403,6 @@ static void encode_opentype(struct xdr_stream *xdr, const struct nfs_openargs *a
- 		*p = cpu_to_be32(NFS4_OPEN_NOCREATE);
- 		break;
- 	default:
--		BUG_ON(arg->claim != NFS4_OPEN_CLAIM_NULL);
- 		*p = cpu_to_be32(NFS4_OPEN_CREATE);
- 		encode_createmode(xdr, arg);
- 	}
-@@ -1621,7 +1620,6 @@ encode_setacl(struct xdr_stream *xdr, struct nfs_setaclargs *arg, struct compoun
- 	p = reserve_space(xdr, 2*4);
- 	*p++ = cpu_to_be32(1);
- 	*p = cpu_to_be32(FATTR4_WORD0_ACL);
--	BUG_ON(arg->acl_len % 4);
- 	p = reserve_space(xdr, 4);
- 	*p = cpu_to_be32(arg->acl_len);
- 	xdr_write_pages(xdr, arg->acl_pages, arg->acl_pgbase, arg->acl_len);
--- 
-1.7.11.7
-
+T24gVHVlLCAyMDEyLTEwLTA5IGF0IDE0OjMwICswMTAwLCBEYXZpZCBIb3dlbGxzIHdyb3RlOg0K
+PiBDYW4geW91IG1lcmdlIHRoZSBmb2xsb3dpbmcgYnJhbmNoIGludG8gdGhlIG5mcyB0cmVlIHBs
+ZWFzZS4NCj4gDQo+IFRoaXMgaXMgdG8gY29tcGxldGUgcGFydCBvZiB0aGUgVXNlcnNwYWNlIEFQ
+SSAoVUFQSSkgZGlzaW50ZWdyYXRpb24gZm9yIHdoaWNoDQo+IHRoZSBwcmVwYXJhdG9yeSBwYXRj
+aGVzIHdlcmUgcHVsbGVkIHJlY2VudGx5LiAgQWZ0ZXIgdGhlc2UgcGF0Y2hlcywgdXNlcnNwYWNl
+DQo+IGhlYWRlcnMgd2lsbCBiZSBzZWdyZWdhdGVkIGludG86DQo+IA0KPiAJaW5jbHVkZS91YXBp
+L2xpbnV4Ly4uLi9mb28uaA0KPiANCj4gZm9yIHRoZSB1c2Vyc3BhY2UgaW50ZXJmYWNlIHN0dWZm
+LCBhbmQ6DQo+IA0KPiAJaW5jbHVkZS9saW51eC8uLi4vZm9vLmgNCj4gDQo+IGZvciB0aGUgc3Ry
+aWN0bHkga2VybmVsIGludGVybmFsIHN0dWZmLg0KPiANCj4gLS0tDQo+IFRoZSBmb2xsb3dpbmcg
+Y2hhbmdlcyBzaW5jZSBjb21taXQgOWUyZDg2NTZmNWU4YWEyMTRlNjZiNDYyNjgwY2Y4NmIyMTBi
+NzRhODoNCj4gDQo+ICAgTWVyZ2UgYnJhbmNoICdha3BtJyAoQW5kcmV3J3MgcGF0Y2gtYm9tYikg
+KDIwMTItMTAtMDkgMTY6MjM6MTUgKzA5MDApDQo+IA0KPiBhcmUgYXZhaWxhYmxlIGluIHRoZSBn
+aXQgcmVwb3NpdG9yeSBhdDoNCj4gDQo+IA0KPiAgIGdpdDovL2dpdC5pbmZyYWRlYWQub3JnL3Vz
+ZXJzL2Rob3dlbGxzL2xpbnV4LWhlYWRlcnMuZ2l0IHRhZ3MvZGlzaW50ZWdyYXRlLW5mcy0yMDEy
+MTAwOQ0KPiANCj4gZm9yIHlvdSB0byBmZXRjaCBjaGFuZ2VzIHVwIHRvIGUzZGQ5YTUyY2I1NTUy
+YzQ2YzJhNGNhN2NjZGZiNGRhYjVjNzI0NTc6DQo+IA0KPiAgIFVBUEk6IChTY3JpcHRlZCkgRGlz
+aW50ZWdyYXRlIGluY2x1ZGUvbGludXgvc3VucnBjICgyMDEyLTEwLTA5IDA5OjQ5OjA0ICswMTAw
+KQ0KPiANCj4gLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLQ0KPiBVQVBJIERpc2ludGVncmF0aW9uIDIwMTItMTAtMDkNCj4gDQo+
+IC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0NCj4gRGF2aWQgSG93ZWxscyAoMik6DQo+ICAgICAgIFVBUEk6IChTY3JpcHRlZCkg
+RGlzaW50ZWdyYXRlIGluY2x1ZGUvbGludXgvbmZzZA0KPiAgICAgICBVQVBJOiAoU2NyaXB0ZWQp
+IERpc2ludGVncmF0ZSBpbmNsdWRlL2xpbnV4L3N1bnJwYw0KPiANCj4gIGluY2x1ZGUvbGludXgv
+bmZzZC9LYnVpbGQgICAgICAgICAgIHwgICA1IC0tDQo+ICBpbmNsdWRlL2xpbnV4L25mc2QvZGVi
+dWcuaCAgICAgICAgICB8ICAzMSArLS0tLS0tLS0NCj4gIGluY2x1ZGUvbGludXgvbmZzZC9leHBv
+cnQuaCAgICAgICAgIHwgIDUyICstLS0tLS0tLS0tLS0tLQ0KPiAgaW5jbHVkZS9saW51eC9uZnNk
+L25mc2ZoLmggICAgICAgICAgfCAxMTEgKy0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0N
+Cj4gIGluY2x1ZGUvbGludXgvbmZzZC9zdGF0cy5oICAgICAgICAgIHwgICA4ICstLQ0KPiAgaW5j
+bHVkZS9saW51eC9zdW5ycGMvS2J1aWxkICAgICAgICAgfCAgIDEgLQ0KPiAgaW5jbHVkZS9saW51
+eC9zdW5ycGMvZGVidWcuaCAgICAgICAgfCAgMzkgKy0tLS0tLS0tLS0tDQo+ICBpbmNsdWRlL3Vh
+cGkvbGludXgvbmZzZC9LYnVpbGQgICAgICB8ICAgNSArKw0KPiAgaW5jbHVkZS97ID0+IHVhcGl9
+L2xpbnV4L25mc2QvY2xkLmggfCAgIDANCj4gIGluY2x1ZGUvdWFwaS9saW51eC9uZnNkL2RlYnVn
+LmggICAgIHwgIDQwICsrKysrKysrKysrKw0KPiAgaW5jbHVkZS91YXBpL2xpbnV4L25mc2QvZXhw
+b3J0LmggICAgfCAgNTggKysrKysrKysrKysrKysrKysNCj4gIGluY2x1ZGUvdWFwaS9saW51eC9u
+ZnNkL25mc2ZoLmggICAgIHwgMTIyICsrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
+Kw0KPiAgaW5jbHVkZS91YXBpL2xpbnV4L25mc2Qvc3RhdHMuaCAgICAgfCAgMTcgKysrKysNCj4g
+IGluY2x1ZGUvdWFwaS9saW51eC9zdW5ycGMvS2J1aWxkICAgIHwgICAxICsNCj4gIGluY2x1ZGUv
+dWFwaS9saW51eC9zdW5ycGMvZGVidWcuaCAgIHwgIDQ4ICsrKysrKysrKysrKysrDQo+ICAxNSBm
+aWxlcyBjaGFuZ2VkLCAyOTYgaW5zZXJ0aW9ucygrKSwgMjQyIGRlbGV0aW9ucygtKQ0KPiAgcmVu
+YW1lIGluY2x1ZGUveyA9PiB1YXBpfS9saW51eC9uZnNkL2NsZC5oICgxMDAlKQ0KPiAgY3JlYXRl
+IG1vZGUgMTAwNjQ0IGluY2x1ZGUvdWFwaS9saW51eC9uZnNkL2RlYnVnLmgNCj4gIGNyZWF0ZSBt
+b2RlIDEwMDY0NCBpbmNsdWRlL3VhcGkvbGludXgvbmZzZC9leHBvcnQuaA0KPiAgY3JlYXRlIG1v
+ZGUgMTAwNjQ0IGluY2x1ZGUvdWFwaS9saW51eC9uZnNkL25mc2ZoLmgNCj4gIGNyZWF0ZSBtb2Rl
+IDEwMDY0NCBpbmNsdWRlL3VhcGkvbGludXgvbmZzZC9zdGF0cy5oDQo+ICBjcmVhdGUgbW9kZSAx
+MDA2NDQgaW5jbHVkZS91YXBpL2xpbnV4L3N1bnJwYy9kZWJ1Zy5oDQoNClRoZXNlIGZpbGVzIGxv
+b2sgbGlrZSB0aGV5IGFyZSBtYWlubHkgTkZTIHNlcnZlciByZWxhdGVkLCBzbyBwZXJoYXBzIGl0
+DQppcyBiZXR0ZXIgdG8gbWVyZ2UgdGhyb3VnaCBCcnVjZSdzIHRyZWUuDQoNCkJydWNlPw0KDQot
+LSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFw
+cA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
