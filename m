@@ -1,84 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:15962 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755125Ab2JPQbL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Oct 2012 12:31:11 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 15/25] SUNRPC: remove BUG_ON()s from *_reclassify_socket*
-Date: Tue, 16 Oct 2012 12:30:33 -0400
-Message-Id: <1350405043-39316-15-git-send-email-dros@netapp.com>
-In-Reply-To: <1350405043-39316-1-git-send-email-dros@netapp.com>
-References: <1350405043-39316-1-git-send-email-dros@netapp.com>
+Received: from hydra.rus.uni-stuttgart.de ([129.69.1.55]:42466 "EHLO
+	hydra.rus.uni-stuttgart.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754876Ab2JIT11 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Oct 2012 15:27:27 -0400
+Date: Tue, 9 Oct 2012 21:27:24 +0200
+From: David Werner <david.werner@iws.uni-stuttgart.de>
+To: linux-nfs@vger.kernel.org
+Cc: eflorac@intellique.com
+Subject: Re: Problem with NFSv4 (server: NetApp-Filer, client
+ openSUSE-11.4, 12.1 and 12.2)
+Message-ID: <20121009192724.GA12172@tindra.iws.uni-stuttgart.de>
+References: <20121009135919.GA16012@tindra.iws.uni-stuttgart.de>
+ <20121009162126.432516c2@harpe.intellique.com>
+ <20121009150958.GB16012@tindra.iws.uni-stuttgart.de>
+ <20121009181511.09686f13@harpe.intellique.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <20121009181511.09686f13@harpe.intellique.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Replace multiple BUG_ON() calls with WARN_ON_ONCE() and early return when
-sanity checking socket ownership (lock). The bind call will fail if the
-socket was unsuccessfully reclassified.
+On Tue, Oct 09, 2012 at 06:15:11PM +0200, Emmanuel Florac wrote:
+> Le Tue, 9 Oct 2012 17:09:59 +0200
+> David Werner <david.werner@iws.uni-stuttgart.de> écrivait:
+> 
+> > 	rus4iws.rus.uni-stuttgart.de:/vol/rus4iws_data0/ on /home
+> > type nfs4
+> > (rw,relatime,sync,vers=4.0,rsize=65536,wsize=65536,namlen=255,acregmin=0,acregmax=0,acdirmin=0,acdirmax=0,hard,noac,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=129.69.98.101,local_lock=none,addr=129.69.201.103)
+> > 
+> > But it did not resolve anything. 
+> 
+> Is the NetApp exported volume compressed by any chance? What does the
+> output from "showmount -e <filer>" looks like for the related exports?
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- net/sunrpc/svcsock.c  |    6 +++++-
- net/sunrpc/xprtsock.c |    7 ++++---
- 2 files changed, 9 insertions(+), 4 deletions(-)
+output of showmount -e: 
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 03827ce..cc3020d 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -84,7 +84,11 @@ static struct lock_class_key svc_slock_key[2];
- static void svc_reclassify_socket(struct socket *sock)
- {
- 	struct sock *sk = sock->sk;
--	BUG_ON(sock_owned_by_user(sk));
-+
-+	WARN_ON_ONCE(sock_owned_by_user(sk));
-+	if (sock_owned_by_user(sk))
-+		return;
-+
- 	switch (sk->sk_family) {
- 	case AF_INET:
- 		sock_lock_init_class_and_name(sk, "slock-AF_INET-NFSD",
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index aaaadfb..4e76d38 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1762,7 +1762,6 @@ static inline void xs_reclassify_socketu(struct socket *sock)
- {
- 	struct sock *sk = sock->sk;
- 
--	BUG_ON(sock_owned_by_user(sk));
- 	sock_lock_init_class_and_name(sk, "slock-AF_LOCAL-RPC",
- 		&xs_slock_key[1], "sk_lock-AF_LOCAL-RPC", &xs_key[1]);
- }
-@@ -1771,7 +1770,6 @@ static inline void xs_reclassify_socket4(struct socket *sock)
- {
- 	struct sock *sk = sock->sk;
- 
--	BUG_ON(sock_owned_by_user(sk));
- 	sock_lock_init_class_and_name(sk, "slock-AF_INET-RPC",
- 		&xs_slock_key[0], "sk_lock-AF_INET-RPC", &xs_key[0]);
- }
-@@ -1780,13 +1778,16 @@ static inline void xs_reclassify_socket6(struct socket *sock)
- {
- 	struct sock *sk = sock->sk;
- 
--	BUG_ON(sock_owned_by_user(sk));
- 	sock_lock_init_class_and_name(sk, "slock-AF_INET6-RPC",
- 		&xs_slock_key[1], "sk_lock-AF_INET6-RPC", &xs_key[1]);
- }
- 
- static inline void xs_reclassify_socket(int family, struct socket *sock)
- {
-+	WARN_ON_ONCE(sock_owned_by_user(sock->sk));
-+	if (sock_owned_by_user(sock->sk))
-+		return;
-+
- 	switch (family) {
- 	case AF_LOCAL:
- 		xs_reclassify_socketu(sock);
+Export list for rus4iws.rus.uni-stuttgart.de:
+/vol/rus4iws_data0
+129.69.201.31,129.69.201.39,ikearw,ikea1,ikea2,ikea3,teleloch
+/vol/rus4iws_vol0  129.69.201.31,129.69.201.39
+
+The first line contains our netgroups and is the directory we mount.
+I think some deduplication is enabled.
+Today I made a test with ubuntu-12.04.1 client, with the same problem.
+
 -- 
-1.7.9.6 (Apple Git-31.1)
-
+David Werner
+Universitaet Stuttgart
+Institut für Wasser- und Umweltsystemmodellierung
+Lehrstuhl fuer Hydromechanik &  Hydrosystemmodellierung
+Pfaffenwaldring 61 ** 70569 Stuttgart
+Tel.: ++49-711-685 67010 ** Fax: ++49-711-685 60430
+david.werner@iws.uni-stuttgart.de
