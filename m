@@ -1,69 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from li9-11.members.linode.com ([67.18.176.11]:57861 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932185Ab2JZU4c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Oct 2012 16:56:32 -0400
-Date: Fri, 26 Oct 2012 16:56:18 -0400
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: Nix <nix@esperi.org.uk>
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
-        Bryan Schumaker <bjschuma@netapp.com>, Peng Tao <bergwolf@gmail.com>,
-        Trond.Myklebust@netapp.com, gregkh@linuxfoundation.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3
- (and other stable branches?)
-Message-ID: <20121026205618.GC8614@thunk.org>
-References: <87objupjlr.fsf@spindle.srvr.nix>
- <20121023013343.GB6370@fieldses.org>
- <87mwzdnuww.fsf@spindle.srvr.nix>
- <20121023143019.GA3040@fieldses.org>
- <874nllxi7e.fsf_-_@spindle.srvr.nix>
- <87pq48nbyz.fsf_-_@spindle.srvr.nix>
- <508AF3FA.4020506@redhat.com>
- <87wqydx957.fsf@spindle.srvr.nix>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87wqydx957.fsf@spindle.srvr.nix>
+Received: from mx1.redhat.com ([209.132.183.28]:47551 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755688Ab2JINak (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Oct 2012 09:30:40 -0400
+From: David Howells <dhowells@redhat.com>
+To: Trond.Myklebust@netapp.com
+Cc: dhowells@redhat.com, bfields@fieldses.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: [GIT PULL] Disintegrate UAPI for nfs
+Date: Tue, 09 Oct 2012 14:30:36 +0100
+Message-ID: <30732.1349789436@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 26, 2012 at 09:37:08PM +0100, Nix wrote:
-> 
-> I can reproduce this on a small filesystem and stick the image somewhere
-> if that would be of any use to anyone. (If I'm very lucky, merely making
-> this offer will make the problem go away. :} )
+Can you merge the following branch into the nfs tree please.
 
-I'm not sure the image is going to be that useful.  What we really
-need to do is to get a reliable reproduction of what _you_ are seeing.
+This is to complete part of the Userspace API (UAPI) disintegration for which
+the preparatory patches were pulled recently.  After these patches, userspace
+headers will be segregated into:
 
-It's clear from Eric's experiments that journal_checksum is dangerous.
-In fact, I will likely put it under an #ifdef EXT4_EXPERIMENTAL to try
-to discourage people from using it in the future.  There are things
-I've been planning on doing to make it be safer, but there's a very
-good *reason* that both journal_checksum and journal_async_commit are
-not on by default.
+	include/uapi/linux/.../foo.h
 
-That's why one of the things I asked you to do when you had time was
-to see if you could reproduce the problem you are seeing w/o
-nobarrier,journal_checksum,journal_async_commit.
+for the userspace interface stuff, and:
 
-The other experiment that would be really useful if you could do is to
-try to apply these two patches which I sent earlier this week:
+	include/linux/.../foo.h
 
-[PATCH 1/2] ext4: revert "jbd2: don't write superblock when if its empty
-[PATCH 2/2] ext4: fix I/O error when unmounting an ro file system
+for the strictly kernel internal stuff.
 
-... and see if they make a difference.
+---
+The following changes since commit 9e2d8656f5e8aa214e66b462680cf86b210b74a8:
 
-If they don't make a difference, I don't want to apply patches just
-for placebo/PR reasons.  And for Eric at least, he can reproduce the
-journal checksum error followed by fairly significant corruption
-reported by e2fsck with journal_checksum, and the presence or absense
-of these patches make no difference for him.  So I really don't want
-to push these patches to Linus until I get confirmation that they make
-a difference to *somebody*.
+  Merge branch 'akpm' (Andrew's patch-bomb) (2012-10-09 16:23:15 +0900)
 
-Regards,
+are available in the git repository at:
 
-						- Ted
+
+  git://git.infradead.org/users/dhowells/linux-headers.git tags/disintegrate-nfs-20121009
+
+for you to fetch changes up to e3dd9a52cb5552c46c2a4ca7ccdfb4dab5c72457:
+
+  UAPI: (Scripted) Disintegrate include/linux/sunrpc (2012-10-09 09:49:04 +0100)
+
+----------------------------------------------------------------
+UAPI Disintegration 2012-10-09
+
+----------------------------------------------------------------
+David Howells (2):
+      UAPI: (Scripted) Disintegrate include/linux/nfsd
+      UAPI: (Scripted) Disintegrate include/linux/sunrpc
+
+ include/linux/nfsd/Kbuild           |   5 --
+ include/linux/nfsd/debug.h          |  31 +--------
+ include/linux/nfsd/export.h         |  52 +--------------
+ include/linux/nfsd/nfsfh.h          | 111 +-------------------------------
+ include/linux/nfsd/stats.h          |   8 +--
+ include/linux/sunrpc/Kbuild         |   1 -
+ include/linux/sunrpc/debug.h        |  39 +-----------
+ include/uapi/linux/nfsd/Kbuild      |   5 ++
+ include/{ => uapi}/linux/nfsd/cld.h |   0
+ include/uapi/linux/nfsd/debug.h     |  40 ++++++++++++
+ include/uapi/linux/nfsd/export.h    |  58 +++++++++++++++++
+ include/uapi/linux/nfsd/nfsfh.h     | 122 ++++++++++++++++++++++++++++++++++++
+ include/uapi/linux/nfsd/stats.h     |  17 +++++
+ include/uapi/linux/sunrpc/Kbuild    |   1 +
+ include/uapi/linux/sunrpc/debug.h   |  48 ++++++++++++++
+ 15 files changed, 296 insertions(+), 242 deletions(-)
+ rename include/{ => uapi}/linux/nfsd/cld.h (100%)
+ create mode 100644 include/uapi/linux/nfsd/debug.h
+ create mode 100644 include/uapi/linux/nfsd/export.h
+ create mode 100644 include/uapi/linux/nfsd/nfsfh.h
+ create mode 100644 include/uapi/linux/nfsd/stats.h
+ create mode 100644 include/uapi/linux/sunrpc/debug.h
+.
