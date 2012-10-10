@@ -1,44 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:33605 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754731Ab2JWOx1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Oct 2012 10:53:27 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 12/25] SUNRPC: remove BUG_ON calls from cache_read
-Date: Tue, 23 Oct 2012 10:43:36 -0400
-Message-Id: <1351003429-18887-13-git-send-email-dros@netapp.com>
-In-Reply-To: <1351003429-18887-1-git-send-email-dros@netapp.com>
-References: <1351003429-18887-1-git-send-email-dros@netapp.com>
+Received: from relay.parallels.com ([195.214.232.42]:45972 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752036Ab2JJFEF convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Oct 2012 01:04:05 -0400
+Message-ID: <507501AD.7030202@parallels.com>
+Date: Wed, 10 Oct 2012 09:03:41 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: "Eric W. Biederman" <ebiederm@xmission.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v3] SUNRPC: set desired file system root before connecting
+ local transports
+References: <20121008105437.18668.99905.stgit@localhost.localdomain> <20121009193506.GA19680@fieldses.org> <4FA345DA4F4AE44899BD2B03EEEC2FA90901A143@SACEXCMBX04-PRD.hq.netapp.com> <87txu3bdnj.fsf@xmission.com> <20121009223139.GA25826@fieldses.org> <87bogb1cvl.fsf@xmission.com>
+In-Reply-To: <87bogb1cvl.fsf@xmission.com>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Replace BUG_ON() with WARN_ON_ONCE() in two parts of cache_read().
+10.10.2012 02:47, Eric W. Biederman пишет:
+> "J. Bruce Fields" <bfields@fieldses.org> writes:
+>
+>> On Tue, Oct 09, 2012 at 01:20:48PM -0700, Eric W. Biederman wrote:
+>>> "Myklebust, Trond" <Trond.Myklebust@netapp.com> writes:
+>>>
+>>>> On Tue, 2012-10-09 at 15:35 -0400, J. Bruce Fields wrote:
+>>>>> Cc'ing Eric since I seem to recall he suggested doing it this way?
+>>> Yes.  On second look setting fs->root won't work. We need to change fs.
+>>> The problem is that by default all kernel threads share fs so changing
+>>> fs->root will have non-local consequences.
+>> Oh, huh.  And we can't "unshare" it somehow?
+> I don't fully understand how nfs uses kernel threads and work queues.
+> My general understanding is work queues reuse their kernel threads
+> between different users.  So it is mostly a don't pollute your
+> environment thing.  If there was a dedicated kernel thread for each
+> environment this would be trivial.
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- net/sunrpc/cache.c |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+One kernel thread per environment is exactly what we are trying to avoid 
+if possible.
+And the reason why we don't want to do this is that it's really looks 
+like overkill.
 
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 2a68bb3..d051451 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -775,11 +775,11 @@ static ssize_t cache_read(struct file *filp, char __user *buf, size_t count,
- 	if (rp->q.list.next == &cd->queue) {
- 		spin_unlock(&queue_lock);
- 		mutex_unlock(&inode->i_mutex);
--		BUG_ON(rp->offset);
-+		WARN_ON_ONCE(rp->offset);
- 		return 0;
- 	}
- 	rq = container_of(rp->q.list.next, struct cache_request, q.list);
--	BUG_ON(rq->q.reader);
-+	WARN_ON_ONCE(rq->q.reader);
- 	if (rp->offset == 0)
- 		rq->readers++;
- 	spin_unlock(&queue_lock);
--- 
-1.7.9.6 (Apple Git-31.1)
+> What I was suggesting here is changing task->fs instead of
+> task->fs.root.  That should just require task_lock().
+>
+>> Or, previously you suggested:
+>>
+>> 	- introduce sockaddr_fd that can be applied to AF_UNIX sockets,
+>> 	  and teach unix_bind and unix_connect how to deal with a second
+>> 	  type of sockaddr, AT_FD:
+>> 	  struct sockaddr_fd { short fd_family; short pad; int fd; }
+>>
+>> 	- introduce sockaddr_unix_at that takes a directory file
+>> 	  descriptor as well as a unix path, and teach unix_bind and
+>> 	  unix_connect to deal with a second sockaddr type, AF_UNIX_AT:
+>> 	  struct sockaddr_unix_at { short family; short pad; int dfd; char path[102]; }
+>>
+>> Any other options?
+> I am still half hoping we don't have to change the userspace API/ABI.
+> There is sanity checking on that path that no one seems interested in to
+> solve this problem.
+>
+> This is a weird issue as we are dealing with both the vfs and the
+> networking stack.  Fundamentally we need to change task->fs.root or
+> we need to capitialize on the openat functionality in the kernel, so
+> that we don't create mountains of special cases to support this.
+>
+> I think swapping task->fs instead of task->fs.root is effecitely the
+> same complexity.
+
+Thanks for the idea. And for mentioning, that kernel threads shares fs 
+struct. I missed it.
+
+>
+>>> I very much believe we want if at all possible to perform a local
+>>> modification.
+>>>
+>>> Changing fs isn't all that different from what devtmpfs is doing.
+>> Sorry, I don't know much about devtmpfs, are you suggesting it as a
+>> model?  What exactly should we look at?
+> Roughly all I meant was that devtmpsfsd is a kernel thread that runs
+> with an unshared fs struct.  Although I admit devtmpfsd is for all
+> practical purposes a userspace daemon that just happens to run in kernel
+> space.
+>
+> Eric
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
