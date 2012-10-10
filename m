@@ -1,44 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47965 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:33447 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757886Ab2JXVcO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Oct 2012 17:32:14 -0400
-Date: Wed, 24 Oct 2012 17:32:13 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 0/4] nfsd: add a usermodehelper upcall for client id
- tracking
-Message-ID: <20121024213213.GI6697@fieldses.org>
-References: <1351089018-24551-1-git-send-email-jlayton@redhat.com>
+	id S1753706Ab2JJM2g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Oct 2012 08:28:36 -0400
+Date: Wed, 10 Oct 2012 08:28:33 -0400
+To: Ivan Romanov <drizt@land.ru>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: exportfs crash with long path
+Message-ID: <20121010122833.GD2935@fieldses.org>
+References: <1349708828.1183.5.camel@lix>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1351089018-24551-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1349708828.1183.5.camel@lix>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 24, 2012 at 10:30:14AM -0400, Jeff Layton wrote:
-> This is a respin of the set with the same title that I sent on October
-> 3rd. The main difference is the addition of a printk warning for people
-> that are using the nfsdcld upcall, and some minor bugfixes and renaming
-> of functions for consistency.
+On Mon, Oct 08, 2012 at 09:07:08PM +0600, Ivan Romanov wrote:
+> Hello. I opened a bug with nfs-utils on Redhat Bugzilla. And got an
+> advice to email upstream. So I just repeat my bug text with a patch.
 > 
-> I'd like to see this go into 3.8 if possible.
+> How reproducible:
+> always
+> 
+> Steps to Reproduce:
+> # mkdir -p /home/kudinae/Общедоступные
+> # echo '/home/kudinae/Общедоступные oek-1(rw,sync,no_wdelay,no_root_squash,no_subtree_check)' > /etc/exports
+> # exportfs -a
+> Segmentation fault
+> 
+> I've obtained the sources. So a crush happens on export.c:293. variable
+> pos has negative value. I think problem into strtoint and export_hash
+> functions. strtoint has unsigned type and always returns positive value
+> but export_hash impicity cast it to signed int. So it is possible to
+> get negative value. I wrote patch to fix this.
 
-Thanks, two questions (see individual replies) aside, this seems fine.
-
---b.
+The fix looks right to me, thanks.--b.
 
 > 
-> Jeff Layton (4):
->   nfsd: add a usermodehelper upcall for NFSv4 client ID tracking
->   nfsd: change heuristic for selecting the client_tracking_ops
->   nfsd: pass info about the legacy recoverydir in environment variables
->   nfsd: warn about impending removal of nfsdcld upcall
-> 
->  fs/nfsd/nfs4recover.c | 247 ++++++++++++++++++++++++++++++++++++++++++++++++--
->  1 file changed, 237 insertions(+), 10 deletions(-)
-> 
-> -- 
-> 1.7.11.7
-> 
+> Original Red Hat bug
+> https://bugzilla.redhat.com/show_bug.cgi?id=863054
+
+> diff --git a/support/export/export.c b/support/export/export.c
+> index 4fda30a..0257903 100644
+> --- a/support/export/export.c
+> +++ b/support/export/export.c
+> @@ -357,7 +357,7 @@ strtoint(char *str)
+>  static int 
+>  export_hash(char *str)
+>  {
+> -	int num = strtoint(str);
+> +	unsigned int num = strtoint(str);
+>  
+>  	return num % HASH_TABLE_SIZE;
+>  }
+
