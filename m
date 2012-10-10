@@ -1,152 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f174.google.com ([209.85.216.174]:57265 "EHLO
-	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751541Ab2J1TDK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Oct 2012 15:03:10 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH v7 02/16] userns: use new hashtable implementation
-Date: Sun, 28 Oct 2012 15:02:14 -0400
-Message-Id: <1351450948-15618-2-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
-References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:38002 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757243Ab2JJBXu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Oct 2012 21:23:50 -0400
+Date: Tue, 9 Oct 2012 21:23:36 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Eric W. Biederman" <ebiederm@xmission.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: [PATCH v3] SUNRPC: set desired file system root before
+ connecting local transports
+Message-ID: <20121010012336.GA2935@fieldses.org>
+References: <20121008105437.18668.99905.stgit@localhost.localdomain>
+ <20121009193506.GA19680@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90901A143@SACEXCMBX04-PRD.hq.netapp.com>
+ <87txu3bdnj.fsf@xmission.com>
+ <20121009223139.GA25826@fieldses.org>
+ <87bogb1cvl.fsf@xmission.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <87bogb1cvl.fsf@xmission.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch to using the new hashtable implementation to store user structs.
-This reduces the amount of generic unrelated code in kernel/user.c.
+On Tue, Oct 09, 2012 at 03:47:42PM -0700, Eric W. Biederman wrote:
+> "J. Bruce Fields" <bfields@fieldses.org> writes:
+> 
+> > On Tue, Oct 09, 2012 at 01:20:48PM -0700, Eric W. Biederman wrote:
+> >> "Myklebust, Trond" <Trond.Myklebust@netapp.com> writes:
+> >> 
+> >> > On Tue, 2012-10-09 at 15:35 -0400, J. Bruce Fields wrote:
+> >> >> Cc'ing Eric since I seem to recall he suggested doing it this way?
+> >> 
+> >> Yes.  On second look setting fs->root won't work. We need to change fs.
+> >> The problem is that by default all kernel threads share fs so changing
+> >> fs->root will have non-local consequences.
+> >
+> > Oh, huh.  And we can't "unshare" it somehow?
+> 
+> I don't fully understand how nfs uses kernel threads and work queues.
+> My general understanding is work queues reuse their kernel threads
+> between different users.  So it is mostly a don't pollute your
+> environment thing.  If there was a dedicated kernel thread for each
+> environment this would be trivial.
+> 
+> What I was suggesting here is changing task->fs instead of
+> task->fs.root.  That should just require task_lock().
 
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
----
- kernel/user.c | 33 +++++++++++++--------------------
- 1 file changed, 13 insertions(+), 20 deletions(-)
+Oh, OK, got it--if that works, great.
 
-diff --git a/kernel/user.c b/kernel/user.c
-index 750acff..8cd922a 100644
---- a/kernel/user.c
-+++ b/kernel/user.c
-@@ -16,6 +16,7 @@
- #include <linux/interrupt.h>
- #include <linux/export.h>
- #include <linux/user_namespace.h>
-+#include <linux/hashtable.h>
- 
- /*
-  * userns count is 1 for root user, 1 for init_uts_ns,
-@@ -60,13 +61,9 @@ EXPORT_SYMBOL_GPL(init_user_ns);
-  */
- 
- #define UIDHASH_BITS	(CONFIG_BASE_SMALL ? 3 : 7)
--#define UIDHASH_SZ	(1 << UIDHASH_BITS)
--#define UIDHASH_MASK		(UIDHASH_SZ - 1)
--#define __uidhashfn(uid)	(((uid >> UIDHASH_BITS) + uid) & UIDHASH_MASK)
--#define uidhashentry(uid)	(uidhash_table + __uidhashfn((__kuid_val(uid))))
- 
- static struct kmem_cache *uid_cachep;
--struct hlist_head uidhash_table[UIDHASH_SZ];
-+static DEFINE_HASHTABLE(uidhash_table, UIDHASH_BITS);
- 
- /*
-  * The uidhash_lock is mostly taken from process context, but it is
-@@ -92,22 +89,22 @@ struct user_struct root_user = {
- /*
-  * These routines must be called with the uidhash spinlock held!
-  */
--static void uid_hash_insert(struct user_struct *up, struct hlist_head *hashent)
-+static void uid_hash_insert(struct user_struct *up)
- {
--	hlist_add_head(&up->uidhash_node, hashent);
-+	hash_add(uidhash_table, &up->uidhash_node, __kuid_val(up->uid));
- }
- 
- static void uid_hash_remove(struct user_struct *up)
- {
--	hlist_del_init(&up->uidhash_node);
-+	hash_del(&up->uidhash_node);
- }
- 
--static struct user_struct *uid_hash_find(kuid_t uid, struct hlist_head *hashent)
-+static struct user_struct *uid_hash_find(kuid_t uid)
- {
- 	struct user_struct *user;
- 	struct hlist_node *h;
- 
--	hlist_for_each_entry(user, h, hashent, uidhash_node) {
-+	hash_for_each_possible(uidhash_table, user, h, uidhash_node, __kuid_val(uid)) {
- 		if (uid_eq(user->uid, uid)) {
- 			atomic_inc(&user->__count);
- 			return user;
-@@ -143,7 +140,7 @@ struct user_struct *find_user(kuid_t uid)
- 	unsigned long flags;
- 
- 	spin_lock_irqsave(&uidhash_lock, flags);
--	ret = uid_hash_find(uid, uidhashentry(uid));
-+	ret = uid_hash_find(uid);
- 	spin_unlock_irqrestore(&uidhash_lock, flags);
- 	return ret;
- }
-@@ -164,11 +161,10 @@ void free_uid(struct user_struct *up)
- 
- struct user_struct *alloc_uid(kuid_t uid)
- {
--	struct hlist_head *hashent = uidhashentry(uid);
- 	struct user_struct *up, *new;
- 
- 	spin_lock_irq(&uidhash_lock);
--	up = uid_hash_find(uid, hashent);
-+	up = uid_hash_find(uid);
- 	spin_unlock_irq(&uidhash_lock);
- 
- 	if (!up) {
-@@ -184,13 +180,13 @@ struct user_struct *alloc_uid(kuid_t uid)
- 		 * on adding the same user already..
- 		 */
- 		spin_lock_irq(&uidhash_lock);
--		up = uid_hash_find(uid, hashent);
-+		up = uid_hash_find(uid);
- 		if (up) {
- 			key_put(new->uid_keyring);
- 			key_put(new->session_keyring);
- 			kmem_cache_free(uid_cachep, new);
- 		} else {
--			uid_hash_insert(new, hashent);
-+			uid_hash_insert(new);
- 			up = new;
- 		}
- 		spin_unlock_irq(&uidhash_lock);
-@@ -204,17 +200,14 @@ out_unlock:
- 
- static int __init uid_cache_init(void)
- {
--	int n;
--
- 	uid_cachep = kmem_cache_create("uid_cache", sizeof(struct user_struct),
- 			0, SLAB_HWCACHE_ALIGN|SLAB_PANIC, NULL);
- 
--	for(n = 0; n < UIDHASH_SZ; ++n)
--		INIT_HLIST_HEAD(uidhash_table + n);
-+	hash_init(uidhash_table);
- 
- 	/* Insert the root user immediately (init already runs as root) */
- 	spin_lock_irq(&uidhash_lock);
--	uid_hash_insert(&root_user, uidhashentry(GLOBAL_ROOT_UID));
-+	uid_hash_insert(&root_user);
- 	spin_unlock_irq(&uidhash_lock);
- 
- 	return 0;
--- 
-1.7.12.4
+> > Sorry, I don't know much about devtmpfs, are you suggesting it as a
+> > model?  What exactly should we look at?
+> 
+> Roughly all I meant was that devtmpsfsd is a kernel thread that runs
+> with an unshared fs struct.  Although I admit devtmpfsd is for all
+> practical purposes a userspace daemon that just happens to run in kernel
+> space.
 
+Thanks for the explanation.
+
+--b.
