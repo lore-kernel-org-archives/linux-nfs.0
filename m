@@ -1,45 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45227 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757670Ab2JQTCm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Oct 2012 15:02:42 -0400
-Date: Wed, 17 Oct 2012 15:02:33 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: Trond.Myklebust@netapp.com, davem@davemloft.net, davej@redhat.com,
-        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] SUNRPC: Prevent kernel stack corruption on long values
- of flush
-Message-ID: <20121017190233.GA8630@fieldses.org>
-References: <1342476086-21638-1-git-send-email-levinsasha928@gmail.com>
- <20120718173913.GA1298@fieldses.org>
- <CA+1xoqcgWTP8pAY3Ok2R0JM-ZXSkGroEvAFcqP0KaK=dABiTXA@mail.gmail.com>
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:42220 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755227Ab2JJCtG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Oct 2012 22:49:06 -0400
+Received: by mail-ie0-f174.google.com with SMTP id k13so82308iea.19
+        for <linux-nfs@vger.kernel.org>; Tue, 09 Oct 2012 19:49:06 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CA+1xoqcgWTP8pAY3Ok2R0JM-ZXSkGroEvAFcqP0KaK=dABiTXA@mail.gmail.com>
+In-Reply-To: <5074B53A.3030207@RedHat.com>
+References: <CAA7C2qiZhHD7-RHP93LCVOBGCmp4JxyJwRLa0AR8a=oi4fi2Gg@mail.gmail.com>
+	<5072B1E5.9060808@RedHat.com>
+	<CAA7C2qjRPs3pb66s2HDJqEyn0yGfGS_88+yvJNo0fhFQ9M6S3g@mail.gmail.com>
+	<5074B53A.3030207@RedHat.com>
+Date: Tue, 9 Oct 2012 19:49:05 -0700
+Message-ID: <CAA7C2qg558GBYgaE2_Ay9QmC48UryG_9PqLP7Vebb1_QzRZd-g@mail.gmail.com>
+Subject: Re: Problem with rpcbind
+From: VDR User <user.vdr@gmail.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 17, 2012 at 01:59:39PM -0400, Sasha Levin wrote:
-> On Wed, Jul 18, 2012 at 1:39 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Tue, Jul 17, 2012 at 12:01:26AM +0200, Sasha Levin wrote:
-> >> The buffer size in read_flush() is too small for the longest possible values
-> >> for it. This can lead to a kernel stack corruption:
-> >
-> > Thanks!
-> 
-> I've just stumbled on this crash again, and noticed that this patch
-> never made it in.
-> 
-> Was it just a mixup, or is something still missing?
+On Tue, Oct 9, 2012 at 4:37 PM, Steve Dickson <SteveD@redhat.com> wrote:
+>>>> Per Aníbal Salazar, I'm sending this to the nfs mailing list..
+>>>>
+>>>> ==========
+>>>>
+>>>> Hi. I would like to know who I can talk to about having the rpcbind's
+>>>> timeout value settable on the command line by the user. In many cases
+>>>> the timeout is too long, requiring hackish solutions. It would be
+>>>> best, and makes sense, that the user should be able to set the timeout
+>>>> to something other than the default value if he chooses. If you could
+>>>> direct me to the right person to talk to about it, I'd appreciate it.
+>>>
+>>> What timeout are you referring to? The one given to poll()?
+>>
+>> Hi. I guess so but not really sure. I'm talking about the timeout that
+>> happens when rpcbind is waiting for a response. Sounds like poll()
+>> could be it. We have an nfs server on .100 and the response happens
+>> immediately.
+>>
+>> $ rpcinfo -t 192.168.1.100 nfs
+>> program 100003 version 2 ready and waiting
+>> program 100003 version 3 ready and waiting
+>> program 100003 version 4 ready and waiting
+>>
+>> but there's no server on say .101 so if we run the same command on
+>> that ip, the timeout takes a very long time. It's this timeout that
+>> should be user-definable on the command line in my opinion. Any
+>> thoughts about it?
+>
+> Hmm... I'm guess that is the 7min tcp connect time out cause by
+> the -t option... Try using -u instead of -t... Basically using
+> UDP instead of TCP... In general I would never recommend that
+> but in this particular case it might help...
 
-Oh, man, I guess I got distracted by the subsequent base10len()
-discussion.
+Thanks for this suggestion. I tried with -u but the timeout still
+takes at least 1 min. Is it not feasible to have a command line
+timeout where users can set it to something appropriate for their
+needs? For example, in our case we only need about 5 seconds at most.
 
-Added to my for-3.7 branch, I'll push that out after some tests and
-hopefully send in a pull request tomorrow.
-
-Thanks for noticing the ommission.
-
---b.
+Cheers
