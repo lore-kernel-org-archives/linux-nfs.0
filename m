@@ -1,250 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f53.google.com ([209.85.216.53]:65273 "EHLO
-	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751541Ab2J1TDG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Oct 2012 15:03:06 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH v7 01/16] hashtable: introduce a small and naive hashtable
-Date: Sun, 28 Oct 2012 15:02:13 -0400
-Message-Id: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:2360 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756614Ab2JJSGW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Oct 2012 14:06:22 -0400
+Received: from vmwexceht01-prd.hq.netapp.com (vmwexceht01-prd.hq.netapp.com [10.106.76.239])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q9AI6Kqo029795
+	for <linux-nfs@vger.kernel.org>; Wed, 10 Oct 2012 11:06:20 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] NFSv4.1	do not wake up all tasks on data server
+ reset to MDS
+Date: Wed, 10 Oct 2012 18:06:19 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9091CE9D7@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1349817608-4730-1-git-send-email-andros@netapp.com>
+	 <1349817608-4730-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1349817608-4730-2-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This hashtable implementation is using hlist buckets to provide a simple
-hashtable to prevent it from getting reimplemented all over the kernel.
-
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
----
-
-Sorry for the long delay, I was busy with a bunch of personal things.
-
-Changes since v6:
-
- - Use macros that point to internal static inline functions instead of
- implementing everything as a macro.
- - Rebase on latest -next.
- - Resending the enter patch series on request.
- - Break early from hash_empty() if found to be non-empty.
- - DECLARE_HASHTABLE/DEFINE_HASHTABLE.
-
-
- include/linux/hashtable.h | 193 ++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 193 insertions(+)
- create mode 100644 include/linux/hashtable.h
-
-diff --git a/include/linux/hashtable.h b/include/linux/hashtable.h
-new file mode 100644
-index 0000000..1fb8c97
---- /dev/null
-+++ b/include/linux/hashtable.h
-@@ -0,0 +1,193 @@
-+/*
-+ * Statically sized hash table implementation
-+ * (C) 2012  Sasha Levin <levinsasha928@gmail.com>
-+ */
-+
-+#ifndef _LINUX_HASHTABLE_H
-+#define _LINUX_HASHTABLE_H
-+
-+#include <linux/list.h>
-+#include <linux/types.h>
-+#include <linux/kernel.h>
-+#include <linux/hash.h>
-+#include <linux/rculist.h>
-+
-+#define DEFINE_HASHTABLE(name, bits)						\
-+	struct hlist_head name[1 << bits] =					\
-+			{ [0 ... ((1 << bits) - 1)] = HLIST_HEAD_INIT }
-+
-+#define DECLARE_HASHTABLE(name, bits)                                   	\
-+	struct hlist_head name[1 << (bits)]
-+
-+#define HASH_SIZE(name) (ARRAY_SIZE(name))
-+#define HASH_BITS(name) ilog2(HASH_SIZE(name))
-+
-+/* Use hash_32 when possible to allow for fast 32bit hashing in 64bit kernels. */
-+#define hash_min(val, bits)							\
-+({										\
-+	sizeof(val) <= 4 ?							\
-+	hash_32(val, bits) :							\
-+	hash_long(val, bits);							\
-+})
-+
-+static inline void __hash_init(struct hlist_head *ht, int sz)
-+{
-+	int i;
-+
-+	for (i = 0; i < sz; i++)
-+		INIT_HLIST_HEAD(&ht[sz]);
-+}
-+
-+/**
-+ * hash_init - initialize a hash table
-+ * @hashtable: hashtable to be initialized
-+ *
-+ * Calculates the size of the hashtable from the given parameter, otherwise
-+ * same as hash_init_size.
-+ *
-+ * This has to be a macro since HASH_BITS() will not work on pointers since
-+ * it calculates the size during preprocessing.
-+ */
-+#define hash_init(hashtable) __hash_init(hashtable, HASH_SIZE(hashtable))
-+
-+/**
-+ * hash_add - add an object to a hashtable
-+ * @hashtable: hashtable to add to
-+ * @node: the &struct hlist_node of the object to be added
-+ * @key: the key of the object to be added
-+ */
-+#define hash_add(hashtable, node, key)						\
-+	hlist_add_head(node, &hashtable[hash_min(key, HASH_BITS(hashtable))]);
-+
-+/**
-+ * hash_add_rcu - add an object to a rcu enabled hashtable
-+ * @hashtable: hashtable to add to
-+ * @node: the &struct hlist_node of the object to be added
-+ * @key: the key of the object to be added
-+ */
-+#define hash_add_rcu(hashtable, node, key)					\
-+	hlist_add_head_rcu(node, &hashtable[hash_min(key, HASH_BITS(hashtable))]);
-+
-+/**
-+ * hash_hashed - check whether an object is in any hashtable
-+ * @node: the &struct hlist_node of the object to be checked
-+ */
-+#define hash_hashed(node) (!hlist_unhashed(node))
-+
-+static inline bool __hash_empty(struct hlist_head *ht, int sz)
-+{
-+	int i;
-+
-+	for (i = 0; i < sz; i++)
-+		if (!hlist_empty(&ht[i]))
-+			return false;
-+
-+	return true;
-+}
-+
-+/**
-+ * hash_empty - check whether a hashtable is empty
-+ * @hashtable: hashtable to check
-+ *
-+ * This has to be a macro since HASH_BITS() will not work on pointers since
-+ * it calculates the size during preprocessing.
-+ */
-+#define hash_empty(hashtable) __hash_empty(hashtable, HASH_SIZE(hashtable))
-+
-+/**
-+ * hash_del - remove an object from a hashtable
-+ * @node: &struct hlist_node of the object to remove
-+ */
-+static inline void hash_del(struct hlist_node *node)
-+{
-+	hlist_del_init(node);
-+}
-+
-+/**
-+ * hash_del_rcu - remove an object from a rcu enabled hashtable
-+ * @node: &struct hlist_node of the object to remove
-+ */
-+static inline void hash_del_rcu(struct hlist_node *node)
-+{
-+	hlist_del_init_rcu(node);
-+}
-+
-+/**
-+ * hash_for_each - iterate over a hashtable
-+ * @name: hashtable to iterate
-+ * @bkt: integer to use as bucket loop cursor
-+ * @node: the &struct list_head to use as a loop cursor for each entry
-+ * @obj: the type * to use as a loop cursor for each entry
-+ * @member: the name of the hlist_node within the struct
-+ */
-+#define hash_for_each(name, bkt, node, obj, member)				\
-+	for (bkt = 0, node = NULL; node == NULL && bkt < HASH_SIZE(name); bkt++)\
-+		hlist_for_each_entry(obj, node, &name[bkt], member)
-+
-+/**
-+ * hash_for_each_rcu - iterate over a rcu enabled hashtable
-+ * @name: hashtable to iterate
-+ * @bkt: integer to use as bucket loop cursor
-+ * @node: the &struct list_head to use as a loop cursor for each entry
-+ * @obj: the type * to use as a loop cursor for each entry
-+ * @member: the name of the hlist_node within the struct
-+ */
-+#define hash_for_each_rcu(name, bkt, node, obj, member)				\
-+	for (bkt = 0, node = NULL; node == NULL && bkt < HASH_SIZE(name); bkt++)\
-+		hlist_for_each_entry_rcu(obj, node, &name[bkt], member)
-+
-+/**
-+ * hash_for_each_safe - iterate over a hashtable safe against removal of
-+ * hash entry
-+ * @name: hashtable to iterate
-+ * @bkt: integer to use as bucket loop cursor
-+ * @node: the &struct list_head to use as a loop cursor for each entry
-+ * @tmp: a &struct used for temporary storage
-+ * @obj: the type * to use as a loop cursor for each entry
-+ * @member: the name of the hlist_node within the struct
-+ */
-+#define hash_for_each_safe(name, bkt, node, tmp, obj, member)			\
-+	for (bkt = 0, node = NULL; node == NULL && bkt < HASH_SIZE(name); bkt++)\
-+		hlist_for_each_entry_safe(obj, node, tmp, &name[bkt], member)
-+
-+/**
-+ * hash_for_each_possible - iterate over all possible objects hashing to the
-+ * same bucket
-+ * @name: hashtable to iterate
-+ * @obj: the type * to use as a loop cursor for each entry
-+ * @node: the &struct list_head to use as a loop cursor for each entry
-+ * @member: the name of the hlist_node within the struct
-+ * @key: the key of the objects to iterate over
-+ */
-+#define hash_for_each_possible(name, obj, node, member, key)			\
-+	hlist_for_each_entry(obj, node,	&name[hash_min(key, HASH_BITS(name))], member)
-+
-+/**
-+ * hash_for_each_possible_rcu - iterate over all possible objects hashing to the
-+ * same bucket in an rcu enabled hashtable
-+ * in a rcu enabled hashtable
-+ * @name: hashtable to iterate
-+ * @obj: the type * to use as a loop cursor for each entry
-+ * @node: the &struct list_head to use as a loop cursor for each entry
-+ * @member: the name of the hlist_node within the struct
-+ * @key: the key of the objects to iterate over
-+ */
-+#define hash_for_each_possible_rcu(name, obj, node, member, key)		\
-+	hlist_for_each_entry_rcu(obj, node, &name[hash_min(key, HASH_BITS(name))], member)
-+
-+/**
-+ * hash_for_each_possible_safe - iterate over all possible objects hashing to the
-+ * same bucket safe against removals
-+ * @name: hashtable to iterate
-+ * @obj: the type * to use as a loop cursor for each entry
-+ * @node: the &struct list_head to use as a loop cursor for each entry
-+ * @tmp: a &struct used for temporary storage
-+ * @member: the name of the hlist_node within the struct
-+ * @key: the key of the objects to iterate over
-+ */
-+#define hash_for_each_possible_safe(name, obj, node, tmp, member, key)		\
-+	hlist_for_each_entry_safe(obj, node, tmp,				\
-+		&name[hash_min(key, HASH_BITS(name))], member)
-+
-+
-+#endif
--- 
-1.7.12.4
-
+T24gVHVlLCAyMDEyLTEwLTA5IGF0IDE3OjIwIC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
+ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFRoZXJl
+IGlzIG5vIGFkdmFudGFnZSB0byB3YWtpbmcgdXAgYWxsIHJwYyB0YXNrcyBvbiBlYWNoIGRhdGEg
+c2VydmVyIGRpc2Nvbm5lY3QNCj4gb3IgaW52YWxpZCBsYXlvdXQgZXJyb3IuDQo+IA0KPiBGb3Ig
+RFMgZGlzY29ubmVjdCBlcnJvcnMgd2hlcmUgdGhlIGRhdGEgc2VydmVyIGlzIHJlc2V0aW5nIGFs
+bCBJL08gdG8gdGhlIE1EUywNCj4gdGFza3Mgd2FrZW5lZCBmcm9tIHRoZSBmb3JlIGNoYW5uZWwg
+c2xvdCB0YWJsZSB3YWl0cSBhcmUgaW1tZWRpYXRlbHkgcmVzZXQNCj4gdG8gdXNlIHRoZSBNRFMg
+c2Vzc2lvbiwgYW5kIGRvIG5vdCByZXF1ZXN0IGEgZGF0YSBzZXJ2ZXIgc2Vzc2lvbiBzbG90LCBh
+bmQNCj4gc28gZG8gbm90IGNhbGwgbmZzNDFfc2Vzc2lvbl9mcmVlX3Nsb3QsIGFuZCBkbyBub3Qg
+d2FrZSB1cCB0aGUgbmV4dCB0YXNrIG9uDQo+IHRoZSBkYXRhIHNlcnZlciBzZXNzaW9uIGZvcmUg
+Y2hhbm5lbCBzbG90IHRhYmxlIHdhaXQgcXVldWUuDQo+IA0KPiBSZXBsYWNlIHRoZSBjYWxsIHRv
+IHJwY193YWtlX3VwIHdoaWNoIHdha2VzIHVwIGFsbCB0YXNrcyB3aXRoIGEgY2FsbCB0bw0KPiBy
+cGNfd2FrZV91cF9maXJzdCBpbiB0aGUgZmlsZWxheW91dCBJL08gcHJlcGFyZSByb3V0aW5lcyBm
+b3IgdGhlIGNhc2Ugd2hlcmUNCj4gSS9PIGlzIHJlZGlyZWN0ZWQgdG8gdGhlIE1EUy4NCj4gDQo+
+IFNoYXJlIGNvZGUgd2l0aCBuZnM0X2NoZWNrX2RyYWluX2ZjX2NvbXBsZXRlLg0KDQpUaGlzIHdp
+bGwgc3RpbGwgaGF2ZSBmYWxzZSBwb3NpdGl2ZSB3YWtldXBzLCB0aG91Z2gsIHNpbmNlIHRoZXJl
+IGlzIG5vDQpjb25uZWN0aW9uIHRvIG51bWJlciBvZiBzbG90cyB0aGF0IGFyZSBhdmFpbGFibGUu
+DQoNCkhvdyBhYm91dCByYXRoZXIganVzdCBsZXR0aW5nIHRoZSBzZXNzaW9uIGNvZGUgZHJpdmUg
+dGhlIHdha2V1cHM/IEknbQ0KdGhpbmtpbmcgc29tZXRoaW5nIGxpa2UgdGhlIGZvbGxvd2luZyBw
+YXRjaDoNCg0KODwtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLQ0KZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0X2ZzLmggYi9mcy9uZnMv
+bmZzNF9mcy5oDQppbmRleCBhNTI1ZmRlLi5kZjI0NzRiIDEwMDY0NA0KLS0tIGEvZnMvbmZzL25m
+czRfZnMuaA0KKysrIGIvZnMvbmZzL25mczRfZnMuaA0KQEAgLTI0OCw2ICsyNDgsNyBAQCBleHRl
+cm4gaW50IG5mczRfc2V0dXBfc2VxdWVuY2UoY29uc3Qgc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZl
+ciwNCiBleHRlcm4gaW50IG5mczQxX3NldHVwX3NlcXVlbmNlKHN0cnVjdCBuZnM0X3Nlc3Npb24g
+KnNlc3Npb24sDQogCQlzdHJ1Y3QgbmZzNF9zZXF1ZW5jZV9hcmdzICphcmdzLCBzdHJ1Y3QgbmZz
+NF9zZXF1ZW5jZV9yZXMgKnJlcywNCiAJCXN0cnVjdCBycGNfdGFzayAqdGFzayk7DQorZXh0ZXJu
+IHZvaWQgbmZzNDFfc2VxdWVuY2VfZnJlZV9zbG90KHN0cnVjdCBuZnM0X3NlcXVlbmNlX3JlcyAq
+cmVzKTsNCiBleHRlcm4gdm9pZCBuZnM0X2Rlc3Ryb3lfc2Vzc2lvbihzdHJ1Y3QgbmZzNF9zZXNz
+aW9uICpzZXNzaW9uKTsNCiBleHRlcm4gc3RydWN0IG5mczRfc2Vzc2lvbiAqbmZzNF9hbGxvY19z
+ZXNzaW9uKHN0cnVjdCBuZnNfY2xpZW50ICpjbHApOw0KIGV4dGVybiBpbnQgbmZzNF9wcm9jX2Ny
+ZWF0ZV9zZXNzaW9uKHN0cnVjdCBuZnNfY2xpZW50ICosIHN0cnVjdCBycGNfY3JlZCAqKTsNCmRp
+ZmYgLS1naXQgYS9mcy9uZnMvbmZzNGZpbGVsYXlvdXQuYyBiL2ZzL25mcy9uZnM0ZmlsZWxheW91
+dC5jDQppbmRleCA1MmQ4NDcyLi44MGFhMTlhIDEwMDY0NA0KLS0tIGEvZnMvbmZzL25mczRmaWxl
+bGF5b3V0LmMNCisrKyBiL2ZzL25mcy9uZnM0ZmlsZWxheW91dC5jDQpAQCAtMjkxLDE5ICsyOTEs
+MjAgQEAgc3RhdGljIHZvaWQgZmlsZWxheW91dF9yZWFkX3ByZXBhcmUoc3RydWN0IHJwY190YXNr
+ICp0YXNrLCB2b2lkICpkYXRhKQ0KIHsNCiAJc3RydWN0IG5mc19yZWFkX2RhdGEgKnJkYXRhID0g
+ZGF0YTsNCiANCisJaWYgKG5mczQxX3NldHVwX3NlcXVlbmNlKHJkYXRhLT5kc19jbHAtPmNsX3Nl
+c3Npb24sDQorCQkJCSZyZGF0YS0+YXJncy5zZXFfYXJncywgJnJkYXRhLT5yZXMuc2VxX3JlcywN
+CisJCQkJdGFzaykpDQorCQlyZXR1cm47DQorDQogCWlmIChmaWxlbGF5b3V0X3Jlc2V0X3RvX21k
+cyhyZGF0YS0+aGVhZGVyLT5sc2VnKSkgew0KIAkJZHByaW50aygiJXMgdGFzayAldSByZXNldCBp
+byB0byBNRFNcbiIsIF9fZnVuY19fLCB0YXNrLT50a19waWQpOw0KIAkJZmlsZWxheW91dF9yZXNl
+dF9yZWFkKHJkYXRhKTsNCisJCW5mczQxX3NlcXVlbmNlX2ZyZWVfc2xvdCgmcmRhdGEtPnJlcy5z
+ZXFfcmVzKTsNCiAJCXJwY19leGl0KHRhc2ssIDApOw0KIAkJcmV0dXJuOw0KIAl9DQogCXJkYXRh
+LT5yZWFkX2RvbmVfY2IgPSBmaWxlbGF5b3V0X3JlYWRfZG9uZV9jYjsNCiANCi0JaWYgKG5mczQx
+X3NldHVwX3NlcXVlbmNlKHJkYXRhLT5kc19jbHAtPmNsX3Nlc3Npb24sDQotCQkJCSZyZGF0YS0+
+YXJncy5zZXFfYXJncywgJnJkYXRhLT5yZXMuc2VxX3JlcywNCi0JCQkJdGFzaykpDQotCQlyZXR1
+cm47DQotDQogCXJwY19jYWxsX3N0YXJ0KHRhc2spOw0KIH0NCiANCkBAIC0zOTMsMTcgKzM5NCwx
+OCBAQCBzdGF0aWMgdm9pZCBmaWxlbGF5b3V0X3dyaXRlX3ByZXBhcmUoc3RydWN0IHJwY190YXNr
+ICp0YXNrLCB2b2lkICpkYXRhKQ0KIHsNCiAJc3RydWN0IG5mc193cml0ZV9kYXRhICp3ZGF0YSA9
+IGRhdGE7DQogDQorCWlmIChuZnM0MV9zZXR1cF9zZXF1ZW5jZSh3ZGF0YS0+ZHNfY2xwLT5jbF9z
+ZXNzaW9uLA0KKwkJCQkmd2RhdGEtPmFyZ3Muc2VxX2FyZ3MsICZ3ZGF0YS0+cmVzLnNlcV9yZXMs
+DQorCQkJCXRhc2spKQ0KKwkJcmV0dXJuOw0KKw0KIAlpZiAoZmlsZWxheW91dF9yZXNldF90b19t
+ZHMod2RhdGEtPmhlYWRlci0+bHNlZykpIHsNCiAJCWRwcmludGsoIiVzIHRhc2sgJXUgcmVzZXQg
+aW8gdG8gTURTXG4iLCBfX2Z1bmNfXywgdGFzay0+dGtfcGlkKTsNCiAJCWZpbGVsYXlvdXRfcmVz
+ZXRfd3JpdGUod2RhdGEpOw0KKwkJbmZzNDFfc2VxdWVuY2VfZnJlZV9zbG90KCZyZGF0YS0+cmVz
+LnNlcV9yZXMpOw0KIAkJcnBjX2V4aXQodGFzaywgMCk7DQogCQlyZXR1cm47DQogCX0NCi0JaWYg
+KG5mczQxX3NldHVwX3NlcXVlbmNlKHdkYXRhLT5kc19jbHAtPmNsX3Nlc3Npb24sDQotCQkJCSZ3
+ZGF0YS0+YXJncy5zZXFfYXJncywgJndkYXRhLT5yZXMuc2VxX3JlcywNCi0JCQkJdGFzaykpDQot
+CQlyZXR1cm47DQotDQogCXJwY19jYWxsX3N0YXJ0KHRhc2spOw0KIH0NCiANCmRpZmYgLS1naXQg
+YS9mcy9uZnMvbmZzNHByb2MuYyBiL2ZzL25mcy9uZnM0cHJvYy5jDQppbmRleCA2OGIyMWQ4Li5k
+MTg2YmUyIDEwMDY0NA0KLS0tIGEvZnMvbmZzL25mczRwcm9jLmMNCisrKyBiL2ZzL25mcy9uZnM0
+cHJvYy5jDQpAQCAtNDY4LDcgKzQ2OCw3IEBAIHZvaWQgbmZzNF9jaGVja19kcmFpbl9iY19jb21w
+bGV0ZShzdHJ1Y3QgbmZzNF9zZXNzaW9uICpzZXMpDQogCWNvbXBsZXRlKCZzZXMtPmJjX3Nsb3Rf
+dGFibGUuY29tcGxldGUpOw0KIH0NCiANCi1zdGF0aWMgdm9pZCBuZnM0MV9zZXF1ZW5jZV9mcmVl
+X3Nsb3Qoc3RydWN0IG5mczRfc2VxdWVuY2VfcmVzICpyZXMpDQordm9pZCBuZnM0MV9zZXF1ZW5j
+ZV9mcmVlX3Nsb3Qoc3RydWN0IG5mczRfc2VxdWVuY2VfcmVzICpyZXMpDQogew0KIAlzdHJ1Y3Qg
+bmZzNF9zbG90X3RhYmxlICp0Ymw7DQogDQpAQCAtNDg2LDYgKzQ4Niw3IEBAIHN0YXRpYyB2b2lk
+IG5mczQxX3NlcXVlbmNlX2ZyZWVfc2xvdChzdHJ1Y3QgbmZzNF9zZXF1ZW5jZV9yZXMgKnJlcykN
+CiAJc3Bpbl91bmxvY2soJnRibC0+c2xvdF90YmxfbG9jayk7DQogCXJlcy0+c3Jfc2xvdCA9IE5V
+TEw7DQogfQ0KK0VYUE9SVF9TWU1CT0xfR1BMKG5mczQxX3NlcXVlbmNlX2ZyZWVfc2xvdCk7DQog
+DQogc3RhdGljIGludCBuZnM0MV9zZXF1ZW5jZV9kb25lKHN0cnVjdCBycGNfdGFzayAqdGFzaywg
+c3RydWN0IG5mczRfc2VxdWVuY2VfcmVzICpyZXMpDQogew0KDQotLSANClRyb25kIE15a2xlYnVz
+dA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0
+QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
