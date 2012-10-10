@@ -1,126 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f174.google.com ([209.85.220.174]:39682 "EHLO
-	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934910Ab2JXP0M (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Oct 2012 11:26:12 -0400
-Received: by mail-vc0-f174.google.com with SMTP id fk26so666905vcb.19
-        for <linux-nfs@vger.kernel.org>; Wed, 24 Oct 2012 08:26:11 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 04/10] nfsdcltrack: break out a function to open the database handle
-Date: Wed, 24 Oct 2012 11:25:53 -0400
-Message-Id: <1351092359-25842-5-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1351092359-25842-1-git-send-email-jlayton@redhat.com>
-References: <1351092359-25842-1-git-send-email-jlayton@redhat.com>
+Received: from out02.mta.xmission.com ([166.70.13.232]:48181 "EHLO
+	out02.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751108Ab2JJCAp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Oct 2012 22:00:45 -0400
+From: ebiederm@xmission.com (Eric W. Biederman)
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "Myklebust\, Trond" <Trond.Myklebust@netapp.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel\@openvz.org" <devel@openvz.org>
+References: <20121008105437.18668.99905.stgit@localhost.localdomain>
+	<20121009193506.GA19680@fieldses.org>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA90901A143@SACEXCMBX04-PRD.hq.netapp.com>
+	<87txu3bdnj.fsf@xmission.com> <20121009223139.GA25826@fieldses.org>
+	<87bogb1cvl.fsf@xmission.com>
+Date: Tue, 09 Oct 2012 19:00:35 -0700
+In-Reply-To: <87bogb1cvl.fsf@xmission.com> (Eric W. Biederman's message of
+	"Tue, 09 Oct 2012 15:47:42 -0700")
+Message-ID: <87obkbytks.fsf@xmission.com>
+MIME-Version: 1.0
+Content-Type: text/plain
+Subject: Re: [PATCH v3] SUNRPC: set desired file system root before connecting local transports
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When we add a new usermodehelper upcall program to do the database
-access, the existing "init" function will be overkill every time
-we start up the program.
+ebiederm@xmission.com (Eric W. Biederman) writes:
 
-Break out the database handle establishment routine into a separate
-function that we can call from each upcall command in the one-shot
-program.
+> "J. Bruce Fields" <bfields@fieldses.org> writes:
+>
+>> On Tue, Oct 09, 2012 at 01:20:48PM -0700, Eric W. Biederman wrote:
+>>> "Myklebust, Trond" <Trond.Myklebust@netapp.com> writes:
+>>> 
+>>> > On Tue, 2012-10-09 at 15:35 -0400, J. Bruce Fields wrote:
+>>> >> Cc'ing Eric since I seem to recall he suggested doing it this way?
+>>> 
+>>> Yes.  On second look setting fs->root won't work. We need to change fs.
+>>> The problem is that by default all kernel threads share fs so changing
+>>> fs->root will have non-local consequences.
+>>
+>> Oh, huh.  And we can't "unshare" it somehow?
+>
+> I don't fully understand how nfs uses kernel threads and work queues.
+> My general understanding is work queues reuse their kernel threads
+> between different users.  So it is mostly a don't pollute your
+> environment thing.  If there was a dedicated kernel thread for each
+> environment this would be trivial.
+>
+> What I was suggesting here is changing task->fs instead of
+> task->fs.root.  That should just require task_lock().
+>
+>> Or, previously you suggested:
+>>
+>> 	- introduce sockaddr_fd that can be applied to AF_UNIX sockets,
+>> 	  and teach unix_bind and unix_connect how to deal with a second
+>> 	  type of sockaddr, AT_FD:
+>> 	  struct sockaddr_fd { short fd_family; short pad; int fd; }
+>>
+>> 	- introduce sockaddr_unix_at that takes a directory file
+>> 	  descriptor as well as a unix path, and teach unix_bind and
+>> 	  unix_connect to deal with a second sockaddr type, AF_UNIX_AT:
+>> 	  struct sockaddr_unix_at { short family; short pad; int dfd; char path[102]; }
+>>
+>> Any other options?
+>
+> I am still half hoping we don't have to change the userspace API/ABI.
+> There is sanity checking on that path that no one seems interested in to
+> solve this problem.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- utils/nfsdcltrack/sqlite.c | 49 ++++++++++++++++++++++++++++++++--------------
- utils/nfsdcltrack/sqlite.h |  1 +
- 2 files changed, 35 insertions(+), 15 deletions(-)
+There is a good option if we are up to userspace ABI extensions.
 
-diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
-index c19af7e..bac6789 100644
---- a/utils/nfsdcltrack/sqlite.c
-+++ b/utils/nfsdcltrack/sqlite.c
-@@ -90,24 +90,15 @@ mkdir_if_not_exist(const char *dirname)
- 	return ret;
- }
- 
--/*
-- * Open the "main" database, and attempt to initialize it by creating the
-- * parameters table and inserting the schema version into it. Ignore any errors
-- * from that, and then attempt to select the version out of it again. If the
-- * version appears wrong, then assume that the DB is corrupt or has been
-- * upgraded, and return an error. If all of that works, then attempt to create
-- * the "clients" table.
-- */
-+/* Open the database and set up the database handle for it */
- int
--sqlite_maindb_init(const char *topdir)
-+sqlite_prepare_dbh(const char *topdir)
- {
- 	int ret;
--	char *err = NULL;
--	sqlite3_stmt *stmt = NULL;
- 
--	ret = mkdir_if_not_exist(topdir);
--	if (ret)
--		return ret;
-+	/* Do nothing if the database handle is already set up */
-+	if (dbh)
-+		return 0;
- 
- 	ret = snprintf(buf, PATH_MAX - 1, "%s/main.sqlite", topdir);
- 	if (ret < 0)
-@@ -118,15 +109,43 @@ sqlite_maindb_init(const char *topdir)
- 	ret = sqlite3_open(buf, &dbh);
- 	if (ret != SQLITE_OK) {
- 		xlog(L_ERROR, "Unable to open main database: %d", ret);
-+		dbh = NULL;
- 		return ret;
- 	}
- 
- 	ret = sqlite3_busy_timeout(dbh, CLD_SQLITE_BUSY_TIMEOUT);
- 	if (ret != SQLITE_OK) {
- 		xlog(L_ERROR, "Unable to set sqlite busy timeout: %d", ret);
--		goto out_err;
-+		sqlite3_close(dbh);
-+		dbh = NULL;
- 	}
- 
-+	return ret;
-+}
-+
-+/*
-+ * Open the "main" database, and attempt to initialize it by creating the
-+ * parameters table and inserting the schema version into it. Ignore any errors
-+ * from that, and then attempt to select the version out of it again. If the
-+ * version appears wrong, then assume that the DB is corrupt or has been
-+ * upgraded, and return an error. If all of that works, then attempt to create
-+ * the "clients" table.
-+ */
-+int
-+sqlite_maindb_init(const char *topdir)
-+{
-+	int ret;
-+	char *err = NULL;
-+	sqlite3_stmt *stmt = NULL;
-+
-+	ret = mkdir_if_not_exist(topdir);
-+	if (ret)
-+		return ret;
-+
-+	ret = sqlite_prepare_dbh(topdir);
-+	if (ret)
-+		return ret;
-+
- 	/* Try to create table */
- 	ret = sqlite3_exec(dbh, "CREATE TABLE IF NOT EXISTS parameters "
- 				"(key TEXT PRIMARY KEY, value TEXT);",
-diff --git a/utils/nfsdcltrack/sqlite.h b/utils/nfsdcltrack/sqlite.h
-index 8748948..ebf04c3 100644
---- a/utils/nfsdcltrack/sqlite.h
-+++ b/utils/nfsdcltrack/sqlite.h
-@@ -20,6 +20,7 @@
- #ifndef _SQLITE_H_
- #define _SQLITE_H_
- 
-+int sqlite_prepare_dbh(const char *topdir);
- int sqlite_maindb_init(const char *topdir);
- int sqlite_insert_client(const unsigned char *clname, const size_t namelen);
- int sqlite_remove_client(const unsigned char *clname, const size_t namelen);
--- 
-1.7.11.7
+Implement open(2) on unix domain sockets.  Where open(2) would
+essentially equal connect(2) on unix domain sockets.
+
+With an open(2) implementation we could use file_open_path and the
+implementation should be pretty straight forward and maintainable.
+So implementing open(2) looks like a good alternative implementation
+route.
+
+Eric
 
