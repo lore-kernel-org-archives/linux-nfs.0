@@ -1,78 +1,138 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f174.google.com ([74.125.82.174]:55361 "EHLO
-	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753552Ab2JAXMO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2012 19:12:14 -0400
-Received: by weyt9 with SMTP id t9so3249068wey.19
-        for <linux-nfs@vger.kernel.org>; Mon, 01 Oct 2012 16:12:12 -0700 (PDT)
+Received: from mail-ia0-f174.google.com ([209.85.210.174]:53157 "EHLO
+	mail-ia0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757691Ab2JKPLp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Oct 2012 11:11:45 -0400
+Received: by mail-ia0-f174.google.com with SMTP id y32so1304641iag.19
+        for <linux-nfs@vger.kernel.org>; Thu, 11 Oct 2012 08:11:44 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 7/8] mountd: Dynamically allocate exportent that represents
+ junctions
+To: steved@redhat.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Date: Thu, 11 Oct 2012 11:11:43 -0400
+Message-ID: <20121011151143.4665.12217.stgit@lebasque.1015granger.net>
+In-Reply-To: <20121011150421.4665.35964.stgit@lebasque.1015granger.net>
+References: <20121011150421.4665.35964.stgit@lebasque.1015granger.net>
 MIME-Version: 1.0
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA908FFAAF9@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1348866309-2049-1-git-send-email-andros@netapp.com>
-	<1348866309-2049-2-git-send-email-andros@netapp.com>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA908FFAAF9@SACEXCMBX04-PRD.hq.netapp.com>
-Date: Mon, 1 Oct 2012 19:12:12 -0400
-Message-ID: <CAHVgHyUJ2qLa8zGS72d0cpPtZEf=9U+YN_7G+=WaayDpSimsXA@mail.gmail.com>
-Subject: Re: [PATCH 1/1] NFSv4.0 reclaim reboot state when re-establishing clientid
-From: Andy Adamson <androsadamson@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 1, 2012 at 6:15 PM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> On Fri, 2012-09-28 at 17:05 -0400, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
->>
->> We should always reclaim state when the lease and therefore the clientid
->> is expired.
->>
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> ---
->>  fs/nfs/nfs4state.c |    6 ++++--
->>  1 files changed, 4 insertions(+), 2 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->> index a5331ec..134323a 100644
->> --- a/fs/nfs/nfs4state.c
->> +++ b/fs/nfs/nfs4state.c
->> @@ -1600,8 +1600,8 @@ out:
->>       return nfs4_recovery_handle_error(clp, status);
->>  }
->>
->> -/* Set NFS4CLNT_LEASE_EXPIRED for all v4.0 errors and for recoverable errors
->> - * on EXCHANGE_ID for v4.1
->> +/* Set NFS4CLNT_LEASE_EXPIRED and reclaim reboot state for all v4.0 errors
->> + * and for recoverable errors on EXCHANGE_ID for v4.1
->>   */
->>  static int nfs4_handle_reclaim_lease_error(struct nfs_client *clp, int status)
->>  {
->> @@ -1647,6 +1647,8 @@ static int nfs4_handle_reclaim_lease_error(struct nfs_client *clp, int status)
->>               return status;
->>       }
->>       set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
->> +     nfs4_state_clear_reclaim_reboot(clp);
->> +     nfs4_state_start_reclaim_reboot(clp);
->
-> This is probably correct for NFS4ERR_STALE_CLIENTID, but certainly not
-> for NFS4ERR_SEQ_MISORDERED, or NFS4ERR_DELAY...
->
+We're now duplicating a real exportent with arbitrary export options
+to create a junction exportent.  After a dupexportent() call,
+several of the structure's fields can point to dynamically allocated
+memory.  We have to be careful about not orphaning that memory.
 
+What's more, returning a pointer to a static structure is as 90's as
+a bad mullet.  It's more straightforward to allocate the exportent
+dynamically and release it when we are through with it.
 
-Oops - will resend with fix...
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
--->Andy
+ utils/mountd/cache.c |   55 ++++++++++++++++++++++++++++----------------------
+ 1 files changed, 31 insertions(+), 24 deletions(-)
 
->>       dprintk("%s: handled error %d for server %s\n", __func__, status,
->>                       clp->cl_hostname);
->>       return 0;
->
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
->
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index 9c2b972..457fc9c 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -968,30 +968,36 @@ out_false:
+ /*
+  * Duplicate the junction's parent's export options and graft in
+  * the fslocdata we constructed from the locations list.
+- *
+- * Returned exportent points to static memory.
+  */
+ static struct exportent *create_junction_exportent(struct exportent *parent,
+ 		const char *junction, const char *fslocdata, int ttl)
+ {
+-	static struct exportent ee;
++	static struct exportent *eep;
+ 
+-	dupexportent(&ee, parent);
+-	strcpy(ee.e_path, junction);
+-	ee.e_hostname = strdup(parent->e_hostname);
+-	if (ee.e_hostname == NULL)
+-		goto out_nomem;
+-	free(ee.e_uuid);
+-	ee.e_uuid = NULL;
+-	ee.e_ttl = (unsigned int)ttl;
+-
+-	free(ee.e_fslocdata);
+-	ee.e_fslocmethod = FSLOC_REFER;
+-	ee.e_fslocdata = strdup(fslocdata);
+-	if (ee.e_fslocdata == NULL)
++	eep = (struct exportent *)malloc(sizeof(*eep));
++	if (eep == NULL)
+ 		goto out_nomem;
+ 
+-	return &ee;
++	dupexportent(eep, parent);
++	strcpy(eep->e_path, junction);
++	eep->e_hostname = strdup(parent->e_hostname);
++	if (eep->e_hostname == NULL) {
++		free(eep);
++		goto out_nomem;
++	}
++	free(eep->e_uuid);
++	eep->e_uuid = NULL;
++	eep->e_ttl = (unsigned int)ttl;
++
++	free(eep->e_fslocdata);
++	eep->e_fslocdata = strdup(fslocdata);
++	if (eep->e_fslocdata == NULL) {
++		free(eep->e_hostname);
++		free(eep);
++		goto out_nomem;
++	}
++	eep->e_fslocmethod = FSLOC_REFER;
++	return eep;
+ 
+ out_nomem:
+ 	xlog(L_ERROR, "%s: No memory", __func__);
+@@ -1001,8 +1007,6 @@ out_nomem:
+ /*
+  * Walk through the set of FS locations and build an exportent.
+  * Returns pointer to an exportent if "junction" refers to a junction.
+- *
+- * Returned exportent points to static memory.
+  */
+ static struct exportent *locations_to_export(struct jp_ops *ops,
+ 		nfs_fsloc_set_t locations, const char *junction,
+@@ -1022,8 +1026,6 @@ static struct exportent *locations_to_export(struct jp_ops *ops,
+  * Retrieve locations information in "junction" and dump it to the
+  * kernel.  Returns pointer to an exportent if "junction" refers
+  * to a junction.
+- *
+- * Returned exportent points to static memory.
+  */
+ static struct exportent *invoke_junction_ops(void *handle, char *dom,
+ 		const char *junction, struct addrinfo *ai)
+@@ -1085,8 +1087,6 @@ out:
+  * Load the junction plug-in, then try to resolve "pathname".
+  * Returns pointer to an initialized exportent if "junction"
+  * refers to a junction, or NULL if not.
+- *
+- * Returned exportent points to static memory.
+  */
+ static struct exportent *lookup_junction(char *dom, const char *pathname,
+ 		struct addrinfo *ai)
+@@ -1165,7 +1165,14 @@ static void nfsd_export(FILE *f)
+ 			dump_to_cache(f, dom, path, NULL);
+ 		}
+ 	} else {
+-		dump_to_cache(f, dom, path, lookup_junction(dom, path, ai));
++		struct exportent *eep;
++
++		eep = lookup_junction(dom, path, ai);
++		dump_to_cache(f, dom, path, eep);
++		if (eep != NULL) {
++			exportent_release(eep);
++			free(eep);
++		}
+ 	}
+  out:
+ 	xlog(D_CALL, "nfsd_export: found %p path %s", found, path ? path : NULL);
+
