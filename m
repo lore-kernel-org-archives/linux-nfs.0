@@ -1,44 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:22096 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755255Ab2JOVcF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Oct 2012 17:32:05 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 03/13] NFSv4: Remove the BUG_ON() from nfs4_get_lease_time_prepare()...
-Date: Mon, 15 Oct 2012 17:30:57 -0400
-Message-Id: <1350336667-18770-5-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1350336667-18770-4-git-send-email-Trond.Myklebust@netapp.com>
-References: <1350336667-18770-1-git-send-email-Trond.Myklebust@netapp.com>
- <1350336667-18770-2-git-send-email-Trond.Myklebust@netapp.com>
- <1350336667-18770-3-git-send-email-Trond.Myklebust@netapp.com>
- <1350336667-18770-4-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-ia0-f174.google.com ([209.85.210.174]:56988 "EHLO
+	mail-ia0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757156Ab2JKPKw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Oct 2012 11:10:52 -0400
+Received: by mail-ia0-f174.google.com with SMTP id y32so1303750iag.19
+        for <linux-nfs@vger.kernel.org>; Thu, 11 Oct 2012 08:10:52 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/8] mountd: Warn when a broken junction is encountered
+To: steved@redhat.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Date: Thu, 11 Oct 2012 11:10:48 -0400
+Message-ID: <20121011151048.4665.10650.stgit@lebasque.1015granger.net>
+In-Reply-To: <20121011150421.4665.35964.stgit@lebasque.1015granger.net>
+References: <20121011150421.4665.35964.stgit@lebasque.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-An EAGAIN return value would be unexpected, but there is no reason to
-BUG...
+A broken junction is a problem that administrators will want to
+know about and correct.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/nfs4proc.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 68b21d8..16190b4 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5571,8 +5571,8 @@ static void nfs4_get_lease_time_prepare(struct rpc_task *task,
- 				   &data->args->la_seq_args,
- 				   &data->res->lr_seq_res, task);
+ utils/mountd/cache.c |   19 ++++++++++++++-----
+ 1 files changed, 14 insertions(+), 5 deletions(-)
+
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index 7d80432..942fdbd 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -975,8 +975,8 @@ static struct exportent *locations_to_export(struct jp_ops *ops,
+ static struct exportent *invoke_junction_ops(void *handle,
+ 		const char *junction)
+ {
++	struct exportent *exp = NULL;
+ 	nfs_fsloc_set_t locations;
+-	struct exportent *exp;
+ 	enum jp_status status;
+ 	struct jp_ops *ops;
+ 	char *error;
+@@ -1002,15 +1002,24 @@ static struct exportent *invoke_junction_ops(void *handle,
+ 	}
  
--	BUG_ON(ret == -EAGAIN);
--	rpc_call_start(task);
-+	if (ret != -EAGAIN)
-+		rpc_call_start(task);
- 	dprintk("<-- %s\n", __func__);
+ 	status = ops->jp_get_locations(junction, &locations);
+-	if (status != JP_OK) {
+-		xlog(D_GENERAL, "%s: failed to resolve %s: %s",
+-			__func__, junction, ops->jp_error(status));
+-		return NULL;
++	switch (status) {
++	case JP_OK:
++		break;
++	case JP_NOTJUNCTION:
++		xlog(D_GENERAL, "%s: %s is not a junction",
++			__func__, junction);
++		goto out;
++	default:
++		xlog(L_WARNING, "Dangling junction %s: %s",
++			junction, ops->jp_error(status));
++		goto out;
+ 	}
+ 
+ 	exp = locations_to_export(ops, locations, junction);
+ 
+ 	ops->jp_put_locations(locations);
++
++out:
+ 	ops->jp_done();
+ 	return exp;
  }
- 
--- 
-1.7.11.7
 
