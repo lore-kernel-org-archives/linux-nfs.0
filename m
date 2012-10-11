@@ -1,55 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from out01.mta.xmission.com ([166.70.13.231]:42682 "EHLO
-	out01.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751332Ab2JIUU5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Oct 2012 16:20:57 -0400
-From: ebiederm@xmission.com (Eric W. Biederman)
-To: "Myklebust\, Trond" <Trond.Myklebust@netapp.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel\@openvz.org" <devel@openvz.org>
-References: <20121008105437.18668.99905.stgit@localhost.localdomain>
-	<20121009193506.GA19680@fieldses.org>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA90901A143@SACEXCMBX04-PRD.hq.netapp.com>
-Date: Tue, 09 Oct 2012 13:20:48 -0700
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90901A143@SACEXCMBX04-PRD.hq.netapp.com>
-	(Trond Myklebust's message of "Tue, 9 Oct 2012 19:49:46 +0000")
-Message-ID: <87txu3bdnj.fsf@xmission.com>
+Received: from mail-wi0-f170.google.com ([209.85.212.170]:41248 "EHLO
+	mail-wi0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753739Ab2JKRvA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Oct 2012 13:51:00 -0400
+Received: by mail-wi0-f170.google.com with SMTP id hm2so7534567wib.1
+        for <linux-nfs@vger.kernel.org>; Thu, 11 Oct 2012 10:50:59 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain
-Subject: Re: [PATCH v3] SUNRPC: set desired file system root before connecting local transports
+In-Reply-To: <1349974296-48449-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1349974296-48449-1-git-send-email-Trond.Myklebust@netapp.com>
+Date: Thu, 11 Oct 2012 13:50:59 -0400
+Message-ID: <CAHVgHyVnowveZDOp8X_YC1K9Y7WOmj6A-TU_doDgV78vGm-cYQ@mail.gmail.com>
+Subject: Re: [PATCH] NFSv4.1: Kill nfs4_ds_disconnect()
+From: Andy Adamson <androsadamson@gmail.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> writes:
+On Thu, Oct 11, 2012 at 12:51 PM, Trond Myklebust
+<Trond.Myklebust@netapp.com> wrote:
+> There is nothing to prevent another thread from dereferencing ds->ds_clp
+> during or after the call to nfs4_ds_disconnect(), and Oopsing due to the
+> resulting NULL pointer.
 
-> On Tue, 2012-10-09 at 15:35 -0400, J. Bruce Fields wrote:
->> Cc'ing Eric since I seem to recall he suggested doing it this way?
+Yes.
 
-Yes.  On second look setting fs->root won't work. We need to change fs.
-The problem is that by default all kernel threads share fs so changing
-fs->root will have non-local consequences.
-
-I very much believe we want if at all possible to perform a local
-modification.
-
-Changing fs isn't all that different from what devtmpfs is doing.
-
->> Seems OK to me, but maybe that swap_root should be in common code?  (Or
->> maybe we could use set_fs_root()?)
->> 
->> I'm assuming it's up to Trond to take this.--b.
 >
-> I'm reluctant to do that at this time since the original proposal was
-> precisely that of export set_fs_root() and using it around the AF_LOCAL
-> socket bind. That proposal was NACKed by Al Viro.
+> Instead, we should just rely on filelayout_mark_devid_invalid() to keep
+> us out of trouble by avoiding that deviceid.
 
-> If Al is OK with the idea of us creating a private version of
-> set_fs_root, then I'd like to see an official Acked-by: that we can
-> append to this commit.
+Why do we want to keep the connection and the nfs_client? For connection retry?
 
-Eric
+-->Andy
 
+>
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+>  fs/nfs/nfs4filelayout.c    |  1 -
+>  fs/nfs/nfs4filelayout.h    |  1 -
+>  fs/nfs/nfs4filelayoutdev.c | 22 ----------------------
+>  3 files changed, 24 deletions(-)
+>
+> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+> index 52d8472..816c2d0 100644
+> --- a/fs/nfs/nfs4filelayout.c
+> +++ b/fs/nfs/nfs4filelayout.c
+> @@ -207,7 +207,6 @@ static int filelayout_async_handle_error(struct rpc_task *task,
+>                 clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags);
+>                 _pnfs_return_layout(inode);
+>                 rpc_wake_up(&tbl->slot_tbl_waitq);
+> -               nfs4_ds_disconnect(clp);
+>                 /* fall through */
+>         default:
+>  reset:
+> diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
+> index dca47d78..8c07241 100644
+> --- a/fs/nfs/nfs4filelayout.h
+> +++ b/fs/nfs/nfs4filelayout.h
+> @@ -149,6 +149,5 @@ extern void nfs4_fl_put_deviceid(struct nfs4_file_layout_dsaddr *dsaddr);
+>  extern void nfs4_fl_free_deviceid(struct nfs4_file_layout_dsaddr *dsaddr);
+>  struct nfs4_file_layout_dsaddr *
+>  filelayout_get_device_info(struct inode *inode, struct nfs4_deviceid *dev_id, gfp_t gfp_flags);
+> -void nfs4_ds_disconnect(struct nfs_client *clp);
+>
+>  #endif /* FS_NFS_NFS4FILELAYOUT_H */
+> diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+> index 3336d5e..a8eaa9b 100644
+> --- a/fs/nfs/nfs4filelayoutdev.c
+> +++ b/fs/nfs/nfs4filelayoutdev.c
+> @@ -149,28 +149,6 @@ _data_server_lookup_locked(const struct list_head *dsaddrs)
+>  }
+>
+>  /*
+> - * Lookup DS by nfs_client pointer. Zero data server client pointer
+> - */
+> -void nfs4_ds_disconnect(struct nfs_client *clp)
+> -{
+> -       struct nfs4_pnfs_ds *ds;
+> -       struct nfs_client *found = NULL;
+> -
+> -       dprintk("%s clp %p\n", __func__, clp);
+> -       spin_lock(&nfs4_ds_cache_lock);
+> -       list_for_each_entry(ds, &nfs4_data_server_cache, ds_node)
+> -               if (ds->ds_clp && ds->ds_clp == clp) {
+> -                       found = ds->ds_clp;
+> -                       ds->ds_clp = NULL;
+> -               }
+> -       spin_unlock(&nfs4_ds_cache_lock);
+> -       if (found) {
+> -               set_bit(NFS_CS_STOP_RENEW, &clp->cl_res_state);
+> -               nfs_put_client(clp);
+> -       }
+> -}
+> -
+> -/*
+>   * Create an rpc connection to the nfs4_pnfs_ds data server
+>   * Currently only supports IPv4 and IPv6 addresses
+>   */
+> --
+> 1.7.11.7
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
