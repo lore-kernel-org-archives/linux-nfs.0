@@ -1,62 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from shadbolt.e.decadent.org.uk ([88.96.1.126]:60646 "EHLO
-	shadbolt.e.decadent.org.uk" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751564Ab2J0XZs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 19:25:48 -0400
-Message-ID: <1351380340.21585.13.camel@deadeye.wl.decadent.org.uk>
-Subject: Re: [PATCH] SUNRPC: Set alloc_slot for backchannel tcp ops
-From: Ben Hutchings <ben@decadent.org.uk>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: bjschuma@netapp.com, Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
-        stable@vger.kernel.org
-Date: Sun, 28 Oct 2012 00:25:40 +0100
-In-Reply-To: <20121019193951.GA30593@fieldses.org>
-References: <1348508341-19642-1-git-send-email-bjschuma@netapp.com>
-	 <20121019193951.GA30593@fieldses.org>
-Content-Type: multipart/signed; micalg="pgp-sha512";
-	protocol="application/pgp-signature"; boundary="=-aKqUHvY6L92/pxX5p6zA"
-Mime-Version: 1.0
+Received: from mx2.netapp.com ([216.240.18.37]:3214 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757755Ab2JKQwG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 11 Oct 2012 12:52:06 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv4.1: Kill nfs4_ds_disconnect()
+Date: Thu, 11 Oct 2012 12:51:36 -0400
+Message-Id: <1349974296-48449-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+There is nothing to prevent another thread from dereferencing ds->ds_clp
+during or after the call to nfs4_ds_disconnect(), and Oopsing due to the
+resulting NULL pointer.
 
---=-aKqUHvY6L92/pxX5p6zA
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Instead, we should just rely on filelayout_mark_devid_invalid() to keep
+us out of trouble by avoiding that deviceid.
 
-On Fri, 2012-10-19 at 15:39 -0400, J. Bruce Fields wrote:
-> Did this not get sent to stable?  (Now upstream as
-> 84e28a307e376f271505af65a7b7e212dd6f61f4.)
-[...]
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c    |  1 -
+ fs/nfs/nfs4filelayout.h    |  1 -
+ fs/nfs/nfs4filelayoutdev.c | 22 ----------------------
+ 3 files changed, 24 deletions(-)
 
-I've added this to the queue for 3.2.
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 52d8472..816c2d0 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -207,7 +207,6 @@ static int filelayout_async_handle_error(struct rpc_task *task,
+ 		clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags);
+ 		_pnfs_return_layout(inode);
+ 		rpc_wake_up(&tbl->slot_tbl_waitq);
+-		nfs4_ds_disconnect(clp);
+ 		/* fall through */
+ 	default:
+ reset:
+diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/nfs4filelayout.h
+index dca47d78..8c07241 100644
+--- a/fs/nfs/nfs4filelayout.h
++++ b/fs/nfs/nfs4filelayout.h
+@@ -149,6 +149,5 @@ extern void nfs4_fl_put_deviceid(struct nfs4_file_layout_dsaddr *dsaddr);
+ extern void nfs4_fl_free_deviceid(struct nfs4_file_layout_dsaddr *dsaddr);
+ struct nfs4_file_layout_dsaddr *
+ filelayout_get_device_info(struct inode *inode, struct nfs4_deviceid *dev_id, gfp_t gfp_flags);
+-void nfs4_ds_disconnect(struct nfs_client *clp);
+ 
+ #endif /* FS_NFS_NFS4FILELAYOUT_H */
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index 3336d5e..a8eaa9b 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -149,28 +149,6 @@ _data_server_lookup_locked(const struct list_head *dsaddrs)
+ }
+ 
+ /*
+- * Lookup DS by nfs_client pointer. Zero data server client pointer
+- */
+-void nfs4_ds_disconnect(struct nfs_client *clp)
+-{
+-	struct nfs4_pnfs_ds *ds;
+-	struct nfs_client *found = NULL;
+-
+-	dprintk("%s clp %p\n", __func__, clp);
+-	spin_lock(&nfs4_ds_cache_lock);
+-	list_for_each_entry(ds, &nfs4_data_server_cache, ds_node)
+-		if (ds->ds_clp && ds->ds_clp == clp) {
+-			found = ds->ds_clp;
+-			ds->ds_clp = NULL;
+-		}
+-	spin_unlock(&nfs4_ds_cache_lock);
+-	if (found) {
+-		set_bit(NFS_CS_STOP_RENEW, &clp->cl_res_state);
+-		nfs_put_client(clp);
+-	}
+-}
+-
+-/*
+  * Create an rpc connection to the nfs4_pnfs_ds data server
+  * Currently only supports IPv4 and IPv6 addresses
+  */
+-- 
+1.7.11.7
 
-Ben.
-
---=20
-Ben Hutchings
-Reality is just a crutch for people who can't handle science fiction.
-
---=-aKqUHvY6L92/pxX5p6zA
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-
-iQIVAwUAUIxtdOe/yOyVhhEJAQrDsRAAsEGH/LGUoOjXZLr+YxHsLz/nVIN777rY
-HnvGuax4mnCZp8RzMJeY4ezRMabauMK+zdg+Lqmk53C4grOf2oTze95phauXCRIP
-94DLOuF6EJsDNBvy5VYzaoPTNydR2RL11b2o7iSP5TFjG/JQGcOCZQkfmG86gBSK
-rE8FoCSqffOx4vfbRGkkNemprTSDu29diQ40c+fez5Age+ph1K5oVi5Dv2ZwvM6m
-Bt/Jzb8/jygc/dukYpXT0vzmh6T180VBPn2LUrsBt8dTFxC9ckOdUO8CSxLxUlQ/
-VnroN7vR7nKaHsaMNLDUsVZaYtkUJrF2SsMAB/gDjaqk+qbGgOYh2bQ+3kYY13XC
-O+9/THc+AQrlCqrp8K92buFIQSPU11FSBLXmYd5c4GTs97itYf/Rasr5KI8+spnI
-JKKMCMwPyHOsXULRdXE6Ea/bPA+LCuHAfLmYV7Fu6J5yWTREE/LVAuPwrE+sx5Uw
-YqMg5xQfqS3x9C5HNDacaUcjn0joXOo8QI9qm06siMY5hVVmmeSgMtLVIKmBPbPP
-XyQez2+cmLpk8yu6ukWx/AYljZPe4cCwmpcMde0gd5fSSK5Tl3bIx/+l5oxDqyhj
-4I+sd3SfjVL31Ljaqi795EbJ3szuSNS4DACj9zyS4OznKaEehC0tLQ1Pr0nI82f7
-0Iye3WQoadY=
-=iKFc
------END PGP SIGNATURE-----
-
---=-aKqUHvY6L92/pxX5p6zA--
