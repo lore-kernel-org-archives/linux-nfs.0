@@ -1,79 +1,180 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:9991 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750802Ab2JXE1U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Oct 2012 00:27:20 -0400
-Message-ID: <50876E1D.3040501@redhat.com>
-Date: Tue, 23 Oct 2012 23:27:09 -0500
-From: Eric Sandeen <sandeen@redhat.com>
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:64939 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757156Ab2JKPLS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Oct 2012 11:11:18 -0400
+Received: by mail-ie0-f174.google.com with SMTP id k13so3136165iea.19
+        for <linux-nfs@vger.kernel.org>; Thu, 11 Oct 2012 08:11:18 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 4/8] mountd: Add lookup_export_parent()
+To: steved@redhat.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Date: Thu, 11 Oct 2012 11:11:17 -0400
+Message-ID: <20121011151117.4665.62505.stgit@lebasque.1015granger.net>
+In-Reply-To: <20121011150421.4665.35964.stgit@lebasque.1015granger.net>
+References: <20121011150421.4665.35964.stgit@lebasque.1015granger.net>
 MIME-Version: 1.0
-To: Nix <nix@esperi.org.uk>
-CC: "Ted Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
-        Bryan Schumaker <bjschuma@netapp.com>, Peng Tao <bergwolf@gmail.com>,
-        Trond.Myklebust@netapp.com, gregkh@linuxfoundation.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3
- (and other stable branches?)
-References: <87objupjlr.fsf@spindle.srvr.nix> <20121023013343.GB6370@fieldses.org> <87mwzdnuww.fsf@spindle.srvr.nix> <20121023143019.GA3040@fieldses.org> <874nllxi7e.fsf_-_@spindle.srvr.nix> <87pq48nbyz.fsf_-_@spindle.srvr.nix> <508740B2.2030401@redhat.com> <87txtkld4h.fsf@spindle.srvr.nix>
-In-Reply-To: <87txtkld4h.fsf@spindle.srvr.nix>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/23/12 11:15 PM, Nix wrote:
-> On 24 Oct 2012, Eric Sandeen uttered the following:
-> 
->> On 10/23/12 3:57 PM, Nix wrote:
->>> The only unusual thing about the filesystems on this machine are that
->>> they have hardware RAID-5 (using the Areca driver), so I'm mounting with
->>> 'nobarrier': 
->>
->> I should have read more.  :(  More questions follow:
->>
->> * Does the Areca have a battery backed write cache?
-> 
-> Yes (though I'm not powering off, just rebooting). Battery at 100% and
-> happy, though the lack of power-off means it's not actually getting
-> used, since the cache is obviously mains-backed as well.
-> 
->> * Are you crashing or rebooting cleanly?
-> 
-> Rebooting cleanly, everything umounted happily including /home and /var.
-> 
->> * Do you see log recovery messages in the logs for this filesystem?
-> 
-> My memory says yes, but nothing seems to be logged when this happens
-> (though with my logs on the first filesystem damaged by this, this is
-> rather hard to tell, they're all quite full of NULs by now).
-> 
-> I'll double-reboot tomorrow via the faulty kernel and check, unless I
-> get asked not to in the interim. (And then double-reboot again to fsck
-> everything...)
-> 
->>> the full set of options for all my ext4 filesystems are:
->>>
->>> rw,nosuid,nodev,relatime,journal_checksum,journal_async_commit,nobarrier,quota,
->>> usrquota,grpquota,commit=30,stripe=16,data=ordered,usrquota,grpquota
->>
->> ok journal_async_commit is off the reservation a bit; that's really not
->> tested, and Jan had serious reservations about its safety.
-> 
-> OK, well, I've been 'testing' it for years :) No problems until now. (If
-> anything, I was more concerned about journal_checksum. I thought that
-> had actually been implicated in corruption before now...)
+In a moment I will be adding some logic that needs to know an
+junction's parent export.
 
-It had, but I fixed it AFAIK; OTOH, we turned it off by default
-after that episode.
+Here's a function that can discover an export's parent.  It takes
+the target export's pathname, chops off the rightmost component, and
+tries a lookup_export().  If that succeeds, we have our answer.
+If not, it chops off the next rightmost component and tries again,
+until the root is reached.
 
->> * Can you reproduce this w/o journal_async_commit?
-> 
-> I can try!
+At the same time, infrastructure is added to pass the parent export
+down into the functions that convert locations into a new junction
+export entry.  For now the parent export remains unused.
 
-Ok, fair enough.  If the BBU is working, nobarrier is ok; I don't trust
-journal_async_commit, but that doesn't mean this isn't a regression.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Thanks for the answers... onward.  :)
+ utils/mountd/cache.c |   79 ++++++++++++++++++++++++++++++++++++++++++++------
+ 1 files changed, 70 insertions(+), 9 deletions(-)
 
--Eric
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index f63803b..b858e60 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -831,6 +831,60 @@ lookup_export(char *dom, char *path, struct addrinfo *ai)
+ #include <nfs-plugin.h>
+ 
+ /*
++ * Find the export entry for the parent of "pathname".
++ * Caller must not free returned exportent.
++ */
++static struct exportent *lookup_parent_export(char *dom,
++		const char *pathname, struct addrinfo *ai)
++{
++	char *parent, *slash;
++	nfs_export *result;
++
++	parent = strdup(pathname);
++	if (parent == NULL) {
++		xlog(D_GENERAL, "%s: failed to allocate parent path buffer",
++			__func__);
++		goto out_default;
++	}
++	xlog(D_CALL, "%s: pathname = '%s'", __func__, pathname);
++
++again:
++	/* shorten pathname by one component */
++	slash = strrchr(parent, '/');
++	if (slash == NULL) {
++		xlog(D_GENERAL, "%s: no slash found in pathname",
++			__func__);
++		goto out_default;
++	}
++	*slash = '\0';
++
++	if (strlen(parent) == 0) {
++		result = lookup_export(dom, "/", ai);
++		if (result == NULL) {
++			xlog(L_ERROR, "%s: no root export found.", __func__);
++			goto out_default;
++		}
++		goto out;
++	}
++
++	result = lookup_export(dom, parent, ai);
++	if (result == NULL) {
++		xlog(D_GENERAL, "%s: lookup_export(%s) found nothing",
++			__func__, parent);
++		goto again;
++	}
++
++out:
++	xlog(D_CALL, "%s: found export for %s", __func__, parent);
++	free(parent);
++	return &result->m_export;
++
++out_default:
++	free(parent);
++	return mkexportent("*", "/", "insecure");
++}
++
++/*
+  * Walk through a set of FS locations and build an e_fslocdata string.
+  * Returns true if all went to plan; otherwise, false.
+  */
+@@ -918,7 +972,8 @@ out_false:
+  * Returned exportent points to static memory.
+  */
+ static struct exportent *locations_to_export(struct jp_ops *ops,
+-		nfs_fsloc_set_t locations, const char *junction)
++		nfs_fsloc_set_t locations, const char *junction,
++		struct exportent *UNUSED(parent))
+ {
+ 	static char fslocdata[BUFSIZ];
+ 	struct exportent *exp;
+@@ -955,10 +1010,10 @@ static struct exportent *locations_to_export(struct jp_ops *ops,
+  *
+  * Returned exportent points to static memory.
+  */
+-static struct exportent *invoke_junction_ops(void *handle,
+-		const char *junction)
++static struct exportent *invoke_junction_ops(void *handle, char *dom,
++		const char *junction, struct addrinfo *ai)
+ {
+-	struct exportent *exp = NULL;
++	struct exportent *parent, *exp = NULL;
+ 	nfs_fsloc_set_t locations;
+ 	enum jp_status status;
+ 	struct jp_ops *ops;
+@@ -998,7 +1053,11 @@ static struct exportent *invoke_junction_ops(void *handle,
+ 		goto out;
+ 	}
+ 
+-	exp = locations_to_export(ops, locations, junction);
++	parent = lookup_parent_export(dom, junction, ai);
++	if (parent == NULL)
++		goto out;
++
++	exp = locations_to_export(ops, locations, junction, parent);
+ 
+ 	ops->jp_put_locations(locations);
+ 
+@@ -1014,7 +1073,8 @@ out:
+  *
+  * Returned exportent points to static memory.
+  */
+-static struct exportent *lookup_junction(const char *pathname)
++static struct exportent *lookup_junction(char *dom, const char *pathname,
++		struct addrinfo *ai)
+ {
+ 	struct exportent *exp;
+ 	void *handle;
+@@ -1026,7 +1086,7 @@ static struct exportent *lookup_junction(const char *pathname)
+ 	}
+ 	(void)dlerror();	/* Clear any error */
+ 
+-	exp = invoke_junction_ops(handle, pathname);
++	exp = invoke_junction_ops(handle, dom, pathname, ai);
+ 
+ 	/* We could leave it loaded to make junction resolution
+ 	 * faster next time.  However, if we want to replace the
+@@ -1035,7 +1095,8 @@ static struct exportent *lookup_junction(const char *pathname)
+ 	return exp;
+ }
+ #else	/* !HAVE_NFS_PLUGIN_H */
+-static inline struct exportent *lookup_junction(const char *UNUSED(pathname))
++static inline struct exportent *lookup_junction(char *UNUSED(dom),
++		const char *UNUSED(pathname), struct addrinfo *UNUSED(ai))
+ {
+ 	return NULL;
+ }
+@@ -1089,7 +1150,7 @@ static void nfsd_export(FILE *f)
+ 			dump_to_cache(f, dom, path, NULL);
+ 		}
+ 	} else {
+-		dump_to_cache(f, dom, path, lookup_junction(path));
++		dump_to_cache(f, dom, path, lookup_junction(dom, path, ai));
+ 	}
+  out:
+ 	xlog(D_CALL, "nfsd_export: found %p path %s", found, path ? path : NULL);
 
