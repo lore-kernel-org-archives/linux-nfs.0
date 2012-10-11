@@ -1,106 +1,144 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:28612 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752514Ab2JMCw7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Oct 2012 22:52:59 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Larry McVoy <lm@bitmover.com>
-CC: Linus Torvalds <torvalds@linux-foundation.org>,
-        Bruce Fields <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
-Date: Sat, 13 Oct 2012 02:52:51 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9091FE478@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20121012211701.GA8301@bitmover.com>
-	 <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
-	 <20121013002100.GB23247@bitmover.com>
-	 <CA+55aFwKn+rp4qTk3dLgN8n=M-Aw1GYYpOfevDJaJhnK-U5VOg@mail.gmail.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9091FDED5@SACEXCMBX04-PRD.hq.netapp.com>
-	 <20121013023147.GJ23247@bitmover.com>
-In-Reply-To: <20121013023147.GJ23247@bitmover.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:64939 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757156Ab2JKPLK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Oct 2012 11:11:10 -0400
+Received: by mail-ie0-f174.google.com with SMTP id k13so3136165iea.19
+        for <linux-nfs@vger.kernel.org>; Thu, 11 Oct 2012 08:11:10 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 3/8] mountd: Set e_fslocdata field directly
+To: steved@redhat.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Date: Thu, 11 Oct 2012 11:11:08 -0400
+Message-ID: <20121011151108.4665.56795.stgit@lebasque.1015granger.net>
+In-Reply-To: <20121011150421.4665.35964.stgit@lebasque.1015granger.net>
+References: <20121011150421.4665.35964.stgit@lebasque.1015granger.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTEwLTEyIGF0IDE5OjMxIC0wNzAwLCBMYXJyeSBNY1ZveSB3cm90ZToNCj4g
-QXMgSSd2ZSBzYWlkLCBkZWJ1Z2dpbmcgdGhpcyBpcyBnb2luZyB0byBiZSBoYXJkLCBpdCBtZWFu
-cyBzdG9wcGluZyBteQ0KPiBjb21wYW55LiAgV2UgY2FuIGRvIG9uZSBtb3JlIGNyYXNoLCB5b3Ug
-Z3V5cyBjYW4gdGVsbCBtZSB3aGF0IHRvIGRvLA0KPiBidXQgdGhhdCdzIGFib3V0IGl0Lg0KDQpE
-byB5b3UgaGF2ZSBhIHJlcHJvZHVjZXI/IElmIHlvdSBkbywgdGhlbiBwZXJoYXBzIHdlIGNhbiB0
-cnkgdG8NCmR1cGxpY2F0ZSB0aGUgaXNzdWUgb24gb3VyIG93biBzZXR1cHMgd2l0aG91dCBuZWVk
-aW5nIHRvIGRlbGliZXJhdGVseQ0KY2F1c2UgeW91IG1vcmUgZG93bnRpbWUuDQoNCklmIG5vdCwg
-dGhlbiBJIGd1ZXNzIHdlJ2xsIGhhdmUgdG8gdHJ5IGxvb2tpbmcgYXQgdGhvc2Ugc2xhYiBtZW1v
-cnkNCmRlYnVnZ2luZyBvcHRpb25zLiBJJ20gbm8gZXhwZXJ0IG9uIHNsYWIgZGVidWdnaW5nLCBh
-bmQgaXQncyB3YXkgdG9vDQpsYXRlIGluIHRoaXMgY29ybmVyIG9mIHRoZSBVUyBmb3IgbWUgdG8g
-dHJ5IHRvIGZpZ3VyZSBvdXQgZXhhY3RseSB3aGF0DQpvcHRpb25zIGFyZSBhcHByb3ByaWF0ZSwg
-YnV0IEkgY2FuIGxvb2sgaW50byBpdCB0b21vcnJvdyAodW5sZXNzIExpbnVzDQpoYXMgYSBzdWdn
-ZXN0aW9uKS4NCg0KPiBPbiBTYXQsIE9jdCAxMywgMjAxMiBhdCAwMjoyODozOUFNICswMDAwLCBN
-eWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+IE9uIFNhdCwgMjAxMi0xMC0xMyBhdCAxMDowMiAr
-MDkwMCwgTGludXMgVG9ydmFsZHMgd3JvdGU6DQo+ID4gPiBPbiBTYXQsIE9jdCAxMywgMjAxMiBh
-dCA5OjIxIEFNLCBMYXJyeSBNY1ZveSA8bG1AYml0bW92ZXIuY29tPiB3cm90ZToNCj4gPiA+ID4N
-Cj4gPiA+ID4gQWhoLCBJJ3ZlIGJlZW4gYXdheSBmcm9tIHRoZSBrZXJuZWwgdG9vIGxvbmcuICBJ
-IG1pc3MgdGhhdCBkZWxpY2F0ZQ0KPiA+ID4gPiBtYW5hZ2VtZW50IHRvdWNoLg0KPiA+ID4gDQo+
-ID4gPiAiRGVsaWNhdGUgTWFuYWdlbWVudCBUb3VjaCIgaXMgbXkgbWlkZGxlIG5hbWUuDQo+ID4g
-PiANCj4gPiA+ID4gcGljcyBvZiB0aGUgc3RhY2sgdHJhY2UgYXQgaHR0cDovL3d3dy5tY3ZveS5j
-b20vbG0vbmZzLWxvY2stY3Jhc2gNCj4gPiA+IA0KPiA+ID4gT2ssIHRoYXQncyBqdXN0IHRoZSBu
-b3JtYWwga2luZCBvZiByYW5kb20gbGVmdC1vdmVyIG9vcHNlcyBkdWUgdG8NCj4gPiA+IHN1YnNl
-cXVlbnQgcHJvYmxlbXMgb2YgYSBCVUdfT04oKS4gTG9va3MgbGlrZSB0aGUgd2F0Y2hkb2cgdGlt
-ZXIgZW5kcw0KPiA+ID4gdXAgYmVpbmcgdW5oYXBweSwgYWxtb3N0IGNlcnRhaW5seSBzaW1wbHkg
-YmVjYXVzZSBzb21lIGNvcmUgZmlsZXN5c3RlbQ0KPiA+ID4gc3BpbmxvY2sgbm90IGJlaW5nIHJl
-bGVhc2VkLg0KPiA+ID4gDQo+ID4gPiBJdCB1c2VkIHRvIGJlIChhIGxvbmcgbG9uZyB0aW1lIGFn
-bykgdGhhdCB3ZSdkIHJlY292ZXIgZmFpcmx5DQo+ID4gPiBncmFjZWZ1bGx5IGZyb20gQlVHX09O
-KCkncyAtIGJhY2sgd2hlbiB0aGUgbWFpbiBzaGFyZWQgbG9jayB3ZSBoYWQgd2FzDQo+ID4gPiB0
-aGUga2VybmVsIGxvY2ssIGFuZCB3ZSBoYWQgYSBzaW5nbGUgcGVyLXByb2Nlc3Mga2VybmVsIGxv
-Y2sgY291bnRlci4NCj4gPiA+IFNvIHdoZW4gd2Uga2lsbGVkIHRoZSBwcm9jZXNzLCB3ZSBjb3Vs
-ZCBjbGVhbiB0aGF0IHNpbmdsZSBsb2NrIHVwLg0KPiA+ID4gDQo+ID4gPiBUaGVzZSBkYXlzLCBp
-ZiBzb21lIHByb2Nlc3MgZGllcyBpbiByYW5kb20ga2VybmVsIGNvZGUgZHVlIHRvIGENCj4gPiA+
-IEJVR19PTigpIG9yIGEgd2lsZCBwb2ludGVyIG9yIHNpbWlsYXIsIGFuZCB3ZSBraWxsIGl0LCB3
-ZSBhcmUgc2VsZG9tDQo+ID4gPiBhYmxlIHRvIGRvIHNvIGNsZWFubHkuIFNvIHRoZSBiZXN0IHdl
-IGNhbiBob3BlIGZvciBpcyB0aGF0IGl0IGhhcHBlbmVkDQo+ID4gPiBpbiBzb21lIGNvbnRleHQg
-d2hlcmUgaXQgaGVsZCBubyAoaW1wb3J0YW50KSBsb2Nrcy4gV2hpY2ggaXMgcmFyZS4gU28NCj4g
-PiA+IEJVR19PTigpJ3MgYXJlIG9mdGVuIGZhdGFsLCBhbmQgdGhlcmUgYXJlIHRoZXNlIGtpbmRz
-IG9mIGRvd25zdHJlYW0NCj4gPiA+IHByb2JsZW1zIHdoZXJlIHRoZXkgZ2V0IGZsdXNoZWQgb2Zm
-IHRoZSBzY3JlZW4gYnkgc3Vic2VxdWVudCBpc3N1ZXMuLi4NCj4gPiANCj4gPiBJZiB0aGF0IGNv
-ZGUgaXMgYmVpbmcgY2FsbGVkIHVuZGVyIGEgbG9jaywgdGhlbiB3ZSBoYXZlIG90aGVyIHByb2Js
-ZW1zLg0KPiA+IEl0IGlzIHN0YW5kYXJkIFhEUiBjb2RlOiBpdCBzaG91bGQgYWx3YXlzIGJlIGNh
-bGxlZCBmcm9tIGFuIG9yZGluYXJ5DQo+ID4gcHJvY2VzcyBjb250ZXh0IHdpdGggbm8gc3BlY2lh
-bCBsb2NrcyBiZWluZyBoZWxkIGJ5IHRoZSBjYWxsZXJzLg0KPiA+IA0KPiA+ID4gSG8gaHVtbS4g
-R29vZ2xlIGRvZXNuJ3Qgc2VlbSB0byBiZSBmaW5kaW5nIGFueSBzaW1pbGFyIGJ1Zy1yZXBvcnRz
-LCBzbw0KPiA+ID4gdW5sZXNzIEJydWNlIG9yIFRyb25kIGdvICJBaGgsIEkga25vdyB3aGF0IGl0
-J3MgYWJvdXQiLCBJIGRvIHRoaW5rIHdlDQo+ID4gPiB3b3VsZCB3YW50IHRvIGdldCBhcyBtdWNo
-IG1vcmUgaW5mbyBhcyBwb3NzaWJsZS4NCj4gPiANCj4gPiBOZXZlciBzZWVuIGl0IGJlZm9yZSwg
-YW5kIEkgc2VlIG5vIHJlYXNvbiB3aHkgaXQgc2hvdWxkIGRyYWcgdGhlIGVudGlyZQ0KPiA+IGJv
-eCBkb3duIHdpdGggaXQuIEl0IGlzIHBhcnQgb2YgdGhlIE5MTSBzZXJ2ZXIncyBjYWxsYmFjayBj
-b2RlLCBzbyB0aGVyZQ0KPiA+IGlzIG5vIGNoYW5jZSBvZiBpdCBiZWluZyBjYWxsZWQgYXMgcGFy
-dCBvZiBhIG1lbW9yeSByZWNsYWltIG9yIGFueXRoaW5nDQo+ID4gc2ltaWxhcmx5IHNlbnNpdGl2
-ZSB0byB0aGUgcmVzdCBvZiB0aGUgYm94Lg0KPiA+IA0KPiA+IEFyZSB3ZSBzdXJlIHRoYXQgdGhp
-cyBCVUdfT04oKSByZWFsbHkgaXMgdG9wIG9mIHRoZSBjaGFpbiBvZiBPb3BzZXMNCj4gPiBoZXJl
-PyBBbGwgSSBjYW4gc2VlIGl0IGRvaW5nIGlzIGNyYXNoaW5nIHRoZSBsb2NrZCBzZXJ2ZXIgcHJv
-Y2Vzcywgd2hpY2gNCj4gPiB3aWxsIHNlcmlvdXNseSBpbmNvbnZlbmllbmNlIGFsbCB0aGUgTkZT
-IGNsaWVudHMgdHJ5aW5nIHRvIGRvIGxvY2tpbmcsDQo+ID4gYnV0IGl0IHNob3VsZG4ndCBiZSBh
-ZmZlY3RpbmcgdGhlIHN3YXBwZXIgcHJvY2VzcyBhcyB3ZSdyZSBzZWVpbmcgaW4gdGhlDQo+ID4g
-T29wcyBzY3JlZW5zaG90cy4NCj4gPiBJZiBpdCByZWFsbHkgaXMgdGhlIGZpcnN0IHRoaW5nIHRv
-IE9vcHMsIHRoZW4gdGhlIG9ubHkgdGhpbmcgSSBjYW4gdGhpbmsNCj4gPiBvZiB0aGVyZSB0aGF0
-IHdvdWxkIHRyaWdnZXIgb3RoZXIgT29wc2VzIHdvdWxkIGJlIGEgbWVtb3J5IGNvcnJ1cHRpb24N
-Cj4gPiAodXNlIGFmdGVyIGZyZWUgb3Igc29tZSBzdWNoIHRoaW5nPykuIFBlcmhhcHMgTGFycnkg
-Y291bGQgdHJ5IHR1cm5pbmcgb24NCj4gPiBzb21lIG9mIHRoZSBsZXNzIGludHJ1c2l2ZSBzbGFi
-IGRlYnVnZ2luZyBvcHRpb25zPw0KPiA+IA0KPiA+ID4gRG9pbmcgYSBrZXJuZWwgY29tcGlsZSBy
-ZWFsbHkgaXNuJ3QgdGhhdCBiYWQuIFRoZSBvbmx5IG5hc3R5IHBpZWNlIGlzDQo+ID4gPiBnZXR0
-aW5nIHRoZSBrZXJuZWwgY29uZmlndXJhdGlvbiByaWdodCwgYnV0IHlvdSBjYW4ganVzdCB1c2Ug
-dGhlDQo+ID4gPiBkaXN0cm8gY29uZmlnLiBJdCdzIG11Y2ggdG9vIGJpZyBhbmQgY29udGFpbnMg
-ZXZlcnl0aGluZywgYnV0IGl0IHdpbGwNCj4gPiA+IHdvcmssIGFuZCBnZXRzIHlvdSBhcyBzaW1p
-bGFyIGEga2VybmVsIGFzIHBvc3NpYmxlLiBPZiBjb3Vyc2UsIFVidW50dQ0KPiA+ID4gaGFzIG1h
-ZGUgaW5zdGFsbGluZyB5b3VyIG93biBrZXJuZWwgc3R1cGlkbHkgY29tcGxpY2F0ZWQgKHlvdSBo
-YXZlIHRvDQo+ID4gPiBidWlsZCBhIHBhY2thZ2UgYW5kIGluc3RhbGwgaXQgdXNpbmcgdGhlIHBh
-Y2thZ2UgbWFuYWdlciksIGJ1dCB3aGlsZQ0KPiA+ID4gaXQncyBhbiBhbm5veWluZyBleHRyYSBz
-dGVwIG9yIHR3byAoY29tcGFyZWQgdG8ganVzdCBkb2luZyBhICJtYWtlDQo+ID4gPiBtb2R1bGVz
-X2luc3RhbGwgaW5zdGFsbCIpLCBpdCdzIG5vdCByb2NrZXQgc3VyZ2VyeS4gVGhlcmUncyBhIGZl
-dyBoZWxwDQo+ID4gPiBwYWdlcyBmb3IgaXQ6DQo+ID4gPiANCj4gPiA+ICAgICBodHRwczovL2hl
-bHAudWJ1bnR1LmNvbS9jb21tdW5pdHkvS2VybmVsL0NvbXBpbGUNCj4gPiA+IA0KPiA+ID4gYmVp
-bmcgdGhlIGZpcnN0IG9uZS4NCj4gPiA+IA0KPiA+ID4gICAgICAgICAgICAgICAgIExpbnVzDQo+
-ID4gDQo+ID4gLS0gDQo+ID4gVHJvbmQgTXlrbGVidXN0DQo+ID4gTGludXggTkZTIGNsaWVudCBt
-YWludGFpbmVyDQo+ID4gDQo+ID4gTmV0QXBwDQo+ID4gVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
-b20NCj4gPiB3d3cubmV0YXBwLmNvbQ0KPiANCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4
-IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAu
-Y29tDQp3d3cubmV0YXBwLmNvbQ0K
+To create an export entry for a junction, an options string is
+constructed from the set of locations in the junction.  This options
+string is then passed to mkexportent() where it is parsed and
+converted into an exportent.
+
+There is only one export option that is used to create a junction's
+exportent: "refer=".  When that option is parsed, it's value is
+simply copied to a fresh string and planted in the new export's
+e_fslocdata field.
+
+Let's avoid the option parsing and extra string copy.  Construct
+a string for the new e_fslocdata field and plant it in the exportent
+directly.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ utils/mountd/cache.c |   37 +++++++++++++++++++++++--------------
+ 1 files changed, 23 insertions(+), 14 deletions(-)
+
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index 8de2eac..f63803b 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -831,12 +831,12 @@ lookup_export(char *dom, char *path, struct addrinfo *ai)
+ #include <nfs-plugin.h>
+ 
+ /*
+- * Walk through a set of FS locations and build a set of export options.
++ * Walk through a set of FS locations and build an e_fslocdata string.
+  * Returns true if all went to plan; otherwise, false.
+  */
+-static _Bool
+-locations_to_options(struct jp_ops *ops, nfs_fsloc_set_t locations,
+-		char *options, size_t remaining, int *ttl)
++static bool locations_to_fslocdata(struct jp_ops *ops,
++		nfs_fsloc_set_t locations, char *fslocdata,
++		size_t remaining, int *ttl)
+ {
+ 	char *server, *last_path, *rootpath, *ptr;
+ 	_Bool seen = false;
+@@ -844,7 +844,7 @@ locations_to_options(struct jp_ops *ops, nfs_fsloc_set_t locations,
+ 	last_path = NULL;
+ 	rootpath = NULL;
+ 	server = NULL;
+-	ptr = options;
++	ptr = fslocdata;
+ 	*ttl = 0;
+ 
+ 	for (;;) {
+@@ -870,14 +870,14 @@ locations_to_options(struct jp_ops *ops, nfs_fsloc_set_t locations,
+ 				goto out_false;
+ 			}
+ 			if ((size_t)len >= remaining) {
+-				xlog(D_GENERAL, "%s: options buffer overflow", __func__);
++				xlog(D_GENERAL, "%s: fslocdata buffer overflow", __func__);
+ 				goto out_false;
+ 			}
+ 			remaining -= (size_t)len;
+ 			ptr += len;
+ 		} else {
+ 			if (last_path == NULL)
+-				len = snprintf(ptr, remaining, "refer=%s@%s",
++				len = snprintf(ptr, remaining, "%s@%s",
+ 							rootpath, server);
+ 			else
+ 				len = snprintf(ptr, remaining, ":%s@%s",
+@@ -887,7 +887,7 @@ locations_to_options(struct jp_ops *ops, nfs_fsloc_set_t locations,
+ 				goto out_false;
+ 			}
+ 			if ((size_t)len >= remaining) {
+-				xlog(D_GENERAL, "%s: options buffer overflow",
++				xlog(D_GENERAL, "%s: fslocdata buffer overflow",
+ 					__func__);
+ 				goto out_false;
+ 			}
+@@ -901,8 +901,8 @@ locations_to_options(struct jp_ops *ops, nfs_fsloc_set_t locations,
+ 		free(server);
+ 	}
+ 
+-	xlog(D_CALL, "%s: options='%s', ttl=%d",
+-		__func__, options, *ttl);
++	xlog(D_CALL, "%s: fslocdata='%s', ttl=%d",
++		__func__, fslocdata, *ttl);
+ 	return seen;
+ 
+ out_false:
+@@ -920,15 +920,16 @@ out_false:
+ static struct exportent *locations_to_export(struct jp_ops *ops,
+ 		nfs_fsloc_set_t locations, const char *junction)
+ {
+-	static char options[BUFSIZ];
++	static char fslocdata[BUFSIZ];
+ 	struct exportent *exp;
+ 	int ttl;
+ 
+-	options[0] = '\0';
+-	if (!locations_to_options(ops, locations, options, sizeof(options), &ttl))
++	fslocdata[0] = '\0';
++	if (!locations_to_fslocdata(ops, locations,
++					fslocdata, sizeof(fslocdata), &ttl))
+ 		return NULL;
+ 
+-	exp = mkexportent("*", (char *)junction, options);
++	exp = mkexportent("*", (char *)junction, "");
+ 	if (exp == NULL) {
+ 		xlog(L_ERROR, "%s: Failed to construct exportent", __func__);
+ 		return NULL;
+@@ -936,6 +937,14 @@ static struct exportent *locations_to_export(struct jp_ops *ops,
+ 
+ 	exp->e_uuid = NULL;
+ 	exp->e_ttl = ttl;
++
++	free(exp->e_fslocdata);
++	exp->e_fslocmethod = FSLOC_REFER;
++	exp->e_fslocdata = strdup(fslocdata);
++	if (exp->e_fslocdata == NULL) {
++		xlog(L_ERROR, "%s: No memory", __func__);
++		return NULL;
++	}
+ 	return exp;
+ }
+ 
+
