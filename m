@@ -1,52 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:14548 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754948Ab2JWOxg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Oct 2012 10:53:36 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 23/25] SUNRPC: remove BUG_ONs checking RPC_IS_QUEUED
-Date: Tue, 23 Oct 2012 10:43:47 -0400
-Message-Id: <1351003429-18887-24-git-send-email-dros@netapp.com>
-In-Reply-To: <1351003429-18887-1-git-send-email-dros@netapp.com>
-References: <1351003429-18887-1-git-send-email-dros@netapp.com>
+Received: from medousa.rus.uni-stuttgart.de ([129.69.1.57]:52403 "EHLO
+	medousa.rus.uni-stuttgart.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S932170Ab2JKOUi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Oct 2012 10:20:38 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by medousa.rus.uni-stuttgart.de (Postfix) with ESMTP id D5B2337F45
+	for <linux-nfs@vger.kernel.org>; Thu, 11 Oct 2012 16:20:36 +0200 (CEST)
+Received: from medousa.rus.uni-stuttgart.de ([127.0.0.1])
+	by localhost (medousa.rus.uni-stuttgart.de [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id Cq_aPCX2LoyB for <linux-nfs@vger.kernel.org>;
+	Thu, 11 Oct 2012 16:20:35 +0200 (CEST)
+Received: from tindra.iws.uni-stuttgart.de (tindra.iws.uni-stuttgart.de [129.69.98.190])
+	by medousa.rus.uni-stuttgart.de (Postfix) with ESMTP
+	for <linux-nfs@vger.kernel.org>; Thu, 11 Oct 2012 16:20:35 +0200 (CEST)
+Date: Thu, 11 Oct 2012 16:20:35 +0200
+From: David Werner <david.werner@iws.uni-stuttgart.de>
+To: linux-nfs@vger.kernel.org
+Subject: Re: Problem with NFSv4 (server: NetApp-Filer, client
+ openSUSE-11.4, 12.1 and 12.2)
+Message-ID: <20121011142034.GA4304@tindra.iws.uni-stuttgart.de>
+References: <20121009135919.GA16012@tindra.iws.uni-stuttgart.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121009135919.GA16012@tindra.iws.uni-stuttgart.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Replace two BUG_ON() calls with WARN_ON_ONCE() and early returns.
+Some more news about my problem. Thanks to all, who read this thread and
+made their thoughts about it.
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- net/sunrpc/sched.c |    8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
+* I found not any significant kernel messages regarding stale
+  handles in syslog or dmesg.
 
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index e6db496..6904917 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -133,7 +133,9 @@ static void __rpc_add_wait_queue(struct rpc_wait_queue *queue,
- 		struct rpc_task *task,
- 		unsigned char queue_priority)
- {
--	BUG_ON (RPC_IS_QUEUED(task));
-+	WARN_ON_ONCE(RPC_IS_QUEUED(task));
-+	if (RPC_IS_QUEUED(task))
-+		return;
- 
- 	if (RPC_IS_PRIORITY(queue))
- 		__rpc_add_wait_queue_priority(queue, task, queue_priority);
-@@ -707,7 +709,9 @@ static void __rpc_execute(struct rpc_task *task)
- 	dprintk("RPC: %5u __rpc_execute flags=0x%x\n",
- 			task->tk_pid, task->tk_flags);
- 
--	BUG_ON(RPC_IS_QUEUED(task));
-+	WARN_ON_ONCE(RPC_IS_QUEUED(task));
-+	if (RPC_IS_QUEUED(task))
-+		return;
- 
- 	for (;;) {
- 		void (*do_action)(struct rpc_task *);
--- 
-1.7.9.6 (Apple Git-31.1)
+* The question about "noac"-mount-parameter brought me to check more mount
+  options. The parameter lookupcache is quite signifcant. If I set it 
+  to "none", the problem disappears. while with the values "positive" or "all"
+  the problem persits.
 
+  - Though if I mount first with "none" and later with "all"
+    the problem disappeared but only until reboot when it then was 
+    mounted with "all".
+  - I checked this under openSUSE-12.2.
+  - I made a quick check with openSUSE 11.4 whether "none" takes there
+    also away the problem.
+
+Best regards, David
