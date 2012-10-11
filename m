@@ -1,51 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:42554 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754981Ab2JPR1K convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Oct 2012 13:27:10 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Fengguang Wu <fengguang.wu@intel.com>
-CC: "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: [nfs:testing 6/19] fs/nfs/callback.c:239:3: error: 'ret'
- undeclared
-Date: Tue, 16 Oct 2012 17:27:08 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90925FC81@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20121016172405.GC11813@localhost>
-In-Reply-To: <20121016172405.GC11813@localhost>
-Content-Type: text/plain; charset="Windows-1252"
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:64939 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757691Ab2JKPLx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Oct 2012 11:11:53 -0400
+Received: by mail-ie0-f174.google.com with SMTP id k13so3136165iea.19
+        for <linux-nfs@vger.kernel.org>; Thu, 11 Oct 2012 08:11:53 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 8/8] mountd: Simplify "no junction support" case
+To: steved@redhat.com
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Date: Thu, 11 Oct 2012 11:11:51 -0400
+Message-ID: <20121011151151.4665.80466.stgit@lebasque.1015granger.net>
+In-Reply-To: <20121011150421.4665.35964.stgit@lebasque.1015granger.net>
+References: <20121011150421.4665.35964.stgit@lebasque.1015granger.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: Fengguang Wu [mailto:fengguang.wu@intel.com]
-> Sent: Tuesday, October 16, 2012 1:24 PM
-> To: Myklebust, Trond
-> Cc: kernel-janitors@vger.kernel.org; linux-nfs@vger.kernel.org
-> Subject: [nfs:testing 6/19] fs/nfs/callback.c:239:3: error: 'ret' undeclared
-> 
-> Hi Trond,
-> 
-> FYI, kernel build failed on
-> 
-> tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git testing
-> head:   7d84fbe58c098cb9200e1d9180ae50d49e54e4e2
-> commit: 8c47a6a6ce14a7baf1c5d6a169523cb083f9aaa9 [6/19] NFSv4: Remove
-> an unused variable from nfs_callback_start_svc
-> config: x86_64-allyesconfig # make ARCH=x86_64
-> 
-> All error/warnings:
-> 
-> fs/nfs/callback.c: In function 'nfs_callback_start_svc':
-> fs/nfs/callback.c:239:3: error: 'ret' undeclared (first use in this function)
-> fs/nfs/callback.c:239:3: note: each undeclared identifier is reported only once
-> for each function it appears in
-> 
+We've added logic in the "not an export" case in nfsd_fh(), so it's
+no longer a simple function call.  Clean up this code by splitting
+it into a new function, and make plain what happens when junction
+support is compiled out.
 
-Hi Fengguang,
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Yes. This issue is already fixed in the repository. Sorry for having pushed it out too quickly...
+ utils/mountd/cache.c |   32 +++++++++++++++++++-------------
+ 1 files changed, 19 insertions(+), 13 deletions(-)
 
-Cheers
-  Trond
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index 457fc9c..8280234 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -1109,11 +1109,24 @@ static struct exportent *lookup_junction(char *dom, const char *pathname,
+ 	(void)dlclose(handle);
+ 	return exp;
+ }
++
++static void lookup_nonexport(FILE *f, char *dom, char *path,
++		struct addrinfo *ai)
++{
++	struct exportent *eep;
++
++	eep = lookup_junction(dom, path, ai);
++	dump_to_cache(f, dom, path, eep);
++	if (eep == NULL)
++		return;
++	exportent_release(eep);
++	free(eep);
++}
+ #else	/* !HAVE_NFS_PLUGIN_H */
+-static inline struct exportent *lookup_junction(char *UNUSED(dom),
+-		const char *UNUSED(pathname), struct addrinfo *UNUSED(ai))
++static void lookup_nonexport(FILE *f, char *dom, char *path,
++		struct addrinfo *UNUSED(ai))
+ {
+-	return NULL;
++	dump_to_cache(f, dom, path, NULL);
+ }
+ #endif	/* !HAVE_NFS_PLUGIN_H */
+ 
+@@ -1164,16 +1177,9 @@ static void nfsd_export(FILE *f)
+ 			     " or fsid= required", path);
+ 			dump_to_cache(f, dom, path, NULL);
+ 		}
+-	} else {
+-		struct exportent *eep;
+-
+-		eep = lookup_junction(dom, path, ai);
+-		dump_to_cache(f, dom, path, eep);
+-		if (eep != NULL) {
+-			exportent_release(eep);
+-			free(eep);
+-		}
+-	}
++	} else
++		lookup_nonexport(f, dom, path, ai);
++
+  out:
+ 	xlog(D_CALL, "nfsd_export: found %p path %s", found, path ? path : NULL);
+ 	if (dom) free(dom);
+
