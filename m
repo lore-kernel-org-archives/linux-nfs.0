@@ -1,132 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f174.google.com ([209.85.216.174]:46116 "EHLO
-	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965427Ab2J3SrG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Oct 2012 14:47:06 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH v8 03/16] mm,ksm: use new hashtable implementation
-Date: Tue, 30 Oct 2012 14:45:59 -0400
-Message-Id: <1351622772-16400-3-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
-References: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:28404 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758503Ab2JKNXw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 11 Oct 2012 09:23:52 -0400
+Message-ID: <5076C867.4050806@RedHat.com>
+Date: Thu, 11 Oct 2012 09:23:51 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: VDR User <user.vdr@gmail.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Problem with rpcbind
+References: <CAA7C2qiZhHD7-RHP93LCVOBGCmp4JxyJwRLa0AR8a=oi4fi2Gg@mail.gmail.com> <5072B1E5.9060808@RedHat.com> <CAA7C2qjRPs3pb66s2HDJqEyn0yGfGS_88+yvJNo0fhFQ9M6S3g@mail.gmail.com> <5074B53A.3030207@RedHat.com> <CAA7C2qg558GBYgaE2_Ay9QmC48UryG_9PqLP7Vebb1_QzRZd-g@mail.gmail.com>
+In-Reply-To: <CAA7C2qg558GBYgaE2_Ay9QmC48UryG_9PqLP7Vebb1_QzRZd-g@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch ksm to use the new hashtable implementation. This reduces the amount of
-generic unrelated code in the ksm module.
 
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
----
- mm/ksm.c | 31 +++++++++++++------------------
- 1 file changed, 13 insertions(+), 18 deletions(-)
 
-diff --git a/mm/ksm.c b/mm/ksm.c
-index 31ae5ea..751e328 100644
---- a/mm/ksm.c
-+++ b/mm/ksm.c
-@@ -33,7 +33,7 @@
- #include <linux/mmu_notifier.h>
- #include <linux/swap.h>
- #include <linux/ksm.h>
--#include <linux/hash.h>
-+#include <linux/hashtable.h>
- #include <linux/freezer.h>
- #include <linux/oom.h>
- 
-@@ -156,9 +156,8 @@ struct rmap_item {
- static struct rb_root root_stable_tree = RB_ROOT;
- static struct rb_root root_unstable_tree = RB_ROOT;
- 
--#define MM_SLOTS_HASH_SHIFT 10
--#define MM_SLOTS_HASH_HEADS (1 << MM_SLOTS_HASH_SHIFT)
--static struct hlist_head mm_slots_hash[MM_SLOTS_HASH_HEADS];
-+#define MM_SLOTS_HASH_BITS 10
-+static DEFINE_HASHTABLE(mm_slots_hash, MM_SLOTS_HASH_BITS);
- 
- static struct mm_slot ksm_mm_head = {
- 	.mm_list = LIST_HEAD_INIT(ksm_mm_head.mm_list),
-@@ -275,26 +274,21 @@ static inline void free_mm_slot(struct mm_slot *mm_slot)
- 
- static struct mm_slot *get_mm_slot(struct mm_struct *mm)
- {
--	struct mm_slot *mm_slot;
--	struct hlist_head *bucket;
- 	struct hlist_node *node;
-+	struct mm_slot *slot;
-+
-+	hash_for_each_possible(mm_slots_hash, slot, node, link, (unsigned long)mm) 
-+		if (slot->mm == mm)
-+			return slot;
- 
--	bucket = &mm_slots_hash[hash_ptr(mm, MM_SLOTS_HASH_SHIFT)];
--	hlist_for_each_entry(mm_slot, node, bucket, link) {
--		if (mm == mm_slot->mm)
--			return mm_slot;
--	}
- 	return NULL;
- }
- 
- static void insert_to_mm_slots_hash(struct mm_struct *mm,
- 				    struct mm_slot *mm_slot)
- {
--	struct hlist_head *bucket;
--
--	bucket = &mm_slots_hash[hash_ptr(mm, MM_SLOTS_HASH_SHIFT)];
- 	mm_slot->mm = mm;
--	hlist_add_head(&mm_slot->link, bucket);
-+	hash_add(mm_slots_hash, &mm_slot->link, (unsigned long)mm);
- }
- 
- static inline int in_stable_tree(struct rmap_item *rmap_item)
-@@ -647,7 +641,7 @@ static int unmerge_and_remove_all_rmap_items(void)
- 		ksm_scan.mm_slot = list_entry(mm_slot->mm_list.next,
- 						struct mm_slot, mm_list);
- 		if (ksm_test_exit(mm)) {
--			hlist_del(&mm_slot->link);
-+			hash_del(&mm_slot->link);
- 			list_del(&mm_slot->mm_list);
- 			spin_unlock(&ksm_mmlist_lock);
- 
-@@ -1392,7 +1386,7 @@ next_mm:
- 		 * or when all VM_MERGEABLE areas have been unmapped (and
- 		 * mmap_sem then protects against race with MADV_MERGEABLE).
- 		 */
--		hlist_del(&slot->link);
-+		hash_del(&slot->link);
- 		list_del(&slot->mm_list);
- 		spin_unlock(&ksm_mmlist_lock);
- 
-@@ -1559,7 +1553,7 @@ void __ksm_exit(struct mm_struct *mm)
- 	mm_slot = get_mm_slot(mm);
- 	if (mm_slot && ksm_scan.mm_slot != mm_slot) {
- 		if (!mm_slot->rmap_list) {
--			hlist_del(&mm_slot->link);
-+			hash_del(&mm_slot->link);
- 			list_del(&mm_slot->mm_list);
- 			easy_to_free = 1;
- 		} else {
-@@ -2038,6 +2032,7 @@ static int __init ksm_init(void)
- 	 */
- 	hotplug_memory_notifier(ksm_memory_callback, 100);
- #endif
-+
- 	return 0;
- 
- out_free:
--- 
-1.7.12.4
+On 09/10/12 22:49, VDR User wrote:
+> On Tue, Oct 9, 2012 at 4:37 PM, Steve Dickson <SteveD@redhat.com> wrote:
+>>>>> Per Aníbal Salazar, I'm sending this to the nfs mailing list..
+>>>>>
+>>>>> ==========
+>>>>>
+>>>>> Hi. I would like to know who I can talk to about having the rpcbind's
+>>>>> timeout value settable on the command line by the user. In many cases
+>>>>> the timeout is too long, requiring hackish solutions. It would be
+>>>>> best, and makes sense, that the user should be able to set the timeout
+>>>>> to something other than the default value if he chooses. If you could
+>>>>> direct me to the right person to talk to about it, I'd appreciate it.
+>>>>
+>>>> What timeout are you referring to? The one given to poll()?
+>>>
+>>> Hi. I guess so but not really sure. I'm talking about the timeout that
+>>> happens when rpcbind is waiting for a response. Sounds like poll()
+>>> could be it. We have an nfs server on .100 and the response happens
+>>> immediately.
+>>>
+>>> $ rpcinfo -t 192.168.1.100 nfs
+>>> program 100003 version 2 ready and waiting
+>>> program 100003 version 3 ready and waiting
+>>> program 100003 version 4 ready and waiting
+>>>
+>>> but there's no server on say .101 so if we run the same command on
+>>> that ip, the timeout takes a very long time. It's this timeout that
+>>> should be user-definable on the command line in my opinion. Any
+>>> thoughts about it?
+>>
+>> Hmm... I'm guess that is the 7min tcp connect time out cause by
+>> the -t option... Try using -u instead of -t... Basically using
+>> UDP instead of TCP... In general I would never recommend that
+>> but in this particular case it might help...
+> 
+> Thanks for this suggestion. I tried with -u but the timeout still
+> takes at least 1 min. Is it not feasible to have a command line
+> timeout where users can set it to something appropriate for their
+> needs? For example, in our case we only need about 5 seconds at most.
+hmm... when I do a "rpcinfo -t <ip-address> nfs" to a machine that
+does not have a daemon listening I immediately get:
+     rpcinfo: RPC: Port mapper failure - Unable to receive: errno 111 (Connection refused) program 100003 is not available
 
+So I not seeing here this hang is coming from...
+
+steved.
