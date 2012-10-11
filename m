@@ -1,67 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34440 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S966528Ab2JZVHA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Oct 2012 17:07:00 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Cc: Peter Staubach <pstaubach@exagrid.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/2] nfsd: use vfs_fsync_range(), not O_SYNC, for stable writes
-Date: Fri, 26 Oct 2012 17:06:57 -0400
-Message-Id: <1351285617-20450-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1351285617-20450-1-git-send-email-bfields@redhat.com>
-References: <1351285617-20450-1-git-send-email-bfields@redhat.com>
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:58429 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753926Ab2JKPCe convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Oct 2012 11:02:34 -0400
+Received: by mail-ie0-f174.google.com with SMTP id k13so3117572iea.19
+        for <linux-nfs@vger.kernel.org>; Thu, 11 Oct 2012 08:02:33 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <5076C867.4050806@RedHat.com>
+References: <CAA7C2qiZhHD7-RHP93LCVOBGCmp4JxyJwRLa0AR8a=oi4fi2Gg@mail.gmail.com>
+	<5072B1E5.9060808@RedHat.com>
+	<CAA7C2qjRPs3pb66s2HDJqEyn0yGfGS_88+yvJNo0fhFQ9M6S3g@mail.gmail.com>
+	<5074B53A.3030207@RedHat.com>
+	<CAA7C2qg558GBYgaE2_Ay9QmC48UryG_9PqLP7Vebb1_QzRZd-g@mail.gmail.com>
+	<5076C867.4050806@RedHat.com>
+Date: Thu, 11 Oct 2012 08:02:33 -0700
+Message-ID: <CAA7C2qjd-mtSjc79T4EkV1_vUbJpqOQ53PjPQoW-eC6U7uv1Vw@mail.gmail.com>
+Subject: Re: Problem with rpcbind
+From: VDR User <user.vdr@gmail.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Thu, Oct 11, 2012 at 6:23 AM, Steve Dickson <SteveD@redhat.com> wrote:
+>>>>>> Per Aníbal Salazar, I'm sending this to the nfs mailing list..
+>>>>>>
+>>>>>> ==========
+>>>>>>
+>>>>>> Hi. I would like to know who I can talk to about having the rpcbind's
+>>>>>> timeout value settable on the command line by the user. In many cases
+>>>>>> the timeout is too long, requiring hackish solutions. It would be
+>>>>>> best, and makes sense, that the user should be able to set the timeout
+>>>>>> to something other than the default value if he chooses. If you could
+>>>>>> direct me to the right person to talk to about it, I'd appreciate it.
+>>>>>
+>>>>> What timeout are you referring to? The one given to poll()?
+>>>>
+>>>> Hi. I guess so but not really sure. I'm talking about the timeout that
+>>>> happens when rpcbind is waiting for a response. Sounds like poll()
+>>>> could be it. We have an nfs server on .100 and the response happens
+>>>> immediately.
+>>>>
+>>>> $ rpcinfo -t 192.168.1.100 nfs
+>>>> program 100003 version 2 ready and waiting
+>>>> program 100003 version 3 ready and waiting
+>>>> program 100003 version 4 ready and waiting
+>>>>
+>>>> but there's no server on say .101 so if we run the same command on
+>>>> that ip, the timeout takes a very long time. It's this timeout that
+>>>> should be user-definable on the command line in my opinion. Any
+>>>> thoughts about it?
+>>>
+>>> Hmm... I'm guess that is the 7min tcp connect time out cause by
+>>> the -t option... Try using -u instead of -t... Basically using
+>>> UDP instead of TCP... In general I would never recommend that
+>>> but in this particular case it might help...
+>>
+>> Thanks for this suggestion. I tried with -u but the timeout still
+>> takes at least 1 min. Is it not feasible to have a command line
+>> timeout where users can set it to something appropriate for their
+>> needs? For example, in our case we only need about 5 seconds at most.
+>
+> hmm... when I do a "rpcinfo -t <ip-address> nfs" to a machine that
+> does not have a daemon listening I immediately get:
+>      rpcinfo: RPC: Port mapper failure - Unable to receive: errno 111 (Connection refused) program 100003 is not available
+>
+> So I not seeing here this hang is coming from...
 
-NFSv4 shares the same struct file across multiple writes.  (And we'd
-like NFSv2 and NFSv3 to do that as well some day.)
+The computers on our network run a mixture of different OS'es so maybe
+that is relevant. Regardless though it makes sense that we should be
+able to tell rpcbind to abort if I hasn't received a response within X
+seconds. That's much better than being forced to wait predefined
+timeouts, or timeouts in other places. Or is it just me?
 
-So setting O_SYNC on the struct file as a way to request a synchronous
-write doesn't work.
-
-Instead, do a vfs_fsync_range() in that case.
-
-Reported-by: Peter Staubach <pstaubach@exagrid.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/vfs.c |   13 ++++++-------
- 1 file changed, 6 insertions(+), 7 deletions(-)
-
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index ed3eb59..b584205 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1024,11 +1024,6 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
- 
- 	if (!EX_ISSYNC(exp))
- 		stable = 0;
--	if (stable && !use_wgather) {
--		spin_lock(&file->f_lock);
--		file->f_flags |= O_SYNC;
--		spin_unlock(&file->f_lock);
--	}
- 
- 	/* Write the data. */
- 	oldfs = get_fs(); set_fs(KERNEL_DS);
-@@ -1044,8 +1039,12 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
- 	if (inode->i_mode & (S_ISUID | S_ISGID))
- 		kill_suid(dentry);
- 
--	if (stable && use_wgather)
--		host_err = wait_for_concurrent_writes(file);
-+	if (stable) {
-+		if (use_wgather)
-+			host_err = wait_for_concurrent_writes(file);
-+		else
-+			host_err = vfs_fsync_range(file, offset, offset+*cnt, 0);
-+	}
- 
- out_nfserr:
- 	dprintk("nfsd: write complete host_err=%d\n", host_err);
--- 
-1.7.9.5
-
+Cheers
