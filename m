@@ -1,97 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:40705 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:43586 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751410Ab2J3QeO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Oct 2012 12:34:14 -0400
-Date: Tue, 30 Oct 2012 12:33:55 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        michael.brantley@deshaw.com, hch@infradead.org, miklos@szeredi.hu,
-        pstaubach@exagrid.com
-Subject: Re: [PATCH v8 11/32] vfs: make do_unlinkat retry on ESTALE errors
-Message-ID: <20121030123355.5c404373@tlielax.poochiereds.net>
-In-Reply-To: <20121030161429.GD24618@fieldses.org>
-References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
-	<1351341219-17837-12-git-send-email-jlayton@redhat.com>
-	<20121030161429.GD24618@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1754856Ab2JKUlF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 11 Oct 2012 16:41:05 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] NFSv4.1: Do not call pnfs_return_layout() from an rpciod context
+Date: Thu, 11 Oct 2012 16:40:30 -0400
+Message-Id: <1349988031-1122-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 30 Oct 2012 12:14:29 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+Move the call to pnfs_return_layout() to the read and write rpc_release()
+callbacks, so that it gets called from nfsiod, which is a more appropriate
+context.
 
-> On Sat, Oct 27, 2012 at 08:33:18AM -0400, Jeff Layton wrote:
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  fs/namei.c | 12 ++++++++++--
-> >  1 file changed, 10 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/fs/namei.c b/fs/namei.c
-> > index 7c9bb50..467b9f1 100644
-> > --- a/fs/namei.c
-> > +++ b/fs/namei.c
-> > @@ -3446,9 +3446,13 @@ static long do_unlinkat(int dfd, const char __user *pathname)
-> >  	struct filename *name;
-> >  	struct dentry *dentry;
-> >  	struct nameidata nd;
-> > -	struct inode *inode = NULL;
-> > +	struct inode *inode;
-> > +	unsigned int try = 0;
-> > +	unsigned int lookup_flags = LOOKUP_PARENT;
-> >  
-> > -	name = user_path_parent(dfd, pathname, &nd, 0);
-> > +retry:
-> > +	inode = NULL;
-> 
-> So, you fail after "inode" was set (say vfs_unlink returned an error)
-> the first time, then before "inode" was set (lookup_hash returns an
-> error), and you end up incorrectly doing another iput() the second time
-> through if you don't reset inode here?
-> 
-> (I think I made the same mistake in another patch, actually....)
-> 
-> --b.
-> 
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c | 18 +++++++++++++++---
+ fs/nfs/pnfs.h           |  1 +
+ 2 files changed, 16 insertions(+), 3 deletions(-)
 
-Correct. That's a new delta in this patch, btw. The original patch
-didn't do that and it was causing a busy inodes on umount bug in
-testing.
-
-It would occasionally hit an ESTALE error in this function and
-because "inode" wasn't reset to NULL, it would do a double-put of the
-inode and cause the counter to underflow.
-
-It might be good to restructure this code to make those sorts of bugs
-less likely, but the error handling in here is already so hairy that I
-decided to punt on that for now...
-
-> > +	name = user_path_parent(dfd, pathname, &nd, try);
-> >  	if (IS_ERR(name))
-> >  		return PTR_ERR(name);
-> >  
-> > @@ -3486,6 +3490,10 @@ exit2:
-> >  exit1:
-> >  	path_put(&nd.path);
-> >  	putname(name);
-> > +	if (retry_estale(error, try++)) {
-> > +		lookup_flags |= LOOKUP_REVAL;
-> > +		goto retry;
-> > +	}
-> >  	return error;
-> >  
-> >  slashes:
-> > -- 
-> > 1.7.11.7
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 816c2d0..e7aee56 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -122,12 +122,21 @@ static void filelayout_reset_read(struct nfs_read_data *data)
+ 	}
+ }
+ 
++static void filelayout_fenceme(struct inode *inode, struct pnfs_layout_hdr *lo)
++{
++	if (!test_and_clear_bit(NFS_LAYOUT_RETURN, &lo->plh_flags))
++		return;
++	clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags);
++	pnfs_return_layout(inode);
++}
++
+ static int filelayout_async_handle_error(struct rpc_task *task,
+ 					 struct nfs4_state *state,
+ 					 struct nfs_client *clp,
+ 					 struct pnfs_layout_segment *lseg)
+ {
+-	struct inode *inode = lseg->pls_layout->plh_inode;
++	struct pnfs_layout_hdr *lo = lseg->pls_layout;
++	struct inode *inode = lo->plh_inode;
+ 	struct nfs_server *mds_server = NFS_SERVER(inode);
+ 	struct nfs4_deviceid_node *devid = FILELAYOUT_DEVID_NODE(lseg);
+ 	struct nfs_client *mds_client = mds_server->nfs_client;
+@@ -204,8 +213,7 @@ static int filelayout_async_handle_error(struct rpc_task *task,
+ 		dprintk("%s DS connection error %d\n", __func__,
+ 			task->tk_status);
+ 		nfs4_mark_deviceid_unavailable(devid);
+-		clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags);
+-		_pnfs_return_layout(inode);
++		set_bit(NFS_LAYOUT_RETURN, &lo->plh_flags);
+ 		rpc_wake_up(&tbl->slot_tbl_waitq);
+ 		/* fall through */
+ 	default:
+@@ -330,7 +338,9 @@ static void filelayout_read_count_stats(struct rpc_task *task, void *data)
+ static void filelayout_read_release(void *data)
+ {
+ 	struct nfs_read_data *rdata = data;
++	struct pnfs_layout_hdr *lo = rdata->header->lseg->pls_layout;
+ 
++	filelayout_fenceme(lo->plh_inode, lo);
+ 	nfs_put_client(rdata->ds_clp);
+ 	rdata->header->mds_ops->rpc_release(data);
+ }
+@@ -428,7 +438,9 @@ static void filelayout_write_count_stats(struct rpc_task *task, void *data)
+ static void filelayout_write_release(void *data)
+ {
+ 	struct nfs_write_data *wdata = data;
++	struct pnfs_layout_hdr *lo = wdata->header->lseg->pls_layout;
+ 
++	filelayout_fenceme(lo->plh_inode, lo);
+ 	nfs_put_client(wdata->ds_clp);
+ 	wdata->header->mds_ops->rpc_release(data);
+ }
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 2d722db..dbf7bba 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -62,6 +62,7 @@ enum {
+ 	NFS_LAYOUT_RW_FAILED,		/* get rw layout failed stop trying */
+ 	NFS_LAYOUT_BULK_RECALL,		/* bulk recall affecting layout */
+ 	NFS_LAYOUT_ROC,			/* some lseg had roc bit set */
++	NFS_LAYOUT_RETURN,		/* Return this layout ASAP */
+ };
+ 
+ enum layoutdriver_policy_flags {
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.11.7
+
