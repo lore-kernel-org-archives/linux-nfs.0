@@ -1,68 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:60325 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757647Ab2JKABq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 10 Oct 2012 20:01:46 -0400
-Date: Thu, 11 Oct 2012 11:01:56 +1100
-From: NeilBrown <neilb@suse.de>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Should "mount -o proto=udp" be usable against an IPv6 only
- server?
-Message-ID: <20121011110156.5fdcfd53@notabene.brown>
-In-Reply-To: <61E96B57-9545-4DC5-8AAF-BD704EA802D5@oracle.com>
-References: <11D4587E-7739-4D31-836D-D63177D13302@oracle.com>
-	<20121008143550.68b4aa45@notabene.brown>
-	<64BBDA5E-E51C-4DD1-9ECB-41322286C57E@oracle.com>
-	<20121009104847.13cceeae@notabene.brown>
-	<61E96B57-9545-4DC5-8AAF-BD704EA802D5@oracle.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/E_bhjqs_B34ce9na.8a=vYq"; protocol="application/pgp-signature"
+Received: from zep00a03.dent.med.uni-muenchen.de ([138.246.161.8]:55094 "HELO
+	md.dent.med.uni-muenchen.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1759578Ab2JLMHN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Oct 2012 08:07:13 -0400
+Date: 12 Oct 2012 14:00:30 +0200
+Message-ID: <20121012120030.18411.qmail@md.dent.med.uni-muenchen.de>
+From: Wolfram Gloger <wmglo@dent.med.uni-muenchen.de>
+To: linux-nfs@vger.kernel.org
+CC: wmglo@dent.med.uni-muenchen.de
+Subject: [PATCH] nfs-utils: Backgrounding mount broken with NFS versions <4
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/E_bhjqs_B34ce9na.8a=vYq
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+When the NFS version isn't specified in the mount options, mount.nfs
+attempts V4 first and appends 'vers=4' to the extra_options string in
+the mount options.  If the server isn't immediately reachable, this
+attempt fails.  However, if the background option is specified and the
+server comes up later on, the extra_options are used again for all
+further attempts and thus they fail if the server only supports
+vers<4.
 
-On Tue, 9 Oct 2012 11:01:32 -0400 Chuck Lever <chuck.lever@oracle.com> wrot=
-e:
+Fix this by only amending extra_options on a successful vers=4 mount.
 
+This is now Debian bug #690181 and has apparently been around for
+ages.
 
-> > Thanks for your patience.  Sorry I missed the mountproto=3Drdma changes=
- you
-> > mentioned earlier - I've fixed that up now, as well as addressing your =
-other
-> > suggestion.
->=20
-> Acked-by: Chuck Lever <chuck.lever@oracle.com>
->=20
+Signed-off-by: Wolfram Gloger <bugzilla1@malloc.de>
 
-Thanks!  I've sent it off to Steve.
-
-NeilBrown
-
---Sig_/E_bhjqs_B34ce9na.8a=vYq
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.18 (GNU/Linux)
-
-iQIVAwUBUHYMdDnsnt1WYoG5AQKuYA//VEIV1M8rqHWjl4LZar17FBwgajx4vb53
-CP5hi/Ov7LMp5y6bIDyOg+Gs3HORGoZn1FfS2/yA8nbz/tqHLLHTCjhwj/ADsk1b
-hB+a1YbVFWa6GCZwNg8mgvsNhuzjoAAP8EeuwCH9SUAFwXmTwiuKUMizVIR5O5FE
-UIE0rgTBWAfSSs5P4pnCavg+xv7AncrehkRIvpFh2nfknPN8Wt6cb3HuWppypKgP
-ASOVad5uxbdgA5CbN7tZJSwEl3GOuj3dWXom5AMj179RcIvcjc44VxPWdbaDuU60
-wD5k7Fyg19ls7TvEjQB/B0jStU+iVAPZMcbWUQavR0FoaXOzwPQBmvDNDop1Jjja
-2H5aXziJCslbx8kz85XqYrgnt18yu9ZCehvT3uVjPevpvgycCTuXoNkjlKBfW26d
-S2noJekjRpQXg056N+Mdx0qHhoNex3TEoNZfOfKhDae1INf+snI/H1qJC9VeD+yH
-USckRzBhib7KrDywGe/7jNzsyWQlCVVkHVImhxiaSaVk9riEmYxO874MYkuQG0le
-YtkcESIDPcRjiq4A24+QVWkm3JoM7F+DjV27/LT6/jQxsV9C8EBh/naZyxND/x+g
-QH/qasKU3pPfhHxqLLGPlh8oH2yawZJdltPk331VSq8aIbneoMEOaYHh7aOJyDZI
-JG8cP/DU5Mo=
-=aAiA
------END PGP SIGNATURE-----
-
---Sig_/E_bhjqs_B34ce9na.8a=vYq--
+--- utils/mount/stropts.c.orig	2012-08-23 19:41:56.000000000 +0200
++++ utils/mount/stropts.c	2012-10-11 13:46:25.000000000 +0200
+@@ -680,6 +680,7 @@
+ {
+ 	struct mount_options *options = po_dup(mi->options);
+ 	int result = 0;
++	char *extra_opts = NULL;
+ 
+ 	if (!options) {
+ 		errno = ENOMEM;
+@@ -715,20 +716,26 @@
+ 		goto out_fail;
+ 	}
+ 
+-	/*
+-	 * Update option string to be recorded in /etc/mtab.
+-	 */
+-	if (po_join(options, mi->extra_opts) == PO_FAILED) {
++	if (po_join(options, &extra_opts) == PO_FAILED) {
+ 		errno = ENOMEM;
+ 		goto out_fail;
+ 	}
+ 
+ 	if (verbose)
+ 		printf(_("%s: trying text-based options '%s'\n"),
+-			progname, *mi->extra_opts);
++			progname, extra_opts);
+ 
+ 	result = nfs_sys_mount(mi, options);
+ 
++	/*
++	 * If success, update option string to be recorded in /etc/mtab.
++	 */
++	if (result) {
++	    free(*mi->extra_opts);
++	    *mi->extra_opts = extra_opts;
++	} else
++	    free(extra_opts);
++
+ out_fail:
+ 	po_destroy(options);
+ 	return result;
