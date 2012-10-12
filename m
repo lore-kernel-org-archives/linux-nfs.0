@@ -1,130 +1,142 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:46292 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:39568 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751182Ab2JITtw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Oct 2012 15:49:52 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>
-CC: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: Re: [PATCH v3] SUNRPC: set desired file system root before
- connecting local transports
-Date: Tue, 9 Oct 2012 19:49:46 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90901A143@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20121008105437.18668.99905.stgit@localhost.localdomain>
-	 <20121009193506.GA19680@fieldses.org>
-In-Reply-To: <20121009193506.GA19680@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+	id S1751516Ab2JLQVz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Oct 2012 12:21:55 -0400
+Date: Fri, 12 Oct 2012 12:21:49 -0400
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: please pull nfsd changes for 3.7
+Message-ID: <20121012162149.GC6895@fieldses.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTEwLTA5IGF0IDE1OjM1IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IENjJ2luZyBFcmljIHNpbmNlIEkgc2VlbSB0byByZWNhbGwgaGUgc3VnZ2VzdGVkIGRvaW5n
-IGl0IHRoaXMgd2F5Pw0KPiANCj4gU2VlbXMgT0sgdG8gbWUsIGJ1dCBtYXliZSB0aGF0IHN3YXBf
-cm9vdCBzaG91bGQgYmUgaW4gY29tbW9uIGNvZGU/ICAoT3INCj4gbWF5YmUgd2UgY291bGQgdXNl
-IHNldF9mc19yb290KCk/KQ0KPiANCj4gSSdtIGFzc3VtaW5nIGl0J3MgdXAgdG8gVHJvbmQgdG8g
-dGFrZSB0aGlzLi0tYi4NCg0KSSdtIHJlbHVjdGFudCB0byBkbyB0aGF0IGF0IHRoaXMgdGltZSBz
-aW5jZSB0aGUgb3JpZ2luYWwgcHJvcG9zYWwgd2FzDQpwcmVjaXNlbHkgdGhhdCBvZiBleHBvcnQg
-c2V0X2ZzX3Jvb3QoKSBhbmQgdXNpbmcgaXQgYXJvdW5kIHRoZSBBRl9MT0NBTA0Kc29ja2V0IGJp
-bmQuIFRoYXQgcHJvcG9zYWwgd2FzIE5BQ0tlZCBieSBBbCBWaXJvLg0KDQpJZiBBbCBpcyBPSyB3
-aXRoIHRoZSBpZGVhIG9mIHVzIGNyZWF0aW5nIGEgcHJpdmF0ZSB2ZXJzaW9uIG9mDQpzZXRfZnNf
-cm9vdCwgdGhlbiBJJ2QgbGlrZSB0byBzZWUgYW4gb2ZmaWNpYWwgQWNrZWQtYnk6IHRoYXQgd2Ug
-Y2FuDQphcHBlbmQgdG8gdGhpcyBjb21taXQuDQoNCkNoZWVycw0KICBUcm9uZA0KDQo+IE9uIE1v
-biwgT2N0IDA4LCAyMDEyIGF0IDAyOjU2OjMyUE0gKzA0MDAsIFN0YW5pc2xhdiBLaW5zYnVyc2t5
-IHdyb3RlOg0KPiA+IFRvZGF5LCB0aGVyZSBpcyBhIHByb2JsZW0gaW4gY29ubmVjdGluZyBvZiBs
-b2NhbCBTVU5SUEMgdGhhbnNwb3J0cy4gVGhlc2UNCj4gPiB0cmFuc3BvcnRzIHVzZXMgVU5JWCBz
-b2NrZXRzIGFuZCBjb25uZWN0aW9uIGl0c2VsZiBpcyBkb25lIGJ5IHJwY2lvZA0KPiA+IHdvcmtx
-dWV1ZS4NCj4gPiBCdXQgYWxsIGxvY2FsIHRyYW5zcG9ydHMgYXJlIGNvbm5lY3RpbmcgaW4gcnBj
-aW9kIGNvbnRleHQuIEkuZS4gVU5JWCBzb2NrZXRzDQo+ID4gbG9va3VwIGlzIGRvbmUgaW4gY29u
-dGV4dCBvZiBwcm9jZXNzIGZpbGUgc3lzdGVtIHJvb3QuDQo+ID4gVGhpcyB3b3JrcyBuaWNlIHVu
-dGlsIHdlIHdpbGwgdHJ5IHRvIG1vdW50IE5GUyBmcm9tIHByb2Nlc3Mgd2l0aCBvdGhlciByb290
-IC0NCj4gPiBmb3IgZXhhbXBsZSBpbiBjb250YWluZXIuIFRoaXMgY29udGFpbmVyIGNhbiBoYXZl
-IGl0J3Mgb3duIChuZXN0ZWQpIHJvb3QgYW5kDQo+ID4gcmNwYmluZCBwcm9jZXNzLCBsaXN0ZW5p
-bmcgb24gaXQncyBvd24gdW5peCBzb2NrZXRzLiBCdXQgTkZTIG1vdW50IGF0dGVtcHQgaW4NCj4g
-PiB0aGlzIGNvbnRhaW5lciB3aWxsIHJlZ2lzdGVyIG5ldyBzZXJ2aWNlIChMb2NrZCBmb3IgZXhh
-bXBsZSkgaW4gZ2xvYmFsIHJwY2JpbmQNCj4gPiAtIG5vdCBjb250YWluZXJzJ3Mgb25lLg0KPiA+
-IFRoaXMgcGF0Y2ggc29sdmVzIHRoZSBwcm9ibGVtIGJ5IHN3aXRjaGluZyBycGNpb2Qga2VybmVs
-IHRocmVhZCdzIGZpbGUgc3lzdGVtDQo+ID4gcm9vdCB0byB0aGUgcmlnaHQgb25lIChzdG9yZWQg
-b24gdHJhbnNwb3J0KSB3aGlsZSBjb25uZWN0aW5nIG9mIGxvY2FsDQo+ID4gdHJhbnNwb3J0cy4N
-Cj4gPiANCj4gPiBTaWduZWQtb2ZmLWJ5OiBTdGFuaXNsYXYgS2luc2J1cnNreSA8c2tpbnNidXJz
-a3lAcGFyYWxsZWxzLmNvbT4NCj4gPiAtLS0NCj4gPiAgbmV0L3N1bnJwYy94cHJ0c29jay5jIHwg
-ICA1MiArKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKy0tDQo+
-ID4gIDEgZmlsZXMgY2hhbmdlZCwgNTAgaW5zZXJ0aW9ucygrKSwgMiBkZWxldGlvbnMoLSkNCj4g
-PiANCj4gPiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy94cHJ0c29jay5jIGIvbmV0L3N1bnJwYy94
-cHJ0c29jay5jDQo+ID4gaW5kZXggYWFhYWRmYi4uZWNiY2VkMSAxMDA2NDQNCj4gPiAtLS0gYS9u
-ZXQvc3VucnBjL3hwcnRzb2NrLmMNCj4gPiArKysgYi9uZXQvc3VucnBjL3hwcnRzb2NrLmMNCj4g
-PiBAQCAtMzcsNiArMzcsNyBAQA0KPiA+ICAjaW5jbHVkZSA8bGludXgvc3VucnBjL3N2Y3NvY2su
-aD4NCj4gPiAgI2luY2x1ZGUgPGxpbnV4L3N1bnJwYy94cHJ0c29jay5oPg0KPiA+ICAjaW5jbHVk
-ZSA8bGludXgvZmlsZS5oPg0KPiA+ICsjaW5jbHVkZSA8bGludXgvZnNfc3RydWN0Lmg+DQo+ID4g
-ICNpZmRlZiBDT05GSUdfU1VOUlBDX0JBQ0tDSEFOTkVMDQo+ID4gICNpbmNsdWRlIDxsaW51eC9z
-dW5ycGMvYmNfeHBydC5oPg0KPiA+ICAjZW5kaWYNCj4gPiBAQCAtMjU1LDYgKzI1NiwxMSBAQCBz
-dHJ1Y3Qgc29ja194cHJ0IHsNCj4gPiAgCXZvaWQJCQkoKm9sZF9zdGF0ZV9jaGFuZ2UpKHN0cnVj
-dCBzb2NrICopOw0KPiA+ICAJdm9pZAkJCSgqb2xkX3dyaXRlX3NwYWNlKShzdHJ1Y3Qgc29jayAq
-KTsNCj4gPiAgCXZvaWQJCQkoKm9sZF9lcnJvcl9yZXBvcnQpKHN0cnVjdCBzb2NrICopOw0KPiA+
-ICsNCj4gPiArCS8qDQo+ID4gKwkgKiBTYXZlZCB0cmFuc3BvcnQgY3JlYXRvciByb290LiBSZXF1
-aXJlZCBmb3IgbG9jYWwgdHJhbnNwb3J0cyBvbmx5Lg0KPiA+ICsJICovDQo+ID4gKwlzdHJ1Y3Qg
-cGF0aAkJcm9vdDsNCj4gPiAgfTsNCj4gPiAgDQo+ID4gIC8qDQo+ID4gQEAgLTE4NzYsNiArMTg4
-MiwzMCBAQCBzdGF0aWMgaW50IHhzX2xvY2FsX2ZpbmlzaF9jb25uZWN0aW5nKHN0cnVjdCBycGNf
-eHBydCAqeHBydCwNCj4gPiAgCXJldHVybiBrZXJuZWxfY29ubmVjdChzb2NrLCB4c19hZGRyKHhw
-cnQpLCB4cHJ0LT5hZGRybGVuLCAwKTsNCj4gPiAgfQ0KPiA+ICANCj4gPiArLyoNCj4gPiArICog
-X194c19sb2NhbF9zd2FwX3Jvb3QgLSBzd2FwIGN1cnJlbnQgcm9vdCB0byB0cmFucG9ydCdzIHJv
-b3QgaGVscGVyLg0KPiA+ICsgKiBAbmV3X3Jvb3QgLSBwYXRoIHRvIHNldCB0byBjdXJyZW50IGZz
-LT5yb290Lg0KPiA+ICsgKiBAb2xkX3Jvb3QgLSBvcHRpbmFsIHBhb2luZXQgdG8gc2F2ZSBjdXJy
-ZW50IHJvb3QgdG8NCj4gPiArICoNCj4gPiArICogVGhpcyByb3V0aW5lIGlzIHJlcXVpZWVkIHRv
-IGNvbm5lY3RpbmcgdW5peCBzb2NrZXRzIHRvIGFic29sdXRlIHBhdGggaW4NCj4gPiArICogcHJv
-cGVyIHJvb3QgZW52aXJvbm1lbnQuDQo+ID4gKyAqIE5vdGU6IG5vIHBhdGhfZ2V0KCkgd2lsbCBi
-ZSBjYWxsZWQuIEkuZS4gY2FsbGVyIGhhdmUgdG8gaG9sZCByZWZlcmVuY2UgdG8NCj4gPiArICog
-bmV3X3Jvb3QuDQo+ID4gKyAqLw0KPiA+ICtzdGF0aWMgdm9pZCBfX3hzX2xvY2FsX3N3YXBfcm9v
-dChzdHJ1Y3QgcGF0aCAqbmV3X3Jvb3QsIHN0cnVjdCBwYXRoICpvbGRfcm9vdCkNCj4gPiArew0K
-PiA+ICsJc3RydWN0IGZzX3N0cnVjdCAqZnMgPSBjdXJyZW50LT5mczsNCj4gPiArDQo+ID4gKwlz
-cGluX2xvY2soJmZzLT5sb2NrKTsNCj4gPiArCXdyaXRlX3NlcWNvdW50X2JlZ2luKCZmcy0+c2Vx
-KTsNCj4gPiArCWlmIChvbGRfcm9vdCkNCj4gPiArCQkqb2xkX3Jvb3QgPSBmcy0+cm9vdDsNCj4g
-PiArCWZzLT5yb290ID0gKm5ld19yb290Ow0KPiA+ICsJd3JpdGVfc2VxY291bnRfZW5kKCZmcy0+
-c2VxKTsNCj4gPiArCXNwaW5fdW5sb2NrKCZmcy0+bG9jayk7DQo+ID4gK30NCj4gPiArDQo+ID4g
-Kw0KPiA+ICAvKioNCj4gPiAgICogeHNfbG9jYWxfc2V0dXBfc29ja2V0IC0gY3JlYXRlIEFGX0xP
-Q0FMIHNvY2tldCwgY29ubmVjdCB0byBhIGxvY2FsIGVuZHBvaW50DQo+ID4gICAqIEB4cHJ0OiBS
-UEMgdHJhbnNwb3J0IHRvIGNvbm5lY3QNCj4gPiBAQCAtMTg5MSw2ICsxOTIxLDcgQEAgc3RhdGlj
-IHZvaWQgeHNfbG9jYWxfc2V0dXBfc29ja2V0KHN0cnVjdCB3b3JrX3N0cnVjdCAqd29yaykNCj4g
-PiAgCXN0cnVjdCBycGNfeHBydCAqeHBydCA9ICZ0cmFuc3BvcnQtPnhwcnQ7DQo+ID4gIAlzdHJ1
-Y3Qgc29ja2V0ICpzb2NrOw0KPiA+ICAJaW50IHN0YXR1cyA9IC1FSU87DQo+ID4gKwlzdHJ1Y3Qg
-cGF0aCByb290Ow0KPiA+ICANCj4gPiAgCWN1cnJlbnQtPmZsYWdzIHw9IFBGX0ZTVFJBTlM7DQo+
-ID4gIA0KPiA+IEBAIC0xOTA3LDcgKzE5MzgsMTAgQEAgc3RhdGljIHZvaWQgeHNfbG9jYWxfc2V0
-dXBfc29ja2V0KHN0cnVjdCB3b3JrX3N0cnVjdCAqd29yaykNCj4gPiAgCWRwcmludGsoIlJQQzog
-ICAgICAgd29ya2VyIGNvbm5lY3RpbmcgeHBydCAlcCB2aWEgQUZfTE9DQUwgdG8gJXNcbiIsDQo+
-ID4gIAkJCXhwcnQsIHhwcnQtPmFkZHJlc3Nfc3RyaW5nc1tSUENfRElTUExBWV9BRERSXSk7DQo+
-ID4gIA0KPiA+ICsJX194c19sb2NhbF9zd2FwX3Jvb3QoJnRyYW5zcG9ydC0+cm9vdCwgJnJvb3Qp
-Ow0KPiA+ICAJc3RhdHVzID0geHNfbG9jYWxfZmluaXNoX2Nvbm5lY3RpbmcoeHBydCwgc29jayk7
-DQo+ID4gKwlfX3hzX2xvY2FsX3N3YXBfcm9vdCgmcm9vdCwgTlVMTCk7DQo+ID4gKw0KPiA+ICAJ
-c3dpdGNoIChzdGF0dXMpIHsNCj4gPiAgCWNhc2UgMDoNCj4gPiAgCQlkcHJpbnRrKCJSUEM6ICAg
-ICAgIHhwcnQgJXAgY29ubmVjdGVkIHRvICVzXG4iLA0KPiA+IEBAIC0yMjU2LDYgKzIyOTAsMTgg
-QEAgc3RhdGljIHZvaWQgeHNfY29ubmVjdChzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2spDQo+ID4gIAl9
-DQo+ID4gIH0NCj4gPiAgDQo+ID4gK3N0YXRpYyB2b2lkIHhzX2xvY2FsX2Rlc3Ryb3koc3RydWN0
-IHJwY194cHJ0ICp4cHJ0KQ0KPiA+ICt7DQo+ID4gKwlzdHJ1Y3Qgc29ja194cHJ0ICp0cmFuc3Bv
-cnQgPSBjb250YWluZXJfb2YoeHBydCwgc3RydWN0IHNvY2tfeHBydCwgeHBydCk7DQo+ID4gKwlz
-dHJ1Y3QgcGF0aCByb290ID0gdHJhbnNwb3J0LT5yb290Ow0KPiA+ICsNCj4gPiArCWRwcmludGso
-IlJQQzogICAgICAgeHNfbG9jYWxfZGVzdHJveSB4cHJ0ICVwXG4iLCB4cHJ0KTsNCj4gPiArDQo+
-ID4gKwl4c19kZXN0cm95KHhwcnQpOw0KPiA+ICsNCj4gPiArCXBhdGhfcHV0KCZyb290KTsNCj4g
-PiArfQ0KPiA+ICsNCj4gPiAgLyoqDQo+ID4gICAqIHhzX2xvY2FsX3ByaW50X3N0YXRzIC0gZGlz
-cGxheSBBRl9MT0NBTCBzb2NrZXQtc3BlY2lmYyBzdGF0cw0KPiA+ICAgKiBAeHBydDogcnBjX3hw
-cnQgc3RydWN0IGNvbnRhaW5pbmcgc3RhdGlzdGljcw0KPiA+IEBAIC0yNDc1LDcgKzI1MjEsNyBA
-QCBzdGF0aWMgc3RydWN0IHJwY194cHJ0X29wcyB4c19sb2NhbF9vcHMgPSB7DQo+ID4gIAkuc2Vu
-ZF9yZXF1ZXN0CQk9IHhzX2xvY2FsX3NlbmRfcmVxdWVzdCwNCj4gPiAgCS5zZXRfcmV0cmFuc190
-aW1lb3V0CT0geHBydF9zZXRfcmV0cmFuc190aW1lb3V0X2RlZiwNCj4gPiAgCS5jbG9zZQkJCT0g
-eHNfY2xvc2UsDQo+ID4gLQkuZGVzdHJveQkJPSB4c19kZXN0cm95LA0KPiA+ICsJLmRlc3Ryb3kJ
-CT0geHNfbG9jYWxfZGVzdHJveSwNCj4gPiAgCS5wcmludF9zdGF0cwkJPSB4c19sb2NhbF9wcmlu
-dF9zdGF0cywNCj4gPiAgfTsNCj4gPiAgDQo+ID4gQEAgLTI2NTQsOCArMjcwMCwxMCBAQCBzdGF0
-aWMgc3RydWN0IHJwY194cHJ0ICp4c19zZXR1cF9sb2NhbChzdHJ1Y3QgeHBydF9jcmVhdGUgKmFy
-Z3MpDQo+ID4gIAlkcHJpbnRrKCJSUEM6ICAgICAgIHNldCB1cCB4cHJ0IHRvICVzIHZpYSBBRl9M
-T0NBTFxuIiwNCj4gPiAgCQkJeHBydC0+YWRkcmVzc19zdHJpbmdzW1JQQ19ESVNQTEFZX0FERFJd
-KTsNCj4gPiAgDQo+ID4gLQlpZiAodHJ5X21vZHVsZV9nZXQoVEhJU19NT0RVTEUpKQ0KPiA+ICsJ
-aWYgKHRyeV9tb2R1bGVfZ2V0KFRISVNfTU9EVUxFKSkgew0KPiA+ICsJCWdldF9mc19yb290KGN1
-cnJlbnQtPmZzLCAmdHJhbnNwb3J0LT5yb290KTsNCj4gPiAgCQlyZXR1cm4geHBydDsNCj4gPiAr
-CX0NCj4gPiAgCXJldCA9IEVSUl9QVFIoLUVJTlZBTCk7DQo+ID4gIG91dF9lcnI6DQo+ID4gIAl4
-cHJ0X2ZyZWUoeHBydCk7DQo+ID4gDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMg
-Y2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0K
-d3d3Lm5ldGFwcC5jb20NCg==
+The following nfsd changes for 3.7 are available from the for-3.7 branch
+at:
+
+	git://linux-nfs.org/~bfields/linux.git for-3.7
+
+Another relatively quiet cycle.  There was some progress on my remaining
+4.1 todo's, but a couple of them were just of the form "check that we do
+X correctly", so didn't have much affect on the code.
+
+Other than that, a bunch of cleanup and some bugfixes (including an
+annoying NFSv4.0 state leak and a busy-loop in the server that could
+cause it to peg the CPU without making progress).
+
+--b.
+
+----------------------------------------------------------------
+
+Bryan Schumaker (1):
+      NFSD: Swap the struct nfs4_operation getter and setter
+
+David Howells (2):
+      UAPI: (Scripted) Disintegrate include/linux/nfsd
+      UAPI: (Scripted) Disintegrate include/linux/sunrpc
+
+J. Bruce Fields (38):
+      nfsd4: nfsaclsvc_encode_voidres static
+      nfsd4: declare nfs4_recoverydir properly
+      nfsd: do_nfsd_create verf argument is a u32
+      nfsd4: nfsd_process_n_delegations should be static
+      svcrpc: fix xpt_list traversal locking on shutdown
+      svcrpc: standardize svc_setup_socket return convention
+      svcrpc: clean up control flow
+      svcrpc: make svc_create_xprt enqueue on clearing XPT_BUSY
+      svcrpc: share some setup of listening sockets
+      nfsd: remove redundant "port" argument
+      nfsd: allow configuring nfsd to listen on 5-digit ports
+      svcrpc: minor udp code cleanup
+      svcrpc: don't bother checking bad svc_addr_len result
+      svcrpc: make xpo_recvfrom return only >=0
+      svcrpc: remove handling of unknown errors from svc_recv
+      svcrpc: make svc_xprt_received static
+      svcrpc: break up svc_recv
+      svcrpc: split up svc_handle_xprt
+      nfsd: document kernel interfaces for nfsd configuration
+      nfsd4: fix nfs4 stateid leak
+      nfsd: remove unused listener-removal interfaces
+      nfsd4: eliminate redundant nfs4_free_stateid
+      nfsd4: cast readlink() bug argument
+      nfsd4: fix bind_conn_to_session xdr comment
+      nfsd4: don't pin clientids to pseudoflavors
+      nfsd4: set cl_minorversion at create time
+      nfsd4: enforce per-client sessions/no-sessions distinction
+      nfsd4: reject bad forechannel attrs earlier
+      nfsd4: separate connection allocation and initialization
+      nfsd4: new_conn_from_crses should only allocate
+      nfsd4: minor free_session cleanup
+      nfsd4: clean up session allocation
+      nfsd4: separate session allocation and initialization
+      nfsd4: expire old client earlier
+      nfsd4: remove redundant callback probe
+      nfsd4: don't allow reclaims of expired clients
+      nfs: disintegrate UAPI for nfs
+      Merge Trond's bugfixes
+
+Jeff Layton (4):
+      vfs: don't treat fl_type as a bitmap
+      nfsd: trivial comment updates
+      knfsd: remove bogus BUG_ON() call from nfsd4_locku
+      knfsd: don't allocate file_locks on the stack
+
+Julia Lawall (1):
+      fs/nfsd/nfs4idmap.c: adjust inconsistent IS_ERR and PTR_ERR
+
+Malahal Naineni (1):
+      NFSD: pass null terminated buf to kstrtouint()
+
+Namjae Jeon (1):
+      nfsd: remove duplicate init in nfsd4_cb_recall
+
+ .../filesystems/nfs/nfsd-admin-interfaces.txt      |   41 +++
+ fs/lockd/svc.c                                     |   17 +-
+ fs/locks.c                                         |    6 +-
+ fs/nfs/callback.c                                  |   16 +-
+ fs/nfs/nfs4namespace.c                             |    4 +-
+ fs/nfs/nfs4proc.c                                  |    2 +-
+ fs/nfsd/nfs2acl.c                                  |    3 +-
+ fs/nfsd/nfs3proc.c                                 |    2 +-
+ fs/nfsd/nfs4callback.c                             |    1 -
+ fs/nfsd/nfs4idmap.c                                |    4 +-
+ fs/nfsd/nfs4proc.c                                 |    6 +-
+ fs/nfsd/nfs4state.c                                |  351 +++++++++++---------
+ fs/nfsd/nfs4xdr.c                                  |    2 +-
+ fs/nfsd/nfsctl.c                                   |   84 +----
+ fs/nfsd/nfsd.h                                     |    4 +-
+ fs/nfsd/nfssvc.c                                   |   26 +-
+ fs/nfsd/state.h                                    |    8 +-
+ fs/nfsd/vfs.c                                      |    2 +-
+ include/linux/nfsd/Kbuild                          |    5 -
+ include/linux/nfsd/debug.h                         |   31 +-
+ include/linux/nfsd/export.h                        |   52 +--
+ include/linux/nfsd/nfsfh.h                         |  111 +------
+ include/linux/nfsd/stats.h                         |    8 +-
+ include/linux/sunrpc/Kbuild                        |    1 -
+ include/linux/sunrpc/debug.h                       |   39 +--
+ include/linux/sunrpc/svc_xprt.h                    |    5 +-
+ include/linux/sunrpc/svcsock.h                     |    3 -
+ include/uapi/linux/nfsd/Kbuild                     |    5 +
+ include/{ => uapi}/linux/nfsd/cld.h                |    0
+ include/uapi/linux/nfsd/debug.h                    |   40 +++
+ include/uapi/linux/nfsd/export.h                   |   58 ++++
+ include/uapi/linux/nfsd/nfsfh.h                    |  122 +++++++
+ include/uapi/linux/nfsd/stats.h                    |   17 +
+ include/uapi/linux/sunrpc/Kbuild                   |    1 +
+ include/uapi/linux/sunrpc/debug.h                  |   48 +++
+ net/sunrpc/svc_xprt.c                              |  233 +++++++------
+ net/sunrpc/svcsock.c                               |  157 +++------
+ net/sunrpc/xprtrdma/svc_rdma_transport.c           |    4 -
+ net/sunrpc/xprtsock.c                              |   22 +-
+ 39 files changed, 776 insertions(+), 765 deletions(-)
+ create mode 100644 Documentation/filesystems/nfs/nfsd-admin-interfaces.txt
+ rename include/{ => uapi}/linux/nfsd/cld.h (100%)
+ create mode 100644 include/uapi/linux/nfsd/debug.h
+ create mode 100644 include/uapi/linux/nfsd/export.h
+ create mode 100644 include/uapi/linux/nfsd/nfsfh.h
+ create mode 100644 include/uapi/linux/nfsd/stats.h
+ create mode 100644 include/uapi/linux/sunrpc/debug.h
