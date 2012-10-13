@@ -1,47 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f53.google.com ([209.85.216.53]:41947 "EHLO
-	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1946133Ab2J0AI4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Oct 2012 20:08:56 -0400
-Received: by mail-qa0-f53.google.com with SMTP id c1so590662qae.19
-        for <linux-nfs@vger.kernel.org>; Fri, 26 Oct 2012 17:08:55 -0700 (PDT)
+Received: from ipcop.bitmover.com ([192.132.92.15]:37861 "EHLO
+	mail.bitmover.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753101Ab2JMCaD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Oct 2012 22:30:03 -0400
+Date: Fri, 12 Oct 2012 19:30:00 -0700
+From: Larry McVoy <lm@bitmover.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        Bruce Fields <bfields@fieldses.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Larry McVoy <lm@bitmover.com>
+Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
+Message-ID: <20121013023000.GI23247@bitmover.com>
+References: <20121012211701.GA8301@bitmover.com>
+ <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
+ <5078D17C.9090002@panasas.com>
 MIME-Version: 1.0
-From: Brock Noland <brock@cloudera.com>
-Date: Fri, 26 Oct 2012 19:08:35 -0500
-Message-ID: <CAFukC=7aTHvXoD9tNhZ5w=3Ffzc-661DNxwAxXy6Lr08VGBO8g@mail.gmail.com>
-Subject: rpc.gssd segfault - real time event 32 in pol()
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5078D17C.9090002@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+In BitKeeper, we wacked perror() to print out file, line.  Saved us
+a ton of debugging.  Oh, and bk-version as well.  That helps.
 
-I built nfs-utils, libgssglue, and librpcsecgss from scratch to debug
-some other issue.
+On Fri, Oct 12, 2012 at 07:27:08PM -0700, Boaz Harrosh wrote:
+> On 10/12/2012 04:52 PM, Linus Torvalds wrote:
+> > Guys, check this report from Larry out.
+> > 
+> > Also, why the *HELL* is that a BUG_ON() in the first place? Who was
+> > the less-than-gifted person who decided "if this thing can happen,
+> > let's just kill the whole machine"?
+> > 
+> 
+> Something is trivially weird
+> 
+> fs/lockd/clntxdr.c:226 is in this static function:
+> 	encode_nlm_stat()
+> 
+> encode_nlm_stat() is called in two places
+> 	static void nlm_xdr_enc_res(...)
+>   and
+> 	static void nlm_xdr_enc_testres(...)
+> 
+> But these two are not called anywhere. In-fact a Kernel wide grep
+> returns a single occurrence of both
+> 
+> I suspect the BUG_ON() belongs else where.
+> Perhaps we should add __func__ to the BUG_ON macro exactly for times
+> that source and Kernel get out of sync.
+> 
+> Puzzled
+> Boaz
 
-However, whenever I try and mount a filesystem with sec=krb5p, I am
-seeing the following:
-
-Program received signal SIG37, Real-time event 37.
-0x00000037b72e8b84 in poll () from /lib64/libc.so.6
-(gdb) bt
-#0  0x00000037b72e8b84 in poll () from /lib64/libc.so.6
-#1  0x0000000000404764 in gssd_run () at gssd_main_loop.c:213
-#2  0x00000000004036b3 in main (argc=<optimized out>, argv=<optimized
-out>) at gssd.c:194
-
-At that point, it's waiting for DNOTIFY_SIGNAL. Is it possible that
-DNOTIFY_SIGNAL is defined differently in the build versions the
-runtime?
-
-Version info:
-
-Linux localhost.localdomain 3.6.2-4.fc17.x86_64 #1 SMP Wed Oct 17
-02:43:21 UTC 2012 x86_64 x86_64 x86_64 GNU/Linux
-
-nfs-utils-1.2.6
-libgssglue-0.4
-librpcsecgss-0.19
-
-Brock
+-- 
+---
+Larry McVoy                lm at bitmover.com           http://www.bitkeeper.com
