@@ -1,89 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:24472 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:28612 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755031Ab2JSUXI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Oct 2012 16:23:08 -0400
+	id S1752514Ab2JMCw7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Oct 2012 22:52:59 -0400
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "stable@vger.kernel.org" <stable@vger.kernel.org>
-Subject: RE: [PATCH] SUNRPC: Set alloc_slot for backchannel tcp ops
-Date: Fri, 19 Oct 2012 20:23:05 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092851AD@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1348508341-19642-1-git-send-email-bjschuma@netapp.com>
- <20121019193951.GA30593@fieldses.org>
-In-Reply-To: <20121019193951.GA30593@fieldses.org>
-Content-Type: text/plain; charset="Windows-1252"
+To: Larry McVoy <lm@bitmover.com>
+CC: Linus Torvalds <torvalds@linux-foundation.org>,
+        Bruce Fields <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
+Date: Sat, 13 Oct 2012 02:52:51 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9091FE478@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20121012211701.GA8301@bitmover.com>
+	 <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
+	 <20121013002100.GB23247@bitmover.com>
+	 <CA+55aFwKn+rp4qTk3dLgN8n=M-Aw1GYYpOfevDJaJhnK-U5VOg@mail.gmail.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9091FDED5@SACEXCMBX04-PRD.hq.netapp.com>
+	 <20121013023147.GJ23247@bitmover.com>
+In-Reply-To: <20121013023147.GJ23247@bitmover.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-Et tu Bruce?
-
-Not yet, because if you check, neither has commit f39c1bfb5a (SUNRPC: Fix a UDP transport regression). I figured it is better to send them both together as a single patch.
-
-Trond
-
-> -----Original Message-----
-> From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> Sent: Friday, October 19, 2012 3:40 PM
-> To: Schumaker, Bryan
-> Cc: Myklebust, Trond; linux-nfs@vger.kernel.org; stable@vger.kernel.org
-> Subject: Re: [PATCH] SUNRPC: Set alloc_slot for backchannel tcp ops
-> 
-> Did this not get sent to stable?  (Now upstream as
-> 84e28a307e376f271505af65a7b7e212dd6f61f4.)
-> 
-> --b.
-> 
-> On Mon, Sep 24, 2012 at 01:39:01PM -0400, bjschuma@netapp.com wrote:
-> > From: Bryan Schumaker <bjschuma@netapp.com>
-> >
-> > f39c1bfb5a03e2d255451bff05be0d7255298fa4 (SUNRPC: Fix a UDP
-> transport
-> > regression) introduced the "alloc_slot" function for xprt operations,
-> > but never created one for the backchannel operations.  This patch
-> > fixes a null pointer dereference when mounting NFS over v4.1.
-> >
-> > Call Trace:
-> >  [<ffffffffa0207957>] ? xprt_reserve+0x47/0x50 [sunrpc]
-> > [<ffffffffa02023a4>] call_reserve+0x34/0x60 [sunrpc]
-> > [<ffffffffa020e280>] __rpc_execute+0x90/0x400 [sunrpc]
-> > [<ffffffffa020e61a>] rpc_async_schedule+0x2a/0x40 [sunrpc]
-> > [<ffffffff81073589>] process_one_work+0x139/0x500
-> > [<ffffffff81070e70>] ? alloc_worker+0x70/0x70  [<ffffffffa020e5f0>] ?
-> > __rpc_execute+0x400/0x400 [sunrpc]  [<ffffffff81073d1e>]
-> > worker_thread+0x15e/0x460  [<ffffffff8145c839>] ?
-> > preempt_schedule+0x49/0x70  [<ffffffff81073bc0>] ?
-> > rescuer_thread+0x230/0x230  [<ffffffff81079603>] kthread+0x93/0xa0
-> > [<ffffffff81465d04>] kernel_thread_helper+0x4/0x10
-> > [<ffffffff81079570>] ? kthread_freezable_should_stop+0x70/0x70
-> >  [<ffffffff81465d00>] ? gs_change+0x13/0x13
-> >
-> > Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-> > ---
-> >  net/sunrpc/xprtsock.c | 1 +
-> >  1 file changed, 1 insertion(+)
-> >
-> > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c index
-> > 86b7777..aaaadfb 100644
-> > --- a/net/sunrpc/xprtsock.c
-> > +++ b/net/sunrpc/xprtsock.c
-> > @@ -2521,6 +2521,7 @@ static struct rpc_xprt_ops xs_tcp_ops = {
-> > static struct rpc_xprt_ops bc_tcp_ops = {
-> >  	.reserve_xprt		= xprt_reserve_xprt,
-> >  	.release_xprt		= xprt_release_xprt,
-> > +	.alloc_slot		= xprt_alloc_slot,
-> >  	.rpcbind		= xs_local_rpcbind,
-> >  	.buf_alloc		= bc_malloc,
-> >  	.buf_free		= bc_free,
-> > --
-> > 1.7.12.1
-> >
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs"
-> > in the body of a message to majordomo@vger.kernel.org More
-> majordomo
-> > info at  http://vger.kernel.org/majordomo-info.html
+T24gRnJpLCAyMDEyLTEwLTEyIGF0IDE5OjMxIC0wNzAwLCBMYXJyeSBNY1ZveSB3cm90ZToNCj4g
+QXMgSSd2ZSBzYWlkLCBkZWJ1Z2dpbmcgdGhpcyBpcyBnb2luZyB0byBiZSBoYXJkLCBpdCBtZWFu
+cyBzdG9wcGluZyBteQ0KPiBjb21wYW55LiAgV2UgY2FuIGRvIG9uZSBtb3JlIGNyYXNoLCB5b3Ug
+Z3V5cyBjYW4gdGVsbCBtZSB3aGF0IHRvIGRvLA0KPiBidXQgdGhhdCdzIGFib3V0IGl0Lg0KDQpE
+byB5b3UgaGF2ZSBhIHJlcHJvZHVjZXI/IElmIHlvdSBkbywgdGhlbiBwZXJoYXBzIHdlIGNhbiB0
+cnkgdG8NCmR1cGxpY2F0ZSB0aGUgaXNzdWUgb24gb3VyIG93biBzZXR1cHMgd2l0aG91dCBuZWVk
+aW5nIHRvIGRlbGliZXJhdGVseQ0KY2F1c2UgeW91IG1vcmUgZG93bnRpbWUuDQoNCklmIG5vdCwg
+dGhlbiBJIGd1ZXNzIHdlJ2xsIGhhdmUgdG8gdHJ5IGxvb2tpbmcgYXQgdGhvc2Ugc2xhYiBtZW1v
+cnkNCmRlYnVnZ2luZyBvcHRpb25zLiBJJ20gbm8gZXhwZXJ0IG9uIHNsYWIgZGVidWdnaW5nLCBh
+bmQgaXQncyB3YXkgdG9vDQpsYXRlIGluIHRoaXMgY29ybmVyIG9mIHRoZSBVUyBmb3IgbWUgdG8g
+dHJ5IHRvIGZpZ3VyZSBvdXQgZXhhY3RseSB3aGF0DQpvcHRpb25zIGFyZSBhcHByb3ByaWF0ZSwg
+YnV0IEkgY2FuIGxvb2sgaW50byBpdCB0b21vcnJvdyAodW5sZXNzIExpbnVzDQpoYXMgYSBzdWdn
+ZXN0aW9uKS4NCg0KPiBPbiBTYXQsIE9jdCAxMywgMjAxMiBhdCAwMjoyODozOUFNICswMDAwLCBN
+eWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+IE9uIFNhdCwgMjAxMi0xMC0xMyBhdCAxMDowMiAr
+MDkwMCwgTGludXMgVG9ydmFsZHMgd3JvdGU6DQo+ID4gPiBPbiBTYXQsIE9jdCAxMywgMjAxMiBh
+dCA5OjIxIEFNLCBMYXJyeSBNY1ZveSA8bG1AYml0bW92ZXIuY29tPiB3cm90ZToNCj4gPiA+ID4N
+Cj4gPiA+ID4gQWhoLCBJJ3ZlIGJlZW4gYXdheSBmcm9tIHRoZSBrZXJuZWwgdG9vIGxvbmcuICBJ
+IG1pc3MgdGhhdCBkZWxpY2F0ZQ0KPiA+ID4gPiBtYW5hZ2VtZW50IHRvdWNoLg0KPiA+ID4gDQo+
+ID4gPiAiRGVsaWNhdGUgTWFuYWdlbWVudCBUb3VjaCIgaXMgbXkgbWlkZGxlIG5hbWUuDQo+ID4g
+PiANCj4gPiA+ID4gcGljcyBvZiB0aGUgc3RhY2sgdHJhY2UgYXQgaHR0cDovL3d3dy5tY3ZveS5j
+b20vbG0vbmZzLWxvY2stY3Jhc2gNCj4gPiA+IA0KPiA+ID4gT2ssIHRoYXQncyBqdXN0IHRoZSBu
+b3JtYWwga2luZCBvZiByYW5kb20gbGVmdC1vdmVyIG9vcHNlcyBkdWUgdG8NCj4gPiA+IHN1YnNl
+cXVlbnQgcHJvYmxlbXMgb2YgYSBCVUdfT04oKS4gTG9va3MgbGlrZSB0aGUgd2F0Y2hkb2cgdGlt
+ZXIgZW5kcw0KPiA+ID4gdXAgYmVpbmcgdW5oYXBweSwgYWxtb3N0IGNlcnRhaW5seSBzaW1wbHkg
+YmVjYXVzZSBzb21lIGNvcmUgZmlsZXN5c3RlbQ0KPiA+ID4gc3BpbmxvY2sgbm90IGJlaW5nIHJl
+bGVhc2VkLg0KPiA+ID4gDQo+ID4gPiBJdCB1c2VkIHRvIGJlIChhIGxvbmcgbG9uZyB0aW1lIGFn
+bykgdGhhdCB3ZSdkIHJlY292ZXIgZmFpcmx5DQo+ID4gPiBncmFjZWZ1bGx5IGZyb20gQlVHX09O
+KCkncyAtIGJhY2sgd2hlbiB0aGUgbWFpbiBzaGFyZWQgbG9jayB3ZSBoYWQgd2FzDQo+ID4gPiB0
+aGUga2VybmVsIGxvY2ssIGFuZCB3ZSBoYWQgYSBzaW5nbGUgcGVyLXByb2Nlc3Mga2VybmVsIGxv
+Y2sgY291bnRlci4NCj4gPiA+IFNvIHdoZW4gd2Uga2lsbGVkIHRoZSBwcm9jZXNzLCB3ZSBjb3Vs
+ZCBjbGVhbiB0aGF0IHNpbmdsZSBsb2NrIHVwLg0KPiA+ID4gDQo+ID4gPiBUaGVzZSBkYXlzLCBp
+ZiBzb21lIHByb2Nlc3MgZGllcyBpbiByYW5kb20ga2VybmVsIGNvZGUgZHVlIHRvIGENCj4gPiA+
+IEJVR19PTigpIG9yIGEgd2lsZCBwb2ludGVyIG9yIHNpbWlsYXIsIGFuZCB3ZSBraWxsIGl0LCB3
+ZSBhcmUgc2VsZG9tDQo+ID4gPiBhYmxlIHRvIGRvIHNvIGNsZWFubHkuIFNvIHRoZSBiZXN0IHdl
+IGNhbiBob3BlIGZvciBpcyB0aGF0IGl0IGhhcHBlbmVkDQo+ID4gPiBpbiBzb21lIGNvbnRleHQg
+d2hlcmUgaXQgaGVsZCBubyAoaW1wb3J0YW50KSBsb2Nrcy4gV2hpY2ggaXMgcmFyZS4gU28NCj4g
+PiA+IEJVR19PTigpJ3MgYXJlIG9mdGVuIGZhdGFsLCBhbmQgdGhlcmUgYXJlIHRoZXNlIGtpbmRz
+IG9mIGRvd25zdHJlYW0NCj4gPiA+IHByb2JsZW1zIHdoZXJlIHRoZXkgZ2V0IGZsdXNoZWQgb2Zm
+IHRoZSBzY3JlZW4gYnkgc3Vic2VxdWVudCBpc3N1ZXMuLi4NCj4gPiANCj4gPiBJZiB0aGF0IGNv
+ZGUgaXMgYmVpbmcgY2FsbGVkIHVuZGVyIGEgbG9jaywgdGhlbiB3ZSBoYXZlIG90aGVyIHByb2Js
+ZW1zLg0KPiA+IEl0IGlzIHN0YW5kYXJkIFhEUiBjb2RlOiBpdCBzaG91bGQgYWx3YXlzIGJlIGNh
+bGxlZCBmcm9tIGFuIG9yZGluYXJ5DQo+ID4gcHJvY2VzcyBjb250ZXh0IHdpdGggbm8gc3BlY2lh
+bCBsb2NrcyBiZWluZyBoZWxkIGJ5IHRoZSBjYWxsZXJzLg0KPiA+IA0KPiA+ID4gSG8gaHVtbS4g
+R29vZ2xlIGRvZXNuJ3Qgc2VlbSB0byBiZSBmaW5kaW5nIGFueSBzaW1pbGFyIGJ1Zy1yZXBvcnRz
+LCBzbw0KPiA+ID4gdW5sZXNzIEJydWNlIG9yIFRyb25kIGdvICJBaGgsIEkga25vdyB3aGF0IGl0
+J3MgYWJvdXQiLCBJIGRvIHRoaW5rIHdlDQo+ID4gPiB3b3VsZCB3YW50IHRvIGdldCBhcyBtdWNo
+IG1vcmUgaW5mbyBhcyBwb3NzaWJsZS4NCj4gPiANCj4gPiBOZXZlciBzZWVuIGl0IGJlZm9yZSwg
+YW5kIEkgc2VlIG5vIHJlYXNvbiB3aHkgaXQgc2hvdWxkIGRyYWcgdGhlIGVudGlyZQ0KPiA+IGJv
+eCBkb3duIHdpdGggaXQuIEl0IGlzIHBhcnQgb2YgdGhlIE5MTSBzZXJ2ZXIncyBjYWxsYmFjayBj
+b2RlLCBzbyB0aGVyZQ0KPiA+IGlzIG5vIGNoYW5jZSBvZiBpdCBiZWluZyBjYWxsZWQgYXMgcGFy
+dCBvZiBhIG1lbW9yeSByZWNsYWltIG9yIGFueXRoaW5nDQo+ID4gc2ltaWxhcmx5IHNlbnNpdGl2
+ZSB0byB0aGUgcmVzdCBvZiB0aGUgYm94Lg0KPiA+IA0KPiA+IEFyZSB3ZSBzdXJlIHRoYXQgdGhp
+cyBCVUdfT04oKSByZWFsbHkgaXMgdG9wIG9mIHRoZSBjaGFpbiBvZiBPb3BzZXMNCj4gPiBoZXJl
+PyBBbGwgSSBjYW4gc2VlIGl0IGRvaW5nIGlzIGNyYXNoaW5nIHRoZSBsb2NrZCBzZXJ2ZXIgcHJv
+Y2Vzcywgd2hpY2gNCj4gPiB3aWxsIHNlcmlvdXNseSBpbmNvbnZlbmllbmNlIGFsbCB0aGUgTkZT
+IGNsaWVudHMgdHJ5aW5nIHRvIGRvIGxvY2tpbmcsDQo+ID4gYnV0IGl0IHNob3VsZG4ndCBiZSBh
+ZmZlY3RpbmcgdGhlIHN3YXBwZXIgcHJvY2VzcyBhcyB3ZSdyZSBzZWVpbmcgaW4gdGhlDQo+ID4g
+T29wcyBzY3JlZW5zaG90cy4NCj4gPiBJZiBpdCByZWFsbHkgaXMgdGhlIGZpcnN0IHRoaW5nIHRv
+IE9vcHMsIHRoZW4gdGhlIG9ubHkgdGhpbmcgSSBjYW4gdGhpbmsNCj4gPiBvZiB0aGVyZSB0aGF0
+IHdvdWxkIHRyaWdnZXIgb3RoZXIgT29wc2VzIHdvdWxkIGJlIGEgbWVtb3J5IGNvcnJ1cHRpb24N
+Cj4gPiAodXNlIGFmdGVyIGZyZWUgb3Igc29tZSBzdWNoIHRoaW5nPykuIFBlcmhhcHMgTGFycnkg
+Y291bGQgdHJ5IHR1cm5pbmcgb24NCj4gPiBzb21lIG9mIHRoZSBsZXNzIGludHJ1c2l2ZSBzbGFi
+IGRlYnVnZ2luZyBvcHRpb25zPw0KPiA+IA0KPiA+ID4gRG9pbmcgYSBrZXJuZWwgY29tcGlsZSBy
+ZWFsbHkgaXNuJ3QgdGhhdCBiYWQuIFRoZSBvbmx5IG5hc3R5IHBpZWNlIGlzDQo+ID4gPiBnZXR0
+aW5nIHRoZSBrZXJuZWwgY29uZmlndXJhdGlvbiByaWdodCwgYnV0IHlvdSBjYW4ganVzdCB1c2Ug
+dGhlDQo+ID4gPiBkaXN0cm8gY29uZmlnLiBJdCdzIG11Y2ggdG9vIGJpZyBhbmQgY29udGFpbnMg
+ZXZlcnl0aGluZywgYnV0IGl0IHdpbGwNCj4gPiA+IHdvcmssIGFuZCBnZXRzIHlvdSBhcyBzaW1p
+bGFyIGEga2VybmVsIGFzIHBvc3NpYmxlLiBPZiBjb3Vyc2UsIFVidW50dQ0KPiA+ID4gaGFzIG1h
+ZGUgaW5zdGFsbGluZyB5b3VyIG93biBrZXJuZWwgc3R1cGlkbHkgY29tcGxpY2F0ZWQgKHlvdSBo
+YXZlIHRvDQo+ID4gPiBidWlsZCBhIHBhY2thZ2UgYW5kIGluc3RhbGwgaXQgdXNpbmcgdGhlIHBh
+Y2thZ2UgbWFuYWdlciksIGJ1dCB3aGlsZQ0KPiA+ID4gaXQncyBhbiBhbm5veWluZyBleHRyYSBz
+dGVwIG9yIHR3byAoY29tcGFyZWQgdG8ganVzdCBkb2luZyBhICJtYWtlDQo+ID4gPiBtb2R1bGVz
+X2luc3RhbGwgaW5zdGFsbCIpLCBpdCdzIG5vdCByb2NrZXQgc3VyZ2VyeS4gVGhlcmUncyBhIGZl
+dyBoZWxwDQo+ID4gPiBwYWdlcyBmb3IgaXQ6DQo+ID4gPiANCj4gPiA+ICAgICBodHRwczovL2hl
+bHAudWJ1bnR1LmNvbS9jb21tdW5pdHkvS2VybmVsL0NvbXBpbGUNCj4gPiA+IA0KPiA+ID4gYmVp
+bmcgdGhlIGZpcnN0IG9uZS4NCj4gPiA+IA0KPiA+ID4gICAgICAgICAgICAgICAgIExpbnVzDQo+
+ID4gDQo+ID4gLS0gDQo+ID4gVHJvbmQgTXlrbGVidXN0DQo+ID4gTGludXggTkZTIGNsaWVudCBt
+YWludGFpbmVyDQo+ID4gDQo+ID4gTmV0QXBwDQo+ID4gVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
+b20NCj4gPiB3d3cubmV0YXBwLmNvbQ0KPiANCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4
+IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAu
+Y29tDQp3d3cubmV0YXBwLmNvbQ0K
