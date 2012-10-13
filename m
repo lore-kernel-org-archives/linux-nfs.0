@@ -1,90 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51580 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755016Ab2JIWlL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Oct 2012 18:41:11 -0400
-Date: Tue, 9 Oct 2012 18:41:09 -0400
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: David Howells <dhowells@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [GIT PULL] Disintegrate UAPI for nfs
-Message-ID: <20121009224109.GB25826@fieldses.org>
-References: <30732.1349789436@warthog.procyon.org.uk>
- <4FA345DA4F4AE44899BD2B03EEEC2FA90901876D@SACEXCMBX04-PRD.hq.netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90901876D@SACEXCMBX04-PRD.hq.netapp.com>
+Received: from zep00a03.dent.med.uni-muenchen.de ([138.246.161.8]:54112 "HELO
+	md.dent.med.uni-muenchen.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1754170Ab2JMVqz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 13 Oct 2012 17:46:55 -0400
+Date: 13 Oct 2012 23:46:52 +0200
+Message-ID: <20121013214652.23089.qmail@md.dent.med.uni-muenchen.de>
+From: Wolfram Gloger <wmglo@dent.med.uni-muenchen.de>
+To: chuck.lever@oracle.com
+CC: linux-nfs@vger.kernel.org
+In-reply-to: <F5C4FA78-A467-4306-BC57-0A50D8F0A8A9@oracle.com> (message from
+	Chuck Lever on Sat, 13 Oct 2012 13:25:57 -0400)
+Subject: Re: [PATCH] nfs-utils: Backgrounding mount broken with NFS versions <4
+References: <20121012120030.18411.qmail@md.dent.med.uni-muenchen.de> <6AB50360-BADE-4544-85CF-700C63A44FDE@oracle.com> <20121013171856.10814.qmail@md.dent.med.uni-muenchen.de> <F5C4FA78-A467-4306-BC57-0A50D8F0A8A9@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 09, 2012 at 02:13:30PM +0000, Myklebust, Trond wrote:
-> On Tue, 2012-10-09 at 14:30 +0100, David Howells wrote:
-> > Can you merge the following branch into the nfs tree please.
-> > 
-> > This is to complete part of the Userspace API (UAPI) disintegration for which
-> > the preparatory patches were pulled recently.  After these patches, userspace
-> > headers will be segregated into:
-> > 
-> > 	include/uapi/linux/.../foo.h
-> > 
-> > for the userspace interface stuff, and:
-> > 
-> > 	include/linux/.../foo.h
-> > 
-> > for the strictly kernel internal stuff.
-> > 
-> > ---
-> > The following changes since commit 9e2d8656f5e8aa214e66b462680cf86b210b74a8:
-> > 
-> >   Merge branch 'akpm' (Andrew's patch-bomb) (2012-10-09 16:23:15 +0900)
-> > 
-> > are available in the git repository at:
-> > 
-> > 
-> >   git://git.infradead.org/users/dhowells/linux-headers.git tags/disintegrate-nfs-20121009
-> > 
-> > for you to fetch changes up to e3dd9a52cb5552c46c2a4ca7ccdfb4dab5c72457:
-> > 
-> >   UAPI: (Scripted) Disintegrate include/linux/sunrpc (2012-10-09 09:49:04 +0100)
-> > 
-> > ----------------------------------------------------------------
-> > UAPI Disintegration 2012-10-09
-> > 
-> > ----------------------------------------------------------------
-> > David Howells (2):
-> >       UAPI: (Scripted) Disintegrate include/linux/nfsd
-> >       UAPI: (Scripted) Disintegrate include/linux/sunrpc
-> > 
-> >  include/linux/nfsd/Kbuild           |   5 --
-> >  include/linux/nfsd/debug.h          |  31 +--------
-> >  include/linux/nfsd/export.h         |  52 +--------------
-> >  include/linux/nfsd/nfsfh.h          | 111 +-------------------------------
-> >  include/linux/nfsd/stats.h          |   8 +--
-> >  include/linux/sunrpc/Kbuild         |   1 -
-> >  include/linux/sunrpc/debug.h        |  39 +-----------
-> >  include/uapi/linux/nfsd/Kbuild      |   5 ++
-> >  include/{ => uapi}/linux/nfsd/cld.h |   0
-> >  include/uapi/linux/nfsd/debug.h     |  40 ++++++++++++
-> >  include/uapi/linux/nfsd/export.h    |  58 +++++++++++++++++
-> >  include/uapi/linux/nfsd/nfsfh.h     | 122 ++++++++++++++++++++++++++++++++++++
-> >  include/uapi/linux/nfsd/stats.h     |  17 +++++
-> >  include/uapi/linux/sunrpc/Kbuild    |   1 +
-> >  include/uapi/linux/sunrpc/debug.h   |  48 ++++++++++++++
-> >  15 files changed, 296 insertions(+), 242 deletions(-)
-> >  rename include/{ => uapi}/linux/nfsd/cld.h (100%)
-> >  create mode 100644 include/uapi/linux/nfsd/debug.h
-> >  create mode 100644 include/uapi/linux/nfsd/export.h
-> >  create mode 100644 include/uapi/linux/nfsd/nfsfh.h
-> >  create mode 100644 include/uapi/linux/nfsd/stats.h
-> >  create mode 100644 include/uapi/linux/sunrpc/debug.h
-> 
-> These files look like they are mainly NFS server related, so perhaps it
-> is better to merge through Bruce's tree.
-> 
-> Bruce?
+Hi,
 
-Sure, I'll take it, thanks.
+> >>> 	result = nfs_sys_mount(mi, options);
+> > 
+> > No, nfs_sys_mount() does not use mi->extra_opts at all, only the
+> > binary options.
+> 
+> This is the text-based code, which I wrote.  nfs_sys_mount() passes an options string (NUL-terminated C string) to the kernel, not a binary object.  That string contains all the FS-specific mount options specified by the user.
+> 
+> But your patch makes that string empty, by my reading.  I think this is incorrect.
 
---b.
+Ok, I'm happy to go through this line-by-line.
+
+static int nfs_sys_mount(struct nfsmount_info *mi, struct mount_options *opts)
+{
+        char *options = NULL;
+        int result;
+
+        if (mi->fake)
+                return 1;
+
+        if (po_join(opts, &options) == PO_FAILED) { // HERE
+                errno = EIO;
+                return 0;
+        }
+
+        result = mount(mi->spec, mi->node, mi->type,
+                        mi->flags & ~(MS_USER|MS_USERS), options);
+...
+}
+
+nfs_sys_mount() constructs the text options _itself_ purely from the
+opts (2nd) argument HERE -- po_join has opts as input and options as
+output.
+
+My patch only changes the first argument (mi).  So, no functional change
+within nfs_sys_mount() at all.
+
+The functional change is that with my patch, mi->extra_opts is kept
+unchanged unless the system call is successful.  mi->extra_opts is
+actually reused later throughout the mount program, because
+nfsmount_string() has extra_opts as an input _and_ output argument,
+and propagates mi->extra_opts into the extra_opts variable in main.c.
+
+I have actually tested this patch extensively and it fixes the
+problem.
+
+Regards,
+Wolfram.
