@@ -1,40 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:48114 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751062Ab2JRSs5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Oct 2012 14:48:57 -0400
-Received: from vmwexceht02-prd.hq.netapp.com (vmwexceht02-prd.hq.netapp.com [10.106.76.240])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q9IIme5O026945
-	for <linux-nfs@vger.kernel.org>; Thu, 18 Oct 2012 11:48:40 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 05/25] SUNRPC: remove BUG_ON() from rpc_call_sync()
-Date: Thu, 18 Oct 2012 18:48:39 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA909281219@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1350405043-39316-1-git-send-email-dros@netapp.com>
-	 <1350405043-39316-5-git-send-email-dros@netapp.com>
-In-Reply-To: <1350405043-39316-5-git-send-email-dros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-wg0-f44.google.com ([74.125.82.44]:58388 "EHLO
+	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752842Ab2JMBDS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Oct 2012 21:03:18 -0400
+Received: by mail-wg0-f44.google.com with SMTP id dr13so2853549wgb.1
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Oct 2012 18:03:17 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <20121013002100.GB23247@bitmover.com>
+References: <20121012211701.GA8301@bitmover.com> <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
+ <20121013002100.GB23247@bitmover.com>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Sat, 13 Oct 2012 10:02:56 +0900
+Message-ID: <CA+55aFwKn+rp4qTk3dLgN8n=M-Aw1GYYpOfevDJaJhnK-U5VOg@mail.gmail.com>
+Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
+To: Larry McVoy <lm@bitmover.com>, Bruce Fields <bfields@fieldses.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTEwLTE2IGF0IDEyOjMwIC0wNDAwLCBXZXN0b24gQW5kcm9zIEFkYW1zb24g
-d3JvdGU6DQo+IFJldHVybiAtRUlOVkFMIGluc3RlYWQgb2YgY2FsbGluZyBCVUdfT04oKSB3aGVu
-IFJQQ19UQVNLX0FTWU5DIGZsYWcgaXMgcGFzc2VkDQo+IHRvIHJwY19jYWxsX3N5bmMoKS4NCj4g
-DQo+IFNpZ25lZC1vZmYtYnk6IFdlc3RvbiBBbmRyb3MgQWRhbXNvbiA8ZHJvc0BuZXRhcHAuY29t
-Pg0KPiAtLS0NCj4gIG5ldC9zdW5ycGMvY2xudC5jIHwgICAgMyArKy0NCj4gIDEgZmlsZSBjaGFu
-Z2VkLCAyIGluc2VydGlvbnMoKyksIDEgZGVsZXRpb24oLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9u
-ZXQvc3VucnBjL2NsbnQuYyBiL25ldC9zdW5ycGMvY2xudC5jDQo+IGluZGV4IDc2ZDE3MzAuLmE4
-YTZiY2YgMTAwNjQ0DQo+IC0tLSBhL25ldC9zdW5ycGMvY2xudC5jDQo+ICsrKyBiL25ldC9zdW5y
-cGMvY2xudC5jDQo+IEBAIC04MzksNyArODM5LDggQEAgaW50IHJwY19jYWxsX3N5bmMoc3RydWN0
-IHJwY19jbG50ICpjbG50LCBjb25zdCBzdHJ1Y3QgcnBjX21lc3NhZ2UgKm1zZywgaW50IGZsYWcN
-Cj4gIAl9Ow0KPiAgCWludCBzdGF0dXM7DQo+ICANCj4gLQlCVUdfT04oZmxhZ3MgJiBSUENfVEFT
-S19BU1lOQyk7DQo+ICsJaWYgKGZsYWdzICYgUlBDX1RBU0tfQVNZTkMpDQo+ICsJCXJldHVybiAt
-RUlOVkFMOw0KDQpOZWVkcyBhIFdBUk5fT05fT05DRSgpLiBUaGlzIGlzbid0IGEgY29uZGl0aW9u
-IHRoYXQgdGhlIHVzZXIgY2FuIGZpeCwgc28NCnRoZXkgbmVlZCB0byBrbm93IHRoYXQgaXQgbmVl
-ZHMgcmVwb3J0aW5nLg0KDQo+ICANCj4gIAl0YXNrID0gcnBjX3J1bl90YXNrKCZ0YXNrX3NldHVw
-X2RhdGEpOw0KPiAgCWlmIChJU19FUlIodGFzaykpDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpM
-aW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0
-YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+On Sat, Oct 13, 2012 at 9:21 AM, Larry McVoy <lm@bitmover.com> wrote:
+>
+> Ahh, I've been away from the kernel too long.  I miss that delicate
+> management touch.
+
+"Delicate Management Touch" is my middle name.
+
+> pics of the stack trace at http://www.mcvoy.com/lm/nfs-lock-crash
+
+Ok, that's just the normal kind of random left-over oopses due to
+subsequent problems of a BUG_ON(). Looks like the watchdog timer ends
+up being unhappy, almost certainly simply because some core filesystem
+spinlock not being released.
+
+It used to be (a long long time ago) that we'd recover fairly
+gracefully from BUG_ON()'s - back when the main shared lock we had was
+the kernel lock, and we had a single per-process kernel lock counter.
+So when we killed the process, we could clean that single lock up.
+
+These days, if some process dies in random kernel code due to a
+BUG_ON() or a wild pointer or similar, and we kill it, we are seldom
+able to do so cleanly. So the best we can hope for is that it happened
+in some context where it held no (important) locks. Which is rare. So
+BUG_ON()'s are often fatal, and there are these kinds of downstream
+problems where they get flushed off the screen by subsequent issues...
+
+Ho humm. Google doesn't seem to be finding any similar bug-reports, so
+unless Bruce or Trond go "Ahh, I know what it's about", I do think we
+would want to get as much more info as possible.
+
+Doing a kernel compile really isn't that bad. The only nasty piece is
+getting the kernel configuration right, but you can just use the
+distro config. It's much too big and contains everything, but it will
+work, and gets you as similar a kernel as possible. Of course, Ubuntu
+has made installing your own kernel stupidly complicated (you have to
+build a package and install it using the package manager), but while
+it's an annoying extra step or two (compared to just doing a "make
+modules_install install"), it's not rocket surgery. There's a few help
+pages for it:
+
+    https://help.ubuntu.com/community/Kernel/Compile
+
+being the first one.
+
+                Linus
