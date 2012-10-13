@@ -1,93 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:52869 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932341Ab2JaBPk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Oct 2012 21:15:40 -0400
-Date: Wed, 31 Oct 2012 12:16:01 +1100
-From: NeilBrown <neilb@suse.de>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Chuck Lever <chuck.lever@oracle.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH] NFS: fix bug in legacy DNS resolver.
-Message-ID: <20121031121601.5de16a5b@notabene.brown>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/+c+HOqW3xiITKgD.nAmi94p"; protocol="application/pgp-signature"
+Received: from che.mayfirst.org ([209.234.253.108]:56597 "EHLO
+	che.mayfirst.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754168Ab2JMVlB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 13 Oct 2012 17:41:01 -0400
+Message-ID: <5079DDC5.6020407@fifthhorseman.net>
+Date: Sat, 13 Oct 2012 17:31:49 -0400
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+MIME-Version: 1.0
+To: Linus Torvalds <torvalds@linux-foundation.org>
+CC: Jim Rees <rees@umich.edu>, Larry McVoy <lm@bitmover.com>,
+        Bruce Fields <bfields@fieldses.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
+References: <20121012211701.GA8301@bitmover.com> <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com> <20121013002100.GB23247@bitmover.com> <CA+55aFwKn+rp4qTk3dLgN8n=M-Aw1GYYpOfevDJaJhnK-U5VOg@mail.gmail.com> <20121013013613.GA11272@umich.edu> <CA+55aFzQWw-rv76VX2=2MpFf3-ZMFtzVcps-PQsXO6cOG+4tBg@mail.gmail.com>
+In-Reply-To: <CA+55aFzQWw-rv76VX2=2MpFf3-ZMFtzVcps-PQsXO6cOG+4tBg@mail.gmail.com>
+Content-Type: multipart/signed; micalg=pgp-sha512;
+ protocol="application/pgp-signature";
+ boundary="------------enig9527B90B9FCC809C5FB4E279"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/+c+HOqW3xiITKgD.nAmi94p
-Content-Type: text/plain; charset=US-ASCII
+This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
+--------------enig9527B90B9FCC809C5FB4E279
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: quoted-printable
 
+On 10/12/2012 09:45 PM, Linus Torvalds wrote:
+> On Sat, Oct 13, 2012 at 10:36 AM, Jim Rees <rees@umich.edu> wrote:
+>>
+>> I install kernels on Ubuntu every day of the week and twice on Sundays=
+, and
+>> never jump through their silly hoops.  The only magic is making the
+>> initramfs, if you use one.
+>>
+>> make install modules_install
+>> update-initramfs -c -k 3.6.1 (or whatever)
+>> update-grub
+>=20
+> This magic is what the distro "/usr/sbin/installkernel" script is
+> supposed to do, which the kernel Makefile does for the "install"
+> target.
+>=20
+> So the "make install" *should* have done the grub and initramfs
+> update. Ubuntu screwed up (probably because Debian did).
+>=20
+> I wish they'd just fix it.=20
 
-The DNS resolver's use of the sunrpc cache involves a 'ttl' number
-(relative) rather that a timeout (absolute).  This confused me when
-I wrote
-  commit c5b29f885afe890f953f7f23424045cdad31d3e4
-     "sunrpc: use seconds since boot in expiry cache"
+fwiw, this was fixed in debian as of debianutils package 3.4.3.  So it
+should be functional in testing (wheezy) but, alas, not in the current
+stable release (squeeze).
 
-and I managed to break it.  The effect is that any TTL is interpreted
-as 0, and nothing useful gets into the cache.
+For ubuntu, i think the fixed packages should be available from "nattie
+narwhal" forward, but i haven't tested them directly.
 
-This patch removes the use of get_expiry() - which really expects an
-expiry time - and uses get_uint() instead, treating the int correctly
-as a ttl.
+For reference, the bug report in debian is at:
 
-This fixes a regression that has been present since 2.6.37, causing
-certain NFS accesses in certain environments to incorrectly fail.
+   http://bugs.debian.org/607411
 
-Reported-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: stable@vger.kernel.org
-Signed-off-by: NeilBrown <neilb@suse.de>
+Regards,
 
-diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
-index 31c26c4..d9415a2 100644
---- a/fs/nfs/dns_resolve.c
-+++ b/fs/nfs/dns_resolve.c
-@@ -217,7 +217,7 @@ static int nfs_dns_parse(struct cache_detail *cd, char =
-*buf, int buflen)
- {
- 	char buf1[NFS_DNS_HOSTNAME_MAXLEN+1];
- 	struct nfs_dns_ent key, *item;
--	unsigned long ttl;
-+	unsigned int ttl;
- 	ssize_t len;
- 	int ret =3D -EINVAL;
-=20
-@@ -240,7 +240,8 @@ static int nfs_dns_parse(struct cache_detail *cd, char =
-*buf, int buflen)
- 	key.namelen =3D len;
- 	memset(&key.h, 0, sizeof(key.h));
-=20
--	ttl =3D get_expiry(&buf);
-+	if (get_int(&buf, &ttl) < 0)
-+		goto out;
- 	if (ttl =3D=3D 0)
- 		goto out;
- 	key.h.expiry_time =3D ttl + seconds_since_boot();
+	--dkg
 
---Sig_/+c+HOqW3xiITKgD.nAmi94p
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
+
+--------------enig9527B90B9FCC809C5FB4E279
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.18 (GNU/Linux)
+Version: GnuPG v1.4.12 (GNU/Linux)
+Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org/
 
-iQIVAwUBUJB70Tnsnt1WYoG5AQJGvxAAkMlKFbl6Wc12InsKqs89REwZsZAEFp9W
-CAQZYo8SeoeLstAawAcpwPiDAfU58yUFNQz8uvtj0nPuJMUioR4boIJ8TQR2+WjK
-ForSPX0kau7YUgUcToC+N918qV4EEyCwG5LsUq5M9EIiGuHENs3+hGJTvwtzEd2a
-o9SGY1dKQCT5lCwjhl7hRUN/XhXPHKWVSrAvQtN2scQtMprOshFDrso7sak1WUsw
-4v8tEVNUuNvBo5Nkavw/g0OCgRxo+GLRDjZQWIjPDzF7qvJlBe3x1uta0ieLfxwV
-I8wW6X4q0zeqC8yg7Q+8A7ytpdkUF6w6slOvnmCrD/dKzJfAUvkLXmMfJGepjNRd
-Drq2tnmljBnqk5GX0JA0zqq8otG5MTHAoUN2MDERnJ/EeKF8um00qXdaCN4qY31u
-UiKQrzPHjLUYYPbUyCZGsWgADG5CVGXRTcySmLbDP3aNYtSgyWwYqqhy8mDCH2Zj
-wJHdRFbnW54I+/wc103+qdkiyEuJx+a9Q6wnsxbVzlSINfARLU/wCVf4wmY163R8
-+7+Vo03KQeBGbKuh4LLdOytBECaK8ep6pTSc6wTQY/RI/BS0odE29PdRdaPJR3qy
-FRKTTF4i+T2Cj51ZrPvZYkOkIJoAnxpUEJraDWMFfs4UboauGYkVY3wiWyYLYvdH
-WAFqeTN8egs=
-=cw/S
+iQJ8BAEBCgBmBQJQed3FXxSAAAAAAC4AKGlzc3Vlci1mcHJAbm90YXRpb25zLm9w
+ZW5wZ3AuZmlmdGhob3JzZW1hbi5uZXQwRUU1QkU5NzkyODJEODBCOUY3NTQwRjFD
+Q0QyRUQ5NEQyMTczOUU5AAoJEMzS7ZTSFznpoJYP/iArPZY1mU3vEaDhBAJyv26x
+3owQmgExpINuqFjYs3wcwoZ5pdt6FhkgeDwUe5MfcKFGB7EhDzU7fUVWn8Tz2Pw/
+8GhyMQqmTdR7dj6uiAfSuvLTZgOS20Q//3Rl8rf8dVGiqanMkcHBPnLOiF9Ng1VY
+jA634MswhhIRMpB1RRVuD9jN9IDR1enIgK3bjZoCWyEGWcO80UYVPyR/A0MG31PZ
+aSAuEAPt6cnvJtNhdYxkwJXAsMf1XO81eVbKcCeHU5pTwPFqoG5C7dncXtK4cwcN
+jRAOVBQ/k4oYSGa5x8mZzJXcQyJT9TIXv/Ew8f4oQzIJmDip+6fzq1TGfrQKSzfH
+VzI/NtflqLYAXQwwjjK4QwvF2NftVIWAjEdPCMZEoz7VKgSKZQRwJBWRiU27YjhS
+hq7SovqUF4slpdDIvM7tVnFbaJhV43iVaYLJucLyMxCWMUY70pAxaMo8DS4CGEyj
+7krc+7VIf7rPkzIEWtT2Fins4B4FpZULSpiclvU7z4vZEH4jpk8ZEf0D657dvKyH
+kK2OT6u5t2iU+Fmtb0c0FsCHx+p8RAi4dmJzSGm8qxIaC9E985n58BrF94Oqqi4e
+jOpyJDXvH9+G3pl2mD3vXUWn51oT2ssmhcnJZ4JhzUto7NwavQ1wBPY58tKfAxpy
+klLXPjgBt+zcJJ3UY0b0
+=94eS
 -----END PGP SIGNATURE-----
 
---Sig_/+c+HOqW3xiITKgD.nAmi94p--
+--------------enig9527B90B9FCC809C5FB4E279--
