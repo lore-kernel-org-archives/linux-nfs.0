@@ -1,40 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:54008 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751915Ab2JMCcL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Oct 2012 22:32:11 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mail-wg0-f44.google.com ([74.125.82.44]:50817 "EHLO
+	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752307Ab2JMChY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Oct 2012 22:37:24 -0400
+Received: by mail-wg0-f44.google.com with SMTP id dr13so2895314wgb.1
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Oct 2012 19:37:22 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <5078D17C.9090002@panasas.com>
+References: <20121012211701.GA8301@bitmover.com> <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
+ <5078D17C.9090002@panasas.com>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Sat, 13 Oct 2012 11:37:01 +0900
+Message-ID: <CA+55aFyreSgqjkc5_hFjcX2PkWp0TXjMccPydO6wMj+hwC5Qqw@mail.gmail.com>
+Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
 To: Boaz Harrosh <bharrosh@panasas.com>
-CC: Linus Torvalds <torvalds@linux-foundation.org>,
-        Bruce Fields <bfields@fieldses.org>,
+Cc: Bruce Fields <bfields@fieldses.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         Larry McVoy <lm@bitmover.com>
-Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
-Date: Sat, 13 Oct 2012 02:32:09 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9091FDFA9@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20121012211701.GA8301@bitmover.com>
-	 <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
-	 <5078D17C.9090002@panasas.com>
-In-Reply-To: <5078D17C.9090002@panasas.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTEwLTEyIGF0IDE5OjI3IC0wNzAwLCBCb2F6IEhhcnJvc2ggd3JvdGU6DQo+
-IE9uIDEwLzEyLzIwMTIgMDQ6NTIgUE0sIExpbnVzIFRvcnZhbGRzIHdyb3RlOg0KPiA+IEd1eXMs
-IGNoZWNrIHRoaXMgcmVwb3J0IGZyb20gTGFycnkgb3V0Lg0KPiA+IA0KPiA+IEFsc28sIHdoeSB0
-aGUgKkhFTEwqIGlzIHRoYXQgYSBCVUdfT04oKSBpbiB0aGUgZmlyc3QgcGxhY2U/IFdobyB3YXMN
-Cj4gPiB0aGUgbGVzcy10aGFuLWdpZnRlZCBwZXJzb24gd2hvIGRlY2lkZWQgImlmIHRoaXMgdGhp
-bmcgY2FuIGhhcHBlbiwNCj4gPiBsZXQncyBqdXN0IGtpbGwgdGhlIHdob2xlIG1hY2hpbmUiPw0K
-PiA+IA0KPiANCj4gU29tZXRoaW5nIGlzIHRyaXZpYWxseSB3ZWlyZA0KPiANCj4gZnMvbG9ja2Qv
-Y2xudHhkci5jOjIyNiBpcyBpbiB0aGlzIHN0YXRpYyBmdW5jdGlvbjoNCj4gCWVuY29kZV9ubG1f
-c3RhdCgpDQo+IA0KPiBlbmNvZGVfbmxtX3N0YXQoKSBpcyBjYWxsZWQgaW4gdHdvIHBsYWNlcw0K
-PiAJc3RhdGljIHZvaWQgbmxtX3hkcl9lbmNfcmVzKC4uLikNCj4gICBhbmQNCj4gCXN0YXRpYyB2
-b2lkIG5sbV94ZHJfZW5jX3Rlc3RyZXMoLi4uKQ0KPiANCj4gQnV0IHRoZXNlIHR3byBhcmUgbm90
-IGNhbGxlZCBhbnl3aGVyZS4gSW4tZmFjdCBhIEtlcm5lbCB3aWRlIGdyZXANCj4gcmV0dXJucyBh
-IHNpbmdsZSBvY2N1cnJlbmNlIG9mIGJvdGgNCg0KVGhleSBhcmUgdXNlZCBpbiB0aGUgbmxtX3By
-b2NlZHVyZXNbXSBhcnJheSBhcyBURVNUX1JFUywgTE9DS19SRVMsDQpDQU5DRUxfUkVTLCBVTkxP
-Q0tfUkVTIGFuZCBHUkFOVEVEX1JFUyB4ZHIgZW5jb2RpbmcgcHJvY2VkdXJlcy4NCg0KDQoNCi0t
-IA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBw
-DQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+On Sat, Oct 13, 2012 at 11:27 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+>
+> I suspect the BUG_ON() belongs else where.
+> Perhaps we should add __func__ to the BUG_ON macro exactly for times
+> that source and Kernel get out of sync.
+
+BUG_ON already does the whole "line and file" thing, so the exact
+BUG_ON() should be very well pinpointed.
+
+Sometimes various distro changes do make the lines move around, but
+clntxdr.c has been very stable, and line 226 has the same BUG_ON in it
+in both 3.2 and 3.6, so I seriously doubt that's the case.
+
+And that function is definitely called, it's just that you missed the
+magic cpp stuff. See the preprocessor using it like this:
+
+  .p_encode    = (kxdreproc_t)nlm_xdr_enc_##argtype,
+
+so the nlm_xdr_enc_res() function ends up being used as the .p_encode
+function for the 'res' argtype.. (and same for testres)
+
+             Linus
