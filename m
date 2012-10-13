@@ -1,33 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37993 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754562Ab2JSM63 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Oct 2012 08:58:29 -0400
-Date: Fri, 19 Oct 2012 08:58:27 -0400
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: nfsd bugfixes for 3.7
-Message-ID: <20121019125827.GC20324@fieldses.org>
+Received: from natasha.panasas.com ([67.152.220.90]:51180 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751235Ab2JMC1T (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Oct 2012 22:27:19 -0400
+Message-ID: <5078D17C.9090002@panasas.com>
+Date: Fri, 12 Oct 2012 19:27:08 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+CC: Bruce Fields <bfields@fieldses.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Larry McVoy <lm@bitmover.com>
+Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
+References: <20121012211701.GA8301@bitmover.com> <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
+In-Reply-To: <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please pull nfsd bugfixes for 3.7 from the for-3.7 branch at:
+On 10/12/2012 04:52 PM, Linus Torvalds wrote:
+> Guys, check this report from Larry out.
+> 
+> Also, why the *HELL* is that a BUG_ON() in the first place? Who was
+> the less-than-gifted person who decided "if this thing can happen,
+> let's just kill the whole machine"?
+> 
 
-  git://linux-nfs.org/~bfields/linux.git for-3.7
+Something is trivially weird
 
---b.
+fs/lockd/clntxdr.c:226 is in this static function:
+	encode_nlm_stat()
 
-----------------------------------------------------------------
-Sasha Levin (1):
-      SUNRPC: Prevent kernel stack corruption on long values of flush
+encode_nlm_stat() is called in two places
+	static void nlm_xdr_enc_res(...)
+  and
+	static void nlm_xdr_enc_testres(...)
 
-Trond Myklebust (1):
-      NLM: nlm_lookup_file() may return NLMv4-specific error codes
+But these two are not called anywhere. In-fact a Kernel wide grep
+returns a single occurrence of both
 
- fs/lockd/clntxdr.c |    2 +-
- fs/lockd/svcproc.c |    3 ++-
- net/sunrpc/cache.c |    4 ++--
- 3 files changed, 5 insertions(+), 4 deletions(-)
+I suspect the BUG_ON() belongs else where.
+Perhaps we should add __func__ to the BUG_ON macro exactly for times
+that source and Kernel get out of sync.
+
+Puzzled
+Boaz
