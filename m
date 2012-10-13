@@ -1,64 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43322 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751628Ab2JARnw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Oct 2012 13:43:52 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/2] nfsd4: set cl_minorversion at create time
-Date: Mon,  1 Oct 2012 13:43:47 -0400
-Message-Id: <1349113428-30173-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1349113428-30173-1-git-send-email-bfields@redhat.com>
-References: <1349113428-30173-1-git-send-email-bfields@redhat.com>
+Received: from rcsinet15.oracle.com ([148.87.113.117]:40126 "EHLO
+	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751196Ab2JMR2E convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 13 Oct 2012 13:28:04 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
+Subject: Re: [PATCH] nfs-utils: Backgrounding mount broken with NFS versions <4
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20121013171856.10814.qmail@md.dent.med.uni-muenchen.de>
+Date: Sat, 13 Oct 2012 13:25:57 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <F5C4FA78-A467-4306-BC57-0A50D8F0A8A9@oracle.com>
+References: <20121012120030.18411.qmail@md.dent.med.uni-muenchen.de> <6AB50360-BADE-4544-85CF-700C63A44FDE@oracle.com> <20121013171856.10814.qmail@md.dent.med.uni-muenchen.de>
+To: Wolfram Gloger <wmglo@dent.med.uni-muenchen.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
 
-And remove some mostly obsolete comments.
+On Oct 13, 2012, at 1:18 PM, Wolfram Gloger <wmglo@dent.med.uni-muenchen.de> wrote:
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c |   11 +----------
- 1 file changed, 1 insertion(+), 10 deletions(-)
+> Hi,
+> 
+>>> -	/*
+>>> -	 * Update option string to be recorded in /etc/mtab.
+>>> -	 */
+>>> -	if (po_join(options, mi->extra_opts) == PO_FAILED) {
+>>> +	if (po_join(options, &extra_opts) == PO_FAILED) {
+>> 
+>> This doesn't look right to me, but I haven't had time to test it.  Doesn't this hunk cause the mount system call to ignore what's in mi->extra_opts?
+> ...
+>>> 	result = nfs_sys_mount(mi, options);
+> 
+> No, nfs_sys_mount() does not use mi->extra_opts at all, only the
+> binary options.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 0f8d7e7..73029cd 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1667,6 +1667,7 @@ out_new:
- 		status = nfserr_jukebox;
- 		goto out;
- 	}
-+	new->cl_minorversion = 1;
- 
- 	gen_clid(new);
- 	add_to_unconfirmed(new, strhashval);
-@@ -1799,12 +1800,6 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 		status = nfserr_stale_clientid;
- 		goto out;
- 	}
--
--	/*
--	 * XXX: we should probably set this at creation time, and check
--	 * for consistent minorversion use throughout:
--	 */
--	conf->cl_minorversion = 1;
- 	/*
- 	 * We do not support RDMA or persistent sessions
- 	 */
-@@ -2216,10 +2211,6 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		copy_clid(new, conf);
- 	else /* case 4 (new client) or cases 2, 3 (client reboot): */
- 		gen_clid(new);
--	/*
--	 * XXX: we should probably set this at creation time, and check
--	 * for consistent minorversion use throughout:
--	 */
- 	new->cl_minorversion = 0;
- 	gen_callback(new, setclid, rqstp);
- 	add_to_unconfirmed(new, strhashval);
--- 
-1.7.9.5
+This is the text-based code, which I wrote.  nfs_sys_mount() passes an options string (NUL-terminated C string) to the kernel, not a binary object.  That string contains all the FS-specific mount options specified by the user.
+
+But your patch makes that string empty, by my reading.  I think this is incorrect.
+
+> It would perhaps be clearer to handle the update of mi->extra_opts in
+> nfs_sys_mount(), but only after a successful mount(2) call.
+> A more invasive patch.
+> 
+> Regards,
+> Wolfram.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
