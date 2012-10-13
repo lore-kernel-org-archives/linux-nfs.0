@@ -1,208 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:22582 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:56212 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752004Ab2JCBIf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Oct 2012 21:08:35 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 3 1/1] NFSv4 reduce attribute requests for open reclaim
-Date: Tue,  2 Oct 2012 21:07:32 -0400
-Message-Id: <1349226452-2026-1-git-send-email-andros@netapp.com>
+	id S1751400Ab2JMEmJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 13 Oct 2012 00:42:09 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Larry McVoy <lm@bitmover.com>
+CC: Linus Torvalds <torvalds@linux-foundation.org>,
+        Bruce Fields <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
+Date: Sat, 13 Oct 2012 04:42:05 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9091FFA38@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20121012211701.GA8301@bitmover.com>
+	 <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
+	 <20121013002100.GB23247@bitmover.com>
+	 <CA+55aFwKn+rp4qTk3dLgN8n=M-Aw1GYYpOfevDJaJhnK-U5VOg@mail.gmail.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9091FDED5@SACEXCMBX04-PRD.hq.netapp.com>
+	 <20121013023147.GJ23247@bitmover.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9091FE478@SACEXCMBX04-PRD.hq.netapp.com>
+	 <20121013025600.GL23247@bitmover.com>
+In-Reply-To: <20121013025600.GL23247@bitmover.com>
+Content-Type: multipart/mixed;
+	boundary="_002_4FA345DA4F4AE44899BD2B03EEEC2FA9091FFA38SACEXCMBX04PRDh_"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+--_002_4FA345DA4F4AE44899BD2B03EEEC2FA9091FFA38SACEXCMBX04PRDh_
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <7BE1A54247BD9144B6067202EAE171DB@tahoe.netapp.com>
+Content-Transfer-Encoding: base64
 
-We currently make no distinction in attribute requests between normal OPENs
-and OPEN with CLAIM_PREVIOUS.  This offers more possibility of failures in
-the GETATTR response which foils OPEN reclaim attempts.
+T24gRnJpLCAyMDEyLTEwLTEyIGF0IDE5OjU2IC0wNzAwLCBMYXJyeSBNY1ZveSB3cm90ZToNCj4g
+T24gU2F0LCBPY3QgMTMsIDIwMTIgYXQgMDI6NTI6NTFBTSArMDAwMCwgTXlrbGVidXN0LCBUcm9u
+ZCB3cm90ZToNCj4gPiBPbiBGcmksIDIwMTItMTAtMTIgYXQgMTk6MzEgLTA3MDAsIExhcnJ5IE1j
+Vm95IHdyb3RlOg0KPiA+ID4gQXMgSSd2ZSBzYWlkLCBkZWJ1Z2dpbmcgdGhpcyBpcyBnb2luZyB0
+byBiZSBoYXJkLCBpdCBtZWFucyBzdG9wcGluZyBteQ0KPiA+ID4gY29tcGFueS4gIFdlIGNhbiBk
+byBvbmUgbW9yZSBjcmFzaCwgeW91IGd1eXMgY2FuIHRlbGwgbWUgd2hhdCB0byBkbywNCj4gPiA+
+IGJ1dCB0aGF0J3MgYWJvdXQgaXQuDQo+ID4gDQo+ID4gRG8geW91IGhhdmUgYSByZXByb2R1Y2Vy
+PyANCj4gDQo+IE9oIHllYWgsIGl0IGhhcHBlbnMgZXZlcnkgdGltZS4gIFJ1biBza3lwZSBvbiBh
+IG1hYyB3LyB5b3VyIGhvbWUgZGlyIE5GUw0KPiBtb3VudGVkLiAgU2t5cGUgdHJpZXMgdG8gZG8g
+c29tZSBsb2NrIG9wZXJhdGlvbiBhbmQgdGhlIG1hY2hpbmUgcGFuaWNzLg0KPiANCj4gV2UndmUg
+ZG9uZSBpdCA0IHRpbWVzIGluIGEgcm93IHRvIGJlIHN1cmUgd2Ugd2VyZW4ndCBzbW9raW5nIGNy
+YWNrLiAgTm8NCj4gY3JhY2suICBKdXN0IHBhbmljcy4NCg0KT0suIEkgdGhpbmsgSSBjYW4gc2Vl
+IHdoYXQgaXMgaGFwcGVuaW5nLiBXZSBuZWVkIHRvIGZpbHRlciB0aGUgcmV0dXJuDQp2YWx1ZXMg
+ZnJvbSBubG1fbG9va3VwX2ZpbGUoKSB3aGVuIGRlYWxpbmcgd2l0aCBOTE12MSBhbmQgTkxNdjMu
+DQoNCkNhbiB5b3UgcGxlYXNlIHRyeSB0aGUgYXR0YWNoZWQgcGF0Y2g/DQoNCkNoZWVycw0KICBU
+cm9uZA0KDQpQUzogeW91IGFyZSBwcmVzdW1hYmx5IHJ1bm5pbmcgTkZTdjIgb24geW91ciBNYWNz
+LiBPZGQgdGhhdCB0aGV5IHNob3VsZA0KZGVmYXVsdCB0byB0aGF0Li4uDQotLSANClRyb25kIE15
+a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlr
+bGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
 
-Reduce the requested attributes to the bare minimum needed to update the
-reclaim open stateid and split nfs4_opendata_to_nfs4_state processing
-accordingly.
+--_002_4FA345DA4F4AE44899BD2B03EEEC2FA9091FFA38SACEXCMBX04PRDh_
+Content-Type: text/x-patch;
+	name="0001-NLM-nlm_lookup_file-may-return-NLMv4-specific-error-.patch"
+Content-Description: 0001-NLM-nlm_lookup_file-may-return-NLMv4-specific-error-.patch
+Content-Disposition: attachment;
+	filename="0001-NLM-nlm_lookup_file-may-return-NLMv4-specific-error-.patch";
+	size=1753; creation-date="Sat, 13 Oct 2012 04:42:05 GMT";
+	modification-date="Sat, 13 Oct 2012 04:42:05 GMT"
+Content-ID: <70BE5C318D80CB489EA3421FF728D2D4@tahoe.netapp.com>
+Content-Transfer-Encoding: base64
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
+RnJvbSAxZjBkNGQxYmI3N2ZhMDIxNmRkMmZiMjA0MWNjOWI0NGRiNDY5N2UwIE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
+YXBwLmNvbT4NCkRhdGU6IFNhdCwgMTMgT2N0IDIwMTIgMDA6MzA6MjggLTA0MDANClN1YmplY3Q6
+IFtQQVRDSF0gTkxNOiBubG1fbG9va3VwX2ZpbGUoKSBtYXkgcmV0dXJuIE5MTXY0LXNwZWNpZmlj
+IGVycm9yIGNvZGVzDQoNCklmIHRoZSBmaWxlaGFuZGxlIGlzIHN0YWxlLCBvciBvcGVuIGFjY2Vz
+cyBpcyBkZW5pZWQgZm9yIHNvbWUgcmVhc29uLA0KbmxtX2ZvcGVuKCkgbWF5IHJldHVybiBvbmUg
+b2YgdGhlIE5MTXY0LXNwZWNpZmljIGVycm9yIGNvZGVzIG5sbTRfc3RhbGVfZmgNCm9yIG5sbTRf
+ZmFpbGVkLiBUaGVzZSBnZXQgcGFzc2VkIHJpZ2h0IHRocm91Z2ggbmxtX2xvb2t1cF9maWxlKCks
+DQphbmQgc28gd2hlbiBubG1zdmNfcmV0cmlldmVfYXJncygpIGNhbGxzIHRoZSBsYXR0ZXIsIGl0
+IG5lZWRzIHRvIGZpbHRlcg0KdGhlIHJlc3VsdCB0aHJvdWdoIHRoZSBjYXN0X3N0YXR1cygpIG1h
+Y2hpbmVyeS4NCg0KRmFpbHVyZSB0byBkbyBzbywgd2lsbCB0cmlnZ2VyIHRoZSBCVUdfT04oKSBp
+biBlbmNvZGVfbmxtX3N0YXQuLi4NCg0KU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDxU
+cm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCi0tLQ0KIGZzL2xvY2tkL2NsbnR4ZHIuYyB8IDIg
+Ky0NCiBmcy9sb2NrZC9zdmNwcm9jLmMgfCAzICsrLQ0KIDIgZmlsZXMgY2hhbmdlZCwgMyBpbnNl
+cnRpb25zKCspLCAyIGRlbGV0aW9ucygtKQ0KDQpkaWZmIC0tZ2l0IGEvZnMvbG9ja2QvY2xudHhk
+ci5jIGIvZnMvbG9ja2QvY2xudHhkci5jDQppbmRleCAxODBhYzM0Li5jZjA0Y2RhIDEwMDY0NA0K
+LS0tIGEvZnMvbG9ja2QvY2xudHhkci5jDQorKysgYi9mcy9sb2NrZC9jbG50eGRyLmMNCkBAIC0y
+MjMsNyArMjIzLDcgQEAgc3RhdGljIHZvaWQgZW5jb2RlX25sbV9zdGF0KHN0cnVjdCB4ZHJfc3Ry
+ZWFtICp4ZHIsDQogew0KIAlfX2JlMzIgKnA7DQogDQotCUJVR19PTihiZTMyX3RvX2NwdShzdGF0
+KSA+IE5MTV9MQ0tfREVOSUVEX0dSQUNFX1BFUklPRCk7DQorCVdBUk5fT05fT05DRShiZTMyX3Rv
+X2NwdShzdGF0KSA+IE5MTV9MQ0tfREVOSUVEX0dSQUNFX1BFUklPRCk7DQogCXAgPSB4ZHJfcmVz
+ZXJ2ZV9zcGFjZSh4ZHIsIDQpOw0KIAkqcCA9IHN0YXQ7DQogfQ0KZGlmZiAtLWdpdCBhL2ZzL2xv
+Y2tkL3N2Y3Byb2MuYyBiL2ZzL2xvY2tkL3N2Y3Byb2MuYw0KaW5kZXggZDI3YWFiMS4uZDQxM2Fm
+MyAxMDA2NDQNCi0tLSBhL2ZzL2xvY2tkL3N2Y3Byb2MuYw0KKysrIGIvZnMvbG9ja2Qvc3ZjcHJv
+Yy5jDQpAQCAtNjcsNyArNjcsOCBAQCBubG1zdmNfcmV0cmlldmVfYXJncyhzdHJ1Y3Qgc3ZjX3Jx
+c3QgKnJxc3RwLCBzdHJ1Y3QgbmxtX2FyZ3MgKmFyZ3AsDQogDQogCS8qIE9idGFpbiBmaWxlIHBv
+aW50ZXIuIE5vdCB1c2VkIGJ5IEZSRUVfQUxMIGNhbGwuICovDQogCWlmIChmaWxwICE9IE5VTEwp
+IHsNCi0JCWlmICgoZXJyb3IgPSBubG1fbG9va3VwX2ZpbGUocnFzdHAsICZmaWxlLCAmbG9jay0+
+ZmgpKSAhPSAwKQ0KKwkJZXJyb3IgPSBjYXN0X3N0YXR1cyhubG1fbG9va3VwX2ZpbGUocnFzdHAs
+ICZmaWxlLCAmbG9jay0+ZmgpKTsNCisJCWlmIChlcnJvciAhPSAwKQ0KIAkJCWdvdG8gbm9fbG9j
+a3M7DQogCQkqZmlscCA9IGZpbGU7DQogDQotLSANCjEuNy4xMS43DQoNCg==
 
-Version 3
-
-cleaned up -ESTALE check in nfs4_opendata_reclaim_to_nfs4_state as per Tronds
-suggestion.
-
- fs/nfs/nfs4proc.c |  114 +++++++++++++++++++++++++++++++++++++++++------------
- fs/nfs/nfs4xdr.c  |    2 +-
- 2 files changed, 89 insertions(+), 27 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 1e0faf9..5b109e6 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -152,6 +152,12 @@ static const u32 nfs4_pnfs_open_bitmap[3] = {
- 	FATTR4_WORD2_MDSTHRESHOLD
- };
- 
-+static const u32 nfs4_open_noattr_bitmap[3] = {
-+	FATTR4_WORD0_TYPE
-+	| FATTR4_WORD0_CHANGE
-+	| FATTR4_WORD0_FILEID,
-+};
-+
- const u32 nfs4_statfs_bitmap[2] = {
- 	FATTR4_WORD0_FILES_AVAIL
- 	| FATTR4_WORD0_FILES_FREE
-@@ -1120,11 +1126,80 @@ out_return_state:
- 	return state;
- }
- 
--static struct nfs4_state *nfs4_opendata_to_nfs4_state(struct nfs4_opendata *data)
-+static void
-+nfs4_opendata_check_deleg(struct nfs4_opendata *data, struct nfs4_state *state)
-+{
-+	struct nfs_client *clp = NFS_SERVER(state->inode)->nfs_client;
-+	struct nfs_delegation *delegation;
-+	int delegation_flags = 0;
-+
-+	rcu_read_lock();
-+	delegation = rcu_dereference(NFS_I(state->inode)->delegation);
-+	if (delegation)
-+		delegation_flags = delegation->flags;
-+	rcu_read_unlock();
-+	if (data->o_arg.claim == NFS4_OPEN_CLAIM_DELEGATE_CUR) {
-+		pr_err_ratelimited("NFS: Broken NFSv4 server %s is "
-+				   "returning a delegation for "
-+				   "OPEN(CLAIM_DELEGATE_CUR)\n",
-+				   clp->cl_hostname);
-+	} else if ((delegation_flags & 1UL<<NFS_DELEGATION_NEED_RECLAIM) == 0)
-+		nfs_inode_set_delegation(state->inode,
-+					 data->owner->so_cred,
-+					 &data->o_res);
-+	else
-+		nfs_inode_reclaim_delegation(state->inode,
-+					     data->owner->so_cred,
-+					     &data->o_res);
-+}
-+
-+/*
-+ * Check the inode attributes against the CLAIM_PREVIOUS returned attributes
-+ * and update the nfs4_state.
-+ */
-+static struct nfs4_state *
-+_nfs4_opendata_reclaim_to_nfs4_state(struct nfs4_opendata *data)
-+{
-+	struct inode *inode = data->state->inode;
-+	struct nfs4_state *state = data->state;
-+	int ret;
-+
-+	if (!data->rpc_done) {
-+		ret = data->rpc_status;
-+		goto err;
-+	}
-+
-+	ret = -ESTALE;
-+	if (!(data->f_attr.valid & NFS_ATTR_FATTR_TYPE) ||
-+	    !(data->f_attr.valid & NFS_ATTR_FATTR_FILEID) ||
-+	    !(data->f_attr.valid & NFS_ATTR_FATTR_CHANGE))
-+		goto err;
-+
-+	ret = -ENOMEM;
-+	state = nfs4_get_open_state(inode, data->owner);
-+	if (state == NULL)
-+		goto err;
-+
-+	ret = nfs_refresh_inode(inode, &data->f_attr);
-+	if (ret)
-+		goto err;
-+
-+	if (data->o_res.delegation_type != 0)
-+		nfs4_opendata_check_deleg(data, state);
-+	update_open_stateid(state, &data->o_res.stateid, NULL,
-+			    data->o_arg.fmode);
-+
-+	return state;
-+err:
-+	return ERR_PTR(ret);
-+
-+}
-+
-+static struct nfs4_state *
-+_nfs4_opendata_to_nfs4_state(struct nfs4_opendata *data)
- {
- 	struct inode *inode;
- 	struct nfs4_state *state = NULL;
--	struct nfs_delegation *delegation;
- 	int ret;
- 
- 	if (!data->rpc_done) {
-@@ -1143,30 +1218,8 @@ static struct nfs4_state *nfs4_opendata_to_nfs4_state(struct nfs4_opendata *data
- 	state = nfs4_get_open_state(inode, data->owner);
- 	if (state == NULL)
- 		goto err_put_inode;
--	if (data->o_res.delegation_type != 0) {
--		struct nfs_client *clp = NFS_SERVER(inode)->nfs_client;
--		int delegation_flags = 0;
--
--		rcu_read_lock();
--		delegation = rcu_dereference(NFS_I(inode)->delegation);
--		if (delegation)
--			delegation_flags = delegation->flags;
--		rcu_read_unlock();
--		if (data->o_arg.claim == NFS4_OPEN_CLAIM_DELEGATE_CUR) {
--			pr_err_ratelimited("NFS: Broken NFSv4 server %s is "
--					"returning a delegation for "
--					"OPEN(CLAIM_DELEGATE_CUR)\n",
--					clp->cl_hostname);
--		} else if ((delegation_flags & 1UL<<NFS_DELEGATION_NEED_RECLAIM) == 0)
--			nfs_inode_set_delegation(state->inode,
--					data->owner->so_cred,
--					&data->o_res);
--		else
--			nfs_inode_reclaim_delegation(state->inode,
--					data->owner->so_cred,
--					&data->o_res);
--	}
--
-+	if (data->o_res.delegation_type != 0)
-+		nfs4_opendata_check_deleg(data, state);
- 	update_open_stateid(state, &data->o_res.stateid, NULL,
- 			data->o_arg.fmode);
- 	iput(inode);
-@@ -1178,6 +1231,14 @@ err:
- 	return ERR_PTR(ret);
- }
- 
-+static struct nfs4_state *
-+nfs4_opendata_to_nfs4_state(struct nfs4_opendata *data)
-+{
-+	if (data->o_arg.claim == NFS4_OPEN_CLAIM_PREVIOUS)
-+		return _nfs4_opendata_reclaim_to_nfs4_state(data);
-+	return _nfs4_opendata_to_nfs4_state(data);
-+}
-+
- static struct nfs_open_context *nfs4_state_find_open_context(struct nfs4_state *state)
- {
- 	struct nfs_inode *nfsi = NFS_I(state->inode);
-@@ -1499,6 +1560,7 @@ static void nfs4_open_prepare(struct rpc_task *task, void *calldata)
- 	data->o_arg.clientid = sp->so_server->nfs_client->cl_clientid;
- 	if (data->o_arg.claim == NFS4_OPEN_CLAIM_PREVIOUS) {
- 		task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_OPEN_NOATTR];
-+		data->o_arg.open_bitmap = &nfs4_open_noattr_bitmap[0];
- 		nfs_copy_fh(&data->o_res.fh, data->o_arg.fh);
- 	}
- 	data->timestamp = jiffies;
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 657483c..ba5b195 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -2262,7 +2262,7 @@ static void nfs4_xdr_enc_open_noattr(struct rpc_rqst *req,
- 	encode_putfh(xdr, args->fh, &hdr);
- 	encode_open(xdr, args, &hdr);
- 	encode_access(xdr, args->access, &hdr);
--	encode_getfattr(xdr, args->bitmask, &hdr);
-+	encode_getfattr_open(xdr, args->bitmask, args->open_bitmap, &hdr);
- 	encode_nops(&hdr);
- }
- 
--- 
-1.7.7.6
-
+--_002_4FA345DA4F4AE44899BD2B03EEEC2FA9091FFA38SACEXCMBX04PRDh_--
