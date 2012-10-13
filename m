@@ -1,53 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57305 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753993Ab2JSMo0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Oct 2012 08:44:26 -0400
-Date: Fri, 19 Oct 2012 08:44:21 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Wei Yongjun <weiyj.lk@gmail.com>
-Cc: yongjun_wei@trendmicro.com.cn, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd4: remove unused variable in nfsd4_delegreturn()
-Message-ID: <20121019124421.GB20324@fieldses.org>
-References: <CAPgLHd_u-xX9oHdst_nCf0h+HmSigU7euOy3UYbemc=Um7trSw@mail.gmail.com>
+Received: from ipcop.bitmover.com ([192.132.92.15]:59186 "EHLO
+	mail.bitmover.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752625Ab2JMC4B (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Oct 2012 22:56:01 -0400
+Date: Fri, 12 Oct 2012 19:56:00 -0700
+From: Larry McVoy <lm@bitmover.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Larry McVoy <lm@bitmover.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Bruce Fields <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
+Message-ID: <20121013025600.GL23247@bitmover.com>
+References: <20121012211701.GA8301@bitmover.com>
+ <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
+ <20121013002100.GB23247@bitmover.com>
+ <CA+55aFwKn+rp4qTk3dLgN8n=M-Aw1GYYpOfevDJaJhnK-U5VOg@mail.gmail.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9091FDED5@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121013023147.GJ23247@bitmover.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9091FE478@SACEXCMBX04-PRD.hq.netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAPgLHd_u-xX9oHdst_nCf0h+HmSigU7euOy3UYbemc=Um7trSw@mail.gmail.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9091FE478@SACEXCMBX04-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 18, 2012 at 10:44:21PM +0800, Wei Yongjun wrote:
-> From: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
+On Sat, Oct 13, 2012 at 02:52:51AM +0000, Myklebust, Trond wrote:
+> On Fri, 2012-10-12 at 19:31 -0700, Larry McVoy wrote:
+> > As I've said, debugging this is going to be hard, it means stopping my
+> > company.  We can do one more crash, you guys can tell me what to do,
+> > but that's about it.
 > 
-> The variable inode is initialized but never used
-> otherwise, so remove the unused variable.
-> 
-> dpatch engine is used to auto generate this patch.
-> (https://github.com/weiyj/dpatch)
+> Do you have a reproducer? 
 
-Thanks, applying for 3.8.--b.
+Oh yeah, it happens every time.  Run skype on a mac w/ your home dir NFS
+mounted.  Skype tries to do some lock operation and the machine panics.
 
-> 
-> Signed-off-by: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
-> ---
->  fs/nfsd/nfs4state.c | 2 --
->  1 file changed, 2 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index d0237f8..620ff81 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -3807,12 +3807,10 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	struct nfs4_delegation *dp;
->  	stateid_t *stateid = &dr->dr_stateid;
->  	struct nfs4_stid *s;
-> -	struct inode *inode;
->  	__be32 status;
->  
->  	if ((status = fh_verify(rqstp, &cstate->current_fh, S_IFREG, 0)))
->  		return status;
-> -	inode = cstate->current_fh.fh_dentry->d_inode;
->  
->  	nfs4_lock_state();
->  	status = nfsd4_lookup_stateid(stateid, NFS4_DELEG_STID, &s, cstate->minorversion);
-> 
+We've done it 4 times in a row to be sure we weren't smoking crack.  No
+crack.  Just panics.
+-- 
+---
+Larry McVoy                lm at bitmover.com           http://www.bitkeeper.com
