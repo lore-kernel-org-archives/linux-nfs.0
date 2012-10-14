@@ -1,43 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:11874 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751062Ab2JRStP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Oct 2012 14:49:15 -0400
-Received: from vmwexceht04-prd.hq.netapp.com (vmwexceht04-prd.hq.netapp.com [10.106.77.34])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q9IInFl3027401
-	for <linux-nfs@vger.kernel.org>; Thu, 18 Oct 2012 11:49:15 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 04/25] SUNRPC: remove BUG_ON() from call_transmit()
-Date: Thu, 18 Oct 2012 18:49:14 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA909281240@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1350405043-39316-1-git-send-email-dros@netapp.com>
-	 <1350405043-39316-4-git-send-email-dros@netapp.com>
-In-Reply-To: <1350405043-39316-4-git-send-email-dros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from acsinet15.oracle.com ([141.146.126.227]:31617 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753101Ab2JNWcp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Oct 2012 18:32:45 -0400
+Content-Type: text/plain; charset=US-ASCII
+Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
+Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CA+55aFz=1yFc-i4gmfGbyATvSNmPheedb6qF38ditHrdvtbdFQ@mail.gmail.com>
+Date: Sun, 14 Oct 2012 18:32:31 -0400
+Cc: Bruce Fields <bfields@fieldses.org>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Larry McVoy <lm@bitmover.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <F6AF04FD-1849-408B-A964-DDC386CA4654@oracle.com>
+References: <20121012211701.GA8301@bitmover.com> <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com> <20121013002100.GB23247@bitmover.com> <CA+55aFwKn+rp4qTk3dLgN8n=M-Aw1GYYpOfevDJaJhnK-U5VOg@mail.gmail.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9091FDED5@SACEXCMBX04-PRD.hq.netapp.com> <20121014193905.GC32420@fieldses.org> <2CAF58DA-E925-47F5-B1FD-DC86EF565125@oracle.com> <CA+55aFz=1yFc-i4gmfGbyATvSNmPheedb6qF38ditHrdvtbdFQ@mail.gmail.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTEwLTE2IGF0IDEyOjMwIC0wNDAwLCBXZXN0b24gQW5kcm9zIEFkYW1zb24g
-d3JvdGU6DQo+IFJlcGxhY2UgQlVHX09OKCkgd2l0aCBXQVJOX09OX09OQ0UoKSBhbmQgaWYgdGhl
-IGVycm9yIGNvbmRpdGlvbiBpcyB0cnVlDQo+IGF0dGVtcHQgdG8gZ3JhY2VmdWxseSByZWNvdmVy
-IGJ5IGNhbGxpbmcgcnBjX2V4aXQoKS4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IFdlc3RvbiBBbmRy
-b3MgQWRhbXNvbiA8ZHJvc0BuZXRhcHAuY29tPg0KPiAtLS0NCj4gIG5ldC9zdW5ycGMvY2xudC5j
-IHwgICAgNiArKysrKy0NCj4gIDEgZmlsZSBjaGFuZ2VkLCA1IGluc2VydGlvbnMoKyksIDEgZGVs
-ZXRpb24oLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9uZXQvc3VucnBjL2NsbnQuYyBiL25ldC9zdW5y
-cGMvY2xudC5jDQo+IGluZGV4IGZlOGExMzMuLjc2ZDE3MzAgMTAwNjQ0DQo+IC0tLSBhL25ldC9z
-dW5ycGMvY2xudC5jDQo+ICsrKyBiL25ldC9zdW5ycGMvY2xudC5jDQo+IEBAIC0xNjYxLDcgKzE2
-NjEsMTEgQEAgY2FsbF90cmFuc21pdChzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2spDQo+ICAJdGFzay0+
-dGtfYWN0aW9uID0gY2FsbF90cmFuc21pdF9zdGF0dXM7DQo+ICAJLyogRW5jb2RlIGhlcmUgc28g
-dGhhdCBycGNzZWNfZ3NzIGNhbiB1c2UgY29ycmVjdCBzZXF1ZW5jZSBudW1iZXIuICovDQo+ICAJ
-aWYgKHJwY190YXNrX25lZWRfZW5jb2RlKHRhc2spKSB7DQo+IC0JCUJVR19PTih0YXNrLT50a19y
-cXN0cC0+cnFfYnl0ZXNfc2VudCAhPSAwKTsNCj4gKwkJV0FSTl9PTih0YXNrLT50a19ycXN0cC0+
-cnFfYnl0ZXNfc2VudCAhPSAwKTsNCg0KV0FSTl9PTl9PTkNFKCk/DQoNCj4gKwkJaWYgKHRhc2st
-PnRrX3Jxc3RwLT5ycV9ieXRlc19zZW50ICE9IDApIHsNCj4gKwkJCXJwY19leGl0KHRhc2ssIC1F
-SU5WQUwpOw0KPiArCQkJcmV0dXJuOw0KPiArCQl9DQo+ICAJCXJwY194ZHJfZW5jb2RlKHRhc2sp
-Ow0KPiAgCQkvKiBEaWQgdGhlIGVuY29kZSByZXN1bHQgaW4gYW4gZXJyb3IgY29uZGl0aW9uPyAq
-Lw0KPiAgCQlpZiAodGFzay0+dGtfc3RhdHVzICE9IDApIHsNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1
-c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVz
-dEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+
+On Oct 14, 2012, at 5:05 PM, Linus Torvalds <torvalds@linux-foundation.org> wrote:
+
+> On Sun, Oct 14, 2012 at 1:55 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> 
+>> I think range-check assertions in the XDR code are valuable.  Whether they are done via BUG_ON or WARN_ON_ONCE is a matter of priority:
+> 
+> Bullshit.
+> 
+>> BUG_ON forces you to notice the problem and address it, while WARN_ON allows the system to continue operating with the bug, but the bug can be ignored (or the WARN_ON simply removed because it is annoying).
+> 
+> Bullshit again.
+
+> I don't think you've ever even *seen* a BUG_ON() fire in critical
+> code, have you? It's not pretty.
+
+I've been working on the Linux kernel NFS client for 12 years.  I've seen plenty of BUG_ONs fire at inopportune moments, and plenty fire right when it is useful.
+
+The client-side XDR encoder functions don't return a return value.  Upper layers can not find out there was a problem if marshalling fails.  That's why we use BUG_ON here: the code really has to stop executing, especially if pointers are involved, to avoid crapping on other parts of memory or posting data to a server that could corrupt file data.
+
+Remember, in a file system, you need to be concerned about kernel data structures _and_ what is being written to disk.
+
+Even if we change BUG_ON to WARN_ON everywhere, there are still plenty of ways to oops in that code, and we have the same result: the machine may lock up or not write the back trace to the system log.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
