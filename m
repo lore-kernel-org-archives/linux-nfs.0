@@ -1,39 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:22993 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:40648 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752158Ab2JBUBk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Oct 2012 16:01:40 -0400
-From: bjschuma@netapp.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFS: Set key construction data for the legacy upcall
-Date: Tue,  2 Oct 2012 16:01:38 -0400
-Message-Id: <1349208098-18997-1-git-send-email-bjschuma@netapp.com>
+	id S1751565Ab2JNTny (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 14 Oct 2012 15:43:54 -0400
+Date: Sun, 14 Oct 2012 15:43:51 -0400
+From: Bruce Fields <bfields@fieldses.org>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Larry McVoy <lm@bitmover.com>
+Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
+Message-ID: <20121014194351.GD32420@fieldses.org>
+References: <20121012211701.GA8301@bitmover.com>
+ <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
+ <5078D17C.9090002@panasas.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9091FDFA9@SACEXCMBX04-PRD.hq.netapp.com>
+ <5078D45A.3090801@panasas.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5078D45A.3090801@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Fri, Oct 12, 2012 at 07:39:22PM -0700, Boaz Harrosh wrote:
+> On 10/12/2012 07:32 PM, Myklebust, Trond wrote:
+> > On Fri, 2012-10-12 at 19:27 -0700, Boaz Harrosh wrote:
+> >> On 10/12/2012 04:52 PM, Linus Torvalds wrote:
+> >>> Guys, check this report from Larry out.
+> >>>
+> >>> Also, why the *HELL* is that a BUG_ON() in the first place? Who was
+> >>> the less-than-gifted person who decided "if this thing can happen,
+> >>> let's just kill the whole machine"?
+> >>>
+> >>
+> >> Something is trivially weird
+> >>
+> >> fs/lockd/clntxdr.c:226 is in this static function:
+> >> 	encode_nlm_stat()
+> >>
+> >> encode_nlm_stat() is called in two places
+> >> 	static void nlm_xdr_enc_res(...)
+> >>   and
+> >> 	static void nlm_xdr_enc_testres(...)
+> >>
+> >> But these two are not called anywhere. In-fact a Kernel wide grep
+> >> returns a single occurrence of both
+> > 
+> > They are used in the nlm_procedures[] array as TEST_RES, LOCK_RES,
+> > CANCEL_RES, UNLOCK_RES and GRANTED_RES xdr encoding procedures.
+> 
+> Ha, sorry that was impossible to find. OK I'll have a look
 
-This prevents a null pointer dereference when
-nfs_idmap_complete_pipe_upcall_locked() calls complete_request_key().
+Everybody falls into that trap at least once.  Any objections to killing
+those macros and expanding that stuff out?
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfs/idmap.c | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index 675b389c..9cc4a3f 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -707,6 +707,7 @@ static int nfs_idmap_legacy_upcall(struct key_construction *cons,
- 	msg = &data->pipe_msg;
- 	im = &data->idmap_msg;
- 	data->idmap = idmap;
-+	data->key_cons = cons;
- 
- 	ret = nfs_idmap_prepare_message(key->description, idmap, im, msg);
- 	if (ret < 0)
--- 
-1.7.12.2
-
+--b.
