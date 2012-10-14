@@ -1,59 +1,31 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f53.google.com ([209.85.216.53]:33290 "EHLO
-	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S966897Ab2J0AJ6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Oct 2012 20:09:58 -0400
-Received: by mail-qa0-f53.google.com with SMTP id c1so590915qae.19
-        for <linux-nfs@vger.kernel.org>; Fri, 26 Oct 2012 17:09:58 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <CAFukC=7aTHvXoD9tNhZ5w=3Ffzc-661DNxwAxXy6Lr08VGBO8g@mail.gmail.com>
-References: <CAFukC=7aTHvXoD9tNhZ5w=3Ffzc-661DNxwAxXy6Lr08VGBO8g@mail.gmail.com>
-From: Brock Noland <brock@cloudera.com>
-Date: Fri, 26 Oct 2012 19:09:38 -0500
-Message-ID: <CAFukC=7XWhwWFcwfs=fODk70OHbk8ioOw2KeqS7Ao2wKaqZpWg@mail.gmail.com>
-Subject: Re: rpc.gssd segfault - real time event 32 in pol()
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from zep00a03.dent.med.uni-muenchen.de ([138.246.161.8]:49644 "HELO
+	md.dent.med.uni-muenchen.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1753202Ab2JNUJz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Oct 2012 16:09:55 -0400
+Date: 14 Oct 2012 22:09:52 +0200
+Message-ID: <20121014200952.26230.qmail@md.dent.med.uni-muenchen.de>
+From: Wolfram Gloger <wmglo@dent.med.uni-muenchen.de>
+To: chuck.lever@oracle.com
+CC: linux-nfs@vger.kernel.org
+In-reply-to: <6C61B43F-7A32-47E3-B81D-70CD991D9CDF@oracle.com> (message from
+	Chuck Lever on Sun, 14 Oct 2012 15:10:29 -0400)
+Subject: Re: [PATCH] nfs-utils: Backgrounding mount broken with NFS versions <4
+References: <20121012120030.18411.qmail@md.dent.med.uni-muenchen.de> <6AB50360-BADE-4544-85CF-700C63A44FDE@oracle.com> <20121013171856.10814.qmail@md.dent.med.uni-muenchen.de> <F5C4FA78-A467-4306-BC57-0A50D8F0A8A9@oracle.com> <20121013214652.23089.qmail@md.dent.med.uni-muenchen.de> <6C61B43F-7A32-47E3-B81D-70CD991D9CDF@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Also I am starting rpc.gssd in the foreground with -v flag.
+Hi,
 
-Brock
+> Unfortunately there are a rather unimaginable number of use cases for mount.nfs, which is why it is so complicated.  "Extensively" could mean you've tested it for a long time but with just a few use cases.
 
-On Fri, Oct 26, 2012 at 7:08 PM, Brock Noland <brock@cloudera.com> wrote:
-> Hi,
->
-> I built nfs-utils, libgssglue, and librpcsecgss from scratch to debug
-> some other issue.
->
-> However, whenever I try and mount a filesystem with sec=krb5p, I am
-> seeing the following:
->
-> Program received signal SIG37, Real-time event 37.
-> 0x00000037b72e8b84 in poll () from /lib64/libc.so.6
-> (gdb) bt
-> #0  0x00000037b72e8b84 in poll () from /lib64/libc.so.6
-> #1  0x0000000000404764 in gssd_run () at gssd_main_loop.c:213
-> #2  0x00000000004036b3 in main (argc=<optimized out>, argv=<optimized
-> out>) at gssd.c:194
->
-> At that point, it's waiting for DNOTIFY_SIGNAL. Is it possible that
-> DNOTIFY_SIGNAL is defined differently in the build versions the
-> runtime?
->
-> Version info:
->
-> Linux localhost.localdomain 3.6.2-4.fc17.x86_64 #1 SMP Wed Oct 17
-> 02:43:21 UTC 2012 x86_64 x86_64 x86_64 GNU/Linux
->
-> nfs-utils-1.2.6
-> libgssglue-0.4
-> librpcsecgss-0.19
->
-> Brock
+Admitted, I certainly didn't run an extensive test suite, mainly just
+the case in question by simulating server down with a temporary
+iptables DROP rule.
 
+> In any event:
+> 
+> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
 
-
--- 
-Apache MRUnit - Unit testing MapReduce - http://incubator.apache.org/mrunit/
+Thanks,
+Wolfram.
