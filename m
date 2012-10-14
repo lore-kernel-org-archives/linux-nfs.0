@@ -1,77 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:58429 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753926Ab2JKPCe convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Oct 2012 11:02:34 -0400
-Received: by mail-ie0-f174.google.com with SMTP id k13so3117572iea.19
-        for <linux-nfs@vger.kernel.org>; Thu, 11 Oct 2012 08:02:33 -0700 (PDT)
+Received: from mail-wi0-f172.google.com ([209.85.212.172]:50831 "EHLO
+	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751311Ab2JNWyX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Oct 2012 18:54:23 -0400
+Received: by mail-wi0-f172.google.com with SMTP id hq12so1362859wib.1
+        for <linux-nfs@vger.kernel.org>; Sun, 14 Oct 2012 15:54:22 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <5076C867.4050806@RedHat.com>
-References: <CAA7C2qiZhHD7-RHP93LCVOBGCmp4JxyJwRLa0AR8a=oi4fi2Gg@mail.gmail.com>
-	<5072B1E5.9060808@RedHat.com>
-	<CAA7C2qjRPs3pb66s2HDJqEyn0yGfGS_88+yvJNo0fhFQ9M6S3g@mail.gmail.com>
-	<5074B53A.3030207@RedHat.com>
-	<CAA7C2qg558GBYgaE2_Ay9QmC48UryG_9PqLP7Vebb1_QzRZd-g@mail.gmail.com>
-	<5076C867.4050806@RedHat.com>
-Date: Thu, 11 Oct 2012 08:02:33 -0700
-Message-ID: <CAA7C2qjd-mtSjc79T4EkV1_vUbJpqOQ53PjPQoW-eC6U7uv1Vw@mail.gmail.com>
-Subject: Re: Problem with rpcbind
-From: VDR User <user.vdr@gmail.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <F6AF04FD-1849-408B-A964-DDC386CA4654@oracle.com>
+References: <20121012211701.GA8301@bitmover.com> <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
+ <20121013002100.GB23247@bitmover.com> <CA+55aFwKn+rp4qTk3dLgN8n=M-Aw1GYYpOfevDJaJhnK-U5VOg@mail.gmail.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9091FDED5@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121014193905.GC32420@fieldses.org> <2CAF58DA-E925-47F5-B1FD-DC86EF565125@oracle.com>
+ <CA+55aFz=1yFc-i4gmfGbyATvSNmPheedb6qF38ditHrdvtbdFQ@mail.gmail.com> <F6AF04FD-1849-408B-A964-DDC386CA4654@oracle.com>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Sun, 14 Oct 2012 15:54:02 -0700
+Message-ID: <CA+55aFx-4FNQpmtLsVmVNufk0nVxqvJ=3wNrfAt2aK9=F7U8Cg@mail.gmail.com>
+Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Bruce Fields <bfields@fieldses.org>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Larry McVoy <lm@bitmover.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 11, 2012 at 6:23 AM, Steve Dickson <SteveD@redhat.com> wrote:
->>>>>> Per Aníbal Salazar, I'm sending this to the nfs mailing list..
->>>>>>
->>>>>> ==========
->>>>>>
->>>>>> Hi. I would like to know who I can talk to about having the rpcbind's
->>>>>> timeout value settable on the command line by the user. In many cases
->>>>>> the timeout is too long, requiring hackish solutions. It would be
->>>>>> best, and makes sense, that the user should be able to set the timeout
->>>>>> to something other than the default value if he chooses. If you could
->>>>>> direct me to the right person to talk to about it, I'd appreciate it.
->>>>>
->>>>> What timeout are you referring to? The one given to poll()?
->>>>
->>>> Hi. I guess so but not really sure. I'm talking about the timeout that
->>>> happens when rpcbind is waiting for a response. Sounds like poll()
->>>> could be it. We have an nfs server on .100 and the response happens
->>>> immediately.
->>>>
->>>> $ rpcinfo -t 192.168.1.100 nfs
->>>> program 100003 version 2 ready and waiting
->>>> program 100003 version 3 ready and waiting
->>>> program 100003 version 4 ready and waiting
->>>>
->>>> but there's no server on say .101 so if we run the same command on
->>>> that ip, the timeout takes a very long time. It's this timeout that
->>>> should be user-definable on the command line in my opinion. Any
->>>> thoughts about it?
->>>
->>> Hmm... I'm guess that is the 7min tcp connect time out cause by
->>> the -t option... Try using -u instead of -t... Basically using
->>> UDP instead of TCP... In general I would never recommend that
->>> but in this particular case it might help...
->>
->> Thanks for this suggestion. I tried with -u but the timeout still
->> takes at least 1 min. Is it not feasible to have a command line
->> timeout where users can set it to something appropriate for their
->> needs? For example, in our case we only need about 5 seconds at most.
+On Sun, Oct 14, 2012 at 3:32 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
 >
-> hmm... when I do a "rpcinfo -t <ip-address> nfs" to a machine that
-> does not have a daemon listening I immediately get:
->      rpcinfo: RPC: Port mapper failure - Unable to receive: errno 111 (Connection refused) program 100003 is not available
->
-> So I not seeing here this hang is coming from...
+> The client-side XDR encoder functions don't return a return value.  Upper layers can not find out there was a problem if marshalling fails.  That's why we use BUG_ON here
 
-The computers on our network run a mixture of different OS'es so maybe
-that is relevant. Regardless though it makes sense that we should be
-able to tell rpcbind to abort if I hasn't received a response within X
-seconds. That's much better than being forced to wait predefined
-timeouts, or timeouts in other places. Or is it just me?
+The above is STILL pure bull.
 
-Cheers
+Use a WARN_ON_ONCE() so that people can actually *report* the bugs
+sanely (see this very thread about why BUG_ON causes problems for
+reporters).
+
+If you are so damned certain that you mustn't continue, make the damn
+function return the error code, and stop marshalling. If you don't do
+error handling, that's no excuse for BUG_ON.
+
+And if you think the code gets too complicated from that, then that
+*still* isn't a reason to do BUG_ON(). See above.
+
+What part of this thread do you have problems acknowledging? The
+undeniable *facts* (that you seem to be in total denial about) from
+this very thread are:
+
+ - the BUG_ON() caused an otherwise *benign* bug to result in a unusable system.
+
+   Your "to avoid crapping on other parts of memory or posting data"
+argument is pretty much f*cked up, when you instead cause a fatal
+error!
+
+ - the BUG_ON() caused the debug data to be almost totally useless.
+
+   Look at the screen shots. Look at the lack of debug info. Just look at it.
+
+Why are you denying reality, and bringing up arguments that are purely
+theoretical and shown to be wrong in reality?
+
+BUG_ON() in a filesystem or random service is pure and utter garbage.
+There is no way it is ever the right thing to do. Get rid of them, and
+stop posting excuses for them.
+
+Christ, we had THIS VERY SAME issue not more than a month or two ago,
+when the locking code had a BUG() in it that turned what should have
+been a simple error return into a DoS attack by normal users. See
+commit 8d657eb3b438.
+
+The whole "it's better to BUG_ON() than do something unexpected" is a
+disease. It may be well-intentioned, but the road to hell is paved
+with good intentions, and saying "I don't want to do odd things" is
+stupid to do, when the BUG_ON() itself just causes *different*
+catastrophic odd things to happen.
+
+Really: killing the machine IS NOT ANY BETTER than sending out odd packets.
+
+             Linus
