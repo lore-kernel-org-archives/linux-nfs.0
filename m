@@ -1,59 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:14548 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754948Ab2JWOxf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Oct 2012 10:53:35 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 17/25] SUNRPC: remove BUG_ONs checking RPCSVC_MAXPAGES
-Date: Tue, 23 Oct 2012 10:43:41 -0400
-Message-Id: <1351003429-18887-18-git-send-email-dros@netapp.com>
-In-Reply-To: <1351003429-18887-1-git-send-email-dros@netapp.com>
-References: <1351003429-18887-1-git-send-email-dros@netapp.com>
+Received: from mail-wi0-f170.google.com ([209.85.212.170]:62023 "EHLO
+	mail-wi0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751611Ab2JNTox (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Oct 2012 15:44:53 -0400
+Received: by mail-wi0-f170.google.com with SMTP id hm2so197466wib.1
+        for <linux-nfs@vger.kernel.org>; Sun, 14 Oct 2012 12:44:52 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20121014193905.GC32420@fieldses.org>
+References: <20121012211701.GA8301@bitmover.com> <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
+ <20121013002100.GB23247@bitmover.com> <CA+55aFwKn+rp4qTk3dLgN8n=M-Aw1GYYpOfevDJaJhnK-U5VOg@mail.gmail.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9091FDED5@SACEXCMBX04-PRD.hq.netapp.com> <20121014193905.GC32420@fieldses.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Sun, 14 Oct 2012 12:44:32 -0700
+Message-ID: <CA+55aFyqy_unZJFpg2Cax=VHf-ZkwtM2fq=K3VSvKXT6NRVkbQ@mail.gmail.com>
+Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
+To: Bruce Fields <bfields@fieldses.org>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Larry McVoy <lm@bitmover.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Replace two bounds checking BUG_ON() calls with WARN_ON_ONCE() and resetting
-the requested size to RPCSVC_MAXPAGES.
+On Sun, Oct 14, 2012 at 12:39 PM, Bruce Fields <bfields@fieldses.org> wrote:
+>
+> Can't it be called from the rpciod workqueue?  I'm not sure what happens
+> when we hit a BUG there.
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- net/sunrpc/svc.c      |    4 +++-
- net/sunrpc/svc_xprt.c |    5 ++++-
- 2 files changed, 7 insertions(+), 2 deletions(-)
+>From personal experience, I can say that killing a workqueue will
+cause tons of *very* non-obvious downstream errors, so yeah, if it's
+called that way, I could easily see watchdogs firing etc.
 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 664979b..3bf5a54 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -587,7 +587,9 @@ svc_init_buffer(struct svc_rqst *rqstp, unsigned int size, int node)
- 				       * We assume one is at most one page
- 				       */
- 	arghi = 0;
--	BUG_ON(pages > RPCSVC_MAXPAGES);
-+	WARN_ON_ONCE(pages > RPCSVC_MAXPAGES);
-+	if (pages > RPCSVC_MAXPAGES)
-+		pages = RPCSVC_MAXPAGES;
- 	while (pages) {
- 		struct page *p = alloc_pages_node(node, GFP_KERNEL, 0);
- 		if (!p)
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index be89bb6..35fa74b 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -579,7 +579,10 @@ int svc_alloc_arg(struct svc_rqst *rqstp)
- 
- 	/* now allocate needed pages.  If we get a failure, sleep briefly */
- 	pages = (serv->sv_max_mesg + PAGE_SIZE) / PAGE_SIZE;
--	BUG_ON(pages >= RPCSVC_MAXPAGES);
-+	WARN_ON_ONCE(pages >= RPCSVC_MAXPAGES);
-+	if (pages >= RPCSVC_MAXPAGES)
-+		/* use as many pages as possible */
-+		pages = RPCSVC_MAXPAGES - 1;
- 	for (i = 0; i < pages ; i++)
- 		while (rqstp->rq_pages[i] == NULL) {
- 			struct page *p = alloc_page(GFP_KERNEL);
--- 
-1.7.9.6 (Apple Git-31.1)
+> It looks like a bunch of BUG_ON's got added with an xdr rewrite in
+> 2b061f9ef216b6d229b06267f188167fd6ab3d9b.  Maybe Chuck or someone should
+> do a 'git grep BUG fs/lockd' and figure out what those should be
+> instead?
 
+Even just replacing them with a WARN_ON_ONCE() would probably help
+things. Because BUG_ON() really *really* should be a "last possible
+case" thing.
+
+               Linus
