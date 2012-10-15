@@ -1,55 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ye0-f174.google.com ([209.85.213.174]:56913 "EHLO
-	mail-ye0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756377Ab2J0Mef (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 08:34:35 -0400
-Received: by mail-ye0-f174.google.com with SMTP id m12so638325yen.19
-        for <linux-nfs@vger.kernel.org>; Sat, 27 Oct 2012 05:34:35 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v8 26/32] vfs: make llistxattr retry once on ESTALE error
-Date: Sat, 27 Oct 2012 08:33:33 -0400
-Message-Id: <1351341219-17837-27-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
-References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:8999 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751398Ab2JOEl6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Oct 2012 00:41:58 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Bruce Fields <bfields@fieldses.org>
+CC: Larry McVoy <lm@bitmover.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
+Date: Mon, 15 Oct 2012 04:41:56 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA909236FFD@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20121012211701.GA8301@bitmover.com>
+	 <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
+	 <20121013002100.GB23247@bitmover.com>
+	 <CA+55aFwKn+rp4qTk3dLgN8n=M-Aw1GYYpOfevDJaJhnK-U5VOg@mail.gmail.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9091FDED5@SACEXCMBX04-PRD.hq.netapp.com>
+	 <20121013023147.GJ23247@bitmover.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9091FE478@SACEXCMBX04-PRD.hq.netapp.com>
+	 <20121013025600.GL23247@bitmover.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9091FFA38@SACEXCMBX04-PRD.hq.netapp.com>
+	 <20121014014215.GO23247@bitmover.com> <20121015004302.GF32420@fieldses.org>
+In-Reply-To: <20121015004302.GF32420@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/xattr.c | 15 ++++++++++-----
- 1 file changed, 10 insertions(+), 5 deletions(-)
-
-diff --git a/fs/xattr.c b/fs/xattr.c
-index 8a318a4..8a30ef0 100644
---- a/fs/xattr.c
-+++ b/fs/xattr.c
-@@ -595,12 +595,17 @@ SYSCALL_DEFINE3(llistxattr, const char __user *, pathname, char __user *, list,
- {
- 	struct path path;
- 	ssize_t error;
-+	unsigned int try = 0;
-+	unsigned int lookup_flags = 0;
- 
--	error = user_lpath(pathname, &path);
--	if (error)
--		return error;
--	error = listxattr(path.dentry, list, size);
--	path_put(&path);
-+	do {
-+		error = user_path_at(AT_FDCWD, pathname, lookup_flags, &path);
-+		if (error)
-+			break;
-+		error = listxattr(path.dentry, list, size);
-+		path_put(&path);
-+		lookup_flags |= LOOKUP_REVAL;
-+	} while (retry_estale(error, try++));
- 	return error;
- }
- 
--- 
-1.7.11.7
-
+T24gU3VuLCAyMDEyLTEwLTE0IGF0IDIwOjQzIC0wNDAwLCBCcnVjZSBGaWVsZHMgd3JvdGU6DQo+
+IEJ1ZyByZXBvcnRzIHdlbGNvbWVkIGlmIGFueSBvZiB0aG9zZSBidWdzIGFyZSBzdGlsbCBhcm91
+bmQuDQoNCllvdSBkaWQgc2VlIHRoZSBwYXRjaCB0aGF0IEkgc3VibWl0dGVkLCByaWdodD8gU2lu
+Y2UgaXQgaXMgYSBzZXJ2ZXIgYnVnLA0KSSdtIGFzc3VtaW5nIHRoYXQgeW91IHdpbGwgd2FudCB0
+byBwdXNoIGl0IHVwc3RyZWFtLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNs
+aWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3
+dy5uZXRhcHAuY29tDQo=
