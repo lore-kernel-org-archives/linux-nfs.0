@@ -1,220 +1,170 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f46.google.com ([209.85.213.46]:53308 "EHLO
-	mail-yh0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933053Ab2JWNp5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Oct 2012 09:45:57 -0400
-Received: by mail-yh0-f46.google.com with SMTP id m54so700694yhm.19
-        for <linux-nfs@vger.kernel.org>; Tue, 23 Oct 2012 06:45:57 -0700 (PDT)
-Date: Tue, 23 Oct 2012 09:45:51 -0400
-From: Chris Perl <chris.perl@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: RPC Race Condition
-Message-ID: <20121023134551.GB27191@nyc-qws-132.nyc.delacy.com>
-References: <20121022180339.GC24763@nyc-qws-132.nyc.delacy.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA909289403@SACEXCMBX04-PRD.hq.netapp.com>
- <20121022202611.GA27191@nyc-qws-132.nyc.delacy.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA90928AB39@SACEXCMBX04-PRD.hq.netapp.com>
+Received: from intranet.asianux.com ([58.214.24.6]:55956 "EHLO
+	intranet.asianux.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753617Ab2JOC3z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Oct 2012 22:29:55 -0400
+Message-ID: <507B70F1.7040903@asianux.com>
+Date: Mon, 15 Oct 2012 10:12:01 +0800
+From: Chen Gang <gang.chen@asianux.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90928AB39@SACEXCMBX04-PRD.hq.netapp.com>
+To: Jeff Layton <jlayton@redhat.com>, Trond.Myklebust@netapp.com,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [Bug fix] nfs-client: fix nfs_inode_attrs_need_update for async read_done
+ comes during truncating to smaller size
+Content-Type: text/plain; charset=GB2312
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 22, 2012 at 09:20:34PM +0000, Myklebust, Trond wrote:
-> > This is what I changed:
-> > 
-> > --- a/net/sunrpc/xprtsock.c     2012-08-14 08:47:16.000000000 -0400
-> > +++ b/net/sunrpc/xprtsock.c     2012-10-22 14:50:09.237725498 -0400
-> > @@ -1571,7 +1571,8 @@
-> >         dprintk("RPC:       %s client %p...\n"
-> >                         "RPC:       error %d\n",
-> >                         __func__, xprt, sk->sk_err);
-> > -       xprt_wake_pending_tasks(xprt, -EAGAIN);
-> > +       if (!xprt_connecting(xprt))
-> > +               xprt_wake_pending_tasks(xprt, -EAGAIN);
-> >  out:
-> >         read_unlock_bh(&sk->sk_callback_lock);
-> >  }
-> > 
-> > Unfortunately it does not resolve it.  It appears that does stop the wakeup
-> > from happening where I detailed it before, but we still wake up too early.  The
-> > following is the call stack from SystemTap catching the call to `rpc_make_runnable':
-> > 
-> >  0xffffffffa0434840 : rpc_make_runnable+0x0/0x80 [sunrpc]
-> >  0xffffffffa0434b5e : rpc_wake_up_task_queue_locked+0x18e/0x270 [sunrpc]
-> >  0xffffffffa0434c8e : rpc_wake_up_status+0x4e/0x80 [sunrpc]
-> >  0xffffffffa042d8ec : xprt_wake_pending_tasks+0x2c/0x30 [sunrpc]
-> >  0xffffffffa042da56 : xprt_disconnect_done+0x46/0x70 [sunrpc]
-> >  0xffffffffa04305b0 : xs_tcp_setup_socket+0x330/0x4c0 [sunrpc]
-> >  0xffffffff8108c760 : worker_thread+0x170/0x2a0 [kernel]
-> >  0xffffffff81091d66 : kthread+0x96/0xa0 [kernel]
-> >  0xffffffff8100c14a : child_rip+0xa/0x20 [kernel]
-> > 
-> > However, its mildly confusing to me since I cannot follow that exact
-> > call stack in the code.  The nearest I can find to that is the
-> > following:
-> > 
-> >   rpc_make_runnable
-> >   rpc_wake_up_task_queue_locked
-> >   rpc_wake_up_status
-> >   xprt_wake_pending_tasks
-> >   xprt_disconnect_done
-> >   xs_sock_mark_closed
-> >   xs_abort_connection
-> >   xs_tcp_reuse_connection
-> >   xs_tcp_setup_socket
-> > 
-> > As far as I can tell, we get here because the call to `kernel_connect'
-> > from within `xs_abort_connection' by rpciod is returning 0 sometimes
-> > (and EINPROGRESS others).  When it returns 0, we enter this block:
-> > 
-> >   if (!result)
-> >           xs_sock_mark_closed(&transport->xprt);
-> >   else
-> >     dprintk("RPC:       AF_UNSPEC connect return code %d\n", result);
-> > 
-> > and that eventually gets us woken up via the call stack above.  The end
-> > result is the same, we wake up and move on to `call_transmit' before
-> > rpciod is done connecting the socket.
-> > 
-> > I'll do some more tracing and see what else I can come up with.
-> > 
-> > Chris
-> 
-> OK, then let's just get rid of xs_error_report(). All the cases that we
-> care about will call tcp_done(), which will induce a state change when
-> needed.
-> 
-> Cheers,
->   Trond
-> 8<---------------------------------------------------------------------
-> From 047ee9ea072698f1d35573c1f26dc02d13a4af7f Mon Sep 17 00:00:00 2001
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Date: Mon, 22 Oct 2012 17:14:36 -0400
-> Subject: [PATCH] SUNRPC: Get rid of the xs_error_report socket callback
-> 
-> Chris Perl reports that we're seeing races between the wakeup call in
-> xs_error_report and the connect attempts. Basically, Chris has shown
-> that in certain circumstances, the call to xs_error_report causes the
-> rpc_task that is responsible for reconnecting to wake up early, thus
-> triggering a disconnect and retry.
-> 
-> Since the sk->sk_error_report() calls in the socket layer are always
-> followed by a tcp_done() in the cases where we care about waking up
-> the rpc_tasks, just let the state_change callbacks take responsibility
-> for those wake ups.
-> 
-> Reported-by: Chris Perl <chris.perl@gmail.com>
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
->  net/sunrpc/xprtsock.c | 25 -------------------------
->  1 file changed, 25 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index aaaadfb..89bde21 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -254,7 +254,6 @@ struct sock_xprt {
->  	void			(*old_data_ready)(struct sock *, int);
->  	void			(*old_state_change)(struct sock *);
->  	void			(*old_write_space)(struct sock *);
-> -	void			(*old_error_report)(struct sock *);
->  };
->  
->  /*
-> @@ -781,7 +780,6 @@ static void xs_save_old_callbacks(struct sock_xprt *transport, struct sock *sk)
->  	transport->old_data_ready = sk->sk_data_ready;
->  	transport->old_state_change = sk->sk_state_change;
->  	transport->old_write_space = sk->sk_write_space;
-> -	transport->old_error_report = sk->sk_error_report;
->  }
->  
->  static void xs_restore_old_callbacks(struct sock_xprt *transport, struct sock *sk)
-> @@ -789,7 +787,6 @@ static void xs_restore_old_callbacks(struct sock_xprt *transport, struct sock *s
->  	sk->sk_data_ready = transport->old_data_ready;
->  	sk->sk_state_change = transport->old_state_change;
->  	sk->sk_write_space = transport->old_write_space;
-> -	sk->sk_error_report = transport->old_error_report;
->  }
->  
->  static void xs_reset_transport(struct sock_xprt *transport)
-> @@ -1540,25 +1537,6 @@ static void xs_tcp_state_change(struct sock *sk)
->  	read_unlock_bh(&sk->sk_callback_lock);
->  }
->  
-> -/**
-> - * xs_error_report - callback mainly for catching socket errors
-> - * @sk: socket
-> - */
-> -static void xs_error_report(struct sock *sk)
-> -{
-> -	struct rpc_xprt *xprt;
-> -
-> -	read_lock_bh(&sk->sk_callback_lock);
-> -	if (!(xprt = xprt_from_sock(sk)))
-> -		goto out;
-> -	dprintk("RPC:       %s client %p...\n"
-> -			"RPC:       error %d\n",
-> -			__func__, xprt, sk->sk_err);
-> -	xprt_wake_pending_tasks(xprt, -EAGAIN);
-> -out:
-> -	read_unlock_bh(&sk->sk_callback_lock);
-> -}
-> -
->  static void xs_write_space(struct sock *sk)
->  {
->  	struct socket *sock;
-> @@ -1858,7 +1836,6 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
->  		sk->sk_user_data = xprt;
->  		sk->sk_data_ready = xs_local_data_ready;
->  		sk->sk_write_space = xs_udp_write_space;
-> -		sk->sk_error_report = xs_error_report;
->  		sk->sk_allocation = GFP_ATOMIC;
->  
->  		xprt_clear_connected(xprt);
-> @@ -1983,7 +1960,6 @@ static void xs_udp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
->  		sk->sk_user_data = xprt;
->  		sk->sk_data_ready = xs_udp_data_ready;
->  		sk->sk_write_space = xs_udp_write_space;
-> -		sk->sk_error_report = xs_error_report;
->  		sk->sk_no_check = UDP_CSUM_NORCV;
->  		sk->sk_allocation = GFP_ATOMIC;
->  
-> @@ -2098,7 +2074,6 @@ static int xs_tcp_finish_connecting(struct rpc_xprt *xprt, struct socket *sock)
->  		sk->sk_data_ready = xs_tcp_data_ready;
->  		sk->sk_state_change = xs_tcp_state_change;
->  		sk->sk_write_space = xs_tcp_write_space;
-> -		sk->sk_error_report = xs_error_report;
->  		sk->sk_allocation = GFP_ATOMIC;
->  
->  		/* socket options */
+Hello Trond Myklebust, Jeff Layton:
 
-Hi Trond,
+1) Root Cause:
+   A) begin truncate to smaller, after async read finish starting.
+   B) async read done come, after truncate operation change inode size.
+   C) in nfs_inode_attrs_need_update, nfs_size_need_update return true.
+      i)   the bigger size is the original old size of client itself.
+      ii)  the smaller size is the current true size.
+      iii) nfs_inode_attrs_need_update not consider this situation.
 
-First, thanks for being so responsive!  I never expected to get such
-quick feedback and help.
+2) Fix nfs_size_need_update:
+   A) delete it:
+      i)   it is for performance, not necessary (not for correctness).
+      ii)  if it was necessary, it should use "!=" instead of '>'.
+      iii) it is the simplest way to fix this bug (maybe not best way).
+   B) consider this situation in it:
+      i)   it is the best way.
+      ii)  it is a little complex (need think of)
+      iii) sorry for I do not know how to fix it (at least now).
+   C) not touch it:
+      i)   correct another place (such as nfs_update_inode)
+      ii)  it is a bad idea (at least, I think it is)
+      iii) we need keep the source code as clearer as possible.
 
-I think perhaps you misread my last email.  Adding the check for
-`xprt_connecting(xprt)' to `xs_error_report' _did_ stop the early wake
-up from happening at that point in the code.  Removing the
-entire call back with your patch works just as well.
+3) Test Result:
+   A) it is one client and one server separately, under 3.6-rc5 x86_32.
+   B) use one process (fsx-linux) test (only one user mode thread).
+   C) only use read, truncate, llseek, fstat operation for one file.
 
-I have confirmed that I can still reproduce the problem with this
-patch.
+   Before delete nfs_size_need_update, it causes issue.
+   After delete nfs_size_need_update, it is ok.
 
-Now that we're not waking up early because of `xs_error_report', we're
-waking up early in another part of the code as I mentioned above.  I'm
-not entirely clear about all the details here yet.
 
-What I do know is that we're woken up with `tk_status' set to EGAIN, and
-since `call_connect_status' doesn't do anything special for that, we move
-on to `call_transmit'.  Meanwhile, rpciod is still trying to connect the
-socket (eventually succeeding) and so we're racing.
+User Mode Log:
+-------------------------------------------------------------------------
+<<<test_start>>>
+tag=nfsx-linux stime=1350202875
+cmdline="export VERSION SOCKET_TYPE; TCbin=$LTPROOT/testcases/bin fsx.sh"
+contacts=""
+analysis=exit
+<<<test_output>>>
 
-Question: should `call_connect_status' treat EAGAIN specially and reset
-`tk_action' to `call_connect' again (rather than just moving on to
-`call_transmit')?  I don't think this alone would fix things properly,
-but seems logical to me.  Perhaps I'm missing something.
+Test Options:
+ VERSION: 2
+ RHOST: dhcp122.asianux.net
+ ITERATIONS: 50000
+ SOCKET_TYPE: udp
+ NFS_TYPE: nfs
+Setting up remote machine: dhcp122.asianux.net
+Mounting NFS filesystem dhcp122.asianux.net:/tmp/fsx1447.testdir on
+/opt/ltp/testcases/bin/fsx1447 with options '-o proto=udp,vers=2 '
+fsx-linux -N 50000 /opt/ltp/testcases/bin/fsx1447/testfile Starting
+truncating to largest ever: 0x13e76
+truncating to largest ever: 0x2e52c
+truncating to largest ever: 0x3c2c2
+truncating to largest ever: 0x3f15f
+truncating to largest ever: 0x3fcb9
+truncating to largest ever: 0x3fe96
+truncating to largest ever: 0x3ff9d
+Size error: expected 0x36ef9 stat 0x3bbca seek 0x36ef9
+LOG DUMP (5652 total operations):
 
-Chris
+...
+
+5636: 1350203089.781599 READ     0x143b6 thru 0x21ccb (0xd916 bytes)
+5637: 1350203090.028214 READ     0x2a629 thru 0x2d0a1 (0x2a79 bytes)
+5638: 1350203090.072029 TRUNCATE DOWN   from 0x2d0a2 to 0x1bb35
+5639: 1350203090.087401 READ     0x11a05 thru 0x1bb34 (0xa130 bytes)
+5640: 1350203090.223985 READ     0x508c thru 0xa9da (0x594f bytes)
+5641: 1350203090.245717 TRUNCATE DOWN   from 0x1bb35 to 0x8830
+5642: 1350203090.353502 READ     0x548f thru 0x882f (0x33a1 bytes)
+5643: 1350203090.366596 READ     0x5802 thru 0x882f (0x302e bytes)
+5644: 1350203090.366629 TRUNCATE UP     from 0x8830 to 0x20011
+5645: 1350203090.379476 TRUNCATE DOWN   from 0x20011 to 0x134f4
+5646: 1350203090.396234 READ     0x124a0 thru 0x134f3 (0x1054 bytes)
+5647: 1350203090.401805 READ     0x880b thru 0x1189d (0x9093 bytes)
+5648: 1350203090.532050 READ     0x134c7 thru 0x134f3 (0x2d bytes)
+5649: 1350203090.532057 TRUNCATE UP     from 0x134f4 to 0x3bbca
+5650: 1350203090.546373 READ     0x2944c thru 0x2c1d6 (0x2d8b bytes)
+5651: 1350203090.561228 READ     0xdbe1 thru 0x16260 (0x8680 bytes)
+5652: 1350203090.751937 TRUNCATE DOWN   from 0x3bbca to 0x36ef9
+Correct content saved for comparison
+(maybe hexdump "/opt/ltp/testcases/bin/fsx1447/testfile" vs
+"/opt/ltp/testcases/bin/fsx1447/testfile.fsxgood")
+fsx-linux -N 50000 /opt/ltp/testcases/bin/fsx1447/testfile Finished
+Cleaning up testcase
+Unmounting /opt/ltp/testcases/bin/fsx1447
+Test Failed: Errors have resulted from this test
+incrementing stop
+<<<execution_status>>>
+initiation_status="ok"
+duration=218 termination_type=exited termination_id=1 corefile=no
+cutime=43 cstime=82
+<<<test_end>>>
+
+
+-------------------------------------------------------------------------
+
+
+Kernel Mode Log: (using printk which I add)
+-------------------------------------------------------------------------
+Time:          My Mark:   Task ptr:  comments (include function name):
+[  280.883701] gchen_tag: f5c30000, nfs_read_done call
+nfs_refresh_inode, cur=0x3bbca, new=0x3bbca
+[  280.890677] gchen_tag: f5c30000, nfs_read_done call
+nfs_refresh_inode, cur=0x3bbca, new=0x3bbca
+[  280.897437] gchen_tag: f5c30000, nfs_read_done call
+nfs_refresh_inode, cur=0x3bbca, new=0x3bbca
+[  280.897441] gchen_tag: f5e48c90, nfs_setattr_update_inode, cur=3bbca,
+new=36ef9
+[  280.897450] gchen_tag: f5e48c90, nfs_setattr
+[  280.897462] gchen_tag: hit, f5c30000, nfs_refresh_inode_locked,
+cur=36ef9, new=3bbca
+[  280.897469] gchen_tag: f5c30000, nfs_update_inode, change size,
+cur=36ef9, new=3bbca
+[  280.898129] gchen_tag: f5e48c90, nfs_update_inode, change size,
+cur=3bbca, new=36ef9
+[  280.977915] gchen_tag: f5c30000, nfs_update_inode, not change size,
+cur=36ef9, new=2000, pages=55
+[  281.019879] gchen_tag: f5c30000, nfs_update_inode, not change size,
+cur=36ef9, new=a000, pages=53
+[  281.070325] gchen_tag: f5c30000, nfs_update_inode, not change size,
+cur=36ef9, new=e000, pages=45
+[  281.087103] gchen_tag: f5c30000, nfs_update_inode, not change size,
+cur=36ef9, new=12000, pages=43
+[  281.129061] gchen_tag: f5c30000, nfs_update_inode, not change size,
+cur=36ef9, new=16000, pages=41
+[  281.163012] gchen_tag: f5c30000, nfs_update_inode, not change size,
+cur=36ef9, new=18000, pages=37
+[  281.213481] gchen_tag: f5c30000, nfs_update_inode, not change size,
+cur=36ef9, new=1c000, pages=33
+[  281.255727] gchen_tag: f5c30000, nfs_update_inode, not change size,
+cur=36ef9, new=22000, pages=31
+[  281.306177] gchen_tag: f5c30000, nfs_update_inode, not change size,
+cur=36ef9, new=24000, pages=27
+[  281.356888] gchen_tag: f5c30000, nfs_update_inode, not change size,
+cur=36ef9, new=2e000, pages=21
+[  281.398859] gchen_tag: f5c30000, nfs_update_inode, not change size,
+cur=36ef9, new=36000, pages=19
+[  281.585491] gchen_tag: f5c30000, nfs_update_inode, not change size,
+cur=104d8, new=2000, pages=17
+[  281.644207] gchen_tag: f5c30000, nfs_update_inode, not change size,
+cur=104d8, new=10000, pages=15
+-------------------------------------------------------------------------
+
+
+Thanks.
+
+--
+Chen Gang
+
+Asianux Corporation
+
