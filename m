@@ -1,82 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:18507 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752412Ab2JNTMh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Oct 2012 15:12:37 -0400
+Received: from ipcop.bitmover.com ([192.132.92.15]:56914 "EHLO
+	mail.bitmover.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751196Ab2JOOfM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Oct 2012 10:35:12 -0400
+Date: Mon, 15 Oct 2012 07:34:56 -0700
+From: Larry McVoy <lm@bitmover.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Bruce Fields <bfields@fieldses.org>, Larry McVoy <lm@bitmover.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
+Message-ID: <20121015143456.GA28502@bitmover.com>
+References: <20121013002100.GB23247@bitmover.com>
+ <CA+55aFwKn+rp4qTk3dLgN8n=M-Aw1GYYpOfevDJaJhnK-U5VOg@mail.gmail.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9091FDED5@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121013023147.GJ23247@bitmover.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9091FE478@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121013025600.GL23247@bitmover.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9091FFA38@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121014014215.GO23247@bitmover.com>
+ <20121015004302.GF32420@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA909236E9E@SACEXCMBX04-PRD.hq.netapp.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
-Subject: Re: [PATCH] nfs-utils: Backgrounding mount broken with NFS versions <4
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20121013214652.23089.qmail@md.dent.med.uni-muenchen.de>
-Date: Sun, 14 Oct 2012 15:10:29 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <6C61B43F-7A32-47E3-B81D-70CD991D9CDF@oracle.com>
-References: <20121012120030.18411.qmail@md.dent.med.uni-muenchen.de> <6AB50360-BADE-4544-85CF-700C63A44FDE@oracle.com> <20121013171856.10814.qmail@md.dent.med.uni-muenchen.de> <F5C4FA78-A467-4306-BC57-0A50D8F0A8A9@oracle.com> <20121013214652.23089.qmail@md.dent.med.uni-muenchen.de>
-To: Wolfram Gloger <wmglo@dent.med.uni-muenchen.de>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA909236E9E@SACEXCMBX04-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Oct 13, 2012, at 5:46 PM, Wolfram Gloger <wmglo@dent.med.uni-muenchen.de> wrote:
-
-> Hi,
+On Mon, Oct 15, 2012 at 04:38:02AM +0000, Myklebust, Trond wrote:
+> On Sun, 2012-10-14 at 20:43 -0400, Bruce Fields wrote:
+> > On Sat, Oct 13, 2012 at 06:42:15PM -0700, Larry McVoy wrote:
+> > > > PS: you are presumably running NFSv2 on your Macs. Odd that they should
+> > > > default to that...
+> > > 
+> > > I dunno if they default to that or we force that.  We have had lots of
+> > > problems with Linux NFS, we export our home directories but they are
+> > > more or less read only.
+> > > 
+> > > Maybe things have gotten better but back in the day I could crash the
+> > > kernel with a bk clone to a NFS directory.
+> > 
+> > Bug reports welcomed if any of those bugs are still around.
 > 
->>>>> 	result = nfs_sys_mount(mi, options);
->>> 
->>> No, nfs_sys_mount() does not use mi->extra_opts at all, only the
->>> binary options.
->> 
->> This is the text-based code, which I wrote.  nfs_sys_mount() passes an options string (NUL-terminated C string) to the kernel, not a binary object.  That string contains all the FS-specific mount options specified by the user.
->> 
->> But your patch makes that string empty, by my reading.  I think this is incorrect.
-> 
-> Ok, I'm happy to go through this line-by-line.
-> 
-> static int nfs_sys_mount(struct nfsmount_info *mi, struct mount_options *opts)
-> {
->        char *options = NULL;
->        int result;
-> 
->        if (mi->fake)
->                return 1;
-> 
->        if (po_join(opts, &options) == PO_FAILED) { // HERE
->                errno = EIO;
->                return 0;
->        }
-> 
->        result = mount(mi->spec, mi->node, mi->type,
->                        mi->flags & ~(MS_USER|MS_USERS), options);
-> ...
-> }
-> 
-> nfs_sys_mount() constructs the text options _itself_ purely from the
-> opts (2nd) argument HERE -- po_join has opts as input and options as
-> output.
-> 
-> My patch only changes the first argument (mi).  So, no functional change
-> within nfs_sys_mount() at all.
+> The other thing to note is that at this point, NFSv2 has been legacy
+> code for more than 10 years on Linux and is starting to suffer big time
+> from bit rot. We should probably aim to remove it entirely in the next
+> 1-2 years. There is no place in today's world for a protocol that can
+> only deal with a 2GB maximum file size...
 
-Agreed.
-
-> The functional change is that with my patch, mi->extra_opts is kept
-> unchanged unless the system call is successful.  mi->extra_opts is
-> actually reused later throughout the mount program, because
-> nfsmount_string() has extra_opts as an input _and_ output argument,
-> and propagates mi->extra_opts into the extra_opts variable in main.c.
-> 
-> I have actually tested this patch extensively and it fixes the
-> problem.
-
-Unfortunately there are a rather unimaginable number of use cases for mount.nfs, which is why it is so complicated.  "Extensively" could mean you've tested it for a long time but with just a few use cases.
-
-In any event:
-
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+Well, we support ancient machines (why?  damn good question) that only
+speak NFSv2 so it would sorta suck for us if you pulled it.
+-- 
+---
+Larry McVoy                lm at bitmover.com           http://www.bitkeeper.com
