@@ -1,121 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:5757 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:44070 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757650Ab2J3UvE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Oct 2012 16:51:04 -0400
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 09/10] NFSD: Add a custom file operations structure for fault injection
-Date: Tue, 30 Oct 2012 16:50:53 -0400
-Message-Id: <1351630254-26166-10-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
-References: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
+	id S1752484Ab2JOAnG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 14 Oct 2012 20:43:06 -0400
+Date: Sun, 14 Oct 2012 20:43:03 -0400
+From: Bruce Fields <bfields@fieldses.org>
+To: Larry McVoy <lm@bitmover.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
+Message-ID: <20121015004302.GF32420@fieldses.org>
+References: <20121012211701.GA8301@bitmover.com>
+ <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
+ <20121013002100.GB23247@bitmover.com>
+ <CA+55aFwKn+rp4qTk3dLgN8n=M-Aw1GYYpOfevDJaJhnK-U5VOg@mail.gmail.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9091FDED5@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121013023147.GJ23247@bitmover.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9091FE478@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121013025600.GL23247@bitmover.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9091FFA38@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121014014215.GO23247@bitmover.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121014014215.GO23247@bitmover.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Sat, Oct 13, 2012 at 06:42:15PM -0700, Larry McVoy wrote:
+> > PS: you are presumably running NFSv2 on your Macs. Odd that they should
+> > default to that...
+> 
+> I dunno if they default to that or we force that.  We have had lots of
+> problems with Linux NFS, we export our home directories but they are
+> more or less read only.
+> 
+> Maybe things have gotten better but back in the day I could crash the
+> kernel with a bk clone to a NFS directory.
 
-Controlling the read and write functions allows me to add in "forget
-client w.x.y.z", since we won't be limited to reading and writing only
-u64 values.
+Bug reports welcomed if any of those bugs are still around.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfsd/fault_inject.c | 56 +++++++++++++++++++++++++++++++++++++++++++-------
- 1 file changed, 49 insertions(+), 7 deletions(-)
-
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-index 545f8e4..19f9094 100644
---- a/fs/nfsd/fault_inject.c
-+++ b/fs/nfsd/fault_inject.c
-@@ -8,6 +8,7 @@
- #include <linux/fs.h>
- #include <linux/debugfs.h>
- #include <linux/module.h>
-+#include <asm/uaccess.h>
- 
- #include "state.h"
- 
-@@ -48,10 +49,9 @@ static struct nfsd_fault_inject_op inject_ops[] = {
- static long int NUM_INJECT_OPS = sizeof(inject_ops) / sizeof(struct nfsd_fault_inject_op);
- static struct dentry *debug_dir;
- 
--static int nfsd_inject_set(void *op_ptr, u64 val)
-+static void nfsd_inject_set(struct nfsd_fault_inject_op *op, u64 val)
- {
- 	u64 count = 0;
--	struct nfsd_fault_inject_op *op = op_ptr;
- 
- 	if (val == 0)
- 		printk(KERN_INFO "NFSD Fault Injection: %s (all)", op->file);
-@@ -62,19 +62,61 @@ static int nfsd_inject_set(void *op_ptr, u64 val)
- 	count = nfsd_for_n_state(val, op->forget);
- 	nfs4_unlock_state();
- 	printk(KERN_INFO "NFSD: %s: found %llu", op->file, count);
--	return 0;
- }
- 
--static int nfsd_inject_get(void *op_ptr, u64 *val)
-+static void nfsd_inject_get(struct nfsd_fault_inject_op *op, u64 *val)
- {
--	struct nfsd_fault_inject_op *op = op_ptr;
- 	nfs4_lock_state();
- 	*val = nfsd_for_n_state(0, op->print);
- 	nfs4_unlock_state();
--	return 0;
- }
- 
--DEFINE_SIMPLE_ATTRIBUTE(fops_nfsd, nfsd_inject_get, nfsd_inject_set, "%llu\n");
-+static ssize_t fault_inject_read(struct file *file, char __user *buf,
-+				 size_t len, loff_t *ppos)
-+{
-+	static u64 val;
-+	char read_buf[25];
-+	size_t size, ret;
-+	loff_t pos = *ppos;
-+
-+	if (!pos)
-+		nfsd_inject_get(file->f_dentry->d_inode->i_private, &val);
-+	size = scnprintf(read_buf, sizeof(read_buf), "%llu\n", val);
-+
-+	if (pos < 0)
-+		return -EINVAL;
-+	if (pos >= size || !len)
-+		return 0;
-+	if (len > size - pos)
-+		len = size - pos;
-+	ret = copy_to_user(buf, read_buf + pos, len);
-+	if (ret == len)
-+		return -EFAULT;
-+	len -= ret;
-+	*ppos = pos + len;
-+	return len;
-+}
-+
-+static ssize_t fault_inject_write(struct file *file, const char __user *buf,
-+				  size_t len, loff_t *ppos)
-+{
-+	char write_buf[24];
-+	size_t size = min(sizeof(write_buf), len) - 1;
-+	u64 val;
-+
-+	if (copy_from_user(write_buf, buf, size))
-+		return -EFAULT;
-+
-+	val = simple_strtoll(write_buf, NULL, 0);
-+	nfsd_inject_set(file->f_dentry->d_inode->i_private, val);
-+	return len; /* on success, claim we got the whole input */
-+}
-+
-+static const struct file_operations fops_nfsd = {
-+	.owner   = THIS_MODULE,
-+	.read    = fault_inject_read,
-+	.write   = fault_inject_write,
-+};
- 
- void nfsd_fault_inject_cleanup(void)
- {
--- 
-1.8.0
-
+--b.
