@@ -1,45 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ia0-f174.google.com ([209.85.210.174]:56988 "EHLO
-	mail-ia0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755390Ab2JKPKm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Oct 2012 11:10:42 -0400
-Received: by mail-ia0-f174.google.com with SMTP id y32so1303750iag.19
-        for <linux-nfs@vger.kernel.org>; Thu, 11 Oct 2012 08:10:41 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/8] Junctions should inherit parent's export options
-To: steved@redhat.com
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-Date: Thu, 11 Oct 2012 11:10:39 -0400
-Message-ID: <20121011150421.4665.35964.stgit@lebasque.1015granger.net>
+Received: from tirith.ics.muni.cz ([147.251.4.36]:40709 "EHLO
+	tirith.ics.muni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750953Ab2JOQwI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Oct 2012 12:52:08 -0400
+Received: from anubis.ics.muni.cz (igw1.zrnko.net [94.112.253.31])
+	(authenticated user=xhejtman@META bits=0)
+	by tirith.ics.muni.cz (8.13.8/8.13.8/SuSE Linux 0.8) with ESMTP id q9FGcvu3007460
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Mon, 15 Oct 2012 18:38:59 +0200
+Received: from xhejtman by anubis.ics.muni.cz with local (Exim 4.80)
+	(envelope-from <xhejtman@ics.muni.cz>)
+	id 1TNngp-0000Mk-Qp
+	for linux-nfs@vger.kernel.org; Mon, 15 Oct 2012 18:38:51 +0200
+Date: Mon, 15 Oct 2012 18:38:51 +0200
+From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+To: linux-nfs@vger.kernel.org
+Subject: nfsv4 monitoring tool
+Message-ID: <20121015163851.GO5412@ics.muni.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=iso-8859-2
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Following suggestions by Steve and Bruce, I've at long last
-implemented a mechanism by which junctions inherit the export
-options of their parent exports.
+Hello,
 
-While I was there, I took the opportunity to clean up the junction
-resolution logic.
+is there any NFSv4 monitoring tool, that can be run on NFSv4 server (running
+NFSv4.0 + GSS) and that reports statistics per connected client? I would like
+to see amount of transfered data for each client, latency of RPC calls, rate
+of requests.
 
----
+nfsstat on server does not distinguish individual clients. 
+nfswatch does not support NFSv4
 
-Chuck Lever (8):
-      mountd: Simplify "no junction support" case
-      mountd: Dynamically allocate exportent that represents junctions
-      mountd: Add exportent_release()
-      mountd: Junctions inherit parent export's options
-      mountd: Add lookup_export_parent()
-      mountd: Set e_fslocdata field directly
-      mountd: Use static buffer when constructing junction export options
-      mountd: Warn when a broken junction is encountered
-
-
- support/export/export.c    |   19 ++--
- support/include/exportfs.h |    1 
- utils/mountd/cache.c       |  217 ++++++++++++++++++++++++++++++--------------
- 3 files changed, 162 insertions(+), 75 deletions(-)
+I didn't find anything else. Do I need to create the tool by myself or is
+there free of paid tool thad does the job?
 
 -- 
-Chuck Lever
+Luká¹ Hejtmánek
