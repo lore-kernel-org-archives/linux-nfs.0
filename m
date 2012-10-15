@@ -1,66 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38002 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:56868 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757243Ab2JJBXu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Oct 2012 21:23:50 -0400
-Date: Tue, 9 Oct 2012 21:23:36 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Eric W. Biederman" <ebiederm@xmission.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH v3] SUNRPC: set desired file system root before
- connecting local transports
-Message-ID: <20121010012336.GA2935@fieldses.org>
-References: <20121008105437.18668.99905.stgit@localhost.localdomain>
- <20121009193506.GA19680@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA90901A143@SACEXCMBX04-PRD.hq.netapp.com>
- <87txu3bdnj.fsf@xmission.com>
- <20121009223139.GA25826@fieldses.org>
- <87bogb1cvl.fsf@xmission.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87bogb1cvl.fsf@xmission.com>
+	id S1754698Ab2JOVbp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Oct 2012 17:31:45 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] NFSv4.1: Do not call pnfs_return_layout() from an rpciod context
+Date: Mon, 15 Oct 2012 17:30:54 -0400
+Message-Id: <1350336667-18770-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1350336667-18770-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1350336667-18770-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 09, 2012 at 03:47:42PM -0700, Eric W. Biederman wrote:
-> "J. Bruce Fields" <bfields@fieldses.org> writes:
-> 
-> > On Tue, Oct 09, 2012 at 01:20:48PM -0700, Eric W. Biederman wrote:
-> >> "Myklebust, Trond" <Trond.Myklebust@netapp.com> writes:
-> >> 
-> >> > On Tue, 2012-10-09 at 15:35 -0400, J. Bruce Fields wrote:
-> >> >> Cc'ing Eric since I seem to recall he suggested doing it this way?
-> >> 
-> >> Yes.  On second look setting fs->root won't work. We need to change fs.
-> >> The problem is that by default all kernel threads share fs so changing
-> >> fs->root will have non-local consequences.
-> >
-> > Oh, huh.  And we can't "unshare" it somehow?
-> 
-> I don't fully understand how nfs uses kernel threads and work queues.
-> My general understanding is work queues reuse their kernel threads
-> between different users.  So it is mostly a don't pollute your
-> environment thing.  If there was a dedicated kernel thread for each
-> environment this would be trivial.
-> 
-> What I was suggesting here is changing task->fs instead of
-> task->fs.root.  That should just require task_lock().
+Move the call to pnfs_return_layout() to the read and write rpc_release()
+callbacks, so that it gets called from nfsiod, which is a more appropriate
+context.
 
-Oh, OK, got it--if that works, great.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c | 18 +++++++++++++++---
+ fs/nfs/pnfs.h           |  1 +
+ 2 files changed, 16 insertions(+), 3 deletions(-)
 
-> > Sorry, I don't know much about devtmpfs, are you suggesting it as a
-> > model?  What exactly should we look at?
-> 
-> Roughly all I meant was that devtmpsfsd is a kernel thread that runs
-> with an unshared fs struct.  Although I admit devtmpfsd is for all
-> practical purposes a userspace daemon that just happens to run in kernel
-> space.
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 816c2d0..e7aee56 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -122,12 +122,21 @@ static void filelayout_reset_read(struct nfs_read_data *data)
+ 	}
+ }
+ 
++static void filelayout_fenceme(struct inode *inode, struct pnfs_layout_hdr *lo)
++{
++	if (!test_and_clear_bit(NFS_LAYOUT_RETURN, &lo->plh_flags))
++		return;
++	clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags);
++	pnfs_return_layout(inode);
++}
++
+ static int filelayout_async_handle_error(struct rpc_task *task,
+ 					 struct nfs4_state *state,
+ 					 struct nfs_client *clp,
+ 					 struct pnfs_layout_segment *lseg)
+ {
+-	struct inode *inode = lseg->pls_layout->plh_inode;
++	struct pnfs_layout_hdr *lo = lseg->pls_layout;
++	struct inode *inode = lo->plh_inode;
+ 	struct nfs_server *mds_server = NFS_SERVER(inode);
+ 	struct nfs4_deviceid_node *devid = FILELAYOUT_DEVID_NODE(lseg);
+ 	struct nfs_client *mds_client = mds_server->nfs_client;
+@@ -204,8 +213,7 @@ static int filelayout_async_handle_error(struct rpc_task *task,
+ 		dprintk("%s DS connection error %d\n", __func__,
+ 			task->tk_status);
+ 		nfs4_mark_deviceid_unavailable(devid);
+-		clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags);
+-		_pnfs_return_layout(inode);
++		set_bit(NFS_LAYOUT_RETURN, &lo->plh_flags);
+ 		rpc_wake_up(&tbl->slot_tbl_waitq);
+ 		/* fall through */
+ 	default:
+@@ -330,7 +338,9 @@ static void filelayout_read_count_stats(struct rpc_task *task, void *data)
+ static void filelayout_read_release(void *data)
+ {
+ 	struct nfs_read_data *rdata = data;
++	struct pnfs_layout_hdr *lo = rdata->header->lseg->pls_layout;
+ 
++	filelayout_fenceme(lo->plh_inode, lo);
+ 	nfs_put_client(rdata->ds_clp);
+ 	rdata->header->mds_ops->rpc_release(data);
+ }
+@@ -428,7 +438,9 @@ static void filelayout_write_count_stats(struct rpc_task *task, void *data)
+ static void filelayout_write_release(void *data)
+ {
+ 	struct nfs_write_data *wdata = data;
++	struct pnfs_layout_hdr *lo = wdata->header->lseg->pls_layout;
+ 
++	filelayout_fenceme(lo->plh_inode, lo);
+ 	nfs_put_client(wdata->ds_clp);
+ 	wdata->header->mds_ops->rpc_release(data);
+ }
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 2d722db..dbf7bba 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -62,6 +62,7 @@ enum {
+ 	NFS_LAYOUT_RW_FAILED,		/* get rw layout failed stop trying */
+ 	NFS_LAYOUT_BULK_RECALL,		/* bulk recall affecting layout */
+ 	NFS_LAYOUT_ROC,			/* some lseg had roc bit set */
++	NFS_LAYOUT_RETURN,		/* Return this layout ASAP */
+ };
+ 
+ enum layoutdriver_policy_flags {
+-- 
+1.7.11.7
 
-Thanks for the explanation.
-
---b.
