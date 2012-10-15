@@ -1,83 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f46.google.com ([209.85.213.46]:54525 "EHLO
-	mail-yh0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756939Ab2J0Meo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 08:34:44 -0400
-Received: by mail-yh0-f46.google.com with SMTP id m54so690987yhm.19
-        for <linux-nfs@vger.kernel.org>; Sat, 27 Oct 2012 05:34:44 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v8 32/32] vfs: make number of ESTALE retries tunable
-Date: Sat, 27 Oct 2012 08:33:39 -0400
-Message-Id: <1351341219-17837-33-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
-References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:22096 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755255Ab2JOVcL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Oct 2012 17:32:11 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 04/13] NFSv4.1: Remove unused function last_byte_offset
+Date: Mon, 15 Oct 2012 17:30:58 -0400
+Message-Id: <1350336667-18770-6-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1350336667-18770-5-git-send-email-Trond.Myklebust@netapp.com>
+References: <1350336667-18770-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-5-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/namei.c         | 2 ++
- include/linux/fs.h | 4 +++-
- kernel/sysctl.c    | 7 +++++++
- 3 files changed, 12 insertions(+), 1 deletion(-)
+ fs/nfs/objlayout/objlayout.c | 11 -----------
+ fs/nfs/pnfs.c                | 11 -----------
+ 2 files changed, 22 deletions(-)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 6886630..1ae2c06 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -110,6 +110,8 @@
-  * any extra contention...
-  */
- 
-+unsigned int estale_retries __read_mostly = 1;
-+
- /* In order to reduce some races, while at the same time doing additional
-  * checking and hopefully speeding things up, we copy filenames to the
-  * kernel data space before using them..
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 01ff902..119a0f0 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2023,6 +2023,8 @@ extern int finish_open(struct file *file, struct dentry *dentry,
- 			int *opened);
- extern int finish_no_open(struct file *file, struct dentry *dentry);
- 
-+extern unsigned int estale_retries;
-+
- /**
-  * retry_estale - determine whether the caller should retry an operation
-  *
-@@ -2041,7 +2043,7 @@ retry_estale(const long error, const unsigned int try)
- 	if (likely(error != -ESTALE))
- 		return false;
- 
--	return !try;
-+	return (try <= estale_retries);
+diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
+index 8746135..a9ebd81 100644
+--- a/fs/nfs/objlayout/objlayout.c
++++ b/fs/nfs/objlayout/objlayout.c
+@@ -148,17 +148,6 @@ end_offset(u64 start, u64 len)
+ 	return end >= start ? end : NFS4_MAX_UINT64;
  }
  
- /* fs/ioctl.c */
-diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-index 26f65ea..24735db 100644
---- a/kernel/sysctl.c
-+++ b/kernel/sysctl.c
-@@ -1545,6 +1545,13 @@ static struct ctl_table fs_table[] = {
- 		.proc_handler	= &pipe_proc_fn,
- 		.extra1		= &pipe_min_size,
- 	},
-+	{
-+		.procname	= "estale_retries",
-+		.data		= &estale_retries,
-+		.maxlen		= sizeof(unsigned int),
-+		.mode		= 0644,
-+		.proc_handler	= proc_dointvec,
-+	},
- 	{ }
- };
+-/* last octet in a range */
+-static inline u64
+-last_byte_offset(u64 start, u64 len)
+-{
+-	u64 end;
+-
+-	BUG_ON(!len);
+-	end = start + len;
+-	return end > start ? end - 1 : NFS4_MAX_UINT64;
+-}
+-
+ static void _fix_verify_io_params(struct pnfs_layout_segment *lseg,
+ 			   struct page ***p_pages, unsigned *p_pgbase,
+ 			   u64 offset, unsigned long count)
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index fe624c9..43e4ad8 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -369,17 +369,6 @@ end_offset(u64 start, u64 len)
+ 	return end >= start ? end : NFS4_MAX_UINT64;
+ }
  
+-/* last octet in a range */
+-static inline u64
+-last_byte_offset(u64 start, u64 len)
+-{
+-	u64 end;
+-
+-	BUG_ON(!len);
+-	end = start + len;
+-	return end > start ? end - 1 : NFS4_MAX_UINT64;
+-}
+-
+ /*
+  * is l2 fully contained in l1?
+  *   start1                             end1
 -- 
 1.7.11.7
 
