@@ -1,76 +1,150 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:49602 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:14172 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754010Ab2JBWbQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Oct 2012 18:31:16 -0400
-Subject: Re: [REGRESSION] nfsd crashing with 3.6.0-rc7 on PowerPC
-Mime-Version: 1.0 (Apple Message framework v1278)
-Content-Type: text/plain; charset=us-ascii
-From: Alexander Graf <agraf@suse.de>
-In-Reply-To: <20121002221736.GB29218@linux.vnet.ibm.com>
-Date: Wed, 3 Oct 2012 00:31:09 +0200
-Cc: Benjamin Herrenschmidt <benh@kernel.crashing.org>,
-        linux-nfs@vger.kernel.org, Jan Kara <jack@suse.cz>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        LKML List <linux-kernel@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>, anton@samba.org,
-        skinsbursky@parallels.com, bfields@redhat.com,
-        linuxppc-dev <linuxppc-dev@lists.ozlabs.org>
-Message-Id: <E141CA01-F58C-47B1-8ED5-A314D1DEC968@suse.de>
-References: <3BDA9E62-7031-42D6-8CA9-5327B61700F5@suse.de> <CA+55aFyXwB1QcXE4Z_FAGnXROSgvP2x2+wjnX9OWPa4Dfaaf0A@mail.gmail.com> <DC545CD9-8745-47DD-B13B-3385C0EB5B27@suse.de> <20120928151043.GA19102@fieldses.org> <2A52FC96-148C-4F7A-9950-E152E0C6698D@suse.de> <1349139509.3847.2.camel@pasglop> <20121002214327.GA29218@linux.vnet.ibm.com> <9257E705-4EF9-4347-945C-B4A7582C427F@suse.de> <20121002221736.GB29218@linux.vnet.ibm.com>
-To: Nishanth Aravamudan <nacc@linux.vnet.ibm.com>
+	id S1755255Ab2JOVcR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Oct 2012 17:32:17 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 05/13] NFSv4.1: Remove assertion BUG_ON()s from the files and generic layout code
+Date: Mon, 15 Oct 2012 17:30:59 -0400
+Message-Id: <1350336667-18770-7-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1350336667-18770-6-git-send-email-Trond.Myklebust@netapp.com>
+References: <1350336667-18770-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-6-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4filelayout.c    | 13 ++++---------
+ fs/nfs/nfs4filelayoutdev.c |  2 --
+ fs/nfs/pnfs.c              |  6 ++----
+ 3 files changed, 6 insertions(+), 15 deletions(-)
 
-On 03.10.2012, at 00:17, Nishanth Aravamudan wrote:
-
-> On 02.10.2012 [23:47:39 +0200], Alexander Graf wrote:
->> 
->> On 02.10.2012, at 23:43, Nishanth Aravamudan wrote:
->> 
->>> Hi Ben,
->>> 
->>> On 02.10.2012 [10:58:29 +1000], Benjamin Herrenschmidt wrote:
->>>> On Mon, 2012-10-01 at 16:03 +0200, Alexander Graf wrote:
->>>>> Phew. Here we go :). It looks to be more of a PPC specific problem
->>>>> than it appeared as at first:
->>>> 
->>>> Ok, so I suspect the problem is the pushing down of the locks which
->>>> breaks with iommu backends that have a separate flush callback. In
->>>> that case, the flush moves out of the allocator lock.
->>>> 
->>>> Now we do call flush before we return, still, but it becomes racy
->>>> I suspect, but somebody needs to give it a closer look. I'm hoping
->>>> Anton or Nish will later today.
->>> 
->>> Started looking into this. If your suspicion were accurate, wouldn't the
->>> bisection have stopped at 0e4bc95d87394364f408627067238453830bdbf3
->>> ("powerpc/iommu: Reduce spinlock coverage in iommu_alloc and
->>> iommu_free")?
->>> 
->>> Alex, the error is reproducible, right?
->> 
->> Yes. I'm having a hard time to figure out if the reason my U4 based G5
->> Mac crashes and fails reading data is the same since I don't have a
->> serial connection there, but I assume so.
-> 
-> Ok, great, thanks. Yeah, that would imply (I think) that the I would
-> have thought the lock pushdown in the above commit (or even in one of
-> the others in Anton's series) would have been the real source if it was
-> a lock-based race. But that's just my first sniff at what Ben was
-> suggesting. Still reading/understanding the code.
-> 
->>> Does it go away by reverting
->>> that commit against mainline? Just trying to narrow down my focus.
->> 
->> The patch doesn't revert that easily. Mind to provide a revert patch
->> so I can try?
-> 
-> The following at least builds on defconfig here:
-
-Yes. With that patch applied, things work for me again.
-
-
-Alex
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 2e45fd9..bfb28fa 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -512,7 +512,6 @@ filelayout_read_pagelist(struct nfs_read_data *data)
+ 	loff_t offset = data->args.offset;
+ 	u32 j, idx;
+ 	struct nfs_fh *fh;
+-	int status;
+ 
+ 	dprintk("--> %s ino %lu pgbase %u req %Zu@%llu\n",
+ 		__func__, hdr->inode->i_ino,
+@@ -538,9 +537,8 @@ filelayout_read_pagelist(struct nfs_read_data *data)
+ 	data->mds_offset = offset;
+ 
+ 	/* Perform an asynchronous read to ds */
+-	status = nfs_initiate_read(ds->ds_clp->cl_rpcclient, data,
++	nfs_initiate_read(ds->ds_clp->cl_rpcclient, data,
+ 				  &filelayout_read_call_ops, RPC_TASK_SOFTCONN);
+-	BUG_ON(status != 0);
+ 	return PNFS_ATTEMPTED;
+ }
+ 
+@@ -554,7 +552,6 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
+ 	loff_t offset = data->args.offset;
+ 	u32 j, idx;
+ 	struct nfs_fh *fh;
+-	int status;
+ 
+ 	/* Retrieve the correct rpc_client for the byte range */
+ 	j = nfs4_fl_calc_j_index(lseg, offset);
+@@ -579,10 +576,9 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
+ 	data->args.offset = filelayout_get_dserver_offset(lseg, offset);
+ 
+ 	/* Perform an asynchronous write */
+-	status = nfs_initiate_write(ds->ds_clp->cl_rpcclient, data,
++	nfs_initiate_write(ds->ds_clp->cl_rpcclient, data,
+ 				    &filelayout_write_call_ops, sync,
+ 				    RPC_TASK_SOFTCONN);
+-	BUG_ON(status != 0);
+ 	return PNFS_ATTEMPTED;
+ }
+ 
+@@ -909,7 +905,7 @@ static void
+ filelayout_pg_init_read(struct nfs_pageio_descriptor *pgio,
+ 			struct nfs_page *req)
+ {
+-	BUG_ON(pgio->pg_lseg != NULL);
++	WARN_ON_ONCE(pgio->pg_lseg != NULL);
+ 
+ 	if (req->wb_offset != req->wb_pgbase) {
+ 		/*
+@@ -939,7 +935,7 @@ filelayout_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 	struct nfs_commit_info cinfo;
+ 	int status;
+ 
+-	BUG_ON(pgio->pg_lseg != NULL);
++	WARN_ON_ONCE(pgio->pg_lseg != NULL);
+ 
+ 	if (req->wb_offset != req->wb_pgbase)
+ 		goto out_mds;
+@@ -1187,7 +1183,6 @@ static void filelayout_recover_commit_reqs(struct list_head *dst,
+ 	 */
+ 	for (i = 0, b = cinfo->ds->buckets; i < cinfo->ds->nbuckets; i++, b++) {
+ 		if (transfer_commit_list(&b->written, dst, cinfo, 0)) {
+-			BUG_ON(!list_empty(&b->written));
+ 			pnfs_put_lseg(b->wlseg);
+ 			b->wlseg = NULL;
+ 		}
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+index a8eaa9b..93e2530 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/nfs4filelayoutdev.c
+@@ -162,8 +162,6 @@ nfs4_ds_connect(struct nfs_server *mds_srv, struct nfs4_pnfs_ds *ds)
+ 	dprintk("--> %s DS %s au_flavor %d\n", __func__, ds->ds_remotestr,
+ 		mds_srv->nfs_client->cl_rpcclient->cl_auth->au_flavor);
+ 
+-	BUG_ON(list_empty(&ds->ds_addrs));
+-
+ 	list_for_each_entry(da, &ds->ds_addrs, da_node) {
+ 		dprintk("%s: DS %s: trying address %s\n",
+ 			__func__, ds->ds_remotestr, da->da_remotestr);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 43e4ad8..778c7fa 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -634,7 +634,6 @@ send_layoutget(struct pnfs_layout_hdr *lo,
+ 
+ 	dprintk("--> %s\n", __func__);
+ 
+-	BUG_ON(ctx == NULL);
+ 	lgp = kzalloc(sizeof(*lgp), gfp_flags);
+ 	if (lgp == NULL)
+ 		return NULL;
+@@ -1115,7 +1114,6 @@ pnfs_update_layout(struct inode *ino,
+ 		 * chance of a CB_LAYOUTRECALL(FILE) coming in.
+ 		 */
+ 		spin_lock(&clp->cl_lock);
+-		BUG_ON(!list_empty(&lo->plh_layouts));
+ 		list_add_tail(&lo->plh_layouts, &server->layouts);
+ 		spin_unlock(&clp->cl_lock);
+ 	}
+@@ -1211,7 +1209,7 @@ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *r
+ {
+ 	u64 rd_size = req->wb_bytes;
+ 
+-	BUG_ON(pgio->pg_lseg != NULL);
++	WARN_ON_ONCE(pgio->pg_lseg != NULL);
+ 
+ 	if (req->wb_offset != req->wb_pgbase) {
+ 		nfs_pageio_reset_read_mds(pgio);
+@@ -1240,7 +1238,7 @@ void
+ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 			   struct nfs_page *req, u64 wb_size)
+ {
+-	BUG_ON(pgio->pg_lseg != NULL);
++	WARN_ON_ONCE(pgio->pg_lseg != NULL);
+ 
+ 	if (req->wb_offset != req->wb_pgbase) {
+ 		nfs_pageio_reset_write_mds(pgio);
+-- 
+1.7.11.7
 
