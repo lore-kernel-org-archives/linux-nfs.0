@@ -1,109 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f46.google.com ([209.85.216.46]:59446 "EHLO
-	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965249Ab2J3Srp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Oct 2012 14:47:45 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH v8 09/16] SUNRPC/cache: use new hashtable implementation
-Date: Tue, 30 Oct 2012 14:46:05 -0400
-Message-Id: <1351622772-16400-9-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
-References: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:4862 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751299Ab2JOEiF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Oct 2012 00:38:05 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Bruce Fields <bfields@fieldses.org>
+CC: Larry McVoy <lm@bitmover.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
+Date: Mon, 15 Oct 2012 04:38:02 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA909236E9E@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20121012211701.GA8301@bitmover.com>
+	 <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
+	 <20121013002100.GB23247@bitmover.com>
+	 <CA+55aFwKn+rp4qTk3dLgN8n=M-Aw1GYYpOfevDJaJhnK-U5VOg@mail.gmail.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9091FDED5@SACEXCMBX04-PRD.hq.netapp.com>
+	 <20121013023147.GJ23247@bitmover.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9091FE478@SACEXCMBX04-PRD.hq.netapp.com>
+	 <20121013025600.GL23247@bitmover.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9091FFA38@SACEXCMBX04-PRD.hq.netapp.com>
+	 <20121014014215.GO23247@bitmover.com> <20121015004302.GF32420@fieldses.org>
+In-Reply-To: <20121015004302.GF32420@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch cache to use the new hashtable implementation. This reduces the amount
-of generic unrelated code in the cache implementation.
-
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
----
- net/sunrpc/cache.c | 18 +++++++-----------
- 1 file changed, 7 insertions(+), 11 deletions(-)
-
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index fc2f7aa..eaf9693 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -28,6 +28,7 @@
- #include <linux/workqueue.h>
- #include <linux/mutex.h>
- #include <linux/pagemap.h>
-+#include <linux/hashtable.h>
- #include <asm/ioctls.h>
- #include <linux/sunrpc/types.h>
- #include <linux/sunrpc/cache.h>
-@@ -524,19 +525,18 @@ EXPORT_SYMBOL_GPL(cache_purge);
-  * it to be revisited when cache info is available
-  */
- 
--#define	DFR_HASHSIZE	(PAGE_SIZE/sizeof(struct list_head))
--#define	DFR_HASH(item)	((((long)item)>>4 ^ (((long)item)>>13)) % DFR_HASHSIZE)
-+#define	DFR_HASH_BITS	9
- 
- #define	DFR_MAX	300	/* ??? */
- 
- static DEFINE_SPINLOCK(cache_defer_lock);
- static LIST_HEAD(cache_defer_list);
--static struct hlist_head cache_defer_hash[DFR_HASHSIZE];
-+static DEFINE_HASHTABLE(cache_defer_hash, DFR_HASH_BITS);
- static int cache_defer_cnt;
- 
- static void __unhash_deferred_req(struct cache_deferred_req *dreq)
- {
--	hlist_del_init(&dreq->hash);
-+	hash_del(&dreq->hash);
- 	if (!list_empty(&dreq->recent)) {
- 		list_del_init(&dreq->recent);
- 		cache_defer_cnt--;
-@@ -545,10 +545,7 @@ static void __unhash_deferred_req(struct cache_deferred_req *dreq)
- 
- static void __hash_deferred_req(struct cache_deferred_req *dreq, struct cache_head *item)
- {
--	int hash = DFR_HASH(item);
--
--	INIT_LIST_HEAD(&dreq->recent);
--	hlist_add_head(&dreq->hash, &cache_defer_hash[hash]);
-+	hash_add(cache_defer_hash, &dreq->hash, (unsigned long)item);
- }
- 
- static void setup_deferral(struct cache_deferred_req *dreq,
-@@ -600,7 +597,7 @@ static void cache_wait_req(struct cache_req *req, struct cache_head *item)
- 		 * to clean up
- 		 */
- 		spin_lock(&cache_defer_lock);
--		if (!hlist_unhashed(&sleeper.handle.hash)) {
-+		if (hash_hashed(&sleeper.handle.hash)) {
- 			__unhash_deferred_req(&sleeper.handle);
- 			spin_unlock(&cache_defer_lock);
- 		} else {
-@@ -671,12 +668,11 @@ static void cache_revisit_request(struct cache_head *item)
- 	struct cache_deferred_req *dreq;
- 	struct list_head pending;
- 	struct hlist_node *lp, *tmp;
--	int hash = DFR_HASH(item);
- 
- 	INIT_LIST_HEAD(&pending);
- 	spin_lock(&cache_defer_lock);
- 
--	hlist_for_each_entry_safe(dreq, lp, tmp, &cache_defer_hash[hash], hash)
-+	hash_for_each_possible_safe(cache_defer_hash, dreq, lp, tmp, hash, (unsigned long)item)
- 		if (dreq->item == item) {
- 			__unhash_deferred_req(dreq);
- 			list_add(&dreq->recent, &pending);
--- 
-1.7.12.4
-
+T24gU3VuLCAyMDEyLTEwLTE0IGF0IDIwOjQzIC0wNDAwLCBCcnVjZSBGaWVsZHMgd3JvdGU6DQo+
+IE9uIFNhdCwgT2N0IDEzLCAyMDEyIGF0IDA2OjQyOjE1UE0gLTA3MDAsIExhcnJ5IE1jVm95IHdy
+b3RlOg0KPiA+ID4gUFM6IHlvdSBhcmUgcHJlc3VtYWJseSBydW5uaW5nIE5GU3YyIG9uIHlvdXIg
+TWFjcy4gT2RkIHRoYXQgdGhleSBzaG91bGQNCj4gPiA+IGRlZmF1bHQgdG8gdGhhdC4uLg0KPiA+
+IA0KPiA+IEkgZHVubm8gaWYgdGhleSBkZWZhdWx0IHRvIHRoYXQgb3Igd2UgZm9yY2UgdGhhdC4g
+IFdlIGhhdmUgaGFkIGxvdHMgb2YNCj4gPiBwcm9ibGVtcyB3aXRoIExpbnV4IE5GUywgd2UgZXhw
+b3J0IG91ciBob21lIGRpcmVjdG9yaWVzIGJ1dCB0aGV5IGFyZQ0KPiA+IG1vcmUgb3IgbGVzcyBy
+ZWFkIG9ubHkuDQo+ID4gDQo+ID4gTWF5YmUgdGhpbmdzIGhhdmUgZ290dGVuIGJldHRlciBidXQg
+YmFjayBpbiB0aGUgZGF5IEkgY291bGQgY3Jhc2ggdGhlDQo+ID4ga2VybmVsIHdpdGggYSBiayBj
+bG9uZSB0byBhIE5GUyBkaXJlY3RvcnkuDQo+IA0KPiBCdWcgcmVwb3J0cyB3ZWxjb21lZCBpZiBh
+bnkgb2YgdGhvc2UgYnVncyBhcmUgc3RpbGwgYXJvdW5kLg0KDQpUaGUgb3RoZXIgdGhpbmcgdG8g
+bm90ZSBpcyB0aGF0IGF0IHRoaXMgcG9pbnQsIE5GU3YyIGhhcyBiZWVuIGxlZ2FjeQ0KY29kZSBm
+b3IgbW9yZSB0aGFuIDEwIHllYXJzIG9uIExpbnV4IGFuZCBpcyBzdGFydGluZyB0byBzdWZmZXIg
+YmlnIHRpbWUNCmZyb20gYml0IHJvdC4gV2Ugc2hvdWxkIHByb2JhYmx5IGFpbSB0byByZW1vdmUg
+aXQgZW50aXJlbHkgaW4gdGhlIG5leHQNCjEtMiB5ZWFycy4gVGhlcmUgaXMgbm8gcGxhY2UgaW4g
+dG9kYXkncyB3b3JsZCBmb3IgYSBwcm90b2NvbCB0aGF0IGNhbg0Kb25seSBkZWFsIHdpdGggYSAy
+R0IgbWF4aW11bSBmaWxlIHNpemUuLi4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5G
+UyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29t
+DQp3d3cubmV0YXBwLmNvbQ0K
