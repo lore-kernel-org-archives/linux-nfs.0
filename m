@@ -1,131 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:5748 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:59488 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757629Ab2J3UvF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Oct 2012 16:51:05 -0400
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 10/10] NFSD: Forget state for a specific client
-Date: Tue, 30 Oct 2012 16:50:54 -0400
-Message-Id: <1351630254-26166-11-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
-References: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
+	id S1752042Ab2JOWZA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Oct 2012 18:25:00 -0400
+Date: Mon, 15 Oct 2012 18:24:55 -0400
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: steved@redhat.com, bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/8] Junctions should inherit parent's export options
+Message-ID: <20121015222455.GB30649@fieldses.org>
+References: <20121011150421.4665.35964.stgit@lebasque.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121011150421.4665.35964.stgit@lebasque.1015granger.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Thu, Oct 11, 2012 at 11:10:39AM -0400, Chuck Lever wrote:
+> Following suggestions by Steve and Bruce, I've at long last
+> implemented a mechanism by which junctions inherit the export
+> options of their parent exports.
 
-Write the client's ip address to any state file and all appropriate
-state for that client will be forgotten.
+Thanks!
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfsd/fault_inject.c | 36 ++++++++++++++++++++++++++++++++----
- fs/nfsd/nfs4state.c    | 11 +++++++++++
- fs/nfsd/state.h        |  1 +
- 3 files changed, 44 insertions(+), 4 deletions(-)
+> While I was there, I took the opportunity to clean up the junction
+> resolution logic.
 
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-index 19f9094..d9c2ef8 100644
---- a/fs/nfsd/fault_inject.c
-+++ b/fs/nfsd/fault_inject.c
-@@ -8,6 +8,8 @@
- #include <linux/fs.h>
- #include <linux/debugfs.h>
- #include <linux/module.h>
-+#include <linux/nsproxy.h>
-+#include <linux/sunrpc/clnt.h>
- #include <asm/uaccess.h>
- 
- #include "state.h"
-@@ -64,6 +66,24 @@ static void nfsd_inject_set(struct nfsd_fault_inject_op *op, u64 val)
- 	printk(KERN_INFO "NFSD: %s: found %llu", op->file, count);
- }
- 
-+static void nfsd_inject_set_client(struct nfsd_fault_inject_op *op,
-+				   struct sockaddr_storage *addr,
-+				   size_t addr_size)
-+{
-+	char buf[INET6_ADDRSTRLEN];
-+	struct nfs4_client *clp;
-+	u64 count;
-+
-+	nfs4_lock_state();
-+	clp = nfsd_find_client(addr, addr_size);
-+	if (clp) {
-+		count = op->forget(clp, 0);
-+		rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, 129);
-+		printk(KERN_INFO "NFSD [%s]: Client %s had %llu state object(s)\n", op->file, buf, count);
-+	}
-+	nfs4_unlock_state();
-+}
-+
- static void nfsd_inject_get(struct nfsd_fault_inject_op *op, u64 *val)
- {
- 	nfs4_lock_state();
-@@ -100,15 +120,23 @@ static ssize_t fault_inject_read(struct file *file, char __user *buf,
- static ssize_t fault_inject_write(struct file *file, const char __user *buf,
- 				  size_t len, loff_t *ppos)
- {
--	char write_buf[24];
-+	char write_buf[INET6_ADDRSTRLEN];
- 	size_t size = min(sizeof(write_buf), len) - 1;
-+	struct net *net = current->nsproxy->net_ns;
-+	struct sockaddr_storage sa;
- 	u64 val;
- 
- 	if (copy_from_user(write_buf, buf, size))
- 		return -EFAULT;
--
--	val = simple_strtoll(write_buf, NULL, 0);
--	nfsd_inject_set(file->f_dentry->d_inode->i_private, val);
-+	write_buf[size] = '\0';
-+
-+	size = rpc_pton(net, write_buf, size, (struct sockaddr *)&sa, sizeof(sa));
-+	if (size > 0)
-+		nfsd_inject_set_client(file->f_dentry->d_inode->i_private, &sa, size);
-+	else {
-+		val = simple_strtoll(write_buf, NULL, 0);
-+		nfsd_inject_set(file->f_dentry->d_inode->i_private, val);
-+	}
- 	return len; /* on success, claim we got the whole input */
- }
- 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 0a20ac2..ad02045 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4713,6 +4713,17 @@ u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
- 	return count;
- }
- 
-+struct nfs4_client *nfsd_find_client(struct sockaddr_storage *addr, size_t addr_size)
-+{
-+	struct nfs4_client *clp;
-+
-+	list_for_each_entry(clp, &client_lru, cl_lru) {
-+		if (memcmp(&clp->cl_addr, addr, addr_size) == 0)
-+			return clp;
-+	}
-+	return NULL;
-+}
-+
- #endif /* CONFIG_NFSD_FAULT_INJECTION */
- 
- /* initialization to perform at module load time: */
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 646275c..b836e64 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -487,6 +487,7 @@ extern void nfsd4_record_grace_done(struct net *net, time_t boot_time);
- int nfsd_fault_inject_init(void);
- void nfsd_fault_inject_cleanup(void);
- u64 nfsd_for_n_state(u64, u64 (*)(struct nfs4_client *, u64));
-+struct nfs4_client *nfsd_find_client(struct sockaddr_storage *, size_t);
- 
- u64 nfsd_forget_client(struct nfs4_client *, u64);
- u64 nfsd_forget_client_locks(struct nfs4_client*, u64);
--- 
-1.8.0
+Are bad mullets really specifically a 90's thing?  I thought they were
+sort of timeless.
 
+Anyway, that aside, looks reasonable to me.  ACK.
+
+(I still can't get used to ACK.  Whenever I see it I wonder what the
+writer's so startled about.  ACK!)
+
+--b.
