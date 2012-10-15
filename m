@@ -1,65 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from shadbolt.e.decadent.org.uk ([88.96.1.126]:60704 "EHLO
-	shadbolt.e.decadent.org.uk" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752369Ab2J0Xdb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 19:33:31 -0400
-Message-ID: <1351380808.21585.16.camel@deadeye.wl.decadent.org.uk>
-Subject: Re: [PATCH] SUNRPC: Fix a UDP transport regression
-From: Ben Hutchings <ben@decadent.org.uk>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: stable@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Bryan Schumaker <bjschuma@netapp.com>
-Date: Sun, 28 Oct 2012 00:33:28 +0100
-In-Reply-To: <1350925018-12926-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1350925018-12926-1-git-send-email-Trond.Myklebust@netapp.com>
-Content-Type: multipart/signed; micalg="pgp-sha512";
-	protocol="application/pgp-signature"; boundary="=-QGz8IYjDTmbUGmY1GWAv"
-Mime-Version: 1.0
+Received: from mx2.netapp.com ([216.240.18.37]:39243 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755255Ab2JOVc7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Oct 2012 17:32:59 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 12/13] lockd: Remove BUG_ON()s in fs/lockd/host.c
+Date: Mon, 15 Oct 2012 17:31:06 -0400
+Message-Id: <1350336667-18770-14-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1350336667-18770-13-git-send-email-Trond.Myklebust@netapp.com>
+References: <1350336667-18770-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-12-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-13-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+- Convert the non-trivial ones into WARN_ON_ONCE().
+- Remove the trivial refcounting BUGs
 
---=-QGz8IYjDTmbUGmY1GWAv
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/lockd/host.c | 15 +++++----------
+ 1 file changed, 5 insertions(+), 10 deletions(-)
 
-On Mon, 2012-10-22 at 12:56 -0400, Trond Myklebust wrote:
-> commit f39c1bfb5a03e2d255451bff05be0d7255298fa4 and
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index f9b22e5..0e17090 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -177,9 +177,6 @@ static void nlm_destroy_host_locked(struct nlm_host *host)
+ 
+ 	dprintk("lockd: destroy host %s\n", host->h_name);
+ 
+-	BUG_ON(!list_empty(&host->h_lockowners));
+-	BUG_ON(atomic_read(&host->h_count));
+-
+ 	hlist_del_init(&host->h_hash);
+ 
+ 	nsm_unmonitor(host);
+@@ -289,13 +286,12 @@ void nlmclnt_release_host(struct nlm_host *host)
+ 
+ 	dprintk("lockd: release client host %s\n", host->h_name);
+ 
+-	BUG_ON(atomic_read(&host->h_count) < 0);
+-	BUG_ON(host->h_server);
++	WARN_ON_ONCE(host->h_server);
+ 
+ 	if (atomic_dec_and_test(&host->h_count)) {
+-		BUG_ON(!list_empty(&host->h_lockowners));
+-		BUG_ON(!list_empty(&host->h_granted));
+-		BUG_ON(!list_empty(&host->h_reclaim));
++		WARN_ON_ONCE(!list_empty(&host->h_lockowners));
++		WARN_ON_ONCE(!list_empty(&host->h_granted));
++		WARN_ON_ONCE(!list_empty(&host->h_reclaim));
+ 
+ 		mutex_lock(&nlm_host_mutex);
+ 		nlm_destroy_host_locked(host);
+@@ -412,8 +408,7 @@ void nlmsvc_release_host(struct nlm_host *host)
+ 
+ 	dprintk("lockd: release server host %s\n", host->h_name);
+ 
+-	BUG_ON(atomic_read(&host->h_count) < 0);
+-	BUG_ON(!host->h_server);
++	WARN_ON_ONCE(!host->h_server);
+ 	atomic_dec(&host->h_count);
+ }
+ 
+-- 
+1.7.11.7
 
-You were too late to stop me applying the above to 3.2.30...
-
-> commit 84e28a307e376f271505af65a7b7e212dd6f61f4 upstream.
-[...]
-
-so I had to cherry-pick this separately, with the obvious context
-adjustment.
-
-Ben.
-
---=20
-Ben Hutchings
-Reality is just a crutch for people who can't handle science fiction.
-
---=-QGz8IYjDTmbUGmY1GWAv
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-
-iQIVAwUAUIxvSOe/yOyVhhEJAQp0iw//XmgH2M1jU/2D7Rejxw2xJVG/GpqR0370
-DkcBH8dHIA8D/hPI73sFpccYzPjVW5BkcUJn5+opPoLylojeANY/baWal0qHjmrW
-uSriJHhbB6qelohwD0nGE+5k0s0ky5zs8uA8mAkg3P854w6SReF0JRmXLHjGlBBl
-zdCmRN4Wn7hKBDldaQ/+uGDjtISTJiWcbmhiyowimxl2EqJH+EOWbaISfHphsylO
-QoE/wuWlT8EHUEm46CUFBzbXqdu39lKA8qMGm4KMMGgdQ6xAS5r6q1jgIh9tE+T/
-AbPZ/+eX5Rs9NjKL5XWXeu3vLq9nTkpi2A2Edmh5YQap/EH3x/sAmHHkPlO9+aGS
-gjrF8zkrfmZfxB25CLenSvs9MmqYLJ9xVaZT8+eQzLO/celde4h8bc7iGe1DK2m7
-IPqzopNtzxl7g9pSwrBovFF8z9dZPG9pN/v0xCQGSkFWsp6gKPa72wOE06Y57CoF
-YAbMK4+8nxLNf2dBxj6UD5NNlCznfcnWtrC6j5FIoLSPLZqQuAby53filnrL6zMI
-hbcjjnudgITDABEnNDlQ+u1jzy007mjcDBcOAGxOdXmKH0GiZ/LP0hthxFiwPVjb
-PNAGp7JY29U0tQog838oLdaoWXZvTaNfCB/6muvXuxydjMGykezxNBYIHbAKsrc0
-n/qViWQ75xc=
-=UM7M
------END PGP SIGNATURE-----
-
---=-QGz8IYjDTmbUGmY1GWAv--
