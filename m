@@ -1,97 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:56212 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751400Ab2JMEmJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 13 Oct 2012 00:42:09 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Larry McVoy <lm@bitmover.com>
-CC: Linus Torvalds <torvalds@linux-foundation.org>,
-        Bruce Fields <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
-Date: Sat, 13 Oct 2012 04:42:05 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9091FFA38@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20121012211701.GA8301@bitmover.com>
-	 <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
-	 <20121013002100.GB23247@bitmover.com>
-	 <CA+55aFwKn+rp4qTk3dLgN8n=M-Aw1GYYpOfevDJaJhnK-U5VOg@mail.gmail.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9091FDED5@SACEXCMBX04-PRD.hq.netapp.com>
-	 <20121013023147.GJ23247@bitmover.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9091FE478@SACEXCMBX04-PRD.hq.netapp.com>
-	 <20121013025600.GL23247@bitmover.com>
-In-Reply-To: <20121013025600.GL23247@bitmover.com>
-Content-Type: multipart/mixed;
-	boundary="_002_4FA345DA4F4AE44899BD2B03EEEC2FA9091FFA38SACEXCMBX04PRDh_"
+Received: from natasha.panasas.com ([67.152.220.90]:40714 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754083Ab2JOSVC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Oct 2012 14:21:02 -0400
+Message-ID: <507C5400.4030609@panasas.com>
+Date: Mon, 15 Oct 2012 11:20:48 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
+To: Bruce Fields <bfields@fieldses.org>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Larry McVoy <lm@bitmover.com>
+Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
+References: <20121012211701.GA8301@bitmover.com> <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com> <5078D17C.9090002@panasas.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9091FDFA9@SACEXCMBX04-PRD.hq.netapp.com> <5078D45A.3090801@panasas.com> <20121014194351.GD32420@fieldses.org>
+In-Reply-To: <20121014194351.GD32420@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---_002_4FA345DA4F4AE44899BD2B03EEEC2FA9091FFA38SACEXCMBX04PRDh_
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <7BE1A54247BD9144B6067202EAE171DB@tahoe.netapp.com>
-Content-Transfer-Encoding: base64
+On 10/14/2012 12:43 PM, Bruce Fields wrote:
+> On Fri, Oct 12, 2012 at 07:39:22PM -0700, Boaz Harrosh wrote:
+>> On 10/12/2012 07:32 PM, Myklebust, Trond wrote:
+>>> They are used in the nlm_procedures[] array as TEST_RES, LOCK_RES,
+>>> CANCEL_RES, UNLOCK_RES and GRANTED_RES xdr encoding procedures.
+>>
+>> Ha, sorry that was impossible to find. OK I'll have a look
+> 
+> Everybody falls into that trap at least once.  Any objections to killing
+> those macros and expanding that stuff out?
+> 
 
-T24gRnJpLCAyMDEyLTEwLTEyIGF0IDE5OjU2IC0wNzAwLCBMYXJyeSBNY1ZveSB3cm90ZToNCj4g
-T24gU2F0LCBPY3QgMTMsIDIwMTIgYXQgMDI6NTI6NTFBTSArMDAwMCwgTXlrbGVidXN0LCBUcm9u
-ZCB3cm90ZToNCj4gPiBPbiBGcmksIDIwMTItMTAtMTIgYXQgMTk6MzEgLTA3MDAsIExhcnJ5IE1j
-Vm95IHdyb3RlOg0KPiA+ID4gQXMgSSd2ZSBzYWlkLCBkZWJ1Z2dpbmcgdGhpcyBpcyBnb2luZyB0
-byBiZSBoYXJkLCBpdCBtZWFucyBzdG9wcGluZyBteQ0KPiA+ID4gY29tcGFueS4gIFdlIGNhbiBk
-byBvbmUgbW9yZSBjcmFzaCwgeW91IGd1eXMgY2FuIHRlbGwgbWUgd2hhdCB0byBkbywNCj4gPiA+
-IGJ1dCB0aGF0J3MgYWJvdXQgaXQuDQo+ID4gDQo+ID4gRG8geW91IGhhdmUgYSByZXByb2R1Y2Vy
-PyANCj4gDQo+IE9oIHllYWgsIGl0IGhhcHBlbnMgZXZlcnkgdGltZS4gIFJ1biBza3lwZSBvbiBh
-IG1hYyB3LyB5b3VyIGhvbWUgZGlyIE5GUw0KPiBtb3VudGVkLiAgU2t5cGUgdHJpZXMgdG8gZG8g
-c29tZSBsb2NrIG9wZXJhdGlvbiBhbmQgdGhlIG1hY2hpbmUgcGFuaWNzLg0KPiANCj4gV2UndmUg
-ZG9uZSBpdCA0IHRpbWVzIGluIGEgcm93IHRvIGJlIHN1cmUgd2Ugd2VyZW4ndCBzbW9raW5nIGNy
-YWNrLiAgTm8NCj4gY3JhY2suICBKdXN0IHBhbmljcy4NCg0KT0suIEkgdGhpbmsgSSBjYW4gc2Vl
-IHdoYXQgaXMgaGFwcGVuaW5nLiBXZSBuZWVkIHRvIGZpbHRlciB0aGUgcmV0dXJuDQp2YWx1ZXMg
-ZnJvbSBubG1fbG9va3VwX2ZpbGUoKSB3aGVuIGRlYWxpbmcgd2l0aCBOTE12MSBhbmQgTkxNdjMu
-DQoNCkNhbiB5b3UgcGxlYXNlIHRyeSB0aGUgYXR0YWNoZWQgcGF0Y2g/DQoNCkNoZWVycw0KICBU
-cm9uZA0KDQpQUzogeW91IGFyZSBwcmVzdW1hYmx5IHJ1bm5pbmcgTkZTdjIgb24geW91ciBNYWNz
-LiBPZGQgdGhhdCB0aGV5IHNob3VsZA0KZGVmYXVsdCB0byB0aGF0Li4uDQotLSANClRyb25kIE15
-a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlr
-bGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+No objections from me. I did the one file just to understand and
+actually I think the code even looks better without them.
 
---_002_4FA345DA4F4AE44899BD2B03EEEC2FA9091FFA38SACEXCMBX04PRDh_
-Content-Type: text/x-patch;
-	name="0001-NLM-nlm_lookup_file-may-return-NLMv4-specific-error-.patch"
-Content-Description: 0001-NLM-nlm_lookup_file-may-return-NLMv4-specific-error-.patch
-Content-Disposition: attachment;
-	filename="0001-NLM-nlm_lookup_file-may-return-NLMv4-specific-error-.patch";
-	size=1753; creation-date="Sat, 13 Oct 2012 04:42:05 GMT";
-	modification-date="Sat, 13 Oct 2012 04:42:05 GMT"
-Content-ID: <70BE5C318D80CB489EA3421FF728D2D4@tahoe.netapp.com>
-Content-Transfer-Encoding: base64
+But then I realized they are all over, I'm not sure I'll have
+time to do it
 
-RnJvbSAxZjBkNGQxYmI3N2ZhMDIxNmRkMmZiMjA0MWNjOWI0NGRiNDY5N2UwIE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
-YXBwLmNvbT4NCkRhdGU6IFNhdCwgMTMgT2N0IDIwMTIgMDA6MzA6MjggLTA0MDANClN1YmplY3Q6
-IFtQQVRDSF0gTkxNOiBubG1fbG9va3VwX2ZpbGUoKSBtYXkgcmV0dXJuIE5MTXY0LXNwZWNpZmlj
-IGVycm9yIGNvZGVzDQoNCklmIHRoZSBmaWxlaGFuZGxlIGlzIHN0YWxlLCBvciBvcGVuIGFjY2Vz
-cyBpcyBkZW5pZWQgZm9yIHNvbWUgcmVhc29uLA0KbmxtX2ZvcGVuKCkgbWF5IHJldHVybiBvbmUg
-b2YgdGhlIE5MTXY0LXNwZWNpZmljIGVycm9yIGNvZGVzIG5sbTRfc3RhbGVfZmgNCm9yIG5sbTRf
-ZmFpbGVkLiBUaGVzZSBnZXQgcGFzc2VkIHJpZ2h0IHRocm91Z2ggbmxtX2xvb2t1cF9maWxlKCks
-DQphbmQgc28gd2hlbiBubG1zdmNfcmV0cmlldmVfYXJncygpIGNhbGxzIHRoZSBsYXR0ZXIsIGl0
-IG5lZWRzIHRvIGZpbHRlcg0KdGhlIHJlc3VsdCB0aHJvdWdoIHRoZSBjYXN0X3N0YXR1cygpIG1h
-Y2hpbmVyeS4NCg0KRmFpbHVyZSB0byBkbyBzbywgd2lsbCB0cmlnZ2VyIHRoZSBCVUdfT04oKSBp
-biBlbmNvZGVfbmxtX3N0YXQuLi4NCg0KU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDxU
-cm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCi0tLQ0KIGZzL2xvY2tkL2NsbnR4ZHIuYyB8IDIg
-Ky0NCiBmcy9sb2NrZC9zdmNwcm9jLmMgfCAzICsrLQ0KIDIgZmlsZXMgY2hhbmdlZCwgMyBpbnNl
-cnRpb25zKCspLCAyIGRlbGV0aW9ucygtKQ0KDQpkaWZmIC0tZ2l0IGEvZnMvbG9ja2QvY2xudHhk
-ci5jIGIvZnMvbG9ja2QvY2xudHhkci5jDQppbmRleCAxODBhYzM0Li5jZjA0Y2RhIDEwMDY0NA0K
-LS0tIGEvZnMvbG9ja2QvY2xudHhkci5jDQorKysgYi9mcy9sb2NrZC9jbG50eGRyLmMNCkBAIC0y
-MjMsNyArMjIzLDcgQEAgc3RhdGljIHZvaWQgZW5jb2RlX25sbV9zdGF0KHN0cnVjdCB4ZHJfc3Ry
-ZWFtICp4ZHIsDQogew0KIAlfX2JlMzIgKnA7DQogDQotCUJVR19PTihiZTMyX3RvX2NwdShzdGF0
-KSA+IE5MTV9MQ0tfREVOSUVEX0dSQUNFX1BFUklPRCk7DQorCVdBUk5fT05fT05DRShiZTMyX3Rv
-X2NwdShzdGF0KSA+IE5MTV9MQ0tfREVOSUVEX0dSQUNFX1BFUklPRCk7DQogCXAgPSB4ZHJfcmVz
-ZXJ2ZV9zcGFjZSh4ZHIsIDQpOw0KIAkqcCA9IHN0YXQ7DQogfQ0KZGlmZiAtLWdpdCBhL2ZzL2xv
-Y2tkL3N2Y3Byb2MuYyBiL2ZzL2xvY2tkL3N2Y3Byb2MuYw0KaW5kZXggZDI3YWFiMS4uZDQxM2Fm
-MyAxMDA2NDQNCi0tLSBhL2ZzL2xvY2tkL3N2Y3Byb2MuYw0KKysrIGIvZnMvbG9ja2Qvc3ZjcHJv
-Yy5jDQpAQCAtNjcsNyArNjcsOCBAQCBubG1zdmNfcmV0cmlldmVfYXJncyhzdHJ1Y3Qgc3ZjX3Jx
-c3QgKnJxc3RwLCBzdHJ1Y3QgbmxtX2FyZ3MgKmFyZ3AsDQogDQogCS8qIE9idGFpbiBmaWxlIHBv
-aW50ZXIuIE5vdCB1c2VkIGJ5IEZSRUVfQUxMIGNhbGwuICovDQogCWlmIChmaWxwICE9IE5VTEwp
-IHsNCi0JCWlmICgoZXJyb3IgPSBubG1fbG9va3VwX2ZpbGUocnFzdHAsICZmaWxlLCAmbG9jay0+
-ZmgpKSAhPSAwKQ0KKwkJZXJyb3IgPSBjYXN0X3N0YXR1cyhubG1fbG9va3VwX2ZpbGUocnFzdHAs
-ICZmaWxlLCAmbG9jay0+ZmgpKTsNCisJCWlmIChlcnJvciAhPSAwKQ0KIAkJCWdvdG8gbm9fbG9j
-a3M7DQogCQkqZmlscCA9IGZpbGU7DQogDQotLSANCjEuNy4xMS43DQoNCg==
+> --b.
+> 
 
---_002_4FA345DA4F4AE44899BD2B03EEEC2FA9091FFA38SACEXCMBX04PRDh_--
+Thanks
+Boaz
