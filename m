@@ -1,52 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:16006 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754841Ab2JPQbj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Oct 2012 12:31:39 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 23/25] SUNRPC: remove BUG_ON()s checking RPC_IS_QUEUED()
-Date: Tue, 16 Oct 2012 12:30:41 -0400
-Message-Id: <1350405043-39316-23-git-send-email-dros@netapp.com>
-In-Reply-To: <1350405043-39316-1-git-send-email-dros@netapp.com>
-References: <1350405043-39316-1-git-send-email-dros@netapp.com>
+Received: from mail-oa0-f46.google.com ([209.85.219.46]:47573 "EHLO
+	mail-oa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751304Ab2JOQCt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Oct 2012 12:02:49 -0400
+Received: by mail-oa0-f46.google.com with SMTP id h16so5121328oag.19
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Oct 2012 09:02:45 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90923ED96@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20121015080539.23088.qmail@science.horizon.com>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA90923ED96@SACEXCMBX04-PRD.hq.netapp.com>
+Date: Mon, 15 Oct 2012 09:02:45 -0700
+Message-ID: <CAA7C2qhn-Z8iAp_Cqg6s0DURCRSh=238kHnNMn=i8rXfFX1hAg@mail.gmail.com>
+Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
+From: VDR User <user.vdr@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: George Spelvin <linux@horizon.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Replace two BUG_ON() calls with WARN_ON_ONCE() and early returns.
+On Mon, Oct 15, 2012 at 5:19 AM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> I do mind; it is clearly starting to bitrot due to an absence of users.
+> Maintenance of unused code is actually _more_ of a pain, not less.
+>
+> So unfsd is one solution. Keeping a VM with an older version of the
+> Linux kernel that still supports NFSv2 is another. Volunteering to
+> maintain the code is a third.
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- net/sunrpc/sched.c |    8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
+Growing pains can be hard for those who can't/won't update but when
+it's time to move on, it's time to move on. Maintaining code _is_ in
+fact a chore that eventually becomes counter-productive once the user
+base has diminished enough and/or it's become so outdated. Your
+suggestions might not thrill other people but then who likes taking
+their medicine?
 
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 5dcc1ff..2d72af1 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -133,7 +133,9 @@ static void __rpc_add_wait_queue(struct rpc_wait_queue *queue,
- 		struct rpc_task *task,
- 		unsigned char queue_priority)
- {
--	BUG_ON (RPC_IS_QUEUED(task));
-+	WARN_ON_ONCE(RPC_IS_QUEUED(task));
-+	if (RPC_IS_QUEUED(task))
-+		return;
- 
- 	if (RPC_IS_PRIORITY(queue))
- 		__rpc_add_wait_queue_priority(queue, task, queue_priority);
-@@ -705,7 +707,9 @@ static void __rpc_execute(struct rpc_task *task)
- 	dprintk("RPC: %5u __rpc_execute flags=0x%x\n",
- 			task->tk_pid, task->tk_flags);
- 
--	BUG_ON(RPC_IS_QUEUED(task));
-+	WARN_ON_ONCE(RPC_IS_QUEUED(task));
-+	if (RPC_IS_QUEUED(task))
-+		return;
- 
- 	for (;;) {
- 		void (*do_action)(struct rpc_task *);
--- 
-1.7.9.6 (Apple Git-31.1)
-
+Cheers
