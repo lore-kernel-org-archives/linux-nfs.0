@@ -1,98 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:2360 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:17794 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756614Ab2JJSGW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 10 Oct 2012 14:06:22 -0400
-Received: from vmwexceht01-prd.hq.netapp.com (vmwexceht01-prd.hq.netapp.com [10.106.76.239])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q9AI6Kqo029795
-	for <linux-nfs@vger.kernel.org>; Wed, 10 Oct 2012 11:06:20 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] NFSv4.1	do not wake up all tasks on data server
- reset to MDS
-Date: Wed, 10 Oct 2012 18:06:19 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9091CE9D7@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1349817608-4730-1-git-send-email-andros@netapp.com>
-	 <1349817608-4730-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1349817608-4730-2-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1755255Ab2JOVcX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Oct 2012 17:32:23 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 06/13] NFS: Remove BUG_ON() calls from the generic writeback code
+Date: Mon, 15 Oct 2012 17:31:00 -0400
+Message-Id: <1350336667-18770-8-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1350336667-18770-7-git-send-email-Trond.Myklebust@netapp.com>
+References: <1350336667-18770-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-7-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTEwLTA5IGF0IDE3OjIwIC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
-ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFRoZXJl
-IGlzIG5vIGFkdmFudGFnZSB0byB3YWtpbmcgdXAgYWxsIHJwYyB0YXNrcyBvbiBlYWNoIGRhdGEg
-c2VydmVyIGRpc2Nvbm5lY3QNCj4gb3IgaW52YWxpZCBsYXlvdXQgZXJyb3IuDQo+IA0KPiBGb3Ig
-RFMgZGlzY29ubmVjdCBlcnJvcnMgd2hlcmUgdGhlIGRhdGEgc2VydmVyIGlzIHJlc2V0aW5nIGFs
-bCBJL08gdG8gdGhlIE1EUywNCj4gdGFza3Mgd2FrZW5lZCBmcm9tIHRoZSBmb3JlIGNoYW5uZWwg
-c2xvdCB0YWJsZSB3YWl0cSBhcmUgaW1tZWRpYXRlbHkgcmVzZXQNCj4gdG8gdXNlIHRoZSBNRFMg
-c2Vzc2lvbiwgYW5kIGRvIG5vdCByZXF1ZXN0IGEgZGF0YSBzZXJ2ZXIgc2Vzc2lvbiBzbG90LCBh
-bmQNCj4gc28gZG8gbm90IGNhbGwgbmZzNDFfc2Vzc2lvbl9mcmVlX3Nsb3QsIGFuZCBkbyBub3Qg
-d2FrZSB1cCB0aGUgbmV4dCB0YXNrIG9uDQo+IHRoZSBkYXRhIHNlcnZlciBzZXNzaW9uIGZvcmUg
-Y2hhbm5lbCBzbG90IHRhYmxlIHdhaXQgcXVldWUuDQo+IA0KPiBSZXBsYWNlIHRoZSBjYWxsIHRv
-IHJwY193YWtlX3VwIHdoaWNoIHdha2VzIHVwIGFsbCB0YXNrcyB3aXRoIGEgY2FsbCB0bw0KPiBy
-cGNfd2FrZV91cF9maXJzdCBpbiB0aGUgZmlsZWxheW91dCBJL08gcHJlcGFyZSByb3V0aW5lcyBm
-b3IgdGhlIGNhc2Ugd2hlcmUNCj4gSS9PIGlzIHJlZGlyZWN0ZWQgdG8gdGhlIE1EUy4NCj4gDQo+
-IFNoYXJlIGNvZGUgd2l0aCBuZnM0X2NoZWNrX2RyYWluX2ZjX2NvbXBsZXRlLg0KDQpUaGlzIHdp
-bGwgc3RpbGwgaGF2ZSBmYWxzZSBwb3NpdGl2ZSB3YWtldXBzLCB0aG91Z2gsIHNpbmNlIHRoZXJl
-IGlzIG5vDQpjb25uZWN0aW9uIHRvIG51bWJlciBvZiBzbG90cyB0aGF0IGFyZSBhdmFpbGFibGUu
-DQoNCkhvdyBhYm91dCByYXRoZXIganVzdCBsZXR0aW5nIHRoZSBzZXNzaW9uIGNvZGUgZHJpdmUg
-dGhlIHdha2V1cHM/IEknbQ0KdGhpbmtpbmcgc29tZXRoaW5nIGxpa2UgdGhlIGZvbGxvd2luZyBw
-YXRjaDoNCg0KODwtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLQ0KZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0X2ZzLmggYi9mcy9uZnMv
-bmZzNF9mcy5oDQppbmRleCBhNTI1ZmRlLi5kZjI0NzRiIDEwMDY0NA0KLS0tIGEvZnMvbmZzL25m
-czRfZnMuaA0KKysrIGIvZnMvbmZzL25mczRfZnMuaA0KQEAgLTI0OCw2ICsyNDgsNyBAQCBleHRl
-cm4gaW50IG5mczRfc2V0dXBfc2VxdWVuY2UoY29uc3Qgc3RydWN0IG5mc19zZXJ2ZXIgKnNlcnZl
-ciwNCiBleHRlcm4gaW50IG5mczQxX3NldHVwX3NlcXVlbmNlKHN0cnVjdCBuZnM0X3Nlc3Npb24g
-KnNlc3Npb24sDQogCQlzdHJ1Y3QgbmZzNF9zZXF1ZW5jZV9hcmdzICphcmdzLCBzdHJ1Y3QgbmZz
-NF9zZXF1ZW5jZV9yZXMgKnJlcywNCiAJCXN0cnVjdCBycGNfdGFzayAqdGFzayk7DQorZXh0ZXJu
-IHZvaWQgbmZzNDFfc2VxdWVuY2VfZnJlZV9zbG90KHN0cnVjdCBuZnM0X3NlcXVlbmNlX3JlcyAq
-cmVzKTsNCiBleHRlcm4gdm9pZCBuZnM0X2Rlc3Ryb3lfc2Vzc2lvbihzdHJ1Y3QgbmZzNF9zZXNz
-aW9uICpzZXNzaW9uKTsNCiBleHRlcm4gc3RydWN0IG5mczRfc2Vzc2lvbiAqbmZzNF9hbGxvY19z
-ZXNzaW9uKHN0cnVjdCBuZnNfY2xpZW50ICpjbHApOw0KIGV4dGVybiBpbnQgbmZzNF9wcm9jX2Ny
-ZWF0ZV9zZXNzaW9uKHN0cnVjdCBuZnNfY2xpZW50ICosIHN0cnVjdCBycGNfY3JlZCAqKTsNCmRp
-ZmYgLS1naXQgYS9mcy9uZnMvbmZzNGZpbGVsYXlvdXQuYyBiL2ZzL25mcy9uZnM0ZmlsZWxheW91
-dC5jDQppbmRleCA1MmQ4NDcyLi44MGFhMTlhIDEwMDY0NA0KLS0tIGEvZnMvbmZzL25mczRmaWxl
-bGF5b3V0LmMNCisrKyBiL2ZzL25mcy9uZnM0ZmlsZWxheW91dC5jDQpAQCAtMjkxLDE5ICsyOTEs
-MjAgQEAgc3RhdGljIHZvaWQgZmlsZWxheW91dF9yZWFkX3ByZXBhcmUoc3RydWN0IHJwY190YXNr
-ICp0YXNrLCB2b2lkICpkYXRhKQ0KIHsNCiAJc3RydWN0IG5mc19yZWFkX2RhdGEgKnJkYXRhID0g
-ZGF0YTsNCiANCisJaWYgKG5mczQxX3NldHVwX3NlcXVlbmNlKHJkYXRhLT5kc19jbHAtPmNsX3Nl
-c3Npb24sDQorCQkJCSZyZGF0YS0+YXJncy5zZXFfYXJncywgJnJkYXRhLT5yZXMuc2VxX3JlcywN
-CisJCQkJdGFzaykpDQorCQlyZXR1cm47DQorDQogCWlmIChmaWxlbGF5b3V0X3Jlc2V0X3RvX21k
-cyhyZGF0YS0+aGVhZGVyLT5sc2VnKSkgew0KIAkJZHByaW50aygiJXMgdGFzayAldSByZXNldCBp
-byB0byBNRFNcbiIsIF9fZnVuY19fLCB0YXNrLT50a19waWQpOw0KIAkJZmlsZWxheW91dF9yZXNl
-dF9yZWFkKHJkYXRhKTsNCisJCW5mczQxX3NlcXVlbmNlX2ZyZWVfc2xvdCgmcmRhdGEtPnJlcy5z
-ZXFfcmVzKTsNCiAJCXJwY19leGl0KHRhc2ssIDApOw0KIAkJcmV0dXJuOw0KIAl9DQogCXJkYXRh
-LT5yZWFkX2RvbmVfY2IgPSBmaWxlbGF5b3V0X3JlYWRfZG9uZV9jYjsNCiANCi0JaWYgKG5mczQx
-X3NldHVwX3NlcXVlbmNlKHJkYXRhLT5kc19jbHAtPmNsX3Nlc3Npb24sDQotCQkJCSZyZGF0YS0+
-YXJncy5zZXFfYXJncywgJnJkYXRhLT5yZXMuc2VxX3JlcywNCi0JCQkJdGFzaykpDQotCQlyZXR1
-cm47DQotDQogCXJwY19jYWxsX3N0YXJ0KHRhc2spOw0KIH0NCiANCkBAIC0zOTMsMTcgKzM5NCwx
-OCBAQCBzdGF0aWMgdm9pZCBmaWxlbGF5b3V0X3dyaXRlX3ByZXBhcmUoc3RydWN0IHJwY190YXNr
-ICp0YXNrLCB2b2lkICpkYXRhKQ0KIHsNCiAJc3RydWN0IG5mc193cml0ZV9kYXRhICp3ZGF0YSA9
-IGRhdGE7DQogDQorCWlmIChuZnM0MV9zZXR1cF9zZXF1ZW5jZSh3ZGF0YS0+ZHNfY2xwLT5jbF9z
-ZXNzaW9uLA0KKwkJCQkmd2RhdGEtPmFyZ3Muc2VxX2FyZ3MsICZ3ZGF0YS0+cmVzLnNlcV9yZXMs
-DQorCQkJCXRhc2spKQ0KKwkJcmV0dXJuOw0KKw0KIAlpZiAoZmlsZWxheW91dF9yZXNldF90b19t
-ZHMod2RhdGEtPmhlYWRlci0+bHNlZykpIHsNCiAJCWRwcmludGsoIiVzIHRhc2sgJXUgcmVzZXQg
-aW8gdG8gTURTXG4iLCBfX2Z1bmNfXywgdGFzay0+dGtfcGlkKTsNCiAJCWZpbGVsYXlvdXRfcmVz
-ZXRfd3JpdGUod2RhdGEpOw0KKwkJbmZzNDFfc2VxdWVuY2VfZnJlZV9zbG90KCZyZGF0YS0+cmVz
-LnNlcV9yZXMpOw0KIAkJcnBjX2V4aXQodGFzaywgMCk7DQogCQlyZXR1cm47DQogCX0NCi0JaWYg
-KG5mczQxX3NldHVwX3NlcXVlbmNlKHdkYXRhLT5kc19jbHAtPmNsX3Nlc3Npb24sDQotCQkJCSZ3
-ZGF0YS0+YXJncy5zZXFfYXJncywgJndkYXRhLT5yZXMuc2VxX3JlcywNCi0JCQkJdGFzaykpDQot
-CQlyZXR1cm47DQotDQogCXJwY19jYWxsX3N0YXJ0KHRhc2spOw0KIH0NCiANCmRpZmYgLS1naXQg
-YS9mcy9uZnMvbmZzNHByb2MuYyBiL2ZzL25mcy9uZnM0cHJvYy5jDQppbmRleCA2OGIyMWQ4Li5k
-MTg2YmUyIDEwMDY0NA0KLS0tIGEvZnMvbmZzL25mczRwcm9jLmMNCisrKyBiL2ZzL25mcy9uZnM0
-cHJvYy5jDQpAQCAtNDY4LDcgKzQ2OCw3IEBAIHZvaWQgbmZzNF9jaGVja19kcmFpbl9iY19jb21w
-bGV0ZShzdHJ1Y3QgbmZzNF9zZXNzaW9uICpzZXMpDQogCWNvbXBsZXRlKCZzZXMtPmJjX3Nsb3Rf
-dGFibGUuY29tcGxldGUpOw0KIH0NCiANCi1zdGF0aWMgdm9pZCBuZnM0MV9zZXF1ZW5jZV9mcmVl
-X3Nsb3Qoc3RydWN0IG5mczRfc2VxdWVuY2VfcmVzICpyZXMpDQordm9pZCBuZnM0MV9zZXF1ZW5j
-ZV9mcmVlX3Nsb3Qoc3RydWN0IG5mczRfc2VxdWVuY2VfcmVzICpyZXMpDQogew0KIAlzdHJ1Y3Qg
-bmZzNF9zbG90X3RhYmxlICp0Ymw7DQogDQpAQCAtNDg2LDYgKzQ4Niw3IEBAIHN0YXRpYyB2b2lk
-IG5mczQxX3NlcXVlbmNlX2ZyZWVfc2xvdChzdHJ1Y3QgbmZzNF9zZXF1ZW5jZV9yZXMgKnJlcykN
-CiAJc3Bpbl91bmxvY2soJnRibC0+c2xvdF90YmxfbG9jayk7DQogCXJlcy0+c3Jfc2xvdCA9IE5V
-TEw7DQogfQ0KK0VYUE9SVF9TWU1CT0xfR1BMKG5mczQxX3NlcXVlbmNlX2ZyZWVfc2xvdCk7DQog
-DQogc3RhdGljIGludCBuZnM0MV9zZXF1ZW5jZV9kb25lKHN0cnVjdCBycGNfdGFzayAqdGFzaywg
-c3RydWN0IG5mczRfc2VxdWVuY2VfcmVzICpyZXMpDQogew0KDQotLSANClRyb25kIE15a2xlYnVz
-dA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0
-QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/write.c | 25 +++++++++----------------
+ 1 file changed, 9 insertions(+), 16 deletions(-)
+
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 9347ab7..4e9eb0b 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -239,21 +239,18 @@ int nfs_congestion_kb;
+ #define NFS_CONGESTION_OFF_THRESH	\
+ 	(NFS_CONGESTION_ON_THRESH - (NFS_CONGESTION_ON_THRESH >> 2))
+ 
+-static int nfs_set_page_writeback(struct page *page)
++static void nfs_set_page_writeback(struct page *page)
+ {
++	struct nfs_server *nfss = NFS_SERVER(page_file_mapping(page)->host);
+ 	int ret = test_set_page_writeback(page);
+ 
+-	if (!ret) {
+-		struct inode *inode = page_file_mapping(page)->host;
+-		struct nfs_server *nfss = NFS_SERVER(inode);
++	WARN_ON_ONCE(ret != 0);
+ 
+-		if (atomic_long_inc_return(&nfss->writeback) >
+-				NFS_CONGESTION_ON_THRESH) {
+-			set_bdi_congested(&nfss->backing_dev_info,
+-						BLK_RW_ASYNC);
+-		}
++	if (atomic_long_inc_return(&nfss->writeback) >
++			NFS_CONGESTION_ON_THRESH) {
++		set_bdi_congested(&nfss->backing_dev_info,
++					BLK_RW_ASYNC);
+ 	}
+-	return ret;
+ }
+ 
+ static void nfs_end_page_writeback(struct page *page)
+@@ -315,9 +312,8 @@ static int nfs_page_async_flush(struct nfs_pageio_descriptor *pgio,
+ 	if (IS_ERR(req))
+ 		goto out;
+ 
+-	ret = nfs_set_page_writeback(page);
+-	BUG_ON(ret != 0);
+-	BUG_ON(test_bit(PG_CLEAN, &req->wb_flags));
++	nfs_set_page_writeback(page);
++	WARN_ON_ONCE(test_bit(PG_CLEAN, &req->wb_flags));
+ 
+ 	if (!nfs_pageio_add_request(pgio, req)) {
+ 		nfs_redirty_request(req);
+@@ -451,8 +447,6 @@ static void nfs_inode_remove_request(struct nfs_page *req)
+ 	struct inode *inode = req->wb_context->dentry->d_inode;
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+ 
+-	BUG_ON (!NFS_WBACK_BUSY(req));
+-
+ 	spin_lock(&inode->i_lock);
+ 	if (likely(!PageSwapCache(req->wb_page))) {
+ 		set_page_private(req->wb_page, 0);
+@@ -1727,7 +1721,6 @@ int nfs_wb_page_cancel(struct inode *inode, struct page *page)
+ 	struct nfs_page *req;
+ 	int ret = 0;
+ 
+-	BUG_ON(!PageLocked(page));
+ 	for (;;) {
+ 		wait_on_page_writeback(page);
+ 		req = nfs_page_find_request(page);
+-- 
+1.7.11.7
+
