@@ -1,136 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from riis.snl.salk.edu ([198.202.70.55]:59656 "EHLO
-	riis.snl.salk.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752782Ab2JBWh0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Oct 2012 18:37:26 -0400
-Content-Type: multipart/signed; boundary="Apple-Mail=_1F542D08-B6E0-4D06-8EDE-83B8B64B02CC"; protocol="application/pkcs7-signature"; micalg=sha1
-Mime-Version: 1.0 (Mac OS X Mail 6.1 \(1498\))
-Subject: Re: NFS: kernel forces trailing slash for export in /proc/self/mounts
-From: Chris Hiestand <chiestand@salk.edu>
-In-Reply-To: <20120930212341.GA32505@elie.Belkin>
-Date: Tue, 2 Oct 2012 15:37:25 -0700
-Cc: Ben Hutchings <ben@decadent.org.uk>, 669314@bugs.debian.org,
-        viro@zeniv.linux.org.uk, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Micheal Waltz <mwaltz@qualcomm.com>,
-        Gabriel Evanoff <gevanoff@salk.edu>
-Message-Id: <B259EBD8-0ED1-405F-A3E5-DF488FCE402F@salk.edu>
-References: <8F8193BD-84C6-4905-8789-DE7EB2579A4E@salk.edu> <1347762073.13258.188.camel@deadeye.wl.decadent.org.uk> <254E1AAA-BDE2-41A8-94D8-6E677860AD72@salk.edu> <1347804028.13258.267.camel@deadeye.wl.decadent.org.uk> <FB3CAE84-FDFE-4345-9F54-3295BDE2AD81@salk.edu> <20120930212341.GA32505@elie.Belkin>
-To: Jonathan Nieder <jrnieder@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:15892 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755255Ab2JOVcl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Oct 2012 17:32:41 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 09/13] NFS: Remove the BUG_ON() in the mount code
+Date: Mon, 15 Oct 2012 17:31:03 -0400
+Message-Id: <1350336667-18770-11-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1350336667-18770-10-git-send-email-Trond.Myklebust@netapp.com>
+References: <1350336667-18770-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-10-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/mount_clnt.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
 
---Apple-Mail=_1F542D08-B6E0-4D06-8EDE-83B8B64B02CC
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
+index 8e65c7f..5955181 100644
+--- a/fs/nfs/mount_clnt.c
++++ b/fs/nfs/mount_clnt.c
+@@ -169,6 +169,9 @@ int nfs_mount(struct nfs_mount_request *info)
+ 		(info->hostname ? info->hostname : "server"),
+ 			info->dirpath);
+ 
++	if (strlen(info->dirpath) > MNTPATHLEN)
++		return -ENAMETOOLONG;
++
+ 	if (info->noresvport)
+ 		args.flags |= RPC_CLNT_CREATE_NONPRIVPORT;
+ 
+@@ -242,6 +245,9 @@ void nfs_umount(const struct nfs_mount_request *info)
+ 	struct rpc_clnt *clnt;
+ 	int status;
+ 
++	if (strlen(info->dirpath) > MNTPATHLEN)
++		return -ENAMETOOLONG;
++
+ 	if (info->noresvport)
+ 		args.flags |= RPC_CLNT_CREATE_NONPRIVPORT;
+ 
+@@ -283,7 +289,6 @@ static void encode_mntdirpath(struct xdr_stream *xdr, const char *pathname)
+ 	const u32 pathname_len = strlen(pathname);
+ 	__be32 *p;
+ 
+-	BUG_ON(pathname_len > MNTPATHLEN);
+ 	p = xdr_reserve_space(xdr, 4 + pathname_len);
+ 	xdr_encode_opaque(p, pathname, pathname_len);
+ }
+-- 
+1.7.11.7
 
-I haven't had a chance to test it yet thanks. I'll be too busy until at =
-least mid-next week, but I will test it then if nobody beats me to it.
-
--Chris
-
-
-On Sep 30, 2012, at 2:23 PM, Jonathan Nieder <jrnieder@gmail.com> wrote:
-
-> Thanks for looking it over.  Did you get a chance to test Ben's patch?
->=20
-> Curious,
-> Jonathan
-
-
---Apple-Mail=_1F542D08-B6E0-4D06-8EDE-83B8B64B02CC
-Content-Disposition: attachment;
-	filename=smime.p7s
-Content-Type: application/pkcs7-signature;
-	name=smime.p7s
-Content-Transfer-Encoding: base64
-
-MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIO1TCCBIow
-ggNyoAMCAQICECf06hH0eobEbp27bqkXBwcwDQYJKoZIhvcNAQEFBQAwbzELMAkGA1UEBhMCU0Ux
-FDASBgNVBAoTC0FkZFRydXN0IEFCMSYwJAYDVQQLEx1BZGRUcnVzdCBFeHRlcm5hbCBUVFAgTmV0
-d29yazEiMCAGA1UEAxMZQWRkVHJ1c3QgRXh0ZXJuYWwgQ0EgUm9vdDAeFw0wNTA2MDcwODA5MTBa
-Fw0yMDA1MzAxMDQ4MzhaMIGuMQswCQYDVQQGEwJVUzELMAkGA1UECBMCVVQxFzAVBgNVBAcTDlNh
-bHQgTGFrZSBDaXR5MR4wHAYDVQQKExVUaGUgVVNFUlRSVVNUIE5ldHdvcmsxITAfBgNVBAsTGGh0
-dHA6Ly93d3cudXNlcnRydXN0LmNvbTE2MDQGA1UEAxMtVVROLVVTRVJGaXJzdC1DbGllbnQgQXV0
-aGVudGljYXRpb24gYW5kIEVtYWlsMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsjmF
-pPJ9q0E7YkY3rs3BYHW8OWX5ShpHornMSMxqmNVNNRm5pELlzkniii8efNIxB8dOtINknS4p1aJk
-xIW9hVE1eaROaJB7HHqkkqgX8pgV8pPMyaQylbsMTzC9mKALi+VuG6JG+ni8om+rWV6lL8/K2m2q
-L+usobNqqrcuZzWLeeEeaYji5kbNoKXqvgvOdjp6Dpvq/NonWz1zHyLmSGHGTPNpsaguG7bUMSAs
-vIKKjqQOpdeJQ/wWWq8dcdcRWdq6hw2v+vPhwvCkxWeM1tZUOt4KpLoDd7NlyP0e03RiqhjKaJMe
-oYV+9Udly/hNVyh00jT/MLbu9mIwFIws6wIDAQABo4HhMIHeMB8GA1UdIwQYMBaAFK29mHo0tCb3
-+sQmVO8DveAky1QaMB0GA1UdDgQWBBSJgmd9xJ0mcABLtFBIfN49rgRufTAOBgNVHQ8BAf8EBAMC
-AQYwDwYDVR0TAQH/BAUwAwEB/zB7BgNVHR8EdDByMDigNqA0hjJodHRwOi8vY3JsLmNvbW9kb2Nh
-LmNvbS9BZGRUcnVzdEV4dGVybmFsQ0FSb290LmNybDA2oDSgMoYwaHR0cDovL2NybC5jb21vZG8u
-bmV0L0FkZFRydXN0RXh0ZXJuYWxDQVJvb3QuY3JsMA0GCSqGSIb3DQEBBQUAA4IBAQAZ2IkRbyis
-pgCi54fBm5AD236hEv0e8+LwAamUVEJrmgnEoG3XkJIEA2Z5Q3H8+G+v23ZF4jcaPd3kWQR4rBz0
-g0bzes9bhHIt5UbBuhgRKfPLSXmHPLptBZ2kbWhPrXIUNqi5sf2/z3/wpGqUNVCPz4FtVbHdWTBK
-322gnGQfSXzvNrv042n0+DmPWq1LhTq3Du3Tzw1EovsEv+QvcI4l+1pUBrPQxLxtjftzMizpm4Qk
-LdZ/kXpoAlAfDj9N6cz1u2fo3BwuO/xOzf4CjuOoEwqlJkRl6RDyTVKnrtw+ymsyXEFs/vVdoOr/
-0fqbhlhtPZZH5f4ulQTCAMyOofK7MIIFGjCCBAKgAwIBAgIQbRnqpxlPajMi5iIyeqpx3jANBgkq
-hkiG9w0BAQUFADCBrjELMAkGA1UEBhMCVVMxCzAJBgNVBAgTAlVUMRcwFQYDVQQHEw5TYWx0IExh
-a2UgQ2l0eTEeMBwGA1UEChMVVGhlIFVTRVJUUlVTVCBOZXR3b3JrMSEwHwYDVQQLExhodHRwOi8v
-d3d3LnVzZXJ0cnVzdC5jb20xNjA0BgNVBAMTLVVUTi1VU0VSRmlyc3QtQ2xpZW50IEF1dGhlbnRp
-Y2F0aW9uIGFuZCBFbWFpbDAeFw0xMTA0MjgwMDAwMDBaFw0yMDA1MzAxMDQ4MzhaMIGTMQswCQYD
-VQQGEwJHQjEbMBkGA1UECBMSR3JlYXRlciBNYW5jaGVzdGVyMRAwDgYDVQQHEwdTYWxmb3JkMRow
-GAYDVQQKExFDT01PRE8gQ0EgTGltaXRlZDE5MDcGA1UEAxMwQ09NT0RPIENsaWVudCBBdXRoZW50
-aWNhdGlvbiBhbmQgU2VjdXJlIEVtYWlsIENBMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKC
-AQEAkoSEW0tXmNReL4uk4UDIo1NYX2Zl8TJO958yfVXQeExVt0KU4PkncQfFxmmkuTLE8UAakMwn
-VmJ/F7Vxaa7lIBvky2NeYMqiQfZq4aP/uN8fSG1lQ4wqLitjOHffsReswtqCAtbUMmrUZ28gE49c
-NfrlVICv2HEKHTcKAlBTbJUdqRAUtJmVWRIx/wmi0kzcUtve4kABW0ho3cVKtODtJB86r3FfB+Os
-vxQ7sCVxaD30D9YXWEYVgTxoi4uDD216IVfmNLDbMn7jSuGlUnJkJpFOpZIP/+CxYP0ab2hRmWON
-GoulzEKbm30iY9OpoPzOnpDfRBn0XFs1uhbzp5v/wQIDAQABo4IBSzCCAUcwHwYDVR0jBBgwFoAU
-iYJnfcSdJnAAS7RQSHzePa4Ebn0wHQYDVR0OBBYEFHoTTgB0W8Z4Y2QnwS/ioFu8ecV7MA4GA1Ud
-DwEB/wQEAwIBBjASBgNVHRMBAf8ECDAGAQH/AgEAMBEGA1UdIAQKMAgwBgYEVR0gADBYBgNVHR8E
-UTBPME2gS6BJhkdodHRwOi8vY3JsLnVzZXJ0cnVzdC5jb20vVVROLVVTRVJGaXJzdC1DbGllbnRB
-dXRoZW50aWNhdGlvbmFuZEVtYWlsLmNybDB0BggrBgEFBQcBAQRoMGYwPQYIKwYBBQUHMAKGMWh0
-dHA6Ly9jcnQudXNlcnRydXN0LmNvbS9VVE5BZGRUcnVzdENsaWVudF9DQS5jcnQwJQYIKwYBBQUH
-MAGGGWh0dHA6Ly9vY3NwLnVzZXJ0cnVzdC5jb20wDQYJKoZIhvcNAQEFBQADggEBAIXWvnhXVW0z
-f0RS/kLVBqgBA4CK+w2y/Uq/9q9BSfUbWsXSrRtzbj7pJnzmTJjBMCjfy/tCPKElPgp11tA9OYZm
-0aGbtU2bb68obB2v5ep0WqjascDxdXovnrqTecr+4pEeVnSy+I3T4ENyG+2P/WA5IEf7i686ZUg8
-mD2lJb+972DgSeUWyOs/Q4Pw4O4NwdPNM1+b0L1garM7/vrUyTo8H+2b/5tJM75CKTmD7jNpLoKd
-RU2oadqAGx490hpdfEeZpZsIbRKZhtZdVwcbpzC+S0lEuJB+ytF5OOu0M/qgOl0mWJ5hVRi0IdWZ
-1eBDQEIwvuql55TSsP7zdfl/bucwggUlMIIEDaADAgECAhAJi8lShk8jTNMgVo7nXaDGMA0GCSqG
-SIb3DQEBBQUAMIGTMQswCQYDVQQGEwJHQjEbMBkGA1UECBMSR3JlYXRlciBNYW5jaGVzdGVyMRAw
-DgYDVQQHEwdTYWxmb3JkMRowGAYDVQQKExFDT01PRE8gQ0EgTGltaXRlZDE5MDcGA1UEAxMwQ09N
-T0RPIENsaWVudCBBdXRoZW50aWNhdGlvbiBhbmQgU2VjdXJlIEVtYWlsIENBMB4XDTEyMDgxNDAw
-MDAwMFoXDTEzMDgxNDIzNTk1OVowIzEhMB8GCSqGSIb3DQEJARYSY2hpZXN0YW5kQHNhbGsuZWR1
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtqz/Yy0csi37dTvyoNn8MNtPRvG2D7E3
-pwSsuXFnBML17AZU1wpAKsQpggGoznvsFQvvOzJyWRBWKdF0deds1xpFGhe7+/GzMhnQKwFDeVZs
-9hTXKWEERVVaBmyIbj0BP3D5VrUo/7eaybMALnxEjrteg9jyuFTSrGDc8qJ+c1Ps5vlH0v+Fvp4V
-HoI8bW/+auu4mNT1E0nzpm3eWCsF1Rif2FVDetoDaArW1uTJh+g6oV3d1eJeGiqRnc+k7Q+ShfHj
-wehOQT7dvYRE1CqArv69m2BBue+gHXQXWFgfaHx7/9mJapJG/ALpmqaHU8x9bMaBcZcIQHqEQV9E
-3yOWpQIDAQABo4IB4jCCAd4wHwYDVR0jBBgwFoAUehNOAHRbxnhjZCfBL+KgW7x5xXswHQYDVR0O
-BBYEFGOY5NfMgoO8duC6gWVGeskIkDbrMA4GA1UdDwEB/wQEAwIFoDAMBgNVHRMBAf8EAjAAMCAG
-A1UdJQQZMBcGCCsGAQUFBwMEBgsrBgEEAbIxAQMFAjARBglghkgBhvhCAQEEBAMCBSAwRgYDVR0g
-BD8wPTA7BgwrBgEEAbIxAQIBAQEwKzApBggrBgEFBQcCARYdaHR0cHM6Ly9zZWN1cmUuY29tb2Rv
-Lm5ldC9DUFMwVwYDVR0fBFAwTjBMoEqgSIZGaHR0cDovL2NybC5jb21vZG9jYS5jb20vQ09NT0RP
-Q2xpZW50QXV0aGVudGljYXRpb25hbmRTZWN1cmVFbWFpbENBLmNybDCBiAYIKwYBBQUHAQEEfDB6
-MFIGCCsGAQUFBzAChkZodHRwOi8vY3J0LmNvbW9kb2NhLmNvbS9DT01PRE9DbGllbnRBdXRoZW50
-aWNhdGlvbmFuZFNlY3VyZUVtYWlsQ0EuY3J0MCQGCCsGAQUFBzABhhhodHRwOi8vb2NzcC5jb21v
-ZG9jYS5jb20wHQYDVR0RBBYwFIESY2hpZXN0YW5kQHNhbGsuZWR1MA0GCSqGSIb3DQEBBQUAA4IB
-AQCHpk5ZpwS5faNtGTJxlHTy9hQm4NwJZhatrTz7xq23Q93RjLxwVn9tFG/YuPB1iN1aEA1DZWwP
-Xi5OMbYxEb4Icw7/QGbJGwdHn6IDkU6IR2UOx5RzQJ84Fl6jUKCvlnJ3/UbZuzYG3fCyqi5GhUk1
-PN4l/qwbxmsZKLwZep45lrbmea5XmqIO5NB4F02NLFYZWmEByKEi92aHLfgsvULq1CfNJMKIIYD2
-/AW96vDQmk/liJHld+gkQQkIlTTzZmOYbHKtkeN8B8kFkB5OmdUZJvWoDMDMLLHhPkfRBBYuS7WO
-jQY521z50tPATaS3yDZUYlcFyXjns8Wew/gv/XT5MYIDqzCCA6cCAQEwgagwgZMxCzAJBgNVBAYT
-AkdCMRswGQYDVQQIExJHcmVhdGVyIE1hbmNoZXN0ZXIxEDAOBgNVBAcTB1NhbGZvcmQxGjAYBgNV
-BAoTEUNPTU9ETyBDQSBMaW1pdGVkMTkwNwYDVQQDEzBDT01PRE8gQ2xpZW50IEF1dGhlbnRpY2F0
-aW9uIGFuZCBTZWN1cmUgRW1haWwgQ0ECEAmLyVKGTyNM0yBWjuddoMYwCQYFKw4DAhoFAKCCAdcw
-GAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMTIxMDAyMjIzNzI1WjAj
-BgkqhkiG9w0BCQQxFgQUhm8kEbPEItFBsI8YXaX8NlKn1WAwgbkGCSsGAQQBgjcQBDGBqzCBqDCB
-kzELMAkGA1UEBhMCR0IxGzAZBgNVBAgTEkdyZWF0ZXIgTWFuY2hlc3RlcjEQMA4GA1UEBxMHU2Fs
-Zm9yZDEaMBgGA1UEChMRQ09NT0RPIENBIExpbWl0ZWQxOTA3BgNVBAMTMENPTU9ETyBDbGllbnQg
-QXV0aGVudGljYXRpb24gYW5kIFNlY3VyZSBFbWFpbCBDQQIQCYvJUoZPI0zTIFaO512gxjCBuwYL
-KoZIhvcNAQkQAgsxgauggagwgZMxCzAJBgNVBAYTAkdCMRswGQYDVQQIExJHcmVhdGVyIE1hbmNo
-ZXN0ZXIxEDAOBgNVBAcTB1NhbGZvcmQxGjAYBgNVBAoTEUNPTU9ETyBDQSBMaW1pdGVkMTkwNwYD
-VQQDEzBDT01PRE8gQ2xpZW50IEF1dGhlbnRpY2F0aW9uIGFuZCBTZWN1cmUgRW1haWwgQ0ECEAmL
-yVKGTyNM0yBWjuddoMYwDQYJKoZIhvcNAQEBBQAEggEAWXV5555cB8E8bhW2NVsKWf90itCQSerl
-aUkqDrTaWhPJ0EHLpSLXN6wEUyxRIbMqiho+kw5TRqfjX2uun4sE3KXnoYATQPgkuBWHUXJTLJLM
-FvqE8uGy8d5N+kEC3kqwr15IR0EbAawTt1vyoFH9+Lkl6mrMwvKpqfJgJhZsqO6AUIg0x3rKJr13
-HCHdMGtIcFJF4lyH9nOo8GoK3W+Z8Qh6QZ+M6Y2Rz7YRoqEmPEATkoi256sM03Fp8PzvpKPUrOpn
-vxRf3mzyLbyCAZ+asw/q36GOAP9z8PdlRc4VD9SxaiFbGORmB/VQoOwtG7a8tNryBt4/reBFIHnA
-jpRC1AAAAAAAAA==
-
---Apple-Mail=_1F542D08-B6E0-4D06-8EDE-83B8B64B02CC--
