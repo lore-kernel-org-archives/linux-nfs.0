@@ -1,41 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:15938 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:25565 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755078Ab2JPQbG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Oct 2012 12:31:06 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 11/25] SUNRPC: remove BUG_ON() from bc_send()
-Date: Tue, 16 Oct 2012 12:30:29 -0400
-Message-Id: <1350405043-39316-11-git-send-email-dros@netapp.com>
-In-Reply-To: <1350405043-39316-1-git-send-email-dros@netapp.com>
-References: <1350405043-39316-1-git-send-email-dros@netapp.com>
+	id S1755255Ab2JOVcf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Oct 2012 17:32:35 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 08/13] NFS: Remove BUG_ON()s in the fs/nfs/inode.c
+Date: Mon, 15 Oct 2012 17:31:02 -0400
+Message-Id: <1350336667-18770-10-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1350336667-18770-9-git-send-email-Trond.Myklebust@netapp.com>
+References: <1350336667-18770-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1350336667-18770-9-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Replace BUG_ON() with WARN_ON_ONCE(). The error condition is a simple
-ref counting sanity check and the following code will not free anything
-until final put.
-
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- net/sunrpc/bc_svc.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfs/inode.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/bc_svc.c b/net/sunrpc/bc_svc.c
-index 0b2eb38..15c7a8a 100644
---- a/net/sunrpc/bc_svc.c
-+++ b/net/sunrpc/bc_svc.c
-@@ -53,7 +53,7 @@ int bc_send(struct rpc_rqst *req)
- 	if (IS_ERR(task))
- 		ret = PTR_ERR(task);
- 	else {
--		BUG_ON(atomic_read(&task->tk_count) != 1);
-+		WARN_ON_ONCE(atomic_read(&task->tk_count) != 1);
- 		ret = task->tk_status;
- 		rpc_put_task(task);
- 	}
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 5c7325c..3967be2 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -112,8 +112,8 @@ void nfs_clear_inode(struct inode *inode)
+ 	/*
+ 	 * The following should never happen...
+ 	 */
+-	BUG_ON(nfs_have_writebacks(inode));
+-	BUG_ON(!list_empty(&NFS_I(inode)->open_files));
++	WARN_ON_ONCE(nfs_have_writebacks(inode));
++	WARN_ON_ONCE(!list_empty(&NFS_I(inode)->open_files));
+ 	nfs_zap_acl_cache(inode);
+ 	nfs_access_zap_cache(inode);
+ 	nfs_fscache_release_inode_cookie(inode);
 -- 
-1.7.9.6 (Apple Git-31.1)
+1.7.11.7
 
