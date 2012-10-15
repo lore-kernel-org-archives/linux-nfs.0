@@ -1,89 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.openrapids.net ([64.15.138.104]:58293 "EHLO
-	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1758766Ab2J2LfS convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Oct 2012 07:35:18 -0400
-Date: Mon, 29 Oct 2012 07:35:15 -0400
-From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v7 06/16] tracepoint: use new hashtable implementation
-Message-ID: <20121029113515.GB9115@Krystal>
-References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com> <1351450948-15618-6-git-send-email-levinsasha928@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:53132 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750895Ab2JOE1j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Oct 2012 00:27:39 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chen Gang <gang.chen@asianux.com>
+CC: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [Bug fix] nfs-client: fix nfs_inode_attrs_need_update for async
+ read_done comes during truncating to smaller size
+Date: Mon, 15 Oct 2012 04:27:35 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA909236BB5@SACEXCMBX04-PRD.hq.netapp.com>
+References: <507B70F1.7040903@asianux.com>
+In-Reply-To: <507B70F1.7040903@asianux.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1351450948-15618-6-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* Sasha Levin (levinsasha928@gmail.com) wrote:
-> Switch tracepoints to use the new hashtable implementation. This reduces the amount of
-> generic unrelated code in the tracepoints.
-> 
-> Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
-> ---
->  kernel/tracepoint.c | 27 +++++++++++----------------
->  1 file changed, 11 insertions(+), 16 deletions(-)
-> 
-> diff --git a/kernel/tracepoint.c b/kernel/tracepoint.c
-> index d96ba22..854df92 100644
-> --- a/kernel/tracepoint.c
-> +++ b/kernel/tracepoint.c
-> @@ -26,6 +26,7 @@
->  #include <linux/slab.h>
->  #include <linux/sched.h>
->  #include <linux/static_key.h>
-> +#include <linux/hashtable.h>
->  
->  extern struct tracepoint * const __start___tracepoints_ptrs[];
->  extern struct tracepoint * const __stop___tracepoints_ptrs[];
-> @@ -49,8 +50,7 @@ static LIST_HEAD(tracepoint_module_list);
->   * Protected by tracepoints_mutex.
->   */
->  #define TRACEPOINT_HASH_BITS 6
-> -#define TRACEPOINT_TABLE_SIZE (1 << TRACEPOINT_HASH_BITS)
-> -static struct hlist_head tracepoint_table[TRACEPOINT_TABLE_SIZE];
-> +static DEFINE_HASHTABLE(tracepoint_table, TRACEPOINT_HASH_BITS);
->  
-[...]
->  
-> @@ -722,6 +715,8 @@ struct notifier_block tracepoint_module_nb = {
->  
->  static int init_tracepoints(void)
->  {
-> +	hash_init(tracepoint_table);
-> +
->  	return register_module_notifier(&tracepoint_module_nb);
->  }
->  __initcall(init_tracepoints);
-
-So we have a hash table defined in .bss (therefore entirely initialized
-to NULL), and you add a call to "hash_init", which iterates on the whole
-array and initialize it to NULL (again) ?
-
-This extra initialization is redundant. I think it should be removed
-from here, and hashtable.h should document that hash_init() don't need
-to be called on zeroed memory (which includes static/global variables,
-kzalloc'd memory, etc).
-
-Thanks,
-
-Mathieu
-
--- 
-Mathieu Desnoyers
-Operating System Efficiency R&D Consultant
-EfficiOS Inc.
-http://www.efficios.com
+T24gTW9uLCAyMDEyLTEwLTE1IGF0IDEwOjEyICswODAwLCBDaGVuIEdhbmcgd3JvdGU6DQo+IEhl
+bGxvIFRyb25kIE15a2xlYnVzdCwgSmVmZiBMYXl0b246DQo+IA0KPiAxKSBSb290IENhdXNlOg0K
+PiAgICBBKSBiZWdpbiB0cnVuY2F0ZSB0byBzbWFsbGVyLCBhZnRlciBhc3luYyByZWFkIGZpbmlz
+aCBzdGFydGluZy4NCj4gICAgQikgYXN5bmMgcmVhZCBkb25lIGNvbWUsIGFmdGVyIHRydW5jYXRl
+IG9wZXJhdGlvbiBjaGFuZ2UgaW5vZGUgc2l6ZS4NCj4gICAgQykgaW4gbmZzX2lub2RlX2F0dHJz
+X25lZWRfdXBkYXRlLCBuZnNfc2l6ZV9uZWVkX3VwZGF0ZSByZXR1cm4gdHJ1ZS4NCj4gICAgICAg
+aSkgICB0aGUgYmlnZ2VyIHNpemUgaXMgdGhlIG9yaWdpbmFsIG9sZCBzaXplIG9mIGNsaWVudCBp
+dHNlbGYuDQo+ICAgICAgIGlpKSAgdGhlIHNtYWxsZXIgc2l6ZSBpcyB0aGUgY3VycmVudCB0cnVl
+IHNpemUuDQo+ICAgICAgIGlpaSkgbmZzX2lub2RlX2F0dHJzX25lZWRfdXBkYXRlIG5vdCBjb25z
+aWRlciB0aGlzIHNpdHVhdGlvbi4NCj4gDQo+IDIpIEZpeCBuZnNfc2l6ZV9uZWVkX3VwZGF0ZToN
+Cj4gICAgQSkgZGVsZXRlIGl0Og0KPiAgICAgICBpKSAgIGl0IGlzIGZvciBwZXJmb3JtYW5jZSwg
+bm90IG5lY2Vzc2FyeSAobm90IGZvciBjb3JyZWN0bmVzcykuDQo+ICAgICAgIGlpKSAgaWYgaXQg
+d2FzIG5lY2Vzc2FyeSwgaXQgc2hvdWxkIHVzZSAiIT0iIGluc3RlYWQgb2YgJz4nLg0KPiAgICAg
+ICBpaWkpIGl0IGlzIHRoZSBzaW1wbGVzdCB3YXkgdG8gZml4IHRoaXMgYnVnIChtYXliZSBub3Qg
+YmVzdCB3YXkpLg0KPiAgICBCKSBjb25zaWRlciB0aGlzIHNpdHVhdGlvbiBpbiBpdDoNCj4gICAg
+ICAgaSkgICBpdCBpcyB0aGUgYmVzdCB3YXkuDQo+ICAgICAgIGlpKSAgaXQgaXMgYSBsaXR0bGUg
+Y29tcGxleCAobmVlZCB0aGluayBvZikNCj4gICAgICAgaWlpKSBzb3JyeSBmb3IgSSBkbyBub3Qg
+a25vdyBob3cgdG8gZml4IGl0IChhdCBsZWFzdCBub3cpLg0KPiAgICBDKSBub3QgdG91Y2ggaXQ6
+DQo+ICAgICAgIGkpICAgY29ycmVjdCBhbm90aGVyIHBsYWNlIChzdWNoIGFzIG5mc191cGRhdGVf
+aW5vZGUpDQo+ICAgICAgIGlpKSAgaXQgaXMgYSBiYWQgaWRlYSAoYXQgbGVhc3QsIEkgdGhpbmsg
+aXQgaXMpDQo+ICAgICAgIGlpaSkgd2UgbmVlZCBrZWVwIHRoZSBzb3VyY2UgY29kZSBhcyBjbGVh
+cmVyIGFzIHBvc3NpYmxlLg0KPiANCj4gMykgVGVzdCBSZXN1bHQ6DQo+ICAgIEEpIGl0IGlzIG9u
+ZSBjbGllbnQgYW5kIG9uZSBzZXJ2ZXIgc2VwYXJhdGVseSwgdW5kZXIgMy42LXJjNSB4ODZfMzIu
+DQo+ICAgIEIpIHVzZSBvbmUgcHJvY2VzcyAoZnN4LWxpbnV4KSB0ZXN0IChvbmx5IG9uZSB1c2Vy
+IG1vZGUgdGhyZWFkKS4NCj4gICAgQykgb25seSB1c2UgcmVhZCwgdHJ1bmNhdGUsIGxsc2Vlaywg
+ZnN0YXQgb3BlcmF0aW9uIGZvciBvbmUgZmlsZS4NCj4gDQo+ICAgIEJlZm9yZSBkZWxldGUgbmZz
+X3NpemVfbmVlZF91cGRhdGUsIGl0IGNhdXNlcyBpc3N1ZS4NCj4gICAgQWZ0ZXIgZGVsZXRlIG5m
+c19zaXplX25lZWRfdXBkYXRlLCBpdCBpcyBvay4NCg0KbmZzX3NpemVfbmVlZF91cGRhdGUgaXMg
+bm90IGFib3V0IHBlcmZvcm1hbmNlLiBJdCBpcyBhIGhldXJpc3RpYyB0aGF0IGlzDQplbnRpcmVs
+eSBhYm91dCBlbnN1cmluZyBjb3JyZWN0bmVzcyB3aGVuIGZhY2VkIHdpdGggdGhlIGZhY3QgdGhh
+dCBtb3N0DQpMaW51eCBmaWxlc3lzdGVtcyBhcmUgdXR0ZXJseSBpbmNhcGFibGUgb2YgcmVwb3J0
+aW5nIHdpdGggbW9kaWZpY2F0aW9ucw0KdGhhdCBvY2N1ciB3aXRoaW4gPCAxIHNlY29uZCBpbnRl
+cnZhbHMgYmVjYXVzZSB0aGVpciBtdGltZS9jdGltZSBpcw0KbGltaXRlZCB0byAxIHNlY29uZCBy
+ZXNvbHV0aW9ucy4NCg0KTm93LCB3aGF0IGFyZSB0aGUgY29uZGl0aW9ucyBvZiB5b3VyIHRlc3Qg
+c2V0dXA/IFRoZSBhYm92ZSBidWcgcmVwb3J0IGlzDQptZWFuaW5nbGVzcyB1bmxlc3MgaXQgaW5j
+bHVkZXMgYSBkZXNjcmlwdGlvbiBvZiB3aGF0IGlzIGJlaW5nIGV4cG9ydGVkDQpieSB0aGUgc2Vy
+dmVyIChpbmNsdWRpbmcgYSBwcm9wZXIgbGlzdGluZyBvZiB0aGUgY29udGVudHMNCm9mIC9ldGMv
+ZXhwb3J0cyBhbmQgL3Byb2MvbW91bnRzKS4gSXQgc2hvdWxkIGFsc28gaW5jbHVkZSBhIGRlc2Ny
+aXB0aW9uDQpvZiB0aGUgTkZTIGNsaWVudCBtb3VudCBvcHRpb25zIChzZWUgL3Byb2MvbW91bnRz
+IG9uIHRoZSBjbGllbnQpLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVu
+dCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5u
+ZXRhcHAuY29tDQo=
