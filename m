@@ -1,76 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from maui.cs.washington.edu ([128.208.5.86]:35988 "EHLO
-	maui.cs.washington.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755186Ab2JSV1X (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Oct 2012 17:27:23 -0400
-Received: from maui.cs.washington.edu (localhost [127.0.0.1])
-	by maui.cs.washington.edu (8.14.1/8.14.1/1.10) with ESMTP id q9JKrv0m009348
-	for <linux-nfs@vger.kernel.org>; Fri, 19 Oct 2012 13:53:57 -0700
-	(envelope-from oystr@maui.cs.washington.edu)
-Date: 19 Oct 2012 13:53 PDT
-From: Jan Sanislo <oystr@cs.washington.edu>
-Subject: nfsidmap and NFS key timeouts and quotas
-To: linux-nfs@vger.kernel.org
-Message-Id: <1350679987/oystr@maui.cs.washington.edu>
+Received: from mx1.redhat.com ([209.132.183.28]:15983 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754092Ab2JOU2n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Oct 2012 16:28:43 -0400
+Message-ID: <507C71F9.6040201@RedHat.com>
+Date: Mon, 15 Oct 2012 16:28:41 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: VDR User <user.vdr@gmail.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Problem with rpcbind
+References: <CAA7C2qiZhHD7-RHP93LCVOBGCmp4JxyJwRLa0AR8a=oi4fi2Gg@mail.gmail.com> <5072B1E5.9060808@RedHat.com> <CAA7C2qjRPs3pb66s2HDJqEyn0yGfGS_88+yvJNo0fhFQ9M6S3g@mail.gmail.com> <5074B53A.3030207@RedHat.com> <CAA7C2qg558GBYgaE2_Ay9QmC48UryG_9PqLP7Vebb1_QzRZd-g@mail.gmail.com> <5076C867.4050806@RedHat.com> <CAA7C2qjd-mtSjc79T4EkV1_vUbJpqOQ53PjPQoW-eC6U7uv1Vw@mail.gmail.com>
+In-Reply-To: <CAA7C2qjd-mtSjc79T4EkV1_vUbJpqOQ53PjPQoW-eC6U7uv1Vw@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The man page for nfsidmap says that it will set a default timeout
-of 600 seconds on keys requested by the NFS client.  But the
-keys instantiated are listed a permanent in /proc/keys and it's
-easily possible to run out of key quota in an NFS environment with
-100s/1000s of uids/gids.
 
-Nfsidmap's call to keyctl_set_timeout fails with a permission
-error because the call is made *after* the key is instantiated
-and permission to modify the key attributes has been revoked as
-a result.  The following patch seems to be more effective in
-actually setting the key timeout:
 
-====================================
+On 11/10/12 11:02, VDR User wrote:
+> On Thu, Oct 11, 2012 at 6:23 AM, Steve Dickson <SteveD@redhat.com> wrote:
+>>>>>>> Per Aníbal Salazar, I'm sending this to the nfs mailing list..
+>>>>>>>
+>>>>>>> ==========
+>>>>>>>
+>>>>>>> Hi. I would like to know who I can talk to about having the rpcbind's
+>>>>>>> timeout value settable on the command line by the user. In many cases
+>>>>>>> the timeout is too long, requiring hackish solutions. It would be
+>>>>>>> best, and makes sense, that the user should be able to set the timeout
+>>>>>>> to something other than the default value if he chooses. If you could
+>>>>>>> direct me to the right person to talk to about it, I'd appreciate it.
+>>>>>>
+>>>>>> What timeout are you referring to? The one given to poll()?
+>>>>>
+>>>>> Hi. I guess so but not really sure. I'm talking about the timeout that
+>>>>> happens when rpcbind is waiting for a response. Sounds like poll()
+>>>>> could be it. We have an nfs server on .100 and the response happens
+>>>>> immediately.
+>>>>>
+>>>>> $ rpcinfo -t 192.168.1.100 nfs
+>>>>> program 100003 version 2 ready and waiting
+>>>>> program 100003 version 3 ready and waiting
+>>>>> program 100003 version 4 ready and waiting
+>>>>>
+>>>>> but there's no server on say .101 so if we run the same command on
+>>>>> that ip, the timeout takes a very long time. It's this timeout that
+>>>>> should be user-definable on the command line in my opinion. Any
+>>>>> thoughts about it?
+>>>>
+>>>> Hmm... I'm guess that is the 7min tcp connect time out cause by
+>>>> the -t option... Try using -u instead of -t... Basically using
+>>>> UDP instead of TCP... In general I would never recommend that
+>>>> but in this particular case it might help...
+>>>
+>>> Thanks for this suggestion. I tried with -u but the timeout still
+>>> takes at least 1 min. Is it not feasible to have a command line
+>>> timeout where users can set it to something appropriate for their
+>>> needs? For example, in our case we only need about 5 seconds at most.
+>>
+>> hmm... when I do a "rpcinfo -t <ip-address> nfs" to a machine that
+>> does not have a daemon listening I immediately get:
+>>      rpcinfo: RPC: Port mapper failure - Unable to receive: errno 111 (Connection refused) program 100003 is not available
+>>
+>> So I not seeing here this hang is coming from...
+> 
+> The computers on our network run a mixture of different OS'es so maybe
+> that is relevant. Regardless though it makes sense that we should be
+> able to tell rpcbind to abort if I hasn't received a response within X
+> seconds. That's much better than being forced to wait predefined
+> timeouts, or timeouts in other places. Or is it just me?
+I guess... but there are a lot of timeout one has to deal with...
+If its high on your priority, patches are always welcome... ;-) 
 
---- nfsidmap.c_orig	2012-10-19 11:32:29.806374240 -0700
-+++ nfsidmap.c	2012-10-19 11:40:06.334674363 -0700
-@@ -320,6 +320,16 @@
- 			key, type, value, timeout);
- 	}
+steved.
  
-+	/*
-+	 * Set timeout before instantiation revokes our rights
-+	 * over the key.
-+	 */
-+	if ( timeout > 0 ) {
-+		rc = keyctl_set_timeout(key, timeout);
-+		if ( rc != 0 )
-+			xlog_warn("keyctl_set_timeout key 0x%x failed: %m",key);
-+	}
-+
- 	if (strcmp(type, "uid") == 0)
- 		rc = id_lookup(value, key, USER);
- 	else if (strcmp(type, "gid") == 0)
-@@ -329,10 +339,6 @@
- 	else if (strcmp(type, "group") == 0)
- 		rc = name_lookup(value, key, GROUP);
- 
--	/* Set timeout to 10 (600 seconds) minutes */
--	if (rc == 0)
--		keyctl_set_timeout(key, timeout);
--
- 	free(arg);
- 	return rc;
- }
-
-====================================
-
-Also, it appears that the check for EDQUOT/ENFILE/ENOMEM after the
-keyctl_instantiate call is ineffective.  Those errors seem to be
-handled within the kernel a key_alloc time -- if one of them occurs
-an upcall to nfsidmap is not made.
-
-Finally, the key LRU discard patch: http://lkml.org/lkml/2012/3/28/144
-looks promising for managing key quotas.  But it only seems to be
-invoked when a key is linked into a destination keyring. fs/nfs/idmap.c
-uses a call to security/keys/request_key which by default provides an
-NULL dest_keyring. Might consider changing the request_key call in nfs/idmap.c
-to request_key_and_link (although I don't pretend to know all the
-implications of making such a change).
