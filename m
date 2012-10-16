@@ -1,52 +1,28 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from maui.cs.washington.edu ([128.208.5.86]:57799 "EHLO
-	maui.cs.washington.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754545Ab2JVSli (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Oct 2012 14:41:38 -0400
-Date: 22 Oct 2012 11:35 PDT
-From: Jan Sanislo <oystr@cs.washington.edu>
-Subject: [PATCH 01/01] Allow nfsidmap to set key timeout
-To: linux-nfs@vger.kernel.org
-Cc: jlayton@redhat.com, SteveD@redhat.com
-Message-Id: <1350930905/oystr@maui.cs.washington.edu>
+Received: from mout.perfora.net ([74.208.4.195]:61955 "EHLO mout.perfora.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754188Ab2JPLRb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Oct 2012 07:17:31 -0400
+Date: Tue, 16 Oct 2012 07:17:17 -0400
+From: Jim Rees <rees@umich.edu>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: George Spelvin <linux@horizon.com>, "lm@bitmover.com" <lm@bitmover.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
+Message-ID: <20121016111717.GA6032@umich.edu>
+References: <20121016014824.4952.qmail@science.horizon.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA909253B3B@SACEXCMBX04-PRD.hq.netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA909253B3B@SACEXCMBX04-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfsidmap calls keyctl_set_timeout after the key has been
-instantiated, by which time our key modification privileges
-have been removed.  Move the timeout setting prior to key
-instantiation.
+Myklebust, Trond wrote:
 
-Reviewed-by: Jeff Layton jlayton@redhat.com
-Signed-off-by: Jan Sanislo oystr@cs.washington.edu
+  The fact that you are all in a huff about base64 encoded emails
+  indicates that this is not something you are running on anything as
+  sophisticated as a cell phone.
 
---- a/nfs-utils-1.2.6/utils/nfsidmap/nfsidmap.c
-+++ b/nfs-utils-1.2.6/utils/nfsidmap/nfsidmap.c
-@@ -320,6 +320,16 @@
- 			key, type, value, timeout);
- 	}
- 
-+	/*
-+	 * Set timeout before instantiation revokes our rights
-+	 * over the key.
-+	 */
-+	if ( timeout > 0 ) {
-+		rc = keyctl_set_timeout(key, timeout);
-+		if ( rc != 0 )
-+			xlog_warn("keyctl_set_timeout key 0x%x failed: %m",key);
-+	}
-+
- 	if (strcmp(type, "uid") == 0)
- 		rc = id_lookup(value, key, USER);
- 	else if (strcmp(type, "gid") == 0)
-@@ -329,10 +339,6 @@
- 	else if (strcmp(type, "group") == 0)
- 		rc = name_lookup(value, key, GROUP);
- 
--	/* Set timeout to 10 (600 seconds) minutes */
--	if (rc == 0)
--		keyctl_set_timeout(key, timeout);
--
- 	free(arg);
- 	return rc;
- }
+The problem with your base64 email is that the vger server doesn't handle
+them correctly.
