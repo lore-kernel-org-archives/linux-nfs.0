@@ -1,95 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:10448 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:36033 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757154Ab2JWRoO convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Oct 2012 13:44:14 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Nix <nix@esperi.org.uk>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, "Ted Ts'o" <tytso@mit.edu>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        Peng Tao <bergwolf@gmail.com>,
-        "gregkh@linuxfoundation.org" <gregkh@linuxfoundation.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>
-Subject: RE: Heads-up: 3.6.2 / 3.6.3 NFS server oops: 3.6.2+ regression?
- (also an unrelated ext4 data loss bug)
-Date: Tue, 23 Oct 2012 17:44:12 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90928CD7F@SACEXCMBX04-PRD.hq.netapp.com>
-References: <87objupjlr.fsf@spindle.srvr.nix>
-	<20121023013343.GB6370@fieldses.org> <87mwzdnuww.fsf@spindle.srvr.nix>
-	<20121023143019.GA3040@fieldses.org>	<874nllxi7e.fsf_-_@spindle.srvr.nix>
-	<20121023164621.GC3040@fieldses.org>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA90928CA6F@SACEXCMBX04-PRD.hq.netapp.com>
-	<87vce1w241.fsf@spindle.srvr.nix> <87r4opw0og.fsf@spindle.srvr.nix>
-In-Reply-To: <87r4opw0og.fsf@spindle.srvr.nix>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+	id S1755358Ab2JPWBq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Oct 2012 18:01:46 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 09/12] locks: helper functions for delegation breaking
+Date: Tue, 16 Oct 2012 18:01:34 -0400
+Message-Id: <1350424897-26894-10-git-send-email-bfields@redhat.com>
+In-Reply-To: <1350424897-26894-1-git-send-email-bfields@redhat.com>
+References: <1350424897-26894-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: Nix [mailto:nix@esperi.org.uk]
-> Sent: Tuesday, October 23, 2012 1:36 PM
-> To: Myklebust, Trond
-> Cc: J. Bruce Fields; Ted Ts'o; linux-kernel@vger.kernel.org; Schumaker,
-> Bryan; Peng Tao; gregkh@linuxfoundation.org; linux-nfs@vger.kernel.org;
-> Stanislav Kinsbursky
-> Subject: Re: Heads-up: 3.6.2 / 3.6.3 NFS server oops: 3.6.2+ regression? (also
-> an unrelated ext4 data loss bug)
-> 
-> On 23 Oct 2012, nix@esperi.org.uk uttered the following:
-> 
-> > On 23 Oct 2012, Trond Myklebust spake thusly:
-> >> On Tue, 2012-10-23 at 12:46 -0400, J. Bruce Fields wrote:
-> >>> Looks like there's some confusion about whether nsm_client_get()
-> >>> returns NULL or an error?
-> >>
-> >> nsm_client_get() looks extremely racy in the case where ln->nsm_users
-> >> == 0.  Since we never recheck the value of ln->nsm_users after taking
-> >> nsm_create_mutex, what is stopping 2 different threads from both
-> >> setting
-> >> ln->nsm_clnt and re-initialising ln->nsm_users?
-> >
-> > Yep. At the worst possible time:
-> >
-> > 	spin_lock(&ln->nsm_clnt_lock);
-> > 	if (ln->nsm_users) {
-> > 		if (--ln->nsm_users)
-> > 			ln->nsm_clnt = NULL;
-> > (1)		shutdown = !ln->nsm_users;
-> > 	}
-> > 	spin_unlock(&ln->nsm_clnt_lock);
-> >
-> > If a thread reinitializes nsm_users at point (1), after the
-> > assignment, we could well end up with ln->nsm_clnt NULL and shutdown
-> > false. A bit later, nsm_mon_unmon gets called with a NULL clnt, and boom.
-> 
-> Possible fix if so, utterly untested so far (will test when I can face yet another
-> reboot and fs-corruption-recovery-hell cycle, in a few hours), may ruin
-> performance, violate locking hierarchies, and consume
-> kittens:
-> 
-> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c index e4fb3ba..da91cdf 100644
-> --- a/fs/lockd/mon.c
-> +++ b/fs/lockd/mon.c
-> @@ -98,7 +98,6 @@ static struct rpc_clnt *nsm_client_get(struct net *net)
->  		spin_unlock(&ln->nsm_clnt_lock);
->  		goto out;
->  	}
-> -	spin_unlock(&ln->nsm_clnt_lock);
-> 
->  	mutex_lock(&nsm_create_mutex);
->  	clnt = nsm_create(net);
-> @@ -108,6 +107,7 @@ static struct rpc_clnt *nsm_client_get(struct net *net)
->  		ln->nsm_users = 1;
->  	}
->  	mutex_unlock(&nsm_create_mutex);
-> +	spin_unlock(&ln->nsm_clnt_lock);
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-You can't hold a spinlock while sleeping. Both mutex_lock() and nsm_create() can definitely sleep.
+We'll need the same logic for rename and link.
 
-The correct way to do this is to grab the spinlock and recheck the value of ln->nsm_users inside the 'if (!IS_ERR())' condition. If it is still zero, bump it and set ln->nsm_clnt, otherwise bump it, get the existing ln->nsm_clnt and call rpc_shutdown_clnt() on the redundant nsm client after dropping the spinlock.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/namei.c         |   13 +++----------
+ include/linux/fs.h |   33 +++++++++++++++++++++++++++++++--
+ 2 files changed, 34 insertions(+), 12 deletions(-)
 
-Cheers
-  Trond
+diff --git a/fs/namei.c b/fs/namei.c
+index ed57a97..66228a8 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3390,14 +3390,9 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegate
+ 	else {
+ 		error = security_inode_unlink(dir, dentry);
+ 		if (!error) {
+-			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
+-			if (error) {
+-				if (error == -EWOULDBLOCK && delegated_inode) {
+-					*delegated_inode = target;
+-					ihold(target);
+-				}
++			error = try_break_deleg(target, delegated_inode);
++			if (error)
+ 				goto out;
+-			}
+ 			error = dir->i_op->unlink(dir, dentry);
+ 			if (!error)
+ 				dont_mount(dentry);
+@@ -3465,9 +3460,7 @@ exit2:
+ 	if (inode)
+ 		iput(inode);	/* truncate the inode here */
+ 	if (delegated_inode) {
+-		error = break_deleg(delegated_inode, O_WRONLY);
+-		iput(delegated_inode);
+-		delegated_inode = NULL;
++		error = break_deleg_wait(&delegated_inode);
+ 		if (!error)
+ 			goto retry_deleg;
+ 	}
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 5ea5f5f..0e761e7 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1770,6 +1770,9 @@ extern bool our_mnt(struct vfsmount *mnt);
+ 
+ extern int current_umask(void);
+ 
++extern void ihold(struct inode * inode);
++extern void iput(struct inode *);
++
+ /* /sys/fs */
+ extern struct kobject *fs_kobj;
+ 
+@@ -1838,6 +1841,28 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
+ 	return 0;
+ }
+ 
++static inline int try_break_deleg(struct inode *inode, struct inode **delegated_inode)
++{
++	int ret;
++
++	ret = break_deleg(inode, O_WRONLY|O_NONBLOCK);
++	if (ret == -EWOULDBLOCK && delegated_inode) {
++		*delegated_inode = inode;
++		ihold(inode);
++	}
++	return ret;
++}
++
++static inline int break_deleg_wait(struct inode **delegated_inode)
++{
++	int ret;
++
++	ret = break_deleg(*delegated_inode, O_WRONLY);
++	iput(*delegated_inode);
++	*delegated_inode = NULL;
++	return ret;
++}
++
+ #else /* !CONFIG_FILE_LOCKING */
+ static inline int locks_mandatory_locked(struct inode *inode)
+ {
+@@ -1881,6 +1906,12 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
+ {
+ 	return 0;
+ }
++
++static inline int try_break_deleg(struct inode *inode, struct delegated_inode **inode)
++{
++	return 0;
++}
++
+ #endif /* CONFIG_FILE_LOCKING */
+ 
+ /* fs/open.c */
+@@ -2189,8 +2220,6 @@ extern loff_t vfs_llseek(struct file *file, loff_t offset, int origin);
+ extern int inode_init_always(struct super_block *, struct inode *);
+ extern void inode_init_once(struct inode *);
+ extern void address_space_init_once(struct address_space *mapping);
+-extern void ihold(struct inode * inode);
+-extern void iput(struct inode *);
+ extern struct inode * igrab(struct inode *);
+ extern ino_t iunique(struct super_block *, ino_t);
+ extern int inode_needs_sync(struct inode *inode);
+-- 
+1.7.9.5
+
