@@ -1,31 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from zep00a03.dent.med.uni-muenchen.de ([138.246.161.8]:49644 "HELO
-	md.dent.med.uni-muenchen.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1753202Ab2JNUJz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Oct 2012 16:09:55 -0400
-Date: 14 Oct 2012 22:09:52 +0200
-Message-ID: <20121014200952.26230.qmail@md.dent.med.uni-muenchen.de>
-From: Wolfram Gloger <wmglo@dent.med.uni-muenchen.de>
-To: chuck.lever@oracle.com
-CC: linux-nfs@vger.kernel.org
-In-reply-to: <6C61B43F-7A32-47E3-B81D-70CD991D9CDF@oracle.com> (message from
-	Chuck Lever on Sun, 14 Oct 2012 15:10:29 -0400)
-Subject: Re: [PATCH] nfs-utils: Backgrounding mount broken with NFS versions <4
-References: <20121012120030.18411.qmail@md.dent.med.uni-muenchen.de> <6AB50360-BADE-4544-85CF-700C63A44FDE@oracle.com> <20121013171856.10814.qmail@md.dent.med.uni-muenchen.de> <F5C4FA78-A467-4306-BC57-0A50D8F0A8A9@oracle.com> <20121013214652.23089.qmail@md.dent.med.uni-muenchen.de> <6C61B43F-7A32-47E3-B81D-70CD991D9CDF@oracle.com>
+Received: from mx2.netapp.com ([216.240.18.37]:15883 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754629Ab2JPQaz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Oct 2012 12:30:55 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 01/25] SUNRPC: remove BUG_ON in __rpc_clnt_handle_event
+Date: Tue, 16 Oct 2012 12:30:19 -0400
+Message-Id: <1350405043-39316-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+Print a KERN_INFO message before rpc_d_lookup_sb returns NULL, like
+other error paths in that function.
 
-> Unfortunately there are a rather unimaginable number of use cases for mount.nfs, which is why it is so complicated.  "Extensively" could mean you've tested it for a long time but with just a few use cases.
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ net/sunrpc/clnt.c |    7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
-Admitted, I certainly didn't run an extensive test suite, mainly just
-the case in question by simulating server down with a temporary
-iptables DROP rule.
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index cdc7564..abb7f5e 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -132,8 +132,10 @@ static struct dentry *rpc_setup_pipedir_sb(struct super_block *sb,
+ 	int error;
+ 
+ 	dir = rpc_d_lookup_sb(sb, dir_name);
+-	if (dir == NULL)
++	if (dir == NULL) {
++		pr_info("RPC: pipefs directory doesn't exist: %s\n", dir_name);
+ 		return dir;
++	}
+ 	for (;;) {
+ 		q.len = snprintf(name, sizeof(name), "clnt%x", (unsigned int)clntid++);
+ 		name[sizeof(name) - 1] = '\0';
+@@ -192,7 +194,8 @@ static int __rpc_clnt_handle_event(struct rpc_clnt *clnt, unsigned long event,
+ 	case RPC_PIPEFS_MOUNT:
+ 		dentry = rpc_setup_pipedir_sb(sb, clnt,
+ 					      clnt->cl_program->pipe_dir_name);
+-		BUG_ON(dentry == NULL);
++		if (!dentry)
++			return -ENOENT;
+ 		if (IS_ERR(dentry))
+ 			return PTR_ERR(dentry);
+ 		clnt->cl_dentry = dentry;
+-- 
+1.7.9.6 (Apple Git-31.1)
 
-> In any event:
-> 
-> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-
-Thanks,
-Wolfram.
