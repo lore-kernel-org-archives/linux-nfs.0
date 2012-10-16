@@ -1,121 +1,204 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f46.google.com ([209.85.216.46]:59446 "EHLO
-	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965249Ab2J3Sr2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Oct 2012 14:47:28 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH v8 06/16] tracepoint: use new hashtable implementation
-Date: Tue, 30 Oct 2012 14:46:02 -0400
-Message-Id: <1351622772-16400-6-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
-References: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:36019 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755013Ab2JPWBn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Oct 2012 18:01:43 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 06/12] locks: implement delegations
+Date: Tue, 16 Oct 2012 18:01:31 -0400
+Message-Id: <1350424897-26894-7-git-send-email-bfields@redhat.com>
+In-Reply-To: <1350424897-26894-1-git-send-email-bfields@redhat.com>
+References: <1350424897-26894-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch tracepoints to use the new hashtable implementation. This reduces the
-amount of generic unrelated code in the tracepoints.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+Implement NFSv4 delegations at the vfs level using the new FL_DELEG lock
+type.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- kernel/tracepoint.c | 25 +++++++++----------------
- 1 file changed, 9 insertions(+), 16 deletions(-)
+ fs/locks.c         |   49 +++++++++++++++++++++++++++++++++++++++----------
+ include/linux/fs.h |   18 +++++++++++++++---
+ 2 files changed, 54 insertions(+), 13 deletions(-)
 
-diff --git a/kernel/tracepoint.c b/kernel/tracepoint.c
-index d96ba22..5b599f1 100644
---- a/kernel/tracepoint.c
-+++ b/kernel/tracepoint.c
-@@ -26,6 +26,7 @@
- #include <linux/slab.h>
- #include <linux/sched.h>
- #include <linux/static_key.h>
-+#include <linux/hashtable.h>
- 
- extern struct tracepoint * const __start___tracepoints_ptrs[];
- extern struct tracepoint * const __stop___tracepoints_ptrs[];
-@@ -49,8 +50,7 @@ static LIST_HEAD(tracepoint_module_list);
-  * Protected by tracepoints_mutex.
-  */
- #define TRACEPOINT_HASH_BITS 6
--#define TRACEPOINT_TABLE_SIZE (1 << TRACEPOINT_HASH_BITS)
--static struct hlist_head tracepoint_table[TRACEPOINT_TABLE_SIZE];
-+static DEFINE_HASHTABLE(tracepoint_table, TRACEPOINT_HASH_BITS);
- 
- /*
-  * Note about RCU :
-@@ -191,16 +191,15 @@ tracepoint_entry_remove_probe(struct tracepoint_entry *entry,
-  */
- static struct tracepoint_entry *get_tracepoint(const char *name)
- {
--	struct hlist_head *head;
- 	struct hlist_node *node;
- 	struct tracepoint_entry *e;
- 	u32 hash = jhash(name, strlen(name), 0);
- 
--	head = &tracepoint_table[hash & (TRACEPOINT_TABLE_SIZE - 1)];
--	hlist_for_each_entry(e, node, head, hlist) {
-+	hash_for_each_possible(tracepoint_table, e, node, hlist, hash) {
- 		if (!strcmp(name, e->name))
- 			return e;
+diff --git a/fs/locks.c b/fs/locks.c
+index 7fac262..17532ac 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1176,28 +1176,40 @@ static void time_out_leases(struct inode *inode)
  	}
+ }
+ 
++static bool leases_conflict(struct file_lock *lease, struct file_lock *breaker)
++{
++	if ((breaker->fl_flags & FL_DELEG) && (lease->fl_flags & FL_LEASE))
++		return false;
++	return locks_conflict(breaker, lease);
++}
 +
- 	return NULL;
- }
- 
-@@ -210,19 +209,13 @@ static struct tracepoint_entry *get_tracepoint(const char *name)
+ /**
+  *	__break_lease	-	revoke all outstanding leases on file
+  *	@inode: the inode of the file to return
+- *	@mode: the open mode (read or write)
++ *	@mode: O_RDONLY: break only write leases; O_WRONLY or O_RDWR:
++ *	    break all leases
++ *	@type: FL_LEASE: break leases and delegations; FL_DELEG: break
++ *	    only delegations
+  *
+  *	break_lease (inlined for speed) has checked there already is at least
+  *	some kind of lock (maybe a lease) on this file.  Leases are broken on
+  *	a call to open() or truncate().  This function can sleep unless you
+  *	specified %O_NONBLOCK to your open().
   */
- static struct tracepoint_entry *add_tracepoint(const char *name)
+-int __break_lease(struct inode *inode, unsigned int mode)
++int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
  {
--	struct hlist_head *head;
--	struct hlist_node *node;
- 	struct tracepoint_entry *e;
- 	size_t name_len = strlen(name) + 1;
- 	u32 hash = jhash(name, name_len-1, 0);
+ 	int error = 0;
+ 	struct file_lock *new_fl, *flock;
+ 	struct file_lock *fl;
+ 	unsigned long break_time;
+ 	int i_have_this_lease = 0;
++	bool lease_conflict = false;
+ 	int want_write = (mode & O_ACCMODE) != O_RDONLY;
  
--	head = &tracepoint_table[hash & (TRACEPOINT_TABLE_SIZE - 1)];
--	hlist_for_each_entry(e, node, head, hlist) {
--		if (!strcmp(name, e->name)) {
--			printk(KERN_NOTICE
--				"tracepoint %s busy\n", name);
--			return ERR_PTR(-EEXIST);	/* Already there */
--		}
-+	if (get_tracepoint(name)) {
-+		printk(KERN_NOTICE "tracepoint %s busy\n", name);
-+		return ERR_PTR(-EEXIST);	/* Already there */
+ 	new_fl = lease_alloc(NULL, want_write ? F_WRLCK : F_RDLCK);
+ 	if (IS_ERR(new_fl))
+ 		return PTR_ERR(new_fl);
++	new_fl->fl_flags = type;
+ 
+ 	lock_flocks();
+ 
+@@ -1207,13 +1219,16 @@ int __break_lease(struct inode *inode, unsigned int mode)
+ 	if ((flock == NULL) || !IS_LEASE(flock))
+ 		goto out;
+ 
+-	if (!locks_conflict(flock, new_fl))
++	for (fl = flock; fl && IS_LEASE(fl); fl = fl->fl_next) {
++		if (leases_conflict(fl, new_fl)) {
++			lease_conflict = true;
++			if (fl->fl_owner == current->files)
++				i_have_this_lease = 1;
++		}
++	}
++	if (!lease_conflict)
+ 		goto out;
+ 
+-	for (fl = flock; fl && IS_LEASE(fl); fl = fl->fl_next)
+-		if (fl->fl_owner == current->files)
+-			i_have_this_lease = 1;
+-
+ 	break_time = 0;
+ 	if (lease_break_time > 0) {
+ 		break_time = jiffies + lease_break_time * HZ;
+@@ -1222,6 +1237,8 @@ int __break_lease(struct inode *inode, unsigned int mode)
  	}
- 	/*
- 	 * Using kmalloc here to allocate a variable length element. Could
-@@ -234,7 +227,7 @@ static struct tracepoint_entry *add_tracepoint(const char *name)
- 	memcpy(&e->name[0], name, name_len);
- 	e->funcs = NULL;
- 	e->refcount = 0;
--	hlist_add_head(&e->hlist, head);
-+	hash_add(tracepoint_table, &e->hlist, hash);
- 	return e;
+ 
+ 	for (fl = flock; fl && IS_LEASE(fl); fl = fl->fl_next) {
++		if (!leases_conflict(fl, new_fl))
++			continue;
+ 		if (want_write) {
+ 			if (fl->fl_flags & FL_UNLOCK_PENDING)
+ 				continue;
+@@ -1263,7 +1280,7 @@ restart:
+ 		 */
+ 		for (flock = inode->i_flock; flock && IS_LEASE(flock);
+ 				flock = flock->fl_next) {
+-			if (locks_conflict(new_fl, flock))
++			if (leases_conflict(new_fl, flock))
+ 				goto restart;
+ 		}
+ 		error = 0;
+@@ -1343,9 +1360,20 @@ int generic_add_lease(struct file *filp, long arg, struct file_lock **flp)
+ 	struct file_lock *fl, **before, **my_before = NULL, *lease;
+ 	struct dentry *dentry = filp->f_path.dentry;
+ 	struct inode *inode = dentry->d_inode;
++	bool is_deleg = (*flp)->fl_flags & FL_DELEG;
+ 	int error;
+ 
+ 	lease = *flp;
++	/*
++	 * In the delegation case we need mutual exclusion with
++	 * a number of operations that take the i_mutex.  We trylock
++	 * because delegations are an optional optimization, and if
++	 * there's some chance of a conflict--we'd rather not
++	 * bother, maybe that's a sign this just isn't a good file to
++	 * hand out a delegation on.
++	 */
++	if (is_deleg && !mutex_trylock(&inode->i_mutex))
++		return -EAGAIN;
+ 
+ 	error = -EAGAIN;
+ 	if ((arg == F_RDLCK) && (atomic_read(&inode->i_writecount) > 0))
+@@ -1397,9 +1425,10 @@ int generic_add_lease(struct file *filp, long arg, struct file_lock **flp)
+ 		goto out;
+ 
+ 	locks_insert_lock(before, lease);
+-	return 0;
+-
++	error = 0;
+ out:
++	if (is_deleg)
++		mutex_unlock(&inode->i_mutex);
+ 	return error;
  }
  
-@@ -244,7 +237,7 @@ static struct tracepoint_entry *add_tracepoint(const char *name)
-  */
- static inline void remove_tracepoint(struct tracepoint_entry *e)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index eae4f10..a05ac23 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -938,7 +938,7 @@ extern int vfs_test_lock(struct file *, struct file_lock *);
+ extern int vfs_lock_file(struct file *, unsigned int, struct file_lock *, struct file_lock *);
+ extern int vfs_cancel_lock(struct file *filp, struct file_lock *fl);
+ extern int flock_lock_file_wait(struct file *filp, struct file_lock *fl);
+-extern int __break_lease(struct inode *inode, unsigned int flags);
++extern int __break_lease(struct inode *inode, unsigned int flags, unsigned int type);
+ extern void lease_get_mtime(struct inode *, struct timespec *time);
+ extern int generic_setlease(struct file *, long, struct file_lock **);
+ extern int vfs_setlease(struct file *, long, struct file_lock **);
+@@ -1051,7 +1051,7 @@ static inline int flock_lock_file_wait(struct file *filp,
+ 	return -ENOLCK;
+ }
+ 
+-static inline int __break_lease(struct inode *inode, unsigned int mode)
++static inline int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
  {
--	hlist_del(&e->hlist);
-+	hash_del(&e->hlist);
- 	kfree(e);
+ 	return 0;
+ }
+@@ -1827,9 +1827,17 @@ static inline int locks_verify_truncate(struct inode *inode,
+ static inline int break_lease(struct inode *inode, unsigned int mode)
+ {
+ 	if (inode->i_flock)
+-		return __break_lease(inode, mode);
++		return __break_lease(inode, mode, FL_LEASE);
+ 	return 0;
+ }
++
++static inline int break_deleg(struct inode *inode, unsigned int mode)
++{
++	if (inode->i_flock)
++		return __break_lease(inode, mode, FL_DELEG);
++	return 0;
++}
++
+ #else /* !CONFIG_FILE_LOCKING */
+ static inline int locks_mandatory_locked(struct inode *inode)
+ {
+@@ -1869,6 +1877,10 @@ static inline int break_lease(struct inode *inode, unsigned int mode)
+ 	return 0;
  }
  
++static inline int break_deleg(struct inode *inode, unsigned int mode)
++{
++	return 0;
++}
+ #endif /* CONFIG_FILE_LOCKING */
+ 
+ /* fs/open.c */
 -- 
-1.7.12.4
+1.7.9.5
 
