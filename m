@@ -1,58 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga11.intel.com ([192.55.52.93]:57000 "EHLO mga11.intel.com"
+Received: from mx2.netapp.com ([216.240.18.37]:15938 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752218Ab2JBCQ7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Oct 2012 22:16:59 -0400
-Date: Tue, 2 Oct 2012 10:16:54 +0800
-From: Fengguang Wu <fengguang.wu@intel.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: kernel-janitors@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: [nfs:testing 56/83] fs/nfs/netns.h:27:15: error:
- 'NFS4_MAX_MINOR_VERSION' undeclared here (not in a function)
-Message-ID: <20121002021654.GA6691@localhost>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+	id S1755047Ab2JPQbG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Oct 2012 12:31:06 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 10/25] SUNRPC: remove BUG_ON() from xprt_destroy_backchannel
+Date: Tue, 16 Oct 2012 12:30:28 -0400
+Message-Id: <1350405043-39316-10-git-send-email-dros@netapp.com>
+In-Reply-To: <1350405043-39316-1-git-send-email-dros@netapp.com>
+References: <1350405043-39316-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Stanislav,
+If max_reqs is 0, do nothing besides the usual dprintks.
 
-FYI, kernel build failed on
-
-tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git testing
-head:   2afdfa5a846246de50e1881f71ba5c0aac0b415f
-commit: b3d19c51723be69fddb64723bebb5a30fb57a483 [56/83] NFS: callback per-net usage counting introduced
-config: x86_64-allyesconfig
-
-All error/warnings:
-
-In file included from fs/nfs/dns_resolve.c:51:0:
-fs/nfs/netns.h:27:15: error: 'NFS4_MAX_MINOR_VERSION' undeclared here (not in a function)
-
-vim +27 fs/nfs/netns.h
-
-cb9c1c4a (Stanislav Kinsbursky 2012-03-11  15) 
-1b340d01 (Stanislav Kinsbursky 2011-11-25  16) struct nfs_net {
-1b340d01 (Stanislav Kinsbursky 2011-11-25  17) 	struct cache_detail *nfs_dns_resolve;
-9e2e74db (Stanislav Kinsbursky 2012-01-10  18) 	struct rpc_pipe *bl_device_pipe;
-cb9c1c4a (Stanislav Kinsbursky 2012-03-11  19) 	struct bl_dev_msg bl_mount_reply;
-5ffaf855 (Stanislav Kinsbursky 2012-03-11  20) 	wait_queue_head_t bl_wq;
-6b13168b (Stanislav Kinsbursky 2012-01-23  21) 	struct list_head nfs_client_list;
-c25d32b2 (Stanislav Kinsbursky 2012-01-23  22) 	struct list_head nfs_volume_list;
-89d77c8f (Bryan Schumaker      2012-07-30  23) #if IS_ENABLED(CONFIG_NFS_V4)
-28cd1b3f (Stanislav Kinsbursky 2012-01-23  24) 	struct idr cb_ident_idr; /* Protected by nfs_client_lock */
-bbe0a3aa (Stanislav Kinsbursky 2012-08-20  25) 	unsigned short nfs_callback_tcpport;
-29dcc16a (Stanislav Kinsbursky 2012-08-20  26) 	unsigned short nfs_callback_tcpport6;
-b3d19c51 (Stanislav Kinsbursky 2012-08-20 @27) 	int cb_users[NFS4_MAX_MINOR_VERSION + 1];
-28cd1b3f (Stanislav Kinsbursky 2012-01-23  28) #endif
-dc030858 (Stanislav Kinsbursky 2012-01-23  29) 	spinlock_t nfs_client_lock;
-f092075d (Chuck Lever          2012-05-21  30) 	struct timespec boot_time;
-1b340d01 (Stanislav Kinsbursky 2011-11-25  31) };
-1b340d01 (Stanislav Kinsbursky 2011-11-25  32) 
-1b340d01 (Stanislav Kinsbursky 2011-11-25  33) extern int nfs_net_id;
-
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
 ---
-0-DAY kernel build testing backend         Open Source Technology Centre
-Fengguang Wu, Yuanhan Liu                              Intel Corporation
+ net/sunrpc/backchannel_rqst.c |    5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
+index 7567bcd..f0fb0dd 100644
+--- a/net/sunrpc/backchannel_rqst.c
++++ b/net/sunrpc/backchannel_rqst.c
+@@ -191,7 +191,9 @@ void xprt_destroy_backchannel(struct rpc_xprt *xprt, unsigned int max_reqs)
+ 
+ 	dprintk("RPC:        destroy backchannel transport\n");
+ 
+-	BUG_ON(max_reqs == 0);
++	if (max_reqs == 0)
++		goto out;
++
+ 	spin_lock_bh(&xprt->bc_pa_lock);
+ 	xprt_dec_alloc_count(xprt, max_reqs);
+ 	list_for_each_entry_safe(req, tmp, &xprt->bc_pa_list, rq_bc_pa_list) {
+@@ -202,6 +204,7 @@ void xprt_destroy_backchannel(struct rpc_xprt *xprt, unsigned int max_reqs)
+ 	}
+ 	spin_unlock_bh(&xprt->bc_pa_lock);
+ 
++out:
+ 	dprintk("RPC:        backchannel list empty= %s\n",
+ 		list_empty(&xprt->bc_pa_list) ? "true" : "false");
+ }
+-- 
+1.7.9.6 (Apple Git-31.1)
+
