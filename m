@@ -1,82 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.gnuher.de ([78.47.12.54]:49089 "EHLO mail.gnuher.de"
+Received: from mx2.netapp.com ([216.240.18.37]:45807 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965301Ab2JZQhu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Oct 2012 12:37:50 -0400
-Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
-	by mail.gnuher.de (envelope-from
-	<news@geggus.net>)
-	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.72)
-	id 1TRmIu-0001kG-N8
-	for linux-nfs@vger.kernel.org; Fri, 26 Oct 2012 17:58:36 +0200
-Received: from news  by ultimate100.geggus.net (envelope-from
-	<news@geggus.net>)
-	with local (Exim 4.72)
-	id 1TRmIs-0000X0-8I
-	for linux-nfs@vger.kernel.org; Fri, 26 Oct 2012 17:58:34 +0200
-To: linux-nfs@vger.kernel.org
-From: Sven Geggus <lists@fuchsschwanzdomain.de>
-Subject: Kernel update 3.5.7 -> 3.6.3 breaks NFS4
-Date: Fri, 26 Oct 2012 15:58:34 +0000 (UTC)
-Message-ID: <k6ebva$1kf$1@ultimate100.geggus.net>
+	id S1755489Ab2JPDqh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Oct 2012 23:46:37 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: George Spelvin <linux@horizon.com>
+CC: "lm@bitmover.com" <lm@bitmover.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
+Date: Tue, 16 Oct 2012 03:46:34 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA909253B3B@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20121016014824.4952.qmail@science.horizon.com>
+In-Reply-To: <20121016014824.4952.qmail@science.horizon.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
-
-after updating the kernel of my NFS4-Server (because of 3.5.x EOL) I ended
-up with NFS4 stopped working.
-
-Kernel config is more or less the same as with 3.5.7, as I used "make
-oldconfig". The only new stuff in the NFS area seems to be swap over NFS
-which is disabled.
-
-So starting from a working setup with 3.5.7 on the server (client uses
-kernel 3.6.3) NFS4 stops working after upgrading the server to 3.6.3.
-
-What happens is that mounting seems to hang infinitely when trying to mount
-the server using the following command:
-mount -v -t nfs4 -o sec=krb5 <server>:/<dir> /mnt/
-
-However everything works fine again when the server has been rebooted into kernel
-3.5.7.
-
-Here is the relevant part of .config:
-CONFIG_NETWORK_FILESYSTEMS=y
-CONFIG_NFS_FS=m
-CONFIG_NFS_V2=m
-CONFIG_NFS_V3=m
-CONFIG_NFS_V3_ACL=y
-CONFIG_NFS_V4=m
-# CONFIG_NFS_SWAP is not set
-# CONFIG_NFS_V4_1 is not set
-# CONFIG_NFS_USE_LEGACY_DNS is not set
-CONFIG_NFS_USE_KERNEL_DNS=y
-CONFIG_NFS_DEBUG=y
-CONFIG_NFSD=y
-CONFIG_NFSD_V2_ACL=y
-CONFIG_NFSD_V3=y
-CONFIG_NFSD_V3_ACL=y
-CONFIG_NFSD_V4=y
-# CONFIG_NFSD_FAULT_INJECTION is not set
-CONFIG_LOCKD=y
-CONFIG_LOCKD_V4=y
-CONFIG_NFS_ACL_SUPPORT=y
-CONFIG_NFS_COMMON=y
-CONFIG_SUNRPC=y
-CONFIG_SUNRPC_GSS=y
-CONFIG_RPCSEC_GSS_KRB5=y
-CONFIG_SUNRPC_DEBUG=y
-
-
-Sven
-
-P.S.: The system is using nfs-utils 1.2.6 on debian wheezy if this should be
-relevant.
-
--- 
-"Those who do not understand Unix are condemned to reinvent it, poorly"
-(Henry Spencer)
-
-/me is giggls@ircnet, http://sven.gegg.us/ on the Web
+T24gTW9uLCAyMDEyLTEwLTE1IGF0IDIxOjQ4IC0wNDAwLCBHZW9yZ2UgU3BlbHZpbiB3cm90ZToN
+Cj4gVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20gd3JvdGU6DQo+ID4gU1NCa2J5QnRhVzVrT3lC
+cGRDQnBjeUJqYkdWaGNteDVJSE4wWVhKMGFXNW5JSFJ2SUdKcGRISnZkQ0JrZFdVZw0KPiA+IGRH
+OGdZVzRnWVdKelpXNWpaU0J2WmlCMWMyVnljeTROQ2sxaGFXNTBaVzVoYm1ObElHOW1JSFZ1ZFhO
+bFpDQmpiMlJsSUdseklHRmoNCj4gPiBkSFZoYkd4NUlGOXRiM0psWHlCdlppQmhJSEJoYVc0c0lH
+NXZkQ0JzWlhOekxnMEtEUXBUYnlCMWJtWnpaQ0JwY3lCdmJtVWdjMjlzDQo+ID4gZFhScGIyNHVJ
+RXRsWlhCcGJtY2dZU0JXVFNCM2FYUm9JR0Z1SUc5c1pHVnlJSFpsY25OcGIyNGdiMllnZEdobERR
+cE1hVzUxZUNCcg0KPiA+IFpYSnVaV3dnZEdoaGRDQnpkR2xzYkNCemRYQndiM0owY3lCT1JsTjJN
+aUJwY3lCaGJtOTBhR1Z5TGlCV2IyeDFiblJsWlhKcGJtY2cNCj4gPiBkRzhOQ20xaGFXNTBZV2x1
+SUhSb1pTQmpiMlJsSUdseklHRWdkR2hwY21RdURRb04NCj4gDQo+IFdoaWNoIGNhbiBiZSBiYXNl
+NjQgZGVjb2RlZCAod2h5IHdhcyBpdCBldmVyIEVOY29kZWQ/KSB0bw0KPiANCj4gPiBJIGRvIG1p
+bmQ7IGl0IGlzIGNsZWFybHkgc3RhcnRpbmcgdG8gYml0cm90IGR1ZSB0byBhbiBhYnNlbmNlIG9m
+IHVzZXJzLg0KPiA+IE1haW50ZW5hbmNlIG9mIHVudXNlZCBjb2RlIGlzIGFjdHVhbGx5IF9tb3Jl
+XyBvZiBhIHBhaW4sIG5vdCBsZXNzLg0KPiA+DQo+ID4gU28gdW5mc2QgaXMgb25lIHNvbHV0aW9u
+LiBLZWVwaW5nIGEgVk0gd2l0aCBhbiBvbGRlciB2ZXJzaW9uIG9mIHRoZQ0KPiA+IExpbnV4IGtl
+cm5lbCB0aGF0IHN0aWxsIHN1cHBvcnRzIE5GU3YyIGlzIGFub3RoZXIuIFZvbHVudGVlcmluZyB0
+bw0KPiA+IG1haW50YWluIHRoZSBjb2RlIGlzIGEgdGhpcmQuDQo+IA0KPiBJZiBJIG1pZ2h0IGFz
+aywgdGhvdWdoLCBpcyB0aGUgcGFpbiBjb25jZW50cmF0ZWQgbW9yZSBvbiB0aGUgY2xpZW50IG9y
+DQo+IHRoZSBzZXJ2ZXIgc2lkZT8NCj4gDQo+IE5GU3YyIHNlcnZlciBzdXBwb3J0IHNlZW1zIGEg
+ZmFpcmx5IHNpbXBsZSBtYXR0ZXIgb2Ygc29tZSBvbGQNCj4gY29tcGF0aWJpbGl0eSBSUEMgY2Fs
+bHMuICBUaGUgbWFpbiBwYWluIGlzIHRoZSBsaW1pdGVkIHNpemUgb2YgdGhlIGZpbGUNCj4gaGFu
+ZGxlIGFuZCAoZXNwZWNpYWxseSkgcmVhZGRpciBjb29raWVzLg0KDQpXZWxsLCBJJ20gcmVhbGx5
+IGdsYWQgdG8gaGVhciB0aGF0IGFmdGVyIHNldmVyYWwgcGVvcGxlIHNwZW50IDMtNCBob3Vycw0K
+ZGVidWdnaW5nIGFuIE5GU3YyLW9ubHkgc2VydmVyIHNpZGUgcHJvYmxlbSBsYXN0IEZyaWRheS4g
+UGxlYXNlIGxldCBtZQ0Ka25vdyB0aGUgbmV4dCB0aW1lIEkgY2FuIGhlbHAgZGVhbCB3aXRoIGFu
+b3RoZXIgZmFpcmx5IHNpbXBsZSBtYXR0ZXIgb2YNCm9sZCBjb21wYXRpYmlsaXR5IGNhbGxzLi4u
+DQoNCk9LLCBJJ2xsIGJpdGUuIFdoYXQgaXMgdGhpcyBidXNpbmVzcy1jcml0aWNhbCBhcHBsaWNh
+dGlvbiB0aGF0IHlvdSBhcmUNCnJ1bm5pbmcgYW5kIHRoYXQgd2lsbCBvbmx5IHJ1biBvbiBhIG1h
+Y2hpbmUgdGhhdCBpcyBpbmNhcGFibGUgb2YgcnVubmluZw0KYSBtZXJlIDIwLXllYXIgb2xkIHBy
+b3RvY29sIGFuZCB0aGF0IG11c3QgaGF2ZSBhIDMwIHllYXIgb2xkIHByb3RvY29sPw0KVGhlIGZh
+Y3QgdGhhdCB5b3UgYXJlIGFsbCBpbiBhIGh1ZmYgYWJvdXQgYmFzZTY0IGVuY29kZWQgZW1haWxz
+DQppbmRpY2F0ZXMgdGhhdCB0aGlzIGlzIG5vdCBzb21ldGhpbmcgeW91IGFyZSBydW5uaW5nIG9u
+IGFueXRoaW5nIGFzDQpzb3BoaXN0aWNhdGVkIGFzIGEgY2VsbCBwaG9uZS4NCg0KPiBDbGllbnQg
+c3VwcG9ydCBpcyBwcm9iYWJseSBtb3JlIGNvbXBsaWNhdGVkLCBhcyBORlMncyAic3RhdGVsZXNz
+IHNlcnZlciINCj4gbW9kZWwgcHV0cyB0aGUgYnVsayBvZiB0aGUgY29tcGxleGl0eSBvbiB0aGUg
+Y2xpZW50LCBhbmQgeW91IG5lZWQgYQ0KPiB0aGlja2VyIGxheWVyIG9mIGxvZ2ljIHRvIHRyYW5z
+bGF0ZSB0aGUgb3BlcmF0aW9ucyBpbnRvIGEgZGlmZmVyZW50DQo+IHZvY2FidWxhcnkgcGYgUlBD
+IGNhbGxzLg0KPiANCj4gSSBkb24ndCB0aGluayBORlN2MiBjbGllbnQgc3VwcG9ydCB3b3VsZCBi
+ZSBtb3VybmVkIG11Y2g7IHRyeWluZyB0byB0bw0KPiB1c2Ugc3VjaCBhbiBhbmNpZW50IGxpbWl0
+ZWQgbWFjaGluZSBhcyBhIGZpbGUgc2VydmVyIHNlZW1zIHN0dXBpZC4NCj4gDQo+IEl0J3MgTkZT
+djIgc2VydmVyIHN1cHBvcnQgdGhhdCBJLCBhbmQgSSBiZWxpZXZlIExhcnJ5LCBhcmUgaW50ZXJl
+c3RlZA0KPiBpbiBwcmVzZXJ2aW5nLCBpbiBvcmRlciB0byBwcm92aWRlIHNlcnZpY2VzIHRvIGFu
+Y2llbnQgY2xpZW50cy4NCj4gDQo+IFRoZSBvbmx5IHJlYWwgdXNlIG9mIHYyIGNsaWVudCBjb2Rl
+IGlzIHRlIHRlc3QgdGhlIHNlcnZlci4NCg0KR29vZC4gVGhlbiBpdCB3b24ndCBiZSBtaXNzZWQu
+DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0K
+TmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
