@@ -1,46 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53687 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:15992 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751221Ab2JAR12 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Oct 2012 13:27:28 -0400
-Received: from bfields by fieldses.org with local (Exim 4.76)
-	(envelope-from <bfields@fieldses.org>)
-	id 1TIjmB-0007fJ-TB
-	for linux-nfs@vger.kernel.org; Mon, 01 Oct 2012 13:27:27 -0400
-Date: Mon, 1 Oct 2012 13:27:27 -0400
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] fix bind_conn_to_session xdr comment
-Message-ID: <20121001172727.GA28616@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1754716Ab2JPQbi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Oct 2012 12:31:38 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 20/25] SUNRPC: remove BUG_ON() from encode_rpcb_string()
+Date: Tue, 16 Oct 2012 12:30:38 -0400
+Message-Id: <1350405043-39316-20-git-send-email-dros@netapp.com>
+In-Reply-To: <1350405043-39316-1-git-send-email-dros@netapp.com>
+References: <1350405043-39316-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a trivial patch, queued up for 3.7.  (And I think returning 0
-here is all we need to do to cleanly not support rdma, which closes one
-of the minor 4.1 todo items.)
+Replace BUG_ON() with WARN_ON_ONCE() and truncate the encoded string if
+len > max.
 
---b.
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ net/sunrpc/rpcb_clnt.c |    5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-commit 6e67b5d1840b5788875ad561f2e76a1bf5facc86
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Thu Sep 13 09:49:43 2012 -0400
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index a70acae..411f332 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -884,7 +884,10 @@ static void encode_rpcb_string(struct xdr_stream *xdr, const char *string,
+ 	u32 len;
+ 
+ 	len = strlen(string);
+-	BUG_ON(len > maxstrlen);
++	WARN_ON_ONCE(len > maxstrlen);
++	if (len > maxstrlen)
++		/* truncate and hope for the best */
++		len = maxstrlen;
+ 	p = xdr_reserve_space(xdr, 4 + len);
+ 	xdr_encode_opaque(p, string, len);
+ }
+-- 
+1.7.9.6 (Apple Git-31.1)
 
-    nfsd4: fix bind_conn_to_session xdr comment
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 6322df3..fd548d1 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2659,7 +2659,7 @@ static __be32 nfsd4_encode_bind_conn_to_session(struct nfsd4_compoundres *resp,
- 		RESERVE_SPACE(NFS4_MAX_SESSIONID_LEN + 8);
- 		WRITEMEM(bcts->sessionid.data, NFS4_MAX_SESSIONID_LEN);
- 		WRITE32(bcts->dir);
--		/* XXX: ? */
-+		/* Sorry, we do not yet support RDMA over 4.1: */
- 		WRITE32(0);
- 		ADJUST_ARGS();
- 	}
