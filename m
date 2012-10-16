@@ -1,202 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47963 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:15992 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964877Ab2JXVbc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Oct 2012 17:31:32 -0400
-Date: Wed, 24 Oct 2012 17:31:31 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 3/4] nfsd: pass info about the legacy recoverydir in
- environment variables
-Message-ID: <20121024213131.GH6697@fieldses.org>
-References: <1351089018-24551-1-git-send-email-jlayton@redhat.com>
- <1351089018-24551-4-git-send-email-jlayton@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1351089018-24551-4-git-send-email-jlayton@redhat.com>
+	id S1754716Ab2JPQbk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Oct 2012 12:31:40 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 22/25] SUNRPC: remove BUG_ON() from __rpc_sleep_on_priority()
+Date: Tue, 16 Oct 2012 12:30:40 -0400
+Message-Id: <1350405043-39316-22-git-send-email-dros@netapp.com>
+In-Reply-To: <1350405043-39316-1-git-send-email-dros@netapp.com>
+References: <1350405043-39316-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 24, 2012 at 10:30:17AM -0400, Jeff Layton wrote:
-> The usermodehelper upcall program can then decide to use this info as
-> a (one-way) transition mechanism to the new scheme. When a "check"
-> upcall occurs and the client doesn't exist in the database, we can
-> look to see whether the directory exists. If it does, then we'd add
-> the client to the database, remove the legacy recdir, and return
-> success to the kernel to allow the recovery to proceed.
-> 
-> For gracedone, we simply pass the v4recovery "topdir" so that the
-> upcall can clean it out prior to returning to the kernel.
+Replace BUG_ON() with WARN_ON_ONCE().
 
-I don't understand why the kernel needs to be involved here--can't
-userspace find the old directory on its own?
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ net/sunrpc/sched.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
---b.
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index ec9513d..5dcc1ff 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -334,7 +334,7 @@ static void __rpc_sleep_on_priority(struct rpc_wait_queue *q,
+ 
+ 	__rpc_add_wait_queue(q, task, queue_priority);
+ 
+-	BUG_ON(task->tk_callback != NULL);
++	WARN_ON_ONCE(task->tk_callback != NULL);
+ 	task->tk_callback = action;
+ 	__rpc_add_timer(q, task);
+ }
+-- 
+1.7.9.6 (Apple Git-31.1)
 
-> 
-> A module parm is also added to disable the legacy conversion if
-> the admin chooses.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/nfsd/nfs4recover.c | 90 ++++++++++++++++++++++++++++++++++++++++++++++-----
->  1 file changed, 82 insertions(+), 8 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-> index aa165fd..782168d 100644
-> --- a/fs/nfsd/nfs4recover.c
-> +++ b/fs/nfsd/nfs4recover.c
-> @@ -932,10 +932,75 @@ module_param_string(cltrack_prog, cltrack_prog, sizeof(cltrack_prog),
->  			S_IRUGO|S_IWUSR);
->  MODULE_PARM_DESC(cltrack_prog, "Path to the nfsdcltrack upcall program");
->  
-> +static bool cltrack_legacy_disable;
-> +module_param(cltrack_legacy_disable, bool, S_IRUGO|S_IWUSR);
-> +MODULE_PARM_DESC(cltrack_legacy_disable,
-> +		"Disable legacy recoverydir conversion. Default: false");
-> +
-> +#define LEGACY_TOPDIR_ENV_PREFIX "NFSDCLTRACK_LEGACY_TOPDIR="
-> +#define LEGACY_RECDIR_ENV_PREFIX "NFSDCLTRACK_LEGACY_RECDIR="
-> +
-> +static char *
-> +nfsd4_cltrack_legacy_topdir(void)
-> +{
-> +	int copied;
-> +	size_t len;
-> +	char *result;
-> +
-> +	if (cltrack_legacy_disable)
-> +		return NULL;
-> +
-> +	len = strlen(LEGACY_TOPDIR_ENV_PREFIX) +
-> +		strlen(nfs4_recoverydir()) + 1;
-> +
-> +	result = kmalloc(len, GFP_KERNEL);
-> +	if (!result)
-> +		return result;
-> +
-> +	copied = snprintf(result, len, LEGACY_TOPDIR_ENV_PREFIX "%s",
-> +				nfs4_recoverydir());
-> +	if (copied >= len) {
-> +		/* just return nothing if output was truncated */
-> +		kfree(result);
-> +		return NULL;
-> +	}
-> +
-> +	return result;
-> +}
-> +
-> +static char *
-> +nfsd4_cltrack_legacy_recdir(const char *recdir)
-> +{
-> +	int copied;
-> +	size_t len;
-> +	char *result;
-> +
-> +	if (cltrack_legacy_disable)
-> +		return NULL;
-> +
-> +	/* +1 is for '/' between "topdir" and "recdir" */
-> +	len = strlen(LEGACY_RECDIR_ENV_PREFIX) +
-> +		strlen(nfs4_recoverydir()) + 1 + HEXDIR_LEN;
-> +
-> +	result = kmalloc(len, GFP_KERNEL);
-> +	if (!result)
-> +		return result;
-> +
-> +	copied = snprintf(result, len, LEGACY_RECDIR_ENV_PREFIX "%s/%s",
-> +				nfs4_recoverydir(), recdir);
-> +	if (copied >= len) {
-> +		/* just return nothing if output was truncated */
-> +		kfree(result);
-> +		return NULL;
-> +	}
-> +
-> +	return result;
-> +}
-> +
->  static int
-> -nfsd4_umh_cltrack_upcall(char *cmd, char *arg)
-> +nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *legacy)
->  {
-> -	char *envp[] = { NULL };
-> +	char *envp[2];
->  	char *argv[4];
->  	int ret;
->  
-> @@ -946,6 +1011,10 @@ nfsd4_umh_cltrack_upcall(char *cmd, char *arg)
->  
->  	dprintk("%s: cmd: %s\n", __func__, cmd);
->  	dprintk("%s: arg: %s\n", __func__, arg ? arg : "(null)");
-> +	dprintk("%s: legacy: %s\n", __func__, legacy ? legacy : "(null)");
-> +
-> +	envp[0] = legacy;
-> +	envp[1] = NULL;
->  
->  	argv[0] = (char *)cltrack_prog;
->  	argv[1] = cmd;
-> @@ -991,7 +1060,7 @@ bin_to_hex_dup(const unsigned char *src, int srclen)
->  static int
->  nfsd4_umh_cltrack_init(struct net __attribute__((unused)) *net)
->  {
-> -	return nfsd4_umh_cltrack_upcall("init", NULL);
-> +	return nfsd4_umh_cltrack_upcall("init", NULL, NULL);
->  }
->  
->  static void
-> @@ -1004,7 +1073,7 @@ nfsd4_umh_cltrack_create(struct nfs4_client *clp)
->  		dprintk("%s: can't allocate memory for upcall!\n", __func__);
->  		return;
->  	}
-> -	nfsd4_umh_cltrack_upcall("create", hexid);
-> +	nfsd4_umh_cltrack_upcall("create", hexid, NULL);
->  	kfree(hexid);
->  }
->  
-> @@ -1018,7 +1087,7 @@ nfsd4_umh_cltrack_remove(struct nfs4_client *clp)
->  		dprintk("%s: can't allocate memory for upcall!\n", __func__);
->  		return;
->  	}
-> -	nfsd4_umh_cltrack_upcall("remove", hexid);
-> +	nfsd4_umh_cltrack_upcall("remove", hexid, NULL);
->  	kfree(hexid);
->  }
->  
-> @@ -1026,14 +1095,16 @@ static int
->  nfsd4_umh_cltrack_check(struct nfs4_client *clp)
->  {
->  	int ret;
-> -	char *hexid;
-> +	char *hexid, *legacy;
->  
->  	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
->  	if (!hexid) {
->  		dprintk("%s: can't allocate memory for upcall!\n", __func__);
->  		return -ENOMEM;
->  	}
-> -	ret = nfsd4_umh_cltrack_upcall("check", hexid);
-> +	legacy = nfsd4_cltrack_legacy_recdir(clp->cl_recdir);
-> +	ret = nfsd4_umh_cltrack_upcall("check", hexid, legacy);
-> +	kfree(legacy);
->  	kfree(hexid);
->  	return ret;
->  }
-> @@ -1042,10 +1113,13 @@ static void
->  nfsd4_umh_cltrack_grace_done(struct net __attribute__((unused)) *net,
->  				time_t boot_time)
->  {
-> +	char *legacy;
->  	char timestr[22]; /* FIXME: better way to determine max size? */
->  
->  	sprintf(timestr, "%ld", boot_time);
-> -	nfsd4_umh_cltrack_upcall("gracedone", timestr);
-> +	legacy = nfsd4_cltrack_legacy_topdir();
-> +	nfsd4_umh_cltrack_upcall("gracedone", timestr, legacy);
-> +	kfree(legacy);
->  }
->  
->  static struct nfsd4_client_tracking_ops nfsd4_umh_tracking_ops = {
-> -- 
-> 1.7.11.7
-> 
