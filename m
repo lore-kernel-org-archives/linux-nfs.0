@@ -1,55 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39653 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:15883 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756200Ab2JQOAZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 17 Oct 2012 10:00:25 -0400
-Date: Wed, 17 Oct 2012 10:00:20 -0400
-From: Bruce Fields <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Larry McVoy <lm@bitmover.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
-Message-ID: <20121017140020.GA25488@fieldses.org>
-References: <20121012211701.GA8301@bitmover.com>
- <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
- <20121013002100.GB23247@bitmover.com>
- <CA+55aFwKn+rp4qTk3dLgN8n=M-Aw1GYYpOfevDJaJhnK-U5VOg@mail.gmail.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9091FDED5@SACEXCMBX04-PRD.hq.netapp.com>
- <20121013023147.GJ23247@bitmover.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9091FE478@SACEXCMBX04-PRD.hq.netapp.com>
- <20121013025600.GL23247@bitmover.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9091FFA38@SACEXCMBX04-PRD.hq.netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9091FFA38@SACEXCMBX04-PRD.hq.netapp.com>
+	id S1754869Ab2JPQa6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Oct 2012 12:30:58 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 04/25] SUNRPC: remove BUG_ON() from call_transmit()
+Date: Tue, 16 Oct 2012 12:30:22 -0400
+Message-Id: <1350405043-39316-4-git-send-email-dros@netapp.com>
+In-Reply-To: <1350405043-39316-1-git-send-email-dros@netapp.com>
+References: <1350405043-39316-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Oct 13, 2012 at 04:42:05AM +0000, Myklebust, Trond wrote:
-> On Fri, 2012-10-12 at 19:56 -0700, Larry McVoy wrote:
-> > On Sat, Oct 13, 2012 at 02:52:51AM +0000, Myklebust, Trond wrote:
-> > > On Fri, 2012-10-12 at 19:31 -0700, Larry McVoy wrote:
-> > > > As I've said, debugging this is going to be hard, it means stopping my
-> > > > company.  We can do one more crash, you guys can tell me what to do,
-> > > > but that's about it.
-> > > 
-> > > Do you have a reproducer? 
-> > 
-> > Oh yeah, it happens every time.  Run skype on a mac w/ your home dir NFS
-> > mounted.  Skype tries to do some lock operation and the machine panics.
-> > 
-> > We've done it 4 times in a row to be sure we weren't smoking crack.  No
-> > crack.  Just panics.
-> 
-> OK. I think I can see what is happening. We need to filter the return
-> values from nlm_lookup_file() when dealing with NLMv1 and NLMv3.
-> 
-> Can you please try the attached patch?
+Replace BUG_ON() with WARN_ON_ONCE() and if the error condition is true
+attempt to gracefully recover by calling rpc_exit().
 
-Larry, did you get a chance to test this patch?
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ net/sunrpc/clnt.c |    6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-It seems obviously right anyway, so I'll go ahead and pass it along
-regardless, but it would be nice to have the confirmation.
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index fe8a133..76d1730 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1661,7 +1661,11 @@ call_transmit(struct rpc_task *task)
+ 	task->tk_action = call_transmit_status;
+ 	/* Encode here so that rpcsec_gss can use correct sequence number. */
+ 	if (rpc_task_need_encode(task)) {
+-		BUG_ON(task->tk_rqstp->rq_bytes_sent != 0);
++		WARN_ON(task->tk_rqstp->rq_bytes_sent != 0);
++		if (task->tk_rqstp->rq_bytes_sent != 0) {
++			rpc_exit(task, -EINVAL);
++			return;
++		}
+ 		rpc_xdr_encode(task);
+ 		/* Did the encode result in an error condition? */
+ 		if (task->tk_status != 0) {
+-- 
+1.7.9.6 (Apple Git-31.1)
 
---b.
