@@ -1,67 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:29748 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:15883 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757995Ab2JXUbR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Oct 2012 16:31:17 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-Subject: RE: 3.7-rc1 NFSv3/sec=krb5 mkdir failure
-Date: Wed, 24 Oct 2012 20:31:16 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA909290827@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20121016125832.GC30649@fieldses.org>
- <20121024200249.GC6697@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9092906F7@SACEXCMBX04-PRD.hq.netapp.com>
- <20121024201517.GD6697@fieldses.org>
-In-Reply-To: <20121024201517.GD6697@fieldses.org>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+	id S1754869Ab2JPQa4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Oct 2012 12:30:56 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 02/25] SUNRPC: remove BUG_ON from rpc_bind_new_program
+Date: Tue, 16 Oct 2012 12:30:20 -0400
+Message-Id: <1350405043-39316-2-git-send-email-dros@netapp.com>
+In-Reply-To: <1350405043-39316-1-git-send-email-dros@netapp.com>
+References: <1350405043-39316-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> Sent: Wednesday, October 24, 2012 4:15 PM
-> To: Myklebust, Trond
-> Cc: linux-nfs@vger.kernel.org; Schumaker, Bryan
-> Subject: Re: 3.7-rc1 NFSv3/sec=krb5 mkdir failure
-> 
-> On Wed, Oct 24, 2012 at 08:07:55PM +0000, Myklebust, Trond wrote:
-> > > -----Original Message-----
-> > > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> > > owner@vger.kernel.org] On Behalf Of J. Bruce Fields
-> > > Sent: Wednesday, October 24, 2012 4:03 PM
-> > > To: linux-nfs@vger.kernel.org; Myklebust, Trond; Schumaker, Bryan
-> > > Subject: Re: 3.7-rc1 NFSv3/sec=krb5 mkdir failure
-> > >
-> > > Anyone get a chance to look at this?  It seems very reproduceable.
-> > >
-> > > --b.
-> > >
-> > > On Tue, Oct 16, 2012 at 08:58:32AM -0400, bfields wrote:
-> > > > On 3.7-rc1:
-> > > >
-> > > > 	client# mount -tnfs -osec=krb5,vers=3 server:/exports/ext4 /mnt/
-> > > >
-> > > > 		server# ls -l /exports/ext4|grep TMP
-> > > > 		server#
-> > > >
-> > > > 	# mkdir /mnt/TMP
-> > > > 	mkdir: cannot create directory `/mnt/TMP': Permission denied
-> > > >
-> > > > 		server# ls -l /exports/ext4|grep TMP
-> > > > 		drwxr-xr-x  2 nfsnobody nfsnobody 4096 Oct 16 08:56 TMP
-> > > > 		server#
-> > > >
-> > > > Wireshark also shows that the create succeeds.
-> >
-> > Can you share the wireshark trace?
-> 
-> Sure.  This covers the mount and mkdir.  The mkdir call and reply are in
-> frames 77 and 78.
+Instead of calling BUG_ON when rpc_bind_new_program gets an invalid
+rpc program version, print a KERN_ERR message and return -EINVAL.
 
-Hmm.... Can you please check if the ACL is being set correctly on the server? I suspect that might be the source of the error.
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ net/sunrpc/clnt.c |    6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-Cheers
-  Trond
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index abb7f5e..eacdb15 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -700,7 +700,11 @@ struct rpc_clnt *rpc_bind_new_program(struct rpc_clnt *old,
+ 	const struct rpc_version *version;
+ 	int err;
+ 
+-	BUG_ON(vers >= program->nrvers || !program->version[vers]);
++	if (vers >= program->nrvers || !program->version[vers]) {
++		pr_err("RPC: invalid program version %u for program %s\n",
++			vers, program->name);
++		return ERR_PTR(-EINVAL);
++	}
+ 	version = program->version[vers];
+ 	clnt = rpc_clone_client(old);
+ 	if (IS_ERR(clnt))
+-- 
+1.7.9.6 (Apple Git-31.1)
+
