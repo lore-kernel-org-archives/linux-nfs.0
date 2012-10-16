@@ -1,27 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ipcop.bitmover.com ([192.132.92.15]:41395 "EHLO
-	mail.bitmover.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752251Ab2JPBwL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Oct 2012 21:52:11 -0400
-Date: Mon, 15 Oct 2012 18:52:08 -0700
-From: Larry McVoy <lm@bitmover.com>
-To: George Spelvin <linux@horizon.com>
-Cc: lm@bitmover.com, Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
-Message-ID: <20121016015208.GE11148@bitmover.com>
-References: <4FA345DA4F4AE44899BD2B03EEEC2FA90923ED96@SACEXCMBX04-PRD.hq.netapp.com>
- <20121016014824.4952.qmail@science.horizon.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20121016014824.4952.qmail@science.horizon.com>
+Received: from mx2.netapp.com ([216.240.18.37]:15883 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754869Ab2JPQa5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Oct 2012 12:30:57 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 03/25] SUNRPC: remove BUG_ON() from rpc_run_bc_task
+Date: Tue, 16 Oct 2012 12:30:21 -0400
+Message-Id: <1350405043-39316-3-git-send-email-dros@netapp.com>
+In-Reply-To: <1350405043-39316-1-git-send-email-dros@netapp.com>
+References: <1350405043-39316-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 15, 2012 at 09:48:24PM -0400, George Spelvin wrote:
-> It's NFSv2 server support that I, and I believe Larry, are interested
-> in preserving, in order to provide services to ancient clients.
+Replace BUG_ON() with WARN_ON_ONCE() - rpc_run_bc_task calls rpc_init_task()
+then increments the tk_count, so this is a simple sanity check that
+if hit once would hit every time this code path is executed.
 
-Yup.  Exactly right.
--- 
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
 ---
-Larry McVoy                lm at bitmover.com           http://www.bitkeeper.com
+ net/sunrpc/clnt.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index eacdb15..fe8a133 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -915,7 +915,7 @@ struct rpc_task *rpc_run_bc_task(struct rpc_rqst *req,
+ 
+ 	task->tk_action = call_bc_transmit;
+ 	atomic_inc(&task->tk_count);
+-	BUG_ON(atomic_read(&task->tk_count) != 2);
++	WARN_ON_ONCE(atomic_read(&task->tk_count) != 2);
+ 	rpc_execute(task);
+ 
+ out:
+-- 
+1.7.9.6 (Apple Git-31.1)
+
