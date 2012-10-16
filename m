@@ -1,44 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:63711 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752158Ab2JaIOt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Oct 2012 04:14:49 -0400
-From: ycnian@gmail.com
+Received: from mx2.netapp.com ([216.240.18.37]:15883 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754869Ab2JPQbB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Oct 2012 12:31:01 -0400
+From: Weston Andros Adamson <dros@netapp.com>
 To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Yanchuan Nian <ycnian@gmail.com>
-Subject: [PATCH] nfs: Check whether a layout pointer is NULL before free it
-Date: Wed, 31 Oct 2012 16:05:48 +0800
-Message-Id: <1351670748-21927-1-git-send-email-ycnian@gmail.com>
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 06/25] SUNRPC: remove BUG_ON() from call_bc_transmit()
+Date: Tue, 16 Oct 2012 12:30:24 -0400
+Message-Id: <1350405043-39316-6-git-send-email-dros@netapp.com>
+In-Reply-To: <1350405043-39316-1-git-send-email-dros@netapp.com>
+References: <1350405043-39316-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Yanchuan Nian <ycnian@gmail.com>
+Replace BUG_ON() with WARN_ON_ONCE().
 
-The new layout pointer in pnfs_find_alloc_layout() may be NULL because of 
-out of memory. we must do some check work, otherwise pnfs_free_layout_hdr()
-will go wrong because it can not deal with a NULL pointer.
-
-Signed-off-by: Yanchuan Nian <ycnian@gmail.com>
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
 ---
- fs/nfs/pnfs.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ net/sunrpc/clnt.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index fe624c9..2878f97 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -925,8 +925,8 @@ pnfs_find_alloc_layout(struct inode *ino,
- 	if (likely(nfsi->layout == NULL)) {	/* Won the race? */
- 		nfsi->layout = new;
- 		return new;
--	}
--	pnfs_free_layout_hdr(new);
-+	} else if (new != NULL)
-+		pnfs_free_layout_hdr(new);
- out_existing:
- 	pnfs_get_layout_hdr(nfsi->layout);
- 	return nfsi->layout;
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index a8a6bcf..ced0f36 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1797,7 +1797,7 @@ call_bc_transmit(struct rpc_task *task)
+ 		 * We were unable to reply and will have to drop the
+ 		 * request.  The server should reconnect and retransmit.
+ 		 */
+-		BUG_ON(task->tk_status == -EAGAIN);
++		WARN_ON_ONCE(task->tk_status == -EAGAIN);
+ 		printk(KERN_NOTICE "RPC: Could not send backchannel reply "
+ 			"error: %d\n", task->tk_status);
+ 		break;
 -- 
-1.7.4.4
+1.7.9.6 (Apple Git-31.1)
 
