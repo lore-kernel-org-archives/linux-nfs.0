@@ -1,154 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from peace.netnation.com ([204.174.223.2]:51771 "EHLO
-	peace.netnation.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751389Ab2JLIPS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Oct 2012 04:15:18 -0400
-Date: Fri, 12 Oct 2012 01:15:16 -0700
-From: Simon Kirby <sim@hostway.ca>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Yan-Pai Chen <yanpai.chen@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [3.2.5] NFSv3 CLOSE_WAIT hang
-Message-ID: <20121012081516.GA20046@hostway.ca>
-References: <447c.504a05c9.dd0a9@altium.nl>
- <447c.504a05c9.dd0a9@altium.nl>
- <4FA345DA4F4AE44899BD2B03EEEC2FA908F8E833@SACEXCMBX04-PRD.hq.netapp.com>
- <74c7.504b9d45.a5956@altium.nl>
- <loom.20120910T105944-416@post.gmane.org>
- <20120911194051.GB11160@hostway.ca>
- <1347401844.15208.17.camel@lade.trondhjem.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA908F9F734@SACEXCMBX04-PRD.hq.netapp.com>
- <20120919220148.GA8249@hostway.ca>
- <4FA345DA4F4AE44899BD2B03EEEC2FA908FD9796@SACEXCMBX04-PRD.hq.netapp.com>
+Received: from intranet.asianux.com ([58.214.24.6]:23594 "EHLO
+	intranet.asianux.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754542Ab2JPLnf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Oct 2012 07:43:35 -0400
+Message-ID: <507D48A6.3070601@asianux.com>
+Date: Tue, 16 Oct 2012 19:44:38 +0800
+From: Chen Gang <gang.chen@asianux.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA908FD9796@SACEXCMBX04-PRD.hq.netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [Bug fix] nfs-client: fix nfs_inode_attrs_need_update for async
+ read_done comes during truncating to smaller size
+References: <507B70F1.7040903@asianux.com> <4FA345DA4F4AE44899BD2B03EEEC2FA909236BB5@SACEXCMBX04-PRD.hq.netapp.com> <507B968A.9090104@asianux.com> <4FA345DA4F4AE44899BD2B03EEEC2FA90923F1C4@SACEXCMBX04-PRD.hq.netapp.com> <507CBA3F.6000204@asianux.com> <4FA345DA4F4AE44899BD2B03EEEC2FA909253103@SACEXCMBX04-PRD.hq.netapp.com> <507CDEF2.2060809@asianux.com> <20121016063348.7b225bfb@tlielax.poochiereds.net>
+In-Reply-To: <20121016063348.7b225bfb@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 19, 2012 at 10:11:57PM +0000, Myklebust, Trond wrote:
 
-> On Wed, 2012-09-19 at 15:01 -0700, Simon Kirby wrote:
+于 2012年10月16日 18:33, Jeff Layton 写道:
+> In any situation where we get back attributes, we have to decide
+> whether they are valid or stale. It's always possible for replies or
+> their handling to be reordered such that an older set of attributes
+> is processed after a newer set.
 > 
-> > Yes, based on data collected today, this seems to fix the problem!
-> > Awesome! :)
+> Unfortunately, the v2/v3 protocols do not have great support for
+> helping the client detect this situation, so we do the best we can with
+> what we do have. Unfortunately when things are changing very quickly we
+> can still get it wrong, especially with v2/3. [1]
 > 
-> Great! I'm adding "Tested-by:" and "Cc: stable" lines since you've been
-> seeing this for some time.
+> In any case, the logic to determine this is in
+> nfs_inode_attrs_need_update(). Looking at the size is sort of the "last
+> resort" after we look at the timestamps and gencount.
+> 
 
-This has been working well, except we just saw one case now where we
-still got a CLOSE_WAIT hang. The issue was that the queue_work() was not
-called because setting XPRT_LOCKED failed, which you asked about before.
+I agree with you (what I understood originally is just like what you
+said above).
 
-This trace from our debugging patches:
+thank for your confirmation.
 
-WARNING: at net/sunrpc/xprt.c:648 xprt_force_disconnect+0x12a/0x140() 
-Hardware name: PowerEdge 1950 
-xprt_force_disconnect(): setting XPRT_LOCKED failed                                                                                                                                                
-Modules linked in: ipmi_devintf ipmi_si ipmi_msghandler xt_recent nf_conntrack_ftp xt_state xt_owner nf_conntrack_ipv4 nf_conntrack nf_defrag_ipv4 bnx2 serio_raw evdev                             
-Pid: 0, comm: swapper/1 Tainted: G        W    3.2.28-hw+ #25 
-Call Trace: 
- <IRQ>  [<ffffffff816b74ba>] ? xprt_force_disconnect+0x12a/0x140 
- [<ffffffff8105db70>] warn_slowpath_common+0x80/0xc0 
- [<ffffffff8105dca9>] warn_slowpath_fmt+0x69/0x70 
- [<ffffffff81701c8c>] ? printk+0x67/0x69 
- [<ffffffff81704ef1>] ? _raw_spin_lock_bh+0x11/0x40 
- [<ffffffff816b74ba>] xprt_force_disconnect+0x12a/0x140 
- [<ffffffff816ba99c>] xs_tcp_state_change+0xdc/0x340 
- [<ffffffff81669deb>] tcp_fin+0x17b/0x210 
- [<ffffffff8166aaf2>] tcp_data_queue+0x4c2/0xe70 
- [<ffffffff8166e259>] ? tcp_validate_incoming+0x109/0x340 
- [<ffffffff8166e5d9>] tcp_rcv_established+0x149/0xb50 
- [<ffffffff8167711c>] tcp_v4_do_rcv+0x15c/0x2e0 
- [<ffffffff8164b6e4>] ? nf_iterate+0x84/0xb0 
- [<ffffffff816778ef>] tcp_v4_rcv+0x64f/0x8b0 
- [<ffffffff8164b85d>] ? nf_hook_slow+0x6d/0x130 
- [<ffffffff81656160>] ? ip_rcv+0x2f0/0x2f0 
- [<ffffffff8165620a>] ip_local_deliver_finish+0xaa/0x1d0 
- [<ffffffff816563bd>] ip_local_deliver+0x8d/0xa0 
- [<ffffffff81655bdb>] ip_rcv_finish+0x7b/0x310 
- [<ffffffff816560ed>] ip_rcv+0x27d/0x2f0 
- [<ffffffff816272b7>] __netif_receive_skb+0x437/0x490 
- [<ffffffff81629148>] netif_receive_skb+0x78/0x80 
-...
--pid- flgs status -client- --rqstp- -timeout ---ops--
-60022 0080    -11 ffff880096e5bc00   (null)        0 ffffffff817beb20 nfsv3 FSINFO a:call_reserveresult q:xprt_sending
-SUNRPC: xprt(ffff88021e87d800) state=283, snd_task->tk_pid=0
-SUNRPC: xprt(ffff88022509b000) state=18, snd_task=0
-SUNRPC: xprt(ffff88022509b000) state=18, snd_task=0
-SUNRPC: xprt(ffff88022509b000) state=18, snd_task=0
-SUNRPC: xprt(ffff88022509b000) state=18, snd_task=0
-SUNRPC: xprt(ffff88022509b000) state=18, snd_task=0
-SUNRPC: xprt(ffff880142c1d800) state=16, snd_task=0
-SUNRPC: xprt(ffff880032175800) state=16, snd_task=0
-SUNRPC: xprt(ffff8800c2da9000) state=16, snd_task=0
-SUNRPC: xprt(ffff88022509b000) state=18, snd_task=0
-SUNRPC: xprt(ffff880221977000) state=16, snd_task=0
-SUNRPC: xprt(ffff88022212f800) state=16, snd_task=0
-SUNRPC: xprt(ffff880221504000) state=0, snd_task=0
-SUNRPC: xprt(ffff88022509c800) state=18, snd_task=0
-SUNRPC: xprt(ffff88022509c800) state=18, snd_task=0
-SUNRPC: xprt(ffff880222711000) state=18, snd_task=0
-SUNRPC: xprt(ffff880222711000) state=18, snd_task=0
-SUNRPC: xprt(ffff880221737800) state=18, snd_task=0
-SUNRPC: xprt(ffff880221737800) state=18, snd_task=0
-SUNRPC: xprt(ffff88021f275800) state=18, snd_task=0
-SUNRPC: xprt(ffff88021f275800) state=18, snd_task=0
-SUNRPC: xprt(ffff8802252b3800) state=18, snd_task=0
-SUNRPC: xprt(ffff880222704000) state=18, snd_task=0
-SUNRPC: xprt(ffff880222704000) state=18, snd_task=0
-SUNRPC: xprt(ffff8802252b3800) state=18, snd_task=0
-SUNRPC: xprt(ffff8802252b3800) state=18, snd_task=0
-SUNRPC: xprt(ffff88022234e800) state=18, snd_task=0
-SUNRPC: xprt(ffff88022234e800) state=18, snd_task=0
-SUNRPC: xprt(ffff880221734000) state=18, snd_task=0
-SUNRPC: xprt(ffff880221734000) state=18, snd_task=0
-SUNRPC: xprt(ffff880222702000) state=18, snd_task=0
-SUNRPC: xprt(ffff880222702000) state=18, snd_task=0
- 1758 0080    -11 ffff880225562400   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
- 1770 0080    -11 ffff880225562400   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
- 1799 0080    -11 ffff880225562400   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
-SUNRPC: xprt(ffff88021e87d800) state=283, snd_task->tk_pid=0
-59728 0001    -11 ffff8802253d9e00   (null)        0 ffffffff8173ff20 nfsv3 COMMIT a:call_reserveresult q:xprt_sending
- 1449 0080    -11 ffff8802253d9e00   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
- 1766 0080    -11 ffff8802253d9e00   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
- 1811 0080    -11 ffff8802253d9e00   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
-SUNRPC: xprt(ffff88021e87d800) state=283, snd_task->tk_pid=0
- 1431 0080    -11 ffff8802253d6000   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
- 1604 0080    -11 ffff8802253d6000   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
- 1851 0080    -11 ffff8802253d6000   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
- 1870 0080    -11 ffff8802253d6000   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
- 5693 0080    -11 ffff8802253d6000   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
- 5791 0080    -11 ffff8802253d6000   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
-SUNRPC: xprt(ffff88021e87d800) state=283, snd_task->tk_pid=0
- 1871 0080    -11 ffff880225522800   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
-SUNRPC: xprt(ffff88021e87d800) state=283, snd_task->tk_pid=0
- 1442 0080    -11 ffff8802253d7600   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
- 1457 0080    -11 ffff8802253d7600   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
- 1829 0080    -11 ffff8802253d7600   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
- 5784 0080    -11 ffff8802253d7600   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
-SUNRPC: xprt(ffff88021e87d800) state=283, snd_task->tk_pid=0
- 1625 0080    -11 ffff880225522000   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
- 2152 0080    -11 ffff880225522000   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
- 2196 0080    -11 ffff880225522000   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
-SUNRPC: xprt(ffff88021e87d800) state=283, snd_task->tk_pid=0
- 1517 0080    -11 ffff8802253d5a00   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
- 1733 0080    -11 ffff8802253d5a00   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
- 1741 0080    -11 ffff8802253d5a00   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
- 1872 0080    -11 ffff8802253d5a00   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
- 2211 0080    -11 ffff8802253d5a00   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
- 4316 0080    -11 ffff8802253d5a00   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
- 4350 0080    -11 ffff8802253d5a00   (null)        0 ffffffff817beb20 nfsv3 LOOKUP a:call_reserveresult q:xprt_sending
- 4353 0080    -11 ffff8802253d5a00   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
- 5862 0080    -11 ffff8802253d5a00   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
- 6982 0080    -11 ffff8802253d5a00   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
- 9869 0080    -11 ffff8802253d5a00   (null)        0 ffffffff817beb20 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
-SUNRPC: xprt(ffff88021e87d800) state=283, snd_task->tk_pid=0
-SUNRPC: xprt(ffff88021e87d800) state=283, snd_task->tk_pid=0
-SUNRPC: xprt(ffff88022509b000) state=18, snd_task=0
-SUNRPC: xprt(ffff880225098800) state=16, snd_task=0
-SUNRPC: xprt(ffff88022509b000) state=18, snd_task=0
+> The problem with doing what you suggest is that if we get it wrong, the
+> consequences are worse than the file appearing to be bigger than it is.
+> It means that written data may be silently lost.
+> 
 
-We've only seen this once, so we're definitely better than before.
+1) I understand why my suggestion is not quite suitable. I agree you.
 
-Simon-
+2) but, are we truly no ways to solve this issue ?  (I do not think so).
+
+3) I think an executable way (but maybe not a good way) is :
+
+   A) for each client, check each task id of the client its own (such as
+rpc task xid), so can know the order of tasks of the client its own.
+
+   B) maybe also need another some synchronization code, but I think it
+does not have much negative effect with performance.
+
+
+> ======
+> 
+> [1]: v4 has a change attribute so it's slightly simpler there when the
+> server supports it. Unrelated Q for Trond: should we be checking the v4
+> change_attr in nfs_inode_attrs_need_update too? 
+
+sorry for I am truly not quite familiar with nfs, I also think it is not
+quite relative with current issue, so I have to skip it (although I
+think these contents are valulable for Trond)
+
+-- 
+Chen Gang
+
+Asianux Corporation
