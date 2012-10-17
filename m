@@ -1,104 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:39551 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755539Ab2JTNqS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 20 Oct 2012 09:46:18 -0400
-Date: Sat, 20 Oct 2012 09:46:11 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Jan Sanislo <oystr@cs.washington.edu>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: nfsidmap and NFS key timeouts and quotas
-Message-ID: <20121020094611.2f0d2c32@tlielax.poochiereds.net>
-In-Reply-To: <1350679987/oystr@maui.cs.washington.edu>
-References: <1350679987/oystr@maui.cs.washington.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from intranet.asianux.com ([58.214.24.6]:45672 "EHLO
+	intranet.asianux.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755923Ab2JQBgt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Oct 2012 21:36:49 -0400
+Message-ID: <507E0BF0.7050207@asianux.com>
+Date: Wed, 17 Oct 2012 09:37:52 +0800
+From: Chen Gang <gang.chen@asianux.com>
+MIME-Version: 1.0
+To: Jeff Layton <jlayton@redhat.com>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [Bug fix] nfs-client: fix nfs_inode_attrs_need_update for async
+ read_done comes during truncating to smaller size
+References: <507B70F1.7040903@asianux.com> <4FA345DA4F4AE44899BD2B03EEEC2FA909236BB5@SACEXCMBX04-PRD.hq.netapp.com> <507B968A.9090104@asianux.com> <4FA345DA4F4AE44899BD2B03EEEC2FA90923F1C4@SACEXCMBX04-PRD.hq.netapp.com> <507CBA3F.6000204@asianux.com> <4FA345DA4F4AE44899BD2B03EEEC2FA909253103@SACEXCMBX04-PRD.hq.netapp.com> <507CDEF2.2060809@asianux.com> <20121016063348.7b225bfb@tlielax.poochiereds.net> <507D48A6.3070601@asianux.com> <20121016081320.74fccc5b@tlielax.poochiereds.net>
+In-Reply-To: <20121016081320.74fccc5b@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 19 Oct 2012 13:53 PDT
-Jan Sanislo <oystr@cs.washington.edu> wrote:
-
-> The man page for nfsidmap says that it will set a default timeout
-> of 600 seconds on keys requested by the NFS client.  But the
-> keys instantiated are listed a permanent in /proc/keys and it's
-> easily possible to run out of key quota in an NFS environment with
-> 100s/1000s of uids/gids.
+于 2012年10月16日 20:13, Jeff Layton 写道:
+>>
+>> 2) but, are we truly no ways to solve this issue ?  (I do not think so).
+>>
 > 
-> Nfsidmap's call to keyctl_set_timeout fails with a permission
-> error because the call is made *after* the key is instantiated
-> and permission to modify the key attributes has been revoked as
-> a result.  The following patch seems to be more effective in
-> actually setting the key timeout:
-> 
-> ====================================
-> 
-> --- nfsidmap.c_orig	2012-10-19 11:32:29.806374240 -0700
-> +++ nfsidmap.c	2012-10-19 11:40:06.334674363 -0700
-> @@ -320,6 +320,16 @@
->  			key, type, value, timeout);
->  	}
->  
-> +	/*
-> +	 * Set timeout before instantiation revokes our rights
-> +	 * over the key.
-> +	 */
-> +	if ( timeout > 0 ) {
-> +		rc = keyctl_set_timeout(key, timeout);
-> +		if ( rc != 0 )
-> +			xlog_warn("keyctl_set_timeout key 0x%x failed: %m",key);
-> +	}
-> +
->  	if (strcmp(type, "uid") == 0)
->  		rc = id_lookup(value, key, USER);
->  	else if (strcmp(type, "gid") == 0)
-> @@ -329,10 +339,6 @@
->  	else if (strcmp(type, "group") == 0)
->  		rc = name_lookup(value, key, GROUP);
->  
-> -	/* Set timeout to 10 (600 seconds) minutes */
-> -	if (rc == 0)
-> -		keyctl_set_timeout(key, timeout);
-> -
->  	free(arg);
->  	return rc;
->  }
+> Not that I see, but don't let me stop you from trying to find one. ;)
 > 
 
-Nice catch. The rpc.idmapd downcall handler does this already in the
-kernel:
+we can divide the issue to 2 separate parts:
 
-        ret = nfs_idmap_read_and_verify_message(&im,
-                        &idmap->idmap_upcall_data->idmap_msg,
-                        cons->key, cons->authkey);
-        if (ret >= 0) {
-                key_set_timeout(cons->key, nfs_idmap_cache_timeout);
-                ret = mlen;
-        }
+1) the inconsistent attribute by time delay between client and server:
 
-...where nfs_idmap_cache_timeout defaults to 600 and is tunable via
-module parameter. Might it be better for consistency's sake to make the
-keys API upcall do the same thing?
+   A) it is the nfs v2/v3 design issue, the "user" can understand (not
+implementation mistake)
+   B) we need make the time delay as shorter as we can. (this is the
+reason why I call it "performance", although this "word" is still not
+quit suitable)
+   C) "user" can understand, not mean can bear (such as skipping writing
+operation attribute changes)
 
-> ====================================
+2) the inconsistent attribute by a client itself:
+
+   A) it is implementation issue, the "user" can not understand (it is
+an implementation mistake)
+   B) we need solve it (so I call it "correctness" issue).
+   C) "user" can not understand, not mean can not bear (such as current
+issue which I report)
+
+at last, for maintainer:
+   A) for "performance", we need try our best to do;
+   B) for "correctness", we need fix it completely;
+
+>> 3) I think an executable way (but maybe not a good way) is :
+>>
+>>    A) for each client, check each task id of the client its own (such as
+>> rpc task xid), so can know the order of tasks of the client its own.
+>>
 > 
-> Also, it appears that the check for EDQUOT/ENFILE/ENOMEM after the
-> keyctl_instantiate call is ineffective.  Those errors seem to be
-> handled within the kernel a key_alloc time -- if one of them occurs
-> an upcall to nfsidmap is not made.
-> 
-> Finally, the key LRU discard patch: http://lkml.org/lkml/2012/3/28/144
-> looks promising for managing key quotas.  But it only seems to be
-> invoked when a key is linked into a destination keyring. fs/nfs/idmap.c
-> uses a call to security/keys/request_key which by default provides an
-> NULL dest_keyring. Might consider changing the request_key call in nfs/idmap.c
-> to request_key_and_link (although I don't pretend to know all the
-> implications of making such a change).
+> We do something like this already. That's what the gencount thing is
+> all about. It's still possible though to fool that check if two calls
+> are scheduled closely enough.
+>
 
-Have you tested that? I thought these keys did end up in a keyring
-(hence the whole override_creds/revert_creds song-and-dance). I haven't
-looked closely at the LRU discard stuff though, so you may be correct
-here...
+1) I think gencount is not equal to sequence number, the sequence number
+can mark all relative tasks of one client in order.
+
+2) I also think, it is not quite complex to make a client itself in
+consistency. (it is implementation issue, not design issue)
+
+
+> Also note that it's not just the reordering of replies that you have to
+> concern yourself with. The requests themselves can be reordered on the
+> network. The server is also under no obligation to execute calls in the
+> order received.
+> 
+
+1) I agree with you, in nfs_inode_attrs_need_update(), it need consider
+this situation (the tasks from server return is not in order).
+
+2) I do not think it can not be accomplished if the tasks of client
+itself have sequence number.  (maybe, it would be enough to only judge
+which task is later between the 2 tasks by sequence number).
+
+
+>>    B) maybe also need another some synchronization code, but I think it
+>> does not have much negative effect with performance.
+>>
+> 
+> Yeah, serializing things to fix this is probably a non-starter. NFSv2
+> and UDP transports are basically legacy code at this point, so there's
+> not a lot of incentive to do anything drastic here.
+> 
+
+1) I agree with what you said above, but maybe you misunderstand of what
+I said for the "item B)"
+
+2) the "item B)" is for the completion of "item A)". when we fix this
+issue, maybe have to add additional synchronization code which maybe can
+cause negative effect with performance, but I think it is not much
+("user" can bear).
+
+At last, I suggest we need think of how to fix this implementation bug
+in nfs-client region.
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Chen Gang
+
+Asianux Corporation
