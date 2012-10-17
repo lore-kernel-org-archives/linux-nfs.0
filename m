@@ -1,61 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:55304 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755888Ab2JVR16 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Oct 2012 13:27:58 -0400
-Message-ID: <5085821C.4020500@RedHat.com>
-Date: Mon, 22 Oct 2012 13:27:56 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from natasha.panasas.com ([67.152.220.90]:50327 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754716Ab2JQSaF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Oct 2012 14:30:05 -0400
+Message-ID: <507EF918.5030004@panasas.com>
+Date: Wed, 17 Oct 2012 11:29:44 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 00/10] nfs-utils compiler warning clean ups
-References: <20121022160140.4552.34477.stgit@lebasque.1015granger.net>
-In-Reply-To: <20121022160140.4552.34477.stgit@lebasque.1015granger.net>
-Content-Type: text/plain; charset=UTF-8
+To: Jim Rees <rees@umich.edu>
+CC: Dave Jones <davej@redhat.com>, "J. Bruce Fields" <bfields@fieldses.org>,
+        Sasha Levin <levinsasha928@gmail.com>, <Trond.Myklebust@netapp.com>,
+        <davem@davemloft.net>, <linux-nfs@vger.kernel.org>,
+        <netdev@vger.kernel.org>, <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] SUNRPC: Prevent kernel stack corruption on long values
+ of flush
+References: <1342476086-21638-1-git-send-email-levinsasha928@gmail.com> <20120718173913.GA1298@fieldses.org> <20120718200049.GA17964@umich.edu> <20120718203304.GA18540@redhat.com> <20120718205510.GA18374@umich.edu>
+In-Reply-To: <20120718205510.GA18374@umich.edu>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 07/18/2012 01:55 PM, Jim Rees wrote:
+> Dave Jones wrote:
+> 
+>   
+>   Unsigned long isn't necessarily 32 bits.
+>   On 64-bit systems %lu can be up to 18446744073709551615
+> 
+> Thanks.  You caught me thinking "Intel."  How embarrassing.
 
+What? why even on Intel-64 long is 64bit. long is always the
+same or bigger then a pointer (A pointer must always fit
+in a long)
 
-On 22/10/12 12:05, Chuck Lever wrote:
-> Hi-
-> 
-> These address compiler warnings in mountd and gssd that I've found
-> during recent sojourns in that code base.  I've done some light
-> testing, but more critical review and testing would be appreciated.
-> 
-> I think these are appropriate for your next release of nfs-utils.
-What CFLAGS do you use to see these warnings? Every time I do a build
-I check for warnings and if I would have seen these I would have
-fixed them immediately...   
+On the other hand int is 32bit in Intel-64 unlike some
+other CPUs where int(s) may get to be 64bit as well.
 
-BTW, I'm using gcc version 4.7.2 20120921 (Red Hat 4.7.2-2) (GCC)
-to do my builds these days...
-
-steved.
-
-> 
-> ---
-> 
-> Chuck Lever (10):
->       rpc.gssd: Squelch compiler error
->       rpc.gssd: Squelch compiler warning
->       rpc.gssd: Squelch compiler warning
->       mountd: Avoid unnecessary type conversions
->       mountd: Avoid unnecessary type conversions
->       mountd: Avoid unnecessary type conversions
->       mountd: Make local functions static
->       mountd: Eliminate unnecessary type conversions
->       mountd: Avoid unnecessary type conversions
->       nfs-utils: Eliminate dereferencing type punned pointers
-> 
-> 
->  support/include/nfslib.h   |    1 +
->  support/include/sockaddr.h |   10 ++++------
->  support/nfs/cacheio.c      |    5 +++++
->  utils/gssd/gss_util.c      |    2 +-
->  utils/gssd/gssd_proc.c     |   13 +++++++------
->  utils/mountd/cache.c       |   34 ++++++++++++++++++----------------
->  6 files changed, 36 insertions(+), 29 deletions(-)
-> 
+Cheers
+Boaz
