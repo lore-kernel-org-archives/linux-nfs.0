@@ -1,84 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:51770 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:41458 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754948Ab2JWOxj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Oct 2012 10:53:39 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 15/25] SUNRPC: remove BUG_ONs from *_reclassify_socket*
-Date: Tue, 23 Oct 2012 10:43:39 -0400
-Message-Id: <1351003429-18887-16-git-send-email-dros@netapp.com>
-In-Reply-To: <1351003429-18887-1-git-send-email-dros@netapp.com>
-References: <1351003429-18887-1-git-send-email-dros@netapp.com>
+	id S932696Ab2JRSFf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 18 Oct 2012 14:05:35 -0400
+Message-ID: <508044EC.9040004@RedHat.com>
+Date: Thu, 18 Oct 2012 14:05:32 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: Linux pNFS status meeting 10/18/12
+References: <507FF381.2060804@RedHat.com> <50803A48.60303@panasas.com>
+In-Reply-To: <50803A48.60303@panasas.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Replace multiple BUG_ON() calls with WARN_ON_ONCE() and early return when
-sanity checking socket ownership (lock). The bind call will fail if the
-socket was unsuccessfully reclassified.
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- net/sunrpc/svcsock.c  |    6 +++++-
- net/sunrpc/xprtsock.c |    7 ++++---
- 2 files changed, 9 insertions(+), 4 deletions(-)
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 03827ce..cc3020d 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -84,7 +84,11 @@ static struct lock_class_key svc_slock_key[2];
- static void svc_reclassify_socket(struct socket *sock)
- {
- 	struct sock *sk = sock->sk;
--	BUG_ON(sock_owned_by_user(sk));
-+
-+	WARN_ON_ONCE(sock_owned_by_user(sk));
-+	if (sock_owned_by_user(sk))
-+		return;
-+
- 	switch (sk->sk_family) {
- 	case AF_INET:
- 		sock_lock_init_class_and_name(sk, "slock-AF_INET-NFSD",
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index aaaadfb..4e76d38 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1762,7 +1762,6 @@ static inline void xs_reclassify_socketu(struct socket *sock)
- {
- 	struct sock *sk = sock->sk;
- 
--	BUG_ON(sock_owned_by_user(sk));
- 	sock_lock_init_class_and_name(sk, "slock-AF_LOCAL-RPC",
- 		&xs_slock_key[1], "sk_lock-AF_LOCAL-RPC", &xs_key[1]);
- }
-@@ -1771,7 +1770,6 @@ static inline void xs_reclassify_socket4(struct socket *sock)
- {
- 	struct sock *sk = sock->sk;
- 
--	BUG_ON(sock_owned_by_user(sk));
- 	sock_lock_init_class_and_name(sk, "slock-AF_INET-RPC",
- 		&xs_slock_key[0], "sk_lock-AF_INET-RPC", &xs_key[0]);
- }
-@@ -1780,13 +1778,16 @@ static inline void xs_reclassify_socket6(struct socket *sock)
- {
- 	struct sock *sk = sock->sk;
- 
--	BUG_ON(sock_owned_by_user(sk));
- 	sock_lock_init_class_and_name(sk, "slock-AF_INET6-RPC",
- 		&xs_slock_key[1], "sk_lock-AF_INET6-RPC", &xs_key[1]);
- }
- 
- static inline void xs_reclassify_socket(int family, struct socket *sock)
- {
-+	WARN_ON_ONCE(sock_owned_by_user(sock->sk));
-+	if (sock_owned_by_user(sock->sk))
-+		return;
-+
- 	switch (family) {
- 	case AF_LOCAL:
- 		xs_reclassify_socketu(sock);
--- 
-1.7.9.6 (Apple Git-31.1)
+On 18/10/12 13:20, Boaz Harrosh wrote:
+> On 10/18/2012 05:18 AM, Steve Dickson wrote:
+>> Sorry for the late notice, but the bi-weekly meeting is *today* (Thur Oct 18)
+>>
+>> Time: 9:30 AM PST (12:30 PM EST)
+>>
+>> The call in numbers are:
+>> U.S. and Canada: (800) 451-8679
+>> International dial-in number: (212) 729-5016
+>> Israel Toll-Free: 1-809-462-557
+>> Conference code: 564.272.1552
+>>
+>> steved.
+>>
+> 
+> That was, a short notice, I missed it. For some reason I had that tentative
+> to  10:30 AM PST in my Calendar.
+Sorry about that... I'll try to do better in the future... 
 
+> 
+> Nu well next time. Any summery?
+Yes, things got a bit messed up when we had that back to back meeting... 
+
+The next meeting will be in two week from today (Thu Nov 1).
+
+steved.
