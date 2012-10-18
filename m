@@ -1,49 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:15938 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:60384 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755047Ab2JPQbG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Oct 2012 12:31:06 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 10/25] SUNRPC: remove BUG_ON() from xprt_destroy_backchannel
-Date: Tue, 16 Oct 2012 12:30:28 -0400
-Message-Id: <1350405043-39316-10-git-send-email-dros@netapp.com>
-In-Reply-To: <1350405043-39316-1-git-send-email-dros@netapp.com>
+	id S1752727Ab2JRTKa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 18 Oct 2012 15:10:30 -0400
+Received: from vmwexceht03-prd.hq.netapp.com (vmwexceht03-prd.hq.netapp.com [10.106.76.241])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q9IJATSK011281
+	for <linux-nfs@vger.kernel.org>; Thu, 18 Oct 2012 12:10:29 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 04/25] SUNRPC: remove BUG_ON() from call_transmit()
+Date: Thu, 18 Oct 2012 19:10:28 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092815A6@SACEXCMBX04-PRD.hq.netapp.com>
 References: <1350405043-39316-1-git-send-email-dros@netapp.com>
+	 <1350405043-39316-4-git-send-email-dros@netapp.com>
+In-Reply-To: <1350405043-39316-4-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If max_reqs is 0, do nothing besides the usual dprintks.
-
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- net/sunrpc/backchannel_rqst.c |    5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
-
-diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
-index 7567bcd..f0fb0dd 100644
---- a/net/sunrpc/backchannel_rqst.c
-+++ b/net/sunrpc/backchannel_rqst.c
-@@ -191,7 +191,9 @@ void xprt_destroy_backchannel(struct rpc_xprt *xprt, unsigned int max_reqs)
- 
- 	dprintk("RPC:        destroy backchannel transport\n");
- 
--	BUG_ON(max_reqs == 0);
-+	if (max_reqs == 0)
-+		goto out;
-+
- 	spin_lock_bh(&xprt->bc_pa_lock);
- 	xprt_dec_alloc_count(xprt, max_reqs);
- 	list_for_each_entry_safe(req, tmp, &xprt->bc_pa_list, rq_bc_pa_list) {
-@@ -202,6 +204,7 @@ void xprt_destroy_backchannel(struct rpc_xprt *xprt, unsigned int max_reqs)
- 	}
- 	spin_unlock_bh(&xprt->bc_pa_lock);
- 
-+out:
- 	dprintk("RPC:        backchannel list empty= %s\n",
- 		list_empty(&xprt->bc_pa_list) ? "true" : "false");
- }
--- 
-1.7.9.6 (Apple Git-31.1)
-
+T24gVHVlLCAyMDEyLTEwLTE2IGF0IDEyOjMwIC0wNDAwLCBXZXN0b24gQW5kcm9zIEFkYW1zb24g
+d3JvdGU6DQo+IFJlcGxhY2UgQlVHX09OKCkgd2l0aCBXQVJOX09OX09OQ0UoKSBhbmQgaWYgdGhl
+IGVycm9yIGNvbmRpdGlvbiBpcyB0cnVlDQo+IGF0dGVtcHQgdG8gZ3JhY2VmdWxseSByZWNvdmVy
+IGJ5IGNhbGxpbmcgcnBjX2V4aXQoKS4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IFdlc3RvbiBBbmRy
+b3MgQWRhbXNvbiA8ZHJvc0BuZXRhcHAuY29tPg0KPiAtLS0NCj4gIG5ldC9zdW5ycGMvY2xudC5j
+IHwgICAgNiArKysrKy0NCj4gIDEgZmlsZSBjaGFuZ2VkLCA1IGluc2VydGlvbnMoKyksIDEgZGVs
+ZXRpb24oLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9uZXQvc3VucnBjL2NsbnQuYyBiL25ldC9zdW5y
+cGMvY2xudC5jDQo+IGluZGV4IGZlOGExMzMuLjc2ZDE3MzAgMTAwNjQ0DQo+IC0tLSBhL25ldC9z
+dW5ycGMvY2xudC5jDQo+ICsrKyBiL25ldC9zdW5ycGMvY2xudC5jDQo+IEBAIC0xNjYxLDcgKzE2
+NjEsMTEgQEAgY2FsbF90cmFuc21pdChzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2spDQo+ICAJdGFzay0+
+dGtfYWN0aW9uID0gY2FsbF90cmFuc21pdF9zdGF0dXM7DQo+ICAJLyogRW5jb2RlIGhlcmUgc28g
+dGhhdCBycGNzZWNfZ3NzIGNhbiB1c2UgY29ycmVjdCBzZXF1ZW5jZSBudW1iZXIuICovDQo+ICAJ
+aWYgKHJwY190YXNrX25lZWRfZW5jb2RlKHRhc2spKSB7DQo+IC0JCUJVR19PTih0YXNrLT50a19y
+cXN0cC0+cnFfYnl0ZXNfc2VudCAhPSAwKTsNCj4gKwkJV0FSTl9PTih0YXNrLT50a19ycXN0cC0+
+cnFfYnl0ZXNfc2VudCAhPSAwKTsNCj4gKwkJaWYgKHRhc2stPnRrX3Jxc3RwLT5ycV9ieXRlc19z
+ZW50ICE9IDApIHsNCj4gKwkJCXJwY19leGl0KHRhc2ssIC1FSU5WQUwpOw0KPiArCQkJcmV0dXJu
+Ow0KPiArCQl9DQoNCkFjdHVhbGx5LCBsZXQncyBqdXN0IGdldCByaWQgb2YgdGhpcyBvbmUgdG9v
+Li4uDQoNCj4gIAkJcnBjX3hkcl9lbmNvZGUodGFzayk7DQo+ICAJCS8qIERpZCB0aGUgZW5jb2Rl
+IHJlc3VsdCBpbiBhbiBlcnJvciBjb25kaXRpb24/ICovDQo+ICAJCWlmICh0YXNrLT50a19zdGF0
+dXMgIT0gMCkgew0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWlu
+dGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAu
+Y29tDQo=
