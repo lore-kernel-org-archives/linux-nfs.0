@@ -1,126 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vb0-f46.google.com ([209.85.212.46]:50610 "EHLO
-	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965500Ab2JYRV4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Oct 2012 13:21:56 -0400
-Received: by mail-vb0-f46.google.com with SMTP id ff1so2161469vbb.19
-        for <linux-nfs@vger.kernel.org>; Thu, 25 Oct 2012 10:21:56 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 4/9] nfsdcltrack: break out a function to open the database handle
-Date: Thu, 25 Oct 2012 13:21:38 -0400
-Message-Id: <1351185703-14191-5-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1351185703-14191-1-git-send-email-jlayton@redhat.com>
-References: <1351185703-14191-1-git-send-email-jlayton@redhat.com>
+Received: from natasha.panasas.com ([67.152.220.90]:51316 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932119Ab2JRRUR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Oct 2012 13:20:17 -0400
+Message-ID: <50803A48.60303@panasas.com>
+Date: Thu, 18 Oct 2012 10:20:08 -0700
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Steve Dickson <SteveD@redhat.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: Linux pNFS status meeting 10/18/12
+References: <507FF381.2060804@RedHat.com>
+In-Reply-To: <507FF381.2060804@RedHat.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When we add a new usermodehelper upcall program to do the database
-access, the existing "init" function will be overkill every time
-we start up the program.
+On 10/18/2012 05:18 AM, Steve Dickson wrote:
+> Sorry for the late notice, but the bi-weekly meeting is *today* (Thur Oct 18)
+> 
+> Time: 9:30 AM PST (12:30 PM EST)
+> 
+> The call in numbers are:
+> U.S. and Canada: (800) 451-8679
+> International dial-in number: (212) 729-5016
+> Israel Toll-Free: 1-809-462-557
+> Conference code: 564.272.1552
+> 
+> steved.
+> 
 
-Break out the database handle establishment routine into a separate
-function that we can call from each upcall command in the one-shot
-program.
+That was, a short notice, I missed it. For some reason I had that tentative
+to  10:30 AM PST in my Calendar.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- utils/nfsdcltrack/sqlite.c | 49 ++++++++++++++++++++++++++++++++--------------
- utils/nfsdcltrack/sqlite.h |  1 +
- 2 files changed, 35 insertions(+), 15 deletions(-)
+Nu well next time. Any summery?
 
-diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
-index c19af7e..bac6789 100644
---- a/utils/nfsdcltrack/sqlite.c
-+++ b/utils/nfsdcltrack/sqlite.c
-@@ -90,24 +90,15 @@ mkdir_if_not_exist(const char *dirname)
- 	return ret;
- }
- 
--/*
-- * Open the "main" database, and attempt to initialize it by creating the
-- * parameters table and inserting the schema version into it. Ignore any errors
-- * from that, and then attempt to select the version out of it again. If the
-- * version appears wrong, then assume that the DB is corrupt or has been
-- * upgraded, and return an error. If all of that works, then attempt to create
-- * the "clients" table.
-- */
-+/* Open the database and set up the database handle for it */
- int
--sqlite_maindb_init(const char *topdir)
-+sqlite_prepare_dbh(const char *topdir)
- {
- 	int ret;
--	char *err = NULL;
--	sqlite3_stmt *stmt = NULL;
- 
--	ret = mkdir_if_not_exist(topdir);
--	if (ret)
--		return ret;
-+	/* Do nothing if the database handle is already set up */
-+	if (dbh)
-+		return 0;
- 
- 	ret = snprintf(buf, PATH_MAX - 1, "%s/main.sqlite", topdir);
- 	if (ret < 0)
-@@ -118,15 +109,43 @@ sqlite_maindb_init(const char *topdir)
- 	ret = sqlite3_open(buf, &dbh);
- 	if (ret != SQLITE_OK) {
- 		xlog(L_ERROR, "Unable to open main database: %d", ret);
-+		dbh = NULL;
- 		return ret;
- 	}
- 
- 	ret = sqlite3_busy_timeout(dbh, CLD_SQLITE_BUSY_TIMEOUT);
- 	if (ret != SQLITE_OK) {
- 		xlog(L_ERROR, "Unable to set sqlite busy timeout: %d", ret);
--		goto out_err;
-+		sqlite3_close(dbh);
-+		dbh = NULL;
- 	}
- 
-+	return ret;
-+}
-+
-+/*
-+ * Open the "main" database, and attempt to initialize it by creating the
-+ * parameters table and inserting the schema version into it. Ignore any errors
-+ * from that, and then attempt to select the version out of it again. If the
-+ * version appears wrong, then assume that the DB is corrupt or has been
-+ * upgraded, and return an error. If all of that works, then attempt to create
-+ * the "clients" table.
-+ */
-+int
-+sqlite_maindb_init(const char *topdir)
-+{
-+	int ret;
-+	char *err = NULL;
-+	sqlite3_stmt *stmt = NULL;
-+
-+	ret = mkdir_if_not_exist(topdir);
-+	if (ret)
-+		return ret;
-+
-+	ret = sqlite_prepare_dbh(topdir);
-+	if (ret)
-+		return ret;
-+
- 	/* Try to create table */
- 	ret = sqlite3_exec(dbh, "CREATE TABLE IF NOT EXISTS parameters "
- 				"(key TEXT PRIMARY KEY, value TEXT);",
-diff --git a/utils/nfsdcltrack/sqlite.h b/utils/nfsdcltrack/sqlite.h
-index 8748948..ebf04c3 100644
---- a/utils/nfsdcltrack/sqlite.h
-+++ b/utils/nfsdcltrack/sqlite.h
-@@ -20,6 +20,7 @@
- #ifndef _SQLITE_H_
- #define _SQLITE_H_
- 
-+int sqlite_prepare_dbh(const char *topdir);
- int sqlite_maindb_init(const char *topdir);
- int sqlite_insert_client(const unsigned char *clname, const size_t namelen);
- int sqlite_remove_client(const unsigned char *clname, const size_t namelen);
--- 
-1.7.11.7
-
+Thanks
+Boaz
