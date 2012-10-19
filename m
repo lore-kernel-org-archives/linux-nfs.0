@@ -1,47 +1,165 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from charon.rus.uni-stuttgart.de ([129.69.1.54]:49471 "EHLO
-	charon.rus.uni-stuttgart.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756116Ab2JIPKB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Oct 2012 11:10:01 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by charon.rus.uni-stuttgart.de (Postfix) with ESMTP id C40EF5FDA2
-	for <linux-nfs@vger.kernel.org>; Tue,  9 Oct 2012 17:09:59 +0200 (CEST)
-Received: from charon.rus.uni-stuttgart.de ([127.0.0.1])
-	by localhost (charon.rus.uni-stuttgart.de [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id YXVoBllG3Lru for <linux-nfs@vger.kernel.org>;
-	Tue,  9 Oct 2012 17:09:59 +0200 (CEST)
-Received: from tindra.iws.uni-stuttgart.de (tindra.iws.uni-stuttgart.de [129.69.98.190])
-	by charon.rus.uni-stuttgart.de (Postfix) with ESMTP
-	for <linux-nfs@vger.kernel.org>; Tue,  9 Oct 2012 17:09:59 +0200 (CEST)
-Date: Tue, 9 Oct 2012 17:09:59 +0200
-From: David Werner <david.werner@iws.uni-stuttgart.de>
-To: linux-nfs@vger.kernel.org
-Subject: Re: Problem with NFSv4 (server: NetApp-Filer, client
- openSUSE-11.4, 12.1 and 12.2)
-Message-ID: <20121009150958.GB16012@tindra.iws.uni-stuttgart.de>
-References: <20121009135919.GA16012@tindra.iws.uni-stuttgart.de>
- <20121009162126.432516c2@harpe.intellique.com>
+Received: from fieldses.org ([174.143.236.118]:35969 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752671Ab2JSM0x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Oct 2012 08:26:53 -0400
+Date: Fri, 19 Oct 2012 08:26:50 -0400
+To: Yao Zhao <yao.zhao@windriver.com>
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com
+Subject: Re: [PATCH]fix bugs and compiling warnings in libgssglue
+Message-ID: <20121019122650.GA20324@fieldses.org>
+References: <50577508.90004@windriver.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20121009162126.432516c2@harpe.intellique.com>
+In-Reply-To: <50577508.90004@windriver.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Emmanuel,
+Steve, is it you that maintains libgssglue now?
 
-Mount shows the following options which resulted from "defaults,_netdev"
-in fstab: 
+--b.
 
-	rus4iws.rus.uni-stuttgart.de:/vol/rus4iws_data0/ on /home type nfs4
-	(rw,relatime,vers=4.0,rsize=65536,wsize=65536,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=129.69.98.101,local_lock=none,addr=129.69.201.103,_netdev)
+On Mon, Sep 17, 2012 at 03:07:52PM -0400, Yao Zhao wrote:
+> Hi,
+> 
+> The 4 attached patches fixed a couple of warnings and bug found when
+> compiling libgssglue.
+> 
+> thanks,
+> yao
 
-I now also tried with "noac" and without _netdev (where I forgot its meaning .. I think it was a recommendation to cirumvent some systemd boot problem)
-like the following:
+> --- a/src/g_canon_name.c
+> +++ b/src/g_canon_name.c
+> fix the bug:
+> g_canon_name.c:125:5: warning: passing argument 2 of '__gss_copy_namebuf' from incompatible pointer type [enabled by default]
+> 
+> the 2nd argument of __gss_copy_namebuf should be address of *gss_buffer_t, \
+> but a *gss_buffer_t is assigned.
+> 
+> what __gss_copy_namebuf does is to alloc memory for a gss_buffer_desc and \
+> copy from src and return its address.
+> 
+> if following code failed, gss_release_name will free \
+> union_canon_name->external_name.value if it is not NULL.
+> 
+> OM_uint32 __gss_copy_namebuf(src, dest)
+>     gss_buffer_t   src;
+>     gss_buffer_t   *dest;
+> 
+> typedef struct gss_union_name_t {
+> 	gss_mechanism		gss_mech;
+> 	gss_OID			name_type;
+> 	gss_buffer_desc		external_name;
+> 	/*
+> 	 * These last two fields are only filled in for mechanism
+> 	 * names.
+> 	 */
+> 	gss_OID			mech_type;
+> 	gss_name_t		mech_name;
+> } gss_union_name_desc, *gss_union_name_t;
+> 
+> typedef struct gss_buffer_desc_struct {
+>       size_t length;
+>       void FAR *value;
+> } gss_buffer_desc, FAR *gss_buffer_t;
+> 
+> Upstream-Status: Pending
+> Signed-off-by: Yao Zhao <yao.zhao@windriver.com>
+> 
+> @@ -121,11 +121,17 @@ gss_canonicalize_name (OM_uint32 *minor_
+>  
+>      union_canon_name->mech_name = mech_name;
+>  
+> -    status = __gss_copy_namebuf(&union_input_name->external_name,
+> -				&union_canon_name->external_name);
+> -    if (status != GSS_S_COMPLETE)
+> -	goto failure;
+> +    union_canon_name->external_name.value = (void*) malloc(
+> +                      union_input_name->external_name.length + 1);
+> +    if (!union_canon_name->external_name.value)
+> +        goto failure;
+>  
+> +    memcpy(union_canon_name->external_name.value, 
+> +           union_input_name->external_name.value, 
+> +           union_input_name->external_name.length);
+> +    union_canon_name->external_name.length = 
+> +                      union_input_name->external_name.length; 
+> +   
+>      if (union_input_name->name_type != GSS_C_NO_OID) {
+>  	status = generic_gss_copy_oid(minor_status,
+>  				      union_input_name->name_type,
 
-	rus4iws.rus.uni-stuttgart.de:/vol/rus4iws_data0/ on /home type nfs4
-	(rw,relatime,sync,vers=4.0,rsize=65536,wsize=65536,namlen=255,acregmin=0,acregmax=0,acdirmin=0,acdirmax=0,hard,noac,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=129.69.98.101,local_lock=none,addr=129.69.201.103)
+> diff --git a/src/g_initialize.c b/src1/g_initialize.c
+> index 82fcce1..200f173 100644
+> --- a/src/g_initialize.c
+> +++ b/src/g_initialize.c
+> 
+> Fix the warning for getuid, geteuid
+> g_initialize.c: In function 'linux_initialize':
+> g_initialize.c:275:5: warning: implicit declaration of function 'getuid' [-Wimplicit-function-declaration]
+> g_initialize.c:275:5: warning: implicit declaration of function 'geteuid' [-Wimplicit-function-declaration]
+> 
+> Upstream-Status: Pending
+> Signed-off-by: Yao Zhao <yao.zhao@windriver.com>
+> 
+> @@ -29,6 +29,8 @@
+>  #include "mglueP.h"
+>  #include <stdlib.h>
+>  
+> +#include <unistd.h>   /*getuid, geteuid */
+> +#include <sys/types.h>
+>  #include <stdio.h>
+>  #include <string.h>
+>  #include <ctype.h>
 
-But it did not resolve anything. 
+> --- a/src/g_inq_cred.c
+> +++ b/src/g_inq_cred.c
+> 1) add free if malloc failed for (*mechanisms)->elements
+> 2) g_inq_cred.c: In function 'gss_inquire_cred':
+> g_inq_cred.c:161:8: warning: passing argument 3 of 'generic_gss_copy_oid' from incompatible pointer type [enabled by default]
+> 
+> Upstream-Status: Pending
+> Signed-off-by: Yao Zhao <yao.zhao@windriver.com>
+> 
+> @@ -152,13 +152,15 @@ gss_OID_set *		mechanisms;
+>  			     union_cred->count);
+>  	if ((*mechanisms)->elements == NULL) {
+>  	    *minor_status = ENOMEM;
+> +	    free(*mechanisms);
+> +	    *mechanisms = GSS_C_NO_OID_SET;
+>  	    return (GSS_S_FAILURE);
+>  	}
+>  
+>  	for (i=0; i < union_cred->count; i++) {
+> -	    status = generic_gss_copy_oid(minor_status,
+> +	    status = generic_gss_add_oid_set_member(minor_status,
+>  	    				  &union_cred->mechs_array[i],
+> -					  &((*mechanisms)->elements[i]));
+> +					  mechanisms);
+>  	    if (status != GSS_S_COMPLETE)
+>  	        break;
+>  	}
 
-Best regards,
-	David
+> --- a/src/mglueP.h
+> +++ b/src/mglueP.h
+> fix the warning:
+> warning: implicit declaration of function 'generic_gss_copy_oid_set' [-Wimplicit-function-declaration]
+> 
+> Upstream-Status: Pending
+> Signed-off-by: Yao Zhao <yao.zhao@windriver.com>
+> 
+> @@ -447,6 +447,12 @@ OM_uint32 generic_gss_copy_oid
+>  	    gss_OID *		/* new_oid */
+>  	    );
+>  
+> +OM_uint32 generic_gss_copy_oid_set
+> +	   (OM_uint32 *minor_status,	/* minor_status */
+> +	    const gss_OID_set_desc * const oidset,	/* oid */
+> +	    gss_OID_set *new_oidset			/* new_oid */
+> +	   );
+> +
+>  OM_uint32 generic_gss_create_empty_oid_set
+>  	   (OM_uint32 *,	/* minor_status */
+>  	    gss_OID_set *	/* oid_set */
+
