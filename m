@@ -1,75 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:60605 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755440Ab2JVQG0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Oct 2012 12:06:26 -0400
-Received: by mail-ie0-f174.google.com with SMTP id k13so3828544iea.19
-        for <linux-nfs@vger.kernel.org>; Mon, 22 Oct 2012 09:06:26 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 05/10] mountd: Avoid unnecessary type conversions
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 22 Oct 2012 12:06:23 -0400
-Message-ID: <20121022160623.4552.56505.stgit@lebasque.1015granger.net>
-In-Reply-To: <20121022160140.4552.34477.stgit@lebasque.1015granger.net>
-References: <20121022160140.4552.34477.stgit@lebasque.1015granger.net>
+Received: from fieldses.org ([174.143.236.118]:48579 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754833Ab2JSVLp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Oct 2012 17:11:45 -0400
+Date: Fri, 19 Oct 2012 17:11:43 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "stable@vger.kernel.org" <stable@vger.kernel.org>
+Subject: Re: [PATCH] SUNRPC: Set alloc_slot for backchannel tcp ops
+Message-ID: <20121019211143.GC2320@fieldses.org>
+References: <1348508341-19642-1-git-send-email-bjschuma@netapp.com>
+ <20121019193951.GA30593@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9092851AD@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121019210121.GB2320@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA909285321@SACEXCMBX04-PRD.hq.netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA909285321@SACEXCMBX04-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up compiler warnings:
+On Fri, Oct 19, 2012 at 09:05:08PM +0000, Myklebust, Trond wrote:
+> > -----Original Message-----
+> > From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> > Sent: Friday, October 19, 2012 5:01 PM
+> > To: Myklebust, Trond
+> > Cc: Schumaker, Bryan; linux-nfs@vger.kernel.org; stable@vger.kernel.org
+> > Subject: Re: [PATCH] SUNRPC: Set alloc_slot for backchannel tcp ops
+> > 
+> > On Fri, Oct 19, 2012 at 08:23:05PM +0000, Myklebust, Trond wrote:
+> > >
+> > > Et tu Bruce?
+> > >
+> > > Not yet, because if you check, neither has commit f39c1bfb5a (SUNRPC: Fix
+> > a UDP transport regression). I figured it is better to send them both together
+> > as a single patch.
+> > 
+> > I'm confused, I thought I did check.  Looking again...  It's in 3.6:
+> > 
+> > 	$ git log v3.6..f39c1bfb5a
+> > 	$
+> 
+> Yes. 3.6 still has the original patch+problem.
+> 
+> > and cc'd to stable:
+> > 
+> > 	$ git show f39c1bfb5a|grep stable
+> > 	    Cc: stable@vger.kernel.org [>= 3.1]
+> > 
+> > so presumably it's already on its way to older stable branches too.
+> 
+> No. See attachment... 
 
-cache.c: In function ‘get_uuid’:
-cache.c:249:2: warning: conversion to ‘size_t’ from ‘int’ may change
-  the sign of the result [-Wsign-conversion]
+OK.  As long as it makes it to 3.6.x one way or another, I'm happy....
 
-And the like.
-
-Seen with gcc version 4.6.3 20120306 (Red Hat 4.6.3-2) (GCC)
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- utils/mountd/cache.c |    8 ++++----
- 1 files changed, 4 insertions(+), 4 deletions(-)
-
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index 57a3fed..64ca5ba 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -238,13 +238,13 @@ static const char *get_uuid_blkdev(char *path)
- #define get_uuid_blkdev(path) (NULL)
- #endif
- 
--static int get_uuid(const char *val, int uuidlen, char *u)
-+static int get_uuid(const char *val, size_t uuidlen, char *u)
- {
- 	/* extract hex digits from uuidstr and compose a uuid
- 	 * of the given length (max 16), xoring bytes to make
- 	 * a smaller uuid.
- 	 */
--	int i = 0;
-+	size_t i = 0;
- 	
- 	memset(u, 0, uuidlen);
- 	for ( ; *val ; val++) {
-@@ -268,7 +268,7 @@ static int get_uuid(const char *val, int uuidlen, char *u)
- 	return 1;
- }
- 
--static int uuid_by_path(char *path, int type, int uuidlen, char *uuid)
-+static int uuid_by_path(char *path, int type, size_t uuidlen, char *uuid)
- {
- 	/* get a uuid for the filesystem found at 'path'.
- 	 * There are several possible ways of generating the
-@@ -366,7 +366,7 @@ struct parsed_fsid {
- 	unsigned int minor;
- 	unsigned int major;
- 	unsigned int fsidnum;
--	int uuidlen;
-+	size_t uuidlen;
- 	char *fhuuid;
- };
- 
-
+--b.
