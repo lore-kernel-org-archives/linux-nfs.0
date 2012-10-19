@@ -1,68 +1,172 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f53.google.com ([209.85.216.53]:53819 "EHLO
-	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S966897Ab2J0APK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Oct 2012 20:15:10 -0400
-Received: by mail-qa0-f53.google.com with SMTP id c1so592212qae.19
-        for <linux-nfs@vger.kernel.org>; Fri, 26 Oct 2012 17:15:09 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:6087 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751820Ab2JSOUW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Oct 2012 10:20:22 -0400
+Message-ID: <50816199.9000900@RedHat.com>
+Date: Fri, 19 Oct 2012 10:20:09 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <CAFukC=7XWhwWFcwfs=fODk70OHbk8ioOw2KeqS7Ao2wKaqZpWg@mail.gmail.com>
-References: <CAFukC=7aTHvXoD9tNhZ5w=3Ffzc-661DNxwAxXy6Lr08VGBO8g@mail.gmail.com>
- <CAFukC=7XWhwWFcwfs=fODk70OHbk8ioOw2KeqS7Ao2wKaqZpWg@mail.gmail.com>
-From: Brock Noland <brock@cloudera.com>
-Date: Fri, 26 Oct 2012 19:14:49 -0500
-Message-ID: <CAFukC=4mfK4cR7D37cs3wwDvVmtTuz04GuW-ShUhqviG5akjvQ@mail.gmail.com>
-Subject: Re: rpc.gssd segfault - real time event 32 in pol()
-To: linux-nfs@vger.kernel.org
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Yao Zhao <yao.zhao@windriver.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH]fix bugs and compiling warnings in libgssglue
+References: <50577508.90004@windriver.com> <20121019122650.GA20324@fieldses.org>
+In-Reply-To: <20121019122650.GA20324@fieldses.org>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Never mind. It must be segfauiting somewhere else and gdb just stopped me there.
 
-On Fri, Oct 26, 2012 at 7:09 PM, Brock Noland <brock@cloudera.com> wrote:
-> Also I am starting rpc.gssd in the foreground with -v flag.
->
-> Brock
->
-> On Fri, Oct 26, 2012 at 7:08 PM, Brock Noland <brock@cloudera.com> wrote:
+
+On 19/10/12 08:26, J. Bruce Fields wrote:
+> Steve, is it you that maintains libgssglue now?
+Yes, I do. Thanks for the ping. I did miss this...
+
+steved.
+
+> 
+> --b.
+> 
+> On Mon, Sep 17, 2012 at 03:07:52PM -0400, Yao Zhao wrote:
 >> Hi,
 >>
->> I built nfs-utils, libgssglue, and librpcsecgss from scratch to debug
->> some other issue.
+>> The 4 attached patches fixed a couple of warnings and bug found when
+>> compiling libgssglue.
 >>
->> However, whenever I try and mount a filesystem with sec=krb5p, I am
->> seeing the following:
+>> thanks,
+>> yao
+> 
+>> --- a/src/g_canon_name.c
+>> +++ b/src/g_canon_name.c
+>> fix the bug:
+>> g_canon_name.c:125:5: warning: passing argument 2 of '__gss_copy_namebuf' from incompatible pointer type [enabled by default]
 >>
->> Program received signal SIG37, Real-time event 37.
->> 0x00000037b72e8b84 in poll () from /lib64/libc.so.6
->> (gdb) bt
->> #0  0x00000037b72e8b84 in poll () from /lib64/libc.so.6
->> #1  0x0000000000404764 in gssd_run () at gssd_main_loop.c:213
->> #2  0x00000000004036b3 in main (argc=<optimized out>, argv=<optimized
->> out>) at gssd.c:194
+>> the 2nd argument of __gss_copy_namebuf should be address of *gss_buffer_t, \
+>> but a *gss_buffer_t is assigned.
 >>
->> At that point, it's waiting for DNOTIFY_SIGNAL. Is it possible that
->> DNOTIFY_SIGNAL is defined differently in the build versions the
->> runtime?
+>> what __gss_copy_namebuf does is to alloc memory for a gss_buffer_desc and \
+>> copy from src and return its address.
 >>
->> Version info:
+>> if following code failed, gss_release_name will free \
+>> union_canon_name->external_name.value if it is not NULL.
 >>
->> Linux localhost.localdomain 3.6.2-4.fc17.x86_64 #1 SMP Wed Oct 17
->> 02:43:21 UTC 2012 x86_64 x86_64 x86_64 GNU/Linux
+>> OM_uint32 __gss_copy_namebuf(src, dest)
+>>     gss_buffer_t   src;
+>>     gss_buffer_t   *dest;
 >>
->> nfs-utils-1.2.6
->> libgssglue-0.4
->> librpcsecgss-0.19
+>> typedef struct gss_union_name_t {
+>> 	gss_mechanism		gss_mech;
+>> 	gss_OID			name_type;
+>> 	gss_buffer_desc		external_name;
+>> 	/*
+>> 	 * These last two fields are only filled in for mechanism
+>> 	 * names.
+>> 	 */
+>> 	gss_OID			mech_type;
+>> 	gss_name_t		mech_name;
+>> } gss_union_name_desc, *gss_union_name_t;
 >>
->> Brock
->
->
->
-> --
-> Apache MRUnit - Unit testing MapReduce - http://incubator.apache.org/mrunit/
-
-
-
--- 
-Apache MRUnit - Unit testing MapReduce - http://incubator.apache.org/mrunit/
+>> typedef struct gss_buffer_desc_struct {
+>>       size_t length;
+>>       void FAR *value;
+>> } gss_buffer_desc, FAR *gss_buffer_t;
+>>
+>> Upstream-Status: Pending
+>> Signed-off-by: Yao Zhao <yao.zhao@windriver.com>
+>>
+>> @@ -121,11 +121,17 @@ gss_canonicalize_name (OM_uint32 *minor_
+>>  
+>>      union_canon_name->mech_name = mech_name;
+>>  
+>> -    status = __gss_copy_namebuf(&union_input_name->external_name,
+>> -				&union_canon_name->external_name);
+>> -    if (status != GSS_S_COMPLETE)
+>> -	goto failure;
+>> +    union_canon_name->external_name.value = (void*) malloc(
+>> +                      union_input_name->external_name.length + 1);
+>> +    if (!union_canon_name->external_name.value)
+>> +        goto failure;
+>>  
+>> +    memcpy(union_canon_name->external_name.value, 
+>> +           union_input_name->external_name.value, 
+>> +           union_input_name->external_name.length);
+>> +    union_canon_name->external_name.length = 
+>> +                      union_input_name->external_name.length; 
+>> +   
+>>      if (union_input_name->name_type != GSS_C_NO_OID) {
+>>  	status = generic_gss_copy_oid(minor_status,
+>>  				      union_input_name->name_type,
+> 
+>> diff --git a/src/g_initialize.c b/src1/g_initialize.c
+>> index 82fcce1..200f173 100644
+>> --- a/src/g_initialize.c
+>> +++ b/src/g_initialize.c
+>>
+>> Fix the warning for getuid, geteuid
+>> g_initialize.c: In function 'linux_initialize':
+>> g_initialize.c:275:5: warning: implicit declaration of function 'getuid' [-Wimplicit-function-declaration]
+>> g_initialize.c:275:5: warning: implicit declaration of function 'geteuid' [-Wimplicit-function-declaration]
+>>
+>> Upstream-Status: Pending
+>> Signed-off-by: Yao Zhao <yao.zhao@windriver.com>
+>>
+>> @@ -29,6 +29,8 @@
+>>  #include "mglueP.h"
+>>  #include <stdlib.h>
+>>  
+>> +#include <unistd.h>   /*getuid, geteuid */
+>> +#include <sys/types.h>
+>>  #include <stdio.h>
+>>  #include <string.h>
+>>  #include <ctype.h>
+> 
+>> --- a/src/g_inq_cred.c
+>> +++ b/src/g_inq_cred.c
+>> 1) add free if malloc failed for (*mechanisms)->elements
+>> 2) g_inq_cred.c: In function 'gss_inquire_cred':
+>> g_inq_cred.c:161:8: warning: passing argument 3 of 'generic_gss_copy_oid' from incompatible pointer type [enabled by default]
+>>
+>> Upstream-Status: Pending
+>> Signed-off-by: Yao Zhao <yao.zhao@windriver.com>
+>>
+>> @@ -152,13 +152,15 @@ gss_OID_set *		mechanisms;
+>>  			     union_cred->count);
+>>  	if ((*mechanisms)->elements == NULL) {
+>>  	    *minor_status = ENOMEM;
+>> +	    free(*mechanisms);
+>> +	    *mechanisms = GSS_C_NO_OID_SET;
+>>  	    return (GSS_S_FAILURE);
+>>  	}
+>>  
+>>  	for (i=0; i < union_cred->count; i++) {
+>> -	    status = generic_gss_copy_oid(minor_status,
+>> +	    status = generic_gss_add_oid_set_member(minor_status,
+>>  	    				  &union_cred->mechs_array[i],
+>> -					  &((*mechanisms)->elements[i]));
+>> +					  mechanisms);
+>>  	    if (status != GSS_S_COMPLETE)
+>>  	        break;
+>>  	}
+> 
+>> --- a/src/mglueP.h
+>> +++ b/src/mglueP.h
+>> fix the warning:
+>> warning: implicit declaration of function 'generic_gss_copy_oid_set' [-Wimplicit-function-declaration]
+>>
+>> Upstream-Status: Pending
+>> Signed-off-by: Yao Zhao <yao.zhao@windriver.com>
+>>
+>> @@ -447,6 +447,12 @@ OM_uint32 generic_gss_copy_oid
+>>  	    gss_OID *		/* new_oid */
+>>  	    );
+>>  
+>> +OM_uint32 generic_gss_copy_oid_set
+>> +	   (OM_uint32 *minor_status,	/* minor_status */
+>> +	    const gss_OID_set_desc * const oidset,	/* oid */
+>> +	    gss_OID_set *new_oidset			/* new_oid */
+>> +	   );
+>> +
+>>  OM_uint32 generic_gss_create_empty_oid_set
+>>  	   (OM_uint32 *,	/* minor_status */
+>>  	    gss_OID_set *	/* oid_set */
+> 
