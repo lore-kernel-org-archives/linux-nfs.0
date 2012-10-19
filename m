@@ -1,125 +1,108 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:38295 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751821Ab2JALwy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2012 07:52:54 -0400
-Received: by mail-gh0-f174.google.com with SMTP id g15so1356084ghb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 01 Oct 2012 04:52:54 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/6] nfsdcltrack: break out a function to open the database handle
-Date: Mon,  1 Oct 2012 07:52:42 -0400
-Message-Id: <1349092365-23920-4-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1349092365-23920-1-git-send-email-jlayton@redhat.com>
-References: <1349092365-23920-1-git-send-email-jlayton@redhat.com>
-Sender: linux-nfs-owner@vger.kernel.org
+From: Eric Dumazet <eric.dumazet@gmail.com>
+Subject: Re: [PATCH net-next 00/21] treewide: Use consistent api
+ style for address testing
+Date: Fri, 19 Oct 2012 09:04:14 +0200
+Message-ID: <1350630254.2293.183.camel@edumazet-glaptop>
+References: <cover.1350618006.git.joe@perches.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+Cc: linux-mips@linux-mips.org, linux-usb@vger.kernel.org,
+	linux-doc@vger.kernel.org, brcm80211-dev-list@broadcom.com,
+	linux-kernel@vger.kernel.org, linux-sctp@vger.kernel.org,
+	devel@open-fcoe.org, dev@openvswitch.org, linux-s390@vger.kernel.org,
+	user-mode-linux-devel@lists.sourceforge.net,
+	linux-scsi@vger.kernel.org, linux-rdma@vger.kernel.org,
+	bridge@lists.linux-foundation.org, lvs-devel@vger.kernel.org,
+	coreteam@netfilter.org, b43-dev@lists.infradead.org,
+	cbe-oss-dev@lists.ozlabs.org, devel@driverdev.osuosl.org,
+	wimax@linuxwimax.org, devicetree-discuss@lists.ozlabs.org,
+	linux-nfs@vger.kernel.org, netfilter@vger.kernel.org,
+	user-mode-linux-user@lists.sourceforge.net,
+	linux-arm-kernel@lists.infradead.org,
+	davinci-linux-open-source@linux.davincidsp.com,
+	linux-parisc@vger.kernel.org, netdev@vger.kernel.org,
+	b.a.t.m.a.n@lists.open-mesh.org, linux-wireless@vger.kernel.org,
+	us
+To: Joe Perches <joe@perches.com>
+Return-path: <bridge-bounces@lists.linux-foundation.org>
+In-Reply-To: <cover.1350618006.git.joe@perches.com>
+List-Unsubscribe: <https://lists.linuxfoundation.org/mailman/options/bridge>,
+	<mailto:bridge-request@lists.linux-foundation.org?subject=unsubscribe>
+List-Archive: <http://lists.linuxfoundation.org/pipermail/bridge/>
+List-Post: <mailto:bridge@lists.linux-foundation.org>
+List-Help: <mailto:bridge-request@lists.linux-foundation.org?subject=help>
+List-Subscribe: <https://lists.linuxfoundation.org/mailman/listinfo/bridge>,
+	<mailto:bridge-request@lists.linux-foundation.org?subject=subscribe>
+Sender: bridge-bounces@lists.linux-foundation.org
+Errors-To: bridge-bounces@lists.linux-foundation.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When we add a new usermodehelper upcall program to do the database
-access, the existing "init" function will be overkill every time
-we start up the program.
+On Thu, 2012-10-18 at 20:55 -0700, Joe Perches wrote:
+> ethernet, ipv4, and ipv6 address testing uses 3 different api naming styles.
+> 
+> ethernet uses:	is_<foo>_ether_addr
+> ipv4 uses:	ipv4_is_<foo>
+> ipv6 uses:	ipv6_addr_<foo>
+> 
+> Standardize on the ipv6 style of <prefix>_addr_<type> to reduce
+> the number of styles to remember.
+> 
+> The new consistent styles are:
+> 
+> eth_addr_<foo>(const u8 *)
+> ipv4_addr_<foo>(__be32)
+> ipv6_addr_<foo>(const struct in6_addr *)
+> 
+> Add temporary backward compatibility #defines for the old names too.
+> 
+> Joe Perches (21):
+>   etherdevice: Rename is_<foo>_ether_addr tests to eth_addr_<foo>
+>   net: Convert is_<foo>_ether_addr uses to eth_addr_<foo>
+>   arch: Convert is_<foo>_ether_addr uses to eth_addr_<foo>
+>   wireless: Convert is_<foo>_ether_addr uses to eth_addr_<foo>
+>   drivers: net: Convert is_<foo>_ether_addr uses to eth_addr_<foo>
+>   staging: Convert is_<foo>_ether_addr uses to eth_addr_<foo>
+>   infiniband: Convert is_<foo>_ether_addr uses to eth_addr_<foo>
+>   scsi: Convert is_<foo>_ether_addr uses to eth_addr_<foo>
+>   of: Convert is_<foo>_ether_addr uses to eth_addr_<foo>
+>   s390: Convert is_<foo>_ether_addr uses to eth_addr_<foo>
+>   usb: Convert is_<foo>_ether_addr uses to eth_addr_<foo>
+>   uwb: Convert is_<foo>_ether_addr uses to eth_addr_<foo>
+>   Documentation: networking: Convert is_<foo>_ether_addr uses to eth_addr_<foo>
+>   llc_if.h: Convert is_<foo>_ether_addr uses to eth_addr_<foo>
+>   in.h: Rename ipv4_is_<foo> functions to ipv4_addr_<foo>
+>   net: Convert ipv4_is_<foo> uses to ipv4_addr_<foo>
+>   infiniband: Convert ipv4_is_<foo> uses to ipv4_addr_<foo>
+>   ath6kl: Convert ipv4_is_<foo> uses to ipv4_addr_<foo>
+>   parisc: Convert ipv4_is_<foo> uses to ipv4_addr_<foo>
+>   lockd: Convert ipv4_is_<foo> uses to ipv4_addr_<foo>
+>   sctp: Convert ipv4_is_<foo> uses to ipv4_addr_<foo>
 
-Break out the database handle establishment routine into a separate
-function that we can call from each upcall command in the one-shot
-program.
+Yes they are some names discrepancies, thats a big deal.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- utils/nfsdcltrack/sqlite.c | 49 ++++++++++++++++++++++++++++++++--------------
- utils/nfsdcltrack/sqlite.h |  1 +
- 2 files changed, 35 insertions(+), 15 deletions(-)
+And we have alloc_skb() / kfree_skb() / skb_clone() 
 
-diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
-index c19af7e..bac6789 100644
---- a/utils/nfsdcltrack/sqlite.c
-+++ b/utils/nfsdcltrack/sqlite.c
-@@ -90,24 +90,15 @@ mkdir_if_not_exist(const char *dirname)
- 	return ret;
- }
- 
--/*
-- * Open the "main" database, and attempt to initialize it by creating the
-- * parameters table and inserting the schema version into it. Ignore any errors
-- * from that, and then attempt to select the version out of it again. If the
-- * version appears wrong, then assume that the DB is corrupt or has been
-- * upgraded, and return an error. If all of that works, then attempt to create
-- * the "clients" table.
-- */
-+/* Open the database and set up the database handle for it */
- int
--sqlite_maindb_init(const char *topdir)
-+sqlite_prepare_dbh(const char *topdir)
- {
- 	int ret;
--	char *err = NULL;
--	sqlite3_stmt *stmt = NULL;
- 
--	ret = mkdir_if_not_exist(topdir);
--	if (ret)
--		return ret;
-+	/* Do nothing if the database handle is already set up */
-+	if (dbh)
-+		return 0;
- 
- 	ret = snprintf(buf, PATH_MAX - 1, "%s/main.sqlite", topdir);
- 	if (ret < 0)
-@@ -118,15 +109,43 @@ sqlite_maindb_init(const char *topdir)
- 	ret = sqlite3_open(buf, &dbh);
- 	if (ret != SQLITE_OK) {
- 		xlog(L_ERROR, "Unable to open main database: %d", ret);
-+		dbh = NULL;
- 		return ret;
- 	}
- 
- 	ret = sqlite3_busy_timeout(dbh, CLD_SQLITE_BUSY_TIMEOUT);
- 	if (ret != SQLITE_OK) {
- 		xlog(L_ERROR, "Unable to set sqlite busy timeout: %d", ret);
--		goto out_err;
-+		sqlite3_close(dbh);
-+		dbh = NULL;
- 	}
- 
-+	return ret;
-+}
-+
-+/*
-+ * Open the "main" database, and attempt to initialize it by creating the
-+ * parameters table and inserting the schema version into it. Ignore any errors
-+ * from that, and then attempt to select the version out of it again. If the
-+ * version appears wrong, then assume that the DB is corrupt or has been
-+ * upgraded, and return an error. If all of that works, then attempt to create
-+ * the "clients" table.
-+ */
-+int
-+sqlite_maindb_init(const char *topdir)
-+{
-+	int ret;
-+	char *err = NULL;
-+	sqlite3_stmt *stmt = NULL;
-+
-+	ret = mkdir_if_not_exist(topdir);
-+	if (ret)
-+		return ret;
-+
-+	ret = sqlite_prepare_dbh(topdir);
-+	if (ret)
-+		return ret;
-+
- 	/* Try to create table */
- 	ret = sqlite3_exec(dbh, "CREATE TABLE IF NOT EXISTS parameters "
- 				"(key TEXT PRIMARY KEY, value TEXT);",
-diff --git a/utils/nfsdcltrack/sqlite.h b/utils/nfsdcltrack/sqlite.h
-index 8748948..ebf04c3 100644
---- a/utils/nfsdcltrack/sqlite.h
-+++ b/utils/nfsdcltrack/sqlite.h
-@@ -20,6 +20,7 @@
- #ifndef _SQLITE_H_
- #define _SQLITE_H_
- 
-+int sqlite_prepare_dbh(const char *topdir);
- int sqlite_maindb_init(const char *topdir);
- int sqlite_insert_client(const unsigned char *clname, const size_t namelen);
- int sqlite_remove_client(const unsigned char *clname, const size_t namelen);
--- 
-1.7.11.4
+Why not skb_alloc() / skb_free() / skb_clone() ?
 
+Some people actually know current code by name of functions, they dont
+want to change their mind and having to grep include files and git log
+to learn the new names of an old function, especially when traveling and
+using a laptop.
+
+Sure, when we want to use eth_random_addr(), a grep into include files
+to check if its still the right name (old one was random_ether_addr())
+is OK because we dont use this one often.
+
+If you think about it, eth_random_addr() was not the perfect name.
+
+Think about all the documentation you can find outside of kernel tree,
+RFC and things like that, copy/pasting some linux kernel code.
+
+This kind of changes make our life more difficult, when we have to
+backport patches or rebase code, or even perform some searches to find
+prior issues/discussions.
+
+Life of a kernel developer is not only dealing with latest Linus (or
+-next) tree, and using automatic 'tools'.
+
+Thats a real pain for me at least.
