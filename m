@@ -1,82 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:48922 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:39551 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751235Ab2JMC2k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Oct 2012 22:28:40 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-CC: Larry McVoy <lm@bitmover.com>, Bruce Fields <bfields@fieldses.org>,
-        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
-Date: Sat, 13 Oct 2012 02:28:39 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9091FDED5@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20121012211701.GA8301@bitmover.com>
-	 <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
-	 <20121013002100.GB23247@bitmover.com>
-	 <CA+55aFwKn+rp4qTk3dLgN8n=M-Aw1GYYpOfevDJaJhnK-U5VOg@mail.gmail.com>
-In-Reply-To: <CA+55aFwKn+rp4qTk3dLgN8n=M-Aw1GYYpOfevDJaJhnK-U5VOg@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1755539Ab2JTNqS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 20 Oct 2012 09:46:18 -0400
+Date: Sat, 20 Oct 2012 09:46:11 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Jan Sanislo <oystr@cs.washington.edu>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: nfsidmap and NFS key timeouts and quotas
+Message-ID: <20121020094611.2f0d2c32@tlielax.poochiereds.net>
+In-Reply-To: <1350679987/oystr@maui.cs.washington.edu>
+References: <1350679987/oystr@maui.cs.washington.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU2F0LCAyMDEyLTEwLTEzIGF0IDEwOjAyICswOTAwLCBMaW51cyBUb3J2YWxkcyB3cm90ZToN
-Cj4gT24gU2F0LCBPY3QgMTMsIDIwMTIgYXQgOToyMSBBTSwgTGFycnkgTWNWb3kgPGxtQGJpdG1v
-dmVyLmNvbT4gd3JvdGU6DQo+ID4NCj4gPiBBaGgsIEkndmUgYmVlbiBhd2F5IGZyb20gdGhlIGtl
-cm5lbCB0b28gbG9uZy4gIEkgbWlzcyB0aGF0IGRlbGljYXRlDQo+ID4gbWFuYWdlbWVudCB0b3Vj
-aC4NCj4gDQo+ICJEZWxpY2F0ZSBNYW5hZ2VtZW50IFRvdWNoIiBpcyBteSBtaWRkbGUgbmFtZS4N
-Cj4gDQo+ID4gcGljcyBvZiB0aGUgc3RhY2sgdHJhY2UgYXQgaHR0cDovL3d3dy5tY3ZveS5jb20v
-bG0vbmZzLWxvY2stY3Jhc2gNCj4gDQo+IE9rLCB0aGF0J3MganVzdCB0aGUgbm9ybWFsIGtpbmQg
-b2YgcmFuZG9tIGxlZnQtb3ZlciBvb3BzZXMgZHVlIHRvDQo+IHN1YnNlcXVlbnQgcHJvYmxlbXMg
-b2YgYSBCVUdfT04oKS4gTG9va3MgbGlrZSB0aGUgd2F0Y2hkb2cgdGltZXIgZW5kcw0KPiB1cCBi
-ZWluZyB1bmhhcHB5LCBhbG1vc3QgY2VydGFpbmx5IHNpbXBseSBiZWNhdXNlIHNvbWUgY29yZSBm
-aWxlc3lzdGVtDQo+IHNwaW5sb2NrIG5vdCBiZWluZyByZWxlYXNlZC4NCj4gDQo+IEl0IHVzZWQg
-dG8gYmUgKGEgbG9uZyBsb25nIHRpbWUgYWdvKSB0aGF0IHdlJ2QgcmVjb3ZlciBmYWlybHkNCj4g
-Z3JhY2VmdWxseSBmcm9tIEJVR19PTigpJ3MgLSBiYWNrIHdoZW4gdGhlIG1haW4gc2hhcmVkIGxv
-Y2sgd2UgaGFkIHdhcw0KPiB0aGUga2VybmVsIGxvY2ssIGFuZCB3ZSBoYWQgYSBzaW5nbGUgcGVy
-LXByb2Nlc3Mga2VybmVsIGxvY2sgY291bnRlci4NCj4gU28gd2hlbiB3ZSBraWxsZWQgdGhlIHBy
-b2Nlc3MsIHdlIGNvdWxkIGNsZWFuIHRoYXQgc2luZ2xlIGxvY2sgdXAuDQo+IA0KPiBUaGVzZSBk
-YXlzLCBpZiBzb21lIHByb2Nlc3MgZGllcyBpbiByYW5kb20ga2VybmVsIGNvZGUgZHVlIHRvIGEN
-Cj4gQlVHX09OKCkgb3IgYSB3aWxkIHBvaW50ZXIgb3Igc2ltaWxhciwgYW5kIHdlIGtpbGwgaXQs
-IHdlIGFyZSBzZWxkb20NCj4gYWJsZSB0byBkbyBzbyBjbGVhbmx5LiBTbyB0aGUgYmVzdCB3ZSBj
-YW4gaG9wZSBmb3IgaXMgdGhhdCBpdCBoYXBwZW5lZA0KPiBpbiBzb21lIGNvbnRleHQgd2hlcmUg
-aXQgaGVsZCBubyAoaW1wb3J0YW50KSBsb2Nrcy4gV2hpY2ggaXMgcmFyZS4gU28NCj4gQlVHX09O
-KCkncyBhcmUgb2Z0ZW4gZmF0YWwsIGFuZCB0aGVyZSBhcmUgdGhlc2Uga2luZHMgb2YgZG93bnN0
-cmVhbQ0KPiBwcm9ibGVtcyB3aGVyZSB0aGV5IGdldCBmbHVzaGVkIG9mZiB0aGUgc2NyZWVuIGJ5
-IHN1YnNlcXVlbnQgaXNzdWVzLi4uDQoNCklmIHRoYXQgY29kZSBpcyBiZWluZyBjYWxsZWQgdW5k
-ZXIgYSBsb2NrLCB0aGVuIHdlIGhhdmUgb3RoZXIgcHJvYmxlbXMuDQpJdCBpcyBzdGFuZGFyZCBY
-RFIgY29kZTogaXQgc2hvdWxkIGFsd2F5cyBiZSBjYWxsZWQgZnJvbSBhbiBvcmRpbmFyeQ0KcHJv
-Y2VzcyBjb250ZXh0IHdpdGggbm8gc3BlY2lhbCBsb2NrcyBiZWluZyBoZWxkIGJ5IHRoZSBjYWxs
-ZXJzLg0KDQo+IEhvIGh1bW0uIEdvb2dsZSBkb2Vzbid0IHNlZW0gdG8gYmUgZmluZGluZyBhbnkg
-c2ltaWxhciBidWctcmVwb3J0cywgc28NCj4gdW5sZXNzIEJydWNlIG9yIFRyb25kIGdvICJBaGgs
-IEkga25vdyB3aGF0IGl0J3MgYWJvdXQiLCBJIGRvIHRoaW5rIHdlDQo+IHdvdWxkIHdhbnQgdG8g
-Z2V0IGFzIG11Y2ggbW9yZSBpbmZvIGFzIHBvc3NpYmxlLg0KDQpOZXZlciBzZWVuIGl0IGJlZm9y
-ZSwgYW5kIEkgc2VlIG5vIHJlYXNvbiB3aHkgaXQgc2hvdWxkIGRyYWcgdGhlIGVudGlyZQ0KYm94
-IGRvd24gd2l0aCBpdC4gSXQgaXMgcGFydCBvZiB0aGUgTkxNIHNlcnZlcidzIGNhbGxiYWNrIGNv
-ZGUsIHNvIHRoZXJlDQppcyBubyBjaGFuY2Ugb2YgaXQgYmVpbmcgY2FsbGVkIGFzIHBhcnQgb2Yg
-YSBtZW1vcnkgcmVjbGFpbSBvciBhbnl0aGluZw0Kc2ltaWxhcmx5IHNlbnNpdGl2ZSB0byB0aGUg
-cmVzdCBvZiB0aGUgYm94Lg0KDQpBcmUgd2Ugc3VyZSB0aGF0IHRoaXMgQlVHX09OKCkgcmVhbGx5
-IGlzIHRvcCBvZiB0aGUgY2hhaW4gb2YgT29wc2VzDQpoZXJlPyBBbGwgSSBjYW4gc2VlIGl0IGRv
-aW5nIGlzIGNyYXNoaW5nIHRoZSBsb2NrZCBzZXJ2ZXIgcHJvY2Vzcywgd2hpY2gNCndpbGwgc2Vy
-aW91c2x5IGluY29udmVuaWVuY2UgYWxsIHRoZSBORlMgY2xpZW50cyB0cnlpbmcgdG8gZG8gbG9j
-a2luZywNCmJ1dCBpdCBzaG91bGRuJ3QgYmUgYWZmZWN0aW5nIHRoZSBzd2FwcGVyIHByb2Nlc3Mg
-YXMgd2UncmUgc2VlaW5nIGluIHRoZQ0KT29wcyBzY3JlZW5zaG90cy4NCklmIGl0IHJlYWxseSBp
-cyB0aGUgZmlyc3QgdGhpbmcgdG8gT29wcywgdGhlbiB0aGUgb25seSB0aGluZyBJIGNhbiB0aGlu
-aw0Kb2YgdGhlcmUgdGhhdCB3b3VsZCB0cmlnZ2VyIG90aGVyIE9vcHNlcyB3b3VsZCBiZSBhIG1l
-bW9yeSBjb3JydXB0aW9uDQoodXNlIGFmdGVyIGZyZWUgb3Igc29tZSBzdWNoIHRoaW5nPykuIFBl
-cmhhcHMgTGFycnkgY291bGQgdHJ5IHR1cm5pbmcgb24NCnNvbWUgb2YgdGhlIGxlc3MgaW50cnVz
-aXZlIHNsYWIgZGVidWdnaW5nIG9wdGlvbnM/DQoNCj4gRG9pbmcgYSBrZXJuZWwgY29tcGlsZSBy
-ZWFsbHkgaXNuJ3QgdGhhdCBiYWQuIFRoZSBvbmx5IG5hc3R5IHBpZWNlIGlzDQo+IGdldHRpbmcg
-dGhlIGtlcm5lbCBjb25maWd1cmF0aW9uIHJpZ2h0LCBidXQgeW91IGNhbiBqdXN0IHVzZSB0aGUN
-Cj4gZGlzdHJvIGNvbmZpZy4gSXQncyBtdWNoIHRvbyBiaWcgYW5kIGNvbnRhaW5zIGV2ZXJ5dGhp
-bmcsIGJ1dCBpdCB3aWxsDQo+IHdvcmssIGFuZCBnZXRzIHlvdSBhcyBzaW1pbGFyIGEga2VybmVs
-IGFzIHBvc3NpYmxlLiBPZiBjb3Vyc2UsIFVidW50dQ0KPiBoYXMgbWFkZSBpbnN0YWxsaW5nIHlv
-dXIgb3duIGtlcm5lbCBzdHVwaWRseSBjb21wbGljYXRlZCAoeW91IGhhdmUgdG8NCj4gYnVpbGQg
-YSBwYWNrYWdlIGFuZCBpbnN0YWxsIGl0IHVzaW5nIHRoZSBwYWNrYWdlIG1hbmFnZXIpLCBidXQg
-d2hpbGUNCj4gaXQncyBhbiBhbm5veWluZyBleHRyYSBzdGVwIG9yIHR3byAoY29tcGFyZWQgdG8g
-anVzdCBkb2luZyBhICJtYWtlDQo+IG1vZHVsZXNfaW5zdGFsbCBpbnN0YWxsIiksIGl0J3Mgbm90
-IHJvY2tldCBzdXJnZXJ5LiBUaGVyZSdzIGEgZmV3IGhlbHANCj4gcGFnZXMgZm9yIGl0Og0KPiAN
-Cj4gICAgIGh0dHBzOi8vaGVscC51YnVudHUuY29tL2NvbW11bml0eS9LZXJuZWwvQ29tcGlsZQ0K
-PiANCj4gYmVpbmcgdGhlIGZpcnN0IG9uZS4NCj4gDQo+ICAgICAgICAgICAgICAgICBMaW51cw0K
-DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5l
-dEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+On 19 Oct 2012 13:53 PDT
+Jan Sanislo <oystr@cs.washington.edu> wrote:
+
+> The man page for nfsidmap says that it will set a default timeout
+> of 600 seconds on keys requested by the NFS client.  But the
+> keys instantiated are listed a permanent in /proc/keys and it's
+> easily possible to run out of key quota in an NFS environment with
+> 100s/1000s of uids/gids.
+> 
+> Nfsidmap's call to keyctl_set_timeout fails with a permission
+> error because the call is made *after* the key is instantiated
+> and permission to modify the key attributes has been revoked as
+> a result.  The following patch seems to be more effective in
+> actually setting the key timeout:
+> 
+> ====================================
+> 
+> --- nfsidmap.c_orig	2012-10-19 11:32:29.806374240 -0700
+> +++ nfsidmap.c	2012-10-19 11:40:06.334674363 -0700
+> @@ -320,6 +320,16 @@
+>  			key, type, value, timeout);
+>  	}
+>  
+> +	/*
+> +	 * Set timeout before instantiation revokes our rights
+> +	 * over the key.
+> +	 */
+> +	if ( timeout > 0 ) {
+> +		rc = keyctl_set_timeout(key, timeout);
+> +		if ( rc != 0 )
+> +			xlog_warn("keyctl_set_timeout key 0x%x failed: %m",key);
+> +	}
+> +
+>  	if (strcmp(type, "uid") == 0)
+>  		rc = id_lookup(value, key, USER);
+>  	else if (strcmp(type, "gid") == 0)
+> @@ -329,10 +339,6 @@
+>  	else if (strcmp(type, "group") == 0)
+>  		rc = name_lookup(value, key, GROUP);
+>  
+> -	/* Set timeout to 10 (600 seconds) minutes */
+> -	if (rc == 0)
+> -		keyctl_set_timeout(key, timeout);
+> -
+>  	free(arg);
+>  	return rc;
+>  }
+> 
+
+Nice catch. The rpc.idmapd downcall handler does this already in the
+kernel:
+
+        ret = nfs_idmap_read_and_verify_message(&im,
+                        &idmap->idmap_upcall_data->idmap_msg,
+                        cons->key, cons->authkey);
+        if (ret >= 0) {
+                key_set_timeout(cons->key, nfs_idmap_cache_timeout);
+                ret = mlen;
+        }
+
+...where nfs_idmap_cache_timeout defaults to 600 and is tunable via
+module parameter. Might it be better for consistency's sake to make the
+keys API upcall do the same thing?
+
+> ====================================
+> 
+> Also, it appears that the check for EDQUOT/ENFILE/ENOMEM after the
+> keyctl_instantiate call is ineffective.  Those errors seem to be
+> handled within the kernel a key_alloc time -- if one of them occurs
+> an upcall to nfsidmap is not made.
+> 
+> Finally, the key LRU discard patch: http://lkml.org/lkml/2012/3/28/144
+> looks promising for managing key quotas.  But it only seems to be
+> invoked when a key is linked into a destination keyring. fs/nfs/idmap.c
+> uses a call to security/keys/request_key which by default provides an
+> NULL dest_keyring. Might consider changing the request_key call in nfs/idmap.c
+> to request_key_and_link (although I don't pretend to know all the
+> implications of making such a change).
+
+Have you tested that? I thought these keys did end up in a keyring
+(hence the whole override_creds/revert_creds song-and-dance). I haven't
+looked closely at the LRU discard stuff though, so you may be correct
+here...
+
+-- 
+Jeff Layton <jlayton@redhat.com>
