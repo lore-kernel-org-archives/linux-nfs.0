@@ -1,90 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:15432 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932450Ab2JYOeD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 25 Oct 2012 10:34:03 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q9PEY3tk021909
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 25 Oct 2012 10:34:03 -0400
-Date: Thu, 25 Oct 2012 10:34:01 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
+Received: from maui.cs.washington.edu ([128.208.5.86]:35153 "EHLO
+	maui.cs.washington.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753123Ab2JUUQT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 21 Oct 2012 16:16:19 -0400
+Date: 21 Oct 2012 13:15 PDT
+From: Jan Sanislo <oystr@cs.washington.edu>
+Subject: Re: nfsidmap and NFS key timeouts and quotas
+To: jlayton@redhat.com
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 10/10] nfsdcltrack: flip the default in autoconf to
- "yes" for it
-Message-ID: <20121025103401.4b15123b@corrin.poochiereds.net>
-In-Reply-To: <50894C88.9070205@RedHat.com>
-References: <1351092359-25842-1-git-send-email-jlayton@redhat.com>
-	<1351092359-25842-11-git-send-email-jlayton@redhat.com>
-	<5089372D.1050501@RedHat.com>
-	<20121025100707.4e01c0b7@corrin.poochiereds.net>
-	<50894C88.9070205@RedHat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Message-Id: <1350849102/oystr@maui.cs.washington.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 25 Oct 2012 10:28:24 -0400
-Steve Dickson <SteveD@redhat.com> wrote:
+> Nice catch. The rpc.idmapd downcall handler does this already in the
+> kernel:
+>
+>        ret = nfs_idmap_read_and_verify_message(&im,
+>                        &idmap->idmap_upcall_data->idmap_msg,
+>                        cons->key, cons->authkey);
+>        if (ret >= 0) {
+>                key_set_timeout(cons->key, nfs_idmap_cache_timeout);
+>                ret = mlen;
+>        }
+>
+> ...where nfs_idmap_cache_timeout defaults to 600 and is tunable via
+> module parameter. Might it be better for consistency's sake to make the
+> keys API upcall do the same thing?
 
-> 
-> 
-> On 25/10/12 10:07, Jeff Layton wrote:
-> > On Thu, 25 Oct 2012 08:57:17 -0400
-> > Steve Dickson <SteveD@redhat.com> wrote:
-> > 
-> >>
-> >>
-> >> On 24/10/12 11:25, Jeff Layton wrote:
-> >>> Allow nfsdcltrack to be built by default if all of the requirements
-> >>> for it are in place. Set the initial state of $enable_nfsdcltrack
-> >>> to "maybe", and fix the appropriate tests to just disable building
-> >>> the binary unless someone explicitly requests it.
-> >> Hmm... I'm not sure I too keen on this "maybe" state... 
-> >>
-> > 
-> > Would it help if we renamed it to
-> > "yes_but_only_if_requirements_are_met" ? :)
-> :-) 
-> 
-> > 
-> >> So if no flags are given to ./configuration, and not 
-> >> all the requirements to build nfsdcltrack exists, the configuration 
-> >> will succeed, but the command will not be build. Correct?
-> >>
-> > 
-> > Correct.
-> > 
-> >> But if the  --enable_nfsdcltrack flag is given and not all
-> >> the requirements to build nfsdcltrack exist the configuration
-> >> will fail. 
-> >>
-> > 
-> > Correct.
-> > 
-> >> I'm thinking we might want to make it a bit more binary. Either
-> >> on or off. Like it is with the other conditionally built 
-> >> commands... 
-> >>
-> > 
-> > So you want to fail the configure stage if all of the requirements for
-> > nfsdcltrack aren't present? That doesn't sound good to me. Note that we
-> > do have "tristate" handling already for stuff like the --disable-uuid
-> > option...
-> I'm thinking there it might cause confusion to silently not build
-> a binary, when the expectation is this should be there. I'm thinking
-> a failure of the config script would remove that confusion... And
-> as long as there a way to mask that failure out (aka --enable_nfsdcltrack=no
-> or --disable_nfsdcltrack) it will make it more explicit to what is or
-> is not happening... 
-> 
->  
+Yes, that certainly works.  But I wonder whether it's conspicuous
+absence on that call path wasn't intentional, with the intent being
+to make request-keys/nfsidmap the single stop for setting NFS key
+timeouts.  If the key_set_timeout call moves into the kernel then
+it would be useful to remove the nfsidmap code and docs regarding
+key timeouts -- otherwise things might get a littel confusing.
 
-It's not silent. It does throw a warning in this case, but that is
-likely to get lost in the noise. It's your call -- if you want to fail
-the build by default if the requirements aren't present, then I'm ok
-with that.
+>> 
+>> Finally, the key LRU discard patch: http://lkml.org/lkml/2012/3/28/144
+>> looks promising for managing key quotas.  But it only seems to be
+>> invoked when a key is linked into a destination keyring. fs/nfs/idmap.c
+>> uses a call to security/keys/request_key which by default provides an
+>> NULL dest_keyring. Might consider changing the request_key call in nfs/idmap.c
+>> to request_key_and_link (although I don't pretend to know all the
+>> implications of making such a change).
 
--- 
-Jeff Layton <jlayton@redhat.com>
+> Have you tested that? I thought these keys did end up in a keyring
+> (hence the whole override_creds/revert_creds song-and-dance). I haven't
+> looked closely at the LRU discard stuff though, so you may be correct
+> here...
+
+Tested only in the sense that, after cranking down the root key quota to
+20 or so, the LRU code does not seem to be working for NFS keys.  I
+should probably investigate that further.  I was hoping I would get
+a response of "yeah, we know it's not quite right" or "you haven't got
+things configured correctly".
+
+Thanks for the help.
+
