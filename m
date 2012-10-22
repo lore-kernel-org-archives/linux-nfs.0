@@ -1,148 +1,173 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43335 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751646Ab2JARqz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Oct 2012 13:46:55 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 6/8] nfsd4: separate session allocation and initialization
-Date: Mon,  1 Oct 2012 13:46:50 -0400
-Message-Id: <1349113612-30374-7-git-send-email-bfields@redhat.com>
-In-Reply-To: <1349113612-30374-1-git-send-email-bfields@redhat.com>
-References: <1349113612-30374-1-git-send-email-bfields@redhat.com>
+Received: from mail-da0-f46.google.com ([209.85.210.46]:48802 "EHLO
+	mail-da0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753708Ab2JVABY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 21 Oct 2012 20:01:24 -0400
+Date: Sun, 21 Oct 2012 17:01:20 -0700
+From: Jonathan Nieder <jrnieder@gmail.com>
+To: Ben Hutchings <ben@decadent.org.uk>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, 669314@bugs.debian.org,
+        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, Micheal Waltz <mwaltz@qualcomm.com>,
+        Gabriel Evanoff <gevanoff@salk.edu>, laurent+debian@u-picardie.fr
+Subject: Re: [PATCH] nfs: Show original device name verbatim in
+ /proc/*/mount{s,info}
+Message-ID: <20121022000119.GB9057@elie.Belkin>
+References: <7941E5E1-488D-4D0B-A21A-4E389EF6EBBA@salk.edu>
+ <1350843832.22276.34.camel@deadeye.wl.decadent.org.uk>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1350843832.22276.34.camel@deadeye.wl.decadent.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+(cc-ing Laurent in case he wants to test.  Laurent, a "git am"-ready
+ patch is at [1])
+Ben Hutchings wrote:
 
-This will allow some further simplification.
+> Since commit c7f404b ('vfs: new superblock methods to override
+> /proc/*/mount{s,info}'), nfs_path() is used to generate the mounted
+> device name reported back to userland.
+>
+> nfs_path() always generates a trailing slash when the given dentry is
+> the root of an NFS mount, but userland may expect the original device
+> name to be returned verbatim (as it used to be).  Make this
+> canonicalisation optional and change the callers accordingly.
+>
+> Reported-and-tested-by: Chris Hiestand <chiestand@salk.edu>
+> Reference: http://bugs.debian.org/669314
+> Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
+> Cc: <stable@vger.kernel.org> # v2.6.39+
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Changing the content of /proc/mounts broke 
+
+ user@hostname:/proc/self$ sudo umount.nfs nfsserver:/srv/ubuntu-32
+ umount.nfs: nfsserver:/srv/ubuntu-32: not found
+
+with nfs2 and nfs3 and this looks like the minimal change to get it
+working again, so for what it's worth,
+Reviewed-by: Jonathan Nieder <jrnieder@gmail.com>
+
+How about something like the following on top?
+
+-- >8 --
+Subject: nfs: convert boolean nfs_path() argument to a flag word
+
+If nfs_path() gains any other boolean settings, they can share the
+flag argument, and this way call sites look like "nfs_path(&limit,
+dentry, buffer, buflen, NFS_PATH_CANONICAL);" so the reader does not
+need to guess the sense of true and false.  No functional change
+intended.
+
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
- fs/nfsd/nfs4state.c |   46 +++++++++++++++++++++++-----------------------
- 1 file changed, 23 insertions(+), 23 deletions(-)
+[1] http://download.gmane.org/gmane.linux.nfs/52755/52756
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 79f1fdb..1cd80d5 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -946,21 +946,10 @@ static struct nfsd4_session *alloc_session(struct nfsd4_channel_attrs *fchan)
- 	return new;
- }
+ fs/nfs/internal.h      |  5 +++--
+ fs/nfs/namespace.c     | 14 +++++++++-----
+ fs/nfs/nfs4namespace.c |  3 ++-
+ fs/nfs/super.c         |  2 +-
+ 4 files changed, 15 insertions(+), 9 deletions(-)
+
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 9c9603373d64..a54fe51c1dfb 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -353,8 +353,9 @@ extern void nfs_sb_active(struct super_block *sb);
+ extern void nfs_sb_deactive(struct super_block *sb);
  
--static struct nfsd4_session *alloc_init_session(struct svc_rqst *rqstp, struct nfs4_client *clp, struct nfsd4_create_session *cses)
-+static struct nfsd4_session *init_session(struct svc_rqst *rqstp, struct nfsd4_session *new, struct nfs4_client *clp, struct nfsd4_create_session *cses)
+ /* namespace.c */
++#define NFS_PATH_CANONICAL 1
+ extern char *nfs_path(char **p, struct dentry *dentry,
+-		      char *buffer, ssize_t buflen, bool canonical);
++		      char *buffer, ssize_t buflen, unsigned flags);
+ extern struct vfsmount *nfs_d_automount(struct path *path);
+ struct vfsmount *nfs_submount(struct nfs_server *, struct dentry *,
+ 			      struct nfs_fh *, struct nfs_fattr *);
+@@ -498,7 +499,7 @@ static inline char *nfs_devname(struct dentry *dentry,
+ 				char *buffer, ssize_t buflen)
  {
--	struct nfsd4_session *new;
--	struct nfsd4_conn *conn;
- 	int idx;
- 
--	new = alloc_session(&cses->fore_channel);
--	if (!new)
--		return NULL;
--
--	conn = alloc_conn_from_crses(rqstp, cses);
--	if (!conn) {
--		__free_session(new);
--		return NULL;
--	}
- 	new->se_client = clp;
- 	gen_sessionid(new);
- 
-@@ -978,7 +967,6 @@ static struct nfsd4_session *alloc_init_session(struct svc_rqst *rqstp, struct n
- 	spin_unlock(&clp->cl_lock);
- 	spin_unlock(&client_lock);
- 
--	nfsd4_init_conn(rqstp, conn, new);
- 	if (cses->flags & SESSION4_BACK_CHAN) {
- 		struct sockaddr *sa = svc_addr(rqstp);
- 		/*
-@@ -1766,6 +1754,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 	struct sockaddr *sa = svc_addr(rqstp);
- 	struct nfs4_client *conf, *unconf;
- 	struct nfsd4_session *new;
-+	struct nfsd4_conn *conn;
- 	struct nfsd4_clid_slot *cs_slot = NULL;
- 	bool confirm_me = false;
- 	__be32 status = 0;
-@@ -1774,6 +1763,13 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 		return nfserr_inval;
- 	if (check_forechannel_attrs(cr_ses->fore_channel))
- 		return nfserr_toosmall;
-+	new = alloc_session(&cr_ses->fore_channel);
-+	if (!new)
-+		return nfserr_jukebox;
-+	status = nfserr_jukebox;
-+	conn = alloc_conn_from_crses(rqstp, cr_ses);
-+	if (!conn)
-+		goto out_free_session;
- 
- 	nfs4_lock_state();
- 	unconf = find_unconfirmed_client(&cr_ses->clientid, true);
-@@ -1784,41 +1780,40 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 		status = check_slot_seqid(cr_ses->seqid, cs_slot->sl_seqid, 0);
- 		if (status == nfserr_replay_cache) {
- 			status = nfsd4_replay_create_session(cr_ses, cs_slot);
--			goto out;
-+			goto out_free_conn;
- 		} else if (cr_ses->seqid != cs_slot->sl_seqid + 1) {
- 			status = nfserr_seq_misordered;
--			goto out;
-+			goto out_free_conn;
- 		}
- 	} else if (unconf) {
- 		if (!same_creds(&unconf->cl_cred, &rqstp->rq_cred) ||
- 		    !rpc_cmp_addr(sa, (struct sockaddr *) &unconf->cl_addr)) {
- 			status = nfserr_clid_inuse;
--			goto out;
-+			goto out_free_conn;
- 		}
- 		cs_slot = &unconf->cl_cs_slot;
- 		status = check_slot_seqid(cr_ses->seqid, cs_slot->sl_seqid, 0);
- 		if (status) {
- 			/* an unconfirmed replay returns misordered */
- 			status = nfserr_seq_misordered;
--			goto out;
-+			goto out_free_conn;
- 		}
- 		confirm_me = true;
- 		conf = unconf;
- 	} else {
- 		status = nfserr_stale_clientid;
--		goto out;
-+		goto out_free_conn;
- 	}
-+	status = nfs_ok;
- 	/*
- 	 * We do not support RDMA or persistent sessions
- 	 */
- 	cr_ses->flags &= ~SESSION4_PERSIST;
- 	cr_ses->flags &= ~SESSION4_RDMA;
- 
--	status = nfserr_jukebox;
--	new = alloc_init_session(rqstp, conf, cr_ses);
--	if (!new)
--		goto out;
--	status = nfs_ok;
-+	init_session(rqstp, new, conf, cr_ses);
-+	nfsd4_init_conn(rqstp, conn, new);
-+
- 	memcpy(cr_ses->sessionid.data, new->se_sessionid.data,
- 	       NFS4_MAX_SESSIONID_LEN);
- 	memcpy(&cr_ses->fore_channel, &new->se_fchannel,
-@@ -1840,6 +1835,11 @@ out:
- 	nfs4_unlock_state();
- 	dprintk("%s returns %d\n", __func__, ntohl(status));
- 	return status;
-+out_free_conn:
-+	free_conn(conn);
-+out_free_session:
-+	__free_session(new);
-+	goto out;
+ 	char *dummy;
+-	return nfs_path(&dummy, dentry, buffer, buflen, true);
++	return nfs_path(&dummy, dentry, buffer, buflen, NFS_PATH_CANONICAL);
  }
  
- static bool nfsd4_last_compound_op(struct svc_rqst *rqstp)
+ /*
+diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
+index 059975e492e1..dd057bc6b65b 100644
+--- a/fs/nfs/namespace.c
++++ b/fs/nfs/namespace.c
+@@ -33,8 +33,7 @@ int nfs_mountpoint_expiry_timeout = 500 * HZ;
+  * @dentry - pointer to dentry
+  * @buffer - result buffer
+  * @buflen - length of buffer
+- * @canonical - ensure there is exactly one slash after the original
+- *		device (export) name; if false, return it verbatim
++ * @flags - options (see below)
+  *
+  * Helper function for constructing the server pathname
+  * by arbitrary hashed dentry.
+@@ -42,9 +41,14 @@ int nfs_mountpoint_expiry_timeout = 500 * HZ;
+  * This is mainly for use in figuring out the path on the
+  * server side when automounting on top of an existing partition
+  * and in generating /proc/mounts and friends.
++ *
++ * Supported flags:
++ * NFS_PATH_CANONICAL: ensure there is exactly one slash after
++ *		       the original device (export) name
++ *		       (if unset, the original name is returned verbatim)
+  */
+ char *nfs_path(char **p, struct dentry *dentry, char *buffer, ssize_t buflen,
+-	       bool canonical)
++	       unsigned flags)
+ {
+ 	char *end;
+ 	int namelen;
+@@ -77,7 +81,7 @@ rename_retry:
+ 		rcu_read_unlock();
+ 		goto rename_retry;
+ 	}
+-	if (canonical && *end != '/') {
++	if ((flags & NFS_PATH_CANONICAL) && *end != '/') {
+ 		if (--buflen < 0) {
+ 			spin_unlock(&dentry->d_lock);
+ 			rcu_read_unlock();
+@@ -94,7 +98,7 @@ rename_retry:
+ 		return end;
+ 	}
+ 	namelen = strlen(base);
+-	if (canonical) {
++	if (flags & NFS_PATH_CANONICAL) {
+ 		/* Strip off excess slashes in base string */
+ 		while (namelen > 0 && base[namelen - 1] == '/')
+ 			namelen--;
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index 2f6f16331769..1e09eb78543b 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -81,7 +81,8 @@ static char *nfs_path_component(const char *nfspath, const char *end)
+ static char *nfs4_path(struct dentry *dentry, char *buffer, ssize_t buflen)
+ {
+ 	char *limit;
+-	char *path = nfs_path(&limit, dentry, buffer, buflen, true);
++	char *path = nfs_path(&limit, dentry, buffer, buflen,
++			      NFS_PATH_CANONICAL);
+ 	if (!IS_ERR(path)) {
+ 		char *path_component = nfs_path_component(path, limit);
+ 		if (path_component)
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index c89a73da13d9..13c2a5be4765 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -771,7 +771,7 @@ int nfs_show_devname(struct seq_file *m, struct dentry *root)
+ 	int err = 0;
+ 	if (!page)
+ 		return -ENOMEM;
+-	devname = nfs_path(&dummy, root, page, PAGE_SIZE, false);
++	devname = nfs_path(&dummy, root, page, PAGE_SIZE, 0);
+ 	if (IS_ERR(devname))
+ 		err = PTR_ERR(devname);
+ 	else
 -- 
-1.7.9.5
+1.8.0.rc3
 
