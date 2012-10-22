@@ -1,45 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:53867 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756788Ab2J0Mem (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 08:34:42 -0400
-Received: by mail-gg0-f174.google.com with SMTP id k5so690907ggd.19
-        for <linux-nfs@vger.kernel.org>; Sat, 27 Oct 2012 05:34:42 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v8 31/32] vfs: convert filename_lookup to use retry_estale helper
-Date: Sat, 27 Oct 2012 08:33:38 -0400
-Message-Id: <1351341219-17837-32-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
-References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:60605 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755556Ab2JVQGy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Oct 2012 12:06:54 -0400
+Received: by mail-ie0-f174.google.com with SMTP id k13so3828544iea.19
+        for <linux-nfs@vger.kernel.org>; Mon, 22 Oct 2012 09:06:54 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 08/10] rpc.gssd: Squelch compiler warning
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 22 Oct 2012 12:06:52 -0400
+Message-ID: <20121022160652.4552.84836.stgit@lebasque.1015granger.net>
+In-Reply-To: <20121022160140.4552.34477.stgit@lebasque.1015granger.net>
+References: <20121022160140.4552.34477.stgit@lebasque.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/namei.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+gss_util.c: At top level:
+gss_util.c:98:36: warning: ISO C does not allow extra ‘;’ outside of a
+function [-pedantic]
 
-diff --git a/fs/namei.c b/fs/namei.c
-index c6173cc..6886630 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -2020,10 +2020,11 @@ static int path_lookupat(int dfd, const char *name,
- static int filename_lookup(int dfd, struct filename *name,
- 				unsigned int flags, struct nameidata *nd)
- {
-+	unsigned int try = 0;
- 	int retval = path_lookupat(dfd, name->name, flags | LOOKUP_RCU, nd);
- 	if (unlikely(retval == -ECHILD))
- 		retval = path_lookupat(dfd, name->name, flags, nd);
--	if (unlikely(retval == -ESTALE))
-+	while (retry_estale(retval, try++))
- 		retval = path_lookupat(dfd, name->name,
- 						flags | LOOKUP_REVAL, nd);
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ utils/gssd/gss_util.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/utils/gssd/gss_util.c b/utils/gssd/gss_util.c
+index 0e327b0..2e6d40f 100644
+--- a/utils/gssd/gss_util.c
++++ b/utils/gssd/gss_util.c
+@@ -95,7 +95,7 @@
+ /* Global gssd_credentials handle */
+ gss_cred_id_t gssd_creds;
  
--- 
-1.7.11.7
+-gss_OID g_mechOid = GSS_C_NULL_OID;;
++gss_OID g_mechOid = GSS_C_NULL_OID;
+ 
+ #if 0
+ static void
 
