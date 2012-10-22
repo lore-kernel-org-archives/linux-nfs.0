@@ -1,51 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49156 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751551Ab2JARfO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Oct 2012 13:35:14 -0400
-Received: from bfields by fieldses.org with local (Exim 4.76)
-	(envelope-from <bfields@fieldses.org>)
-	id 1TIjti-0007lV-4S
-	for linux-nfs@vger.kernel.org; Mon, 01 Oct 2012 13:35:14 -0400
-Date: Mon, 1 Oct 2012 13:35:14 -0400
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: stricter endianness in reply cache hash
-Message-ID: <20121001173513.GA29803@fieldses.org>
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:60605 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755157Ab2JVQGI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Oct 2012 12:06:08 -0400
+Received: by mail-ie0-f174.google.com with SMTP id k13so3828544iea.19
+        for <linux-nfs@vger.kernel.org>; Mon, 22 Oct 2012 09:06:07 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 03/10] mountd: Eliminate unnecessary type conversions
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 22 Oct 2012 12:06:04 -0400
+Message-ID: <20121022160604.4552.21104.stgit@lebasque.1015granger.net>
+In-Reply-To: <20121022160140.4552.34477.stgit@lebasque.1015granger.net>
+References: <20121022160140.4552.34477.stgit@lebasque.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Just a dumb patch to make u32/__be32 use more consistent, queuing for
-3.7.--b.
+Clean up compiler warnings:
 
-commit 46056c57875540e945b9fc84042f2e4d7777b2d3
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Fri Jul 27 11:57:00 2012 -0400
+cache.c:332:16: warning: conversion to ‘int’ from ‘size_t’ may alter
+  its value [-Wconversion]
+cache.c:339:9: warning: conversion to ‘size_t’ from ‘int’ may change
+  the sign of the result [-Wsign-conversion]
+cache.c: In function ‘subexport’:
+cache.c:354:17: warning: conversion to ‘int’ from ‘size_t’ may alter
+  its value [-Wconversion]
+cache.c:357:9: warning: conversion to ‘size_t’ from ‘int’ may change
+  the sign of the result [-Wsign-conversion]
 
-    nfsd: stricter endianness in reply cache hash
-    
-    Admittedly this is just to shut up sparse; the byte-swapping has no
-    effect on the result.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Seen with gcc version 4.6.3 20120306 (Red Hat 4.6.3-2) (GCC) .
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index 2cbac34..6e5b8a8 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -29,10 +29,10 @@ static int			cache_disabled = 1;
- /*
-  * Calculate the hash index from an XID.
-  */
--static inline u32 request_hash(u32 xid)
-+static inline u32 request_hash(__be32 xid)
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ utils/mountd/cache.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index 6de05f1..70e1aa4 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -329,7 +329,7 @@ static char *next_mnt(void **v, char *p)
  {
--	u32 h = xid;
--	h ^= (xid >> 24);
-+	u32 h = ntohl(xid);
-+	h ^= (h >> 24);
- 	return h & (HASHSIZE-1);
- }
+ 	FILE *f;
+ 	struct mntent *me;
+-	int l = strlen(p);
++	size_t l = strlen(p);
+ 	if (*v == NULL) {
+ 		f = setmntent("/etc/mtab", "r");
+ 		*v = f;
+@@ -351,7 +351,7 @@ static char *next_mnt(void **v, char *p)
+ static bool subexport(struct exportent *e1, struct exportent *e2)
+ {
+ 	char *p1 = e1->e_path, *p2 = e2->e_path;
+-	int l2 = strlen(p2);
++	size_t l2 = strlen(p2);
  
+ 	return e2->e_flags & NFSEXP_CROSSMOUNT
+ 	       && strncmp(p1, p2, l2) == 0
+
