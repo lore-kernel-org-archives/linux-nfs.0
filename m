@@ -1,63 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:53132 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750895Ab2JOE1j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Oct 2012 00:27:39 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chen Gang <gang.chen@asianux.com>
-CC: Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [Bug fix] nfs-client: fix nfs_inode_attrs_need_update for async
- read_done comes during truncating to smaller size
-Date: Mon, 15 Oct 2012 04:27:35 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA909236BB5@SACEXCMBX04-PRD.hq.netapp.com>
-References: <507B70F1.7040903@asianux.com>
-In-Reply-To: <507B70F1.7040903@asianux.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:60605 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755440Ab2JVQGh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Oct 2012 12:06:37 -0400
+Received: by mail-ie0-f174.google.com with SMTP id k13so3828544iea.19
+        for <linux-nfs@vger.kernel.org>; Mon, 22 Oct 2012 09:06:37 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 06/10] mountd: Avoid unnecessary type conversions
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 22 Oct 2012 12:06:33 -0400
+Message-ID: <20121022160633.4552.55174.stgit@lebasque.1015granger.net>
+In-Reply-To: <20121022160140.4552.34477.stgit@lebasque.1015granger.net>
+References: <20121022160140.4552.34477.stgit@lebasque.1015granger.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTEwLTE1IGF0IDEwOjEyICswODAwLCBDaGVuIEdhbmcgd3JvdGU6DQo+IEhl
-bGxvIFRyb25kIE15a2xlYnVzdCwgSmVmZiBMYXl0b246DQo+IA0KPiAxKSBSb290IENhdXNlOg0K
-PiAgICBBKSBiZWdpbiB0cnVuY2F0ZSB0byBzbWFsbGVyLCBhZnRlciBhc3luYyByZWFkIGZpbmlz
-aCBzdGFydGluZy4NCj4gICAgQikgYXN5bmMgcmVhZCBkb25lIGNvbWUsIGFmdGVyIHRydW5jYXRl
-IG9wZXJhdGlvbiBjaGFuZ2UgaW5vZGUgc2l6ZS4NCj4gICAgQykgaW4gbmZzX2lub2RlX2F0dHJz
-X25lZWRfdXBkYXRlLCBuZnNfc2l6ZV9uZWVkX3VwZGF0ZSByZXR1cm4gdHJ1ZS4NCj4gICAgICAg
-aSkgICB0aGUgYmlnZ2VyIHNpemUgaXMgdGhlIG9yaWdpbmFsIG9sZCBzaXplIG9mIGNsaWVudCBp
-dHNlbGYuDQo+ICAgICAgIGlpKSAgdGhlIHNtYWxsZXIgc2l6ZSBpcyB0aGUgY3VycmVudCB0cnVl
-IHNpemUuDQo+ICAgICAgIGlpaSkgbmZzX2lub2RlX2F0dHJzX25lZWRfdXBkYXRlIG5vdCBjb25z
-aWRlciB0aGlzIHNpdHVhdGlvbi4NCj4gDQo+IDIpIEZpeCBuZnNfc2l6ZV9uZWVkX3VwZGF0ZToN
-Cj4gICAgQSkgZGVsZXRlIGl0Og0KPiAgICAgICBpKSAgIGl0IGlzIGZvciBwZXJmb3JtYW5jZSwg
-bm90IG5lY2Vzc2FyeSAobm90IGZvciBjb3JyZWN0bmVzcykuDQo+ICAgICAgIGlpKSAgaWYgaXQg
-d2FzIG5lY2Vzc2FyeSwgaXQgc2hvdWxkIHVzZSAiIT0iIGluc3RlYWQgb2YgJz4nLg0KPiAgICAg
-ICBpaWkpIGl0IGlzIHRoZSBzaW1wbGVzdCB3YXkgdG8gZml4IHRoaXMgYnVnIChtYXliZSBub3Qg
-YmVzdCB3YXkpLg0KPiAgICBCKSBjb25zaWRlciB0aGlzIHNpdHVhdGlvbiBpbiBpdDoNCj4gICAg
-ICAgaSkgICBpdCBpcyB0aGUgYmVzdCB3YXkuDQo+ICAgICAgIGlpKSAgaXQgaXMgYSBsaXR0bGUg
-Y29tcGxleCAobmVlZCB0aGluayBvZikNCj4gICAgICAgaWlpKSBzb3JyeSBmb3IgSSBkbyBub3Qg
-a25vdyBob3cgdG8gZml4IGl0IChhdCBsZWFzdCBub3cpLg0KPiAgICBDKSBub3QgdG91Y2ggaXQ6
-DQo+ICAgICAgIGkpICAgY29ycmVjdCBhbm90aGVyIHBsYWNlIChzdWNoIGFzIG5mc191cGRhdGVf
-aW5vZGUpDQo+ICAgICAgIGlpKSAgaXQgaXMgYSBiYWQgaWRlYSAoYXQgbGVhc3QsIEkgdGhpbmsg
-aXQgaXMpDQo+ICAgICAgIGlpaSkgd2UgbmVlZCBrZWVwIHRoZSBzb3VyY2UgY29kZSBhcyBjbGVh
-cmVyIGFzIHBvc3NpYmxlLg0KPiANCj4gMykgVGVzdCBSZXN1bHQ6DQo+ICAgIEEpIGl0IGlzIG9u
-ZSBjbGllbnQgYW5kIG9uZSBzZXJ2ZXIgc2VwYXJhdGVseSwgdW5kZXIgMy42LXJjNSB4ODZfMzIu
-DQo+ICAgIEIpIHVzZSBvbmUgcHJvY2VzcyAoZnN4LWxpbnV4KSB0ZXN0IChvbmx5IG9uZSB1c2Vy
-IG1vZGUgdGhyZWFkKS4NCj4gICAgQykgb25seSB1c2UgcmVhZCwgdHJ1bmNhdGUsIGxsc2Vlaywg
-ZnN0YXQgb3BlcmF0aW9uIGZvciBvbmUgZmlsZS4NCj4gDQo+ICAgIEJlZm9yZSBkZWxldGUgbmZz
-X3NpemVfbmVlZF91cGRhdGUsIGl0IGNhdXNlcyBpc3N1ZS4NCj4gICAgQWZ0ZXIgZGVsZXRlIG5m
-c19zaXplX25lZWRfdXBkYXRlLCBpdCBpcyBvay4NCg0KbmZzX3NpemVfbmVlZF91cGRhdGUgaXMg
-bm90IGFib3V0IHBlcmZvcm1hbmNlLiBJdCBpcyBhIGhldXJpc3RpYyB0aGF0IGlzDQplbnRpcmVs
-eSBhYm91dCBlbnN1cmluZyBjb3JyZWN0bmVzcyB3aGVuIGZhY2VkIHdpdGggdGhlIGZhY3QgdGhh
-dCBtb3N0DQpMaW51eCBmaWxlc3lzdGVtcyBhcmUgdXR0ZXJseSBpbmNhcGFibGUgb2YgcmVwb3J0
-aW5nIHdpdGggbW9kaWZpY2F0aW9ucw0KdGhhdCBvY2N1ciB3aXRoaW4gPCAxIHNlY29uZCBpbnRl
-cnZhbHMgYmVjYXVzZSB0aGVpciBtdGltZS9jdGltZSBpcw0KbGltaXRlZCB0byAxIHNlY29uZCBy
-ZXNvbHV0aW9ucy4NCg0KTm93LCB3aGF0IGFyZSB0aGUgY29uZGl0aW9ucyBvZiB5b3VyIHRlc3Qg
-c2V0dXA/IFRoZSBhYm92ZSBidWcgcmVwb3J0IGlzDQptZWFuaW5nbGVzcyB1bmxlc3MgaXQgaW5j
-bHVkZXMgYSBkZXNjcmlwdGlvbiBvZiB3aGF0IGlzIGJlaW5nIGV4cG9ydGVkDQpieSB0aGUgc2Vy
-dmVyIChpbmNsdWRpbmcgYSBwcm9wZXIgbGlzdGluZyBvZiB0aGUgY29udGVudHMNCm9mIC9ldGMv
-ZXhwb3J0cyBhbmQgL3Byb2MvbW91bnRzKS4gSXQgc2hvdWxkIGFsc28gaW5jbHVkZSBhIGRlc2Ny
-aXB0aW9uDQpvZiB0aGUgTkZTIGNsaWVudCBtb3VudCBvcHRpb25zIChzZWUgL3Byb2MvbW91bnRz
-IG9uIHRoZSBjbGllbnQpLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVu
-dCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5u
-ZXRhcHAuY29tDQo=
+Clean up compiler warnings:
+
+cache.c: In function ‘is_subdirectory’:
+cache.c:760:16: warning: conversion to ‘int’ from ‘size_t’ may
+  alter its value [-Wconversion]
+cache.c:763:3: warning: conversion to ‘size_t’ from ‘int’ may
+  change the sign of the result [-Wsign-conversion]
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ utils/mountd/cache.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index 64ca5ba..fbaa28e 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -758,7 +758,7 @@ static int dump_to_cache(FILE *f, char *domain, char *path, struct exportent *ex
+ 
+ static int is_subdirectory(char *child, char *parent)
+ {
+-	int l = strlen(parent);
++	size_t l = strlen(parent);
+ 
+ 	return strcmp(child, parent) == 0
+ 		|| (strncmp(child, parent, l) == 0 && child[l] == '/');
+
