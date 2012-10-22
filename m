@@ -1,47 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:1127 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755124Ab2JPRZy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Oct 2012 13:25:54 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] nfsv3: Make v3 mounts fail with ETIMEDOUTs instead EIO on mountd timeouts
-Date: Tue, 16 Oct 2012 13:22:19 -0400
-Message-Id: <1350408139-4245-1-git-send-email-steved@redhat.com>
+Received: from acsinet15.oracle.com ([141.146.126.227]:37203 "EHLO
+	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755015Ab2JVRbv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Oct 2012 13:31:51 -0400
+References: <20121022160140.4552.34477.stgit@lebasque.1015granger.net> <5085821C.4020500@RedHat.com>
+Mime-Version: 1.0 (1.0)
+In-Reply-To: <5085821C.4020500@RedHat.com>
+Content-Type: text/plain;
+	charset=us-ascii
+Message-Id: <4E4F3F80-FE31-45E1-A938-1D5DB8E7E64B@oracle.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH 00/10] nfs-utils compiler warning clean ups
+Date: Mon, 22 Oct 2012 13:31:44 -0400
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Scott Mayhew <smayhew@redhat.com>
+The compiler flag that enables a warning is listed in square brackets at the end of each warning message.  Like:  [-wsigned-comparison]
 
-In very busy v3 environment, rpc.mountd can respond to the NULL
-procedure but not the MNT procedure in a timely manner causing
-the MNT procedure to time out. The problem is the mount system
-call returns EIO which causes the mount to fail, instead of
-ETIMEDOUT, which would cause the mount to be retried.
+Sent from my iPhone
 
-This patch sets the RPC_TASK_SOFT|RPC_TASK_TIMEOUT flags to
-the rpc_call_sync() call in nfs_mount() which causes
-ETIMEDOUT to be returned on timed out connections.
+On Oct 22, 2012, at 1:27 PM, Steve Dickson <SteveD@redhat.com> wrote:
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- fs/nfs/mount_clnt.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
-index 8e65c7f..015f71f 100644
---- a/fs/nfs/mount_clnt.c
-+++ b/fs/nfs/mount_clnt.c
-@@ -181,7 +181,7 @@ int nfs_mount(struct nfs_mount_request *info)
- 	else
- 		msg.rpc_proc = &mnt_clnt->cl_procinfo[MOUNTPROC_MNT];
- 
--	status = rpc_call_sync(mnt_clnt, &msg, 0);
-+	status = rpc_call_sync(mnt_clnt, &msg, RPC_TASK_SOFT|RPC_TASK_TIMEOUT);
- 	rpc_shutdown_client(mnt_clnt);
- 
- 	if (status < 0)
--- 
-1.7.11.7
-
+> 
+> 
+> On 22/10/12 12:05, Chuck Lever wrote:
+>> Hi-
+>> 
+>> These address compiler warnings in mountd and gssd that I've found
+>> during recent sojourns in that code base.  I've done some light
+>> testing, but more critical review and testing would be appreciated.
+>> 
+>> I think these are appropriate for your next release of nfs-utils.
+> What CFLAGS do you use to see these warnings? Every time I do a build
+> I check for warnings and if I would have seen these I would have
+> fixed them immediately...   
+> 
+> BTW, I'm using gcc version 4.7.2 20120921 (Red Hat 4.7.2-2) (GCC)
+> to do my builds these days...
+> 
+> steved.
+> 
+>> 
+>> ---
+>> 
+>> Chuck Lever (10):
+>>      rpc.gssd: Squelch compiler error
+>>      rpc.gssd: Squelch compiler warning
+>>      rpc.gssd: Squelch compiler warning
+>>      mountd: Avoid unnecessary type conversions
+>>      mountd: Avoid unnecessary type conversions
+>>      mountd: Avoid unnecessary type conversions
+>>      mountd: Make local functions static
+>>      mountd: Eliminate unnecessary type conversions
+>>      mountd: Avoid unnecessary type conversions
+>>      nfs-utils: Eliminate dereferencing type punned pointers
+>> 
+>> 
+>> support/include/nfslib.h   |    1 +
+>> support/include/sockaddr.h |   10 ++++------
+>> support/nfs/cacheio.c      |    5 +++++
+>> utils/gssd/gss_util.c      |    2 +-
+>> utils/gssd/gssd_proc.c     |   13 +++++++------
+>> utils/mountd/cache.c       |   34 ++++++++++++++++++----------------
+>> 6 files changed, 36 insertions(+), 29 deletions(-)
+>> 
