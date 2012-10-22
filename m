@@ -1,130 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f53.google.com ([209.85.216.53]:65273 "EHLO
-	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754448Ab2J1TD0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Oct 2012 15:03:26 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH v7 06/16] tracepoint: use new hashtable implementation
-Date: Sun, 28 Oct 2012 15:02:18 -0400
-Message-Id: <1351450948-15618-6-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
-References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:58603 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753911Ab2JVNv0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Oct 2012 09:51:26 -0400
+Message-ID: <50854F5C.9040709@RedHat.com>
+Date: Mon, 22 Oct 2012 09:51:24 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/8] Junctions should inherit parent's export options
+References: <20121011150421.4665.35964.stgit@lebasque.1015granger.net>
+In-Reply-To: <20121011150421.4665.35964.stgit@lebasque.1015granger.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch tracepoints to use the new hashtable implementation. This reduces the amount of
-generic unrelated code in the tracepoints.
 
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
----
- kernel/tracepoint.c | 27 +++++++++++----------------
- 1 file changed, 11 insertions(+), 16 deletions(-)
 
-diff --git a/kernel/tracepoint.c b/kernel/tracepoint.c
-index d96ba22..854df92 100644
---- a/kernel/tracepoint.c
-+++ b/kernel/tracepoint.c
-@@ -26,6 +26,7 @@
- #include <linux/slab.h>
- #include <linux/sched.h>
- #include <linux/static_key.h>
-+#include <linux/hashtable.h>
- 
- extern struct tracepoint * const __start___tracepoints_ptrs[];
- extern struct tracepoint * const __stop___tracepoints_ptrs[];
-@@ -49,8 +50,7 @@ static LIST_HEAD(tracepoint_module_list);
-  * Protected by tracepoints_mutex.
-  */
- #define TRACEPOINT_HASH_BITS 6
--#define TRACEPOINT_TABLE_SIZE (1 << TRACEPOINT_HASH_BITS)
--static struct hlist_head tracepoint_table[TRACEPOINT_TABLE_SIZE];
-+static DEFINE_HASHTABLE(tracepoint_table, TRACEPOINT_HASH_BITS);
- 
- /*
-  * Note about RCU :
-@@ -191,16 +191,15 @@ tracepoint_entry_remove_probe(struct tracepoint_entry *entry,
-  */
- static struct tracepoint_entry *get_tracepoint(const char *name)
- {
--	struct hlist_head *head;
- 	struct hlist_node *node;
- 	struct tracepoint_entry *e;
- 	u32 hash = jhash(name, strlen(name), 0);
- 
--	head = &tracepoint_table[hash & (TRACEPOINT_TABLE_SIZE - 1)];
--	hlist_for_each_entry(e, node, head, hlist) {
-+	hash_for_each_possible(tracepoint_table, e, node, hlist, hash) {
- 		if (!strcmp(name, e->name))
- 			return e;
- 	}
-+
- 	return NULL;
- }
- 
-@@ -210,19 +209,13 @@ static struct tracepoint_entry *get_tracepoint(const char *name)
-  */
- static struct tracepoint_entry *add_tracepoint(const char *name)
- {
--	struct hlist_head *head;
--	struct hlist_node *node;
- 	struct tracepoint_entry *e;
- 	size_t name_len = strlen(name) + 1;
- 	u32 hash = jhash(name, name_len-1, 0);
- 
--	head = &tracepoint_table[hash & (TRACEPOINT_TABLE_SIZE - 1)];
--	hlist_for_each_entry(e, node, head, hlist) {
--		if (!strcmp(name, e->name)) {
--			printk(KERN_NOTICE
--				"tracepoint %s busy\n", name);
--			return ERR_PTR(-EEXIST);	/* Already there */
--		}
-+	if (get_tracepoint(name)) {
-+		printk(KERN_NOTICE "tracepoint %s busy\n", name);
-+		return ERR_PTR(-EEXIST);	/* Already there */
- 	}
- 	/*
- 	 * Using kmalloc here to allocate a variable length element. Could
-@@ -234,7 +227,7 @@ static struct tracepoint_entry *add_tracepoint(const char *name)
- 	memcpy(&e->name[0], name, name_len);
- 	e->funcs = NULL;
- 	e->refcount = 0;
--	hlist_add_head(&e->hlist, head);
-+	hash_add(tracepoint_table, &e->hlist, hash);
- 	return e;
- }
- 
-@@ -244,7 +237,7 @@ static struct tracepoint_entry *add_tracepoint(const char *name)
-  */
- static inline void remove_tracepoint(struct tracepoint_entry *e)
- {
--	hlist_del(&e->hlist);
-+	hash_del(&e->hlist);
- 	kfree(e);
- }
- 
-@@ -722,6 +715,8 @@ struct notifier_block tracepoint_module_nb = {
- 
- static int init_tracepoints(void)
- {
-+	hash_init(tracepoint_table);
-+
- 	return register_module_notifier(&tracepoint_module_nb);
- }
- __initcall(init_tracepoints);
--- 
-1.7.12.4
+On 11/10/12 11:10, Chuck Lever wrote:
+> Following suggestions by Steve and Bruce, I've at long last
+> implemented a mechanism by which junctions inherit the export
+> options of their parent exports.
+> 
+> While I was there, I took the opportunity to clean up the junction
+> resolution logic.
+> 
+> ---
+> 
+> Chuck Lever (8):
+>       mountd: Simplify "no junction support" case
+>       mountd: Dynamically allocate exportent that represents junctions
+>       mountd: Add exportent_release()
+>       mountd: Junctions inherit parent export's options
+>       mountd: Add lookup_export_parent()
+>       mountd: Set e_fslocdata field directly
+>       mountd: Use static buffer when constructing junction export options
+>       mountd: Warn when a broken junction is encountered
+> 
+> 
+>  support/export/export.c    |   19 ++--
+>  support/include/exportfs.h |    1 
+>  utils/mountd/cache.c       |  217 ++++++++++++++++++++++++++++++--------------
+>  3 files changed, 162 insertions(+), 75 deletions(-)
+> 
+Committed....
 
+steved.
