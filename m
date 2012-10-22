@@ -1,80 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:57466 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752221Ab2JALvs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2012 07:51:48 -0400
-Received: by ggnr5 with SMTP id r5so1332440ggn.19
-        for <linux-nfs@vger.kernel.org>; Mon, 01 Oct 2012 04:51:47 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, bharrosh@panasas.com, steved@redhat.com,
-        skinsbursky@parallels.com
-Subject: [PATCH 2/2] nfsd: change algorithm for selecting the client_tracking_ops
-Date: Mon,  1 Oct 2012 07:51:38 -0400
-Message-Id: <1349092298-23872-3-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1349092298-23872-1-git-send-email-jlayton@redhat.com>
-References: <1349092298-23872-1-git-send-email-jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:55304 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755888Ab2JVR16 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Oct 2012 13:27:58 -0400
+Message-ID: <5085821C.4020500@RedHat.com>
+Date: Mon, 22 Oct 2012 13:27:56 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 00/10] nfs-utils compiler warning clean ups
+References: <20121022160140.4552.34477.stgit@lebasque.1015granger.net>
+In-Reply-To: <20121022160140.4552.34477.stgit@lebasque.1015granger.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the legacy tracking dir exists, use that. Next try the usermodehelper
-upcall. It should succeed or fail quickly, so trying it first should be
-harmless. If that fails, fall back to using nfsdcld.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/nfs4recover.c | 36 +++++++++++++++++++++++++++---------
- 1 file changed, 27 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index d8e07d5..3584313 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -1067,17 +1067,35 @@ nfsd4_client_tracking_init(struct net *net)
- 	int status;
- 	struct path path;
- 
--	if (!client_tracking_ops) {
--		client_tracking_ops = &nfsd4_cld_tracking_ops;
--		status = kern_path(nfs4_recoverydir(), LOOKUP_FOLLOW, &path);
--		if (!status) {
--			if (S_ISDIR(path.dentry->d_inode->i_mode))
--				client_tracking_ops =
--						&nfsd4_legacy_tracking_ops;
--			path_put(&path);
--		}
-+	/* just run the init if it the method is already decided */
-+	if (client_tracking_ops)
-+		goto do_init;
-+
-+	/*
-+	 * See if the recoverydir exists and is a directory. If it is,
-+	 * then use the legacy ops.
-+	 */
-+	client_tracking_ops = &nfsd4_legacy_tracking_ops;
-+	status = kern_path(nfs4_recoverydir(), LOOKUP_FOLLOW, &path);
-+	if (!status) {
-+		status = S_ISDIR(path.dentry->d_inode->i_mode);
-+		path_put(&path);
-+		if (status)
-+			goto do_init;
- 	}
- 
-+	/*
-+	 * Next, try a UMH upcall. It should succeed or fail quickly, so
-+	 * there's little harm in trying that first.
-+	 */
-+	client_tracking_ops = &nfsd4_umh_tracking_ops;
-+	status = client_tracking_ops->init(net);
-+	if (!status)
-+		return status;
-+
-+	/* Finally, try to use nfsdcld */
-+	client_tracking_ops = &nfsd4_cld_tracking_ops;
-+do_init:
- 	status = client_tracking_ops->init(net);
- 	if (status) {
- 		printk(KERN_WARNING "NFSD: Unable to initialize client "
--- 
-1.7.11.4
+On 22/10/12 12:05, Chuck Lever wrote:
+> Hi-
+> 
+> These address compiler warnings in mountd and gssd that I've found
+> during recent sojourns in that code base.  I've done some light
+> testing, but more critical review and testing would be appreciated.
+> 
+> I think these are appropriate for your next release of nfs-utils.
+What CFLAGS do you use to see these warnings? Every time I do a build
+I check for warnings and if I would have seen these I would have
+fixed them immediately...   
 
+BTW, I'm using gcc version 4.7.2 20120921 (Red Hat 4.7.2-2) (GCC)
+to do my builds these days...
+
+steved.
+
+> 
+> ---
+> 
+> Chuck Lever (10):
+>       rpc.gssd: Squelch compiler error
+>       rpc.gssd: Squelch compiler warning
+>       rpc.gssd: Squelch compiler warning
+>       mountd: Avoid unnecessary type conversions
+>       mountd: Avoid unnecessary type conversions
+>       mountd: Avoid unnecessary type conversions
+>       mountd: Make local functions static
+>       mountd: Eliminate unnecessary type conversions
+>       mountd: Avoid unnecessary type conversions
+>       nfs-utils: Eliminate dereferencing type punned pointers
+> 
+> 
+>  support/include/nfslib.h   |    1 +
+>  support/include/sockaddr.h |   10 ++++------
+>  support/nfs/cacheio.c      |    5 +++++
+>  utils/gssd/gss_util.c      |    2 +-
+>  utils/gssd/gssd_proc.c     |   13 +++++++------
+>  utils/mountd/cache.c       |   34 ++++++++++++++++++----------------
+>  6 files changed, 36 insertions(+), 29 deletions(-)
+> 
