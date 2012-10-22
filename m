@@ -1,55 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ye0-f174.google.com ([209.85.213.174]:54786 "EHLO
-	mail-ye0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756299Ab2J0Med (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 08:34:33 -0400
-Received: by mail-ye0-f174.google.com with SMTP id m12so638386yen.19
-        for <linux-nfs@vger.kernel.org>; Sat, 27 Oct 2012 05:34:33 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v8 25/32] vfs: make listxattr retry once on ESTALE error
-Date: Sat, 27 Oct 2012 08:33:32 -0400
-Message-Id: <1351341219-17837-26-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
-References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:60605 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755547Ab2JVQHN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Oct 2012 12:07:13 -0400
+Received: by mail-ie0-f174.google.com with SMTP id k13so3828544iea.19
+        for <linux-nfs@vger.kernel.org>; Mon, 22 Oct 2012 09:07:12 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 10/10] rpc.gssd: Squelch compiler error
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 22 Oct 2012 12:07:11 -0400
+Message-ID: <20121022160711.4552.45963.stgit@lebasque.1015granger.net>
+In-Reply-To: <20121022160140.4552.34477.stgit@lebasque.1015granger.net>
+References: <20121022160140.4552.34477.stgit@lebasque.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/xattr.c | 15 ++++++++++-----
- 1 file changed, 10 insertions(+), 5 deletions(-)
+gssd_proc.c: In function ‘handle_krb5_upcall’:
+gssd_proc.c:1117:2: warning: ISO C forbids ‘return’ with expression, in
+function returning void [-pedantic]
 
-diff --git a/fs/xattr.c b/fs/xattr.c
-index 3a5e3ff..8a318a4 100644
---- a/fs/xattr.c
-+++ b/fs/xattr.c
-@@ -576,12 +576,17 @@ SYSCALL_DEFINE3(listxattr, const char __user *, pathname, char __user *, list,
- {
- 	struct path path;
- 	ssize_t error;
-+	unsigned int try = 0;
-+	unsigned int lookup_flags = LOOKUP_FOLLOW;
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ utils/gssd/gssd_proc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index 1bc3942..ec251fa 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -1116,7 +1116,7 @@ handle_krb5_upcall(struct clnt_info *clp)
+ 		return;
+ 	}
  
--	error = user_path(pathname, &path);
--	if (error)
--		return error;
--	error = listxattr(path.dentry, list, size);
--	path_put(&path);
-+	do {
-+		error = user_path_at(AT_FDCWD, pathname, lookup_flags, &path);
-+		if (error)
-+			break;
-+		error = listxattr(path.dentry, list, size);
-+		path_put(&path);
-+		lookup_flags |= LOOKUP_REVAL;
-+	} while (retry_estale(error, try++));
- 	return error;
+-	return process_krb5_upcall(clp, uid, clp->krb5_fd, NULL, NULL);
++	process_krb5_upcall(clp, uid, clp->krb5_fd, NULL, NULL);
  }
  
--- 
-1.7.11.7
+ void
 
