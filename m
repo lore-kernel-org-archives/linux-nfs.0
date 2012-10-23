@@ -1,186 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:37164 "EHLO mx2.netapp.com"
+Received: from mx1.netapp.com ([216.240.18.38]:36134 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755443Ab2JVQ5E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Oct 2012 12:57:04 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: stable@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>
-Subject: [PATCH] SUNRPC: Fix a UDP transport regression
-Date: Mon, 22 Oct 2012 12:56:58 -0400
-Message-Id: <1350925018-12926-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S932939Ab2JWQ4E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Oct 2012 12:56:04 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Nix <nix@esperi.org.uk>, "Ted Ts'o" <tytso@mit.edu>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        Peng Tao <bergwolf@gmail.com>,
+        "gregkh@linuxfoundation.org" <gregkh@linuxfoundation.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>
+Subject: Re: Heads-up: 3.6.2 / 3.6.3 NFS server oops: 3.6.2+ regression?
+ (also an unrelated ext4 data loss bug)
+Date: Tue, 23 Oct 2012 16:56:00 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90928CA6F@SACEXCMBX04-PRD.hq.netapp.com>
+References: <87objupjlr.fsf@spindle.srvr.nix>
+	 <20121023013343.GB6370@fieldses.org> <87mwzdnuww.fsf@spindle.srvr.nix>
+	 <20121023143019.GA3040@fieldses.org> <874nllxi7e.fsf_-_@spindle.srvr.nix>
+	 <20121023164621.GC3040@fieldses.org>
+In-Reply-To: <20121023164621.GC3040@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-commit f39c1bfb5a03e2d255451bff05be0d7255298fa4 and
-commit 84e28a307e376f271505af65a7b7e212dd6f61f4 upstream.
-
-Commit 43cedbf0e8dfb9c5610eb7985d5f21263e313802 (SUNRPC: Ensure that
-we grab the XPRT_LOCK before calling xprt_alloc_slot) is causing
-hangs in the case of NFS over UDP mounts.
-
-Since neither the UDP or the RDMA transport mechanism use dynamic slot
-allocation, we can skip grabbing the socket lock for those transports.
-Add a new rpc_xprt_op to allow switching between the TCP and UDP/RDMA
-case.
-
-Note that the NFSv4.1 back channel assigns the slot directly
-through rpc_run_bc_task, so we can ignore that case.
-
-Reported-by: Dick Streefland <dick.streefland@altium.nl>
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
-Please apply to all stable kernels >= 3.1 and <=3.5
-
-Thanks!
-   Trond
-
- include/linux/sunrpc/xprt.h     |  3 +++
- net/sunrpc/xprt.c               | 34 ++++++++++++++++++++--------------
- net/sunrpc/xprtrdma/transport.c |  1 +
- net/sunrpc/xprtsock.c           |  4 ++++
- 4 files changed, 28 insertions(+), 14 deletions(-)
-
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 77d278d..005b507 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -114,6 +114,7 @@ struct rpc_xprt_ops {
- 	void		(*set_buffer_size)(struct rpc_xprt *xprt, size_t sndsize, size_t rcvsize);
- 	int		(*reserve_xprt)(struct rpc_xprt *xprt, struct rpc_task *task);
- 	void		(*release_xprt)(struct rpc_xprt *xprt, struct rpc_task *task);
-+	void		(*alloc_slot)(struct rpc_xprt *xprt, struct rpc_task *task);
- 	void		(*rpcbind)(struct rpc_task *task);
- 	void		(*set_port)(struct rpc_xprt *xprt, unsigned short port);
- 	void		(*connect)(struct rpc_task *task);
-@@ -279,6 +280,8 @@ void			xprt_connect(struct rpc_task *task);
- void			xprt_reserve(struct rpc_task *task);
- int			xprt_reserve_xprt(struct rpc_xprt *xprt, struct rpc_task *task);
- int			xprt_reserve_xprt_cong(struct rpc_xprt *xprt, struct rpc_task *task);
-+void			xprt_alloc_slot(struct rpc_xprt *xprt, struct rpc_task *task);
-+void			xprt_lock_and_alloc_slot(struct rpc_xprt *xprt, struct rpc_task *task);
- int			xprt_prepare_transmit(struct rpc_task *task);
- void			xprt_transmit(struct rpc_task *task);
- void			xprt_end_transmit(struct rpc_task *task);
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index da72492..176a24f 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -969,11 +969,11 @@ static bool xprt_dynamic_free_slot(struct rpc_xprt *xprt, struct rpc_rqst *req)
- 	return false;
- }
- 
--static void xprt_alloc_slot(struct rpc_task *task)
-+void xprt_alloc_slot(struct rpc_xprt *xprt, struct rpc_task *task)
- {
--	struct rpc_xprt	*xprt = task->tk_xprt;
- 	struct rpc_rqst *req;
- 
-+	spin_lock(&xprt->reserve_lock);
- 	if (!list_empty(&xprt->free)) {
- 		req = list_entry(xprt->free.next, struct rpc_rqst, rq_list);
- 		list_del(&req->rq_list);
-@@ -994,12 +994,29 @@ static void xprt_alloc_slot(struct rpc_task *task)
- 	default:
- 		task->tk_status = -EAGAIN;
- 	}
-+	spin_unlock(&xprt->reserve_lock);
- 	return;
- out_init_req:
- 	task->tk_status = 0;
- 	task->tk_rqstp = req;
- 	xprt_request_init(task, xprt);
-+	spin_unlock(&xprt->reserve_lock);
-+}
-+EXPORT_SYMBOL_GPL(xprt_alloc_slot);
-+
-+void xprt_lock_and_alloc_slot(struct rpc_xprt *xprt, struct rpc_task *task)
-+{
-+	/* Note: grabbing the xprt_lock_write() ensures that we throttle
-+	 * new slot allocation if the transport is congested (i.e. when
-+	 * reconnecting a stream transport or when out of socket write
-+	 * buffer space).
-+	 */
-+	if (xprt_lock_write(xprt, task)) {
-+		xprt_alloc_slot(xprt, task);
-+		xprt_release_write(xprt, task);
-+	}
- }
-+EXPORT_SYMBOL_GPL(xprt_lock_and_alloc_slot);
- 
- static void xprt_free_slot(struct rpc_xprt *xprt, struct rpc_rqst *req)
- {
-@@ -1083,20 +1100,9 @@ void xprt_reserve(struct rpc_task *task)
- 	if (task->tk_rqstp != NULL)
- 		return;
- 
--	/* Note: grabbing the xprt_lock_write() here is not strictly needed,
--	 * but ensures that we throttle new slot allocation if the transport
--	 * is congested (e.g. if reconnecting or if we're out of socket
--	 * write buffer space).
--	 */
- 	task->tk_timeout = 0;
- 	task->tk_status = -EAGAIN;
--	if (!xprt_lock_write(xprt, task))
--		return;
--
--	spin_lock(&xprt->reserve_lock);
--	xprt_alloc_slot(task);
--	spin_unlock(&xprt->reserve_lock);
--	xprt_release_write(xprt, task);
-+	xprt->ops->alloc_slot(xprt, task);
- }
- 
- static inline __be32 xprt_alloc_xid(struct rpc_xprt *xprt)
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 06cdbff..5d9202d 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -713,6 +713,7 @@ static void xprt_rdma_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
- static struct rpc_xprt_ops xprt_rdma_procs = {
- 	.reserve_xprt		= xprt_rdma_reserve_xprt,
- 	.release_xprt		= xprt_release_xprt_cong, /* sunrpc/xprt.c */
-+	.alloc_slot		= xprt_alloc_slot,
- 	.release_request	= xprt_release_rqst_cong,       /* ditto */
- 	.set_retrans_timeout	= xprt_set_retrans_timeout_def, /* ditto */
- 	.rpcbind		= rpcb_getport_async,	/* sunrpc/rpcb_clnt.c */
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 00ff343..a4a6586 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2444,6 +2444,7 @@ static void bc_destroy(struct rpc_xprt *xprt)
- static struct rpc_xprt_ops xs_local_ops = {
- 	.reserve_xprt		= xprt_reserve_xprt,
- 	.release_xprt		= xs_tcp_release_xprt,
-+	.alloc_slot		= xprt_alloc_slot,
- 	.rpcbind		= xs_local_rpcbind,
- 	.set_port		= xs_local_set_port,
- 	.connect		= xs_connect,
-@@ -2460,6 +2461,7 @@ static struct rpc_xprt_ops xs_udp_ops = {
- 	.set_buffer_size	= xs_udp_set_buffer_size,
- 	.reserve_xprt		= xprt_reserve_xprt_cong,
- 	.release_xprt		= xprt_release_xprt_cong,
-+	.alloc_slot		= xprt_alloc_slot,
- 	.rpcbind		= rpcb_getport_async,
- 	.set_port		= xs_set_port,
- 	.connect		= xs_connect,
-@@ -2477,6 +2479,7 @@ static struct rpc_xprt_ops xs_udp_ops = {
- static struct rpc_xprt_ops xs_tcp_ops = {
- 	.reserve_xprt		= xprt_reserve_xprt,
- 	.release_xprt		= xs_tcp_release_xprt,
-+	.alloc_slot		= xprt_lock_and_alloc_slot,
- 	.rpcbind		= rpcb_getport_async,
- 	.set_port		= xs_set_port,
- 	.connect		= xs_connect,
-@@ -2496,6 +2499,7 @@ static struct rpc_xprt_ops xs_tcp_ops = {
- static struct rpc_xprt_ops bc_tcp_ops = {
- 	.reserve_xprt		= xprt_reserve_xprt,
- 	.release_xprt		= xprt_release_xprt,
-+	.alloc_slot		= xprt_alloc_slot,
- 	.rpcbind		= xs_local_rpcbind,
- 	.buf_alloc		= bc_malloc,
- 	.buf_free		= bc_free,
--- 
-1.7.11.7
-
+T24gVHVlLCAyMDEyLTEwLTIzIGF0IDEyOjQ2IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIFR1ZSwgT2N0IDIzLCAyMDEyIGF0IDA1OjMyOjIxUE0gKzAxMDAsIE5peCB3cm90ZToN
+Cj4gPiBPbiAyMyBPY3QgMjAxMiwgSi4gQnJ1Y2UgRmllbGRzIHV0dGVyZWQgdGhlIGZvbGxvd2lu
+ZzoNCj4gPiA+IG5mcy11dGlscyBzaG91bGRuJ3QgYmUgY2FwYWJsZSBvZiBvb3BzaW5nIHRoZSBr
+ZXJuZWwsIHNvIGZyb20gbXkNCj4gPiA+IChzZWxmaXNoKSBwb2ludCBvZiB2aWV3IEknZCBhY3R1
+YWxseSByYXRoZXIgeW91IHN0aWNrIHdpdGggd2hhdGV2ZXIgeW91DQo+ID4gPiBoYXZlIGFuZCB0
+cnkgdG8gcmVwcm9kdWNlIHRoZSBvb3BzLg0KPiA+IA0KPiA+IFJlcHJvZHVjZWQgaW4gMy42LjMs
+IG5vdCBpbiAzLjYuMSwgbm90IHRyaWVkIDMuNi4yLiBDYXB0dXJpbmcgaXQgd2FzDQo+ID4gcmVu
+ZGVyZWQgc29tZXdoYXQgZGlmZmljdWx0IGJ5IGFuIGV4dDQvSkJEMiBidWcgd2hpY2ggbGVhZHMg
+dG8gZGF0YSBsb3NzDQo+ID4gaW4gL3ZhciBvbiBldmVyeSByZWJvb3Qgb3V0IG9mIDMuNi4xIGFu
+ZCBvbiBzb21lIHJlYm9vdHMgb3V0IG9mIDMuNi4zIChJDQo+ID4gaGF2ZSBydW5zIG9mIE5VTHMg
+aW4gbXkgbG9ncyBub3csIHdoaWNoIGtlZXAgZWF0aW5nIHRoZSBvb3BzZXMpOg0KPiA+IA0KPiA+
+IFt3aGlsZSBpbiAzLjYuMV0NCj4gPiBbICAgODguNTY1Njk4XSBKQkQyOiBTcG90dGVkIGRpcnR5
+IG1ldGFkYXRhIGJ1ZmZlciAoZGV2ID0gZG0tNSwgYmxvY2tuciA9IDApLiBUaGVyZSdzIGEgcmlz
+ayBvZiBmaWxlc3lzdGVtIGNvcnJ1cHRpb24gaW4gY2FzZSBvZiBzeXN0ZW0gY3Jhc2guDQo+ID4g
+WyAgIDg4Ljc5OTI2M10gSkJEMjogU3BvdHRlZCBkaXJ0eSBtZXRhZGF0YSBidWZmZXIgKGRldiA9
+IGRtLTUsIGJsb2NrbnIgPSAwKS4gVGhlcmUncyBhIHJpc2sgb2YgZmlsZXN5c3RlbSBjb3JydXB0
+aW9uIGluIGNhc2Ugb2Ygc3lzdGVtIGNyYXNoLg0KPiA+IFsgICA4OS42NDgxNTJdIC0tLS0tLS0t
+LS0tLVsgY3V0IGhlcmUgXS0tLS0tLS0tLS0tLQ0KPiA+IFsgICA4OS42NDgzODZdIFdBUk5JTkc6
+IGF0IGZzL2lub2RlLmM6MjgwIGRyb3BfbmxpbmsrMHgyNS8weDQyKCkNCj4gPiBbICAgODkuNjQ4
+NjE0XSBIYXJkd2FyZSBuYW1lOiBlbXB0eQ0KPiA+IFsgICA4OS42NDg4MzNdIE1vZHVsZXMgbGlu
+a2VkIGluOiBmaXJld2lyZV9vaGNpIGZpcmV3aXJlX2NvcmUgW2xhc3QgdW5sb2FkZWQ6IG1pY3Jv
+Y29kZV0NCj4gPiBbICAgODkuNjQ5MzgyXSBQaWQ6IDE0ODQsIGNvbW06IGRoY3BkIE5vdCB0YWlu
+dGVkIDMuNi4xLWRpcnR5ICMxDQo+ID4gWyAgIDg5LjY0OTYxMF0gQ2FsbCBUcmFjZToNCj4gPiBb
+ICAgODkuNjQ5ODMyXSAgWzxmZmZmZmZmZjgxMDYwOGMwPl0gd2Fybl9zbG93cGF0aF9jb21tb24r
+MHg4My8weDliDQo+ID4gWyAgIDg5LjY1MDA2M10gIFs8ZmZmZmZmZmY4MTA2MDhmMj5dIHdhcm5f
+c2xvd3BhdGhfbnVsbCsweDFhLzB4MWMNCj4gPiBbICAgODkuNjUwMjkyXSAgWzxmZmZmZmZmZjgx
+MTJlZmJmPl0gZHJvcF9ubGluaysweDI1LzB4NDINCj4gPiBbICAgODkuNjUwNTMzXSAgWzxmZmZm
+ZmZmZjgxMTg3MTEyPl0gZXh0NF9kZWNfY291bnQrMHgyNi8weDI4DQo+ID4gWyAgIDg5LjY1MDc2
+M10gIFs8ZmZmZmZmZmY4MTE4YWJiOD5dIGV4dDRfcmVuYW1lKzB4NGVjLzB4N2I0DQo+ID4gWyAg
+IDg5LjY1MDk5M10gIFs8ZmZmZmZmZmY4MTEyNWQ4MT5dID8gdmZzX3JlbmFtZSsweGJlLzB4M2I3
+DQo+ID4gWyAgIDg5LjY1MTIyNF0gIFs8ZmZmZmZmZmY4MTEyNWYzZj5dIHZmc19yZW5hbWUrMHgy
+N2MvMHgzYjcNCj4gPiBbICAgODkuNjUxNDU0XSAgWzxmZmZmZmZmZjgxMTI3YTUzPl0gc3lzX3Jl
+bmFtZWF0KzB4MWIxLzB4MjI4DQo+ID4gWyAgIDg5LjY1MTY4Ml0gIFs8ZmZmZmZmZmY4MTE0YmRh
+MT5dID8gZnNub3RpZnkrMHgyMjYvMHgyNDkNCj4gPiBbICAgODkuNjUxOTExXSAgWzxmZmZmZmZm
+ZjgxMjM5Yjc1Pl0gPyBzZWN1cml0eV9pbm9kZV9wZXJtaXNzaW9uKzB4MWUvMHgyMA0KPiA+IFsg
+ICA4OS42NTIxNDVdICBbPGZmZmZmZmZmODExMWEyNDA+XSA/IHZmc193cml0ZSsweDExNi8weDE0
+Mg0KPiA+IFsgICA4OS42NTIzNzJdICBbPGZmZmZmZmZmODExMjdhZTU+XSBzeXNfcmVuYW1lKzB4
+MWIvMHgxZQ0KPiA+IFsgICA4OS42NTI2MDFdICBbPGZmZmZmZmZmODE0ZmZmYTI+XSBzeXN0ZW1f
+Y2FsbF9mYXN0cGF0aCsweDE2LzB4MWINCj4gPiBbLi4uXQ0KPiA+IFt3aGlsZSBoYXZpbmcganVz
+dCBib290ZWQgaW50byAzLjYuMSBhZnRlciBzb21lIHRpbWUgaW4gMy42LjM6IHRoZSBGUw0KPiA+
+ICB3YXMgY2xlYW4sIGFuZCBmc2NrZWQgb24gdGhlIHByZXZpb3VzIGJvb3QgaW50byAzLjYuMyBh
+ZnRlciBhIHByZXZpb3VzDQo+ID4gIGluc3RhbmNlIG9mIHRoaXMgYnVnXQ0KPiA+IE9jdCAyMyAx
+NzoxODoyNiBzcGluZGxlIGNyaXQ6IFsgICA2Ny42MjUzMTldIEVYVDQtZnMgZXJyb3IgKGRldmlj
+ZSBkbS01KTogbWJfZnJlZV9ibG9ja3M6MTMwMDogZ3JvdXAgNjUsIGJsb2NrIDIxNDM3NDg6ZnJl
+ZWluZyBhbHJlYWR5IGZyZWVkIGJsb2NrIChiaXQgMTM4MjgpDQo+ID4gDQo+ID4gVGhpcyBtYXkg
+d2VsbCBiZSBhIDMuNi4xLXNwZWNpZmljIGJ1ZyBmaXhlZCBpbiAzLjYuMywgYnV0IGl0J3MgaGFy
+ZCB0bw0KPiA+IHRlbGwgc2luY2UgbW9zdCBvZiBteSByZWJvb3RzIGFyZSAzLjYuMS0+My42LjMg
+b3IgdmljZSB2ZXJzYSByaWdodCBub3cuDQo+ID4gDQo+ID4gDQo+ID4gQW55d2F5LCBoZXJlJ3Mg
+dGhlIE5GU3Y0IG9vcHMgKG5vdCBhIHBhbmljOiBpdCBoZWxwcyBpZiBJIHJlbWVtYmVyIHRvDQo+
+ID4gdHVybiBvZmYgcGFuaWNfb25fb29wcyB3aGVuIEkgY29tZSBob21lIGZyb20gdGhlIGhvbGlk
+YXlzKS4NCj4gPiANCj4gPiBJdCdzIGEgbG9ja2QgcHJvYmxlbSwgYW5kIHByb2JhYmx5IGhhcHBl
+bnMgZHVyaW5nIGRlbGl2ZXJ5IG9mIG1haWwgb3Zlcg0KPiA+IE5GUyAobXkgbWFpbHNlcnZlciBs
+b2FkIHNvYXJzIHdoZW4gaXQgaGFwcGVucyk6DQo+ID4gDQo+ID4gWyAgODEzLjExMDM1NF0gLS0t
+LS0tLS0tLS0tWyBjdXQgaGVyZSBdLS0tLS0tLS0tLS0tDQo+ID4gWyAgODEzLjExMDU4NV0ga2Vy
+bmVsIEJVRyBhdCBmcy9sb2NrZC9tb24uYzoxNTAhDQo+IA0KPiBTbyBuc21fbW9uX3VubW9uKCkg
+aXMgYmVpbmcgcGFzc2VkIGEgTlVMTCBjbGllbnQuDQo+IA0KPiBUaGVyZSBhcmUgdGhyZWUgY29u
+dGFpbmVyIHBhdGNoZXMgYmV0d2VlbiAzLjYuMSBhbmQgMy42LjM6DQo+IA0KPiAJbG9ja2Q6IHBl
+ci1uZXQgTlNNIGNsaWVudCBjcmVhdGlvbiBhbmQgZGVzdHJ1Y3Rpb24gaGVscGVycyBpbnRyb2R1
+Y2VkDQo+IAlsb2NrZDogdXNlIHJwYyBjbGllbnQncyBjbF9ub2RlbmFtZSBmb3IgaWQgZW5jb2Rp
+bmcNCj4gCWxvY2tkOiBjcmVhdGUgYW5kIHVzZSBwZXItbmV0IE5TTSBSUEMgY2xpZW50cyBvbiBN
+T04vVU5NT04gcmVxdWVzdHMNCj4gDQo+IGFuZCB0aGF0IGxhc3QgZG9lcyBjaGFuZ2UgbnNtX21v
+bml0b3IncyBjYWxsIHRvIG5zbV9tb25fdW5tb24sIHNvIHRoYXQncw0KPiBhbG1vc3QgY2VydGFp
+bmx5IGl0Li4uLg0KPiANCj4gTG9va3MgbGlrZSB0aGVyZSdzIHNvbWUgY29uZnVzaW9uIGFib3V0
+IHdoZXRoZXIgbnNtX2NsaWVudF9nZXQoKSByZXR1cm5zDQo+IE5VTEwgb3IgYW4gZXJyb3I/DQoN
+Cm5zbV9jbGllbnRfZ2V0KCkgbG9va3MgZXh0cmVtZWx5IHJhY3kgaW4gdGhlIGNhc2Ugd2hlcmUg
+bG4tPm5zbV91c2VycyA9PQ0KMC4NCg0KU2luY2Ugd2UgbmV2ZXIgcmVjaGVjayB0aGUgdmFsdWUg
+b2YgbG4tPm5zbV91c2VycyBhZnRlciB0YWtpbmcNCm5zbV9jcmVhdGVfbXV0ZXgsIHdoYXQgaXMg
+c3RvcHBpbmcgMiBkaWZmZXJlbnQgdGhyZWFkcyBmcm9tIGJvdGggc2V0dGluZw0KbG4tPm5zbV9j
+bG50IGFuZCByZS1pbml0aWFsaXNpbmcgbG4tPm5zbV91c2Vycz8NCg0KDQotLSANClRyb25kIE15
+a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlr
+bGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
