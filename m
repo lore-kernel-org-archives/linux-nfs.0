@@ -1,63 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail3.ks.pochta.ru ([62.141.94.173]:49638 "EHLO
-	mail3.ks.pochta.ru" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753933Ab2JHPUv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Oct 2012 11:20:51 -0400
-Message-ID: <1349708828.1183.5.camel@lix>
-Subject: exportfs crash with long path
-From: Ivan Romanov <drizt@land.ru>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 08 Oct 2012 21:07:08 +0600
-Content-Type: multipart/mixed; boundary="=-ebu/n9Oo77Dwu5UEEdUP"
-Mime-Version: 1.0
+Received: from mx12.netapp.com ([216.240.18.77]:11983 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751745Ab2JWOxO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Oct 2012 10:53:14 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 09/25] SUNRPC: remove two BUG_ON asserts
+Date: Tue, 23 Oct 2012 10:43:33 -0400
+Message-Id: <1351003429-18887-10-git-send-email-dros@netapp.com>
+In-Reply-To: <1351003429-18887-1-git-send-email-dros@netapp.com>
+References: <1351003429-18887-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Replace two BUG_ON() calls checking the RPC_BC_PA_IN_USE flag with
+WARN_ON_ONCE().
 
---=-ebu/n9Oo77Dwu5UEEdUP
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8bit
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ net/sunrpc/backchannel_rqst.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-Hello. I opened a bug with nfs-utils on Redhat Bugzilla. And got an
-advice to email upstream. So I just repeat my bug text with a patch.
-
-How reproducible:
-always
-
-Steps to Reproduce:
-# mkdir -p /home/kudinae/Общедоступные
-# echo '/home/kudinae/Общедоступные oek-1(rw,sync,no_wdelay,no_root_squash,no_subtree_check)' > /etc/exports
-# exportfs -a
-Segmentation fault
-
-I've obtained the sources. So a crush happens on export.c:293. variable
-pos has negative value. I think problem into strtoint and export_hash
-functions. strtoint has unsigned type and always returns positive value
-but export_hash impicity cast it to signed int. So it is possible to
-get negative value. I wrote patch to fix this.
-
-Original Red Hat bug
-https://bugzilla.redhat.com/show_bug.cgi?id=863054
-
---=-ebu/n9Oo77Dwu5UEEdUP
-Content-Disposition: attachment; filename="nfs-utils-hash.patch"
-Content-Type: text/x-patch; name="nfs-utils-hash.patch"; charset="UTF-8"
-Content-Transfer-Encoding: 7bit
-
-diff --git a/support/export/export.c b/support/export/export.c
-index 4fda30a..0257903 100644
---- a/support/export/export.c
-+++ b/support/export/export.c
-@@ -357,7 +357,7 @@ strtoint(char *str)
- static int 
- export_hash(char *str)
- {
--	int num = strtoint(str);
-+	unsigned int num = strtoint(str);
+diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
+index 5a3d675..7567bcd 100644
+--- a/net/sunrpc/backchannel_rqst.c
++++ b/net/sunrpc/backchannel_rqst.c
+@@ -59,7 +59,7 @@ static void xprt_free_allocation(struct rpc_rqst *req)
+ 	struct xdr_buf *xbufp;
  
- 	return num % HASH_TABLE_SIZE;
- }
-
---=-ebu/n9Oo77Dwu5UEEdUP--
+ 	dprintk("RPC:        free allocations for req= %p\n", req);
+-	BUG_ON(test_bit(RPC_BC_PA_IN_USE, &req->rq_bc_pa_state));
++	WARN_ON_ONCE(test_bit(RPC_BC_PA_IN_USE, &req->rq_bc_pa_state));
+ 	xbufp = &req->rq_private_buf;
+ 	free_page((unsigned long)xbufp->head[0].iov_base);
+ 	xbufp = &req->rq_snd_buf;
+@@ -255,7 +255,7 @@ void xprt_free_bc_request(struct rpc_rqst *req)
+ 	dprintk("RPC:       free backchannel req=%p\n", req);
+ 
+ 	smp_mb__before_clear_bit();
+-	BUG_ON(!test_bit(RPC_BC_PA_IN_USE, &req->rq_bc_pa_state));
++	WARN_ON_ONCE(!test_bit(RPC_BC_PA_IN_USE, &req->rq_bc_pa_state));
+ 	clear_bit(RPC_BC_PA_IN_USE, &req->rq_bc_pa_state);
+ 	smp_mb__after_clear_bit();
+ 
+-- 
+1.7.9.6 (Apple Git-31.1)
 
