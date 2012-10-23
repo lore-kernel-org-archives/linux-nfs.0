@@ -1,47 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:57172 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:60286 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755600Ab2JVRmb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Oct 2012 13:42:31 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        "Linux Kernel mailing list" <linux-kernel@vger.kernel.org>
-Subject: [GIT PULL] Please pull NFS client bugfixes...
-Date: Mon, 22 Oct 2012 17:42:28 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA909289258@SACEXCMBX04-PRD.hq.netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1754044Ab2JWOaY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Oct 2012 10:30:24 -0400
+Date: Tue, 23 Oct 2012 10:30:19 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Nix <nix@esperi.org.uk>
+Cc: linux-kernel@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>,
+        Peng Tao <bergwolf@gmail.com>, Trond.Myklebust@netapp.com,
+        gregkh@linuxfoundation.org, linux-nfs@vger.kernel.org
+Subject: Re: Heads-up: 3.6.2 / 3.6.3 NFS server panic: 3.6.2+ regression?
+Message-ID: <20121023143019.GA3040@fieldses.org>
+References: <87objupjlr.fsf@spindle.srvr.nix>
+ <20121023013343.GB6370@fieldses.org>
+ <87mwzdnuww.fsf@spindle.srvr.nix>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <87mwzdnuww.fsf@spindle.srvr.nix>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgZGRmZmViOGM0
-ZDAzMzE2MDllZjI1ODFkODRkZTRkNzYzNjA3YmQzNzoNCg0KICBMaW51eCAzLjctcmMxICgyMDEy
-LTEwLTE0IDE0OjQxOjA0IC0wNzAwKQ0KDQphcmUgYXZhaWxhYmxlIGluIHRoZSBnaXQgcmVwb3Np
-dG9yeSBhdDoNCg0KICBnaXQ6Ly9naXQubGludXgtbmZzLm9yZy9wcm9qZWN0cy90cm9uZG15L2xp
-bnV4LW5mcy5naXQgdGFncy9uZnMtZm9yLTMuNy0yDQoNCmZvciB5b3UgdG8gZmV0Y2ggY2hhbmdl
-cyB1cCB0byBlOWI3ZTkxNzQ1ZmE5ZGY5NDkwMGM4YWIwOGU2MzNmMzM2Njg2MDk4Og0KDQogIE5G
-U3Y0OiBGaXggdGhlIHJldHVybiB2YWx1ZSBmb3IgbmZzX2NhbGxiYWNrX3N0YXJ0X3N2YyAoMjAx
-Mi0xMC0xNiAxMzoxNDo0MiAtMDQwMCkNCg0KLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KTkZTIGNsaWVudCBidWdmaXhlcyBm
-b3IgTGludXggMy43DQoNCi0gRG8gbm90IGNhbGwgcG5mc19yZXR1cm5fbGF5b3V0KCkgZnJvbSBh
-biBycGNpb2QgY29udGV4dA0KLSBuZnM0X2RzX2Rpc2Nvbm5lY3QgY2FuIGNhdXNlIE9vcHNlcy4g
-S2lsbCBpdC4uLg0KLSBGaXggdGhlIHJldHVybiB2YWx1ZSBmb3IgbmZzX2NhbGxiYWNrX3N0YXJ0
-X3N2Yw0KLSBGaXggYSBudW1iZXIgb2YgY29tcGlsZSB3YXJuaW5ncw0KDQotLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpUcm9u
-ZCBNeWtsZWJ1c3QgKDYpOg0KICAgICAgTkZTdjQuMTogS2lsbCBuZnM0X2RzX2Rpc2Nvbm5lY3Qo
-KQ0KICAgICAgTkZTdjQuMTogRG8gbm90IGNhbGwgcG5mc19yZXR1cm5fbGF5b3V0KCkgZnJvbSBh
-biBycGNpb2QgY29udGV4dA0KICAgICAgTkZTdjQuMTogVXNlIGtjYWxsb2MoKSB0byBhbGxvY2F0
-ZSB6ZXJvZWQgYXJyYXlzIGluc3RlYWQgb2Yga3phbGxvYygpDQogICAgICBORlN2NDogZnMvbmZz
-L25mczRnZXRyb290LmMgbmVlZHMgdG8gaW5jbHVkZSAiaW50ZXJuYWwuaCINCiAgICAgIE5GU3Y0
-LjE6IERlY2xhcmUgb3NkX3ByaV8yX3BuZnNfZXJyKCksIG9iamlvX2luaXRfcmVhZC93cml0ZSB0
-byBiZSBzdGF0aWMNCiAgICAgIE5GU3Y0OiBGaXggdGhlIHJldHVybiB2YWx1ZSBmb3IgbmZzX2Nh
-bGxiYWNrX3N0YXJ0X3N2Yw0KDQogZnMvbmZzL2NhbGxiYWNrLmMgICAgICAgICAgICB8ICAyICst
-DQogZnMvbmZzL25mczRmaWxlbGF5b3V0LmMgICAgICB8IDIxICsrKysrKysrKysrKysrKystLS0t
-LQ0KIGZzL25mcy9uZnM0ZmlsZWxheW91dC5oICAgICAgfCAgMSAtDQogZnMvbmZzL25mczRmaWxl
-bGF5b3V0ZGV2LmMgICB8IDIyIC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCiBmcy9uZnMvbmZzNGdl
-dHJvb3QuYyAgICAgICAgIHwgIDEgKw0KIGZzL25mcy9vYmpsYXlvdXQvb2JqaW9fb3NkLmMgfCAg
-NiArKystLS0NCiBmcy9uZnMvcG5mcy5oICAgICAgICAgICAgICAgIHwgIDEgKw0KIDcgZmlsZXMg
-Y2hhbmdlZCwgMjIgaW5zZXJ0aW9ucygrKSwgMzIgZGVsZXRpb25zKC0pDQoNCi0tIA0KVHJvbmQg
-TXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5N
-eWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+On Tue, Oct 23, 2012 at 03:07:59PM +0100, Nix wrote:
+> On 23 Oct 2012, J. Bruce Fields uttered the following:
+> 
+> > On Mon, Oct 22, 2012 at 05:17:04PM +0100, Nix wrote:
+> >> I just had a panic/oops on upgrading from 3.6.1 to 3.6.3, after weeks of
+> >> smooth operation on 3.6.1: one of the NFS changes that went into one of
+> >> the two latest stable kernels appears to be lethal after around half an
+> >> hour of uptime. The oops came from NFSv4, IIRC (relying on memory since
+> >> my camera was recharging and there is no netconsole from that box
+> >> because it is where the netconsole logs go, so I'll have to reproduce it
+> >> later today). The machine is an NFSv3 server only at present, with no
+> >> NFSv4 running (though NFSv4 is built in).
+> >
+> > Note recent clients may try to negotiate NFSv4 by default, so it's
+> > possible to use it without knowing.
+> 
+> Every NFS import from all this server's clients has 'vers=3' forced on
+> (for now, until I get around to figuring out what if anything needs to
+> be done to move to NFSv4: it may be the answer is 'nothing' but I tread
+> quite carefully with this server, since my $HOME is there).
+> 
+> /proc/fs/nfsfs/volumes on the clients confirms that everything is v3.
+> 
+> > You didn't change anything else about your server or clients recently?
+> 
+> Nope (other than upgrading the clients to 3.6.3 in concert). Running
+> 3.6.1 here on that server now and 3.6.3 on all the clients, and no crash
+> in over a day.
+> 
+> nfs-utils is a bit old, 1.2.6-rc6, I should probably upgrade it...
+
+nfs-utils shouldn't be capable of oopsing the kernel, so from my
+(selfish) point of view I'd actually rather you stick with whatever you
+have and try to reproduce the oops.
+
+(It's unlikely to make any difference anyway.)
+
+--b.
+
+> > I don't see an obvious candidate on a quick skim of v3.6.1..v3.6.3
+> > commits, but of course I could be missing something.
+> 
+> I'll try rebooting into it again soon, and get an oops report if it
+> should happen again (and hopefully less filesystem corruption this time,
+> right after a reboot into a new kernel was clearly the wrong time to
+> move a bunch of directories around).
+> 
+> Sorry for the continuing lack of useful information... I'll try to fix
+> that shortly (once with a report of a false alarm, since I really want
+> this stable kernel: my server is affected by the tx stalls fixed by
+> 3468e9d and I'm getting tired of the frequent 1s lags talking to it: I
+> could just apply that one fix, but I'd rather track this down properly).
