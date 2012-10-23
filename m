@@ -1,91 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:27854 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:14548 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751375Ab2JVLtE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Oct 2012 07:49:04 -0400
-Message-ID: <508532A9.1040703@RedHat.com>
-Date: Mon, 22 Oct 2012 07:48:57 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Jan Sanislo <oystr@cs.washington.edu>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: nfsidmap and NFS key timeouts and quotas
-References: <1350679987/oystr@maui.cs.washington.edu>
-In-Reply-To: <1350679987/oystr@maui.cs.washington.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1755355Ab2JWOxc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Oct 2012 10:53:32 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 22/25] SUNRPC: remove BUG_ON from __rpc_sleep_on_priority
+Date: Tue, 23 Oct 2012 10:43:46 -0400
+Message-Id: <1351003429-18887-23-git-send-email-dros@netapp.com>
+In-Reply-To: <1351003429-18887-1-git-send-email-dros@netapp.com>
+References: <1351003429-18887-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Replace BUG_ON() with WARN_ON_ONCE().
 
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ net/sunrpc/sched.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-On 19/10/12 16:53, Jan Sanislo wrote:
-> The man page for nfsidmap says that it will set a default timeout
-> of 600 seconds on keys requested by the NFS client.  But the
-> keys instantiated are listed a permanent in /proc/keys and it's
-> easily possible to run out of key quota in an NFS environment with
-> 100s/1000s of uids/gids.
-> 
-> Nfsidmap's call to keyctl_set_timeout fails with a permission
-> error because the call is made *after* the key is instantiated
-> and permission to modify the key attributes has been revoked as
-> a result.  The following patch seems to be more effective in
-> actually setting the key timeout:
-> 
-> ====================================
-> 
-> --- nfsidmap.c_orig	2012-10-19 11:32:29.806374240 -0700
-> +++ nfsidmap.c	2012-10-19 11:40:06.334674363 -0700
-> @@ -320,6 +320,16 @@
->  			key, type, value, timeout);
->  	}
->  
-> +	/*
-> +	 * Set timeout before instantiation revokes our rights
-> +	 * over the key.
-> +	 */
-> +	if ( timeout > 0 ) {
-> +		rc = keyctl_set_timeout(key, timeout);
-> +		if ( rc != 0 )
-> +			xlog_warn("keyctl_set_timeout key 0x%x failed: %m",key);
-> +	}
-> +
->  	if (strcmp(type, "uid") == 0)
->  		rc = id_lookup(value, key, USER);
->  	else if (strcmp(type, "gid") == 0)
-> @@ -329,10 +339,6 @@
->  	else if (strcmp(type, "group") == 0)
->  		rc = name_lookup(value, key, GROUP);
->  
-> -	/* Set timeout to 10 (600 seconds) minutes */
-> -	if (rc == 0)
-> -		keyctl_set_timeout(key, timeout);
-> -
->  	free(arg);
->  	return rc;
->  }
-> 
-> ====================================
-Is this a proposed patch? If so, could you please add he proper
-Signed-off-by lines? The main reason I ask is I'm looking to 
-do a nfs-utils release in the near future...
-
-steved.
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index f494b35..e6db496 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -334,7 +334,7 @@ static void __rpc_sleep_on_priority(struct rpc_wait_queue *q,
  
-> 
-> Also, it appears that the check for EDQUOT/ENFILE/ENOMEM after the
-> keyctl_instantiate call is ineffective.  Those errors seem to be
-> handled within the kernel a key_alloc time -- if one of them occurs
-> an upcall to nfsidmap is not made.
-> 
-> Finally, the key LRU discard patch: http://lkml.org/lkml/2012/3/28/144
-> looks promising for managing key quotas.  But it only seems to be
-> invoked when a key is linked into a destination keyring. fs/nfs/idmap.c
-> uses a call to security/keys/request_key which by default provides an
-> NULL dest_keyring. Might consider changing the request_key call in nfs/idmap.c
-> to request_key_and_link (although I don't pretend to know all the
-> implications of making such a change).
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+ 	__rpc_add_wait_queue(q, task, queue_priority);
+ 
+-	BUG_ON(task->tk_callback != NULL);
++	WARN_ON_ONCE(task->tk_callback != NULL);
+ 	task->tk_callback = action;
+ 	__rpc_add_timer(q, task);
+ }
+-- 
+1.7.9.6 (Apple Git-31.1)
+
