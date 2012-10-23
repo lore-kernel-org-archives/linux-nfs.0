@@ -1,112 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:62011 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759899Ab2JYSCz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 25 Oct 2012 14:02:55 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH] NFS: avoid deadlock in nfs_kill_super
-Date: Thu, 25 Oct 2012 14:02:43 -0400
-Message-Id: <1351188163-10067-1-git-send-email-dros@netapp.com>
+Received: from mail-vc0-f174.google.com ([209.85.220.174]:46448 "EHLO
+	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933317Ab2JWUJA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Oct 2012 16:09:00 -0400
+Received: by mail-vc0-f174.google.com with SMTP id fk26so4694648vcb.19
+        for <linux-nfs@vger.kernel.org>; Tue, 23 Oct 2012 13:08:59 -0700 (PDT)
+Date: Tue, 23 Oct 2012 16:08:55 -0400
+From: Chris Perl <chris.perl@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: RPC Race Condition
+Message-ID: <20121023200855.GC27191@nyc-qws-132.nyc.delacy.com>
+References: <20121022180339.GC24763@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA909289403@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121022202611.GA27191@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90928AB39@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121023134551.GB27191@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90928C74A@SACEXCMBX04-PRD.hq.netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90928C74A@SACEXCMBX04-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Calling nfs_kill_super from an RPC task callback would result in a deadlock
-where nfs_free_server (via rpc_shutdown_client) tries to kill all
-RPC tasks associated with that connection - including itself!
+On Tue, Oct 23, 2012 at 04:02:27PM +0000, Myklebust, Trond wrote:
+> call_transmit() should normally just cause the rpc_task to detect that
+> the connection is down, and should cause it to go to call_connect in
+> order to fix everything.
+> 
+> If it is causing a race, then I'm thinking that is probably due to the
+> call to xs_tcp_shutdown() when we get an EPIPE error in
+> xs_tcp_send_request(). That shutdown seems to be needed only in the case
+> when we're in TCP_CLOSE_WAIT, in which case what we really want is to
+> force the rpc_task to go to xprt_connect, which means clearing
+> xprt_connected().
+> 
+> Hmm.... Can you try applying the attached 2 patches?
 
-Instead of calling nfs_kill_super directly, queue a job on the nfsiod
-workqueue.
+I rebuilt with those two patches as well as the first one that removed
+the `xs_error_report' callback.
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
+Good news, it works!
 
-This fixes the current incarnation of the lockup I've been tracking down for
-some time now.  I still have to go back and see why the reproducer changed
-behavior a few weeks ago - tasks used to get stuck in rpc_prepare_task, but
-now (before this patch) are stuck in rpc_exit.
+However, looking at the interactions, it still seems a little bit racy.
+Clearly you know more about this than I do, so I'll defer to your better
+judgement, but let me lay out what I believe is happening:
 
-The reproducer works against a server with write delegations:
+            Stat Thread                                rpciod
+           -------------                              --------
+  - woken up with tk_status set to
+    EAGAIN via xs_tcp_state_change
 
-./nfsometer.py -m v4 server:/path dd_100m_100k
+  - tries call_transmit again, which
+    calls xs_tcp_send_request which
+    comes back with ECONNRESET (b/c this
+    is what sk_err is)
 
-which is basically:
- - mount
- - dd if=/dev/zero of=./dd_file.100m_100k bs=102400 count=1024
- - umount
- - break if /proc/fs/nfsfs/servers still has entry after 5 seconds (in this
-   case it NEVER goes away)
+  - call_status sees this and goes to
+    sleep for 3 seconds and then sets
+    tk_action to call_bind
 
-There are clearly other ways to trigger this deadlock, like a v4.1 CLOSE - the
-done handler calls nfs_sb_deactivate...
+  - call_bind
 
-I've tested this approach with 10 runs X 3 nfs versions X 5 workloads 
-(dd_100m_100k, dd_100m_1k, python, kernel, cthon), so I'm pretty confident
-its correct.
+  - call_connect, queues execution of
+    xs_tcp_setup_socket with rpciod and
+    goes to sleep
+    			
+					   - starts doing its thing, but wakes
+					     up our other thread before its done
+					     trying to connect the socket (or
+					     failing to do so) via the call
+					     stack mentioned before (via
+					     xprt_disconnect_done)
+					     
+  - tk_status is set to EAGAIN, so
+    call_connect_status moves on to
+    call_transmit
 
-One question for the list: should nfs_free_server *always* be scheduled on
-the nfsiod workqueue? It's called in error paths in several locations.
-After looking at them, I don't think my approach would break anything, but 
-some might have style objections.
+  - call_transmit calls
+    xs_tcp_send_request again which
+    finds the socket with sk_shutdown !=
+    0 and so returns EPIPE
 
- -dros
+  - call_status sees the EPIPE and sets
+    tk_action back to call_bind
 
- fs/nfs/client.c           |   20 +++++++++++++++++---
- include/linux/nfs_fs_sb.h |    1 +
- 2 files changed, 18 insertions(+), 3 deletions(-)
+					   - continues on and updates the state
+					     of the socket to TCP_SYN_SENT
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index c285e0a..9186a96 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1010,9 +1010,11 @@ EXPORT_SYMBOL_GPL(nfs_alloc_server);
- /*
-  * Free up a server record
-  */
--void nfs_free_server(struct nfs_server *server)
-+static void nfs_free_server_schedule_work(struct work_struct *work)
- {
--	dprintk("--> nfs_free_server()\n");
-+	struct nfs_server *server = container_of(work, struct nfs_server, work);
-+
-+	dprintk("--> %s\n", __func__);
- 
- 	nfs_server_remove_lists(server);
- 
-@@ -1032,7 +1034,19 @@ void nfs_free_server(struct nfs_server *server)
- 	bdi_destroy(&server->backing_dev_info);
- 	kfree(server);
- 	nfs_release_automount_timer();
--	dprintk("<-- nfs_free_server()\n");
-+	dprintk("<-- %s\n", __func__);
-+}
-+
-+/*
-+ * Queue work on nfsiod workqueue to free up a server record.
-+ * This avoids a deadlock when an RPC task scheduled from the rpciod
-+ * workqueue tries to kill itself.
-+ */
-+void nfs_free_server(struct nfs_server *server)
-+{
-+	WARN_ON_ONCE(work_pending(&server->work));
-+	INIT_WORK(&server->work, nfs_free_server_schedule_work);
-+	queue_work(nfsiod_workqueue, &server->work);
- }
- EXPORT_SYMBOL_GPL(nfs_free_server);
- 
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index a9e76ee..a607886 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -171,6 +171,7 @@ struct nfs_server {
- 	void (*destroy)(struct nfs_server *);
- 
- 	atomic_t active; /* Keep trace of any activity to this server */
-+	struct work_struct	work;		/* used to schedule free */
- 
- 	/* mountd-related mount options */
- 	struct sockaddr_storage	mountd_address;
--- 
-1.7.9.6 (Apple Git-31.1)
+					   - When the connection is established,
+					     xs_tcp_state_change takes care of
+					     marking the xprt connected
 
+  - call_bind
+
+  - call_connect, however this time it
+    schedules no work because it finds
+    that the transport is already
+    connected
+
+  - call_transmit, succeeds, we recover
+
+This is how the recovery went when I was testing, but I could imagine a
+situation where different timing comes into play and we wind up asking
+rpciod to execute xs_tcp_setup_socket twice (because the first connect
+hasn't been established yet).  I haven't thought too hard about what
+that would mean, but I imagine it probably wouldn't be good.
+
+Like I said, you know way more about this than I do, I just wanted to point this
+out.  Its entirely possible that I'm missing or misunderstanding something.
+
+Thanks!
+
+Chris
