@@ -1,36 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:8999 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751398Ab2JOEl6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Oct 2012 00:41:58 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Bruce Fields <bfields@fieldses.org>
-CC: Larry McVoy <lm@bitmover.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
-Date: Mon, 15 Oct 2012 04:41:56 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA909236FFD@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20121012211701.GA8301@bitmover.com>
-	 <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
-	 <20121013002100.GB23247@bitmover.com>
-	 <CA+55aFwKn+rp4qTk3dLgN8n=M-Aw1GYYpOfevDJaJhnK-U5VOg@mail.gmail.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9091FDED5@SACEXCMBX04-PRD.hq.netapp.com>
-	 <20121013023147.GJ23247@bitmover.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9091FE478@SACEXCMBX04-PRD.hq.netapp.com>
-	 <20121013025600.GL23247@bitmover.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9091FFA38@SACEXCMBX04-PRD.hq.netapp.com>
-	 <20121014014215.GO23247@bitmover.com> <20121015004302.GF32420@fieldses.org>
-In-Reply-To: <20121015004302.GF32420@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+Received: from icebox.esperi.org.uk ([81.187.191.129]:54802 "EHLO
+	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756056Ab2JWRGX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Oct 2012 13:06:23 -0400
+From: Nix <nix@esperi.org.uk>
+To: "Myklebust\, Trond" <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, "Ted Ts'o" <tytso@mit.edu>,
+        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "Schumaker\, Bryan" <Bryan.Schumaker@netapp.com>,
+        Peng Tao <bergwolf@gmail.com>,
+        "gregkh\@linuxfoundation.org" <gregkh@linuxfoundation.org>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>
+Subject: Re: Heads-up: 3.6.2 / 3.6.3 NFS server oops: 3.6.2+ regression? (also an unrelated ext4 data loss bug)
+References: <87objupjlr.fsf@spindle.srvr.nix>
+	<20121023013343.GB6370@fieldses.org> <87mwzdnuww.fsf@spindle.srvr.nix>
+	<20121023143019.GA3040@fieldses.org>
+	<874nllxi7e.fsf_-_@spindle.srvr.nix>
+	<20121023164621.GC3040@fieldses.org>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA90928CA6F@SACEXCMBX04-PRD.hq.netapp.com>
+Date: Tue, 23 Oct 2012 18:05:18 +0100
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90928CA6F@SACEXCMBX04-PRD.hq.netapp.com>
+	(Trond Myklebust's message of "Tue, 23 Oct 2012 16:56:00 +0000")
+Message-ID: <87vce1w241.fsf@spindle.srvr.nix>
 MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU3VuLCAyMDEyLTEwLTE0IGF0IDIwOjQzIC0wNDAwLCBCcnVjZSBGaWVsZHMgd3JvdGU6DQo+
-IEJ1ZyByZXBvcnRzIHdlbGNvbWVkIGlmIGFueSBvZiB0aG9zZSBidWdzIGFyZSBzdGlsbCBhcm91
-bmQuDQoNCllvdSBkaWQgc2VlIHRoZSBwYXRjaCB0aGF0IEkgc3VibWl0dGVkLCByaWdodD8gU2lu
-Y2UgaXQgaXMgYSBzZXJ2ZXIgYnVnLA0KSSdtIGFzc3VtaW5nIHRoYXQgeW91IHdpbGwgd2FudCB0
-byBwdXNoIGl0IHVwc3RyZWFtLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNs
-aWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3
-dy5uZXRhcHAuY29tDQo=
+On 23 Oct 2012, Trond Myklebust spake thusly:
+> On Tue, 2012-10-23 at 12:46 -0400, J. Bruce Fields wrote:
+>> Looks like there's some confusion about whether nsm_client_get() returns
+>> NULL or an error?
+>
+> nsm_client_get() looks extremely racy in the case where ln->nsm_users ==
+> 0.  Since we never recheck the value of ln->nsm_users after taking
+> nsm_create_mutex, what is stopping 2 different threads from both setting
+> ln->nsm_clnt and re-initialising ln->nsm_users?
+
+Yep. At the worst possible time:
+
+	spin_lock(&ln->nsm_clnt_lock);
+	if (ln->nsm_users) {
+		if (--ln->nsm_users)
+			ln->nsm_clnt = NULL;
+(1)		shutdown = !ln->nsm_users;
+	}
+	spin_unlock(&ln->nsm_clnt_lock);
+
+If a thread reinitializes nsm_users at point (1), after the assignment,
+we could well end up with ln->nsm_clnt NULL and shutdown false. A bit
+later, nsm_mon_unmon gets called with a NULL clnt, and boom.
+
+This seems particularly likely if there is only one nsm_user (which is
+true in my case, since I have only one active network namespace).
+
+-- 
+NULL && (void)
