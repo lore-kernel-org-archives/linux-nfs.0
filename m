@@ -1,42 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:38678 "EHLO mx2.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:51770 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754600Ab2JIVUf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Oct 2012 17:20:35 -0400
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 0/1] NFSv4.1: pNFS has no business touching the slot table waitq...
-Date: Tue,  9 Oct 2012 17:20:07 -0400
-Message-Id: <1349817608-4730-1-git-send-email-andros@netapp.com>
+	id S1755397Ab2JWOxj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Oct 2012 10:53:39 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 25/25] SUNRPC: remove BUG_ON in rpc_release_task
+Date: Tue, 23 Oct 2012 10:43:49 -0400
+Message-Id: <1351003429-18887-26-git-send-email-dros@netapp.com>
+In-Reply-To: <1351003429-18887-1-git-send-email-dros@netapp.com>
+References: <1351003429-18887-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+Replace BUG_ON() with WARN_ON_ONCE().
 
-Hi Trond:
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ net/sunrpc/sched.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-How about this?
-
-I tested this patch against the rpc_wake_up version - no difference in run
-time for DS disconnect.
-
-I have not yet tested DS invalid layout, but since
-the invalid layout does not trigger a deviceid invalidation, each call using
-the layout will go through filelayout_async_handle_error, free the slot, and
-wake up the next task on the ds session fore channel slot table waitq, and
-the filelayout_read/write_prepare routines do not reset to the MDS.
-
--->Andy
-
-Andy Adamson (1):
-  NFSv4.1	do not wake up all tasks on data server reset to MDS
-
- fs/nfs/internal.h       |    1 +
- fs/nfs/nfs4filelayout.c |    5 ++---
- fs/nfs/nfs4proc.c       |   18 +++++++++++++-----
- 3 files changed, 16 insertions(+), 8 deletions(-)
-
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index 6904917..8529026 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -995,7 +995,7 @@ static void rpc_release_task(struct rpc_task *task)
+ {
+ 	dprintk("RPC: %5u release task\n", task->tk_pid);
+ 
+-	BUG_ON (RPC_IS_QUEUED(task));
++	WARN_ON_ONCE(RPC_IS_QUEUED(task));
+ 
+ 	rpc_release_resources_task(task);
+ 
 -- 
-1.7.7.6
+1.7.9.6 (Apple Git-31.1)
 
