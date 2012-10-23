@@ -1,86 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-lb0-f174.google.com ([209.85.217.174]:35410 "EHLO
-	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752837Ab2JHT7F (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Oct 2012 15:59:05 -0400
-Received: by mail-lb0-f174.google.com with SMTP id n3so3219466lbo.19
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Oct 2012 12:59:04 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1349718630-26008-4-git-send-email-Trond.Myklebust@netapp.com>
-References: <1349718630-26008-1-git-send-email-Trond.Myklebust@netapp.com>
-	<1349718630-26008-2-git-send-email-Trond.Myklebust@netapp.com>
-	<1349718630-26008-3-git-send-email-Trond.Myklebust@netapp.com>
-	<1349718630-26008-4-git-send-email-Trond.Myklebust@netapp.com>
-Date: Mon, 8 Oct 2012 15:59:03 -0400
-Message-ID: <CAHVgHyV7aW8TArsu0xi0Nz6AhO98bO2qVzAvY9XZYx7hQZcx4w@mail.gmail.com>
-Subject: Re: [PATCH 4/4] NFSv4.1: pNFS has no business touching the slot table
- wait queue...
-From: Andy Adamson <androsadamson@gmail.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx12.netapp.com ([216.240.18.77]:51770 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754948Ab2JWOxj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Oct 2012 10:53:39 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 15/25] SUNRPC: remove BUG_ONs from *_reclassify_socket*
+Date: Tue, 23 Oct 2012 10:43:39 -0400
+Message-Id: <1351003429-18887-16-git-send-email-dros@netapp.com>
+In-Reply-To: <1351003429-18887-1-git-send-email-dros@netapp.com>
+References: <1351003429-18887-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 8, 2012 at 1:50 PM, Trond Myklebust
-<Trond.Myklebust@netapp.com> wrote:
-> Aside from it being a layering violation, there is no point in doing so:
-> - If slots are available, then the waitqueue will be empty.
-> - If no slots are available, then the wake up just causes waitqueue churn
+Replace multiple BUG_ON() calls with WARN_ON_ONCE() and early return when
+sanity checking socket ownership (lock). The bind call will fail if the
+socket was unsuccessfully reclassified.
 
-We call rpc_wake_up so that I/O waiting on the DS session, all of
-which needs to be re-directed to the MDS (not via the state recovery
-machinery), will by-pass the RPC machine "try each task one at a time
-and redirect on failure" which includes the 60 second TCP timeout on
-DS connection failures.
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ net/sunrpc/svcsock.c  |    6 +++++-
+ net/sunrpc/xprtsock.c |    7 ++++---
+ 2 files changed, 9 insertions(+), 4 deletions(-)
 
-So, it doesn't just cause waitqueue churn, it significantly reduces
-the time it takes to recover to the MDS.
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 03827ce..cc3020d 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -84,7 +84,11 @@ static struct lock_class_key svc_slock_key[2];
+ static void svc_reclassify_socket(struct socket *sock)
+ {
+ 	struct sock *sk = sock->sk;
+-	BUG_ON(sock_owned_by_user(sk));
++
++	WARN_ON_ONCE(sock_owned_by_user(sk));
++	if (sock_owned_by_user(sk))
++		return;
++
+ 	switch (sk->sk_family) {
+ 	case AF_INET:
+ 		sock_lock_init_class_and_name(sk, "slock-AF_INET-NFSD",
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index aaaadfb..4e76d38 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1762,7 +1762,6 @@ static inline void xs_reclassify_socketu(struct socket *sock)
+ {
+ 	struct sock *sk = sock->sk;
+ 
+-	BUG_ON(sock_owned_by_user(sk));
+ 	sock_lock_init_class_and_name(sk, "slock-AF_LOCAL-RPC",
+ 		&xs_slock_key[1], "sk_lock-AF_LOCAL-RPC", &xs_key[1]);
+ }
+@@ -1771,7 +1770,6 @@ static inline void xs_reclassify_socket4(struct socket *sock)
+ {
+ 	struct sock *sk = sock->sk;
+ 
+-	BUG_ON(sock_owned_by_user(sk));
+ 	sock_lock_init_class_and_name(sk, "slock-AF_INET-RPC",
+ 		&xs_slock_key[0], "sk_lock-AF_INET-RPC", &xs_key[0]);
+ }
+@@ -1780,13 +1778,16 @@ static inline void xs_reclassify_socket6(struct socket *sock)
+ {
+ 	struct sock *sk = sock->sk;
+ 
+-	BUG_ON(sock_owned_by_user(sk));
+ 	sock_lock_init_class_and_name(sk, "slock-AF_INET6-RPC",
+ 		&xs_slock_key[1], "sk_lock-AF_INET6-RPC", &xs_key[1]);
+ }
+ 
+ static inline void xs_reclassify_socket(int family, struct socket *sock)
+ {
++	WARN_ON_ONCE(sock_owned_by_user(sock->sk));
++	if (sock_owned_by_user(sock->sk))
++		return;
++
+ 	switch (family) {
+ 	case AF_LOCAL:
+ 		xs_reclassify_socketu(sock);
+-- 
+1.7.9.6 (Apple Git-31.1)
 
--->Andy
-
-
-
-> - If the slot table is being drained, then the state recovery machinery
->   will manage the waitqueue using the calls to nfs4_begin/end_drain_session.
->
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
->  fs/nfs/nfs4filelayout.c | 3 ---
->  1 file changed, 3 deletions(-)
->
-> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-> index 52d8472..368f11f 100644
-> --- a/fs/nfs/nfs4filelayout.c
-> +++ b/fs/nfs/nfs4filelayout.c
-> @@ -131,7 +131,6 @@ static int filelayout_async_handle_error(struct rpc_task *task,
->         struct nfs_server *mds_server = NFS_SERVER(inode);
->         struct nfs4_deviceid_node *devid = FILELAYOUT_DEVID_NODE(lseg);
->         struct nfs_client *mds_client = mds_server->nfs_client;
-> -       struct nfs4_slot_table *tbl = &clp->cl_session->fc_slot_table;
->
->         if (task->tk_status >= 0)
->                 return 0;
-> @@ -191,7 +190,6 @@ static int filelayout_async_handle_error(struct rpc_task *task,
->                  * layout is destroyed and a new valid layout is obtained.
->                  */
->                 pnfs_destroy_layout(NFS_I(inode));
-> -               rpc_wake_up(&tbl->slot_tbl_waitq);
->                 goto reset;
->         /* RPC connection errors */
->         case -ECONNREFUSED:
-> @@ -206,7 +204,6 @@ static int filelayout_async_handle_error(struct rpc_task *task,
->                 nfs4_mark_deviceid_unavailable(devid);
->                 clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags);
->                 _pnfs_return_layout(inode);
-> -               rpc_wake_up(&tbl->slot_tbl_waitq);
->                 nfs4_ds_disconnect(clp);
->                 /* fall through */
->         default:
-> --
-> 1.7.11.4
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
