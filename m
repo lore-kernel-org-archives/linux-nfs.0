@@ -1,107 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:17746 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755118Ab2JPSj6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Oct 2012 14:39:58 -0400
-Date: Tue, 16 Oct 2012 13:39:56 -0500
-From: "Haynes, Tom" <thomas@netapp.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Testing XDR code for nits
-Message-ID: <20121016183956.GA19073@netapp.com>
-References: <20121015173035.GA1777@netapp.com>
- <507C7129.7090609@RedHat.com>
+Received: from icebox.esperi.org.uk ([81.187.191.129]:49637 "EHLO
+	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751745Ab2JWOZF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Oct 2012 10:25:05 -0400
+From: Nix <nix@esperi.org.uk>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-kernel@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>,
+        Peng Tao <bergwolf@gmail.com>, Trond.Myklebust@netapp.com,
+        gregkh@linuxfoundation.org, linux-nfs@vger.kernel.org
+Subject: Re: Heads-up: 3.6.2 / 3.6.3 NFS server panic: 3.6.2+ regression?
+References: <87objupjlr.fsf@spindle.srvr.nix>
+	<20121023013343.GB6370@fieldses.org>
+Date: Tue, 23 Oct 2012 15:07:59 +0100
+In-Reply-To: <20121023013343.GB6370@fieldses.org> (J. Bruce Fields's message
+	of "Mon, 22 Oct 2012 21:33:43 -0400")
+Message-ID: <87mwzdnuww.fsf@spindle.srvr.nix>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <507C7129.7090609@RedHat.com>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 15, 2012 at 04:25:13PM -0400, Steve Dickson wrote:
-> 
-> Here is the list of build decencies to build a Fedora nfs-utils rpm.
-> 
-> libgssglue-devel libevent-devel libcap-devel
-> libnfsidmap-devel libtirpc-devel libblkid-devel
-> krb5-libs >= 1.4 autoconf >= 2.57 openldap-devel >= 2.2
-> automake, libtool, glibc-headers, device-mapper-devel
-> krb5-devel, tcp_wrappers-devel, libmount-devel
-> fedfs-utils-devel >= 0.8.0-7
-> 
-> I hope this helps...
-> 
-> steved.
+On 23 Oct 2012, J. Bruce Fields uttered the following:
 
-The difference I finally can see is FC13:
+> On Mon, Oct 22, 2012 at 05:17:04PM +0100, Nix wrote:
+>> I just had a panic/oops on upgrading from 3.6.1 to 3.6.3, after weeks of
+>> smooth operation on 3.6.1: one of the NFS changes that went into one of
+>> the two latest stable kernels appears to be lethal after around half an
+>> hour of uptime. The oops came from NFSv4, IIRC (relying on memory since
+>> my camera was recharging and there is no netconsole from that box
+>> because it is where the netconsole logs go, so I'll have to reproduce it
+>> later today). The machine is an NFSv3 server only at present, with no
+>> NFSv4 running (though NFSv4 is built in).
+>
+> Note recent clients may try to negotiate NFSv4 by default, so it's
+> possible to use it without knowing.
 
+Every NFS import from all this server's clients has 'vers=3' forced on
+(for now, until I get around to figuring out what if anything needs to
+be done to move to NFSv4: it may be the answer is 'nothing' but I tread
+quite carefully with this server, since my $HOME is there).
 
-[thomas@ietf include]$ ls -la /usr/include/rpcsecgss
-total 20
-drwxr-xr-x    3 root root  4096 Oct 16 11:49 .
-drwxr-xr-x. 134 root root 12288 Oct 16 11:49 ..
-drwxr-xr-x    2 root root  4096 Oct 16 11:49 rpc
-[thomas@ietf include]$ yum provides /usr/include/rpcsecgss/rpc/rpcsecgss_rename.h
-Loaded plugins: presto, refresh-packagekit
-nfs-utils-lib-devel-1.1.5-1.fc13.i686 : Development files for the nfs-utils-lib library
-Repo        : fedora
-Matched from:
-Filename    : /usr/include/rpcsecgss/rpc/rpcsecgss_rename.h
+/proc/fs/nfsfs/volumes on the clients confirms that everything is v3.
 
+> You didn't change anything else about your server or clients recently?
 
+Nope (other than upgrading the clients to 3.6.3 in concert). Running
+3.6.1 here on that server now and 3.6.3 on all the clients, and no crash
+in over a day.
 
-nfs-utils-lib-devel-1.1.5-1.fc13.i686 : Development files for the nfs-utils-lib library
-Repo        : installed
-Matched from:
-Other       : Provides-match: /usr/include/rpcsecgss/rpc/rpcsecgss_rename.h
+nfs-utils is a bit old, 1.2.6-rc6, I should probably upgrade it...
 
-And FC17:
+> I don't see an obvious candidate on a quick skim of v3.6.1..v3.6.3
+> commits, but of course I could be missing something.
 
-[thomas@psyklo include]$ ls -la /usr/include/rpcsecgss
-ls: cannot access /usr/include/rpcsecgss: No such file or directory
-[thomas@psyklo include]$ yum provides /usr/include/rpcsecgss/rpc/rpcsecgss_rename.h
-Loaded plugins: langpacks, presto, refresh-packagekit
-nfs-utils-lib-devel-1.1.5-6.fc17.i686 : Development files for the nfs-utils-lib library
-Repo        : fedora
-Matched from:
-Filename    : /usr/include/rpcsecgss/rpc/rpcsecgss_rename.h
+I'll try rebooting into it again soon, and get an oops report if it
+should happen again (and hopefully less filesystem corruption this time,
+right after a reboot into a new kernel was clearly the wrong time to
+move a bunch of directories around).
 
-
-
-nfs-utils-lib-devel-1.1.5-6.fc17.x86_64 : Development files for the nfs-utils-lib library
-Repo        : fedora
-Matched from:
-Filename    : /usr/include/rpcsecgss/rpc/rpcsecgss_rename.h
-
-
-mas@psyklo include]$ sudo yum -y install nfs-utils-lib-devel
-Loaded plugins: langpacks, presto, refresh-packagekit
-Resolving Dependencies
---> Running transaction check
----> Package nfs-utils-lib-devel.x86_64 0:1.1.5-6.fc17 will be installed
---> Processing Dependency: librpcsecgss.so.3()(64bit) for package: nfs-utils-lib-devel-1.1.5-6.fc17.x86_64
-Package nfs-utils-lib-1.1.5-6.fc17.x86_64 is obsoleted by libnfsidmap-0.25-3.fc17.x86_64 which is already installed
---> Finished Dependency Resolution
-Error: Package: nfs-utils-lib-devel-1.1.5-6.fc17.x86_64 (fedora)
-           Requires: librpcsecgss.so.3()(64bit)
-           Available: nfs-utils-lib-1.1.5-6.fc17.x86_64 (fedora)
-               librpcsecgss.so.3()(64bit)
- You could try using --skip-broken to work around the problem
- You could try running: rpm -Va --nofiles --nodigest
-[thomas@psyklo include]$ sudo yum -y --skip-broken install nfs-utils-lib-devel
-Loaded plugins: langpacks, presto, refresh-packagekit
-Resolving Dependencies
---> Running transaction check
----> Package nfs-utils-lib-devel.x86_64 0:1.1.5-6.fc17 will be installed
---> Processing Dependency: librpcsecgss.so.3()(64bit) for package: nfs-utils-lib-devel-1.1.5-6.fc17.x86_64
-Package nfs-utils-lib-1.1.5-6.fc17.x86_64 is obsoleted by libnfsidmap-0.25-3.fc17.x86_64 which is already installed
-
-Packages skipped because of dependency problems:
-    nfs-utils-lib-devel-1.1.5-6.fc17.x86_64 from fedora
-
-So it looks like this functionality is no longer provided.
-
-What is supposed to replace it?
-
-
--- 
-Tom Haynes - ex-cfb
+Sorry for the continuing lack of useful information... I'll try to fix
+that shortly (once with a report of a false alarm, since I really want
+this stable kernel: my server is affected by the tx stalls fixed by
+3468e9d and I'm getting tired of the frequent 1s lags talking to it: I
+could just apply that one fix, but I'd rather track this down properly).
