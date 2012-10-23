@@ -1,152 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:29524 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750833Ab2JHKy2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Oct 2012 06:54:28 -0400
-Subject: [PATCH v3] SUNRPC: set desired file system root before connecting
-	local transports
-To: Trond.Myklebust@netapp.com
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Mon, 08 Oct 2012 14:56:32 +0400
-Message-ID: <20121008105437.18668.99905.stgit@localhost.localdomain>
+Received: from icebox.esperi.org.uk ([81.187.191.129]:54891 "EHLO
+	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757239Ab2JWRgm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Oct 2012 13:36:42 -0400
+From: Nix <nix@esperi.org.uk>
+To: "Myklebust\, Trond" <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, "Ted Ts'o" <tytso@mit.edu>,
+        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "Schumaker\, Bryan" <Bryan.Schumaker@netapp.com>,
+        Peng Tao <bergwolf@gmail.com>,
+        "gregkh\@linuxfoundation.org" <gregkh@linuxfoundation.org>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>
+Subject: Re: Heads-up: 3.6.2 / 3.6.3 NFS server oops: 3.6.2+ regression? (also an unrelated ext4 data loss bug)
+References: <87objupjlr.fsf@spindle.srvr.nix>
+	<20121023013343.GB6370@fieldses.org> <87mwzdnuww.fsf@spindle.srvr.nix>
+	<20121023143019.GA3040@fieldses.org>
+	<874nllxi7e.fsf_-_@spindle.srvr.nix>
+	<20121023164621.GC3040@fieldses.org>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA90928CA6F@SACEXCMBX04-PRD.hq.netapp.com>
+	<87vce1w241.fsf@spindle.srvr.nix>
+Date: Tue, 23 Oct 2012 18:36:15 +0100
+In-Reply-To: <87vce1w241.fsf@spindle.srvr.nix> (nix@esperi.org.uk's message of
+	"Tue, 23 Oct 2012 18:05:18 +0100")
+Message-ID: <87r4opw0og.fsf@spindle.srvr.nix>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Today, there is a problem in connecting of local SUNRPC thansports. These
-transports uses UNIX sockets and connection itself is done by rpciod
-workqueue.
-But all local transports are connecting in rpciod context. I.e. UNIX sockets
-lookup is done in context of process file system root.
-This works nice until we will try to mount NFS from process with other root -
-for example in container. This container can have it's own (nested) root and
-rcpbind process, listening on it's own unix sockets. But NFS mount attempt in
-this container will register new service (Lockd for example) in global rpcbind
-- not containers's one.
-This patch solves the problem by switching rpciod kernel thread's file system
-root to the right one (stored on transport) while connecting of local
-transports.
+On 23 Oct 2012, nix@esperi.org.uk uttered the following:
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- net/sunrpc/xprtsock.c |   52 +++++++++++++++++++++++++++++++++++++++++++++++--
- 1 files changed, 50 insertions(+), 2 deletions(-)
+> On 23 Oct 2012, Trond Myklebust spake thusly:
+>> On Tue, 2012-10-23 at 12:46 -0400, J. Bruce Fields wrote:
+>>> Looks like there's some confusion about whether nsm_client_get() returns
+>>> NULL or an error?
+>>
+>> nsm_client_get() looks extremely racy in the case where ln->nsm_users ==
+>> 0.  Since we never recheck the value of ln->nsm_users after taking
+>> nsm_create_mutex, what is stopping 2 different threads from both setting
+>> ln->nsm_clnt and re-initialising ln->nsm_users?
+>
+> Yep. At the worst possible time:
+>
+> 	spin_lock(&ln->nsm_clnt_lock);
+> 	if (ln->nsm_users) {
+> 		if (--ln->nsm_users)
+> 			ln->nsm_clnt = NULL;
+> (1)		shutdown = !ln->nsm_users;
+> 	}
+> 	spin_unlock(&ln->nsm_clnt_lock);
+>
+> If a thread reinitializes nsm_users at point (1), after the assignment,
+> we could well end up with ln->nsm_clnt NULL and shutdown false. A bit
+> later, nsm_mon_unmon gets called with a NULL clnt, and boom.
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index aaaadfb..ecbced1 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -37,6 +37,7 @@
- #include <linux/sunrpc/svcsock.h>
- #include <linux/sunrpc/xprtsock.h>
- #include <linux/file.h>
-+#include <linux/fs_struct.h>
- #ifdef CONFIG_SUNRPC_BACKCHANNEL
- #include <linux/sunrpc/bc_xprt.h>
- #endif
-@@ -255,6 +256,11 @@ struct sock_xprt {
- 	void			(*old_state_change)(struct sock *);
- 	void			(*old_write_space)(struct sock *);
- 	void			(*old_error_report)(struct sock *);
-+
-+	/*
-+	 * Saved transport creator root. Required for local transports only.
-+	 */
-+	struct path		root;
- };
- 
- /*
-@@ -1876,6 +1882,30 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
- 	return kernel_connect(sock, xs_addr(xprt), xprt->addrlen, 0);
- }
- 
-+/*
-+ * __xs_local_swap_root - swap current root to tranport's root helper.
-+ * @new_root - path to set to current fs->root.
-+ * @old_root - optinal paoinet to save current root to
-+ *
-+ * This routine is requieed to connecting unix sockets to absolute path in
-+ * proper root environment.
-+ * Note: no path_get() will be called. I.e. caller have to hold reference to
-+ * new_root.
-+ */
-+static void __xs_local_swap_root(struct path *new_root, struct path *old_root)
-+{
-+	struct fs_struct *fs = current->fs;
-+
-+	spin_lock(&fs->lock);
-+	write_seqcount_begin(&fs->seq);
-+	if (old_root)
-+		*old_root = fs->root;
-+	fs->root = *new_root;
-+	write_seqcount_end(&fs->seq);
-+	spin_unlock(&fs->lock);
-+}
-+
-+
- /**
-  * xs_local_setup_socket - create AF_LOCAL socket, connect to a local endpoint
-  * @xprt: RPC transport to connect
-@@ -1891,6 +1921,7 @@ static void xs_local_setup_socket(struct work_struct *work)
- 	struct rpc_xprt *xprt = &transport->xprt;
- 	struct socket *sock;
- 	int status = -EIO;
-+	struct path root;
- 
- 	current->flags |= PF_FSTRANS;
- 
-@@ -1907,7 +1938,10 @@ static void xs_local_setup_socket(struct work_struct *work)
- 	dprintk("RPC:       worker connecting xprt %p via AF_LOCAL to %s\n",
- 			xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
- 
-+	__xs_local_swap_root(&transport->root, &root);
- 	status = xs_local_finish_connecting(xprt, sock);
-+	__xs_local_swap_root(&root, NULL);
-+
- 	switch (status) {
- 	case 0:
- 		dprintk("RPC:       xprt %p connected to %s\n",
-@@ -2256,6 +2290,18 @@ static void xs_connect(struct rpc_task *task)
+Possible fix if so, utterly untested so far (will test when I can face
+yet another reboot and fs-corruption-recovery-hell cycle, in a few
+hours), may ruin performance, violate locking hierarchies, and consume
+kittens:
+
+diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+index e4fb3ba..da91cdf 100644
+--- a/fs/lockd/mon.c
++++ b/fs/lockd/mon.c
+@@ -98,7 +98,6 @@ static struct rpc_clnt *nsm_client_get(struct net *net)
+ 		spin_unlock(&ln->nsm_clnt_lock);
+ 		goto out;
  	}
+-	spin_unlock(&ln->nsm_clnt_lock);
+ 
+ 	mutex_lock(&nsm_create_mutex);
+ 	clnt = nsm_create(net);
+@@ -108,6 +107,7 @@ static struct rpc_clnt *nsm_client_get(struct net *net)
+ 		ln->nsm_users = 1;
+ 	}
+ 	mutex_unlock(&nsm_create_mutex);
++	spin_unlock(&ln->nsm_clnt_lock);
+ out:
+ 	return clnt;
  }
- 
-+static void xs_local_destroy(struct rpc_xprt *xprt)
-+{
-+	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
-+	struct path root = transport->root;
-+
-+	dprintk("RPC:       xs_local_destroy xprt %p\n", xprt);
-+
-+	xs_destroy(xprt);
-+
-+	path_put(&root);
-+}
-+
- /**
-  * xs_local_print_stats - display AF_LOCAL socket-specifc stats
-  * @xprt: rpc_xprt struct containing statistics
-@@ -2475,7 +2521,7 @@ static struct rpc_xprt_ops xs_local_ops = {
- 	.send_request		= xs_local_send_request,
- 	.set_retrans_timeout	= xprt_set_retrans_timeout_def,
- 	.close			= xs_close,
--	.destroy		= xs_destroy,
-+	.destroy		= xs_local_destroy,
- 	.print_stats		= xs_local_print_stats,
- };
- 
-@@ -2654,8 +2700,10 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
- 	dprintk("RPC:       set up xprt to %s via AF_LOCAL\n",
- 			xprt->address_strings[RPC_DISPLAY_ADDR]);
- 
--	if (try_module_get(THIS_MODULE))
-+	if (try_module_get(THIS_MODULE)) {
-+		get_fs_root(current->fs, &transport->root);
- 		return xprt;
-+	}
- 	ret = ERR_PTR(-EINVAL);
- out_err:
- 	xprt_free(xprt);
 
