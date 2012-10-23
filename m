@@ -1,39 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:11591 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:39811 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751457Ab2JRTG7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Oct 2012 15:06:59 -0400
-Received: from vmwexceht04-prd.hq.netapp.com (vmwexceht04-prd.hq.netapp.com [10.106.77.34])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q9IJ6wbk007692
-	for <linux-nfs@vger.kernel.org>; Thu, 18 Oct 2012 12:06:58 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 05/25] SUNRPC: remove BUG_ON() from rpc_call_sync()
-Date: Thu, 18 Oct 2012 19:06:57 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA909281502@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1350405043-39316-1-git-send-email-dros@netapp.com>
-	 <1350405043-39316-5-git-send-email-dros@netapp.com>
-In-Reply-To: <1350405043-39316-5-git-send-email-dros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1756227Ab2JWBds (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Oct 2012 21:33:48 -0400
+Date: Mon, 22 Oct 2012 21:33:43 -0400
+To: Nix <nix@esperi.org.uk>
+Cc: linux-kernel@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>,
+        Peng Tao <bergwolf@gmail.com>, Trond.Myklebust@netapp.com,
+        gregkh@linuxfoundation.org, linux-nfs@vger.kernel.org
+Subject: Re: Heads-up: 3.6.2 / 3.6.3 NFS server panic: 3.6.2+ regression?
+Message-ID: <20121023013343.GB6370@fieldses.org>
+References: <87objupjlr.fsf@spindle.srvr.nix>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <87objupjlr.fsf@spindle.srvr.nix>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTEwLTE2IGF0IDEyOjMwIC0wNDAwLCBXZXN0b24gQW5kcm9zIEFkYW1zb24g
-d3JvdGU6DQo+IFJldHVybiAtRUlOVkFMIGluc3RlYWQgb2YgY2FsbGluZyBCVUdfT04oKSB3aGVu
-IFJQQ19UQVNLX0FTWU5DIGZsYWcgaXMgcGFzc2VkDQo+IHRvIHJwY19jYWxsX3N5bmMoKS4NCj4g
-DQo+IFNpZ25lZC1vZmYtYnk6IFdlc3RvbiBBbmRyb3MgQWRhbXNvbiA8ZHJvc0BuZXRhcHAuY29t
-Pg0KPiAtLS0NCj4gIG5ldC9zdW5ycGMvY2xudC5jIHwgICAgMyArKy0NCj4gIDEgZmlsZSBjaGFu
-Z2VkLCAyIGluc2VydGlvbnMoKyksIDEgZGVsZXRpb24oLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9u
-ZXQvc3VucnBjL2NsbnQuYyBiL25ldC9zdW5ycGMvY2xudC5jDQo+IGluZGV4IDc2ZDE3MzAuLmE4
-YTZiY2YgMTAwNjQ0DQo+IC0tLSBhL25ldC9zdW5ycGMvY2xudC5jDQo+ICsrKyBiL25ldC9zdW5y
-cGMvY2xudC5jDQo+IEBAIC04MzksNyArODM5LDggQEAgaW50IHJwY19jYWxsX3N5bmMoc3RydWN0
-IHJwY19jbG50ICpjbG50LCBjb25zdCBzdHJ1Y3QgcnBjX21lc3NhZ2UgKm1zZywgaW50IGZsYWcN
-Cj4gIAl9Ow0KPiAgCWludCBzdGF0dXM7DQo+ICANCj4gLQlCVUdfT04oZmxhZ3MgJiBSUENfVEFT
-S19BU1lOQyk7DQo+ICsJaWYgKGZsYWdzICYgUlBDX1RBU0tfQVNZTkMpDQo+ICsJCXJldHVybiAt
-RUlOVkFMOw0KDQpCVFc6IFRoaXMgbmVlZHMgdG8gY2FsbCBycGNfcmVsZWFzZV9jYWxsZGF0YSgp
-IGJlZm9yZSBleGl0aW5nLg0KPiAgDQo+ICAJdGFzayA9IHJwY19ydW5fdGFzaygmdGFza19zZXR1
-cF9kYXRhKTsNCj4gIAlpZiAoSVNfRVJSKHRhc2spKQ0KDQotLSANClRyb25kIE15a2xlYnVzdA0K
-TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5l
-dGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+On Mon, Oct 22, 2012 at 05:17:04PM +0100, Nix wrote:
+> I just had a panic/oops on upgrading from 3.6.1 to 3.6.3, after weeks of
+> smooth operation on 3.6.1: one of the NFS changes that went into one of
+> the two latest stable kernels appears to be lethal after around half an
+> hour of uptime. The oops came from NFSv4, IIRC (relying on memory since
+> my camera was recharging and there is no netconsole from that box
+> because it is where the netconsole logs go, so I'll have to reproduce it
+> later today). The machine is an NFSv3 server only at present, with no
+> NFSv4 running (though NFSv4 is built in).
+
+Note recent clients may try to negotiate NFSv4 by default, so it's
+possible to use it without knowing.
+
+You didn't change anything else about your server or clients recently?
+
+> This is just a heads-up, not intended to be sufficient to track it down
+> unless it is instantly obvious: more later, including a .config dump and
+> proper oops report if it turns out to be reproducible. I just have to
+> recover from the usual panic-induced fs corruption and take a backup
+> first.
+
+Thanks.
+
+I don't see an obvious candidate on a quick skim of v3.6.1..v3.6.3
+commits, but of course I could be missing something.
+
+--b.
