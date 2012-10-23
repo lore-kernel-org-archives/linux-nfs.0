@@ -1,86 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40622 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:48316 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751612Ab2J2PCH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Oct 2012 11:02:07 -0400
-Date: Mon, 29 Oct 2012 11:02:03 -0400
+	id S1754731Ab2JWRnJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Oct 2012 13:43:09 -0400
+Date: Tue, 23 Oct 2012 13:43:03 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Sven Geggus <sven@geggus.net>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Kernel update 3.5.7 -> 3.6.3 breaks NFS4
-Message-ID: <20121029150203.GB9502@fieldses.org>
-References: <k6ebva$1kf$1@ultimate100.geggus.net>
- <20121026171549.GA11806@fieldses.org>
- <20121029094038.GA14836@geggus.net>
+To: Nix <nix@esperi.org.uk>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "Ted Ts'o" <tytso@mit.edu>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        Peng Tao <bergwolf@gmail.com>,
+        "gregkh@linuxfoundation.org" <gregkh@linuxfoundation.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>
+Subject: Re: Heads-up: 3.6.2 / 3.6.3 NFS server oops: 3.6.2+ regression?
+ (also an unrelated ext4 data loss bug)
+Message-ID: <20121023174303.GE3040@fieldses.org>
+References: <87objupjlr.fsf@spindle.srvr.nix>
+ <20121023013343.GB6370@fieldses.org>
+ <87mwzdnuww.fsf@spindle.srvr.nix>
+ <20121023143019.GA3040@fieldses.org>
+ <874nllxi7e.fsf_-_@spindle.srvr.nix>
+ <20121023164621.GC3040@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90928CA6F@SACEXCMBX04-PRD.hq.netapp.com>
+ <87vce1w241.fsf@spindle.srvr.nix>
+ <87r4opw0og.fsf@spindle.srvr.nix>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20121029094038.GA14836@geggus.net>
+In-Reply-To: <87r4opw0og.fsf@spindle.srvr.nix>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Re-adding linux-nfs to cc:
-
-On Mon, Oct 29, 2012 at 10:40:38AM +0100, Sven Geggus wrote:
-> J. Bruce Fields schrieb am Freitag, den 26. Oktober um 19:15 Uhr:
+On Tue, Oct 23, 2012 at 06:36:15PM +0100, Nix wrote:
+> On 23 Oct 2012, nix@esperi.org.uk uttered the following:
 > 
-> > Could I see a network trace?
+> > On 23 Oct 2012, Trond Myklebust spake thusly:
+> >> On Tue, 2012-10-23 at 12:46 -0400, J. Bruce Fields wrote:
+> >>> Looks like there's some confusion about whether nsm_client_get() returns
+> >>> NULL or an error?
+> >>
+> >> nsm_client_get() looks extremely racy in the case where ln->nsm_users ==
+> >> 0.  Since we never recheck the value of ln->nsm_users after taking
+> >> nsm_create_mutex, what is stopping 2 different threads from both setting
+> >> ln->nsm_clnt and re-initialising ln->nsm_users?
+> >
+> > Yep. At the worst possible time:
+> >
+> > 	spin_lock(&ln->nsm_clnt_lock);
+> > 	if (ln->nsm_users) {
+> > 		if (--ln->nsm_users)
+> > 			ln->nsm_clnt = NULL;
+> > (1)		shutdown = !ln->nsm_users;
+> > 	}
+> > 	spin_unlock(&ln->nsm_clnt_lock);
+> >
+> > If a thread reinitializes nsm_users at point (1), after the assignment,
+> > we could well end up with ln->nsm_clnt NULL and shutdown false. A bit
+> > later, nsm_mon_unmon gets called with a NULL clnt, and boom.
 > 
-> Shure. I can also do one with the working kernel.
-> 
-> > 	tcpdump -s0 -wtmp.pcap 'host <myclient> && host <myserver>'
-> > 
-> > then try the mount, then kill tcpdump and send me a copy of tmp.pcap.
-> 
-> pcap file attached.
+> Possible fix if so, utterly untested so far (will test when I can face
+> yet another reboot and fs-corruption-recovery-hell cycle, in a few
+> hours), may ruin performance, violate locking hierarchies, and consume
+> kittens:
 
-Thanks.  So running "wireshark nfs4.pcap", I see:
-
-	frame 13, 15: create a gss context with handle 0x01000000
-	frame 17, 18: client sends a DESTROY for context 0x01000000 and
-		a TCP FIN.  The RPC is malformed in that it has no verifier
-		field.  The server doesn't respond.
-	frame 19: client sends a PUTROOTFH using context 0x01000000.
-	frame 25-31: a minute has passed, the client gives up, closes
-		the connection and retries the PUTROOTFH, again with the
-		same context.
-
-That DESTROY is sent over the same connection as the context creation,
-so must have been done by gssd.  So gssd has a bug.  Well, two: first,
-the DESTROY is malformed, second, it shouldn't be sending it anyway.
-
-I don't understand why the server is dropping requests instead of
-returning errors.  I actually would have expected it to return BADVERF
-to the DESTROY request and then accept the PUTROOTFH normally, which
-might have allowed the mount to succeed despite the bizarre rpc.gssd
-behavior.
-
-I'd be curious to understand what changed on the server to make a
-difference.  I can't think of anything.  Looking at a network trace from
-a successful mount with 3.5.7 might be useful.
+Right, mutexes can't be taken while holding spinlocks.  Keep the kittens
+well away from the computer.
 
 --b.
 
 > 
-> This is what I called:
-> mount -t nfs4 -v -o sec=krb5 centauri:/storage /mnt
+> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+> index e4fb3ba..da91cdf 100644
+> --- a/fs/lockd/mon.c
+> +++ b/fs/lockd/mon.c
+> @@ -98,7 +98,6 @@ static struct rpc_clnt *nsm_client_get(struct net *net)
+>  		spin_unlock(&ln->nsm_clnt_lock);
+>  		goto out;
+>  	}
+> -	spin_unlock(&ln->nsm_clnt_lock);
+>  
+>  	mutex_lock(&nsm_create_mutex);
+>  	clnt = nsm_create(net);
+> @@ -108,6 +107,7 @@ static struct rpc_clnt *nsm_client_get(struct net *net)
+>  		ln->nsm_users = 1;
+>  	}
+>  	mutex_unlock(&nsm_create_mutex);
+> +	spin_unlock(&ln->nsm_clnt_lock);
+>  out:
+>  	return clnt;
+>  }
 > 
-> Client ist venus (10.1.7.30), server is centauri (10.1.7.67) kerberos realm
-> (AD) is PC.IITB.FHG.DE
-> 
-> What I should probably also metion is that the machine is a redundant system
-> using drbd. The IP-address 10.1.7.67 can be migrated to the the slave
-> machine in case of a hardware failure. So if something seems to be missing I
-> can also create a capture file including the other IP-address of the
-> server system.
-> 
-> Regards
-> 
-> Sven
-> 
-> -- 
-> "Those who do not understand Unix are condemned to reinvent it, poorly"
-> (Henry Spencer)
-> 
-> /me is giggls@ircnet, http://sven.gegg.us/ on the Web
-
-
