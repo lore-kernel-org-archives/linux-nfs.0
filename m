@@ -1,41 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:33605 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756811Ab2JWOx1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Oct 2012 10:53:27 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 14/25] SUNRPC: remove BUG_ON from svc_pool_map_set_cpumask
-Date: Tue, 23 Oct 2012 10:43:38 -0400
-Message-Id: <1351003429-18887-15-git-send-email-dros@netapp.com>
-In-Reply-To: <1351003429-18887-1-git-send-email-dros@netapp.com>
-References: <1351003429-18887-1-git-send-email-dros@netapp.com>
+Received: from mail-da0-f46.google.com ([209.85.210.46]:37287 "EHLO
+	mail-da0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932238Ab2JWIta (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Oct 2012 04:49:30 -0400
+Received: by mail-da0-f46.google.com with SMTP id n41so1824270dak.19
+        for <linux-nfs@vger.kernel.org>; Tue, 23 Oct 2012 01:49:30 -0700 (PDT)
+Message-ID: <50866815.30103@gmail.com>
+Date: Tue, 23 Oct 2012 15:19:09 +0530
+From: "dE ." <de.techno@gmail.com>
+MIME-Version: 1.0
+To: linux-nfs@vger.kernel.org
+Subject: slow loop performance.
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Replace BUG_ON() with a WARN() and early return.
+Hi!
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- net/sunrpc/svc.c |    4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+Great job with NFS server, it surely is fast, but not on loop devices.
 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 3ee7461..664979b 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -324,7 +324,9 @@ svc_pool_map_set_cpumask(struct task_struct *task, unsigned int pidx)
- 	 * The caller checks for sv_nrpools > 1, which
- 	 * implies that we've been initialized.
- 	 */
--	BUG_ON(m->count == 0);
-+	WARN_ON_ONCE(m->count == 0);
-+	if (m->count == 0)
-+		return;
- 
- 	switch (m->mode) {
- 	case SVC_POOL_PERCPU:
--- 
-1.7.9.6 (Apple Git-31.1)
+If I loop mount a file and share the mount point over NFS3 or NFS4, the 
+write performance of the client on the loop mounted share is pretty bad.
 
+On a 100 Mbps (or 12.5MBps) full duplex Ethernet link, I get ~8MBps 
+speeds, whereas on the loop mounted device, I get at best 6MBps.
+
+Any ideas why?
+
+My server configuration (NFS4) --
+anonuid=1000,anongid=1000,secure,no_subtree_check,rw,fsid=0,crossmnt
+
+My client mount options --
+rsize=1048576,wsize=1048576,async,hard,timeo=60,retrans=2,actimeo=900,retry=2,lookupcache=pos,nfsvers=4,nolock,intr,noacl,rdirplus
