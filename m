@@ -1,323 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:48462 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751100Ab2JHXsm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Oct 2012 19:48:42 -0400
-Date: Tue, 9 Oct 2012 10:48:47 +1100
-From: NeilBrown <neilb@suse.de>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Should "mount -o proto=udp" be usable against an IPv6 only
- server?
-Message-ID: <20121009104847.13cceeae@notabene.brown>
-In-Reply-To: <64BBDA5E-E51C-4DD1-9ECB-41322286C57E@oracle.com>
-References: <11D4587E-7739-4D31-836D-D63177D13302@oracle.com>
-	<20121008143550.68b4aa45@notabene.brown>
-	<64BBDA5E-E51C-4DD1-9ECB-41322286C57E@oracle.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/TI0QYXRgZWtzPsq+Rd_4jst"; protocol="application/pgp-signature"
+Received: from icebox.esperi.org.uk ([81.187.191.129]:58248 "EHLO
+	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756855Ab2JWTt3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Oct 2012 15:49:29 -0400
+From: Nix <nix@esperi.org.uk>
+To: "Myklebust\, Trond" <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, "Ted Ts'o" <tytso@mit.edu>,
+        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "Schumaker\, Bryan" <Bryan.Schumaker@netapp.com>,
+        Peng Tao <bergwolf@gmail.com>,
+        "gregkh\@linuxfoundation.org" <gregkh@linuxfoundation.org>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>
+Subject: Re: Heads-up: 3.6.2 / 3.6.3 NFS server oops: 3.6.2+ regression? (also an unrelated ext4 data loss bug)
+References: <87objupjlr.fsf@spindle.srvr.nix>
+	<20121023013343.GB6370@fieldses.org> <87mwzdnuww.fsf@spindle.srvr.nix>
+	<20121023143019.GA3040@fieldses.org>
+	<874nllxi7e.fsf_-_@spindle.srvr.nix>
+	<20121023164621.GC3040@fieldses.org>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA90928CA6F@SACEXCMBX04-PRD.hq.netapp.com>
+	<87vce1w241.fsf@spindle.srvr.nix> <87r4opw0og.fsf@spindle.srvr.nix>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA90928CD7F@SACEXCMBX04-PRD.hq.netapp.com>
+	<1351015039.4622.23.camel@lade.trondhjem.org>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA90928CF49@SACEXCMBX04-PRD.hq.netapp.com>
+Date: Tue, 23 Oct 2012 20:49:13 +0100
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90928CF49@SACEXCMBX04-PRD.hq.netapp.com>
+	(Trond Myklebust's message of "Tue, 23 Oct 2012 18:23:48 +0000")
+Message-ID: <87fw55hsue.fsf@spindle.srvr.nix>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/TI0QYXRgZWtzPsq+Rd_4jst
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On 23 Oct 2012, Trond Myklebust outgrape:
 
-On Mon, 8 Oct 2012 11:51:29 -0400 Chuck Lever <chuck.lever@oracle.com> wrot=
-e:
+> On Tue, 2012-10-23 at 13:57 -0400, Trond Myklebust wrote:
+>> On Tue, 2012-10-23 at 17:44 +0000, Myklebust, Trond wrote:
+>> > You can't hold a spinlock while sleeping. Both mutex_lock() and nsm_create() can definitely sleep.
+>> > 
+>> > The correct way to do this is to grab the spinlock and recheck the value of ln->nsm_users inside the 'if (!IS_ERR())' condition. If it is still zero, bump it and set ln->nsm_clnt, otherwise bump it, get the existing ln->nsm_clnt and call rpc_shutdown_clnt() on the redundant nsm client after dropping the spinlock.
+>> > 
+>> > Cheers
+>> >   Trond
+>> 
+>> Can you please check if the following patch fixes the issue?
+>> 
+>> Cheers
+>>   Trond
+>> 
+> Meh... This one gets rid of the 100% redundant mutex...
 
->=20
-> On Oct 7, 2012, at 11:35 PM, NeilBrown wrote:
->=20
-> > On Wed, 3 Oct 2012 21:15:16 -0700 Chuck Lever <chuck.lever@oracle.com> =
-wrote:
-> >=20
-> >> Hi-
-> >>=20
-> >> Unfortunately our corporate e-mail server lost your e-mail from yester=
-day.  I read it last night and was going to reply this morning, but it was =
-gone from my mailbox.  I'm not sure how to preserve the thread structure at=
- this point.
-> >>=20
-> >> I'm OK with the nfsmount.conf() changes, and the addition of IPv6 synt=
-ax to the clientaddr=3D option.
-> >>=20
-> >>>> The protocol and protocol family the NFS client uses to transmit req=
-uests to the NFS server for this mount point.  For example, udp selects UDP=
- over IPv4, while tcp6 selects TCP over IPv6.  If an NFS server has both an=
- IPv4 and an IPv6 address, using a specific netid forces the use of IPv4 or=
- IPv6 networking to communicate with that server.
-> >>>=20
-> >>> I still don't like that last sentence.
-> >>=20
-> >> Can you say why?
-> >=20
-> > Its meaning is not at all clear.  It tells me that some set of circumst=
-ances
-> > will "force the use of IPv4 or IPv6 networking" - given that their isn't
-> > really any other sort of networking (except maybe RDMA?), I'm not at all
-> > surprised that it will either use IPv4 or IPv6.  But the sentence doesn=
-'t
-> > tell me how the netid has anything to do with this obvious outcome.
-> >=20
-> > Even if I'm generous and understand that some specific netids will forc=
-e IPv4
-> > while other specific netids will force IPv6 (and conveniently forget th=
-at
-> > 'rdma' won't force either), this is true whether the NFS server is
-> > dual-stack, or has either possible single stack.  So the introductory c=
-lause
-> > it irrelevant to the conclusion.
->=20
-> Clarifying the last sentence would be less work than rewriting that whole=
- paragraph.
->=20
-> Incidentally, "rdma" does force IPv4.  NFS/RDMA targets are identified by=
- their IP address and a special port (20049).
->=20
-> >=20
-> >>=20
-> >> While that sentence could be made more precise, this is one of the key=
- reasons NFS with netids works the way it does.  Dual-stack NFS servers wil=
-l be pervasive for some time to come.
-> >>=20
-> >> Other comments:
-> >>=20
-> >>  o "rdma6" is not supported, and should not be explicitly listed.
-> >=20
-> > Even though support/nfs/getport.c mentioned it...
-> > OK, I'll remove that.  I was assuming it might be close given that nfs-=
-utils
-> > seemed to support it, but apparently not.
->=20
-> The issue is when the RDMA transport in the kernel will support IPv6.  Si=
-nce no one is working on adding IPv6 support, it's not likely to happen soo=
-n.  The "rmda6" netid support in getport.c is merely for completeness.
->=20
-> >=20
-> >>=20
-> >>  o "mountproto=3Drdma[6]" is not supported.
-> >>=20
-> >>  o We discourage the use of UDP with NFSv4 (in fact it may no longer b=
-e supported).  The NFSv4 proto=3D language should not list "udp" or "udp6."
-> >=20
-> > It does work ...
-> > I guess if I change it to "Supported options" rather than "Available op=
-tions"
-> > I can bring my self to remove those two...
->=20
-> > Is this worth an acked-by yet :-)
->=20
-> I'm not happy about any of the proto=3D changes, but it's not worth argui=
-ng about.  Thanks for the opportunity to comment.  But see below.  You forg=
-ot to fix "mountproto=3D," that really does have to be fixed.
->=20
+No help, I'm afraid:
 
-Thanks for your patience.  Sorry I missed the mountproto=3Drdma changes you
-mentioned earlier - I've fixed that up now, as well as addressing your other
-suggestion.
+[  894.005699] ------------[ cut here ]------------
+[  894.005929] kernel BUG at fs/lockd/mon.c:159!
+[  894.006156] invalid opcode: 0000 [#1] SMP
+[  894.006451] Modules linked in: firewire_ohci firewire_core [last unloaded: microcode]
+[  894.007005] CPU 1
+[  894.007050] Pid: 1035, comm: lockd Not tainted 3.6.3-dirty #1 empty empty/S7010
+[  894.007669] RIP: 0010:[<ffffffff8120fbbc>]  [<ffffffff8120fbbc>] nsm_mon_unmon+0x64/0x98
+[  894.008126] RSP: 0018:ffff880620a23ce0  EFLAGS: 00010246
+[  894.008355] RAX: ffff880620a23ce8 RBX: 0000000000000000 RCX: 0000000000000000
+[  894.008591] RDX: ffff880620a23d58 RSI: 0000000000000002 RDI: ffff880620a23d30
+[  894.008827] RBP: ffff880620a23d40 R08: 0000000000000000 R09: ffffea00188e4f00
+[  894.009063] R10: ffffffff814d032f R11: 0000000000000020 R12: 0000000000000000
+[  894.009300] R13: ffff88061f067e40 R14: ffff88061f067ee8 R15: ffff88062393dc00
+[  894.009537] FS:  0000000000000000(0000) GS:ffff88063fc40000(0000) knlGS:0000000000000000
+[  894.009956] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+[  894.010187] CR2: 00007f056a9a6ff0 CR3: 0000000001a0b000 CR4: 00000000000027e0
+[  894.010422] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+[  894.010659] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+[  894.010896] Process lockd (pid: 1035, threadinfo ffff880620a22000, task ffff8806208b5900)
+[  894.011310] Stack:
+[  894.011528]  0000000000000010 ffff8806102d3db1 00000003000186b5 ffffffff00000010
+[  894.012083]  ffff8806102d3dc1 000000000000008c 0000000000000000 ffff880620a23ce8
+[  894.012637]  ffff880620a23d58 0000000000000000 ffff88061f067ee8 ffff8806102d3d00
+[  894.013190] Call Trace:
+[  894.013413]  [<ffffffff8120ff07>] nsm_monitor+0x123/0x17e
+[  894.013645]  [<ffffffff81211b72>] nlm4svc_retrieve_args+0x62/0xd7
+[  894.013879]  [<ffffffff81211f71>] nlm4svc_proc_lock+0x3c/0xb5
+[  894.014112]  [<ffffffff812116a3>] ? nlm4svc_decode_lockargs+0x47/0xb2
+[  894.014349]  [<ffffffff814d89fa>] svc_process+0x3bf/0x6a1
+[  894.014581]  [<ffffffff8120d5f0>] lockd+0x127/0x164
+[  894.014810]  [<ffffffff8120d4c9>] ? set_grace_period+0x8a/0x8a
+[  894.015046]  [<ffffffff8107bcbc>] kthread+0x8b/0x93
+[  894.015277]  [<ffffffff81501334>] kernel_thread_helper+0x4/0x10
+[  894.015511]  [<ffffffff8107bc31>] ? kthread_worker_fn+0xe1/0xe1
+[  894.015744]  [<ffffffff81501330>] ? gs_change+0xb/0xb
+[  894.015972] Code: b8 10 00 00 00 48 89 45 c0 48 8d 81 8c 00 00 00 b9 08 00 00 00 48 89 45 c8 89 d8 f3 ab 48 8d 45 a8 48 89 55 e0 48 89 45 d8 75 02 <0f> 0b 89 f6 48 c7 02 00 00 00 00 4c 89 c7 48 6b f6 38 ba 00 04
+[  894.018895] RIP  [<ffffffff8120fbbc>] nsm_mon_unmon+0x64/0x98
+[  894.019163]  RSP <ffff880620a23ce0>
+[  894.019401] ---[ end trace b8ef5cb81bec72c8 ]---
 
-Thanks,
-NeilBrown
-
-=46rom 0210f5c0cebd884335d2ced5cb3e680d9821e951 Mon Sep 17 00:00:00 2001
-From: Neil Brown <neilb@suse.de>
-Date: Tue, 2 Oct 2012 15:21:46 +1000
-Subject: [PATCH] mount.nfs mapage: clear up confusion between 'proto' and
- 'transport'
-
-The mount option "proto=3D" actually set the "transport" which in
-netconfig usage is the pairing of a protocol (e.g. UDP, TCP) with
-a protocol family (e.g. INET, INET6).
-
-This can cause confusion if people naively except "proto=3Dudp" to work
-equally well on IPv6.
-
-So add some text to both nfs(5) and nfsmount.conf(5) to hopefully
-clarify this.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
-
-diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-index da6d6d3..d04e272 100644
---- a/utils/mount/nfs.man
-+++ b/utils/mount/nfs.man
-@@ -1,5 +1,5 @@
- .\"@(#)nfs.5"
--.TH NFS 5 "2 November 2007"
-+.TH NFS 5 "9 October 2012"
- .SH NAME
- nfs \- fstab format and options for the
- .B nfs
-@@ -472,24 +472,15 @@ Use these options, along with the options in the abov=
-e subsection,
- for NFS versions 2 and 3 only.
- .TP 1.5i
- .BI proto=3D netid
--The transport protocol name and protocol family the NFS client uses
--to transmit requests to the NFS server for this mount point.
--If an NFS server has both an IPv4 and an IPv6 address, using a specific
--netid will force the use of IPv4 or IPv6 networking to communicate
--with that server.
--.IP
--If support for TI-RPC is built into the
--.B mount.nfs
--command,
--.I netid
--is a valid netid listed in
--.IR /etc/netconfig .
--The value "rdma" may also be specified.
--If the
--.B mount.nfs
--command does not have TI-RPC support, then
-+The
- .I netid
--is one of "tcp," "udp," or "rdma," and only IPv4 may be used.
-+determines the transport that is used to communicate with the NFS
-+server.  Available options are
-+.BR udp ", " udp6 ", "tcp ", " tcp6 ", and " rdma .
-+Those which end in
-+.B 6
-+use IPv6 addresses and are only available if support for TI-RPC is
-+built in. Others use IPv4 addresses.
- .IP
- Each transport protocol uses different default
- .B retrans
-@@ -569,19 +560,18 @@ This option can be used when mounting an NFS server
- through a firewall that blocks the rpcbind protocol.
- .TP 1.5i
- .BI mountproto=3D netid
--The transport protocol name and protocol family the NFS client uses
-+The transport the NFS client uses
- to transmit requests to the NFS server's mountd service when performing
- this mount request, and when later unmounting this mount point.
- .IP
--If support for TI-RPC is built into the
-+.I netid
-+may be one of
-+.BR udp ", and " tcp
-+which use IPv4 address or, if TI-RPC is built into the
- .B mount.nfs
- command,
--.I netid
--is a valid netid listed in
--.IR /etc/netconfig .
--Otherwise,
--.I netid
--is one of "tcp" or "udp," and only IPv4 may be used.
-+.BR udp6 ", and " tcp6
-+which use IPv6 addresses.
- .IP
- This option can be used when mounting an NFS server
- through a firewall that blocks a particular transport.
-@@ -773,21 +763,14 @@ Use these options, along with the options in the firs=
-t subsection above,
- for NFS version 4 and newer.
- .TP 1.5i
- .BI proto=3D netid
--The transport protocol name and protocol family the NFS client uses
--to transmit requests to the NFS server for this mount point.
--If an NFS server has both an IPv4 and an IPv6 address, using a specific
--netid will force the use of IPv4 or IPv6 networking to communicate
--with that server.
--.IP
--If support for TI-RPC is built into the
--.B mount.nfs
--command,
--.I netid
--is a valid netid listed in
--.IR /etc/netconfig .
--Otherwise,
-+The
- .I netid
--is one of "tcp" or "udp," and only IPv4 may be used.
-+determines the transport that is used to communicate with the NFS
-+server.  Supported options are
-+.BR tcp ", " tcp6 ", and " rdma .
-+.B tcp6
-+use IPv6 addresses and is only available if support for TI-RPC is
-+built in. Both others use IPv4 addresses.
- .IP
- All NFS version 4 servers are required to support TCP,
- so if this mount option is not specified, the NFS version 4 client
-@@ -851,6 +834,8 @@ The DATA AND METADATA COHERENCE section discusses
- the behavior of this option in more detail.
- .TP 1.5i
- .BI clientaddr=3D n.n.n.n
-+.TP 1.5i
-+.BI clientaddr=3D n:n: ... :n
- Specifies a single IPv4 address (in dotted-quad form),
- or a non-link-local IPv6 address,
- that the NFS client advertises to allow servers
-diff --git a/utils/mount/nfsmount.conf.man b/utils/mount/nfsmount.conf.man
-index 12a3fe7..2258296 100644
---- a/utils/mount/nfsmount.conf.man
-+++ b/utils/mount/nfsmount.conf.man
-@@ -1,5 +1,5 @@
- .\"@(#)nfsmount.conf.5"
--.TH NFSMOUNT.CONF 5 "9 Mar 2008"
-+.TH NFSMOUNT.CONF 5 "9 October 2012"
- .SH NAME
- nfsmount.conf - Configuration file for NFS mounts
- .SH SYNOPSIS
-@@ -18,6 +18,10 @@ to particular variables using the
- .BR =3D=20
- operator, as in=20
- .BR Proto=3DTcp .
-+The variables that can be assigned are exactly the set of NFS specific
-+mount options listed in
-+.BR nfs (5).
-+.PP
- Sections are broken up into three basic categories:
- Global options, Server options and Mount Point options.
- .HP
-@@ -54,7 +58,7 @@ are defined in the configuration file.
-     Proto=3DTcp
- .RS
- .HP
--The TCP protocol will be used on every NFS mount.
-+The TCP/IPv4 protocol will be used on every NFS mount.
- .HP
- .RE
- [ Server \(lqnfsserver.foo.com\(rq ]
-@@ -62,10 +66,13 @@ The TCP protocol will be used on every NFS mount.
-     rsize=3D32k
- .br
-     wsize=3D32k
-+.br
-+    proto=3Dudp6
- .HP
- .RS
--A 33k (32768 bytes) block size will be used as the read and write
--size on all mounts to the 'nfsserver.foo.com' server.
-+A 32k (32768 bytes) block size will be used as the read and write
-+size on all mounts to the 'nfsserver.foo.com' server.  UDP/IPv6
-+is the protocol to be used.
- .HP
- .RE
- .BR=20
-
---Sig_/TI0QYXRgZWtzPsq+Rd_4jst
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.18 (GNU/Linux)
-
-iQIVAwUBUHNmXznsnt1WYoG5AQIL2g/9F2pnfQncxMnWzTAfhnD02FcNLAlyu4FW
-xbjFNRWWREI7ePQ7fSTNnB1JfussQgbWPrzcZ8w9hx/pqK9MlTQIk4RO4LQa8YLU
-ht4NxLMeO9F9TaIzJXvMuGM2L6eNUreJeea/XCVRE6VxA2+h+1sXLgyHYTZQ6cv9
-FNB9YoxcNtF/sJD3WNHz4lA+XYb9zZ6MXOjTDRvo2SXbTL4X5rQZ9WK2S31vP0Q6
-G6N6MUlnoZHUmfLDl04zUvVPCNzh3HWUYLk8ZS7rOODLNL8XmHFkUenwmfWpihHU
-m6Rk81op1Y5NOMxjewh2xA3BJWIJZCjxJNV2qKkWM4UYCNYn/Pul7eGyMs5uV+xS
-tX2749Z22QVQQ7yoYmNYIm6Y11Mjiv1hhYaQ2yvFVpzWjtc9yzHKeYpK6rnUCIL+
-TPuhSOLowcSA4YLJC481AK0nIzuHAHoL5XtxVKf4FjhN5G5BWDLZRpXaoVLx2LRC
-ABi2QKR7imy693iX26XXpm3GOjf5PYXjeCK1XVAxVz8PDSgii1HX62fWIe62V1SN
-gaQwEU4zhaaqQ70tX9CpPKEVQXkHGkDAYiwEH4y/ngprXsVAPVhGNX0BwitXNPEv
-0mC5JU6EBgD+277DGzAJd2w8hnhCD3G4t3qQGAvI9Ejeh3k6jDQfsEXRwaLFZA/f
-JWPrQBSUGkc=
-=3stm
------END PGP SIGNATURE-----
-
---Sig_/TI0QYXRgZWtzPsq+Rd_4jst--
+Slightly different timing, but still boom.
