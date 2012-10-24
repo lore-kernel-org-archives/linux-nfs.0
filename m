@@ -1,53 +1,30 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:40126 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751196Ab2JMR2E convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 13 Oct 2012 13:28:04 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
-Subject: Re: [PATCH] nfs-utils: Backgrounding mount broken with NFS versions <4
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20121013171856.10814.qmail@md.dent.med.uni-muenchen.de>
-Date: Sat, 13 Oct 2012 13:25:57 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <F5C4FA78-A467-4306-BC57-0A50D8F0A8A9@oracle.com>
-References: <20121012120030.18411.qmail@md.dent.med.uni-muenchen.de> <6AB50360-BADE-4544-85CF-700C63A44FDE@oracle.com> <20121013171856.10814.qmail@md.dent.med.uni-muenchen.de>
-To: Wolfram Gloger <wmglo@dent.med.uni-muenchen.de>
+Received: from mail-qc0-f174.google.com ([209.85.216.174]:35868 "EHLO
+	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934874Ab2JXP3V (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Oct 2012 11:29:21 -0400
+Received: by mail-qc0-f174.google.com with SMTP id o22so345865qcr.19
+        for <linux-nfs@vger.kernel.org>; Wed, 24 Oct 2012 08:29:20 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90928F4E6@SACEXCMBX04-PRD.hq.netapp.com>
+References: <CAFukC=5Mq3CwK=u7YP_=cF6gab+0K_mP-Sj0k8fCk_a2f=xsfg@mail.gmail.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90928F4E6@SACEXCMBX04-PRD.hq.netapp.com>
+From: Brock Noland <brock@cloudera.com>
+Date: Wed, 24 Oct 2012 10:29:00 -0500
+Message-ID: <CAFukC=6CW7bup1CtBkPYYotETswqwDHf9RcxYptwnSPP+SL25g@mail.gmail.com>
+Subject: Re: readdir from Linux NFS4 client when cookieverf is no longer valid
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, Oct 24, 2012 at 7:42 AM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+...
+>
+> Until the recovery question is answered, the Linux client will continue to ignore the whole "cookie verifier" junk...
 
-On Oct 13, 2012, at 1:18 PM, Wolfram Gloger <wmglo@dent.med.uni-muenchen.de> wrote:
+OK perfect, this is exactly what I needed to know. Thanks!
 
-> Hi,
-> 
->>> -	/*
->>> -	 * Update option string to be recorded in /etc/mtab.
->>> -	 */
->>> -	if (po_join(options, mi->extra_opts) == PO_FAILED) {
->>> +	if (po_join(options, &extra_opts) == PO_FAILED) {
->> 
->> This doesn't look right to me, but I haven't had time to test it.  Doesn't this hunk cause the mount system call to ignore what's in mi->extra_opts?
-> ...
->>> 	result = nfs_sys_mount(mi, options);
-> 
-> No, nfs_sys_mount() does not use mi->extra_opts at all, only the
-> binary options.
-
-This is the text-based code, which I wrote.  nfs_sys_mount() passes an options string (NUL-terminated C string) to the kernel, not a binary object.  That string contains all the FS-specific mount options specified by the user.
-
-But your patch makes that string empty, by my reading.  I think this is incorrect.
-
-> It would perhaps be clearer to handle the update of mi->extra_opts in
-> nfs_sys_mount(), but only after a successful mount(2) call.
-> A more invasive patch.
-> 
-> Regards,
-> Wolfram.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+Brock
