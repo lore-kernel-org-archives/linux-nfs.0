@@ -1,127 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36033 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:52406 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755358Ab2JPWBq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Oct 2012 18:01:46 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 09/12] locks: helper functions for delegation breaking
-Date: Tue, 16 Oct 2012 18:01:34 -0400
-Message-Id: <1350424897-26894-10-git-send-email-bfields@redhat.com>
-In-Reply-To: <1350424897-26894-1-git-send-email-bfields@redhat.com>
-References: <1350424897-26894-1-git-send-email-bfields@redhat.com>
+	id S1161028Ab2JXSLd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Oct 2012 14:11:33 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q9OIBXiZ005435
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 24 Oct 2012 14:11:33 -0400
+Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id q9OIBWSE020176
+	for <linux-nfs@vger.kernel.org>; Wed, 24 Oct 2012 14:11:33 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 2/5] Fixed warnings in src/g_initialize.c
+Date: Wed, 24 Oct 2012 14:08:41 -0400
+Message-Id: <1351102124-24036-3-git-send-email-steved@redhat.com>
+In-Reply-To: <1351102124-24036-1-git-send-email-steved@redhat.com>
+References: <1351102124-24036-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Yao Zhao <yao.zhao@windriver.com>
 
-We'll need the same logic for rename and link.
+g_initialize.c: In function 'linux_initialize':
+g_initialize.c:275:5: warning: implicit declaration of function 'getuid'
+[-Wimplicit-function-declaration]
+g_initialize.c:275:5: warning: implicit declaration of function
+'geteuid' [-Wimplicit-function-declaration]
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Yao Zhao <yao.zhao@windriver.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- fs/namei.c         |   13 +++----------
- include/linux/fs.h |   33 +++++++++++++++++++++++++++++++--
- 2 files changed, 34 insertions(+), 12 deletions(-)
+ src/g_initialize.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index ed57a97..66228a8 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3390,14 +3390,9 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegate
- 	else {
- 		error = security_inode_unlink(dir, dentry);
- 		if (!error) {
--			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
--			if (error) {
--				if (error == -EWOULDBLOCK && delegated_inode) {
--					*delegated_inode = target;
--					ihold(target);
--				}
-+			error = try_break_deleg(target, delegated_inode);
-+			if (error)
- 				goto out;
--			}
- 			error = dir->i_op->unlink(dir, dentry);
- 			if (!error)
- 				dont_mount(dentry);
-@@ -3465,9 +3460,7 @@ exit2:
- 	if (inode)
- 		iput(inode);	/* truncate the inode here */
- 	if (delegated_inode) {
--		error = break_deleg(delegated_inode, O_WRONLY);
--		iput(delegated_inode);
--		delegated_inode = NULL;
-+		error = break_deleg_wait(&delegated_inode);
- 		if (!error)
- 			goto retry_deleg;
- 	}
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 5ea5f5f..0e761e7 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1770,6 +1770,9 @@ extern bool our_mnt(struct vfsmount *mnt);
+diff --git a/src/g_initialize.c b/src/g_initialize.c
+index 908398e..d1cb172 100644
+--- a/src/g_initialize.c
++++ b/src/g_initialize.c
+@@ -29,6 +29,8 @@
+ #include "mglueP.h"
+ #include <stdlib.h>
  
- extern int current_umask(void);
- 
-+extern void ihold(struct inode * inode);
-+extern void iput(struct inode *);
-+
- /* /sys/fs */
- extern struct kobject *fs_kobj;
- 
-@@ -1838,6 +1841,28 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
- 	return 0;
- }
- 
-+static inline int try_break_deleg(struct inode *inode, struct inode **delegated_inode)
-+{
-+	int ret;
-+
-+	ret = break_deleg(inode, O_WRONLY|O_NONBLOCK);
-+	if (ret == -EWOULDBLOCK && delegated_inode) {
-+		*delegated_inode = inode;
-+		ihold(inode);
-+	}
-+	return ret;
-+}
-+
-+static inline int break_deleg_wait(struct inode **delegated_inode)
-+{
-+	int ret;
-+
-+	ret = break_deleg(*delegated_inode, O_WRONLY);
-+	iput(*delegated_inode);
-+	*delegated_inode = NULL;
-+	return ret;
-+}
-+
- #else /* !CONFIG_FILE_LOCKING */
- static inline int locks_mandatory_locked(struct inode *inode)
- {
-@@ -1881,6 +1906,12 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
- {
- 	return 0;
- }
-+
-+static inline int try_break_deleg(struct inode *inode, struct delegated_inode **inode)
-+{
-+	return 0;
-+}
-+
- #endif /* CONFIG_FILE_LOCKING */
- 
- /* fs/open.c */
-@@ -2189,8 +2220,6 @@ extern loff_t vfs_llseek(struct file *file, loff_t offset, int origin);
- extern int inode_init_always(struct super_block *, struct inode *);
- extern void inode_init_once(struct inode *);
- extern void address_space_init_once(struct address_space *mapping);
--extern void ihold(struct inode * inode);
--extern void iput(struct inode *);
- extern struct inode * igrab(struct inode *);
- extern ino_t iunique(struct super_block *, ino_t);
- extern int inode_needs_sync(struct inode *inode);
++#include <unistd.h>   /*getuid, geteuid */
++#include <sys/types.h>
+ #include <stdio.h>
+ #include <string.h>
+ #include <ctype.h>
 -- 
-1.7.9.5
+1.7.11.7
 
