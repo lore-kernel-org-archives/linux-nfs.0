@@ -1,130 +1,507 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:35875 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753285Ab2J0Mdu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 08:33:50 -0400
-Received: by mail-gh0-f174.google.com with SMTP id g15so699669ghb.19
-        for <linux-nfs@vger.kernel.org>; Sat, 27 Oct 2012 05:33:50 -0700 (PDT)
+Received: from mail-vc0-f174.google.com ([209.85.220.174]:62426 "EHLO
+	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934911Ab2JXP0P (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Oct 2012 11:26:15 -0400
+Received: by mail-vc0-f174.google.com with SMTP id fk26so666919vcb.19
+        for <linux-nfs@vger.kernel.org>; Wed, 24 Oct 2012 08:26:14 -0700 (PDT)
 From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v8 00/32] vfs: add the ability to retry lookup and operation to most path-based syscalls
-Date: Sat, 27 Oct 2012 08:33:07 -0400
-Message-Id: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 05/10] nfsdcltrack: add a new "one-shot" program for manipulating the client tracking db
+Date: Wed, 24 Oct 2012 11:25:54 -0400
+Message-Id: <1351092359-25842-6-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1351092359-25842-1-git-send-email-jlayton@redhat.com>
+References: <1351092359-25842-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patchset retrofits most of the path-based syscalls in the kernel to
-retry the lookup and operation when the operation returns ESTALE. There
-might be a few more that need similar changes afterward, but this should
-cover most of the ones people are interested in.
+Usermode helper upcalls are all the rage these days for infrequent
+upcalls, since they make it rather idiot-proof. No running daemon is
+required, so there's really no setup beyond ensuring that the callout
+exists and is runnable.
 
-The prerequisite patches for this set were merged in 3.7. I think that
-these are appropriate for 3.8. There are some minor changes since I last
-posted the set:
+This program adds a callout program to nfs-utils for that purpose. The
+storage engine on the backend is identical to the one used by nfsdcld.
+This just adds a new frontend for it.
 
-- a subtle bug in the do_unlinkat patch was fixed. It's necessary to set
-  "inode" to NULL on each pass through the function. This was causing a
-  "Busy inodes on umount" error in testing.
+For now, building with --enable-nfsdcltrack gives you both nfsdcld and
+nfsdcltrack programs. A later patch will remove nfsdcld altogether.
 
-- a patch for user_statfs has been added
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/nfsdcltrack/Makefile.am   |   6 +-
+ utils/nfsdcltrack/nfsdcltrack.c | 441 ++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 445 insertions(+), 2 deletions(-)
+ create mode 100644 utils/nfsdcltrack/nfsdcltrack.c
 
-- patches for do_filp_open, do_file_open_root, and filename_lookup have
-  been added to make them use the retry_estale helper function.  These
-  don't strictly need changing if we only ever want to make this code
-  retry once on an ESTALE error, but I still felt it was best to keep the
-  policy on retrying after an ESTALE error in a single function.
-
-- a patch has been added to make the number of ESTALE retries tunable
-  via sysctl. The problem I encountered in working on this set was the
-  difficulty in testing these changes. By adding this tunable, I could
-  crank up the number of retries to a large value to make testing easier.
-
-I'm happy to report that with this set, I was able to run Peter
-Staubach's reproducer program from 2008 for as long as I liked providing
-I cranked up the estale_retries value to a large number. [1]
-
-At the very least, I'd like to see the first 28 patches merged for 3.8.
-The next three in the series I think also make sense for consistency's
-sake. If we ever determined that a single retry was not enough, then
-they will make changing that policy easier.
-
-I include the final patch for completeness sake since it shows how I
-tested the set. That said, since there is no well-defined value that
-will work for all cases, allowing a tunable for this makes some sense to
-me. [2]
-
-These patches are also available in the "estale" branch of my git tree
-if that makes it easier to merge them:
-
-    git://git.samba.org/jlayton/linux.git estale
-
-[1]: Peter's test program is here: https://lkml.org/lkml/2008/1/18/265
-     I commented out the inotify_test since I haven't patched those
-     syscalls. The test was done by running this program on the server
-     and the client at the same time in the same directory. If I
-     cranked up estale_retries to a large value (10000000 or so), then
-     it would run indefinitely.
-
-[2]: If we do want to allow a tunable however, we might consider "beefing
-     up" retry_estale() to add some of the earlier suggestions. For
-     instance, checking for fatal signals and an an exponential backoff
-     delay. We might also want to do some work to ensure that lookups are
-     making forward progress in the face of multiple retries. If we
-     do want those, then that's probably best done in a separate patchset.
-
-Jeff Layton (32):
-  vfs: add a retry_estale helper function to handle retries on ESTALE
-  vfs: make fstatat retry on ESTALE errors from getattr call
-  vfs: fix readlinkat to retry on ESTALE
-  vfs: add new "reval" argument to kern_path_create and
-    user_path_create
-  vfs: fix mknodat to retry on ESTALE errors
-  vfs: fix mkdir to retry on ESTALE errors
-  vfs: fix symlinkat to retry on ESTALE errors
-  vfs: fix linkat to retry on ESTALE errors
-  vfs: add a reval argument to user_path_parent
-  vfs: make rmdir retry on ESTALE errors
-  vfs: make do_unlinkat retry on ESTALE errors
-  vfs: fix renameat to retry on ESTALE errors
-  vfs: have do_sys_truncate retry once on an ESTALE error
-  vfs: have faccessat retry once on an ESTALE error
-  vfs: have chdir retry lookup and call once on ESTALE error
-  vfs: make chroot retry once on ESTALE error
-  vfs: make fchmodat retry once on ESTALE errors
-  vfs: make fchownat retry once on ESTALE errors
-  vfs: fix user_statfs to retry once on ESTALE errors
-  vfs: allow utimensat() calls to retry once on an ESTALE error
-  vfs: allow setxattr to retry once on ESTALE errors
-  vfs: allow lsetxattr() to retry once on ESTALE errors
-  vfs: make getxattr retry once on an ESTALE error
-  vfs: make lgetxattr retry once on ESTALE
-  vfs: make listxattr retry once on ESTALE error
-  vfs: make llistxattr retry once on ESTALE error
-  vfs: make removexattr retry once on ESTALE
-  vfs: make lremovexattr retry once on ESTALE error
-  vfs: convert do_filp_open to use retry_estale helper
-  vfs: convert do_file_open_root to use retry_estale helper
-  vfs: convert filename_lookup to use retry_estale helper
-  vfs: make number of ESTALE retries tunable
-
- arch/powerpc/platforms/cell/spufs/syscalls.c |   2 +-
- drivers/base/devtmpfs.c                      |   7 +-
- fs/namei.c                                   | 273 ++++++++++++++++-----------
- fs/ocfs2/refcounttree.c                      |   3 +-
- fs/open.c                                    | 252 ++++++++++++++-----------
- fs/stat.c                                    |  32 +++-
- fs/statfs.c                                  |  14 +-
- fs/utimes.c                                  |  15 +-
- fs/xattr.c                                   | 152 +++++++++------
- include/linux/fs.h                           |  23 +++
- include/linux/namei.h                        |   4 +-
- kernel/sysctl.c                              |   7 +
- net/unix/af_unix.c                           |   2 +-
- 13 files changed, 484 insertions(+), 302 deletions(-)
-
+diff --git a/utils/nfsdcltrack/Makefile.am b/utils/nfsdcltrack/Makefile.am
+index 073a71b..afae455 100644
+--- a/utils/nfsdcltrack/Makefile.am
++++ b/utils/nfsdcltrack/Makefile.am
+@@ -4,11 +4,13 @@ man8_MANS	= nfsdcld.man
+ EXTRA_DIST	= $(man8_MANS)
+ 
+ AM_CFLAGS	+= -D_LARGEFILE64_SOURCE
+-sbin_PROGRAMS	= nfsdcld
++sbin_PROGRAMS	= nfsdcld nfsdcltrack
+ 
+ nfsdcld_SOURCES = nfsdcld.c sqlite.c
+-
+ nfsdcld_LDADD = ../../support/nfs/libnfs.a $(LIBEVENT) $(LIBSQLITE) $(LIBCAP)
+ 
++nfsdcltrack_SOURCES = nfsdcltrack.c sqlite.c
++nfsdcltrack_LDADD = ../../support/nfs/libnfs.a $(LIBSQLITE) $(LIBCAP)
++
+ MAINTAINERCLEANFILES = Makefile.in
+ 
+diff --git a/utils/nfsdcltrack/nfsdcltrack.c b/utils/nfsdcltrack/nfsdcltrack.c
+new file mode 100644
+index 0000000..f8c3810
+--- /dev/null
++++ b/utils/nfsdcltrack/nfsdcltrack.c
+@@ -0,0 +1,441 @@
++/*
++ * nfsdcltrack.c -- NFSv4 client name tracking program
++ *
++ * Copyright (C) 2012 Jeff Layton <jlayton@redhat.com>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2
++ * of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor,
++ * Boston, MA 02110-1301, USA.
++ */
++
++#ifdef HAVE_CONFIG_H
++#include "config.h"
++#endif /* HAVE_CONFIG_H */
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <ctype.h>
++#include <errno.h>
++#include <stdbool.h>
++#include <getopt.h>
++#include <string.h>
++#include <sys/stat.h>
++#include <sys/types.h>
++#include <fcntl.h>
++#include <unistd.h>
++#include <libgen.h>
++#include <sys/inotify.h>
++#ifdef HAVE_SYS_CAPABILITY_H
++#include <sys/prctl.h>
++#include <sys/capability.h>
++#endif
++
++#include "xlog.h"
++#include "sqlite.h"
++
++#ifndef CLD_DEFAULT_STORAGEDIR
++#define CLD_DEFAULT_STORAGEDIR NFS_STATEDIR "/nfsdcltrack"
++#endif
++
++/* defined by RFC 3530 */
++#define NFS4_OPAQUE_LIMIT	1024
++
++/* private data structures */
++struct cltrack_cmd {
++	char *name;
++	bool needs_arg;
++	int (*func)(const char *arg);
++};
++
++/* forward declarations */
++static int cltrack_init(const char *unused);
++static int cltrack_create(const char *id);
++static int cltrack_remove(const char *id);
++static int cltrack_check(const char *id);
++static int cltrack_gracedone(const char *gracetime);
++
++/* global variables */
++static struct option longopts[] =
++{
++	{ "help", 0, NULL, 'h' },
++	{ "debug", 0, NULL, 'd' },
++	{ "foreground", 0, NULL, 'f' },
++	{ "storagedir", 1, NULL, 's' },
++	{ NULL, 0, 0, 0 },
++};
++
++static struct cltrack_cmd commands[] =
++{
++	{ "init", false, cltrack_init },
++	{ "create", true, cltrack_create },
++	{ "remove", true, cltrack_remove },
++	{ "check", true, cltrack_check },
++	{ "gracedone", true, cltrack_gracedone },
++	{ NULL, false, NULL },
++};
++
++static char *storagedir = CLD_DEFAULT_STORAGEDIR;
++
++/* common buffer for holding id4 blobs */
++static unsigned char blob[NFS4_OPAQUE_LIMIT];
++
++static void
++usage(char *progname)
++{
++	printf("%s [ -hfd ] [ -s dir ] < cmd > < arg >\n", progname);
++	printf("Where < cmd > is one of the following and takes the following < arg >:\n");
++	printf("    init\n");
++	printf("    create <nfs_client_id4>\n");
++	printf("    remove <nfs_client_id4>\n");
++	printf("    check  <nfs_client_id4>\n");
++	printf("    gracedone <epoch time>\n");
++}
++
++
++/**
++ * hex_to_bin - convert a hex digit to its real value
++ * @ch: ascii character represents hex digit
++ *
++ * hex_to_bin() converts one hex digit to its actual value or -1 in case of bad
++ * input.
++ *
++ * Note: borrowed from lib/hexdump.c in the Linux kernel sources.
++ */
++static int
++hex_to_bin(char ch)
++{
++	if ((ch >= '0') && (ch <= '9'))
++		return ch - '0';
++	ch = tolower(ch);
++	if ((ch >= 'a') && (ch <= 'f'))
++		return ch - 'a' + 10;
++	return -1;
++}
++
++/**
++ * hex_str_to_bin - convert a hexidecimal string into a binary blob
++ *
++ * @src: string of hex digit pairs
++ * @dst: destination buffer to hold binary data
++ * @dstsize: size of the destination buffer
++ *
++ * Walk a string of hex digit pairs and convert them into binary data. Returns
++ * the resulting length of the binary data or a negative error code. If the
++ * data will not fit in the buffer, it returns -ENOBUFS (but will likely have
++ * clobbered the dst buffer in the process of determining that). If there are
++ * non-hexidecimal characters in the src, or an odd number of them then it
++ * returns -EINVAL.
++ */
++static ssize_t
++hex_str_to_bin(const char *src, unsigned char *dst, ssize_t dstsize)
++{
++	unsigned char *tmpdst = dst;
++
++	while (*src) {
++		int hi, lo;
++
++		/* make sure we don't overrun the dst buffer */
++		if ((tmpdst - dst) >= dstsize)
++			return -ENOBUFS;
++
++		hi = hex_to_bin(*src++);
++
++		/* did we get an odd number of characters? */
++		if (!*src)
++			return -EINVAL;
++		lo = hex_to_bin(*src++);
++
++		/* one of the characters isn't a hex digit */
++		if (hi < 0 || lo < 0)
++			return -EINVAL;
++
++		/* now place it in the dst buffer */
++		*tmpdst++ = (hi << 4) | lo;
++	}
++
++	return (ssize_t)(tmpdst - dst);
++}
++
++/*
++ * This program will almost always be run with root privileges since the
++ * kernel will call out to run it. Drop all capabilities prior to doing
++ * anything important to limit the exposure to potential compromise.
++ *
++ * FIXME: should we setuid to a different user early on instead?
++ */
++static int
++cltrack_set_caps(void)
++{
++	int ret = 0;
++#ifdef HAVE_SYS_CAPABILITY_H
++	unsigned long i;
++	cap_t caps;
++
++	/* prune the bounding set to nothing */
++	for (i = 0; prctl(PR_CAPBSET_READ, i, 0, 0, 0) >= 0 ; ++i) {
++		ret = prctl(PR_CAPBSET_DROP, i, 0, 0, 0);
++		if (ret) {
++			xlog(L_ERROR, "Unable to prune capability %lu from "
++				      "bounding set: %m", i);
++			return -errno;
++		}
++	}
++
++	/* get a blank capset */
++	caps = cap_init();
++	if (caps == NULL) {
++		xlog(L_ERROR, "Unable to get blank capability set: %m");
++		return -errno;
++	}
++
++	/* reset the process capabilities */
++	if (cap_set_proc(caps) != 0) {
++		xlog(L_ERROR, "Unable to set process capabilities: %m");
++		ret = -errno;
++	}
++	cap_free(caps);
++#endif
++	return ret;
++}
++
++static int
++cltrack_init(const char __attribute__((unused)) *unused)
++{
++	int ret;
++
++	/*
++	 * see if the storagedir is writable by root w/o CAP_DAC_OVERRIDE.
++	 * If it isn't then give the user a warning but proceed as if
++	 * everything is OK. If the DB has already been created, then
++	 * everything might still work. If it doesn't exist at all, then
++	 * assume that the maindb init will be able to create it. Fail on
++	 * anything else.
++	 */
++	if (access(storagedir, W_OK) == -1) {
++		switch (errno) {
++		case EACCES:
++			xlog(L_WARNING, "Storage directory %s is not writable. "
++					"Should be owned by root and writable "
++					"by owner!", storagedir);
++			break;
++		case ENOENT:
++			/* ignore and assume that we can create dir as root */
++			break;
++		default:
++			xlog(L_ERROR, "Unexpected error when checking access "
++				      "on %s: %m", storagedir);
++			return -errno;
++		}
++	}
++
++	/* set up storage db */
++	ret = sqlite_maindb_init(storagedir);
++	if (ret) {
++		xlog(L_ERROR, "Failed to init database: %d", ret);
++		/*
++		 * Convert any error here into -EACCES. It's not truly
++		 * accurate in all cases, but it should cause the kernel to
++		 * stop upcalling until the problem is resolved.
++		 */
++		ret = -EACCES;
++	}
++	return ret;
++}
++
++static int
++cltrack_create(const char *id)
++{
++	int ret;
++	ssize_t len;
++
++	xlog(D_GENERAL, "%s: create client record.", __func__);
++
++	ret = sqlite_prepare_dbh(storagedir);
++	if (ret)
++		return ret;
++
++	len = hex_str_to_bin(id, blob, sizeof(blob));
++	if (len < 0)
++		return (int)len;
++
++	ret = sqlite_insert_client(blob, len);
++
++	return ret ? -EREMOTEIO : ret;
++}
++
++static int
++cltrack_remove(const char *id)
++{
++	int ret;
++	ssize_t len;
++
++	xlog(D_GENERAL, "%s: remove client record.", __func__);
++
++	ret = sqlite_prepare_dbh(storagedir);
++	if (ret)
++		return ret;
++
++	len = hex_str_to_bin(id, blob, sizeof(blob));
++	if (len < 0)
++		return (int)len;
++
++	ret = sqlite_remove_client(blob, len);
++
++	return ret ? -EREMOTEIO : ret;
++}
++
++static int
++cltrack_check(const char *id)
++{
++	int ret;
++	ssize_t len;
++
++	xlog(D_GENERAL, "%s: check client record", __func__);
++
++	ret = sqlite_prepare_dbh(storagedir);
++	if (ret)
++		return ret;
++
++	len = hex_str_to_bin(id, blob, sizeof(blob));
++	if (len < 0)
++		return (int)len;
++
++	ret = sqlite_check_client(blob, len);
++
++	return ret ? -EPERM : ret;
++}
++
++static int
++cltrack_gracedone(const char *timestr)
++{
++	int ret;
++	char *tail;
++	time_t gracetime;
++
++
++	ret = sqlite_prepare_dbh(storagedir);
++	if (ret)
++		return ret;
++
++	errno = 0;
++	gracetime = strtol(timestr, &tail, 0);
++
++	/* did the resulting value overflow? (Probably -ERANGE here) */
++	if (errno)
++		return -errno;
++
++	/* string wasn't fully converted */
++	if (*tail)
++		return -EINVAL;
++
++	xlog(D_GENERAL, "%s: grace done. gracetime=%ld", __func__, gracetime);
++
++	ret = sqlite_remove_unreclaimed(gracetime);
++
++	return ret ? -EREMOTEIO : ret;
++}
++
++static struct cltrack_cmd *
++find_cmd(char *cmdname)
++{
++	struct cltrack_cmd *current = &commands[0];
++
++	while (current->name) {
++		if (!strcmp(cmdname, current->name))
++			return current;
++		++current;
++	}
++
++	xlog(L_ERROR, "%s: '%s' doesn't match any known command",
++			__func__, cmdname);
++	return NULL;
++}
++
++int
++main(int argc, char **argv)
++{
++	char arg;
++	int rc = 0;
++	char *progname, *cmdarg = NULL;
++	struct cltrack_cmd *cmd;
++
++	progname = strdup(basename(argv[0]));
++	if (!progname) {
++		fprintf(stderr, "%s: unable to allocate memory.\n", argv[0]);
++		return 1;
++	}
++
++	xlog_syslog(1);
++	xlog_stderr(0);
++
++	/* process command-line options */
++	while ((arg = getopt_long(argc, argv, "hdfs:", longopts,
++				  NULL)) != EOF) {
++		switch (arg) {
++		case 'd':
++			xlog_config(D_ALL, 1);
++		case 'f':
++			xlog_syslog(0);
++			xlog_stderr(1);
++			break;
++		case 's':
++			storagedir = optarg;
++			break;
++		default:
++			usage(progname);
++			return 0;
++		}
++	}
++
++	xlog_open(progname);
++
++	/* we expect a command, at least */
++	if (optind >= argc) {
++		xlog(L_ERROR, "Missing command name\n");
++		rc = -EINVAL;
++		goto out;
++	}
++
++	/* drop all capabilities */
++	rc = cltrack_set_caps();
++	if (rc)
++		goto out;
++
++	cmd = find_cmd(argv[optind]);
++	if (!cmd) {
++		/*
++		 * In the event that we get a command that we don't understand
++		 * then return a distinct error. The kernel can use this to
++		 * determine a new kernel/old userspace situation and cope
++		 * with it.
++		 */
++		rc = -ENOSYS;
++		goto out;
++	}
++
++	/* populate arg var if command needs it */
++	if (cmd->needs_arg) {
++		if (optind + 1 >= argc) {
++			xlog(L_ERROR, "Command %s requires an argument\n",
++				cmd->name);
++			rc = -EINVAL;
++			goto out;
++		}
++		cmdarg = argv[optind + 1];
++	}
++	rc = cmd->func(cmdarg);
++out:
++	free(progname);
++	return rc;
++}
 -- 
 1.7.11.7
 
