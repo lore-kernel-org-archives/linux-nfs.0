@@ -1,66 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:28404 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758503Ab2JKNXw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 11 Oct 2012 09:23:52 -0400
-Message-ID: <5076C867.4050806@RedHat.com>
-Date: Thu, 11 Oct 2012 09:23:51 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-vc0-f174.google.com ([209.85.220.174]:37235 "EHLO
+	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751310Ab2JXAIK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Oct 2012 20:08:10 -0400
+Received: by mail-vc0-f174.google.com with SMTP id fk26so4932072vcb.19
+        for <linux-nfs@vger.kernel.org>; Tue, 23 Oct 2012 17:08:09 -0700 (PDT)
 MIME-Version: 1.0
-To: VDR User <user.vdr@gmail.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: Problem with rpcbind
-References: <CAA7C2qiZhHD7-RHP93LCVOBGCmp4JxyJwRLa0AR8a=oi4fi2Gg@mail.gmail.com> <5072B1E5.9060808@RedHat.com> <CAA7C2qjRPs3pb66s2HDJqEyn0yGfGS_88+yvJNo0fhFQ9M6S3g@mail.gmail.com> <5074B53A.3030207@RedHat.com> <CAA7C2qg558GBYgaE2_Ay9QmC48UryG_9PqLP7Vebb1_QzRZd-g@mail.gmail.com>
-In-Reply-To: <CAA7C2qg558GBYgaE2_Ay9QmC48UryG_9PqLP7Vebb1_QzRZd-g@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+From: Brock Noland <brock@cloudera.com>
+Date: Tue, 23 Oct 2012 19:07:49 -0500
+Message-ID: <CAFukC=5Mq3CwK=u7YP_=cF6gab+0K_mP-Sj0k8fCk_a2f=xsfg@mail.gmail.com>
+Subject: readdir from Linux NFS4 client when cookieverf is no longer valid
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hello,
 
+It is my first message to this list, so please understand I that I
+might be in the wrong place or be wrong altogether. In my spare time I
+am implementing a NFS Proxy for the Hadoop Distributed File System:
+https://github.com/brockn/hdfs-nfs-proxy The scenario is as follows,
+two clients RHEL 6.3 and 5.8:
 
-On 09/10/12 22:49, VDR User wrote:
-> On Tue, Oct 9, 2012 at 4:37 PM, Steve Dickson <SteveD@redhat.com> wrote:
->>>>> Per Aníbal Salazar, I'm sending this to the nfs mailing list..
->>>>>
->>>>> ==========
->>>>>
->>>>> Hi. I would like to know who I can talk to about having the rpcbind's
->>>>> timeout value settable on the command line by the user. In many cases
->>>>> the timeout is too long, requiring hackish solutions. It would be
->>>>> best, and makes sense, that the user should be able to set the timeout
->>>>> to something other than the default value if he chooses. If you could
->>>>> direct me to the right person to talk to about it, I'd appreciate it.
->>>>
->>>> What timeout are you referring to? The one given to poll()?
->>>
->>> Hi. I guess so but not really sure. I'm talking about the timeout that
->>> happens when rpcbind is waiting for a response. Sounds like poll()
->>> could be it. We have an nfs server on .100 and the response happens
->>> immediately.
->>>
->>> $ rpcinfo -t 192.168.1.100 nfs
->>> program 100003 version 2 ready and waiting
->>> program 100003 version 3 ready and waiting
->>> program 100003 version 4 ready and waiting
->>>
->>> but there's no server on say .101 so if we run the same command on
->>> that ip, the timeout takes a very long time. It's this timeout that
->>> should be user-definable on the command line in my opinion. Any
->>> thoughts about it?
->>
->> Hmm... I'm guess that is the 7min tcp connect time out cause by
->> the -t option... Try using -u instead of -t... Basically using
->> UDP instead of TCP... In general I would never recommend that
->> but in this particular case it might help...
-> 
-> Thanks for this suggestion. I tried with -u but the timeout still
-> takes at least 1 min. Is it not feasible to have a command line
-> timeout where users can set it to something appropriate for their
-> needs? For example, in our case we only need about 5 seconds at most.
-hmm... when I do a "rpcinfo -t <ip-address> nfs" to a machine that
-does not have a daemon listening I immediately get:
-     rpcinfo: RPC: Port mapper failure - Unable to receive: errno 111 (Connection refused) program 100003 is not available
+Client 1) Creating and deleting files in a directory
+Client 2) Listing the files in that directory with a wildcard: foo*
 
-So I not seeing here this hang is coming from...
+Eventually client 1 creates a file while client 2 is listing the directory.
 
-steved.
+Regarding readdir from a NFS4 client, based on RFC 3530 it is my
+understanding that if the cookie verifier is invalid, I should return
+NFS4ERR_NOT_SAME. I believe that because of this statement "If the
+server determines that the cookieverf is no longer valid for the
+directory, the error NFS4ERR_NOT_SAME must be returned." In my case, I
+am using the number of entries in the directory as the cookieverf.
+Based on the statement above, it was my belief that the client should
+then re-read the directory.
+
+However, what occurs is the nfs client bails and eventually the client
+gets a NOENT after the wildcard foo* is send to the server for a
+lookup request. When the client receives NFS4ERR_NOT_SAME should it
+invalidate the directory and read it from scratch? I tried sending
+NFS4ERR_BAD_COOKIE which had the same effect as NOT_SAME.
+
+Oct 23 17:36:13 node102 kernel: NFS: nfs_do_filldir() filling ended @
+cookie 2147483746; returning = 0
+Oct 23 17:36:13 node102 kernel: _nfs4_proc_readdir: dentry = /tmp,
+cookie = 2147483746
+Oct 23 17:36:13 node102 kernel: encode_compound: tag=
+Oct 23 17:36:13 node102 kernel: encode_readdir: cookie = 2147483746,
+verifier = 00000000:53010000, bitmap = 0018011a:0030a23a
+Oct 23 17:36:13 node102 kernel: nfs4_xdr_enc_readdir: inlined page
+args = (60, ffff88012ba2fd08, 0, 32768)
+Oct 23 17:36:13 node102 kernel: _nfs4_proc_readdir: returns -10027
+Oct 23 17:36:13 node102 kernel: nfs4_map_errors could not handle NFSv4
+error 10027
+Oct 23 17:36:13 node102 kernel: NFS: readdir(/tmp) returns -5
+Oct 23 17:36:13 node102 kernel: NFS: readdir(/tmp) starting at cookie 102
+Oct 23 17:36:13 node102 kernel: _nfs4_proc_readdir: dentry = /tmp,
+cookie = 2147483746
+Oct 23 17:36:13 node102 kernel: encode_compound: tag=
+Oct 23 17:36:13 node102 kernel: encode_readdir: cookie = 2147483746,
+verifier = 00000000:53010000, bitmap = 0018011a:0030a23a
+Oct 23 17:36:13 node102 kernel: nfs4_xdr_enc_readdir: inlined page
+args = (60, ffff88012ba2fd08, 0, 32768)
+Oct 23 17:36:13 node102 kernel: _nfs4_proc_readdir: returns -10027
+Oct 23 17:36:13 node102 kernel: nfs4_map_errors could not handle NFSv4
+error 10027
