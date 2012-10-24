@@ -1,59 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:48579 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:49433 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754833Ab2JSVLp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Oct 2012 17:11:45 -0400
-Date: Fri, 19 Oct 2012 17:11:43 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "stable@vger.kernel.org" <stable@vger.kernel.org>
-Subject: Re: [PATCH] SUNRPC: Set alloc_slot for backchannel tcp ops
-Message-ID: <20121019211143.GC2320@fieldses.org>
-References: <1348508341-19642-1-git-send-email-bjschuma@netapp.com>
- <20121019193951.GA30593@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9092851AD@SACEXCMBX04-PRD.hq.netapp.com>
- <20121019210121.GB2320@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA909285321@SACEXCMBX04-PRD.hq.netapp.com>
+	id S934915Ab2JXO45 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Oct 2012 10:56:57 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chris Perl <chris.perl@gmail.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: RPC Race Condition
+Date: Wed, 24 Oct 2012 14:56:55 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90928F920@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20121022180339.GC24763@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA909289403@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121022202611.GA27191@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90928AB39@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121023134551.GB27191@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90928C74A@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121023200855.GC27191@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90928DCDD@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121024124047.GD27191@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90928F571@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121024142333.GE27191@nyc-qws-132.nyc.delacy.com>
+In-Reply-To: <20121024142333.GE27191@nyc-qws-132.nyc.delacy.com>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA909285321@SACEXCMBX04-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 19, 2012 at 09:05:08PM +0000, Myklebust, Trond wrote:
-> > -----Original Message-----
-> > From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> > Sent: Friday, October 19, 2012 5:01 PM
-> > To: Myklebust, Trond
-> > Cc: Schumaker, Bryan; linux-nfs@vger.kernel.org; stable@vger.kernel.org
-> > Subject: Re: [PATCH] SUNRPC: Set alloc_slot for backchannel tcp ops
-> > 
-> > On Fri, Oct 19, 2012 at 08:23:05PM +0000, Myklebust, Trond wrote:
-> > >
-> > > Et tu Bruce?
-> > >
-> > > Not yet, because if you check, neither has commit f39c1bfb5a (SUNRPC: Fix
-> > a UDP transport regression). I figured it is better to send them both together
-> > as a single patch.
-> > 
-> > I'm confused, I thought I did check.  Looking again...  It's in 3.6:
-> > 
-> > 	$ git log v3.6..f39c1bfb5a
-> > 	$
+> -----Original Message-----
+> From: Chris Perl [mailto:chris.perl@gmail.com]
+> Sent: Wednesday, October 24, 2012 10:24 AM
+> To: Myklebust, Trond
+> Cc: linux-nfs@vger.kernel.org
+> Subject: Re: RPC Race Condition
 > 
-> Yes. 3.6 still has the original patch+problem.
+> On Wed, Oct 24, 2012 at 01:04:16PM +0000, Myklebust, Trond wrote:
+> > Cool! Would you mind if I add "Tested-by" tags?
 > 
-> > and cc'd to stable:
-> > 
-> > 	$ git show f39c1bfb5a|grep stable
-> > 	    Cc: stable@vger.kernel.org [>= 3.1]
-> > 
-> > so presumably it's already on its way to older stable branches too.
+> Wouldn't mind at all.
 > 
-> No. See attachment... 
+> I've also run several of the filebench [1] workload personalities with this
+> patched kernel for ten minutes a piece (i.e. the `fileserver' and `networkfs'
+> personalities) and experienced no problems.  During the tests I also added
+> the blackhole route to the server several times (along with restarting the NFS
+> server) and it recovered each time.  I did this for filebench running
+> SCHED_OTHER and SCHED_RR with a priority of 50.
+> 
+> > Sure. I'll let you know as soon as I push them out later today...
+> 
+> Cool, I'll keep an eye out.
 
-OK.  As long as it makes it to 3.6.x one way or another, I'm happy....
+OK, I've now posted the patches in the "bugfixes" branch of
 
---b.
+       git://git.linux-nfs.org/projects/trondmy/linux-nfs.git
+
+By the way, you said that you were using a set of systemtap scripts to debug these races? If you'd be OK sharing those scripts, I'd love to see them. Debugging this kind of race is always difficult...
+
+Cheers
+  Trond
