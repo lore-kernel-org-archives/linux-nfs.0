@@ -1,56 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:43561 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:23705 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932885Ab2JCAS1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Oct 2012 20:18:27 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 4/5] NFSv4.1: Deal with wraparound when updating the layout "barrier" seqid
-Date: Tue,  2 Oct 2012 17:18:24 -0700
-Message-Id: <1349223505-59248-4-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1349223505-59248-3-git-send-email-Trond.Myklebust@netapp.com>
-References: <1349223505-59248-1-git-send-email-Trond.Myklebust@netapp.com>
- <1349223505-59248-2-git-send-email-Trond.Myklebust@netapp.com>
- <1349223505-59248-3-git-send-email-Trond.Myklebust@netapp.com>
+	id S1161045Ab2JXSLe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Oct 2012 14:11:34 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q9OIBXj0005439
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 24 Oct 2012 14:11:34 -0400
+Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id q9OIBWSF020176
+	for <linux-nfs@vger.kernel.org>; Wed, 24 Oct 2012 14:11:33 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 3/5] Fixed warnings in src/g_inq_cred.c
+Date: Wed, 24 Oct 2012 14:08:42 -0400
+Message-Id: <1351102124-24036-4-git-send-email-steved@redhat.com>
+In-Reply-To: <1351102124-24036-1-git-send-email-steved@redhat.com>
+References: <1351102124-24036-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...and fix a bug in pnfs_set_layout_stateid.
+From: Yao Zhao <yao.zhao@windriver.com>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+g_inq_cred.c:161:8: warning: passing argument 3 of
+'generic_gss_copy_oid' from incompatible pointer type [enabled by default]
+
+Signed-off-by: Yao Zhao <yao.zhao@windriver.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- fs/nfs/pnfs.c | 11 +++++++----
- 1 file changed, 7 insertions(+), 4 deletions(-)
+ src/g_inq_cred.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index f1387e8..de82725 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -572,7 +572,7 @@ pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo, const nfs4_stateid *new,
- 		if (update_barrier) {
- 			u32 new_barrier = be32_to_cpu(new->seqid);
+diff --git a/src/g_inq_cred.c b/src/g_inq_cred.c
+index 9f531d8..8367a56 100644
+--- a/src/g_inq_cred.c
++++ b/src/g_inq_cred.c
+@@ -152,13 +152,15 @@ gss_OID_set *		mechanisms;
+ 			     union_cred->count);
+ 	if ((*mechanisms)->elements == NULL) {
+ 	    *minor_status = ENOMEM;
++	    free(*mechanisms);
++	    *mechanisms = GSS_C_NO_OID_SET;
+ 	    return (GSS_S_FAILURE);
+ 	}
  
--			if ((int)(new_barrier - lo->plh_barrier))
-+			if (pnfs_seqid_is_newer(new_barrier, lo->plh_barrier))
- 				lo->plh_barrier = new_barrier;
- 		} else {
- 			/* Because of wraparound, we want to keep the barrier
-@@ -593,9 +593,12 @@ static bool
- pnfs_layoutgets_blocked(struct pnfs_layout_hdr *lo, nfs4_stateid *stateid,
- 			int lget)
- {
--	if ((stateid) &&
--	    (int)(lo->plh_barrier - be32_to_cpu(stateid->seqid)) >= 0)
--		return true;
-+	if (stateid != NULL) {
-+		u32 seqid = be32_to_cpu(stateid->seqid);
-+
-+		if (!pnfs_seqid_is_newer(seqid, lo->plh_barrier))
-+			return true;
-+	}
- 	return lo->plh_block_lgets ||
- 		test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags) ||
- 		(list_empty(&lo->plh_segs) &&
+ 	for (i=0; i < union_cred->count; i++) {
+-	    status = generic_gss_copy_oid(minor_status,
++	    status = generic_gss_add_oid_set_member(minor_status,
+ 	    				  &union_cred->mechs_array[i],
+-					  &((*mechanisms)->elements[i]));
++					  mechanisms);
+ 	    if (status != GSS_S_COMPLETE)
+ 	        break;
+ 	}
 -- 
-1.7.11.4
+1.7.11.7
 
