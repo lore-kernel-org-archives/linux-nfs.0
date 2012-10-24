@@ -1,131 +1,202 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:57592 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:47963 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753046Ab2J3Uu6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Oct 2012 16:50:58 -0400
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
+	id S964877Ab2JXVbc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Oct 2012 17:31:32 -0400
+Date: Wed, 24 Oct 2012 17:31:31 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 01/10] NFSD: Fold fault_inject.h into state.h
-Date: Tue, 30 Oct 2012 16:50:45 -0400
-Message-Id: <1351630254-26166-2-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
-References: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
+Subject: Re: [PATCH v3 3/4] nfsd: pass info about the legacy recoverydir in
+ environment variables
+Message-ID: <20121024213131.GH6697@fieldses.org>
+References: <1351089018-24551-1-git-send-email-jlayton@redhat.com>
+ <1351089018-24551-4-git-send-email-jlayton@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1351089018-24551-4-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Wed, Oct 24, 2012 at 10:30:17AM -0400, Jeff Layton wrote:
+> The usermodehelper upcall program can then decide to use this info as
+> a (one-way) transition mechanism to the new scheme. When a "check"
+> upcall occurs and the client doesn't exist in the database, we can
+> look to see whether the directory exists. If it does, then we'd add
+> the client to the database, remove the legacy recdir, and return
+> success to the kernel to allow the recovery to proceed.
+> 
+> For gracedone, we simply pass the v4recovery "topdir" so that the
+> upcall can clean it out prior to returning to the kernel.
 
-There were only a small number of functions in this file and since they
-all affect stored state I think it makes sense to put them in state.h
-instead.  I also dropped most static inline declarations since there are
-no callers when fault injection is not enabled.
+I don't understand why the kernel needs to be involved here--can't
+userspace find the old directory on its own?
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfsd/fault_inject.c |  1 -
- fs/nfsd/fault_inject.h | 28 ----------------------------
- fs/nfsd/nfs4state.c    |  1 -
- fs/nfsd/nfsctl.c       |  2 +-
- fs/nfsd/state.h        | 15 +++++++++++++++
- 5 files changed, 16 insertions(+), 31 deletions(-)
- delete mode 100644 fs/nfsd/fault_inject.h
+--b.
 
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-index e6c3815..0278112 100644
---- a/fs/nfsd/fault_inject.c
-+++ b/fs/nfsd/fault_inject.c
-@@ -10,7 +10,6 @@
- #include <linux/module.h>
- 
- #include "state.h"
--#include "fault_inject.h"
- 
- struct nfsd_fault_inject_op {
- 	char *file;
-diff --git a/fs/nfsd/fault_inject.h b/fs/nfsd/fault_inject.h
-deleted file mode 100644
-index 90bd057..0000000
---- a/fs/nfsd/fault_inject.h
-+++ /dev/null
-@@ -1,28 +0,0 @@
--/*
-- * Copyright (c) 2011 Bryan Schumaker <bjschuma@netapp.com>
-- *
-- * Function definitions for fault injection
-- */
--
--#ifndef LINUX_NFSD_FAULT_INJECT_H
--#define LINUX_NFSD_FAULT_INJECT_H
--
--#ifdef CONFIG_NFSD_FAULT_INJECTION
--int nfsd_fault_inject_init(void);
--void nfsd_fault_inject_cleanup(void);
--void nfsd_forget_clients(u64);
--void nfsd_forget_locks(u64);
--void nfsd_forget_openowners(u64);
--void nfsd_forget_delegations(u64);
--void nfsd_recall_delegations(u64);
--#else /* CONFIG_NFSD_FAULT_INJECTION */
--static inline int nfsd_fault_inject_init(void) { return 0; }
--static inline void nfsd_fault_inject_cleanup(void) {}
--static inline void nfsd_forget_clients(u64 num) {}
--static inline void nfsd_forget_locks(u64 num) {}
--static inline void nfsd_forget_openowners(u64 num) {}
--static inline void nfsd_forget_delegations(u64 num) {}
--static inline void nfsd_recall_delegations(u64 num) {}
--#endif /* CONFIG_NFSD_FAULT_INJECTION */
--
--#endif /* LINUX_NFSD_FAULT_INJECT_H */
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 8fd3ce0..14c3b70 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -44,7 +44,6 @@
- #include "xdr4.h"
- #include "vfs.h"
- #include "current_stateid.h"
--#include "fault_inject.h"
- 
- #include "netns.h"
- 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index dab350d..7e0d6db 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -19,7 +19,7 @@
- #include "idmap.h"
- #include "nfsd.h"
- #include "cache.h"
--#include "fault_inject.h"
-+#include "state.h"
- #include "netns.h"
- 
- /*
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index e036894..d2f52a1 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -481,4 +481,19 @@ extern void nfsd4_client_record_create(struct nfs4_client *clp);
- extern void nfsd4_client_record_remove(struct nfs4_client *clp);
- extern int nfsd4_client_record_check(struct nfs4_client *clp);
- extern void nfsd4_record_grace_done(struct net *net, time_t boot_time);
-+
-+/* nfs fault injection functions */
-+#ifdef CONFIG_NFSD_FAULT_INJECTION
-+int nfsd_fault_inject_init(void);
-+void nfsd_fault_inject_cleanup(void);
-+void nfsd_forget_clients(u64);
-+void nfsd_forget_locks(u64);
-+void nfsd_forget_openowners(u64);
-+void nfsd_forget_delegations(u64);
-+void nfsd_recall_delegations(u64);
-+#else /* CONFIG_NFSD_FAULT_INJECTION */
-+static inline int nfsd_fault_inject_init(void) { return 0; }
-+static inline void nfsd_fault_inject_cleanup(void) {}
-+#endif /* CONFIG_NFSD_FAULT_INJECTION */
-+
- #endif   /* NFSD4_STATE_H */
--- 
-1.8.0
-
+> 
+> A module parm is also added to disable the legacy conversion if
+> the admin chooses.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/nfsd/nfs4recover.c | 90 ++++++++++++++++++++++++++++++++++++++++++++++-----
+>  1 file changed, 82 insertions(+), 8 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+> index aa165fd..782168d 100644
+> --- a/fs/nfsd/nfs4recover.c
+> +++ b/fs/nfsd/nfs4recover.c
+> @@ -932,10 +932,75 @@ module_param_string(cltrack_prog, cltrack_prog, sizeof(cltrack_prog),
+>  			S_IRUGO|S_IWUSR);
+>  MODULE_PARM_DESC(cltrack_prog, "Path to the nfsdcltrack upcall program");
+>  
+> +static bool cltrack_legacy_disable;
+> +module_param(cltrack_legacy_disable, bool, S_IRUGO|S_IWUSR);
+> +MODULE_PARM_DESC(cltrack_legacy_disable,
+> +		"Disable legacy recoverydir conversion. Default: false");
+> +
+> +#define LEGACY_TOPDIR_ENV_PREFIX "NFSDCLTRACK_LEGACY_TOPDIR="
+> +#define LEGACY_RECDIR_ENV_PREFIX "NFSDCLTRACK_LEGACY_RECDIR="
+> +
+> +static char *
+> +nfsd4_cltrack_legacy_topdir(void)
+> +{
+> +	int copied;
+> +	size_t len;
+> +	char *result;
+> +
+> +	if (cltrack_legacy_disable)
+> +		return NULL;
+> +
+> +	len = strlen(LEGACY_TOPDIR_ENV_PREFIX) +
+> +		strlen(nfs4_recoverydir()) + 1;
+> +
+> +	result = kmalloc(len, GFP_KERNEL);
+> +	if (!result)
+> +		return result;
+> +
+> +	copied = snprintf(result, len, LEGACY_TOPDIR_ENV_PREFIX "%s",
+> +				nfs4_recoverydir());
+> +	if (copied >= len) {
+> +		/* just return nothing if output was truncated */
+> +		kfree(result);
+> +		return NULL;
+> +	}
+> +
+> +	return result;
+> +}
+> +
+> +static char *
+> +nfsd4_cltrack_legacy_recdir(const char *recdir)
+> +{
+> +	int copied;
+> +	size_t len;
+> +	char *result;
+> +
+> +	if (cltrack_legacy_disable)
+> +		return NULL;
+> +
+> +	/* +1 is for '/' between "topdir" and "recdir" */
+> +	len = strlen(LEGACY_RECDIR_ENV_PREFIX) +
+> +		strlen(nfs4_recoverydir()) + 1 + HEXDIR_LEN;
+> +
+> +	result = kmalloc(len, GFP_KERNEL);
+> +	if (!result)
+> +		return result;
+> +
+> +	copied = snprintf(result, len, LEGACY_RECDIR_ENV_PREFIX "%s/%s",
+> +				nfs4_recoverydir(), recdir);
+> +	if (copied >= len) {
+> +		/* just return nothing if output was truncated */
+> +		kfree(result);
+> +		return NULL;
+> +	}
+> +
+> +	return result;
+> +}
+> +
+>  static int
+> -nfsd4_umh_cltrack_upcall(char *cmd, char *arg)
+> +nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *legacy)
+>  {
+> -	char *envp[] = { NULL };
+> +	char *envp[2];
+>  	char *argv[4];
+>  	int ret;
+>  
+> @@ -946,6 +1011,10 @@ nfsd4_umh_cltrack_upcall(char *cmd, char *arg)
+>  
+>  	dprintk("%s: cmd: %s\n", __func__, cmd);
+>  	dprintk("%s: arg: %s\n", __func__, arg ? arg : "(null)");
+> +	dprintk("%s: legacy: %s\n", __func__, legacy ? legacy : "(null)");
+> +
+> +	envp[0] = legacy;
+> +	envp[1] = NULL;
+>  
+>  	argv[0] = (char *)cltrack_prog;
+>  	argv[1] = cmd;
+> @@ -991,7 +1060,7 @@ bin_to_hex_dup(const unsigned char *src, int srclen)
+>  static int
+>  nfsd4_umh_cltrack_init(struct net __attribute__((unused)) *net)
+>  {
+> -	return nfsd4_umh_cltrack_upcall("init", NULL);
+> +	return nfsd4_umh_cltrack_upcall("init", NULL, NULL);
+>  }
+>  
+>  static void
+> @@ -1004,7 +1073,7 @@ nfsd4_umh_cltrack_create(struct nfs4_client *clp)
+>  		dprintk("%s: can't allocate memory for upcall!\n", __func__);
+>  		return;
+>  	}
+> -	nfsd4_umh_cltrack_upcall("create", hexid);
+> +	nfsd4_umh_cltrack_upcall("create", hexid, NULL);
+>  	kfree(hexid);
+>  }
+>  
+> @@ -1018,7 +1087,7 @@ nfsd4_umh_cltrack_remove(struct nfs4_client *clp)
+>  		dprintk("%s: can't allocate memory for upcall!\n", __func__);
+>  		return;
+>  	}
+> -	nfsd4_umh_cltrack_upcall("remove", hexid);
+> +	nfsd4_umh_cltrack_upcall("remove", hexid, NULL);
+>  	kfree(hexid);
+>  }
+>  
+> @@ -1026,14 +1095,16 @@ static int
+>  nfsd4_umh_cltrack_check(struct nfs4_client *clp)
+>  {
+>  	int ret;
+> -	char *hexid;
+> +	char *hexid, *legacy;
+>  
+>  	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
+>  	if (!hexid) {
+>  		dprintk("%s: can't allocate memory for upcall!\n", __func__);
+>  		return -ENOMEM;
+>  	}
+> -	ret = nfsd4_umh_cltrack_upcall("check", hexid);
+> +	legacy = nfsd4_cltrack_legacy_recdir(clp->cl_recdir);
+> +	ret = nfsd4_umh_cltrack_upcall("check", hexid, legacy);
+> +	kfree(legacy);
+>  	kfree(hexid);
+>  	return ret;
+>  }
+> @@ -1042,10 +1113,13 @@ static void
+>  nfsd4_umh_cltrack_grace_done(struct net __attribute__((unused)) *net,
+>  				time_t boot_time)
+>  {
+> +	char *legacy;
+>  	char timestr[22]; /* FIXME: better way to determine max size? */
+>  
+>  	sprintf(timestr, "%ld", boot_time);
+> -	nfsd4_umh_cltrack_upcall("gracedone", timestr);
+> +	legacy = nfsd4_cltrack_legacy_topdir();
+> +	nfsd4_umh_cltrack_upcall("gracedone", timestr, legacy);
+> +	kfree(legacy);
+>  }
+>  
+>  static struct nfsd4_client_tracking_ops nfsd4_umh_tracking_ops = {
+> -- 
+> 1.7.11.7
+> 
