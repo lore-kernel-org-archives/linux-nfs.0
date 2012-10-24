@@ -1,60 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:40512 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750980Ab2JYSSB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 25 Oct 2012 14:18:01 -0400
-Received: from vmwexceht02-prd.hq.netapp.com (vmwexceht02-prd.hq.netapp.com [10.106.76.240])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q9PII0si027313
-	for <linux-nfs@vger.kernel.org>; Thu, 25 Oct 2012 11:18:00 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: avoid deadlock in nfs_kill_super
-Date: Thu, 25 Oct 2012 18:17:58 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092922A5@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1351188163-10067-1-git-send-email-dros@netapp.com>
-In-Reply-To: <1351188163-10067-1-git-send-email-dros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-vb0-f46.google.com ([209.85.212.46]:42117 "EHLO
+	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933678Ab2JXUT2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Oct 2012 16:19:28 -0400
+Received: by mail-vb0-f46.google.com with SMTP id ff1so1036917vbb.19
+        for <linux-nfs@vger.kernel.org>; Wed, 24 Oct 2012 13:19:27 -0700 (PDT)
+Date: Wed, 24 Oct 2012 16:19:23 -0400
+From: Chris Perl <chris.perl@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: RPC Race Condition
+Message-ID: <20121024201923.GG27191@nyc-qws-132.nyc.delacy.com>
+References: <4FA345DA4F4AE44899BD2B03EEEC2FA90928AB39@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121023134551.GB27191@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90928C74A@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121023200855.GC27191@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90928DCDD@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121024124047.GD27191@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90928F571@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121024142333.GE27191@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90928F920@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121024161004.GF27191@nyc-qws-132.nyc.delacy.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121024161004.GF27191@nyc-qws-132.nyc.delacy.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTEwLTI1IGF0IDE0OjAyIC0wNDAwLCBXZXN0b24gQW5kcm9zIEFkYW1zb24g
-d3JvdGU6DQo+IENhbGxpbmcgbmZzX2tpbGxfc3VwZXIgZnJvbSBhbiBSUEMgdGFzayBjYWxsYmFj
-ayB3b3VsZCByZXN1bHQgaW4gYSBkZWFkbG9jaw0KPiB3aGVyZSBuZnNfZnJlZV9zZXJ2ZXIgKHZp
-YSBycGNfc2h1dGRvd25fY2xpZW50KSB0cmllcyB0byBraWxsIGFsbA0KPiBSUEMgdGFza3MgYXNz
-b2NpYXRlZCB3aXRoIHRoYXQgY29ubmVjdGlvbiAtIGluY2x1ZGluZyBpdHNlbGYhDQo+IA0KPiBJ
-bnN0ZWFkIG9mIGNhbGxpbmcgbmZzX2tpbGxfc3VwZXIgZGlyZWN0bHksIHF1ZXVlIGEgam9iIG9u
-IHRoZSBuZnNpb2QNCj4gd29ya3F1ZXVlLg0KPiANCj4gU2lnbmVkLW9mZi1ieTogV2VzdG9uIEFu
-ZHJvcyBBZGFtc29uIDxkcm9zQG5ldGFwcC5jb20+DQo+IC0tLQ0KPiANCj4gVGhpcyBmaXhlcyB0
-aGUgY3VycmVudCBpbmNhcm5hdGlvbiBvZiB0aGUgbG9ja3VwIEkndmUgYmVlbiB0cmFja2luZyBk
-b3duIGZvcg0KPiBzb21lIHRpbWUgbm93LiAgSSBzdGlsbCBoYXZlIHRvIGdvIGJhY2sgYW5kIHNl
-ZSB3aHkgdGhlIHJlcHJvZHVjZXIgY2hhbmdlZA0KPiBiZWhhdmlvciBhIGZldyB3ZWVrcyBhZ28g
-LSB0YXNrcyB1c2VkIHRvIGdldCBzdHVjayBpbiBycGNfcHJlcGFyZV90YXNrLCBidXQNCj4gbm93
-IChiZWZvcmUgdGhpcyBwYXRjaCkgYXJlIHN0dWNrIGluIHJwY19leGl0Lg0KPiANCj4gVGhlIHJl
-cHJvZHVjZXIgd29ya3MgYWdhaW5zdCBhIHNlcnZlciB3aXRoIHdyaXRlIGRlbGVnYXRpb25zOg0K
-PiANCj4gLi9uZnNvbWV0ZXIucHkgLW0gdjQgc2VydmVyOi9wYXRoIGRkXzEwMG1fMTAwaw0KPiAN
-Cj4gd2hpY2ggaXMgYmFzaWNhbGx5Og0KPiAgLSBtb3VudA0KPiAgLSBkZCBpZj0vZGV2L3plcm8g
-b2Y9Li9kZF9maWxlLjEwMG1fMTAwayBicz0xMDI0MDAgY291bnQ9MTAyNA0KPiAgLSB1bW91bnQN
-Cj4gIC0gYnJlYWsgaWYgL3Byb2MvZnMvbmZzZnMvc2VydmVycyBzdGlsbCBoYXMgZW50cnkgYWZ0
-ZXIgNSBzZWNvbmRzIChpbiB0aGlzDQo+ICAgIGNhc2UgaXQgTkVWRVIgZ29lcyBhd2F5KQ0KPiAN
-Cj4gVGhlcmUgYXJlIGNsZWFybHkgb3RoZXIgd2F5cyB0byB0cmlnZ2VyIHRoaXMgZGVhZGxvY2ss
-IGxpa2UgYSB2NC4xIENMT1NFIC0gdGhlDQo+IGRvbmUgaGFuZGxlciBjYWxscyBuZnNfc2JfZGVh
-Y3RpdmF0ZS4uLg0KPiANCj4gSSd2ZSB0ZXN0ZWQgdGhpcyBhcHByb2FjaCB3aXRoIDEwIHJ1bnMg
-WCAzIG5mcyB2ZXJzaW9ucyBYIDUgd29ya2xvYWRzIA0KPiAoZGRfMTAwbV8xMDBrLCBkZF8xMDBt
-XzFrLCBweXRob24sIGtlcm5lbCwgY3Rob24pLCBzbyBJJ20gcHJldHR5IGNvbmZpZGVudA0KPiBp
-dHMgY29ycmVjdC4NCj4gDQo+IE9uZSBxdWVzdGlvbiBmb3IgdGhlIGxpc3Q6IHNob3VsZCBuZnNf
-ZnJlZV9zZXJ2ZXIgKmFsd2F5cyogYmUgc2NoZWR1bGVkIG9uDQo+IHRoZSBuZnNpb2Qgd29ya3F1
-ZXVlPyBJdCdzIGNhbGxlZCBpbiBlcnJvciBwYXRocyBpbiBzZXZlcmFsIGxvY2F0aW9ucy4NCj4g
-QWZ0ZXIgbG9va2luZyBhdCB0aGVtLCBJIGRvbid0IHRoaW5rIG15IGFwcHJvYWNoIHdvdWxkIGJy
-ZWFrIGFueXRoaW5nLCBidXQgDQo+IHNvbWUgbWlnaHQgaGF2ZSBzdHlsZSBvYmplY3Rpb25zLg0K
-PiANCg0KVGhpcyBkb2Vzbid0IGFkZCB1cC4gVGhlcmUgc2hvdWxkIGJlIG5vdGhpbmcgY2FsbGlu
-ZyBuZnNfc2JfZGVhY3RpdmUoKQ0KZnJvbSBhIHJwY19jYWxsX2RvbmUoKSBjYWxsYmFjay4gSWYg
-c28sIHRoZW4gdGhhdCB3b3VsZCBiZSB0aGUgYnVnLg0KDQpBbGwgY2FsbHMgdG8gdGhpbmdzIGxp
-a2UgcnBjX3B1dF90YXNrKCksIHB1dF9uZnNfb3Blbl9jb250ZXh0KCksIGRwdXQoKSwNCm9yIG5m
-c19zYl9kZWFjdGl2ZSgpIHNob3VsZCBvY2N1ciBpbiB0aGUgcnBjX2NhbGxfcmVsZWFzZSgpIGNh
-bGxiYWNrIGlmDQp0aGV5IGNhbid0IGJlIGRvbmUgaW4gYSBwcm9jZXNzIGNvbnRleHQuIEluIGJv
-dGggdGhvc2UgY2FzZXMsIHRoZQ0KcnBjX3Rhc2sgd2lsbCBiZSBpbnZpc2libGUgdG8gcnBjX2tp
-bGxhbGxfdGFza3MgYW5kIHJwY19zaHV0ZG93bl9jbGllbnQuDQoNCi0tIA0KVHJvbmQgTXlrbGVi
-dXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1
-c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+On Wed, Oct 24, 2012 at 12:10:04PM -0400, Chris Perl wrote:
+> On Wed, Oct 24, 2012 at 02:56:55PM +0000, Myklebust, Trond wrote:
+> > OK, I've now posted the patches in the "bugfixes" branch of
+> > 
+> >        git://git.linux-nfs.org/projects/trondmy/linux-nfs.git
+> 
+> Cool, I'll try to get that pulled, compiled and tested by the end of the
+> day.
+
+Pulled, compiled and tested in the same manner described before without
+problems.
+
+Thanks for getting this resolved!
+
+Chris
