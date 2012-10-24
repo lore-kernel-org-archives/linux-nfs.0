@@ -1,97 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:60605 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755157Ab2JVQFs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Oct 2012 12:05:48 -0400
-Received: by mail-ie0-f174.google.com with SMTP id k13so3828544iea.19
-        for <linux-nfs@vger.kernel.org>; Mon, 22 Oct 2012 09:05:48 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 01/10] nfs-utils: Eliminate dereferencing type punned pointers
+Received: from mail-ye0-f174.google.com ([209.85.213.174]:41421 "EHLO
+	mail-ye0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934931Ab2JXP0R (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Oct 2012 11:26:17 -0400
+Received: by mail-ye0-f174.google.com with SMTP id m12so88823yen.19
+        for <linux-nfs@vger.kernel.org>; Wed, 24 Oct 2012 08:26:17 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
 To: steved@redhat.com
 Cc: linux-nfs@vger.kernel.org
-Date: Mon, 22 Oct 2012 12:05:46 -0400
-Message-ID: <20121022160546.4552.81486.stgit@lebasque.1015granger.net>
-In-Reply-To: <20121022160140.4552.34477.stgit@lebasque.1015granger.net>
-References: <20121022160140.4552.34477.stgit@lebasque.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Subject: [PATCH v2 09/10] nfsdcltrack: update the README about server startup order
+Date: Wed, 24 Oct 2012 11:25:58 -0400
+Message-Id: <1351092359-25842-10-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1351092359-25842-1-git-send-email-jlayton@redhat.com>
+References: <1351092359-25842-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up compiler warnings:
+Now that nfsdcld is gone, remove the section about starting it up.
 
-../../support/include/sockaddr.h: In function ‘compare_sockaddr6’:
-../../support/include/sockaddr.h:197:2: warning: dereferencing
-  type-punned pointer might break strict-aliasing rules
-  [-Wstrict-aliasing]
-../../support/include/sockaddr.h:198:7: warning: dereferencing
-  type-punned pointer might break strict-aliasing rules
-  [-Wstrict-aliasing]
-../../support/include/sockaddr.h:199:6: warning: dereferencing
-  type-punned pointer might break strict-aliasing rules
-  [-Wstrict-aliasing]
-../../support/include/sockaddr.h:200:7: warning: dereferencing
-  type-punned pointer might break strict-aliasing rules
-  [-Wstrict-aliasing]
-../../support/include/sockaddr.h:204:2: warning: dereferencing
-  type-punned pointer might break strict-aliasing rules
-  [-Wstrict-aliasing]
-../../support/include/sockaddr.h:204:2: warning: dereferencing
-  type-punned pointer might break strict-aliasing rules
-  [-Wstrict-aliasing]
-../../support/include/sockaddr.h:204:2: warning: dereferencing
-  type-punned pointer might break strict-aliasing rules
-  [-Wstrict-aliasing]
-../../support/include/sockaddr.h:204:2: warning: dereferencing
-  type-punned pointer might break strict-aliasing rules
-  [-Wstrict-aliasing]
-../../support/include/sockaddr.h:204:2: warning: dereferencing
-  type-punned pointer might break strict-aliasing rules
-  [-Wstrict-aliasing]
-../../support/include/sockaddr.h:204:2: warning: dereferencing
-  type-punned pointer might break strict-aliasing rules
-  [-Wstrict-aliasing]
-../../support/include/sockaddr.h:204:2: warning: dereferencing
-  type-punned pointer might break strict-aliasing rules
-  [-Wstrict-aliasing]
-../../support/include/sockaddr.h:204:2: warning: dereferencing
-  type-punned pointer might break strict-aliasing rules
-  [-Wstrict-aliasing]
-
-Seen with gcc version 4.6.3 20120306 (Red Hat 4.6.3-2) (GCC)
-
-Note also that site-local IPv6 addresses are deprecated, and thus
-are no longer encountered.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
+ README | 23 ++---------------------
+ 1 file changed, 2 insertions(+), 21 deletions(-)
 
- support/include/sockaddr.h |   10 ++++------
- 1 files changed, 4 insertions(+), 6 deletions(-)
-
-diff --git a/support/include/sockaddr.h b/support/include/sockaddr.h
-index 9af2543..72766db 100644
---- a/support/include/sockaddr.h
-+++ b/support/include/sockaddr.h
-@@ -193,16 +193,14 @@ compare_sockaddr6(const struct sockaddr *sa1, const struct sockaddr *sa2)
- {
- 	const struct sockaddr_in6 *sin1 = (const struct sockaddr_in6 *)sa1;
- 	const struct sockaddr_in6 *sin2 = (const struct sockaddr_in6 *)sa2;
-+	const struct in6_addr *saddr1 = &sin1->sin6_addr;
-+	const struct in6_addr *saddr2 = &sin2->sin6_addr;
+diff --git a/README b/README
+index e55b2dd..61702f7 100644
+--- a/README
++++ b/README
+@@ -108,31 +108,12 @@ scripts can be written to work correctly.
+        the lock.
+        rpc.statd is only needed for NFSv2 and NFSv3 support.
  
--	if ((IN6_IS_ADDR_LINKLOCAL((char *)&sin1->sin6_addr) &&
--	     IN6_IS_ADDR_LINKLOCAL((char *)&sin2->sin6_addr)) ||
--	    (IN6_IS_ADDR_SITELOCAL((char *)&sin1->sin6_addr) &&
--	     IN6_IS_ADDR_SITELOCAL((char *)&sin2->sin6_addr)))
-+	if (IN6_IS_ADDR_LINKLOCAL(saddr1) && IN6_IS_ADDR_LINKLOCAL(saddr2))
- 		if (sin1->sin6_scope_id != sin2->sin6_scope_id)
- 			return false;
- 
--	return IN6_ARE_ADDR_EQUAL((char *)&sin1->sin6_addr,
--					(char *)&sin2->sin6_addr);
-+	return IN6_ARE_ADDR_EQUAL(saddr1, saddr2);
- }
- #else	/* !IPV6_SUPPORTED */
- static inline _Bool
+-   E/ nfsdcld
+-       This daemon is only needed on kernels that support the nfsdcld
+-       upcall, and only if the legacy client ID tracking isn't used. It
+-       is also not needed if the server does not support NFSv4.
+-
+-       To determine whether you need this or not, do the following:
+-
+-           # cat /proc/fs/nfsd/versions
+-
+-       That should yield a list of NFS versions that this kernel supports,
+-       if "4" or later is not in that list, or they are prefixed with a "-"
+-       then you don't need to run this daemon. Next:
+-
+-           # cat /proc/fs/nfsd/nfsv4recoverydir
+-
+-       If that file is not present, or the directory that the above command
+-       outputs is not present, then this daemon is required in order to
+-       support lock recovery by the clients when the server reboots.
+-
+-   F/ rpc.nfsd
++   E/ rpc.nfsd
+        Starting nfsd will automatically start lockd.  The nfs server
+        will now be fully active and respond to any requests from
+        clients.
+        
+-   G/ sm-notify
++   F/ sm-notify
+        This will notify any client which might have locks from before
+        a reboot to try to reclaim their locks.  This should start
+        immediately after rpc.nfsd is started so that clients have a
+-- 
+1.7.11.7
 
