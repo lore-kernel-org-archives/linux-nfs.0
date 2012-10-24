@@ -1,48 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:51180 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751235Ab2JMC1T (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Oct 2012 22:27:19 -0400
-Message-ID: <5078D17C.9090002@panasas.com>
-Date: Fri, 12 Oct 2012 19:27:08 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from fieldses.org ([174.143.236.118]:46974 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934471Ab2JXUlB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Oct 2012 16:41:01 -0400
+Date: Wed, 24 Oct 2012 16:40:59 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+Subject: Re: 3.7-rc1 NFSv3/sec=krb5 mkdir failure
+Message-ID: <20121024204059.GF6697@fieldses.org>
+References: <20121016125832.GC30649@fieldses.org>
+ <20121024200249.GC6697@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9092906F7@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121024201517.GD6697@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90929086C@SACEXCMBX04-PRD.hq.netapp.com>
 MIME-Version: 1.0
-To: Linus Torvalds <torvalds@linux-foundation.org>
-CC: Bruce Fields <bfields@fieldses.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Larry McVoy <lm@bitmover.com>
-Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
-References: <20121012211701.GA8301@bitmover.com> <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
-In-Reply-To: <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90929086C@SACEXCMBX04-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/12/2012 04:52 PM, Linus Torvalds wrote:
-> Guys, check this report from Larry out.
+On Wed, Oct 24, 2012 at 08:34:37PM +0000, Myklebust, Trond wrote:
+> > -----Original Message-----
+> > From: Myklebust, Trond
+> > Sent: Wednesday, October 24, 2012 4:31 PM
+> > To: 'J. Bruce Fields'
+> > Cc: linux-nfs@vger.kernel.org; Schumaker, Bryan
+> > Subject: RE: 3.7-rc1 NFSv3/sec=krb5 mkdir failure
+> > 
+> > > -----Original Message-----
+> > > From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> > > Sent: Wednesday, October 24, 2012 4:15 PM
+> > > To: Myklebust, Trond
+> > > Cc: linux-nfs@vger.kernel.org; Schumaker, Bryan
+> > > Subject: Re: 3.7-rc1 NFSv3/sec=krb5 mkdir failure
+> > >
+> > > On Wed, Oct 24, 2012 at 08:07:55PM +0000, Myklebust, Trond wrote:
+> > > > > -----Original Message-----
+> > > > > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> > > > > owner@vger.kernel.org] On Behalf Of J. Bruce Fields
+> > > > > Sent: Wednesday, October 24, 2012 4:03 PM
+> > > > > To: linux-nfs@vger.kernel.org; Myklebust, Trond; Schumaker, Bryan
+> > > > > Subject: Re: 3.7-rc1 NFSv3/sec=krb5 mkdir failure
+> > > > >
+> > > > > Anyone get a chance to look at this?  It seems very reproduceable.
+> > > > >
+> > > > > --b.
+> > > > >
+> > > > > On Tue, Oct 16, 2012 at 08:58:32AM -0400, bfields wrote:
+> > > > > > On 3.7-rc1:
+> > > > > >
+> > > > > > 	client# mount -tnfs -osec=krb5,vers=3 server:/exports/ext4
+> > > > > > /mnt/
+> > > > > >
+> > > > > > 		server# ls -l /exports/ext4|grep TMP
+> > > > > > 		server#
+> > > > > >
+> > > > > > 	# mkdir /mnt/TMP
+> > > > > > 	mkdir: cannot create directory `/mnt/TMP': Permission denied
+> > > > > >
+> > > > > > 		server# ls -l /exports/ext4|grep TMP
+> > > > > > 		drwxr-xr-x  2 nfsnobody nfsnobody 4096 Oct 16 08:56 TMP
+> > > > > > 		server#
+> > > > > >
+> > > > > > Wireshark also shows that the create succeeds.
+> > > >
+> > > > Can you share the wireshark trace?
+> > >
+> > > Sure.  This covers the mount and mkdir.  The mkdir call and reply are
+> > > in frames 77 and 78.
+> > 
+> > Hmm.... Can you please check if the ACL is being set correctly on the server? I
+> > suspect that might be the source of the error.
+> > 
 > 
-> Also, why the *HELL* is that a BUG_ON() in the first place? Who was
-> the less-than-gifted person who decided "if this thing can happen,
-> let's just kill the whole machine"?
-> 
+> In fact, can you see if mounting with '-onoacl' causes the whole thing to succeed?
 
-Something is trivially weird
+That's on the client mount command?  No difference.
 
-fs/lockd/clntxdr.c:226 is in this static function:
-	encode_nlm_stat()
-
-encode_nlm_stat() is called in two places
-	static void nlm_xdr_enc_res(...)
-  and
-	static void nlm_xdr_enc_testres(...)
-
-But these two are not called anywhere. In-fact a Kernel wide grep
-returns a single occurrence of both
-
-I suspect the BUG_ON() belongs else where.
-Perhaps we should add __func__ to the BUG_ON macro exactly for times
-that source and Kernel get out of sync.
-
-Puzzled
-Boaz
+--b.
