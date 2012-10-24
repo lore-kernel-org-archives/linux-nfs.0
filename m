@@ -1,858 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vb0-f46.google.com ([209.85.212.46]:50610 "EHLO
-	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1946201Ab2JYRWG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Oct 2012 13:22:06 -0400
-Received: by mail-vb0-f46.google.com with SMTP id ff1so2161469vbb.19
-        for <linux-nfs@vger.kernel.org>; Thu, 25 Oct 2012 10:22:05 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 8/9] nfsdcltrack: remove the nfsdcld daemon
-Date: Thu, 25 Oct 2012 13:21:42 -0400
-Message-Id: <1351185703-14191-9-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1351185703-14191-1-git-send-email-jlayton@redhat.com>
-References: <1351185703-14191-1-git-send-email-jlayton@redhat.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:34345 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933517Ab2JXKQc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Oct 2012 06:16:32 -0400
+Subject: [PATCH] lockd: fix races in per-net NSM client handling
+To: Trond.Myklebust@netapp.com
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Wed, 24 Oct 2012 14:18:10 +0400
+Message-ID: <20121024101713.22494.75940.stgit@localhost.localdomain>
+In-Reply-To: <87fw55hsue.fsf@spindle.srvr.nix>
+References: <87fw55hsue.fsf@spindle.srvr.nix>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since we want to move to using the usermodehelper upcall
-unconditionally, just remove nfsdcld. The kernel code to handle
-this will be formally deprecated in 3.10 as well.
+This patch fixes two problems:
+1) Removes races on NSM creation.
+2) Fixes silly misprint on NSM client destruction (usage counter was checked
+for non-zero value instead of zero).
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 ---
- utils/nfsdcltrack/Makefile.am |   7 +-
- utils/nfsdcltrack/nfsdcld.c   | 607 ------------------------------------------
- utils/nfsdcltrack/nfsdcld.man | 185 -------------
- 3 files changed, 2 insertions(+), 797 deletions(-)
- delete mode 100644 utils/nfsdcltrack/nfsdcld.c
- delete mode 100644 utils/nfsdcltrack/nfsdcld.man
+ fs/lockd/mon.c |   35 +++++++++++++++++++++++------------
+ 1 files changed, 23 insertions(+), 12 deletions(-)
 
-diff --git a/utils/nfsdcltrack/Makefile.am b/utils/nfsdcltrack/Makefile.am
-index 1746a25..a860ffb 100644
---- a/utils/nfsdcltrack/Makefile.am
-+++ b/utils/nfsdcltrack/Makefile.am
-@@ -1,13 +1,10 @@
- ## Process this file with automake to produce Makefile.in
+diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+index e4fb3ba..e3e59f6 100644
+--- a/fs/lockd/mon.c
++++ b/fs/lockd/mon.c
+@@ -85,30 +85,41 @@ static struct rpc_clnt *nsm_create(struct net *net)
+ 	return rpc_create(&args);
+ }
  
--man8_MANS	= nfsdcld.man nfsdcltrack.man
-+man8_MANS	= nfsdcltrack.man
- EXTRA_DIST	= $(man8_MANS)
+-static struct rpc_clnt *nsm_client_get(struct net *net)
++static struct rpc_clnt *nsm_get_client(struct net *net)
+ {
+-	static DEFINE_MUTEX(nsm_create_mutex);
+-	struct rpc_clnt	*clnt;
++	struct rpc_clnt *clnt = NULL;
+ 	struct lockd_net *ln = net_generic(net, lockd_net_id);
  
- AM_CFLAGS	+= -D_LARGEFILE64_SOURCE
--sbin_PROGRAMS	= nfsdcld nfsdcltrack
--
--nfsdcld_SOURCES = nfsdcld.c sqlite.c
--nfsdcld_LDADD = ../../support/nfs/libnfs.a $(LIBEVENT) $(LIBSQLITE) $(LIBCAP)
-+sbin_PROGRAMS	= nfsdcltrack
+ 	spin_lock(&ln->nsm_clnt_lock);
+ 	if (ln->nsm_users) {
+ 		ln->nsm_users++;
+ 		clnt = ln->nsm_clnt;
+-		spin_unlock(&ln->nsm_clnt_lock);
+-		goto out;
+ 	}
+ 	spin_unlock(&ln->nsm_clnt_lock);
++	return clnt;
++}
++
++static struct rpc_clnt *nsm_client_get(struct net *net)
++{
++	static DEFINE_MUTEX(nsm_create_mutex);
++	struct rpc_clnt	*clnt;
++	struct lockd_net *ln = net_generic(net, lockd_net_id);
++
++	clnt = nsm_get_client(net);
++	if (clnt)
++		return clnt;
  
- nfsdcltrack_SOURCES = nfsdcltrack.c sqlite.c
- nfsdcltrack_LDADD = ../../support/nfs/libnfs.a $(LIBSQLITE) $(LIBCAP)
-diff --git a/utils/nfsdcltrack/nfsdcld.c b/utils/nfsdcltrack/nfsdcld.c
-deleted file mode 100644
-index 473d069..0000000
---- a/utils/nfsdcltrack/nfsdcld.c
-+++ /dev/null
-@@ -1,607 +0,0 @@
--/*
-- * nfsdcld.c -- NFSv4 client name tracking daemon
-- *
-- * Copyright (C) 2011  Red Hat, Jeff Layton <jlayton@redhat.com>
-- *
-- * This program is free software; you can redistribute it and/or
-- * modify it under the terms of the GNU General Public License
-- * as published by the Free Software Foundation; either version 2
-- * of the License, or (at your option) any later version.
-- *
-- * This program is distributed in the hope that it will be useful,
-- * but WITHOUT ANY WARRANTY; without even the implied warranty of
-- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-- * GNU General Public License for more details.
-- *
-- * You should have received a copy of the GNU General Public License
-- * along with this program; if not, write to the Free Software
-- * Foundation, Inc., 51 Franklin Street, Fifth Floor,
-- * Boston, MA 02110-1301, USA.
-- */
--
--#ifdef HAVE_CONFIG_H
--#include "config.h"
--#endif /* HAVE_CONFIG_H */
--
--#include <errno.h>
--#include <event.h>
--#include <stdbool.h>
--#include <getopt.h>
--#include <string.h>
--#include <sys/stat.h>
--#include <sys/types.h>
--#include <fcntl.h>
--#include <unistd.h>
--#include <libgen.h>
--#include <sys/inotify.h>
--#ifdef HAVE_SYS_CAPABILITY_H
--#include <sys/prctl.h>
--#include <sys/capability.h>
--#endif
--
--#include "xlog.h"
--#include "nfslib.h"
--#include "cld.h"
--#include "sqlite.h"
--
--#ifndef PIPEFS_DIR
--#define PIPEFS_DIR NFS_STATEDIR "/rpc_pipefs"
--#endif
--
--#define DEFAULT_CLD_PATH	PIPEFS_DIR "/nfsd/cld"
--
--#ifndef CLD_DEFAULT_STORAGEDIR
--#define CLD_DEFAULT_STORAGEDIR NFS_STATEDIR "/nfsdcld"
--#endif
--
--#define UPCALL_VERSION		1
--
--/* private data structures */
--struct cld_client {
--	int			cl_fd;
--	struct event		cl_event;
--	struct cld_msg	cl_msg;
--};
--
--/* global variables */
--static char *pipepath = DEFAULT_CLD_PATH;
--static int 		inotify_fd = -1;
--static struct event	pipedir_event;
--
--static struct option longopts[] =
--{
--	{ "help", 0, NULL, 'h' },
--	{ "foreground", 0, NULL, 'F' },
--	{ "debug", 0, NULL, 'd' },
--	{ "pipe", 1, NULL, 'p' },
--	{ "storagedir", 1, NULL, 's' },
--	{ NULL, 0, 0, 0 },
--};
--
--/* forward declarations */
--static void cldcb(int UNUSED(fd), short which, void *data);
--
--static void
--usage(char *progname)
--{
--	printf("%s [ -hFd ] [ -p pipe ] [ -s dir ]\n", progname);
--}
--
--static int
--cld_set_caps(void)
--{
--	int ret = 0;
--#ifdef HAVE_SYS_CAPABILITY_H
--	unsigned long i;
--	cap_t caps;
--
--	if (getuid() != 0) {
--		xlog(L_ERROR, "Not running as root. Daemon won't be able to "
--			      "open the pipe after dropping capabilities!");
--		return -EINVAL;
--	}
--
--	/* prune the bounding set to nothing */
--	for (i = 0; prctl(PR_CAPBSET_READ, i, 0, 0, 0) >= 0 ; ++i) {
--		ret = prctl(PR_CAPBSET_DROP, i, 0, 0, 0);
--		if (ret) {
--			xlog(L_ERROR, "Unable to prune capability %lu from "
--				      "bounding set: %m", i);
--			return -errno;
--		}
--	}
--
--	/* get a blank capset */
--	caps = cap_init();
--	if (caps == NULL) {
--		xlog(L_ERROR, "Unable to get blank capability set: %m");
--		return -errno;
--	}
--
--	/* reset the process capabilities */
--	if (cap_set_proc(caps) != 0) {
--		xlog(L_ERROR, "Unable to set process capabilities: %m");
--		ret = -errno;
--	}
--	cap_free(caps);
--#endif
--	return ret;
--}
--
--#define INOTIFY_EVENT_MAX (sizeof(struct inotify_event) + NAME_MAX)
--
--static int
--cld_pipe_open(struct cld_client *clnt)
--{
--	int fd;
--
--	xlog(D_GENERAL, "%s: opening upcall pipe %s", __func__, pipepath);
--	fd = open(pipepath, O_RDWR, 0);
--	if (fd < 0) {
--		xlog(D_GENERAL, "%s: open of %s failed: %m", __func__, pipepath);
--		return -errno;
--	}
--
--	if (clnt->cl_event.ev_flags & EVLIST_INIT)
--		event_del(&clnt->cl_event);
--	if (clnt->cl_fd >= 0)
--		close(clnt->cl_fd);
--
--	clnt->cl_fd = fd;
--	event_set(&clnt->cl_event, clnt->cl_fd, EV_READ, cldcb, clnt);
--	/* event_add is done by the caller */
--	return 0;
--}
--
--static void
--cld_inotify_cb(int UNUSED(fd), short which, void *data)
--{
--	int ret;
--	size_t elen;
--	ssize_t rret;
--	char evbuf[INOTIFY_EVENT_MAX];
--	char *dirc = NULL, *pname;
--	struct inotify_event *event = (struct inotify_event *)evbuf;
--	struct cld_client *clnt = data;
--
--	if (which != EV_READ)
--		return;
--
--	xlog(D_GENERAL, "%s: called for EV_READ", __func__);
--
--	dirc = strndup(pipepath, PATH_MAX);
--	if (!dirc) {
--		xlog(L_ERROR, "%s: unable to allocate memory", __func__);
--		goto out;
--	}
--
--	rret = read(inotify_fd, evbuf, INOTIFY_EVENT_MAX);
--	if (rret < 0) {
--		xlog(L_ERROR, "%s: read from inotify fd failed: %m", __func__);
--		goto out;
--	}
--
--	/* check to see if we have a filename in the evbuf */
--	if (!event->len) {
--		xlog(D_GENERAL, "%s: no filename in inotify event", __func__);
--		goto out;
--	}
--
--	pname = basename(dirc);
--	elen = strnlen(event->name, event->len);
--
--	/* does the filename match our pipe? */
--	if (strlen(pname) != elen || memcmp(pname, event->name, elen)) {
--		xlog(D_GENERAL, "%s: wrong filename (%s)", __func__,
--				event->name);
--		goto out;
--	}
--
--	ret = cld_pipe_open(clnt);
--	switch (ret) {
--	case 0:
--		/* readd the event for the cl_event pipe */
--		event_add(&clnt->cl_event, NULL);
--		break;
--	case -ENOENT:
--		/* pipe must have disappeared, wait for it to come back */
--		goto out;
--	default:
--		/* anything else is fatal */
--		xlog(L_FATAL, "%s: unable to open new pipe (%d). Aborting.",
--			ret, __func__);
--		exit(ret);
--	}
--
+ 	mutex_lock(&nsm_create_mutex);
+-	clnt = nsm_create(net);
+-	if (!IS_ERR(clnt)) {
+-		ln->nsm_clnt = clnt;
+-		smp_wmb();
+-		ln->nsm_users = 1;
++	clnt = nsm_get_client(net);
++	if (clnt == NULL) {
++		clnt = nsm_create(net);
++		if (!IS_ERR(clnt)) {
++			ln->nsm_clnt = clnt;
++			smp_wmb();
++			ln->nsm_users = 1;
++		}
+ 	}
+ 	mutex_unlock(&nsm_create_mutex);
 -out:
--	event_add(&pipedir_event, NULL);
--	free(dirc);
--}
--
--static int
--cld_inotify_setup(void)
--{
--	int ret;
--	char *dirc, *dname;
--
--	dirc = strndup(pipepath, PATH_MAX);
--	if (!dirc) {
--		xlog_err("%s: unable to allocate memory", __func__);
--		ret = -ENOMEM;
--		goto out_free;
--	}
--
--	dname = dirname(dirc);
--
--	inotify_fd = inotify_init();
--	if (inotify_fd < 0) {
--		xlog_err("%s: inotify_init failed: %m", __func__);
--		ret = -errno;
--		goto out_free;
--	}
--
--	ret = inotify_add_watch(inotify_fd, dname, IN_CREATE);
--	if (ret < 0) {
--		xlog_err("%s: inotify_add_watch failed: %m", __func__);
--		ret = -errno;
--		goto out_err;
--	}
--
--out_free:
--	free(dirc);
--	return 0;
--out_err:
--	close(inotify_fd);
--	goto out_free;
--}
--
--/*
-- * Set an inotify watch on the directory that should contain the pipe, and then
-- * try to open it. If it fails with anything but -ENOENT, return the error
-- * immediately.
-- *
-- * If it succeeds, then set up the pipe event handler. At that point, set up
-- * the inotify event handler and go ahead and return success.
-- */
--static int
--cld_pipe_init(struct cld_client *clnt)
--{
--	int ret;
--
--	xlog(D_GENERAL, "%s: init pipe handlers", __func__);
--
--	ret = cld_inotify_setup();
--	if (ret != 0)
--		goto out;
--
--	clnt->cl_fd = -1;
--	ret = cld_pipe_open(clnt);
--	switch (ret) {
--	case 0:
--		/* add the event and we're good to go */
--		event_add(&clnt->cl_event, NULL);
--		break;
--	case -ENOENT:
--		/* ignore this error -- cld_inotify_cb will handle it */
--		ret = 0;
--		break;
--	default:
--		/* anything else is fatal */
--		close(inotify_fd);
--		goto out;
--	}
--
--	/* set event for inotify read */
--	event_set(&pipedir_event, inotify_fd, EV_READ, cld_inotify_cb, clnt);
--	event_add(&pipedir_event, NULL);
--out:
--	return ret;
--}
--
--static void
--cld_not_implemented(struct cld_client *clnt)
--{
--	int ret;
--	ssize_t bsize, wsize;
--	struct cld_msg *cmsg = &clnt->cl_msg;
--
--	xlog(D_GENERAL, "%s: downcalling with not implemented error", __func__);
--
--	/* set up reply */
--	cmsg->cm_status = -EOPNOTSUPP;
--
--	bsize = sizeof(*cmsg);
--
--	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
--	if (wsize != bsize)
--		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
--			 __func__, wsize);
--
--	/* reopen pipe, just to be sure */
--	ret = cld_pipe_open(clnt);
--	if (ret) {
--		xlog(L_FATAL, "%s: unable to reopen pipe: %d", __func__, ret);
--		exit(ret);
--	}
--}
--
--static void
--cld_create(struct cld_client *clnt)
--{
--	int ret;
--	ssize_t bsize, wsize;
--	struct cld_msg *cmsg = &clnt->cl_msg;
--
--	xlog(D_GENERAL, "%s: create client record.", __func__);
--
--	ret = sqlite_insert_client(cmsg->cm_u.cm_name.cn_id,
--				   cmsg->cm_u.cm_name.cn_len);
--
--	cmsg->cm_status = ret ? -EREMOTEIO : ret;
--
--	bsize = sizeof(*cmsg);
--
--	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
--	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
--	if (wsize != bsize) {
--		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
--			 __func__, wsize);
--		ret = cld_pipe_open(clnt);
--		if (ret) {
--			xlog(L_FATAL, "%s: unable to reopen pipe: %d",
--					__func__, ret);
--			exit(ret);
--		}
--	}
--}
--
--static void
--cld_remove(struct cld_client *clnt)
--{
--	int ret;
--	ssize_t bsize, wsize;
--	struct cld_msg *cmsg = &clnt->cl_msg;
--
--	xlog(D_GENERAL, "%s: remove client record.", __func__);
--
--	ret = sqlite_remove_client(cmsg->cm_u.cm_name.cn_id,
--				   cmsg->cm_u.cm_name.cn_len);
--
--	cmsg->cm_status = ret ? -EREMOTEIO : ret;
--
--	bsize = sizeof(*cmsg);
--
--	xlog(D_GENERAL, "%s: downcall with status %d", __func__,
--			cmsg->cm_status);
--	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
--	if (wsize != bsize) {
--		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
--			 __func__, wsize);
--		ret = cld_pipe_open(clnt);
--		if (ret) {
--			xlog(L_FATAL, "%s: unable to reopen pipe: %d",
--					__func__, ret);
--			exit(ret);
--		}
--	}
--}
--
--static void
--cld_check(struct cld_client *clnt)
--{
--	int ret;
--	ssize_t bsize, wsize;
--	struct cld_msg *cmsg = &clnt->cl_msg;
--
--	xlog(D_GENERAL, "%s: check client record", __func__);
--
--	ret = sqlite_check_client(cmsg->cm_u.cm_name.cn_id,
--				  cmsg->cm_u.cm_name.cn_len);
--
--	/* set up reply */
--	cmsg->cm_status = ret ? -EACCES : ret;
--
--	bsize = sizeof(*cmsg);
--
--	xlog(D_GENERAL, "%s: downcall with status %d", __func__,
--			cmsg->cm_status);
--	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
--	if (wsize != bsize) {
--		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
--			 __func__, wsize);
--		ret = cld_pipe_open(clnt);
--		if (ret) {
--			xlog(L_FATAL, "%s: unable to reopen pipe: %d",
--					__func__, ret);
--			exit(ret);
--		}
--	}
--}
--
--static void
--cld_gracedone(struct cld_client *clnt)
--{
--	int ret;
--	ssize_t bsize, wsize;
--	struct cld_msg *cmsg = &clnt->cl_msg;
--
--	xlog(D_GENERAL, "%s: grace done. cm_gracetime=%ld", __func__,
--			cmsg->cm_u.cm_gracetime);
--
--	ret = sqlite_remove_unreclaimed(cmsg->cm_u.cm_gracetime);
--
--	/* set up reply: downcall with 0 status */
--	cmsg->cm_status = ret ? -EREMOTEIO : ret;
--
--	bsize = sizeof(*cmsg);
--
--	xlog(D_GENERAL, "Doing downcall with status %d", cmsg->cm_status);
--	wsize = atomicio((void *)write, clnt->cl_fd, cmsg, bsize);
--	if (wsize != bsize) {
--		xlog(L_ERROR, "%s: problem writing to cld pipe (%ld): %m",
--			 __func__, wsize);
--		ret = cld_pipe_open(clnt);
--		if (ret) {
--			xlog(L_FATAL, "%s: unable to reopen pipe: %d",
--					__func__, ret);
--			exit(ret);
--		}
--	}
--}
--
--static void
--cldcb(int UNUSED(fd), short which, void *data)
--{
--	ssize_t len;
--	struct cld_client *clnt = data;
--	struct cld_msg *cmsg = &clnt->cl_msg;
--
--	if (which != EV_READ)
--		goto out;
--
--	len = atomicio(read, clnt->cl_fd, cmsg, sizeof(*cmsg));
--	if (len <= 0) {
--		xlog(L_ERROR, "%s: pipe read failed: %m", __func__);
--		cld_pipe_open(clnt);
--		goto out;
--	}
--
--	if (cmsg->cm_vers != UPCALL_VERSION) {
--		xlog(L_ERROR, "%s: unsupported upcall version: %hu",
--				cmsg->cm_vers);
--		cld_pipe_open(clnt);
--		goto out;
--	}
--
--	switch(cmsg->cm_cmd) {
--	case Cld_Create:
--		cld_create(clnt);
--		break;
--	case Cld_Remove:
--		cld_remove(clnt);
--		break;
--	case Cld_Check:
--		cld_check(clnt);
--		break;
--	case Cld_GraceDone:
--		cld_gracedone(clnt);
--		break;
--	default:
--		xlog(L_WARNING, "%s: command %u is not yet implemented",
--				__func__, cmsg->cm_cmd);
--		cld_not_implemented(clnt);
--	}
--out:
--	event_add(&clnt->cl_event, NULL);
--}
--
--int
--main(int argc, char **argv)
--{
--	char arg;
--	int rc = 0;
--	bool foreground = false;
--	char *progname;
--	char *storagedir = CLD_DEFAULT_STORAGEDIR;
--	struct cld_client clnt;
--
--	memset(&clnt, 0, sizeof(clnt));
--
--	progname = strdup(basename(argv[0]));
--	if (!progname) {
--		fprintf(stderr, "%s: unable to allocate memory.\n", argv[0]);
--		return 1;
--	}
--
--	event_init();
--	xlog_syslog(0);
--	xlog_stderr(1);
--
--	/* process command-line options */
--	while ((arg = getopt_long(argc, argv, "hdFp:s:", longopts,
--				  NULL)) != EOF) {
--		switch (arg) {
--		case 'd':
--			xlog_config(D_ALL, 1);
--			break;
--		case 'F':
--			foreground = true;
--			break;
--		case 'p':
--			pipepath = optarg;
--			break;
--		case 's':
--			storagedir = optarg;
--			break;
--		default:
--			usage(progname);
--			return 0;
--		}
--	}
--
--
--	xlog_open(progname);
--	if (!foreground) {
--		xlog_syslog(1);
--		xlog_stderr(0);
--		rc = daemon(0, 0);
--		if (rc) {
--			xlog(L_ERROR, "Unable to daemonize: %m");
--			goto out;
--		}
--	}
--
--	/* drop all capabilities */
--	rc = cld_set_caps();
--	if (rc)
--		goto out;
--
--	/*
--	 * now see if the storagedir is writable by root w/o CAP_DAC_OVERRIDE.
--	 * If it isn't then give the user a warning but proceed as if
--	 * everything is OK. If the DB has already been created, then
--	 * everything might still work. If it doesn't exist at all, then
--	 * assume that the maindb init will be able to create it. Fail on
--	 * anything else.
--	 */
--	if (access(storagedir, W_OK) == -1) {
--		switch (errno) {
--		case EACCES:
--			xlog(L_WARNING, "Storage directory %s is not writable. "
--					"Should be owned by root and writable "
--					"by owner!", storagedir);
--			break;
--		case ENOENT:
--			/* ignore and assume that we can create dir as root */
--			break;
--		default:
--			xlog(L_ERROR, "Unexpected error when checking access "
--				      "on %s: %m", storagedir);
--			rc = -errno;
--			goto out;
--		}
--	}
--
--	/* set up storage db */
--	rc = sqlite_maindb_init(storagedir);
--	if (rc) {
--		xlog(L_ERROR, "Failed to open main database: %d", rc);
--		goto out;
--	}
--
--	/* set up event handler */
--	rc = cld_pipe_init(&clnt);
--	if (rc)
--		goto out;
--
--	xlog(D_GENERAL, "%s: Starting event dispatch handler.", __func__);
--	rc = event_dispatch();
--	if (rc < 0)
--		xlog(L_ERROR, "%s: event_dispatch failed: %m", __func__);
--
--	close(clnt.cl_fd);
--	close(inotify_fd);
--out:
--	free(progname);
--	return rc;
--}
-diff --git a/utils/nfsdcltrack/nfsdcld.man b/utils/nfsdcltrack/nfsdcld.man
-deleted file mode 100644
-index 9ddaf64..0000000
---- a/utils/nfsdcltrack/nfsdcld.man
-+++ /dev/null
-@@ -1,185 +0,0 @@
--.\" Automatically generated by Pod::Man 2.22 (Pod::Simple 3.13)
--.\"
--.\" Standard preamble:
--.\" ========================================================================
--.de Sp \" Vertical space (when we can't use .PP)
--.if t .sp .5v
--.if n .sp
--..
--.de Vb \" Begin verbatim text
--.ft CW
--.nf
--.ne \\$1
--..
--.de Ve \" End verbatim text
--.ft R
--.fi
--..
--.\" Set up some character translations and predefined strings.  \*(-- will
--.\" give an unbreakable dash, \*(PI will give pi, \*(L" will give a left
--.\" double quote, and \*(R" will give a right double quote.  \*(C+ will
--.\" give a nicer C++.  Capital omega is used to do unbreakable dashes and
--.\" therefore won't be available.  \*(C` and \*(C' expand to `' in nroff,
--.\" nothing in troff, for use with C<>.
--.tr \(*W-
--.ds C+ C\v'-.1v'\h'-1p'\s-2+\h'-1p'+\s0\v'.1v'\h'-1p'
--.ie n \{\
--.    ds -- \(*W-
--.    ds PI pi
--.    if (\n(.H=4u)&(1m=24u) .ds -- \(*W\h'-12u'\(*W\h'-12u'-\" diablo 10 pitch
--.    if (\n(.H=4u)&(1m=20u) .ds -- \(*W\h'-12u'\(*W\h'-8u'-\"  diablo 12 pitch
--.    ds L" ""
--.    ds R" ""
--.    ds C` ""
--.    ds C' ""
--'br\}
--.el\{\
--.    ds -- \|\(em\|
--.    ds PI \(*p
--.    ds L" ``
--.    ds R" ''
--'br\}
--.\"
--.\" Escape single quotes in literal strings from groff's Unicode transform.
--.ie \n(.g .ds Aq \(aq
--.el       .ds Aq '
--.\"
--.\" If the F register is turned on, we'll generate index entries on stderr for
--.\" titles (.TH), headers (.SH), subsections (.SS), items (.Ip), and index
--.\" entries marked with X<> in POD.  Of course, you'll have to process the
--.\" output yourself in some meaningful fashion.
--.ie \nF \{\
--.    de IX
--.    tm Index:\\$1\t\\n%\t"\\$2"
--..
--.    nr % 0
--.    rr F
--.\}
--.el \{\
--.    de IX
--..
--.\}
--.\"
--.\" Accent mark definitions (@(#)ms.acc 1.5 88/02/08 SMI; from UCB 4.2).
--.\" Fear.  Run.  Save yourself.  No user-serviceable parts.
--.    \" fudge factors for nroff and troff
--.if n \{\
--.    ds #H 0
--.    ds #V .8m
--.    ds #F .3m
--.    ds #[ \f1
--.    ds #] \fP
--.\}
--.if t \{\
--.    ds #H ((1u-(\\\\n(.fu%2u))*.13m)
--.    ds #V .6m
--.    ds #F 0
--.    ds #[ \&
--.    ds #] \&
--.\}
--.    \" simple accents for nroff and troff
--.if n \{\
--.    ds ' \&
--.    ds ` \&
--.    ds ^ \&
--.    ds , \&
--.    ds ~ ~
--.    ds /
--.\}
--.if t \{\
--.    ds ' \\k:\h'-(\\n(.wu*8/10-\*(#H)'\'\h"|\\n:u"
--.    ds ` \\k:\h'-(\\n(.wu*8/10-\*(#H)'\`\h'|\\n:u'
--.    ds ^ \\k:\h'-(\\n(.wu*10/11-\*(#H)'^\h'|\\n:u'
--.    ds , \\k:\h'-(\\n(.wu*8/10)',\h'|\\n:u'
--.    ds ~ \\k:\h'-(\\n(.wu-\*(#H-.1m)'~\h'|\\n:u'
--.    ds / \\k:\h'-(\\n(.wu*8/10-\*(#H)'\z\(sl\h'|\\n:u'
--.\}
--.    \" troff and (daisy-wheel) nroff accents
--.ds : \\k:\h'-(\\n(.wu*8/10-\*(#H+.1m+\*(#F)'\v'-\*(#V'\z.\h'.2m+\*(#F'.\h'|\\n:u'\v'\*(#V'
--.ds 8 \h'\*(#H'\(*b\h'-\*(#H'
--.ds o \\k:\h'-(\\n(.wu+\w'\(de'u-\*(#H)/2u'\v'-.3n'\*(#[\z\(de\v'.3n'\h'|\\n:u'\*(#]
--.ds d- \h'\*(#H'\(pd\h'-\w'~'u'\v'-.25m'\f2\(hy\fP\v'.25m'\h'-\*(#H'
--.ds D- D\\k:\h'-\w'D'u'\v'-.11m'\z\(hy\v'.11m'\h'|\\n:u'
--.ds th \*(#[\v'.3m'\s+1I\s-1\v'-.3m'\h'-(\w'I'u*2/3)'\s-1o\s+1\*(#]
--.ds Th \*(#[\s+2I\s-2\h'-\w'I'u*3/5'\v'-.3m'o\v'.3m'\*(#]
--.ds ae a\h'-(\w'a'u*4/10)'e
--.ds Ae A\h'-(\w'A'u*4/10)'E
--.    \" corrections for vroff
--.if v .ds ~ \\k:\h'-(\\n(.wu*9/10-\*(#H)'\s-2\u~\d\s+2\h'|\\n:u'
--.if v .ds ^ \\k:\h'-(\\n(.wu*10/11-\*(#H)'\v'-.4m'^\v'.4m'\h'|\\n:u'
--.    \" for low resolution devices (crt and lpr)
--.if \n(.H>23 .if \n(.V>19 \
--\{\
--.    ds : e
--.    ds 8 ss
--.    ds o a
--.    ds d- d\h'-1'\(ga
--.    ds D- D\h'-1'\(hy
--.    ds th \o'bp'
--.    ds Th \o'LP'
--.    ds ae ae
--.    ds Ae AE
--.\}
--.rm #[ #] #H #V #F C
--.\" ========================================================================
--.\"
--.IX Title "NFSDCLD 8"
--.TH NFSDCLD 8 "2011-12-21" "" ""
--.\" For nroff, turn off justification.  Always turn off hyphenation; it makes
--.\" way too many mistakes in technical documents.
--.if n .ad l
--.nh
--.SH "NAME"
--nfsdcld \- NFSv4 Client Tracking Daemon
--.SH "SYNOPSIS"
--.IX Header "SYNOPSIS"
--nfsdcld [\-d] [\-F] [\-p path] [\-s stable storage dir]
--.SH "DESCRIPTION"
--.IX Header "DESCRIPTION"
--nfsdcld is the NFSv4 client tracking daemon. It is not necessary to run
--this daemon on machines that are not acting as NFSv4 servers.
--.PP
--When a network partition is combined with a server reboot, there are
--edge conditions that can cause the server to grant lock reclaims when
--other clients have taken conflicting locks in the interim. A more detailed
--explanation of this issue is described in \s-1RFC\s0 3530, section 8.6.3.
--.PP
--In order to prevent these problems, the server must track a small amount
--of per-client information on stable storage. This daemon provides the
--userspace piece of that functionality.
--.SH "OPTIONS"
--.IX Header "OPTIONS"
--.IP "\fB\-d\fR, \fB\-\-debug\fR" 4
--.IX Item "-d, --debug"
--Enable debug level logging.
--.IP "\fB\-F\fR, \fB\-\-foreground\fR" 4
--.IX Item "-F, --foreground"
--Runs the daemon in the foreground and prints all output to stderr
--.IP "\fB\-p\fR \fIpipe\fR, \fB\-\-pipe\fR=\fIpipe\fR" 4
--.IX Item "-p pipe, --pipe=pipe"
--Location of the \*(L"cld\*(R" upcall pipe. The default value is
--\&\fI/var/lib/nfs/rpc_pipefs/nfsd/cld\fR. If the pipe does not exist when the
--daemon starts then it will wait for it to be created.
--.IP "\fB\-s\fR \fIstorage_dir\fR, \fB\-\-storagedir\fR=\fIstorage_dir\fR" 4
--.IX Item "-s storagedir, --storagedir=storage_dir"
--Directory where stable storage information should be kept. The default
--value is \fI/var/lib/nfs/nfsdcld\fR.
--.SH "NOTES"
--.IX Header "NOTES"
--The Linux kernel NFSv4 server has historically tracked this information
--on stable storage by manipulating information on the filesystem
--directly, in the directory to which \fI/proc/fs/nfsd/nfsv4recoverydir\fR
--points.
--.PP
--This daemon requires a kernel that supports the nfsdcld upcall. If the
--kernel does not support the new upcall, or is using the legacy client
--name tracking code then it will not create the pipe that nfsdcld uses to
--talk to the kernel.
--.PP
--This daemon should be run as root, as the pipe that it uses to communicate
--with the kernel is only accessable by root. The daemon however does drop all
--superuser capabilities after starting. Because of this, the \fIstoragedir\fR
--should be owned by root, and be readable and writable by owner.
--.SH "AUTHORS"
--.IX Header "AUTHORS"
--The nfsdcld daemon was developed by Jeff Layton <jlayton@redhat.com>.
--- 
-1.7.11.7
+ 	return clnt;
+ }
+ 
+@@ -120,7 +131,7 @@ static void nsm_client_put(struct net *net)
+ 
+ 	spin_lock(&ln->nsm_clnt_lock);
+ 	if (ln->nsm_users) {
+-		if (--ln->nsm_users)
++		if (--ln->nsm_users == 0)
+ 			ln->nsm_clnt = NULL;
+ 		shutdown = !ln->nsm_users;
+ 	}
 
