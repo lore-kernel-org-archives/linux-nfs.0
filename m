@@ -1,48 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:56514 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751475Ab2JaBgm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Oct 2012 21:36:42 -0400
+Received: from fieldses.org ([174.143.236.118]:37956 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934318Ab2JXUip (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Oct 2012 16:38:45 -0400
+Date: Wed, 24 Oct 2012 16:38:43 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+Subject: Re: 3.7-rc1 NFSv3/sec=krb5 mkdir failure
+Message-ID: <20121024203843.GE6697@fieldses.org>
+References: <20121016125832.GC30649@fieldses.org>
+ <20121024200249.GC6697@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9092906F7@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121024201517.GD6697@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA909290827@SACEXCMBX04-PRD.hq.netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <CA+55aFzFMrOUwdHHJ5-YUtEzTHGvdRosQc+K+trjub0K-w-D3A@mail.gmail.com>
-References: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
- <20121030214257.GB2681@htj.dyndns.org> <CA+1xoqeCKS2E4TWCUCELjDqV2pWS4v6EyV6K-=w-GRi_K6quiQ@mail.gmail.com>
- <1351646186.4004.41.camel@gandalf.local.home> <CA+55aFzFMrOUwdHHJ5-YUtEzTHGvdRosQc+K+trjub0K-w-D3A@mail.gmail.com>
-From: Sasha Levin <levinsasha928@gmail.com>
-Date: Tue, 30 Oct 2012 21:36:21 -0400
-Message-ID: <CA+1xoqd8vAn+N1JuhpXRjSr74OPtnnw_1UBhf8=c4WDC3jOirw@mail.gmail.com>
-Subject: Re: [PATCH v8 01/16] hashtable: introduce a small and naive hashtable
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Steven Rostedt <rostedt@goodmis.org>, Tejun Heo <tj@kernel.org>,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
-        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
-        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
-        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA909290827@SACEXCMBX04-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+On Wed, Oct 24, 2012 at 08:31:16PM +0000, Myklebust, Trond wrote:
+> > -----Original Message-----
+> > From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> > Sent: Wednesday, October 24, 2012 4:15 PM
+> > To: Myklebust, Trond
+> > Cc: linux-nfs@vger.kernel.org; Schumaker, Bryan
+> > Subject: Re: 3.7-rc1 NFSv3/sec=krb5 mkdir failure
+> > 
+> > On Wed, Oct 24, 2012 at 08:07:55PM +0000, Myklebust, Trond wrote:
+> > > > -----Original Message-----
+> > > > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> > > > owner@vger.kernel.org] On Behalf Of J. Bruce Fields
+> > > > Sent: Wednesday, October 24, 2012 4:03 PM
+> > > > To: linux-nfs@vger.kernel.org; Myklebust, Trond; Schumaker, Bryan
+> > > > Subject: Re: 3.7-rc1 NFSv3/sec=krb5 mkdir failure
+> > > >
+> > > > Anyone get a chance to look at this?  It seems very reproduceable.
+> > > >
+> > > > --b.
+> > > >
+> > > > On Tue, Oct 16, 2012 at 08:58:32AM -0400, bfields wrote:
+> > > > > On 3.7-rc1:
+> > > > >
+> > > > > 	client# mount -tnfs -osec=krb5,vers=3 server:/exports/ext4 /mnt/
+> > > > >
+> > > > > 		server# ls -l /exports/ext4|grep TMP
+> > > > > 		server#
+> > > > >
+> > > > > 	# mkdir /mnt/TMP
+> > > > > 	mkdir: cannot create directory `/mnt/TMP': Permission denied
+> > > > >
+> > > > > 		server# ls -l /exports/ext4|grep TMP
+> > > > > 		drwxr-xr-x  2 nfsnobody nfsnobody 4096 Oct 16 08:56 TMP
+> > > > > 		server#
+> > > > >
+> > > > > Wireshark also shows that the create succeeds.
+> > >
+> > > Can you share the wireshark trace?
+> > 
+> > Sure.  This covers the mount and mkdir.  The mkdir call and reply are in
+> > frames 77 and 78.
+> 
+> Hmm.... Can you please check if the ACL is being set correctly on the server? I suspect that might be the source of the error.
 
-> But whatever. This series has gotten way too much bike-shedding
-> anyway. I think it should just be applied, since it does remove lines
-> of code overall. I'd even possibly apply it to mainline, but it seems
-> to be against linux-next.
+ACLs on the export and the new directory are both trivial:
 
-Yup, I switched to using -next because I've been running my
-trinity/KVM tools tests with it.
+	[root@pip1 ~]# ls -ld /exports/ext4/
+	drwxrwxrwx. 8 root root 4096 Oct 24 16:12 /exports/ext4/
+	[root@pip1 ~]# getfacl /exports/ext4
+	getfacl: Removing leading '/' from absolute path names
+	# file: exports/ext4
+	# owner: root
+	# group: root
+	user::rwx
+	group::rwx
+	other::rwx
 
-I can either rebase that on top of mainline, or we can ask maintainers
-to take it to their own trees if you take only 01/16 into mainline.
-What would you prefer?
+	[root@pip1 ~]# ls -ld /exports/ext4/TMP
+	drwxr-xr-x 2 nfsnobody nfsnobody 4096 Oct 24 16:12
+	/exports/ext4/TMP
+	[root@pip1 ~]# getfacl /exports/ext4/TMP
+	getfacl: Removing leading '/' from absolute path names
+	# file: exports/ext4/TMP
+	# owner: nfsnobody
+	# group: nfsnobody
+	user::rwx
+	group::r-x
+	other::r-x
 
+	[root@pip1 ~]# 
 
-Thanks,
-Sasha
+--b.
