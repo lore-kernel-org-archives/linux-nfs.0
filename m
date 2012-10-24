@@ -1,49 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-out.m-online.net ([212.18.0.9]:33587 "EHLO
-	mail-out.m-online.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965200Ab2JDO6D (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Oct 2012 10:58:03 -0400
-From: Marek Vasut <marex@denx.de>
+Received: from mail-vb0-f46.google.com ([209.85.212.46]:41974 "EHLO
+	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755194Ab2JXMkw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Oct 2012 08:40:52 -0400
+Received: by mail-vb0-f46.google.com with SMTP id ff1so456540vbb.19
+        for <linux-nfs@vger.kernel.org>; Wed, 24 Oct 2012 05:40:51 -0700 (PDT)
+Date: Wed, 24 Oct 2012 08:40:47 -0400
+From: Chris Perl <chris.perl@gmail.com>
 To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH] net: sunrpc: xdr: Change message to pr_debug level
-Date: Thu, 4 Oct 2012 16:57:58 +0200
-Cc: Fabio Estevam <fabio.estevam@freescale.com>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-References: <1349360495-29325-1-git-send-email-fabio.estevam@freescale.com> <201210041625.23710.marex@denx.de> <4FA345DA4F4AE44899BD2B03EEEC2FA9090049AD@SACEXCMBX04-PRD.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9090049AD@SACEXCMBX04-PRD.hq.netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: RPC Race Condition
+Message-ID: <20121024124047.GD27191@nyc-qws-132.nyc.delacy.com>
+References: <20121022180339.GC24763@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA909289403@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121022202611.GA27191@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90928AB39@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121023134551.GB27191@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90928C74A@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121023200855.GC27191@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90928DCDD@SACEXCMBX04-PRD.hq.netapp.com>
 MIME-Version: 1.0
-Content-Type: Text/Plain;
-  charset="us-ascii"
-Message-Id: <201210041657.59046.marex@denx.de>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90928DCDD@SACEXCMBX04-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Dear Myklebust, Trond,
-
-> > -----Original Message-----
-> > From: Marek Vasut [mailto:marex@denx.de]
-> > Sent: Thursday, October 04, 2012 7:25 AM
-> > To: Fabio Estevam
-> > Cc: davem@davemloft.net; Myklebust, Trond; netdev@vger.kernel.org;
-> > linux-nfs@vger.kernel.org
-> > Subject: Re: [PATCH] net: sunrpc: xdr: Change message to pr_debug level
-> > 
-> > Dear Fabio Estevam,
-> > 
-> > > commit 49f6189 (SUNRPC: Optimise away unnecessary data moves in
-> > > xdr_align_pages) has added a pr_info that floods dmesg when booting
-> > > via NFS.
-> > > 
-> > > There is also a note in the commit log: "Warning! Contains debugging
-> > > printks!"
+On Tue, Oct 23, 2012 at 09:58:35PM +0000, Myklebust, Trond wrote:
+> The only problem there would be the call to xs_sock_mark_closed() in
+> xs_abort_connection. As far as I can tell, all we want to do there is
+> clear all those flags.
 > 
-> ...which meant that it contained debugging code, and was obviously not
-> appropriate for merging upstream. The final version has already dropped
-> the debugging printks.
+> How about the following?
 
-Uh oh, the version with debug prints made it into -next .
+Looks good!  With all 4 patches applied things recover correctly and I
+no longer see anything racing.
 
-Best regards,
-Marek Vasut
+Just to be clear, I took your patches and integrated them into the
+CentOS 2.6.32-279.5.2.el6.centos.plus kernel.  Basically everything was
+the same except the offsets and perhaps a little of the surrounding
+context.  I do not believe the meaning of the patches was changed at
+all.
+
+If you want me to test your latest git where these commits live, I can,
+just point me at the git repo url.
+
+Thanks for the help!
+
+Chris
