@@ -1,117 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:24085 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:9991 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932199Ab2JRR3b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Oct 2012 13:29:31 -0400
-Message-ID: <50803C79.7080602@RedHat.com>
-Date: Thu, 18 Oct 2012 13:29:29 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1750802Ab2JXE1U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Oct 2012 00:27:20 -0400
+Message-ID: <50876E1D.3040501@redhat.com>
+Date: Tue, 23 Oct 2012 23:27:09 -0500
+From: Eric Sandeen <sandeen@redhat.com>
 MIME-Version: 1.0
-To: andros@netapp.com
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/1] GSSD: Pass GSS_context lifetime to the kernel.
-References: <1346961490-2624-1-git-send-email-andros@netapp.com>
-In-Reply-To: <1346961490-2624-1-git-send-email-andros@netapp.com>
+To: Nix <nix@esperi.org.uk>
+CC: "Ted Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
+        Bryan Schumaker <bjschuma@netapp.com>, Peng Tao <bergwolf@gmail.com>,
+        Trond.Myklebust@netapp.com, gregkh@linuxfoundation.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3
+ (and other stable branches?)
+References: <87objupjlr.fsf@spindle.srvr.nix> <20121023013343.GB6370@fieldses.org> <87mwzdnuww.fsf@spindle.srvr.nix> <20121023143019.GA3040@fieldses.org> <874nllxi7e.fsf_-_@spindle.srvr.nix> <87pq48nbyz.fsf_-_@spindle.srvr.nix> <508740B2.2030401@redhat.com> <87txtkld4h.fsf@spindle.srvr.nix>
+In-Reply-To: <87txtkld4h.fsf@spindle.srvr.nix>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 10/23/12 11:15 PM, Nix wrote:
+> On 24 Oct 2012, Eric Sandeen uttered the following:
+> 
+>> On 10/23/12 3:57 PM, Nix wrote:
+>>> The only unusual thing about the filesystems on this machine are that
+>>> they have hardware RAID-5 (using the Areca driver), so I'm mounting with
+>>> 'nobarrier': 
+>>
+>> I should have read more.  :(  More questions follow:
+>>
+>> * Does the Areca have a battery backed write cache?
+> 
+> Yes (though I'm not powering off, just rebooting). Battery at 100% and
+> happy, though the lack of power-off means it's not actually getting
+> used, since the cache is obviously mains-backed as well.
+> 
+>> * Are you crashing or rebooting cleanly?
+> 
+> Rebooting cleanly, everything umounted happily including /home and /var.
+> 
+>> * Do you see log recovery messages in the logs for this filesystem?
+> 
+> My memory says yes, but nothing seems to be logged when this happens
+> (though with my logs on the first filesystem damaged by this, this is
+> rather hard to tell, they're all quite full of NULs by now).
+> 
+> I'll double-reboot tomorrow via the faulty kernel and check, unless I
+> get asked not to in the interim. (And then double-reboot again to fsck
+> everything...)
+> 
+>>> the full set of options for all my ext4 filesystems are:
+>>>
+>>> rw,nosuid,nodev,relatime,journal_checksum,journal_async_commit,nobarrier,quota,
+>>> usrquota,grpquota,commit=30,stripe=16,data=ordered,usrquota,grpquota
+>>
+>> ok journal_async_commit is off the reservation a bit; that's really not
+>> tested, and Jan had serious reservations about its safety.
+> 
+> OK, well, I've been 'testing' it for years :) No problems until now. (If
+> anything, I was more concerned about journal_checksum. I thought that
+> had actually been implicated in corruption before now...)
 
+It had, but I fixed it AFAIK; OTOH, we turned it off by default
+after that episode.
 
-On 06/09/12 15:58, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
+>> * Can you reproduce this w/o journal_async_commit?
 > 
-> The kernel gss_cl_ctx stores the context lifetime in gc_expiry, set
-> by gssd in do_downcall() called by process_krb5_upcall(). The lifetime value is
-> currently not related at all to the Kerberos TGS lifetime. It is either
-> set to the value of gssd -t <timeout>, or to a kernel default of 3600
-> seconds.
-> 
-> Most of the time the gssd -t command line is not set, and a timeout value
-> of zero was sent to the kernel triggering the use of the 3600 second kernel
-> default timeout.
-> 
-> In order for the kernel to properly know when to renew a context, or to stop
-> buffering writes for a context about to expire, the gc_expiry value needs to
-> reflect the credential lifetime used to create the context.
-> 
-> Note that gss_inquire_cred returns the number of seconds for which the context
-> remains valid in the lifetime_rec parameter.
-> 
-> Send the actual TGS remaining lifetime to the kernel. It can still be
-> overwritten by the gssd -t command line option, or set to the kernel default
-> if the gss_inquire_cred call fails (which sets the lifetime_rec to zero).
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-Committed... 
+> I can try!
 
-steved.
+Ok, fair enough.  If the BBU is working, nobarrier is ok; I don't trust
+journal_async_commit, but that doesn't mean this isn't a regression.
 
-> ---
->  utils/gssd/gssd_proc.c |   19 ++++++++++++++++---
->  1 files changed, 16 insertions(+), 3 deletions(-)
-> 
-> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-> index aa39435..c8d8142 100644
-> --- a/utils/gssd/gssd_proc.c
-> +++ b/utils/gssd/gssd_proc.c
-> @@ -640,19 +640,22 @@ parse_enctypes(char *enctypes)
->  
->  static int
->  do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
-> -	    gss_buffer_desc *context_token)
-> +	    gss_buffer_desc *context_token, OM_uint32 lifetime_rec)
->  {
->  	char    *buf = NULL, *p = NULL, *end = NULL;
->  	unsigned int timeout = context_timeout;
->  	unsigned int buf_size = 0;
->  
-> -	printerr(1, "doing downcall\n");
-> +	printerr(1, "doing downcall lifetime_rec %u\n", lifetime_rec);
->  	buf_size = sizeof(uid) + sizeof(timeout) + sizeof(pd->pd_seq_win) +
->  		sizeof(pd->pd_ctx_hndl.length) + pd->pd_ctx_hndl.length +
->  		sizeof(context_token->length) + context_token->length;
->  	p = buf = malloc(buf_size);
->  	end = buf + buf_size;
->  
-> +	/* context_timeout set by -t option overrides context lifetime */
-> +	if (timeout == 0)
-> +		timeout = lifetime_rec;
->  	if (WRITE_BYTES(&p, end, uid)) goto out_err;
->  	if (WRITE_BYTES(&p, end, timeout)) goto out_err;
->  	if (WRITE_BYTES(&p, end, pd->pd_seq_win)) goto out_err;
-> @@ -952,6 +955,7 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
->  	char			**dirname, *dir, *userdir;
->  	int			create_resp = -1;
->  	int			err, downcall_err = -EACCES;
-> +	OM_uint32		maj_stat, min_stat, lifetime_rec;
->  
->  	printerr(1, "handling krb5 upcall (%s)\n", clp->dirname);
->  
-> @@ -1077,6 +1081,15 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
->  		goto out_return_error;
->  	}
->  
-> +	/* Grab the context lifetime to pass to the kernel. lifetime_rec
-> +	 * is set to zero on error */
-> +	maj_stat = gss_inquire_context(&min_stat, pd.pd_ctx, NULL, NULL,
-> +				       &lifetime_rec, NULL, NULL, NULL, NULL);
-> +
-> +	if (maj_stat)
-> +		printerr(1, "WARNING: Failed to inquire context for lifetme "
-> +			    "maj_stat %u\n", maj_stat);
-> +
->  	if (serialize_context_for_kernel(pd.pd_ctx, &token, &krb5oid, NULL)) {
->  		printerr(0, "WARNING: Failed to serialize krb5 context for "
->  			    "user with uid %d for server %s\n",
-> @@ -1084,7 +1097,7 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
->  		goto out_return_error;
->  	}
->  
-> -	do_downcall(fd, uid, &pd, &token);
-> +	do_downcall(fd, uid, &pd, &token, lifetime_rec);
->  
->  out:
->  	if (token.value)
-> -- 1.7.7.6
-> 
+Thanks for the answers... onward.  :)
+
+-Eric
+
