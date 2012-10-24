@@ -1,39 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:15992 "EHLO mx2.netapp.com"
+Received: from mx1.netapp.com ([216.240.18.38]:44994 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754716Ab2JPQbk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Oct 2012 12:31:40 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 22/25] SUNRPC: remove BUG_ON() from __rpc_sleep_on_priority()
-Date: Tue, 16 Oct 2012 12:30:40 -0400
-Message-Id: <1350405043-39316-22-git-send-email-dros@netapp.com>
-In-Reply-To: <1350405043-39316-1-git-send-email-dros@netapp.com>
-References: <1350405043-39316-1-git-send-email-dros@netapp.com>
+	id S932176Ab2JXNES convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Oct 2012 09:04:18 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chris Perl <chris.perl@gmail.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: RPC Race Condition
+Date: Wed, 24 Oct 2012 13:04:16 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90928F571@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20121022180339.GC24763@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA909289403@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121022202611.GA27191@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90928AB39@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121023134551.GB27191@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90928C74A@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121023200855.GC27191@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90928DCDD@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121024124047.GD27191@nyc-qws-132.nyc.delacy.com>
+In-Reply-To: <20121024124047.GD27191@nyc-qws-132.nyc.delacy.com>
+Content-Type: text/plain; charset="Windows-1252"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Replace BUG_ON() with WARN_ON_ONCE().
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> owner@vger.kernel.org] On Behalf Of Chris Perl
+> Sent: Wednesday, October 24, 2012 8:41 AM
+> To: Myklebust, Trond
+> Cc: linux-nfs@vger.kernel.org
+> Subject: Re: RPC Race Condition
+> 
+> On Tue, Oct 23, 2012 at 09:58:35PM +0000, Myklebust, Trond wrote:
+> > The only problem there would be the call to xs_sock_mark_closed() in
+> > xs_abort_connection. As far as I can tell, all we want to do there is
+> > clear all those flags.
+> >
+> > How about the following?
+> 
+> Looks good!  With all 4 patches applied things recover correctly and I no
+> longer see anything racing.
+> 
+> Just to be clear, I took your patches and integrated them into the CentOS
+> 2.6.32-279.5.2.el6.centos.plus kernel.  Basically everything was the same
+> except the offsets and perhaps a little of the surrounding context.  I do not
+> believe the meaning of the patches was changed at all.
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- net/sunrpc/sched.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Cool! Would you mind if I add "Tested-by" tags?
 
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index ec9513d..5dcc1ff 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -334,7 +334,7 @@ static void __rpc_sleep_on_priority(struct rpc_wait_queue *q,
- 
- 	__rpc_add_wait_queue(q, task, queue_priority);
- 
--	BUG_ON(task->tk_callback != NULL);
-+	WARN_ON_ONCE(task->tk_callback != NULL);
- 	task->tk_callback = action;
- 	__rpc_add_timer(q, task);
- }
--- 
-1.7.9.6 (Apple Git-31.1)
+> If you want me to test your latest git where these commits live, I can, just
+> point me at the git repo url.
 
+Sure. I'll let you know as soon as I push them out later today...
+
+Thanks!
+   Trond
