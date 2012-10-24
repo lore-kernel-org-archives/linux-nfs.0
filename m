@@ -1,66 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f46.google.com ([209.85.213.46]:65280 "EHLO
-	mail-yh0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755416Ab2J0MeS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 08:34:18 -0400
-Received: by mail-yh0-f46.google.com with SMTP id m54so690985yhm.19
-        for <linux-nfs@vger.kernel.org>; Sat, 27 Oct 2012 05:34:18 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v8 15/32] vfs: have chdir retry lookup and call once on ESTALE error
-Date: Sat, 27 Oct 2012 08:33:22 -0400
-Message-Id: <1351341219-17837-16-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
-References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:54943 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933694Ab2JXUCu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Oct 2012 16:02:50 -0400
+Date: Wed, 24 Oct 2012 16:02:49 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: linux-nfs@vger.kernel.org, Trond Myklebust <trond@netapp.com>,
+        Bryan Schumaker <bjschuma@netapp.com>
+Subject: Re: 3.7-rc1 NFSv3/sec=krb5 mkdir failure
+Message-ID: <20121024200249.GC6697@fieldses.org>
+References: <20121016125832.GC30649@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121016125832.GC30649@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/open.c | 25 +++++++++++++------------
- 1 file changed, 13 insertions(+), 12 deletions(-)
+Anyone get a chance to look at this?  It seems very reproduceable.
 
-diff --git a/fs/open.c b/fs/open.c
-index 9cd0a50..5c2a973 100644
---- a/fs/open.c
-+++ b/fs/open.c
-@@ -387,20 +387,21 @@ SYSCALL_DEFINE1(chdir, const char __user *, filename)
- {
- 	struct path path;
- 	int error;
-+	int lookup_flags = LOOKUP_FOLLOW | LOOKUP_DIRECTORY;
-+	unsigned int try = 0;
- 
--	error = user_path_dir(filename, &path);
--	if (error)
--		goto out;
--
--	error = inode_permission(path.dentry->d_inode, MAY_EXEC | MAY_CHDIR);
--	if (error)
--		goto dput_and_out;
--
--	set_fs_pwd(current->fs, &path);
-+	do {
-+		error = user_path_at(AT_FDCWD, filename, lookup_flags, &path);
-+		if (error)
-+			break;
- 
--dput_and_out:
--	path_put(&path);
--out:
-+		error = inode_permission(path.dentry->d_inode,
-+					 MAY_EXEC | MAY_CHDIR);
-+		if (!error)
-+			set_fs_pwd(current->fs, &path);
-+		path_put(&path);
-+		lookup_flags |= LOOKUP_REVAL;
-+	} while (retry_estale(error, try++));
- 	return error;
- }
- 
--- 
-1.7.11.7
+--b.
 
+On Tue, Oct 16, 2012 at 08:58:32AM -0400, bfields wrote:
+> On 3.7-rc1:
+> 
+> 	client# mount -tnfs -osec=krb5,vers=3 server:/exports/ext4 /mnt/
+> 
+> 		server# ls -l /exports/ext4|grep TMP
+> 		server#
+> 
+> 	# mkdir /mnt/TMP
+> 	mkdir: cannot create directory `/mnt/TMP': Permission denied
+> 
+> 		server# ls -l /exports/ext4|grep TMP
+> 		drwxr-xr-x  2 nfsnobody nfsnobody 4096 Oct 16 08:56 TMP
+> 		server#
+> 
+> Wireshark also shows that the create succeeds.
+> 
+> --b.
