@@ -1,98 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay4-d.mail.gandi.net ([217.70.183.196]:60218 "EHLO
-	relay4-d.mail.gandi.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760255Ab2J2ScJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 14:32:09 -0400
-Date: Mon, 29 Oct 2012 11:31:57 -0700
-From: Josh Triplett <josh@joshtriplett.org>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
-        torvalds@linux-foundation.org, tj@kernel.org,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v7 06/16] tracepoint: use new hashtable implementation
-Message-ID: <20121029183157.GC3097@jtriplet-mobl1>
-References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
- <1351450948-15618-6-git-send-email-levinsasha928@gmail.com>
- <20121029113515.GB9115@Krystal>
- <CA+1xoqce6uJ6wy3+2CBwsLHKnsz4wD0vt8MBEGKCFfXTvuC0Hg@mail.gmail.com>
+Received: from icebox.esperi.org.uk ([81.187.191.129]:60292 "EHLO
+	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751284Ab2JXEPm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Oct 2012 00:15:42 -0400
+From: Nix <nix@esperi.org.uk>
+To: Eric Sandeen <sandeen@redhat.com>
+Cc: "Ted Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
+        Bryan Schumaker <bjschuma@netapp.com>, Peng Tao <bergwolf@gmail.com>,
+        Trond.Myklebust@netapp.com, gregkh@linuxfoundation.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3 (and other stable branches?)
+References: <87objupjlr.fsf@spindle.srvr.nix>
+	<20121023013343.GB6370@fieldses.org> <87mwzdnuww.fsf@spindle.srvr.nix>
+	<20121023143019.GA3040@fieldses.org>
+	<874nllxi7e.fsf_-_@spindle.srvr.nix>
+	<87pq48nbyz.fsf_-_@spindle.srvr.nix> <508740B2.2030401@redhat.com>
+Date: Wed, 24 Oct 2012 05:15:10 +0100
+In-Reply-To: <508740B2.2030401@redhat.com> (Eric Sandeen's message of "Tue, 23
+	Oct 2012 20:13:22 -0500")
+Message-ID: <87txtkld4h.fsf@spindle.srvr.nix>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CA+1xoqce6uJ6wy3+2CBwsLHKnsz4wD0vt8MBEGKCFfXTvuC0Hg@mail.gmail.com>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 29, 2012 at 01:29:24PM -0400, Sasha Levin wrote:
-> On Mon, Oct 29, 2012 at 7:35 AM, Mathieu Desnoyers
-> <mathieu.desnoyers@efficios.com> wrote:
-> > * Sasha Levin (levinsasha928@gmail.com) wrote:
-> >> Switch tracepoints to use the new hashtable implementation. This reduces the amount of
-> >> generic unrelated code in the tracepoints.
-> >>
-> >> Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
-> >> ---
-> >>  kernel/tracepoint.c | 27 +++++++++++----------------
-> >>  1 file changed, 11 insertions(+), 16 deletions(-)
-> >>
-> >> diff --git a/kernel/tracepoint.c b/kernel/tracepoint.c
-> >> index d96ba22..854df92 100644
-> >> --- a/kernel/tracepoint.c
-> >> +++ b/kernel/tracepoint.c
-> >> @@ -26,6 +26,7 @@
-> >>  #include <linux/slab.h>
-> >>  #include <linux/sched.h>
-> >>  #include <linux/static_key.h>
-> >> +#include <linux/hashtable.h>
-> >>
-> >>  extern struct tracepoint * const __start___tracepoints_ptrs[];
-> >>  extern struct tracepoint * const __stop___tracepoints_ptrs[];
-> >> @@ -49,8 +50,7 @@ static LIST_HEAD(tracepoint_module_list);
-> >>   * Protected by tracepoints_mutex.
-> >>   */
-> >>  #define TRACEPOINT_HASH_BITS 6
-> >> -#define TRACEPOINT_TABLE_SIZE (1 << TRACEPOINT_HASH_BITS)
-> >> -static struct hlist_head tracepoint_table[TRACEPOINT_TABLE_SIZE];
-> >> +static DEFINE_HASHTABLE(tracepoint_table, TRACEPOINT_HASH_BITS);
-> >>
-> > [...]
-> >>
-> >> @@ -722,6 +715,8 @@ struct notifier_block tracepoint_module_nb = {
-> >>
-> >>  static int init_tracepoints(void)
-> >>  {
-> >> +     hash_init(tracepoint_table);
-> >> +
-> >>       return register_module_notifier(&tracepoint_module_nb);
-> >>  }
-> >>  __initcall(init_tracepoints);
-> >
-> > So we have a hash table defined in .bss (therefore entirely initialized
-> > to NULL), and you add a call to "hash_init", which iterates on the whole
-> > array and initialize it to NULL (again) ?
-> >
-> > This extra initialization is redundant. I think it should be removed
-> > from here, and hashtable.h should document that hash_init() don't need
-> > to be called on zeroed memory (which includes static/global variables,
-> > kzalloc'd memory, etc).
-> 
-> This was discussed in the previous series, the conclusion was to call
-> hash_init() either way to keep the encapsulation and consistency.
-> 
-> It's cheap enough and happens only once, so why not?
+On 24 Oct 2012, Eric Sandeen uttered the following:
 
-Unnecessary work adds up.  Better not to do it unnecessarily, even if by
-itself it doesn't cost that much.
+> On 10/23/12 3:57 PM, Nix wrote:
+>> The only unusual thing about the filesystems on this machine are that
+>> they have hardware RAID-5 (using the Areca driver), so I'm mounting with
+>> 'nobarrier': 
+>
+> I should have read more.  :(  More questions follow:
+>
+> * Does the Areca have a battery backed write cache?
 
-It doesn't seem that difficult for future fields to have 0 as their
-initialized state.
+Yes (though I'm not powering off, just rebooting). Battery at 100% and
+happy, though the lack of power-off means it's not actually getting
+used, since the cache is obviously mains-backed as well.
 
-- Josh Triplett
+> * Are you crashing or rebooting cleanly?
+
+Rebooting cleanly, everything umounted happily including /home and /var.
+
+> * Do you see log recovery messages in the logs for this filesystem?
+
+My memory says yes, but nothing seems to be logged when this happens
+(though with my logs on the first filesystem damaged by this, this is
+rather hard to tell, they're all quite full of NULs by now).
+
+I'll double-reboot tomorrow via the faulty kernel and check, unless I
+get asked not to in the interim. (And then double-reboot again to fsck
+everything...)
+
+>> the full set of options for all my ext4 filesystems are:
+>> 
+>> rw,nosuid,nodev,relatime,journal_checksum,journal_async_commit,nobarrier,quota,
+>> usrquota,grpquota,commit=30,stripe=16,data=ordered,usrquota,grpquota
+>
+> ok journal_async_commit is off the reservation a bit; that's really not
+> tested, and Jan had serious reservations about its safety.
+
+OK, well, I've been 'testing' it for years :) No problems until now. (If
+anything, I was more concerned about journal_checksum. I thought that
+had actually been implicated in corruption before now...)
+
+> * Can you reproduce this w/o journal_async_commit?
+
+I can try!
+
+-- 
+NULL && (void)
