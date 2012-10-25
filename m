@@ -1,111 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f174.google.com ([74.125.82.174]:61961 "EHLO
-	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752411Ab2JaWOr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Oct 2012 18:14:47 -0400
-Received: by mail-we0-f174.google.com with SMTP id t9so878688wey.19
-        for <linux-nfs@vger.kernel.org>; Wed, 31 Oct 2012 15:14:46 -0700 (PDT)
+Received: from mx12.netapp.com ([216.240.18.77]:40512 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750980Ab2JYSSB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 25 Oct 2012 14:18:01 -0400
+Received: from vmwexceht02-prd.hq.netapp.com (vmwexceht02-prd.hq.netapp.com [10.106.76.240])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q9PII0si027313
+	for <linux-nfs@vger.kernel.org>; Thu, 25 Oct 2012 11:18:00 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: avoid deadlock in nfs_kill_super
+Date: Thu, 25 Oct 2012 18:17:58 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092922A5@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1351188163-10067-1-git-send-email-dros@netapp.com>
+In-Reply-To: <1351188163-10067-1-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <1351627595-6462-1-git-send-email-bjschuma@netapp.com>
-References: <1351627595-6462-1-git-send-email-bjschuma@netapp.com>
-Date: Wed, 31 Oct 2012 18:14:46 -0400
-Message-ID: <CAHVgHyXWk86GGJ0Fip3uE5SG94aUpcfuh1A4R+UWr442Q2P5Nw@mail.gmail.com>
-Subject: Re: [PATCH] NFS: Wait for session recovery to finish before returning
-From: Andy Adamson <androsadamson@gmail.com>
-To: bjschuma@netapp.com
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 30, 2012 at 4:06 PM,  <bjschuma@netapp.com> wrote:
-> From: Bryan Schumaker <bjschuma@netapp.com>
->
-> Currently, we will schedule session recovery and then return to the
-> caller of nfs4_handle_exception.  This works for most cases, but causes
-> a hang on the following test case:
->
->         Client                          Server
->         ------                          ------
->         Open file over NFS v4.1
->         Write to file
->                                         Expire client
->         Try to lock file
->
-> The server will return NFS4ERR_BADSESSION, prompting the client to
-> schedule recovery.  However, the client will continue placing lock
-> attempts and the open recovery never seems to be scheduled.
-
-I need more detail. Is this what is happening?
-
-When the first NFS4ERR_BADSESSION error arrives, session recovery
-starts by setting the NFS4_SESSION_DRAINING bit which places all non
-RPC_PRIORITY_PRIVILEGED tasks with OP_SEQUENCE on the slot_tbl_waitq,
-so the lock requests should be placed on the slot_tbl_waitq and not go
-on the wire.
-
-Once the session is drained,  DESTROY_SESSION and CREATE_SESSION are
-called and one will return with NFS4ERR_STALE_CLIENTID kicking off the
-EXCHANGE_ID / CREATE_SESSION to establish a new clientid.
-
-Do you see the clientid being recovered?
-
-Once the new session is created, it inherits the slot_tbl_waitq of the
-old session, and all the lock requests and any other tasks piled up on
-the slot_tbl_waitq will run. At the same time, the state_manager
-thread is running recovery for any OPENs established under the old
-clientid, and then their associated LOCKs.
-
-The OPEN and LOCK recovery tasks run with RPC_PRIORITY_PRIVILEGE which
-should mean that they get run before the RPC tasks with lower
-priority.
-
-So my question (finally!): How is open recovery starvation happening?
-nfs41_sequence_free_slot => nfs4_check_drain_fc_complete =>
-rpc_wake_up_first on the session slot_tbl_waitq, which in turn calls
-__rpc_find_next_queued_priority which should choose
-RPC_PRIORITY_PRIVILEGE tasks over lower privileged tasks on the
-session slot_tbl_waitq.
-
-So even with a bunch of slots, when the first one returns and and free
-it's slot, the priority tasks (e.g. open recovery) should run.
-
-
--->Andy
-
-
-> The
-> simplest solution is to wait for session recovery to run before retrying
-> the lock.
-
-If on the wire RPCs return with NFS4ERR_BADSESSION, and then wait for
-session recovery in the exception handler, they will not call their
-rpc_release function
-
->
-> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
-> ---
->  fs/nfs/nfs4proc.c | 3 +--
->  1 file changed, 1 insertion(+), 2 deletions(-)
->
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 8b04d14..70e0c47 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -338,8 +338,7 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
->                         dprintk("%s ERROR: %d Reset session\n", __func__,
->                                 errorcode);
->                         nfs4_schedule_session_recovery(clp->cl_session, errorcode);
-> -                       exception->retry = 1;
-> -                       break;
-> +                       goto wait_on_recovery;
->  #endif /* defined(CONFIG_NFS_V4_1) */
->                 case -NFS4ERR_FILE_OPEN:
->                         if (exception->timeout > HZ) {
-> --
-> 1.8.0
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+T24gVGh1LCAyMDEyLTEwLTI1IGF0IDE0OjAyIC0wNDAwLCBXZXN0b24gQW5kcm9zIEFkYW1zb24g
+d3JvdGU6DQo+IENhbGxpbmcgbmZzX2tpbGxfc3VwZXIgZnJvbSBhbiBSUEMgdGFzayBjYWxsYmFj
+ayB3b3VsZCByZXN1bHQgaW4gYSBkZWFkbG9jaw0KPiB3aGVyZSBuZnNfZnJlZV9zZXJ2ZXIgKHZp
+YSBycGNfc2h1dGRvd25fY2xpZW50KSB0cmllcyB0byBraWxsIGFsbA0KPiBSUEMgdGFza3MgYXNz
+b2NpYXRlZCB3aXRoIHRoYXQgY29ubmVjdGlvbiAtIGluY2x1ZGluZyBpdHNlbGYhDQo+IA0KPiBJ
+bnN0ZWFkIG9mIGNhbGxpbmcgbmZzX2tpbGxfc3VwZXIgZGlyZWN0bHksIHF1ZXVlIGEgam9iIG9u
+IHRoZSBuZnNpb2QNCj4gd29ya3F1ZXVlLg0KPiANCj4gU2lnbmVkLW9mZi1ieTogV2VzdG9uIEFu
+ZHJvcyBBZGFtc29uIDxkcm9zQG5ldGFwcC5jb20+DQo+IC0tLQ0KPiANCj4gVGhpcyBmaXhlcyB0
+aGUgY3VycmVudCBpbmNhcm5hdGlvbiBvZiB0aGUgbG9ja3VwIEkndmUgYmVlbiB0cmFja2luZyBk
+b3duIGZvcg0KPiBzb21lIHRpbWUgbm93LiAgSSBzdGlsbCBoYXZlIHRvIGdvIGJhY2sgYW5kIHNl
+ZSB3aHkgdGhlIHJlcHJvZHVjZXIgY2hhbmdlZA0KPiBiZWhhdmlvciBhIGZldyB3ZWVrcyBhZ28g
+LSB0YXNrcyB1c2VkIHRvIGdldCBzdHVjayBpbiBycGNfcHJlcGFyZV90YXNrLCBidXQNCj4gbm93
+IChiZWZvcmUgdGhpcyBwYXRjaCkgYXJlIHN0dWNrIGluIHJwY19leGl0Lg0KPiANCj4gVGhlIHJl
+cHJvZHVjZXIgd29ya3MgYWdhaW5zdCBhIHNlcnZlciB3aXRoIHdyaXRlIGRlbGVnYXRpb25zOg0K
+PiANCj4gLi9uZnNvbWV0ZXIucHkgLW0gdjQgc2VydmVyOi9wYXRoIGRkXzEwMG1fMTAwaw0KPiAN
+Cj4gd2hpY2ggaXMgYmFzaWNhbGx5Og0KPiAgLSBtb3VudA0KPiAgLSBkZCBpZj0vZGV2L3plcm8g
+b2Y9Li9kZF9maWxlLjEwMG1fMTAwayBicz0xMDI0MDAgY291bnQ9MTAyNA0KPiAgLSB1bW91bnQN
+Cj4gIC0gYnJlYWsgaWYgL3Byb2MvZnMvbmZzZnMvc2VydmVycyBzdGlsbCBoYXMgZW50cnkgYWZ0
+ZXIgNSBzZWNvbmRzIChpbiB0aGlzDQo+ICAgIGNhc2UgaXQgTkVWRVIgZ29lcyBhd2F5KQ0KPiAN
+Cj4gVGhlcmUgYXJlIGNsZWFybHkgb3RoZXIgd2F5cyB0byB0cmlnZ2VyIHRoaXMgZGVhZGxvY2ss
+IGxpa2UgYSB2NC4xIENMT1NFIC0gdGhlDQo+IGRvbmUgaGFuZGxlciBjYWxscyBuZnNfc2JfZGVh
+Y3RpdmF0ZS4uLg0KPiANCj4gSSd2ZSB0ZXN0ZWQgdGhpcyBhcHByb2FjaCB3aXRoIDEwIHJ1bnMg
+WCAzIG5mcyB2ZXJzaW9ucyBYIDUgd29ya2xvYWRzIA0KPiAoZGRfMTAwbV8xMDBrLCBkZF8xMDBt
+XzFrLCBweXRob24sIGtlcm5lbCwgY3Rob24pLCBzbyBJJ20gcHJldHR5IGNvbmZpZGVudA0KPiBp
+dHMgY29ycmVjdC4NCj4gDQo+IE9uZSBxdWVzdGlvbiBmb3IgdGhlIGxpc3Q6IHNob3VsZCBuZnNf
+ZnJlZV9zZXJ2ZXIgKmFsd2F5cyogYmUgc2NoZWR1bGVkIG9uDQo+IHRoZSBuZnNpb2Qgd29ya3F1
+ZXVlPyBJdCdzIGNhbGxlZCBpbiBlcnJvciBwYXRocyBpbiBzZXZlcmFsIGxvY2F0aW9ucy4NCj4g
+QWZ0ZXIgbG9va2luZyBhdCB0aGVtLCBJIGRvbid0IHRoaW5rIG15IGFwcHJvYWNoIHdvdWxkIGJy
+ZWFrIGFueXRoaW5nLCBidXQgDQo+IHNvbWUgbWlnaHQgaGF2ZSBzdHlsZSBvYmplY3Rpb25zLg0K
+PiANCg0KVGhpcyBkb2Vzbid0IGFkZCB1cC4gVGhlcmUgc2hvdWxkIGJlIG5vdGhpbmcgY2FsbGlu
+ZyBuZnNfc2JfZGVhY3RpdmUoKQ0KZnJvbSBhIHJwY19jYWxsX2RvbmUoKSBjYWxsYmFjay4gSWYg
+c28sIHRoZW4gdGhhdCB3b3VsZCBiZSB0aGUgYnVnLg0KDQpBbGwgY2FsbHMgdG8gdGhpbmdzIGxp
+a2UgcnBjX3B1dF90YXNrKCksIHB1dF9uZnNfb3Blbl9jb250ZXh0KCksIGRwdXQoKSwNCm9yIG5m
+c19zYl9kZWFjdGl2ZSgpIHNob3VsZCBvY2N1ciBpbiB0aGUgcnBjX2NhbGxfcmVsZWFzZSgpIGNh
+bGxiYWNrIGlmDQp0aGV5IGNhbid0IGJlIGRvbmUgaW4gYSBwcm9jZXNzIGNvbnRleHQuIEluIGJv
+dGggdGhvc2UgY2FzZXMsIHRoZQ0KcnBjX3Rhc2sgd2lsbCBiZSBpbnZpc2libGUgdG8gcnBjX2tp
+bGxhbGxfdGFza3MgYW5kIHJwY19zaHV0ZG93bl9jbGllbnQuDQoNCi0tIA0KVHJvbmQgTXlrbGVi
+dXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1
+c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
