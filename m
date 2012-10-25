@@ -1,95 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:56951 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:15432 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752598Ab2J1QP7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 28 Oct 2012 12:15:59 -0400
-Date: Sun, 28 Oct 2012 12:15:56 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-Subject: Re: 3.7-rc1 NFSv3/sec=krb5 mkdir failure
-Message-ID: <20121028161556.GC20520@fieldses.org>
-References: <20121016125832.GC30649@fieldses.org>
- <20121024200249.GC6697@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9092906F7@SACEXCMBX04-PRD.hq.netapp.com>
- <20121024201517.GD6697@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA90929086C@SACEXCMBX04-PRD.hq.netapp.com>
- <20121024204059.GF6697@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20121024204059.GF6697@fieldses.org>
+	id S932450Ab2JYOeD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 25 Oct 2012 10:34:03 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q9PEY3tk021909
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 25 Oct 2012 10:34:03 -0400
+Date: Thu, 25 Oct 2012 10:34:01 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 10/10] nfsdcltrack: flip the default in autoconf to
+ "yes" for it
+Message-ID: <20121025103401.4b15123b@corrin.poochiereds.net>
+In-Reply-To: <50894C88.9070205@RedHat.com>
+References: <1351092359-25842-1-git-send-email-jlayton@redhat.com>
+	<1351092359-25842-11-git-send-email-jlayton@redhat.com>
+	<5089372D.1050501@RedHat.com>
+	<20121025100707.4e01c0b7@corrin.poochiereds.net>
+	<50894C88.9070205@RedHat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 24, 2012 at 04:40:59PM -0400, J. Bruce Fields wrote:
-> On Wed, Oct 24, 2012 at 08:34:37PM +0000, Myklebust, Trond wrote:
-> > > -----Original Message-----
-> > > From: Myklebust, Trond
-> > > Sent: Wednesday, October 24, 2012 4:31 PM
-> > > To: 'J. Bruce Fields'
-> > > Cc: linux-nfs@vger.kernel.org; Schumaker, Bryan
-> > > Subject: RE: 3.7-rc1 NFSv3/sec=krb5 mkdir failure
-> > > 
-> > > > -----Original Message-----
-> > > > From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> > > > Sent: Wednesday, October 24, 2012 4:15 PM
-> > > > To: Myklebust, Trond
-> > > > Cc: linux-nfs@vger.kernel.org; Schumaker, Bryan
-> > > > Subject: Re: 3.7-rc1 NFSv3/sec=krb5 mkdir failure
-> > > >
-> > > > On Wed, Oct 24, 2012 at 08:07:55PM +0000, Myklebust, Trond wrote:
-> > > > > > -----Original Message-----
-> > > > > > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> > > > > > owner@vger.kernel.org] On Behalf Of J. Bruce Fields
-> > > > > > Sent: Wednesday, October 24, 2012 4:03 PM
-> > > > > > To: linux-nfs@vger.kernel.org; Myklebust, Trond; Schumaker, Bryan
-> > > > > > Subject: Re: 3.7-rc1 NFSv3/sec=krb5 mkdir failure
-> > > > > >
-> > > > > > Anyone get a chance to look at this?  It seems very reproduceable.
-> > > > > >
-> > > > > > --b.
-> > > > > >
-> > > > > > On Tue, Oct 16, 2012 at 08:58:32AM -0400, bfields wrote:
-> > > > > > > On 3.7-rc1:
-> > > > > > >
-> > > > > > > 	client# mount -tnfs -osec=krb5,vers=3 server:/exports/ext4
-> > > > > > > /mnt/
-> > > > > > >
-> > > > > > > 		server# ls -l /exports/ext4|grep TMP
-> > > > > > > 		server#
-> > > > > > >
-> > > > > > > 	# mkdir /mnt/TMP
-> > > > > > > 	mkdir: cannot create directory `/mnt/TMP': Permission denied
-> > > > > > >
-> > > > > > > 		server# ls -l /exports/ext4|grep TMP
-> > > > > > > 		drwxr-xr-x  2 nfsnobody nfsnobody 4096 Oct 16 08:56 TMP
-> > > > > > > 		server#
-> > > > > > >
-> > > > > > > Wireshark also shows that the create succeeds.
-> > > > >
-> > > > > Can you share the wireshark trace?
-> > > >
-> > > > Sure.  This covers the mount and mkdir.  The mkdir call and reply are
-> > > > in frames 77 and 78.
-> > > 
-> > > Hmm.... Can you please check if the ACL is being set correctly on the server? I
-> > > suspect that might be the source of the error.
-> > > 
-> > 
-> > In fact, can you see if mounting with '-onoacl' causes the whole thing to succeed?
+On Thu, 25 Oct 2012 10:28:24 -0400
+Steve Dickson <SteveD@redhat.com> wrote:
+
 > 
-> That's on the client mount command?  No difference.
+> 
+> On 25/10/12 10:07, Jeff Layton wrote:
+> > On Thu, 25 Oct 2012 08:57:17 -0400
+> > Steve Dickson <SteveD@redhat.com> wrote:
+> > 
+> >>
+> >>
+> >> On 24/10/12 11:25, Jeff Layton wrote:
+> >>> Allow nfsdcltrack to be built by default if all of the requirements
+> >>> for it are in place. Set the initial state of $enable_nfsdcltrack
+> >>> to "maybe", and fix the appropriate tests to just disable building
+> >>> the binary unless someone explicitly requests it.
+> >> Hmm... I'm not sure I too keen on this "maybe" state... 
+> >>
+> > 
+> > Would it help if we renamed it to
+> > "yes_but_only_if_requirements_are_met" ? :)
+> :-) 
+> 
+> > 
+> >> So if no flags are given to ./configuration, and not 
+> >> all the requirements to build nfsdcltrack exists, the configuration 
+> >> will succeed, but the command will not be build. Correct?
+> >>
+> > 
+> > Correct.
+> > 
+> >> But if the  --enable_nfsdcltrack flag is given and not all
+> >> the requirements to build nfsdcltrack exist the configuration
+> >> will fail. 
+> >>
+> > 
+> > Correct.
+> > 
+> >> I'm thinking we might want to make it a bit more binary. Either
+> >> on or off. Like it is with the other conditionally built 
+> >> commands... 
+> >>
+> > 
+> > So you want to fail the configure stage if all of the requirements for
+> > nfsdcltrack aren't present? That doesn't sound good to me. Note that we
+> > do have "tristate" handling already for stuff like the --disable-uuid
+> > option...
+> I'm thinking there it might cause confusion to silently not build
+> a binary, when the expectation is this should be there. I'm thinking
+> a failure of the config script would remove that confusion... And
+> as long as there a way to mask that failure out (aka --enable_nfsdcltrack=no
+> or --disable_nfsdcltrack) it will make it more explicit to what is or
+> is not happening... 
+> 
+>  
 
-By the way, I managed to do a little bisecting while working on
-something else today, and blame landed on Chuck's
-ba9b584c1dc37851d9c6ca6d0d2ccba55d9aad04 "SUNRPC: Introduce
-rpc_clone_client_set_auth()".  Which makes some sense if it's an ACL
-problem, and indeed testing on that commit finds success with -noacl,
-failure without.
+It's not silent. It does throw a warning in this case, but that is
+likely to get lost in the noise. It's your call -- if you want to fail
+the build by default if the requirements aren't present, then I'm ok
+with that.
 
-I'm not sure if that explains the failure I was seeing on 3.7-rc1, since
-there I didn't see any ACL traffic, and still got a failure.  (And
--noacl didn't help.)
-
---b.
+-- 
+Jeff Layton <jlayton@redhat.com>
