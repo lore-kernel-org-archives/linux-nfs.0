@@ -1,193 +1,502 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:33066 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751821Ab2JALvr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2012 07:51:47 -0400
-Received: by ghbg15 with SMTP id g15so1355850ghb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 01 Oct 2012 04:51:46 -0700 (PDT)
+Received: from mail-vc0-f174.google.com ([209.85.220.174]:60763 "EHLO
+	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S2992448Ab2JYRV7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Oct 2012 13:21:59 -0400
+Received: by mail-vc0-f174.google.com with SMTP id fk26so2132362vcb.19
+        for <linux-nfs@vger.kernel.org>; Thu, 25 Oct 2012 10:21:59 -0700 (PDT)
 From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, bharrosh@panasas.com, steved@redhat.com,
-        skinsbursky@parallels.com
-Subject: [PATCH 1/2] nfsd: add a usermodehelper upcall for NFSv4 client ID tracking
-Date: Mon,  1 Oct 2012 07:51:37 -0400
-Message-Id: <1349092298-23872-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1349092298-23872-1-git-send-email-jlayton@redhat.com>
-References: <1349092298-23872-1-git-send-email-jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 5/9] nfsdcltrack: add a new "one-shot" program for manipulating the client tracking db
+Date: Thu, 25 Oct 2012 13:21:39 -0400
+Message-Id: <1351185703-14191-6-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1351185703-14191-1-git-send-email-jlayton@redhat.com>
+References: <1351185703-14191-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add a new client tracker upcall type that uses call_usermodehelper to
-call out to a program. This seems to be the preferred method of
-calling out to usermode these days for seldom-called upcalls. It's
-simple and doesn't require a running daemon, so it should "just work"
-as long as the binary is installed.
+Usermode helper upcalls are all the rage these days for infrequent
+upcalls, since they make it rather idiot-proof. No running daemon is
+required, so there's really no setup beyond ensuring that the callout
+exists and is runnable.
 
-The client tracking exit operation is also changed to check for a
-NULL pointer before running. The UMH upcall doesn't need to do anything
-at module teardown time.
+This program adds a callout program to nfs-utils for that purpose. The
+storage engine on the backend is identical to the one used by nfsdcld.
+This just adds a new frontend for it.
+
+For now, building with --enable-nfsdcltrack gives you both nfsdcld and
+nfsdcltrack programs. A later patch will remove nfsdcld altogether.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/nfs4recover.c | 138 +++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 137 insertions(+), 1 deletion(-)
+ utils/nfsdcltrack/Makefile.am   |   6 +-
+ utils/nfsdcltrack/nfsdcltrack.c | 436 ++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 440 insertions(+), 2 deletions(-)
+ create mode 100644 utils/nfsdcltrack/nfsdcltrack.c
 
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index 43295d4..d8e07d5 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -926,6 +926,141 @@ static struct nfsd4_client_tracking_ops nfsd4_cld_tracking_ops = {
- 	.grace_done	= nfsd4_cld_grace_done,
- };
+diff --git a/utils/nfsdcltrack/Makefile.am b/utils/nfsdcltrack/Makefile.am
+index 073a71b..afae455 100644
+--- a/utils/nfsdcltrack/Makefile.am
++++ b/utils/nfsdcltrack/Makefile.am
+@@ -4,11 +4,13 @@ man8_MANS	= nfsdcld.man
+ EXTRA_DIST	= $(man8_MANS)
  
-+/* upcall via usermodehelper */
-+static char cltrack_prog[PATH_MAX] = "/sbin/nfsdcltrack";
-+module_param_string(cltrack_prog, cltrack_prog, sizeof(cltrack_prog), 0600);
-+MODULE_PARM_DESC(cltrack_prog, "Path to the nfsdcltrack upcall program");
+ AM_CFLAGS	+= -D_LARGEFILE64_SOURCE
+-sbin_PROGRAMS	= nfsdcld
++sbin_PROGRAMS	= nfsdcld nfsdcltrack
+ 
+ nfsdcld_SOURCES = nfsdcld.c sqlite.c
+-
+ nfsdcld_LDADD = ../../support/nfs/libnfs.a $(LIBEVENT) $(LIBSQLITE) $(LIBCAP)
+ 
++nfsdcltrack_SOURCES = nfsdcltrack.c sqlite.c
++nfsdcltrack_LDADD = ../../support/nfs/libnfs.a $(LIBSQLITE) $(LIBCAP)
 +
-+static int
-+nfsd4_cltrack_upcall(char *cmd, char *arg)
-+{
-+	static char *envp[] = { "HOME=/",
-+		"TERM=linux",
-+		"PATH=/sbin:/usr/sbin:/bin:/usr/bin",
-+		NULL
-+	};
-+	char *argv[4];
-+	int ret;
+ MAINTAINERCLEANFILES = Makefile.in
+ 
+diff --git a/utils/nfsdcltrack/nfsdcltrack.c b/utils/nfsdcltrack/nfsdcltrack.c
+new file mode 100644
+index 0000000..1d262a2
+--- /dev/null
++++ b/utils/nfsdcltrack/nfsdcltrack.c
+@@ -0,0 +1,436 @@
++/*
++ * nfsdcltrack.c -- NFSv4 client name tracking program
++ *
++ * Copyright (C) 2012 Jeff Layton <jlayton@redhat.com>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2
++ * of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor,
++ * Boston, MA 02110-1301, USA.
++ */
 +
-+	if (unlikely(!cltrack_prog[0])) {
-+		dprintk("%s: cltrack_prog is disabled\n", __func__);
-+		return -EACCES;
-+	}
++#ifdef HAVE_CONFIG_H
++#include "config.h"
++#endif /* HAVE_CONFIG_H */
 +
-+	dprintk("%s: cmd: %s\n", __func__, cmd);
-+	dprintk("%s: arg: %s\n", __func__, arg ? arg : "(null)");
++#include <stdio.h>
++#include <stdlib.h>
++#include <ctype.h>
++#include <errno.h>
++#include <stdbool.h>
++#include <getopt.h>
++#include <string.h>
++#include <sys/stat.h>
++#include <sys/types.h>
++#include <fcntl.h>
++#include <unistd.h>
++#include <libgen.h>
++#include <sys/inotify.h>
++#ifdef HAVE_SYS_CAPABILITY_H
++#include <sys/prctl.h>
++#include <sys/capability.h>
++#endif
 +
-+	argv[0] = (char *)cltrack_prog;
-+	argv[1] = cmd;
-+	argv[2] = arg;
-+	argv[3] = NULL;
++#include "xlog.h"
++#include "sqlite.h"
 +
-+	ret = call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
-+	/*
-+	 * Disable the upcall mechanism if we're getting an ENOENT
-+	 * error. The admin can re-enable it on the fly by using sysfs
-+	 * once the problem has been fixed.
-+	 */
-+	if (ret == -ENOENT || ret == -EACCES) {
-+		printk(KERN_ERR "NFSD: %s was not found or isn't executable. "
-+			"Please reset nfsd.cltrack_prog module parameter "
-+			"once problem is resolved (%d)!\n",
-+			cltrack_prog, ret);
-+		cltrack_prog[0] = '\0';
-+	}
-+	dprintk("%s: %s return value: %d\n", __func__, cltrack_prog, ret);
++#ifndef CLD_DEFAULT_STORAGEDIR
++#define CLD_DEFAULT_STORAGEDIR NFS_STATEDIR "/nfsdcltrack"
++#endif
 +
-+	return ret;
-+}
++/* defined by RFC 3530 */
++#define NFS4_OPAQUE_LIMIT	1024
 +
-+static char *
-+bin_to_hex_dup(const unsigned char *src, int srclen)
-+{
-+	int i;
-+	char *buf, *hex;
-+
-+	/* +1 for terminating NULL */
-+	buf = kmalloc((srclen * 2) + 1, GFP_KERNEL);
-+	if (!buf)
-+		return buf;
-+
-+	hex = buf;
-+	for (i = 0; i < srclen; i++) {
-+		sprintf(hex, "%2.2x", *src++);
-+		hex += 2;
-+	}
-+	return buf;
-+}
-+
-+static int
-+nfsd4_umh_cltrack_init(struct net __attribute__((unused)) *net)
-+{
-+	return nfsd4_cltrack_upcall("init", NULL);
-+}
-+
-+static void
-+nfsd4_umh_cltrack_create(struct nfs4_client *clp)
-+{
-+	char *hexid;
-+
-+	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
-+	if (!hexid) {
-+		dprintk("%s: can't allocate memory for upcall!\n", __func__);
-+		return;
-+	}
-+	nfsd4_cltrack_upcall("create", hexid);
-+	kfree(hexid);
-+}
-+
-+static void
-+nfsd4_umh_cltrack_remove(struct nfs4_client *clp)
-+{
-+	char *hexid;
-+
-+	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
-+	if (!hexid) {
-+		dprintk("%s: can't allocate memory for upcall!\n", __func__);
-+		return;
-+	}
-+	nfsd4_cltrack_upcall("remove", hexid);
-+	kfree(hexid);
-+}
-+
-+static int
-+nfsd4_umh_cltrack_check(struct nfs4_client *clp)
-+{
-+	int ret;
-+	char *hexid;
-+
-+	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
-+	if (!hexid) {
-+		dprintk("%s: can't allocate memory for upcall!\n", __func__);
-+		return -ENOMEM;
-+	}
-+	ret = nfsd4_cltrack_upcall("check", hexid);
-+	kfree(hexid);
-+	return ret;
-+}
-+
-+static void
-+nfsd4_umh_cltrack_grace_done(struct net __attribute__((unused)) *net,
-+				time_t boot_time)
-+{
-+	char timestr[22]; /* FIXME: better way to determine max size? */
-+
-+	sprintf(timestr, "%ld", boot_time);
-+	nfsd4_cltrack_upcall("gracedone", timestr);
-+}
-+
-+static struct nfsd4_client_tracking_ops nfsd4_umh_tracking_ops = {
-+	.init		= nfsd4_umh_cltrack_init,
-+	.exit		= NULL,
-+	.create		= nfsd4_umh_cltrack_create,
-+	.remove		= nfsd4_umh_cltrack_remove,
-+	.check		= nfsd4_umh_cltrack_check,
-+	.grace_done	= nfsd4_umh_cltrack_grace_done,
++/* private data structures */
++struct cltrack_cmd {
++	char *name;
++	bool needs_arg;
++	int (*func)(const char *arg);
 +};
 +
- int
- nfsd4_client_tracking_init(struct net *net)
- {
-@@ -956,7 +1091,8 @@ void
- nfsd4_client_tracking_exit(struct net *net)
- {
- 	if (client_tracking_ops) {
--		client_tracking_ops->exit(net);
-+		if (client_tracking_ops->exit)
-+			client_tracking_ops->exit(net);
- 		client_tracking_ops = NULL;
- 	}
- }
++/* forward declarations */
++static int cltrack_init(const char *unused);
++static int cltrack_create(const char *id);
++static int cltrack_remove(const char *id);
++static int cltrack_check(const char *id);
++static int cltrack_gracedone(const char *gracetime);
++
++/* global variables */
++static struct option longopts[] =
++{
++	{ "help", 0, NULL, 'h' },
++	{ "debug", 0, NULL, 'd' },
++	{ "foreground", 0, NULL, 'f' },
++	{ "storagedir", 1, NULL, 's' },
++	{ NULL, 0, 0, 0 },
++};
++
++static struct cltrack_cmd commands[] =
++{
++	{ "init", false, cltrack_init },
++	{ "create", true, cltrack_create },
++	{ "remove", true, cltrack_remove },
++	{ "check", true, cltrack_check },
++	{ "gracedone", true, cltrack_gracedone },
++	{ NULL, false, NULL },
++};
++
++static char *storagedir = CLD_DEFAULT_STORAGEDIR;
++
++/* common buffer for holding id4 blobs */
++static unsigned char blob[NFS4_OPAQUE_LIMIT];
++
++static void
++usage(char *progname)
++{
++	printf("%s [ -hfd ] [ -s dir ] < cmd > < arg >\n", progname);
++	printf("Where < cmd > is one of the following and takes the following < arg >:\n");
++	printf("    init\n");
++	printf("    create <nfs_client_id4>\n");
++	printf("    remove <nfs_client_id4>\n");
++	printf("    check  <nfs_client_id4>\n");
++	printf("    gracedone <epoch time>\n");
++}
++
++
++/**
++ * hex_to_bin - convert a hex digit to its real value
++ * @ch: ascii character represents hex digit
++ *
++ * hex_to_bin() converts one hex digit to its actual value or -1 in case of bad
++ * input.
++ *
++ * Note: borrowed from lib/hexdump.c in the Linux kernel sources.
++ */
++static int
++hex_to_bin(char ch)
++{
++	if ((ch >= '0') && (ch <= '9'))
++		return ch - '0';
++	ch = tolower(ch);
++	if ((ch >= 'a') && (ch <= 'f'))
++		return ch - 'a' + 10;
++	return -1;
++}
++
++/**
++ * hex_str_to_bin - convert a hexidecimal string into a binary blob
++ *
++ * @src: string of hex digit pairs
++ * @dst: destination buffer to hold binary data
++ * @dstsize: size of the destination buffer
++ *
++ * Walk a string of hex digit pairs and convert them into binary data. Returns
++ * the resulting length of the binary data or a negative error code. If the
++ * data will not fit in the buffer, it returns -ENOBUFS (but will likely have
++ * clobbered the dst buffer in the process of determining that). If there are
++ * non-hexidecimal characters in the src, or an odd number of them then it
++ * returns -EINVAL.
++ */
++static ssize_t
++hex_str_to_bin(const char *src, unsigned char *dst, ssize_t dstsize)
++{
++	unsigned char *tmpdst = dst;
++
++	while (*src) {
++		int hi, lo;
++
++		/* make sure we don't overrun the dst buffer */
++		if ((tmpdst - dst) >= dstsize)
++			return -ENOBUFS;
++
++		hi = hex_to_bin(*src++);
++
++		/* did we get an odd number of characters? */
++		if (!*src)
++			return -EINVAL;
++		lo = hex_to_bin(*src++);
++
++		/* one of the characters isn't a hex digit */
++		if (hi < 0 || lo < 0)
++			return -EINVAL;
++
++		/* now place it in the dst buffer */
++		*tmpdst++ = (hi << 4) | lo;
++	}
++
++	return (ssize_t)(tmpdst - dst);
++}
++
++/*
++ * This program will almost always be run with root privileges since the
++ * kernel will call out to run it. Drop all capabilities prior to doing
++ * anything important to limit the exposure to potential compromise.
++ *
++ * FIXME: should we setuid to a different user early on instead?
++ */
++static int
++cltrack_set_caps(void)
++{
++	int ret = 0;
++#ifdef HAVE_SYS_CAPABILITY_H
++	unsigned long i;
++	cap_t caps;
++
++	/* prune the bounding set to nothing */
++	for (i = 0; prctl(PR_CAPBSET_READ, i, 0, 0, 0) >= 0 ; ++i) {
++		ret = prctl(PR_CAPBSET_DROP, i, 0, 0, 0);
++		if (ret) {
++			xlog(L_ERROR, "Unable to prune capability %lu from "
++				      "bounding set: %m", i);
++			return -errno;
++		}
++	}
++
++	/* get a blank capset */
++	caps = cap_init();
++	if (caps == NULL) {
++		xlog(L_ERROR, "Unable to get blank capability set: %m");
++		return -errno;
++	}
++
++	/* reset the process capabilities */
++	if (cap_set_proc(caps) != 0) {
++		xlog(L_ERROR, "Unable to set process capabilities: %m");
++		ret = -errno;
++	}
++	cap_free(caps);
++#endif
++	return ret;
++}
++
++static int
++cltrack_init(const char __attribute__((unused)) *unused)
++{
++	int ret;
++
++	/*
++	 * see if the storagedir is writable by root w/o CAP_DAC_OVERRIDE.
++	 * If it isn't then give the user a warning but proceed as if
++	 * everything is OK. If the DB has already been created, then
++	 * everything might still work. If it doesn't exist at all, then
++	 * assume that the maindb init will be able to create it. Fail on
++	 * anything else.
++	 */
++	if (access(storagedir, W_OK) == -1) {
++		switch (errno) {
++		case EACCES:
++			xlog(L_WARNING, "Storage directory %s is not writable. "
++					"Should be owned by root and writable "
++					"by owner!", storagedir);
++			break;
++		case ENOENT:
++			/* ignore and assume that we can create dir as root */
++			break;
++		default:
++			xlog(L_ERROR, "Unexpected error when checking access "
++				      "on %s: %m", storagedir);
++			return -errno;
++		}
++	}
++
++	/* set up storage db */
++	ret = sqlite_maindb_init(storagedir);
++	if (ret) {
++		xlog(L_ERROR, "Failed to init database: %d", ret);
++		/*
++		 * Convert any error here into -EACCES. It's not truly
++		 * accurate in all cases, but it should cause the kernel to
++		 * stop upcalling until the problem is resolved.
++		 */
++		ret = -EACCES;
++	}
++	return ret;
++}
++
++static int
++cltrack_create(const char *id)
++{
++	int ret;
++	ssize_t len;
++
++	xlog(D_GENERAL, "%s: create client record.", __func__);
++
++	ret = sqlite_prepare_dbh(storagedir);
++	if (ret)
++		return ret;
++
++	len = hex_str_to_bin(id, blob, sizeof(blob));
++	if (len < 0)
++		return (int)len;
++
++	ret = sqlite_insert_client(blob, len);
++
++	return ret ? -EREMOTEIO : ret;
++}
++
++static int
++cltrack_remove(const char *id)
++{
++	int ret;
++	ssize_t len;
++
++	xlog(D_GENERAL, "%s: remove client record.", __func__);
++
++	ret = sqlite_prepare_dbh(storagedir);
++	if (ret)
++		return ret;
++
++	len = hex_str_to_bin(id, blob, sizeof(blob));
++	if (len < 0)
++		return (int)len;
++
++	ret = sqlite_remove_client(blob, len);
++
++	return ret ? -EREMOTEIO : ret;
++}
++
++static int
++cltrack_check(const char *id)
++{
++	int ret;
++	ssize_t len;
++
++	xlog(D_GENERAL, "%s: check client record", __func__);
++
++	ret = sqlite_prepare_dbh(storagedir);
++	if (ret)
++		return ret;
++
++	len = hex_str_to_bin(id, blob, sizeof(blob));
++	if (len < 0)
++		return (int)len;
++
++	ret = sqlite_check_client(blob, len);
++
++	return ret ? -EPERM : ret;
++}
++
++static int
++cltrack_gracedone(const char *timestr)
++{
++	int ret;
++	char *tail;
++	time_t gracetime;
++
++
++	ret = sqlite_prepare_dbh(storagedir);
++	if (ret)
++		return ret;
++
++	errno = 0;
++	gracetime = strtol(timestr, &tail, 0);
++
++	/* did the resulting value overflow? (Probably -ERANGE here) */
++	if (errno)
++		return -errno;
++
++	/* string wasn't fully converted */
++	if (*tail)
++		return -EINVAL;
++
++	xlog(D_GENERAL, "%s: grace done. gracetime=%ld", __func__, gracetime);
++
++	ret = sqlite_remove_unreclaimed(gracetime);
++
++	return ret ? -EREMOTEIO : ret;
++}
++
++static struct cltrack_cmd *
++find_cmd(char *cmdname)
++{
++	struct cltrack_cmd *current = &commands[0];
++
++	while (current->name) {
++		if (!strcmp(cmdname, current->name))
++			return current;
++		++current;
++	}
++
++	xlog(L_ERROR, "%s: '%s' doesn't match any known command",
++			__func__, cmdname);
++	return NULL;
++}
++
++int
++main(int argc, char **argv)
++{
++	char arg;
++	int rc = 0;
++	char *progname, *cmdarg = NULL;
++	struct cltrack_cmd *cmd;
++
++	progname = basename(argv[0]);
++
++	xlog_syslog(1);
++	xlog_stderr(0);
++
++	/* process command-line options */
++	while ((arg = getopt_long(argc, argv, "hdfs:", longopts,
++				  NULL)) != EOF) {
++		switch (arg) {
++		case 'd':
++			xlog_config(D_ALL, 1);
++		case 'f':
++			xlog_syslog(0);
++			xlog_stderr(1);
++			break;
++		case 's':
++			storagedir = optarg;
++			break;
++		default:
++			usage(progname);
++			return 0;
++		}
++	}
++
++	xlog_open(progname);
++
++	/* we expect a command, at least */
++	if (optind >= argc) {
++		xlog(L_ERROR, "Missing command name\n");
++		rc = -EINVAL;
++		goto out;
++	}
++
++	/* drop all capabilities */
++	rc = cltrack_set_caps();
++	if (rc)
++		goto out;
++
++	cmd = find_cmd(argv[optind]);
++	if (!cmd) {
++		/*
++		 * In the event that we get a command that we don't understand
++		 * then return a distinct error. The kernel can use this to
++		 * determine a new kernel/old userspace situation and cope
++		 * with it.
++		 */
++		rc = -ENOSYS;
++		goto out;
++	}
++
++	/* populate arg var if command needs it */
++	if (cmd->needs_arg) {
++		if (optind + 1 >= argc) {
++			xlog(L_ERROR, "Command %s requires an argument\n",
++				cmd->name);
++			rc = -EINVAL;
++			goto out;
++		}
++		cmdarg = argv[optind + 1];
++	}
++	rc = cmd->func(cmdarg);
++out:
++	return rc;
++}
 -- 
-1.7.11.4
+1.7.11.7
 
