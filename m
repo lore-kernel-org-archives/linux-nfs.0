@@ -1,77 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:64939 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757691Ab2JKPLg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Oct 2012 11:11:36 -0400
-Received: by mail-ie0-f174.google.com with SMTP id k13so3136165iea.19
-        for <linux-nfs@vger.kernel.org>; Thu, 11 Oct 2012 08:11:36 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 6/8] mountd: Add exportent_release()
+Received: from mail-vc0-f174.google.com ([209.85.220.174]:60763 "EHLO
+	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757202Ab2JYRVv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Oct 2012 13:21:51 -0400
+Received: by mail-vc0-f174.google.com with SMTP id fk26so2132362vcb.19
+        for <linux-nfs@vger.kernel.org>; Thu, 25 Oct 2012 10:21:50 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
 To: steved@redhat.com
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-Date: Thu, 11 Oct 2012 11:11:34 -0400
-Message-ID: <20121011151134.4665.44892.stgit@lebasque.1015granger.net>
-In-Reply-To: <20121011150421.4665.35964.stgit@lebasque.1015granger.net>
-References: <20121011150421.4665.35964.stgit@lebasque.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 0/9] nfsdcltrack: create a new usermodehelper upcall program for tracking clients
+Date: Thu, 25 Oct 2012 13:21:34 -0400
+Message-Id: <1351185703-14191-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Split out the logic that releases dynamically allocated data in an
-exportent.  The junction resolution code will invoke this to clean
-up the junction exportent once it has been dumped to the kernel.
+This is a respin of the set that I sent yesterday. The main differences
+are fairly minor...
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+- the program no longer strdup()s the basename of the binary
 
- support/export/export.c    |   19 ++++++++++++-------
- support/include/exportfs.h |    1 +
- 2 files changed, 13 insertions(+), 7 deletions(-)
+- the autoconf option is still built by default, but if the requirements
+  aren't met, configure will error out. Steve felt this was better than
+  disabling it and moving on.
 
-diff --git a/support/export/export.c b/support/export/export.c
-index 4fda30a..17ceca9 100644
---- a/support/export/export.c
-+++ b/support/export/export.c
-@@ -31,16 +31,21 @@ static nfs_export *
- 		export_allowed_internal(const struct addrinfo *ai,
- 				const char *path);
- 
-+void
-+exportent_release(struct exportent *eep)
-+{
-+	xfree(eep->e_squids);
-+	xfree(eep->e_sqgids);
-+	free(eep->e_mountpoint);
-+	free(eep->e_fslocdata);
-+	free(eep->e_uuid);
-+	xfree(eep->e_hostname);
-+}
-+
- static void
- export_free(nfs_export *exp)
- {
--	xfree(exp->m_export.e_squids);
--	xfree(exp->m_export.e_sqgids);
--	free(exp->m_export.e_mountpoint);
--	free(exp->m_export.e_fslocdata);
--	free(exp->m_export.e_uuid);
--
--	xfree(exp->m_export.e_hostname);
-+	exportent_release(&exp->m_export);
- 	xfree(exp);
- }
- 
-diff --git a/support/include/exportfs.h b/support/include/exportfs.h
-index 99916e5..5960feb 100644
---- a/support/include/exportfs.h
-+++ b/support/include/exportfs.h
-@@ -141,6 +141,7 @@ nfs_export *			export_find(const struct addrinfo *ai,
- nfs_export *			export_allowed(const struct addrinfo *ai,
- 						const char *path);
- nfs_export *			export_create(struct exportent *, int canonical);
-+void				exportent_release(struct exportent *);
- void				export_freeall(void);
- int				export_export(nfs_export *);
- int				export_unexport(nfs_export *);
+Everything else is pretty much the same. If it's easier, these patches
+are also in the "nfsdcltrack" branch of my git tree here:
+
+    git://git.linux-nfs.org/projects/jlayton/nfs-utils.git
+
+Thanks for the review so far!
+
+Jeff Layton (9):
+  nfsdcltrack: fix segfault in sqlite debug logging
+  nfsdcltrack: rename the nfsdcld directory and options to nfsdcltrack
+  nfsdcltrack: remove pointless sqlite_topdir variable
+  nfsdcltrack: break out a function to open the database handle
+  nfsdcltrack: add a new "one-shot" program for manipulating the client
+    tracking db
+  nfsdcltrack: add a legacy transition mechanism
+  nfsdcltrack: add a manpage for nfsdcltrack
+  nfsdcltrack: remove the nfsdcld daemon
+  nfsdcltrack: update the README about server startup order
+
+ README                            |  23 +-
+ configure.ac                      |  20 +-
+ utils/Makefile.am                 |   4 +-
+ utils/nfsdcld/Makefile.am         |  14 -
+ utils/nfsdcld/nfsdcld.c           | 607 --------------------------------------
+ utils/nfsdcld/nfsdcld.man         | 185 ------------
+ utils/nfsdcld/sqlite.c            | 386 ------------------------
+ utils/nfsdcld/sqlite.h            |  29 --
+ utils/nfsdcltrack/Makefile.am     |  13 +
+ utils/nfsdcltrack/nfsdcltrack.c   | 521 ++++++++++++++++++++++++++++++++
+ utils/nfsdcltrack/nfsdcltrack.man | 211 +++++++++++++
+ utils/nfsdcltrack/sqlite.c        | 400 +++++++++++++++++++++++++
+ utils/nfsdcltrack/sqlite.h        |  30 ++
+ 13 files changed, 1189 insertions(+), 1254 deletions(-)
+ delete mode 100644 utils/nfsdcld/Makefile.am
+ delete mode 100644 utils/nfsdcld/nfsdcld.c
+ delete mode 100644 utils/nfsdcld/nfsdcld.man
+ delete mode 100644 utils/nfsdcld/sqlite.c
+ delete mode 100644 utils/nfsdcld/sqlite.h
+ create mode 100644 utils/nfsdcltrack/Makefile.am
+ create mode 100644 utils/nfsdcltrack/nfsdcltrack.c
+ create mode 100644 utils/nfsdcltrack/nfsdcltrack.man
+ create mode 100644 utils/nfsdcltrack/sqlite.c
+ create mode 100644 utils/nfsdcltrack/sqlite.h
+
+-- 
+1.7.11.7
 
