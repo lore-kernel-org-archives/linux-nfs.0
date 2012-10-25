@@ -1,75 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from intranet.asianux.com ([58.214.24.6]:23594 "EHLO
-	intranet.asianux.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754542Ab2JPLnf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Oct 2012 07:43:35 -0400
-Message-ID: <507D48A6.3070601@asianux.com>
-Date: Tue, 16 Oct 2012 19:44:38 +0800
-From: Chen Gang <gang.chen@asianux.com>
-MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [Bug fix] nfs-client: fix nfs_inode_attrs_need_update for async
- read_done comes during truncating to smaller size
-References: <507B70F1.7040903@asianux.com> <4FA345DA4F4AE44899BD2B03EEEC2FA909236BB5@SACEXCMBX04-PRD.hq.netapp.com> <507B968A.9090104@asianux.com> <4FA345DA4F4AE44899BD2B03EEEC2FA90923F1C4@SACEXCMBX04-PRD.hq.netapp.com> <507CBA3F.6000204@asianux.com> <4FA345DA4F4AE44899BD2B03EEEC2FA909253103@SACEXCMBX04-PRD.hq.netapp.com> <507CDEF2.2060809@asianux.com> <20121016063348.7b225bfb@tlielax.poochiereds.net>
-In-Reply-To: <20121016063348.7b225bfb@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-vb0-f46.google.com ([209.85.212.46]:50610 "EHLO
+	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965500Ab2JYRV4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Oct 2012 13:21:56 -0400
+Received: by mail-vb0-f46.google.com with SMTP id ff1so2161469vbb.19
+        for <linux-nfs@vger.kernel.org>; Thu, 25 Oct 2012 10:21:56 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 4/9] nfsdcltrack: break out a function to open the database handle
+Date: Thu, 25 Oct 2012 13:21:38 -0400
+Message-Id: <1351185703-14191-5-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1351185703-14191-1-git-send-email-jlayton@redhat.com>
+References: <1351185703-14191-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+When we add a new usermodehelper upcall program to do the database
+access, the existing "init" function will be overkill every time
+we start up the program.
 
-于 2012年10月16日 18:33, Jeff Layton 写道:
-> In any situation where we get back attributes, we have to decide
-> whether they are valid or stale. It's always possible for replies or
-> their handling to be reordered such that an older set of attributes
-> is processed after a newer set.
-> 
-> Unfortunately, the v2/v3 protocols do not have great support for
-> helping the client detect this situation, so we do the best we can with
-> what we do have. Unfortunately when things are changing very quickly we
-> can still get it wrong, especially with v2/3. [1]
-> 
-> In any case, the logic to determine this is in
-> nfs_inode_attrs_need_update(). Looking at the size is sort of the "last
-> resort" after we look at the timestamps and gencount.
-> 
+Break out the database handle establishment routine into a separate
+function that we can call from each upcall command in the one-shot
+program.
 
-I agree with you (what I understood originally is just like what you
-said above).
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/nfsdcltrack/sqlite.c | 49 ++++++++++++++++++++++++++++++++--------------
+ utils/nfsdcltrack/sqlite.h |  1 +
+ 2 files changed, 35 insertions(+), 15 deletions(-)
 
-thank for your confirmation.
-
-> The problem with doing what you suggest is that if we get it wrong, the
-> consequences are worse than the file appearing to be bigger than it is.
-> It means that written data may be silently lost.
-> 
-
-1) I understand why my suggestion is not quite suitable. I agree you.
-
-2) but, are we truly no ways to solve this issue ?  (I do not think so).
-
-3) I think an executable way (but maybe not a good way) is :
-
-   A) for each client, check each task id of the client its own (such as
-rpc task xid), so can know the order of tasks of the client its own.
-
-   B) maybe also need another some synchronization code, but I think it
-does not have much negative effect with performance.
-
-
-> ======
-> 
-> [1]: v4 has a change attribute so it's slightly simpler there when the
-> server supports it. Unrelated Q for Trond: should we be checking the v4
-> change_attr in nfs_inode_attrs_need_update too? 
-
-sorry for I am truly not quite familiar with nfs, I also think it is not
-quite relative with current issue, so I have to skip it (although I
-think these contents are valulable for Trond)
-
+diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
+index c19af7e..bac6789 100644
+--- a/utils/nfsdcltrack/sqlite.c
++++ b/utils/nfsdcltrack/sqlite.c
+@@ -90,24 +90,15 @@ mkdir_if_not_exist(const char *dirname)
+ 	return ret;
+ }
+ 
+-/*
+- * Open the "main" database, and attempt to initialize it by creating the
+- * parameters table and inserting the schema version into it. Ignore any errors
+- * from that, and then attempt to select the version out of it again. If the
+- * version appears wrong, then assume that the DB is corrupt or has been
+- * upgraded, and return an error. If all of that works, then attempt to create
+- * the "clients" table.
+- */
++/* Open the database and set up the database handle for it */
+ int
+-sqlite_maindb_init(const char *topdir)
++sqlite_prepare_dbh(const char *topdir)
+ {
+ 	int ret;
+-	char *err = NULL;
+-	sqlite3_stmt *stmt = NULL;
+ 
+-	ret = mkdir_if_not_exist(topdir);
+-	if (ret)
+-		return ret;
++	/* Do nothing if the database handle is already set up */
++	if (dbh)
++		return 0;
+ 
+ 	ret = snprintf(buf, PATH_MAX - 1, "%s/main.sqlite", topdir);
+ 	if (ret < 0)
+@@ -118,15 +109,43 @@ sqlite_maindb_init(const char *topdir)
+ 	ret = sqlite3_open(buf, &dbh);
+ 	if (ret != SQLITE_OK) {
+ 		xlog(L_ERROR, "Unable to open main database: %d", ret);
++		dbh = NULL;
+ 		return ret;
+ 	}
+ 
+ 	ret = sqlite3_busy_timeout(dbh, CLD_SQLITE_BUSY_TIMEOUT);
+ 	if (ret != SQLITE_OK) {
+ 		xlog(L_ERROR, "Unable to set sqlite busy timeout: %d", ret);
+-		goto out_err;
++		sqlite3_close(dbh);
++		dbh = NULL;
+ 	}
+ 
++	return ret;
++}
++
++/*
++ * Open the "main" database, and attempt to initialize it by creating the
++ * parameters table and inserting the schema version into it. Ignore any errors
++ * from that, and then attempt to select the version out of it again. If the
++ * version appears wrong, then assume that the DB is corrupt or has been
++ * upgraded, and return an error. If all of that works, then attempt to create
++ * the "clients" table.
++ */
++int
++sqlite_maindb_init(const char *topdir)
++{
++	int ret;
++	char *err = NULL;
++	sqlite3_stmt *stmt = NULL;
++
++	ret = mkdir_if_not_exist(topdir);
++	if (ret)
++		return ret;
++
++	ret = sqlite_prepare_dbh(topdir);
++	if (ret)
++		return ret;
++
+ 	/* Try to create table */
+ 	ret = sqlite3_exec(dbh, "CREATE TABLE IF NOT EXISTS parameters "
+ 				"(key TEXT PRIMARY KEY, value TEXT);",
+diff --git a/utils/nfsdcltrack/sqlite.h b/utils/nfsdcltrack/sqlite.h
+index 8748948..ebf04c3 100644
+--- a/utils/nfsdcltrack/sqlite.h
++++ b/utils/nfsdcltrack/sqlite.h
+@@ -20,6 +20,7 @@
+ #ifndef _SQLITE_H_
+ #define _SQLITE_H_
+ 
++int sqlite_prepare_dbh(const char *topdir);
+ int sqlite_maindb_init(const char *topdir);
+ int sqlite_insert_client(const unsigned char *clname, const size_t namelen);
+ int sqlite_remove_client(const unsigned char *clname, const size_t namelen);
 -- 
-Chen Gang
+1.7.11.7
 
-Asianux Corporation
