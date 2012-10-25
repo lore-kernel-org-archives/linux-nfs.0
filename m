@@ -1,213 +1,120 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f174.google.com ([209.85.216.174]:57265 "EHLO
-	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752803Ab2J1TDR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Oct 2012 15:03:17 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH v7 04/16] workqueue: use new hashtable implementation
-Date: Sun, 28 Oct 2012 15:02:16 -0400
-Message-Id: <1351450948-15618-4-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
-References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:5622 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932151Ab2JYTW3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Oct 2012 15:22:29 -0400
+Received: from vmwexceht04-prd.hq.netapp.com (vmwexceht04-prd.hq.netapp.com [10.106.77.34])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q9PJMSL6025124
+	for <linux-nfs@vger.kernel.org>; Thu, 25 Oct 2012 12:22:28 -0700 (PDT)
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: avoid deadlock in nfs_kill_super
+Date: Thu, 25 Oct 2012 19:22:27 +0000
+Message-ID: <0EC8763B847DB24D9ADF5EBD9CD7B41910744FBE@SACEXCMBX03-PRD.hq.netapp.com>
+References: <1351188163-10067-1-git-send-email-dros@netapp.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9092922A5@SACEXCMBX04-PRD.hq.netapp.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9092922A5@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch workqueues to use the new hashtable implementation. This reduces the amount of
-generic unrelated code in the workqueues.
 
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
----
- kernel/workqueue.c | 86 ++++++++++--------------------------------------------
- 1 file changed, 15 insertions(+), 71 deletions(-)
+On Oct 25, 2012, at 2:17 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-diff --git a/kernel/workqueue.c b/kernel/workqueue.c
-index a1135c6..8f6e1bf 100644
---- a/kernel/workqueue.c
-+++ b/kernel/workqueue.c
-@@ -41,6 +41,7 @@
- #include <linux/debug_locks.h>
- #include <linux/lockdep.h>
- #include <linux/idr.h>
-+#include <linux/hashtable.h>
- 
- #include "workqueue_sched.h"
- 
-@@ -82,8 +83,6 @@ enum {
- 	NR_WORKER_POOLS		= 2,		/* # worker pools per gcwq */
- 
- 	BUSY_WORKER_HASH_ORDER	= 6,		/* 64 pointers */
--	BUSY_WORKER_HASH_SIZE	= 1 << BUSY_WORKER_HASH_ORDER,
--	BUSY_WORKER_HASH_MASK	= BUSY_WORKER_HASH_SIZE - 1,
- 
- 	MAX_IDLE_WORKERS_RATIO	= 4,		/* 1/4 of busy can be idle */
- 	IDLE_WORKER_TIMEOUT	= 300 * HZ,	/* keep idle ones for 5 mins */
-@@ -180,7 +179,7 @@ struct global_cwq {
- 	unsigned int		flags;		/* L: GCWQ_* flags */
- 
- 	/* workers are chained either in busy_hash or pool idle_list */
--	struct hlist_head	busy_hash[BUSY_WORKER_HASH_SIZE];
-+	DECLARE_HASHTABLE(busy_hash, BUSY_WORKER_HASH_ORDER);
- 						/* L: hash of busy workers */
- 
- 	struct worker_pool	pools[NR_WORKER_POOLS];
-@@ -285,8 +284,7 @@ EXPORT_SYMBOL_GPL(system_freezable_wq);
- 	     (pool) < &(gcwq)->pools[NR_WORKER_POOLS]; (pool)++)
- 
- #define for_each_busy_worker(worker, i, pos, gcwq)			\
--	for (i = 0; i < BUSY_WORKER_HASH_SIZE; i++)			\
--		hlist_for_each_entry(worker, pos, &gcwq->busy_hash[i], hentry)
-+	hash_for_each(gcwq->busy_hash, i, pos, worker, hentry)
- 
- static inline int __next_gcwq_cpu(int cpu, const struct cpumask *mask,
- 				  unsigned int sw)
-@@ -857,63 +855,6 @@ static inline void worker_clr_flags(struct worker *worker, unsigned int flags)
- }
- 
- /**
-- * busy_worker_head - return the busy hash head for a work
-- * @gcwq: gcwq of interest
-- * @work: work to be hashed
-- *
-- * Return hash head of @gcwq for @work.
-- *
-- * CONTEXT:
-- * spin_lock_irq(gcwq->lock).
-- *
-- * RETURNS:
-- * Pointer to the hash head.
-- */
--static struct hlist_head *busy_worker_head(struct global_cwq *gcwq,
--					   struct work_struct *work)
--{
--	const int base_shift = ilog2(sizeof(struct work_struct));
--	unsigned long v = (unsigned long)work;
--
--	/* simple shift and fold hash, do we need something better? */
--	v >>= base_shift;
--	v += v >> BUSY_WORKER_HASH_ORDER;
--	v &= BUSY_WORKER_HASH_MASK;
--
--	return &gcwq->busy_hash[v];
--}
--
--/**
-- * __find_worker_executing_work - find worker which is executing a work
-- * @gcwq: gcwq of interest
-- * @bwh: hash head as returned by busy_worker_head()
-- * @work: work to find worker for
-- *
-- * Find a worker which is executing @work on @gcwq.  @bwh should be
-- * the hash head obtained by calling busy_worker_head() with the same
-- * work.
-- *
-- * CONTEXT:
-- * spin_lock_irq(gcwq->lock).
-- *
-- * RETURNS:
-- * Pointer to worker which is executing @work if found, NULL
-- * otherwise.
-- */
--static struct worker *__find_worker_executing_work(struct global_cwq *gcwq,
--						   struct hlist_head *bwh,
--						   struct work_struct *work)
--{
--	struct worker *worker;
--	struct hlist_node *tmp;
--
--	hlist_for_each_entry(worker, tmp, bwh, hentry)
--		if (worker->current_work == work)
--			return worker;
--	return NULL;
--}
--
--/**
-  * find_worker_executing_work - find worker which is executing a work
-  * @gcwq: gcwq of interest
-  * @work: work to find worker for
-@@ -932,8 +873,14 @@ static struct worker *__find_worker_executing_work(struct global_cwq *gcwq,
- static struct worker *find_worker_executing_work(struct global_cwq *gcwq,
- 						 struct work_struct *work)
- {
--	return __find_worker_executing_work(gcwq, busy_worker_head(gcwq, work),
--					    work);
-+	struct worker *worker;
-+	struct hlist_node *tmp;
-+
-+	hash_for_each_possible(gcwq->busy_hash, worker, tmp, hentry, (unsigned long)work)
-+		if (worker->current_work == work)
-+			return worker;
-+
-+	return NULL;
- }
- 
- /**
-@@ -2160,7 +2107,6 @@ __acquires(&gcwq->lock)
- 	struct cpu_workqueue_struct *cwq = get_work_cwq(work);
- 	struct worker_pool *pool = worker->pool;
- 	struct global_cwq *gcwq = pool->gcwq;
--	struct hlist_head *bwh = busy_worker_head(gcwq, work);
- 	bool cpu_intensive = cwq->wq->flags & WQ_CPU_INTENSIVE;
- 	work_func_t f = work->func;
- 	int work_color;
-@@ -2192,7 +2138,7 @@ __acquires(&gcwq->lock)
- 	 * already processing the work.  If so, defer the work to the
- 	 * currently executing one.
- 	 */
--	collision = __find_worker_executing_work(gcwq, bwh, work);
-+	collision = find_worker_executing_work(gcwq, work);
- 	if (unlikely(collision)) {
- 		move_linked_works(work, &collision->scheduled, NULL);
- 		return;
-@@ -2200,7 +2146,7 @@ __acquires(&gcwq->lock)
- 
- 	/* claim and dequeue */
- 	debug_work_deactivate(work);
--	hlist_add_head(&worker->hentry, bwh);
-+	hash_add(gcwq->busy_hash, &worker->hentry, (unsigned long)worker);
- 	worker->current_work = work;
- 	worker->current_cwq = cwq;
- 	work_color = get_work_color(work);
-@@ -2258,7 +2204,7 @@ __acquires(&gcwq->lock)
- 		worker_clr_flags(worker, WORKER_CPU_INTENSIVE);
- 
- 	/* we're done with it, release */
--	hlist_del_init(&worker->hentry);
-+	hash_del(&worker->hentry);
- 	worker->current_work = NULL;
- 	worker->current_cwq = NULL;
- 	cwq_dec_nr_in_flight(cwq, work_color);
-@@ -3823,7 +3769,6 @@ out_unlock:
- static int __init init_workqueues(void)
- {
- 	unsigned int cpu;
--	int i;
- 
- 	/* make sure we have enough bits for OFFQ CPU number */
- 	BUILD_BUG_ON((1LU << (BITS_PER_LONG - WORK_OFFQ_CPU_SHIFT)) <
-@@ -3841,8 +3786,7 @@ static int __init init_workqueues(void)
- 		gcwq->cpu = cpu;
- 		gcwq->flags |= GCWQ_DISASSOCIATED;
- 
--		for (i = 0; i < BUSY_WORKER_HASH_SIZE; i++)
--			INIT_HLIST_HEAD(&gcwq->busy_hash[i]);
-+		hash_init(gcwq->busy_hash);
- 
- 		for_each_worker_pool(pool, gcwq) {
- 			pool->gcwq = gcwq;
--- 
-1.7.12.4
+> On Thu, 2012-10-25 at 14:02 -0400, Weston Andros Adamson wrote:
+>> Calling nfs_kill_super from an RPC task callback would result in a deadlock
+>> where nfs_free_server (via rpc_shutdown_client) tries to kill all
+>> RPC tasks associated with that connection - including itself!
+>> 
+>> Instead of calling nfs_kill_super directly, queue a job on the nfsiod
+>> workqueue.
+>> 
+>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+>> ---
+>> 
+>> This fixes the current incarnation of the lockup I've been tracking down for
+>> some time now.  I still have to go back and see why the reproducer changed
+>> behavior a few weeks ago - tasks used to get stuck in rpc_prepare_task, but
+>> now (before this patch) are stuck in rpc_exit.
+>> 
+>> The reproducer works against a server with write delegations:
+>> 
+>> ./nfsometer.py -m v4 server:/path dd_100m_100k
+>> 
+>> which is basically:
+>> - mount
+>> - dd if=/dev/zero of=./dd_file.100m_100k bs=102400 count=1024
+>> - umount
+>> - break if /proc/fs/nfsfs/servers still has entry after 5 seconds (in this
+>>   case it NEVER goes away)
+>> 
+>> There are clearly other ways to trigger this deadlock, like a v4.1 CLOSE - the
+>> done handler calls nfs_sb_deactivate...
+>> 
+>> I've tested this approach with 10 runs X 3 nfs versions X 5 workloads 
+>> (dd_100m_100k, dd_100m_1k, python, kernel, cthon), so I'm pretty confident
+>> its correct.
+>> 
+>> One question for the list: should nfs_free_server *always* be scheduled on
+>> the nfsiod workqueue? It's called in error paths in several locations.
+>> After looking at them, I don't think my approach would break anything, but 
+>> some might have style objections.
+>> 
+> 
+> This doesn't add up. There should be nothing calling nfs_sb_deactive()
+> from a rpc_call_done() callback. If so, then that would be the bug.
+> 
+> All calls to things like rpc_put_task(), put_nfs_open_context(), dput(),
+> or nfs_sb_deactive() should occur in the rpc_call_release() callback if
+> they can't be done in a process context. In both those cases, the
+> rpc_task will be invisible to rpc_killall_tasks and rpc_shutdown_client.
 
+Ah, I misunderstood what was going on here.
+
+nfs_kill_super *is* being called by rpc_release_calldata callback:
+
+The kworker stuck in rpc_killall_tasks forever:
+
+[   34.552600]  [<ffffffffa00868e6>] rpc_killall_tasks+0x2d/0xcd [sunrpc]
+[   34.552608]  [<ffffffffa00883e4>] rpc_shutdown_client+0x4a/0xec [sunrpc]
+[   34.552615]  [<ffffffffa002b973>] nfs_free_server+0xcf/0x133 [nfs]
+[   34.552625]  [<ffffffffa0033193>] nfs_kill_super+0x37/0x3c [nfs]
+[   34.552629]  [<ffffffff81136c68>] deactivate_locked_super+0x37/0x63
+[   34.552633]  [<ffffffff8113785f>] deactivate_super+0x37/0x3b
+[   34.552642]  [<ffffffffa0034fc1>] nfs_sb_deactive+0x23/0x25 [nfs]
+[   34.552649]  [<ffffffffa00dbba2>] nfs4_free_closedata+0x53/0x63 [nfsv4]
+[   34.552661]  [<ffffffffa008f997>] rpc_release_calldata+0x17/0x19 [sunrpc]
+[   34.552671]  [<ffffffffa008f9f5>] rpc_free_task+0x5c/0x65 [sunrpc]
+[   34.552680]  [<ffffffffa008fe07>] rpc_async_release+0x15/0x17 [sunrpc]
+[   34.552684]  [<ffffffff810632b7>] process_one_work+0x192/0x2a0
+[   34.552693]  [<ffffffffa008fdf2>] ? rpc_async_schedule+0x33/0x33 [sunrpc]
+[   34.552697]  [<ffffffff81064169>] worker_thread+0x140/0x1d7
+[   34.552700]  [<ffffffff81064029>] ? manage_workers+0x23b/0x23b
+[   34.552704]  [<ffffffff81067d21>] kthread+0x8d/0x95
+[   34.552708]  [<ffffffff81067c94>] ? kthread_freezable_should_stop+0x43/0x43
+[   34.552713]  [<ffffffff814ef1ac>] ret_from_fork+0x7c/0xb0
+[   34.552717]  [<ffffffff81067c94>] ? kthread_freezable_should_stop+0x43/0x43
+
+And the client's task list:
+
+[  174.574006] -pid- flgs status -client- --rqstp- -timeout ---ops--
+[  174.574019]  1664 0181     -5 ffff880226474600   (null)        0 ffffffffa00f7ce0 nfsv4 DELEGRETURN a:rpc_exit_task [sunrpc] q:none
+
+So it looks like a CLOSE's rpc_release_calldata is triggering the nfs_kill_super and this is stuck trying to kill the DELEGRETURN task - which never gets run.
+
+I've debugged this from the workqueue side and the DELEGRETURN work is scheduled, but ends up having insert_wq_barrier called on it.  It seems to me that this means the work queue is enforcing queue ordering that the CLOSE work should complete before the DELEGRETURN work can proceed -- and *that* is the deadlock (CLOSE waiting until DELEGRETURN is dead, DELEGRETURN can't run until close is complete).
+
+This would also explain our (Trond and me) failed attempts at canceling / rescheduling jobs in killall_tasks -- insert_wq_barrier's comment states:
+
+ * Currently, a queued barrier can't be canceled.  This is because
+ * try_to_grab_pending() can't determine whether the work to be
+ * grabbed is at the head of the queue and thus can't clear LINKED
+ * flag of the previous work while there must be a valid next work
+ * after a work with LINKED flag set.
+
+Now that I have a better understanding of what's happening, I'll go back to the drawing board.
+
+Thanks!
+-dros
