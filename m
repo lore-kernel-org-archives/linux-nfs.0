@@ -1,56 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from li9-11.members.linode.com ([67.18.176.11]:57877 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S966544Ab2JZVPy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Oct 2012 17:15:54 -0400
-Date: Fri, 26 Oct 2012 17:15:42 -0400
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: Nix <nix@esperi.org.uk>
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
-        Bryan Schumaker <bjschuma@netapp.com>, Peng Tao <bergwolf@gmail.com>,
-        Trond.Myklebust@netapp.com, gregkh@linuxfoundation.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3
- (and other stable branches?)
-Message-ID: <20121026211542.GE8614@thunk.org>
-References: <87objupjlr.fsf@spindle.srvr.nix>
- <20121023013343.GB6370@fieldses.org>
- <87mwzdnuww.fsf@spindle.srvr.nix>
- <20121023143019.GA3040@fieldses.org>
- <874nllxi7e.fsf_-_@spindle.srvr.nix>
- <87pq48nbyz.fsf_-_@spindle.srvr.nix>
- <508AF3FA.4020506@redhat.com>
- <87wqydx957.fsf@spindle.srvr.nix>
- <20121026205618.GC8614@thunk.org>
- <87objpx84k.fsf@spindle.srvr.nix>
+Received: from mx12.netapp.com ([216.240.18.77]:30043 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752347Ab2JZBMY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 25 Oct 2012 21:12:24 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        "Linux Kernel mailing list" <linux-kernel@vger.kernel.org>
+Subject: [GIT PULL] Please pull more NFS related bugfixes
+Date: Fri, 26 Oct 2012 01:12:22 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA909293049@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87objpx84k.fsf@spindle.srvr.nix>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> This isn't the first time that journal_checksum has proven problematic.
-> It's a shame that we're stuck between two error-inducing stools here...
-
-The problem is that it currently bails out be aborting the entire
-journal replay, and the file system will get left in a mess when it
-does that.  It's actually safer today to just be blissfully ignorant
-of a corrupted block in the journal, than to have the journal getting
-aborted mid-replay when we detect a corrupted commit.
-
-The plan is that eventually, we will have checksums on a
-per-journalled block basis, instead of a per-commit basis, and when we
-get a failed checksum, we skip the replay of that block, but we keep
-going and replay all of the other blocks and commits.  We'll then set
-the "file system corrupted" bit and force an e2fsck check.
-
-The problem is this code isn't done yet, and journal_checksum is
-really not ready for prime time.  When it is ready, my plan is to wire
-it up so it is enabled by default; at the moment, it was intended for
-developer experimentation only.  As I said, it's my fault for not
-clearly labelling it "Not for you!", or putting it under an #ifdef to
-prevent unwary civilians from coming across the feature and saying,
-"oooh, shiny!" and turning it on.  :-(
-
-					- Ted
+SGkgTGludXMsDQoNClRoaXMgcHVsbCBmaXhlcyBhIGZhaXJseSB1cmdlbnQgaXNzdWUgd2l0aCB0
+aGUgTkZTdjIvdjMgc3RhdGQgY29kZSB0aGF0DQppcyBjYXVzaW5nIE9vcHNlcywgYXMgd2VsbCBh
+cyBzb21lIGxvbmcgc3RhbmRpbmcgcmFjZXMgd2l0aCB0aGUgU1VOUlBDDQp0Y3AgY29kZS4NCg0K
+VGhlIGZvbGxvd2luZyBjaGFuZ2VzIHNpbmNlIGNvbW1pdCAwZTllM2UzMDZjN2U0NzJiZGNmZmEz
+NGM0YzQ1ODQzMDFlZGEwM2IzOg0KDQogIE1lcmdlIHRhZyAnc3RhYmxlL2Zvci1saW51cy0zLjct
+cmMyLXRhZycgb2YgZ2l0Oi8vZ2l0Lmtlcm5lbC5vcmcvcHViL3NjbS9saW51eC9rZXJuZWwvZ2l0
+L2tvbnJhZC94ZW4gKDIwMTItMTAtMjQgMDU6MTc6MjcgKzAzMDApDQoNCmFyZSBhdmFpbGFibGUg
+aW4gdGhlIGdpdCByZXBvc2l0b3J5IGF0Og0KDQoNCiAgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcv
+cHJvamVjdHMvdHJvbmRteS9saW51eC1uZnMuZ2l0IHRhZ3MvbmZzLWZvci0zLjctMw0KDQpmb3Ig
+eW91IHRvIGZldGNoIGNoYW5nZXMgdXAgdG8gZTQ5OGRhYTgxMjk1ZDAyZjczNTlhZjMxM2MyYjdm
+ODdlMTA2MjIwNzoNCg0KICBMT0NLRDogQ2xlYXIgbG4tPm5zbV9jbG50IG9ubHkgd2hlbiBsbi0+
+bnNtX3VzZXJzIGlzIHplcm8gKDIwMTItMTAtMjQgMTA6NDY6MjIgLTA0MDApDQoNCi0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0N
+Ck5GUyBidWdmaXhlcyBmb3IgTGludXggMy43DQoNCi0gRml4IHRoZSBORlN2Mi92MyBrZXJuZWwg
+c3RhdGQgcHJvdG9jb2wsIHdoaWNoIGJyb2tlIGR1ZSB0byBuZXQgbmFtZXNwYWNlDQogIHJlbGF0
+ZWQgY2hhbmdlcy4NCi0gRml4IGEgbnVtYmVyIG9mIHJhY2VzIGluIHRoZSBTVU5SUEMgVENQIGRp
+c2Nvbm5lY3QvcmVjb25uZWN0IGNvZGUuDQoNCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NClRyb25kIE15a2xlYnVzdCAoNik6
+DQogICAgICBTVU5SUEM6IENsZWFyIHRoZSBjb25uZWN0IGZsYWcgd2hlbiBzb2NrZXQgc3RhdGUg
+aXMgVENQX0NMT1NFX1dBSVQNCiAgICAgIFJldmVydCAiU1VOUlBDOiBFbnN1cmUgd2UgY2xvc2Ug
+dGhlIHNvY2tldCBvbiBFUElQRSBlcnJvcnMgdG9vLi4uIg0KICAgICAgU1VOUlBDOiBQcmV2ZW50
+IHJhY2VzIGluIHhzX2Fib3J0X2Nvbm5lY3Rpb24oKQ0KICAgICAgU1VOUlBDOiBHZXQgcmlkIG9m
+IHRoZSB4c19lcnJvcl9yZXBvcnQgc29ja2V0IGNhbGxiYWNrDQogICAgICBMT0NLRDogZml4IHJh
+Y2VzIGluIG5zbV9jbGllbnRfZ2V0DQogICAgICBMT0NLRDogQ2xlYXIgbG4tPm5zbV9jbG50IG9u
+bHkgd2hlbiBsbi0+bnNtX3VzZXJzIGlzIHplcm8NCg0KIGZzL2xvY2tkL21vbi5jICAgICAgICB8
+IDU3ICsrKysrKysrKysrKysrKysrKysrKysrKysrKysrLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0K
+IG5ldC9zdW5ycGMveHBydHNvY2suYyB8IDQxICsrKysrKysrKy0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLQ0KIDIgZmlsZXMgY2hhbmdlZCwgNDIgaW5zZXJ0aW9ucygrKSwgNTYgZGVsZXRpb25z
+KC0pDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIN
+Cg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
