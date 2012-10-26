@@ -1,45 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:36201 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:43847 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934107Ab2J3VBo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Oct 2012 17:01:44 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 2/2] SUNRPC: add WARN_ON_ONCE for potential deadlock
-Date: Tue, 30 Oct 2012 17:01:40 -0400
-Message-Id: <1351630900-6498-2-git-send-email-dros@netapp.com>
-In-Reply-To: <1351630900-6498-1-git-send-email-dros@netapp.com>
-References: <1351630900-6498-1-git-send-email-dros@netapp.com>
+	id S1756705Ab2JZRPv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Oct 2012 13:15:51 -0400
+Date: Fri, 26 Oct 2012 13:15:49 -0400
+To: Sven Geggus <lists@fuchsschwanzdomain.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Kernel update 3.5.7 -> 3.6.3 breaks NFS4
+Message-ID: <20121026171549.GA11806@fieldses.org>
+References: <k6ebva$1kf$1@ultimate100.geggus.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <k6ebva$1kf$1@ultimate100.geggus.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-rpc_shutdown_client should never be called from a workqueue context.
-If it is, it could deadlock looping forever trying to kill tasks that are
-assigned to the same kworker thread (and will never run rpc_exit_task).
+On Fri, Oct 26, 2012 at 03:58:34PM +0000, Sven Geggus wrote:
+> Hello,
+> 
+> after updating the kernel of my NFS4-Server (because of 3.5.x EOL) I ended
+> up with NFS4 stopped working.
+> 
+> Kernel config is more or less the same as with 3.5.7, as I used "make
+> oldconfig". The only new stuff in the NFS area seems to be swap over NFS
+> which is disabled.
+> 
+> So starting from a working setup with 3.5.7 on the server (client uses
+> kernel 3.6.3) NFS4 stops working after upgrading the server to 3.6.3.
+> 
+> What happens is that mounting seems to hang infinitely when trying to mount
+> the server using the following command:
+> mount -v -t nfs4 -o sec=krb5 <server>:/<dir> /mnt/
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- net/sunrpc/clnt.c |    6 ++++++
- 1 file changed, 6 insertions(+)
+Could I see a network trace?
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index cdc7564..d2737c2 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -607,6 +607,12 @@ EXPORT_SYMBOL_GPL(rpc_killall_tasks);
-  */
- void rpc_shutdown_client(struct rpc_clnt *clnt)
- {
-+	/*
-+	 * To avoid deadlock, never call rpc_shutdown_client from a
-+	 * workqueue context!
-+	 */
-+	WARN_ON_ONCE(current->flags & PF_WQ_WORKER);
-+
- 	dprintk_rcu("RPC:       shutting down %s client for %s\n",
- 			clnt->cl_protname,
- 			rcu_dereference(clnt->cl_xprt)->servername);
--- 
-1.7.9.6 (Apple Git-31.1)
+	tcpdump -s0 -wtmp.pcap 'host <myclient> && host <myserver>'
 
+then try the mount, then kill tcpdump and send me a copy of tmp.pcap.
+
+--b.
+
+> 
+> However everything works fine again when the server has been rebooted into kernel
+> 3.5.7.
+> 
+> Here is the relevant part of .config:
+> CONFIG_NETWORK_FILESYSTEMS=y
+> CONFIG_NFS_FS=m
+> CONFIG_NFS_V2=m
+> CONFIG_NFS_V3=m
+> CONFIG_NFS_V3_ACL=y
+> CONFIG_NFS_V4=m
+> # CONFIG_NFS_SWAP is not set
+> # CONFIG_NFS_V4_1 is not set
+> # CONFIG_NFS_USE_LEGACY_DNS is not set
+> CONFIG_NFS_USE_KERNEL_DNS=y
+> CONFIG_NFS_DEBUG=y
+> CONFIG_NFSD=y
+> CONFIG_NFSD_V2_ACL=y
+> CONFIG_NFSD_V3=y
+> CONFIG_NFSD_V3_ACL=y
+> CONFIG_NFSD_V4=y
+> # CONFIG_NFSD_FAULT_INJECTION is not set
+> CONFIG_LOCKD=y
+> CONFIG_LOCKD_V4=y
+> CONFIG_NFS_ACL_SUPPORT=y
+> CONFIG_NFS_COMMON=y
+> CONFIG_SUNRPC=y
+> CONFIG_SUNRPC_GSS=y
+> CONFIG_RPCSEC_GSS_KRB5=y
+> CONFIG_SUNRPC_DEBUG=y
+> 
+> 
+> Sven
+> 
+> P.S.: The system is using nfs-utils 1.2.6 on debian wheezy if this should be
+> relevant.
+> 
+> -- 
+> "Those who do not understand Unix are condemned to reinvent it, poorly"
+> (Henry Spencer)
+> 
+> /me is giggls@ircnet, http://sven.gegg.us/ on the Web
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
