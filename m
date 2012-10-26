@@ -1,60 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:37300 "EHLO mx2.netapp.com"
+Received: from mail.gnuher.de ([78.47.12.54]:49089 "EHLO mail.gnuher.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751705Ab2JPCvh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Oct 2012 22:51:37 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chen Gang <gang.chen@asianux.com>
-CC: Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [Bug fix] nfs-client: fix nfs_inode_attrs_need_update for async
- read_done comes during truncating to smaller size
-Date: Tue, 16 Oct 2012 02:51:35 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA909253103@SACEXCMBX04-PRD.hq.netapp.com>
-References: <507B70F1.7040903@asianux.com>
-	  <4FA345DA4F4AE44899BD2B03EEEC2FA909236BB5@SACEXCMBX04-PRD.hq.netapp.com>
-	  <507B968A.9090104@asianux.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA90923F1C4@SACEXCMBX04-PRD.hq.netapp.com>
-	 <507CBA3F.6000204@asianux.com>
-In-Reply-To: <507CBA3F.6000204@asianux.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S965301Ab2JZQhu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Oct 2012 12:37:50 -0400
+Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
+	by mail.gnuher.de (envelope-from
+	<news@geggus.net>)
+	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
+	(Exim 4.72)
+	id 1TRmIu-0001kG-N8
+	for linux-nfs@vger.kernel.org; Fri, 26 Oct 2012 17:58:36 +0200
+Received: from news  by ultimate100.geggus.net (envelope-from
+	<news@geggus.net>)
+	with local (Exim 4.72)
+	id 1TRmIs-0000X0-8I
+	for linux-nfs@vger.kernel.org; Fri, 26 Oct 2012 17:58:34 +0200
+To: linux-nfs@vger.kernel.org
+From: Sven Geggus <lists@fuchsschwanzdomain.de>
+Subject: Kernel update 3.5.7 -> 3.6.3 breaks NFS4
+Date: Fri, 26 Oct 2012 15:58:34 +0000 (UTC)
+Message-ID: <k6ebva$1kf$1@ultimate100.geggus.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTEwLTE2IGF0IDA5OjM3ICswODAwLCBDaGVuIEdhbmcgd3JvdGU6DQo+IOS6
-jiAyMDEy5bm0MTDmnIgxNeaXpSAyMDozMiwgTXlrbGVidXN0LCBUcm9uZCDlhpnpgZM6DQo+ID4g
-UlBDIGlzIG5vdCBvcmRlcmVkLiBUaGUgZmFjdCB0aGF0IHdlIGdldCBvbmUgUlBDIHJlcGx5IGJl
-Zm9yZSBhbm90aGVyDQo+ID4gZG9lcyBub3QgbWVhbiB0aGF0IHRoZSBzZXJ2ZXIgc2VudCB0aGVt
-IGluIHRoYXQgb3JkZXIuDQo+ID4gDQo+ID4gVGhpcyBpcyBkb3VibHkgdHJ1ZSB3aGVuIHlvdSB1
-c2UgVURQIGFzIHRoZSB0cmFuc3BvcnQgcHJvdG9jb2wuDQo+IA0KPiAxKSBpcyBpdCBtZWFuczog
-bmZzX2lub2RlX2F0dHJzX25lZWRfdXBkYXRlIG5lZWQgbm90IGNvbnNpZGVyIGFzeW5jDQo+IHJl
-YWRfZG9uZSBzaXR1YXRpb24gPw0KDQpJIGRvbid0IHVuZGVyc3RhbmQgd2hhdCB5b3UgbWVhbi4g
-VGhpcyBpcyBtYWlubHkgYWJvdXQgdGhlIGFzeW5jaHJvbm91cw0Kd3JpdGUgc2l0dWF0aW9uLi4u
-DQoNCj4gMikgZm9yIGNvcnJlY3RuZXNzLCBJIGRvIG5vdCB0aGluayAibmZzX3NpemVfdG9fbG9m
-Zl90KGZhdHRyLT5zaXplKSA+DQo+IGlfc2l6ZV9yZWFkKGlub2RlKSIgaW4gbmZzX3NpemVfbmVl
-ZF91cGRhdGUgaXMgZW5vdWdoLiAoYXQgbGVhc3QgbmVlZA0KPiB1c2UgIiE9IiBpbnN0ZWFkIG9m
-ICc+JyksIGRvIHlvdSB0aGluayBzbyA/DQoNCk5vLi4uIElmIEkgZGlkLCBJIHdvdWxkIGhhdmUg
-Y2hhbmdlZCB0aGlzIDE1IHllYXJzIGFnbyB3aGVuIEkgd2FzDQp3cml0aW5nIHRoYXQgY29kZS4g
-Tm90aGluZyBoZXJlIGlzIG5ldy4uLiAyLjYuMjctcmM5IGhhcyB0aGUgZXhhY3Qgc2FtZQ0KaGV1
-cmlzdGljcy4NCkl0IGJvaWxzIGRvd24gdG8gdGhlIHJ1bGUgdGhhdCBpZiB5b3Ugd2FudCB0byBl
-bnN1cmUgdGhhdCBkYXRhIGlzIG5vdA0KX2xvc3RfLCB0aGVuIHlvdSBoYXZlIHRvIGVuc3VyZSB0
-aGF0IHRoZSBjYWNoZWQgZmlsZSBzaXplIGlzIG5vdCBsZXNzDQp0aGFuIHRoZSB0cnVlIGZpbGUg
-c2l6ZS4NCg0KPiAzKSBhbm90aGVyIHJlZmVyZW5jZToNCj4gDQo+ICAgQSkgZm9yIGFuIG9sZCBr
-ZXJuZWwgdmVyc2lvbiAoc3VjaCBhcyAyLjYuMjctcmM5KSwgbm8gc3VjaCBpc3N1ZQ0KPiAoYmVj
-YXVzZSBpdCBkaWQgbm90IGhhdmUgbmZzX3NpemVfbmVlZF91cGRhdGUpLg0KPiANCj4gICBCKSB0
-aGUgdGVzdCB0b29scyB3aGljaCBJIHVzZSBpcyBmcm9tIHRoZSBMVFAgKExpbnV4IFRlc3QgUHJv
-amVjdCksDQo+IHRoZXkgdXNlIGJvdGggdWRwIGFuZCB0Y3AgdG8gdGVzdCBib3RoIHRoZSBuZnN2
-MiBhbmQgbmZzdjMuDQoNClNvIHdoYXQgY29tYmluYXRpb25zIGFyZSBmYWlsaW5nPw0KDQo+ICAg
-QykgdHJ1bHkgTFRQIGhhcyBpdHMgbGltaXRhdGlvbnM6ICJmb3Igc3RyZXNzIHRlc3QsIExUUCBs
-ZXQgbmZzIGNsaWVudA0KPiBhbmQgc2VydmVyIHVuZGVyIHRoZSBzYW1lIG1hY2hpbmUsIHdoaWNo
-IHdpbGwgY2F1c2Uga2VybmVsIHN0YWJsZQ0KPiBpc3N1ZSIsIGJ1dCBmb3IgbmV0IHRlc3QsIExU
-UCB1c2UgZGlmZmVyZW50IG1hY2hpbmUgKEkgZ290IG91ciBpc3N1ZQ0KPiBmcm9tIExUUCBuZXQg
-dGVzdCkuDQoNClJ1bm5pbmcgdGhlIGNsaWVudCBhbmQgc2VydmVyIG9uIHRoZSBzYW1lIG1hY2hp
-bmUgaXMgbGlrZWx5IHRvIGRlYWRsb2NrDQpkdWUgdG8gbWVtb3J5IHByZXNzdXJlIGlzc3Vlcy4g
-VGhlIGNsaWVudCBuZWVkcyB0byBiZSBhYmxlIHRvIF9pbmNyZWFzZV8NCm1lbW9yeSBwcmVzc3Vy
-ZSBvbiB0aGUgc2VydmVyIGluIG9yZGVyIHRvIHJlZHVjZSBpdHMgb3duIHByZXNzdXJlLiBUaGF0
-DQpkb2Vzbid0IHdvcmsgd2VsbCB3aGVuIGNsaWVudCA9PSBzZXJ2ZXIuDQoNCi0tIA0KVHJvbmQg
-TXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5N
-eWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+Hello,
+
+after updating the kernel of my NFS4-Server (because of 3.5.x EOL) I ended
+up with NFS4 stopped working.
+
+Kernel config is more or less the same as with 3.5.7, as I used "make
+oldconfig". The only new stuff in the NFS area seems to be swap over NFS
+which is disabled.
+
+So starting from a working setup with 3.5.7 on the server (client uses
+kernel 3.6.3) NFS4 stops working after upgrading the server to 3.6.3.
+
+What happens is that mounting seems to hang infinitely when trying to mount
+the server using the following command:
+mount -v -t nfs4 -o sec=krb5 <server>:/<dir> /mnt/
+
+However everything works fine again when the server has been rebooted into kernel
+3.5.7.
+
+Here is the relevant part of .config:
+CONFIG_NETWORK_FILESYSTEMS=y
+CONFIG_NFS_FS=m
+CONFIG_NFS_V2=m
+CONFIG_NFS_V3=m
+CONFIG_NFS_V3_ACL=y
+CONFIG_NFS_V4=m
+# CONFIG_NFS_SWAP is not set
+# CONFIG_NFS_V4_1 is not set
+# CONFIG_NFS_USE_LEGACY_DNS is not set
+CONFIG_NFS_USE_KERNEL_DNS=y
+CONFIG_NFS_DEBUG=y
+CONFIG_NFSD=y
+CONFIG_NFSD_V2_ACL=y
+CONFIG_NFSD_V3=y
+CONFIG_NFSD_V3_ACL=y
+CONFIG_NFSD_V4=y
+# CONFIG_NFSD_FAULT_INJECTION is not set
+CONFIG_LOCKD=y
+CONFIG_LOCKD_V4=y
+CONFIG_NFS_ACL_SUPPORT=y
+CONFIG_NFS_COMMON=y
+CONFIG_SUNRPC=y
+CONFIG_SUNRPC_GSS=y
+CONFIG_RPCSEC_GSS_KRB5=y
+CONFIG_SUNRPC_DEBUG=y
+
+
+Sven
+
+P.S.: The system is using nfs-utils 1.2.6 on debian wheezy if this should be
+relevant.
+
+-- 
+"Those who do not understand Unix are condemned to reinvent it, poorly"
+(Henry Spencer)
+
+/me is giggls@ircnet, http://sven.gegg.us/ on the Web
