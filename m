@@ -1,54 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.gnuher.de ([78.47.12.54]:39759 "EHLO mail.gnuher.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757389Ab2JaMwp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 31 Oct 2012 08:52:45 -0400
-Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
-	by mail.gnuher.de (envelope-from
-	<news@geggus.net>)
-	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.72)
-	id 1TTXml-0005EE-Uq
-	for linux-nfs@vger.kernel.org; Wed, 31 Oct 2012 13:52:44 +0100
-Received: from news  by ultimate100.geggus.net (envelope-from
-	<news@geggus.net>)
-	with local (Exim 4.72)
-	id 1TTXml-00045b-Ac
-	for linux-nfs@vger.kernel.org; Wed, 31 Oct 2012 13:52:43 +0100
-To: linux-nfs@vger.kernel.org
-From: Sven Geggus <lists@fuchsschwanzdomain.de>
-Subject: Re: Kernel update 3.5.7 -> 3.6.3 breaks NFS4
-Date: Wed, 31 Oct 2012 12:52:43 +0000 (UTC)
-Message-ID: <k6r6ur$eva$2@ultimate100.geggus.net>
-References: <k6ebva$1kf$1@ultimate100.geggus.net> <20121026171549.GA11806@fieldses.org> <20121029094038.GA14836@geggus.net> <20121029150203.GB9502@fieldses.org> <20121029163323.GA24345@geggus.net>
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:59451 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753337Ab2J0Mdv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 08:33:51 -0400
+Received: by mail-gg0-f174.google.com with SMTP id k5so690906ggd.19
+        for <linux-nfs@vger.kernel.org>; Sat, 27 Oct 2012 05:33:50 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v8 01/32] vfs: add a retry_estale helper function to handle retries on ESTALE
+Date: Sat, 27 Oct 2012 08:33:08 -0400
+Message-Id: <1351341219-17837-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
+References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sven Geggus <lists@fuchsschwanzdomain.de> wrote:
+This function is expected to be called from path-based syscalls to help
+them decide whether to try the lookup and call again in the event that
+they got an -ESTALE return back on an earier try.
 
->> I'd be curious to understand what changed on the server to make a
->> difference. 
-> 
-> Nothing but the kernel. I'm currently dual booting either 3.5.7 or 3.6.3
-> vanilla kernels on the same system.
+Currently, we only retry the call once on an ESTALE error, but in the
+event that we decide that that's not enough in the future, we should be
+able to change the logic in this helper without too much effort.
 
-I did some further investigation on this using a freshly installed
-system on virtualbox with either kernel.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ include/linux/fs.h | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
 
-Same odd behaviour. Everything work using Kernel 3.5.7. Server does not work using
-Kernel 3.6.3.
-
-There are even different filesystems on the vm (ext4) and on the real server
-(xfs).
-
-Looks like I need to cherry-pick nfs4 server changes between 3.5.7 and 3.6.3 now :(
-
-Regards
-
-Sven
-
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index b33cfc9..01ff902 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2023,6 +2023,27 @@ extern int finish_open(struct file *file, struct dentry *dentry,
+ 			int *opened);
+ extern int finish_no_open(struct file *file, struct dentry *dentry);
+ 
++/**
++ * retry_estale - determine whether the caller should retry an operation
++ *
++ * @error: the error we'll be returning
++ * @try: number of retries already performed
++ *
++ * Check to see if the error code was -ESTALE, and then determine whether
++ * to retry the call based on the number of retries so far. Currently, we only
++ * retry the call once.
++ *
++ * Returns true if the caller should try again.
++ */
++static inline bool
++retry_estale(const long error, const unsigned int try)
++{
++	if (likely(error != -ESTALE))
++		return false;
++
++	return !try;
++}
++
+ /* fs/ioctl.c */
+ 
+ extern int ioctl_preallocate(struct file *filp, void __user *argp);
 -- 
-"Those who do not understand Unix are condemned to reinvent it, poorly"
-(Henry Spencer)
+1.7.11.7
 
-/me is giggls@ircnet, http://sven.gegg.us/ on the Web
