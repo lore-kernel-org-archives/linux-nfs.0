@@ -1,63 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:32454 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752223Ab2JZK4J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Oct 2012 06:56:09 -0400
-Message-ID: <508A6C46.2070309@RedHat.com>
-Date: Fri, 26 Oct 2012 06:56:06 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: lux-integ <lux-integ@btconnect.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: nfs-utils, --enable-gss   librpcsecgss.so glitch
-References: <201210260234.04247.lux-integ@btconnect.com>
-In-Reply-To: <201210260234.04247.lux-integ@btconnect.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-yh0-f46.google.com ([209.85.213.46]:55832 "EHLO
+	mail-yh0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756016Ab2J0MeZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 08:34:25 -0400
+Received: by mail-yh0-f46.google.com with SMTP id m54so691039yhm.19
+        for <linux-nfs@vger.kernel.org>; Sat, 27 Oct 2012 05:34:24 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v8 19/32] vfs: fix user_statfs to retry once on ESTALE errors
+Date: Sat, 27 Oct 2012 08:33:26 -0400
+Message-Id: <1351341219-17837-20-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
+References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/statfs.c | 14 +++++++++++---
+ 1 file changed, 11 insertions(+), 3 deletions(-)
 
+diff --git a/fs/statfs.c b/fs/statfs.c
+index f8e832e..7b42ca3 100644
+--- a/fs/statfs.c
++++ b/fs/statfs.c
+@@ -77,11 +77,19 @@ EXPORT_SYMBOL(vfs_statfs);
+ int user_statfs(const char __user *pathname, struct kstatfs *st)
+ {
+ 	struct path path;
+-	int error = user_path_at(AT_FDCWD, pathname, LOOKUP_FOLLOW|LOOKUP_AUTOMOUNT, &path);
+-	if (!error) {
++	int error;
++	unsigned int try = 0;
++	unsigned int lookup_flags = LOOKUP_FOLLOW|LOOKUP_AUTOMOUNT;
++
++	do {
++		error  = user_path_at(AT_FDCWD, pathname, lookup_flags, &path);
++		if (error)
++			break;
++
+ 		error = vfs_statfs(&path, st);
+ 		path_put(&path);
+-	}
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
+ 	return error;
+ }
+ 
+-- 
+1.7.11.7
 
-On 25/10/12 21:34, lux-integ wrote:
-> Greetings,
-> 
-> I hope I am posting to the right list.  
-> 
-> I am trying to compile nfs-utils  on a cblfs setup  with (
-> gcc-4.6.3, 
->  linx-3.6.3, 
-> kerberos-10.3
-> as well as 
-> librpcsecgss-0.19 and
-> libgssglue-0.4 )
-> 
-> 
-> I tried  nfs-utils 1.2.5, 1.2.6. and r.1.2.7rc7  In all  instances  
-> 
->  with the --disable-gss ,  compilation sicceeds 
-> BUT
-> with --enable-gss (the default)
-> make ends like so.
-> #########
-> /usr/lib/librpcsecgss.so: undefined reference to `__rpc_thread_svc_fdset'
-> collect2: ld returned 1 exit status
-> make[2]: *** [gssd] Error 1
-> ########
-This was define in glibc... I wonder if its deprecated
-
-steved.
-> 
-> The thing is, I want the gss feature  for an NFSv4 setup.
-> 
-> I have successfully compiled earlier versions of nfs-utils   on hosts  with 
-> earlier versions of kerberos, librpcsecgss-and libgssglue
-> 
-> I would be grateful for advice concerning  the current setup and result(s)
-> 
-> sincerely
-> lux-integ
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
