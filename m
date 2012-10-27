@@ -1,62 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:53974 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755050Ab2JHVZd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Oct 2012 17:25:33 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Andy Adamson <androsadamson@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 4/4] NFSv4.1: pNFS has no business touching the slot
- table wait queue...
-Date: Mon, 8 Oct 2012 21:25:30 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90900F43F@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1349718630-26008-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <1349718630-26008-2-git-send-email-Trond.Myklebust@netapp.com>
-	 <1349718630-26008-3-git-send-email-Trond.Myklebust@netapp.com>
-	 <1349718630-26008-4-git-send-email-Trond.Myklebust@netapp.com>
-	 <CAHVgHyV7aW8TArsu0xi0Nz6AhO98bO2qVzAvY9XZYx7hQZcx4w@mail.gmail.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA90900EFF1@SACEXCMBX04-PRD.hq.netapp.com>
-	 <CAHVgHyUrm_nprthmLE4NjsyTBNYS-HjiKwFOi7DLjiOTyPJinw@mail.gmail.com>
-In-Reply-To: <CAHVgHyUrm_nprthmLE4NjsyTBNYS-HjiKwFOi7DLjiOTyPJinw@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qa0-f53.google.com ([209.85.216.53]:33290 "EHLO
+	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S966897Ab2J0AJ6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Oct 2012 20:09:58 -0400
+Received: by mail-qa0-f53.google.com with SMTP id c1so590915qae.19
+        for <linux-nfs@vger.kernel.org>; Fri, 26 Oct 2012 17:09:58 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <CAFukC=7aTHvXoD9tNhZ5w=3Ffzc-661DNxwAxXy6Lr08VGBO8g@mail.gmail.com>
+References: <CAFukC=7aTHvXoD9tNhZ5w=3Ffzc-661DNxwAxXy6Lr08VGBO8g@mail.gmail.com>
+From: Brock Noland <brock@cloudera.com>
+Date: Fri, 26 Oct 2012 19:09:38 -0500
+Message-ID: <CAFukC=7XWhwWFcwfs=fODk70OHbk8ioOw2KeqS7Ao2wKaqZpWg@mail.gmail.com>
+Subject: Re: rpc.gssd segfault - real time event 32 in pol()
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTEwLTA4IGF0IDE2OjI0IC0wNDAwLCBBbmR5IEFkYW1zb24gd3JvdGU6DQo+
-IE9uIE1vbiwgT2N0IDgsIDIwMTIgYXQgNDowNCBQTSwgTXlrbGVidXN0LCBUcm9uZA0KPiA8VHJv
-bmQuTXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiA+IE9uIE1vbiwgMjAxMi0xMC0wOCBh
-dCAxNTo1OSAtMDQwMCwgQW5keSBBZGFtc29uIHdyb3RlOg0KPiA+PiBPbiBNb24sIE9jdCA4LCAy
-MDEyIGF0IDE6NTAgUE0sIFRyb25kIE15a2xlYnVzdA0KPiA+PiA8VHJvbmQuTXlrbGVidXN0QG5l
-dGFwcC5jb20+IHdyb3RlOg0KPiA+PiA+IEFzaWRlIGZyb20gaXQgYmVpbmcgYSBsYXllcmluZyB2
-aW9sYXRpb24sIHRoZXJlIGlzIG5vIHBvaW50IGluIGRvaW5nIHNvOg0KPiA+PiA+IC0gSWYgc2xv
-dHMgYXJlIGF2YWlsYWJsZSwgdGhlbiB0aGUgd2FpdHF1ZXVlIHdpbGwgYmUgZW1wdHkuDQo+ID4+
-ID4gLSBJZiBubyBzbG90cyBhcmUgYXZhaWxhYmxlLCB0aGVuIHRoZSB3YWtlIHVwIGp1c3QgY2F1
-c2VzIHdhaXRxdWV1ZSBjaHVybg0KPiA+Pg0KPiA+PiBXZSBjYWxsIHJwY193YWtlX3VwIHNvIHRo
-YXQgSS9PIHdhaXRpbmcgb24gdGhlIERTIHNlc3Npb24sIGFsbCBvZg0KPiA+PiB3aGljaCBuZWVk
-cyB0byBiZSByZS1kaXJlY3RlZCB0byB0aGUgTURTIChub3QgdmlhIHRoZSBzdGF0ZSByZWNvdmVy
-eQ0KPiA+PiBtYWNoaW5lcnkpLCB3aWxsIGJ5LXBhc3MgdGhlIFJQQyBtYWNoaW5lICJ0cnkgZWFj
-aCB0YXNrIG9uZSBhdCBhIHRpbWUNCj4gPj4gYW5kIHJlZGlyZWN0IG9uIGZhaWx1cmUiIHdoaWNo
-IGluY2x1ZGVzIHRoZSA2MCBzZWNvbmQgVENQIHRpbWVvdXQgb24NCj4gPj4gRFMgY29ubmVjdGlv
-biBmYWlsdXJlcy4NCj4gPj4NCj4gPj4gU28sIGl0IGRvZXNuJ3QganVzdCBjYXVzZSB3YWl0cXVl
-dWUgY2h1cm4sIGl0IHNpZ25pZmljYW50bHkgcmVkdWNlcw0KPiA+PiB0aGUgdGltZSBpdCB0YWtl
-cyB0byByZWNvdmVyIHRvIHRoZSBNRFMuDQo+ID4+DQo+ID4NCj4gPiBBbGwgaXQgZG9lcyBpcyBh
-IHdha2UgdXAuLi4gVGhhdCB3aWxsIGhhcHBlbiBfQU5ZV0FZXyBhcyBzb29uIGFzIGEgc2xvdA0K
-PiA+IGlzIG1hZGUgYXZhaWxhYmxlLg0KPiANCj4gVGhhdCBpcyB0cnVlLiBCdXQgd2h5IHdhaXQ/
-IEVzcGVjaWFsbHkgd2hlbiBhbGwgdGFza3MgYXJlIEkvTywgYW5kIGlmDQo+IHRoZSBhcHBsaWNh
-dGlvbiBoYXBwZW5zIHRvIGJlIGRvaW5nIGEgaGVhdnkgSS9PIHdvcmtsb2FkLCB0aGVyZSBjYW4g
-YmUNCj4gaHVuZHJlZHMgb2YgdGFza3Mgb24gdGhhdCB3YWl0IHF1ZXVlLg0KPiANCj4gV2UgZG9u
-J3QgY2FyZSBpZiBhbnkgRFMgc2xvdHMgYXJlIGF2YWlsYWJsZS4gV2UgaGF2ZSBnaXZlbiB1cCBh
-bmQgcmUNCj4gcmVkaXJlY3RpbmcgdGhlc2UgdGFza3MgdG8gdGhlIE1EUyBzZXNzaW9uLiBUaGUg
-c29vbmVyLCB0aGUgYmV0dGVyLg0KDQpZb3UgYXJlbid0IGp1c3QgcmVkaXJlY3RpbmcgdGhvc2Ug
-dGFza3MsIHlvdSBhcmUgd2FraW5nIHVwIF9hbGxfIHRhc2tzDQpvbiB0aGF0IG5mc19jbGllbnQn
-cyBzZXNzaW9uLg0KDQpUaGF0IF9tYXlfIGJlIGFjY2VwdGFibGUgaW4gdGhlIGNhc2Ugd2hlcmUg
-d2UgY2FsbA0KbmZzNF9tYXJrX2RldmljZWlkX3VuYXZhaWxhYmxlKCksIF9pZl8gdGhlIG5mc19j
-bGllbnQgaXMgYSBwdXJlIGRhdGENCnNlcnZlciBhbmQgaXNuJ3QgYWxzbyBhY3RpbmcgYXMgYW4g
-TURTIGZvciBzb21lIGZpbGVzeXN0ZW0uDQoNCkl0IGlzIGNsZWFybHkgb3ZlcmtpbGwgaW4gdGhl
-IGNhc2Ugd2hlcmUgdGhlIERTIGlzIHJldHVybmluZyANCk5GUzRFUlJfRkhFWFBJUkVEIG9yIHNv
-bWUgc3VjaCBlcnJvciB0aGF0IGFwcGxpZXMgb25seSB0byB0aGlzIG9uZQ0KbGF5b3V0Lg0KDQo+
-IEknbGwgcmUtcnVuIHNvbWUgdGVzdHMgYW5kIGRlbW9uc3RyYXRlIHRoZSB0aW1lIGRpZmZlcmVu
-Y2UNCj4gd2l0aC93aXRob3V0IHRoZSBycGNfd2FrZV91cC4NCg0KDQotLSANClRyb25kIE15a2xl
-YnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVi
-dXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+Also I am starting rpc.gssd in the foreground with -v flag.
+
+Brock
+
+On Fri, Oct 26, 2012 at 7:08 PM, Brock Noland <brock@cloudera.com> wrote:
+> Hi,
+>
+> I built nfs-utils, libgssglue, and librpcsecgss from scratch to debug
+> some other issue.
+>
+> However, whenever I try and mount a filesystem with sec=krb5p, I am
+> seeing the following:
+>
+> Program received signal SIG37, Real-time event 37.
+> 0x00000037b72e8b84 in poll () from /lib64/libc.so.6
+> (gdb) bt
+> #0  0x00000037b72e8b84 in poll () from /lib64/libc.so.6
+> #1  0x0000000000404764 in gssd_run () at gssd_main_loop.c:213
+> #2  0x00000000004036b3 in main (argc=<optimized out>, argv=<optimized
+> out>) at gssd.c:194
+>
+> At that point, it's waiting for DNOTIFY_SIGNAL. Is it possible that
+> DNOTIFY_SIGNAL is defined differently in the build versions the
+> runtime?
+>
+> Version info:
+>
+> Linux localhost.localdomain 3.6.2-4.fc17.x86_64 #1 SMP Wed Oct 17
+> 02:43:21 UTC 2012 x86_64 x86_64 x86_64 GNU/Linux
+>
+> nfs-utils-1.2.6
+> libgssglue-0.4
+> librpcsecgss-0.19
+>
+> Brock
+
+
+
+-- 
+Apache MRUnit - Unit testing MapReduce - http://incubator.apache.org/mrunit/
