@@ -1,170 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:45988 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753057Ab2JCMnA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Oct 2012 08:43:00 -0400
-Received: by ggnr5 with SMTP id r5so1928603ggn.19
-        for <linux-nfs@vger.kernel.org>; Wed, 03 Oct 2012 05:42:59 -0700 (PDT)
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:35875 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753285Ab2J0Mdu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 08:33:50 -0400
+Received: by mail-gh0-f174.google.com with SMTP id g15so699669ghb.19
+        for <linux-nfs@vger.kernel.org>; Sat, 27 Oct 2012 05:33:50 -0700 (PDT)
 From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 7/6] nfsdcltrack: add a legacy transition mechanism
-Date: Wed,  3 Oct 2012 08:42:53 -0400
-Message-Id: <1349268173-16574-1-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1349092365-23920-1-git-send-email-jlayton@redhat.com>
-References: <1349092365-23920-1-git-send-email-jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v8 00/32] vfs: add the ability to retry lookup and operation to most path-based syscalls
+Date: Sat, 27 Oct 2012 08:33:07 -0400
+Message-Id: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the kernel passes the legacy recdir path in the environment, then we
-can use that to transition from the old legacy tracker to the new one.
+This patchset retrofits most of the path-based syscalls in the kernel to
+retry the lookup and operation when the operation returns ESTALE. There
+might be a few more that need similar changes afterward, but this should
+cover most of the ones people are interested in.
 
-On a "check" operation, if there is no record of the client in the
-database, check to see if there is a matching recoverydir. If there
-isn't then just refuse the reclaim. If there is, then insert a new
-record for this client into the db, and remove the legacy recoverydir.
-If either of those operations fail, then refuse the reclaim.
+The prerequisite patches for this set were merged in 3.7. I think that
+these are appropriate for 3.8. There are some minor changes since I last
+posted the set:
 
-On a "gracedone" operation, clean out the entire legacy recoverydir
-after purging any unreclaimed records from the db. There's not much
-we can do if this fails, so just log a warning if it does.
+- a subtle bug in the do_unlinkat patch was fixed. It's necessary to set
+  "inode" to NULL on each pass through the function. This was causing a
+  "Busy inodes on umount" error in testing.
 
-Note that this is a one-way conversion. If the user later boots back
-into an older kernel, it will have no knowledge of the new database.
+- a patch for user_statfs has been added
 
-In principle, we could create a tool that would walk the clients
-table, md5 hash the clientids and create directories in the
-v4recovery dir. Trying to do that automatically would be a mess
-though...
+- patches for do_filp_open, do_file_open_root, and filename_lookup have
+  been added to make them use the retry_estale helper function.  These
+  don't strictly need changing if we only ever want to make this code
+  retry once on an ESTALE error, but I still felt it was best to keep the
+  policy on retrying after an ESTALE error in a single function.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- utils/nfsdcltrack/nfsdcltrack.c | 87 +++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 87 insertions(+)
+- a patch has been added to make the number of ESTALE retries tunable
+  via sysctl. The problem I encountered in working on this set was the
+  difficulty in testing these changes. By adding this tunable, I could
+  crank up the number of retries to a large value to make testing easier.
 
-diff --git a/utils/nfsdcltrack/nfsdcltrack.c b/utils/nfsdcltrack/nfsdcltrack.c
-index db7e534..7c2625a 100644
---- a/utils/nfsdcltrack/nfsdcltrack.c
-+++ b/utils/nfsdcltrack/nfsdcltrack.c
-@@ -36,6 +36,7 @@
- #include <unistd.h>
- #include <libgen.h>
- #include <sys/inotify.h>
-+#include <dirent.h>
- #ifdef HAVE_SYS_CAPABILITY_H
- #include <sys/prctl.h>
- #include <sys/capability.h>
-@@ -296,6 +297,50 @@ cltrack_remove(const char *id)
- }
- 
- static int
-+cltrack_check_legacy(const unsigned char *blob, const ssize_t len)
-+{
-+	int ret;
-+	char *recdir;
-+	struct stat st;
-+
-+	/* see if the legacy recdir exists */
-+	recdir = getenv("NFSDCLTRACK_LEGACY_RECDIR");
-+	if (!recdir) {
-+		xlog(D_GENERAL, "No NFSDCLTRACK_LEGACY_RECDIR env var");
-+		return -EOPNOTSUPP;
-+	}
-+
-+	/* fail recovery on any stat failure */
-+	ret = stat(recdir, &st);
-+	if (ret) {
-+		xlog(D_GENERAL, "Unable to stat %s: %d", recdir, errno);
-+		return -errno;
-+	}
-+
-+	/* fail if it isn't a directory */
-+	if (!S_ISDIR(st.st_mode)) {
-+		xlog(D_GENERAL, "%s is not a directory: mode=0%o", recdir
-+				, st.st_mode);
-+		return -ENOTDIR;
-+	}
-+
-+	/* Dir exists, try to insert record into db */
-+	ret = sqlite_insert_client(blob, len);
-+	if (ret) {
-+		xlog(D_GENERAL, "Failed to insert client: %d", ret);
-+		return -EREMOTEIO;
-+	}
-+
-+	/* remove the legacy recoverydir */
-+	ret = rmdir(recdir);
-+	if (ret) {
-+		xlog(D_GENERAL, "Failed to rmdir %s: %d", recdir, errno);
-+		return -errno;
-+	}
-+	return 0;
-+}
-+
-+static int
- cltrack_check(const char *id)
- {
- 	int ret;
-@@ -312,10 +357,50 @@ cltrack_check(const char *id)
- 		return (int)len;
- 
- 	ret = sqlite_check_client(blob, len);
-+	if (ret)
-+		ret = cltrack_check_legacy(blob, len);
- 
- 	return ret ? -EPERM : ret;
- }
- 
-+/* Clean out the v4recoverydir -- best effort here */
-+static void
-+cltrack_legacy_gracedone(void)
-+{
-+	char *dirname = getenv("NFSDCLTRACK_LEGACY_TOPDIR");
-+	DIR *v4recovery;
-+	struct dirent *entry;
-+
-+	if (!dirname)
-+		return;
-+
-+	v4recovery = opendir(dirname);
-+	if (!v4recovery)
-+		return;
-+
-+	while ((entry = readdir(v4recovery))) {
-+		int len;
-+
-+		/* borrow the clientid blob for this */
-+		len = snprintf((char *)blob, sizeof(blob), "%s/%s", dirname,
-+				entry->d_name);
-+
-+		/* if there's a problem, then skip this entry */
-+		if (len < 0 || (size_t)len >= sizeof(blob)) {
-+			xlog(L_WARNING, "%s: unable to build filename for %s!",
-+				__func__, entry->d_name);
-+			continue;
-+		}
-+
-+		len = rmdir((char *)blob);
-+		if (len)
-+			xlog(L_WARNING, "%s: unable to rmdir %s: %d", __func__,
-+				(char *)blob, len);
-+	}
-+
-+	closedir(v4recovery);
-+}
-+
- static int
- cltrack_gracedone(const char *timestr)
- {
-@@ -343,6 +428,8 @@ cltrack_gracedone(const char *timestr)
- 
- 	ret = sqlite_remove_unreclaimed(gracetime);
- 
-+	cltrack_legacy_gracedone();
-+
- 	return ret ? -EREMOTEIO : ret;
- }
- 
+I'm happy to report that with this set, I was able to run Peter
+Staubach's reproducer program from 2008 for as long as I liked providing
+I cranked up the estale_retries value to a large number. [1]
+
+At the very least, I'd like to see the first 28 patches merged for 3.8.
+The next three in the series I think also make sense for consistency's
+sake. If we ever determined that a single retry was not enough, then
+they will make changing that policy easier.
+
+I include the final patch for completeness sake since it shows how I
+tested the set. That said, since there is no well-defined value that
+will work for all cases, allowing a tunable for this makes some sense to
+me. [2]
+
+These patches are also available in the "estale" branch of my git tree
+if that makes it easier to merge them:
+
+    git://git.samba.org/jlayton/linux.git estale
+
+[1]: Peter's test program is here: https://lkml.org/lkml/2008/1/18/265
+     I commented out the inotify_test since I haven't patched those
+     syscalls. The test was done by running this program on the server
+     and the client at the same time in the same directory. If I
+     cranked up estale_retries to a large value (10000000 or so), then
+     it would run indefinitely.
+
+[2]: If we do want to allow a tunable however, we might consider "beefing
+     up" retry_estale() to add some of the earlier suggestions. For
+     instance, checking for fatal signals and an an exponential backoff
+     delay. We might also want to do some work to ensure that lookups are
+     making forward progress in the face of multiple retries. If we
+     do want those, then that's probably best done in a separate patchset.
+
+Jeff Layton (32):
+  vfs: add a retry_estale helper function to handle retries on ESTALE
+  vfs: make fstatat retry on ESTALE errors from getattr call
+  vfs: fix readlinkat to retry on ESTALE
+  vfs: add new "reval" argument to kern_path_create and
+    user_path_create
+  vfs: fix mknodat to retry on ESTALE errors
+  vfs: fix mkdir to retry on ESTALE errors
+  vfs: fix symlinkat to retry on ESTALE errors
+  vfs: fix linkat to retry on ESTALE errors
+  vfs: add a reval argument to user_path_parent
+  vfs: make rmdir retry on ESTALE errors
+  vfs: make do_unlinkat retry on ESTALE errors
+  vfs: fix renameat to retry on ESTALE errors
+  vfs: have do_sys_truncate retry once on an ESTALE error
+  vfs: have faccessat retry once on an ESTALE error
+  vfs: have chdir retry lookup and call once on ESTALE error
+  vfs: make chroot retry once on ESTALE error
+  vfs: make fchmodat retry once on ESTALE errors
+  vfs: make fchownat retry once on ESTALE errors
+  vfs: fix user_statfs to retry once on ESTALE errors
+  vfs: allow utimensat() calls to retry once on an ESTALE error
+  vfs: allow setxattr to retry once on ESTALE errors
+  vfs: allow lsetxattr() to retry once on ESTALE errors
+  vfs: make getxattr retry once on an ESTALE error
+  vfs: make lgetxattr retry once on ESTALE
+  vfs: make listxattr retry once on ESTALE error
+  vfs: make llistxattr retry once on ESTALE error
+  vfs: make removexattr retry once on ESTALE
+  vfs: make lremovexattr retry once on ESTALE error
+  vfs: convert do_filp_open to use retry_estale helper
+  vfs: convert do_file_open_root to use retry_estale helper
+  vfs: convert filename_lookup to use retry_estale helper
+  vfs: make number of ESTALE retries tunable
+
+ arch/powerpc/platforms/cell/spufs/syscalls.c |   2 +-
+ drivers/base/devtmpfs.c                      |   7 +-
+ fs/namei.c                                   | 273 ++++++++++++++++-----------
+ fs/ocfs2/refcounttree.c                      |   3 +-
+ fs/open.c                                    | 252 ++++++++++++++-----------
+ fs/stat.c                                    |  32 +++-
+ fs/statfs.c                                  |  14 +-
+ fs/utimes.c                                  |  15 +-
+ fs/xattr.c                                   | 152 +++++++++------
+ include/linux/fs.h                           |  23 +++
+ include/linux/namei.h                        |   4 +-
+ kernel/sysctl.c                              |   7 +
+ net/unix/af_unix.c                           |   2 +-
+ 13 files changed, 484 insertions(+), 302 deletions(-)
+
 -- 
-1.7.11.4
+1.7.11.7
 
