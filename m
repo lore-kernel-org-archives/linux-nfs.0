@@ -1,51 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:36028 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754043Ab2JHQrc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Oct 2012 12:47:32 -0400
-Received: by mail-ie0-f174.google.com with SMTP id k13so97632iea.19
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Oct 2012 09:47:31 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <5072B1E5.9060808@RedHat.com>
-References: <CAA7C2qiZhHD7-RHP93LCVOBGCmp4JxyJwRLa0AR8a=oi4fi2Gg@mail.gmail.com>
-	<5072B1E5.9060808@RedHat.com>
-Date: Mon, 8 Oct 2012 09:47:31 -0700
-Message-ID: <CAA7C2qjRPs3pb66s2HDJqEyn0yGfGS_88+yvJNo0fhFQ9M6S3g@mail.gmail.com>
-Subject: Re: Problem with rpcbind
-From: VDR User <user.vdr@gmail.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-yh0-f46.google.com ([209.85.213.46]:55832 "EHLO
+	mail-yh0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756259Ab2J0Mec (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 08:34:32 -0400
+Received: by mail-yh0-f46.google.com with SMTP id m54so691039yhm.19
+        for <linux-nfs@vger.kernel.org>; Sat, 27 Oct 2012 05:34:31 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v8 23/32] vfs: make getxattr retry once on an ESTALE error
+Date: Sat, 27 Oct 2012 08:33:30 -0400
+Message-Id: <1351341219-17837-24-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
+References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 8, 2012 at 3:58 AM, Steve Dickson <SteveD@redhat.com> wrote:
->> Per Aníbal Salazar, I'm sending this to the nfs mailing list..
->>
->> ==========
->>
->> Hi. I would like to know who I can talk to about having the rpcbind's
->> timeout value settable on the command line by the user. In many cases
->> the timeout is too long, requiring hackish solutions. It would be
->> best, and makes sense, that the user should be able to set the timeout
->> to something other than the default value if he chooses. If you could
->> direct me to the right person to talk to about it, I'd appreciate it.
->
-> What timeout are you referring to? The one given to poll()?
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/xattr.c | 15 ++++++++++-----
+ 1 file changed, 10 insertions(+), 5 deletions(-)
 
-Hi. I guess so but not really sure. I'm talking about the timeout that
-happens when rpcbind is waiting for a response. Sounds like poll()
-could be it. We have an nfs server on .100 and the response happens
-immediately.
+diff --git a/fs/xattr.c b/fs/xattr.c
+index 5a9ddba..42284fc 100644
+--- a/fs/xattr.c
++++ b/fs/xattr.c
+@@ -486,12 +486,17 @@ SYSCALL_DEFINE4(getxattr, const char __user *, pathname,
+ {
+ 	struct path path;
+ 	ssize_t error;
++	unsigned int try = 0;
++	unsigned int lookup_flags = LOOKUP_FOLLOW;
+ 
+-	error = user_path(pathname, &path);
+-	if (error)
+-		return error;
+-	error = getxattr(path.dentry, name, value, size);
+-	path_put(&path);
++	do {
++		error = user_path_at(AT_FDCWD, pathname, lookup_flags, &path);
++		if (error)
++			break;
++		error = getxattr(path.dentry, name, value, size);
++		path_put(&path);
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
+ 	return error;
+ }
+ 
+-- 
+1.7.11.7
 
-$ rpcinfo -t 192.168.1.100 nfs
-program 100003 version 2 ready and waiting
-program 100003 version 3 ready and waiting
-program 100003 version 4 ready and waiting
-
-but there's no server on say .101 so if we run the same command on
-that ip, the timeout takes a very long time. It's this timeout that
-should be user-definable on the command line in my opinion. Any
-thoughts about it?
-
-Cheers
