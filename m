@@ -1,45 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:48576 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1161028Ab2JXSLd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Oct 2012 14:11:33 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id q9OIBWRd016382
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 24 Oct 2012 14:11:32 -0400
-Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id q9OIBWSC020176
-	for <linux-nfs@vger.kernel.org>; Wed, 24 Oct 2012 14:11:32 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 0/5] libgssglue clean up.
-Date: Wed, 24 Oct 2012 14:08:39 -0400
-Message-Id: <1351102124-24036-1-git-send-email-steved@redhat.com>
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:59451 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756070Ab2J0Me0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 08:34:26 -0400
+Received: by mail-gg0-f174.google.com with SMTP id k5so690906ggd.19
+        for <linux-nfs@vger.kernel.org>; Sat, 27 Oct 2012 05:34:26 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v8 20/32] vfs: allow utimensat() calls to retry once on an ESTALE error
+Date: Sat, 27 Oct 2012 08:33:27 -0400
+Message-Id: <1351341219-17837-21-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
+References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These patches, including the ones Yao Zhao posted a while back,
-remove a number of different types of warnings through out the 
-code.
+Clearly, we can't handle the NULL filename case, but we can deal with
+the case where there's a real pathname.
 
-Steve Dickson (2):
-  Fixed warnings in src/g_mit_krb5_mech.c
-  Fixed warnings in src/g_unseal.c and src/g_verify.c
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/utimes.c | 15 ++++++++++-----
+ 1 file changed, 10 insertions(+), 5 deletions(-)
 
-Yao Zhao (3):
-  Fixed warnings in src/g_canon_name.c
-  Fixed warnings in src/g_initialize.c
-  Fixed warnings in src/g_inq_cred.c
-
- src/g_canon_name.c    | 16 +++++++++++-----
- src/g_initialize.c    |  2 ++
- src/g_inq_cred.c      |  6 ++++--
- src/g_mit_krb5_mech.c |  1 -
- src/g_unseal.c        |  2 +-
- src/g_verify.c        |  2 +-
- src/mglueP.h          |  4 ++--
- 7 files changed, 21 insertions(+), 12 deletions(-)
-
+diff --git a/fs/utimes.c b/fs/utimes.c
+index bb0696a..2b91adc2 100644
+--- a/fs/utimes.c
++++ b/fs/utimes.c
+@@ -155,16 +155,21 @@ long do_utimes(int dfd, const char __user *filename, struct timespec *times,
+ 	} else {
+ 		struct path path;
+ 		int lookup_flags = 0;
++		unsigned int try = 0;
+ 
+ 		if (!(flags & AT_SYMLINK_NOFOLLOW))
+ 			lookup_flags |= LOOKUP_FOLLOW;
+ 
+-		error = user_path_at(dfd, filename, lookup_flags, &path);
+-		if (error)
+-			goto out;
++		do {
++			error = user_path_at(dfd, filename,
++						lookup_flags, &path);
++			if (error)
++				break;
+ 
+-		error = utimes_common(&path, times);
+-		path_put(&path);
++			error = utimes_common(&path, times);
++			path_put(&path);
++			lookup_flags |= LOOKUP_REVAL;
++		} while (retry_estale(error, try++));
+ 	}
+ 
+ out:
 -- 
 1.7.11.7
 
