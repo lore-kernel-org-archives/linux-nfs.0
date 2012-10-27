@@ -1,54 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from hydra.rus.uni-stuttgart.de ([129.69.1.55]:42466 "EHLO
-	hydra.rus.uni-stuttgart.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754876Ab2JIT11 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Oct 2012 15:27:27 -0400
-Date: Tue, 9 Oct 2012 21:27:24 +0200
-From: David Werner <david.werner@iws.uni-stuttgart.de>
-To: linux-nfs@vger.kernel.org
-Cc: eflorac@intellique.com
-Subject: Re: Problem with NFSv4 (server: NetApp-Filer, client
- openSUSE-11.4, 12.1 and 12.2)
-Message-ID: <20121009192724.GA12172@tindra.iws.uni-stuttgart.de>
-References: <20121009135919.GA16012@tindra.iws.uni-stuttgart.de>
- <20121009162126.432516c2@harpe.intellique.com>
- <20121009150958.GB16012@tindra.iws.uni-stuttgart.de>
- <20121009181511.09686f13@harpe.intellique.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <20121009181511.09686f13@harpe.intellique.com>
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:64114 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754820Ab2J0MeB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 08:34:01 -0400
+Received: by mail-gh0-f174.google.com with SMTP id g15so699683ghb.19
+        for <linux-nfs@vger.kernel.org>; Sat, 27 Oct 2012 05:34:01 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v8 07/32] vfs: fix symlinkat to retry on ESTALE errors
+Date: Sat, 27 Oct 2012 08:33:14 -0400
+Message-Id: <1351341219-17837-8-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
+References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 09, 2012 at 06:15:11PM +0200, Emmanuel Florac wrote:
-> Le Tue, 9 Oct 2012 17:09:59 +0200
-> David Werner <david.werner@iws.uni-stuttgart.de> écrivait:
-> 
-> > 	rus4iws.rus.uni-stuttgart.de:/vol/rus4iws_data0/ on /home
-> > type nfs4
-> > (rw,relatime,sync,vers=4.0,rsize=65536,wsize=65536,namlen=255,acregmin=0,acregmax=0,acdirmin=0,acdirmax=0,hard,noac,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=129.69.98.101,local_lock=none,addr=129.69.201.103)
-> > 
-> > But it did not resolve anything. 
-> 
-> Is the NetApp exported volume compressed by any chance? What does the
-> output from "showmount -e <filer>" looks like for the related exports?
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/namei.c | 22 +++++++++++++---------
+ 1 file changed, 13 insertions(+), 9 deletions(-)
 
-output of showmount -e: 
-
-Export list for rus4iws.rus.uni-stuttgart.de:
-/vol/rus4iws_data0
-129.69.201.31,129.69.201.39,ikearw,ikea1,ikea2,ikea3,teleloch
-/vol/rus4iws_vol0  129.69.201.31,129.69.201.39
-
-The first line contains our netgroups and is the directory we mount.
-I think some deduplication is enabled.
-Today I made a test with ubuntu-12.04.1 client, with the same problem.
-
+diff --git a/fs/namei.c b/fs/namei.c
+index 6e8db3d..7def44b 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3525,21 +3525,25 @@ SYSCALL_DEFINE3(symlinkat, const char __user *, oldname,
+ 	struct filename *from;
+ 	struct dentry *dentry;
+ 	struct path path;
++	unsigned int try = 0;
+ 
+ 	from = getname(oldname);
+ 	if (IS_ERR(from))
+ 		return PTR_ERR(from);
+ 
+-	dentry = user_path_create(newdfd, newname, &path, false, false);
+-	error = PTR_ERR(dentry);
+-	if (IS_ERR(dentry))
+-		goto out_putname;
++	do {
++		dentry = user_path_create(newdfd, newname, &path, false, false);
++		if (IS_ERR(dentry)) {
++			error = PTR_ERR(dentry);
++			break;
++		}
+ 
+-	error = security_path_symlink(&path, dentry, from->name);
+-	if (!error)
+-		error = vfs_symlink(path.dentry->d_inode, dentry, from->name);
+-	done_path_create(&path, dentry);
+-out_putname:
++		error = security_path_symlink(&path, dentry, from->name);
++		if (!error)
++			error = vfs_symlink(path.dentry->d_inode, dentry,
++						from->name);
++		done_path_create(&path, dentry);
++	} while (retry_estale(error, try++));
+ 	putname(from);
+ 	return error;
+ }
 -- 
-David Werner
-Universitaet Stuttgart
-Institut für Wasser- und Umweltsystemmodellierung
-Lehrstuhl fuer Hydromechanik &  Hydrosystemmodellierung
-Pfaffenwaldring 61 ** 70569 Stuttgart
-Tel.: ++49-711-685 67010 ** Fax: ++49-711-685 60430
-david.werner@iws.uni-stuttgart.de
+1.7.11.7
+
