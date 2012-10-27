@@ -1,122 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:54535 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753116Ab2JOMc0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Oct 2012 08:32:26 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chen Gang <gang.chen@asianux.com>
-CC: Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [Bug fix] nfs-client: fix nfs_inode_attrs_need_update for async
- read_done comes during truncating to smaller size
-Date: Mon, 15 Oct 2012 12:32:24 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90923F1C4@SACEXCMBX04-PRD.hq.netapp.com>
-References: <507B70F1.7040903@asianux.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA909236BB5@SACEXCMBX04-PRD.hq.netapp.com>
-	 <507B968A.9090104@asianux.com>
-In-Reply-To: <507B968A.9090104@asianux.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:53867 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755312Ab2J0MeQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 08:34:16 -0400
+Received: by mail-gg0-f174.google.com with SMTP id k5so690907ggd.19
+        for <linux-nfs@vger.kernel.org>; Sat, 27 Oct 2012 05:34:16 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v8 14/32] vfs: have faccessat retry once on an ESTALE error
+Date: Sat, 27 Oct 2012 08:33:21 -0400
+Message-Id: <1351341219-17837-15-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
+References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTEwLTE1IGF0IDEyOjUyICswODAwLCBDaGVuIEdhbmcgd3JvdGU6DQo+IOS6
-jiAyMDEy5bm0MTDmnIgxNeaXpSAxMjoyNywgTXlrbGVidXN0LCBUcm9uZCDlhpnpgZM6DQo+ID4g
-bmZzX3NpemVfbmVlZF91cGRhdGUgaXMgbm90IGFib3V0IHBlcmZvcm1hbmNlLiBJdCBpcyBhIGhl
-dXJpc3RpYyB0aGF0IGlzDQo+ID4gZW50aXJlbHkgYWJvdXQgZW5zdXJpbmcgY29ycmVjdG5lc3Mg
-d2hlbiBmYWNlZCB3aXRoIHRoZSBmYWN0IHRoYXQgbW9zdA0KPiA+IExpbnV4IGZpbGVzeXN0ZW1z
-IGFyZSB1dHRlcmx5IGluY2FwYWJsZSBvZiByZXBvcnRpbmcgd2l0aCBtb2RpZmljYXRpb25zDQo+
-ID4gdGhhdCBvY2N1ciB3aXRoaW4gPCAxIHNlY29uZCBpbnRlcnZhbHMgYmVjYXVzZSB0aGVpciBt
-dGltZS9jdGltZSBpcw0KPiA+IGxpbWl0ZWQgdG8gMSBzZWNvbmQgcmVzb2x1dGlvbnMuDQo+ID4g
-DQo+IA0KPiBpZiB0cnVseSBpdCB3YXMgZm9yIGNvcnJlY3RuZXNzLCB3aHkgbm90IHVzZSAiIT0i
-IGluc3RlYWQgb2YgJz4nID8NCg0KUlBDIGlzIG5vdCBvcmRlcmVkLiBUaGUgZmFjdCB0aGF0IHdl
-IGdldCBvbmUgUlBDIHJlcGx5IGJlZm9yZSBhbm90aGVyDQpkb2VzIG5vdCBtZWFuIHRoYXQgdGhl
-IHNlcnZlciBzZW50IHRoZW0gaW4gdGhhdCBvcmRlci4NCg0KVGhpcyBpcyBkb3VibHkgdHJ1ZSB3
-aGVuIHlvdSB1c2UgVURQIGFzIHRoZSB0cmFuc3BvcnQgcHJvdG9jb2wuDQoNCj4gPiBOb3csIHdo
-YXQgYXJlIHRoZSBjb25kaXRpb25zIG9mIHlvdXIgdGVzdCBzZXR1cD8gVGhlIGFib3ZlIGJ1ZyBy
-ZXBvcnQgaXMNCj4gPiBtZWFuaW5nbGVzcyB1bmxlc3MgaXQgaW5jbHVkZXMgYSBkZXNjcmlwdGlv
-biBvZiB3aGF0IGlzIGJlaW5nIGV4cG9ydGVkDQo+ID4gYnkgdGhlIHNlcnZlciAoaW5jbHVkaW5n
-IGEgcHJvcGVyIGxpc3Rpbmcgb2YgdGhlIGNvbnRlbnRzDQo+ID4gb2YgL2V0Yy9leHBvcnRzIGFu
-ZCAvcHJvYy9tb3VudHMpLiBJdCBzaG91bGQgYWxzbyBpbmNsdWRlIGEgZGVzY3JpcHRpb24NCj4g
-PiBvZiB0aGUgTkZTIGNsaWVudCBtb3VudCBvcHRpb25zIChzZWUgL3Byb2MvbW91bnRzIG9uIHRo
-ZSBjbGllbnQpLg0KPiANCj4gdGhleSBhcmUgYmVsb3csIGlmIHlvdSBuZWVkIGFkZGl0aW9uYWwg
-aW5mb3JtYXRpb24sIHBsZWFzZSB0ZWxsIG1lIGFnYWluLg0KPiANCj4gZm9yIHNlcnZlcjoNCj4g
-KG5mc3gtbGludXggdXNpbmcgcnNoIGF1dG8gZXhwb3J0ZnMgaW4gY21kIGxpbmUsIG5vdCBpbiAv
-ZXRjL2V4cG9ydHMpDQo+IC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+IHJvb3RAZGhjcDEyMjp+IyBleHBvcnRmcw0K
-PiAvdG1wL2ZzeDE4MjUxLnRlc3RkaXINCj4gCQk8d29ybGQ+DQo+IC90bXAgICAgICAgICAgCTx3
-b3JsZD4NCj4gcm9vdEBkaGNwMTIyOn4jDQo+IHJvb3RAZGhjcDEyMjp+IyBjYXQgL2V0Yy9leHBv
-cnRzDQo+ICMgL2V0Yy9leHBvcnRzOiB0aGUgYWNjZXNzIGNvbnRyb2wgbGlzdCBmb3IgZmlsZXN5
-c3RlbXMgd2hpY2ggbWF5IGJlDQo+IGV4cG9ydGVkDQo+ICMJCXRvIE5GUyBjbGllbnRzLiAgU2Vl
-IGV4cG9ydHMoNSkuDQo+ICMNCj4gIyBFeGFtcGxlIGZvciBORlN2MiBhbmQgTkZTdjM6DQo+ICMg
-L3Nydi9ob21lcyAgICAgICBob3N0bmFtZTEocncsc3luYyxub19zdWJ0cmVlX2NoZWNrKQ0KPiBo
-b3N0bmFtZTIocm8sc3luYyxub19zdWJ0cmVlX2NoZWNrKQ0KPiAjDQo+ICMgRXhhbXBsZSBmb3Ig
-TkZTdjQ6DQo+ICMgL3Nydi9uZnM0ICAgICAgICBnc3Mva3JiNWkocncsc3luYyxmc2lkPTAsY3Jv
-c3NtbnQsbm9fc3VidHJlZV9jaGVjaykNCj4gIyAvc3J2L25mczQvaG9tZXMgIGdzcy9rcmI1aShy
-dyxzeW5jLG5vX3N1YnRyZWVfY2hlY2spDQo+ICMNCj4gL3RtcCAqKHJ3LHN5bmMsbm9fcm9vdF9z
-cXVhc2gsbm9fc3VidHJlZV9jaGVjaykNCj4gcm9vdEBkaGNwMTIyOn4jDQo+IHJvb3RAZGhjcDEy
-Mjp+IyBjYXQgL3Byb2MvbW91bnRzDQo+IHJvb3RmcyAvIHJvb3RmcyBydyAwIDANCj4gc3lzZnMg
-L3N5cyBzeXNmcyBydyxub3N1aWQsbm9kZXYsbm9leGVjLHJlbGF0aW1lIDAgMA0KPiBwcm9jIC9w
-cm9jIHByb2Mgcncsbm9zdWlkLG5vZGV2LG5vZXhlYyxyZWxhdGltZSAwIDANCj4gdWRldiAvZGV2
-IGRldnRtcGZzIHJ3LHJlbGF0aW1lLHNpemU9MTIyOTYyOGssbnJfaW5vZGVzPTE4OTkwMSxtb2Rl
-PTc1NSAwIDANCj4gZGV2cHRzIC9kZXYvcHRzIGRldnB0cw0KPiBydyxub3N1aWQsbm9leGVjLHJl
-bGF0aW1lLGdpZD01LG1vZGU9NjIwLHB0bXhtb2RlPTAwMCAwIDANCj4gdG1wZnMgL3J1biB0bXBm
-cyBydyxub3N1aWQscmVsYXRpbWUsc2l6ZT01MTYyODBrLG1vZGU9NzU1IDAgMA0KPiAvZGV2L2Rp
-c2svYnktdXVpZC9lODQzYzU3ZS05OGNlLTQ0Y2MtOGUwMi02ZDhlOGQ4YTAxYjYgLyBleHQ0DQoN
-Ck9LLiBTbyB0aGUgZXhwb3J0IGlzIHBhcnQgb2YgdGhpcyBleHQ0IGZpbGVzeXN0ZW0/DQoNCj4g
-cncscmVsYXRpbWUsZXJyb3JzPXJlbW91bnQtcm8sZGF0YT1vcmRlcmVkIDAgMA0KPiBjZ3JvdXAg
-L3N5cy9mcy9jZ3JvdXAgdG1wZnMgcncscmVsYXRpbWUsbW9kZT03NTUgMCAwDQo+IGNncm91cCAv
-c3lzL2ZzL2Nncm91cC9jcHVzZXQgY2dyb3VwIHJ3LHJlbGF0aW1lLGNwdXNldCAwIDANCj4gY2dy
-b3VwIC9zeXMvZnMvY2dyb3VwL2NwdSBjZ3JvdXAgcncscmVsYXRpbWUsY3B1IDAgMA0KPiBjZ3Jv
-dXAgL3N5cy9mcy9jZ3JvdXAvY3B1YWNjdCBjZ3JvdXAgcncscmVsYXRpbWUsY3B1YWNjdCAwIDAN
-Cj4gY2dyb3VwIC9zeXMvZnMvY2dyb3VwL2RldmljZXMgY2dyb3VwIHJ3LHJlbGF0aW1lLGRldmlj
-ZXMgMCAwDQo+IGNncm91cCAvc3lzL2ZzL2Nncm91cC9mcmVlemVyIGNncm91cCBydyxyZWxhdGlt
-ZSxmcmVlemVyIDAgMA0KPiBjZ3JvdXAgL3N5cy9mcy9jZ3JvdXAvYmxraW8gY2dyb3VwIHJ3LHJl
-bGF0aW1lLGJsa2lvIDAgMA0KPiBjZ3JvdXAgL3N5cy9mcy9jZ3JvdXAvcGVyZl9ldmVudCBjZ3Jv
-dXAgcncscmVsYXRpbWUscGVyZl9ldmVudCAwIDANCj4gbm9uZSAvc3lzL2ZzL2Z1c2UvY29ubmVj
-dGlvbnMgZnVzZWN0bCBydyxyZWxhdGltZSAwIDANCj4gbm9uZSAvc3lzL2tlcm5lbC9kZWJ1ZyBk
-ZWJ1Z2ZzIHJ3LHJlbGF0aW1lIDAgMA0KPiBub25lIC9zeXMva2VybmVsL3NlY3VyaXR5IHNlY3Vy
-aXR5ZnMgcncscmVsYXRpbWUgMCAwDQo+IG5vbmUgL3J1bi9sb2NrIHRtcGZzIHJ3LG5vc3VpZCxu
-b2Rldixub2V4ZWMscmVsYXRpbWUsc2l6ZT01MTIwayAwIDANCj4gbm9uZSAvcnVuL3NobSB0bXBm
-cyBydyxub3N1aWQsbm9kZXYscmVsYXRpbWUgMCAwDQo+IHJwY19waXBlZnMgL3J1bi9ycGNfcGlw
-ZWZzIHJwY19waXBlZnMgcncscmVsYXRpbWUgMCAwDQo+IG5mc2QgL3Byb2MvZnMvbmZzZCBuZnNk
-IHJ3LHJlbGF0aW1lIDAgMA0KPiByb290QGRoY3AxMjI6fiMNCj4gLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCj4g
-DQo+IGZvciBjbGllbnQ6DQo+IC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+IA0KPiByb290QGRoY3AxNTk6L29w
-dC9sdHAvdGVzdHNjcmlwdHMjIGNhdCAvcHJvYy9tb3VudHMNCj4gcm9vdGZzIC8gcm9vdGZzIHJ3
-IDAgMA0KPiBzeXNmcyAvc3lzIHN5c2ZzIHJ3LG5vc3VpZCxub2Rldixub2V4ZWMscmVsYXRpbWUg
-MCAwDQo+IHByb2MgL3Byb2MgcHJvYyBydyxub3N1aWQsbm9kZXYsbm9leGVjLHJlbGF0aW1lIDAg
-MA0KPiB1ZGV2IC9kZXYgZGV2dG1wZnMgcncscmVsYXRpbWUsc2l6ZT0xMTAzNzAwayxucl9pbm9k
-ZXM9MTkwMzkyLG1vZGU9NzU1IDAgMA0KPiBkZXZwdHMgL2Rldi9wdHMgZGV2cHRzDQo+IHJ3LG5v
-c3VpZCxub2V4ZWMscmVsYXRpbWUsZ2lkPTUsbW9kZT02MjAscHRteG1vZGU9MDAwIDAgMA0KPiB0
-bXBmcyAvcnVuIHRtcGZzIHJ3LG5vc3VpZCxyZWxhdGltZSxzaXplPTQ2NTkwOGssbW9kZT03NTUg
-MCAwDQo+IC9kZXYvZGlzay9ieS11dWlkLzQxOGVjMWYxLWVkOWQtNGNhZS05MzM2LTZjNzQyYWNj
-ZjUzOCAvIGV4dDQNCj4gcncscmVsYXRpbWUsZXJyb3JzPXJlbW91bnQtcm8sZGF0YT1vcmRlcmVk
-IDAgMA0KPiBjZ3JvdXAgL3N5cy9mcy9jZ3JvdXAgdG1wZnMgcncscmVsYXRpbWUsbW9kZT03NTUg
-MCAwDQo+IGNncm91cCAvc3lzL2ZzL2Nncm91cC9jcHVzZXQgY2dyb3VwIHJ3LHJlbGF0aW1lLGNw
-dXNldCAwIDANCj4gY2dyb3VwIC9zeXMvZnMvY2dyb3VwL2NwdSBjZ3JvdXAgcncscmVsYXRpbWUs
-Y3B1IDAgMA0KPiBjZ3JvdXAgL3N5cy9mcy9jZ3JvdXAvY3B1YWNjdCBjZ3JvdXAgcncscmVsYXRp
-bWUsY3B1YWNjdCAwIDANCj4gY2dyb3VwIC9zeXMvZnMvY2dyb3VwL2RldmljZXMgY2dyb3VwIHJ3
-LHJlbGF0aW1lLGRldmljZXMgMCAwDQo+IGNncm91cCAvc3lzL2ZzL2Nncm91cC9mcmVlemVyIGNn
-cm91cCBydyxyZWxhdGltZSxmcmVlemVyIDAgMA0KPiBjZ3JvdXAgL3N5cy9mcy9jZ3JvdXAvYmxr
-aW8gY2dyb3VwIHJ3LHJlbGF0aW1lLGJsa2lvIDAgMA0KPiBjZ3JvdXAgL3N5cy9mcy9jZ3JvdXAv
-cGVyZl9ldmVudCBjZ3JvdXAgcncscmVsYXRpbWUscGVyZl9ldmVudCAwIDANCj4gbm9uZSAvc3lz
-L2ZzL2Z1c2UvY29ubmVjdGlvbnMgZnVzZWN0bCBydyxyZWxhdGltZSAwIDANCj4gbm9uZSAvc3lz
-L2tlcm5lbC9kZWJ1ZyBkZWJ1Z2ZzIHJ3LHJlbGF0aW1lIDAgMA0KPiBub25lIC9zeXMva2VybmVs
-L3NlY3VyaXR5IHNlY3VyaXR5ZnMgcncscmVsYXRpbWUgMCAwDQo+IG5vbmUgL3J1bi9sb2NrIHRt
-cGZzIHJ3LG5vc3VpZCxub2Rldixub2V4ZWMscmVsYXRpbWUsc2l6ZT01MTIwayAwIDANCj4gbm9u
-ZSAvcnVuL3NobSB0bXBmcyBydyxub3N1aWQsbm9kZXYscmVsYXRpbWUgMCAwDQo+IHJwY19waXBl
-ZnMgL3J1bi9ycGNfcGlwZWZzIHJwY19waXBlZnMgcncscmVsYXRpbWUgMCAwDQo+IG5mc2QgL3By
-b2MvZnMvbmZzZCBuZnNkIHJ3LHJlbGF0aW1lIDAgMA0KPiAvZGV2L3NkYTEgL21udC9zZGExIGV4
-dDMNCj4gcncscmVsYXRpbWUsZXJyb3JzPWNvbnRpbnVlLHVzZXJfeGF0dHIsYWNsLGJhcnJpZXI9
-MSxkYXRhPW9yZGVyZWQgMCAwDQo+IGRoY3AxMjIuYXNpYW51eC5uZXQ6L3RtcC9mc3gxODI1MS50
-ZXN0ZGlyLw0KPiAvb3B0L2x0cC90ZXN0Y2FzZXMvYmluL2ZzeDE4MjUxIG5mcw0KPiBydyxyZWxh
-dGltZSx2ZXJzPTIscnNpemU9ODE5Mix3c2l6ZT04MTkyLG5hbWxlbj0yNTUsaGFyZCxwcm90bz11
-ZHAsdGltZW89MTEscmV0cmFucz0zLHNlYz1zeXMsbW91bnRhZGRyPTEwLjEuMC4xMzksbW91bnR2
-ZXJzPTEsbW91bnRwb3J0PTM5OTczLG1vdW50cHJvdG89dWRwLGxvY2FsX2xvY2s9bm9uZSxhZGRy
-PTEwLjEuMC4xMzkNCj4gMCAwDQo+IHJvb3RAZGhjcDE1OTovb3B0L2x0cC90ZXN0c2NyaXB0cyMN
-Cg0KLi4uYW5kIHlvdSBhcmUgdXNpbmcgTkZTdjIgd2l0aCBVRFA/DQoNCi0tIA0KVHJvbmQgTXlr
-bGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWts
-ZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/open.c | 64 +++++++++++++++++++++++++++++++++------------------------------
+ 1 file changed, 34 insertions(+), 30 deletions(-)
+
+diff --git a/fs/open.c b/fs/open.c
+index 2a32d5c..9cd0a50 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -310,6 +310,8 @@ SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
+ 	struct path path;
+ 	struct inode *inode;
+ 	int res;
++	unsigned int lookup_flags = LOOKUP_FOLLOW;
++	unsigned int try = 0;
+ 
+ 	if (mode & ~S_IRWXO)	/* where's F_OK, X_OK, W_OK, R_OK? */
+ 		return -EINVAL;
+@@ -333,42 +335,44 @@ SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
+ 
+ 	old_cred = override_creds(override_cred);
+ 
+-	res = user_path_at(dfd, filename, LOOKUP_FOLLOW, &path);
+-	if (res)
+-		goto out;
++	do {
++		res = user_path_at(dfd, filename, lookup_flags, &path);
++		if (res)
++			break;
+ 
+-	inode = path.dentry->d_inode;
++		inode = path.dentry->d_inode;
++
++		if ((mode & MAY_EXEC) && S_ISREG(inode->i_mode)) {
++			/*
++			 * MAY_EXEC on regular files is denied if the fs is
++			 * mounted with the "noexec" flag.
++			 */
++			res = -EACCES;
++			if (path.mnt->mnt_flags & MNT_NOEXEC)
++				goto out_path_release;
++		}
+ 
+-	if ((mode & MAY_EXEC) && S_ISREG(inode->i_mode)) {
++		res = inode_permission(inode, mode | MAY_ACCESS);
++		/* SuS v2 requires we report a read only fs too */
++		if (res || !(mode & S_IWOTH) || special_file(inode->i_mode))
++			goto out_path_release;
+ 		/*
+-		 * MAY_EXEC on regular files is denied if the fs is mounted
+-		 * with the "noexec" flag.
++		 * This is a rare case where using __mnt_is_readonly()
++		 * is OK without a mnt_want/drop_write() pair.  Since
++		 * no actual write to the fs is performed here, we do
++		 * not need to telegraph to that to anyone.
++		 *
++		 * By doing this, we accept that this access is
++		 * inherently racy and know that the fs may change
++		 * state before we even see this result.
+ 		 */
+-		res = -EACCES;
+-		if (path.mnt->mnt_flags & MNT_NOEXEC)
+-			goto out_path_release;
+-	}
+-
+-	res = inode_permission(inode, mode | MAY_ACCESS);
+-	/* SuS v2 requires we report a read only fs too */
+-	if (res || !(mode & S_IWOTH) || special_file(inode->i_mode))
+-		goto out_path_release;
+-	/*
+-	 * This is a rare case where using __mnt_is_readonly()
+-	 * is OK without a mnt_want/drop_write() pair.  Since
+-	 * no actual write to the fs is performed here, we do
+-	 * not need to telegraph to that to anyone.
+-	 *
+-	 * By doing this, we accept that this access is
+-	 * inherently racy and know that the fs may change
+-	 * state before we even see this result.
+-	 */
+-	if (__mnt_is_readonly(path.mnt))
+-		res = -EROFS;
++		if (__mnt_is_readonly(path.mnt))
++			res = -EROFS;
+ 
+ out_path_release:
+-	path_put(&path);
+-out:
++		path_put(&path);
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(res, try++));
+ 	revert_creds(old_cred);
+ 	put_cred(override_cred);
+ 	return res;
+-- 
+1.7.11.7
+
