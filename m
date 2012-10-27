@@ -1,39 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:12555 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965399Ab2JCR6u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Oct 2012 13:58:50 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSv4.1: Remove the dependency on CONFIG_EXPERIMENTAL
-Date: Wed,  3 Oct 2012 10:58:49 -0700
-Message-Id: <1349287129-51620-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:35347 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756189Ab2J0Me3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 08:34:29 -0400
+Received: by mail-gh0-f174.google.com with SMTP id g15so699691ghb.19
+        for <linux-nfs@vger.kernel.org>; Sat, 27 Oct 2012 05:34:29 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v8 22/32] vfs: allow lsetxattr() to retry once on ESTALE errors
+Date: Sat, 27 Oct 2012 08:33:29 -0400
+Message-Id: <1351341219-17837-23-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
+References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-CONFIG_EXPERIMENTAL is deprecated and, regardless of that, this code
-is being enabled in most newer distributions.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/Kconfig | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/xattr.c | 23 ++++++++++++++---------
+ 1 file changed, 14 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index db7ad719..13ca196 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -95,8 +95,8 @@ config NFS_SWAP
- 	  This option enables swapon to work on files located on NFS mounts.
+diff --git a/fs/xattr.c b/fs/xattr.c
+index 5b6e48d..5a9ddba 100644
+--- a/fs/xattr.c
++++ b/fs/xattr.c
+@@ -394,16 +394,21 @@ SYSCALL_DEFINE5(lsetxattr, const char __user *, pathname,
+ {
+ 	struct path path;
+ 	int error;
++	unsigned int try = 0;
++	unsigned int lookup_flags = 0;
  
- config NFS_V4_1
--	bool "NFS client support for NFSv4.1 (EXPERIMENTAL)"
--	depends on NFS_V4 && EXPERIMENTAL
-+	bool "NFS client support for NFSv4.1"
-+	depends on NFS_V4
- 	select SUNRPC_BACKCHANNEL
- 	help
- 	  This option enables support for minor version 1 of the NFSv4 protocol
+-	error = user_lpath(pathname, &path);
+-	if (error)
+-		return error;
+-	error = mnt_want_write(path.mnt);
+-	if (!error) {
+-		error = setxattr(path.dentry, name, value, size, flags);
+-		mnt_drop_write(path.mnt);
+-	}
+-	path_put(&path);
++	do {
++		error = user_path_at(AT_FDCWD, pathname, lookup_flags, &path);
++		if (error)
++			break;
++		error = mnt_want_write(path.mnt);
++		if (!error) {
++			error = setxattr(path.dentry, name, value, size, flags);
++			mnt_drop_write(path.mnt);
++		}
++		path_put(&path);
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
+ 	return error;
+ }
+ 
 -- 
-1.7.11.4
+1.7.11.7
 
