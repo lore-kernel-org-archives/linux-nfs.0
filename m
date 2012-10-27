@@ -1,44 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:51770 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757166Ab2JWOxh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Oct 2012 10:53:37 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 05/25] SUNRPC: remove BUG_ON from rpc_call_sync
-Date: Tue, 23 Oct 2012 10:43:29 -0400
-Message-Id: <1351003429-18887-6-git-send-email-dros@netapp.com>
-In-Reply-To: <1351003429-18887-1-git-send-email-dros@netapp.com>
-References: <1351003429-18887-1-git-send-email-dros@netapp.com>
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:47879 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755619Ab2J0MeV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 08:34:21 -0400
+Received: by mail-gh0-f174.google.com with SMTP id g15so699677ghb.19
+        for <linux-nfs@vger.kernel.org>; Sat, 27 Oct 2012 05:34:21 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v8 17/32] vfs: make fchmodat retry once on ESTALE errors
+Date: Sat, 27 Oct 2012 08:33:24 -0400
+Message-Id: <1351341219-17837-18-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
+References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Return -EINVAL instead of calling BUG_ON() when RPC_TASK_ASYNC flag is passed
-to rpc_call_sync().
-
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- net/sunrpc/clnt.c |    6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ fs/open.c | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index dd16e52..0c0035f 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -839,7 +839,11 @@ int rpc_call_sync(struct rpc_clnt *clnt, const struct rpc_message *msg, int flag
- 	};
- 	int status;
+diff --git a/fs/open.c b/fs/open.c
+index a1331f1..06f04bd 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -503,12 +503,17 @@ SYSCALL_DEFINE3(fchmodat, int, dfd, const char __user *, filename, umode_t, mode
+ {
+ 	struct path path;
+ 	int error;
++	unsigned int try = 0;
++	int lookup_flags = LOOKUP_FOLLOW;
  
--	BUG_ON(flags & RPC_TASK_ASYNC);
-+	if (flags & RPC_TASK_ASYNC) {
-+		rpc_release_calldata(task_setup_data.callback_ops,
-+			task_setup_data.callback_data);
-+		return -EINVAL;
-+	}
+-	error = user_path_at(dfd, filename, LOOKUP_FOLLOW, &path);
+-	if (!error) {
++	do {
++		error = user_path_at(dfd, filename, lookup_flags, &path);
++		if (error)
++			break;
+ 		error = chmod_common(&path, mode);
+ 		path_put(&path);
+-	}
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
+ 	return error;
+ }
  
- 	task = rpc_run_task(&task_setup_data);
- 	if (IS_ERR(task))
 -- 
-1.7.9.6 (Apple Git-31.1)
+1.7.11.7
 
