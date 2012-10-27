@@ -1,76 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:10869 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756812Ab2JWR5Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Oct 2012 13:57:25 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:57902 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752578Ab2J0AXN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Oct 2012 20:23:13 -0400
+Date: Fri, 26 Oct 2012 20:22:58 -0400
+From: "Theodore Ts'o" <tytso@mit.edu>
 To: Nix <nix@esperi.org.uk>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, "Ted Ts'o" <tytso@mit.edu>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        Peng Tao <bergwolf@gmail.com>,
-        "gregkh@linuxfoundation.org" <gregkh@linuxfoundation.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>
-Subject: Re: Heads-up: 3.6.2 / 3.6.3 NFS server oops: 3.6.2+ regression?
- (also an unrelated ext4 data loss bug)
-Date: Tue, 23 Oct 2012 17:57:21 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90928CE09@SACEXCMBX04-PRD.hq.netapp.com>
-References: <87objupjlr.fsf@spindle.srvr.nix>
-	 <20121023013343.GB6370@fieldses.org> <87mwzdnuww.fsf@spindle.srvr.nix>
-	 <20121023143019.GA3040@fieldses.org>	<874nllxi7e.fsf_-_@spindle.srvr.nix>
-	 <20121023164621.GC3040@fieldses.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA90928CA6F@SACEXCMBX04-PRD.hq.netapp.com>
-	 <87vce1w241.fsf@spindle.srvr.nix> <87r4opw0og.fsf@spindle.srvr.nix>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA90928CD7F@SACEXCMBX04-PRD.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90928CD7F@SACEXCMBX04-PRD.hq.netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
+        linux-kernel@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
+        Bryan Schumaker <bjschuma@netapp.com>, Peng Tao <bergwolf@gmail.com>,
+        Trond.Myklebust@netapp.com, gregkh@linuxfoundation.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3
+ (and other stable branches?)
+Message-ID: <20121027002258.GB31030@thunk.org>
+References: <87mwzdnuww.fsf@spindle.srvr.nix>
+ <20121023143019.GA3040@fieldses.org>
+ <874nllxi7e.fsf_-_@spindle.srvr.nix>
+ <87pq48nbyz.fsf_-_@spindle.srvr.nix>
+ <508AF3FA.4020506@redhat.com>
+ <87wqydx957.fsf@spindle.srvr.nix>
+ <20121026205618.GC8614@thunk.org>
+ <87objpx84k.fsf@spindle.srvr.nix>
+ <20121026211542.GE8614@thunk.org>
+ <87haphx76u.fsf@spindle.srvr.nix>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <87haphx76u.fsf@spindle.srvr.nix>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTEwLTIzIGF0IDE3OjQ0ICswMDAwLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3Rl
-Og0KPiBZb3UgY2FuJ3QgaG9sZCBhIHNwaW5sb2NrIHdoaWxlIHNsZWVwaW5nLiBCb3RoIG11dGV4
-X2xvY2soKSBhbmQgbnNtX2NyZWF0ZSgpIGNhbiBkZWZpbml0ZWx5IHNsZWVwLg0KPiANCj4gVGhl
-IGNvcnJlY3Qgd2F5IHRvIGRvIHRoaXMgaXMgdG8gZ3JhYiB0aGUgc3BpbmxvY2sgYW5kIHJlY2hl
-Y2sgdGhlIHZhbHVlIG9mIGxuLT5uc21fdXNlcnMgaW5zaWRlIHRoZSAnaWYgKCFJU19FUlIoKSkn
-IGNvbmRpdGlvbi4gSWYgaXQgaXMgc3RpbGwgemVybywgYnVtcCBpdCBhbmQgc2V0IGxuLT5uc21f
-Y2xudCwgb3RoZXJ3aXNlIGJ1bXAgaXQsIGdldCB0aGUgZXhpc3RpbmcgbG4tPm5zbV9jbG50IGFu
-ZCBjYWxsIHJwY19zaHV0ZG93bl9jbG50KCkgb24gdGhlIHJlZHVuZGFudCBuc20gY2xpZW50IGFm
-dGVyIGRyb3BwaW5nIHRoZSBzcGlubG9jay4NCj4gDQo+IENoZWVycw0KPiAgIFRyb25kDQoNCkNh
-biB5b3UgcGxlYXNlIGNoZWNrIGlmIHRoZSBmb2xsb3dpbmcgcGF0Y2ggZml4ZXMgdGhlIGlzc3Vl
-Pw0KDQpDaGVlcnMNCiAgVHJvbmQNCg0KODwtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KRnJvbSA0NGEwNzA0NTVkMjQ2ZTA5ZGUwY2VmYzg4
-NzU4MzNmMjFjYTY1NWU4IE1vbiBTZXAgMTcgMDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlr
-bGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCkRhdGU6IFR1ZSwgMjMgT2N0IDIw
-MTIgMTM6NTE6NTggLTA0MDANClN1YmplY3Q6IFtQQVRDSF0gTE9DS0Q6IGZpeCByYWNlcyBpbiBu
-c21fY2xpZW50X2dldA0KDQpDb21taXQgZTk0MDZkYjIwZmVjYmZjYWI2NDZiYWQxNTdiNGNmZGM3
-Y2FkZGRmYiAobG9ja2Q6IHBlci1uZXQNCk5TTSBjbGllbnQgY3JlYXRpb24gYW5kIGRlc3RydWN0
-aW9uIGhlbHBlcnMgaW50cm9kdWNlZCkgY29udGFpbnMNCmEgbmFzdHkgcmFjZSBvbiBpbml0aWFs
-aXNhdGlvbiBvZiB0aGUgcGVyLW5ldCBOU00gY2xpZW50IGJlY2F1c2UNCml0IGRvZXNuJ3QgY2hl
-Y2sgd2hldGhlciBvciBub3QgdGhlIGNsaWVudCBpcyBzZXQgYWZ0ZXIgZ3JhYmJpbmcNCnRoZSBu
-c21fY3JlYXRlX211dGV4Lg0KDQpSZXBvcnRlZC1ieTogTml4IDxuaXhAZXNwZXJpLm9yZy51az4N
-ClNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
-b20+DQotLS0NCiBmcy9sb2NrZC9tb24uYyB8IDIwICsrKysrKysrKysrKysrLS0tLS0tDQogMSBm
-aWxlIGNoYW5nZWQsIDE0IGluc2VydGlvbnMoKyksIDYgZGVsZXRpb25zKC0pDQoNCmRpZmYgLS1n
-aXQgYS9mcy9sb2NrZC9tb24uYyBiL2ZzL2xvY2tkL21vbi5jDQppbmRleCBlNGZiM2JhLi45NzU1
-NjAzIDEwMDY0NA0KLS0tIGEvZnMvbG9ja2QvbW9uLmMNCisrKyBiL2ZzL2xvY2tkL21vbi5jDQpA
-QCAtODgsNyArODgsNyBAQCBzdGF0aWMgc3RydWN0IHJwY19jbG50ICpuc21fY3JlYXRlKHN0cnVj
-dCBuZXQgKm5ldCkNCiBzdGF0aWMgc3RydWN0IHJwY19jbG50ICpuc21fY2xpZW50X2dldChzdHJ1
-Y3QgbmV0ICpuZXQpDQogew0KIAlzdGF0aWMgREVGSU5FX01VVEVYKG5zbV9jcmVhdGVfbXV0ZXgp
-Ow0KLQlzdHJ1Y3QgcnBjX2NsbnQJKmNsbnQ7DQorCXN0cnVjdCBycGNfY2xudAkqY2xudCwgKm5l
-dzsNCiAJc3RydWN0IGxvY2tkX25ldCAqbG4gPSBuZXRfZ2VuZXJpYyhuZXQsIGxvY2tkX25ldF9p
-ZCk7DQogDQogCXNwaW5fbG9jaygmbG4tPm5zbV9jbG50X2xvY2spOw0KQEAgLTEwMSwxMSArMTAx
-LDE5IEBAIHN0YXRpYyBzdHJ1Y3QgcnBjX2NsbnQgKm5zbV9jbGllbnRfZ2V0KHN0cnVjdCBuZXQg
-Km5ldCkNCiAJc3Bpbl91bmxvY2soJmxuLT5uc21fY2xudF9sb2NrKTsNCiANCiAJbXV0ZXhfbG9j
-aygmbnNtX2NyZWF0ZV9tdXRleCk7DQotCWNsbnQgPSBuc21fY3JlYXRlKG5ldCk7DQotCWlmICgh
-SVNfRVJSKGNsbnQpKSB7DQotCQlsbi0+bnNtX2NsbnQgPSBjbG50Ow0KLQkJc21wX3dtYigpOw0K
-LQkJbG4tPm5zbV91c2VycyA9IDE7DQorCW5ldyA9IG5zbV9jcmVhdGUobmV0KTsNCisJY2xudCA9
-IG5ldzsNCisJaWYgKCFJU19FUlIobmV3KSkgew0KKwkJc3Bpbl9sb2NrKCZsbi0+bnNtX2NsbnRf
-bG9jayk7DQorCQlpZiAoIWxuLT5uc21fdXNlcnMpIHsNCisJCQlsbi0+bnNtX2NsbnQgPSBuZXc7
-DQorCQkJbmV3ID0gTlVMTDsNCisJCX0NCisJCWNsbnQgPSBsbi0+bnNtX2NsbnQ7DQorCQlsbi0+
-bnNtX3VzZXJzKys7DQorCQlzcGluX3VubG9jaygmbG4tPm5zbV9jbG50X2xvY2spOw0KKwkJaWYg
-KG5ldykNCisJCQlycGNfc2h1dGRvd25fY2xpZW50KG5ldyk7DQogCX0NCiAJbXV0ZXhfdW5sb2Nr
-KCZuc21fY3JlYXRlX211dGV4KTsNCiBvdXQ6DQotLSANCjEuNy4xMS43DQoNCg0KLS0gDQpUcm9u
-ZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25k
-Lk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+On Fri, Oct 26, 2012 at 10:19:21PM +0100, Nix wrote:
+> > prevent unwary civilians from coming across the feature and saying,
+> > "oooh, shiny!" and turning it on.  :-(
+> 
+> Or having it turned on by default either, which seems to be the case
+> now.
+
+Huh?  It's not turned on by default.  If you mount with no mount
+options, journal checksums are *not* turned on.
+
+	 	 	       	     - Ted
