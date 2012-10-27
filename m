@@ -1,141 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:30504 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758962Ab2JZTGw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Oct 2012 15:06:52 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 1/2] NFS: add nfs_sb_deactive_async to avoid deadlock
-Date: Fri, 26 Oct 2012 15:06:46 -0400
-Message-Id: <1351278407-13804-1-git-send-email-dros@netapp.com>
+Received: from mail-ye0-f174.google.com ([209.85.213.174]:54786 "EHLO
+	mail-ye0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756299Ab2J0Med (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 08:34:33 -0400
+Received: by mail-ye0-f174.google.com with SMTP id m12so638386yen.19
+        for <linux-nfs@vger.kernel.org>; Sat, 27 Oct 2012 05:34:33 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v8 25/32] vfs: make listxattr retry once on ESTALE error
+Date: Sat, 27 Oct 2012 08:33:32 -0400
+Message-Id: <1351341219-17837-26-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
+References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use nfs_sb_deactive_async instead of nfs_sb_deactive when in a workqueue
-context.  This avoids a deadlock where rpc_shutdown_client loops forever
-in a workqueue kworker context, trying to kill all RPC tasks associated with
-the client, while one or more of these tasks have already been assigned to the
-same kworker (and will never run rpc_exit_task).
-
-This approach is needed because RPC tasks that have already been assigned
-to a kworker by queue_work cannot be canceled, as explained in the comment
-for workqueue.c:insert_wq_barrier.
-
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/inode.c    |    5 ++++-
- fs/nfs/internal.h |    1 +
- fs/nfs/nfs4proc.c |    2 +-
- fs/nfs/super.c    |   33 +++++++++++++++++++++++++++++++++
- fs/nfs/unlink.c   |    2 +-
- 5 files changed, 40 insertions(+), 3 deletions(-)
+ fs/xattr.c | 15 ++++++++++-----
+ 1 file changed, 10 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 3967be2..117183b 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -685,7 +685,10 @@ static void __put_nfs_open_context(struct nfs_open_context *ctx, int is_sync)
- 	if (ctx->cred != NULL)
- 		put_rpccred(ctx->cred);
- 	dput(ctx->dentry);
--	nfs_sb_deactive(sb);
-+	if (is_sync)
-+		nfs_sb_deactive(sb);
-+	else
-+		nfs_sb_deactive_async(sb);
- 	kfree(ctx->mdsthreshold);
- 	kfree(ctx);
- }
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 59b133c..12b8d69 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -351,6 +351,7 @@ extern int __init register_nfs_fs(void);
- extern void __exit unregister_nfs_fs(void);
- extern void nfs_sb_active(struct super_block *sb);
- extern void nfs_sb_deactive(struct super_block *sb);
-+extern void nfs_sb_deactive_async(struct super_block *sb);
+diff --git a/fs/xattr.c b/fs/xattr.c
+index 3a5e3ff..8a318a4 100644
+--- a/fs/xattr.c
++++ b/fs/xattr.c
+@@ -576,12 +576,17 @@ SYSCALL_DEFINE3(listxattr, const char __user *, pathname, char __user *, list,
+ {
+ 	struct path path;
+ 	ssize_t error;
++	unsigned int try = 0;
++	unsigned int lookup_flags = LOOKUP_FOLLOW;
  
- /* namespace.c */
- extern char *nfs_path(char **p, struct dentry *dentry,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 8b04d14..33a36e0 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2193,7 +2193,7 @@ static void nfs4_free_closedata(void *data)
- 	nfs4_put_open_state(calldata->state);
- 	nfs_free_seqid(calldata->arg.seqid);
- 	nfs4_put_state_owner(sp);
--	nfs_sb_deactive(sb);
-+	nfs_sb_deactive_async(sb);
- 	kfree(calldata);
+-	error = user_path(pathname, &path);
+-	if (error)
+-		return error;
+-	error = listxattr(path.dentry, list, size);
+-	path_put(&path);
++	do {
++		error = user_path_at(AT_FDCWD, pathname, lookup_flags, &path);
++		if (error)
++			break;
++		error = listxattr(path.dentry, list, size);
++		path_put(&path);
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
+ 	return error;
  }
  
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index e831bce..4ca78a5 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -54,6 +54,7 @@
- #include <linux/parser.h>
- #include <linux/nsproxy.h>
- #include <linux/rcupdate.h>
-+#include <linux/kthread.h>
- 
- #include <asm/uaccess.h>
- 
-@@ -415,6 +416,38 @@ void nfs_sb_deactive(struct super_block *sb)
- }
- EXPORT_SYMBOL_GPL(nfs_sb_deactive);
- 
-+static int nfs_deactivate_super_async(void *ptr)
-+{
-+	struct super_block *sb = ptr;
-+
-+	deactivate_super(sb);
-+	return 0;
-+}
-+
-+void nfs_sb_deactive_async(struct super_block *sb)
-+{
-+	struct task_struct *task;
-+	char buf[INET6_ADDRSTRLEN + sizeof("-deactivate-super") + 1];
-+	struct nfs_server *server = NFS_SB(sb);
-+	struct nfs_client *clp = server->nfs_client;
-+
-+	rcu_read_lock();
-+	snprintf(buf, sizeof(buf), "%s-deactivate-super",
-+		rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR));
-+	rcu_read_unlock();
-+
-+	if (atomic_dec_and_test(&server->active)) {
-+		task = kthread_run(nfs_deactivate_super_async, sb, buf);
-+		if (IS_ERR(task)) {
-+			pr_err("%s: kthread_run: %ld\n",
-+				__func__, PTR_ERR(task));
-+			/* make synchronous call and hope for the best */
-+			nfs_sb_deactive(sb);
-+		}
-+	}
-+}
-+EXPORT_SYMBOL_GPL(nfs_sb_deactive_async);
-+
- /*
-  * Deliver file system statistics to userspace
-  */
-diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
-index 13cea63..3f79c77 100644
---- a/fs/nfs/unlink.c
-+++ b/fs/nfs/unlink.c
-@@ -95,7 +95,7 @@ static void nfs_async_unlink_release(void *calldata)
- 
- 	nfs_dec_sillycount(data->dir);
- 	nfs_free_unlinkdata(data);
--	nfs_sb_deactive(sb);
-+	nfs_sb_deactive_async(sb);
- }
- 
- static void nfs_unlink_prepare(struct rpc_task *task, void *calldata)
 -- 
-1.7.9.6 (Apple Git-31.1)
+1.7.11.7
 
