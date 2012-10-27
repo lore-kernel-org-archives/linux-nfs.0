@@ -1,72 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:57592 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753046Ab2J3Uu7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Oct 2012 16:50:59 -0400
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 03/10] NFSD: Clean up forgetting clients
-Date: Tue, 30 Oct 2012 16:50:47 -0400
-Message-Id: <1351630254-26166-4-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
-References: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:47879 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756537Ab2J0Meg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 08:34:36 -0400
+Received: by mail-gh0-f174.google.com with SMTP id g15so699677ghb.19
+        for <linux-nfs@vger.kernel.org>; Sat, 27 Oct 2012 05:34:36 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v8 27/32] vfs: make removexattr retry once on ESTALE
+Date: Sat, 27 Oct 2012 08:33:34 -0400
+Message-Id: <1351341219-17837-28-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
+References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
-
-I added in a generic for-each loop that takes a pass over the client_lru
-list and calls some function.  The next few patches will update other
-operations to use this function as well.  A value of 0 still means "forget
-everything that is found".
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/nfs4state.c | 23 ++++++++++++++++++-----
- 1 file changed, 18 insertions(+), 5 deletions(-)
+ fs/xattr.c | 23 ++++++++++++++---------
+ 1 file changed, 14 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index cf79c3b..3c5719a 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4556,18 +4556,31 @@ nfs4_check_open_reclaim(clientid_t *clid, bool sessions)
- 
- #ifdef CONFIG_NFSD_FAULT_INJECTION
- 
--void nfsd_forget_clients(u64 num)
-+static u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
-+{
-+	nfsd4_client_record_remove(clp);
-+	expire_client(clp);
-+	return 1;
-+}
-+
-+static u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
+diff --git a/fs/xattr.c b/fs/xattr.c
+index 8a30ef0..e2071ed 100644
+--- a/fs/xattr.c
++++ b/fs/xattr.c
+@@ -645,16 +645,21 @@ SYSCALL_DEFINE2(removexattr, const char __user *, pathname,
  {
- 	struct nfs4_client *clp, *next;
--	int count = 0;
-+	u64 count = 0;
+ 	struct path path;
+ 	int error;
++	unsigned int try = 0;
++	unsigned int lookup_flags = LOOKUP_FOLLOW;
  
- 	list_for_each_entry_safe(clp, next, &client_lru, cl_lru) {
--		expire_client(clp);
--		if (++count == num)
-+		count += func(clp, max - count);
-+		if ((max != 0) && (count >= max))
- 			break;
- 	}
- 
--	printk(KERN_INFO "NFSD: Forgot %d clients", count);
-+	return count;
-+}
-+
-+void nfsd_forget_clients(u64 num)
-+{
-+	u64 count = nfsd_for_n_state(num, nfsd_forget_client);
-+	printk(KERN_INFO "NFSD: Forgot %llu clients", count);
+-	error = user_path(pathname, &path);
+-	if (error)
+-		return error;
+-	error = mnt_want_write(path.mnt);
+-	if (!error) {
+-		error = removexattr(path.dentry, name);
+-		mnt_drop_write(path.mnt);
+-	}
+-	path_put(&path);
++	do {
++		error = user_path_at(AT_FDCWD, pathname, lookup_flags, &path);
++		if (error)
++			break;
++		error = mnt_want_write(path.mnt);
++		if (!error) {
++			error = removexattr(path.dentry, name);
++			mnt_drop_write(path.mnt);
++		}
++		path_put(&path);
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
+ 	return error;
  }
  
- static void release_lockowner_sop(struct nfs4_stateowner *sop)
 -- 
-1.8.0
+1.7.11.7
 
