@@ -1,76 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38938 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753423Ab2J3QOh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Oct 2012 12:14:37 -0400
-Date: Tue, 30 Oct 2012 12:14:29 -0400
-To: Jeff Layton <jlayton@redhat.com>
-Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        michael.brantley@deshaw.com, hch@infradead.org, miklos@szeredi.hu,
-        pstaubach@exagrid.com
-Subject: Re: [PATCH v8 11/32] vfs: make do_unlinkat retry on ESTALE errors
-Message-ID: <20121030161429.GD24618@fieldses.org>
+Received: from mail-yh0-f46.google.com ([209.85.213.46]:65280 "EHLO
+	mail-yh0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755416Ab2J0MeS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 08:34:18 -0400
+Received: by mail-yh0-f46.google.com with SMTP id m54so690985yhm.19
+        for <linux-nfs@vger.kernel.org>; Sat, 27 Oct 2012 05:34:18 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v8 15/32] vfs: have chdir retry lookup and call once on ESTALE error
+Date: Sat, 27 Oct 2012 08:33:22 -0400
+Message-Id: <1351341219-17837-16-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
 References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
- <1351341219-17837-12-git-send-email-jlayton@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1351341219-17837-12-git-send-email-jlayton@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Oct 27, 2012 at 08:33:18AM -0400, Jeff Layton wrote:
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/namei.c | 12 ++++++++++--
->  1 file changed, 10 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/namei.c b/fs/namei.c
-> index 7c9bb50..467b9f1 100644
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -3446,9 +3446,13 @@ static long do_unlinkat(int dfd, const char __user *pathname)
->  	struct filename *name;
->  	struct dentry *dentry;
->  	struct nameidata nd;
-> -	struct inode *inode = NULL;
-> +	struct inode *inode;
-> +	unsigned int try = 0;
-> +	unsigned int lookup_flags = LOOKUP_PARENT;
->  
-> -	name = user_path_parent(dfd, pathname, &nd, 0);
-> +retry:
-> +	inode = NULL;
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/open.c | 25 +++++++++++++------------
+ 1 file changed, 13 insertions(+), 12 deletions(-)
 
-So, you fail after "inode" was set (say vfs_unlink returned an error)
-the first time, then before "inode" was set (lookup_hash returns an
-error), and you end up incorrectly doing another iput() the second time
-through if you don't reset inode here?
+diff --git a/fs/open.c b/fs/open.c
+index 9cd0a50..5c2a973 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -387,20 +387,21 @@ SYSCALL_DEFINE1(chdir, const char __user *, filename)
+ {
+ 	struct path path;
+ 	int error;
++	int lookup_flags = LOOKUP_FOLLOW | LOOKUP_DIRECTORY;
++	unsigned int try = 0;
+ 
+-	error = user_path_dir(filename, &path);
+-	if (error)
+-		goto out;
+-
+-	error = inode_permission(path.dentry->d_inode, MAY_EXEC | MAY_CHDIR);
+-	if (error)
+-		goto dput_and_out;
+-
+-	set_fs_pwd(current->fs, &path);
++	do {
++		error = user_path_at(AT_FDCWD, filename, lookup_flags, &path);
++		if (error)
++			break;
+ 
+-dput_and_out:
+-	path_put(&path);
+-out:
++		error = inode_permission(path.dentry->d_inode,
++					 MAY_EXEC | MAY_CHDIR);
++		if (!error)
++			set_fs_pwd(current->fs, &path);
++		path_put(&path);
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
+ 	return error;
+ }
+ 
+-- 
+1.7.11.7
 
-(I think I made the same mistake in another patch, actually....)
-
---b.
-
-> +	name = user_path_parent(dfd, pathname, &nd, try);
->  	if (IS_ERR(name))
->  		return PTR_ERR(name);
->  
-> @@ -3486,6 +3490,10 @@ exit2:
->  exit1:
->  	path_put(&nd.path);
->  	putname(name);
-> +	if (retry_estale(error, try++)) {
-> +		lookup_flags |= LOOKUP_REVAL;
-> +		goto retry;
-> +	}
->  	return error;
->  
->  slashes:
-> -- 
-> 1.7.11.7
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
