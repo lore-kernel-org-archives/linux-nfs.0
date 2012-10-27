@@ -1,43 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:44471 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752041Ab2JMDFP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Oct 2012 23:05:15 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Larry McVoy <lm@bitmover.com>
-CC: Linus Torvalds <torvalds@linux-foundation.org>,
-        Bruce Fields <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
-Date: Sat, 13 Oct 2012 03:05:11 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9091FE78E@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20121012211701.GA8301@bitmover.com>
-	 <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
-	 <20121013002100.GB23247@bitmover.com>
-	 <CA+55aFwKn+rp4qTk3dLgN8n=M-Aw1GYYpOfevDJaJhnK-U5VOg@mail.gmail.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9091FDED5@SACEXCMBX04-PRD.hq.netapp.com>
-	 <20121013023147.GJ23247@bitmover.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9091FE478@SACEXCMBX04-PRD.hq.netapp.com>
-	 <20121013025600.GL23247@bitmover.com>
-In-Reply-To: <20121013025600.GL23247@bitmover.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:47879 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754223Ab2J0Mdz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 08:33:55 -0400
+Received: by mail-gh0-f174.google.com with SMTP id g15so699677ghb.19
+        for <linux-nfs@vger.kernel.org>; Sat, 27 Oct 2012 05:33:55 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v8 03/32] vfs: fix readlinkat to retry on ESTALE
+Date: Sat, 27 Oct 2012 08:33:10 -0400
+Message-Id: <1351341219-17837-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
+References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTEwLTEyIGF0IDE5OjU2IC0wNzAwLCBMYXJyeSBNY1ZveSB3cm90ZToNCj4g
-T24gU2F0LCBPY3QgMTMsIDIwMTIgYXQgMDI6NTI6NTFBTSArMDAwMCwgTXlrbGVidXN0LCBUcm9u
-ZCB3cm90ZToNCj4gPiBPbiBGcmksIDIwMTItMTAtMTIgYXQgMTk6MzEgLTA3MDAsIExhcnJ5IE1j
-Vm95IHdyb3RlOg0KPiA+ID4gQXMgSSd2ZSBzYWlkLCBkZWJ1Z2dpbmcgdGhpcyBpcyBnb2luZyB0
-byBiZSBoYXJkLCBpdCBtZWFucyBzdG9wcGluZyBteQ0KPiA+ID4gY29tcGFueS4gIFdlIGNhbiBk
-byBvbmUgbW9yZSBjcmFzaCwgeW91IGd1eXMgY2FuIHRlbGwgbWUgd2hhdCB0byBkbywNCj4gPiA+
-IGJ1dCB0aGF0J3MgYWJvdXQgaXQuDQo+ID4gDQo+ID4gRG8geW91IGhhdmUgYSByZXByb2R1Y2Vy
-PyANCj4gDQo+IE9oIHllYWgsIGl0IGhhcHBlbnMgZXZlcnkgdGltZS4gIFJ1biBza3lwZSBvbiBh
-IG1hYyB3LyB5b3VyIGhvbWUgZGlyIE5GUw0KPiBtb3VudGVkLiAgU2t5cGUgdHJpZXMgdG8gZG8g
-c29tZSBsb2NrIG9wZXJhdGlvbiBhbmQgdGhlIG1hY2hpbmUgcGFuaWNzLg0KPiANCj4gV2UndmUg
-ZG9uZSBpdCA0IHRpbWVzIGluIGEgcm93IHRvIGJlIHN1cmUgd2Ugd2VyZW4ndCBzbW9raW5nIGNy
-YWNrLiAgTm8NCj4gY3JhY2suICBKdXN0IHBhbmljcy4NCg0KVGhhbmtzISBUaGF0IHNob3VsZCBi
-ZSBlYXN5IHRvIGR1cGxpY2F0ZS4NCg0KSSdsbCBnaXZlIGl0IGEgc2hvdCB0b21vcnJvdywgYW5k
-IHNlZSBpZiBJIGNhbiBnZXQgYSB3aXJlc2hhcmsgdHJhY2UuLi4NCg0KLS0gDQpUcm9uZCBNeWts
-ZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xl
-YnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/stat.c | 16 ++++++++++++----
+ 1 file changed, 12 insertions(+), 4 deletions(-)
+
+diff --git a/fs/stat.c b/fs/stat.c
+index c97a17e..452ee93 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -300,14 +300,21 @@ SYSCALL_DEFINE4(readlinkat, int, dfd, const char __user *, pathname,
+ 	struct path path;
+ 	int error;
+ 	int empty = 0;
++	unsigned int try = 0;
++	unsigned int lookup_flags = LOOKUP_EMPTY;
+ 
+ 	if (bufsiz <= 0)
+ 		return -EINVAL;
+ 
+-	error = user_path_at_empty(dfd, pathname, LOOKUP_EMPTY, &path, &empty);
+-	if (!error) {
+-		struct inode *inode = path.dentry->d_inode;
++	do {
++		struct inode *inode;
++
++		error = user_path_at_empty(dfd, pathname, lookup_flags,
++					   &path, &empty);
++		if (error)
++			break;
+ 
++		inode = path.dentry->d_inode;
+ 		error = empty ? -ENOENT : -EINVAL;
+ 		if (inode->i_op->readlink) {
+ 			error = security_inode_readlink(path.dentry);
+@@ -318,7 +325,8 @@ SYSCALL_DEFINE4(readlinkat, int, dfd, const char __user *, pathname,
+ 			}
+ 		}
+ 		path_put(&path);
+-	}
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
+ 	return error;
+ }
+ 
+-- 
+1.7.11.7
+
