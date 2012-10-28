@@ -1,51 +1,165 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from acsinet15.oracle.com ([141.146.126.227]:31617 "EHLO
-	acsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753101Ab2JNWcp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Oct 2012 18:32:45 -0400
-Content-Type: text/plain; charset=US-ASCII
-Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
-Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CA+55aFz=1yFc-i4gmfGbyATvSNmPheedb6qF38ditHrdvtbdFQ@mail.gmail.com>
-Date: Sun, 14 Oct 2012 18:32:31 -0400
-Cc: Bruce Fields <bfields@fieldses.org>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Larry McVoy <lm@bitmover.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <F6AF04FD-1849-408B-A964-DDC386CA4654@oracle.com>
-References: <20121012211701.GA8301@bitmover.com> <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com> <20121013002100.GB23247@bitmover.com> <CA+55aFwKn+rp4qTk3dLgN8n=M-Aw1GYYpOfevDJaJhnK-U5VOg@mail.gmail.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9091FDED5@SACEXCMBX04-PRD.hq.netapp.com> <20121014193905.GC32420@fieldses.org> <2CAF58DA-E925-47F5-B1FD-DC86EF565125@oracle.com> <CA+55aFz=1yFc-i4gmfGbyATvSNmPheedb6qF38ditHrdvtbdFQ@mail.gmail.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
+Received: from mail-qa0-f53.google.com ([209.85.216.53]:65273 "EHLO
+	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752803Ab2J1TDW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Oct 2012 15:03:22 -0400
+From: Sasha Levin <levinsasha928@gmail.com>
+To: torvalds@linux-foundation.org
+Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
+        Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH v7 05/16] mm/huge_memory: use new hashtable implementation
+Date: Sun, 28 Oct 2012 15:02:17 -0400
+Message-Id: <1351450948-15618-5-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
+References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Switch hugemem to use the new hashtable implementation. This reduces the amount of
+generic unrelated code in the hugemem.
 
-On Oct 14, 2012, at 5:05 PM, Linus Torvalds <torvalds@linux-foundation.org> wrote:
+This also removes the dymanic allocation of the hash table. The size of the table is
+constant so there's no point in paying the price of an extra dereference when accessing
+it.
 
-> On Sun, Oct 14, 2012 at 1:55 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->> 
->> I think range-check assertions in the XDR code are valuable.  Whether they are done via BUG_ON or WARN_ON_ONCE is a matter of priority:
-> 
-> Bullshit.
-> 
->> BUG_ON forces you to notice the problem and address it, while WARN_ON allows the system to continue operating with the bug, but the bug can be ignored (or the WARN_ON simply removed because it is annoying).
-> 
-> Bullshit again.
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ mm/huge_memory.c | 55 ++++++++++++++-----------------------------------------
+ 1 file changed, 14 insertions(+), 41 deletions(-)
 
-> I don't think you've ever even *seen* a BUG_ON() fire in critical
-> code, have you? It's not pretty.
-
-I've been working on the Linux kernel NFS client for 12 years.  I've seen plenty of BUG_ONs fire at inopportune moments, and plenty fire right when it is useful.
-
-The client-side XDR encoder functions don't return a return value.  Upper layers can not find out there was a problem if marshalling fails.  That's why we use BUG_ON here: the code really has to stop executing, especially if pointers are involved, to avoid crapping on other parts of memory or posting data to a server that could corrupt file data.
-
-Remember, in a file system, you need to be concerned about kernel data structures _and_ what is being written to disk.
-
-Even if we change BUG_ON to WARN_ON everywhere, there are still plenty of ways to oops in that code, and we have the same result: the machine may lock up or not write the back trace to the system log.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+diff --git a/mm/huge_memory.c b/mm/huge_memory.c
+index 3c14a96..38ce8e9 100644
+--- a/mm/huge_memory.c
++++ b/mm/huge_memory.c
+@@ -19,6 +19,7 @@
+ #include <linux/mman.h>
+ #include <linux/pagemap.h>
+ #include <linux/migrate.h>
++#include <linux/hashtable.h>
+ #include <asm/tlb.h>
+ #include <asm/pgalloc.h>
+ #include "internal.h"
+@@ -59,12 +60,12 @@ static DECLARE_WAIT_QUEUE_HEAD(khugepaged_wait);
+ static unsigned int khugepaged_max_ptes_none __read_mostly = HPAGE_PMD_NR-1;
+ 
+ static int khugepaged(void *none);
+-static int mm_slots_hash_init(void);
+ static int khugepaged_slab_init(void);
+ static void khugepaged_slab_free(void);
+ 
+-#define MM_SLOTS_HASH_HEADS 1024
+-static struct hlist_head *mm_slots_hash __read_mostly;
++#define MM_SLOTS_HASH_BITS 10
++static DEFINE_HASHTABLE(mm_slots_hash, MM_SLOTS_HASH_BITS);
++
+ static struct kmem_cache *mm_slot_cache __read_mostly;
+ 
+ /**
+@@ -545,12 +546,6 @@ static int __init hugepage_init(void)
+ 	if (err)
+ 		goto out;
+ 
+-	err = mm_slots_hash_init();
+-	if (err) {
+-		khugepaged_slab_free();
+-		goto out;
+-	}
+-
+ 	/*
+ 	 * By default disable transparent hugepages on smaller systems,
+ 	 * where the extra memory used could hurt more than TLB overhead
+@@ -1673,6 +1668,8 @@ static int __init khugepaged_slab_init(void)
+ 	if (!mm_slot_cache)
+ 		return -ENOMEM;
+ 
++	hash_init(mm_slots_hash);
++
+ 	return 0;
+ }
+ 
+@@ -1694,47 +1691,23 @@ static inline void free_mm_slot(struct mm_slot *mm_slot)
+ 	kmem_cache_free(mm_slot_cache, mm_slot);
+ }
+ 
+-static int __init mm_slots_hash_init(void)
+-{
+-	mm_slots_hash = kzalloc(MM_SLOTS_HASH_HEADS * sizeof(struct hlist_head),
+-				GFP_KERNEL);
+-	if (!mm_slots_hash)
+-		return -ENOMEM;
+-	return 0;
+-}
+-
+-#if 0
+-static void __init mm_slots_hash_free(void)
+-{
+-	kfree(mm_slots_hash);
+-	mm_slots_hash = NULL;
+-}
+-#endif
+-
+ static struct mm_slot *get_mm_slot(struct mm_struct *mm)
+ {
+-	struct mm_slot *mm_slot;
+-	struct hlist_head *bucket;
++	struct mm_slot *slot;
+ 	struct hlist_node *node;
+ 
+-	bucket = &mm_slots_hash[((unsigned long)mm / sizeof(struct mm_struct))
+-				% MM_SLOTS_HASH_HEADS];
+-	hlist_for_each_entry(mm_slot, node, bucket, hash) {
+-		if (mm == mm_slot->mm)
+-			return mm_slot;
+-	}
++	hash_for_each_possible(mm_slots_hash, slot, node, hash, (unsigned long) mm)
++		if (slot->mm == mm)
++			return slot;
++
+ 	return NULL;
+ }
+ 
+ static void insert_to_mm_slots_hash(struct mm_struct *mm,
+ 				    struct mm_slot *mm_slot)
+ {
+-	struct hlist_head *bucket;
+-
+-	bucket = &mm_slots_hash[((unsigned long)mm / sizeof(struct mm_struct))
+-				% MM_SLOTS_HASH_HEADS];
+ 	mm_slot->mm = mm;
+-	hlist_add_head(&mm_slot->hash, bucket);
++	hash_add(mm_slots_hash, &mm_slot->hash, (long)mm);
+ }
+ 
+ static inline int khugepaged_test_exit(struct mm_struct *mm)
+@@ -1803,7 +1776,7 @@ void __khugepaged_exit(struct mm_struct *mm)
+ 	spin_lock(&khugepaged_mm_lock);
+ 	mm_slot = get_mm_slot(mm);
+ 	if (mm_slot && khugepaged_scan.mm_slot != mm_slot) {
+-		hlist_del(&mm_slot->hash);
++		hash_del(&mm_slot->hash);
+ 		list_del(&mm_slot->mm_node);
+ 		free = 1;
+ 	}
+@@ -2252,7 +2225,7 @@ static void collect_mm_slot(struct mm_slot *mm_slot)
+ 
+ 	if (khugepaged_test_exit(mm)) {
+ 		/* free mm_slot */
+-		hlist_del(&mm_slot->hash);
++		hash_del(&mm_slot->hash);
+ 		list_del(&mm_slot->mm_node);
+ 
+ 		/*
+-- 
+1.7.12.4
 
