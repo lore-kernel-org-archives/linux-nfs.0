@@ -1,42 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp3-g21.free.fr ([212.27.42.3]:59563 "EHLO smtp3-g21.free.fr"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752473Ab2JITo5 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Oct 2012 15:44:57 -0400
-Date: Tue, 9 Oct 2012 21:44:37 +0200
-From: Emmanuel Florac <eflorac@intellique.com>
-To: David Werner <david.werner@iws.uni-stuttgart.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Problem with NFSv4 (server: NetApp-Filer, client openSUSE-11.4,
- 12.1 and 12.2)
-Message-ID: <20121009214437.7a01c1cf@galadriel.home>
-In-Reply-To: <20121009192724.GA12172@tindra.iws.uni-stuttgart.de>
-References: <20121009135919.GA16012@tindra.iws.uni-stuttgart.de>
-	<20121009162126.432516c2@harpe.intellique.com>
-	<20121009150958.GB16012@tindra.iws.uni-stuttgart.de>
-	<20121009181511.09686f13@harpe.intellique.com>
-	<20121009192724.GA12172@tindra.iws.uni-stuttgart.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qa0-f53.google.com ([209.85.216.53]:65273 "EHLO
+	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754770Ab2J1TDj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Oct 2012 15:03:39 -0400
+From: Sasha Levin <levinsasha928@gmail.com>
+To: torvalds@linux-foundation.org
+Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
+        Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH v7 09/16] SUNRPC/cache: use new hashtable implementation
+Date: Sun, 28 Oct 2012 15:02:21 -0400
+Message-Id: <1351450948-15618-9-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
+References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Le Tue, 9 Oct 2012 21:27:24 +0200 vous écriviez:
+Switch cache to use the new hashtable implementation. This reduces the amount of
+generic unrelated code in the cache implementation.
 
-> The first line contains our netgroups and is the directory we mount.
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ net/sunrpc/cache.c | 20 +++++++++-----------
+ 1 file changed, 9 insertions(+), 11 deletions(-)
 
-Yes, nothing special apparently.
-
-> I think some deduplication is enabled.
-> Today I made a test with ubuntu-12.04.1 client, with the same problem.
-> 
-
-So this may be a kernel bug. I'll have a quick look.
-
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index fc2f7aa..0490546 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -28,6 +28,7 @@
+ #include <linux/workqueue.h>
+ #include <linux/mutex.h>
+ #include <linux/pagemap.h>
++#include <linux/hashtable.h>
+ #include <asm/ioctls.h>
+ #include <linux/sunrpc/types.h>
+ #include <linux/sunrpc/cache.h>
+@@ -524,19 +525,18 @@ EXPORT_SYMBOL_GPL(cache_purge);
+  * it to be revisited when cache info is available
+  */
+ 
+-#define	DFR_HASHSIZE	(PAGE_SIZE/sizeof(struct list_head))
+-#define	DFR_HASH(item)	((((long)item)>>4 ^ (((long)item)>>13)) % DFR_HASHSIZE)
++#define	DFR_HASH_BITS	9
+ 
+ #define	DFR_MAX	300	/* ??? */
+ 
+ static DEFINE_SPINLOCK(cache_defer_lock);
+ static LIST_HEAD(cache_defer_list);
+-static struct hlist_head cache_defer_hash[DFR_HASHSIZE];
++static DEFINE_HASHTABLE(cache_defer_hash, DFR_HASH_BITS);
+ static int cache_defer_cnt;
+ 
+ static void __unhash_deferred_req(struct cache_deferred_req *dreq)
+ {
+-	hlist_del_init(&dreq->hash);
++	hash_del(&dreq->hash);
+ 	if (!list_empty(&dreq->recent)) {
+ 		list_del_init(&dreq->recent);
+ 		cache_defer_cnt--;
+@@ -545,10 +545,7 @@ static void __unhash_deferred_req(struct cache_deferred_req *dreq)
+ 
+ static void __hash_deferred_req(struct cache_deferred_req *dreq, struct cache_head *item)
+ {
+-	int hash = DFR_HASH(item);
+-
+-	INIT_LIST_HEAD(&dreq->recent);
+-	hlist_add_head(&dreq->hash, &cache_defer_hash[hash]);
++	hash_add(cache_defer_hash, &dreq->hash, (unsigned long)item);
+ }
+ 
+ static void setup_deferral(struct cache_deferred_req *dreq,
+@@ -600,7 +597,7 @@ static void cache_wait_req(struct cache_req *req, struct cache_head *item)
+ 		 * to clean up
+ 		 */
+ 		spin_lock(&cache_defer_lock);
+-		if (!hlist_unhashed(&sleeper.handle.hash)) {
++		if (hash_hashed(&sleeper.handle.hash)) {
+ 			__unhash_deferred_req(&sleeper.handle);
+ 			spin_unlock(&cache_defer_lock);
+ 		} else {
+@@ -671,12 +668,11 @@ static void cache_revisit_request(struct cache_head *item)
+ 	struct cache_deferred_req *dreq;
+ 	struct list_head pending;
+ 	struct hlist_node *lp, *tmp;
+-	int hash = DFR_HASH(item);
+ 
+ 	INIT_LIST_HEAD(&pending);
+ 	spin_lock(&cache_defer_lock);
+ 
+-	hlist_for_each_entry_safe(dreq, lp, tmp, &cache_defer_hash[hash], hash)
++	hash_for_each_possible_safe(cache_defer_hash, dreq, lp, tmp, hash, (unsigned long)item)
+ 		if (dreq->item == item) {
+ 			__unhash_deferred_req(dreq);
+ 			list_add(&dreq->recent, &pending);
+@@ -1636,6 +1632,8 @@ static int create_cache_proc_entries(struct cache_detail *cd, struct net *net)
+ void __init cache_initialize(void)
+ {
+ 	INIT_DEFERRABLE_WORK(&cache_cleaner, do_cache_clean);
++
++	hash_init(cache_defer_hash);
+ }
+ 
+ int cache_register_net(struct cache_detail *cd, struct net *net)
 -- 
-------------------------------------------------------------------------
-Emmanuel Florac     |   Direction technique
-                    |   Intellique
-                    |	<eflorac@intellique.com>
-                    |   +33 1 78 94 84 02
-------------------------------------------------------------------------
+1.7.12.4
+
