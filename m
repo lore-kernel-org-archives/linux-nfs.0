@@ -1,67 +1,339 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:61945 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754219Ab2JORah (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Oct 2012 13:30:37 -0400
-Received: from netapp.com (vpn2ntap-358750.hq.netapp.com [10.55.67.32])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id q9FHUZCs005698
-	for <linux-nfs@vger.kernel.org>; Mon, 15 Oct 2012 10:30:35 -0700 (PDT)
-Date: Mon, 15 Oct 2012 12:30:35 -0500
-From: "Haynes, Tom" <thomas@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: Testing XDR code for nits
-Message-ID: <20121015173035.GA1777@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Received: from mail-qa0-f53.google.com ([209.85.216.53]:65273 "EHLO
+	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755033Ab2J1TD5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Oct 2012 15:03:57 -0400
+From: Sasha Levin <levinsasha928@gmail.com>
+To: torvalds@linux-foundation.org
+Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
+        Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH v7 14/16] net,rds: use new hashtable implementation
+Date: Sun, 28 Oct 2012 15:02:26 -0400
+Message-Id: <1351450948-15618-14-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
+References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It used to be when I wanted to test for sanity, I could do:
+Switch rds to use the new hashtable implementation. This reduces the amount of
+generic unrelated code in rds.
 
-sudo yum -y install libgssglue-devel
-sudo yum -y install nfs-utils-lib-devel
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ net/rds/bind.c       |  28 +++++++++-----
+ net/rds/connection.c | 102 +++++++++++++++++++++++----------------------------
+ 2 files changed, 63 insertions(+), 67 deletions(-)
 
-and then:
-
-[thomas@psyklo NFSv4.2]$ make testx
-
-Since about FC15, that has been broken. I can solve this with
-another distro, but I'd really like to get it working.
-
-I can't install nfs-utils-lib-devel, I found this bugzilla:
-
-https://bugzilla.redhat.com/show_bug.cgi?id=722847
-
-So I tried installing libtirpc-devel and no luck with the
-test:
-
-( cd testx.d ; \
-	rpcgen -a nfsv42.x ; \
-	if [ ! -f /usr/include/rpc/auth_sys.h ]; then \
-		ln Make* make ; \
-		CFLAGS="-I /usr/include/rpcsecgss -I /usr/include/gssglue" ; export CFLAGS ; \
-		LDLIBS="-lrpcsecgss" ; export LDLIBS ; \
-	fi ; \
-	make -f make* )
-file `nfsv42_server.c' already exists and may be overwritten
-make[1]: Entering directory `/home/thomas/Documents/ietf/NFSv4.2/testx.d'
-rpcgen  nfsv42.x
-cc -I /usr/include/rpcsecgss -I /usr/include/gssglue -g    -c -o nfsv42_clnt.o nfsv42_clnt.c
-cc -I /usr/include/rpcsecgss -I /usr/include/gssglue -g    -c -o nfsv42_client.o nfsv42_client.c
-cc -I /usr/include/rpcsecgss -I /usr/include/gssglue -g    -c -o nfsv42_xdr.o nfsv42_xdr.c
-nfsv42_xdr.c: In function ‘xdr_secinfo4’:
-nfsv42_xdr.c:3511:7: error: ‘RPCSEC_GSS’ undeclared (first use in this function)
-nfsv42_xdr.c:3511:7: note: each undeclared identifier is reported only once for each function it appears in
-nfsv42_xdr.c: In function ‘xdr_callback_sec_parms4’:
-nfsv42_xdr.c:3790:7: error: ‘RPCSEC_GSS’ undeclared (first use in this function)
-make[1]: *** [nfsv42_xdr.o] Error 1
-make[1]: Leaving directory `/home/thomas/Documents/ietf/NFSv4.2/testx.d'
-make: *** [testx] Error 2
-
-What package will provide RPCSEC_GSS in a header?
-
-Thanks,
-
-
+diff --git a/net/rds/bind.c b/net/rds/bind.c
+index 637bde5..79d65ce 100644
+--- a/net/rds/bind.c
++++ b/net/rds/bind.c
+@@ -36,16 +36,16 @@
+ #include <linux/if_arp.h>
+ #include <linux/jhash.h>
+ #include <linux/ratelimit.h>
++#include <linux/hashtable.h>
+ #include "rds.h"
+ 
+-#define BIND_HASH_SIZE 1024
+-static struct hlist_head bind_hash_table[BIND_HASH_SIZE];
++#define BIND_HASH_BITS 10
++static DEFINE_HASHTABLE(bind_hash_table, BIND_HASH_BITS);
+ static DEFINE_SPINLOCK(rds_bind_lock);
+ 
+-static struct hlist_head *hash_to_bucket(__be32 addr, __be16 port)
++static u32 rds_hash(__be32 addr, __be16 port)
+ {
+-	return bind_hash_table + (jhash_2words((u32)addr, (u32)port, 0) &
+-				  (BIND_HASH_SIZE - 1));
++	return jhash_2words((u32)addr, (u32)port, 0);
+ }
+ 
+ static struct rds_sock *rds_bind_lookup(__be32 addr, __be16 port,
+@@ -53,12 +53,12 @@ static struct rds_sock *rds_bind_lookup(__be32 addr, __be16 port,
+ {
+ 	struct rds_sock *rs;
+ 	struct hlist_node *node;
+-	struct hlist_head *head = hash_to_bucket(addr, port);
++	u32 key = rds_hash(addr, port);
+ 	u64 cmp;
+ 	u64 needle = ((u64)be32_to_cpu(addr) << 32) | be16_to_cpu(port);
+ 
+ 	rcu_read_lock();
+-	hlist_for_each_entry_rcu(rs, node, head, rs_bound_node) {
++	hash_for_each_possible_rcu(bind_hash_table, rs, node, rs_bound_node, key) {
+ 		cmp = ((u64)be32_to_cpu(rs->rs_bound_addr) << 32) |
+ 		      be16_to_cpu(rs->rs_bound_port);
+ 
+@@ -74,13 +74,13 @@ static struct rds_sock *rds_bind_lookup(__be32 addr, __be16 port,
+ 		 * make sure our addr and port are set before
+ 		 * we are added to the list, other people
+ 		 * in rcu will find us as soon as the
+-		 * hlist_add_head_rcu is done
++		 * hash_add_rcu is done
+ 		 */
+ 		insert->rs_bound_addr = addr;
+ 		insert->rs_bound_port = port;
+ 		rds_sock_addref(insert);
+ 
+-		hlist_add_head_rcu(&insert->rs_bound_node, head);
++		hash_add_rcu(bind_hash_table, &insert->rs_bound_node, key);
+ 	}
+ 	return NULL;
+ }
+@@ -152,7 +152,7 @@ void rds_remove_bound(struct rds_sock *rs)
+ 		  rs, &rs->rs_bound_addr,
+ 		  ntohs(rs->rs_bound_port));
+ 
+-		hlist_del_init_rcu(&rs->rs_bound_node);
++		hash_del_rcu(&rs->rs_bound_node);
+ 		rds_sock_put(rs);
+ 		rs->rs_bound_addr = 0;
+ 	}
+@@ -202,3 +202,11 @@ out:
+ 		synchronize_rcu();
+ 	return ret;
+ }
++
++static int __init rds_init(void)
++{
++	hash_init(bind_hash_table);
++	return 0;
++}
++
++module_init(rds_init);
+diff --git a/net/rds/connection.c b/net/rds/connection.c
+index 9e07c75..5b09ee1 100644
+--- a/net/rds/connection.c
++++ b/net/rds/connection.c
+@@ -34,28 +34,24 @@
+ #include <linux/list.h>
+ #include <linux/slab.h>
+ #include <linux/export.h>
++#include <linux/hashtable.h>
+ #include <net/inet_hashtables.h>
+ 
+ #include "rds.h"
+ #include "loop.h"
+ 
+ #define RDS_CONNECTION_HASH_BITS 12
+-#define RDS_CONNECTION_HASH_ENTRIES (1 << RDS_CONNECTION_HASH_BITS)
+-#define RDS_CONNECTION_HASH_MASK (RDS_CONNECTION_HASH_ENTRIES - 1)
+ 
+ /* converting this to RCU is a chore for another day.. */
+ static DEFINE_SPINLOCK(rds_conn_lock);
+ static unsigned long rds_conn_count;
+-static struct hlist_head rds_conn_hash[RDS_CONNECTION_HASH_ENTRIES];
++static DEFINE_HASHTABLE(rds_conn_hash, RDS_CONNECTION_HASH_BITS);
+ static struct kmem_cache *rds_conn_slab;
+ 
+-static struct hlist_head *rds_conn_bucket(__be32 laddr, __be32 faddr)
++static unsigned long rds_conn_hashfn(__be32 laddr, __be32 faddr)
+ {
+ 	/* Pass NULL, don't need struct net for hash */
+-	unsigned long hash = inet_ehashfn(NULL,
+-					  be32_to_cpu(laddr), 0,
+-					  be32_to_cpu(faddr), 0);
+-	return &rds_conn_hash[hash & RDS_CONNECTION_HASH_MASK];
++	return inet_ehashfn(NULL,  be32_to_cpu(laddr), 0,  be32_to_cpu(faddr), 0);
+ }
+ 
+ #define rds_conn_info_set(var, test, suffix) do {		\
+@@ -64,14 +60,14 @@ static struct hlist_head *rds_conn_bucket(__be32 laddr, __be32 faddr)
+ } while (0)
+ 
+ /* rcu read lock must be held or the connection spinlock */
+-static struct rds_connection *rds_conn_lookup(struct hlist_head *head,
+-					      __be32 laddr, __be32 faddr,
++static struct rds_connection *rds_conn_lookup(__be32 laddr, __be32 faddr,
+ 					      struct rds_transport *trans)
+ {
+ 	struct rds_connection *conn, *ret = NULL;
+ 	struct hlist_node *pos;
++	unsigned long key = rds_conn_hashfn(laddr, faddr);
+ 
+-	hlist_for_each_entry_rcu(conn, pos, head, c_hash_node) {
++	hash_for_each_possible_rcu(rds_conn_hash, conn, pos, c_hash_node, key) {
+ 		if (conn->c_faddr == faddr && conn->c_laddr == laddr &&
+ 				conn->c_trans == trans) {
+ 			ret = conn;
+@@ -117,13 +113,12 @@ static struct rds_connection *__rds_conn_create(__be32 laddr, __be32 faddr,
+ 				       int is_outgoing)
+ {
+ 	struct rds_connection *conn, *parent = NULL;
+-	struct hlist_head *head = rds_conn_bucket(laddr, faddr);
+ 	struct rds_transport *loop_trans;
+ 	unsigned long flags;
+ 	int ret;
+ 
+ 	rcu_read_lock();
+-	conn = rds_conn_lookup(head, laddr, faddr, trans);
++	conn = rds_conn_lookup(laddr, faddr, trans);
+ 	if (conn && conn->c_loopback && conn->c_trans != &rds_loop_transport &&
+ 	    !is_outgoing) {
+ 		/* This is a looped back IB connection, and we're
+@@ -224,13 +219,15 @@ static struct rds_connection *__rds_conn_create(__be32 laddr, __be32 faddr,
+ 		/* Creating normal conn */
+ 		struct rds_connection *found;
+ 
+-		found = rds_conn_lookup(head, laddr, faddr, trans);
++		found = rds_conn_lookup(laddr, faddr, trans);
+ 		if (found) {
+ 			trans->conn_free(conn->c_transport_data);
+ 			kmem_cache_free(rds_conn_slab, conn);
+ 			conn = found;
+ 		} else {
+-			hlist_add_head_rcu(&conn->c_hash_node, head);
++			unsigned long key = rds_conn_hashfn(laddr, faddr);
++
++			hash_add_rcu(rds_conn_hash, &conn->c_hash_node, key);
+ 			rds_cong_add_conn(conn);
+ 			rds_conn_count++;
+ 		}
+@@ -303,7 +300,7 @@ void rds_conn_shutdown(struct rds_connection *conn)
+ 	 * conn - the reconnect is always triggered by the active peer. */
+ 	cancel_delayed_work_sync(&conn->c_conn_w);
+ 	rcu_read_lock();
+-	if (!hlist_unhashed(&conn->c_hash_node)) {
++	if (hash_hashed(&conn->c_hash_node)) {
+ 		rcu_read_unlock();
+ 		rds_queue_reconnect(conn);
+ 	} else {
+@@ -329,7 +326,7 @@ void rds_conn_destroy(struct rds_connection *conn)
+ 
+ 	/* Ensure conn will not be scheduled for reconnect */
+ 	spin_lock_irq(&rds_conn_lock);
+-	hlist_del_init_rcu(&conn->c_hash_node);
++	hash_del(&conn->c_hash_node);
+ 	spin_unlock_irq(&rds_conn_lock);
+ 	synchronize_rcu();
+ 
+@@ -375,7 +372,6 @@ static void rds_conn_message_info(struct socket *sock, unsigned int len,
+ 				  struct rds_info_lengths *lens,
+ 				  int want_send)
+ {
+-	struct hlist_head *head;
+ 	struct hlist_node *pos;
+ 	struct list_head *list;
+ 	struct rds_connection *conn;
+@@ -388,27 +384,24 @@ static void rds_conn_message_info(struct socket *sock, unsigned int len,
+ 
+ 	rcu_read_lock();
+ 
+-	for (i = 0, head = rds_conn_hash; i < ARRAY_SIZE(rds_conn_hash);
+-	     i++, head++) {
+-		hlist_for_each_entry_rcu(conn, pos, head, c_hash_node) {
+-			if (want_send)
+-				list = &conn->c_send_queue;
+-			else
+-				list = &conn->c_retrans;
+-
+-			spin_lock_irqsave(&conn->c_lock, flags);
+-
+-			/* XXX too lazy to maintain counts.. */
+-			list_for_each_entry(rm, list, m_conn_item) {
+-				total++;
+-				if (total <= len)
+-					rds_inc_info_copy(&rm->m_inc, iter,
+-							  conn->c_laddr,
+-							  conn->c_faddr, 0);
+-			}
+-
+-			spin_unlock_irqrestore(&conn->c_lock, flags);
++	hash_for_each_rcu(rds_conn_hash, i, pos, conn, c_hash_node) {
++		if (want_send)
++			list = &conn->c_send_queue;
++		else
++			list = &conn->c_retrans;
++
++		spin_lock_irqsave(&conn->c_lock, flags);
++
++		/* XXX too lazy to maintain counts.. */
++		list_for_each_entry(rm, list, m_conn_item) {
++			total++;
++			if (total <= len)
++				rds_inc_info_copy(&rm->m_inc, iter,
++						  conn->c_laddr,
++						  conn->c_faddr, 0);
+ 		}
++
++		spin_unlock_irqrestore(&conn->c_lock, flags);
+ 	}
+ 	rcu_read_unlock();
+ 
+@@ -438,7 +431,6 @@ void rds_for_each_conn_info(struct socket *sock, unsigned int len,
+ 			  size_t item_len)
+ {
+ 	uint64_t buffer[(item_len + 7) / 8];
+-	struct hlist_head *head;
+ 	struct hlist_node *pos;
+ 	struct rds_connection *conn;
+ 	size_t i;
+@@ -448,23 +440,19 @@ void rds_for_each_conn_info(struct socket *sock, unsigned int len,
+ 	lens->nr = 0;
+ 	lens->each = item_len;
+ 
+-	for (i = 0, head = rds_conn_hash; i < ARRAY_SIZE(rds_conn_hash);
+-	     i++, head++) {
+-		hlist_for_each_entry_rcu(conn, pos, head, c_hash_node) {
+-
+-			/* XXX no c_lock usage.. */
+-			if (!visitor(conn, buffer))
+-				continue;
+-
+-			/* We copy as much as we can fit in the buffer,
+-			 * but we count all items so that the caller
+-			 * can resize the buffer. */
+-			if (len >= item_len) {
+-				rds_info_copy(iter, buffer, item_len);
+-				len -= item_len;
+-			}
+-			lens->nr++;
++	hash_for_each_rcu(rds_conn_hash, i, pos, conn, c_hash_node) {
++		/* XXX no c_lock usage.. */
++		if (!visitor(conn, buffer))
++			continue;
++
++		/* We copy as much as we can fit in the buffer,
++		 * but we count all items so that the caller
++		 * can resize the buffer. */
++		if (len >= item_len) {
++			rds_info_copy(iter, buffer, item_len);
++			len -= item_len;
+ 		}
++		lens->nr++;
+ 	}
+ 	rcu_read_unlock();
+ }
+@@ -518,6 +506,8 @@ int rds_conn_init(void)
+ 	rds_info_register_func(RDS_INFO_RETRANS_MESSAGES,
+ 			       rds_conn_message_info_retrans);
+ 
++	hash_init(rds_conn_hash);
++
+ 	return 0;
+ }
+ 
+@@ -525,8 +515,6 @@ void rds_conn_exit(void)
+ {
+ 	rds_loop_exit();
+ 
+-	WARN_ON(!hlist_empty(rds_conn_hash));
+-
+ 	kmem_cache_destroy(rds_conn_slab);
+ 
+ 	rds_info_deregister_func(RDS_INFO_CONNECTIONS, rds_conn_info);
 -- 
-Tom Haynes - ex-cfb
+1.7.12.4
+
