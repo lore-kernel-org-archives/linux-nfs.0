@@ -1,276 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:51791 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752293Ab2JIPBl convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Oct 2012 11:01:41 -0400
-Subject: Re: Should "mount -o proto=udp" be usable against an IPv6 only server?
-Mime-Version: 1.0 (Apple Message framework v1283)
+Received: from fieldses.org ([174.143.236.118]:56951 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752598Ab2J1QP7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 28 Oct 2012 12:15:59 -0400
+Date: Sun, 28 Oct 2012 12:15:56 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+Subject: Re: 3.7-rc1 NFSv3/sec=krb5 mkdir failure
+Message-ID: <20121028161556.GC20520@fieldses.org>
+References: <20121016125832.GC30649@fieldses.org>
+ <20121024200249.GC6697@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9092906F7@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121024201517.GD6697@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90929086C@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121024204059.GF6697@fieldses.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20121009104847.13cceeae@notabene.brown>
-Date: Tue, 9 Oct 2012 11:01:32 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <61E96B57-9545-4DC5-8AAF-BD704EA802D5@oracle.com>
-References: <11D4587E-7739-4D31-836D-D63177D13302@oracle.com> <20121008143550.68b4aa45@notabene.brown> <64BBDA5E-E51C-4DD1-9ECB-41322286C57E@oracle.com> <20121009104847.13cceeae@notabene.brown>
-To: NeilBrown <neilb@suse.de>
+In-Reply-To: <20121024204059.GF6697@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Oct 8, 2012, at 7:48 PM, NeilBrown wrote:
-
-> On Mon, 8 Oct 2012 11:51:29 -0400 Chuck Lever <chuck.lever@oracle.com> wrote:
+On Wed, Oct 24, 2012 at 04:40:59PM -0400, J. Bruce Fields wrote:
+> On Wed, Oct 24, 2012 at 08:34:37PM +0000, Myklebust, Trond wrote:
+> > > -----Original Message-----
+> > > From: Myklebust, Trond
+> > > Sent: Wednesday, October 24, 2012 4:31 PM
+> > > To: 'J. Bruce Fields'
+> > > Cc: linux-nfs@vger.kernel.org; Schumaker, Bryan
+> > > Subject: RE: 3.7-rc1 NFSv3/sec=krb5 mkdir failure
+> > > 
+> > > > -----Original Message-----
+> > > > From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> > > > Sent: Wednesday, October 24, 2012 4:15 PM
+> > > > To: Myklebust, Trond
+> > > > Cc: linux-nfs@vger.kernel.org; Schumaker, Bryan
+> > > > Subject: Re: 3.7-rc1 NFSv3/sec=krb5 mkdir failure
+> > > >
+> > > > On Wed, Oct 24, 2012 at 08:07:55PM +0000, Myklebust, Trond wrote:
+> > > > > > -----Original Message-----
+> > > > > > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> > > > > > owner@vger.kernel.org] On Behalf Of J. Bruce Fields
+> > > > > > Sent: Wednesday, October 24, 2012 4:03 PM
+> > > > > > To: linux-nfs@vger.kernel.org; Myklebust, Trond; Schumaker, Bryan
+> > > > > > Subject: Re: 3.7-rc1 NFSv3/sec=krb5 mkdir failure
+> > > > > >
+> > > > > > Anyone get a chance to look at this?  It seems very reproduceable.
+> > > > > >
+> > > > > > --b.
+> > > > > >
+> > > > > > On Tue, Oct 16, 2012 at 08:58:32AM -0400, bfields wrote:
+> > > > > > > On 3.7-rc1:
+> > > > > > >
+> > > > > > > 	client# mount -tnfs -osec=krb5,vers=3 server:/exports/ext4
+> > > > > > > /mnt/
+> > > > > > >
+> > > > > > > 		server# ls -l /exports/ext4|grep TMP
+> > > > > > > 		server#
+> > > > > > >
+> > > > > > > 	# mkdir /mnt/TMP
+> > > > > > > 	mkdir: cannot create directory `/mnt/TMP': Permission denied
+> > > > > > >
+> > > > > > > 		server# ls -l /exports/ext4|grep TMP
+> > > > > > > 		drwxr-xr-x  2 nfsnobody nfsnobody 4096 Oct 16 08:56 TMP
+> > > > > > > 		server#
+> > > > > > >
+> > > > > > > Wireshark also shows that the create succeeds.
+> > > > >
+> > > > > Can you share the wireshark trace?
+> > > >
+> > > > Sure.  This covers the mount and mkdir.  The mkdir call and reply are
+> > > > in frames 77 and 78.
+> > > 
+> > > Hmm.... Can you please check if the ACL is being set correctly on the server? I
+> > > suspect that might be the source of the error.
+> > > 
+> > 
+> > In fact, can you see if mounting with '-onoacl' causes the whole thing to succeed?
 > 
->> 
->> On Oct 7, 2012, at 11:35 PM, NeilBrown wrote:
->> 
->>> On Wed, 3 Oct 2012 21:15:16 -0700 Chuck Lever <chuck.lever@oracle.com> wrote:
->>> 
->>>> Hi-
->>>> 
->>>> Unfortunately our corporate e-mail server lost your e-mail from yesterday.  I read it last night and was going to reply this morning, but it was gone from my mailbox.  I'm not sure how to preserve the thread structure at this point.
->>>> 
->>>> I'm OK with the nfsmount.conf() changes, and the addition of IPv6 syntax to the clientaddr= option.
->>>> 
->>>>>> The protocol and protocol family the NFS client uses to transmit requests to the NFS server for this mount point.  For example, udp selects UDP over IPv4, while tcp6 selects TCP over IPv6.  If an NFS server has both an IPv4 and an IPv6 address, using a specific netid forces the use of IPv4 or IPv6 networking to communicate with that server.
->>>>> 
->>>>> I still don't like that last sentence.
->>>> 
->>>> Can you say why?
->>> 
->>> Its meaning is not at all clear.  It tells me that some set of circumstances
->>> will "force the use of IPv4 or IPv6 networking" - given that their isn't
->>> really any other sort of networking (except maybe RDMA?), I'm not at all
->>> surprised that it will either use IPv4 or IPv6.  But the sentence doesn't
->>> tell me how the netid has anything to do with this obvious outcome.
->>> 
->>> Even if I'm generous and understand that some specific netids will force IPv4
->>> while other specific netids will force IPv6 (and conveniently forget that
->>> 'rdma' won't force either), this is true whether the NFS server is
->>> dual-stack, or has either possible single stack.  So the introductory clause
->>> it irrelevant to the conclusion.
->> 
->> Clarifying the last sentence would be less work than rewriting that whole paragraph.
->> 
->> Incidentally, "rdma" does force IPv4.  NFS/RDMA targets are identified by their IP address and a special port (20049).
->> 
->>> 
->>>> 
->>>> While that sentence could be made more precise, this is one of the key reasons NFS with netids works the way it does.  Dual-stack NFS servers will be pervasive for some time to come.
->>>> 
->>>> Other comments:
->>>> 
->>>> o "rdma6" is not supported, and should not be explicitly listed.
->>> 
->>> Even though support/nfs/getport.c mentioned it...
->>> OK, I'll remove that.  I was assuming it might be close given that nfs-utils
->>> seemed to support it, but apparently not.
->> 
->> The issue is when the RDMA transport in the kernel will support IPv6.  Since no one is working on adding IPv6 support, it's not likely to happen soon.  The "rmda6" netid support in getport.c is merely for completeness.
->> 
->>> 
->>>> 
->>>> o "mountproto=rdma[6]" is not supported.
->>>> 
->>>> o We discourage the use of UDP with NFSv4 (in fact it may no longer be supported).  The NFSv4 proto= language should not list "udp" or "udp6."
->>> 
->>> It does work ...
->>> I guess if I change it to "Supported options" rather than "Available options"
->>> I can bring my self to remove those two...
->> 
->>> Is this worth an acked-by yet :-)
->> 
->> I'm not happy about any of the proto= changes, but it's not worth arguing about.  Thanks for the opportunity to comment.  But see below.  You forgot to fix "mountproto=," that really does have to be fixed.
->> 
-> 
-> Thanks for your patience.  Sorry I missed the mountproto=rdma changes you
-> mentioned earlier - I've fixed that up now, as well as addressing your other
-> suggestion.
+> That's on the client mount command?  No difference.
 
-Acked-by: Chuck Lever <chuck.lever@oracle.com>
+By the way, I managed to do a little bisecting while working on
+something else today, and blame landed on Chuck's
+ba9b584c1dc37851d9c6ca6d0d2ccba55d9aad04 "SUNRPC: Introduce
+rpc_clone_client_set_auth()".  Which makes some sense if it's an ACL
+problem, and indeed testing on that commit finds success with -noacl,
+failure without.
 
-> Thanks,
-> NeilBrown
-> 
-> From 0210f5c0cebd884335d2ced5cb3e680d9821e951 Mon Sep 17 00:00:00 2001
-> From: Neil Brown <neilb@suse.de>
-> Date: Tue, 2 Oct 2012 15:21:46 +1000
-> Subject: [PATCH] mount.nfs mapage: clear up confusion between 'proto' and
-> 'transport'
-> 
-> The mount option "proto=" actually set the "transport" which in
-> netconfig usage is the pairing of a protocol (e.g. UDP, TCP) with
-> a protocol family (e.g. INET, INET6).
-> 
-> This can cause confusion if people naively except "proto=udp" to work
-> equally well on IPv6.
-> 
-> So add some text to both nfs(5) and nfsmount.conf(5) to hopefully
-> clarify this.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> 
-> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-> index da6d6d3..d04e272 100644
-> --- a/utils/mount/nfs.man
-> +++ b/utils/mount/nfs.man
-> @@ -1,5 +1,5 @@
-> .\"@(#)nfs.5"
-> -.TH NFS 5 "2 November 2007"
-> +.TH NFS 5 "9 October 2012"
-> .SH NAME
-> nfs \- fstab format and options for the
-> .B nfs
-> @@ -472,24 +472,15 @@ Use these options, along with the options in the above subsection,
-> for NFS versions 2 and 3 only.
-> .TP 1.5i
-> .BI proto= netid
-> -The transport protocol name and protocol family the NFS client uses
-> -to transmit requests to the NFS server for this mount point.
-> -If an NFS server has both an IPv4 and an IPv6 address, using a specific
-> -netid will force the use of IPv4 or IPv6 networking to communicate
-> -with that server.
-> -.IP
-> -If support for TI-RPC is built into the
-> -.B mount.nfs
-> -command,
-> -.I netid
-> -is a valid netid listed in
-> -.IR /etc/netconfig .
-> -The value "rdma" may also be specified.
-> -If the
-> -.B mount.nfs
-> -command does not have TI-RPC support, then
-> +The
-> .I netid
-> -is one of "tcp," "udp," or "rdma," and only IPv4 may be used.
-> +determines the transport that is used to communicate with the NFS
-> +server.  Available options are
-> +.BR udp ", " udp6 ", "tcp ", " tcp6 ", and " rdma .
-> +Those which end in
-> +.B 6
-> +use IPv6 addresses and are only available if support for TI-RPC is
-> +built in. Others use IPv4 addresses.
-> .IP
-> Each transport protocol uses different default
-> .B retrans
-> @@ -569,19 +560,18 @@ This option can be used when mounting an NFS server
-> through a firewall that blocks the rpcbind protocol.
-> .TP 1.5i
-> .BI mountproto= netid
-> -The transport protocol name and protocol family the NFS client uses
-> +The transport the NFS client uses
-> to transmit requests to the NFS server's mountd service when performing
-> this mount request, and when later unmounting this mount point.
-> .IP
-> -If support for TI-RPC is built into the
-> +.I netid
-> +may be one of
-> +.BR udp ", and " tcp
-> +which use IPv4 address or, if TI-RPC is built into the
-> .B mount.nfs
-> command,
-> -.I netid
-> -is a valid netid listed in
-> -.IR /etc/netconfig .
-> -Otherwise,
-> -.I netid
-> -is one of "tcp" or "udp," and only IPv4 may be used.
-> +.BR udp6 ", and " tcp6
-> +which use IPv6 addresses.
-> .IP
-> This option can be used when mounting an NFS server
-> through a firewall that blocks a particular transport.
-> @@ -773,21 +763,14 @@ Use these options, along with the options in the first subsection above,
-> for NFS version 4 and newer.
-> .TP 1.5i
-> .BI proto= netid
-> -The transport protocol name and protocol family the NFS client uses
-> -to transmit requests to the NFS server for this mount point.
-> -If an NFS server has both an IPv4 and an IPv6 address, using a specific
-> -netid will force the use of IPv4 or IPv6 networking to communicate
-> -with that server.
-> -.IP
-> -If support for TI-RPC is built into the
-> -.B mount.nfs
-> -command,
-> -.I netid
-> -is a valid netid listed in
-> -.IR /etc/netconfig .
-> -Otherwise,
-> +The
-> .I netid
-> -is one of "tcp" or "udp," and only IPv4 may be used.
-> +determines the transport that is used to communicate with the NFS
-> +server.  Supported options are
-> +.BR tcp ", " tcp6 ", and " rdma .
-> +.B tcp6
-> +use IPv6 addresses and is only available if support for TI-RPC is
-> +built in. Both others use IPv4 addresses.
-> .IP
-> All NFS version 4 servers are required to support TCP,
-> so if this mount option is not specified, the NFS version 4 client
-> @@ -851,6 +834,8 @@ The DATA AND METADATA COHERENCE section discusses
-> the behavior of this option in more detail.
-> .TP 1.5i
-> .BI clientaddr= n.n.n.n
-> +.TP 1.5i
-> +.BI clientaddr= n:n: ... :n
-> Specifies a single IPv4 address (in dotted-quad form),
-> or a non-link-local IPv6 address,
-> that the NFS client advertises to allow servers
-> diff --git a/utils/mount/nfsmount.conf.man b/utils/mount/nfsmount.conf.man
-> index 12a3fe7..2258296 100644
-> --- a/utils/mount/nfsmount.conf.man
-> +++ b/utils/mount/nfsmount.conf.man
-> @@ -1,5 +1,5 @@
-> .\"@(#)nfsmount.conf.5"
-> -.TH NFSMOUNT.CONF 5 "9 Mar 2008"
-> +.TH NFSMOUNT.CONF 5 "9 October 2012"
-> .SH NAME
-> nfsmount.conf - Configuration file for NFS mounts
-> .SH SYNOPSIS
-> @@ -18,6 +18,10 @@ to particular variables using the
-> .BR = 
-> operator, as in 
-> .BR Proto=Tcp .
-> +The variables that can be assigned are exactly the set of NFS specific
-> +mount options listed in
-> +.BR nfs (5).
-> +.PP
-> Sections are broken up into three basic categories:
-> Global options, Server options and Mount Point options.
-> .HP
-> @@ -54,7 +58,7 @@ are defined in the configuration file.
->     Proto=Tcp
-> .RS
-> .HP
-> -The TCP protocol will be used on every NFS mount.
-> +The TCP/IPv4 protocol will be used on every NFS mount.
-> .HP
-> .RE
-> [ Server \(lqnfsserver.foo.com\(rq ]
-> @@ -62,10 +66,13 @@ The TCP protocol will be used on every NFS mount.
->     rsize=32k
-> .br
->     wsize=32k
-> +.br
-> +    proto=udp6
-> .HP
-> .RS
-> -A 33k (32768 bytes) block size will be used as the read and write
-> -size on all mounts to the 'nfsserver.foo.com' server.
-> +A 32k (32768 bytes) block size will be used as the read and write
-> +size on all mounts to the 'nfsserver.foo.com' server.  UDP/IPv6
-> +is the protocol to be used.
-> .HP
-> .RE
-> .BR 
+I'm not sure if that explains the failure I was seeing on 3.7-rc1, since
+there I didn't see any ACL traffic, and still got a failure.  (And
+-noacl didn't help.)
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+--b.
