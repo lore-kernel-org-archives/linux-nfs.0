@@ -1,116 +1,167 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:53867 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755312Ab2J0MeQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 08:34:16 -0400
-Received: by mail-gg0-f174.google.com with SMTP id k5so690907ggd.19
-        for <linux-nfs@vger.kernel.org>; Sat, 27 Oct 2012 05:34:16 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v8 14/32] vfs: have faccessat retry once on an ESTALE error
-Date: Sat, 27 Oct 2012 08:33:21 -0400
-Message-Id: <1351341219-17837-15-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
-References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
+Received: from mail-qa0-f46.google.com ([209.85.216.46]:46599 "EHLO
+	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754606Ab2J1TDg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Oct 2012 15:03:36 -0400
+From: Sasha Levin <levinsasha928@gmail.com>
+To: torvalds@linux-foundation.org
+Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
+        Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH v7 08/16] block,elevator: use new hashtable implementation
+Date: Sun, 28 Oct 2012 15:02:20 -0400
+Message-Id: <1351450948-15618-8-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
+References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/open.c | 64 +++++++++++++++++++++++++++++++++------------------------------
- 1 file changed, 34 insertions(+), 30 deletions(-)
+Switch elevator to use the new hashtable implementation. This reduces the amount of
+generic unrelated code in the elevator.
 
-diff --git a/fs/open.c b/fs/open.c
-index 2a32d5c..9cd0a50 100644
---- a/fs/open.c
-+++ b/fs/open.c
-@@ -310,6 +310,8 @@ SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
- 	struct path path;
- 	struct inode *inode;
- 	int res;
-+	unsigned int lookup_flags = LOOKUP_FOLLOW;
-+	unsigned int try = 0;
+This also removes the dymanic allocation of the hash table. The size of the table is
+constant so there's no point in paying the price of an extra dereference when accessing
+it.
+
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ block/blk.h              |  2 +-
+ block/elevator.c         | 23 ++++-------------------
+ include/linux/elevator.h |  5 ++++-
+ 3 files changed, 9 insertions(+), 21 deletions(-)
+
+diff --git a/block/blk.h b/block/blk.h
+index ca51543..a0abbf6 100644
+--- a/block/blk.h
++++ b/block/blk.h
+@@ -61,7 +61,7 @@ static inline void blk_clear_rq_complete(struct request *rq)
+ /*
+  * Internal elevator interface
+  */
+-#define ELV_ON_HASH(rq)		(!hlist_unhashed(&(rq)->hash))
++#define ELV_ON_HASH(rq) hash_hashed(&(rq)->hash)
  
- 	if (mode & ~S_IRWXO)	/* where's F_OK, X_OK, W_OK, R_OK? */
- 		return -EINVAL;
-@@ -333,42 +335,44 @@ SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
+ void blk_insert_flush(struct request *rq);
+ void blk_abort_flushes(struct request_queue *q);
+diff --git a/block/elevator.c b/block/elevator.c
+index 9b1d42b..898d0eb 100644
+--- a/block/elevator.c
++++ b/block/elevator.c
+@@ -46,11 +46,6 @@ static LIST_HEAD(elv_list);
+ /*
+  * Merge hash stuff.
+  */
+-static const int elv_hash_shift = 6;
+-#define ELV_HASH_BLOCK(sec)	((sec) >> 3)
+-#define ELV_HASH_FN(sec)	\
+-		(hash_long(ELV_HASH_BLOCK((sec)), elv_hash_shift))
+-#define ELV_HASH_ENTRIES	(1 << elv_hash_shift)
+ #define rq_hash_key(rq)		(blk_rq_pos(rq) + blk_rq_sectors(rq))
  
- 	old_cred = override_creds(override_cred);
+ /*
+@@ -142,7 +137,6 @@ static struct elevator_queue *elevator_alloc(struct request_queue *q,
+ 				  struct elevator_type *e)
+ {
+ 	struct elevator_queue *eq;
+-	int i;
  
--	res = user_path_at(dfd, filename, LOOKUP_FOLLOW, &path);
--	if (res)
--		goto out;
-+	do {
-+		res = user_path_at(dfd, filename, lookup_flags, &path);
-+		if (res)
-+			break;
- 
--	inode = path.dentry->d_inode;
-+		inode = path.dentry->d_inode;
-+
-+		if ((mode & MAY_EXEC) && S_ISREG(inode->i_mode)) {
-+			/*
-+			 * MAY_EXEC on regular files is denied if the fs is
-+			 * mounted with the "noexec" flag.
-+			 */
-+			res = -EACCES;
-+			if (path.mnt->mnt_flags & MNT_NOEXEC)
-+				goto out_path_release;
-+		}
- 
--	if ((mode & MAY_EXEC) && S_ISREG(inode->i_mode)) {
-+		res = inode_permission(inode, mode | MAY_ACCESS);
-+		/* SuS v2 requires we report a read only fs too */
-+		if (res || !(mode & S_IWOTH) || special_file(inode->i_mode))
-+			goto out_path_release;
- 		/*
--		 * MAY_EXEC on regular files is denied if the fs is mounted
--		 * with the "noexec" flag.
-+		 * This is a rare case where using __mnt_is_readonly()
-+		 * is OK without a mnt_want/drop_write() pair.  Since
-+		 * no actual write to the fs is performed here, we do
-+		 * not need to telegraph to that to anyone.
-+		 *
-+		 * By doing this, we accept that this access is
-+		 * inherently racy and know that the fs may change
-+		 * state before we even see this result.
- 		 */
--		res = -EACCES;
--		if (path.mnt->mnt_flags & MNT_NOEXEC)
--			goto out_path_release;
--	}
+ 	eq = kmalloc_node(sizeof(*eq), GFP_KERNEL | __GFP_ZERO, q->node);
+ 	if (unlikely(!eq))
+@@ -151,14 +145,7 @@ static struct elevator_queue *elevator_alloc(struct request_queue *q,
+ 	eq->type = e;
+ 	kobject_init(&eq->kobj, &elv_ktype);
+ 	mutex_init(&eq->sysfs_lock);
 -
--	res = inode_permission(inode, mode | MAY_ACCESS);
--	/* SuS v2 requires we report a read only fs too */
--	if (res || !(mode & S_IWOTH) || special_file(inode->i_mode))
--		goto out_path_release;
--	/*
--	 * This is a rare case where using __mnt_is_readonly()
--	 * is OK without a mnt_want/drop_write() pair.  Since
--	 * no actual write to the fs is performed here, we do
--	 * not need to telegraph to that to anyone.
--	 *
--	 * By doing this, we accept that this access is
--	 * inherently racy and know that the fs may change
--	 * state before we even see this result.
--	 */
--	if (__mnt_is_readonly(path.mnt))
--		res = -EROFS;
-+		if (__mnt_is_readonly(path.mnt))
-+			res = -EROFS;
+-	eq->hash = kmalloc_node(sizeof(struct hlist_head) * ELV_HASH_ENTRIES,
+-					GFP_KERNEL, q->node);
+-	if (!eq->hash)
+-		goto err;
+-
+-	for (i = 0; i < ELV_HASH_ENTRIES; i++)
+-		INIT_HLIST_HEAD(&eq->hash[i]);
++	hash_init(eq->hash);
  
- out_path_release:
--	path_put(&path);
--out:
-+		path_put(&path);
-+		lookup_flags |= LOOKUP_REVAL;
-+	} while (retry_estale(res, try++));
- 	revert_creds(old_cred);
- 	put_cred(override_cred);
- 	return res;
+ 	return eq;
+ err:
+@@ -173,7 +160,6 @@ static void elevator_release(struct kobject *kobj)
+ 
+ 	e = container_of(kobj, struct elevator_queue, kobj);
+ 	elevator_put(e->type);
+-	kfree(e->hash);
+ 	kfree(e);
+ }
+ 
+@@ -240,7 +226,7 @@ EXPORT_SYMBOL(elevator_exit);
+ 
+ static inline void __elv_rqhash_del(struct request *rq)
+ {
+-	hlist_del_init(&rq->hash);
++	hash_del(&rq->hash);
+ }
+ 
+ static void elv_rqhash_del(struct request_queue *q, struct request *rq)
+@@ -254,7 +240,7 @@ static void elv_rqhash_add(struct request_queue *q, struct request *rq)
+ 	struct elevator_queue *e = q->elevator;
+ 
+ 	BUG_ON(ELV_ON_HASH(rq));
+-	hlist_add_head(&rq->hash, &e->hash[ELV_HASH_FN(rq_hash_key(rq))]);
++	hash_add(e->hash, &rq->hash, rq_hash_key(rq));
+ }
+ 
+ static void elv_rqhash_reposition(struct request_queue *q, struct request *rq)
+@@ -266,11 +252,10 @@ static void elv_rqhash_reposition(struct request_queue *q, struct request *rq)
+ static struct request *elv_rqhash_find(struct request_queue *q, sector_t offset)
+ {
+ 	struct elevator_queue *e = q->elevator;
+-	struct hlist_head *hash_list = &e->hash[ELV_HASH_FN(offset)];
+ 	struct hlist_node *entry, *next;
+ 	struct request *rq;
+ 
+-	hlist_for_each_entry_safe(rq, entry, next, hash_list, hash) {
++	hash_for_each_possible_safe(e->hash, rq, entry, next, hash, offset) {
+ 		BUG_ON(!ELV_ON_HASH(rq));
+ 
+ 		if (unlikely(!rq_mergeable(rq))) {
+diff --git a/include/linux/elevator.h b/include/linux/elevator.h
+index c03af76..7587f7f 100644
+--- a/include/linux/elevator.h
++++ b/include/linux/elevator.h
+@@ -2,6 +2,7 @@
+ #define _LINUX_ELEVATOR_H
+ 
+ #include <linux/percpu.h>
++#include <linux/hashtable.h>
+ 
+ #ifdef CONFIG_BLOCK
+ 
+@@ -96,6 +97,8 @@ struct elevator_type
+ 	struct list_head list;
+ };
+ 
++#define ELV_HASH_BITS 6
++
+ /*
+  * each queue has an elevator_queue associated with it
+  */
+@@ -105,7 +108,7 @@ struct elevator_queue
+ 	void *elevator_data;
+ 	struct kobject kobj;
+ 	struct mutex sysfs_lock;
+-	struct hlist_head *hash;
++	DECLARE_HASHTABLE(hash, ELV_HASH_BITS);
+ 	unsigned int registered:1;
+ };
+ 
 -- 
-1.7.11.7
+1.7.12.4
 
