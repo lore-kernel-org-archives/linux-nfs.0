@@ -1,75 +1,408 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54361 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932658Ab2JCSX1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Oct 2012 14:23:27 -0400
-Date: Wed, 3 Oct 2012 14:23:25 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Bryan Schumaker <bjschuma@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 00/10] NFSD: Improve fault injection
-Message-ID: <20121003182325.GA28505@fieldses.org>
-References: <1347912979-20603-1-git-send-email-bjschuma@netapp.com>
- <506C7A1A.5000001@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <506C7A1A.5000001@netapp.com>
+Received: from mail-qa0-f46.google.com ([209.85.216.46]:46599 "EHLO
+	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754770Ab2J1TDq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Oct 2012 15:03:46 -0400
+From: Sasha Levin <levinsasha928@gmail.com>
+To: torvalds@linux-foundation.org
+Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
+        Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH v7 11/16] net,l2tp: use new hashtable implementation
+Date: Sun, 28 Oct 2012 15:02:23 -0400
+Message-Id: <1351450948-15618-11-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
+References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 03, 2012 at 01:47:06PM -0400, Bryan Schumaker wrote:
-> Bruce, have you had a chance to look at these yet?  I don't see them in your git tree...
+Switch l2tp to use the new hashtable implementation. This reduces the amount of
+generic unrelated code in l2tp.
 
-Sorry, no, it hasn't been a high priority.
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ net/l2tp/l2tp_core.c    | 134 ++++++++++++++++++------------------------------
+ net/l2tp/l2tp_core.h    |   8 +--
+ net/l2tp/l2tp_debugfs.c |  19 +++----
+ 3 files changed, 61 insertions(+), 100 deletions(-)
 
-I'll try to take a look soon.  They may end up being queued up for 3.8.
+diff --git a/net/l2tp/l2tp_core.c b/net/l2tp/l2tp_core.c
+index 1a9f372..77029b0 100644
+--- a/net/l2tp/l2tp_core.c
++++ b/net/l2tp/l2tp_core.c
+@@ -44,6 +44,7 @@
+ #include <linux/udp.h>
+ #include <linux/l2tp.h>
+ #include <linux/hash.h>
++#include <linux/hashtable.h>
+ #include <linux/sort.h>
+ #include <linux/file.h>
+ #include <linux/nsproxy.h>
+@@ -107,8 +108,8 @@ static unsigned int l2tp_net_id;
+ struct l2tp_net {
+ 	struct list_head l2tp_tunnel_list;
+ 	spinlock_t l2tp_tunnel_list_lock;
+-	struct hlist_head l2tp_session_hlist[L2TP_HASH_SIZE_2];
+-	spinlock_t l2tp_session_hlist_lock;
++	DECLARE_HASHTABLE(l2tp_session_hash, L2TP_HASH_BITS_2);
++	spinlock_t l2tp_session_hash_lock;
+ };
+ 
+ static void l2tp_session_set_header_len(struct l2tp_session *session, int version);
+@@ -156,30 +157,17 @@ do {									\
+ #define l2tp_tunnel_dec_refcount(t) l2tp_tunnel_dec_refcount_1(t)
+ #endif
+ 
+-/* Session hash global list for L2TPv3.
+- * The session_id SHOULD be random according to RFC3931, but several
+- * L2TP implementations use incrementing session_ids.  So we do a real
+- * hash on the session_id, rather than a simple bitmask.
+- */
+-static inline struct hlist_head *
+-l2tp_session_id_hash_2(struct l2tp_net *pn, u32 session_id)
+-{
+-	return &pn->l2tp_session_hlist[hash_32(session_id, L2TP_HASH_BITS_2)];
+-
+-}
+-
+ /* Lookup a session by id in the global session list
+  */
+ static struct l2tp_session *l2tp_session_find_2(struct net *net, u32 session_id)
+ {
+ 	struct l2tp_net *pn = l2tp_pernet(net);
+-	struct hlist_head *session_list =
+-		l2tp_session_id_hash_2(pn, session_id);
+ 	struct l2tp_session *session;
+ 	struct hlist_node *walk;
+ 
+ 	rcu_read_lock_bh();
+-	hlist_for_each_entry_rcu(session, walk, session_list, global_hlist) {
++	hash_for_each_possible_rcu(pn->l2tp_session_hash, session, walk,
++					global_hlist, session_id) {
+ 		if (session->session_id == session_id) {
+ 			rcu_read_unlock_bh();
+ 			return session;
+@@ -190,23 +178,10 @@ static struct l2tp_session *l2tp_session_find_2(struct net *net, u32 session_id)
+ 	return NULL;
+ }
+ 
+-/* Session hash list.
+- * The session_id SHOULD be random according to RFC2661, but several
+- * L2TP implementations (Cisco and Microsoft) use incrementing
+- * session_ids.  So we do a real hash on the session_id, rather than a
+- * simple bitmask.
+- */
+-static inline struct hlist_head *
+-l2tp_session_id_hash(struct l2tp_tunnel *tunnel, u32 session_id)
+-{
+-	return &tunnel->session_hlist[hash_32(session_id, L2TP_HASH_BITS)];
+-}
+-
+ /* Lookup a session by id
+  */
+ struct l2tp_session *l2tp_session_find(struct net *net, struct l2tp_tunnel *tunnel, u32 session_id)
+ {
+-	struct hlist_head *session_list;
+ 	struct l2tp_session *session;
+ 	struct hlist_node *walk;
+ 
+@@ -217,15 +192,14 @@ struct l2tp_session *l2tp_session_find(struct net *net, struct l2tp_tunnel *tunn
+ 	if (tunnel == NULL)
+ 		return l2tp_session_find_2(net, session_id);
+ 
+-	session_list = l2tp_session_id_hash(tunnel, session_id);
+-	read_lock_bh(&tunnel->hlist_lock);
+-	hlist_for_each_entry(session, walk, session_list, hlist) {
++	read_lock_bh(&tunnel->hash_lock);
++	hash_for_each_possible(tunnel->session_hash, session, walk, hlist, session_id) {
+ 		if (session->session_id == session_id) {
+-			read_unlock_bh(&tunnel->hlist_lock);
++			read_unlock_bh(&tunnel->hash_lock);
+ 			return session;
+ 		}
+ 	}
+-	read_unlock_bh(&tunnel->hlist_lock);
++	read_unlock_bh(&tunnel->hash_lock);
+ 
+ 	return NULL;
+ }
+@@ -238,17 +212,15 @@ struct l2tp_session *l2tp_session_find_nth(struct l2tp_tunnel *tunnel, int nth)
+ 	struct l2tp_session *session;
+ 	int count = 0;
+ 
+-	read_lock_bh(&tunnel->hlist_lock);
+-	for (hash = 0; hash < L2TP_HASH_SIZE; hash++) {
+-		hlist_for_each_entry(session, walk, &tunnel->session_hlist[hash], hlist) {
+-			if (++count > nth) {
+-				read_unlock_bh(&tunnel->hlist_lock);
+-				return session;
+-			}
++	read_lock_bh(&tunnel->hash_lock);
++	hash_for_each(tunnel->session_hash, hash, walk, session, hlist) {
++		if (++count > nth) {
++			read_unlock_bh(&tunnel->hash_lock);
++			return session;
+ 		}
+ 	}
+ 
+-	read_unlock_bh(&tunnel->hlist_lock);
++	read_unlock_bh(&tunnel->hash_lock);
+ 
+ 	return NULL;
+ }
+@@ -265,12 +237,10 @@ struct l2tp_session *l2tp_session_find_by_ifname(struct net *net, char *ifname)
+ 	struct l2tp_session *session;
+ 
+ 	rcu_read_lock_bh();
+-	for (hash = 0; hash < L2TP_HASH_SIZE_2; hash++) {
+-		hlist_for_each_entry_rcu(session, walk, &pn->l2tp_session_hlist[hash], global_hlist) {
+-			if (!strcmp(session->ifname, ifname)) {
+-				rcu_read_unlock_bh();
+-				return session;
+-			}
++	hash_for_each_rcu(pn->l2tp_session_hash, hash, walk, session, global_hlist) {
++		if (!strcmp(session->ifname, ifname)) {
++			rcu_read_unlock_bh();
++			return session;
+ 		}
+ 	}
+ 
+@@ -1272,7 +1242,7 @@ end:
+  */
+ static void l2tp_tunnel_closeall(struct l2tp_tunnel *tunnel)
+ {
+-	int hash;
++	int hash, found = 0;
+ 	struct hlist_node *walk;
+ 	struct hlist_node *tmp;
+ 	struct l2tp_session *session;
+@@ -1282,16 +1252,14 @@ static void l2tp_tunnel_closeall(struct l2tp_tunnel *tunnel)
+ 	l2tp_info(tunnel, L2TP_MSG_CONTROL, "%s: closing all sessions...\n",
+ 		  tunnel->name);
+ 
+-	write_lock_bh(&tunnel->hlist_lock);
+-	for (hash = 0; hash < L2TP_HASH_SIZE; hash++) {
+-again:
+-		hlist_for_each_safe(walk, tmp, &tunnel->session_hlist[hash]) {
+-			session = hlist_entry(walk, struct l2tp_session, hlist);
+-
++	write_lock_bh(&tunnel->hash_lock);
++	do {
++		found = 0;
++		hash_for_each_safe(tunnel->session_hash, hash, walk, tmp, session, hlist) {
+ 			l2tp_info(session, L2TP_MSG_CONTROL,
+ 				  "%s: closing session\n", session->name);
+ 
+-			hlist_del_init(&session->hlist);
++			hash_del(&session->hlist);
+ 
+ 			/* Since we should hold the sock lock while
+ 			 * doing any unbinding, we need to release the
+@@ -1302,14 +1270,14 @@ again:
+ 			if (session->ref != NULL)
+ 				(*session->ref)(session);
+ 
+-			write_unlock_bh(&tunnel->hlist_lock);
++			write_unlock_bh(&tunnel->hash_lock);
+ 
+ 			if (tunnel->version != L2TP_HDR_VER_2) {
+ 				struct l2tp_net *pn = l2tp_pernet(tunnel->l2tp_net);
+ 
+-				spin_lock_bh(&pn->l2tp_session_hlist_lock);
+-				hlist_del_init_rcu(&session->global_hlist);
+-				spin_unlock_bh(&pn->l2tp_session_hlist_lock);
++				spin_lock_bh(&pn->l2tp_session_hash_lock);
++				hash_del_rcu(&session->global_hlist);
++				spin_unlock_bh(&pn->l2tp_session_hash_lock);
+ 				synchronize_rcu();
+ 			}
+ 
+@@ -1319,17 +1287,17 @@ again:
+ 			if (session->deref != NULL)
+ 				(*session->deref)(session);
+ 
+-			write_lock_bh(&tunnel->hlist_lock);
++			write_lock_bh(&tunnel->hash_lock);
+ 
+ 			/* Now restart from the beginning of this hash
+ 			 * chain.  We always remove a session from the
+ 			 * list so we are guaranteed to make forward
+ 			 * progress.
+ 			 */
+-			goto again;
++			found = 1;
+ 		}
+-	}
+-	write_unlock_bh(&tunnel->hlist_lock);
++	} while (found);
++	write_unlock_bh(&tunnel->hash_lock);
+ }
+ 
+ /* Really kill the tunnel.
+@@ -1576,7 +1544,7 @@ int l2tp_tunnel_create(struct net *net, int fd, int version, u32 tunnel_id, u32
+ 
+ 	tunnel->magic = L2TP_TUNNEL_MAGIC;
+ 	sprintf(&tunnel->name[0], "tunl %u", tunnel_id);
+-	rwlock_init(&tunnel->hlist_lock);
++	rwlock_init(&tunnel->hash_lock);
+ 
+ 	/* The net we belong to */
+ 	tunnel->l2tp_net = net;
+@@ -1613,6 +1581,8 @@ int l2tp_tunnel_create(struct net *net, int fd, int version, u32 tunnel_id, u32
+ 
+ 	/* Add tunnel to our list */
+ 	INIT_LIST_HEAD(&tunnel->list);
++
++	hash_init(tunnel->session_hash);
+ 	atomic_inc(&l2tp_tunnel_count);
+ 
+ 	/* Bump the reference count. The tunnel context is deleted
+@@ -1677,17 +1647,17 @@ void l2tp_session_free(struct l2tp_session *session)
+ 		BUG_ON(tunnel->magic != L2TP_TUNNEL_MAGIC);
+ 
+ 		/* Delete the session from the hash */
+-		write_lock_bh(&tunnel->hlist_lock);
+-		hlist_del_init(&session->hlist);
+-		write_unlock_bh(&tunnel->hlist_lock);
++		write_lock_bh(&tunnel->hash_lock);
++		hash_del(&session->hlist);
++		write_unlock_bh(&tunnel->hash_lock);
+ 
+ 		/* Unlink from the global hash if not L2TPv2 */
+ 		if (tunnel->version != L2TP_HDR_VER_2) {
+ 			struct l2tp_net *pn = l2tp_pernet(tunnel->l2tp_net);
+ 
+-			spin_lock_bh(&pn->l2tp_session_hlist_lock);
+-			hlist_del_init_rcu(&session->global_hlist);
+-			spin_unlock_bh(&pn->l2tp_session_hlist_lock);
++			spin_lock_bh(&pn->l2tp_session_hash_lock);
++			hash_del_rcu(&session->global_hlist);
++			spin_unlock_bh(&pn->l2tp_session_hash_lock);
+ 			synchronize_rcu();
+ 		}
+ 
+@@ -1800,19 +1770,17 @@ struct l2tp_session *l2tp_session_create(int priv_size, struct l2tp_tunnel *tunn
+ 		sock_hold(tunnel->sock);
+ 
+ 		/* Add session to the tunnel's hash list */
+-		write_lock_bh(&tunnel->hlist_lock);
+-		hlist_add_head(&session->hlist,
+-			       l2tp_session_id_hash(tunnel, session_id));
+-		write_unlock_bh(&tunnel->hlist_lock);
++		write_lock_bh(&tunnel->hash_lock);
++		hash_add(tunnel->session_hash, &session->hlist, session_id);
++		write_unlock_bh(&tunnel->hash_lock);
+ 
+ 		/* And to the global session list if L2TPv3 */
+ 		if (tunnel->version != L2TP_HDR_VER_2) {
+ 			struct l2tp_net *pn = l2tp_pernet(tunnel->l2tp_net);
+ 
+-			spin_lock_bh(&pn->l2tp_session_hlist_lock);
+-			hlist_add_head_rcu(&session->global_hlist,
+-					   l2tp_session_id_hash_2(pn, session_id));
+-			spin_unlock_bh(&pn->l2tp_session_hlist_lock);
++			spin_lock_bh(&pn->l2tp_session_hash_lock);
++			hash_add(pn->l2tp_session_hash, &session->global_hlist, session_id);
++			spin_unlock_bh(&pn->l2tp_session_hash_lock);
+ 		}
+ 
+ 		/* Ignore management session in session count value */
+@@ -1831,15 +1799,13 @@ EXPORT_SYMBOL_GPL(l2tp_session_create);
+ static __net_init int l2tp_init_net(struct net *net)
+ {
+ 	struct l2tp_net *pn = net_generic(net, l2tp_net_id);
+-	int hash;
+ 
+ 	INIT_LIST_HEAD(&pn->l2tp_tunnel_list);
+ 	spin_lock_init(&pn->l2tp_tunnel_list_lock);
+ 
+-	for (hash = 0; hash < L2TP_HASH_SIZE_2; hash++)
+-		INIT_HLIST_HEAD(&pn->l2tp_session_hlist[hash]);
++	hash_init(pn->l2tp_session_hash);
+ 
+-	spin_lock_init(&pn->l2tp_session_hlist_lock);
++	spin_lock_init(&pn->l2tp_session_hash_lock);
+ 
+ 	return 0;
+ }
+diff --git a/net/l2tp/l2tp_core.h b/net/l2tp/l2tp_core.h
+index 56d583e..dcbec9e 100644
+--- a/net/l2tp/l2tp_core.h
++++ b/net/l2tp/l2tp_core.h
+@@ -11,17 +11,17 @@
+ #ifndef _L2TP_CORE_H_
+ #define _L2TP_CORE_H_
+ 
++#include <linux/hashtable.h>
++
+ /* Just some random numbers */
+ #define L2TP_TUNNEL_MAGIC	0x42114DDA
+ #define L2TP_SESSION_MAGIC	0x0C04EB7D
+ 
+ /* Per tunnel, session hash table size */
+ #define L2TP_HASH_BITS	4
+-#define L2TP_HASH_SIZE	(1 << L2TP_HASH_BITS)
+ 
+ /* System-wide, session hash table size */
+ #define L2TP_HASH_BITS_2	8
+-#define L2TP_HASH_SIZE_2	(1 << L2TP_HASH_BITS_2)
+ 
+ /* Debug message categories for the DEBUG socket option */
+ enum {
+@@ -164,8 +164,8 @@ struct l2tp_tunnel_cfg {
+ struct l2tp_tunnel {
+ 	int			magic;		/* Should be L2TP_TUNNEL_MAGIC */
+ 	struct rcu_head rcu;
+-	rwlock_t		hlist_lock;	/* protect session_hlist */
+-	struct hlist_head	session_hlist[L2TP_HASH_SIZE];
++	rwlock_t		hash_lock;	/* protect session_hash */
++	DECLARE_HASHTABLE(session_hash, L2TP_HASH_BITS);
+ 						/* hashed list of sessions,
+ 						 * hashed by id */
+ 	u32			tunnel_id;
+diff --git a/net/l2tp/l2tp_debugfs.c b/net/l2tp/l2tp_debugfs.c
+index c3813bc..655f1fa 100644
+--- a/net/l2tp/l2tp_debugfs.c
++++ b/net/l2tp/l2tp_debugfs.c
+@@ -105,21 +105,16 @@ static void l2tp_dfs_seq_tunnel_show(struct seq_file *m, void *v)
+ 	int session_count = 0;
+ 	int hash;
+ 	struct hlist_node *walk;
+-	struct hlist_node *tmp;
++	struct l2tp_session *session;
+ 
+-	read_lock_bh(&tunnel->hlist_lock);
+-	for (hash = 0; hash < L2TP_HASH_SIZE; hash++) {
+-		hlist_for_each_safe(walk, tmp, &tunnel->session_hlist[hash]) {
+-			struct l2tp_session *session;
++	read_lock_bh(&tunnel->hash_lock);
++	hash_for_each(tunnel->session_hash, hash, walk, session, hlist) {
++		if (session->session_id == 0)
++			continue;
+ 
+-			session = hlist_entry(walk, struct l2tp_session, hlist);
+-			if (session->session_id == 0)
+-				continue;
+-
+-			session_count++;
+-		}
++		session_count++;
+ 	}
+-	read_unlock_bh(&tunnel->hlist_lock);
++	read_unlock_bh(&tunnel->hash_lock);
+ 
+ 	seq_printf(m, "\nTUNNEL %u peer %u", tunnel->tunnel_id, tunnel->peer_tunnel_id);
+ 	if (tunnel->sock) {
+-- 
+1.7.12.4
 
---b.
-
-> 
-> - Bryan
-> 
-> On 09/17/2012 04:16 PM, bjschuma@netapp.com wrote:
-> > From: Bryan Schumaker <bjschuma@netapp.com>
-> > 
-> > While working on p2p-nfs, I discovered that I sometimes need to clear
-> > state for a specific client to test all possible error recovery conditions.
-> > The current fault injection code deletes state as it find it, so it can
-> > be difficult to guess which state will be forgotten.  In addition, I
-> > currently print out the amount of state forgotten but I don't give details
-> > like "Forgot 3 locks from client w.x.y.z".  These patches set out to
-> > improve that.
-> > 
-> > The first 7 patches clean up the current code and prepare it for specific
-> > client state removal.  Patch 8 adds prints information to the server's logs
-> > when a fault injection file is read (such as "Client w.x.y.z has 3 open
-> > files").  Patch 9 adds in a custom file operations structure so users can
-> > write strings to fault injection files in addition to u64s.  Finally, patch
-> > 10 allows users to remove state by writing a client's IP address to one of
-> > the files.
-> > 
-> > Questions, comments and suggestions are appreciated!
-> > 
-> > - Bryan
-> > 
-> > Bryan Schumaker (10):
-> >   NFSD: Fold fault_inject.h into state.h
-> >   NFSD: Lock state before calling fault injection function
-> >   NFSD: Clean up forgetting clients
-> >   NFSD: Clean up forgetting locks
-> >   NFSD: Clean up forgetting openowners
-> >   NFSD: Clean up forgetting and recalling delegations
-> >   NFSD: Fault injection operations take a per-client forget function
-> >   NFSD: Reading a fault injection file prints a state count
-> >   NFSD: Add a custom file operations structure for fault injection
-> >   NFSD: Forget state for a specific client
-> > 
-> >  fs/nfsd/fault_inject.c | 108 ++++++++++++++++++++++++-----
-> >  fs/nfsd/fault_inject.h |  28 --------
-> >  fs/nfsd/nfs4state.c    | 182 +++++++++++++++++++++++++++++++------------------
-> >  fs/nfsd/nfsctl.c       |   2 +-
-> >  fs/nfsd/state.h        |  23 +++++++
-> >  5 files changed, 230 insertions(+), 113 deletions(-)
-> >  delete mode 100644 fs/nfsd/fault_inject.h
-> > 
-> 
