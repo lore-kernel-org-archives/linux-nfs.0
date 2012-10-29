@@ -1,64 +1,120 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:53760 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754652Ab2JISpG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Oct 2012 14:45:06 -0400
-Message-ID: <507470AB.8030900@panasas.com>
-Date: Tue, 9 Oct 2012 11:44:59 -0700
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mail-ia0-f174.google.com ([209.85.210.174]:59753 "EHLO
+	mail-ia0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760261Ab2J2Smy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 14:42:54 -0400
 MIME-Version: 1.0
-To: Peng Tao <bergwolf@gmail.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linuxnfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH-Resend] NFS41: layoutget optimize and pnfsblock cleanup
-References: <CA+a=Yy5+i+z++XHkKkyFav1nE9pdccwUpz2=GW2J1GDRseR8jA@mail.gmail.com>
-In-Reply-To: <CA+a=Yy5+i+z++XHkKkyFav1nE9pdccwUpz2=GW2J1GDRseR8jA@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
+In-Reply-To: <20121029183157.GC3097@jtriplet-mobl1>
+References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
+ <1351450948-15618-6-git-send-email-levinsasha928@gmail.com>
+ <20121029113515.GB9115@Krystal> <CA+1xoqce6uJ6wy3+2CBwsLHKnsz4wD0vt8MBEGKCFfXTvuC0Hg@mail.gmail.com>
+ <20121029183157.GC3097@jtriplet-mobl1>
+From: Sasha Levin <levinsasha928@gmail.com>
+Date: Mon, 29 Oct 2012 14:42:33 -0400
+Message-ID: <CA+1xoqfMrn9zDFMJNFfA0NA86wE_DedD97cP1yJ2UQdTjs3uyQ@mail.gmail.com>
+Subject: Re: [PATCH v7 06/16] tracepoint: use new hashtable implementation
+To: Josh Triplett <josh@joshtriplett.org>
+Cc: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
+        torvalds@linux-foundation.org, tj@kernel.org,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/07/2012 02:59 PM, Peng Tao wrote:
-> Hi Trond,
-> 
-> Following first three patches were sent before and optimize layoutget size.
-> Last patch is cleanup and is also sent before.
-> 
-> Sorry that I have to send patches as attachments. I am having problem
-> with my smtp setup.
-> 
-> Thanks,
-> Tao
-> 
+On Mon, Oct 29, 2012 at 2:31 PM, Josh Triplett <josh@joshtriplett.org> wrote:
+> On Mon, Oct 29, 2012 at 01:29:24PM -0400, Sasha Levin wrote:
+>> On Mon, Oct 29, 2012 at 7:35 AM, Mathieu Desnoyers
+>> <mathieu.desnoyers@efficios.com> wrote:
+>> > * Sasha Levin (levinsasha928@gmail.com) wrote:
+>> >> Switch tracepoints to use the new hashtable implementation. This reduces the amount of
+>> >> generic unrelated code in the tracepoints.
+>> >>
+>> >> Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+>> >> ---
+>> >>  kernel/tracepoint.c | 27 +++++++++++----------------
+>> >>  1 file changed, 11 insertions(+), 16 deletions(-)
+>> >>
+>> >> diff --git a/kernel/tracepoint.c b/kernel/tracepoint.c
+>> >> index d96ba22..854df92 100644
+>> >> --- a/kernel/tracepoint.c
+>> >> +++ b/kernel/tracepoint.c
+>> >> @@ -26,6 +26,7 @@
+>> >>  #include <linux/slab.h>
+>> >>  #include <linux/sched.h>
+>> >>  #include <linux/static_key.h>
+>> >> +#include <linux/hashtable.h>
+>> >>
+>> >>  extern struct tracepoint * const __start___tracepoints_ptrs[];
+>> >>  extern struct tracepoint * const __stop___tracepoints_ptrs[];
+>> >> @@ -49,8 +50,7 @@ static LIST_HEAD(tracepoint_module_list);
+>> >>   * Protected by tracepoints_mutex.
+>> >>   */
+>> >>  #define TRACEPOINT_HASH_BITS 6
+>> >> -#define TRACEPOINT_TABLE_SIZE (1 << TRACEPOINT_HASH_BITS)
+>> >> -static struct hlist_head tracepoint_table[TRACEPOINT_TABLE_SIZE];
+>> >> +static DEFINE_HASHTABLE(tracepoint_table, TRACEPOINT_HASH_BITS);
+>> >>
+>> > [...]
+>> >>
+>> >> @@ -722,6 +715,8 @@ struct notifier_block tracepoint_module_nb = {
+>> >>
+>> >>  static int init_tracepoints(void)
+>> >>  {
+>> >> +     hash_init(tracepoint_table);
+>> >> +
+>> >>       return register_module_notifier(&tracepoint_module_nb);
+>> >>  }
+>> >>  __initcall(init_tracepoints);
+>> >
+>> > So we have a hash table defined in .bss (therefore entirely initialized
+>> > to NULL), and you add a call to "hash_init", which iterates on the whole
+>> > array and initialize it to NULL (again) ?
+>> >
+>> > This extra initialization is redundant. I think it should be removed
+>> > from here, and hashtable.h should document that hash_init() don't need
+>> > to be called on zeroed memory (which includes static/global variables,
+>> > kzalloc'd memory, etc).
+>>
+>> This was discussed in the previous series, the conclusion was to call
+>> hash_init() either way to keep the encapsulation and consistency.
+>>
+>> It's cheap enough and happens only once, so why not?
+>
+> Unnecessary work adds up.  Better not to do it unnecessarily, even if by
+> itself it doesn't cost that much.
+>
+> It doesn't seem that difficult for future fields to have 0 as their
+> initialized state.
 
-Tao hi.
+Let's put it this way: hlist requires the user to initialize hlist
+head before usage, therefore as a hlist user, hashtable implementation
+must do that.
 
-What are these patches based on? they do not apply to Linus tree as of today
-(v3.6-9228-g547b1e8) and they do not apply to v3.6 nor v3.5 tags.
+We do it automatically when the hashtable user does
+DEFINE_HASHTABLE(), but we can't do that if he does
+DECLARE_HASHTABLE(). This means that the hashtable user must call
+hash_init() whenever he uses DECLARE_HASHTABLE() to create his
+hashtable.
 
-I get a conflict on the first patch:
-	NFS: track direct IO left bytes
+There are two options here, either we specify that hash_init() should
+only be called if DECLARE_HASHTABLE() was called, which is confusing,
+inconsistent and prone to errors, or we can just say that it should be
+called whenever a hashtable is used.
 
-(Do you have a public git tree with these on? Why don't you ask for a git tree
- on git.linux-nfs.org. Trond who should we ask for an hosting on git.linux-nfs.org)
-
-Thanks
-Boaz
-
-> Peng Tao (4):
->   NFS: track direct IO left bytes
->   NFS41: send real write size in layoutget
->   NFS41: send real read size in layoutget
->   pnfsblock: cleanup nfs4_blkdev_get
-> 
->  fs/nfs/blocklayout/blocklayout.c    |   38 ++++++++++++++++++++++++++++++++--
->  fs/nfs/blocklayout/blocklayout.h    |    1 -
->  fs/nfs/blocklayout/blocklayoutdev.c |   25 ++++------------------
->  fs/nfs/direct.c                     |   12 +++++++++++
->  fs/nfs/internal.h                   |    1 +
->  fs/nfs/objlayout/objio_osd.c        |    9 +++++++-
->  fs/nfs/pnfs.c                       |   16 ++++++++++++--
->  fs/nfs/pnfs.h                       |    3 +-
->  8 files changed, 76 insertions(+), 29 deletions(-)
-> 
+The only way to work around it IMO is to get hlist to not require
+initializing before usage, and there are good reasons that that won't
+happen.
 
 
+Thanks,
+Sasha
