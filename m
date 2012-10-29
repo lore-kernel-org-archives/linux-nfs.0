@@ -1,70 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f46.google.com ([209.85.215.46]:56213 "EHLO
-	mail-la0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750953Ab2JHUY6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Oct 2012 16:24:58 -0400
-Received: by mail-la0-f46.google.com with SMTP id h6so2537006lag.19
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Oct 2012 13:24:56 -0700 (PDT)
+Received: from mail.openrapids.net ([64.15.138.104]:58499 "EHLO
+	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1756567Ab2J2NHj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 09:07:39 -0400
+Date: Mon, 29 Oct 2012 09:07:36 -0400
+From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+To: Sasha Levin <levinsasha928@gmail.com>
+Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v7 10/16] dlm: use new hashtable implementation
+Message-ID: <20121029130736.GF11733@Krystal>
+References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com> <1351450948-15618-10-git-send-email-levinsasha928@gmail.com> <20121029124655.GD11733@Krystal>
 MIME-Version: 1.0
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90900EFF1@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1349718630-26008-1-git-send-email-Trond.Myklebust@netapp.com>
-	<1349718630-26008-2-git-send-email-Trond.Myklebust@netapp.com>
-	<1349718630-26008-3-git-send-email-Trond.Myklebust@netapp.com>
-	<1349718630-26008-4-git-send-email-Trond.Myklebust@netapp.com>
-	<CAHVgHyV7aW8TArsu0xi0Nz6AhO98bO2qVzAvY9XZYx7hQZcx4w@mail.gmail.com>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA90900EFF1@SACEXCMBX04-PRD.hq.netapp.com>
-Date: Mon, 8 Oct 2012 16:24:56 -0400
-Message-ID: <CAHVgHyUrm_nprthmLE4NjsyTBNYS-HjiKwFOi7DLjiOTyPJinw@mail.gmail.com>
-Subject: Re: [PATCH 4/4] NFSv4.1: pNFS has no business touching the slot table
- wait queue...
-From: Andy Adamson <androsadamson@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121029124655.GD11733@Krystal>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 8, 2012 at 4:04 PM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> On Mon, 2012-10-08 at 15:59 -0400, Andy Adamson wrote:
->> On Mon, Oct 8, 2012 at 1:50 PM, Trond Myklebust
->> <Trond.Myklebust@netapp.com> wrote:
->> > Aside from it being a layering violation, there is no point in doing so:
->> > - If slots are available, then the waitqueue will be empty.
->> > - If no slots are available, then the wake up just causes waitqueue churn
->>
->> We call rpc_wake_up so that I/O waiting on the DS session, all of
->> which needs to be re-directed to the MDS (not via the state recovery
->> machinery), will by-pass the RPC machine "try each task one at a time
->> and redirect on failure" which includes the 60 second TCP timeout on
->> DS connection failures.
->>
->> So, it doesn't just cause waitqueue churn, it significantly reduces
->> the time it takes to recover to the MDS.
->>
->
-> All it does is a wake up... That will happen _ANYWAY_ as soon as a slot
-> is made available.
+* Mathieu Desnoyers (mathieu.desnoyers@efficios.com) wrote:
+> * Sasha Levin (levinsasha928@gmail.com) wrote:
+> [...]
+> > @@ -158,34 +159,21 @@ static int dlm_allow_conn;
+> >  static struct workqueue_struct *recv_workqueue;
+> >  static struct workqueue_struct *send_workqueue;
+> >  
+> > -static struct hlist_head connection_hash[CONN_HASH_SIZE];
+> > +static struct hlist_head connection_hash[CONN_HASH_BITS];
+> >  static DEFINE_MUTEX(connections_lock);
+> >  static struct kmem_cache *con_cache;
+> >  
+> >  static void process_recv_sockets(struct work_struct *work);
+> >  static void process_send_sockets(struct work_struct *work);
+> >  
+> > -
+> > -/* This is deliberately very simple because most clusters have simple
+> > -   sequential nodeids, so we should be able to go straight to a connection
+> > -   struct in the array */
+> > -static inline int nodeid_hash(int nodeid)
+> > -{
+> > -	return nodeid & (CONN_HASH_SIZE-1);
+> > -}
+> 
+> There is one thing I dislike about this change: you remove a useful
+> comment. It's good to be informed of the reason why a direct mapping
+> "value -> hash" without any dispersion function is preferred here.
 
-That is true. But why wait? Especially when all tasks are I/O, and if
-the application happens to be doing a heavy I/O workload, there can be
-hundreds of tasks on that wait queue.
+And now that I come to think of it: you're changing the behavior : you
+will now use a dispersion function on the key, which goes against the
+intent expressed in this comment.
 
-We don't care if any DS slots are available. We have given up and re
-redirecting these tasks to the MDS session. The sooner, the better.
+It might be good to change hash_add(), hash_add_rcu(),
+hash_for_each_possible*() key parameter for a "hash" parameter, and let
+the caller provide the hash value computed by the function they like as
+parameter, rather than enforcing hash_32/hash_64.
 
-I'll re-run some tests and demonstrate the time difference
-with/without the rpc_wake_up.
+Thoughts ?
 
--->Andy
+Thanks,
 
->
-> So yes, it is pure churn...
->
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
->
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
+Mathieu
+
+-- 
+Mathieu Desnoyers
+Operating System Efficiency R&D Consultant
+EfficiOS Inc.
+http://www.efficios.com
