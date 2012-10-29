@@ -1,193 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yx0-f174.google.com ([209.85.213.174]:42076 "EHLO
-	mail-yx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753394Ab2JCMkk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Oct 2012 08:40:40 -0400
-Received: by mail-yx0-f174.google.com with SMTP id m12so1960937yen.19
-        for <linux-nfs@vger.kernel.org>; Wed, 03 Oct 2012 05:40:40 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 1/3] nfsd: add a usermodehelper upcall for NFSv4 client ID tracking
-Date: Wed,  3 Oct 2012 08:40:29 -0400
-Message-Id: <1349268031-16498-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1349268031-16498-1-git-send-email-jlayton@redhat.com>
-References: <1349268031-16498-1-git-send-email-jlayton@redhat.com>
+Received: from mail.openrapids.net ([64.15.138.104]:58917 "EHLO
+	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S932181Ab2J2SQv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 14:16:51 -0400
+Date: Mon, 29 Oct 2012 14:16:48 -0400
+From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+To: Sasha Levin <levinsasha928@gmail.com>
+Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v7 15/16] openvswitch: use new hashtable implementation
+Message-ID: <20121029181648.GB20796@Krystal>
+References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com> <1351450948-15618-15-git-send-email-levinsasha928@gmail.com> <20121029132931.GC16391@Krystal> <CA+1xoqfRGhPaBEVh228O5_295bWh8FmcyLSOwq8VE5Dm7i3JHg@mail.gmail.com> <20121029155957.GB18834@Krystal> <CA+1xoqcr5xmOkDfqL3P84CNdotOALOhiLRkJjsPCZzijSQUF6w@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CA+1xoqcr5xmOkDfqL3P84CNdotOALOhiLRkJjsPCZzijSQUF6w@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add a new client tracker upcall type that uses call_usermodehelper to
-call out to a program. This seems to be the preferred method of
-calling out to usermode these days for seldom-called upcalls. It's
-simple and doesn't require a running daemon, so it should "just work"
-as long as the binary is installed.
+* Sasha Levin (levinsasha928@gmail.com) wrote:
+> On Mon, Oct 29, 2012 at 11:59 AM, Mathieu Desnoyers
+> <mathieu.desnoyers@efficios.com> wrote:
+> > * Sasha Levin (levinsasha928@gmail.com) wrote:
+> >> Hi Mathieu,
+> >>
+> >> On Mon, Oct 29, 2012 at 9:29 AM, Mathieu Desnoyers
+> >> <mathieu.desnoyers@efficios.com> wrote:
+> >> > * Sasha Levin (levinsasha928@gmail.com) wrote:
+> >> > [...]
+> >> >> -static struct hlist_head *hash_bucket(struct net *net, const char *name)
+> >> >> -{
+> >> >> -     unsigned int hash = jhash(name, strlen(name), (unsigned long) net);
+> >> >> -     return &dev_table[hash & (VPORT_HASH_BUCKETS - 1)];
+> >> >> -}
+> >> >> -
+> >> >>  /**
+> >> >>   *   ovs_vport_locate - find a port that has already been created
+> >> >>   *
+> >> >> @@ -84,13 +76,12 @@ static struct hlist_head *hash_bucket(struct net *net, const char *name)
+> >> >>   */
+> >> >>  struct vport *ovs_vport_locate(struct net *net, const char *name)
+> >> >>  {
+> >> >> -     struct hlist_head *bucket = hash_bucket(net, name);
+> >> >>       struct vport *vport;
+> >> >>       struct hlist_node *node;
+> >> >> +     int key = full_name_hash(name, strlen(name));
+> >> >>
+> >> >> -     hlist_for_each_entry_rcu(vport, node, bucket, hash_node)
+> >> >> -             if (!strcmp(name, vport->ops->get_name(vport)) &&
+> >> >> -                 net_eq(ovs_dp_get_net(vport->dp), net))
+> >> >> +     hash_for_each_possible_rcu(dev_table, vport, node, hash_node, key)
+> >> >
+> >> > Is applying hash_32() on top of full_name_hash() needed and expected ?
+> >>
+> >> Since this was pointed out in several of the patches, I'll answer it
+> >> just once here.
+> >>
+> >> I've intentionally "allowed" double hashing with hash_32 to keep the
+> >> code simple.
+> >>
+> >> hash_32() is pretty simple and gcc optimizes it to be almost nothing,
+> >> so doing that costs us a multiplication and a shift. On the other
+> >> hand, we benefit from keeping our code simple - how would we avoid
+> >> doing this double hash? adding a different hashtable function for
+> >> strings? or a new function for already hashed keys? I think we benefit
+> >> a lot from having to mul/shr instead of adding extra lines of code
+> >> here.
+> >
+> > This could be done, as I pointed out in another email within this
+> > thread, by changing the "key" argument from add/for_each_possible to an
+> > expected "hash" value, and let the caller invoke hash_32() if they want.
+> > I doubt this would add a significant amount of complexity for users of
+> > this API, but would allow much more flexibility to choose hash
+> > functions.
+> 
+> Most callers do need to do the hashing though, so why add an
+> additional step for all callers instead of doing another hash_32 for
+> the ones that don't really need it?
+> 
+> Another question is why do you need flexibility? I think that
+> simplicity wins over flexibility here.
 
-The client tracking exit operation is also changed to check for a
-NULL pointer before running. The UMH upcall doesn't need to do anything
-at module teardown time.
+I usually try to make things as simple as possible, but not simplistic
+compared to the problem tackled. In this case, I would ask the following
+question: by standardizing the hash function of all those pieces of
+kernel infrastructure to "hash_32()", including submodules part of the
+kernel network infrastructure, parts of the kernel that can be fed
+values coming from user-space (through the VFS), how can you guarantee
+that hash_32() won't be the cause of a DoS attack based on the fact that
+this algorithm is a) known by an attacker, and b) does not have any
+randomness. It's been a recent trend to perform DoS attacks on poorly
+implemented hashing functions.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/nfs4recover.c | 139 +++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 138 insertions(+), 1 deletion(-)
+This is just one example in an attempt to show why different hash table
+users may have different constraints: for a hash table entirely
+populated by keys generated internally by the kernel, a random seed
+might not be required, but for cases where values are fed by user-space
+and from the NIC, I would argue that flexibility to implement a
+randomizable hash function beats implementation simplicity any time.
 
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index 43295d4..481cb3e 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -926,6 +926,142 @@ static struct nfsd4_client_tracking_ops nfsd4_cld_tracking_ops = {
- 	.grace_done	= nfsd4_cld_grace_done,
- };
- 
-+/* upcall via usermodehelper */
-+static char cltrack_prog[PATH_MAX] = "/sbin/nfsdcltrack";
-+module_param_string(cltrack_prog, cltrack_prog, sizeof(cltrack_prog),
-+			S_IRUGO|S_IWUSR);
-+MODULE_PARM_DESC(cltrack_prog, "Path to the nfsdcltrack upcall program");
-+
-+static int
-+nfsd4_cltrack_upcall(char *cmd, char *arg)
-+{
-+	char *envp[] = { "HOME=/",
-+			"TERM=linux",
-+			"PATH=/sbin:/usr/sbin:/bin:/usr/bin",
-+			NULL
-+	};
-+	char *argv[4];
-+	int ret;
-+
-+	if (unlikely(!cltrack_prog[0])) {
-+		dprintk("%s: cltrack_prog is disabled\n", __func__);
-+		return -EACCES;
-+	}
-+
-+	dprintk("%s: cmd: %s\n", __func__, cmd);
-+	dprintk("%s: arg: %s\n", __func__, arg ? arg : "(null)");
-+
-+	argv[0] = (char *)cltrack_prog;
-+	argv[1] = cmd;
-+	argv[2] = arg;
-+	argv[3] = NULL;
-+
-+	ret = call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
-+	/*
-+	 * Disable the upcall mechanism if we're getting an ENOENT
-+	 * error. The admin can re-enable it on the fly by using sysfs
-+	 * once the problem has been fixed.
-+	 */
-+	if (ret == -ENOENT || ret == -EACCES) {
-+		printk(KERN_ERR "NFSD: %s was not found or isn't executable. "
-+			"Please reset nfsd.cltrack_prog module parameter "
-+			"once problem is resolved (%d)!\n",
-+			cltrack_prog, ret);
-+		cltrack_prog[0] = '\0';
-+	}
-+	dprintk("%s: %s return value: %d\n", __func__, cltrack_prog, ret);
-+
-+	return ret;
-+}
-+
-+static char *
-+bin_to_hex_dup(const unsigned char *src, int srclen)
-+{
-+	int i;
-+	char *buf, *hex;
-+
-+	/* +1 for terminating NULL */
-+	buf = kmalloc((srclen * 2) + 1, GFP_KERNEL);
-+	if (!buf)
-+		return buf;
-+
-+	hex = buf;
-+	for (i = 0; i < srclen; i++) {
-+		sprintf(hex, "%2.2x", *src++);
-+		hex += 2;
-+	}
-+	return buf;
-+}
-+
-+static int
-+nfsd4_umh_cltrack_init(struct net __attribute__((unused)) *net)
-+{
-+	return nfsd4_cltrack_upcall("init", NULL);
-+}
-+
-+static void
-+nfsd4_umh_cltrack_create(struct nfs4_client *clp)
-+{
-+	char *hexid;
-+
-+	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
-+	if (!hexid) {
-+		dprintk("%s: can't allocate memory for upcall!\n", __func__);
-+		return;
-+	}
-+	nfsd4_cltrack_upcall("create", hexid);
-+	kfree(hexid);
-+}
-+
-+static void
-+nfsd4_umh_cltrack_remove(struct nfs4_client *clp)
-+{
-+	char *hexid;
-+
-+	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
-+	if (!hexid) {
-+		dprintk("%s: can't allocate memory for upcall!\n", __func__);
-+		return;
-+	}
-+	nfsd4_cltrack_upcall("remove", hexid);
-+	kfree(hexid);
-+}
-+
-+static int
-+nfsd4_umh_cltrack_check(struct nfs4_client *clp)
-+{
-+	int ret;
-+	char *hexid;
-+
-+	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
-+	if (!hexid) {
-+		dprintk("%s: can't allocate memory for upcall!\n", __func__);
-+		return -ENOMEM;
-+	}
-+	ret = nfsd4_cltrack_upcall("check", hexid);
-+	kfree(hexid);
-+	return ret;
-+}
-+
-+static void
-+nfsd4_umh_cltrack_grace_done(struct net __attribute__((unused)) *net,
-+				time_t boot_time)
-+{
-+	char timestr[22]; /* FIXME: better way to determine max size? */
-+
-+	sprintf(timestr, "%ld", boot_time);
-+	nfsd4_cltrack_upcall("gracedone", timestr);
-+}
-+
-+static struct nfsd4_client_tracking_ops nfsd4_umh_tracking_ops = {
-+	.init		= nfsd4_umh_cltrack_init,
-+	.exit		= NULL,
-+	.create		= nfsd4_umh_cltrack_create,
-+	.remove		= nfsd4_umh_cltrack_remove,
-+	.check		= nfsd4_umh_cltrack_check,
-+	.grace_done	= nfsd4_umh_cltrack_grace_done,
-+};
-+
- int
- nfsd4_client_tracking_init(struct net *net)
- {
-@@ -956,7 +1092,8 @@ void
- nfsd4_client_tracking_exit(struct net *net)
- {
- 	if (client_tracking_ops) {
--		client_tracking_ops->exit(net);
-+		if (client_tracking_ops->exit)
-+			client_tracking_ops->exit(net);
- 		client_tracking_ops = NULL;
- 	}
- }
+And you could keep the basic use-case simple by providing hints to the
+hash_32()/hash_64()/hash_ulong() helpers in comments.
+
+Thoughts ?
+
+Thanks,
+
+Mathieu
+
 -- 
-1.7.11.4
-
+Mathieu Desnoyers
+Operating System Efficiency R&D Consultant
+EfficiOS Inc.
+http://www.efficios.com
