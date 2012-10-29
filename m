@@ -1,70 +1,151 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41542 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965580Ab2JZRxH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Oct 2012 13:53:07 -0400
-Date: Fri, 26 Oct 2012 13:52:54 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH v3] SUNRPC: set desired file system root before
- connecting local transports
-Message-ID: <20121026175254.GA13094@fieldses.org>
-References: <20121008105437.18668.99905.stgit@localhost.localdomain>
- <20121009193506.GA19680@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA90901A143@SACEXCMBX04-PRD.hq.netapp.com>
- <87txu3bdnj.fsf@xmission.com>
- <20121009223139.GA25826@fieldses.org>
- <87bogb1cvl.fsf@xmission.com>
- <20121010012336.GA2935@fieldses.org>
- <50754EBC.5020608@parallels.com>
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:37848 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750963Ab2J2TJ5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 15:09:57 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <50754EBC.5020608@parallels.com>
+In-Reply-To: <20121029185319.GA21546@Krystal>
+References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
+ <1351450948-15618-6-git-send-email-levinsasha928@gmail.com>
+ <20121029113515.GB9115@Krystal> <CA+1xoqce6uJ6wy3+2CBwsLHKnsz4wD0vt8MBEGKCFfXTvuC0Hg@mail.gmail.com>
+ <20121029183157.GC3097@jtriplet-mobl1> <CA+1xoqfMrn9zDFMJNFfA0NA86wE_DedD97cP1yJ2UQdTjs3uyQ@mail.gmail.com>
+ <20121029185319.GA21546@Krystal>
+From: Sasha Levin <levinsasha928@gmail.com>
+Date: Mon, 29 Oct 2012 15:09:36 -0400
+Message-ID: <CA+1xoqcSx04JEXy2aPu4Qt7Zb4iSqXBSjARgMae_FusgzpgnaQ@mail.gmail.com>
+Subject: Re: [PATCH v7 06/16] tracepoint: use new hashtable implementation
+To: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+Cc: Josh Triplett <josh@joshtriplett.org>, torvalds@linux-foundation.org,
+        tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 10, 2012 at 02:32:28PM +0400, Stanislav Kinsbursky wrote:
-> 10.10.2012 05:23, J. Bruce Fields пишет:
-> >On Tue, Oct 09, 2012 at 03:47:42PM -0700, Eric W. Biederman wrote:
-> >>"J. Bruce Fields" <bfields@fieldses.org> writes:
-> >>
-> >>>On Tue, Oct 09, 2012 at 01:20:48PM -0700, Eric W. Biederman wrote:
-> >>>>"Myklebust, Trond" <Trond.Myklebust@netapp.com> writes:
-> >>>>
-> >>>>>On Tue, 2012-10-09 at 15:35 -0400, J. Bruce Fields wrote:
-> >>>>>>Cc'ing Eric since I seem to recall he suggested doing it this way?
-> >>>>
-> >>>>Yes.  On second look setting fs->root won't work. We need to change fs.
-> >>>>The problem is that by default all kernel threads share fs so changing
-> >>>>fs->root will have non-local consequences.
-> >>>
-> >>>Oh, huh.  And we can't "unshare" it somehow?
-> >>
-> >>I don't fully understand how nfs uses kernel threads and work queues.
-> >>My general understanding is work queues reuse their kernel threads
-> >>between different users.  So it is mostly a don't pollute your
-> >>environment thing.  If there was a dedicated kernel thread for each
-> >>environment this would be trivial.
-> >>
-> >>What I was suggesting here is changing task->fs instead of
-> >>task->fs.root.  That should just require task_lock().
-> >
-> >Oh, OK, got it--if that works, great.
-> >
-> 
-> The main problem with swapping fs struct is actually the same as in
-> root swapping. I.e. routines for copy fs_struct are not exported.
-> It could be done on place, but I don't think, that Al Viro would
-> support such implementation.
-> Trond?
+On Mon, Oct 29, 2012 at 2:53 PM, Mathieu Desnoyers
+<mathieu.desnoyers@efficios.com> wrote:
+> * Sasha Levin (levinsasha928@gmail.com) wrote:
+>> On Mon, Oct 29, 2012 at 2:31 PM, Josh Triplett <josh@joshtriplett.org> wrote:
+>> > On Mon, Oct 29, 2012 at 01:29:24PM -0400, Sasha Levin wrote:
+>> >> On Mon, Oct 29, 2012 at 7:35 AM, Mathieu Desnoyers
+>> >> <mathieu.desnoyers@efficios.com> wrote:
+>> >> > * Sasha Levin (levinsasha928@gmail.com) wrote:
+>> >> >> Switch tracepoints to use the new hashtable implementation. This reduces the amount of
+>> >> >> generic unrelated code in the tracepoints.
+>> >> >>
+>> >> >> Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+>> >> >> ---
+>> >> >>  kernel/tracepoint.c | 27 +++++++++++----------------
+>> >> >>  1 file changed, 11 insertions(+), 16 deletions(-)
+>> >> >>
+>> >> >> diff --git a/kernel/tracepoint.c b/kernel/tracepoint.c
+>> >> >> index d96ba22..854df92 100644
+>> >> >> --- a/kernel/tracepoint.c
+>> >> >> +++ b/kernel/tracepoint.c
+>> >> >> @@ -26,6 +26,7 @@
+>> >> >>  #include <linux/slab.h>
+>> >> >>  #include <linux/sched.h>
+>> >> >>  #include <linux/static_key.h>
+>> >> >> +#include <linux/hashtable.h>
+>> >> >>
+>> >> >>  extern struct tracepoint * const __start___tracepoints_ptrs[];
+>> >> >>  extern struct tracepoint * const __stop___tracepoints_ptrs[];
+>> >> >> @@ -49,8 +50,7 @@ static LIST_HEAD(tracepoint_module_list);
+>> >> >>   * Protected by tracepoints_mutex.
+>> >> >>   */
+>> >> >>  #define TRACEPOINT_HASH_BITS 6
+>> >> >> -#define TRACEPOINT_TABLE_SIZE (1 << TRACEPOINT_HASH_BITS)
+>> >> >> -static struct hlist_head tracepoint_table[TRACEPOINT_TABLE_SIZE];
+>> >> >> +static DEFINE_HASHTABLE(tracepoint_table, TRACEPOINT_HASH_BITS);
+>> >> >>
+>> >> > [...]
+>> >> >>
+>> >> >> @@ -722,6 +715,8 @@ struct notifier_block tracepoint_module_nb = {
+>> >> >>
+>> >> >>  static int init_tracepoints(void)
+>> >> >>  {
+>> >> >> +     hash_init(tracepoint_table);
+>> >> >> +
+>> >> >>       return register_module_notifier(&tracepoint_module_nb);
+>> >> >>  }
+>> >> >>  __initcall(init_tracepoints);
+>> >> >
+>> >> > So we have a hash table defined in .bss (therefore entirely initialized
+>> >> > to NULL), and you add a call to "hash_init", which iterates on the whole
+>> >> > array and initialize it to NULL (again) ?
+>> >> >
+>> >> > This extra initialization is redundant. I think it should be removed
+>> >> > from here, and hashtable.h should document that hash_init() don't need
+>> >> > to be called on zeroed memory (which includes static/global variables,
+>> >> > kzalloc'd memory, etc).
+>> >>
+>> >> This was discussed in the previous series, the conclusion was to call
+>> >> hash_init() either way to keep the encapsulation and consistency.
+>> >>
+>> >> It's cheap enough and happens only once, so why not?
+>> >
+>> > Unnecessary work adds up.  Better not to do it unnecessarily, even if by
+>> > itself it doesn't cost that much.
+>> >
+>> > It doesn't seem that difficult for future fields to have 0 as their
+>> > initialized state.
+>>
+>> Let's put it this way: hlist requires the user to initialize hlist
+>> head before usage, therefore as a hlist user, hashtable implementation
+>> must do that.
+>>
+>> We do it automatically when the hashtable user does
+>> DEFINE_HASHTABLE(), but we can't do that if he does
+>> DECLARE_HASHTABLE(). This means that the hashtable user must call
+>> hash_init() whenever he uses DECLARE_HASHTABLE() to create his
+>> hashtable.
+>>
+>> There are two options here, either we specify that hash_init() should
+>> only be called if DECLARE_HASHTABLE() was called, which is confusing,
+>> inconsistent and prone to errors, or we can just say that it should be
+>> called whenever a hashtable is used.
+>>
+>> The only way to work around it IMO is to get hlist to not require
+>> initializing before usage, and there are good reasons that that won't
+>> happen.
+>
+> Hrm, just a second here.
+>
+> The argument about hash_init being useful to add magic values in the
+> future only works for the cases where a hash table is declared with
+> DECLARE_HASHTABLE(). It's completely pointless with DEFINE_HASHTABLE(),
+> because we could initialize any debugging variables from within
+> DEFINE_HASHTABLE().
+>
+> So I take my "Agreed" back. I disagree with initializing the hash table
+> twice redundantly. There should be at least "DEFINE_HASHTABLE()" or a
+> hash_init() (for DECLARE_HASHTABLE()), but not useless execution
+> initialization on top of an already statically initialized hash table.
 
-It seems like we got stalled here....  Could you go ahead and try a
-patch, and see what people think?
+The "magic values" argument was used to point out that some sort of
+initialization *must* occur, either by hash_init() or by a proper
+initialization in DEFINE_HASHTABLE(), and we can't simply memset() it
+to 0. It appears that we all agree on that.
 
---b.
+The other thing is whether hash_init() should be called for hashtables
+that were created with DEFINE_HASHTABLE(). That point was raised by
+Neil Brown last time this series went around, and it seems that no one
+objected to the point that it should be consistent across the code.
+
+Even if we ignore hash_init() being mostly optimized out, is it really
+worth it taking the risk that some future patch would move a hashtable
+that user DEFINE_HASHTABLE() into a struct and will start using
+DECLARE_HASHTABLE() and forgetting to initialize it, for example?
+
+
+Thanks,
+Sasha
