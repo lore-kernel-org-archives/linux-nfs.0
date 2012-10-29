@@ -1,51 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from science.horizon.com ([71.41.210.146]:28980 "HELO
-	science.horizon.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752146Ab2JPBs0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Oct 2012 21:48:26 -0400
-Date: 15 Oct 2012 21:48:24 -0400
-Message-ID: <20121016014824.4952.qmail@science.horizon.com>
-From: "George Spelvin" <linux@horizon.com>
-To: linux@horizon.com, lm@bitmover.com, Trond.Myklebust@netapp.com
-Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
-Cc: linux-nfs@vger.kernel.org
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90923ED96@SACEXCMBX04-PRD.hq.netapp.com>
+Received: from relay4-d.mail.gandi.net ([217.70.183.196]:60218 "EHLO
+	relay4-d.mail.gandi.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760255Ab2J2ScJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 14:32:09 -0400
+Date: Mon, 29 Oct 2012 11:31:57 -0700
+From: Josh Triplett <josh@joshtriplett.org>
+To: Sasha Levin <levinsasha928@gmail.com>
+Cc: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
+        torvalds@linux-foundation.org, tj@kernel.org,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v7 06/16] tracepoint: use new hashtable implementation
+Message-ID: <20121029183157.GC3097@jtriplet-mobl1>
+References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
+ <1351450948-15618-6-git-send-email-levinsasha928@gmail.com>
+ <20121029113515.GB9115@Krystal>
+ <CA+1xoqce6uJ6wy3+2CBwsLHKnsz4wD0vt8MBEGKCFfXTvuC0Hg@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CA+1xoqce6uJ6wy3+2CBwsLHKnsz4wD0vt8MBEGKCFfXTvuC0Hg@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond.Myklebust@netapp.com wrote:
-> SSBkbyBtaW5kOyBpdCBpcyBjbGVhcmx5IHN0YXJ0aW5nIHRvIGJpdHJvdCBkdWUg
-> dG8gYW4gYWJzZW5jZSBvZiB1c2Vycy4NCk1haW50ZW5hbmNlIG9mIHVudXNlZCBjb2RlIGlzIGFj
-> dHVhbGx5IF9tb3JlXyBvZiBhIHBhaW4sIG5vdCBsZXNzLg0KDQpTbyB1bmZzZCBpcyBvbmUgc29s
-> dXRpb24uIEtlZXBpbmcgYSBWTSB3aXRoIGFuIG9sZGVyIHZlcnNpb24gb2YgdGhlDQpMaW51eCBr
-> ZXJuZWwgdGhhdCBzdGlsbCBzdXBwb3J0cyBORlN2MiBpcyBhbm90aGVyLiBWb2x1bnRlZXJpbmcg
-> dG8NCm1haW50YWluIHRoZSBjb2RlIGlzIGEgdGhpcmQuDQoN
+On Mon, Oct 29, 2012 at 01:29:24PM -0400, Sasha Levin wrote:
+> On Mon, Oct 29, 2012 at 7:35 AM, Mathieu Desnoyers
+> <mathieu.desnoyers@efficios.com> wrote:
+> > * Sasha Levin (levinsasha928@gmail.com) wrote:
+> >> Switch tracepoints to use the new hashtable implementation. This reduces the amount of
+> >> generic unrelated code in the tracepoints.
+> >>
+> >> Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+> >> ---
+> >>  kernel/tracepoint.c | 27 +++++++++++----------------
+> >>  1 file changed, 11 insertions(+), 16 deletions(-)
+> >>
+> >> diff --git a/kernel/tracepoint.c b/kernel/tracepoint.c
+> >> index d96ba22..854df92 100644
+> >> --- a/kernel/tracepoint.c
+> >> +++ b/kernel/tracepoint.c
+> >> @@ -26,6 +26,7 @@
+> >>  #include <linux/slab.h>
+> >>  #include <linux/sched.h>
+> >>  #include <linux/static_key.h>
+> >> +#include <linux/hashtable.h>
+> >>
+> >>  extern struct tracepoint * const __start___tracepoints_ptrs[];
+> >>  extern struct tracepoint * const __stop___tracepoints_ptrs[];
+> >> @@ -49,8 +50,7 @@ static LIST_HEAD(tracepoint_module_list);
+> >>   * Protected by tracepoints_mutex.
+> >>   */
+> >>  #define TRACEPOINT_HASH_BITS 6
+> >> -#define TRACEPOINT_TABLE_SIZE (1 << TRACEPOINT_HASH_BITS)
+> >> -static struct hlist_head tracepoint_table[TRACEPOINT_TABLE_SIZE];
+> >> +static DEFINE_HASHTABLE(tracepoint_table, TRACEPOINT_HASH_BITS);
+> >>
+> > [...]
+> >>
+> >> @@ -722,6 +715,8 @@ struct notifier_block tracepoint_module_nb = {
+> >>
+> >>  static int init_tracepoints(void)
+> >>  {
+> >> +     hash_init(tracepoint_table);
+> >> +
+> >>       return register_module_notifier(&tracepoint_module_nb);
+> >>  }
+> >>  __initcall(init_tracepoints);
+> >
+> > So we have a hash table defined in .bss (therefore entirely initialized
+> > to NULL), and you add a call to "hash_init", which iterates on the whole
+> > array and initialize it to NULL (again) ?
+> >
+> > This extra initialization is redundant. I think it should be removed
+> > from here, and hashtable.h should document that hash_init() don't need
+> > to be called on zeroed memory (which includes static/global variables,
+> > kzalloc'd memory, etc).
+> 
+> This was discussed in the previous series, the conclusion was to call
+> hash_init() either way to keep the encapsulation and consistency.
+> 
+> It's cheap enough and happens only once, so why not?
 
-Which can be base64 decoded (why was it ever ENcoded?) to
+Unnecessary work adds up.  Better not to do it unnecessarily, even if by
+itself it doesn't cost that much.
 
-> I do mind; it is clearly starting to bitrot due to an absence of users.
-> Maintenance of unused code is actually _more_ of a pain, not less.
->
-> So unfsd is one solution. Keeping a VM with an older version of the
-> Linux kernel that still supports NFSv2 is another. Volunteering to
-> maintain the code is a third.
+It doesn't seem that difficult for future fields to have 0 as their
+initialized state.
 
-If I might ask, though, is the pain concentrated more on the client or
-the server side?
-
-NFSv2 server support seems a fairly simple matter of some old
-compatibility RPC calls.  The main pain is the limited size of the file
-handle and (especially) readdir cookies.
-
-Client support is probably more complicated, as NFS's "stateless server"
-model puts the bulk of the complexity on the client, and you need a
-thicker layer of logic to translate the operations into a different
-vocabulary pf RPC calls.
-
-I don't think NFSv2 client support would be mourned much; trying to to
-use such an ancient limited machine as a file server seems stupid.
-
-It's NFSv2 server support that I, and I believe Larry, are interested
-in preserving, in order to provide services to ancient clients.
-
-The only real use of v2 client code is te test the server.
+- Josh Triplett
