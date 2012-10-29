@@ -1,59 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ye0-f174.google.com ([209.85.213.174]:56913 "EHLO
-	mail-ye0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755172Ab2J0MeL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 08:34:11 -0400
-Received: by mail-ye0-f174.google.com with SMTP id m12so638325yen.19
-        for <linux-nfs@vger.kernel.org>; Sat, 27 Oct 2012 05:34:11 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v8 11/32] vfs: make do_unlinkat retry on ESTALE errors
-Date: Sat, 27 Oct 2012 08:33:18 -0400
-Message-Id: <1351341219-17837-12-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
-References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
+Received: from mail.openrapids.net ([64.15.138.104]:58627 "EHLO
+	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752265Ab2J2PNq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 11:13:46 -0400
+Date: Mon, 29 Oct 2012 11:13:43 -0400
+From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Sasha Levin <levinsasha928@gmail.com>, tj@kernel.org,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com, axboe@kernel.dk,
+        agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
+        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
+        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v7 09/16] SUNRPC/cache: use new hashtable implementation
+Message-ID: <20121029151343.GA17722@Krystal>
+References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com> <1351450948-15618-9-git-send-email-levinsasha928@gmail.com> <20121029124229.GC11733@Krystal> <CA+55aFzO8DJJP3HBfgqXFac9r3=bYK+_nYe4cuXiNFg-623s6w@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CA+55aFzO8DJJP3HBfgqXFac9r3=bYK+_nYe4cuXiNFg-623s6w@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/namei.c | 12 ++++++++++--
- 1 file changed, 10 insertions(+), 2 deletions(-)
+* Linus Torvalds (torvalds@linux-foundation.org) wrote:
+> On Mon, Oct 29, 2012 at 5:42 AM, Mathieu Desnoyers
+> <mathieu.desnoyers@efficios.com> wrote:
+> >
+> > So defining e.g.:
+> >
+> > #include <linux/log2.h>
+> >
+> > #define DFR_HASH_BITS  (PAGE_SHIFT - ilog2(BITS_PER_LONG))
+> >
+> > would keep the intended behavior in all cases: use one page for the hash
+> > array.
+> 
+> Well, since that wasn't true before either because of the long-time
+> bug you point out, clearly the page size isn't all that important. I
+> think it's more important to have small and simple code, and "9" is
+> certainly that, compared to playing ilog2 games with not-so-obvious
+> things.
+> 
+> Because there's no reason to believe that '9' is in any way a worse
+> random number than something page-shift-related, is there? And getting
+> away from *previous* overly-complicated size calculations that had
+> been broken because they were too complicated and random, sounds like
+> a good idea.
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 7c9bb50..467b9f1 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3446,9 +3446,13 @@ static long do_unlinkat(int dfd, const char __user *pathname)
- 	struct filename *name;
- 	struct dentry *dentry;
- 	struct nameidata nd;
--	struct inode *inode = NULL;
-+	struct inode *inode;
-+	unsigned int try = 0;
-+	unsigned int lookup_flags = LOOKUP_PARENT;
- 
--	name = user_path_parent(dfd, pathname, &nd, 0);
-+retry:
-+	inode = NULL;
-+	name = user_path_parent(dfd, pathname, &nd, try);
- 	if (IS_ERR(name))
- 		return PTR_ERR(name);
- 
-@@ -3486,6 +3490,10 @@ exit2:
- exit1:
- 	path_put(&nd.path);
- 	putname(name);
-+	if (retry_estale(error, try++)) {
-+		lookup_flags |= LOOKUP_REVAL;
-+		goto retry;
-+	}
- 	return error;
- 
- slashes:
+Good point. I agree that unless we really care about the precise number
+of TLB entries and cache lines used by this hash table, we might want to
+stay away from page-size and pointer-size based calculation.
+
+It might not hurt to explain this in the patch changelog though.
+
+Thanks,
+
+Mathieu
+
 -- 
-1.7.11.7
-
+Mathieu Desnoyers
+Operating System Efficiency R&D Consultant
+EfficiOS Inc.
+http://www.efficios.com
