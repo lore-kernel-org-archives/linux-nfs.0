@@ -1,55 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:8246 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932864Ab2JCAS1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Oct 2012 20:18:27 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/5] NFSv4.1: Deal with wraparound issues when updating the layout stateid
-Date: Tue,  2 Oct 2012 17:18:23 -0700
-Message-Id: <1349223505-59248-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1349223505-59248-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1349223505-59248-1-git-send-email-Trond.Myklebust@netapp.com>
- <1349223505-59248-2-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail.openrapids.net ([64.15.138.104]:58403 "EHLO
+	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S932332Ab2J2Mmd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 08:42:33 -0400
+Date: Mon, 29 Oct 2012 08:42:29 -0400
+From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+To: Sasha Levin <levinsasha928@gmail.com>
+Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v7 09/16] SUNRPC/cache: use new hashtable implementation
+Message-ID: <20121029124229.GC11733@Krystal>
+References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com> <1351450948-15618-9-git-send-email-levinsasha928@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1351450948-15618-9-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...and add a helper function.
+* Sasha Levin (levinsasha928@gmail.com) wrote:
+> Switch cache to use the new hashtable implementation. This reduces the amount of
+> generic unrelated code in the cache implementation.
+> 
+> Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+> ---
+>  net/sunrpc/cache.c | 20 +++++++++-----------
+>  1 file changed, 9 insertions(+), 11 deletions(-)
+> 
+> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+> index fc2f7aa..0490546 100644
+> --- a/net/sunrpc/cache.c
+> +++ b/net/sunrpc/cache.c
+> @@ -28,6 +28,7 @@
+>  #include <linux/workqueue.h>
+>  #include <linux/mutex.h>
+>  #include <linux/pagemap.h>
+> +#include <linux/hashtable.h>
+>  #include <asm/ioctls.h>
+>  #include <linux/sunrpc/types.h>
+>  #include <linux/sunrpc/cache.h>
+> @@ -524,19 +525,18 @@ EXPORT_SYMBOL_GPL(cache_purge);
+>   * it to be revisited when cache info is available
+>   */
+>  
+> -#define	DFR_HASHSIZE	(PAGE_SIZE/sizeof(struct list_head))
+> -#define	DFR_HASH(item)	((((long)item)>>4 ^ (((long)item)>>13)) % DFR_HASHSIZE)
+> +#define	DFR_HASH_BITS	9
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/pnfs.c | 11 ++++++++++-
- 1 file changed, 10 insertions(+), 1 deletion(-)
+If we look at a bit of history, mainly commit:
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index c8c1d0c..f1387e8 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -549,6 +549,15 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
- 	}
- }
- 
-+/*
-+ * Compare 2 layout stateid sequence ids, to see which is newer,
-+ * taking into account wraparound issues.
-+ */
-+static bool pnfs_seqid_is_newer(u32 s1, u32 s2)
-+{
-+	return (s32)s1 - (s32)s2 > 0;
-+}
-+
- /* update lo->plh_stateid with new if is more recent */
- void
- pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo, const nfs4_stateid *new,
-@@ -558,7 +567,7 @@ pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo, const nfs4_stateid *new,
- 
- 	oldseq = be32_to_cpu(lo->plh_stateid.seqid);
- 	newseq = be32_to_cpu(new->seqid);
--	if (list_empty(&lo->plh_segs) || (int)(newseq - oldseq) > 0) {
-+	if (list_empty(&lo->plh_segs) || pnfs_seqid_is_newer(newseq, oldseq)) {
- 		nfs4_stateid_copy(&lo->plh_stateid, new);
- 		if (update_barrier) {
- 			u32 new_barrier = be32_to_cpu(new->seqid);
+commit 1117449276bb909b029ed0b9ba13f53e4784db9d
+Author: NeilBrown <neilb@suse.de>
+Date:   Thu Aug 12 17:04:08 2010 +1000
+
+    sunrpc/cache: change deferred-request hash table to use hlist.
+
+
+we'll notice that the only reason why the prior DFR_HASHSIZE was using
+
+  (PAGE_SIZE/sizeof(struct list_head))
+
+instead of
+
+  (PAGE_SIZE/sizeof(struct hlist_head))
+
+is because it has been forgotten in that commit. The intent there is to
+make the hash table array fit the page size.
+
+By defining DFR_HASH_BITS arbitrarily to "9", this indeed fulfills this
+purpose on architectures with 4kB page size and 64-bit pointers, but not
+on some powerpc configurations, and Tile architectures, which have more
+exotic 64kB page size, and of course on the far less exotic 32-bit
+pointer architectures.
+
+So defining e.g.:
+
+#include <linux/log2.h>
+
+#define DFR_HASH_BITS  (PAGE_SHIFT - ilog2(BITS_PER_LONG))
+
+would keep the intended behavior in all cases: use one page for the hash
+array.
+
+Thanks,
+
+Mathieu
+
 -- 
-1.7.11.4
-
+Mathieu Desnoyers
+Operating System Efficiency R&D Consultant
+EfficiOS Inc.
+http://www.efficios.com
