@@ -1,101 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f53.google.com ([209.85.216.53]:56829 "EHLO
-	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965249Ab2J3Srf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Oct 2012 14:47:35 -0400
+Received: from mail-ia0-f174.google.com ([209.85.210.174]:49380 "EHLO
+	mail-ia0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751430Ab2J2R3p (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 13:29:45 -0400
+MIME-Version: 1.0
+In-Reply-To: <20121029113515.GB9115@Krystal>
+References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
+ <1351450948-15618-6-git-send-email-levinsasha928@gmail.com> <20121029113515.GB9115@Krystal>
 From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+Date: Mon, 29 Oct 2012 13:29:24 -0400
+Message-ID: <CA+1xoqce6uJ6wy3+2CBwsLHKnsz4wD0vt8MBEGKCFfXTvuC0Hg@mail.gmail.com>
+Subject: Re: [PATCH v7 06/16] tracepoint: use new hashtable implementation
+To: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
         dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
         teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
         fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
         ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
         linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH v8 07/16] net,9p: use new hashtable implementation
-Date: Tue, 30 Oct 2012 14:46:03 -0400
-Message-Id: <1351622772-16400-7-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
-References: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch 9p error table to use the new hashtable implementation. This reduces
-the amount of generic unrelated code in 9p.
+On Mon, Oct 29, 2012 at 7:35 AM, Mathieu Desnoyers
+<mathieu.desnoyers@efficios.com> wrote:
+> * Sasha Levin (levinsasha928@gmail.com) wrote:
+>> Switch tracepoints to use the new hashtable implementation. This reduces the amount of
+>> generic unrelated code in the tracepoints.
+>>
+>> Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+>> ---
+>>  kernel/tracepoint.c | 27 +++++++++++----------------
+>>  1 file changed, 11 insertions(+), 16 deletions(-)
+>>
+>> diff --git a/kernel/tracepoint.c b/kernel/tracepoint.c
+>> index d96ba22..854df92 100644
+>> --- a/kernel/tracepoint.c
+>> +++ b/kernel/tracepoint.c
+>> @@ -26,6 +26,7 @@
+>>  #include <linux/slab.h>
+>>  #include <linux/sched.h>
+>>  #include <linux/static_key.h>
+>> +#include <linux/hashtable.h>
+>>
+>>  extern struct tracepoint * const __start___tracepoints_ptrs[];
+>>  extern struct tracepoint * const __stop___tracepoints_ptrs[];
+>> @@ -49,8 +50,7 @@ static LIST_HEAD(tracepoint_module_list);
+>>   * Protected by tracepoints_mutex.
+>>   */
+>>  #define TRACEPOINT_HASH_BITS 6
+>> -#define TRACEPOINT_TABLE_SIZE (1 << TRACEPOINT_HASH_BITS)
+>> -static struct hlist_head tracepoint_table[TRACEPOINT_TABLE_SIZE];
+>> +static DEFINE_HASHTABLE(tracepoint_table, TRACEPOINT_HASH_BITS);
+>>
+> [...]
+>>
+>> @@ -722,6 +715,8 @@ struct notifier_block tracepoint_module_nb = {
+>>
+>>  static int init_tracepoints(void)
+>>  {
+>> +     hash_init(tracepoint_table);
+>> +
+>>       return register_module_notifier(&tracepoint_module_nb);
+>>  }
+>>  __initcall(init_tracepoints);
+>
+> So we have a hash table defined in .bss (therefore entirely initialized
+> to NULL), and you add a call to "hash_init", which iterates on the whole
+> array and initialize it to NULL (again) ?
+>
+> This extra initialization is redundant. I think it should be removed
+> from here, and hashtable.h should document that hash_init() don't need
+> to be called on zeroed memory (which includes static/global variables,
+> kzalloc'd memory, etc).
 
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
----
- net/9p/error.c | 21 +++++++++------------
- 1 file changed, 9 insertions(+), 12 deletions(-)
+This was discussed in the previous series, the conclusion was to call
+hash_init() either way to keep the encapsulation and consistency.
 
-diff --git a/net/9p/error.c b/net/9p/error.c
-index 2ab2de7..a394b37 100644
---- a/net/9p/error.c
-+++ b/net/9p/error.c
-@@ -34,6 +34,7 @@
- #include <linux/jhash.h>
- #include <linux/errno.h>
- #include <net/9p/9p.h>
-+#include <linux/hashtable.h>
- 
- /**
-  * struct errormap - map string errors from Plan 9 to Linux numeric ids
-@@ -50,8 +51,8 @@ struct errormap {
- 	struct hlist_node list;
- };
- 
--#define ERRHASHSZ		32
--static struct hlist_head hash_errmap[ERRHASHSZ];
-+#define ERR_HASH_BITS 5
-+static DEFINE_HASHTABLE(hash_errmap, ERR_HASH_BITS);
- 
- /* FixMe - reduce to a reasonable size */
- static struct errormap errmap[] = {
-@@ -193,18 +194,14 @@ static struct errormap errmap[] = {
- int p9_error_init(void)
- {
- 	struct errormap *c;
--	int bucket;
--
--	/* initialize hash table */
--	for (bucket = 0; bucket < ERRHASHSZ; bucket++)
--		INIT_HLIST_HEAD(&hash_errmap[bucket]);
-+	u32 hash;
- 
- 	/* load initial error map into hash table */
- 	for (c = errmap; c->name != NULL; c++) {
- 		c->namelen = strlen(c->name);
--		bucket = jhash(c->name, c->namelen, 0) % ERRHASHSZ;
-+		hash = jhash(c->name, c->namelen, 0);
- 		INIT_HLIST_NODE(&c->list);
--		hlist_add_head(&c->list, &hash_errmap[bucket]);
-+		hash_add(hash_errmap, &c->list, hash);
- 	}
- 
- 	return 1;
-@@ -223,13 +220,13 @@ int p9_errstr2errno(char *errstr, int len)
- 	int errno;
- 	struct hlist_node *p;
- 	struct errormap *c;
--	int bucket;
-+	u32 hash;
- 
- 	errno = 0;
- 	p = NULL;
- 	c = NULL;
--	bucket = jhash(errstr, len, 0) % ERRHASHSZ;
--	hlist_for_each_entry(c, p, &hash_errmap[bucket], list) {
-+	hash = jhash(errstr, len, 0);
-+	hash_for_each_possible(hash_errmap, c, p, list, hash) {
- 		if (c->namelen == len && !memcmp(c->name, errstr, len)) {
- 			errno = c->val;
- 			break;
--- 
-1.7.12.4
+It's cheap enough and happens only once, so why not?
 
+
+Thanks,
+Sasha
