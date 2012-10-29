@@ -1,65 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:45807 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755489Ab2JPDqh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Oct 2012 23:46:37 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: George Spelvin <linux@horizon.com>
-CC: "lm@bitmover.com" <lm@bitmover.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
-Date: Tue, 16 Oct 2012 03:46:34 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA909253B3B@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20121016014824.4952.qmail@science.horizon.com>
-In-Reply-To: <20121016014824.4952.qmail@science.horizon.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:33180 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759480Ab2J2PoV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 11:44:21 -0400
 MIME-Version: 1.0
+In-Reply-To: <20121029132931.GC16391@Krystal>
+References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
+ <1351450948-15618-15-git-send-email-levinsasha928@gmail.com> <20121029132931.GC16391@Krystal>
+From: Sasha Levin <levinsasha928@gmail.com>
+Date: Mon, 29 Oct 2012 11:43:59 -0400
+Message-ID: <CA+1xoqfRGhPaBEVh228O5_295bWh8FmcyLSOwq8VE5Dm7i3JHg@mail.gmail.com>
+Subject: Re: [PATCH v7 15/16] openvswitch: use new hashtable implementation
+To: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTEwLTE1IGF0IDIxOjQ4IC0wNDAwLCBHZW9yZ2UgU3BlbHZpbiB3cm90ZToN
-Cj4gVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20gd3JvdGU6DQo+ID4gU1NCa2J5QnRhVzVrT3lC
-cGRDQnBjeUJqYkdWaGNteDVJSE4wWVhKMGFXNW5JSFJ2SUdKcGRISnZkQ0JrZFdVZw0KPiA+IGRH
-OGdZVzRnWVdKelpXNWpaU0J2WmlCMWMyVnljeTROQ2sxaGFXNTBaVzVoYm1ObElHOW1JSFZ1ZFhO
-bFpDQmpiMlJsSUdseklHRmoNCj4gPiBkSFZoYkd4NUlGOXRiM0psWHlCdlppQmhJSEJoYVc0c0lH
-NXZkQ0JzWlhOekxnMEtEUXBUYnlCMWJtWnpaQ0JwY3lCdmJtVWdjMjlzDQo+ID4gZFhScGIyNHVJ
-RXRsWlhCcGJtY2dZU0JXVFNCM2FYUm9JR0Z1SUc5c1pHVnlJSFpsY25OcGIyNGdiMllnZEdobERR
-cE1hVzUxZUNCcg0KPiA+IFpYSnVaV3dnZEdoaGRDQnpkR2xzYkNCemRYQndiM0owY3lCT1JsTjJN
-aUJwY3lCaGJtOTBhR1Z5TGlCV2IyeDFiblJsWlhKcGJtY2cNCj4gPiBkRzhOQ20xaGFXNTBZV2x1
-SUhSb1pTQmpiMlJsSUdseklHRWdkR2hwY21RdURRb04NCj4gDQo+IFdoaWNoIGNhbiBiZSBiYXNl
-NjQgZGVjb2RlZCAod2h5IHdhcyBpdCBldmVyIEVOY29kZWQ/KSB0bw0KPiANCj4gPiBJIGRvIG1p
-bmQ7IGl0IGlzIGNsZWFybHkgc3RhcnRpbmcgdG8gYml0cm90IGR1ZSB0byBhbiBhYnNlbmNlIG9m
-IHVzZXJzLg0KPiA+IE1haW50ZW5hbmNlIG9mIHVudXNlZCBjb2RlIGlzIGFjdHVhbGx5IF9tb3Jl
-XyBvZiBhIHBhaW4sIG5vdCBsZXNzLg0KPiA+DQo+ID4gU28gdW5mc2QgaXMgb25lIHNvbHV0aW9u
-LiBLZWVwaW5nIGEgVk0gd2l0aCBhbiBvbGRlciB2ZXJzaW9uIG9mIHRoZQ0KPiA+IExpbnV4IGtl
-cm5lbCB0aGF0IHN0aWxsIHN1cHBvcnRzIE5GU3YyIGlzIGFub3RoZXIuIFZvbHVudGVlcmluZyB0
-bw0KPiA+IG1haW50YWluIHRoZSBjb2RlIGlzIGEgdGhpcmQuDQo+IA0KPiBJZiBJIG1pZ2h0IGFz
-aywgdGhvdWdoLCBpcyB0aGUgcGFpbiBjb25jZW50cmF0ZWQgbW9yZSBvbiB0aGUgY2xpZW50IG9y
-DQo+IHRoZSBzZXJ2ZXIgc2lkZT8NCj4gDQo+IE5GU3YyIHNlcnZlciBzdXBwb3J0IHNlZW1zIGEg
-ZmFpcmx5IHNpbXBsZSBtYXR0ZXIgb2Ygc29tZSBvbGQNCj4gY29tcGF0aWJpbGl0eSBSUEMgY2Fs
-bHMuICBUaGUgbWFpbiBwYWluIGlzIHRoZSBsaW1pdGVkIHNpemUgb2YgdGhlIGZpbGUNCj4gaGFu
-ZGxlIGFuZCAoZXNwZWNpYWxseSkgcmVhZGRpciBjb29raWVzLg0KDQpXZWxsLCBJJ20gcmVhbGx5
-IGdsYWQgdG8gaGVhciB0aGF0IGFmdGVyIHNldmVyYWwgcGVvcGxlIHNwZW50IDMtNCBob3Vycw0K
-ZGVidWdnaW5nIGFuIE5GU3YyLW9ubHkgc2VydmVyIHNpZGUgcHJvYmxlbSBsYXN0IEZyaWRheS4g
-UGxlYXNlIGxldCBtZQ0Ka25vdyB0aGUgbmV4dCB0aW1lIEkgY2FuIGhlbHAgZGVhbCB3aXRoIGFu
-b3RoZXIgZmFpcmx5IHNpbXBsZSBtYXR0ZXIgb2YNCm9sZCBjb21wYXRpYmlsaXR5IGNhbGxzLi4u
-DQoNCk9LLCBJJ2xsIGJpdGUuIFdoYXQgaXMgdGhpcyBidXNpbmVzcy1jcml0aWNhbCBhcHBsaWNh
-dGlvbiB0aGF0IHlvdSBhcmUNCnJ1bm5pbmcgYW5kIHRoYXQgd2lsbCBvbmx5IHJ1biBvbiBhIG1h
-Y2hpbmUgdGhhdCBpcyBpbmNhcGFibGUgb2YgcnVubmluZw0KYSBtZXJlIDIwLXllYXIgb2xkIHBy
-b3RvY29sIGFuZCB0aGF0IG11c3QgaGF2ZSBhIDMwIHllYXIgb2xkIHByb3RvY29sPw0KVGhlIGZh
-Y3QgdGhhdCB5b3UgYXJlIGFsbCBpbiBhIGh1ZmYgYWJvdXQgYmFzZTY0IGVuY29kZWQgZW1haWxz
-DQppbmRpY2F0ZXMgdGhhdCB0aGlzIGlzIG5vdCBzb21ldGhpbmcgeW91IGFyZSBydW5uaW5nIG9u
-IGFueXRoaW5nIGFzDQpzb3BoaXN0aWNhdGVkIGFzIGEgY2VsbCBwaG9uZS4NCg0KPiBDbGllbnQg
-c3VwcG9ydCBpcyBwcm9iYWJseSBtb3JlIGNvbXBsaWNhdGVkLCBhcyBORlMncyAic3RhdGVsZXNz
-IHNlcnZlciINCj4gbW9kZWwgcHV0cyB0aGUgYnVsayBvZiB0aGUgY29tcGxleGl0eSBvbiB0aGUg
-Y2xpZW50LCBhbmQgeW91IG5lZWQgYQ0KPiB0aGlja2VyIGxheWVyIG9mIGxvZ2ljIHRvIHRyYW5z
-bGF0ZSB0aGUgb3BlcmF0aW9ucyBpbnRvIGEgZGlmZmVyZW50DQo+IHZvY2FidWxhcnkgcGYgUlBD
-IGNhbGxzLg0KPiANCj4gSSBkb24ndCB0aGluayBORlN2MiBjbGllbnQgc3VwcG9ydCB3b3VsZCBi
-ZSBtb3VybmVkIG11Y2g7IHRyeWluZyB0byB0bw0KPiB1c2Ugc3VjaCBhbiBhbmNpZW50IGxpbWl0
-ZWQgbWFjaGluZSBhcyBhIGZpbGUgc2VydmVyIHNlZW1zIHN0dXBpZC4NCj4gDQo+IEl0J3MgTkZT
-djIgc2VydmVyIHN1cHBvcnQgdGhhdCBJLCBhbmQgSSBiZWxpZXZlIExhcnJ5LCBhcmUgaW50ZXJl
-c3RlZA0KPiBpbiBwcmVzZXJ2aW5nLCBpbiBvcmRlciB0byBwcm92aWRlIHNlcnZpY2VzIHRvIGFu
-Y2llbnQgY2xpZW50cy4NCj4gDQo+IFRoZSBvbmx5IHJlYWwgdXNlIG9mIHYyIGNsaWVudCBjb2Rl
-IGlzIHRlIHRlc3QgdGhlIHNlcnZlci4NCg0KR29vZC4gVGhlbiBpdCB3b24ndCBiZSBtaXNzZWQu
-DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0K
-TmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+Hi Mathieu,
+
+On Mon, Oct 29, 2012 at 9:29 AM, Mathieu Desnoyers
+<mathieu.desnoyers@efficios.com> wrote:
+> * Sasha Levin (levinsasha928@gmail.com) wrote:
+> [...]
+>> -static struct hlist_head *hash_bucket(struct net *net, const char *name)
+>> -{
+>> -     unsigned int hash = jhash(name, strlen(name), (unsigned long) net);
+>> -     return &dev_table[hash & (VPORT_HASH_BUCKETS - 1)];
+>> -}
+>> -
+>>  /**
+>>   *   ovs_vport_locate - find a port that has already been created
+>>   *
+>> @@ -84,13 +76,12 @@ static struct hlist_head *hash_bucket(struct net *net, const char *name)
+>>   */
+>>  struct vport *ovs_vport_locate(struct net *net, const char *name)
+>>  {
+>> -     struct hlist_head *bucket = hash_bucket(net, name);
+>>       struct vport *vport;
+>>       struct hlist_node *node;
+>> +     int key = full_name_hash(name, strlen(name));
+>>
+>> -     hlist_for_each_entry_rcu(vport, node, bucket, hash_node)
+>> -             if (!strcmp(name, vport->ops->get_name(vport)) &&
+>> -                 net_eq(ovs_dp_get_net(vport->dp), net))
+>> +     hash_for_each_possible_rcu(dev_table, vport, node, hash_node, key)
+>
+> Is applying hash_32() on top of full_name_hash() needed and expected ?
+
+Since this was pointed out in several of the patches, I'll answer it
+just once here.
+
+I've intentionally "allowed" double hashing with hash_32 to keep the
+code simple.
+
+hash_32() is pretty simple and gcc optimizes it to be almost nothing,
+so doing that costs us a multiplication and a shift. On the other
+hand, we benefit from keeping our code simple - how would we avoid
+doing this double hash? adding a different hashtable function for
+strings? or a new function for already hashed keys? I think we benefit
+a lot from having to mul/shr instead of adding extra lines of code
+here.
+
+
+Thanks,
+Sasha
