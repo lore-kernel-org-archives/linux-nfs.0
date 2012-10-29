@@ -1,9 +1,9 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.openrapids.net ([64.15.138.104]:58437 "EHLO
+Received: from mail.openrapids.net ([64.15.138.104]:58337 "EHLO
 	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751318Ab2J2Mq5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 08:46:57 -0400
-Date: Mon, 29 Oct 2012 08:46:55 -0400
+	by vger.kernel.org with ESMTP id S1754978Ab2J2MPJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 08:15:09 -0400
+Date: Mon, 29 Oct 2012 08:15:06 -0400
 From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
 To: Sasha Levin <levinsasha928@gmail.com>
 Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
@@ -18,45 +18,102 @@ Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
         ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
         linux-nfs@vger.kernel.org, dev@openvswitch.org,
         rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v7 10/16] dlm: use new hashtable implementation
-Message-ID: <20121029124655.GD11733@Krystal>
-References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com> <1351450948-15618-10-git-send-email-levinsasha928@gmail.com>
+Subject: Re: [PATCH v7 07/16] net,9p: use new hashtable implementation
+Message-ID: <20121029121506.GA11733@Krystal>
+References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com> <1351450948-15618-7-git-send-email-levinsasha928@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1351450948-15618-10-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1351450948-15618-7-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 * Sasha Levin (levinsasha928@gmail.com) wrote:
-[...]
-> @@ -158,34 +159,21 @@ static int dlm_allow_conn;
->  static struct workqueue_struct *recv_workqueue;
->  static struct workqueue_struct *send_workqueue;
->  
-> -static struct hlist_head connection_hash[CONN_HASH_SIZE];
-> +static struct hlist_head connection_hash[CONN_HASH_BITS];
->  static DEFINE_MUTEX(connections_lock);
->  static struct kmem_cache *con_cache;
->  
->  static void process_recv_sockets(struct work_struct *work);
->  static void process_send_sockets(struct work_struct *work);
->  
+> Switch 9p error table to use the new hashtable implementation. This reduces the amount of
+> generic unrelated code in 9p.
+> 
+> Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+> ---
+>  net/9p/error.c | 21 ++++++++++-----------
+>  1 file changed, 10 insertions(+), 11 deletions(-)
+> 
+> diff --git a/net/9p/error.c b/net/9p/error.c
+> index 2ab2de7..a5cc7dd 100644
+> --- a/net/9p/error.c
+> +++ b/net/9p/error.c
+> @@ -34,7 +34,7 @@
+>  #include <linux/jhash.h>
+>  #include <linux/errno.h>
+>  #include <net/9p/9p.h>
 > -
-> -/* This is deliberately very simple because most clusters have simple
-> -   sequential nodeids, so we should be able to go straight to a connection
-> -   struct in the array */
-> -static inline int nodeid_hash(int nodeid)
-> -{
-> -	return nodeid & (CONN_HASH_SIZE-1);
-> -}
+> +#include <linux/hashtable.h>
 
-There is one thing I dislike about this change: you remove a useful
-comment. It's good to be informed of the reason why a direct mapping
-"value -> hash" without any dispersion function is preferred here.
+missing newline.
+
+>  /**
+>   * struct errormap - map string errors from Plan 9 to Linux numeric ids
+>   * @name: string sent over 9P
+> @@ -50,8 +50,8 @@ struct errormap {
+>  	struct hlist_node list;
+>  };
+>  
+> -#define ERRHASHSZ		32
+> -static struct hlist_head hash_errmap[ERRHASHSZ];
+> +#define ERR_HASH_BITS 5
+> +static DEFINE_HASHTABLE(hash_errmap, ERR_HASH_BITS);
+>  
+>  /* FixMe - reduce to a reasonable size */
+>  static struct errormap errmap[] = {
+> @@ -193,18 +193,17 @@ static struct errormap errmap[] = {
+>  int p9_error_init(void)
+>  {
+>  	struct errormap *c;
+> -	int bucket;
+> +	u32 hash;
+>  
+>  	/* initialize hash table */
+> -	for (bucket = 0; bucket < ERRHASHSZ; bucket++)
+> -		INIT_HLIST_HEAD(&hash_errmap[bucket]);
+> +	hash_init(hash_errmap);
+
+As for most of the other patches in this series, the hash_init is
+redundant for a statically defined hash table.
 
 Thanks,
 
 Mathieu
+
+>  
+>  	/* load initial error map into hash table */
+>  	for (c = errmap; c->name != NULL; c++) {
+>  		c->namelen = strlen(c->name);
+> -		bucket = jhash(c->name, c->namelen, 0) % ERRHASHSZ;
+> +		hash = jhash(c->name, c->namelen, 0);
+>  		INIT_HLIST_NODE(&c->list);
+> -		hlist_add_head(&c->list, &hash_errmap[bucket]);
+> +		hash_add(hash_errmap, &c->list, hash);
+>  	}
+>  
+>  	return 1;
+> @@ -223,13 +222,13 @@ int p9_errstr2errno(char *errstr, int len)
+>  	int errno;
+>  	struct hlist_node *p;
+>  	struct errormap *c;
+> -	int bucket;
+> +	u32 hash;
+>  
+>  	errno = 0;
+>  	p = NULL;
+>  	c = NULL;
+> -	bucket = jhash(errstr, len, 0) % ERRHASHSZ;
+> -	hlist_for_each_entry(c, p, &hash_errmap[bucket], list) {
+> +	hash = jhash(errstr, len, 0);
+> +	hash_for_each_possible(hash_errmap, c, p, list, hash) {
+>  		if (c->namelen == len && !memcmp(c->name, errstr, len)) {
+>  			errno = c->val;
+>  			break;
+> -- 
+> 1.7.12.4
+> 
 
 -- 
 Mathieu Desnoyers
