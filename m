@@ -1,168 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f174.google.com ([209.85.216.174]:46116 "EHLO
-	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965249Ab2J3Srk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Oct 2012 14:47:40 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH v8 08/16] block,elevator: use new hashtable implementation
-Date: Tue, 30 Oct 2012 14:46:04 -0400
-Message-Id: <1351622772-16400-8-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
-References: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
+Received: from mail-oa0-f46.google.com ([209.85.219.46]:64086 "EHLO
+	mail-oa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751040Ab2J2OJ3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 10:09:29 -0400
+Received: by mail-oa0-f46.google.com with SMTP id h16so4676961oag.19
+        for <linux-nfs@vger.kernel.org>; Mon, 29 Oct 2012 07:09:29 -0700 (PDT)
+MIME-Version: 1.0
+Date: Mon, 29 Oct 2012 18:09:29 +0400
+Message-ID: <CAA91j0VBWhT58iyNDTMXVnMU8skJTEwHyezD_HyhmaqW5+pt3w@mail.gmail.com>
+Subject: Effective process GID is ignored when client creates file on NFS
+From: Andrey Borzenkov <arvidjaar@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch elevator to use the new hashtable implementation. This reduces the
-amount of generic unrelated code in the elevator.
+I have met application that is badly broken when installed on NFS. The
+reason is - it expects files to belong to specific group. It switches
+to this group on startup (explicit setgid) and creates files. But
+files come out as belonging to GID 0.
 
-This also removes the dymanic allocation of the hash table. The size of the table is
-constant so there's no point in paying the price of an extra dereference when accessing
-it.
+I finally reduced it to this trivial script:
 
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
----
- block/blk.h              |  2 +-
- block/elevator.c         | 23 ++++-------------------
- include/linux/elevator.h |  5 ++++-
- 3 files changed, 9 insertions(+), 21 deletions(-)
+=== cut here ===
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
-diff --git a/block/blk.h b/block/blk.h
-index ca51543..a0abbf6 100644
---- a/block/blk.h
-+++ b/block/blk.h
-@@ -61,7 +61,7 @@ static inline void blk_clear_rq_complete(struct request *rq)
- /*
-  * Internal elevator interface
-  */
--#define ELV_ON_HASH(rq)		(!hlist_unhashed(&(rq)->hash))
-+#define ELV_ON_HASH(rq) hash_hashed(&(rq)->hash)
- 
- void blk_insert_flush(struct request *rq);
- void blk_abort_flushes(struct request_queue *q);
-diff --git a/block/elevator.c b/block/elevator.c
-index 9b1d42b..898d0eb 100644
---- a/block/elevator.c
-+++ b/block/elevator.c
-@@ -46,11 +46,6 @@ static LIST_HEAD(elv_list);
- /*
-  * Merge hash stuff.
-  */
--static const int elv_hash_shift = 6;
--#define ELV_HASH_BLOCK(sec)	((sec) >> 3)
--#define ELV_HASH_FN(sec)	\
--		(hash_long(ELV_HASH_BLOCK((sec)), elv_hash_shift))
--#define ELV_HASH_ENTRIES	(1 << elv_hash_shift)
- #define rq_hash_key(rq)		(blk_rq_pos(rq) + blk_rq_sectors(rq))
- 
- /*
-@@ -142,7 +137,6 @@ static struct elevator_queue *elevator_alloc(struct request_queue *q,
- 				  struct elevator_type *e)
- {
- 	struct elevator_queue *eq;
--	int i;
- 
- 	eq = kmalloc_node(sizeof(*eq), GFP_KERNEL | __GFP_ZERO, q->node);
- 	if (unlikely(!eq))
-@@ -151,14 +145,7 @@ static struct elevator_queue *elevator_alloc(struct request_queue *q,
- 	eq->type = e;
- 	kobject_init(&eq->kobj, &elv_ktype);
- 	mutex_init(&eq->sysfs_lock);
--
--	eq->hash = kmalloc_node(sizeof(struct hlist_head) * ELV_HASH_ENTRIES,
--					GFP_KERNEL, q->node);
--	if (!eq->hash)
--		goto err;
--
--	for (i = 0; i < ELV_HASH_ENTRIES; i++)
--		INIT_HLIST_HEAD(&eq->hash[i]);
-+	hash_init(eq->hash);
- 
- 	return eq;
- err:
-@@ -173,7 +160,6 @@ static void elevator_release(struct kobject *kobj)
- 
- 	e = container_of(kobj, struct elevator_queue, kobj);
- 	elevator_put(e->type);
--	kfree(e->hash);
- 	kfree(e);
- }
- 
-@@ -240,7 +226,7 @@ EXPORT_SYMBOL(elevator_exit);
- 
- static inline void __elv_rqhash_del(struct request *rq)
- {
--	hlist_del_init(&rq->hash);
-+	hash_del(&rq->hash);
- }
- 
- static void elv_rqhash_del(struct request_queue *q, struct request *rq)
-@@ -254,7 +240,7 @@ static void elv_rqhash_add(struct request_queue *q, struct request *rq)
- 	struct elevator_queue *e = q->elevator;
- 
- 	BUG_ON(ELV_ON_HASH(rq));
--	hlist_add_head(&rq->hash, &e->hash[ELV_HASH_FN(rq_hash_key(rq))]);
-+	hash_add(e->hash, &rq->hash, rq_hash_key(rq));
- }
- 
- static void elv_rqhash_reposition(struct request_queue *q, struct request *rq)
-@@ -266,11 +252,10 @@ static void elv_rqhash_reposition(struct request_queue *q, struct request *rq)
- static struct request *elv_rqhash_find(struct request_queue *q, sector_t offset)
- {
- 	struct elevator_queue *e = q->elevator;
--	struct hlist_head *hash_list = &e->hash[ELV_HASH_FN(offset)];
- 	struct hlist_node *entry, *next;
- 	struct request *rq;
- 
--	hlist_for_each_entry_safe(rq, entry, next, hash_list, hash) {
-+	hash_for_each_possible_safe(e->hash, rq, entry, next, hash, offset) {
- 		BUG_ON(!ELV_ON_HASH(rq));
- 
- 		if (unlikely(!rq_mergeable(rq))) {
-diff --git a/include/linux/elevator.h b/include/linux/elevator.h
-index c03af76..7c5a7c9 100644
---- a/include/linux/elevator.h
-+++ b/include/linux/elevator.h
-@@ -2,6 +2,7 @@
- #define _LINUX_ELEVATOR_H
- 
- #include <linux/percpu.h>
-+#include <linux/hashtable.h>
- 
- #ifdef CONFIG_BLOCK
- 
-@@ -96,6 +97,8 @@ struct elevator_type
- 	struct list_head list;
- };
- 
-+#define ELV_HASH_BITS 6
-+
- /*
-  * each queue has an elevator_queue associated with it
-  */
-@@ -105,8 +108,8 @@ struct elevator_queue
- 	void *elevator_data;
- 	struct kobject kobj;
- 	struct mutex sysfs_lock;
--	struct hlist_head *hash;
- 	unsigned int registered:1;
-+	DECLARE_HASHTABLE(hash, ELV_HASH_BITS);
- };
- 
- /*
--- 
-1.7.12.4
+main()
+{
+        int fd;
 
+        setgid(107);
+        fd = open("bar", O_CREAT, 0666);
+        close(fd);
+}
+=== cut here ===
+
+On local storage file comes with GID 107; on NFS file comes with GID 0.
+
+Linux is SLES10 SP3 with relatively old kernel: 2.6.16.60-0.89.1-smp,
+server(s) are NetApp with different Data ONTAP versions (7.x and 8.1.1
+as the last).
+
+Client passes correct credentials (UID:0, GID:107), but does not
+explicitly request file ownership in CREATE call (uid set_it - 0, gid
+set_it - 0).
+
+I am not sure whether this is a bug and if yes, on which side. I
+appreciate any hint. Thank you!
+
+-andrey
