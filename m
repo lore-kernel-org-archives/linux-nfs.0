@@ -1,52 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.gnuher.de ([78.47.12.54]:59474 "EHLO mail.gnuher.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1422908Ab2JaPde (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 31 Oct 2012 11:33:34 -0400
-Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
-	by mail.gnuher.de (envelope-from
-	<news@geggus.net>)
-	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.72)
-	id 1TTaIP-0003UI-2t
-	for linux-nfs@vger.kernel.org; Wed, 31 Oct 2012 16:33:33 +0100
-Received: from news  by ultimate100.geggus.net (envelope-from
-	<news@geggus.net>)
-	with local (Exim 4.72)
-	id 1TTaIO-0004yz-Ev
-	for linux-nfs@vger.kernel.org; Wed, 31 Oct 2012 16:33:32 +0100
-To: linux-nfs@vger.kernel.org
-From: Sven Geggus <lists@fuchsschwanzdomain.de>
-Subject: Re: Kernel update 3.5.7 -> 3.6.3 breaks NFS4
-Date: Wed, 31 Oct 2012 15:33:32 +0000 (UTC)
-Message-ID: <k6rgcc$igt$1@ultimate100.geggus.net>
-References: <k6ebva$1kf$1@ultimate100.geggus.net> <20121026171549.GA11806@fieldses.org> <20121029094038.GA14836@geggus.net> <20121029150203.GB9502@fieldses.org> <20121029163323.GA24345@geggus.net> <k6r6ur$eva$2@ultimate100.geggus.net> <CAA7C2qiiHzwMmkm5fUyNCffejxACtsDu0Pb1qgYJPCfgcaZU-w@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail.openrapids.net ([64.15.138.104]:58437 "EHLO
+	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751318Ab2J2Mq5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 08:46:57 -0400
+Date: Mon, 29 Oct 2012 08:46:55 -0400
+From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+To: Sasha Levin <levinsasha928@gmail.com>
+Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v7 10/16] dlm: use new hashtable implementation
+Message-ID: <20121029124655.GD11733@Krystal>
+References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com> <1351450948-15618-10-git-send-email-levinsasha928@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1351450948-15618-10-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-VDR User <user.vdr@gmail.com> wrote:
+* Sasha Levin (levinsasha928@gmail.com) wrote:
+[...]
+> @@ -158,34 +159,21 @@ static int dlm_allow_conn;
+>  static struct workqueue_struct *recv_workqueue;
+>  static struct workqueue_struct *send_workqueue;
+>  
+> -static struct hlist_head connection_hash[CONN_HASH_SIZE];
+> +static struct hlist_head connection_hash[CONN_HASH_BITS];
+>  static DEFINE_MUTEX(connections_lock);
+>  static struct kmem_cache *con_cache;
+>  
+>  static void process_recv_sockets(struct work_struct *work);
+>  static void process_send_sockets(struct work_struct *work);
+>  
+> -
+> -/* This is deliberately very simple because most clusters have simple
+> -   sequential nodeids, so we should be able to go straight to a connection
+> -   struct in the array */
+> -static inline int nodeid_hash(int nodeid)
+> -{
+> -	return nodeid & (CONN_HASH_SIZE-1);
+> -}
 
-> In case you missed my previous message, "I use debian testing here and
-> NFSv4. My clients are running kernel 3.6.3, server is running 3.6.2.  No
-> problems here".
+There is one thing I dislike about this change: you remove a useful
+comment. It's good to be informed of the reason why a direct mapping
+"value -> hash" without any dispersion function is preferred here.
 
-No, I did not miss your post. I even asked if you are using sec=krb5. I did
-not try if it works without using kerberos, because I am not interested in
-"No File Security" NFS3-like mode.
+Thanks,
 
-> It would seem you only need to cherry-pick server changes between 3.6.2
-> and 3.6.3...?
-
-Unfortunately not. It already did not work using 3.6.2
-
-Regards
-
-Sven
+Mathieu
 
 -- 
-"Der wichtigste Aspekt, den Sie vor der Entscheidung für ein Open
-Source-Betriebssystem bedenken sollten, ist, dass Sie kein
-Windows-Betriebssystem erhalten." (von http://www.dell.de/ubuntu)
-/me is giggls@ircnet, http://sven.gegg.us/ on the Web
+Mathieu Desnoyers
+Operating System Efficiency R&D Consultant
+EfficiOS Inc.
+http://www.efficios.com
