@@ -1,63 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ia0-f174.google.com ([209.85.210.174]:59378 "EHLO
-	mail-ia0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755440Ab2JVQGp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Oct 2012 12:06:45 -0400
-Received: by mail-ia0-f174.google.com with SMTP id y32so2175418iag.19
-        for <linux-nfs@vger.kernel.org>; Mon, 22 Oct 2012 09:06:45 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 07/10] mountd: Avoid unnecessary type conversions
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 22 Oct 2012 12:06:44 -0400
-Message-ID: <20121022160644.4552.477.stgit@lebasque.1015granger.net>
-In-Reply-To: <20121022160140.4552.34477.stgit@lebasque.1015granger.net>
-References: <20121022160140.4552.34477.stgit@lebasque.1015granger.net>
+Received: from mail.openrapids.net ([64.15.138.104]:58737 "EHLO
+	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1759844Ab2J2QHN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 12:07:13 -0400
+Date: Mon, 29 Oct 2012 12:07:10 -0400
+From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+To: Sasha Levin <levinsasha928@gmail.com>
+Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v7 10/16] dlm: use new hashtable implementation
+Message-ID: <20121029160710.GA18944@Krystal>
+References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com> <1351450948-15618-10-git-send-email-levinsasha928@gmail.com> <20121029124655.GD11733@Krystal> <20121029130736.GF11733@Krystal> <CA+1xoqfxgB+8BybPpf+jwT-ObfGPxnbKvkz1MUMuJuR8NDSNaw@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CA+1xoqfxgB+8BybPpf+jwT-ObfGPxnbKvkz1MUMuJuR8NDSNaw@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up compiler warnings:
+* Sasha Levin (levinsasha928@gmail.com) wrote:
+> On Mon, Oct 29, 2012 at 9:07 AM, Mathieu Desnoyers
+> <mathieu.desnoyers@efficios.com> wrote:
+> > * Mathieu Desnoyers (mathieu.desnoyers@efficios.com) wrote:
+> >> * Sasha Levin (levinsasha928@gmail.com) wrote:
+> >> [...]
+> >> > @@ -158,34 +159,21 @@ static int dlm_allow_conn;
+> >> >  static struct workqueue_struct *recv_workqueue;
+> >> >  static struct workqueue_struct *send_workqueue;
+> >> >
+> >> > -static struct hlist_head connection_hash[CONN_HASH_SIZE];
+> >> > +static struct hlist_head connection_hash[CONN_HASH_BITS];
+> >> >  static DEFINE_MUTEX(connections_lock);
+> >> >  static struct kmem_cache *con_cache;
+> >> >
+> >> >  static void process_recv_sockets(struct work_struct *work);
+> >> >  static void process_send_sockets(struct work_struct *work);
+> >> >
+> >> > -
+> >> > -/* This is deliberately very simple because most clusters have simple
+> >> > -   sequential nodeids, so we should be able to go straight to a connection
+> >> > -   struct in the array */
+> >> > -static inline int nodeid_hash(int nodeid)
+> >> > -{
+> >> > -   return nodeid & (CONN_HASH_SIZE-1);
+> >> > -}
+> >>
+> >> There is one thing I dislike about this change: you remove a useful
+> >> comment. It's good to be informed of the reason why a direct mapping
+> >> "value -> hash" without any dispersion function is preferred here.
+> 
+> Yes, I've removed the comment because it's no longer true with the patch :)
+> 
+> > And now that I come to think of it: you're changing the behavior : you
+> > will now use a dispersion function on the key, which goes against the
+> > intent expressed in this comment.
+> 
+> The comment gave us the information that nodeids are mostly
+> sequential, we no longer need to rely on that.
 
-cache.c: In function ‘get_uuid’:
-cache.c:256:17: warning: conversion to ‘char’ from ‘int’ may
-  alter its value [-Wconversion]
-cache.c:258:17: warning: conversion to ‘char’ from ‘int’ may
-  alter its value [-Wconversion]
-cache.c:260:16: warning: conversion to ‘char’ from ‘int’ may
-  alter its value [-Wconversion]
-cache.c:262:6: warning: conversion to ‘char’ from ‘int’ may
-  alter its value [-Wconversion]
+I'm fine with turning a direct + modulo mapping into a dispersed hash as
+long as there are no underlying assumptions about sequentiality of value
+accesses.
 
-Seen with gcc version 4.6.3 20120306 (Red Hat 4.6.3-2) (GCC)
+If the access pattern would happen to be typically sequential, then
+adding dispersion could hurt performances significantly, turning a
+frequent L1 access into a L2 access for instance.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+> 
+> > It might be good to change hash_add(), hash_add_rcu(),
+> > hash_for_each_possible*() key parameter for a "hash" parameter, and let
+> > the caller provide the hash value computed by the function they like as
+> > parameter, rather than enforcing hash_32/hash_64.
+> 
+> Why? We already proved that hash_32() is more than enough as a hashing
+> function, why complicate things?
+> 
+> Even doing hash_32() on top of another hash is probably a good idea to
+> keep things simple.
 
- utils/mountd/cache.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+All I'm asking is: have you made sure that this hash table is not
+deliberately kept sequential (without dispersion) to accelerate specific
+access patterns ? This should at least be documented in the changelog.
 
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index fbaa28e..e950ec6 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -248,7 +248,7 @@ static int get_uuid(const char *val, size_t uuidlen, char *u)
- 	
- 	memset(u, 0, uuidlen);
- 	for ( ; *val ; val++) {
--		char c = *val;
-+		int c = *val;
- 		if (!isxdigit(c))
- 			continue;
- 		if (isalpha(c)) {
-@@ -260,7 +260,7 @@ static int get_uuid(const char *val, size_t uuidlen, char *u)
- 			c = c - '0' + 0;
- 		if ((i&1) == 0)
- 			c <<= 4;
--		u[i/2] ^= c;
-+		u[i/2] ^= (char)c;
- 		i++;
- 		if (i == uuidlen*2)
- 			i = 0;
+Thanks,
 
+Mathieu
+
+
+> 
+> Thanks,
+> Sasha
+
+-- 
+Mathieu Desnoyers
+Operating System Efficiency R&D Consultant
+EfficiOS Inc.
+http://www.efficios.com
