@@ -1,47 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:36151 "EHLO e6.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753584Ab2JJQGJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 10 Oct 2012 12:06:09 -0400
-Received: from /spool/local
-	by e6.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Wed, 10 Oct 2012 12:06:05 -0400
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id q9AFtcUg100646
-	for <linux-nfs@vger.kernel.org>; Wed, 10 Oct 2012 12:04:53 -0400
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id q9AFtPq7022895
-	for <linux-nfs@vger.kernel.org>; Wed, 10 Oct 2012 09:55:25 -0600
-Date: Wed, 10 Oct 2012 10:54:54 -0500
-From: Malahal Naineni <malahal@us.ibm.com>
-To: David Werner <david.werner@iws.uni-stuttgart.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Problem with NFSv4 (server: NetApp-Filer, client
- openSUSE-11.4, 12.1 and 12.2)
-Message-ID: <20121010155454.GA10050@us.ibm.com>
-References: <20121009135919.GA16012@tindra.iws.uni-stuttgart.de>
- <20121010150448.GA12518@tindra.iws.uni-stuttgart.de>
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:65200 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753241Ab2J2TRi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 15:17:38 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20121010150448.GA12518@tindra.iws.uni-stuttgart.de>
+In-Reply-To: <20121029191256.GE4066@htj.dyndns.org>
+References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
+ <1351450948-15618-6-git-send-email-levinsasha928@gmail.com>
+ <20121029113515.GB9115@Krystal> <CA+1xoqce6uJ6wy3+2CBwsLHKnsz4wD0vt8MBEGKCFfXTvuC0Hg@mail.gmail.com>
+ <20121029183157.GC3097@jtriplet-mobl1> <CA+1xoqfMrn9zDFMJNFfA0NA86wE_DedD97cP1yJ2UQdTjs3uyQ@mail.gmail.com>
+ <20121029185319.GA21546@Krystal> <CA+1xoqcSx04JEXy2aPu4Qt7Zb4iSqXBSjARgMae_FusgzpgnaQ@mail.gmail.com>
+ <20121029191256.GE4066@htj.dyndns.org>
+From: Sasha Levin <levinsasha928@gmail.com>
+Date: Mon, 29 Oct 2012 15:17:16 -0400
+Message-ID: <CA+1xoqdi2pQENa=--FkPbOGOHgK+M26_jNCxGTkFiynqnR+7og@mail.gmail.com>
+Subject: Re: [PATCH v7 06/16] tracepoint: use new hashtable implementation
+To: Tejun Heo <tj@kernel.org>
+Cc: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
+        Josh Triplett <josh@joshtriplett.org>, torvalds@linux-foundation.org,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-David Werner [david.werner@iws.uni-stuttgart.de] wrote:
-> Hi, 
-> 
-> to provide more details I made tcpdump of the 
-> "touch .." on two hosts.  The outputfiles for looking in with wireshark
-> & co are on: 
-> 
-> 	http://maultier.iws.uni-stuttgart.de:8080/nfs
-> 
-> But I do not understand much of nfs-protocol. 
+On Mon, Oct 29, 2012 at 3:12 PM, Tejun Heo <tj@kernel.org> wrote:
+> On Mon, Oct 29, 2012 at 03:09:36PM -0400, Sasha Levin wrote:
+>> The other thing is whether hash_init() should be called for hashtables
+>> that were created with DEFINE_HASHTABLE(). That point was raised by
+>> Neil Brown last time this series went around, and it seems that no one
+>> objected to the point that it should be consistent across the code.
+>
+> Hmmm?  If something is DEFINE_XXX()'d, you definitely shouldn't be
+> calling XXX_init() on it.  That's how it is with most other abstract
+> data types and you need *VERY* strong rationale to deviate from that.
 
-I did take a quick look and didn't see anything wrong in the NFS trace.
-Any syslog messages at the client. The ESTALE error must be made up at
-the client.
+Neil Brown raised that point last time that this series went around,
+and suggested that this should be consistent and hash_init() would
+appear everywhere, even if DEFINE_HASHTABLE() was used. Since no one
+objected to that I thought we're going with that.
 
-Regards, Malahal.
+I'll chalk it up to me getting confused :)
 
+
+Thanks,
+Sasha
