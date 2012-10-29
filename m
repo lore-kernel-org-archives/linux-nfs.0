@@ -1,57 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:3629 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755268Ab2JOVdG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Oct 2012 17:33:06 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 13/13] lockd: Remove BUG_ON()s from fs/lockd/clntproc.c
-Date: Mon, 15 Oct 2012 17:31:07 -0400
-Message-Id: <1350336667-18770-15-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1350336667-18770-14-git-send-email-Trond.Myklebust@netapp.com>
-References: <1350336667-18770-1-git-send-email-Trond.Myklebust@netapp.com>
- <1350336667-18770-2-git-send-email-Trond.Myklebust@netapp.com>
- <1350336667-18770-3-git-send-email-Trond.Myklebust@netapp.com>
- <1350336667-18770-4-git-send-email-Trond.Myklebust@netapp.com>
- <1350336667-18770-5-git-send-email-Trond.Myklebust@netapp.com>
- <1350336667-18770-6-git-send-email-Trond.Myklebust@netapp.com>
- <1350336667-18770-7-git-send-email-Trond.Myklebust@netapp.com>
- <1350336667-18770-8-git-send-email-Trond.Myklebust@netapp.com>
- <1350336667-18770-9-git-send-email-Trond.Myklebust@netapp.com>
- <1350336667-18770-10-git-send-email-Trond.Myklebust@netapp.com>
- <1350336667-18770-11-git-send-email-Trond.Myklebust@netapp.com>
- <1350336667-18770-12-git-send-email-Trond.Myklebust@netapp.com>
- <1350336667-18770-13-git-send-email-Trond.Myklebust@netapp.com>
- <1350336667-18770-14-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail.openrapids.net ([64.15.138.104]:58959 "EHLO
+	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1754860Ab2J2SfN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 14:35:13 -0400
+Date: Mon, 29 Oct 2012 14:35:10 -0400
+From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+To: Tejun Heo <tj@kernel.org>
+Cc: Sasha Levin <levinsasha928@gmail.com>, torvalds@linux-foundation.org,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com, axboe@kernel.dk,
+        agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
+        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
+        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v7 15/16] openvswitch: use new hashtable implementation
+Message-ID: <20121029183510.GA21114@Krystal>
+References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com> <1351450948-15618-15-git-send-email-levinsasha928@gmail.com> <20121029132931.GC16391@Krystal> <CA+1xoqfRGhPaBEVh228O5_295bWh8FmcyLSOwq8VE5Dm7i3JHg@mail.gmail.com> <20121029155957.GB18834@Krystal> <CA+1xoqcr5xmOkDfqL3P84CNdotOALOhiLRkJjsPCZzijSQUF6w@mail.gmail.com> <20121029181648.GB20796@Krystal> <20121029182209.GB4066@htj.dyndns.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121029182209.GB4066@htj.dyndns.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/lockd/clntproc.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+* Tejun Heo (tj@kernel.org) wrote:
+> Hello,
+> 
+> On Mon, Oct 29, 2012 at 02:16:48PM -0400, Mathieu Desnoyers wrote:
+> > This is just one example in an attempt to show why different hash table
+> > users may have different constraints: for a hash table entirely
+> > populated by keys generated internally by the kernel, a random seed
+> > might not be required, but for cases where values are fed by user-space
+> > and from the NIC, I would argue that flexibility to implement a
+> > randomizable hash function beats implementation simplicity any time.
+> > 
+> > And you could keep the basic use-case simple by providing hints to the
+> > hash_32()/hash_64()/hash_ulong() helpers in comments.
+> 
+> If all you need is throwing in a salt value to avoid attacks, can't
+> you just do that from caller side?  Scrambling the key before feeding
+> it into hash_*() should work, no?
 
-diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-index 05d2912..54f9e6c 100644
---- a/fs/lockd/clntproc.c
-+++ b/fs/lockd/clntproc.c
-@@ -141,7 +141,7 @@ static void nlmclnt_setlockargs(struct nlm_rqst *req, struct file_lock *fl)
- 
- static void nlmclnt_release_lockargs(struct nlm_rqst *req)
- {
--	BUG_ON(req->a_args.lock.fl.fl_ops != NULL);
-+	WARN_ON_ONCE(req->a_args.lock.fl.fl_ops != NULL);
- }
- 
- /**
-@@ -465,7 +465,6 @@ static const struct file_lock_operations nlmclnt_lock_ops = {
- 
- static void nlmclnt_locks_init_private(struct file_lock *fl, struct nlm_host *host)
- {
--	BUG_ON(fl->fl_ops != NULL);
- 	fl->fl_u.nfs_fl.state = 0;
- 	fl->fl_u.nfs_fl.owner = nlm_find_lockowner(host, fl->fl_owner);
- 	INIT_LIST_HEAD(&fl->fl_u.nfs_fl.list);
+Yes, I think salting the "key" parameter would work.
+
+Thanks,
+
+Mathieu
+
+> 
+> Thanks.
+> 
+> -- 
+> tejun
+
 -- 
-1.7.11.7
-
+Mathieu Desnoyers
+Operating System Efficiency R&D Consultant
+EfficiOS Inc.
+http://www.efficios.com
