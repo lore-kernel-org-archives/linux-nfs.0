@@ -1,44 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:9254 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:63116 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751789Ab2JWOpM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Oct 2012 10:45:12 -0400
-Message-ID: <5086AD74.4070905@RedHat.com>
-Date: Tue, 23 Oct 2012 10:45:08 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S932495Ab2J2QYm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Oct 2012 12:24:42 -0400
+Date: Mon, 29 Oct 2012 12:23:44 -0400
+From: David Teigland <teigland@redhat.com>
+To: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+Cc: Sasha Levin <levinsasha928@gmail.com>, torvalds@linux-foundation.org,
+        tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com, axboe@kernel.dk,
+        agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v7 10/16] dlm: use new hashtable implementation
+Message-ID: <20121029162344.GC3516@redhat.com>
+References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
+ <1351450948-15618-10-git-send-email-levinsasha928@gmail.com>
+ <20121029124655.GD11733@Krystal>
+ <20121029130736.GF11733@Krystal>
+ <CA+1xoqfxgB+8BybPpf+jwT-ObfGPxnbKvkz1MUMuJuR8NDSNaw@mail.gmail.com>
+ <20121029160710.GA18944@Krystal>
 MIME-Version: 1.0
-To: Jim Rees <rees@umich.edu>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Added more compile warning options
-References: <1350939654-25126-1-git-send-email-steved@redhat.com> <20121022214332.GA14793@umich.edu>
-In-Reply-To: <20121022214332.GA14793@umich.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121029160710.GA18944@Krystal>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Jim,
-
-On 22/10/12 17:43, Jim Rees wrote:
-> Steve Dickson wrote:
+On Mon, Oct 29, 2012 at 12:07:10PM -0400, Mathieu Desnoyers wrote:
+> I'm fine with turning a direct + modulo mapping into a dispersed hash as
+> long as there are no underlying assumptions about sequentiality of value
+> accesses.
 > 
->   To ensure the code compiles cleaner, the following warning options
->   are now set
->       -Wall -Wextra -Wstrict-prototypes -Wstrict-aliasing
->       -Wconversion -Wsign-conversion -Wmissing-prototypes
->       -Wsign-conversion -pedantic -Wmissing-prototypes
-> 
-> You only need to specify them once.  You've got sign-conversion and
-> missing-prototypes twice.  
-Yeah... I noticed that after I posted the patch... This was more
-of an RFC patch than anything... I just wanted to get people's opinion...
+> If the access pattern would happen to be typically sequential, then
+> adding dispersion could hurt performances significantly, turning a
+> frequent L1 access into a L2 access for instance.
+  
+> All I'm asking is: have you made sure that this hash table is not
+> deliberately kept sequential (without dispersion) to accelerate specific
+> access patterns ? This should at least be documented in the changelog.
 
-> Also I think -pedantic is going too far.
-Why? The one patch its used for does the following:
-
--gss_OID g_mechOid = GSS_C_NULL_OID;;
-+gss_OID g_mechOid = GSS_C_NULL_OID;
-
-Which seems reasonable... What do you see that I don't?
-
-steved.
+It was not intentional.  I don't expect any benefit would be lost by
+making it non-sequential.
 
