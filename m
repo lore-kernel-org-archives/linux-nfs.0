@@ -1,66 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f174.google.com ([209.85.220.174]:60763 "EHLO
-	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1946202Ab2JYRWH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Oct 2012 13:22:07 -0400
-Received: by mail-vc0-f174.google.com with SMTP id fk26so2132362vcb.19
-        for <linux-nfs@vger.kernel.org>; Thu, 25 Oct 2012 10:22:06 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 9/9] nfsdcltrack: update the README about server startup order
-Date: Thu, 25 Oct 2012 13:21:43 -0400
-Message-Id: <1351185703-14191-10-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1351185703-14191-1-git-send-email-jlayton@redhat.com>
-References: <1351185703-14191-1-git-send-email-jlayton@redhat.com>
+Received: from mail.openrapids.net ([64.15.138.104]:58577 "EHLO
+	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1759034Ab2J2N3e (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 09:29:34 -0400
+Date: Mon, 29 Oct 2012 09:29:31 -0400
+From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+To: Sasha Levin <levinsasha928@gmail.com>
+Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v7 15/16] openvswitch: use new hashtable implementation
+Message-ID: <20121029132931.GC16391@Krystal>
+References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com> <1351450948-15618-15-git-send-email-levinsasha928@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1351450948-15618-15-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that nfsdcld is gone, remove the section about starting it up.
+* Sasha Levin (levinsasha928@gmail.com) wrote:
+[...]
+> -static struct hlist_head *hash_bucket(struct net *net, const char *name)
+> -{
+> -	unsigned int hash = jhash(name, strlen(name), (unsigned long) net);
+> -	return &dev_table[hash & (VPORT_HASH_BUCKETS - 1)];
+> -}
+> -
+>  /**
+>   *	ovs_vport_locate - find a port that has already been created
+>   *
+> @@ -84,13 +76,12 @@ static struct hlist_head *hash_bucket(struct net *net, const char *name)
+>   */
+>  struct vport *ovs_vport_locate(struct net *net, const char *name)
+>  {
+> -	struct hlist_head *bucket = hash_bucket(net, name);
+>  	struct vport *vport;
+>  	struct hlist_node *node;
+> +	int key = full_name_hash(name, strlen(name));
+>  
+> -	hlist_for_each_entry_rcu(vport, node, bucket, hash_node)
+> -		if (!strcmp(name, vport->ops->get_name(vport)) &&
+> -		    net_eq(ovs_dp_get_net(vport->dp), net))
+> +	hash_for_each_possible_rcu(dev_table, vport, node, hash_node, key)
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- README | 23 ++---------------------
- 1 file changed, 2 insertions(+), 21 deletions(-)
+Is applying hash_32() on top of full_name_hash() needed and expected ?
 
-diff --git a/README b/README
-index e55b2dd..61702f7 100644
---- a/README
-+++ b/README
-@@ -108,31 +108,12 @@ scripts can be written to work correctly.
-        the lock.
-        rpc.statd is only needed for NFSv2 and NFSv3 support.
- 
--   E/ nfsdcld
--       This daemon is only needed on kernels that support the nfsdcld
--       upcall, and only if the legacy client ID tracking isn't used. It
--       is also not needed if the server does not support NFSv4.
--
--       To determine whether you need this or not, do the following:
--
--           # cat /proc/fs/nfsd/versions
--
--       That should yield a list of NFS versions that this kernel supports,
--       if "4" or later is not in that list, or they are prefixed with a "-"
--       then you don't need to run this daemon. Next:
--
--           # cat /proc/fs/nfsd/nfsv4recoverydir
--
--       If that file is not present, or the directory that the above command
--       outputs is not present, then this daemon is required in order to
--       support lock recovery by the clients when the server reboots.
--
--   F/ rpc.nfsd
-+   E/ rpc.nfsd
-        Starting nfsd will automatically start lockd.  The nfs server
-        will now be fully active and respond to any requests from
-        clients.
-        
--   G/ sm-notify
-+   F/ sm-notify
-        This will notify any client which might have locks from before
-        a reboot to try to reclaim their locks.  This should start
-        immediately after rpc.nfsd is started so that clients have a
+Thanks,
+
+Mathieu
+
+> +		if (!strcmp(name, vport->ops->get_name(vport)))
+>  			return vport;
+>  
+>  	return NULL;
+> @@ -174,7 +165,8 @@ struct vport *ovs_vport_add(const struct vport_parms *parms)
+>  
+>  	for (i = 0; i < ARRAY_SIZE(vport_ops_list); i++) {
+>  		if (vport_ops_list[i]->type == parms->type) {
+> -			struct hlist_head *bucket;
+> +			int key;
+> +			const char *name;
+>  
+>  			vport = vport_ops_list[i]->create(parms);
+>  			if (IS_ERR(vport)) {
+> @@ -182,9 +174,9 @@ struct vport *ovs_vport_add(const struct vport_parms *parms)
+>  				goto out;
+>  			}
+>  
+> -			bucket = hash_bucket(ovs_dp_get_net(vport->dp),
+> -					     vport->ops->get_name(vport));
+> -			hlist_add_head_rcu(&vport->hash_node, bucket);
+> +			name = vport->ops->get_name(vport);
+> +			key = full_name_hash(name, strlen(name));
+> +			hash_add_rcu(dev_table, &vport->hash_node, key);
+>  			return vport;
+>  		}
+>  	}
+> @@ -225,7 +217,7 @@ void ovs_vport_del(struct vport *vport)
+>  {
+>  	ASSERT_RTNL();
+>  
+> -	hlist_del_rcu(&vport->hash_node);
+> +	hash_del_rcu(&vport->hash_node);
+>  
+>  	vport->ops->destroy(vport);
+>  }
+> -- 
+> 1.7.12.4
+> 
+
 -- 
-1.7.11.7
-
+Mathieu Desnoyers
+Operating System Efficiency R&D Consultant
+EfficiOS Inc.
+http://www.efficios.com
