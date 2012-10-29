@@ -1,49 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:14548 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:39269 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755421Ab2JWOxf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Oct 2012 10:53:35 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 10/25] SUNRPC: remove BUG_ON from xprt_destroy_backchannel
-Date: Tue, 23 Oct 2012 10:43:34 -0400
-Message-Id: <1351003429-18887-11-git-send-email-dros@netapp.com>
-In-Reply-To: <1351003429-18887-1-git-send-email-dros@netapp.com>
-References: <1351003429-18887-1-git-send-email-dros@netapp.com>
+	id S1759276Ab2J2PRd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Oct 2012 11:17:33 -0400
+Date: Mon, 29 Oct 2012 11:16:54 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        Sasha Levin <levinsasha928@gmail.com>, tj@kernel.org,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com, axboe@kernel.dk,
+        agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v7 09/16] SUNRPC/cache: use new hashtable implementation
+Message-ID: <20121029151653.GC9502@fieldses.org>
+References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
+ <1351450948-15618-9-git-send-email-levinsasha928@gmail.com>
+ <20121029124229.GC11733@Krystal>
+ <CA+55aFzO8DJJP3HBfgqXFac9r3=bYK+_nYe4cuXiNFg-623s6w@mail.gmail.com>
+ <20121029151343.GA17722@Krystal>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121029151343.GA17722@Krystal>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If max_reqs is 0, do nothing besides the usual dprintks.
+On Mon, Oct 29, 2012 at 11:13:43AM -0400, Mathieu Desnoyers wrote:
+> * Linus Torvalds (torvalds@linux-foundation.org) wrote:
+> > On Mon, Oct 29, 2012 at 5:42 AM, Mathieu Desnoyers
+> > <mathieu.desnoyers@efficios.com> wrote:
+> > >
+> > > So defining e.g.:
+> > >
+> > > #include <linux/log2.h>
+> > >
+> > > #define DFR_HASH_BITS  (PAGE_SHIFT - ilog2(BITS_PER_LONG))
+> > >
+> > > would keep the intended behavior in all cases: use one page for the hash
+> > > array.
+> > 
+> > Well, since that wasn't true before either because of the long-time
+> > bug you point out, clearly the page size isn't all that important. I
+> > think it's more important to have small and simple code, and "9" is
+> > certainly that, compared to playing ilog2 games with not-so-obvious
+> > things.
+> > 
+> > Because there's no reason to believe that '9' is in any way a worse
+> > random number than something page-shift-related, is there? And getting
+> > away from *previous* overly-complicated size calculations that had
+> > been broken because they were too complicated and random, sounds like
+> > a good idea.
+> 
+> Good point. I agree that unless we really care about the precise number
+> of TLB entries and cache lines used by this hash table, we might want to
+> stay away from page-size and pointer-size based calculation.
+>
+> It might not hurt to explain this in the patch changelog though.
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- net/sunrpc/backchannel_rqst.c |    5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+I'd also be happy to take that as a separate patch now.
 
-diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
-index 7567bcd..f0fb0dd 100644
---- a/net/sunrpc/backchannel_rqst.c
-+++ b/net/sunrpc/backchannel_rqst.c
-@@ -191,7 +191,9 @@ void xprt_destroy_backchannel(struct rpc_xprt *xprt, unsigned int max_reqs)
- 
- 	dprintk("RPC:        destroy backchannel transport\n");
- 
--	BUG_ON(max_reqs == 0);
-+	if (max_reqs == 0)
-+		goto out;
-+
- 	spin_lock_bh(&xprt->bc_pa_lock);
- 	xprt_dec_alloc_count(xprt, max_reqs);
- 	list_for_each_entry_safe(req, tmp, &xprt->bc_pa_list, rq_bc_pa_list) {
-@@ -202,6 +204,7 @@ void xprt_destroy_backchannel(struct rpc_xprt *xprt, unsigned int max_reqs)
- 	}
- 	spin_unlock_bh(&xprt->bc_pa_lock);
- 
-+out:
- 	dprintk("RPC:        backchannel list empty= %s\n",
- 		list_empty(&xprt->bc_pa_list) ? "true" : "false");
- }
--- 
-1.7.9.6 (Apple Git-31.1)
-
+--b.
