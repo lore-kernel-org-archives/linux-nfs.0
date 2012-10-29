@@ -1,314 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.openrapids.net ([64.15.138.104]:58302 "EHLO
-	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S932329Ab2J2Lhb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 07:37:31 -0400
-Date: Mon, 29 Oct 2012 07:29:08 -0400
-From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v7 01/16] hashtable: introduce a small and naive
-	hashtable
-Message-ID: <20121029112907.GA9115@Krystal>
-References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
+Received: from cantor2.suse.de ([195.135.220.15]:56754 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751903Ab2J2X2P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Oct 2012 19:28:15 -0400
+Date: Tue, 30 Oct 2012 10:28:33 +1100
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Peter Staubach <pstaubach@exagrid.com>
+Subject: Re: [PATCH 0/2] fix nfsd stable write implementation
+Message-ID: <20121030102833.306e833a@notabene.brown>
+In-Reply-To: <1351285617-20450-1-git-send-email-bfields@redhat.com>
+References: <1351285617-20450-1-git-send-email-bfields@redhat.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/Naj0.z9RNwrfSqR+Euo/DOm"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* Sasha Levin (levinsasha928@gmail.com) wrote:
-> This hashtable implementation is using hlist buckets to provide a simple
-> hashtable to prevent it from getting reimplemented all over the kernel.
-> 
-> Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
-> ---
-> 
-> Sorry for the long delay, I was busy with a bunch of personal things.
-> 
-> Changes since v6:
-> 
->  - Use macros that point to internal static inline functions instead of
->  implementing everything as a macro.
->  - Rebase on latest -next.
->  - Resending the enter patch series on request.
->  - Break early from hash_empty() if found to be non-empty.
->  - DECLARE_HASHTABLE/DEFINE_HASHTABLE.
-> 
-> 
->  include/linux/hashtable.h | 193 ++++++++++++++++++++++++++++++++++++++++++++++
->  1 file changed, 193 insertions(+)
->  create mode 100644 include/linux/hashtable.h
-> 
-> diff --git a/include/linux/hashtable.h b/include/linux/hashtable.h
-> new file mode 100644
-> index 0000000..1fb8c97
-> --- /dev/null
-> +++ b/include/linux/hashtable.h
-> @@ -0,0 +1,193 @@
-> +/*
-> + * Statically sized hash table implementation
-> + * (C) 2012  Sasha Levin <levinsasha928@gmail.com>
-> + */
-> +
-> +#ifndef _LINUX_HASHTABLE_H
-> +#define _LINUX_HASHTABLE_H
-> +
-> +#include <linux/list.h>
-> +#include <linux/types.h>
-> +#include <linux/kernel.h>
-> +#include <linux/hash.h>
-> +#include <linux/rculist.h>
-> +
-> +#define DEFINE_HASHTABLE(name, bits)						\
-> +	struct hlist_head name[1 << bits] =					\
-> +			{ [0 ... ((1 << bits) - 1)] = HLIST_HEAD_INIT }
+--Sig_/Naj0.z9RNwrfSqR+Euo/DOm
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Although it's unlikely that someone would use this with a binary
-operator with lower precedence than "<<" (see e.g.
-http://www.swansontec.com/sopc.html) as "bits", lack of parenthesis
-around "bits" would be unexpected by the caller, and could introduce
-bugs. Please review all macros with the precedence table in mind, and
-ask yourself if lack of parenthesis could introduce a subtle bug.
+On Fri, 26 Oct 2012 17:06:55 -0400 "J. Bruce Fields" <bfields@redhat.com>
+wrote:
 
-> +
-> +#define DECLARE_HASHTABLE(name, bits)                                   	\
-> +	struct hlist_head name[1 << (bits)]
+> From: "J. Bruce Fields" <bfields@redhat.com>
+>=20
+> Peter pointed out to me that the nfs server is implementing stable
+> writes by setting the O_SYNC flag.  I can't see why we couldn't write
+> and then sync instead, but I don't know this stuff as well as I should;
+> does the following look reasonable to people?
 
-Here, you have parenthesis around "bits", but not above (inconsistency).
+Bruce changed the code to implement stable writes by calling
+vfs_fsync_range().  I can't see why we couldn't use O_SYNC instead.
 
-> +
-> +#define HASH_SIZE(name) (ARRAY_SIZE(name))
-> +#define HASH_BITS(name) ilog2(HASH_SIZE(name))
-> +
-> +/* Use hash_32 when possible to allow for fast 32bit hashing in 64bit kernels. */
-> +#define hash_min(val, bits)							\
-> +({										\
-> +	sizeof(val) <= 4 ?							\
-> +	hash_32(val, bits) :							\
-> +	hash_long(val, bits);							\
-> +})
-> +
-> +static inline void __hash_init(struct hlist_head *ht, int sz)
+It seems like you are making a change just for the sake of making a change.
+Is there some reason that you think a separate 'sync' is more efficient than
+using O_SYNC ?
 
-int -> unsigned int.
+As a general principle, I think it is best to give the file system as much
+information as possible to that it can make whatever optimisation decisions
+that it wants to.
 
-> +{
-> +	int i;
+Setting O_SYNC gives the filesystem more information than not, because it
+allows it to change the behaviour of the 'write' request... though I don't
+know if any filesystem actually uses the information.
 
-int -> unsigned int.
+Why the change?
 
-> +
-> +	for (i = 0; i < sz; i++)
-> +		INIT_HLIST_HEAD(&ht[sz]);
+NeilBrown
 
-ouch. How did this work ? Has it been tested at all ?
-
-sz -> i
+>=20
+> --b.
+>=20
+> J. Bruce Fields (2):
+>   nfsd: assume writeable exportabled filesystems have f_sync
+>   nfsd: use vfs_fsync_range(), not O_SYNC, for stable writes
+>=20
+>  fs/nfsd/vfs.c |   26 ++++++--------------------
+>  1 file changed, 6 insertions(+), 20 deletions(-)
+>=20
 
 
-> +}
-> +
-> +/**
-> + * hash_init - initialize a hash table
-> + * @hashtable: hashtable to be initialized
-> + *
-> + * Calculates the size of the hashtable from the given parameter, otherwise
-> + * same as hash_init_size.
-> + *
-> + * This has to be a macro since HASH_BITS() will not work on pointers since
-> + * it calculates the size during preprocessing.
-> + */
-> +#define hash_init(hashtable) __hash_init(hashtable, HASH_SIZE(hashtable))
-> +
-> +/**
-> + * hash_add - add an object to a hashtable
-> + * @hashtable: hashtable to add to
-> + * @node: the &struct hlist_node of the object to be added
-> + * @key: the key of the object to be added
-> + */
-> +#define hash_add(hashtable, node, key)						\
-> +	hlist_add_head(node, &hashtable[hash_min(key, HASH_BITS(hashtable))]);
+--Sig_/Naj0.z9RNwrfSqR+Euo/DOm
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
 
-extra ";" at the end to remove.
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
 
-> +
-> +/**
-> + * hash_add_rcu - add an object to a rcu enabled hashtable
-> + * @hashtable: hashtable to add to
-> + * @node: the &struct hlist_node of the object to be added
-> + * @key: the key of the object to be added
-> + */
-> +#define hash_add_rcu(hashtable, node, key)					\
-> +	hlist_add_head_rcu(node, &hashtable[hash_min(key, HASH_BITS(hashtable))]);
+iQIVAwUBUI8RITnsnt1WYoG5AQLVkg//TWTS5EYEIf/CeFBOnBYg6eLC8xJgOKZY
+xYJWho7FVs+WP2l5d7RitaYXlXUTrrMkrfvUPHTQFGs1Tfu5g8Zzpr+cnGR9oX+I
+421a54L95xxDPooDFhryC6saJQchUpm14Zdy0fE0uKgf0l9pK2pIAFZodBDkxTfv
+81C3oaoHos+SdquxCBRubYfUGoKXaGhVTpZy7VPyEOKaD0xPzD1kYhWlrV/YQVZi
+bQW3G+o+nCRVxvkz0fF1bN5ZAXKfDQ6Hazy/ExXb/fKV+CLkU6ZXSXRujHwiwO05
+v/kLyqMKxb7zRodr6phRi+S2wM/288BCvPId5gkwsc3c+aVbMZdeHdT+2t0MHdsG
+zvTOKStf2dSwccjnP2PlyTFdkVqu2YhJ8rZilAzRnP5cF9mrirljAg4wV24EiddT
+PyI6yXO8WBT97Bri3a1/j8MA/Oci4Zsq3kCNRBzZc+UughomRO0AjaUn5w1KzhxG
+BtxMji1xtuY20gUmAGOop1ype99DzQsqOlXSABJb03xE4wSG17nd6rOXYXfslsm8
+bCOgDAY5DB0V9eJrXkHx/B8AnCRpvhKiYp9tQpmQYloDIX0c1vDuwLVZTTM85LE2
+0lKqirg3JzQYYmG1mN5iPf4VaPigyH0Znzs6Wx/xky1oBSsoBRND/AZarA6snTs1
+rd/HxDlUp98=
+=RRzh
+-----END PGP SIGNATURE-----
 
-extra ";" at the end to remove.
-
-> +
-> +/**
-> + * hash_hashed - check whether an object is in any hashtable
-> + * @node: the &struct hlist_node of the object to be checked
-> + */
-> +#define hash_hashed(node) (!hlist_unhashed(node))
-
-Please use a static inline for this instead of a macro.
-
-> +
-> +static inline bool __hash_empty(struct hlist_head *ht, int sz)
-
-int -> unsigned int.
-
-> +{
-> +	int i;
-
-int -> unsigned int.
-
-> +
-> +	for (i = 0; i < sz; i++)
-> +		if (!hlist_empty(&ht[i]))
-> +			return false;
-> +
-> +	return true;
-> +}
-> +
-> +/**
-> + * hash_empty - check whether a hashtable is empty
-> + * @hashtable: hashtable to check
-> + *
-> + * This has to be a macro since HASH_BITS() will not work on pointers since
-> + * it calculates the size during preprocessing.
-> + */
-> +#define hash_empty(hashtable) __hash_empty(hashtable, HASH_SIZE(hashtable))
-> +
-> +/**
-> + * hash_del - remove an object from a hashtable
-> + * @node: &struct hlist_node of the object to remove
-> + */
-> +static inline void hash_del(struct hlist_node *node)
-> +{
-> +	hlist_del_init(node);
-> +}
-> +
-> +/**
-> + * hash_del_rcu - remove an object from a rcu enabled hashtable
-> + * @node: &struct hlist_node of the object to remove
-> + */
-> +static inline void hash_del_rcu(struct hlist_node *node)
-> +{
-> +	hlist_del_init_rcu(node);
-> +}
-> +
-> +/**
-> + * hash_for_each - iterate over a hashtable
-> + * @name: hashtable to iterate
-> + * @bkt: integer to use as bucket loop cursor
-> + * @node: the &struct list_head to use as a loop cursor for each entry
-> + * @obj: the type * to use as a loop cursor for each entry
-> + * @member: the name of the hlist_node within the struct
-> + */
-> +#define hash_for_each(name, bkt, node, obj, member)				\
-> +	for (bkt = 0, node = NULL; node == NULL && bkt < HASH_SIZE(name); bkt++)\
-
-if "bkt" happens to be a dereferenced pointer (unary operator '*'), we
-get into a situation where "*blah" has higher precedence than "=",
-higher than "<", but lower than "++". Any thoughts on fixing this ?
-
-> +		hlist_for_each_entry(obj, node, &name[bkt], member)
-> +
-> +/**
-> + * hash_for_each_rcu - iterate over a rcu enabled hashtable
-> + * @name: hashtable to iterate
-> + * @bkt: integer to use as bucket loop cursor
-> + * @node: the &struct list_head to use as a loop cursor for each entry
-> + * @obj: the type * to use as a loop cursor for each entry
-> + * @member: the name of the hlist_node within the struct
-> + */
-> +#define hash_for_each_rcu(name, bkt, node, obj, member)				\
-> +	for (bkt = 0, node = NULL; node == NULL && bkt < HASH_SIZE(name); bkt++)\
-
-Same comment as above about "bkt".
-
-> +		hlist_for_each_entry_rcu(obj, node, &name[bkt], member)
-> +
-> +/**
-> + * hash_for_each_safe - iterate over a hashtable safe against removal of
-> + * hash entry
-> + * @name: hashtable to iterate
-> + * @bkt: integer to use as bucket loop cursor
-> + * @node: the &struct list_head to use as a loop cursor for each entry
-> + * @tmp: a &struct used for temporary storage
-> + * @obj: the type * to use as a loop cursor for each entry
-> + * @member: the name of the hlist_node within the struct
-> + */
-> +#define hash_for_each_safe(name, bkt, node, tmp, obj, member)			\
-> +	for (bkt = 0, node = NULL; node == NULL && bkt < HASH_SIZE(name); bkt++)\
-
-Same comment as above about "bkt".
-
-Thanks,
-
-Mathieu
-
-> +		hlist_for_each_entry_safe(obj, node, tmp, &name[bkt], member)
-> +
-> +/**
-> + * hash_for_each_possible - iterate over all possible objects hashing to the
-> + * same bucket
-> + * @name: hashtable to iterate
-> + * @obj: the type * to use as a loop cursor for each entry
-> + * @node: the &struct list_head to use as a loop cursor for each entry
-> + * @member: the name of the hlist_node within the struct
-> + * @key: the key of the objects to iterate over
-> + */
-> +#define hash_for_each_possible(name, obj, node, member, key)			\
-> +	hlist_for_each_entry(obj, node,	&name[hash_min(key, HASH_BITS(name))], member)
-> +
-> +/**
-> + * hash_for_each_possible_rcu - iterate over all possible objects hashing to the
-> + * same bucket in an rcu enabled hashtable
-> + * in a rcu enabled hashtable
-> + * @name: hashtable to iterate
-> + * @obj: the type * to use as a loop cursor for each entry
-> + * @node: the &struct list_head to use as a loop cursor for each entry
-> + * @member: the name of the hlist_node within the struct
-> + * @key: the key of the objects to iterate over
-> + */
-> +#define hash_for_each_possible_rcu(name, obj, node, member, key)		\
-> +	hlist_for_each_entry_rcu(obj, node, &name[hash_min(key, HASH_BITS(name))], member)
-> +
-> +/**
-> + * hash_for_each_possible_safe - iterate over all possible objects hashing to the
-> + * same bucket safe against removals
-> + * @name: hashtable to iterate
-> + * @obj: the type * to use as a loop cursor for each entry
-> + * @node: the &struct list_head to use as a loop cursor for each entry
-> + * @tmp: a &struct used for temporary storage
-> + * @member: the name of the hlist_node within the struct
-> + * @key: the key of the objects to iterate over
-> + */
-> +#define hash_for_each_possible_safe(name, obj, node, tmp, member, key)		\
-> +	hlist_for_each_entry_safe(obj, node, tmp,				\
-> +		&name[hash_min(key, HASH_BITS(name))], member)
-> +
-> +
-> +#endif
-> -- 
-> 1.7.12.4
-> 
-
--- 
-Mathieu Desnoyers
-Operating System Efficiency R&D Consultant
-EfficiOS Inc.
-http://www.efficios.com
+--Sig_/Naj0.z9RNwrfSqR+Euo/DOm--
