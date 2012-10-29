@@ -1,41 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:15883 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754869Ab2JPQa5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Oct 2012 12:30:57 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 03/25] SUNRPC: remove BUG_ON() from rpc_run_bc_task
-Date: Tue, 16 Oct 2012 12:30:21 -0400
-Message-Id: <1350405043-39316-3-git-send-email-dros@netapp.com>
-In-Reply-To: <1350405043-39316-1-git-send-email-dros@netapp.com>
-References: <1350405043-39316-1-git-send-email-dros@netapp.com>
+Received: from mail.linuxfoundation.org ([140.211.169.12]:58998 "EHLO
+	mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932647Ab2J2Q2O (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 12:28:14 -0400
+Date: Mon, 29 Oct 2012 09:27:58 -0700
+From: Andrew Morton <akpm@linux-foundation.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
+        Sasha Levin <levinsasha928@gmail.com>, tj@kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v7 09/16] SUNRPC/cache: use new hashtable implementation
+Message-Id: <20121029092758.1ab87d79.akpm@linux-foundation.org>
+In-Reply-To: <CA+55aFzO8DJJP3HBfgqXFac9r3=bYK+_nYe4cuXiNFg-623s6w@mail.gmail.com>
+References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
+	<1351450948-15618-9-git-send-email-levinsasha928@gmail.com>
+	<20121029124229.GC11733@Krystal>
+	<CA+55aFzO8DJJP3HBfgqXFac9r3=bYK+_nYe4cuXiNFg-623s6w@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Replace BUG_ON() with WARN_ON_ONCE() - rpc_run_bc_task calls rpc_init_task()
-then increments the tk_count, so this is a simple sanity check that
-if hit once would hit every time this code path is executed.
+On Mon, 29 Oct 2012 07:49:42 -0700 Linus Torvalds <torvalds@linux-foundation.org> wrote:
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- net/sunrpc/clnt.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+> Because there's no reason to believe that '9' is in any way a worse
+> random number than something page-shift-related, is there?
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index eacdb15..fe8a133 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -915,7 +915,7 @@ struct rpc_task *rpc_run_bc_task(struct rpc_rqst *req,
- 
- 	task->tk_action = call_bc_transmit;
- 	atomic_inc(&task->tk_count);
--	BUG_ON(atomic_read(&task->tk_count) != 2);
-+	WARN_ON_ONCE(atomic_read(&task->tk_count) != 2);
- 	rpc_execute(task);
- 
- out:
--- 
-1.7.9.6 (Apple Git-31.1)
+9 is much better than PAGE_SHIFT.  PAGE_SIZE can vary by a factor of
+16, depending on config.
 
+Everyone thinks 4k, and tests only for that.  There's potential for
+very large performance and behavior changes when their code gets run
+on a 64k PAGE_SIZE machine.
