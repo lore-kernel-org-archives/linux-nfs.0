@@ -1,74 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f46.google.com ([209.85.213.46]:65280 "EHLO
-	mail-yh0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755868Ab2J0MeX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 08:34:23 -0400
-Received: by mail-yh0-f46.google.com with SMTP id m54so690985yhm.19
-        for <linux-nfs@vger.kernel.org>; Sat, 27 Oct 2012 05:34:23 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v8 18/32] vfs: make fchownat retry once on ESTALE errors
-Date: Sat, 27 Oct 2012 08:33:25 -0400
-Message-Id: <1351341219-17837-19-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
-References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
+Received: from mail-pa0-f46.google.com ([209.85.220.46]:64666 "EHLO
+	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757361Ab2J2TBM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 15:01:12 -0400
+Date: Mon, 29 Oct 2012 12:01:07 -0700
+From: Tejun Heo <tj@kernel.org>
+To: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+Cc: Sasha Levin <levinsasha928@gmail.com>,
+        Josh Triplett <josh@joshtriplett.org>, torvalds@linux-foundation.org,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v7 06/16] tracepoint: use new hashtable implementation
+Message-ID: <20121029190107.GD4066@htj.dyndns.org>
+References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
+ <1351450948-15618-6-git-send-email-levinsasha928@gmail.com>
+ <20121029113515.GB9115@Krystal>
+ <CA+1xoqce6uJ6wy3+2CBwsLHKnsz4wD0vt8MBEGKCFfXTvuC0Hg@mail.gmail.com>
+ <20121029183157.GC3097@jtriplet-mobl1>
+ <CA+1xoqfMrn9zDFMJNFfA0NA86wE_DedD97cP1yJ2UQdTjs3uyQ@mail.gmail.com>
+ <20121029185319.GA21546@Krystal>
+ <20121029185814.GC4066@htj.dyndns.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121029185814.GC4066@htj.dyndns.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/open.c | 29 +++++++++++++++++------------
- 1 file changed, 17 insertions(+), 12 deletions(-)
+On Mon, Oct 29, 2012 at 11:58:14AM -0700, Tejun Heo wrote:
+> On Mon, Oct 29, 2012 at 02:53:19PM -0400, Mathieu Desnoyers wrote:
+> > The argument about hash_init being useful to add magic values in the
+> > future only works for the cases where a hash table is declared with
+> > DECLARE_HASHTABLE(). It's completely pointless with DEFINE_HASHTABLE(),
+> > because we could initialize any debugging variables from within
+> > DEFINE_HASHTABLE().
+> 
+> You can do that with [0 .. HASH_SIZE - 1] initializer.
 
-diff --git a/fs/open.c b/fs/open.c
-index 06f04bd..abb52b9 100644
---- a/fs/open.c
-+++ b/fs/open.c
-@@ -564,24 +564,29 @@ SYSCALL_DEFINE5(fchownat, int, dfd, const char __user *, filename, uid_t, user,
- 	struct path path;
- 	int error = -EINVAL;
- 	int lookup_flags;
-+	unsigned int try = 0;
- 
- 	if ((flag & ~(AT_SYMLINK_NOFOLLOW | AT_EMPTY_PATH)) != 0)
--		goto out;
-+		return error;
- 
- 	lookup_flags = (flag & AT_SYMLINK_NOFOLLOW) ? 0 : LOOKUP_FOLLOW;
- 	if (flag & AT_EMPTY_PATH)
- 		lookup_flags |= LOOKUP_EMPTY;
--	error = user_path_at(dfd, filename, lookup_flags, &path);
--	if (error)
--		goto out;
--	error = mnt_want_write(path.mnt);
--	if (error)
--		goto out_release;
--	error = chown_common(&path, user, group);
--	mnt_drop_write(path.mnt);
--out_release:
--	path_put(&path);
--out:
-+
-+	do {
-+		error = user_path_at(dfd, filename, lookup_flags, &path);
-+		if (error)
-+			break;
-+
-+		error = mnt_want_write(path.mnt);
-+		if (!error) {
-+			error = chown_common(&path, user, group);
-+			mnt_drop_write(path.mnt);
-+		}
-+
-+		path_put(&path);
-+		lookup_flags |= LOOKUP_REVAL;
-+	} while (retry_estale(error, try++));
- 	return error;
- }
- 
+And in general, let's please try not to do optimizations which are
+pointless.  Just stick to the usual semantics.  You have an abstract
+data structure - invoke the initializer before using it.  Sure,
+optimize it if it shows up somewhere.  And here, if we do the
+initializers properly, it shouldn't cause any more actual overhead -
+ie. DEFINE_HASHTABLE() will basicallly boil down to all zero
+assignments and the compiler will put the whole thing in .bss anyway.
+
+Thanks.
+
 -- 
-1.7.11.7
-
+tejun
