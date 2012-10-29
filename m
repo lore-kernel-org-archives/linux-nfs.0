@@ -1,68 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:59451 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753337Ab2J0Mdv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Oct 2012 08:33:51 -0400
-Received: by mail-gg0-f174.google.com with SMTP id k5so690906ggd.19
-        for <linux-nfs@vger.kernel.org>; Sat, 27 Oct 2012 05:33:50 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v8 01/32] vfs: add a retry_estale helper function to handle retries on ESTALE
-Date: Sat, 27 Oct 2012 08:33:08 -0400
-Message-Id: <1351341219-17837-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
-References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:45998 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760002Ab2J2Q1J (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 12:27:09 -0400
+MIME-Version: 1.0
+In-Reply-To: <20121029161412.GB18944@Krystal>
+References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
+ <20121029112907.GA9115@Krystal> <CA+1xoqfQn92igbFS1TtrpYuSiy7+Ro02ar=axgqSOJOuE_EVuA@mail.gmail.com>
+ <20121029161412.GB18944@Krystal>
+From: Sasha Levin <levinsasha928@gmail.com>
+Date: Mon, 29 Oct 2012 12:26:47 -0400
+Message-ID: <CA+1xoqfBXM4sjvcZtUncnWAaUxA9_YBod3Hjx3ZO=K1oJO_j7g@mail.gmail.com>
+Subject: Re: [PATCH v7 01/16] hashtable: introduce a small and naive hashtable
+To: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This function is expected to be called from path-based syscalls to help
-them decide whether to try the lookup and call again in the event that
-they got an -ESTALE return back on an earier try.
+On Mon, Oct 29, 2012 at 12:14 PM, Mathieu Desnoyers
+<mathieu.desnoyers@efficios.com> wrote:
+> * Sasha Levin (levinsasha928@gmail.com) wrote:
+>> On Mon, Oct 29, 2012 at 7:29 AM, Mathieu Desnoyers
+>> <mathieu.desnoyers@efficios.com> wrote:
+>> > * Sasha Levin (levinsasha928@gmail.com) wrote:
+>> >> +
+>> >> +     for (i = 0; i < sz; i++)
+>> >> +             INIT_HLIST_HEAD(&ht[sz]);
+>> >
+>> > ouch. How did this work ? Has it been tested at all ?
+>> >
+>> > sz -> i
+>>
+>> Funny enough, it works perfectly. Generally as a test I boot the
+>> kernel in a VM and let it fuzz with trinity for a bit, doing that with
+>> the code above worked flawlessly.
+>>
+>> While it works, it's obviously wrong. Why does it work though? Usually
+>> there's a list op happening pretty soon after that which brings the
+>> list into proper state.
+>>
+>> I've been playing with a patch that adds a magic value into list_head
+>> if CONFIG_DEBUG_LIST is set, and checks that magic in the list debug
+>> code in lib/list_debug.c.
+>>
+>> Does it sound like something useful? If so I'll send that patch out.
+>
+> Most of the calls to this initialization function apply it on zeroed
+> memory (static/kzalloc'd...), which makes it useless. I'd actually be in
+> favor of removing those redundant calls (as I pointed out in another
+> email), and document that zeroed memory don't need to be explicitly
+> initialized.
 
-Currently, we only retry the call once on an ESTALE error, but in the
-event that we decide that that's not enough in the future, we should be
-able to change the logic in this helper without too much effort.
+Why would that make it useless? The idea is that the init functions
+will set the magic field to something random, like:
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- include/linux/fs.h | 21 +++++++++++++++++++++
- 1 file changed, 21 insertions(+)
+.magic = 0xBADBEEF0;
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index b33cfc9..01ff902 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2023,6 +2023,27 @@ extern int finish_open(struct file *file, struct dentry *dentry,
- 			int *opened);
- extern int finish_no_open(struct file *file, struct dentry *dentry);
- 
-+/**
-+ * retry_estale - determine whether the caller should retry an operation
-+ *
-+ * @error: the error we'll be returning
-+ * @try: number of retries already performed
-+ *
-+ * Check to see if the error code was -ESTALE, and then determine whether
-+ * to retry the call based on the number of retries so far. Currently, we only
-+ * retry the call once.
-+ *
-+ * Returns true if the caller should try again.
-+ */
-+static inline bool
-+retry_estale(const long error, const unsigned int try)
-+{
-+	if (likely(error != -ESTALE))
-+		return false;
-+
-+	return !try;
-+}
-+
- /* fs/ioctl.c */
- 
- extern int ioctl_preallocate(struct file *filp, void __user *argp);
--- 
-1.7.11.7
+And have list_add() and friends WARN(.magic != 0xBADBEEF0, "Using an
+uninitialized list\n");
 
+This way we'll catch all places that don't go through list initialization code.
+
+
+Thanks,
+Sasha
