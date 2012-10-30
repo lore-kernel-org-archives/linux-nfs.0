@@ -1,122 +1,209 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.openrapids.net ([64.15.138.104]:58337 "EHLO
-	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1754978Ab2J2MPJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 08:15:09 -0400
-Date: Mon, 29 Oct 2012 08:15:06 -0400
-From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v7 07/16] net,9p: use new hashtable implementation
-Message-ID: <20121029121506.GA11733@Krystal>
-References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com> <1351450948-15618-7-git-send-email-levinsasha928@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1351450948-15618-7-git-send-email-levinsasha928@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:5748 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757123Ab2J3UvD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Oct 2012 16:51:03 -0400
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 07/10] NFSD: Fault injection operations take a per-client forget function
+Date: Tue, 30 Oct 2012 16:50:51 -0400
+Message-Id: <1351630254-26166-8-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
+References: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* Sasha Levin (levinsasha928@gmail.com) wrote:
-> Switch 9p error table to use the new hashtable implementation. This reduces the amount of
-> generic unrelated code in 9p.
-> 
-> Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
-> ---
->  net/9p/error.c | 21 ++++++++++-----------
->  1 file changed, 10 insertions(+), 11 deletions(-)
-> 
-> diff --git a/net/9p/error.c b/net/9p/error.c
-> index 2ab2de7..a5cc7dd 100644
-> --- a/net/9p/error.c
-> +++ b/net/9p/error.c
-> @@ -34,7 +34,7 @@
->  #include <linux/jhash.h>
->  #include <linux/errno.h>
->  #include <net/9p/9p.h>
-> -
-> +#include <linux/hashtable.h>
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-missing newline.
+The eventual goal is to forget state based on ip address, so it makes
+sense to call this function in a for-each-client loop until the correct
+amount of state is forgotten.  I also use this patch as an opportunity
+to rename the forget function from "func()" to "forget()".
 
->  /**
->   * struct errormap - map string errors from Plan 9 to Linux numeric ids
->   * @name: string sent over 9P
-> @@ -50,8 +50,8 @@ struct errormap {
->  	struct hlist_node list;
->  };
->  
-> -#define ERRHASHSZ		32
-> -static struct hlist_head hash_errmap[ERRHASHSZ];
-> +#define ERR_HASH_BITS 5
-> +static DEFINE_HASHTABLE(hash_errmap, ERR_HASH_BITS);
->  
->  /* FixMe - reduce to a reasonable size */
->  static struct errormap errmap[] = {
-> @@ -193,18 +193,17 @@ static struct errormap errmap[] = {
->  int p9_error_init(void)
->  {
->  	struct errormap *c;
-> -	int bucket;
-> +	u32 hash;
->  
->  	/* initialize hash table */
-> -	for (bucket = 0; bucket < ERRHASHSZ; bucket++)
-> -		INIT_HLIST_HEAD(&hash_errmap[bucket]);
-> +	hash_init(hash_errmap);
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfsd/fault_inject.c | 16 +++++++++-------
+ fs/nfsd/nfs4state.c    | 42 ++++++------------------------------------
+ fs/nfsd/state.h        | 12 +++++++-----
+ 3 files changed, 22 insertions(+), 48 deletions(-)
 
-As for most of the other patches in this series, the hash_init is
-redundant for a statically defined hash table.
-
-Thanks,
-
-Mathieu
-
->  
->  	/* load initial error map into hash table */
->  	for (c = errmap; c->name != NULL; c++) {
->  		c->namelen = strlen(c->name);
-> -		bucket = jhash(c->name, c->namelen, 0) % ERRHASHSZ;
-> +		hash = jhash(c->name, c->namelen, 0);
->  		INIT_HLIST_NODE(&c->list);
-> -		hlist_add_head(&c->list, &hash_errmap[bucket]);
-> +		hash_add(hash_errmap, &c->list, hash);
->  	}
->  
->  	return 1;
-> @@ -223,13 +222,13 @@ int p9_errstr2errno(char *errstr, int len)
->  	int errno;
->  	struct hlist_node *p;
->  	struct errormap *c;
-> -	int bucket;
-> +	u32 hash;
->  
->  	errno = 0;
->  	p = NULL;
->  	c = NULL;
-> -	bucket = jhash(errstr, len, 0) % ERRHASHSZ;
-> -	hlist_for_each_entry(c, p, &hash_errmap[bucket], list) {
-> +	hash = jhash(errstr, len, 0);
-> +	hash_for_each_possible(hash_errmap, c, p, list, hash) {
->  		if (c->namelen == len && !memcmp(c->name, errstr, len)) {
->  			errno = c->val;
->  			break;
-> -- 
-> 1.7.12.4
-> 
-
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index 4b385a1..bf6161a 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -13,29 +13,29 @@
+ 
+ struct nfsd_fault_inject_op {
+ 	char *file;
+-	void (*func)(u64);
++	u64 (*forget)(struct nfs4_client *, u64);
+ };
+ 
+ static struct nfsd_fault_inject_op inject_ops[] = {
+ 	{
+ 		.file   = "forget_clients",
+-		.func   = nfsd_forget_clients,
++		.forget = nfsd_forget_client,
+ 	},
+ 	{
+ 		.file   = "forget_locks",
+-		.func   = nfsd_forget_locks,
++		.forget = nfsd_forget_client_locks,
+ 	},
+ 	{
+ 		.file   = "forget_openowners",
+-		.func   = nfsd_forget_openowners,
++		.forget = nfsd_forget_client_openowners,
+ 	},
+ 	{
+ 		.file   = "forget_delegations",
+-		.func   = nfsd_forget_delegations,
++		.forget = nfsd_forget_client_delegations,
+ 	},
+ 	{
+ 		.file   = "recall_delegations",
+-		.func   = nfsd_recall_delegations,
++		.forget = nfsd_recall_client_delegations,
+ 	},
+ };
+ 
+@@ -44,6 +44,7 @@ static struct dentry *debug_dir;
+ 
+ static int nfsd_inject_set(void *op_ptr, u64 val)
+ {
++	u64 count = 0;
+ 	struct nfsd_fault_inject_op *op = op_ptr;
+ 
+ 	if (val == 0)
+@@ -52,8 +53,9 @@ static int nfsd_inject_set(void *op_ptr, u64 val)
+ 		printk(KERN_INFO "NFSD Fault Injection: %s (n = %llu)", op->file, val);
+ 
+ 	nfs4_lock_state();
+-	op->func(val);
++	count = nfsd_for_n_state(val, op->forget);
+ 	nfs4_unlock_state();
++	printk(KERN_INFO "NFSD: %s: found %llu", op->file, count);
+ 	return 0;
+ }
+ 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 49ab5c4..3c64dbc 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4556,14 +4556,14 @@ nfs4_check_open_reclaim(clientid_t *clid, bool sessions)
+ 
+ #ifdef CONFIG_NFSD_FAULT_INJECTION
+ 
+-static u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
++u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
+ {
+ 	nfsd4_client_record_remove(clp);
+ 	expire_client(clp);
+ 	return 1;
+ }
+ 
+-static u64 nfsd_forget_client_locks(struct nfs4_client *clp, u64 max)
++u64 nfsd_forget_client_locks(struct nfs4_client *clp, u64 max)
+ {
+ 	struct nfs4_stateowner *sop, *next;
+ 	u64 count = 0;
+@@ -4581,7 +4581,7 @@ static u64 nfsd_forget_client_locks(struct nfs4_client *clp, u64 max)
+ 	return count;
+ }
+ 
+-static u64 nfsd_forget_client_openowners(struct nfs4_client *clp, u64 max)
++u64 nfsd_forget_client_openowners(struct nfs4_client *clp, u64 max)
+ {
+ 	struct nfs4_openowner *oop, *next;
+ 	u64 count = 0;
+@@ -4609,7 +4609,7 @@ static u64 nfsd_find_n_delegations(struct nfs4_client *clp, u64 max,
+ 	return count;
+ }
+ 
+-static u64 nfsd_forget_client_delegations(struct nfs4_client *clp, u64 max)
++u64 nfsd_forget_client_delegations(struct nfs4_client *clp, u64 max)
+ {
+ 	struct nfs4_delegation *dp, *next;
+ 	LIST_HEAD(victims);
+@@ -4625,7 +4625,7 @@ static u64 nfsd_forget_client_delegations(struct nfs4_client *clp, u64 max)
+ 	return count;
+ }
+ 
+-static u64 nfsd_recall_client_delegations(struct nfs4_client *clp, u64 max)
++u64 nfsd_recall_client_delegations(struct nfs4_client *clp, u64 max)
+ {
+ 	struct nfs4_delegation *dp, *next;
+ 	LIST_HEAD(victims);
+@@ -4641,7 +4641,7 @@ static u64 nfsd_recall_client_delegations(struct nfs4_client *clp, u64 max)
+ 	return count;
+ }
+ 
+-static u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
++u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
+ {
+ 	struct nfs4_client *clp, *next;
+ 	u64 count = 0;
+@@ -4655,36 +4655,6 @@ static u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
+ 	return count;
+ }
+ 
+-void nfsd_forget_clients(u64 num)
+-{
+-	u64 count = nfsd_for_n_state(num, nfsd_forget_client);
+-	printk(KERN_INFO "NFSD: Forgot %llu clients", count);
+-}
+-
+-void nfsd_forget_locks(u64 num)
+-{
+-	u64 count = nfsd_for_n_state(num, nfsd_forget_client_locks);
+-	printk(KERN_INFO "NFSD: Forgot %llu locks", count);
+-}
+-
+-void nfsd_forget_openowners(u64 num)
+-{
+-	u64 count = nfsd_for_n_state(num, nfsd_forget_client_openowners);
+-	printk(KERN_INFO "NFSD: Forgot %llu open owners", count);
+-}
+-
+-void nfsd_forget_delegations(u64 num)
+-{
+-	u64 count = nfsd_for_n_state(num, nfsd_forget_client_delegations);
+-	printk(KERN_INFO "NFSD: Forgot %llu delegations", count);
+-}
+-
+-void nfsd_recall_delegations(u64 num)
+-{
+-	u64 count = nfsd_for_n_state(num, nfsd_recall_client_delegations);
+-	printk(KERN_INFO "NFSD: Recalled %llu delegations", count);
+-}
+-
+ #endif /* CONFIG_NFSD_FAULT_INJECTION */
+ 
+ /* initialization to perform at module load time: */
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index d2f52a1..9e133e5 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -486,11 +486,13 @@ extern void nfsd4_record_grace_done(struct net *net, time_t boot_time);
+ #ifdef CONFIG_NFSD_FAULT_INJECTION
+ int nfsd_fault_inject_init(void);
+ void nfsd_fault_inject_cleanup(void);
+-void nfsd_forget_clients(u64);
+-void nfsd_forget_locks(u64);
+-void nfsd_forget_openowners(u64);
+-void nfsd_forget_delegations(u64);
+-void nfsd_recall_delegations(u64);
++u64 nfsd_for_n_state(u64, u64 (*)(struct nfs4_client *, u64));
++
++u64 nfsd_forget_client(struct nfs4_client *, u64);
++u64 nfsd_forget_client_locks(struct nfs4_client*, u64);
++u64 nfsd_forget_client_openowners(struct nfs4_client *, u64);
++u64 nfsd_forget_client_delegations(struct nfs4_client *, u64);
++u64 nfsd_recall_client_delegations(struct nfs4_client *, u64);
+ #else /* CONFIG_NFSD_FAULT_INJECTION */
+ static inline int nfsd_fault_inject_init(void) { return 0; }
+ static inline void nfsd_fault_inject_cleanup(void) {}
 -- 
-Mathieu Desnoyers
-Operating System Efficiency R&D Consultant
-EfficiOS Inc.
-http://www.efficios.com
+1.8.0
+
