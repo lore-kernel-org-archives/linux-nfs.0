@@ -1,8 +1,8 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f53.google.com ([209.85.216.53]:65273 "EHLO
-	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755033Ab2J1TD5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Oct 2012 15:03:57 -0400
+Received: from mail-qc0-f174.google.com ([209.85.216.174]:46116 "EHLO
+	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932788Ab2J3Sqx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Oct 2012 14:46:53 -0400
 From: Sasha Levin <levinsasha928@gmail.com>
 To: torvalds@linux-foundation.org
 Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
@@ -18,322 +18,229 @@ Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
         linux-nfs@vger.kernel.org, dev@openvswitch.org,
         rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
         Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH v7 14/16] net,rds: use new hashtable implementation
-Date: Sun, 28 Oct 2012 15:02:26 -0400
-Message-Id: <1351450948-15618-14-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
-References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
+Subject: [PATCH v8 01/16] hashtable: introduce a small and naive hashtable
+Date: Tue, 30 Oct 2012 14:45:57 -0400
+Message-Id: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch rds to use the new hashtable implementation. This reduces the amount of
-generic unrelated code in rds.
+This hashtable implementation is using hlist buckets to provide a simple
+hashtable to prevent it from getting reimplemented all over the kernel.
 
 Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
 ---
- net/rds/bind.c       |  28 +++++++++-----
- net/rds/connection.c | 102 +++++++++++++++++++++++----------------------------
- 2 files changed, 63 insertions(+), 67 deletions(-)
 
-diff --git a/net/rds/bind.c b/net/rds/bind.c
-index 637bde5..79d65ce 100644
---- a/net/rds/bind.c
-+++ b/net/rds/bind.c
-@@ -36,16 +36,16 @@
- #include <linux/if_arp.h>
- #include <linux/jhash.h>
- #include <linux/ratelimit.h>
-+#include <linux/hashtable.h>
- #include "rds.h"
- 
--#define BIND_HASH_SIZE 1024
--static struct hlist_head bind_hash_table[BIND_HASH_SIZE];
-+#define BIND_HASH_BITS 10
-+static DEFINE_HASHTABLE(bind_hash_table, BIND_HASH_BITS);
- static DEFINE_SPINLOCK(rds_bind_lock);
- 
--static struct hlist_head *hash_to_bucket(__be32 addr, __be16 port)
-+static u32 rds_hash(__be32 addr, __be16 port)
- {
--	return bind_hash_table + (jhash_2words((u32)addr, (u32)port, 0) &
--				  (BIND_HASH_SIZE - 1));
-+	return jhash_2words((u32)addr, (u32)port, 0);
- }
- 
- static struct rds_sock *rds_bind_lookup(__be32 addr, __be16 port,
-@@ -53,12 +53,12 @@ static struct rds_sock *rds_bind_lookup(__be32 addr, __be16 port,
- {
- 	struct rds_sock *rs;
- 	struct hlist_node *node;
--	struct hlist_head *head = hash_to_bucket(addr, port);
-+	u32 key = rds_hash(addr, port);
- 	u64 cmp;
- 	u64 needle = ((u64)be32_to_cpu(addr) << 32) | be16_to_cpu(port);
- 
- 	rcu_read_lock();
--	hlist_for_each_entry_rcu(rs, node, head, rs_bound_node) {
-+	hash_for_each_possible_rcu(bind_hash_table, rs, node, rs_bound_node, key) {
- 		cmp = ((u64)be32_to_cpu(rs->rs_bound_addr) << 32) |
- 		      be16_to_cpu(rs->rs_bound_port);
- 
-@@ -74,13 +74,13 @@ static struct rds_sock *rds_bind_lookup(__be32 addr, __be16 port,
- 		 * make sure our addr and port are set before
- 		 * we are added to the list, other people
- 		 * in rcu will find us as soon as the
--		 * hlist_add_head_rcu is done
-+		 * hash_add_rcu is done
- 		 */
- 		insert->rs_bound_addr = addr;
- 		insert->rs_bound_port = port;
- 		rds_sock_addref(insert);
- 
--		hlist_add_head_rcu(&insert->rs_bound_node, head);
-+		hash_add_rcu(bind_hash_table, &insert->rs_bound_node, key);
- 	}
- 	return NULL;
- }
-@@ -152,7 +152,7 @@ void rds_remove_bound(struct rds_sock *rs)
- 		  rs, &rs->rs_bound_addr,
- 		  ntohs(rs->rs_bound_port));
- 
--		hlist_del_init_rcu(&rs->rs_bound_node);
-+		hash_del_rcu(&rs->rs_bound_node);
- 		rds_sock_put(rs);
- 		rs->rs_bound_addr = 0;
- 	}
-@@ -202,3 +202,11 @@ out:
- 		synchronize_rcu();
- 	return ret;
- }
+Changes from v8:
+
+ - Addressed comments from Tejun Heo and Mathieu Desnoyers.
+
+
+ include/linux/hashtable.h | 196 ++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 196 insertions(+)
+ create mode 100644 include/linux/hashtable.h
+
+diff --git a/include/linux/hashtable.h b/include/linux/hashtable.h
+new file mode 100644
+index 0000000..3c1a9cb
+--- /dev/null
++++ b/include/linux/hashtable.h
+@@ -0,0 +1,196 @@
++/*
++ * Statically sized hash table implementation
++ * (C) 2012  Sasha Levin <levinsasha928@gmail.com>
++ */
 +
-+static int __init rds_init(void)
++#ifndef _LINUX_HASHTABLE_H
++#define _LINUX_HASHTABLE_H
++
++#include <linux/list.h>
++#include <linux/types.h>
++#include <linux/kernel.h>
++#include <linux/hash.h>
++#include <linux/rculist.h>
++
++#define DEFINE_HASHTABLE(name, bits)						\
++	struct hlist_head name[1 << (bits)] =					\
++			{ [0 ... ((1 << (bits)) - 1)] = HLIST_HEAD_INIT }
++
++#define DECLARE_HASHTABLE(name, bits)                                   	\
++	struct hlist_head name[1 << (bits)]
++
++#define HASH_SIZE(name) (ARRAY_SIZE(name))
++#define HASH_BITS(name) ilog2(HASH_SIZE(name))
++
++/* Use hash_32 when possible to allow for fast 32bit hashing in 64bit kernels. */
++#define hash_min(val, bits)							\
++({										\
++	sizeof(val) <= 4 ?							\
++	hash_32(val, bits) :							\
++	hash_long(val, bits);							\
++})
++
++static inline void __hash_init(struct hlist_head *ht, unsigned int sz)
 +{
-+	hash_init(bind_hash_table);
-+	return 0;
++	unsigned int i;
++
++	for (i = 0; i < sz; i++)
++		INIT_HLIST_HEAD(&ht[i]);
 +}
 +
-+module_init(rds_init);
-diff --git a/net/rds/connection.c b/net/rds/connection.c
-index 9e07c75..5b09ee1 100644
---- a/net/rds/connection.c
-+++ b/net/rds/connection.c
-@@ -34,28 +34,24 @@
- #include <linux/list.h>
- #include <linux/slab.h>
- #include <linux/export.h>
-+#include <linux/hashtable.h>
- #include <net/inet_hashtables.h>
- 
- #include "rds.h"
- #include "loop.h"
- 
- #define RDS_CONNECTION_HASH_BITS 12
--#define RDS_CONNECTION_HASH_ENTRIES (1 << RDS_CONNECTION_HASH_BITS)
--#define RDS_CONNECTION_HASH_MASK (RDS_CONNECTION_HASH_ENTRIES - 1)
- 
- /* converting this to RCU is a chore for another day.. */
- static DEFINE_SPINLOCK(rds_conn_lock);
- static unsigned long rds_conn_count;
--static struct hlist_head rds_conn_hash[RDS_CONNECTION_HASH_ENTRIES];
-+static DEFINE_HASHTABLE(rds_conn_hash, RDS_CONNECTION_HASH_BITS);
- static struct kmem_cache *rds_conn_slab;
- 
--static struct hlist_head *rds_conn_bucket(__be32 laddr, __be32 faddr)
-+static unsigned long rds_conn_hashfn(__be32 laddr, __be32 faddr)
- {
- 	/* Pass NULL, don't need struct net for hash */
--	unsigned long hash = inet_ehashfn(NULL,
--					  be32_to_cpu(laddr), 0,
--					  be32_to_cpu(faddr), 0);
--	return &rds_conn_hash[hash & RDS_CONNECTION_HASH_MASK];
-+	return inet_ehashfn(NULL,  be32_to_cpu(laddr), 0,  be32_to_cpu(faddr), 0);
- }
- 
- #define rds_conn_info_set(var, test, suffix) do {		\
-@@ -64,14 +60,14 @@ static struct hlist_head *rds_conn_bucket(__be32 laddr, __be32 faddr)
- } while (0)
- 
- /* rcu read lock must be held or the connection spinlock */
--static struct rds_connection *rds_conn_lookup(struct hlist_head *head,
--					      __be32 laddr, __be32 faddr,
-+static struct rds_connection *rds_conn_lookup(__be32 laddr, __be32 faddr,
- 					      struct rds_transport *trans)
- {
- 	struct rds_connection *conn, *ret = NULL;
- 	struct hlist_node *pos;
-+	unsigned long key = rds_conn_hashfn(laddr, faddr);
- 
--	hlist_for_each_entry_rcu(conn, pos, head, c_hash_node) {
-+	hash_for_each_possible_rcu(rds_conn_hash, conn, pos, c_hash_node, key) {
- 		if (conn->c_faddr == faddr && conn->c_laddr == laddr &&
- 				conn->c_trans == trans) {
- 			ret = conn;
-@@ -117,13 +113,12 @@ static struct rds_connection *__rds_conn_create(__be32 laddr, __be32 faddr,
- 				       int is_outgoing)
- {
- 	struct rds_connection *conn, *parent = NULL;
--	struct hlist_head *head = rds_conn_bucket(laddr, faddr);
- 	struct rds_transport *loop_trans;
- 	unsigned long flags;
- 	int ret;
- 
- 	rcu_read_lock();
--	conn = rds_conn_lookup(head, laddr, faddr, trans);
-+	conn = rds_conn_lookup(laddr, faddr, trans);
- 	if (conn && conn->c_loopback && conn->c_trans != &rds_loop_transport &&
- 	    !is_outgoing) {
- 		/* This is a looped back IB connection, and we're
-@@ -224,13 +219,15 @@ static struct rds_connection *__rds_conn_create(__be32 laddr, __be32 faddr,
- 		/* Creating normal conn */
- 		struct rds_connection *found;
- 
--		found = rds_conn_lookup(head, laddr, faddr, trans);
-+		found = rds_conn_lookup(laddr, faddr, trans);
- 		if (found) {
- 			trans->conn_free(conn->c_transport_data);
- 			kmem_cache_free(rds_conn_slab, conn);
- 			conn = found;
- 		} else {
--			hlist_add_head_rcu(&conn->c_hash_node, head);
-+			unsigned long key = rds_conn_hashfn(laddr, faddr);
++/**
++ * hash_init - initialize a hash table
++ * @hashtable: hashtable to be initialized
++ *
++ * Calculates the size of the hashtable from the given parameter, otherwise
++ * same as hash_init_size.
++ *
++ * This has to be a macro since HASH_BITS() will not work on pointers since
++ * it calculates the size during preprocessing.
++ */
++#define hash_init(hashtable) __hash_init(hashtable, HASH_SIZE(hashtable))
 +
-+			hash_add_rcu(rds_conn_hash, &conn->c_hash_node, key);
- 			rds_cong_add_conn(conn);
- 			rds_conn_count++;
- 		}
-@@ -303,7 +300,7 @@ void rds_conn_shutdown(struct rds_connection *conn)
- 	 * conn - the reconnect is always triggered by the active peer. */
- 	cancel_delayed_work_sync(&conn->c_conn_w);
- 	rcu_read_lock();
--	if (!hlist_unhashed(&conn->c_hash_node)) {
-+	if (hash_hashed(&conn->c_hash_node)) {
- 		rcu_read_unlock();
- 		rds_queue_reconnect(conn);
- 	} else {
-@@ -329,7 +326,7 @@ void rds_conn_destroy(struct rds_connection *conn)
- 
- 	/* Ensure conn will not be scheduled for reconnect */
- 	spin_lock_irq(&rds_conn_lock);
--	hlist_del_init_rcu(&conn->c_hash_node);
-+	hash_del(&conn->c_hash_node);
- 	spin_unlock_irq(&rds_conn_lock);
- 	synchronize_rcu();
- 
-@@ -375,7 +372,6 @@ static void rds_conn_message_info(struct socket *sock, unsigned int len,
- 				  struct rds_info_lengths *lens,
- 				  int want_send)
- {
--	struct hlist_head *head;
- 	struct hlist_node *pos;
- 	struct list_head *list;
- 	struct rds_connection *conn;
-@@ -388,27 +384,24 @@ static void rds_conn_message_info(struct socket *sock, unsigned int len,
- 
- 	rcu_read_lock();
- 
--	for (i = 0, head = rds_conn_hash; i < ARRAY_SIZE(rds_conn_hash);
--	     i++, head++) {
--		hlist_for_each_entry_rcu(conn, pos, head, c_hash_node) {
--			if (want_send)
--				list = &conn->c_send_queue;
--			else
--				list = &conn->c_retrans;
--
--			spin_lock_irqsave(&conn->c_lock, flags);
--
--			/* XXX too lazy to maintain counts.. */
--			list_for_each_entry(rm, list, m_conn_item) {
--				total++;
--				if (total <= len)
--					rds_inc_info_copy(&rm->m_inc, iter,
--							  conn->c_laddr,
--							  conn->c_faddr, 0);
--			}
--
--			spin_unlock_irqrestore(&conn->c_lock, flags);
-+	hash_for_each_rcu(rds_conn_hash, i, pos, conn, c_hash_node) {
-+		if (want_send)
-+			list = &conn->c_send_queue;
-+		else
-+			list = &conn->c_retrans;
++/**
++ * hash_add - add an object to a hashtable
++ * @hashtable: hashtable to add to
++ * @node: the &struct hlist_node of the object to be added
++ * @key: the key of the object to be added
++ */
++#define hash_add(hashtable, node, key)						\
++	hlist_add_head(node, &hashtable[hash_min(key, HASH_BITS(hashtable))])
 +
-+		spin_lock_irqsave(&conn->c_lock, flags);
++/**
++ * hash_add_rcu - add an object to a rcu enabled hashtable
++ * @hashtable: hashtable to add to
++ * @node: the &struct hlist_node of the object to be added
++ * @key: the key of the object to be added
++ */
++#define hash_add_rcu(hashtable, node, key)					\
++	hlist_add_head_rcu(node, &hashtable[hash_min(key, HASH_BITS(hashtable))])
 +
-+		/* XXX too lazy to maintain counts.. */
-+		list_for_each_entry(rm, list, m_conn_item) {
-+			total++;
-+			if (total <= len)
-+				rds_inc_info_copy(&rm->m_inc, iter,
-+						  conn->c_laddr,
-+						  conn->c_faddr, 0);
- 		}
++/**
++ * hash_hashed - check whether an object is in any hashtable
++ * @node: the &struct hlist_node of the object to be checked
++ */
++static inline bool hash_hashed(struct hlist_node *node)
++{
++	return !hlist_unhashed(node);
++}
 +
-+		spin_unlock_irqrestore(&conn->c_lock, flags);
- 	}
- 	rcu_read_unlock();
- 
-@@ -438,7 +431,6 @@ void rds_for_each_conn_info(struct socket *sock, unsigned int len,
- 			  size_t item_len)
- {
- 	uint64_t buffer[(item_len + 7) / 8];
--	struct hlist_head *head;
- 	struct hlist_node *pos;
- 	struct rds_connection *conn;
- 	size_t i;
-@@ -448,23 +440,19 @@ void rds_for_each_conn_info(struct socket *sock, unsigned int len,
- 	lens->nr = 0;
- 	lens->each = item_len;
- 
--	for (i = 0, head = rds_conn_hash; i < ARRAY_SIZE(rds_conn_hash);
--	     i++, head++) {
--		hlist_for_each_entry_rcu(conn, pos, head, c_hash_node) {
--
--			/* XXX no c_lock usage.. */
--			if (!visitor(conn, buffer))
--				continue;
--
--			/* We copy as much as we can fit in the buffer,
--			 * but we count all items so that the caller
--			 * can resize the buffer. */
--			if (len >= item_len) {
--				rds_info_copy(iter, buffer, item_len);
--				len -= item_len;
--			}
--			lens->nr++;
-+	hash_for_each_rcu(rds_conn_hash, i, pos, conn, c_hash_node) {
-+		/* XXX no c_lock usage.. */
-+		if (!visitor(conn, buffer))
-+			continue;
++static inline bool __hash_empty(struct hlist_head *ht, unsigned int sz)
++{
++	unsigned int i;
 +
-+		/* We copy as much as we can fit in the buffer,
-+		 * but we count all items so that the caller
-+		 * can resize the buffer. */
-+		if (len >= item_len) {
-+			rds_info_copy(iter, buffer, item_len);
-+			len -= item_len;
- 		}
-+		lens->nr++;
- 	}
- 	rcu_read_unlock();
- }
-@@ -518,6 +506,8 @@ int rds_conn_init(void)
- 	rds_info_register_func(RDS_INFO_RETRANS_MESSAGES,
- 			       rds_conn_message_info_retrans);
- 
-+	hash_init(rds_conn_hash);
++	for (i = 0; i < sz; i++)
++		if (!hlist_empty(&ht[i]))
++			return false;
 +
- 	return 0;
- }
- 
-@@ -525,8 +515,6 @@ void rds_conn_exit(void)
- {
- 	rds_loop_exit();
- 
--	WARN_ON(!hlist_empty(rds_conn_hash));
--
- 	kmem_cache_destroy(rds_conn_slab);
- 
- 	rds_info_deregister_func(RDS_INFO_CONNECTIONS, rds_conn_info);
++	return true;
++}
++
++/**
++ * hash_empty - check whether a hashtable is empty
++ * @hashtable: hashtable to check
++ *
++ * This has to be a macro since HASH_BITS() will not work on pointers since
++ * it calculates the size during preprocessing.
++ */
++#define hash_empty(hashtable) __hash_empty(hashtable, HASH_SIZE(hashtable))
++
++/**
++ * hash_del - remove an object from a hashtable
++ * @node: &struct hlist_node of the object to remove
++ */
++static inline void hash_del(struct hlist_node *node)
++{
++	hlist_del_init(node);
++}
++
++/**
++ * hash_del_rcu - remove an object from a rcu enabled hashtable
++ * @node: &struct hlist_node of the object to remove
++ */
++static inline void hash_del_rcu(struct hlist_node *node)
++{
++	hlist_del_init_rcu(node);
++}
++
++/**
++ * hash_for_each - iterate over a hashtable
++ * @name: hashtable to iterate
++ * @bkt: integer to use as bucket loop cursor
++ * @node: the &struct list_head to use as a loop cursor for each entry
++ * @obj: the type * to use as a loop cursor for each entry
++ * @member: the name of the hlist_node within the struct
++ */
++#define hash_for_each(name, bkt, node, obj, member)				\
++	for ((bkt) = 0, node = NULL; node == NULL && (bkt) < HASH_SIZE(name); (bkt)++)\
++		hlist_for_each_entry(obj, node, &name[bkt], member)
++
++/**
++ * hash_for_each_rcu - iterate over a rcu enabled hashtable
++ * @name: hashtable to iterate
++ * @bkt: integer to use as bucket loop cursor
++ * @node: the &struct list_head to use as a loop cursor for each entry
++ * @obj: the type * to use as a loop cursor for each entry
++ * @member: the name of the hlist_node within the struct
++ */
++#define hash_for_each_rcu(name, bkt, node, obj, member)				\
++	for ((bkt) = 0, node = NULL; node == NULL && (bkt) < HASH_SIZE(name); (bkt)++)\
++		hlist_for_each_entry_rcu(obj, node, &name[bkt], member)
++
++/**
++ * hash_for_each_safe - iterate over a hashtable safe against removal of
++ * hash entry
++ * @name: hashtable to iterate
++ * @bkt: integer to use as bucket loop cursor
++ * @node: the &struct list_head to use as a loop cursor for each entry
++ * @tmp: a &struct used for temporary storage
++ * @obj: the type * to use as a loop cursor for each entry
++ * @member: the name of the hlist_node within the struct
++ */
++#define hash_for_each_safe(name, bkt, node, tmp, obj, member)			\
++	for ((bkt) = 0, node = NULL; node == NULL && (bkt) < HASH_SIZE(name); (bkt)++)\
++		hlist_for_each_entry_safe(obj, node, tmp, &name[bkt], member)
++
++/**
++ * hash_for_each_possible - iterate over all possible objects hashing to the
++ * same bucket
++ * @name: hashtable to iterate
++ * @obj: the type * to use as a loop cursor for each entry
++ * @node: the &struct list_head to use as a loop cursor for each entry
++ * @member: the name of the hlist_node within the struct
++ * @key: the key of the objects to iterate over
++ */
++#define hash_for_each_possible(name, obj, node, member, key)			\
++	hlist_for_each_entry(obj, node,	&name[hash_min(key, HASH_BITS(name))], member)
++
++/**
++ * hash_for_each_possible_rcu - iterate over all possible objects hashing to the
++ * same bucket in an rcu enabled hashtable
++ * in a rcu enabled hashtable
++ * @name: hashtable to iterate
++ * @obj: the type * to use as a loop cursor for each entry
++ * @node: the &struct list_head to use as a loop cursor for each entry
++ * @member: the name of the hlist_node within the struct
++ * @key: the key of the objects to iterate over
++ */
++#define hash_for_each_possible_rcu(name, obj, node, member, key)		\
++	hlist_for_each_entry_rcu(obj, node, &name[hash_min(key, HASH_BITS(name))], member)
++
++/**
++ * hash_for_each_possible_safe - iterate over all possible objects hashing to the
++ * same bucket safe against removals
++ * @name: hashtable to iterate
++ * @obj: the type * to use as a loop cursor for each entry
++ * @node: the &struct list_head to use as a loop cursor for each entry
++ * @tmp: a &struct used for temporary storage
++ * @member: the name of the hlist_node within the struct
++ * @key: the key of the objects to iterate over
++ */
++#define hash_for_each_possible_safe(name, obj, node, tmp, member, key)		\
++	hlist_for_each_entry_safe(obj, node, tmp,				\
++		&name[hash_min(key, HASH_BITS(name))], member)
++
++
++#endif
 -- 
 1.7.12.4
 
