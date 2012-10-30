@@ -1,147 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:5748 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:40705 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750961Ab2J3UvC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Oct 2012 16:51:02 -0400
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 06/10] NFSD: Clean up forgetting and recalling delegations
-Date: Tue, 30 Oct 2012 16:50:50 -0400
-Message-Id: <1351630254-26166-7-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
-References: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
+	id S1751410Ab2J3QeO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Oct 2012 12:34:14 -0400
+Date: Tue, 30 Oct 2012 12:33:55 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        michael.brantley@deshaw.com, hch@infradead.org, miklos@szeredi.hu,
+        pstaubach@exagrid.com
+Subject: Re: [PATCH v8 11/32] vfs: make do_unlinkat retry on ESTALE errors
+Message-ID: <20121030123355.5c404373@tlielax.poochiereds.net>
+In-Reply-To: <20121030161429.GD24618@fieldses.org>
+References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
+	<1351341219-17837-12-git-send-email-jlayton@redhat.com>
+	<20121030161429.GD24618@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Tue, 30 Oct 2012 12:14:29 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-Once I have a client, I can easily use its delegation list rather than
-searching the file hash table for delegations to remove.
+> On Sat, Oct 27, 2012 at 08:33:18AM -0400, Jeff Layton wrote:
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  fs/namei.c | 12 ++++++++++--
+> >  1 file changed, 10 insertions(+), 2 deletions(-)
+> > 
+> > diff --git a/fs/namei.c b/fs/namei.c
+> > index 7c9bb50..467b9f1 100644
+> > --- a/fs/namei.c
+> > +++ b/fs/namei.c
+> > @@ -3446,9 +3446,13 @@ static long do_unlinkat(int dfd, const char __user *pathname)
+> >  	struct filename *name;
+> >  	struct dentry *dentry;
+> >  	struct nameidata nd;
+> > -	struct inode *inode = NULL;
+> > +	struct inode *inode;
+> > +	unsigned int try = 0;
+> > +	unsigned int lookup_flags = LOOKUP_PARENT;
+> >  
+> > -	name = user_path_parent(dfd, pathname, &nd, 0);
+> > +retry:
+> > +	inode = NULL;
+> 
+> So, you fail after "inode" was set (say vfs_unlink returned an error)
+> the first time, then before "inode" was set (lookup_hash returns an
+> error), and you end up incorrectly doing another iput() the second time
+> through if you don't reset inode here?
+> 
+> (I think I made the same mistake in another patch, actually....)
+> 
+> --b.
+> 
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfsd/nfs4state.c | 94 ++++++++++++++++++++++++++++-------------------------
- 1 file changed, 50 insertions(+), 44 deletions(-)
+Correct. That's a new delta in this patch, btw. The original patch
+didn't do that and it was causing a busy inodes on umount bug in
+testing.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 552925e..49ab5c4 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4595,6 +4595,52 @@ static u64 nfsd_forget_client_openowners(struct nfs4_client *clp, u64 max)
- 	return count;
- }
- 
-+static u64 nfsd_find_n_delegations(struct nfs4_client *clp, u64 max,
-+				   struct list_head *victims)
-+{
-+	struct nfs4_delegation *dp, *next;
-+	u64 count = 0;
-+
-+	list_for_each_entry_safe(dp, next, &clp->cl_delegations, dl_perclnt) {
-+		list_move(&dp->dl_recall_lru, victims);
-+		if (++count == max)
-+			break;
-+	}
-+	return count;
-+}
-+
-+static u64 nfsd_forget_client_delegations(struct nfs4_client *clp, u64 max)
-+{
-+	struct nfs4_delegation *dp, *next;
-+	LIST_HEAD(victims);
-+	u64 count;
-+
-+	spin_lock(&recall_lock);
-+	count = nfsd_find_n_delegations(clp, max, &victims);
-+	spin_unlock(&recall_lock);
-+
-+	list_for_each_entry_safe(dp, next, &victims, dl_recall_lru)
-+		unhash_delegation(dp);
-+
-+	return count;
-+}
-+
-+static u64 nfsd_recall_client_delegations(struct nfs4_client *clp, u64 max)
-+{
-+	struct nfs4_delegation *dp, *next;
-+	LIST_HEAD(victims);
-+	u64 count;
-+
-+	spin_lock(&recall_lock);
-+
-+	count = nfsd_find_n_delegations(clp, max, &victims);
-+	list_for_each_entry_safe(dp, next, &victims, dl_recall_lru)
-+		nfsd_break_one_deleg(dp);
-+
-+	spin_unlock(&recall_lock);
-+	return count;
-+}
-+
- static u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
- {
- 	struct nfs4_client *clp, *next;
-@@ -4627,56 +4673,16 @@ void nfsd_forget_openowners(u64 num)
- 	printk(KERN_INFO "NFSD: Forgot %llu open owners", count);
- }
- 
--static int nfsd_process_n_delegations(u64 num, struct list_head *list)
--{
--	int i, count = 0;
--	struct nfs4_file *fp, *fnext;
--	struct nfs4_delegation *dp, *dnext;
--
--	for (i = 0; i < FILE_HASH_SIZE; i++) {
--		list_for_each_entry_safe(fp, fnext, &file_hashtbl[i], fi_hash) {
--			list_for_each_entry_safe(dp, dnext, &fp->fi_delegations, dl_perfile) {
--				list_move(&dp->dl_recall_lru, list);
--				if (++count == num)
--					return count;
--			}
--		}
--	}
--
--	return count;
--}
--
- void nfsd_forget_delegations(u64 num)
- {
--	unsigned int count;
--	LIST_HEAD(victims);
--	struct nfs4_delegation *dp, *dnext;
--
--	spin_lock(&recall_lock);
--	count = nfsd_process_n_delegations(num, &victims);
--	spin_unlock(&recall_lock);
--
--	list_for_each_entry_safe(dp, dnext, &victims, dl_recall_lru)
--		unhash_delegation(dp);
--
--	printk(KERN_INFO "NFSD: Forgot %d delegations", count);
-+	u64 count = nfsd_for_n_state(num, nfsd_forget_client_delegations);
-+	printk(KERN_INFO "NFSD: Forgot %llu delegations", count);
- }
- 
- void nfsd_recall_delegations(u64 num)
- {
--	unsigned int count;
--	LIST_HEAD(victims);
--	struct nfs4_delegation *dp, *dnext;
--
--	spin_lock(&recall_lock);
--	count = nfsd_process_n_delegations(num, &victims);
--	list_for_each_entry_safe(dp, dnext, &victims, dl_recall_lru) {
--		list_del(&dp->dl_recall_lru);
--		nfsd_break_one_deleg(dp);
--	}
--	spin_unlock(&recall_lock);
--
--	printk(KERN_INFO "NFSD: Recalled %d delegations", count);
-+	u64 count = nfsd_for_n_state(num, nfsd_recall_client_delegations);
-+	printk(KERN_INFO "NFSD: Recalled %llu delegations", count);
- }
- 
- #endif /* CONFIG_NFSD_FAULT_INJECTION */
+It would occasionally hit an ESTALE error in this function and
+because "inode" wasn't reset to NULL, it would do a double-put of the
+inode and cause the counter to underflow.
+
+It might be good to restructure this code to make those sorts of bugs
+less likely, but the error handling in here is already so hairy that I
+decided to punt on that for now...
+
+> > +	name = user_path_parent(dfd, pathname, &nd, try);
+> >  	if (IS_ERR(name))
+> >  		return PTR_ERR(name);
+> >  
+> > @@ -3486,6 +3490,10 @@ exit2:
+> >  exit1:
+> >  	path_put(&nd.path);
+> >  	putname(name);
+> > +	if (retry_estale(error, try++)) {
+> > +		lookup_flags |= LOOKUP_REVAL;
+> > +		goto retry;
+> > +	}
+> >  	return error;
+> >  
+> >  slashes:
+> > -- 
+> > 1.7.11.7
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
 -- 
-1.8.0
-
+Jeff Layton <jlayton@redhat.com>
