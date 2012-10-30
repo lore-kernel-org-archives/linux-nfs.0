@@ -1,165 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35969 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:32894 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752671Ab2JSM0x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Oct 2012 08:26:53 -0400
-Date: Fri, 19 Oct 2012 08:26:50 -0400
-To: Yao Zhao <yao.zhao@windriver.com>
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-Subject: Re: [PATCH]fix bugs and compiling warnings in libgssglue
-Message-ID: <20121019122650.GA20324@fieldses.org>
-References: <50577508.90004@windriver.com>
+	id S1759048Ab2J3OH2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Oct 2012 10:07:28 -0400
+Date: Tue, 30 Oct 2012 10:07:25 -0400
+To: NeilBrown <neilb@suse.de>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, Peter Staubach <pstaubach@exagrid.com>
+Subject: Re: [PATCH 0/2] fix nfsd stable write implementation
+Message-ID: <20121030140725.GC24618@fieldses.org>
+References: <1351285617-20450-1-git-send-email-bfields@redhat.com>
+ <20121030102833.306e833a@notabene.brown>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <50577508.90004@windriver.com>
+In-Reply-To: <20121030102833.306e833a@notabene.brown>
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Steve, is it you that maintains libgssglue now?
+On Tue, Oct 30, 2012 at 10:28:33AM +1100, NeilBrown wrote:
+> On Fri, 26 Oct 2012 17:06:55 -0400 "J. Bruce Fields" <bfields@redhat.com>
+> wrote:
+> 
+> > From: "J. Bruce Fields" <bfields@redhat.com>
+> > 
+> > Peter pointed out to me that the nfs server is implementing stable
+> > writes by setting the O_SYNC flag.  I can't see why we couldn't write
+> > and then sync instead, but I don't know this stuff as well as I should;
+> > does the following look reasonable to people?
+> 
+> Bruce changed the code to implement stable writes by calling
+> vfs_fsync_range().  I can't see why we couldn't use O_SYNC instead.
+> 
+> It seems like you are making a change just for the sake of making a change.
+> Is there some reason that you think a separate 'sync' is more efficient than
+> using O_SYNC ?
+
+Oh, sorry, see the changelog on the second patch: the problem is that
+the struct file can be shared across multiple writes in the NFSv4 case,
+so a single stable write could make all subsequent writes synchronous.
+
+(And some day people would like filehandle caching for v2/v3, in which
+case we'll run into the same problem.)
+
+> As a general principle, I think it is best to give the file system as much
+> information as possible to that it can make whatever optimisation decisions
+> that it wants to.
+> 
+> Setting O_SYNC gives the filesystem more information than not, because it
+> allows it to change the behaviour of the 'write' request... though I don't
+> know if any filesystem actually uses the information.
+
+I'm not sure how to figure out if that's a real problem or not.
 
 --b.
-
-On Mon, Sep 17, 2012 at 03:07:52PM -0400, Yao Zhao wrote:
-> Hi,
-> 
-> The 4 attached patches fixed a couple of warnings and bug found when
-> compiling libgssglue.
-> 
-> thanks,
-> yao
-
-> --- a/src/g_canon_name.c
-> +++ b/src/g_canon_name.c
-> fix the bug:
-> g_canon_name.c:125:5: warning: passing argument 2 of '__gss_copy_namebuf' from incompatible pointer type [enabled by default]
-> 
-> the 2nd argument of __gss_copy_namebuf should be address of *gss_buffer_t, \
-> but a *gss_buffer_t is assigned.
-> 
-> what __gss_copy_namebuf does is to alloc memory for a gss_buffer_desc and \
-> copy from src and return its address.
-> 
-> if following code failed, gss_release_name will free \
-> union_canon_name->external_name.value if it is not NULL.
-> 
-> OM_uint32 __gss_copy_namebuf(src, dest)
->     gss_buffer_t   src;
->     gss_buffer_t   *dest;
-> 
-> typedef struct gss_union_name_t {
-> 	gss_mechanism		gss_mech;
-> 	gss_OID			name_type;
-> 	gss_buffer_desc		external_name;
-> 	/*
-> 	 * These last two fields are only filled in for mechanism
-> 	 * names.
-> 	 */
-> 	gss_OID			mech_type;
-> 	gss_name_t		mech_name;
-> } gss_union_name_desc, *gss_union_name_t;
-> 
-> typedef struct gss_buffer_desc_struct {
->       size_t length;
->       void FAR *value;
-> } gss_buffer_desc, FAR *gss_buffer_t;
-> 
-> Upstream-Status: Pending
-> Signed-off-by: Yao Zhao <yao.zhao@windriver.com>
-> 
-> @@ -121,11 +121,17 @@ gss_canonicalize_name (OM_uint32 *minor_
->  
->      union_canon_name->mech_name = mech_name;
->  
-> -    status = __gss_copy_namebuf(&union_input_name->external_name,
-> -				&union_canon_name->external_name);
-> -    if (status != GSS_S_COMPLETE)
-> -	goto failure;
-> +    union_canon_name->external_name.value = (void*) malloc(
-> +                      union_input_name->external_name.length + 1);
-> +    if (!union_canon_name->external_name.value)
-> +        goto failure;
->  
-> +    memcpy(union_canon_name->external_name.value, 
-> +           union_input_name->external_name.value, 
-> +           union_input_name->external_name.length);
-> +    union_canon_name->external_name.length = 
-> +                      union_input_name->external_name.length; 
-> +   
->      if (union_input_name->name_type != GSS_C_NO_OID) {
->  	status = generic_gss_copy_oid(minor_status,
->  				      union_input_name->name_type,
-
-> diff --git a/src/g_initialize.c b/src1/g_initialize.c
-> index 82fcce1..200f173 100644
-> --- a/src/g_initialize.c
-> +++ b/src/g_initialize.c
-> 
-> Fix the warning for getuid, geteuid
-> g_initialize.c: In function 'linux_initialize':
-> g_initialize.c:275:5: warning: implicit declaration of function 'getuid' [-Wimplicit-function-declaration]
-> g_initialize.c:275:5: warning: implicit declaration of function 'geteuid' [-Wimplicit-function-declaration]
-> 
-> Upstream-Status: Pending
-> Signed-off-by: Yao Zhao <yao.zhao@windriver.com>
-> 
-> @@ -29,6 +29,8 @@
->  #include "mglueP.h"
->  #include <stdlib.h>
->  
-> +#include <unistd.h>   /*getuid, geteuid */
-> +#include <sys/types.h>
->  #include <stdio.h>
->  #include <string.h>
->  #include <ctype.h>
-
-> --- a/src/g_inq_cred.c
-> +++ b/src/g_inq_cred.c
-> 1) add free if malloc failed for (*mechanisms)->elements
-> 2) g_inq_cred.c: In function 'gss_inquire_cred':
-> g_inq_cred.c:161:8: warning: passing argument 3 of 'generic_gss_copy_oid' from incompatible pointer type [enabled by default]
-> 
-> Upstream-Status: Pending
-> Signed-off-by: Yao Zhao <yao.zhao@windriver.com>
-> 
-> @@ -152,13 +152,15 @@ gss_OID_set *		mechanisms;
->  			     union_cred->count);
->  	if ((*mechanisms)->elements == NULL) {
->  	    *minor_status = ENOMEM;
-> +	    free(*mechanisms);
-> +	    *mechanisms = GSS_C_NO_OID_SET;
->  	    return (GSS_S_FAILURE);
->  	}
->  
->  	for (i=0; i < union_cred->count; i++) {
-> -	    status = generic_gss_copy_oid(minor_status,
-> +	    status = generic_gss_add_oid_set_member(minor_status,
->  	    				  &union_cred->mechs_array[i],
-> -					  &((*mechanisms)->elements[i]));
-> +					  mechanisms);
->  	    if (status != GSS_S_COMPLETE)
->  	        break;
->  	}
-
-> --- a/src/mglueP.h
-> +++ b/src/mglueP.h
-> fix the warning:
-> warning: implicit declaration of function 'generic_gss_copy_oid_set' [-Wimplicit-function-declaration]
-> 
-> Upstream-Status: Pending
-> Signed-off-by: Yao Zhao <yao.zhao@windriver.com>
-> 
-> @@ -447,6 +447,12 @@ OM_uint32 generic_gss_copy_oid
->  	    gss_OID *		/* new_oid */
->  	    );
->  
-> +OM_uint32 generic_gss_copy_oid_set
-> +	   (OM_uint32 *minor_status,	/* minor_status */
-> +	    const gss_OID_set_desc * const oidset,	/* oid */
-> +	    gss_OID_set *new_oidset			/* new_oid */
-> +	   );
-> +
->  OM_uint32 generic_gss_create_empty_oid_set
->  	   (OM_uint32 *,	/* minor_status */
->  	    gss_OID_set *	/* oid_set */
-
