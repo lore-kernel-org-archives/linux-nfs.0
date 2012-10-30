@@ -1,77 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.openrapids.net ([64.15.138.104]:58499 "EHLO
-	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1756567Ab2J2NHj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Oct 2012 09:07:39 -0400
-Date: Mon, 29 Oct 2012 09:07:36 -0400
-From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Subject: Re: [PATCH v7 10/16] dlm: use new hashtable implementation
-Message-ID: <20121029130736.GF11733@Krystal>
-References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com> <1351450948-15618-10-git-send-email-levinsasha928@gmail.com> <20121029124655.GD11733@Krystal>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20121029124655.GD11733@Krystal>
+Received: from mx2.netapp.com ([216.240.18.37]:57592 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757123Ab2J3UvB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Oct 2012 16:51:01 -0400
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 05/10] NFSD: Clean up forgetting openowners
+Date: Tue, 30 Oct 2012 16:50:49 -0400
+Message-Id: <1351630254-26166-6-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
+References: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-* Mathieu Desnoyers (mathieu.desnoyers@efficios.com) wrote:
-> * Sasha Levin (levinsasha928@gmail.com) wrote:
-> [...]
-> > @@ -158,34 +159,21 @@ static int dlm_allow_conn;
-> >  static struct workqueue_struct *recv_workqueue;
-> >  static struct workqueue_struct *send_workqueue;
-> >  
-> > -static struct hlist_head connection_hash[CONN_HASH_SIZE];
-> > +static struct hlist_head connection_hash[CONN_HASH_BITS];
-> >  static DEFINE_MUTEX(connections_lock);
-> >  static struct kmem_cache *con_cache;
-> >  
-> >  static void process_recv_sockets(struct work_struct *work);
-> >  static void process_send_sockets(struct work_struct *work);
-> >  
-> > -
-> > -/* This is deliberately very simple because most clusters have simple
-> > -   sequential nodeids, so we should be able to go straight to a connection
-> > -   struct in the array */
-> > -static inline int nodeid_hash(int nodeid)
-> > -{
-> > -	return nodeid & (CONN_HASH_SIZE-1);
-> > -}
-> 
-> There is one thing I dislike about this change: you remove a useful
-> comment. It's good to be informed of the reason why a direct mapping
-> "value -> hash" without any dispersion function is preferred here.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-And now that I come to think of it: you're changing the behavior : you
-will now use a dispersion function on the key, which goes against the
-intent expressed in this comment.
+Using "forget_n_state()" forces me to implement the code needed to
+forget a specific client's openowners.
 
-It might be good to change hash_add(), hash_add_rcu(),
-hash_for_each_possible*() key parameter for a "hash" parameter, and let
-the caller provide the hash value computed by the function they like as
-parameter, rather than enforcing hash_32/hash_64.
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfsd/nfs4state.c | 41 ++++++++++++++++-------------------------
+ 1 file changed, 16 insertions(+), 25 deletions(-)
 
-Thoughts ?
-
-Thanks,
-
-Mathieu
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 5c62323..552925e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4581,6 +4581,20 @@ static u64 nfsd_forget_client_locks(struct nfs4_client *clp, u64 max)
+ 	return count;
+ }
+ 
++static u64 nfsd_forget_client_openowners(struct nfs4_client *clp, u64 max)
++{
++	struct nfs4_openowner *oop, *next;
++	u64 count = 0;
++
++	list_for_each_entry_safe(oop, next, &clp->cl_openowners, oo_perclient) {
++		release_openowner(oop);
++		if (++count == max)
++			break;
++	}
++
++	return count;
++}
++
+ static u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
+ {
+ 	struct nfs4_client *clp, *next;
+@@ -4601,29 +4615,6 @@ void nfsd_forget_clients(u64 num)
+ 	printk(KERN_INFO "NFSD: Forgot %llu clients", count);
+ }
+ 
+-static void release_openowner_sop(struct nfs4_stateowner *sop)
+-{
+-	release_openowner(openowner(sop));
+-}
+-
+-static int nfsd_release_n_owners(u64 num, bool is_open_owner,
+-				void (*release_sop)(struct nfs4_stateowner *))
+-{
+-	int i, count = 0;
+-	struct nfs4_stateowner *sop, *next;
+-
+-	for (i = 0; i < OWNER_HASH_SIZE; i++) {
+-		list_for_each_entry_safe(sop, next, &ownerstr_hashtbl[i], so_strhash) {
+-			if (sop->so_is_open_owner != is_open_owner)
+-				continue;
+-			release_sop(sop);
+-			if (++count == num)
+-				return count;
+-		}
+-	}
+-	return count;
+-}
+-
+ void nfsd_forget_locks(u64 num)
+ {
+ 	u64 count = nfsd_for_n_state(num, nfsd_forget_client_locks);
+@@ -4632,8 +4623,8 @@ void nfsd_forget_locks(u64 num)
+ 
+ void nfsd_forget_openowners(u64 num)
+ {
+-	int count = nfsd_release_n_owners(num, true, release_openowner_sop);
+-	printk(KERN_INFO "NFSD: Forgot %d open owners", count);
++	u64 count = nfsd_for_n_state(num, nfsd_forget_client_openowners);
++	printk(KERN_INFO "NFSD: Forgot %llu open owners", count);
+ }
+ 
+ static int nfsd_process_n_delegations(u64 num, struct list_head *list)
 -- 
-Mathieu Desnoyers
-Operating System Efficiency R&D Consultant
-EfficiOS Inc.
-http://www.efficios.com
+1.8.0
+
