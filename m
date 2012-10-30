@@ -1,41 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:15962 "EHLO mx2.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:56478 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755130Ab2JPQbM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Oct 2012 12:31:12 -0400
-From: Weston Andros Adamson <dros@netapp.com>
+	id S965249Ab2J3UQI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Oct 2012 16:16:08 -0400
+From: bjschuma@netapp.com
 To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 16/25] SUNRPC: remove BUG_ON() in svc_xprt_received()
-Date: Tue, 16 Oct 2012 12:30:34 -0400
-Message-Id: <1350405043-39316-16-git-send-email-dros@netapp.com>
-In-Reply-To: <1350405043-39316-1-git-send-email-dros@netapp.com>
-References: <1350405043-39316-1-git-send-email-dros@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFS: Wait for session recovery to finish before returning
+Date: Tue, 30 Oct 2012 16:06:35 -0400
+Message-Id: <1351627595-6462-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Replace BUG_ON() with a WARN_ON_ONCE() and early return.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+Currently, we will schedule session recovery and then return to the
+caller of nfs4_handle_exception.  This works for most cases, but causes
+a hang on the following test case:
+
+	Client				Server
+	------				------
+	Open file over NFS v4.1
+	Write to file
+					Expire client
+	Try to lock file
+
+The server will return NFS4ERR_BADSESSION, prompting the client to
+schedule recovery.  However, the client will continue placing lock
+attempts and the open recovery never seems to be scheduled.  The
+simplest solution is to wait for session recovery to run before retrying
+the lock.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- net/sunrpc/svc_xprt.c |    4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ fs/nfs/nfs4proc.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 194d865..be89bb6 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -218,7 +218,9 @@ static struct svc_xprt *__svc_xpo_create(struct svc_xprt_class *xcl,
-  */
- static void svc_xprt_received(struct svc_xprt *xprt)
- {
--	BUG_ON(!test_bit(XPT_BUSY, &xprt->xpt_flags));
-+	WARN_ON_ONCE(!test_bit(XPT_BUSY, &xprt->xpt_flags));
-+	if (!test_bit(XPT_BUSY, &xprt->xpt_flags))
-+		return;
- 	/* As soon as we clear busy, the xprt could be closed and
- 	 * 'put', so we need a reference to call svc_xprt_enqueue with:
- 	 */
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 8b04d14..70e0c47 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -338,8 +338,7 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
+ 			dprintk("%s ERROR: %d Reset session\n", __func__,
+ 				errorcode);
+ 			nfs4_schedule_session_recovery(clp->cl_session, errorcode);
+-			exception->retry = 1;
+-			break;
++			goto wait_on_recovery;
+ #endif /* defined(CONFIG_NFS_V4_1) */
+ 		case -NFS4ERR_FILE_OPEN:
+ 			if (exception->timeout > HZ) {
 -- 
-1.7.9.6 (Apple Git-31.1)
+1.8.0
 
