@@ -1,55 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:51119 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:38938 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932415Ab2JBVt4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Oct 2012 17:49:56 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 1/2] NFSv4: don't check MAY_WRITE access bit in OPEN
-Date: Tue,  2 Oct 2012 14:49:51 -0700
-Message-Id: <1349214592-11717-2-git-send-email-dros@netapp.com>
-In-Reply-To: <1349214592-11717-1-git-send-email-dros@netapp.com>
-References: <1349214592-11717-1-git-send-email-dros@netapp.com>
+	id S1753423Ab2J3QOh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Oct 2012 12:14:37 -0400
+Date: Tue, 30 Oct 2012 12:14:29 -0400
+To: Jeff Layton <jlayton@redhat.com>
+Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        michael.brantley@deshaw.com, hch@infradead.org, miklos@szeredi.hu,
+        pstaubach@exagrid.com
+Subject: Re: [PATCH v8 11/32] vfs: make do_unlinkat retry on ESTALE errors
+Message-ID: <20121030161429.GD24618@fieldses.org>
+References: <1351341219-17837-1-git-send-email-jlayton@redhat.com>
+ <1351341219-17837-12-git-send-email-jlayton@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1351341219-17837-12-git-send-email-jlayton@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Don't check MAY_WRITE as a newly created file may not have write mode bits,
-but POSIX allows the creating process to write regardless.
-This is ok because NFSv4 OPEN ops handle write permissions correctly -
-the ACCESS in the OPEN compound is to differentiate READ v EXEC permissions.
+On Sat, Oct 27, 2012 at 08:33:18AM -0400, Jeff Layton wrote:
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/namei.c | 12 ++++++++++--
+>  1 file changed, 10 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/namei.c b/fs/namei.c
+> index 7c9bb50..467b9f1 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -3446,9 +3446,13 @@ static long do_unlinkat(int dfd, const char __user *pathname)
+>  	struct filename *name;
+>  	struct dentry *dentry;
+>  	struct nameidata nd;
+> -	struct inode *inode = NULL;
+> +	struct inode *inode;
+> +	unsigned int try = 0;
+> +	unsigned int lookup_flags = LOOKUP_PARENT;
+>  
+> -	name = user_path_parent(dfd, pathname, &nd, 0);
+> +retry:
+> +	inode = NULL;
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- fs/nfs/nfs4proc.c |    6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+So, you fail after "inode" was set (say vfs_unlink returned an error)
+the first time, then before "inode" was set (lookup_hash returns an
+error), and you end up incorrectly doing another iput() the second time
+through if you don't reset inode here?
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 1e0faf9..ccada68 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1661,10 +1661,10 @@ static int nfs4_opendata_access(struct rpc_cred *cred,
- 		return 0;
- 
- 	mask = 0;
-+	/* don't check MAY_WRITE - a newly created file may not have
-+	 * write mode bits, but POSIX allows the creating process to write */
- 	if (fmode & FMODE_READ)
- 		mask |= MAY_READ;
--	if (fmode & FMODE_WRITE)
--		mask |= MAY_WRITE;
- 	if (fmode & FMODE_EXEC)
- 		mask |= MAY_EXEC;
- 
-@@ -1673,7 +1673,7 @@ static int nfs4_opendata_access(struct rpc_cred *cred,
- 	nfs_access_set_mask(&cache, opendata->o_res.access_result);
- 	nfs_access_add_cache(state->inode, &cache);
- 
--	if ((mask & ~cache.mask & (MAY_READ | MAY_WRITE | MAY_EXEC)) == 0)
-+	if ((mask & ~cache.mask & (MAY_READ | MAY_EXEC)) == 0)
- 		return 0;
- 
- 	/* even though OPEN succeeded, access is denied. Close the file */
--- 
-1.7.9.6 (Apple Git-31.1)
+(I think I made the same mistake in another patch, actually....)
 
+--b.
+
+> +	name = user_path_parent(dfd, pathname, &nd, try);
+>  	if (IS_ERR(name))
+>  		return PTR_ERR(name);
+>  
+> @@ -3486,6 +3490,10 @@ exit2:
+>  exit1:
+>  	path_put(&nd.path);
+>  	putname(name);
+> +	if (retry_estale(error, try++)) {
+> +		lookup_flags |= LOOKUP_REVAL;
+> +		goto retry;
+> +	}
+>  	return error;
+>  
+>  slashes:
+> -- 
+> 1.7.11.7
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
