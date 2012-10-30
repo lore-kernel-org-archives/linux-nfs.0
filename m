@@ -1,8 +1,8 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f53.google.com ([209.85.216.53]:65273 "EHLO
+Received: from mail-qa0-f53.google.com ([209.85.216.53]:56829 "EHLO
 	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752803Ab2J1TDW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Oct 2012 15:03:22 -0400
+	with ESMTP id S965249Ab2J3Srf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Oct 2012 14:47:35 -0400
 From: Sasha Levin <levinsasha928@gmail.com>
 To: torvalds@linux-foundation.org
 Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
@@ -18,148 +18,84 @@ Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
         linux-nfs@vger.kernel.org, dev@openvswitch.org,
         rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
         Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH v7 05/16] mm/huge_memory: use new hashtable implementation
-Date: Sun, 28 Oct 2012 15:02:17 -0400
-Message-Id: <1351450948-15618-5-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
-References: <1351450948-15618-1-git-send-email-levinsasha928@gmail.com>
+Subject: [PATCH v8 07/16] net,9p: use new hashtable implementation
+Date: Tue, 30 Oct 2012 14:46:03 -0400
+Message-Id: <1351622772-16400-7-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
+References: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch hugemem to use the new hashtable implementation. This reduces the amount of
-generic unrelated code in the hugemem.
-
-This also removes the dymanic allocation of the hash table. The size of the table is
-constant so there's no point in paying the price of an extra dereference when accessing
-it.
+Switch 9p error table to use the new hashtable implementation. This reduces
+the amount of generic unrelated code in 9p.
 
 Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
 ---
- mm/huge_memory.c | 55 ++++++++++++++-----------------------------------------
- 1 file changed, 14 insertions(+), 41 deletions(-)
+ net/9p/error.c | 21 +++++++++------------
+ 1 file changed, 9 insertions(+), 12 deletions(-)
 
-diff --git a/mm/huge_memory.c b/mm/huge_memory.c
-index 3c14a96..38ce8e9 100644
---- a/mm/huge_memory.c
-+++ b/mm/huge_memory.c
-@@ -19,6 +19,7 @@
- #include <linux/mman.h>
- #include <linux/pagemap.h>
- #include <linux/migrate.h>
+diff --git a/net/9p/error.c b/net/9p/error.c
+index 2ab2de7..a394b37 100644
+--- a/net/9p/error.c
++++ b/net/9p/error.c
+@@ -34,6 +34,7 @@
+ #include <linux/jhash.h>
+ #include <linux/errno.h>
+ #include <net/9p/9p.h>
 +#include <linux/hashtable.h>
- #include <asm/tlb.h>
- #include <asm/pgalloc.h>
- #include "internal.h"
-@@ -59,12 +60,12 @@ static DECLARE_WAIT_QUEUE_HEAD(khugepaged_wait);
- static unsigned int khugepaged_max_ptes_none __read_mostly = HPAGE_PMD_NR-1;
- 
- static int khugepaged(void *none);
--static int mm_slots_hash_init(void);
- static int khugepaged_slab_init(void);
- static void khugepaged_slab_free(void);
- 
--#define MM_SLOTS_HASH_HEADS 1024
--static struct hlist_head *mm_slots_hash __read_mostly;
-+#define MM_SLOTS_HASH_BITS 10
-+static DEFINE_HASHTABLE(mm_slots_hash, MM_SLOTS_HASH_BITS);
-+
- static struct kmem_cache *mm_slot_cache __read_mostly;
  
  /**
-@@ -545,12 +546,6 @@ static int __init hugepage_init(void)
- 	if (err)
- 		goto out;
+  * struct errormap - map string errors from Plan 9 to Linux numeric ids
+@@ -50,8 +51,8 @@ struct errormap {
+ 	struct hlist_node list;
+ };
  
--	err = mm_slots_hash_init();
--	if (err) {
--		khugepaged_slab_free();
--		goto out;
--	}
--
- 	/*
- 	 * By default disable transparent hugepages on smaller systems,
- 	 * where the extra memory used could hurt more than TLB overhead
-@@ -1673,6 +1668,8 @@ static int __init khugepaged_slab_init(void)
- 	if (!mm_slot_cache)
- 		return -ENOMEM;
+-#define ERRHASHSZ		32
+-static struct hlist_head hash_errmap[ERRHASHSZ];
++#define ERR_HASH_BITS 5
++static DEFINE_HASHTABLE(hash_errmap, ERR_HASH_BITS);
  
-+	hash_init(mm_slots_hash);
-+
- 	return 0;
- }
- 
-@@ -1694,47 +1691,23 @@ static inline void free_mm_slot(struct mm_slot *mm_slot)
- 	kmem_cache_free(mm_slot_cache, mm_slot);
- }
- 
--static int __init mm_slots_hash_init(void)
--{
--	mm_slots_hash = kzalloc(MM_SLOTS_HASH_HEADS * sizeof(struct hlist_head),
--				GFP_KERNEL);
--	if (!mm_slots_hash)
--		return -ENOMEM;
--	return 0;
--}
--
--#if 0
--static void __init mm_slots_hash_free(void)
--{
--	kfree(mm_slots_hash);
--	mm_slots_hash = NULL;
--}
--#endif
--
- static struct mm_slot *get_mm_slot(struct mm_struct *mm)
+ /* FixMe - reduce to a reasonable size */
+ static struct errormap errmap[] = {
+@@ -193,18 +194,14 @@ static struct errormap errmap[] = {
+ int p9_error_init(void)
  {
--	struct mm_slot *mm_slot;
--	struct hlist_head *bucket;
-+	struct mm_slot *slot;
- 	struct hlist_node *node;
- 
--	bucket = &mm_slots_hash[((unsigned long)mm / sizeof(struct mm_struct))
--				% MM_SLOTS_HASH_HEADS];
--	hlist_for_each_entry(mm_slot, node, bucket, hash) {
--		if (mm == mm_slot->mm)
--			return mm_slot;
--	}
-+	hash_for_each_possible(mm_slots_hash, slot, node, hash, (unsigned long) mm)
-+		if (slot->mm == mm)
-+			return slot;
-+
- 	return NULL;
- }
- 
- static void insert_to_mm_slots_hash(struct mm_struct *mm,
- 				    struct mm_slot *mm_slot)
- {
--	struct hlist_head *bucket;
+ 	struct errormap *c;
+-	int bucket;
 -
--	bucket = &mm_slots_hash[((unsigned long)mm / sizeof(struct mm_struct))
--				% MM_SLOTS_HASH_HEADS];
- 	mm_slot->mm = mm;
--	hlist_add_head(&mm_slot->hash, bucket);
-+	hash_add(mm_slots_hash, &mm_slot->hash, (long)mm);
- }
+-	/* initialize hash table */
+-	for (bucket = 0; bucket < ERRHASHSZ; bucket++)
+-		INIT_HLIST_HEAD(&hash_errmap[bucket]);
++	u32 hash;
  
- static inline int khugepaged_test_exit(struct mm_struct *mm)
-@@ -1803,7 +1776,7 @@ void __khugepaged_exit(struct mm_struct *mm)
- 	spin_lock(&khugepaged_mm_lock);
- 	mm_slot = get_mm_slot(mm);
- 	if (mm_slot && khugepaged_scan.mm_slot != mm_slot) {
--		hlist_del(&mm_slot->hash);
-+		hash_del(&mm_slot->hash);
- 		list_del(&mm_slot->mm_node);
- 		free = 1;
+ 	/* load initial error map into hash table */
+ 	for (c = errmap; c->name != NULL; c++) {
+ 		c->namelen = strlen(c->name);
+-		bucket = jhash(c->name, c->namelen, 0) % ERRHASHSZ;
++		hash = jhash(c->name, c->namelen, 0);
+ 		INIT_HLIST_NODE(&c->list);
+-		hlist_add_head(&c->list, &hash_errmap[bucket]);
++		hash_add(hash_errmap, &c->list, hash);
  	}
-@@ -2252,7 +2225,7 @@ static void collect_mm_slot(struct mm_slot *mm_slot)
  
- 	if (khugepaged_test_exit(mm)) {
- 		/* free mm_slot */
--		hlist_del(&mm_slot->hash);
-+		hash_del(&mm_slot->hash);
- 		list_del(&mm_slot->mm_node);
+ 	return 1;
+@@ -223,13 +220,13 @@ int p9_errstr2errno(char *errstr, int len)
+ 	int errno;
+ 	struct hlist_node *p;
+ 	struct errormap *c;
+-	int bucket;
++	u32 hash;
  
- 		/*
+ 	errno = 0;
+ 	p = NULL;
+ 	c = NULL;
+-	bucket = jhash(errstr, len, 0) % ERRHASHSZ;
+-	hlist_for_each_entry(c, p, &hash_errmap[bucket], list) {
++	hash = jhash(errstr, len, 0);
++	hash_for_each_possible(hash_errmap, c, p, list, hash) {
+ 		if (c->namelen == len && !memcmp(c->name, errstr, len)) {
+ 			errno = c->val;
+ 			break;
 -- 
 1.7.12.4
 
