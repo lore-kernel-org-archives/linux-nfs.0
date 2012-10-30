@@ -1,126 +1,156 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:42592 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933806Ab2JXBNi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Oct 2012 21:13:38 -0400
-Message-ID: <508740B2.2030401@redhat.com>
-Date: Tue, 23 Oct 2012 20:13:22 -0500
-From: Eric Sandeen <sandeen@redhat.com>
-MIME-Version: 1.0
-To: Nix <nix@esperi.org.uk>
-CC: "Ted Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-        linux-kernel@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
-        Bryan Schumaker <bjschuma@netapp.com>, Peng Tao <bergwolf@gmail.com>,
-        Trond.Myklebust@netapp.com, gregkh@linuxfoundation.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: Apparent serious progressive ext4 data corruption bug in 3.6.3
- (and other stable branches?)
-References: <87objupjlr.fsf@spindle.srvr.nix> <20121023013343.GB6370@fieldses.org> <87mwzdnuww.fsf@spindle.srvr.nix> <20121023143019.GA3040@fieldses.org> <874nllxi7e.fsf_-_@spindle.srvr.nix> <87pq48nbyz.fsf_-_@spindle.srvr.nix>
-In-Reply-To: <87pq48nbyz.fsf_-_@spindle.srvr.nix>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qc0-f174.google.com ([209.85.216.174]:46116 "EHLO
+	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965462Ab2J3SrT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Oct 2012 14:47:19 -0400
+From: Sasha Levin <levinsasha928@gmail.com>
+To: torvalds@linux-foundation.org
+Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
+        Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH v8 05/16] mm/huge_memory: use new hashtable implementation
+Date: Tue, 30 Oct 2012 14:46:01 -0400
+Message-Id: <1351622772-16400-5-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
+References: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/23/12 3:57 PM, Nix wrote:
+Switch hugemem to use the new hashtable implementation. This reduces the
+amount of generic unrelated code in the hugemem.
 
-<snip>
+This also removes the dymanic allocation of the hash table. The size of the table is
+constant so there's no point in paying the price of an extra dereference when accessing
+it.
 
-> (I'd provide more sample errors, but this bug has been eating
-> newly-written logs in /var all day, so not much has survived.)
-> 
-> I rebooted into 3.6.1 rescue mode and fscked everything: lots of
-> orphans, block group corruption and cross-linked files. The problems did
-> not recur upon booting from 3.6.1 into 3.6.1 again. It is quite clear
-> that metadata changes made in 3.6.3 are not making it to disk reliably,
-> thus leading to corrupted filesystems marked clean on reboot into other
-> kernels: pretty much every file appended to in 3.6.3 loses some or all
-> of its appended data, and newly allocated blocks often end up
-> cross-linked between multiple files.
-> 
-> The curious thing is this doesn't affect every filesystem: for a while
-> it affected only /var, and now it's affecting only /var and /home. The
-> massive writes to the ext4 filesystem mounted on /usr/src seem to have
-> gone off without incident: fsck reports no problems.
-> 
-> 
-> The only unusual thing about the filesystems on this machine are that
-> they have hardware RAID-5 (using the Areca driver), so I'm mounting with
-> 'nobarrier': 
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ mm/huge_memory.c | 53 ++++++++++++-----------------------------------------
+ 1 file changed, 12 insertions(+), 41 deletions(-)
 
-I should have read more.  :(  More questions follow:
-
-* Does the Areca have a battery backed write cache?
-* Are you crashing or rebooting cleanly?
-* Do you see log recovery messages in the logs for this filesystem?
-
-> the full set of options for all my ext4 filesystems are:
-> 
-> rw,nosuid,nodev,relatime,journal_checksum,journal_async_commit,nobarrier,quota,
-> usrquota,grpquota,commit=30,stripe=16,data=ordered,usrquota,grpquota
-
-ok journal_async_commit is off the reservation a bit; that's really not
-tested, and Jan had serious reservations about its safety.
-
-* Can you reproduce this w/o journal_async_commit?
-
--Eric
-
-> If there's anything I can do to help, I'm happy to do it, once I've
-> restored my home directory from backup :(
-> 
-> 
-> tune2fs output for one of the afflicted filesystems (after fscking):
-> 
-> tune2fs 1.42.2 (9-Apr-2012)
-> Filesystem volume name:   home
-> Last mounted on:          /home
-> Filesystem UUID:          95bd22c2-253c-456f-8e36-b6cfb9ecd4ef
-> Filesystem magic number:  0xEF53
-> Filesystem revision #:    1 (dynamic)
-> Filesystem features:      has_journal ext_attr resize_inode dir_index filetype needs_recovery extent flex_bg sparse_super large_file huge_file uninit_bg dir_nlink extra_isize
-> Filesystem flags:         signed_directory_hash
-> Default mount options:    (none)
-> Filesystem state:         clean
-> Errors behavior:          Continue
-> Filesystem OS type:       Linux
-> Inode count:              3276800
-> Block count:              13107200
-> Reserved block count:     655360
-> Free blocks:              5134852
-> Free inodes:              3174777
-> First block:              0
-> Block size:               4096
-> Fragment size:            4096
-> Reserved GDT blocks:      20
-> Blocks per group:         32768
-> Fragments per group:      32768
-> Inodes per group:         8192
-> Inode blocks per group:   512
-> RAID stripe width:        16
-> Flex block group size:    64
-> Filesystem created:       Tue May 26 21:29:41 2009
-> Last mount time:          Tue Oct 23 21:32:07 2012
-> Last write time:          Tue Oct 23 21:32:07 2012
-> Mount count:              2
-> Maximum mount count:      20
-> Last checked:             Tue Oct 23 21:22:16 2012
-> Check interval:           15552000 (6 months)
-> Next check after:         Sun Apr 21 21:22:16 2013
-> Lifetime writes:          1092 GB
-> Reserved blocks uid:      0 (user root)
-> Reserved blocks gid:      0 (group root)
-> First inode:              11
-> Inode size:               256
-> Required extra isize:     28
-> Desired extra isize:      28
-> Journal inode:            8
-> First orphan inode:       1572907
-> Default directory hash:   half_md4
-> Directory Hash Seed:      a201983d-d8a3-460b-93ca-eb7804b62c23
-> Journal backup:           inode blocks
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+diff --git a/mm/huge_memory.c b/mm/huge_memory.c
+index 3c14a96..4b32238 100644
+--- a/mm/huge_memory.c
++++ b/mm/huge_memory.c
+@@ -19,6 +19,7 @@
+ #include <linux/mman.h>
+ #include <linux/pagemap.h>
+ #include <linux/migrate.h>
++#include <linux/hashtable.h>
+ #include <asm/tlb.h>
+ #include <asm/pgalloc.h>
+ #include "internal.h"
+@@ -59,12 +60,12 @@ static DECLARE_WAIT_QUEUE_HEAD(khugepaged_wait);
+ static unsigned int khugepaged_max_ptes_none __read_mostly = HPAGE_PMD_NR-1;
+ 
+ static int khugepaged(void *none);
+-static int mm_slots_hash_init(void);
+ static int khugepaged_slab_init(void);
+ static void khugepaged_slab_free(void);
+ 
+-#define MM_SLOTS_HASH_HEADS 1024
+-static struct hlist_head *mm_slots_hash __read_mostly;
++#define MM_SLOTS_HASH_BITS 10
++static DEFINE_HASHTABLE(mm_slots_hash, MM_SLOTS_HASH_BITS);
++
+ static struct kmem_cache *mm_slot_cache __read_mostly;
+ 
+ /**
+@@ -545,12 +546,6 @@ static int __init hugepage_init(void)
+ 	if (err)
+ 		goto out;
+ 
+-	err = mm_slots_hash_init();
+-	if (err) {
+-		khugepaged_slab_free();
+-		goto out;
+-	}
+-
+ 	/*
+ 	 * By default disable transparent hugepages on smaller systems,
+ 	 * where the extra memory used could hurt more than TLB overhead
+@@ -1694,47 +1689,23 @@ static inline void free_mm_slot(struct mm_slot *mm_slot)
+ 	kmem_cache_free(mm_slot_cache, mm_slot);
+ }
+ 
+-static int __init mm_slots_hash_init(void)
+-{
+-	mm_slots_hash = kzalloc(MM_SLOTS_HASH_HEADS * sizeof(struct hlist_head),
+-				GFP_KERNEL);
+-	if (!mm_slots_hash)
+-		return -ENOMEM;
+-	return 0;
+-}
+-
+-#if 0
+-static void __init mm_slots_hash_free(void)
+-{
+-	kfree(mm_slots_hash);
+-	mm_slots_hash = NULL;
+-}
+-#endif
+-
+ static struct mm_slot *get_mm_slot(struct mm_struct *mm)
+ {
+-	struct mm_slot *mm_slot;
+-	struct hlist_head *bucket;
++	struct mm_slot *slot;
+ 	struct hlist_node *node;
+ 
+-	bucket = &mm_slots_hash[((unsigned long)mm / sizeof(struct mm_struct))
+-				% MM_SLOTS_HASH_HEADS];
+-	hlist_for_each_entry(mm_slot, node, bucket, hash) {
+-		if (mm == mm_slot->mm)
+-			return mm_slot;
+-	}
++	hash_for_each_possible(mm_slots_hash, slot, node, hash, (unsigned long) mm)
++		if (slot->mm == mm)
++			return slot;
++
+ 	return NULL;
+ }
+ 
+ static void insert_to_mm_slots_hash(struct mm_struct *mm,
+ 				    struct mm_slot *mm_slot)
+ {
+-	struct hlist_head *bucket;
+-
+-	bucket = &mm_slots_hash[((unsigned long)mm / sizeof(struct mm_struct))
+-				% MM_SLOTS_HASH_HEADS];
+ 	mm_slot->mm = mm;
+-	hlist_add_head(&mm_slot->hash, bucket);
++	hash_add(mm_slots_hash, &mm_slot->hash, (long)mm);
+ }
+ 
+ static inline int khugepaged_test_exit(struct mm_struct *mm)
+@@ -1803,7 +1774,7 @@ void __khugepaged_exit(struct mm_struct *mm)
+ 	spin_lock(&khugepaged_mm_lock);
+ 	mm_slot = get_mm_slot(mm);
+ 	if (mm_slot && khugepaged_scan.mm_slot != mm_slot) {
+-		hlist_del(&mm_slot->hash);
++		hash_del(&mm_slot->hash);
+ 		list_del(&mm_slot->mm_node);
+ 		free = 1;
+ 	}
+@@ -2252,7 +2223,7 @@ static void collect_mm_slot(struct mm_slot *mm_slot)
+ 
+ 	if (khugepaged_test_exit(mm)) {
+ 		/* free mm_slot */
+-		hlist_del(&mm_slot->hash);
++		hash_del(&mm_slot->hash);
+ 		list_del(&mm_slot->mm_node);
+ 
+ 		/*
+-- 
+1.7.12.4
 
