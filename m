@@ -1,52 +1,131 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43325 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:5748 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751620Ab2JARqz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Oct 2012 13:46:55 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/8] nfsd4: reject bad forechannel attrs earlier
-Date: Mon,  1 Oct 2012 13:46:45 -0400
-Message-Id: <1349113612-30374-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1349113612-30374-1-git-send-email-bfields@redhat.com>
-References: <1349113612-30374-1-git-send-email-bfields@redhat.com>
+	id S1757629Ab2J3UvF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Oct 2012 16:51:05 -0400
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 10/10] NFSD: Forget state for a specific client
+Date: Tue, 30 Oct 2012 16:50:54 -0400
+Message-Id: <1351630254-26166-11-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
+References: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-This could simplify the logic a little later.
+Write the client's ip address to any state file and all appropriate
+state for that client will be forgotten.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfsd/nfs4state.c |    6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+ fs/nfsd/fault_inject.c | 36 ++++++++++++++++++++++++++++++++----
+ fs/nfsd/nfs4state.c    | 11 +++++++++++
+ fs/nfsd/state.h        |  1 +
+ 3 files changed, 44 insertions(+), 4 deletions(-)
 
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index 19f9094..d9c2ef8 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -8,6 +8,8 @@
+ #include <linux/fs.h>
+ #include <linux/debugfs.h>
+ #include <linux/module.h>
++#include <linux/nsproxy.h>
++#include <linux/sunrpc/clnt.h>
+ #include <asm/uaccess.h>
+ 
+ #include "state.h"
+@@ -64,6 +66,24 @@ static void nfsd_inject_set(struct nfsd_fault_inject_op *op, u64 val)
+ 	printk(KERN_INFO "NFSD: %s: found %llu", op->file, count);
+ }
+ 
++static void nfsd_inject_set_client(struct nfsd_fault_inject_op *op,
++				   struct sockaddr_storage *addr,
++				   size_t addr_size)
++{
++	char buf[INET6_ADDRSTRLEN];
++	struct nfs4_client *clp;
++	u64 count;
++
++	nfs4_lock_state();
++	clp = nfsd_find_client(addr, addr_size);
++	if (clp) {
++		count = op->forget(clp, 0);
++		rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, 129);
++		printk(KERN_INFO "NFSD [%s]: Client %s had %llu state object(s)\n", op->file, buf, count);
++	}
++	nfs4_unlock_state();
++}
++
+ static void nfsd_inject_get(struct nfsd_fault_inject_op *op, u64 *val)
+ {
+ 	nfs4_lock_state();
+@@ -100,15 +120,23 @@ static ssize_t fault_inject_read(struct file *file, char __user *buf,
+ static ssize_t fault_inject_write(struct file *file, const char __user *buf,
+ 				  size_t len, loff_t *ppos)
+ {
+-	char write_buf[24];
++	char write_buf[INET6_ADDRSTRLEN];
+ 	size_t size = min(sizeof(write_buf), len) - 1;
++	struct net *net = current->nsproxy->net_ns;
++	struct sockaddr_storage sa;
+ 	u64 val;
+ 
+ 	if (copy_from_user(write_buf, buf, size))
+ 		return -EFAULT;
+-
+-	val = simple_strtoll(write_buf, NULL, 0);
+-	nfsd_inject_set(file->f_dentry->d_inode->i_private, val);
++	write_buf[size] = '\0';
++
++	size = rpc_pton(net, write_buf, size, (struct sockaddr *)&sa, sizeof(sa));
++	if (size > 0)
++		nfsd_inject_set_client(file->f_dentry->d_inode->i_private, &sa, size);
++	else {
++		val = simple_strtoll(write_buf, NULL, 0);
++		nfsd_inject_set(file->f_dentry->d_inode->i_private, val);
++	}
+ 	return len; /* on success, claim we got the whole input */
+ }
+ 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 5507842..64938ca 100644
+index 0a20ac2..ad02045 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1771,6 +1771,8 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+@@ -4713,6 +4713,17 @@ u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
+ 	return count;
+ }
  
- 	if (cr_ses->flags & ~SESSION4_FLAG_MASK_A)
- 		return nfserr_inval;
-+	if (check_forechannel_attrs(cr_ses->fore_channel))
-+		return nfserr_toosmall;
++struct nfs4_client *nfsd_find_client(struct sockaddr_storage *addr, size_t addr_size)
++{
++	struct nfs4_client *clp;
++
++	list_for_each_entry(clp, &client_lru, cl_lru) {
++		if (memcmp(&clp->cl_addr, addr, addr_size) == 0)
++			return clp;
++	}
++	return NULL;
++}
++
+ #endif /* CONFIG_NFSD_FAULT_INJECTION */
  
- 	nfs4_lock_state();
- 	unconf = find_unconfirmed_client(&cr_ses->clientid, true);
-@@ -1811,10 +1813,6 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 	cr_ses->flags &= ~SESSION4_PERSIST;
- 	cr_ses->flags &= ~SESSION4_RDMA;
+ /* initialization to perform at module load time: */
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 646275c..b836e64 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -487,6 +487,7 @@ extern void nfsd4_record_grace_done(struct net *net, time_t boot_time);
+ int nfsd_fault_inject_init(void);
+ void nfsd_fault_inject_cleanup(void);
+ u64 nfsd_for_n_state(u64, u64 (*)(struct nfs4_client *, u64));
++struct nfs4_client *nfsd_find_client(struct sockaddr_storage *, size_t);
  
--	status = nfserr_toosmall;
--	if (check_forechannel_attrs(cr_ses->fore_channel))
--		goto out;
--
- 	status = nfserr_jukebox;
- 	new = alloc_init_session(rqstp, conf, cr_ses);
- 	if (!new)
+ u64 nfsd_forget_client(struct nfs4_client *, u64);
+ u64 nfsd_forget_client_locks(struct nfs4_client*, u64);
 -- 
-1.7.9.5
+1.8.0
 
