@@ -1,74 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60286 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:57592 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754044Ab2JWOaY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Oct 2012 10:30:24 -0400
-Date: Tue, 23 Oct 2012 10:30:19 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Nix <nix@esperi.org.uk>
-Cc: linux-kernel@vger.kernel.org, Bryan Schumaker <bjschuma@netapp.com>,
-        Peng Tao <bergwolf@gmail.com>, Trond.Myklebust@netapp.com,
-        gregkh@linuxfoundation.org, linux-nfs@vger.kernel.org
-Subject: Re: Heads-up: 3.6.2 / 3.6.3 NFS server panic: 3.6.2+ regression?
-Message-ID: <20121023143019.GA3040@fieldses.org>
-References: <87objupjlr.fsf@spindle.srvr.nix>
- <20121023013343.GB6370@fieldses.org>
- <87mwzdnuww.fsf@spindle.srvr.nix>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87mwzdnuww.fsf@spindle.srvr.nix>
+	id S1751271Ab2J3Uu6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Oct 2012 16:50:58 -0400
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 02/10] NFSD: Lock state before calling fault injection function
+Date: Tue, 30 Oct 2012 16:50:46 -0400
+Message-Id: <1351630254-26166-3-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
+References: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 23, 2012 at 03:07:59PM +0100, Nix wrote:
-> On 23 Oct 2012, J. Bruce Fields uttered the following:
-> 
-> > On Mon, Oct 22, 2012 at 05:17:04PM +0100, Nix wrote:
-> >> I just had a panic/oops on upgrading from 3.6.1 to 3.6.3, after weeks of
-> >> smooth operation on 3.6.1: one of the NFS changes that went into one of
-> >> the two latest stable kernels appears to be lethal after around half an
-> >> hour of uptime. The oops came from NFSv4, IIRC (relying on memory since
-> >> my camera was recharging and there is no netconsole from that box
-> >> because it is where the netconsole logs go, so I'll have to reproduce it
-> >> later today). The machine is an NFSv3 server only at present, with no
-> >> NFSv4 running (though NFSv4 is built in).
-> >
-> > Note recent clients may try to negotiate NFSv4 by default, so it's
-> > possible to use it without knowing.
-> 
-> Every NFS import from all this server's clients has 'vers=3' forced on
-> (for now, until I get around to figuring out what if anything needs to
-> be done to move to NFSv4: it may be the answer is 'nothing' but I tread
-> quite carefully with this server, since my $HOME is there).
-> 
-> /proc/fs/nfsfs/volumes on the clients confirms that everything is v3.
-> 
-> > You didn't change anything else about your server or clients recently?
-> 
-> Nope (other than upgrading the clients to 3.6.3 in concert). Running
-> 3.6.1 here on that server now and 3.6.3 on all the clients, and no crash
-> in over a day.
-> 
-> nfs-utils is a bit old, 1.2.6-rc6, I should probably upgrade it...
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-nfs-utils shouldn't be capable of oopsing the kernel, so from my
-(selfish) point of view I'd actually rather you stick with whatever you
-have and try to reproduce the oops.
+Each function touches state in some way, so getting the lock earlier
+can help simplify code.
 
-(It's unlikely to make any difference anyway.)
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfsd/fault_inject.c |  2 ++
+ fs/nfsd/nfs4state.c    | 18 ++----------------
+ 2 files changed, 4 insertions(+), 16 deletions(-)
 
---b.
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index 0278112..4b385a1 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -51,7 +51,9 @@ static int nfsd_inject_set(void *op_ptr, u64 val)
+ 	else
+ 		printk(KERN_INFO "NFSD Fault Injection: %s (n = %llu)", op->file, val);
+ 
++	nfs4_lock_state();
+ 	op->func(val);
++	nfs4_unlock_state();
+ 	return 0;
+ }
+ 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 14c3b70..cf79c3b 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4561,13 +4561,11 @@ void nfsd_forget_clients(u64 num)
+ 	struct nfs4_client *clp, *next;
+ 	int count = 0;
+ 
+-	nfs4_lock_state();
+ 	list_for_each_entry_safe(clp, next, &client_lru, cl_lru) {
+ 		expire_client(clp);
+ 		if (++count == num)
+ 			break;
+ 	}
+-	nfs4_unlock_state();
+ 
+ 	printk(KERN_INFO "NFSD: Forgot %d clients", count);
+ }
+@@ -4602,23 +4600,13 @@ static int nfsd_release_n_owners(u64 num, bool is_open_owner,
+ 
+ void nfsd_forget_locks(u64 num)
+ {
+-	int count;
+-
+-	nfs4_lock_state();
+-	count = nfsd_release_n_owners(num, false, release_lockowner_sop);
+-	nfs4_unlock_state();
+-
++	int count = nfsd_release_n_owners(num, false, release_lockowner_sop);
+ 	printk(KERN_INFO "NFSD: Forgot %d locks", count);
+ }
+ 
+ void nfsd_forget_openowners(u64 num)
+ {
+-	int count;
+-
+-	nfs4_lock_state();
+-	count = nfsd_release_n_owners(num, true, release_openowner_sop);
+-	nfs4_unlock_state();
+-
++	int count = nfsd_release_n_owners(num, true, release_openowner_sop);
+ 	printk(KERN_INFO "NFSD: Forgot %d open owners", count);
+ }
+ 
+@@ -4651,10 +4639,8 @@ void nfsd_forget_delegations(u64 num)
+ 	count = nfsd_process_n_delegations(num, &victims);
+ 	spin_unlock(&recall_lock);
+ 
+-	nfs4_lock_state();
+ 	list_for_each_entry_safe(dp, dnext, &victims, dl_recall_lru)
+ 		unhash_delegation(dp);
+-	nfs4_unlock_state();
+ 
+ 	printk(KERN_INFO "NFSD: Forgot %d delegations", count);
+ }
+-- 
+1.8.0
 
-> > I don't see an obvious candidate on a quick skim of v3.6.1..v3.6.3
-> > commits, but of course I could be missing something.
-> 
-> I'll try rebooting into it again soon, and get an oops report if it
-> should happen again (and hopefully less filesystem corruption this time,
-> right after a reboot into a new kernel was clearly the wrong time to
-> move a bunch of directories around).
-> 
-> Sorry for the continuing lack of useful information... I'll try to fix
-> that shortly (once with a report of a false alarm, since I really want
-> this stable kernel: my server is affected by the tx stalls fixed by
-> 3468e9d and I'm getting tired of the frequent 1s lags talking to it: I
-> could just apply that one fix, but I'd rather track this down properly).
