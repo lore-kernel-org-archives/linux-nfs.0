@@ -1,76 +1,260 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:24982 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754721Ab2JOUZP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Oct 2012 16:25:15 -0400
-Message-ID: <507C7129.7090609@RedHat.com>
-Date: Mon, 15 Oct 2012 16:25:13 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail.openrapids.net ([64.15.138.104]:59928 "EHLO
+	blackscsi.openrapids.net" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1753257Ab2J3TTO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Oct 2012 15:19:14 -0400
+Date: Tue, 30 Oct 2012 15:19:09 -0400
+From: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+To: Sasha Levin <levinsasha928@gmail.com>
+Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Subject: Re: [PATCH v8 01/16] hashtable: introduce a small and naive
+	hashtable
+Message-ID: <20121030191909.GB9427@Krystal>
+References: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
 MIME-Version: 1.0
-To: "Haynes, Tom" <thomas@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: Testing XDR code for nits
-References: <20121015173035.GA1777@netapp.com>
-In-Reply-To: <20121015173035.GA1777@netapp.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+* Sasha Levin (levinsasha928@gmail.com) wrote:
+> This hashtable implementation is using hlist buckets to provide a simple
+> hashtable to prevent it from getting reimplemented all over the kernel.
+> 
+> Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
 
+Reviewed-by: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
 
-On 15/10/12 13:30, Haynes, Tom wrote:
-> It used to be when I wanted to test for sanity, I could do:
+> ---
 > 
-> sudo yum -y install libgssglue-devel
-> sudo yum -y install nfs-utils-lib-devel
+> Changes from v8:
 > 
-> and then:
+>  - Addressed comments from Tejun Heo and Mathieu Desnoyers.
 > 
-> [thomas@psyklo NFSv4.2]$ make testx
 > 
-> Since about FC15, that has been broken. I can solve this with
-> another distro, but I'd really like to get it working.
+>  include/linux/hashtable.h | 196 ++++++++++++++++++++++++++++++++++++++++++++++
+>  1 file changed, 196 insertions(+)
+>  create mode 100644 include/linux/hashtable.h
 > 
-> I can't install nfs-utils-lib-devel, I found this bugzilla:
+> diff --git a/include/linux/hashtable.h b/include/linux/hashtable.h
+> new file mode 100644
+> index 0000000..3c1a9cb
+> --- /dev/null
+> +++ b/include/linux/hashtable.h
+> @@ -0,0 +1,196 @@
+> +/*
+> + * Statically sized hash table implementation
+> + * (C) 2012  Sasha Levin <levinsasha928@gmail.com>
+> + */
+> +
+> +#ifndef _LINUX_HASHTABLE_H
+> +#define _LINUX_HASHTABLE_H
+> +
+> +#include <linux/list.h>
+> +#include <linux/types.h>
+> +#include <linux/kernel.h>
+> +#include <linux/hash.h>
+> +#include <linux/rculist.h>
+> +
+> +#define DEFINE_HASHTABLE(name, bits)						\
+> +	struct hlist_head name[1 << (bits)] =					\
+> +			{ [0 ... ((1 << (bits)) - 1)] = HLIST_HEAD_INIT }
+> +
+> +#define DECLARE_HASHTABLE(name, bits)                                   	\
+> +	struct hlist_head name[1 << (bits)]
+> +
+> +#define HASH_SIZE(name) (ARRAY_SIZE(name))
+> +#define HASH_BITS(name) ilog2(HASH_SIZE(name))
+> +
+> +/* Use hash_32 when possible to allow for fast 32bit hashing in 64bit kernels. */
+> +#define hash_min(val, bits)							\
+> +({										\
+> +	sizeof(val) <= 4 ?							\
+> +	hash_32(val, bits) :							\
+> +	hash_long(val, bits);							\
+> +})
+> +
+> +static inline void __hash_init(struct hlist_head *ht, unsigned int sz)
+> +{
+> +	unsigned int i;
+> +
+> +	for (i = 0; i < sz; i++)
+> +		INIT_HLIST_HEAD(&ht[i]);
+> +}
+> +
+> +/**
+> + * hash_init - initialize a hash table
+> + * @hashtable: hashtable to be initialized
+> + *
+> + * Calculates the size of the hashtable from the given parameter, otherwise
+> + * same as hash_init_size.
+> + *
+> + * This has to be a macro since HASH_BITS() will not work on pointers since
+> + * it calculates the size during preprocessing.
+> + */
+> +#define hash_init(hashtable) __hash_init(hashtable, HASH_SIZE(hashtable))
+> +
+> +/**
+> + * hash_add - add an object to a hashtable
+> + * @hashtable: hashtable to add to
+> + * @node: the &struct hlist_node of the object to be added
+> + * @key: the key of the object to be added
+> + */
+> +#define hash_add(hashtable, node, key)						\
+> +	hlist_add_head(node, &hashtable[hash_min(key, HASH_BITS(hashtable))])
+> +
+> +/**
+> + * hash_add_rcu - add an object to a rcu enabled hashtable
+> + * @hashtable: hashtable to add to
+> + * @node: the &struct hlist_node of the object to be added
+> + * @key: the key of the object to be added
+> + */
+> +#define hash_add_rcu(hashtable, node, key)					\
+> +	hlist_add_head_rcu(node, &hashtable[hash_min(key, HASH_BITS(hashtable))])
+> +
+> +/**
+> + * hash_hashed - check whether an object is in any hashtable
+> + * @node: the &struct hlist_node of the object to be checked
+> + */
+> +static inline bool hash_hashed(struct hlist_node *node)
+> +{
+> +	return !hlist_unhashed(node);
+> +}
+> +
+> +static inline bool __hash_empty(struct hlist_head *ht, unsigned int sz)
+> +{
+> +	unsigned int i;
+> +
+> +	for (i = 0; i < sz; i++)
+> +		if (!hlist_empty(&ht[i]))
+> +			return false;
+> +
+> +	return true;
+> +}
+> +
+> +/**
+> + * hash_empty - check whether a hashtable is empty
+> + * @hashtable: hashtable to check
+> + *
+> + * This has to be a macro since HASH_BITS() will not work on pointers since
+> + * it calculates the size during preprocessing.
+> + */
+> +#define hash_empty(hashtable) __hash_empty(hashtable, HASH_SIZE(hashtable))
+> +
+> +/**
+> + * hash_del - remove an object from a hashtable
+> + * @node: &struct hlist_node of the object to remove
+> + */
+> +static inline void hash_del(struct hlist_node *node)
+> +{
+> +	hlist_del_init(node);
+> +}
+> +
+> +/**
+> + * hash_del_rcu - remove an object from a rcu enabled hashtable
+> + * @node: &struct hlist_node of the object to remove
+> + */
+> +static inline void hash_del_rcu(struct hlist_node *node)
+> +{
+> +	hlist_del_init_rcu(node);
+> +}
+> +
+> +/**
+> + * hash_for_each - iterate over a hashtable
+> + * @name: hashtable to iterate
+> + * @bkt: integer to use as bucket loop cursor
+> + * @node: the &struct list_head to use as a loop cursor for each entry
+> + * @obj: the type * to use as a loop cursor for each entry
+> + * @member: the name of the hlist_node within the struct
+> + */
+> +#define hash_for_each(name, bkt, node, obj, member)				\
+> +	for ((bkt) = 0, node = NULL; node == NULL && (bkt) < HASH_SIZE(name); (bkt)++)\
+> +		hlist_for_each_entry(obj, node, &name[bkt], member)
+> +
+> +/**
+> + * hash_for_each_rcu - iterate over a rcu enabled hashtable
+> + * @name: hashtable to iterate
+> + * @bkt: integer to use as bucket loop cursor
+> + * @node: the &struct list_head to use as a loop cursor for each entry
+> + * @obj: the type * to use as a loop cursor for each entry
+> + * @member: the name of the hlist_node within the struct
+> + */
+> +#define hash_for_each_rcu(name, bkt, node, obj, member)				\
+> +	for ((bkt) = 0, node = NULL; node == NULL && (bkt) < HASH_SIZE(name); (bkt)++)\
+> +		hlist_for_each_entry_rcu(obj, node, &name[bkt], member)
+> +
+> +/**
+> + * hash_for_each_safe - iterate over a hashtable safe against removal of
+> + * hash entry
+> + * @name: hashtable to iterate
+> + * @bkt: integer to use as bucket loop cursor
+> + * @node: the &struct list_head to use as a loop cursor for each entry
+> + * @tmp: a &struct used for temporary storage
+> + * @obj: the type * to use as a loop cursor for each entry
+> + * @member: the name of the hlist_node within the struct
+> + */
+> +#define hash_for_each_safe(name, bkt, node, tmp, obj, member)			\
+> +	for ((bkt) = 0, node = NULL; node == NULL && (bkt) < HASH_SIZE(name); (bkt)++)\
+> +		hlist_for_each_entry_safe(obj, node, tmp, &name[bkt], member)
+> +
+> +/**
+> + * hash_for_each_possible - iterate over all possible objects hashing to the
+> + * same bucket
+> + * @name: hashtable to iterate
+> + * @obj: the type * to use as a loop cursor for each entry
+> + * @node: the &struct list_head to use as a loop cursor for each entry
+> + * @member: the name of the hlist_node within the struct
+> + * @key: the key of the objects to iterate over
+> + */
+> +#define hash_for_each_possible(name, obj, node, member, key)			\
+> +	hlist_for_each_entry(obj, node,	&name[hash_min(key, HASH_BITS(name))], member)
+> +
+> +/**
+> + * hash_for_each_possible_rcu - iterate over all possible objects hashing to the
+> + * same bucket in an rcu enabled hashtable
+> + * in a rcu enabled hashtable
+> + * @name: hashtable to iterate
+> + * @obj: the type * to use as a loop cursor for each entry
+> + * @node: the &struct list_head to use as a loop cursor for each entry
+> + * @member: the name of the hlist_node within the struct
+> + * @key: the key of the objects to iterate over
+> + */
+> +#define hash_for_each_possible_rcu(name, obj, node, member, key)		\
+> +	hlist_for_each_entry_rcu(obj, node, &name[hash_min(key, HASH_BITS(name))], member)
+> +
+> +/**
+> + * hash_for_each_possible_safe - iterate over all possible objects hashing to the
+> + * same bucket safe against removals
+> + * @name: hashtable to iterate
+> + * @obj: the type * to use as a loop cursor for each entry
+> + * @node: the &struct list_head to use as a loop cursor for each entry
+> + * @tmp: a &struct used for temporary storage
+> + * @member: the name of the hlist_node within the struct
+> + * @key: the key of the objects to iterate over
+> + */
+> +#define hash_for_each_possible_safe(name, obj, node, tmp, member, key)		\
+> +	hlist_for_each_entry_safe(obj, node, tmp,				\
+> +		&name[hash_min(key, HASH_BITS(name))], member)
+> +
+> +
+> +#endif
+> -- 
+> 1.7.12.4
 > 
-> https://bugzilla.redhat.com/show_bug.cgi?id=722847
-> 
-> So I tried installing libtirpc-devel and no luck with the
-> test:
-> 
-> ( cd testx.d ; \
-> 	rpcgen -a nfsv42.x ; \
-> 	if [ ! -f /usr/include/rpc/auth_sys.h ]; then \
-> 		ln Make* make ; \
-> 		CFLAGS="-I /usr/include/rpcsecgss -I /usr/include/gssglue" ; export CFLAGS ; \
-> 		LDLIBS="-lrpcsecgss" ; export LDLIBS ; \
-> 	fi ; \
-> 	make -f make* )
-> file `nfsv42_server.c' already exists and may be overwritten
-> make[1]: Entering directory `/home/thomas/Documents/ietf/NFSv4.2/testx.d'
-> rpcgen  nfsv42.x
-> cc -I /usr/include/rpcsecgss -I /usr/include/gssglue -g    -c -o nfsv42_clnt.o nfsv42_clnt.c
-> cc -I /usr/include/rpcsecgss -I /usr/include/gssglue -g    -c -o nfsv42_client.o nfsv42_client.c
-> cc -I /usr/include/rpcsecgss -I /usr/include/gssglue -g    -c -o nfsv42_xdr.o nfsv42_xdr.c
-> nfsv42_xdr.c: In function ‘xdr_secinfo4’:
-> nfsv42_xdr.c:3511:7: error: ‘RPCSEC_GSS’ undeclared (first use in this function)
-> nfsv42_xdr.c:3511:7: note: each undeclared identifier is reported only once for each function it appears in
-> nfsv42_xdr.c: In function ‘xdr_callback_sec_parms4’:
-> nfsv42_xdr.c:3790:7: error: ‘RPCSEC_GSS’ undeclared (first use in this function)
-> make[1]: *** [nfsv42_xdr.o] Error 1
-> make[1]: Leaving directory `/home/thomas/Documents/ietf/NFSv4.2/testx.d'
-> make: *** [testx] Error 2
-> 
-> What package will provide RPCSEC_GSS in a header?
-Here is the list of build decencies to build a Fedora nfs-utils rpm.
 
-libgssglue-devel libevent-devel libcap-devel
-libnfsidmap-devel libtirpc-devel libblkid-devel
-krb5-libs >= 1.4 autoconf >= 2.57 openldap-devel >= 2.2
-automake, libtool, glibc-headers, device-mapper-devel
-krb5-devel, tcp_wrappers-devel, libmount-devel
-fedfs-utils-devel >= 0.8.0-7
-
-I hope this helps...
-
-steved.
+-- 
+Mathieu Desnoyers
+Operating System Efficiency R&D Consultant
+EfficiOS Inc.
+http://www.efficios.com
