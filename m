@@ -1,67 +1,147 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f44.google.com ([74.125.82.44]:58388 "EHLO
-	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752842Ab2JMBDS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Oct 2012 21:03:18 -0400
-Received: by mail-wg0-f44.google.com with SMTP id dr13so2853549wgb.1
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Oct 2012 18:03:17 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20121013002100.GB23247@bitmover.com>
-References: <20121012211701.GA8301@bitmover.com> <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
- <20121013002100.GB23247@bitmover.com>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Sat, 13 Oct 2012 10:02:56 +0900
-Message-ID: <CA+55aFwKn+rp4qTk3dLgN8n=M-Aw1GYYpOfevDJaJhnK-U5VOg@mail.gmail.com>
-Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
-To: Larry McVoy <lm@bitmover.com>, Bruce Fields <bfields@fieldses.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx2.netapp.com ([216.240.18.37]:5748 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750961Ab2J3UvC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Oct 2012 16:51:02 -0400
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 06/10] NFSD: Clean up forgetting and recalling delegations
+Date: Tue, 30 Oct 2012 16:50:50 -0400
+Message-Id: <1351630254-26166-7-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
+References: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Oct 13, 2012 at 9:21 AM, Larry McVoy <lm@bitmover.com> wrote:
->
-> Ahh, I've been away from the kernel too long.  I miss that delicate
-> management touch.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-"Delicate Management Touch" is my middle name.
+Once I have a client, I can easily use its delegation list rather than
+searching the file hash table for delegations to remove.
 
-> pics of the stack trace at http://www.mcvoy.com/lm/nfs-lock-crash
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfsd/nfs4state.c | 94 ++++++++++++++++++++++++++++-------------------------
+ 1 file changed, 50 insertions(+), 44 deletions(-)
 
-Ok, that's just the normal kind of random left-over oopses due to
-subsequent problems of a BUG_ON(). Looks like the watchdog timer ends
-up being unhappy, almost certainly simply because some core filesystem
-spinlock not being released.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 552925e..49ab5c4 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4595,6 +4595,52 @@ static u64 nfsd_forget_client_openowners(struct nfs4_client *clp, u64 max)
+ 	return count;
+ }
+ 
++static u64 nfsd_find_n_delegations(struct nfs4_client *clp, u64 max,
++				   struct list_head *victims)
++{
++	struct nfs4_delegation *dp, *next;
++	u64 count = 0;
++
++	list_for_each_entry_safe(dp, next, &clp->cl_delegations, dl_perclnt) {
++		list_move(&dp->dl_recall_lru, victims);
++		if (++count == max)
++			break;
++	}
++	return count;
++}
++
++static u64 nfsd_forget_client_delegations(struct nfs4_client *clp, u64 max)
++{
++	struct nfs4_delegation *dp, *next;
++	LIST_HEAD(victims);
++	u64 count;
++
++	spin_lock(&recall_lock);
++	count = nfsd_find_n_delegations(clp, max, &victims);
++	spin_unlock(&recall_lock);
++
++	list_for_each_entry_safe(dp, next, &victims, dl_recall_lru)
++		unhash_delegation(dp);
++
++	return count;
++}
++
++static u64 nfsd_recall_client_delegations(struct nfs4_client *clp, u64 max)
++{
++	struct nfs4_delegation *dp, *next;
++	LIST_HEAD(victims);
++	u64 count;
++
++	spin_lock(&recall_lock);
++
++	count = nfsd_find_n_delegations(clp, max, &victims);
++	list_for_each_entry_safe(dp, next, &victims, dl_recall_lru)
++		nfsd_break_one_deleg(dp);
++
++	spin_unlock(&recall_lock);
++	return count;
++}
++
+ static u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
+ {
+ 	struct nfs4_client *clp, *next;
+@@ -4627,56 +4673,16 @@ void nfsd_forget_openowners(u64 num)
+ 	printk(KERN_INFO "NFSD: Forgot %llu open owners", count);
+ }
+ 
+-static int nfsd_process_n_delegations(u64 num, struct list_head *list)
+-{
+-	int i, count = 0;
+-	struct nfs4_file *fp, *fnext;
+-	struct nfs4_delegation *dp, *dnext;
+-
+-	for (i = 0; i < FILE_HASH_SIZE; i++) {
+-		list_for_each_entry_safe(fp, fnext, &file_hashtbl[i], fi_hash) {
+-			list_for_each_entry_safe(dp, dnext, &fp->fi_delegations, dl_perfile) {
+-				list_move(&dp->dl_recall_lru, list);
+-				if (++count == num)
+-					return count;
+-			}
+-		}
+-	}
+-
+-	return count;
+-}
+-
+ void nfsd_forget_delegations(u64 num)
+ {
+-	unsigned int count;
+-	LIST_HEAD(victims);
+-	struct nfs4_delegation *dp, *dnext;
+-
+-	spin_lock(&recall_lock);
+-	count = nfsd_process_n_delegations(num, &victims);
+-	spin_unlock(&recall_lock);
+-
+-	list_for_each_entry_safe(dp, dnext, &victims, dl_recall_lru)
+-		unhash_delegation(dp);
+-
+-	printk(KERN_INFO "NFSD: Forgot %d delegations", count);
++	u64 count = nfsd_for_n_state(num, nfsd_forget_client_delegations);
++	printk(KERN_INFO "NFSD: Forgot %llu delegations", count);
+ }
+ 
+ void nfsd_recall_delegations(u64 num)
+ {
+-	unsigned int count;
+-	LIST_HEAD(victims);
+-	struct nfs4_delegation *dp, *dnext;
+-
+-	spin_lock(&recall_lock);
+-	count = nfsd_process_n_delegations(num, &victims);
+-	list_for_each_entry_safe(dp, dnext, &victims, dl_recall_lru) {
+-		list_del(&dp->dl_recall_lru);
+-		nfsd_break_one_deleg(dp);
+-	}
+-	spin_unlock(&recall_lock);
+-
+-	printk(KERN_INFO "NFSD: Recalled %d delegations", count);
++	u64 count = nfsd_for_n_state(num, nfsd_recall_client_delegations);
++	printk(KERN_INFO "NFSD: Recalled %llu delegations", count);
+ }
+ 
+ #endif /* CONFIG_NFSD_FAULT_INJECTION */
+-- 
+1.8.0
 
-It used to be (a long long time ago) that we'd recover fairly
-gracefully from BUG_ON()'s - back when the main shared lock we had was
-the kernel lock, and we had a single per-process kernel lock counter.
-So when we killed the process, we could clean that single lock up.
-
-These days, if some process dies in random kernel code due to a
-BUG_ON() or a wild pointer or similar, and we kill it, we are seldom
-able to do so cleanly. So the best we can hope for is that it happened
-in some context where it held no (important) locks. Which is rare. So
-BUG_ON()'s are often fatal, and there are these kinds of downstream
-problems where they get flushed off the screen by subsequent issues...
-
-Ho humm. Google doesn't seem to be finding any similar bug-reports, so
-unless Bruce or Trond go "Ahh, I know what it's about", I do think we
-would want to get as much more info as possible.
-
-Doing a kernel compile really isn't that bad. The only nasty piece is
-getting the kernel configuration right, but you can just use the
-distro config. It's much too big and contains everything, but it will
-work, and gets you as similar a kernel as possible. Of course, Ubuntu
-has made installing your own kernel stupidly complicated (you have to
-build a package and install it using the package manager), but while
-it's an annoying extra step or two (compared to just doing a "make
-modules_install install"), it's not rocket surgery. There's a few help
-pages for it:
-
-    https://help.ubuntu.com/community/Kernel/Compile
-
-being the first one.
-
-                Linus
