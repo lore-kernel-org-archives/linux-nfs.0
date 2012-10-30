@@ -1,204 +1,158 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:8035 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:36201 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753043Ab2JOUeR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Oct 2012 16:34:17 -0400
-Message-ID: <507C7344.5040506@RedHat.com>
-Date: Mon, 15 Oct 2012 16:34:12 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>
-CC: Chuck Lever <chuck.lever@oracle.com>, NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] mount.nfs mapage: clear up confusion between 'proto'
- and 'transport'
-References: <20121011110126.44669d79@notabene.brown>
-In-Reply-To: <20121011110126.44669d79@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S934107Ab2J3VBn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Oct 2012 17:01:43 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 1/2] NFS: add nfs_sb_deactive_async to avoid deadlock
+Date: Tue, 30 Oct 2012 17:01:39 -0400
+Message-Id: <1351630900-6498-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Use nfs_sb_deactive_async instead of nfs_sb_deactive when in a workqueue
+context.  This avoids a deadlock where rpc_shutdown_client loops forever
+in a workqueue kworker context, trying to kill all RPC tasks associated with
+the client, while one or more of these tasks have already been assigned to the
+same kworker (and will never run rpc_exit_task).
 
+This approach is needed because RPC tasks that have already been assigned
+to a kworker by queue_work cannot be canceled, as explained in the comment
+for workqueue.c:insert_wq_barrier.
 
-On 10/10/12 20:01, NeilBrown wrote:
-> 
-> The mount option "proto=" actually set the "transport" which in
-> netconfig usage is the pairing of a protocol (e.g. UDP, TCP) with
-> a protocol family (e.g. INET, INET6).
-> 
-> This can cause confusion if people naively except "proto=udp" to work
-> equally well on IPv6.
-> 
-> So add some text to both nfs(5) and nfsmount.conf(5) to hopefully
-> clarify this.
-> 
-> Acked-by: Chuck Lever <chuck.lever@oracle.com>
-> Signed-off-by: NeilBrown <neilb@suse.de>
-Committed...
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
 
-steved.
+This version calls kthread_run *only* when deactivate_super will result
+in an umount -- the previous version could cause many unneeded kthread_runs
+with certain workloads.
 
-> 
-> --
-> Hi Steve,
->  please apply this to nfs-utils.
-> Thanks,
-> NeilBrown
-> 
-> 
-> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-> index da6d6d3..c15de98 100644
-> --- a/utils/mount/nfs.man
-> +++ b/utils/mount/nfs.man
-> @@ -1,5 +1,5 @@
->  .\"@(#)nfs.5"
-> -.TH NFS 5 "2 November 2007"
-> +.TH NFS 5 "9 October 2012"
->  .SH NAME
->  nfs \- fstab format and options for the
->  .B nfs
-> @@ -472,24 +472,15 @@ Use these options, along with the options in the above subsection,
->  for NFS versions 2 and 3 only.
->  .TP 1.5i
->  .BI proto= netid
-> -The transport protocol name and protocol family the NFS client uses
-> -to transmit requests to the NFS server for this mount point.
-> -If an NFS server has both an IPv4 and an IPv6 address, using a specific
-> -netid will force the use of IPv4 or IPv6 networking to communicate
-> -with that server.
-> -.IP
-> -If support for TI-RPC is built into the
-> -.B mount.nfs
-> -command,
-> -.I netid
-> -is a valid netid listed in
-> -.IR /etc/netconfig .
-> -The value "rdma" may also be specified.
-> -If the
-> -.B mount.nfs
-> -command does not have TI-RPC support, then
-> +The
->  .I netid
-> -is one of "tcp," "udp," or "rdma," and only IPv4 may be used.
-> +determines the transport that is used to communicate with the NFS
-> +server.  Available options are
-> +.BR udp ", " udp6 ", "tcp ", " tcp6 ", and " rdma .
-> +Those which end in
-> +.B 6
-> +use IPv6 addresses and are only available if support for TI-RPC is
-> +built in. Others use IPv4 addresses.
->  .IP
->  Each transport protocol uses different default
->  .B retrans
-> @@ -569,19 +560,18 @@ This option can be used when mounting an NFS server
->  through a firewall that blocks the rpcbind protocol.
->  .TP 1.5i
->  .BI mountproto= netid
-> -The transport protocol name and protocol family the NFS client uses
-> +The transport the NFS client uses
->  to transmit requests to the NFS server's mountd service when performing
->  this mount request, and when later unmounting this mount point.
->  .IP
-> -If support for TI-RPC is built into the
-> +.I netid
-> +may be one of
-> +.BR udp ", and " tcp
-> +which use IPv4 address or, if TI-RPC is built into the
->  .B mount.nfs
->  command,
-> -.I netid
-> -is a valid netid listed in
-> -.IR /etc/netconfig .
-> -Otherwise,
-> -.I netid
-> -is one of "tcp" or "udp," and only IPv4 may be used.
-> +.BR udp6 ", and " tcp6
-> +which use IPv6 addresses.
->  .IP
->  This option can be used when mounting an NFS server
->  through a firewall that blocks a particular transport.
-> @@ -773,21 +763,14 @@ Use these options, along with the options in the first subsection above,
->  for NFS version 4 and newer.
->  .TP 1.5i
->  .BI proto= netid
-> -The transport protocol name and protocol family the NFS client uses
-> -to transmit requests to the NFS server for this mount point.
-> -If an NFS server has both an IPv4 and an IPv6 address, using a specific
-> -netid will force the use of IPv4 or IPv6 networking to communicate
-> -with that server.
-> -.IP
-> -If support for TI-RPC is built into the
-> -.B mount.nfs
-> -command,
-> -.I netid
-> -is a valid netid listed in
-> -.IR /etc/netconfig .
-> -Otherwise,
-> +The
->  .I netid
-> -is one of "tcp" or "udp," and only IPv4 may be used.
-> +determines the transport that is used to communicate with the NFS
-> +server.  Supported options are
-> +.BR tcp ", " tcp6 ", and " rdma .
-> +.B tcp6
-> +use IPv6 addresses and is only available if support for TI-RPC is
-> +built in. Both others use IPv4 addresses.
->  .IP
->  All NFS version 4 servers are required to support TCP,
->  so if this mount option is not specified, the NFS version 4 client
-> @@ -851,6 +834,8 @@ The DATA AND METADATA COHERENCE section discusses
->  the behavior of this option in more detail.
->  .TP 1.5i
->  .BI clientaddr= n.n.n.n
-> +.TP 1.5i
-> +.BI clientaddr= n:n: ... :n
->  Specifies a single IPv4 address (in dotted-quad form),
->  or a non-link-local IPv6 address,
->  that the NFS client advertises to allow servers
-> diff --git a/utils/mount/nfsmount.conf.man b/utils/mount/nfsmount.conf.man
-> index 12a3fe7..3aa3456 100644
-> --- a/utils/mount/nfsmount.conf.man
-> +++ b/utils/mount/nfsmount.conf.man
-> @@ -1,5 +1,5 @@
->  .\"@(#)nfsmount.conf.5"
-> -.TH NFSMOUNT.CONF 5 "9 Mar 2008"
-> +.TH NFSMOUNT.CONF 5 "9 October 2012"
->  .SH NAME
->  nfsmount.conf - Configuration file for NFS mounts
->  .SH SYNOPSIS
-> @@ -18,6 +18,10 @@ to particular variables using the
->  .BR = 
->  operator, as in 
->  .BR Proto=Tcp .
-> +The variables that can be assigned are exactly the set of NFS specific
-> +mount options listed in
-> +.BR nfs (5).
-> +.PP
->  Sections are broken up into three basic categories:
->  Global options, Server options and Mount Point options.
->  .HP
-> @@ -54,7 +58,7 @@ are defined in the configuration file.
->      Proto=Tcp
->  .RS
->  .HP
-> -The TCP protocol will be used on every NFS mount.
-> +The TCP/IPv4 protocol will be used on every NFS mount.
->  .HP
->  .RE
->  [ Server \(lqnfsserver.foo.com\(rq ]
-> @@ -62,10 +66,13 @@ The TCP protocol will be used on every NFS mount.
->      rsize=32k
->  .br
->      wsize=32k
-> +.br
-> +    proto=udp6
->  .HP
->  .RS
-> -A 33k (32768 bytes) block size will be used as the read and write
-> -size on all mounts to the 'nfsserver.foo.com' server.
-> +A 32k (32768 bytes) block size will be used as the read and write
-> +size on all mounts to the 'nfsserver.foo.com' server.  UDP/IPv6
-> +is the protocol to be used.
->  .HP
->  .RE
->  .BR 
-> 
+ fs/nfs/inode.c    |    5 ++++-
+ fs/nfs/internal.h |    1 +
+ fs/nfs/nfs4proc.c |    2 +-
+ fs/nfs/super.c    |   45 +++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/unlink.c   |    2 +-
+ 5 files changed, 52 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 3967be2..117183b 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -685,7 +685,10 @@ static void __put_nfs_open_context(struct nfs_open_context *ctx, int is_sync)
+ 	if (ctx->cred != NULL)
+ 		put_rpccred(ctx->cred);
+ 	dput(ctx->dentry);
+-	nfs_sb_deactive(sb);
++	if (is_sync)
++		nfs_sb_deactive(sb);
++	else
++		nfs_sb_deactive_async(sb);
+ 	kfree(ctx->mdsthreshold);
+ 	kfree(ctx);
+ }
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 59b133c..12b8d69 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -351,6 +351,7 @@ extern int __init register_nfs_fs(void);
+ extern void __exit unregister_nfs_fs(void);
+ extern void nfs_sb_active(struct super_block *sb);
+ extern void nfs_sb_deactive(struct super_block *sb);
++extern void nfs_sb_deactive_async(struct super_block *sb);
+ 
+ /* namespace.c */
+ extern char *nfs_path(char **p, struct dentry *dentry,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 8b04d14..33a36e0 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2193,7 +2193,7 @@ static void nfs4_free_closedata(void *data)
+ 	nfs4_put_open_state(calldata->state);
+ 	nfs_free_seqid(calldata->arg.seqid);
+ 	nfs4_put_state_owner(sp);
+-	nfs_sb_deactive(sb);
++	nfs_sb_deactive_async(sb);
+ 	kfree(calldata);
+ }
+ 
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index e831bce..c25678c 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -54,6 +54,7 @@
+ #include <linux/parser.h>
+ #include <linux/nsproxy.h>
+ #include <linux/rcupdate.h>
++#include <linux/kthread.h>
+ 
+ #include <asm/uaccess.h>
+ 
+@@ -415,6 +416,50 @@ void nfs_sb_deactive(struct super_block *sb)
+ }
+ EXPORT_SYMBOL_GPL(nfs_sb_deactive);
+ 
++static int nfs_deactivate_super_async_work(void *ptr)
++{
++	struct super_block *sb = ptr;
++
++	deactivate_super(sb);
++	return 0;
++}
++
++/*
++ * same effect as deactivate_super, but will do final unmount in kthread
++ * context
++ */
++static void nfs_deactivate_super_async(struct super_block *sb)
++{
++	struct task_struct *task;
++	char buf[INET6_ADDRSTRLEN + sizeof("-deactivate-super") + 1];
++	struct nfs_server *server = NFS_SB(sb);
++	struct nfs_client *clp = server->nfs_client;
++
++	if (!atomic_add_unless(&sb->s_active, -1, 1)) {
++		rcu_read_lock();
++		snprintf(buf, sizeof(buf), "%s-deactivate-super",
++			rpc_peeraddr2str(clp->cl_rpcclient, RPC_DISPLAY_ADDR));
++		rcu_read_unlock();
++
++		task = kthread_run(nfs_deactivate_super_async_work, sb, buf);
++		if (IS_ERR(task)) {
++			pr_err("%s: kthread_run: %ld\n",
++				__func__, PTR_ERR(task));
++			/* make synchronous call and hope for the best */
++			deactivate_super(sb);
++		}
++	}
++}
++
++void nfs_sb_deactive_async(struct super_block *sb)
++{
++	struct nfs_server *server = NFS_SB(sb);
++
++	if (atomic_dec_and_test(&server->active))
++		nfs_deactivate_super_async(sb);
++}
++EXPORT_SYMBOL_GPL(nfs_sb_deactive_async);
++
+ /*
+  * Deliver file system statistics to userspace
+  */
+diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
+index 13cea63..3f79c77 100644
+--- a/fs/nfs/unlink.c
++++ b/fs/nfs/unlink.c
+@@ -95,7 +95,7 @@ static void nfs_async_unlink_release(void *calldata)
+ 
+ 	nfs_dec_sillycount(data->dir);
+ 	nfs_free_unlinkdata(data);
+-	nfs_sb_deactive(sb);
++	nfs_sb_deactive_async(sb);
+ }
+ 
+ static void nfs_unlink_prepare(struct rpc_task *task, void *calldata)
+-- 
+1.7.9.6 (Apple Git-31.1)
+
