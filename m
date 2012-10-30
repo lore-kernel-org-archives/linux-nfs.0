@@ -1,103 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f174.google.com ([209.85.216.174]:46116 "EHLO
-	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965625Ab2J3Ssa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Oct 2012 14:48:30 -0400
-From: Sasha Levin <levinsasha928@gmail.com>
-To: torvalds@linux-foundation.org
-Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
-        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
-        josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
-        Sasha Levin <levinsasha928@gmail.com>
-Subject: [PATCH v8 16/16] tracing output: use new hashtable implementation
-Date: Tue, 30 Oct 2012 14:46:12 -0400
-Message-Id: <1351622772-16400-16-git-send-email-levinsasha928@gmail.com>
-In-Reply-To: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
-References: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:57592 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753046Ab2J3Uu7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Oct 2012 16:50:59 -0400
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 03/10] NFSD: Clean up forgetting clients
+Date: Tue, 30 Oct 2012 16:50:47 -0400
+Message-Id: <1351630254-26166-4-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
+References: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch tracing to use the new hashtable implementation. This reduces the
-amount of generic unrelated code in the tracing module.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+I added in a generic for-each loop that takes a pass over the client_lru
+list and calls some function.  The next few patches will update other
+operations to use this function as well.  A value of 0 still means "forget
+everything that is found".
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- kernel/trace/trace_output.c | 18 ++++++------------
- 1 file changed, 6 insertions(+), 12 deletions(-)
+ fs/nfsd/nfs4state.c | 23 ++++++++++++++++++-----
+ 1 file changed, 18 insertions(+), 5 deletions(-)
 
-diff --git a/kernel/trace/trace_output.c b/kernel/trace/trace_output.c
-index 123b189..6af4879 100644
---- a/kernel/trace/trace_output.c
-+++ b/kernel/trace/trace_output.c
-@@ -8,15 +8,15 @@
- #include <linux/module.h>
- #include <linux/mutex.h>
- #include <linux/ftrace.h>
-+#include <linux/hashtable.h>
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index cf79c3b..3c5719a 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4556,18 +4556,31 @@ nfs4_check_open_reclaim(clientid_t *clid, bool sessions)
  
- #include "trace_output.h"
+ #ifdef CONFIG_NFSD_FAULT_INJECTION
  
--/* must be a power of 2 */
--#define EVENT_HASHSIZE	128
-+#define EVENT_HASH_BITS	7
- 
- DECLARE_RWSEM(trace_event_mutex);
- 
--static struct hlist_head event_hash[EVENT_HASHSIZE] __read_mostly;
-+static DEFINE_HASHTABLE(event_hash, EVENT_HASH_BITS);
- 
- static int next_event_type = __TRACE_LAST_TYPE + 1;
- 
-@@ -712,11 +712,8 @@ struct trace_event *ftrace_find_event(int type)
+-void nfsd_forget_clients(u64 num)
++static u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
++{
++	nfsd4_client_record_remove(clp);
++	expire_client(clp);
++	return 1;
++}
++
++static u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
  {
- 	struct trace_event *event;
- 	struct hlist_node *n;
--	unsigned key;
+ 	struct nfs4_client *clp, *next;
+-	int count = 0;
++	u64 count = 0;
  
--	key = type & (EVENT_HASHSIZE - 1);
--
--	hlist_for_each_entry(event, n, &event_hash[key], node) {
-+	hash_for_each_possible(event_hash, event, n, node, type) {
- 		if (event->type == type)
- 			return event;
+ 	list_for_each_entry_safe(clp, next, &client_lru, cl_lru) {
+-		expire_client(clp);
+-		if (++count == num)
++		count += func(clp, max - count);
++		if ((max != 0) && (count >= max))
+ 			break;
  	}
-@@ -781,7 +778,6 @@ void trace_event_read_unlock(void)
-  */
- int register_ftrace_event(struct trace_event *event)
- {
--	unsigned key;
- 	int ret = 0;
  
- 	down_write(&trace_event_mutex);
-@@ -833,9 +829,7 @@ int register_ftrace_event(struct trace_event *event)
- 	if (event->funcs->binary == NULL)
- 		event->funcs->binary = trace_nop_print;
- 
--	key = event->type & (EVENT_HASHSIZE - 1);
--
--	hlist_add_head(&event->node, &event_hash[key]);
-+	hash_add(event_hash, &event->node, event->type);
- 
- 	ret = event->type;
-  out:
-@@ -850,7 +844,7 @@ EXPORT_SYMBOL_GPL(register_ftrace_event);
-  */
- int __unregister_ftrace_event(struct trace_event *event)
- {
--	hlist_del(&event->node);
-+	hash_del(&event->node);
- 	list_del(&event->list);
- 	return 0;
+-	printk(KERN_INFO "NFSD: Forgot %d clients", count);
++	return count;
++}
++
++void nfsd_forget_clients(u64 num)
++{
++	u64 count = nfsd_for_n_state(num, nfsd_forget_client);
++	printk(KERN_INFO "NFSD: Forgot %llu clients", count);
  }
+ 
+ static void release_lockowner_sop(struct nfs4_stateowner *sop)
 -- 
-1.7.12.4
+1.8.0
 
