@@ -1,64 +1,132 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f172.google.com ([209.85.212.172]:61851 "EHLO
-	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752762Ab2JLXxJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Oct 2012 19:53:09 -0400
-Received: by mail-wi0-f172.google.com with SMTP id hq12so57641wib.1
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Oct 2012 16:53:08 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20121012211701.GA8301@bitmover.com>
-References: <20121012211701.GA8301@bitmover.com>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Sat, 13 Oct 2012 08:52:44 +0900
-Message-ID: <CA+55aFymSQYnutQgv0B2yXHL00hHs-3UZZGEXVik18QUdPTgyg@mail.gmail.com>
-Subject: Re: kernel BUG at /build/buildd/linux-3.2.0/fs/lockd/clntxdr.c:226!
-To: Bruce Fields <bfields@fieldses.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Cc: Larry McVoy <lm@bitmover.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qc0-f174.google.com ([209.85.216.174]:46116 "EHLO
+	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965427Ab2J3SrG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Oct 2012 14:47:06 -0400
+From: Sasha Levin <levinsasha928@gmail.com>
+To: torvalds@linux-foundation.org
+Cc: tj@kernel.org, akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com,
+        Sasha Levin <levinsasha928@gmail.com>
+Subject: [PATCH v8 03/16] mm,ksm: use new hashtable implementation
+Date: Tue, 30 Oct 2012 14:45:59 -0400
+Message-Id: <1351622772-16400-3-git-send-email-levinsasha928@gmail.com>
+In-Reply-To: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
+References: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Guys, check this report from Larry out.
+Switch ksm to use the new hashtable implementation. This reduces the amount of
+generic unrelated code in the ksm module.
 
-Also, why the *HELL* is that a BUG_ON() in the first place? Who was
-the less-than-gifted person who decided "if this thing can happen,
-let's just kill the whole machine"?
+Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+---
+ mm/ksm.c | 31 +++++++++++++------------------
+ 1 file changed, 13 insertions(+), 18 deletions(-)
 
-BUG_ON()'s are for machine-killing problems, not for some random
-assert() in the code. If the thing can never happen, then the BUG_ON()
-shouldn't have existed in the first place. And if you are worried
-about it happening (like it clearly did for Larry), ou should have
-handled it, since clearly this is *not* a machine-killing worthy
-problem.
+diff --git a/mm/ksm.c b/mm/ksm.c
+index 31ae5ea..751e328 100644
+--- a/mm/ksm.c
++++ b/mm/ksm.c
+@@ -33,7 +33,7 @@
+ #include <linux/mmu_notifier.h>
+ #include <linux/swap.h>
+ #include <linux/ksm.h>
+-#include <linux/hash.h>
++#include <linux/hashtable.h>
+ #include <linux/freezer.h>
+ #include <linux/oom.h>
+ 
+@@ -156,9 +156,8 @@ struct rmap_item {
+ static struct rb_root root_stable_tree = RB_ROOT;
+ static struct rb_root root_unstable_tree = RB_ROOT;
+ 
+-#define MM_SLOTS_HASH_SHIFT 10
+-#define MM_SLOTS_HASH_HEADS (1 << MM_SLOTS_HASH_SHIFT)
+-static struct hlist_head mm_slots_hash[MM_SLOTS_HASH_HEADS];
++#define MM_SLOTS_HASH_BITS 10
++static DEFINE_HASHTABLE(mm_slots_hash, MM_SLOTS_HASH_BITS);
+ 
+ static struct mm_slot ksm_mm_head = {
+ 	.mm_list = LIST_HEAD_INIT(ksm_mm_head.mm_list),
+@@ -275,26 +274,21 @@ static inline void free_mm_slot(struct mm_slot *mm_slot)
+ 
+ static struct mm_slot *get_mm_slot(struct mm_struct *mm)
+ {
+-	struct mm_slot *mm_slot;
+-	struct hlist_head *bucket;
+ 	struct hlist_node *node;
++	struct mm_slot *slot;
++
++	hash_for_each_possible(mm_slots_hash, slot, node, link, (unsigned long)mm) 
++		if (slot->mm == mm)
++			return slot;
+ 
+-	bucket = &mm_slots_hash[hash_ptr(mm, MM_SLOTS_HASH_SHIFT)];
+-	hlist_for_each_entry(mm_slot, node, bucket, link) {
+-		if (mm == mm_slot->mm)
+-			return mm_slot;
+-	}
+ 	return NULL;
+ }
+ 
+ static void insert_to_mm_slots_hash(struct mm_struct *mm,
+ 				    struct mm_slot *mm_slot)
+ {
+-	struct hlist_head *bucket;
+-
+-	bucket = &mm_slots_hash[hash_ptr(mm, MM_SLOTS_HASH_SHIFT)];
+ 	mm_slot->mm = mm;
+-	hlist_add_head(&mm_slot->link, bucket);
++	hash_add(mm_slots_hash, &mm_slot->link, (unsigned long)mm);
+ }
+ 
+ static inline int in_stable_tree(struct rmap_item *rmap_item)
+@@ -647,7 +641,7 @@ static int unmerge_and_remove_all_rmap_items(void)
+ 		ksm_scan.mm_slot = list_entry(mm_slot->mm_list.next,
+ 						struct mm_slot, mm_list);
+ 		if (ksm_test_exit(mm)) {
+-			hlist_del(&mm_slot->link);
++			hash_del(&mm_slot->link);
+ 			list_del(&mm_slot->mm_list);
+ 			spin_unlock(&ksm_mmlist_lock);
+ 
+@@ -1392,7 +1386,7 @@ next_mm:
+ 		 * or when all VM_MERGEABLE areas have been unmapped (and
+ 		 * mmap_sem then protects against race with MADV_MERGEABLE).
+ 		 */
+-		hlist_del(&slot->link);
++		hash_del(&slot->link);
+ 		list_del(&slot->mm_list);
+ 		spin_unlock(&ksm_mmlist_lock);
+ 
+@@ -1559,7 +1553,7 @@ void __ksm_exit(struct mm_struct *mm)
+ 	mm_slot = get_mm_slot(mm);
+ 	if (mm_slot && ksm_scan.mm_slot != mm_slot) {
+ 		if (!mm_slot->rmap_list) {
+-			hlist_del(&mm_slot->link);
++			hash_del(&mm_slot->link);
+ 			list_del(&mm_slot->mm_list);
+ 			easy_to_free = 1;
+ 		} else {
+@@ -2038,6 +2032,7 @@ static int __init ksm_init(void)
+ 	 */
+ 	hotplug_memory_notifier(ksm_memory_callback, 100);
+ #endif
++
+ 	return 0;
+ 
+ out_free:
+-- 
+1.7.12.4
 
-IOW, something like
-
-        WARN_ON_ONCE(be32_to_cpu(stat) > NLM_LCK_DENIED_GRACE_PERIOD);
-
-would have been way more appropriate. Let people know that there is a
-problem, but don't kill the machine.
-
-We have way too many people who seem to think that "I don't know what
-I should do, so I'll just kill the machine" is a sane option. It's
-not. Sure, often a BUG_ON() is survivable (just killing the process),
-but in filesystem code there's usually a lock (or many) that tends to
-make it problematic even when we can just kill the process, and often
-causes these things to not even be logged very well.
-
-Larry, the stack trace and registers would be useful. Picture or a
-full dump of the BUG_ON() if it got logged? If it gets eaten by the
-machine being unresponsive after the event and since you can reproduce
-it, you could just try to change it to the WARN_ON_ONCE() above, and
-then it should be easier to just get out of the dmesg, since hopefully
-the machine stays up despite the odd status value..
-
-                  Linus
-
-On Sat, Oct 13, 2012 at 6:17 AM, Larry McVoy <lm@bitmover.com> wrote:
-> I've got a reproduce-at-will crash, it's starting skype w/ /home nfs mounted
-> on an x86 mac.  I can text you the stack trace if you like.
-> --
-> ---
-> Larry McVoy                lm at bitmover.com           http://www.bitkeeper.com
