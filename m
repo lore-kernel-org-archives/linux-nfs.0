@@ -1,89 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:44068 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751821Ab2JALwx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2012 07:52:53 -0400
-Received: by ggnr5 with SMTP id r5so1332667ggn.19
-        for <linux-nfs@vger.kernel.org>; Mon, 01 Oct 2012 04:52:52 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/6] nfsdcltrack: remove pointless sqlite_topdir variable
-Date: Mon,  1 Oct 2012 07:52:41 -0400
-Message-Id: <1349092365-23920-3-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1349092365-23920-1-git-send-email-jlayton@redhat.com>
-References: <1349092365-23920-1-git-send-email-jlayton@redhat.com>
+Received: from mail-wg0-f44.google.com ([74.125.82.44]:37963 "EHLO
+	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932324Ab2JaCsl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Oct 2012 22:48:41 -0400
+MIME-Version: 1.0
+In-Reply-To: <20121031022418.GE2616@ZenIV.linux.org.uk>
+References: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
+ <20121030214257.GB2681@htj.dyndns.org> <CA+1xoqeCKS2E4TWCUCELjDqV2pWS4v6EyV6K-=w-GRi_K6quiQ@mail.gmail.com>
+ <1351646186.4004.41.camel@gandalf.local.home> <CA+55aFzFMrOUwdHHJ5-YUtEzTHGvdRosQc+K+trjub0K-w-D3A@mail.gmail.com>
+ <20121031022418.GE2616@ZenIV.linux.org.uk>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Tue, 30 Oct 2012 19:48:19 -0700
+Message-ID: <CA+55aFyU30Z2JS9XJ4KTordbAw-2EBVD7xF4K3eAhKVRCJw8YA@mail.gmail.com>
+Subject: Re: [PATCH v8 01/16] hashtable: introduce a small and naive hashtable
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: Steven Rostedt <rostedt@goodmis.org>,
+        Sasha Levin <levinsasha928@gmail.com>, Tejun Heo <tj@kernel.org>,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
+        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
+        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
+        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is holdover from an earlier version of the code and doesn't really
-provide any benefit. Also, mark the topdir and dirname arguments const
-since they should never be changed.
+On Tue, Oct 30, 2012 at 7:24 PM, Al Viro <viro@zeniv.linux.org.uk> wrote:
+>
+> BTW, how serious have you been back at KS when you were talking about
+> pull requests killing a thousand of lines of code being acceptable
+> at any point in the cycle?
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- utils/nfsdcltrack/sqlite.c | 13 ++++---------
- utils/nfsdcltrack/sqlite.h |  2 +-
- 2 files changed, 5 insertions(+), 10 deletions(-)
+Well... I'm absolutely a lot more open to pull requests that kill code
+than not, but I have to admit to being a bit more worried about stuff
+like your execve/fork patches that touch very low-level code.
 
-diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
-index fc882c6..c19af7e 100644
---- a/utils/nfsdcltrack/sqlite.c
-+++ b/utils/nfsdcltrack/sqlite.c
-@@ -61,9 +61,6 @@
- 
- /* global variables */
- 
--/* top level DB directory */
--static char *sqlite_topdir;
--
- /* reusable pathname and sql command buffer */
- static char buf[PATH_MAX];
- 
-@@ -74,7 +71,7 @@ static sqlite3 *dbh;
- 
- /* make a directory, ignoring EEXIST errors unless it's not a directory */
- static int
--mkdir_if_not_exist(char *dirname)
-+mkdir_if_not_exist(const char *dirname)
- {
- 	int ret;
- 	struct stat statbuf;
-@@ -102,19 +99,17 @@ mkdir_if_not_exist(char *dirname)
-  * the "clients" table.
-  */
- int
--sqlite_maindb_init(char *topdir)
-+sqlite_maindb_init(const char *topdir)
- {
- 	int ret;
- 	char *err = NULL;
- 	sqlite3_stmt *stmt = NULL;
- 
--	sqlite_topdir = topdir;
--
--	ret = mkdir_if_not_exist(sqlite_topdir);
-+	ret = mkdir_if_not_exist(topdir);
- 	if (ret)
- 		return ret;
- 
--	ret = snprintf(buf, PATH_MAX - 1, "%s/main.sqlite", sqlite_topdir);
-+	ret = snprintf(buf, PATH_MAX - 1, "%s/main.sqlite", topdir);
- 	if (ret < 0)
- 		return ret;
- 
-diff --git a/utils/nfsdcltrack/sqlite.h b/utils/nfsdcltrack/sqlite.h
-index c85e7d6..8748948 100644
---- a/utils/nfsdcltrack/sqlite.h
-+++ b/utils/nfsdcltrack/sqlite.h
-@@ -20,7 +20,7 @@
- #ifndef _SQLITE_H_
- #define _SQLITE_H_
- 
--int sqlite_maindb_init(char *topdir);
-+int sqlite_maindb_init(const char *topdir);
- int sqlite_insert_client(const unsigned char *clname, const size_t namelen);
- int sqlite_remove_client(const unsigned char *clname, const size_t namelen);
- int sqlite_check_client(const unsigned char *clname, const size_t namelen);
--- 
-1.7.11.4
+So I think I'll punt that for 3.8 anyway.
 
+         Linus
