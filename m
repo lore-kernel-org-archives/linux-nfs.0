@@ -1,90 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f174.google.com ([209.85.220.174]:51746 "EHLO
-	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756155Ab2JVU02 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Oct 2012 16:26:28 -0400
-Received: by mail-vc0-f174.google.com with SMTP id fk26so3432215vcb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 22 Oct 2012 13:26:27 -0700 (PDT)
-Date: Mon, 22 Oct 2012 16:26:11 -0400
-From: Chris Perl <chris.perl@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: RPC Race Condition
-Message-ID: <20121022202611.GA27191@nyc-qws-132.nyc.delacy.com>
-References: <20121022180339.GC24763@nyc-qws-132.nyc.delacy.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA909289403@SACEXCMBX04-PRD.hq.netapp.com>
+Received: from mx0.aculab.com ([213.249.233.131]:35848 "HELO mx0.aculab.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S935272Ab2JaJ5u convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Oct 2012 05:57:50 -0400
+Received: from mx0.aculab.com ([127.0.0.1])
+ by localhost (mx0.aculab.com [127.0.0.1]) (amavisd-new, port 10024) with SMTP
+ id 05333-10 for <linux-nfs@vger.kernel.org>;
+ Wed, 31 Oct 2012 09:57:46 +0000 (GMT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA909289403@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset=US-ASCII
+Subject: RE: [PATCH v8 01/16] hashtable: introduce a small and naive hashtable
+Date: Wed, 31 Oct 2012 09:46:20 -0000
+Message-ID: <AE90C24D6B3A694183C094C60CF0A2F6026B7080@saturn3.aculab.com>
+In-Reply-To: <1351646186.4004.41.camel@gandalf.local.home>
+References: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com> <20121030214257.GB2681@htj.dyndns.org> <CA+1xoqeCKS2E4TWCUCELjDqV2pWS4v6EyV6K-=w-GRi_K6quiQ@mail.gmail.com> <1351646186.4004.41.camel@gandalf.local.home>
+From: "David Laight" <David.Laight@ACULAB.COM>
+To: "Steven Rostedt" <rostedt@goodmis.org>,
+        "Sasha Levin" <levinsasha928@gmail.com>
+Cc: "Tejun Heo" <tj@kernel.org>, <torvalds@linux-foundation.org>,
+        <akpm@linux-foundation.org>, <linux-kernel@vger.kernel.org>,
+        <linux-mm@kvack.org>, <paul.gortmaker@windriver.com>,
+        <davem@davemloft.net>, <mingo@elte.hu>, <ebiederm@xmission.com>,
+        <aarcange@redhat.com>, <ericvh@gmail.com>, <netdev@vger.kernel.org>,
+        <josh@joshtriplett.org>, <eric.dumazet@gmail.com>,
+        <mathieu.desnoyers@efficios.com>, <axboe@kernel.dk>, <agk@redhat.com>,
+        <dm-devel@redhat.com>, <neilb@suse.de>, <ccaulfie@redhat.com>,
+        <teigland@redhat.com>, <Trond.Myklebust@netapp.com>,
+        <bfields@fieldses.org>, <fweisbec@gmail.com>, <jesse@nicira.com>,
+        <venkat.x.venkatsubra@oracle.com>, <ejt@redhat.com>,
+        <snitzer@redhat.com>, <edumazet@google.com>,
+        <linux-nfs@vger.kernel.org>, <dev@openvswitch.org>,
+        <rds-devel@oss.oracle.com>, <lw@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 22, 2012 at 06:28:02PM +0000, Myklebust, Trond wrote:
-> Hi Chris,
+> > > On Tue, Oct 30, 2012 at 02:45:57PM -0400, Sasha Levin wrote:
+> > >> +/* Use hash_32 when possible to allow for fast 32bit hashing in 64bit kernels. */
+> > >> +#define hash_min(val, bits)                                                  \
+> > >> +({                                                                           \
+> > >> +     sizeof(val) <= 4 ?                                                      \
+> > >> +     hash_32(val, bits) :                                                    \
+> > >> +     hash_long(val, bits);                                                   \
+> > >> +})
+> > >
+> > > Doesn't the above fit in 80 column.  Why is it broken into multiple
+> > > lines?  Also, you probably want () around at least @val.  In general,
+> > > it's a good idea to add () around any macro argument to avoid nasty
+> > > surprises.
+> >
+> > It was broken to multiple lines because it looks nicer that way (IMO).
+> >
+> > If we wrap it with () it's going to go over 80, so it's going to stay
+> > broken down either way :)
 > 
-> Thanks for helping to debug this, and for providing such a thorough
-> analysis! This is great work!
+> ({								      \
+> 	sizeof(val) <= 4 ? hash_32(val, bits) : hash_long(val, bits); \
+> })
 > 
-> Does adding a check in xs_error_report() for xprt_connecting(xprt) so
-> that we skip the call to xprt_wake_pending_tasks() if true, help to
-> resolve the race?
+> Is the better way to go. We are C programmers, we like to see the ?: on
+> a single line if possible. The way you have it, looks like three
+> statements run consecutively.
 
-This is what I changed:
+To add some more colour (not color):
 
---- a/net/sunrpc/xprtsock.c     2012-08-14 08:47:16.000000000 -0400
-+++ b/net/sunrpc/xprtsock.c     2012-10-22 14:50:09.237725498 -0400
-@@ -1571,7 +1571,8 @@
-        dprintk("RPC:       %s client %p...\n"
-                        "RPC:       error %d\n",
-                        __func__, xprt, sk->sk_err);
--       xprt_wake_pending_tasks(xprt, -EAGAIN);
-+       if (!xprt_connecting(xprt))
-+               xprt_wake_pending_tasks(xprt, -EAGAIN);
- out:
-        read_unlock_bh(&sk->sk_callback_lock);
- }
+In any case, this is a normal C #define, it doesn't need the {}.
+So it can just be:
+# define hash_min(val, bits) \
+	(sizeof(val) <= 4 ? hash_32(val, bits) : hash_long(val, bits))
 
-Unfortunately it does not resolve it.  It appears that does stop the wakeup
-from happening where I detailed it before, but we still wake up too early.  The
-following is the call stack from SystemTap catching the call to `rpc_make_runnable':
+I don't think that s/val/(val)/g and s/bits/(bits)/g are needed
+because the tokens are already ',' separated.
 
- 0xffffffffa0434840 : rpc_make_runnable+0x0/0x80 [sunrpc]
- 0xffffffffa0434b5e : rpc_wake_up_task_queue_locked+0x18e/0x270 [sunrpc]
- 0xffffffffa0434c8e : rpc_wake_up_status+0x4e/0x80 [sunrpc]
- 0xffffffffa042d8ec : xprt_wake_pending_tasks+0x2c/0x30 [sunrpc]
- 0xffffffffa042da56 : xprt_disconnect_done+0x46/0x70 [sunrpc]
- 0xffffffffa04305b0 : xs_tcp_setup_socket+0x330/0x4c0 [sunrpc]
- 0xffffffff8108c760 : worker_thread+0x170/0x2a0 [kernel]
- 0xffffffff81091d66 : kthread+0x96/0xa0 [kernel]
- 0xffffffff8100c14a : child_rip+0xa/0x20 [kernel]
+I do actually wonder how many of these hash lists should be replaced
+with some kind of tree structure in order to get O(log(n)) searches.
+After all hashing is still O(n).
+(apologies if I mean o(n) not O(n) - it's a long time since I did
+my maths degree!)
 
-However, its mildly confusing to me since I cannot follow that exact
-call stack in the code.  The nearest I can find to that is the
-following:
+	David
 
-  rpc_make_runnable
-  rpc_wake_up_task_queue_locked
-  rpc_wake_up_status
-  xprt_wake_pending_tasks
-  xprt_disconnect_done
-  xs_sock_mark_closed
-  xs_abort_connection
-  xs_tcp_reuse_connection
-  xs_tcp_setup_socket
 
-As far as I can tell, we get here because the call to `kernel_connect'
-from within `xs_abort_connection' by rpciod is returning 0 sometimes
-(and EINPROGRESS others).  When it returns 0, we enter this block:
 
-  if (!result)
-          xs_sock_mark_closed(&transport->xprt);
-  else
-    dprintk("RPC:       AF_UNSPEC connect return code %d\n", result);
-
-and that eventually gets us woken up via the call stack above.  The end
-result is the same, we wake up and move on to `call_transmit' before
-rpciod is done connecting the socket.
-
-I'll do some more tracing and see what else I can come up with.
-
-Chris
