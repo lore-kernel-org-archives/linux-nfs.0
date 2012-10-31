@@ -1,54 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f46.google.com ([209.85.215.46]:65072 "EHLO
-	mail-la0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755657Ab2JJKON (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Oct 2012 06:14:13 -0400
-Received: by mail-la0-f46.google.com with SMTP id h6so241106lag.19
-        for <linux-nfs@vger.kernel.org>; Wed, 10 Oct 2012 03:14:11 -0700 (PDT)
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:56514 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751475Ab2JaBgm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Oct 2012 21:36:42 -0400
 MIME-Version: 1.0
-In-Reply-To: <507474F5.8050307@panasas.com>
-References: <CA+a=Yy5+i+z++XHkKkyFav1nE9pdccwUpz2=GW2J1GDRseR8jA@mail.gmail.com>
- <507470AB.8030900@panasas.com> <507474F5.8050307@panasas.com>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Wed, 10 Oct 2012 18:13:50 +0800
-Message-ID: <CA+a=Yy4jw744eDR56o9JdVwzRBOakXZJpoY2mfkMrQ+LLkT0MA@mail.gmail.com>
-Subject: Re: [PATCH-Resend] NFS41: layoutget optimize and pnfsblock cleanup
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linuxnfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <CA+55aFzFMrOUwdHHJ5-YUtEzTHGvdRosQc+K+trjub0K-w-D3A@mail.gmail.com>
+References: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
+ <20121030214257.GB2681@htj.dyndns.org> <CA+1xoqeCKS2E4TWCUCELjDqV2pWS4v6EyV6K-=w-GRi_K6quiQ@mail.gmail.com>
+ <1351646186.4004.41.camel@gandalf.local.home> <CA+55aFzFMrOUwdHHJ5-YUtEzTHGvdRosQc+K+trjub0K-w-D3A@mail.gmail.com>
+From: Sasha Levin <levinsasha928@gmail.com>
+Date: Tue, 30 Oct 2012 21:36:21 -0400
+Message-ID: <CA+1xoqd8vAn+N1JuhpXRjSr74OPtnnw_1UBhf8=c4WDC3jOirw@mail.gmail.com>
+Subject: Re: [PATCH v8 01/16] hashtable: introduce a small and naive hashtable
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Steven Rostedt <rostedt@goodmis.org>, Tejun Heo <tj@kernel.org>,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
+        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
+        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
+        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 10, 2012 at 3:03 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
-> On 10/09/2012 11:44 AM, Boaz Harrosh wrote:
->> On 10/07/2012 02:59 PM, Peng Tao wrote:
->>> Hi Trond,
->>>
->>> Following first three patches were sent before and optimize layoutget size.
->>> Last patch is cleanup and is also sent before.
->>>
->>> Sorry that I have to send patches as attachments. I am having problem
->>> with my smtp setup.
->>>
->>> Thanks,
->>> Tao
->>>
->>
->> Tao hi.
->>
->> What are these patches based on? they do not apply to Linus tree as of today
->> (v3.6-9228-g547b1e8) and they do not apply to v3.6 nor v3.5 tags.
->>
->> I get a conflict on the first patch:
->>       NFS: track direct IO left bytes
->>
->
-> Actually the second patch does not apply either. minor on pnfs.c but
-> a real fallout on blocklayout.c (3 and 4 are fine)
->
-Sorry I forgot to mention... They apply to Trond's nfs-for-next
-branch, commit (5f65753033d8c5a53e65810bff3832e8282c68d1).
+Hi Linus,
+
+> But whatever. This series has gotten way too much bike-shedding
+> anyway. I think it should just be applied, since it does remove lines
+> of code overall. I'd even possibly apply it to mainline, but it seems
+> to be against linux-next.
+
+Yup, I switched to using -next because I've been running my
+trinity/KVM tools tests with it.
+
+I can either rebase that on top of mainline, or we can ask maintainers
+to take it to their own trees if you take only 01/16 into mainline.
+What would you prefer?
+
 
 Thanks,
-Tao
+Sasha
