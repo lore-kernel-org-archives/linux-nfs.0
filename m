@@ -1,58 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:38295 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751821Ab2JALw5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Oct 2012 07:52:57 -0400
-Received: by mail-gh0-f174.google.com with SMTP id g15so1356084ghb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 01 Oct 2012 04:52:57 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 6/6] nfsdcltrack: update the README about server startup order
-Date: Mon,  1 Oct 2012 07:52:45 -0400
-Message-Id: <1349092365-23920-7-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1349092365-23920-1-git-send-email-jlayton@redhat.com>
-References: <1349092365-23920-1-git-send-email-jlayton@redhat.com>
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:56043 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754164Ab2JaO2M (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Oct 2012 10:28:12 -0400
+Received: by mail-ie0-f174.google.com with SMTP id k13so2108663iea.19
+        for <linux-nfs@vger.kernel.org>; Wed, 31 Oct 2012 07:28:11 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <k6r6ur$eva$2@ultimate100.geggus.net>
+References: <k6ebva$1kf$1@ultimate100.geggus.net>
+	<20121026171549.GA11806@fieldses.org>
+	<20121029094038.GA14836@geggus.net>
+	<20121029150203.GB9502@fieldses.org>
+	<20121029163323.GA24345@geggus.net>
+	<k6r6ur$eva$2@ultimate100.geggus.net>
+Date: Wed, 31 Oct 2012 07:28:11 -0700
+Message-ID: <CAA7C2qiiHzwMmkm5fUyNCffejxACtsDu0Pb1qgYJPCfgcaZU-w@mail.gmail.com>
+Subject: Re: Kernel update 3.5.7 -> 3.6.3 breaks NFS4
+From: VDR User <user.vdr@gmail.com>
+To: Sven Geggus <lists@fuchsschwanzdomain.de>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If we eventually deprecate nfsdcld, then we can just remove this
-section I think.
+On Wed, Oct 31, 2012 at 5:52 AM, Sven Geggus
+<lists@fuchsschwanzdomain.de> wrote:
+>>> I'd be curious to understand what changed on the server to make a
+>>> difference.
+>>
+>> Nothing but the kernel. I'm currently dual booting either 3.5.7 or 3.6.3
+>> vanilla kernels on the same system.
+>
+> I did some further investigation on this using a freshly installed
+> system on virtualbox with either kernel.
+>
+> Same odd behaviour. Everything work using Kernel 3.5.7. Server does not work using
+> Kernel 3.6.3.
+>
+> There are even different filesystems on the vm (ext4) and on the real server
+> (xfs).
+>
+> Looks like I need to cherry-pick nfs4 server changes between 3.5.7 and 3.6.3 now :(
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- README | 12 +++++++++---
- 1 file changed, 9 insertions(+), 3 deletions(-)
-
-diff --git a/README b/README
-index e55b2dd..f997783 100644
---- a/README
-+++ b/README
-@@ -110,8 +110,9 @@ scripts can be written to work correctly.
- 
-    E/ nfsdcld
-        This daemon is only needed on kernels that support the nfsdcld
--       upcall, and only if the legacy client ID tracking isn't used. It
--       is also not needed if the server does not support NFSv4.
-+       upcall, and only if the legacy client ID tracking and nfsdcltrack
-+       aren't used. It is also not needed if the server does not support
-+       NFSv4.
- 
-        To determine whether you need this or not, do the following:
- 
-@@ -124,7 +125,12 @@ scripts can be written to work correctly.
-            # cat /proc/fs/nfsd/nfsv4recoverydir
- 
-        If that file is not present, or the directory that the above command
--       outputs is not present, then this daemon is required in order to
-+       outputs is not present, then check this:
-+
-+	   # modinfo nfsd | grep cltrack_prog
-+
-+       to see whether the kernel supports the nfsdcltrack upcall. If
-+       none of those are configured then this daemon is required in order to
-        support lock recovery by the clients when the server reboots.
- 
-    F/ rpc.nfsd
--- 
-1.7.11.4
-
+In case you missed my previous message, "I use debian testing here and
+NFSv4. My clients are running kernel
+3.6.3, server is running 3.6.2.  No problems here". It would seem you
+only need to cherry-pick server changes between 3.6.2 and 3.6.3...?
