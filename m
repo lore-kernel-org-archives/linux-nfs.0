@@ -1,53 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36007 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754728Ab2JPWBn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Oct 2012 18:01:43 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 02/12] vfs: don't use PARENT/CHILD lock classes for non-directories
-Date: Tue, 16 Oct 2012 18:01:27 -0400
-Message-Id: <1350424897-26894-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1350424897-26894-1-git-send-email-bfields@redhat.com>
-References: <1350424897-26894-1-git-send-email-bfields@redhat.com>
+Received: from hrndva-omtalb.mail.rr.com ([71.74.56.122]:7930 "EHLO
+	hrndva-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751475Ab2JaBgf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Oct 2012 21:36:35 -0400
+Message-ID: <1351647390.4004.47.camel@gandalf.local.home>
+Subject: Re: [PATCH v8 01/16] hashtable: introduce a small and naive
+ hashtable
+From: Steven Rostedt <rostedt@goodmis.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Sasha Levin <levinsasha928@gmail.com>, Tejun Heo <tj@kernel.org>,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
+        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
+        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
+        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Date: Tue, 30 Oct 2012 21:36:30 -0400
+In-Reply-To: <CA+55aFzFMrOUwdHHJ5-YUtEzTHGvdRosQc+K+trjub0K-w-D3A@mail.gmail.com>
+References: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
+	 <20121030214257.GB2681@htj.dyndns.org>
+	 <CA+1xoqeCKS2E4TWCUCELjDqV2pWS4v6EyV6K-=w-GRi_K6quiQ@mail.gmail.com>
+	 <1351646186.4004.41.camel@gandalf.local.home>
+	 <CA+55aFzFMrOUwdHHJ5-YUtEzTHGvdRosQc+K+trjub0K-w-D3A@mail.gmail.com>
+Content-Type: text/plain; charset="ISO-8859-15"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Tue, 2012-10-30 at 18:25 -0700, Linus Torvalds wrote:
+> On Tue, Oct 30, 2012 at 6:16 PM, Steven Rostedt <rostedt@goodmis.org> wrote:
+> >
+> > ({                                                                    \
+> >         sizeof(val) <= 4 ? hash_32(val, bits) : hash_long(val, bits); \
+> > })
+> >
+> > Is the better way to go. We are C programmers, we like to see the ?: on
+> > a single line if possible. The way you have it, looks like three
+> > statements run consecutively.
+> 
+> If we're C programmers, why use the non-standard statement-expression
+> at all? And split it onto three lines when it's just a single one?
 
-Reserve I_MUTEX_PARENT and I_MUTEX_CHILD for locking of actual
-directories.
+I like the blue color over the pink. Anyway, I was just expressing an
+opinion and really didn't care if it was changed or not.
 
-(Also I_MUTEX_QUOTA isn't really a meaningful name for this locking
-class any more; fixed in a later patch.)
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/inode.c |    8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+> 
+> But whatever. This series has gotten way too much bike-shedding
+> anyway. I think it should just be applied, since it does remove lines
+> of code overall. I'd even possibly apply it to mainline, but it seems
+> to be against linux-next.
 
-diff --git a/fs/inode.c b/fs/inode.c
-index 9d5b6bd..413b043 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -976,11 +976,11 @@ EXPORT_SYMBOL(unlock_new_inode);
- void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
- {
- 	if (inode1 < inode2) {
--		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
--		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
-+		mutex_lock(&inode1->i_mutex);
-+		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_QUOTA);
- 	} else {
--		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
--		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
-+		mutex_lock(&inode2->i_mutex);
-+		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_QUOTA);
- 	}
- }
- EXPORT_SYMBOL(lock_two_nondirectories);
--- 
-1.7.9.5
+I would think this change is a bit too big for an -rc4 release, but
+you're the boss.  I've already given my ack for my code that this set
+touches. Let it go to Stephen's repo then.
+
+-- Steve
+
 
