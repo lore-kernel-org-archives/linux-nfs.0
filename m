@@ -1,80 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:54167 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933216Ab2JCSY2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Oct 2012 14:24:28 -0400
-Message-ID: <506C82DB.7020408@netapp.com>
-Date: Wed, 03 Oct 2012 14:24:27 -0400
-From: Bryan Schumaker <bjschuma@netapp.com>
+Received: from mail-wg0-f42.google.com ([74.125.82.42]:51245 "EHLO
+	mail-wg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756536Ab2JaDtN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Oct 2012 23:49:13 -0400
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 00/10] NFSD: Improve fault injection
-References: <1347912979-20603-1-git-send-email-bjschuma@netapp.com> <506C7A1A.5000001@netapp.com> <20121003182325.GA28505@fieldses.org>
-In-Reply-To: <20121003182325.GA28505@fieldses.org>
+In-Reply-To: <20121031032431.GG2616@ZenIV.linux.org.uk>
+References: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
+ <20121030214257.GB2681@htj.dyndns.org> <CA+1xoqeCKS2E4TWCUCELjDqV2pWS4v6EyV6K-=w-GRi_K6quiQ@mail.gmail.com>
+ <1351646186.4004.41.camel@gandalf.local.home> <CA+55aFzFMrOUwdHHJ5-YUtEzTHGvdRosQc+K+trjub0K-w-D3A@mail.gmail.com>
+ <20121031022418.GE2616@ZenIV.linux.org.uk> <CA+55aFyU30Z2JS9XJ4KTordbAw-2EBVD7xF4K3eAhKVRCJw8YA@mail.gmail.com>
+ <20121031032431.GG2616@ZenIV.linux.org.uk>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Tue, 30 Oct 2012 20:48:51 -0700
+Message-ID: <CA+55aFxfAMyyPdxNB-GQhhErrWpaUHGOmvov1HR290YjRdoxeg@mail.gmail.com>
+Subject: Re: [PATCH v8 01/16] hashtable: introduce a small and naive hashtable
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: Steven Rostedt <rostedt@goodmis.org>,
+        Sasha Levin <levinsasha928@gmail.com>, Tejun Heo <tj@kernel.org>,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
+        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
+        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
+        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/03/2012 02:23 PM, J. Bruce Fields wrote:
-> On Wed, Oct 03, 2012 at 01:47:06PM -0400, Bryan Schumaker wrote:
->> Bruce, have you had a chance to look at these yet?  I don't see them in your git tree...
-> 
-> Sorry, no, it hasn't been a high priority.
-> 
-> I'll try to take a look soon.  They may end up being queued up for 3.8.
+On Tue, Oct 30, 2012 at 8:24 PM, Al Viro <viro@zeniv.linux.org.uk> wrote:
+>
+> Oh, well... there go my blackmail plans ;-)  Seriously, though, I'm at loss
+> regarding several embedded architectures - arch/score, in particular,
+> seems to be completely orphaned.
 
-Sure, I was just making sure they don't get lost :).
+Don't worry about it. Do a best-effort, and if nobody ever reacts
+about some odd-ball architecture, whatever.
 
-- Bryan
-> 
-> --b.
-> 
->>
->> - Bryan
->>
->> On 09/17/2012 04:16 PM, bjschuma@netapp.com wrote:
->>> From: Bryan Schumaker <bjschuma@netapp.com>
->>>
->>> While working on p2p-nfs, I discovered that I sometimes need to clear
->>> state for a specific client to test all possible error recovery conditions.
->>> The current fault injection code deletes state as it find it, so it can
->>> be difficult to guess which state will be forgotten.  In addition, I
->>> currently print out the amount of state forgotten but I don't give details
->>> like "Forgot 3 locks from client w.x.y.z".  These patches set out to
->>> improve that.
->>>
->>> The first 7 patches clean up the current code and prepare it for specific
->>> client state removal.  Patch 8 adds prints information to the server's logs
->>> when a fault injection file is read (such as "Client w.x.y.z has 3 open
->>> files").  Patch 9 adds in a custom file operations structure so users can
->>> write strings to fault injection files in addition to u64s.  Finally, patch
->>> 10 allows users to remove state by writing a client's IP address to one of
->>> the files.
->>>
->>> Questions, comments and suggestions are appreciated!
->>>
->>> - Bryan
->>>
->>> Bryan Schumaker (10):
->>>   NFSD: Fold fault_inject.h into state.h
->>>   NFSD: Lock state before calling fault injection function
->>>   NFSD: Clean up forgetting clients
->>>   NFSD: Clean up forgetting locks
->>>   NFSD: Clean up forgetting openowners
->>>   NFSD: Clean up forgetting and recalling delegations
->>>   NFSD: Fault injection operations take a per-client forget function
->>>   NFSD: Reading a fault injection file prints a state count
->>>   NFSD: Add a custom file operations structure for fault injection
->>>   NFSD: Forget state for a specific client
->>>
->>>  fs/nfsd/fault_inject.c | 108 ++++++++++++++++++++++++-----
->>>  fs/nfsd/fault_inject.h |  28 --------
->>>  fs/nfsd/nfs4state.c    | 182 +++++++++++++++++++++++++++++++------------------
->>>  fs/nfsd/nfsctl.c       |   2 +-
->>>  fs/nfsd/state.h        |  23 +++++++
->>>  5 files changed, 230 insertions(+), 113 deletions(-)
->>>  delete mode 100644 fs/nfsd/fault_inject.h
->>>
->>
+We won't start deleting architectures over something like this, but it
+might be another sign down the road that some arch code can be removed
+entirely.
 
+So it's not arch/score I'd worry about. It's all the *other* architectures..
+
+             Linus
