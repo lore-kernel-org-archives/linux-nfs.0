@@ -1,56 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from rcsinet15.oracle.com ([148.87.113.117]:16744 "EHLO
-	rcsinet15.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754759Ab2JPAgv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Oct 2012 20:36:51 -0400
-References: <20121011150421.4665.35964.stgit@lebasque.1015granger.net> <20121015222455.GB30649@fieldses.org>
-In-Reply-To: <20121015222455.GB30649@fieldses.org>
-Mime-Version: 1.0 (1.0)
-Content-Type: text/plain;
-	charset=us-ascii
-Message-Id: <80D40623-BC32-4711-8005-A4975CF69A39@oracle.com>
-Cc: "steved@redhat.com" <steved@redhat.com>,
-        "bfields@redhat.com" <bfields@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH 0/8] Junctions should inherit parent's export options
-Date: Mon, 15 Oct 2012 20:36:44 -0400
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:41556 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755680Ab2JaAeF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Oct 2012 20:34:05 -0400
+MIME-Version: 1.0
+In-Reply-To: <20121030214257.GB2681@htj.dyndns.org>
+References: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com> <20121030214257.GB2681@htj.dyndns.org>
+From: Sasha Levin <levinsasha928@gmail.com>
+Date: Tue, 30 Oct 2012 20:33:43 -0400
+Message-ID: <CA+1xoqeCKS2E4TWCUCELjDqV2pWS4v6EyV6K-=w-GRi_K6quiQ@mail.gmail.com>
+Subject: Re: [PATCH v8 01/16] hashtable: introduce a small and naive hashtable
+To: Tejun Heo <tj@kernel.org>
+Cc: torvalds@linux-foundation.org, akpm@linux-foundation.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        paul.gortmaker@windriver.com, davem@davemloft.net, rostedt@goodmis.org,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
+        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
+        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
+        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Oct 30, 2012 at 5:42 PM, Tejun Heo <tj@kernel.org> wrote:
+> Hello,
+>
+> Just some nitpicks.
+>
+> On Tue, Oct 30, 2012 at 02:45:57PM -0400, Sasha Levin wrote:
+>> +/* Use hash_32 when possible to allow for fast 32bit hashing in 64bit kernels. */
+>> +#define hash_min(val, bits)                                                  \
+>> +({                                                                           \
+>> +     sizeof(val) <= 4 ?                                                      \
+>> +     hash_32(val, bits) :                                                    \
+>> +     hash_long(val, bits);                                                   \
+>> +})
+>
+> Doesn't the above fit in 80 column.  Why is it broken into multiple
+> lines?  Also, you probably want () around at least @val.  In general,
+> it's a good idea to add () around any macro argument to avoid nasty
+> surprises.
+
+It was broken to multiple lines because it looks nicer that way (IMO).
+
+If we wrap it with () it's going to go over 80, so it's going to stay
+broken down either way :)
 
 
-Sent from my iPad
+Thanks,
+Sasha
 
-On Oct 15, 2012, at 6:24 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Thu, Oct 11, 2012 at 11:10:39AM -0400, Chuck Lever wrote:
->> Following suggestions by Steve and Bruce, I've at long last
->> implemented a mechanism by which junctions inherit the export
->> options of their parent exports.
-> 
-> Thanks!
-> 
->> While I was there, I took the opportunity to clean up the junction
->> resolution logic.
-> 
-> Are bad mullets really specifically a 90's thing?  I thought they were
-> sort of timeless.
-
-I could have referenced MacGyver, but I never watched the show.
-
-> Anyway, that aside, looks reasonable to me.  ACK.
-
-Thanks for the review.
-
-Steve, I think you can take these now, if you are happy with them.
-
-> (I still can't get used to ACK.  Whenever I see it I wonder what the
-> writer's so startled about.  ACK!)
-> 
-> --b.
+> Looks good to me otherwise.
+>
+>  Reviewed-by: Tejun Heo <tj@kernel.org>
+>
+> Thanks.
+>
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> tejun
