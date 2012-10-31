@@ -1,44 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:40739 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752407Ab2JAXtF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Oct 2012 19:49:05 -0400
-From: Jorge Mora <mora@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Jorge Mora <mora@netapp.com>
-Subject: [PATCH] NFS: Fix compile error
-Date: Mon,  1 Oct 2012 16:49:01 -0700
-Message-Id: <1349135341-30170-1-git-send-email-mora@cyclsvl26.eng.netapp.com>
+Received: from mail-ia0-f174.google.com ([209.85.210.174]:37423 "EHLO
+	mail-ia0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932341Ab2JaBPu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Oct 2012 21:15:50 -0400
+MIME-Version: 1.0
+In-Reply-To: <20121031005128.GA30251@umich.edu>
+References: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
+ <20121030214257.GB2681@htj.dyndns.org> <CA+1xoqeCKS2E4TWCUCELjDqV2pWS4v6EyV6K-=w-GRi_K6quiQ@mail.gmail.com>
+ <20121031005128.GA30251@umich.edu>
+From: Sasha Levin <levinsasha928@gmail.com>
+Date: Tue, 30 Oct 2012 21:15:29 -0400
+Message-ID: <CA+1xoqd9CMP4_CET38LTm6vVXwbButn3hJNbcFs6Darkh1EJSg@mail.gmail.com>
+Subject: Re: [PATCH v8 01/16] hashtable: introduce a small and naive hashtable
+To: Jim Rees <rees@umich.edu>
+Cc: Tejun Heo <tj@kernel.org>, torvalds@linux-foundation.org,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        rostedt@goodmis.org, mingo@elte.hu, ebiederm@xmission.com,
+        aarcange@redhat.com, ericvh@gmail.com, netdev@vger.kernel.org,
+        josh@joshtriplett.org, eric.dumazet@gmail.com,
+        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
+        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
+        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
+        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
+        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
+        linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Jorge Mora <mora@netapp.com>
+On Tue, Oct 30, 2012 at 8:51 PM, Jim Rees <rees@umich.edu> wrote:
+> Sasha Levin wrote:
+>
+>   On Tue, Oct 30, 2012 at 5:42 PM, Tejun Heo <tj@kernel.org> wrote:
+>   > Hello,
+>   >
+>   > Just some nitpicks.
+>   >
+>   > On Tue, Oct 30, 2012 at 02:45:57PM -0400, Sasha Levin wrote:
+>   >> +/* Use hash_32 when possible to allow for fast 32bit hashing in 64bit kernels. */
+>   >> +#define hash_min(val, bits)                                                  \
+>   >> +({                                                                           \
+>   >> +     sizeof(val) <= 4 ?                                                      \
+>   >> +     hash_32(val, bits) :                                                    \
+>   >> +     hash_long(val, bits);                                                   \
+>   >> +})
+>   >
+>   > Doesn't the above fit in 80 column.  Why is it broken into multiple
+>   > lines?  Also, you probably want () around at least @val.  In general,
+>   > it's a good idea to add () around any macro argument to avoid nasty
+>   > surprises.
+>
+>   It was broken to multiple lines because it looks nicer that way (IMO).
+>
+>   If we wrap it with () it's going to go over 80, so it's going to stay
+>   broken down either way :)
+>
+> I would prefer the body be all on one line too. But shouldn't this be a
+> static inline function?
+
+We want sizeof(val), which wouldn't work in a static inline. We can
+either wrap a static inline __hash_min() with a macro and pass that
+size to it, but that's quite an overkill here, or we can add a size
+parameter to hash_min(), but it would look awkward considering how
+hash_32()/hash_64()/hash_long() look like.
 
 
-Signed-off-by: Jorge Mora <mora@netapp.com>
----
-Fixes bug on Trond's testing branch
- fs/nfs/nfs4state.c |    5 +++--
- 1 files changed, 3 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 5c42866..2602290 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -123,10 +123,11 @@ int nfs40_discover_server_trunking(struct nfs_client *clp,
- 	};
- 	unsigned short port;
- 	int status;
-+	struct nfs_net *nn = net_generic(clp->cl_net, nfs_net_id);
- 
--	port = nfs_callback_tcpport;
-+	port = nn->nfs_callback_tcpport;
- 	if (clp->cl_addr.ss_family == AF_INET6)
--		port = nfs_callback_tcpport6;
-+		port = nn->nfs_callback_tcpport6;
- 
- 	status = nfs4_proc_setclientid(clp, NFS4_CALLBACK, port, cred, &clid);
- 	if (status != 0)
--- 
-1.7.3.1
-
+Thanks,
+Sasha
