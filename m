@@ -1,80 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.perfora.net ([74.208.4.195]:60907 "EHLO mout.perfora.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932297Ab2JESmV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 5 Oct 2012 14:42:21 -0400
-Date: Fri, 5 Oct 2012 14:42:15 -0400
-From: Jim Rees <rees@umich.edu>
-To: Emmanuel Florac <eflorac@intellique.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFS daemon statistics in /proc/net/rpc/nfsd
-Message-ID: <20121005184215.GA23015@umich.edu>
-References: <20121005184856.4472a72e@harpe.intellique.com>
+Received: from mail-we0-f174.google.com ([74.125.82.174]:61961 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752411Ab2JaWOr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Oct 2012 18:14:47 -0400
+Received: by mail-we0-f174.google.com with SMTP id t9so878688wey.19
+        for <linux-nfs@vger.kernel.org>; Wed, 31 Oct 2012 15:14:46 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20121005184856.4472a72e@harpe.intellique.com>
+In-Reply-To: <1351627595-6462-1-git-send-email-bjschuma@netapp.com>
+References: <1351627595-6462-1-git-send-email-bjschuma@netapp.com>
+Date: Wed, 31 Oct 2012 18:14:46 -0400
+Message-ID: <CAHVgHyXWk86GGJ0Fip3uE5SG94aUpcfuh1A4R+UWr442Q2P5Nw@mail.gmail.com>
+Subject: Re: [PATCH] NFS: Wait for session recovery to finish before returning
+From: Andy Adamson <androsadamson@gmail.com>
+To: bjschuma@netapp.com
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Emmanuel Florac wrote:
+On Tue, Oct 30, 2012 at 4:06 PM,  <bjschuma@netapp.com> wrote:
+> From: Bryan Schumaker <bjschuma@netapp.com>
+>
+> Currently, we will schedule session recovery and then return to the
+> caller of nfs4_handle_exception.  This works for most cases, but causes
+> a hang on the following test case:
+>
+>         Client                          Server
+>         ------                          ------
+>         Open file over NFS v4.1
+>         Write to file
+>                                         Expire client
+>         Try to lock file
+>
+> The server will return NFS4ERR_BADSESSION, prompting the client to
+> schedule recovery.  However, the client will continue placing lock
+> attempts and the open recovery never seems to be scheduled.
 
-  I noticed a long time ago that the thread information in
-  /proc/net/rpc/nfsd isn't updated anymore since somewhere between the
-  2.629 (information present) and 2.6.32 (information missing). It's
-  quite easy to check:
-  
-  # grep th /proc/net/rpc/nfsd
-  th 8 0 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000 0.000
-  
-  All values are perpetually at zero. Unsurprising, because the
-  update_thread_usage function in fs/nfsd/nfssvc.c isn't present anymore.
-  
-  I can't find any information about why this information was dropped;
+I need more detail. Is this what is happening?
 
-It's easy to find this information from the git log. It also shows up in the
-top half dozen or so results of a Google search on the same term.
+When the first NFS4ERR_BADSESSION error arrives, session recovery
+starts by setting the NFS4_SESSION_DRAINING bit which places all non
+RPC_PRIORITY_PRIVILEGED tasks with OP_SEQUENCE on the slot_tbl_waitq,
+so the lock requests should be placed on the slot_tbl_waitq and not go
+on the wire.
 
-% git log --grep update_thread_usage
-commit 8bbfa9f3889b643fc7de82c0c761ef17097f8faf
-Author: Greg Banks <gnb@sgi.com>
-Date:   Tue Jan 13 21:26:34 2009 +1100
+Once the session is drained,  DESTROY_SESSION and CREATE_SESSION are
+called and one will return with NFS4ERR_STALE_CLIENTID kicking off the
+EXCHANGE_ID / CREATE_SESSION to establish a new clientid.
 
-    knfsd: remove the nfsd thread busy histogram
-    
-    Stop gathering the data that feeds the 'th' line in /proc/net/rpc/nfsd
-    because the questionable data provided is not worth the scalability
-    impact of calculating it.  Instead, always report zeroes.  The current
-    approach suffers from three major issues:
-    
-    1. update_thread_usage() increments buckets by call service
-       time or call arrival time...in jiffies.  On lightly loaded
-       machines, call service times are usually < 1 jiffy; on
-       heavily loaded machines call arrival times will be << 1 jiffy.
-       So a large portion of the updates to the buckets are rounded
-       down to zero, and the histogram is undercounting.
-    
-    2. As seen previously on the nfs mailing list, the format in which
-       the histogram is presented is cryptic, difficult to explain,
-       and difficult to use.
-    
-    3. Updating the histogram requires taking a global spinlock and
-       dirtying the global variables nfsd_last_call, nfsd_busy, and
-       nfsdstats *twice* on every RPC call, which is a significant
-       scaling limitation.
-    
-    Testing on a 4 CPU 4 NIC Altix using 4 IRIX clients each doing
-    1K streaming reads at full line rate, shows the stats update code
-    (inlined into nfsd()) takes about 1.7% of each CPU.  This patch drops
-    the contribution from nfsd() into the profile noise.
-    
-    This patch is a forward-ported version of knfsd-remove-nfsd-threadstats
-    which has been shipping in the SGI "Enhanced NFS" product since 2006.
-    In that time, exactly one customer has noticed that the threadstats
-    were missing.  It has been previously posted:
-    
-    http://article.gmane.org/gmane.linux.nfs/10376
-    
-    and more recently requested to be posted again.
-    
-    Signed-off-by: Greg Banks <gnb@sgi.com>
-    Signed-off-by: J. Bruce Fields <bfields@citi.umich.edu>
+Do you see the clientid being recovered?
+
+Once the new session is created, it inherits the slot_tbl_waitq of the
+old session, and all the lock requests and any other tasks piled up on
+the slot_tbl_waitq will run. At the same time, the state_manager
+thread is running recovery for any OPENs established under the old
+clientid, and then their associated LOCKs.
+
+The OPEN and LOCK recovery tasks run with RPC_PRIORITY_PRIVILEGE which
+should mean that they get run before the RPC tasks with lower
+priority.
+
+So my question (finally!): How is open recovery starvation happening?
+nfs41_sequence_free_slot => nfs4_check_drain_fc_complete =>
+rpc_wake_up_first on the session slot_tbl_waitq, which in turn calls
+__rpc_find_next_queued_priority which should choose
+RPC_PRIORITY_PRIVILEGE tasks over lower privileged tasks on the
+session slot_tbl_waitq.
+
+So even with a bunch of slots, when the first one returns and and free
+it's slot, the priority tasks (e.g. open recovery) should run.
+
+
+-->Andy
+
+
+> The
+> simplest solution is to wait for session recovery to run before retrying
+> the lock.
+
+If on the wire RPCs return with NFS4ERR_BADSESSION, and then wait for
+session recovery in the exception handler, they will not call their
+rpc_release function
+
+>
+> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+> ---
+>  fs/nfs/nfs4proc.c | 3 +--
+>  1 file changed, 1 insertion(+), 2 deletions(-)
+>
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 8b04d14..70e0c47 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -338,8 +338,7 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
+>                         dprintk("%s ERROR: %d Reset session\n", __func__,
+>                                 errorcode);
+>                         nfs4_schedule_session_recovery(clp->cl_session, errorcode);
+> -                       exception->retry = 1;
+> -                       break;
+> +                       goto wait_on_recovery;
+>  #endif /* defined(CONFIG_NFS_V4_1) */
+>                 case -NFS4ERR_FILE_OPEN:
+>                         if (exception->timeout > HZ) {
+> --
+> 1.8.0
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
