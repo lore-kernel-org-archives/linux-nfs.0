@@ -1,43 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from hrndva-omtalb.mail.rr.com ([71.74.56.122]:12684 "EHLO
-	hrndva-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755158Ab2J3TXs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Oct 2012 15:23:48 -0400
-Message-ID: <1351625023.4004.29.camel@gandalf.local.home>
-Subject: Re: [PATCH v8 16/16] tracing output: use new hashtable
- implementation
-From: Steven Rostedt <rostedt@goodmis.org>
-To: Sasha Levin <levinsasha928@gmail.com>
-Cc: torvalds@linux-foundation.org, tj@kernel.org, akpm@linux-foundation.org,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        paul.gortmaker@windriver.com, davem@davemloft.net, mingo@elte.hu,
-        ebiederm@xmission.com, aarcange@redhat.com, ericvh@gmail.com,
-        netdev@vger.kernel.org, josh@joshtriplett.org, eric.dumazet@gmail.com,
-        mathieu.desnoyers@efficios.com, axboe@kernel.dk, agk@redhat.com,
-        dm-devel@redhat.com, neilb@suse.de, ccaulfie@redhat.com,
-        teigland@redhat.com, Trond.Myklebust@netapp.com, bfields@fieldses.org,
-        fweisbec@gmail.com, jesse@nicira.com, venkat.x.venkatsubra@oracle.com,
-        ejt@redhat.com, snitzer@redhat.com, edumazet@google.com,
-        linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Date: Tue, 30 Oct 2012 15:23:43 -0400
-In-Reply-To: <1351622772-16400-16-git-send-email-levinsasha928@gmail.com>
-References: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
-	 <1351622772-16400-16-git-send-email-levinsasha928@gmail.com>
-Content-Type: text/plain; charset="ISO-8859-15"
-Mime-Version: 1.0
+Received: from mail-pb0-f46.google.com ([209.85.160.46]:63711 "EHLO
+	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752158Ab2JaIOt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Oct 2012 04:14:49 -0400
+From: ycnian@gmail.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Yanchuan Nian <ycnian@gmail.com>
+Subject: [PATCH] nfs: Check whether a layout pointer is NULL before free it
+Date: Wed, 31 Oct 2012 16:05:48 +0800
+Message-Id: <1351670748-21927-1-git-send-email-ycnian@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2012-10-30 at 14:46 -0400, Sasha Levin wrote:
-> Switch tracing to use the new hashtable implementation. This reduces the
-> amount of generic unrelated code in the tracing module.
-> 
-> Signed-off-by: Sasha Levin <levinsasha928@gmail.com>
+From: Yanchuan Nian <ycnian@gmail.com>
 
-Acked-by: Steven Rostedt <rostedt@goodmis.org>
+The new layout pointer in pnfs_find_alloc_layout() may be NULL because of 
+out of memory. we must do some check work, otherwise pnfs_free_layout_hdr()
+will go wrong because it can not deal with a NULL pointer.
 
--- Steve
+Signed-off-by: Yanchuan Nian <ycnian@gmail.com>
+---
+ fs/nfs/pnfs.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index fe624c9..2878f97 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -925,8 +925,8 @@ pnfs_find_alloc_layout(struct inode *ino,
+ 	if (likely(nfsi->layout == NULL)) {	/* Won the race? */
+ 		nfsi->layout = new;
+ 		return new;
+-	}
+-	pnfs_free_layout_hdr(new);
++	} else if (new != NULL)
++		pnfs_free_layout_hdr(new);
+ out_existing:
+ 	pnfs_get_layout_hdr(nfsi->layout);
+ 	return nfsi->layout;
+-- 
+1.7.4.4
 
