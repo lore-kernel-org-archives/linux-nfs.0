@@ -1,193 +1,149 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:5748 "EHLO mx2.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:39819 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757639Ab2J3UvE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Oct 2012 16:51:04 -0400
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 08/10] NFSD: Reading a fault injection file prints a state count
-Date: Tue, 30 Oct 2012 16:50:52 -0400
-Message-Id: <1351630254-26166-9-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
-References: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
+	id S1754524Ab2JaUW7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 31 Oct 2012 16:22:59 -0400
+Date: Thu, 1 Nov 2012 07:23:22 +1100
+From: NeilBrown <neilb@suse.de>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: fix bug in legacy DNS resolver.
+Message-ID: <20121101072322.47bcb34a@notabene.brown>
+In-Reply-To: <06657F3E-5812-4680-929E-DE0FAED5601E@oracle.com>
+References: <20121031121601.5de16a5b@notabene.brown>
+	<06657F3E-5812-4680-929E-DE0FAED5601E@oracle.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/ZSXA3/=+1zvgStvrEUhvx8D"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+--Sig_/ZSXA3/=+1zvgStvrEUhvx8D
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-I also log basic information that I can figure out about the type of
-state (such as number of locks for each client IP address).  This can be
-useful for checking that state was actually dropped and later for
-checking if the client was able to recover.
+On Wed, 31 Oct 2012 11:09:27 -0400 Chuck Lever <chuck.lever@oracle.com> wro=
+te:
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfsd/fault_inject.c | 13 +++++++++--
- fs/nfsd/nfs4state.c    | 58 ++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/state.h        |  5 +++++
- 3 files changed, 74 insertions(+), 2 deletions(-)
+> Thanks, Neil!
+>=20
+> On Oct 30, 2012, at 9:16 PM, NeilBrown <neilb@suse.de> wrote:
+>=20
+> >=20
+> > The DNS resolver's use of the sunrpc cache involves a 'ttl' number
+> > (relative) rather that a timeout (absolute).  This confused me when
+> > I wrote
+> >  commit c5b29f885afe890f953f7f23424045cdad31d3e4
+> >     "sunrpc: use seconds since boot in expiry cache"
+> >=20
+> > and I managed to break it.  The effect is that any TTL is interpreted
+> > as 0, and nothing useful gets into the cache.
+> >=20
+> > This patch removes the use of get_expiry() - which really expects an
+> > expiry time - and uses get_uint() instead, treating the int correctly
+> > as a ttl.
+>=20
+> Nit: The description says "get_uint()" but the patch uses "get_int()."  S=
+hould we change the patch?
+>=20
 
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-index bf6161a..545f8e4 100644
---- a/fs/nfsd/fault_inject.c
-+++ b/fs/nfsd/fault_inject.c
-@@ -14,28 +14,34 @@
- struct nfsd_fault_inject_op {
- 	char *file;
- 	u64 (*forget)(struct nfs4_client *, u64);
-+	u64 (*print)(struct nfs4_client *, u64);
- };
- 
- static struct nfsd_fault_inject_op inject_ops[] = {
- 	{
- 		.file   = "forget_clients",
- 		.forget = nfsd_forget_client,
-+		.print  = nfsd_print_client,
- 	},
- 	{
- 		.file   = "forget_locks",
- 		.forget = nfsd_forget_client_locks,
-+		.print  = nfsd_print_client_locks,
- 	},
- 	{
- 		.file   = "forget_openowners",
- 		.forget = nfsd_forget_client_openowners,
-+		.print  = nfsd_print_client_openowners,
- 	},
- 	{
- 		.file   = "forget_delegations",
- 		.forget = nfsd_forget_client_delegations,
-+		.print  = nfsd_print_client_delegations,
- 	},
- 	{
- 		.file   = "recall_delegations",
- 		.forget = nfsd_recall_client_delegations,
-+		.print  = nfsd_print_client_delegations,
- 	},
- };
- 
-@@ -59,9 +65,12 @@ static int nfsd_inject_set(void *op_ptr, u64 val)
- 	return 0;
- }
- 
--static int nfsd_inject_get(void *data, u64 *val)
-+static int nfsd_inject_get(void *op_ptr, u64 *val)
- {
--	*val = 0;
-+	struct nfsd_fault_inject_op *op = op_ptr;
-+	nfs4_lock_state();
-+	*val = nfsd_for_n_state(0, op->print);
-+	nfs4_unlock_state();
- 	return 0;
- }
- 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 3c64dbc..0a20ac2 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4556,6 +4556,22 @@ nfs4_check_open_reclaim(clientid_t *clid, bool sessions)
- 
- #ifdef CONFIG_NFSD_FAULT_INJECTION
- 
-+u64 nfsd_print_client(struct nfs4_client *clp, u64 num)
-+{
-+	char buf[INET6_ADDRSTRLEN];
-+	rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, 129);
-+	printk(KERN_INFO "NFS Client: %s\n", buf);
-+	return 1;
-+}
-+
-+static void nfsd_print_count(struct nfs4_client *clp, unsigned int count,
-+			     const char *type)
-+{
-+	char buf[INET6_ADDRSTRLEN];
-+	rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, 129);
-+	printk(KERN_INFO "NFS Client: %s has %u %s\n", buf, count, type);
-+}
-+
- u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
- {
- 	nfsd4_client_record_remove(clp);
-@@ -4581,6 +4597,23 @@ u64 nfsd_forget_client_locks(struct nfs4_client *clp, u64 max)
- 	return count;
- }
- 
-+u64 nfsd_print_client_locks(struct nfs4_client *clp, u64 max)
-+{
-+	struct nfs4_stateowner *sop;
-+	u64 count = 0;
-+	int i;
-+
-+	for (i = 0; i < OWNER_HASH_SIZE; i++) {
-+		list_for_each_entry(sop, &ownerstr_hashtbl[i], so_strhash) {
-+			if (!sop->so_is_open_owner && (sop->so_client == clp))
-+				count++;
-+		}
-+	}
-+
-+	nfsd_print_count(clp, count, "locked files");
-+	return count;
-+}
-+
- u64 nfsd_forget_client_openowners(struct nfs4_client *clp, u64 max)
- {
- 	struct nfs4_openowner *oop, *next;
-@@ -4595,6 +4628,17 @@ u64 nfsd_forget_client_openowners(struct nfs4_client *clp, u64 max)
- 	return count;
- }
- 
-+u64 nfsd_print_client_openowners(struct nfs4_client *clp, u64 max)
-+{
-+	struct nfs4_openowner *oop;
-+	u64 count = 0;
-+
-+	list_for_each_entry(oop, &clp->cl_openowners, oo_perclient)
-+		count++;
-+	nfsd_print_count(clp, count, "open files");
-+	return count;
-+}
-+
- static u64 nfsd_find_n_delegations(struct nfs4_client *clp, u64 max,
- 				   struct list_head *victims)
- {
-@@ -4641,6 +4685,20 @@ u64 nfsd_recall_client_delegations(struct nfs4_client *clp, u64 max)
- 	return count;
- }
- 
-+u64 nfsd_print_client_delegations(struct nfs4_client *clp, u64 max)
-+{
-+	struct nfs4_delegation *dp;
-+	u64 count = 0;
-+
-+	spin_lock(&recall_lock);
-+	list_for_each_entry(dp, &clp->cl_delegations, dl_perclnt)
-+		count++;
-+	spin_unlock(&recall_lock);
-+
-+	nfsd_print_count(clp, count, "delegations");
-+	return count;
-+}
-+
- u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
- {
- 	struct nfs4_client *clp, *next;
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 9e133e5..646275c 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -493,6 +493,11 @@ u64 nfsd_forget_client_locks(struct nfs4_client*, u64);
- u64 nfsd_forget_client_openowners(struct nfs4_client *, u64);
- u64 nfsd_forget_client_delegations(struct nfs4_client *, u64);
- u64 nfsd_recall_client_delegations(struct nfs4_client *, u64);
-+
-+u64 nfsd_print_client(struct nfs4_client *, u64);
-+u64 nfsd_print_client_locks(struct nfs4_client *, u64);
-+u64 nfsd_print_client_openowners(struct nfs4_client *, u64);
-+u64 nfsd_print_client_delegations(struct nfs4_client *, u64);
- #else /* CONFIG_NFSD_FAULT_INJECTION */
- static inline int nfsd_fault_inject_init(void) { return 0; }
- static inline void nfsd_fault_inject_cleanup(void) {}
--- 
-1.8.0
+Yes, change the patch.  I remember looking at that issue and deciding that
+get_uint() was the right thing to use as 'ttl' is already unsigned.
+And I wrote the description based on the memory.  But it seems I didn't
+change the code.  Weird.
 
+> > This fixes a regression that has been present since 2.6.37, causing
+> > certain NFS accesses in certain environments to incorrectly fail.
+>=20
+> In particular, when the legacy DNS resolver is in use, this regression pr=
+events the NFS client from following any NFSv4 referral which contains a DN=
+S hostname.
+
+Thanks.  Updated patch below.
+
+NeilBrown
+
+
+
+=46rom e0b382c5b880017853f6a4cc0eda472cf6fef0e4 Mon Sep 17 00:00:00 2001
+From: NeilBrown <neilb@suse.de>
+Date: Wed, 31 Oct 2012 12:10:48 +1100
+Subject: [PATCH] NFS: fix bug in legacy DNS resolver.
+
+The DNS resolver's use of the sunrpc cache involves a 'ttl' number
+(relative) rather that a timeout (absolute).  This confused me when
+I wrote
+  commit c5b29f885afe890f953f7f23424045cdad31d3e4
+     "sunrpc: use seconds since boot in expiry cache"
+
+and I managed to break it.  The effect is that any TTL is interpreted
+as 0, and nothing useful gets into the cache.
+
+This patch removes the use of get_expiry() - which really expects an
+expiry time - and uses get_uint() instead, treating the int correctly
+as a ttl.
+
+This fixes a regression that has been present since 2.6.37, causing
+certain NFS accesses in certain environments to incorrectly fail.
+
+In particular, when the legacy DNS resolver is in use, this regression
+prevents the NFS client from following any NFSv4 referral which
+contains a DNS hostname.
+
+Reported-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: stable@vger.kernel.org
+Signed-off-by: NeilBrown <neilb@suse.de>
+
+diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
+index 31c26c4..ca4b11e 100644
+--- a/fs/nfs/dns_resolve.c
++++ b/fs/nfs/dns_resolve.c
+@@ -217,7 +217,7 @@ static int nfs_dns_parse(struct cache_detail *cd, char =
+*buf, int buflen)
+ {
+ 	char buf1[NFS_DNS_HOSTNAME_MAXLEN+1];
+ 	struct nfs_dns_ent key, *item;
+-	unsigned long ttl;
++	unsigned int ttl;
+ 	ssize_t len;
+ 	int ret =3D -EINVAL;
+=20
+@@ -240,7 +240,8 @@ static int nfs_dns_parse(struct cache_detail *cd, char =
+*buf, int buflen)
+ 	key.namelen =3D len;
+ 	memset(&key.h, 0, sizeof(key.h));
+=20
+-	ttl =3D get_expiry(&buf);
++	if (get_uint(&buf, &ttl) < 0)
++		goto out;
+ 	if (ttl =3D=3D 0)
+ 		goto out;
+ 	key.h.expiry_time =3D ttl + seconds_since_boot();
+
+
+
+--Sig_/ZSXA3/=+1zvgStvrEUhvx8D
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.18 (GNU/Linux)
+
+iQIVAwUBUJGIujnsnt1WYoG5AQL8pBAAnOuj5qVqmLUMkqg1P/MtS+eSpM3Hru8t
+bI1VWfCgu4S/ne5zdcvpygmcNHtc1OkLY4eV9odpVXNk8gUm/5/g0hWHyazTL1PP
+dpIGwoZbPxrhO1z39C6sFDCP2/1aIDaJpXqwP8VsBLAO5GTYxFSiUjy6ySaT5xzk
+K4mTdql/YsDx8M+WEXvVguM5ICv9SQFW282om83UO2kuPbN8Po4UyZ+3Spn6qNRm
+O3VKGu8f950Sa0PT4lW4Q4dPdz8T0hefP7lF7Ocx/WGhSi7ZdxEs3pipXqctgK0y
+OZ9YDv1mVuigMa3U81u5yJih3mCrrdP4utSr9ij8mmPKvpQsl+tkymSkUwr4xAJY
+Bkro1196hbCyRIv2ItnzYOgMt9m3PwMErdExFNzll1/bWaOdEK7lfXSrRJlYWQy0
+YCssshJzfsAajDrJwFmMFGYaRUAh/EVjhoW56s4/iDrIju98iNB+elAqAP7nl27x
+4jGoAAQdxGtxmTvZUxL5k7XplKffL1EK3u8+0Fg+cnTu0IshJ91xtdQibFOhEDC1
++oHhviW2zYYaK3VY4GU3JoDqU/i7VRv8bRajGztQzZVjjfrA3B8rNzWLKR9K2NAx
+lMpJ4N9wScyzAp+CRdhkGJJrPSC64iNjXn0lFI8pG7ph47Tbsqxi7x0rwbkto31E
+IpcbB84HfFw=
+=z9NC
+-----END PGP SIGNATURE-----
+
+--Sig_/ZSXA3/=+1zvgStvrEUhvx8D--
