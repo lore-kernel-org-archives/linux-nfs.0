@@ -1,45 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:52248 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757202Ab2JYQ7K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 25 Oct 2012 12:59:10 -0400
-Date: Thu, 25 Oct 2012 12:59:08 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-oa0-f46.google.com ([209.85.219.46]:41874 "EHLO
+	mail-oa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759426Ab2JaRnf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Oct 2012 13:43:35 -0400
+Received: by mail-oa0-f46.google.com with SMTP id h16so1704792oag.19
+        for <linux-nfs@vger.kernel.org>; Wed, 31 Oct 2012 10:43:35 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <k6rgcc$igt$1@ultimate100.geggus.net>
+References: <k6ebva$1kf$1@ultimate100.geggus.net>
+	<20121026171549.GA11806@fieldses.org>
+	<20121029094038.GA14836@geggus.net>
+	<20121029150203.GB9502@fieldses.org>
+	<20121029163323.GA24345@geggus.net>
+	<k6r6ur$eva$2@ultimate100.geggus.net>
+	<CAA7C2qiiHzwMmkm5fUyNCffejxACtsDu0Pb1qgYJPCfgcaZU-w@mail.gmail.com>
+	<k6rgcc$igt$1@ultimate100.geggus.net>
+Date: Wed, 31 Oct 2012 10:43:34 -0700
+Message-ID: <CAA7C2qhaKE7tAcsfNn0_jZ3BgWbFM6FkH1s0z+hd3JfOELywuQ@mail.gmail.com>
+Subject: Re: Kernel update 3.5.7 -> 3.6.3 breaks NFS4
+From: VDR User <user.vdr@gmail.com>
+To: Sven Geggus <lists@fuchsschwanzdomain.de>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 1/4] nfsd: add a usermodehelper upcall for NFSv4
- client ID tracking
-Message-ID: <20121025125908.3bf1e56e@corrin.poochiereds.net>
-In-Reply-To: <20121025154947.GD6846@fieldses.org>
-References: <1351089018-24551-1-git-send-email-jlayton@redhat.com>
-	<1351089018-24551-2-git-send-email-jlayton@redhat.com>
-	<20121024210310.GG6697@fieldses.org>
-	<20121025073936.4a57cf24@tlielax.poochiereds.net>
-	<20121025150608.GB6846@fieldses.org>
-	<20121025112706.086ab02a@corrin.poochiereds.net>
-	<20121025154947.GD6846@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 25 Oct 2012 11:49:47 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+On Wed, Oct 31, 2012 at 8:33 AM, Sven Geggus
+<lists@fuchsschwanzdomain.de> wrote:
+>> In case you missed my previous message, "I use debian testing here and
+>> NFSv4. My clients are running kernel 3.6.3, server is running 3.6.2.  No
+>> problems here".
+>
+> No, I did not miss your post. I even asked if you are using sec=krb5. I did
+> not try if it works without using kerberos, because I am not interested in
+> "No File Security" NFS3-like mode.
 
-> On Thu, Oct 25, 2012 at 11:27:06AM -0400, Jeff Layton wrote:
-> > What disadvantages do you see in doing it the way I've proposed?
-> 
-> Just a vague feeling, along the lines of: APIs can outlast
-> implementations, and it'll take longer to rip this out if it has to be
-> removed from both sides....
-> 
-> But it's just an environment variable, easy to ignore, I agree.  I can
-> live with it.
-> 
-> --b.
+Ahh sorry. I misread your post and thought it was directed towards
+someone else. No, I'm not using sec=krb5.
 
-Yep, that was the main reason I used env vars here. Userspace is free
-to ignore them, and the kernel is free to not supply them.
+>> It would seem you only need to cherry-pick server changes between 3.6.2
+>> and 3.6.3...?
+>
+> Unfortunately not. It already did not work using 3.6.2
 
--- 
-Jeff Layton <jlayton@redhat.com>
+You could always write a simple script to download & compile each
+kernel inbetween that range, then just boot into each and find where
+the breakage occured that way. Sometimes its easier than sifting
+through a sea of changes. :)
