@@ -1,44 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f46.google.com ([209.85.215.46]:33410 "EHLO
-	mail-la0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932554Ab2K3KUw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Nov 2012 05:20:52 -0500
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 0/3] Add O_DENY* flags to fcntl and cifs
-Date: Fri, 30 Nov 2012 14:20:37 +0400
-Message-Id: <1354270840-7272-1-git-send-email-piastry@etersoft.ru>
+Received: from mx2.netapp.com ([216.240.18.37]:15088 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1761933Ab2KAQJN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 Nov 2012 12:09:13 -0400
+Received: from vmwexceht03-prd.hq.netapp.com (exchsmtp.hq.netapp.com [10.106.76.241])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id qA1G9BXW026961
+	for <linux-nfs@vger.kernel.org>; Thu, 1 Nov 2012 09:09:12 -0700 (PDT)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 2 5/5] SUNRPC Fix rpc_verify_header error returns
+Date: Thu, 1 Nov 2012 16:09:10 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092A13C8@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1347657109-2180-1-git-send-email-andros@netapp.com>
+	 <1347657109-2180-6-git-send-email-andros@netapp.com>
+In-Reply-To: <1347657109-2180-6-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Network filesystems CIFS, SMB2.0, SMB3.0 and NFSv4 have such flags - this change can benefit cifs and nfs modules. While this change is ok for network filesystems, itsn't not targeted for local filesystems due security problems (e.g. when a user process can deny root to delete a file).
-
-Share flags are used by Windows applications and WINE have to deal with them too. While WINE can process open share flags itself on local filesystems, it can't do it if a file stored on a network share and is used by several clients. This patchset makes it possible for CIFS/SMB2.0/SMB3.0.
-
-Pavel Shilovsky (3):
-  fcntl: Introduce new O_DENY* open flags for network filesystems
-  CIFS: Add O_DENY* open flags support
-  CIFS: Use NT_CREATE_ANDX command for forcemand mounts
-
- fs/cifs/cifsacl.c                |   10 ++++----
- fs/cifs/cifsglob.h               |   11 ++++++++-
- fs/cifs/cifsproto.h              |    9 ++++----
- fs/cifs/cifssmb.c                |   47 ++++++++++++++++++++------------------
- fs/cifs/dir.c                    |   14 ++++++++----
- fs/cifs/file.c                   |   18 ++++++++++-----
- fs/cifs/inode.c                  |   11 +++++----
- fs/cifs/link.c                   |   10 ++++----
- fs/cifs/readdir.c                |    2 +-
- fs/cifs/smb1ops.c                |   15 ++++++------
- fs/cifs/smb2file.c               |   10 ++++----
- fs/cifs/smb2inode.c              |    4 ++--
- fs/cifs/smb2ops.c                |   10 ++++----
- fs/cifs/smb2pdu.c                |    6 ++---
- fs/cifs/smb2proto.h              |   14 +++++++-----
- fs/fcntl.c                       |    5 ++--
- include/uapi/asm-generic/fcntl.h |   11 +++++++++
- 17 files changed, 125 insertions(+), 82 deletions(-)
-
--- 
-1.7.10.4
-
+T24gRnJpLCAyMDEyLTA5LTE0IGF0IDE3OjExIC0wNDAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
+ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFNpZ25l
+ZC1vZmYtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQo+IC0tLQ0KPiAgbmV0
+L3N1bnJwYy9jbG50LmMgfCAgIDEwICsrKysrKy0tLS0NCj4gIDEgZmlsZXMgY2hhbmdlZCwgNiBp
+bnNlcnRpb25zKCspLCA0IGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL25ldC9zdW5y
+cGMvY2xudC5jIGIvbmV0L3N1bnJwYy9jbG50LmMNCj4gaW5kZXggYTE1Yjk2Yy4uZjMxMzZjYyAx
+MDA2NDQNCj4gLS0tIGEvbmV0L3N1bnJwYy9jbG50LmMNCj4gKysrIGIvbmV0L3N1bnJwYy9jbG50
+LmMNCj4gQEAgLTIwMDUsNyArMjAwNSw4IEBAIHJwY192ZXJpZnlfaGVhZGVyKHN0cnVjdCBycGNf
+dGFzayAqdGFzaykNCj4gIAkJZHByaW50aygiUlBDOiAlNXUgJXM6IFhEUiByZXByZXNlbnRhdGlv
+biBub3QgYSBtdWx0aXBsZSBvZiINCj4gIAkJICAgICAgICIgNCBieXRlczogMHgleFxuIiwgdGFz
+ay0+dGtfcGlkLCBfX2Z1bmNfXywNCj4gIAkJICAgICAgIHRhc2stPnRrX3Jxc3RwLT5ycV9yY3Zf
+YnVmLmxlbik7DQo+IC0JCWdvdG8gb3V0X2VpbzsNCj4gKwkJZXJyb3IgPSAtRUlPOw0KPiArCQln
+b3RvIG91dF9lcnI7DQo+ICAJfQ0KPiAgCWlmICgobGVuIC09IDMpIDwgMCkNCj4gIAkJZ290byBv
+dXRfb3ZlcmZsb3c7DQo+IEBAIC0yMDE0LDYgKzIwMTUsNyBAQCBycGNfdmVyaWZ5X2hlYWRlcihz
+dHJ1Y3QgcnBjX3Rhc2sgKnRhc2spDQo+ICAJaWYgKChuID0gbnRvaGwoKnArKykpICE9IFJQQ19S
+RVBMWSkgew0KPiAgCQlkcHJpbnRrKCJSUEM6ICU1dSAlczogbm90IGFuIFJQQyByZXBseTogJXhc
+biIsDQo+ICAJCQl0YXNrLT50a19waWQsIF9fZnVuY19fLCBuKTsNCj4gKwkJZXJyb3IgPSAtRUlP
+Ow0KPiAgCQlnb3RvIG91dF9nYXJiYWdlOw0KPiAgCX0NCj4gIA0KPiBAQCAtMjAzMiw3ICsyMDM0
+LDggQEAgcnBjX3ZlcmlmeV9oZWFkZXIoc3RydWN0IHJwY190YXNrICp0YXNrKQ0KPiAgCQkJZHBy
+aW50aygiUlBDOiAlNXUgJXM6IFJQQyBjYWxsIHJlamVjdGVkLCAiDQo+ICAJCQkJInVua25vd24g
+ZXJyb3I6ICV4XG4iLA0KPiAgCQkJCXRhc2stPnRrX3BpZCwgX19mdW5jX18sIG4pOw0KPiAtCQkJ
+Z290byBvdXRfZWlvOw0KPiArCQkJZXJyb3IgPSAtRUlPOw0KPiArCQkJZ290byBvdXRfZXJyOw0K
+PiAgCQl9DQo+ICAJCWlmICgtLWxlbiA8IDApDQo+ICAJCQlnb3RvIG91dF9vdmVyZmxvdzsNCj4g
+QEAgLTIwODAsNiArMjA4Myw3IEBAIHJwY192ZXJpZnlfaGVhZGVyKHN0cnVjdCBycGNfdGFzayAq
+dGFzaykNCj4gIAlpZiAoIShwID0gcnBjYXV0aF9jaGVja3ZlcmYodGFzaywgcCkpKSB7DQo+ICAJ
+CWRwcmludGsoIlJQQzogJTV1ICVzOiBhdXRoIGNoZWNrIGZhaWxlZFxuIiwNCj4gIAkJCQl0YXNr
+LT50a19waWQsIF9fZnVuY19fKTsNCj4gKwkJZXJyb3IgPSAtRUFDQ0VTOw0KPiAgCQlnb3RvIG91
+dF9nYXJiYWdlOwkJLyogYmFkIHZlcmlmaWVyLCByZXRyeSAqLw0KDQpVbW0uLi4gVGhpcyBtYWtl
+cyB6ZXJvIHNlbnNlLg0KDQpJZiB0aGUgc2VydmVyIGlzIHNlbmRpbmcgdXMgZG9kZ3kgdmVyaWZp
+ZXJzIHRoZW4gdGhhdCBpcyBfbm90XyBhbiBhY2Nlc3MNCmVycm9yLiBBY2Nlc3MgZXJyb3JzIGFy
+ZSBkdWUgdG8gdXNlcnMgZG9pbmcgc29tZXRoaW5nIHRoYXQgdGhleSBkb24ndA0KaGF2ZSBwZXJt
+aXNzaW9uIHRvIGRvLCB3aGVyZWFzIHRoaXMgaXMgYSBzZXJ2ZXIgX2J1Z18uLi4NCg0KPiAgCX0N
+Cj4gIAlsZW4gPSBwIC0gKF9fYmUzMiAqKWlvdi0+aW92X2Jhc2UgLSAxOw0KPiBAQCAtMjEzMiw4
+ICsyMTM2LDYgQEAgb3V0X2dhcmJhZ2U6DQo+ICBvdXRfcmV0cnk6DQo+ICAJCXJldHVybiBFUlJf
+UFRSKC1FQUdBSU4pOw0KPiAgCX0NCj4gLW91dF9laW86DQo+IC0JZXJyb3IgPSAtRUlPOw0KPiAg
+b3V0X2VycjoNCj4gIAlycGNfZXhpdCh0YXNrLCBlcnJvcik7DQo+ICAJZHByaW50aygiUlBDOiAl
+NXUgJXM6IGNhbGwgZmFpbGVkIHdpdGggZXJyb3IgJWRcbiIsIHRhc2stPnRrX3BpZCwNCg0KLS0g
+DQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHAN
+ClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
