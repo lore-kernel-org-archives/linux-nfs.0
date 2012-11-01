@@ -1,89 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:17984 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754085Ab2KLVYD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Nov 2012 16:24:03 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Andy Adamson <androsadamson@gmail.com>
-CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFS: Add sequence_priviliged_ops for
- nfs4_proc_sequence()
-Date: Mon, 12 Nov 2012 21:24:00 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092D826E@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1352745355-31157-1-git-send-email-bjschuma@netapp.com>
-	 <CAHVgHyWyKhjOc4AFY3LvK57k8JK5zNJDkRGwUjqNA4LMYcSzdw@mail.gmail.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9092D7F52@SACEXCMBX04-PRD.hq.netapp.com>
-	 <CAHVgHyWzO6UxnQEBoBFY4uHxTx9PBHKxP+hvJfYaW-OTqWLgMA@mail.gmail.com>
-	 <50A16144.1040708@netapp.com>
-	 <CAHVgHyVjerCE6X-fP-CJEAYZdVvvK2NLu=8JuDHa9P+G8L5yzg@mail.gmail.com>
-In-Reply-To: <CAHVgHyVjerCE6X-fP-CJEAYZdVvvK2NLu=8JuDHa9P+G8L5yzg@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from sr-smtp.usish.com ([210.5.144.203]:47907 "EHLO
+	sr-smtp.usish.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760746Ab2KANgE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Nov 2012 09:36:04 -0400
+Received: from outbound.usish.com (unknown [192.168.40.103])
+	by sr-smtp.usish.com (Postfix) with ESMTP id B777877821C
+	for <linux-nfs@vger.kernel.org>; Thu,  1 Nov 2012 16:26:27 +0800 (CST)
+Received: from outbound.usish.com (outbound.usish.com [127.0.0.1])
+	by postfix.imss70 (Postfix) with ESMTP id 61EF74280A8
+	for <linux-nfs@vger.kernel.org>; Thu,  1 Nov 2012 16:58:47 +0800 (CST)
+Received: from [192.168.58.59] (unknown [192.168.58.59])
+	by outbound.usish.com (Postfix) with ESMTP id 3FF7E428041
+	for <linux-nfs@vger.kernel.org>; Thu,  1 Nov 2012 16:58:47 +0800 (CST)
+Subject: hang problem when umount a nfs point
+From: dahai_tian <dahai_tian@usish.com>
+Reply-To: dahai_tian@usish.com
+To: linux-nfs@vger.kernel.org
+Date: Thu, 01 Nov 2012 16:58:17 +0800
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1351760297.5369.1.camel@localhost>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTExLTEyIGF0IDE2OjA4IC0wNTAwLCBBbmR5IEFkYW1zb24gd3JvdGU6DQo+
-IE9uIE1vbiwgTm92IDEyLCAyMDEyIGF0IDM6NTEgUE0sIEJyeWFuIFNjaHVtYWtlciA8YmpzY2h1
-bWFAbmV0YXBwLmNvbT4gd3JvdGU6DQo+ID4gT24gMTEvMTIvMjAxMiAwMzo0OSBQTSwgQW5keSBB
-ZGFtc29uIHdyb3RlOg0KPiA+PiBPbiBNb24sIE5vdiAxMiwgMjAxMiBhdCAzOjI5IFBNLCBNeWts
-ZWJ1c3QsIFRyb25kDQo+ID4+IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQo+
-ID4+PiBPbiBNb24sIDIwMTItMTEtMTIgYXQgMTU6MjIgLTA1MDAsIEFuZHkgQWRhbXNvbiB3cm90
-ZToNCj4gPj4+PiBPbiBNb24sIE5vdiAxMiwgMjAxMiBhdCAxOjM1IFBNLCAgPGJqc2NodW1hQG5l
-dGFwcC5jb20+IHdyb3RlOg0KPiA+Pj4+PiBGcm9tOiBCcnlhbiBTY2h1bWFrZXIgPGJqc2NodW1h
-QG5ldGFwcC5jb20+DQo+ID4+Pj4+DQo+ID4+Pj4+IER1cmluZyByZWNvdmVyeSB0aGUgTkZTNF9T
-RVNTSU9OX0RSQUlOSU5HIGZsYWcgbWlnaHQgYmUgc2V0IG9uIHRoZQ0KPiA+Pj4+PiBjbGllbnQg
-c3RydWN0dXJlLiAgVGhpcyBjYW4gY2F1c2UgbGVhc2UgcmVuZXdhbCB0byBhYm9ydCB3aGVuDQo+
-ID4+Pg0KPiA+Pj4gTm90IGxlYXNlIHJlbmV3YWwuIEl0IGlzIGxlYXNlIHZlcmlmaWNhdGlvbiAo
-aS5lLiBjaGVja2luZyB0aGF0IHdlIGhhdmUNCj4gPj4+IGEgdmFsaWQgbGVhc2UgYW5kIHNlc3Np
-b24pIHRoYXQgd2lsbCBkZWFkbG9jay4NCj4gPj4+DQo+ID4+Pj4+IG5mczQxX3NldHVwX3NlcXVl
-bmNlIHNlZXMgdGhhdCB3ZSBhcmUgZG9pbmcgcmVjb3ZlcnkuICBBcyBhIHJlc3VsdCwgdGhlDQo+
-ID4+Pj4+IGNsaWVudCBuZXZlciByZWNvdmVycyBhbmQgYWxsIGFjdGl2aXR5IHdpdGggdGhlIE5G
-UyBzZXJ2ZXIgaGFsdHMuDQo+ID4+Pj4NCj4gPj4+Pg0KPiA+Pj4+IFdoZW4gZG9lcyB0aGlzIGhh
-cHBlbj8gU2F5IHRoZSBzZXNzaW9uIGlzIGRyYWluaW5nLCBhbmQgYW4gUlBDIHJldHVybnMNCj4g
-Pj4+PiBmcm9tIG9uZSBvZiB0aGUgY29tcG91bmRzIHN1Y2ggYXMgbmZzX29wZW4sIG5mc19sb2Nr
-dSBldGMgd2hvc2UNCj4gPj4+PiBycGNfY2FsbF9kb25lIHJvdXRpbmUgY2FsbHMgcmVuZXdfbGVh
-c2UgYWZ0ZXIgZnJlZWluZyBpdCdzIHNsb3QuICBMaWtlDQo+ID4+Pj4gYWxsIGNhbGxzIG9uIGEg
-ZHJhaW5pbmcgc2Vzc2lvbiwgdGhlIHJlbmV3X2xlYXNlIHNsZWVwcyBvbiB0aGUgc2Vzc2lvbg0K
-PiA+Pj4+IHNsb3RfdGJsX3dhaXRxIC0gaXMgdGhpcyB3aGF0IHlvdSBtZWFuIGJ5ICJjYXVzZXMg
-bGVhc2UgcmVuZXdhbCB0bw0KPiA+Pj4+IGFib3J0Ij8gSG93IGRvZXMgdGhpcyBjYXVzZSB0aGUg
-Y2xpZW50IHRvIG5ldmVyIHJlY292ZXI/DQo+ID4+Pj4NCj4gPj4+PiBUaGUgb25seSBvdGhlciBj
-YWxsIHRvIHJlbmV3X2xlYXNlIGlzIGZyb20gdGhlIHN0YXRlIG1hbmFnZXIgaXRzZWxmDQo+ID4+
-Pj4gd2hpY2ggcnVucyBvbmUgZnVuY3Rpb24gYXQgYSB0aW1lLCBhbmQgd2lsbCBub3QgY2FsbCBy
-ZW5ld19sZWFzZSB1bnRpbA0KPiA+Pj4+IHRoZSByZWNvdmVyeSBpcyBvdmVyLi4uLg0KPiA+Pj4+
-DQo+ID4+Pj4gV2hhdCBhbSBJIG1pc3NpbmcuLi4uPw0KPiA+Pj4NCj4gPj4+IG5mczRfY2hlY2tf
-bGVhc2UoKSBpcyBydW4gZXhjbHVzaXZlbHkgYnkgdGhlIHN0YXRlIG1hbmFnZXIgdGhyZWFkIGlu
-DQo+ID4+PiBvcmRlciB0byBjaGVjayB0aGF0IHRoZSBjbGllbnRpZCAoYW5kIHNlc3Npb24gaWQg
-b24gTkZTdjQuMSkgYXJlIHZhbGlkLg0KPiA+Pj4gSXQgd2lsbCBkZWFkbG9jayB0aGUgc3RhdGUg
-bWFuYWdlciB0aHJlYWQgaWYgTkZTNF9TRVNTSU9OX0RSQUlOSU5HIGlzDQo+ID4+PiBhbHJlYWR5
-IHNldC4NCj4gPj4NCj4gPj4gT0suIE5GUzRfU0VTU0lPTl9EUkFJTklORyBpcyBhbHNvIHNldCBl
-eGNsdXNpdmVseSBieSB0aGUgc3RhdGUgbWFuYWdlcg0KPiA+PiB0aHJlYWQuIFdoeSBpcyB0aGUg
-c3RhdGUgbWFuYWdlciB0b2xkIHRvIGNoZWNrIHRoZSBsZWFzZSB3aGVuIGl0J3MNCj4gPj4gYWxz
-byBkcmFpbmluZyBhIHNlc3Npb24/DQo+IA0KPiBIZXJlIGlzIHRoZSBjYWxsIGluIHRoZSBzdGF0
-ZSBtYW5hZ2VyLg0KPiANCj4gICAgICAgICAgICAgICAgIGlmICh0ZXN0X2FuZF9jbGVhcl9iaXQo
-TkZTNENMTlRfQklORF9DT05OX1RPX1NFU1NJT04sDQo+ICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgJmNscC0+Y2xfc3RhdGUpKSB7DQo+ICAgICAgICAgICAgICAgICAgICAgICAgIHNl
-Y3Rpb24gPSAiYmluZCBjb25uIHRvIHNlc3Npb24iOw0KPiAgICAgICAgICAgICAgICAgICAgICAg
-ICBzdGF0dXMgPSBuZnM0X2JpbmRfY29ubl90b19zZXNzaW9uKGNscCk7DQo+ICAgICAgICAgICAg
-ICAgICAgICAgICAgIGlmIChzdGF0dXMgPCAwKQ0KPiAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgIGdvdG8gb3V0X2Vycm9yOw0KPiAgICAgICAgICAgICAgICAgICAgICAgICBjb250aW51
-ZTsNCj4gICAgICAgICAgICAgICAgIH0NCj4gDQo+IG5mczRfYmluZF9jb25uX3RvX3Nlc3Npb24g
-Y2FsbHMgbmZzNF9iZWdpbl9kcmFpbl9zZXNzaW9uLiBUaGUgZXJyb3INCj4gY2FzZSBpcyBmaW5l
-IC0gbmZzNF9lbmRfZHJhaW5fc2Vzc2lvbiBpcyBjYWxsZWQgaW4gb3V0X2Vycm9yLg0KPiANCj4g
-QnV0IHRoZSBjb250aW51ZSB3aGVuIG5mczRfYmluZF9jb25uX3RvX3Nlc3Npb24gc3VjY2VlZHMg
-Y2FuIHNlbmQgdGhlDQo+IHN0YXRlIG1hbmFnZXIgdG8gcHJvY2VzcyBvdGhlciBmbGFncyAoc3Vj
-aCBhcyBORlM0Q0xOVF9DSEVDS19MRUFTRSkNCj4gd2l0aG91dCBhIGNhbGwgdG8gbmZzNF9lbmRf
-ZHJhaW5fc2Vzc2lvbi4NCj4gDQo+IFRoYXQgbG9va3MgbGlrZSBhIGJ1ZyB0byBtZS4gVGhlIHNh
-bWUgY2FuIG9jY3VyIHdpdGgNCj4gTkZTNENMTlRfUkVDQUxMX1NMT1QuDQoNClNvIHdoYXQ/DQoN
-Cj4gIFdoeSBub3QganVzdCBjYWxsIG5mczRfZW5kX2RyYWluX3Nlc3Npb24gcHJpb3INCj4gdG8g
-dGhlIGNvbnRpbnVlLCBvciBwZXJoYXBzIHJlbW92ZSB0aGUgY29udGludWUgYW5kIGhpdCB0aGUN
-Cj4gbmZzNF9lbmRfZHJhaW5fc2Vzc2lvbiBjYWxsIGZ1cnRoZXIgZG93biBpbiB0aGUgc3RhdGUg
-bWFuYWdlciBsb29wPw0KDQpDYWxsaW5nIG5mczRfZW5kX2RyYWluX3Nlc3Npb24gaW4gb3JkZXIg
-dG8gYWxsb3cgdW5wcml2aWxlZ2VkIG9wZXJhdGlvbnMNCnRvIHByb2NlZWQsIHdoZW4gd2UncmUg
-bm90IGV2ZW4gc3VyZSB0aGF0IHdlIHN0aWxsIGhhdmUgYSBsZWFzZSwgbWFrZXMNCm5vIHNlbnNl
-LiBUaGUgd2hvbGUgcG9pbnQgaGVyZSBpcyB0byBibG9jayB0aG9zZSBvcGVyYXRpb25zIHVudGls
-IHRoZQ0Kc3RhdGUgbWFuYWdlciB0aHJlYWQgaGFzIHJlY292ZXJlZCB0aGUgbGVhc2UsIHNlc3Np
-b24sIG9wZW4gc3RhdGVpZHMgYW5kDQpsb2NrIHN0YXRlaWRzLg0KDQotLSANClRyb25kIE15a2xl
-YnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVi
-dXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+Hi all:
+        I mount a local directory to a nfs server. When nfs server is
+stopped
+for some accidental cause, I try to umount the mount point, the umount
+command will hang and 'time out' messages are continually printed in the
+terminal. How can I avoid hanging in this case? BTW, This issue does not
+exist when I changed nfs version from 4 to 3. 
+        Look forward to your response, thanks!
+
