@@ -1,86 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:44174 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753531Ab2KIQhB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Nov 2012 11:37:01 -0500
-Date: Fri, 9 Nov 2012 11:36:58 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Florian Pritz <bluewind@xinu.at>
-Cc: linux-nfs@vger.kernel.org, xfs@oss.sgi.com, Ben Myers <bpm@sgi.com>,
-        Alex Elder <elder@kernel.org>
-Subject: Re: NFS stalls when writing - linux 3.6.x
-Message-ID: <20121109163658.GE6171@fieldses.org>
-References: <50957087.6050008@xinu.at>
- <20121107190724.GD7421@fieldses.org>
- <509D2993.4050604@xinu.at>
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:57313 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750922Ab2KBEYJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Nov 2012 00:24:09 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <509D2993.4050604@xinu.at>
+In-Reply-To: <CA+55aFxK+xr0Gc+ZLgi3Ch8YgoV78vvr+Q-7cP=kC7asFB5k5w@mail.gmail.com>
+References: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
+ <20121030214257.GB2681@htj.dyndns.org> <CA+1xoqeCKS2E4TWCUCELjDqV2pWS4v6EyV6K-=w-GRi_K6quiQ@mail.gmail.com>
+ <1351646186.4004.41.camel@gandalf.local.home> <CA+55aFzFMrOUwdHHJ5-YUtEzTHGvdRosQc+K+trjub0K-w-D3A@mail.gmail.com>
+ <CA+1xoqd8vAn+N1JuhpXRjSr74OPtnnw_1UBhf8=c4WDC3jOirw@mail.gmail.com> <CA+55aFxK+xr0Gc+ZLgi3Ch8YgoV78vvr+Q-7cP=kC7asFB5k5w@mail.gmail.com>
+From: Sasha Levin <levinsasha928@gmail.com>
+Date: Fri, 2 Nov 2012 00:23:48 -0400
+Message-ID: <CA+1xoqdu-ar=-hh-+uVPtj=jy=rN0OiOGr09OxZsyphYzyJuEw@mail.gmail.com>
+Subject: Re: [PATCH v8 01/16] hashtable: introduce a small and naive hashtable
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Steven Rostedt <rostedt@goodmis.org>, Tejun Heo <tj@kernel.org>,
+        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
+        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
+        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
+        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
+        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
+        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
+        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
+        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
+        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
+        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 09, 2012 at 05:04:35PM +0100, Florian Pritz wrote:
-> On 07.11.2012 20:07, J. Bruce Fields wrote:
-> >> Sadly I don't know when this started happening.
-> > 
-> > It would be helpful to know that--especially if you find an easy way to
-> > reproduce this, it would be worth booting to older kernels and seeing if
-> > you can figure when the problem started.
-> 
-> I'll try that unless the sysrq output helps.
-> 
-> >> top on the server now shows lots of nfsd threads in D state.
-> > 
-> > Next time you find in that state, could you try
-> > 
-> > 	echo t >/proc/sysrq-trigger
-> > 
-> > on the server?  That will dump a bunch of data to the logs which we
-> > might be able to use.
-> 
-> Data should be attached if the ML allows it. Hope it helps. sysrq output
-> is after line 883.
+On Tue, Oct 30, 2012 at 10:23 PM, Linus Torvalds
+<torvalds@linux-foundation.org> wrote:
+> On Tue, Oct 30, 2012 at 6:36 PM, Sasha Levin <levinsasha928@gmail.com> wrote:
+>>
+>> I can either rebase that on top of mainline, or we can ask maintainers
+>> to take it to their own trees if you take only 01/16 into mainline.
+>> What would you prefer?
+>
+> I don't really care deeply. The only reason to merge it now would be
+> to avoid any pain with it during the next merge window. Just taking
+> 01/16 might be the sanest way to do that, then the rest can trickle in
+> independently at their own leisure.
 
-The nfsd threads are all stuck in _vfs_lock_force_lsn in xfs_file_fsync;
-for example:
+Okay, I'll keep working on converting everything else as soon as 01/16
+makes it in your tree.
 
-> [99390.866452] nfsd            D ffff880075723060     0  1342      2 0x00000000
-> [99390.866455]  ffff88007988d8b0 0000000000000046 ffff880075723060 ffff88007988dfd8
-> [99390.866460]  ffff88007988dfd8 ffff88007988dfd8 ffff88007bbcd0a0 ffff880075723060
-> [99390.866464]  ffff88007553b998 ffff88007553b980 ffff88005cd2d0c0 0000000000000001
-> [99390.866468] Call Trace:
-> [99390.866484]  [<ffffffffa0af521e>] ? xlog_cil_force_lsn+0xce/0x160 [xfs]
-> [99390.866488]  [<ffffffff81491b79>] schedule+0x29/0x70
-> [99390.866504]  [<ffffffffa0af3a17>] _xfs_log_force_lsn+0x287/0x2d0 [xfs]
-> [99390.866508]  [<ffffffff8108bbd0>] ? try_to_wake_up+0x2f0/0x2f0
-> [99390.866519]  [<ffffffffa0a9ecff>] xfs_file_fsync+0x1bf/0x230 [xfs]
-> [99390.866524]  [<ffffffff811ae21d>] generic_write_sync+0x4d/0x60
-> [99390.866536]  [<ffffffffa0a9fbcf>] xfs_file_aio_write+0x12f/0x160 [xfs]
-> [99390.866547]  [<ffffffffa0a9faa0>] ? xfs_file_buffered_aio_write+0x1f0/0x1f0 [xfs]
-> [99390.866552]  [<ffffffff8117fb73>] do_sync_readv_writev+0xa3/0xe0
-> [99390.866557]  [<ffffffff8117fe54>] do_readv_writev+0xd4/0x1e0
-> [99390.866565]  [<ffffffffa0ba3170>] ? _fh_update.isra.9.part.10+0x60/0x60 [nfsd]
-> [99390.866572]  [<ffffffffa0ba3170>] ? _fh_update.isra.9.part.10+0x60/0x60 [nfsd]
-> [99390.866576]  [<ffffffff811f64cf>] ? exportfs_decode_fh+0xaf/0x310
-> [99390.866581]  [<ffffffff8117ff95>] vfs_writev+0x35/0x60
-> [99390.866588]  [<ffffffffa0ba44fb>] nfsd_vfs_write.isra.11+0xeb/0x300 [nfsd]
-> [99390.866598]  [<ffffffffa0bbb262>] ? find_confirmed_client+0xb2/0x100 [nfsd]
-> [99390.866607]  [<ffffffffa0bbc1ba>] ? nfsd4_lookup_stateid+0xea/0x120 [nfsd]
-> [99390.866615]  [<ffffffffa0ba6b22>] nfsd_write+0xa2/0x110 [nfsd]
-> [99390.866623]  [<ffffffffa0bb1463>] nfsd4_write+0xe3/0x110 [nfsd]
-> [99390.866632]  [<ffffffffa0bb20bc>] nfsd4_proc_compound+0x2fc/0x650 [nfsd]
-> [99390.866639]  [<ffffffffa0ba0b3e>] nfsd_dispatch+0xbe/0x1c0 [nfsd]
-> [99390.866651]  [<ffffffffa027020e>] svc_process+0x48e/0x790 [sunrpc]
-> [99390.866658]  [<ffffffffa0ba0115>] nfsd+0xb5/0x1a0 [nfsd]
-> [99390.866664]  [<ffffffffa0ba0060>] ? nfsd_get_default_max_blksize+0x60/0x60 [nfsd]
-> [99390.866668]  [<ffffffff81079a03>] kthread+0x93/0xa0
-> [99390.866673]  [<ffffffff8149b144>] kernel_thread_helper+0x4/0x10
-> [99390.866678]  [<ffffffff81079970>] ? kthread_freezable_should_stop+0x70/0x70
-> [99390.866682]  [<ffffffff8149b140>] ? gs_change+0x13/0x13
 
-Maybe xfs folks would have an idea?  (More context:
-
-	http://thread.gmane.org/gmane.linux.nfs/53123/focus=53180
-)
-
---b.
+Thanks,
+Sasha
