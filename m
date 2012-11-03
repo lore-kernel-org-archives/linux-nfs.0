@@ -1,291 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:45972 "EHLO relay.sw.ru"
+Received: from mx12.netapp.com ([216.240.18.77]:35108 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754286Ab2KZNOO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Nov 2012 08:14:14 -0500
-Subject: [PATCH 1/2] nfsd: recovery - make rec_file per net
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Mon, 26 Nov 2012 16:16:25 +0300
-Message-ID: <20121126131625.8822.10895.stgit@localhost.localdomain>
-In-Reply-To: <20121126131404.8822.65870.stgit@localhost.localdomain>
-References: <20121126131404.8822.65870.stgit@localhost.localdomain>
-MIME-Version: 1.0
+	id S1751138Ab2KCTsn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 3 Nov 2012 15:48:43 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        "Linux Kernel mailing list" <linux-kernel@vger.kernel.org>
+Subject: [GIT PULL] Please pull NFS client bugfixes
+Date: Sat, 3 Nov 2012 19:48:41 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092A6A40@SACEXCMBX04-PRD.hq.netapp.com>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Opening and closing of this file is done in client tracking init and exit
-operations.
-Client tracking is done in network namespace context already. So let's make
-this file opened and closed per network context - this will simlify it's
-management.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfsd/netns.h       |    2 +
- fs/nfsd/nfs4recover.c |   70 +++++++++++++++++++++++++------------------------
- 2 files changed, 37 insertions(+), 35 deletions(-)
-
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index 08d5fa1..1305632 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -84,6 +84,8 @@ struct nfsd_net {
- 
- 	/* client_lock protects the client lru list and session hash table */
- 	spinlock_t client_lock;
-+
-+	struct file *rec_file;
- };
- 
- extern int nfsd_net_id;
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index 651d513..3e76d28 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -62,7 +62,6 @@ struct nfsd4_client_tracking_ops {
- };
- 
- /* Globals */
--static struct file *rec_file;
- static char user_recovery_dirname[PATH_MAX] = "/var/lib/nfs/v4recovery";
- static struct nfsd4_client_tracking_ops *client_tracking_ops;
- static bool in_grace;
-@@ -182,7 +181,7 @@ nfsd4_create_clid_dir(struct nfs4_client *clp)
- 
- 	if (test_and_set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
- 		return;
--	if (!rec_file)
-+	if (!nn->rec_file)
- 		return;
- 
- 	status = nfs4_make_rec_clidname(dname, &clp->cl_name);
-@@ -193,11 +192,11 @@ nfsd4_create_clid_dir(struct nfs4_client *clp)
- 	if (status < 0)
- 		return;
- 
--	status = mnt_want_write_file(rec_file);
-+	status = mnt_want_write_file(nn->rec_file);
- 	if (status)
- 		return;
- 
--	dir = rec_file->f_path.dentry;
-+	dir = nn->rec_file->f_path.dentry;
- 	/* lock the parent */
- 	mutex_lock(&dir->d_inode->i_mutex);
- 
-@@ -227,14 +226,14 @@ out_unlock:
- 			if (crp)
- 				crp->cr_clp = clp;
- 		}
--		vfs_fsync(rec_file, 0);
-+		vfs_fsync(nn->rec_file, 0);
- 	} else {
- 		printk(KERN_ERR "NFSD: failed to write recovery record"
- 				" (err %d); please check that %s exists"
- 				" and is writeable", status,
- 				user_recovery_dirname);
- 	}
--	mnt_drop_write_file(rec_file);
-+	mnt_drop_write_file(nn->rec_file);
- 	nfs4_reset_creds(original_cred);
- }
- 
-@@ -267,7 +266,7 @@ static int
- nfsd4_list_rec_dir(recdir_func *f, struct nfsd_net *nn)
- {
- 	const struct cred *original_cred;
--	struct dentry *dir = rec_file->f_path.dentry;
-+	struct dentry *dir = nn->rec_file->f_path.dentry;
- 	LIST_HEAD(names);
- 	int status;
- 
-@@ -275,13 +274,13 @@ nfsd4_list_rec_dir(recdir_func *f, struct nfsd_net *nn)
- 	if (status < 0)
- 		return status;
- 
--	status = vfs_llseek(rec_file, 0, SEEK_SET);
-+	status = vfs_llseek(nn->rec_file, 0, SEEK_SET);
- 	if (status < 0) {
- 		nfs4_reset_creds(original_cred);
- 		return status;
- 	}
- 
--	status = vfs_readdir(rec_file, nfsd4_build_namelist, &names);
-+	status = vfs_readdir(nn->rec_file, nfsd4_build_namelist, &names);
- 	mutex_lock_nested(&dir->d_inode->i_mutex, I_MUTEX_PARENT);
- 	while (!list_empty(&names)) {
- 		struct name_list *entry;
-@@ -305,14 +304,14 @@ nfsd4_list_rec_dir(recdir_func *f, struct nfsd_net *nn)
- }
- 
- static int
--nfsd4_unlink_clid_dir(char *name, int namlen)
-+nfsd4_unlink_clid_dir(char *name, int namlen, struct nfsd_net *nn)
- {
- 	struct dentry *dir, *dentry;
- 	int status;
- 
- 	dprintk("NFSD: nfsd4_unlink_clid_dir. name %.*s\n", namlen, name);
- 
--	dir = rec_file->f_path.dentry;
-+	dir = nn->rec_file->f_path.dentry;
- 	mutex_lock_nested(&dir->d_inode->i_mutex, I_MUTEX_PARENT);
- 	dentry = lookup_one_len(name, dir, namlen);
- 	if (IS_ERR(dentry)) {
-@@ -339,14 +338,14 @@ nfsd4_remove_clid_dir(struct nfs4_client *clp)
- 	int status;
- 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 
--	if (!rec_file || !test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
-+	if (!nn->rec_file || !test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
- 		return;
- 
- 	status = nfs4_make_rec_clidname(dname, &clp->cl_name);
- 	if (status)
- 		return legacy_recdir_name_error(status);
- 
--	status = mnt_want_write_file(rec_file);
-+	status = mnt_want_write_file(nn->rec_file);
- 	if (status)
- 		goto out;
- 	clear_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
-@@ -355,10 +354,10 @@ nfsd4_remove_clid_dir(struct nfs4_client *clp)
- 	if (status < 0)
- 		goto out_drop_write;
- 
--	status = nfsd4_unlink_clid_dir(dname, HEXDIR_LEN-1);
-+	status = nfsd4_unlink_clid_dir(dname, HEXDIR_LEN-1, nn);
- 	nfs4_reset_creds(original_cred);
- 	if (status == 0) {
--		vfs_fsync(rec_file, 0);
-+		vfs_fsync(nn->rec_file, 0);
- 		if (in_grace) {
- 			/* remove reclaim record */
- 			crp = nfsd4_find_reclaim_client(dname, nn);
-@@ -367,7 +366,7 @@ nfsd4_remove_clid_dir(struct nfs4_client *clp)
- 		}
- 	}
- out_drop_write:
--	mnt_drop_write_file(rec_file);
-+	mnt_drop_write_file(nn->rec_file);
- out:
- 	if (status)
- 		printk("NFSD: Failed to remove expired client state directory"
-@@ -396,20 +395,20 @@ nfsd4_recdir_purge_old(struct nfsd_net *nn, time_t boot_time)
- 	int status;
- 
- 	in_grace = false;
--	if (!rec_file)
-+	if (!nn->rec_file)
- 		return;
--	status = mnt_want_write_file(rec_file);
-+	status = mnt_want_write_file(nn->rec_file);
- 	if (status)
- 		goto out;
- 	status = nfsd4_list_rec_dir(purge_old, nn);
- 	if (status == 0)
--		vfs_fsync(rec_file, 0);
--	mnt_drop_write_file(rec_file);
-+		vfs_fsync(nn->rec_file, 0);
-+	mnt_drop_write_file(nn->rec_file);
- out:
- 	nfs4_release_reclaim(nn);
- 	if (status)
- 		printk("nfsd4: failed to purge old clients from recovery"
--			" directory %s\n", rec_file->f_path.dentry->d_name.name);
-+			" directory %s\n", nn->rec_file->f_path.dentry->d_name.name);
- }
- 
- static int
-@@ -430,13 +429,13 @@ nfsd4_recdir_load(struct net *net) {
- 	int status;
- 	struct nfsd_net *nn =  net_generic(net, nfsd_net_id);
- 
--	if (!rec_file)
-+	if (!nn->rec_file)
- 		return 0;
- 
- 	status = nfsd4_list_rec_dir(load_recdir, nn);
- 	if (status)
- 		printk("nfsd4: failed loading clients from recovery"
--			" directory %s\n", rec_file->f_path.dentry->d_name.name);
-+			" directory %s\n", nn->rec_file->f_path.dentry->d_name.name);
- 	return status;
- }
- 
-@@ -445,15 +444,16 @@ nfsd4_recdir_load(struct net *net) {
-  */
- 
- static int
--nfsd4_init_recdir(void)
-+nfsd4_init_recdir(struct net *net)
- {
-+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 	const struct cred *original_cred;
- 	int status;
- 
- 	printk("NFSD: Using %s as the NFSv4 state recovery directory\n",
- 			user_recovery_dirname);
- 
--	BUG_ON(rec_file);
-+	BUG_ON(nn->rec_file);
- 
- 	status = nfs4_save_creds(&original_cred);
- 	if (status < 0) {
-@@ -463,12 +463,12 @@ nfsd4_init_recdir(void)
- 		return status;
- 	}
- 
--	rec_file = filp_open(user_recovery_dirname, O_RDONLY | O_DIRECTORY, 0);
--	if (IS_ERR(rec_file)) {
-+	nn->rec_file = filp_open(user_recovery_dirname, O_RDONLY | O_DIRECTORY, 0);
-+	if (IS_ERR(nn->rec_file)) {
- 		printk("NFSD: unable to find recovery directory %s\n",
- 				user_recovery_dirname);
--		status = PTR_ERR(rec_file);
--		rec_file = NULL;
-+		status = PTR_ERR(nn->rec_file);
-+		nn->rec_file = NULL;
- 	}
- 
- 	nfs4_reset_creds(original_cred);
-@@ -509,7 +509,7 @@ nfsd4_load_reboot_recovery_data(struct net *net)
- {
- 	int status;
- 
--	status = nfsd4_init_recdir();
-+	status = nfsd4_init_recdir(net);
- 	if (!status)
- 		status = nfsd4_recdir_load(net);
- 	if (status)
-@@ -544,12 +544,12 @@ err:
- }
- 
- static void
--nfsd4_shutdown_recdir(void)
-+nfsd4_shutdown_recdir(struct nfsd_net *nn)
- {
--	if (!rec_file)
-+	if (!nn->rec_file)
- 		return;
--	fput(rec_file);
--	rec_file = NULL;
-+	fput(nn->rec_file);
-+	nn->rec_file = NULL;
- }
- 
- static void
-@@ -558,7 +558,7 @@ nfsd4_legacy_tracking_exit(struct net *net)
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
- 	nfs4_release_reclaim(nn);
--	nfsd4_shutdown_recdir();
-+	nfsd4_shutdown_recdir(nn);
- 	nfs4_legacy_state_shutdown(net);
- }
- 
-
+SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgMDhmMDVjNDk3
+NDllZTY1NWJlZjkyMWQxMjE2MDk2MGEyNzNhYWQ0NzoNCg0KICBSZXR1cm4gdGhlIHJpZ2h0IGVy
+cm9yIHZhbHVlIHdoZW4gZHVwWzIzXSgpIG5ld2ZkIGFyZ3VtZW50IGlzIHRvbyBsYXJnZSAoMjAx
+Mi0xMC0zMCAyMToyNzoyOCAtMDcwMCkNCg0KYXJlIGF2YWlsYWJsZSBpbiB0aGUgZ2l0IHJlcG9z
+aXRvcnkgYXQ6DQoNCiAgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9s
+aW51eC1uZnMuZ2l0IHRhZ3MvbmZzLWZvci0zLjctNA0KDQpmb3IgeW91IHRvIGZldGNoIGNoYW5n
+ZXMgdXAgdG8gOTk4ZjQwYjU1MGYyNTdlNDM2NDg1MjkxODAyZmE5MzhlNGNmNTgwZjoNCg0KICBO
+RlM0OiBuZnM0X29wZW5kYXRhX2FjY2VzcyBzaG91bGQgcmV0dXJuIGVycm5vICgyMDEyLTExLTAy
+IDE4OjUxOjU0IC0wNDAwKQ0KDQotLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpORlMgYnVnZml4ZXMgZm9yIExpbnV4IDMuNw0K
+DQotIEZpeCBhIGJ1bmNoIG9mIGRlYWRsb2NrIHNpdHVhdGlvbnM6DQogICogU3RhdGUgcmVjb3Zl
+cnkgY2FuIGRlYWRsb2NrIGlmIHdlIGZhaWwgdG8gcmVsZWFzZSBzZXF1ZW5jZSBpZHMgYmVmb3Jl
+DQogICAgc2NoZWR1bGluZyB0aGUgcmVjb3ZlcnkgdGhyZWFkLg0KICAqIENhbGxpbmcgZGVhY3Rp
+dmF0ZV9zdXBlcigpIGZyb20gYW4gUlBDIHdvcmtxdWV1ZSB0aHJlYWQgY2FuIGRlYWRsb2NrDQog
+ICAgYmVjYXVzZSBvZiB0aGUgY2FsbCB0byBycGNfc2h1dGRvd25fY2xpZW50Lg0KLSBEaXNwbGF5
+IHRoZSBkZXZpY2UgbmFtZSBjb3JyZWN0bHkgaW4gL3Byb2MvKi9tb3VudHMNCi0gRml4IGEgbnVt
+YmVyIG9mIGluY29ycmVjdCBlcnJvciByZXR1cm4gdmFsdWVzOg0KICAqIFdoZW4gTkZTdjMgbW91
+bnRzIGZhaWwgZHVlIHRvIGEgdGltZW91dC4NCiAgKiBPbiBORlN2NC4xIGJhY2tjaGFubmVsIHNl
+dHVwIGZhaWx1cmUNCiAgKiBPbiBORlN2NCBvcGVuIGFjY2VzcyBjaGVja3MNCi0gcG5mc19maW5k
+X2FsbG9jX2xheW91dCgpIG11c3QgY2hlY2sgdGhlIGxheW91dCBwb2ludGVyIGZvciBOVUxMDQot
+IEZpeCBhIHJlZ3Jlc3Npb24gaW4gdGhlIGxlZ2FjeSBETlMgcmVzb2x2ZWQNCg0KLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0K
+QmVuIEh1dGNoaW5ncyAoMSk6DQogICAgICBuZnM6IFNob3cgb3JpZ2luYWwgZGV2aWNlIG5hbWUg
+dmVyYmF0aW0gaW4gL3Byb2MvKi9tb3VudHtzLGluZm99DQoNCkJyeWFuIFNjaHVtYWtlciAoMSk6
+DQogICAgICBORlM6IFdhaXQgZm9yIHNlc3Npb24gcmVjb3ZlcnkgdG8gZmluaXNoIGJlZm9yZSBy
+ZXR1cm5pbmcNCg0KTmVpbEJyb3duICgxKToNCiAgICAgIE5GUzogZml4IGJ1ZyBpbiBsZWdhY3kg
+RE5TIHJlc29sdmVyLg0KDQpTY290dCBNYXloZXcgKDEpOg0KICAgICAgbmZzdjM6IE1ha2UgdjMg
+bW91bnRzIGZhaWwgd2l0aCBFVElNRURPVVRzIGluc3RlYWQgRUlPIG9uIG1vdW50ZCB0aW1lb3V0
+cw0KDQpUcm9uZCBNeWtsZWJ1c3QgKDMpOg0KICAgICAgTkZTdjQuMTogV2UgbXVzdCByZWxlYXNl
+IHRoZSBzZXF1ZW5jZSBpZCB3aGVuIHdlIGZhaWwgdG8gZ2V0IGEgc2Vzc2lvbiBzbG90DQogICAg
+ICBORlN2NDogbmZzNF9sb2NrdV9kb25lIG11c3QgcmVsZWFzZSB0aGUgc2VxdWVuY2UgaWQNCiAg
+ICAgIE5GU3Y0OiBJbml0aWFsaXNlIHRoZSBORlN2NC4xIHNsb3QgdGFibGUgaGlnaGVzdF91c2Vk
+X3Nsb3RpZCBjb3JyZWN0bHkNCg0KV2VzdG9uIEFuZHJvcyBBZGFtc29uICgzKToNCiAgICAgIE5G
+UzogYWRkIG5mc19zYl9kZWFjdGl2ZV9hc3luYyB0byBhdm9pZCBkZWFkbG9jaw0KICAgICAgU1VO
+UlBDOiByZXR1cm4gcHJvcGVyIGVycm5vIGZyb20gYmFja2NoYW5uZWxfcnFzdA0KICAgICAgTkZT
+NDogbmZzNF9vcGVuZGF0YV9hY2Nlc3Mgc2hvdWxkIHJldHVybiBlcnJubw0KDQpZYW5jaHVhbiBO
+aWFuICgxKToNCiAgICAgIG5mczogQ2hlY2sgd2hldGhlciBhIGxheW91dCBwb2ludGVyIGlzIE5V
+TEwgYmVmb3JlIGZyZWUgaXQNCg0KIGZzL25mcy9kbnNfcmVzb2x2ZS5jICAgICAgICAgIHwgIDUg
+KysrLS0NCiBmcy9uZnMvaW5vZGUuYyAgICAgICAgICAgICAgICB8ICA1ICsrKystDQogZnMvbmZz
+L2ludGVybmFsLmggICAgICAgICAgICAgfCAgNiArKystLQ0KIGZzL25mcy9tb3VudF9jbG50LmMg
+ICAgICAgICAgIHwgIDIgKy0NCiBmcy9uZnMvbmFtZXNwYWNlLmMgICAgICAgICAgICB8IDE5ICsr
+KysrKysrKysrLS0tLS0NCiBmcy9uZnMvbmZzNG5hbWVzcGFjZS5jICAgICAgICB8ICAzICsrLQ0K
+IGZzL25mcy9uZnM0cHJvYy5jICAgICAgICAgICAgIHwgNDYgKysrKysrKysrKysrKysrKysrKysr
+KystLS0tLS0tLS0tLS0tLS0NCiBmcy9uZnMvcG5mcy5jICAgICAgICAgICAgICAgICB8ICA0ICsr
+LS0NCiBmcy9uZnMvc3VwZXIuYyAgICAgICAgICAgICAgICB8IDUxICsrKysrKysrKysrKysrKysr
+KysrKysrKysrKysrKysrKysrKysrKysrKy0NCiBmcy9uZnMvdW5saW5rLmMgICAgICAgICAgICAg
+ICB8ICAyICstDQogbmV0L3N1bnJwYy9iYWNrY2hhbm5lbF9ycXN0LmMgfCAgMiArLQ0KIDExIGZp
+bGVzIGNoYW5nZWQsIDExMCBpbnNlcnRpb25zKCspLCAzNSBkZWxldGlvbnMoLSkNCg0KLS0gDQpU
+cm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRy
+b25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
