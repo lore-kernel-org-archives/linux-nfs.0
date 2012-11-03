@@ -1,197 +1,158 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47858 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751731Ab2KLMP3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Nov 2012 07:15:29 -0500
-Date: Mon, 12 Nov 2012 07:15:25 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: David Quigley <dpquigl@davequigley.com>
-Cc: trond.myklebust@netapp.com, sds@tycho.nsa.gov, linux-nfs@vger.kernel.org,
-        selinux@tycho.nsa.gov, linux-security-module@vger.kernel.org,
-        "Matthew N. Dodd" <Matthew.Dodd@sparta.com>,
-        Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>,
-        Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>,
-        Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
-Subject: Re: [PATCH 02/13] Security: Add Hook to test if the particular xattr
- is part of a MAC model.
-Message-ID: <20121112121525.GD30713@fieldses.org>
-References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com>
- <1352700947-3915-3-git-send-email-dpquigl@davequigley.com>
+Received: from karif.server-speed.net ([188.40.51.140]:53035 "EHLO
+	karif.server-speed.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754646Ab2KCTgI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 3 Nov 2012 15:36:08 -0400
+Received: from karif.server-speed.net (karif.server-speed.net [127.0.0.1])
+	by karif.server-speed.net (Postfix) with ESMTP id 06F03138192
+	for <linux-nfs@vger.kernel.org>; Sat,  3 Nov 2012 20:29:12 +0100 (CET)
+Received: from [192.168.4.247] (h081217049118.dyn.cm.kabsi.at [81.217.49.118])
+	(using TLSv1 with cipher ECDHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	(Authenticated sender: flo)
+	by karif.server-speed.net (Postfix) with ESMTPSA
+	for <linux-nfs@vger.kernel.org>; Sat,  3 Nov 2012 20:29:11 +0100 (CET)
+Message-ID: <50957087.6050008@xinu.at>
+Date: Sat, 03 Nov 2012 20:29:11 +0100
+From: Florian Pritz <bluewind@xinu.at>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1352700947-3915-3-git-send-email-dpquigl@davequigley.com>
+To: linux-nfs@vger.kernel.org
+Subject: NFS stalls when writing - linux 3.6.x
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ protocol="application/pgp-signature";
+ boundary="------------enig3813964ED803AD5DDCA6B340"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 12, 2012 at 01:15:36AM -0500, David Quigley wrote:
-> From: David Quigley <dpquigl@davequigley.com>
-> 
-> The interface to request security labels from user space is the xattr
-> interface. When requesting the security label from an NFS server it is
-> important to make sure the requested xattr
+This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
+--------------enig3813964ED803AD5DDCA6B340
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
 
-I'm confused--clients can't request xattrs from NFS servers.  I must be
-reading this wrong, but I'm not sure what you meant.
+Hi,
 
---b.
+Long text ahead.
 
-> actually is a MAC label. This allows
-> us to make sure that we get the desired semantics from the attribute instead of
-> something else such as capabilities or a time based LSM.
-> 
-> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
-> Signed-off-by: David Quigley <dpquigl@davequigley.com>
-> ---
->  include/linux/security.h   | 14 ++++++++++++++
->  security/capability.c      |  6 ++++++
->  security/security.c        |  6 ++++++
->  security/selinux/hooks.c   |  6 ++++++
->  security/smack/smack_lsm.c | 11 +++++++++++
->  5 files changed, 43 insertions(+)
-> 
-> diff --git a/include/linux/security.h b/include/linux/security.h
-> index c9f5eec..167bdd5 100644
-> --- a/include/linux/security.h
-> +++ b/include/linux/security.h
-> @@ -1301,6 +1301,13 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
->   *	@pages contains the number of pages.
->   *	Return 0 if permission is granted.
->   *
-> + * @ismaclabel:
-> + *	Check if the extended attribute specified by @name
-> + *	represents a MAC label. Returns 0 if name is a MAC
-> + *	attribute otherwise returns non-zero.
-> + *	@name full extended attribute name to check against
-> + *	LSM as a MAC label.
-> + *
->   * @secid_to_secctx:
->   *	Convert secid to security context.  If secdata is NULL the length of
->   *	the result will be returned in seclen, but no secdata will be returned.
-> @@ -1581,6 +1588,7 @@ struct security_operations {
->  
->  	int (*getprocattr) (struct task_struct *p, char *name, char **value);
->  	int (*setprocattr) (struct task_struct *p, char *name, void *value, size_t size);
-> +	int (*ismaclabel) (const char *name);
->  	int (*secid_to_secctx) (u32 secid, char **secdata, u32 *seclen);
->  	int (*secctx_to_secid) (const char *secdata, u32 seclen, u32 *secid);
->  	void (*release_secctx) (char *secdata, u32 seclen);
-> @@ -1829,6 +1837,7 @@ void security_d_instantiate(struct dentry *dentry, struct inode *inode);
->  int security_getprocattr(struct task_struct *p, char *name, char **value);
->  int security_setprocattr(struct task_struct *p, char *name, void *value, size_t size);
->  int security_netlink_send(struct sock *sk, struct sk_buff *skb);
-> +int security_ismaclabel(const char *name);
->  int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen);
->  int security_secctx_to_secid(const char *secdata, u32 seclen, u32 *secid);
->  void security_release_secctx(char *secdata, u32 seclen);
-> @@ -2512,6 +2521,11 @@ static inline int security_netlink_send(struct sock *sk, struct sk_buff *skb)
->  	return cap_netlink_send(sk, skb);
->  }
->  
-> +static inline int security_ismaclabel(const char *name)
-> +{
-> +	return 0;
-> +}
-> +
->  static inline int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
->  {
->  	return -EOPNOTSUPP;
-> diff --git a/security/capability.c b/security/capability.c
-> index f1eb284..9071447 100644
-> --- a/security/capability.c
-> +++ b/security/capability.c
-> @@ -797,6 +797,11 @@ static int cap_setprocattr(struct task_struct *p, char *name, void *value,
->  	return -EINVAL;
->  }
->  
-> +static int cap_ismaclabel(const char *name)
-> +{
-> +	return 0;
-> +}
-> +
->  static int cap_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
->  {
->  	return -EOPNOTSUPP;
-> @@ -1015,6 +1020,7 @@ void __init security_fixup_ops(struct security_operations *ops)
->  	set_to_cap_if_null(ops, d_instantiate);
->  	set_to_cap_if_null(ops, getprocattr);
->  	set_to_cap_if_null(ops, setprocattr);
-> +	set_to_cap_if_null(ops, ismaclabel);
->  	set_to_cap_if_null(ops, secid_to_secctx);
->  	set_to_cap_if_null(ops, secctx_to_secid);
->  	set_to_cap_if_null(ops, release_secctx);
-> diff --git a/security/security.c b/security/security.c
-> index b4b2017..a7bee7b 100644
-> --- a/security/security.c
-> +++ b/security/security.c
-> @@ -1047,6 +1047,12 @@ int security_netlink_send(struct sock *sk, struct sk_buff *skb)
->  	return security_ops->netlink_send(sk, skb);
->  }
->  
-> +int security_ismaclabel(const char *name)
-> +{
-> +	return security_ops->ismaclabel(name);
-> +}
-> +EXPORT_SYMBOL(security_ismaclabel);
-> +
->  int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
->  {
->  	return security_ops->secid_to_secctx(secid, secdata, seclen);
-> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-> index 22d9adf..f7c4899 100644
-> --- a/security/selinux/hooks.c
-> +++ b/security/selinux/hooks.c
-> @@ -5401,6 +5401,11 @@ abort_change:
->  	return error;
->  }
->  
-> +static int selinux_ismaclabel(const char *name)
-> +{
-> +	return (strcmp(name, XATTR_SELINUX_SUFFIX) == 0);
-> +}
-> +
->  static int selinux_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
->  {
->  	return security_sid_to_context(secid, secdata, seclen);
-> @@ -5639,6 +5644,7 @@ static struct security_operations selinux_ops = {
->  	.getprocattr =			selinux_getprocattr,
->  	.setprocattr =			selinux_setprocattr,
->  
-> +	.ismaclabel =			selinux_ismaclabel,
->  	.secid_to_secctx =		selinux_secid_to_secctx,
->  	.secctx_to_secid =		selinux_secctx_to_secid,
->  	.release_secctx =		selinux_release_secctx,
-> diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
-> index 38be92c..82c3c72 100644
-> --- a/security/smack/smack_lsm.c
-> +++ b/security/smack/smack_lsm.c
-> @@ -3335,6 +3335,16 @@ static void smack_audit_rule_free(void *vrule)
->  #endif /* CONFIG_AUDIT */
->  
->  /**
-> + * smack_ismaclabel - check if xattr @name references a smack MAC label
-> + * @name: Full xattr name to check.
-> + */
-> +static int smack_ismaclabel(const char *name)
-> +{
-> +	return (strcmp(name, XATTR_SMACK_SUFFIX) == 0);
-> +}
-> +
-> +
-> +/**
->   * smack_secid_to_secctx - return the smack label for a secid
->   * @secid: incoming integer
->   * @secdata: destination
-> @@ -3530,6 +3540,7 @@ struct security_operations smack_ops = {
->  	.audit_rule_free =		smack_audit_rule_free,
->  #endif /* CONFIG_AUDIT */
->  
-> +	.ismaclabel =			smack_ismaclabel,
->  	.secid_to_secctx = 		smack_secid_to_secctx,
->  	.secctx_to_secid = 		smack_secctx_to_secid,
->  	.release_secctx = 		smack_release_secctx,
-> -- 
-> 1.7.11.7
-> 
+
+Since I have no idea what to look at/for, I tried to summarise all more
+or less relevant information. If you need any more, please tell me.
+
+I've been trying to debug this for days now and might have mixed
+something up although I double checked as much as possible while writing
+this mail.
+
+
+# Overview
+
+I've been experiencing stalls when trying to write big-ish files on my
+nfs mount for some time (few months) now. Rsync is also somewhat slow,
+transferring only like 1 file per second even if the files are only a
+few kilobytes in size. Sometimes it also stalls for a few seconds
+between files. I hardly run rsync over nfs so can't tell if this might
+be normal.
+
+Sadly I don't know when this started happening.
+
+Server and client are both running Arch Linux with linux 3.6.5 and
+nfs-utils 1.2.6.
+
+The server is running on a striped raid10 array with 4 disks using the
+deadline scheduler and connected via Gbit ethernet. The CPU is an Intel
+i3-530 and it has 2GB RAM. The raid10 is part of an LVM which contains
+the actual XFS file system exported by nfsd.
+
+At first I assumed a problem with file system, but I switched from ext3
+to XFS and still experience the issue. Transferring large amounts
+(>80GB) of data over samba + cifs didn't cause any problems so I'm
+ruling out network and disks.
+
+# Description
+
+dd if=3D/dev/zero of=3Dtest bs=3D1M count=3D8000 (writing a 1GB file is a=
+lso
+enough, sometimes)
+
+Watch the network traffic (with "vnstat -l" or conky) and wait until it
+drops from 110MB/s to 0-5MB/s (you might need to run dd multiple times,
+wait a few minutes/hours or reboot the server)
+
+top on the server now shows lots of nfsd threads in D state. iostat only
+shows the 0-5MB/s of network traffic going to the disk.
+
+A local dd job on the server manages to write 160MB/s while nfsd
+continues to hang. Reading from the nfs share while nfsd is hanging is
+possible, but has a delay of up to ~20-30 seconds.
+
+After some time the client displays "nfs: server levant not responding,
+still trying" in dmesg followed by a "nfs: server levant OK" 0 or more
+seconds later (yes, zero). Both messages sometimes appear more than once
+at the same time.
+
+Apart from those messages dmesg is clean on either system even after
+waiting for a few minutes.
+
+# Environment
+
+## Mount options (from /proc/mounts)
+
+rw,nosuid,nodev,noexec,relatime,vers=3D4.0,rsize=3D65536,wsize=3D65536,
+namlen=3D255,hard,proto=3Dtcp,port=3D0,timeo=3D14,retrans=3D2,sec=3Dsys,
+clientaddr=3D192.168.4.247,local_lock=3Dnone,addr=3D192.168.4.103,user
+
+## /etc/exportsfs -v
+
+/mnt/data/nfs
+192.168.4.1/24(rw,wdelay,crossmnt,root_squash,all_squash,no_subtree_check=
+,anonuid=3D999,anongid=3D999)
+
+## Programm versions
+
+Those are all the same on both client and server.
+
+acl 2.2.51-2
+libgssglue 0.4-1
+libevent 2.0.20-1
+librpcsecgss 0.19-7
+nfs-utils 1.2.6-2
+util-linux 2.22.1-2
+
+# Other notes
+
+I tried reproducing the issue with a virtual machine and it somehow
+worked, but I'm not really sure if I actually hit the same issue because
+the vm sometimes locks up too.
+
+The VM was set up in qemu with one virtio disk which was directly
+partioned without the use of mdadm or lvm.
+
+
+Thank you for reading.
+
+--=20
+Florian Pritz
+
+
+--------------enig3813964ED803AD5DDCA6B340
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIbBAEBAgAGBQJQlXCHAAoJEG0WVcFM4cE+peoP+ME8fS8z7PYxBdLo6eD06L01
+Va3WvwYQ+iyOA4aXqEIaT9UOMcGVap2CKJ3GpyO+lmC1Ium2M1SBLdbxYz8+Vd7Y
+tJTufmhZo4r0ESjFphCaQ7xDv5p1mzUE2rm99N5nUfknhfMFp0fPnYem07QIRc7e
+Wl5Ghm1YKEDtf+gTjqIODlmNh53kK/GnYV425G0CwHRIEqxWJWFpzfeb1DwrhgoX
+IbetvZoKUJfZfFRLdCE01XyJbArHI+5OhqF4Nla2DQoci8I0pFzIfthjRSTyhJZV
+ZhMXkWmlHtxctQsCnpCOq65x7xofTEMwpsXnfcYRdWe3rPo+0v3kegUlO62egKmH
+lIra6brPpbf5cAbh9K0kNkOvQ9p43XWSQLBdCSOcdstA91tRBLYAdrWIqr1D90Ve
+m39iRiAOZVtoK/vmPemotxNVPePxmQKqUyWp0WSmcYKqowm1IBWLUb5Wm8j9EU+3
+jtULTq1Luz3DmSG8+pDtmgulHFH3aUJc35Bp1N7gaWuxV7zPzEwZO9qlS1AcsBbm
+SAAdiFVybLSbJhkWe8bODFrsVIe+vDnKAqUDJdsVy/HC9TKqbHxtEFsfPkjJqLdJ
+fGiyoXN2Oe+NZVz77I+K5eVgSFdeS9/+66eMwlKLN6+xB164mLRwUioWYDTsTuET
+v1OWdxdSLHyatgnoV/A=
+=/sOh
+-----END PGP SIGNATURE-----
+
+--------------enig3813964ED803AD5DDCA6B340--
