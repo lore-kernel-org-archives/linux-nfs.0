@@ -1,36 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:25317 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756946Ab2KHVRK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Nov 2012 16:17:10 -0500
-Message-ID: <509C214F.1090607@oracle.com>
-Date: Thu, 08 Nov 2012 15:17:03 -0600
-From: Bill Baker <bill.baker@oracle.com>
-MIME-Version: 1.0
-To: nfsv4@ietf.org
-CC: linux-nfs@vger.kernel.org, tina.hartshorn@oracle.com
-Subject: Announcing Connectathon 2013
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:51474 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933039Ab2KEPXF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Nov 2012 10:23:05 -0500
+Received: by mail-gh0-f174.google.com with SMTP id g15so1012583ghb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Nov 2012 07:23:05 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v9 24/34] vfs: make lgetxattr retry once on ESTALE
+Date: Mon,  5 Nov 2012 10:22:03 -0500
+Message-Id: <1352128933-28526-25-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
+References: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/xattr.c | 15 ++++++++++-----
+ 1 file changed, 10 insertions(+), 5 deletions(-)
 
-Greetings,
-
-Oracle will be hosting Connectathon 2013 the last
-week in February (2/25 - 3/1) in the Agnews
-auditorium on Oracle's Santa Clara Campus.
-
-We'll have posted details about the event on the
-the web site shown below.  Please contact our event
-coordinator, Tina.Hartshorn@oracle.com, if you need
-additional information or have special requirements.
-
-http://hub.opensolaris.org/bin/view/Community+Group+nfs/Connectathon13
-
-Please feel free to forward this on to other interested
-parties.
-
-Regards,
+diff --git a/fs/xattr.c b/fs/xattr.c
+index 42284fc..3a5e3ff 100644
+--- a/fs/xattr.c
++++ b/fs/xattr.c
+@@ -505,12 +505,17 @@ SYSCALL_DEFINE4(lgetxattr, const char __user *, pathname,
+ {
+ 	struct path path;
+ 	ssize_t error;
++	unsigned int try = 0;
++	unsigned int lookup_flags = 0;
+ 
+-	error = user_lpath(pathname, &path);
+-	if (error)
+-		return error;
+-	error = getxattr(path.dentry, name, value, size);
+-	path_put(&path);
++	do {
++		error = user_path_at(AT_FDCWD, pathname, lookup_flags, &path);
++		if (error)
++			break;
++		error = getxattr(path.dentry, name, value, size);
++		path_put(&path);
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
+ 	return error;
+ }
+ 
 -- 
-Bill Baker - Oracle Solaris NFS development
+1.7.11.7
+
