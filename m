@@ -1,69 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:28552 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751719Ab2K1OlC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Nov 2012 09:41:02 -0500
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id qASEepvl004938
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 28 Nov 2012 09:40:51 -0500
-Message-ID: <50B6224C.1040405@RedHat.com>
-Date: Wed, 28 Nov 2012 09:40:12 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Steve Dickson <steved@redhat.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2 V2] mount.nfs: Continue to trying address when the
- server return EACCES
-References: <1354035684-15802-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1354035684-15802-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:33300 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932944Ab2KEPWt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Nov 2012 10:22:49 -0500
+Received: by mail-gg0-f174.google.com with SMTP id k5so1001920ggd.19
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Nov 2012 07:22:48 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v9 15/34] vfs: have chdir retry lookup and call once on ESTALE error
+Date: Mon,  5 Nov 2012 10:21:54 -0500
+Message-Id: <1352128933-28526-16-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
+References: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/open.c | 25 +++++++++++++------------
+ 1 file changed, 13 insertions(+), 12 deletions(-)
 
+diff --git a/fs/open.c b/fs/open.c
+index 9cd0a50..5c2a973 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -387,20 +387,21 @@ SYSCALL_DEFINE1(chdir, const char __user *, filename)
+ {
+ 	struct path path;
+ 	int error;
++	int lookup_flags = LOOKUP_FOLLOW | LOOKUP_DIRECTORY;
++	unsigned int try = 0;
+ 
+-	error = user_path_dir(filename, &path);
+-	if (error)
+-		goto out;
+-
+-	error = inode_permission(path.dentry->d_inode, MAY_EXEC | MAY_CHDIR);
+-	if (error)
+-		goto dput_and_out;
+-
+-	set_fs_pwd(current->fs, &path);
++	do {
++		error = user_path_at(AT_FDCWD, filename, lookup_flags, &path);
++		if (error)
++			break;
+ 
+-dput_and_out:
+-	path_put(&path);
+-out:
++		error = inode_permission(path.dentry->d_inode,
++					 MAY_EXEC | MAY_CHDIR);
++		if (!error)
++			set_fs_pwd(current->fs, &path);
++		path_put(&path);
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
+ 	return error;
+ }
+ 
+-- 
+1.7.11.7
 
-On 27/11/12 12:01, Steve Dickson wrote:
-> With recent changes to the /etc/hosts file, the 'localhost'
-> host name is now multiply defined as both an IPv4 address (127.0.01)
-> and an IPv6 address (::1). This causes first address returned
-> by getaddrinfo('localhost') to be the IPv6 address instead of
-> the IPv4 address.
-> 
-> The change in the default 'localhost' address type causes
-> existing exports using '127.0.0.1' to fail, because the
-> '::1' address is tried first and fails. The problem is
-> not all the addresses in the address list are being tried.
-> 
-> So this patch allows that address list to continue to be
-> process when a 'EACCES' error is returned by the server.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-Committed...
-
-steved.
-> ---
->  utils/mount/stropts.c | 2 ++
->  1 file changed, 2 insertions(+)
-> 
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index 9b4197b..8ee3024 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -666,6 +666,7 @@ static int nfs_try_mount_v3v2(struct nfsmount_info *mi)
->  		case EOPNOTSUPP:
->  		case EHOSTUNREACH:
->  		case ETIMEDOUT:
-> +		case EACCES:
->  			continue;
->  		default:
->  			goto out;
-> @@ -761,6 +762,7 @@ static int nfs_try_mount_v4(struct nfsmount_info *mi)
->  		case ECONNREFUSED:
->  		case EHOSTUNREACH:
->  		case ETIMEDOUT:
-> +		case EACCES:
->  			continue;
->  		default:
->  			goto out;
-> 
