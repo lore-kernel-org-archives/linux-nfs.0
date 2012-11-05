@@ -1,140 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:10768 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752985Ab2K0TXO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Nov 2012 14:23:14 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Steve Dickson <steved@redhat.com>
-Cc: Bruce Fields <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH] gssd: Handle the target name correctly
-Date: Tue, 27 Nov 2012 14:23:06 -0500
-Message-Id: <1354044186-38830-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:42122 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933032Ab2KEPXP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Nov 2012 10:23:15 -0500
+Received: by mail-gg0-f174.google.com with SMTP id k5so1001863ggd.19
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Nov 2012 07:23:15 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v9 29/34] vfs: convert do_filp_open to use retry_estale helper
+Date: Mon,  5 Nov 2012 10:22:08 -0500
+Message-Id: <1352128933-28526-30-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
+References: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The target name contains a hostname in the realm that we are authenticating
-to. Since we may be authenticating to a different realm than the default
-realm for the server, we should not assume that the target name and host
-name point to the same string.
-In fact, the kernel NFS client will always use its own hostname as the
-target name, since it is always authenticating to its own default realm.
-On the other hand, the NFS server's callback channel will pass the hostname
-of the NFS client that it is authenticating too (Section 3.4, RFC3530).
-
-This patch fixes the handling of the target name in process_krb5_upcall,
-and ensures that it gets passed to find_keytab_entry().
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- utils/gssd/gssd_proc.c |  9 ++-------
- utils/gssd/krb5_util.c | 20 ++++++++++++++------
- utils/gssd/krb5_util.h |  3 ++-
- 3 files changed, 18 insertions(+), 14 deletions(-)
+ fs/namei.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index aa5bbb9..2fba7de 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -951,12 +951,6 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+diff --git a/fs/namei.c b/fs/namei.c
+index 39adf1b..45a45d7 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3012,11 +3012,12 @@ struct file *do_filp_open(int dfd, struct filename *pathname,
+ {
+ 	struct nameidata nd;
+ 	struct file *filp;
++	unsigned int try = 0;
  
- 	printerr(1, "handling krb5 upcall (%s)\n", clp->dirname);
- 
--	if (tgtname) {
--		if (clp->servicename) {
--			free(clp->servicename);
--			clp->servicename = strdup(tgtname);
--		}
--	}
- 	token.length = 0;
- 	token.value = NULL;
- 	memset(&pd, 0, sizeof(struct authgss_private_data));
-@@ -1005,7 +999,8 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
- 			int success = 0;
- 			do {
- 				gssd_refresh_krb5_machine_credential(clp->servername,
--								     NULL, service);
-+								     NULL, service,
-+								     tgtname);
- 				/*
- 				 * Get a list of credential cache names and try each
- 				 * of them until one works or we've tried them all
-diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index 60ba594..aeb8f70 100644
---- a/utils/gssd/krb5_util.c
-+++ b/utils/gssd/krb5_util.c
-@@ -774,12 +774,16 @@ gssd_search_krb5_keytab(krb5_context context, krb5_keytab kt,
+ 	filp = path_openat(dfd, pathname, &nd, op, flags | LOOKUP_RCU);
+ 	if (unlikely(filp == ERR_PTR(-ECHILD)))
+ 		filp = path_openat(dfd, pathname, &nd, op, flags);
+-	if (unlikely(filp == ERR_PTR(-ESTALE)))
++	while (retry_estale(PTR_ERR(filp), try++))
+ 		filp = path_openat(dfd, pathname, &nd, op, flags | LOOKUP_REVAL);
+ 	return filp;
  }
- 
- /*
-- * Find a keytab entry to use for a given target hostname.
-+ * Find a keytab entry to use for a given target realm.
-  * Tries to find the most appropriate keytab to use given the
-  * name of the host we are trying to connect with.
-+ *
-+ * Note: the tgtname contains a hostname in the realm that we
-+ * are authenticating to. It may, or may not be the same as
-+ * the server hostname.
-  */
- static int
--find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
-+find_keytab_entry(krb5_context context, krb5_keytab kt, const char *tgtname,
- 		  krb5_keytab_entry *kte, const char **svcnames)
- {
- 	krb5_error_code code;
-@@ -795,7 +799,7 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *hostname,
- 
- 
- 	/* Get full target hostname */
--	retval = get_full_hostname(hostname, targethostname,
-+	retval = get_full_hostname(tgtname, targethostname,
- 				   sizeof(targethostname));
- 	if (retval)
- 		goto out;
-@@ -1128,7 +1132,7 @@ gssd_get_krb5_machine_cred_list(char ***list)
- 		if (ple->ccname) {
- 			/* Make sure cred is up-to-date before returning it */
- 			retval = gssd_refresh_krb5_machine_credential(NULL, ple,
--				NULL);
-+				NULL, NULL);
- 			if (retval)
- 				continue;
- 			if (i + 1 > listsize) {
-@@ -1219,7 +1223,8 @@ gssd_destroy_krb5_machine_creds(void)
- int
- gssd_refresh_krb5_machine_credential(char *hostname,
- 				     struct gssd_k5_kt_princ *ple, 
--					 char *service)
-+					 char *service,
-+					 char *tgtname)
- {
- 	krb5_error_code code = 0;
- 	krb5_context context;
-@@ -1258,7 +1263,10 @@ gssd_refresh_krb5_machine_credential(char *hostname,
- 	if (ple == NULL) {
- 		krb5_keytab_entry kte;
- 
--		code = find_keytab_entry(context, kt, hostname, &kte, svcnames);
-+		if (tgtname == NULL)
-+			tgtname = hostname;
-+
-+		code = find_keytab_entry(context, kt, tgtname, &kte, svcnames);
- 		if (code) {
- 			printerr(0, "ERROR: %s: no usable keytab entry found "
- 				 "in keytab %s for connection with host %s\n",
-diff --git a/utils/gssd/krb5_util.h b/utils/gssd/krb5_util.h
-index cd6e107..9f41625 100644
---- a/utils/gssd/krb5_util.h
-+++ b/utils/gssd/krb5_util.h
-@@ -31,7 +31,8 @@ void gssd_setup_krb5_machine_gss_ccache(char *servername);
- void gssd_destroy_krb5_machine_creds(void);
- int  gssd_refresh_krb5_machine_credential(char *hostname,
- 					  struct gssd_k5_kt_princ *ple, 
--					  char *service);
-+					  char *service,
-+					  char *tgtname);
- char *gssd_k5_err_msg(krb5_context context, krb5_error_code code);
- void gssd_k5_get_default_realm(char **def_realm);
- 
 -- 
 1.7.11.7
 
