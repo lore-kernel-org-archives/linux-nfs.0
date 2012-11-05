@@ -1,26 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:64932 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753717Ab2KZQBa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Nov 2012 11:01:30 -0500
-Received: by mail-pb0-f46.google.com with SMTP id wy7so8115141pbc.19
-        for <linux-nfs@vger.kernel.org>; Mon, 26 Nov 2012 08:01:30 -0800 (PST)
-Message-ID: <50B39233.3070406@gmail.com>
-Date: Mon, 26 Nov 2012 21:30:51 +0530
-From: "dE ." <de.techno@gmail.com>
-MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: Re: Slow NFS loop performance.
-References: <50AF57A3.3090000@gmail.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9092F876C@SACEXCMBX04-PRD.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9092F876C@SACEXCMBX04-PRD.hq.netapp.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Received: from mail-yh0-f46.google.com ([209.85.213.46]:48884 "EHLO
+	mail-yh0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933062Ab2KEPXJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Nov 2012 10:23:09 -0500
+Received: by mail-yh0-f46.google.com with SMTP id m54so972012yhm.19
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Nov 2012 07:23:09 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v9 26/34] vfs: make llistxattr retry once on ESTALE error
+Date: Mon,  5 Nov 2012 10:22:05 -0500
+Message-Id: <1352128933-28526-27-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
+References: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/24/12 00:34, Myklebust, Trond wrote:
-> You're using a non-default timeo=60 on a TCP connection.
->
-> Why?
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/xattr.c | 15 ++++++++++-----
+ 1 file changed, 10 insertions(+), 5 deletions(-)
 
-This's a LAN with just 2 PCs. So there're no packet drops, so there's no 
-point resending requests frequently.
+diff --git a/fs/xattr.c b/fs/xattr.c
+index 8a318a4..8a30ef0 100644
+--- a/fs/xattr.c
++++ b/fs/xattr.c
+@@ -595,12 +595,17 @@ SYSCALL_DEFINE3(llistxattr, const char __user *, pathname, char __user *, list,
+ {
+ 	struct path path;
+ 	ssize_t error;
++	unsigned int try = 0;
++	unsigned int lookup_flags = 0;
+ 
+-	error = user_lpath(pathname, &path);
+-	if (error)
+-		return error;
+-	error = listxattr(path.dentry, list, size);
+-	path_put(&path);
++	do {
++		error = user_path_at(AT_FDCWD, pathname, lookup_flags, &path);
++		if (error)
++			break;
++		error = listxattr(path.dentry, list, size);
++		path_put(&path);
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
+ 	return error;
+ }
+ 
+-- 
+1.7.11.7
+
