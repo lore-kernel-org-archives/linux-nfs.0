@@ -1,347 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:27515 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755881Ab2K0Pei (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Nov 2012 10:34:38 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 3 3/5] SUNRPC new rpc_credops to test credential expiry
-Date: Tue, 27 Nov 2012 10:34:21 -0500
-Message-Id: <1354030463-2372-4-git-send-email-andros@netapp.com>
-In-Reply-To: <1354030463-2372-1-git-send-email-andros@netapp.com>
-References: <1354030463-2372-1-git-send-email-andros@netapp.com>
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:57223 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932951Ab2KEPWu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Nov 2012 10:22:50 -0500
+Received: by mail-gg0-f174.google.com with SMTP id k5so1001813ggd.19
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Nov 2012 07:22:50 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v9 16/34] vfs: make chroot retry once on ESTALE error
+Date: Mon,  5 Nov 2012 10:21:55 -0500
+Message-Id: <1352128933-28526-17-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
+References: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
-
-This patch provides the RPC layer helper functions to allow NFS to manage
-data in the face of expired credentials - such as avoiding buffered WRITEs
-and COMMITs when the gss context will expire before the WRITEs are flushed
-and COMMITs are sent.
-
-These helper functions enable checking the expiration of an underlying
-credential key for a generic rpc credential, e.g. the gss_cred gss context
-gc_expiry which for Kerberos is set to the remaining TGT lifetime.
-
-A new rpc_authops key_timeout is only defined for the generic auth.
-A new rpc_credops crkey_to_expire is only defined for the generic cred.
-A new rpc_credops crkey_timeout is only defined for the gss cred.
-
-Set a credential key expiry watermark, RPC_KEY_EXPIRE_TIMEO set to 60 seconds.
-NOTE: this timeout is a guess that works in a VM environment. We may want to
-make it adjustable via a module parameter.
-
-If key_timeout is called on a credential with an underlying credential key that
-will expire within watermark seconds, we set the RPC_CRED_KEY_EXPIRE_SOON
-flag in the generic_cred acred so that the NFS layer can clean up prior to
-key expiration.
-
-Checking a generic credential's underlying credential involves a cred lookup.
-To avoid this lookup in the normal case when the underlying credential has
-a key that is valid (before the watermark), a notify flag is set in
-the generic credential the first time the key_timeout is called. The
-generic credential then stops checking the underlying credential key expiry, and
-the underlying credential (gss_cred) match routine then checks the key
-expiration upon each normal use and sets a flag in the associated generic
-credential only when the key expiration is within the watermark.
-This in turn signals the generic credential key_timeout to perform the extra
-credetial lookup thereafter.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- include/linux/sunrpc/auth.h    |   21 ++++++++++
- net/sunrpc/auth.c              |   21 +++++++++-
- net/sunrpc/auth_generic.c      |   84 ++++++++++++++++++++++++++++++++++++++++
- net/sunrpc/auth_gss/auth_gss.c |   44 ++++++++++++++++++++-
- 4 files changed, 167 insertions(+), 3 deletions(-)
+ fs/open.c | 37 +++++++++++++++++++++----------------
+ 1 file changed, 21 insertions(+), 16 deletions(-)
 
-diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
-index f25ba92..217ee6f 100644
---- a/include/linux/sunrpc/auth.h
-+++ b/include/linux/sunrpc/auth.h
-@@ -21,12 +21,25 @@
- /* size of the nodename buffer */
- #define UNX_MAXNODENAME	32
- 
-+/* Set RPC_CRED_KEY_EXPIRE_SOON auth_cred flag if called RPC_CRED_EXPIRE_TIMEO
-+ * seconds before the credential key will expire */
-+#define RPC_KEY_EXPIRE_TIMEO	(60 * HZ)
-+
-+/* auth_cred ac_flags bits */
-+enum {
-+	RPC_CRED_NO_CRKEY_TIMEOUT = 0, /* underlying cred has no key timeout */
-+	RPC_CRED_KEY_EXPIRE_SOON = 1, /* underlying cred key will expire soon */
-+	RPC_CRED_NOTIFY_TIMEOUT = 2,   /* nofity generic cred when underlying
-+					key will expire soon */
-+};
-+
- /* Work around the lack of a VFS credential */
- struct auth_cred {
- 	uid_t	uid;
- 	gid_t	gid;
- 	struct group_info *group_info;
- 	const char *principal;
-+	unsigned long ac_flags;
- 	unsigned char machine_cred : 1;
- };
- 
-@@ -102,6 +115,8 @@ struct rpc_authops {
- 	int			(*pipes_create)(struct rpc_auth *);
- 	void			(*pipes_destroy)(struct rpc_auth *);
- 	int			(*list_pseudoflavors)(rpc_authflavor_t *, int);
-+	int			(*key_timeout)(struct rpc_auth *,
-+					      struct rpc_cred *);
- };
- 
- struct rpc_credops {
-@@ -118,6 +133,9 @@ struct rpc_credops {
- 						void *, __be32 *, void *);
- 	int			(*crunwrap_resp)(struct rpc_task *, kxdrdproc_t,
- 						void *, __be32 *, void *);
-+	int			(*crkey_timeout)(struct rpc_cred *,
-+						unsigned long);
-+	bool			(*crkey_to_expire)(struct rpc_cred *);
- };
- 
- extern const struct rpc_authops	authunix_ops;
-@@ -152,6 +170,9 @@ int			rpcauth_uptodatecred(struct rpc_task *);
- int			rpcauth_init_credcache(struct rpc_auth *);
- void			rpcauth_destroy_credcache(struct rpc_auth *);
- void			rpcauth_clear_credcache(struct rpc_cred_cache *);
-+int			rpcauth_key_timeout_notify(struct rpc_auth *,
-+						struct rpc_cred *);
-+bool			rpcauth_cred_key_to_expire(struct rpc_cred *);
- 
- static inline
- struct rpc_cred *	get_rpccred(struct rpc_cred *cred)
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index b5c067b..83b2fdb 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -270,8 +270,27 @@ out_nocache:
- EXPORT_SYMBOL_GPL(rpcauth_init_credcache);
- 
- /*
-- * Destroy a list of credentials
-+ * Setup a credential key lifetime timeout notification
-  */
-+int
-+rpcauth_key_timeout_notify(struct rpc_auth *auth, struct rpc_cred *cred)
-+{
-+	if (!cred->cr_auth->au_ops->key_timeout)
-+		return 0;
-+	return cred->cr_auth->au_ops->key_timeout(auth, cred);
-+}
-+EXPORT_SYMBOL_GPL(rpcauth_key_timeout_notify);
-+
-+bool
-+rpcauth_cred_key_to_expire(struct rpc_cred *cred)
-+{
-+	if (!cred->cr_ops->crkey_to_expire)
-+		return false;
-+	return cred->cr_ops->crkey_to_expire(cred);
-+}
-+EXPORT_SYMBOL_GPL(rpcauth_cred_key_to_expire);
-+
-+/* Destroy a list of credentials */
- static inline
- void rpcauth_destroy_credlist(struct list_head *head)
+diff --git a/fs/open.c b/fs/open.c
+index 5c2a973..a1331f1 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -434,27 +434,32 @@ SYSCALL_DEFINE1(chroot, const char __user *, filename)
  {
-diff --git a/net/sunrpc/auth_generic.c b/net/sunrpc/auth_generic.c
-index 6ed6f20..4ef327d 100644
---- a/net/sunrpc/auth_generic.c
-+++ b/net/sunrpc/auth_generic.c
-@@ -89,6 +89,7 @@ generic_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags)
- 	gcred->acred.uid = acred->uid;
- 	gcred->acred.gid = acred->gid;
- 	gcred->acred.group_info = acred->group_info;
-+	gcred->acred.ac_flags = 0;
- 	if (gcred->acred.group_info != NULL)
- 		get_group_info(gcred->acred.group_info);
- 	gcred->acred.machine_cred = acred->machine_cred;
-@@ -180,11 +181,80 @@ void rpc_destroy_generic_auth(void)
- 	rpcauth_destroy_credcache(&generic_auth);
+ 	struct path path;
+ 	int error;
++	int lookup_flags = LOOKUP_FOLLOW | LOOKUP_DIRECTORY;
++	unsigned int try = 0;
+ 
+-	error = user_path_dir(filename, &path);
+-	if (error)
+-		goto out;
++	do {
++		error = user_path_at(AT_FDCWD, filename, lookup_flags, &path);
++		if (error)
++			break;
+ 
+-	error = inode_permission(path.dentry->d_inode, MAY_EXEC | MAY_CHDIR);
+-	if (error)
+-		goto dput_and_out;
++		error = inode_permission(path.dentry->d_inode,
++					 MAY_EXEC | MAY_CHDIR);
++		if (error)
++			goto dput_and_out;
+ 
+-	error = -EPERM;
+-	if (!capable(CAP_SYS_CHROOT))
+-		goto dput_and_out;
+-	error = security_path_chroot(&path);
+-	if (error)
+-		goto dput_and_out;
++		error = -EPERM;
++		if (!capable(CAP_SYS_CHROOT))
++			goto dput_and_out;
++		error = security_path_chroot(&path);
++		if (error)
++			goto dput_and_out;
+ 
+-	set_fs_root(current->fs, &path);
+-	error = 0;
++		set_fs_root(current->fs, &path);
++		error = 0;
+ dput_and_out:
+-	path_put(&path);
+-out:
++		path_put(&path);
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
+ 	return error;
  }
  
-+/*
-+ * Test the the current time (now) against the underlying credential key expiry
-+ * minus a timeout and setup notification.
-+ *
-+ * The normal case:
-+ * If 'now' is before the key expiry minus RPC_KEY_EXPIRE_TIMEO, set
-+ * the RPC_CRED_NOTIFY_TIMEOUT flag to setup the underlying credential
-+ * rpc_credops crmatch routine to notify this generic cred when it's key
-+ * expiration is within RPC_KEY_EXPIRE_TIMEO, and return 0.
-+ *
-+ * The error case:
-+ * If the underlying cred lookup fails, return -EACCES.
-+ *
-+ * The 'almost' error case:
-+ * If 'now' is within key expiry minus RPC_KEY_EXPIRE_TIMEO, but not within
-+ * key expiry minus RPC_KEY_EXPIRE_FAIL, set the RPC_CRED_EXPIRE_SOON bit
-+ * on the acred ac_flags and return 0.
-+ */
-+static int
-+generic_key_timeout(struct rpc_auth *auth, struct rpc_cred *cred)
-+{
-+	struct auth_cred *acred = &container_of(cred, struct generic_cred,
-+						gc_base)->acred;
-+	struct rpc_cred *tcred;
-+	int ret = 0;
-+
-+
-+	dprintk("--> %s cred %p acred %p acred->ac_flags %lu\n", __func__,
-+		cred, acred, acred->ac_flags);
-+
-+	/* Fast track for non crkey_timeout (no key) underlying credentials */
-+	if (test_bit(RPC_CRED_NO_CRKEY_TIMEOUT, &acred->ac_flags))
-+		return 0;
-+
-+	/* Fast track for the normal case */
-+	if (test_bit(RPC_CRED_NOTIFY_TIMEOUT, &acred->ac_flags))
-+		return 0;
-+
-+	/* lookup_cred either returns a valid referenced rpc_cred, or PTR_ERR */
-+	tcred = auth->au_ops->lookup_cred(auth, acred, 0);
-+	if (IS_ERR(tcred))
-+		return -EACCES;
-+
-+	if (!tcred->cr_ops->crkey_timeout) {
-+		set_bit(RPC_CRED_NO_CRKEY_TIMEOUT, &acred->ac_flags);
-+		ret = 0;
-+		goto out_put;
-+	}
-+
-+	/* Test for the almost error case */
-+	ret = tcred->cr_ops->crkey_timeout(tcred, RPC_KEY_EXPIRE_TIMEO);
-+	if (ret != 0) {
-+		set_bit(RPC_CRED_KEY_EXPIRE_SOON, &acred->ac_flags);
-+		ret = 0;
-+	} else {
-+		/* In case underlying cred key has been reset */
-+		test_and_clear_bit(RPC_CRED_KEY_EXPIRE_SOON, &acred->ac_flags);
-+		/* set up fasttrack for the normal case */
-+		set_bit(RPC_CRED_NOTIFY_TIMEOUT, &acred->ac_flags);
-+	}
-+
-+out_put:
-+	put_rpccred(tcred);
-+	dprintk("%s return %d acred->ac_flags %lu\n", __func__, ret,
-+		acred->ac_flags);
-+	return ret;
-+}
-+
- static const struct rpc_authops generic_auth_ops = {
- 	.owner = THIS_MODULE,
- 	.au_name = "Generic",
- 	.lookup_cred = generic_lookup_cred,
- 	.crcreate = generic_create_cred,
-+	.key_timeout = generic_key_timeout,
- };
- 
- static struct rpc_auth generic_auth = {
-@@ -192,9 +262,23 @@ static struct rpc_auth generic_auth = {
- 	.au_count = ATOMIC_INIT(0),
- };
- 
-+static bool generic_key_to_expire(struct rpc_cred *cred)
-+{
-+	struct auth_cred *acred = &container_of(cred, struct generic_cred,
-+						gc_base)->acred;
-+	bool ret;
-+
-+	get_rpccred(cred);
-+	ret = test_bit(RPC_CRED_KEY_EXPIRE_SOON, &acred->ac_flags);
-+	put_rpccred(cred);
-+
-+	return ret;
-+}
-+
- static const struct rpc_credops generic_credops = {
- 	.cr_name = "Generic cred",
- 	.crdestroy = generic_destroy_cred,
- 	.crbind = generic_bind_cred,
- 	.crmatch = generic_match,
-+	.crkey_to_expire = generic_key_to_expire,
- };
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 6e5c824..e24948f 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -1095,10 +1095,32 @@ gss_cred_init(struct rpc_auth *auth, struct rpc_cred *cred)
- 	return err;
- }
- 
-+/*
-+ * Returns -EACCES if GSS context is NULL or will expire within the
-+ * timeout (miliseconds)
-+ */
-+static int
-+gss_key_timeout(struct rpc_cred *rc, unsigned long timeout)
-+{
-+	struct gss_cred *gss_cred = container_of(rc, struct gss_cred, gc_base);
-+	unsigned long now = jiffies;
-+	unsigned long expire;
-+
-+	if (gss_cred->gc_ctx == NULL)
-+		return -EACCES;
-+
-+	expire = gss_cred->gc_ctx->gc_expiry - timeout;
-+
-+	if (time_after(now, expire))
-+		return -EACCES;
-+	return 0;
-+}
-+
- static int
- gss_match(struct auth_cred *acred, struct rpc_cred *rc, int flags)
- {
- 	struct gss_cred *gss_cred = container_of(rc, struct gss_cred, gc_base);
-+	int ret;
- 
- 	if (test_bit(RPCAUTH_CRED_NEW, &rc->cr_flags))
- 		goto out;
-@@ -1111,11 +1133,28 @@ out:
- 	if (acred->principal != NULL) {
- 		if (gss_cred->gc_principal == NULL)
- 			return 0;
--		return strcmp(acred->principal, gss_cred->gc_principal) == 0;
-+		ret = strcmp(acred->principal, gss_cred->gc_principal) == 0;
-+		goto check_expire;
- 	}
- 	if (gss_cred->gc_principal != NULL)
- 		return 0;
--	return rc->cr_uid == acred->uid;
-+	ret = rc->cr_uid == acred->uid;
-+
-+check_expire:
-+	if (ret == 0)
-+		return ret;
-+
-+	/* Notify acred users of GSS context expiration timeout */
-+	if (test_bit(RPC_CRED_NOTIFY_TIMEOUT, &acred->ac_flags) &&
-+	    (gss_key_timeout(rc, RPC_KEY_EXPIRE_TIMEO) != 0)) {
-+		/* test will now be done from generic cred */
-+		test_and_clear_bit(RPC_CRED_NOTIFY_TIMEOUT, &acred->ac_flags);
-+		/* tell NFS layer that key will expire soon */
-+		set_bit(RPC_CRED_KEY_EXPIRE_SOON, &acred->ac_flags);
-+		pr_warn("RPC: GSS context %p to expire within %d ms.\n",
-+			gss_cred->gc_ctx, RPC_KEY_EXPIRE_TIMEO);
-+	}
-+	return ret;
- }
- 
- /*
-@@ -1642,6 +1681,7 @@ static const struct rpc_credops gss_credops = {
- 	.crvalidate	= gss_validate,
- 	.crwrap_req	= gss_wrap_req,
- 	.crunwrap_resp	= gss_unwrap_resp,
-+	.crkey_timeout	= gss_key_timeout,
- };
- 
- static const struct rpc_credops gss_nullops = {
 -- 
-1.7.7.6
+1.7.11.7
 
