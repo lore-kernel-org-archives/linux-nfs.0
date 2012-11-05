@@ -1,143 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:61467 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932299Ab2K2DRw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Nov 2012 22:17:52 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/4] NFSD: Add slot table support for target_highest_slotid and highest_slotid
-Date: Wed, 28 Nov 2012 22:17:42 -0500
-Message-Id: <1354159063-17343-4-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1354159063-17343-3-git-send-email-Trond.Myklebust@netapp.com>
-References: <1354159063-17343-1-git-send-email-Trond.Myklebust@netapp.com>
- <1354159063-17343-2-git-send-email-Trond.Myklebust@netapp.com>
- <1354159063-17343-3-git-send-email-Trond.Myklebust@netapp.com>
+Received: from hop-nat-141.emc.com ([168.159.213.141]:30169 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750919Ab2KEMmm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Nov 2012 07:42:42 -0500
+From: "faibish, sorin" <faibish_sorin@emc.com>
+To: "Peng, Tao" <tao.peng@emc.com>
+CC: Jun Xiao <xiaojuntime@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Jason Glasgow <jglasgow@aya.yale.edu>
+Date: Mon, 5 Nov 2012 07:42:25 -0500
+Subject: Re: pNFS Block layout issues / questions
+Message-ID: <B99990FD-D4C5-43D1-8096-CDAEE90BECB8@emc.com>
+References: <loom.20110328T230906-552@post.gmane.org>
+ <4D977456.1040303@panasas.com> <loom.20121103T072206-631@post.gmane.org>
+ <1882637210201641A747464075FFC6490291C9@MX101CL02.corp.emc.com>
+In-Reply-To: <1882637210201641A747464075FFC6490291C9@MX101CL02.corp.emc.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This commit just enables the slot table to set and maintain values for
-the target_highest_slotid and highest_slotid, as used in the replies
-to a SEQUENCE request from the client.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfsd/nfs4state.c | 18 +++++++++++-------
- fs/nfsd/nfs4xdr.c   |  7 +++----
- fs/nfsd/state.h     |  2 ++
- fs/nfsd/xdr4.h      |  6 ++----
- 4 files changed, 18 insertions(+), 15 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9cb2450..a1208cc 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -853,11 +853,14 @@ static void nfsd4_free_slot_table(struct nfsd4_slot_table *tbl)
- 	spin_unlock(&tbl->slt_lock);
- }
- 
--static void nfsd4_init_slot_table(struct nfsd4_slot_table *tbl, size_t slotsize)
-+static void nfsd4_init_slot_table(struct nfsd4_slot_table *tbl,
-+		size_t slotsize, u32 highest_slotid)
- {
- 	INIT_LIST_HEAD(&tbl->slt_head);
- 	spin_lock_init(&tbl->slt_lock);
- 	tbl->slt_slotsize = slotsize;
-+	tbl->slt_highest_slotid = highest_slotid;
-+	tbl->slt_target_highest_slotid = highest_slotid;
- }
- 
- static struct nfsd4_session *__alloc_session(size_t slotsize, u32 highest_slotid)
-@@ -867,7 +870,7 @@ static struct nfsd4_session *__alloc_session(size_t slotsize, u32 highest_slotid
- 	new = kzalloc(sizeof(*new), GFP_KERNEL);
- 	if (!new)
- 		return NULL;
--	nfsd4_init_slot_table(&new->se_slots, slotsize);
-+	nfsd4_init_slot_table(&new->se_slots, slotsize, highest_slotid);
- 	/* allocate each struct nfsd4_slot and data cache in one piece */
- 	if (nfsd4_grow_slot_table(&new->se_slots, highest_slotid, GFP_KERNEL))
- 		return new;
-@@ -2128,11 +2131,6 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 		goto out;
- 	dprintk("%s: slotid %d\n", __func__, seq->slotid);
- 
--	/* We do not negotiate the number of slots yet, so set the
--	 * maxslots to the session maxreqs which is used to encode
--	 * sr_highest_slotid and the sr_target_slot id to maxslots */
--	seq->maxslots = session->se_fchannel.maxreqs;
--
- 	status = check_slot_seqid(seq->seqid, slot->sl_seqid,
- 					slot->sl_flags & NFSD4_SLOT_INUSE);
- 	if (status == nfserr_replay_cache) {
-@@ -2161,6 +2159,12 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	else
- 		slot->sl_flags &= ~NFSD4_SLOT_CACHETHIS;
- 
-+	/* Retrieve new target/highest slotid values */
-+	spin_lock(&session->se_slots.slt_lock);
-+	seq->target_highest_slotid = session->se_slots.slt_target_highest_slotid;
-+	seq->highest_slotid = session->se_slots.slt_highest_slotid;
-+	spin_unlock(&session->se_slots.slt_lock);
-+
- 	cstate->slot = slot;
- 	cstate->session = session;
- 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index fd548d1..52e2923 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1371,7 +1371,7 @@ nfsd4_decode_sequence(struct nfsd4_compoundargs *argp,
- 	COPYMEM(seq->sessionid.data, NFS4_MAX_SESSIONID_LEN);
- 	READ32(seq->seqid);
- 	READ32(seq->slotid);
--	READ32(seq->maxslots);
-+	READ32(seq->highest_slotid);
- 	READ32(seq->cachethis);
- 
- 	DECODE_TAIL;
-@@ -3415,9 +3415,8 @@ nfsd4_encode_sequence(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	WRITEMEM(seq->sessionid.data, NFS4_MAX_SESSIONID_LEN);
- 	WRITE32(seq->seqid);
- 	WRITE32(seq->slotid);
--	/* Note slotid's are numbered from zero: */
--	WRITE32(seq->maxslots - 1); /* sr_highest_slotid */
--	WRITE32(seq->maxslots - 1); /* sr_target_highest_slotid */
-+	WRITE32(seq->highest_slotid);
-+	WRITE32(seq->target_highest_slotid);
- 	WRITE32(seq->status_flags);
- 
- 	ADJUST_ARGS();
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 6bcc8a1..7a0d8e4 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -146,6 +146,8 @@ struct nfsd4_slot_table {
- 	spinlock_t		slt_lock;
- 	size_t			slt_slotsize;
- 	unsigned long		slt_memused;
-+	u32			slt_target_highest_slotid;
-+	u32			slt_highest_slotid;
- };
- 
- struct nfsd4_channel_attrs {
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index acd127d..0c5c704 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -405,11 +405,9 @@ struct nfsd4_sequence {
- 	struct nfs4_sessionid	sessionid;		/* request/response */
- 	u32			seqid;			/* request/response */
- 	u32			slotid;			/* request/response */
--	u32			maxslots;		/* request/response */
-+	u32			highest_slotid;		/* request/response */
- 	u32			cachethis;		/* request */
--#if 0
--	u32			target_maxslots;	/* response */
--#endif /* not yet */
-+	u32			target_highest_slotid;	/* response */
- 	u32			status_flags;		/* response */
- };
- 
--- 
-1.7.11.7
-
+DQoNClNlbnQgZnJvbSBTb3JpbidzIGlQYWQNCg0KT24gTm92IDQsIDIwMTIsIGF0IDk6MzMgUE0s
+ICJQZW5nLCBUYW8iIDx0YW8ucGVuZ0BlbWMuY29tPiB3cm90ZToNCg0KPiBIaSwNCj4gDQo+IEkn
+bGwgYW5zd2VyIHlvdXIgcXVlc3Rpb25zIGFzIGZhciBhcyBJIGNhbiwgYnV0IEkgbXlzZWxmIGFt
+IG5vdCBmYW1pbGlhciB3aXRoIExpbnV4IHBuZnMgYmxvY2sgc2VydmVyIGltcGxlbWVudGF0aW9u
+Lg0KPiANCj4+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+PiBGcm9tOiBsaW51eC1uZnMt
+b3duZXJAdmdlci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVs
+Lm9yZ10gT24gQmVoYWxmIE9mIEp1biBYaWFvDQo+PiBTZW50OiBTYXR1cmRheSwgTm92ZW1iZXIg
+MDMsIDIwMTIgMzoyOCBQTQ0KPj4gVG86IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcNCj4+IFN1
+YmplY3Q6IFJlOiBwTkZTIEJsb2NrIGxheW91dCBpc3N1ZXMgLyBxdWVzdGlvbnMNCj4+IA0KPj4g
+U2VlbXMgdGhlIHRocmVhZCBkaWRuJ3QgZ2V0IGFueSByZXBseSBmb3IgcXVpdGUgYSBsb25nIHRp
+bWUuDQo+PiANCj4+IEknbSB0cnlpbmcgdG8gc2V0IHVwIHBORlMgYmxvY2sgbGF5b3V0IE1EUy9E
+UyBzZXJ2ZXIsIGFuZCBzb21lDQo+PiBzaW1pbGFyIHF1ZXN0aW9ucyBhcyBQaGlsLg0KPj4gDQo+
+PiAtIEZvciBibG9jayBsYXlvdXQsIGlzIGl0IG5lY2Vzc2FyeSB0byBtYWtlIERTIGV4cG9ydCBu
+ZnMgc2hhcmU/DQo+IE5vLiBKdXN0IGV4cG9ydCB5b3VyIGRhdGEgY29ubmVjdGlvbiBpcyBlbm91
+Z2gsIHdoaWNoIGZvciBwbmZzIGJsb2NrIGNhbiBiZSBpc2NzaS9GUyBldGMuDQpTaG91bGQgYmUg
+aVNDU0kgLyBGQyBmaWJlciBjaGFubmVsLg0KDQo+IA0KPj4gLSBIb3cgY291bGQgYWRkIGEgYmxv
+Y2sgbGF5b3V0IERTIGludG8gcE5GUyBzZXJ2ZXI/DQo+IEkgZG9uJ3QgdGhpbmsgTGludXggcG5m
+cyBibG9jayBzZXJ2ZXIgaW1wbGVtZW50cyBzZXBhcmF0ZSBEU2VzLiBTbyBNRFMvRFMgaGFzIHRv
+IGJlIG9uIHRoZSBzYW1lIG1hY2hpbmUgZm9yIGl0Lg0KTWF5YmUgSmFzb24gR2xhc2dvdyByZW1l
+bWJlcnM/DQoNCj4gDQo+PiAtIERvZXMgc3BuZnMgYWxzbyB3b3JrIGZvciBibG9jayBsYXlvdXQv
+DQo+IExhcmdlbHkgeWVzLiBUaGUgd2lraSBwYWdlIGhhcyBpdCB0aGF0IHBuZnMgYmxvY2sgc2Vy
+dmVyIGlzIGJhc2VkIG9uIHNwbmZzLg0KPiBodHRwOi8vbGludXgtbmZzLm9yZy93aWtpL2luZGV4
+LnBocC9QTkZTX0Jsb2NrX1NlcnZlcl9TZXR1cF9JbnN0cnVjdGlvbnMNCj4gDQo+IEJ1dCBJJ20g
+bm90IHN1cmUgaWYgdGhlIGNvZGUgc3RpbGwgd29ya3MuDQo+IA0KPiBDaGVlcnMsDQo+IFRhbw0K
+PiANCj4gE++/ve+/vey5uxzvv70m77+9fu+/vSbvv70Y77+977+9Ky3vv73vv73dthfvv73vv713
+77+977+9y5vvv73vv73vv71t77+9Yu+/ve+/vWd+yKfvv70X77+977+93Kh977+977+977+9xqB6
+77+9Jmo6K3bvv73vv73vv70H77+977+977+977+9elor77+977+9K3pm77+977+977+9aO+/ve+/
+ve+/vX7vv73vv73vv73vv71p77+977+977+9eu+/vR7vv71377+977+977+9P++/ve+/ve+/ve+/
+vSbvv70p36IbZg0K
