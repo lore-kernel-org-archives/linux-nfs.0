@@ -1,188 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f174.google.com ([209.85.220.174]:61244 "EHLO
-	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752395Ab2KLUBI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Nov 2012 15:01:08 -0500
-Received: by mail-vc0-f174.google.com with SMTP id fk26so6536725vcb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Nov 2012 12:01:07 -0800 (PST)
+Received: from mail-ye0-f174.google.com ([209.85.213.174]:52182 "EHLO
+	mail-ye0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932804Ab2KEPWa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Nov 2012 10:22:30 -0500
+Received: by mail-ye0-f174.google.com with SMTP id m12so1017184yen.19
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Nov 2012 07:22:30 -0800 (PST)
 From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 01/11] nfsd: add a usermodehelper upcall for NFSv4 client ID tracking
-Date: Mon, 12 Nov 2012 15:00:48 -0500
-Message-Id: <1352750458-16857-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1352750458-16857-1-git-send-email-jlayton@redhat.com>
-References: <1352750458-16857-1-git-send-email-jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v9 05/34] vfs: fix mknodat to retry on ESTALE errors
+Date: Mon,  5 Nov 2012 10:21:44 -0500
+Message-Id: <1352128933-28526-6-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
+References: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add a new client tracker upcall type that uses call_usermodehelper to
-call out to a program. This seems to be the preferred method of
-calling out to usermode these days for seldom-called upcalls. It's
-simple and doesn't require a running daemon, so it should "just work"
-as long as the binary is installed.
-
-The client tracking exit operation is also changed to check for a
-NULL pointer before running. The UMH upcall doesn't need to do anything
-at module teardown time.
-
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/nfs4recover.c | 134 +++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 133 insertions(+), 1 deletion(-)
+ fs/namei.c | 43 +++++++++++++++++++++++++------------------
+ 1 file changed, 25 insertions(+), 18 deletions(-)
 
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index 151921b..2fc2f6c 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -927,6 +927,137 @@ static struct nfsd4_client_tracking_ops nfsd4_cld_tracking_ops = {
- 	.grace_done	= nfsd4_cld_grace_done,
- };
+diff --git a/fs/namei.c b/fs/namei.c
+index 8618a47..7311968 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3177,34 +3177,41 @@ SYSCALL_DEFINE4(mknodat, int, dfd, const char __user *, filename, umode_t, mode,
+ 	struct dentry *dentry;
+ 	struct path path;
+ 	int error;
++	unsigned int try = 0;
  
-+/* upcall via usermodehelper */
-+static char cltrack_prog[PATH_MAX] = "/sbin/nfsdcltrack";
-+module_param_string(cltrack_prog, cltrack_prog, sizeof(cltrack_prog),
-+			S_IRUGO|S_IWUSR);
-+MODULE_PARM_DESC(cltrack_prog, "Path to the nfsdcltrack upcall program");
-+
-+static int
-+nfsd4_umh_cltrack_upcall(char *cmd, char *arg)
-+{
-+	char *envp[] = { NULL };
-+	char *argv[4];
-+	int ret;
-+
-+	if (unlikely(!cltrack_prog[0])) {
-+		dprintk("%s: cltrack_prog is disabled\n", __func__);
-+		return -EACCES;
-+	}
-+
-+	dprintk("%s: cmd: %s\n", __func__, cmd);
-+	dprintk("%s: arg: %s\n", __func__, arg ? arg : "(null)");
-+
-+	argv[0] = (char *)cltrack_prog;
-+	argv[1] = cmd;
-+	argv[2] = arg;
-+	argv[3] = NULL;
-+
-+	ret = call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
-+	/*
-+	 * Disable the upcall mechanism if we're getting an ENOENT or EACCES
-+	 * error. The admin can re-enable it on the fly by using sysfs
-+	 * once the problem has been fixed.
-+	 */
-+	if (ret == -ENOENT || ret == -EACCES) {
-+		dprintk("NFSD: %s was not found or isn't executable (%d). "
-+			"Setting cltrack_prog to blank string!",
-+			cltrack_prog, ret);
-+		cltrack_prog[0] = '\0';
-+	}
-+	dprintk("%s: %s return value: %d\n", __func__, cltrack_prog, ret);
-+
-+	return ret;
-+}
-+
-+static char *
-+bin_to_hex_dup(const unsigned char *src, int srclen)
-+{
-+	int i;
-+	char *buf, *hex;
-+
-+	/* +1 for terminating NULL */
-+	buf = kmalloc((srclen * 2) + 1, GFP_KERNEL);
-+	if (!buf)
-+		return buf;
-+
-+	hex = buf;
-+	for (i = 0; i < srclen; i++) {
-+		sprintf(hex, "%2.2x", *src++);
-+		hex += 2;
-+	}
-+	return buf;
-+}
-+
-+static int
-+nfsd4_umh_cltrack_init(struct net __attribute__((unused)) *net)
-+{
-+	return nfsd4_umh_cltrack_upcall("init", NULL);
-+}
-+
-+static void
-+nfsd4_umh_cltrack_create(struct nfs4_client *clp)
-+{
-+	char *hexid;
-+
-+	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
-+	if (!hexid) {
-+		dprintk("%s: can't allocate memory for upcall!\n", __func__);
-+		return;
-+	}
-+	nfsd4_umh_cltrack_upcall("create", hexid);
-+	kfree(hexid);
-+}
-+
-+static void
-+nfsd4_umh_cltrack_remove(struct nfs4_client *clp)
-+{
-+	char *hexid;
-+
-+	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
-+	if (!hexid) {
-+		dprintk("%s: can't allocate memory for upcall!\n", __func__);
-+		return;
-+	}
-+	nfsd4_umh_cltrack_upcall("remove", hexid);
-+	kfree(hexid);
-+}
-+
-+static int
-+nfsd4_umh_cltrack_check(struct nfs4_client *clp)
-+{
-+	int ret;
-+	char *hexid;
-+
-+	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
-+	if (!hexid) {
-+		dprintk("%s: can't allocate memory for upcall!\n", __func__);
-+		return -ENOMEM;
-+	}
-+	ret = nfsd4_umh_cltrack_upcall("check", hexid);
-+	kfree(hexid);
-+	return ret;
-+}
-+
-+static void
-+nfsd4_umh_cltrack_grace_done(struct net __attribute__((unused)) *net,
-+				time_t boot_time)
-+{
-+	char timestr[22]; /* FIXME: better way to determine max size? */
-+
-+	sprintf(timestr, "%ld", boot_time);
-+	nfsd4_umh_cltrack_upcall("gracedone", timestr);
-+}
-+
-+static struct nfsd4_client_tracking_ops nfsd4_umh_tracking_ops = {
-+	.init		= nfsd4_umh_cltrack_init,
-+	.exit		= NULL,
-+	.create		= nfsd4_umh_cltrack_create,
-+	.remove		= nfsd4_umh_cltrack_remove,
-+	.check		= nfsd4_umh_cltrack_check,
-+	.grace_done	= nfsd4_umh_cltrack_grace_done,
-+};
-+
- int
- nfsd4_client_tracking_init(struct net *net)
- {
-@@ -957,7 +1088,8 @@ void
- nfsd4_client_tracking_exit(struct net *net)
- {
- 	if (client_tracking_ops) {
--		client_tracking_ops->exit(net);
-+		if (client_tracking_ops->exit)
-+			client_tracking_ops->exit(net);
- 		client_tracking_ops = NULL;
- 	}
+ 	error = may_mknod(mode);
+ 	if (error)
+ 		return error;
+ 
+-	dentry = user_path_create(dfd, filename, &path, false, false);
+-	if (IS_ERR(dentry))
+-		return PTR_ERR(dentry);
++	do {
++		dentry = user_path_create(dfd, filename, &path, false, try);
++		if (IS_ERR(dentry))
++			return PTR_ERR(dentry);
+ 
+-	if (!IS_POSIXACL(path.dentry->d_inode))
+-		mode &= ~current_umask();
+-	error = security_path_mknod(&path, dentry, mode, dev);
+-	if (error)
+-		goto out;
+-	switch (mode & S_IFMT) {
+-		case 0: case S_IFREG:
+-			error = vfs_create(path.dentry->d_inode,dentry,mode,true);
++		if (!IS_POSIXACL(path.dentry->d_inode))
++			mode &= ~current_umask();
++		error = security_path_mknod(&path, dentry, mode, dev);
++		if (error)
++			goto out;
++		switch (mode & S_IFMT) {
++		case 0:
++		case S_IFREG:
++			error = vfs_create(path.dentry->d_inode, dentry,
++					mode, true);
+ 			break;
+-		case S_IFCHR: case S_IFBLK:
+-			error = vfs_mknod(path.dentry->d_inode,dentry,mode,
++		case S_IFCHR:
++		case S_IFBLK:
++			error = vfs_mknod(path.dentry->d_inode, dentry, mode,
+ 					new_decode_dev(dev));
+ 			break;
+-		case S_IFIFO: case S_IFSOCK:
+-			error = vfs_mknod(path.dentry->d_inode,dentry,mode,0);
+-			break;
+-	}
++		case S_IFIFO:
++		case S_IFSOCK:
++			error = vfs_mknod(path.dentry->d_inode, dentry,
++					mode, 0);
++		}
+ out:
+-	done_path_create(&path, dentry);
++		done_path_create(&path, dentry);
++	} while (retry_estale(error, try++));
+ 	return error;
  }
+ 
 -- 
 1.7.11.7
 
