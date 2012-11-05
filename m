@@ -1,63 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51242 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752093Ab2KGTBO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Nov 2012 14:01:14 -0500
-Date: Wed, 7 Nov 2012 14:01:11 -0500
-To: Jack Wang <jack.wang.usish@gmail.com>
-Cc: =?utf-8?Q?Mart=C3=ADn?= Cigorraga <msx@archlinux.us>, dahai_tian@usish.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: hang problem when umount a nfs point
-Message-ID: <20121107190111.GC7421@fieldses.org>
-References: <1351760297.5369.1.camel@localhost>
- <CA+res+RTz9DC8TK3N3kFrSpeT-rgad1nk7amJdWP_Up9OW9KSg@mail.gmail.com>
- <CAJLw8+WJGPiWW6K7UEX72eYdgeYWsDLcoZKNP7V1UvvQGnMxXA@mail.gmail.com>
- <CA+res+RhNJT1D0MpdSBJoywemainEJVZKSzG1BxhXTrQ3kQCbw@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <CA+res+RhNJT1D0MpdSBJoywemainEJVZKSzG1BxhXTrQ3kQCbw@mail.gmail.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-ye0-f174.google.com ([209.85.213.174]:52182 "EHLO
+	mail-ye0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932606Ab2KEPW0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Nov 2012 10:22:26 -0500
+Received: by mail-ye0-f174.google.com with SMTP id m12so1017184yen.19
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Nov 2012 07:22:26 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v9 03/34] vfs: fix readlinkat to retry on ESTALE
+Date: Mon,  5 Nov 2012 10:21:42 -0500
+Message-Id: <1352128933-28526-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
+References: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 07, 2012 at 09:05:51AM +0800, Jack Wang wrote:
-> 2012/11/7 Martín Cigorraga <msx@archlinux.us>:
-> > On Mon, Nov 5, 2012 at 10:27 PM, Jack Wang <jack.wang.usish@gmail.com>
-> > wrote:
-> >>
-> >> Hi all,
-> >>
-> >> Anyone who can kindly give some suggestion? or we just put question to
-> >> the wrong list?
-> >>
-> >> Thanks.
-> >>
-> >> Jack
-> >>
-> >> 2012/11/1 dahai_tian <dahai_tian@usish.com>:
-> >> > Hi all:
-> >> >         I mount a local directory to a nfs server. When nfs server is
-> >> > stopped
-> >> > for some accidental cause, I try to umount the mount point, the umount
-> >> > command will hang and 'time out' messages are continually printed in the
-> >> > terminal. How can I avoid hanging in this case? BTW, This issue does not
-> >> > exist when I changed nfs version from 4 to 3.
-> >> >         Look forward to your response, thanks!
-> 
-> >
-> > Hi Jack, use the -l (lazy) switch:
-> > # umount -l {your mounted nfs share}
-> >
-> > Also, I wouldn't recommend 'just to kill' the NFS proces(ses) as it (them)
-> > may leave shared memory a mess.
-> > (And I would like to see how do you make to mount any NFS share again
-> > without booting)
-> 
-> Thanks Martin for kindly help.
-> 
-> umount -l did work, but why nfsv3 do not have this problem?
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/stat.c | 16 ++++++++++++----
+ 1 file changed, 12 insertions(+), 4 deletions(-)
 
-I don't know what it is exactly.  But in general I wouldn't expect
-umount to work when the server's unavailable.
+diff --git a/fs/stat.c b/fs/stat.c
+index c97a17e..452ee93 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -300,14 +300,21 @@ SYSCALL_DEFINE4(readlinkat, int, dfd, const char __user *, pathname,
+ 	struct path path;
+ 	int error;
+ 	int empty = 0;
++	unsigned int try = 0;
++	unsigned int lookup_flags = LOOKUP_EMPTY;
+ 
+ 	if (bufsiz <= 0)
+ 		return -EINVAL;
+ 
+-	error = user_path_at_empty(dfd, pathname, LOOKUP_EMPTY, &path, &empty);
+-	if (!error) {
+-		struct inode *inode = path.dentry->d_inode;
++	do {
++		struct inode *inode;
++
++		error = user_path_at_empty(dfd, pathname, lookup_flags,
++					   &path, &empty);
++		if (error)
++			break;
+ 
++		inode = path.dentry->d_inode;
+ 		error = empty ? -ENOENT : -EINVAL;
+ 		if (inode->i_op->readlink) {
+ 			error = security_inode_readlink(path.dentry);
+@@ -318,7 +325,8 @@ SYSCALL_DEFINE4(readlinkat, int, dfd, const char __user *, pathname,
+ 			}
+ 		}
+ 		path_put(&path);
+-	}
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
+ 	return error;
+ }
+ 
+-- 
+1.7.11.7
 
---b.
