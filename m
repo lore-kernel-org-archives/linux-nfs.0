@@ -1,75 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fn.samba.org ([216.83.154.106]:49680 "EHLO mail.samba.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752947Ab2K2P1v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Nov 2012 10:27:51 -0500
-Message-ID: <1354202525.4064.1.camel@pico.ipa.ssimo.org>
-Subject: Re: Possible to make nfs aware of a inotify watch has been set.
-From: simo <idra@samba.org>
-To: Stef Bon <stefbon@gmail.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-cifs <linux-cifs@vger.kernel.org>
-Date: Thu, 29 Nov 2012 10:22:05 -0500
-In-Reply-To: <CANXojcxR9673fRObMLPSScogAN05RSVhPFoni=ENc6YDWq9T7w@mail.gmail.com>
-References: <CANXojcy9thLBwrENTkOTSSE17L3N17A8XsTmyNqq3oNdhW_Q_w@mail.gmail.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B329CFD@SACEXCMBX04-PRD.hq.netapp.com>
-	 <CANXojcxR9673fRObMLPSScogAN05RSVhPFoni=ENc6YDWq9T7w@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-ye0-f174.google.com ([209.85.213.174]:52182 "EHLO
+	mail-ye0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933014Ab2KEPXA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Nov 2012 10:23:00 -0500
+Received: by mail-ye0-f174.google.com with SMTP id m12so1017184yen.19
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Nov 2012 07:22:59 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v9 21/34] vfs: allow setxattr to retry once on ESTALE errors
+Date: Mon,  5 Nov 2012 10:22:00 -0500
+Message-Id: <1352128933-28526-22-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
+References: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2012-11-29 at 15:49 +0100, Stef Bon wrote:
-> 2012/11/29 Myklebust, Trond <Trond.Myklebust@netapp.com>:
-> >> -----Original Message-----
-> >>
-> >> 1. while the filesystems are using credentails or tickets to get access to a
-> >> remote resource, this is a bit difficult for notifyfs.
-> >> Notifyfs bypasses that. Maybe this leads to permissions/abuse I cannot see
-> >> directly.
-> >
-> > Lack of security is a showstopper. There are good reasons why inotify won't allow you to monitor files for which you don't have access permissions.
-> >
-> 
-> Let me explain, I think you not understand fully.
-> 
-> Notifyfs does not allow users/clients to set a watch if there are no
-> read permissions (the object and access for the whole path to it), so
-> there are no security issues there.
-> 
-> What I mean is that any program can contact the remote notifyfs
-> server, and this remote notifyfs server cannot figure out it's a valid
-> request from another notifyfs server, or a program faking that.
-> In the construction I describe it does not check that (yet).
-> 
-> >>
-> >> What do you think, is the latest option possible??
-> >
-> > So what is the killer app for inotify on NFS/CIFS/FUSE? What programs do you need to run on a NFS/CIFS/FUSE client that use inotify and that wouldn't be better off running on the server instead?
-> >
-> 
-> What do you mean with "better off running on the server instead"?
-> There are a lot of programs interested in fs changes, like a simple
-> file manager. I think it's a very nice feature to see changes right
-> away in the view.
-> It's not a killer app, but a think the whole user experience is
-> improving when your system is able to keep a view (like a view in the
-> file manager) up to date.
-> 
-> > IOW: whose problem are you trying to solve?
-> 
-> I think that enabling fs notify on network filesystems like nfs, cifs
-> and fuse is a good thing (see above). On systems like Windows and iOS
-> since long time this works.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/xattr.c | 23 ++++++++++++++---------
+ 1 file changed, 14 insertions(+), 9 deletions(-)
 
-CIFS has notification capabilities built in (oplocks), as does NFS
-(leases), is this not sufficient ?
-
-Simo.
-
+diff --git a/fs/xattr.c b/fs/xattr.c
+index f3a2ffa..5b6e48d 100644
+--- a/fs/xattr.c
++++ b/fs/xattr.c
+@@ -370,16 +370,21 @@ SYSCALL_DEFINE5(setxattr, const char __user *, pathname,
+ {
+ 	struct path path;
+ 	int error;
++	unsigned int try = 0;
++	unsigned int lookup_flags = LOOKUP_FOLLOW;
+ 
+-	error = user_path(pathname, &path);
+-	if (error)
+-		return error;
+-	error = mnt_want_write(path.mnt);
+-	if (!error) {
+-		error = setxattr(path.dentry, name, value, size, flags);
+-		mnt_drop_write(path.mnt);
+-	}
+-	path_put(&path);
++	do {
++		error = user_path_at(AT_FDCWD, pathname, lookup_flags, &path);
++		if (error)
++			break;
++		error = mnt_want_write(path.mnt);
++		if (!error) {
++			error = setxattr(path.dentry, name, value, size, flags);
++			mnt_drop_write(path.mnt);
++		}
++		path_put(&path);
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
+ 	return error;
+ }
+ 
 -- 
-Simo Sorce
-Samba Team GPL Compliance Officer <simo@samba.org>
-Principal Software Engineer at Red Hat, Inc. <simo@redhat.com>
+1.7.11.7
 
