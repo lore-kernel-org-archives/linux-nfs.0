@@ -1,138 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:3807 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755166Ab2KZMUA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Nov 2012 07:20:00 -0500
-Subject: [PATCH 4/5] nfsd: cleanup NFSd state start a bit
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Mon, 26 Nov 2012 15:22:13 +0300
-Message-ID: <20121126122213.955.78067.stgit@localhost.localdomain>
-In-Reply-To: <20121126121907.955.25349.stgit@localhost.localdomain>
-References: <20121126121907.955.25349.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-yh0-f46.google.com ([209.85.213.46]:34402 "EHLO
+	mail-yh0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932895Ab2KEPWj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Nov 2012 10:22:39 -0500
+Received: by mail-yh0-f46.google.com with SMTP id m54so971985yhm.19
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Nov 2012 07:22:39 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v9 10/34] vfs: make rmdir retry on ESTALE errors
+Date: Mon,  5 Nov 2012 10:21:49 -0500
+Message-Id: <1352128933-28526-11-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
+References: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch renames nfs4_state_start_net() into nfs4_state_create_net(), where
-get_net() now performed.
-Also it introduces new nfs4_state_start_net(), which is now responsible for
-state creation and initializing all per-net data and which is now called from
-nfs4_state_start().
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/nfs4state.c |   59 ++++++++++++++++++++++++++++++---------------------
- 1 files changed, 35 insertions(+), 24 deletions(-)
+ fs/namei.c | 79 +++++++++++++++++++++++++++++++++-----------------------------
+ 1 file changed, 42 insertions(+), 37 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index edff2cc..72df721 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4766,7 +4766,7 @@ set_max_delegations(void)
- 	max_delegations = nr_free_buffer_pages() >> (20 - 2 - PAGE_SHIFT);
- }
+diff --git a/fs/namei.c b/fs/namei.c
+index 1569ccd..0b70e6d 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3344,49 +3344,54 @@ static long do_rmdir(int dfd, const char __user *pathname)
+ 	struct filename *name;
+ 	struct dentry *dentry;
+ 	struct nameidata nd;
++	unsigned int try = 0;
  
--static int nfs4_state_start_net(struct net *net)
-+static int nfs4_state_create_net(struct net *net)
- {
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 	int i;
-@@ -4809,6 +4809,7 @@ static int nfs4_state_start_net(struct net *net)
- 	spin_lock_init(&nn->client_lock);
- 
- 	INIT_DELAYED_WORK(&nn->laundromat_work, laundromat_main);
-+	get_net(net);
- 
- 	return 0;
- 
-@@ -4856,37 +4857,35 @@ nfs4_state_destroy_net(struct net *net)
- 	put_net(net);
- }
- 
--/* initialization to perform when the nfsd service is started: */
+-	name = user_path_parent(dfd, pathname, &nd, 0);
+-	if (IS_ERR(name))
+-		return PTR_ERR(name);
 -
--int
--nfs4_state_start(void)
-+static int
-+nfs4_state_start_net(struct net *net)
- {
--	struct net *net = &init_net;
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 	int ret;
- 
--	/*
--	 * FIXME: For now, we hang most of the pernet global stuff off of
--	 * init_net until nfsd is fully containerized. Eventually, we'll
--	 * need to pass a net pointer into this function, take a reference
--	 * to that instead and then do most of the rest of this on a per-net
--	 * basis.
--	 */
--	get_net(net);
--	ret = nfs4_state_start_net(net);
-+	ret = nfs4_state_create_net(net);
- 	if (ret)
- 		return ret;
- 	nfsd4_client_tracking_init(net);
- 	nn->boot_time = get_seconds();
- 	locks_start_grace(net, &nn->nfsd4_manager);
- 	nn->grace_ended = false;
--	printk(KERN_INFO "NFSD: starting %ld-second grace period\n",
--	       nfsd4_grace);
-+	printk(KERN_INFO "NFSD: starting %ld-second grace period (net %p)\n",
-+	       nfsd4_grace, net);
-+	queue_delayed_work(laundry_wq, &nn->laundromat_work, nfsd4_grace * HZ);
-+	return 0;
-+}
-+
-+/* initialization to perform when the nfsd service is started: */
-+
-+int
-+nfs4_state_start(void)
-+{
-+	int ret;
-+
- 	ret = set_callback_cred();
--	if (ret) {
--		ret = -ENOMEM;
--		goto out_recovery;
+-	switch(nd.last_type) {
+-	case LAST_DOTDOT:
+-		error = -ENOTEMPTY;
+-		goto exit1;
+-	case LAST_DOT:
+-		error = -EINVAL;
+-		goto exit1;
+-	case LAST_ROOT:
+-		error = -EBUSY;
+-		goto exit1;
 -	}
-+	if (ret)
-+		return -ENOMEM;
- 	laundry_wq = create_singlethread_workqueue("nfsd4");
- 	if (laundry_wq == NULL) {
- 		ret = -ENOMEM;
-@@ -4896,14 +4895,26 @@ nfs4_state_start(void)
- 	if (ret)
- 		goto out_free_laundry;
++	do {
++		name = user_path_parent(dfd, pathname, &nd, try);
++		if (IS_ERR(name))
++			return PTR_ERR(name);
++
++		switch (nd.last_type) {
++		case LAST_DOTDOT:
++			error = -ENOTEMPTY;
++			goto exit1;
++		case LAST_DOT:
++			error = -EINVAL;
++			goto exit1;
++		case LAST_ROOT:
++			error = -EBUSY;
++			goto exit1;
++		}
  
--	queue_delayed_work(laundry_wq, &nn->laundromat_work, nfsd4_grace * HZ);
- 	set_max_delegations();
-+
-+	/*
-+	 * FIXME: For now, we hang most of the pernet global stuff off of
-+	 * init_net until nfsd is fully containerized. Eventually, we'll
-+	 * need to pass a net pointer into this function, take a reference
-+	 * to that instead and then do most of the rest of this on a per-net
-+	 * basis.
-+	 */
-+	ret = nfs4_state_start_net(&init_net);
-+	if (ret)
-+		goto out_free_callback;
-+
- 	return 0;
-+
-+out_free_callback:
-+	nfsd4_destroy_callback_queue();
- out_free_laundry:
- 	destroy_workqueue(laundry_wq);
- out_recovery:
--	nfsd4_client_tracking_exit(net);
--	nfs4_state_destroy_net(net);
- 	return ret;
+-	nd.flags &= ~LOOKUP_PARENT;
+-	error = mnt_want_write(nd.path.mnt);
+-	if (error)
+-		goto exit1;
++		nd.flags &= ~LOOKUP_PARENT;
++		error = mnt_want_write(nd.path.mnt);
++		if (error)
++			goto exit1;
+ 
+-	mutex_lock_nested(&nd.path.dentry->d_inode->i_mutex, I_MUTEX_PARENT);
+-	dentry = lookup_hash(&nd);
+-	error = PTR_ERR(dentry);
+-	if (IS_ERR(dentry))
+-		goto exit2;
+-	if (!dentry->d_inode) {
+-		error = -ENOENT;
+-		goto exit3;
+-	}
+-	error = security_path_rmdir(&nd.path, dentry);
+-	if (error)
+-		goto exit3;
+-	error = vfs_rmdir(nd.path.dentry->d_inode, dentry);
++		mutex_lock_nested(&nd.path.dentry->d_inode->i_mutex,
++					I_MUTEX_PARENT);
++		dentry = lookup_hash(&nd);
++		if (IS_ERR(dentry)) {
++			error = PTR_ERR(dentry);
++			goto exit2;
++		}
++		if (!dentry->d_inode) {
++			error = -ENOENT;
++			goto exit3;
++		}
++		error = security_path_rmdir(&nd.path, dentry);
++		if (error)
++			goto exit3;
++		error = vfs_rmdir(nd.path.dentry->d_inode, dentry);
+ exit3:
+-	dput(dentry);
++		dput(dentry);
+ exit2:
+-	mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
+-	mnt_drop_write(nd.path.mnt);
++		mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
++		mnt_drop_write(nd.path.mnt);
+ exit1:
+-	path_put(&nd.path);
+-	putname(name);
++		path_put(&nd.path);
++		putname(name);
++	} while (retry_estale(error, try++));
+ 	return error;
  }
  
+-- 
+1.7.11.7
 
