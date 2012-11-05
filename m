@@ -1,133 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:35638 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1757209Ab2K3Q2g (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Nov 2012 11:28:36 -0500
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Date: Fri, 30 Nov 2012 11:28:35 -0500
-From: David Quigley <dpquigl@davequigley.com>
-To: Casey Schaufler <casey@schaufler-ca.com>
-Cc: Stephen Smalley <sds@tycho.nsa.gov>,
-        "J. Bruce Fields" <bfields@fieldses.org>, <trond.myklebust@netapp.com>,
-        <linux-nfs@vger.kernel.org>, <selinux@tycho.nsa.gov>,
-        <linux-security-module@vger.kernel.org>
-Subject: Re: Labeled NFS [v5]
-In-Reply-To: <50B8DD14.6080104@schaufler-ca.com>
-References: <50AC4A7A.6010208@davequigley.com>
- <50B65E7E.4030607@schaufler-ca.com> <50B6B706.1010002@davequigley.com>
- <50B6C398.90002@schaufler-ca.com> <50B7E189.80200@schaufler-ca.com>
- <d0817140372d745df0b4952b796610f2@countercultured.net>
- <50B7FEFB.30109@schaufler-ca.com>
- <579e850139bd3d5a0c9155270d5d9fbe@countercultured.net>
- <50B810D2.2000401@schaufler-ca.com>
- <3ea3f70e0a5cdb99f1594019b7bd619d@countercultured.net>
- <20121130121437.GC614@fieldses.org>
- <607a8005d6c33a19c53b5ede29d81ef5@countercultured.net>
- <5170c3bd8900c36b372217af96e5e764@countercultured.net>
- <50B8B47F.5050206@tycho.nsa.gov>
- <c00cec058c2bd0cb7104a53ca680f6cb@countercultured.net>
- <50B8B9BF.7000802@tycho.nsa.gov>
- <7969331f8e30a7a1a60b1aa3c4a034d3@countercultured.net>
- <50B8DD14.6080104@schaufler-ca.com>
-Message-ID: <e332c08e38f41d70c9cca858c8dba844@countercultured.net>
+Received: from mail.gnuher.de ([78.47.12.54]:51838 "EHLO mail.gnuher.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751606Ab2KEOpf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 5 Nov 2012 09:45:35 -0500
+Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
+	by mail.gnuher.de (envelope-from
+	<news@geggus.net>)
+	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
+	(Exim 4.72)
+	id 1TVNvi-0007lc-Ag
+	for linux-nfs@vger.kernel.org; Mon, 05 Nov 2012 15:45:34 +0100
+Received: from news  by ultimate100.geggus.net (envelope-from
+	<news@geggus.net>)
+	with local (Exim 4.72)
+	id 1TVNvh-0008Os-LP
+	for linux-nfs@vger.kernel.org; Mon, 05 Nov 2012 15:45:33 +0100
+To: linux-nfs@vger.kernel.org
+From: Sven Geggus <lists@fuchsschwanzdomain.de>
+Subject: Re: Kernel update 3.5.7 -> 3.6.3 breaks NFS4
+Date: Mon, 5 Nov 2012 14:45:33 +0000 (UTC)
+Message-ID: <k78jed$vgm$1@ultimate100.geggus.net>
+References: <k6ebva$1kf$1@ultimate100.geggus.net> <20121026171549.GA11806@fieldses.org> <20121029094038.GA14836@geggus.net> <20121029150203.GB9502@fieldses.org> <20121029163323.GA24345@geggus.net> <k6r6ur$eva$2@ultimate100.geggus.net> <CAA7C2qiiHzwMmkm5fUyNCffejxACtsDu0Pb1qgYJPCfgcaZU-w@mail.gmail.com> <k6rgcc$igt$1@ultimate100.geggus.net> <CAA7C2qhaKE7tAcsfNn0_jZ3BgWbFM6FkH1s0z+hd3JfOELywuQ@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/30/2012 11:21, Casey Schaufler wrote:
-> On 11/30/2012 6:02 AM, David Quigley wrote:
->
-> There are times when living by the correct ocean makes
-> life so much easier. Thanks all for the early morning
-> brain work.
->
->> On 11/30/2012 08:50, Stephen Smalley wrote:
->>> On 11/30/2012 08:35 AM, David Quigley wrote:
->>>> On 11/30/2012 08:28, Stephen Smalley wrote:
->>>>> On 11/30/2012 08:17 AM, David Quigley wrote:
->>>>>> On 11/30/2012 07:57, David Quigley wrote:
->>>>>>> On 11/30/2012 07:14, J. Bruce Fields wrote:
->>>>>>>> On Thu, Nov 29, 2012 at 09:02:49PM -0500, David Quigley wrote:
->>>>>>>>> On 11/29/2012 20:50, Casey Schaufler wrote:
->>>>>>>>> >On 11/29/2012 4:46 PM, David Quigley wrote:
->>>>>>>>> >>On 11/29/2012 19:34, Casey Schaufler wrote:
->>>>>>>>> >... Whole bunch snipped ...
->>>
->>> Looks like Smack requires CAP_MAC_ADMIN in order to set Smack
->>> attributes on a file at all.  So nfsd would require that capability
->>> for Smack.  I think this means however that setting Smack labels on
->>> NFS files won't work in any case where root is squashed, which 
->>> seems
->>> unfortunate.
->
-> I'm building a kernel with CAP_MAC_ADMIN set for nfsd.
-> I am reasonably sure that this will get me past the current
-> issue. As far as a squashed root goes, well, doing things
-> that the security policy doesn't allow requires privilege.
->
->>
->> I'll leave that problem to Casey to figure out. However it seems to 
->> me
->> that regardless of Labeled NFS Casey should have problems with the 
->> NFS
->> server not being able to serve up files that are dominated by floor. 
->> I
->> wonder if he has every tried NFSv4 on a SMACK enabled server before.
->> It may have just worked because all files implicitly get labeled 
->> floor.
->
-> CAP_MAC_OVERRIDE, which nfsd does have, is sufficient for
-> reading and writing files. A Smack enabled server is able
-> to serve to Smack and Smackless clients, but of course all
-> label enforcement is lost. Thus it will "work", but it will
-> be bad. I haven't used NFS much lately, in part because of
-> the lack of labeling and the security issues inherent in
-> serving labeled files to clueless clients.
+VDR User <user.vdr@gmail.com> wrote:
 
-Can we confirm that this problem doesn't manifest itself without a 
-Labeled NFS kernel? Set the labels on the exported files properly and 
-then just mount over NFSv4 and see what happens?
+> Ahh sorry. I misread your post and thought it was directed towards
+> someone else. No, I'm not using sec=krb5.
 
+OK so this is not a comparable use case.
 
->
->
->>
->>>
->>> On the SELinux side, we don't require CAP_MAC_ADMIN to set the
->>> SELinux attribute on a file in the normal case, only when the 
->>> SELinux
->>> attribute is not known to the security policy yet.  So granting
->>> CAP_MAC_ADMIN there means that a client will be able to set 
->>> security
->>> contexts on files that are unknown to the server.  I guess that 
->>> might
->>> even be desirable in some instances where client and server policy 
->>> are
->>> different.  We do have the option of denying mac_admin permission 
->>> in
->>> policy for nfsd (kernel_t?), in which case we would block such
->>> attempts to set unknown contexts but would still support setting of
->>> known security contexts.
->>>
->>> So I think it is workable, albeit a bit confusing.
->>
->> Yea it is unfortunate that we have to go mucking around in 
->> capability
->> land but it seems that adding CAP_MAC_ADMIN should be fine and we 
->> can
->> deal with it in policy if we like.
->
-> Worst case we could add a security_set_nfsd_capabilities hook.
-> Maybe make the capability set an export option?
->
->>
->>
->> --
->> This message was distributed to subscribers of the selinux mailing 
->> list.
->> If you no longer wish to subscribe, send mail to
->> majordomo@tycho.nsa.gov with
->> the words "unsubscribe selinux" without quotes as the message.
->>
+Sven
 
+-- 
+"Ich fürchte mich nicht vor der Rückkehr der Faschisten in der Maske der
+Faschisten, sondern vor der Rückkehr der Faschisten in der Maske der
+Demokraten" (Theodor W. Adorno)
+/me is giggls@ircnet, http://sven.gegg.us/ on the Web
