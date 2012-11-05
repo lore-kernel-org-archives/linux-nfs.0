@@ -1,78 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60393 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1768657Ab2KOS7D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Nov 2012 13:59:03 -0500
-Date: Thu, 15 Nov 2012 13:58:53 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "Eric W. Biederman" <ebiederm@xmission.com>,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>, simo@redhat.com
-Subject: Re: [PATCH v3] SUNRPC: set desired file system root before
- connecting local transports
-Message-ID: <20121115185853.GA22448@fieldses.org>
-References: <20121106133605.GD6718@fieldses.org>
- <20121107183355.GA7421@fieldses.org>
- <50A0B562.2090807@parallels.com>
- <20121114210112.GA539@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9092E0A40@SACEXCMBX04-PRD.hq.netapp.com>
- <20121114214236.GB539@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9092E0AE9@SACEXCMBX04-PRD.hq.netapp.com>
- <20121114215426.GC539@fieldses.org>
- <87obize6jp.fsf@xmission.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9092E2984@SACEXCMBX04-PRD.hq.netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9092E2984@SACEXCMBX04-PRD.hq.netapp.com>
+Received: from mail-gg0-f174.google.com ([209.85.161.174]:42122 "EHLO
+	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932872Ab2KEPWg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Nov 2012 10:22:36 -0500
+Received: by mail-gg0-f174.google.com with SMTP id k5so1001863ggd.19
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Nov 2012 07:22:36 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v9 08/34] vfs: fix linkat to retry on ESTALE errors
+Date: Mon,  5 Nov 2012 10:21:47 -0500
+Message-Id: <1352128933-28526-9-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
+References: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 15, 2012 at 01:34:16PM +0000, Myklebust, Trond wrote:
-> On Wed, 2012-11-14 at 22:14 -0800, Eric W. Biederman wrote:
-> > "J. Bruce Fields" <bfields@fieldses.org> writes:
-> > 
-> > > On Wed, Nov 14, 2012 at 09:51:33PM +0000, Myklebust, Trond wrote:
-> > >> On Wed, 2012-11-14 at 16:42 -0500, J. Bruce Fields wrote:
-> > >> > Simo's patches use them for upcalls to svcgssd.  Those will always be
-> > >> > done from server threads.
-> > >> 
-> > >> Any reason why you can't set that up when you start nfsd?
-> > >
-> > > Oh, right, I was thinking of the upcalls themselves--right, the connect
-> > > we should be able to do on server start, I agree.
-> > >
-> > >> 
-> > >> > > If not, then let's just move
-> > >> > > the AF_LOCAL connection back into the process context and out of rpciod.
-> > >> > 
-> > >> > Remind me how this helps?
-> > >> 
-> > >> rpciod shares the 'init' process net namespace and chroot properties.
-> > >> If, however you call bind() from the (containerised) process that was
-> > >> used to start nfsd, then you will be using filesystem root (and net
-> > >> namespace) of that container.
-> > >
-> > > Got it.
-> > 
-> > If you can move the connect and bind into the server start that does
-> > sound like a very good and maintainable solution.  I suspect it might
-> > even be a smidge better for error handling.
-> > 
-> > Is there ever a reason to reconnect one of these sockets?
-> 
-> Not for the rpcbind case, however you can easily get into a situation
-> where the user restarts the gss daemon. The good news is that the gss
-> upcall code that uses AF_LOCAL hasn't been merged upstream yet, so that
-> particular interface is not yet locked in stone.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/namei.c | 46 ++++++++++++++++++++++++++--------------------
+ 1 file changed, 26 insertions(+), 20 deletions(-)
 
-I think we do want to be able to allow the daemon to be restarted.
+diff --git a/fs/namei.c b/fs/namei.c
+index af1b473..28d70cd 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3613,6 +3613,7 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
+ 	struct path old_path, new_path;
+ 	int how = 0;
+ 	int error;
++	unsigned int try = 0;
+ 
+ 	if ((flags & ~(AT_SYMLINK_FOLLOW | AT_EMPTY_PATH)) != 0)
+ 		return -EINVAL;
+@@ -3630,30 +3631,35 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
+ 	if (flags & AT_SYMLINK_FOLLOW)
+ 		how |= LOOKUP_FOLLOW;
+ 
+-	error = user_path_at(olddfd, oldname, how, &old_path);
+-	if (error)
+-		return error;
++	do {
++		error = user_path_at(olddfd, oldname, how, &old_path);
++		if (error)
++			break;
+ 
+-	new_dentry = user_path_create(newdfd, newname, &new_path, false, false);
+-	error = PTR_ERR(new_dentry);
+-	if (IS_ERR(new_dentry))
+-		goto out;
++		new_dentry = user_path_create(newdfd, newname, &new_path,
++						false, try);
++		error = PTR_ERR(new_dentry);
++		if (IS_ERR(new_dentry))
++			goto out;
+ 
+-	error = -EXDEV;
+-	if (old_path.mnt != new_path.mnt)
+-		goto out_dput;
+-	error = may_linkat(&old_path);
+-	if (unlikely(error))
+-		goto out_dput;
+-	error = security_path_link(old_path.dentry, &new_path, new_dentry);
+-	if (error)
+-		goto out_dput;
+-	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry);
++		error = -EXDEV;
++		if (old_path.mnt != new_path.mnt)
++			goto out_dput;
++		error = may_linkat(&old_path);
++		if (unlikely(error))
++			goto out_dput;
++		error = security_path_link(old_path.dentry, &new_path,
++						new_dentry);
++		if (error)
++			goto out_dput;
++		error = vfs_link(old_path.dentry, new_path.dentry->d_inode,
++						new_dentry);
+ out_dput:
+-	done_path_create(&new_path, new_dentry);
++		done_path_create(&new_path, new_dentry);
+ out:
+-	path_put(&old_path);
+-
++		path_put(&old_path);
++		how |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
+ 	return error;
+ }
+ 
+-- 
+1.7.11.7
 
-I guess we can have it call into the rpc server code when it starts up
-and the server could do the connect then?  We need some way for
-userspace to tell the server that the new upcall is supported anyway.
-
---b.
