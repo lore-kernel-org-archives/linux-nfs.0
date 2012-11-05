@@ -1,68 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35358 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932139Ab2KZWhg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Nov 2012 17:37:36 -0500
-Date: Mon, 26 Nov 2012 17:37:34 -0500
-From: Bruce Fields <bfields@fieldses.org>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] gssd: Remove insane sanity checks of the service name
-Message-ID: <20121126223734.GD18186@fieldses.org>
-References: <1353969081-17842-1-git-send-email-Trond.Myklebust@netapp.com>
- <1353969081-17842-2-git-send-email-Trond.Myklebust@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1353969081-17842-2-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-gh0-f174.google.com ([209.85.160.174]:41191 "EHLO
+	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754454Ab2KEPWZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Nov 2012 10:22:25 -0500
+Received: by mail-gh0-f174.google.com with SMTP id g15so1012581ghb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Nov 2012 07:22:24 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v9 02/34] vfs: make fstatat retry on ESTALE errors from getattr call
+Date: Mon,  5 Nov 2012 10:21:41 -0500
+Message-Id: <1352128933-28526-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
+References: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 26, 2012 at 05:31:21PM -0500, Trond Myklebust wrote:
-> Either we trust the info file, or we don't. The current
-> 'checks' only work for the combination 'nfs', '100003' and
-> a version number between 2 and 4.
-> The problem is that the callback channel also wants to use
-> 'nfs' in combination with a different program number and
-> version number.
-> 
-> This patch throws the bogus checks out altogether and lets the
-> kernel use whatever combination it wants....
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/stat.c | 16 ++++++++++------
+ 1 file changed, 10 insertions(+), 6 deletions(-)
 
-ACK to both.--b.
+diff --git a/fs/stat.c b/fs/stat.c
+index eae4946..c97a17e 100644
+--- a/fs/stat.c
++++ b/fs/stat.c
+@@ -74,7 +74,8 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
+ {
+ 	struct path path;
+ 	int error = -EINVAL;
+-	int lookup_flags = 0;
++	unsigned int try = 0;
++	unsigned int lookup_flags = 0;
+ 
+ 	if ((flag & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
+ 		      AT_EMPTY_PATH)) != 0)
+@@ -85,12 +86,15 @@ int vfs_fstatat(int dfd, const char __user *filename, struct kstat *stat,
+ 	if (flag & AT_EMPTY_PATH)
+ 		lookup_flags |= LOOKUP_EMPTY;
+ 
+-	error = user_path_at(dfd, filename, lookup_flags, &path);
+-	if (error)
+-		goto out;
++	do {
++		error = user_path_at(dfd, filename, lookup_flags, &path);
++		if (error)
++			break;
+ 
+-	error = vfs_getattr(path.mnt, path.dentry, stat);
+-	path_put(&path);
++		error = vfs_getattr(path.mnt, path.dentry, stat);
++		path_put(&path);
++		lookup_flags |= LOOKUP_REVAL;
++	} while (retry_estale(error, try++));
+ out:
+ 	return error;
+ }
+-- 
+1.7.11.7
 
-> ---
->  utils/gssd/gssd_proc.c | 13 +------------
->  1 file changed, 1 insertion(+), 12 deletions(-)
-> 
-> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-> index b79e872..8c00201 100644
-> --- a/utils/gssd/gssd_proc.c
-> +++ b/utils/gssd/gssd_proc.c
-> @@ -250,21 +250,10 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
->  	if ((p = strstr(buf, "port")) != NULL)
->  		sscanf(p, "port: %127s\n", port);
->  
-> -	/* check service, program, and version */
-> -	if (memcmp(service, "nfs", 3) != 0)
-> -		return -1;
-> +	/* get program, and version numbers */
->  	*prog = atoi(program + 1); /* skip open paren */
->  	*vers = atoi(version);
->  
-> -	if (strlen(service) == 3 ) {
-> -		if ((*prog != 100003) || ((*vers != 2) && (*vers != 3) &&
-> -		    (*vers != 4)))
-> -			goto fail;
-> -	} else if (memcmp(service, "nfs4_cb", 7) == 0) {
-> -		if (*vers != 1)
-> -			goto fail;
-> -	}
-> -
->  	if (!addrstr_to_sockaddr(addr, address, port))
->  		goto fail;
->  
-> -- 
-> 1.7.11.7
-> 
