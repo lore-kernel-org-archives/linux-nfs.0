@@ -1,117 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:59533 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752971Ab2KVSmt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Nov 2012 13:42:49 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 10/20] NFSv4.1: Simplify slot allocation
-Date: Wed, 21 Nov 2012 17:43:09 -0500
-Message-Id: <1353537799-60488-11-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1353537799-60488-10-git-send-email-Trond.Myklebust@netapp.com>
-References: <1353537799-60488-1-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-2-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-3-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-4-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-5-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-6-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-7-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-8-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-9-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-10-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-ye0-f174.google.com ([209.85.213.174]:61085 "EHLO
+	mail-ye0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754412Ab2KEPWX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Nov 2012 10:22:23 -0500
+Received: by mail-ye0-f174.google.com with SMTP id m12so1017195yen.19
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Nov 2012 07:22:22 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v9 01/34] vfs: add a retry_estale helper function to handle retries on ESTALE
+Date: Mon,  5 Nov 2012 10:21:40 -0500
+Message-Id: <1352128933-28526-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
+References: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up the NFSv4.1 slot allocation by replacing nfs_find_slot() with
-a function nfs_alloc_slot() that returns a pointer to the nfs4_slot
-instead of an offset into the slot table.
+This function is expected to be called from path-based syscalls to help
+them decide whether to try the lookup and call again in the event that
+they got an -ESTALE return back on an earier try.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Currently, we only retry the call once on an ESTALE error, but in the
+event that we decide that that's not enough in the future, we should be
+able to change the logic in this helper without too much effort.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/nfs4proc.c | 29 ++++++++++++++---------------
- 1 file changed, 14 insertions(+), 15 deletions(-)
+ include/linux/fs.h | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 7c2b037..59cef54 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -557,20 +557,18 @@ static int nfs4_sequence_done(struct rpc_task *task,
- }
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index b33cfc9..3e42289 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2023,6 +2023,26 @@ extern int finish_open(struct file *file, struct dentry *dentry,
+ 			int *opened);
+ extern int finish_no_open(struct file *file, struct dentry *dentry);
  
- /*
-- * nfs4_find_slot - efficiently look for a free slot
-+ * nfs4_alloc_slot - efficiently look for a free slot
-  *
-- * nfs4_find_slot looks for an unset bit in the used_slots bitmap.
-+ * nfs4_alloc_slot looks for an unset bit in the used_slots bitmap.
-  * If found, we mark the slot as used, update the highest_used_slotid,
-  * and respectively set up the sequence operation args.
-- * The slot number is returned if found, or NFS4_NO_SLOT otherwise.
-  *
-  * Note: must be called with under the slot_tbl_lock.
-  */
--static u32
--nfs4_find_slot(struct nfs4_slot_table *tbl)
-+static struct nfs4_slot *nfs4_alloc_slot(struct nfs4_slot_table *tbl)
- {
-+	struct nfs4_slot *ret = NULL;
- 	u32 slotid;
--	u32 ret_id = NFS4_NO_SLOT;
- 
- 	dprintk("--> %s used_slots=%04lx highest_used=%u max_slots=%u\n",
- 		__func__, tbl->used_slots[0], tbl->highest_used_slotid,
-@@ -582,11 +580,14 @@ nfs4_find_slot(struct nfs4_slot_table *tbl)
- 	if (slotid > tbl->highest_used_slotid ||
- 			tbl->highest_used_slotid == NFS4_NO_SLOT)
- 		tbl->highest_used_slotid = slotid;
--	ret_id = slotid;
-+	ret = &tbl->slots[slotid];
-+	ret->renewal_time = jiffies;
++/**
++ * retry_estale - determine whether the caller should retry an operation
++ * @error: the error that would currently be returned
++ * @try: number of tries already performed
++ *
++ * Check to see if the error code was -ESTALE, and then determine whether
++ * to retry the call based on the number of tries so far. Currently, we only
++ * retry the call once.
++ *
++ * Returns true if the caller should try the operation again.
++ */
++static inline bool
++retry_estale(const long error, const unsigned int try)
++{
++	if (likely(error != -ESTALE))
++		return false;
 +
- out:
- 	dprintk("<-- %s used_slots=%04lx highest_used=%d slotid=%d \n",
--		__func__, tbl->used_slots[0], tbl->highest_used_slotid, ret_id);
--	return ret_id;
-+		__func__, tbl->used_slots[0], tbl->highest_used_slotid,
-+		ret ? ret->slot_nr : -1);
-+	return ret;
- }
++	return !try;
++}
++
+ /* fs/ioctl.c */
  
- static void nfs41_init_sequence(struct nfs4_sequence_args *args,
-@@ -606,7 +607,6 @@ int nfs41_setup_sequence(struct nfs4_session *session,
- {
- 	struct nfs4_slot *slot;
- 	struct nfs4_slot_table *tbl;
--	u32 slotid;
- 
- 	dprintk("--> %s\n", __func__);
- 	/* slot already allocated? */
-@@ -633,8 +633,8 @@ int nfs41_setup_sequence(struct nfs4_session *session,
- 		return -EAGAIN;
- 	}
- 
--	slotid = nfs4_find_slot(tbl);
--	if (slotid == NFS4_NO_SLOT) {
-+	slot = nfs4_alloc_slot(tbl);
-+	if (slot == NULL) {
- 		rpc_sleep_on(&tbl->slot_tbl_waitq, task, NULL);
- 		spin_unlock(&tbl->slot_tbl_lock);
- 		dprintk("<-- %s: no free slots\n", __func__);
-@@ -643,12 +643,11 @@ int nfs41_setup_sequence(struct nfs4_session *session,
- 	spin_unlock(&tbl->slot_tbl_lock);
- 
- 	rpc_task_set_priority(task, RPC_PRIORITY_NORMAL);
--	slot = tbl->slots + slotid;
--	slot->renewal_time = jiffies;
- 
- 	args->sa_slot = slot;
- 
--	dprintk("<-- %s slotid=%d seqid=%d\n", __func__, slotid, slot->seq_nr);
-+	dprintk("<-- %s slotid=%d seqid=%d\n", __func__,
-+			slot->slot_nr, slot->seq_nr);
- 
- 	res->sr_slot = slot;
- 	res->sr_status_flags = 0;
+ extern int ioctl_preallocate(struct file *filp, void __user *argp);
 -- 
 1.7.11.7
 
