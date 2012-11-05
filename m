@@ -1,113 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:24349 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751671Ab2K2MzY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2012 07:55:24 -0500
-Date: Thu, 29 Nov 2012 07:55:08 -0500
+Received: from mail-yh0-f46.google.com ([209.85.213.46]:34402 "EHLO
+	mail-yh0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932936Ab2KEPXV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Nov 2012 10:23:21 -0500
+Received: by mail-yh0-f46.google.com with SMTP id m54so971985yhm.19
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Nov 2012 07:23:21 -0800 (PST)
 From: Jeff Layton <jlayton@redhat.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
-Subject: Re: NFSd in container - it works
-Message-ID: <20121129075508.6f6f1c76@tlielax.poochiereds.net>
-In-Reply-To: <50B759AB.6010504@parallels.com>
-References: <50B64628.4070007@parallels.com>
-	<20121128200126.GA17875@fieldses.org>
-	<20121128152813.2b4c388d@tlielax.poochiereds.net>
-	<50B74CCB.9080000@parallels.com>
-	<20121129071309.6550614e@tlielax.poochiereds.net>
-	<50B759AB.6010504@parallels.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
+        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
+Subject: [PATCH v9 32/34] vfs: ensure that forward progress is being made on pathwalks
+Date: Mon,  5 Nov 2012 10:22:11 -0500
+Message-Id: <1352128933-28526-33-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
+References: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 29 Nov 2012 16:48:43 +0400
-Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+In operations that involve pathwalks (lookups and atomic opens), ensure
+that the operations are making forward progress. Save a copy of the
+current nd.path.dentry when retrying on an estale and ensure that it's
+changing on each pass through the loop. If it isn't, then we're stuck.
+Just return -ENOENT in that case.
 
-> 29.11.2012 16:13, Jeff Layton пишет:
-> > On Thu, 29 Nov 2012 15:53:47 +0400
-> > Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
-> >
-> >> 29.11.2012 00:28, Jeff Layton пишет:
-> >>> On Wed, 28 Nov 2012 15:01:26 -0500
-> >>> "bfields@fieldses.org" <bfields@fieldses.org> wrote:
-> >>>
-> >>>>> 3) Holding net by tracker looks redundant. What was the reason for this?
-> >>>>
-> >>>> I don't understand, what's tracker?
-> >>>
-> >>> I assume he means the clientid tracker. That was necessary for the
-> >>> nfsdcld upcall because it used rpc_pipefs files, and those were
-> >>> net-namespacified. Once we deprecate that in 3.10, I don't think we'll
-> >>> need to worry about the net namespace in the clientid tracker.
-> >>>
-> >>
-> >> Sorry, I don't understand. Rpc_pipefs superblock already holds network namespace.
-> >>
-> >
-> > ...and how do you know which rpc_pipefs superblock you're dealing with?
-> > In any case, I'm ok with ripping out references to the net namespace
-> > there if you think it's valid.
-> >
-> 
-> I'm not saying, that you don't need to have a reference to network namespace.
-> I'm not sure, that you need to grab the reference to it (i.e. call get_net()).
-> 
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/namei.c | 31 ++++++++++++++++++++++++++++---
+ 1 file changed, 28 insertions(+), 3 deletions(-)
 
-Hmm..ok. I'll take your word for it on this...
-
-> >>> We probably *will* need to concern ourselves with the mnt namespace
-> >>> there though since each container will presumably have its own clientid
-> >>> database...
-> >>
-> >> Since NFSd server in network namespace based, it means, that we can create one server for more than one mount namespace.
-> >> And clietid tracker holds files opened. Thus holds mount.
-> >> Mount namespace itself doesn't look that important to me.
-> >> Or I'm wrong?
-> >>
-> >
-> > I confess I don't understand the design well enough to reasonably
-> > comment here...
-> >
-> > Both the new clientid tracker and the legacy one involve storing data
-> > on a local filesystem somewhere. In the case of the new tracker, we
-> > upcall using call_usermodehelper to spawn a process to handle access to
-> > the on disk database. In the legacy tracker, it's done directly by the
-> > kernel using vfs calls.
-> >
-> > Presumably, you will have multiple containers serving NFS, so you'll
-> > have multiple sets of client id data being stored. You'll need some
-> > mechanism to ensure that the usermodehelper is spawned within the
-> > correct container or that the legacy tracker accesses the files in the
-> > correct container.
-> >
-> > My assumption there was that you'd need to ensure that it's using the
-> > right mount namespace in order to do that...
-> >
-> 
-> Yes, I see... Look like it's better to disable this type tracker in containers for now.
-> As, I see it, the problem is not in mount namespace itself, but in proper root path for khelper.
-> I.e. the problem is the same as with portmapper Unix sockets.
-> But, luckily, usermode khelper allow to pass init/cleanup functions.
-> Init function could be like these:
-> 
-> init() {
-> 	unshare_fs_struct();	// to make sure, that we won't affect other kthreads
-> 	swap_root();		// replace root, get new one, put old one.
-> }
-> 
-> Cleanup function is not required: fs struct will be destroyed on usermode khelper thread exit.
-> 
-
-nfsdcld is being ripped out in 3.10. The binaries for it are already
-gone from nfs-utils. If you disable the legacy and usermode helper
-trackers, then you have nothing left. :)
-
-I think you'll need to come up with some mechanism to ensure that these
-things are done in the correct container. What that is, and how that
-should work, I'm not sure...
-
+diff --git a/fs/namei.c b/fs/namei.c
+index c3582d4..f0916e6 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2021,12 +2021,21 @@ static int filename_lookup(int dfd, struct filename *name,
+ 				unsigned int flags, struct nameidata *nd)
+ {
+ 	unsigned int try = 0;
++	struct dentry *save = NULL;
+ 	int retval = path_lookupat(dfd, name->name, flags | LOOKUP_RCU, nd);
++
+ 	if (unlikely(retval == -ECHILD))
+ 		retval = path_lookupat(dfd, name->name, flags, nd);
+-	while (retry_estale(retval, try++))
++
++	while (retry_estale(retval, try++)) {
++		if (nd->path.dentry == save) {
++			retval = -ENOENT;
++			break;
++		}
++		save = nd->path.dentry;
+ 		retval = path_lookupat(dfd, name->name,
+ 						flags | LOOKUP_REVAL, nd);
++	}
+ 
+ 	if (likely(!retval))
+ 		audit_inode(name, nd->path.dentry, flags & LOOKUP_PARENT);
+@@ -3014,12 +3023,20 @@ struct file *do_filp_open(int dfd, struct filename *pathname,
+ 	struct nameidata nd;
+ 	struct file *filp;
+ 	unsigned int try = 0;
++	struct dentry *save = NULL;
+ 
+ 	filp = path_openat(dfd, pathname, &nd, op, flags | LOOKUP_RCU);
+ 	if (unlikely(filp == ERR_PTR(-ECHILD)))
+ 		filp = path_openat(dfd, pathname, &nd, op, flags);
+-	while (retry_estale(PTR_ERR(filp), try++))
++
++	while (retry_estale(PTR_ERR(filp), try++)) {
++		if (nd.path.dentry == save) {
++			filp = ERR_PTR(-ENOENT);
++			break;
++		}
++		save = nd.path.dentry;
+ 		filp = path_openat(dfd, pathname, &nd, op, flags | LOOKUP_REVAL);
++	}
+ 	return filp;
+ }
+ 
+@@ -3030,6 +3047,7 @@ struct file *do_file_open_root(struct dentry *dentry, struct vfsmount *mnt,
+ 	struct file *file;
+ 	struct filename filename = { .name = name };
+ 	unsigned int try = 0;
++	struct dentry *save = NULL;
+ 
+ 	nd.root.mnt = mnt;
+ 	nd.root.dentry = dentry;
+@@ -3042,8 +3060,15 @@ struct file *do_file_open_root(struct dentry *dentry, struct vfsmount *mnt,
+ 	file = path_openat(-1, &filename, &nd, op, flags | LOOKUP_RCU);
+ 	if (unlikely(file == ERR_PTR(-ECHILD)))
+ 		file = path_openat(-1, &filename, &nd, op, flags);
+-	while (retry_estale(PTR_ERR(file), try++))
++
++	while (retry_estale(PTR_ERR(file), try++)) {
++		if (nd.path.dentry == save) {
++			file = ERR_PTR(-ENOENT);
++			break;
++		}
++		save = nd.path.dentry;
+ 		file = path_openat(-1, &filename, &nd, op, flags | LOOKUP_REVAL);
++	}
+ 	return file;
+ }
+ 
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.11.7
+
