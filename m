@@ -1,261 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:61467 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755584Ab2K2DRu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Nov 2012 22:17:50 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/4] NFSD: Convert the slot table to use a linked list
-Date: Wed, 28 Nov 2012 22:17:40 -0500
-Message-Id: <1354159063-17343-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1354159063-17343-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1354159063-17343-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mx4.science-computing.de ([193.197.16.30]:29338 "EHLO
+	mx4.science-computing.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752432Ab2KEM6E (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Nov 2012 07:58:04 -0500
+Message-ID: <5097B580.7020104@science-computing.de>
+Date: Mon, 05 Nov 2012 13:48:00 +0100
+From: Johannes Schild <j.schild@science-computing.de>
+MIME-Version: 1.0
+To: "faibish, sorin" <faibish_sorin@emc.com>
+CC: "Peng, Tao" <tao.peng@emc.com>, Jun Xiao <xiaojuntime@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Jason Glasgow <jglasgow@aya.yale.edu>
+Subject: Re: pNFS Block layout issues / questions
+References: <loom.20110328T230906-552@post.gmane.org> <4D977456.1040303@panasas.com> <loom.20121103T072206-631@post.gmane.org> <1882637210201641A747464075FFC6490291C9@MX101CL02.corp.emc.com> <B99990FD-D4C5-43D1-8096-CDAEE90BECB8@emc.com>
+In-Reply-To: <B99990FD-D4C5-43D1-8096-CDAEE90BECB8@emc.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In preparation for the dynamic slot table allocation, convert the nfsd
-slot table to a linked list model.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfsd/nfs4state.c | 151 +++++++++++++++++++++++++++++++++++++++++-----------
- fs/nfsd/state.h     |  10 +++-
- 2 files changed, 129 insertions(+), 32 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d0237f8..5717ea1 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -704,15 +704,6 @@ gen_sessionid(struct nfsd4_session *ses)
-  */
- #define NFSD_MIN_HDR_SEQ_SZ  (24 + 12 + 44)
- 
--static void
--free_session_slots(struct nfsd4_session *ses)
--{
--	int i;
--
--	for (i = 0; i < ses->se_fchannel.maxreqs; i++)
--		kfree(ses->se_slots[i]);
--}
--
- /*
-  * We don't actually need to cache the rpc and session headers, so we
-  * can allocate a little less for each slot:
-@@ -758,29 +749,127 @@ static void nfsd4_put_drc_mem(int slotsize, int num)
- 	spin_unlock(&nfsd_drc_lock);
- }
- 
--static struct nfsd4_session *__alloc_session(int slotsize, int numslots)
-+static void nfsd4_free_slot(struct nfsd4_slot *slot)
- {
--	struct nfsd4_session *new;
--	int mem, i;
-+	kfree(slot);
-+}
-+
-+static struct nfsd4_slot *nfsd4_new_slot(size_t slotsize, gfp_t gfp_mask)
-+{
-+	return kzalloc(sizeof(struct nfsd4_slot) + slotsize, gfp_mask);
-+}
-+
-+static struct nfsd4_slot *nfsd4_find_slot_locked(const struct nfsd4_slot_table *tbl,
-+		u32 slotid)
-+{
-+	struct nfsd4_slot *slot;
-+
-+	list_for_each_entry(slot, &tbl->slt_head, sl_list) {
-+		if (slot->sl_slotid == slotid)
-+			return slot;
-+	}
-+	return NULL;
-+}
-+
-+static struct nfsd4_slot *nfsd4_find_slot(struct nfsd4_slot_table *tbl,
-+		u32 slotid)
-+{
-+	struct nfsd4_slot *slot;
-+
-+	spin_lock(&tbl->slt_lock);
-+	slot = nfsd4_find_slot_locked(tbl, slotid);
-+	spin_unlock(&tbl->slt_lock);
-+	return slot;
-+}
-+
-+static struct nfsd4_slot *nfsd4_find_last_slot_locked(const struct nfsd4_slot_table *tbl)
-+{
-+	if (list_empty(&tbl->slt_head))
-+		return NULL;
-+	return list_entry(tbl->slt_head.prev, struct nfsd4_slot, sl_list);
-+}
-+
-+static bool nfsd4_grow_slot_table_locked(struct nfsd4_slot_table *tbl,
-+		u32 slotid, gfp_t gfp_mask)
-+{
-+	struct nfsd4_slot *slot = NULL;
-+	struct nfsd4_slot *prev;
-+	u32 next_slotid;
-+
-+	for (;;) {
-+		prev = nfsd4_find_last_slot_locked(tbl);
-+		if (prev != NULL) {
-+			if (prev->sl_slotid >= slotid)
-+				break;
-+			next_slotid = prev->sl_slotid + 1;
-+		} else
-+			next_slotid = 0;
-+		if (slot != NULL){
-+			slot->sl_slotid = next_slotid;
-+			list_add_tail(&slot->sl_list, &tbl->slt_head);
-+		}
-+		spin_unlock(&tbl->slt_lock);
-+		slot = nfsd4_new_slot(tbl->slt_slotsize, gfp_mask);
-+		spin_lock(&tbl->slt_lock);
-+		if (slot == NULL)
-+			return false;
-+	}
-+	nfsd4_free_slot(slot);
-+	return true;
-+}
-+
-+static bool nfsd4_grow_slot_table(struct nfsd4_slot_table *tbl,
-+		u32 slotid, gfp_t gfp_mask)
-+{
-+	bool ret;
-+
-+	spin_lock(&tbl->slt_lock);
-+	ret = nfsd4_grow_slot_table_locked(tbl, slotid, gfp_mask);
-+	spin_unlock(&tbl->slt_lock);
-+	return ret;
-+}
-+
-+static void nfsd4_truncate_slot_table_locked(struct nfsd4_slot_table *tbl,
-+		u32 slotid)
-+{
-+	struct nfsd4_slot *slot;
-+
-+	for (;;) {
-+		slot = nfsd4_find_last_slot_locked(tbl);
-+		if (slot == NULL || slot->sl_slotid < slotid)
-+			break;
-+		list_del(&slot->sl_list);
-+		nfsd4_free_slot(slot);
-+	}
-+}
-+
-+static void nfsd4_free_slot_table(struct nfsd4_slot_table *tbl)
-+{
-+	spin_lock(&tbl->slt_lock);
-+	nfsd4_truncate_slot_table_locked(tbl, 0);
-+	spin_unlock(&tbl->slt_lock);
-+}
-+
-+static void nfsd4_init_slot_table(struct nfsd4_slot_table *tbl, size_t slotsize)
-+{
-+	INIT_LIST_HEAD(&tbl->slt_head);
-+	spin_lock_init(&tbl->slt_lock);
-+	tbl->slt_slotsize = slotsize;
-+}
- 
--	BUILD_BUG_ON(NFSD_MAX_SLOTS_PER_SESSION * sizeof(struct nfsd4_slot *)
--			+ sizeof(struct nfsd4_session) > PAGE_SIZE);
--	mem = numslots * sizeof(struct nfsd4_slot *);
-+static struct nfsd4_session *__alloc_session(size_t slotsize, u32 highest_slotid)
-+{
-+	struct nfsd4_session *new;
- 
--	new = kzalloc(sizeof(*new) + mem, GFP_KERNEL);
-+	new = kzalloc(sizeof(*new), GFP_KERNEL);
- 	if (!new)
- 		return NULL;
-+	nfsd4_init_slot_table(&new->se_slots, slotsize);
- 	/* allocate each struct nfsd4_slot and data cache in one piece */
--	for (i = 0; i < numslots; i++) {
--		mem = sizeof(struct nfsd4_slot) + slotsize;
--		new->se_slots[i] = kzalloc(mem, GFP_KERNEL);
--		if (!new->se_slots[i])
--			goto out_free;
--	}
--	return new;
--out_free:
--	while (i--)
--		kfree(new->se_slots[i]);
-+	if (nfsd4_grow_slot_table(&new->se_slots, highest_slotid, GFP_KERNEL))
-+		return new;
-+
-+	nfsd4_free_slot_table(&new->se_slots);
- 	kfree(new);
- 	return NULL;
- }
-@@ -899,7 +988,7 @@ static void nfsd4_del_conns(struct nfsd4_session *s)
- static void __free_session(struct nfsd4_session *ses)
- {
- 	nfsd4_put_drc_mem(slot_bytes(&ses->se_fchannel), ses->se_fchannel.maxreqs);
--	free_session_slots(ses);
-+	nfsd4_free_slot_table(&ses->se_slots);
- 	kfree(ses);
- }
- 
-@@ -936,7 +1025,7 @@ static struct nfsd4_session *alloc_session(struct nfsd4_channel_attrs *fchan)
- 	if (numslots < 1)
- 		return NULL;
- 
--	new = __alloc_session(slotsize, numslots);
-+	new = __alloc_session(slotsize, numslots - 1);
- 	if (!new) {
- 		nfsd4_put_drc_mem(slotsize, fchan->maxreqs);
- 		return NULL;
-@@ -2032,11 +2121,11 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	if (nfsd4_request_too_big(rqstp, session))
- 		goto out;
- 
-+	/* Note: nfsd4_find_slot checks the validity of seq->slotid */
- 	status = nfserr_badslot;
--	if (seq->slotid >= session->se_fchannel.maxreqs)
-+	slot = nfsd4_find_slot(&session->se_slots, seq->slotid);
-+	if (slot == NULL)
- 		goto out;
--
--	slot = session->se_slots[seq->slotid];
- 	dprintk("%s: slotid %d\n", __func__, seq->slotid);
- 
- 	/* We do not negotiate the number of slots yet, so set the
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index e036894..7d319e9a 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -128,6 +128,8 @@ static inline struct nfs4_delegation *delegstateid(struct nfs4_stid *s)
- 		(NFSD_CACHE_SIZE_SLOTS_PER_SESSION * NFSD_SLOT_CACHE_SIZE)
- 
- struct nfsd4_slot {
-+	struct list_head sl_list;
-+	u32	sl_slotid;
- 	u32	sl_seqid;
- 	__be32	sl_status;
- 	u32	sl_datalen;
-@@ -139,6 +141,12 @@ struct nfsd4_slot {
- 	char	sl_data[];
- };
- 
-+struct nfsd4_slot_table {
-+	struct list_head	slt_head;
-+	spinlock_t		slt_lock;
-+	size_t			slt_slotsize;
-+};
-+
- struct nfsd4_channel_attrs {
- 	u32		headerpadsz;
- 	u32		maxreq_sz;
-@@ -195,7 +203,7 @@ struct nfsd4_session {
- 	struct list_head	se_conns;
- 	u32			se_cb_prog;
- 	u32			se_cb_seq_nr;
--	struct nfsd4_slot	*se_slots[];	/* forward channel slots */
-+	struct nfsd4_slot_table	se_slots;
- };
- 
- extern void nfsd4_put_session(struct nfsd4_session *ses);
--- 
-1.7.11.7
+QW0gMDUuMTEuMjAxMiAxMzo0Miwgc2NocmllYiBmYWliaXNoLCBzb3JpbjoKPgo+IFNlbnQgZnJv
+bSBTb3JpbidzIGlQYWQKPgo+IE9uIE5vdiA0LCAyMDEyLCBhdCA5OjMzIFBNLCAiUGVuZywgVGFv
+IiA8dGFvLnBlbmdAZW1jLmNvbT4gd3JvdGU6Cj4KPj4gSGksCj4+Cj4+IEknbGwgYW5zd2VyIHlv
+dXIgcXVlc3Rpb25zIGFzIGZhciBhcyBJIGNhbiwgYnV0IEkgbXlzZWxmIGFtIG5vdCBmYW1pbGlh
+ciB3aXRoIExpbnV4IHBuZnMgYmxvY2sgc2VydmVyIGltcGxlbWVudGF0aW9uLgo+Pgo+Pj4gLS0t
+LS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0KPj4+IEZyb206IGxpbnV4LW5mcy1vd25lckB2Z2VyLmtl
+cm5lbC5vcmcgW21haWx0bzpsaW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnXSBPbiBCZWhh
+bGYgT2YgSnVuIFhpYW8KPj4+IFNlbnQ6IFNhdHVyZGF5LCBOb3ZlbWJlciAwMywgMjAxMiAzOjI4
+IFBNCj4+PiBUbzogbGludXgtbmZzQHZnZXIua2VybmVsLm9yZwo+Pj4gU3ViamVjdDogUmU6IHBO
+RlMgQmxvY2sgbGF5b3V0IGlzc3VlcyAvIHF1ZXN0aW9ucwo+Pj4KPj4+IFNlZW1zIHRoZSB0aHJl
+YWQgZGlkbid0IGdldCBhbnkgcmVwbHkgZm9yIHF1aXRlIGEgbG9uZyB0aW1lLgo+Pj4KPj4+IEkn
+bSB0cnlpbmcgdG8gc2V0IHVwIHBORlMgYmxvY2sgbGF5b3V0IE1EUy9EUyBzZXJ2ZXIsIGFuZCBz
+b21lCj4+PiBzaW1pbGFyIHF1ZXN0aW9ucyBhcyBQaGlsLgo+Pj4KPj4+IC0gRm9yIGJsb2NrIGxh
+eW91dCwgaXMgaXQgbmVjZXNzYXJ5IHRvIG1ha2UgRFMgZXhwb3J0IG5mcyBzaGFyZT8KPj4gTm8u
+IEp1c3QgZXhwb3J0IHlvdXIgZGF0YSBjb25uZWN0aW9uIGlzIGVub3VnaCwgd2hpY2ggZm9yIHBu
+ZnMgYmxvY2sgY2FuIGJlIGlzY3NpL0ZTIGV0Yy4KPiBTaG91bGQgYmUgaVNDU0kgLyBGQyBmaWJl
+ciBjaGFubmVsLgo+Cj4+PiAtIEhvdyBjb3VsZCBhZGQgYSBibG9jayBsYXlvdXQgRFMgaW50byBw
+TkZTIHNlcnZlcj8KPj4gSSBkb24ndCB0aGluayBMaW51eCBwbmZzIGJsb2NrIHNlcnZlciBpbXBs
+ZW1lbnRzIHNlcGFyYXRlIERTZXMuIFNvIE1EUy9EUyBoYXMgdG8gYmUgb24gdGhlIHNhbWUgbWFj
+aGluZSBmb3IgaXQuCj4gTWF5YmUgSmFzb24gR2xhc2dvdyByZW1lbWJlcnM/Cj4KPj4+IC0gRG9l
+cyBzcG5mcyBhbHNvIHdvcmsgZm9yIGJsb2NrIGxheW91dC8KPj4gTGFyZ2VseSB5ZXMuIFRoZSB3
+aWtpIHBhZ2UgaGFzIGl0IHRoYXQgcG5mcyBibG9jayBzZXJ2ZXIgaXMgYmFzZWQgb24gc3BuZnMu
+Cj4+IGh0dHA6Ly9saW51eC1uZnMub3JnL3dpa2kvaW5kZXgucGhwL1BORlNfQmxvY2tfU2VydmVy
+X1NldHVwX0luc3RydWN0aW9ucwo+Pgo+PiBCdXQgSSdtIG5vdCBzdXJlIGlmIHRoZSBjb2RlIHN0
+aWxsIHdvcmtzLgpGb3IgbWUgdGhlIGNvZGUgZGlkbid0IHdvcmsuIElmIGkgcmVtZW1iZXIgY29y
+cmVjdGx5IEJlbiBIYWxldmV5IHRvbGQKbWUsIHRoYXQgdGhlIGNvZGUgYXJlIG5vdCBtYWludGFp
+bmVkIGF0IHRoZSBtb21lbnQuCj4+Cj4+IENoZWVycywKPj4gVGFvCj4+Cj4+IBPvv73vv73subsc
+77+9Ju+/vX7vv70m77+9GO+/ve+/vSst77+977+93bYX77+977+9d++/ve+/vcub77+977+977+9
+be+/vWLvv73vv71nfsin77+9F++/ve+/vdyofe+/ve+/ve+/vcageu+/vSZqOit277+977+977+9
+B++/ve+/ve+/ve+/vXpaK++/ve+/vSt6Zu+/ve+/ve+/vWjvv73vv73vv71+77+977+977+977+9
+ae+/ve+/ve+/vXrvv70e77+9d++/ve+/ve+/vT/vv73vv73vv73vv70m77+9Kd+iG2YKPiBO77+9
+77+977+977+977+9cu+/ve+/vXnvv73vv73vv71i77+9WO+/ve+/vcendu+/vV7vv70p3rp7Lm7v
+v70r77+977+977+977+9e++/ve+/ve+/vSLvv73vv71ebu+/vXLvv73vv71677+9Gu+/ve+/vWjv
+v73vv73vv73vv70m77+977+9Hu+/vUfvv73vv73vv71o77+9Ayjvv73pmo7vv73domoi77+977+9
+Gu+/vRtt77+977+977+977+977+9eu+/vd6W77+977+977+9Zu+/ve+/ve+/vWjvv73vv73vv71+
+77+9bW1sPT0KQmVzdCBSZWdhcmRzCgpKb2hhbm5lcwotLSANClZvcnN0YW5kc3ZvcnNpdHplbmRl
+ci9DaGFpcm1hbiBvZiB0aGUgYm9hcmQgb2YgbWFuYWdlbWVudDoNCkdlcmQtTG90aGFyIExlb25o
+YXJ0DQpWb3JzdGFuZC9Cb2FyZCBvZiBNYW5hZ2VtZW50Og0KRHIuIEJlcm5kIEZpbmtiZWluZXIs
+IE1pY2hhZWwgSGVpbnJpY2hzLCANCkRyLiBBcm5vIFN0ZWl0eiwgRHIuIEluZ3JpZCBaZWNoDQpW
+b3JzaXR6ZW5kZXIgZGVzIEF1ZnNpY2h0c3JhdHMvDQpDaGFpcm1hbiBvZiB0aGUgU3VwZXJ2aXNv
+cnkgQm9hcmQ6DQpQaGlsaXBwZSBNaWx0aW4NClNpdHovUmVnaXN0ZXJlZCBPZmZpY2U6IFR1ZWJp
+bmdlbg0KUmVnaXN0ZXJnZXJpY2h0L1JlZ2lzdHJhdGlvbiBDb3VydDogU3R1dHRnYXJ0DQpSZWdp
+c3Rlcm51bW1lci9Db21tZXJjaWFsIFJlZ2lzdGVyIE5vLjogSFJCIDM4MjE5Ngo=
 
