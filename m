@@ -1,64 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx4.science-computing.de ([193.197.16.30]:29338 "EHLO
-	mx4.science-computing.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752432Ab2KEM6E (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Nov 2012 07:58:04 -0500
-Message-ID: <5097B580.7020104@science-computing.de>
-Date: Mon, 05 Nov 2012 13:48:00 +0100
-From: Johannes Schild <j.schild@science-computing.de>
-MIME-Version: 1.0
-To: "faibish, sorin" <faibish_sorin@emc.com>
-CC: "Peng, Tao" <tao.peng@emc.com>, Jun Xiao <xiaojuntime@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+Received: from hop-nat-141.emc.com ([168.159.213.141]:33137 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S933594Ab2KFCUR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Nov 2012 21:20:17 -0500
+From: "Peng, Tao" <tao.peng@emc.com>
+To: "faibish, sorin" <faibish_sorin@emc.com>, Jun Xiao <xiaojuntime@gmail.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         Jason Glasgow <jglasgow@aya.yale.edu>
-Subject: Re: pNFS Block layout issues / questions
-References: <loom.20110328T230906-552@post.gmane.org> <4D977456.1040303@panasas.com> <loom.20121103T072206-631@post.gmane.org> <1882637210201641A747464075FFC6490291C9@MX101CL02.corp.emc.com> <B99990FD-D4C5-43D1-8096-CDAEE90BECB8@emc.com>
+Subject: RE: pNFS Block layout issues / questions
+Date: Tue, 6 Nov 2012 02:19:55 +0000
+Message-ID: <1882637210201641A747464075FFC64902A5D4@MX101CL02.corp.emc.com>
+References: <loom.20110328T230906-552@post.gmane.org>
+ <4D977456.1040303@panasas.com> <loom.20121103T072206-631@post.gmane.org>
+ <1882637210201641A747464075FFC6490291C9@MX101CL02.corp.emc.com>
+ <B99990FD-D4C5-43D1-8096-CDAEE90BECB8@emc.com>
 In-Reply-To: <B99990FD-D4C5-43D1-8096-CDAEE90BECB8@emc.com>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-QW0gMDUuMTEuMjAxMiAxMzo0Miwgc2NocmllYiBmYWliaXNoLCBzb3JpbjoKPgo+IFNlbnQgZnJv
-bSBTb3JpbidzIGlQYWQKPgo+IE9uIE5vdiA0LCAyMDEyLCBhdCA5OjMzIFBNLCAiUGVuZywgVGFv
-IiA8dGFvLnBlbmdAZW1jLmNvbT4gd3JvdGU6Cj4KPj4gSGksCj4+Cj4+IEknbGwgYW5zd2VyIHlv
-dXIgcXVlc3Rpb25zIGFzIGZhciBhcyBJIGNhbiwgYnV0IEkgbXlzZWxmIGFtIG5vdCBmYW1pbGlh
-ciB3aXRoIExpbnV4IHBuZnMgYmxvY2sgc2VydmVyIGltcGxlbWVudGF0aW9uLgo+Pgo+Pj4gLS0t
-LS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0KPj4+IEZyb206IGxpbnV4LW5mcy1vd25lckB2Z2VyLmtl
-cm5lbC5vcmcgW21haWx0bzpsaW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnXSBPbiBCZWhh
-bGYgT2YgSnVuIFhpYW8KPj4+IFNlbnQ6IFNhdHVyZGF5LCBOb3ZlbWJlciAwMywgMjAxMiAzOjI4
-IFBNCj4+PiBUbzogbGludXgtbmZzQHZnZXIua2VybmVsLm9yZwo+Pj4gU3ViamVjdDogUmU6IHBO
-RlMgQmxvY2sgbGF5b3V0IGlzc3VlcyAvIHF1ZXN0aW9ucwo+Pj4KPj4+IFNlZW1zIHRoZSB0aHJl
-YWQgZGlkbid0IGdldCBhbnkgcmVwbHkgZm9yIHF1aXRlIGEgbG9uZyB0aW1lLgo+Pj4KPj4+IEkn
-bSB0cnlpbmcgdG8gc2V0IHVwIHBORlMgYmxvY2sgbGF5b3V0IE1EUy9EUyBzZXJ2ZXIsIGFuZCBz
-b21lCj4+PiBzaW1pbGFyIHF1ZXN0aW9ucyBhcyBQaGlsLgo+Pj4KPj4+IC0gRm9yIGJsb2NrIGxh
-eW91dCwgaXMgaXQgbmVjZXNzYXJ5IHRvIG1ha2UgRFMgZXhwb3J0IG5mcyBzaGFyZT8KPj4gTm8u
-IEp1c3QgZXhwb3J0IHlvdXIgZGF0YSBjb25uZWN0aW9uIGlzIGVub3VnaCwgd2hpY2ggZm9yIHBu
-ZnMgYmxvY2sgY2FuIGJlIGlzY3NpL0ZTIGV0Yy4KPiBTaG91bGQgYmUgaVNDU0kgLyBGQyBmaWJl
-ciBjaGFubmVsLgo+Cj4+PiAtIEhvdyBjb3VsZCBhZGQgYSBibG9jayBsYXlvdXQgRFMgaW50byBw
-TkZTIHNlcnZlcj8KPj4gSSBkb24ndCB0aGluayBMaW51eCBwbmZzIGJsb2NrIHNlcnZlciBpbXBs
-ZW1lbnRzIHNlcGFyYXRlIERTZXMuIFNvIE1EUy9EUyBoYXMgdG8gYmUgb24gdGhlIHNhbWUgbWFj
-aGluZSBmb3IgaXQuCj4gTWF5YmUgSmFzb24gR2xhc2dvdyByZW1lbWJlcnM/Cj4KPj4+IC0gRG9l
-cyBzcG5mcyBhbHNvIHdvcmsgZm9yIGJsb2NrIGxheW91dC8KPj4gTGFyZ2VseSB5ZXMuIFRoZSB3
-aWtpIHBhZ2UgaGFzIGl0IHRoYXQgcG5mcyBibG9jayBzZXJ2ZXIgaXMgYmFzZWQgb24gc3BuZnMu
-Cj4+IGh0dHA6Ly9saW51eC1uZnMub3JnL3dpa2kvaW5kZXgucGhwL1BORlNfQmxvY2tfU2VydmVy
-X1NldHVwX0luc3RydWN0aW9ucwo+Pgo+PiBCdXQgSSdtIG5vdCBzdXJlIGlmIHRoZSBjb2RlIHN0
-aWxsIHdvcmtzLgpGb3IgbWUgdGhlIGNvZGUgZGlkbid0IHdvcmsuIElmIGkgcmVtZW1iZXIgY29y
-cmVjdGx5IEJlbiBIYWxldmV5IHRvbGQKbWUsIHRoYXQgdGhlIGNvZGUgYXJlIG5vdCBtYWludGFp
-bmVkIGF0IHRoZSBtb21lbnQuCj4+Cj4+IENoZWVycywKPj4gVGFvCj4+Cj4+IBPvv73vv73subsc
-77+9Ju+/vX7vv70m77+9GO+/ve+/vSst77+977+93bYX77+977+9d++/ve+/vcub77+977+977+9
-be+/vWLvv73vv71nfsin77+9F++/ve+/vdyofe+/ve+/ve+/vcageu+/vSZqOit277+977+977+9
-B++/ve+/ve+/ve+/vXpaK++/ve+/vSt6Zu+/ve+/ve+/vWjvv73vv73vv71+77+977+977+977+9
-ae+/ve+/ve+/vXrvv70e77+9d++/ve+/ve+/vT/vv73vv73vv73vv70m77+9Kd+iG2YKPiBO77+9
-77+977+977+977+9cu+/ve+/vXnvv73vv73vv71i77+9WO+/ve+/vcendu+/vV7vv70p3rp7Lm7v
-v70r77+977+977+977+9e++/ve+/ve+/vSLvv73vv71ebu+/vXLvv73vv71677+9Gu+/ve+/vWjv
-v73vv73vv73vv70m77+977+9Hu+/vUfvv73vv73vv71o77+9Ayjvv73pmo7vv73domoi77+977+9
-Gu+/vRtt77+977+977+977+977+9eu+/vd6W77+977+977+9Zu+/ve+/ve+/vWjvv73vv73vv71+
-77+9bW1sPT0KQmVzdCBSZWdhcmRzCgpKb2hhbm5lcwotLSANClZvcnN0YW5kc3ZvcnNpdHplbmRl
-ci9DaGFpcm1hbiBvZiB0aGUgYm9hcmQgb2YgbWFuYWdlbWVudDoNCkdlcmQtTG90aGFyIExlb25o
-YXJ0DQpWb3JzdGFuZC9Cb2FyZCBvZiBNYW5hZ2VtZW50Og0KRHIuIEJlcm5kIEZpbmtiZWluZXIs
-IE1pY2hhZWwgSGVpbnJpY2hzLCANCkRyLiBBcm5vIFN0ZWl0eiwgRHIuIEluZ3JpZCBaZWNoDQpW
-b3JzaXR6ZW5kZXIgZGVzIEF1ZnNpY2h0c3JhdHMvDQpDaGFpcm1hbiBvZiB0aGUgU3VwZXJ2aXNv
-cnkgQm9hcmQ6DQpQaGlsaXBwZSBNaWx0aW4NClNpdHovUmVnaXN0ZXJlZCBPZmZpY2U6IFR1ZWJp
-bmdlbg0KUmVnaXN0ZXJnZXJpY2h0L1JlZ2lzdHJhdGlvbiBDb3VydDogU3R1dHRnYXJ0DQpSZWdp
-c3Rlcm51bW1lci9Db21tZXJjaWFsIFJlZ2lzdGVyIE5vLjogSFJCIDM4MjE5Ngo=
-
+DQo+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+IEZyb206IGZhaWJpc2gsIHNvcmluDQo+
+IFNlbnQ6IE1vbmRheSwgTm92ZW1iZXIgMDUsIDIwMTIgODo0MiBQTQ0KPiBUbzogUGVuZywgVGFv
+DQo+IENjOiBKdW4gWGlhbzsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZzsgSmFzb24gR2xhc2dv
+dw0KPiBTdWJqZWN0OiBSZTogcE5GUyBCbG9jayBsYXlvdXQgaXNzdWVzIC8gcXVlc3Rpb25zDQo+
+IA0KPiANCj4gDQo+IFNlbnQgZnJvbSBTb3JpbidzIGlQYWQNCj4gDQo+IE9uIE5vdiA0LCAyMDEy
+LCBhdCA5OjMzIFBNLCAiUGVuZywgVGFvIiA8dGFvLnBlbmdAZW1jLmNvbT4gd3JvdGU6DQo+IA0K
+PiA+IEhpLA0KPiA+DQo+ID4gSSdsbCBhbnN3ZXIgeW91ciBxdWVzdGlvbnMgYXMgZmFyIGFzIEkg
+Y2FuLCBidXQgSSBteXNlbGYgYW0gbm90IGZhbWlsaWFyIHdpdGggTGludXggcG5mcyBibG9jaw0K
+PiBzZXJ2ZXIgaW1wbGVtZW50YXRpb24uDQo+ID4NCj4gPj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdl
+LS0tLS0NCj4gPj4gRnJvbTogbGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZyBbbWFpbHRv
+OmxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmddIE9uIEJlaGFsZiBPZiBKdW4NCj4gWGlh
+bw0KPiA+PiBTZW50OiBTYXR1cmRheSwgTm92ZW1iZXIgMDMsIDIwMTIgMzoyOCBQTQ0KPiA+PiBU
+bzogbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiA+PiBTdWJqZWN0OiBSZTogcE5GUyBCbG9j
+ayBsYXlvdXQgaXNzdWVzIC8gcXVlc3Rpb25zDQo+ID4+DQo+ID4+IFNlZW1zIHRoZSB0aHJlYWQg
+ZGlkbid0IGdldCBhbnkgcmVwbHkgZm9yIHF1aXRlIGEgbG9uZyB0aW1lLg0KPiA+Pg0KPiA+PiBJ
+J20gdHJ5aW5nIHRvIHNldCB1cCBwTkZTIGJsb2NrIGxheW91dCBNRFMvRFMgc2VydmVyLCBhbmQg
+c29tZQ0KPiA+PiBzaW1pbGFyIHF1ZXN0aW9ucyBhcyBQaGlsLg0KPiA+Pg0KPiA+PiAtIEZvciBi
+bG9jayBsYXlvdXQsIGlzIGl0IG5lY2Vzc2FyeSB0byBtYWtlIERTIGV4cG9ydCBuZnMgc2hhcmU/
+DQo+ID4gTm8uIEp1c3QgZXhwb3J0IHlvdXIgZGF0YSBjb25uZWN0aW9uIGlzIGVub3VnaCwgd2hp
+Y2ggZm9yIHBuZnMgYmxvY2sgY2FuIGJlIGlzY3NpL0ZTIGV0Yy4NCj4gU2hvdWxkIGJlIGlTQ1NJ
+IC8gRkMgZmliZXIgY2hhbm5lbC4NCj4gDQpZZXMuIGFuZCBzb3JyeSBmb3IgdGhlIHR5cG8uLi4N
+Cg0KPiA+DQo+ID4+IC0gSG93IGNvdWxkIGFkZCBhIGJsb2NrIGxheW91dCBEUyBpbnRvIHBORlMg
+c2VydmVyPw0KPiA+IEkgZG9uJ3QgdGhpbmsgTGludXggcG5mcyBibG9jayBzZXJ2ZXIgaW1wbGVt
+ZW50cyBzZXBhcmF0ZSBEU2VzLiBTbyBNRFMvRFMgaGFzIHRvIGJlIG9uIHRoZSBzYW1lDQo+IG1h
+Y2hpbmUgZm9yIGl0Lg0KPiBNYXliZSBKYXNvbiBHbGFzZ293IHJlbWVtYmVycz8NCj4gDQpGb3Ig
+c3BuZnMsIE1EUy9EUyBoYXMgdG8gYmUgb24gdGhlIHNhbWUgbWFjaGluZS4gRm9yIGJsb2NrIGxh
+eW91dCBzZXJ2ZXIsIHRoZXJlIGlzIG5vdCBtdWNoIGNvbmNlcHQgb2YgRFNlcy4gVGhlIG9ubHkg
+cmVxdWlyZW1lbnQgaXMgdGhhdCBNRFMgYW5kIGNsaWVudHMgY2FuIGFjY2VzcyB0aGUgc2FtZSBz
+dG9yYWdlLiBTbyBpdCBjYW4gYmUgZWl0aGVyIGlzY3NpIGV4cG9ydGVkIGZyb20gdGhlIHNhbWUg
+TURTLCBvciBzb21lIHNoYXJlZCBzdG9yYWdlIGxpa2UgU0FOIGV0Yy4NCg0KQ2hlZXJzLA0KVGFv
+DQoNCj4gPg0KPiA+PiAtIERvZXMgc3BuZnMgYWxzbyB3b3JrIGZvciBibG9jayBsYXlvdXQvDQo+
+ID4gTGFyZ2VseSB5ZXMuIFRoZSB3aWtpIHBhZ2UgaGFzIGl0IHRoYXQgcG5mcyBibG9jayBzZXJ2
+ZXIgaXMgYmFzZWQgb24gc3BuZnMuDQo+ID4gaHR0cDovL2xpbnV4LW5mcy5vcmcvd2lraS9pbmRl
+eC5waHAvUE5GU19CbG9ja19TZXJ2ZXJfU2V0dXBfSW5zdHJ1Y3Rpb25zDQo+ID4NCj4gPiBCdXQg
+SSdtIG5vdCBzdXJlIGlmIHRoZSBjb2RlIHN0aWxsIHdvcmtzLg0KPiA+DQo+ID4gQ2hlZXJzLA0K
+PiA+IFRhbw0KPiA+DQo+ID4gE++/ve+/vey5uxzvv70m77+9fu+/vSbvv70Y77+977+9Ky0NCj4g
+77+977+93bYX77+977+9d++/ve+/vcub77+977+977+9be+/vWLvv73vv71nfsin77+9F++/ve+/
+vdyofe+/ve+/ve+/vcageu+/vSZqOit277+977+977+9De+/ve+/ve+/ve+/vXpaK++/ve+/vSt6
+Zu+/ve+/ve+/vWjvv73vv73vv71+77+977+977+977+9ae+/ve+/ve+/vXrvv70e77+9d++/ve+/
+ve+/vT/vv73vv73vv73vv70m77+9Kd+iG2YNCg==
