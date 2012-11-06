@@ -1,132 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ia0-f174.google.com ([209.85.210.174]:35852 "EHLO
-	mail-ia0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753769Ab2KPX2z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Nov 2012 18:28:55 -0500
-Received: by mail-ia0-f174.google.com with SMTP id y25so2063184iay.19
-        for <linux-nfs@vger.kernel.org>; Fri, 16 Nov 2012 15:28:55 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] SUNRPC: Allow rpc_clone_client() to share rpc_auth objects
-To: linux-nfs@vger.kernel.org
-Date: Fri, 16 Nov 2012 18:28:51 -0500
-Message-ID: <20121116232846.4931.88675.stgit@seurat.1015granger.net>
+Received: from fieldses.org ([174.143.236.118]:47897 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751410Ab2KFNHK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Nov 2012 08:07:10 -0500
+Date: Tue, 6 Nov 2012 08:07:06 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>,
+        "Eric W. Biederman" <ebiederm@xmission.com>
+Subject: Re: [PATCH v3] SUNRPC: set desired file system root before
+ connecting local transports
+Message-ID: <20121106130705.GC6718@fieldses.org>
+References: <20121008105437.18668.99905.stgit@localhost.localdomain>
+ <20121009193506.GA19680@fieldses.org>
+ <5098E31A.5080801@parallels.com>
+ <20121106120642.GA6718@fieldses.org>
+ <20121106124035.GA20522@infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121106124035.GA20522@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields reports:
-> On 3.7-rc1:
->
-> 	client# mount -tnfs -osec=krb5,vers=3 server:/exports/ext4 /mnt/
->
-> 		server# ls -l /exports/ext4|grep TMP
-> 		server#
->
-> 	# mkdir /mnt/TMP
-> 	mkdir: cannot create directory `/mnt/TMP': Permission denied
->
-> 		server# ls -l /exports/ext4|grep TMP
-> 		drwxr-xr-x  2 nfsnobody nfsnobody 4096 Oct 16 08:56 TMP
-> 		server#
->
-> Wireshark also shows that the create succeeds.
+On Tue, Nov 06, 2012 at 07:40:35AM -0500, Christoph Hellwig wrote:
+> On Tue, Nov 06, 2012 at 07:06:42AM -0500, J. Bruce Fields wrote:
+> > On Tue, Nov 06, 2012 at 02:14:50PM +0400, Stanislav Kinsbursky wrote:
+> > > 09.10.2012 23:35, J. Bruce Fields ??????????:
+> > > >Cc'ing Eric since I seem to recall he suggested doing it this way?
+> > > >
+> > > >Seems OK to me, but maybe that swap_root should be in common code?  (Or
+> > > >maybe we could use set_fs_root()?)
+> > > >
+> > > 
+> > > This patch is not good since, as Eric mentioned, all kernel threads
+> > > share same fs struct.
+> > > We can swap whole fs struct. Or we can unshare fs struct
+> > > (unshare_fs_struct() is exported) and swap root in this case.
+> > > But this approach is to close to set_fs_root() logic, which is not
+> > > exported and seems there are some valid reasons for it.
+> > 
+> > What are those reasons?
+> > 
+> > Googling found one previous thread:
+> > 
+> > 	http://thread.gmane.org/gmane.linux.kernel/1259986/focus=47687
+> > 
+> > There Trond requests an ACK from Al or Cristoph for the export, but I
+> > don't see either an ACK or any objection.
+> 
+> I really don't think messing with current->fs for workqueue worker
+> threads is a good idea, as the worker threads are shared by different
+> workqueues and thus this can easily cause havoc for entirely unrelated
+> subsystems.
 
-The NFS3 MKDIR operation succeeds but the mkdir(2) system call fails
-because the NFS client attempts to retrieve the ACL on the new
-directory, but encounters a problem that appears to have been
-introduced by commit 1b63a751 "SUNRPC: Refactor rpc_clone_client()",
-Sep 14 17:23:52 2012.
+So you're worried that a bug in the nfs code could modify the root and
+then not restore it?
 
-NFSv3 ACL requests are part of a side-band protocol called NFSACL.
-Unlike the MNT or NLM side-band protocols, an NFS client sends
-NFSACL protocol requests on the same transport as it sends NFS
-protocol requests.
+--b.
 
-The Linux NFS client clones the rpc_clnt for the NFS protocol to
-make an rpc_clnt for NFSACL protocol requests, but they share the
-underlying transport (rpc_xprt).  Normally the original rpc_clnt's
-rpc_auth object should also be shared by both rpc_clnt's.  See
-rpc_bind_new_program() and rpc_clone_client().
-
-Thanks to 1b63a751, however, rpc_clone_client() create a _new_
-rpc_auth object for the NFSACL rpc_clnt.  With AUTH_GSS, this means
-a fresh GSS context must be created for the new rpc_auth object.
-rpc.gssd tries to create the context with the service name
-"nfsacl@servername".  The NFS server does not recognize that service
-name.
-
-The solution is to restore the original pre-1b63a751 behavior of
-rpc_clone_client().  This behavior is to share an rpc_auth
-object between the original rpc_clnt and the cloned rpc_clnt.  A
-fresh GSS context for the NFSACL rpc_clnt is then no longer
-required.  It simply uses the one that is already established for
-the NFS rpc_clnt.
-
-Reported-by: J. Bruce Fields <bfields@fieldses.org>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- include/linux/sunrpc/clnt.h |    1 +
- net/sunrpc/clnt.c           |   21 +++++++++++++++------
- 2 files changed, 16 insertions(+), 6 deletions(-)
-
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 34206b8..2931952 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -112,6 +112,7 @@ struct rpc_create_args {
- 	u32			prognumber;	/* overrides program->number */
- 	u32			version;
- 	rpc_authflavor_t	authflavor;
-+	struct rpc_auth		*auth;
- 	unsigned long		flags;
- 	char			*client_name;
- 	struct svc_xprt		*bc_xprt;	/* NFSv4.1 backchannel */
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index cdc7564..c75630a 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -356,12 +356,17 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args, stru
- 	if (err < 0)
- 		goto out_no_path;
- 
--	auth = rpcauth_create(args->authflavor, clnt);
--	if (IS_ERR(auth)) {
--		printk(KERN_INFO "RPC: Couldn't create auth handle (flavor %u)\n",
--				args->authflavor);
--		err = PTR_ERR(auth);
--		goto out_no_auth;
-+	if (args->auth == NULL) {
-+		auth = rpcauth_create(args->authflavor, clnt);
-+		if (IS_ERR(auth)) {
-+			printk(KERN_INFO "RPC: Couldn't create auth handle (flavor %u)\n",
-+					args->authflavor);
-+			err = PTR_ERR(auth);
-+			goto out_no_auth;
-+		}
-+	} else {
-+		atomic_inc(&args->auth->au_count);
-+		clnt->cl_auth = args->auth;
- 	}
- 
- 	/* save the nodename */
-@@ -542,6 +547,7 @@ struct rpc_clnt *rpc_clone_client(struct rpc_clnt *clnt)
- 		.prognumber	= clnt->cl_prog,
- 		.version	= clnt->cl_vers,
- 		.authflavor	= clnt->cl_auth->au_flavor,
-+		.auth		= clnt->cl_auth,
- 		.client_name	= clnt->cl_principal,
- 	};
- 	return __rpc_clone_client(&args, clnt);
-@@ -566,6 +572,9 @@ rpc_clone_client_set_auth(struct rpc_clnt *clnt, rpc_authflavor_t flavor)
- 		.authflavor	= flavor,
- 		.client_name	= clnt->cl_principal,
- 	};
-+
-+	if (flavor == clnt->cl_auth->au_flavor)
-+		args.auth = clnt->cl_auth;
- 	return __rpc_clone_client(&args, clnt);
- }
- EXPORT_SYMBOL_GPL(rpc_clone_client_set_auth);
-
+> 
+> To do this properly you'll need to avoid current->fs references in the
+> sunrpc code.
+> 
+> And just in case it wasn't clear: the hack in this iteration is even
+> worse than the original.
