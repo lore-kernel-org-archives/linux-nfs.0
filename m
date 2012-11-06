@@ -1,52 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51481 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754404Ab2KHAgW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Nov 2012 19:36:22 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 3/4] svcrpc: demote some printks to a dprintk
-Date: Wed,  7 Nov 2012 19:36:11 -0500
-Message-Id: <1352334972-28495-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <1352334972-28495-1-git-send-email-bfields@redhat.com>
-References: <1352334972-28495-1-git-send-email-bfields@redhat.com>
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:42613
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750846Ab2KFNK2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Nov 2012 08:10:28 -0500
+Date: Tue, 6 Nov 2012 08:10:18 -0500
+From: Christoph Hellwig <hch@infradead.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>,
+        "Eric W. Biederman" <ebiederm@xmission.com>
+Subject: Re: [PATCH v3] SUNRPC: set desired file system root before
+ connecting local transports
+Message-ID: <20121106131018.GA12211@infradead.org>
+References: <20121008105437.18668.99905.stgit@localhost.localdomain>
+ <20121009193506.GA19680@fieldses.org>
+ <5098E31A.5080801@parallels.com>
+ <20121106120642.GA6718@fieldses.org>
+ <20121106124035.GA20522@infradead.org>
+ <20121106130705.GC6718@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121106130705.GC6718@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Tue, Nov 06, 2012 at 08:07:06AM -0500, J. Bruce Fields wrote:
+> So you're worried that a bug in the nfs code could modify the root and
+> then not restore it?
 
-In general I'd rather random bad behavior on the network won't trigger a
-printk.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- net/sunrpc/svc.c |    5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
-
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 3ee7461..be301e1 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1035,7 +1035,7 @@ static void svc_unregister(const struct svc_serv *serv, struct net *net)
- }
- 
- /*
-- * Printk the given error with the address of the client that caused it.
-+ * dprintk the given error with the address of the client that caused it.
-  */
- static __printf(2, 3)
- void svc_printk(struct svc_rqst *rqstp, const char *fmt, ...)
-@@ -1049,8 +1049,7 @@ void svc_printk(struct svc_rqst *rqstp, const char *fmt, ...)
- 	vaf.fmt = fmt;
- 	vaf.va = &args;
- 
--	net_warn_ratelimited("svc: %s: %pV",
--			     svc_print_addr(rqstp, buf, sizeof(buf)), &vaf);
-+	dprintk("svc: %s: %pV", svc_print_addr(rqstp, buf, sizeof(buf)), &vaf);
- 
- 	va_end(args);
- }
--- 
-1.7.9.5
+At least the link you pointed to earlier never sets it back.  Instead
+of messing with it I'd rather have the sunrpc code use vfs_path_lookup
+and not care about current->fs->root at all.
 
