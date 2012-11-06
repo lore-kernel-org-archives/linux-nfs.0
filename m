@@ -1,39 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:17249 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:56356 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754967Ab2K1U2U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Nov 2012 15:28:20 -0500
-Date: Wed, 28 Nov 2012 15:28:13 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+	id S1751274Ab2KFMGq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 Nov 2012 07:06:46 -0500
+Date: Tue, 6 Nov 2012 07:06:42 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
-Subject: Re: NFSd in container - it works
-Message-ID: <20121128152813.2b4c388d@tlielax.poochiereds.net>
-In-Reply-To: <20121128200126.GA17875@fieldses.org>
-References: <50B64628.4070007@parallels.com>
-	<20121128200126.GA17875@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>,
+        "Eric W. Biederman" <ebiederm@xmission.com>
+Subject: Re: [PATCH v3] SUNRPC: set desired file system root before
+ connecting local transports
+Message-ID: <20121106120642.GA6718@fieldses.org>
+References: <20121008105437.18668.99905.stgit@localhost.localdomain>
+ <20121009193506.GA19680@fieldses.org>
+ <5098E31A.5080801@parallels.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <5098E31A.5080801@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 28 Nov 2012 15:01:26 -0500
-"bfields@fieldses.org" <bfields@fieldses.org> wrote:
-
-> > 3) Holding net by tracker looks redundant. What was the reason for this?
+On Tue, Nov 06, 2012 at 02:14:50PM +0400, Stanislav Kinsbursky wrote:
+> 09.10.2012 23:35, J. Bruce Fields пишет:
+> >Cc'ing Eric since I seem to recall he suggested doing it this way?
+> >
+> >Seems OK to me, but maybe that swap_root should be in common code?  (Or
+> >maybe we could use set_fs_root()?)
+> >
 > 
-> I don't understand, what's tracker?
+> This patch is not good since, as Eric mentioned, all kernel threads
+> share same fs struct.
+> We can swap whole fs struct. Or we can unshare fs struct
+> (unshare_fs_struct() is exported) and swap root in this case.
+> But this approach is to close to set_fs_root() logic, which is not
+> exported and seems there are some valid reasons for it.
 
-I assume he means the clientid tracker. That was necessary for the
-nfsdcld upcall because it used rpc_pipefs files, and those were
-net-namespacified. Once we deprecate that in 3.10, I don't think we'll
-need to worry about the net namespace in the clientid tracker.
+What are those reasons?
 
-We probably *will* need to concern ourselves with the mnt namespace
-there though since each container will presumably have its own clientid
-database...
+Googling found one previous thread:
 
--- 
-Jeff Layton <jlayton@redhat.com>
+	http://thread.gmane.org/gmane.linux.kernel/1259986/focus=47687
+
+There Trond requests an ACK from Al or Cristoph for the export, but I
+don't see either an ACK or any objection.
+
+--b.
