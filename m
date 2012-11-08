@@ -1,54 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:59995 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:57237 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752404Ab2KHQvw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Nov 2012 11:51:52 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+	id S1754464Ab2KHAo2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Nov 2012 19:44:28 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
 To: linux-nfs@vger.kernel.org
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Subject: [PATCH v2] SUNRPC: Fix validity issues with rpc_pipefs sb->s_fs_info
-Date: Thu,  8 Nov 2012 11:51:46 -0500
-Message-Id: <1352393506-39590-1-git-send-email-Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 4/5] nfsd4: common helper to initialize callback work
+Date: Wed,  7 Nov 2012 19:44:22 -0500
+Message-Id: <1352335463-29084-5-git-send-email-bfields@redhat.com>
+In-Reply-To: <1352335463-29084-1-git-send-email-bfields@redhat.com>
+References: <1352335463-29084-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-rpc_kill_sb() must defer calling put_net() until after the notifier
-has been called, since most (all?) of the notifier callbacks assume
-that sb->s_fs_info points to a valid net namespace. It also must not
-call put_net() if the call to rpc_fill_super was unsuccessful.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: stable@vger.kernel.org [>= v3.4]
+I've found it confusing having the only references to
+nfsd4_do_callback_rpc() in a different file.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- net/sunrpc/rpc_pipe.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+ fs/nfsd/nfs4callback.c |    7 ++++++-
+ fs/nfsd/nfs4state.c    |    4 ++--
+ fs/nfsd/state.h        |    2 +-
+ 3 files changed, 9 insertions(+), 4 deletions(-)
 
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 21fde99..2a419f1 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -1152,14 +1152,19 @@ static void rpc_kill_sb(struct super_block *sb)
- 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
- 
- 	mutex_lock(&sn->pipefs_sb_lock);
-+	if (sn->pipefs_sb != sb) {
-+		mutex_unlock(&sn->pipefs_sb_lock);
-+		goto out;
-+	}
- 	sn->pipefs_sb = NULL;
- 	mutex_unlock(&sn->pipefs_sb_lock);
--	put_net(net);
- 	dprintk("RPC:	sending pipefs UMOUNT notification for net %p%s\n", net,
- 								NET_NAME(net));
- 	blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
- 					   RPC_PIPEFS_UMOUNT,
- 					   sb);
-+	put_net(net);
-+out:
- 	kill_litter_super(sb);
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index b32639e..a1aa18d 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -1016,7 +1016,7 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
+ 		run_nfsd4_cb(cb);
  }
  
+-void nfsd4_do_callback_rpc(struct work_struct *w)
++static void nfsd4_do_callback_rpc(struct work_struct *w)
+ {
+ 	struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback, cb_work);
+ 	struct nfs4_client *clp = cb->cb_clp;
+@@ -1036,6 +1036,11 @@ void nfsd4_do_callback_rpc(struct work_struct *w)
+ 			cb->cb_ops, cb);
+ }
+ 
++void nfsd4_init_callback(struct nfsd4_callback *cb)
++{
++	INIT_WORK(&cb->cb_work, nfsd4_do_callback_rpc);
++}
++
+ void nfsd4_cb_recall(struct nfs4_delegation *dp)
+ {
+ 	struct nfsd4_callback *cb = &dp->dl_recall;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 4023e77..13f3471 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -340,7 +340,7 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
+ 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
+ 	dp->dl_time = 0;
+ 	atomic_set(&dp->dl_count, 1);
+-	INIT_WORK(&dp->dl_recall.cb_work, nfsd4_do_callback_rpc);
++	nfsd4_init_callback(&dp->dl_recall);
+ 	return dp;
+ }
+ 
+@@ -1313,7 +1313,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name, char *recdir,
+ 	INIT_LIST_HEAD(&clp->cl_lru);
+ 	INIT_LIST_HEAD(&clp->cl_callbacks);
+ 	spin_lock_init(&clp->cl_lock);
+-	INIT_WORK(&clp->cl_cb_null.cb_work, nfsd4_do_callback_rpc);
++	nfsd4_init_callback(&clp->cl_cb_null);
+ 	clp->cl_time = get_seconds();
+ 	clear_bit(0, &clp->cl_cb_slot_busy);
+ 	rpc_init_wait_queue(&clp->cl_cb_waitq, "Backchannel slot table");
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 758bc9c..0fd342a 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -470,10 +470,10 @@ extern __be32 nfs4_check_open_reclaim(clientid_t *clid, bool sessions);
+ extern void nfs4_free_openowner(struct nfs4_openowner *);
+ extern void nfs4_free_lockowner(struct nfs4_lockowner *);
+ extern int set_callback_cred(void);
++extern void nfsd4_init_callback(struct nfsd4_callback *);
+ extern void nfsd4_probe_callback(struct nfs4_client *clp);
+ extern void nfsd4_probe_callback_sync(struct nfs4_client *clp);
+ extern void nfsd4_change_callback(struct nfs4_client *clp, struct nfs4_cb_conn *);
+-extern void nfsd4_do_callback_rpc(struct work_struct *);
+ extern void nfsd4_cb_recall(struct nfs4_delegation *dp);
+ extern int nfsd4_create_callback_queue(void);
+ extern void nfsd4_destroy_callback_queue(void);
 -- 
-1.7.11.7
+1.7.9.5
 
