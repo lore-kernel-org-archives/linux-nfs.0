@@ -1,122 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:2425 "EHLO mx2.netapp.com"
+Received: from mx1.netapp.com ([216.240.18.38]:17796 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752122Ab2KLU1u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Nov 2012 15:27:50 -0500
-Message-ID: <50A15BC4.7080809@netapp.com>
-Date: Mon, 12 Nov 2012 15:27:48 -0500
-From: Bryan Schumaker <bjschuma@netapp.com>
-MIME-Version: 1.0
-To: Andy Adamson <androsadamson@gmail.com>
-CC: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] NFS: Add sequence_priviliged_ops for nfs4_proc_sequence()
-References: <1352745355-31157-1-git-send-email-bjschuma@netapp.com> <CAHVgHyWyKhjOc4AFY3LvK57k8JK5zNJDkRGwUjqNA4LMYcSzdw@mail.gmail.com>
-In-Reply-To: <CAHVgHyWyKhjOc4AFY3LvK57k8JK5zNJDkRGwUjqNA4LMYcSzdw@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1752600Ab2KHPdA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Nov 2012 10:33:00 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Subject: [PATCH] SUNRPC: Fix validity issues with rpc_pipefs sb->s_fs_info
+Date: Thu,  8 Nov 2012 10:32:54 -0500
+Message-Id: <1352388774-37495-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/12/2012 03:22 PM, Andy Adamson wrote:
-> On Mon, Nov 12, 2012 at 1:35 PM,  <bjschuma@netapp.com> wrote:
->> From: Bryan Schumaker <bjschuma@netapp.com>
->>
->> During recovery the NFS4_SESSION_DRAINING flag might be set on the
->> client structure.  This can cause lease renewal to abort when
->> nfs41_setup_sequence sees that we are doing recovery.  As a result, the
->> client never recovers and all activity with the NFS server halts.
-> 
-> 
-> When does this happen? Say the session is draining, and an RPC returns
-> from one of the compounds such as nfs_open, nfs_locku etc whose
-> rpc_call_done routine calls renew_lease after freeing it's slot.  Like
-> all calls on a draining session, the renew_lease sleeps on the session
-> slot_tbl_waitq - is this what you mean by "causes lease renewal to
-> abort"? How does this cause the client to never recover?
+rpc_fill_super must not exit without setting sb->s_fs_info, since it is
+used in rpc_kill_sb(), which is called by mount_ns() on failure.
 
-I'm not sure exactly what causes it, but I was able to hit this fairly reliably when mounting a server to 4 or 5 mountpoints on a client and then running xfstests against each mountpoint.  At some point during the tests the client gets a cb_path_down sequence error, tries to recover but hangs after the bind connection to session.
+rpc_kill_sb() must defer calling put_net() until after the notifier
+has been called, since most (all?) of the notifier callbacks assume
+that sb->s_fs_info points to a valid net namespace.
 
-> 
-> The only other call to renew_lease is from the state manager itself
-> which runs one function at a time, and will not call renew_lease until
-> the recovery is over....
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: stable@vger.kernel.org [>= v3.4]
+---
+ net/sunrpc/rpc_pipe.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-It's this call that isn't completing.  nfs4_begin_drain_session() was called as part of bind connection to session, but there was never a call to nfs4_end_drain_session() by the time renew_lease was called so the client doesn't know that recovery is over.
-
-> 
-> What am I missing....?
-> -->Andy
-> 
-> 
->>
->> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
->> ---
->>  fs/nfs/nfs4proc.c | 21 +++++++++++++++++----
->>  1 file changed, 17 insertions(+), 4 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index 5eec442..537181c 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -6138,13 +6138,26 @@ static void nfs41_sequence_prepare(struct rpc_task *task, void *data)
->>         rpc_call_start(task);
->>  }
->>
->> +static void nfs41_sequence_prepare_privileged(struct rpc_task *task, void *data)
->> +{
->> +       rpc_task_set_priority(task, RPC_PRIORITY_PRIVILEGED);
->> +       nfs41_sequence_prepare(task, data);
->> +}
->> +
->>  static const struct rpc_call_ops nfs41_sequence_ops = {
->>         .rpc_call_done = nfs41_sequence_call_done,
->>         .rpc_call_prepare = nfs41_sequence_prepare,
->>         .rpc_release = nfs41_sequence_release,
->>  };
->>
->> -static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp, struct rpc_cred *cred)
->> +static const struct rpc_call_ops nfs41_sequence_privileged_ops = {
->> +       .rpc_call_done = nfs41_sequence_call_done,
->> +       .rpc_call_prepare = nfs41_sequence_prepare_privileged,
->> +       .rpc_release = nfs41_sequence_release,
->> +};
->> +
->> +static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp, struct rpc_cred *cred,
->> +                                            const struct rpc_call_ops *seq_ops)
->>  {
->>         struct nfs4_sequence_data *calldata;
->>         struct rpc_message msg = {
->> @@ -6154,7 +6167,7 @@ static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp, struct rpc_
->>         struct rpc_task_setup task_setup_data = {
->>                 .rpc_client = clp->cl_rpcclient,
->>                 .rpc_message = &msg,
->> -               .callback_ops = &nfs41_sequence_ops,
->> +               .callback_ops = seq_ops,
->>                 .flags = RPC_TASK_ASYNC | RPC_TASK_SOFT,
->>         };
->>
->> @@ -6181,7 +6194,7 @@ static int nfs41_proc_async_sequence(struct nfs_client *clp, struct rpc_cred *cr
->>
->>         if ((renew_flags & NFS4_RENEW_TIMEOUT) == 0)
->>                 return 0;
->> -       task = _nfs41_proc_sequence(clp, cred);
->> +       task = _nfs41_proc_sequence(clp, cred, &nfs41_sequence_ops);
->>         if (IS_ERR(task))
->>                 ret = PTR_ERR(task);
->>         else
->> @@ -6195,7 +6208,7 @@ static int nfs4_proc_sequence(struct nfs_client *clp, struct rpc_cred *cred)
->>         struct rpc_task *task;
->>         int ret;
->>
->> -       task = _nfs41_proc_sequence(clp, cred);
->> +       task = _nfs41_proc_sequence(clp, cred, &nfs41_sequence_privileged_ops);
->>         if (IS_ERR(task)) {
->>                 ret = PTR_ERR(task);
->>                 goto out;
->> --
->> 1.8.0
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 21fde99..253af66 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -1112,6 +1112,7 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ 	sb->s_magic = RPCAUTH_GSSMAGIC;
+ 	sb->s_op = &s_ops;
+ 	sb->s_time_gran = 1;
++	sb->s_fs_info = get_net(net);
+ 
+ 	inode = rpc_get_inode(sb, S_IFDIR | S_IRUGO | S_IXUGO);
+ 	sb->s_root = root = d_make_root(inode);
+@@ -1127,7 +1128,6 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ 					   sb);
+ 	if (err)
+ 		goto err_depopulate;
+-	sb->s_fs_info = get_net(net);
+ 	return 0;
+ 
+ err_depopulate:
+@@ -1154,13 +1154,13 @@ static void rpc_kill_sb(struct super_block *sb)
+ 	mutex_lock(&sn->pipefs_sb_lock);
+ 	sn->pipefs_sb = NULL;
+ 	mutex_unlock(&sn->pipefs_sb_lock);
+-	put_net(net);
+ 	dprintk("RPC:	sending pipefs UMOUNT notification for net %p%s\n", net,
+ 								NET_NAME(net));
+ 	blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
+ 					   RPC_PIPEFS_UMOUNT,
+ 					   sb);
+ 	kill_litter_super(sb);
++	put_net(net);
+ }
+ 
+ static struct file_system_type rpc_pipe_fs_type = {
+-- 
+1.7.11.7
 
