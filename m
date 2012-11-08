@@ -1,63 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f46.google.com ([209.85.213.46]:61781 "EHLO
-	mail-yh0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933031Ab2KEPXC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Nov 2012 10:23:02 -0500
-Received: by mail-yh0-f46.google.com with SMTP id m54so972013yhm.19
-        for <linux-nfs@vger.kernel.org>; Mon, 05 Nov 2012 07:23:01 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v9 22/34] vfs: allow lsetxattr() to retry once on ESTALE errors
-Date: Mon,  5 Nov 2012 10:22:01 -0500
-Message-Id: <1352128933-28526-23-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
-References: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:46242 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755407Ab2KHM1p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 Nov 2012 07:27:45 -0500
+Date: Thu, 8 Nov 2012 07:27:42 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jack Wang <jack.wang.usish@gmail.com>
+Cc: =?utf-8?Q?Mart=C3=ADn?= Cigorraga <msx@archlinux.us>, dahai_tian@usish.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: hang problem when umount a nfs point
+Message-ID: <20121108122742.GB22735@fieldses.org>
+References: <1351760297.5369.1.camel@localhost>
+ <CA+res+RTz9DC8TK3N3kFrSpeT-rgad1nk7amJdWP_Up9OW9KSg@mail.gmail.com>
+ <CAJLw8+WJGPiWW6K7UEX72eYdgeYWsDLcoZKNP7V1UvvQGnMxXA@mail.gmail.com>
+ <CA+res+RhNJT1D0MpdSBJoywemainEJVZKSzG1BxhXTrQ3kQCbw@mail.gmail.com>
+ <20121107190111.GC7421@fieldses.org>
+ <CA+res+SD_mradA6grZz_80uWiidb_r9Kv_aW8rXVXpNLSozjWA@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <CA+res+SD_mradA6grZz_80uWiidb_r9Kv_aW8rXVXpNLSozjWA@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/xattr.c | 23 ++++++++++++++---------
- 1 file changed, 14 insertions(+), 9 deletions(-)
+On Thu, Nov 08, 2012 at 11:03:22AM +0800, Jack Wang wrote:
+> 2012/11/8 J. Bruce Fields <bfields@fieldses.org>:
+> > On Wed, Nov 07, 2012 at 09:05:51AM +0800, Jack Wang wrote:
+> >> 2012/11/7 Martín Cigorraga <msx@archlinux.us>:
+> >> > On Mon, Nov 5, 2012 at 10:27 PM, Jack Wang <jack.wang.usish@gmail.com>
+> >> > wrote:
+> >> >>
+> >> >> Hi all,
+> >> >>
+> >> >> Anyone who can kindly give some suggestion? or we just put question to
+> >> >> the wrong list?
+> >> >>
+> >> >> Thanks.
+> >> >>
+> >> >> Jack
+> >> >>
+> >> >> 2012/11/1 dahai_tian <dahai_tian@usish.com>:
+> >> >> > Hi all:
+> >> >> >         I mount a local directory to a nfs server. When nfs server is
+> >> >> > stopped
+> >> >> > for some accidental cause, I try to umount the mount point, the umount
+> >> >> > command will hang and 'time out' messages are continually printed in the
+> >> >> > terminal. How can I avoid hanging in this case? BTW, This issue does not
+> >> >> > exist when I changed nfs version from 4 to 3.
+> >> >> >         Look forward to your response, thanks!
+> >>
+> >> >
+> >> > Hi Jack, use the -l (lazy) switch:
+> >> > # umount -l {your mounted nfs share}
+> >> >
+> >> > Also, I wouldn't recommend 'just to kill' the NFS proces(ses) as it (them)
+> >> > may leave shared memory a mess.
+> >> > (And I would like to see how do you make to mount any NFS share again
+> >> > without booting)
+> >>
+> >> Thanks Martin for kindly help.
+> >>
+> >> umount -l did work, but why nfsv3 do not have this problem?
+> >
+> > I don't know what it is exactly.  But in general I wouldn't expect
+> > umount to work when the server's unavailable.
+> >
+> > --b.
+> 
+> Thanks for your time Bruce, but there are chance the server
+> unavailable , why you think umount don't work is expected?
 
-diff --git a/fs/xattr.c b/fs/xattr.c
-index 5b6e48d..5a9ddba 100644
---- a/fs/xattr.c
-+++ b/fs/xattr.c
-@@ -394,16 +394,21 @@ SYSCALL_DEFINE5(lsetxattr, const char __user *, pathname,
- {
- 	struct path path;
- 	int error;
-+	unsigned int try = 0;
-+	unsigned int lookup_flags = 0;
- 
--	error = user_lpath(pathname, &path);
--	if (error)
--		return error;
--	error = mnt_want_write(path.mnt);
--	if (!error) {
--		error = setxattr(path.dentry, name, value, size, flags);
--		mnt_drop_write(path.mnt);
--	}
--	path_put(&path);
-+	do {
-+		error = user_path_at(AT_FDCWD, pathname, lookup_flags, &path);
-+		if (error)
-+			break;
-+		error = mnt_want_write(path.mnt);
-+		if (!error) {
-+			error = setxattr(path.dentry, name, value, size, flags);
-+			mnt_drop_write(path.mnt);
-+		}
-+		path_put(&path);
-+		lookup_flags |= LOOKUP_REVAL;
-+	} while (retry_estale(error, try++));
- 	return error;
- }
- 
--- 
-1.7.11.7
+It's tough for the client to deal safely with an unreachable server.
+Worst case it may still have data in its buffers that applications have
+written but that hasn't yet made it to the server.
 
+If you don't have any opens or other state on the filesystem any more,
+there might be things that could be done to make it easier to umount in
+that case--I haven't thought it through--but I doubt that's a high
+priority, so it's likely up to you to write the code and persuade people
+it's worthwhile.
+
+--b.
