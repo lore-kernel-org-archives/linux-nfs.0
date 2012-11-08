@@ -1,45 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:4683 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756000Ab2KZURN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Nov 2012 15:17:13 -0500
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id qAQKHDC9009937
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 26 Nov 2012 15:17:13 -0500
-Received: from smallhat.bos.devel.redhat.com (vpn-9-97.rdu.redhat.com [10.11.9.97])
-	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id qAQKHBB2026413
-	for <linux-nfs@vger.kernel.org>; Mon, 26 Nov 2012 15:17:12 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/3] mount.nfs: error message clean up.
-Date: Mon, 26 Nov 2012 15:17:08 -0500
-Message-Id: <1353961029-6317-2-git-send-email-steved@redhat.com>
-In-Reply-To: <1353961029-6317-1-git-send-email-steved@redhat.com>
-References: <1353961029-6317-1-git-send-email-steved@redhat.com>
+Received: from mail-ia0-f174.google.com ([209.85.210.174]:43243 "EHLO
+	mail-ia0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753639Ab2KHDDX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Nov 2012 22:03:23 -0500
+Received: by mail-ia0-f174.google.com with SMTP id y32so1619044iag.19
+        for <linux-nfs@vger.kernel.org>; Wed, 07 Nov 2012 19:03:23 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <20121107190111.GC7421@fieldses.org>
+References: <1351760297.5369.1.camel@localhost>
+	<CA+res+RTz9DC8TK3N3kFrSpeT-rgad1nk7amJdWP_Up9OW9KSg@mail.gmail.com>
+	<CAJLw8+WJGPiWW6K7UEX72eYdgeYWsDLcoZKNP7V1UvvQGnMxXA@mail.gmail.com>
+	<CA+res+RhNJT1D0MpdSBJoywemainEJVZKSzG1BxhXTrQ3kQCbw@mail.gmail.com>
+	<20121107190111.GC7421@fieldses.org>
+Date: Thu, 8 Nov 2012 11:03:22 +0800
+Message-ID: <CA+res+SD_mradA6grZz_80uWiidb_r9Kv_aW8rXVXpNLSozjWA@mail.gmail.com>
+Subject: Re: hang problem when umount a nfs point
+From: Jack Wang <jack.wang.usish@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: =?UTF-8?Q?Mart=C3=ADn_Cigorraga?= <msx@archlinux.us>, dahai_tian@usish.com,
+        linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Remove a unnecessary newline in an error message.
+2012/11/8 J. Bruce Fields <bfields@fieldses.org>:
+> On Wed, Nov 07, 2012 at 09:05:51AM +0800, Jack Wang wrote:
+>> 2012/11/7 Martín Cigorraga <msx@archlinux.us>:
+>> > On Mon, Nov 5, 2012 at 10:27 PM, Jack Wang <jack.wang.usish@gmail.com>
+>> > wrote:
+>> >>
+>> >> Hi all,
+>> >>
+>> >> Anyone who can kindly give some suggestion? or we just put question to
+>> >> the wrong list?
+>> >>
+>> >> Thanks.
+>> >>
+>> >> Jack
+>> >>
+>> >> 2012/11/1 dahai_tian <dahai_tian@usish.com>:
+>> >> > Hi all:
+>> >> >         I mount a local directory to a nfs server. When nfs server is
+>> >> > stopped
+>> >> > for some accidental cause, I try to umount the mount point, the umount
+>> >> > command will hang and 'time out' messages are continually printed in the
+>> >> > terminal. How can I avoid hanging in this case? BTW, This issue does not
+>> >> > exist when I changed nfs version from 4 to 3.
+>> >> >         Look forward to your response, thanks!
+>>
+>> >
+>> > Hi Jack, use the -l (lazy) switch:
+>> > # umount -l {your mounted nfs share}
+>> >
+>> > Also, I wouldn't recommend 'just to kill' the NFS proces(ses) as it (them)
+>> > may leave shared memory a mess.
+>> > (And I would like to see how do you make to mount any NFS share again
+>> > without booting)
+>>
+>> Thanks Martin for kindly help.
+>>
+>> umount -l did work, but why nfsv3 do not have this problem?
+>
+> I don't know what it is exactly.  But in general I wouldn't expect
+> umount to work when the server's unavailable.
+>
+> --b.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- utils/mount/error.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Thanks for your time Bruce, but there are chance the server
+unavailable , why you think umount don't work is expected?
 
-diff --git a/utils/mount/error.c b/utils/mount/error.c
-index 83ad1d2..f8fc13f 100644
---- a/utils/mount/error.c
-+++ b/utils/mount/error.c
-@@ -225,7 +225,7 @@ void mount_error(const char *spec, const char *mount_point, int error)
- 	case ENOENT:
- 		if (spec)
- 			nfs_error(_("%s: mounting %s failed, "
--				"reason given by server:\n  %s"),
-+				"reason given by server: %s"),
- 				progname, spec, strerror(error));
- 		else
- 			nfs_error(_("%s: mount point %s does not exist"),
--- 
-1.7.11.7
-
+Jack
