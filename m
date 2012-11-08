@@ -1,163 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp109.biz.mail.bf1.yahoo.com ([98.139.244.33]:44973 "HELO
-	smtp109.biz.mail.bf1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1755270Ab2K3BuF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2012 20:50:05 -0500
-Message-ID: <50B810D2.2000401@schaufler-ca.com>
-Date: Thu, 29 Nov 2012 17:50:10 -0800
-From: Casey Schaufler <casey@schaufler-ca.com>
+Received: from fieldses.org ([174.143.236.118]:60559 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752844Ab2KHAVC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Nov 2012 19:21:02 -0500
+Date: Wed, 7 Nov 2012 19:20:59 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, Peter Staubach <pstaubach@exagrid.com>
+Subject: Re: [PATCH 0/2] fix nfsd stable write implementation
+Message-ID: <20121108002059.GA17945@fieldses.org>
+References: <1351285617-20450-1-git-send-email-bfields@redhat.com>
+ <20121030102833.306e833a@notabene.brown>
+ <20121030140725.GC24618@fieldses.org>
+ <20121031073027.254242ed@notabene.brown>
 MIME-Version: 1.0
-To: David Quigley <dpquigl@davequigley.com>
-CC: bfields@fieldses.org, trond.myklebust@netapp.com, sds@tycho.nsa.gov,
-        linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
-        linux-security-module@vger.kernel.org
-Subject: Re: Labeled NFS [v5]
-References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com> <50ABF1A5.2010406@schaufler-ca.com> <50AC1A74.7080105@davequigley.com> <50AC2117.801@schaufler-ca.com> <50AC224D.3080108@davequigley.com> <50AC41DC.5070607@schaufler-ca.com> <50AC4A7A.6010208@davequigley.com> <50B65E7E.4030607@schaufler-ca.com> <50B6B706.1010002@davequigley.com> <50B6C398.90002@schaufler-ca.com> <50B7E189.80200@schaufler-ca.com> <d0817140372d745df0b4952b796610f2@countercultured.net> <50B7FEFB.30109@schaufler-ca.com> <579e850139bd3d5a0c9155270d5d9fbe@countercultured.net>
-In-Reply-To: <579e850139bd3d5a0c9155270d5d9fbe@countercultured.net>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121031073027.254242ed@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/29/2012 4:46 PM, David Quigley wrote:
-> On 11/29/2012 19:34, Casey Schaufler wrote:
->> On 11/29/2012 4:07 PM, David Quigley wrote:
->>> On 11/29/2012 17:28, Casey Schaufler wrote:
->>>> On 11/28/2012 6:08 PM, Casey Schaufler wrote:
->>>>> On 11/28/2012 5:14 PM, Dave Quigley wrote:
->>>>>> On 11/28/2012 1:57 PM, Casey Schaufler wrote:
->>>>>>> On 11/20/2012 7:28 PM, Dave Quigley wrote:
->>>>>>>> On 11/20/2012 9:52 PM, Casey Schaufler wrote:
->>>>>>>>> On 11/20/2012 4:37 PM, Dave Quigley wrote:
->>>>>>>>>> ...
->>>>>>>>>>
->>>>>>>>>>
->>>>>>>>>> Or I could just give you this link and you should be good to
->>>>>>>>>> go ;)
->>>>>>>>>>
->>>>>>>>>> http://www.selinuxproject.org/~dpquigl/nfs-utils-rpms/
->>>>>>>>>>
->>>>>>>>>> I haven't tried it but it should work. If it doesn't let me
->>>>>>>>>> know and
->>>>>>>>>> i'll try to fix it on my end. I'd imagine you might need to yum
->>>>>>>>>> remove
->>>>>>>>>> nfs-utils first before adding this new one or you could also
->>>>>>>>>> try an
->>>>>>>>>> rpm with the upgrade flag for this instead. Good luck.
->>>>>>> ...
->>>>>>>
->>>>>>>
->>>>>>> I've tried on Fedora17 and Ubuntu12.04, and I'm getting the
->>>>>>> attached stack trace on mount. After mounting I'm getting
->>>>>>> denials when I should, but also when I shouldn't.
->>>>>>>
->>>>>>> I've tried tracking down the issue, but there's a lot going on
->>>>>>> that I don't find obvious. I added a dentry_init hook just for
->>>>>>> grins, but it's not getting called.
->>>>>>>
->>>>>>> .
->>>>>>>
->>>>>>>
->>>>>> Any chance of you throwing a kickstart file my way that's configured
->>>>>> with SMACK so I can use it for a test box (both server and
->>>>>> client)? I
->>>>>> can have the guys working with me test for SMACK as well if you
->>>>>> provide an appropriate test harness and image for testing.
->>>>> I've attached the .config from my Fedora17 machine. Who knows, maybe
->>>>> I got something wrong there. I get the error doing the test on the
->>>>> loopback interface (mount -t nfs4 localhist:/ /mnt).
->>>>
->>>> I've done some instrumentation and security_ismaclabel() is getting
->>>> called with "selinux", but never "SMACK64". I would guess that
->>>> somewhere
->>>> in the tools you're telling the kernel to expect "selinux". Where is
->>>> that, so that I can tell it to try "SMACK64" instead?
->>>>
->>>>
->>>>
->>>> -- 
->>>> This message was distributed to subscribers of the selinux mailing
->>>> list.
->>>> If you no longer wish to subscribe, send mail to
->>>> majordomo@tycho.nsa.gov with
->>>> the words "unsubscribe selinux" without quotes as the message.
->>>
->>>
->>> What tools do you use in SMACK to see the labels?
->>
->> attr -S -g SMACK64 <path>
->
-> ok so that seems to work for SELinux as well. Never knew about that.
-> I'd always just rip the xattr out of the inode with getfattr.
->
->
->>
->>> Do you just use getxattr? If so can you try calling that and seeing
->>> what happens? I'm concerned that you aren't getting any attribute
->>> information on that file.
->>
->> I would think that were it not for the case that access is denied
->> and I get an audit record for nfsd that reports a subject label of "_"
->> (which is correct for nfsd but not the process attempting access) and
->> an object label of "WhooHoo", which is correct. The server side
->> looks like it might be working right, given the information that it
->> has.
->>
->
-> Ok so this is the problem. nfsd is a kernel thread I believe. In
-> SELinux land it has the type kernel_t which is all powerful. We don't
-> have client label transport yet (That requires RPCSECGSSv3). Is there
-> a way you can have that kernel thread running as a type that has
-> access to everything?
+On Wed, Oct 31, 2012 at 07:30:27AM +1100, NeilBrown wrote:
+> On Tue, 30 Oct 2012 10:07:25 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+> wrote:
+> 
+> > On Tue, Oct 30, 2012 at 10:28:33AM +1100, NeilBrown wrote:
+> > > On Fri, 26 Oct 2012 17:06:55 -0400 "J. Bruce Fields" <bfields@redhat.com>
+> > > wrote:
+> > > 
+> > > > From: "J. Bruce Fields" <bfields@redhat.com>
+> > > > 
+> > > > Peter pointed out to me that the nfs server is implementing stable
+> > > > writes by setting the O_SYNC flag.  I can't see why we couldn't write
+> > > > and then sync instead, but I don't know this stuff as well as I should;
+> > > > does the following look reasonable to people?
+> > > 
+> > > Bruce changed the code to implement stable writes by calling
+> > > vfs_fsync_range().  I can't see why we couldn't use O_SYNC instead.
+> > > 
+> > > It seems like you are making a change just for the sake of making a change.
+> > > Is there some reason that you think a separate 'sync' is more efficient than
+> > > using O_SYNC ?
+> > 
+> > Oh, sorry, see the changelog on the second patch: the problem is that
+> > the struct file can be shared across multiple writes in the NFSv4 case,
+> > so a single stable write could make all subsequent writes synchronous.
+> > 
+> > (And some day people would like filehandle caching for v2/v3, in which
+> > case we'll run into the same problem.)
+> 
+> Ahh, I missed that.
+> Makes sense then, thanks.
+> 
+> > 
+> > > As a general principle, I think it is best to give the file system as much
+> > > information as possible to that it can make whatever optimisation decisions
+> > > that it wants to.
+> > > 
+> > > Setting O_SYNC gives the filesystem more information than not, because it
+> > > allows it to change the behaviour of the 'write' request... though I don't
+> > > know if any filesystem actually uses the information.
+> > 
+> > I'm not sure how to figure out if that's a real problem or not.
+> 
+> Search all filesystems for special handling of O_SYNC or O_DSYNC?
+> 
+> I strongly suspect that it is not a real problem.
 
-That would be having CAP_MAC_ADMIN and CAP_MAC_OVERRIDE in Smackese.
-Looking at /proc/<pid-of-nfsd>/status we see CapEff of fff...fff which
-is to say, all capabilities.
- 
+OK, committing for 3.8.
 
-> I think that is the current problem. Which makes perfect sense. If
-> your kernel threads don't get started with max privilege then the
-> server would be denied access on all of the file attributes and
-> wouldn't be able to ship it over the wire properly.
-
-OK. I haven't had to do anything with kernel threads so far.
-Where is NFS setting these up? Poking around fs/nfsd looks like
-the place, but I haven't seen anything there that makes it look
-like they would be running without capabilities. Clearly, that's
-what I'm seeing. It looks as if the credential of nfsd does not
-match what /proc reports. Bother.
-
-
-> I'm not sure what you need to do but you'll probably have to work this
-> out. We have a usage mode in the IETF spec which has a non-mac
-> enforcing server which still support object labeling. In the SELinux
-> case it works for us since kernel_t can access anything. Ideally when
-> RPCSECGSSv3 is finished and merged we'll be able to choose whether to
-> use the label of the process on the client side or kernel_t for the
-> server if its not available.
->
->>> Do you have a disto that I can use that has full smack integration and
->>> is easy to setup?
->>
->> There's no full integration, but Ubuntu is easy to set up because they
->> compile in all the LSMs.
->> Set "security=smack" on the boot line in grub.cfg and reboot.
->>
->> All processes and files will get the floor ("_") label unless you change
->> one. You can change
->> a file label with:
->>      # attr -S -s SMACK64 WhooHoo path
->> or execute at a different label with:
->>     # (echo WhooHoo > /proc/self/attr/current ; command)
->>
->
-> I'm not out of here until really late tonight so getting an Ubuntu VM
-> setup probably won't happen until sometime next week when everything
-> calms down. However I think we isolated the problem above. If I'm
-> correct this is strictly a smack labeling problem. I don't know if you
-> need to put some code into smack to init kernel threads with a more
-> powerful label or not so I'll leave it up to you on how to address this.
->
->
-> Dave
->
-
+--b.
