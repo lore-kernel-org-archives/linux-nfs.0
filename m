@@ -1,57 +1,114 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:10246 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:57235 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752464Ab2K2RLY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Nov 2012 12:11:24 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Stef Bon <stefbon@gmail.com>
-CC: simo <idra@samba.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-cifs <linux-cifs@vger.kernel.org>
-Subject: Re: Possible to make nfs aware of a inotify watch has been set.
-Date: Thu, 29 Nov 2012 17:11:22 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90B32B2A0@SACEXCMBX04-PRD.hq.netapp.com>
-References: <CANXojcy9thLBwrENTkOTSSE17L3N17A8XsTmyNqq3oNdhW_Q_w@mail.gmail.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B329CFD@SACEXCMBX04-PRD.hq.netapp.com>
-	 <CANXojcxR9673fRObMLPSScogAN05RSVhPFoni=ENc6YDWq9T7w@mail.gmail.com>
-	 <1354202525.4064.1.camel@pico.ipa.ssimo.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B32AEB7@SACEXCMBX04-PRD.hq.netapp.com>
-	 <CANXojcys4wR8N-R3oSjWRWJLsObn0Qf+i41vBUaNnJctdcrKVw@mail.gmail.com>
-In-Reply-To: <CANXojcys4wR8N-R3oSjWRWJLsObn0Qf+i41vBUaNnJctdcrKVw@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1754186Ab2KHAo2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Nov 2012 19:44:28 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 5/5] nfsd4: backchannel should use client-provided security flavor
+Date: Wed,  7 Nov 2012 19:44:23 -0500
+Message-Id: <1352335463-29084-6-git-send-email-bfields@redhat.com>
+In-Reply-To: <1352335463-29084-1-git-send-email-bfields@redhat.com>
+References: <1352335463-29084-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTExLTI5IGF0IDE3OjM5ICswMTAwLCBTdGVmIEJvbiB3cm90ZToNCj4gMjAx
-Mi8xMS8yOSBNeWtsZWJ1c3QsIFRyb25kIDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT46DQo+
-ID4gT24gVGh1LCAyMDEyLTExLTI5IGF0IDEwOjIyIC0wNTAwLCBzaW1vIHdyb3RlOg0KPiA+PiBP
-biBUaHUsIDIwMTItMTEtMjkgYXQgMTU6NDkgKzAxMDAsIFN0ZWYgQm9uIHdyb3RlOg0KPiA+PiA+
-IDIwMTIvMTEvMjkgTXlrbGVidXN0LCBUcm9uZCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+
-Og0KPiA+PiA+ID4+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+ID4+ID4gPj4NCj4gPiBO
-RlN2NC4xIGFjdHVhbGx5IGhhcyBkaXJlY3Rvcnkgbm90aWZpY2F0aW9ucyB3aGljaCBkdXBsaWNh
-dGUgbW9zdCBvZiB0aGUNCj4gPiBmdW5jdGlvbmFsaXR5IG9mIGRub3RpZnkuIFRoZSBxdWVzdGlv
-biBJJ20gYXNraW5nIGlzICJXaHkgc2hvdWxkIHdlIGRvDQo+ID4gaXQ/Iiwgbm90ICJjYW4gd2Ug
-ZG8gaXQ/Ii4NCj4gPg0KPiA+IEFuc3dlcnMgbGlrZSAid2VsbCBXaW5kb3dzIGFuZCBpT1MgZG8g
-aXQiIGFyZW4ndCBoZWxwZnVsIHVubGVzcyB0aGV5DQo+ID4gaW5jbHVkZSBhIGRlc2NyaXB0aW9u
-IG9mIHdoYXQgV2luZG93cyBhbmQgaU9TIGFwcHMgdXNlIGl0IGZvciB0aGF0IHdlDQo+ID4gY2Fu
-J3QgYWxyZWFkeSBkbyBvbiBMaW51eC4NCj4gPiBJZiB0aGUgb25seSBhcHBsaWNhdGlvbiBpcyBi
-ZWFnbGUsIHRoZW4gTGludXggaGFzIHRoaXMgcmVhbGx5IGhlbHBmdWwNCj4gPiB1dGlsaXR5IGNh
-bGxlZCAic3NoIiwgd2hpY2ggYWxsb3dzIHlvdSB0byBhdm9pZCB3YXN0aW5nIGEgbG9hZCBvZg0K
-PiA+IG5ldHdvcmsgYmFuZHdpZHRoLi4uDQo+IA0KPiBObywgc3VyZSwgeW91IHNob3VsZCBub3Qg
-ZG8gYW55dGhpbmcgYmVjYXVzZSBvdGhlcnMgZG8gaXQuIEJ1dCBvbiB0aGUNCj4gb3RoZXIgaGFu
-ZCwgaWYgb3RoZXJzIGRvIGl0LCB3aHkgZG9uJ3QgeW91PyBCZXR0ZXIgY29weSBhIGdvb2QgaWRl
-YQ0KPiB0aGFuIGJlIHN0dWJib3JuIGZvciBldmVyLg0KDQpUaGUgaWRlYSB0aGF0ICJpZiB3ZSBi
-dWlsZCBhIGJyaWRnZSwgdGhleSB3aWxsIGNvbWUgdG8gdXMiIGlzIHdoYXQgZ2F2ZQ0KcmlzZSB0
-byBkbm90aWZ5LCB0aGVuIGlub3RpZnkgKG5vYm9keSBjYW1lLCBzbyBsZXQncyBidWlsZCBhIGJp
-Z2dlcg0KYnJpZGdlKSBhbmQgZnNub3RpZnkgKG1ha2UgaXQgYSB0b2xsIGJyaWRnZSkuIE5vYm9k
-eSBpcyB1c2luZyB0aG9zZQ0KaW50ZXJmYWNlcyBtdWNoIG9uIGxvY2FsIGZpbGVzeXN0ZW1zLCBz
-byB3aHkgaXMgYWRkaW5nIGl0IHRvIE5GUyBhbmQNCkNJRlMgZ29pbmcgdG8gYmUgc3VjaCBhIGdh
-bWUgY2hhbmdlcj8NCg0KPiBBbmQgeWVzIHRoZXJlIGlzIG5vIHN1Y2ggdGhpbmcgYXMgYSBraWxs
-ZXIgYXBwLCBidXQgaW4gbXkgb3BpbmlvbiBpdCdzDQo+IHRoZSB1c2VyIGV4cGVyaWVuY2UuIEl0
-J3Mgc28gbXVjaCBiZXR0ZXIgd2hlbiB5b3VyIHN5c3RlbSBrZWVwcyB0cmFjaw0KPiBvbiBzaGFy
-ZWQgbmV0d29yayByZXNvdXJjZXMuDQoNCldoYXQgZG9lcyBpdCBlbmFibGUgdXMgdG8gZG8gdGhh
-dCB3ZSBjYW4ndCBhbHJlYWR5IGRvPyBUaGlzIGlzIHByZWNpc2VseQ0KdGhlIHF1ZXN0aW9uIHRo
-YXQgSSBhc2tlZCB5b3UgaW4gdGhlIHByZXZpb3VzIGVtYWlsLg0KDQotLSANClRyb25kIE15a2xl
-YnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVi
-dXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+For now this only adds support for AUTH_NULL.  (Previously we assumed
+AUTH_UNIX.)  We'll also need AUTH_GSS, which is trickier.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4callback.c |    3 +--
+ fs/nfsd/nfs4xdr.c      |   14 +++++++++++---
+ fs/nfsd/state.h        |    1 +
+ 3 files changed, 13 insertions(+), 5 deletions(-)
+
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index a1aa18d..7bb187a 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -692,7 +692,7 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
+ 		args.bc_xprt = conn->cb_xprt;
+ 		args.prognumber = clp->cl_cb_session->se_cb_prog;
+ 		args.protocol = XPRT_TRANSPORT_BC_TCP;
+-		args.authflavor = RPC_AUTH_UNIX;
++		args.authflavor = ses->se_cb_sec.flavor;
+ 	}
+ 	/* Create RPC client */
+ 	client = rpc_create(&args);
+@@ -709,7 +709,6 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
+ 	clp->cl_cb_client = client;
+ 	clp->cl_cb_cred = cred;
+ 	return 0;
+-
+ }
+ 
+ static void warn_no_callback_path(struct nfs4_client *clp, int reason)
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index d7e7c11..406d0c4 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -425,7 +425,7 @@ nfsd4_decode_access(struct nfsd4_compoundargs *argp, struct nfsd4_access *access
+ static __be32 nfsd4_decode_cb_sec(struct nfsd4_compoundargs *argp, struct nfsd4_cb_sec *cbs)
+ {
+ 	DECODE_HEAD;
+-	u32 dummy;
++	u32 dummy, uid, gid;
+ 	char *machine_name;
+ 	int i;
+ 	int nr_secflavs;
+@@ -433,12 +433,15 @@ static __be32 nfsd4_decode_cb_sec(struct nfsd4_compoundargs *argp, struct nfsd4_
+ 	/* callback_sec_params4 */
+ 	READ_BUF(4);
+ 	READ32(nr_secflavs);
++	cbs->flavor = (u32)(-1);
+ 	for (i = 0; i < nr_secflavs; ++i) {
+ 		READ_BUF(4);
+ 		READ32(dummy);
+ 		switch (dummy) {
+ 		case RPC_AUTH_NULL:
+ 			/* Nothing to read */
++			if (cbs->flavor == (u32)(-1))
++				cbs->flavor = RPC_AUTH_NULL;
+ 			break;
+ 		case RPC_AUTH_UNIX:
+ 			READ_BUF(8);
+@@ -452,13 +455,18 @@ static __be32 nfsd4_decode_cb_sec(struct nfsd4_compoundargs *argp, struct nfsd4_
+ 
+ 			/* uid, gid */
+ 			READ_BUF(8);
+-			READ32(cbs->uid);
+-			READ32(cbs->gid);
++			READ32(uid);
++			READ32(gid);
+ 
+ 			/* more gids */
+ 			READ_BUF(4);
+ 			READ32(dummy);
+ 			READ_BUF(dummy * 4);
++			if (cbs->flavor == (u32)(-1)) {
++				cbs->uid = uid;
++				cbs->gid = gid;
++				cbs->flavor = RPC_AUTH_UNIX;
++			}
+ 			break;
+ 		case RPC_AUTH_GSS:
+ 			dprintk("RPC_AUTH_GSS callback secflavor "
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 0fd342a..0498053 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -151,6 +151,7 @@ struct nfsd4_channel_attrs {
+ };
+ 
+ struct nfsd4_cb_sec {
++	u32	flavor; /* (u32)(-1) used to mean "no valid flavor" */
+ 	u32	uid;
+ 	u32	gid;
+ };
+-- 
+1.7.9.5
+
