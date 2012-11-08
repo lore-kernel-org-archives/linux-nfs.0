@@ -1,65 +1,208 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from out01.mta.xmission.com ([166.70.13.231]:51994 "EHLO
-	out01.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751345Ab2KOGPK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Nov 2012 01:15:10 -0500
-From: ebiederm@xmission.com (Eric W. Biederman)
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "Myklebust\, Trond" <Trond.Myklebust@netapp.com>,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel\@openvz.org" <devel@openvz.org>
-References: <20121106124035.GA20522@infradead.org>
-	<20121106130705.GC6718@fieldses.org>
-	<20121106131018.GA12211@infradead.org>
-	<20121106133605.GD6718@fieldses.org>
-	<20121107183355.GA7421@fieldses.org> <50A0B562.2090807@parallels.com>
-	<20121114210112.GA539@fieldses.org>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA9092E0A40@SACEXCMBX04-PRD.hq.netapp.com>
-	<20121114214236.GB539@fieldses.org>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA9092E0AE9@SACEXCMBX04-PRD.hq.netapp.com>
-	<20121114215426.GC539@fieldses.org>
-Date: Wed, 14 Nov 2012 22:14:50 -0800
-In-Reply-To: <20121114215426.GC539@fieldses.org> (J. Bruce Fields's message of
-	"Wed, 14 Nov 2012 16:54:26 -0500")
-Message-ID: <87obize6jp.fsf@xmission.com>
-MIME-Version: 1.0
-Content-Type: text/plain
-Subject: Re: [PATCH v3] SUNRPC: set desired file system root before connecting local transports
+Received: from fieldses.org ([174.143.236.118]:57229 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754053Ab2KHAo0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 Nov 2012 19:44:26 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 1/5] nfsd4: clean up callback security parsing
+Date: Wed,  7 Nov 2012 19:44:19 -0500
+Message-Id: <1352335463-29084-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1352335463-29084-1-git-send-email-bfields@redhat.com>
+References: <1352335463-29084-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-"J. Bruce Fields" <bfields@fieldses.org> writes:
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-> On Wed, Nov 14, 2012 at 09:51:33PM +0000, Myklebust, Trond wrote:
->> On Wed, 2012-11-14 at 16:42 -0500, J. Bruce Fields wrote:
->> > Simo's patches use them for upcalls to svcgssd.  Those will always be
->> > done from server threads.
->> 
->> Any reason why you can't set that up when you start nfsd?
->
-> Oh, right, I was thinking of the upcalls themselves--right, the connect
-> we should be able to do on server start, I agree.
->
->> 
->> > > If not, then let's just move
->> > > the AF_LOCAL connection back into the process context and out of rpciod.
->> > 
->> > Remind me how this helps?
->> 
->> rpciod shares the 'init' process net namespace and chroot properties.
->> If, however you call bind() from the (containerised) process that was
->> used to start nfsd, then you will be using filesystem root (and net
->> namespace) of that container.
->
-> Got it.
+Move the callback parsing into a separate function.
 
-If you can move the connect and bind into the server start that does
-sound like a very good and maintainable solution.  I suspect it might
-even be a smidge better for error handling.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4xdr.c |  118 ++++++++++++++++++++++++++++-------------------------
+ fs/nfsd/state.h   |    9 +++-
+ 2 files changed, 70 insertions(+), 57 deletions(-)
 
-Is there ever a reason to reconnect one of these sockets?
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index af65fda..511f980 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -422,6 +422,67 @@ nfsd4_decode_access(struct nfsd4_compoundargs *argp, struct nfsd4_access *access
+ 	DECODE_TAIL;
+ }
+ 
++static __be32 nfsd4_decode_cb_sec(struct nfsd4_compoundargs *argp, struct nfsd4_cb_sec *cbs)
++{
++	DECODE_HEAD;
++	u32 dummy;
++	char *machine_name;
++	int i;
++	int nr_secflavs;
++
++	/* callback_sec_params4 */
++	READ_BUF(4);
++	READ32(nr_secflavs);
++	for (i = 0; i < nr_secflavs; ++i) {
++		READ_BUF(4);
++		READ32(dummy);
++		switch (dummy) {
++		case RPC_AUTH_NULL:
++			/* Nothing to read */
++			break;
++		case RPC_AUTH_UNIX:
++			READ_BUF(8);
++			/* stamp */
++			READ32(dummy);
++
++			/* machine name */
++			READ32(dummy);
++			READ_BUF(dummy);
++			SAVEMEM(machine_name, dummy);
++
++			/* uid, gid */
++			READ_BUF(8);
++			READ32(cbs->uid);
++			READ32(cbs->gid);
++
++			/* more gids */
++			READ_BUF(4);
++			READ32(dummy);
++			READ_BUF(dummy * 4);
++			break;
++		case RPC_AUTH_GSS:
++			dprintk("RPC_AUTH_GSS callback secflavor "
++				"not supported!\n");
++			READ_BUF(8);
++			/* gcbp_service */
++			READ32(dummy);
++			/* gcbp_handle_from_server */
++			READ32(dummy);
++			READ_BUF(dummy);
++			p += XDR_QUADLEN(dummy);
++			/* gcbp_handle_from_client */
++			READ_BUF(4);
++			READ32(dummy);
++			READ_BUF(dummy);
++			break;
++		default:
++			dprintk("Illegal callback secflavor\n");
++			return nfserr_inval;
++		}
++	}
++	DECODE_TAIL;
++}
++
+ static __be32 nfsd4_decode_bind_conn_to_session(struct nfsd4_compoundargs *argp, struct nfsd4_bind_conn_to_session *bcts)
+ {
+ 	DECODE_HEAD;
+@@ -1237,11 +1298,7 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
+ 			    struct nfsd4_create_session *sess)
+ {
+ 	DECODE_HEAD;
+-
+ 	u32 dummy;
+-	char *machine_name;
+-	int i;
+-	int nr_secflavs;
+ 
+ 	READ_BUF(16);
+ 	COPYMEM(&sess->clientid, 8);
+@@ -1282,58 +1339,9 @@ nfsd4_decode_create_session(struct nfsd4_compoundargs *argp,
+ 		goto xdr_error;
+ 	}
+ 
+-	READ_BUF(8);
++	READ_BUF(4);
+ 	READ32(sess->callback_prog);
+-
+-	/* callback_sec_params4 */
+-	READ32(nr_secflavs);
+-	for (i = 0; i < nr_secflavs; ++i) {
+-		READ_BUF(4);
+-		READ32(dummy);
+-		switch (dummy) {
+-		case RPC_AUTH_NULL:
+-			/* Nothing to read */
+-			break;
+-		case RPC_AUTH_UNIX:
+-			READ_BUF(8);
+-			/* stamp */
+-			READ32(dummy);
+-
+-			/* machine name */
+-			READ32(dummy);
+-			READ_BUF(dummy);
+-			SAVEMEM(machine_name, dummy);
+-
+-			/* uid, gid */
+-			READ_BUF(8);
+-			READ32(sess->uid);
+-			READ32(sess->gid);
+-
+-			/* more gids */
+-			READ_BUF(4);
+-			READ32(dummy);
+-			READ_BUF(dummy * 4);
+-			break;
+-		case RPC_AUTH_GSS:
+-			dprintk("RPC_AUTH_GSS callback secflavor "
+-				"not supported!\n");
+-			READ_BUF(8);
+-			/* gcbp_service */
+-			READ32(dummy);
+-			/* gcbp_handle_from_server */
+-			READ32(dummy);
+-			READ_BUF(dummy);
+-			p += XDR_QUADLEN(dummy);
+-			/* gcbp_handle_from_client */
+-			READ_BUF(4);
+-			READ32(dummy);
+-			READ_BUF(dummy);
+-			break;
+-		default:
+-			dprintk("Illegal callback secflavor\n");
+-			return nfserr_inval;
+-		}
+-	}
++	nfsd4_decode_cb_sec(argp, &sess->cb_sec);
+ 	DECODE_TAIL;
+ }
+ 
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index e036894..df33e78 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -150,6 +150,11 @@ struct nfsd4_channel_attrs {
+ 	u32		rdma_attrs;
+ };
+ 
++struct nfsd4_cb_sec {
++	u32	uid;
++	u32	gid;
++};
++
+ struct nfsd4_create_session {
+ 	clientid_t			clientid;
+ 	struct nfs4_sessionid		sessionid;
+@@ -158,8 +163,7 @@ struct nfsd4_create_session {
+ 	struct nfsd4_channel_attrs	fore_channel;
+ 	struct nfsd4_channel_attrs	back_channel;
+ 	u32				callback_prog;
+-	u32				uid;
+-	u32				gid;
++	struct nfsd4_cb_sec		cb_sec;
+ };
+ 
+ struct nfsd4_bind_conn_to_session {
+@@ -192,6 +196,7 @@ struct nfsd4_session {
+ 	struct nfs4_sessionid	se_sessionid;
+ 	struct nfsd4_channel_attrs se_fchannel;
+ 	struct nfsd4_channel_attrs se_bchannel;
++	struct nfsd4_cb_sec	se_cb_sec;
+ 	struct list_head	se_conns;
+ 	u32			se_cb_prog;
+ 	u32			se_cb_seq_nr;
+-- 
+1.7.9.5
 
-Eric
