@@ -1,104 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:55950 "EHLO mx2.netapp.com"
+Received: from mail.gnuher.de ([78.47.12.54]:58598 "EHLO mail.gnuher.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755058Ab2K0OfZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Nov 2012 09:35:25 -0500
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 05/10] NFSD: Clean up forgetting openowners
-Date: Tue, 27 Nov 2012 09:35:14 -0500
-Message-Id: <1354026919-13313-6-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1354026919-13313-1-git-send-email-bjschuma@netapp.com>
-References: <1354026919-13313-1-git-send-email-bjschuma@netapp.com>
+	id S1754622Ab2KISpi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Nov 2012 13:45:38 -0500
+Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
+	by mail.gnuher.de (envelope-from
+	<news@geggus.net>)
+	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
+	(Exim 4.72)
+	id 1TWtaC-0001nX-69
+	for linux-nfs@vger.kernel.org; Fri, 09 Nov 2012 19:45:36 +0100
+Received: from news  by ultimate100.geggus.net (envelope-from
+	<news@geggus.net>)
+	with local (Exim 4.72)
+	id 1TWta9-0006Vz-6I
+	for linux-nfs@vger.kernel.org; Fri, 09 Nov 2012 19:45:33 +0100
+To: linux-nfs@vger.kernel.org
+From: Sven Geggus <lists@fuchsschwanzdomain.de>
+Subject: Re: Kernel update 3.5.7 -> 3.6.3 breaks NFS4
+Date: Fri, 9 Nov 2012 18:45:32 +0000 (UTC)
+Message-ID: <k7jj0c$nak$1@ultimate100.geggus.net>
+References: <k6ebva$1kf$1@ultimate100.geggus.net> <20121026171549.GA11806@fieldses.org> <20121029094038.GA14836@geggus.net> <20121029150203.GB9502@fieldses.org> <20121105165459.GA2958@geggus.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Sven Geggus <lists@fuchsschwanzdomain.de> wrote:
 
-Using "forget_n_state()" forces me to implement the code needed to
-forget a specific client's openowners.
+> OK, I now figured out which commit did cause the problem:
+> 
+> Thus "git diff 08843b79..cc8362b1" on a linux-stable tree from
+> git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git should
+> give us the relevant changes.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfsd/nfs4state.c | 50 +++++++++++++++++++++++---------------------------
- 1 file changed, 23 insertions(+), 27 deletions(-)
+After a private conversation with J. Bruce Fields I figured out that
+I have not been quite there yet. So here comes a FTR post what
+exactly caused my problem.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index c931e65..94c009e 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4624,6 +4624,27 @@ u64 nfsd_forget_client_locks(struct nfsd_net *nn, struct nfs4_client *clp, u64 m
- 	return nfsd_foreach_client_lock(nn, clp, max, release_lockowner);
- }
- 
-+static u64 nfsd_foreach_client_open(struct nfsd_net *nn, struct nfs4_client *clp,
-+				    u64 max, void (*func)(struct nfs4_openowner *))
-+{
-+	struct nfs4_openowner *oop, *next;
-+	u64 count = 0;
-+
-+	list_for_each_entry_safe(oop, next, &clp->cl_openowners, oo_perclient) {
-+		if (func)
-+			func(oop);
-+		if (++count == max)
-+			break;
-+	}
-+
-+	return count;
-+}
-+
-+u64 nfsd_forget_client_openowners(struct nfsd_net *nn, struct nfs4_client *clp, u64 max)
-+{
-+	return nfsd_foreach_client_open(nn, clp, max, release_openowner);
-+}
-+
- static u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfsd_net *, struct nfs4_client *, u64))
+It is the following change:
+
+$ git diff d9c2ede63c74048dfddbb129c59ac01176b0ab71 bbf43dc888833ac0539e437dbaeb28bfd4fbab9f
+diff --git a/include/linux/sunrpc/cache.h
+b/include/linux/sunrpc/cache.h
+index 6def1f6..af42596 100644
+--- a/include/linux/sunrpc/cache.h
++++ b/include/linux/sunrpc/cache.h
+@@ -217,8 +217,6 @@ extern int qword_get(char **bpp, char *dest, int
+bufsize);
+ static inline int get_int(char **bpp, int *anint)
  {
- 	struct nfs4_client *clp, *next;
-@@ -4645,30 +4666,6 @@ void nfsd_forget_clients(u64 num)
- 	printk(KERN_INFO "NFSD: Forgot %llu clients", count);
+        char buf[50];
+-       char *ep;
+-       int rv;
+        int len = qword_get(bpp, buf, sizeof(buf));
+ 
+        if (len < 0)
+@@ -226,11 +224,9 @@ static inline int get_int(char **bpp, int
+*anint)
+        if (len == 0)
+                return -ENOENT;
+ 
+-       rv = simple_strtol(buf, &ep, 0);
+-       if (*ep)
++       if (kstrtoint(buf, 0, anint))
+                return -EINVAL;
+ 
+-       *anint = rv;
+        return 0;
  }
- 
--static void release_openowner_sop(struct nfs4_stateowner *sop)
--{
--	release_openowner(openowner(sop));
--}
--
--static int nfsd_release_n_owners(u64 num, bool is_open_owner,
--				void (*release_sop)(struct nfs4_stateowner *),
--				struct nfsd_net *nn)
--{
--	int i, count = 0;
--	struct nfs4_stateowner *sop, *next;
--
--	for (i = 0; i < OWNER_HASH_SIZE; i++) {
--		list_for_each_entry_safe(sop, next, &nn->ownerstr_hashtbl[i], so_strhash) {
--			if (sop->so_is_open_owner != is_open_owner)
--				continue;
--			release_sop(sop);
--			if (++count == num)
--				return count;
--		}
--	}
--	return count;
--}
--
- void nfsd_forget_locks(u64 num)
- {
- 	u64 count = nfsd_for_n_state(num, nfsd_forget_client_locks);
-@@ -4677,9 +4674,8 @@ void nfsd_forget_locks(u64 num)
- 
- void nfsd_forget_openowners(u64 num)
- {
--	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
--	int count = nfsd_release_n_owners(num, true, release_openowner_sop, nn);
--	printk(KERN_INFO "NFSD: Forgot %d open owners", count);
-+	u64 count = nfsd_for_n_state(num, nfsd_forget_client_openowners);
-+	printk(KERN_INFO "NFSD: Forgot %llu open owners", count);
- }
- 
- static int nfsd_process_n_delegations(u64 num, struct list_head *list)
+
+Reverting this change on recent kernels makes them work for me again.
+
+Sven
+
+
 -- 
-1.8.0.1
-
+Unix is simple and coherent, but it takes a genius – or at any rate a
+programmer – to understand and appreciate the simplicity
+(Dennis M. Ritchie)
+/me is giggls@ircnet, http://sven.gegg.us/ on the Web
