@@ -1,65 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:27465 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754382Ab2KZQ0N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Nov 2012 11:26:13 -0500
-Message-ID: <50B39824.6070207@netapp.com>
-Date: Mon, 26 Nov 2012 11:26:12 -0500
-From: Bryan Schumaker <bjschuma@netapp.com>
+Received: from mail-ia0-f174.google.com ([209.85.210.174]:41906 "EHLO
+	mail-ia0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753523Ab2KIBgW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Nov 2012 20:36:22 -0500
+Received: by mail-ia0-f174.google.com with SMTP id y32so2408136iag.19
+        for <linux-nfs@vger.kernel.org>; Thu, 08 Nov 2012 17:36:22 -0800 (PST)
 MIME-Version: 1.0
+In-Reply-To: <20121108122742.GB22735@fieldses.org>
+References: <1351760297.5369.1.camel@localhost>
+	<CA+res+RTz9DC8TK3N3kFrSpeT-rgad1nk7amJdWP_Up9OW9KSg@mail.gmail.com>
+	<CAJLw8+WJGPiWW6K7UEX72eYdgeYWsDLcoZKNP7V1UvvQGnMxXA@mail.gmail.com>
+	<CA+res+RhNJT1D0MpdSBJoywemainEJVZKSzG1BxhXTrQ3kQCbw@mail.gmail.com>
+	<20121107190111.GC7421@fieldses.org>
+	<CA+res+SD_mradA6grZz_80uWiidb_r9Kv_aW8rXVXpNLSozjWA@mail.gmail.com>
+	<20121108122742.GB22735@fieldses.org>
+Date: Fri, 9 Nov 2012 09:36:22 +0800
+Message-ID: <CA+res+Q6nV+pTmUF0PqH41jUg9d5WQAQfOtJnRngHU9ZE=ECYg@mail.gmail.com>
+Subject: Re: hang problem when umount a nfs point
+From: Jack Wang <jack.wang.usish@gmail.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 00/10] NFSD: Improve fault injection
-References: <1351630254-26166-1-git-send-email-bjschuma@netapp.com> <20121114224846.GE539@fieldses.org> <50A5025C.8070201@netapp.com> <20121115150036.GG539@fieldses.org> <50B38826.3030902@netapp.com> <20121126161046.GC11860@fieldses.org>
-In-Reply-To: <20121126161046.GC11860@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Cc: =?UTF-8?Q?Mart=C3=ADn_Cigorraga?= <msx@archlinux.us>, dahai_tian@usish.com,
+        linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/26/2012 11:10 AM, J. Bruce Fields wrote:
-> On Mon, Nov 26, 2012 at 10:17:58AM -0500, Bryan Schumaker wrote:
->> On 11/15/2012 10:00 AM, J. Bruce Fields wrote:
->>> On Thu, Nov 15, 2012 at 09:55:24AM -0500, Bryan Schumaker wrote:
->>>> On 11/14/2012 05:48 PM, J. Bruce Fields wrote:
->>>>> On Tue, Oct 30, 2012 at 04:50:44PM -0400, bjschuma@netapp.com wrote:
->>>>>> From: Bryan Schumaker <bjschuma@netapp.com>
->>>>>>
->>>>>> While working on p2p-nfs, I discovered that I sometimes need to clear
->>>>>> state for a specific client to test all possible error recovery conditions.
->>>>>> The current fault injection code deletes state as it find it, so it can
->>>>>> be difficult to guess which state will be forgotten.  In addition, I
->>>>>> currently print out the amount of state forgotten but I don't give details
->>>>>> like "Forgot 3 locks from client w.x.y.z".  These patches set out to
->>>>>> improve that.
->>>>>>
->>>>>> The first 7 patches clean up the current code and prepare it for specific
->>>>>> client state removal.  Patch 8 adds prints information to the server's logs
->>>>>> when a fault injection file is read (such as "Client w.x.y.z has 3 open
->>>>>> files").  Patch 9 adds in a custom file operations structure so users can
->>>>>> write strings to fault injection files in addition to u64s.  Finally, patch
->>>>>> 10 allows users to remove state by writing a client's IP address to one of
->>>>>> the files.
->>>>>
->>>>> Apologies for putting you off again, but: I'd like to get Stanislav's
->>>>> patches sorted out first.  I think that shouldn't take too long--bug me
->>>>> in another week or so if I haven't come back to these by then.  These
->>>>> may need a little rebasing at that point.
->>>>
->>>> Ok, I'll add "bug Bruce" to my calendar... I took a quick glance through his patches and I don't think rebasing will be too hard.
->>>
->>> Good, thanks!
+2012/11/8 J. Bruce Fields <bfields@fieldses.org>:
+> On Thu, Nov 08, 2012 at 11:03:22AM +0800, Jack Wang wrote:
+>> 2012/11/8 J. Bruce Fields <bfields@fieldses.org>:
+>> > On Wed, Nov 07, 2012 at 09:05:51AM +0800, Jack Wang wrote:
+>> >> 2012/11/7 Martín Cigorraga <msx@archlinux.us>:
+>> >> > On Mon, Nov 5, 2012 at 10:27 PM, Jack Wang <jack.wang.usish@gmail.com>
+>> >> > wrote:
+>> >> >>
+>> >> >> Hi all,
+>> >> >>
+>> >> >> Anyone who can kindly give some suggestion? or we just put question to
+>> >> >> the wrong list?
+>> >> >>
+>> >> >> Thanks.
+>> >> >>
+>> >> >> Jack
+>> >> >>
+>> >> >> 2012/11/1 dahai_tian <dahai_tian@usish.com>:
+>> >> >> > Hi all:
+>> >> >> >         I mount a local directory to a nfs server. When nfs server is
+>> >> >> > stopped
+>> >> >> > for some accidental cause, I try to umount the mount point, the umount
+>> >> >> > command will hang and 'time out' messages are continually printed in the
+>> >> >> > terminal. How can I avoid hanging in this case? BTW, This issue does not
+>> >> >> > exist when I changed nfs version from 4 to 3.
+>> >> >> >         Look forward to your response, thanks!
+>> >>
+>> >> >
+>> >> > Hi Jack, use the -l (lazy) switch:
+>> >> > # umount -l {your mounted nfs share}
+>> >> >
+>> >> > Also, I wouldn't recommend 'just to kill' the NFS proces(ses) as it (them)
+>> >> > may leave shared memory a mess.
+>> >> > (And I would like to see how do you make to mount any NFS share again
+>> >> > without booting)
+>> >>
+>> >> Thanks Martin for kindly help.
+>> >>
+>> >> umount -l did work, but why nfsv3 do not have this problem?
+>> >
+>> > I don't know what it is exactly.  But in general I wouldn't expect
+>> > umount to work when the server's unavailable.
+>> >
+>> > --b.
 >>
->> So what's the plan for these patches?
-> 
-> I'll need to take a quick look at Stanislav's latest and at these
-> patches.  Some of his stuff is already in my public tree so yours may
-> already need a rebase?
-
-Yeah, some of the context has changed for these patches... updating now.
-
-- Bryan
-
-> 
+>> Thanks for your time Bruce, but there are chance the server
+>> unavailable , why you think umount don't work is expected?
+>
+> It's tough for the client to deal safely with an unreachable server.
+> Worst case it may still have data in its buffers that applications have
+> written but that hasn't yet made it to the server.
+>
+> If you don't have any opens or other state on the filesystem any more,
+> there might be things that could be done to make it easier to umount in
+> that case--I haven't thought it through--but I doubt that's a high
+> priority, so it's likely up to you to write the code and persuade people
+> it's worthwhile.
+>
 > --b.
-> 
+Thanks for explaination.
 
+Jack
