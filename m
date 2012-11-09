@@ -1,67 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55259 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:38727 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755392Ab2K1O5i (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Nov 2012 09:57:38 -0500
-Date: Wed, 28 Nov 2012 09:57:38 -0500
-To: Andrei Warkentin <awarkentin@vmware.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Race between NFS server thread increase / decrease
-Message-ID: <20121128145738.GD11651@fieldses.org>
-References: <477254919.31693823.1353963259597.JavaMail.root@vmware.com>
- <864189844.31754280.1353966597599.JavaMail.root@vmware.com>
+	id S1753315Ab2KIUHd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Nov 2012 15:07:33 -0500
+Date: Fri, 9 Nov 2012 15:07:30 -0500
+To: Sven Geggus <lists@fuchsschwanzdomain.de>
+Cc: linux-nfs@vger.kernel.org, Eldad Zack <eldad@fogrefinery.com>
+Subject: Re: Kernel update 3.5.7 -> 3.6.3 breaks NFS4
+Message-ID: <20121109200730.GI6171@fieldses.org>
+References: <k6ebva$1kf$1@ultimate100.geggus.net>
+ <20121026171549.GA11806@fieldses.org>
+ <20121029094038.GA14836@geggus.net>
+ <20121029150203.GB9502@fieldses.org>
+ <20121105165459.GA2958@geggus.net>
+ <k7jj0c$nak$1@ultimate100.geggus.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <864189844.31754280.1353966597599.JavaMail.root@vmware.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <k7jj0c$nak$1@ultimate100.geggus.net>
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 26, 2012 at 01:49:57PM -0800, Andrei Warkentin wrote:
-> Hi NFSD developers,
+On Fri, Nov 09, 2012 at 06:45:32PM +0000, Sven Geggus wrote:
+> Sven Geggus <lists@fuchsschwanzdomain.de> wrote:
 > 
-> I've found what I think is an interesting problem that occurs on single-CPU machines as far as I can tell.
+> > OK, I now figured out which commit did cause the problem:
+> > 
+> > Thus "git diff 08843b79..cc8362b1" on a linux-stable tree from
+> > git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git should
+> > give us the relevant changes.
 > 
-> Basically the following snippet will occasionally loop forever printing that one thread is still running. Further
-> attempts to run "/usr/sbin/rpc.nfsd 0" don't help.
-> 
-> /usr/sbin/rpc.nfsd 1
-> /usr/sbin/rpc.nfsd 0
-> while [ ! $[`cat /proc/fs/nfsd/threads`] -eq 0 ]; do
->         echo $[`cat /proc/fs/nfsd/threads`] still running
->         sleep .1
-> done
-> 
-> I've not looked a whole lot at it. It appears that although the paths calling svc_set_num_threads synchronize on nfsd_mutex, the code doesn't seem to try waiting on the number of threads to reach the desired count.
+> After a private conversation with J. Bruce Fields I figured out that
+> I have not been quite there yet. So here comes a FTR post what
+> exactly caused my problem.
 
-Yeah, I guess it just signals and returns, I agree that's not ideal.
+Thanks for tracking this down--not what I would have guessed!
 
-Though in your case fixing that may just mean the "rpc.nfsd 0" would
-hang.
+Given that the trace showed a problem starting around context creation
+time, I'm most suspicious of the callers in rsc_parse, which are mostly
+parsing uid's.
 
-> What do you guys think?
+Is it possible that your system has very large uid's?  (Large enough
+that they'd look like negative numbers when cast to ints?)
 
-That is odd.  I'm not sure to suggest without spending a bunch of time
-on it.
+Output from
 
-Presumably ps will still show an nfsd thread running?
+	strace -p $(pidof rpc.mountd) -s4096 -e trace=open,close,read,write
 
-Might be interesting to see its stack (cat /proc/<pid>/stack) or look at
-a full sysrq-t dump (sysrq-t, then check the logs).
-
-Is it stuck spinning in some kind of loop?  (E.g. does "top" show
-anything interesting?)
-
-If none of that provides any hints, I dunno, my caveman approach would
-be to just stare really hard and the relevant code and start sprinkling
-printk's around as necessary.
+(while reproducing the bug) might help confirm that.
 
 --b.
 
+
 > 
-> Thanks.
+> It is the following change:
 > 
-> A
+> $ git diff d9c2ede63c74048dfddbb129c59ac01176b0ab71 bbf43dc888833ac0539e437dbaeb28bfd4fbab9f
+> diff --git a/include/linux/sunrpc/cache.h
+> b/include/linux/sunrpc/cache.h
+> index 6def1f6..af42596 100644
+> --- a/include/linux/sunrpc/cache.h
+> +++ b/include/linux/sunrpc/cache.h
+> @@ -217,8 +217,6 @@ extern int qword_get(char **bpp, char *dest, int
+> bufsize);
+>  static inline int get_int(char **bpp, int *anint)
+>  {
+>         char buf[50];
+> -       char *ep;
+> -       int rv;
+>         int len = qword_get(bpp, buf, sizeof(buf));
+>  
+>         if (len < 0)
+> @@ -226,11 +224,9 @@ static inline int get_int(char **bpp, int
+> *anint)
+>         if (len == 0)
+>                 return -ENOENT;
+>  
+> -       rv = simple_strtol(buf, &ep, 0);
+> -       if (*ep)
+> +       if (kstrtoint(buf, 0, anint))
+>                 return -EINVAL;
+>  
+> -       *anint = rv;
+>         return 0;
+>  }
+> 
+> Reverting this change on recent kernels makes them work for me again.
+> 
+> Sven
+> 
+> 
+> -- 
+> Unix is simple and coherent, but it takes a genius – or at any rate a
+> programmer – to understand and appreciate the simplicity
+> (Dennis M. Ritchie)
+> /me is giggls@ircnet, http://sven.gegg.us/ on the Web
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
