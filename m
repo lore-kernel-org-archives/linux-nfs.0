@@ -1,67 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f46.google.com ([209.85.215.46]:43174 "EHLO
-	mail-la0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753993Ab2K3KU4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Nov 2012 05:20:56 -0500
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 3/3] CIFS: Use NT_CREATE_ANDX command for forcemand mounts
-Date: Fri, 30 Nov 2012 14:20:40 +0400
-Message-Id: <1354270840-7272-4-git-send-email-piastry@etersoft.ru>
-In-Reply-To: <1354270840-7272-1-git-send-email-piastry@etersoft.ru>
-References: <1354270840-7272-1-git-send-email-piastry@etersoft.ru>
+Received: from mail-vc0-f174.google.com ([209.85.220.174]:36169 "EHLO
+	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755388Ab2KIUcC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Nov 2012 15:32:02 -0500
+Received: by mail-vc0-f174.google.com with SMTP id fk26so4210471vcb.19
+        for <linux-nfs@vger.kernel.org>; Fri, 09 Nov 2012 12:32:01 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd: fix error handling in nfsd4_remove_clid_dir
+Date: Fri,  9 Nov 2012 15:31:53 -0500
+Message-Id: <1352493113-22005-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-forcemand mount option now lets us use Windows mandatory style of
-byte-range locks even if server supports posix ones - switches on
-Windows locking mechanism. Share flags is another locking mehanism
-provided by Windows semantic that can be used by NT_CREATE_ANDX
-command. This patch combines all Windows locking mechanism in one
-mount option by using NT_CREATE_ANDX to open files if forcemand is on.
+If the credential save fails, then we'll leak our mnt_want_write_file
+reference.
 
-Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/cifs/dir.c  |    1 +
- fs/cifs/file.c |    6 ++++--
- 2 files changed, 5 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4recover.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/cifs/dir.c b/fs/cifs/dir.c
-index 4784d53..8edd950 100644
---- a/fs/cifs/dir.c
-+++ b/fs/cifs/dir.c
-@@ -216,6 +216,7 @@ cifs_do_create(struct inode *inode, struct dentry *direntry, unsigned int xid,
- 	}
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index 43295d4..0f1e2e2 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -301,12 +301,13 @@ nfsd4_remove_clid_dir(struct nfs4_client *clp)
  
- 	if (tcon->unix_ext && cap_unix(tcon->ses) && !tcon->broken_posix_open &&
-+	    ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NOPOSIXBRL) == 0) &&
- 	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
- 			le64_to_cpu(tcon->fsUnixInfo.Capability))) {
- 		rc = cifs_posix_open(full_path, &newinode, inode->i_sb, mode,
-diff --git a/fs/cifs/file.c b/fs/cifs/file.c
-index e2614b9..8cfda53 100644
---- a/fs/cifs/file.c
-+++ b/fs/cifs/file.c
-@@ -426,8 +426,9 @@ int cifs_open(struct inode *inode, struct file *file)
- 	else
- 		oplock = 0;
+ 	status = nfs4_save_creds(&original_cred);
+ 	if (status < 0)
+-		goto out;
++		goto out_drop_write;
  
--	if (!tcon->broken_posix_open && tcon->unix_ext &&
--	    cap_unix(tcon->ses) && (CIFS_UNIX_POSIX_PATH_OPS_CAP &
-+	if (!tcon->broken_posix_open && tcon->unix_ext && cap_unix(tcon->ses)
-+	    && ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NOPOSIXBRL) == 0) &&
-+	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
- 				le64_to_cpu(tcon->fsUnixInfo.Capability))) {
- 		/* can not refresh inode info since size could be stale */
- 		rc = cifs_posix_open(full_path, &inode, inode->i_sb,
-@@ -595,6 +596,7 @@ cifs_reopen_file(struct cifsFileInfo *cfile, bool can_flush)
- 		oplock = 0;
- 
- 	if (tcon->unix_ext && cap_unix(tcon->ses) &&
-+	    ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NOPOSIXBRL) == 0) &&
- 	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
- 				le64_to_cpu(tcon->fsUnixInfo.Capability))) {
- 		/*
+ 	status = nfsd4_unlink_clid_dir(clp->cl_recdir, HEXDIR_LEN-1);
+ 	nfs4_reset_creds(original_cred);
+ 	if (status == 0)
+ 		vfs_fsync(rec_file, 0);
++out_drop_write:
+ 	mnt_drop_write_file(rec_file);
+ out:
+ 	if (status)
 -- 
-1.7.10.4
+1.7.11.7
 
