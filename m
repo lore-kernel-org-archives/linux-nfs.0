@@ -1,132 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35545 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752861Ab2KZOkE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Nov 2012 09:40:04 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 8/8] nfsd4: return badname on use "." or "..", or "/"
-Date: Mon, 26 Nov 2012 09:39:59 -0500
-Message-Id: <1353940799-11763-9-git-send-email-bfields@redhat.com>
-In-Reply-To: <1353940799-11763-1-git-send-email-bfields@redhat.com>
-References: <1353940799-11763-1-git-send-email-bfields@redhat.com>
+Received: from mail-vc0-f174.google.com ([209.85.220.174]:61101 "EHLO
+	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755681Ab2KIUGx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Nov 2012 15:06:53 -0500
+Received: by mail-vc0-f174.google.com with SMTP id fk26so4183151vcb.19
+        for <linux-nfs@vger.kernel.org>; Fri, 09 Nov 2012 12:06:52 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH RFC 1/7] nfsd: remove unused argument to nfs4_has_reclaimed_state
+Date: Fri,  9 Nov 2012 15:06:38 -0500
+Message-Id: <1352491604-21605-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1352491604-21605-1-git-send-email-jlayton@redhat.com>
+References: <1352491604-21605-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
-
-The spec requires badname, not inval, in these cases.
-
-Some callers want us to return enoent, but I can see no justification
-for that.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/nfs4xdr.c |   25 ++++++++++++-------------
- 1 file changed, 12 insertions(+), 13 deletions(-)
+ fs/nfsd/nfs4recover.c | 2 +-
+ fs/nfsd/nfs4state.c   | 2 +-
+ fs/nfsd/state.h       | 2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 09204f5..250171c 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -65,17 +65,17 @@
- #define NFS4_REFERRAL_FSID_MINOR	0x8000000ULL
- 
- static __be32
--check_filename(char *str, int len, __be32 err)
-+check_filename(char *str, int len)
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index 0a9ac9d..10b7f47 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -319,7 +319,7 @@ purge_old(struct dentry *parent, struct dentry *child)
  {
- 	int i;
+ 	int status;
  
- 	if (len == 0)
- 		return nfserr_inval;
- 	if (isdotent(str, len))
--		return err;
-+		return nfserr_badname;
- 	for (i = 0; i < len; i++)
- 		if (str[i] == '/')
--			return err;
-+			return nfserr_badname;
- 	return 0;
+-	if (nfs4_has_reclaimed_state(child->d_name.name, false))
++	if (nfs4_has_reclaimed_state(child->d_name.name))
+ 		return 0;
+ 
+ 	status = vfs_rmdir(parent->d_inode, child);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index fba2996..f15a2a0 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4465,7 +4465,7 @@ alloc_reclaim(void)
  }
  
-@@ -570,7 +570,7 @@ nfsd4_decode_create(struct nfsd4_compoundargs *argp, struct nfsd4_create *create
- 	READ32(create->cr_namelen);
- 	READ_BUF(create->cr_namelen);
- 	SAVEMEM(create->cr_name, create->cr_namelen);
--	if ((status = check_filename(create->cr_name, create->cr_namelen, nfserr_inval)))
-+	if ((status = check_filename(create->cr_name, create->cr_namelen)))
- 		return status;
+ int
+-nfs4_has_reclaimed_state(const char *name, bool use_exchange_id)
++nfs4_has_reclaimed_state(const char *name)
+ {
+ 	unsigned int strhashval = clientstr_hashval(name);
+ 	struct nfs4_client *clp;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index e036894..bd734f0 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -470,7 +470,7 @@ extern void nfsd4_shutdown_callback(struct nfs4_client *);
+ extern void nfs4_put_delegation(struct nfs4_delegation *dp);
+ extern __be32 nfs4_make_rec_clidname(char *clidname, struct xdr_netobj *clname);
+ extern int nfs4_client_to_reclaim(const char *name);
+-extern int nfs4_has_reclaimed_state(const char *name, bool use_exchange_id);
++extern int nfs4_has_reclaimed_state(const char *name);
+ extern void release_session_client(struct nfsd4_session *);
+ extern void nfsd4_purge_closed_stateid(struct nfs4_stateowner *);
  
- 	status = nfsd4_decode_fattr(argp, create->cr_bmval, &create->cr_iattr,
-@@ -602,7 +602,7 @@ nfsd4_decode_link(struct nfsd4_compoundargs *argp, struct nfsd4_link *link)
- 	READ32(link->li_namelen);
- 	READ_BUF(link->li_namelen);
- 	SAVEMEM(link->li_name, link->li_namelen);
--	if ((status = check_filename(link->li_name, link->li_namelen, nfserr_inval)))
-+	if ((status = check_filename(link->li_name, link->li_namelen)))
- 		return status;
- 
- 	DECODE_TAIL;
-@@ -696,7 +696,7 @@ nfsd4_decode_lookup(struct nfsd4_compoundargs *argp, struct nfsd4_lookup *lookup
- 	READ32(lookup->lo_len);
- 	READ_BUF(lookup->lo_len);
- 	SAVEMEM(lookup->lo_name, lookup->lo_len);
--	if ((status = check_filename(lookup->lo_name, lookup->lo_len, nfserr_noent)))
-+	if ((status = check_filename(lookup->lo_name, lookup->lo_len)))
- 		return status;
- 
- 	DECODE_TAIL;
-@@ -860,7 +860,7 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
- 		READ32(open->op_fname.len);
- 		READ_BUF(open->op_fname.len);
- 		SAVEMEM(open->op_fname.data, open->op_fname.len);
--		if ((status = check_filename(open->op_fname.data, open->op_fname.len, nfserr_inval)))
-+		if ((status = check_filename(open->op_fname.data, open->op_fname.len)))
- 			return status;
- 		break;
- 	case NFS4_OPEN_CLAIM_PREVIOUS:
-@@ -875,7 +875,7 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
- 		READ32(open->op_fname.len);
- 		READ_BUF(open->op_fname.len);
- 		SAVEMEM(open->op_fname.data, open->op_fname.len);
--		if ((status = check_filename(open->op_fname.data, open->op_fname.len, nfserr_inval)))
-+		if ((status = check_filename(open->op_fname.data, open->op_fname.len)))
- 			return status;
- 		break;
- 	case NFS4_OPEN_CLAIM_FH:
-@@ -987,7 +987,7 @@ nfsd4_decode_remove(struct nfsd4_compoundargs *argp, struct nfsd4_remove *remove
- 	READ32(remove->rm_namelen);
- 	READ_BUF(remove->rm_namelen);
- 	SAVEMEM(remove->rm_name, remove->rm_namelen);
--	if ((status = check_filename(remove->rm_name, remove->rm_namelen, nfserr_noent)))
-+	if ((status = check_filename(remove->rm_name, remove->rm_namelen)))
- 		return status;
- 
- 	DECODE_TAIL;
-@@ -1005,9 +1005,9 @@ nfsd4_decode_rename(struct nfsd4_compoundargs *argp, struct nfsd4_rename *rename
- 	READ32(rename->rn_tnamelen);
- 	READ_BUF(rename->rn_tnamelen);
- 	SAVEMEM(rename->rn_tname, rename->rn_tnamelen);
--	if ((status = check_filename(rename->rn_sname, rename->rn_snamelen, nfserr_noent)))
-+	if ((status = check_filename(rename->rn_sname, rename->rn_snamelen)))
- 		return status;
--	if ((status = check_filename(rename->rn_tname, rename->rn_tnamelen, nfserr_inval)))
-+	if ((status = check_filename(rename->rn_tname, rename->rn_tnamelen)))
- 		return status;
- 
- 	DECODE_TAIL;
-@@ -1034,8 +1034,7 @@ nfsd4_decode_secinfo(struct nfsd4_compoundargs *argp,
- 	READ32(secinfo->si_namelen);
- 	READ_BUF(secinfo->si_namelen);
- 	SAVEMEM(secinfo->si_name, secinfo->si_namelen);
--	status = check_filename(secinfo->si_name, secinfo->si_namelen,
--								nfserr_noent);
-+	status = check_filename(secinfo->si_name, secinfo->si_namelen);
- 	if (status)
- 		return status;
- 	DECODE_TAIL;
 -- 
-1.7.9.5
+1.7.11.7
 
