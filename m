@@ -1,62 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:24056 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754984Ab2KUPFm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 Nov 2012 10:05:42 -0500
-Subject: [PATCH] nfsd4: remove state lock from nfs4_state_shutdown
+Received: from mail-vb0-f46.google.com ([209.85.212.46]:43164 "EHLO
+	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755681Ab2KIUGw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Nov 2012 15:06:52 -0500
+Received: by mail-vb0-f46.google.com with SMTP id ff1so4276477vbb.19
+        for <linux-nfs@vger.kernel.org>; Fri, 09 Nov 2012 12:06:50 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
 To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Wed, 21 Nov 2012 18:07:38 +0300
-Message-ID: <20121121150730.6644.99859.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH RFC 0/7] nfsd: limit the use of md5 hashes in nfsdv4 code
+Date: Fri,  9 Nov 2012 15:06:37 -0500
+Message-Id: <1352491604-21605-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Protection of __nfs4_state_shutdown() with nfs4_lock_state() looks redundant.
+knfsd has historically used md5 hashes as a way to turn nfs_client_id4
+blobs into printable strings. It mainly does this to make directories in
+the v4recoverydir, but it also uses those strings as part of a scheme to
+pick a hash bucket for tracking it.
 
-This function is called by the last NFSd thread on it's exit and state lock
-protects actually two functions (del_recall_lru is protected by recall_lock):
-1) nfsd4_client_tracking_exit
-2) __nfs4_state_shutdown_net
+The choice of md5 here turns out to be problematic. We have customers
+that would like to be able to use knfsd while booted in FIPS mode, but
+serving v4 currently falls down because those algorithms are proscribed.
 
-"nfsd4_client_tracking_exit" doesn't require state lock protection, because it's
-state can be modified only by tracker callbacks.
-Here a re they:
-1) create: is called only from nfsd4_proc_compound.
-2) remove: is called from either nfsd4_proc_compound or nfs4_laundromat.
-3) check: is called only from nfsd4_proc_compound.
-4) grace_done; called only from nfs4_laundromat.
+This patchset is a first pass at making md5 hashing less necessary.
+Clearly, we *do* need md5 hashes for the legacy client tracking code.
+But, if someone is using nfsdcltrack, for instance it's not strictly
+necessary.
 
-nfsd4_proc_compound is called onll by NFSd kthread, which is exiting right
-now.
-nfs4_laundromat is called by laundry_wq. But laundromat_work was canceled
-already.
+With this patchset it also ought to be possible to support v4 serving
+with the legacy tracker, even if md5 is unavailable. Reclaiming won't
+work correctly of course, but you'll be able to serve NFSv4 without
+that.
 
-"__nfs4_state_shutdown_net" also doesn't require state lock protection,
-because all NFSd kthreads are dead, and no race can happen with NFSd start,
-because "nfsd_up" flag is still set.
-Moreover, all Nfsd shutdown is protected with global nfsd_mutex.
+This code builds and I've done some rudimentary testing on it that
+indicates that it works. It needs more testing, so consider this an RFC.
+This patchset is based on the 4 patches that add the nfsdcltrack
+recovery tracker.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfsd/nfs4state.c |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
+The code is also available here in my nfsd-3.8 branch:
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e75872f..d41cc71 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4926,9 +4926,7 @@ nfs4_state_shutdown(void)
- 	cancel_delayed_work_sync(&nn->laundromat_work);
- 	destroy_workqueue(laundry_wq);
- 	locks_end_grace(&nn->nfsd4_manager);
--	nfs4_lock_state();
- 	__nfs4_state_shutdown(net);
--	nfs4_unlock_state();
- 	nfsd4_destroy_callback_queue();
- }
- 
+    http://git.samba.org/?p=jlayton/linux.git;a=shortlog;h=refs/heads/nfsd-3.8
+
+Jeff Layton (7):
+  nfsd: remove unused argument to nfs4_has_reclaimed_state
+  nfsd: have nfsd4_find_reclaim_client take a char * argument
+  nfsd: break out reclaim record removal into separate function
+  nfsd: make nfs4_client_to_reclaim return a pointer to the reclaim
+    record
+  nfsd: don't search for client by hash on legacy reboot recovery
+    gracedone
+  nfsd: move the confirmed and unconfirmed hlists to a rbtree
+  nfsd: get rid of cl_recdir field
+
+ fs/nfsd/nfs4recover.c |  75 +++++++++++++-----
+ fs/nfsd/nfs4state.c   | 207 +++++++++++++++++++++++++++++---------------------
+ fs/nfsd/state.h       |  14 ++--
+ 3 files changed, 183 insertions(+), 113 deletions(-)
+
+-- 
+1.7.11.7
 
