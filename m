@@ -1,74 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cn.fujitsu.com ([222.73.24.84]:6901 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1755267Ab2KWEtm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Nov 2012 23:49:42 -0500
-Message-ID: <50AEF92B.4080900@cn.fujitsu.com>
-Date: Fri, 23 Nov 2012 12:18:51 +0800
-From: fanchaoting <fanchaoting@cn.fujitsu.com>
+Received: from mail.gnuher.de ([78.47.12.54]:39314 "EHLO mail.gnuher.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751694Ab2KIXHt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 9 Nov 2012 18:07:49 -0500
+Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
+	by mail.gnuher.de (envelope-from
+	<sven@geggus.net>)
+	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
+	(Exim 4.72)
+	id 1TWxKc-0004fG-5h
+	for linux-nfs@vger.kernel.org; Fri, 09 Nov 2012 23:45:46 +0100
+From: Sven Geggus <lists@fuchsschwanzdomain.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Kernel update 3.5.7 -> 3.6.3 breaks NFS4
+In-Reply-To: <20121109200730.GI6171@fieldses.org>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>, bfields@fieldses.org
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: nfs cache bug (when server delete the file ,nfs client can read file
- also)
-Content-Type: text/plain; charset=ISO-2022-JP
+Content-Type: text/plain; charset=UTF-8
+Message-Id: <E1TWxKX-00025I-J2@diesel.geggus.net>
+Date: Fri, 09 Nov 2012 23:45:41 +0100
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,everyone. I found a big bug abount nfs cache.
+In article <20121109200730.GI6171@fieldses.org> you wrote:
 
-when server delete the file ,nfs client can read file also.
+> Is it possible that your system has very large uid's?  (Large enough
+> that they'd look like negative numbers when cast to ints?)
 
-the following is the reproduce.
+Shurely not. however, mounting is done as root which might get mapped to
+nobody which usually is 65534.
 
-ip: 192.168.0.19  nfs-client
-ip: 192.168.0.20  nfs-client
-ip: 192.168.0.21  nfs-server
+> Output from
+> 
+>        strace -p $(pidof rpc.mountd) -s4096 -e trace=open,close,read,write
+> 
+> (while reproducing the bug) might help confirm that.
 
-############################################################################
+While doing the hanging or while doing the proper mount?
 
-/usr/bin/ssh -n 192.168.0.21 service nfs start
-/usr/bin/ssh -n 192.168.0.21 /usr/sbin/rpc.idmapd
-/usr/bin/ssh -n 192.168.0.19 /usr/sbin/rpc.idmapd
-/usr/bin/ssh -n 192.168.0.20 /usr/sbin/rpc.idmapd
-/usr/bin/ssh -n 192.168.0.21 "rm -rf /nfsroot; mkdir -p /nfsroot"
-/usr/bin/ssh -n 192.168.0.21 /usr/sbin/exportfs -au
-/usr/bin/ssh -n 192.168.0.21 /usr/sbin/exportfs -i -o insecure,no_root_squash,rw,fsid=0 *:/nfsroot
-/usr/bin/ssh -n 192.168.0.19 test -d /nfsroot || (rm -rf /nfsroot; mkdir -p /nfsroot)
-/usr/bin/ssh -n 192.168.0.20 test -d /nfsroot || (rm -rf /nfsroot; mkdir -p /nfsroot)
+Sven
 
-/usr/bin/ssh -n 192.168.0.19 umount /nfsroot
-/usr/bin/ssh -n 192.168.0.20 umount /nfsroot
-cmd="echo \"hello world\" > /nfsroot/tmpfile"
-/usr/bin/ssh -n 192.168.0.21 $cmd
-/usr/bin/ssh -n 192.168.0.21 mkdir /nfsroot/tmpdir
-/usr/bin/ssh -n 192.168.0.21 touch /nfsroot/tmpdir/tmpdfile
-/usr/bin/ssh -n 192.168.0.19 mount -t nfs4 192.168.0.21:/ /nfsroot
-/usr/bin/ssh -n 192.168.0.20 mount -t nfs4 192.168.0.21:/ /nfsroot
-/usr/bin/ssh -n 192.168.0.21 cat  /nfsroot/tmpfile
-/usr/bin/ssh -n 192.168.0.21 ls -l /nfsroot/tmpdir
-/usr/bin/ssh -n 192.168.0.19 cat  /nfsroot/tmpfile
-/usr/bin/ssh -n 192.168.0.19 ls -l  /nfsroot/tmpdir
-/usr/bin/ssh -n 192.168.0.20 cat  /nfsroot/tmpfile
-/usr/bin/ssh -n 192.168.0.20 ls -l  /nfsroot/tmpdir
-/usr/bin/ssh -n 192.168.0.19 cat /nfsroot/tmpfile > /dev/null
-/usr/bin/ssh -n 192.168.0.20 cat /nfsroot/tmpfile > /dev/null
-/usr/bin/ssh -n 192.168.0.21 rm -rf /nfsroot/tmpfile
-echo -e "sleep 60~~~~~~~~\n"
-sleep 60
-
-#############################################################################
-
-last: In 192.168.0.19 I do:
-
-#cat /nfsroot/tmpfile           <--the nfs server delete the file,but nfs client can read the file
- hello world
-
-
-I think  when the nfs server delete the file ,
-the  server should notice the nfs client,
-but the upstream kernel does't this.
- 
-
-
-
+-- 
+Microsoft ist offenbar die einzige Firma, die in der Lage ist, ein mit
+Office nicht kompatibles Bürosoftwarepaket einzuführen.
+                            (Florian Weimer in de.alt.sysadmin.recovery)
+/me is giggls@ircnet, http://sven.gegg.us/ on the Web
