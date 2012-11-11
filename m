@@ -1,31 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:49910 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755135Ab2K1RNb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Nov 2012 12:13:31 -0500
-Message-ID: <50B64628.4070007@parallels.com>
-Date: Wed, 28 Nov 2012 21:13:12 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from mx1.redhat.com ([209.132.183.28]:56078 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751179Ab2KKXib (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 11 Nov 2012 18:38:31 -0500
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id qABNcUwB009869
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Sun, 11 Nov 2012 18:38:30 -0500
+Received: from smallhat.bos.devel.redhat.com (vpn-11-117.rdu.redhat.com [10.11.11.117])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id qABNcTw5012179
+	for <linux-nfs@vger.kernel.org>; Sun, 11 Nov 2012 18:38:30 -0500
+Message-ID: <50A036F5.3060706@RedHat.com>
+Date: Sun, 11 Nov 2012 18:38:29 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: "bfields@fieldses.org" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Jeff Layton <jlayton@redhat.com>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
-Subject: NFSd in container - it works
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: ANNOUNCE: nfs-utils-1.2.7 released.
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi.
-I have about ~10 more patches, which makes NFS server works in container (mnt + pid + net namesapces). And it passes basic tests.
-But there are some issues I would like to discuss:
-1) NFSd threads are running in init_pid namespace. This makes impossible to stop NFS server by signals from container. Also is makes possible to stop and 
-destroy container without stopping its NFS server (network namespace thus will stay alive). So, there should be implemented some way to destroy these threads, 
-when container's child reaper is exiting.
-2) We need to solve this issue with registering in wrong portmapper. Sync connects suits both Lockd and NFSd. Bruce, what about gss daemon? Maybe some other 
-socket (abstract UNIX or loopback) can be used instead? Or PipeFS?
-3) Holding net by tracker looks redundant. What was the reason for this?
+New Features in this release:
+   * The nfsdcld daemon was replaced by the nfsdcltrack (which is
+     enabled by default)
 
--- 
-Best regards,
-Stanislav Kinsbursky
+   * FedFS support was added to mountd.
+
+As well as the usual assorted bug fixes...  
+
+The tarballs can be found at
+  http://kernel.org/pub/linux/utils/nfs-utils/1.2.7/
+or
+  http://sourceforge.net/projects/nfs
+
+The change log is at 
+   http://kernel.org/pub/linux/utils/nfs-utils/1.2.7/1.2.7-ChangeLog
+or
+   http://sourceforge.net/projects/nfs/files/nfs-utils/1.2.7/1.2.7-Changelog
+
+The git tree is at:
+   git://linux-nfs.org/nfs-utils
+
+Please send comments/bugs to linux-nfs@vger.kernel.org
+
+steved.
