@@ -1,55 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ea0-f174.google.com ([209.85.215.174]:52987 "EHLO
-	mail-ea0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754489Ab2KZJ0T (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Nov 2012 04:26:19 -0500
-Received: by mail-ea0-f174.google.com with SMTP id e13so4312730eaa.19
-        for <linux-nfs@vger.kernel.org>; Mon, 26 Nov 2012 01:26:18 -0800 (PST)
-From: Benny Halevy <bhalevy@tonian.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] pnfsd-lexp: CONFIG_PNFSD_LEXP_COMMIT_THRU_MDS
-Date: Mon, 26 Nov 2012 11:26:14 +0200
-Message-Id: <1353921974-19637-1-git-send-email-bhalevy@tonian.com>
+Received: from mx2.netapp.com ([216.240.18.37]:20418 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752754Ab2KLUyq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Nov 2012 15:54:46 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Andy Adamson <androsadamson@gmail.com>
+CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] NFS: Add sequence_priviliged_ops for
+ nfs4_proc_sequence()
+Date: Mon, 12 Nov 2012 20:54:45 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092D80BB@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1352745355-31157-1-git-send-email-bjschuma@netapp.com>
+	 <CAHVgHyWyKhjOc4AFY3LvK57k8JK5zNJDkRGwUjqNA4LMYcSzdw@mail.gmail.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9092D7F52@SACEXCMBX04-PRD.hq.netapp.com>
+	 <CAHVgHyWzO6UxnQEBoBFY4uHxTx9PBHKxP+hvJfYaW-OTqWLgMA@mail.gmail.com>
+In-Reply-To: <CAHVgHyWzO6UxnQEBoBFY4uHxTx9PBHKxP+hvJfYaW-OTqWLgMA@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfsd/Kconfig      | 7 +++++++
- fs/nfsd/pnfsd_lexp.c | 4 ++++
- 2 files changed, 11 insertions(+)
-
-diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-index d5ceec0..54b828e 100644
---- a/fs/nfsd/Kconfig
-+++ b/fs/nfsd/Kconfig
-@@ -139,3 +139,10 @@ config PNFSD_LEXP_RETURN_ON_CLOSE
- 	default y
- 	help
- 	  Set return_on_close response flag.
-+
-+config PNFSD_LEXP_COMMIT_THRU_MDS
-+	bool "Reply to LAYOUTGET with commit_thru_mds set to true"
-+	depends on PNFSD_LOCAL_EXPORT
-+	default n
-+	help
-+	  Set commit_thru_mds nfl_util response flag.
-diff --git a/fs/nfsd/pnfsd_lexp.c b/fs/nfsd/pnfsd_lexp.c
-index 33a724c..bcdb80f 100644
---- a/fs/nfsd/pnfsd_lexp.c
-+++ b/fs/nfsd/pnfsd_lexp.c
-@@ -168,7 +168,11 @@ static int get_stripe_unit(int blocksize)
- 	/* Set file layout response args */
- 	layout->lg_layout_type = LAYOUT_NFSV4_1_FILES;
- 	layout->lg_stripe_type = STRIPE_SPARSE;
-+#ifdef CONFIG_PNFSD_LEXP_COMMIT_THRU_MDS
- 	layout->lg_commit_through_mds = true;
-+#else
-+	layout->lg_commit_through_mds = false;
-+#endif
- 	layout->lg_stripe_unit = get_stripe_unit(inode->i_sb->s_blocksize);
- 	layout->lg_fh_length = 1;
- 	layout->device_id.sbid = arg->lg_sbid;
--- 
-1.7.11.7
-
+T24gTW9uLCAyMDEyLTExLTEyIGF0IDE1OjQ5IC0wNTAwLCBBbmR5IEFkYW1zb24gd3JvdGU6DQo+
+IE9uIE1vbiwgTm92IDEyLCAyMDEyIGF0IDM6MjkgUE0sIE15a2xlYnVzdCwgVHJvbmQNCj4gPFRy
+b25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPiBPbiBNb24sIDIwMTItMTEtMTIg
+YXQgMTU6MjIgLTA1MDAsIEFuZHkgQWRhbXNvbiB3cm90ZToNCj4gPj4gT24gTW9uLCBOb3YgMTIs
+IDIwMTIgYXQgMTozNSBQTSwgIDxianNjaHVtYUBuZXRhcHAuY29tPiB3cm90ZToNCj4gPj4gPiBG
+cm9tOiBCcnlhbiBTY2h1bWFrZXIgPGJqc2NodW1hQG5ldGFwcC5jb20+DQo+ID4+ID4NCj4gPj4g
+PiBEdXJpbmcgcmVjb3ZlcnkgdGhlIE5GUzRfU0VTU0lPTl9EUkFJTklORyBmbGFnIG1pZ2h0IGJl
+IHNldCBvbiB0aGUNCj4gPj4gPiBjbGllbnQgc3RydWN0dXJlLiAgVGhpcyBjYW4gY2F1c2UgbGVh
+c2UgcmVuZXdhbCB0byBhYm9ydCB3aGVuDQo+ID4NCj4gPiBOb3QgbGVhc2UgcmVuZXdhbC4gSXQg
+aXMgbGVhc2UgdmVyaWZpY2F0aW9uIChpLmUuIGNoZWNraW5nIHRoYXQgd2UgaGF2ZQ0KPiA+IGEg
+dmFsaWQgbGVhc2UgYW5kIHNlc3Npb24pIHRoYXQgd2lsbCBkZWFkbG9jay4NCj4gPg0KPiA+PiA+
+IG5mczQxX3NldHVwX3NlcXVlbmNlIHNlZXMgdGhhdCB3ZSBhcmUgZG9pbmcgcmVjb3ZlcnkuICBB
+cyBhIHJlc3VsdCwgdGhlDQo+ID4+ID4gY2xpZW50IG5ldmVyIHJlY292ZXJzIGFuZCBhbGwgYWN0
+aXZpdHkgd2l0aCB0aGUgTkZTIHNlcnZlciBoYWx0cy4NCj4gPj4NCj4gPj4NCj4gPj4gV2hlbiBk
+b2VzIHRoaXMgaGFwcGVuPyBTYXkgdGhlIHNlc3Npb24gaXMgZHJhaW5pbmcsIGFuZCBhbiBSUEMg
+cmV0dXJucw0KPiA+PiBmcm9tIG9uZSBvZiB0aGUgY29tcG91bmRzIHN1Y2ggYXMgbmZzX29wZW4s
+IG5mc19sb2NrdSBldGMgd2hvc2UNCj4gPj4gcnBjX2NhbGxfZG9uZSByb3V0aW5lIGNhbGxzIHJl
+bmV3X2xlYXNlIGFmdGVyIGZyZWVpbmcgaXQncyBzbG90LiAgTGlrZQ0KPiA+PiBhbGwgY2FsbHMg
+b24gYSBkcmFpbmluZyBzZXNzaW9uLCB0aGUgcmVuZXdfbGVhc2Ugc2xlZXBzIG9uIHRoZSBzZXNz
+aW9uDQo+ID4+IHNsb3RfdGJsX3dhaXRxIC0gaXMgdGhpcyB3aGF0IHlvdSBtZWFuIGJ5ICJjYXVz
+ZXMgbGVhc2UgcmVuZXdhbCB0bw0KPiA+PiBhYm9ydCI/IEhvdyBkb2VzIHRoaXMgY2F1c2UgdGhl
+IGNsaWVudCB0byBuZXZlciByZWNvdmVyPw0KPiA+Pg0KPiA+PiBUaGUgb25seSBvdGhlciBjYWxs
+IHRvIHJlbmV3X2xlYXNlIGlzIGZyb20gdGhlIHN0YXRlIG1hbmFnZXIgaXRzZWxmDQo+ID4+IHdo
+aWNoIHJ1bnMgb25lIGZ1bmN0aW9uIGF0IGEgdGltZSwgYW5kIHdpbGwgbm90IGNhbGwgcmVuZXdf
+bGVhc2UgdW50aWwNCj4gPj4gdGhlIHJlY292ZXJ5IGlzIG92ZXIuLi4uDQo+ID4+DQo+ID4+IFdo
+YXQgYW0gSSBtaXNzaW5nLi4uLj8NCj4gPg0KPiA+IG5mczRfY2hlY2tfbGVhc2UoKSBpcyBydW4g
+ZXhjbHVzaXZlbHkgYnkgdGhlIHN0YXRlIG1hbmFnZXIgdGhyZWFkIGluDQo+ID4gb3JkZXIgdG8g
+Y2hlY2sgdGhhdCB0aGUgY2xpZW50aWQgKGFuZCBzZXNzaW9uIGlkIG9uIE5GU3Y0LjEpIGFyZSB2
+YWxpZC4NCj4gPiBJdCB3aWxsIGRlYWRsb2NrIHRoZSBzdGF0ZSBtYW5hZ2VyIHRocmVhZCBpZiBO
+RlM0X1NFU1NJT05fRFJBSU5JTkcgaXMNCj4gPiBhbHJlYWR5IHNldC4NCj4gDQo+IE9LLiBORlM0
+X1NFU1NJT05fRFJBSU5JTkcgaXMgYWxzbyBzZXQgZXhjbHVzaXZlbHkgYnkgdGhlIHN0YXRlIG1h
+bmFnZXINCj4gdGhyZWFkLiBXaHkgaXMgdGhlIHN0YXRlIG1hbmFnZXIgdG9sZCB0byBjaGVjayB0
+aGUgbGVhc2Ugd2hlbiBpdCdzDQo+IGFsc28gZHJhaW5pbmcgYSBzZXNzaW9uPw0KDQpORlM0X1NF
+U1NJT05fRFJBSU5JTkcgZG9lcyBub3QganVzdCBtZWFuIHRoYXQgdGhlIHNlc3Npb24gaXMgYmVp
+bmcNCmRyYWluZWQ7IGl0IHJlbWFpbnMgc2V0IHVudGlsIG9wZW4gYW5kIGxvY2sgc3RhdGUgcmVj
+b3ZlcnkgaXMgY29tcGxldGVkLg0KDQpJT1c6IGlmIHNvbWV0aGluZyBoYXBwZW5zIGR1cmluZyBz
+dGF0ZSByZWNvdmVyeSB0aGF0IHJlcXVpcmVzIHVzIHRvDQpjaGVjayB0aGUgbGVhc2UgKGUuZy4g
+c29tZXRoaW5nIHJldHVybnMgTkZTNEVSUl9FWFBJUkVEKSB0aGVuIHRoZQ0KY3VycmVudCBjb2Rl
+IHdpbGwgZGVhZGxvY2suDQoNCj4gTm8gbWF0dGVyIHdoYXQgdGhlIGFuc3dlciwgcGxlYXNlIHVw
+ZGF0ZSB0aGUgcGF0Y2ggZGVzY3JpcHRpb24gdG8NCj4gYmV0dGVyIGV4cGxhaW4gdGhlIHByb2Js
+ZW0gYmVpbmcgc29sdmVkLg0KDQpBQ0suIEkgYWdyZWUgdGhhdCB0aGUgY2hhbmdlbG9nIGVudHJ5
+IGNhbiBiZSBpbXByb3ZlZC4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGll
+bnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cu
+bmV0YXBwLmNvbQ0K
