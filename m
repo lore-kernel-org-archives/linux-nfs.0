@@ -1,69 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp105.biz.mail.bf1.yahoo.com ([98.139.221.43]:40796 "HELO
-	smtp105.biz.mail.bf1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1752776Ab2KUCwO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Nov 2012 21:52:14 -0500
-Message-ID: <50AC41DC.5070607@schaufler-ca.com>
-Date: Tue, 20 Nov 2012 18:52:12 -0800
-From: Casey Schaufler <casey@schaufler-ca.com>
+Received: from mail.gnuher.de ([78.47.12.54]:37445 "EHLO mail.gnuher.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751936Ab2KLJRU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Nov 2012 04:17:20 -0500
+Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
+	by mail.gnuher.de (envelope-from
+	<lists@fuchsschwanzdomain.de>)
+	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
+	(Exim 4.72)
+	id 1TXq8s-0006ea-R9
+	for linux-nfs@vger.kernel.org; Mon, 12 Nov 2012 10:17:18 +0100
+Date: Mon, 12 Nov 2012 10:17:17 +0100
+From: Sven Geggus <lists@fuchsschwanzdomain.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Kernel update 3.5.7 -> 3.6.3 breaks NFS4
+Message-ID: <20121112091717.GA1610@geggus.net>
+References: <20121109200730.GI6171@fieldses.org>
+ <E1TWxKX-00025I-J2@diesel.geggus.net>
+ <20121109232410.GK6171@fieldses.org>
 MIME-Version: 1.0
-To: Dave Quigley <dpquigl@davequigley.com>
-CC: bfields@fieldses.org, trond.myklebust@netapp.com, sds@tycho.nsa.gov,
-        linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
-        linux-security-module@vger.kernel.org,
-        Casey Schaufler <casey@schaufler-ca.com>
-Subject: Re: Labeled NFS [v5]
-References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com> <50ABF1A5.2010406@schaufler-ca.com> <50AC1A74.7080105@davequigley.com> <50AC2117.801@schaufler-ca.com> <50AC224D.3080108@davequigley.com>
-In-Reply-To: <50AC224D.3080108@davequigley.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20121109232410.GK6171@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/20/2012 4:37 PM, Dave Quigley wrote:
-> ...
->
->
-> Or I could just give you this link and you should be good to go ;)
->
-> http://www.selinuxproject.org/~dpquigl/nfs-utils-rpms/
->
-> I haven't tried it but it should work. If it doesn't let me know and
-> i'll try to fix it on my end. I'd imagine you might need to yum remove
-> nfs-utils first before adding this new one or you could also try an
-> rpm with the upgrade flag for this instead. Good luck.
+J. Bruce Fields schrieb am Samstag, den 10. November um 00:24 Uhr:
 
-I don't care what Eric says, you're OK with me.
+OK, back at work and here is what I get:
 
-The behavior is interesting with a Smack kernel:
+> Restart the server, start strace, then try the mount, let it hang a few
+> seconds just to make sure you got anything interesting, then kill strace
+> and send the output.
 
-I create an export using the recommended options (sec=unix,security_label, ...)
-of /pub. Then , I create a directory sub with the floor ("_") label and a file
-named Pop labeled "Pop". I mount the filesystem at /mnt.
+OK, back at work and here is what I get...
 
-# ls -l /mnt
-ls: cannot access /mnt/Pop: Permission Denied
-total 4
-?????????? ? ?    ?       ?            ? Pop
-drwxr-xr-x 2 root root 4096 Nov 20 17:57 sub
+read(3, "nfsd 10.1.7.30\n", 2048)       = 15
+close(15)                               = 0
+open("/var/lib/nfs/etab", O_RDONLY)     = 15
+close(15)                               = 0
+close(15)                               = 0
+write(3, "nfsd 10.1.7.30 1352710828 * \n", 29) = 29
+read(4, "4294967295\n", 2048)           = 11
+close(16)                               = 0
+close(15)                               = 0
+read(15,
+"\2\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\377\377\377\377\377\377\377\377\0\0\0\0\0\0\0\0\0\0\0\0",
+36) = 36
+close(15)                               = 0
+write(4, "4294967295 1352710828 0 \n", 25) = -1 EINVAL (Invalid argument)
 
-which is exactly correct!
+4294967295 is UINT_MAX and this place is where it behaves differently on a good
+kernel where the write call will succeed:
 
-Unfortunately, I get the exact same result if the process
-is run with the Pop label. A process run with the Pop label
-should be able to see the attributes of the file Pop.
+write(4, "4294967295 1352710828 0 \n", 25) = 25
 
-It looks as if the basic mechanism is working, but that there
-is some detail that is not working right. I will have to dig
-deeper to understand what's up. Let me know if you have ideas.
+Sven
 
+P.S.: Your patched svcauth_gss.c will give me an "access denied by server"
+while mounting instead of the infinite delay:
+ ~/ # mount -t nfs4 -o sec=krb5 testsrv:/storage /mnt/
+mount.nfs4: access denied by server while mounting testsrv:/storage
 
->
-> Dave
->
-> -- 
-> This message was distributed to subscribers of the selinux mailing list.
-> If you no longer wish to subscribe, send mail to
-> majordomo@tycho.nsa.gov with
-> the words "unsubscribe selinux" without quotes as the message.
->
+-- 
+Those who would give up Essential Liberty to purchase a little Temporary
+Safety, deserve neither Liberty nor Safety (Benjamin Franklin)
 
+/me is giggls@ircnet, http://sven.gegg.us/ on the Web
