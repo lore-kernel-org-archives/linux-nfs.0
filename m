@@ -1,43 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:39821 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754818Ab2KWLCa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Nov 2012 06:02:30 -0500
-Received: by mail-pb0-f46.google.com with SMTP id wy7so6459469pbc.19
-        for <linux-nfs@vger.kernel.org>; Fri, 23 Nov 2012 03:02:29 -0800 (PST)
-Message-ID: <50AF57A3.3090000@gmail.com>
-Date: Fri, 23 Nov 2012 16:31:55 +0530
-From: "dE ." <de.techno@gmail.com>
+Received: from countercultured.net ([209.51.175.25]:48932 "HELO
+	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1752841Ab2KLPEA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Nov 2012 10:04:00 -0500
+Message-ID: <50A10E53.4080206@davequigley.com>
+Date: Mon, 12 Nov 2012 09:57:23 -0500
+From: Dave Quigley <dpquigl@davequigley.com>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: Slow NFS loop performance.
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: trond.myklebust@netapp.com, sds@tycho.nsa.gov, linux-nfs@vger.kernel.org,
+        selinux@tycho.nsa.gov, linux-security-module@vger.kernel.org,
+        "Matthew N. Dodd" <Matthew.Dodd@sparta.com>,
+        Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>,
+        Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>,
+        Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+Subject: Re: [PATCH 05/13] KConfig: Add KConfig entries for Labeled NFS
+References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com> <1352700947-3915-6-git-send-email-dpquigl@davequigley.com> <20121112144555.GF30713@fieldses.org>
+In-Reply-To: <20121112144555.GF30713@fieldses.org>
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Humm... The last thing I expected was no response even in the mailing list.
+On 11/12/2012 9:45 AM, J. Bruce Fields wrote:
+> On Mon, Nov 12, 2012 at 01:15:39AM -0500, David Quigley wrote:
+>> From: David Quigley <dpquigl@davequigley.com>
+>>
+>> This patch adds two entries into the fs/KConfig file. The first entry
+>> NFS_V4_SECURITY_LABEL enables security label support for the NFSv4 client while
+>> the second entry NFSD_V4_SECURITY_LABEL enables security labeling support on
+>> the server side.
+>>
+>> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+>> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+>> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+>> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+>> Signed-off-by: David Quigley <dpquigl@davequigley.com>
+>> ---
+>>   fs/nfs/Kconfig  | 16 ++++++++++++++++
+>>   fs/nfsd/Kconfig | 13 +++++++++++++
+>>   2 files changed, 29 insertions(+)
+>>
+>> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+>> index 13ca196..0077197 100644
+>> --- a/fs/nfs/Kconfig
+>> +++ b/fs/nfs/Kconfig
+>> @@ -131,6 +131,22 @@ config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
+>>   	  If the NFS client is unchanged from the upstream kernel, this
+>>   	  option should be set to the default "kernel.org".
+>>
+>> +config NFS_V4_SECURITY_LABEL
+>> +	bool "Provide Security Label support for NFSv4 client"
+>> +	depends on NFS_V4 && SECURITY
+>> +	help
+>> +
+>> +	Say Y here if you want enable fine-grained security label attribute
+>> +	support for NFS version 4.  Security labels allow security modules like
+>> +	SELinux and Smack to label files to facilitate enforcement of their policies.
+>> +	Without this an NFSv4 mount will have the same label on each file.
+>> +
+>> +	If you do not wish to enable fine-grained security labels SELinux or
+>> +	Smack policies on NFSv4 files, say N.
+>
+> Here and below we also need some warning abouot the current state of
+> this: we definitely want to warn any distro that might be tempted to
+> turn this on by default that there's still a chance of
+> backwards-incompatible protocol changes.
+>
+> --b.
+>
 
-So I'm filing a bug on this.
+Sounds good to me I'll make sure to include that.
 
-On Oct 23, 2012 2:19 PM, "dE ." <de.techno@gmail.com> wrote:
- > Hi!
- >
- > Great job with NFS server, it surely is fast, but not on loop devices.
- >
- > If I loop mount a file and share the mount point over NFS3 or NFS4, the
- > write performance of the client on the loop mounted share is pretty bad.
- >
- > On a 100 Mbps (or 12.5MBps) full duplex Ethernet link, I get ~8MBps
- > speeds, whereas on the loop mounted device, I get at best 6MBps.
- >
- > Any ideas why?
- >
- > My server configuration (NFS4) --
- > anonuid=1000,anongid=1000,**secure,no_subtree_check,rw,**fsid=0,crossmnt
- >
- > My client mount options --
- > rsize=1048576,wsize=1048576,**async,hard,timeo=60,retrans=2,**
- > actimeo=900,retry=2,**lookupcache=pos,nfsvers=4,**
- > nolock,intr,noacl,rdirplus
- >
+>> +
+>> +
+>> +	  If unsure, say N.
+>> +
+>>   config ROOT_NFS
+>>   	bool "Root file system on NFS"
+>>   	depends on NFS_FS=y && IP_PNP
+>> diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+>> index 8df1ea4..75ba894 100644
+>> --- a/fs/nfsd/Kconfig
+>> +++ b/fs/nfsd/Kconfig
+>> @@ -81,6 +81,19 @@ config NFSD_V4
+>>
+>>   	  If unsure, say N.
+>>
+>> +config NFSD_V4_SECURITY_LABEL
+>> +	bool "Provide Security Label support for NFSv4 server"
+>> +	depends on NFSD_V4 && SECURITY
+>> +	help
+>> +
+>> +	Say Y here if you want enable fine-grained security label attribute
+>> +	support for NFS version 4.  Security labels allow security modules like
+>> +	SELinux and Smack to label files to facilitate enforcement of their policies.
+>> +	Without this an NFSv4 mount will have the same label on each file.
+>> +
+>> +	If you do not wish to enable fine-grained security labels SELinux or
+>> +	Smack policies on NFSv4 files, say N.
+>> +
+>>   config NFSD_FAULT_INJECTION
+>>   	bool "NFS server manual fault injection"
+>>   	depends on NFSD_V4 && DEBUG_KERNEL
+>> --
+>> 1.7.11.7
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-security-module" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
 
