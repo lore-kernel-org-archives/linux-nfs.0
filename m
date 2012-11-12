@@ -1,43 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp107.biz.mail.gq1.yahoo.com ([98.137.12.182]:28802 "HELO
-	smtp107.biz.mail.gq1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1752473Ab2KTVJ5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Nov 2012 16:09:57 -0500
-Message-ID: <50ABF1A5.2010406@schaufler-ca.com>
-Date: Tue, 20 Nov 2012 13:09:57 -0800
-From: Casey Schaufler <casey@schaufler-ca.com>
-MIME-Version: 1.0
-To: David Quigley <dpquigl@davequigley.com>
-CC: bfields@fieldses.org, trond.myklebust@netapp.com, sds@tycho.nsa.gov,
-        linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
-        linux-security-module@vger.kernel.org,
-        Casey Schaufler <casey@schaufler-ca.com>
-Subject: Re: Labeled NFS [v5]
-References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com>
-In-Reply-To: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-vb0-f46.google.com ([209.85.212.46]:62149 "EHLO
+	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753392Ab2KLUzL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Nov 2012 15:55:11 -0500
+Received: by mail-vb0-f46.google.com with SMTP id ff1so6713166vbb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Nov 2012 12:55:10 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsdcltrack: skip "." and ".." when trying to clean out legacy recdir
+Date: Mon, 12 Nov 2012 15:54:58 -0500
+Message-Id: <1352753698-17693-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/11/2012 10:15 PM, David Quigley wrote:
-> The NFSv4 working group has finally accepted Labeled NFS as part of the NFSv4.2
-> specification and it has been decided that a reposting of the Labeled NFS code
-> for inclusion into mainline was a good idea. The patches have been rebased onto
-> v3.7-rc2 and have been tested against the SELinux testsuite with the only
-> failures being for features not supported by NFS.
+readdir picks up these two entries as "normal" dentries, but rmdir'ing
+them won't work (and we wouldn't want to remove them anyway).
 
-I'm trying to get the user space tools built so that I can
-do Smack testing. The instructions on selinuxproject.org
-seen out of date with regard to the packages required to
-build the NFS tools. I have failed to build on Fedora 17
-and Ubuntu 12.04. Any pointers beyond what's on the wiki?
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/nfsdcltrack/nfsdcltrack.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-Thank you.
-
-
- --
-This message was distributed to subscribers of the selinux mailing list.
-If you no longer wish to subscribe, send mail to majordomo@tycho.nsa.gov with
-the words "unsubscribe selinux" without quotes as the message.
-
+diff --git a/utils/nfsdcltrack/nfsdcltrack.c b/utils/nfsdcltrack/nfsdcltrack.c
+index 9801b9c..4334340 100644
+--- a/utils/nfsdcltrack/nfsdcltrack.c
++++ b/utils/nfsdcltrack/nfsdcltrack.c
+@@ -379,6 +379,17 @@ cltrack_legacy_gracedone(void)
+ 	while ((entry = readdir(v4recovery))) {
+ 		int len;
+ 
++		/* skip "." and ".." */
++		if (entry->d_name[0] == '.') {
++			switch (entry->d_name[1]) {
++			case '\0':
++				continue;
++			case '.':
++				if (entry->d_name[2] == '\0')
++					continue;
++			}
++		}
++
+ 		/* borrow the clientid blob for this */
+ 		len = snprintf((char *)blob, sizeof(blob), "%s/%s", dirname,
+ 				entry->d_name);
+-- 
+1.7.11.7
 
