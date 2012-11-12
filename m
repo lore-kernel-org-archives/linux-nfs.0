@@ -1,72 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39109 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751237Ab2KFNFf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Nov 2012 08:05:35 -0500
-Date: Tue, 6 Nov 2012 08:05:27 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: Re: [PATCH v3] SUNRPC: set desired file system root before
- connecting local transports
-Message-ID: <20121106130526.GB6718@fieldses.org>
-References: <20121008105437.18668.99905.stgit@localhost.localdomain>
- <20121009193506.GA19680@fieldses.org>
- <5098E31A.5080801@parallels.com>
- <20121106120642.GA6718@fieldses.org>
- <5098FE5F.7030709@parallels.com>
+Received: from countercultured.net ([209.51.175.25]:56923 "HELO
+	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1753369Ab2KLUoZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Nov 2012 15:44:25 -0500
+Message-ID: <50A15FAB.9040208@davequigley.com>
+Date: Mon, 12 Nov 2012 15:44:27 -0500
+From: Dave Quigley <dpquigl@davequigley.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <5098FE5F.7030709@parallels.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: trond.myklebust@netapp.com, sds@tycho.nsa.gov, linux-nfs@vger.kernel.org,
+        selinux@tycho.nsa.gov, linux-security-module@vger.kernel.org
+Subject: Re: Labeled NFS [v5]
+References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com> <20121112163314.GM30713@fieldses.org>
+In-Reply-To: <20121112163314.GM30713@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 06, 2012 at 04:11:11PM +0400, Stanislav Kinsbursky wrote:
-> 06.11.2012 16:06, J. Bruce Fields пишет:
-> >On Tue, Nov 06, 2012 at 02:14:50PM +0400, Stanislav Kinsbursky wrote:
-> >>09.10.2012 23:35, J. Bruce Fields пишет:
-> >>>Cc'ing Eric since I seem to recall he suggested doing it this way?
-> >>>
-> >>>Seems OK to me, but maybe that swap_root should be in common code?  (Or
-> >>>maybe we could use set_fs_root()?)
-> >>>
-> >>
-> >>This patch is not good since, as Eric mentioned, all kernel threads
-> >>share same fs struct.
-> >>We can swap whole fs struct. Or we can unshare fs struct
-> >>(unshare_fs_struct() is exported) and swap root in this case.
-> >>But this approach is to close to set_fs_root() logic, which is not
-> >>exported and seems there are some valid reasons for it.
-> >
-> >What are those reasons?
-> >
-> 
-> I don't know them.
-> Trond told, that Al doesn't like the idea of set_fs_root() exporting.
-> 
-> >Googling found one previous thread:
-> >
-> >	http://thread.gmane.org/gmane.linux.kernel/1259986/focus=47687
-> >
-> >There Trond requests an ACK from Al or Cristoph for the export, but I
-> >don't see either an ACK or any objection.
-> >
-> 
-> Cristoph told me on LSF something line "No ... way", when I asked
-> him about set_fs_root() exporting.
-> But I had no opportunity to ask why.
+On 11/12/2012 11:33 AM, J. Bruce Fields wrote:
+> On Mon, Nov 12, 2012 at 01:15:34AM -0500, David Quigley wrote:
+>> The NFSv4 working group has finally accepted Labeled NFS as part of the NFSv4.2
+>> specification and it has been decided that a reposting of the Labeled NFS code
+>> for inclusion into mainline was a good idea. The patches have been rebased onto
+>> v3.7-rc2 and have been tested against the SELinux testsuite with the only
+>> failures being for features not supported by NFS.
+>
+> This will still need support for FATTR4_CHANGE_SEC_LABEL.
+>
+> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
 
-So, Al or Christoph: NFS calls up to rpcbind from the kernel using
-AF_LOCAL, so it looks up a path when it connects.  We'd like to export
-set_fs_root() so we can temporarily put our task in the right namespace
-around the connect call.  Is that reasonable?
-
-I just want to get a reason on record so we stop going in circles here.
-
---b.
+That's true. At the time we didn't have FATTR4_CHANGE_SEC_LABEL so it 
+wasn't implemented. This should be a good start at Labeled NFS support 
+but will take more work.
