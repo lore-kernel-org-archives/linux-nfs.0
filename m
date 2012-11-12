@@ -1,7 +1,7 @@
 From: David Quigley <dpquigl@davequigley.com>
-Subject: [PATCH 02/13] Security: Add Hook to test if the particular xattr is part of a MAC model.
-Date: Mon, 12 Nov 2012 01:15:36 -0500
-Message-ID: <1352700947-3915-3-git-send-email-dpquigl@davequigley.com>
+Subject: [PATCH 10/13] NFS: Add label lifecycle management
+Date: Mon, 12 Nov 2012 01:15:44 -0500
+Message-ID: <1352700947-3915-11-git-send-email-dpquigl@davequigley.com>
 References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com>
 Cc: linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
         linux-security-module@vger.kernel.org,
@@ -16,13 +16,11 @@ In-Reply-To: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com>
 Sender: owner-selinux@tycho.nsa.gov
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+>From David Quigley <dpquigl@davequigley.com>
 
-The interface to request security labels from user space is the xattr
-interface. When requesting the security label from an NFS server it is
-important to make sure the requested xattr actually is a MAC label. This allows
-us to make sure that we get the desired semantics from the attribute instead of
-something else such as capabilities or a time based LSM.
+This patch adds the lifecycle management for the security label structure
+introduced in an earlier patch. The label is not used yet but allocations and
+freeing of the structure is handled.
 
 Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
 Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
@@ -30,152 +28,388 @@ Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
 Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
 Signed-off-by: David Quigley <dpquigl@davequigley.com>
 ---
- include/linux/security.h   | 14 ++++++++++++++
- security/capability.c      |  6 ++++++
- security/security.c        |  6 ++++++
- security/selinux/hooks.c   |  6 ++++++
- security/smack/smack_lsm.c | 11 +++++++++++
- 5 files changed, 43 insertions(+)
+ fs/nfs/dir.c      |  30 +++++++++++++-
+ fs/nfs/getroot.c  |   1 -
+ fs/nfs/inode.c    |  13 ++++++
+ fs/nfs/nfs4proc.c | 116 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 4 files changed, 156 insertions(+), 4 deletions(-)
 
-diff --git a/include/linux/security.h b/include/linux/security.h
-index c9f5eec..167bdd5 100644
---- a/include/linux/security.h
-+++ b/include/linux/security.h
-@@ -1301,6 +1301,13 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
-  *	@pages contains the number of pages.
-  *	Return 0 if permission is granted.
-  *
-+ * @ismaclabel:
-+ *	Check if the extended attribute specified by @name
-+ *	represents a MAC label. Returns 0 if name is a MAC
-+ *	attribute otherwise returns non-zero.
-+ *	@name full extended attribute name to check against
-+ *	LSM as a MAC label.
-+ *
-  * @secid_to_secctx:
-  *	Convert secid to security context.  If secdata is NULL the length of
-  *	the result will be returned in seclen, but no secdata will be returned.
-@@ -1581,6 +1588,7 @@ struct security_operations {
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 1339e44..561d2fb 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -581,7 +581,8 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
+ 	entry.fh = nfs_alloc_fhandle();
+ 	entry.fattr = nfs_alloc_fattr();
+ 	entry.server = NFS_SERVER(inode);
+-	if (entry.fh == NULL || entry.fattr == NULL)
++	entry.label = nfs4_label_alloc(GFP_NOWAIT);
++	if (entry.fh == NULL || entry.fattr == NULL || entry.label == NULL)
+ 		goto out;
  
- 	int (*getprocattr) (struct task_struct *p, char *name, char **value);
- 	int (*setprocattr) (struct task_struct *p, char *name, void *value, size_t size);
-+	int (*ismaclabel) (const char *name);
- 	int (*secid_to_secctx) (u32 secid, char **secdata, u32 *seclen);
- 	int (*secctx_to_secid) (const char *secdata, u32 seclen, u32 *secid);
- 	void (*release_secctx) (char *secdata, u32 seclen);
-@@ -1829,6 +1837,7 @@ void security_d_instantiate(struct dentry *dentry, struct inode *inode);
- int security_getprocattr(struct task_struct *p, char *name, char **value);
- int security_setprocattr(struct task_struct *p, char *name, void *value, size_t size);
- int security_netlink_send(struct sock *sk, struct sk_buff *skb);
-+int security_ismaclabel(const char *name);
- int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen);
- int security_secctx_to_secid(const char *secdata, u32 seclen, u32 *secid);
- void security_release_secctx(char *secdata, u32 seclen);
-@@ -2512,6 +2521,11 @@ static inline int security_netlink_send(struct sock *sk, struct sk_buff *skb)
- 	return cap_netlink_send(sk, skb);
+ 	array = nfs_readdir_get_array(page);
+@@ -616,6 +617,7 @@ out_release_array:
+ out:
+ 	nfs_free_fattr(entry.fattr);
+ 	nfs_free_fhandle(entry.fh);
++	nfs4_label_free(entry.label);
+ 	return status;
  }
  
-+static inline int security_ismaclabel(const char *name)
-+{
-+	return 0;
-+}
-+
- static inline int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return -EOPNOTSUPP;
-diff --git a/security/capability.c b/security/capability.c
-index f1eb284..9071447 100644
---- a/security/capability.c
-+++ b/security/capability.c
-@@ -797,6 +797,11 @@ static int cap_setprocattr(struct task_struct *p, char *name, void *value,
- 	return -EINVAL;
- }
+@@ -1077,6 +1079,14 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
+ 	if (fhandle == NULL || fattr == NULL)
+ 		goto out_error;
  
-+static int cap_ismaclabel(const char *name)
-+{
-+	return 0;
-+}
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL)) {
++		label = nfs4_label_alloc(GFP_NOWAIT);
++		if (label == NULL)
++			goto out_error;
++	}
++#endif
 +
- static int cap_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return -EOPNOTSUPP;
-@@ -1015,6 +1020,7 @@ void __init security_fixup_ops(struct security_operations *ops)
- 	set_to_cap_if_null(ops, d_instantiate);
- 	set_to_cap_if_null(ops, getprocattr);
- 	set_to_cap_if_null(ops, setprocattr);
-+	set_to_cap_if_null(ops, ismaclabel);
- 	set_to_cap_if_null(ops, secid_to_secctx);
- 	set_to_cap_if_null(ops, secctx_to_secid);
- 	set_to_cap_if_null(ops, release_secctx);
-diff --git a/security/security.c b/security/security.c
-index b4b2017..a7bee7b 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -1047,6 +1047,12 @@ int security_netlink_send(struct sock *sk, struct sk_buff *skb)
- 	return security_ops->netlink_send(sk, skb);
- }
+ 	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr, label);
+ 	if (error)
+ 		goto out_bad;
+@@ -1087,6 +1097,12 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
  
-+int security_ismaclabel(const char *name)
-+{
-+	return security_ops->ismaclabel(name);
-+}
-+EXPORT_SYMBOL(security_ismaclabel);
+ 	nfs_free_fattr(fattr);
+ 	nfs_free_fhandle(fhandle);
 +
- int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return security_ops->secid_to_secctx(secid, secdata, seclen);
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index 22d9adf..f7c4899 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -5401,6 +5401,11 @@ abort_change:
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL))
++		nfs4_label_free(label);
++#endif
++
+ out_set_verifier:
+ 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
+  out_valid:
+@@ -1123,6 +1139,7 @@ out_zap_parent:
+ out_error:
+ 	nfs_free_fattr(fattr);
+ 	nfs_free_fhandle(fhandle);
++	nfs4_label_free(label);
+ 	dput(parent);
+ 	dfprintk(LOOKUPCACHE, "NFS: %s(%s/%s) lookup returned error %d\n",
+ 			__func__, dentry->d_parent->d_name.name,
+@@ -1235,6 +1252,13 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
+ 	if (fhandle == NULL || fattr == NULL)
+ 		goto out;
+ 
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL)) {
++		label = nfs4_label_alloc(GFP_NOWAIT);
++		if (label == NULL)
++			goto out;
++	}
++#endif
+ 	parent = dentry->d_parent;
+ 	/* Protect against concurrent sillydeletes */
+ 	nfs_block_sillyrename(parent);
+@@ -1264,6 +1288,10 @@ no_entry:
+ out_unblock_sillyrename:
+ 	nfs_unblock_sillyrename(parent);
+ out:
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL))
++		nfs4_label_free(label);
++#endif
+ 	nfs_free_fattr(fattr);
+ 	nfs_free_fhandle(fhandle);
+ 	return res;
+diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
+index 3b68bb6..14bd667 100644
+--- a/fs/nfs/getroot.c
++++ b/fs/nfs/getroot.c
+@@ -75,7 +75,6 @@ struct dentry *nfs_get_root(struct super_block *sb, struct nfs_fh *mntfh,
+ 	struct nfs_fsinfo fsinfo;
+ 	struct dentry *ret;
+ 	struct inode *inode;
+-	struct nfs4_label *label = NULL;
+ 	void *name = kstrdup(devname, GFP_KERNEL);
+ 	int error;
+ 
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index daca08c..ab08d0d 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -835,6 +835,15 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+ 		goto out;
+ 
+ 	nfs_inc_stats(inode, NFSIOS_INODEREVALIDATE);
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	if (nfs_server_capable(inode, NFS_CAP_SECURITY_LABEL)) {
++		label = nfs4_label_alloc(GFP_KERNEL);
++		if (label == NULL) {
++			status = -ENOMEM;
++			goto out;
++		}
++	}
++#endif
+ 	status = NFS_PROTO(inode)->getattr(server, NFS_FH(inode), fattr, label);
+ 	if (status != 0) {
+ 		dfprintk(PAGECACHE, "nfs_revalidate_inode: (%s/%Ld) getattr failed, error=%d\n",
+@@ -864,6 +873,10 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+ 		(long long)NFS_FILEID(inode));
+ 
+  out:
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	if (nfs_server_capable(inode, NFS_CAP_SECURITY_LABEL))
++		nfs4_label_free(label);
++#endif
+ 	nfs_free_fattr(fattr);
+ 	return status;
+ }
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 8e0378c..4ab2738 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -865,9 +865,16 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	p = kzalloc(sizeof(*p), gfp_mask);
+ 	if (p == NULL)
+ 		goto err;
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	if (server->caps & NFS_CAP_SECURITY_LABEL) {
++		p->f_label = nfs4_label_alloc(gfp_mask);
++		if (p->f_label == NULL)
++			goto err_free_p;
++	}
++#endif
+ 	p->o_arg.seqid = nfs_alloc_seqid(&sp->so_seqid, gfp_mask);
+ 	if (p->o_arg.seqid == NULL)
+-		goto err_free;
++		goto err_free_label;
+ 	nfs_sb_active(dentry->d_sb);
+ 	p->dentry = dget(dentry);
+ 	p->dir = parent;
+@@ -910,7 +917,13 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	nfs4_init_opendata_res(p);
+ 	kref_init(&p->kref);
+ 	return p;
+-err_free:
++
++err_free_label:
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	if (server->caps & NFS_CAP_SECURITY_LABEL)
++		nfs4_label_free(p->f_label);
++#endif
++err_free_p:
+ 	kfree(p);
+ err:
+ 	dput(parent);
+@@ -927,6 +940,10 @@ static void nfs4_opendata_free(struct kref *kref)
+ 	if (p->state != NULL)
+ 		nfs4_put_open_state(p->state);
+ 	nfs4_put_state_owner(p->owner);
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	if (p->o_arg.server->caps & NFS_CAP_SECURITY_LABEL)
++		nfs4_label_free(p->f_label);
++#endif
+ 	dput(p->dir);
+ 	dput(p->dentry);
+ 	nfs_sb_deactive(sb);
+@@ -1998,6 +2015,16 @@ static int _nfs4_do_open(struct inode *dir,
+ 	if (opendata == NULL)
+ 		goto err_put_state_owner;
+ 
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	if (label && nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL)) {
++		olabel = nfs4_label_alloc(GFP_KERNEL);
++		if (olabel == NULL) {
++			status = -ENOMEM;
++			goto err_opendata_put;
++		}
++	}
++#endif
++
+ 	if (ctx_th && server->attr_bitmask[2] & FATTR4_WORD2_MDSTHRESHOLD) {
+ 		opendata->f_attr.mdsthreshold = pnfs_mdsthreshold_alloc();
+ 		if (!opendata->f_attr.mdsthreshold)
+@@ -2041,6 +2068,10 @@ static int _nfs4_do_open(struct inode *dir,
+ 		kfree(opendata->f_attr.mdsthreshold);
+ 	opendata->f_attr.mdsthreshold = NULL;
+ 
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL))
++		nfs4_label_free(olabel);
++#endif
+ 	nfs4_opendata_put(opendata);
+ 	nfs4_put_state_owner(sp);
+ 	*res = state;
+@@ -2607,6 +2638,12 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *mntfh,
+ 		return error;
+ 	}
+ 
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	label = nfs4_label_alloc(GFP_KERNEL);
++	if (label == NULL)
++		return -ENOMEM;
++#endif
++
+ 	error = nfs4_proc_getattr(server, mntfh, fattr, label);
+ 	if (error < 0) {
+ 		dprintk("nfs4_get_root: getattr error = %d\n", -error);
+@@ -2617,6 +2654,11 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *mntfh,
+ 	    !nfs_fsid_equal(&server->fsid, &fattr->fsid))
+ 		memcpy(&server->fsid, &fattr->fsid, sizeof(server->fsid));
+ 
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	if (server->caps & NFS_CAP_SECURITY_LABEL)
++		nfs4_label_free(label);
++#endif
++
  	return error;
  }
  
-+static int selinux_ismaclabel(const char *name)
-+{
-+	return (strcmp(name, XATTR_SELINUX_SUFFIX) == 0);
-+}
+@@ -2728,6 +2770,10 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 	if (pnfs_ld_layoutret_on_setattr(inode))
+ 		pnfs_return_layout(inode);
+ 
++	olabel = nfs4_label_alloc(GFP_KERNEL);
++	if (olabel == NULL)
++		return -ENOMEM;
 +
- static int selinux_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+ 	nfs_fattr_init(fattr);
+ 	
+ 	/* Deal with open(O_TRUNC) */
+@@ -2905,12 +2951,27 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
+ 	res.fattr = nfs_alloc_fattr();
+ 	if (res.fattr == NULL)
+ 		return -ENOMEM;
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	if (server->caps & NFS_CAP_SECURITY_LABEL) {
++		res.label = nfs4_label_alloc(GFP_KERNEL);
++		if (res.label == NULL) {
++			status = -ENOMEM;
++			goto out;
++		}
++	}
++#endif
+ 
+ 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
+ 	if (!status) {
+ 		nfs_access_set_mask(entry, res.access);
+ 		nfs_refresh_inode(inode, res.fattr, res.label);
+ 	}
++
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	if (server->caps & NFS_CAP_SECURITY_LABEL)
++		nfs4_label_free(res.label);
++#endif
++out:
+ 	nfs_free_fattr(res.fattr);
+ 	return status;
+ }
+@@ -3034,6 +3095,7 @@ static int _nfs4_proc_remove(struct inode *dir, struct qstr *name)
+ 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 1);
+ 	if (status == 0)
+ 		update_changeattr(dir, &res.cinfo);
++
+ 	return status;
+ }
+ 
+@@ -3079,6 +3141,7 @@ static int nfs4_proc_unlink_done(struct rpc_task *task, struct inode *dir)
+ 	if (nfs4_async_handle_error(task, res->server, NULL) == -EAGAIN)
+ 		return 0;
+ 	update_changeattr(dir, &res->cinfo);
++
+ 	return 1;
+ }
+ 
+@@ -3139,12 +3202,33 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 		.rpc_resp = &res,
+ 	};
+ 	int status = -ENOMEM;
++
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	if (server->caps & NFS_CAP_SECURITY_LABEL) {
++		res.old_label = nfs4_label_alloc(GFP_NOWAIT);
++		if (res.old_label == NULL)
++			goto out;
++		res.new_label = nfs4_label_alloc(GFP_NOWAIT);
++		if (res.new_label == NULL) {
++			nfs4_label_free(res.old_label);
++			goto out;
++		}
++	}
++#endif
+ 	
+ 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	if (!status) {
+ 		update_changeattr(old_dir, &res.old_cinfo);
+ 		update_changeattr(new_dir, &res.new_cinfo);
+ 	}
++
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	if (server->caps & NFS_CAP_SECURITY_LABEL) {
++		nfs4_label_free(res.old_label);
++		nfs4_label_free(res.new_label);
++	}
++#endif
++out:
+ 	return status;
+ }
+ 
+@@ -3186,11 +3270,25 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, struct qstr *
+ 	if (res.fattr == NULL)
+ 		goto out;
+ 
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	if (server->caps & NFS_CAP_SECURITY_LABEL) {
++		res.label = nfs4_label_alloc(GFP_KERNEL);
++		if (res.label == NULL)
++			goto out;
++	}
++#endif
++
+ 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	if (!status) {
+ 		update_changeattr(dir, &res.cinfo);
+ 		nfs_post_op_update_inode(inode, res.fattr, res.label);
+ 	}
++
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	if (server->caps & NFS_CAP_SECURITY_LABEL)
++		nfs4_label_free(res.label);
++#endif
++
+ out:
+ 	nfs_free_fattr(res.fattr);
+ 	return status;
+@@ -3226,6 +3324,13 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
+ 	if (data != NULL) {
+ 		struct nfs_server *server = NFS_SERVER(dir);
+ 
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++		if (server->caps & NFS_CAP_SECURITY_LABEL) {
++			data->label = nfs4_label_alloc(GFP_KERNEL);
++			if (data->label == NULL)
++				goto out_free;
++		}
++#endif
+ 		data->msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CREATE];
+ 		data->msg.rpc_argp = &data->arg;
+ 		data->msg.rpc_resp = &data->res;
+@@ -3242,6 +3347,9 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
+ 		nfs_fattr_init(data->res.fattr);
+ 	}
+ 	return data;
++out_free:
++	kfree(data);
++	return NULL;
+ }
+ 
+ static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_createdata *data)
+@@ -3257,6 +3365,10 @@ static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_
+ 
+ static void nfs4_free_createdata(struct nfs4_createdata *data)
  {
- 	return security_sid_to_context(secid, secdata, seclen);
-@@ -5639,6 +5644,7 @@ static struct security_operations selinux_ops = {
- 	.getprocattr =			selinux_getprocattr,
- 	.setprocattr =			selinux_setprocattr,
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	if (data->arg.server->caps & NFS_CAP_SECURITY_LABEL)
++		nfs4_label_free(data->label);
++#endif
+ 	kfree(data);
+ }
  
-+	.ismaclabel =			selinux_ismaclabel,
- 	.secid_to_secctx =		selinux_secid_to_secctx,
- 	.secctx_to_secid =		selinux_secctx_to_secid,
- 	.release_secctx =		selinux_release_secctx,
-diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
-index 38be92c..82c3c72 100644
---- a/security/smack/smack_lsm.c
-+++ b/security/smack/smack_lsm.c
-@@ -3335,6 +3335,16 @@ static void smack_audit_rule_free(void *vrule)
- #endif /* CONFIG_AUDIT */
- 
- /**
-+ * smack_ismaclabel - check if xattr @name references a smack MAC label
-+ * @name: Full xattr name to check.
-+ */
-+static int smack_ismaclabel(const char *name)
-+{
-+	return (strcmp(name, XATTR_SMACK_SUFFIX) == 0);
-+}
-+
-+
-+/**
-  * smack_secid_to_secctx - return the smack label for a secid
-  * @secid: incoming integer
-  * @secdata: destination
-@@ -3530,6 +3540,7 @@ struct security_operations smack_ops = {
- 	.audit_rule_free =		smack_audit_rule_free,
- #endif /* CONFIG_AUDIT */
- 
-+	.ismaclabel =			smack_ismaclabel,
- 	.secid_to_secctx = 		smack_secid_to_secctx,
- 	.secctx_to_secid = 		smack_secctx_to_secid,
- 	.release_secctx = 		smack_release_secctx,
 -- 
 1.7.11.7
