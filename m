@@ -1,100 +1,188 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp107.biz.mail.bf1.yahoo.com ([98.139.244.55]:25808 "HELO
-	smtp107.biz.mail.bf1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1751466Ab2KUAjF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Nov 2012 19:39:05 -0500
-Message-ID: <50AC2117.801@schaufler-ca.com>
-Date: Tue, 20 Nov 2012 16:32:23 -0800
-From: Casey Schaufler <casey@schaufler-ca.com>
-MIME-Version: 1.0
-To: Dave Quigley <dpquigl@davequigley.com>
-CC: bfields@fieldses.org, trond.myklebust@netapp.com, sds@tycho.nsa.gov,
-        linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
-        linux-security-module@vger.kernel.org,
-        Casey Schaufler <casey@schaufler-ca.com>
-Subject: Re: Labeled NFS [v5]
-References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com> <50ABF1A5.2010406@schaufler-ca.com> <50AC1A74.7080105@davequigley.com>
-In-Reply-To: <50AC1A74.7080105@davequigley.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-vc0-f174.google.com ([209.85.220.174]:61244 "EHLO
+	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752395Ab2KLUBI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Nov 2012 15:01:08 -0500
+Received: by mail-vc0-f174.google.com with SMTP id fk26so6536725vcb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Nov 2012 12:01:07 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 01/11] nfsd: add a usermodehelper upcall for NFSv4 client ID tracking
+Date: Mon, 12 Nov 2012 15:00:48 -0500
+Message-Id: <1352750458-16857-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1352750458-16857-1-git-send-email-jlayton@redhat.com>
+References: <1352750458-16857-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/20/2012 4:04 PM, Dave Quigley wrote:
-> On 11/20/2012 4:09 PM, Casey Schaufler wrote:
->> On 11/11/2012 10:15 PM, David Quigley wrote:
->>> The NFSv4 working group has finally accepted Labeled NFS as part of
->>> the NFSv4.2
->>> specification and it has been decided that a reposting of the
->>> Labeled NFS code
->>> for inclusion into mainline was a good idea. The patches have been
->>> rebased onto
->>> v3.7-rc2 and have been tested against the SELinux testsuite with the
->>> only
->>> failures being for features not supported by NFS.
->>
->> I'm trying to get the user space tools built so that I can
->> do Smack testing. The instructions on selinuxproject.org
->> seen out of date with regard to the packages required to
->> build the NFS tools. I have failed to build on Fedora 17
->> and Ubuntu 12.04. Any pointers beyond what's on the wiki?
->>
->> Thank you.
->>
->>
->>   --
->> This message was distributed to subscribers of the selinux mailing list.
->> If you no longer wish to subscribe, send mail to
->> majordomo@tycho.nsa.gov with
->> the words "unsubscribe selinux" without quotes as the message.
->>
->>
->
-> There are a bunch of libs that need to be installed for it to compile
-> properly.
+Add a new client tracker upcall type that uses call_usermodehelper to
+call out to a program. This seems to be the preferred method of
+calling out to usermode these days for seldom-called upcalls. It's
+simple and doesn't require a running daemon, so it should "just work"
+as long as the binary is installed.
 
-Yes, indeed!
+The client tracking exit operation is also changed to check for a
+NULL pointer before running. The UMH upcall doesn't need to do anything
+at module teardown time.
 
-> Unfortunately there are new dependencies which have been added since I
-> updated the wiki last.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfs4recover.c | 134 +++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 133 insertions(+), 1 deletion(-)
 
-I found that to be the case as well.
-
-> unfortunately don't remember what they are.
-
-And they're not obvious.
-
-> What I did to build it last time though was to apply the one patch
-> onto the latest tag from the nfs-utils tree.
-
-Sound simple enough if you're building the nfs-util tree on a daily basis
-I suppose. Not something that I do regularly, alas.
-
-
-> Unfortunately I don't have a clean vm on hand at the moment so I can't
-> manually go through and list all the packages for you. A heavy handed
-> approach that should still work is that I can give you my rpm list
-> from my VM and then you can just make sure you have all the devel
-> packages installed.
-
-I'd be up for that.
-
-
-> Another option would be to grab the nfs-utils srpm for fedora 17 and
-> just add the patch into the spec file.
-
-Yeah. Or not.
-
-> That would work too and tell you the build dependencies you need. I
-> could also just try to make that for you and put the RPM up but that
-> wouldn't be for a few days at the earliest.
-
-That, or I could give you the instructions on how to enable and test
-Smack.
-
-Thank you.
-
-
->
-> Dave
->
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index 151921b..2fc2f6c 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -927,6 +927,137 @@ static struct nfsd4_client_tracking_ops nfsd4_cld_tracking_ops = {
+ 	.grace_done	= nfsd4_cld_grace_done,
+ };
+ 
++/* upcall via usermodehelper */
++static char cltrack_prog[PATH_MAX] = "/sbin/nfsdcltrack";
++module_param_string(cltrack_prog, cltrack_prog, sizeof(cltrack_prog),
++			S_IRUGO|S_IWUSR);
++MODULE_PARM_DESC(cltrack_prog, "Path to the nfsdcltrack upcall program");
++
++static int
++nfsd4_umh_cltrack_upcall(char *cmd, char *arg)
++{
++	char *envp[] = { NULL };
++	char *argv[4];
++	int ret;
++
++	if (unlikely(!cltrack_prog[0])) {
++		dprintk("%s: cltrack_prog is disabled\n", __func__);
++		return -EACCES;
++	}
++
++	dprintk("%s: cmd: %s\n", __func__, cmd);
++	dprintk("%s: arg: %s\n", __func__, arg ? arg : "(null)");
++
++	argv[0] = (char *)cltrack_prog;
++	argv[1] = cmd;
++	argv[2] = arg;
++	argv[3] = NULL;
++
++	ret = call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
++	/*
++	 * Disable the upcall mechanism if we're getting an ENOENT or EACCES
++	 * error. The admin can re-enable it on the fly by using sysfs
++	 * once the problem has been fixed.
++	 */
++	if (ret == -ENOENT || ret == -EACCES) {
++		dprintk("NFSD: %s was not found or isn't executable (%d). "
++			"Setting cltrack_prog to blank string!",
++			cltrack_prog, ret);
++		cltrack_prog[0] = '\0';
++	}
++	dprintk("%s: %s return value: %d\n", __func__, cltrack_prog, ret);
++
++	return ret;
++}
++
++static char *
++bin_to_hex_dup(const unsigned char *src, int srclen)
++{
++	int i;
++	char *buf, *hex;
++
++	/* +1 for terminating NULL */
++	buf = kmalloc((srclen * 2) + 1, GFP_KERNEL);
++	if (!buf)
++		return buf;
++
++	hex = buf;
++	for (i = 0; i < srclen; i++) {
++		sprintf(hex, "%2.2x", *src++);
++		hex += 2;
++	}
++	return buf;
++}
++
++static int
++nfsd4_umh_cltrack_init(struct net __attribute__((unused)) *net)
++{
++	return nfsd4_umh_cltrack_upcall("init", NULL);
++}
++
++static void
++nfsd4_umh_cltrack_create(struct nfs4_client *clp)
++{
++	char *hexid;
++
++	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
++	if (!hexid) {
++		dprintk("%s: can't allocate memory for upcall!\n", __func__);
++		return;
++	}
++	nfsd4_umh_cltrack_upcall("create", hexid);
++	kfree(hexid);
++}
++
++static void
++nfsd4_umh_cltrack_remove(struct nfs4_client *clp)
++{
++	char *hexid;
++
++	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
++	if (!hexid) {
++		dprintk("%s: can't allocate memory for upcall!\n", __func__);
++		return;
++	}
++	nfsd4_umh_cltrack_upcall("remove", hexid);
++	kfree(hexid);
++}
++
++static int
++nfsd4_umh_cltrack_check(struct nfs4_client *clp)
++{
++	int ret;
++	char *hexid;
++
++	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
++	if (!hexid) {
++		dprintk("%s: can't allocate memory for upcall!\n", __func__);
++		return -ENOMEM;
++	}
++	ret = nfsd4_umh_cltrack_upcall("check", hexid);
++	kfree(hexid);
++	return ret;
++}
++
++static void
++nfsd4_umh_cltrack_grace_done(struct net __attribute__((unused)) *net,
++				time_t boot_time)
++{
++	char timestr[22]; /* FIXME: better way to determine max size? */
++
++	sprintf(timestr, "%ld", boot_time);
++	nfsd4_umh_cltrack_upcall("gracedone", timestr);
++}
++
++static struct nfsd4_client_tracking_ops nfsd4_umh_tracking_ops = {
++	.init		= nfsd4_umh_cltrack_init,
++	.exit		= NULL,
++	.create		= nfsd4_umh_cltrack_create,
++	.remove		= nfsd4_umh_cltrack_remove,
++	.check		= nfsd4_umh_cltrack_check,
++	.grace_done	= nfsd4_umh_cltrack_grace_done,
++};
++
+ int
+ nfsd4_client_tracking_init(struct net *net)
+ {
+@@ -957,7 +1088,8 @@ void
+ nfsd4_client_tracking_exit(struct net *net)
+ {
+ 	if (client_tracking_ops) {
+-		client_tracking_ops->exit(net);
++		if (client_tracking_ops->exit)
++			client_tracking_ops->exit(net);
+ 		client_tracking_ops = NULL;
+ 	}
+ }
+-- 
+1.7.11.7
 
