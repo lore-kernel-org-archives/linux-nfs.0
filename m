@@ -1,69 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vb0-f46.google.com ([209.85.212.46]:59742 "EHLO
-	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752395Ab2KLUBG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Nov 2012 15:01:06 -0500
-Received: by mail-vb0-f46.google.com with SMTP id ff1so6652181vbb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Nov 2012 12:01:05 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 00/11] nfsd: add nfsdcltrack support and limit the use of md5 hashes in nfsdv4 code
-Date: Mon, 12 Nov 2012 15:00:47 -0500
-Message-Id: <1352750458-16857-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:2425 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752122Ab2KLU1u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Nov 2012 15:27:50 -0500
+Message-ID: <50A15BC4.7080809@netapp.com>
+Date: Mon, 12 Nov 2012 15:27:48 -0500
+From: Bryan Schumaker <bjschuma@netapp.com>
+MIME-Version: 1.0
+To: Andy Adamson <androsadamson@gmail.com>
+CC: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] NFS: Add sequence_priviliged_ops for nfs4_proc_sequence()
+References: <1352745355-31157-1-git-send-email-bjschuma@netapp.com> <CAHVgHyWyKhjOc4AFY3LvK57k8JK5zNJDkRGwUjqNA4LMYcSzdw@mail.gmail.com>
+In-Reply-To: <CAHVgHyWyKhjOc4AFY3LvK57k8JK5zNJDkRGwUjqNA4LMYcSzdw@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is the first "official" posting of the patchset that I sent as an
-RFC last week. I've spent some time testing the set now and I'm fairly
-convinced that it works properly. At this point, it's probably ready to
-soak in -next for a bit and if all goes well, merge in 3.8.
+On 11/12/2012 03:22 PM, Andy Adamson wrote:
+> On Mon, Nov 12, 2012 at 1:35 PM,  <bjschuma@netapp.com> wrote:
+>> From: Bryan Schumaker <bjschuma@netapp.com>
+>>
+>> During recovery the NFS4_SESSION_DRAINING flag might be set on the
+>> client structure.  This can cause lease renewal to abort when
+>> nfs41_setup_sequence sees that we are doing recovery.  As a result, the
+>> client never recovers and all activity with the NFS server halts.
+> 
+> 
+> When does this happen? Say the session is draining, and an RPC returns
+> from one of the compounds such as nfs_open, nfs_locku etc whose
+> rpc_call_done routine calls renew_lease after freeing it's slot.  Like
+> all calls on a draining session, the renew_lease sleeps on the session
+> slot_tbl_waitq - is this what you mean by "causes lease renewal to
+> abort"? How does this cause the client to never recover?
 
-The main changes from the last set are:
+I'm not sure exactly what causes it, but I was able to hit this fairly reliably when mounting a server to 4 or 5 mountpoints on a client and then running xfstests against each mountpoint.  At some point during the tests the client gets a cb_path_down sequence error, tries to recover but hangs after the bind connection to session.
 
-1/ I've prefixed this set with the patches to add nfsdcltrack
+> 
+> The only other call to renew_lease is from the state manager itself
+> which runs one function at a time, and will not call renew_lease until
+> the recovery is over....
 
-2/ fixed an off-by-one bug in nfsd4_cltrack_legacy_recdir()
+It's this call that isn't completing.  nfs4_begin_drain_session() was called as part of bind connection to session, but there was never a call to nfs4_end_drain_session() by the time renew_lease was called so the client doesn't know that recovery is over.
 
-3/ error handling for nfs4_make_rec_clidname() has been cleaned up so
-   that errors from the functions called are returned to the caller
-
-4/ the callers of nfs4_make_rec_clidname in the legacy tracker now call
-   it earlier, which means that it's computed under fewer locks
-
-5/ if nfs4_make_rec_clidname returns -ENOENT, then the legacy tracker
-   will now disable the client ID tracking altogether and emit a
-   printk to warn that recovery won't work properly
-
-6/ the legacy tracker also frees the contents of the reclaim list in
-   its gracedone operation. There's no point in keeping that around
-   afterward.
-
-Bruce, let me know if you see anything that needs addressing before
-you can put this into your for-next branch.
-
-Thanks,
-
-Jeff Layton (11):
-  nfsd: add a usermodehelper upcall for NFSv4 client ID tracking
-  nfsd: change heuristic for selecting the client_tracking_ops
-  nfsd: pass info about the legacy recoverydir in environment variables
-  nfsd: warn about impending removal of nfsdcld upcall
-  nfsd: have nfsd4_find_reclaim_client take a char * argument
-  nfsd: break out reclaim record removal into separate function
-  nfsd: make nfs4_client_to_reclaim return a pointer to the reclaim
-    record
-  nfsd: don't search for client by hash on legacy reboot recovery
-    gracedone
-  nfsd: move the confirmed and unconfirmed hlists to a rbtree
-  nfsd: get rid of cl_recdir field
-  nfsd: release the legacy reclaimable clients list in grace_done
-
- fs/nfsd/nfs4recover.c | 354 ++++++++++++++++++++++++++++++++++++++++++++++----
- fs/nfsd/nfs4state.c   | 217 ++++++++++++++++++-------------
- fs/nfsd/state.h       |  14 +-
- 3 files changed, 461 insertions(+), 124 deletions(-)
-
--- 
-1.7.11.7
+> 
+> What am I missing....?
+> -->Andy
+> 
+> 
+>>
+>> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+>> ---
+>>  fs/nfs/nfs4proc.c | 21 +++++++++++++++++----
+>>  1 file changed, 17 insertions(+), 4 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index 5eec442..537181c 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -6138,13 +6138,26 @@ static void nfs41_sequence_prepare(struct rpc_task *task, void *data)
+>>         rpc_call_start(task);
+>>  }
+>>
+>> +static void nfs41_sequence_prepare_privileged(struct rpc_task *task, void *data)
+>> +{
+>> +       rpc_task_set_priority(task, RPC_PRIORITY_PRIVILEGED);
+>> +       nfs41_sequence_prepare(task, data);
+>> +}
+>> +
+>>  static const struct rpc_call_ops nfs41_sequence_ops = {
+>>         .rpc_call_done = nfs41_sequence_call_done,
+>>         .rpc_call_prepare = nfs41_sequence_prepare,
+>>         .rpc_release = nfs41_sequence_release,
+>>  };
+>>
+>> -static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp, struct rpc_cred *cred)
+>> +static const struct rpc_call_ops nfs41_sequence_privileged_ops = {
+>> +       .rpc_call_done = nfs41_sequence_call_done,
+>> +       .rpc_call_prepare = nfs41_sequence_prepare_privileged,
+>> +       .rpc_release = nfs41_sequence_release,
+>> +};
+>> +
+>> +static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp, struct rpc_cred *cred,
+>> +                                            const struct rpc_call_ops *seq_ops)
+>>  {
+>>         struct nfs4_sequence_data *calldata;
+>>         struct rpc_message msg = {
+>> @@ -6154,7 +6167,7 @@ static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp, struct rpc_
+>>         struct rpc_task_setup task_setup_data = {
+>>                 .rpc_client = clp->cl_rpcclient,
+>>                 .rpc_message = &msg,
+>> -               .callback_ops = &nfs41_sequence_ops,
+>> +               .callback_ops = seq_ops,
+>>                 .flags = RPC_TASK_ASYNC | RPC_TASK_SOFT,
+>>         };
+>>
+>> @@ -6181,7 +6194,7 @@ static int nfs41_proc_async_sequence(struct nfs_client *clp, struct rpc_cred *cr
+>>
+>>         if ((renew_flags & NFS4_RENEW_TIMEOUT) == 0)
+>>                 return 0;
+>> -       task = _nfs41_proc_sequence(clp, cred);
+>> +       task = _nfs41_proc_sequence(clp, cred, &nfs41_sequence_ops);
+>>         if (IS_ERR(task))
+>>                 ret = PTR_ERR(task);
+>>         else
+>> @@ -6195,7 +6208,7 @@ static int nfs4_proc_sequence(struct nfs_client *clp, struct rpc_cred *cred)
+>>         struct rpc_task *task;
+>>         int ret;
+>>
+>> -       task = _nfs41_proc_sequence(clp, cred);
+>> +       task = _nfs41_proc_sequence(clp, cred, &nfs41_sequence_privileged_ops);
+>>         if (IS_ERR(task)) {
+>>                 ret = PTR_ERR(task);
+>>                 goto out;
+>> --
+>> 1.8.0
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
