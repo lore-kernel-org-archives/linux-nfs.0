@@ -1,76 +1,29 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:34650 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752903Ab2KUD3D (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Nov 2012 22:29:03 -0500
-Message-ID: <50AC4A7A.6010208@davequigley.com>
-Date: Tue, 20 Nov 2012 22:28:58 -0500
-From: Dave Quigley <dpquigl@davequigley.com>
-MIME-Version: 1.0
-To: Casey Schaufler <casey@schaufler-ca.com>
-CC: bfields@fieldses.org, trond.myklebust@netapp.com, sds@tycho.nsa.gov,
-        linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
-        linux-security-module@vger.kernel.org
+Received: from fieldses.org ([174.143.236.118]:36209 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751613Ab2KLQdR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Nov 2012 11:33:17 -0500
+Date: Mon, 12 Nov 2012 11:33:14 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: David Quigley <dpquigl@davequigley.com>
+Cc: trond.myklebust@netapp.com, sds@tycho.nsa.gov, linux-nfs@vger.kernel.org,
+        selinux@tycho.nsa.gov, linux-security-module@vger.kernel.org
 Subject: Re: Labeled NFS [v5]
-References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com> <50ABF1A5.2010406@schaufler-ca.com> <50AC1A74.7080105@davequigley.com> <50AC2117.801@schaufler-ca.com> <50AC224D.3080108@davequigley.com> <50AC41DC.5070607@schaufler-ca.com>
-In-Reply-To: <50AC41DC.5070607@schaufler-ca.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Message-ID: <20121112163314.GM30713@fieldses.org>
+References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/20/2012 9:52 PM, Casey Schaufler wrote:
-> On 11/20/2012 4:37 PM, Dave Quigley wrote:
->> ...
->>
->>
->> Or I could just give you this link and you should be good to go ;)
->>
->> http://www.selinuxproject.org/~dpquigl/nfs-utils-rpms/
->>
->> I haven't tried it but it should work. If it doesn't let me know and
->> i'll try to fix it on my end. I'd imagine you might need to yum remove
->> nfs-utils first before adding this new one or you could also try an
->> rpm with the upgrade flag for this instead. Good luck.
->
-> I don't care what Eric says, you're OK with me.
->
-> The behavior is interesting with a Smack kernel:
->
-> I create an export using the recommended options (sec=unix,security_label, ...)
-> of /pub. Then , I create a directory sub with the floor ("_") label and a file
-> named Pop labeled "Pop". I mount the filesystem at /mnt.
->
-> # ls -l /mnt
-> ls: cannot access /mnt/Pop: Permission Denied
-> total 4
-> ?????????? ? ?    ?       ?            ? Pop
-> drwxr-xr-x 2 root root 4096 Nov 20 17:57 sub
->
-> which is exactly correct!
->
-> Unfortunately, I get the exact same result if the process
-> is run with the Pop label. A process run with the Pop label
-> should be able to see the attributes of the file Pop.
->
-> It looks as if the basic mechanism is working, but that there
-> is some detail that is not working right. I will have to dig
-> deeper to understand what's up. Let me know if you have ideas.
->
->
->>
->> Dave
->>
->> --
->> This message was distributed to subscribers of the selinux mailing list.
->> If you no longer wish to subscribe, send mail to
->> majordomo@tycho.nsa.gov with
->> the words "unsubscribe selinux" without quotes as the message.
->>
->
+On Mon, Nov 12, 2012 at 01:15:34AM -0500, David Quigley wrote:
+> The NFSv4 working group has finally accepted Labeled NFS as part of the NFSv4.2
+> specification and it has been decided that a reposting of the Labeled NFS code
+> for inclusion into mainline was a good idea. The patches have been rebased onto
+> v3.7-rc2 and have been tested against the SELinux testsuite with the only
+> failures being for features not supported by NFS.
 
-You might want to load up wireshark and see if the getfattr call is what 
-is failing. If it is then its an issue with the interaction between 
-smack and the server components. Otherwise I'm not sure you'll have to 
-look in the NFS debug info to find the call that is failing. ]
+This will still need support for FATTR4_CHANGE_SEC_LABEL.
 
-Dave
+--b.
