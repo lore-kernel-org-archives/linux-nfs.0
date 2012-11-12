@@ -1,129 +1,193 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:46844 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750929Ab2K3HKZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Nov 2012 02:10:25 -0500
-MIME-Version: 1.0
-In-Reply-To: <CAH2r5muw1U2XNMZsCq0gApuTMyj+6SN6S9KsUq52YM8CyZEG4A@mail.gmail.com>
-References: <CANXojcy9thLBwrENTkOTSSE17L3N17A8XsTmyNqq3oNdhW_Q_w@mail.gmail.com>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA90B329CFD@SACEXCMBX04-PRD.hq.netapp.com>
-	<CANXojcxR9673fRObMLPSScogAN05RSVhPFoni=ENc6YDWq9T7w@mail.gmail.com>
-	<1354202525.4064.1.camel@pico.ipa.ssimo.org>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA90B32AEB7@SACEXCMBX04-PRD.hq.netapp.com>
-	<CANXojcys4wR8N-R3oSjWRWJLsObn0Qf+i41vBUaNnJctdcrKVw@mail.gmail.com>
-	<20121129202037.GQ4939@ZenIV.linux.org.uk>
-	<CANXojcw15RdJdRoZxB3Z59YbOda7vG7RDRegfpoCjG4Bv4AvsQ@mail.gmail.com>
-	<20121129211624.GS4939@ZenIV.linux.org.uk>
-	<CANXojcxfrO+Ar4JSd0NiDJh7+_gg6s6cq5=UA7Pu1h4DRZ8Vkg@mail.gmail.com>
-	<CAH2r5muw1U2XNMZsCq0gApuTMyj+6SN6S9KsUq52YM8CyZEG4A@mail.gmail.com>
-Date: Fri, 30 Nov 2012 08:10:24 +0100
-Message-ID: <CANXojcwRy5cBz=E1S567J-1BFC4AiamLr=35bKrX0Zq-Me2b3w@mail.gmail.com>
-Subject: Re: Possible to make nfs aware of a inotify watch has been set.
-From: Stef Bon <stefbon@gmail.com>
-To: Steve French <smfrench@gmail.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-cifs <linux-cifs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-vc0-f174.google.com ([209.85.220.174]:61244 "EHLO
+	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752395Ab2KLUBK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Nov 2012 15:01:10 -0500
+Received: by mail-vc0-f174.google.com with SMTP id fk26so6536725vcb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Nov 2012 12:01:10 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 03/11] nfsd: pass info about the legacy recoverydir in environment variables
+Date: Mon, 12 Nov 2012 15:00:50 -0500
+Message-Id: <1352750458-16857-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1352750458-16857-1-git-send-email-jlayton@redhat.com>
+References: <1352750458-16857-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2012/11/30 Steve French <smfrench@gmail.com>:
-> On Thu, Nov 29, 2012 at 5:14 PM, Stef Bon <stefbon@gmail.com> wrote:
->> 2012/11/29 Al Viro <viro@zeniv.linux.org.uk>:
->>> On Thu, Nov 29, 2012 at 09:31:05PM +0100, Stef Bon wrote:
->>>> 2012/11/29 Al Viro <viro@zeniv.linux.org.uk>:
->>>> > On Thu, Nov 29, 2012 at 05:39:27PM +0100, Stef Bon wrote:
->>>> >
->>
->>>> With Ubuntu people started Unity, also without a killer app, but just
->>>> with an opinion, an impression, an idea. And anyone can dislike or
->>>> like it, it's a succes as far as I can see. What the hell is wrong
->>>> with suggesting things based upon an idea/impression?
->>>
->>> IOW, it was a true positive for "([Uu]ser experience)|UX" as BS predictor.
->>> Nice to know...
->>>
->>> Look, you'd been asked to give good reasons for doing some thing; replying with
->>> "it's My Opinion(tm), piss off if that's not enough reason for you" would at
->>> least have been honest.  References to UX, as your last reply has confirmed,
->>> had been basically an obfuscated equivalent of that.
->>
->> No no, I do not say "piss off". If that is what my message looked
->> like, I'm sorry for that. But I do not have any killer app or
->> something. I cannot convince you otherwise that saying it's my
->> opinion. I do not have numbers or something like that proving I have a
->> point. I wish I have. But I do understand you do not agree with me,
->> and see things different.
->>>
->>> Sorry for being harsh, but I've had it with the GNOME crowd and their ilk
->>> using just such references to handwave away any questions.
->>>
->>> There's nothing wrong with having opinions/impressions/etc.  Everyone got
->>> their own, etc.  But "I believe so, period" is not a sufficient answer to
->>> "what makes that a good idea?" and obfuscating it up is even worse.
->>
->> So, no I do not say "I believe so, period" . But I cannot convince you
->> ...and we have different opinions here.. I don't know any method here
->> of "proving having a point".
->
-> One question that hasn't been answered AFAIK is how well the current
-> Linux directory change notification API maps to the needs of its principal user
-> (presumably Samba, and kde/gnome file managers), and a loosely
-> related question of how well the change notification API maps to the
-> corresponding network file system protocol operations
-> (TRANSACT_NOTIFY_CHANGE) which is a fairly common operation
-> sent to Samba, and obviously for the cifs/smb2/smb3 case would limit
-> what types of events the client can notify the desktop/file manager about.
->
-> In particular, the 10 or 15 filter flags, and the (at least) 8 events
-> (add/remove/modify/rename etc.),
-> available in tne network protocol AFAIK have not been matched to see if they
-> match closely to the existing Linux API.
+The usermodehelper upcall program can then decide to use this info as
+a (one-way) transition mechanism to the new scheme. When a "check"
+upcall occurs and the client doesn't exist in the database, we can
+look to see whether the directory exists. If it does, then we'd add
+the client to the database, remove the legacy recdir, and return
+success to the kernel to allow the recovery to proceed.
 
-Hi,
+For gracedone, we simply pass the v4recovery "topdir" so that the
+upcall can clean it out prior to returning to the kernel.
 
-I start working on the seperate notifyfs servers.
-The whole advantage of that approach is that you can design the api
-from scratch. Notifyfs is not bound to the api of inotify. There
-remains the problem of mapping it to the fs event api on the host,
-which will be inotify probably on linux.
+A module parm is also added to disable the legacy conversion if
+the admin chooses.
 
-At this moment the different events look like:
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfs4recover.c | 90 ++++++++++++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 82 insertions(+), 8 deletions(-)
 
-#define NOTIFYFS_FSEVENT_META_ATTRIB_NOTSET                     2
-#define NOTIFYFS_FSEVENT_META_ATTRIB_MODE                       4
-#define NOTIFYFS_FSEVENT_META_ATTRIB_OWNER                      8
-#define NOTIFYFS_FSEVENT_META_ATTRIB_GROUP                      16
-#define NOTIFYFS_FSEVENT_META_ATTRIB                            28
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index e71f713..38af615 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -933,10 +933,75 @@ module_param_string(cltrack_prog, cltrack_prog, sizeof(cltrack_prog),
+ 			S_IRUGO|S_IWUSR);
+ MODULE_PARM_DESC(cltrack_prog, "Path to the nfsdcltrack upcall program");
+ 
++static bool cltrack_legacy_disable;
++module_param(cltrack_legacy_disable, bool, S_IRUGO|S_IWUSR);
++MODULE_PARM_DESC(cltrack_legacy_disable,
++		"Disable legacy recoverydir conversion. Default: false");
++
++#define LEGACY_TOPDIR_ENV_PREFIX "NFSDCLTRACK_LEGACY_TOPDIR="
++#define LEGACY_RECDIR_ENV_PREFIX "NFSDCLTRACK_LEGACY_RECDIR="
++
++static char *
++nfsd4_cltrack_legacy_topdir(void)
++{
++	int copied;
++	size_t len;
++	char *result;
++
++	if (cltrack_legacy_disable)
++		return NULL;
++
++	len = strlen(LEGACY_TOPDIR_ENV_PREFIX) +
++		strlen(nfs4_recoverydir()) + 1;
++
++	result = kmalloc(len, GFP_KERNEL);
++	if (!result)
++		return result;
++
++	copied = snprintf(result, len, LEGACY_TOPDIR_ENV_PREFIX "%s",
++				nfs4_recoverydir());
++	if (copied >= len) {
++		/* just return nothing if output was truncated */
++		kfree(result);
++		return NULL;
++	}
++
++	return result;
++}
++
++static char *
++nfsd4_cltrack_legacy_recdir(const char *recdir)
++{
++	int copied;
++	size_t len;
++	char *result;
++
++	if (cltrack_legacy_disable)
++		return NULL;
++
++	/* +1 is for '/' between "topdir" and "recdir" */
++	len = strlen(LEGACY_RECDIR_ENV_PREFIX) +
++		strlen(nfs4_recoverydir()) + 1 + HEXDIR_LEN;
++
++	result = kmalloc(len, GFP_KERNEL);
++	if (!result)
++		return result;
++
++	copied = snprintf(result, len, LEGACY_RECDIR_ENV_PREFIX "%s/%s",
++				nfs4_recoverydir(), recdir);
++	if (copied >= len) {
++		/* just return nothing if output was truncated */
++		kfree(result);
++		return NULL;
++	}
++
++	return result;
++}
++
+ static int
+-nfsd4_umh_cltrack_upcall(char *cmd, char *arg)
++nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *legacy)
+ {
+-	char *envp[] = { NULL };
++	char *envp[2];
+ 	char *argv[4];
+ 	int ret;
+ 
+@@ -947,6 +1012,10 @@ nfsd4_umh_cltrack_upcall(char *cmd, char *arg)
+ 
+ 	dprintk("%s: cmd: %s\n", __func__, cmd);
+ 	dprintk("%s: arg: %s\n", __func__, arg ? arg : "(null)");
++	dprintk("%s: legacy: %s\n", __func__, legacy ? legacy : "(null)");
++
++	envp[0] = legacy;
++	envp[1] = NULL;
+ 
+ 	argv[0] = (char *)cltrack_prog;
+ 	argv[1] = cmd;
+@@ -992,7 +1061,7 @@ bin_to_hex_dup(const unsigned char *src, int srclen)
+ static int
+ nfsd4_umh_cltrack_init(struct net __attribute__((unused)) *net)
+ {
+-	return nfsd4_umh_cltrack_upcall("init", NULL);
++	return nfsd4_umh_cltrack_upcall("init", NULL, NULL);
+ }
+ 
+ static void
+@@ -1005,7 +1074,7 @@ nfsd4_umh_cltrack_create(struct nfs4_client *clp)
+ 		dprintk("%s: can't allocate memory for upcall!\n", __func__);
+ 		return;
+ 	}
+-	nfsd4_umh_cltrack_upcall("create", hexid);
++	nfsd4_umh_cltrack_upcall("create", hexid, NULL);
+ 	kfree(hexid);
+ }
+ 
+@@ -1019,7 +1088,7 @@ nfsd4_umh_cltrack_remove(struct nfs4_client *clp)
+ 		dprintk("%s: can't allocate memory for upcall!\n", __func__);
+ 		return;
+ 	}
+-	nfsd4_umh_cltrack_upcall("remove", hexid);
++	nfsd4_umh_cltrack_upcall("remove", hexid, NULL);
+ 	kfree(hexid);
+ }
+ 
+@@ -1027,14 +1096,16 @@ static int
+ nfsd4_umh_cltrack_check(struct nfs4_client *clp)
+ {
+ 	int ret;
+-	char *hexid;
++	char *hexid, *legacy;
+ 
+ 	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
+ 	if (!hexid) {
+ 		dprintk("%s: can't allocate memory for upcall!\n", __func__);
+ 		return -ENOMEM;
+ 	}
+-	ret = nfsd4_umh_cltrack_upcall("check", hexid);
++	legacy = nfsd4_cltrack_legacy_recdir(clp->cl_recdir);
++	ret = nfsd4_umh_cltrack_upcall("check", hexid, legacy);
++	kfree(legacy);
+ 	kfree(hexid);
+ 	return ret;
+ }
+@@ -1043,10 +1114,13 @@ static void
+ nfsd4_umh_cltrack_grace_done(struct net __attribute__((unused)) *net,
+ 				time_t boot_time)
+ {
++	char *legacy;
+ 	char timestr[22]; /* FIXME: better way to determine max size? */
+ 
+ 	sprintf(timestr, "%ld", boot_time);
+-	nfsd4_umh_cltrack_upcall("gracedone", timestr);
++	legacy = nfsd4_cltrack_legacy_topdir();
++	nfsd4_umh_cltrack_upcall("gracedone", timestr, legacy);
++	kfree(legacy);
+ }
+ 
+ static struct nfsd4_client_tracking_ops nfsd4_umh_tracking_ops = {
+-- 
+1.7.11.7
 
-#define NOTIFYFS_FSEVENT_META_XATTR_NOTSET                      32
-#define NOTIFYFS_FSEVENT_META_XATTR_CREATE                      64
-#define NOTIFYFS_FSEVENT_META_XATTR_MODIFY                      128
-#define NOTIFYFS_FSEVENT_META_XATTR_DELETE                      256
-#define NOTIFYFS_FSEVENT_META_XATTR                             448
-
-#define NOTIFYFS_FSEVENT_FILE_NOTSET                            512
-#define NOTIFYFS_FSEVENT_FILE_MODIFIED                          1024
-#define NOTIFYFS_FSEVENT_FILE_SIZE                              2048
-#define NOTIFYFS_FSEVENT_FILE_OPEN                              4096
-#define NOTIFYFS_FSEVENT_FILE_READ                              8192
-#define NOTIFYFS_FSEVENT_FILE_CLOSE_WRITE                       16384
-#define NOTIFYFS_FSEVENT_FILE_CLOSE_NOWRITE                     32768
-
-#define NOTIFYFS_FSEVENT_MOVE_NOTSET                            65536
-#define NOTIFYFS_FSEVENT_MOVE_CREATED                           131072
-#define NOTIFYFS_FSEVENT_MOVE_MOVED                             262144
-#define NOTIFYFS_FSEVENT_MOVE_MOVED_FROM                        524288
-#define NOTIFYFS_FSEVENT_MOVE_MOVED_TO                          1048576
-#define NOTIFYFS_FSEVENT_MOVE_DELETED                           2097152
-
-#define NOTIFYFS_FSEVENT_FS_NOTSET                              4194304
-#define NOTIFYFS_FSEVENT_FS_MOUNT                               8388608
-#define NOTIFYFS_FSEVENT_FS_UNMOUNT                             16777216
-#define NOTIFYFS_FSEVENT_FS_NLINKS                              33554432
-
-Note that there is no such thing as watching changing xattr at this
-moment right now on linux. The field st_ctime is changed, nothing
-more.
-
-Stef
