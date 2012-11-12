@@ -1,170 +1,194 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:40749 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1750812Ab2KPDoA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Nov 2012 22:44:00 -0500
+Received: from mail-wi0-f170.google.com ([209.85.212.170]:40574 "EHLO
+	mail-wi0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752254Ab2KLVIn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Nov 2012 16:08:43 -0500
+Received: by mail-wi0-f170.google.com with SMTP id hm9so2631801wib.1
+        for <linux-nfs@vger.kernel.org>; Mon, 12 Nov 2012 13:08:42 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Date: Thu, 15 Nov 2012 22:43:57 -0500
-From: David Quigley <dpquigl@davequigley.com>
-To: Casey Schaufler <casey@schaufler-ca.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Steve Dickson <steved@redhat.com>,
-        "David P. Quigley" <selinux@davequigley.com>,
-        <trond.myklebust@netapp.com>, <sds@tycho.nsa.gov>,
-        <linux-nfs@vger.kernel.org>, <selinux@tycho.nsa.gov>,
-        <linux-security-module@vger.kernel.org>
-Subject: Re: Labeled NFS [v5]
-In-Reply-To: <50A5B441.70206@schaufler-ca.com>
-References: <50A116F0.5050404@davequigley.com>
- <20121112160959.GK30713@fieldses.org> <50A16269.4060601@RedHat.com>
- <50A1A4EE.7030507@davequigley.com> <50A24345.8080309@RedHat.com>
- <50A31EF5.1050801@davequigley.com> <20121114134535.GD23604@fieldses.org>
- <624cc90c1bf726d8ff1a1ea0ace5f50f@countercultured.net>
- <20121114135939.GE23604@fieldses.org>
- <80f36fef2a58eb538bce28daba3a862a@countercultured.net>
- <20121114142458.GF23604@fieldses.org>
- <4f9b24e3942b4a28cd9068d5bc0135fa@countercultured.net>
- <50A51195.9080004@schaufler-ca.com>
- <a843eae7d5fa2df4faa99bf5531dcecc@countercultured.net>
- <50A5B441.70206@schaufler-ca.com>
-Message-ID: <98ae8bfde2b1967c7db6db1f04ce73b1@countercultured.net>
+In-Reply-To: <50A16144.1040708@netapp.com>
+References: <1352745355-31157-1-git-send-email-bjschuma@netapp.com>
+	<CAHVgHyWyKhjOc4AFY3LvK57k8JK5zNJDkRGwUjqNA4LMYcSzdw@mail.gmail.com>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA9092D7F52@SACEXCMBX04-PRD.hq.netapp.com>
+	<CAHVgHyWzO6UxnQEBoBFY4uHxTx9PBHKxP+hvJfYaW-OTqWLgMA@mail.gmail.com>
+	<50A16144.1040708@netapp.com>
+Date: Mon, 12 Nov 2012 16:08:41 -0500
+Message-ID: <CAHVgHyVjerCE6X-fP-CJEAYZdVvvK2NLu=8JuDHa9P+G8L5yzg@mail.gmail.com>
+Subject: Re: [PATCH 1/2] NFS: Add sequence_priviliged_ops for nfs4_proc_sequence()
+From: Andy Adamson <androsadamson@gmail.com>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/15/2012 22:34, Casey Schaufler wrote:
-> On 11/15/2012 12:28 PM, David Quigley wrote:
->> On 11/15/2012 11:00, Casey Schaufler wrote:
->>> On 11/14/2012 6:30 AM, David Quigley wrote:
->>>> On 11/14/2012 09:24, J. Bruce Fields wrote:
->>>>> On Wed, Nov 14, 2012 at 09:04:18AM -0500, David Quigley wrote:
->>>>>> On 11/14/2012 08:59, J. Bruce Fields wrote:
->>>>>> >On Wed, Nov 14, 2012 at 08:50:17AM -0500, David Quigley wrote:
->>>>>> >>On 11/14/2012 08:45, J. Bruce Fields wrote:
->>>>>> >>>On Tue, Nov 13, 2012 at 11:32:53PM -0500, Dave Quigley wrote:
->>>>>> >>>>Ok so if you go to http://www.selinuxproject.org/git you 
->>>>>> will
->>>>>> >>see a
->>>>>> >>>>repo for lnfs and lnfs-patchset. The instructions at
->>>>>> >>>>http://www.selinuxproject.org/page/Labeled_NFS give you a 
->>>>>> better
->>>>>> >>>>indication on how to pull the trees. I've attached a patch 
->>>>>> for
->>>>>> NFS
->>>>>> >>>>utils which gives support for 
->>>>>> security_label/nosecurity_label in
->>>>>> >>>>your /etc/exports file.
->>>>>> >>>
->>>>>> >>>Do we need an export option?  Is there any reason not to make 
->>>>>> the
->>>>>> >>>feature available whenever there's support available for it?
->>>>>> >>
->>>>>> >>I guess we could build it in but I figured an export option 
->>>>>> allowed
->>>>>> >>someone to turn off security labeling support if they didn't
->>>>>> want it
->>>>>> >>on that export. What happens to clients when the server 
->>>>>> returns a
->>>>>> >>cap that they don't support? Do they mask the bits out?
->>>>>> >
->>>>>> >Yeah, they should just ignore it.
->>>>>> >
->>>>>> >While this is still experimental it's still nice to have a way 
->>>>>> to
->>>>>> >turn
->>>>>> >this on and off at runtime so people can experiment without
->>>>>> having to
->>>>>> >have it on for everyone all the time.  But
->>>>>> >nfsd_supported_minorversion
->>>>>> >should be sufficient for that.
->>>>>> >
->>>>>> >(I don't think your patches actually dealt yet with the fact 
->>>>>> that
->>>>>> >this
->>>>>> >is part of minor version 2?  Another for the todo list.)
->>>>>> >
->>>>>> >--b.
->>>>>>
->>>>>> If we use nfsd_supported_minorversion which I'm guessing is an
->>>>>> export option
+On Mon, Nov 12, 2012 at 3:51 PM, Bryan Schumaker <bjschuma@netapp.com> wrote:
+> On 11/12/2012 03:49 PM, Andy Adamson wrote:
+>> On Mon, Nov 12, 2012 at 3:29 PM, Myklebust, Trond
+>> <Trond.Myklebust@netapp.com> wrote:
+>>> On Mon, 2012-11-12 at 15:22 -0500, Andy Adamson wrote:
+>>>> On Mon, Nov 12, 2012 at 1:35 PM,  <bjschuma@netapp.com> wrote:
+>>>>> From: Bryan Schumaker <bjschuma@netapp.com>
 >>>>>
->>>>> That's just a variable in the code.  It's controlled by
->>>>> /proc/fs/nfsd/versions.
->>>>>
->>>>>> what happens if someone wants to use other 4.2
->>>>>> features but not labeling?
->>>>>
->>>>> We'll cross that bridge when we come to it, maybe by adding some 
->>>>> new
->>>>> global paramater.
->>>>>
->>>>> There's no reason this really needs to be per-export, is there?
->>>>>
->>>>> --b.
+>>>>> During recovery the NFS4_SESSION_DRAINING flag might be set on the
+>>>>> client structure.  This can cause lease renewal to abort when
+>>>
+>>> Not lease renewal. It is lease verification (i.e. checking that we have
+>>> a valid lease and session) that will deadlock.
+>>>
+>>>>> nfs41_setup_sequence sees that we are doing recovery.  As a result, the
+>>>>> client never recovers and all activity with the NFS server halts.
 >>>>
->>>> At the moment I can't really think of a reason to have it be
->>>> per-export. I think we need a new LSM patch though to determine if 
->>>> the
->>>> LSM supports labeling over NFS unless Steve can think of a better 
->>>> way
->>>> to tell if the LSM supports labeling.
+>>>>
+>>>> When does this happen? Say the session is draining, and an RPC returns
+>>>> from one of the compounds such as nfs_open, nfs_locku etc whose
+>>>> rpc_call_done routine calls renew_lease after freeing it's slot.  Like
+>>>> all calls on a draining session, the renew_lease sleeps on the session
+>>>> slot_tbl_waitq - is this what you mean by "causes lease renewal to
+>>>> abort"? How does this cause the client to never recover?
+>>>>
+>>>> The only other call to renew_lease is from the state manager itself
+>>>> which runs one function at a time, and will not call renew_lease until
+>>>> the recovery is over....
+>>>>
+>>>> What am I missing....?
 >>>
->>> If the LSM has a secid_to_secctx hook it supports labeling.
->>> Today that's SELinux and Smack. You already have support in
->>> for SELinux, and providing Smack's review and possibly updates
->>> is #2 on my gotta do list. On the whole, I think that, except
->>> for the fundamental philosophical difference between label
->>> support and xattr support, it should be a simple matter to
->>> get support in for any LSM that has secid_to_secctx.
->>>
->>> But I'm still working on the review.
->>>
+>>> nfs4_check_lease() is run exclusively by the state manager thread in
+>>> order to check that the clientid (and session id on NFSv4.1) are valid.
+>>> It will deadlock the state manager thread if NFS4_SESSION_DRAINING is
+>>> already set.
 >>
->> I believe SMACK already works out of the box since we abstracted the
->> call to obtain labels and your implementation currently works.
->
-> I'm looking to do a little verification. I hate assuming that 
-> something
-> will work only to discover otherwise in the wild.
->
->> The call that is needed is not secid_to_secctx but inode_getsecctx.
->
-> I was pointing out that secid_to_secctx pretty well defines that the 
-> LSM
-> is using labels.
->
->> You asked for this because SMACK labels can span multiple xattrs. I
->> don't think its right to expect NFS to poke around the security
->> structure to check if there is a valid hook(and it isn't really
->> possible either).
->
-> Yeah, I can see that.
->
->> Maybe we can have an LSM hook where the LSM categorizes itself and
->> returns a value and if the value it returns is label based then NFS
->> can use it.
->
-> I'm not sure what the proposed hook would be for except to identify 
-> it
-> as concerned with nfs. Perhaps the hook could return the names of
-> attributes that it wants nfs to provide.
->
+>> OK. NFS4_SESSION_DRAINING is also set exclusively by the state manager
+>> thread. Why is the state manager told to check the lease when it's
+>> also draining a session?
 
-I'm not quite sure what you're proposing? I'm sure someone would find 
-another use for this hook though. The inode_getsecctx hook we made for 
-Labeled NFS was already merged because it was needed for providing 
-"persistent" label support for sysfs (meaning that it persisted inode 
-eviction from memory). The problem is that we have no real way to ask in 
-the NFS code if this is an LSM that can be used with Labeled NFS. In the 
-xattr code we have the new ismaclabel hook we add which allows us to 
-verify the xattr used as belonging to a label based LSM however we need 
-an xattr from userspace for that. The reason this is required is that 
-the server will need to fill out its capability mask to indicate it 
-supports security labeling. In addition the client also needs to know if 
-its running a security label based LSM because it will need to mask out 
-the label fattr bit from its getattr calls if it doesn't support it. We 
-can override this in SELinux by giving it a context mount but if we 
-don't then it will need to know whether or not to be pulling security 
-labels back.
+Here is the call in the state manager.
 
+                if (test_and_clear_bit(NFS4CLNT_BIND_CONN_TO_SESSION,
+                                &clp->cl_state)) {
+                        section = "bind conn to session";
+                        status = nfs4_bind_conn_to_session(clp);
+                        if (status < 0)
+                                goto out_error;
+                        continue;
+                }
+
+nfs4_bind_conn_to_session calls nfs4_begin_drain_session. The error
+case is fine - nfs4_end_drain_session is called in out_error.
+
+But the continue when nfs4_bind_conn_to_session succeeds can send the
+state manager to process other flags (such as NFS4CLNT_CHECK_LEASE)
+without a call to nfs4_end_drain_session.
+
+That looks like a bug to me. The same can occur with
+NFS4CLNT_RECALL_SLOT. Why not just call nfs4_end_drain_session prior
+to the continue, or perhaps remove the continue and hit the
+nfs4_end_drain_session call further down in the state manager loop?
+
+-->Andy
+
+>>
+>> No matter what the answer, please update the patch description to
+>> better explain the problem being solved.
+>
+> Yeah, I was just thinking about doing that.  Give me a few minutes...
+
+
+>
+> - Bryan
+>
+>>
+>> -->Andy
+>>
+>>>
+>>>> -->Andy
+>>>>
+>>>>
+>>>>>
+>>>>> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+>>>>> ---
+>>>>>  fs/nfs/nfs4proc.c | 21 +++++++++++++++++----
+>>>>>  1 file changed, 17 insertions(+), 4 deletions(-)
+>>>>>
+>>>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>>>>> index 5eec442..537181c 100644
+>>>>> --- a/fs/nfs/nfs4proc.c
+>>>>> +++ b/fs/nfs/nfs4proc.c
+>>>>> @@ -6138,13 +6138,26 @@ static void nfs41_sequence_prepare(struct rpc_task *task, void *data)
+>>>>>         rpc_call_start(task);
+>>>>>  }
+>>>>>
+>>>>> +static void nfs41_sequence_prepare_privileged(struct rpc_task *task, void *data)
+>>>>> +{
+>>>>> +       rpc_task_set_priority(task, RPC_PRIORITY_PRIVILEGED);
+>>>>> +       nfs41_sequence_prepare(task, data);
+>>>>> +}
+>>>>> +
+>>>>>  static const struct rpc_call_ops nfs41_sequence_ops = {
+>>>>>         .rpc_call_done = nfs41_sequence_call_done,
+>>>>>         .rpc_call_prepare = nfs41_sequence_prepare,
+>>>>>         .rpc_release = nfs41_sequence_release,
+>>>>>  };
+>>>>>
+>>>>> -static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp, struct rpc_cred *cred)
+>>>>> +static const struct rpc_call_ops nfs41_sequence_privileged_ops = {
+>>>>> +       .rpc_call_done = nfs41_sequence_call_done,
+>>>>> +       .rpc_call_prepare = nfs41_sequence_prepare_privileged,
+>>>>> +       .rpc_release = nfs41_sequence_release,
+>>>>> +};
+>>>>> +
+>>>>> +static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp, struct rpc_cred *cred,
+>>>>> +                                            const struct rpc_call_ops *seq_ops)
+>>>>>  {
+>>>>>         struct nfs4_sequence_data *calldata;
+>>>>>         struct rpc_message msg = {
+>>>>> @@ -6154,7 +6167,7 @@ static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp, struct rpc_
+>>>>>         struct rpc_task_setup task_setup_data = {
+>>>>>                 .rpc_client = clp->cl_rpcclient,
+>>>>>                 .rpc_message = &msg,
+>>>>> -               .callback_ops = &nfs41_sequence_ops,
+>>>>> +               .callback_ops = seq_ops,
+>>>>>                 .flags = RPC_TASK_ASYNC | RPC_TASK_SOFT,
+>>>>>         };
+>>>>>
+>>>>> @@ -6181,7 +6194,7 @@ static int nfs41_proc_async_sequence(struct nfs_client *clp, struct rpc_cred *cr
+>>>>>
+>>>>>         if ((renew_flags & NFS4_RENEW_TIMEOUT) == 0)
+>>>>>                 return 0;
+>>>>> -       task = _nfs41_proc_sequence(clp, cred);
+>>>>> +       task = _nfs41_proc_sequence(clp, cred, &nfs41_sequence_ops);
+>>>>>         if (IS_ERR(task))
+>>>>>                 ret = PTR_ERR(task);
+>>>>>         else
+>>>>> @@ -6195,7 +6208,7 @@ static int nfs4_proc_sequence(struct nfs_client *clp, struct rpc_cred *cred)
+>>>>>         struct rpc_task *task;
+>>>>>         int ret;
+>>>>>
+>>>>> -       task = _nfs41_proc_sequence(clp, cred);
+>>>>> +       task = _nfs41_proc_sequence(clp, cred, &nfs41_sequence_privileged_ops);
+>>>>>         if (IS_ERR(task)) {
+>>>>>                 ret = PTR_ERR(task);
+>>>>>                 goto out;
+>>>>> --
+>>>>> 1.8.0
+>>>>>
+>>>>> --
+>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>
+>>> --
+>>> Trond Myklebust
+>>> Linux NFS client maintainer
+>>>
+>>> NetApp
+>>> Trond.Myklebust@netapp.com
+>>> www.netapp.com
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>
