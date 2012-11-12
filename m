@@ -1,60 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42552 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:52915 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753385Ab2KLQKC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Nov 2012 11:10:02 -0500
-Date: Mon, 12 Nov 2012 11:09:59 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "David P. Quigley" <selinux@davequigley.com>
-Cc: David Quigley <dpquigl@davequigley.com>, trond.myklebust@netapp.com,
-        sds@tycho.nsa.gov, linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
-        linux-security-module@vger.kernel.org
-Subject: Re: Labeled NFS [v5]
-Message-ID: <20121112160959.GK30713@fieldses.org>
-References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com>
- <20121112152335.GH30713@fieldses.org>
- <50A116F0.5050404@davequigley.com>
+	id S1754257Ab2KLV0E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Nov 2012 16:26:04 -0500
+Message-ID: <50A16968.9030307@netapp.com>
+Date: Mon, 12 Nov 2012 16:26:00 -0500
+From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <50A116F0.5050404@davequigley.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        Andy Adamson <androsadamson@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] NFS: Add sequence_priviliged_ops for nfs4_proc_sequence()
+References: <1352745355-31157-1-git-send-email-bjschuma@netapp.com>   <CAHVgHyWyKhjOc4AFY3LvK57k8JK5zNJDkRGwUjqNA4LMYcSzdw@mail.gmail.com>   <4FA345DA4F4AE44899BD2B03EEEC2FA9092D7F52@SACEXCMBX04-PRD.hq.netapp.com>   <CAHVgHyWzO6UxnQEBoBFY4uHxTx9PBHKxP+hvJfYaW-OTqWLgMA@mail.gmail.com>  <4FA345DA4F4AE44899BD2B03EEEC2FA9092D80BB@SACEXCMBX04-PRD.hq.netapp.com>  <50A163E6.9020604@netapp.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9092D81D5@SACEXCMBX04-PRD.hq.netapp.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9092D81D5@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 12, 2012 at 10:34:08AM -0500, David P. Quigley wrote:
-> On 11/12/2012 10:23 AM, J. Bruce Fields wrote:
-> >On Mon, Nov 12, 2012 at 01:15:34AM -0500, David Quigley wrote:
-> >>The NFSv4 working group has finally accepted Labeled NFS as part of the NFSv4.2
-> >>specification and it has been decided that a reposting of the Labeled NFS code
-> >>for inclusion into mainline was a good idea. The patches have been rebased onto
-> >>v3.7-rc2 and have been tested against the SELinux testsuite with the only
-> >>failures being for features not supported by NFS.
-> >By the way, is there wireshark support anywhere for the labeled NFS
-> >protocol?
-> >
-> >--b.
-> >--
-> >To unsubscribe from this list: send the line "unsubscribe linux-security-module" in
-> >the body of a message to majordomo@vger.kernel.org
-> >More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >
+On 11/12/2012 04:10 PM, Myklebust, Trond wrote:
+> On Mon, 2012-11-12 at 16:02 -0500, Bryan Schumaker wrote:
+>> On 11/12/2012 03:54 PM, Myklebust, Trond wrote:
+>>> On Mon, 2012-11-12 at 15:49 -0500, Andy Adamson wrote:
+>>>> On Mon, Nov 12, 2012 at 3:29 PM, Myklebust, Trond
+>>>> <Trond.Myklebust@netapp.com> wrote:
+>>>>> On Mon, 2012-11-12 at 15:22 -0500, Andy Adamson wrote:
+>>>>>> On Mon, Nov 12, 2012 at 1:35 PM,  <bjschuma@netapp.com> wrote:
+>>>>>>> From: Bryan Schumaker <bjschuma@netapp.com>
+>>>>>>>
+>>>>>>> During recovery the NFS4_SESSION_DRAINING flag might be set on the
+>>>>>>> client structure.  This can cause lease renewal to abort when
+>>>>>
+>>>>> Not lease renewal. It is lease verification (i.e. checking that we have
+>>>>> a valid lease and session) that will deadlock.
+>>>>>
+>>>>>>> nfs41_setup_sequence sees that we are doing recovery.  As a result, the
+>>>>>>> client never recovers and all activity with the NFS server halts.
+>>>>>>
+>>>>>>
+>>>>>> When does this happen? Say the session is draining, and an RPC returns
+>>>>>> from one of the compounds such as nfs_open, nfs_locku etc whose
+>>>>>> rpc_call_done routine calls renew_lease after freeing it's slot.  Like
+>>>>>> all calls on a draining session, the renew_lease sleeps on the session
+>>>>>> slot_tbl_waitq - is this what you mean by "causes lease renewal to
+>>>>>> abort"? How does this cause the client to never recover?
+>>>>>>
+>>>>>> The only other call to renew_lease is from the state manager itself
+>>>>>> which runs one function at a time, and will not call renew_lease until
+>>>>>> the recovery is over....
+>>>>>>
+>>>>>> What am I missing....?
+>>>>>
+>>>>> nfs4_check_lease() is run exclusively by the state manager thread in
+>>>>> order to check that the clientid (and session id on NFSv4.1) are valid.
+>>>>> It will deadlock the state manager thread if NFS4_SESSION_DRAINING is
+>>>>> already set.
+>>>>
+>>>> OK. NFS4_SESSION_DRAINING is also set exclusively by the state manager
+>>>> thread. Why is the state manager told to check the lease when it's
+>>>> also draining a session?
+>>>
+>>> NFS4_SESSION_DRAINING does not just mean that the session is being
+>>> drained; it remains set until open and lock state recovery is completed.
+>>>
+>>> IOW: if something happens during state recovery that requires us to
+>>> check the lease (e.g. something returns NFS4ERR_EXPIRED) then the
+>>> current code will deadlock.
+>>>
+>>>> No matter what the answer, please update the patch description to
+>>>> better explain the problem being solved.
+>>>
+>>> ACK. I agree that the changelog entry can be improved.
+>>>
+>>
+>> Does this read any better (and should I resend the patch)?
+>>
+>> NFS: Add sequence_priviliged_ops for nfs4_proc_sequence()
+>>
+>> If I mount an NFS v4.1 server to a single client multiple times and then
+>> run xfstests over each mountpoint I usually get the client into a state
+>> where recovery deadlocks.  The server informs the client of a
+>> cb_path_down sequence error, the client then does a
+>> bind_connection_to_session and checks the status of the lease.
 > 
-> Unfortunately I never got a chance to add it. You can see the label
-> pretty clearly in wireshark but it comes up as an unknown attribute
-> in the fattr decomposition. If someone knows how to do it I'd be
-> glad to help.
+> Why are you getting the cb_path_down? Is that a result of a fault
+> injection, or is it a genuine error?
+> 
+> While cb_path_down is a valid error, and we do want the recovery to work
+> correctly, I would expect it to be rare since it implies that we lost
+> the TCP connection to the server for some reason. Finding out why it
+> happens is therefore worth doing.
 
-It's usually not too hard: last time I needed something I did a
+I didn't get it with fault injection, it just happened by itself somewhere during testing.  My attempts at capturing it with wireshark usually slow down my system as wireshark tries to display 1,000,000+ packets... I'll try again, though.
 
-	git clone http://code.wireshark.org/git/wireshark
+> 
+>> I found that bind_connection_to_session sets the NFS4_SESSION_DRAINING
+>> flag on the client, but this flag is never unset before
+>> nfs4_check_lease() reaches nfs4_proc_sequence().  This causes the client
+>> to deadlock, halting all NFS activity to the server.
+> 
+> Otherwise, the text is more or less OK. The one thing that I'm missing
+> is a statement about why nfs4_proc_sequence() needs to be a privileged
+> operation.
+> 
 
-then grepped through epan/dissectors/packet-nfs.c for something similar
-to imitate.  It wa easy to build and run the result from the build
-directory.  Then I submitted a patch following:
+Here is the new last paragraph, I just added the sentence at the end:
 
-	http://www.wireshark.org/docs/wsdg_html_chunked/ChSrcContribute.html#ChSrcSend
+I found that bind_connection_to_session sets the NFS4_SESSION_DRAINING
+flag on the client, but this flag is never unset before
+nfs4_check_lease() reaches nfs4_proc_sequence().  This causes the client
+to deadlock, halting all NFS activity to the server.  This patch changes
+nfs4_proc_sequence() to run in privileged mode to bypass the
+NFS4_SESSION_DRAINING check and continue with recovery.
 
-and the response was quick and helpful.
 
-(But yeah I don't have time to volunteer right now either.)
-
---b.
