@@ -1,7 +1,7 @@
 From: David Quigley <dpquigl@davequigley.com>
-Subject: [PATCH 10/13] NFS: Add label lifecycle management
-Date: Mon, 12 Nov 2012 01:15:44 -0500
-Message-ID: <1352700947-3915-11-git-send-email-dpquigl@davequigley.com>
+Subject: [PATCH 07/13] NFSv4: Introduce new label structure
+Date: Mon, 12 Nov 2012 01:15:41 -0500
+Message-ID: <1352700947-3915-8-git-send-email-dpquigl@davequigley.com>
 References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com>
 Cc: linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
         linux-security-module@vger.kernel.org,
@@ -16,11 +16,11 @@ In-Reply-To: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com>
 Sender: owner-selinux@tycho.nsa.gov
 List-ID: <linux-nfs.vger.kernel.org>
 
->From David Quigley <dpquigl@davequigley.com>
+From: David Quigley <dpquigl@davequigley.com>
 
-This patch adds the lifecycle management for the security label structure
-introduced in an earlier patch. The label is not used yet but allocations and
-freeing of the structure is handled.
+In order to mimic the way that NFSv4 ACLs are implemented we have created a
+structure to be used to pass label data up and down the call chain. This patch
+adds the new structure and new members to the required NFSv4 call structures.
 
 Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
 Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
@@ -28,388 +28,282 @@ Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
 Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
 Signed-off-by: David Quigley <dpquigl@davequigley.com>
 ---
- fs/nfs/dir.c      |  30 +++++++++++++-
- fs/nfs/getroot.c  |   1 -
- fs/nfs/inode.c    |  13 ++++++
- fs/nfs/nfs4proc.c | 116 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 4 files changed, 156 insertions(+), 4 deletions(-)
+ fs/nfs/inode.c          | 40 ++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/xdr4.h          |  3 +++
+ include/linux/nfs4.h    |  8 ++++++++
+ include/linux/nfs_fs.h  | 14 ++++++++++++++
+ include/linux/nfs_xdr.h | 20 ++++++++++++++++++++
+ 5 files changed, 85 insertions(+)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 1339e44..561d2fb 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -581,7 +581,8 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
- 	entry.fh = nfs_alloc_fhandle();
- 	entry.fattr = nfs_alloc_fattr();
- 	entry.server = NFS_SERVER(inode);
--	if (entry.fh == NULL || entry.fattr == NULL)
-+	entry.label = nfs4_label_alloc(GFP_NOWAIT);
-+	if (entry.fh == NULL || entry.fattr == NULL || entry.label == NULL)
- 		goto out;
- 
- 	array = nfs_readdir_get_array(page);
-@@ -616,6 +617,7 @@ out_release_array:
- out:
- 	nfs_free_fattr(entry.fattr);
- 	nfs_free_fhandle(entry.fh);
-+	nfs4_label_free(entry.label);
- 	return status;
- }
- 
-@@ -1077,6 +1079,14 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
- 	if (fhandle == NULL || fattr == NULL)
- 		goto out_error;
- 
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL)) {
-+		label = nfs4_label_alloc(GFP_NOWAIT);
-+		if (label == NULL)
-+			goto out_error;
-+	}
-+#endif
-+
- 	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr, label);
- 	if (error)
- 		goto out_bad;
-@@ -1087,6 +1097,12 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
- 
- 	nfs_free_fattr(fattr);
- 	nfs_free_fhandle(fhandle);
-+
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL))
-+		nfs4_label_free(label);
-+#endif
-+
- out_set_verifier:
- 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
-  out_valid:
-@@ -1123,6 +1139,7 @@ out_zap_parent:
- out_error:
- 	nfs_free_fattr(fattr);
- 	nfs_free_fhandle(fhandle);
-+	nfs4_label_free(label);
- 	dput(parent);
- 	dfprintk(LOOKUPCACHE, "NFS: %s(%s/%s) lookup returned error %d\n",
- 			__func__, dentry->d_parent->d_name.name,
-@@ -1235,6 +1252,13 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
- 	if (fhandle == NULL || fattr == NULL)
- 		goto out;
- 
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL)) {
-+		label = nfs4_label_alloc(GFP_NOWAIT);
-+		if (label == NULL)
-+			goto out;
-+	}
-+#endif
- 	parent = dentry->d_parent;
- 	/* Protect against concurrent sillydeletes */
- 	nfs_block_sillyrename(parent);
-@@ -1264,6 +1288,10 @@ no_entry:
- out_unblock_sillyrename:
- 	nfs_unblock_sillyrename(parent);
- out:
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL))
-+		nfs4_label_free(label);
-+#endif
- 	nfs_free_fattr(fattr);
- 	nfs_free_fhandle(fhandle);
- 	return res;
-diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
-index 3b68bb6..14bd667 100644
---- a/fs/nfs/getroot.c
-+++ b/fs/nfs/getroot.c
-@@ -75,7 +75,6 @@ struct dentry *nfs_get_root(struct super_block *sb, struct nfs_fh *mntfh,
- 	struct nfs_fsinfo fsinfo;
- 	struct dentry *ret;
- 	struct inode *inode;
--	struct nfs4_label *label = NULL;
- 	void *name = kstrdup(devname, GFP_KERNEL);
- 	int error;
- 
 diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index daca08c..ab08d0d 100644
+index 5c7325c..0963ad9 100644
 --- a/fs/nfs/inode.c
 +++ b/fs/nfs/inode.c
-@@ -835,6 +835,15 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
- 		goto out;
- 
- 	nfs_inc_stats(inode, NFSIOS_INODEREVALIDATE);
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (nfs_server_capable(inode, NFS_CAP_SECURITY_LABEL)) {
-+		label = nfs4_label_alloc(GFP_KERNEL);
-+		if (label == NULL) {
-+			status = -ENOMEM;
-+			goto out;
-+		}
-+	}
-+#endif
- 	status = NFS_PROTO(inode)->getattr(server, NFS_FH(inode), fattr, label);
- 	if (status != 0) {
- 		dfprintk(PAGECACHE, "nfs_revalidate_inode: (%s/%Ld) getattr failed, error=%d\n",
-@@ -864,6 +873,10 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
- 		(long long)NFS_FILEID(inode));
- 
-  out:
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (nfs_server_capable(inode, NFS_CAP_SECURITY_LABEL))
-+		nfs4_label_free(label);
-+#endif
- 	nfs_free_fattr(fattr);
- 	return status;
+@@ -246,6 +246,46 @@ nfs_init_locked(struct inode *inode, void *opaque)
+ 	return 0;
  }
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 8e0378c..4ab2738 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -865,9 +865,16 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
- 	p = kzalloc(sizeof(*p), gfp_mask);
- 	if (p == NULL)
- 		goto err;
+ 
 +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (server->caps & NFS_CAP_SECURITY_LABEL) {
-+		p->f_label = nfs4_label_alloc(gfp_mask);
-+		if (p->f_label == NULL)
-+			goto err_free_p;
-+	}
-+#endif
- 	p->o_arg.seqid = nfs_alloc_seqid(&sp->so_seqid, gfp_mask);
- 	if (p->o_arg.seqid == NULL)
--		goto err_free;
-+		goto err_free_label;
- 	nfs_sb_active(dentry->d_sb);
- 	p->dentry = dget(dentry);
- 	p->dir = parent;
-@@ -910,7 +917,13 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
- 	nfs4_init_opendata_res(p);
- 	kref_init(&p->kref);
- 	return p;
--err_free:
++struct nfs4_label *nfs4_label_alloc(gfp_t flags)
++{
++	struct nfs4_label *label = NULL;
 +
-+err_free_label:
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (server->caps & NFS_CAP_SECURITY_LABEL)
-+		nfs4_label_free(p->f_label);
-+#endif
-+err_free_p:
- 	kfree(p);
- err:
- 	dput(parent);
-@@ -927,6 +940,10 @@ static void nfs4_opendata_free(struct kref *kref)
- 	if (p->state != NULL)
- 		nfs4_put_open_state(p->state);
- 	nfs4_put_state_owner(p->owner);
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (p->o_arg.server->caps & NFS_CAP_SECURITY_LABEL)
-+		nfs4_label_free(p->f_label);
-+#endif
- 	dput(p->dir);
- 	dput(p->dentry);
- 	nfs_sb_deactive(sb);
-@@ -1998,6 +2015,16 @@ static int _nfs4_do_open(struct inode *dir,
- 	if (opendata == NULL)
- 		goto err_put_state_owner;
- 
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (label && nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL)) {
-+		olabel = nfs4_label_alloc(GFP_KERNEL);
-+		if (olabel == NULL) {
-+			status = -ENOMEM;
-+			goto err_opendata_put;
-+		}
-+	}
-+#endif
-+
- 	if (ctx_th && server->attr_bitmask[2] & FATTR4_WORD2_MDSTHRESHOLD) {
- 		opendata->f_attr.mdsthreshold = pnfs_mdsthreshold_alloc();
- 		if (!opendata->f_attr.mdsthreshold)
-@@ -2041,6 +2068,10 @@ static int _nfs4_do_open(struct inode *dir,
- 		kfree(opendata->f_attr.mdsthreshold);
- 	opendata->f_attr.mdsthreshold = NULL;
- 
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL))
-+		nfs4_label_free(olabel);
-+#endif
- 	nfs4_opendata_put(opendata);
- 	nfs4_put_state_owner(sp);
- 	*res = state;
-@@ -2607,6 +2638,12 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *mntfh,
- 		return error;
- 	}
- 
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	label = nfs4_label_alloc(GFP_KERNEL);
++	label = kzalloc(sizeof(struct nfs4_label) + NFS4_MAXLABELLEN, flags);
 +	if (label == NULL)
-+		return -ENOMEM;
-+#endif
++		return NULL;
 +
- 	error = nfs4_proc_getattr(server, mntfh, fattr, label);
- 	if (error < 0) {
- 		dprintk("nfs4_get_root: getattr error = %d\n", -error);
-@@ -2617,6 +2654,11 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *mntfh,
- 	    !nfs_fsid_equal(&server->fsid, &fattr->fsid))
- 		memcpy(&server->fsid, &fattr->fsid, sizeof(server->fsid));
- 
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (server->caps & NFS_CAP_SECURITY_LABEL)
-+		nfs4_label_free(label);
-+#endif
++	label->label = (void *)(label + 1);
++	label->len = NFS4_MAXLABELLEN;
++	/* 0 is the null format meaning that the data is not to be translated */
++	label->lfs = 0;
++	label->pi = 0;
++	return label;
++}
++EXPORT_SYMBOL_GPL(nfs4_label_alloc);
 +
- 	return error;
- }
- 
-@@ -2728,6 +2770,10 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- 	if (pnfs_ld_layoutret_on_setattr(inode))
- 		pnfs_return_layout(inode);
- 
-+	olabel = nfs4_label_alloc(GFP_KERNEL);
-+	if (olabel == NULL)
-+		return -ENOMEM;
-+
- 	nfs_fattr_init(fattr);
- 	
- 	/* Deal with open(O_TRUNC) */
-@@ -2905,12 +2951,27 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
- 	res.fattr = nfs_alloc_fattr();
- 	if (res.fattr == NULL)
- 		return -ENOMEM;
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (server->caps & NFS_CAP_SECURITY_LABEL) {
-+		res.label = nfs4_label_alloc(GFP_KERNEL);
-+		if (res.label == NULL) {
-+			status = -ENOMEM;
-+			goto out;
-+		}
++void nfs4_label_init(struct nfs4_label *label)
++{
++	if (label && label->label) {
++		*(unsigned char *)label->label = 0;
++		label->len = NFS4_MAXLABELLEN;
++		/* 0 is the null format meaning that the data is not
++		to be translated */
++		label->lfs = 0;
++		label->pi = 0;
 +	}
++	return;
++}
++EXPORT_SYMBOL_GPL(nfs4_label_init);
++
++void nfs4_label_free(struct nfs4_label *label)
++{
++	kfree(label);
++	return;
++}
++EXPORT_SYMBOL_GPL(nfs4_label_free);
 +#endif
++
+ /*
+  * This is our front-end to iget that looks up inodes by file handle
+  * instead of inode number.
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index acd127d..ca8f30b 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -118,6 +118,7 @@ struct nfsd4_create {
+ 	struct iattr	cr_iattr;           /* request */
+ 	struct nfsd4_change_info  cr_cinfo; /* response */
+ 	struct nfs4_acl *cr_acl;
++	struct nfs4_label *cr_label;
+ };
+ #define cr_linklen	u.link.namelen
+ #define cr_linkname	u.link.name
+@@ -246,6 +247,7 @@ struct nfsd4_open {
+ 	struct nfs4_file *op_file;          /* used during processing */
+ 	struct nfs4_ol_stateid *op_stp;	    /* used during processing */
+ 	struct nfs4_acl *op_acl;
++	struct nfs4_label *op_label;
+ };
+ #define op_iattr	iattr
  
- 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
- 	if (!status) {
- 		nfs_access_set_mask(entry, res.access);
- 		nfs_refresh_inode(inode, res.fattr, res.label);
- 	}
+@@ -330,6 +332,7 @@ struct nfsd4_setattr {
+ 	u32		sa_bmval[3];        /* request */
+ 	struct iattr	sa_iattr;           /* request */
+ 	struct nfs4_acl *sa_acl;
++	struct nfs4_label *sa_label;
+ };
+ 
+ struct nfsd4_setclientid {
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index f9235b4..862471f 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -28,6 +28,14 @@ struct nfs4_acl {
+ 	struct nfs4_ace	aces[0];
+ };
+ 
++struct nfs4_label {
++	uint32_t	lfs;
++	uint32_t	pi;
++	u32		len;
++	void		*label;
++};
++
++
+ typedef struct { char data[NFS4_VERIFIER_SIZE]; } nfs4_verifier;
+ 
+ struct nfs_stateid4 {
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 1cc2568..37a862c 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -489,6 +489,20 @@ extern int nfs_mountpoint_expiry_timeout;
+ extern void nfs_release_automount_timer(void);
+ 
+ /*
++ * linux/fs/nfs/nfs4proc.c
++ */
 +
 +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (server->caps & NFS_CAP_SECURITY_LABEL)
-+		nfs4_label_free(res.label);
-+#endif
-+out:
- 	nfs_free_fattr(res.fattr);
- 	return status;
- }
-@@ -3034,6 +3095,7 @@ static int _nfs4_proc_remove(struct inode *dir, struct qstr *name)
- 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 1);
- 	if (status == 0)
- 		update_changeattr(dir, &res.cinfo);
-+
- 	return status;
- }
- 
-@@ -3079,6 +3141,7 @@ static int nfs4_proc_unlink_done(struct rpc_task *task, struct inode *dir)
- 	if (nfs4_async_handle_error(task, res->server, NULL) == -EAGAIN)
- 		return 0;
- 	update_changeattr(dir, &res->cinfo);
-+
- 	return 1;
- }
- 
-@@ -3139,12 +3202,33 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 		.rpc_resp = &res,
- 	};
- 	int status = -ENOMEM;
-+
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (server->caps & NFS_CAP_SECURITY_LABEL) {
-+		res.old_label = nfs4_label_alloc(GFP_NOWAIT);
-+		if (res.old_label == NULL)
-+			goto out;
-+		res.new_label = nfs4_label_alloc(GFP_NOWAIT);
-+		if (res.new_label == NULL) {
-+			nfs4_label_free(res.old_label);
-+			goto out;
-+		}
-+	}
-+#endif
- 	
- 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (!status) {
- 		update_changeattr(old_dir, &res.old_cinfo);
- 		update_changeattr(new_dir, &res.new_cinfo);
- 	}
-+
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (server->caps & NFS_CAP_SECURITY_LABEL) {
-+		nfs4_label_free(res.old_label);
-+		nfs4_label_free(res.new_label);
-+	}
-+#endif
-+out:
- 	return status;
- }
- 
-@@ -3186,11 +3270,25 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, struct qstr *
- 	if (res.fattr == NULL)
- 		goto out;
- 
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (server->caps & NFS_CAP_SECURITY_LABEL) {
-+		res.label = nfs4_label_alloc(GFP_KERNEL);
-+		if (res.label == NULL)
-+			goto out;
-+	}
++extern struct nfs4_label *nfs4_label_alloc(gfp_t flags);
++extern void nfs4_label_init(struct nfs4_label *);
++extern void nfs4_label_free(struct nfs4_label *);
++#else
++static inline struct nfs4_label *nfs4_label_alloc(gfp_t flags) { return NULL; }
++static inline void nfs4_label_init(struct nfs4_label *) {}
++static inline void nfs4_label_free(struct nfs4_label *label) {}
 +#endif
 +
- 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (!status) {
- 		update_changeattr(dir, &res.cinfo);
- 		nfs_post_op_update_inode(inode, res.fattr, res.label);
- 	}
-+
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (server->caps & NFS_CAP_SECURITY_LABEL)
-+		nfs4_label_free(res.label);
-+#endif
-+
- out:
- 	nfs_free_fattr(res.fattr);
- 	return status;
-@@ -3226,6 +3324,13 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
- 	if (data != NULL) {
- 		struct nfs_server *server = NFS_SERVER(dir);
++/*
+  * linux/fs/nfs/unlink.c
+  */
+ extern void nfs_complete_unlink(struct dentry *dentry, struct inode *);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index a0669d3..7e9347a 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -352,6 +352,7 @@ struct nfs_openargs {
+ 	const u32 *		bitmask;
+ 	const u32 *		open_bitmap;
+ 	__u32			claim;
++	const struct nfs4_label *label;
+ 	struct nfs4_sequence_args	seq_args;
+ };
  
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+		if (server->caps & NFS_CAP_SECURITY_LABEL) {
-+			data->label = nfs4_label_alloc(GFP_KERNEL);
-+			if (data->label == NULL)
-+				goto out_free;
-+		}
-+#endif
- 		data->msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CREATE];
- 		data->msg.rpc_argp = &data->arg;
- 		data->msg.rpc_resp = &data->res;
-@@ -3242,6 +3347,9 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
- 		nfs_fattr_init(data->res.fattr);
- 	}
- 	return data;
-+out_free:
-+	kfree(data);
-+	return NULL;
- }
+@@ -361,6 +362,7 @@ struct nfs_openres {
+ 	struct nfs4_change_info	cinfo;
+ 	__u32                   rflags;
+ 	struct nfs_fattr *      f_attr;
++	struct nfs4_label	*f_label;
+ 	struct nfs_seqid *	seqid;
+ 	const struct nfs_server *server;
+ 	fmode_t			delegation_type;
+@@ -405,6 +407,7 @@ struct nfs_closeargs {
+ struct nfs_closeres {
+ 	nfs4_stateid            stateid;
+ 	struct nfs_fattr *	fattr;
++	struct nfs4_label	*label;
+ 	struct nfs_seqid *	seqid;
+ 	const struct nfs_server *server;
+ 	struct nfs4_sequence_res	seq_res;
+@@ -478,6 +481,7 @@ struct nfs4_delegreturnargs {
  
- static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_createdata *data)
-@@ -3257,6 +3365,10 @@ static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_
+ struct nfs4_delegreturnres {
+ 	struct nfs_fattr * fattr;
++	struct nfs4_label	*label;
+ 	const struct nfs_server *server;
+ 	struct nfs4_sequence_res	seq_res;
+ };
+@@ -498,6 +502,7 @@ struct nfs_readargs {
  
- static void nfs4_free_createdata(struct nfs4_createdata *data)
- {
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (data->arg.server->caps & NFS_CAP_SECURITY_LABEL)
-+		nfs4_label_free(data->label);
-+#endif
- 	kfree(data);
- }
+ struct nfs_readres {
+ 	struct nfs_fattr *	fattr;
++	struct nfs4_label	*label;
+ 	__u32			count;
+ 	int                     eof;
+ 	struct nfs4_sequence_res	seq_res;
+@@ -566,6 +571,7 @@ struct nfs_removeargs {
+ struct nfs_removeres {
+ 	const struct nfs_server *server;
+ 	struct nfs_fattr	*dir_attr;
++	struct nfs4_label	*dir_label;
+ 	struct nfs4_change_info	cinfo;
+ 	struct nfs4_sequence_res 	seq_res;
+ };
+@@ -578,6 +584,8 @@ struct nfs_renameargs {
+ 	const struct nfs_fh		*new_dir;
+ 	const struct qstr		*old_name;
+ 	const struct qstr		*new_name;
++	const struct nfs4_label		*old_label;
++	const struct nfs4_label		*new_label;
+ 	struct nfs4_sequence_args	seq_args;
+ };
+ 
+@@ -585,8 +593,10 @@ struct nfs_renameres {
+ 	const struct nfs_server		*server;
+ 	struct nfs4_change_info		old_cinfo;
+ 	struct nfs_fattr		*old_fattr;
++	struct nfs4_label		*old_label;
+ 	struct nfs4_change_info		new_cinfo;
+ 	struct nfs_fattr		*new_fattr;
++	struct nfs4_label		*new_label;
+ 	struct nfs4_sequence_res	seq_res;
+ };
+ 
+@@ -634,6 +644,7 @@ struct nfs_setattrargs {
+ 	struct iattr *                  iap;
+ 	const struct nfs_server *	server; /* Needed for name mapping */
+ 	const u32 *			bitmask;
++	const struct nfs4_label		*label;
+ 	struct nfs4_sequence_args 	seq_args;
+ };
+ 
+@@ -669,6 +680,7 @@ struct nfs_getaclres {
+ 
+ struct nfs_setattrres {
+ 	struct nfs_fattr *              fattr;
++	struct nfs4_label		*label;
+ 	const struct nfs_server *	server;
+ 	struct nfs4_sequence_res	seq_res;
+ };
+@@ -715,6 +727,7 @@ struct nfs3_setaclargs {
+ struct nfs_diropok {
+ 	struct nfs_fh *		fh;
+ 	struct nfs_fattr *	fattr;
++	struct nfs4_label	*label;
+ };
+ 
+ struct nfs_readlinkargs {
+@@ -844,6 +857,7 @@ struct nfs4_accessargs {
+ struct nfs4_accessres {
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
++	struct nfs4_label		*label;
+ 	u32				supported;
+ 	u32				access;
+ 	struct nfs4_sequence_res	seq_res;
+@@ -866,6 +880,7 @@ struct nfs4_create_arg {
+ 	const struct iattr *		attrs;
+ 	const struct nfs_fh *		dir_fh;
+ 	const u32 *			bitmask;
++	const struct nfs4_label		*label;
+ 	struct nfs4_sequence_args 	seq_args;
+ };
+ 
+@@ -873,6 +888,7 @@ struct nfs4_create_res {
+ 	const struct nfs_server *	server;
+ 	struct nfs_fh *			fh;
+ 	struct nfs_fattr *		fattr;
++	struct nfs4_label		*label;
+ 	struct nfs4_change_info		dir_cinfo;
+ 	struct nfs4_sequence_res	seq_res;
+ };
+@@ -898,6 +914,7 @@ struct nfs4_getattr_res {
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
+ 	struct nfs4_sequence_res	seq_res;
++	struct nfs4_label		*label;
+ };
+ 
+ struct nfs4_link_arg {
+@@ -911,8 +928,10 @@ struct nfs4_link_arg {
+ struct nfs4_link_res {
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
++	struct nfs4_label		*label;
+ 	struct nfs4_change_info		cinfo;
+ 	struct nfs_fattr *		dir_attr;
++	struct nfs4_label		*dir_label;
+ 	struct nfs4_sequence_res	seq_res;
+ };
+ 
+@@ -928,6 +947,7 @@ struct nfs4_lookup_res {
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
+ 	struct nfs_fh *			fh;
++	struct nfs4_label		*label;
+ 	struct nfs4_sequence_res	seq_res;
+ };
  
 -- 
 1.7.11.7
