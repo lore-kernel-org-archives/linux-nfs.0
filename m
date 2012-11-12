@@ -1,292 +1,226 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:27494 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:47851 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756070Ab2K0Peh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Nov 2012 10:34:37 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 3 1/5] SUNRPC handle EKEYEXPIRED in call_refreshresult
-Date: Tue, 27 Nov 2012 10:34:19 -0500
-Message-Id: <1354030463-2372-2-git-send-email-andros@netapp.com>
-In-Reply-To: <1354030463-2372-1-git-send-email-andros@netapp.com>
-References: <1354030463-2372-1-git-send-email-andros@netapp.com>
+	id S1751691Ab2KLMOE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Nov 2012 07:14:04 -0500
+Date: Mon, 12 Nov 2012 07:13:56 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: David Quigley <dpquigl@davequigley.com>
+Cc: trond.myklebust@netapp.com, sds@tycho.nsa.gov, linux-nfs@vger.kernel.org,
+        selinux@tycho.nsa.gov, linux-security-module@vger.kernel.org,
+        "Matthew N. Dodd" <Matthew.Dodd@sparta.com>,
+        Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>,
+        Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>,
+        Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+Subject: Re: [PATCH 01/13] Security: Add hook to calculate context based on a
+ negative dentry.
+Message-ID: <20121112121356.GC30713@fieldses.org>
+References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com>
+ <1352700947-3915-2-git-send-email-dpquigl@davequigley.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1352700947-3915-2-git-send-email-dpquigl@davequigley.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On Mon, Nov 12, 2012 at 01:15:35AM -0500, David Quigley wrote:
+> From: David Quigley <dpquigl@davequigley.com>
+> 
+> There is a time where we need to calculate a context without the
+> inode having been created yet. To do this we take the negative dentry and
+> calculate a context based on the process and the parent directory contexts.
+> 
+> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+> Signed-off-by: David Quigley <dpquigl@davequigley.com>
+> ---
+>  include/linux/security.h | 27 +++++++++++++++++++++++++++
+>  security/capability.c    |  8 ++++++++
+>  security/security.c      | 10 ++++++++++
+>  security/selinux/hooks.c | 35 +++++++++++++++++++++++++++++++++++
+>  4 files changed, 80 insertions(+)
+> 
+> diff --git a/include/linux/security.h b/include/linux/security.h
+> index 05e88bd..c9f5eec 100644
+> --- a/include/linux/security.h
+> +++ b/include/linux/security.h
+> @@ -26,6 +26,7 @@
+>  #include <linux/capability.h>
+>  #include <linux/slab.h>
+>  #include <linux/err.h>
+> +#include <linux/string.h>
+>  
+>  struct linux_binprm;
+>  struct cred;
+> @@ -306,6 +307,15 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
+>   *	Parse a string of security data filling in the opts structure
+>   *	@options string containing all mount options known by the LSM
+>   *	@opts binary data structure usable by the LSM
+> + * @dentry_init_security:
+> + *	Compute a context for a dentry as the inode is not yet available
+> + *	since NFSv4 has no label backed by an EA anyway.
 
-Currently, when an RPCSEC_GSS context has expired or is non-existent
-and the users (Kerberos) credentials have also expired or are non-existent,
-the client receives the -EKEYEXPIRED error and tries to refresh the context
-forever.  If an application is performing I/O, or other work against the share,
-the application hangs, and the user is not prompted to refresh/establish their
-credentials. This can result in a denial of service for other users.
+I don't understand this comment.  Why exactly is NFSv4 the first user
+that needs this?
 
-Users are expected to manage their Kerberos credential lifetimes to mitigate
-this issue.
+--b.
 
-Move the -EKEYEXPIRED handling into the RPC layer. Try tk_cred_retry number
-of times to refresh the gss_context, and then return -EACCES to the application.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs3proc.c       |    6 +++---
- fs/nfs/nfs4filelayout.c |    1 -
- fs/nfs/nfs4proc.c       |   18 ------------------
- fs/nfs/nfs4state.c      |   23 -----------------------
- fs/nfs/proc.c           |   43 -------------------------------------------
- net/sunrpc/clnt.c       |    1 +
- 6 files changed, 4 insertions(+), 88 deletions(-)
-
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index 6932209..70efb63 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -24,14 +24,14 @@
- 
- #define NFSDBG_FACILITY		NFSDBG_PROC
- 
--/* A wrapper to handle the EJUKEBOX and EKEYEXPIRED error messages */
-+/* A wrapper to handle the EJUKEBOX error messages */
- static int
- nfs3_rpc_wrapper(struct rpc_clnt *clnt, struct rpc_message *msg, int flags)
- {
- 	int res;
- 	do {
- 		res = rpc_call_sync(clnt, msg, flags);
--		if (res != -EJUKEBOX && res != -EKEYEXPIRED)
-+		if (res != -EJUKEBOX)
- 			break;
- 		freezable_schedule_timeout_killable(NFS_JUKEBOX_RETRY_TIME);
- 		res = -ERESTARTSYS;
-@@ -44,7 +44,7 @@ nfs3_rpc_wrapper(struct rpc_clnt *clnt, struct rpc_message *msg, int flags)
- static int
- nfs3_async_handle_jukebox(struct rpc_task *task, struct inode *inode)
- {
--	if (task->tk_status != -EJUKEBOX && task->tk_status != -EKEYEXPIRED)
-+	if (task->tk_status != -EJUKEBOX)
- 		return 0;
- 	if (task->tk_status == -EJUKEBOX)
- 		nfs_inc_stats(inode, NFSIOS_DELAY);
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 1e42413..194c484 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -179,7 +179,6 @@ static int filelayout_async_handle_error(struct rpc_task *task,
- 		break;
- 	case -NFS4ERR_DELAY:
- 	case -NFS4ERR_GRACE:
--	case -EKEYEXPIRED:
- 		rpc_delay(task, FILELAYOUT_POLL_RETRY_MAX);
- 		break;
- 	case -NFS4ERR_RETRY_UNCACHED_REP:
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 99d99a5..4a389f4 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -333,7 +333,6 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
- 			}
- 		case -NFS4ERR_GRACE:
- 		case -NFS4ERR_DELAY:
--		case -EKEYEXPIRED:
- 			ret = nfs4_delay(server->client, &exception->timeout);
- 			if (ret != 0)
- 				break;
-@@ -1331,13 +1330,6 @@ int nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs4_state
- 				nfs_inode_find_state_and_recover(state->inode,
- 						stateid);
- 				nfs4_schedule_stateid_recovery(server, state);
--			case -EKEYEXPIRED:
--				/*
--				 * User RPCSEC_GSS context has expired.
--				 * We cannot recover this stateid now, so
--				 * skip it and allow recovery thread to
--				 * proceed.
--				 */
- 			case -ENOMEM:
- 				err = 0;
- 				goto out;
-@@ -3927,7 +3919,6 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
- 		case -NFS4ERR_DELAY:
- 			nfs_inc_server_stats(server, NFSIOS_DELAY);
- 		case -NFS4ERR_GRACE:
--		case -EKEYEXPIRED:
- 			rpc_delay(task, NFS4_POLL_RETRY_MAX);
- 			task->tk_status = 0;
- 			return -EAGAIN;
-@@ -4926,15 +4917,6 @@ int nfs4_lock_delegation_recall(struct nfs4_state *state, struct file_lock *fl)
- 				nfs4_schedule_stateid_recovery(server, state);
- 				err = 0;
- 				goto out;
--			case -EKEYEXPIRED:
--				/*
--				 * User RPCSEC_GSS context has expired.
--				 * We cannot recover this stateid now, so
--				 * skip it and allow recovery thread to
--				 * proceed.
--				 */
--				err = 0;
--				goto out;
- 			case -ENOMEM:
- 			case -NFS4ERR_DENIED:
- 				/* kill_proc(fl->fl_pid, SIGLOST, 1); */
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 7d73df5..56d77e6 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1441,14 +1441,6 @@ restart:
- 				/* Mark the file as being 'closed' */
- 				state->state = 0;
- 				break;
--			case -EKEYEXPIRED:
--				/*
--				 * User RPCSEC_GSS context has expired.
--				 * We cannot recover this stateid now, so
--				 * skip it and allow recovery thread to
--				 * proceed.
--				 */
--				break;
- 			case -NFS4ERR_ADMIN_REVOKED:
- 			case -NFS4ERR_STALE_STATEID:
- 			case -NFS4ERR_BAD_STATEID:
-@@ -1601,14 +1593,6 @@ static void nfs4_state_start_reclaim_nograce(struct nfs_client *clp)
- 	nfs4_state_mark_reclaim_helper(clp, nfs4_state_mark_reclaim_nograce);
- }
- 
--static void nfs4_warn_keyexpired(const char *s)
--{
--	printk_ratelimited(KERN_WARNING "Error: state manager"
--			" encountered RPCSEC_GSS session"
--			" expired against NFSv4 server %s.\n",
--			s);
--}
--
- static int nfs4_recovery_handle_error(struct nfs_client *clp, int error)
- {
- 	switch (error) {
-@@ -1642,10 +1626,6 @@ static int nfs4_recovery_handle_error(struct nfs_client *clp, int error)
- 		case -NFS4ERR_CONN_NOT_BOUND_TO_SESSION:
- 			set_bit(NFS4CLNT_BIND_CONN_TO_SESSION, &clp->cl_state);
- 			break;
--		case -EKEYEXPIRED:
--			/* Nothing we can do */
--			nfs4_warn_keyexpired(clp->cl_hostname);
--			break;
- 		default:
- 			dprintk("%s: failed to handle error %d for server %s\n",
- 					__func__, error, clp->cl_hostname);
-@@ -1762,8 +1742,6 @@ static int nfs4_handle_reclaim_lease_error(struct nfs_client *clp, int status)
- 		dprintk("%s: exit with error %d for server %s\n",
- 				__func__, -EPROTONOSUPPORT, clp->cl_hostname);
- 		return -EPROTONOSUPPORT;
--	case -EKEYEXPIRED:
--		nfs4_warn_keyexpired(clp->cl_hostname);
- 	case -NFS4ERR_NOT_SAME: /* FixMe: implement recovery
- 				 * in nfs4_exchange_id */
- 	default:
-@@ -1916,7 +1894,6 @@ again:
- 		break;
- 
- 	case -EKEYEXPIRED:
--		nfs4_warn_keyexpired(clp->cl_hostname);
- 	case -NFS4ERR_NOT_SAME: /* FixMe: implement recovery
- 				 * in nfs4_exchange_id */
- 		status = -EKEYEXPIRED;
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index 50a88c3..f084dac 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -47,39 +47,6 @@
- #define NFSDBG_FACILITY		NFSDBG_PROC
- 
- /*
-- * wrapper to handle the -EKEYEXPIRED error message. This should generally
-- * only happen if using krb5 auth and a user's TGT expires. NFSv2 doesn't
-- * support the NFSERR_JUKEBOX error code, but we handle this situation in the
-- * same way that we handle that error with NFSv3.
-- */
--static int
--nfs_rpc_wrapper(struct rpc_clnt *clnt, struct rpc_message *msg, int flags)
--{
--	int res;
--	do {
--		res = rpc_call_sync(clnt, msg, flags);
--		if (res != -EKEYEXPIRED)
--			break;
--		freezable_schedule_timeout_killable(NFS_JUKEBOX_RETRY_TIME);
--		res = -ERESTARTSYS;
--	} while (!fatal_signal_pending(current));
--	return res;
--}
--
--#define rpc_call_sync(clnt, msg, flags)	nfs_rpc_wrapper(clnt, msg, flags)
--
--static int
--nfs_async_handle_expired_key(struct rpc_task *task)
--{
--	if (task->tk_status != -EKEYEXPIRED)
--		return 0;
--	task->tk_status = 0;
--	rpc_restart_call(task);
--	rpc_delay(task, NFS_JUKEBOX_RETRY_TIME);
--	return 1;
--}
--
--/*
-  * Bare-bones access to getattr: this is for nfs_read_super.
-  */
- static int
-@@ -364,8 +331,6 @@ static void nfs_proc_unlink_rpc_prepare(struct rpc_task *task, struct nfs_unlink
- 
- static int nfs_proc_unlink_done(struct rpc_task *task, struct inode *dir)
- {
--	if (nfs_async_handle_expired_key(task))
--		return 0;
- 	nfs_mark_for_revalidate(dir);
- 	return 1;
- }
-@@ -385,8 +350,6 @@ static int
- nfs_proc_rename_done(struct rpc_task *task, struct inode *old_dir,
- 		     struct inode *new_dir)
- {
--	if (nfs_async_handle_expired_key(task))
--		return 0;
- 	nfs_mark_for_revalidate(old_dir);
- 	nfs_mark_for_revalidate(new_dir);
- 	return 1;
-@@ -642,9 +605,6 @@ static int nfs_read_done(struct rpc_task *task, struct nfs_read_data *data)
- {
- 	struct inode *inode = data->header->inode;
- 
--	if (nfs_async_handle_expired_key(task))
--		return -EAGAIN;
--
- 	nfs_invalidate_atime(inode);
- 	if (task->tk_status >= 0) {
- 		nfs_refresh_inode(inode, data->res.fattr);
-@@ -671,9 +631,6 @@ static int nfs_write_done(struct rpc_task *task, struct nfs_write_data *data)
- {
- 	struct inode *inode = data->header->inode;
- 
--	if (nfs_async_handle_expired_key(task))
--		return -EAGAIN;
--
- 	if (task->tk_status >= 0)
- 		nfs_post_op_update_inode_force_wcc(inode, data->res.fattr);
- 	return 0;
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index c69e199..55e174f 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -1381,6 +1381,7 @@ call_refreshresult(struct rpc_task *task)
- 		return;
- 	case -ETIMEDOUT:
- 		rpc_delay(task, 3*HZ);
-+	case -EKEYEXPIRED:
- 	case -EAGAIN:
- 		status = -EACCES;
- 		if (!task->tk_cred_retry)
--- 
-1.7.7.6
-
+> + *	@dentry dentry to use in calculating the context.
+> + *	@mode mode used to determine resource type.
+> + *	@name name of the last path component used to create file
+> + *	@ctx pointer to place the pointer to the resulting context in.
+> + *	@ctxlen point to place the length of the resulting context.
+> + *
+>   *
+>   * Security hooks for inode operations.
+>   *
+> @@ -1421,6 +1431,10 @@ struct security_operations {
+>  	void (*sb_clone_mnt_opts) (const struct super_block *oldsb,
+>  				   struct super_block *newsb);
+>  	int (*sb_parse_opts_str) (char *options, struct security_mnt_opts *opts);
+> +	int (*dentry_init_security) (struct dentry *dentry, int mode,
+> +					struct qstr *name, void **ctx,
+> +					u32 *ctxlen);
+> +
+>  
+>  #ifdef CONFIG_SECURITY_PATH
+>  	int (*path_unlink) (struct path *dir, struct dentry *dentry);
+> @@ -1702,6 +1716,9 @@ int security_sb_set_mnt_opts(struct super_block *sb, struct security_mnt_opts *o
+>  void security_sb_clone_mnt_opts(const struct super_block *oldsb,
+>  				struct super_block *newsb);
+>  int security_sb_parse_opts_str(char *options, struct security_mnt_opts *opts);
+> +int security_dentry_init_security(struct dentry *dentry, int mode,
+> +					struct qstr *name, void **ctx,
+> +					u32 *ctxlen);
+>  
+>  int security_inode_alloc(struct inode *inode);
+>  void security_inode_free(struct inode *inode);
+> @@ -2005,6 +2022,16 @@ static inline int security_inode_alloc(struct inode *inode)
+>  static inline void security_inode_free(struct inode *inode)
+>  { }
+>  
+> +static inline int security_dentry_init_security(struct dentry *dentry,
+> +						 int mode,
+> +						 struct qstr *name,
+> +						 void **ctx,
+> +						 u32 *ctxlen)
+> +{
+> +	return -EOPNOTSUPP;
+> +}
+> +
+> +
+>  static inline int security_inode_init_security(struct inode *inode,
+>  						struct inode *dir,
+>  						const struct qstr *qstr,
+> diff --git a/security/capability.c b/security/capability.c
+> index b14a30c..f1eb284 100644
+> --- a/security/capability.c
+> +++ b/security/capability.c
+> @@ -108,6 +108,13 @@ static int cap_sb_parse_opts_str(char *options, struct security_mnt_opts *opts)
+>  	return 0;
+>  }
+>  
+> +static int cap_dentry_init_security(struct dentry *dentry, int mode,
+> +					struct qstr *name, void **ctx,
+> +					u32 *ctxlen)
+> +{
+> +	return 0;
+> +}
+> +
+>  static int cap_inode_alloc_security(struct inode *inode)
+>  {
+>  	return 0;
+> @@ -905,6 +912,7 @@ void __init security_fixup_ops(struct security_operations *ops)
+>  	set_to_cap_if_null(ops, sb_set_mnt_opts);
+>  	set_to_cap_if_null(ops, sb_clone_mnt_opts);
+>  	set_to_cap_if_null(ops, sb_parse_opts_str);
+> +	set_to_cap_if_null(ops, dentry_init_security);
+>  	set_to_cap_if_null(ops, inode_alloc_security);
+>  	set_to_cap_if_null(ops, inode_free_security);
+>  	set_to_cap_if_null(ops, inode_init_security);
+> diff --git a/security/security.c b/security/security.c
+> index 8dcd4ae..b4b2017 100644
+> --- a/security/security.c
+> +++ b/security/security.c
+> @@ -12,6 +12,7 @@
+>   */
+>  
+>  #include <linux/capability.h>
+> +#include <linux/dcache.h>
+>  #include <linux/module.h>
+>  #include <linux/init.h>
+>  #include <linux/kernel.h>
+> @@ -324,6 +325,15 @@ void security_inode_free(struct inode *inode)
+>  	security_ops->inode_free_security(inode);
+>  }
+>  
+> +int security_dentry_init_security(struct dentry *dentry, int mode,
+> +					struct qstr *name, void **ctx,
+> +					u32 *ctxlen)
+> +{
+> +	return security_ops->dentry_init_security(dentry, mode, name,
+> +							ctx, ctxlen);
+> +}
+> +EXPORT_SYMBOL(security_dentry_init_security);
+> +
+>  int security_inode_init_security(struct inode *inode, struct inode *dir,
+>  				 const struct qstr *qstr,
+>  				 const initxattrs initxattrs, void *fs_data)
+> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+> index 61a5336..22d9adf 100644
+> --- a/security/selinux/hooks.c
+> +++ b/security/selinux/hooks.c
+> @@ -2483,6 +2483,40 @@ static void selinux_inode_free_security(struct inode *inode)
+>  	inode_free_security(inode);
+>  }
+>  
+> +static int selinux_dentry_init_security(struct dentry *dentry, int mode,
+> +					struct qstr *name, void **ctx,
+> +					u32 *ctxlen)
+> +{
+> +	struct cred *cred = current_cred();
+> +	struct task_security_struct *tsec;
+> +	struct inode_security_struct *dsec;
+> +	struct superblock_security_struct *sbsec;
+> +	struct inode *dir = dentry->d_parent->d_inode;
+> +	u32 newsid;
+> +	int rc;
+> +
+> +	tsec = cred->security;
+> +	dsec = dir->i_security;
+> +	sbsec = dir->i_sb->s_security;
+> +
+> +	if (tsec->create_sid && sbsec->behavior != SECURITY_FS_USE_MNTPOINT) {
+> +		newsid = tsec->create_sid;
+> +	} else {
+> +		rc = security_transition_sid(tsec->sid, dsec->sid,
+> +					     inode_mode_to_security_class(mode),
+> +					     name,
+> +					     &newsid);
+> +		if (rc) {
+> +			printk(KERN_WARNING
+> +				"%s: security_transition_sid failed, rc=%d\n",
+> +			       __func__, -rc);
+> +			return rc;
+> +		}
+> +	}
+> +
+> +	return security_sid_to_context(newsid, (char **)ctx, ctxlen);
+> +}
+> +
+>  static int selinux_inode_init_security(struct inode *inode, struct inode *dir,
+>  				       const struct qstr *qstr, char **name,
+>  				       void **value, size_t *len)
+> @@ -5509,6 +5543,7 @@ static struct security_operations selinux_ops = {
+>  	.sb_clone_mnt_opts =		selinux_sb_clone_mnt_opts,
+>  	.sb_parse_opts_str = 		selinux_parse_opts_str,
+>  
+> +	.dentry_init_security =		selinux_dentry_init_security,
+>  
+>  	.inode_alloc_security =		selinux_inode_alloc_security,
+>  	.inode_free_security =		selinux_inode_free_security,
+> -- 
+> 1.7.11.7
+> 
