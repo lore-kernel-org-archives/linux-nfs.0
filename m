@@ -1,74 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51478 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:42552 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753606Ab2KHAgW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Nov 2012 19:36:22 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/4] nfsd4: helper function for getting mounted_on ino
-Date: Wed,  7 Nov 2012 19:36:09 -0500
-Message-Id: <1352334972-28495-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1352334972-28495-1-git-send-email-bfields@redhat.com>
-References: <1352334972-28495-1-git-send-email-bfields@redhat.com>
+	id S1753385Ab2KLQKC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 12 Nov 2012 11:10:02 -0500
+Date: Mon, 12 Nov 2012 11:09:59 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "David P. Quigley" <selinux@davequigley.com>
+Cc: David Quigley <dpquigl@davequigley.com>, trond.myklebust@netapp.com,
+        sds@tycho.nsa.gov, linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
+        linux-security-module@vger.kernel.org
+Subject: Re: Labeled NFS [v5]
+Message-ID: <20121112160959.GK30713@fieldses.org>
+References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com>
+ <20121112152335.GH30713@fieldses.org>
+ <50A116F0.5050404@davequigley.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <50A116F0.5050404@davequigley.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Mon, Nov 12, 2012 at 10:34:08AM -0500, David P. Quigley wrote:
+> On 11/12/2012 10:23 AM, J. Bruce Fields wrote:
+> >On Mon, Nov 12, 2012 at 01:15:34AM -0500, David Quigley wrote:
+> >>The NFSv4 working group has finally accepted Labeled NFS as part of the NFSv4.2
+> >>specification and it has been decided that a reposting of the Labeled NFS code
+> >>for inclusion into mainline was a good idea. The patches have been rebased onto
+> >>v3.7-rc2 and have been tested against the SELinux testsuite with the only
+> >>failures being for features not supported by NFS.
+> >By the way, is there wireshark support anywhere for the labeled NFS
+> >protocol?
+> >
+> >--b.
+> >--
+> >To unsubscribe from this list: send the line "unsubscribe linux-security-module" in
+> >the body of a message to majordomo@vger.kernel.org
+> >More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >
+> 
+> Unfortunately I never got a chance to add it. You can see the label
+> pretty clearly in wireshark but it comes up as an unknown attribute
+> in the fattr decomposition. If someone knows how to do it I'd be
+> glad to help.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4xdr.c |   30 ++++++++++++++++++------------
- 1 file changed, 18 insertions(+), 12 deletions(-)
+It's usually not too hard: last time I needed something I did a
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index fd548d1..af65fda 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2014,6 +2014,22 @@ static __be32 fattr_handle_absent_fs(u32 *bmval0, u32 *bmval1, u32 *rdattr_err)
- 	return 0;
- }
- 
-+
-+static int get_parent_attributes(struct svc_export *exp, struct kstat *stat)
-+{
-+	struct path path = exp->ex_path;
-+	int err;
-+
-+	path_get(&path);
-+	while (follow_up(&path)) {
-+		if (path.dentry != path.mnt->mnt_root)
-+			break;
-+	}
-+	err = vfs_getattr(path.mnt, path.dentry, stat);
-+	path_put(&path);
-+	return err;
-+}
-+
- /*
-  * Note: @fhp can be NULL; in this case, we might have to compose the filehandle
-  * ourselves.
-@@ -2430,18 +2446,8 @@ out_acl:
- 		 * and this is the root of a cross-mounted filesystem.
- 		 */
- 		if (ignore_crossmnt == 0 &&
--		    dentry == exp->ex_path.mnt->mnt_root) {
--			struct path path = exp->ex_path;
--			path_get(&path);
--			while (follow_up(&path)) {
--				if (path.dentry != path.mnt->mnt_root)
--					break;
--			}
--			err = vfs_getattr(path.mnt, path.dentry, &stat);
--			path_put(&path);
--			if (err)
--				goto out_nfserr;
--		}
-+		    dentry == exp->ex_path.mnt->mnt_root)
-+			get_parent_attributes(exp, &stat);
- 		WRITE64(stat.ino);
- 	}
- 	if (bmval2 & FATTR4_WORD2_SUPPATTR_EXCLCREAT) {
--- 
-1.7.9.5
+	git clone http://code.wireshark.org/git/wireshark
 
+then grepped through epan/dissectors/packet-nfs.c for something similar
+to imitate.  It wa easy to build and run the result from the build
+directory.  Then I submitted a patch following:
+
+	http://www.wireshark.org/docs/wsdg_html_chunked/ChSrcContribute.html#ChSrcSend
+
+and the response was quick and helpful.
+
+(But yeah I don't have time to volunteer right now either.)
+
+--b.
