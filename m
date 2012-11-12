@@ -1,147 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:36259 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751734Ab2K2Qky (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Nov 2012 11:40:54 -0500
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 5/9] NFSD: Clean up forgetting and recalling delegations
-Date: Thu, 29 Nov 2012 11:40:42 -0500
-Message-Id: <1354207246-32343-6-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1354207246-32343-1-git-send-email-bjschuma@netapp.com>
-References: <1354207246-32343-1-git-send-email-bjschuma@netapp.com>
+Received: from countercultured.net ([209.51.175.25]:50282 "HELO
+	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1753864Ab2KLQxQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Nov 2012 11:53:16 -0500
+Message-ID: <50A12979.3040902@davequigley.com>
+Date: Mon, 12 Nov 2012 11:53:13 -0500
+From: "David P. Quigley" <selinux@davequigley.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: David Quigley <dpquigl@davequigley.com>, trond.myklebust@netapp.com,
+        sds@tycho.nsa.gov, linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
+        linux-security-module@vger.kernel.org,
+        "Matthew N. Dodd" <Matthew.Dodd@sparta.com>,
+        Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>,
+        Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>,
+        Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+Subject: Re: [PATCH 07/13] NFSv4: Introduce new label structure
+References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com> <1352700947-3915-8-git-send-email-dpquigl@davequigley.com> <20121112151314.GG30713@fieldses.org> <50A116A8.20105@davequigley.com> <20121112160523.GJ30713@fieldses.org>
+In-Reply-To: <20121112160523.GJ30713@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On 11/12/2012 11:05 AM, J. Bruce Fields wrote:
+> On Mon, Nov 12, 2012 at 10:32:56AM -0500, David P. Quigley wrote:
+>> On 11/12/2012 10:13 AM, J. Bruce Fields wrote:
+>>> On Mon, Nov 12, 2012 at 01:15:41AM -0500, David Quigley wrote:
+>>>> From: David Quigley<dpquigl@davequigley.com>
+>>>>
+>>>> In order to mimic the way that NFSv4 ACLs are implemented we have created a
+>>>> structure to be used to pass label data up and down the call chain. This patch
+>>>> adds the new structure and new members to the required NFSv4 call structures.
+>>>>
+>>>> Signed-off-by: Matthew N. Dodd<Matthew.Dodd@sparta.com>
+>>>> Signed-off-by: Miguel Rodel Felipe<Rodel_FM@dsi.a-star.edu.sg>
+>>>> Signed-off-by: Phua Eu Gene<PHUA_Eu_Gene@dsi.a-star.edu.sg>
+>>>> Signed-off-by: Khin Mi Mi Aung<Mi_Mi_AUNG@dsi.a-star.edu.sg>
+>>>> Signed-off-by: David Quigley<dpquigl@davequigley.com>
+>>>> ---
+>>>>   fs/nfs/inode.c          | 40 ++++++++++++++++++++++++++++++++++++++++
+>>>>   fs/nfsd/xdr4.h          |  3 +++
+>>>>   include/linux/nfs4.h    |  8 ++++++++
+>>>>   include/linux/nfs_fs.h  | 14 ++++++++++++++
+>>>>   include/linux/nfs_xdr.h | 20 ++++++++++++++++++++
+>>>>   5 files changed, 85 insertions(+)
+>>>>
+>>>> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+>>>> index 5c7325c..0963ad9 100644
+>>>> --- a/fs/nfs/inode.c
+>>>> +++ b/fs/nfs/inode.c
+>>>> @@ -246,6 +246,46 @@ nfs_init_locked(struct inode *inode, void *opaque)
+>>>>   	return 0;
+>>>>   }
+>>>>
+>>>> +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
+>>>> +struct nfs4_label *nfs4_label_alloc(gfp_t flags)
+>>>> +{
+>>>> +	struct nfs4_label *label = NULL;
+>>>> +
+>>>> +	label = kzalloc(sizeof(struct nfs4_label) + NFS4_MAXLABELLEN, flags);
+>>> NFS4_MAXLABELLEN is 4096, but we usually try to avoid allocating more
+>>> than that in a single allocation.
+>> Should we make this smaller? I figured a page would be a good upper bound.
+> If we could make it small enough so that the above fits in 4096 bytes
+> that would be easier.
+>
+> (What does the protocol say?  On a quick glance it doesn't seem to
+> impose a limit.)
 
-Once I have a client, I can easily use its delegation list rather than
-searching the file hash table for delegations to remove.
+The spec doesn't limit the size of a label but we thought that a page 
+would be good. We can make it 4095 to ensure that it will always be in a 
+page incase a null terminator is added. I believe someone mentioned this 
+in the past I'm not sure why it didn't make its way in. We initially had 
+something much larger but Trond chimed in and said that if its larger 
+than a page something is wrong so we lowered it.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfsd/nfs4state.c | 94 ++++++++++++++++++++++++++++-------------------------
- 1 file changed, 50 insertions(+), 44 deletions(-)
+>
+>>>> +	label->label = (void *)(label + 1);
+>>>> +	label->len = NFS4_MAXLABELLEN;
+>>>> +	/* 0 is the null format meaning that the data is not to be translated */
+>>>> +	label->lfs = 0;
+>>>> +	label->pi = 0;
+>>> What's "pi"?
+>>>
+>>> --b.
+>> In the LFS document we talk about how a policy identifier is a
+>> recommended field. It isn't implemented yet as we're setting both
+>> the LFS and the PI to 0 but I added it for when we put the LFS
+>> mapping daemon in next. The idea is that even though we have a label
+>> and we specify the format with the LFS we need to identify what
+>> version of policy it is so we can ensure that the actual meaning of
+>> a value is correct.
+> And, my bad, this is in the spec--sorry, I need to go study it.
+>
+> --b.
+>
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 00d4398..dc7c22f 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4657,6 +4657,52 @@ u64 nfsd_forget_client_openowners(struct nfs4_client *clp, u64 max)
- 	return nfsd_foreach_client_open(clp, max, release_openowner);
- }
- 
-+static u64 nfsd_find_all_delegations(struct nfs4_client *clp, u64 max,
-+				     struct list_head *victims)
-+{
-+	struct nfs4_delegation *dp, *next;
-+	u64 count = 0;
-+
-+	list_for_each_entry_safe(dp, next, &clp->cl_delegations, dl_perclnt) {
-+		if (victims)
-+			list_move(&dp->dl_recall_lru, victims);
-+		if (++count == max)
-+			break;
-+	}
-+	return count;
-+}
-+
-+u64 nfsd_forget_client_delegations(struct nfs4_client *clp, u64 max)
-+{
-+	struct nfs4_delegation *dp, *next;
-+	LIST_HEAD(victims);
-+	u64 count;
-+
-+	spin_lock(&recall_lock);
-+	count = nfsd_find_all_delegations(clp, max, &victims);
-+	spin_unlock(&recall_lock);
-+
-+	list_for_each_entry_safe(dp, next, &victims, dl_recall_lru)
-+		unhash_delegation(dp);
-+
-+	return count;
-+}
-+
-+u64 nfsd_recall_client_delegations(struct nfs4_client *clp, u64 max)
-+{
-+	struct nfs4_delegation *dp, *next;
-+	LIST_HEAD(victims);
-+	u64 count;
-+
-+	spin_lock(&recall_lock);
-+	count = nfsd_find_all_delegations(clp, max, &victims);
-+	list_for_each_entry_safe(dp, next, &victims, dl_recall_lru)
-+		nfsd_break_one_deleg(dp);
-+	spin_unlock(&recall_lock);
-+
-+	return count;
-+}
-+
- u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
- {
- 	struct nfs4_client *clp, *next;
-@@ -4693,56 +4739,16 @@ void nfsd_forget_openowners(u64 num)
- 	printk(KERN_INFO "NFSD: Forgot %llu open owners", count);
- }
- 
--static int nfsd_process_n_delegations(u64 num, struct list_head *list)
--{
--	int i, count = 0;
--	struct nfs4_file *fp, *fnext;
--	struct nfs4_delegation *dp, *dnext;
--
--	for (i = 0; i < FILE_HASH_SIZE; i++) {
--		list_for_each_entry_safe(fp, fnext, &file_hashtbl[i], fi_hash) {
--			list_for_each_entry_safe(dp, dnext, &fp->fi_delegations, dl_perfile) {
--				list_move(&dp->dl_recall_lru, list);
--				if (++count == num)
--					return count;
--			}
--		}
--	}
--
--	return count;
--}
--
- void nfsd_forget_delegations(u64 num)
- {
--	unsigned int count;
--	LIST_HEAD(victims);
--	struct nfs4_delegation *dp, *dnext;
--
--	spin_lock(&recall_lock);
--	count = nfsd_process_n_delegations(num, &victims);
--	spin_unlock(&recall_lock);
--
--	list_for_each_entry_safe(dp, dnext, &victims, dl_recall_lru)
--		unhash_delegation(dp);
--
--	printk(KERN_INFO "NFSD: Forgot %d delegations", count);
-+	u64 count = nfsd_for_n_state(num, nfsd_forget_client_delegations);
-+	printk(KERN_INFO "NFSD: Forgot %llu delegations", count);
- }
- 
- void nfsd_recall_delegations(u64 num)
- {
--	unsigned int count;
--	LIST_HEAD(victims);
--	struct nfs4_delegation *dp, *dnext;
--
--	spin_lock(&recall_lock);
--	count = nfsd_process_n_delegations(num, &victims);
--	list_for_each_entry_safe(dp, dnext, &victims, dl_recall_lru) {
--		list_del(&dp->dl_recall_lru);
--		nfsd_break_one_deleg(dp);
--	}
--	spin_unlock(&recall_lock);
--
--	printk(KERN_INFO "NFSD: Recalled %d delegations", count);
-+	u64 count = nfsd_for_n_state(num, nfsd_recall_client_delegations);
-+	printk(KERN_INFO "NFSD: Recalled %llu delegations", count);
- }
- 
- #endif /* CONFIG_NFSD_FAULT_INJECTION */
--- 
-1.8.0.1
-
+Its ok. It's been in the works so long its hard to keep track of it all.
