@@ -1,89 +1,166 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ia0-f174.google.com ([209.85.210.174]:41906 "EHLO
-	mail-ia0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753523Ab2KIBgW convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Nov 2012 20:36:22 -0500
-Received: by mail-ia0-f174.google.com with SMTP id y32so2408136iag.19
-        for <linux-nfs@vger.kernel.org>; Thu, 08 Nov 2012 17:36:22 -0800 (PST)
+Received: from mailhub.sw.ru ([195.214.232.25]:46211 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753488Ab2KMPqW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Nov 2012 10:46:22 -0500
+Subject: [PATCH 07/15] nfsd: make unconf_str_hastbl allocated per net
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, devel@openvz.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, jlayton@redhat.com
+Date: Tue, 13 Nov 2012 18:48:54 +0300
+Message-ID: <20121113154854.12577.7404.stgit@localhost.localdomain>
+In-Reply-To: <20121113154722.12577.57671.stgit@localhost.localdomain>
+References: <20121113154722.12577.57671.stgit@localhost.localdomain>
 MIME-Version: 1.0
-In-Reply-To: <20121108122742.GB22735@fieldses.org>
-References: <1351760297.5369.1.camel@localhost>
-	<CA+res+RTz9DC8TK3N3kFrSpeT-rgad1nk7amJdWP_Up9OW9KSg@mail.gmail.com>
-	<CAJLw8+WJGPiWW6K7UEX72eYdgeYWsDLcoZKNP7V1UvvQGnMxXA@mail.gmail.com>
-	<CA+res+RhNJT1D0MpdSBJoywemainEJVZKSzG1BxhXTrQ3kQCbw@mail.gmail.com>
-	<20121107190111.GC7421@fieldses.org>
-	<CA+res+SD_mradA6grZz_80uWiidb_r9Kv_aW8rXVXpNLSozjWA@mail.gmail.com>
-	<20121108122742.GB22735@fieldses.org>
-Date: Fri, 9 Nov 2012 09:36:22 +0800
-Message-ID: <CA+res+Q6nV+pTmUF0PqH41jUg9d5WQAQfOtJnRngHU9ZE=ECYg@mail.gmail.com>
-Subject: Re: hang problem when umount a nfs point
-From: Jack Wang <jack.wang.usish@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: =?UTF-8?Q?Mart=C3=ADn_Cigorraga?= <msx@archlinux.us>, dahai_tian@usish.com,
-        linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2012/11/8 J. Bruce Fields <bfields@fieldses.org>:
-> On Thu, Nov 08, 2012 at 11:03:22AM +0800, Jack Wang wrote:
->> 2012/11/8 J. Bruce Fields <bfields@fieldses.org>:
->> > On Wed, Nov 07, 2012 at 09:05:51AM +0800, Jack Wang wrote:
->> >> 2012/11/7 Martín Cigorraga <msx@archlinux.us>:
->> >> > On Mon, Nov 5, 2012 at 10:27 PM, Jack Wang <jack.wang.usish@gmail.com>
->> >> > wrote:
->> >> >>
->> >> >> Hi all,
->> >> >>
->> >> >> Anyone who can kindly give some suggestion? or we just put question to
->> >> >> the wrong list?
->> >> >>
->> >> >> Thanks.
->> >> >>
->> >> >> Jack
->> >> >>
->> >> >> 2012/11/1 dahai_tian <dahai_tian@usish.com>:
->> >> >> > Hi all:
->> >> >> >         I mount a local directory to a nfs server. When nfs server is
->> >> >> > stopped
->> >> >> > for some accidental cause, I try to umount the mount point, the umount
->> >> >> > command will hang and 'time out' messages are continually printed in the
->> >> >> > terminal. How can I avoid hanging in this case? BTW, This issue does not
->> >> >> > exist when I changed nfs version from 4 to 3.
->> >> >> >         Look forward to your response, thanks!
->> >>
->> >> >
->> >> > Hi Jack, use the -l (lazy) switch:
->> >> > # umount -l {your mounted nfs share}
->> >> >
->> >> > Also, I wouldn't recommend 'just to kill' the NFS proces(ses) as it (them)
->> >> > may leave shared memory a mess.
->> >> > (And I would like to see how do you make to mount any NFS share again
->> >> > without booting)
->> >>
->> >> Thanks Martin for kindly help.
->> >>
->> >> umount -l did work, but why nfsv3 do not have this problem?
->> >
->> > I don't know what it is exactly.  But in general I wouldn't expect
->> > umount to work when the server's unavailable.
->> >
->> > --b.
->>
->> Thanks for your time Bruce, but there are chance the server
->> unavailable , why you think umount don't work is expected?
->
-> It's tough for the client to deal safely with an unreachable server.
-> Worst case it may still have data in its buffers that applications have
-> written but that hasn't yet made it to the server.
->
-> If you don't have any opens or other state on the filesystem any more,
-> there might be things that could be done to make it easier to umount in
-> that case--I haven't thought it through--but I doubt that's a high
-> priority, so it's likely up to you to write the code and persuade people
-> it's worthwhile.
->
-> --b.
-Thanks for explaination.
+This hash holds nfs4_clients info, which are network namespace aware.
+So let's make it allocated per network namespace.
 
-Jack
+Note: this hash can be allocated in per-net operations. But it looks
+better to allocate it on nfsd state start and thus don't waste resources
+if server is not running.
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfsd/netns.h     |    3 +++
+ fs/nfsd/nfs4state.c |   27 ++++++++++++++-------------
+ 2 files changed, 17 insertions(+), 13 deletions(-)
+
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index 0577780..ad08208 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -51,12 +51,15 @@ struct nfsd_net {
+ 	 * conf_id_hashtbl[], and conf_str_hashtbl[] hold confirmed
+ 	 * setclientid_confirmed info.
+ 	 *
++	 * unconf_str_hastbl[] and unconf_id_hashtbl[] hold unconfirmed
++	 * setclientid info.
+ 	 */
+ 	struct list_head *reclaim_str_hashtbl;
+ 	int reclaim_str_hashtbl_size;
+ 	struct list_head *conf_id_hashtbl;
+ 	struct list_head *conf_str_hashtbl;
+ 	struct list_head *unconf_str_hashtbl;
++	struct list_head *unconf_id_hashtbl;
+ };
+ 
+ extern int nfsd_net_id;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 7e44015..10ee3ec 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -404,16 +404,12 @@ static unsigned int clientstr_hashval(const char *name)
+ }
+ 
+ /*
+- * unconf_str_hastbl[] and unconf_id_hashtbl[] hold unconfirmed 
+- * setclientid info.
+- *
+  * client_lru holds client queue ordered by nfs4_client.cl_time
+  * for lease renewal.
+  *
+  * close_lru holds (open) stateowner queue ordered by nfs4_stateowner.so_time
+  * for last close replay.
+  */
+-static struct list_head	unconf_id_hashtbl[CLIENT_HASH_SIZE];
+ static struct list_head client_lru;
+ static struct list_head close_lru;
+ 
+@@ -1317,7 +1313,7 @@ add_to_unconfirmed(struct nfs4_client *clp, unsigned int strhashval)
+ 
+ 	list_add(&clp->cl_strhash, &nn->unconf_str_hashtbl[strhashval]);
+ 	idhashval = clientid_hashval(clp->cl_clientid.cl_id);
+-	list_add(&clp->cl_idhash, &unconf_id_hashtbl[idhashval]);
++	list_add(&clp->cl_idhash, &nn->unconf_id_hashtbl[idhashval]);
+ 	renew_client(clp);
+ }
+ 
+@@ -1353,12 +1349,12 @@ find_confirmed_client(clientid_t *clid, bool sessions, struct nfsd_net *nn)
+ }
+ 
+ static struct nfs4_client *
+-find_unconfirmed_client(clientid_t *clid, bool sessions)
++find_unconfirmed_client(clientid_t *clid, bool sessions, struct nfsd_net *nn)
+ {
+ 	struct nfs4_client *clp;
+ 	unsigned int idhashval = clientid_hashval(clid->cl_id);
+ 
+-	list_for_each_entry(clp, &unconf_id_hashtbl[idhashval], cl_idhash) {
++	list_for_each_entry(clp, &nn->unconf_id_hashtbl[idhashval], cl_idhash) {
+ 		if (same_clid(&clp->cl_clientid, clid)) {
+ 			if ((bool)clp->cl_minorversion != sessions)
+ 				return NULL;
+@@ -1766,7 +1762,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 		goto out_free_session;
+ 
+ 	nfs4_lock_state();
+-	unconf = find_unconfirmed_client(&cr_ses->clientid, true);
++	unconf = find_unconfirmed_client(&cr_ses->clientid, true, nn);
+ 	conf = find_confirmed_client(&cr_ses->clientid, true, nn);
+ 
+ 	if (conf) {
+@@ -2112,7 +2108,7 @@ nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
+ 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+ 
+ 	nfs4_lock_state();
+-	unconf = find_unconfirmed_client(&dc->clientid, true);
++	unconf = find_unconfirmed_client(&dc->clientid, true, nn);
+ 	conf = find_confirmed_client(&dc->clientid, true, nn);
+ 
+ 	if (conf) {
+@@ -2257,7 +2253,7 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+ 	nfs4_lock_state();
+ 
+ 	conf = find_confirmed_client(clid, false, nn);
+-	unconf = find_unconfirmed_client(clid, false);
++	unconf = find_unconfirmed_client(clid, false, nn);
+ 	/*
+ 	 * We try hard to give out unique clientid's, so if we get an
+ 	 * attempt to confirm the same clientid with a different cred,
+@@ -4700,9 +4696,6 @@ nfs4_state_init(void)
+ {
+ 	int i;
+ 
+-	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
+-		INIT_LIST_HEAD(&unconf_id_hashtbl[i]);
+-	}
+ 	for (i = 0; i < SESSION_HASH_SIZE; i++)
+ 		INIT_LIST_HEAD(&sessionid_hashtbl[i]);
+ 	for (i = 0; i < FILE_HASH_SIZE; i++) {
+@@ -4756,15 +4749,22 @@ static int nfs4_state_start_net(struct net *net)
+ 			CLIENT_HASH_SIZE, GFP_KERNEL);
+ 	if (!nn->unconf_str_hashtbl)
+ 		goto err_unconf_str;
++	nn->unconf_id_hashtbl = kmalloc(sizeof(struct list_head) *
++			CLIENT_HASH_SIZE, GFP_KERNEL);
++	if (!nn->unconf_id_hashtbl)
++		goto err_unconf_id;
+ 
+ 	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
+ 		INIT_LIST_HEAD(&nn->conf_id_hashtbl[i]);
+ 		INIT_LIST_HEAD(&nn->conf_str_hashtbl[i]);
+ 		INIT_LIST_HEAD(&nn->unconf_str_hashtbl[i]);
++		INIT_LIST_HEAD(&nn->unconf_id_hashtbl[i]);
+ 	}
+ 
+ 	return 0;
+ 
++err_unconf_id:
++	kfree(nn->unconf_str_hashtbl);
+ err_unconf_str:
+ 	kfree(nn->conf_str_hashtbl);
+ err_conf_str:
+@@ -4790,6 +4790,7 @@ __nfs4_state_shutdown_net(struct net *net)
+ 			destroy_client(clp);
+ 		}
+ 	}
++	kfree(nn->unconf_id_hashtbl);
+ 	kfree(nn->unconf_str_hashtbl);
+ 	kfree(nn->conf_str_hashtbl);
+ 	kfree(nn->conf_id_hashtbl);
+
