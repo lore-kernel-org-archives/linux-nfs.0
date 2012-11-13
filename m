@@ -1,54 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39198 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:17753 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753875Ab2KWRXi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Nov 2012 12:23:38 -0500
-Date: Fri, 23 Nov 2012 12:23:33 -0500
-To: "dE ." <de.techno@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Slow NFS loop performance.
-Message-ID: <20121123172333.GB8776@fieldses.org>
-References: <50AF57A3.3090000@gmail.com>
+	id S1754799Ab2KMPpw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Nov 2012 10:45:52 -0500
+Subject: [PATCH 01/15] nfsd: use service net instead of hard-coded net where
+	possible
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, devel@openvz.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, jlayton@redhat.com
+Date: Tue, 13 Nov 2012 18:48:23 +0300
+Message-ID: <20121113154823.12577.89371.stgit@localhost.localdomain>
+In-Reply-To: <20121113154722.12577.57671.stgit@localhost.localdomain>
+References: <20121113154722.12577.57671.stgit@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <50AF57A3.3090000@gmail.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 23, 2012 at 04:31:55PM +0530, dE . wrote:
-> Humm... The last thing I expected was no response even in the mailing list.
-> 
-> So I'm filing a bug on this.
-> 
-> On Oct 23, 2012 2:19 PM, "dE ." <de.techno@gmail.com> wrote:
-> > Hi!
-> >
-> > Great job with NFS server, it surely is fast, but not on loop devices.
-> >
-> > If I loop mount a file and share the mount point over NFS3 or NFS4, the
-> > write performance of the client on the loop mounted share is pretty bad.
-> >
-> > On a 100 Mbps (or 12.5MBps) full duplex Ethernet link, I get ~8MBps
-> > speeds, whereas on the loop mounted device, I get at best 6MBps.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfsd/nfs4state.c |   10 +++++-----
+ 1 files changed, 5 insertions(+), 5 deletions(-)
 
-What exactly is your test?
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index d6b602a..6a3661b 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2257,7 +2257,7 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+ 	nfs4_verifier confirm = setclientid_confirm->sc_confirm; 
+ 	clientid_t * clid = &setclientid_confirm->sc_clientid;
+ 	__be32 status;
+-	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
++	struct nfsd_net	*nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+ 
+ 	if (STALE_CLIENTID(clid, nn))
+ 		return nfserr_stale_clientid;
+@@ -3129,7 +3129,7 @@ nfsd4_renew(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ {
+ 	struct nfs4_client *clp;
+ 	__be32 status;
+-	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
++	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+ 
+ 	nfs4_lock_state();
+ 	dprintk("process_renew(%08x/%08x): starting\n", 
+@@ -4082,7 +4082,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	bool new_state = false;
+ 	int lkflg;
+ 	int err;
+-	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
++	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+ 
+ 	dprintk("NFSD: nfsd4_lock: start=%Ld length=%Ld\n",
+ 		(long long) lock->lk_offset,
+@@ -4255,7 +4255,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	struct file_lock *file_lock = NULL;
+ 	struct nfs4_lockowner *lo;
+ 	__be32 status;
+-	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
++	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+ 
+ 	if (locks_in_grace(SVC_NET(rqstp)))
+ 		return nfserr_grace;
+@@ -4431,7 +4431,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 	struct list_head matches;
+ 	unsigned int hashval = ownerstr_hashval(clid->cl_id, owner);
+ 	__be32 status;
+-	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
++	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+ 
+ 	dprintk("nfsd4_release_lockowner clientid: (%08x/%08x):\n",
+ 		clid->cl_boot, clid->cl_id);
 
---b.
-
-> >
-> > Any ideas why?
-> >
-> > My server configuration (NFS4) --
-> > anonuid=1000,anongid=1000,**secure,no_subtree_check,rw,**fsid=0,crossmnt
-> >
-> > My client mount options --
-> > rsize=1048576,wsize=1048576,**async,hard,timeo=60,retrans=2,**
-> > actimeo=900,retry=2,**lookupcache=pos,nfsvers=4,**
-> > nolock,intr,noacl,rdirplus
-> >
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
