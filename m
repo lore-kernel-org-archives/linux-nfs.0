@@ -1,67 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f174.google.com ([209.85.220.174]:61101 "EHLO
-	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755681Ab2KIUGx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Nov 2012 15:06:53 -0500
-Received: by mail-vc0-f174.google.com with SMTP id fk26so4183151vcb.19
-        for <linux-nfs@vger.kernel.org>; Fri, 09 Nov 2012 12:06:52 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:41830 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754046Ab2KMPrJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Nov 2012 10:47:09 -0500
+Subject: [PATCH 15/15] nfsd: make laundromat network namespace aware
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH RFC 1/7] nfsd: remove unused argument to nfs4_has_reclaimed_state
-Date: Fri,  9 Nov 2012 15:06:38 -0500
-Message-Id: <1352491604-21605-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1352491604-21605-1-git-send-email-jlayton@redhat.com>
-References: <1352491604-21605-1-git-send-email-jlayton@redhat.com>
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, devel@openvz.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, jlayton@redhat.com
+Date: Tue, 13 Nov 2012 18:49:35 +0300
+Message-ID: <20121113154935.12577.97422.stgit@localhost.localdomain>
+In-Reply-To: <20121113154722.12577.57671.stgit@localhost.localdomain>
+References: <20121113154722.12577.57671.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/nfs4recover.c | 2 +-
- fs/nfsd/nfs4state.c   | 2 +-
- fs/nfsd/state.h       | 2 +-
- 3 files changed, 3 insertions(+), 3 deletions(-)
+This patch moves laundromat_work to nfsd per-net context, thus allowing to run
+multiple laundries.
 
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index 0a9ac9d..10b7f47 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -319,7 +319,7 @@ purge_old(struct dentry *parent, struct dentry *child)
- {
- 	int status;
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfsd/netns.h     |    2 ++
+ fs/nfsd/nfs4state.c |   21 +++++++++++++--------
+ 2 files changed, 15 insertions(+), 8 deletions(-)
+
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index f024fe2..c135277 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -77,6 +77,8 @@ struct nfsd_net {
+ 	 */
+ 	struct list_head client_lru;
+ 	struct list_head close_lru;
++
++	struct delayed_work laundromat_work;
+ };
  
--	if (nfs4_has_reclaimed_state(child->d_name.name, false))
-+	if (nfs4_has_reclaimed_state(child->d_name.name))
- 		return 0;
- 
- 	status = vfs_rmdir(parent->d_inode, child);
+ extern int nfsd_net_id;
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index fba2996..f15a2a0 100644
+index 4756176..bb109ae 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -4465,7 +4465,7 @@ alloc_reclaim(void)
+@@ -3157,7 +3157,7 @@ nfsd4_end_grace(struct nfsd_net *nn)
  }
  
- int
--nfs4_has_reclaimed_state(const char *name, bool use_exchange_id)
-+nfs4_has_reclaimed_state(const char *name)
+ static time_t
+-nfs4_laundromat(void)
++nfs4_laundromat(struct nfsd_net *nn)
  {
- 	unsigned int strhashval = clientstr_hashval(name);
  	struct nfs4_client *clp;
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index e036894..bd734f0 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -470,7 +470,7 @@ extern void nfsd4_shutdown_callback(struct nfs4_client *);
- extern void nfs4_put_delegation(struct nfs4_delegation *dp);
- extern __be32 nfs4_make_rec_clidname(char *clidname, struct xdr_netobj *clname);
- extern int nfs4_client_to_reclaim(const char *name);
--extern int nfs4_has_reclaimed_state(const char *name, bool use_exchange_id);
-+extern int nfs4_has_reclaimed_state(const char *name);
- extern void release_session_client(struct nfsd4_session *);
- extern void nfsd4_purge_closed_stateid(struct nfs4_stateowner *);
+ 	struct nfs4_openowner *oo;
+@@ -3166,7 +3166,6 @@ nfs4_laundromat(void)
+ 	time_t cutoff = get_seconds() - nfsd4_lease;
+ 	time_t t, clientid_val = nfsd4_lease;
+ 	time_t u, test_val = nfsd4_lease;
+-	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
  
--- 
-1.7.11.7
+ 	nfs4_lock_state();
+ 
+@@ -3232,16 +3231,19 @@ nfs4_laundromat(void)
+ 
+ static struct workqueue_struct *laundry_wq;
+ static void laundromat_main(struct work_struct *);
+-static DECLARE_DELAYED_WORK(laundromat_work, laundromat_main);
+ 
+ static void
+-laundromat_main(struct work_struct *not_used)
++laundromat_main(struct work_struct *laundry)
+ {
+ 	time_t t;
++	struct delayed_work *dwork = container_of(laundry, struct delayed_work,
++						  work);
++	struct nfsd_net *nn = container_of(dwork, struct nfsd_net,
++					   laundromat_work);
+ 
+-	t = nfs4_laundromat();
++	t = nfs4_laundromat(nn);
+ 	dprintk("NFSD: laundromat_main - sleeping for %ld seconds\n", t);
+-	queue_delayed_work(laundry_wq, &laundromat_work, t*HZ);
++	queue_delayed_work(laundry_wq, &nn->laundromat_work, t*HZ);
+ }
+ 
+ static inline __be32 nfs4_check_fh(struct svc_fh *fhp, struct nfs4_ol_stateid *stp)
+@@ -4781,6 +4783,8 @@ static int nfs4_state_start_net(struct net *net)
+ 	INIT_LIST_HEAD(&nn->client_lru);
+ 	INIT_LIST_HEAD(&nn->close_lru);
+ 
++	INIT_DELAYED_WORK(&nn->laundromat_work, laundromat_main);
++
+ 	return 0;
+ 
+ err_sessionid:
+@@ -4864,7 +4868,8 @@ nfs4_state_start(void)
+ 	ret = nfsd4_create_callback_queue();
+ 	if (ret)
+ 		goto out_free_laundry;
+-	queue_delayed_work(laundry_wq, &laundromat_work, nfsd4_grace * HZ);
++
++	queue_delayed_work(laundry_wq, &nn->laundromat_work, nfsd4_grace * HZ);
+ 	set_max_delegations();
+ 	return 0;
+ out_free_laundry:
+@@ -4906,7 +4911,7 @@ nfs4_state_shutdown(void)
+ 	struct net *net = &init_net;
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
+-	cancel_delayed_work_sync(&laundromat_work);
++	cancel_delayed_work_sync(&nn->laundromat_work);
+ 	destroy_workqueue(laundry_wq);
+ 	locks_end_grace(&nn->nfsd4_manager);
+ 	nfs4_lock_state();
 
