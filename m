@@ -1,185 +1,165 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:40465 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:16722 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755933Ab2KZURE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Nov 2012 15:17:04 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 13/28] NFSv4.1: Ensure that the client tracks the server target_highest_slotid
-Date: Mon, 26 Nov 2012 15:16:30 -0500
-Message-Id: <1353961005-63874-14-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1353961005-63874-13-git-send-email-Trond.Myklebust@netapp.com>
-References: <1353961005-63874-1-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-2-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-3-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-4-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-5-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-6-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-7-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-8-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-9-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-10-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-11-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-12-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-13-git-send-email-Trond.Myklebust@netapp.com>
+	id S1754046Ab2KMPqd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Nov 2012 10:46:33 -0500
+Subject: [PATCH 09/15] nfsd: make lockowner_ino_hashtbl allocated per net
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, devel@openvz.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, jlayton@redhat.com
+Date: Tue, 13 Nov 2012 18:49:04 +0300
+Message-ID: <20121113154904.12577.62685.stgit@localhost.localdomain>
+In-Reply-To: <20121113154722.12577.57671.stgit@localhost.localdomain>
+References: <20121113154722.12577.57671.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Dynamic slot allocation in NFSv4.1 depends on the client being able to
-track the server's target value for the highest slotid in the
-slot table.  See the reference in Section 2.10.6.1 of RFC5661.
+This hash holds file lock owners and closely associated with nfs4_clients info,
+which are network namespace aware. So let's make it allocated per network
+namespace too.
 
-To avoid ordering problems in the case where 2 SEQUENCE replies contain
-conflicting updates to this target value, we also introduce a generation
-counter, to track whether or not an RPC containing a SEQUENCE operation
-was launched before or after the last update.
+Note: this hash can be allocated in per-net operations. But it looks
+better to allocate it on nfsd state start and thus don't waste resources
+if server is not running.
 
-Also rename the nfs4_slot_table target_max_slots field to
-'target_highest_slotid' to avoid confusion with a slot
-table size or number of slots.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 ---
- fs/nfs/nfs4proc.c         | 25 +++++++++++++++++++++++++
- fs/nfs/nfs4state.c        |  7 +++----
- fs/nfs/nfs4xdr.c          |  4 ++--
- include/linux/nfs_fs_sb.h |  5 +++--
- include/linux/nfs_xdr.h   |  2 ++
- 5 files changed, 35 insertions(+), 8 deletions(-)
+ fs/nfsd/netns.h     |    4 ++++
+ fs/nfsd/nfs4state.c |   27 ++++++++++++++++-----------
+ 2 files changed, 20 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 14389f2..8333260 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -489,6 +489,28 @@ static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
- 	res->sr_slot = NULL;
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index 70f28f1..f7a6b87 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -29,6 +29,9 @@
+ #define CLIENT_HASH_SIZE                (1 << CLIENT_HASH_BITS)
+ #define CLIENT_HASH_MASK                (CLIENT_HASH_SIZE - 1)
+ 
++#define LOCKOWNER_INO_HASH_BITS		8
++#define LOCKOWNER_INO_HASH_SIZE		(1 << LOCKOWNER_INO_HASH_BITS)
++
+ struct cld_net;
+ 
+ struct nfsd_net {
+@@ -61,6 +64,7 @@ struct nfsd_net {
+ 	struct list_head *unconf_str_hashtbl;
+ 	struct list_head *unconf_id_hashtbl;
+ 	struct list_head *ownerstr_hashtbl;
++	struct list_head *lockowner_ino_hashtbl;
+ };
+ 
+ extern int nfsd_net_id;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 5fa1bde..ddc5a9f 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3841,8 +3841,6 @@ out:
+ 
+ #define LOFF_OVERFLOW(start, len)      ((u64)(len) > ~(u64)(start))
+ 
+-#define LOCKOWNER_INO_HASH_BITS 8
+-#define LOCKOWNER_INO_HASH_SIZE (1 << LOCKOWNER_INO_HASH_BITS)
+ #define LOCKOWNER_INO_HASH_MASK (LOCKOWNER_INO_HASH_SIZE - 1)
+ 
+ static inline u64
+@@ -3872,8 +3870,6 @@ static unsigned int lockowner_ino_hashval(struct inode *inode, u32 cl_id, struct
+ 		& LOCKOWNER_INO_HASH_MASK;
  }
  
-+/* Update the client's idea of target_highest_slotid */
-+static void nfs41_set_target_slotid_locked(struct nfs4_slot_table *tbl,
-+		u32 target_highest_slotid)
-+{
-+	if (tbl->target_highest_slotid == target_highest_slotid)
-+		return;
-+	tbl->target_highest_slotid = target_highest_slotid;
-+	tbl->generation++;
-+}
-+
-+static void nfs41_update_target_slotid(struct nfs4_slot_table *tbl,
-+		struct nfs4_slot *slot,
-+		struct nfs4_sequence_res *res)
-+{
-+	spin_lock(&tbl->slot_tbl_lock);
-+	if (tbl->generation != slot->generation)
-+		goto out;
-+	nfs41_set_target_slotid_locked(tbl, res->sr_target_highest_slotid);
-+out:
-+	spin_unlock(&tbl->slot_tbl_lock);
-+}
-+
- static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *res)
+-static struct list_head lockowner_ino_hashtbl[LOCKOWNER_INO_HASH_SIZE];
+-
+ /*
+  * TODO: Linux file offsets are _signed_ 64-bit quantities, which means that
+  * we can't properly handle lock requests that go beyond the (2^63 - 1)-th
+@@ -3939,12 +3935,12 @@ static bool same_lockowner_ino(struct nfs4_lockowner *lo, struct inode *inode, c
+ 
+ static struct nfs4_lockowner *
+ find_lockowner_str(struct inode *inode, clientid_t *clid,
+-		struct xdr_netobj *owner)
++		   struct xdr_netobj *owner, struct nfsd_net *nn)
  {
- 	struct nfs4_session *session;
-@@ -523,6 +545,7 @@ static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *
- 		/* Check sequence flags */
- 		if (res->sr_status_flags != 0)
- 			nfs4_schedule_lease_recovery(clp);
-+		nfs41_update_target_slotid(slot->table, slot, res);
- 		break;
- 	case -NFS4ERR_DELAY:
- 		/* The server detected a resend of the RPC call and
-@@ -584,6 +607,7 @@ static struct nfs4_slot *nfs4_alloc_slot(struct nfs4_slot_table *tbl)
- 		tbl->highest_used_slotid = slotid;
- 	ret = &tbl->slots[slotid];
- 	ret->renewal_time = jiffies;
-+	ret->generation = tbl->generation;
+ 	unsigned int hashval = lockowner_ino_hashval(inode, clid->cl_id, owner);
+ 	struct nfs4_lockowner *lo;
  
- out:
- 	dprintk("<-- %s used_slots=%04lx highest_used=%d slotid=%d \n",
-@@ -5694,6 +5718,7 @@ static void nfs4_add_and_init_slots(struct nfs4_slot_table *tbl,
- 		tbl->max_slots = max_slots;
+-	list_for_each_entry(lo, &lockowner_ino_hashtbl[hashval], lo_owner_ino_hash) {
++	list_for_each_entry(lo, &nn->lockowner_ino_hashtbl[hashval], lo_owner_ino_hash) {
+ 		if (same_lockowner_ino(lo, inode, clid, owner))
+ 			return lo;
  	}
- 	tbl->highest_used_slotid = NFS4_NO_SLOT;
-+	tbl->target_highest_slotid = max_slots - 1;
- 	for (i = 0; i < tbl->max_slots; i++)
- 		tbl->slots[i].seq_nr = ivalue;
- 	spin_unlock(&tbl->slot_tbl_lock);
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 9495789..842cb8c 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -2033,17 +2033,16 @@ static int nfs4_recall_slot(struct nfs_client *clp)
- 		return 0;
- 	nfs4_begin_drain_session(clp);
- 	fc_tbl = &clp->cl_session->fc_slot_table;
--	new = nfs4_alloc_slots(fc_tbl, fc_tbl->target_max_slots, GFP_NOFS);
-+	new = nfs4_alloc_slots(fc_tbl, fc_tbl->target_highest_slotid + 1, GFP_NOFS);
-         if (!new)
- 		return -ENOMEM;
+@@ -3959,7 +3955,7 @@ static void hash_lockowner(struct nfs4_lockowner *lo, unsigned int strhashval, s
+ 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
  
- 	spin_lock(&fc_tbl->slot_tbl_lock);
--	for (i = 0; i < fc_tbl->target_max_slots; i++)
-+	for (i = 0; i <= fc_tbl->target_highest_slotid; i++)
- 		new[i].seq_nr = fc_tbl->slots[i].seq_nr;
- 	old = fc_tbl->slots;
- 	fc_tbl->slots = new;
--	fc_tbl->max_slots = fc_tbl->target_max_slots;
--	fc_tbl->target_max_slots = 0;
-+	fc_tbl->max_slots = fc_tbl->target_highest_slotid + 1;
- 	clp->cl_session->fc_attrs.max_reqs = fc_tbl->max_slots;
- 	spin_unlock(&fc_tbl->slot_tbl_lock);
+ 	list_add(&lo->lo_owner.so_strhash, &nn->ownerstr_hashtbl[strhashval]);
+-	list_add(&lo->lo_owner_ino_hash, &lockowner_ino_hashtbl[inohash]);
++	list_add(&lo->lo_owner_ino_hash, &nn->lockowner_ino_hashtbl[inohash]);
+ 	list_add(&lo->lo_perstateid, &open_stp->st_lockowners);
+ }
  
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 27b0fec..05d34f1 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -5552,8 +5552,8 @@ static int decode_sequence(struct xdr_stream *xdr,
+@@ -4033,8 +4029,10 @@ static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate, s
+ 	struct nfs4_client *cl = oo->oo_owner.so_client;
+ 	struct nfs4_lockowner *lo;
+ 	unsigned int strhashval;
++	struct nfsd_net *nn = net_generic(cl->net, nfsd_net_id);
+ 
+-	lo = find_lockowner_str(fi->fi_inode, &cl->cl_clientid, &lock->v.new.owner);
++	lo = find_lockowner_str(fi->fi_inode, &cl->cl_clientid,
++				&lock->v.new.owner, nn);
+ 	if (lo) {
+ 		if (!cstate->minorversion)
+ 			return nfserr_bad_seqid;
+@@ -4287,7 +4285,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		goto out;
  	}
- 	/* highest slot id - currently not processed */
- 	dummy = be32_to_cpup(p++);
--	/* target highest slot id - currently not processed */
--	dummy = be32_to_cpup(p++);
-+	/* target highest slot id */
-+	res->sr_target_highest_slotid = be32_to_cpup(p++);
- 	/* result flags */
- 	res->sr_status_flags = be32_to_cpup(p);
- 	status = 0;
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index b041287..57d4069 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -217,8 +217,9 @@ struct nfs4_slot_table {
- 	u32		max_slots;		/* # slots in table */
- 	u32		highest_used_slotid;	/* sent to server on each SEQ.
- 						 * op for dynamic resizing */
--	u32		target_max_slots;	/* Set by CB_RECALL_SLOT as
--						 * the new max_slots */
-+	u32		target_highest_slotid;	/* Server max_slot target */
-+	unsigned long	generation;		/* Generation counter for
-+						   target_highest_slotid */
- 	struct completion complete;
- };
  
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index deb31bb..08c47db 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -188,6 +188,7 @@ struct nfs4_channel_attrs {
- /* nfs41 sessions slot seqid */
- struct nfs4_slot {
- 	struct nfs4_slot_table	*table;
-+	unsigned long		generation;
- 	unsigned long		renewal_time;
- 	u32			slot_nr;
- 	u32		 	seq_nr;
-@@ -202,6 +203,7 @@ struct nfs4_sequence_res {
- 	struct nfs4_slot	*sr_slot;	/* slot used to send request */
- 	int			sr_status;	/* sequence operation status */
- 	u32			sr_status_flags;
-+	u32			sr_target_highest_slotid;
- };
+-	lo = find_lockowner_str(inode, &lockt->lt_clientid, &lockt->lt_owner);
++	lo = find_lockowner_str(inode, &lockt->lt_clientid, &lockt->lt_owner, nn);
+ 	if (lo)
+ 		file_lock->fl_owner = (fl_owner_t)lo;
+ 	file_lock->fl_pid = current->tgid;
+@@ -4706,8 +4704,6 @@ nfs4_state_init(void)
+ 	for (i = 0; i < FILE_HASH_SIZE; i++) {
+ 		INIT_LIST_HEAD(&file_hashtbl[i]);
+ 	}
+-	for (i = 0; i < LOCKOWNER_INO_HASH_SIZE; i++)
+-		INIT_LIST_HEAD(&lockowner_ino_hashtbl[i]);
+ 	INIT_LIST_HEAD(&close_lru);
+ 	INIT_LIST_HEAD(&client_lru);
+ 	INIT_LIST_HEAD(&del_recall_lru);
+@@ -4759,6 +4755,10 @@ static int nfs4_state_start_net(struct net *net)
+ 			OWNER_HASH_SIZE, GFP_KERNEL);
+ 	if (!nn->ownerstr_hashtbl)
+ 		goto err_ownerstr;
++	nn->lockowner_ino_hashtbl = kmalloc(sizeof(struct list_head) *
++			LOCKOWNER_INO_HASH_SIZE, GFP_KERNEL);
++	if (!nn->lockowner_ino_hashtbl)
++		goto err_lockowner_ino;
  
- struct nfs4_get_lease_time_args {
--- 
-1.7.11.7
+ 	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
+ 		INIT_LIST_HEAD(&nn->conf_id_hashtbl[i]);
+@@ -4768,9 +4768,13 @@ static int nfs4_state_start_net(struct net *net)
+ 	}
+ 	for (i = 0; i < OWNER_HASH_SIZE; i++)
+ 		INIT_LIST_HEAD(&nn->ownerstr_hashtbl[i]);
++	for (i = 0; i < LOCKOWNER_INO_HASH_SIZE; i++)
++		INIT_LIST_HEAD(&nn->lockowner_ino_hashtbl[i]);
+ 
+ 	return 0;
+ 
++err_lockowner_ino:
++	kfree(nn->ownerstr_hashtbl);
+ err_ownerstr:
+ 	kfree(nn->unconf_id_hashtbl);
+ err_unconf_id:
+@@ -4800,6 +4804,7 @@ __nfs4_state_shutdown_net(struct net *net)
+ 			destroy_client(clp);
+ 		}
+ 	}
++	kfree(nn->lockowner_ino_hashtbl);
+ 	kfree(nn->ownerstr_hashtbl);
+ 	kfree(nn->unconf_id_hashtbl);
+ 	kfree(nn->unconf_str_hashtbl);
 
