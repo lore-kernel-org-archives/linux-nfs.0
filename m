@@ -1,112 +1,164 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:57496 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:15103 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753871Ab2KNPDn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Nov 2012 10:03:43 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "tigran.mkrtchyan@desy.de" <tigran.mkrtchyan@desy.de>
-CC: DENIEL Philippe <philippe.deniel@cea.fr>,
-        "Matt W. Benjamin" <matt@linuxbox.com>,
-        Tomasz Chmielewski <mangoo@wpkg.org>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: xattr support in NFS?
-Date: Wed, 14 Nov 2012 15:03:40 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092DFB2C@SACEXCMBX04-PRD.hq.netapp.com>
-References: <939474821.100.1352749795732.JavaMail.root@thunderbeast.private.linuxbox.com>
-	 <50A1FCB2.9090502@cea.fr>
-	 <CAGue13o69+M4zDrHj3Cs5dSJz_bT49UPoBO=QKr+JCnXwYgcqg@mail.gmail.com>
-In-Reply-To: <CAGue13o69+M4zDrHj3Cs5dSJz_bT49UPoBO=QKr+JCnXwYgcqg@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+	id S932078Ab2KMPqU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Nov 2012 10:46:20 -0500
+Subject: [PATCH 06/15] nfsd: make unconf_str_hashtbl allocated per net
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, devel@openvz.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, jlayton@redhat.com
+Date: Tue, 13 Nov 2012 18:48:49 +0300
+Message-ID: <20121113154849.12577.37390.stgit@localhost.localdomain>
+In-Reply-To: <20121113154722.12577.57671.stgit@localhost.localdomain>
+References: <20121113154722.12577.57671.stgit@localhost.localdomain>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTExLTE0IGF0IDExOjQ3ICswMTAwLCBUaWdyYW4gTWtydGNoeWFuIHdyb3Rl
-Og0KPiBUaGF0J3MgYmFkIG5ld3MuLi4uIEN1cnJlbnRseSB3ZSB1c2UgJ21hZ2ljIGZpbGVzJyB0
-byBzZXQvZ2V0IHVzZXINCj4gc3BlY2lmaWMgbWV0YWRhdGEgbGlrZSBudW1iZXIgb2YgZXZlbnRz
-LCBzcGFjZSByZXNlcnZhdGlvbiAgICBhbmQNCj4gZGlmZmVyZW50IGZpbGUgcmV0ZW50aW9uIHBv
-bGljaWVzLiBUaGUgaG9wZSB3YXMgdGhhdCBhbGwgY291bGQgYmUgZG9uZQ0KPiB3aXRoIG5hbWVk
-IGF0dHJpYnV0ZXMuDQo+DQo+ICBUaWdyYW4uDQo+ICANCg0KVGhlIHNldHRpbmcgYW5kIHF1ZXJ5
-aW5nIG9mIHJldGVudGlvbiBwb2xpY2llcyBpcyBhbHJlYWR5IGNvdmVyZWQgaW4gdGhlDQpORlN2
-NC4xIHByb3RvY29sIHdpdGhvdXQgYW55IG5lZWQgZm9yIGFueSBhZGRpdGlvbnMuIFNwYWNlIHJl
-c2VydmF0aW9uDQppcyBhbHJlYWR5IGNvdmVyZWQgaW4gTkZTdjQuMiAoYXMgYXJlIHNlY3VyaXR5
-IGxhYmVscyAtIGFub3RoZXIgY29tbW9uDQpob2JieS1ob3JzZSBmb3IgeGF0dHIgYWR2b2NhdGVz
-KS4gV2h5IGRvbid0IHlvdSBpbXBsZW1lbnQgdGhvc2UgaW5zdGVhZA0Kb2Ygd2lzaGluZyBmb3Ig
-YSBjb21wbGV0ZWx5IGRpZmZlcmVudCB3YXkgb2YgZG9pbmcgdGhlIHNhbWUgdGhpbmc/DQoNCllv
-dXIgYXJndW1lbnQgZGVtb25zdHJhdGVzIHByZWNpc2VseSB3aHkgd2Ugc2hvdWxkIG5ldmVyIGRv
-IHhhdHRycyBvdmVyDQpORlMuIEl0IG1ha2VzIGl0IHdheSB0b28gZWFzeSB0byBnbyBvZmYgYW5k
-IGludmVudCB5b3VyIG93biBwcml2YXRlIGFuZA0Kbm9uLXN0YW5kYXJkIHByb3RvY29sIGZvciBk
-b2luZyBpb2N0bCgpLWxpa2UgUlBDIGNhbGxzLg0KDQo+IE9uIFR1ZSwgTm92IDEzLCAyMDEyIGF0
-IDg6NTQgQU0sIERFTklFTCBQaGlsaXBwZQ0KPiA8cGhpbGlwcGUuZGVuaWVsQGNlYS5mcj4gd3Jv
-dGU6DQo+ICAgICAgICAgQSBmZXcgeWVhcnMgYWdvLCBTR0kgdHJpZWQgdG8gcHJvbW90ZSAiTkZT
-MyBYQVRUUiIsIGFuDQo+ICAgICAgICAgZXh0ZW5zaW9uIHRvIE5GU3YzIHRvIGFkZCB4YXR0ciBz
-dXBwb3J0LiBJdCByb3VnaGx5IGFkZGVkIDMNCj4gICAgICAgICBmdW5jdGlvbnMgdG8gdGhlIHBy
-b3RvY29sIChHRVRYQVRUUiwgU0VUWEFUVFIsIExJU1RYQVRUUiksIGluDQo+ICAgICAgICAgYSBz
-aW1pbGFyIHdheSBhcyB3aGF0IDlwLjIwMDBMIGRvZXMuIE5vdGhpbmcgYnV0IElSSVggaGFkIHRo
-aXMNCj4gICAgICAgICBORlN2MyBmZWF0dXJlLiBBcyBmYXIgYXMgSSBrbm93LCBpdCByZW1haW5l
-ZCBxdWl0ZSBleG90aWMgYW5kDQo+ICAgICAgICAgc3RheWVkIGEgU0dJJ3MgdGhpbmcuDQo+ICAg
-ICAgICAgDQo+ICAgICAgICAgICAgUGhpbGlwcGUNCj4gICAgICAgICANCj4gICAgICAgICBNYXR0
-IFcuIEJlbmphbWluIGEgw6ljcml0IDoNCj4gICAgICAgICANCj4gICAgICAgICAgICAgICAgIENh
-biB5b3UgcmVzdGF0ZSByZWFzb25pbmcgd2h5IGl0IHdpbGwgbmV2ZXIgZG8gc28sIGFuZA0KPiAg
-ICAgICAgICAgICAgICAgd2hldGhlciB0aGlzIGlzIHRoZSBzYW1lIGFzIHNheWluZyBpdCB3aWxs
-IG5ldmVyDQo+ICAgICAgICAgICAgICAgICBpbXBsZW1lbnQgbmFtZWQgYXR0cmlidXRlcz8NCj4g
-ICAgICAgICAgICAgICAgIA0KPiAgICAgICAgICAgICAgICAgVGhhbmtzLA0KPiAgICAgICAgICAg
-ICAgICAgDQo+ICAgICAgICAgICAgICAgICBNYXR0DQo+ICAgICAgICAgICAgICAgICANCj4gICAg
-ICAgICAgICAgICAgIC0tLS0tICJUcm9uZCBNeWtsZWJ1c3QiIDxUcm9uZC5NeWtsZWJ1c3RAbmV0
-YXBwLmNvbT4NCj4gICAgICAgICAgICAgICAgIHdyb3RlOg0KPiAgICAgICAgICAgICAgICAgDQo+
-ICAgICAgICAgICAgICAgICAgIA0KPiAgICAgICAgICAgICAgICAgICAgICAgICBOby4gV2Ugd2ls
-bCBuZXZlciBzdXBwb3J0IHhhdHRycyBvdmVyIE5GUy4NCj4gICAgICAgICAgICAgICAgICAgICAg
-ICAgDQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICANCj4gICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgIEZyb206IGxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmcN
-Cj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBbbWFpbHRvOmxpbnV4LW5mcy0NCj4g
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBvd25lckB2Z2VyLmtlcm5lbC5vcmddIE9u
-IEJlaGFsZiBPZg0KPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIFRvbWFzeiBDaG1p
-ZWxld3NraQ0KPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIFNlbnQ6IE1vbmRheSwg
-Tm92ZW1iZXIgMTIsIDIwMTIgMTA6MTQNCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICBBTQ0KPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIFRvOiBsaW51eC1uZnNAdmdl
-ci5rZXJuZWwub3JnDQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgU3ViamVjdDog
-eGF0dHIgc3VwcG9ydCBpbiBORlM/DQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-DQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgRG9lcyBMaW51eCBzdXBwb3J0IHhh
-dHRyIGluIE5GUz8NCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICANCj4gICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICBJRiB0cmllcyB1c2luZyBpdCBpbiBib3RoIE5GUzMg
-YW5kDQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgTkZTNCB1bmRlciBEZWJpYW4g
-TGVubnkgKDIuNi4zMiwNCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAN
-Cj4gICAgICAgICAgICAgICAgICAgICAgICAgYm90aA0KPiAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgDQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgc2VydmVyIGFuZCBjbGll
-bnQpLCB3aXRob3V0IHN1Y2Nlc3MuDQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-DQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIyBzZXRmYXR0ciAtbiB1c2VyLmNv
-bW1lbnQgLXYgInRoaXMgaXMNCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBhIGNv
-bW1lbnQiIC9tbnQvbmZzDQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgc2V0ZmF0
-dHI6IC9tbnQvbmZzOiBPcGVyYXRpb24gbm90DQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgc3VwcG9ydGVkDQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgDQo+ICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgDQo+ICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgLS0NCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBUb21hc3ogQ2ht
-aWVsZXdza2kNCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBodHRwOi8vYmxvZy53
-cGtnLm9yZw0KPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIC0tDQo+ICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNl
-bmQNCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB0aGUgbGluZSAidW5zdWJzY3Jp
-YmUgbGludXgtbmZzIg0KPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA0K
-PiAgICAgICAgICAgICAgICAgICAgICAgICBpbiB0aGUNCj4gICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgIA0KPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGJvZHkgb2YgYSBtZXNz
-YWdlIHRvDQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgbWFqb3Jkb21vQHZnZXIu
-a2VybmVsLm9yZyBNb3JlDQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgbWFqb3Jk
-b21vIGluZm8NCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICANCj4gICAg
-ICAgICAgICAgICAgICAgICAgICAgYXQNCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgIA0K
-PiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcv
-bWFqb3Jkb21vLWluZm8uaHRtbA0KPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgIA0KPiAgICAgICAgICAgICAgICAgICAgICAgICBO77+977+977+977+977+9cu+/ve+/vXnv
-v73vv73vv71i77+9WO+/ve+/vcendu+/vV7vv70p3rp7Lm7vv70NCj4gICAgICAgICAgICAgICAg
-ICAgICAgICAgK++/ve+/ve+/ve+/vXvvv73vv73vv70i77+977+9Xm7vv71y77+977+977+9eu+/
-ve+/ve+/vWjvv73vv73vv73vv70m77+977+977+9R++/ve+/ve+/vWjvv70o77+96ZqODQo+ICAg
-ICAgICAgICAgICAgICAgICAgICAgIO+/vd2iaiLvv73vv73vv71t77+977+977+977+977+9eu+/
-vd6W77+977+977+9Zu+/ve+/ve+/vWjvv73vv73vv71+77+9be+/vQ0KPiAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgDQo+ICAgICAgICAgICAgICAgICANCj4gICAgICAgICAgICAgICAgICAg
-DQo+ICAgICAgICAgDQo+ICAgICAgICAgLS0NCj4gICAgICAgICBUbyB1bnN1YnNjcmliZSBmcm9t
-IHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUNCj4gICAgICAgICBsaW51eC1u
-ZnMiIGluDQo+ICAgICAgICAgdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2Vy
-Lmtlcm5lbC5vcmcNCj4gICAgICAgICBNb3JlIG1ham9yZG9tbyBpbmZvIGF0DQo+ICAgICAgICAg
-IGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KPiAgICAgICAgIA0K
-PiANCj4gDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWlu
-ZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20N
-Cg==
+This hash holds nfs4_clients info, which are network namespace aware.
+So let's make it allocated per network namespace.
+
+Note: this hash can be allocated in per-net operations. But it looks
+better to allocate it on nfsd state start and thus don't waste resources
+if server is not running.
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfsd/netns.h     |    1 +
+ fs/nfsd/nfs4state.c |   34 +++++++++++++++++++---------------
+ 2 files changed, 20 insertions(+), 15 deletions(-)
+
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index 61f41c0..0577780 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -56,6 +56,7 @@ struct nfsd_net {
+ 	int reclaim_str_hashtbl_size;
+ 	struct list_head *conf_id_hashtbl;
+ 	struct list_head *conf_str_hashtbl;
++	struct list_head *unconf_str_hashtbl;
+ };
+ 
+ extern int nfsd_net_id;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index a709dd2..7e44015 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -413,7 +413,6 @@ static unsigned int clientstr_hashval(const char *name)
+  * close_lru holds (open) stateowner queue ordered by nfs4_stateowner.so_time
+  * for last close replay.
+  */
+-static struct list_head	unconf_str_hashtbl[CLIENT_HASH_SIZE];
+ static struct list_head	unconf_id_hashtbl[CLIENT_HASH_SIZE];
+ static struct list_head client_lru;
+ static struct list_head close_lru;
+@@ -1314,8 +1313,9 @@ static void
+ add_to_unconfirmed(struct nfs4_client *clp, unsigned int strhashval)
+ {
+ 	unsigned int idhashval;
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 
+-	list_add(&clp->cl_strhash, &unconf_str_hashtbl[strhashval]);
++	list_add(&clp->cl_strhash, &nn->unconf_str_hashtbl[strhashval]);
+ 	idhashval = clientid_hashval(clp->cl_clientid.cl_id);
+ 	list_add(&clp->cl_idhash, &unconf_id_hashtbl[idhashval]);
+ 	renew_client(clp);
+@@ -1387,11 +1387,12 @@ find_confirmed_client_by_str(const char *dname, unsigned int hashval,
+ }
+ 
+ static struct nfs4_client *
+-find_unconfirmed_client_by_str(const char *dname, unsigned int hashval)
++find_unconfirmed_client_by_str(const char *dname, unsigned int hashval,
++			       struct nfsd_net *nn)
+ {
+ 	struct nfs4_client *clp;
+ 
+-	list_for_each_entry(clp, &unconf_str_hashtbl[hashval], cl_strhash) {
++	list_for_each_entry(clp, &nn->unconf_str_hashtbl[hashval], cl_strhash) {
+ 		if (same_name(clp->cl_recdir, dname))
+ 			return clp;
+ 	}
+@@ -1643,7 +1644,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 		goto out;
+ 	}
+ 
+-	unconf  = find_unconfirmed_client_by_str(dname, strhashval);
++	unconf  = find_unconfirmed_client_by_str(dname, strhashval, nn);
+ 	if (unconf) /* case 4, possible retry or client restart */
+ 		expire_client(unconf);
+ 
+@@ -2215,7 +2216,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 			goto out;
+ 		}
+ 	}
+-	unconf = find_unconfirmed_client_by_str(dname, strhashval);
++	unconf = find_unconfirmed_client_by_str(dname, strhashval, nn);
+ 	if (unconf)
+ 		expire_client(unconf);
+ 	status = nfserr_jukebox;
+@@ -4700,7 +4701,6 @@ nfs4_state_init(void)
+ 	int i;
+ 
+ 	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
+-		INIT_LIST_HEAD(&unconf_str_hashtbl[i]);
+ 		INIT_LIST_HEAD(&unconf_id_hashtbl[i]);
+ 	}
+ 	for (i = 0; i < SESSION_HASH_SIZE; i++)
+@@ -4752,14 +4752,21 @@ static int nfs4_state_start_net(struct net *net)
+ 			CLIENT_HASH_SIZE, GFP_KERNEL);
+ 	if (!nn->conf_str_hashtbl)
+ 		goto err_conf_str;
++	nn->unconf_str_hashtbl = kmalloc(sizeof(struct list_head) *
++			CLIENT_HASH_SIZE, GFP_KERNEL);
++	if (!nn->unconf_str_hashtbl)
++		goto err_unconf_str;
+ 
+ 	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
+ 		INIT_LIST_HEAD(&nn->conf_id_hashtbl[i]);
+ 		INIT_LIST_HEAD(&nn->conf_str_hashtbl[i]);
++		INIT_LIST_HEAD(&nn->unconf_str_hashtbl[i]);
+ 	}
+ 
+ 	return 0;
+ 
++err_unconf_str:
++	kfree(nn->conf_str_hashtbl);
+ err_conf_str:
+ 	kfree(nn->conf_id_hashtbl);
+ err:
+@@ -4778,7 +4785,12 @@ __nfs4_state_shutdown_net(struct net *net)
+ 			clp = list_entry(nn->conf_id_hashtbl[i].next, struct nfs4_client, cl_idhash);
+ 			destroy_client(clp);
+ 		}
++		while (!list_empty(&nn->unconf_str_hashtbl[i])) {
++			clp = list_entry(nn->unconf_str_hashtbl[i].next, struct nfs4_client, cl_strhash);
++			destroy_client(clp);
++		}
+ 	}
++	kfree(nn->unconf_str_hashtbl);
+ 	kfree(nn->conf_str_hashtbl);
+ 	kfree(nn->conf_id_hashtbl);
+ }
+@@ -4837,19 +4849,11 @@ out_recovery:
+ static void
+ __nfs4_state_shutdown(struct net *net)
+ {
+-	int i;
+-	struct nfs4_client *clp = NULL;
+ 	struct nfs4_delegation *dp = NULL;
+ 	struct list_head *pos, *next, reaplist;
+ 
+ 	__nfs4_state_shutdown_net(net);
+ 
+-	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
+-		while (!list_empty(&unconf_str_hashtbl[i])) {
+-			clp = list_entry(unconf_str_hashtbl[i].next, struct nfs4_client, cl_strhash);
+-			destroy_client(clp);
+-		}
+-	}
+ 	INIT_LIST_HEAD(&reaplist);
+ 	spin_lock(&recall_lock);
+ 	list_for_each_safe(pos, next, &del_recall_lru) {
+
