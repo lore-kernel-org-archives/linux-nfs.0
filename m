@@ -1,193 +1,146 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:25627 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:55984 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1422677Ab2KNPTQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Nov 2012 10:19:16 -0500
-Subject: [PATCH v2 07/15] nfsd: make unconf_name_tree per net
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, devel@openvz.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, jlayton@redhat.com
-Date: Wed, 14 Nov 2012 18:21:36 +0300
-Message-ID: <20121114152136.4708.89742.stgit@localhost.localdomain>
-In-Reply-To: <20121114152018.4708.63125.stgit@localhost.localdomain>
-References: <20121114152018.4708.63125.stgit@localhost.localdomain>
+	id S1754778Ab2KMOrr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Nov 2012 09:47:47 -0500
+Message-ID: <50A25D91.1010301@netapp.com>
+Date: Tue, 13 Nov 2012 09:47:45 -0500
+From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        Andy Adamson <androsadamson@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] NFS: Add sequence_priviliged_ops for nfs4_proc_sequence()
+References: <1352745355-31157-1-git-send-email-bjschuma@netapp.com>    <CAHVgHyWyKhjOc4AFY3LvK57k8JK5zNJDkRGwUjqNA4LMYcSzdw@mail.gmail.com>    <4FA345DA4F4AE44899BD2B03EEEC2FA9092D7F52@SACEXCMBX04-PRD.hq.netapp.com>    <CAHVgHyWzO6UxnQEBoBFY4uHxTx9PBHKxP+hvJfYaW-OTqWLgMA@mail.gmail.com>   <4FA345DA4F4AE44899BD2B03EEEC2FA9092D80BB@SACEXCMBX04-PRD.hq.netapp.com>   <50A163E6.9020604@netapp.com>  <4FA345DA4F4AE44899BD2B03EEEC2FA9092D81D5@SACEXCMBX04-PRD.hq.netapp.com>  <50A16968.9030307@netapp.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9092D839F@SACEXCMBX04-PRD.hq.netapp.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9092D839F@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This hash holds nfs4_clients info, which are network namespace aware.
-So let's make it allocated per network namespace.
+On 11/12/2012 04:37 PM, Myklebust, Trond wrote:
+> On Mon, 2012-11-12 at 16:26 -0500, Bryan Schumaker wrote:
+>> On 11/12/2012 04:10 PM, Myklebust, Trond wrote:
+>>> On Mon, 2012-11-12 at 16:02 -0500, Bryan Schumaker wrote:
+>>>> On 11/12/2012 03:54 PM, Myklebust, Trond wrote:
+>>>>> On Mon, 2012-11-12 at 15:49 -0500, Andy Adamson wrote:
+>>>>>> On Mon, Nov 12, 2012 at 3:29 PM, Myklebust, Trond
+>>>>>> <Trond.Myklebust@netapp.com> wrote:
+>>>>>>> On Mon, 2012-11-12 at 15:22 -0500, Andy Adamson wrote:
+>>>>>>>> On Mon, Nov 12, 2012 at 1:35 PM,  <bjschuma@netapp.com> wrote:
+>>>>>>>>> From: Bryan Schumaker <bjschuma@netapp.com>
+>>>>>>>>>
+>>>>>>>>> During recovery the NFS4_SESSION_DRAINING flag might be set on the
+>>>>>>>>> client structure.  This can cause lease renewal to abort when
+>>>>>>>
+>>>>>>> Not lease renewal. It is lease verification (i.e. checking that we have
+>>>>>>> a valid lease and session) that will deadlock.
+>>>>>>>
+>>>>>>>>> nfs41_setup_sequence sees that we are doing recovery.  As a result, the
+>>>>>>>>> client never recovers and all activity with the NFS server halts.
+>>>>>>>>
+>>>>>>>>
+>>>>>>>> When does this happen? Say the session is draining, and an RPC returns
+>>>>>>>> from one of the compounds such as nfs_open, nfs_locku etc whose
+>>>>>>>> rpc_call_done routine calls renew_lease after freeing it's slot.  Like
+>>>>>>>> all calls on a draining session, the renew_lease sleeps on the session
+>>>>>>>> slot_tbl_waitq - is this what you mean by "causes lease renewal to
+>>>>>>>> abort"? How does this cause the client to never recover?
+>>>>>>>>
+>>>>>>>> The only other call to renew_lease is from the state manager itself
+>>>>>>>> which runs one function at a time, and will not call renew_lease until
+>>>>>>>> the recovery is over....
+>>>>>>>>
+>>>>>>>> What am I missing....?
+>>>>>>>
+>>>>>>> nfs4_check_lease() is run exclusively by the state manager thread in
+>>>>>>> order to check that the clientid (and session id on NFSv4.1) are valid.
+>>>>>>> It will deadlock the state manager thread if NFS4_SESSION_DRAINING is
+>>>>>>> already set.
+>>>>>>
+>>>>>> OK. NFS4_SESSION_DRAINING is also set exclusively by the state manager
+>>>>>> thread. Why is the state manager told to check the lease when it's
+>>>>>> also draining a session?
+>>>>>
+>>>>> NFS4_SESSION_DRAINING does not just mean that the session is being
+>>>>> drained; it remains set until open and lock state recovery is completed.
+>>>>>
+>>>>> IOW: if something happens during state recovery that requires us to
+>>>>> check the lease (e.g. something returns NFS4ERR_EXPIRED) then the
+>>>>> current code will deadlock.
+>>>>>
+>>>>>> No matter what the answer, please update the patch description to
+>>>>>> better explain the problem being solved.
+>>>>>
+>>>>> ACK. I agree that the changelog entry can be improved.
+>>>>>
+>>>>
+>>>> Does this read any better (and should I resend the patch)?
+>>>>
+>>>> NFS: Add sequence_priviliged_ops for nfs4_proc_sequence()
+>>>>
+>>>> If I mount an NFS v4.1 server to a single client multiple times and then
+>>>> run xfstests over each mountpoint I usually get the client into a state
+>>>> where recovery deadlocks.  The server informs the client of a
+>>>> cb_path_down sequence error, the client then does a
+>>>> bind_connection_to_session and checks the status of the lease.
+>>>
+>>> Why are you getting the cb_path_down? Is that a result of a fault
+>>> injection, or is it a genuine error?
+>>>
+>>> While cb_path_down is a valid error, and we do want the recovery to work
+>>> correctly, I would expect it to be rare since it implies that we lost
+>>> the TCP connection to the server for some reason. Finding out why it
+>>> happens is therefore worth doing.
+>>
+>> I didn't get it with fault injection, it just happened by itself somewhere during testing.  My attempts at capturing it with wireshark usually slow down my system as wireshark tries to display 1,000,000+ packets... I'll try again, though.
+> 
+> See if you can just turn on the two dprintks() in xs_tcp_state_change(),
+> and then add a printk() trigger to the
+> nfs41_handle_sequence_flag_errors() to see if you can catch a
+> correlation between a TCP state change and the path_down issue.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfsd/netns.h     |    4 ++++
- fs/nfsd/nfs4state.c |   42 +++++++++++++++++++-----------------------
- 2 files changed, 23 insertions(+), 23 deletions(-)
+I saw this in the logs, but the printk I added to nfs41_handle_sequence_flag_errors() wasn't hit.  Maybe that was something hit by waiting read / write requests that were stacked up?  I know that a few read_prepare() and write_prepare() requests were stacked up... but I don't remember seeing the "Callback slot table overflowed" message last week.
 
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index 1ff781f..1e76030 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -50,12 +50,16 @@ struct nfsd_net {
- 	 *
- 	 * conf_id_hashtbl[], and conf_name_tree hold confirmed
- 	 * setclientid_confirmed info.
-+	 *
-+	 * unconf_str_hastbl[] and unconf_name_tree hold unconfirmed
-+	 * setclientid info.
- 	 */
- 	struct list_head *reclaim_str_hashtbl;
- 	int reclaim_str_hashtbl_size;
- 	struct list_head *conf_id_hashtbl;
- 	struct rb_root conf_name_tree;
- 	struct list_head *unconf_id_hashtbl;
-+	struct rb_root unconf_name_tree;
- };
- 
- extern int nfsd_net_id;
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index b967804..c38fea9 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -404,9 +404,6 @@ static unsigned int clientstr_hashval(const char *name)
- }
- 
- /*
-- * unconf_id_hashtbl[] and unconf_name_tree hold unconfirmed
-- * setclientid info.
-- *
-  * client_lru holds client queue ordered by nfs4_client.cl_time
-  * for lease renewal.
-  *
-@@ -415,7 +412,6 @@ static unsigned int clientstr_hashval(const char *name)
-  *
-  * All of the above fields are protected by the client_mutex.
-  */
--static struct rb_root unconf_name_tree;
- static struct list_head client_lru;
- static struct list_head close_lru;
- 
-@@ -1134,7 +1130,7 @@ destroy_client(struct nfs4_client *clp)
- 	if (test_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags))
- 		rb_erase(&clp->cl_namenode, &nn->conf_name_tree);
- 	else
--		rb_erase(&clp->cl_namenode, &unconf_name_tree);
-+		rb_erase(&clp->cl_namenode, &nn->unconf_name_tree);
- 	spin_lock(&client_lock);
- 	unhash_client_locked(clp);
- 	if (atomic_read(&clp->cl_refcount) == 0)
-@@ -1371,7 +1367,7 @@ add_to_unconfirmed(struct nfs4_client *clp)
- 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 
- 	clear_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags);
--	add_clp_to_name_tree(clp, &unconf_name_tree);
-+	add_clp_to_name_tree(clp, &nn->unconf_name_tree);
- 	idhashval = clientid_hashval(clp->cl_clientid.cl_id);
- 	list_add(&clp->cl_idhash, &nn->unconf_id_hashtbl[idhashval]);
- 	renew_client(clp);
-@@ -1385,7 +1381,7 @@ move_to_confirmed(struct nfs4_client *clp)
- 
- 	dprintk("NFSD: move_to_confirm nfs4_client %p\n", clp);
- 	list_move(&clp->cl_idhash, &nn->conf_id_hashtbl[idhashval]);
--	rb_erase(&clp->cl_namenode, &unconf_name_tree);
-+	rb_erase(&clp->cl_namenode, &nn->unconf_name_tree);
- 	add_clp_to_name_tree(clp, &nn->conf_name_tree);
- 	set_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags);
- 	renew_client(clp);
-@@ -1436,9 +1432,9 @@ find_confirmed_client_by_name(struct xdr_netobj *name, struct nfsd_net *nn)
- }
- 
- static struct nfs4_client *
--find_unconfirmed_client_by_name(struct xdr_netobj *name)
-+find_unconfirmed_client_by_name(struct xdr_netobj *name, struct nfsd_net *nn)
- {
--	return find_clp_in_name_tree(name, &unconf_name_tree);
-+	return find_clp_in_name_tree(name, &nn->unconf_name_tree);
- }
- 
- static void
-@@ -1677,7 +1673,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 		goto out;
- 	}
- 
--	unconf  = find_unconfirmed_client_by_name(&exid->clname);
-+	unconf  = find_unconfirmed_client_by_name(&exid->clname, nn);
- 	if (unconf) /* case 4, possible retry or client restart */
- 		expire_client(unconf);
- 
-@@ -2239,7 +2235,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 			goto out;
- 		}
- 	}
--	unconf = find_unconfirmed_client_by_name(&clname);
-+	unconf = find_unconfirmed_client_by_name(&clname, nn);
- 	if (unconf)
- 		expire_client(unconf);
- 	status = nfserr_jukebox;
-@@ -4720,7 +4716,6 @@ nfs4_state_init(void)
- {
- 	int i;
- 
--	unconf_name_tree = RB_ROOT;
- 	for (i = 0; i < SESSION_HASH_SIZE; i++)
- 		INIT_LIST_HEAD(&sessionid_hashtbl[i]);
- 	for (i = 0; i < FILE_HASH_SIZE; i++) {
-@@ -4776,6 +4771,7 @@ static int nfs4_state_start_net(struct net *net)
- 		INIT_LIST_HEAD(&nn->unconf_id_hashtbl[i]);
- 	}
- 	nn->conf_name_tree = RB_ROOT;
-+	nn->unconf_name_tree = RB_ROOT;
- 
- 	return 0;
- 
-@@ -4791,6 +4787,7 @@ __nfs4_state_shutdown_net(struct net *net)
- 	int i;
- 	struct nfs4_client *clp = NULL;
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-+	struct rb_node *node, *tmp;
- 
- 	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
- 		while (!list_empty(&nn->conf_id_hashtbl[i])) {
-@@ -4798,6 +4795,16 @@ __nfs4_state_shutdown_net(struct net *net)
- 			destroy_client(clp);
- 		}
- 	}
-+
-+	node = rb_first(&nn->unconf_name_tree);
-+	while (node != NULL) {
-+		tmp = node;
-+		node = rb_next(tmp);
-+		clp = rb_entry(tmp, struct nfs4_client, cl_namenode);
-+		rb_erase(tmp, &nn->unconf_name_tree);
-+		destroy_client(clp);
-+	}
-+
- 	kfree(nn->unconf_id_hashtbl);
- 	kfree(nn->conf_id_hashtbl);
- }
-@@ -4857,22 +4864,11 @@ out_recovery:
- static void
- __nfs4_state_shutdown(struct net *net)
- {
--	struct nfs4_client *clp = NULL;
- 	struct nfs4_delegation *dp = NULL;
- 	struct list_head *pos, *next, reaplist;
--	struct rb_node *node, *tmp;
- 
- 	__nfs4_state_shutdown_net(net);
- 
--	node = rb_first(&unconf_name_tree);
--	while (node != NULL) {
--		tmp = node;
--		node = rb_next(tmp);
--		clp = rb_entry(tmp, struct nfs4_client, cl_namenode);
--		rb_erase(tmp, &unconf_name_tree);
--		destroy_client(clp);
--	}
--
- 	INIT_LIST_HEAD(&reaplist);
- 	spin_lock(&recall_lock);
- 	list_for_each_safe(pos, next, &del_recall_lru) {
+[  287.951307] Callback slot table overflowed
+[  287.951540] RPC:       xs_tcp_state_change client ffff88003d7cc000...
+[  287.951542] RPC:       state 4 conn 1 dead 0 zapped 1 sk_shutdown 2
+[  287.951550] RPC: Could not send backchannel reply error: -32
+[  287.951746] RPC:       xs_tcp_state_change client ffff88003d7cc000...
+[  287.951748] RPC:       state 5 conn 0 dead 0 zapped 1 sk_shutdown 2
+[  287.951759] RPC:       xs_tcp_state_change client ffff88003d7cc000...
+[  287.951761] RPC:       state 7 conn 0 dead 0 zapped 1 sk_shutdown 3
+[  287.951762] RPC:       xs_tcp_state_change client ffff88003d7cc000...
+[  287.951763] RPC:       state 7 conn 0 dead 0 zapped 1 sk_shutdown 3
+[  287.951978] RPC:       xs_tcp_state_change client ffff88003d7cc000...
+[  287.951981] RPC:       state 1 conn 0 dead 0 zapped 1 sk_shutdown 0
+
+- Bryan
+
+
+> 
+>>>
+>>>> I found that bind_connection_to_session sets the NFS4_SESSION_DRAINING
+>>>> flag on the client, but this flag is never unset before
+>>>> nfs4_check_lease() reaches nfs4_proc_sequence().  This causes the client
+>>>> to deadlock, halting all NFS activity to the server.
+>>>
+>>> Otherwise, the text is more or less OK. The one thing that I'm missing
+>>> is a statement about why nfs4_proc_sequence() needs to be a privileged
+>>> operation.
+>>>
+>>
+>> Here is the new last paragraph, I just added the sentence at the end:
+>>
+>> I found that bind_connection_to_session sets the NFS4_SESSION_DRAINING
+>> flag on the client, but this flag is never unset before
+>> nfs4_check_lease() reaches nfs4_proc_sequence().  This causes the client
+>> to deadlock, halting all NFS activity to the server.  This patch changes
+>> nfs4_proc_sequence() to run in privileged mode to bypass the
+>> NFS4_SESSION_DRAINING check and continue with recovery.
+> 
+> Thanks. You might want to add a note to the fact that
+> nfs4_proc_sequence() is always run from the state recovery thread, and
+> therefore it is correct to run it as a privileged operation.
+> 
 
