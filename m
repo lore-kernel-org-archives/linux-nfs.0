@@ -1,94 +1,195 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:61803 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:48167 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1423296Ab2KNVvg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Nov 2012 16:51:36 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: Re: [PATCH v3] SUNRPC: set desired file system root before
- connecting local transports
-Date: Wed, 14 Nov 2012 21:51:33 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092E0AE9@SACEXCMBX04-PRD.hq.netapp.com>
-References: <5098E31A.5080801@parallels.com>
-	 <20121106120642.GA6718@fieldses.org> <20121106124035.GA20522@infradead.org>
-	 <20121106130705.GC6718@fieldses.org> <20121106131018.GA12211@infradead.org>
-	 <20121106133605.GD6718@fieldses.org> <20121107183355.GA7421@fieldses.org>
-	 <50A0B562.2090807@parallels.com> <20121114210112.GA539@fieldses.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9092E0A40@SACEXCMBX04-PRD.hq.netapp.com>
-	 <20121114214236.GB539@fieldses.org>
-In-Reply-To: <20121114214236.GB539@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+	id S1751474Ab2KMWkH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 Nov 2012 17:40:07 -0500
+Date: Tue, 13 Nov 2012 17:40:05 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Sven Geggus <lists@fuchsschwanzdomain.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Kernel update 3.5.7 -> 3.6.3 breaks NFS4
+Message-ID: <20121113224005.GA11545@fieldses.org>
+References: <20121109200730.GI6171@fieldses.org>
+ <E1TWxKX-00025I-J2@diesel.geggus.net>
+ <20121109232410.GK6171@fieldses.org>
+ <20121112091717.GA1610@geggus.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121112091717.GA1610@geggus.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTExLTE0IGF0IDE2OjQyIC0wNTAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IE9uIFdlZCwgTm92IDE0LCAyMDEyIGF0IDA5OjM2OjMzUE0gKzAwMDAsIE15a2xlYnVzdCwg
-VHJvbmQgd3JvdGU6DQo+ID4gT24gV2VkLCAyMDEyLTExLTE0IGF0IDE2OjAxIC0wNTAwLCBKLiBC
-cnVjZSBGaWVsZHMgd3JvdGU6DQo+ID4gPiBPbiBNb24sIE5vdiAxMiwgMjAxMiBhdCAxMjozNzo1
-NFBNICswNDAwLCBTdGFuaXNsYXYgS2luc2J1cnNreSB3cm90ZToNCj4gPiA+ID4gMDcuMTEuMjAx
-MiAyMjozMywgSi4gQnJ1Y2UgRmllbGRzINC/0LjRiNC10YI6DQo+ID4gPiA+ID5PbiBUdWUsIE5v
-diAwNiwgMjAxMiBhdCAwODozNjowNUFNIC0wNTAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6DQo+
-ID4gPiA+ID4+T24gVHVlLCBOb3YgMDYsIDIwMTIgYXQgMDg6MTA6MThBTSAtMDUwMCwgQ2hyaXN0
-b3BoIEhlbGx3aWcgd3JvdGU6DQo+ID4gPiA+ID4+Pk9uIFR1ZSwgTm92IDA2LCAyMDEyIGF0IDA4
-OjA3OjA2QU0gLTA1MDAsIEouIEJydWNlIEZpZWxkcyB3cm90ZToNCj4gPiA+ID4gPj4+PlNvIHlv
-dSdyZSB3b3JyaWVkIHRoYXQgYSBidWcgaW4gdGhlIG5mcyBjb2RlIGNvdWxkIG1vZGlmeSB0aGUg
-cm9vdCBhbmQNCj4gPiA+ID4gPj4+PnRoZW4gbm90IHJlc3RvcmUgaXQ/DQo+ID4gPiA+ID4+Pg0K
-PiA+ID4gPiA+Pj5BdCBsZWFzdCB0aGUgbGluayB5b3UgcG9pbnRlZCB0byBlYXJsaWVyIG5ldmVy
-IHNldHMgaXQgYmFjay4NCj4gPiA+ID4gPj4NCj4gPiA+ID4gPj5UaGlzPyBodHRwOi8vdGhyZWFk
-LmdtYW5lLm9yZy9nbWFuZS5saW51eC5rZXJuZWwvMTI1OTk4Ni9mb2N1cz00NzY4Nw0KPiA+ID4g
-PiA+Pg0KPiA+ID4gPiA+PgkrCWdldF9mc19yb290KGN1cnJlbnQtPmZzLCAmcm9vdCk7DQo+ID4g
-PiA+ID4+CSsJc2V0X2ZzX3Jvb3QoY3VycmVudC0+ZnMsICZ0cmFuc3BvcnQtPnJvb3QpOw0KPiA+
-ID4gPiA+PgkrDQo+ID4gPiA+ID4+CSAJc3RhdHVzID0geHNfbG9jYWxfZmluaXNoX2Nvbm5lY3Rp
-bmcoeHBydCwgc29jayk7DQo+ID4gPiA+ID4+CSsNCj4gPiA+ID4gPj4JKwlzZXRfZnNfcm9vdChj
-dXJyZW50LT5mcywgJnJvb3QpOw0KPiA+ID4gPiA+PgkrCXBhdGhfcHV0KCZyb290KTsNCj4gPiA+
-ID4gPj4NCj4gPiA+ID4gPj4+SW5zdGVhZA0KPiA+ID4gPiA+Pj5vZiBtZXNzaW5nIHdpdGggaXQg
-SSdkIHJhdGhlciBoYXZlIHRoZSBzdW5ycGMgY29kZSB1c2UgdmZzX3BhdGhfbG9va3VwDQo+ID4g
-PiA+ID4+PmFuZCBub3QgY2FyZSBhYm91dCBjdXJyZW50LT5mcy0+cm9vdCBhdCBhbGwuDQo+ID4g
-PiA+ID4+DQo+ID4gPiA+ID4+VGhlIGFubm95YW5jZSBpcyB0aGF0IHRoZSBsb29rdXAgaGFwcGVu
-cyBzb21ld2hlcmUgbG93ZXIgZG93biBpbiB0aGUNCj4gPiA+ID4gPj5uZXR3b3JraW5nIGNvZGUg
-KG5ldC91bml4L2FmX3VuaXguYzp1bml4X2ZpbmRfb3RoZXIsIEkgdGhpbmspLiAgU28gd2UnZA0K
-PiA+ID4gPiA+Pm5lZWQgc29tZSBuZXcgKGludGVybmFsKSBBUEkuICBXZSdkIGxpa2VseSBiZSB0
-aGUgb25seSB1c2VyIG9mIHRoYXQgbmV3DQo+ID4gPiA+ID4+QVBJLg0KPiA+ID4gPiA+DQo+ID4g
-PiA+ID5TbywgaWYgdGhlIG9ubHkgZHJhd2JhY2sgaXMgcmVhbGx5IGp1c3QgdGhlIHJpc2sgb2Yg
-aW50cm9kdWNpbmcgYSBidWcNCj4gPiA+ID4gPnRoYXQgbGVhdmVzIHRoZSBmc19yb290IGNoYW5n
-ZWQtLXRoZSBhYm92ZSBzZWVtcyBzaW1wbGUgZW5vdWdoIGZvciB0aGF0DQo+ID4gPiA+ID5ub3Qg
-dG8gYmUgYSBncmVhdCByaXNrLCByaWdodD8NCj4gPiA+ID4gPg0KPiA+ID4gPiANCj4gPiA+ID4g
-SWYgd2UgdW5zaGFyZSBycGNpb2QgZnMgc3RydWN0ICh3aGljaCBpcyBleHBvcnRlZCBhbHJlYWR5
-KSwgdGhlbiB3ZQ0KPiA+ID4gDQo+ID4gPiBJJ20gbm90IHN1cmUgd2hhdCB5b3UgbWVhbiBieSB0
-aGF0LiAgRG8gd29ya3F1ZXVlcyBhY3R1YWxseSBoYXZlIHRoZWlyDQo+ID4gPiBvd24gZGVkaWNh
-dGVkIHNldCBvZiBhc3NvY2lhdGVkIHRhc2tzPyAgSSB0aG91Z2h0IGFsbCB3b3JrcXVldWVzIHNo
-YXJlZA0KPiA+ID4gYSBjb21tb24gcG9vbCBvZiB0YXNrcyB0aGVzZSBkYXlzLg0KPiA+ID4gDQo+
-ID4gPiA+IHdvbid0IGFmZmVjdCBvdGhlciBrdGhyZWFkcyBieSByb290IHN3YXBwaW5nLg0KPiA+
-ID4gPiBCdXQgd291bGQgYmUgZ3JlYXQgdG8gaGVhciBUcm9uZCdzIG9waW5pb24gYWJvdXQgdGhp
-cyBhcHByb2FjaC4NCj4gPiA+ID4gDQo+ID4gPiA+IFRyb25kLCBjb3VsZCB5b3UgdGVsbCB1cyB5
-b3VyIGZlZWxpbmcgYWJvdXQgYWxsIHRoaXM/DQo+ID4gPiANCj4gPiA+IEkgdGhpbmsgaXQncyBv
-ZnRlbiBlYXNpZXIgdG8gZ2V0IHBlb3BsZSB0byBjb21tZW50IG9uIGFuIGFjdHVhbCBwYXRjaCwN
-Cj4gPiA+IGFuZCB0aGlzIG9uZSB3b3VsZCBiZSBxdWl0ZSBzaG9ydCwgc28gdHJ5IHRoYXQuLi4u
-DQo+ID4gDQo+ID4gdW5zaGFyZSgpIHdvdWxkIGJyZWFrIGV4cGVjdGF0aW9ucyBmb3Igb3RoZXIg
-dXNlcnMgb2Ygd29ya3F1ZXVlIHRocmVhZHMNCj4gPiB1bmxlc3MgeW91ICJyZXNoYXJlKCkiIGFm
-dGVyd2FyZHMuIEVpdGhlciB3YXkgdGhhdCdzIGdvaW5nIHRvIGJlDQo+ID4gc2VyaW91c2x5IHVn
-bHkuDQo+ID4gDQo+ID4gT0ssIGxldCdzIGxvb2sgYXQgdGhpcyBhZ2Fpbi4gRG8gd2UgZXZlciB1
-c2UgQUZfTE9DQUwgY29ubmVjdGlvbnMgZm9yDQo+ID4gYW55dGhpbmcgb3RoZXIgdGhhbiBzeW5j
-aHJvbm91cyBycGMgY2FsbHMgdG8gdGhlIGxvY2FsIHJwY2JpbmQgZGFlbW9uIGluDQo+ID4gb3Jk
-ZXIgdG8gcmVnaXN0ZXIvdW5yZWdpc3RlciBuZXcgc2VydmljZXM/DQo+IA0KPiBTaW1vJ3MgcGF0
-Y2hlcyB1c2UgdGhlbSBmb3IgdXBjYWxscyB0byBzdmNnc3NkLiAgVGhvc2Ugd2lsbCBhbHdheXMg
-YmUNCj4gZG9uZSBmcm9tIHNlcnZlciB0aHJlYWRzLg0KDQpBbnkgcmVhc29uIHdoeSB5b3UgY2Fu
-J3Qgc2V0IHRoYXQgdXAgd2hlbiB5b3Ugc3RhcnQgbmZzZD8NCg0KPiA+IElmIG5vdCwgdGhlbiBs
-ZXQncyBqdXN0IG1vdmUNCj4gPiB0aGUgQUZfTE9DQUwgY29ubmVjdGlvbiBiYWNrIGludG8gdGhl
-IHByb2Nlc3MgY29udGV4dCBhbmQgb3V0IG9mIHJwY2lvZC4NCj4gDQo+IFJlbWluZCBtZSBob3cg
-dGhpcyBoZWxwcz8NCg0KcnBjaW9kIHNoYXJlcyB0aGUgJ2luaXQnIHByb2Nlc3MgbmV0IG5hbWVz
-cGFjZSBhbmQgY2hyb290IHByb3BlcnRpZXMuDQpJZiwgaG93ZXZlciB5b3UgY2FsbCBiaW5kKCkg
-ZnJvbSB0aGUgKGNvbnRhaW5lcmlzZWQpIHByb2Nlc3MgdGhhdCB3YXMNCnVzZWQgdG8gc3RhcnQg
-bmZzZCwgdGhlbiB5b3Ugd2lsbCBiZSB1c2luZyBmaWxlc3lzdGVtIHJvb3QgKGFuZCBuZXQNCm5h
-bWVzcGFjZSkgb2YgdGhhdCBjb250YWluZXIuDQoNCj4gLS1iLg0KPiANCj4gPiANCj4gPiBUaGF0
-IGltcGxpZXMgdGhhdCB0aGUgcHJvY2VzcyBuZWVkcyB0byBiZSBwcml2aWxlZ2VkLCBidXQgaXQg
-bmVlZHMNCj4gPiBwcml2aWxlZ2VzIGluIG9yZGVyIHRvIHN0YXJ0IFJQQyBkYWVtb25zIGFueXdh
-eS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0K
-DQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+On Mon, Nov 12, 2012 at 10:17:17AM +0100, Sven Geggus wrote:
+> J. Bruce Fields schrieb am Samstag, den 10. November um 00:24 Uhr:
+> 
+> OK, back at work and here is what I get:
+> 
+> > Restart the server, start strace, then try the mount, let it hang a few
+> > seconds just to make sure you got anything interesting, then kill strace
+> > and send the output.
+> 
+> OK, back at work and here is what I get...
+> 
+> read(3, "nfsd 10.1.7.30\n", 2048)       = 15
+> close(15)                               = 0
+> open("/var/lib/nfs/etab", O_RDONLY)     = 15
+> close(15)                               = 0
+> close(15)                               = 0
+> write(3, "nfsd 10.1.7.30 1352710828 * \n", 29) = 29
+> read(4, "4294967295\n", 2048)           = 11
+> close(16)                               = 0
+> close(15)                               = 0
+> read(15,
+> "\2\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\377\377\377\377\377\377\377\377\0\0\0\0\0\0\0\0\0\0\0\0",
+> 36) = 36
+> close(15)                               = 0
+> write(4, "4294967295 1352710828 0 \n", 25) = -1 EINVAL (Invalid argument)
+
+I suspect that error's coming from
+net/sunrpc/svcauth_unix.c:unix_gid_parse().
+
+> 4294967295 is UINT_MAX and this place is where it behaves differently on a good
+> kernel where the write call will succeed:
+> 
+> write(4, "4294967295 1352710828 0 \n", 25) = 25
+> 
+> Sven
+> 
+> P.S.: Your patched svcauth_gss.c will give me an "access denied by server"
+> while mounting instead of the infinite delay:
+>  ~/ # mount -t nfs4 -o sec=krb5 testsrv:/storage /mnt/
+> mount.nfs4: access denied by server while mounting testsrv:/storage
+
+So, looks like the same get_int problem exists in several other places.
+Could you try the following instead of the previous patch?  I think I
+got them all this time....
+
+--b.
+
+commit 664f26313a738f539a32c4eadd5351905e301bf2
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Fri Nov 9 15:16:02 2012 -0500
+
+    svcrpc: fix parsing of uids and gids in gss contexts
+    
+    bbf43dc888833ac0539e437dbaeb28bfd4fbab9f "sunrpc/cache.h: replace
+    simple_strtoul" introduced new range-checking which could cause get_int
+    to fail if given an unsigned integer too large to represent as an int.
+    
+    Symptoms were hangs on krb5 mounts after upgrading an NFS server.
+    
+    Cc: Eldad Zack <eldad@fogrefinery.com>
+    Reported-by: Sven Geggus <lists@fuchsschwanzdomain.de>
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index a3946cf..8481961 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -491,7 +491,7 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
+ 	int err;
+ 	struct auth_domain *dom = NULL;
+ 	struct svc_export exp = {}, *expp;
+-	int an_int;
++	unsigned int an_int;
+ 
+ 	if (mesg[mlen-1] != '\n')
+ 		return -EINVAL;
+@@ -531,7 +531,7 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
+ 		goto out3;
+ 
+ 	/* flags */
+-	err = get_int(&mesg, &an_int);
++	err = get_uint(&mesg, &an_int);
+ 	if (err == -ENOENT) {
+ 		err = 0;
+ 		set_bit(CACHE_NEGATIVE, &exp.h.flags);
+@@ -541,19 +541,19 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
+ 		exp.ex_flags= an_int;
+ 	
+ 		/* anon uid */
+-		err = get_int(&mesg, &an_int);
++		err = get_uint(&mesg, &an_int);
+ 		if (err)
+ 			goto out3;
+ 		exp.ex_anon_uid= an_int;
+ 
+ 		/* anon gid */
+-		err = get_int(&mesg, &an_int);
++		err = get_uint(&mesg, &an_int);
+ 		if (err)
+ 			goto out3;
+ 		exp.ex_anon_gid= an_int;
+ 
+ 		/* fsid */
+-		err = get_int(&mesg, &an_int);
++		err = get_uint(&mesg, &an_int);
+ 		if (err)
+ 			goto out3;
+ 		exp.ex_fsid = an_int;
+diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
+index a1f10c0..e2c9317 100644
+--- a/fs/nfsd/nfs4idmap.c
++++ b/fs/nfsd/nfs4idmap.c
+@@ -415,7 +415,7 @@ nametoid_parse(struct cache_detail *cd, char *buf, int buflen)
+ 		goto out;
+ 
+ 	/* ID */
+-	error = get_int(&buf, &ent.id);
++	error = get_uint(&buf, &ent.id);
+ 	if (error == -EINVAL)
+ 		goto out;
+ 	if (error == -ENOENT)
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 73e9573..243d180 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -444,7 +444,7 @@ static int rsc_parse(struct cache_detail *cd,
+ 		goto out;
+ 
+ 	/* uid, or NEGATIVE */
+-	rv = get_int(&mesg, &rsci.cred.cr_uid);
++	rv = get_uint(&mesg, &rsci.cred.cr_uid);
+ 	if (rv == -EINVAL)
+ 		goto out;
+ 	if (rv == -ENOENT)
+@@ -453,7 +453,7 @@ static int rsc_parse(struct cache_detail *cd,
+ 		int N, i;
+ 
+ 		/* gid */
+-		if (get_int(&mesg, &rsci.cred.cr_gid))
++		if (get_uint(&mesg, &rsci.cred.cr_gid))
+ 			goto out;
+ 
+ 		/* number of additional gid's */
+@@ -469,7 +469,7 @@ static int rsc_parse(struct cache_detail *cd,
+ 		for (i=0; i<N; i++) {
+ 			gid_t gid;
+ 			kgid_t kgid;
+-			if (get_int(&mesg, &gid))
++			if (get_uint(&mesg, &gid))
+ 				goto out;
+ 			kgid = make_kgid(&init_user_ns, gid);
+ 			if (!gid_valid(kgid))
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index 4d01292..5d7020a 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -493,7 +493,7 @@ static int unix_gid_parse(struct cache_detail *cd,
+ 		return -EINVAL;
+ 	mesg[mlen-1] = 0;
+ 
+-	rv = get_int(&mesg, &uid);
++	rv = get_uint(&mesg, &uid);
+ 	if (rv)
+ 		return -EINVAL;
+ 	ug.uid = uid;
+@@ -513,7 +513,7 @@ static int unix_gid_parse(struct cache_detail *cd,
+ 	for (i = 0 ; i < gids ; i++) {
+ 		int gid;
+ 		kgid_t kgid;
+-		rv = get_int(&mesg, &gid);
++		rv = get_uint(&mesg, &gid);
+ 		err = -EINVAL;
+ 		if (rv)
+ 			goto out;
