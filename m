@@ -1,48 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49648 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:28406 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751772Ab2KSMqV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Nov 2012 07:46:21 -0500
-Date: Mon, 19 Nov 2012 07:46:18 -0500
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Jeff Layton <jlayton@redhat.com>,
+	id S933183Ab2KNXBt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Nov 2012 18:01:49 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFSd state: nfs4_lock_state() and nfs4_lock_state()
-Message-ID: <20121119124618.GA30084@fieldses.org>
-References: <50A622AE.3080809@parallels.com>
- <20121116165845.GA32183@fieldses.org>
- <50A9F03B.1010909@parallels.com>
+Subject: RE: [PATCH] nfs(5): Document the minorversion= mount option
+Date: Wed, 14 Nov 2012 23:01:47 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092E0DB4@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20121114223600.48062.5680.stgit@seurat.1015granger.net>
+In-Reply-To: <20121114223600.48062.5680.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <50A9F03B.1010909@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 19, 2012 at 12:39:23PM +0400, Stanislav Kinsbursky wrote:
-> 16.11.2012 20:58, bfields@fieldses.org пишет:
-> >
-> >A patch follows: note it's a two-line patch, with 20 lines of changelog
-> >showing that I looked at what state might be shared by other threads and
-> >explaining why I think this is safe.
-> >
-> 
-> Acked-by: Stanislav Kinsburskiy <skinsbursky@parallels.com>
-> 
-> >I think that's what we need to do: little patches that remove it from
-> >one or another part of the code with careful explanation of why it
-> >works.
-> >
-> 
-> Yes, thanks. I'll also try to simplify nfsd_open() by little patches.
-> In general it looks like client_mutex protect two different things:
-> open owner state (which is containerised already, actually) and
-> files access.
-> So, probably, this client mutex have to be converted into two:
-> per-net one, which protects open owner state, and static one, which
-> protects files operations.
-> What do you think about it?
-
-That sounds right.
-
---b.
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
+ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLQ0KPiBvd25lckB2Z2VyLmtlcm5lbC5vcmdd
+IE9uIEJlaGFsZiBPZiBDaHVjayBMZXZlcg0KPiBTZW50OiBXZWRuZXNkYXksIE5vdmVtYmVyIDE0
+LCAyMDEyIDU6MzkgUE0NCj4gVG86IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcNCj4gU3ViamVj
+dDogW1BBVENIXSBuZnMoNSk6IERvY3VtZW50IHRoZSBtaW5vcnZlcnNpb249IG1vdW50IG9wdGlv
+bg0KPiANCj4gU2lnbmVkLW9mZi1ieTogQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5j
+b20+DQo+IC0tLQ0KPiANCj4gT3VyIHBhbHMgb24gdGhlIFNvbGFyaXMgdGVhbSByZWNlbnRseSBu
+b3RpY2VkIHRoYXQgdGhlIG1pbm9ydmVyc2lvbj0gb3B0aW9uDQo+IGlzIG5vdCBkb2N1bWVudGVk
+IGluIG5mcyg1KS4gIFRoaXMgaXMgYSBmaXJzdCB0YWtlLCBqdXN0IHRvIHN0YXJ0IHRoZSBjb252
+ZXJzYXRpb24uDQo+IEknbSBwcmV0dHkgc3VyZSBJIGdvdCB0aGUga2VybmVsIHZlcnNpb24gaW5m
+b3JtYXRpb24gd3JvbmcsIGZvciBpbnN0YW5jZS4NCj4gDQo+IEFueSBvdGhlciBjb21tZW50cz8N
+Cg0KWW91IG1pZ2h0IHdhbnQgdG8gbm90ZSB0aGF0IGl0IGlzIGRlcHJlY2F0ZWQgaW4gZmF2b3Vy
+IG9mIHRoZSAidmVycz00LjEiIG5vdGF0aW9uLCBhbmQgZm9yIHRoYXQgcmVhc29uIHdlIG1pZ2h0
+IHdhbnQgdG8gZm9yZ28gZG9jdW1lbnRpbmcgaXQgYWx0b2dldGhlci4NCg0KPiAgdXRpbHMvbW91
+bnQvbmZzLm1hbiB8ICAgMTcgKysrKysrKysrKysrKysrKysNCj4gIDEgZmlsZXMgY2hhbmdlZCwg
+MTcgaW5zZXJ0aW9ucygrKSwgMCBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS91dGls
+cy9tb3VudC9uZnMubWFuIGIvdXRpbHMvbW91bnQvbmZzLm1hbiBpbmRleA0KPiBjMTVkZTk4Li42
+NjE5OGNjIDEwMDY0NA0KPiAtLS0gYS91dGlscy9tb3VudC9uZnMubWFuDQo+ICsrKyBiL3V0aWxz
+L21vdW50L25mcy5tYW4NCj4gQEAgLTc3Nyw2ICs3NzcsMjMgQEAgc28gaWYgdGhpcyBtb3VudCBv
+cHRpb24gaXMgbm90IHNwZWNpZmllZCwgdGhlIE5GUw0KPiB2ZXJzaW9uIDQgY2xpZW50ICB1c2Vz
+IHRoZSBUQ1AgcHJvdG9jb2wuDQo+ICBSZWZlciB0byB0aGUgVFJBTlNQT1JUIE1FVEhPRFMgc2Vj
+dGlvbiBmb3IgbW9yZSBkZXRhaWxzLg0KPiAgLlRQIDEuNWkNCj4gKy5CSSBtaW5vcnZlcnNpb249
+IG4NCj4gK1NwZWNpZmllcyB0aGUgcHJvdG9jb2wgbWlub3IgdmVyc2lvbiBudW1iZXIuDQo+ICtO
+RlN2NCBpbnRyb2R1Y2VzICJtaW5vciB2ZXJzaW9uaW5nLCIgd2hlcmUgTkZTIHByb3RvY29sIGVu
+aGFuY2VtZW50cw0KPiArY2FuIGJlIGludHJvZHVjZWQgd2l0aG91dCBidW1waW5nIHRoZSBORlMg
+cHJvdG9jb2wgdmVyc2lvbiBudW1iZXIuDQo+ICtCZWZvcmUga2VybmVsIDIuNi4zOCwgdGhlIG1p
+bm9yIHZlcnNpb24gaXMgYWx3YXlzIHplcm8sIGFuZCB0aGlzIG9wdGlvbg0KPiAraXMgbm90IHJl
+Y29nbml6ZWQuDQo+ICtBZnRlciB0aGlzIGtlcm5lbCwgc3BlY2lmeWluZyAibWlub3J2ZXJzaW9u
+PTEiIGVuYWJsZXMgYSBudW1iZXIgb2YNCj4gK2FkdmFuY2VkIGZlYXR1cmVzLCBzdWNoIGFzIE5G
+U3Y0IHNlc3Npb25zLg0KPiArLklQDQo+ICtSZWNlbnQga2VybmVscyBhbGxvdyB0aGUgbWlub3Ig
+dmVyc2lvbiB0byBiZSBzcGVjaWZpZWQgdXNpbmcgdGhlIC5CDQo+ICt2ZXJzPSBvcHRpb24uDQo+
+ICtGb3IgZXhhbXBsZSwgc3BlY2lmeWluZw0KPiArLkIgdmVycz00LjENCj4gK2lzIHRoZSBzYW1l
+IGFzIHNwZWNpZnlpbmcNCj4gKy5CUiB2ZXJzPTQsbWlub3J2ZXJzaW9uPTEgLg0KPiArLlRQIDEu
+NWkNCj4gIC5CSSBwb3J0PSBuDQo+ICBUaGUgbnVtZXJpYyB2YWx1ZSBvZiB0aGUgc2VydmVyJ3Mg
+TkZTIHNlcnZpY2UgcG9ydC4NCj4gIElmIHRoZSBzZXJ2ZXIncyBORlMgc2VydmljZSBpcyBub3Qg
+YXZhaWxhYmxlIG9uIHRoZSBzcGVjaWZpZWQgcG9ydCwNCj4gDQo+IC0tDQo+IFRvIHVuc3Vic2Ny
+aWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1uZnMi
+IGluIHRoZQ0KPiBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3Jn
+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQNCj4gaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRv
+bW8taW5mby5odG1sDQo=
