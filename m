@@ -1,105 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:23015 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:38916 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754021Ab2KSTEj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Nov 2012 14:04:39 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC PATCH V2] mount: Added the -o v4.1 mount option
-Date: Mon, 19 Nov 2012 19:04:10 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092EF662@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1353339810-19126-1-git-send-email-steved@redhat.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9092EEE7A@SACEXCMBX04-PRD.hq.netapp.com>
-	 <50AA571E.4090509@RedHat.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9092EEFD7@SACEXCMBX04-PRD.hq.netapp.com>
-	 <50AA5AD4.5070808@RedHat.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9092EF0B3@SACEXCMBX04-PRD.hq.netapp.com>
-	 <8B557EF0-A1F7-4487-8887-0B08F6922784@oracle.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9092EF4AA@SACEXCMBX04-PRD.hq.netapp.com>
-	 <428AB13F-9EE3-4357-8C88-11F2DA45453C@oracle.com>
-In-Reply-To: <428AB13F-9EE3-4357-8C88-11F2DA45453C@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+	id S933112Ab2KNWAi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Nov 2012 17:00:38 -0500
+Date: Wed, 14 Nov 2012 17:00:36 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, devel@openvz.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, jlayton@redhat.com
+Subject: Re: [RFC PATCH v2 00/15] NFSd state containerization
+Message-ID: <20121114220036.GD539@fieldses.org>
+References: <20121114152018.4708.63125.stgit@localhost.localdomain>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121114152018.4708.63125.stgit@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTExLTE5IGF0IDEzOjM5IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gTm92IDE5LCAyMDEyLCBhdCAxOjI5IFBNLCAiTXlrbGVidXN0LCBUcm9uZCIgPFRyb25kLk15
-a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+ID4gT24gTW9uLCAyMDEyLTExLTE5IGF0
-IDEzOjExIC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4gPj4gT24gTm92IDE5LCAyMDEyLCBh
-dCAxMToyNCBBTSwgIk15a2xlYnVzdCwgVHJvbmQiIDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
-bT4gd3JvdGU6DQo+ID4+IA0KPiA+Pj4gT24gTW9uLCAyMDEyLTExLTE5IGF0IDExOjE0IC0wNTAw
-LCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0KPiA+Pj4+IA0KPiA+Pj4+IE9uIDE5LzExLzEyIDExOjAy
-LCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+Pj4+PiBPbiBNb24sIDIwMTItMTEtMTkgYXQg
-MTA6NTggLTA1MDAsIFN0ZXZlIERpY2tzb24gd3JvdGU6DQo+ID4+Pj4+PiANCj4gPj4+Pj4+IE9u
-IDE5LzExLzEyIDEwOjU0LCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+Pj4+Pj4+IE9uIE1v
-biwgMjAxMi0xMS0xOSBhdCAxMDo0MyAtMDUwMCwgU3RldmUgRGlja3NvbiB3cm90ZToNCj4gPj4+
-Pj4+Pj4gVGhpcyBwYXRjaCB3aWxsIGNvbnZlcnQgLW8gdjQuMSwgdmVycz00LjEgb3IgbmZzdmVy
-cz00LjEgaW50bw0KPiA+Pj4+Pj4+PiB0aGUgY29ycmVzcG9uZGluZyAidjQsbWlub3J2ZXJzaW9u
-PTEiLCAidmVycz00LG1pbm9ydmVyc2lvbj0xIg0KPiA+Pj4+Pj4+PiBvciAibmZzdmVycz00LG1p
-bm9ydmVyc2lvbj0xIiBvcHRpb25zLg0KPiA+Pj4+Pj4+PiANCj4gPj4+Pj4+PiANCj4gPj4+Pj4+
-PiBOQUNLLg0KPiA+Pj4+Pj4+IA0KPiA+Pj4+Pj4+IElmIHlvdSBhcmUgZ29pbmcgdG8gZG8gdGhp
-cywgdGhlbiBwbGVhc2UgZG8gaXQgb25seSBmb3Iga2VybmVscyB0aGF0DQo+ID4+Pj4+Pj4gZG9u
-J3Qgc3VwcG9ydCB0aGUgInZlcnM9NC4xIiBzeW50YXguIGkuZS4gYW55dGhpbmcgb2xkZXIgdGhh
-biBMaW51eC0zLjQuDQo+ID4+Pj4+PiBUaGlzIGlzIHRoZSBpbnRlbnRpb24uLi4gDQo+ID4+Pj4+
-PiANCj4gPj4+Pj4+PiANCj4gPj4+Pj4+PiBXZSB3YW50IHRvIGdldCByaWQgb2YgbWlub3J2ZXJz
-aW9uPXgsIG5vdCBwZXJwZXR1YXRlIGl0Li4uDQo+ID4+Pj4+Pj4gDQo+ID4+Pj4+PiBVbmRlcnN0
-b29kLi4uIEJ1dCB0aGF0IGlzIG5vdCBvcHRpb24gaW4gc29tZSB3b3JsZHMuLi4gOy0pIA0KPiA+
-Pj4+PiANCj4gPj4+Pj4gU3VyZSBpdCBpcy4gVGhlIG1vdW50IHByb2dyYW0gY2FuIGNvbnRpbnVl
-IHRvIHBhcnNlIG1pbm9ydmVyc2lvbj0gYWZ0ZXINCj4gPj4+Pj4gaXQgaXMgZ29uZSBmcm9tIHRo
-ZSBrZXJuZWwgYW5kIGNvbnZlcnQgaXQgaW50byB0aGUgdmVycz00Lnggc3ludGF4Lg0KPiA+Pj4+
-PiANCj4gPj4+PiBCYXNpY2FsbHkgd2hhdCBJJ20gZG9pbmcgbm93LCB3aXRoIHRoZSBleGNlcHRp
-b24gb2Ygbm90IGFkZGluZw0KPiA+Pj4+IHRoZSBtaW5vcnZlcnNpb249MSBvcHRpb25zLi4uIA0K
-PiA+Pj4+IA0KPiA+Pj4+IEJUVywgdGhlcmUgaXMgYSBidWcgaW4gdGhlIC1vIHY0LjEgY3VycmVu
-dCBsb2dpYy4uLiANCj4gPj4+PiANCj4gPj4+PiBtb3VudCAtbyB2NC4xIHByb2R1Y2VzIGJvdGgg
-InY0LjEsdmVycz00LC4uLiIgaW4gdGhlIHN0cmluZyB0aGF0IGdpdmVuDQo+ID4+Pj4gdG8gdGhl
-IGtlcm5lbCB3aGljaCBkb2VzIG5vdCBzZWVtIHJpZ2h0Li4uIEkgd291bGQgYXNzdW1lIGp1c3Qg
-YSAidjQuMSwuLiINCj4gPj4+PiBzaG91bGQgYmUgcHVtcGVkIGRvd24uLiANCj4gPj4+IA0KPiA+
-Pj4gWWVzLiBJIHJlbWVtYmVyIHNlZWluZyB0aGF0IGluIHRoZSBCYWtlYXRob24gdGVzdHMuLi4g
-SSBhZ3JlZSB0aGF0IHdlDQo+ID4+PiBqdXN0IG5lZWQgdGhlIHZlcnM9NC4xLiBUaGUgZXh0cmEg
-J3ZlcnM9NCcgaXNuJ3QgaGFybWZ1bCBpbiB0aGF0IHRoZQ0KPiA+Pj4ga2VybmVsIHdvbid0IGlu
-dGVycHJldCBpdCBhcyB2ZXJzPTQuMCwgYnV0IGl0IHdvdWxkIGJlIG5pY2UgdG8gZ2V0IHJpZA0K
-PiA+Pj4gb2YgaXQuDQo+ID4+PiANCj4gPj4+IEVzc2VudGlhbGx5LCB0aGUgcGxhbiBpcyB0aGF0
-IHNvbWUgdGltZSBpbiB0aGUgZnV0dXJlIHdlIHdpbGwgd2FudCB0bw0KPiA+Pj4gaGF2ZSAndmVy
-cz00JyBiZSB0aGUgJ2F1dG8tbmVnb3RpYXRlIG1pbm9yIHZlcnNpb24nIHN5bnRheCwgd2hpbGUN
-Cj4gPj4+IHZlcnM9NC54IHdpbGwgYmUgdGhlICd1c2UgbWlub3IgdmVyc2lvbiB4JyBzeW50YXgu
-DQo+ID4+PiBPZiBjb3Vyc2UsIGF1dG8tbmVnb3RpYXRpb24gc2hvdWxkIGJlIGRyaXZlbiBieSB0
-aGUgJ21vdW50JyBwcm9ncmFtLA0KPiA+Pj4gd2hpY2ggd2lsbCBiZSB1c2luZyB0aGUgJ3ZlcnM9
-NC54JyBzeW50YXggaW4gdGhlIG1vdW50IHN5c3RlbSBjYWxsLCBmb3INCj4gPj4+IHZhcmlvdXMg
-dmFsdWVzIG9mICd4JywgdW50aWwgaXQgYWNoaWV2ZXMgc3VjY2Vzcy4NCj4gPj4gDQo+ID4+IElu
-dGVyZXN0aW5nLiAgSSBhc3N1bWUgeW91IHdhbnQgIm1vdW50Lm5mcyIgdG8gZG8gdGhpcyB0byBh
-bGxvdyBzb21lIGtpbmQgb2YgYXV0by1uZWdvdGlhdGlvbiBwb2xpY3kgdG8gYmUgc3BlY2lmaWVk
-IChzYXksIHZpYSB0aGUgbW91bnQgY29tbWFuZCBjb25maWd1cmF0aW9uIGZpbGUpLg0KPiA+IA0K
-PiA+IFJpZ2h0LiBJJ2QgbGlrZSB0byBiZSBhYmxlIHRvIHNldCBEZWZhdWx0dmVycz00LjEgaW4g
-L2V0Yy9uZnNtb3VudC5jb25mDQo+ID4gYW5kIGhhdmUgaXQgd29yay4NCj4gPiANCj4gPj4gQXMg
-YSBkZXNpZ24gcHJlY3Vyc29yLCBjYW4geW91IHNwZWN1bGF0ZSBvbiBob3cgdGhlIG1vdW50IGNv
-bW1hbmQgd291bGQgZ28gYWJvdXQgbmVnb3RpYXRpbmcgdGhlIG1pbm9yIHZlcnNpb24/ICBtb3Vu
-dC5uZnMgY2Fubm90IHVzZSBwcm90b2NvbCB2ZXJzaW9ucyBhZHZlcnRpc2VkIGJ5IHJwY2JpbmQs
-IGZvciBpbnN0YW5jZSwgYW5kIG5laXRoZXIgY2FuIGEgc2ltcGxlIE5VTEwgcmVxdWVzdCBpZGVu
-dGlmeSB3aGljaCBtaW5vciB2ZXJzaW9ucyBhcmUgYXZhaWxhYmxlIG9uIHRoZSBzZXJ2ZXIuDQo+
-ID4gDQo+ID4gTm90ZSB0aGF0IHRoZSBtb3VudCBjb21tYW5kIHNob3VsZCBpbiBhbnkgY2FzZSBu
-b3QgYmUgcmVseWluZyBvbiBycGNiaW5kDQo+ID4gdG8gZGVjaWRlIHdoZXRoZXIgb3Igbm90IHRo
-ZSBzZXJ2ZXIgc3VwcG9ydHMgTkZTdjQuDQo+ID4gDQo+ID4gQXMgZm9yIG1pbm9yIHZlcnNpb24g
-bmVnb3RpYXRpb24sIFJGQzM1MzAgYWxyZWFkeSB0ZWxscyB5b3UgaG93IHRvIGRvDQo+ID4gdGhp
-czogdGhlIGNsaWVudCBoYXMgdG8gc3RhcnQgd2l0aCB0aGUgaGlnaGVzdCB2ZXJzaW9uIHRoYXQg
-aXQgc3VwcG9ydHMsDQo+ID4gYW5kIHRoZW4gd2FsayB0aGF0IG51bWJlciBkb3duIHVudGlsIHRo
-ZSBzZXJ2ZXIgc3RvcHMgcmVwbHlpbmcgd2l0aA0KPiA+IE5GUzRFUlJfTUlOT1JfVkVSU19NSVNN
-QVRDSC4NCj4gPiANCj4gPiBOb3RlIHRoYXQgaWYgeW91IHdhbnQgdG8gZG8gdGhpcyBpbiB1c2Vy
-bGFuZCBiZWZvcmUgY2FsbGluZyB0aGUgbW91bnQNCj4gPiBzeXNjYWxsLCB0aGVuIHRoZSBzcGVj
-IGRvZXMgYWxsb3cgeW91IHRvICJwaW5nIiB0aGUgTkZTdjQgc2VydmVyIHdpdGggYW4NCj4gPiBl
-bXB0eSBDT01QT1VORC4NCj4gDQo+IEkgc2VlOiBub3QgYW4gTkZTdjQgTlVMTCwgYnV0IGFuIE5G
-U3Y0IENPTVBPVU5EIHRoYXQgaGFzIG5vIG9wZXJhdGlvbnMuICBUaGF0IGNhcnJpZXMgYSBjb21w
-b3VuZCBoZWFkZXIsIHdoaWNoIHdvdWxkIGhhdmUgdGhlIG1pbm9yIHZlcnNpb24gbnVtYmVyIGlu
-IGl0Lg0KDQpSaWdodC4gU2VjdGlvbiAxNi4yLjQgb2YgUkZDNTY2MSB3b3VsZCBhcHBlYXIgdG8g
-YWxsb3cgdGhlIHNlcnZlciB0bw0KcmV0dXJuIHRoZSBmb2xsb3dpbmcgZXJyb3JzIGluIHRoZSBj
-YXNlIG9mIGFuIGVtcHR5IENPTVBPVU5EOiBORlM0X09LLA0KTkZTNEVSUl9ERUxBWSwgTkZTNEVS
-Ul9NSU5PUl9WRVJTX01JU01BVENIIGFuZCBORlM0RVJSX1NFUlZFUkZBVUxULg0KDQpUaGUgb3Ro
-ZXIgZXJyb3JzIHNob3VsZG4ndCBhcHBseSBhdCBhbGwgdG8gYSB6ZXJvLW9wIGNvbXBvdW5kDQoo
-TkZTNEVSUl9CQURYRFIsIE5GUzRFUlJfVE9PX01BTllfT1BTLCBORlM0RVJSX1JFUF9UT09fQklH
-X1RPX0NBQ0hFKSwgb3INCnNob3VsZCBvbmx5IGFwcGx5IGlmIHlvdSBoYXZlIGEgbm9uLWVtcHR5
-IG9wdGlvbmFsIHRhZyBhcmd1bWVudA0KKE5GUzRFUlJfQkFEQ0hBUiwgTkZTNEVSUl9JTlZBTCwg
-TkZTNEVSUl9SRVBfVE9PX0JJRywNCk5GUzRFUlJfUkVRX1RPT19CSUcpLg0KDQotLSANClRyb25k
-IE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQu
-TXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+On Wed, Nov 14, 2012 at 06:20:59PM +0300, Stanislav Kinsbursky wrote:
+> This patch set is my first attempt to containerize NFSv4 state - i.e. make it
+> works in networks namespace context.
+> I admit, that some of this new code could be partially rewritten during future
+> NFSd containerization.
+> But the overall idea look more or less correct to me.
+> So, the main things here are:
+> 1) making nfs4_client network namespace aware.
+> 2) Allocating all hashes (except file_hashtbl and reclaim_str_hashtbl) per
+> network namespace context on NFSd start (not init) and destroying on NFSd
+> state shutdown.
+> 3) Allocating of reclaim_str_hashtbl on legacy tracker start and destroying on
+> legacy tracker stop.
+> 4) Moving of client_lru and close_lru lists to per-net data.
+> 5) Making lundromat network namespace aware.
+
+These look OK and pass my tests.  Jeff, do the revised recovery bits
+look OK?
+
+Have you done any testing?
+
+It'd be interesting, for example, to know if there are any pynfs that
+fail against the server in a non-init network namespace, but pass
+normally.
+
+--b.
+
+> 
+> v2:
+> 1) Rebased on current nfsd-next.
+> 2) Legacy tracker init become clearer.
+> 
+> The following series implements...
+> 
+> ---
+> 
+> Stanislav Kinsbursky (15):
+>       nfsd: use service net instead of hard-coded net where possible
+>       nfsd: make nfs4_client network namespace dependent
+>       nfsd: make reclaim_str_hashtbl allocated per net
+>       nfsd: make conf_id_hashtbl allocated per net
+>       nfsd: make conf_name_tree per net
+>       nfsd: make unconf_id_hashtbl allocated per net
+>       nfsd: make unconf_name_tree per net
+>       nfsd: make ownerstr_hashtbl allocated per net
+>       nfsd: make lockowner_ino_hashtbl allocated per net
+>       nfsd: make sessionid_hashtbl allocated per net
+>       nfsd: make client_lru list per net
+>       nfsd: make close_lru list per net
+>       nfsd: use service net instead of hard-coded init_net
+>       nfsd: pass nfsd_net instead of net to grace enders
+>       nfsd: make laundromat network namespace aware
+> 
+> 
+>  fs/nfsd/netns.h        |   43 +++++
+>  fs/nfsd/nfs4callback.c |    2 
+>  fs/nfsd/nfs4proc.c     |   13 +
+>  fs/nfsd/nfs4recover.c  |  102 ++++++++---
+>  fs/nfsd/nfs4state.c    |  450 +++++++++++++++++++++++++++---------------------
+>  fs/nfsd/state.h        |   17 +-
+>  fs/nfsd/xdr4.h         |    2 
+>  7 files changed, 389 insertions(+), 240 deletions(-)
+> 
