@@ -1,167 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:31617 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:33997 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1422998Ab2KNPTQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Nov 2012 10:19:16 -0500
-Subject: [PATCH v2 09/15] nfsd: make lockowner_ino_hashtbl allocated per net
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, devel@openvz.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, jlayton@redhat.com
-Date: Wed, 14 Nov 2012 18:21:46 +0300
-Message-ID: <20121114152146.4708.4696.stgit@localhost.localdomain>
-In-Reply-To: <20121114152018.4708.63125.stgit@localhost.localdomain>
-References: <20121114152018.4708.63125.stgit@localhost.localdomain>
-MIME-Version: 1.0
+	id S1753562Ab2KNVgg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Nov 2012 16:36:36 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>,
+        "Eric W. Biederman" <ebiederm@xmission.com>
+Subject: Re: [PATCH v3] SUNRPC: set desired file system root before
+ connecting local transports
+Date: Wed, 14 Nov 2012 21:36:33 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092E0A40@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20121008105437.18668.99905.stgit@localhost.localdomain>
+	 <20121009193506.GA19680@fieldses.org> <5098E31A.5080801@parallels.com>
+	 <20121106120642.GA6718@fieldses.org> <20121106124035.GA20522@infradead.org>
+	 <20121106130705.GC6718@fieldses.org> <20121106131018.GA12211@infradead.org>
+	 <20121106133605.GD6718@fieldses.org> <20121107183355.GA7421@fieldses.org>
+	 <50A0B562.2090807@parallels.com> <20121114210112.GA539@fieldses.org>
+In-Reply-To: <20121114210112.GA539@fieldses.org>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This hash holds file lock owners and closely associated with nfs4_clients info,
-which are network namespace aware. So let's make it allocated per network
-namespace too.
-
-Note: this hash can be allocated in per-net operations. But it looks
-better to allocate it on nfsd state start and thus don't waste resources
-if server is not running.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfsd/netns.h     |    4 ++++
- fs/nfsd/nfs4state.c |   27 ++++++++++++++++-----------
- 2 files changed, 20 insertions(+), 11 deletions(-)
-
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index 46cca94..2281f6d 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -29,6 +29,9 @@
- #define CLIENT_HASH_SIZE                (1 << CLIENT_HASH_BITS)
- #define CLIENT_HASH_MASK                (CLIENT_HASH_SIZE - 1)
- 
-+#define LOCKOWNER_INO_HASH_BITS		8
-+#define LOCKOWNER_INO_HASH_SIZE		(1 << LOCKOWNER_INO_HASH_BITS)
-+
- struct cld_net;
- 
- struct nfsd_net {
-@@ -61,6 +64,7 @@ struct nfsd_net {
- 	struct list_head *unconf_id_hashtbl;
- 	struct rb_root unconf_name_tree;
- 	struct list_head *ownerstr_hashtbl;
-+	struct list_head *lockowner_ino_hashtbl;
- };
- 
- extern int nfsd_net_id;
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2333d15..34006a4 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3862,8 +3862,6 @@ out:
- 
- #define LOFF_OVERFLOW(start, len)      ((u64)(len) > ~(u64)(start))
- 
--#define LOCKOWNER_INO_HASH_BITS 8
--#define LOCKOWNER_INO_HASH_SIZE (1 << LOCKOWNER_INO_HASH_BITS)
- #define LOCKOWNER_INO_HASH_MASK (LOCKOWNER_INO_HASH_SIZE - 1)
- 
- static inline u64
-@@ -3893,8 +3891,6 @@ static unsigned int lockowner_ino_hashval(struct inode *inode, u32 cl_id, struct
- 		& LOCKOWNER_INO_HASH_MASK;
- }
- 
--static struct list_head lockowner_ino_hashtbl[LOCKOWNER_INO_HASH_SIZE];
--
- /*
-  * TODO: Linux file offsets are _signed_ 64-bit quantities, which means that
-  * we can't properly handle lock requests that go beyond the (2^63 - 1)-th
-@@ -3960,12 +3956,12 @@ static bool same_lockowner_ino(struct nfs4_lockowner *lo, struct inode *inode, c
- 
- static struct nfs4_lockowner *
- find_lockowner_str(struct inode *inode, clientid_t *clid,
--		struct xdr_netobj *owner)
-+		   struct xdr_netobj *owner, struct nfsd_net *nn)
- {
- 	unsigned int hashval = lockowner_ino_hashval(inode, clid->cl_id, owner);
- 	struct nfs4_lockowner *lo;
- 
--	list_for_each_entry(lo, &lockowner_ino_hashtbl[hashval], lo_owner_ino_hash) {
-+	list_for_each_entry(lo, &nn->lockowner_ino_hashtbl[hashval], lo_owner_ino_hash) {
- 		if (same_lockowner_ino(lo, inode, clid, owner))
- 			return lo;
- 	}
-@@ -3980,7 +3976,7 @@ static void hash_lockowner(struct nfs4_lockowner *lo, unsigned int strhashval, s
- 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 
- 	list_add(&lo->lo_owner.so_strhash, &nn->ownerstr_hashtbl[strhashval]);
--	list_add(&lo->lo_owner_ino_hash, &lockowner_ino_hashtbl[inohash]);
-+	list_add(&lo->lo_owner_ino_hash, &nn->lockowner_ino_hashtbl[inohash]);
- 	list_add(&lo->lo_perstateid, &open_stp->st_lockowners);
- }
- 
-@@ -4054,8 +4050,10 @@ static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate, s
- 	struct nfs4_client *cl = oo->oo_owner.so_client;
- 	struct nfs4_lockowner *lo;
- 	unsigned int strhashval;
-+	struct nfsd_net *nn = net_generic(cl->net, nfsd_net_id);
- 
--	lo = find_lockowner_str(fi->fi_inode, &cl->cl_clientid, &lock->v.new.owner);
-+	lo = find_lockowner_str(fi->fi_inode, &cl->cl_clientid,
-+				&lock->v.new.owner, nn);
- 	if (lo) {
- 		if (!cstate->minorversion)
- 			return nfserr_bad_seqid;
-@@ -4308,7 +4306,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		goto out;
- 	}
- 
--	lo = find_lockowner_str(inode, &lockt->lt_clientid, &lockt->lt_owner);
-+	lo = find_lockowner_str(inode, &lockt->lt_clientid, &lockt->lt_owner, nn);
- 	if (lo)
- 		file_lock->fl_owner = (fl_owner_t)lo;
- 	file_lock->fl_pid = current->tgid;
-@@ -4726,8 +4724,6 @@ nfs4_state_init(void)
- 	for (i = 0; i < FILE_HASH_SIZE; i++) {
- 		INIT_LIST_HEAD(&file_hashtbl[i]);
- 	}
--	for (i = 0; i < LOCKOWNER_INO_HASH_SIZE; i++)
--		INIT_LIST_HEAD(&lockowner_ino_hashtbl[i]);
- 	INIT_LIST_HEAD(&close_lru);
- 	INIT_LIST_HEAD(&client_lru);
- 	INIT_LIST_HEAD(&del_recall_lru);
-@@ -4771,6 +4767,10 @@ static int nfs4_state_start_net(struct net *net)
- 			OWNER_HASH_SIZE, GFP_KERNEL);
- 	if (!nn->ownerstr_hashtbl)
- 		goto err_ownerstr;
-+	nn->lockowner_ino_hashtbl = kmalloc(sizeof(struct list_head) *
-+			LOCKOWNER_INO_HASH_SIZE, GFP_KERNEL);
-+	if (!nn->lockowner_ino_hashtbl)
-+		goto err_lockowner_ino;
- 
- 	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
- 		INIT_LIST_HEAD(&nn->conf_id_hashtbl[i]);
-@@ -4778,11 +4778,15 @@ static int nfs4_state_start_net(struct net *net)
- 	}
- 	for (i = 0; i < OWNER_HASH_SIZE; i++)
- 		INIT_LIST_HEAD(&nn->ownerstr_hashtbl[i]);
-+	for (i = 0; i < LOCKOWNER_INO_HASH_SIZE; i++)
-+		INIT_LIST_HEAD(&nn->lockowner_ino_hashtbl[i]);
- 	nn->conf_name_tree = RB_ROOT;
- 	nn->unconf_name_tree = RB_ROOT;
- 
- 	return 0;
- 
-+err_lockowner_ino:
-+	kfree(nn->ownerstr_hashtbl);
- err_ownerstr:
- 	kfree(nn->unconf_id_hashtbl);
- err_unconf_id:
-@@ -4815,6 +4819,7 @@ __nfs4_state_shutdown_net(struct net *net)
- 		destroy_client(clp);
- 	}
- 
-+	kfree(nn->lockowner_ino_hashtbl);
- 	kfree(nn->ownerstr_hashtbl);
- 	kfree(nn->unconf_id_hashtbl);
- 	kfree(nn->conf_id_hashtbl);
-
+T24gV2VkLCAyMDEyLTExLTE0IGF0IDE2OjAxIC0wNTAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIE1vbiwgTm92IDEyLCAyMDEyIGF0IDEyOjM3OjU0UE0gKzA0MDAsIFN0YW5pc2xhdiBL
+aW5zYnVyc2t5IHdyb3RlOg0KPiA+IDA3LjExLjIwMTIgMjI6MzMsIEouIEJydWNlIEZpZWxkcyDQ
+v9C40YjQtdGCOg0KPiA+ID5PbiBUdWUsIE5vdiAwNiwgMjAxMiBhdCAwODozNjowNUFNIC0wNTAw
+LCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6DQo+ID4gPj5PbiBUdWUsIE5vdiAwNiwgMjAxMiBhdCAw
+ODoxMDoxOEFNIC0wNTAwLCBDaHJpc3RvcGggSGVsbHdpZyB3cm90ZToNCj4gPiA+Pj5PbiBUdWUs
+IE5vdiAwNiwgMjAxMiBhdCAwODowNzowNkFNIC0wNTAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+ID4gPj4+PlNvIHlvdSdyZSB3b3JyaWVkIHRoYXQgYSBidWcgaW4gdGhlIG5mcyBjb2RlIGNv
+dWxkIG1vZGlmeSB0aGUgcm9vdCBhbmQNCj4gPiA+Pj4+dGhlbiBub3QgcmVzdG9yZSBpdD8NCj4g
+PiA+Pj4NCj4gPiA+Pj5BdCBsZWFzdCB0aGUgbGluayB5b3UgcG9pbnRlZCB0byBlYXJsaWVyIG5l
+dmVyIHNldHMgaXQgYmFjay4NCj4gPiA+Pg0KPiA+ID4+VGhpcz8gaHR0cDovL3RocmVhZC5nbWFu
+ZS5vcmcvZ21hbmUubGludXgua2VybmVsLzEyNTk5ODYvZm9jdXM9NDc2ODcNCj4gPiA+Pg0KPiA+
+ID4+CSsJZ2V0X2ZzX3Jvb3QoY3VycmVudC0+ZnMsICZyb290KTsNCj4gPiA+PgkrCXNldF9mc19y
+b290KGN1cnJlbnQtPmZzLCAmdHJhbnNwb3J0LT5yb290KTsNCj4gPiA+PgkrDQo+ID4gPj4JIAlz
+dGF0dXMgPSB4c19sb2NhbF9maW5pc2hfY29ubmVjdGluZyh4cHJ0LCBzb2NrKTsNCj4gPiA+Pgkr
+DQo+ID4gPj4JKwlzZXRfZnNfcm9vdChjdXJyZW50LT5mcywgJnJvb3QpOw0KPiA+ID4+CSsJcGF0
+aF9wdXQoJnJvb3QpOw0KPiA+ID4+DQo+ID4gPj4+SW5zdGVhZA0KPiA+ID4+Pm9mIG1lc3Npbmcg
+d2l0aCBpdCBJJ2QgcmF0aGVyIGhhdmUgdGhlIHN1bnJwYyBjb2RlIHVzZSB2ZnNfcGF0aF9sb29r
+dXANCj4gPiA+Pj5hbmQgbm90IGNhcmUgYWJvdXQgY3VycmVudC0+ZnMtPnJvb3QgYXQgYWxsLg0K
+PiA+ID4+DQo+ID4gPj5UaGUgYW5ub3lhbmNlIGlzIHRoYXQgdGhlIGxvb2t1cCBoYXBwZW5zIHNv
+bWV3aGVyZSBsb3dlciBkb3duIGluIHRoZQ0KPiA+ID4+bmV0d29ya2luZyBjb2RlIChuZXQvdW5p
+eC9hZl91bml4LmM6dW5peF9maW5kX290aGVyLCBJIHRoaW5rKS4gIFNvIHdlJ2QNCj4gPiA+Pm5l
+ZWQgc29tZSBuZXcgKGludGVybmFsKSBBUEkuICBXZSdkIGxpa2VseSBiZSB0aGUgb25seSB1c2Vy
+IG9mIHRoYXQgbmV3DQo+ID4gPj5BUEkuDQo+ID4gPg0KPiA+ID5TbywgaWYgdGhlIG9ubHkgZHJh
+d2JhY2sgaXMgcmVhbGx5IGp1c3QgdGhlIHJpc2sgb2YgaW50cm9kdWNpbmcgYSBidWcNCj4gPiA+
+dGhhdCBsZWF2ZXMgdGhlIGZzX3Jvb3QgY2hhbmdlZC0tdGhlIGFib3ZlIHNlZW1zIHNpbXBsZSBl
+bm91Z2ggZm9yIHRoYXQNCj4gPiA+bm90IHRvIGJlIGEgZ3JlYXQgcmlzaywgcmlnaHQ/DQo+ID4g
+Pg0KPiA+IA0KPiA+IElmIHdlIHVuc2hhcmUgcnBjaW9kIGZzIHN0cnVjdCAod2hpY2ggaXMgZXhw
+b3J0ZWQgYWxyZWFkeSksIHRoZW4gd2UNCj4gDQo+IEknbSBub3Qgc3VyZSB3aGF0IHlvdSBtZWFu
+IGJ5IHRoYXQuICBEbyB3b3JrcXVldWVzIGFjdHVhbGx5IGhhdmUgdGhlaXINCj4gb3duIGRlZGlj
+YXRlZCBzZXQgb2YgYXNzb2NpYXRlZCB0YXNrcz8gIEkgdGhvdWdodCBhbGwgd29ya3F1ZXVlcyBz
+aGFyZWQNCj4gYSBjb21tb24gcG9vbCBvZiB0YXNrcyB0aGVzZSBkYXlzLg0KPiANCj4gPiB3b24n
+dCBhZmZlY3Qgb3RoZXIga3RocmVhZHMgYnkgcm9vdCBzd2FwcGluZy4NCj4gPiBCdXQgd291bGQg
+YmUgZ3JlYXQgdG8gaGVhciBUcm9uZCdzIG9waW5pb24gYWJvdXQgdGhpcyBhcHByb2FjaC4NCj4g
+PiANCj4gPiBUcm9uZCwgY291bGQgeW91IHRlbGwgdXMgeW91ciBmZWVsaW5nIGFib3V0IGFsbCB0
+aGlzPw0KPiANCj4gSSB0aGluayBpdCdzIG9mdGVuIGVhc2llciB0byBnZXQgcGVvcGxlIHRvIGNv
+bW1lbnQgb24gYW4gYWN0dWFsIHBhdGNoLA0KPiBhbmQgdGhpcyBvbmUgd291bGQgYmUgcXVpdGUg
+c2hvcnQsIHNvIHRyeSB0aGF0Li4uLg0KDQp1bnNoYXJlKCkgd291bGQgYnJlYWsgZXhwZWN0YXRp
+b25zIGZvciBvdGhlciB1c2VycyBvZiB3b3JrcXVldWUgdGhyZWFkcw0KdW5sZXNzIHlvdSAicmVz
+aGFyZSgpIiBhZnRlcndhcmRzLiBFaXRoZXIgd2F5IHRoYXQncyBnb2luZyB0byBiZQ0Kc2VyaW91
+c2x5IHVnbHkuDQoNCk9LLCBsZXQncyBsb29rIGF0IHRoaXMgYWdhaW4uIERvIHdlIGV2ZXIgdXNl
+IEFGX0xPQ0FMIGNvbm5lY3Rpb25zIGZvcg0KYW55dGhpbmcgb3RoZXIgdGhhbiBzeW5jaHJvbm91
+cyBycGMgY2FsbHMgdG8gdGhlIGxvY2FsIHJwY2JpbmQgZGFlbW9uIGluDQpvcmRlciB0byByZWdp
+c3Rlci91bnJlZ2lzdGVyIG5ldyBzZXJ2aWNlcz8gSWYgbm90LCB0aGVuIGxldCdzIGp1c3QgbW92
+ZQ0KdGhlIEFGX0xPQ0FMIGNvbm5lY3Rpb24gYmFjayBpbnRvIHRoZSBwcm9jZXNzIGNvbnRleHQg
+YW5kIG91dCBvZiBycGNpb2QuDQoNClRoYXQgaW1wbGllcyB0aGF0IHRoZSBwcm9jZXNzIG5lZWRz
+IHRvIGJlIHByaXZpbGVnZWQsIGJ1dCBpdCBuZWVkcw0KcHJpdmlsZWdlcyBpbiBvcmRlciB0byBz
+dGFydCBSUEMgZGFlbW9ucyBhbnl3YXkuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBO
+RlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
+bQ0Kd3d3Lm5ldGFwcC5jb20NCg==
