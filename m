@@ -1,95 +1,175 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:10285 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37686 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755445Ab2KZUQy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Nov 2012 15:16:54 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 00/27] NFSv4.1: Add support for session dynamic slot management
-Date: Mon, 26 Nov 2012 15:16:17 -0500
-Message-Id: <1353961005-63874-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1422805Ab2KNNVH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Nov 2012 08:21:07 -0500
+Date: Wed, 14 Nov 2012 08:20:44 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, devel@openvz.org,
+        Trond.Myklebust@netapp.com, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 06/15] nfsd: make unconf_str_hashtbl allocated per net
+Message-ID: <20121114082044.2a4ba128@tlielax.poochiereds.net>
+In-Reply-To: <20121113154849.12577.37390.stgit@localhost.localdomain>
+References: <20121113154722.12577.57671.stgit@localhost.localdomain>
+	<20121113154849.12577.37390.stgit@localhost.localdomain>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch series adds support for session dynamic slot management
-in accordance with Section 2.10.6.1 of RFC5661.
+On Tue, 13 Nov 2012 18:48:49 +0300
+Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
 
-By tracking the sr_target_highest_slotid and sr_highest_slotid in the
-server's replies to our SEQUENCE operations, we can figure out when
-it is safe to increase the number of RPC requests that go in parallel
-to the server, and when we should decrease that number.
+> This hash holds nfs4_clients info, which are network namespace aware.
+> So let's make it allocated per network namespace.
+> 
+> Note: this hash can be allocated in per-net operations. But it looks
+> better to allocate it on nfsd state start and thus don't waste resources
+> if server is not running.
+> 
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> ---
+>  fs/nfsd/netns.h     |    1 +
+>  fs/nfsd/nfs4state.c |   34 +++++++++++++++++++---------------
+>  2 files changed, 20 insertions(+), 15 deletions(-)
+> 
+> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+> index 61f41c0..0577780 100644
+> --- a/fs/nfsd/netns.h
+> +++ b/fs/nfsd/netns.h
+> @@ -56,6 +56,7 @@ struct nfsd_net {
+>  	int reclaim_str_hashtbl_size;
+>  	struct list_head *conf_id_hashtbl;
+>  	struct list_head *conf_str_hashtbl;
+> +	struct list_head *unconf_str_hashtbl;
+>  };
+>  
+>  extern int nfsd_net_id;
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index a709dd2..7e44015 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -413,7 +413,6 @@ static unsigned int clientstr_hashval(const char *name)
+>   * close_lru holds (open) stateowner queue ordered by nfs4_stateowner.so_time
+>   * for last close replay.
+>   */
+> -static struct list_head	unconf_str_hashtbl[CLIENT_HASH_SIZE];
+>  static struct list_head	unconf_id_hashtbl[CLIENT_HASH_SIZE];
+>  static struct list_head client_lru;
+>  static struct list_head close_lru;
+> @@ -1314,8 +1313,9 @@ static void
+>  add_to_unconfirmed(struct nfs4_client *clp, unsigned int strhashval)
+>  {
+>  	unsigned int idhashval;
+> +	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+>  
+> -	list_add(&clp->cl_strhash, &unconf_str_hashtbl[strhashval]);
+> +	list_add(&clp->cl_strhash, &nn->unconf_str_hashtbl[strhashval]);
+>  	idhashval = clientid_hashval(clp->cl_clientid.cl_id);
+>  	list_add(&clp->cl_idhash, &unconf_id_hashtbl[idhashval]);
+>  	renew_client(clp);
+> @@ -1387,11 +1387,12 @@ find_confirmed_client_by_str(const char *dname, unsigned int hashval,
+>  }
+>  
+>  static struct nfs4_client *
+> -find_unconfirmed_client_by_str(const char *dname, unsigned int hashval)
+> +find_unconfirmed_client_by_str(const char *dname, unsigned int hashval,
+> +			       struct nfsd_net *nn)
+>  {
+>  	struct nfs4_client *clp;
+>  
+> -	list_for_each_entry(clp, &unconf_str_hashtbl[hashval], cl_strhash) {
+> +	list_for_each_entry(clp, &nn->unconf_str_hashtbl[hashval], cl_strhash) {
+>  		if (same_name(clp->cl_recdir, dname))
+>  			return clp;
+>  	}
+> @@ -1643,7 +1644,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+>  		goto out;
+>  	}
+>  
+> -	unconf  = find_unconfirmed_client_by_str(dname, strhashval);
+> +	unconf  = find_unconfirmed_client_by_str(dname, strhashval, nn);
+>  	if (unconf) /* case 4, possible retry or client restart */
+>  		expire_client(unconf);
+>  
+> @@ -2215,7 +2216,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  			goto out;
+>  		}
+>  	}
+> -	unconf = find_unconfirmed_client_by_str(dname, strhashval);
+> +	unconf = find_unconfirmed_client_by_str(dname, strhashval, nn);
+>  	if (unconf)
+>  		expire_client(unconf);
+>  	status = nfserr_jukebox;
+> @@ -4700,7 +4701,6 @@ nfs4_state_init(void)
+>  	int i;
+>  
+>  	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
+> -		INIT_LIST_HEAD(&unconf_str_hashtbl[i]);
+>  		INIT_LIST_HEAD(&unconf_id_hashtbl[i]);
+>  	}
+>  	for (i = 0; i < SESSION_HASH_SIZE; i++)
+> @@ -4752,14 +4752,21 @@ static int nfs4_state_start_net(struct net *net)
+>  			CLIENT_HASH_SIZE, GFP_KERNEL);
+>  	if (!nn->conf_str_hashtbl)
+>  		goto err_conf_str;
+> +	nn->unconf_str_hashtbl = kmalloc(sizeof(struct list_head) *
+> +			CLIENT_HASH_SIZE, GFP_KERNEL);
+> +	if (!nn->unconf_str_hashtbl)
+> +		goto err_unconf_str;
+>  
+>  	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
+>  		INIT_LIST_HEAD(&nn->conf_id_hashtbl[i]);
+>  		INIT_LIST_HEAD(&nn->conf_str_hashtbl[i]);
+> +		INIT_LIST_HEAD(&nn->unconf_str_hashtbl[i]);
+>  	}
+>  
+>  	return 0;
+>  
+> +err_unconf_str:
+> +	kfree(nn->conf_str_hashtbl);
+>  err_conf_str:
+>  	kfree(nn->conf_id_hashtbl);
+>  err:
+> @@ -4778,7 +4785,12 @@ __nfs4_state_shutdown_net(struct net *net)
+>  			clp = list_entry(nn->conf_id_hashtbl[i].next, struct nfs4_client, cl_idhash);
+>  			destroy_client(clp);
+>  		}
+> +		while (!list_empty(&nn->unconf_str_hashtbl[i])) {
+> +			clp = list_entry(nn->unconf_str_hashtbl[i].next, struct nfs4_client, cl_strhash);
+> +			destroy_client(clp);
+> +		}
+>  	}
+> +	kfree(nn->unconf_str_hashtbl);
+>  	kfree(nn->conf_str_hashtbl);
+>  	kfree(nn->conf_id_hashtbl);
+>  }
+> @@ -4837,19 +4849,11 @@ out_recovery:
+>  static void
+>  __nfs4_state_shutdown(struct net *net)
+>  {
+> -	int i;
+> -	struct nfs4_client *clp = NULL;
+>  	struct nfs4_delegation *dp = NULL;
+>  	struct list_head *pos, *next, reaplist;
+>  
+>  	__nfs4_state_shutdown_net(net);
+>  
+> -	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
+> -		while (!list_empty(&unconf_str_hashtbl[i])) {
+> -			clp = list_entry(unconf_str_hashtbl[i].next, struct nfs4_client, cl_strhash);
+> -			destroy_client(clp);
+> -		}
+> -	}
+>  	INIT_LIST_HEAD(&reaplist);
+>  	spin_lock(&recall_lock);
+>  	list_for_each_safe(pos, next, &del_recall_lru) {
+> 
 
-Changes w.r.t v1:
-
- - Retry slot allocation within 1/4 second if an allocation failed due
-   to an OOM condition
- - Move NFSv4.1 session handling into a separate file, fs/nfs/nfs4session.c
- - Increase the slot table size limit to 1024
-
-
-Trond Myklebust (28):
-  NFSv4.1: Handle session reset and bind_conn_to_session before lease
-    check
-  NFSv4.1: Don't confuse CREATE_SESSION arguments and results
-  NFSv4.1: Adjust CREATE_SESSION arguments when mounting a new
-    filesystem
-  NFSv4.1: We must bump the clientid sequence number after
-    CREATE_SESSION
-  NFSv4.1: nfs4_alloc_slots doesn't need zeroing
-  NFSv4.1: clean up nfs4_recall_slot to use nfs4_alloc_slots
-  NFSv4.1: Shrink struct nfs4_sequence_res by moving sr_renewal_time
-  NFSv4.1: Shrink struct nfs4_sequence_res by moving the session
-    pointer
-  NFSv4.1: Label each entry in the session slot tables with its slot
-    number
-  NFSv4.1: Simplify struct nfs4_sequence_args too
-  NFSv4.1: Simplify slot allocation
-  NFSv4.1: Clean up nfs4_free_slot
-  NFSv4.1: Ensure that the client tracks the server
-    target_highest_slotid
-  NFSv4.1: Reset the sequence number for slots that have been
-    deallocated
-  NFSv4.1: Fix nfs4_callback_recallslot to work with dynamic slot
-    allocation
-  NFSv4.1: Don't confuse target_highest_slotid and max_slots in
-    cb_recall_slot
-  NFSv4.1: Allow the server to recall all but one slot
-  NFSv4.1: Support dynamic resizing of the session slot table
-  NFSv4.1: Allow SEQUENCE to resize the slot table on the fly
-  NFSv4.1: Remove the state manager code to resize the slot table
-  NFSv4.1: CB_RECALL_SLOT must schedule a sequence op after updating
-    targets
-  NFSv4.1: If slot allocation fails due to OOM, retry more quickly
-  NFSv4.1: Clean up session draining
-  NFSv4: Move nfs4_wait_clnt_recover and
-    nfs4_client_recover_expired_lease
-  NFSv4.1: Cleanup move session slot management to fs/nfs/nfs4session.c
-  Remove unused function slot_idx
-  NFSv4.1: Move slot table and session struct definitions to
-    nfs4session.h
-  NFSv4.1: Set the maximum slot table size to 1024 slots
-
- fs/nfs/Makefile            |   2 +-
- fs/nfs/callback.h          |   4 +-
- fs/nfs/callback_proc.c     |  16 +-
- fs/nfs/callback_xdr.c      |   5 +-
- fs/nfs/internal.h          |  23 ---
- fs/nfs/nfs4_fs.h           |  21 +--
- fs/nfs/nfs4client.c        |   1 +
- fs/nfs/nfs4filelayout.c    |   1 +
- fs/nfs/nfs4filelayoutdev.c |   1 +
- fs/nfs/nfs4proc.c          | 418 +++++--------------------------------------
- fs/nfs/nfs4session.c       | 436 +++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/nfs4session.h       | 136 ++++++++++++++
- fs/nfs/nfs4state.c         | 104 +++++------
- fs/nfs/nfs4xdr.c           |  38 ++--
- fs/nfs/super.c             |   1 +
- include/linux/nfs_fs_sb.h  |  47 -----
- include/linux/nfs_xdr.h    |  13 +-
- 17 files changed, 710 insertions(+), 557 deletions(-)
- create mode 100644 fs/nfs/nfs4session.c
- create mode 100644 fs/nfs/nfs4session.h
+This too will need to be rebased on top of nfsd-next tree. This
+hashtable has also been turned into a rbtree for the same reasons as the
+conf_str_hashtbl.
 
 -- 
-1.7.11.7
-
+Jeff Layton <jlayton@redhat.com>
