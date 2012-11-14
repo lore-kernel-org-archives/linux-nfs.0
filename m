@@ -1,66 +1,115 @@
-From: Pavel Roskin <proski-mXXj517/zsQ@public.gmane.org>
-Subject: Re: [ath9k-devel] [PATCH net-next 00/21] treewide: Use
- consistent api style for address testing
-Date: Fri, 19 Oct 2012 11:55:17 -0400
-Message-ID: <20121019115517.7b8514a8@mj>
-References: <cover.1350618006.git.joe@perches.com>
-	<1350630254.2293.183.camel@edumazet-glaptop>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: linux-mips-6z/3iImG2C8G8FEW9MqTrA@public.gmane.org, b.a.t.m.a.n-ZwoEplunGu2X36UT3dwllkB+6BGkLq7r@public.gmane.org,
-	linux-doc@vger.kernel.org, brcm80211-dev-list-dY08KVG/lbpWk0Htik3J/w@public.gmane.org,
-	users-poMEt7QlJxcwIE2E9O76wjtx2kNaKg5H@public.gmane.org, linux-sctp@vger.kernel.org,
-	devel-s9riP+hp16TNLxjTenLetw@public.gmane.org, dev@openvswitch.org,
-	linux-s390@vger.kernel.org, wimax-BPSAo7wm5JOHVYUYWc+uSQ@public.gmane.org,
-	linux-scsi@vger.kernel.org, linux-rdma@vger.kernel.org,
-	bridge@lists.linux-foundation.org, lvs-devel@vger.kernel.org,
-	coreteam@netfilter.org, b43-dev@lists.infradead.org,
-	cbe-oss-dev@lists.ozlabs.org, devel@driverdev.osuosl.org,
-	user-mode-linux-devel@lists.sourceforge.net,
-	devicetree-discuss@lists.ozlabs.org,
-	davinci-linux-open-source-VycZQUHpC/PFrsHnngEfi1aTQe2KTcn/@public.gmane.org, netfilter@vger.kernel.org,
-	user-mode-linux-user@lists.sourceforge.net,
-	linux-arm-kernel@lists.infradead.org, linux-nfs@vger.kernel.org,
-	linux-parisc@vger.kernel.org, netdev@vger.kernel.org,
-	linux-usb@vger.kernel.org, linux-wireless@vger.kernel.org,
-	l
-To: Eric Dumazet <eric.dumazet@gmail.com>
-Return-path: <dev-bounces@openvswitch.org>
-In-Reply-To: <1350630254.2293.183.camel@edumazet-glaptop>
-List-Unsubscribe: <http://openvswitch.org/mailman/options/dev>,
-	<mailto:dev-request@openvswitch.org?subject=unsubscribe>
-List-Archive: <http://openvswitch.org/pipermail/dev>
-List-Post: <mailto:dev@openvswitch.org>
-List-Help: <mailto:dev-request@openvswitch.org?subject=help>
-List-Subscribe: <http://openvswitch.org/mailman/listinfo/dev>,
-	<mailto:dev-request@openvswitch.org?subject=subscribe>
-Sender: dev-bounces@openvswitch.org
-Errors-To: dev-bounces@openvswitch.org
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from mailhub.sw.ru ([195.214.232.25]:7807 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1423069Ab2KNPTm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Nov 2012 10:19:42 -0500
+Subject: [PATCH v2 15/15] nfsd: make laundromat network namespace aware
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, devel@openvz.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, jlayton@redhat.com
+Date: Wed, 14 Nov 2012 18:22:17 +0300
+Message-ID: <20121114152217.4708.92548.stgit@localhost.localdomain>
+In-Reply-To: <20121114152018.4708.63125.stgit@localhost.localdomain>
+References: <20121114152018.4708.63125.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 19 Oct 2012 09:04:14 +0200
-Eric Dumazet <eric.dumazet@gmail.com> wrote:
+This patch moves laundromat_work to nfsd per-net context, thus allowing to run
+multiple laundries.
 
-> Yes they are some names discrepancies, thats a big deal.
-> 
-> And we have alloc_skb() / kfree_skb() / skb_clone() 
-> 
-> Why not skb_alloc() / skb_free() / skb_clone() ?
-> 
-> Some people actually know current code by name of functions, they dont
-> want to change their mind and having to grep include files and git log
-> to learn the new names of an old function, especially when traveling
-> and using a laptop.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfsd/netns.h     |    2 ++
+ fs/nfsd/nfs4state.c |   21 +++++++++++++--------
+ 2 files changed, 15 insertions(+), 8 deletions(-)
 
-I agree.
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index a356ea3..227b93e 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -79,6 +79,8 @@ struct nfsd_net {
+ 	 */
+ 	struct list_head client_lru;
+ 	struct list_head close_lru;
++
++	struct delayed_work laundromat_work;
+ };
+ 
+ extern int nfsd_net_id;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 07f10fb..18d2646 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3176,7 +3176,7 @@ nfsd4_end_grace(struct nfsd_net *nn)
+ }
+ 
+ static time_t
+-nfs4_laundromat(void)
++nfs4_laundromat(struct nfsd_net *nn)
+ {
+ 	struct nfs4_client *clp;
+ 	struct nfs4_openowner *oo;
+@@ -3185,7 +3185,6 @@ nfs4_laundromat(void)
+ 	time_t cutoff = get_seconds() - nfsd4_lease;
+ 	time_t t, clientid_val = nfsd4_lease;
+ 	time_t u, test_val = nfsd4_lease;
+-	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
+ 
+ 	nfs4_lock_state();
+ 
+@@ -3251,16 +3250,19 @@ nfs4_laundromat(void)
+ 
+ static struct workqueue_struct *laundry_wq;
+ static void laundromat_main(struct work_struct *);
+-static DECLARE_DELAYED_WORK(laundromat_work, laundromat_main);
+ 
+ static void
+-laundromat_main(struct work_struct *not_used)
++laundromat_main(struct work_struct *laundry)
+ {
+ 	time_t t;
++	struct delayed_work *dwork = container_of(laundry, struct delayed_work,
++						  work);
++	struct nfsd_net *nn = container_of(dwork, struct nfsd_net,
++					   laundromat_work);
+ 
+-	t = nfs4_laundromat();
++	t = nfs4_laundromat(nn);
+ 	dprintk("NFSD: laundromat_main - sleeping for %ld seconds\n", t);
+-	queue_delayed_work(laundry_wq, &laundromat_work, t*HZ);
++	queue_delayed_work(laundry_wq, &nn->laundromat_work, t*HZ);
+ }
+ 
+ static inline __be32 nfs4_check_fh(struct svc_fh *fhp, struct nfs4_ol_stateid *stp)
+@@ -4791,6 +4793,8 @@ static int nfs4_state_start_net(struct net *net)
+ 	INIT_LIST_HEAD(&nn->client_lru);
+ 	INIT_LIST_HEAD(&nn->close_lru);
+ 
++	INIT_DELAYED_WORK(&nn->laundromat_work, laundromat_main);
++
+ 	return 0;
+ 
+ err_sessionid:
+@@ -4875,7 +4879,8 @@ nfs4_state_start(void)
+ 	ret = nfsd4_create_callback_queue();
+ 	if (ret)
+ 		goto out_free_laundry;
+-	queue_delayed_work(laundry_wq, &laundromat_work, nfsd4_grace * HZ);
++
++	queue_delayed_work(laundry_wq, &nn->laundromat_work, nfsd4_grace * HZ);
+ 	set_max_delegations();
+ 	return 0;
+ out_free_laundry:
+@@ -4918,7 +4923,7 @@ nfs4_state_shutdown(void)
+ 	struct net *net = &init_net;
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
+-	cancel_delayed_work_sync(&laundromat_work);
++	cancel_delayed_work_sync(&nn->laundromat_work);
+ 	destroy_workqueue(laundry_wq);
+ 	locks_end_grace(&nn->nfsd4_manager);
+ 	nfs4_lock_state();
 
-Also, it makes sense to introduce a more consistent name for a function
-when it's improved in some way and the callers need to be adjusted or
-re-checked.
-
-That way, the old name can be phased out as the code is made compatible
-with the new function.
-
--- 
-Regards,
-Pavel Roskin
