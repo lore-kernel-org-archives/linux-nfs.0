@@ -1,93 +1,166 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:40465 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:13564 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755875Ab2KZURK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Nov 2012 15:17:10 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 21/28] NFSv4.1: CB_RECALL_SLOT must schedule a sequence op after updating targets
-Date: Mon, 26 Nov 2012 15:16:38 -0500
-Message-Id: <1353961005-63874-22-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1353961005-63874-21-git-send-email-Trond.Myklebust@netapp.com>
-References: <1353961005-63874-1-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-2-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-3-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-4-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-5-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-6-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-7-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-8-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-9-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-10-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-11-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-12-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-13-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-14-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-15-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-16-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-17-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-18-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-19-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-20-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-21-git-send-email-Trond.Myklebust@netapp.com>
+	id S1752655Ab2KNPSi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Nov 2012 10:18:38 -0500
+Subject: [PATCH v2 02/15] nfsd: make nfs4_client network namespace dependent
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, devel@openvz.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, jlayton@redhat.com
+Date: Wed, 14 Nov 2012 18:21:10 +0300
+Message-ID: <20121114152110.4708.27500.stgit@localhost.localdomain>
+In-Reply-To: <20121114152018.4708.63125.stgit@localhost.localdomain>
+References: <20121114152018.4708.63125.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-RFC5661 requires us to make sure that the server knows we've updated
-our slot table size by sending at least one SEQUENCE op containing the
-new 'highest_slotid' value.
-We can do so using the 'CHECK_LEASE' functionality of the state
-manager.
+And use it's net where possible.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 ---
- fs/nfs/callback_proc.c | 1 +
- fs/nfs/nfs4_fs.h       | 1 +
- fs/nfs/nfs4state.c     | 7 +++++++
- 3 files changed, 9 insertions(+)
+ fs/nfsd/nfs4callback.c |    2 +-
+ fs/nfsd/nfs4recover.c  |    9 +++------
+ fs/nfsd/nfs4state.c    |   15 +++++++++------
+ fs/nfsd/state.h        |    1 +
+ 4 files changed, 14 insertions(+), 13 deletions(-)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 8610bd1..f99faad 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -570,6 +570,7 @@ __be32 nfs4_callback_recallslot(struct cb_recallslotargs *args, void *dummy,
- 	status = htonl(NFS4_OK);
- 
- 	nfs41_set_target_slotid(fc_tbl, args->crsa_target_highest_slotid);
-+	nfs41_server_notify_target_slotid_update(cps->clp);
- out:
- 	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
- 	return status;
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index fa1a055..0a109ec 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -334,6 +334,7 @@ struct rpc_cred *nfs4_get_exchange_id_cred(struct nfs_client *clp);
- int nfs41_discover_server_trunking(struct nfs_client *clp,
- 			struct nfs_client **, struct rpc_cred *);
- extern void nfs4_schedule_session_recovery(struct nfs4_session *, int);
-+extern void nfs41_server_notify_target_slotid_update(struct nfs_client *clp);
- #else
- static inline void nfs4_schedule_session_recovery(struct nfs4_session *session, int err)
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 7bb187a..8bbe873 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -663,7 +663,7 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
+ 		.to_retries	= 0,
+ 	};
+ 	struct rpc_create_args args = {
+-		.net		= &init_net,
++		.net		= clp->net,
+ 		.address	= (struct sockaddr *) &conn->cb_addr,
+ 		.addrsize	= conn->cb_addrlen,
+ 		.saddress	= (struct sockaddr *) &conn->cb_saddr,
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index b03b6aa..9881bca 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -859,8 +859,7 @@ nfsd4_cld_create(struct nfs4_client *clp)
  {
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 3940cd4..55a3e8c 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1904,6 +1904,13 @@ void nfs4_schedule_session_recovery(struct nfs4_session *session, int err)
+ 	int ret;
+ 	struct cld_upcall *cup;
+-	/* FIXME: determine net from clp */
+-	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 	struct cld_net *cn = nn->cld_net;
+ 
+ 	/* Don't upcall if it's already stored */
+@@ -897,8 +896,7 @@ nfsd4_cld_remove(struct nfs4_client *clp)
+ {
+ 	int ret;
+ 	struct cld_upcall *cup;
+-	/* FIXME: determine net from clp */
+-	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 	struct cld_net *cn = nn->cld_net;
+ 
+ 	/* Don't upcall if it's already removed */
+@@ -935,8 +933,7 @@ nfsd4_cld_check(struct nfs4_client *clp)
+ {
+ 	int ret;
+ 	struct cld_upcall *cup;
+-	/* FIXME: determine net from clp */
+-	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 	struct cld_net *cn = nn->cld_net;
+ 
+ 	/* Don't upcall if one was already stored during this grace pd */
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 743c622..9b4df00 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1263,10 +1263,9 @@ same_creds(struct svc_cred *cr1, struct svc_cred *cr2)
+ 	return 0 == strcmp(cr1->cr_principal, cr2->cr_principal);
  }
- EXPORT_SYMBOL_GPL(nfs4_schedule_session_recovery);
  
-+void nfs41_server_notify_target_slotid_update(struct nfs_client *clp)
-+{
-+	/* Use CHECK_LEASE to ping the server with a SEQUENCE */
-+	set_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state);
-+	nfs4_schedule_state_manager(clp);
-+}
-+
- static void nfs4_reset_all_state(struct nfs_client *clp)
+-static void gen_clid(struct nfs4_client *clp)
++static void gen_clid(struct nfs4_client *clp, struct nfsd_net *nn)
  {
- 	if (test_and_set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state) == 0) {
--- 
-1.7.11.7
+ 	static u32 current_clientid = 1;
+-	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
+ 
+ 	clp->cl_clientid.cl_boot = nn->boot_time;
+ 	clp->cl_clientid.cl_id = current_clientid++; 
+@@ -1305,6 +1304,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
+ 	struct nfs4_client *clp;
+ 	struct sockaddr *sa = svc_addr(rqstp);
+ 	int ret;
++	struct net *net = SVC_NET(rqstp);
+ 
+ 	clp = alloc_client(name);
+ 	if (clp == NULL)
+@@ -1335,6 +1335,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
+ 	rpc_copy_addr((struct sockaddr *) &clp->cl_addr, sa);
+ 	gen_confirm(clp);
+ 	clp->cl_cb_session = NULL;
++	clp->net = net;
+ 	return clp;
+ }
+ 
+@@ -1471,7 +1472,7 @@ gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, struct svc_r
+ 	else
+ 		goto out_err;
+ 
+-	conn->cb_addrlen = rpc_uaddr2sockaddr(&init_net, se->se_callback_addr_val,
++	conn->cb_addrlen = rpc_uaddr2sockaddr(clp->net, se->se_callback_addr_val,
+ 					    se->se_callback_addr_len,
+ 					    (struct sockaddr *)&conn->cb_addr,
+ 					    sizeof(conn->cb_addr));
+@@ -1619,6 +1620,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 	nfs4_verifier		verf = exid->verifier;
+ 	struct sockaddr		*sa = svc_addr(rqstp);
+ 	bool	update = exid->flags & EXCHGID4_FLAG_UPD_CONFIRMED_REC_A;
++	struct nfsd_net		*nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+ 
+ 	rpc_ntop(sa, addr_str, sizeof(addr_str));
+ 	dprintk("%s rqstp=%p exid=%p clname.len=%u clname.data=%p "
+@@ -1701,7 +1703,7 @@ out_new:
+ 	}
+ 	new->cl_minorversion = 1;
+ 
+-	gen_clid(new);
++	gen_clid(new, nn);
+ 	add_to_unconfirmed(new);
+ out_copy:
+ 	exid->clientid.cl_boot = new->cl_clientid.cl_boot;
+@@ -2229,7 +2231,8 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	nfs4_verifier		clverifier = setclid->se_verf;
+ 	struct nfs4_client	*conf, *unconf, *new;
+ 	__be32 			status;
+-	
++	struct nfsd_net		*nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
++
+ 	/* Cases below refer to rfc 3530 section 14.2.33: */
+ 	nfs4_lock_state();
+ 	conf = find_confirmed_client_by_name(&clname);
+@@ -2258,7 +2261,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		/* case 1: probable callback update */
+ 		copy_clid(new, conf);
+ 	else /* case 4 (new client) or cases 2, 3 (client reboot): */
+-		gen_clid(new);
++		gen_clid(new, nn);
+ 	new->cl_minorversion = 0;
+ 	gen_callback(new, setclid, rqstp);
+ 	add_to_unconfirmed(new);
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 029217a..ca8ee8c 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -283,6 +283,7 @@ struct nfs4_client {
+ 	unsigned long		cl_cb_slot_busy;
+ 	struct rpc_wait_queue	cl_cb_waitq;	/* backchannel callers may */
+ 						/* wait here for slots */
++	struct net		*net;
+ };
+ 
+ static inline void
 
