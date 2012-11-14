@@ -1,89 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47406 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:57496 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1422661Ab2KNOZB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Nov 2012 09:25:01 -0500
-Date: Wed, 14 Nov 2012 09:24:58 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: David Quigley <dpquigl@davequigley.com>
-Cc: Steve Dickson <steved@redhat.com>,
-        "David P. Quigley" <selinux@davequigley.com>,
-        trond.myklebust@netapp.com, sds@tycho.nsa.gov,
-        linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
-        linux-security-module@vger.kernel.org
-Subject: Re: Labeled NFS [v5]
-Message-ID: <20121114142458.GF23604@fieldses.org>
-References: <50A116F0.5050404@davequigley.com>
- <20121112160959.GK30713@fieldses.org>
- <50A16269.4060601@RedHat.com>
- <50A1A4EE.7030507@davequigley.com>
- <50A24345.8080309@RedHat.com>
- <50A31EF5.1050801@davequigley.com>
- <20121114134535.GD23604@fieldses.org>
- <624cc90c1bf726d8ff1a1ea0ace5f50f@countercultured.net>
- <20121114135939.GE23604@fieldses.org>
- <80f36fef2a58eb538bce28daba3a862a@countercultured.net>
+	id S1753871Ab2KNPDn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Nov 2012 10:03:43 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "tigran.mkrtchyan@desy.de" <tigran.mkrtchyan@desy.de>
+CC: DENIEL Philippe <philippe.deniel@cea.fr>,
+        "Matt W. Benjamin" <matt@linuxbox.com>,
+        Tomasz Chmielewski <mangoo@wpkg.org>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: xattr support in NFS?
+Date: Wed, 14 Nov 2012 15:03:40 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092DFB2C@SACEXCMBX04-PRD.hq.netapp.com>
+References: <939474821.100.1352749795732.JavaMail.root@thunderbeast.private.linuxbox.com>
+	 <50A1FCB2.9090502@cea.fr>
+	 <CAGue13o69+M4zDrHj3Cs5dSJz_bT49UPoBO=QKr+JCnXwYgcqg@mail.gmail.com>
+In-Reply-To: <CAGue13o69+M4zDrHj3Cs5dSJz_bT49UPoBO=QKr+JCnXwYgcqg@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <80f36fef2a58eb538bce28daba3a862a@countercultured.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 14, 2012 at 09:04:18AM -0500, David Quigley wrote:
-> On 11/14/2012 08:59, J. Bruce Fields wrote:
-> >On Wed, Nov 14, 2012 at 08:50:17AM -0500, David Quigley wrote:
-> >>On 11/14/2012 08:45, J. Bruce Fields wrote:
-> >>>On Tue, Nov 13, 2012 at 11:32:53PM -0500, Dave Quigley wrote:
-> >>>>Ok so if you go to http://www.selinuxproject.org/git you will
-> >>see a
-> >>>>repo for lnfs and lnfs-patchset. The instructions at
-> >>>>http://www.selinuxproject.org/page/Labeled_NFS give you a better
-> >>>>indication on how to pull the trees. I've attached a patch for NFS
-> >>>>utils which gives support for security_label/nosecurity_label in
-> >>>>your /etc/exports file.
-> >>>
-> >>>Do we need an export option?  Is there any reason not to make the
-> >>>feature available whenever there's support available for it?
-> >>
-> >>I guess we could build it in but I figured an export option allowed
-> >>someone to turn off security labeling support if they didn't want it
-> >>on that export. What happens to clients when the server returns a
-> >>cap that they don't support? Do they mask the bits out?
-> >
-> >Yeah, they should just ignore it.
-> >
-> >While this is still experimental it's still nice to have a way to
-> >turn
-> >this on and off at runtime so people can experiment without having to
-> >have it on for everyone all the time.  But
-> >nfsd_supported_minorversion
-> >should be sufficient for that.
-> >
-> >(I don't think your patches actually dealt yet with the fact that
-> >this
-> >is part of minor version 2?  Another for the todo list.)
-> >
-> >--b.
-> 
-> If we use nfsd_supported_minorversion which I'm guessing is an
-> export option
-
-That's just a variable in the code.  It's controlled by
-/proc/fs/nfsd/versions.
-
-> what happens if someone wants to use other 4.2
-> features but not labeling?
-
-We'll cross that bridge when we come to it, maybe by adding some new
-global paramater.
-
-There's no reason this really needs to be per-export, is there?
-
---b.
-
-> I'll switch it over if you guys want it
-> done that way, I think though that this provides more flexibility.
-> Although anything that makes me carry around fewer patches is good
-> in my book.
-> 
-> Dave
+T24gV2VkLCAyMDEyLTExLTE0IGF0IDExOjQ3ICswMTAwLCBUaWdyYW4gTWtydGNoeWFuIHdyb3Rl
+Og0KPiBUaGF0J3MgYmFkIG5ld3MuLi4uIEN1cnJlbnRseSB3ZSB1c2UgJ21hZ2ljIGZpbGVzJyB0
+byBzZXQvZ2V0IHVzZXINCj4gc3BlY2lmaWMgbWV0YWRhdGEgbGlrZSBudW1iZXIgb2YgZXZlbnRz
+LCBzcGFjZSByZXNlcnZhdGlvbiAgICBhbmQNCj4gZGlmZmVyZW50IGZpbGUgcmV0ZW50aW9uIHBv
+bGljaWVzLiBUaGUgaG9wZSB3YXMgdGhhdCBhbGwgY291bGQgYmUgZG9uZQ0KPiB3aXRoIG5hbWVk
+IGF0dHJpYnV0ZXMuDQo+DQo+ICBUaWdyYW4uDQo+ICANCg0KVGhlIHNldHRpbmcgYW5kIHF1ZXJ5
+aW5nIG9mIHJldGVudGlvbiBwb2xpY2llcyBpcyBhbHJlYWR5IGNvdmVyZWQgaW4gdGhlDQpORlN2
+NC4xIHByb3RvY29sIHdpdGhvdXQgYW55IG5lZWQgZm9yIGFueSBhZGRpdGlvbnMuIFNwYWNlIHJl
+c2VydmF0aW9uDQppcyBhbHJlYWR5IGNvdmVyZWQgaW4gTkZTdjQuMiAoYXMgYXJlIHNlY3VyaXR5
+IGxhYmVscyAtIGFub3RoZXIgY29tbW9uDQpob2JieS1ob3JzZSBmb3IgeGF0dHIgYWR2b2NhdGVz
+KS4gV2h5IGRvbid0IHlvdSBpbXBsZW1lbnQgdGhvc2UgaW5zdGVhZA0Kb2Ygd2lzaGluZyBmb3Ig
+YSBjb21wbGV0ZWx5IGRpZmZlcmVudCB3YXkgb2YgZG9pbmcgdGhlIHNhbWUgdGhpbmc/DQoNCllv
+dXIgYXJndW1lbnQgZGVtb25zdHJhdGVzIHByZWNpc2VseSB3aHkgd2Ugc2hvdWxkIG5ldmVyIGRv
+IHhhdHRycyBvdmVyDQpORlMuIEl0IG1ha2VzIGl0IHdheSB0b28gZWFzeSB0byBnbyBvZmYgYW5k
+IGludmVudCB5b3VyIG93biBwcml2YXRlIGFuZA0Kbm9uLXN0YW5kYXJkIHByb3RvY29sIGZvciBk
+b2luZyBpb2N0bCgpLWxpa2UgUlBDIGNhbGxzLg0KDQo+IE9uIFR1ZSwgTm92IDEzLCAyMDEyIGF0
+IDg6NTQgQU0sIERFTklFTCBQaGlsaXBwZQ0KPiA8cGhpbGlwcGUuZGVuaWVsQGNlYS5mcj4gd3Jv
+dGU6DQo+ICAgICAgICAgQSBmZXcgeWVhcnMgYWdvLCBTR0kgdHJpZWQgdG8gcHJvbW90ZSAiTkZT
+MyBYQVRUUiIsIGFuDQo+ICAgICAgICAgZXh0ZW5zaW9uIHRvIE5GU3YzIHRvIGFkZCB4YXR0ciBz
+dXBwb3J0LiBJdCByb3VnaGx5IGFkZGVkIDMNCj4gICAgICAgICBmdW5jdGlvbnMgdG8gdGhlIHBy
+b3RvY29sIChHRVRYQVRUUiwgU0VUWEFUVFIsIExJU1RYQVRUUiksIGluDQo+ICAgICAgICAgYSBz
+aW1pbGFyIHdheSBhcyB3aGF0IDlwLjIwMDBMIGRvZXMuIE5vdGhpbmcgYnV0IElSSVggaGFkIHRo
+aXMNCj4gICAgICAgICBORlN2MyBmZWF0dXJlLiBBcyBmYXIgYXMgSSBrbm93LCBpdCByZW1haW5l
+ZCBxdWl0ZSBleG90aWMgYW5kDQo+ICAgICAgICAgc3RheWVkIGEgU0dJJ3MgdGhpbmcuDQo+ICAg
+ICAgICAgDQo+ICAgICAgICAgICAgUGhpbGlwcGUNCj4gICAgICAgICANCj4gICAgICAgICBNYXR0
+IFcuIEJlbmphbWluIGEgw6ljcml0IDoNCj4gICAgICAgICANCj4gICAgICAgICAgICAgICAgIENh
+biB5b3UgcmVzdGF0ZSByZWFzb25pbmcgd2h5IGl0IHdpbGwgbmV2ZXIgZG8gc28sIGFuZA0KPiAg
+ICAgICAgICAgICAgICAgd2hldGhlciB0aGlzIGlzIHRoZSBzYW1lIGFzIHNheWluZyBpdCB3aWxs
+IG5ldmVyDQo+ICAgICAgICAgICAgICAgICBpbXBsZW1lbnQgbmFtZWQgYXR0cmlidXRlcz8NCj4g
+ICAgICAgICAgICAgICAgIA0KPiAgICAgICAgICAgICAgICAgVGhhbmtzLA0KPiAgICAgICAgICAg
+ICAgICAgDQo+ICAgICAgICAgICAgICAgICBNYXR0DQo+ICAgICAgICAgICAgICAgICANCj4gICAg
+ICAgICAgICAgICAgIC0tLS0tICJUcm9uZCBNeWtsZWJ1c3QiIDxUcm9uZC5NeWtsZWJ1c3RAbmV0
+YXBwLmNvbT4NCj4gICAgICAgICAgICAgICAgIHdyb3RlOg0KPiAgICAgICAgICAgICAgICAgDQo+
+ICAgICAgICAgICAgICAgICAgIA0KPiAgICAgICAgICAgICAgICAgICAgICAgICBOby4gV2Ugd2ls
+bCBuZXZlciBzdXBwb3J0IHhhdHRycyBvdmVyIE5GUy4NCj4gICAgICAgICAgICAgICAgICAgICAg
+ICAgDQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICANCj4gICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgIEZyb206IGxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmcN
+Cj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBbbWFpbHRvOmxpbnV4LW5mcy0NCj4g
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBvd25lckB2Z2VyLmtlcm5lbC5vcmddIE9u
+IEJlaGFsZiBPZg0KPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIFRvbWFzeiBDaG1p
+ZWxld3NraQ0KPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIFNlbnQ6IE1vbmRheSwg
+Tm92ZW1iZXIgMTIsIDIwMTIgMTA6MTQNCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICBBTQ0KPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIFRvOiBsaW51eC1uZnNAdmdl
+ci5rZXJuZWwub3JnDQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgU3ViamVjdDog
+eGF0dHIgc3VwcG9ydCBpbiBORlM/DQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+DQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgRG9lcyBMaW51eCBzdXBwb3J0IHhh
+dHRyIGluIE5GUz8NCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICANCj4gICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICBJRiB0cmllcyB1c2luZyBpdCBpbiBib3RoIE5GUzMg
+YW5kDQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgTkZTNCB1bmRlciBEZWJpYW4g
+TGVubnkgKDIuNi4zMiwNCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAN
+Cj4gICAgICAgICAgICAgICAgICAgICAgICAgYm90aA0KPiAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgDQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgc2VydmVyIGFuZCBjbGll
+bnQpLCB3aXRob3V0IHN1Y2Nlc3MuDQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+DQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIyBzZXRmYXR0ciAtbiB1c2VyLmNv
+bW1lbnQgLXYgInRoaXMgaXMNCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBhIGNv
+bW1lbnQiIC9tbnQvbmZzDQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgc2V0ZmF0
+dHI6IC9tbnQvbmZzOiBPcGVyYXRpb24gbm90DQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgc3VwcG9ydGVkDQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgDQo+ICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgDQo+ICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgLS0NCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBUb21hc3ogQ2ht
+aWVsZXdza2kNCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBodHRwOi8vYmxvZy53
+cGtnLm9yZw0KPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIC0tDQo+ICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNl
+bmQNCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB0aGUgbGluZSAidW5zdWJzY3Jp
+YmUgbGludXgtbmZzIg0KPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIA0K
+PiAgICAgICAgICAgICAgICAgICAgICAgICBpbiB0aGUNCj4gICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgIA0KPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGJvZHkgb2YgYSBtZXNz
+YWdlIHRvDQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgbWFqb3Jkb21vQHZnZXIu
+a2VybmVsLm9yZyBNb3JlDQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgbWFqb3Jk
+b21vIGluZm8NCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICANCj4gICAg
+ICAgICAgICAgICAgICAgICAgICAgYXQNCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgIA0K
+PiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcv
+bWFqb3Jkb21vLWluZm8uaHRtbA0KPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgIA0KPiAgICAgICAgICAgICAgICAgICAgICAgICBO77+977+977+977+977+9cu+/ve+/vXnv
+v73vv73vv71i77+9WO+/ve+/vcendu+/vV7vv70p3rp7Lm7vv70NCj4gICAgICAgICAgICAgICAg
+ICAgICAgICAgK++/ve+/ve+/ve+/vXvvv73vv73vv70i77+977+9Xm7vv71y77+977+977+9eu+/
+ve+/ve+/vWjvv73vv73vv73vv70m77+977+977+9R++/ve+/ve+/vWjvv70o77+96ZqODQo+ICAg
+ICAgICAgICAgICAgICAgICAgICAgIO+/vd2iaiLvv73vv73vv71t77+977+977+977+977+9eu+/
+vd6W77+977+977+9Zu+/ve+/ve+/vWjvv73vv73vv71+77+9be+/vQ0KPiAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgDQo+ICAgICAgICAgICAgICAgICANCj4gICAgICAgICAgICAgICAgICAg
+DQo+ICAgICAgICAgDQo+ICAgICAgICAgLS0NCj4gICAgICAgICBUbyB1bnN1YnNjcmliZSBmcm9t
+IHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUNCj4gICAgICAgICBsaW51eC1u
+ZnMiIGluDQo+ICAgICAgICAgdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2Vy
+Lmtlcm5lbC5vcmcNCj4gICAgICAgICBNb3JlIG1ham9yZG9tbyBpbmZvIGF0DQo+ICAgICAgICAg
+IGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KPiAgICAgICAgIA0K
+PiANCj4gDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWlu
+ZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20N
+Cg==
