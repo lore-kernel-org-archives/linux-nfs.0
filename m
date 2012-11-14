@@ -1,244 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from p02c12o148.mxlogic.net ([208.65.145.81]:36355 "EHLO
-	p02c12o148.mxlogic.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753785Ab2KSRDF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Nov 2012 12:03:05 -0500
-From: Peter Staubach <pstaubach@exagrid.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Mon, 19 Nov 2012 11:52:31 -0500
-Subject: RE: [RFC PATCH 1/4] NFS: Add an ioctl to allow applications limited
- control over caching
-Message-ID: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC0C1D2D44D6@IT-1874.Isys.com>
-References: <1353033088-47163-1-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1353033088-47163-1-git-send-email-Trond.Myklebust@netapp.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from countercultured.net ([209.51.175.25]:50446 "HELO
+	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1752342Ab2KNOBh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Nov 2012 09:01:37 -0500
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8;
+ format=flowed
+Date: Wed, 14 Nov 2012 09:01:36 -0500
+From: David Quigley <dpquigl@davequigley.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Steve Dickson <steved@redhat.com>,
+        "David P. Quigley" <selinux@davequigley.com>,
+        <trond.myklebust@netapp.com>, <sds@tycho.nsa.gov>,
+        <linux-nfs@vger.kernel.org>, <selinux@tycho.nsa.gov>,
+        <linux-security-module@vger.kernel.org>
+Subject: Re: Labeled NFS [v5]
+In-Reply-To: <20121114135939.GE23604@fieldses.org>
+References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com>
+ <20121112152335.GH30713@fieldses.org> <50A116F0.5050404@davequigley.com>
+ <20121112160959.GK30713@fieldses.org> <50A16269.4060601@RedHat.com>
+ <50A1A4EE.7030507@davequigley.com> <50A24345.8080309@RedHat.com>
+ <50A31EF5.1050801@davequigley.com> <20121114134535.GD23604@fieldses.org>
+ <624cc90c1bf726d8ff1a1ea0ace5f50f@countercultured.net>
+ <20121114135939.GE23604@fieldses.org>
+Message-ID: <6fc201d796587ac166a8b45467b087cc@countercultured.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi.
+On 11/14/2012 08:59, J. Bruce Fields wrote:
+> On Wed, Nov 14, 2012 at 08:50:17AM -0500, David Quigley wrote:
+>> On 11/14/2012 08:45, J. Bruce Fields wrote:
+>> >On Tue, Nov 13, 2012 at 11:32:53PM -0500, Dave Quigley wrote:
+>> >>Ok so if you go to http://www.selinuxproject.org/git you will see 
+>> a
+>> >>repo for lnfs and lnfs-patchset. The instructions at
+>> >>http://www.selinuxproject.org/page/Labeled_NFS give you a better
+>> >>indication on how to pull the trees. I've attached a patch for NFS
+>> >>utils which gives support for security_label/nosecurity_label in
+>> >>your /etc/exports file.
+>> >
+>> >Do we need an export option?  Is there any reason not to make the
+>> >feature available whenever there's support available for it?
+>>
+>> I guess we could build it in but I figured an export option allowed
+>> someone to turn off security labeling support if they didn't want it
+>> on that export. What happens to clients when the server returns a
+>> cap that they don't support? Do they mask the bits out?
+>
+> Yeah, they should just ignore it.
+>
+> While this is still experimental it's still nice to have a way to 
+> turn
+> this on and off at runtime so people can experiment without having to
+> have it on for everyone all the time.  But 
+> nfsd_supported_minorversion
+> should be sufficient for that.
+>
+> (I don't think your patches actually dealt yet with the fact that 
+> this
+> is part of minor version 2?  Another for the todo list.)
+>
+> --b.
 
-What application is having a problem which can be addressed via this support and what is the problem?
-
-	Thanx...
-
-		ps
-
-
------Original Message-----
-From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Trond Myklebust
-Sent: Thursday, November 15, 2012 9:31 PM
-To: linux-nfs@vger.kernel.org
-Subject: [RFC PATCH 1/4] NFS: Add an ioctl to allow applications limited control over caching
-
-Add an ioctl that allows an application to force the NFS client to revalidate the attributes and/or data for a regular file, or directory.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/Makefile   |  2 +-
- fs/nfs/dir.c      |  4 +++
- fs/nfs/file.c     |  4 +++
- fs/nfs/internal.h |  3 ++
- fs/nfs/ioctl.c    | 86 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/ioctl.h    | 35 ++++++++++++++++++++++
- fs/nfs/nfs4file.c |  4 +++
- 7 files changed, 137 insertions(+), 1 deletion(-)  create mode 100644 fs/nfs/ioctl.c  create mode 100644 fs/nfs/ioctl.h
-
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile index b7db608..581db7a 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -7,7 +7,7 @@ obj-$(CONFIG_NFS_FS) += nfs.o
- nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o \
- 			   direct.o pagelist.o read.o symlink.o unlink.o \
- 			   write.o namespace.o mount_clnt.o \
--			   dns_resolve.o cache_lib.o
-+			   dns_resolve.o cache_lib.o ioctl.o
- nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
- nfs-$(CONFIG_SYSCTL)	+= sysctl.o
- nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c index ce8cb92..10ad886 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -58,6 +58,10 @@ const struct file_operations nfs_dir_operations = {
- 	.open		= nfs_opendir,
- 	.release	= nfs_closedir,
- 	.fsync		= nfs_fsync_dir,
-+	.unlocked_ioctl = nfs_ioctl,
-+#ifdef CONFIG_COMPAT
-+	.compat_ioctl	= nfs_ioctl,
-+#endif
- };
- 
- const struct address_space_operations nfs_dir_aops = { diff --git a/fs/nfs/file.c b/fs/nfs/file.c index 582bb88..deefa62 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -925,5 +925,9 @@ const struct file_operations nfs_file_operations = {
- 	.splice_write	= nfs_file_splice_write,
- 	.check_flags	= nfs_check_flags,
- 	.setlease	= nfs_setlease,
-+	.unlocked_ioctl = nfs_ioctl,
-+#ifdef CONFIG_COMPAT
-+	.compat_ioctl	= nfs_ioctl,
-+#endif
- };
- EXPORT_SYMBOL_GPL(nfs_file_operations);
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h index e1827b0..4b425bd 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -481,6 +481,9 @@ extern int nfs41_walk_client_list(struct nfs_client *clp,
- 				struct nfs_client **result,
- 				struct rpc_cred *cred);
- 
-+/* ioctl.c */
-+extern long nfs_ioctl(struct file *filp, unsigned int cmd, unsigned 
-+long arg);
-+
- /*
-  * Determine the device name as a string
-  */
-diff --git a/fs/nfs/ioctl.c b/fs/nfs/ioctl.c new file mode 100644 index 0000000..9da5f7d
---- /dev/null
-+++ b/fs/nfs/ioctl.c
-@@ -0,0 +1,86 @@
-+/*
-+ * linux/fs/nfs/ioctl.c
-+ *
-+ * Copyright (C) 2012 Trond Myklebust <Trond.Myklebust@netapp.com>
-+ *
-+ * nfs ioctl implementation
-+ *
-+ */
-+
-+#include <linux/module.h>
-+#include <linux/fs.h>
-+#include <linux/nfs_fs.h>
-+#include "internal.h"
-+#include "ioctl.h"
-+
-+static long nfs_ioctl_cache_revalidate(struct file *filp, bool 
-+metadata, bool data) {
-+	struct inode *inode = filp->f_path.dentry->d_inode;
-+	struct nfs_inode *nfsi = NFS_I(inode);
-+	umode_t mode = inode->i_mode;
-+	unsigned long invalid = 0;
-+	long ret = -EINVAL;
-+
-+	if (metadata)
-+		invalid |= NFS_INO_INVALID_ATTR
-+			| NFS_INO_INVALID_ACCESS
-+			| NFS_INO_INVALID_ACL;
-+	if (data)
-+		invalid |= NFS_INO_INVALID_DATA;
-+
-+	switch (mode & S_IFMT) {
-+	default:
-+		goto out;
-+	case S_IFDIR:
-+		spin_lock(&inode->i_lock);
-+		if (data)
-+			nfsi->cache_change_attribute++;
-+		nfsi->cache_validity |= invalid;
-+		spin_unlock(&inode->i_lock);
-+		break;
-+	case S_IFREG:
-+		vfs_fsync(filp, 1);
-+		if (data)
-+			invalid |= NFS_INO_REVAL_PAGECACHE;
-+	case S_IFLNK:
-+		spin_lock(&inode->i_lock);
-+		nfsi->cache_validity |= invalid;
-+		spin_unlock(&inode->i_lock);
-+	}
-+	ret = nfs_revalidate_inode(NFS_SERVER(inode), inode);
-+	if (ret == 0)
-+		ret = nfs_revalidate_mapping(inode, filp->f_mapping);
-+
-+out:
-+	return ret;
-+}
-+
-+static long nfs_ioctl_cachectl(struct file *filp, struct nfs_cachectl 
-+__user *argp) {
-+	u64 cmd;
-+
-+	if (!(filp->f_mode & (FMODE_READ|FMODE_WRITE)))
-+		return -EBADF;
-+	if (get_user(cmd, &argp->cmd))
-+		return -EFAULT;
-+	switch (cmd) {
-+	case NFS_CACHECTL_REVALIDATE_ALL:
-+		return nfs_ioctl_cache_revalidate(filp, true, true);
-+	case NFS_CACHECTL_REVALIDATE_METADATA:
-+		return nfs_ioctl_cache_revalidate(filp, true, false);
-+	case NFS_CACHECTL_REVALIDATE_DATA:
-+		return nfs_ioctl_cache_revalidate(filp, false, true);
-+	}
-+	return -EINVAL;
-+}
-+
-+long nfs_ioctl(struct file *filp, unsigned int cmd, unsigned long arg) 
-+{
-+	void __user *argp = (void __user *)arg;
-+
-+	switch (cmd) {
-+	case NFS_IOC_CACHECTL:
-+		return nfs_ioctl_cachectl(filp, argp);
-+	}
-+	return -ENOTTY;
-+}
-diff --git a/fs/nfs/ioctl.h b/fs/nfs/ioctl.h new file mode 100644 index 0000000..cf79f0d
---- /dev/null
-+++ b/fs/nfs/ioctl.h
-@@ -0,0 +1,35 @@
-+/*
-+ * linux/fs/nfs/ioctl.h
-+ *
-+ * Copyright (C) 2012 Trond Myklebust <Trond.Myklebust@netapp.com>
-+ *
-+ * This program is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU General Public
-+ * License v2 as published by the Free Software Foundation.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ * General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public
-+ * License along with this program; if not, write to the
-+ * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
-+ * Boston, MA 021110-1307, USA.
-+ *
-+ * nfs ioctl definitions
-+ *
-+ */
-+
-+#include <uapi/linux/ioctl.h>
-+
-+/* Cache revalidation modes */
-+#define NFS_CACHECTL_REVALIDATE_ALL		1
-+#define NFS_CACHECTL_REVALIDATE_METADATA	2
-+#define NFS_CACHECTL_REVALIDATE_DATA		3
-+
-+struct nfs_cachectl {
-+	u64 cmd;
-+};
-+
-+#define NFS_IOC_CACHECTL	_IOW('N', 1, struct nfs_cachectl)
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c index e769930..b221690 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -133,4 +133,8 @@ const struct file_operations nfs4_file_operations = {
- 	.splice_write	= nfs_file_splice_write,
- 	.check_flags	= nfs_check_flags,
- 	.setlease	= nfs_setlease,
-+	.unlocked_ioctl = nfs_ioctl,
-+#ifdef CONFIG_COMPAT
-+	.compat_ioctl	= nfs_ioctl,
-+#endif
- };
---
-1.7.11.7
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of a message to majordomo@vger.kernel.org More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Hmm... I'll have to look at the patches again to find out. Its been so 
+long since I worked on these full time that I have to go back and check 
+quite a bit. Luckily since i put the tree up for Trond last night I 
+should be able to look at them while at work.
