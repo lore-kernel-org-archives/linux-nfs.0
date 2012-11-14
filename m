@@ -1,128 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:36233 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753130Ab2KVSm5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Nov 2012 13:42:57 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 17/20] NFSv4.1: Support dynamic resizing of the session slot table
-Date: Wed, 21 Nov 2012 17:43:16 -0500
-Message-Id: <1353537799-60488-18-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1353537799-60488-17-git-send-email-Trond.Myklebust@netapp.com>
-References: <1353537799-60488-1-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-2-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-3-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-4-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-5-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-6-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-7-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-8-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-9-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-10-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-11-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-12-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-13-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-14-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-15-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-16-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-17-git-send-email-Trond.Myklebust@netapp.com>
+Received: from countercultured.net ([209.51.175.25]:50760 "HELO
+	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1161179Ab2KNOaE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Nov 2012 09:30:04 -0500
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8;
+ format=flowed
+Date: Wed, 14 Nov 2012 09:30:02 -0500
+From: David Quigley <dpquigl@davequigley.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Steve Dickson <steved@redhat.com>,
+        "David P. Quigley" <selinux@davequigley.com>,
+        <trond.myklebust@netapp.com>, <sds@tycho.nsa.gov>,
+        <linux-nfs@vger.kernel.org>, <selinux@tycho.nsa.gov>,
+        <linux-security-module@vger.kernel.org>
+Subject: Re: Labeled NFS [v5]
+In-Reply-To: <20121114142458.GF23604@fieldses.org>
+References: <50A116F0.5050404@davequigley.com>
+ <20121112160959.GK30713@fieldses.org> <50A16269.4060601@RedHat.com>
+ <50A1A4EE.7030507@davequigley.com> <50A24345.8080309@RedHat.com>
+ <50A31EF5.1050801@davequigley.com> <20121114134535.GD23604@fieldses.org>
+ <624cc90c1bf726d8ff1a1ea0ace5f50f@countercultured.net>
+ <20121114135939.GE23604@fieldses.org>
+ <80f36fef2a58eb538bce28daba3a862a@countercultured.net>
+ <20121114142458.GF23604@fieldses.org>
+Message-ID: <4f9b24e3942b4a28cd9068d5bc0135fa@countercultured.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Allow the server to control the size of the session slot table
-by adjusting the value of sr_target_max_slots in the reply to the
-SEQUENCE operation.
+On 11/14/2012 09:24, J. Bruce Fields wrote:
+> On Wed, Nov 14, 2012 at 09:04:18AM -0500, David Quigley wrote:
+>> On 11/14/2012 08:59, J. Bruce Fields wrote:
+>> >On Wed, Nov 14, 2012 at 08:50:17AM -0500, David Quigley wrote:
+>> >>On 11/14/2012 08:45, J. Bruce Fields wrote:
+>> >>>On Tue, Nov 13, 2012 at 11:32:53PM -0500, Dave Quigley wrote:
+>> >>>>Ok so if you go to http://www.selinuxproject.org/git you will
+>> >>see a
+>> >>>>repo for lnfs and lnfs-patchset. The instructions at
+>> >>>>http://www.selinuxproject.org/page/Labeled_NFS give you a better
+>> >>>>indication on how to pull the trees. I've attached a patch for 
+>> NFS
+>> >>>>utils which gives support for security_label/nosecurity_label in
+>> >>>>your /etc/exports file.
+>> >>>
+>> >>>Do we need an export option?  Is there any reason not to make the
+>> >>>feature available whenever there's support available for it?
+>> >>
+>> >>I guess we could build it in but I figured an export option 
+>> allowed
+>> >>someone to turn off security labeling support if they didn't want 
+>> it
+>> >>on that export. What happens to clients when the server returns a
+>> >>cap that they don't support? Do they mask the bits out?
+>> >
+>> >Yeah, they should just ignore it.
+>> >
+>> >While this is still experimental it's still nice to have a way to
+>> >turn
+>> >this on and off at runtime so people can experiment without having 
+>> to
+>> >have it on for everyone all the time.  But
+>> >nfsd_supported_minorversion
+>> >should be sufficient for that.
+>> >
+>> >(I don't think your patches actually dealt yet with the fact that
+>> >this
+>> >is part of minor version 2?  Another for the todo list.)
+>> >
+>> >--b.
+>>
+>> If we use nfsd_supported_minorversion which I'm guessing is an
+>> export option
+>
+> That's just a variable in the code.  It's controlled by
+> /proc/fs/nfsd/versions.
+>
+>> what happens if someone wants to use other 4.2
+>> features but not labeling?
+>
+> We'll cross that bridge when we come to it, maybe by adding some new
+> global paramater.
+>
+> There's no reason this really needs to be per-export, is there?
+>
+> --b.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c         | 12 ++++++++++--
- fs/nfs/nfs4state.c        |  6 +++---
- include/linux/nfs_fs_sb.h |  1 +
- 3 files changed, 14 insertions(+), 5 deletions(-)
+At the moment I can't really think of a reason to have it be 
+per-export. I think we need a new LSM patch though to determine if the 
+LSM supports labeling over NFS unless Steve can think of a better way to 
+tell if the LSM supports labeling.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 731a6fd..5641380 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -493,10 +493,17 @@ static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
- static void nfs41_set_target_slotid_locked(struct nfs4_slot_table *tbl,
- 		u32 target_highest_slotid)
- {
-+	unsigned int max_slotid, i;
-+
- 	if (tbl->target_highest_slotid == target_highest_slotid)
- 		return;
- 	tbl->target_highest_slotid = target_highest_slotid;
- 	tbl->generation++;
-+
-+	max_slotid = min(tbl->max_slots - 1, tbl->target_highest_slotid);
-+	for (i = tbl->max_slotid + 1; i <= max_slotid; i++)
-+		rpc_wake_up_next(&tbl->slot_tbl_waitq);
-+	tbl->max_slotid = max_slotid;
- }
- 
- void nfs41_set_target_slotid(struct nfs4_slot_table *tbl,
-@@ -623,8 +630,8 @@ static struct nfs4_slot *nfs4_alloc_slot(struct nfs4_slot_table *tbl)
- 	dprintk("--> %s used_slots=%04lx highest_used=%u max_slots=%u\n",
- 		__func__, tbl->used_slots[0], tbl->highest_used_slotid,
- 		tbl->max_slots);
--	slotid = find_first_zero_bit(tbl->used_slots, tbl->max_slots);
--	if (slotid >= tbl->max_slots)
-+	slotid = find_first_zero_bit(tbl->used_slots, tbl->max_slotid + 1);
-+	if (slotid > tbl->max_slotid)
- 		goto out;
- 	__set_bit(slotid, tbl->used_slots);
- 	if (slotid > tbl->highest_used_slotid ||
-@@ -5745,6 +5752,7 @@ static void nfs4_add_and_init_slots(struct nfs4_slot_table *tbl,
- 	tbl->highest_used_slotid = NFS4_NO_SLOT;
- 	tbl->target_highest_slotid = max_slots - 1;
- 	tbl->server_highest_slotid = max_slots - 1;
-+	tbl->max_slotid = max_slots - 1;
- 	for (i = 0; i < tbl->max_slots; i++)
- 		tbl->slots[i].seq_nr = ivalue;
- 	spin_unlock(&tbl->slot_tbl_lock);
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 842cb8c..1b7fa73 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -254,15 +254,14 @@ static void nfs4_end_drain_session(struct nfs_client *clp)
- {
- 	struct nfs4_session *ses = clp->cl_session;
- 	struct nfs4_slot_table *tbl;
--	int max_slots;
-+	unsigned int i;
- 
- 	if (ses == NULL)
- 		return;
- 	tbl = &ses->fc_slot_table;
- 	if (test_and_clear_bit(NFS4_SESSION_DRAINING, &ses->session_state)) {
- 		spin_lock(&tbl->slot_tbl_lock);
--		max_slots = tbl->max_slots;
--		while (max_slots--) {
-+		for (i = 0; i <= tbl->max_slotid; i++) {
- 			if (rpc_wake_up_first(&tbl->slot_tbl_waitq,
- 						nfs4_set_task_privileged,
- 						NULL) == NULL)
-@@ -2043,6 +2042,7 @@ static int nfs4_recall_slot(struct nfs_client *clp)
- 	old = fc_tbl->slots;
- 	fc_tbl->slots = new;
- 	fc_tbl->max_slots = fc_tbl->target_highest_slotid + 1;
-+	fc_tbl->max_slotid = fc_tbl->target_highest_slotid;
- 	clp->cl_session->fc_attrs.max_reqs = fc_tbl->max_slots;
- 	spin_unlock(&fc_tbl->slot_tbl_lock);
- 
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 646e64b..3071550 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -215,6 +215,7 @@ struct nfs4_slot_table {
- 	spinlock_t	slot_tbl_lock;
- 	struct rpc_wait_queue	slot_tbl_waitq;	/* allocators may wait here */
- 	u32		max_slots;		/* # slots in table */
-+	u32		max_slotid;		/* Max allowed slotid value */
- 	u32		highest_used_slotid;	/* sent to server on each SEQ.
- 						 * op for dynamic resizing */
- 	u32		target_highest_slotid;	/* Server max_slot target */
--- 
-1.7.11.7
+
+>
+>> I'll switch it over if you guys want it
+>> done that way, I think though that this provides more flexibility.
+>> Although anything that makes me carry around fewer patches is good
+>> in my book.
+>>
+>> Dave
 
