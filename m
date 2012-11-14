@@ -1,106 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f46.google.com ([209.85.215.46]:64759 "EHLO
-	mail-la0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753109Ab2KHDM7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Nov 2012 22:12:59 -0500
-Received: by mail-la0-f46.google.com with SMTP id h6so1778400lag.19
-        for <linux-nfs@vger.kernel.org>; Wed, 07 Nov 2012 19:12:57 -0800 (PST)
-Date: Thu, 8 Nov 2012 07:12:50 +0400
-From: Andrey Borzenkov <arvidjaar@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Effective process GID is ignored when client creates file on
- NFS
-Message-ID: <20121108071250.78c36ab3@opensuse.site>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9092AE579@SACEXCMBX04-PRD.hq.netapp.com>
-References: <CAA91j0VBWhT58iyNDTMXVnMU8skJTEwHyezD_HyhmaqW5+pt3w@mail.gmail.com>
-	<20121107191336.GE7421@fieldses.org>
-	<20121107232801.27afef92@opensuse.site>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA9092AE579@SACEXCMBX04-PRD.hq.netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=KOI8-R
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:34228 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933163Ab2KNWjR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Nov 2012 17:39:17 -0500
+Received: by mail-ie0-f174.google.com with SMTP id k13so1402953iea.19
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Nov 2012 14:39:17 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] nfs(5): Document the minorversion= mount option
+To: linux-nfs@vger.kernel.org
+Date: Wed, 14 Nov 2012 17:39:15 -0500
+Message-ID: <20121114223600.48062.5680.stgit@seurat.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-В Wed, 7 Nov 2012 20:35:55 +0000
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> пишет:
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-> > -----Original Message-----
-> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> > owner@vger.kernel.org] On Behalf Of Andrey Borzenkov
-> > Sent: Wednesday, November 07, 2012 2:28 PM
-> > To: J. Bruce Fields
-> > Cc: linux-nfs@vger.kernel.org
-> > Subject: Re: Effective process GID is ignored when client creates
-> > file on NFS
-> > 
-> > В Wed, 7 Nov 2012 14:13:36 -0500
-> > "J. Bruce Fields" <bfields@fieldses.org> пишет:
-> > 
-> > > On Mon, Oct 29, 2012 at 06:09:29PM +0400, Andrey Borzenkov wrote:
-> > > > I have met application that is badly broken when installed on
-> > > > NFS. The reason is - it expects files to belong to specific
-> > > > group. It switches to this group on startup (explicit setgid)
-> > > > and creates files. But files come out as belonging to GID 0.
-> > > >
-> > > > I finally reduced it to this trivial script:
-> > > >
-> > > > === cut here ===
-> > > > #include <sys/types.h>
-> > > > #include <sys/stat.h>
-> > > > #include <fcntl.h>
-> > > > #include <unistd.h>
-> > > >
-> > > > main()
-> > > > {
-> > > >         int fd;
-> > > >
-> > > >         setgid(107);
-> > > >         fd = open("bar", O_CREAT, 0666);
-> > > >         close(fd);
-> > > > }
-> > > > === cut here ===
-> > > >
-> > > > On local storage file comes with GID 107; on NFS file comes
-> > > > with GID 0.
-> > > >
-> > > > Linux is SLES10 SP3 with relatively old kernel:
-> > > > 2.6.16.60-0.89.1-smp, server(s) are NetApp with different Data
-> > > > ONTAP versions (7.x and 8.1.1 as the last).
-> > > >
-> > > > Client passes correct credentials (UID:0, GID:107), but does not
-> > >
-> > > Those are the credentials in the rpc header on the CREATE call?
-> > >
-> > 
-> > Yes.
-> > 
-> > > > explicitly request file ownership in CREATE call (uid set_it -
-> > > > 0, gid set_it - 0).
-> > >
-> > > The client shouldn't have to set the owner or group itself.
-> > >
-> > > So this is server behavior.
-> > >
-> > > Have you checked that the directory you're creating in doesn't
-> > > have the sgid bit?
-> > 
-> > Yes. It does not.
-> > 
-> > >              Or perhaps there's some other server configuration
-> > > that causes this.
-> > 
-> > It appears that server ignores passed group if UID == 0. It
-> > correctly creates files if UID != 0. I got bug number from support
-> > but it is non-public and no information is visible so far. I asked
-> > about possible workaround (or undocumented options) but have not
-> > got any reply as yet.
-> 
-> So is it possible that you forgot to turn off root squashing on the
-> server before testing?
-> 
+Our pals on the Solaris team recently noticed that the minorversion=
+option is not documented in nfs(5).  This is a first take, just to
+start the conversation.  I'm pretty sure I got the kernel version
+information wrong, for instance.
 
-All filesystems are exported with anon=0 in this configuration. But if
-root suqashing is active, files should not appear as owned by UID 0,
-should not they?
+Any other comments?
+
+ utils/mount/nfs.man |   17 +++++++++++++++++
+ 1 files changed, 17 insertions(+), 0 deletions(-)
+
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index c15de98..66198cc 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -777,6 +777,23 @@ so if this mount option is not specified, the NFS version 4 client
+ uses the TCP protocol.
+ Refer to the TRANSPORT METHODS section for more details.
+ .TP 1.5i
++.BI minorversion= n
++Specifies the protocol minor version number.
++NFSv4 introduces "minor versioning," where NFS protocol enhancements can
++be introduced without bumping the NFS protocol version number.
++Before kernel 2.6.38, the minor version is always zero, and this
++option is not recognized.
++After this kernel, specifying "minorversion=1" enables a number of
++advanced features, such as NFSv4 sessions.
++.IP
++Recent kernels allow the minor version to be specified using the
++.B vers=
++option.
++For example, specifying
++.B vers=4.1
++is the same as specifying
++.BR vers=4,minorversion=1 .
++.TP 1.5i
+ .BI port= n
+ The numeric value of the server's NFS service port.
+ If the server's NFS service is not available on the specified port,
+
