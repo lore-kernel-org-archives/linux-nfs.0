@@ -1,132 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:35963 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752301Ab2KLVlI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Nov 2012 16:41:08 -0500
-Message-ID: <50A16CF2.8050703@netapp.com>
-Date: Mon, 12 Nov 2012 16:41:06 -0500
-From: Bryan Schumaker <bjschuma@netapp.com>
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:52565 "EHLO
+	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1422661Ab2KNOWN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Nov 2012 09:22:13 -0500
+Received: by mail-lb0-f174.google.com with SMTP id gp3so422994lbb.19
+        for <linux-nfs@vger.kernel.org>; Wed, 14 Nov 2012 06:22:12 -0800 (PST)
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        Andy Adamson <androsadamson@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFS: Add sequence_priviliged_ops for nfs4_proc_sequence()
-References: <1352745355-31157-1-git-send-email-bjschuma@netapp.com>    <CAHVgHyWyKhjOc4AFY3LvK57k8JK5zNJDkRGwUjqNA4LMYcSzdw@mail.gmail.com>    <4FA345DA4F4AE44899BD2B03EEEC2FA9092D7F52@SACEXCMBX04-PRD.hq.netapp.com>    <CAHVgHyWzO6UxnQEBoBFY4uHxTx9PBHKxP+hvJfYaW-OTqWLgMA@mail.gmail.com>   <4FA345DA4F4AE44899BD2B03EEEC2FA9092D80BB@SACEXCMBX04-PRD.hq.netapp.com>   <50A163E6.9020604@netapp.com>  <4FA345DA4F4AE44899BD2B03EEEC2FA9092D81D5@SACEXCMBX04-PRD.hq.netapp.com>  <50A16968.9030307@netapp.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9092D839F@SACEXCMBX04-PRD.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9092D839F@SACEXCMBX04-PRD.hq.netapp.com>
+In-Reply-To: <CAGRr-NiRkkhoVG4ss5WG7RXXOUWQ5dcOaVAxbQ2yA2c1NbPjKw@mail.gmail.com>
+References: <CAGRr-NiRkkhoVG4ss5WG7RXXOUWQ5dcOaVAxbQ2yA2c1NbPjKw@mail.gmail.com>
+Date: Wed, 14 Nov 2012 14:22:11 +0000
+Message-ID: <CAA4Z2ZQHAvZoUE6h9aqHSZwWF8jvY5QSYai0nXK9gZr6-BN+qA@mail.gmail.com>
+Subject: Re: nfs performance - idea.
+From: Adrien Kunysz <adk@acunu.com>
+To: =?UTF-8?B?xYF1a2FzeiBUYXN6?= <lukasz@tasz.eu>
+Cc: linux-nfs@vger.kernel.org
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/12/2012 04:37 PM, Myklebust, Trond wrote:
-> On Mon, 2012-11-12 at 16:26 -0500, Bryan Schumaker wrote:
->> On 11/12/2012 04:10 PM, Myklebust, Trond wrote:
->>> On Mon, 2012-11-12 at 16:02 -0500, Bryan Schumaker wrote:
->>>> On 11/12/2012 03:54 PM, Myklebust, Trond wrote:
->>>>> On Mon, 2012-11-12 at 15:49 -0500, Andy Adamson wrote:
->>>>>> On Mon, Nov 12, 2012 at 3:29 PM, Myklebust, Trond
->>>>>> <Trond.Myklebust@netapp.com> wrote:
->>>>>>> On Mon, 2012-11-12 at 15:22 -0500, Andy Adamson wrote:
->>>>>>>> On Mon, Nov 12, 2012 at 1:35 PM,  <bjschuma@netapp.com> wrote:
->>>>>>>>> From: Bryan Schumaker <bjschuma@netapp.com>
->>>>>>>>>
->>>>>>>>> During recovery the NFS4_SESSION_DRAINING flag might be set on the
->>>>>>>>> client structure.  This can cause lease renewal to abort when
->>>>>>>
->>>>>>> Not lease renewal. It is lease verification (i.e. checking that we have
->>>>>>> a valid lease and session) that will deadlock.
->>>>>>>
->>>>>>>>> nfs41_setup_sequence sees that we are doing recovery.  As a result, the
->>>>>>>>> client never recovers and all activity with the NFS server halts.
->>>>>>>>
->>>>>>>>
->>>>>>>> When does this happen? Say the session is draining, and an RPC returns
->>>>>>>> from one of the compounds such as nfs_open, nfs_locku etc whose
->>>>>>>> rpc_call_done routine calls renew_lease after freeing it's slot.  Like
->>>>>>>> all calls on a draining session, the renew_lease sleeps on the session
->>>>>>>> slot_tbl_waitq - is this what you mean by "causes lease renewal to
->>>>>>>> abort"? How does this cause the client to never recover?
->>>>>>>>
->>>>>>>> The only other call to renew_lease is from the state manager itself
->>>>>>>> which runs one function at a time, and will not call renew_lease until
->>>>>>>> the recovery is over....
->>>>>>>>
->>>>>>>> What am I missing....?
->>>>>>>
->>>>>>> nfs4_check_lease() is run exclusively by the state manager thread in
->>>>>>> order to check that the clientid (and session id on NFSv4.1) are valid.
->>>>>>> It will deadlock the state manager thread if NFS4_SESSION_DRAINING is
->>>>>>> already set.
->>>>>>
->>>>>> OK. NFS4_SESSION_DRAINING is also set exclusively by the state manager
->>>>>> thread. Why is the state manager told to check the lease when it's
->>>>>> also draining a session?
->>>>>
->>>>> NFS4_SESSION_DRAINING does not just mean that the session is being
->>>>> drained; it remains set until open and lock state recovery is completed.
->>>>>
->>>>> IOW: if something happens during state recovery that requires us to
->>>>> check the lease (e.g. something returns NFS4ERR_EXPIRED) then the
->>>>> current code will deadlock.
->>>>>
->>>>>> No matter what the answer, please update the patch description to
->>>>>> better explain the problem being solved.
->>>>>
->>>>> ACK. I agree that the changelog entry can be improved.
->>>>>
->>>>
->>>> Does this read any better (and should I resend the patch)?
->>>>
->>>> NFS: Add sequence_priviliged_ops for nfs4_proc_sequence()
->>>>
->>>> If I mount an NFS v4.1 server to a single client multiple times and then
->>>> run xfstests over each mountpoint I usually get the client into a state
->>>> where recovery deadlocks.  The server informs the client of a
->>>> cb_path_down sequence error, the client then does a
->>>> bind_connection_to_session and checks the status of the lease.
->>>
->>> Why are you getting the cb_path_down? Is that a result of a fault
->>> injection, or is it a genuine error?
->>>
->>> While cb_path_down is a valid error, and we do want the recovery to work
->>> correctly, I would expect it to be rare since it implies that we lost
->>> the TCP connection to the server for some reason. Finding out why it
->>> happens is therefore worth doing.
->>
->> I didn't get it with fault injection, it just happened by itself somewhere during testing.  My attempts at capturing it with wireshark usually slow down my system as wireshark tries to display 1,000,000+ packets... I'll try again, though.
-> 
-> See if you can just turn on the two dprintks() in xs_tcp_state_change(),
-> and then add a printk() trigger to the
-> nfs41_handle_sequence_flag_errors() to see if you can catch a
-> correlation between a TCP state change and the path_down issue.
+On Wed, Nov 14, 2012 at 1:38 PM, Łukasz Tasz <lukasz@tasz.eu> wrote:
+> Hi all,
+>
+> I would like to consult some idea with you,
+>
+> Problem:
+> I have two processes which are doing some actions and one of the
+> action is done on a shared file system.
+> Issue is that this thing could be done only by one process, and for
+> this issue, locking mechanism is implemented.
+> Problem is that while one process is releasing lock, second one is
+> informed that file processing is finished, but unfortunately files
+> does not exists in context of second process.
+> Two processes are executed on two different hosts. NFS share is
+> mounted in a standard way, no special flag.
+> Problem I guess is with caches, lookupcache=none solves the problem,
+> but also causes others :) - performance.
+>
+> I know, it not possible to have all things at once - no complains.
+> But simple idea is that inside second process after notification that
+> files are generated execute touch function on directory which holds
+> files,
+> This will cause unnecessary update of modification date, but as a side
+> effect I noticed  that also file gets visible immediately on client
+> hosts.
+>
+> That's why my question is if this is expected and reasonable behaviour?
+> At the end I'm looking for kind of 'sync' command which will cause
+> synchronization of directories content inside client and server
+> something like flush() - but in NFS it's more complex.
 
-Sounds simple enough.  I'll do that now...
+Doesn't fsync(2) do what you want? If not, can you explain why?
 
-> 
->>>
->>>> I found that bind_connection_to_session sets the NFS4_SESSION_DRAINING
->>>> flag on the client, but this flag is never unset before
->>>> nfs4_check_lease() reaches nfs4_proc_sequence().  This causes the client
->>>> to deadlock, halting all NFS activity to the server.
->>>
->>> Otherwise, the text is more or less OK. The one thing that I'm missing
->>> is a statement about why nfs4_proc_sequence() needs to be a privileged
->>> operation.
->>>
->>
->> Here is the new last paragraph, I just added the sentence at the end:
->>
->> I found that bind_connection_to_session sets the NFS4_SESSION_DRAINING
->> flag on the client, but this flag is never unset before
->> nfs4_check_lease() reaches nfs4_proc_sequence().  This causes the client
->> to deadlock, halting all NFS activity to the server.  This patch changes
->> nfs4_proc_sequence() to run in privileged mode to bypass the
->> NFS4_SESSION_DRAINING check and continue with recovery.
-> 
-> Thanks. You might want to add a note to the fact that
-> nfs4_proc_sequence() is always run from the state recovery thread, and
-> therefore it is correct to run it as a privileged operation.
-> 
-
-Ok.  Do you want a new patch?  Just the commit text?
-
+> thanks in advance for help,
+>
+> regards
+> Lukasz
