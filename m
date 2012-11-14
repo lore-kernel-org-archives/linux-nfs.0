@@ -1,64 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from zeniv.linux.org.uk ([195.92.253.2]:56932 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753813Ab2K3AfF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2012 19:35:05 -0500
-Date: Fri, 30 Nov 2012 00:35:02 +0000
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Patrick McLean <patrickm@gaikai.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: Regression with initramfs and nfsroot (appears to be in the
- dcache)
-Message-ID: <20121130003502.GY4939@ZenIV.linux.org.uk>
-References: <CAE2NFgU+4QDcLaVE5dKDvZCxey7qEf7FAbYNjNmcjVU=HLhF=A@mail.gmail.com>
- <20121129213316.GU4939@ZenIV.linux.org.uk>
- <CAE2NFgWCnmgSCsw7MzRkqBLTHgRDG-FvKKcbTHN6UqePK6Ef+Q@mail.gmail.com>
- <20121129222109.GW4939@ZenIV.linux.org.uk>
- <50B7E759.9070007@gaikai.com>
- <20121129234326.GX4939@ZenIV.linux.org.uk>
- <50B7FBA7.2030300@gaikai.com>
+Received: from mx2.netapp.com ([216.240.18.37]:61803 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1423296Ab2KNVvg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Nov 2012 16:51:36 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>,
+        "Eric W. Biederman" <ebiederm@xmission.com>
+Subject: Re: [PATCH v3] SUNRPC: set desired file system root before
+ connecting local transports
+Date: Wed, 14 Nov 2012 21:51:33 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092E0AE9@SACEXCMBX04-PRD.hq.netapp.com>
+References: <5098E31A.5080801@parallels.com>
+	 <20121106120642.GA6718@fieldses.org> <20121106124035.GA20522@infradead.org>
+	 <20121106130705.GC6718@fieldses.org> <20121106131018.GA12211@infradead.org>
+	 <20121106133605.GD6718@fieldses.org> <20121107183355.GA7421@fieldses.org>
+	 <50A0B562.2090807@parallels.com> <20121114210112.GA539@fieldses.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9092E0A40@SACEXCMBX04-PRD.hq.netapp.com>
+	 <20121114214236.GB539@fieldses.org>
+In-Reply-To: <20121114214236.GB539@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <50B7FBA7.2030300@gaikai.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 29, 2012 at 04:19:51PM -0800, Patrick McLean wrote:
-> >> [    8.821584] FH(0)]
-> >> [    8.821586] FH(36)[01 00 07 01 89 00 00 00 00 00 00 00 e1 21 fe c4 9e 38 44 dc bf 1b d5 95 d6 76 d6 d9 a7 3c 1b 80 33 38 e3 62]
-> >> [    8.821601] filename: proc
-> > 
-> > *whoa*
-> > 
-> > So we have zero entry->fh->size?  No wonder it doesn't match...  Which NFS
-> > version it is?  entry->fh->size is set by nfs[34]_decode_dirent().
-> 
-> This is nfs v3 over TCP on Linus git at commit e9296e89b85604862bd9ec2d54dc43edad775c0d with nfs-utils-1.2.6 userspace.
-
-So we have nfs3_decode_dirent(), stepping into
-                /* In fact, a post_op_fh3: */
-                p = xdr_inline_decode(xdr, 4);
-                if (unlikely(p == NULL))
-                        goto out_overflow;
-                if (*p != xdr_zero) {
-                        error = decode_nfs_fh3(xdr, entry->fh);
-                        if (unlikely(error)) {
-                                if (error == -E2BIG)
-                                        goto out_truncated;
-                                return error;
-                        }
-                } else
-                        zero_nfs_fh3(entry->fh);
-Interesting...  Server-side that should've been produced by
-encode_entryplus_baggage(), which looks like failing compose_entry_fh()...
-which has explicit
-        if (d_mountpoint(dchild))
-                goto out;
-resulting in ENOENT on everything that's overmounted on server.
-
-Do you, by any chance, have the server really exporting its own root
-filesystem?  Another thing to check: have nfs_prime_dcache() print
-filename.name of everything that fails nfs_same_entry() and has
-zero entry->fh->size, regardless of d_invalidate() results.
+T24gV2VkLCAyMDEyLTExLTE0IGF0IDE2OjQyIC0wNTAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIFdlZCwgTm92IDE0LCAyMDEyIGF0IDA5OjM2OjMzUE0gKzAwMDAsIE15a2xlYnVzdCwg
+VHJvbmQgd3JvdGU6DQo+ID4gT24gV2VkLCAyMDEyLTExLTE0IGF0IDE2OjAxIC0wNTAwLCBKLiBC
+cnVjZSBGaWVsZHMgd3JvdGU6DQo+ID4gPiBPbiBNb24sIE5vdiAxMiwgMjAxMiBhdCAxMjozNzo1
+NFBNICswNDAwLCBTdGFuaXNsYXYgS2luc2J1cnNreSB3cm90ZToNCj4gPiA+ID4gMDcuMTEuMjAx
+MiAyMjozMywgSi4gQnJ1Y2UgRmllbGRzINC/0LjRiNC10YI6DQo+ID4gPiA+ID5PbiBUdWUsIE5v
+diAwNiwgMjAxMiBhdCAwODozNjowNUFNIC0wNTAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6DQo+
+ID4gPiA+ID4+T24gVHVlLCBOb3YgMDYsIDIwMTIgYXQgMDg6MTA6MThBTSAtMDUwMCwgQ2hyaXN0
+b3BoIEhlbGx3aWcgd3JvdGU6DQo+ID4gPiA+ID4+Pk9uIFR1ZSwgTm92IDA2LCAyMDEyIGF0IDA4
+OjA3OjA2QU0gLTA1MDAsIEouIEJydWNlIEZpZWxkcyB3cm90ZToNCj4gPiA+ID4gPj4+PlNvIHlv
+dSdyZSB3b3JyaWVkIHRoYXQgYSBidWcgaW4gdGhlIG5mcyBjb2RlIGNvdWxkIG1vZGlmeSB0aGUg
+cm9vdCBhbmQNCj4gPiA+ID4gPj4+PnRoZW4gbm90IHJlc3RvcmUgaXQ/DQo+ID4gPiA+ID4+Pg0K
+PiA+ID4gPiA+Pj5BdCBsZWFzdCB0aGUgbGluayB5b3UgcG9pbnRlZCB0byBlYXJsaWVyIG5ldmVy
+IHNldHMgaXQgYmFjay4NCj4gPiA+ID4gPj4NCj4gPiA+ID4gPj5UaGlzPyBodHRwOi8vdGhyZWFk
+LmdtYW5lLm9yZy9nbWFuZS5saW51eC5rZXJuZWwvMTI1OTk4Ni9mb2N1cz00NzY4Nw0KPiA+ID4g
+PiA+Pg0KPiA+ID4gPiA+PgkrCWdldF9mc19yb290KGN1cnJlbnQtPmZzLCAmcm9vdCk7DQo+ID4g
+PiA+ID4+CSsJc2V0X2ZzX3Jvb3QoY3VycmVudC0+ZnMsICZ0cmFuc3BvcnQtPnJvb3QpOw0KPiA+
+ID4gPiA+PgkrDQo+ID4gPiA+ID4+CSAJc3RhdHVzID0geHNfbG9jYWxfZmluaXNoX2Nvbm5lY3Rp
+bmcoeHBydCwgc29jayk7DQo+ID4gPiA+ID4+CSsNCj4gPiA+ID4gPj4JKwlzZXRfZnNfcm9vdChj
+dXJyZW50LT5mcywgJnJvb3QpOw0KPiA+ID4gPiA+PgkrCXBhdGhfcHV0KCZyb290KTsNCj4gPiA+
+ID4gPj4NCj4gPiA+ID4gPj4+SW5zdGVhZA0KPiA+ID4gPiA+Pj5vZiBtZXNzaW5nIHdpdGggaXQg
+SSdkIHJhdGhlciBoYXZlIHRoZSBzdW5ycGMgY29kZSB1c2UgdmZzX3BhdGhfbG9va3VwDQo+ID4g
+PiA+ID4+PmFuZCBub3QgY2FyZSBhYm91dCBjdXJyZW50LT5mcy0+cm9vdCBhdCBhbGwuDQo+ID4g
+PiA+ID4+DQo+ID4gPiA+ID4+VGhlIGFubm95YW5jZSBpcyB0aGF0IHRoZSBsb29rdXAgaGFwcGVu
+cyBzb21ld2hlcmUgbG93ZXIgZG93biBpbiB0aGUNCj4gPiA+ID4gPj5uZXR3b3JraW5nIGNvZGUg
+KG5ldC91bml4L2FmX3VuaXguYzp1bml4X2ZpbmRfb3RoZXIsIEkgdGhpbmspLiAgU28gd2UnZA0K
+PiA+ID4gPiA+Pm5lZWQgc29tZSBuZXcgKGludGVybmFsKSBBUEkuICBXZSdkIGxpa2VseSBiZSB0
+aGUgb25seSB1c2VyIG9mIHRoYXQgbmV3DQo+ID4gPiA+ID4+QVBJLg0KPiA+ID4gPiA+DQo+ID4g
+PiA+ID5TbywgaWYgdGhlIG9ubHkgZHJhd2JhY2sgaXMgcmVhbGx5IGp1c3QgdGhlIHJpc2sgb2Yg
+aW50cm9kdWNpbmcgYSBidWcNCj4gPiA+ID4gPnRoYXQgbGVhdmVzIHRoZSBmc19yb290IGNoYW5n
+ZWQtLXRoZSBhYm92ZSBzZWVtcyBzaW1wbGUgZW5vdWdoIGZvciB0aGF0DQo+ID4gPiA+ID5ub3Qg
+dG8gYmUgYSBncmVhdCByaXNrLCByaWdodD8NCj4gPiA+ID4gPg0KPiA+ID4gPiANCj4gPiA+ID4g
+SWYgd2UgdW5zaGFyZSBycGNpb2QgZnMgc3RydWN0ICh3aGljaCBpcyBleHBvcnRlZCBhbHJlYWR5
+KSwgdGhlbiB3ZQ0KPiA+ID4gDQo+ID4gPiBJJ20gbm90IHN1cmUgd2hhdCB5b3UgbWVhbiBieSB0
+aGF0LiAgRG8gd29ya3F1ZXVlcyBhY3R1YWxseSBoYXZlIHRoZWlyDQo+ID4gPiBvd24gZGVkaWNh
+dGVkIHNldCBvZiBhc3NvY2lhdGVkIHRhc2tzPyAgSSB0aG91Z2h0IGFsbCB3b3JrcXVldWVzIHNo
+YXJlZA0KPiA+ID4gYSBjb21tb24gcG9vbCBvZiB0YXNrcyB0aGVzZSBkYXlzLg0KPiA+ID4gDQo+
+ID4gPiA+IHdvbid0IGFmZmVjdCBvdGhlciBrdGhyZWFkcyBieSByb290IHN3YXBwaW5nLg0KPiA+
+ID4gPiBCdXQgd291bGQgYmUgZ3JlYXQgdG8gaGVhciBUcm9uZCdzIG9waW5pb24gYWJvdXQgdGhp
+cyBhcHByb2FjaC4NCj4gPiA+ID4gDQo+ID4gPiA+IFRyb25kLCBjb3VsZCB5b3UgdGVsbCB1cyB5
+b3VyIGZlZWxpbmcgYWJvdXQgYWxsIHRoaXM/DQo+ID4gPiANCj4gPiA+IEkgdGhpbmsgaXQncyBv
+ZnRlbiBlYXNpZXIgdG8gZ2V0IHBlb3BsZSB0byBjb21tZW50IG9uIGFuIGFjdHVhbCBwYXRjaCwN
+Cj4gPiA+IGFuZCB0aGlzIG9uZSB3b3VsZCBiZSBxdWl0ZSBzaG9ydCwgc28gdHJ5IHRoYXQuLi4u
+DQo+ID4gDQo+ID4gdW5zaGFyZSgpIHdvdWxkIGJyZWFrIGV4cGVjdGF0aW9ucyBmb3Igb3RoZXIg
+dXNlcnMgb2Ygd29ya3F1ZXVlIHRocmVhZHMNCj4gPiB1bmxlc3MgeW91ICJyZXNoYXJlKCkiIGFm
+dGVyd2FyZHMuIEVpdGhlciB3YXkgdGhhdCdzIGdvaW5nIHRvIGJlDQo+ID4gc2VyaW91c2x5IHVn
+bHkuDQo+ID4gDQo+ID4gT0ssIGxldCdzIGxvb2sgYXQgdGhpcyBhZ2Fpbi4gRG8gd2UgZXZlciB1
+c2UgQUZfTE9DQUwgY29ubmVjdGlvbnMgZm9yDQo+ID4gYW55dGhpbmcgb3RoZXIgdGhhbiBzeW5j
+aHJvbm91cyBycGMgY2FsbHMgdG8gdGhlIGxvY2FsIHJwY2JpbmQgZGFlbW9uIGluDQo+ID4gb3Jk
+ZXIgdG8gcmVnaXN0ZXIvdW5yZWdpc3RlciBuZXcgc2VydmljZXM/DQo+IA0KPiBTaW1vJ3MgcGF0
+Y2hlcyB1c2UgdGhlbSBmb3IgdXBjYWxscyB0byBzdmNnc3NkLiAgVGhvc2Ugd2lsbCBhbHdheXMg
+YmUNCj4gZG9uZSBmcm9tIHNlcnZlciB0aHJlYWRzLg0KDQpBbnkgcmVhc29uIHdoeSB5b3UgY2Fu
+J3Qgc2V0IHRoYXQgdXAgd2hlbiB5b3Ugc3RhcnQgbmZzZD8NCg0KPiA+IElmIG5vdCwgdGhlbiBs
+ZXQncyBqdXN0IG1vdmUNCj4gPiB0aGUgQUZfTE9DQUwgY29ubmVjdGlvbiBiYWNrIGludG8gdGhl
+IHByb2Nlc3MgY29udGV4dCBhbmQgb3V0IG9mIHJwY2lvZC4NCj4gDQo+IFJlbWluZCBtZSBob3cg
+dGhpcyBoZWxwcz8NCg0KcnBjaW9kIHNoYXJlcyB0aGUgJ2luaXQnIHByb2Nlc3MgbmV0IG5hbWVz
+cGFjZSBhbmQgY2hyb290IHByb3BlcnRpZXMuDQpJZiwgaG93ZXZlciB5b3UgY2FsbCBiaW5kKCkg
+ZnJvbSB0aGUgKGNvbnRhaW5lcmlzZWQpIHByb2Nlc3MgdGhhdCB3YXMNCnVzZWQgdG8gc3RhcnQg
+bmZzZCwgdGhlbiB5b3Ugd2lsbCBiZSB1c2luZyBmaWxlc3lzdGVtIHJvb3QgKGFuZCBuZXQNCm5h
+bWVzcGFjZSkgb2YgdGhhdCBjb250YWluZXIuDQoNCj4gLS1iLg0KPiANCj4gPiANCj4gPiBUaGF0
+IGltcGxpZXMgdGhhdCB0aGUgcHJvY2VzcyBuZWVkcyB0byBiZSBwcml2aWxlZ2VkLCBidXQgaXQg
+bmVlZHMNCj4gPiBwcml2aWxlZ2VzIGluIG9yZGVyIHRvIHN0YXJ0IFJQQyBkYWVtb25zIGFueXdh
+eS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0K
+DQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
