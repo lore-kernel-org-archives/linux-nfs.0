@@ -1,82 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:50850 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932070Ab2K0QbZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Nov 2012 11:31:25 -0500
-From: Sasha Levin <sasha.levin@oracle.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Sasha Levin <sasha.levin@oracle.com>
-Subject: [PATCH] nfsd: prevent NULL ptr derefs on fault injection
-Date: Tue, 27 Nov 2012 11:31:11 -0500
-Message-Id: <1354033871-25815-1-git-send-email-sasha.levin@oracle.com>
+Received: from mx2.netapp.com ([216.240.18.37]:51575 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754505Ab2KNVDt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Nov 2012 16:03:49 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Matt W. Benjamin" <matt@linuxbox.com>
+CC: DENIEL Philippe <philippe.deniel@cea.fr>,
+        Tomasz Chmielewski <mangoo@wpkg.org>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        tigran mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: Re: !
+Date: Wed, 14 Nov 2012 21:03:46 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092E0903@SACEXCMBX04-PRD.hq.netapp.com>
+References: <132199707.99.1352925492348.JavaMail.root@thunderbeast.private.linuxbox.com>
+In-Reply-To: <132199707.99.1352925492348.JavaMail.root@thunderbeast.private.linuxbox.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A recent patch series has moved hashtable initialization to when the net
-struct is initialized.
-
-When injecting faults, we tried accessing the hashtables even if the struct
-wasn't really initialized (nfsd wasn't in use) - this caused a NULL ptr
-deref.
-
-A simple test would be:
-
-	echo 1 > /sys/kernel/debug/nfsd/forget_locks
-
-Signed-off-by: Sasha Levin <sasha.levin@oracle.com>
----
- fs/nfsd/netns.h     | 3 +++
- fs/nfsd/nfs4state.c | 9 +++++++++
- 2 files changed, 12 insertions(+)
-
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index 227b93e..c5806a57 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -83,5 +83,8 @@ struct nfsd_net {
- 	struct delayed_work laundromat_work;
- };
- 
-+/* Simple check to find out if a given net was properly initialized */
-+#define nfsd_netns_ready(nn) ((nn)->sessionid_hashtbl)
-+
- extern int nfsd_net_id;
- #endif /* __NFSD_NETNS_H__ */
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e75872f..0e7428c 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4598,6 +4598,9 @@ void nfsd_forget_clients(u64 num)
- 	int count = 0;
- 	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns, nfsd_net_id);
- 
-+	if (!nfsd_netns_ready(nn))
-+		return;
-+
- 	nfs4_lock_state();
- 	list_for_each_entry_safe(clp, next, &nn->client_lru, cl_lru) {
- 		expire_client(clp);
-@@ -4643,6 +4646,9 @@ void nfsd_forget_locks(u64 num)
- 	int count;
- 	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
- 
-+	if (!nfsd_netns_ready(nn))
-+		return;
-+
- 	nfs4_lock_state();
- 	count = nfsd_release_n_owners(num, false, release_lockowner_sop, nn);
- 	nfs4_unlock_state();
-@@ -4655,6 +4661,9 @@ void nfsd_forget_openowners(u64 num)
- 	int count;
- 	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
- 
-+	if (!nfsd_netns_ready(nn))
-+		return;
-+
- 	nfs4_lock_state();
- 	count = nfsd_release_n_owners(num, true, release_openowner_sop, nn);
- 	nfs4_unlock_state();
--- 
-1.8.0
-
+T24gV2VkLCAyMDEyLTExLTE0IGF0IDE1OjM4IC0wNTAwLCBNYXR0IFcuIEJlbmphbWluIHdyb3Rl
+Og0KPiBIaSBUcm9uZCwNCj4gDQo+IEkgdGhpbmsgeW91ciBwb2ludCB0aGF0IGRpc2N1c3Npb24g
+b2YgYWx0ZXJuYXRpdmUgd2F5cyBvZiBkb2luZyB0aGluZ3Mgd2hpY2ggbWlnaHQgdWx0aW1hdGVs
+eSBiZSBzdGFuZGFyZGl6ZWQgcmVmbGVjdHMgbGFjayBvZiB1bmRlcnN0YW5kaW5nIG9mIHRoZSBj
+b25jZXB0IG9mIHN0YW5kYXJkaXphdGlvbiBpcyAuLi4gIGEgbm9uLXNlcXVpdHVyLg0KDQpOb2Jv
+ZHkgaXMgcmVzdHJpY3RpbmcgeW91ciBhYmlsaXR5IHRvIHdyaXRlIHlvdXIgb3duIHNpZGUtYmFu
+ZCBwcm90b2NvbA0Kb3IgZXZlbiBmcm9tIG1ha2luZyBwcm9wb3NhbHMgdG8gdGhlIElFVEYuIFRo
+ZSBvbmx5IHJlc3RyaWN0aW9uIGJlaW5nDQppbXBvc2VkIG9uIHlvdSBpcyB0aGF0IHRob3NlIHdv
+bid0IGdvIHVwc3RyZWFtIGludG8gdGhlIExpbnV4IGNsaWVudA0KdW50aWwgYWNjb21wYW5pZWQg
+d2l0aCBhbiBBUEkgYW5kIGEgc3RhbmRhcmRzLWJhc2VkIHNwZWNpZmljYXRpb24uDQoNCj4gSSBk
+aWQgc3RhdGUgdGhhdCB0aGUgc3RhbmRhcmQgZG9lc24ndCBiZW5lZml0IGZyb20gcmVzdHJpY3Rp
+bmcgdGhlIGFiaWxpdHkgb2YgaW1wbGVtZW50YXRpb25zIGFuZCBhcHBsaWNhdGlvbnMgZnJvbSBl
+dm9sdmluZyBuZXcgbWV0YWRhdGEgY29udmVudGlvbnMgZW50aXJlbHkgYWJvdmUgdGhlIGZpbGUg
+c3lzdGVtLiAgVGhpcyBjbGFpbSBpcyBpbiBubyB3YXkgcmFkaWNhbCwgaXQncyBob3cgZXZlcnlv
+bmUgdXNlcyB0aGUgZmlsZSBzeXN0ZW0gYWxyZWFkeS4NCg0KTmVpdGhlciBpcyBpdCBjbGVhciB0
+aGF0IG1vdmluZyB0aG9zZSBtZXRhZGF0YSBjb252ZW50aW9ucyBpbnRvIHRoZQ0KZmlsZXN5c3Rl
+bSBpcyBwYXJ0aWN1bGFybHkgdXNlZnVsLiBTbyBmYXIsIGFsbCB5b3UndmUgZG9uZSBpcyBzcG91
+dA0Kd2FudHMsIGFuZCBub3RoaW5nIGFib3V0IGhvdyB0aGlzIGFkZHJlc3NlcyBhIG5lZWQuDQoN
+Cj4gU2luY2UgSSBoYXZlbid0IHZpb2xhdGVkIGFueSBydWxlIG9mIG5ldGlxdWV0dGUgb3IgY29u
+dmVudGlvbiBvZiBwb2xpdGUgZGlzY3Vzc2lvbiBnZW5lcmFsbHksIGZvcmdpdmUgbWUgZm9yIG5v
+dCBnb2luZyBhd2F5Lg0KDQpZb3UgYXJlIHlhbW1lcmluZyBvbiBhbmQgb24gYWJvdXQgc29tZXRo
+aW5nIHRoYXQgeW91IHdhbnQgZnJvbSBvdGhlcg0KcGVvcGxlIGluIG9yZGVyIHRvIGJlIGFibGUg
+dG8gYnlwYXNzIHRoZWlyIHN0YW5kYXJkIHJldmlldyBwcm9jZXNzIGZvcg0KYWRkaW5nIG5ldyBw
+cm90b2NvbCBmZWF0dXJlcy4gSWYgdGhhdCBlcGl0b21pc2VzIHBvbGl0ZQ0KbmV0aXF1ZXR0ZS1m
+cmllbmRseSBkaXNjdXNzaW9uIHRoZW4gY291bnQgbWUgb3V0Li4uDQoNCj4gUmVnYXJkcywNCj4g
+DQo+IE1hdHQNCj4gDQo+IC0tLS0tICJUcm9uZCBNeWtsZWJ1c3QiIDxUcm9uZC5NeWtsZWJ1c3RA
+bmV0YXBwLmNvbT4gd3JvdGU6DQo+IA0KPiA+ID4gWW91J3ZlIHNhaWQgdGhhdCB4YXR0cnMgYW5k
+IG5hbWVkIGF0dHJpYnV0ZXMgYXJlIGNvbXBsZXRlbHkNCj4gPiBkaWZmZXJlbnQsIGJ1dCBub3R3
+aXRoc3RhbmRpbmcgdGhhdCwgdGhlcmUgc2VlbXMgdG8gYmUgbG9naWNhbGx5IHF1aXRlDQo+ID4g
+YSBiaXQgb2Ygb3ZlcmxhcC4gIENsZWFybHksIHRoZSBmYWN0IHRoYXQgdGhlIE5GUyBwcm90b2Nv
+bCB0cmVhdHMNCj4gPiBuYW1lZCBhdHRyaWJ1dGVzIGFzIHN1YmZpbGVzIGlzIGEgZGV0YWlsIHRo
+YXQgdGhlIGNsaWVudCBuZWVkIG5vdA0KPiA+IGV4cG9zZSB0byBhcHBsaWNhdGlvbnMuICBJdCBh
+bHNvIHNlZW1zIGFzIGlmIGFuIHhhdHRyIGludGVyZmFjZSBpcw0KPiA+IGNvbnZlbmllbnQgZm9y
+IGludGVyYWN0aW5nIHdpdGggYXQgYSBzdWJzZXQgb2YgbmFtZWQgYXR0cmlidXRlcyAob25lcw0K
+PiA+IHdpdGggdHJhY3RhYmxlIGxlbmd0aCBuYW1lcy92YWx1ZXMpLiAgSSBtZWFuLCBhcyBJIG5v
+dGUsIHRoaXMgaXMgdGhlDQo+ID4gcHJvcGxpc3QsIGFuZCB0aGF0IGhhcyBiZWVuIGEgdmVyeSBz
+dWNjZXNzZnVsIGludGVyZmFjZSBpbiBhIGxvdCBvZg0KPiA+IHN5c3RlbXMsIGdvaW5nIGJhY2sg
+YSAtbG9uZy0gd2F5cy4NCj4gPiANCj4gPiBOTyEgR08gQVdBWSEhISENCj4gPiANCj4gPiBTZXJp
+b3VzbHksIGlmIHlvdSBkb24ndCB1bmRlcnN0YW5kIHRoZSBjb25jZXB0IG9mIGEgc3RhbmRhcmQs
+IHRoZW4gZ28NCj4gPiBhd2F5IQ0KPiA+IA0KPiA+IFRyb25kDQo+IA0KDQotLSANClRyb25kIE15
+a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlr
+bGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
