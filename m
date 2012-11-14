@@ -1,135 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f174.google.com ([209.85.214.174]:47469 "EHLO
-	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754439Ab2K2OAh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2012 09:00:37 -0500
-Received: by mail-ob0-f174.google.com with SMTP id wc20so13025859obb.19
-        for <linux-nfs@vger.kernel.org>; Thu, 29 Nov 2012 06:00:36 -0800 (PST)
+Received: from mailhub.sw.ru ([195.214.232.25]:42048 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1422677Ab2KNPT0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Nov 2012 10:19:26 -0500
+Subject: [PATCH v2 12/15] nfsd: make close_lru list per net
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, devel@openvz.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, jlayton@redhat.com
+Date: Wed, 14 Nov 2012 18:22:01 +0300
+Message-ID: <20121114152201.4708.14175.stgit@localhost.localdomain>
+In-Reply-To: <20121114152018.4708.63125.stgit@localhost.localdomain>
+References: <20121114152018.4708.63125.stgit@localhost.localdomain>
 MIME-Version: 1.0
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90B329C21@SACEXCMBX04-PRD.hq.netapp.com>
-References: <CAGRr-NiRkkhoVG4ss5WG7RXXOUWQ5dcOaVAxbQ2yA2c1NbPjKw@mail.gmail.com>
- <CAA4Z2ZQHAvZoUE6h9aqHSZwWF8jvY5QSYai0nXK9gZr6-BN+qA@mail.gmail.com>
- <CAGRr-NjKsSGoL5P8n8nsfk3eoAY8zZt+h1K6rU19cLitTD78uw@mail.gmail.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA90B329B2A@SACEXCMBX04-PRD.hq.netapp.com>
- <CAGRr-Niowy4W6wmqjCHesv9r66B0Ok2kha-7=xBp69gksaXt-A@mail.gmail.com> <4FA345DA4F4AE44899BD2B03EEEC2FA90B329C21@SACEXCMBX04-PRD.hq.netapp.com>
-From: =?UTF-8?B?xYF1a2FzeiBUYXN6?= <lukasz@tasz.eu>
-Date: Thu, 29 Nov 2012 15:00:05 +0100
-Message-ID: <CAGRr-Nj9t+jaKf_DFL+zjYMgS1b5EaFjMnDc6XMdad3PJMDvnA@mail.gmail.com>
-Subject: Re: nfs performance - idea.
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Adrien Kunysz <adk@acunu.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2012/11/29 Myklebust, Trond <Trond.Myklebust@netapp.com>:
->> -----Original Message-----
->> From: Łukasz Tasz [mailto:lukasz@tasz.eu]
->> Sent: Thursday, November 29, 2012 8:47 AM
->> To: Myklebust, Trond
->> Cc: Adrien Kunysz; linux-nfs@vger.kernel.org
->> Subject: Re: nfs performance - idea.
->>
->> Hi, thanks a lot for answer,
->>
->> looks then even better! so to be 100% sure it good to traverse whole path
->> and open directory content.
->
-> No. All you really need is the opendir(). If you want to make your own hack, all you need is a program that does something along the lines of
->
-> DIR* p = opendir(".");
-> if (p)
->      closedir(p);
->
-I think I got what you mean, but in case of ./a/b/c/d/e
-just opendir('./a/b/c/d/e') could end with "No such file or directory"
+This list holds nfs4 clients (open) stateowner queue for last close replay,
+which are network namespace aware. So let's make this list per network
+namespace too.
 
-that's why I'm thinking about:
-for d in "./a/b/c/d/e".split('/')
-   opendir(d)
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfsd/netns.h     |    6 ++++++
+ fs/nfsd/nfs4state.c |   20 +++++++-------------
+ 2 files changed, 13 insertions(+), 13 deletions(-)
 
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index 9a98a0a..a356ea3 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -71,8 +71,14 @@ struct nfsd_net {
+ 	/*
+ 	 * client_lru holds client queue ordered by nfs4_client.cl_time
+ 	 * for lease renewal.
++	 *
++	 * close_lru holds (open) stateowner queue ordered by nfs4_stateowner.so_time
++	 * for last close replay.
++	 *
++	 * All of the above fields are protected by the client_mutex.
+ 	 */
+ 	struct list_head client_lru;
++	struct list_head close_lru;
+ };
+ 
+ extern int nfsd_net_id;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 87868ae..a281a18 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -402,14 +402,6 @@ static unsigned int clientstr_hashval(const char *name)
+ }
+ 
+ /*
+- * close_lru holds (open) stateowner queue ordered by nfs4_stateowner.so_time
+- * for last close replay.
+- *
+- * All of the above fields are protected by the client_mutex.
+- */
+-static struct list_head close_lru;
+-
+-/*
+  * We store the NONE, READ, WRITE, and BOTH bits separately in the
+  * st_{access,deny}_bmap field of the stateid, in order to track not
+  * only what share bits are currently in force, but also what
+@@ -2465,11 +2457,13 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
+ }
+ 
+ static void
+-move_to_close_lru(struct nfs4_openowner *oo)
++move_to_close_lru(struct nfs4_openowner *oo, struct net *net)
+ {
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++
+ 	dprintk("NFSD: move_to_close_lru nfs4_openowner %p\n", oo);
+ 
+-	list_move_tail(&oo->oo_close_lru, &close_lru);
++	list_move_tail(&oo->oo_close_lru, &nn->close_lru);
+ 	oo->oo_time = get_seconds();
+ }
+ 
+@@ -3242,7 +3236,7 @@ nfs4_laundromat(void)
+ 		unhash_delegation(dp);
+ 	}
+ 	test_val = nfsd4_lease;
+-	list_for_each_safe(pos, next, &close_lru) {
++	list_for_each_safe(pos, next, &nn->close_lru) {
+ 		oo = container_of(pos, struct nfs4_openowner, oo_close_lru);
+ 		if (time_after((unsigned long)oo->oo_time, (unsigned long)cutoff)) {
+ 			u = oo->oo_time - cutoff;
+@@ -3820,7 +3814,7 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 			 * little while to handle CLOSE replay.
+ 			 */
+ 			if (list_empty(&oo->oo_owner.so_stateids))
+-				move_to_close_lru(oo);
++				move_to_close_lru(oo, SVC_NET(rqstp));
+ 		}
+ 	}
+ out:
+@@ -4721,7 +4715,6 @@ nfs4_state_init(void)
+ 	for (i = 0; i < FILE_HASH_SIZE; i++) {
+ 		INIT_LIST_HEAD(&file_hashtbl[i]);
+ 	}
+-	INIT_LIST_HEAD(&close_lru);
+ 	INIT_LIST_HEAD(&del_recall_lru);
+ }
+ 
+@@ -4785,6 +4778,7 @@ static int nfs4_state_start_net(struct net *net)
+ 	nn->conf_name_tree = RB_ROOT;
+ 	nn->unconf_name_tree = RB_ROOT;
+ 	INIT_LIST_HEAD(&nn->client_lru);
++	INIT_LIST_HEAD(&nn->close_lru);
+ 
+ 	return 0;
+ 
 
->> One remark, since I did not mentioned it, I'm using NFSv3, is this behavior
->> same in NFSv3 and NFSv4?
->
-> Yes. It is a consequence of the NFS close-to-open caching model, which is common to all versions of NFS.
-great,
-could you please point me to document/manual which describe this model?
-
-thanks a lot for your help!
-Łukasz
-
->
->> thanks & regards
->> Lukasz Tasz
->> Łukasz Tasz
->>
->>
->> 2012/11/29 Myklebust, Trond <Trond.Myklebust@netapp.com>:
->> >> -----Original Message-----
->> >> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
->> >> owner@vger.kernel.org] On Behalf Of Lukasz Tasz
->> >> Sent: Thursday, November 29, 2012 4:41 AM
->> >> To: Adrien Kunysz
->> >> Cc: linux-nfs@vger.kernel.org
->> >> Subject: Re: nfs performance - idea.
->> >>
->> >> Any idea on this topic?
->> >>
->> >> Can I assume that "touch" could be interface for triggering
->> >> synchronising client state with server state?
->> >>
->> >
->> > 'ls' is better. All opendir() calls will trigger a revalidation of the directory
->> cache.
->> >
->> >
->> >> many thanks for help!
->> >> regards
->> >> Lukasz Tasz
->> >>
->> >>
->> >> 2012/11/14 Adrien Kunysz <adk@acunu.com>:
->> >> > On Wed, Nov 14, 2012 at 1:38 PM, Łukasz Tasz <lukasz@tasz.eu> wrote:
->> >> >> Hi all,
->> >> >>
->> >> >> I would like to consult some idea with you,
->> >> >>
->> >> >> Problem:
->> >> >> I have two processes which are doing some actions and one of the
->> >> >> action is done on a shared file system.
->> >> >> Issue is that this thing could be done only by one process, and
->> >> >> for this issue, locking mechanism is implemented.
->> >> >> Problem is that while one process is releasing lock, second one is
->> >> >> informed that file processing is finished, but unfortunately files
->> >> >> does not exists in context of second process.
->> >> >> Two processes are executed on two different hosts. NFS share is
->> >> >> mounted in a standard way, no special flag.
->> >> >> Problem I guess is with caches, lookupcache=none solves the
->> >> >> problem, but also causes others :) - performance.
->> >> >>
->> >> >> I know, it not possible to have all things at once - no complains.
->> >> >> But simple idea is that inside second process after notification
->> >> >> that files are generated execute touch function on directory which
->> >> >> holds files, This will cause unnecessary update of modification
->> >> >> date, but as a side effect I noticed  that also file gets visible
->> >> >> immediately on client hosts.
->> >> >>
->> >> >> That's why my question is if this is expected and reasonable
->> behaviour?
->> >> >> At the end I'm looking for kind of 'sync' command which will cause
->> >> >> synchronization of directories content inside client and server
->> >> >> something like flush() - but in NFS it's more complex.
->> >> >
->> >> > Doesn't fsync(2) do what you want? If not, can you explain why?
->> >> >
->> >> >> thanks in advance for help,
->> >> >>
->> >> >> regards
->> >> >> Lukasz
->> >> --
->> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
->> >> in the body of a message to majordomo@vger.kernel.org More
->> majordomo
->> >> info at http://vger.kernel.org/majordomo-info.html
