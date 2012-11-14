@@ -1,62 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:7504 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:47406 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754765Ab2K2OyD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Nov 2012 09:54:03 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Stef Bon <stefbon@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-cifs <linux-cifs@vger.kernel.org>
-Subject: RE: Possible to make nfs aware of a inotify watch has been set.
-Date: Thu, 29 Nov 2012 14:54:00 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90B329DFF@SACEXCMBX04-PRD.hq.netapp.com>
-References: <CANXojcy9thLBwrENTkOTSSE17L3N17A8XsTmyNqq3oNdhW_Q_w@mail.gmail.com>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA90B329CFD@SACEXCMBX04-PRD.hq.netapp.com>
- <CANXojcxR9673fRObMLPSScogAN05RSVhPFoni=ENc6YDWq9T7w@mail.gmail.com>
-In-Reply-To: <CANXojcxR9673fRObMLPSScogAN05RSVhPFoni=ENc6YDWq9T7w@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1422661Ab2KNOZB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Nov 2012 09:25:01 -0500
+Date: Wed, 14 Nov 2012 09:24:58 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: David Quigley <dpquigl@davequigley.com>
+Cc: Steve Dickson <steved@redhat.com>,
+        "David P. Quigley" <selinux@davequigley.com>,
+        trond.myklebust@netapp.com, sds@tycho.nsa.gov,
+        linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
+        linux-security-module@vger.kernel.org
+Subject: Re: Labeled NFS [v5]
+Message-ID: <20121114142458.GF23604@fieldses.org>
+References: <50A116F0.5050404@davequigley.com>
+ <20121112160959.GK30713@fieldses.org>
+ <50A16269.4060601@RedHat.com>
+ <50A1A4EE.7030507@davequigley.com>
+ <50A24345.8080309@RedHat.com>
+ <50A31EF5.1050801@davequigley.com>
+ <20121114134535.GD23604@fieldses.org>
+ <624cc90c1bf726d8ff1a1ea0ace5f50f@countercultured.net>
+ <20121114135939.GE23604@fieldses.org>
+ <80f36fef2a58eb538bce28daba3a862a@countercultured.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <80f36fef2a58eb538bce28daba3a862a@countercultured.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBTdGVmIEJvbiBbbWFpbHRvOnN0
-ZWZib25AZ21haWwuY29tXQ0KPiBTZW50OiBUaHVyc2RheSwgTm92ZW1iZXIgMjksIDIwMTIgOTo0
-OSBBTQ0KPiBUbzogTXlrbGVidXN0LCBUcm9uZA0KPiBDYzogbGludXgtbmZzQHZnZXIua2VybmVs
-Lm9yZzsgbGludXgtY2lmcw0KPiBTdWJqZWN0OiBSZTogUG9zc2libGUgdG8gbWFrZSBuZnMgYXdh
-cmUgb2YgYSBpbm90aWZ5IHdhdGNoIGhhcyBiZWVuIHNldC4NCj4gDQo+IDIwMTIvMTEvMjkgTXlr
-bGVidXN0LCBUcm9uZCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+Og0KPiA+PiAtLS0tLU9y
-aWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiA+Pg0KPiA+PiAxLiB3aGlsZSB0aGUgZmlsZXN5c3RlbXMg
-YXJlIHVzaW5nIGNyZWRlbnRhaWxzIG9yIHRpY2tldHMgdG8gZ2V0DQo+ID4+IGFjY2VzcyB0byBh
-IHJlbW90ZSByZXNvdXJjZSwgdGhpcyBpcyBhIGJpdCBkaWZmaWN1bHQgZm9yIG5vdGlmeWZzLg0K
-PiA+PiBOb3RpZnlmcyBieXBhc3NlcyB0aGF0LiBNYXliZSB0aGlzIGxlYWRzIHRvIHBlcm1pc3Np
-b25zL2FidXNlIEkNCj4gPj4gY2Fubm90IHNlZSBkaXJlY3RseS4NCj4gPg0KPiA+IExhY2sgb2Yg
-c2VjdXJpdHkgaXMgYSBzaG93c3RvcHBlci4gVGhlcmUgYXJlIGdvb2QgcmVhc29ucyB3aHkgaW5v
-dGlmeSB3b24ndA0KPiBhbGxvdyB5b3UgdG8gbW9uaXRvciBmaWxlcyBmb3Igd2hpY2ggeW91IGRv
-bid0IGhhdmUgYWNjZXNzIHBlcm1pc3Npb25zLg0KPiA+DQo+IA0KPiBMZXQgbWUgZXhwbGFpbiwg
-SSB0aGluayB5b3Ugbm90IHVuZGVyc3RhbmQgZnVsbHkuDQo+IA0KPiBOb3RpZnlmcyBkb2VzIG5v
-dCBhbGxvdyB1c2Vycy9jbGllbnRzIHRvIHNldCBhIHdhdGNoIGlmIHRoZXJlIGFyZSBubyByZWFk
-DQo+IHBlcm1pc3Npb25zICh0aGUgb2JqZWN0IGFuZCBhY2Nlc3MgZm9yIHRoZSB3aG9sZSBwYXRo
-IHRvIGl0KSwgc28gdGhlcmUgYXJlIG5vDQo+IHNlY3VyaXR5IGlzc3VlcyB0aGVyZS4NCj4gDQo+
-IFdoYXQgSSBtZWFuIGlzIHRoYXQgYW55IHByb2dyYW0gY2FuIGNvbnRhY3QgdGhlIHJlbW90ZSBu
-b3RpZnlmcyBzZXJ2ZXIsIGFuZA0KPiB0aGlzIHJlbW90ZSBub3RpZnlmcyBzZXJ2ZXIgY2Fubm90
-IGZpZ3VyZSBvdXQgaXQncyBhIHZhbGlkIHJlcXVlc3QgZnJvbSBhbm90aGVyDQo+IG5vdGlmeWZz
-IHNlcnZlciwgb3IgYSBwcm9ncmFtIGZha2luZyB0aGF0Lg0KPiBJbiB0aGUgY29uc3RydWN0aW9u
-IEkgZGVzY3JpYmUgaXQgZG9lcyBub3QgY2hlY2sgdGhhdCAoeWV0KS4NCj4gDQo+ID4+DQo+ID4+
-IFdoYXQgZG8geW91IHRoaW5rLCBpcyB0aGUgbGF0ZXN0IG9wdGlvbiBwb3NzaWJsZT8/DQo+ID4N
-Cj4gPiBTbyB3aGF0IGlzIHRoZSBraWxsZXIgYXBwIGZvciBpbm90aWZ5IG9uIE5GUy9DSUZTL0ZV
-U0U/IFdoYXQgcHJvZ3JhbXMgZG8NCj4geW91IG5lZWQgdG8gcnVuIG9uIGEgTkZTL0NJRlMvRlVT
-RSBjbGllbnQgdGhhdCB1c2UgaW5vdGlmeSBhbmQgdGhhdCB3b3VsZG4ndA0KPiBiZSBiZXR0ZXIg
-b2ZmIHJ1bm5pbmcgb24gdGhlIHNlcnZlciBpbnN0ZWFkPw0KPiA+DQo+IA0KPiBXaGF0IGRvIHlv
-dSBtZWFuIHdpdGggImJldHRlciBvZmYgcnVubmluZyBvbiB0aGUgc2VydmVyIGluc3RlYWQiPw0K
-PiBUaGVyZSBhcmUgYSBsb3Qgb2YgcHJvZ3JhbXMgaW50ZXJlc3RlZCBpbiBmcyBjaGFuZ2VzLCBs
-aWtlIGEgc2ltcGxlIGZpbGUNCj4gbWFuYWdlci4gSSB0aGluayBpdCdzIGEgdmVyeSBuaWNlIGZl
-YXR1cmUgdG8gc2VlIGNoYW5nZXMgcmlnaHQgYXdheSBpbiB0aGUgdmlldy4NCj4gSXQncyBub3Qg
-YSBraWxsZXIgYXBwLCBidXQgYSB0aGluayB0aGUgd2hvbGUgdXNlciBleHBlcmllbmNlIGlzIGlt
-cHJvdmluZyB3aGVuDQo+IHlvdXIgc3lzdGVtIGlzIGFibGUgdG8ga2VlcCBhIHZpZXcgKGxpa2Ug
-YSB2aWV3IGluIHRoZSBmaWxlIG1hbmFnZXIpIHVwIHRvDQo+IGRhdGUuDQo+IA0KPiA+IElPVzog
-d2hvc2UgcHJvYmxlbSBhcmUgeW91IHRyeWluZyB0byBzb2x2ZT8NCj4gDQo+IEkgdGhpbmsgdGhh
-dCBlbmFibGluZyBmcyBub3RpZnkgb24gbmV0d29yayBmaWxlc3lzdGVtcyBsaWtlIG5mcywgY2lm
-cyBhbmQgZnVzZSBpcw0KPiBhIGdvb2QgdGhpbmcgKHNlZSBhYm92ZSkuIE9uIHN5c3RlbXMgbGlr
-ZSBXaW5kb3dzIGFuZCBpT1Mgc2luY2UgbG9uZyB0aW1lDQo+IHRoaXMgd29ya3MuDQo+IA0KPiBZ
-b3UgZG8gbm90IGFncmVlPz8NCg0KTm8uIEkgbGlrZSBoYXZpbmcgYSByZWFzb24gZm9yIGFkZGlu
-ZyBrZXJuZWwgZnVuY3Rpb25hbGl0eS4NCg0KVHJvbmQNCiANCg==
+On Wed, Nov 14, 2012 at 09:04:18AM -0500, David Quigley wrote:
+> On 11/14/2012 08:59, J. Bruce Fields wrote:
+> >On Wed, Nov 14, 2012 at 08:50:17AM -0500, David Quigley wrote:
+> >>On 11/14/2012 08:45, J. Bruce Fields wrote:
+> >>>On Tue, Nov 13, 2012 at 11:32:53PM -0500, Dave Quigley wrote:
+> >>>>Ok so if you go to http://www.selinuxproject.org/git you will
+> >>see a
+> >>>>repo for lnfs and lnfs-patchset. The instructions at
+> >>>>http://www.selinuxproject.org/page/Labeled_NFS give you a better
+> >>>>indication on how to pull the trees. I've attached a patch for NFS
+> >>>>utils which gives support for security_label/nosecurity_label in
+> >>>>your /etc/exports file.
+> >>>
+> >>>Do we need an export option?  Is there any reason not to make the
+> >>>feature available whenever there's support available for it?
+> >>
+> >>I guess we could build it in but I figured an export option allowed
+> >>someone to turn off security labeling support if they didn't want it
+> >>on that export. What happens to clients when the server returns a
+> >>cap that they don't support? Do they mask the bits out?
+> >
+> >Yeah, they should just ignore it.
+> >
+> >While this is still experimental it's still nice to have a way to
+> >turn
+> >this on and off at runtime so people can experiment without having to
+> >have it on for everyone all the time.  But
+> >nfsd_supported_minorversion
+> >should be sufficient for that.
+> >
+> >(I don't think your patches actually dealt yet with the fact that
+> >this
+> >is part of minor version 2?  Another for the todo list.)
+> >
+> >--b.
+> 
+> If we use nfsd_supported_minorversion which I'm guessing is an
+> export option
+
+That's just a variable in the code.  It's controlled by
+/proc/fs/nfsd/versions.
+
+> what happens if someone wants to use other 4.2
+> features but not labeling?
+
+We'll cross that bridge when we come to it, maybe by adding some new
+global paramater.
+
+There's no reason this really needs to be per-export, is there?
+
+--b.
+
+> I'll switch it over if you guys want it
+> done that way, I think though that this provides more flexibility.
+> Although anything that makes me carry around fewer patches is good
+> in my book.
+> 
+> Dave
