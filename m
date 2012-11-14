@@ -1,66 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:54315 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1754777Ab2K3ACb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2012 19:02:31 -0500
+Received: from mx12.netapp.com ([216.240.18.77]:6329 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1423427Ab2KNXMM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Nov 2012 18:12:12 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs(5): Document the minorversion= mount option
+Date: Wed, 14 Nov 2012 23:12:10 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092E0E75@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20121114223600.48062.5680.stgit@seurat.1015granger.net>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9092E0DB4@SACEXCMBX04-PRD.hq.netapp.com>
+	 <A7E004BD-A5DA-4258-978A-80E46DBE3D32@oracle.com>
+In-Reply-To: <A7E004BD-A5DA-4258-978A-80E46DBE3D32@oracle.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Date: Thu, 29 Nov 2012 19:02:28 -0500
-From: David Quigley <dpquigl@davequigley.com>
-To: Casey Schaufler <casey@schaufler-ca.com>
-Cc: <bfields@fieldses.org>, <trond.myklebust@netapp.com>, <sds@tycho.nsa.gov>,
-        <linux-nfs@vger.kernel.org>, <selinux@tycho.nsa.gov>,
-        <linux-security-module@vger.kernel.org>
-Subject: Re: Labeled NFS [v5]
-In-Reply-To: <0ff94ca24f0c686ac7035c6dd9292746@countercultured.net>
-References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com>
- <50ABF1A5.2010406@schaufler-ca.com> <50AC1A74.7080105@davequigley.com>
- <50AC2117.801@schaufler-ca.com> <50AC224D.3080108@davequigley.com>
- <50AC41DC.5070607@schaufler-ca.com> <50AC4A7A.6010208@davequigley.com>
- <50B65E7E.4030607@schaufler-ca.com> <50B6B706.1010002@davequigley.com>
- <50B6C398.90002@schaufler-ca.com> <50B7E189.80200@schaufler-ca.com>
- <0ff94ca24f0c686ac7035c6dd9292746@countercultured.net>
-Message-ID: <366126a9d2f81c76c116059d4e3202d1@countercultured.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/29/2012 17:49, David Quigley wrote:
-> I have an idea of what it is then. I'm cloning the tree so I can take
-> a look really quick but I have a feeling that I didn't convey
-> something properly and it got messed up in the implementation. If
-> that's the case I'll make sure to be clearer next time to avoid
-> confusion.
->
-> --
-> This message was distributed to subscribers of the selinux mailing 
-> list.
-> If you no longer wish to subscribe, send mail to 
-> majordomo@tycho.nsa.gov with
-> the words "unsubscribe selinux" without quotes as the message.
-
-
-So the problem isn't clear to me. If we look in fs/nfs/nfs4proc.c we'll 
-see the xattr handlers for the security namespace. This will strip off 
-the security and should pass the second part to the security_ismaclabel 
-call on the key.
-
-The code in question is below.
-
-
-static int nfs4_xattr_get_nfs4_label(struct dentry *dentry, const char 
-*key,
-                                    void *buf, size_t buflen, int type)
-{
-         if (security_ismaclabel(key))
-                 return nfs4_get_security_label(dentry->d_inode, buf, 
-buflen);
-         return -EOPNOTSUPP;
-}
-
-This means whatever is making the getxattr call from userspace is 
-requesting security.selinux instead of security.smack. Is there a 
-different command to ls that will give you security.smack (or whatever 
-it is)? what happens if you install getfattr and do getfattr -n 
-security.whatever -m security.* /mnt/file
-
+T24gV2VkLCAyMDEyLTExLTE0IGF0IDE4OjAzIC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+T24gTm92IDE0LCAyMDEyLCBhdCA2OjAxIFBNLCAiTXlrbGVidXN0LCBUcm9uZCIgPFRyb25kLk15
+a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+ID4+IC0tLS0tT3JpZ2luYWwgTWVzc2Fn
+ZS0tLS0tDQo+ID4+IEZyb206IGxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmcgW21haWx0
+bzpsaW51eC1uZnMtDQo+ID4+IG93bmVyQHZnZXIua2VybmVsLm9yZ10gT24gQmVoYWxmIE9mIENo
+dWNrIExldmVyDQo+ID4+IFNlbnQ6IFdlZG5lc2RheSwgTm92ZW1iZXIgMTQsIDIwMTIgNTozOSBQ
+TQ0KPiA+PiBUbzogbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiA+PiBTdWJqZWN0OiBbUEFU
+Q0hdIG5mcyg1KTogRG9jdW1lbnQgdGhlIG1pbm9ydmVyc2lvbj0gbW91bnQgb3B0aW9uDQo+ID4+
+IA0KPiA+PiBTaWduZWQtb2ZmLWJ5OiBDaHVjayBMZXZlciA8Y2h1Y2subGV2ZXJAb3JhY2xlLmNv
+bT4NCj4gPj4gLS0tDQo+ID4+IA0KPiA+PiBPdXIgcGFscyBvbiB0aGUgU29sYXJpcyB0ZWFtIHJl
+Y2VudGx5IG5vdGljZWQgdGhhdCB0aGUgbWlub3J2ZXJzaW9uPSBvcHRpb24NCj4gPj4gaXMgbm90
+IGRvY3VtZW50ZWQgaW4gbmZzKDUpLiAgVGhpcyBpcyBhIGZpcnN0IHRha2UsIGp1c3QgdG8gc3Rh
+cnQgdGhlIGNvbnZlcnNhdGlvbi4NCj4gPj4gSSdtIHByZXR0eSBzdXJlIEkgZ290IHRoZSBrZXJu
+ZWwgdmVyc2lvbiBpbmZvcm1hdGlvbiB3cm9uZywgZm9yIGluc3RhbmNlLg0KPiA+PiANCj4gPj4g
+QW55IG90aGVyIGNvbW1lbnRzPw0KPiA+IA0KPiA+IFlvdSBtaWdodCB3YW50IHRvIG5vdGUgdGhh
+dCBpdCBpcyBkZXByZWNhdGVkIGluIGZhdm91ciBvZiB0aGUgInZlcnM9NC4xIiBub3RhdGlvbiwg
+YW5kIGZvciB0aGF0IHJlYXNvbiB3ZSBtaWdodCB3YW50IHRvIGZvcmdvIGRvY3VtZW50aW5nIGl0
+IGFsdG9nZXRoZXIuDQo+IA0KPiBPSy4gIG1pbm9ydmVyc2lvbj0gaXMgdGhlIG9ubHkgd2F5IHRv
+IGdldCBORlN2NC4xIG9uIEVMNi1iYXNlZCBkaXN0cmlidXRpb25zLCBpc24ndCBpdD8NCg0KWW91
+IGRpZG4ndCBzZWVtIHRvIGJlIHdyaXRpbmcgYSBtYW5wYWdlIGZvciB0aGUgUkhFTC02IGRpc3Ry
+b3M6ICJCZWZvcmUNCmtlcm5lbCAyLjYuMzgsIHRoZSBtaW5vciB2ZXJzaW9uIGlzIGFsd2F5cyB6
+ZXJvLi4uIi4gQXMgZmFyIGFzIEkga25vdywNClJIRUwtNiBpcyBzdGlsbCBiYXNlZCBvbiAyLjYu
+MzIuLi4NCg0KPiBCeSAiZGVwcmVjYXRlZCIgZG8geW91IG1lYW4gdGhhdCB5b3UgaW50ZW5kIHRv
+IHJlbW92ZSBpdD8NCg0KSSBtZWFuIGZvciBpbnN0YW5jZSB0aGF0ICdjYXQgL3Byb2MvbW91bnRz
+JyBhbmQgZnJpZW5kcyB3aWxsIHVzZSB0aGUNCid2ZXJzPTQuMScgbm90YXRpb24uIFRoZXkgd29u
+J3QgZXZlciBkaXNwbGF5ICdtaW5vcnZlcnNpb249Jy4NCg0KV2UgbWF5IGVuZCB1cCByZW1vdmlu
+ZyBzdXBwb3J0IGZvciBpdCBzb21lIGRheS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4
+IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAu
+Y29tDQp3d3cubmV0YXBwLmNvbQ0K
