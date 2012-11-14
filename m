@@ -1,195 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:48167 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:49098 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751474Ab2KMWkH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Nov 2012 17:40:07 -0500
-Date: Tue, 13 Nov 2012 17:40:05 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Sven Geggus <lists@fuchsschwanzdomain.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Kernel update 3.5.7 -> 3.6.3 breaks NFS4
-Message-ID: <20121113224005.GA11545@fieldses.org>
-References: <20121109200730.GI6171@fieldses.org>
- <E1TWxKX-00025I-J2@diesel.geggus.net>
- <20121109232410.GK6171@fieldses.org>
- <20121112091717.GA1610@geggus.net>
+	id S932701Ab2KNPTi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 Nov 2012 10:19:38 -0500
+Subject: [PATCH v2 14/15] nfsd: pass nfsd_net instead of net to grace enders
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, devel@openvz.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, jlayton@redhat.com
+Date: Wed, 14 Nov 2012 18:22:12 +0300
+Message-ID: <20121114152212.4708.35689.stgit@localhost.localdomain>
+In-Reply-To: <20121114152018.4708.63125.stgit@localhost.localdomain>
+References: <20121114152018.4708.63125.stgit@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20121112091717.GA1610@geggus.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 12, 2012 at 10:17:17AM +0100, Sven Geggus wrote:
-> J. Bruce Fields schrieb am Samstag, den 10. November um 00:24 Uhr:
-> 
-> OK, back at work and here is what I get:
-> 
-> > Restart the server, start strace, then try the mount, let it hang a few
-> > seconds just to make sure you got anything interesting, then kill strace
-> > and send the output.
-> 
-> OK, back at work and here is what I get...
-> 
-> read(3, "nfsd 10.1.7.30\n", 2048)       = 15
-> close(15)                               = 0
-> open("/var/lib/nfs/etab", O_RDONLY)     = 15
-> close(15)                               = 0
-> close(15)                               = 0
-> write(3, "nfsd 10.1.7.30 1352710828 * \n", 29) = 29
-> read(4, "4294967295\n", 2048)           = 11
-> close(16)                               = 0
-> close(15)                               = 0
-> read(15,
-> "\2\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\377\377\377\377\377\377\377\377\0\0\0\0\0\0\0\0\0\0\0\0",
-> 36) = 36
-> close(15)                               = 0
-> write(4, "4294967295 1352710828 0 \n", 25) = -1 EINVAL (Invalid argument)
+Passing net context looks as overkill.
 
-I suspect that error's coming from
-net/sunrpc/svcauth_unix.c:unix_gid_parse().
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfsd/nfs4recover.c |   14 ++++++--------
+ fs/nfsd/nfs4state.c   |    8 +++-----
+ fs/nfsd/state.h       |    2 +-
+ 3 files changed, 10 insertions(+), 14 deletions(-)
 
-> 4294967295 is UINT_MAX and this place is where it behaves differently on a good
-> kernel where the write call will succeed:
-> 
-> write(4, "4294967295 1352710828 0 \n", 25) = 25
-> 
-> Sven
-> 
-> P.S.: Your patched svcauth_gss.c will give me an "access denied by server"
-> while mounting instead of the infinite delay:
->  ~/ # mount -t nfs4 -o sec=krb5 testsrv:/storage /mnt/
-> mount.nfs4: access denied by server while mounting testsrv:/storage
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index 376692a..b657b62 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -58,7 +58,7 @@ struct nfsd4_client_tracking_ops {
+ 	void (*create)(struct nfs4_client *);
+ 	void (*remove)(struct nfs4_client *);
+ 	int (*check)(struct nfs4_client *);
+-	void (*grace_done)(struct net *, time_t);
++	void (*grace_done)(struct nfsd_net *, time_t);
+ };
+ 
+ /* Globals */
+@@ -391,10 +391,9 @@ purge_old(struct dentry *parent, struct dentry *child, struct nfsd_net *nn)
+ }
+ 
+ static void
+-nfsd4_recdir_purge_old(struct net *net, time_t boot_time)
++nfsd4_recdir_purge_old(struct nfsd_net *nn, time_t boot_time)
+ {
+ 	int status;
+-	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
+ 	in_grace = false;
+ 	if (!rec_file)
+@@ -1017,11 +1016,10 @@ nfsd4_cld_check(struct nfs4_client *clp)
+ }
+ 
+ static void
+-nfsd4_cld_grace_done(struct net *net, time_t boot_time)
++nfsd4_cld_grace_done(struct nfsd_net *nn, time_t boot_time)
+ {
+ 	int ret;
+ 	struct cld_upcall *cup;
+-	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 	struct cld_net *cn = nn->cld_net;
+ 
+ 	cup = alloc_cld_upcall(cn);
+@@ -1241,7 +1239,7 @@ nfsd4_umh_cltrack_check(struct nfs4_client *clp)
+ }
+ 
+ static void
+-nfsd4_umh_cltrack_grace_done(struct net __attribute__((unused)) *net,
++nfsd4_umh_cltrack_grace_done(struct nfsd_net __attribute__((unused)) *nn,
+ 				time_t boot_time)
+ {
+ 	char *legacy;
+@@ -1343,10 +1341,10 @@ nfsd4_client_record_check(struct nfs4_client *clp)
+ }
+ 
+ void
+-nfsd4_record_grace_done(struct net *net, time_t boot_time)
++nfsd4_record_grace_done(struct nfsd_net *nn, time_t boot_time)
+ {
+ 	if (client_tracking_ops)
+-		client_tracking_ops->grace_done(net, boot_time);
++		client_tracking_ops->grace_done(nn, boot_time);
+ }
+ 
+ static int
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 6927031..07f10fb 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3157,17 +3157,15 @@ out:
+ }
+ 
+ static void
+-nfsd4_end_grace(struct net *net)
++nfsd4_end_grace(struct nfsd_net *nn)
+ {
+-	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+-
+ 	/* do nothing if grace period already ended */
+ 	if (nn->grace_ended)
+ 		return;
+ 
+ 	dprintk("NFSD: end of grace period\n");
+ 	nn->grace_ended = true;
+-	nfsd4_record_grace_done(net, nn->boot_time);
++	nfsd4_record_grace_done(nn, nn->boot_time);
+ 	locks_end_grace(&nn->nfsd4_manager);
+ 	/*
+ 	 * Now that every NFSv4 client has had the chance to recover and
+@@ -3192,7 +3190,7 @@ nfs4_laundromat(void)
+ 	nfs4_lock_state();
+ 
+ 	dprintk("NFSD: laundromat service - starting\n");
+-	nfsd4_end_grace(&init_net);
++	nfsd4_end_grace(nn);
+ 	INIT_LIST_HEAD(&reaplist);
+ 	spin_lock(&client_lock);
+ 	list_for_each_safe(pos, next, &nn->client_lru) {
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index bfe0106..2deb6a8 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -495,5 +495,5 @@ extern void nfsd4_client_tracking_exit(struct net *net);
+ extern void nfsd4_client_record_create(struct nfs4_client *clp);
+ extern void nfsd4_client_record_remove(struct nfs4_client *clp);
+ extern int nfsd4_client_record_check(struct nfs4_client *clp);
+-extern void nfsd4_record_grace_done(struct net *net, time_t boot_time);
++extern void nfsd4_record_grace_done(struct nfsd_net *nn, time_t boot_time);
+ #endif   /* NFSD4_STATE_H */
 
-So, looks like the same get_int problem exists in several other places.
-Could you try the following instead of the previous patch?  I think I
-got them all this time....
-
---b.
-
-commit 664f26313a738f539a32c4eadd5351905e301bf2
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Fri Nov 9 15:16:02 2012 -0500
-
-    svcrpc: fix parsing of uids and gids in gss contexts
-    
-    bbf43dc888833ac0539e437dbaeb28bfd4fbab9f "sunrpc/cache.h: replace
-    simple_strtoul" introduced new range-checking which could cause get_int
-    to fail if given an unsigned integer too large to represent as an int.
-    
-    Symptoms were hangs on krb5 mounts after upgrading an NFS server.
-    
-    Cc: Eldad Zack <eldad@fogrefinery.com>
-    Reported-by: Sven Geggus <lists@fuchsschwanzdomain.de>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index a3946cf..8481961 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -491,7 +491,7 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
- 	int err;
- 	struct auth_domain *dom = NULL;
- 	struct svc_export exp = {}, *expp;
--	int an_int;
-+	unsigned int an_int;
- 
- 	if (mesg[mlen-1] != '\n')
- 		return -EINVAL;
-@@ -531,7 +531,7 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
- 		goto out3;
- 
- 	/* flags */
--	err = get_int(&mesg, &an_int);
-+	err = get_uint(&mesg, &an_int);
- 	if (err == -ENOENT) {
- 		err = 0;
- 		set_bit(CACHE_NEGATIVE, &exp.h.flags);
-@@ -541,19 +541,19 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
- 		exp.ex_flags= an_int;
- 	
- 		/* anon uid */
--		err = get_int(&mesg, &an_int);
-+		err = get_uint(&mesg, &an_int);
- 		if (err)
- 			goto out3;
- 		exp.ex_anon_uid= an_int;
- 
- 		/* anon gid */
--		err = get_int(&mesg, &an_int);
-+		err = get_uint(&mesg, &an_int);
- 		if (err)
- 			goto out3;
- 		exp.ex_anon_gid= an_int;
- 
- 		/* fsid */
--		err = get_int(&mesg, &an_int);
-+		err = get_uint(&mesg, &an_int);
- 		if (err)
- 			goto out3;
- 		exp.ex_fsid = an_int;
-diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
-index a1f10c0..e2c9317 100644
---- a/fs/nfsd/nfs4idmap.c
-+++ b/fs/nfsd/nfs4idmap.c
-@@ -415,7 +415,7 @@ nametoid_parse(struct cache_detail *cd, char *buf, int buflen)
- 		goto out;
- 
- 	/* ID */
--	error = get_int(&buf, &ent.id);
-+	error = get_uint(&buf, &ent.id);
- 	if (error == -EINVAL)
- 		goto out;
- 	if (error == -ENOENT)
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 73e9573..243d180 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -444,7 +444,7 @@ static int rsc_parse(struct cache_detail *cd,
- 		goto out;
- 
- 	/* uid, or NEGATIVE */
--	rv = get_int(&mesg, &rsci.cred.cr_uid);
-+	rv = get_uint(&mesg, &rsci.cred.cr_uid);
- 	if (rv == -EINVAL)
- 		goto out;
- 	if (rv == -ENOENT)
-@@ -453,7 +453,7 @@ static int rsc_parse(struct cache_detail *cd,
- 		int N, i;
- 
- 		/* gid */
--		if (get_int(&mesg, &rsci.cred.cr_gid))
-+		if (get_uint(&mesg, &rsci.cred.cr_gid))
- 			goto out;
- 
- 		/* number of additional gid's */
-@@ -469,7 +469,7 @@ static int rsc_parse(struct cache_detail *cd,
- 		for (i=0; i<N; i++) {
- 			gid_t gid;
- 			kgid_t kgid;
--			if (get_int(&mesg, &gid))
-+			if (get_uint(&mesg, &gid))
- 				goto out;
- 			kgid = make_kgid(&init_user_ns, gid);
- 			if (!gid_valid(kgid))
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index 4d01292..5d7020a 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -493,7 +493,7 @@ static int unix_gid_parse(struct cache_detail *cd,
- 		return -EINVAL;
- 	mesg[mlen-1] = 0;
- 
--	rv = get_int(&mesg, &uid);
-+	rv = get_uint(&mesg, &uid);
- 	if (rv)
- 		return -EINVAL;
- 	ug.uid = uid;
-@@ -513,7 +513,7 @@ static int unix_gid_parse(struct cache_detail *cd,
- 	for (i = 0 ; i < gids ; i++) {
- 		int gid;
- 		kgid_t kgid;
--		rv = get_int(&mesg, &gid);
-+		rv = get_uint(&mesg, &gid);
- 		err = -EINVAL;
- 		if (rv)
- 			goto out;
