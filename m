@@ -1,131 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:29323 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752812Ab2KSSVw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Nov 2012 13:21:52 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
-Subject: Re: [RFC PATCH V2] mount: Added the -o v4.1 mount option
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1353339810-19126-1-git-send-email-steved@redhat.com>
-Date: Mon, 19 Nov 2012 13:21:45 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <30DFD4FD-3442-4F35-B576-EA597E21F4CE@oracle.com>
-References: <1353339810-19126-1-git-send-email-steved@redhat.com>
-To: Steve Dickson <steved@redhat.com>
+Received: from out01.mta.xmission.com ([166.70.13.231]:51994 "EHLO
+	out01.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751345Ab2KOGPK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Nov 2012 01:15:10 -0500
+From: ebiederm@xmission.com (Eric W. Biederman)
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "Myklebust\, Trond" <Trond.Myklebust@netapp.com>,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel\@openvz.org" <devel@openvz.org>
+References: <20121106124035.GA20522@infradead.org>
+	<20121106130705.GC6718@fieldses.org>
+	<20121106131018.GA12211@infradead.org>
+	<20121106133605.GD6718@fieldses.org>
+	<20121107183355.GA7421@fieldses.org> <50A0B562.2090807@parallels.com>
+	<20121114210112.GA539@fieldses.org>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA9092E0A40@SACEXCMBX04-PRD.hq.netapp.com>
+	<20121114214236.GB539@fieldses.org>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA9092E0AE9@SACEXCMBX04-PRD.hq.netapp.com>
+	<20121114215426.GC539@fieldses.org>
+Date: Wed, 14 Nov 2012 22:14:50 -0800
+In-Reply-To: <20121114215426.GC539@fieldses.org> (J. Bruce Fields's message of
+	"Wed, 14 Nov 2012 16:54:26 -0500")
+Message-ID: <87obize6jp.fsf@xmission.com>
+MIME-Version: 1.0
+Content-Type: text/plain
+Subject: Re: [PATCH v3] SUNRPC: set desired file system root before connecting local transports
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+"J. Bruce Fields" <bfields@fieldses.org> writes:
 
-On Nov 19, 2012, at 10:43 AM, Steve Dickson <steved@redhat.com> wrote:
+> On Wed, Nov 14, 2012 at 09:51:33PM +0000, Myklebust, Trond wrote:
+>> On Wed, 2012-11-14 at 16:42 -0500, J. Bruce Fields wrote:
+>> > Simo's patches use them for upcalls to svcgssd.  Those will always be
+>> > done from server threads.
+>> 
+>> Any reason why you can't set that up when you start nfsd?
+>
+> Oh, right, I was thinking of the upcalls themselves--right, the connect
+> we should be able to do on server start, I agree.
+>
+>> 
+>> > > If not, then let's just move
+>> > > the AF_LOCAL connection back into the process context and out of rpciod.
+>> > 
+>> > Remind me how this helps?
+>> 
+>> rpciod shares the 'init' process net namespace and chroot properties.
+>> If, however you call bind() from the (containerised) process that was
+>> used to start nfsd, then you will be using filesystem root (and net
+>> namespace) of that container.
+>
+> Got it.
 
-> This patch will convert -o v4.1, vers=4.1 or nfsvers=4.1 into
-> the corresponding "v4,minorversion=1", "vers=4,minorversion=1"
-> or "nfsvers=4,minorversion=1" options.
+If you can move the connect and bind into the server start that does
+sound like a very good and maintainable solution.  I suspect it might
+even be a smidge better for error handling.
 
-I had a couple of thoughts about this.
+Is there ever a reason to reconnect one of these sockets?
 
-As Trond points out, mount.nfs really should not use option "minorversion=" here, except on kernels that do not support "vers=4.x".  That will add complexity, certainly.
-
-In addition, I think we can expect the need for support for "v4.2" and "v4.0" (perhaps) in the near future, and then subsequently "v4.3" and so on.  Since that is close at hand, we should consider the need to add those as we design this.
-
-Perhaps instead of editing the mount option string directly in nfs_nfs_version(), you might add a "*minorversion" argument to nfs_nfs_version() function and let its callers finish the work, just as is done with "*version" today.  That might also make it easier to add the logic that changes behavior based on kernel version.
-
-
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
-> utils/mount/network.c | 18 ++++++++++++++++--
-> utils/mount/nfs.man   | 13 +++++++++++++
-> 2 files changed, 29 insertions(+), 2 deletions(-)
-> 
-> diff --git a/utils/mount/network.c b/utils/mount/network.c
-> index e7bd522..36aa03b 100644
-> --- a/utils/mount/network.c
-> +++ b/utils/mount/network.c
-> @@ -94,6 +94,7 @@ static const char *nfs_version_opttbl[] = {
-> 	"v2",
-> 	"v3",
-> 	"v4",
-> +	"v4.1",
-> 	"vers",
-> 	"nfsvers",
-> 	NULL,
-> @@ -1244,11 +1245,20 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
-> 	case 2: /* v4 */
-> 		*version = 4;
-> 		return 1;
-> -	case 3:	/* vers */
-> +	case 3: /* v4.1 */
-> +		*version = 4;
-> +		po_remove_all(options, "v4.1");
-> +		po_append(options, "v4,minorversion=1");
-> +		return 1;
-> +	case 4:	/* vers */
-> 		switch (po_get_numeric(options, "vers", &tmp)) {
-> 		case PO_FOUND:
-> 			if (tmp >= 2 && tmp <= 4) {
-> 				*version = tmp;
-> +				if (strcmp(po_get(options, "vers"), "4.1") == 0) {
-> +					po_remove_all(options, "vers");
-> +					po_append(options, "vers=4,minorversion=1");
-> +				}
-> 				return 1;
-> 			}
-> 			return 0;
-> @@ -1261,11 +1271,15 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
-> 					progname);
-> 			return 0;
-> 		}
-> -	case 4: /* nfsvers */
-> +	case 5: /* nfsvers */
-> 		switch (po_get_numeric(options, "nfsvers", &tmp)) {
-> 		case PO_FOUND:
-> 			if (tmp >= 2 && tmp <= 4) {
-> 				*version = tmp;
-> +				if (strcmp(po_get(options, "nfsvers"), "4.1") == 0) {
-> +					po_remove_all(options, "nfsvers");
-> +					po_append(options, "nfsvers=4,minorversion=1");
-> +				}
-> 				return 1;
-> 			}
-> 			return 0;
-> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-> index c15de98..8d1bb56 100644
-> --- a/utils/mount/nfs.man
-> +++ b/utils/mount/nfs.man
-> @@ -762,6 +762,19 @@ by 'nolock'/'lock' mount option.
-> Use these options, along with the options in the first subsection above,
-> for NFS version 4 and newer.
-> .TP 1.5i
-> +.BI minorversion= n
-> +Specifies the protocol minor version number.
-> +NFSv4 introduces "minor versioning," where NFS protocol enhancements can
-> +be introduced without bumping the NFS protocol version number.
-> +.IP
-> +The minor version can also be be specified using the
-> +.B vers=
-> +option.
-> +For example, specifying
-> +.B vers=4.1
-> +is the same as specifying
-> +.BR vers=4,minorversion=1 .
-> +.TP 1.5i
-> .BI proto= netid
-> The
-> .I netid
-> -- 
-> 1.7.11.7
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Eric
