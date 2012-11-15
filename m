@@ -1,54 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.struction.de ([85.214.237.111]:32859 "EHLO
-	rasta.struction.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753222Ab2KHUU5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Nov 2012 15:20:57 -0500
-Message-ID: <509C1419.2030802@struction.de>
-Date: Thu, 08 Nov 2012 21:20:41 +0100
-From: pille <pille+kernel.org+mailinglist+linux-nfs@struction.de>
-MIME-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:55083 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S2993480Ab2KOSeQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Nov 2012 13:34:16 -0500
+Date: Thu, 15 Nov 2012 13:34:08 -0500
+From: Jeff Layton <jlayton@redhat.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org, 1071733@bugs.launchpad.net
-Subject: Re: NFS export of LVM snapshot exports origin instead of snapshot
-References: <509BDA31.3090904@struction.de> <20121108195025.GA5042@fieldses.org>
-In-Reply-To: <20121108195025.GA5042@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        linux-nfs@vger.kernel.org, devel@openvz.org,
+        Trond.Myklebust@netapp.com, linux-kernel@vger.kernel.org
+Subject: Re: [RFC PATCH v2 00/15] NFSd state containerization
+Message-ID: <20121115133408.23db9ebb@corrin.poochiereds.net>
+In-Reply-To: <20121114220036.GD539@fieldses.org>
+References: <20121114152018.4708.63125.stgit@localhost.localdomain>
+	<20121114220036.GD539@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/08/2012 08:50 PM, J. Bruce Fields wrote:
+On Wed, 14 Nov 2012 17:00:36 -0500
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-> The protocol references files on the filesystem using filehandles.  The
-> linux NFS server generates a filehandle that has a part which identifies
-> the filesystem and a part which identifies the particular file (usually
-> an inode and generation number).
-
-sounds comprehensible.
-
-> The filesystem part in your case is probably a uuid which is part of
-> what's copied when you snapshot (as are all the inode numbers).  So
-> you're left with filehandles that are the same for the two filesystems.
-
-i can confirm that both filesystems by design have the same UUID.
-
-> You can tell it to instead to use whatever integer you'd like using the
-> "fsid=" export option (just don't used fsid=0, which has a special
-> meaning).
-
-tried that already (using 2 and 6) and it did not work.
-
-> Or, probably better--you should be able to be able to modify the uuid...
-> Looking at the tune2fs man page, I think it should be:
+> On Wed, Nov 14, 2012 at 06:20:59PM +0300, Stanislav Kinsbursky wrote:
+> > This patch set is my first attempt to containerize NFSv4 state - i.e. make it
+> > works in networks namespace context.
+> > I admit, that some of this new code could be partially rewritten during future
+> > NFSd containerization.
+> > But the overall idea look more or less correct to me.
+> > So, the main things here are:
+> > 1) making nfs4_client network namespace aware.
+> > 2) Allocating all hashes (except file_hashtbl and reclaim_str_hashtbl) per
+> > network namespace context on NFSd start (not init) and destroying on NFSd
+> > state shutdown.
+> > 3) Allocating of reclaim_str_hashtbl on legacy tracker start and destroying on
+> > legacy tracker stop.
+> > 4) Moving of client_lru and close_lru lists to per-net data.
+> > 5) Making lundromat network namespace aware.
 > 
-> 	tune2fs -U random /dev/vg0/nfssnapshot
+> These look OK and pass my tests.  Jeff, do the revised recovery bits
+> look OK?
+> 
+> Have you done any testing?
+> 
+> It'd be interesting, for example, to know if there are any pynfs that
+> fail against the server in a non-init network namespace, but pass
+> normally.
+> 
+> --b.
+> 
 
-we're using xfs in production, but it has some similar tool. i'll look
-into it tomorrow, because it doesn't works out that quick.
+I looked over the patches and they look sane to me. I move that they go
+into your -next branch to soak for a bit.
 
-my problem with this issue is that we're running this setup for over two
-years now and the NFS server wasn't rebooted since half a year and the
-bug just showed recently. while we didn't had safety-checks in place to
-be sure what we mounted, we regularly simulated file-operations on a
-snapshot which never affected the origin volume.
-
-  pille
+Cheers,
+-- 
+Jeff Layton <jlayton@redhat.com>
