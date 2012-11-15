@@ -1,39 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:56923 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753369Ab2KLUoZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Nov 2012 15:44:25 -0500
-Message-ID: <50A15FAB.9040208@davequigley.com>
-Date: Mon, 12 Nov 2012 15:44:27 -0500
-From: Dave Quigley <dpquigl@davequigley.com>
+Received: from mx1.redhat.com ([209.132.183.28]:41567 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1423471Ab2KOItm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Nov 2012 03:49:42 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id qAF8ngFd017775
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Nov 2012 03:49:42 -0500
+Received: from smallhat.bos.devel.redhat.com (vpn-10-117.rdu.redhat.com [10.11.10.117])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id qAF8nft3022796
+	for <linux-nfs@vger.kernel.org>; Thu, 15 Nov 2012 03:49:42 -0500
+Message-ID: <50A4ACA5.7000109@RedHat.com>
+Date: Thu, 15 Nov 2012 03:49:41 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: trond.myklebust@netapp.com, sds@tycho.nsa.gov, linux-nfs@vger.kernel.org,
-        selinux@tycho.nsa.gov, linux-security-module@vger.kernel.org
-Subject: Re: Labeled NFS [v5]
-References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com> <20121112163314.GM30713@fieldses.org>
-In-Reply-To: <20121112163314.GM30713@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Linux pNFS status meeting 11/15/12 *today*
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/12/2012 11:33 AM, J. Bruce Fields wrote:
-> On Mon, Nov 12, 2012 at 01:15:34AM -0500, David Quigley wrote:
->> The NFSv4 working group has finally accepted Labeled NFS as part of the NFSv4.2
->> specification and it has been decided that a reposting of the Labeled NFS code
->> for inclusion into mainline was a good idea. The patches have been rebased onto
->> v3.7-rc2 and have been tested against the SELinux testsuite with the only
->> failures being for features not supported by NFS.
->
-> This will still need support for FATTR4_CHANGE_SEC_LABEL.
->
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+Sorry for the late notice... but the bi-weekly meeting is Today (Thur Nov 15)
 
-That's true. At the time we didn't have FATTR4_CHANGE_SEC_LABEL so it 
-wasn't implemented. This should be a good start at Labeled NFS support 
-but will take more work.
+Time: 9:30 AM PST (12:30 PM EST)
+
+The call in numbers are:
+U.S. and Canada: (800) 451-8679
+International dial-in number: (212) 729-5016
+Israel Toll-Free: 1-809-462-557
+Conference code: 564.272.1552
+
+steved.
+
