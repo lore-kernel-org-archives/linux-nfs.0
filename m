@@ -1,83 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:21965 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1768070Ab2KOOz0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Nov 2012 09:55:26 -0500
-Message-ID: <50A5025C.8070201@netapp.com>
-Date: Thu, 15 Nov 2012 09:55:24 -0500
-From: Bryan Schumaker <bjschuma@netapp.com>
+Received: from smtp105.biz.mail.bf1.yahoo.com ([98.139.221.43]:28659 "HELO
+	smtp105.biz.mail.bf1.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1767956Ab2KOQGy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Nov 2012 11:06:54 -0500
+Message-ID: <50A51195.9080004@schaufler-ca.com>
+Date: Thu, 15 Nov 2012 08:00:21 -0800
+From: Casey Schaufler <casey@schaufler-ca.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 00/10] NFSD: Improve fault injection
-References: <1351630254-26166-1-git-send-email-bjschuma@netapp.com> <20121114224846.GE539@fieldses.org>
-In-Reply-To: <20121114224846.GE539@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+To: David Quigley <dpquigl@davequigley.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Steve Dickson <steved@redhat.com>,
+        "David P. Quigley" <selinux@davequigley.com>,
+        trond.myklebust@netapp.com, sds@tycho.nsa.gov,
+        linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
+        linux-security-module@vger.kernel.org,
+        Casey Schaufler <casey@schaufler-ca.com>
+Subject: Re: Labeled NFS [v5]
+References: <50A116F0.5050404@davequigley.com> <20121112160959.GK30713@fieldses.org> <50A16269.4060601@RedHat.com> <50A1A4EE.7030507@davequigley.com> <50A24345.8080309@RedHat.com> <50A31EF5.1050801@davequigley.com> <20121114134535.GD23604@fieldses.org> <624cc90c1bf726d8ff1a1ea0ace5f50f@countercultured.net> <20121114135939.GE23604@fieldses.org> <80f36fef2a58eb538bce28daba3a862a@countercultured.net> <20121114142458.GF23604@fieldses.org> <4f9b24e3942b4a28cd9068d5bc0135fa@countercultured.net>
+In-Reply-To: <4f9b24e3942b4a28cd9068d5bc0135fa@countercultured.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/14/2012 05:48 PM, J. Bruce Fields wrote:
-> On Tue, Oct 30, 2012 at 04:50:44PM -0400, bjschuma@netapp.com wrote:
->> From: Bryan Schumaker <bjschuma@netapp.com>
+On 11/14/2012 6:30 AM, David Quigley wrote:
+> On 11/14/2012 09:24, J. Bruce Fields wrote:
+>> On Wed, Nov 14, 2012 at 09:04:18AM -0500, David Quigley wrote:
+>>> On 11/14/2012 08:59, J. Bruce Fields wrote:
+>>> >On Wed, Nov 14, 2012 at 08:50:17AM -0500, David Quigley wrote:
+>>> >>On 11/14/2012 08:45, J. Bruce Fields wrote:
+>>> >>>On Tue, Nov 13, 2012 at 11:32:53PM -0500, Dave Quigley wrote:
+>>> >>>>Ok so if you go to http://www.selinuxproject.org/git you will
+>>> >>see a
+>>> >>>>repo for lnfs and lnfs-patchset. The instructions at
+>>> >>>>http://www.selinuxproject.org/page/Labeled_NFS give you a better
+>>> >>>>indication on how to pull the trees. I've attached a patch for NFS
+>>> >>>>utils which gives support for security_label/nosecurity_label in
+>>> >>>>your /etc/exports file.
+>>> >>>
+>>> >>>Do we need an export option?  Is there any reason not to make the
+>>> >>>feature available whenever there's support available for it?
+>>> >>
+>>> >>I guess we could build it in but I figured an export option allowed
+>>> >>someone to turn off security labeling support if they didn't want it
+>>> >>on that export. What happens to clients when the server returns a
+>>> >>cap that they don't support? Do they mask the bits out?
+>>> >
+>>> >Yeah, they should just ignore it.
+>>> >
+>>> >While this is still experimental it's still nice to have a way to
+>>> >turn
+>>> >this on and off at runtime so people can experiment without having to
+>>> >have it on for everyone all the time.  But
+>>> >nfsd_supported_minorversion
+>>> >should be sufficient for that.
+>>> >
+>>> >(I don't think your patches actually dealt yet with the fact that
+>>> >this
+>>> >is part of minor version 2?  Another for the todo list.)
+>>> >
+>>> >--b.
+>>>
+>>> If we use nfsd_supported_minorversion which I'm guessing is an
+>>> export option
 >>
->> While working on p2p-nfs, I discovered that I sometimes need to clear
->> state for a specific client to test all possible error recovery conditions.
->> The current fault injection code deletes state as it find it, so it can
->> be difficult to guess which state will be forgotten.  In addition, I
->> currently print out the amount of state forgotten but I don't give details
->> like "Forgot 3 locks from client w.x.y.z".  These patches set out to
->> improve that.
+>> That's just a variable in the code.  It's controlled by
+>> /proc/fs/nfsd/versions.
 >>
->> The first 7 patches clean up the current code and prepare it for specific
->> client state removal.  Patch 8 adds prints information to the server's logs
->> when a fault injection file is read (such as "Client w.x.y.z has 3 open
->> files").  Patch 9 adds in a custom file operations structure so users can
->> write strings to fault injection files in addition to u64s.  Finally, patch
->> 10 allows users to remove state by writing a client's IP address to one of
->> the files.
-> 
-> Apologies for putting you off again, but: I'd like to get Stanislav's
-> patches sorted out first.  I think that shouldn't take too long--bug me
-> in another week or so if I haven't come back to these by then.  These
-> may need a little rebasing at that point.
+>>> what happens if someone wants to use other 4.2
+>>> features but not labeling?
+>>
+>> We'll cross that bridge when we come to it, maybe by adding some new
+>> global paramater.
+>>
+>> There's no reason this really needs to be per-export, is there?
+>>
+>> --b.
+>
+> At the moment I can't really think of a reason to have it be
+> per-export. I think we need a new LSM patch though to determine if the
+> LSM supports labeling over NFS unless Steve can think of a better way
+> to tell if the LSM supports labeling.
 
-Ok, I'll add "bug Bruce" to my calendar... I took a quick glance through his patches and I don't think rebasing will be too hard.
+If the LSM has a secid_to_secctx hook it supports labeling.
+Today that's SELinux and Smack. You already have support in
+for SELinux, and providing Smack's review and possibly updates
+is #2 on my gotta do list. On the whole, I think that, except
+for the fundamental philosophical difference between label
+support and xattr support, it should be a simple matter to
+get support in for any LSM that has secid_to_secctx.
 
-- Bryan
+But I'm still working on the review.
 
-> 
-> --b.
-> 
+>
+>
 >>
->> Changes in v2:
->> - Patches apply cleanly to the most recent nfsd-next branch
->> - Improve printk() output
->>
->> Questions, comments and suggestions are appreciated!
->>
->> - Bryan
->>
->> Bryan Schumaker (10):
->>   NFSD: Fold fault_inject.h into state.h
->>   NFSD: Lock state before calling fault injection function
->>   NFSD: Clean up forgetting clients
->>   NFSD: Clean up forgetting locks
->>   NFSD: Clean up forgetting openowners
->>   NFSD: Clean up forgetting and recalling delegations
->>   NFSD: Fault injection operations take a per-client forget function
->>   NFSD: Reading a fault injection file prints a state count
->>   NFSD: Add a custom file operations structure for fault injection
->>   NFSD: Forget state for a specific client
->>
->>  fs/nfsd/fault_inject.c | 112 ++++++++++++++++++++++++++----
->>  fs/nfsd/fault_inject.h |  28 --------
->>  fs/nfsd/nfs4state.c    | 181 +++++++++++++++++++++++++++++++------------------
->>  fs/nfsd/nfsctl.c       |   2 +-
->>  fs/nfsd/state.h        |  23 +++++++
->>  5 files changed, 235 insertions(+), 111 deletions(-)
->>  delete mode 100644 fs/nfsd/fault_inject.h
->>
->> -- 
->> 1.8.0
->>
+>>> I'll switch it over if you guys want it
+>>> done that way, I think though that this provides more flexibility.
+>>> Although anything that makes me carry around fewer patches is good
+>>> in my book.
+>>>
+>>> Dave
+>
+> -- 
+> To unsubscribe from this list: send the line "unsubscribe
+> linux-security-module" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
 
