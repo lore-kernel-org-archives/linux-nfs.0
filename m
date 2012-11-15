@@ -1,59 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:40465 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:44972 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755938Ab2KZURH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Nov 2012 15:17:07 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 17/28] NFSv4.1: Allow the server to recall all but one slot
-Date: Mon, 26 Nov 2012 15:16:34 -0500
-Message-Id: <1353961005-63874-18-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1353961005-63874-17-git-send-email-Trond.Myklebust@netapp.com>
-References: <1353961005-63874-1-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-2-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-3-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-4-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-5-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-6-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-7-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-8-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-9-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-10-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-11-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-12-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-13-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-14-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-15-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-16-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-17-git-send-email-Trond.Myklebust@netapp.com>
+	id S2992484Ab2KOS0p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Nov 2012 13:26:45 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@tonian.com>
+CC: Giovanni <fattorare@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: PNFS Kernel - CONFIG_SPNFS not found
+Date: Thu, 15 Nov 2012 18:26:43 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092E33AC@SACEXCMBX04-PRD.hq.netapp.com>
+References: <loom.20121105T154655-381@post.gmane.org>
+	 <50A51559.9090009@tonian.com>
+In-Reply-To: <50A51559.9090009@tonian.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the server wants to leave us with only one slot, or it wants
-to "shrink" our slot table to something larger than we have now,
-then so be it.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/callback_proc.c | 5 -----
- 1 file changed, 5 deletions(-)
-
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index ed0b446..a0546ec 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -567,11 +567,6 @@ __be32 nfs4_callback_recallslot(struct cb_recallslotargs *args, void *dummy,
- 
- 	fc_tbl = &cps->clp->cl_session->fc_slot_table;
- 
--	status = htonl(NFS4ERR_BAD_HIGH_SLOT);
--	if (args->crsa_target_highest_slotid >= fc_tbl->max_slots ||
--	    args->crsa_target_highest_slotid < 1)
--		goto out;
--
- 	status = htonl(NFS4_OK);
- 
- 	nfs41_set_target_slotid(fc_tbl, args->crsa_target_highest_slotid);
--- 
-1.7.11.7
-
+T24gVGh1LCAyMDEyLTExLTE1IGF0IDE4OjE2ICswMjAwLCBCZW5ueSBIYWxldnkgd3JvdGU6DQo+
+IEdpb3Zhbm5pLA0KPiBTb3JyeSBidXQgc3VwcG9ydCBmb3Igc3BuZnMgd2FzIGRyb3BwZWQgYmFj
+ayBpbiBwbmZzLWFsbC0zLjINCj4gU2VlIGh0dHA6Ly93d3cuc3Bpbmljcy5uZXQvbGlzdHMvbGlu
+dXgtbmZzL21zZzI1OTE3Lmh0bWwNCj4gDQo+IEJlbm55DQoNClRpbWUgdG8gdXBkYXRlIHRoZSBz
+cG5mcyBlbnRyeSBpbiB0aGUgd2lraT8NCg0KVHJvbmQNCg0KPiBPbiAyMDEyLTExLTA1IDE2OjQ5
+LCBHaW92YW5uaSB3cm90ZToNCj4gPiBIaSwNCj4gPiBJJ20gdHJ5aW5nIHRvIGNvbXBpbGUgdGhl
+IGtlcm5lbCBpbiBvcmRlciB0byBlbmFibGUgcG5mcyBmZWF0dXJlIHByZXNlbnQgaW4gTkZTDQo+
+ID4gNC4xIGZvbGxvd2luZyB0aGlzIGd1aWRlIGh0dHA6Ly9saW51eC0NCj4gPiBuZnMub3JnL3dp
+a2kvaW5kZXgucGhwL0NvbmZpZ3VyaW5nX3BORlMvc3BuZnNkDQo+ID4gSSBkb3dubG9hZGVkIHRo
+ZSBnaXQgcmVwb3NpdG9yeSBmb3IgdGhlIGtlcm5lbCBmcm9tIGdpdDovL2dpdC5saW51eC0NCj4g
+PiBuZnMub3JnL3Byb2plY3RzL2JoYWxldnkvbGludXgtcG5mcy5naXQNCj4gPiBJIGRpZG4ndCBm
+b3VuZCB3aGVyZSBJIGNhbiBlbmFibGUgdGhlIGtlcm5lbCBvcHRpb25zIENPTkZJR19TUE5GUyBh
+bmQNCj4gPiBDT05GSUdfU1BORlNfTEFZT1VUU0VHTUVOVC4gSSBoYXZlIGZvdW5kIGFsbCB0aGUg
+b3RoZXIgb3B0aW9ucyByZXF1aXJlZCBieSBQTkZTLg0KPiA+IEkgZGlkbid0IGZvdW5kIHRoaXMg
+dHdvIHN0cmluZyBhbHNvIGluIHRoZSBzb3VyY2UgY29kZToNCj4gPiANCj4gPiBbcm9vdEByaDYy
+ZHMxIGxpbnV4LXBuZnNdIyBmaW5kIC58eGFyZ3MgZ3JlcCBDT05GSUdfU1BORlMNCj4gPiBbcm9v
+dEByaDYyZHMxIGxpbnV4LXBuZnNdIw0KPiA+IA0KPiA+IEkgaGF2ZSB0cmllZCB1c2luZyB0aGUg
+bGF0ZXN0IGNvbW1pdCBhbmQgYWxzbyB3aXRoIHRoZSBjb21taXQgaWQNCj4gPiBjYmQwOWUwZmIy
+YjE2MGEwNmE0NGFhZDFjMjE3ODZiOTk0MDE4MjNmICBhcyByZXBvcnRlZCBpbiB0aGUgd2lraSBn
+dWlkZSBidXQgdGhlDQo+ID4gcmVzdWx0IGlzIHRoZSBzYW1lLg0KPiA+IElmIEkgZG9uJ3Qgc2Vs
+ZWN0IHRoaXMgdHdvIGZlYXR1cmUsIGxhdGVyIEkgb2J0YWluIGEgZXJyb3Igd2hlbiBJIHRyeSB0
+byBleGVjdXRlDQo+ID4gdGhlIHByb2Nlc3Mgc3BuZnNkIGV4aXQgd2l0aCBlcnJvciBiZWNhdXNl
+IGl0IGRvZXNuJ3QgZm91bmQgdGhlIGZpbGUNCj4gPiAvcHJvYy9mcy9zcG5mcy9jdGwNCj4gPiAN
+Cj4gPiBDYW4geW91IGhlbHAgbWU/DQo+ID4gDQo+ID4gR2lvdmFubmkgU2Npb3J0aW5vDQo+ID4g
+DQo+ID4gLS0NCj4gPiBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGlu
+ZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBpbg0KPiA+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0
+byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnDQo+ID4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAg
+aHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQo+ID4gDQo+IC0tDQo+
+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmli
+ZSBsaW51eC1uZnMiIGluDQo+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdl
+ci5rZXJuZWwub3JnDQo+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5l
+bC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXgg
+TkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
+b20NCnd3dy5uZXRhcHAuY29tDQo=
