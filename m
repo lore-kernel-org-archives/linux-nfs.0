@@ -1,68 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:46485 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750778Ab2KWFLu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Nov 2012 00:11:50 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: fanchaoting <fanchaoting@cn.fujitsu.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfs cache bug (when server delete the file ,nfs client can read
- file also)
-Date: Fri, 23 Nov 2012 05:11:48 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092F7F07@SACEXCMBX04-PRD.hq.netapp.com>
-References: <50AEF92B.4080900@cn.fujitsu.com>
-In-Reply-To: <50AEF92B.4080900@cn.fujitsu.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:59359 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1768345Ab2KOQQc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Nov 2012 11:16:32 -0500
+Received: by mail-ee0-f46.google.com with SMTP id b15so1060495eek.19
+        for <linux-nfs@vger.kernel.org>; Thu, 15 Nov 2012 08:16:31 -0800 (PST)
+Message-ID: <50A51559.9090009@tonian.com>
+Date: Thu, 15 Nov 2012 18:16:25 +0200
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
+To: Giovanni <fattorare@gmail.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: PNFS Kernel - CONFIG_SPNFS not found
+References: <loom.20121105T154655-381@post.gmane.org>
+In-Reply-To: <loom.20121105T154655-381@post.gmane.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTExLTIzIGF0IDEyOjE4ICswODAwLCBmYW5jaGFvdGluZyB3cm90ZToNCj4g
-SGksZXZlcnlvbmUuIEkgZm91bmQgYSBiaWcgYnVnIGFib3VudCBuZnMgY2FjaGUuDQo+IA0KPiB3
-aGVuIHNlcnZlciBkZWxldGUgdGhlIGZpbGUgLG5mcyBjbGllbnQgY2FuIHJlYWQgZmlsZSBhbHNv
-Lg0KPiANCj4gdGhlIGZvbGxvd2luZyBpcyB0aGUgcmVwcm9kdWNlLg0KPiANCj4gaXA6IDE5Mi4x
-NjguMC4xOSAgbmZzLWNsaWVudA0KPiBpcDogMTkyLjE2OC4wLjIwICBuZnMtY2xpZW50DQo+IGlw
-OiAxOTIuMTY4LjAuMjEgIG5mcy1zZXJ2ZXINCj4gDQo+ICMjIyMjIyMjIyMjIyMjIyMjIyMjIyMj
-IyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMNCj4g
-DQo+IC91c3IvYmluL3NzaCAtbiAxOTIuMTY4LjAuMjEgc2VydmljZSBuZnMgc3RhcnQNCj4gL3Vz
-ci9iaW4vc3NoIC1uIDE5Mi4xNjguMC4yMSAvdXNyL3NiaW4vcnBjLmlkbWFwZA0KPiAvdXNyL2Jp
-bi9zc2ggLW4gMTkyLjE2OC4wLjE5IC91c3Ivc2Jpbi9ycGMuaWRtYXBkDQo+IC91c3IvYmluL3Nz
-aCAtbiAxOTIuMTY4LjAuMjAgL3Vzci9zYmluL3JwYy5pZG1hcGQNCj4gL3Vzci9iaW4vc3NoIC1u
-IDE5Mi4xNjguMC4yMSAicm0gLXJmIC9uZnNyb290OyBta2RpciAtcCAvbmZzcm9vdCINCj4gL3Vz
-ci9iaW4vc3NoIC1uIDE5Mi4xNjguMC4yMSAvdXNyL3NiaW4vZXhwb3J0ZnMgLWF1DQo+IC91c3Iv
-YmluL3NzaCAtbiAxOTIuMTY4LjAuMjEgL3Vzci9zYmluL2V4cG9ydGZzIC1pIC1vIGluc2VjdXJl
-LG5vX3Jvb3Rfc3F1YXNoLHJ3LGZzaWQ9MCAqOi9uZnNyb290DQo+IC91c3IvYmluL3NzaCAtbiAx
-OTIuMTY4LjAuMTkgdGVzdCAtZCAvbmZzcm9vdCB8fCAocm0gLXJmIC9uZnNyb290OyBta2RpciAt
-cCAvbmZzcm9vdCkNCj4gL3Vzci9iaW4vc3NoIC1uIDE5Mi4xNjguMC4yMCB0ZXN0IC1kIC9uZnNy
-b290IHx8IChybSAtcmYgL25mc3Jvb3Q7IG1rZGlyIC1wIC9uZnNyb290KQ0KPiANCj4gL3Vzci9i
-aW4vc3NoIC1uIDE5Mi4xNjguMC4xOSB1bW91bnQgL25mc3Jvb3QNCj4gL3Vzci9iaW4vc3NoIC1u
-IDE5Mi4xNjguMC4yMCB1bW91bnQgL25mc3Jvb3QNCj4gY21kPSJlY2hvIFwiaGVsbG8gd29ybGRc
-IiA+IC9uZnNyb290L3RtcGZpbGUiDQo+IC91c3IvYmluL3NzaCAtbiAxOTIuMTY4LjAuMjEgJGNt
-ZA0KPiAvdXNyL2Jpbi9zc2ggLW4gMTkyLjE2OC4wLjIxIG1rZGlyIC9uZnNyb290L3RtcGRpcg0K
-PiAvdXNyL2Jpbi9zc2ggLW4gMTkyLjE2OC4wLjIxIHRvdWNoIC9uZnNyb290L3RtcGRpci90bXBk
-ZmlsZQ0KPiAvdXNyL2Jpbi9zc2ggLW4gMTkyLjE2OC4wLjE5IG1vdW50IC10IG5mczQgMTkyLjE2
-OC4wLjIxOi8gL25mc3Jvb3QNCj4gL3Vzci9iaW4vc3NoIC1uIDE5Mi4xNjguMC4yMCBtb3VudCAt
-dCBuZnM0IDE5Mi4xNjguMC4yMTovIC9uZnNyb290DQo+IC91c3IvYmluL3NzaCAtbiAxOTIuMTY4
-LjAuMjEgY2F0ICAvbmZzcm9vdC90bXBmaWxlDQo+IC91c3IvYmluL3NzaCAtbiAxOTIuMTY4LjAu
-MjEgbHMgLWwgL25mc3Jvb3QvdG1wZGlyDQo+IC91c3IvYmluL3NzaCAtbiAxOTIuMTY4LjAuMTkg
-Y2F0ICAvbmZzcm9vdC90bXBmaWxlDQo+IC91c3IvYmluL3NzaCAtbiAxOTIuMTY4LjAuMTkgbHMg
-LWwgIC9uZnNyb290L3RtcGRpcg0KPiAvdXNyL2Jpbi9zc2ggLW4gMTkyLjE2OC4wLjIwIGNhdCAg
-L25mc3Jvb3QvdG1wZmlsZQ0KPiAvdXNyL2Jpbi9zc2ggLW4gMTkyLjE2OC4wLjIwIGxzIC1sICAv
-bmZzcm9vdC90bXBkaXINCj4gL3Vzci9iaW4vc3NoIC1uIDE5Mi4xNjguMC4xOSBjYXQgL25mc3Jv
-b3QvdG1wZmlsZSA+IC9kZXYvbnVsbA0KPiAvdXNyL2Jpbi9zc2ggLW4gMTkyLjE2OC4wLjIwIGNh
-dCAvbmZzcm9vdC90bXBmaWxlID4gL2Rldi9udWxsDQo+IC91c3IvYmluL3NzaCAtbiAxOTIuMTY4
-LjAuMjEgcm0gLXJmIC9uZnNyb290L3RtcGZpbGUNCj4gZWNobyAtZSAic2xlZXAgNjB+fn5+fn5+
-flxuIg0KPiBzbGVlcCA2MA0KPiANCj4gIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMj
-IyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMNCj4gDQo+IGxhc3Q6
-IEluIDE5Mi4xNjguMC4xOSBJIGRvOg0KPiANCj4gI2NhdCAvbmZzcm9vdC90bXBmaWxlICAgICAg
-ICAgICA8LS10aGUgbmZzIHNlcnZlciBkZWxldGUgdGhlIGZpbGUsYnV0IG5mcyBjbGllbnQgY2Fu
-IHJlYWQgdGhlIGZpbGUNCj4gIGhlbGxvIHdvcmxkDQo+IA0KPiANCj4gSSB0aGluayAgd2hlbiB0
-aGUgbmZzIHNlcnZlciBkZWxldGUgdGhlIGZpbGUgLA0KPiB0aGUgIHNlcnZlciBzaG91bGQgbm90
-aWNlIHRoZSBuZnMgY2xpZW50LA0KPiBidXQgdGhlIHVwc3RyZWFtIGtlcm5lbCBkb2VzJ3QgdGhp
-cy4NCg0KU28gaXMgdGhpcyBhIHByb2JsZW0gd2l0aCB0aGUgY2xpZW50IG9yIHRoZSBzZXJ2ZXI/
-IEluIG90aGVyIHdvcmRzLCBpZg0KeW91IHVzZSBhIGRpZmZlcmVudCBzZXJ2ZXIvY2xpZW50IGNv
-bWJpbmF0aW9uLCBkbyB5b3Ugc2VlIGEgZGlmZmVyZW50DQpyZXN1bHQ/DQoNCldoaWNoIGtlcm5l
-bHMgYXJlIHlvdSB1c2luZyBpbiB5b3VyIHRlc3RzIGZvciB0aGUgY2xpZW50IGFuZCBzZXJ2ZXI/
-DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0K
-TmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+Giovanni,
+Sorry but support for spnfs was dropped back in pnfs-all-3.2
+See http://www.spinics.net/lists/linux-nfs/msg25917.html
+
+Benny
+
+On 2012-11-05 16:49, Giovanni wrote:
+> Hi,
+> I'm trying to compile the kernel in order to enable pnfs feature present in NFS
+> 4.1 following this guide http://linux-
+> nfs.org/wiki/index.php/Configuring_pNFS/spnfsd
+> I downloaded the git repository for the kernel from git://git.linux-
+> nfs.org/projects/bhalevy/linux-pnfs.git
+> I didn't found where I can enable the kernel options CONFIG_SPNFS and
+> CONFIG_SPNFS_LAYOUTSEGMENT. I have found all the other options required by PNFS.
+> I didn't found this two string also in the source code:
+> 
+> [root@rh62ds1 linux-pnfs]# find .|xargs grep CONFIG_SPNFS
+> [root@rh62ds1 linux-pnfs]#
+> 
+> I have tried using the latest commit and also with the commit id
+> cbd09e0fb2b160a06a44aad1c21786b99401823f  as reported in the wiki guide but the
+> result is the same.
+> If I don't select this two feature, later I obtain a error when I try to execute
+> the process spnfsd exit with error because it doesn't found the file
+> /proc/fs/spnfs/ctl
+> 
+> Can you help me?
+> 
+> Giovanni Sciortino
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
