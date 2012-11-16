@@ -1,55 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:21218 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751622Ab2K0OYA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Nov 2012 09:24:00 -0500
-Message-ID: <50B4CCFD.6010900@RedHat.com>
-Date: Tue, 27 Nov 2012 09:23:57 -0500
-From: Steve Dickson <SteveD@redhat.com>
+Received: from relay.parallels.com ([195.214.232.42]:34227 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751710Ab2KPLZ4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Nov 2012 06:25:56 -0500
+Message-ID: <50A622AE.3080809@parallels.com>
+Date: Fri, 16 Nov 2012 15:25:34 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] Revert "mountd: handle allocation failures in auth_unix_ip
- upcall"
-References: <20121126220343.GA18140@fieldses.org> <73EFE585-98D4-40BE-9EDF-15CC6B14BDB2@oracle.com> <20121126221535.GB18186@fieldses.org> <A954A569-E030-4119-A349-6CB888979738@oracle.com> <20121126225116.GE18186@fieldses.org>
-In-Reply-To: <20121126225116.GE18186@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+To: "bfields@fieldses.org" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: NFSd state: nfs4_lock_state() and nfs4_lock_state()
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+Hello, guys.
+Right now I'm looking how client_mutex can be containerised.
+And it looks like this mutex is too widely used. And I can't get what it 
+protects exactly.
 
-On 26/11/12 17:51, J. Bruce Fields wrote:
->> What exactly is the problem with the current code?
->> > 
->> > client_resolve() can return a NULL in some cases.  Why is it OK to
->> > pass a NULL "ai" to client_compose() ?  Looks like that can result in
->> > a mountd segfault.
-> Bah, I thought I'd checked this and found it was prepared to handle
-> that, but no:
-> 
-> 	client_check->check_wildcard()
-> 
-> looks like it can oops.
-Yeah... added client_check->check_netgroup() to this list...
+I'd like to hear your opinions about the following:
+1) Why do we need to use this mutex in nfsd4_load_reboot_recovery_data()? This 
+function is called only once on NFS server start before launching kthreads.
 
-> 
-> OK, I'll take another look.
-A simply check that ai is not null when calling client_compose() should work..
+2) Look like using of this mutex can be easely moved out from read, write and 
+setattr functions in nfs4proc.c to nfs4_preprocess_stateid_op() in nfs4state.c. 
+It it also could be removed from nfs4_open(), then nfs4_lock_state() and 
+nfs4_lock_state() can become static.
 
-> 
->> > The kernel won't get any downcall reply in that
->> > case!  Is that what you are trying to fix?
->> > 
->> > WRT my original objection: In general I don't see how to make it
->> > impossible for mountd to fail.
-> Sure, but mountd is required for the server to function, so it's just a
-> question of how we fail.
-> 
->> > Thus the kernel needs to be better about recovering when mountd
->> > suddenly disappears.
-> Currently it drops and lets the client retry.  I suspect that's the
-> correct thing to do, but alternatives are welcomed.
-This one things I didn't see happen... the client retrying... expected it would...
+So the question is: why this mutex covers that much different code in 
+nfsd4_open() call?
 
-steved.
+-- 
+Best regards,
+Stanislav Kinsbursky
