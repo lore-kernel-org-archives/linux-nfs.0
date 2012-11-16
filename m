@@ -1,66 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.perfora.net ([74.208.4.195]:64180 "EHLO mout.perfora.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753626Ab2KPXML (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 16 Nov 2012 18:12:11 -0500
-From: Jim Rees <rees@umich.edu>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2] NFS: Reduce stack use in encode_exchange_id()
-Date: Fri, 16 Nov 2012 18:12:06 -0500
-Message-Id: <1353107526-25460-1-git-send-email-rees@umich.edu>
+Received: from nm21-vm8.bullet.mail.ird.yahoo.com ([212.82.109.248]:32704 "EHLO
+	nm21-vm8.bullet.mail.ird.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751295Ab2KPNCo convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Nov 2012 08:02:44 -0500
+Message-ID: <1353070621.67855.YahooMailClassic@web171703.mail.ir2.yahoo.com>
+Date: Fri, 16 Nov 2012 12:57:01 +0000 (GMT)
+From: willims gebrel <willims.gebrel@9y.com>
+Reply-To: williamsgebrel786@yahoo.com
+Subject: Williams
+To: undisclosed recipients:;
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-encode_exchange_id() uses more stack space than necessary, giving a compile
-time warning. Reduce the size of the static buffer for implementation name.
 
-Signed-off-by: Jim Rees <rees@umich.edu>
-Reviewed-by: "Adamson, Dros" <Weston.Adamson@netapp.com>
----
- fs/nfs/nfs4xdr.c |    8 +++++---
- 1 file changed, 5 insertions(+), 3 deletions(-)
+My Dear,
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 672d9b0..cc2f8a9 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -270,6 +270,8 @@ static int nfs4_stat_to_errno(int);
  
- #if defined(CONFIG_NFS_V4_1)
- #define NFS4_MAX_MACHINE_NAME_LEN (64)
-+#define IMPL_NAME_LIMIT (sizeof(utsname()->sysname) + sizeof(utsname()->release) + \
-+			 sizeof(utsname()->version) + sizeof(utsname()->machine) + 8)
- 
- #define encode_exchange_id_maxsz (op_encode_hdr_maxsz + \
- 				encode_verifier_maxsz + \
-@@ -282,7 +284,7 @@ static int nfs4_stat_to_errno(int);
- 				1 /* nii_domain */ + \
- 				XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + \
- 				1 /* nii_name */ + \
--				XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + \
-+				XDR_QUADLEN(IMPL_NAME_LIMIT) + \
- 				3 /* nii_date */)
- #define decode_exchange_id_maxsz (op_decode_hdr_maxsz + \
- 				2 /* eir_clientid */ + \
-@@ -1711,7 +1713,7 @@ static void encode_exchange_id(struct xdr_stream *xdr,
- 			       struct compound_hdr *hdr)
- {
- 	__be32 *p;
--	char impl_name[NFS4_OPAQUE_LIMIT];
-+	char impl_name[IMPL_NAME_LIMIT];
- 	int len = 0;
- 
- 	encode_op_hdr(xdr, OP_EXCHANGE_ID, decode_exchange_id_maxsz, hdr);
-@@ -1726,7 +1728,7 @@ static void encode_exchange_id(struct xdr_stream *xdr,
- 	if (send_implementation_id &&
- 	    sizeof(CONFIG_NFS_V4_1_IMPLEMENTATION_ID_DOMAIN) > 1 &&
- 	    sizeof(CONFIG_NFS_V4_1_IMPLEMENTATION_ID_DOMAIN)
--		<= NFS4_OPAQUE_LIMIT + 1)
-+		<= sizeof(impl_name) + 1)
- 		len = snprintf(impl_name, sizeof(impl_name), "%s %s %s %s",
- 			       utsname()->sysname, utsname()->release,
- 			       utsname()->version, utsname()->machine);
--- 
-1.7.9.5
 
+I'm happy to inform you about my success in getting those funds transferred under the cooperation of my new partner from Canada based business man; presently I'm in Bahamas for investment projects with my own share of the total sum. Meanwhile, I didn't forget your past efforts and attempts to assist me in transferring those funds despite that it failed us somehow.
+
+ 
+
+Now contact my patina personal adviser in Togo, his name is HON REV.PETER SMITH of church embassy ministry Togo, E-mail: fortbendlawlegal@gmail.com
+
+ 
+
+Ask him to send you the official Draft check of $500.000.00 or by cash which I gave him as order to kept for your compensation for all the past efforts and attempts to assist me in this matter before. I appreciated your collective efforts at that time, so feel free and get in touch with my patina adviser HON.REV. PETER SMITH and instruct him where to send the amount to you. Please do let me know immediately you receive it so that we can share the joy after all the sufferings at that time.
+
+ 
+
+in the moment, I am very busy here In Bahamas because of the investment projects which myself and the new partner are having at hand without confrontations, finally, remember that I had forwarded instruction to the REV.PETER SMITH on your behalf to send you the check or by cash as my patina deposited to him on your name before he left to Canada where he based.
+
+ 
+
+So feel free to get in touch with HON REV.PETER SMITH he will send the amount to you without any delay.
+
+ 
+
+With best regards,
+
+Williams
