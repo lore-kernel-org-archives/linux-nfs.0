@@ -1,62 +1,170 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from hop-nat-141.emc.com ([168.159.213.141]:33137 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S933594Ab2KFCUR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Nov 2012 21:20:17 -0500
-From: "Peng, Tao" <tao.peng@emc.com>
-To: "faibish, sorin" <faibish_sorin@emc.com>, Jun Xiao <xiaojuntime@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Jason Glasgow <jglasgow@aya.yale.edu>
-Subject: RE: pNFS Block layout issues / questions
-Date: Tue, 6 Nov 2012 02:19:55 +0000
-Message-ID: <1882637210201641A747464075FFC64902A5D4@MX101CL02.corp.emc.com>
-References: <loom.20110328T230906-552@post.gmane.org>
- <4D977456.1040303@panasas.com> <loom.20121103T072206-631@post.gmane.org>
- <1882637210201641A747464075FFC6490291C9@MX101CL02.corp.emc.com>
- <B99990FD-D4C5-43D1-8096-CDAEE90BECB8@emc.com>
-In-Reply-To: <B99990FD-D4C5-43D1-8096-CDAEE90BECB8@emc.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from countercultured.net ([209.51.175.25]:40749 "HELO
+	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1750812Ab2KPDoA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Nov 2012 22:44:00 -0500
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8;
+ format=flowed
+Date: Thu, 15 Nov 2012 22:43:57 -0500
+From: David Quigley <dpquigl@davequigley.com>
+To: Casey Schaufler <casey@schaufler-ca.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Steve Dickson <steved@redhat.com>,
+        "David P. Quigley" <selinux@davequigley.com>,
+        <trond.myklebust@netapp.com>, <sds@tycho.nsa.gov>,
+        <linux-nfs@vger.kernel.org>, <selinux@tycho.nsa.gov>,
+        <linux-security-module@vger.kernel.org>
+Subject: Re: Labeled NFS [v5]
+In-Reply-To: <50A5B441.70206@schaufler-ca.com>
+References: <50A116F0.5050404@davequigley.com>
+ <20121112160959.GK30713@fieldses.org> <50A16269.4060601@RedHat.com>
+ <50A1A4EE.7030507@davequigley.com> <50A24345.8080309@RedHat.com>
+ <50A31EF5.1050801@davequigley.com> <20121114134535.GD23604@fieldses.org>
+ <624cc90c1bf726d8ff1a1ea0ace5f50f@countercultured.net>
+ <20121114135939.GE23604@fieldses.org>
+ <80f36fef2a58eb538bce28daba3a862a@countercultured.net>
+ <20121114142458.GF23604@fieldses.org>
+ <4f9b24e3942b4a28cd9068d5bc0135fa@countercultured.net>
+ <50A51195.9080004@schaufler-ca.com>
+ <a843eae7d5fa2df4faa99bf5531dcecc@countercultured.net>
+ <50A5B441.70206@schaufler-ca.com>
+Message-ID: <98ae8bfde2b1967c7db6db1f04ce73b1@countercultured.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQo+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+IEZyb206IGZhaWJpc2gsIHNvcmluDQo+
-IFNlbnQ6IE1vbmRheSwgTm92ZW1iZXIgMDUsIDIwMTIgODo0MiBQTQ0KPiBUbzogUGVuZywgVGFv
-DQo+IENjOiBKdW4gWGlhbzsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZzsgSmFzb24gR2xhc2dv
-dw0KPiBTdWJqZWN0OiBSZTogcE5GUyBCbG9jayBsYXlvdXQgaXNzdWVzIC8gcXVlc3Rpb25zDQo+
-IA0KPiANCj4gDQo+IFNlbnQgZnJvbSBTb3JpbidzIGlQYWQNCj4gDQo+IE9uIE5vdiA0LCAyMDEy
-LCBhdCA5OjMzIFBNLCAiUGVuZywgVGFvIiA8dGFvLnBlbmdAZW1jLmNvbT4gd3JvdGU6DQo+IA0K
-PiA+IEhpLA0KPiA+DQo+ID4gSSdsbCBhbnN3ZXIgeW91ciBxdWVzdGlvbnMgYXMgZmFyIGFzIEkg
-Y2FuLCBidXQgSSBteXNlbGYgYW0gbm90IGZhbWlsaWFyIHdpdGggTGludXggcG5mcyBibG9jaw0K
-PiBzZXJ2ZXIgaW1wbGVtZW50YXRpb24uDQo+ID4NCj4gPj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdl
-LS0tLS0NCj4gPj4gRnJvbTogbGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZyBbbWFpbHRv
-OmxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmddIE9uIEJlaGFsZiBPZiBKdW4NCj4gWGlh
-bw0KPiA+PiBTZW50OiBTYXR1cmRheSwgTm92ZW1iZXIgMDMsIDIwMTIgMzoyOCBQTQ0KPiA+PiBU
-bzogbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiA+PiBTdWJqZWN0OiBSZTogcE5GUyBCbG9j
-ayBsYXlvdXQgaXNzdWVzIC8gcXVlc3Rpb25zDQo+ID4+DQo+ID4+IFNlZW1zIHRoZSB0aHJlYWQg
-ZGlkbid0IGdldCBhbnkgcmVwbHkgZm9yIHF1aXRlIGEgbG9uZyB0aW1lLg0KPiA+Pg0KPiA+PiBJ
-J20gdHJ5aW5nIHRvIHNldCB1cCBwTkZTIGJsb2NrIGxheW91dCBNRFMvRFMgc2VydmVyLCBhbmQg
-c29tZQ0KPiA+PiBzaW1pbGFyIHF1ZXN0aW9ucyBhcyBQaGlsLg0KPiA+Pg0KPiA+PiAtIEZvciBi
-bG9jayBsYXlvdXQsIGlzIGl0IG5lY2Vzc2FyeSB0byBtYWtlIERTIGV4cG9ydCBuZnMgc2hhcmU/
-DQo+ID4gTm8uIEp1c3QgZXhwb3J0IHlvdXIgZGF0YSBjb25uZWN0aW9uIGlzIGVub3VnaCwgd2hp
-Y2ggZm9yIHBuZnMgYmxvY2sgY2FuIGJlIGlzY3NpL0ZTIGV0Yy4NCj4gU2hvdWxkIGJlIGlTQ1NJ
-IC8gRkMgZmliZXIgY2hhbm5lbC4NCj4gDQpZZXMuIGFuZCBzb3JyeSBmb3IgdGhlIHR5cG8uLi4N
-Cg0KPiA+DQo+ID4+IC0gSG93IGNvdWxkIGFkZCBhIGJsb2NrIGxheW91dCBEUyBpbnRvIHBORlMg
-c2VydmVyPw0KPiA+IEkgZG9uJ3QgdGhpbmsgTGludXggcG5mcyBibG9jayBzZXJ2ZXIgaW1wbGVt
-ZW50cyBzZXBhcmF0ZSBEU2VzLiBTbyBNRFMvRFMgaGFzIHRvIGJlIG9uIHRoZSBzYW1lDQo+IG1h
-Y2hpbmUgZm9yIGl0Lg0KPiBNYXliZSBKYXNvbiBHbGFzZ293IHJlbWVtYmVycz8NCj4gDQpGb3Ig
-c3BuZnMsIE1EUy9EUyBoYXMgdG8gYmUgb24gdGhlIHNhbWUgbWFjaGluZS4gRm9yIGJsb2NrIGxh
-eW91dCBzZXJ2ZXIsIHRoZXJlIGlzIG5vdCBtdWNoIGNvbmNlcHQgb2YgRFNlcy4gVGhlIG9ubHkg
-cmVxdWlyZW1lbnQgaXMgdGhhdCBNRFMgYW5kIGNsaWVudHMgY2FuIGFjY2VzcyB0aGUgc2FtZSBz
-dG9yYWdlLiBTbyBpdCBjYW4gYmUgZWl0aGVyIGlzY3NpIGV4cG9ydGVkIGZyb20gdGhlIHNhbWUg
-TURTLCBvciBzb21lIHNoYXJlZCBzdG9yYWdlIGxpa2UgU0FOIGV0Yy4NCg0KQ2hlZXJzLA0KVGFv
-DQoNCj4gPg0KPiA+PiAtIERvZXMgc3BuZnMgYWxzbyB3b3JrIGZvciBibG9jayBsYXlvdXQvDQo+
-ID4gTGFyZ2VseSB5ZXMuIFRoZSB3aWtpIHBhZ2UgaGFzIGl0IHRoYXQgcG5mcyBibG9jayBzZXJ2
-ZXIgaXMgYmFzZWQgb24gc3BuZnMuDQo+ID4gaHR0cDovL2xpbnV4LW5mcy5vcmcvd2lraS9pbmRl
-eC5waHAvUE5GU19CbG9ja19TZXJ2ZXJfU2V0dXBfSW5zdHJ1Y3Rpb25zDQo+ID4NCj4gPiBCdXQg
-SSdtIG5vdCBzdXJlIGlmIHRoZSBjb2RlIHN0aWxsIHdvcmtzLg0KPiA+DQo+ID4gQ2hlZXJzLA0K
-PiA+IFRhbw0KPiA+DQo+ID4gE++/ve+/vey5uxzvv70m77+9fu+/vSbvv70Y77+977+9Ky0NCj4g
-77+977+93bYX77+977+9d++/ve+/vcub77+977+977+9be+/vWLvv73vv71nfsin77+9F++/ve+/
-vdyofe+/ve+/ve+/vcageu+/vSZqOit277+977+977+9De+/ve+/ve+/ve+/vXpaK++/ve+/vSt6
-Zu+/ve+/ve+/vWjvv73vv73vv71+77+977+977+977+9ae+/ve+/ve+/vXrvv70e77+9d++/ve+/
-ve+/vT/vv73vv73vv73vv70m77+9Kd+iG2YNCg==
+On 11/15/2012 22:34, Casey Schaufler wrote:
+> On 11/15/2012 12:28 PM, David Quigley wrote:
+>> On 11/15/2012 11:00, Casey Schaufler wrote:
+>>> On 11/14/2012 6:30 AM, David Quigley wrote:
+>>>> On 11/14/2012 09:24, J. Bruce Fields wrote:
+>>>>> On Wed, Nov 14, 2012 at 09:04:18AM -0500, David Quigley wrote:
+>>>>>> On 11/14/2012 08:59, J. Bruce Fields wrote:
+>>>>>> >On Wed, Nov 14, 2012 at 08:50:17AM -0500, David Quigley wrote:
+>>>>>> >>On 11/14/2012 08:45, J. Bruce Fields wrote:
+>>>>>> >>>On Tue, Nov 13, 2012 at 11:32:53PM -0500, Dave Quigley wrote:
+>>>>>> >>>>Ok so if you go to http://www.selinuxproject.org/git you 
+>>>>>> will
+>>>>>> >>see a
+>>>>>> >>>>repo for lnfs and lnfs-patchset. The instructions at
+>>>>>> >>>>http://www.selinuxproject.org/page/Labeled_NFS give you a 
+>>>>>> better
+>>>>>> >>>>indication on how to pull the trees. I've attached a patch 
+>>>>>> for
+>>>>>> NFS
+>>>>>> >>>>utils which gives support for 
+>>>>>> security_label/nosecurity_label in
+>>>>>> >>>>your /etc/exports file.
+>>>>>> >>>
+>>>>>> >>>Do we need an export option?  Is there any reason not to make 
+>>>>>> the
+>>>>>> >>>feature available whenever there's support available for it?
+>>>>>> >>
+>>>>>> >>I guess we could build it in but I figured an export option 
+>>>>>> allowed
+>>>>>> >>someone to turn off security labeling support if they didn't
+>>>>>> want it
+>>>>>> >>on that export. What happens to clients when the server 
+>>>>>> returns a
+>>>>>> >>cap that they don't support? Do they mask the bits out?
+>>>>>> >
+>>>>>> >Yeah, they should just ignore it.
+>>>>>> >
+>>>>>> >While this is still experimental it's still nice to have a way 
+>>>>>> to
+>>>>>> >turn
+>>>>>> >this on and off at runtime so people can experiment without
+>>>>>> having to
+>>>>>> >have it on for everyone all the time.  But
+>>>>>> >nfsd_supported_minorversion
+>>>>>> >should be sufficient for that.
+>>>>>> >
+>>>>>> >(I don't think your patches actually dealt yet with the fact 
+>>>>>> that
+>>>>>> >this
+>>>>>> >is part of minor version 2?  Another for the todo list.)
+>>>>>> >
+>>>>>> >--b.
+>>>>>>
+>>>>>> If we use nfsd_supported_minorversion which I'm guessing is an
+>>>>>> export option
+>>>>>
+>>>>> That's just a variable in the code.  It's controlled by
+>>>>> /proc/fs/nfsd/versions.
+>>>>>
+>>>>>> what happens if someone wants to use other 4.2
+>>>>>> features but not labeling?
+>>>>>
+>>>>> We'll cross that bridge when we come to it, maybe by adding some 
+>>>>> new
+>>>>> global paramater.
+>>>>>
+>>>>> There's no reason this really needs to be per-export, is there?
+>>>>>
+>>>>> --b.
+>>>>
+>>>> At the moment I can't really think of a reason to have it be
+>>>> per-export. I think we need a new LSM patch though to determine if 
+>>>> the
+>>>> LSM supports labeling over NFS unless Steve can think of a better 
+>>>> way
+>>>> to tell if the LSM supports labeling.
+>>>
+>>> If the LSM has a secid_to_secctx hook it supports labeling.
+>>> Today that's SELinux and Smack. You already have support in
+>>> for SELinux, and providing Smack's review and possibly updates
+>>> is #2 on my gotta do list. On the whole, I think that, except
+>>> for the fundamental philosophical difference between label
+>>> support and xattr support, it should be a simple matter to
+>>> get support in for any LSM that has secid_to_secctx.
+>>>
+>>> But I'm still working on the review.
+>>>
+>>
+>> I believe SMACK already works out of the box since we abstracted the
+>> call to obtain labels and your implementation currently works.
+>
+> I'm looking to do a little verification. I hate assuming that 
+> something
+> will work only to discover otherwise in the wild.
+>
+>> The call that is needed is not secid_to_secctx but inode_getsecctx.
+>
+> I was pointing out that secid_to_secctx pretty well defines that the 
+> LSM
+> is using labels.
+>
+>> You asked for this because SMACK labels can span multiple xattrs. I
+>> don't think its right to expect NFS to poke around the security
+>> structure to check if there is a valid hook(and it isn't really
+>> possible either).
+>
+> Yeah, I can see that.
+>
+>> Maybe we can have an LSM hook where the LSM categorizes itself and
+>> returns a value and if the value it returns is label based then NFS
+>> can use it.
+>
+> I'm not sure what the proposed hook would be for except to identify 
+> it
+> as concerned with nfs. Perhaps the hook could return the names of
+> attributes that it wants nfs to provide.
+>
+
+I'm not quite sure what you're proposing? I'm sure someone would find 
+another use for this hook though. The inode_getsecctx hook we made for 
+Labeled NFS was already merged because it was needed for providing 
+"persistent" label support for sysfs (meaning that it persisted inode 
+eviction from memory). The problem is that we have no real way to ask in 
+the NFS code if this is an LSM that can be used with Labeled NFS. In the 
+xattr code we have the new ismaclabel hook we add which allows us to 
+verify the xattr used as belonging to a label based LSM however we need 
+an xattr from userspace for that. The reason this is required is that 
+the server will need to fill out its capability mask to indicate it 
+supports security labeling. In addition the client also needs to know if 
+its running a security label based LSM because it will need to mask out 
+the label fattr bit from its getattr calls if it doesn't support it. We 
+can override this in SELinux by giving it a context mount but if we 
+don't then it will need to know whether or not to be pulling security 
+labels back.
+
