@@ -1,86 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:32742 "EHLO mx2.netapp.com"
+Received: from mout.perfora.net ([74.208.4.194]:59593 "EHLO mout.perfora.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753975Ab2KSS32 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Nov 2012 13:29:28 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC PATCH V2] mount: Added the -o v4.1 mount option
-Date: Mon, 19 Nov 2012 18:29:26 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092EF4AA@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1353339810-19126-1-git-send-email-steved@redhat.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9092EEE7A@SACEXCMBX04-PRD.hq.netapp.com>
-	 <50AA571E.4090509@RedHat.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9092EEFD7@SACEXCMBX04-PRD.hq.netapp.com>
-	 <50AA5AD4.5070808@RedHat.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9092EF0B3@SACEXCMBX04-PRD.hq.netapp.com>
-	 <8B557EF0-A1F7-4487-8887-0B08F6922784@oracle.com>
-In-Reply-To: <8B557EF0-A1F7-4487-8887-0B08F6922784@oracle.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1753618Ab2KPVbX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Nov 2012 16:31:23 -0500
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFS: Reduce stack use in encode_exchange_id()
+Date: Fri, 16 Nov 2012 16:31:15 -0500
+Message-Id: <1353101475-11613-1-git-send-email-rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTExLTE5IGF0IDEzOjExIC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gTm92IDE5LCAyMDEyLCBhdCAxMToyNCBBTSwgIk15a2xlYnVzdCwgVHJvbmQiIDxUcm9uZC5N
-eWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQo+IA0KPiA+IE9uIE1vbiwgMjAxMi0xMS0xOSBh
-dCAxMToxNCAtMDUwMCwgU3RldmUgRGlja3NvbiB3cm90ZToNCj4gPj4gDQo+ID4+IE9uIDE5LzEx
-LzEyIDExOjAyLCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+Pj4gT24gTW9uLCAyMDEyLTEx
-LTE5IGF0IDEwOjU4IC0wNTAwLCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0KPiA+Pj4+IA0KPiA+Pj4+
-IE9uIDE5LzExLzEyIDEwOjU0LCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+Pj4+PiBPbiBN
-b24sIDIwMTItMTEtMTkgYXQgMTA6NDMgLTA1MDAsIFN0ZXZlIERpY2tzb24gd3JvdGU6DQo+ID4+
-Pj4+PiBUaGlzIHBhdGNoIHdpbGwgY29udmVydCAtbyB2NC4xLCB2ZXJzPTQuMSBvciBuZnN2ZXJz
-PTQuMSBpbnRvDQo+ID4+Pj4+PiB0aGUgY29ycmVzcG9uZGluZyAidjQsbWlub3J2ZXJzaW9uPTEi
-LCAidmVycz00LG1pbm9ydmVyc2lvbj0xIg0KPiA+Pj4+Pj4gb3IgIm5mc3ZlcnM9NCxtaW5vcnZl
-cnNpb249MSIgb3B0aW9ucy4NCj4gPj4+Pj4+IA0KPiA+Pj4+PiANCj4gPj4+Pj4gTkFDSy4NCj4g
-Pj4+Pj4gDQo+ID4+Pj4+IElmIHlvdSBhcmUgZ29pbmcgdG8gZG8gdGhpcywgdGhlbiBwbGVhc2Ug
-ZG8gaXQgb25seSBmb3Iga2VybmVscyB0aGF0DQo+ID4+Pj4+IGRvbid0IHN1cHBvcnQgdGhlICJ2
-ZXJzPTQuMSIgc3ludGF4LiBpLmUuIGFueXRoaW5nIG9sZGVyIHRoYW4gTGludXgtMy40Lg0KPiA+
-Pj4+IFRoaXMgaXMgdGhlIGludGVudGlvbi4uLiANCj4gPj4+PiANCj4gPj4+Pj4gDQo+ID4+Pj4+
-IFdlIHdhbnQgdG8gZ2V0IHJpZCBvZiBtaW5vcnZlcnNpb249eCwgbm90IHBlcnBldHVhdGUgaXQu
-Li4NCj4gPj4+Pj4gDQo+ID4+Pj4gVW5kZXJzdG9vZC4uLiBCdXQgdGhhdCBpcyBub3Qgb3B0aW9u
-IGluIHNvbWUgd29ybGRzLi4uIDstKSANCj4gPj4+IA0KPiA+Pj4gU3VyZSBpdCBpcy4gVGhlIG1v
-dW50IHByb2dyYW0gY2FuIGNvbnRpbnVlIHRvIHBhcnNlIG1pbm9ydmVyc2lvbj0gYWZ0ZXINCj4g
-Pj4+IGl0IGlzIGdvbmUgZnJvbSB0aGUga2VybmVsIGFuZCBjb252ZXJ0IGl0IGludG8gdGhlIHZl
-cnM9NC54IHN5bnRheC4NCj4gPj4+IA0KPiA+PiBCYXNpY2FsbHkgd2hhdCBJJ20gZG9pbmcgbm93
-LCB3aXRoIHRoZSBleGNlcHRpb24gb2Ygbm90IGFkZGluZw0KPiA+PiB0aGUgbWlub3J2ZXJzaW9u
-PTEgb3B0aW9ucy4uLiANCj4gPj4gDQo+ID4+IEJUVywgdGhlcmUgaXMgYSBidWcgaW4gdGhlIC1v
-IHY0LjEgY3VycmVudCBsb2dpYy4uLiANCj4gPj4gDQo+ID4+IG1vdW50IC1vIHY0LjEgcHJvZHVj
-ZXMgYm90aCAidjQuMSx2ZXJzPTQsLi4uIiBpbiB0aGUgc3RyaW5nIHRoYXQgZ2l2ZW4NCj4gPj4g
-dG8gdGhlIGtlcm5lbCB3aGljaCBkb2VzIG5vdCBzZWVtIHJpZ2h0Li4uIEkgd291bGQgYXNzdW1l
-IGp1c3QgYSAidjQuMSwuLiINCj4gPj4gc2hvdWxkIGJlIHB1bXBlZCBkb3duLi4gDQo+ID4gDQo+
-ID4gWWVzLiBJIHJlbWVtYmVyIHNlZWluZyB0aGF0IGluIHRoZSBCYWtlYXRob24gdGVzdHMuLi4g
-SSBhZ3JlZSB0aGF0IHdlDQo+ID4ganVzdCBuZWVkIHRoZSB2ZXJzPTQuMS4gVGhlIGV4dHJhICd2
-ZXJzPTQnIGlzbid0IGhhcm1mdWwgaW4gdGhhdCB0aGUNCj4gPiBrZXJuZWwgd29uJ3QgaW50ZXJw
-cmV0IGl0IGFzIHZlcnM9NC4wLCBidXQgaXQgd291bGQgYmUgbmljZSB0byBnZXQgcmlkDQo+ID4g
-b2YgaXQuDQo+ID4gDQo+ID4gRXNzZW50aWFsbHksIHRoZSBwbGFuIGlzIHRoYXQgc29tZSB0aW1l
-IGluIHRoZSBmdXR1cmUgd2Ugd2lsbCB3YW50IHRvDQo+ID4gaGF2ZSAndmVycz00JyBiZSB0aGUg
-J2F1dG8tbmVnb3RpYXRlIG1pbm9yIHZlcnNpb24nIHN5bnRheCwgd2hpbGUNCj4gPiB2ZXJzPTQu
-eCB3aWxsIGJlIHRoZSAndXNlIG1pbm9yIHZlcnNpb24geCcgc3ludGF4Lg0KPiA+IE9mIGNvdXJz
-ZSwgYXV0by1uZWdvdGlhdGlvbiBzaG91bGQgYmUgZHJpdmVuIGJ5IHRoZSAnbW91bnQnIHByb2dy
-YW0sDQo+ID4gd2hpY2ggd2lsbCBiZSB1c2luZyB0aGUgJ3ZlcnM9NC54JyBzeW50YXggaW4gdGhl
-IG1vdW50IHN5c3RlbSBjYWxsLCBmb3INCj4gPiB2YXJpb3VzIHZhbHVlcyBvZiAneCcsIHVudGls
-IGl0IGFjaGlldmVzIHN1Y2Nlc3MuDQo+IA0KPiBJbnRlcmVzdGluZy4gIEkgYXNzdW1lIHlvdSB3
-YW50ICJtb3VudC5uZnMiIHRvIGRvIHRoaXMgdG8gYWxsb3cgc29tZSBraW5kIG9mIGF1dG8tbmVn
-b3RpYXRpb24gcG9saWN5IHRvIGJlIHNwZWNpZmllZCAoc2F5LCB2aWEgdGhlIG1vdW50IGNvbW1h
-bmQgY29uZmlndXJhdGlvbiBmaWxlKS4NCg0KUmlnaHQuIEknZCBsaWtlIHRvIGJlIGFibGUgdG8g
-c2V0IERlZmF1bHR2ZXJzPTQuMSBpbiAvZXRjL25mc21vdW50LmNvbmYNCmFuZCBoYXZlIGl0IHdv
-cmsuDQoNCj4gQXMgYSBkZXNpZ24gcHJlY3Vyc29yLCBjYW4geW91IHNwZWN1bGF0ZSBvbiBob3cg
-dGhlIG1vdW50IGNvbW1hbmQgd291bGQgZ28gYWJvdXQgbmVnb3RpYXRpbmcgdGhlIG1pbm9yIHZl
-cnNpb24/ICBtb3VudC5uZnMgY2Fubm90IHVzZSBwcm90b2NvbCB2ZXJzaW9ucyBhZHZlcnRpc2Vk
-IGJ5IHJwY2JpbmQsIGZvciBpbnN0YW5jZSwgYW5kIG5laXRoZXIgY2FuIGEgc2ltcGxlIE5VTEwg
-cmVxdWVzdCBpZGVudGlmeSB3aGljaCBtaW5vciB2ZXJzaW9ucyBhcmUgYXZhaWxhYmxlIG9uIHRo
-ZSBzZXJ2ZXIuDQoNCk5vdGUgdGhhdCB0aGUgbW91bnQgY29tbWFuZCBzaG91bGQgaW4gYW55IGNh
-c2Ugbm90IGJlIHJlbHlpbmcgb24gcnBjYmluZA0KdG8gZGVjaWRlIHdoZXRoZXIgb3Igbm90IHRo
-ZSBzZXJ2ZXIgc3VwcG9ydHMgTkZTdjQuDQoNCkFzIGZvciBtaW5vciB2ZXJzaW9uIG5lZ290aWF0
-aW9uLCBSRkMzNTMwIGFscmVhZHkgdGVsbHMgeW91IGhvdyB0byBkbw0KdGhpczogdGhlIGNsaWVu
-dCBoYXMgdG8gc3RhcnQgd2l0aCB0aGUgaGlnaGVzdCB2ZXJzaW9uIHRoYXQgaXQgc3VwcG9ydHMs
-DQphbmQgdGhlbiB3YWxrIHRoYXQgbnVtYmVyIGRvd24gdW50aWwgdGhlIHNlcnZlciBzdG9wcyBy
-ZXBseWluZyB3aXRoDQpORlM0RVJSX01JTk9SX1ZFUlNfTUlTTUFUQ0guDQoNCk5vdGUgdGhhdCBp
-ZiB5b3Ugd2FudCB0byBkbyB0aGlzIGluIHVzZXJsYW5kIGJlZm9yZSBjYWxsaW5nIHRoZSBtb3Vu
-dA0Kc3lzY2FsbCwgdGhlbiB0aGUgc3BlYyBkb2VzIGFsbG93IHlvdSB0byAicGluZyIgdGhlIE5G
-U3Y0IHNlcnZlciB3aXRoIGFuDQplbXB0eSBDT01QT1VORC4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1
-c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVz
-dEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+encode_exchange_id() uses more stack space than necessary, giving a compile
+time warning. Reduce the size of the static buffer for implementation name.
+
+Signed-off-by: Jim Rees <rees@umich.edu>
+Reviewed-by: "Adamson, Dros" <Weston.Adamson@netapp.com>
+---
+ fs/nfs/nfs4xdr.c |    7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 672d9b0..e9c101d 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1706,12 +1706,15 @@ static void encode_bind_conn_to_session(struct xdr_stream *xdr,
+ 	*p = 0;	/* use_conn_in_rdma_mode = False */
+ }
+ 
++#define IMPL_NAME_LIMIT (sizeof(utsname()->sysname) + sizeof(utsname()->release) + \
++			 sizeof(utsname()->version) + sizeof(utsname()->machine) + 8)
++
+ static void encode_exchange_id(struct xdr_stream *xdr,
+ 			       struct nfs41_exchange_id_args *args,
+ 			       struct compound_hdr *hdr)
+ {
+ 	__be32 *p;
+-	char impl_name[NFS4_OPAQUE_LIMIT];
++	char impl_name[IMPL_NAME_LIMIT];
+ 	int len = 0;
+ 
+ 	encode_op_hdr(xdr, OP_EXCHANGE_ID, decode_exchange_id_maxsz, hdr);
+@@ -1726,7 +1729,7 @@ static void encode_exchange_id(struct xdr_stream *xdr,
+ 	if (send_implementation_id &&
+ 	    sizeof(CONFIG_NFS_V4_1_IMPLEMENTATION_ID_DOMAIN) > 1 &&
+ 	    sizeof(CONFIG_NFS_V4_1_IMPLEMENTATION_ID_DOMAIN)
+-		<= NFS4_OPAQUE_LIMIT + 1)
++		<= sizeof(impl_name) + 1)
+ 		len = snprintf(impl_name, sizeof(impl_name), "%s %s %s %s",
+ 			       utsname()->sysname, utsname()->release,
+ 			       utsname()->version, utsname()->machine);
+-- 
+1.7.9.5
+
