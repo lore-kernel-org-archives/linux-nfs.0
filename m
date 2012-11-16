@@ -1,72 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59595 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932381Ab2KNVyg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Nov 2012 16:54:36 -0500
-Date: Wed, 14 Nov 2012 16:54:26 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: Re: [PATCH v3] SUNRPC: set desired file system root before
- connecting local transports
-Message-ID: <20121114215426.GC539@fieldses.org>
-References: <20121106124035.GA20522@infradead.org>
- <20121106130705.GC6718@fieldses.org>
- <20121106131018.GA12211@infradead.org>
- <20121106133605.GD6718@fieldses.org>
- <20121107183355.GA7421@fieldses.org>
- <50A0B562.2090807@parallels.com>
- <20121114210112.GA539@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9092E0A40@SACEXCMBX04-PRD.hq.netapp.com>
- <20121114214236.GB539@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9092E0AE9@SACEXCMBX04-PRD.hq.netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9092E0AE9@SACEXCMBX04-PRD.hq.netapp.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:40972 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751980Ab2KPOFh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Nov 2012 09:05:37 -0500
+References: <20121114223600.48062.5680.stgit@seurat.1015granger.net> <4FA345DA4F4AE44899BD2B03EEEC2FA9092E0DB4@SACEXCMBX04-PRD.hq.netapp.com> <A7E004BD-A5DA-4258-978A-80E46DBE3D32@oracle.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9092E0E75@SACEXCMBX04-PRD.hq.netapp.com> <8CFA849C-DE85-41BB-8EEA-DBC9FF65FB6E@oracle.com> <50A641F5.3080403@RedHat.com>
+Mime-Version: 1.0 (1.0)
+In-Reply-To: <50A641F5.3080403@RedHat.com>
+Content-Type: text/plain;
+	charset=us-ascii
+Message-Id: <45FCD5C8-5434-4D97-9406-C241F9745E4E@oracle.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH] nfs(5): Document the minorversion= mount option
+Date: Fri, 16 Nov 2012 09:05:21 -0500
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 14, 2012 at 09:51:33PM +0000, Myklebust, Trond wrote:
-> On Wed, 2012-11-14 at 16:42 -0500, J. Bruce Fields wrote:
-> > Simo's patches use them for upcalls to svcgssd.  Those will always be
-> > done from server threads.
-> 
-> Any reason why you can't set that up when you start nfsd?
+For the record I opened RH bugzilla 877052 yesterday to document this issue in RHEL 6.
 
-Oh, right, I was thinking of the upcalls themselves--right, the connect
-we should be able to do on server start, I agree.
+Sent from my iPhone
 
-> 
-> > > If not, then let's just move
-> > > the AF_LOCAL connection back into the process context and out of rpciod.
-> > 
-> > Remind me how this helps?
-> 
-> rpciod shares the 'init' process net namespace and chroot properties.
-> If, however you call bind() from the (containerised) process that was
-> used to start nfsd, then you will be using filesystem root (and net
-> namespace) of that container.
+On Nov 16, 2012, at 8:39 AM, Steve Dickson <SteveD@redhat.com> wrote:
 
-Got it.
-
---b.
-
+> Hey Chuck,
 > 
-> > --b.
-> > 
-> > > 
-> > > That implies that the process needs to be privileged, but it needs
-> > > privileges in order to start RPC daemons anyway.
+> First of all, thanks for point this out... 
 > 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
+> On 14/11/12 18:37, Chuck Lever wrote:
+>> 
+>> On Nov 14, 2012, at 6:12 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+>> 
+>>> On Wed, 2012-11-14 at 18:03 -0500, Chuck Lever wrote:
+>>>> On Nov 14, 2012, at 6:01 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+>>>> 
+>>>>>> -----Original Message-----
+>>>>>> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+>>>>>> owner@vger.kernel.org] On Behalf Of Chuck Lever
+>>>>>> Sent: Wednesday, November 14, 2012 5:39 PM
+>>>>>> To: linux-nfs@vger.kernel.org
+>>>>>> Subject: [PATCH] nfs(5): Document the minorversion= mount option
+>>>>>> 
+>>>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>>>>> ---
+>>>>>> 
+>>>>>> Our pals on the Solaris team recently noticed that the minorversion= option
+>>>>>> is not documented in nfs(5).  This is a first take, just to start the conversation.
+>>>>>> I'm pretty sure I got the kernel version information wrong, for instance.
+>>>>>> 
+>>>>>> Any other comments?
+>>>>> 
+>>>>> You might want to note that it is deprecated in favour of the "vers=4.1" notation, and for that reason we might want to forgo documenting it altogether.
+>>>> 
+>>>> OK.  minorversion= is the only way to get NFSv4.1 on EL6-based distributions, isn't it?
+>>> 
+>>> You didn't seem to be writing a manpage for the RHEL-6 distros: "Before
+>>> kernel 2.6.38, the minor version is always zero...". As far as I know,
+>>> RHEL-6 is still based on 2.6.32...
+> 2.6.32 is where we made the branch. So it accurate to say RHEL6 is based
+> on 2.6.36, but in reality it absolutely not a straight 2.6.32 upstream 
+> kernel due to all the backporting we do.  
 > 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
+>> 
+>> ...for some very loose definition of "based on".  One wonders how to document kernel versions in this instance.  One way to fix this is to have RH patch their copy of nfs(5) privately, while upstream nfs-utils can handle this in some other way.
+> Yeah, We'll have to carry an private patch that updates the man page. 
+> 
+>> 
+>> However, search for "Parallel NFS" on this page:
+>> 
+>>  https://access.redhat.com/knowledge/docs/en-US/Red_Hat_Enterprise_Linux/6/html-single/6.2_Release_Notes/index.html
+>> 
+>> This seems to me to count as public documentation of "minorversion=", and suggests that people are likely already using this formal API.  I would hesitate to remove it in this instance.
+> If upstream wants to deprecate minorversion= than so be it... That will have
+> little effect on a RHEL release since we can't change the API like that... 
+> 
+> steved.
