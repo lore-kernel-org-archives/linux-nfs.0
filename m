@@ -1,140 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ye0-f174.google.com ([209.85.213.174]:52182 "EHLO
-	mail-ye0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932610Ab2KEPWp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Nov 2012 10:22:45 -0500
-Received: by mail-ye0-f174.google.com with SMTP id m12so1017184yen.19
-        for <linux-nfs@vger.kernel.org>; Mon, 05 Nov 2012 07:22:45 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v9 13/34] vfs: have do_sys_truncate retry once on an ESTALE error
-Date: Mon,  5 Nov 2012 10:21:52 -0500
-Message-Id: <1352128933-28526-14-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
-References: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:42882 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751098Ab2KPCYt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 Nov 2012 21:24:49 -0500
+Date: Thu, 15 Nov 2012 21:24:47 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+Subject: Re: 3.7-rc1 NFSv3/sec=krb5 mkdir failure
+Message-ID: <20121116022447.GB23409@fieldses.org>
+References: <20121016125832.GC30649@fieldses.org>
+ <20121024200249.GC6697@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9092906F7@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121024201517.GD6697@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90929086C@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121024204059.GF6697@fieldses.org>
+ <20121028161556.GC20520@fieldses.org>
+ <490C84A9-2764-4E35-893E-727853B12916@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <490C84A9-2764-4E35-893E-727853B12916@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/open.c | 86 +++++++++++++++++++++++++++++++++------------------------------
- 1 file changed, 45 insertions(+), 41 deletions(-)
+On Thu, Nov 15, 2012 at 09:03:03PM -0500, Chuck Lever wrote:
+> 
+> On Oct 28, 2012, at 12:15 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> 
+> > On Wed, Oct 24, 2012 at 04:40:59PM -0400, J. Bruce Fields wrote:
+> >> On Wed, Oct 24, 2012 at 08:34:37PM +0000, Myklebust, Trond wrote:
+> >>>> -----Original Message-----
+> >>>> From: Myklebust, Trond
+> >>>> Sent: Wednesday, October 24, 2012 4:31 PM
+> >>>> To: 'J. Bruce Fields'
+> >>>> Cc: linux-nfs@vger.kernel.org; Schumaker, Bryan
+> >>>> Subject: RE: 3.7-rc1 NFSv3/sec=krb5 mkdir failure
+> >>>> 
+> >>>>> -----Original Message-----
+> >>>>> From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> >>>>> Sent: Wednesday, October 24, 2012 4:15 PM
+> >>>>> To: Myklebust, Trond
+> >>>>> Cc: linux-nfs@vger.kernel.org; Schumaker, Bryan
+> >>>>> Subject: Re: 3.7-rc1 NFSv3/sec=krb5 mkdir failure
+> >>>>> 
+> >>>>> On Wed, Oct 24, 2012 at 08:07:55PM +0000, Myklebust, Trond wrote:
+> >>>>>>> -----Original Message-----
+> >>>>>>> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> >>>>>>> owner@vger.kernel.org] On Behalf Of J. Bruce Fields
+> >>>>>>> Sent: Wednesday, October 24, 2012 4:03 PM
+> >>>>>>> To: linux-nfs@vger.kernel.org; Myklebust, Trond; Schumaker, Bryan
+> >>>>>>> Subject: Re: 3.7-rc1 NFSv3/sec=krb5 mkdir failure
+> >>>>>>> 
+> >>>>>>> Anyone get a chance to look at this?  It seems very reproduceable.
+> >>>>>>> 
+> >>>>>>> --b.
+> >>>>>>> 
+> >>>>>>> On Tue, Oct 16, 2012 at 08:58:32AM -0400, bfields wrote:
+> >>>>>>>> On 3.7-rc1:
+> >>>>>>>> 
+> >>>>>>>> 	client# mount -tnfs -osec=krb5,vers=3 server:/exports/ext4
+> >>>>>>>> /mnt/
+> >>>>>>>> 
+> >>>>>>>> 		server# ls -l /exports/ext4|grep TMP
+> >>>>>>>> 		server#
+> >>>>>>>> 
+> >>>>>>>> 	# mkdir /mnt/TMP
+> >>>>>>>> 	mkdir: cannot create directory `/mnt/TMP': Permission denied
+> >>>>>>>> 
+> >>>>>>>> 		server# ls -l /exports/ext4|grep TMP
+> >>>>>>>> 		drwxr-xr-x  2 nfsnobody nfsnobody 4096 Oct 16 08:56 TMP
+> >>>>>>>> 		server#
+> >>>>>>>> 
+> >>>>>>>> Wireshark also shows that the create succeeds.
+> >>>>>> 
+> >>>>>> Can you share the wireshark trace?
+> >>>>> 
+> >>>>> Sure.  This covers the mount and mkdir.  The mkdir call and reply are
+> >>>>> in frames 77 and 78.
+> >>>> 
+> >>>> Hmm.... Can you please check if the ACL is being set correctly on the server? I
+> >>>> suspect that might be the source of the error.
+> >>>> 
+> >>> 
+> >>> In fact, can you see if mounting with '-onoacl' causes the whole thing to succeed?
+> >> 
+> >> That's on the client mount command?  No difference.
+> > 
+> > By the way, I managed to do a little bisecting while working on
+> > something else today, and blame landed on Chuck's
+> > ba9b584c1dc37851d9c6ca6d0d2ccba55d9aad04 "SUNRPC: Introduce
+> > rpc_clone_client_set_auth()".  Which makes some sense if it's an ACL
+> > problem, and indeed testing on that commit finds success with -noacl,
+> > failure without.
+> 
+> After two weeks, Bruce and I were finally able to catch up in person.
+> 
+> I've reproduced this on 3.7-rc5 using cthon basic tests.  The first getacl operation fails because it's mistakenly attempting to set up a fresh GSS context on a transport where one already exists.  That's in line with the kind of change that's in commit ba9b584c1.
+> 
+> > I'm not sure if that explains the failure I was seeing on 3.7-rc1, since
+> > there I didn't see any ACL traffic, and still got a failure.  (And
+> > -noacl didn't help.)
+> 
+> The failure occurs on the client just before the getacl request is issued, so you won't see any ACL-related network traffic in the failure case.  The failure prevents any ACL request from succeeding.
+> 
+> Anyway, I'll have a deeper look at this tomorrow.
 
-diff --git a/fs/open.c b/fs/open.c
-index 94d5649..2a32d5c 100644
---- a/fs/open.c
-+++ b/fs/open.c
-@@ -66,62 +66,66 @@ static long do_sys_truncate(const char __user *pathname, loff_t length)
- 	struct path path;
- 	struct inode *inode;
- 	int error;
-+	unsigned int lookup_flags = LOOKUP_FOLLOW;
-+	unsigned int try = 0;
- 
--	error = -EINVAL;
- 	if (length < 0)	/* sorry, but loff_t says... */
--		goto out;
-+		return -EINVAL;
- 
--	error = user_path(pathname, &path);
--	if (error)
--		goto out;
--	inode = path.dentry->d_inode;
-+	do {
-+		error = user_path_at(AT_FDCWD, pathname, lookup_flags, &path);
-+		if (error)
-+			break;
-+		inode = path.dentry->d_inode;
- 
--	/* For directories it's -EISDIR, for other non-regulars - -EINVAL */
--	error = -EISDIR;
--	if (S_ISDIR(inode->i_mode))
--		goto dput_and_out;
-+		/* For dirs, -EISDIR. For other non-regulars, -EINVAL */
-+		error = -EISDIR;
-+		if (S_ISDIR(inode->i_mode))
-+			goto dput_and_out;
- 
--	error = -EINVAL;
--	if (!S_ISREG(inode->i_mode))
--		goto dput_and_out;
-+		error = -EINVAL;
-+		if (!S_ISREG(inode->i_mode))
-+			goto dput_and_out;
- 
--	error = mnt_want_write(path.mnt);
--	if (error)
--		goto dput_and_out;
-+		error = mnt_want_write(path.mnt);
-+		if (error)
-+			goto dput_and_out;
- 
--	error = inode_permission(inode, MAY_WRITE);
--	if (error)
--		goto mnt_drop_write_and_out;
-+		error = inode_permission(inode, MAY_WRITE);
-+		if (error)
-+			goto mnt_drop_write_and_out;
- 
--	error = -EPERM;
--	if (IS_APPEND(inode))
--		goto mnt_drop_write_and_out;
-+		error = -EPERM;
-+		if (IS_APPEND(inode))
-+			goto mnt_drop_write_and_out;
- 
--	error = get_write_access(inode);
--	if (error)
--		goto mnt_drop_write_and_out;
-+		error = get_write_access(inode);
-+		if (error)
-+			goto mnt_drop_write_and_out;
- 
--	/*
--	 * Make sure that there are no leases.  get_write_access() protects
--	 * against the truncate racing with a lease-granting setlease().
--	 */
--	error = break_lease(inode, O_WRONLY);
--	if (error)
--		goto put_write_and_out;
-+		/*
-+		 * Make sure that there are no leases. get_write_access()
-+		 * protects against the truncate racing with a lease-granting
-+		 * setlease().
-+		 */
-+		error = break_lease(inode, O_WRONLY);
-+		if (error)
-+			goto put_write_and_out;
- 
--	error = locks_verify_truncate(inode, NULL, length);
--	if (!error)
--		error = security_path_truncate(&path);
--	if (!error)
--		error = do_truncate(path.dentry, length, 0, NULL);
-+		error = locks_verify_truncate(inode, NULL, length);
-+		if (!error)
-+			error = security_path_truncate(&path);
-+		if (!error)
-+			error = do_truncate(path.dentry, length, 0, NULL);
- 
- put_write_and_out:
--	put_write_access(inode);
-+		put_write_access(inode);
- mnt_drop_write_and_out:
--	mnt_drop_write(path.mnt);
-+		mnt_drop_write(path.mnt);
- dput_and_out:
--	path_put(&path);
--out:
-+		path_put(&path);
-+		lookup_flags |= LOOKUP_REVAL;
-+	} while (retry_estale(error, try++));
- 	return error;
- }
- 
--- 
-1.7.11.7
+Great, thanks for taking another look.
 
+--b.
