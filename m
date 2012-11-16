@@ -1,101 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35543 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754356Ab2KZOkD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Nov 2012 09:40:03 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 5/8] nfsd4: move more write parameters into xdr argument
-Date: Mon, 26 Nov 2012 09:39:56 -0500
-Message-Id: <1353940799-11763-6-git-send-email-bfields@redhat.com>
-In-Reply-To: <1353940799-11763-1-git-send-email-bfields@redhat.com>
-References: <1353940799-11763-1-git-send-email-bfields@redhat.com>
+Received: from countercultured.net ([209.51.175.25]:41143 "HELO
+	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751283Ab2KPE7C (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Nov 2012 23:59:02 -0500
+Message-ID: <50A5C815.5040002@davequigley.com>
+Date: Thu, 15 Nov 2012 23:59:01 -0500
+From: Dave Quigley <dpquigl@davequigley.com>
+MIME-Version: 1.0
+To: David Quigley <dpquigl@davequigley.com>
+CC: Casey Schaufler <casey@schaufler-ca.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Steve Dickson <steved@redhat.com>, trond.myklebust@netapp.com,
+        sds@tycho.nsa.gov, linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
+        linux-security-module@vger.kernel.org
+Subject: Re: Labeled NFS [v5]
+References: <50A116F0.5050404@davequigley.com> <20121112160959.GK30713@fieldses.org> <50A16269.4060601@RedHat.com> <50A1A4EE.7030507@davequigley.com> <50A24345.8080309@RedHat.com> <50A31EF5.1050801@davequigley.com> <20121114134535.GD23604@fieldses.org> <624cc90c1bf726d8ff1a1ea0ace5f50f@countercultured.net> <20121114135939.GE23604@fieldses.org> <80f36fef2a58eb538bce28daba3a862a@countercultured.net> <20121114142458.GF23604@fieldses.org> <4f9b24e3942b4a28cd9068d5bc0135fa@countercultured.net> <50A51195.9080004@schaufler-ca.com> <a843eae7d5fa2df4faa99bf5531dcecc@countercultured.net> <50A5B441.70206@schaufler-ca.com> <98ae8bfde2b1967c7db6db1f04ce73b1@countercultured.net>
+In-Reply-To: <98ae8bfde2b1967c7db6db1f04ce73b1@countercultured.net>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+ >> I'm not sure what the proposed hook would be for except to identify it
+ >> as concerned with nfs. Perhaps the hook could return the names of
+ >> attributes that it wants nfs to provide.
+ >>
+ >
+ > I'm not quite sure what you're proposing? I'm sure someone would find
+ > another use for this hook though. The inode_getsecctx hook we made for
+ > Labeled NFS was already merged because it was needed for providing
+ > "persistent" label support for sysfs (meaning that it persisted inode
+ > eviction from memory). The problem is that we have no real way to ask in
+ > the NFS code if this is an LSM that can be used with Labeled NFS. In the
+ > xattr code we have the new ismaclabel hook we add which allows us to
+ > verify the xattr used as belonging to a label based LSM however we need
+ > an xattr from userspace for that. The reason this is required is that
+ > the server will need to fill out its capability mask to indicate it
+ > supports security labeling. In addition the client also needs to know if
+ > its running a security label based LSM because it will need to mask out
+ > the label fattr bit from its getattr calls if it doesn't support it. We
+ > can override this in SELinux by giving it a context mount but if we
+ > don't then it will need to know whether or not to be pulling security
+ > labels back.
+ >
 
-In preparation for moving some of this elsewhere.
+[Resending because I sent it from the wrong identity.]
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4xdr.c |   20 +++++++++-----------
- fs/nfsd/xdr4.h    |    2 ++
- 2 files changed, 11 insertions(+), 11 deletions(-)
+I think the point I'm trying to make is that we need to define the 
+interface which if you implement it you are supported. For label 
+import/export we have inode_{get,set,notify}secctx. For checking for 
+xattr suitibility we have the new ismaclabel lsm call. Now the final 
+thing we need to do is a call to determine if the lsm is suitable for 
+Labeled NFS export meaning that it agrees to the semantics. Is 
+inode{get,set,notify}_secctx and ismaclabel sufficient? I'm tempted to 
+say we can make a call to inode_getsecctx and if it failes with 
+EOPNOTSUPP we say we don't support it but then we need an initial file 
+to call that on. This is why I'd rather have a LSM call that we can make 
+that gives us a yes/no answer.
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 579dc70..cb9f9017 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1139,16 +1139,17 @@ nfsd4_decode_verify(struct nfsd4_compoundargs *argp, struct nfsd4_verify *verify
- 	DECODE_TAIL;
- }
- 
--static int fill_in_write_vector(struct kvec *vec, struct kvec *head, struct page **pagelist, int buflen)
-+static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
- {
- 	int i = 1;
-+	int buflen = write->wr_buflen;
- 
--	vec[0].iov_base = head->iov_base;
--	vec[0].iov_len = min_t(int, buflen, head->iov_len);
-+	vec[0].iov_base = write->wr_head.iov_base;
-+	vec[0].iov_len = min_t(int, buflen, write->wr_head.iov_len);
- 	buflen -= vec[0].iov_len;
- 
- 	while (buflen) {
--		vec[i].iov_base = page_address(pagelist[i - 1]);
-+		vec[i].iov_base = page_address(write->wr_pagelist[i - 1]);
- 		vec[i].iov_len = min_t(int, PAGE_SIZE, buflen);
- 		buflen -= vec[i].iov_len;
- 		i++;
-@@ -1161,8 +1162,6 @@ nfsd4_decode_write(struct nfsd4_compoundargs *argp, struct nfsd4_write *write)
- {
- 	int avail;
- 	int len;
--	struct page **pagelist;
--	struct kvec head;
- 	DECODE_HEAD;
- 
- 	status = nfsd4_decode_stateid(argp, &write->wr_stateid);
-@@ -1185,10 +1184,10 @@ nfsd4_decode_write(struct nfsd4_compoundargs *argp, struct nfsd4_write *write)
- 				__FILE__, __LINE__);
- 		goto xdr_error;
- 	}
--	head.iov_base = p;
--	head.iov_len = avail;
-+	write->wr_head.iov_base = p;
-+	write->wr_head.iov_len = avail;
- 	WARN_ON(avail != (XDR_QUADLEN(avail) << 2));
--	pagelist = argp->pagelist;
-+	write->wr_pagelist = argp->pagelist;
- 
- 	len = XDR_QUADLEN(write->wr_buflen) << 2;
- 	if (len >= avail) {
-@@ -1205,8 +1204,7 @@ nfsd4_decode_write(struct nfsd4_compoundargs *argp, struct nfsd4_write *write)
- 		argp->end = argp->p + XDR_QUADLEN(PAGE_SIZE);
- 	}
- 	argp->p += XDR_QUADLEN(len);
--	write->wr_vlen = fill_in_write_vector(argp->rqstp->rq_vec,
--		&head, pagelist, write->wr_buflen);
-+	write->wr_vlen = fill_in_write_vector(argp->rqstp->rq_vec, write);
- 	WARN_ON_ONCE(write->wr_vlen > ARRAY_SIZE(argp->rqstp->rq_vec));
- 
- 	DECODE_TAIL;
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 3c414c1..152867b 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -386,6 +386,8 @@ struct nfsd4_write {
- 	u32		wr_stable_how;      /* request */
- 	u32		wr_buflen;          /* request */
- 	int		wr_vlen;
-+	struct kvec	wr_head;
-+	struct page **	wr_pagelist;        /* request */
- 
- 	u32		wr_bytes_written;   /* response */
- 	u32		wr_how_written;     /* response */
--- 
-1.7.9.5
+Dave
 
