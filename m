@@ -1,41 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:2723 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S936003Ab2KAP4N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 Nov 2012 11:56:13 -0400
-Received: from vmwexceht01-prd.hq.netapp.com (exchsmtp.hq.netapp.com [10.106.76.239])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id qA1FuC3s007000
-	for <linux-nfs@vger.kernel.org>; Thu, 1 Nov 2012 08:56:12 -0700 (PDT)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 05/25] SUNRPC: remove BUG_ON from rpc_call_sync
-Date: Thu, 1 Nov 2012 15:56:10 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092A12FD@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1351003429-18887-1-git-send-email-dros@netapp.com>
-	 <1351003429-18887-6-git-send-email-dros@netapp.com>
-In-Reply-To: <1351003429-18887-6-git-send-email-dros@netapp.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:45864 "EHLO
+	Dobby.4dicksons.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751675Ab2KQOC3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 17 Nov 2012 09:02:29 -0500
+Received: from tophat.home.4dicksons.org ([192.168.62.20])
+	by Dobby.4dicksons.org with esmtp (Exim 4.63)
+	(envelope-from <steved@redhat.com>)
+	id 1TZiyY-0004zI-QU
+	for linux-nfs@vger.kernel.org; Sat, 17 Nov 2012 09:02:27 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH] svcgssd: Encryption types not being parsed correctly
+Date: Sat, 17 Nov 2012 08:57:41 -0500
+Message-Id: <1353160661-30105-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTEwLTIzIGF0IDEwOjQzIC0wNDAwLCBXZXN0b24gQW5kcm9zIEFkYW1zb24g
-d3JvdGU6DQo+IFJldHVybiAtRUlOVkFMIGluc3RlYWQgb2YgY2FsbGluZyBCVUdfT04oKSB3aGVu
-IFJQQ19UQVNLX0FTWU5DIGZsYWcgaXMgcGFzc2VkDQo+IHRvIHJwY19jYWxsX3N5bmMoKS4NCj4g
-DQo+IFNpZ25lZC1vZmYtYnk6IFdlc3RvbiBBbmRyb3MgQWRhbXNvbiA8ZHJvc0BuZXRhcHAuY29t
-Pg0KPiAtLS0NCj4gIG5ldC9zdW5ycGMvY2xudC5jIHwgICAgNiArKysrKy0NCj4gIDEgZmlsZSBj
-aGFuZ2VkLCA1IGluc2VydGlvbnMoKyksIDEgZGVsZXRpb24oLSkNCj4gDQo+IGRpZmYgLS1naXQg
-YS9uZXQvc3VucnBjL2NsbnQuYyBiL25ldC9zdW5ycGMvY2xudC5jDQo+IGluZGV4IGRkMTZlNTIu
-LjBjMDAzNWYgMTAwNjQ0DQo+IC0tLSBhL25ldC9zdW5ycGMvY2xudC5jDQo+ICsrKyBiL25ldC9z
-dW5ycGMvY2xudC5jDQo+IEBAIC04MzksNyArODM5LDExIEBAIGludCBycGNfY2FsbF9zeW5jKHN0
-cnVjdCBycGNfY2xudCAqY2xudCwgY29uc3Qgc3RydWN0IHJwY19tZXNzYWdlICptc2csIGludCBm
-bGFnDQo+ICAJfTsNCj4gIAlpbnQgc3RhdHVzOw0KPiAgDQo+IC0JQlVHX09OKGZsYWdzICYgUlBD
-X1RBU0tfQVNZTkMpOw0KPiArCWlmIChmbGFncyAmIFJQQ19UQVNLX0FTWU5DKSB7DQoNClRoaXMg
-ZGVmaW5pdGVseSBuZWVkcyBhIFdBUk5fT05fT05DRTogaXQncyBhIHByb2dyYW1tZXIgZXJyb3Is
-IG5vdCBhbg0KYXBwbGljYXRpb24gZXJyb3IuLi4NCg0KPiArCQlycGNfcmVsZWFzZV9jYWxsZGF0
-YSh0YXNrX3NldHVwX2RhdGEuY2FsbGJhY2tfb3BzLA0KPiArCQkJdGFza19zZXR1cF9kYXRhLmNh
-bGxiYWNrX2RhdGEpOw0KPiArCQlyZXR1cm4gLUVJTlZBTDsNCj4gKwl9DQo+ICANCj4gIAl0YXNr
-ID0gcnBjX3J1bl90YXNrKCZ0YXNrX3NldHVwX2RhdGEpOw0KPiAgCWlmIChJU19FUlIodGFzaykp
-DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0K
-TmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+When svcgssd reads the supported encrytion types from the
+kernel, they are prefixed with a 'enctypes='. That prefix
+has to be ignored to correctly parse the rest of the types.
+
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ utils/gssd/svcgssd_krb5.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/utils/gssd/svcgssd_krb5.c b/utils/gssd/svcgssd_krb5.c
+index 6c34faf..1d44d34 100644
+--- a/utils/gssd/svcgssd_krb5.c
++++ b/utils/gssd/svcgssd_krb5.c
+@@ -38,6 +38,7 @@
+ 
+ #include <stdio.h>
+ #include <errno.h>
++#include <ctype.h>
+ #include <gssapi/gssapi.h>
+ #include <krb5.h>
+ 
+@@ -98,6 +99,12 @@ parse_enctypes(char *enctypes)
+ 	if (n == 0)
+ 		return ENOENT;
+ 
++	/* Skip pass any non digits */
++	while (*enctypes && isdigit(*enctypes) == 0)
++		enctypes++;
++	if (*enctypes == '\0')
++		return EINVAL;
++
+ 	/* Allocate space for enctypes array */
+ 	if ((parsed_enctypes = (int *) calloc(n, sizeof(int))) == NULL) {
+ 		return ENOMEM;
+-- 
+1.7.11.7
+
