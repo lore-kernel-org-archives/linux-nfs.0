@@ -1,72 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60559 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:12721 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752844Ab2KHAVC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Nov 2012 19:21:02 -0500
-Date: Wed, 7 Nov 2012 19:20:59 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Peter Staubach <pstaubach@exagrid.com>
-Subject: Re: [PATCH 0/2] fix nfsd stable write implementation
-Message-ID: <20121108002059.GA17945@fieldses.org>
-References: <1351285617-20450-1-git-send-email-bfields@redhat.com>
- <20121030102833.306e833a@notabene.brown>
- <20121030140725.GC24618@fieldses.org>
- <20121031073027.254242ed@notabene.brown>
+	id S1753825Ab2KQAxJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 Nov 2012 19:53:09 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jim Rees <rees@umich.edu>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2] NFS: Reduce stack use in encode_exchange_id()
+Date: Sat, 17 Nov 2012 00:53:05 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092EA321@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1353107526-25460-1-git-send-email-rees@umich.edu>
+In-Reply-To: <1353107526-25460-1-git-send-email-rees@umich.edu>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20121031073027.254242ed@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 31, 2012 at 07:30:27AM +1100, NeilBrown wrote:
-> On Tue, 30 Oct 2012 10:07:25 -0400 "J. Bruce Fields" <bfields@fieldses.org>
-> wrote:
-> 
-> > On Tue, Oct 30, 2012 at 10:28:33AM +1100, NeilBrown wrote:
-> > > On Fri, 26 Oct 2012 17:06:55 -0400 "J. Bruce Fields" <bfields@redhat.com>
-> > > wrote:
-> > > 
-> > > > From: "J. Bruce Fields" <bfields@redhat.com>
-> > > > 
-> > > > Peter pointed out to me that the nfs server is implementing stable
-> > > > writes by setting the O_SYNC flag.  I can't see why we couldn't write
-> > > > and then sync instead, but I don't know this stuff as well as I should;
-> > > > does the following look reasonable to people?
-> > > 
-> > > Bruce changed the code to implement stable writes by calling
-> > > vfs_fsync_range().  I can't see why we couldn't use O_SYNC instead.
-> > > 
-> > > It seems like you are making a change just for the sake of making a change.
-> > > Is there some reason that you think a separate 'sync' is more efficient than
-> > > using O_SYNC ?
-> > 
-> > Oh, sorry, see the changelog on the second patch: the problem is that
-> > the struct file can be shared across multiple writes in the NFSv4 case,
-> > so a single stable write could make all subsequent writes synchronous.
-> > 
-> > (And some day people would like filehandle caching for v2/v3, in which
-> > case we'll run into the same problem.)
-> 
-> Ahh, I missed that.
-> Makes sense then, thanks.
-> 
-> > 
-> > > As a general principle, I think it is best to give the file system as much
-> > > information as possible to that it can make whatever optimisation decisions
-> > > that it wants to.
-> > > 
-> > > Setting O_SYNC gives the filesystem more information than not, because it
-> > > allows it to change the behaviour of the 'write' request... though I don't
-> > > know if any filesystem actually uses the information.
-> > 
-> > I'm not sure how to figure out if that's a real problem or not.
-> 
-> Search all filesystems for special handling of O_SYNC or O_DSYNC?
-> 
-> I strongly suspect that it is not a real problem.
-
-OK, committing for 3.8.
-
---b.
+T24gRnJpLCAyMDEyLTExLTE2IGF0IDE4OjEyIC0wNTAwLCBKaW0gUmVlcyB3cm90ZToNCj4gZW5j
+b2RlX2V4Y2hhbmdlX2lkKCkgdXNlcyBtb3JlIHN0YWNrIHNwYWNlIHRoYW4gbmVjZXNzYXJ5LCBn
+aXZpbmcgYSBjb21waWxlDQo+IHRpbWUgd2FybmluZy4gUmVkdWNlIHRoZSBzaXplIG9mIHRoZSBz
+dGF0aWMgYnVmZmVyIGZvciBpbXBsZW1lbnRhdGlvbiBuYW1lLg0KPiANCj4gU2lnbmVkLW9mZi1i
+eTogSmltIFJlZXMgPHJlZXNAdW1pY2guZWR1Pg0KPiBSZXZpZXdlZC1ieTogIkFkYW1zb24sIERy
+b3MiIDxXZXN0b24uQWRhbXNvbkBuZXRhcHAuY29tPg0KPiAtLS0NCj4gIGZzL25mcy9uZnM0eGRy
+LmMgfCAgICA4ICsrKysrLS0tDQo+ICAxIGZpbGUgY2hhbmdlZCwgNSBpbnNlcnRpb25zKCspLCAz
+IGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0eGRyLmMgYi9mcy9u
+ZnMvbmZzNHhkci5jDQo+IGluZGV4IDY3MmQ5YjAuLmNjMmY4YTkgMTAwNjQ0DQo+IC0tLSBhL2Zz
+L25mcy9uZnM0eGRyLmMNCj4gKysrIGIvZnMvbmZzL25mczR4ZHIuYw0KPiBAQCAtMjcwLDYgKzI3
+MCw4IEBAIHN0YXRpYyBpbnQgbmZzNF9zdGF0X3RvX2Vycm5vKGludCk7DQo+ICANCj4gICNpZiBk
+ZWZpbmVkKENPTkZJR19ORlNfVjRfMSkNCj4gICNkZWZpbmUgTkZTNF9NQVhfTUFDSElORV9OQU1F
+X0xFTiAoNjQpDQo+ICsjZGVmaW5lIElNUExfTkFNRV9MSU1JVCAoc2l6ZW9mKHV0c25hbWUoKS0+
+c3lzbmFtZSkgKyBzaXplb2YodXRzbmFtZSgpLT5yZWxlYXNlKSArIFwNCj4gKwkJCSBzaXplb2Yo
+dXRzbmFtZSgpLT52ZXJzaW9uKSArIHNpemVvZih1dHNuYW1lKCktPm1hY2hpbmUpICsgOCkNCj4g
+IA0KPiAgI2RlZmluZSBlbmNvZGVfZXhjaGFuZ2VfaWRfbWF4c3ogKG9wX2VuY29kZV9oZHJfbWF4
+c3ogKyBcDQo+ICAJCQkJZW5jb2RlX3ZlcmlmaWVyX21heHN6ICsgXA0KPiBAQCAtMjgyLDcgKzI4
+NCw3IEBAIHN0YXRpYyBpbnQgbmZzNF9zdGF0X3RvX2Vycm5vKGludCk7DQo+ICAJCQkJMSAvKiBu
+aWlfZG9tYWluICovICsgXA0KPiAgCQkJCVhEUl9RVUFETEVOKE5GUzRfT1BBUVVFX0xJTUlUKSAr
+IFwNCj4gIAkJCQkxIC8qIG5paV9uYW1lICovICsgXA0KPiAtCQkJCVhEUl9RVUFETEVOKE5GUzRf
+T1BBUVVFX0xJTUlUKSArIFwNCj4gKwkJCQlYRFJfUVVBRExFTihJTVBMX05BTUVfTElNSVQpICsg
+XA0KPiAgCQkJCTMgLyogbmlpX2RhdGUgKi8pDQo+ICAjZGVmaW5lIGRlY29kZV9leGNoYW5nZV9p
+ZF9tYXhzeiAob3BfZGVjb2RlX2hkcl9tYXhzeiArIFwNCj4gIAkJCQkyIC8qIGVpcl9jbGllbnRp
+ZCAqLyArIFwNCj4gQEAgLTE3MTEsNyArMTcxMyw3IEBAIHN0YXRpYyB2b2lkIGVuY29kZV9leGNo
+YW5nZV9pZChzdHJ1Y3QgeGRyX3N0cmVhbSAqeGRyLA0KPiAgCQkJICAgICAgIHN0cnVjdCBjb21w
+b3VuZF9oZHIgKmhkcikNCj4gIHsNCj4gIAlfX2JlMzIgKnA7DQo+IC0JY2hhciBpbXBsX25hbWVb
+TkZTNF9PUEFRVUVfTElNSVRdOw0KPiArCWNoYXIgaW1wbF9uYW1lW0lNUExfTkFNRV9MSU1JVF07
+DQo+ICAJaW50IGxlbiA9IDA7DQo+ICANCj4gIAllbmNvZGVfb3BfaGRyKHhkciwgT1BfRVhDSEFO
+R0VfSUQsIGRlY29kZV9leGNoYW5nZV9pZF9tYXhzeiwgaGRyKTsNCj4gQEAgLTE3MjYsNyArMTcy
+OCw3IEBAIHN0YXRpYyB2b2lkIGVuY29kZV9leGNoYW5nZV9pZChzdHJ1Y3QgeGRyX3N0cmVhbSAq
+eGRyLA0KPiAgCWlmIChzZW5kX2ltcGxlbWVudGF0aW9uX2lkICYmDQo+ICAJICAgIHNpemVvZihD
+T05GSUdfTkZTX1Y0XzFfSU1QTEVNRU5UQVRJT05fSURfRE9NQUlOKSA+IDEgJiYNCj4gIAkgICAg
+c2l6ZW9mKENPTkZJR19ORlNfVjRfMV9JTVBMRU1FTlRBVElPTl9JRF9ET01BSU4pDQo+IC0JCTw9
+IE5GUzRfT1BBUVVFX0xJTUlUICsgMSkNCj4gKwkJPD0gc2l6ZW9mKGltcGxfbmFtZSkgKyAxKQ0K
+PiAgCQlsZW4gPSBzbnByaW50ZihpbXBsX25hbWUsIHNpemVvZihpbXBsX25hbWUpLCAiJXMgJXMg
+JXMgJXMiLA0KPiAgCQkJICAgICAgIHV0c25hbWUoKS0+c3lzbmFtZSwgdXRzbmFtZSgpLT5yZWxl
+YXNlLA0KPiAgCQkJICAgICAgIHV0c25hbWUoKS0+dmVyc2lvbiwgdXRzbmFtZSgpLT5tYWNoaW5l
+KTsNCg0KVGhhbmtzIEppbSEgSSB3aWxsIGFwcGx5Li4uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0
+DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RA
+bmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
