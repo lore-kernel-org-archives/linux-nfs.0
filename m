@@ -1,107 +1,43 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:13729 "EHLO mx2.netapp.com"
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:64297 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754437Ab2K2OFA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Nov 2012 09:05:00 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: =?utf-8?B?xYF1a2FzeiBUYXN6?= <lukasz@tasz.eu>
-CC: Adrien Kunysz <adk@acunu.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: nfs performance - idea.
-Date: Thu, 29 Nov 2012 14:04:59 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90B329D17@SACEXCMBX04-PRD.hq.netapp.com>
-References: <CAGRr-NiRkkhoVG4ss5WG7RXXOUWQ5dcOaVAxbQ2yA2c1NbPjKw@mail.gmail.com>
- <CAA4Z2ZQHAvZoUE6h9aqHSZwWF8jvY5QSYai0nXK9gZr6-BN+qA@mail.gmail.com>
- <CAGRr-NjKsSGoL5P8n8nsfk3eoAY8zZt+h1K6rU19cLitTD78uw@mail.gmail.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA90B329B2A@SACEXCMBX04-PRD.hq.netapp.com>
- <CAGRr-Niowy4W6wmqjCHesv9r66B0Ok2kha-7=xBp69gksaXt-A@mail.gmail.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA90B329C21@SACEXCMBX04-PRD.hq.netapp.com>
- <CAGRr-Nj9t+jaKf_DFL+zjYMgS1b5EaFjMnDc6XMdad3PJMDvnA@mail.gmail.com>
-In-Reply-To: <CAGRr-Nj9t+jaKf_DFL+zjYMgS1b5EaFjMnDc6XMdad3PJMDvnA@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1752331Ab2KSVkt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Nov 2012 16:40:49 -0500
+Message-ID: <50AAA75E.70703@RedHat.com>
+Date: Mon, 19 Nov 2012 16:40:46 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC PATCH V2] mount: Added the -o v4.1 mount option
+References: <1353339810-19126-1-git-send-email-steved@redhat.com>  <4FA345DA4F4AE44899BD2B03EEEC2FA9092EEE7A@SACEXCMBX04-PRD.hq.netapp.com>  <50AA571E.4090509@RedHat.com>  <4FA345DA4F4AE44899BD2B03EEEC2FA9092EEFD7@SACEXCMBX04-PRD.hq.netapp.com>  <50AA5AD4.5070808@RedHat.com>  <4FA345DA4F4AE44899BD2B03EEEC2FA9092EF0B3@SACEXCMBX04-PRD.hq.netapp.com>  <8B557EF0-A1F7-4487-8887-0B08F6922784@oracle.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9092EF4AA@SACEXCMBX04-PRD.hq.netapp.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9092EF4AA@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiDFgXVrYXN6IFRhc3ogW21haWx0
-bzpsdWthc3pAdGFzei5ldV0NCj4gU2VudDogVGh1cnNkYXksIE5vdmVtYmVyIDI5LCAyMDEyIDk6
-MDAgQU0NCj4gVG86IE15a2xlYnVzdCwgVHJvbmQNCj4gQ2M6IEFkcmllbiBLdW55c3o7IGxpbnV4
-LW5mc0B2Z2VyLmtlcm5lbC5vcmcNCj4gU3ViamVjdDogUmU6IG5mcyBwZXJmb3JtYW5jZSAtIGlk
-ZWEuDQo+IA0KPiAyMDEyLzExLzI5IE15a2xlYnVzdCwgVHJvbmQgPFRyb25kLk15a2xlYnVzdEBu
-ZXRhcHAuY29tPjoNCj4gPj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gPj4gRnJvbTog
-xYF1a2FzeiBUYXN6IFttYWlsdG86bHVrYXN6QHRhc3ouZXVdDQo+ID4+IFNlbnQ6IFRodXJzZGF5
-LCBOb3ZlbWJlciAyOSwgMjAxMiA4OjQ3IEFNDQo+ID4+IFRvOiBNeWtsZWJ1c3QsIFRyb25kDQo+
-ID4+IENjOiBBZHJpZW4gS3VueXN6OyBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnDQo+ID4+IFN1
-YmplY3Q6IFJlOiBuZnMgcGVyZm9ybWFuY2UgLSBpZGVhLg0KPiA+Pg0KPiA+PiBIaSwgdGhhbmtz
-IGEgbG90IGZvciBhbnN3ZXIsDQo+ID4+DQo+ID4+IGxvb2tzIHRoZW4gZXZlbiBiZXR0ZXIhIHNv
-IHRvIGJlIDEwMCUgc3VyZSBpdCBnb29kIHRvIHRyYXZlcnNlIHdob2xlDQo+ID4+IHBhdGggYW5k
-IG9wZW4gZGlyZWN0b3J5IGNvbnRlbnQuDQo+ID4NCj4gPiBOby4gQWxsIHlvdSByZWFsbHkgbmVl
-ZCBpcyB0aGUgb3BlbmRpcigpLiBJZiB5b3Ugd2FudCB0byBtYWtlIHlvdXIgb3duDQo+ID4gaGFj
-aywgYWxsIHlvdSBuZWVkIGlzIGEgcHJvZ3JhbSB0aGF0IGRvZXMgc29tZXRoaW5nIGFsb25nIHRo
-ZSBsaW5lcyBvZg0KPiA+DQo+ID4gRElSKiBwID0gb3BlbmRpcigiLiIpOw0KPiA+IGlmIChwKQ0K
-PiA+ICAgICAgY2xvc2VkaXIocCk7DQo+ID4NCj4gSSB0aGluayBJIGdvdCB3aGF0IHlvdSBtZWFu
-LCBidXQgaW4gY2FzZSBvZiAuL2EvYi9jL2QvZSBqdXN0DQo+IG9wZW5kaXIoJy4vYS9iL2MvZC9l
-JykgY291bGQgZW5kIHdpdGggIk5vIHN1Y2ggZmlsZSBvciBkaXJlY3RvcnkiDQo+IA0KPiB0aGF0
-J3Mgd2h5IEknbSB0aGlua2luZyBhYm91dDoNCj4gZm9yIGQgaW4gIi4vYS9iL2MvZC9lIi5zcGxp
-dCgnLycpDQo+ICAgIG9wZW5kaXIoZCkNCj4gDQo+IA0KPiA+PiBPbmUgcmVtYXJrLCBzaW5jZSBJ
-IGRpZCBub3QgbWVudGlvbmVkIGl0LCBJJ20gdXNpbmcgTkZTdjMsIGlzIHRoaXMNCj4gPj4gYmVo
-YXZpb3Igc2FtZSBpbiBORlN2MyBhbmQgTkZTdjQ/DQo+ID4NCj4gPiBZZXMuIEl0IGlzIGEgY29u
-c2VxdWVuY2Ugb2YgdGhlIE5GUyBjbG9zZS10by1vcGVuIGNhY2hpbmcgbW9kZWwsIHdoaWNoIGlz
-DQo+IGNvbW1vbiB0byBhbGwgdmVyc2lvbnMgb2YgTkZTLg0KPiBncmVhdCwNCj4gY291bGQgeW91
-IHBsZWFzZSBwb2ludCBtZSB0byBkb2N1bWVudC9tYW51YWwgd2hpY2ggZGVzY3JpYmUgdGhpcyBt
-b2RlbD8NCj4gDQoNCmh0dHA6Ly9uZnMuc291cmNlZm9yZ2UubmV0LyNmYXFfYTgNCg0KPiB0aGFu
-a3MgYSBsb3QgZm9yIHlvdXIgaGVscCENCj4gxYF1a2Fzeg0KPiANCj4gPg0KPiA+PiB0aGFua3Mg
-JiByZWdhcmRzDQo+ID4+IEx1a2FzeiBUYXN6DQo+ID4+IMWBdWthc3ogVGFzeg0KPiA+Pg0KPiA+
-Pg0KPiA+PiAyMDEyLzExLzI5IE15a2xlYnVzdCwgVHJvbmQgPFRyb25kLk15a2xlYnVzdEBuZXRh
-cHAuY29tPjoNCj4gPj4gPj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gPj4gPj4gRnJv
-bTogbGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZyBbbWFpbHRvOmxpbnV4LW5mcy0NCj4g
-Pj4gPj4gb3duZXJAdmdlci5rZXJuZWwub3JnXSBPbiBCZWhhbGYgT2YgTHVrYXN6IFRhc3oNCj4g
-Pj4gPj4gU2VudDogVGh1cnNkYXksIE5vdmVtYmVyIDI5LCAyMDEyIDQ6NDEgQU0NCj4gPj4gPj4g
-VG86IEFkcmllbiBLdW55c3oNCj4gPj4gPj4gQ2M6IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcN
-Cj4gPj4gPj4gU3ViamVjdDogUmU6IG5mcyBwZXJmb3JtYW5jZSAtIGlkZWEuDQo+ID4+ID4+DQo+
-ID4+ID4+IEFueSBpZGVhIG9uIHRoaXMgdG9waWM/DQo+ID4+ID4+DQo+ID4+ID4+IENhbiBJIGFz
-c3VtZSB0aGF0ICJ0b3VjaCIgY291bGQgYmUgaW50ZXJmYWNlIGZvciB0cmlnZ2VyaW5nDQo+ID4+
-ID4+IHN5bmNocm9uaXNpbmcgY2xpZW50IHN0YXRlIHdpdGggc2VydmVyIHN0YXRlPw0KPiA+PiA+
-Pg0KPiA+PiA+DQo+ID4+ID4gJ2xzJyBpcyBiZXR0ZXIuIEFsbCBvcGVuZGlyKCkgY2FsbHMgd2ls
-bCB0cmlnZ2VyIGEgcmV2YWxpZGF0aW9uIG9mDQo+ID4+ID4gdGhlIGRpcmVjdG9yeQ0KPiA+PiBj
-YWNoZS4NCj4gPj4gPg0KPiA+PiA+DQo+ID4+ID4+IG1hbnkgdGhhbmtzIGZvciBoZWxwIQ0KPiA+
-PiA+PiByZWdhcmRzDQo+ID4+ID4+IEx1a2FzeiBUYXN6DQo+ID4+ID4+DQo+ID4+ID4+DQo+ID4+
-ID4+IDIwMTIvMTEvMTQgQWRyaWVuIEt1bnlzeiA8YWRrQGFjdW51LmNvbT46DQo+ID4+ID4+ID4g
-T24gV2VkLCBOb3YgMTQsIDIwMTIgYXQgMTozOCBQTSwgxYF1a2FzeiBUYXN6IDxsdWthc3pAdGFz
-ei5ldT4NCj4gd3JvdGU6DQo+ID4+ID4+ID4+IEhpIGFsbCwNCj4gPj4gPj4gPj4NCj4gPj4gPj4g
-Pj4gSSB3b3VsZCBsaWtlIHRvIGNvbnN1bHQgc29tZSBpZGVhIHdpdGggeW91LA0KPiA+PiA+PiA+
-Pg0KPiA+PiA+PiA+PiBQcm9ibGVtOg0KPiA+PiA+PiA+PiBJIGhhdmUgdHdvIHByb2Nlc3NlcyB3
-aGljaCBhcmUgZG9pbmcgc29tZSBhY3Rpb25zIGFuZCBvbmUgb2YNCj4gPj4gPj4gPj4gdGhlIGFj
-dGlvbiBpcyBkb25lIG9uIGEgc2hhcmVkIGZpbGUgc3lzdGVtLg0KPiA+PiA+PiA+PiBJc3N1ZSBp
-cyB0aGF0IHRoaXMgdGhpbmcgY291bGQgYmUgZG9uZSBvbmx5IGJ5IG9uZSBwcm9jZXNzLCBhbmQN
-Cj4gPj4gPj4gPj4gZm9yIHRoaXMgaXNzdWUsIGxvY2tpbmcgbWVjaGFuaXNtIGlzIGltcGxlbWVu
-dGVkLg0KPiA+PiA+PiA+PiBQcm9ibGVtIGlzIHRoYXQgd2hpbGUgb25lIHByb2Nlc3MgaXMgcmVs
-ZWFzaW5nIGxvY2ssIHNlY29uZCBvbmUNCj4gPj4gPj4gPj4gaXMgaW5mb3JtZWQgdGhhdCBmaWxl
-IHByb2Nlc3NpbmcgaXMgZmluaXNoZWQsIGJ1dCB1bmZvcnR1bmF0ZWx5DQo+ID4+ID4+ID4+IGZp
-bGVzIGRvZXMgbm90IGV4aXN0cyBpbiBjb250ZXh0IG9mIHNlY29uZCBwcm9jZXNzLg0KPiA+PiA+
-PiA+PiBUd28gcHJvY2Vzc2VzIGFyZSBleGVjdXRlZCBvbiB0d28gZGlmZmVyZW50IGhvc3RzLiBO
-RlMgc2hhcmUgaXMNCj4gPj4gPj4gPj4gbW91bnRlZCBpbiBhIHN0YW5kYXJkIHdheSwgbm8gc3Bl
-Y2lhbCBmbGFnLg0KPiA+PiA+PiA+PiBQcm9ibGVtIEkgZ3Vlc3MgaXMgd2l0aCBjYWNoZXMsIGxv
-b2t1cGNhY2hlPW5vbmUgc29sdmVzIHRoZQ0KPiA+PiA+PiA+PiBwcm9ibGVtLCBidXQgYWxzbyBj
-YXVzZXMgb3RoZXJzIDopIC0gcGVyZm9ybWFuY2UuDQo+ID4+ID4+ID4+DQo+ID4+ID4+ID4+IEkg
-a25vdywgaXQgbm90IHBvc3NpYmxlIHRvIGhhdmUgYWxsIHRoaW5ncyBhdCBvbmNlIC0gbm8gY29t
-cGxhaW5zLg0KPiA+PiA+PiA+PiBCdXQgc2ltcGxlIGlkZWEgaXMgdGhhdCBpbnNpZGUgc2Vjb25k
-IHByb2Nlc3MgYWZ0ZXINCj4gPj4gPj4gPj4gbm90aWZpY2F0aW9uIHRoYXQgZmlsZXMgYXJlIGdl
-bmVyYXRlZCBleGVjdXRlIHRvdWNoIGZ1bmN0aW9uIG9uDQo+ID4+ID4+ID4+IGRpcmVjdG9yeSB3
-aGljaCBob2xkcyBmaWxlcywgVGhpcyB3aWxsIGNhdXNlIHVubmVjZXNzYXJ5IHVwZGF0ZQ0KPiA+
-PiA+PiA+PiBvZiBtb2RpZmljYXRpb24gZGF0ZSwgYnV0IGFzIGEgc2lkZSBlZmZlY3QgSSBub3Rp
-Y2VkICB0aGF0IGFsc28NCj4gPj4gPj4gPj4gZmlsZSBnZXRzIHZpc2libGUgaW1tZWRpYXRlbHkg
-b24gY2xpZW50IGhvc3RzLg0KPiA+PiA+PiA+Pg0KPiA+PiA+PiA+PiBUaGF0J3Mgd2h5IG15IHF1
-ZXN0aW9uIGlzIGlmIHRoaXMgaXMgZXhwZWN0ZWQgYW5kIHJlYXNvbmFibGUNCj4gPj4gYmVoYXZp
-b3VyPw0KPiA+PiA+PiA+PiBBdCB0aGUgZW5kIEknbSBsb29raW5nIGZvciBraW5kIG9mICdzeW5j
-JyBjb21tYW5kIHdoaWNoIHdpbGwNCj4gPj4gPj4gPj4gY2F1c2Ugc3luY2hyb25pemF0aW9uIG9m
-IGRpcmVjdG9yaWVzIGNvbnRlbnQgaW5zaWRlIGNsaWVudCBhbmQNCj4gPj4gPj4gPj4gc2VydmVy
-IHNvbWV0aGluZyBsaWtlIGZsdXNoKCkgLSBidXQgaW4gTkZTIGl0J3MgbW9yZSBjb21wbGV4Lg0K
-PiA+PiA+PiA+DQo+ID4+ID4+ID4gRG9lc24ndCBmc3luYygyKSBkbyB3aGF0IHlvdSB3YW50PyBJ
-ZiBub3QsIGNhbiB5b3UgZXhwbGFpbiB3aHk/DQo+ID4+ID4+ID4NCj4gPj4gPj4gPj4gdGhhbmtz
-IGluIGFkdmFuY2UgZm9yIGhlbHAsDQo+ID4+ID4+ID4+DQo+ID4+ID4+ID4+IHJlZ2FyZHMNCj4g
-Pj4gPj4gPj4gTHVrYXN6DQo+ID4+ID4+IC0tDQo+ID4+ID4+IFRvIHVuc3Vic2NyaWJlIGZyb20g
-dGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiDQo+ID4+ID4+
-IGluIHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnIE1v
-cmUNCj4gPj4gbWFqb3Jkb21vDQo+ID4+ID4+IGluZm8gYXQgaHR0cDovL3ZnZXIua2VybmVsLm9y
-Zy9tYWpvcmRvbW8taW5mby5odG1sDQo=
+
+
+On 19/11/12 13:29, Myklebust, Trond wrote:
+> Note that the mount command should in any case not be relying on rpcbind
+> to decide whether or not the server supports NFSv4.
+Of course.... 
+
+> 
+> As for minor version negotiation, RFC3530 already tells you how to do
+> this: the client has to start with the highest version that it supports,
+> and then walk that number down until the server stops replying with
+> NFS4ERR_MINOR_VERS_MISMATCH.
+Perfect... I think we should do *all* v4 negotiation from the mount 
+command... It's so much acceptable to replace mount.nfs binaries 
+than kernels... 
+
+> 
+> Note that if you want to do this in userland before calling the mount
+> syscall, then the spec does allow you to "ping" the NFSv4 server with an
+> empty COMPOUND.
+The type of functionality will allow us to better deal with legacy servers, IMHO..
+
+steved.
+
