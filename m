@@ -1,64 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:31718 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:20938 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753492Ab2KSPxF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Nov 2012 10:53:05 -0500
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id qAJFr4ZD025301
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 19 Nov 2012 10:53:04 -0500
-Message-ID: <50AA55DE.50206@RedHat.com>
-Date: Mon, 19 Nov 2012 10:53:02 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1752640Ab2KSRWL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Nov 2012 12:22:11 -0500
+Message-ID: <50AA6AC1.2080201@netapp.com>
+Date: Mon, 19 Nov 2012 12:22:09 -0500
+From: Bryan Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-To: Steve Dickson <steved@redhat.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] svcgssd: Encryption types not being parsed correctly
-References: <1353160661-30105-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1353160661-30105-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+To: =?UTF-8?B?TWlsb3ZhbiBLcml2b2thcGnEhw==?=
+	<milovan.krivokapic@gmail.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Fwd: [Question] NFS and default file / folder permission
+References: <CAGXUOGKWDB11zoqZ9zofBgJhJ3Jw0mhZh9QUF8up-1LGCVQ2zw@mail.gmail.com> <CAGXUOG+Px7tBTYH_9e93dOdxUweoE64aLLmRFa4BmyejC9Riug@mail.gmail.com> <CAGXUOGLFKKFOjPXHVhr6j7T_4VNKeai4Bmosu44Lsdbs=XJOdQ@mail.gmail.com>
+In-Reply-To: <CAGXUOGLFKKFOjPXHVhr6j7T_4VNKeai4Bmosu44Lsdbs=XJOdQ@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 17/11/12 08:57, Steve Dickson wrote:
-> When svcgssd reads the supported encrytion types from the
-> kernel, they are prefixed with a 'enctypes='. That prefix
-> has to be ignored to correctly parse the rest of the types.
+On 11/19/2012 12:06 PM, Milovan Krivokapić wrote:
+> Hi, a quick question:
+> I have a problem regarding file permissions on NFS. Umask works for
+> new files well, but if I get a file via Skype with permission like 600
+> and then I put that file on NFS, it keeps permission 600 thus others
+> from a group cant use it at all (I am sharing files via common group).
 > 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-Committed... 
+> So the question is how to enforce some default file / folder
+> permission on NFS? So in this example, I put file on NFS as client
+> with 600 and it turns into 660 or similar (kind like a mask).
 
-steved.
+I don't think you can... but the current behavior seems like the right thing to do, since changing permissions on files could create security problems.
 
-> ---
->  utils/gssd/svcgssd_krb5.c | 7 +++++++
->  1 file changed, 7 insertions(+)
+The best workaround I can come up with is creating a cron job to change permissions on everything in the directory (or if you're creative enough, just the new files).  Good luck!
+
+- Bryan
+
 > 
-> diff --git a/utils/gssd/svcgssd_krb5.c b/utils/gssd/svcgssd_krb5.c
-> index 6c34faf..1d44d34 100644
-> --- a/utils/gssd/svcgssd_krb5.c
-> +++ b/utils/gssd/svcgssd_krb5.c
-> @@ -38,6 +38,7 @@
->  
->  #include <stdio.h>
->  #include <errno.h>
-> +#include <ctype.h>
->  #include <gssapi/gssapi.h>
->  #include <krb5.h>
->  
-> @@ -98,6 +99,12 @@ parse_enctypes(char *enctypes)
->  	if (n == 0)
->  		return ENOENT;
->  
-> +	/* Skip pass any non digits */
-> +	while (*enctypes && isdigit(*enctypes) == 0)
-> +		enctypes++;
-> +	if (*enctypes == '\0')
-> +		return EINVAL;
-> +
->  	/* Allocate space for enctypes array */
->  	if ((parsed_enctypes = (int *) calloc(n, sizeof(int))) == NULL) {
->  		return ENOMEM;
+> Is it even possible or you have any suggestions?
+> Debian 6 is a NFS server, clients are Kubuntu 12.04.1 stations that
+> mounted NFS exported folder.
 > 
+> Thank you very much in advance.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
