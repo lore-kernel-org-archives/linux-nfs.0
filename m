@@ -1,42 +1,28 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.gnuher.de ([78.47.12.54]:51838 "EHLO mail.gnuher.de"
+Received: from mx2.netapp.com ([216.240.18.37]:6654 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751606Ab2KEOpf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 5 Nov 2012 09:45:35 -0500
-Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
-	by mail.gnuher.de (envelope-from
-	<news@geggus.net>)
-	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.72)
-	id 1TVNvi-0007lc-Ag
-	for linux-nfs@vger.kernel.org; Mon, 05 Nov 2012 15:45:34 +0100
-Received: from news  by ultimate100.geggus.net (envelope-from
-	<news@geggus.net>)
-	with local (Exim 4.72)
-	id 1TVNvh-0008Os-LP
-	for linux-nfs@vger.kernel.org; Mon, 05 Nov 2012 15:45:33 +0100
-To: linux-nfs@vger.kernel.org
-From: Sven Geggus <lists@fuchsschwanzdomain.de>
-Subject: Re: Kernel update 3.5.7 -> 3.6.3 breaks NFS4
-Date: Mon, 5 Nov 2012 14:45:33 +0000 (UTC)
-Message-ID: <k78jed$vgm$1@ultimate100.geggus.net>
-References: <k6ebva$1kf$1@ultimate100.geggus.net> <20121026171549.GA11806@fieldses.org> <20121029094038.GA14836@geggus.net> <20121029150203.GB9502@fieldses.org> <20121029163323.GA24345@geggus.net> <k6r6ur$eva$2@ultimate100.geggus.net> <CAA7C2qiiHzwMmkm5fUyNCffejxACtsDu0Pb1qgYJPCfgcaZU-w@mail.gmail.com> <k6rgcc$igt$1@ultimate100.geggus.net> <CAA7C2qhaKE7tAcsfNn0_jZ3BgWbFM6FkH1s0z+hd3JfOELywuQ@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+	id S1753492Ab2KSPyM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Nov 2012 10:54:12 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Steve Dickson <steved@redhat.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC PATCH V2] mount: Added the -o v4.1 mount option
+Date: Mon, 19 Nov 2012 15:54:09 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092EEE7A@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1353339810-19126-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1353339810-19126-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-VDR User <user.vdr@gmail.com> wrote:
-
-> Ahh sorry. I misread your post and thought it was directed towards
-> someone else. No, I'm not using sec=krb5.
-
-OK so this is not a comparable use case.
-
-Sven
-
--- 
-"Ich fürchte mich nicht vor der Rückkehr der Faschisten in der Maske der
-Faschisten, sondern vor der Rückkehr der Faschisten in der Maske der
-Demokraten" (Theodor W. Adorno)
-/me is giggls@ircnet, http://sven.gegg.us/ on the Web
+T24gTW9uLCAyMDEyLTExLTE5IGF0IDEwOjQzIC0wNTAwLCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0K
+PiBUaGlzIHBhdGNoIHdpbGwgY29udmVydCAtbyB2NC4xLCB2ZXJzPTQuMSBvciBuZnN2ZXJzPTQu
+MSBpbnRvDQo+IHRoZSBjb3JyZXNwb25kaW5nICJ2NCxtaW5vcnZlcnNpb249MSIsICJ2ZXJzPTQs
+bWlub3J2ZXJzaW9uPTEiDQo+IG9yICJuZnN2ZXJzPTQsbWlub3J2ZXJzaW9uPTEiIG9wdGlvbnMu
+DQo+IA0KDQpOQUNLLg0KDQpJZiB5b3UgYXJlIGdvaW5nIHRvIGRvIHRoaXMsIHRoZW4gcGxlYXNl
+IGRvIGl0IG9ubHkgZm9yIGtlcm5lbHMgdGhhdA0KZG9uJ3Qgc3VwcG9ydCB0aGUgInZlcnM9NC4x
+IiBzeW50YXguIGkuZS4gYW55dGhpbmcgb2xkZXIgdGhhbiBMaW51eC0zLjQuDQoNCldlIHdhbnQg
+dG8gZ2V0IHJpZCBvZiBtaW5vcnZlcnNpb249eCwgbm90IHBlcnBldHVhdGUgaXQuLi4NCg0KLS0g
+DQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHAN
+ClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
