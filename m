@@ -1,73 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:32690 "EHLO mx1.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:58126 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751148Ab2KPCbf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Nov 2012 21:31:35 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [RFC PATCH 3/4] NFS: Allow users to return the delegation
-Date: Thu, 15 Nov 2012 21:31:27 -0500
-Message-Id: <1353033088-47163-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1353033088-47163-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1353033088-47163-1-git-send-email-Trond.Myklebust@netapp.com>
- <1353033088-47163-2-git-send-email-Trond.Myklebust@netapp.com>
+	id S1752637Ab2KSQY1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Nov 2012 11:24:27 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC PATCH V2] mount: Added the -o v4.1 mount option
+Date: Mon, 19 Nov 2012 16:24:24 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092EF0B3@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1353339810-19126-1-git-send-email-steved@redhat.com>
+	  <4FA345DA4F4AE44899BD2B03EEEC2FA9092EEE7A@SACEXCMBX04-PRD.hq.netapp.com>
+	  <50AA571E.4090509@RedHat.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9092EEFD7@SACEXCMBX04-PRD.hq.netapp.com>
+	 <50AA5AD4.5070808@RedHat.com>
+In-Reply-To: <50AA5AD4.5070808@RedHat.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Not all processes are optimised by delegations. If the file is being
-accessed by several clients simultaneously (or even sequentially)
-then performance can suffer if the server has to keep doing
-delegation callbacks.
-This ioctl allows the process to pre-emptively return the delegation
-and hence turn off aggressive caching of the file. It is expected
-that most applications that want to use this feature will do so
-just before the last close of the file.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/ioctl.c | 9 +++++++++
- fs/nfs/ioctl.h | 1 +
- 2 files changed, 10 insertions(+)
-
-diff --git a/fs/nfs/ioctl.c b/fs/nfs/ioctl.c
-index e19fa9e..72b8592 100644
---- a/fs/nfs/ioctl.c
-+++ b/fs/nfs/ioctl.c
-@@ -96,6 +96,13 @@ static long nfs_ioctl_revalidate_range(struct file *filp,
- 	return invalidate_inode_pages2_range(filp->f_mapping, pgstart, pgend);
- }
- 
-+static long nfs_ioctl_return_delegation(struct file *filp)
-+{
-+	struct inode *inode = filp->f_path.dentry->d_inode;
-+
-+	return NFS_PROTO(inode)->return_delegation(inode);
-+}
-+
- static long nfs_ioctl_cachectl(struct file *filp, struct nfs_cachectl __user *argp)
- {
- 	u64 cmd;
-@@ -113,6 +120,8 @@ static long nfs_ioctl_cachectl(struct file *filp, struct nfs_cachectl __user *ar
- 		return nfs_ioctl_cache_revalidate(filp, false, true);
- 	case NFS_CACHECTL_REVALIDATE_RANGE:
- 		return nfs_ioctl_revalidate_range(filp, argp);
-+	case NFS_CACHECTL_RETURN_DELEGATION:
-+		return nfs_ioctl_return_delegation(filp);
- 	}
- 	return -EINVAL;
- }
-diff --git a/fs/nfs/ioctl.h b/fs/nfs/ioctl.h
-index 6cf8337..6cc5baf 100644
---- a/fs/nfs/ioctl.h
-+++ b/fs/nfs/ioctl.h
-@@ -28,6 +28,7 @@
- #define NFS_CACHECTL_REVALIDATE_METADATA	2
- #define NFS_CACHECTL_REVALIDATE_DATA		3
- #define NFS_CACHECTL_REVALIDATE_RANGE		4
-+#define NFS_CACHECTL_RETURN_DELEGATION		5
- 
- struct nfs_cachectl {
- 	u64 cmd;
--- 
-1.7.11.7
-
+T24gTW9uLCAyMDEyLTExLTE5IGF0IDExOjE0IC0wNTAwLCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0K
+PiANCj4gT24gMTkvMTEvMTIgMTE6MDIsIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4gT24g
+TW9uLCAyMDEyLTExLTE5IGF0IDEwOjU4IC0wNTAwLCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0KPiA+
+Pg0KPiA+PiBPbiAxOS8xMS8xMiAxMDo1NCwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4gPj4+
+IE9uIE1vbiwgMjAxMi0xMS0xOSBhdCAxMDo0MyAtMDUwMCwgU3RldmUgRGlja3NvbiB3cm90ZToN
+Cj4gPj4+PiBUaGlzIHBhdGNoIHdpbGwgY29udmVydCAtbyB2NC4xLCB2ZXJzPTQuMSBvciBuZnN2
+ZXJzPTQuMSBpbnRvDQo+ID4+Pj4gdGhlIGNvcnJlc3BvbmRpbmcgInY0LG1pbm9ydmVyc2lvbj0x
+IiwgInZlcnM9NCxtaW5vcnZlcnNpb249MSINCj4gPj4+PiBvciAibmZzdmVycz00LG1pbm9ydmVy
+c2lvbj0xIiBvcHRpb25zLg0KPiA+Pj4+DQo+ID4+Pg0KPiA+Pj4gTkFDSy4NCj4gPj4+DQo+ID4+
+PiBJZiB5b3UgYXJlIGdvaW5nIHRvIGRvIHRoaXMsIHRoZW4gcGxlYXNlIGRvIGl0IG9ubHkgZm9y
+IGtlcm5lbHMgdGhhdA0KPiA+Pj4gZG9uJ3Qgc3VwcG9ydCB0aGUgInZlcnM9NC4xIiBzeW50YXgu
+IGkuZS4gYW55dGhpbmcgb2xkZXIgdGhhbiBMaW51eC0zLjQuDQo+ID4+IFRoaXMgaXMgdGhlIGlu
+dGVudGlvbi4uLiANCj4gPj4NCj4gPj4+DQo+ID4+PiBXZSB3YW50IHRvIGdldCByaWQgb2YgbWlu
+b3J2ZXJzaW9uPXgsIG5vdCBwZXJwZXR1YXRlIGl0Li4uDQo+ID4+Pg0KPiA+PiBVbmRlcnN0b29k
+Li4uIEJ1dCB0aGF0IGlzIG5vdCBvcHRpb24gaW4gc29tZSB3b3JsZHMuLi4gOy0pIA0KPiA+IA0K
+PiA+IFN1cmUgaXQgaXMuIFRoZSBtb3VudCBwcm9ncmFtIGNhbiBjb250aW51ZSB0byBwYXJzZSBt
+aW5vcnZlcnNpb249IGFmdGVyDQo+ID4gaXQgaXMgZ29uZSBmcm9tIHRoZSBrZXJuZWwgYW5kIGNv
+bnZlcnQgaXQgaW50byB0aGUgdmVycz00Lnggc3ludGF4Lg0KPiA+IA0KPiBCYXNpY2FsbHkgd2hh
+dCBJJ20gZG9pbmcgbm93LCB3aXRoIHRoZSBleGNlcHRpb24gb2Ygbm90IGFkZGluZw0KPiB0aGUg
+bWlub3J2ZXJzaW9uPTEgb3B0aW9ucy4uLiANCj4gDQo+IEJUVywgdGhlcmUgaXMgYSBidWcgaW4g
+dGhlIC1vIHY0LjEgY3VycmVudCBsb2dpYy4uLiANCj4gDQo+IG1vdW50IC1vIHY0LjEgcHJvZHVj
+ZXMgYm90aCAidjQuMSx2ZXJzPTQsLi4uIiBpbiB0aGUgc3RyaW5nIHRoYXQgZ2l2ZW4NCj4gdG8g
+dGhlIGtlcm5lbCB3aGljaCBkb2VzIG5vdCBzZWVtIHJpZ2h0Li4uIEkgd291bGQgYXNzdW1lIGp1
+c3QgYSAidjQuMSwuLiINCj4gc2hvdWxkIGJlIHB1bXBlZCBkb3duLi4gDQoNClllcy4gSSByZW1l
+bWJlciBzZWVpbmcgdGhhdCBpbiB0aGUgQmFrZWF0aG9uIHRlc3RzLi4uIEkgYWdyZWUgdGhhdCB3
+ZQ0KanVzdCBuZWVkIHRoZSB2ZXJzPTQuMS4gVGhlIGV4dHJhICd2ZXJzPTQnIGlzbid0IGhhcm1m
+dWwgaW4gdGhhdCB0aGUNCmtlcm5lbCB3b24ndCBpbnRlcnByZXQgaXQgYXMgdmVycz00LjAsIGJ1
+dCBpdCB3b3VsZCBiZSBuaWNlIHRvIGdldCByaWQNCm9mIGl0Lg0KDQpFc3NlbnRpYWxseSwgdGhl
+IHBsYW4gaXMgdGhhdCBzb21lIHRpbWUgaW4gdGhlIGZ1dHVyZSB3ZSB3aWxsIHdhbnQgdG8NCmhh
+dmUgJ3ZlcnM9NCcgYmUgdGhlICdhdXRvLW5lZ290aWF0ZSBtaW5vciB2ZXJzaW9uJyBzeW50YXgs
+IHdoaWxlDQp2ZXJzPTQueCB3aWxsIGJlIHRoZSAndXNlIG1pbm9yIHZlcnNpb24geCcgc3ludGF4
+Lg0KT2YgY291cnNlLCBhdXRvLW5lZ290aWF0aW9uIHNob3VsZCBiZSBkcml2ZW4gYnkgdGhlICdt
+b3VudCcgcHJvZ3JhbSwNCndoaWNoIHdpbGwgYmUgdXNpbmcgdGhlICd2ZXJzPTQueCcgc3ludGF4
+IGluIHRoZSBtb3VudCBzeXN0ZW0gY2FsbCwgZm9yDQp2YXJpb3VzIHZhbHVlcyBvZiAneCcsIHVu
+dGlsIGl0IGFjaGlldmVzIHN1Y2Nlc3MuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBO
+RlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
+bQ0Kd3d3Lm5ldGFwcC5jb20NCg==
