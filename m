@@ -1,96 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:23479 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:52457 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750804Ab2KPC0f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Nov 2012 21:26:35 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-Subject: Re: 3.7-rc1 NFSv3/sec=krb5 mkdir failure
-Date: Fri, 16 Nov 2012 02:26:33 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092E52DF@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20121016125832.GC30649@fieldses.org>
-	 <20121024200249.GC6697@fieldses.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9092906F7@SACEXCMBX04-PRD.hq.netapp.com>
-	 <20121024201517.GD6697@fieldses.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA90929086C@SACEXCMBX04-PRD.hq.netapp.com>
-	 <20121024204059.GF6697@fieldses.org> <20121028161556.GC20520@fieldses.org>
-	 <490C84A9-2764-4E35-893E-727853B12916@oracle.com>
-In-Reply-To: <490C84A9-2764-4E35-893E-727853B12916@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1751861Ab2KSVvS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Nov 2012 16:51:18 -0500
+Message-ID: <50AAA9D1.2010705@RedHat.com>
+Date: Mon, 19 Nov 2012 16:51:13 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC PATCH V2] mount: Added the -o v4.1 mount option
+References: <1353339810-19126-1-git-send-email-steved@redhat.com> <30DFD4FD-3442-4F35-B576-EA597E21F4CE@oracle.com>
+In-Reply-To: <30DFD4FD-3442-4F35-B576-EA597E21F4CE@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTExLTE1IGF0IDIxOjAzIC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gT2N0IDI4LCAyMDEyLCBhdCAxMjoxNSBQTSwgSi4gQnJ1Y2UgRmllbGRzIDxiZmllbGRzQGZp
-ZWxkc2VzLm9yZz4gd3JvdGU6DQo+IA0KPiA+IE9uIFdlZCwgT2N0IDI0LCAyMDEyIGF0IDA0OjQw
-OjU5UE0gLTA0MDAsIEouIEJydWNlIEZpZWxkcyB3cm90ZToNCj4gPj4gT24gV2VkLCBPY3QgMjQs
-IDIwMTIgYXQgMDg6MzQ6MzdQTSArMDAwMCwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4gPj4+
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiA+Pj4+IEZyb206IE15a2xlYnVzdCwgVHJv
-bmQNCj4gPj4+PiBTZW50OiBXZWRuZXNkYXksIE9jdG9iZXIgMjQsIDIwMTIgNDozMSBQTQ0KPiA+
-Pj4+IFRvOiAnSi4gQnJ1Y2UgRmllbGRzJw0KPiA+Pj4+IENjOiBsaW51eC1uZnNAdmdlci5rZXJu
-ZWwub3JnOyBTY2h1bWFrZXIsIEJyeWFuDQo+ID4+Pj4gU3ViamVjdDogUkU6IDMuNy1yYzEgTkZT
-djMvc2VjPWtyYjUgbWtkaXIgZmFpbHVyZQ0KPiA+Pj4+IA0KPiA+Pj4+PiAtLS0tLU9yaWdpbmFs
-IE1lc3NhZ2UtLS0tLQ0KPiA+Pj4+PiBGcm9tOiBKLiBCcnVjZSBGaWVsZHMgW21haWx0bzpiZmll
-bGRzQGZpZWxkc2VzLm9yZ10NCj4gPj4+Pj4gU2VudDogV2VkbmVzZGF5LCBPY3RvYmVyIDI0LCAy
-MDEyIDQ6MTUgUE0NCj4gPj4+Pj4gVG86IE15a2xlYnVzdCwgVHJvbmQNCj4gPj4+Pj4gQ2M6IGxp
-bnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmc7IFNjaHVtYWtlciwgQnJ5YW4NCj4gPj4+Pj4gU3ViamVj
-dDogUmU6IDMuNy1yYzEgTkZTdjMvc2VjPWtyYjUgbWtkaXIgZmFpbHVyZQ0KPiA+Pj4+PiANCj4g
-Pj4+Pj4gT24gV2VkLCBPY3QgMjQsIDIwMTIgYXQgMDg6MDc6NTVQTSArMDAwMCwgTXlrbGVidXN0
-LCBUcm9uZCB3cm90ZToNCj4gPj4+Pj4+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiA+
-Pj4+Pj4+IEZyb206IGxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmcgW21haWx0bzpsaW51
-eC1uZnMtDQo+ID4+Pj4+Pj4gb3duZXJAdmdlci5rZXJuZWwub3JnXSBPbiBCZWhhbGYgT2YgSi4g
-QnJ1Y2UgRmllbGRzDQo+ID4+Pj4+Pj4gU2VudDogV2VkbmVzZGF5LCBPY3RvYmVyIDI0LCAyMDEy
-IDQ6MDMgUE0NCj4gPj4+Pj4+PiBUbzogbGludXgtbmZzQHZnZXIua2VybmVsLm9yZzsgTXlrbGVi
-dXN0LCBUcm9uZDsgU2NodW1ha2VyLCBCcnlhbg0KPiA+Pj4+Pj4+IFN1YmplY3Q6IFJlOiAzLjct
-cmMxIE5GU3YzL3NlYz1rcmI1IG1rZGlyIGZhaWx1cmUNCj4gPj4+Pj4+PiANCj4gPj4+Pj4+PiBB
-bnlvbmUgZ2V0IGEgY2hhbmNlIHRvIGxvb2sgYXQgdGhpcz8gIEl0IHNlZW1zIHZlcnkgcmVwcm9k
-dWNlYWJsZS4NCj4gPj4+Pj4+PiANCj4gPj4+Pj4+PiAtLWIuDQo+ID4+Pj4+Pj4gDQo+ID4+Pj4+
-Pj4gT24gVHVlLCBPY3QgMTYsIDIwMTIgYXQgMDg6NTg6MzJBTSAtMDQwMCwgYmZpZWxkcyB3cm90
-ZToNCj4gPj4+Pj4+Pj4gT24gMy43LXJjMToNCj4gPj4+Pj4+Pj4gDQo+ID4+Pj4+Pj4+IAljbGll
-bnQjIG1vdW50IC10bmZzIC1vc2VjPWtyYjUsdmVycz0zIHNlcnZlcjovZXhwb3J0cy9leHQ0DQo+
-ID4+Pj4+Pj4+IC9tbnQvDQo+ID4+Pj4+Pj4+IA0KPiA+Pj4+Pj4+PiAJCXNlcnZlciMgbHMgLWwg
-L2V4cG9ydHMvZXh0NHxncmVwIFRNUA0KPiA+Pj4+Pj4+PiAJCXNlcnZlciMNCj4gPj4+Pj4+Pj4g
-DQo+ID4+Pj4+Pj4+IAkjIG1rZGlyIC9tbnQvVE1QDQo+ID4+Pj4+Pj4+IAlta2RpcjogY2Fubm90
-IGNyZWF0ZSBkaXJlY3RvcnkgYC9tbnQvVE1QJzogUGVybWlzc2lvbiBkZW5pZWQNCj4gPj4+Pj4+
-Pj4gDQo+ID4+Pj4+Pj4+IAkJc2VydmVyIyBscyAtbCAvZXhwb3J0cy9leHQ0fGdyZXAgVE1QDQo+
-ID4+Pj4+Pj4+IAkJZHJ3eHIteHIteCAgMiBuZnNub2JvZHkgbmZzbm9ib2R5IDQwOTYgT2N0IDE2
-IDA4OjU2IFRNUA0KPiA+Pj4+Pj4+PiAJCXNlcnZlciMNCj4gPj4+Pj4+Pj4gDQo+ID4+Pj4+Pj4+
-IFdpcmVzaGFyayBhbHNvIHNob3dzIHRoYXQgdGhlIGNyZWF0ZSBzdWNjZWVkcy4NCj4gPj4+Pj4+
-IA0KPiA+Pj4+Pj4gQ2FuIHlvdSBzaGFyZSB0aGUgd2lyZXNoYXJrIHRyYWNlPw0KPiA+Pj4+PiAN
-Cj4gPj4+Pj4gU3VyZS4gIFRoaXMgY292ZXJzIHRoZSBtb3VudCBhbmQgbWtkaXIuICBUaGUgbWtk
-aXIgY2FsbCBhbmQgcmVwbHkgYXJlDQo+ID4+Pj4+IGluIGZyYW1lcyA3NyBhbmQgNzguDQo+ID4+
-Pj4gDQo+ID4+Pj4gSG1tLi4uLiBDYW4geW91IHBsZWFzZSBjaGVjayBpZiB0aGUgQUNMIGlzIGJl
-aW5nIHNldCBjb3JyZWN0bHkgb24gdGhlIHNlcnZlcj8gSQ0KPiA+Pj4+IHN1c3BlY3QgdGhhdCBt
-aWdodCBiZSB0aGUgc291cmNlIG9mIHRoZSBlcnJvci4NCj4gPj4+PiANCj4gPj4+IA0KPiA+Pj4g
-SW4gZmFjdCwgY2FuIHlvdSBzZWUgaWYgbW91bnRpbmcgd2l0aCAnLW9ub2FjbCcgY2F1c2VzIHRo
-ZSB3aG9sZSB0aGluZyB0byBzdWNjZWVkPw0KPiA+PiANCj4gPj4gVGhhdCdzIG9uIHRoZSBjbGll
-bnQgbW91bnQgY29tbWFuZD8gIE5vIGRpZmZlcmVuY2UuDQo+ID4gDQo+ID4gQnkgdGhlIHdheSwg
-SSBtYW5hZ2VkIHRvIGRvIGEgbGl0dGxlIGJpc2VjdGluZyB3aGlsZSB3b3JraW5nIG9uDQo+ID4g
-c29tZXRoaW5nIGVsc2UgdG9kYXksIGFuZCBibGFtZSBsYW5kZWQgb24gQ2h1Y2sncw0KPiA+IGJh
-OWI1ODRjMWRjMzc4NTFkOWM2Y2E2ZDBkMmNjYmE1NWQ5YWFkMDQgIlNVTlJQQzogSW50cm9kdWNl
-DQo+ID4gcnBjX2Nsb25lX2NsaWVudF9zZXRfYXV0aCgpIi4gIFdoaWNoIG1ha2VzIHNvbWUgc2Vu
-c2UgaWYgaXQncyBhbiBBQ0wNCj4gPiBwcm9ibGVtLCBhbmQgaW5kZWVkIHRlc3Rpbmcgb24gdGhh
-dCBjb21taXQgZmluZHMgc3VjY2VzcyB3aXRoIC1ub2FjbCwNCj4gPiBmYWlsdXJlIHdpdGhvdXQu
-DQo+IA0KPiBBZnRlciB0d28gd2Vla3MsIEJydWNlIGFuZCBJIHdlcmUgZmluYWxseSBhYmxlIHRv
-IGNhdGNoIHVwIGluIHBlcnNvbi4NCj4gDQo+IEkndmUgcmVwcm9kdWNlZCB0aGlzIG9uIDMuNy1y
-YzUgdXNpbmcgY3Rob24gYmFzaWMgdGVzdHMuICBUaGUgZmlyc3QgZ2V0YWNsIG9wZXJhdGlvbiBm
-YWlscyBiZWNhdXNlIGl0J3MgbWlzdGFrZW5seSBhdHRlbXB0aW5nIHRvIHNldCB1cCBhIGZyZXNo
-IEdTUyBjb250ZXh0IG9uIGEgdHJhbnNwb3J0IHdoZXJlIG9uZSBhbHJlYWR5IGV4aXN0cy4gIFRo
-YXQncyBpbiBsaW5lIHdpdGggdGhlIGtpbmQgb2YgY2hhbmdlIHRoYXQncyBpbiBjb21taXQgYmE5
-YjU4NGMxLg0KDQpXaHkgc2hvdWxkbid0IHdlIGJlIGFibGUgdG8gY29wZSB3aXRoIG11bHRpcGxl
-IEdTUyBzZXNzaW9ucyBvbiB0aGUgc2FtZQ0KdHJhbnNwb3J0Pw0KDQo+ID4gSSdtIG5vdCBzdXJl
-IGlmIHRoYXQgZXhwbGFpbnMgdGhlIGZhaWx1cmUgSSB3YXMgc2VlaW5nIG9uIDMuNy1yYzEsIHNp
-bmNlDQo+ID4gdGhlcmUgSSBkaWRuJ3Qgc2VlIGFueSBBQ0wgdHJhZmZpYywgYW5kIHN0aWxsIGdv
-dCBhIGZhaWx1cmUuICAoQW5kDQo+ID4gLW5vYWNsIGRpZG4ndCBoZWxwLikNCj4gDQo+IFRoZSBm
-YWlsdXJlIG9jY3VycyBvbiB0aGUgY2xpZW50IGp1c3QgYmVmb3JlIHRoZSBnZXRhY2wgcmVxdWVz
-dCBpcyBpc3N1ZWQsIHNvIHlvdSB3b24ndCBzZWUgYW55IEFDTC1yZWxhdGVkIG5ldHdvcmsgdHJh
-ZmZpYyBpbiB0aGUgZmFpbHVyZSBjYXNlLiAgVGhlIGZhaWx1cmUgcHJldmVudHMgYW55IEFDTCBy
-ZXF1ZXN0IGZyb20gc3VjY2VlZGluZy4NCg0KSXMgaXQgZ3NzZCB0aGF0IGlzIGZhaWxpbmcgdGhl
-bj8NCg0KPiBBbnl3YXksIEknbGwgaGF2ZSBhIGRlZXBlciBsb29rIGF0IHRoaXMgdG9tb3Jyb3cu
-DQoNClRoYW5rcyENCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFp
-bnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBw
-LmNvbQ0K
+On 19/11/12 13:21, Chuck Lever wrote:
+> 
+> As Trond points out, mount.nfs really should not use option "minorversion=" here, except on kernels that do not support "vers=4.x".  That will add complexity, certainly.
+I agree... The patch I put out today was just an RFC... I just wanted to get the conversation started... 
+
+> 
+> In addition, I think we can expect the need for support for "v4.2" and "v4.0" (perhaps) in the near future, and then subsequently "v4.3" and so on.  Since that is close at hand, we should consider the need to add those as we design this.
+Right, I thinking bring this type of negotiation back up to userland is the right thing to do... 
+
+> 
+> Perhaps instead of editing the mount option string directly in nfs_nfs_version(), you might add a "*minorversion" argument to nfs_nfs_version() function and let its callers finish the work, just as is done with "*version" today.  That might also make it easier to add the logic that changes behavior based on kernel version.
+Let me digest this... I've noticed that in recent kernels that minorversion always seems to be set... 
+
+steved.
+
