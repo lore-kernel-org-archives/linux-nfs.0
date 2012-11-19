@@ -1,75 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:17753 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:53523 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754799Ab2KMPpw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Nov 2012 10:45:52 -0500
-Subject: [PATCH 01/15] nfsd: use service net instead of hard-coded net where
-	possible
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, devel@openvz.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, jlayton@redhat.com
-Date: Tue, 13 Nov 2012 18:48:23 +0300
-Message-ID: <20121113154823.12577.89371.stgit@localhost.localdomain>
-In-Reply-To: <20121113154722.12577.57671.stgit@localhost.localdomain>
-References: <20121113154722.12577.57671.stgit@localhost.localdomain>
+	id S1751791Ab2KSVPW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Nov 2012 16:15:22 -0500
+Date: Mon, 19 Nov 2012 16:15:18 -0500
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC PATCH V2] mount: Added the -o v4.1 mount option
+Message-ID: <20121119211518.GA10699@fieldses.org>
+References: <1353339810-19126-1-git-send-email-steved@redhat.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9092EEE7A@SACEXCMBX04-PRD.hq.netapp.com>
+ <50AA571E.4090509@RedHat.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9092EEFD7@SACEXCMBX04-PRD.hq.netapp.com>
+ <50AA5AD4.5070808@RedHat.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9092EF0B3@SACEXCMBX04-PRD.hq.netapp.com>
+ <8B557EF0-A1F7-4487-8887-0B08F6922784@oracle.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9092EF4AA@SACEXCMBX04-PRD.hq.netapp.com>
+ <428AB13F-9EE3-4357-8C88-11F2DA45453C@oracle.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9092EF662@SACEXCMBX04-PRD.hq.netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9092EF662@SACEXCMBX04-PRD.hq.netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfsd/nfs4state.c |   10 +++++-----
- 1 files changed, 5 insertions(+), 5 deletions(-)
+On Mon, Nov 19, 2012 at 07:04:10PM +0000, Myklebust, Trond wrote:
+> On Mon, 2012-11-19 at 13:39 -0500, Chuck Lever wrote:
+> > On Nov 19, 2012, at 1:29 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+> > > As for minor version negotiation, RFC3530 already tells you how to do
+> > > this: the client has to start with the highest version that it supports,
+> > > and then walk that number down until the server stops replying with
+> > > NFS4ERR_MINOR_VERS_MISMATCH.
+> > > 
+> > > Note that if you want to do this in userland before calling the mount
+> > > syscall, then the spec does allow you to "ping" the NFSv4 server with an
+> > > empty COMPOUND.
+> > 
+> > I see: not an NFSv4 NULL, but an NFSv4 COMPOUND that has no operations.  That carries a compound header, which would have the minor version number in it.
+> 
+> Right. Section 16.2.4 of RFC5661 would appear to allow the server to
+> return the following errors in the case of an empty COMPOUND: NFS4_OK,
+> NFS4ERR_DELAY, NFS4ERR_MINOR_VERS_MISMATCH and NFS4ERR_SERVERFAULT.
+> 
+> The other errors shouldn't apply at all to a zero-op compound
+> (NFS4ERR_BADXDR, NFS4ERR_TOO_MANY_OPS, NFS4ERR_REP_TOO_BIG_TO_CACHE), or
+> should only apply if you have a non-empty optional tag argument
+> (NFS4ERR_BADCHAR, NFS4ERR_INVAL, NFS4ERR_REP_TOO_BIG,
+> NFS4ERR_REQ_TOO_BIG).
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d6b602a..6a3661b 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2257,7 +2257,7 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
- 	nfs4_verifier confirm = setclientid_confirm->sc_confirm; 
- 	clientid_t * clid = &setclientid_confirm->sc_clientid;
- 	__be32 status;
--	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
-+	struct nfsd_net	*nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 
- 	if (STALE_CLIENTID(clid, nn))
- 		return nfserr_stale_clientid;
-@@ -3129,7 +3129,7 @@ nfsd4_renew(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- {
- 	struct nfs4_client *clp;
- 	__be32 status;
--	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
-+	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 
- 	nfs4_lock_state();
- 	dprintk("process_renew(%08x/%08x): starting\n", 
-@@ -4082,7 +4082,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	bool new_state = false;
- 	int lkflg;
- 	int err;
--	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
-+	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 
- 	dprintk("NFSD: nfsd4_lock: start=%Ld length=%Ld\n",
- 		(long long) lock->lk_offset,
-@@ -4255,7 +4255,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	struct file_lock *file_lock = NULL;
- 	struct nfs4_lockowner *lo;
- 	__be32 status;
--	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
-+	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 
- 	if (locks_in_grace(SVC_NET(rqstp)))
- 		return nfserr_grace;
-@@ -4431,7 +4431,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 	struct list_head matches;
- 	unsigned int hashval = ownerstr_hashval(clid->cl_id, owner);
- 	__be32 status;
--	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
-+	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 
- 	dprintk("nfsd4_release_lockowner clientid: (%08x/%08x):\n",
- 		clid->cl_boot, clid->cl_id);
+And, I just wanted to check because I hadn't thought about this before:
+the Linux server does appear to handle 0-length compounds correctly.
+(And there's a 4.0 pynfs test, COMP1, which checks that a server will
+accept a zero-length compound, so anyone that's run pynfs should have
+noticed if there server doesn't.)
 
+--b.
