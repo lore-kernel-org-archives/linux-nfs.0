@@ -1,76 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:27494 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756084Ab2K0Pei (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Nov 2012 10:34:38 -0500
-From: andros@netapp.com
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 3 2/5] SUNRPC set gss gc_expiry to full lifetime
-Date: Tue, 27 Nov 2012 10:34:20 -0500
-Message-Id: <1354030463-2372-3-git-send-email-andros@netapp.com>
-In-Reply-To: <1354030463-2372-1-git-send-email-andros@netapp.com>
-References: <1354030463-2372-1-git-send-email-andros@netapp.com>
+Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:46121 "EHLO
+	Dobby.4dicksons.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752229Ab2KSPsQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Nov 2012 10:48:16 -0500
+Received: from tophat.home.4dicksons.org ([192.168.62.20])
+	by Dobby.4dicksons.org with esmtp (Exim 4.63)
+	(envelope-from <steved@redhat.com>)
+	id 1TaTa2-0003mK-7L
+	for linux-nfs@vger.kernel.org; Mon, 19 Nov 2012 10:48:14 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [RFC PATCH V2] mount: Added the -o v4.1 mount option
+Date: Mon, 19 Nov 2012 10:43:30 -0500
+Message-Id: <1353339810-19126-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+This patch will convert -o v4.1, vers=4.1 or nfsvers=4.1 into
+the corresponding "v4,minorversion=1", "vers=4,minorversion=1"
+or "nfsvers=4,minorversion=1" options.
 
-Only use the default GSSD_MIN_TIMEOUT if the gss downcall timeout is zero.
-Store the full lifetime in gc_expiry (not 3/4 of the lifetime) as subsequent
-patches will use the gc_expiry to determine buffered WRITE behavior in the
-face of expired or soon to be expired gss credentials.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- net/sunrpc/auth_gss/auth_gss.c |   17 +++++++++++++----
- 1 files changed, 13 insertions(+), 4 deletions(-)
+ utils/mount/network.c | 18 ++++++++++++++++--
+ utils/mount/nfs.man   | 13 +++++++++++++
+ 2 files changed, 29 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 909dc0c..6e5c824 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -192,17 +192,23 @@ gss_fill_context(const void *p, const void *end, struct gss_cl_ctx *ctx, struct
- 	const void *q;
- 	unsigned int seclen;
- 	unsigned int timeout;
-+	unsigned long now = jiffies;
- 	u32 window_size;
- 	int ret;
- 
--	/* First unsigned int gives the lifetime (in seconds) of the cred */
-+	/* First unsigned int gives the remaining lifetime in seconds of the
-+	 * credential - e.g. the remaining TGT lifetime for Kerberos or
-+	 * the -t value passed to GSSD.
-+	 */
- 	p = simple_get_bytes(p, end, &timeout, sizeof(timeout));
- 	if (IS_ERR(p))
- 		goto err;
- 	if (timeout == 0)
- 		timeout = GSSD_MIN_TIMEOUT;
--	ctx->gc_expiry = jiffies + (unsigned long)timeout * HZ * 3 / 4;
--	/* Sequence number window. Determines the maximum number of simultaneous requests */
-+	ctx->gc_expiry = now + ((unsigned long)timeout * HZ);
-+	/* Sequence number window. Determines the maximum number of
-+	 * simultaneous requests
-+	 */
- 	p = simple_get_bytes(p, end, &window_size, sizeof(window_size));
- 	if (IS_ERR(p))
- 		goto err;
-@@ -237,9 +243,12 @@ gss_fill_context(const void *p, const void *end, struct gss_cl_ctx *ctx, struct
- 		p = ERR_PTR(ret);
- 		goto err;
- 	}
-+	dprintk("RPC:       %s Success. gc_expiry %lu now %lu timeout %u\n",
-+		__func__, ctx->gc_expiry, now, timeout);
- 	return q;
- err:
--	dprintk("RPC:       %s returning %ld\n", __func__, -PTR_ERR(p));
-+	dprintk("RPC:       %s returns %ld gc_expiry %lu now %lu timeout %u\n",
-+		__func__, -PTR_ERR(p), ctx->gc_expiry, now, timeout);
- 	return p;
- }
- 
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index e7bd522..36aa03b 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -94,6 +94,7 @@ static const char *nfs_version_opttbl[] = {
+ 	"v2",
+ 	"v3",
+ 	"v4",
++	"v4.1",
+ 	"vers",
+ 	"nfsvers",
+ 	NULL,
+@@ -1244,11 +1245,20 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
+ 	case 2: /* v4 */
+ 		*version = 4;
+ 		return 1;
+-	case 3:	/* vers */
++	case 3: /* v4.1 */
++		*version = 4;
++		po_remove_all(options, "v4.1");
++		po_append(options, "v4,minorversion=1");
++		return 1;
++	case 4:	/* vers */
+ 		switch (po_get_numeric(options, "vers", &tmp)) {
+ 		case PO_FOUND:
+ 			if (tmp >= 2 && tmp <= 4) {
+ 				*version = tmp;
++				if (strcmp(po_get(options, "vers"), "4.1") == 0) {
++					po_remove_all(options, "vers");
++					po_append(options, "vers=4,minorversion=1");
++				}
+ 				return 1;
+ 			}
+ 			return 0;
+@@ -1261,11 +1271,15 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
+ 					progname);
+ 			return 0;
+ 		}
+-	case 4: /* nfsvers */
++	case 5: /* nfsvers */
+ 		switch (po_get_numeric(options, "nfsvers", &tmp)) {
+ 		case PO_FOUND:
+ 			if (tmp >= 2 && tmp <= 4) {
+ 				*version = tmp;
++				if (strcmp(po_get(options, "nfsvers"), "4.1") == 0) {
++					po_remove_all(options, "nfsvers");
++					po_append(options, "nfsvers=4,minorversion=1");
++				}
+ 				return 1;
+ 			}
+ 			return 0;
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index c15de98..8d1bb56 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -762,6 +762,19 @@ by 'nolock'/'lock' mount option.
+ Use these options, along with the options in the first subsection above,
+ for NFS version 4 and newer.
+ .TP 1.5i
++.BI minorversion= n
++Specifies the protocol minor version number.
++NFSv4 introduces "minor versioning," where NFS protocol enhancements can
++be introduced without bumping the NFS protocol version number.
++.IP
++The minor version can also be be specified using the
++.B vers=
++option.
++For example, specifying
++.B vers=4.1
++is the same as specifying
++.BR vers=4,minorversion=1 .
++.TP 1.5i
+ .BI proto= netid
+ The
+ .I netid
 -- 
-1.7.7.6
+1.7.11.7
 
