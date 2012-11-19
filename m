@@ -1,72 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:38674 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752023Ab2KLIiH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Nov 2012 03:38:07 -0500
-Message-ID: <50A0B562.2090807@parallels.com>
-Date: Mon, 12 Nov 2012 12:37:54 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from mx12.netapp.com ([216.240.18.77]:23015 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754021Ab2KSTEj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Nov 2012 14:04:39 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC PATCH V2] mount: Added the -o v4.1 mount option
+Date: Mon, 19 Nov 2012 19:04:10 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092EF662@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1353339810-19126-1-git-send-email-steved@redhat.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9092EEE7A@SACEXCMBX04-PRD.hq.netapp.com>
+	 <50AA571E.4090509@RedHat.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9092EEFD7@SACEXCMBX04-PRD.hq.netapp.com>
+	 <50AA5AD4.5070808@RedHat.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9092EF0B3@SACEXCMBX04-PRD.hq.netapp.com>
+	 <8B557EF0-A1F7-4487-8887-0B08F6922784@oracle.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9092EF4AA@SACEXCMBX04-PRD.hq.netapp.com>
+	 <428AB13F-9EE3-4357-8C88-11F2DA45453C@oracle.com>
+In-Reply-To: <428AB13F-9EE3-4357-8C88-11F2DA45453C@oracle.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
-CC: Christoph Hellwig <hch@infradead.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: Re: [PATCH v3] SUNRPC: set desired file system root before connecting
- local transports
-References: <20121008105437.18668.99905.stgit@localhost.localdomain> <20121009193506.GA19680@fieldses.org> <5098E31A.5080801@parallels.com> <20121106120642.GA6718@fieldses.org> <20121106124035.GA20522@infradead.org> <20121106130705.GC6718@fieldses.org> <20121106131018.GA12211@infradead.org> <20121106133605.GD6718@fieldses.org> <20121107183355.GA7421@fieldses.org>
-In-Reply-To: <20121107183355.GA7421@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-07.11.2012 22:33, J. Bruce Fields пишет:
-> On Tue, Nov 06, 2012 at 08:36:05AM -0500, J. Bruce Fields wrote:
->> On Tue, Nov 06, 2012 at 08:10:18AM -0500, Christoph Hellwig wrote:
->>> On Tue, Nov 06, 2012 at 08:07:06AM -0500, J. Bruce Fields wrote:
->>>> So you're worried that a bug in the nfs code could modify the root and
->>>> then not restore it?
->>>
->>> At least the link you pointed to earlier never sets it back.
->>
->> This? http://thread.gmane.org/gmane.linux.kernel/1259986/focus=47687
->>
->> 	+	get_fs_root(current->fs, &root);
->> 	+	set_fs_root(current->fs, &transport->root);
->> 	+
->> 	 	status = xs_local_finish_connecting(xprt, sock);
->> 	+
->> 	+	set_fs_root(current->fs, &root);
->> 	+	path_put(&root);
->>
->>> Instead
->>> of messing with it I'd rather have the sunrpc code use vfs_path_lookup
->>> and not care about current->fs->root at all.
->>
->> The annoyance is that the lookup happens somewhere lower down in the
->> networking code (net/unix/af_unix.c:unix_find_other, I think).  So we'd
->> need some new (internal) API.  We'd likely be the only user of that new
->> API.
->
-> So, if the only drawback is really just the risk of introducing a bug
-> that leaves the fs_root changed--the above seems simple enough for that
-> not to be a great risk, right?
->
-
-If we unshare rpciod fs struct (which is exported already), then we won't affect 
-other kthreads by root swapping.
-But would be great to hear Trond's opinion about this approach.
-
-Trond, could you tell us your feeling about all this?
-
-> Is there any other hazard to doing this that people can think of?
->
-> --b.
->
-
-
--- 
-Best regards,
-Stanislav Kinsbursky
+T24gTW9uLCAyMDEyLTExLTE5IGF0IDEzOjM5IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+T24gTm92IDE5LCAyMDEyLCBhdCAxOjI5IFBNLCAiTXlrbGVidXN0LCBUcm9uZCIgPFRyb25kLk15
+a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+ID4gT24gTW9uLCAyMDEyLTExLTE5IGF0
+IDEzOjExIC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4gPj4gT24gTm92IDE5LCAyMDEyLCBh
+dCAxMToyNCBBTSwgIk15a2xlYnVzdCwgVHJvbmQiIDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
+bT4gd3JvdGU6DQo+ID4+IA0KPiA+Pj4gT24gTW9uLCAyMDEyLTExLTE5IGF0IDExOjE0IC0wNTAw
+LCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0KPiA+Pj4+IA0KPiA+Pj4+IE9uIDE5LzExLzEyIDExOjAy
+LCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+Pj4+PiBPbiBNb24sIDIwMTItMTEtMTkgYXQg
+MTA6NTggLTA1MDAsIFN0ZXZlIERpY2tzb24gd3JvdGU6DQo+ID4+Pj4+PiANCj4gPj4+Pj4+IE9u
+IDE5LzExLzEyIDEwOjU0LCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+Pj4+Pj4+IE9uIE1v
+biwgMjAxMi0xMS0xOSBhdCAxMDo0MyAtMDUwMCwgU3RldmUgRGlja3NvbiB3cm90ZToNCj4gPj4+
+Pj4+Pj4gVGhpcyBwYXRjaCB3aWxsIGNvbnZlcnQgLW8gdjQuMSwgdmVycz00LjEgb3IgbmZzdmVy
+cz00LjEgaW50bw0KPiA+Pj4+Pj4+PiB0aGUgY29ycmVzcG9uZGluZyAidjQsbWlub3J2ZXJzaW9u
+PTEiLCAidmVycz00LG1pbm9ydmVyc2lvbj0xIg0KPiA+Pj4+Pj4+PiBvciAibmZzdmVycz00LG1p
+bm9ydmVyc2lvbj0xIiBvcHRpb25zLg0KPiA+Pj4+Pj4+PiANCj4gPj4+Pj4+PiANCj4gPj4+Pj4+
+PiBOQUNLLg0KPiA+Pj4+Pj4+IA0KPiA+Pj4+Pj4+IElmIHlvdSBhcmUgZ29pbmcgdG8gZG8gdGhp
+cywgdGhlbiBwbGVhc2UgZG8gaXQgb25seSBmb3Iga2VybmVscyB0aGF0DQo+ID4+Pj4+Pj4gZG9u
+J3Qgc3VwcG9ydCB0aGUgInZlcnM9NC4xIiBzeW50YXguIGkuZS4gYW55dGhpbmcgb2xkZXIgdGhh
+biBMaW51eC0zLjQuDQo+ID4+Pj4+PiBUaGlzIGlzIHRoZSBpbnRlbnRpb24uLi4gDQo+ID4+Pj4+
+PiANCj4gPj4+Pj4+PiANCj4gPj4+Pj4+PiBXZSB3YW50IHRvIGdldCByaWQgb2YgbWlub3J2ZXJz
+aW9uPXgsIG5vdCBwZXJwZXR1YXRlIGl0Li4uDQo+ID4+Pj4+Pj4gDQo+ID4+Pj4+PiBVbmRlcnN0
+b29kLi4uIEJ1dCB0aGF0IGlzIG5vdCBvcHRpb24gaW4gc29tZSB3b3JsZHMuLi4gOy0pIA0KPiA+
+Pj4+PiANCj4gPj4+Pj4gU3VyZSBpdCBpcy4gVGhlIG1vdW50IHByb2dyYW0gY2FuIGNvbnRpbnVl
+IHRvIHBhcnNlIG1pbm9ydmVyc2lvbj0gYWZ0ZXINCj4gPj4+Pj4gaXQgaXMgZ29uZSBmcm9tIHRo
+ZSBrZXJuZWwgYW5kIGNvbnZlcnQgaXQgaW50byB0aGUgdmVycz00Lnggc3ludGF4Lg0KPiA+Pj4+
+PiANCj4gPj4+PiBCYXNpY2FsbHkgd2hhdCBJJ20gZG9pbmcgbm93LCB3aXRoIHRoZSBleGNlcHRp
+b24gb2Ygbm90IGFkZGluZw0KPiA+Pj4+IHRoZSBtaW5vcnZlcnNpb249MSBvcHRpb25zLi4uIA0K
+PiA+Pj4+IA0KPiA+Pj4+IEJUVywgdGhlcmUgaXMgYSBidWcgaW4gdGhlIC1vIHY0LjEgY3VycmVu
+dCBsb2dpYy4uLiANCj4gPj4+PiANCj4gPj4+PiBtb3VudCAtbyB2NC4xIHByb2R1Y2VzIGJvdGgg
+InY0LjEsdmVycz00LC4uLiIgaW4gdGhlIHN0cmluZyB0aGF0IGdpdmVuDQo+ID4+Pj4gdG8gdGhl
+IGtlcm5lbCB3aGljaCBkb2VzIG5vdCBzZWVtIHJpZ2h0Li4uIEkgd291bGQgYXNzdW1lIGp1c3Qg
+YSAidjQuMSwuLiINCj4gPj4+PiBzaG91bGQgYmUgcHVtcGVkIGRvd24uLiANCj4gPj4+IA0KPiA+
+Pj4gWWVzLiBJIHJlbWVtYmVyIHNlZWluZyB0aGF0IGluIHRoZSBCYWtlYXRob24gdGVzdHMuLi4g
+SSBhZ3JlZSB0aGF0IHdlDQo+ID4+PiBqdXN0IG5lZWQgdGhlIHZlcnM9NC4xLiBUaGUgZXh0cmEg
+J3ZlcnM9NCcgaXNuJ3QgaGFybWZ1bCBpbiB0aGF0IHRoZQ0KPiA+Pj4ga2VybmVsIHdvbid0IGlu
+dGVycHJldCBpdCBhcyB2ZXJzPTQuMCwgYnV0IGl0IHdvdWxkIGJlIG5pY2UgdG8gZ2V0IHJpZA0K
+PiA+Pj4gb2YgaXQuDQo+ID4+PiANCj4gPj4+IEVzc2VudGlhbGx5LCB0aGUgcGxhbiBpcyB0aGF0
+IHNvbWUgdGltZSBpbiB0aGUgZnV0dXJlIHdlIHdpbGwgd2FudCB0bw0KPiA+Pj4gaGF2ZSAndmVy
+cz00JyBiZSB0aGUgJ2F1dG8tbmVnb3RpYXRlIG1pbm9yIHZlcnNpb24nIHN5bnRheCwgd2hpbGUN
+Cj4gPj4+IHZlcnM9NC54IHdpbGwgYmUgdGhlICd1c2UgbWlub3IgdmVyc2lvbiB4JyBzeW50YXgu
+DQo+ID4+PiBPZiBjb3Vyc2UsIGF1dG8tbmVnb3RpYXRpb24gc2hvdWxkIGJlIGRyaXZlbiBieSB0
+aGUgJ21vdW50JyBwcm9ncmFtLA0KPiA+Pj4gd2hpY2ggd2lsbCBiZSB1c2luZyB0aGUgJ3ZlcnM9
+NC54JyBzeW50YXggaW4gdGhlIG1vdW50IHN5c3RlbSBjYWxsLCBmb3INCj4gPj4+IHZhcmlvdXMg
+dmFsdWVzIG9mICd4JywgdW50aWwgaXQgYWNoaWV2ZXMgc3VjY2Vzcy4NCj4gPj4gDQo+ID4+IElu
+dGVyZXN0aW5nLiAgSSBhc3N1bWUgeW91IHdhbnQgIm1vdW50Lm5mcyIgdG8gZG8gdGhpcyB0byBh
+bGxvdyBzb21lIGtpbmQgb2YgYXV0by1uZWdvdGlhdGlvbiBwb2xpY3kgdG8gYmUgc3BlY2lmaWVk
+IChzYXksIHZpYSB0aGUgbW91bnQgY29tbWFuZCBjb25maWd1cmF0aW9uIGZpbGUpLg0KPiA+IA0K
+PiA+IFJpZ2h0LiBJJ2QgbGlrZSB0byBiZSBhYmxlIHRvIHNldCBEZWZhdWx0dmVycz00LjEgaW4g
+L2V0Yy9uZnNtb3VudC5jb25mDQo+ID4gYW5kIGhhdmUgaXQgd29yay4NCj4gPiANCj4gPj4gQXMg
+YSBkZXNpZ24gcHJlY3Vyc29yLCBjYW4geW91IHNwZWN1bGF0ZSBvbiBob3cgdGhlIG1vdW50IGNv
+bW1hbmQgd291bGQgZ28gYWJvdXQgbmVnb3RpYXRpbmcgdGhlIG1pbm9yIHZlcnNpb24/ICBtb3Vu
+dC5uZnMgY2Fubm90IHVzZSBwcm90b2NvbCB2ZXJzaW9ucyBhZHZlcnRpc2VkIGJ5IHJwY2JpbmQs
+IGZvciBpbnN0YW5jZSwgYW5kIG5laXRoZXIgY2FuIGEgc2ltcGxlIE5VTEwgcmVxdWVzdCBpZGVu
+dGlmeSB3aGljaCBtaW5vciB2ZXJzaW9ucyBhcmUgYXZhaWxhYmxlIG9uIHRoZSBzZXJ2ZXIuDQo+
+ID4gDQo+ID4gTm90ZSB0aGF0IHRoZSBtb3VudCBjb21tYW5kIHNob3VsZCBpbiBhbnkgY2FzZSBu
+b3QgYmUgcmVseWluZyBvbiBycGNiaW5kDQo+ID4gdG8gZGVjaWRlIHdoZXRoZXIgb3Igbm90IHRo
+ZSBzZXJ2ZXIgc3VwcG9ydHMgTkZTdjQuDQo+ID4gDQo+ID4gQXMgZm9yIG1pbm9yIHZlcnNpb24g
+bmVnb3RpYXRpb24sIFJGQzM1MzAgYWxyZWFkeSB0ZWxscyB5b3UgaG93IHRvIGRvDQo+ID4gdGhp
+czogdGhlIGNsaWVudCBoYXMgdG8gc3RhcnQgd2l0aCB0aGUgaGlnaGVzdCB2ZXJzaW9uIHRoYXQg
+aXQgc3VwcG9ydHMsDQo+ID4gYW5kIHRoZW4gd2FsayB0aGF0IG51bWJlciBkb3duIHVudGlsIHRo
+ZSBzZXJ2ZXIgc3RvcHMgcmVwbHlpbmcgd2l0aA0KPiA+IE5GUzRFUlJfTUlOT1JfVkVSU19NSVNN
+QVRDSC4NCj4gPiANCj4gPiBOb3RlIHRoYXQgaWYgeW91IHdhbnQgdG8gZG8gdGhpcyBpbiB1c2Vy
+bGFuZCBiZWZvcmUgY2FsbGluZyB0aGUgbW91bnQNCj4gPiBzeXNjYWxsLCB0aGVuIHRoZSBzcGVj
+IGRvZXMgYWxsb3cgeW91IHRvICJwaW5nIiB0aGUgTkZTdjQgc2VydmVyIHdpdGggYW4NCj4gPiBl
+bXB0eSBDT01QT1VORC4NCj4gDQo+IEkgc2VlOiBub3QgYW4gTkZTdjQgTlVMTCwgYnV0IGFuIE5G
+U3Y0IENPTVBPVU5EIHRoYXQgaGFzIG5vIG9wZXJhdGlvbnMuICBUaGF0IGNhcnJpZXMgYSBjb21w
+b3VuZCBoZWFkZXIsIHdoaWNoIHdvdWxkIGhhdmUgdGhlIG1pbm9yIHZlcnNpb24gbnVtYmVyIGlu
+IGl0Lg0KDQpSaWdodC4gU2VjdGlvbiAxNi4yLjQgb2YgUkZDNTY2MSB3b3VsZCBhcHBlYXIgdG8g
+YWxsb3cgdGhlIHNlcnZlciB0bw0KcmV0dXJuIHRoZSBmb2xsb3dpbmcgZXJyb3JzIGluIHRoZSBj
+YXNlIG9mIGFuIGVtcHR5IENPTVBPVU5EOiBORlM0X09LLA0KTkZTNEVSUl9ERUxBWSwgTkZTNEVS
+Ul9NSU5PUl9WRVJTX01JU01BVENIIGFuZCBORlM0RVJSX1NFUlZFUkZBVUxULg0KDQpUaGUgb3Ro
+ZXIgZXJyb3JzIHNob3VsZG4ndCBhcHBseSBhdCBhbGwgdG8gYSB6ZXJvLW9wIGNvbXBvdW5kDQoo
+TkZTNEVSUl9CQURYRFIsIE5GUzRFUlJfVE9PX01BTllfT1BTLCBORlM0RVJSX1JFUF9UT09fQklH
+X1RPX0NBQ0hFKSwgb3INCnNob3VsZCBvbmx5IGFwcGx5IGlmIHlvdSBoYXZlIGEgbm9uLWVtcHR5
+IG9wdGlvbmFsIHRhZyBhcmd1bWVudA0KKE5GUzRFUlJfQkFEQ0hBUiwgTkZTNEVSUl9JTlZBTCwg
+TkZTNEVSUl9SRVBfVE9PX0JJRywNCk5GUzRFUlJfUkVRX1RPT19CSUcpLg0KDQotLSANClRyb25k
+IE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQu
+TXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
