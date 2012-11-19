@@ -1,149 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:34581 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1768938Ab2KOU2H (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Nov 2012 15:28:07 -0500
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Date: Thu, 15 Nov 2012 15:28:03 -0500
-From: David Quigley <dpquigl@davequigley.com>
-To: Casey Schaufler <casey@schaufler-ca.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Steve Dickson <steved@redhat.com>,
-        "David P. Quigley" <selinux@davequigley.com>,
-        <trond.myklebust@netapp.com>, <sds@tycho.nsa.gov>,
-        <linux-nfs@vger.kernel.org>, <selinux@tycho.nsa.gov>,
-        <linux-security-module@vger.kernel.org>
-Subject: Re: Labeled NFS [v5]
-In-Reply-To: <50A51195.9080004@schaufler-ca.com>
-References: <50A116F0.5050404@davequigley.com>
- <20121112160959.GK30713@fieldses.org> <50A16269.4060601@RedHat.com>
- <50A1A4EE.7030507@davequigley.com> <50A24345.8080309@RedHat.com>
- <50A31EF5.1050801@davequigley.com> <20121114134535.GD23604@fieldses.org>
- <624cc90c1bf726d8ff1a1ea0ace5f50f@countercultured.net>
- <20121114135939.GE23604@fieldses.org>
- <80f36fef2a58eb538bce28daba3a862a@countercultured.net>
- <20121114142458.GF23604@fieldses.org>
- <4f9b24e3942b4a28cd9068d5bc0135fa@countercultured.net>
- <50A51195.9080004@schaufler-ca.com>
-Message-ID: <a843eae7d5fa2df4faa99bf5531dcecc@countercultured.net>
+Received: from userp1040.oracle.com ([156.151.31.81]:32741 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752869Ab2KSSLe convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Nov 2012 13:11:34 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
+Subject: Re: [RFC PATCH V2] mount: Added the -o v4.1 mount option
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9092EF0B3@SACEXCMBX04-PRD.hq.netapp.com>
+Date: Mon, 19 Nov 2012 13:11:29 -0500
+Cc: Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <8B557EF0-A1F7-4487-8887-0B08F6922784@oracle.com>
+References: <1353339810-19126-1-git-send-email-steved@redhat.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9092EEE7A@SACEXCMBX04-PRD.hq.netapp.com> <50AA571E.4090509@RedHat.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9092EEFD7@SACEXCMBX04-PRD.hq.netapp.com> <50AA5AD4.5070808@RedHat.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9092EF0B3@SACEXCMBX04-PRD.hq.netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/15/2012 11:00, Casey Schaufler wrote:
-> On 11/14/2012 6:30 AM, David Quigley wrote:
->> On 11/14/2012 09:24, J. Bruce Fields wrote:
->>> On Wed, Nov 14, 2012 at 09:04:18AM -0500, David Quigley wrote:
->>>> On 11/14/2012 08:59, J. Bruce Fields wrote:
->>>> >On Wed, Nov 14, 2012 at 08:50:17AM -0500, David Quigley wrote:
->>>> >>On 11/14/2012 08:45, J. Bruce Fields wrote:
->>>> >>>On Tue, Nov 13, 2012 at 11:32:53PM -0500, Dave Quigley wrote:
->>>> >>>>Ok so if you go to http://www.selinuxproject.org/git you will
->>>> >>see a
->>>> >>>>repo for lnfs and lnfs-patchset. The instructions at
->>>> >>>>http://www.selinuxproject.org/page/Labeled_NFS give you a 
->>>> better
->>>> >>>>indication on how to pull the trees. I've attached a patch for 
->>>> NFS
->>>> >>>>utils which gives support for security_label/nosecurity_label 
->>>> in
->>>> >>>>your /etc/exports file.
->>>> >>>
->>>> >>>Do we need an export option?  Is there any reason not to make 
->>>> the
->>>> >>>feature available whenever there's support available for it?
->>>> >>
->>>> >>I guess we could build it in but I figured an export option 
->>>> allowed
->>>> >>someone to turn off security labeling support if they didn't 
->>>> want it
->>>> >>on that export. What happens to clients when the server returns 
->>>> a
->>>> >>cap that they don't support? Do they mask the bits out?
->>>> >
->>>> >Yeah, they should just ignore it.
->>>> >
->>>> >While this is still experimental it's still nice to have a way to
->>>> >turn
->>>> >this on and off at runtime so people can experiment without 
->>>> having to
->>>> >have it on for everyone all the time.  But
->>>> >nfsd_supported_minorversion
->>>> >should be sufficient for that.
->>>> >
->>>> >(I don't think your patches actually dealt yet with the fact that
->>>> >this
->>>> >is part of minor version 2?  Another for the todo list.)
->>>> >
->>>> >--b.
->>>>
->>>> If we use nfsd_supported_minorversion which I'm guessing is an
->>>> export option
->>>
->>> That's just a variable in the code.  It's controlled by
->>> /proc/fs/nfsd/versions.
->>>
->>>> what happens if someone wants to use other 4.2
->>>> features but not labeling?
->>>
->>> We'll cross that bridge when we come to it, maybe by adding some 
->>> new
->>> global paramater.
->>>
->>> There's no reason this really needs to be per-export, is there?
->>>
->>> --b.
->>
->> At the moment I can't really think of a reason to have it be
->> per-export. I think we need a new LSM patch though to determine if 
->> the
->> LSM supports labeling over NFS unless Steve can think of a better 
->> way
->> to tell if the LSM supports labeling.
->
-> If the LSM has a secid_to_secctx hook it supports labeling.
-> Today that's SELinux and Smack. You already have support in
-> for SELinux, and providing Smack's review and possibly updates
-> is #2 on my gotta do list. On the whole, I think that, except
-> for the fundamental philosophical difference between label
-> support and xattr support, it should be a simple matter to
-> get support in for any LSM that has secid_to_secctx.
->
-> But I'm still working on the review.
->
 
-I believe SMACK already works out of the box since we abstracted the 
-call to obtain labels and your implementation currently works. The call 
-that is needed is not secid_to_secctx but inode_getsecctx. You asked for 
-this because SMACK labels can span multiple xattrs. I don't think its 
-right to expect NFS to poke around the security structure to check if 
-there is a valid hook(and it isn't really possible either). Maybe we can 
-have an LSM hook where the LSM categorizes itself and returns a value 
-and if the value it returns is label based then NFS can use it.
+On Nov 19, 2012, at 11:24 AM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
->>
->>
->>>
->>>> I'll switch it over if you guys want it
->>>> done that way, I think though that this provides more flexibility.
->>>> Although anything that makes me carry around fewer patches is good
->>>> in my book.
->>>>
->>>> Dave
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe
->> linux-security-module" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->
->
-> --
-> This message was distributed to subscribers of the selinux mailing 
-> list.
-> If you no longer wish to subscribe, send mail to 
-> majordomo@tycho.nsa.gov with
-> the words "unsubscribe selinux" without quotes as the message.
+> On Mon, 2012-11-19 at 11:14 -0500, Steve Dickson wrote:
+>> 
+>> On 19/11/12 11:02, Myklebust, Trond wrote:
+>>> On Mon, 2012-11-19 at 10:58 -0500, Steve Dickson wrote:
+>>>> 
+>>>> On 19/11/12 10:54, Myklebust, Trond wrote:
+>>>>> On Mon, 2012-11-19 at 10:43 -0500, Steve Dickson wrote:
+>>>>>> This patch will convert -o v4.1, vers=4.1 or nfsvers=4.1 into
+>>>>>> the corresponding "v4,minorversion=1", "vers=4,minorversion=1"
+>>>>>> or "nfsvers=4,minorversion=1" options.
+>>>>>> 
+>>>>> 
+>>>>> NACK.
+>>>>> 
+>>>>> If you are going to do this, then please do it only for kernels that
+>>>>> don't support the "vers=4.1" syntax. i.e. anything older than Linux-3.4.
+>>>> This is the intention... 
+>>>> 
+>>>>> 
+>>>>> We want to get rid of minorversion=x, not perpetuate it...
+>>>>> 
+>>>> Understood... But that is not option in some worlds... ;-) 
+>>> 
+>>> Sure it is. The mount program can continue to parse minorversion= after
+>>> it is gone from the kernel and convert it into the vers=4.x syntax.
+>>> 
+>> Basically what I'm doing now, with the exception of not adding
+>> the minorversion=1 options... 
+>> 
+>> BTW, there is a bug in the -o v4.1 current logic... 
+>> 
+>> mount -o v4.1 produces both "v4.1,vers=4,..." in the string that given
+>> to the kernel which does not seem right... I would assume just a "v4.1,.."
+>> should be pumped down.. 
+> 
+> Yes. I remember seeing that in the Bakeathon tests... I agree that we
+> just need the vers=4.1. The extra 'vers=4' isn't harmful in that the
+> kernel won't interpret it as vers=4.0, but it would be nice to get rid
+> of it.
+> 
+> Essentially, the plan is that some time in the future we will want to
+> have 'vers=4' be the 'auto-negotiate minor version' syntax, while
+> vers=4.x will be the 'use minor version x' syntax.
+> Of course, auto-negotiation should be driven by the 'mount' program,
+> which will be using the 'vers=4.x' syntax in the mount system call, for
+> various values of 'x', until it achieves success.
+
+Interesting.  I assume you want "mount.nfs" to do this to allow some kind of auto-negotiation policy to be specified (say, via the mount command configuration file).
+
+As a design precursor, can you speculate on how the mount command would go about negotiating the minor version?  mount.nfs cannot use protocol versions advertised by rpcbind, for instance, and neither can a simple NULL request identify which minor versions are available on the server.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
