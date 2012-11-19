@@ -1,58 +1,131 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:53537 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753311Ab2KLUXw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Nov 2012 15:23:52 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Matt W. Benjamin" <matt@linuxbox.com>
-CC: Tomasz Chmielewski <mangoo@wpkg.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: xattr support in NFS?
-Date: Mon, 12 Nov 2012 20:23:49 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092D7EB6@SACEXCMBX04-PRD.hq.netapp.com>
-References: <939474821.100.1352749795732.JavaMail.root@thunderbeast.private.linuxbox.com>
-In-Reply-To: <939474821.100.1352749795732.JavaMail.root@thunderbeast.private.linuxbox.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:29323 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752812Ab2KSSVw convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Nov 2012 13:21:52 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
+Subject: Re: [RFC PATCH V2] mount: Added the -o v4.1 mount option
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1353339810-19126-1-git-send-email-steved@redhat.com>
+Date: Mon, 19 Nov 2012 13:21:45 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <30DFD4FD-3442-4F35-B576-EA597E21F4CE@oracle.com>
+References: <1353339810-19126-1-git-send-email-steved@redhat.com>
+To: Steve Dickson <steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQpPbiBNb24sIDIwMTItMTEtMTIgYXQgMTQ6NDkgLTA1MDAsIE1hdHQgVy4gQmVuamFtaW4gd3Jv
-dGU6DQo+IENhbiB5b3UgcmVzdGF0ZSByZWFzb25pbmcgd2h5IGl0IHdpbGwgbmV2ZXIgZG8gc28s
-IGFuZCB3aGV0aGVyIHRoaXMgaXMgdGhlIHNhbWUgYXMgc2F5aW5nIGl0IHdpbGwgbmV2ZXIgaW1w
-bGVtZW50IG5hbWVkIGF0dHJpYnV0ZXM/DQo+IA0KPiBUaGFua3MsDQo+IA0KPiBNYXR0DQo+IA0K
-DQpDZXJ0YWlubHkuLi4NCg0KeGF0dHJzIGFyZSB0aGUgYmFzdGFyZCBvZmZzcHJpbmcgZnJvbSBo
-ZWxsIG9mIGlvY3RsKCkgYW5kIHVzZXIgZGVmaW5lZA0KdHdpdHRlciBtZXNzYWdlLXNpemVkIG1l
-dGFkYXRhLiBUaGUgdXNlci1kZWZpbmVkIG1ldGFkYXRhIGNvdWxkDQp0aGVvcmV0aWNhbGx5IGJl
-IGV4cG9ydGVkIHNvIHRoYXQgd2UgY291bGQgYWxsIHJ1biAndHJhY2tlcicgcmVhbGx5DQpyZWFs
-bHkgc2xvd2x5IG92ZXIgTkZTLCBidXQgdGhhdCB3b3VsZCBqdXN0IGVuY291cmFnZSB0aGUgcGVv
-cGxlIHdobw0KYmVsaWV2ZSB0aGF0IHJ1bm5pbmcgYW4gaW9jdGwoKSBvdmVyIHRoZSBuZXR3b3Jr
-IHdvdWxkIGJlIGEgcmVhbGx5IG5lYXQNCmlkZWEuDQoNCm5hbWVkIGF0dHJpYnV0ZXMgaGF2ZSBu
-b3RoaW5nIHRvIGRvIHdpdGggeGF0dHJzLiBUaGV5IGFyZSBhIGxpbWl0ZWQgZm9ybQ0Kb2YgdGhl
-IHN1YmZpbGUgY29uY2VwdCB0aGF0IGxvb2tzIGdvb2Qgb24gcGFwZXIsIGJ1dCBoYXMgcmFyZWx5
-IGJlZW4NCnVzZWZ1bCBmb3IgYW55dGhpbmcgb3RoZXIgdGhhbiBzdG9yaW5nIGljb24gaW1hZ2Vz
-LiBNZWguLi4NCg0KDQo+IC0tLS0tICJUcm9uZCBNeWtsZWJ1c3QiIDxUcm9uZC5NeWtsZWJ1c3RA
-bmV0YXBwLmNvbT4gd3JvdGU6DQo+IA0KPiA+IE5vLiBXZSB3aWxsIG5ldmVyIHN1cHBvcnQgeGF0
-dHJzIG92ZXIgTkZTLg0KPiA+IA0KPiA+ID4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4g
-PiA+IEZyb206IGxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmcgW21haWx0bzpsaW51eC1u
-ZnMtDQo+ID4gPiBvd25lckB2Z2VyLmtlcm5lbC5vcmddIE9uIEJlaGFsZiBPZiBUb21hc3ogQ2ht
-aWVsZXdza2kNCj4gPiA+IFNlbnQ6IE1vbmRheSwgTm92ZW1iZXIgMTIsIDIwMTIgMTA6MTQgQU0N
-Cj4gPiA+IFRvOiBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnDQo+ID4gPiBTdWJqZWN0OiB4YXR0
-ciBzdXBwb3J0IGluIE5GUz8NCj4gPiA+IA0KPiA+ID4gRG9lcyBMaW51eCBzdXBwb3J0IHhhdHRy
-IGluIE5GUz8NCj4gPiA+IA0KPiA+ID4gSUYgdHJpZXMgdXNpbmcgaXQgaW4gYm90aCBORlMzIGFu
-ZCBORlM0IHVuZGVyIERlYmlhbiBMZW5ueSAoMi42LjMyLA0KPiA+IGJvdGgNCj4gPiA+IHNlcnZl
-ciBhbmQgY2xpZW50KSwgd2l0aG91dCBzdWNjZXNzLg0KPiA+ID4gDQo+ID4gPiAjIHNldGZhdHRy
-IC1uIHVzZXIuY29tbWVudCAtdiAidGhpcyBpcyBhIGNvbW1lbnQiIC9tbnQvbmZzDQo+ID4gPiBz
-ZXRmYXR0cjogL21udC9uZnM6IE9wZXJhdGlvbiBub3Qgc3VwcG9ydGVkDQo+ID4gPiANCj4gPiA+
-IA0KPiA+ID4gLS0NCj4gPiA+IFRvbWFzeiBDaG1pZWxld3NraQ0KPiA+ID4gaHR0cDovL2Jsb2cu
-d3BrZy5vcmcNCj4gPiA+IC0tDQo+ID4gPiBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDog
-c2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIg0KPiA+IGluIHRoZQ0KPiA+ID4g
-Ym9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZyBNb3JlIG1ham9y
-ZG9tbyBpbmZvDQo+ID4gYXQNCj4gPiA+IGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21v
-LWluZm8uaHRtbA0KPiA+IE7vv73vv73vv73vv73vv71y77+977+9ee+/ve+/ve+/vWLvv71Y77+9
-77+9x6d277+9Xu+/vSneunsubu+/vSvvv73vv73vv73vv71777+977+977+9Iu+/ve+/vV5u77+9
-cu+/ve+/ve+/vXrvv73vv73vv71o77+977+977+977+9Ju+/ve+/ve+/vUfvv73vv73vv71o77+9
-KO+/vemaju+/vd2iaiLvv73vv73vv71t77+977+977+977+977+9eu+/vd6W77+977+977+9Zu+/
-ve+/ve+/vWjvv73vv73vv71+77+9be+/vQ0KPiANCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxp
-bnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRh
-cHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+
+On Nov 19, 2012, at 10:43 AM, Steve Dickson <steved@redhat.com> wrote:
+
+> This patch will convert -o v4.1, vers=4.1 or nfsvers=4.1 into
+> the corresponding "v4,minorversion=1", "vers=4,minorversion=1"
+> or "nfsvers=4,minorversion=1" options.
+
+I had a couple of thoughts about this.
+
+As Trond points out, mount.nfs really should not use option "minorversion=" here, except on kernels that do not support "vers=4.x".  That will add complexity, certainly.
+
+In addition, I think we can expect the need for support for "v4.2" and "v4.0" (perhaps) in the near future, and then subsequently "v4.3" and so on.  Since that is close at hand, we should consider the need to add those as we design this.
+
+Perhaps instead of editing the mount option string directly in nfs_nfs_version(), you might add a "*minorversion" argument to nfs_nfs_version() function and let its callers finish the work, just as is done with "*version" today.  That might also make it easier to add the logic that changes behavior based on kernel version.
+
+
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+> utils/mount/network.c | 18 ++++++++++++++++--
+> utils/mount/nfs.man   | 13 +++++++++++++
+> 2 files changed, 29 insertions(+), 2 deletions(-)
+> 
+> diff --git a/utils/mount/network.c b/utils/mount/network.c
+> index e7bd522..36aa03b 100644
+> --- a/utils/mount/network.c
+> +++ b/utils/mount/network.c
+> @@ -94,6 +94,7 @@ static const char *nfs_version_opttbl[] = {
+> 	"v2",
+> 	"v3",
+> 	"v4",
+> +	"v4.1",
+> 	"vers",
+> 	"nfsvers",
+> 	NULL,
+> @@ -1244,11 +1245,20 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
+> 	case 2: /* v4 */
+> 		*version = 4;
+> 		return 1;
+> -	case 3:	/* vers */
+> +	case 3: /* v4.1 */
+> +		*version = 4;
+> +		po_remove_all(options, "v4.1");
+> +		po_append(options, "v4,minorversion=1");
+> +		return 1;
+> +	case 4:	/* vers */
+> 		switch (po_get_numeric(options, "vers", &tmp)) {
+> 		case PO_FOUND:
+> 			if (tmp >= 2 && tmp <= 4) {
+> 				*version = tmp;
+> +				if (strcmp(po_get(options, "vers"), "4.1") == 0) {
+> +					po_remove_all(options, "vers");
+> +					po_append(options, "vers=4,minorversion=1");
+> +				}
+> 				return 1;
+> 			}
+> 			return 0;
+> @@ -1261,11 +1271,15 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
+> 					progname);
+> 			return 0;
+> 		}
+> -	case 4: /* nfsvers */
+> +	case 5: /* nfsvers */
+> 		switch (po_get_numeric(options, "nfsvers", &tmp)) {
+> 		case PO_FOUND:
+> 			if (tmp >= 2 && tmp <= 4) {
+> 				*version = tmp;
+> +				if (strcmp(po_get(options, "nfsvers"), "4.1") == 0) {
+> +					po_remove_all(options, "nfsvers");
+> +					po_append(options, "nfsvers=4,minorversion=1");
+> +				}
+> 				return 1;
+> 			}
+> 			return 0;
+> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+> index c15de98..8d1bb56 100644
+> --- a/utils/mount/nfs.man
+> +++ b/utils/mount/nfs.man
+> @@ -762,6 +762,19 @@ by 'nolock'/'lock' mount option.
+> Use these options, along with the options in the first subsection above,
+> for NFS version 4 and newer.
+> .TP 1.5i
+> +.BI minorversion= n
+> +Specifies the protocol minor version number.
+> +NFSv4 introduces "minor versioning," where NFS protocol enhancements can
+> +be introduced without bumping the NFS protocol version number.
+> +.IP
+> +The minor version can also be be specified using the
+> +.B vers=
+> +option.
+> +For example, specifying
+> +.B vers=4.1
+> +is the same as specifying
+> +.BR vers=4,minorversion=1 .
+> +.TP 1.5i
+> .BI proto= netid
+> The
+> .I netid
+> -- 
+> 1.7.11.7
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
