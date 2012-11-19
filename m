@@ -1,64 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:47531 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751308Ab2KFMLP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Nov 2012 07:11:15 -0500
-Message-ID: <5098FE5F.7030709@parallels.com>
-Date: Tue, 6 Nov 2012 16:11:11 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from fieldses.org ([174.143.236.118]:49648 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751772Ab2KSMqV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Nov 2012 07:46:21 -0500
+Date: Mon, 19 Nov 2012 07:46:18 -0500
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFSd state: nfs4_lock_state() and nfs4_lock_state()
+Message-ID: <20121119124618.GA30084@fieldses.org>
+References: <50A622AE.3080809@parallels.com>
+ <20121116165845.GA32183@fieldses.org>
+ <50A9F03B.1010909@parallels.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: Re: [PATCH v3] SUNRPC: set desired file system root before connecting
- local transports
-References: <20121008105437.18668.99905.stgit@localhost.localdomain> <20121009193506.GA19680@fieldses.org> <5098E31A.5080801@parallels.com> <20121106120642.GA6718@fieldses.org>
-In-Reply-To: <20121106120642.GA6718@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <50A9F03B.1010909@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-06.11.2012 16:06, J. Bruce Fields пишет:
-> On Tue, Nov 06, 2012 at 02:14:50PM +0400, Stanislav Kinsbursky wrote:
->> 09.10.2012 23:35, J. Bruce Fields пишет:
->>> Cc'ing Eric since I seem to recall he suggested doing it this way?
->>>
->>> Seems OK to me, but maybe that swap_root should be in common code?  (Or
->>> maybe we could use set_fs_root()?)
->>>
->>
->> This patch is not good since, as Eric mentioned, all kernel threads
->> share same fs struct.
->> We can swap whole fs struct. Or we can unshare fs struct
->> (unshare_fs_struct() is exported) and swap root in this case.
->> But this approach is to close to set_fs_root() logic, which is not
->> exported and seems there are some valid reasons for it.
->
-> What are those reasons?
->
+On Mon, Nov 19, 2012 at 12:39:23PM +0400, Stanislav Kinsbursky wrote:
+> 16.11.2012 20:58, bfields@fieldses.org пишет:
+> >
+> >A patch follows: note it's a two-line patch, with 20 lines of changelog
+> >showing that I looked at what state might be shared by other threads and
+> >explaining why I think this is safe.
+> >
+> 
+> Acked-by: Stanislav Kinsburskiy <skinsbursky@parallels.com>
+> 
+> >I think that's what we need to do: little patches that remove it from
+> >one or another part of the code with careful explanation of why it
+> >works.
+> >
+> 
+> Yes, thanks. I'll also try to simplify nfsd_open() by little patches.
+> In general it looks like client_mutex protect two different things:
+> open owner state (which is containerised already, actually) and
+> files access.
+> So, probably, this client mutex have to be converted into two:
+> per-net one, which protects open owner state, and static one, which
+> protects files operations.
+> What do you think about it?
 
-I don't know them.
-Trond told, that Al doesn't like the idea of set_fs_root() exporting.
+That sounds right.
 
-> Googling found one previous thread:
->
-> 	http://thread.gmane.org/gmane.linux.kernel/1259986/focus=47687
->
-> There Trond requests an ACK from Al or Cristoph for the export, but I
-> don't see either an ACK or any objection.
->
-
-Cristoph told me on LSF something line "No ... way", when I asked him about 
-set_fs_root() exporting.
-But I had no opportunity to ask why.
-
-> --b.
->
-
-
--- 
-Best regards,
-Stanislav Kinsbursky
+--b.
