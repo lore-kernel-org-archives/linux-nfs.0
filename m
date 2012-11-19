@@ -1,56 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:37755 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757791Ab2K3LKk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Nov 2012 06:10:40 -0500
+Received: from mx12.netapp.com ([216.240.18.77]:45310 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753751Ab2KSQEW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 Nov 2012 11:04:22 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC PATCH V2] mount: Added the -o v4.1 mount option
+Date: Mon, 19 Nov 2012 16:02:33 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092EEFD7@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1353339810-19126-1-git-send-email-steved@redhat.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9092EEE7A@SACEXCMBX04-PRD.hq.netapp.com>
+	 <50AA571E.4090509@RedHat.com>
+In-Reply-To: <50AA571E.4090509@RedHat.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <1354270840-7272-1-git-send-email-piastry@etersoft.ru>
-References: <1354270840-7272-1-git-send-email-piastry@etersoft.ru>
-Date: Fri, 30 Nov 2012 15:10:39 +0400
-Message-ID: <CAKywueSiE_8ahAW4ky=7fLxkSo+uLg5U-YE6Jf9mbaEKRLk60g@mail.gmail.com>
-Subject: Re: [PATCH 0/3] Add O_DENY* flags to fcntl and cifs
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org
-Cc: wine-devel@winehq.org
-Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2012/11/30 Pavel Shilovsky <piastry@etersoft.ru>:
-> Network filesystems CIFS, SMB2.0, SMB3.0 and NFSv4 have such flags - this change can benefit cifs and nfs modules. While this change is ok for network filesystems, itsn't not targeted for local filesystems due security problems (e.g. when a user process can deny root to delete a file).
->
-> Share flags are used by Windows applications and WINE have to deal with them too. While WINE can process open share flags itself on local filesystems, it can't do it if a file stored on a network share and is used by several clients. This patchset makes it possible for CIFS/SMB2.0/SMB3.0.
->
-> Pavel Shilovsky (3):
->   fcntl: Introduce new O_DENY* open flags for network filesystems
->   CIFS: Add O_DENY* open flags support
->   CIFS: Use NT_CREATE_ANDX command for forcemand mounts
->
->  fs/cifs/cifsacl.c                |   10 ++++----
->  fs/cifs/cifsglob.h               |   11 ++++++++-
->  fs/cifs/cifsproto.h              |    9 ++++----
->  fs/cifs/cifssmb.c                |   47 ++++++++++++++++++++------------------
->  fs/cifs/dir.c                    |   14 ++++++++----
->  fs/cifs/file.c                   |   18 ++++++++++-----
->  fs/cifs/inode.c                  |   11 +++++----
->  fs/cifs/link.c                   |   10 ++++----
->  fs/cifs/readdir.c                |    2 +-
->  fs/cifs/smb1ops.c                |   15 ++++++------
->  fs/cifs/smb2file.c               |   10 ++++----
->  fs/cifs/smb2inode.c              |    4 ++--
->  fs/cifs/smb2ops.c                |   10 ++++----
->  fs/cifs/smb2pdu.c                |    6 ++---
->  fs/cifs/smb2proto.h              |   14 +++++++-----
->  fs/fcntl.c                       |    5 ++--
->  include/uapi/asm-generic/fcntl.h |   11 +++++++++
->  17 files changed, 125 insertions(+), 82 deletions(-)
->
-> --
-> 1.7.10.4
->
-
-CC'ing wine-devel@.
-
--- 
-Best regards,
-Pavel Shilovsky.
+T24gTW9uLCAyMDEyLTExLTE5IGF0IDEwOjU4IC0wNTAwLCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0K
+PiANCj4gT24gMTkvMTEvMTIgMTA6NTQsIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4gT24g
+TW9uLCAyMDEyLTExLTE5IGF0IDEwOjQzIC0wNTAwLCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0KPiA+
+PiBUaGlzIHBhdGNoIHdpbGwgY29udmVydCAtbyB2NC4xLCB2ZXJzPTQuMSBvciBuZnN2ZXJzPTQu
+MSBpbnRvDQo+ID4+IHRoZSBjb3JyZXNwb25kaW5nICJ2NCxtaW5vcnZlcnNpb249MSIsICJ2ZXJz
+PTQsbWlub3J2ZXJzaW9uPTEiDQo+ID4+IG9yICJuZnN2ZXJzPTQsbWlub3J2ZXJzaW9uPTEiIG9w
+dGlvbnMuDQo+ID4+DQo+ID4gDQo+ID4gTkFDSy4NCj4gPiANCj4gPiBJZiB5b3UgYXJlIGdvaW5n
+IHRvIGRvIHRoaXMsIHRoZW4gcGxlYXNlIGRvIGl0IG9ubHkgZm9yIGtlcm5lbHMgdGhhdA0KPiA+
+IGRvbid0IHN1cHBvcnQgdGhlICJ2ZXJzPTQuMSIgc3ludGF4LiBpLmUuIGFueXRoaW5nIG9sZGVy
+IHRoYW4gTGludXgtMy40Lg0KPiBUaGlzIGlzIHRoZSBpbnRlbnRpb24uLi4gDQo+IA0KPiA+IA0K
+PiA+IFdlIHdhbnQgdG8gZ2V0IHJpZCBvZiBtaW5vcnZlcnNpb249eCwgbm90IHBlcnBldHVhdGUg
+aXQuLi4NCj4gPiANCj4gVW5kZXJzdG9vZC4uLiBCdXQgdGhhdCBpcyBub3Qgb3B0aW9uIGluIHNv
+bWUgd29ybGRzLi4uIDstKSANCg0KU3VyZSBpdCBpcy4gVGhlIG1vdW50IHByb2dyYW0gY2FuIGNv
+bnRpbnVlIHRvIHBhcnNlIG1pbm9ydmVyc2lvbj0gYWZ0ZXINCml0IGlzIGdvbmUgZnJvbSB0aGUg
+a2VybmVsIGFuZCBjb252ZXJ0IGl0IGludG8gdGhlIHZlcnM9NC54IHN5bnRheC4NCg0KLS0gDQpU
+cm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRy
+b25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
