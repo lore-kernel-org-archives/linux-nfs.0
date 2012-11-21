@@ -1,59 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:58126 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:24056 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752637Ab2KSQY1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 19 Nov 2012 11:24:27 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Steve Dickson <SteveD@redhat.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC PATCH V2] mount: Added the -o v4.1 mount option
-Date: Mon, 19 Nov 2012 16:24:24 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092EF0B3@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1353339810-19126-1-git-send-email-steved@redhat.com>
-	  <4FA345DA4F4AE44899BD2B03EEEC2FA9092EEE7A@SACEXCMBX04-PRD.hq.netapp.com>
-	  <50AA571E.4090509@RedHat.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9092EEFD7@SACEXCMBX04-PRD.hq.netapp.com>
-	 <50AA5AD4.5070808@RedHat.com>
-In-Reply-To: <50AA5AD4.5070808@RedHat.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1754984Ab2KUPFm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 21 Nov 2012 10:05:42 -0500
+Subject: [PATCH] nfsd4: remove state lock from nfs4_state_shutdown
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Wed, 21 Nov 2012 18:07:38 +0300
+Message-ID: <20121121150730.6644.99859.stgit@localhost.localdomain>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTExLTE5IGF0IDExOjE0IC0wNTAwLCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0K
-PiANCj4gT24gMTkvMTEvMTIgMTE6MDIsIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4gT24g
-TW9uLCAyMDEyLTExLTE5IGF0IDEwOjU4IC0wNTAwLCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0KPiA+
-Pg0KPiA+PiBPbiAxOS8xMS8xMiAxMDo1NCwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4gPj4+
-IE9uIE1vbiwgMjAxMi0xMS0xOSBhdCAxMDo0MyAtMDUwMCwgU3RldmUgRGlja3NvbiB3cm90ZToN
-Cj4gPj4+PiBUaGlzIHBhdGNoIHdpbGwgY29udmVydCAtbyB2NC4xLCB2ZXJzPTQuMSBvciBuZnN2
-ZXJzPTQuMSBpbnRvDQo+ID4+Pj4gdGhlIGNvcnJlc3BvbmRpbmcgInY0LG1pbm9ydmVyc2lvbj0x
-IiwgInZlcnM9NCxtaW5vcnZlcnNpb249MSINCj4gPj4+PiBvciAibmZzdmVycz00LG1pbm9ydmVy
-c2lvbj0xIiBvcHRpb25zLg0KPiA+Pj4+DQo+ID4+Pg0KPiA+Pj4gTkFDSy4NCj4gPj4+DQo+ID4+
-PiBJZiB5b3UgYXJlIGdvaW5nIHRvIGRvIHRoaXMsIHRoZW4gcGxlYXNlIGRvIGl0IG9ubHkgZm9y
-IGtlcm5lbHMgdGhhdA0KPiA+Pj4gZG9uJ3Qgc3VwcG9ydCB0aGUgInZlcnM9NC4xIiBzeW50YXgu
-IGkuZS4gYW55dGhpbmcgb2xkZXIgdGhhbiBMaW51eC0zLjQuDQo+ID4+IFRoaXMgaXMgdGhlIGlu
-dGVudGlvbi4uLiANCj4gPj4NCj4gPj4+DQo+ID4+PiBXZSB3YW50IHRvIGdldCByaWQgb2YgbWlu
-b3J2ZXJzaW9uPXgsIG5vdCBwZXJwZXR1YXRlIGl0Li4uDQo+ID4+Pg0KPiA+PiBVbmRlcnN0b29k
-Li4uIEJ1dCB0aGF0IGlzIG5vdCBvcHRpb24gaW4gc29tZSB3b3JsZHMuLi4gOy0pIA0KPiA+IA0K
-PiA+IFN1cmUgaXQgaXMuIFRoZSBtb3VudCBwcm9ncmFtIGNhbiBjb250aW51ZSB0byBwYXJzZSBt
-aW5vcnZlcnNpb249IGFmdGVyDQo+ID4gaXQgaXMgZ29uZSBmcm9tIHRoZSBrZXJuZWwgYW5kIGNv
-bnZlcnQgaXQgaW50byB0aGUgdmVycz00Lnggc3ludGF4Lg0KPiA+IA0KPiBCYXNpY2FsbHkgd2hh
-dCBJJ20gZG9pbmcgbm93LCB3aXRoIHRoZSBleGNlcHRpb24gb2Ygbm90IGFkZGluZw0KPiB0aGUg
-bWlub3J2ZXJzaW9uPTEgb3B0aW9ucy4uLiANCj4gDQo+IEJUVywgdGhlcmUgaXMgYSBidWcgaW4g
-dGhlIC1vIHY0LjEgY3VycmVudCBsb2dpYy4uLiANCj4gDQo+IG1vdW50IC1vIHY0LjEgcHJvZHVj
-ZXMgYm90aCAidjQuMSx2ZXJzPTQsLi4uIiBpbiB0aGUgc3RyaW5nIHRoYXQgZ2l2ZW4NCj4gdG8g
-dGhlIGtlcm5lbCB3aGljaCBkb2VzIG5vdCBzZWVtIHJpZ2h0Li4uIEkgd291bGQgYXNzdW1lIGp1
-c3QgYSAidjQuMSwuLiINCj4gc2hvdWxkIGJlIHB1bXBlZCBkb3duLi4gDQoNClllcy4gSSByZW1l
-bWJlciBzZWVpbmcgdGhhdCBpbiB0aGUgQmFrZWF0aG9uIHRlc3RzLi4uIEkgYWdyZWUgdGhhdCB3
-ZQ0KanVzdCBuZWVkIHRoZSB2ZXJzPTQuMS4gVGhlIGV4dHJhICd2ZXJzPTQnIGlzbid0IGhhcm1m
-dWwgaW4gdGhhdCB0aGUNCmtlcm5lbCB3b24ndCBpbnRlcnByZXQgaXQgYXMgdmVycz00LjAsIGJ1
-dCBpdCB3b3VsZCBiZSBuaWNlIHRvIGdldCByaWQNCm9mIGl0Lg0KDQpFc3NlbnRpYWxseSwgdGhl
-IHBsYW4gaXMgdGhhdCBzb21lIHRpbWUgaW4gdGhlIGZ1dHVyZSB3ZSB3aWxsIHdhbnQgdG8NCmhh
-dmUgJ3ZlcnM9NCcgYmUgdGhlICdhdXRvLW5lZ290aWF0ZSBtaW5vciB2ZXJzaW9uJyBzeW50YXgs
-IHdoaWxlDQp2ZXJzPTQueCB3aWxsIGJlIHRoZSAndXNlIG1pbm9yIHZlcnNpb24geCcgc3ludGF4
-Lg0KT2YgY291cnNlLCBhdXRvLW5lZ290aWF0aW9uIHNob3VsZCBiZSBkcml2ZW4gYnkgdGhlICdt
-b3VudCcgcHJvZ3JhbSwNCndoaWNoIHdpbGwgYmUgdXNpbmcgdGhlICd2ZXJzPTQueCcgc3ludGF4
-IGluIHRoZSBtb3VudCBzeXN0ZW0gY2FsbCwgZm9yDQp2YXJpb3VzIHZhbHVlcyBvZiAneCcsIHVu
-dGlsIGl0IGFjaGlldmVzIHN1Y2Nlc3MuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBO
-RlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
-bQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+Protection of __nfs4_state_shutdown() with nfs4_lock_state() looks redundant.
+
+This function is called by the last NFSd thread on it's exit and state lock
+protects actually two functions (del_recall_lru is protected by recall_lock):
+1) nfsd4_client_tracking_exit
+2) __nfs4_state_shutdown_net
+
+"nfsd4_client_tracking_exit" doesn't require state lock protection, because it's
+state can be modified only by tracker callbacks.
+Here a re they:
+1) create: is called only from nfsd4_proc_compound.
+2) remove: is called from either nfsd4_proc_compound or nfs4_laundromat.
+3) check: is called only from nfsd4_proc_compound.
+4) grace_done; called only from nfs4_laundromat.
+
+nfsd4_proc_compound is called onll by NFSd kthread, which is exiting right
+now.
+nfs4_laundromat is called by laundry_wq. But laundromat_work was canceled
+already.
+
+"__nfs4_state_shutdown_net" also doesn't require state lock protection,
+because all NFSd kthreads are dead, and no race can happen with NFSd start,
+because "nfsd_up" flag is still set.
+Moreover, all Nfsd shutdown is protected with global nfsd_mutex.
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfsd/nfs4state.c |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e75872f..d41cc71 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4926,9 +4926,7 @@ nfs4_state_shutdown(void)
+ 	cancel_delayed_work_sync(&nn->laundromat_work);
+ 	destroy_workqueue(laundry_wq);
+ 	locks_end_grace(&nn->nfsd4_manager);
+-	nfs4_lock_state();
+ 	__nfs4_state_shutdown(net);
+-	nfs4_unlock_state();
+ 	nfsd4_destroy_callback_queue();
+ }
+ 
+
