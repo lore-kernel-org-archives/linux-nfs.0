@@ -1,136 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53162 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:6115 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751524Ab2KGTHa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 Nov 2012 14:07:30 -0500
-Date: Wed, 7 Nov 2012 14:07:24 -0500
-To: Florian Pritz <bluewind@xinu.at>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFS stalls when writing - linux 3.6.x
-Message-ID: <20121107190724.GD7421@fieldses.org>
-References: <50957087.6050008@xinu.at>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <50957087.6050008@xinu.at>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1755411Ab2KVSmf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Nov 2012 13:42:35 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 08/20] NFSv4.1: Label each entry in the session slot tables with its slot number
+Date: Wed, 21 Nov 2012 17:43:07 -0500
+Message-Id: <1353537799-60488-9-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1353537799-60488-8-git-send-email-Trond.Myklebust@netapp.com>
+References: <1353537799-60488-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-8-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Nov 03, 2012 at 08:29:11PM +0100, Florian Pritz wrote:
-> Hi,
-> 
-> Long text ahead.
-> 
-> 
-> Since I have no idea what to look at/for, I tried to summarise all more
-> or less relevant information. If you need any more, please tell me.
-> 
-> I've been trying to debug this for days now and might have mixed
-> something up although I double checked as much as possible while writing
-> this mail.
-> 
-> 
-> # Overview
-> 
-> I've been experiencing stalls when trying to write big-ish files on my
-> nfs mount for some time (few months) now. Rsync is also somewhat slow,
-> transferring only like 1 file per second even if the files are only a
-> few kilobytes in size. Sometimes it also stalls for a few seconds
-> between files. I hardly run rsync over nfs so can't tell if this might
-> be normal.
-> 
-> Sadly I don't know when this started happening.
+Instead of doing slot table pointer gymnastics every time we want to
+know which slot we're using.
 
-It would be helpful to know that--especially if you find an easy way to
-reproduce this, it would be worth booting to older kernels and seeing if
-you can figure when the problem started.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c       | 12 +++++++-----
+ fs/nfs/nfs4xdr.c        |  2 +-
+ include/linux/nfs_xdr.h |  1 +
+ 3 files changed, 9 insertions(+), 6 deletions(-)
 
-> Server and client are both running Arch Linux with linux 3.6.5 and
-> nfs-utils 1.2.6.
-> 
-> The server is running on a striped raid10 array with 4 disks using the
-> deadline scheduler and connected via Gbit ethernet. The CPU is an Intel
-> i3-530 and it has 2GB RAM. The raid10 is part of an LVM which contains
-> the actual XFS file system exported by nfsd.
-> 
-> At first I assumed a problem with file system, but I switched from ext3
-> to XFS and still experience the issue. Transferring large amounts
-> (>80GB) of data over samba + cifs didn't cause any problems so I'm
-> ruling out network and disks.
-> 
-> # Description
-> 
-> dd if=/dev/zero of=test bs=1M count=8000 (writing a 1GB file is also
-> enough, sometimes)
-> 
-> Watch the network traffic (with "vnstat -l" or conky) and wait until it
-> drops from 110MB/s to 0-5MB/s (you might need to run dd multiple times,
-> wait a few minutes/hours or reboot the server)
-> 
-> top on the server now shows lots of nfsd threads in D state.
-
-Next time you find in that state, could you try
-
-	echo t >/proc/sysrq-trigger
-
-on the server?  That will dump a bunch of data to the logs which we
-might be able to use.
-
---b.
-
-> iostat only
-> shows the 0-5MB/s of network traffic going to the disk.
-> 
-> A local dd job on the server manages to write 160MB/s while nfsd
-> continues to hang. Reading from the nfs share while nfsd is hanging is
-> possible, but has a delay of up to ~20-30 seconds.
-> 
-> After some time the client displays "nfs: server levant not responding,
-> still trying" in dmesg followed by a "nfs: server levant OK" 0 or more
-> seconds later (yes, zero). Both messages sometimes appear more than once
-> at the same time.
-> 
-> Apart from those messages dmesg is clean on either system even after
-> waiting for a few minutes.
-> 
-> # Environment
-> 
-> ## Mount options (from /proc/mounts)
-> 
-> rw,nosuid,nodev,noexec,relatime,vers=4.0,rsize=65536,wsize=65536,
-> namlen=255,hard,proto=tcp,port=0,timeo=14,retrans=2,sec=sys,
-> clientaddr=192.168.4.247,local_lock=none,addr=192.168.4.103,user
-> 
-> ## /etc/exportsfs -v
-> 
-> /mnt/data/nfs
-> 192.168.4.1/24(rw,wdelay,crossmnt,root_squash,all_squash,no_subtree_check,anonuid=999,anongid=999)
-> 
-> ## Programm versions
-> 
-> Those are all the same on both client and server.
-> 
-> acl 2.2.51-2
-> libgssglue 0.4-1
-> libevent 2.0.20-1
-> librpcsecgss 0.19-7
-> nfs-utils 1.2.6-2
-> util-linux 2.22.1-2
-> 
-> # Other notes
-> 
-> I tried reproducing the issue with a virtual machine and it somehow
-> worked, but I'm not really sure if I actually hit the same issue because
-> the vm sometimes locks up too.
-> 
-> The VM was set up in qemu with one virtio disk which was directly
-> partioned without the use of mdadm or lvm.
-> 
-> 
-> Thank you for reading.
-> 
-> -- 
-> Florian Pritz
-> 
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index f8cb60b..4f2d058 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -527,9 +527,9 @@ static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *
+ 		 * returned NFS4ERR_DELAY as per Section 2.10.6.2
+ 		 * of RFC5661.
+ 		 */
+-		dprintk("%s: slot=%td seq=%d: Operation in progress\n",
++		dprintk("%s: slot=%u seq=%u: Operation in progress\n",
+ 			__func__,
+-			slot - session->fc_slot_table.slots,
++			slot->slot_nr,
+ 			slot->seq_nr);
+ 		goto out_retry;
+ 	default:
+@@ -672,9 +672,9 @@ int nfs4_setup_sequence(const struct nfs_server *server,
+ 	if (session == NULL)
+ 		goto out;
+ 
+-	dprintk("--> %s clp %p session %p sr_slot %td\n",
++	dprintk("--> %s clp %p session %p sr_slot %d\n",
+ 		__func__, session->clp, session, res->sr_slot ?
+-			res->sr_slot - session->fc_slot_table.slots : -1);
++			res->sr_slot->slot_nr : -1);
+ 
+ 	ret = nfs41_setup_sequence(session, args, res, task);
+ out:
+@@ -5670,8 +5670,10 @@ struct nfs4_slot *nfs4_alloc_slots(struct nfs4_slot_table *table,
+ 
+ 	tbl = kmalloc_array(max_slots, sizeof(*tbl), gfp_flags);
+ 	if (tbl != NULL) {
+-		for (i = 0; i < max_slots; i++)
++		for (i = 0; i < max_slots; i++) {
+ 			tbl[i].table = table;
++			tbl[i].slot_nr = i;
++		}
+ 	}
+ 	return tbl;
+ }
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 4126f05..50bac70 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -5547,7 +5547,7 @@ static int decode_sequence(struct xdr_stream *xdr,
+ 	}
+ 	/* slot id */
+ 	dummy = be32_to_cpup(p++);
+-	if (dummy != res->sr_slot - session->fc_slot_table.slots) {
++	if (dummy != res->sr_slot->slot_nr) {
+ 		dprintk("%s Invalid slot id\n", __func__);
+ 		goto out_err;
+ 	}
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 0fd88ab..9c9b76c 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -189,6 +189,7 @@ struct nfs4_channel_attrs {
+ struct nfs4_slot {
+ 	struct nfs4_slot_table	*table;
+ 	unsigned long		renewal_time;
++	u32			slot_nr;
+ 	u32		 	seq_nr;
+ };
+ 
+-- 
+1.7.11.7
 
