@@ -1,94 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50416 "EHLO fieldses.org"
+Received: from mx1.netapp.com ([216.240.18.38]:24235 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752039Ab2KLQF2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Nov 2012 11:05:28 -0500
-Date: Mon, 12 Nov 2012 11:05:23 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "David P. Quigley" <selinux@davequigley.com>
-Cc: David Quigley <dpquigl@davequigley.com>, trond.myklebust@netapp.com,
-        sds@tycho.nsa.gov, linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
-        linux-security-module@vger.kernel.org,
-        "Matthew N. Dodd" <Matthew.Dodd@sparta.com>,
-        Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>,
-        Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>,
-        Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
-Subject: Re: [PATCH 07/13] NFSv4: Introduce new label structure
-Message-ID: <20121112160523.GJ30713@fieldses.org>
-References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com>
- <1352700947-3915-8-git-send-email-dpquigl@davequigley.com>
- <20121112151314.GG30713@fieldses.org>
- <50A116A8.20105@davequigley.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <50A116A8.20105@davequigley.com>
+	id S1755440Ab2KVSoq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Nov 2012 13:44:46 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 13/20] NFSv4.1: Reset the sequence number for slots that have been deallocated
+Date: Wed, 21 Nov 2012 17:43:12 -0500
+Message-Id: <1353537799-60488-14-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1353537799-60488-13-git-send-email-Trond.Myklebust@netapp.com>
+References: <1353537799-60488-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-12-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-13-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 12, 2012 at 10:32:56AM -0500, David P. Quigley wrote:
-> On 11/12/2012 10:13 AM, J. Bruce Fields wrote:
-> >On Mon, Nov 12, 2012 at 01:15:41AM -0500, David Quigley wrote:
-> >>From: David Quigley<dpquigl@davequigley.com>
-> >>
-> >>In order to mimic the way that NFSv4 ACLs are implemented we have created a
-> >>structure to be used to pass label data up and down the call chain. This patch
-> >>adds the new structure and new members to the required NFSv4 call structures.
-> >>
-> >>Signed-off-by: Matthew N. Dodd<Matthew.Dodd@sparta.com>
-> >>Signed-off-by: Miguel Rodel Felipe<Rodel_FM@dsi.a-star.edu.sg>
-> >>Signed-off-by: Phua Eu Gene<PHUA_Eu_Gene@dsi.a-star.edu.sg>
-> >>Signed-off-by: Khin Mi Mi Aung<Mi_Mi_AUNG@dsi.a-star.edu.sg>
-> >>Signed-off-by: David Quigley<dpquigl@davequigley.com>
-> >>---
-> >>  fs/nfs/inode.c          | 40 ++++++++++++++++++++++++++++++++++++++++
-> >>  fs/nfsd/xdr4.h          |  3 +++
-> >>  include/linux/nfs4.h    |  8 ++++++++
-> >>  include/linux/nfs_fs.h  | 14 ++++++++++++++
-> >>  include/linux/nfs_xdr.h | 20 ++++++++++++++++++++
-> >>  5 files changed, 85 insertions(+)
-> >>
-> >>diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> >>index 5c7325c..0963ad9 100644
-> >>--- a/fs/nfs/inode.c
-> >>+++ b/fs/nfs/inode.c
-> >>@@ -246,6 +246,46 @@ nfs_init_locked(struct inode *inode, void *opaque)
-> >>  	return 0;
-> >>  }
-> >>
-> >>+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-> >>+struct nfs4_label *nfs4_label_alloc(gfp_t flags)
-> >>+{
-> >>+	struct nfs4_label *label = NULL;
-> >>+
-> >>+	label = kzalloc(sizeof(struct nfs4_label) + NFS4_MAXLABELLEN, flags);
-> >NFS4_MAXLABELLEN is 4096, but we usually try to avoid allocating more
-> >than that in a single allocation.
-> 
-> Should we make this smaller? I figured a page would be a good upper bound.
+When the server tells us that it is dynamically resizing the session
+replay cache, we should reset the sequence number for those slots
+that have been deallocated.
 
-If we could make it small enough so that the above fits in 4096 bytes
-that would be easier.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c         | 18 ++++++++++++++++++
+ fs/nfs/nfs4xdr.c          |  4 ++--
+ include/linux/nfs_fs_sb.h |  1 +
+ include/linux/nfs_xdr.h   |  1 +
+ 4 files changed, 22 insertions(+), 2 deletions(-)
 
-(What does the protocol say?  On a quick glance it doesn't seem to
-impose a limit.)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 8333260..fc58ad8 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -499,6 +499,22 @@ static void nfs41_set_target_slotid_locked(struct nfs4_slot_table *tbl,
+ 	tbl->generation++;
+ }
+ 
++static void nfs41_set_server_slotid_locked(struct nfs4_slot_table *tbl,
++		u32 highest_slotid)
++{
++	unsigned int max_slotid, i;
++
++	if (tbl->server_highest_slotid == highest_slotid)
++		return;
++	if (tbl->highest_used_slotid > highest_slotid)
++		return;
++	max_slotid = min(tbl->max_slots - 1, highest_slotid);
++	/* Reset the seq_nr for deallocated slots */
++	for (i = tbl->server_highest_slotid + 1; i <= max_slotid; i++)
++		tbl->slots[i].seq_nr = 1;
++	tbl->server_highest_slotid = highest_slotid;
++}
++
+ static void nfs41_update_target_slotid(struct nfs4_slot_table *tbl,
+ 		struct nfs4_slot *slot,
+ 		struct nfs4_sequence_res *res)
+@@ -506,6 +522,7 @@ static void nfs41_update_target_slotid(struct nfs4_slot_table *tbl,
+ 	spin_lock(&tbl->slot_tbl_lock);
+ 	if (tbl->generation != slot->generation)
+ 		goto out;
++	nfs41_set_server_slotid_locked(tbl, res->sr_highest_slotid);
+ 	nfs41_set_target_slotid_locked(tbl, res->sr_target_highest_slotid);
+ out:
+ 	spin_unlock(&tbl->slot_tbl_lock);
+@@ -5719,6 +5736,7 @@ static void nfs4_add_and_init_slots(struct nfs4_slot_table *tbl,
+ 	}
+ 	tbl->highest_used_slotid = NFS4_NO_SLOT;
+ 	tbl->target_highest_slotid = max_slots - 1;
++	tbl->server_highest_slotid = max_slots - 1;
+ 	for (i = 0; i < tbl->max_slots; i++)
+ 		tbl->slots[i].seq_nr = ivalue;
+ 	spin_unlock(&tbl->slot_tbl_lock);
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 05d34f1..a67040f 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -5550,8 +5550,8 @@ static int decode_sequence(struct xdr_stream *xdr,
+ 		dprintk("%s Invalid slot id\n", __func__);
+ 		goto out_err;
+ 	}
+-	/* highest slot id - currently not processed */
+-	dummy = be32_to_cpup(p++);
++	/* highest slot id */
++	res->sr_highest_slotid = be32_to_cpup(p++);
+ 	/* target highest slot id */
+ 	res->sr_target_highest_slotid = be32_to_cpup(p++);
+ 	/* result flags */
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 57d4069..646e64b 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -218,6 +218,7 @@ struct nfs4_slot_table {
+ 	u32		highest_used_slotid;	/* sent to server on each SEQ.
+ 						 * op for dynamic resizing */
+ 	u32		target_highest_slotid;	/* Server max_slot target */
++	u32		server_highest_slotid;	/* Server highest slotid */
+ 	unsigned long	generation;		/* Generation counter for
+ 						   target_highest_slotid */
+ 	struct completion complete;
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 08c47db..3ddb08f 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -203,6 +203,7 @@ struct nfs4_sequence_res {
+ 	struct nfs4_slot	*sr_slot;	/* slot used to send request */
+ 	int			sr_status;	/* sequence operation status */
+ 	u32			sr_status_flags;
++	u32			sr_highest_slotid;
+ 	u32			sr_target_highest_slotid;
+ };
+ 
+-- 
+1.7.11.7
 
-> >>+	label->label = (void *)(label + 1);
-> >>+	label->len = NFS4_MAXLABELLEN;
-> >>+	/* 0 is the null format meaning that the data is not to be translated */
-> >>+	label->lfs = 0;
-> >>+	label->pi = 0;
-> >What's "pi"?
-> >
-> >--b.
-> 
-> In the LFS document we talk about how a policy identifier is a
-> recommended field. It isn't implemented yet as we're setting both
-> the LFS and the PI to 0 but I added it for when we put the LFS
-> mapping daemon in next. The idea is that even though we have a label
-> and we specify the format with the LFS we need to identify what
-> version of policy it is so we can ensure that the actual meaning of
-> a value is correct.
-
-And, my bad, this is in the spec--sorry, I need to go study it.
-
---b.
