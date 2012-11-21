@@ -1,131 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:55950 "EHLO mx2.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:59533 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753233Ab2K0OfW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Nov 2012 09:35:22 -0500
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 01/10] NFSD: Fold fault_inject.h into state.h
-Date: Tue, 27 Nov 2012 09:35:10 -0500
-Message-Id: <1354026919-13313-2-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1354026919-13313-1-git-send-email-bjschuma@netapp.com>
-References: <1354026919-13313-1-git-send-email-bjschuma@netapp.com>
+	id S1752971Ab2KVSmt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Nov 2012 13:42:49 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 10/20] NFSv4.1: Simplify slot allocation
+Date: Wed, 21 Nov 2012 17:43:09 -0500
+Message-Id: <1353537799-60488-11-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1353537799-60488-10-git-send-email-Trond.Myklebust@netapp.com>
+References: <1353537799-60488-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-10-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+Clean up the NFSv4.1 slot allocation by replacing nfs_find_slot() with
+a function nfs_alloc_slot() that returns a pointer to the nfs4_slot
+instead of an offset into the slot table.
 
-There were only a small number of functions in this file and since they
-all affect stored state I think it makes sense to put them in state.h
-instead.  I also dropped most static inline declarations since there are
-no callers when fault injection is not enabled.
-
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfsd/fault_inject.c |  1 -
- fs/nfsd/fault_inject.h | 28 ----------------------------
- fs/nfsd/nfs4state.c    |  1 -
- fs/nfsd/nfsctl.c       |  2 +-
- fs/nfsd/state.h        | 15 +++++++++++++++
- 5 files changed, 16 insertions(+), 31 deletions(-)
- delete mode 100644 fs/nfsd/fault_inject.h
+ fs/nfs/nfs4proc.c | 29 ++++++++++++++---------------
+ 1 file changed, 14 insertions(+), 15 deletions(-)
 
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-index e6c3815..0278112 100644
---- a/fs/nfsd/fault_inject.c
-+++ b/fs/nfsd/fault_inject.c
-@@ -10,7 +10,6 @@
- #include <linux/module.h>
- 
- #include "state.h"
--#include "fault_inject.h"
- 
- struct nfsd_fault_inject_op {
- 	char *file;
-diff --git a/fs/nfsd/fault_inject.h b/fs/nfsd/fault_inject.h
-deleted file mode 100644
-index 90bd057..0000000
---- a/fs/nfsd/fault_inject.h
-+++ /dev/null
-@@ -1,28 +0,0 @@
--/*
-- * Copyright (c) 2011 Bryan Schumaker <bjschuma@netapp.com>
-- *
-- * Function definitions for fault injection
-- */
--
--#ifndef LINUX_NFSD_FAULT_INJECT_H
--#define LINUX_NFSD_FAULT_INJECT_H
--
--#ifdef CONFIG_NFSD_FAULT_INJECTION
--int nfsd_fault_inject_init(void);
--void nfsd_fault_inject_cleanup(void);
--void nfsd_forget_clients(u64);
--void nfsd_forget_locks(u64);
--void nfsd_forget_openowners(u64);
--void nfsd_forget_delegations(u64);
--void nfsd_recall_delegations(u64);
--#else /* CONFIG_NFSD_FAULT_INJECTION */
--static inline int nfsd_fault_inject_init(void) { return 0; }
--static inline void nfsd_fault_inject_cleanup(void) {}
--static inline void nfsd_forget_clients(u64 num) {}
--static inline void nfsd_forget_locks(u64 num) {}
--static inline void nfsd_forget_openowners(u64 num) {}
--static inline void nfsd_forget_delegations(u64 num) {}
--static inline void nfsd_recall_delegations(u64 num) {}
--#endif /* CONFIG_NFSD_FAULT_INJECTION */
--
--#endif /* LINUX_NFSD_FAULT_INJECT_H */
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 7e5dfa1..2d6386f 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -44,7 +44,6 @@
- #include "xdr4.h"
- #include "vfs.h"
- #include "current_stateid.h"
--#include "fault_inject.h"
- 
- #include "netns.h"
- 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index dab350d..7e0d6db 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -19,7 +19,7 @@
- #include "idmap.h"
- #include "nfsd.h"
- #include "cache.h"
--#include "fault_inject.h"
-+#include "state.h"
- #include "netns.h"
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 7c2b037..59cef54 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -557,20 +557,18 @@ static int nfs4_sequence_done(struct rpc_task *task,
+ }
  
  /*
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 2deb6a8..b542bf2 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -496,4 +496,19 @@ extern void nfsd4_client_record_create(struct nfs4_client *clp);
- extern void nfsd4_client_record_remove(struct nfs4_client *clp);
- extern int nfsd4_client_record_check(struct nfs4_client *clp);
- extern void nfsd4_record_grace_done(struct nfsd_net *nn, time_t boot_time);
+- * nfs4_find_slot - efficiently look for a free slot
++ * nfs4_alloc_slot - efficiently look for a free slot
+  *
+- * nfs4_find_slot looks for an unset bit in the used_slots bitmap.
++ * nfs4_alloc_slot looks for an unset bit in the used_slots bitmap.
+  * If found, we mark the slot as used, update the highest_used_slotid,
+  * and respectively set up the sequence operation args.
+- * The slot number is returned if found, or NFS4_NO_SLOT otherwise.
+  *
+  * Note: must be called with under the slot_tbl_lock.
+  */
+-static u32
+-nfs4_find_slot(struct nfs4_slot_table *tbl)
++static struct nfs4_slot *nfs4_alloc_slot(struct nfs4_slot_table *tbl)
+ {
++	struct nfs4_slot *ret = NULL;
+ 	u32 slotid;
+-	u32 ret_id = NFS4_NO_SLOT;
+ 
+ 	dprintk("--> %s used_slots=%04lx highest_used=%u max_slots=%u\n",
+ 		__func__, tbl->used_slots[0], tbl->highest_used_slotid,
+@@ -582,11 +580,14 @@ nfs4_find_slot(struct nfs4_slot_table *tbl)
+ 	if (slotid > tbl->highest_used_slotid ||
+ 			tbl->highest_used_slotid == NFS4_NO_SLOT)
+ 		tbl->highest_used_slotid = slotid;
+-	ret_id = slotid;
++	ret = &tbl->slots[slotid];
++	ret->renewal_time = jiffies;
 +
-+/* nfs fault injection functions */
-+#ifdef CONFIG_NFSD_FAULT_INJECTION
-+int nfsd_fault_inject_init(void);
-+void nfsd_fault_inject_cleanup(void);
-+void nfsd_forget_clients(u64);
-+void nfsd_forget_locks(u64);
-+void nfsd_forget_openowners(u64);
-+void nfsd_forget_delegations(u64);
-+void nfsd_recall_delegations(u64);
-+#else /* CONFIG_NFSD_FAULT_INJECTION */
-+static inline int nfsd_fault_inject_init(void) { return 0; }
-+static inline void nfsd_fault_inject_cleanup(void) {}
-+#endif /* CONFIG_NFSD_FAULT_INJECTION */
-+
- #endif   /* NFSD4_STATE_H */
+ out:
+ 	dprintk("<-- %s used_slots=%04lx highest_used=%d slotid=%d \n",
+-		__func__, tbl->used_slots[0], tbl->highest_used_slotid, ret_id);
+-	return ret_id;
++		__func__, tbl->used_slots[0], tbl->highest_used_slotid,
++		ret ? ret->slot_nr : -1);
++	return ret;
+ }
+ 
+ static void nfs41_init_sequence(struct nfs4_sequence_args *args,
+@@ -606,7 +607,6 @@ int nfs41_setup_sequence(struct nfs4_session *session,
+ {
+ 	struct nfs4_slot *slot;
+ 	struct nfs4_slot_table *tbl;
+-	u32 slotid;
+ 
+ 	dprintk("--> %s\n", __func__);
+ 	/* slot already allocated? */
+@@ -633,8 +633,8 @@ int nfs41_setup_sequence(struct nfs4_session *session,
+ 		return -EAGAIN;
+ 	}
+ 
+-	slotid = nfs4_find_slot(tbl);
+-	if (slotid == NFS4_NO_SLOT) {
++	slot = nfs4_alloc_slot(tbl);
++	if (slot == NULL) {
+ 		rpc_sleep_on(&tbl->slot_tbl_waitq, task, NULL);
+ 		spin_unlock(&tbl->slot_tbl_lock);
+ 		dprintk("<-- %s: no free slots\n", __func__);
+@@ -643,12 +643,11 @@ int nfs41_setup_sequence(struct nfs4_session *session,
+ 	spin_unlock(&tbl->slot_tbl_lock);
+ 
+ 	rpc_task_set_priority(task, RPC_PRIORITY_NORMAL);
+-	slot = tbl->slots + slotid;
+-	slot->renewal_time = jiffies;
+ 
+ 	args->sa_slot = slot;
+ 
+-	dprintk("<-- %s slotid=%d seqid=%d\n", __func__, slotid, slot->seq_nr);
++	dprintk("<-- %s slotid=%d seqid=%d\n", __func__,
++			slot->slot_nr, slot->seq_nr);
+ 
+ 	res->sr_slot = slot;
+ 	res->sr_status_flags = 0;
 -- 
-1.8.0.1
+1.7.11.7
 
