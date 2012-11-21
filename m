@@ -1,104 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:4984 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752003Ab2KLU37 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Nov 2012 15:29:59 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Andy Adamson <androsadamson@gmail.com>
-CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFS: Add sequence_priviliged_ops for
- nfs4_proc_sequence()
-Date: Mon, 12 Nov 2012 20:29:57 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092D7F52@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1352745355-31157-1-git-send-email-bjschuma@netapp.com>
-	 <CAHVgHyWyKhjOc4AFY3LvK57k8JK5zNJDkRGwUjqNA4LMYcSzdw@mail.gmail.com>
-In-Reply-To: <CAHVgHyWyKhjOc4AFY3LvK57k8JK5zNJDkRGwUjqNA4LMYcSzdw@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from countercultured.net ([209.51.175.25]:33865 "HELO
+	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1753950Ab2KUAhh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Nov 2012 19:37:37 -0500
+Message-ID: <50AC224D.3080108@davequigley.com>
+Date: Tue, 20 Nov 2012 19:37:33 -0500
+From: Dave Quigley <dpquigl@davequigley.com>
 MIME-Version: 1.0
+To: Casey Schaufler <casey@schaufler-ca.com>
+CC: bfields@fieldses.org, trond.myklebust@netapp.com, sds@tycho.nsa.gov,
+        linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
+        linux-security-module@vger.kernel.org
+Subject: Re: Labeled NFS [v5]
+References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com> <50ABF1A5.2010406@schaufler-ca.com> <50AC1A74.7080105@davequigley.com> <50AC2117.801@schaufler-ca.com>
+In-Reply-To: <50AC2117.801@schaufler-ca.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTExLTEyIGF0IDE1OjIyIC0wNTAwLCBBbmR5IEFkYW1zb24gd3JvdGU6DQo+
-IE9uIE1vbiwgTm92IDEyLCAyMDEyIGF0IDE6MzUgUE0sICA8YmpzY2h1bWFAbmV0YXBwLmNvbT4g
-d3JvdGU6DQo+ID4gRnJvbTogQnJ5YW4gU2NodW1ha2VyIDxianNjaHVtYUBuZXRhcHAuY29tPg0K
-PiA+DQo+ID4gRHVyaW5nIHJlY292ZXJ5IHRoZSBORlM0X1NFU1NJT05fRFJBSU5JTkcgZmxhZyBt
-aWdodCBiZSBzZXQgb24gdGhlDQo+ID4gY2xpZW50IHN0cnVjdHVyZS4gIFRoaXMgY2FuIGNhdXNl
-IGxlYXNlIHJlbmV3YWwgdG8gYWJvcnQgd2hlbg0KDQpOb3QgbGVhc2UgcmVuZXdhbC4gSXQgaXMg
-bGVhc2UgdmVyaWZpY2F0aW9uIChpLmUuIGNoZWNraW5nIHRoYXQgd2UgaGF2ZQ0KYSB2YWxpZCBs
-ZWFzZSBhbmQgc2Vzc2lvbikgdGhhdCB3aWxsIGRlYWRsb2NrLg0KDQo+ID4gbmZzNDFfc2V0dXBf
-c2VxdWVuY2Ugc2VlcyB0aGF0IHdlIGFyZSBkb2luZyByZWNvdmVyeS4gIEFzIGEgcmVzdWx0LCB0
-aGUNCj4gPiBjbGllbnQgbmV2ZXIgcmVjb3ZlcnMgYW5kIGFsbCBhY3Rpdml0eSB3aXRoIHRoZSBO
-RlMgc2VydmVyIGhhbHRzLg0KPiANCj4gDQo+IFdoZW4gZG9lcyB0aGlzIGhhcHBlbj8gU2F5IHRo
-ZSBzZXNzaW9uIGlzIGRyYWluaW5nLCBhbmQgYW4gUlBDIHJldHVybnMNCj4gZnJvbSBvbmUgb2Yg
-dGhlIGNvbXBvdW5kcyBzdWNoIGFzIG5mc19vcGVuLCBuZnNfbG9ja3UgZXRjIHdob3NlDQo+IHJw
-Y19jYWxsX2RvbmUgcm91dGluZSBjYWxscyByZW5ld19sZWFzZSBhZnRlciBmcmVlaW5nIGl0J3Mg
-c2xvdC4gIExpa2UNCj4gYWxsIGNhbGxzIG9uIGEgZHJhaW5pbmcgc2Vzc2lvbiwgdGhlIHJlbmV3
-X2xlYXNlIHNsZWVwcyBvbiB0aGUgc2Vzc2lvbg0KPiBzbG90X3RibF93YWl0cSAtIGlzIHRoaXMg
-d2hhdCB5b3UgbWVhbiBieSAiY2F1c2VzIGxlYXNlIHJlbmV3YWwgdG8NCj4gYWJvcnQiPyBIb3cg
-ZG9lcyB0aGlzIGNhdXNlIHRoZSBjbGllbnQgdG8gbmV2ZXIgcmVjb3Zlcj8NCj4gDQo+IFRoZSBv
-bmx5IG90aGVyIGNhbGwgdG8gcmVuZXdfbGVhc2UgaXMgZnJvbSB0aGUgc3RhdGUgbWFuYWdlciBp
-dHNlbGYNCj4gd2hpY2ggcnVucyBvbmUgZnVuY3Rpb24gYXQgYSB0aW1lLCBhbmQgd2lsbCBub3Qg
-Y2FsbCByZW5ld19sZWFzZSB1bnRpbA0KPiB0aGUgcmVjb3ZlcnkgaXMgb3Zlci4uLi4NCj4gDQo+
-IFdoYXQgYW0gSSBtaXNzaW5nLi4uLj8NCg0KbmZzNF9jaGVja19sZWFzZSgpIGlzIHJ1biBleGNs
-dXNpdmVseSBieSB0aGUgc3RhdGUgbWFuYWdlciB0aHJlYWQgaW4NCm9yZGVyIHRvIGNoZWNrIHRo
-YXQgdGhlIGNsaWVudGlkIChhbmQgc2Vzc2lvbiBpZCBvbiBORlN2NC4xKSBhcmUgdmFsaWQuDQpJ
-dCB3aWxsIGRlYWRsb2NrIHRoZSBzdGF0ZSBtYW5hZ2VyIHRocmVhZCBpZiBORlM0X1NFU1NJT05f
-RFJBSU5JTkcgaXMNCmFscmVhZHkgc2V0Lg0KDQo+IC0tPkFuZHkNCj4gDQo+IA0KPiA+DQo+ID4g
-U2lnbmVkLW9mZi1ieTogQnJ5YW4gU2NodW1ha2VyIDxianNjaHVtYUBuZXRhcHAuY29tPg0KPiA+
-IC0tLQ0KPiA+ICBmcy9uZnMvbmZzNHByb2MuYyB8IDIxICsrKysrKysrKysrKysrKysrLS0tLQ0K
-PiA+ICAxIGZpbGUgY2hhbmdlZCwgMTcgaW5zZXJ0aW9ucygrKSwgNCBkZWxldGlvbnMoLSkNCj4g
-Pg0KPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNHByb2MuYyBiL2ZzL25mcy9uZnM0cHJvYy5j
-DQo+ID4gaW5kZXggNWVlYzQ0Mi4uNTM3MTgxYyAxMDA2NDQNCj4gPiAtLS0gYS9mcy9uZnMvbmZz
-NHByb2MuYw0KPiA+ICsrKyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+ID4gQEAgLTYxMzgsMTMgKzYx
-MzgsMjYgQEAgc3RhdGljIHZvaWQgbmZzNDFfc2VxdWVuY2VfcHJlcGFyZShzdHJ1Y3QgcnBjX3Rh
-c2sgKnRhc2ssIHZvaWQgKmRhdGEpDQo+ID4gICAgICAgICBycGNfY2FsbF9zdGFydCh0YXNrKTsN
-Cj4gPiAgfQ0KPiA+DQo+ID4gK3N0YXRpYyB2b2lkIG5mczQxX3NlcXVlbmNlX3ByZXBhcmVfcHJp
-dmlsZWdlZChzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2ssIHZvaWQgKmRhdGEpDQo+ID4gK3sNCj4gPiAr
-ICAgICAgIHJwY190YXNrX3NldF9wcmlvcml0eSh0YXNrLCBSUENfUFJJT1JJVFlfUFJJVklMRUdF
-RCk7DQo+ID4gKyAgICAgICBuZnM0MV9zZXF1ZW5jZV9wcmVwYXJlKHRhc2ssIGRhdGEpOw0KPiA+
-ICt9DQo+ID4gKw0KPiA+ICBzdGF0aWMgY29uc3Qgc3RydWN0IHJwY19jYWxsX29wcyBuZnM0MV9z
-ZXF1ZW5jZV9vcHMgPSB7DQo+ID4gICAgICAgICAucnBjX2NhbGxfZG9uZSA9IG5mczQxX3NlcXVl
-bmNlX2NhbGxfZG9uZSwNCj4gPiAgICAgICAgIC5ycGNfY2FsbF9wcmVwYXJlID0gbmZzNDFfc2Vx
-dWVuY2VfcHJlcGFyZSwNCj4gPiAgICAgICAgIC5ycGNfcmVsZWFzZSA9IG5mczQxX3NlcXVlbmNl
-X3JlbGVhc2UsDQo+ID4gIH07DQo+ID4NCj4gPiAtc3RhdGljIHN0cnVjdCBycGNfdGFzayAqX25m
-czQxX3Byb2Nfc2VxdWVuY2Uoc3RydWN0IG5mc19jbGllbnQgKmNscCwgc3RydWN0IHJwY19jcmVk
-ICpjcmVkKQ0KPiA+ICtzdGF0aWMgY29uc3Qgc3RydWN0IHJwY19jYWxsX29wcyBuZnM0MV9zZXF1
-ZW5jZV9wcml2aWxlZ2VkX29wcyA9IHsNCj4gPiArICAgICAgIC5ycGNfY2FsbF9kb25lID0gbmZz
-NDFfc2VxdWVuY2VfY2FsbF9kb25lLA0KPiA+ICsgICAgICAgLnJwY19jYWxsX3ByZXBhcmUgPSBu
-ZnM0MV9zZXF1ZW5jZV9wcmVwYXJlX3ByaXZpbGVnZWQsDQo+ID4gKyAgICAgICAucnBjX3JlbGVh
-c2UgPSBuZnM0MV9zZXF1ZW5jZV9yZWxlYXNlLA0KPiA+ICt9Ow0KPiA+ICsNCj4gPiArc3RhdGlj
-IHN0cnVjdCBycGNfdGFzayAqX25mczQxX3Byb2Nfc2VxdWVuY2Uoc3RydWN0IG5mc19jbGllbnQg
-KmNscCwgc3RydWN0IHJwY19jcmVkICpjcmVkLA0KPiA+ICsgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgIGNvbnN0IHN0cnVjdCBycGNfY2FsbF9vcHMgKnNlcV9vcHMp
-DQo+ID4gIHsNCj4gPiAgICAgICAgIHN0cnVjdCBuZnM0X3NlcXVlbmNlX2RhdGEgKmNhbGxkYXRh
-Ow0KPiA+ICAgICAgICAgc3RydWN0IHJwY19tZXNzYWdlIG1zZyA9IHsNCj4gPiBAQCAtNjE1NCw3
-ICs2MTY3LDcgQEAgc3RhdGljIHN0cnVjdCBycGNfdGFzayAqX25mczQxX3Byb2Nfc2VxdWVuY2Uo
-c3RydWN0IG5mc19jbGllbnQgKmNscCwgc3RydWN0IHJwY18NCj4gPiAgICAgICAgIHN0cnVjdCBy
-cGNfdGFza19zZXR1cCB0YXNrX3NldHVwX2RhdGEgPSB7DQo+ID4gICAgICAgICAgICAgICAgIC5y
-cGNfY2xpZW50ID0gY2xwLT5jbF9ycGNjbGllbnQsDQo+ID4gICAgICAgICAgICAgICAgIC5ycGNf
-bWVzc2FnZSA9ICZtc2csDQo+ID4gLSAgICAgICAgICAgICAgIC5jYWxsYmFja19vcHMgPSAmbmZz
-NDFfc2VxdWVuY2Vfb3BzLA0KPiA+ICsgICAgICAgICAgICAgICAuY2FsbGJhY2tfb3BzID0gc2Vx
-X29wcywNCj4gPiAgICAgICAgICAgICAgICAgLmZsYWdzID0gUlBDX1RBU0tfQVNZTkMgfCBSUENf
-VEFTS19TT0ZULA0KPiA+ICAgICAgICAgfTsNCj4gPg0KPiA+IEBAIC02MTgxLDcgKzYxOTQsNyBA
-QCBzdGF0aWMgaW50IG5mczQxX3Byb2NfYXN5bmNfc2VxdWVuY2Uoc3RydWN0IG5mc19jbGllbnQg
-KmNscCwgc3RydWN0IHJwY19jcmVkICpjcg0KPiA+DQo+ID4gICAgICAgICBpZiAoKHJlbmV3X2Zs
-YWdzICYgTkZTNF9SRU5FV19USU1FT1VUKSA9PSAwKQ0KPiA+ICAgICAgICAgICAgICAgICByZXR1
-cm4gMDsNCj4gPiAtICAgICAgIHRhc2sgPSBfbmZzNDFfcHJvY19zZXF1ZW5jZShjbHAsIGNyZWQp
-Ow0KPiA+ICsgICAgICAgdGFzayA9IF9uZnM0MV9wcm9jX3NlcXVlbmNlKGNscCwgY3JlZCwgJm5m
-czQxX3NlcXVlbmNlX29wcyk7DQo+ID4gICAgICAgICBpZiAoSVNfRVJSKHRhc2spKQ0KPiA+ICAg
-ICAgICAgICAgICAgICByZXQgPSBQVFJfRVJSKHRhc2spOw0KPiA+ICAgICAgICAgZWxzZQ0KPiA+
-IEBAIC02MTk1LDcgKzYyMDgsNyBAQCBzdGF0aWMgaW50IG5mczRfcHJvY19zZXF1ZW5jZShzdHJ1
-Y3QgbmZzX2NsaWVudCAqY2xwLCBzdHJ1Y3QgcnBjX2NyZWQgKmNyZWQpDQo+ID4gICAgICAgICBz
-dHJ1Y3QgcnBjX3Rhc2sgKnRhc2s7DQo+ID4gICAgICAgICBpbnQgcmV0Ow0KPiA+DQo+ID4gLSAg
-ICAgICB0YXNrID0gX25mczQxX3Byb2Nfc2VxdWVuY2UoY2xwLCBjcmVkKTsNCj4gPiArICAgICAg
-IHRhc2sgPSBfbmZzNDFfcHJvY19zZXF1ZW5jZShjbHAsIGNyZWQsICZuZnM0MV9zZXF1ZW5jZV9w
-cml2aWxlZ2VkX29wcyk7DQo+ID4gICAgICAgICBpZiAoSVNfRVJSKHRhc2spKSB7DQo+ID4gICAg
-ICAgICAgICAgICAgIHJldCA9IFBUUl9FUlIodGFzayk7DQo+ID4gICAgICAgICAgICAgICAgIGdv
-dG8gb3V0Ow0KPiA+IC0tDQo+ID4gMS44LjANCj4gPg0KPiA+IC0tDQo+ID4gVG8gdW5zdWJzY3Jp
-YmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIg
-aW4NCj4gPiB0aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9y
-Zw0KPiA+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFq
-b3Jkb21vLWluZm8uaHRtbA0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVu
-dCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5u
-ZXRhcHAuY29tDQo=
+On 11/20/2012 7:32 PM, Casey Schaufler wrote:
+> On 11/20/2012 4:04 PM, Dave Quigley wrote:
+>> On 11/20/2012 4:09 PM, Casey Schaufler wrote:
+>>> On 11/11/2012 10:15 PM, David Quigley wrote:
+>>>> The NFSv4 working group has finally accepted Labeled NFS as part of
+>>>> the NFSv4.2
+>>>> specification and it has been decided that a reposting of the
+>>>> Labeled NFS code
+>>>> for inclusion into mainline was a good idea. The patches have been
+>>>> rebased onto
+>>>> v3.7-rc2 and have been tested against the SELinux testsuite with the
+>>>> only
+>>>> failures being for features not supported by NFS.
+>>>
+>>> I'm trying to get the user space tools built so that I can
+>>> do Smack testing. The instructions on selinuxproject.org
+>>> seen out of date with regard to the packages required to
+>>> build the NFS tools. I have failed to build on Fedora 17
+>>> and Ubuntu 12.04. Any pointers beyond what's on the wiki?
+>>>
+>>> Thank you.
+>>>
+>>>
+>>>    --
+>>> This message was distributed to subscribers of the selinux mailing list.
+>>> If you no longer wish to subscribe, send mail to
+>>> majordomo@tycho.nsa.gov with
+>>> the words "unsubscribe selinux" without quotes as the message.
+>>>
+>>>
+>>
+>> There are a bunch of libs that need to be installed for it to compile
+>> properly.
+>
+> Yes, indeed!
+>
+>> Unfortunately there are new dependencies which have been added since I
+>> updated the wiki last.
+>
+> I found that to be the case as well.
+>
+>> unfortunately don't remember what they are.
+>
+> And they're not obvious.
+>
+>> What I did to build it last time though was to apply the one patch
+>> onto the latest tag from the nfs-utils tree.
+>
+> Sound simple enough if you're building the nfs-util tree on a daily basis
+> I suppose. Not something that I do regularly, alas.
+>
+>
+>> Unfortunately I don't have a clean vm on hand at the moment so I can't
+>> manually go through and list all the packages for you. A heavy handed
+>> approach that should still work is that I can give you my rpm list
+>> from my VM and then you can just make sure you have all the devel
+>> packages installed.
+>
+> I'd be up for that.
+>
+>
+>> Another option would be to grab the nfs-utils srpm for fedora 17 and
+>> just add the patch into the spec file.
+>
+> Yeah. Or not.
+>
+>> That would work too and tell you the build dependencies you need. I
+>> could also just try to make that for you and put the RPM up but that
+>> wouldn't be for a few days at the earliest.
+>
+> That, or I could give you the instructions on how to enable and test
+> Smack.
+>
+> Thank you.
+>
+>
+>>
+>> Dave
+>>
+>
+
+
+Or I could just give you this link and you should be good to go ;)
+
+http://www.selinuxproject.org/~dpquigl/nfs-utils-rpms/
+
+I haven't tried it but it should work. If it doesn't let me know and 
+i'll try to fix it on my end. I'd imagine you might need to yum remove 
+nfs-utils first before adding this new one or you could also try an rpm 
+with the upgrade flag for this instead. Good luck.
+
+Dave
