@@ -1,51 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42632 "EHLO fieldses.org"
+Received: from mx1.netapp.com ([216.240.18.38]:38784 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1768126Ab2KOPAm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Nov 2012 10:00:42 -0500
-Date: Thu, 15 Nov 2012 10:00:36 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Bryan Schumaker <bjschuma@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 00/10] NFSD: Improve fault injection
-Message-ID: <20121115150036.GG539@fieldses.org>
-References: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
- <20121114224846.GE539@fieldses.org>
- <50A5025C.8070201@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <50A5025C.8070201@netapp.com>
+	id S1752232Ab2KVSsJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Nov 2012 13:48:09 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 01/20] NFSv4.1: Don't confuse CREATE_SESSION arguments and results
+Date: Wed, 21 Nov 2012 17:43:00 -0500
+Message-Id: <1353537799-60488-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1353537799-60488-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1353537799-60488-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 15, 2012 at 09:55:24AM -0500, Bryan Schumaker wrote:
-> On 11/14/2012 05:48 PM, J. Bruce Fields wrote:
-> > On Tue, Oct 30, 2012 at 04:50:44PM -0400, bjschuma@netapp.com wrote:
-> >> From: Bryan Schumaker <bjschuma@netapp.com>
-> >>
-> >> While working on p2p-nfs, I discovered that I sometimes need to clear
-> >> state for a specific client to test all possible error recovery conditions.
-> >> The current fault injection code deletes state as it find it, so it can
-> >> be difficult to guess which state will be forgotten.  In addition, I
-> >> currently print out the amount of state forgotten but I don't give details
-> >> like "Forgot 3 locks from client w.x.y.z".  These patches set out to
-> >> improve that.
-> >>
-> >> The first 7 patches clean up the current code and prepare it for specific
-> >> client state removal.  Patch 8 adds prints information to the server's logs
-> >> when a fault injection file is read (such as "Client w.x.y.z has 3 open
-> >> files").  Patch 9 adds in a custom file operations structure so users can
-> >> write strings to fault injection files in addition to u64s.  Finally, patch
-> >> 10 allows users to remove state by writing a client's IP address to one of
-> >> the files.
-> > 
-> > Apologies for putting you off again, but: I'd like to get Stanislav's
-> > patches sorted out first.  I think that shouldn't take too long--bug me
-> > in another week or so if I haven't come back to these by then.  These
-> > may need a little rebasing at that point.
-> 
-> Ok, I'll add "bug Bruce" to my calendar... I took a quick glance through his patches and I don't think rebasing will be too hard.
+Don't store the target request and response sizes in the same
+variables used to store the server's replies to those targets.
 
-Good, thanks!
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c         | 30 +++++++++++++++++-------------
+ include/linux/nfs_fs_sb.h |  3 +++
+ 2 files changed, 20 insertions(+), 13 deletions(-)
 
---b.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index a32d953..3e572dc 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5807,8 +5807,8 @@ void nfs4_destroy_session(struct nfs4_session *session)
+ static void nfs4_init_channel_attrs(struct nfs41_create_session_args *args)
+ {
+ 	struct nfs4_session *session = args->client->cl_session;
+-	unsigned int mxrqst_sz = session->fc_attrs.max_rqst_sz,
+-		     mxresp_sz = session->fc_attrs.max_resp_sz;
++	unsigned int mxrqst_sz = session->fc_target_max_rqst_sz,
++		     mxresp_sz = session->fc_target_max_resp_sz;
+ 
+ 	if (mxrqst_sz == 0)
+ 		mxrqst_sz = NFS_MAX_FILE_IO_SIZE;
+@@ -6015,24 +6015,28 @@ int nfs4_init_session(struct nfs_server *server)
+ {
+ 	struct nfs_client *clp = server->nfs_client;
+ 	struct nfs4_session *session;
+-	unsigned int rsize, wsize;
++	unsigned int target_max_rqst_sz = NFS_MAX_FILE_IO_SIZE;
++	unsigned int target_max_resp_sz = NFS_MAX_FILE_IO_SIZE;
+ 
+ 	if (!nfs4_has_session(clp))
+ 		return 0;
+ 
++	if (server->rsize != 0)
++		target_max_resp_sz = server->rsize;
++	target_max_resp_sz += nfs41_maxread_overhead;
++
++	if (server->wsize != 0)
++		target_max_rqst_sz = server->wsize;
++	target_max_rqst_sz += nfs41_maxwrite_overhead;
++
+ 	session = clp->cl_session;
+ 	spin_lock(&clp->cl_lock);
+ 	if (test_and_clear_bit(NFS4_SESSION_INITING, &session->session_state)) {
+-
+-		rsize = server->rsize;
+-		if (rsize == 0)
+-			rsize = NFS_MAX_FILE_IO_SIZE;
+-		wsize = server->wsize;
+-		if (wsize == 0)
+-			wsize = NFS_MAX_FILE_IO_SIZE;
+-
+-		session->fc_attrs.max_rqst_sz = wsize + nfs41_maxwrite_overhead;
+-		session->fc_attrs.max_resp_sz = rsize + nfs41_maxread_overhead;
++		/* Initialise targets and channel attributes */
++		session->fc_target_max_rqst_sz = target_max_rqst_sz;
++		session->fc_attrs.max_rqst_sz = target_max_rqst_sz;
++		session->fc_target_max_resp_sz = target_max_resp_sz;
++		session->fc_attrs.max_resp_sz = target_max_resp_sz;
+ 	}
+ 	spin_unlock(&clp->cl_lock);
+ 
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index a9e76ee..97c8f91 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -242,6 +242,9 @@ struct nfs4_session {
+ 	struct nfs4_channel_attrs	bc_attrs;
+ 	struct nfs4_slot_table		bc_slot_table;
+ 	struct nfs_client		*clp;
++	/* Create session arguments */
++	unsigned int			fc_target_max_rqst_sz;
++	unsigned int			fc_target_max_resp_sz;
+ };
+ 
+ #endif /* CONFIG_NFS_V4 */
+-- 
+1.7.11.7
+
