@@ -1,87 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:16944 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755875Ab2KZURO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Nov 2012 15:17:14 -0500
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id qAQKHDi4001692
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 26 Nov 2012 15:17:13 -0500
-Received: from smallhat.bos.devel.redhat.com (vpn-9-97.rdu.redhat.com [10.11.9.97])
-	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id qAQKHBB3026413
-	for <linux-nfs@vger.kernel.org>; Mon, 26 Nov 2012 15:17:13 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 3/3] mountd: Return ENOENT when an export does not exist.
-Date: Mon, 26 Nov 2012 15:17:09 -0500
-Message-Id: <1353961029-6317-3-git-send-email-steved@redhat.com>
-In-Reply-To: <1353961029-6317-1-git-send-email-steved@redhat.com>
-References: <1353961029-6317-1-git-send-email-steved@redhat.com>
+Received: from smtp105.biz.mail.bf1.yahoo.com ([98.139.221.43]:40796 "HELO
+	smtp105.biz.mail.bf1.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1752776Ab2KUCwO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Nov 2012 21:52:14 -0500
+Message-ID: <50AC41DC.5070607@schaufler-ca.com>
+Date: Tue, 20 Nov 2012 18:52:12 -0800
+From: Casey Schaufler <casey@schaufler-ca.com>
+MIME-Version: 1.0
+To: Dave Quigley <dpquigl@davequigley.com>
+CC: bfields@fieldses.org, trond.myklebust@netapp.com, sds@tycho.nsa.gov,
+        linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
+        linux-security-module@vger.kernel.org,
+        Casey Schaufler <casey@schaufler-ca.com>
+Subject: Re: Labeled NFS [v5]
+References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com> <50ABF1A5.2010406@schaufler-ca.com> <50AC1A74.7080105@davequigley.com> <50AC2117.801@schaufler-ca.com> <50AC224D.3080108@davequigley.com>
+In-Reply-To: <50AC224D.3080108@davequigley.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When an export does not exist, ENOENT should be
-returned instead of EACCES
+On 11/20/2012 4:37 PM, Dave Quigley wrote:
+> ...
+>
+>
+> Or I could just give you this link and you should be good to go ;)
+>
+> http://www.selinuxproject.org/~dpquigl/nfs-utils-rpms/
+>
+> I haven't tried it but it should work. If it doesn't let me know and
+> i'll try to fix it on my end. I'd imagine you might need to yum remove
+> nfs-utils first before adding this new one or you could also try an
+> rpm with the upgrade flag for this instead. Good luck.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- utils/mountd/auth.c   | 11 ++++++++++-
- utils/mountd/mountd.c |  5 ++++-
- 2 files changed, 14 insertions(+), 2 deletions(-)
+I don't care what Eric says, you're OK with me.
 
-diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
-index 508040a..c81c3a8 100644
---- a/utils/mountd/auth.c
-+++ b/utils/mountd/auth.c
-@@ -232,7 +232,7 @@ auth_authenticate(const char *what, const struct sockaddr *caller,
- 	char		*p = NULL;
- 	char		buf[INET6_ADDRSTRLEN];
- 	struct addrinfo *ai = NULL;
--	enum auth_error	error = bad_path;
-+	enum auth_error	error = bad_path, first_error = success;
- 
- 	if (path[0] != '/') {
- 		xlog(L_WARNING, "Bad path in %s request from %s: \"%s\"",
-@@ -258,7 +258,15 @@ auth_authenticate(const char *what, const struct sockaddr *caller,
- 		p = strrchr(epath, '/');
- 		if (p == epath) p++;
- 		*p = '\0';
-+		/* 
-+		 * Recored the first error, ignoring the error when "/" 
-+		 * is tried and fails
-+		 */
-+		if (first_error == success)
-+			first_error = error;
- 	}
-+	if (first_error != success)
-+		error = first_error;
- 
- 	switch (error) {
- 	case bad_path:
-@@ -277,6 +285,7 @@ auth_authenticate(const char *what, const struct sockaddr *caller,
- 		break;
- 
- 	case not_exported:
-+		errno = ENOENT;
- 		xlog(L_WARNING, "refused %s request from %s for %s (%s): not exported",
- 		     what, ai->ai_canonname, path, epath);
- 		break;
-diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-index 993b6e6..efd4b49 100644
---- a/utils/mountd/mountd.c
-+++ b/utils/mountd/mountd.c
-@@ -472,7 +472,10 @@ get_rootfh(struct svc_req *rqstp, dirpath *path, nfs_export **expret,
- 	/* Now authenticate the intruder... */
- 	exp = auth_authenticate("mount", sap, p);
- 	if (exp == NULL) {
--		*error = MNT3ERR_ACCES;
-+		if (errno == ENOENT)
-+			*error = MNT3ERR_NOENT;
-+		else
-+			*error = MNT3ERR_ACCES;
- 		return NULL;
- 	}
- 	if (stat(p, &stb) < 0) {
--- 
-1.7.11.7
+The behavior is interesting with a Smack kernel:
+
+I create an export using the recommended options (sec=unix,security_label, ...)
+of /pub. Then , I create a directory sub with the floor ("_") label and a file
+named Pop labeled "Pop". I mount the filesystem at /mnt.
+
+# ls -l /mnt
+ls: cannot access /mnt/Pop: Permission Denied
+total 4
+?????????? ? ?    ?       ?            ? Pop
+drwxr-xr-x 2 root root 4096 Nov 20 17:57 sub
+
+which is exactly correct!
+
+Unfortunately, I get the exact same result if the process
+is run with the Pop label. A process run with the Pop label
+should be able to see the attributes of the file Pop.
+
+It looks as if the basic mechanism is working, but that there
+is some detail that is not working right. I will have to dig
+deeper to understand what's up. Let me know if you have ideas.
+
+
+>
+> Dave
+>
+> -- 
+> This message was distributed to subscribers of the selinux mailing list.
+> If you no longer wish to subscribe, send mail to
+> majordomo@tycho.nsa.gov with
+> the words "unsubscribe selinux" without quotes as the message.
+>
 
