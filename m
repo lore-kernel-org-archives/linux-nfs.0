@@ -1,54 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f174.google.com ([209.85.160.174]:51474 "EHLO
-	mail-gh0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933039Ab2KEPXF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Nov 2012 10:23:05 -0500
-Received: by mail-gh0-f174.google.com with SMTP id g15so1012583ghb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 05 Nov 2012 07:23:05 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v9 24/34] vfs: make lgetxattr retry once on ESTALE
-Date: Mon,  5 Nov 2012 10:22:03 -0500
-Message-Id: <1352128933-28526-25-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
-References: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
+Received: from mx12.netapp.com ([216.240.18.77]:6115 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755321Ab2KVSmj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Nov 2012 13:42:39 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 05/20] NFSv4.1: clean up nfs4_recall_slot to use nfs4_alloc_slots
+Date: Wed, 21 Nov 2012 17:43:04 -0500
+Message-Id: <1353537799-60488-6-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1353537799-60488-5-git-send-email-Trond.Myklebust@netapp.com>
+References: <1353537799-60488-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1353537799-60488-5-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/xattr.c | 15 ++++++++++-----
- 1 file changed, 10 insertions(+), 5 deletions(-)
+ fs/nfs/nfs4_fs.h   | 2 ++
+ fs/nfs/nfs4proc.c  | 2 +-
+ fs/nfs/nfs4state.c | 3 +--
+ 3 files changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/fs/xattr.c b/fs/xattr.c
-index 42284fc..3a5e3ff 100644
---- a/fs/xattr.c
-+++ b/fs/xattr.c
-@@ -505,12 +505,17 @@ SYSCALL_DEFINE4(lgetxattr, const char __user *, pathname,
- {
- 	struct path path;
- 	ssize_t error;
-+	unsigned int try = 0;
-+	unsigned int lookup_flags = 0;
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index a525fde..36880b9 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -258,6 +258,8 @@ extern int nfs4_proc_get_lease_time(struct nfs_client *clp,
+ extern int nfs4_proc_layoutcommit(struct nfs4_layoutcommit_data *data,
+ 				  bool sync);
  
--	error = user_lpath(pathname, &path);
--	if (error)
--		return error;
--	error = getxattr(path.dentry, name, value, size);
--	path_put(&path);
-+	do {
-+		error = user_path_at(AT_FDCWD, pathname, lookup_flags, &path);
-+		if (error)
-+			break;
-+		error = getxattr(path.dentry, name, value, size);
-+		path_put(&path);
-+		lookup_flags |= LOOKUP_REVAL;
-+	} while (retry_estale(error, try++));
- 	return error;
++extern struct nfs4_slot *nfs4_alloc_slots(u32 max_slots, gfp_t gfp_flags);
++
+ static inline bool
+ is_ds_only_client(struct nfs_client *clp)
+ {
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 0402ebb..5e5cc5a 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5656,7 +5656,7 @@ int nfs4_proc_get_lease_time(struct nfs_client *clp, struct nfs_fsinfo *fsinfo)
+ 	return status;
  }
+ 
+-static struct nfs4_slot *nfs4_alloc_slots(u32 max_slots, gfp_t gfp_flags)
++struct nfs4_slot *nfs4_alloc_slots(u32 max_slots, gfp_t gfp_flags)
+ {
+ 	return kmalloc_array(max_slots, sizeof(struct nfs4_slot), gfp_flags);
+ }
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index f3d1bc4..96fcbb9 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -2033,8 +2033,7 @@ static int nfs4_recall_slot(struct nfs_client *clp)
+ 		return 0;
+ 	nfs4_begin_drain_session(clp);
+ 	fc_tbl = &clp->cl_session->fc_slot_table;
+-	new = kmalloc(fc_tbl->target_max_slots * sizeof(struct nfs4_slot),
+-		      GFP_NOFS);
++	new = nfs4_alloc_slots(fc_tbl->target_max_slots, GFP_NOFS);
+         if (!new)
+ 		return -ENOMEM;
  
 -- 
 1.7.11.7
