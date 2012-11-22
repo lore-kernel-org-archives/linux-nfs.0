@@ -1,147 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:55950 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754030Ab2K0Of0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Nov 2012 09:35:26 -0500
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 06/10] NFSD: Clean up forgetting and recalling delegations
-Date: Tue, 27 Nov 2012 09:35:15 -0500
-Message-Id: <1354026919-13313-7-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1354026919-13313-1-git-send-email-bjschuma@netapp.com>
-References: <1354026919-13313-1-git-send-email-bjschuma@netapp.com>
+Received: from relay.parallels.com ([195.214.232.42]:55376 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752556Ab2KVTDt convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Nov 2012 14:03:49 -0500
+Message-ID: <50ADDCB4.2050603@parallels.com>
+Date: Thu, 22 Nov 2012 12:05:08 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Jeff Layton <jlayton@redhat.com>, <linux-nfs@vger.kernel.org>,
+        <devel@openvz.org>, <Trond.Myklebust@netapp.com>,
+        <linux-kernel@vger.kernel.org>
+Subject: Re: [RFC PATCH v2 00/15] NFSd state containerization
+References: <20121114152018.4708.63125.stgit@localhost.localdomain> <20121114220036.GD539@fieldses.org> <20121115133408.23db9ebb@corrin.poochiereds.net> <20121121204408.GA23097@fieldses.org>
+In-Reply-To: <20121121204408.GA23097@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+22.11.2012 00:44, J. Bruce Fields пишет:
+> On Thu, Nov 15, 2012 at 01:34:08PM -0500, Jeff Layton wrote:
+>> On Wed, 14 Nov 2012 17:00:36 -0500
+>> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+>>
+>>> On Wed, Nov 14, 2012 at 06:20:59PM +0300, Stanislav Kinsbursky wrote:
+>>>> This patch set is my first attempt to containerize NFSv4 state - i.e. make it
+>>>> works in networks namespace context.
+>>>> I admit, that some of this new code could be partially rewritten during future
+>>>> NFSd containerization.
+>>>> But the overall idea look more or less correct to me.
+>>>> So, the main things here are:
+>>>> 1) making nfs4_client network namespace aware.
+>>>> 2) Allocating all hashes (except file_hashtbl and reclaim_str_hashtbl) per
+>>>> network namespace context on NFSd start (not init) and destroying on NFSd
+>>>> state shutdown.
+>>>> 3) Allocating of reclaim_str_hashtbl on legacy tracker start and destroying on
+>>>> legacy tracker stop.
+>>>> 4) Moving of client_lru and close_lru lists to per-net data.
+>>>> 5) Making lundromat network namespace aware.
+>>>
+>>> These look OK and pass my tests.  Jeff, do the revised recovery bits
+>>> look OK?
+>>>
+>>> Have you done any testing?
+>>>
+>>> It'd be interesting, for example, to know if there are any pynfs that
+>>> fail against the server in a non-init network namespace, but pass
+>>> normally.
+>>>
+>>> --b.
+>>>
+>>
+>> I looked over the patches and they look sane to me. I move that they go
+>> into your -next branch to soak for a bit.
+>
+> Stanislav, actually, I'm unclear, since you labeled these "RFC": do you
+> consider these patches ready?
+>
 
-Once I have a client, I can easily use its delegation list rather than
-searching the file hash table for delegations to remove.
+Yes, I consider them ready.
+I added the "RFC" mark, because I'm not completely sure, this this code wont' be
+partially rewritten in future.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfsd/nfs4state.c | 94 ++++++++++++++++++++++++++++-------------------------
- 1 file changed, 50 insertions(+), 44 deletions(-)
+> --b.
+>
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 94c009e..84bd4c4 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4645,6 +4645,52 @@ u64 nfsd_forget_client_openowners(struct nfsd_net *nn, struct nfs4_client *clp,
- 	return nfsd_foreach_client_open(nn, clp, max, release_openowner);
- }
- 
-+static u64 nfsd_find_all_delegations(struct nfs4_client *clp, u64 max,
-+				     struct list_head *victims)
-+{
-+	struct nfs4_delegation *dp, *next;
-+	u64 count = 0;
-+
-+	list_for_each_entry_safe(dp, next, &clp->cl_delegations, dl_perclnt) {
-+		if (victims)
-+			list_move(&dp->dl_recall_lru, victims);
-+		if (++count == max)
-+			break;
-+	}
-+	return count;
-+}
-+
-+u64 nfsd_forget_client_delegations(struct nfsd_net *nn, struct nfs4_client *clp, u64 max)
-+{
-+	struct nfs4_delegation *dp, *next;
-+	LIST_HEAD(victims);
-+	u64 count;
-+
-+	spin_lock(&recall_lock);
-+	count = nfsd_find_all_delegations(clp, max, &victims);
-+	spin_unlock(&recall_lock);
-+
-+	list_for_each_entry_safe(dp, next, &victims, dl_recall_lru)
-+		unhash_delegation(dp);
-+
-+	return count;
-+}
-+
-+u64 nfsd_recall_client_delegations(struct nfsd_net *nn, struct nfs4_client *clp, u64 max)
-+{
-+	struct nfs4_delegation *dp, *next;
-+	LIST_HEAD(victims);
-+	u64 count;
-+
-+	spin_lock(&recall_lock);
-+	count = nfsd_find_all_delegations(clp, max, &victims);
-+	list_for_each_entry_safe(dp, next, &victims, dl_recall_lru)
-+		nfsd_break_one_deleg(dp);
-+	spin_unlock(&recall_lock);
-+
-+	return count;
-+}
-+
- static u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfsd_net *, struct nfs4_client *, u64))
- {
- 	struct nfs4_client *clp, *next;
-@@ -4678,56 +4724,16 @@ void nfsd_forget_openowners(u64 num)
- 	printk(KERN_INFO "NFSD: Forgot %llu open owners", count);
- }
- 
--static int nfsd_process_n_delegations(u64 num, struct list_head *list)
--{
--	int i, count = 0;
--	struct nfs4_file *fp, *fnext;
--	struct nfs4_delegation *dp, *dnext;
--
--	for (i = 0; i < FILE_HASH_SIZE; i++) {
--		list_for_each_entry_safe(fp, fnext, &file_hashtbl[i], fi_hash) {
--			list_for_each_entry_safe(dp, dnext, &fp->fi_delegations, dl_perfile) {
--				list_move(&dp->dl_recall_lru, list);
--				if (++count == num)
--					return count;
--			}
--		}
--	}
--
--	return count;
--}
--
- void nfsd_forget_delegations(u64 num)
- {
--	unsigned int count;
--	LIST_HEAD(victims);
--	struct nfs4_delegation *dp, *dnext;
--
--	spin_lock(&recall_lock);
--	count = nfsd_process_n_delegations(num, &victims);
--	spin_unlock(&recall_lock);
--
--	list_for_each_entry_safe(dp, dnext, &victims, dl_recall_lru)
--		unhash_delegation(dp);
--
--	printk(KERN_INFO "NFSD: Forgot %d delegations", count);
-+	u64 count = nfsd_for_n_state(num, nfsd_forget_client_delegations);
-+	printk(KERN_INFO "NFSD: Forgot %llu delegations", count);
- }
- 
- void nfsd_recall_delegations(u64 num)
- {
--	unsigned int count;
--	LIST_HEAD(victims);
--	struct nfs4_delegation *dp, *dnext;
--
--	spin_lock(&recall_lock);
--	count = nfsd_process_n_delegations(num, &victims);
--	list_for_each_entry_safe(dp, dnext, &victims, dl_recall_lru) {
--		list_del(&dp->dl_recall_lru);
--		nfsd_break_one_deleg(dp);
--	}
--	spin_unlock(&recall_lock);
--
--	printk(KERN_INFO "NFSD: Recalled %d delegations", count);
-+	u64 count = nfsd_for_n_state(num, nfsd_recall_client_delegations);
-+	printk(KERN_INFO "NFSD: Recalled %llu delegations", count);
- }
- 
- #endif /* CONFIG_NFSD_FAULT_INJECTION */
+
 -- 
-1.8.0.1
-
+Best regards,
+Stanislav Kinsbursky
