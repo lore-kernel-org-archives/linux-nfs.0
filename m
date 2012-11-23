@@ -1,63 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f174.google.com ([209.85.161.174]:33300 "EHLO
-	mail-gg0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933066Ab2KEPXP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Nov 2012 10:23:15 -0500
-Received: by mail-gg0-f174.google.com with SMTP id k5so1001920ggd.19
-        for <linux-nfs@vger.kernel.org>; Mon, 05 Nov 2012 07:23:13 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v9 28/34] vfs: make lremovexattr retry once on ESTALE error
-Date: Mon,  5 Nov 2012 10:22:07 -0500
-Message-Id: <1352128933-28526-29-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
-References: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:6273 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1753765Ab2KWE0a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Nov 2012 23:26:30 -0500
+Message-ID: <50AEFC73.5040706@cn.fujitsu.com>
+Date: Fri, 23 Nov 2012 12:32:51 +0800
+From: fanchaoting <fanchaoting@cn.fujitsu.com>
+MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>, bfields@fieldses.org
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        =?ISO-2022-JP?B?GyRCZ3dEK0RyGyhC?= <fanchaoting@cn.fujitsu.com>
+Subject: nfs cache bug (when server delete the file ,nfs client can read file
+ also)
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/xattr.c | 23 ++++++++++++++---------
- 1 file changed, 14 insertions(+), 9 deletions(-)
+Hi,everyone. I found a big bug abount nfs cache.
 
-diff --git a/fs/xattr.c b/fs/xattr.c
-index e2071ed..17d5135 100644
---- a/fs/xattr.c
-+++ b/fs/xattr.c
-@@ -668,16 +668,21 @@ SYSCALL_DEFINE2(lremovexattr, const char __user *, pathname,
- {
- 	struct path path;
- 	int error;
-+	unsigned int try = 0;
-+	unsigned int lookup_flags = 0;
+when server delete the file ,nfs client can read file also.
+
+the following is the reproduce.
+
+ip: 192.168.0.19  nfs-client
+ip: 192.168.0.20  nfs-client
+ip: 192.168.0.21  nfs-server
+
+############################################################################
+
+/usr/bin/ssh -n 192.168.0.21 service nfs start
+/usr/bin/ssh -n 192.168.0.21 /usr/sbin/rpc.idmapd
+/usr/bin/ssh -n 192.168.0.19 /usr/sbin/rpc.idmapd
+/usr/bin/ssh -n 192.168.0.20 /usr/sbin/rpc.idmapd
+/usr/bin/ssh -n 192.168.0.21 "rm -rf /nfsroot; mkdir -p /nfsroot"
+/usr/bin/ssh -n 192.168.0.21 /usr/sbin/exportfs -au
+/usr/bin/ssh -n 192.168.0.21 /usr/sbin/exportfs -i -o insecure,no_root_squash,rw,fsid=0 *:/nfsroot
+/usr/bin/ssh -n 192.168.0.19 test -d /nfsroot || (rm -rf /nfsroot; mkdir -p /nfsroot)
+/usr/bin/ssh -n 192.168.0.20 test -d /nfsroot || (rm -rf /nfsroot; mkdir -p /nfsroot)
+
+/usr/bin/ssh -n 192.168.0.19 umount /nfsroot
+/usr/bin/ssh -n 192.168.0.20 umount /nfsroot
+cmd="echo \"hello world\" > /nfsroot/tmpfile"
+/usr/bin/ssh -n 192.168.0.21 $cmd
+/usr/bin/ssh -n 192.168.0.21 mkdir /nfsroot/tmpdir
+/usr/bin/ssh -n 192.168.0.21 touch /nfsroot/tmpdir/tmpdfile
+/usr/bin/ssh -n 192.168.0.19 mount -t nfs4 192.168.0.21:/ /nfsroot
+/usr/bin/ssh -n 192.168.0.20 mount -t nfs4 192.168.0.21:/ /nfsroot
+/usr/bin/ssh -n 192.168.0.21 cat  /nfsroot/tmpfile
+/usr/bin/ssh -n 192.168.0.21 ls -l /nfsroot/tmpdir
+/usr/bin/ssh -n 192.168.0.19 cat  /nfsroot/tmpfile
+/usr/bin/ssh -n 192.168.0.19 ls -l  /nfsroot/tmpdir
+/usr/bin/ssh -n 192.168.0.20 cat  /nfsroot/tmpfile
+/usr/bin/ssh -n 192.168.0.20 ls -l  /nfsroot/tmpdir
+/usr/bin/ssh -n 192.168.0.19 cat /nfsroot/tmpfile > /dev/null
+/usr/bin/ssh -n 192.168.0.20 cat /nfsroot/tmpfile > /dev/null
+/usr/bin/ssh -n 192.168.0.21 rm -rf /nfsroot/tmpfile
+echo -e "sleep 60~~~~~~~~\n"
+sleep 60
+
+#############################################################################
+
+last: In 192.168.0.19 I do:
+
+#cat /nfsroot/tmpfile           <--the nfs server delete the file,but nfs client can read the file
+ hello world
+
+
+I think  when the nfs server delete the file ,
+the  server should notice the nfs client,
+but the upstream kernel does't this.
  
--	error = user_lpath(pathname, &path);
--	if (error)
--		return error;
--	error = mnt_want_write(path.mnt);
--	if (!error) {
--		error = removexattr(path.dentry, name);
--		mnt_drop_write(path.mnt);
--	}
--	path_put(&path);
-+	do {
-+		error = user_path_at(AT_FDCWD, pathname, lookup_flags, &path);
-+		if (error)
-+			break;
-+		error = mnt_want_write(path.mnt);
-+		if (!error) {
-+			error = removexattr(path.dentry, name);
-+			mnt_drop_write(path.mnt);
-+		}
-+		path_put(&path);
-+		lookup_flags |= LOOKUP_REVAL;
-+	} while (retry_estale(error, try++));
- 	return error;
- }
- 
--- 
-1.7.11.7
+
+
+
 
