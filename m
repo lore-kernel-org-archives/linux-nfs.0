@@ -1,99 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:5170 "EHLO mx1.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:58033 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753632Ab2KVSoH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Nov 2012 13:44:07 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 15/20] NFSv4.1: Don't confuse target_highest_slotid and max_slots in cb_recall_slot
-Date: Wed, 21 Nov 2012 17:43:14 -0500
-Message-Id: <1353537799-60488-16-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1353537799-60488-15-git-send-email-Trond.Myklebust@netapp.com>
-References: <1353537799-60488-1-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-2-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-3-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-4-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-5-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-6-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-7-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-8-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-9-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-10-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-11-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-12-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-13-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-14-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-15-git-send-email-Trond.Myklebust@netapp.com>
+	id S1751055Ab2KWFgU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Nov 2012 00:36:20 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: fanchaoting <fanchaoting@cn.fujitsu.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: nfs cache bug (when server delete the file ,nfs client can read
+ file also)
+Date: Fri, 23 Nov 2012 05:36:03 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092F7F85@SACEXCMBX04-PRD.hq.netapp.com>
+References: <50AEF92B.4080900@cn.fujitsu.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9092F7F07@SACEXCMBX04-PRD.hq.netapp.com>
+	 <50AF0850.6060901@cn.fujitsu.com>
+In-Reply-To: <50AF0850.6060901@cn.fujitsu.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Don't confuse the table size and the target_highest_slotid...
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/callback.h      |  2 +-
- fs/nfs/callback_proc.c | 12 +++++-------
- fs/nfs/callback_xdr.c  |  2 +-
- 3 files changed, 7 insertions(+), 9 deletions(-)
-
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index 4251c2a..e75631e 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -142,7 +142,7 @@ extern __be32 nfs4_callback_recallany(struct cb_recallanyargs *args,
- 
- struct cb_recallslotargs {
- 	struct sockaddr	*crsa_addr;
--	uint32_t	crsa_target_max_slots;
-+	uint32_t	crsa_target_highest_slotid;
- };
- extern __be32 nfs4_callback_recallslot(struct cb_recallslotargs *args,
- 					 void *dummy,
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 15b9879..ed0b446 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -561,22 +561,20 @@ __be32 nfs4_callback_recallslot(struct cb_recallslotargs *args, void *dummy,
- 	if (!cps->clp) /* set in cb_sequence */
- 		goto out;
- 
--	dprintk_rcu("NFS: CB_RECALL_SLOT request from %s target max slots %d\n",
-+	dprintk_rcu("NFS: CB_RECALL_SLOT request from %s target highest slotid %d\n",
- 		rpc_peeraddr2str(cps->clp->cl_rpcclient, RPC_DISPLAY_ADDR),
--		args->crsa_target_max_slots);
-+		args->crsa_target_highest_slotid);
- 
- 	fc_tbl = &cps->clp->cl_session->fc_slot_table;
- 
- 	status = htonl(NFS4ERR_BAD_HIGH_SLOT);
--	if (args->crsa_target_max_slots > fc_tbl->max_slots ||
--	    args->crsa_target_max_slots < 1)
-+	if (args->crsa_target_highest_slotid >= fc_tbl->max_slots ||
-+	    args->crsa_target_highest_slotid < 1)
- 		goto out;
- 
- 	status = htonl(NFS4_OK);
--	if (args->crsa_target_max_slots == fc_tbl->max_slots)
--		goto out;
- 
--	nfs41_set_target_slotid(fc_tbl, args->crsa_target_max_slots);
-+	nfs41_set_target_slotid(fc_tbl, args->crsa_target_highest_slotid);
- 	nfs41_handle_recall_slot(cps->clp);
- out:
- 	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 742ff4f..81e8c7d 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -520,7 +520,7 @@ static __be32 decode_recallslot_args(struct svc_rqst *rqstp,
- 	p = read_buf(xdr, 4);
- 	if (unlikely(p == NULL))
- 		return htonl(NFS4ERR_BADXDR);
--	args->crsa_target_max_slots = ntohl(*p++);
-+	args->crsa_target_highest_slotid = ntohl(*p++);
- 	return 0;
- }
- 
--- 
-1.7.11.7
-
+T24gRnJpLCAyMDEyLTExLTIzIGF0IDEzOjIzICswODAwLCBmYW5jaGFvdGluZyB3cm90ZToNCj4g
+TXlrbGVidXN0LCBUcm9uZCDlhpnpgZM6DQo+ID4gT24gRnJpLCAyMDEyLTExLTIzIGF0IDEyOjE4
+ICswODAwLCBmYW5jaGFvdGluZyB3cm90ZToNCj4gPj4gSGksZXZlcnlvbmUuIEkgZm91bmQgYSBi
+aWcgYnVnIGFib3VudCBuZnMgY2FjaGUuDQo+ID4+DQo+ID4+IHdoZW4gc2VydmVyIGRlbGV0ZSB0
+aGUgZmlsZSAsbmZzIGNsaWVudCBjYW4gcmVhZCBmaWxlIGFsc28uDQo+ID4+DQo+ID4+IHRoZSBm
+b2xsb3dpbmcgaXMgdGhlIHJlcHJvZHVjZS4NCj4gPj4NCj4gPj4gaXA6IDE5Mi4xNjguMC4xOSAg
+bmZzLWNsaWVudA0KPiA+PiBpcDogMTkyLjE2OC4wLjIwICBuZnMtY2xpZW50DQo+ID4+IGlwOiAx
+OTIuMTY4LjAuMjEgIG5mcy1zZXJ2ZXINCj4gPj4NCj4gPj4gIyMjIyMjIyMjIyMjIyMjIyMjIyMj
+IyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIw0K
+PiA+Pg0KPiA+PiAvdXNyL2Jpbi9zc2ggLW4gMTkyLjE2OC4wLjIxIHNlcnZpY2UgbmZzIHN0YXJ0
+DQo+ID4+IC91c3IvYmluL3NzaCAtbiAxOTIuMTY4LjAuMjEgL3Vzci9zYmluL3JwYy5pZG1hcGQN
+Cj4gPj4gL3Vzci9iaW4vc3NoIC1uIDE5Mi4xNjguMC4xOSAvdXNyL3NiaW4vcnBjLmlkbWFwZA0K
+PiA+PiAvdXNyL2Jpbi9zc2ggLW4gMTkyLjE2OC4wLjIwIC91c3Ivc2Jpbi9ycGMuaWRtYXBkDQo+
+ID4+IC91c3IvYmluL3NzaCAtbiAxOTIuMTY4LjAuMjEgInJtIC1yZiAvbmZzcm9vdDsgbWtkaXIg
+LXAgL25mc3Jvb3QiDQo+ID4+IC91c3IvYmluL3NzaCAtbiAxOTIuMTY4LjAuMjEgL3Vzci9zYmlu
+L2V4cG9ydGZzIC1hdQ0KPiA+PiAvdXNyL2Jpbi9zc2ggLW4gMTkyLjE2OC4wLjIxIC91c3Ivc2Jp
+bi9leHBvcnRmcyAtaSAtbyBpbnNlY3VyZSxub19yb290X3NxdWFzaCxydyxmc2lkPTAgKjovbmZz
+cm9vdA0KPiA+PiAvdXNyL2Jpbi9zc2ggLW4gMTkyLjE2OC4wLjE5IHRlc3QgLWQgL25mc3Jvb3Qg
+fHwgKHJtIC1yZiAvbmZzcm9vdDsgbWtkaXIgLXAgL25mc3Jvb3QpDQo+ID4+IC91c3IvYmluL3Nz
+aCAtbiAxOTIuMTY4LjAuMjAgdGVzdCAtZCAvbmZzcm9vdCB8fCAocm0gLXJmIC9uZnNyb290OyBt
+a2RpciAtcCAvbmZzcm9vdCkNCj4gPj4NCj4gPj4gL3Vzci9iaW4vc3NoIC1uIDE5Mi4xNjguMC4x
+OSB1bW91bnQgL25mc3Jvb3QNCj4gPj4gL3Vzci9iaW4vc3NoIC1uIDE5Mi4xNjguMC4yMCB1bW91
+bnQgL25mc3Jvb3QNCj4gPj4gY21kPSJlY2hvIFwiaGVsbG8gd29ybGRcIiA+IC9uZnNyb290L3Rt
+cGZpbGUiDQo+ID4+IC91c3IvYmluL3NzaCAtbiAxOTIuMTY4LjAuMjEgJGNtZA0KPiA+PiAvdXNy
+L2Jpbi9zc2ggLW4gMTkyLjE2OC4wLjIxIG1rZGlyIC9uZnNyb290L3RtcGRpcg0KPiA+PiAvdXNy
+L2Jpbi9zc2ggLW4gMTkyLjE2OC4wLjIxIHRvdWNoIC9uZnNyb290L3RtcGRpci90bXBkZmlsZQ0K
+PiA+PiAvdXNyL2Jpbi9zc2ggLW4gMTkyLjE2OC4wLjE5IG1vdW50IC10IG5mczQgMTkyLjE2OC4w
+LjIxOi8gL25mc3Jvb3QNCj4gPj4gL3Vzci9iaW4vc3NoIC1uIDE5Mi4xNjguMC4yMCBtb3VudCAt
+dCBuZnM0IDE5Mi4xNjguMC4yMTovIC9uZnNyb290DQo+ID4+IC91c3IvYmluL3NzaCAtbiAxOTIu
+MTY4LjAuMjEgY2F0ICAvbmZzcm9vdC90bXBmaWxlDQo+ID4+IC91c3IvYmluL3NzaCAtbiAxOTIu
+MTY4LjAuMjEgbHMgLWwgL25mc3Jvb3QvdG1wZGlyDQo+ID4+IC91c3IvYmluL3NzaCAtbiAxOTIu
+MTY4LjAuMTkgY2F0ICAvbmZzcm9vdC90bXBmaWxlDQo+ID4+IC91c3IvYmluL3NzaCAtbiAxOTIu
+MTY4LjAuMTkgbHMgLWwgIC9uZnNyb290L3RtcGRpcg0KPiA+PiAvdXNyL2Jpbi9zc2ggLW4gMTky
+LjE2OC4wLjIwIGNhdCAgL25mc3Jvb3QvdG1wZmlsZQ0KPiA+PiAvdXNyL2Jpbi9zc2ggLW4gMTky
+LjE2OC4wLjIwIGxzIC1sICAvbmZzcm9vdC90bXBkaXINCj4gPj4gL3Vzci9iaW4vc3NoIC1uIDE5
+Mi4xNjguMC4xOSBjYXQgL25mc3Jvb3QvdG1wZmlsZSA+IC9kZXYvbnVsbA0KPiA+PiAvdXNyL2Jp
+bi9zc2ggLW4gMTkyLjE2OC4wLjIwIGNhdCAvbmZzcm9vdC90bXBmaWxlID4gL2Rldi9udWxsDQo+
+ID4+IC91c3IvYmluL3NzaCAtbiAxOTIuMTY4LjAuMjEgcm0gLXJmIC9uZnNyb290L3RtcGZpbGUN
+Cj4gPj4gZWNobyAtZSAic2xlZXAgNjB+fn5+fn5+flxuIg0KPiA+PiBzbGVlcCA2MA0KPiA+Pg0K
+PiA+PiAjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMj
+IyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIw0KPiA+Pg0KPiA+PiBsYXN0OiBJbiAxOTIuMTY4LjAu
+MTkgSSBkbzoNCj4gPj4NCj4gPj4gI2NhdCAvbmZzcm9vdC90bXBmaWxlICAgICAgICAgICA8LS10
+aGUgbmZzIHNlcnZlciBkZWxldGUgdGhlIGZpbGUsYnV0IG5mcyBjbGllbnQgY2FuIHJlYWQgdGhl
+IGZpbGUNCj4gPj4gIGhlbGxvIHdvcmxkDQo+ID4+DQo+ID4+DQo+ID4+IEkgdGhpbmsgIHdoZW4g
+dGhlIG5mcyBzZXJ2ZXIgZGVsZXRlIHRoZSBmaWxlICwNCj4gPj4gdGhlICBzZXJ2ZXIgc2hvdWxk
+IG5vdGljZSB0aGUgbmZzIGNsaWVudCwNCj4gPj4gYnV0IHRoZSB1cHN0cmVhbSBrZXJuZWwgZG9l
+cyd0IHRoaXMuDQo+ID4gDQo+ID4gU28gaXMgdGhpcyBhIHByb2JsZW0gd2l0aCB0aGUgY2xpZW50
+IG9yIHRoZSBzZXJ2ZXI/IEluIG90aGVyIHdvcmRzLCBpZg0KPiA+IHlvdSB1c2UgYSBkaWZmZXJl
+bnQgc2VydmVyL2NsaWVudCBjb21iaW5hdGlvbiwgZG8geW91IHNlZSBhIGRpZmZlcmVudA0KPiA+
+IHJlc3VsdD8NCj4gPiANCj4gDQo+IEkgdGhpbmsgdGhhdCB0aGUgc2VydmVyIGhhcyB0aGUgcHJv
+YmxlbSAud2hlbiB0aGUgc2VydmVyIGRlbGV0ZXMgdGhlIGZpbGUgLA0KPiBpdCBzaG91bGQgbm90
+aWNlIHRoZSBjbGllbnQgaW1tZWRpYXRlbHkuDQoNClRoZXJlIGlzIG5vIG5vdGlmaWNhdGlvbiBt
+ZWNoYW5pc20gaW4gTkZTOyBvbiBvcGVuKCksIHRoZSBjbGllbnQgaXMNCnN1cHBvc2VkIHRvIHJl
+dmFsaWRhdGUgaXRzIGNhY2hlZCBpbmZvcm1hdGlvbiBhbmQgdGhlIHNlcnZlciBpcyBzdXBwb3Nl
+ZA0KdG8gcmV0dXJuIGFuIEVTVEFMRSBlcnJvciBpZiB0aGUgZmlsZWhhbmRsZSBpcyBubyBsb25n
+ZXIgdmFsaWQuIEVpdGhlcg0Kb25lIG9mIHRoZXNlIDIgbWVjaGFuaXNtcyAoY2xpZW50IHJldmFs
+aWRhdGlvbiBvciBzZXJ2ZXIgcmVwbHkpIGNvdWxkIGJlDQpnb2luZyB3cm9uZyBoZXJlLCB3aGlj
+aCBpcyB3aHkgSSdtIGFza2luZy4NCg0KPiA+IFdoaWNoIGtlcm5lbHMgYXJlIHlvdSB1c2luZyBp
+biB5b3VyIHRlc3RzIGZvciB0aGUgY2xpZW50IGFuZCBzZXJ2ZXI/DQo+ID4gDQo+IA0KPiBJIGZv
+dW5kIHRoZSBwcm9ibGVtIGluIGtlcm5lbCAgMy43LjAtcmM2DQoNCk9LLiBEbyB5b3UgaGF2ZSBh
+IG5vbi1MaW51eCBzZXJ2ZXIgb3IgY2xpZW50IGF2YWlsYWJsZSB0aGF0IHlvdSBjYW4gdXNlDQpm
+b3IgdGVzdGluZz8gQWx0ZXJuYXRpdmVseSwgY291bGQgeW91IHVzZSB3aXJlc2hhcmsgdG8gY2Fw
+dHVyZSBhIGR1bXAgb2YNCnRoZSBORlMgdHJhZmZpYyBiZXR3ZWVuIHRoZSBjbGllbnQgYW5kIHNl
+cnZlcj8NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5l
+cg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
