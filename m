@@ -1,61 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38816 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:39198 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752712Ab2KYOsR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 25 Nov 2012 09:48:17 -0500
-Date: Sun, 25 Nov 2012 09:48:16 -0500
-To: Kks Kbase <kks.kbase@yahoo.in>
-Cc: Linux NFS <linux-nfs@vger.kernel.org>
-Subject: Re: NFS exportfs options
-Message-ID: <20121125144816.GA31110@fieldses.org>
-References: <1353479256.92520.YahooMailNeo@web190605.mail.sg3.yahoo.com>
- <1353481809.32623.YahooMailNeo@web190605.mail.sg3.yahoo.com>
- <1353816433.24972.YahooMailNeo@web190603.mail.sg3.yahoo.com>
+	id S1753875Ab2KWRXi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Nov 2012 12:23:38 -0500
+Date: Fri, 23 Nov 2012 12:23:33 -0500
+To: "dE ." <de.techno@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Slow NFS loop performance.
+Message-ID: <20121123172333.GB8776@fieldses.org>
+References: <50AF57A3.3090000@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <1353816433.24972.YahooMailNeo@web190603.mail.sg3.yahoo.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <50AF57A3.3090000@gmail.com>
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Nov 25, 2012 at 12:07:13PM +0800, Kks Kbase wrote:
-> Hi,
+On Fri, Nov 23, 2012 at 04:31:55PM +0530, dE . wrote:
+> Humm... The last thing I expected was no response even in the mailing list.
 > 
-> Here is the mounted option on /var/lib/nfs/etab
+> So I'm filing a bug on this.
 > 
-> # cat /var/lib/nfs/etab
-> /home/nfstest1  *(rw,sync,wdelay,hide,nocrossmnt,secure,root_squash,no_all_squash,no_subtree_check,secure_locks,no_acl,mapping=identity,anonuid=65534,anongid=65534)
-> 
-> 
-> 
-> 
-> 
-> 
-> ----- Original Message -----
-> From: Kks Kbase <kks.kbase@yahoo.in>
-> To: Linux NFS <linux-nfs@vger.kernel.org>
-> Cc: 
-> Sent: Wednesday, 21 November 2012 12:40 PM
-> Subject: NFS exportfs options
-> 
-> 
-> 
-> Hi,
-> 
-> Today I have tried to setup the NFS share. 
-> 
-> 
-> Here is the exportsfs on NFS server
-> 
-> /home/nfstest1   *(rw)
-> 
-> Then I have mounted the nfs share folder and tried to create folders and files. But I am always getting the error as permission denied either root or normal user.
-> 
-> Any ideas please?
+> On Oct 23, 2012 2:19 PM, "dE ." <de.techno@gmail.com> wrote:
+> > Hi!
+> >
+> > Great job with NFS server, it surely is fast, but not on loop devices.
+> >
+> > If I loop mount a file and share the mount point over NFS3 or NFS4, the
+> > write performance of the client on the loop mounted share is pretty bad.
+> >
+> > On a 100 Mbps (or 12.5MBps) full duplex Ethernet link, I get ~8MBps
+> > speeds, whereas on the loop mounted device, I get at best 6MBps.
 
-How are you mounting this on the client?
-
-Have you checked permissions on the exported directory?  (ls -ld
-/home/nfstest1).
+What exactly is your test?
 
 --b.
+
+> >
+> > Any ideas why?
+> >
+> > My server configuration (NFS4) --
+> > anonuid=1000,anongid=1000,**secure,no_subtree_check,rw,**fsid=0,crossmnt
+> >
+> > My client mount options --
+> > rsize=1048576,wsize=1048576,**async,hard,timeo=60,retrans=2,**
+> > actimeo=900,retry=2,**lookupcache=pos,nfsvers=4,**
+> > nolock,intr,noacl,rdirplus
+> >
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
