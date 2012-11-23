@@ -1,30 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:12069 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:46485 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754113Ab2KMMzv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Nov 2012 07:55:51 -0500
-Message-ID: <50A24345.8080309@RedHat.com>
-Date: Tue, 13 Nov 2012 07:55:33 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1750778Ab2KWFLu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Nov 2012 00:11:50 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: fanchaoting <fanchaoting@cn.fujitsu.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: nfs cache bug (when server delete the file ,nfs client can read
+ file also)
+Date: Fri, 23 Nov 2012 05:11:48 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092F7F07@SACEXCMBX04-PRD.hq.netapp.com>
+References: <50AEF92B.4080900@cn.fujitsu.com>
+In-Reply-To: <50AEF92B.4080900@cn.fujitsu.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Dave Quigley <dpquigl@davequigley.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        "David P. Quigley" <selinux@davequigley.com>,
-        trond.myklebust@netapp.com, sds@tycho.nsa.gov,
-        linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
-        linux-security-module@vger.kernel.org
-Subject: Re: Labeled NFS [v5]
-References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com> <20121112152335.GH30713@fieldses.org> <50A116F0.5050404@davequigley.com> <20121112160959.GK30713@fieldses.org> <50A16269.4060601@RedHat.com> <50A1A4EE.7030507@davequigley.com>
-In-Reply-To: <50A1A4EE.7030507@davequigley.com>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 12/11/12 20:39, Dave Quigley wrote:
-> If you're ok with non Fedora kernel images I can try to put up a tree either tonight or tomorrow with the patches that you just need to build and install. That plus the one patch for nfs-utils should make everything work.
-I'm good with that....
-
-steved.
-
+T24gRnJpLCAyMDEyLTExLTIzIGF0IDEyOjE4ICswODAwLCBmYW5jaGFvdGluZyB3cm90ZToNCj4g
+SGksZXZlcnlvbmUuIEkgZm91bmQgYSBiaWcgYnVnIGFib3VudCBuZnMgY2FjaGUuDQo+IA0KPiB3
+aGVuIHNlcnZlciBkZWxldGUgdGhlIGZpbGUgLG5mcyBjbGllbnQgY2FuIHJlYWQgZmlsZSBhbHNv
+Lg0KPiANCj4gdGhlIGZvbGxvd2luZyBpcyB0aGUgcmVwcm9kdWNlLg0KPiANCj4gaXA6IDE5Mi4x
+NjguMC4xOSAgbmZzLWNsaWVudA0KPiBpcDogMTkyLjE2OC4wLjIwICBuZnMtY2xpZW50DQo+IGlw
+OiAxOTIuMTY4LjAuMjEgIG5mcy1zZXJ2ZXINCj4gDQo+ICMjIyMjIyMjIyMjIyMjIyMjIyMjIyMj
+IyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMNCj4g
+DQo+IC91c3IvYmluL3NzaCAtbiAxOTIuMTY4LjAuMjEgc2VydmljZSBuZnMgc3RhcnQNCj4gL3Vz
+ci9iaW4vc3NoIC1uIDE5Mi4xNjguMC4yMSAvdXNyL3NiaW4vcnBjLmlkbWFwZA0KPiAvdXNyL2Jp
+bi9zc2ggLW4gMTkyLjE2OC4wLjE5IC91c3Ivc2Jpbi9ycGMuaWRtYXBkDQo+IC91c3IvYmluL3Nz
+aCAtbiAxOTIuMTY4LjAuMjAgL3Vzci9zYmluL3JwYy5pZG1hcGQNCj4gL3Vzci9iaW4vc3NoIC1u
+IDE5Mi4xNjguMC4yMSAicm0gLXJmIC9uZnNyb290OyBta2RpciAtcCAvbmZzcm9vdCINCj4gL3Vz
+ci9iaW4vc3NoIC1uIDE5Mi4xNjguMC4yMSAvdXNyL3NiaW4vZXhwb3J0ZnMgLWF1DQo+IC91c3Iv
+YmluL3NzaCAtbiAxOTIuMTY4LjAuMjEgL3Vzci9zYmluL2V4cG9ydGZzIC1pIC1vIGluc2VjdXJl
+LG5vX3Jvb3Rfc3F1YXNoLHJ3LGZzaWQ9MCAqOi9uZnNyb290DQo+IC91c3IvYmluL3NzaCAtbiAx
+OTIuMTY4LjAuMTkgdGVzdCAtZCAvbmZzcm9vdCB8fCAocm0gLXJmIC9uZnNyb290OyBta2RpciAt
+cCAvbmZzcm9vdCkNCj4gL3Vzci9iaW4vc3NoIC1uIDE5Mi4xNjguMC4yMCB0ZXN0IC1kIC9uZnNy
+b290IHx8IChybSAtcmYgL25mc3Jvb3Q7IG1rZGlyIC1wIC9uZnNyb290KQ0KPiANCj4gL3Vzci9i
+aW4vc3NoIC1uIDE5Mi4xNjguMC4xOSB1bW91bnQgL25mc3Jvb3QNCj4gL3Vzci9iaW4vc3NoIC1u
+IDE5Mi4xNjguMC4yMCB1bW91bnQgL25mc3Jvb3QNCj4gY21kPSJlY2hvIFwiaGVsbG8gd29ybGRc
+IiA+IC9uZnNyb290L3RtcGZpbGUiDQo+IC91c3IvYmluL3NzaCAtbiAxOTIuMTY4LjAuMjEgJGNt
+ZA0KPiAvdXNyL2Jpbi9zc2ggLW4gMTkyLjE2OC4wLjIxIG1rZGlyIC9uZnNyb290L3RtcGRpcg0K
+PiAvdXNyL2Jpbi9zc2ggLW4gMTkyLjE2OC4wLjIxIHRvdWNoIC9uZnNyb290L3RtcGRpci90bXBk
+ZmlsZQ0KPiAvdXNyL2Jpbi9zc2ggLW4gMTkyLjE2OC4wLjE5IG1vdW50IC10IG5mczQgMTkyLjE2
+OC4wLjIxOi8gL25mc3Jvb3QNCj4gL3Vzci9iaW4vc3NoIC1uIDE5Mi4xNjguMC4yMCBtb3VudCAt
+dCBuZnM0IDE5Mi4xNjguMC4yMTovIC9uZnNyb290DQo+IC91c3IvYmluL3NzaCAtbiAxOTIuMTY4
+LjAuMjEgY2F0ICAvbmZzcm9vdC90bXBmaWxlDQo+IC91c3IvYmluL3NzaCAtbiAxOTIuMTY4LjAu
+MjEgbHMgLWwgL25mc3Jvb3QvdG1wZGlyDQo+IC91c3IvYmluL3NzaCAtbiAxOTIuMTY4LjAuMTkg
+Y2F0ICAvbmZzcm9vdC90bXBmaWxlDQo+IC91c3IvYmluL3NzaCAtbiAxOTIuMTY4LjAuMTkgbHMg
+LWwgIC9uZnNyb290L3RtcGRpcg0KPiAvdXNyL2Jpbi9zc2ggLW4gMTkyLjE2OC4wLjIwIGNhdCAg
+L25mc3Jvb3QvdG1wZmlsZQ0KPiAvdXNyL2Jpbi9zc2ggLW4gMTkyLjE2OC4wLjIwIGxzIC1sICAv
+bmZzcm9vdC90bXBkaXINCj4gL3Vzci9iaW4vc3NoIC1uIDE5Mi4xNjguMC4xOSBjYXQgL25mc3Jv
+b3QvdG1wZmlsZSA+IC9kZXYvbnVsbA0KPiAvdXNyL2Jpbi9zc2ggLW4gMTkyLjE2OC4wLjIwIGNh
+dCAvbmZzcm9vdC90bXBmaWxlID4gL2Rldi9udWxsDQo+IC91c3IvYmluL3NzaCAtbiAxOTIuMTY4
+LjAuMjEgcm0gLXJmIC9uZnNyb290L3RtcGZpbGUNCj4gZWNobyAtZSAic2xlZXAgNjB+fn5+fn5+
+flxuIg0KPiBzbGVlcCA2MA0KPiANCj4gIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMj
+IyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMNCj4gDQo+IGxhc3Q6
+IEluIDE5Mi4xNjguMC4xOSBJIGRvOg0KPiANCj4gI2NhdCAvbmZzcm9vdC90bXBmaWxlICAgICAg
+ICAgICA8LS10aGUgbmZzIHNlcnZlciBkZWxldGUgdGhlIGZpbGUsYnV0IG5mcyBjbGllbnQgY2Fu
+IHJlYWQgdGhlIGZpbGUNCj4gIGhlbGxvIHdvcmxkDQo+IA0KPiANCj4gSSB0aGluayAgd2hlbiB0
+aGUgbmZzIHNlcnZlciBkZWxldGUgdGhlIGZpbGUgLA0KPiB0aGUgIHNlcnZlciBzaG91bGQgbm90
+aWNlIHRoZSBuZnMgY2xpZW50LA0KPiBidXQgdGhlIHVwc3RyZWFtIGtlcm5lbCBkb2VzJ3QgdGhp
+cy4NCg0KU28gaXMgdGhpcyBhIHByb2JsZW0gd2l0aCB0aGUgY2xpZW50IG9yIHRoZSBzZXJ2ZXI/
+IEluIG90aGVyIHdvcmRzLCBpZg0KeW91IHVzZSBhIGRpZmZlcmVudCBzZXJ2ZXIvY2xpZW50IGNv
+bWJpbmF0aW9uLCBkbyB5b3Ugc2VlIGEgZGlmZmVyZW50DQpyZXN1bHQ/DQoNCldoaWNoIGtlcm5l
+bHMgYXJlIHlvdSB1c2luZyBpbiB5b3VyIHRlc3RzIGZvciB0aGUgY2xpZW50IGFuZCBzZXJ2ZXI/
+DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0K
+TmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
