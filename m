@@ -1,124 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:60114 "EHLO mx2.netapp.com"
+Received: from mga01.intel.com ([192.55.52.88]:51063 "EHLO mga01.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751789Ab2KLVhM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Nov 2012 16:37:12 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        Andy Adamson <androsadamson@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFS: Add sequence_priviliged_ops for
- nfs4_proc_sequence()
-Date: Mon, 12 Nov 2012 21:37:10 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092D839F@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1352745355-31157-1-git-send-email-bjschuma@netapp.com>
-	   <CAHVgHyWyKhjOc4AFY3LvK57k8JK5zNJDkRGwUjqNA4LMYcSzdw@mail.gmail.com>
-	   <4FA345DA4F4AE44899BD2B03EEEC2FA9092D7F52@SACEXCMBX04-PRD.hq.netapp.com>
-	   <CAHVgHyWzO6UxnQEBoBFY4uHxTx9PBHKxP+hvJfYaW-OTqWLgMA@mail.gmail.com>
-	  <4FA345DA4F4AE44899BD2B03EEEC2FA9092D80BB@SACEXCMBX04-PRD.hq.netapp.com>
-	  <50A163E6.9020604@netapp.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9092D81D5@SACEXCMBX04-PRD.hq.netapp.com>
-	 <50A16968.9030307@netapp.com>
-In-Reply-To: <50A16968.9030307@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1751334Ab2KWFtL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 Nov 2012 00:49:11 -0500
+Date: Fri, 23 Nov 2012 13:48:15 +0800
+From: kbuild test robot <fengguang.wu@intel.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [nfs:devel 73/73] fs/nfs/nfs4proc.c:743:31: error: expected ')'
+ before ';' token
+Message-ID: <50af0e1f.4y40S77mWeEZCRr9%fengguang.wu@intel.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTExLTEyIGF0IDE2OjI2IC0wNTAwLCBCcnlhbiBTY2h1bWFrZXIgd3JvdGU6
-DQo+IE9uIDExLzEyLzIwMTIgMDQ6MTAgUE0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4g
-T24gTW9uLCAyMDEyLTExLTEyIGF0IDE2OjAyIC0wNTAwLCBCcnlhbiBTY2h1bWFrZXIgd3JvdGU6
-DQo+ID4+IE9uIDExLzEyLzIwMTIgMDM6NTQgUE0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+
-ID4+PiBPbiBNb24sIDIwMTItMTEtMTIgYXQgMTU6NDkgLTA1MDAsIEFuZHkgQWRhbXNvbiB3cm90
-ZToNCj4gPj4+PiBPbiBNb24sIE5vdiAxMiwgMjAxMiBhdCAzOjI5IFBNLCBNeWtsZWJ1c3QsIFRy
-b25kDQo+ID4+Pj4gPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPj4+Pj4g
-T24gTW9uLCAyMDEyLTExLTEyIGF0IDE1OjIyIC0wNTAwLCBBbmR5IEFkYW1zb24gd3JvdGU6DQo+
-ID4+Pj4+PiBPbiBNb24sIE5vdiAxMiwgMjAxMiBhdCAxOjM1IFBNLCAgPGJqc2NodW1hQG5ldGFw
-cC5jb20+IHdyb3RlOg0KPiA+Pj4+Pj4+IEZyb206IEJyeWFuIFNjaHVtYWtlciA8YmpzY2h1bWFA
-bmV0YXBwLmNvbT4NCj4gPj4+Pj4+Pg0KPiA+Pj4+Pj4+IER1cmluZyByZWNvdmVyeSB0aGUgTkZT
-NF9TRVNTSU9OX0RSQUlOSU5HIGZsYWcgbWlnaHQgYmUgc2V0IG9uIHRoZQ0KPiA+Pj4+Pj4+IGNs
-aWVudCBzdHJ1Y3R1cmUuICBUaGlzIGNhbiBjYXVzZSBsZWFzZSByZW5ld2FsIHRvIGFib3J0IHdo
-ZW4NCj4gPj4+Pj4NCj4gPj4+Pj4gTm90IGxlYXNlIHJlbmV3YWwuIEl0IGlzIGxlYXNlIHZlcmlm
-aWNhdGlvbiAoaS5lLiBjaGVja2luZyB0aGF0IHdlIGhhdmUNCj4gPj4+Pj4gYSB2YWxpZCBsZWFz
-ZSBhbmQgc2Vzc2lvbikgdGhhdCB3aWxsIGRlYWRsb2NrLg0KPiA+Pj4+Pg0KPiA+Pj4+Pj4+IG5m
-czQxX3NldHVwX3NlcXVlbmNlIHNlZXMgdGhhdCB3ZSBhcmUgZG9pbmcgcmVjb3ZlcnkuICBBcyBh
-IHJlc3VsdCwgdGhlDQo+ID4+Pj4+Pj4gY2xpZW50IG5ldmVyIHJlY292ZXJzIGFuZCBhbGwgYWN0
-aXZpdHkgd2l0aCB0aGUgTkZTIHNlcnZlciBoYWx0cy4NCj4gPj4+Pj4+DQo+ID4+Pj4+Pg0KPiA+
-Pj4+Pj4gV2hlbiBkb2VzIHRoaXMgaGFwcGVuPyBTYXkgdGhlIHNlc3Npb24gaXMgZHJhaW5pbmcs
-IGFuZCBhbiBSUEMgcmV0dXJucw0KPiA+Pj4+Pj4gZnJvbSBvbmUgb2YgdGhlIGNvbXBvdW5kcyBz
-dWNoIGFzIG5mc19vcGVuLCBuZnNfbG9ja3UgZXRjIHdob3NlDQo+ID4+Pj4+PiBycGNfY2FsbF9k
-b25lIHJvdXRpbmUgY2FsbHMgcmVuZXdfbGVhc2UgYWZ0ZXIgZnJlZWluZyBpdCdzIHNsb3QuICBM
-aWtlDQo+ID4+Pj4+PiBhbGwgY2FsbHMgb24gYSBkcmFpbmluZyBzZXNzaW9uLCB0aGUgcmVuZXdf
-bGVhc2Ugc2xlZXBzIG9uIHRoZSBzZXNzaW9uDQo+ID4+Pj4+PiBzbG90X3RibF93YWl0cSAtIGlz
-IHRoaXMgd2hhdCB5b3UgbWVhbiBieSAiY2F1c2VzIGxlYXNlIHJlbmV3YWwgdG8NCj4gPj4+Pj4+
-IGFib3J0Ij8gSG93IGRvZXMgdGhpcyBjYXVzZSB0aGUgY2xpZW50IHRvIG5ldmVyIHJlY292ZXI/
-DQo+ID4+Pj4+Pg0KPiA+Pj4+Pj4gVGhlIG9ubHkgb3RoZXIgY2FsbCB0byByZW5ld19sZWFzZSBp
-cyBmcm9tIHRoZSBzdGF0ZSBtYW5hZ2VyIGl0c2VsZg0KPiA+Pj4+Pj4gd2hpY2ggcnVucyBvbmUg
-ZnVuY3Rpb24gYXQgYSB0aW1lLCBhbmQgd2lsbCBub3QgY2FsbCByZW5ld19sZWFzZSB1bnRpbA0K
-PiA+Pj4+Pj4gdGhlIHJlY292ZXJ5IGlzIG92ZXIuLi4uDQo+ID4+Pj4+Pg0KPiA+Pj4+Pj4gV2hh
-dCBhbSBJIG1pc3NpbmcuLi4uPw0KPiA+Pj4+Pg0KPiA+Pj4+PiBuZnM0X2NoZWNrX2xlYXNlKCkg
-aXMgcnVuIGV4Y2x1c2l2ZWx5IGJ5IHRoZSBzdGF0ZSBtYW5hZ2VyIHRocmVhZCBpbg0KPiA+Pj4+
-PiBvcmRlciB0byBjaGVjayB0aGF0IHRoZSBjbGllbnRpZCAoYW5kIHNlc3Npb24gaWQgb24gTkZT
-djQuMSkgYXJlIHZhbGlkLg0KPiA+Pj4+PiBJdCB3aWxsIGRlYWRsb2NrIHRoZSBzdGF0ZSBtYW5h
-Z2VyIHRocmVhZCBpZiBORlM0X1NFU1NJT05fRFJBSU5JTkcgaXMNCj4gPj4+Pj4gYWxyZWFkeSBz
-ZXQuDQo+ID4+Pj4NCj4gPj4+PiBPSy4gTkZTNF9TRVNTSU9OX0RSQUlOSU5HIGlzIGFsc28gc2V0
-IGV4Y2x1c2l2ZWx5IGJ5IHRoZSBzdGF0ZSBtYW5hZ2VyDQo+ID4+Pj4gdGhyZWFkLiBXaHkgaXMg
-dGhlIHN0YXRlIG1hbmFnZXIgdG9sZCB0byBjaGVjayB0aGUgbGVhc2Ugd2hlbiBpdCdzDQo+ID4+
-Pj4gYWxzbyBkcmFpbmluZyBhIHNlc3Npb24/DQo+ID4+Pg0KPiA+Pj4gTkZTNF9TRVNTSU9OX0RS
-QUlOSU5HIGRvZXMgbm90IGp1c3QgbWVhbiB0aGF0IHRoZSBzZXNzaW9uIGlzIGJlaW5nDQo+ID4+
-PiBkcmFpbmVkOyBpdCByZW1haW5zIHNldCB1bnRpbCBvcGVuIGFuZCBsb2NrIHN0YXRlIHJlY292
-ZXJ5IGlzIGNvbXBsZXRlZC4NCj4gPj4+DQo+ID4+PiBJT1c6IGlmIHNvbWV0aGluZyBoYXBwZW5z
-IGR1cmluZyBzdGF0ZSByZWNvdmVyeSB0aGF0IHJlcXVpcmVzIHVzIHRvDQo+ID4+PiBjaGVjayB0
-aGUgbGVhc2UgKGUuZy4gc29tZXRoaW5nIHJldHVybnMgTkZTNEVSUl9FWFBJUkVEKSB0aGVuIHRo
-ZQ0KPiA+Pj4gY3VycmVudCBjb2RlIHdpbGwgZGVhZGxvY2suDQo+ID4+Pg0KPiA+Pj4+IE5vIG1h
-dHRlciB3aGF0IHRoZSBhbnN3ZXIsIHBsZWFzZSB1cGRhdGUgdGhlIHBhdGNoIGRlc2NyaXB0aW9u
-IHRvDQo+ID4+Pj4gYmV0dGVyIGV4cGxhaW4gdGhlIHByb2JsZW0gYmVpbmcgc29sdmVkLg0KPiA+
-Pj4NCj4gPj4+IEFDSy4gSSBhZ3JlZSB0aGF0IHRoZSBjaGFuZ2Vsb2cgZW50cnkgY2FuIGJlIGlt
-cHJvdmVkLg0KPiA+Pj4NCj4gPj4NCj4gPj4gRG9lcyB0aGlzIHJlYWQgYW55IGJldHRlciAoYW5k
-IHNob3VsZCBJIHJlc2VuZCB0aGUgcGF0Y2gpPw0KPiA+Pg0KPiA+PiBORlM6IEFkZCBzZXF1ZW5j
-ZV9wcml2aWxpZ2VkX29wcyBmb3IgbmZzNF9wcm9jX3NlcXVlbmNlKCkNCj4gPj4NCj4gPj4gSWYg
-SSBtb3VudCBhbiBORlMgdjQuMSBzZXJ2ZXIgdG8gYSBzaW5nbGUgY2xpZW50IG11bHRpcGxlIHRp
-bWVzIGFuZCB0aGVuDQo+ID4+IHJ1biB4ZnN0ZXN0cyBvdmVyIGVhY2ggbW91bnRwb2ludCBJIHVz
-dWFsbHkgZ2V0IHRoZSBjbGllbnQgaW50byBhIHN0YXRlDQo+ID4+IHdoZXJlIHJlY292ZXJ5IGRl
-YWRsb2Nrcy4gIFRoZSBzZXJ2ZXIgaW5mb3JtcyB0aGUgY2xpZW50IG9mIGENCj4gPj4gY2JfcGF0
-aF9kb3duIHNlcXVlbmNlIGVycm9yLCB0aGUgY2xpZW50IHRoZW4gZG9lcyBhDQo+ID4+IGJpbmRf
-Y29ubmVjdGlvbl90b19zZXNzaW9uIGFuZCBjaGVja3MgdGhlIHN0YXR1cyBvZiB0aGUgbGVhc2Uu
-DQo+ID4gDQo+ID4gV2h5IGFyZSB5b3UgZ2V0dGluZyB0aGUgY2JfcGF0aF9kb3duPyBJcyB0aGF0
-IGEgcmVzdWx0IG9mIGEgZmF1bHQNCj4gPiBpbmplY3Rpb24sIG9yIGlzIGl0IGEgZ2VudWluZSBl
-cnJvcj8NCj4gPiANCj4gPiBXaGlsZSBjYl9wYXRoX2Rvd24gaXMgYSB2YWxpZCBlcnJvciwgYW5k
-IHdlIGRvIHdhbnQgdGhlIHJlY292ZXJ5IHRvIHdvcmsNCj4gPiBjb3JyZWN0bHksIEkgd291bGQg
-ZXhwZWN0IGl0IHRvIGJlIHJhcmUgc2luY2UgaXQgaW1wbGllcyB0aGF0IHdlIGxvc3QNCj4gPiB0
-aGUgVENQIGNvbm5lY3Rpb24gdG8gdGhlIHNlcnZlciBmb3Igc29tZSByZWFzb24uIEZpbmRpbmcg
-b3V0IHdoeSBpdA0KPiA+IGhhcHBlbnMgaXMgdGhlcmVmb3JlIHdvcnRoIGRvaW5nLg0KPiANCj4g
-SSBkaWRuJ3QgZ2V0IGl0IHdpdGggZmF1bHQgaW5qZWN0aW9uLCBpdCBqdXN0IGhhcHBlbmVkIGJ5
-IGl0c2VsZiBzb21ld2hlcmUgZHVyaW5nIHRlc3RpbmcuICBNeSBhdHRlbXB0cyBhdCBjYXB0dXJp
-bmcgaXQgd2l0aCB3aXJlc2hhcmsgdXN1YWxseSBzbG93IGRvd24gbXkgc3lzdGVtIGFzIHdpcmVz
-aGFyayB0cmllcyB0byBkaXNwbGF5IDEsMDAwLDAwMCsgcGFja2V0cy4uLiBJJ2xsIHRyeSBhZ2Fp
-biwgdGhvdWdoLg0KDQpTZWUgaWYgeW91IGNhbiBqdXN0IHR1cm4gb24gdGhlIHR3byBkcHJpbnRr
-cygpIGluIHhzX3RjcF9zdGF0ZV9jaGFuZ2UoKSwNCmFuZCB0aGVuIGFkZCBhIHByaW50aygpIHRy
-aWdnZXIgdG8gdGhlDQpuZnM0MV9oYW5kbGVfc2VxdWVuY2VfZmxhZ19lcnJvcnMoKSB0byBzZWUg
-aWYgeW91IGNhbiBjYXRjaCBhDQpjb3JyZWxhdGlvbiBiZXR3ZWVuIGEgVENQIHN0YXRlIGNoYW5n
-ZSBhbmQgdGhlIHBhdGhfZG93biBpc3N1ZS4NCg0KPiA+IA0KPiA+PiBJIGZvdW5kIHRoYXQgYmlu
-ZF9jb25uZWN0aW9uX3RvX3Nlc3Npb24gc2V0cyB0aGUgTkZTNF9TRVNTSU9OX0RSQUlOSU5HDQo+
-ID4+IGZsYWcgb24gdGhlIGNsaWVudCwgYnV0IHRoaXMgZmxhZyBpcyBuZXZlciB1bnNldCBiZWZv
-cmUNCj4gPj4gbmZzNF9jaGVja19sZWFzZSgpIHJlYWNoZXMgbmZzNF9wcm9jX3NlcXVlbmNlKCku
-ICBUaGlzIGNhdXNlcyB0aGUgY2xpZW50DQo+ID4+IHRvIGRlYWRsb2NrLCBoYWx0aW5nIGFsbCBO
-RlMgYWN0aXZpdHkgdG8gdGhlIHNlcnZlci4NCj4gPiANCj4gPiBPdGhlcndpc2UsIHRoZSB0ZXh0
-IGlzIG1vcmUgb3IgbGVzcyBPSy4gVGhlIG9uZSB0aGluZyB0aGF0IEknbSBtaXNzaW5nDQo+ID4g
-aXMgYSBzdGF0ZW1lbnQgYWJvdXQgd2h5IG5mczRfcHJvY19zZXF1ZW5jZSgpIG5lZWRzIHRvIGJl
-IGEgcHJpdmlsZWdlZA0KPiA+IG9wZXJhdGlvbi4NCj4gPiANCj4gDQo+IEhlcmUgaXMgdGhlIG5l
-dyBsYXN0IHBhcmFncmFwaCwgSSBqdXN0IGFkZGVkIHRoZSBzZW50ZW5jZSBhdCB0aGUgZW5kOg0K
-PiANCj4gSSBmb3VuZCB0aGF0IGJpbmRfY29ubmVjdGlvbl90b19zZXNzaW9uIHNldHMgdGhlIE5G
-UzRfU0VTU0lPTl9EUkFJTklORw0KPiBmbGFnIG9uIHRoZSBjbGllbnQsIGJ1dCB0aGlzIGZsYWcg
-aXMgbmV2ZXIgdW5zZXQgYmVmb3JlDQo+IG5mczRfY2hlY2tfbGVhc2UoKSByZWFjaGVzIG5mczRf
-cHJvY19zZXF1ZW5jZSgpLiAgVGhpcyBjYXVzZXMgdGhlIGNsaWVudA0KPiB0byBkZWFkbG9jaywg
-aGFsdGluZyBhbGwgTkZTIGFjdGl2aXR5IHRvIHRoZSBzZXJ2ZXIuICBUaGlzIHBhdGNoIGNoYW5n
-ZXMNCj4gbmZzNF9wcm9jX3NlcXVlbmNlKCkgdG8gcnVuIGluIHByaXZpbGVnZWQgbW9kZSB0byBi
-eXBhc3MgdGhlDQo+IE5GUzRfU0VTU0lPTl9EUkFJTklORyBjaGVjayBhbmQgY29udGludWUgd2l0
-aCByZWNvdmVyeS4NCg0KVGhhbmtzLiBZb3UgbWlnaHQgd2FudCB0byBhZGQgYSBub3RlIHRvIHRo
-ZSBmYWN0IHRoYXQNCm5mczRfcHJvY19zZXF1ZW5jZSgpIGlzIGFsd2F5cyBydW4gZnJvbSB0aGUg
-c3RhdGUgcmVjb3ZlcnkgdGhyZWFkLCBhbmQNCnRoZXJlZm9yZSBpdCBpcyBjb3JyZWN0IHRvIHJ1
-biBpdCBhcyBhIHByaXZpbGVnZWQgb3BlcmF0aW9uLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0K
-TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5l
-dGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git devel
+head:   29c32c56a420896f372c6efd3b6588b41b735ae8
+commit: 29c32c56a420896f372c6efd3b6588b41b735ae8 [73/73] NFSv4.1: If slot allocation fails due to OOM, retry more quickly
+config: make ARCH=x86_64 allmodconfig
+
+All error/warnings:
+
+fs/nfs/nfs4proc.c: In function 'nfs41_setup_sequence':
+fs/nfs/nfs4proc.c:743:31: error: expected ')' before ';' token
+fs/nfs/nfs4proc.c:747:2: error: expected expression before '}' token
+
+vim +743 fs/nfs/nfs4proc.c
+
+cc9673a8 Trond Myklebust 2012-11-01  737  		goto out_sleep;
+b069d94a Andy Adamson    2009-04-01  738  	}
+b069d94a Andy Adamson    2009-04-01  739  
+779b9e08 Trond Myklebust 2012-11-16  740  	slot = nfs4_alloc_slot(tbl);
+29c32c56 Trond Myklebust 2012-11-22  741  	if (IS_ERR(slot)) {
+29c32c56 Trond Myklebust 2012-11-22  742  		/* If out of memory, try again in 1/4 second */
+29c32c56 Trond Myklebust 2012-11-22 @743  		if (slot == ERR_PTR(-ENOMEM);
+29c32c56 Trond Myklebust 2012-11-22  744  			task->tk_timeout = HZ >> 2;
+fbcd4abc Andy Adamson    2009-04-01  745  		dprintk("<-- %s: no free slots\n", __func__);
+cc9673a8 Trond Myklebust 2012-11-01  746  		goto out_sleep;
+fbcd4abc Andy Adamson    2009-04-01 @747  	}
+fbcd4abc Andy Adamson    2009-04-01  748  	spin_unlock(&tbl->slot_tbl_lock);
+fbcd4abc Andy Adamson    2009-04-01  749  
+b23acb7c Trond Myklebust 2012-11-16  750  	args->sa_slot = slot;
+
+---
+0-DAY kernel build testing backend         Open Source Technology Center
+Fengguang Wu, Yuanhan Liu                              Intel Corporation
