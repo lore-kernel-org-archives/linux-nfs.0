@@ -1,28 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:60814 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1754212Ab2KMBkE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Nov 2012 20:40:04 -0500
-Message-ID: <50A1A4EE.7030507@davequigley.com>
-Date: Mon, 12 Nov 2012 20:39:58 -0500
-From: Dave Quigley <dpquigl@davequigley.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:6901 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1755267Ab2KWEtm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 Nov 2012 23:49:42 -0500
+Message-ID: <50AEF92B.4080900@cn.fujitsu.com>
+Date: Fri, 23 Nov 2012 12:18:51 +0800
+From: fanchaoting <fanchaoting@cn.fujitsu.com>
 MIME-Version: 1.0
-To: Steve Dickson <SteveD@redhat.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        "David P. Quigley" <selinux@davequigley.com>,
-        trond.myklebust@netapp.com, sds@tycho.nsa.gov,
-        linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
-        linux-security-module@vger.kernel.org
-Subject: Re: Labeled NFS [v5]
-References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com> <20121112152335.GH30713@fieldses.org> <50A116F0.5050404@davequigley.com> <20121112160959.GK30713@fieldses.org> <50A16269.4060601@RedHat.com>
-In-Reply-To: <50A16269.4060601@RedHat.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>, bfields@fieldses.org
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: nfs cache bug (when server delete the file ,nfs client can read file
+ also)
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If you're ok with non Fedora kernel images I can try to put up a tree 
-either tonight or tomorrow with the patches that you just need to build 
-and install. That plus the one patch for nfs-utils should make 
-everything work.
+Hi,everyone. I found a big bug abount nfs cache.
 
-Dave
+when server delete the file ,nfs client can read file also.
+
+the following is the reproduce.
+
+ip: 192.168.0.19  nfs-client
+ip: 192.168.0.20  nfs-client
+ip: 192.168.0.21  nfs-server
+
+############################################################################
+
+/usr/bin/ssh -n 192.168.0.21 service nfs start
+/usr/bin/ssh -n 192.168.0.21 /usr/sbin/rpc.idmapd
+/usr/bin/ssh -n 192.168.0.19 /usr/sbin/rpc.idmapd
+/usr/bin/ssh -n 192.168.0.20 /usr/sbin/rpc.idmapd
+/usr/bin/ssh -n 192.168.0.21 "rm -rf /nfsroot; mkdir -p /nfsroot"
+/usr/bin/ssh -n 192.168.0.21 /usr/sbin/exportfs -au
+/usr/bin/ssh -n 192.168.0.21 /usr/sbin/exportfs -i -o insecure,no_root_squash,rw,fsid=0 *:/nfsroot
+/usr/bin/ssh -n 192.168.0.19 test -d /nfsroot || (rm -rf /nfsroot; mkdir -p /nfsroot)
+/usr/bin/ssh -n 192.168.0.20 test -d /nfsroot || (rm -rf /nfsroot; mkdir -p /nfsroot)
+
+/usr/bin/ssh -n 192.168.0.19 umount /nfsroot
+/usr/bin/ssh -n 192.168.0.20 umount /nfsroot
+cmd="echo \"hello world\" > /nfsroot/tmpfile"
+/usr/bin/ssh -n 192.168.0.21 $cmd
+/usr/bin/ssh -n 192.168.0.21 mkdir /nfsroot/tmpdir
+/usr/bin/ssh -n 192.168.0.21 touch /nfsroot/tmpdir/tmpdfile
+/usr/bin/ssh -n 192.168.0.19 mount -t nfs4 192.168.0.21:/ /nfsroot
+/usr/bin/ssh -n 192.168.0.20 mount -t nfs4 192.168.0.21:/ /nfsroot
+/usr/bin/ssh -n 192.168.0.21 cat  /nfsroot/tmpfile
+/usr/bin/ssh -n 192.168.0.21 ls -l /nfsroot/tmpdir
+/usr/bin/ssh -n 192.168.0.19 cat  /nfsroot/tmpfile
+/usr/bin/ssh -n 192.168.0.19 ls -l  /nfsroot/tmpdir
+/usr/bin/ssh -n 192.168.0.20 cat  /nfsroot/tmpfile
+/usr/bin/ssh -n 192.168.0.20 ls -l  /nfsroot/tmpdir
+/usr/bin/ssh -n 192.168.0.19 cat /nfsroot/tmpfile > /dev/null
+/usr/bin/ssh -n 192.168.0.20 cat /nfsroot/tmpfile > /dev/null
+/usr/bin/ssh -n 192.168.0.21 rm -rf /nfsroot/tmpfile
+echo -e "sleep 60~~~~~~~~\n"
+sleep 60
+
+#############################################################################
+
+last: In 192.168.0.19 I do:
+
+#cat /nfsroot/tmpfile           <--the nfs server delete the file,but nfs client can read the file
+ hello world
+
+
+I think  when the nfs server delete the file ,
+the  server should notice the nfs client,
+but the upstream kernel does't this.
+ 
+
+
+
