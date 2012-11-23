@@ -1,67 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:20418 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752754Ab2KLUyq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Nov 2012 15:54:46 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Andy Adamson <androsadamson@gmail.com>
-CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFS: Add sequence_priviliged_ops for
- nfs4_proc_sequence()
-Date: Mon, 12 Nov 2012 20:54:45 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092D80BB@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1352745355-31157-1-git-send-email-bjschuma@netapp.com>
-	 <CAHVgHyWyKhjOc4AFY3LvK57k8JK5zNJDkRGwUjqNA4LMYcSzdw@mail.gmail.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9092D7F52@SACEXCMBX04-PRD.hq.netapp.com>
-	 <CAHVgHyWzO6UxnQEBoBFY4uHxTx9PBHKxP+hvJfYaW-OTqWLgMA@mail.gmail.com>
-In-Reply-To: <CAHVgHyWzO6UxnQEBoBFY4uHxTx9PBHKxP+hvJfYaW-OTqWLgMA@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from relay.parallels.com ([195.214.232.42]:55266 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751513Ab2KWLb0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Nov 2012 06:31:26 -0500
+Message-ID: <50AF5E7F.2010006@parallels.com>
+Date: Fri, 23 Nov 2012 15:31:11 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+CC: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFSd state: nfs4_lock_state() and nfs4_lock_state()
+References: <50A622AE.3080809@parallels.com> <20121116165845.GA32183@fieldses.org> <50A9F03B.1010909@parallels.com> <20121119124618.GA30084@fieldses.org>
+In-Reply-To: <20121119124618.GA30084@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTExLTEyIGF0IDE1OjQ5IC0wNTAwLCBBbmR5IEFkYW1zb24gd3JvdGU6DQo+
-IE9uIE1vbiwgTm92IDEyLCAyMDEyIGF0IDM6MjkgUE0sIE15a2xlYnVzdCwgVHJvbmQNCj4gPFRy
-b25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPiBPbiBNb24sIDIwMTItMTEtMTIg
-YXQgMTU6MjIgLTA1MDAsIEFuZHkgQWRhbXNvbiB3cm90ZToNCj4gPj4gT24gTW9uLCBOb3YgMTIs
-IDIwMTIgYXQgMTozNSBQTSwgIDxianNjaHVtYUBuZXRhcHAuY29tPiB3cm90ZToNCj4gPj4gPiBG
-cm9tOiBCcnlhbiBTY2h1bWFrZXIgPGJqc2NodW1hQG5ldGFwcC5jb20+DQo+ID4+ID4NCj4gPj4g
-PiBEdXJpbmcgcmVjb3ZlcnkgdGhlIE5GUzRfU0VTU0lPTl9EUkFJTklORyBmbGFnIG1pZ2h0IGJl
-IHNldCBvbiB0aGUNCj4gPj4gPiBjbGllbnQgc3RydWN0dXJlLiAgVGhpcyBjYW4gY2F1c2UgbGVh
-c2UgcmVuZXdhbCB0byBhYm9ydCB3aGVuDQo+ID4NCj4gPiBOb3QgbGVhc2UgcmVuZXdhbC4gSXQg
-aXMgbGVhc2UgdmVyaWZpY2F0aW9uIChpLmUuIGNoZWNraW5nIHRoYXQgd2UgaGF2ZQ0KPiA+IGEg
-dmFsaWQgbGVhc2UgYW5kIHNlc3Npb24pIHRoYXQgd2lsbCBkZWFkbG9jay4NCj4gPg0KPiA+PiA+
-IG5mczQxX3NldHVwX3NlcXVlbmNlIHNlZXMgdGhhdCB3ZSBhcmUgZG9pbmcgcmVjb3ZlcnkuICBB
-cyBhIHJlc3VsdCwgdGhlDQo+ID4+ID4gY2xpZW50IG5ldmVyIHJlY292ZXJzIGFuZCBhbGwgYWN0
-aXZpdHkgd2l0aCB0aGUgTkZTIHNlcnZlciBoYWx0cy4NCj4gPj4NCj4gPj4NCj4gPj4gV2hlbiBk
-b2VzIHRoaXMgaGFwcGVuPyBTYXkgdGhlIHNlc3Npb24gaXMgZHJhaW5pbmcsIGFuZCBhbiBSUEMg
-cmV0dXJucw0KPiA+PiBmcm9tIG9uZSBvZiB0aGUgY29tcG91bmRzIHN1Y2ggYXMgbmZzX29wZW4s
-IG5mc19sb2NrdSBldGMgd2hvc2UNCj4gPj4gcnBjX2NhbGxfZG9uZSByb3V0aW5lIGNhbGxzIHJl
-bmV3X2xlYXNlIGFmdGVyIGZyZWVpbmcgaXQncyBzbG90LiAgTGlrZQ0KPiA+PiBhbGwgY2FsbHMg
-b24gYSBkcmFpbmluZyBzZXNzaW9uLCB0aGUgcmVuZXdfbGVhc2Ugc2xlZXBzIG9uIHRoZSBzZXNz
-aW9uDQo+ID4+IHNsb3RfdGJsX3dhaXRxIC0gaXMgdGhpcyB3aGF0IHlvdSBtZWFuIGJ5ICJjYXVz
-ZXMgbGVhc2UgcmVuZXdhbCB0bw0KPiA+PiBhYm9ydCI/IEhvdyBkb2VzIHRoaXMgY2F1c2UgdGhl
-IGNsaWVudCB0byBuZXZlciByZWNvdmVyPw0KPiA+Pg0KPiA+PiBUaGUgb25seSBvdGhlciBjYWxs
-IHRvIHJlbmV3X2xlYXNlIGlzIGZyb20gdGhlIHN0YXRlIG1hbmFnZXIgaXRzZWxmDQo+ID4+IHdo
-aWNoIHJ1bnMgb25lIGZ1bmN0aW9uIGF0IGEgdGltZSwgYW5kIHdpbGwgbm90IGNhbGwgcmVuZXdf
-bGVhc2UgdW50aWwNCj4gPj4gdGhlIHJlY292ZXJ5IGlzIG92ZXIuLi4uDQo+ID4+DQo+ID4+IFdo
-YXQgYW0gSSBtaXNzaW5nLi4uLj8NCj4gPg0KPiA+IG5mczRfY2hlY2tfbGVhc2UoKSBpcyBydW4g
-ZXhjbHVzaXZlbHkgYnkgdGhlIHN0YXRlIG1hbmFnZXIgdGhyZWFkIGluDQo+ID4gb3JkZXIgdG8g
-Y2hlY2sgdGhhdCB0aGUgY2xpZW50aWQgKGFuZCBzZXNzaW9uIGlkIG9uIE5GU3Y0LjEpIGFyZSB2
-YWxpZC4NCj4gPiBJdCB3aWxsIGRlYWRsb2NrIHRoZSBzdGF0ZSBtYW5hZ2VyIHRocmVhZCBpZiBO
-RlM0X1NFU1NJT05fRFJBSU5JTkcgaXMNCj4gPiBhbHJlYWR5IHNldC4NCj4gDQo+IE9LLiBORlM0
-X1NFU1NJT05fRFJBSU5JTkcgaXMgYWxzbyBzZXQgZXhjbHVzaXZlbHkgYnkgdGhlIHN0YXRlIG1h
-bmFnZXINCj4gdGhyZWFkLiBXaHkgaXMgdGhlIHN0YXRlIG1hbmFnZXIgdG9sZCB0byBjaGVjayB0
-aGUgbGVhc2Ugd2hlbiBpdCdzDQo+IGFsc28gZHJhaW5pbmcgYSBzZXNzaW9uPw0KDQpORlM0X1NF
-U1NJT05fRFJBSU5JTkcgZG9lcyBub3QganVzdCBtZWFuIHRoYXQgdGhlIHNlc3Npb24gaXMgYmVp
-bmcNCmRyYWluZWQ7IGl0IHJlbWFpbnMgc2V0IHVudGlsIG9wZW4gYW5kIGxvY2sgc3RhdGUgcmVj
-b3ZlcnkgaXMgY29tcGxldGVkLg0KDQpJT1c6IGlmIHNvbWV0aGluZyBoYXBwZW5zIGR1cmluZyBz
-dGF0ZSByZWNvdmVyeSB0aGF0IHJlcXVpcmVzIHVzIHRvDQpjaGVjayB0aGUgbGVhc2UgKGUuZy4g
-c29tZXRoaW5nIHJldHVybnMgTkZTNEVSUl9FWFBJUkVEKSB0aGVuIHRoZQ0KY3VycmVudCBjb2Rl
-IHdpbGwgZGVhZGxvY2suDQoNCj4gTm8gbWF0dGVyIHdoYXQgdGhlIGFuc3dlciwgcGxlYXNlIHVw
-ZGF0ZSB0aGUgcGF0Y2ggZGVzY3JpcHRpb24gdG8NCj4gYmV0dGVyIGV4cGxhaW4gdGhlIHByb2Js
-ZW0gYmVpbmcgc29sdmVkLg0KDQpBQ0suIEkgYWdyZWUgdGhhdCB0aGUgY2hhbmdlbG9nIGVudHJ5
-IGNhbiBiZSBpbXByb3ZlZC4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGll
-bnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cu
-bmV0YXBwLmNvbQ0K
+19.11.2012 16:46, bfields@fieldses.org пишет:
+> On Mon, Nov 19, 2012 at 12:39:23PM +0400, Stanislav Kinsbursky wrote:
+>> 16.11.2012 20:58, bfields@fieldses.org пишет:
+>>>
+>>> A patch follows: note it's a two-line patch, with 20 lines of changelog
+>>> showing that I looked at what state might be shared by other threads and
+>>> explaining why I think this is safe.
+>>>
+>>
+>> Acked-by: Stanislav Kinsburskiy <skinsbursky@parallels.com>
+>>
+>>> I think that's what we need to do: little patches that remove it from
+>>> one or another part of the code with careful explanation of why it
+>>> works.
+>>>
+>>
+>> Yes, thanks. I'll also try to simplify nfsd_open() by little patches.
+>> In general it looks like client_mutex protect two different things:
+>> open owner state (which is containerised already, actually) and
+>> files access.
+>> So, probably, this client mutex have to be converted into two:
+>> per-net one, which protects open owner state, and static one, which
+>> protects files operations.
+>> What do you think about it?
+>
+> That sounds right.
+>
+
+Looked into the code, and few more questions raised.
+So, currently, this mutex protects different NFS4 state structures and VFS file operations (like open, read, write, etc.).
+I would like this mutex to be converted into per-net one. Since NFS4 state structures are per-net already (with my previous patch set), the only thing left is 
+VFS operations.
+But do we really need to protect them somehow from concurrent access?
+I.e. do we have some RPCs, which does more that one file manipulation, but this manipulations sequence have to be "atomic" in NFSd terms?
+
+-- 
+Best regards,
+Stanislav Kinsbursky
