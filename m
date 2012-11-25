@@ -1,156 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:59109 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:38816 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751269Ab2K2Qkz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Nov 2012 11:40:55 -0500
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 6/9] NFSD: Fault injection operations take a per-client forget function
-Date: Thu, 29 Nov 2012 11:40:43 -0500
-Message-Id: <1354207246-32343-7-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1354207246-32343-1-git-send-email-bjschuma@netapp.com>
-References: <1354207246-32343-1-git-send-email-bjschuma@netapp.com>
+	id S1752712Ab2KYOsR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 25 Nov 2012 09:48:17 -0500
+Date: Sun, 25 Nov 2012 09:48:16 -0500
+To: Kks Kbase <kks.kbase@yahoo.in>
+Cc: Linux NFS <linux-nfs@vger.kernel.org>
+Subject: Re: NFS exportfs options
+Message-ID: <20121125144816.GA31110@fieldses.org>
+References: <1353479256.92520.YahooMailNeo@web190605.mail.sg3.yahoo.com>
+ <1353481809.32623.YahooMailNeo@web190605.mail.sg3.yahoo.com>
+ <1353816433.24972.YahooMailNeo@web190603.mail.sg3.yahoo.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1353816433.24972.YahooMailNeo@web190603.mail.sg3.yahoo.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Sun, Nov 25, 2012 at 12:07:13PM +0800, Kks Kbase wrote:
+> Hi,
+> 
+> Here is the mounted option on /var/lib/nfs/etab
+> 
+> # cat /var/lib/nfs/etab
+> /home/nfstest1  *(rw,sync,wdelay,hide,nocrossmnt,secure,root_squash,no_all_squash,no_subtree_check,secure_locks,no_acl,mapping=identity,anonuid=65534,anongid=65534)
+> 
+> 
+> 
+> 
+> 
+> 
+> ----- Original Message -----
+> From: Kks Kbase <kks.kbase@yahoo.in>
+> To: Linux NFS <linux-nfs@vger.kernel.org>
+> Cc: 
+> Sent: Wednesday, 21 November 2012 12:40 PM
+> Subject: NFS exportfs options
+> 
+> 
+> 
+> Hi,
+> 
+> Today I have tried to setup the NFS share. 
+> 
+> 
+> Here is the exportsfs on NFS server
+> 
+> /home/nfstest1   *(rw)
+> 
+> Then I have mounted the nfs share folder and tried to create folders and files. But I am always getting the error as permission denied either root or normal user.
+> 
+> Any ideas please?
 
-The eventual goal is to forget state based on ip address, so it makes
-sense to call this function in a for-each-client loop until the correct
-amount of state is forgotten.  I also use this patch as an opportunity
-to rename the forget function from "func()" to "forget()".
+How are you mounting this on the client?
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfsd/fault_inject.c | 16 +++++++++-------
- fs/nfsd/nfs4state.c    | 30 ------------------------------
- fs/nfsd/state.h        | 12 +++++++-----
- 3 files changed, 16 insertions(+), 42 deletions(-)
+Have you checked permissions on the exported directory?  (ls -ld
+/home/nfstest1).
 
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-index 4b385a1..bf6161a 100644
---- a/fs/nfsd/fault_inject.c
-+++ b/fs/nfsd/fault_inject.c
-@@ -13,29 +13,29 @@
- 
- struct nfsd_fault_inject_op {
- 	char *file;
--	void (*func)(u64);
-+	u64 (*forget)(struct nfs4_client *, u64);
- };
- 
- static struct nfsd_fault_inject_op inject_ops[] = {
- 	{
- 		.file   = "forget_clients",
--		.func   = nfsd_forget_clients,
-+		.forget = nfsd_forget_client,
- 	},
- 	{
- 		.file   = "forget_locks",
--		.func   = nfsd_forget_locks,
-+		.forget = nfsd_forget_client_locks,
- 	},
- 	{
- 		.file   = "forget_openowners",
--		.func   = nfsd_forget_openowners,
-+		.forget = nfsd_forget_client_openowners,
- 	},
- 	{
- 		.file   = "forget_delegations",
--		.func   = nfsd_forget_delegations,
-+		.forget = nfsd_forget_client_delegations,
- 	},
- 	{
- 		.file   = "recall_delegations",
--		.func   = nfsd_recall_delegations,
-+		.forget = nfsd_recall_client_delegations,
- 	},
- };
- 
-@@ -44,6 +44,7 @@ static struct dentry *debug_dir;
- 
- static int nfsd_inject_set(void *op_ptr, u64 val)
- {
-+	u64 count = 0;
- 	struct nfsd_fault_inject_op *op = op_ptr;
- 
- 	if (val == 0)
-@@ -52,8 +53,9 @@ static int nfsd_inject_set(void *op_ptr, u64 val)
- 		printk(KERN_INFO "NFSD Fault Injection: %s (n = %llu)", op->file, val);
- 
- 	nfs4_lock_state();
--	op->func(val);
-+	count = nfsd_for_n_state(val, op->forget);
- 	nfs4_unlock_state();
-+	printk(KERN_INFO "NFSD: %s: found %llu", op->file, count);
- 	return 0;
- }
- 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index dc7c22f..ab45cdd 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4721,36 +4721,6 @@ u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
- 	return count;
- }
- 
--void nfsd_forget_clients(u64 num)
--{
--	u64 count = nfsd_for_n_state(num, nfsd_forget_client);
--	printk(KERN_INFO "NFSD: Forgot %llu clients", count);
--}
--
--void nfsd_forget_locks(u64 num)
--{
--	u64 count = nfsd_for_n_state(num, nfsd_forget_client_locks);
--	printk(KERN_INFO "NFSD: Forgot %llu locks", count);
--}
--
--void nfsd_forget_openowners(u64 num)
--{
--	u64 count = nfsd_for_n_state(num, nfsd_forget_client_openowners);
--	printk(KERN_INFO "NFSD: Forgot %llu open owners", count);
--}
--
--void nfsd_forget_delegations(u64 num)
--{
--	u64 count = nfsd_for_n_state(num, nfsd_forget_client_delegations);
--	printk(KERN_INFO "NFSD: Forgot %llu delegations", count);
--}
--
--void nfsd_recall_delegations(u64 num)
--{
--	u64 count = nfsd_for_n_state(num, nfsd_recall_client_delegations);
--	printk(KERN_INFO "NFSD: Recalled %llu delegations", count);
--}
--
- #endif /* CONFIG_NFSD_FAULT_INJECTION */
- 
- /* initialization to perform at module load time: */
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index b542bf2..423ac64 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -501,11 +501,13 @@ extern void nfsd4_record_grace_done(struct nfsd_net *nn, time_t boot_time);
- #ifdef CONFIG_NFSD_FAULT_INJECTION
- int nfsd_fault_inject_init(void);
- void nfsd_fault_inject_cleanup(void);
--void nfsd_forget_clients(u64);
--void nfsd_forget_locks(u64);
--void nfsd_forget_openowners(u64);
--void nfsd_forget_delegations(u64);
--void nfsd_recall_delegations(u64);
-+u64 nfsd_for_n_state(u64, u64 (*)(struct nfs4_client *, u64));
-+
-+u64 nfsd_forget_client(struct nfs4_client *, u64);
-+u64 nfsd_forget_client_locks(struct nfs4_client*, u64);
-+u64 nfsd_forget_client_openowners(struct nfs4_client *, u64);
-+u64 nfsd_forget_client_delegations(struct nfs4_client *, u64);
-+u64 nfsd_recall_client_delegations(struct nfs4_client *, u64);
- #else /* CONFIG_NFSD_FAULT_INJECTION */
- static inline int nfsd_fault_inject_init(void) { return 0; }
- static inline void nfsd_fault_inject_cleanup(void) {}
--- 
-1.8.0.1
-
+--b.
