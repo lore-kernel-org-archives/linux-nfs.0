@@ -1,100 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:19433 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753217Ab2K0VeH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Nov 2012 16:34:07 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
-Subject: Re: [PATCH] Revert "mountd: handle allocation failures in auth_unix_ip upcall"
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20121127213127.GH27142@fieldses.org>
-Date: Tue, 27 Nov 2012 16:33:57 -0500
+Received: from fieldses.org ([174.143.236.118]:45997 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755683Ab2KZWPi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Nov 2012 17:15:38 -0500
+Date: Mon, 26 Nov 2012 17:15:35 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Message-Id: <59B5C309-166F-44FD-BBCD-0B467A476F2C@oracle.com>
-References: <20121126220343.GA18140@fieldses.org> <73EFE585-98D4-40BE-9EDF-15CC6B14BDB2@oracle.com> <20121126221535.GB18186@fieldses.org> <A954A569-E030-4119-A349-6CB888979738@oracle.com> <20121126225116.GE18186@fieldses.org> <20121127213127.GH27142@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] Revert "mountd: handle allocation failures in
+ auth_unix_ip upcall"
+Message-ID: <20121126221535.GB18186@fieldses.org>
+References: <20121126220343.GA18140@fieldses.org>
+ <73EFE585-98D4-40BE-9EDF-15CC6B14BDB2@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <73EFE585-98D4-40BE-9EDF-15CC6B14BDB2@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Nov 27, 2012, at 4:31 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Mon, Nov 26, 2012 at 05:51:16PM -0500, J. Bruce Fields wrote:
->> On Mon, Nov 26, 2012 at 05:38:49PM -0500, Chuck Lever wrote:
->>> What exactly is the problem with the current code?
->>> 
->>> client_resolve() can return a NULL in some cases.  Why is it OK to
->>> pass a NULL "ai" to client_compose() ?  Looks like that can result in
->>> a mountd segfault.
->> 
->> Bah, I thought I'd checked this and found it was prepared to handle
->> that, but no:
->> 
->> 	client_check->check_wildcard()
->> 
->> looks like it can oops.
+On Mon, Nov 26, 2012 at 05:05:22PM -0500, Chuck Lever wrote:
 > 
-> Right, so the real problem is just that we're skipping the downcall on
-> failure instead of responding with a negative cache entry.  Thus we're
-> leaving the client hanging instead of returning an error.
+> On Nov 26, 2012, at 5:03 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
 > 
-> So, I suppose we should do the below, based on steved's suggestion
-> (compiled, otherwise untested).
+> > From: "J. Bruce Fields" <bfields@redhat.com>
+> > 
+> > This reverts commit 485f7a21e1649797f29317b865cbb094c1f6a71d.  The
+> > failures handled there could be any sort of name resolution failure, not
+> > just an allocation, and failing to downcall (hence leaving the client
+> > hanging) is not the correct thing to do in those cases.
+> 
+> The problem is in the kernel, then: a downcall should be allowed to fail, IMO.
 
-Thanks, this seems reasonable.
+In this case, after a revert, a failure here will result in the downcall
+passing down a client named "DEFAULT".  Presumably that won't be
+permitted access to the export, so the client will end up getting an
+error.
 
+But I may not understand your objection.
+
+--b.
 
 > 
-> --b.
+> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > ---
+> > utils/mountd/cache.c | 12 +++---------
+> > 1 file changed, 3 insertions(+), 9 deletions(-)
+> > 
+> > diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+> > index 8f14032..6710eca 100644
+> > --- a/utils/mountd/cache.c
+> > +++ b/utils/mountd/cache.c
+> > @@ -84,6 +84,7 @@ static void auth_unix_ip(FILE *f)
+> > 	char ipaddr[INET6_ADDRSTRLEN];
+> > 	char *client = NULL;
+> > 	struct addrinfo *tmp = NULL;
+> > +	struct addrinfo *ai = NULL;
+> > 	if (readline(fileno(f), &lbuf, &lbuflen) != 1)
+> > 		return;
+> > 
+> > @@ -106,16 +107,12 @@ static void auth_unix_ip(FILE *f)
+> > 
+> > 	/* addr is a valid, interesting address, find the domain name... */
+> > 	if (!use_ipaddr) {
+> > -		struct addrinfo *ai = NULL;
+> > -
+> > 		ai = client_resolve(tmp->ai_addr);
+> > -		if (ai == NULL)
+> > -			goto out;
+> > 		client = client_compose(ai);
+> > 		freeaddrinfo(ai);
+> > -		if (!client)
+> > -			goto out;
+> > 	}
+> > +	freeaddrinfo(tmp);
+> > +
+> > 	qword_print(f, "nfsd");
+> > 	qword_print(f, ipaddr);
+> > 	qword_printuint(f, time(0) + DEFAULT_TTL);
+> > @@ -127,9 +124,6 @@ static void auth_unix_ip(FILE *f)
+> > 	xlog(D_CALL, "auth_unix_ip: client %p '%s'", client, client?client: "DEFAULT");
+> > 
+> > 	free(client);
+> > -out:
+> > -	freeaddrinfo(tmp);
+> > -
+> > }
+> > 
+> > static void auth_unix_gid(FILE *f)
+> > -- 
+> > 1.7.11.7
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
-> commit dfb31d861261c8461a2dc4fb7e8823f5169a9079
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Tue Nov 27 16:10:41 2012 -0500
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
 > 
->    mountd: auth_unix_ip should downcall on error to prevent hangs
 > 
->    Since bf6a4febaa78bf188896b7b5b02c46562dd08b70 "mountd: handle
->    allocation failures in auth_unix_ip upcall", a failure to map the
->    address of an incoming client to a name could result in a hang.
 > 
->    We should be responding with an error in the case, not just skipping the
->    downcall and leaving everybody hanging.
-> 
->    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> index e950ec6..c13f305 100644
-> --- a/utils/mountd/cache.c
-> +++ b/utils/mountd/cache.c
-> @@ -109,12 +109,10 @@ static void auth_unix_ip(FILE *f)
-> 		struct addrinfo *ai = NULL;
-> 
-> 		ai = client_resolve(tmp->ai_addr);
-> -		if (ai == NULL)
-> -			goto out;
-> -		client = client_compose(ai);
-> -		freeaddrinfo(ai);
-> -		if (!client)
-> -			goto out;
-> +		if (ai) {
-> +			client = client_compose(ai);
-> +			freeaddrinfo(ai);
-> +		}
-> 	}
-> 	qword_print(f, "nfsd");
-> 	qword_print(f, ipaddr);
-> @@ -127,7 +125,6 @@ static void auth_unix_ip(FILE *f)
-> 	xlog(D_CALL, "auth_unix_ip: client %p '%s'", client, client?client: "DEFAULT");
-> 
-> 	free(client);
-> -out:
-> 	freeaddrinfo(tmp);
-> 
-> }
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
