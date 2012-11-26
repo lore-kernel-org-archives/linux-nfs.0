@@ -1,100 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:6115 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:43768 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755411Ab2KVSmf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Nov 2012 13:42:35 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 08/20] NFSv4.1: Label each entry in the session slot tables with its slot number
-Date: Wed, 21 Nov 2012 17:43:07 -0500
-Message-Id: <1353537799-60488-9-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1353537799-60488-8-git-send-email-Trond.Myklebust@netapp.com>
-References: <1353537799-60488-1-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-2-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-3-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-4-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-5-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-6-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-7-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-8-git-send-email-Trond.Myklebust@netapp.com>
+	id S1755837Ab2KZWDo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Nov 2012 17:03:44 -0500
+Date: Mon, 26 Nov 2012 17:03:43 -0500
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] Revert "mountd: handle allocation failures in auth_unix_ip
+ upcall"
+Message-ID: <20121126220343.GA18140@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Instead of doing slot table pointer gymnastics every time we want to
-know which slot we're using.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+This reverts commit 485f7a21e1649797f29317b865cbb094c1f6a71d.  The
+failures handled there could be any sort of name resolution failure, not
+just an allocation, and failing to downcall (hence leaving the client
+hanging) is not the correct thing to do in those cases.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/nfs4proc.c       | 12 +++++++-----
- fs/nfs/nfs4xdr.c        |  2 +-
- include/linux/nfs_xdr.h |  1 +
- 3 files changed, 9 insertions(+), 6 deletions(-)
+ utils/mountd/cache.c | 12 +++---------
+ 1 file changed, 3 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index f8cb60b..4f2d058 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -527,9 +527,9 @@ static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *
- 		 * returned NFS4ERR_DELAY as per Section 2.10.6.2
- 		 * of RFC5661.
- 		 */
--		dprintk("%s: slot=%td seq=%d: Operation in progress\n",
-+		dprintk("%s: slot=%u seq=%u: Operation in progress\n",
- 			__func__,
--			slot - session->fc_slot_table.slots,
-+			slot->slot_nr,
- 			slot->seq_nr);
- 		goto out_retry;
- 	default:
-@@ -672,9 +672,9 @@ int nfs4_setup_sequence(const struct nfs_server *server,
- 	if (session == NULL)
- 		goto out;
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index 8f14032..6710eca 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -84,6 +84,7 @@ static void auth_unix_ip(FILE *f)
+ 	char ipaddr[INET6_ADDRSTRLEN];
+ 	char *client = NULL;
+ 	struct addrinfo *tmp = NULL;
++	struct addrinfo *ai = NULL;
+ 	if (readline(fileno(f), &lbuf, &lbuflen) != 1)
+ 		return;
  
--	dprintk("--> %s clp %p session %p sr_slot %td\n",
-+	dprintk("--> %s clp %p session %p sr_slot %d\n",
- 		__func__, session->clp, session, res->sr_slot ?
--			res->sr_slot - session->fc_slot_table.slots : -1);
-+			res->sr_slot->slot_nr : -1);
+@@ -106,16 +107,12 @@ static void auth_unix_ip(FILE *f)
  
- 	ret = nfs41_setup_sequence(session, args, res, task);
- out:
-@@ -5670,8 +5670,10 @@ struct nfs4_slot *nfs4_alloc_slots(struct nfs4_slot_table *table,
- 
- 	tbl = kmalloc_array(max_slots, sizeof(*tbl), gfp_flags);
- 	if (tbl != NULL) {
--		for (i = 0; i < max_slots; i++)
-+		for (i = 0; i < max_slots; i++) {
- 			tbl[i].table = table;
-+			tbl[i].slot_nr = i;
-+		}
+ 	/* addr is a valid, interesting address, find the domain name... */
+ 	if (!use_ipaddr) {
+-		struct addrinfo *ai = NULL;
+-
+ 		ai = client_resolve(tmp->ai_addr);
+-		if (ai == NULL)
+-			goto out;
+ 		client = client_compose(ai);
+ 		freeaddrinfo(ai);
+-		if (!client)
+-			goto out;
  	}
- 	return tbl;
++	freeaddrinfo(tmp);
++
+ 	qword_print(f, "nfsd");
+ 	qword_print(f, ipaddr);
+ 	qword_printuint(f, time(0) + DEFAULT_TTL);
+@@ -127,9 +124,6 @@ static void auth_unix_ip(FILE *f)
+ 	xlog(D_CALL, "auth_unix_ip: client %p '%s'", client, client?client: "DEFAULT");
+ 
+ 	free(client);
+-out:
+-	freeaddrinfo(tmp);
+-
  }
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 4126f05..50bac70 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -5547,7 +5547,7 @@ static int decode_sequence(struct xdr_stream *xdr,
- 	}
- 	/* slot id */
- 	dummy = be32_to_cpup(p++);
--	if (dummy != res->sr_slot - session->fc_slot_table.slots) {
-+	if (dummy != res->sr_slot->slot_nr) {
- 		dprintk("%s Invalid slot id\n", __func__);
- 		goto out_err;
- 	}
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 0fd88ab..9c9b76c 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -189,6 +189,7 @@ struct nfs4_channel_attrs {
- struct nfs4_slot {
- 	struct nfs4_slot_table	*table;
- 	unsigned long		renewal_time;
-+	u32			slot_nr;
- 	u32		 	seq_nr;
- };
  
+ static void auth_unix_gid(FILE *f)
 -- 
 1.7.11.7
 
