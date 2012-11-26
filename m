@@ -1,59 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:63083 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754064Ab2KGBFw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Nov 2012 20:05:52 -0500
-Received: by mail-ie0-f174.google.com with SMTP id k13so1620277iea.19
-        for <linux-nfs@vger.kernel.org>; Tue, 06 Nov 2012 17:05:52 -0800 (PST)
+Received: from fieldses.org ([174.143.236.118]:59567 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754214Ab2KZQKs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Nov 2012 11:10:48 -0500
+Date: Mon, 26 Nov 2012 11:10:46 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Bryan Schumaker <bjschuma@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 00/10] NFSD: Improve fault injection
+Message-ID: <20121126161046.GC11860@fieldses.org>
+References: <1351630254-26166-1-git-send-email-bjschuma@netapp.com>
+ <20121114224846.GE539@fieldses.org>
+ <50A5025C.8070201@netapp.com>
+ <20121115150036.GG539@fieldses.org>
+ <50B38826.3030902@netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <CAJLw8+WJGPiWW6K7UEX72eYdgeYWsDLcoZKNP7V1UvvQGnMxXA@mail.gmail.com>
-References: <1351760297.5369.1.camel@localhost>
-	<CA+res+RTz9DC8TK3N3kFrSpeT-rgad1nk7amJdWP_Up9OW9KSg@mail.gmail.com>
-	<CAJLw8+WJGPiWW6K7UEX72eYdgeYWsDLcoZKNP7V1UvvQGnMxXA@mail.gmail.com>
-Date: Wed, 7 Nov 2012 09:05:51 +0800
-Message-ID: <CA+res+RhNJT1D0MpdSBJoywemainEJVZKSzG1BxhXTrQ3kQCbw@mail.gmail.com>
-Subject: Re: hang problem when umount a nfs point
-From: Jack Wang <jack.wang.usish@gmail.com>
-To: =?UTF-8?Q?Mart=C3=ADn_Cigorraga?= <msx@archlinux.us>
-Cc: dahai_tian@usish.com, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <50B38826.3030902@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2012/11/7 Martín Cigorraga <msx@archlinux.us>:
-> On Mon, Nov 5, 2012 at 10:27 PM, Jack Wang <jack.wang.usish@gmail.com>
-> wrote:
->>
->> Hi all,
->>
->> Anyone who can kindly give some suggestion? or we just put question to
->> the wrong list?
->>
->> Thanks.
->>
->> Jack
->>
->> 2012/11/1 dahai_tian <dahai_tian@usish.com>:
->> > Hi all:
->> >         I mount a local directory to a nfs server. When nfs server is
->> > stopped
->> > for some accidental cause, I try to umount the mount point, the umount
->> > command will hang and 'time out' messages are continually printed in the
->> > terminal. How can I avoid hanging in this case? BTW, This issue does not
->> > exist when I changed nfs version from 4 to 3.
->> >         Look forward to your response, thanks!
+On Mon, Nov 26, 2012 at 10:17:58AM -0500, Bryan Schumaker wrote:
+> On 11/15/2012 10:00 AM, J. Bruce Fields wrote:
+> > On Thu, Nov 15, 2012 at 09:55:24AM -0500, Bryan Schumaker wrote:
+> >> On 11/14/2012 05:48 PM, J. Bruce Fields wrote:
+> >>> On Tue, Oct 30, 2012 at 04:50:44PM -0400, bjschuma@netapp.com wrote:
+> >>>> From: Bryan Schumaker <bjschuma@netapp.com>
+> >>>>
+> >>>> While working on p2p-nfs, I discovered that I sometimes need to clear
+> >>>> state for a specific client to test all possible error recovery conditions.
+> >>>> The current fault injection code deletes state as it find it, so it can
+> >>>> be difficult to guess which state will be forgotten.  In addition, I
+> >>>> currently print out the amount of state forgotten but I don't give details
+> >>>> like "Forgot 3 locks from client w.x.y.z".  These patches set out to
+> >>>> improve that.
+> >>>>
+> >>>> The first 7 patches clean up the current code and prepare it for specific
+> >>>> client state removal.  Patch 8 adds prints information to the server's logs
+> >>>> when a fault injection file is read (such as "Client w.x.y.z has 3 open
+> >>>> files").  Patch 9 adds in a custom file operations structure so users can
+> >>>> write strings to fault injection files in addition to u64s.  Finally, patch
+> >>>> 10 allows users to remove state by writing a client's IP address to one of
+> >>>> the files.
+> >>>
+> >>> Apologies for putting you off again, but: I'd like to get Stanislav's
+> >>> patches sorted out first.  I think that shouldn't take too long--bug me
+> >>> in another week or so if I haven't come back to these by then.  These
+> >>> may need a little rebasing at that point.
+> >>
+> >> Ok, I'll add "bug Bruce" to my calendar... I took a quick glance through his patches and I don't think rebasing will be too hard.
+> > 
+> > Good, thanks!
+> 
+> So what's the plan for these patches?
 
->
-> Hi Jack, use the -l (lazy) switch:
-> # umount -l {your mounted nfs share}
->
-> Also, I wouldn't recommend 'just to kill' the NFS proces(ses) as it (them)
-> may leave shared memory a mess.
-> (And I would like to see how do you make to mount any NFS share again
-> without booting)
+I'll need to take a quick look at Stanislav's latest and at these
+patches.  Some of his stuff is already in my public tree so yours may
+already need a rebase?
 
-Thanks Martin for kindly help.
-
-umount -l did work, but why nfsv3 do not have this problem?
-
-Jack
+--b.
