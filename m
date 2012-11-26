@@ -1,165 +1,387 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:32690 "EHLO mx1.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:9745 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751217Ab2KPCbg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Nov 2012 21:31:36 -0500
+	id S1756016Ab2KZURP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Nov 2012 15:17:15 -0500
 From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
-Subject: [RFC PATCH 4/4] NFS: Allow a process to set an aggressive caching policy on a file
-Date: Thu, 15 Nov 2012 21:31:28 -0500
-Message-Id: <1353033088-47163-4-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1353033088-47163-3-git-send-email-Trond.Myklebust@netapp.com>
-References: <1353033088-47163-1-git-send-email-Trond.Myklebust@netapp.com>
- <1353033088-47163-2-git-send-email-Trond.Myklebust@netapp.com>
- <1353033088-47163-3-git-send-email-Trond.Myklebust@netapp.com>
+Subject: [PATCH v2 27/28] NFSv4.1: Move slot table and session struct definitions to nfs4session.h
+Date: Mon, 26 Nov 2012 15:16:44 -0500
+Message-Id: <1353961005-63874-28-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1353961005-63874-27-git-send-email-Trond.Myklebust@netapp.com>
+References: <1353961005-63874-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-12-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-13-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-14-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-15-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-16-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-17-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-18-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-19-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-20-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-21-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-22-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-23-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-24-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-25-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-26-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-27-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch allows one process to take on the role as a file 'cache policy
-controller'. It turns off the some of the more conservative caching
-policies that the kernel uses, making it behave as if a delegation is
-enabled.
-The intention is that the cache policy controller will take over the
-role of revalidating the cache using the NFS_CACHECTL ioctl.
-
-The role is tied to an open file descriptor, which means that the
-process can return control to the kernel by closing that
-file descriptor (or by using the NFS_CACHECTL_CLEAR_AGGRESSIVE
-ioctl).
+Clean up. Gather NFSv4.1 slot definitions in fs/nfs/nfs4session.h.
 
 Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/inode.c         |  8 ++++++++
- fs/nfs/ioctl.c         | 36 ++++++++++++++++++++++++++++++++++++
- fs/nfs/ioctl.h         |  2 ++
- include/linux/nfs_fs.h |  2 ++
- 4 files changed, 48 insertions(+)
+ fs/nfs/callback_xdr.c     |   1 +
+ fs/nfs/internal.h         |  21 ----------
+ fs/nfs/nfs4_fs.h          |  12 ------
+ fs/nfs/nfs4filelayout.c   |   1 +
+ fs/nfs/nfs4session.h      | 101 ++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4state.c        |   1 +
+ fs/nfs/nfs4xdr.c          |   1 +
+ fs/nfs/super.c            |   1 +
+ include/linux/nfs_fs_sb.h |  49 ----------------------
+ include/linux/nfs_xdr.h   |  11 +----
+ 10 files changed, 107 insertions(+), 92 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 117183b..e1de62e 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -672,11 +672,14 @@ static void __put_nfs_open_context(struct nfs_open_context *ctx, int is_sync)
- {
- 	struct inode *inode = ctx->dentry->d_inode;
- 	struct super_block *sb = ctx->dentry->d_sb;
-+	struct nfs_inode *nfsi = NFS_I(inode);
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index ea6a7b1..59461c9 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -16,6 +16,7 @@
+ #include "nfs4_fs.h"
+ #include "callback.h"
+ #include "internal.h"
++#include "nfs4session.h"
  
- 	if (!list_empty(&ctx->list)) {
- 		if (!atomic_dec_and_lock(&ctx->lock_context.count, &inode->i_lock))
- 			return;
- 		list_del(&ctx->list);
-+		if (test_bit(NFS_CONTEXT_CACHE_AGGRESSIVE, &ctx->flags))
-+			nfsi->cache_validity &= ~NFS_INO_CACHE_AGGRESSIVE;
- 		spin_unlock(&inode->i_lock);
- 	} else if (!atomic_dec_and_test(&ctx->lock_context.count))
- 		return;
-@@ -885,6 +888,8 @@ static bool nfs_mapping_need_revalidate_inode(struct inode *inode)
- {
- 	if (nfs_have_delegated_attributes(inode))
- 		return false;
-+	if (NFS_I(inode)->cache_validity & NFS_INO_CACHE_AGGRESSIVE)
-+		return false;
- 	return (NFS_I(inode)->cache_validity & NFS_INO_REVAL_PAGECACHE)
- 		|| nfs_attribute_timeout(inode)
- 		|| NFS_STALE(inode);
-@@ -1484,6 +1489,9 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode)
- 				|| S_ISLNK(inode->i_mode)))
- 		invalid &= ~NFS_INO_INVALID_DATA;
-+	/* Honour the aggressive caching flag */
-+	if (nfsi->cache_validity & NFS_INO_CACHE_AGGRESSIVE)
-+		invalid &= ~(NFS_INO_INVALID_DATA|NFS_INO_REVAL_PAGECACHE);
- 	if (!NFS_PROTO(inode)->have_delegation(inode, FMODE_READ) ||
- 			(save_cache_validity & NFS_INO_REVAL_FORCED))
- 		nfsi->cache_validity |= invalid;
-diff --git a/fs/nfs/ioctl.c b/fs/nfs/ioctl.c
-index 72b8592..8c09d86 100644
---- a/fs/nfs/ioctl.c
-+++ b/fs/nfs/ioctl.c
-@@ -103,6 +103,38 @@ static long nfs_ioctl_return_delegation(struct file *filp)
- 	return NFS_PROTO(inode)->return_delegation(inode);
- }
+ #define CB_OP_TAGLEN_MAXSZ	(512)
+ #define CB_OP_HDR_RES_MAXSZ	(2 + CB_OP_TAGLEN_MAXSZ)
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 8965a99..9bdbfc3 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -18,27 +18,6 @@ struct nfs_string;
+  */
+ #define NFS_MAX_READAHEAD	(RPC_DEF_SLOT_TABLE - 1)
  
-+static long nfs_ioctl_cache_aggressive(struct file *filp, bool set)
-+{
-+	struct inode *inode = filp->f_path.dentry->d_inode;
-+	struct nfs_inode *nfsi = NFS_I(inode);
-+	struct nfs_open_context *ctx;
-+	int ret = 0;
+-/*
+- * Determine if sessions are in use.
+- */
+-static inline int nfs4_has_session(const struct nfs_client *clp)
+-{
+-#ifdef CONFIG_NFS_V4_1
+-	if (clp->cl_session)
+-		return 1;
+-#endif /* CONFIG_NFS_V4_1 */
+-	return 0;
+-}
+-
+-static inline int nfs4_has_persistent_session(const struct nfs_client *clp)
+-{
+-#ifdef CONFIG_NFS_V4_1
+-	if (nfs4_has_session(clp))
+-		return (clp->cl_session->flags & SESSION4_PERSIST);
+-#endif /* CONFIG_NFS_V4_1 */
+-	return 0;
+-}
+-
+ static inline void nfs_attr_check_mountpoint(struct super_block *parent, struct nfs_fattr *fattr)
+ {
+ 	if (!nfs_fsid_equal(&NFS_SB(parent)->fsid, &fattr->fsid))
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index cd3e309..322bd01 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -29,11 +29,6 @@ enum nfs4_client_state {
+ 	NFS4CLNT_BIND_CONN_TO_SESSION,
+ };
+ 
+-enum nfs4_session_state {
+-	NFS4_SESSION_INITING,
+-	NFS4_SESSION_DRAINING,
+-};
+-
+ #define NFS4_RENEW_TIMEOUT		0x01
+ #define NFS4_RENEW_DELEGATION_CB	0x02
+ 
+@@ -327,13 +322,6 @@ int nfs41_discover_server_trunking(struct nfs_client *clp,
+ extern void nfs4_schedule_session_recovery(struct nfs4_session *, int);
+ extern void nfs41_server_notify_target_slotid_update(struct nfs_client *clp);
+ 
+-extern void nfs4_session_drain_complete(struct nfs4_session *session,
+-		struct nfs4_slot_table *tbl);
+-
+-static inline bool nfs4_session_draining(struct nfs4_session *session)
+-{
+-	return !!test_bit(NFS4_SESSION_DRAINING, &session->session_state);
+-}
+ #else
+ static inline void nfs4_schedule_session_recovery(struct nfs4_session *session, int err)
+ {
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index bfb28fa..591a1a7 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -35,6 +35,7 @@
+ 
+ #include <linux/sunrpc/metrics.h>
+ 
++#include "nfs4session.h"
+ #include "internal.h"
+ #include "delegation.h"
+ #include "nfs4filelayout.h"
+diff --git a/fs/nfs/nfs4session.h b/fs/nfs/nfs4session.h
+index cb47b1e..e96323f 100644
+--- a/fs/nfs/nfs4session.h
++++ b/fs/nfs/nfs4session.h
+@@ -7,6 +7,68 @@
+ #ifndef __LINUX_FS_NFS_NFS4SESSION_H
+ #define __LINUX_FS_NFS_NFS4SESSION_H
+ 
++/* maximum number of slots to use */
++#define NFS4_DEF_SLOT_TABLE_SIZE (16U)
++#define NFS4_MAX_SLOT_TABLE (256U)
++#define NFS4_NO_SLOT ((u32)-1)
 +
-+	/* Require write privileges to change the 'aggressive caching' mode */
-+	if (!(filp->f_mode & FMODE_WRITE))
-+		return -EBADF;
-+	if (!S_ISREG(inode->i_mode))
-+		return -EINVAL;
-+	ctx = nfs_file_open_context(filp);
-+	nfs_revalidate_inode(NFS_SERVER(inode), inode);
-+	spin_lock(&inode->i_lock);
-+	if (set) {
-+		if (!(nfsi->cache_validity & NFS_INO_CACHE_AGGRESSIVE)) {
-+			set_bit(NFS_CONTEXT_CACHE_AGGRESSIVE, &ctx->flags);
-+			nfsi->cache_validity |= NFS_INO_CACHE_AGGRESSIVE;
-+		} else
-+			ret = -EBUSY;
-+	} else {
-+		if (test_bit(NFS_CONTEXT_CACHE_AGGRESSIVE, &ctx->flags)) {
-+			nfsi->cache_validity &= ~NFS_INO_CACHE_AGGRESSIVE;
-+			clear_bit(NFS_CONTEXT_CACHE_AGGRESSIVE, &ctx->flags);
-+		} else
-+			ret = -EINVAL;
-+	}
-+	spin_unlock(&inode->i_lock);
-+	return ret;
++#if IS_ENABLED(CONFIG_NFS_V4)
++
++/* Sessions slot seqid */
++struct nfs4_slot {
++	struct nfs4_slot_table	*table;
++	struct nfs4_slot	*next;
++	unsigned long		generation;
++	unsigned long		renewal_time;
++	u32			slot_nr;
++	u32		 	seq_nr;
++};
++
++/* Sessions */
++#define SLOT_TABLE_SZ DIV_ROUND_UP(NFS4_MAX_SLOT_TABLE, 8*sizeof(long))
++struct nfs4_slot_table {
++	struct nfs4_session *session;		/* Parent session */
++	struct nfs4_slot *slots;		/* seqid per slot */
++	unsigned long   used_slots[SLOT_TABLE_SZ]; /* used/unused bitmap */
++	spinlock_t	slot_tbl_lock;
++	struct rpc_wait_queue	slot_tbl_waitq;	/* allocators may wait here */
++	u32		max_slots;		/* # slots in table */
++	u32		max_slotid;		/* Max allowed slotid value */
++	u32		highest_used_slotid;	/* sent to server on each SEQ.
++						 * op for dynamic resizing */
++	u32		target_highest_slotid;	/* Server max_slot target */
++	u32		server_highest_slotid;	/* Server highest slotid */
++	unsigned long	generation;		/* Generation counter for
++						   target_highest_slotid */
++	struct completion complete;
++};
++
++/*
++ * Session related parameters
++ */
++struct nfs4_session {
++	struct nfs4_sessionid		sess_id;
++	u32				flags;
++	unsigned long			session_state;
++	u32				hash_alg;
++	u32				ssv_len;
++
++	/* The fore and back channel */
++	struct nfs4_channel_attrs	fc_attrs;
++	struct nfs4_slot_table		fc_slot_table;
++	struct nfs4_channel_attrs	bc_attrs;
++	struct nfs4_slot_table		bc_slot_table;
++	struct nfs_client		*clp;
++	/* Create session arguments */
++	unsigned int			fc_target_max_rqst_sz;
++	unsigned int			fc_target_max_resp_sz;
++};
++
++enum nfs4_session_state {
++	NFS4_SESSION_INITING,
++	NFS4_SESSION_DRAINING,
++};
++
+ #if defined(CONFIG_NFS_V4_1)
+ extern struct nfs4_slot *nfs4_alloc_slot(struct nfs4_slot_table *tbl);
+ extern void nfs4_free_slot(struct nfs4_slot_table *tbl, struct nfs4_slot *slot);
+@@ -24,6 +86,31 @@ extern void nfs4_destroy_session(struct nfs4_session *session);
+ extern int nfs4_init_session(struct nfs_server *server);
+ extern int nfs4_init_ds_session(struct nfs_client *, unsigned long);
+ 
++extern void nfs4_session_drain_complete(struct nfs4_session *session,
++		struct nfs4_slot_table *tbl);
++
++static inline bool nfs4_session_draining(struct nfs4_session *session)
++{
++	return !!test_bit(NFS4_SESSION_DRAINING, &session->session_state);
 +}
 +
- static long nfs_ioctl_cachectl(struct file *filp, struct nfs_cachectl __user *argp)
- {
- 	u64 cmd;
-@@ -122,6 +154,10 @@ static long nfs_ioctl_cachectl(struct file *filp, struct nfs_cachectl __user *ar
- 		return nfs_ioctl_revalidate_range(filp, argp);
- 	case NFS_CACHECTL_RETURN_DELEGATION:
- 		return nfs_ioctl_return_delegation(filp);
-+	case NFS_CACHECTL_SET_AGGRESSIVE:
-+		return nfs_ioctl_cache_aggressive(filp, true);
-+	case NFS_CACHECTL_CLEAR_AGGRESSIVE:
-+		return nfs_ioctl_cache_aggressive(filp, false);
- 	}
- 	return -EINVAL;
++/*
++ * Determine if sessions are in use.
++ */
++static inline int nfs4_has_session(const struct nfs_client *clp)
++{
++	if (clp->cl_session)
++		return 1;
++	return 0;
++}
++
++static inline int nfs4_has_persistent_session(const struct nfs_client *clp)
++{
++	if (nfs4_has_session(clp))
++		return (clp->cl_session->flags & SESSION4_PERSIST);
++	return 0;
++}
++
+ #else /* defined(CONFIG_NFS_V4_1) */
+ 
+ static inline int nfs4_init_session(struct nfs_server *server)
+@@ -31,5 +118,19 @@ static inline int nfs4_init_session(struct nfs_server *server)
+ 	return 0;
  }
-diff --git a/fs/nfs/ioctl.h b/fs/nfs/ioctl.h
-index 6cc5baf..f05b80b 100644
---- a/fs/nfs/ioctl.h
-+++ b/fs/nfs/ioctl.h
-@@ -29,6 +29,8 @@
- #define NFS_CACHECTL_REVALIDATE_DATA		3
- #define NFS_CACHECTL_REVALIDATE_RANGE		4
- #define NFS_CACHECTL_RETURN_DELEGATION		5
-+#define NFS_CACHECTL_SET_AGGRESSIVE		6
-+#define NFS_CACHECTL_CLEAR_AGGRESSIVE		7
  
- struct nfs_cachectl {
- 	u64 cmd;
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 1cc2568..b481ea6 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -77,6 +77,7 @@ struct nfs_open_context {
- 	unsigned long flags;
- #define NFS_CONTEXT_ERROR_WRITE		(0)
- #define NFS_CONTEXT_RESEND_WRITES	(1)
-+#define NFS_CONTEXT_CACHE_AGGRESSIVE	(2)
- 	int error;
++/*
++ * Determine if sessions are in use.
++ */
++static inline int nfs4_has_session(const struct nfs_client *clp)
++{
++	return 0;
++}
++
++static inline int nfs4_has_persistent_session(const struct nfs_client *clp)
++{
++	return 0;
++}
++
+ #endif /* defined(CONFIG_NFS_V4_1) */
++#endif /* IS_ENABLED(CONFIG_NFS_V4) */
+ #endif /* __LINUX_FS_NFS_NFS4SESSION_H */
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 1d38c8b..9afcdd3 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -57,6 +57,7 @@
+ #include "callback.h"
+ #include "delegation.h"
+ #include "internal.h"
++#include "nfs4session.h"
+ #include "pnfs.h"
+ #include "netns.h"
  
- 	struct list_head list;
-@@ -199,6 +200,7 @@ struct nfs_inode {
- #define NFS_INO_INVALID_ACL	0x0010		/* cached acls are invalid */
- #define NFS_INO_REVAL_PAGECACHE	0x0020		/* must revalidate pagecache */
- #define NFS_INO_REVAL_FORCED	0x0040		/* force revalidation ignoring a delegation */
-+#define NFS_INO_CACHE_AGGRESSIVE 0x8000		/* force aggressive caching */
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index a67040f..e786dc7 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -56,6 +56,7 @@
  
- /*
-  * Bit offsets in flags field
+ #include "nfs4_fs.h"
+ #include "internal.h"
++#include "nfs4session.h"
+ #include "pnfs.h"
+ #include "netns.h"
+ 
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 652d3f7..e12cea4 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -64,6 +64,7 @@
+ #include "iostat.h"
+ #include "internal.h"
+ #include "fscache.h"
++#include "nfs4session.h"
+ #include "pnfs.h"
+ #include "nfs.h"
+ 
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index e707c1b..6c6ed15 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -198,53 +198,4 @@ struct nfs_server {
+ #define NFS_CAP_POSIX_LOCK	(1U << 14)
+ #define NFS_CAP_UIDGID_NOMAP	(1U << 15)
+ 
+-
+-/* maximum number of slots to use */
+-#define NFS4_DEF_SLOT_TABLE_SIZE (16U)
+-#define NFS4_MAX_SLOT_TABLE (256U)
+-#define NFS4_NO_SLOT ((u32)-1)
+-
+-#if IS_ENABLED(CONFIG_NFS_V4)
+-
+-/* Sessions */
+-#define SLOT_TABLE_SZ DIV_ROUND_UP(NFS4_MAX_SLOT_TABLE, 8*sizeof(long))
+-struct nfs4_slot_table {
+-	struct nfs4_session *session;		/* Parent session */
+-	struct nfs4_slot *slots;		/* seqid per slot */
+-	unsigned long   used_slots[SLOT_TABLE_SZ]; /* used/unused bitmap */
+-	spinlock_t	slot_tbl_lock;
+-	struct rpc_wait_queue	slot_tbl_waitq;	/* allocators may wait here */
+-	u32		max_slots;		/* # slots in table */
+-	u32		max_slotid;		/* Max allowed slotid value */
+-	u32		highest_used_slotid;	/* sent to server on each SEQ.
+-						 * op for dynamic resizing */
+-	u32		target_highest_slotid;	/* Server max_slot target */
+-	u32		server_highest_slotid;	/* Server highest slotid */
+-	unsigned long	generation;		/* Generation counter for
+-						   target_highest_slotid */
+-	struct completion complete;
+-};
+-
+-/*
+- * Session related parameters
+- */
+-struct nfs4_session {
+-	struct nfs4_sessionid		sess_id;
+-	u32				flags;
+-	unsigned long			session_state;
+-	u32				hash_alg;
+-	u32				ssv_len;
+-
+-	/* The fore and back channel */
+-	struct nfs4_channel_attrs	fc_attrs;
+-	struct nfs4_slot_table		fc_slot_table;
+-	struct nfs4_channel_attrs	bc_attrs;
+-	struct nfs4_slot_table		bc_slot_table;
+-	struct nfs_client		*clp;
+-	/* Create session arguments */
+-	unsigned int			fc_target_max_rqst_sz;
+-	unsigned int			fc_target_max_resp_sz;
+-};
+-
+-#endif /* CONFIG_NFS_V4 */
+ #endif
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 44d256f..2076149 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -185,16 +185,7 @@ struct nfs4_channel_attrs {
+ 	u32			max_reqs;
+ };
+ 
+-/* nfs41 sessions slot seqid */
+-struct nfs4_slot {
+-	struct nfs4_slot_table	*table;
+-	struct nfs4_slot	*next;
+-	unsigned long		generation;
+-	unsigned long		renewal_time;
+-	u32			slot_nr;
+-	u32		 	seq_nr;
+-};
+-
++struct nfs4_slot;
+ struct nfs4_sequence_args {
+ 	struct nfs4_slot	*sa_slot;
+ 	u8			sa_cache_this;
 -- 
 1.7.11.7
 
