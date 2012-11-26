@@ -1,63 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:51575 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:10285 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754505Ab2KNVDt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Nov 2012 16:03:49 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Matt W. Benjamin" <matt@linuxbox.com>
-CC: DENIEL Philippe <philippe.deniel@cea.fr>,
-        Tomasz Chmielewski <mangoo@wpkg.org>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        tigran mkrtchyan <tigran.mkrtchyan@desy.de>
-Subject: Re: !
-Date: Wed, 14 Nov 2012 21:03:46 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092E0903@SACEXCMBX04-PRD.hq.netapp.com>
-References: <132199707.99.1352925492348.JavaMail.root@thunderbeast.private.linuxbox.com>
-In-Reply-To: <132199707.99.1352925492348.JavaMail.root@thunderbeast.private.linuxbox.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1755677Ab2KZUQz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Nov 2012 15:16:55 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 01/28] NFSv4.1: Handle session reset and bind_conn_to_session before lease check
+Date: Mon, 26 Nov 2012 15:16:18 -0500
+Message-Id: <1353961005-63874-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1353961005-63874-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1353961005-63874-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTExLTE0IGF0IDE1OjM4IC0wNTAwLCBNYXR0IFcuIEJlbmphbWluIHdyb3Rl
-Og0KPiBIaSBUcm9uZCwNCj4gDQo+IEkgdGhpbmsgeW91ciBwb2ludCB0aGF0IGRpc2N1c3Npb24g
-b2YgYWx0ZXJuYXRpdmUgd2F5cyBvZiBkb2luZyB0aGluZ3Mgd2hpY2ggbWlnaHQgdWx0aW1hdGVs
-eSBiZSBzdGFuZGFyZGl6ZWQgcmVmbGVjdHMgbGFjayBvZiB1bmRlcnN0YW5kaW5nIG9mIHRoZSBj
-b25jZXB0IG9mIHN0YW5kYXJkaXphdGlvbiBpcyAuLi4gIGEgbm9uLXNlcXVpdHVyLg0KDQpOb2Jv
-ZHkgaXMgcmVzdHJpY3RpbmcgeW91ciBhYmlsaXR5IHRvIHdyaXRlIHlvdXIgb3duIHNpZGUtYmFu
-ZCBwcm90b2NvbA0Kb3IgZXZlbiBmcm9tIG1ha2luZyBwcm9wb3NhbHMgdG8gdGhlIElFVEYuIFRo
-ZSBvbmx5IHJlc3RyaWN0aW9uIGJlaW5nDQppbXBvc2VkIG9uIHlvdSBpcyB0aGF0IHRob3NlIHdv
-bid0IGdvIHVwc3RyZWFtIGludG8gdGhlIExpbnV4IGNsaWVudA0KdW50aWwgYWNjb21wYW5pZWQg
-d2l0aCBhbiBBUEkgYW5kIGEgc3RhbmRhcmRzLWJhc2VkIHNwZWNpZmljYXRpb24uDQoNCj4gSSBk
-aWQgc3RhdGUgdGhhdCB0aGUgc3RhbmRhcmQgZG9lc24ndCBiZW5lZml0IGZyb20gcmVzdHJpY3Rp
-bmcgdGhlIGFiaWxpdHkgb2YgaW1wbGVtZW50YXRpb25zIGFuZCBhcHBsaWNhdGlvbnMgZnJvbSBl
-dm9sdmluZyBuZXcgbWV0YWRhdGEgY29udmVudGlvbnMgZW50aXJlbHkgYWJvdmUgdGhlIGZpbGUg
-c3lzdGVtLiAgVGhpcyBjbGFpbSBpcyBpbiBubyB3YXkgcmFkaWNhbCwgaXQncyBob3cgZXZlcnlv
-bmUgdXNlcyB0aGUgZmlsZSBzeXN0ZW0gYWxyZWFkeS4NCg0KTmVpdGhlciBpcyBpdCBjbGVhciB0
-aGF0IG1vdmluZyB0aG9zZSBtZXRhZGF0YSBjb252ZW50aW9ucyBpbnRvIHRoZQ0KZmlsZXN5c3Rl
-bSBpcyBwYXJ0aWN1bGFybHkgdXNlZnVsLiBTbyBmYXIsIGFsbCB5b3UndmUgZG9uZSBpcyBzcG91
-dA0Kd2FudHMsIGFuZCBub3RoaW5nIGFib3V0IGhvdyB0aGlzIGFkZHJlc3NlcyBhIG5lZWQuDQoN
-Cj4gU2luY2UgSSBoYXZlbid0IHZpb2xhdGVkIGFueSBydWxlIG9mIG5ldGlxdWV0dGUgb3IgY29u
-dmVudGlvbiBvZiBwb2xpdGUgZGlzY3Vzc2lvbiBnZW5lcmFsbHksIGZvcmdpdmUgbWUgZm9yIG5v
-dCBnb2luZyBhd2F5Lg0KDQpZb3UgYXJlIHlhbW1lcmluZyBvbiBhbmQgb24gYWJvdXQgc29tZXRo
-aW5nIHRoYXQgeW91IHdhbnQgZnJvbSBvdGhlcg0KcGVvcGxlIGluIG9yZGVyIHRvIGJlIGFibGUg
-dG8gYnlwYXNzIHRoZWlyIHN0YW5kYXJkIHJldmlldyBwcm9jZXNzIGZvcg0KYWRkaW5nIG5ldyBw
-cm90b2NvbCBmZWF0dXJlcy4gSWYgdGhhdCBlcGl0b21pc2VzIHBvbGl0ZQ0KbmV0aXF1ZXR0ZS1m
-cmllbmRseSBkaXNjdXNzaW9uIHRoZW4gY291bnQgbWUgb3V0Li4uDQoNCj4gUmVnYXJkcywNCj4g
-DQo+IE1hdHQNCj4gDQo+IC0tLS0tICJUcm9uZCBNeWtsZWJ1c3QiIDxUcm9uZC5NeWtsZWJ1c3RA
-bmV0YXBwLmNvbT4gd3JvdGU6DQo+IA0KPiA+ID4gWW91J3ZlIHNhaWQgdGhhdCB4YXR0cnMgYW5k
-IG5hbWVkIGF0dHJpYnV0ZXMgYXJlIGNvbXBsZXRlbHkNCj4gPiBkaWZmZXJlbnQsIGJ1dCBub3R3
-aXRoc3RhbmRpbmcgdGhhdCwgdGhlcmUgc2VlbXMgdG8gYmUgbG9naWNhbGx5IHF1aXRlDQo+ID4g
-YSBiaXQgb2Ygb3ZlcmxhcC4gIENsZWFybHksIHRoZSBmYWN0IHRoYXQgdGhlIE5GUyBwcm90b2Nv
-bCB0cmVhdHMNCj4gPiBuYW1lZCBhdHRyaWJ1dGVzIGFzIHN1YmZpbGVzIGlzIGEgZGV0YWlsIHRo
-YXQgdGhlIGNsaWVudCBuZWVkIG5vdA0KPiA+IGV4cG9zZSB0byBhcHBsaWNhdGlvbnMuICBJdCBh
-bHNvIHNlZW1zIGFzIGlmIGFuIHhhdHRyIGludGVyZmFjZSBpcw0KPiA+IGNvbnZlbmllbnQgZm9y
-IGludGVyYWN0aW5nIHdpdGggYXQgYSBzdWJzZXQgb2YgbmFtZWQgYXR0cmlidXRlcyAob25lcw0K
-PiA+IHdpdGggdHJhY3RhYmxlIGxlbmd0aCBuYW1lcy92YWx1ZXMpLiAgSSBtZWFuLCBhcyBJIG5v
-dGUsIHRoaXMgaXMgdGhlDQo+ID4gcHJvcGxpc3QsIGFuZCB0aGF0IGhhcyBiZWVuIGEgdmVyeSBz
-dWNjZXNzZnVsIGludGVyZmFjZSBpbiBhIGxvdCBvZg0KPiA+IHN5c3RlbXMsIGdvaW5nIGJhY2sg
-YSAtbG9uZy0gd2F5cy4NCj4gPiANCj4gPiBOTyEgR08gQVdBWSEhISENCj4gPiANCj4gPiBTZXJp
-b3VzbHksIGlmIHlvdSBkb24ndCB1bmRlcnN0YW5kIHRoZSBjb25jZXB0IG9mIGEgc3RhbmRhcmQs
-IHRoZW4gZ28NCj4gPiBhd2F5IQ0KPiA+IA0KPiA+IFRyb25kDQo+IA0KDQotLSANClRyb25kIE15
-a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlr
-bGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+We can't send a SEQUENCE op unless the session is OK, so it is pointless
+to handle the CHECK_LEASE state before we've dealt with SESSION_RESET
+and BIND_CONN_TO_SESSION.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4state.c | 17 ++++++++---------
+ 1 file changed, 8 insertions(+), 9 deletions(-)
+
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index e0a28df..f3d1bc4 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -2114,15 +2114,6 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 			continue;
+ 		}
+ 
+-		if (test_and_clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state)) {
+-			section = "check lease";
+-			status = nfs4_check_lease(clp);
+-			if (status < 0)
+-				goto out_error;
+-			if (test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state))
+-				continue;
+-		}
+-
+ 		/* Initialize or reset the session */
+ 		if (test_and_clear_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state)) {
+ 			section = "reset session";
+@@ -2143,6 +2134,14 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 			continue;
+ 		}
+ 
++		if (test_and_clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state)) {
++			section = "check lease";
++			status = nfs4_check_lease(clp);
++			if (status < 0)
++				goto out_error;
++			continue;
++		}
++
+ 		/* Recall session slots */
+ 		if (test_and_clear_bit(NFS4CLNT_RECALL_SLOT, &clp->cl_state)) {
+ 			section = "recall slot";
+-- 
+1.7.11.7
+
