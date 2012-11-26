@@ -1,44 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f46.google.com ([209.85.220.46]:34453 "EHLO
-	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751142Ab2KLBhK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Nov 2012 20:37:10 -0500
-From: ycnian@gmail.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Yanchuan Nian <ycnian@gmail.com>
-Subject: [PATCH] nfs: Fix wrong slab cache in nfs_commit_mempool
-Date: Mon, 12 Nov 2012 09:27:37 +0800
-Message-Id: <1352683657-5191-1-git-send-email-ycnian@gmail.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:37511 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932362Ab2KZWiv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Nov 2012 17:38:51 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
+Subject: Re: [PATCH] Revert "mountd: handle allocation failures in auth_unix_ip upcall"
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20121126221535.GB18186@fieldses.org>
+Date: Mon, 26 Nov 2012 17:38:49 -0500
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Message-Id: <A954A569-E030-4119-A349-6CB888979738@oracle.com>
+References: <20121126220343.GA18140@fieldses.org> <73EFE585-98D4-40BE-9EDF-15CC6B14BDB2@oracle.com> <20121126221535.GB18186@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Yanchuan Nian <ycnian@gmail.com>
 
-The slab cache in nfs_commit_mempool is wrong, and I think it is just a slip.
-I tested it on a x86-32 machine, the size of nfs_write_header is 544, and
-the size of nfs_commit_data is 408, so it works fine. It is also true that
-sizeof(struct nfs_write_header) > sizeof(struct nfs_commit_data) on other
-platforms in my opinoin. Just fix it.
+On Nov 26, 2012, at 5:15 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-Signed-off-by: Yanchuan Nian <ycnian@gmail.com>
----
- fs/nfs/write.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+> On Mon, Nov 26, 2012 at 05:05:22PM -0500, Chuck Lever wrote:
+>> 
+>> On Nov 26, 2012, at 5:03 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+>> 
+>>> From: "J. Bruce Fields" <bfields@redhat.com>
+>>> 
+>>> This reverts commit 485f7a21e1649797f29317b865cbb094c1f6a71d.  The
+>>> failures handled there could be any sort of name resolution failure, not
+>>> just an allocation, and failing to downcall (hence leaving the client
+>>> hanging) is not the correct thing to do in those cases.
+>> 
+>> The problem is in the kernel, then: a downcall should be allowed to fail, IMO.
+> 
+> In this case, after a revert, a failure here will result in the downcall
+> passing down a client named "DEFAULT".  Presumably that won't be
+> permitted access to the export, so the client will end up getting an
+> error.
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 9347ab7..f710e39 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1829,7 +1829,7 @@ int __init nfs_init_writepagecache(void)
- 		goto out_destroy_write_mempool;
- 
- 	nfs_commit_mempool = mempool_create_slab_pool(MIN_POOL_COMMIT,
--						      nfs_wdata_cachep);
-+						      nfs_cdata_cachep);
- 	if (nfs_commit_mempool == NULL)
- 		goto out_destroy_commit_cache;
- 
--- 
-1.7.4.4
+"A failure here" can mean either malloc() returned NULL in client_resolve() or client_compose(), or . . . ?
+
+> But I may not understand your objection.
+
+The main problem is I don't understand your patch description.  :-)
+
+I don't seem to have commit 485f7a21 in my nfs-utils git tree (it's helpful to include the short description for such a case).
+
+What exactly is the problem with the current code?
+
+client_resolve() can return a NULL in some cases.  Why is it OK to pass a NULL "ai" to client_compose() ?  Looks like that can result in a mountd segfault.  The kernel won't get any downcall reply in that case!  Is that what you are trying to fix?
+
+WRT my original objection: In general I don't see how to make it impossible for mountd to fail.  Thus the kernel needs to be better about recovering when mountd suddenly disappears.
+
+> 
+> --b.
+> 
+>> 
+>>> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+>>> ---
+>>> utils/mountd/cache.c | 12 +++---------
+>>> 1 file changed, 3 insertions(+), 9 deletions(-)
+>>> 
+>>> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+>>> index 8f14032..6710eca 100644
+>>> --- a/utils/mountd/cache.c
+>>> +++ b/utils/mountd/cache.c
+>>> @@ -84,6 +84,7 @@ static void auth_unix_ip(FILE *f)
+>>> 	char ipaddr[INET6_ADDRSTRLEN];
+>>> 	char *client = NULL;
+>>> 	struct addrinfo *tmp = NULL;
+>>> +	struct addrinfo *ai = NULL;
+>>> 	if (readline(fileno(f), &lbuf, &lbuflen) != 1)
+>>> 		return;
+>>> 
+>>> @@ -106,16 +107,12 @@ static void auth_unix_ip(FILE *f)
+>>> 
+>>> 	/* addr is a valid, interesting address, find the domain name... */
+>>> 	if (!use_ipaddr) {
+>>> -		struct addrinfo *ai = NULL;
+>>> -
+>>> 		ai = client_resolve(tmp->ai_addr);
+>>> -		if (ai == NULL)
+>>> -			goto out;
+>>> 		client = client_compose(ai);
+>>> 		freeaddrinfo(ai);
+>>> -		if (!client)
+>>> -			goto out;
+>>> 	}
+>>> +	freeaddrinfo(tmp);
+>>> +
+>>> 	qword_print(f, "nfsd");
+>>> 	qword_print(f, ipaddr);
+>>> 	qword_printuint(f, time(0) + DEFAULT_TTL);
+>>> @@ -127,9 +124,6 @@ static void auth_unix_ip(FILE *f)
+>>> 	xlog(D_CALL, "auth_unix_ip: client %p '%s'", client, client?client: "DEFAULT");
+>>> 
+>>> 	free(client);
+>>> -out:
+>>> -	freeaddrinfo(tmp);
+>>> -
+>>> }
+>>> 
+>>> static void auth_unix_gid(FILE *f)
+>>> -- 
+>>> 1.7.11.7
+>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+>> --
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+>> 
+>> 
+>> 
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
