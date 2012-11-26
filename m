@@ -1,72 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:44898 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753467Ab2K2UKr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2012 15:10:47 -0500
-MIME-Version: 1.0
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90B32B2A0@SACEXCMBX04-PRD.hq.netapp.com>
-References: <CANXojcy9thLBwrENTkOTSSE17L3N17A8XsTmyNqq3oNdhW_Q_w@mail.gmail.com>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA90B329CFD@SACEXCMBX04-PRD.hq.netapp.com>
-	<CANXojcxR9673fRObMLPSScogAN05RSVhPFoni=ENc6YDWq9T7w@mail.gmail.com>
-	<1354202525.4064.1.camel@pico.ipa.ssimo.org>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA90B32AEB7@SACEXCMBX04-PRD.hq.netapp.com>
-	<CANXojcys4wR8N-R3oSjWRWJLsObn0Qf+i41vBUaNnJctdcrKVw@mail.gmail.com>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA90B32B2A0@SACEXCMBX04-PRD.hq.netapp.com>
-Date: Thu, 29 Nov 2012 21:10:46 +0100
-Message-ID: <CANXojczr0guTAc7-yq=wZGcKsYy9x=k_Q-P_OzkJHptcdHYtOg@mail.gmail.com>
-Subject: Re: Possible to make nfs aware of a inotify watch has been set.
-From: Stef Bon <stefbon@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: simo <idra@samba.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-cifs <linux-cifs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx2.netapp.com ([216.240.18.37]:57397 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755875Ab2KZURD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Nov 2012 15:17:03 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 12/28] NFSv4.1: Clean up nfs4_free_slot
+Date: Mon, 26 Nov 2012 15:16:29 -0500
+Message-Id: <1353961005-63874-13-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1353961005-63874-12-git-send-email-Trond.Myklebust@netapp.com>
+References: <1353961005-63874-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-10-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-11-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-12-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2012/11/29 Myklebust, Trond <Trond.Myklebust@netapp.com>:
-> On Thu, 2012-11-29 at 17:39 +0100, Stef Bon wrote:
->> 2012/11/29 Myklebust, Trond <Trond.Myklebust@netapp.com>:
->> > On Thu, 2012-11-29 at 10:22 -0500, simo wrote:
->> >> On Thu, 2012-11-29 at 15:49 +0100, Stef Bon wrote:
->> >> > 2012/11/29 Myklebust, Trond <Trond.Myklebust@netapp.com>:
->> >> > >> -----Original Message-----
->> >> > >>
+Change the argument to take the pointer to the slot, instead of
+just the slotid.
 
->>
->> No, sure, you should not do anything because others do it. But on the
->> other hand, if others do it, why don't you? Better copy a good idea
->> than be stubborn for ever.
->
-> The idea that "if we build a bridge, they will come to us" is what gave
-> rise to dnotify, then inotify (nobody came, so let's build a bigger
-> bridge) and fsnotify (make it a toll bridge). Nobody is using those
-> interfaces much on local filesystems, so why is adding it to NFS and
-> CIFS going to be such a game changer?
+We know that the new value of highest_used_slot must be less than
+the current value. No need to scan the whole table.
 
-Well that's a good question. I've been working on this issue for some
-time now, and do not find much interest in it. I do not understand!
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
-Although I find this a bit frustating, I still beleive it's a good
-feature.  And yes, I believe that what you suggest with building a
-bridge (having a good idea) they will come to us.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 59cef54..14389f2 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -412,16 +412,18 @@ static void renew_lease(const struct nfs_server *server, unsigned long timestamp
+  * Must be called while holding tbl->slot_tbl_lock
+  */
+ static void
+-nfs4_free_slot(struct nfs4_slot_table *tbl, u32 slotid)
++nfs4_free_slot(struct nfs4_slot_table *tbl, struct nfs4_slot *slot)
+ {
++	u32 slotid = slot->slot_nr;
++
+ 	/* clear used bit in bitmap */
+ 	__clear_bit(slotid, tbl->used_slots);
+ 
+ 	/* update highest_used_slotid when it is freed */
+ 	if (slotid == tbl->highest_used_slotid) {
+-		slotid = find_last_bit(tbl->used_slots, tbl->max_slots);
+-		if (slotid < tbl->max_slots)
+-			tbl->highest_used_slotid = slotid;
++		u32 new_max = find_last_bit(tbl->used_slots, slotid);
++		if (new_max < slotid)
++			tbl->highest_used_slotid = new_max;
+ 		else
+ 			tbl->highest_used_slotid = NFS4_NO_SLOT;
+ 	}
+@@ -481,7 +483,7 @@ static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
+ 	tbl = &session->fc_slot_table;
+ 
+ 	spin_lock(&tbl->slot_tbl_lock);
+-	nfs4_free_slot(tbl, res->sr_slot - tbl->slots);
++	nfs4_free_slot(tbl, res->sr_slot);
+ 	nfs4_check_drain_fc_complete(session);
+ 	spin_unlock(&tbl->slot_tbl_lock);
+ 	res->sr_slot = NULL;
+-- 
+1.7.11.7
 
-And I've [posted on qt dev platforms, and they mentioned me that they
-need much more fine grained methods, that just "something has
-changed". But ok, that has nothing to do with nfs ...
-
-
->
->> And yes there is no such thing as a killer app, but in my opinion it's
->> the user experience. It's so much better when your system keeps track
->> on shared network resources.
->
-> What does it enable us to do that we can't already do? This is precisely
-> the question that I asked you in the previous email.
-
-Huh? Is it possible to monitor directories and other objects for
-changes already with network fs's??
-
-By polling? The poor mans fs notify service?
-
-Stef
