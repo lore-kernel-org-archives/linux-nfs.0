@@ -1,159 +1,114 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:30942 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:35537 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752754Ab2KLUv5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Nov 2012 15:51:57 -0500
-Message-ID: <50A16144.1040708@netapp.com>
-Date: Mon, 12 Nov 2012 15:51:16 -0500
-From: Bryan Schumaker <bjschuma@netapp.com>
-MIME-Version: 1.0
-To: Andy Adamson <androsadamson@gmail.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFS: Add sequence_priviliged_ops for nfs4_proc_sequence()
-References: <1352745355-31157-1-git-send-email-bjschuma@netapp.com> <CAHVgHyWyKhjOc4AFY3LvK57k8JK5zNJDkRGwUjqNA4LMYcSzdw@mail.gmail.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9092D7F52@SACEXCMBX04-PRD.hq.netapp.com> <CAHVgHyWzO6UxnQEBoBFY4uHxTx9PBHKxP+hvJfYaW-OTqWLgMA@mail.gmail.com>
-In-Reply-To: <CAHVgHyWzO6UxnQEBoBFY4uHxTx9PBHKxP+hvJfYaW-OTqWLgMA@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1754235Ab2KZOkD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Nov 2012 09:40:03 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 4/8] nfsd4: reorganize write decoding
+Date: Mon, 26 Nov 2012 09:39:55 -0500
+Message-Id: <1353940799-11763-5-git-send-email-bfields@redhat.com>
+In-Reply-To: <1353940799-11763-1-git-send-email-bfields@redhat.com>
+References: <1353940799-11763-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/12/2012 03:49 PM, Andy Adamson wrote:
-> On Mon, Nov 12, 2012 at 3:29 PM, Myklebust, Trond
-> <Trond.Myklebust@netapp.com> wrote:
->> On Mon, 2012-11-12 at 15:22 -0500, Andy Adamson wrote:
->>> On Mon, Nov 12, 2012 at 1:35 PM,  <bjschuma@netapp.com> wrote:
->>>> From: Bryan Schumaker <bjschuma@netapp.com>
->>>>
->>>> During recovery the NFS4_SESSION_DRAINING flag might be set on the
->>>> client structure.  This can cause lease renewal to abort when
->>
->> Not lease renewal. It is lease verification (i.e. checking that we have
->> a valid lease and session) that will deadlock.
->>
->>>> nfs41_setup_sequence sees that we are doing recovery.  As a result, the
->>>> client never recovers and all activity with the NFS server halts.
->>>
->>>
->>> When does this happen? Say the session is draining, and an RPC returns
->>> from one of the compounds such as nfs_open, nfs_locku etc whose
->>> rpc_call_done routine calls renew_lease after freeing it's slot.  Like
->>> all calls on a draining session, the renew_lease sleeps on the session
->>> slot_tbl_waitq - is this what you mean by "causes lease renewal to
->>> abort"? How does this cause the client to never recover?
->>>
->>> The only other call to renew_lease is from the state manager itself
->>> which runs one function at a time, and will not call renew_lease until
->>> the recovery is over....
->>>
->>> What am I missing....?
->>
->> nfs4_check_lease() is run exclusively by the state manager thread in
->> order to check that the clientid (and session id on NFSv4.1) are valid.
->> It will deadlock the state manager thread if NFS4_SESSION_DRAINING is
->> already set.
-> 
-> OK. NFS4_SESSION_DRAINING is also set exclusively by the state manager
-> thread. Why is the state manager told to check the lease when it's
-> also draining a session?
-> 
-> No matter what the answer, please update the patch description to
-> better explain the problem being solved.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Yeah, I was just thinking about doing that.  Give me a few minutes...
+In preparation for moving some of it elsewhere.
 
-- Bryan
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4xdr.c |   62 +++++++++++++++++++++++++++++++++++------------------
+ 1 file changed, 41 insertions(+), 21 deletions(-)
 
-> 
-> -->Andy
-> 
->>
->>> -->Andy
->>>
->>>
->>>>
->>>> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
->>>> ---
->>>>  fs/nfs/nfs4proc.c | 21 +++++++++++++++++----
->>>>  1 file changed, 17 insertions(+), 4 deletions(-)
->>>>
->>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>>> index 5eec442..537181c 100644
->>>> --- a/fs/nfs/nfs4proc.c
->>>> +++ b/fs/nfs/nfs4proc.c
->>>> @@ -6138,13 +6138,26 @@ static void nfs41_sequence_prepare(struct rpc_task *task, void *data)
->>>>         rpc_call_start(task);
->>>>  }
->>>>
->>>> +static void nfs41_sequence_prepare_privileged(struct rpc_task *task, void *data)
->>>> +{
->>>> +       rpc_task_set_priority(task, RPC_PRIORITY_PRIVILEGED);
->>>> +       nfs41_sequence_prepare(task, data);
->>>> +}
->>>> +
->>>>  static const struct rpc_call_ops nfs41_sequence_ops = {
->>>>         .rpc_call_done = nfs41_sequence_call_done,
->>>>         .rpc_call_prepare = nfs41_sequence_prepare,
->>>>         .rpc_release = nfs41_sequence_release,
->>>>  };
->>>>
->>>> -static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp, struct rpc_cred *cred)
->>>> +static const struct rpc_call_ops nfs41_sequence_privileged_ops = {
->>>> +       .rpc_call_done = nfs41_sequence_call_done,
->>>> +       .rpc_call_prepare = nfs41_sequence_prepare_privileged,
->>>> +       .rpc_release = nfs41_sequence_release,
->>>> +};
->>>> +
->>>> +static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp, struct rpc_cred *cred,
->>>> +                                            const struct rpc_call_ops *seq_ops)
->>>>  {
->>>>         struct nfs4_sequence_data *calldata;
->>>>         struct rpc_message msg = {
->>>> @@ -6154,7 +6167,7 @@ static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp, struct rpc_
->>>>         struct rpc_task_setup task_setup_data = {
->>>>                 .rpc_client = clp->cl_rpcclient,
->>>>                 .rpc_message = &msg,
->>>> -               .callback_ops = &nfs41_sequence_ops,
->>>> +               .callback_ops = seq_ops,
->>>>                 .flags = RPC_TASK_ASYNC | RPC_TASK_SOFT,
->>>>         };
->>>>
->>>> @@ -6181,7 +6194,7 @@ static int nfs41_proc_async_sequence(struct nfs_client *clp, struct rpc_cred *cr
->>>>
->>>>         if ((renew_flags & NFS4_RENEW_TIMEOUT) == 0)
->>>>                 return 0;
->>>> -       task = _nfs41_proc_sequence(clp, cred);
->>>> +       task = _nfs41_proc_sequence(clp, cred, &nfs41_sequence_ops);
->>>>         if (IS_ERR(task))
->>>>                 ret = PTR_ERR(task);
->>>>         else
->>>> @@ -6195,7 +6208,7 @@ static int nfs4_proc_sequence(struct nfs_client *clp, struct rpc_cred *cred)
->>>>         struct rpc_task *task;
->>>>         int ret;
->>>>
->>>> -       task = _nfs41_proc_sequence(clp, cred);
->>>> +       task = _nfs41_proc_sequence(clp, cred, &nfs41_sequence_privileged_ops);
->>>>         if (IS_ERR(task)) {
->>>>                 ret = PTR_ERR(task);
->>>>                 goto out;
->>>> --
->>>> 1.8.0
->>>>
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->> --
->> Trond Myklebust
->> Linux NFS client maintainer
->>
->> NetApp
->> Trond.Myklebust@netapp.com
->> www.netapp.com
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index cfebc9c..579dc70 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1139,12 +1139,30 @@ nfsd4_decode_verify(struct nfsd4_compoundargs *argp, struct nfsd4_verify *verify
+ 	DECODE_TAIL;
+ }
+ 
++static int fill_in_write_vector(struct kvec *vec, struct kvec *head, struct page **pagelist, int buflen)
++{
++	int i = 1;
++
++	vec[0].iov_base = head->iov_base;
++	vec[0].iov_len = min_t(int, buflen, head->iov_len);
++	buflen -= vec[0].iov_len;
++
++	while (buflen) {
++		vec[i].iov_base = page_address(pagelist[i - 1]);
++		vec[i].iov_len = min_t(int, PAGE_SIZE, buflen);
++		buflen -= vec[i].iov_len;
++		i++;
++	}
++	return i;
++}
++
+ static __be32
+ nfsd4_decode_write(struct nfsd4_compoundargs *argp, struct nfsd4_write *write)
+ {
+ 	int avail;
+-	int v;
+ 	int len;
++	struct page **pagelist;
++	struct kvec head;
+ 	DECODE_HEAD;
+ 
+ 	status = nfsd4_decode_stateid(argp, &write->wr_stateid);
+@@ -1167,27 +1185,29 @@ nfsd4_decode_write(struct nfsd4_compoundargs *argp, struct nfsd4_write *write)
+ 				__FILE__, __LINE__);
+ 		goto xdr_error;
+ 	}
+-	argp->rqstp->rq_vec[0].iov_base = p;
+-	argp->rqstp->rq_vec[0].iov_len = avail;
+-	v = 0;
+-	len = write->wr_buflen;
+-	while (len > argp->rqstp->rq_vec[v].iov_len) {
+-		len -= argp->rqstp->rq_vec[v].iov_len;
+-		v++;
+-		argp->rqstp->rq_vec[v].iov_base = page_address(argp->pagelist[0]);
+-		argp->pagelist++;
+-		if (argp->pagelen >= PAGE_SIZE) {
+-			argp->rqstp->rq_vec[v].iov_len = PAGE_SIZE;
+-			argp->pagelen -= PAGE_SIZE;
+-		} else {
+-			argp->rqstp->rq_vec[v].iov_len = argp->pagelen;
+-			argp->pagelen -= len;
+-		}
++	head.iov_base = p;
++	head.iov_len = avail;
++	WARN_ON(avail != (XDR_QUADLEN(avail) << 2));
++	pagelist = argp->pagelist;
++
++	len = XDR_QUADLEN(write->wr_buflen) << 2;
++	if (len >= avail) {
++		int pages;
++
++		len -= avail;
++
++		pages = len >> PAGE_SHIFT;
++		argp->pagelist += pages;
++		argp->pagelen -= pages * PAGE_SIZE;
++		len -= pages * PAGE_SIZE;
++
++		argp->p = (__be32 *)page_address(argp->pagelist[0]);
++		argp->end = argp->p + XDR_QUADLEN(PAGE_SIZE);
+ 	}
+-	argp->end = (__be32*) (argp->rqstp->rq_vec[v].iov_base + argp->rqstp->rq_vec[v].iov_len);
+-	argp->p = (__be32*)  (argp->rqstp->rq_vec[v].iov_base + (XDR_QUADLEN(len) << 2));
+-	argp->rqstp->rq_vec[v].iov_len = len;
+-	write->wr_vlen = v+1;
++	argp->p += XDR_QUADLEN(len);
++	write->wr_vlen = fill_in_write_vector(argp->rqstp->rq_vec,
++		&head, pagelist, write->wr_buflen);
++	WARN_ON_ONCE(write->wr_vlen > ARRAY_SIZE(argp->rqstp->rq_vec));
+ 
+ 	DECODE_TAIL;
+ }
+-- 
+1.7.9.5
 
