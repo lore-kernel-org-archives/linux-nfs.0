@@ -1,54 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:44972 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S2992484Ab2KOS0p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Nov 2012 13:26:45 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Benny Halevy <bhalevy@tonian.com>
-CC: Giovanni <fattorare@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: PNFS Kernel - CONFIG_SPNFS not found
-Date: Thu, 15 Nov 2012 18:26:43 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092E33AC@SACEXCMBX04-PRD.hq.netapp.com>
-References: <loom.20121105T154655-381@post.gmane.org>
-	 <50A51559.9090009@tonian.com>
-In-Reply-To: <50A51559.9090009@tonian.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from cn.fujitsu.com ([222.73.24.84]:32511 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1753726Ab2KZFej convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Nov 2012 00:34:39 -0500
+Message-ID: <50B300EC.5020707@cn.fujitsu.com>
+Date: Mon, 26 Nov 2012 13:41:00 +0800
+From: fanchaoting <fanchaoting@cn.fujitsu.com>
 MIME-Version: 1.0
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: nfs cache bug (when server delete the file ,nfs client can read
+ file also)
+References: <50AEF92B.4080900@cn.fujitsu.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9092F7F07@SACEXCMBX04-PRD.hq.netapp.com> <50AF0850.6060901@cn.fujitsu.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9092F7F85@SACEXCMBX04-PRD.hq.netapp.com> <50AF10ED.3070208@cn.fujitsu.com> <20121123172056.GA8776@fieldses.org>
+In-Reply-To: <20121123172056.GA8776@fieldses.org>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTExLTE1IGF0IDE4OjE2ICswMjAwLCBCZW5ueSBIYWxldnkgd3JvdGU6DQo+
-IEdpb3Zhbm5pLA0KPiBTb3JyeSBidXQgc3VwcG9ydCBmb3Igc3BuZnMgd2FzIGRyb3BwZWQgYmFj
-ayBpbiBwbmZzLWFsbC0zLjINCj4gU2VlIGh0dHA6Ly93d3cuc3Bpbmljcy5uZXQvbGlzdHMvbGlu
-dXgtbmZzL21zZzI1OTE3Lmh0bWwNCj4gDQo+IEJlbm55DQoNClRpbWUgdG8gdXBkYXRlIHRoZSBz
-cG5mcyBlbnRyeSBpbiB0aGUgd2lraT8NCg0KVHJvbmQNCg0KPiBPbiAyMDEyLTExLTA1IDE2OjQ5
-LCBHaW92YW5uaSB3cm90ZToNCj4gPiBIaSwNCj4gPiBJJ20gdHJ5aW5nIHRvIGNvbXBpbGUgdGhl
-IGtlcm5lbCBpbiBvcmRlciB0byBlbmFibGUgcG5mcyBmZWF0dXJlIHByZXNlbnQgaW4gTkZTDQo+
-ID4gNC4xIGZvbGxvd2luZyB0aGlzIGd1aWRlIGh0dHA6Ly9saW51eC0NCj4gPiBuZnMub3JnL3dp
-a2kvaW5kZXgucGhwL0NvbmZpZ3VyaW5nX3BORlMvc3BuZnNkDQo+ID4gSSBkb3dubG9hZGVkIHRo
-ZSBnaXQgcmVwb3NpdG9yeSBmb3IgdGhlIGtlcm5lbCBmcm9tIGdpdDovL2dpdC5saW51eC0NCj4g
-PiBuZnMub3JnL3Byb2plY3RzL2JoYWxldnkvbGludXgtcG5mcy5naXQNCj4gPiBJIGRpZG4ndCBm
-b3VuZCB3aGVyZSBJIGNhbiBlbmFibGUgdGhlIGtlcm5lbCBvcHRpb25zIENPTkZJR19TUE5GUyBh
-bmQNCj4gPiBDT05GSUdfU1BORlNfTEFZT1VUU0VHTUVOVC4gSSBoYXZlIGZvdW5kIGFsbCB0aGUg
-b3RoZXIgb3B0aW9ucyByZXF1aXJlZCBieSBQTkZTLg0KPiA+IEkgZGlkbid0IGZvdW5kIHRoaXMg
-dHdvIHN0cmluZyBhbHNvIGluIHRoZSBzb3VyY2UgY29kZToNCj4gPiANCj4gPiBbcm9vdEByaDYy
-ZHMxIGxpbnV4LXBuZnNdIyBmaW5kIC58eGFyZ3MgZ3JlcCBDT05GSUdfU1BORlMNCj4gPiBbcm9v
-dEByaDYyZHMxIGxpbnV4LXBuZnNdIw0KPiA+IA0KPiA+IEkgaGF2ZSB0cmllZCB1c2luZyB0aGUg
-bGF0ZXN0IGNvbW1pdCBhbmQgYWxzbyB3aXRoIHRoZSBjb21taXQgaWQNCj4gPiBjYmQwOWUwZmIy
-YjE2MGEwNmE0NGFhZDFjMjE3ODZiOTk0MDE4MjNmICBhcyByZXBvcnRlZCBpbiB0aGUgd2lraSBn
-dWlkZSBidXQgdGhlDQo+ID4gcmVzdWx0IGlzIHRoZSBzYW1lLg0KPiA+IElmIEkgZG9uJ3Qgc2Vs
-ZWN0IHRoaXMgdHdvIGZlYXR1cmUsIGxhdGVyIEkgb2J0YWluIGEgZXJyb3Igd2hlbiBJIHRyeSB0
-byBleGVjdXRlDQo+ID4gdGhlIHByb2Nlc3Mgc3BuZnNkIGV4aXQgd2l0aCBlcnJvciBiZWNhdXNl
-IGl0IGRvZXNuJ3QgZm91bmQgdGhlIGZpbGUNCj4gPiAvcHJvYy9mcy9zcG5mcy9jdGwNCj4gPiAN
-Cj4gPiBDYW4geW91IGhlbHAgbWU/DQo+ID4gDQo+ID4gR2lvdmFubmkgU2Npb3J0aW5vDQo+ID4g
-DQo+ID4gLS0NCj4gPiBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGlu
-ZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBpbg0KPiA+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0
-byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnDQo+ID4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAg
-aHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQo+ID4gDQo+IC0tDQo+
-IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmli
-ZSBsaW51eC1uZnMiIGluDQo+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdl
-ci5rZXJuZWwub3JnDQo+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5l
-bC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXgg
-TkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5j
-b20NCnd3dy5uZXRhcHAuY29tDQo=
+bfields@fieldses.org 写道:
+> On Fri, Nov 23, 2012 at 02:00:13PM +0800, fanchaoting wrote:
+>> Myklebust, Trond 写道:
+>>> On Fri, 2012-11-23 at 13:23 +0800, fanchaoting wrote:
+>>>> Myklebust, Trond 写道:
+>>>>> On Fri, 2012-11-23 at 12:18 +0800, fanchaoting wrote:
+>>>>>> I think  when the nfs server delete the file ,
+>>>>>> the  server should notice the nfs client,
+>>>>>> but the upstream kernel does't this.
+>>>>> So is this a problem with the client or the server? In other words, if
+>>>>> you use a different server/client combination, do you see a different
+>>>>> result?
+>>>>>
+>>>> I think that the server has the problem .when the server deletes the file ,
+>>>> it should notice the client immediately.
+>>> There is no notification mechanism in NFS; on open(), the client is
+>>> supposed to revalidate its cached information and the server is supposed
+>>> to return an ESTALE error if the filehandle is no longer valid. Either
+>>> one of these 2 mechanisms (client revalidation or server reply) could be
+>>> going wrong here, which is why I'm asking.
+>> I found J. Bruce Fields's patch(break delegations on unlink)  maybe solve this problem .
+>> But I did't found it in the upstream kernel.
+> 
+> Yes, still working on getting that merged.  Next step is probably to
+> rebase it on top of jlayton's ESTALE patches, assuming those will go in
+> first.  In theory they could make 3.8 but that may be optimistic.
+> 
+
+Yes, when I applyed the patch, this problem was solved.
+I found when server deleted the file , it can return 
+"DELEGRETURN" to the nfs client.
+
+> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 
+
+
+
