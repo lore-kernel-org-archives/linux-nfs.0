@@ -1,256 +1,131 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:9944 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:35547 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754046Ab2KMPqJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Nov 2012 10:46:09 -0500
-Subject: [PATCH 04/15] nfsd: make conf_id_hashtbl allocated per net
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, devel@openvz.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, jlayton@redhat.com
-Date: Tue, 13 Nov 2012 18:48:38 +0300
-Message-ID: <20121113154838.12577.70755.stgit@localhost.localdomain>
-In-Reply-To: <20121113154722.12577.57671.stgit@localhost.localdomain>
-References: <20121113154722.12577.57671.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1754753Ab2KZOkE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Nov 2012 09:40:04 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 7/8] nfsd4: downgrade some fs/nfsd/nfs4state.c BUG's
+Date: Mon, 26 Nov 2012 09:39:58 -0500
+Message-Id: <1353940799-11763-8-git-send-email-bfields@redhat.com>
+In-Reply-To: <1353940799-11763-1-git-send-email-bfields@redhat.com>
+References: <1353940799-11763-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This hash holds nfs4_clients info, which are network namespace aware.
-So let's make it allocated per network namespace.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Note: this hash can be allocated in per-net operations. But it looks
-better to allocate it on nfsd state start and thus don't waste resources
-if server is not running.
+Linus has pointed out that indiscriminate use of BUG's can make it
+harder to diagnose bugs because they can bring a machine down, often
+before we manage to get any useful debugging information to the logs.
+(Consider, for example, a BUG() that fires in a workqueue, or while
+holding a spinlock).
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Most of these BUG's won't do much more than kill an nfsd thread, but it
+would still probably be safer to get out the warning without dying.
+
+There's still more of this to do in nfsd/.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/netns.h     |    1 +
- fs/nfsd/nfs4state.c |   73 ++++++++++++++++++++++++++++++++++++++-------------
- 2 files changed, 56 insertions(+), 18 deletions(-)
+ fs/nfsd/nfs4state.c |   26 +++++++++++++++-----------
+ 1 file changed, 15 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index 49e5479..0cc85e9 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -50,6 +50,7 @@ struct nfsd_net {
- 	 */
- 	struct list_head *reclaim_str_hashtbl;
- 	int reclaim_str_hashtbl_size;
-+	struct list_head *conf_id_hashtbl;
- };
- 
- extern int nfsd_net_id;
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index dc818f4..74d047e 100644
+index e75872f..41d2aed 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -416,7 +416,6 @@ static unsigned int clientstr_hashval(const char *name)
-  * close_lru holds (open) stateowner queue ordered by nfs4_stateowner.so_time
-  * for last close replay.
-  */
--static struct list_head	conf_id_hashtbl[CLIENT_HASH_SIZE];
- static struct list_head	conf_str_hashtbl[CLIENT_HASH_SIZE];
- static struct list_head	unconf_str_hashtbl[CLIENT_HASH_SIZE];
- static struct list_head	unconf_id_hashtbl[CLIENT_HASH_SIZE];
-@@ -1331,21 +1330,22 @@ move_to_confirmed(struct nfs4_client *clp)
- {
- 	unsigned int idhashval = clientid_hashval(clp->cl_clientid.cl_id);
- 	unsigned int strhashval;
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+@@ -190,7 +190,7 @@ static struct list_head file_hashtbl[FILE_HASH_SIZE];
  
- 	dprintk("NFSD: move_to_confirm nfs4_client %p\n", clp);
--	list_move(&clp->cl_idhash, &conf_id_hashtbl[idhashval]);
-+	list_move(&clp->cl_idhash, &nn->conf_id_hashtbl[idhashval]);
- 	strhashval = clientstr_hashval(clp->cl_recdir);
- 	list_move(&clp->cl_strhash, &conf_str_hashtbl[strhashval]);
- 	renew_client(clp);
+ static void __nfs4_file_get_access(struct nfs4_file *fp, int oflag)
+ {
+-	BUG_ON(!(fp->fi_fds[oflag] || fp->fi_fds[O_RDWR]));
++	WARN_ON_ONCE(!(fp->fi_fds[oflag] || fp->fi_fds[O_RDWR]));
+ 	atomic_inc(&fp->fi_access[oflag]);
  }
  
- static struct nfs4_client *
--find_confirmed_client(clientid_t *clid, bool sessions)
-+find_confirmed_client(clientid_t *clid, bool sessions, struct nfsd_net *nn)
- {
- 	struct nfs4_client *clp;
- 	unsigned int idhashval = clientid_hashval(clid->cl_id);
- 
--	list_for_each_entry(clp, &conf_id_hashtbl[idhashval], cl_idhash) {
-+	list_for_each_entry(clp, &nn->conf_id_hashtbl[idhashval], cl_idhash) {
- 		if (same_clid(&clp->cl_clientid, clid)) {
- 			if ((bool)clp->cl_minorversion != sessions)
- 				return NULL;
-@@ -1753,6 +1753,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 	struct nfsd4_conn *conn;
- 	struct nfsd4_clid_slot *cs_slot = NULL;
- 	__be32 status = 0;
-+	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 
- 	if (cr_ses->flags & ~SESSION4_FLAG_MASK_A)
- 		return nfserr_inval;
-@@ -1768,7 +1769,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 
- 	nfs4_lock_state();
- 	unconf = find_unconfirmed_client(&cr_ses->clientid, true);
--	conf = find_confirmed_client(&cr_ses->clientid, true);
-+	conf = find_confirmed_client(&cr_ses->clientid, true, nn);
- 
- 	if (conf) {
- 		cs_slot = &conf->cl_cs_slot;
-@@ -2110,10 +2111,11 @@ nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
- {
- 	struct nfs4_client *conf, *unconf, *clp;
- 	__be32 status = 0;
-+	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 
- 	nfs4_lock_state();
- 	unconf = find_unconfirmed_client(&dc->clientid, true);
--	conf = find_confirmed_client(&dc->clientid, true);
-+	conf = find_confirmed_client(&dc->clientid, true, nn);
- 
- 	if (conf) {
- 		clp = conf;
-@@ -2256,7 +2258,7 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
- 		return nfserr_stale_clientid;
- 	nfs4_lock_state();
- 
--	conf = find_confirmed_client(clid, false);
-+	conf = find_confirmed_client(clid, false, nn);
- 	unconf = find_unconfirmed_client(clid, false);
- 	/*
- 	 * We try hard to give out unique clientid's, so if we get an
-@@ -2634,7 +2636,8 @@ nfsd4_process_open1(struct nfsd4_compound_state *cstate,
- 	oo = find_openstateowner_str(strhashval, open, cstate->minorversion);
- 	open->op_openowner = oo;
- 	if (!oo) {
--		clp = find_confirmed_client(clientid, cstate->minorversion);
-+		clp = find_confirmed_client(clientid, cstate->minorversion,
-+					    nn);
- 		if (clp == NULL)
- 			return nfserr_expired;
- 		goto new_owner;
-@@ -3130,7 +3133,7 @@ nfsd4_renew(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	status = nfserr_stale_clientid;
- 	if (STALE_CLIENTID(clid, nn))
- 		goto out;
--	clp = find_confirmed_client(clid, cstate->minorversion);
-+	clp = find_confirmed_client(clid, cstate->minorversion, nn);
- 	status = nfserr_expired;
- 	if (clp == NULL) {
- 		/* We assume the client took too long to RENEW. */
-@@ -3406,7 +3409,7 @@ static __be32 nfsd4_lookup_stateid(stateid_t *stateid, unsigned char typemask, s
- 		return nfserr_bad_stateid;
- 	if (STALE_STATEID(stateid, nn))
- 		return nfserr_stale_stateid;
--	cl = find_confirmed_client(&stateid->si_opaque.so_clid, sessions);
-+	cl = find_confirmed_client(&stateid->si_opaque.so_clid, sessions, nn);
- 	if (!cl)
- 		return nfserr_expired;
- 	*s = find_stateid_by_type(cl, stateid, typemask);
-@@ -4558,9 +4561,10 @@ __be32
- nfs4_check_open_reclaim(clientid_t *clid, bool sessions)
- {
- 	struct nfs4_client *clp;
-+	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
- 
- 	/* find clientid in conf_id_hashtbl */
--	clp = find_confirmed_client(clid, sessions);
-+	clp = find_confirmed_client(clid, sessions, nn);
- 	if (clp == NULL)
- 		return nfserr_reclaim_bad;
- 
-@@ -4699,7 +4703,6 @@ nfs4_state_init(void)
- 	int i;
- 
- 	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
--		INIT_LIST_HEAD(&conf_id_hashtbl[i]);
- 		INIT_LIST_HEAD(&conf_str_hashtbl[i]);
- 		INIT_LIST_HEAD(&unconf_str_hashtbl[i]);
- 		INIT_LIST_HEAD(&unconf_id_hashtbl[i]);
-@@ -4740,6 +4743,38 @@ set_max_delegations(void)
- 	max_delegations = nr_free_buffer_pages() >> (20 - 2 - PAGE_SHIFT);
- }
- 
-+static int nfs4_state_start_net(struct net *net)
-+{
-+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-+	int i;
-+
-+	nn->conf_id_hashtbl = kmalloc(sizeof(struct list_head) *
-+			CLIENT_HASH_SIZE, GFP_KERNEL);
-+	if (!nn->conf_id_hashtbl)
-+		return -ENOMEM;
-+
-+	for (i = 0; i < CLIENT_HASH_SIZE; i++)
-+		INIT_LIST_HEAD(&nn->conf_id_hashtbl[i]);
-+
-+	return 0;
-+}
-+
-+static void
-+__nfs4_state_shutdown_net(struct net *net)
-+{
-+	int i;
-+	struct nfs4_client *clp = NULL;
-+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-+
-+	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
-+		while (!list_empty(&nn->conf_id_hashtbl[i])) {
-+			clp = list_entry(nn->conf_id_hashtbl[i].next, struct nfs4_client, cl_idhash);
-+			destroy_client(clp);
-+		}
-+	}
-+	kfree(nn->conf_id_hashtbl);
-+}
-+
- /* initialization to perform when the nfsd service is started: */
- 
- int
-@@ -4757,6 +4792,9 @@ nfs4_state_start(void)
- 	 * basis.
+@@ -249,7 +249,7 @@ static inline int get_new_stid(struct nfs4_stid *stid)
+ 	 * preallocations that can exist at a time, but the state lock
+ 	 * prevents anyone from using ours before we get here:
  	 */
- 	get_net(net);
-+	ret = nfs4_state_start_net(net);
-+	if (ret)
-+		return ret;
- 	nfsd4_client_tracking_init(net);
- 	nn->boot_time = get_seconds();
- 	locks_start_grace(net, &nn->nfsd4_manager);
-@@ -4783,23 +4821,22 @@ out_free_laundry:
- 	destroy_workqueue(laundry_wq);
- out_recovery:
- 	nfsd4_client_tracking_exit(net);
-+	__nfs4_state_shutdown_net(net);
- 	put_net(net);
- 	return ret;
+-	BUG_ON(error);
++	WARN_ON_ONCE(error);
+ 	/*
+ 	 * It shouldn't be a problem to reuse an opaque stateid value.
+ 	 * I don't think it is for 4.1.  But with 4.0 I worry that, for
+@@ -494,7 +494,8 @@ static int nfs4_access_to_omode(u32 access)
+ 	case NFS4_SHARE_ACCESS_BOTH:
+ 		return O_RDWR;
+ 	}
+-	BUG();
++	WARN_ON_ONCE(1);
++	return O_RDONLY;
  }
  
- static void
--__nfs4_state_shutdown(void)
-+__nfs4_state_shutdown(struct net *net)
+ /* release all access and file references for a given stateid */
+@@ -1605,10 +1606,9 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 	switch (exid->spa_how) {
+ 	case SP4_NONE:
+ 		break;
++	default:				/* checked by xdr code */
++		WARN_ON_ONCE(1);
+ 	case SP4_SSV:
+-		return nfserr_serverfault;
+-	default:
+-		BUG();				/* checked by xdr code */
+ 	case SP4_MACH_CRED:
+ 		return nfserr_serverfault;	/* no excuse :-/ */
+ 	}
+@@ -2912,7 +2912,7 @@ static void nfsd4_open_deleg_none_ext(struct nfsd4_open *open, int status)
+ 			open->op_why_no_deleg = WND4_CANCELLED;
+ 			break;
+ 		case NFS4_SHARE_WANT_NO_DELEG:
+-			BUG();	/* not supposed to get here */
++			WARN_ON_ONCE(1);
+ 		}
+ 	}
+ }
+@@ -3466,7 +3466,11 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
+ 			goto out;
+ 		if (filpp) {
+ 			*filpp = dp->dl_file->fi_deleg_file;
+-			BUG_ON(!*filpp);
++			if (!*filpp) {
++				WARN_ON_ONCE(1);
++				status = nfserr_serverfault;
++				goto out;
++			}
+ 		}
+ 		break;
+ 	case NFS4_OPEN_STID:
+@@ -3693,7 +3697,7 @@ static inline void nfs4_stateid_downgrade(struct nfs4_ol_stateid *stp, u32 to_ac
+ 	case NFS4_SHARE_ACCESS_BOTH:
+ 		break;
+ 	default:
+-		BUG();
++		WARN_ON_ONCE(1);
+ 	}
+ }
+ 
+@@ -3882,7 +3886,7 @@ last_byte_offset(u64 start, u64 len)
  {
- 	int i;
- 	struct nfs4_client *clp = NULL;
- 	struct nfs4_delegation *dp = NULL;
- 	struct list_head *pos, *next, reaplist;
+ 	u64 end;
  
-+	__nfs4_state_shutdown_net(net);
-+
- 	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
--		while (!list_empty(&conf_id_hashtbl[i])) {
--			clp = list_entry(conf_id_hashtbl[i].next, struct nfs4_client, cl_idhash);
--			destroy_client(clp);
--		}
- 		while (!list_empty(&unconf_str_hashtbl[i])) {
- 			clp = list_entry(unconf_str_hashtbl[i].next, struct nfs4_client, cl_strhash);
- 			destroy_client(clp);
-@@ -4831,7 +4868,7 @@ nfs4_state_shutdown(void)
- 	destroy_workqueue(laundry_wq);
- 	locks_end_grace(&nn->nfsd4_manager);
- 	nfs4_lock_state();
--	__nfs4_state_shutdown();
-+	__nfs4_state_shutdown(net);
- 	nfs4_unlock_state();
- 	nfsd4_destroy_callback_queue();
+-	BUG_ON(!len);
++	WARN_ON_ONCE(!len);
+ 	end = start + len;
+ 	return end > start ? end - 1: NFS4_MAX_UINT64;
  }
+@@ -4552,7 +4556,7 @@ nfs4_release_reclaim(struct nfsd_net *nn)
+ 			nfs4_remove_reclaim_record(crp, nn);
+ 		}
+ 	}
+-	BUG_ON(nn->reclaim_str_hashtbl_size);
++	WARN_ON_ONCE(nn->reclaim_str_hashtbl_size);
+ }
+ 
+ /*
+-- 
+1.7.9.5
 
