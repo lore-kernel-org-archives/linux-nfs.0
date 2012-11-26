@@ -1,172 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:4531 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964821Ab2KNPSv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Nov 2012 10:18:51 -0500
-Subject: [PATCH v2 05/15] nfsd: make conf_name_tree per net
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, devel@openvz.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, jlayton@redhat.com
-Date: Wed, 14 Nov 2012 18:21:26 +0300
-Message-ID: <20121114152126.4708.32046.stgit@localhost.localdomain>
-In-Reply-To: <20121114152018.4708.63125.stgit@localhost.localdomain>
-References: <20121114152018.4708.63125.stgit@localhost.localdomain>
+Received: from mail-pa0-f46.google.com ([209.85.220.46]:50892 "EHLO
+	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752946Ab2KZQPy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Nov 2012 11:15:54 -0500
+Received: by mail-pa0-f46.google.com with SMTP id bh2so5159052pad.19
+        for <linux-nfs@vger.kernel.org>; Mon, 26 Nov 2012 08:15:54 -0800 (PST)
+Message-ID: <50B39593.2040708@gmail.com>
+Date: Mon, 26 Nov 2012 21:45:15 +0530
+From: "dE ." <de.techno@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: linux-nfs@vger.kernel.org
+Subject: Re: Slow NFS loop performance.
+References: <50AF57A3.3090000@gmail.com> <20121123172333.GB8776@fieldses.org> <50B3918E.4020303@gmail.com> <20121126160853.GB11860@fieldses.org>
+In-Reply-To: <20121126160853.GB11860@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This tree holds nfs4_clients info, which are network namespace aware.
-So let's make it per network namespace.
+On 11/26/12 21:38, J. Bruce Fields wrote:
+> On Mon, Nov 26, 2012 at 09:28:06PM +0530, dE . wrote:
+>> On 11/23/12 22:53, J. Bruce Fields wrote:
+>>> On Fri, Nov 23, 2012 at 04:31:55PM +0530, dE . wrote:
+>>>> Humm... The last thing I expected was no response even in the mailing list.
+>>>>
+>>>> So I'm filing a bug on this.
+>>>>
+>>>> On Oct 23, 2012 2:19 PM, "dE ."<de.techno@gmail.com>   wrote:
+>>>>> Hi!
+>>>>>
+>>>>> Great job with NFS server, it surely is fast, but not on loop devices.
+>>>>>
+>>>>> If I loop mount a file and share the mount point over NFS3 or NFS4, the
+>>>>> write performance of the client on the loop mounted share is pretty bad.
+>>>>>
+>>>>> On a 100 Mbps (or 12.5MBps) full duplex Ethernet link, I get ~8MBps
+>>>>> speeds, whereas on the loop mounted device, I get at best 6MBps.
+>>> What exactly is your test?
+>>>
+>>> --b.
+>> Sorry for the late response. I'd 200+ unread mails.
+>>
+>> I'm writing a large file to the mounted loop device.
+> How large, and do you have the exact command you're using for that?
+>
+> Also, what are the client and server versions?
+>
+> I don't have any good idea off the top of my head.  I doubt anyone's
+> worked on optimizing exports of loop devices.  I guess the first step
+> would be to collect some statistics in the two cases (loop device and
+> non-loop device), compare them, and see if you can see any patterns.
+> /proc/self/mountstats on the client, and /proc/fs/nfsd/pool_stats, on
+> the server, would be starting points.  Maybe perf on the server could
+> also show up something.  Just running "top" on the server might be
+> interesting.  (E.g.  is the CPU obviously busier in the slow case?)
+>
+> --b.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfsd/netns.h     |    4 ++++
- fs/nfsd/nfs4state.c |   31 ++++++++++++++++---------------
- 2 files changed, 20 insertions(+), 15 deletions(-)
-
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index 0cc85e9..afd9116 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -47,10 +47,14 @@ struct nfsd_net {
- 	/*
- 	 * reclaim_str_hashtbl[] holds known client info from previous reset/reboot
- 	 * used in reboot/reset lease grace period processing
-+	 *
-+	 * conf_id_hashtbl[], and conf_name_tree hold confirmed
-+	 * setclientid_confirmed info.
- 	 */
- 	struct list_head *reclaim_str_hashtbl;
- 	int reclaim_str_hashtbl_size;
- 	struct list_head *conf_id_hashtbl;
-+	struct rb_root conf_name_tree;
- };
- 
- extern int nfsd_net_id;
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 7b02c47..ff03573 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -404,9 +404,6 @@ static unsigned int clientstr_hashval(const char *name)
- }
- 
- /*
-- * conf_id_hashtbl[], and conf_name_tree hold confirmed
-- * setclientid_confirmed info.
-- *
-  * unconf_id_hashtbl[] and unconf_name_tree hold unconfirmed
-  * setclientid info.
-  *
-@@ -419,7 +416,6 @@ static unsigned int clientstr_hashval(const char *name)
-  * All of the above fields are protected by the client_mutex.
-  */
- static struct list_head	unconf_id_hashtbl[CLIENT_HASH_SIZE];
--static struct rb_root conf_name_tree;
- static struct rb_root unconf_name_tree;
- static struct list_head client_lru;
- static struct list_head close_lru;
-@@ -1114,6 +1110,7 @@ destroy_client(struct nfs4_client *clp)
- 	struct nfs4_openowner *oo;
- 	struct nfs4_delegation *dp;
- 	struct list_head reaplist;
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 
- 	INIT_LIST_HEAD(&reaplist);
- 	spin_lock(&recall_lock);
-@@ -1136,7 +1133,7 @@ destroy_client(struct nfs4_client *clp)
- 		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
- 	list_del(&clp->cl_idhash);
- 	if (test_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags))
--		rb_erase(&clp->cl_namenode, &conf_name_tree);
-+		rb_erase(&clp->cl_namenode, &nn->conf_name_tree);
- 	else
- 		rb_erase(&clp->cl_namenode, &unconf_name_tree);
- 	spin_lock(&client_lock);
-@@ -1389,7 +1386,7 @@ move_to_confirmed(struct nfs4_client *clp)
- 	dprintk("NFSD: move_to_confirm nfs4_client %p\n", clp);
- 	list_move(&clp->cl_idhash, &nn->conf_id_hashtbl[idhashval]);
- 	rb_erase(&clp->cl_namenode, &unconf_name_tree);
--	add_clp_to_name_tree(clp, &conf_name_tree);
-+	add_clp_to_name_tree(clp, &nn->conf_name_tree);
- 	set_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags);
- 	renew_client(clp);
- }
-@@ -1433,9 +1430,9 @@ static bool clp_used_exchangeid(struct nfs4_client *clp)
- } 
- 
- static struct nfs4_client *
--find_confirmed_client_by_name(struct xdr_netobj *name)
-+find_confirmed_client_by_name(struct xdr_netobj *name, struct nfsd_net *nn)
- {
--	return find_clp_in_name_tree(name, &conf_name_tree);
-+	return find_clp_in_name_tree(name, &nn->conf_name_tree);
- }
- 
- static struct nfs4_client *
-@@ -1635,7 +1632,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 
- 	/* Cases below refer to rfc 5661 section 18.35.4: */
- 	nfs4_lock_state();
--	conf = find_confirmed_client_by_name(&exid->clname);
-+	conf = find_confirmed_client_by_name(&exid->clname, nn);
- 	if (conf) {
- 		bool creds_match = same_creds(&conf->cl_cred, &rqstp->rq_cred);
- 		bool verfs_match = same_verf(&verf, &conf->cl_verifier);
-@@ -1829,7 +1826,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 			status = nfserr_seq_misordered;
- 			goto out_free_conn;
- 		}
--		old = find_confirmed_client_by_name(&unconf->cl_name);
-+		old = find_confirmed_client_by_name(&unconf->cl_name, nn);
- 		if (old)
- 			expire_client(old);
- 		move_to_confirmed(unconf);
-@@ -2227,7 +2224,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 
- 	/* Cases below refer to rfc 3530 section 14.2.33: */
- 	nfs4_lock_state();
--	conf = find_confirmed_client_by_name(&clname);
-+	conf = find_confirmed_client_by_name(&clname, nn);
- 	if (conf) {
- 		/* case 0: */
- 		status = nfserr_clid_inuse;
-@@ -2309,7 +2306,7 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
- 		nfsd4_probe_callback(conf);
- 		expire_client(unconf);
- 	} else { /* case 3: normal case; new or rebooted client */
--		conf = find_confirmed_client_by_name(&unconf->cl_name);
-+		conf = find_confirmed_client_by_name(&unconf->cl_name, nn);
- 		if (conf)
- 			expire_client(conf);
- 		move_to_confirmed(unconf);
-@@ -4726,7 +4723,6 @@ nfs4_state_init(void)
- 	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
- 		INIT_LIST_HEAD(&unconf_id_hashtbl[i]);
- 	}
--	conf_name_tree = RB_ROOT;
- 	unconf_name_tree = RB_ROOT;
- 	for (i = 0; i < SESSION_HASH_SIZE; i++)
- 		INIT_LIST_HEAD(&sessionid_hashtbl[i]);
-@@ -4772,12 +4768,17 @@ static int nfs4_state_start_net(struct net *net)
- 	nn->conf_id_hashtbl = kmalloc(sizeof(struct list_head) *
- 			CLIENT_HASH_SIZE, GFP_KERNEL);
- 	if (!nn->conf_id_hashtbl)
--		return -ENOMEM;
-+		goto err;
- 
--	for (i = 0; i < CLIENT_HASH_SIZE; i++)
-+	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
- 		INIT_LIST_HEAD(&nn->conf_id_hashtbl[i]);
-+	}
-+	nn->conf_name_tree = RB_ROOT;
- 
- 	return 0;
-+
-+err:
-+	return -ENOMEM;
- }
- 
- static void
-
+I'll try it out, but I've see no CPU usage problem here. This time I'll 
+use dd (I did that previously also).
