@@ -1,58 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:12721 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:35358 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753825Ab2KQAxJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 16 Nov 2012 19:53:09 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jim Rees <rees@umich.edu>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2] NFS: Reduce stack use in encode_exchange_id()
-Date: Sat, 17 Nov 2012 00:53:05 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092EA321@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1353107526-25460-1-git-send-email-rees@umich.edu>
-In-Reply-To: <1353107526-25460-1-git-send-email-rees@umich.edu>
-Content-Type: text/plain; charset="utf-8"
+	id S932139Ab2KZWhg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Nov 2012 17:37:36 -0500
+Date: Mon, 26 Nov 2012 17:37:34 -0500
+From: Bruce Fields <bfields@fieldses.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] gssd: Remove insane sanity checks of the service name
+Message-ID: <20121126223734.GD18186@fieldses.org>
+References: <1353969081-17842-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1353969081-17842-2-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1353969081-17842-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTExLTE2IGF0IDE4OjEyIC0wNTAwLCBKaW0gUmVlcyB3cm90ZToNCj4gZW5j
-b2RlX2V4Y2hhbmdlX2lkKCkgdXNlcyBtb3JlIHN0YWNrIHNwYWNlIHRoYW4gbmVjZXNzYXJ5LCBn
-aXZpbmcgYSBjb21waWxlDQo+IHRpbWUgd2FybmluZy4gUmVkdWNlIHRoZSBzaXplIG9mIHRoZSBz
-dGF0aWMgYnVmZmVyIGZvciBpbXBsZW1lbnRhdGlvbiBuYW1lLg0KPiANCj4gU2lnbmVkLW9mZi1i
-eTogSmltIFJlZXMgPHJlZXNAdW1pY2guZWR1Pg0KPiBSZXZpZXdlZC1ieTogIkFkYW1zb24sIERy
-b3MiIDxXZXN0b24uQWRhbXNvbkBuZXRhcHAuY29tPg0KPiAtLS0NCj4gIGZzL25mcy9uZnM0eGRy
-LmMgfCAgICA4ICsrKysrLS0tDQo+ICAxIGZpbGUgY2hhbmdlZCwgNSBpbnNlcnRpb25zKCspLCAz
-IGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0eGRyLmMgYi9mcy9u
-ZnMvbmZzNHhkci5jDQo+IGluZGV4IDY3MmQ5YjAuLmNjMmY4YTkgMTAwNjQ0DQo+IC0tLSBhL2Zz
-L25mcy9uZnM0eGRyLmMNCj4gKysrIGIvZnMvbmZzL25mczR4ZHIuYw0KPiBAQCAtMjcwLDYgKzI3
-MCw4IEBAIHN0YXRpYyBpbnQgbmZzNF9zdGF0X3RvX2Vycm5vKGludCk7DQo+ICANCj4gICNpZiBk
-ZWZpbmVkKENPTkZJR19ORlNfVjRfMSkNCj4gICNkZWZpbmUgTkZTNF9NQVhfTUFDSElORV9OQU1F
-X0xFTiAoNjQpDQo+ICsjZGVmaW5lIElNUExfTkFNRV9MSU1JVCAoc2l6ZW9mKHV0c25hbWUoKS0+
-c3lzbmFtZSkgKyBzaXplb2YodXRzbmFtZSgpLT5yZWxlYXNlKSArIFwNCj4gKwkJCSBzaXplb2Yo
-dXRzbmFtZSgpLT52ZXJzaW9uKSArIHNpemVvZih1dHNuYW1lKCktPm1hY2hpbmUpICsgOCkNCj4g
-IA0KPiAgI2RlZmluZSBlbmNvZGVfZXhjaGFuZ2VfaWRfbWF4c3ogKG9wX2VuY29kZV9oZHJfbWF4
-c3ogKyBcDQo+ICAJCQkJZW5jb2RlX3ZlcmlmaWVyX21heHN6ICsgXA0KPiBAQCAtMjgyLDcgKzI4
-NCw3IEBAIHN0YXRpYyBpbnQgbmZzNF9zdGF0X3RvX2Vycm5vKGludCk7DQo+ICAJCQkJMSAvKiBu
-aWlfZG9tYWluICovICsgXA0KPiAgCQkJCVhEUl9RVUFETEVOKE5GUzRfT1BBUVVFX0xJTUlUKSAr
-IFwNCj4gIAkJCQkxIC8qIG5paV9uYW1lICovICsgXA0KPiAtCQkJCVhEUl9RVUFETEVOKE5GUzRf
-T1BBUVVFX0xJTUlUKSArIFwNCj4gKwkJCQlYRFJfUVVBRExFTihJTVBMX05BTUVfTElNSVQpICsg
-XA0KPiAgCQkJCTMgLyogbmlpX2RhdGUgKi8pDQo+ICAjZGVmaW5lIGRlY29kZV9leGNoYW5nZV9p
-ZF9tYXhzeiAob3BfZGVjb2RlX2hkcl9tYXhzeiArIFwNCj4gIAkJCQkyIC8qIGVpcl9jbGllbnRp
-ZCAqLyArIFwNCj4gQEAgLTE3MTEsNyArMTcxMyw3IEBAIHN0YXRpYyB2b2lkIGVuY29kZV9leGNo
-YW5nZV9pZChzdHJ1Y3QgeGRyX3N0cmVhbSAqeGRyLA0KPiAgCQkJICAgICAgIHN0cnVjdCBjb21w
-b3VuZF9oZHIgKmhkcikNCj4gIHsNCj4gIAlfX2JlMzIgKnA7DQo+IC0JY2hhciBpbXBsX25hbWVb
-TkZTNF9PUEFRVUVfTElNSVRdOw0KPiArCWNoYXIgaW1wbF9uYW1lW0lNUExfTkFNRV9MSU1JVF07
-DQo+ICAJaW50IGxlbiA9IDA7DQo+ICANCj4gIAllbmNvZGVfb3BfaGRyKHhkciwgT1BfRVhDSEFO
-R0VfSUQsIGRlY29kZV9leGNoYW5nZV9pZF9tYXhzeiwgaGRyKTsNCj4gQEAgLTE3MjYsNyArMTcy
-OCw3IEBAIHN0YXRpYyB2b2lkIGVuY29kZV9leGNoYW5nZV9pZChzdHJ1Y3QgeGRyX3N0cmVhbSAq
-eGRyLA0KPiAgCWlmIChzZW5kX2ltcGxlbWVudGF0aW9uX2lkICYmDQo+ICAJICAgIHNpemVvZihD
-T05GSUdfTkZTX1Y0XzFfSU1QTEVNRU5UQVRJT05fSURfRE9NQUlOKSA+IDEgJiYNCj4gIAkgICAg
-c2l6ZW9mKENPTkZJR19ORlNfVjRfMV9JTVBMRU1FTlRBVElPTl9JRF9ET01BSU4pDQo+IC0JCTw9
-IE5GUzRfT1BBUVVFX0xJTUlUICsgMSkNCj4gKwkJPD0gc2l6ZW9mKGltcGxfbmFtZSkgKyAxKQ0K
-PiAgCQlsZW4gPSBzbnByaW50ZihpbXBsX25hbWUsIHNpemVvZihpbXBsX25hbWUpLCAiJXMgJXMg
-JXMgJXMiLA0KPiAgCQkJICAgICAgIHV0c25hbWUoKS0+c3lzbmFtZSwgdXRzbmFtZSgpLT5yZWxl
-YXNlLA0KPiAgCQkJICAgICAgIHV0c25hbWUoKS0+dmVyc2lvbiwgdXRzbmFtZSgpLT5tYWNoaW5l
-KTsNCg0KVGhhbmtzIEppbSEgSSB3aWxsIGFwcGx5Li4uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0
-DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RA
-bmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+On Mon, Nov 26, 2012 at 05:31:21PM -0500, Trond Myklebust wrote:
+> Either we trust the info file, or we don't. The current
+> 'checks' only work for the combination 'nfs', '100003' and
+> a version number between 2 and 4.
+> The problem is that the callback channel also wants to use
+> 'nfs' in combination with a different program number and
+> version number.
+> 
+> This patch throws the bogus checks out altogether and lets the
+> kernel use whatever combination it wants....
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+ACK to both.--b.
+
+> ---
+>  utils/gssd/gssd_proc.c | 13 +------------
+>  1 file changed, 1 insertion(+), 12 deletions(-)
+> 
+> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+> index b79e872..8c00201 100644
+> --- a/utils/gssd/gssd_proc.c
+> +++ b/utils/gssd/gssd_proc.c
+> @@ -250,21 +250,10 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+>  	if ((p = strstr(buf, "port")) != NULL)
+>  		sscanf(p, "port: %127s\n", port);
+>  
+> -	/* check service, program, and version */
+> -	if (memcmp(service, "nfs", 3) != 0)
+> -		return -1;
+> +	/* get program, and version numbers */
+>  	*prog = atoi(program + 1); /* skip open paren */
+>  	*vers = atoi(version);
+>  
+> -	if (strlen(service) == 3 ) {
+> -		if ((*prog != 100003) || ((*vers != 2) && (*vers != 3) &&
+> -		    (*vers != 4)))
+> -			goto fail;
+> -	} else if (memcmp(service, "nfs4_cb", 7) == 0) {
+> -		if (*vers != 1)
+> -			goto fail;
+> -	}
+> -
+>  	if (!addrstr_to_sockaddr(addr, address, port))
+>  		goto fail;
+>  
+> -- 
+> 1.7.11.7
+> 
