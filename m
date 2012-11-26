@@ -1,71 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:55376 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752556Ab2KVTDt convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Nov 2012 14:03:49 -0500
-Message-ID: <50ADDCB4.2050603@parallels.com>
-Date: Thu, 22 Nov 2012 12:05:08 +0400
+Received: from mailhub.sw.ru ([195.214.232.25]:42064 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754303Ab2KZNOU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Nov 2012 08:14:20 -0500
+Subject: [PATCH 2/2] nfsd: recovery - make in_grace per net
+To: bfields@fieldses.org
 From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Mon, 26 Nov 2012 16:16:30 +0300
+Message-ID: <20121126131630.8822.81210.stgit@localhost.localdomain>
+In-Reply-To: <20121126131404.8822.65870.stgit@localhost.localdomain>
+References: <20121126131404.8822.65870.stgit@localhost.localdomain>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Jeff Layton <jlayton@redhat.com>, <linux-nfs@vger.kernel.org>,
-        <devel@openvz.org>, <Trond.Myklebust@netapp.com>,
-        <linux-kernel@vger.kernel.org>
-Subject: Re: [RFC PATCH v2 00/15] NFSd state containerization
-References: <20121114152018.4708.63125.stgit@localhost.localdomain> <20121114220036.GD539@fieldses.org> <20121115133408.23db9ebb@corrin.poochiereds.net> <20121121204408.GA23097@fieldses.org>
-In-Reply-To: <20121121204408.GA23097@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-22.11.2012 00:44, J. Bruce Fields пишет:
-> On Thu, Nov 15, 2012 at 01:34:08PM -0500, Jeff Layton wrote:
->> On Wed, 14 Nov 2012 17:00:36 -0500
->> "J. Bruce Fields" <bfields@fieldses.org> wrote:
->>
->>> On Wed, Nov 14, 2012 at 06:20:59PM +0300, Stanislav Kinsbursky wrote:
->>>> This patch set is my first attempt to containerize NFSv4 state - i.e. make it
->>>> works in networks namespace context.
->>>> I admit, that some of this new code could be partially rewritten during future
->>>> NFSd containerization.
->>>> But the overall idea look more or less correct to me.
->>>> So, the main things here are:
->>>> 1) making nfs4_client network namespace aware.
->>>> 2) Allocating all hashes (except file_hashtbl and reclaim_str_hashtbl) per
->>>> network namespace context on NFSd start (not init) and destroying on NFSd
->>>> state shutdown.
->>>> 3) Allocating of reclaim_str_hashtbl on legacy tracker start and destroying on
->>>> legacy tracker stop.
->>>> 4) Moving of client_lru and close_lru lists to per-net data.
->>>> 5) Making lundromat network namespace aware.
->>>
->>> These look OK and pass my tests.  Jeff, do the revised recovery bits
->>> look OK?
->>>
->>> Have you done any testing?
->>>
->>> It'd be interesting, for example, to know if there are any pynfs that
->>> fail against the server in a non-init network namespace, but pass
->>> normally.
->>>
->>> --b.
->>>
->>
->> I looked over the patches and they look sane to me. I move that they go
->> into your -next branch to soak for a bit.
->
-> Stanislav, actually, I'm unclear, since you labeled these "RFC": do you
-> consider these patches ready?
->
+Flag in_grace is a part of client tracking state, which is network namesapce
+aware. So let'a replace global static variable with per-net one.
 
-Yes, I consider them ready.
-I added the "RFC" mark, because I'm not completely sure, this this code wont' be
-partially rewritten in future.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfsd/netns.h       |    1 +
+ fs/nfsd/nfs4recover.c |    9 ++++-----
+ 2 files changed, 5 insertions(+), 5 deletions(-)
 
-> --b.
->
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index 1305632..9047706 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -86,6 +86,7 @@ struct nfsd_net {
+ 	spinlock_t client_lock;
+ 
+ 	struct file *rec_file;
++	bool in_grace;
+ };
+ 
+ extern int nfsd_net_id;
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index 3e76d28..359793f 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -64,7 +64,6 @@ struct nfsd4_client_tracking_ops {
+ /* Globals */
+ static char user_recovery_dirname[PATH_MAX] = "/var/lib/nfs/v4recovery";
+ static struct nfsd4_client_tracking_ops *client_tracking_ops;
+-static bool in_grace;
+ 
+ static int
+ nfs4_save_creds(const struct cred **original_creds)
+@@ -221,7 +220,7 @@ out_put:
+ out_unlock:
+ 	mutex_unlock(&dir->d_inode->i_mutex);
+ 	if (status == 0) {
+-		if (in_grace) {
++		if (nn->in_grace) {
+ 			crp = nfs4_client_to_reclaim(dname, nn);
+ 			if (crp)
+ 				crp->cr_clp = clp;
+@@ -358,7 +357,7 @@ nfsd4_remove_clid_dir(struct nfs4_client *clp)
+ 	nfs4_reset_creds(original_cred);
+ 	if (status == 0) {
+ 		vfs_fsync(nn->rec_file, 0);
+-		if (in_grace) {
++		if (nn->in_grace) {
+ 			/* remove reclaim record */
+ 			crp = nfsd4_find_reclaim_client(dname, nn);
+ 			if (crp)
+@@ -394,7 +393,7 @@ nfsd4_recdir_purge_old(struct nfsd_net *nn, time_t boot_time)
+ {
+ 	int status;
+ 
+-	in_grace = false;
++	nn->in_grace = false;
+ 	if (!nn->rec_file)
+ 		return;
+ 	status = mnt_want_write_file(nn->rec_file);
+@@ -473,7 +472,7 @@ nfsd4_init_recdir(struct net *net)
+ 
+ 	nfs4_reset_creds(original_cred);
+ 	if (!status)
+-		in_grace = true;
++		nn->in_grace = true;
+ 	return status;
+ }
+ 
 
-
--- 
-Best regards,
-Stanislav Kinsbursky
