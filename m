@@ -1,150 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f172.google.com ([209.85.212.172]:60551 "EHLO
-	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753142Ab2KLUtW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Nov 2012 15:49:22 -0500
-Received: by mail-wi0-f172.google.com with SMTP id hm6so2882594wib.1
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Nov 2012 12:49:21 -0800 (PST)
+Received: from smtp-outbound-2.vmware.com ([208.91.2.13]:59198 "EHLO
+	smtp-outbound-2.vmware.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756290Ab2KZVt7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Nov 2012 16:49:59 -0500
+Received: from sc9-mailhost1.vmware.com (sc9-mailhost1.vmware.com [10.113.161.71])
+	by smtp-outbound-2.vmware.com (Postfix) with ESMTP id 9D76C28828
+	for <linux-nfs@vger.kernel.org>; Mon, 26 Nov 2012 13:49:58 -0800 (PST)
+Received: from zcs-prod-mta-2.vmware.com (zcs-prod-mta-2.vmware.com [10.113.163.64])
+	by sc9-mailhost1.vmware.com (Postfix) with ESMTP id 9945718291
+	for <linux-nfs@vger.kernel.org>; Mon, 26 Nov 2012 13:49:58 -0800 (PST)
+Received: from localhost (localhost.localdomain [127.0.0.1])
+	by zcs-prod-mta-2.vmware.com (Postfix) with ESMTP id 8BD8DE1BB0
+	for <linux-nfs@vger.kernel.org>; Mon, 26 Nov 2012 13:49:58 -0800 (PST)
+Received: from zcs-prod-mta-2.vmware.com ([127.0.0.1])
+	by localhost (zcs-prod-mta-2.vmware.com [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id hVnKQsjfjMq7 for <linux-nfs@vger.kernel.org>;
+	Mon, 26 Nov 2012 13:49:58 -0800 (PST)
+Received: from zcs-prod-mta-2.vmware.com (localhost.localdomain [127.0.0.1])
+	by zcs-prod-mta-2.vmware.com (Postfix) with ESMTP id 69DECE1B6A
+	for <linux-nfs@vger.kernel.org>; Mon, 26 Nov 2012 13:49:58 -0800 (PST)
+Received: from zimbra-prod-mbox-2.vmware.com (lbv-sc9-t2prod2-int.vmware.com [10.113.160.246])
+	by zcs-prod-mta-2.vmware.com (Postfix) with ESMTP
+	for <linux-nfs@vger.kernel.org>; Mon, 26 Nov 2012 13:49:57 -0800 (PST)
+Date: Mon, 26 Nov 2012 13:49:57 -0800 (PST)
+From: Andrei Warkentin <awarkentin@vmware.com>
+To: linux-nfs@vger.kernel.org
+Message-ID: <864189844.31754280.1353966597599.JavaMail.root@vmware.com>
+In-Reply-To: <477254919.31693823.1353963259597.JavaMail.root@vmware.com>
+Subject: Race between NFS server thread increase / decrease
 MIME-Version: 1.0
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9092D7F52@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1352745355-31157-1-git-send-email-bjschuma@netapp.com>
-	<CAHVgHyWyKhjOc4AFY3LvK57k8JK5zNJDkRGwUjqNA4LMYcSzdw@mail.gmail.com>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA9092D7F52@SACEXCMBX04-PRD.hq.netapp.com>
-Date: Mon, 12 Nov 2012 15:49:21 -0500
-Message-ID: <CAHVgHyWzO6UxnQEBoBFY4uHxTx9PBHKxP+hvJfYaW-OTqWLgMA@mail.gmail.com>
-Subject: Re: [PATCH 1/2] NFS: Add sequence_priviliged_ops for nfs4_proc_sequence()
-From: Andy Adamson <androsadamson@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 12, 2012 at 3:29 PM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> On Mon, 2012-11-12 at 15:22 -0500, Andy Adamson wrote:
->> On Mon, Nov 12, 2012 at 1:35 PM,  <bjschuma@netapp.com> wrote:
->> > From: Bryan Schumaker <bjschuma@netapp.com>
->> >
->> > During recovery the NFS4_SESSION_DRAINING flag might be set on the
->> > client structure.  This can cause lease renewal to abort when
->
-> Not lease renewal. It is lease verification (i.e. checking that we have
-> a valid lease and session) that will deadlock.
->
->> > nfs41_setup_sequence sees that we are doing recovery.  As a result, the
->> > client never recovers and all activity with the NFS server halts.
->>
->>
->> When does this happen? Say the session is draining, and an RPC returns
->> from one of the compounds such as nfs_open, nfs_locku etc whose
->> rpc_call_done routine calls renew_lease after freeing it's slot.  Like
->> all calls on a draining session, the renew_lease sleeps on the session
->> slot_tbl_waitq - is this what you mean by "causes lease renewal to
->> abort"? How does this cause the client to never recover?
->>
->> The only other call to renew_lease is from the state manager itself
->> which runs one function at a time, and will not call renew_lease until
->> the recovery is over....
->>
->> What am I missing....?
->
-> nfs4_check_lease() is run exclusively by the state manager thread in
-> order to check that the clientid (and session id on NFSv4.1) are valid.
-> It will deadlock the state manager thread if NFS4_SESSION_DRAINING is
-> already set.
+Hi NFSD developers,
 
-OK. NFS4_SESSION_DRAINING is also set exclusively by the state manager
-thread. Why is the state manager told to check the lease when it's
-also draining a session?
+I've found what I think is an interesting problem that occurs on single-CPU machines as far as I can tell.
 
-No matter what the answer, please update the patch description to
-better explain the problem being solved.
+Basically the following snippet will occasionally loop forever printing that one thread is still running. Further
+attempts to run "/usr/sbin/rpc.nfsd 0" don't help.
 
--->Andy
+/usr/sbin/rpc.nfsd 1
+/usr/sbin/rpc.nfsd 0
+while [ ! $[`cat /proc/fs/nfsd/threads`] -eq 0 ]; do
+        echo $[`cat /proc/fs/nfsd/threads`] still running
+        sleep .1
+done
 
->
->> -->Andy
->>
->>
->> >
->> > Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
->> > ---
->> >  fs/nfs/nfs4proc.c | 21 +++++++++++++++++----
->> >  1 file changed, 17 insertions(+), 4 deletions(-)
->> >
->> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> > index 5eec442..537181c 100644
->> > --- a/fs/nfs/nfs4proc.c
->> > +++ b/fs/nfs/nfs4proc.c
->> > @@ -6138,13 +6138,26 @@ static void nfs41_sequence_prepare(struct rpc_task *task, void *data)
->> >         rpc_call_start(task);
->> >  }
->> >
->> > +static void nfs41_sequence_prepare_privileged(struct rpc_task *task, void *data)
->> > +{
->> > +       rpc_task_set_priority(task, RPC_PRIORITY_PRIVILEGED);
->> > +       nfs41_sequence_prepare(task, data);
->> > +}
->> > +
->> >  static const struct rpc_call_ops nfs41_sequence_ops = {
->> >         .rpc_call_done = nfs41_sequence_call_done,
->> >         .rpc_call_prepare = nfs41_sequence_prepare,
->> >         .rpc_release = nfs41_sequence_release,
->> >  };
->> >
->> > -static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp, struct rpc_cred *cred)
->> > +static const struct rpc_call_ops nfs41_sequence_privileged_ops = {
->> > +       .rpc_call_done = nfs41_sequence_call_done,
->> > +       .rpc_call_prepare = nfs41_sequence_prepare_privileged,
->> > +       .rpc_release = nfs41_sequence_release,
->> > +};
->> > +
->> > +static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp, struct rpc_cred *cred,
->> > +                                            const struct rpc_call_ops *seq_ops)
->> >  {
->> >         struct nfs4_sequence_data *calldata;
->> >         struct rpc_message msg = {
->> > @@ -6154,7 +6167,7 @@ static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp, struct rpc_
->> >         struct rpc_task_setup task_setup_data = {
->> >                 .rpc_client = clp->cl_rpcclient,
->> >                 .rpc_message = &msg,
->> > -               .callback_ops = &nfs41_sequence_ops,
->> > +               .callback_ops = seq_ops,
->> >                 .flags = RPC_TASK_ASYNC | RPC_TASK_SOFT,
->> >         };
->> >
->> > @@ -6181,7 +6194,7 @@ static int nfs41_proc_async_sequence(struct nfs_client *clp, struct rpc_cred *cr
->> >
->> >         if ((renew_flags & NFS4_RENEW_TIMEOUT) == 0)
->> >                 return 0;
->> > -       task = _nfs41_proc_sequence(clp, cred);
->> > +       task = _nfs41_proc_sequence(clp, cred, &nfs41_sequence_ops);
->> >         if (IS_ERR(task))
->> >                 ret = PTR_ERR(task);
->> >         else
->> > @@ -6195,7 +6208,7 @@ static int nfs4_proc_sequence(struct nfs_client *clp, struct rpc_cred *cred)
->> >         struct rpc_task *task;
->> >         int ret;
->> >
->> > -       task = _nfs41_proc_sequence(clp, cred);
->> > +       task = _nfs41_proc_sequence(clp, cred, &nfs41_sequence_privileged_ops);
->> >         if (IS_ERR(task)) {
->> >                 ret = PTR_ERR(task);
->> >                 goto out;
->> > --
->> > 1.8.0
->> >
->> > --
->> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> > the body of a message to majordomo@vger.kernel.org
->> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
->
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
+I've not looked a whole lot at it. It appears that although the paths calling svc_set_num_threads synchronize on nfsd_mutex, the code doesn't seem to try waiting on the number of threads to reach the desired count.
+
+What do you guys think?
+
+Thanks.
+
+A
