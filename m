@@ -1,217 +1,138 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vb0-f46.google.com ([209.85.212.46]:59742 "EHLO
-	mail-vb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752395Ab2KLUBS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Nov 2012 15:01:18 -0500
-Received: by mail-vb0-f46.google.com with SMTP id ff1so6652181vbb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Nov 2012 12:01:18 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:3807 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755166Ab2KZMUA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Nov 2012 07:20:00 -0500
+Subject: [PATCH 4/5] nfsd: cleanup NFSd state start a bit
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 08/11] nfsd: don't search for client by hash on legacy reboot recovery gracedone
-Date: Mon, 12 Nov 2012 15:00:55 -0500
-Message-Id: <1352750458-16857-9-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1352750458-16857-1-git-send-email-jlayton@redhat.com>
-References: <1352750458-16857-1-git-send-email-jlayton@redhat.com>
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Mon, 26 Nov 2012 15:22:13 +0300
+Message-ID: <20121126122213.955.78067.stgit@localhost.localdomain>
+In-Reply-To: <20121126121907.955.25349.stgit@localhost.localdomain>
+References: <20121126121907.955.25349.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When nfsd starts, the legacy reboot recovery code creates a tracking
-struct for each directory in the v4recoverydir. When the grace period
-ends, it basically does a "readdir" on the directory again, and matches
-each dentry in there to an existing client id to see if it should be
-removed or not. If the matching client doesn't exist, or hasn't
-reclaimed its state then it will remove that dentry.
+This patch renames nfs4_state_start_net() into nfs4_state_create_net(), where
+get_net() now performed.
+Also it introduces new nfs4_state_start_net(), which is now responsible for
+state creation and initializing all per-net data and which is now called from
+nfs4_state_start().
 
-This is pretty inefficient since it involves doing a lot of hash-bucket
-searching. It also means that we have to keep relying on being able to
-search for a nfs4_client by md5 hashed cl_recdir name.
-
-Instead, add a pointer to the nfs4_client that indicates the association
-between the nfs4_client_reclaim and nfs4_client. When a reclaim operation
-comes in, we set the pointer to make that association. On gracedone, the
-legacy client tracker will keep the recdir around iff:
-
-1/ there is a reclaim record for the directory
-
-...and...
-
-2/ there's an association between the reclaim record and a client record
--- that is, a create or check operation was performed on the client that
-matches that directory.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 ---
- fs/nfsd/nfs4recover.c | 31 +++++++++++++++++++++++++++----
- fs/nfsd/nfs4state.c   | 12 +++++-------
- fs/nfsd/state.h       |  4 ++--
- 3 files changed, 34 insertions(+), 13 deletions(-)
+ fs/nfsd/nfs4state.c |   59 ++++++++++++++++++++++++++++++---------------------
+ 1 files changed, 35 insertions(+), 24 deletions(-)
 
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index 4e92fb3..3048c01 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -65,6 +65,7 @@ struct nfsd4_client_tracking_ops {
- static struct file *rec_file;
- static char user_recovery_dirname[PATH_MAX] = "/var/lib/nfs/v4recovery";
- static struct nfsd4_client_tracking_ops *client_tracking_ops;
-+static bool in_grace;
- 
- static int
- nfs4_save_creds(const struct cred **original_creds)
-@@ -142,6 +143,7 @@ nfsd4_create_clid_dir(struct nfs4_client *clp)
- 	const struct cred *original_cred;
- 	char *dname = clp->cl_recdir;
- 	struct dentry *dir, *dentry;
-+	struct nfs4_client_reclaim *crp;
- 	int status;
- 
- 	dprintk("NFSD: nfsd4_create_clid_dir for \"%s\"\n", dname);
-@@ -182,13 +184,19 @@ out_put:
- 	dput(dentry);
- out_unlock:
- 	mutex_unlock(&dir->d_inode->i_mutex);
--	if (status == 0)
-+	if (status == 0) {
-+		if (in_grace) {
-+			crp = nfs4_client_to_reclaim(clp->cl_recdir);
-+			if (crp)
-+				crp->cr_clp = clp;
-+		}
- 		vfs_fsync(rec_file, 0);
--	else
-+	} else {
- 		printk(KERN_ERR "NFSD: failed to write recovery record"
- 				" (err %d); please check that %s exists"
- 				" and is writeable", status,
- 				user_recovery_dirname);
-+	}
- 	mnt_drop_write_file(rec_file);
- 	nfs4_reset_creds(original_cred);
- }
-@@ -289,6 +297,7 @@ static void
- nfsd4_remove_clid_dir(struct nfs4_client *clp)
- {
- 	const struct cred *original_cred;
-+	struct nfs4_client_reclaim *crp;
- 	int status;
- 
- 	if (!rec_file || !test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
-@@ -305,8 +314,15 @@ nfsd4_remove_clid_dir(struct nfs4_client *clp)
- 
- 	status = nfsd4_unlink_clid_dir(clp->cl_recdir, HEXDIR_LEN-1);
- 	nfs4_reset_creds(original_cred);
--	if (status == 0)
-+	if (status == 0) {
- 		vfs_fsync(rec_file, 0);
-+		if (in_grace) {
-+			/* remove reclaim record */
-+			crp = nfsd4_find_reclaim_client(clp->cl_recdir);
-+			if (crp)
-+				nfs4_remove_reclaim_record(crp);
-+		}
-+	}
- out_drop_write:
- 	mnt_drop_write_file(rec_file);
- out:
-@@ -336,6 +352,7 @@ nfsd4_recdir_purge_old(struct net *net, time_t boot_time)
- {
- 	int status;
- 
-+	in_grace = false;
- 	if (!rec_file)
- 		return;
- 	status = mnt_want_write_file(rec_file);
-@@ -410,6 +427,8 @@ nfsd4_init_recdir(void)
- 	}
- 
- 	nfs4_reset_creds(original_cred);
-+	if (!status)
-+		in_grace = true;
- 	return status;
- }
- 
-@@ -481,13 +500,17 @@ nfs4_recoverydir(void)
- static int
- nfsd4_check_legacy_client(struct nfs4_client *clp)
- {
-+	struct nfs4_client_reclaim *crp;
-+
- 	/* did we already find that this client is stable? */
- 	if (test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
- 		return 0;
- 
- 	/* look for it in the reclaim hashtable otherwise */
--	if (nfsd4_find_reclaim_client(clp->cl_recdir)) {
-+	crp = nfsd4_find_reclaim_client(clp->cl_recdir);
-+	if (crp) {
- 		set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
-+		crp->cr_clp = clp;
- 		return 0;
- 	}
- 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 1c6f82e..559ab57 100644
+index edff2cc..72df721 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -4483,16 +4483,13 @@ alloc_reclaim(void)
- 	return kmalloc(sizeof(struct nfs4_client_reclaim), GFP_KERNEL);
+@@ -4766,7 +4766,7 @@ set_max_delegations(void)
+ 	max_delegations = nr_free_buffer_pages() >> (20 - 2 - PAGE_SHIFT);
  }
  
--int
-+bool
- nfs4_has_reclaimed_state(const char *name)
+-static int nfs4_state_start_net(struct net *net)
++static int nfs4_state_create_net(struct net *net)
  {
--	unsigned int strhashval = clientstr_hashval(name);
--	struct nfs4_client *clp;
-+	struct nfs4_client_reclaim *crp;
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 	int i;
+@@ -4809,6 +4809,7 @@ static int nfs4_state_start_net(struct net *net)
+ 	spin_lock_init(&nn->client_lock);
  
--	clp = find_confirmed_client_by_str(name, strhashval);
--	if (!clp)
--		return 0;
--	return test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
-+	crp = nfsd4_find_reclaim_client(name);
-+	return (crp && crp->cr_clp);
+ 	INIT_DELAYED_WORK(&nn->laundromat_work, laundromat_main);
++	get_net(net);
+ 
+ 	return 0;
+ 
+@@ -4856,37 +4857,35 @@ nfs4_state_destroy_net(struct net *net)
+ 	put_net(net);
  }
  
- /*
-@@ -4511,6 +4508,7 @@ nfs4_client_to_reclaim(const char *name)
- 		INIT_LIST_HEAD(&crp->cr_strhash);
- 		list_add(&crp->cr_strhash, &reclaim_str_hashtbl[strhashval]);
- 		memcpy(crp->cr_recdir, name, HEXDIR_LEN);
-+		crp->cr_clp = NULL;
- 		reclaim_str_hashtbl_size++;
- 	}
- 	return crp;
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 3f8b26b..cf9f7ba 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -304,6 +304,7 @@ is_client_expired(struct nfs4_client *clp)
-  */
- struct nfs4_client_reclaim {
- 	struct list_head	cr_strhash;	/* hash by cr_name */
-+	struct nfs4_client	*cr_clp;	/* pointer to associated clp */
- 	char			cr_recdir[HEXDIR_LEN]; /* recover dir */
- };
+-/* initialization to perform when the nfsd service is started: */
+-
+-int
+-nfs4_state_start(void)
++static int
++nfs4_state_start_net(struct net *net)
+ {
+-	struct net *net = &init_net;
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 	int ret;
  
-@@ -464,7 +465,6 @@ extern __be32 nfs4_preprocess_stateid_op(struct net *net,
- 		stateid_t *stateid, int flags, struct file **filp);
- extern void nfs4_lock_state(void);
- extern void nfs4_unlock_state(void);
--extern int nfs4_in_grace(void);
- void nfs4_remove_reclaim_record(struct nfs4_client_reclaim *);
- extern void nfs4_release_reclaim(void);
- extern struct nfs4_client_reclaim *nfsd4_find_reclaim_client(const char *recdir);
-@@ -483,7 +483,7 @@ extern void nfsd4_shutdown_callback(struct nfs4_client *);
- extern void nfs4_put_delegation(struct nfs4_delegation *dp);
- extern __be32 nfs4_make_rec_clidname(char *clidname, struct xdr_netobj *clname);
- extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name);
--extern int nfs4_has_reclaimed_state(const char *name);
-+extern bool nfs4_has_reclaimed_state(const char *name);
- extern void release_session_client(struct nfsd4_session *);
- extern void nfsd4_purge_closed_stateid(struct nfs4_stateowner *);
+-	/*
+-	 * FIXME: For now, we hang most of the pernet global stuff off of
+-	 * init_net until nfsd is fully containerized. Eventually, we'll
+-	 * need to pass a net pointer into this function, take a reference
+-	 * to that instead and then do most of the rest of this on a per-net
+-	 * basis.
+-	 */
+-	get_net(net);
+-	ret = nfs4_state_start_net(net);
++	ret = nfs4_state_create_net(net);
+ 	if (ret)
+ 		return ret;
+ 	nfsd4_client_tracking_init(net);
+ 	nn->boot_time = get_seconds();
+ 	locks_start_grace(net, &nn->nfsd4_manager);
+ 	nn->grace_ended = false;
+-	printk(KERN_INFO "NFSD: starting %ld-second grace period\n",
+-	       nfsd4_grace);
++	printk(KERN_INFO "NFSD: starting %ld-second grace period (net %p)\n",
++	       nfsd4_grace, net);
++	queue_delayed_work(laundry_wq, &nn->laundromat_work, nfsd4_grace * HZ);
++	return 0;
++}
++
++/* initialization to perform when the nfsd service is started: */
++
++int
++nfs4_state_start(void)
++{
++	int ret;
++
+ 	ret = set_callback_cred();
+-	if (ret) {
+-		ret = -ENOMEM;
+-		goto out_recovery;
+-	}
++	if (ret)
++		return -ENOMEM;
+ 	laundry_wq = create_singlethread_workqueue("nfsd4");
+ 	if (laundry_wq == NULL) {
+ 		ret = -ENOMEM;
+@@ -4896,14 +4895,26 @@ nfs4_state_start(void)
+ 	if (ret)
+ 		goto out_free_laundry;
  
--- 
-1.7.11.7
+-	queue_delayed_work(laundry_wq, &nn->laundromat_work, nfsd4_grace * HZ);
+ 	set_max_delegations();
++
++	/*
++	 * FIXME: For now, we hang most of the pernet global stuff off of
++	 * init_net until nfsd is fully containerized. Eventually, we'll
++	 * need to pass a net pointer into this function, take a reference
++	 * to that instead and then do most of the rest of this on a per-net
++	 * basis.
++	 */
++	ret = nfs4_state_start_net(&init_net);
++	if (ret)
++		goto out_free_callback;
++
+ 	return 0;
++
++out_free_callback:
++	nfsd4_destroy_callback_queue();
+ out_free_laundry:
+ 	destroy_workqueue(laundry_wq);
+ out_recovery:
+-	nfsd4_client_tracking_exit(net);
+-	nfs4_state_destroy_net(net);
+ 	return ret;
+ }
+ 
 
