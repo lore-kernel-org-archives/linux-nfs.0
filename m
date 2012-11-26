@@ -1,67 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51848 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:35539 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753284Ab2K0WLI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Nov 2012 17:11:08 -0500
-Date: Tue, 27 Nov 2012 17:11:05 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Subject: Re: [PATCH] nfsd4: remove state lock from nfs4_state_shutdown
-Message-ID: <20121127221105.GJ27142@fieldses.org>
-References: <20121121150730.6644.99859.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20121121150730.6644.99859.stgit@localhost.localdomain>
+	id S1754290Ab2KZOkD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Nov 2012 09:40:03 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 3/8] nfsd4: simplify reading of opnum
+Date: Mon, 26 Nov 2012 09:39:54 -0500
+Message-Id: <1353940799-11763-4-git-send-email-bfields@redhat.com>
+In-Reply-To: <1353940799-11763-1-git-send-email-bfields@redhat.com>
+References: <1353940799-11763-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-OK, applying.--b.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-On Wed, Nov 21, 2012 at 06:07:38PM +0300, Stanislav Kinsbursky wrote:
-> Protection of __nfs4_state_shutdown() with nfs4_lock_state() looks redundant.
-> 
-> This function is called by the last NFSd thread on it's exit and state lock
-> protects actually two functions (del_recall_lru is protected by recall_lock):
-> 1) nfsd4_client_tracking_exit
-> 2) __nfs4_state_shutdown_net
-> 
-> "nfsd4_client_tracking_exit" doesn't require state lock protection, because it's
-> state can be modified only by tracker callbacks.
-> Here a re they:
-> 1) create: is called only from nfsd4_proc_compound.
-> 2) remove: is called from either nfsd4_proc_compound or nfs4_laundromat.
-> 3) check: is called only from nfsd4_proc_compound.
-> 4) grace_done; called only from nfs4_laundromat.
-> 
-> nfsd4_proc_compound is called onll by NFSd kthread, which is exiting right
-> now.
-> nfs4_laundromat is called by laundry_wq. But laundromat_work was canceled
-> already.
-> 
-> "__nfs4_state_shutdown_net" also doesn't require state lock protection,
-> because all NFSd kthreads are dead, and no race can happen with NFSd start,
-> because "nfsd_up" flag is still set.
-> Moreover, all Nfsd shutdown is protected with global nfsd_mutex.
-> 
-> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> ---
->  fs/nfsd/nfs4state.c |    2 --
->  1 files changed, 0 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index e75872f..d41cc71 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -4926,9 +4926,7 @@ nfs4_state_shutdown(void)
->  	cancel_delayed_work_sync(&nn->laundromat_work);
->  	destroy_workqueue(laundry_wq);
->  	locks_end_grace(&nn->nfsd4_manager);
-> -	nfs4_lock_state();
->  	__nfs4_state_shutdown(net);
-> -	nfs4_unlock_state();
->  	nfsd4_destroy_callback_queue();
->  }
->  
-> 
+The comment here is totally bogus:
+	- OP_WRITE + 1 is RELEASE_LOCKOWNER.  Maybe there was some older
+	  version of the spec in which that served as a sort of
+	  OP_ILLEGAL?  No idea, but it's clearly wrong now.
+	- In any case, I can't see that the spec says anything about
+	  what to do if the client sends us less ops than promised.
+	  It's clearly nutty client behavior, and we should do
+	  whatever's easiest: returning an xdr error (even though it
+	  won't be consistent with the error on the last op returned)
+	  seems fine to me.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4xdr.c |   34 ++--------------------------------
+ 1 file changed, 2 insertions(+), 32 deletions(-)
+
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 9dfad58..cfebc9c 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1624,38 +1624,8 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+ 		op = &argp->ops[i];
+ 		op->replay = NULL;
+ 
+-		/*
+-		 * We can't use READ_BUF() here because we need to handle
+-		 * a missing opcode as an OP_WRITE + 1. So we need to check
+-		 * to see if we're truly at the end of our buffer or if there
+-		 * is another page we need to flip to.
+-		 */
+-
+-		if (argp->p == argp->end) {
+-			if (argp->pagelen < 4) {
+-				/* There isn't an opcode still on the wire */
+-				op->opnum = OP_WRITE + 1;
+-				op->status = nfserr_bad_xdr;
+-				argp->opcnt = i+1;
+-				break;
+-			}
+-
+-			/*
+-			 * False alarm. We just hit a page boundary, but there
+-			 * is still data available.  Move pointer across page
+-			 * boundary.  *snip from READ_BUF*
+-			 */
+-			argp->p = page_address(argp->pagelist[0]);
+-			argp->pagelist++;
+-			if (argp->pagelen < PAGE_SIZE) {
+-				argp->end = argp->p + (argp->pagelen>>2);
+-				argp->pagelen = 0;
+-			} else {
+-				argp->end = argp->p + (PAGE_SIZE>>2);
+-				argp->pagelen -= PAGE_SIZE;
+-			}
+-		}
+-		op->opnum = ntohl(*argp->p++);
++		READ_BUF(4);
++		READ32(op->opnum);
+ 
+ 		if (op->opnum >= FIRST_NFS4_OP && op->opnum <= LAST_NFS4_OP)
+ 			op->status = ops->decoders[op->opnum](argp, &op->u);
+-- 
+1.7.9.5
+
