@@ -1,67 +1,27 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:35108 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:49503 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751138Ab2KCTsn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 3 Nov 2012 15:48:43 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        "Linux Kernel mailing list" <linux-kernel@vger.kernel.org>
-Subject: [GIT PULL] Please pull NFS client bugfixes
-Date: Sat, 3 Nov 2012 19:48:41 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092A6A40@SACEXCMBX04-PRD.hq.netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1753492Ab2KZPrg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Nov 2012 10:47:36 -0500
+Date: Mon, 26 Nov 2012 10:47:35 -0500
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: fixes for 3.8
+Message-ID: <20121126154735.GA11860@fieldses.org>
+References: <1353940799-11763-1-git-send-email-bfields@redhat.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1353940799-11763-1-git-send-email-bfields@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgMDhmMDVjNDk3
-NDllZTY1NWJlZjkyMWQxMjE2MDk2MGEyNzNhYWQ0NzoNCg0KICBSZXR1cm4gdGhlIHJpZ2h0IGVy
-cm9yIHZhbHVlIHdoZW4gZHVwWzIzXSgpIG5ld2ZkIGFyZ3VtZW50IGlzIHRvbyBsYXJnZSAoMjAx
-Mi0xMC0zMCAyMToyNzoyOCAtMDcwMCkNCg0KYXJlIGF2YWlsYWJsZSBpbiB0aGUgZ2l0IHJlcG9z
-aXRvcnkgYXQ6DQoNCiAgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9s
-aW51eC1uZnMuZ2l0IHRhZ3MvbmZzLWZvci0zLjctNA0KDQpmb3IgeW91IHRvIGZldGNoIGNoYW5n
-ZXMgdXAgdG8gOTk4ZjQwYjU1MGYyNTdlNDM2NDg1MjkxODAyZmE5MzhlNGNmNTgwZjoNCg0KICBO
-RlM0OiBuZnM0X29wZW5kYXRhX2FjY2VzcyBzaG91bGQgcmV0dXJuIGVycm5vICgyMDEyLTExLTAy
-IDE4OjUxOjU0IC0wNDAwKQ0KDQotLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpORlMgYnVnZml4ZXMgZm9yIExpbnV4IDMuNw0K
-DQotIEZpeCBhIGJ1bmNoIG9mIGRlYWRsb2NrIHNpdHVhdGlvbnM6DQogICogU3RhdGUgcmVjb3Zl
-cnkgY2FuIGRlYWRsb2NrIGlmIHdlIGZhaWwgdG8gcmVsZWFzZSBzZXF1ZW5jZSBpZHMgYmVmb3Jl
-DQogICAgc2NoZWR1bGluZyB0aGUgcmVjb3ZlcnkgdGhyZWFkLg0KICAqIENhbGxpbmcgZGVhY3Rp
-dmF0ZV9zdXBlcigpIGZyb20gYW4gUlBDIHdvcmtxdWV1ZSB0aHJlYWQgY2FuIGRlYWRsb2NrDQog
-ICAgYmVjYXVzZSBvZiB0aGUgY2FsbCB0byBycGNfc2h1dGRvd25fY2xpZW50Lg0KLSBEaXNwbGF5
-IHRoZSBkZXZpY2UgbmFtZSBjb3JyZWN0bHkgaW4gL3Byb2MvKi9tb3VudHMNCi0gRml4IGEgbnVt
-YmVyIG9mIGluY29ycmVjdCBlcnJvciByZXR1cm4gdmFsdWVzOg0KICAqIFdoZW4gTkZTdjMgbW91
-bnRzIGZhaWwgZHVlIHRvIGEgdGltZW91dC4NCiAgKiBPbiBORlN2NC4xIGJhY2tjaGFubmVsIHNl
-dHVwIGZhaWx1cmUNCiAgKiBPbiBORlN2NCBvcGVuIGFjY2VzcyBjaGVja3MNCi0gcG5mc19maW5k
-X2FsbG9jX2xheW91dCgpIG11c3QgY2hlY2sgdGhlIGxheW91dCBwb2ludGVyIGZvciBOVUxMDQot
-IEZpeCBhIHJlZ3Jlc3Npb24gaW4gdGhlIGxlZ2FjeSBETlMgcmVzb2x2ZWQNCg0KLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0K
-QmVuIEh1dGNoaW5ncyAoMSk6DQogICAgICBuZnM6IFNob3cgb3JpZ2luYWwgZGV2aWNlIG5hbWUg
-dmVyYmF0aW0gaW4gL3Byb2MvKi9tb3VudHtzLGluZm99DQoNCkJyeWFuIFNjaHVtYWtlciAoMSk6
-DQogICAgICBORlM6IFdhaXQgZm9yIHNlc3Npb24gcmVjb3ZlcnkgdG8gZmluaXNoIGJlZm9yZSBy
-ZXR1cm5pbmcNCg0KTmVpbEJyb3duICgxKToNCiAgICAgIE5GUzogZml4IGJ1ZyBpbiBsZWdhY3kg
-RE5TIHJlc29sdmVyLg0KDQpTY290dCBNYXloZXcgKDEpOg0KICAgICAgbmZzdjM6IE1ha2UgdjMg
-bW91bnRzIGZhaWwgd2l0aCBFVElNRURPVVRzIGluc3RlYWQgRUlPIG9uIG1vdW50ZCB0aW1lb3V0
-cw0KDQpUcm9uZCBNeWtsZWJ1c3QgKDMpOg0KICAgICAgTkZTdjQuMTogV2UgbXVzdCByZWxlYXNl
-IHRoZSBzZXF1ZW5jZSBpZCB3aGVuIHdlIGZhaWwgdG8gZ2V0IGEgc2Vzc2lvbiBzbG90DQogICAg
-ICBORlN2NDogbmZzNF9sb2NrdV9kb25lIG11c3QgcmVsZWFzZSB0aGUgc2VxdWVuY2UgaWQNCiAg
-ICAgIE5GU3Y0OiBJbml0aWFsaXNlIHRoZSBORlN2NC4xIHNsb3QgdGFibGUgaGlnaGVzdF91c2Vk
-X3Nsb3RpZCBjb3JyZWN0bHkNCg0KV2VzdG9uIEFuZHJvcyBBZGFtc29uICgzKToNCiAgICAgIE5G
-UzogYWRkIG5mc19zYl9kZWFjdGl2ZV9hc3luYyB0byBhdm9pZCBkZWFkbG9jaw0KICAgICAgU1VO
-UlBDOiByZXR1cm4gcHJvcGVyIGVycm5vIGZyb20gYmFja2NoYW5uZWxfcnFzdA0KICAgICAgTkZT
-NDogbmZzNF9vcGVuZGF0YV9hY2Nlc3Mgc2hvdWxkIHJldHVybiBlcnJubw0KDQpZYW5jaHVhbiBO
-aWFuICgxKToNCiAgICAgIG5mczogQ2hlY2sgd2hldGhlciBhIGxheW91dCBwb2ludGVyIGlzIE5V
-TEwgYmVmb3JlIGZyZWUgaXQNCg0KIGZzL25mcy9kbnNfcmVzb2x2ZS5jICAgICAgICAgIHwgIDUg
-KysrLS0NCiBmcy9uZnMvaW5vZGUuYyAgICAgICAgICAgICAgICB8ICA1ICsrKystDQogZnMvbmZz
-L2ludGVybmFsLmggICAgICAgICAgICAgfCAgNiArKystLQ0KIGZzL25mcy9tb3VudF9jbG50LmMg
-ICAgICAgICAgIHwgIDIgKy0NCiBmcy9uZnMvbmFtZXNwYWNlLmMgICAgICAgICAgICB8IDE5ICsr
-KysrKysrKysrLS0tLS0NCiBmcy9uZnMvbmZzNG5hbWVzcGFjZS5jICAgICAgICB8ICAzICsrLQ0K
-IGZzL25mcy9uZnM0cHJvYy5jICAgICAgICAgICAgIHwgNDYgKysrKysrKysrKysrKysrKysrKysr
-KystLS0tLS0tLS0tLS0tLS0NCiBmcy9uZnMvcG5mcy5jICAgICAgICAgICAgICAgICB8ICA0ICsr
-LS0NCiBmcy9uZnMvc3VwZXIuYyAgICAgICAgICAgICAgICB8IDUxICsrKysrKysrKysrKysrKysr
-KysrKysrKysrKysrKysrKysrKysrKysrKy0NCiBmcy9uZnMvdW5saW5rLmMgICAgICAgICAgICAg
-ICB8ICAyICstDQogbmV0L3N1bnJwYy9iYWNrY2hhbm5lbF9ycXN0LmMgfCAgMiArLQ0KIDExIGZp
-bGVzIGNoYW5nZWQsIDExMCBpbnNlcnRpb25zKCspLCAzNSBkZWxldGlvbnMoLSkNCg0KLS0gDQpU
-cm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRy
-b25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+On Mon, Nov 26, 2012 at 09:39:51AM -0500, J. Bruce Fields wrote:
+> The following are some fixes I plan to queue up for 3.8, mostly problems
+> found while looking at the v4 xdr code.
+
+I also added corresponding tests to
+
+	git://linux-nfs.org/~bfields/pynfs.git
+
+--b.
