@@ -1,130 +1,180 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:57397 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:2052 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755913Ab2KZURC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Nov 2012 15:17:02 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 10/28] NFSv4.1: Simplify struct nfs4_sequence_args too
-Date: Mon, 26 Nov 2012 15:16:27 -0500
-Message-Id: <1353961005-63874-11-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1353961005-63874-10-git-send-email-Trond.Myklebust@netapp.com>
-References: <1353961005-63874-1-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-2-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-3-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-4-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-5-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-6-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-7-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-8-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-9-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-10-git-send-email-Trond.Myklebust@netapp.com>
+	id S1755357Ab2KZMUE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Nov 2012 07:20:04 -0500
+Subject: [PATCH 5/5] nfsd: call state init and shutdown twice
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Mon, 26 Nov 2012 15:22:18 +0300
+Message-ID: <20121126122218.955.65863.stgit@localhost.localdomain>
+In-Reply-To: <20121126121907.955.25349.stgit@localhost.localdomain>
+References: <20121126121907.955.25349.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Replace the session pointer + slotid with a pointer to the
-allocated slot.
+Split NFSv4 state init and shutdown into two different calls: per-net one and
+generic one.
+Per-net cwinit/shutdown pair have to be called for any namespace, generic pair
+- only once on NSFd kthreads start and shutdown respectively.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Refresh of diff-nfsd-call-state-init-twice
 ---
- fs/nfs/nfs4proc.c       |  6 +++---
- fs/nfs/nfs4xdr.c        | 21 ++++++++++-----------
- include/linux/nfs_xdr.h |  3 +--
- 3 files changed, 14 insertions(+), 16 deletions(-)
+ fs/nfsd/nfs4state.c |   30 ++++++++++++------------------
+ fs/nfsd/nfsd.h      |    4 ++++
+ fs/nfsd/nfssvc.c    |   15 +++++++++++++--
+ 3 files changed, 29 insertions(+), 20 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 4f2d058..7c2b037 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -592,7 +592,7 @@ out:
- static void nfs41_init_sequence(struct nfs4_sequence_args *args,
- 		struct nfs4_sequence_res *res, int cache_reply)
- {
--	args->sa_session = NULL;
-+	args->sa_slot = NULL;
- 	args->sa_cache_this = 0;
- 	if (cache_reply)
- 		args->sa_cache_this = 1;
-@@ -645,8 +645,8 @@ int nfs41_setup_sequence(struct nfs4_session *session,
- 	rpc_task_set_priority(task, RPC_PRIORITY_NORMAL);
- 	slot = tbl->slots + slotid;
- 	slot->renewal_time = jiffies;
--	args->sa_session = session;
--	args->sa_slotid = slotid;
-+
-+	args->sa_slot = slot;
- 
- 	dprintk("<-- %s slotid=%d seqid=%d\n", __func__, slotid, slot->seq_nr);
- 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 50bac70..27b0fec 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1833,18 +1833,16 @@ static void encode_sequence(struct xdr_stream *xdr,
- 			    struct compound_hdr *hdr)
- {
- #if defined(CONFIG_NFS_V4_1)
--	struct nfs4_session *session = args->sa_session;
-+	struct nfs4_session *session;
- 	struct nfs4_slot_table *tp;
--	struct nfs4_slot *slot;
-+	struct nfs4_slot *slot = args->sa_slot;
- 	__be32 *p;
- 
--	if (!session)
-+	if (slot == NULL)
- 		return;
- 
--	tp = &session->fc_slot_table;
--
--	WARN_ON(args->sa_slotid == NFS4_MAX_SLOT_TABLE);
--	slot = tp->slots + args->sa_slotid;
-+	tp = slot->table;
-+	session = tp->session;
- 
- 	encode_op_hdr(xdr, OP_SEQUENCE, decode_sequence_maxsz, hdr);
- 
-@@ -1858,12 +1856,12 @@ static void encode_sequence(struct xdr_stream *xdr,
- 		((u32 *)session->sess_id.data)[1],
- 		((u32 *)session->sess_id.data)[2],
- 		((u32 *)session->sess_id.data)[3],
--		slot->seq_nr, args->sa_slotid,
-+		slot->seq_nr, slot->slot_nr,
- 		tp->highest_used_slotid, args->sa_cache_this);
- 	p = reserve_space(xdr, NFS4_MAX_SESSIONID_LEN + 16);
- 	p = xdr_encode_opaque_fixed(p, session->sess_id.data, NFS4_MAX_SESSIONID_LEN);
- 	*p++ = cpu_to_be32(slot->seq_nr);
--	*p++ = cpu_to_be32(args->sa_slotid);
-+	*p++ = cpu_to_be32(slot->slot_nr);
- 	*p++ = cpu_to_be32(tp->highest_used_slotid);
- 	*p = cpu_to_be32(args->sa_cache_this);
- #endif /* CONFIG_NFS_V4_1 */
-@@ -2025,8 +2023,9 @@ static void encode_free_stateid(struct xdr_stream *xdr,
- static u32 nfs4_xdr_minorversion(const struct nfs4_sequence_args *args)
- {
- #if defined(CONFIG_NFS_V4_1)
--	if (args->sa_session)
--		return args->sa_session->clp->cl_mvops->minor_version;
-+
-+	if (args->sa_slot)
-+		return args->sa_slot->table->session->clp->cl_mvops->minor_version;
- #endif /* CONFIG_NFS_V4_1 */
- 	return 0;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 72df721..93c7882 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4857,12 +4857,22 @@ nfs4_state_destroy_net(struct net *net)
+ 	put_net(net);
  }
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 9c9b76c..deb31bb 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -194,8 +194,7 @@ struct nfs4_slot {
- };
  
- struct nfs4_sequence_args {
--	struct nfs4_session	*sa_session;
--	u32			sa_slotid;
-+	struct nfs4_slot	*sa_slot;
- 	u8			sa_cache_this;
- };
+-static int
++int
+ nfs4_state_start_net(struct net *net)
+ {
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 	int ret;
  
--- 
-1.7.11.7
++	/*
++	 * FIXME: For now, we hang most of the pernet global stuff off of
++	 * init_net until nfsd is fully containerized. Eventually, we'll
++	 * need to pass a net pointer into this function, take a reference
++	 * to that instead and then do most of the rest of this on a per-net
++	 * basis.
++	 */
++	if (net != &init_net)
++		return -EINVAL;
++
+ 	ret = nfs4_state_create_net(net);
+ 	if (ret)
+ 		return ret;
+@@ -4897,21 +4907,8 @@ nfs4_state_start(void)
+ 
+ 	set_max_delegations();
+ 
+-	/*
+-	 * FIXME: For now, we hang most of the pernet global stuff off of
+-	 * init_net until nfsd is fully containerized. Eventually, we'll
+-	 * need to pass a net pointer into this function, take a reference
+-	 * to that instead and then do most of the rest of this on a per-net
+-	 * basis.
+-	 */
+-	ret = nfs4_state_start_net(&init_net);
+-	if (ret)
+-		goto out_free_callback;
+-
+ 	return 0;
+ 
+-out_free_callback:
+-	nfsd4_destroy_callback_queue();
+ out_free_laundry:
+ 	destroy_workqueue(laundry_wq);
+ out_recovery:
+@@ -4919,7 +4916,7 @@ out_recovery:
+ }
+ 
+ /* should be called with the state lock held */
+-static void
++void
+ nfs4_state_shutdown_net(struct net *net)
+ {
+ 	struct nfs4_delegation *dp = NULL;
+@@ -4950,9 +4947,6 @@ nfs4_state_shutdown_net(struct net *net)
+ void
+ nfs4_state_shutdown(void)
+ {
+-	struct net *net = &init_net;
+-
+-	nfs4_state_shutdown_net(net);
+ 	destroy_workqueue(laundry_wq);
+ 	nfsd4_destroy_callback_queue();
+ }
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 80d5ce4..d7b210b 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -121,7 +121,9 @@ void nfs4_state_init(void);
+ int nfsd4_init_slabs(void);
+ void nfsd4_free_slabs(void);
+ int nfs4_state_start(void);
++int nfs4_state_start_net(struct net *net);
+ void nfs4_state_shutdown(void);
++void nfs4_state_shutdown_net(struct net *net);
+ void nfs4_reset_lease(time_t leasetime);
+ int nfs4_reset_recoverydir(char *recdir);
+ char * nfs4_recoverydir(void);
+@@ -130,7 +132,9 @@ static inline void nfs4_state_init(void) { }
+ static inline int nfsd4_init_slabs(void) { return 0; }
+ static inline void nfsd4_free_slabs(void) { }
+ static inline int nfs4_state_start(void) { return 0; }
++static inline int nfs4_state_start_net(struct net *net) { return 0; }
+ static inline void nfs4_state_shutdown(void) { }
++static inline void nfs4_state_shutdown_net(struct net *net) { }
+ static inline void nfs4_reset_lease(time_t leasetime) { }
+ static inline int nfs4_reset_recoverydir(char *recdir) { return 0; }
+ static inline char * nfs4_recoverydir(void) {return NULL; }
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 2013aa0..6dffa74 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -207,6 +207,7 @@ static bool nfsd_up = false;
+ static int nfsd_startup(int nrservs)
+ {
+ 	int ret;
++	struct net *net = &init_net;
+ 
+ 	if (nfsd_up)
+ 		return 0;
+@@ -221,14 +222,21 @@ static int nfsd_startup(int nrservs)
+ 	ret = nfsd_init_socks();
+ 	if (ret)
+ 		goto out_racache;
+-	ret = lockd_up(&init_net);
++	ret = lockd_up(net);
+ 	if (ret)
+ 		goto out_racache;
+ 	ret = nfs4_state_start();
+ 	if (ret)
+ 		goto out_lockd;
++
++	ret = nfs4_state_start_net(net);
++	if (ret)
++		goto out_net_state;
++
+ 	nfsd_up = true;
+ 	return 0;
++out_net_state:
++	nfs4_state_shutdown();
+ out_lockd:
+ 	lockd_down(&init_net);
+ out_racache:
+@@ -238,6 +246,8 @@ out_racache:
+ 
+ static void nfsd_shutdown(void)
+ {
++	struct net *net = &init_net;
++
+ 	/*
+ 	 * write_ports can create the server without actually starting
+ 	 * any threads--if we get shut down before any threads are
+@@ -246,8 +256,9 @@ static void nfsd_shutdown(void)
+ 	 */
+ 	if (!nfsd_up)
+ 		return;
++	nfs4_state_shutdown_net(net);
+ 	nfs4_state_shutdown();
+-	lockd_down(&init_net);
++	lockd_down(net);
+ 	nfsd_racache_shutdown();
+ 	nfsd_up = false;
+ }
 
