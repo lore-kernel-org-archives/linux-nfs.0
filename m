@@ -1,29 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:33808 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752254Ab2KUA31 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Nov 2012 19:29:27 -0500
-Message-ID: <50AC2062.20907@davequigley.com>
-Date: Tue, 20 Nov 2012 19:29:22 -0500
-From: Dave Quigley <dpquigl@davequigley.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:24897 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755166Ab2KZMT4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Nov 2012 07:19:56 -0500
+Subject: [PATCH 3/5] nfsd: cleanup NFSd state shutdown a bit
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Mon, 26 Nov 2012 15:22:08 +0300
+Message-ID: <20121126122208.955.49674.stgit@localhost.localdomain>
+In-Reply-To: <20121126121907.955.25349.stgit@localhost.localdomain>
+References: <20121126121907.955.25349.stgit@localhost.localdomain>
 MIME-Version: 1.0
-To: Casey Schaufler <casey@schaufler-ca.com>
-CC: bfields@fieldses.org, trond.myklebust@netapp.com, sds@tycho.nsa.gov,
-        linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
-        linux-security-module@vger.kernel.org
-Subject: Re: Labeled NFS [v5]
-References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com> <50ABF1A5.2010406@schaufler-ca.com> <50AC1A74.7080105@davequigley.com>
-In-Reply-To: <50AC1A74.7080105@davequigley.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
- From the spec file these are the BuildRequires statements. I'm trying 
-to build an rpm for it right now. Should be done soon.
+This patch renames __nfs4_state_shutdown_net() into nfs4_state_shutdown_net(),
+__nfs4_state_shutdown() into nfs4_state_shutdown_net() and moves all network
+related shutdown operations to nfs4_state_shutdown_net().
 
-BuildRequires: libgssglue-devel libevent-devel libcap-devel
-BuildRequires: libnfsidmap-devel libtirpc-devel libblkid-devel
-BuildRequires: krb5-libs >= 1.4 autoconf >= 2.57 openldap-devel >= 2.2
-BuildRequires: automake, libtool, glibc-headers, device-mapper-devel
-BuildRequires: krb5-devel, tcp_wrappers-devel, libmount-devel
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfsd/nfs4state.c |   19 +++++++++----------
+ 1 files changed, 9 insertions(+), 10 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 149f7b1..edff2cc 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4825,7 +4825,7 @@ err:
+ }
+ 
+ static void
+-__nfs4_state_shutdown_net(struct net *net)
++nfs4_state_destroy_net(struct net *net)
+ {
+ 	int i;
+ 	struct nfs4_client *clp = NULL;
+@@ -4853,6 +4853,7 @@ __nfs4_state_shutdown_net(struct net *net)
+ 	kfree(nn->ownerstr_hashtbl);
+ 	kfree(nn->unconf_id_hashtbl);
+ 	kfree(nn->conf_id_hashtbl);
++	put_net(net);
+ }
+ 
+ /* initialization to perform when the nfsd service is started: */
+@@ -4902,19 +4903,20 @@ out_free_laundry:
+ 	destroy_workqueue(laundry_wq);
+ out_recovery:
+ 	nfsd4_client_tracking_exit(net);
+-	__nfs4_state_shutdown_net(net);
+-	put_net(net);
++	nfs4_state_destroy_net(net);
+ 	return ret;
+ }
+ 
+ /* should be called with the state lock held */
+ static void
+-__nfs4_state_shutdown(struct net *net)
++nfs4_state_shutdown_net(struct net *net)
+ {
+ 	struct nfs4_delegation *dp = NULL;
+ 	struct list_head *pos, *next, reaplist;
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
+-	__nfs4_state_shutdown_net(net);
++	cancel_delayed_work_sync(&nn->laundromat_work);
++	locks_end_grace(&nn->nfsd4_manager);
+ 
+ 	INIT_LIST_HEAD(&reaplist);
+ 	spin_lock(&recall_lock);
+@@ -4931,19 +4933,16 @@ __nfs4_state_shutdown(struct net *net)
+ 	}
+ 
+ 	nfsd4_client_tracking_exit(net);
+-	put_net(net);
++	nfs4_state_destroy_net(net);
+ }
+ 
+ void
+ nfs4_state_shutdown(void)
+ {
+ 	struct net *net = &init_net;
+-	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
+-	cancel_delayed_work_sync(&nn->laundromat_work);
++	nfs4_state_shutdown_net(net);
+ 	destroy_workqueue(laundry_wq);
+-	locks_end_grace(&nn->nfsd4_manager);
+-	__nfs4_state_shutdown(net);
+ 	nfsd4_destroy_callback_queue();
+ }
+ 
 
