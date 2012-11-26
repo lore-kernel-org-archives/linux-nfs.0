@@ -1,83 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f46.google.com ([209.85.215.46]:39052 "EHLO
-	mail-la0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750802Ab2KGT2c (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Nov 2012 14:28:32 -0500
-Received: by mail-la0-f46.google.com with SMTP id h6so1511907lag.19
-        for <linux-nfs@vger.kernel.org>; Wed, 07 Nov 2012 11:28:31 -0800 (PST)
-Date: Wed, 7 Nov 2012 23:28:01 +0400
-From: Andrey Borzenkov <arvidjaar@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Effective process GID is ignored when client creates file on
- NFS
-Message-ID: <20121107232801.27afef92@opensuse.site>
-In-Reply-To: <20121107191336.GE7421@fieldses.org>
-References: <CAA91j0VBWhT58iyNDTMXVnMU8skJTEwHyezD_HyhmaqW5+pt3w@mail.gmail.com>
-	<20121107191336.GE7421@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=KOI8-R
+Received: from mx2.netapp.com ([216.240.18.37]:10303 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755875Ab2KZUQ7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Nov 2012 15:16:59 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 07/28] NFSv4.1: Shrink struct nfs4_sequence_res by moving sr_renewal_time
+Date: Mon, 26 Nov 2012 15:16:24 -0500
+Message-Id: <1353961005-63874-8-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1353961005-63874-7-git-send-email-Trond.Myklebust@netapp.com>
+References: <1353961005-63874-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-7-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-В Wed, 7 Nov 2012 14:13:36 -0500
-"J. Bruce Fields" <bfields@fieldses.org> пишет:
+Store the renewal time inside the session slot instead.
 
-> On Mon, Oct 29, 2012 at 06:09:29PM +0400, Andrey Borzenkov wrote:
-> > I have met application that is badly broken when installed on NFS.
-> > The reason is - it expects files to belong to specific group. It
-> > switches to this group on startup (explicit setgid) and creates
-> > files. But files come out as belonging to GID 0.
-> > 
-> > I finally reduced it to this trivial script:
-> > 
-> > === cut here ===
-> > #include <sys/types.h>
-> > #include <sys/stat.h>
-> > #include <fcntl.h>
-> > #include <unistd.h>
-> > 
-> > main()
-> > {
-> >         int fd;
-> > 
-> >         setgid(107);
-> >         fd = open("bar", O_CREAT, 0666);
-> >         close(fd);
-> > }
-> > === cut here ===
-> > 
-> > On local storage file comes with GID 107; on NFS file comes with
-> > GID 0.
-> > 
-> > Linux is SLES10 SP3 with relatively old kernel:
-> > 2.6.16.60-0.89.1-smp, server(s) are NetApp with different Data
-> > ONTAP versions (7.x and 8.1.1 as the last).
-> > 
-> > Client passes correct credentials (UID:0, GID:107), but does not
-> 
-> Those are the credentials in the rpc header on the CREATE call?
-> 
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c       | 15 +++++++++------
+ include/linux/nfs_xdr.h |  2 +-
+ 2 files changed, 10 insertions(+), 7 deletions(-)
 
-Yes.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 5e5cc5a..14b3974 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -486,6 +486,7 @@ static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
+ 
+ static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *res)
+ {
++	struct nfs4_slot *slot;
+ 	unsigned long timestamp;
+ 	struct nfs_client *clp;
+ 
+@@ -502,12 +503,14 @@ static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *
+ 	if (!RPC_WAS_SENT(task))
+ 		goto out;
+ 
++	slot = res->sr_slot;
++
+ 	/* Check the SEQUENCE operation status */
+ 	switch (res->sr_status) {
+ 	case 0:
+ 		/* Update the slot's sequence and clientid lease timer */
+-		++res->sr_slot->seq_nr;
+-		timestamp = res->sr_renewal_time;
++		++slot->seq_nr;
++		timestamp = slot->renewal_time;
+ 		clp = res->sr_session->clp;
+ 		do_renew_lease(clp, timestamp);
+ 		/* Check sequence flags */
+@@ -521,12 +524,12 @@ static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *
+ 		 */
+ 		dprintk("%s: slot=%td seq=%d: Operation in progress\n",
+ 			__func__,
+-			res->sr_slot - res->sr_session->fc_slot_table.slots,
+-			res->sr_slot->seq_nr);
++			slot - res->sr_session->fc_slot_table.slots,
++			slot->seq_nr);
+ 		goto out_retry;
+ 	default:
+ 		/* Just update the slot sequence no. */
+-		++res->sr_slot->seq_nr;
++		++slot->seq_nr;
+ 	}
+ out:
+ 	/* The session may be reset by one of the error handlers. */
+@@ -637,6 +640,7 @@ int nfs41_setup_sequence(struct nfs4_session *session,
+ 
+ 	rpc_task_set_priority(task, RPC_PRIORITY_NORMAL);
+ 	slot = tbl->slots + slotid;
++	slot->renewal_time = jiffies;
+ 	args->sa_session = session;
+ 	args->sa_slotid = slotid;
+ 
+@@ -644,7 +648,6 @@ int nfs41_setup_sequence(struct nfs4_session *session,
+ 
+ 	res->sr_session = session;
+ 	res->sr_slot = slot;
+-	res->sr_renewal_time = jiffies;
+ 	res->sr_status_flags = 0;
+ 	/*
+ 	 * sr_status is only set in decode_sequence, and so will remain
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index a73ea89..9cb1c63 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -187,6 +187,7 @@ struct nfs4_channel_attrs {
+ 
+ /* nfs41 sessions slot seqid */
+ struct nfs4_slot {
++	unsigned long		renewal_time;
+ 	u32		 	seq_nr;
+ };
+ 
+@@ -200,7 +201,6 @@ struct nfs4_sequence_res {
+ 	struct nfs4_session	*sr_session;
+ 	struct nfs4_slot	*sr_slot;	/* slot used to send request */
+ 	int			sr_status;	/* sequence operation status */
+-	unsigned long		sr_renewal_time;
+ 	u32			sr_status_flags;
+ };
+ 
+-- 
+1.7.11.7
 
-> > explicitly request file ownership in CREATE call (uid set_it - 0,
-> > gid set_it - 0).
-> 
-> The client shouldn't have to set the owner or group itself.
-> 
-> So this is server behavior.
-> 
-> Have you checked that the directory you're creating in doesn't have
-> the sgid bit?
-
-Yes. It does not.
-
->              Or perhaps there's some other server configuration that
-> causes this.
-
-It appears that server ignores passed group if UID == 0. It correctly
-creates files if UID != 0. I got bug number from support but it is
-non-public and no information is visible so far. I asked about
-possible workaround (or undocumented options) but have not got any reply
-as yet.
