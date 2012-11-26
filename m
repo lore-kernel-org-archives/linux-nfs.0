@@ -1,72 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35660 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:59564 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755410Ab2KMW4N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Nov 2012 17:56:13 -0500
-Date: Tue, 13 Nov 2012 17:56:07 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Frank S Filz <ffilz@us.ibm.com>
+	id S1753450Ab2KZQIx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Nov 2012 11:08:53 -0500
+Date: Mon, 26 Nov 2012 11:08:53 -0500
+To: "dE ." <de.techno@gmail.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: Fw: pynfs updates
-Message-ID: <20121113225607.GB11545@fieldses.org>
-References: <OFA49718FA.4B5DDB35-ON87257AB5.007B0805-88257AB5.007B136E@us.ibm.com>
+Subject: Re: Slow NFS loop performance.
+Message-ID: <20121126160853.GB11860@fieldses.org>
+References: <50AF57A3.3090000@gmail.com>
+ <20121123172333.GB8776@fieldses.org>
+ <50B3918E.4020303@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <OFA49718FA.4B5DDB35-ON87257AB5.007B0805-88257AB5.007B136E@us.ibm.com>
+In-Reply-To: <50B3918E.4020303@gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-OK, thanks--applied to git://linux-nfs.org/~bfields/pynfs.git master.
+On Mon, Nov 26, 2012 at 09:28:06PM +0530, dE . wrote:
+> On 11/23/12 22:53, J. Bruce Fields wrote:
+> >On Fri, Nov 23, 2012 at 04:31:55PM +0530, dE . wrote:
+> >>Humm... The last thing I expected was no response even in the mailing list.
+> >>
+> >>So I'm filing a bug on this.
+> >>
+> >>On Oct 23, 2012 2:19 PM, "dE ."<de.techno@gmail.com>  wrote:
+> >>>Hi!
+> >>>
+> >>>Great job with NFS server, it surely is fast, but not on loop devices.
+> >>>
+> >>>If I loop mount a file and share the mount point over NFS3 or NFS4, the
+> >>>write performance of the client on the loop mounted share is pretty bad.
+> >>>
+> >>>On a 100 Mbps (or 12.5MBps) full duplex Ethernet link, I get ~8MBps
+> >>>speeds, whereas on the loop mounted device, I get at best 6MBps.
+> >What exactly is your test?
+> >
+> >--b.
+> 
+> Sorry for the late response. I'd 200+ unread mails.
+> 
+> I'm writing a large file to the mounted loop device.
+
+How large, and do you have the exact command you're using for that?
+
+Also, what are the client and server versions?
+
+I don't have any good idea off the top of my head.  I doubt anyone's
+worked on optimizing exports of loop devices.  I guess the first step
+would be to collect some statistics in the two cases (loop device and
+non-loop device), compare them, and see if you can see any patterns.
+/proc/self/mountstats on the client, and /proc/fs/nfsd/pool_stats, on
+the server, would be starting points.  Maybe perf on the server could
+also show up something.  Just running "top" on the server might be
+interesting.  (E.g.  is the CPU obviously busier in the slow case?)
 
 --b.
-
-On Tue, Nov 13, 2012 at 02:24:19PM -0800, Frank S Filz wrote:
-> 
-> 
-> I pushed a series of pynfs patches based on Bruce Field's pynfs branch to
-> Github:
-> 
-> git@github.com:ffilz/pynfs.git
-> https://github.com/ffilz/pynfs/commits/master
-> 
-> 05cf3bc49673e61f01a06600569d99d637f98917 Added LOOKP6 to test Xdev by
-> lookup into homedir and back to root
-> 1f4d4fece0bb86de0f2d2479c94854e62c7ad919 Do LINK2 in home directory
-> b85a2387d914798947c755b72cfc5198685654bb Implement RD9g, WRT10g, and
-> LOCK11g to test Ganesha bad stateid
-> bd458601b6fb4661828dcc2bec8cd7c57c240d2a Add Ganesha specific
-> makeBadIDganesha
-> 3e57fbde53e248168ee48a78553fe34ec0054053 Remove RD9 and WRT10 as generic
-> tests
-> 
-> I removed RD9 and WRT10 since these tests rely on makeBadID which attempts
-> to corrupt a stateid to evoke NFS4ERR_BAD_STATEID, but doesn't seem to work
-> even on RHEL 6.2 knfsd. I added makeBadIDganesha to corrupt the stateid in
-> a way that causes Ganesha to return NFS4ERR_BAD_STATEID and then used that
-> in new tests RD9g and WRT10g. LOCK11 causes the server to respond with
-> NFS4ERR_BAD_STATEID by using the all-zero stateid, however, it's worth
-> testing with a corrupted stateid also, so I added LOCK11g that uses
-> makeBadIDganesha to do so.
-> 
-> LINK2 was testing the server response to no SavedFH by doing PUTROOTFH,
-> LINK. Ganesha does all the checking on CurrentFH including export
-> permissions before checking SavedFH, and so was returning NFS4ERR_ROFS
-> because pseudo root is read-only. I modified LINK2 to LOOKUP into the
-> homedir and then do LINK without SAVEFH so that the test will not depend on
-> CurrentFH checking in pseudo root.
-> 
-> I added a new LOOKP6 test that tests LOOKUPP crossing back over a junction
-> by LOOKUP into homedir and then LOOKUPP back to pseudo root. Assuming there
-> is a junction between pseudo root and homedir, this will test LOOKUPP back
-> across a junction without needing any special server setup.
-> 
-> I hope these patches are useful.
-> 
-> With these patches, I have ganesha getting these results after running: all
-> ganesha noCLOSE4 noLOCK8c noLOCK18 noLOCK19 noLOCK21 noLOCK22 noLOCKHELD
-> LOOKP6
-> 
-> Command line asked for 579 of 652 tests
-> Of those: 8 Skipped, 11 Failed, 2 Warned, 558 Passed
-> 
-> Frank
