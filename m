@@ -1,52 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57613 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:57397 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755818Ab2KZWIz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Nov 2012 17:08:55 -0500
-Date: Mon, 26 Nov 2012 17:08:49 -0500
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: NFSd threads amount policy in containers context
-Message-ID: <20121126220849.GA18186@fieldses.org>
-References: <50B3941D.9030202@parallels.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <50B3941D.9030202@parallels.com>
+	id S1755913Ab2KZURC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Nov 2012 15:17:02 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 10/28] NFSv4.1: Simplify struct nfs4_sequence_args too
+Date: Mon, 26 Nov 2012 15:16:27 -0500
+Message-Id: <1353961005-63874-11-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1353961005-63874-10-git-send-email-Trond.Myklebust@netapp.com>
+References: <1353961005-63874-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-10-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 26, 2012 at 08:09:01PM +0400, Stanislav Kinsbursky wrote:
-> Hello.
-> I would like to discuss how to control NFSd threads amount from
-> container environment (is this particular case it means start of NFS
-> server in network namespace different to init_net).
-> 
-> So, I see three possible policies (let's assume, that there are two containers - one requested 3 NFSd threads and another one - 4 NFSd threads):
-> 1) start as many threads, as requested. I.e 7 threads for specified
-> case (simplest case, but probably this is to much - 100 containers
-> will start ~800 threads by default).
-> 2) start maximum number of requested threads. I.e. 4 threads for
-> specified case (if NFSd server in container, requested 4 threads,
-> will be stopped, then 3 thread will left working; will require some
-> way to manage - rb tree of sorted list).
-> 3) There could be some other (more flexible) policy: combine second
-> one with running of one more thread for each second and further
-> network namespace, started NFS server. I.e.:
-> 1 net ns: 3 threads request = 3 threads started
-> 2 net ns: 4 threads request = 4 + 1 (per-net thread: 1 net ns) = 5 threads started
-> 3 net ns: 8 threads request = 8 + 2 (per-net threads: 2 net ns) = 10 threads started
-> 
-> Bruce and community, what do you think about all this?
+Replace the session pointer + slotid with a pointer to the
+allocated slot.
 
-I agree that options 2 or 3 seem more likely to be optimal.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c       |  6 +++---
+ fs/nfs/nfs4xdr.c        | 21 ++++++++++-----------
+ include/linux/nfs_xdr.h |  3 +--
+ 3 files changed, 14 insertions(+), 16 deletions(-)
 
-However, looking at the problems with, for example, getting race-free
-shutdown correct: I'd *strongly* prefer that we start with 1, because I
-think it will be simplest to get right.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 4f2d058..7c2b037 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -592,7 +592,7 @@ out:
+ static void nfs41_init_sequence(struct nfs4_sequence_args *args,
+ 		struct nfs4_sequence_res *res, int cache_reply)
+ {
+-	args->sa_session = NULL;
++	args->sa_slot = NULL;
+ 	args->sa_cache_this = 0;
+ 	if (cache_reply)
+ 		args->sa_cache_this = 1;
+@@ -645,8 +645,8 @@ int nfs41_setup_sequence(struct nfs4_session *session,
+ 	rpc_task_set_priority(task, RPC_PRIORITY_NORMAL);
+ 	slot = tbl->slots + slotid;
+ 	slot->renewal_time = jiffies;
+-	args->sa_session = session;
+-	args->sa_slotid = slotid;
++
++	args->sa_slot = slot;
+ 
+ 	dprintk("<-- %s slotid=%d seqid=%d\n", __func__, slotid, slot->seq_nr);
+ 
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 50bac70..27b0fec 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1833,18 +1833,16 @@ static void encode_sequence(struct xdr_stream *xdr,
+ 			    struct compound_hdr *hdr)
+ {
+ #if defined(CONFIG_NFS_V4_1)
+-	struct nfs4_session *session = args->sa_session;
++	struct nfs4_session *session;
+ 	struct nfs4_slot_table *tp;
+-	struct nfs4_slot *slot;
++	struct nfs4_slot *slot = args->sa_slot;
+ 	__be32 *p;
+ 
+-	if (!session)
++	if (slot == NULL)
+ 		return;
+ 
+-	tp = &session->fc_slot_table;
+-
+-	WARN_ON(args->sa_slotid == NFS4_MAX_SLOT_TABLE);
+-	slot = tp->slots + args->sa_slotid;
++	tp = slot->table;
++	session = tp->session;
+ 
+ 	encode_op_hdr(xdr, OP_SEQUENCE, decode_sequence_maxsz, hdr);
+ 
+@@ -1858,12 +1856,12 @@ static void encode_sequence(struct xdr_stream *xdr,
+ 		((u32 *)session->sess_id.data)[1],
+ 		((u32 *)session->sess_id.data)[2],
+ 		((u32 *)session->sess_id.data)[3],
+-		slot->seq_nr, args->sa_slotid,
++		slot->seq_nr, slot->slot_nr,
+ 		tp->highest_used_slotid, args->sa_cache_this);
+ 	p = reserve_space(xdr, NFS4_MAX_SESSIONID_LEN + 16);
+ 	p = xdr_encode_opaque_fixed(p, session->sess_id.data, NFS4_MAX_SESSIONID_LEN);
+ 	*p++ = cpu_to_be32(slot->seq_nr);
+-	*p++ = cpu_to_be32(args->sa_slotid);
++	*p++ = cpu_to_be32(slot->slot_nr);
+ 	*p++ = cpu_to_be32(tp->highest_used_slotid);
+ 	*p = cpu_to_be32(args->sa_cache_this);
+ #endif /* CONFIG_NFS_V4_1 */
+@@ -2025,8 +2023,9 @@ static void encode_free_stateid(struct xdr_stream *xdr,
+ static u32 nfs4_xdr_minorversion(const struct nfs4_sequence_args *args)
+ {
+ #if defined(CONFIG_NFS_V4_1)
+-	if (args->sa_session)
+-		return args->sa_session->clp->cl_mvops->minor_version;
++
++	if (args->sa_slot)
++		return args->sa_slot->table->session->clp->cl_mvops->minor_version;
+ #endif /* CONFIG_NFS_V4_1 */
+ 	return 0;
+ }
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 9c9b76c..deb31bb 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -194,8 +194,7 @@ struct nfs4_slot {
+ };
+ 
+ struct nfs4_sequence_args {
+-	struct nfs4_session	*sa_session;
+-	u32			sa_slotid;
++	struct nfs4_slot	*sa_slot;
+ 	u8			sa_cache_this;
+ };
+ 
+-- 
+1.7.11.7
 
-I'd rather put off figuring out how to scale to hundreds of containers
-until after we demonstrate something simple and obviously correct.
-
---b.
