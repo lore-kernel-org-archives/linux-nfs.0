@@ -1,72 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35132 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932083Ab2K1NLF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Nov 2012 08:11:05 -0500
-Date: Wed, 28 Nov 2012 08:10:55 -0500
-To: Neil Brown <neilb@suse.de>
-Cc: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/3] gssd: base the size of the fd array on the
- RLIMIT_NOFILE limit.
-Message-ID: <20121128131054.GB11651@fieldses.org>
-References: <20121128010939.2475.13123.stgit@notabene.brown>
- <20121128011123.2475.13691.stgit@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20121128011123.2475.13691.stgit@notabene.brown>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:65420 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753975Ab2KZJaS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Nov 2012 04:30:18 -0500
+Received: by mail-ee0-f46.google.com with SMTP id e53so4338389eek.19
+        for <linux-nfs@vger.kernel.org>; Mon, 26 Nov 2012 01:30:17 -0800 (PST)
+From: Benny Halevy <bhalevy@tonian.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] pnfs: improve debug prints in filelayout_set_layoutcommit
+Date: Mon, 26 Nov 2012 11:30:14 +0200
+Message-Id: <1353922214-27796-1-git-send-email-bhalevy@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 28, 2012 at 12:11:23PM +1100, Neil Brown wrote:
-> We have previously raised the size of the 'pollarray' once (32 -> 256)
-> and I have had another request to make it bigger.
-> Rather than changing the hard-coded value, make it depend on
-> RLIMIT_NOFILE.  This is an upper limit on the size of the array
-> that can be passed to poll() anyway.
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfs/nfs4filelayout.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
 
-Sounds like a good idea.
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 2e45fd9..5b5ce82 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -266,11 +266,16 @@ static int filelayout_read_done_cb(struct rpc_task *task,
+ 	struct nfs_pgio_header *hdr = wdata->header;
+ 
+ 	if (FILELAYOUT_LSEG(hdr->lseg)->commit_through_mds ||
+-	    wdata->res.verf->committed == NFS_FILE_SYNC)
++	    wdata->res.verf->committed == NFS_FILE_SYNC) {
++		dprintk("%s inode %lu commit_through_mds %d committed %d\n",
++			__func__, hdr->inode->i_ino,
++			FILELAYOUT_LSEG(hdr->lseg)->commit_through_mds != 0,
++			wdata->res.verf->committed == NFS_FILE_SYNC);
+ 		return;
++	}
+ 
+ 	pnfs_set_layoutcommit(wdata);
+-	dprintk("%s ionde %lu pls_end_pos %lu\n", __func__, hdr->inode->i_ino,
++	dprintk("%s inode %lu pls_end_pos %lu\n", __func__, hdr->inode->i_ino,
+ 		(unsigned long) NFS_I(hdr->inode)->layout->plh_lwb);
+ }
+ 
+-- 
+1.7.11.7
 
-Just out of curiosity: how does it fail?  I guess mounts just start
-failing at some point--how do people find the workaround?
-
---b.
-
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> ---
->  utils/gssd/gssd_proc.c |    5 +++++
->  1 file changed, 5 insertions(+)
-> 
-> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-> index 425b582..e32b2f0 100644
-> --- a/utils/gssd/gssd_proc.c
-> +++ b/utils/gssd/gssd_proc.c
-> @@ -52,6 +52,7 @@
->  #include <sys/socket.h>
->  #include <arpa/inet.h>
->  #include <sys/fsuid.h>
-> +#include <sys/resource.h>
->  
->  #include <stdio.h>
->  #include <stdlib.h>
-> @@ -483,9 +484,13 @@ fail_keep_client:
->  void
->  init_client_list(void)
->  {
-> +	struct rlimit rlim;
->  	TAILQ_INIT(&clnt_list);
->  	/* Eventually plan to grow/shrink poll array: */
->  	pollsize = FD_ALLOC_BLOCK;
-> +	if (getrlimit(RLIMIT_NOFILE, &rlim) < 0 &&
-> +	    rlim.rlim_cur != RLIM_INFINITY)
-> +		pollsize = rlim.rlim_cur;
->  	pollarray = calloc(pollsize, sizeof(struct pollfd));
->  }
->  
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
