@@ -1,52 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:57050 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:39865 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753302Ab2KPV7V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 16 Nov 2012 16:59:21 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jim Rees <rees@umich.edu>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: Reduce stack use in encode_exchange_id()
-Date: Fri, 16 Nov 2012 21:59:18 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092E9FA3@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1353101475-11613-1-git-send-email-rees@umich.edu>
-In-Reply-To: <1353101475-11613-1-git-send-email-rees@umich.edu>
-Content-Type: text/plain; charset="utf-8"
+	id S932283Ab2KZWvS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Nov 2012 17:51:18 -0500
+Date: Mon, 26 Nov 2012 17:51:16 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Revert "mountd: handle allocation failures in
+ auth_unix_ip upcall"
+Message-ID: <20121126225116.GE18186@fieldses.org>
+References: <20121126220343.GA18140@fieldses.org>
+ <73EFE585-98D4-40BE-9EDF-15CC6B14BDB2@oracle.com>
+ <20121126221535.GB18186@fieldses.org>
+ <A954A569-E030-4119-A349-6CB888979738@oracle.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <A954A569-E030-4119-A349-6CB888979738@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTExLTE2IGF0IDE2OjMxIC0wNTAwLCBKaW0gUmVlcyB3cm90ZToNCj4gZW5j
-b2RlX2V4Y2hhbmdlX2lkKCkgdXNlcyBtb3JlIHN0YWNrIHNwYWNlIHRoYW4gbmVjZXNzYXJ5LCBn
-aXZpbmcgYSBjb21waWxlDQo+IHRpbWUgd2FybmluZy4gUmVkdWNlIHRoZSBzaXplIG9mIHRoZSBz
-dGF0aWMgYnVmZmVyIGZvciBpbXBsZW1lbnRhdGlvbiBuYW1lLg0KPiANCj4gU2lnbmVkLW9mZi1i
-eTogSmltIFJlZXMgPHJlZXNAdW1pY2guZWR1Pg0KPiBSZXZpZXdlZC1ieTogIkFkYW1zb24sIERy
-b3MiIDxXZXN0b24uQWRhbXNvbkBuZXRhcHAuY29tPg0KPiAtLS0NCj4gIGZzL25mcy9uZnM0eGRy
-LmMgfCAgICA3ICsrKysrLS0NCj4gIDEgZmlsZSBjaGFuZ2VkLCA1IGluc2VydGlvbnMoKyksIDIg
-ZGVsZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczR4ZHIuYyBiL2ZzL25m
-cy9uZnM0eGRyLmMNCj4gaW5kZXggNjcyZDliMC4uZTljMTAxZCAxMDA2NDQNCj4gLS0tIGEvZnMv
-bmZzL25mczR4ZHIuYw0KPiArKysgYi9mcy9uZnMvbmZzNHhkci5jDQo+IEBAIC0xNzA2LDEyICsx
-NzA2LDE1IEBAIHN0YXRpYyB2b2lkIGVuY29kZV9iaW5kX2Nvbm5fdG9fc2Vzc2lvbihzdHJ1Y3Qg
-eGRyX3N0cmVhbSAqeGRyLA0KPiAgCSpwID0gMDsJLyogdXNlX2Nvbm5faW5fcmRtYV9tb2RlID0g
-RmFsc2UgKi8NCj4gIH0NCj4gIA0KPiArI2RlZmluZSBJTVBMX05BTUVfTElNSVQgKHNpemVvZih1
-dHNuYW1lKCktPnN5c25hbWUpICsgc2l6ZW9mKHV0c25hbWUoKS0+cmVsZWFzZSkgKyBcDQo+ICsJ
-CQkgc2l6ZW9mKHV0c25hbWUoKS0+dmVyc2lvbikgKyBzaXplb2YodXRzbmFtZSgpLT5tYWNoaW5l
-KSArIDgpDQo+ICsNCj4gIHN0YXRpYyB2b2lkIGVuY29kZV9leGNoYW5nZV9pZChzdHJ1Y3QgeGRy
-X3N0cmVhbSAqeGRyLA0KPiAgCQkJICAgICAgIHN0cnVjdCBuZnM0MV9leGNoYW5nZV9pZF9hcmdz
-ICphcmdzLA0KPiAgCQkJICAgICAgIHN0cnVjdCBjb21wb3VuZF9oZHIgKmhkcikNCj4gIHsNCj4g
-IAlfX2JlMzIgKnA7DQo+IC0JY2hhciBpbXBsX25hbWVbTkZTNF9PUEFRVUVfTElNSVRdOw0KPiAr
-CWNoYXIgaW1wbF9uYW1lW0lNUExfTkFNRV9MSU1JVF07DQoNCkhtbS4uLiBTaG91bGRuJ3Qgd2Ug
-YWxzbyBiZSBjaGFuZ2luZyBlbmNvZGVfZXhjaGFuZ2VfaWRfbWF4c3ogdG8gbWlycm9yDQp0aGlz
-IG5ldyBidWZmZXIgbGltaXQ/DQoNCj4gIAlpbnQgbGVuID0gMDsNCj4gIA0KPiAgCWVuY29kZV9v
-cF9oZHIoeGRyLCBPUF9FWENIQU5HRV9JRCwgZGVjb2RlX2V4Y2hhbmdlX2lkX21heHN6LCBoZHIp
-Ow0KPiBAQCAtMTcyNiw3ICsxNzI5LDcgQEAgc3RhdGljIHZvaWQgZW5jb2RlX2V4Y2hhbmdlX2lk
-KHN0cnVjdCB4ZHJfc3RyZWFtICp4ZHIsDQo+ICAJaWYgKHNlbmRfaW1wbGVtZW50YXRpb25faWQg
-JiYNCj4gIAkgICAgc2l6ZW9mKENPTkZJR19ORlNfVjRfMV9JTVBMRU1FTlRBVElPTl9JRF9ET01B
-SU4pID4gMSAmJg0KPiAgCSAgICBzaXplb2YoQ09ORklHX05GU19WNF8xX0lNUExFTUVOVEFUSU9O
-X0lEX0RPTUFJTikNCj4gLQkJPD0gTkZTNF9PUEFRVUVfTElNSVQgKyAxKQ0KPiArCQk8PSBzaXpl
-b2YoaW1wbF9uYW1lKSArIDEpDQo+ICAJCWxlbiA9IHNucHJpbnRmKGltcGxfbmFtZSwgc2l6ZW9m
-KGltcGxfbmFtZSksICIlcyAlcyAlcyAlcyIsDQo+ICAJCQkgICAgICAgdXRzbmFtZSgpLT5zeXNu
-YW1lLCB1dHNuYW1lKCktPnJlbGVhc2UsDQo+ICAJCQkgICAgICAgdXRzbmFtZSgpLT52ZXJzaW9u
-LCB1dHNuYW1lKCktPm1hY2hpbmUpOw0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZT
-IGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20N
-Cnd3dy5uZXRhcHAuY29tDQo=
+On Mon, Nov 26, 2012 at 05:38:49PM -0500, Chuck Lever wrote:
+> 
+> On Nov 26, 2012, at 5:15 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> 
+> > On Mon, Nov 26, 2012 at 05:05:22PM -0500, Chuck Lever wrote:
+> >> 
+> >> On Nov 26, 2012, at 5:03 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> >> 
+> >>> From: "J. Bruce Fields" <bfields@redhat.com>
+> >>> 
+> >>> This reverts commit 485f7a21e1649797f29317b865cbb094c1f6a71d.  The
+> >>> failures handled there could be any sort of name resolution failure, not
+> >>> just an allocation, and failing to downcall (hence leaving the client
+> >>> hanging) is not the correct thing to do in those cases.
+> >> 
+> >> The problem is in the kernel, then: a downcall should be allowed to fail, IMO.
+> > 
+> > In this case, after a revert, a failure here will result in the downcall
+> > passing down a client named "DEFAULT".  Presumably that won't be
+> > permitted access to the export, so the client will end up getting an
+> > error.
+> 
+> "A failure here" can mean either malloc() returned NULL in client_resolve() or client_compose(), or . . . ?
+
+Looks like it'd also fail if we couldn't map the client's ip address to
+a name.
+
+> > But I may not understand your objection.
+> 
+> The main problem is I don't understand your patch description.  :-)
+> 
+> I don't seem to have commit 485f7a21 in my nfs-utils git tree (it's
+> helpful to include the short description for such a case).
+
+Ah, crap, sorry, looks like I reverted a local commit of that patch....
+The upstream commit is bf6a4febaa78bf188896b7b5b02c46562dd08b70 (and
+the short description is in the subject line above).
+
+> What exactly is the problem with the current code?
+> 
+> client_resolve() can return a NULL in some cases.  Why is it OK to
+> pass a NULL "ai" to client_compose() ?  Looks like that can result in
+> a mountd segfault.
+
+Bah, I thought I'd checked this and found it was prepared to handle
+that, but no:
+
+	client_check->check_wildcard()
+
+looks like it can oops.
+
+OK, I'll take another look.
+
+> The kernel won't get any downcall reply in that
+> case!  Is that what you are trying to fix?
+> 
+> WRT my original objection: In general I don't see how to make it
+> impossible for mountd to fail.
+
+Sure, but mountd is required for the server to function, so it's just a
+question of how we fail.
+
+> Thus the kernel needs to be better about recovering when mountd
+> suddenly disappears.
+
+Currently it drops and lets the client retry.  I suspect that's the
+correct thing to do, but alternatives are welcomed.
+
+--b.
