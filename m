@@ -1,63 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from plane.gmane.org ([80.91.229.3]:55083 "EHLO plane.gmane.org"
+Received: from mx2.netapp.com ([216.240.18.37]:27465 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755290Ab2K1Boy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Nov 2012 20:44:54 -0500
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1TdWhz-0006c3-3l
-	for linux-nfs@vger.kernel.org; Wed, 28 Nov 2012 02:45:03 +0100
-Received: from jua06-1-82-242-159-238.fbx.proxad.net ([82.242.159.238])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Wed, 28 Nov 2012 02:45:03 +0100
-Received: from lists by jua06-1-82-242-159-238.fbx.proxad.net with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Wed, 28 Nov 2012 02:45:03 +0100
-To: linux-nfs@vger.kernel.org
-From: Andrei <lists@andreicostin.com>
-Subject: MIPIO information + MIPIO vs MPIO
-Date: Wed, 28 Nov 2012 01:41:48 +0000 (UTC)
-Message-ID: <loom.20121128T023931-160@post.gmane.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+	id S1754382Ab2KZQ0N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Nov 2012 11:26:13 -0500
+Message-ID: <50B39824.6070207@netapp.com>
+Date: Mon, 26 Nov 2012 11:26:12 -0500
+From: Bryan Schumaker <bjschuma@netapp.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 00/10] NFSD: Improve fault injection
+References: <1351630254-26166-1-git-send-email-bjschuma@netapp.com> <20121114224846.GE539@fieldses.org> <50A5025C.8070201@netapp.com> <20121115150036.GG539@fieldses.org> <50B38826.3030902@netapp.com> <20121126161046.GC11860@fieldses.org>
+In-Reply-To: <20121126161046.GC11860@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On 11/26/2012 11:10 AM, J. Bruce Fields wrote:
+> On Mon, Nov 26, 2012 at 10:17:58AM -0500, Bryan Schumaker wrote:
+>> On 11/15/2012 10:00 AM, J. Bruce Fields wrote:
+>>> On Thu, Nov 15, 2012 at 09:55:24AM -0500, Bryan Schumaker wrote:
+>>>> On 11/14/2012 05:48 PM, J. Bruce Fields wrote:
+>>>>> On Tue, Oct 30, 2012 at 04:50:44PM -0400, bjschuma@netapp.com wrote:
+>>>>>> From: Bryan Schumaker <bjschuma@netapp.com>
+>>>>>>
+>>>>>> While working on p2p-nfs, I discovered that I sometimes need to clear
+>>>>>> state for a specific client to test all possible error recovery conditions.
+>>>>>> The current fault injection code deletes state as it find it, so it can
+>>>>>> be difficult to guess which state will be forgotten.  In addition, I
+>>>>>> currently print out the amount of state forgotten but I don't give details
+>>>>>> like "Forgot 3 locks from client w.x.y.z".  These patches set out to
+>>>>>> improve that.
+>>>>>>
+>>>>>> The first 7 patches clean up the current code and prepare it for specific
+>>>>>> client state removal.  Patch 8 adds prints information to the server's logs
+>>>>>> when a fault injection file is read (such as "Client w.x.y.z has 3 open
+>>>>>> files").  Patch 9 adds in a custom file operations structure so users can
+>>>>>> write strings to fault injection files in addition to u64s.  Finally, patch
+>>>>>> 10 allows users to remove state by writing a client's IP address to one of
+>>>>>> the files.
+>>>>>
+>>>>> Apologies for putting you off again, but: I'd like to get Stanislav's
+>>>>> patches sorted out first.  I think that shouldn't take too long--bug me
+>>>>> in another week or so if I haven't come back to these by then.  These
+>>>>> may need a little rebasing at that point.
+>>>>
+>>>> Ok, I'll add "bug Bruce" to my calendar... I took a quick glance through his patches and I don't think rebasing will be too hard.
+>>>
+>>> Good, thanks!
+>>
+>> So what's the plan for these patches?
+> 
+> I'll need to take a quick look at Stanislav's latest and at these
+> patches.  Some of his stuff is already in my public tree so yours may
+> already need a rebase?
 
-I am looking for more information on MIPIO.
+Yeah, some of the context has changed for these patches... updating now.
 
-To give a small background, I need to fix/patch a script in a system which I
-have no idea of:
- - basically there is a /dev/mipio device driver on a hardware platform
- - it is configured to get an IP address via ifconfig
- - all the hints is that it's an IP-based distributed filesystem, but there is
-no docs whatsoever
- - just need to figure out the specs (terminology mess included) and the purpose
-of this /dev/mipio type of device so that i fire the patch and move on
+- Bryan
 
-I could find plenty of info on similarly spelling (and contextually similar) 
-MPIO (MultiPath I/O), which is usually found also in the context of distributed
-filesystems/storages, 
-SCSI solutions, etc.
-(http://pic.dhe.ibm.com/infocenter/aix/v7r1/index.jsp?topic=%2Fcom.ibm.aix.baseadmn%2Fdoc%2Fbaseadmndita%2Fdevmpio.htm)
-
-I would kindly request if someone could really help point me into the right
-direction:
- - is _generally_ MIPIO same as MPIO or not?
- - can someone provide in private some links/docs on MIPIO?
- - can someone provide his/her prior experience with such /dev/mipio
-programming/sysadmining?
-
-PS: the only MIPIO references I could find is
-"http://permalink.gmane.org/gmane.linux.nfs/28617", 
-this is why I took the chances of writing to linux.nfs :) - apologies if it's
-the wrong place to ask, 
-appreciate hints for the right place to ask.
-
-Thanks.
-
-Cheers,
-Andrei
+> 
+> --b.
+> 
 
