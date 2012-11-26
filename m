@@ -1,81 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:45195 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:10285 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1945979Ab2K2AbL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Nov 2012 19:31:11 -0500
-Date: Thu, 29 Nov 2012 11:30:51 +1100
-From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/3] gssd: base the size of the fd array on the
- RLIMIT_NOFILE limit.
-Message-ID: <20121129113051.046bc658@notabene.brown>
-In-Reply-To: <20121128131054.GB11651@fieldses.org>
-References: <20121128010939.2475.13123.stgit@notabene.brown>
-	<20121128011123.2475.13691.stgit@notabene.brown>
-	<20121128131054.GB11651@fieldses.org>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_//i1lZFFD=uFYlm1inq5SOXo"; protocol="application/pgp-signature"
+	id S1755865Ab2KZUQz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Nov 2012 15:16:55 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 02/28] NFSv4.1: Don't confuse CREATE_SESSION arguments and results
+Date: Mon, 26 Nov 2012 15:16:19 -0500
+Message-Id: <1353961005-63874-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1353961005-63874-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1353961005-63874-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1353961005-63874-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_//i1lZFFD=uFYlm1inq5SOXo
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+Don't store the target request and response sizes in the same
+variables used to store the server's replies to those targets.
 
-On Wed, 28 Nov 2012 08:10:55 -0500 "J. Bruce Fields" <bfields@fieldses.org>
-wrote:
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c         | 30 +++++++++++++++++-------------
+ include/linux/nfs_fs_sb.h |  3 +++
+ 2 files changed, 20 insertions(+), 13 deletions(-)
 
-> On Wed, Nov 28, 2012 at 12:11:23PM +1100, Neil Brown wrote:
-> > We have previously raised the size of the 'pollarray' once (32 -> 256)
-> > and I have had another request to make it bigger.
-> > Rather than changing the hard-coded value, make it depend on
-> > RLIMIT_NOFILE.  This is an upper limit on the size of the array
-> > that can be passed to poll() anyway.
->=20
-> Sounds like a good idea.
->=20
-> Just out of curiosity: how does it fail?  I guess mounts just start
-> failing at some point--how do people find the workaround?
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index a32d953..3e572dc 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5807,8 +5807,8 @@ void nfs4_destroy_session(struct nfs4_session *session)
+ static void nfs4_init_channel_attrs(struct nfs41_create_session_args *args)
+ {
+ 	struct nfs4_session *session = args->client->cl_session;
+-	unsigned int mxrqst_sz = session->fc_attrs.max_rqst_sz,
+-		     mxresp_sz = session->fc_attrs.max_resp_sz;
++	unsigned int mxrqst_sz = session->fc_target_max_rqst_sz,
++		     mxresp_sz = session->fc_target_max_resp_sz;
+ 
+ 	if (mxrqst_sz == 0)
+ 		mxrqst_sz = NFS_MAX_FILE_IO_SIZE;
+@@ -6015,24 +6015,28 @@ int nfs4_init_session(struct nfs_server *server)
+ {
+ 	struct nfs_client *clp = server->nfs_client;
+ 	struct nfs4_session *session;
+-	unsigned int rsize, wsize;
++	unsigned int target_max_rqst_sz = NFS_MAX_FILE_IO_SIZE;
++	unsigned int target_max_resp_sz = NFS_MAX_FILE_IO_SIZE;
+ 
+ 	if (!nfs4_has_session(clp))
+ 		return 0;
+ 
++	if (server->rsize != 0)
++		target_max_resp_sz = server->rsize;
++	target_max_resp_sz += nfs41_maxread_overhead;
++
++	if (server->wsize != 0)
++		target_max_rqst_sz = server->wsize;
++	target_max_rqst_sz += nfs41_maxwrite_overhead;
++
+ 	session = clp->cl_session;
+ 	spin_lock(&clp->cl_lock);
+ 	if (test_and_clear_bit(NFS4_SESSION_INITING, &session->session_state)) {
+-
+-		rsize = server->rsize;
+-		if (rsize == 0)
+-			rsize = NFS_MAX_FILE_IO_SIZE;
+-		wsize = server->wsize;
+-		if (wsize == 0)
+-			wsize = NFS_MAX_FILE_IO_SIZE;
+-
+-		session->fc_attrs.max_rqst_sz = wsize + nfs41_maxwrite_overhead;
+-		session->fc_attrs.max_resp_sz = rsize + nfs41_maxread_overhead;
++		/* Initialise targets and channel attributes */
++		session->fc_target_max_rqst_sz = target_max_rqst_sz;
++		session->fc_attrs.max_rqst_sz = target_max_rqst_sz;
++		session->fc_target_max_resp_sz = target_max_resp_sz;
++		session->fc_attrs.max_resp_sz = target_max_resp_sz;
+ 	}
+ 	spin_unlock(&clp->cl_lock);
+ 
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index a9e76ee..97c8f91 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -242,6 +242,9 @@ struct nfs4_session {
+ 	struct nfs4_channel_attrs	bc_attrs;
+ 	struct nfs4_slot_table		bc_slot_table;
+ 	struct nfs_client		*clp;
++	/* Create session arguments */
++	unsigned int			fc_target_max_rqst_sz;
++	unsigned int			fc_target_max_resp_sz;
+ };
+ 
+ #endif /* CONFIG_NFS_V4 */
+-- 
+1.7.11.7
 
-Error seems to be
-
-rpcsec_gss: gss_init_sec_context: (major) Miscellaneous failure - (minor) C=
-annot contact any KDC for requested realm
-
-in rpc.gssd logs.
-
-I guess people could read the source to find the work around .... not ideal
-though.  I guess we should get gssd to generate some more helpful message.
-
-The seem to be further problems that the customer is experiencing so I might
-wait until they are completely resolved to ensure I have complete
-understanding before I propose a further patch.
-
-NeilBrown
-
-
---Sig_//i1lZFFD=uFYlm1inq5SOXo
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.19 (GNU/Linux)
-
-iQIVAwUBULaswjnsnt1WYoG5AQKQ4Q/+N5cvBYAlpDbYVBP/TJES6vA7no94qDP7
-s+QkHEHXuHiA9Zxx6hSsd54Y6wAaEGsiMKsBncPJ70qDS0JeA7bIkoPcI20R/XP7
-FeXuz1gPoprYoLQYkqhRGwDidVuwtTg0slPapfMFeoUPbJakNkaRvebDyXyFWvIx
-/bBXGeR4hmYamkSblRGan/l+20NQwtle4jaseTdfKG3nhIPFHF9bBGDc6ecMKBtE
-R380v4xlak34cYQQYH1RMzIrD1KiwJyI+YOU47HLWPk9T9ryGVF939VXwS1Kvlu/
-iSuYxeQP04XEZTPxqMktq5zgk47dc28qppQHkdh34tDFlotcXuNimaAsx+6alBe3
-HWxyS/WG+ZrCheeRGLANop2ZNKTHnyQvnBAHUtImhNy9fTfw3I3qnQjbj1dPll3E
-GmbUVazgYY+yPyKMvy1/zY43MiX7LezZFdAAAHNO2WsnHinox80iEqvCdIGMNOax
-FrJPgx7wnqdGS2VwtCC2KZ9WWVf4jWc16kOGaTSp7gfQYbKv1/3X1Rg/oBijYrwJ
-LGw1wWu9emwo653Gh+AiRaUA5PM/ogB0Xpy/06CWQ7m1OrrqHhpBmBgkPDpWvJMr
-NPajZzp7gTzkwWI4ggG/riOlBRI59jnJCnjsSDCdZ8ClaVI19vdODizvYRQi1+tp
-Au2+7C5iXuc=
-=bUL9
------END PGP SIGNATURE-----
-
---Sig_//i1lZFFD=uFYlm1inq5SOXo--
