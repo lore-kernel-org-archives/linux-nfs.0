@@ -1,50 +1,121 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:47468 "EHLO mx2.suse.de"
+Received: from mx2.netapp.com ([216.240.18.37]:55950 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752359Ab2K1BM3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Nov 2012 20:12:29 -0500
-From: Neil Brown <neilb@suse.de>
-To: Steve Dickson <steved@redhat.com>
-Date: Wed, 28 Nov 2012 12:11:22 +1100
-Subject: [PATCH 1/3] gssd_proc: use pollsize, not FD_ALLOC_BLOCK,
- in get_poll_index().
+	id S1755187Ab2K0Of3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Nov 2012 09:35:29 -0500
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Message-ID: <20121128011122.2475.42464.stgit@notabene.brown>
-In-Reply-To: <20121128010939.2475.13123.stgit@notabene.brown>
-References: <20121128010939.2475.13123.stgit@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Subject: [PATCH v3 09/10] NFSD: Add a custom file operations structure for fault injection
+Date: Tue, 27 Nov 2012 09:35:18 -0500
+Message-Id: <1354026919-13313-10-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1354026919-13313-1-git-send-email-bjschuma@netapp.com>
+References: <1354026919-13313-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-get_poll_index wants to walk the entire "pollarray", but uses
-the constant FD_ALLOC_BLOCK, rather than the variable
-pollsize (which has the same value).  If we want to make the
-size of the array variable, it is best not to use the constant.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-As pollsize is 'unsigned long', 'i' should be too.
+Controlling the read and write functions allows me to add in "forget
+client w.x.y.z", since we won't be limited to reading and writing only
+u64 values.
 
-Signed-off-by: NeilBrown <neilb@suse.de>
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- utils/gssd/gssd_proc.c |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/nfsd/fault_inject.c | 56 +++++++++++++++++++++++++++++++++++++++++++-------
+ 1 file changed, 49 insertions(+), 7 deletions(-)
 
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index ec251fa..2d7ec94 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -398,10 +398,10 @@ process_clnt_dir_files(struct clnt_info * clp)
- static int
- get_poll_index(int *ind)
- {
--	int i;
-+	unsigned int i;
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index 43a591b..bf3b869 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -8,6 +8,7 @@
+ #include <linux/fs.h>
+ #include <linux/debugfs.h>
+ #include <linux/module.h>
++#include <asm/uaccess.h>
  
- 	*ind = -1;
--	for (i=0; i<FD_ALLOC_BLOCK; i++) {
-+	for (i=0; i<pollsize; i++) {
- 		if (pollarray[i].events == 0) {
- 			*ind = i;
- 			break;
-
+ #include "state.h"
+ 
+@@ -48,10 +49,9 @@ static struct nfsd_fault_inject_op inject_ops[] = {
+ static long int NUM_INJECT_OPS = sizeof(inject_ops) / sizeof(struct nfsd_fault_inject_op);
+ static struct dentry *debug_dir;
+ 
+-static int nfsd_inject_set(void *op_ptr, u64 val)
++static void nfsd_inject_set(struct nfsd_fault_inject_op *op, u64 val)
+ {
+ 	u64 count = 0;
+-	struct nfsd_fault_inject_op *op = op_ptr;
+ 
+ 	if (val == 0)
+ 		printk(KERN_INFO "NFSD Fault Injection: %s (all)", op->file);
+@@ -62,19 +62,61 @@ static int nfsd_inject_set(void *op_ptr, u64 val)
+ 	count = nfsd_for_n_state(val, op->forget);
+ 	nfs4_unlock_state();
+ 	printk(KERN_INFO "NFSD: %s: found %llu", op->file, count);
+-	return 0;
+ }
+ 
+-static int nfsd_inject_get(void *op_ptr, u64 *val)
++static void nfsd_inject_get(struct nfsd_fault_inject_op *op, u64 *val)
+ {
+-	struct nfsd_fault_inject_op *op = op_ptr;
+ 	nfs4_lock_state();
+ 	*val = nfsd_for_n_state(0, op->print);
+ 	nfs4_unlock_state();
+-	return 0;
+ }
+ 
+-DEFINE_SIMPLE_ATTRIBUTE(fops_nfsd, nfsd_inject_get, nfsd_inject_set, "%llu\n");
++static ssize_t fault_inject_read(struct file *file, char __user *buf,
++				 size_t len, loff_t *ppos)
++{
++	static u64 val;
++	char read_buf[25];
++	size_t size, ret;
++	loff_t pos = *ppos;
++
++	if (!pos)
++		nfsd_inject_get(file->f_dentry->d_inode->i_private, &val);
++	size = scnprintf(read_buf, sizeof(read_buf), "%llu\n", val);
++
++	if (pos < 0)
++		return -EINVAL;
++	if (pos >= size || !len)
++		return 0;
++	if (len > size - pos)
++		len = size - pos;
++	ret = copy_to_user(buf, read_buf + pos, len);
++	if (ret == len)
++		return -EFAULT;
++	len -= ret;
++	*ppos = pos + len;
++	return len;
++}
++
++static ssize_t fault_inject_write(struct file *file, const char __user *buf,
++				  size_t len, loff_t *ppos)
++{
++	char write_buf[24];
++	size_t size = min(sizeof(write_buf), len) - 1;
++	u64 val;
++
++	if (copy_from_user(write_buf, buf, size))
++		return -EFAULT;
++
++	val = simple_strtoll(write_buf, NULL, 0);
++	nfsd_inject_set(file->f_dentry->d_inode->i_private, val);
++	return len; /* on success, claim we got the whole input */
++}
++
++static const struct file_operations fops_nfsd = {
++	.owner   = THIS_MODULE,
++	.read    = fault_inject_read,
++	.write   = fault_inject_write,
++};
+ 
+ void nfsd_fault_inject_cleanup(void)
+ {
+-- 
+1.8.0.1
 
