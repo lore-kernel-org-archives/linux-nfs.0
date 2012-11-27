@@ -1,87 +1,165 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:58033 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:55950 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751055Ab2KWFgU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Nov 2012 00:36:20 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: fanchaoting <fanchaoting@cn.fujitsu.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfs cache bug (when server delete the file ,nfs client can read
- file also)
-Date: Fri, 23 Nov 2012 05:36:03 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092F7F85@SACEXCMBX04-PRD.hq.netapp.com>
-References: <50AEF92B.4080900@cn.fujitsu.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9092F7F07@SACEXCMBX04-PRD.hq.netapp.com>
-	 <50AF0850.6060901@cn.fujitsu.com>
-In-Reply-To: <50AF0850.6060901@cn.fujitsu.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1755187Ab2K0Of1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Nov 2012 09:35:27 -0500
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 07/10] NFSD: Fault injection operations take a per-client forget function
+Date: Tue, 27 Nov 2012 09:35:16 -0500
+Message-Id: <1354026919-13313-8-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1354026919-13313-1-git-send-email-bjschuma@netapp.com>
+References: <1354026919-13313-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTExLTIzIGF0IDEzOjIzICswODAwLCBmYW5jaGFvdGluZyB3cm90ZToNCj4g
-TXlrbGVidXN0LCBUcm9uZCDlhpnpgZM6DQo+ID4gT24gRnJpLCAyMDEyLTExLTIzIGF0IDEyOjE4
-ICswODAwLCBmYW5jaGFvdGluZyB3cm90ZToNCj4gPj4gSGksZXZlcnlvbmUuIEkgZm91bmQgYSBi
-aWcgYnVnIGFib3VudCBuZnMgY2FjaGUuDQo+ID4+DQo+ID4+IHdoZW4gc2VydmVyIGRlbGV0ZSB0
-aGUgZmlsZSAsbmZzIGNsaWVudCBjYW4gcmVhZCBmaWxlIGFsc28uDQo+ID4+DQo+ID4+IHRoZSBm
-b2xsb3dpbmcgaXMgdGhlIHJlcHJvZHVjZS4NCj4gPj4NCj4gPj4gaXA6IDE5Mi4xNjguMC4xOSAg
-bmZzLWNsaWVudA0KPiA+PiBpcDogMTkyLjE2OC4wLjIwICBuZnMtY2xpZW50DQo+ID4+IGlwOiAx
-OTIuMTY4LjAuMjEgIG5mcy1zZXJ2ZXINCj4gPj4NCj4gPj4gIyMjIyMjIyMjIyMjIyMjIyMjIyMj
-IyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIw0K
-PiA+Pg0KPiA+PiAvdXNyL2Jpbi9zc2ggLW4gMTkyLjE2OC4wLjIxIHNlcnZpY2UgbmZzIHN0YXJ0
-DQo+ID4+IC91c3IvYmluL3NzaCAtbiAxOTIuMTY4LjAuMjEgL3Vzci9zYmluL3JwYy5pZG1hcGQN
-Cj4gPj4gL3Vzci9iaW4vc3NoIC1uIDE5Mi4xNjguMC4xOSAvdXNyL3NiaW4vcnBjLmlkbWFwZA0K
-PiA+PiAvdXNyL2Jpbi9zc2ggLW4gMTkyLjE2OC4wLjIwIC91c3Ivc2Jpbi9ycGMuaWRtYXBkDQo+
-ID4+IC91c3IvYmluL3NzaCAtbiAxOTIuMTY4LjAuMjEgInJtIC1yZiAvbmZzcm9vdDsgbWtkaXIg
-LXAgL25mc3Jvb3QiDQo+ID4+IC91c3IvYmluL3NzaCAtbiAxOTIuMTY4LjAuMjEgL3Vzci9zYmlu
-L2V4cG9ydGZzIC1hdQ0KPiA+PiAvdXNyL2Jpbi9zc2ggLW4gMTkyLjE2OC4wLjIxIC91c3Ivc2Jp
-bi9leHBvcnRmcyAtaSAtbyBpbnNlY3VyZSxub19yb290X3NxdWFzaCxydyxmc2lkPTAgKjovbmZz
-cm9vdA0KPiA+PiAvdXNyL2Jpbi9zc2ggLW4gMTkyLjE2OC4wLjE5IHRlc3QgLWQgL25mc3Jvb3Qg
-fHwgKHJtIC1yZiAvbmZzcm9vdDsgbWtkaXIgLXAgL25mc3Jvb3QpDQo+ID4+IC91c3IvYmluL3Nz
-aCAtbiAxOTIuMTY4LjAuMjAgdGVzdCAtZCAvbmZzcm9vdCB8fCAocm0gLXJmIC9uZnNyb290OyBt
-a2RpciAtcCAvbmZzcm9vdCkNCj4gPj4NCj4gPj4gL3Vzci9iaW4vc3NoIC1uIDE5Mi4xNjguMC4x
-OSB1bW91bnQgL25mc3Jvb3QNCj4gPj4gL3Vzci9iaW4vc3NoIC1uIDE5Mi4xNjguMC4yMCB1bW91
-bnQgL25mc3Jvb3QNCj4gPj4gY21kPSJlY2hvIFwiaGVsbG8gd29ybGRcIiA+IC9uZnNyb290L3Rt
-cGZpbGUiDQo+ID4+IC91c3IvYmluL3NzaCAtbiAxOTIuMTY4LjAuMjEgJGNtZA0KPiA+PiAvdXNy
-L2Jpbi9zc2ggLW4gMTkyLjE2OC4wLjIxIG1rZGlyIC9uZnNyb290L3RtcGRpcg0KPiA+PiAvdXNy
-L2Jpbi9zc2ggLW4gMTkyLjE2OC4wLjIxIHRvdWNoIC9uZnNyb290L3RtcGRpci90bXBkZmlsZQ0K
-PiA+PiAvdXNyL2Jpbi9zc2ggLW4gMTkyLjE2OC4wLjE5IG1vdW50IC10IG5mczQgMTkyLjE2OC4w
-LjIxOi8gL25mc3Jvb3QNCj4gPj4gL3Vzci9iaW4vc3NoIC1uIDE5Mi4xNjguMC4yMCBtb3VudCAt
-dCBuZnM0IDE5Mi4xNjguMC4yMTovIC9uZnNyb290DQo+ID4+IC91c3IvYmluL3NzaCAtbiAxOTIu
-MTY4LjAuMjEgY2F0ICAvbmZzcm9vdC90bXBmaWxlDQo+ID4+IC91c3IvYmluL3NzaCAtbiAxOTIu
-MTY4LjAuMjEgbHMgLWwgL25mc3Jvb3QvdG1wZGlyDQo+ID4+IC91c3IvYmluL3NzaCAtbiAxOTIu
-MTY4LjAuMTkgY2F0ICAvbmZzcm9vdC90bXBmaWxlDQo+ID4+IC91c3IvYmluL3NzaCAtbiAxOTIu
-MTY4LjAuMTkgbHMgLWwgIC9uZnNyb290L3RtcGRpcg0KPiA+PiAvdXNyL2Jpbi9zc2ggLW4gMTky
-LjE2OC4wLjIwIGNhdCAgL25mc3Jvb3QvdG1wZmlsZQ0KPiA+PiAvdXNyL2Jpbi9zc2ggLW4gMTky
-LjE2OC4wLjIwIGxzIC1sICAvbmZzcm9vdC90bXBkaXINCj4gPj4gL3Vzci9iaW4vc3NoIC1uIDE5
-Mi4xNjguMC4xOSBjYXQgL25mc3Jvb3QvdG1wZmlsZSA+IC9kZXYvbnVsbA0KPiA+PiAvdXNyL2Jp
-bi9zc2ggLW4gMTkyLjE2OC4wLjIwIGNhdCAvbmZzcm9vdC90bXBmaWxlID4gL2Rldi9udWxsDQo+
-ID4+IC91c3IvYmluL3NzaCAtbiAxOTIuMTY4LjAuMjEgcm0gLXJmIC9uZnNyb290L3RtcGZpbGUN
-Cj4gPj4gZWNobyAtZSAic2xlZXAgNjB+fn5+fn5+flxuIg0KPiA+PiBzbGVlcCA2MA0KPiA+Pg0K
-PiA+PiAjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMj
-IyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIw0KPiA+Pg0KPiA+PiBsYXN0OiBJbiAxOTIuMTY4LjAu
-MTkgSSBkbzoNCj4gPj4NCj4gPj4gI2NhdCAvbmZzcm9vdC90bXBmaWxlICAgICAgICAgICA8LS10
-aGUgbmZzIHNlcnZlciBkZWxldGUgdGhlIGZpbGUsYnV0IG5mcyBjbGllbnQgY2FuIHJlYWQgdGhl
-IGZpbGUNCj4gPj4gIGhlbGxvIHdvcmxkDQo+ID4+DQo+ID4+DQo+ID4+IEkgdGhpbmsgIHdoZW4g
-dGhlIG5mcyBzZXJ2ZXIgZGVsZXRlIHRoZSBmaWxlICwNCj4gPj4gdGhlICBzZXJ2ZXIgc2hvdWxk
-IG5vdGljZSB0aGUgbmZzIGNsaWVudCwNCj4gPj4gYnV0IHRoZSB1cHN0cmVhbSBrZXJuZWwgZG9l
-cyd0IHRoaXMuDQo+ID4gDQo+ID4gU28gaXMgdGhpcyBhIHByb2JsZW0gd2l0aCB0aGUgY2xpZW50
-IG9yIHRoZSBzZXJ2ZXI/IEluIG90aGVyIHdvcmRzLCBpZg0KPiA+IHlvdSB1c2UgYSBkaWZmZXJl
-bnQgc2VydmVyL2NsaWVudCBjb21iaW5hdGlvbiwgZG8geW91IHNlZSBhIGRpZmZlcmVudA0KPiA+
-IHJlc3VsdD8NCj4gPiANCj4gDQo+IEkgdGhpbmsgdGhhdCB0aGUgc2VydmVyIGhhcyB0aGUgcHJv
-YmxlbSAud2hlbiB0aGUgc2VydmVyIGRlbGV0ZXMgdGhlIGZpbGUgLA0KPiBpdCBzaG91bGQgbm90
-aWNlIHRoZSBjbGllbnQgaW1tZWRpYXRlbHkuDQoNClRoZXJlIGlzIG5vIG5vdGlmaWNhdGlvbiBt
-ZWNoYW5pc20gaW4gTkZTOyBvbiBvcGVuKCksIHRoZSBjbGllbnQgaXMNCnN1cHBvc2VkIHRvIHJl
-dmFsaWRhdGUgaXRzIGNhY2hlZCBpbmZvcm1hdGlvbiBhbmQgdGhlIHNlcnZlciBpcyBzdXBwb3Nl
-ZA0KdG8gcmV0dXJuIGFuIEVTVEFMRSBlcnJvciBpZiB0aGUgZmlsZWhhbmRsZSBpcyBubyBsb25n
-ZXIgdmFsaWQuIEVpdGhlcg0Kb25lIG9mIHRoZXNlIDIgbWVjaGFuaXNtcyAoY2xpZW50IHJldmFs
-aWRhdGlvbiBvciBzZXJ2ZXIgcmVwbHkpIGNvdWxkIGJlDQpnb2luZyB3cm9uZyBoZXJlLCB3aGlj
-aCBpcyB3aHkgSSdtIGFza2luZy4NCg0KPiA+IFdoaWNoIGtlcm5lbHMgYXJlIHlvdSB1c2luZyBp
-biB5b3VyIHRlc3RzIGZvciB0aGUgY2xpZW50IGFuZCBzZXJ2ZXI/DQo+ID4gDQo+IA0KPiBJIGZv
-dW5kIHRoZSBwcm9ibGVtIGluIGtlcm5lbCAgMy43LjAtcmM2DQoNCk9LLiBEbyB5b3UgaGF2ZSBh
-IG5vbi1MaW51eCBzZXJ2ZXIgb3IgY2xpZW50IGF2YWlsYWJsZSB0aGF0IHlvdSBjYW4gdXNlDQpm
-b3IgdGVzdGluZz8gQWx0ZXJuYXRpdmVseSwgY291bGQgeW91IHVzZSB3aXJlc2hhcmsgdG8gY2Fw
-dHVyZSBhIGR1bXAgb2YNCnRoZSBORlMgdHJhZmZpYyBiZXR3ZWVuIHRoZSBjbGllbnQgYW5kIHNl
-cnZlcj8NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5l
-cg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+From: Bryan Schumaker <bjschuma@netapp.com>
+
+The eventual goal is to forget state based on ip address, so it makes
+sense to call this function in a for-each-client loop until the correct
+amount of state is forgotten.  I also use this patch as an opportunity
+to rename the forget function from "func()" to "forget()".
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfsd/fault_inject.c | 16 +++++++++-------
+ fs/nfsd/nfs4state.c    | 32 +-------------------------------
+ fs/nfsd/state.h        | 12 +++++++-----
+ 3 files changed, 17 insertions(+), 43 deletions(-)
+
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index 4b385a1..bdef6a8 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -13,29 +13,29 @@
+ 
+ struct nfsd_fault_inject_op {
+ 	char *file;
+-	void (*func)(u64);
++	u64 (*forget)(struct nfsd_net *, struct nfs4_client *, u64);
+ };
+ 
+ static struct nfsd_fault_inject_op inject_ops[] = {
+ 	{
+ 		.file   = "forget_clients",
+-		.func   = nfsd_forget_clients,
++		.forget = nfsd_forget_client,
+ 	},
+ 	{
+ 		.file   = "forget_locks",
+-		.func   = nfsd_forget_locks,
++		.forget = nfsd_forget_client_locks,
+ 	},
+ 	{
+ 		.file   = "forget_openowners",
+-		.func   = nfsd_forget_openowners,
++		.forget = nfsd_forget_client_openowners,
+ 	},
+ 	{
+ 		.file   = "forget_delegations",
+-		.func   = nfsd_forget_delegations,
++		.forget = nfsd_forget_client_delegations,
+ 	},
+ 	{
+ 		.file   = "recall_delegations",
+-		.func   = nfsd_recall_delegations,
++		.forget = nfsd_recall_client_delegations,
+ 	},
+ };
+ 
+@@ -44,6 +44,7 @@ static struct dentry *debug_dir;
+ 
+ static int nfsd_inject_set(void *op_ptr, u64 val)
+ {
++	u64 count = 0;
+ 	struct nfsd_fault_inject_op *op = op_ptr;
+ 
+ 	if (val == 0)
+@@ -52,8 +53,9 @@ static int nfsd_inject_set(void *op_ptr, u64 val)
+ 		printk(KERN_INFO "NFSD Fault Injection: %s (n = %llu)", op->file, val);
+ 
+ 	nfs4_lock_state();
+-	op->func(val);
++	count = nfsd_for_n_state(val, op->forget);
+ 	nfs4_unlock_state();
++	printk(KERN_INFO "NFSD: %s: found %llu", op->file, count);
+ 	return 0;
+ }
+ 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 84bd4c4..ba41006 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4691,7 +4691,7 @@ u64 nfsd_recall_client_delegations(struct nfsd_net *nn, struct nfs4_client *clp,
+ 	return count;
+ }
+ 
+-static u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfsd_net *, struct nfs4_client *, u64))
++u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfsd_net *, struct nfs4_client *, u64))
+ {
+ 	struct nfs4_client *clp, *next;
+ 	u64 count = 0;
+@@ -4706,36 +4706,6 @@ static u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfsd_net *, struct nfs4_
+ 	return count;
+ }
+ 
+-void nfsd_forget_clients(u64 num)
+-{
+-	u64 count = nfsd_for_n_state(num, nfsd_forget_client);
+-	printk(KERN_INFO "NFSD: Forgot %llu clients", count);
+-}
+-
+-void nfsd_forget_locks(u64 num)
+-{
+-	u64 count = nfsd_for_n_state(num, nfsd_forget_client_locks);
+-	printk(KERN_INFO "NFSD: Forgot %llu locks", count);
+-}
+-
+-void nfsd_forget_openowners(u64 num)
+-{
+-	u64 count = nfsd_for_n_state(num, nfsd_forget_client_openowners);
+-	printk(KERN_INFO "NFSD: Forgot %llu open owners", count);
+-}
+-
+-void nfsd_forget_delegations(u64 num)
+-{
+-	u64 count = nfsd_for_n_state(num, nfsd_forget_client_delegations);
+-	printk(KERN_INFO "NFSD: Forgot %llu delegations", count);
+-}
+-
+-void nfsd_recall_delegations(u64 num)
+-{
+-	u64 count = nfsd_for_n_state(num, nfsd_recall_client_delegations);
+-	printk(KERN_INFO "NFSD: Recalled %llu delegations", count);
+-}
+-
+ #endif /* CONFIG_NFSD_FAULT_INJECTION */
+ 
+ /* initialization to perform at module load time: */
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index b542bf2..4d836ed 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -501,11 +501,13 @@ extern void nfsd4_record_grace_done(struct nfsd_net *nn, time_t boot_time);
+ #ifdef CONFIG_NFSD_FAULT_INJECTION
+ int nfsd_fault_inject_init(void);
+ void nfsd_fault_inject_cleanup(void);
+-void nfsd_forget_clients(u64);
+-void nfsd_forget_locks(u64);
+-void nfsd_forget_openowners(u64);
+-void nfsd_forget_delegations(u64);
+-void nfsd_recall_delegations(u64);
++u64 nfsd_for_n_state(u64, u64 (*)(struct nfsd_net *, struct nfs4_client *, u64));
++
++u64 nfsd_forget_client(struct nfsd_net *, struct nfs4_client *, u64);
++u64 nfsd_forget_client_locks(struct nfsd_net *, struct nfs4_client*, u64);
++u64 nfsd_forget_client_openowners(struct nfsd_net *, struct nfs4_client *, u64);
++u64 nfsd_forget_client_delegations(struct nfsd_net *, struct nfs4_client *, u64);
++u64 nfsd_recall_client_delegations(struct nfsd_net *, struct nfs4_client *, u64);
+ #else /* CONFIG_NFSD_FAULT_INJECTION */
+ static inline int nfsd_fault_inject_init(void) { return 0; }
+ static inline void nfsd_fault_inject_cleanup(void) {}
+-- 
+1.8.0.1
+
