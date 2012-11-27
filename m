@@ -1,61 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:50366 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752342Ab2KNN4n (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Nov 2012 08:56:43 -0500
+Received: from fieldses.org ([174.143.236.118]:57990 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932251Ab2K0Cj2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Nov 2012 21:39:28 -0500
+Date: Mon, 26 Nov 2012 21:39:27 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kks Kbase <kks.kbase@yahoo.in>
+Cc: Linux NFS <linux-nfs@vger.kernel.org>
+Subject: Re: NFS exportfs options
+Message-ID: <20121127023927.GB18930@fieldses.org>
+References: <1353479256.92520.YahooMailNeo@web190605.mail.sg3.yahoo.com>
+ <1353481809.32623.YahooMailNeo@web190605.mail.sg3.yahoo.com>
+ <1353816433.24972.YahooMailNeo@web190603.mail.sg3.yahoo.com>
+ <20121125144816.GA31110@fieldses.org>
+ <1353982692.94013.YahooMailNeo@web190603.mail.sg3.yahoo.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Date: Wed, 14 Nov 2012 08:56:42 -0500
-From: David Quigley <selinux@davequigley.com>
-To: Dave Quigley <dpquigl@davequigley.com>
-Cc: Steve Dickson <steved@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, <trond.myklebust@netapp.com>,
-        <sds@tycho.nsa.gov>, <linux-nfs@vger.kernel.org>,
-        <selinux@tycho.nsa.gov>, <linux-security-module@vger.kernel.org>
-Subject: Re: Labeled NFS [v5]
-In-Reply-To: <50A31EF5.1050801@davequigley.com>
-References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com>
- <20121112152335.GH30713@fieldses.org> <50A116F0.5050404@davequigley.com>
- <20121112160959.GK30713@fieldses.org> <50A16269.4060601@RedHat.com>
- <50A1A4EE.7030507@davequigley.com> <50A24345.8080309@RedHat.com>
- <50A31EF5.1050801@davequigley.com>
-Message-ID: <89250d50cb98ad1e39a9e8259312510c@countercultured.net>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1353982692.94013.YahooMailNeo@web190603.mail.sg3.yahoo.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/13/2012 23:32, Dave Quigley wrote:
-> On 11/13/2012 7:55 AM, Steve Dickson wrote:
->>
->>
->> On 12/11/12 20:39, Dave Quigley wrote:
->>> If you're ok with non Fedora kernel images I can try to put up a 
->>> tree either tonight or tomorrow with the patches that you just need 
->>> to build and install. That plus the one patch for nfs-utils should 
->>> make everything work.
->> I'm good with that....
->>
->> steved.
->>
->
-> Ok so if you go to http://www.selinuxproject.org/git you will see a
-> repo for lnfs and lnfs-patchset. The instructions at
-> http://www.selinuxproject.org/page/Labeled_NFS give you a better
-> indication on how to pull the trees. I've attached a patch for NFS
-> utils which gives support for security_label/nosecurity_label in your
-> /etc/exports file. I've also attached a script called setup which
-> should build a test directory called /export with a copy of /var/www
-> under it which should be labeled properly. It does all the proper
-> SELinux commands to make sure labeling is correct. Once you have that
-> setup just mount -t nfs localhost:/ /mnt/lnfs (or wherever you want)
-> and you should be good to go. Just ls -Z in /mnt/lnfs/var and check 
-> to
-> make sure the labels are the same as /export/var. It should have the
-> labels showing up in the network transfer. If you have any problems
-> just let me know and I can try to help figure them out.
->
-> Dave
+On Tue, Nov 27, 2012 at 10:18:12AM +0800, Kks Kbase wrote:
+> Here is the command that I have used to mount.
+> 
+> 
+> mount -f nfs 1.2.3.4:/home/nfstest1 /mnt
+> 
+> 
+> # ls -al /mnt/
+> total 28
+> drwxr-xr-x  2 root root 4096 Nov 22 01:50 .
 
-If you want to run the testsuite we used Serge has a repo on the git 
-page above for the selinux-testsuite. Just copy it onto the nfs export 
-and follow the instructions in the readme.
+Only root is permitted to write to this directory.  But you have
+root_squash turned on (which is the default; see "man export").
+
+--b.
+
+> drwxr-xr-x 25 root root 4096 Nov 23 20:21 ..
+> -rw-r--r--  1 root root    0 Nov 22 01:50 1
+> -rw-r--r--  1 root root    0 Nov 22 01:50 2
+> -rw-r--r--  1 root root    0 Nov 22 01:50 3
+> # ls -ld /mnt/
+> drwxr-xr-x 2 root root 4096 Nov 22 01:50 /mnt/
+> 
+> 
+> 
+> Here is the output in mount command,
+> 
+> 1.2.3.4:/home/nfstest1 on /mnt type nfs (rw,addr=1.2.3.4)
+> 
+> 
+> 
+> 
+> ----- Original Message -----
+> From: J. Bruce Fields <bfields@fieldses.org>
+> To: Kks Kbase <kks.kbase@yahoo.in>
+> Cc: Linux NFS <linux-nfs@vger.kernel.org>
+> Sent: Sunday, 25 November 2012 8:18 PM
+> Subject: Re: NFS exportfs options
+> 
+> On Sun, Nov 25, 2012 at 12:07:13PM +0800, Kks Kbase wrote:
+> > Hi,
+> > 
+> > Here is the mounted option on /var/lib/nfs/etab
+> > 
+> > # cat /var/lib/nfs/etab
+> > /home/nfstest1  *(rw,sync,wdelay,hide,nocrossmnt,secure,root_squash,no_all_squash,no_subtree_check,secure_locks,no_acl,mapping=identity,anonuid=65534,anongid=65534)
+> > 
+> > 
+> > 
+> > 
+> > 
+> > 
+> > ----- Original Message -----
+> > From: Kks Kbase <kks.kbase@yahoo.in>
+> > To: Linux NFS <linux-nfs@vger.kernel.org>
+> > Cc: 
+> > Sent: Wednesday, 21 November 2012 12:40 PM
+> > Subject: NFS exportfs options
+> > 
+> > 
+> > 
+> > Hi,
+> > 
+> > Today I have tried to setup the NFS share. 
+> > 
+> > 
+> > Here is the exportsfs on NFS server
+> > 
+> > /home/nfstest1   *(rw)
+> > 
+> > Then I have mounted the nfs share folder and tried to create folders and files. But I am always getting the error as permission denied either root or normal user.
+> > 
+> > Any ideas please?
+> 
+> How are you mounting this on the client?
+> 
+> Have you checked permissions on the exported directory?  (ls -ld
+> /home/nfstest1).
+> 
+> --b.
+> 
