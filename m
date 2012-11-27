@@ -1,200 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:43978 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:51848 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1422677Ab2KNPTH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Nov 2012 10:19:07 -0500
-Subject: [PATCH v2 08/15] nfsd: make ownerstr_hashtbl allocated per net
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, devel@openvz.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, jlayton@redhat.com
-Date: Wed, 14 Nov 2012 18:21:41 +0300
-Message-ID: <20121114152141.4708.33413.stgit@localhost.localdomain>
-In-Reply-To: <20121114152018.4708.63125.stgit@localhost.localdomain>
-References: <20121114152018.4708.63125.stgit@localhost.localdomain>
+	id S1753284Ab2K0WLI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Nov 2012 17:11:08 -0500
+Date: Tue, 27 Nov 2012 17:11:05 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Subject: Re: [PATCH] nfsd4: remove state lock from nfs4_state_shutdown
+Message-ID: <20121127221105.GJ27142@fieldses.org>
+References: <20121121150730.6644.99859.stgit@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121121150730.6644.99859.stgit@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This hash holds open owner state and closely associated with nfs4_clients
-info, which are network namespace aware. So let's make it allocated per
-network namespace too.
+OK, applying.--b.
 
-Note: this hash can be allocated in per-net operations. But it looks
-better to allocate it on nfsd state start and thus don't waste resources
-if server is not running.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfsd/netns.h     |    1 +
- fs/nfsd/nfs4state.c |   41 ++++++++++++++++++++++++++---------------
- 2 files changed, 27 insertions(+), 15 deletions(-)
-
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index 1e76030..46cca94 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -60,6 +60,7 @@ struct nfsd_net {
- 	struct rb_root conf_name_tree;
- 	struct list_head *unconf_id_hashtbl;
- 	struct rb_root unconf_name_tree;
-+	struct list_head *ownerstr_hashtbl;
- };
- 
- extern int nfsd_net_id;
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index c38fea9..2333d15 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -176,8 +176,6 @@ static unsigned int ownerstr_hashval(u32 clientid, struct xdr_netobj *ownername)
- 	return ret & OWNER_HASH_MASK;
- }
- 
--static struct list_head	ownerstr_hashtbl[OWNER_HASH_SIZE];
--
- /* hash table for nfs4_file */
- #define FILE_HASH_BITS                   8
- #define FILE_HASH_SIZE                  (1 << FILE_HASH_BITS)
-@@ -2428,7 +2426,9 @@ static inline void *alloc_stateowner(struct kmem_cache *slab, struct xdr_netobj
- 
- static void hash_openowner(struct nfs4_openowner *oo, struct nfs4_client *clp, unsigned int strhashval)
- {
--	list_add(&oo->oo_owner.so_strhash, &ownerstr_hashtbl[strhashval]);
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+
-+	list_add(&oo->oo_owner.so_strhash, &nn->ownerstr_hashtbl[strhashval]);
- 	list_add(&oo->oo_perclient, &clp->cl_openowners);
- }
- 
-@@ -2486,13 +2486,14 @@ same_owner_str(struct nfs4_stateowner *sop, struct xdr_netobj *owner,
- }
- 
- static struct nfs4_openowner *
--find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open, bool sessions)
-+find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
-+			bool sessions, struct nfsd_net *nn)
- {
- 	struct nfs4_stateowner *so;
- 	struct nfs4_openowner *oo;
- 	struct nfs4_client *clp;
- 
--	list_for_each_entry(so, &ownerstr_hashtbl[hashval], so_strhash) {
-+	list_for_each_entry(so, &nn->ownerstr_hashtbl[hashval], so_strhash) {
- 		if (!so->so_is_open_owner)
- 			continue;
- 		if (same_owner_str(so, &open->op_owner, &open->op_clientid)) {
-@@ -2648,7 +2649,7 @@ nfsd4_process_open1(struct nfsd4_compound_state *cstate,
- 		return nfserr_jukebox;
- 
- 	strhashval = ownerstr_hashval(clientid->cl_id, &open->op_owner);
--	oo = find_openstateowner_str(strhashval, open, cstate->minorversion);
-+	oo = find_openstateowner_str(strhashval, open, cstate->minorversion, nn);
- 	open->op_openowner = oo;
- 	if (!oo) {
- 		clp = find_confirmed_client(clientid, cstate->minorversion,
-@@ -3976,8 +3977,9 @@ static void hash_lockowner(struct nfs4_lockowner *lo, unsigned int strhashval, s
- 	struct inode *inode = open_stp->st_file->fi_inode;
- 	unsigned int inohash = lockowner_ino_hashval(inode,
- 			clp->cl_clientid.cl_id, &lo->lo_owner.so_owner);
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 
--	list_add(&lo->lo_owner.so_strhash, &ownerstr_hashtbl[strhashval]);
-+	list_add(&lo->lo_owner.so_strhash, &nn->ownerstr_hashtbl[strhashval]);
- 	list_add(&lo->lo_owner_ino_hash, &lockowner_ino_hashtbl[inohash]);
- 	list_add(&lo->lo_perstateid, &open_stp->st_lockowners);
- }
-@@ -4458,7 +4460,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 	status = nfserr_locks_held;
- 	INIT_LIST_HEAD(&matches);
- 
--	list_for_each_entry(sop, &ownerstr_hashtbl[hashval], so_strhash) {
-+	list_for_each_entry(sop, &nn->ownerstr_hashtbl[hashval], so_strhash) {
- 		if (sop->so_is_open_owner)
- 			continue;
- 		if (!same_owner_str(sop, owner, clid))
-@@ -4614,13 +4616,14 @@ static void release_openowner_sop(struct nfs4_stateowner *sop)
- }
- 
- static int nfsd_release_n_owners(u64 num, bool is_open_owner,
--				void (*release_sop)(struct nfs4_stateowner *))
-+				void (*release_sop)(struct nfs4_stateowner *),
-+				struct nfsd_net *nn)
- {
- 	int i, count = 0;
- 	struct nfs4_stateowner *sop, *next;
- 
- 	for (i = 0; i < OWNER_HASH_SIZE; i++) {
--		list_for_each_entry_safe(sop, next, &ownerstr_hashtbl[i], so_strhash) {
-+		list_for_each_entry_safe(sop, next, &nn->ownerstr_hashtbl[i], so_strhash) {
- 			if (sop->so_is_open_owner != is_open_owner)
- 				continue;
- 			release_sop(sop);
-@@ -4634,9 +4637,10 @@ static int nfsd_release_n_owners(u64 num, bool is_open_owner,
- void nfsd_forget_locks(u64 num)
- {
- 	int count;
-+	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
- 
- 	nfs4_lock_state();
--	count = nfsd_release_n_owners(num, false, release_lockowner_sop);
-+	count = nfsd_release_n_owners(num, false, release_lockowner_sop, nn);
- 	nfs4_unlock_state();
- 
- 	printk(KERN_INFO "NFSD: Forgot %d locks", count);
-@@ -4645,9 +4649,10 @@ void nfsd_forget_locks(u64 num)
- void nfsd_forget_openowners(u64 num)
- {
- 	int count;
-+	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
- 
- 	nfs4_lock_state();
--	count = nfsd_release_n_owners(num, true, release_openowner_sop);
-+	count = nfsd_release_n_owners(num, true, release_openowner_sop, nn);
- 	nfs4_unlock_state();
- 
- 	printk(KERN_INFO "NFSD: Forgot %d open owners", count);
-@@ -4721,9 +4726,6 @@ nfs4_state_init(void)
- 	for (i = 0; i < FILE_HASH_SIZE; i++) {
- 		INIT_LIST_HEAD(&file_hashtbl[i]);
- 	}
--	for (i = 0; i < OWNER_HASH_SIZE; i++) {
--		INIT_LIST_HEAD(&ownerstr_hashtbl[i]);
--	}
- 	for (i = 0; i < LOCKOWNER_INO_HASH_SIZE; i++)
- 		INIT_LIST_HEAD(&lockowner_ino_hashtbl[i]);
- 	INIT_LIST_HEAD(&close_lru);
-@@ -4765,16 +4767,24 @@ static int nfs4_state_start_net(struct net *net)
- 			CLIENT_HASH_SIZE, GFP_KERNEL);
- 	if (!nn->unconf_id_hashtbl)
- 		goto err_unconf_id;
-+	nn->ownerstr_hashtbl = kmalloc(sizeof(struct list_head) *
-+			OWNER_HASH_SIZE, GFP_KERNEL);
-+	if (!nn->ownerstr_hashtbl)
-+		goto err_ownerstr;
- 
- 	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
- 		INIT_LIST_HEAD(&nn->conf_id_hashtbl[i]);
- 		INIT_LIST_HEAD(&nn->unconf_id_hashtbl[i]);
- 	}
-+	for (i = 0; i < OWNER_HASH_SIZE; i++)
-+		INIT_LIST_HEAD(&nn->ownerstr_hashtbl[i]);
- 	nn->conf_name_tree = RB_ROOT;
- 	nn->unconf_name_tree = RB_ROOT;
- 
- 	return 0;
- 
-+err_ownerstr:
-+	kfree(nn->unconf_id_hashtbl);
- err_unconf_id:
- 	kfree(nn->conf_id_hashtbl);
- err:
-@@ -4805,6 +4815,7 @@ __nfs4_state_shutdown_net(struct net *net)
- 		destroy_client(clp);
- 	}
- 
-+	kfree(nn->ownerstr_hashtbl);
- 	kfree(nn->unconf_id_hashtbl);
- 	kfree(nn->conf_id_hashtbl);
- }
-
+On Wed, Nov 21, 2012 at 06:07:38PM +0300, Stanislav Kinsbursky wrote:
+> Protection of __nfs4_state_shutdown() with nfs4_lock_state() looks redundant.
+> 
+> This function is called by the last NFSd thread on it's exit and state lock
+> protects actually two functions (del_recall_lru is protected by recall_lock):
+> 1) nfsd4_client_tracking_exit
+> 2) __nfs4_state_shutdown_net
+> 
+> "nfsd4_client_tracking_exit" doesn't require state lock protection, because it's
+> state can be modified only by tracker callbacks.
+> Here a re they:
+> 1) create: is called only from nfsd4_proc_compound.
+> 2) remove: is called from either nfsd4_proc_compound or nfs4_laundromat.
+> 3) check: is called only from nfsd4_proc_compound.
+> 4) grace_done; called only from nfs4_laundromat.
+> 
+> nfsd4_proc_compound is called onll by NFSd kthread, which is exiting right
+> now.
+> nfs4_laundromat is called by laundry_wq. But laundromat_work was canceled
+> already.
+> 
+> "__nfs4_state_shutdown_net" also doesn't require state lock protection,
+> because all NFSd kthreads are dead, and no race can happen with NFSd start,
+> because "nfsd_up" flag is still set.
+> Moreover, all Nfsd shutdown is protected with global nfsd_mutex.
+> 
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> ---
+>  fs/nfsd/nfs4state.c |    2 --
+>  1 files changed, 0 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index e75872f..d41cc71 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -4926,9 +4926,7 @@ nfs4_state_shutdown(void)
+>  	cancel_delayed_work_sync(&nn->laundromat_work);
+>  	destroy_workqueue(laundry_wq);
+>  	locks_end_grace(&nn->nfsd4_manager);
+> -	nfs4_lock_state();
+>  	__nfs4_state_shutdown(net);
+> -	nfs4_unlock_state();
+>  	nfsd4_destroy_callback_queue();
+>  }
+>  
+> 
