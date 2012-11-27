@@ -1,73 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:60428 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752542Ab2KMAML (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Nov 2012 19:12:11 -0500
-Message-ID: <50A1905D.2070608@davequigley.com>
-Date: Mon, 12 Nov 2012 19:12:13 -0500
-From: Dave Quigley <dpquigl@davequigley.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "David P. Quigley" <selinux@davequigley.com>, trond.myklebust@netapp.com,
-        sds@tycho.nsa.gov, linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
-        linux-security-module@vger.kernel.org,
-        "Matthew N. Dodd" <Matthew.Dodd@sparta.com>,
-        Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>,
-        Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>,
-        Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
-Subject: Re: [PATCH 02/13] Security: Add Hook to test if the particular xattr
- is part of a MAC model.
-References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com> <1352700947-3915-3-git-send-email-dpquigl@davequigley.com> <20121112121525.GD30713@fieldses.org> <50A10E25.3030704@davequigley.com> <20121112163617.GN30713@fieldses.org> <50A14FA9.8070606@davequigley.com> <20121112214357.GC23169@fieldses.org>
-In-Reply-To: <20121112214357.GC23169@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:55950 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755197Ab2K0Ofa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Nov 2012 09:35:30 -0500
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 10/10] NFSD: Forget state for a specific client
+Date: Tue, 27 Nov 2012 09:35:19 -0500
+Message-Id: <1354026919-13313-11-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1354026919-13313-1-git-send-email-bjschuma@netapp.com>
+References: <1354026919-13313-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/12/2012 4:43 PM, J. Bruce Fields wrote:
-> On Mon, Nov 12, 2012 at 02:36:09PM -0500, David P. Quigley wrote:
->> On 11/12/2012 11:36 AM, J. Bruce Fields wrote:
->>> On Mon, Nov 12, 2012 at 09:56:37AM -0500, Dave Quigley wrote:
->>>> On 11/12/2012 7:15 AM, J. Bruce Fields wrote:
->>>>> On Mon, Nov 12, 2012 at 01:15:36AM -0500, David Quigley wrote:
->>>>>> From: David Quigley<dpquigl@davequigley.com>
->>>>>>
->>>>>> The interface to request security labels from user space is the xattr
->>>>>> interface. When requesting the security label from an NFS server it is
->>>>>> important to make sure the requested xattr
->>>>> I'm confused--clients can't request xattrs from NFS servers.  I must be
->>>>> reading this wrong, but I'm not sure what you meant.
->>>>>
->>>>> --b.
->>>>>
->>>> Generically clients can't use xattrs from NFS servers but the LSM
->>>> method for getting labels is through the xattr interface. THe point
->>>> of this is if someone selects security.capability that we don't
->>>> translate that into a call in labeled nfs to get the security label.
->>>> We only want label based LSMs to cause a getfattr on the server to
->>>> grab the label and populate the inode with that information.
->>>> Currently if you use security.selinux or security.smack then labeled
->>>> nfs will handle the translation of that into a get/setfattr on the
->>>> security_label attribute in NFSv4.
->>> OK, I think I understand: so this is to help the NFS client implement
->>> the necessary xattr interface for userspace that get and sets security
->>> labels on NFS filesystems?
->>>
->>> --b.
->>
->> Exactly. The problem is we don't want to have LSM specific logic in
->> so the best we can do is ask if the security.* xattr being accessed
->> has the proper semantics to be used with Labeled NFS.
->
-> OK, thanks.  The changelog could probably be clarified (at least make it
-> clear that this is for the client side.)
->
-> Delaying this patch till right before the patch that actually uses it
-> might also help (and/or even combining those two patches).
->
-> --b.
->
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-I should be able to rearrange them and change the patch text. Merging 
-probably isn't a good idea since all of this code is in LSMs so it seems 
-weird to put it in with the NFS code.
+Write the client's ip address to any state file and all appropriate
+state for that client will be forgotten.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfsd/fault_inject.c | 38 ++++++++++++++++++++++++++++++++++----
+ fs/nfsd/nfs4state.c    | 12 ++++++++++++
+ fs/nfsd/state.h        |  1 +
+ 3 files changed, 47 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index bf3b869..699de07 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -8,9 +8,12 @@
+ #include <linux/fs.h>
+ #include <linux/debugfs.h>
+ #include <linux/module.h>
++#include <linux/nsproxy.h>
++#include <linux/sunrpc/clnt.h>
+ #include <asm/uaccess.h>
+ 
+ #include "state.h"
++#include "netns.h"
+ 
+ struct nfsd_fault_inject_op {
+ 	char *file;
+@@ -64,6 +67,25 @@ static void nfsd_inject_set(struct nfsd_fault_inject_op *op, u64 val)
+ 	printk(KERN_INFO "NFSD: %s: found %llu", op->file, count);
+ }
+ 
++static void nfsd_inject_set_client(struct nfsd_fault_inject_op *op,
++				   struct sockaddr_storage *addr,
++				   size_t addr_size)
++{
++	char buf[INET6_ADDRSTRLEN];
++	struct nfs4_client *clp;
++	u64 count;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns, nfsd_net_id);
++
++	nfs4_lock_state();
++	clp = nfsd_find_client(nn, addr, addr_size);
++	if (clp) {
++		count = op->forget(nn, clp, 0);
++		rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, 129);
++		printk(KERN_INFO "NFSD [%s]: Client %s had %llu state object(s)\n", op->file, buf, count);
++	}
++	nfs4_unlock_state();
++}
++
+ static void nfsd_inject_get(struct nfsd_fault_inject_op *op, u64 *val)
+ {
+ 	nfs4_lock_state();
+@@ -100,15 +122,23 @@ static ssize_t fault_inject_read(struct file *file, char __user *buf,
+ static ssize_t fault_inject_write(struct file *file, const char __user *buf,
+ 				  size_t len, loff_t *ppos)
+ {
+-	char write_buf[24];
++	char write_buf[INET6_ADDRSTRLEN];
+ 	size_t size = min(sizeof(write_buf), len) - 1;
++	struct net *net = current->nsproxy->net_ns;
++	struct sockaddr_storage sa;
+ 	u64 val;
+ 
+ 	if (copy_from_user(write_buf, buf, size))
+ 		return -EFAULT;
+-
+-	val = simple_strtoll(write_buf, NULL, 0);
+-	nfsd_inject_set(file->f_dentry->d_inode->i_private, val);
++	write_buf[size] = '\0';
++
++	size = rpc_pton(net, write_buf, size, (struct sockaddr *)&sa, sizeof(sa));
++	if (size > 0)
++		nfsd_inject_set_client(file->f_dentry->d_inode->i_private, &sa, size);
++	else {
++		val = simple_strtoll(write_buf, NULL, 0);
++		nfsd_inject_set(file->f_dentry->d_inode->i_private, val);
++	}
+ 	return len; /* on success, claim we got the whole input */
+ }
+ 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index cf2082d..b32414e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4748,6 +4748,18 @@ u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfsd_net *, struct nfs4_client
+ 	return count;
+ }
+ 
++struct nfs4_client *nfsd_find_client(struct nfsd_net *nn, struct sockaddr_storage *addr,
++				     size_t addr_size)
++{
++	struct nfs4_client *clp;
++
++	list_for_each_entry(clp, &nn->client_lru, cl_lru) {
++		if (memcmp(&clp->cl_addr, addr, addr_size) == 0)
++			return clp;
++	}
++	return NULL;
++}
++
+ #endif /* CONFIG_NFSD_FAULT_INJECTION */
+ 
+ /* initialization to perform at module load time: */
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 1878234..996ce69 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -502,6 +502,7 @@ extern void nfsd4_record_grace_done(struct nfsd_net *nn, time_t boot_time);
+ int nfsd_fault_inject_init(void);
+ void nfsd_fault_inject_cleanup(void);
+ u64 nfsd_for_n_state(u64, u64 (*)(struct nfsd_net *, struct nfs4_client *, u64));
++struct nfs4_client *nfsd_find_client(struct nfsd_net *, struct sockaddr_storage *, size_t);
+ 
+ u64 nfsd_forget_client(struct nfsd_net *, struct nfs4_client *, u64);
+ u64 nfsd_forget_client_locks(struct nfsd_net *, struct nfs4_client*, u64);
+-- 
+1.8.0.1
 
