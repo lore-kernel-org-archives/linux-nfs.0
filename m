@@ -1,70 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47897 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751410Ab2KFNHK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Nov 2012 08:07:10 -0500
-Date: Tue, 6 Nov 2012 08:07:06 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: Re: [PATCH v3] SUNRPC: set desired file system root before
- connecting local transports
-Message-ID: <20121106130705.GC6718@fieldses.org>
-References: <20121008105437.18668.99905.stgit@localhost.localdomain>
- <20121009193506.GA19680@fieldses.org>
- <5098E31A.5080801@parallels.com>
- <20121106120642.GA6718@fieldses.org>
- <20121106124035.GA20522@infradead.org>
+Received: from relay.parallels.com ([195.214.232.42]:55006 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757643Ab2K0Hyt convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Nov 2012 02:54:49 -0500
+Message-ID: <50B471B6.2010407@parallels.com>
+Date: Tue, 27 Nov 2012 11:54:30 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20121106124035.GA20522@infradead.org>
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+CC: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFSd state: nfs4_lock_state() and nfs4_lock_state()
+References: <50A622AE.3080809@parallels.com> <20121116165845.GA32183@fieldses.org> <50A9F03B.1010909@parallels.com> <20121119124618.GA30084@fieldses.org> <50AF5E7F.2010006@parallels.com> <20121126223639.GC18186@fieldses.org>
+In-Reply-To: <20121126223639.GC18186@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 06, 2012 at 07:40:35AM -0500, Christoph Hellwig wrote:
-> On Tue, Nov 06, 2012 at 07:06:42AM -0500, J. Bruce Fields wrote:
-> > On Tue, Nov 06, 2012 at 02:14:50PM +0400, Stanislav Kinsbursky wrote:
-> > > 09.10.2012 23:35, J. Bruce Fields ??????????:
-> > > >Cc'ing Eric since I seem to recall he suggested doing it this way?
-> > > >
-> > > >Seems OK to me, but maybe that swap_root should be in common code?  (Or
-> > > >maybe we could use set_fs_root()?)
-> > > >
-> > > 
-> > > This patch is not good since, as Eric mentioned, all kernel threads
-> > > share same fs struct.
-> > > We can swap whole fs struct. Or we can unshare fs struct
-> > > (unshare_fs_struct() is exported) and swap root in this case.
-> > > But this approach is to close to set_fs_root() logic, which is not
-> > > exported and seems there are some valid reasons for it.
-> > 
-> > What are those reasons?
-> > 
-> > Googling found one previous thread:
-> > 
-> > 	http://thread.gmane.org/gmane.linux.kernel/1259986/focus=47687
-> > 
-> > There Trond requests an ACK from Al or Cristoph for the export, but I
-> > don't see either an ACK or any objection.
-> 
-> I really don't think messing with current->fs for workqueue worker
-> threads is a good idea, as the worker threads are shared by different
-> workqueues and thus this can easily cause havoc for entirely unrelated
-> subsystems.
+27.11.2012 02:36, bfields@fieldses.org пишет:
+> On Fri, Nov 23, 2012 at 03:31:11PM +0400, Stanislav Kinsbursky wrote:
+>> 19.11.2012 16:46, bfields@fieldses.org пишет:
+>>> On Mon, Nov 19, 2012 at 12:39:23PM +0400, Stanislav Kinsbursky wrote:
+>>>> 16.11.2012 20:58, bfields@fieldses.org пишет:
+>>>>>
+>>>>> A patch follows: note it's a two-line patch, with 20 lines of changelog
+>>>>> showing that I looked at what state might be shared by other threads and
+>>>>> explaining why I think this is safe.
+>>>>>
+>>>>
+>>>> Acked-by: Stanislav Kinsburskiy <skinsbursky@parallels.com>
+>>>>
+>>>>> I think that's what we need to do: little patches that remove it from
+>>>>> one or another part of the code with careful explanation of why it
+>>>>> works.
+>>>>>
+>>>>
+>>>> Yes, thanks. I'll also try to simplify nfsd_open() by little patches.
+>>>> In general it looks like client_mutex protect two different things:
+>>>> open owner state (which is containerised already, actually) and
+>>>> files access.
+>>>> So, probably, this client mutex have to be converted into two:
+>>>> per-net one, which protects open owner state, and static one, which
+>>>> protects files operations.
+>>>> What do you think about it?
+>>>
+>>> That sounds right.
+>>>
+>>
+>> Looked into the code, and few more questions raised.
+>> So, currently, this mutex protects different NFS4 state structures and VFS file operations (like open, read, write, etc.).
+>> I would like this mutex to be converted into per-net one. Since NFS4
+>> state structures are per-net already (with my previous patch set),
+>> the only thing left is VFS operations.
+>> But do we really need to protect them somehow from concurrent access?
+>> I.e. do we have some RPCs, which does more that one file manipulation, but this manipulations sequence have to be "atomic" in NFSd terms?
+>
+> Probably not, but open is the most likely problem, as it does several
+> things which are not all atomic from the point of view of the vfs.  The
+> mutex can't prevent races between an nfs client and a local user, but it
+> can at least prevent races between nfs clients.
+>
 
-So you're worried that a bug in the nfs code could modify the root and
-then not restore it?
+Ok then.
+You said, that you are going to optimize open a bit?
+I think client_mutex containerization can be delayed for a while.
+Thnaks.
 
---b.
+> --b.
+>
 
-> 
-> To do this properly you'll need to avoid current->fs references in the
-> sunrpc code.
-> 
-> And just in case it wasn't clear: the hack in this iteration is even
-> worse than the original.
+
+-- 
+Best regards,
+Stanislav Kinsbursky
