@@ -1,90 +1,174 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:62151 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:27494 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751353Ab2KLOxE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Nov 2012 09:53:04 -0500
-Date: Mon, 12 Nov 2012 09:52:55 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Ricky Ng-Adam <rngadam@lophilo.com>
-Cc: linux-nfs@vger.kernel.org, trond.myklebust@netapp.com, neilb@suse.de
-Subject: Re: WARNING: at linux/fs/inode.c:280 drop_nlink
-Message-ID: <20121112095255.5c7babcc@tlielax.poochiereds.net>
-In-Reply-To: <CAOAMTYQ_9bPjCtobC9kfUJrgiT8hx7FsMXoi5ZgWo+P1qjDb0g@mail.gmail.com>
-References: <CAOAMTYQ_9bPjCtobC9kfUJrgiT8hx7FsMXoi5ZgWo+P1qjDb0g@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1753280Ab2K0Pel (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Nov 2012 10:34:41 -0500
+From: andros@netapp.com
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 3 5/5] SUNRPC refactor rpcauth_checkverf error returns
+Date: Tue, 27 Nov 2012 10:34:23 -0500
+Message-Id: <1354030463-2372-6-git-send-email-andros@netapp.com>
+In-Reply-To: <1354030463-2372-1-git-send-email-andros@netapp.com>
+References: <1354030463-2372-1-git-send-email-andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 27 Oct 2012 20:19:38 +0800
-Ricky Ng-Adam <rngadam@lophilo.com> wrote:
+From: Andy Adamson <andros@netapp.com>
 
-> A one time warning after quite a bit of usage with no other problems:
-> 
-> ------------[ cut here ]------------
-> WARNING: at /home/rngadam/lophilo/linux/fs/inode.c:280 drop_nlink+0x54/0x60()
-> Modules linked in: ipt_REDIRECT xt_tcpudp iptable_nat nf_nat
-> nf_conntrack_ipv4 nf_defrag_ipv4 nf_conntrack ip_tables x_tables
-> snd_atmel_ac97c snd_ac97_codec ac97_bus snd_pcm snd_page_alloc
-> snd_timer snd soundcore lophilo(O) ipv6 autofs4
-> [<c000dfdc>] (unwind_backtrace+0x0/0xf0) from [<c0017784>]
-> (warn_slowpath_common+0x4c/0x64)
-> [<c0017784>] (warn_slowpath_common+0x4c/0x64) from [<c00177b8>]
-> (warn_slowpath_null+0x1c/0x24)
-> [<c00177b8>] (warn_slowpath_null+0x1c/0x24) from [<c00a9084>]
-> (drop_nlink+0x54/0x60)
-> [<c00a9084>] (drop_nlink+0x54/0x60) from [<c0131268>]
-> (nfs_dentry_iput+0x38/0x50)
-> [<c0131268>] (nfs_dentry_iput+0x38/0x50) from [<c00a67b0>] (d_kill+0x9c/0xec)
-> [<c00a67b0>] (d_kill+0x9c/0xec) from [<c00a6cf0>] (dput+0x78/0x134)
-> [<c00a6cf0>] (dput+0x78/0x134) from [<c0095128>] (fput+0x194/0x238)
-> [<c0095128>] (fput+0x194/0x238) from [<c0092380>] (filp_close+0x68/0x80)
-> [<c0092380>] (filp_close+0x68/0x80) from [<c001ab88>]
-> (put_files_struct+0xb4/0xd8)
-> [<c001ab88>] (put_files_struct+0xb4/0xd8) from [<c001ad1c>]
-> (do_exit+0x134/0x72c)
-> [<c001ad1c>] (do_exit+0x134/0x72c) from [<c001b59c>] (do_group_exit+0x40/0xac)
-> [<c001b59c>] (do_group_exit+0x40/0xac) from [<c001b618>]
-> (__wake_up_parent+0x0/0x18)
-> ---[ end trace 3bda0ec3b276e040 ]---
-> 
-> client:
-> 
-> Linux lophilo 3.4.4+ #34 Sat Oct 6 16:28:57 CST 2012 armv5tejl GNU/Linux
-> 
-> server:
-> 
-> Linux rngadam-think 3.5.0-17-generic #28-Ubuntu SMP Tue Oct 9 19:32:08
-> UTC 2012 i686 i686 i686 GNU/Linux
-> 
-> # exportfs -v
-> /home/rngadam/lophilo.nfs
-> <world>(rw,async,wdelay,no_root_squash,no_subtree_check)
-> /home/rngadam/lophilo
-> <world>(rw,wdelay,root_squash,all_squash,no_subtree_check,anonuid=0,anongid=0)
-> 
-> seems to have occurred while a bunch of faiilng lstat on long paths
-> were going on:
-> 
-> stat { [Error: ENOENT, lstat
-> '/home/lophilo/lophilo/lmc/users/rngadam/lophilojs-example.git/client/code/colorpicker/img/colorpicker/img/colorpicker/img/colorpicker/js/colorpicker/css/colorpicker']
->   errno: 34,
->   code: 'ENOENT',
->   path: '/home/lophilo/lophilo/lmc/users/rngadam/lophilojs-example.git/client/code/colorpicker/img/colorpicker/img/colorpicker/img/colorpicker/js/colorpicker/css/colorpicker'
-> }
-> 
+Most of the time an error from the credops crvalidate function means the
+server has sent us a garbage verifier. The gss_validate function is the
+exception where there is an -EACCES case if the user GSS_context on the client
+has expired.
 
-The warning is fairly harmless, but it does look scary. Neil Brown had
-a patch to fix it, but I don't think Trond ever took it or commented on
-it.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ net/sunrpc/auth_gss/auth_gss.c |    7 +++++--
+ net/sunrpc/auth_null.c         |    5 +++--
+ net/sunrpc/auth_unix.c         |    5 +++--
+ net/sunrpc/clnt.c              |   17 ++++++++++-------
+ 4 files changed, 21 insertions(+), 13 deletions(-)
 
-Trond, any thoughts on Neil's one-line patch here?
-
-    https://lkml.org/lkml/2012/9/25/24
-
-(Note that I still have my doubts as to whether CIFS or NFS ought to be
-manipulating or relying on the i_nlink like this, but the patch looks
-fairly harmless as an interim fix).
-
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index e24948f..df92ae3 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -1300,6 +1300,7 @@ gss_validate(struct rpc_task *task, __be32 *p)
+ 	struct xdr_netobj mic;
+ 	u32		flav,len;
+ 	u32		maj_stat;
++	__be32		*ret = ERR_PTR(-EIO);
+ 
+ 	dprintk("RPC: %5u %s\n", task->tk_pid, __func__);
+ 
+@@ -1315,6 +1316,7 @@ gss_validate(struct rpc_task *task, __be32 *p)
+ 	mic.data = (u8 *)p;
+ 	mic.len = len;
+ 
++	ret = ERR_PTR(-EACCES);
+ 	maj_stat = gss_verify_mic(ctx->gc_gss_ctx, &verf_buf, &mic);
+ 	if (maj_stat == GSS_S_CONTEXT_EXPIRED)
+ 		clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags);
+@@ -1332,8 +1334,9 @@ gss_validate(struct rpc_task *task, __be32 *p)
+ 	return p + XDR_QUADLEN(len);
+ out_bad:
+ 	gss_put_ctx(ctx);
+-	dprintk("RPC: %5u %s failed.\n", task->tk_pid, __func__);
+-	return NULL;
++	dprintk("RPC: %5u %s failed ret %ld.\n", task->tk_pid, __func__,
++		PTR_ERR(ret));
++	return ret;
+ }
+ 
+ static void gss_wrap_req_encode(kxdreproc_t encode, struct rpc_rqst *rqstp,
+diff --git a/net/sunrpc/auth_null.c b/net/sunrpc/auth_null.c
+index a5c36c0..d60a673 100644
+--- a/net/sunrpc/auth_null.c
++++ b/net/sunrpc/auth_null.c
+@@ -84,17 +84,18 @@ nul_validate(struct rpc_task *task, __be32 *p)
+ {
+ 	rpc_authflavor_t	flavor;
+ 	u32			size;
++	__be32			*ret = ERR_PTR(-EIO);
+ 
+ 	flavor = ntohl(*p++);
+ 	if (flavor != RPC_AUTH_NULL) {
+ 		printk("RPC: bad verf flavor: %u\n", flavor);
+-		return NULL;
++		return ret;
+ 	}
+ 
+ 	size = ntohl(*p++);
+ 	if (size != 0) {
+ 		printk("RPC: bad verf size: %u\n", size);
+-		return NULL;
++		return ret;
+ 	}
+ 
+ 	return p;
+diff --git a/net/sunrpc/auth_unix.c b/net/sunrpc/auth_unix.c
+index 52c5abd..c9dad95 100644
+--- a/net/sunrpc/auth_unix.c
++++ b/net/sunrpc/auth_unix.c
+@@ -192,19 +192,20 @@ unx_validate(struct rpc_task *task, __be32 *p)
+ {
+ 	rpc_authflavor_t	flavor;
+ 	u32			size;
++	__be32			*ret = ERR_PTR(-EIO);
+ 
+ 	flavor = ntohl(*p++);
+ 	if (flavor != RPC_AUTH_NULL &&
+ 	    flavor != RPC_AUTH_UNIX &&
+ 	    flavor != RPC_AUTH_SHORT) {
+ 		printk("RPC: bad verf flavor: %u\n", flavor);
+-		return NULL;
++		return ret;
+ 	}
+ 
+ 	size = ntohl(*p++);
+ 	if (size > RPC_MAX_AUTH_SIZE) {
+ 		printk("RPC: giant verf size: %u\n", size);
+-		return NULL;
++		return ret;
+ 	}
+ 	task->tk_rqstp->rq_cred->cr_auth->au_rslack = (size >> 2) + 2;
+ 	p += (size >> 2);
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 55e174f..c005415 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -2041,7 +2041,8 @@ rpc_verify_header(struct rpc_task *task)
+ 		dprintk("RPC: %5u %s: XDR representation not a multiple of"
+ 		       " 4 bytes: 0x%x\n", task->tk_pid, __func__,
+ 		       task->tk_rqstp->rq_rcv_buf.len);
+-		goto out_eio;
++		error = -EIO;
++		goto out_err;
+ 	}
+ 	if ((len -= 3) < 0)
+ 		goto out_overflow;
+@@ -2050,6 +2051,7 @@ rpc_verify_header(struct rpc_task *task)
+ 	if ((n = ntohl(*p++)) != RPC_REPLY) {
+ 		dprintk("RPC: %5u %s: not an RPC reply: %x\n",
+ 			task->tk_pid, __func__, n);
++		error = -EIO;
+ 		goto out_garbage;
+ 	}
+ 
+@@ -2068,7 +2070,8 @@ rpc_verify_header(struct rpc_task *task)
+ 			dprintk("RPC: %5u %s: RPC call rejected, "
+ 				"unknown error: %x\n",
+ 				task->tk_pid, __func__, n);
+-			goto out_eio;
++			error = -EIO;
++			goto out_err;
+ 		}
+ 		if (--len < 0)
+ 			goto out_overflow;
+@@ -2113,9 +2116,11 @@ rpc_verify_header(struct rpc_task *task)
+ 				task->tk_pid, __func__, n);
+ 		goto out_err;
+ 	}
+-	if (!(p = rpcauth_checkverf(task, p))) {
+-		dprintk("RPC: %5u %s: auth check failed\n",
+-				task->tk_pid, __func__);
++	p = rpcauth_checkverf(task, p);
++	if (IS_ERR(p)) {
++		error = PTR_ERR(p);
++		dprintk("RPC: %5u %s: auth check failed with %d\n",
++				task->tk_pid, __func__, error);
+ 		goto out_garbage;		/* bad verifier, retry */
+ 	}
+ 	len = p - (__be32 *)iov->iov_base - 1;
+@@ -2168,8 +2173,6 @@ out_garbage:
+ out_retry:
+ 		return ERR_PTR(-EAGAIN);
+ 	}
+-out_eio:
+-	error = -EIO;
+ out_err:
+ 	rpc_exit(task, error);
+ 	dprintk("RPC: %5u %s: call failed with error %d\n", task->tk_pid,
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.7.6
+
