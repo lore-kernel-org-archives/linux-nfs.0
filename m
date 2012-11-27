@@ -1,110 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp105.biz.mail.bf1.yahoo.com ([98.139.221.43]:28659 "HELO
-	smtp105.biz.mail.bf1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1767956Ab2KOQGy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Nov 2012 11:06:54 -0500
-Message-ID: <50A51195.9080004@schaufler-ca.com>
-Date: Thu, 15 Nov 2012 08:00:21 -0800
-From: Casey Schaufler <casey@schaufler-ca.com>
+Received: from fieldses.org ([174.143.236.118]:40619 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751535Ab2K0Obc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Nov 2012 09:31:32 -0500
+Date: Tue, 27 Nov 2012 09:31:31 -0500
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: NFSd threads amount policy in containers context
+Message-ID: <20121127143131.GC27142@fieldses.org>
+References: <50B3941D.9030202@parallels.com>
+ <20121126220849.GA18186@fieldses.org>
+ <50B4740A.6000302@parallels.com>
 MIME-Version: 1.0
-To: David Quigley <dpquigl@davequigley.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Steve Dickson <steved@redhat.com>,
-        "David P. Quigley" <selinux@davequigley.com>,
-        trond.myklebust@netapp.com, sds@tycho.nsa.gov,
-        linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
-        linux-security-module@vger.kernel.org,
-        Casey Schaufler <casey@schaufler-ca.com>
-Subject: Re: Labeled NFS [v5]
-References: <50A116F0.5050404@davequigley.com> <20121112160959.GK30713@fieldses.org> <50A16269.4060601@RedHat.com> <50A1A4EE.7030507@davequigley.com> <50A24345.8080309@RedHat.com> <50A31EF5.1050801@davequigley.com> <20121114134535.GD23604@fieldses.org> <624cc90c1bf726d8ff1a1ea0ace5f50f@countercultured.net> <20121114135939.GE23604@fieldses.org> <80f36fef2a58eb538bce28daba3a862a@countercultured.net> <20121114142458.GF23604@fieldses.org> <4f9b24e3942b4a28cd9068d5bc0135fa@countercultured.net>
-In-Reply-To: <4f9b24e3942b4a28cd9068d5bc0135fa@countercultured.net>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <50B4740A.6000302@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/14/2012 6:30 AM, David Quigley wrote:
-> On 11/14/2012 09:24, J. Bruce Fields wrote:
->> On Wed, Nov 14, 2012 at 09:04:18AM -0500, David Quigley wrote:
->>> On 11/14/2012 08:59, J. Bruce Fields wrote:
->>> >On Wed, Nov 14, 2012 at 08:50:17AM -0500, David Quigley wrote:
->>> >>On 11/14/2012 08:45, J. Bruce Fields wrote:
->>> >>>On Tue, Nov 13, 2012 at 11:32:53PM -0500, Dave Quigley wrote:
->>> >>>>Ok so if you go to http://www.selinuxproject.org/git you will
->>> >>see a
->>> >>>>repo for lnfs and lnfs-patchset. The instructions at
->>> >>>>http://www.selinuxproject.org/page/Labeled_NFS give you a better
->>> >>>>indication on how to pull the trees. I've attached a patch for NFS
->>> >>>>utils which gives support for security_label/nosecurity_label in
->>> >>>>your /etc/exports file.
->>> >>>
->>> >>>Do we need an export option?  Is there any reason not to make the
->>> >>>feature available whenever there's support available for it?
->>> >>
->>> >>I guess we could build it in but I figured an export option allowed
->>> >>someone to turn off security labeling support if they didn't want it
->>> >>on that export. What happens to clients when the server returns a
->>> >>cap that they don't support? Do they mask the bits out?
->>> >
->>> >Yeah, they should just ignore it.
->>> >
->>> >While this is still experimental it's still nice to have a way to
->>> >turn
->>> >this on and off at runtime so people can experiment without having to
->>> >have it on for everyone all the time.  But
->>> >nfsd_supported_minorversion
->>> >should be sufficient for that.
->>> >
->>> >(I don't think your patches actually dealt yet with the fact that
->>> >this
->>> >is part of minor version 2?  Another for the todo list.)
->>> >
->>> >--b.
->>>
->>> If we use nfsd_supported_minorversion which I'm guessing is an
->>> export option
->>
->> That's just a variable in the code.  It's controlled by
->> /proc/fs/nfsd/versions.
->>
->>> what happens if someone wants to use other 4.2
->>> features but not labeling?
->>
->> We'll cross that bridge when we come to it, maybe by adding some new
->> global paramater.
->>
->> There's no reason this really needs to be per-export, is there?
->>
->> --b.
->
-> At the moment I can't really think of a reason to have it be
-> per-export. I think we need a new LSM patch though to determine if the
-> LSM supports labeling over NFS unless Steve can think of a better way
-> to tell if the LSM supports labeling.
+On Tue, Nov 27, 2012 at 12:04:26PM +0400, Stanislav Kinsbursky wrote:
+> 27.11.2012 02:08, bfields@fieldses.org пишет:
+> >On Mon, Nov 26, 2012 at 08:09:01PM +0400, Stanislav Kinsbursky wrote:
+> >>Hello.
+> >>I would like to discuss how to control NFSd threads amount from
+> >>container environment (is this particular case it means start of NFS
+> >>server in network namespace different to init_net).
+> >>
+> >>So, I see three possible policies (let's assume, that there are two containers - one requested 3 NFSd threads and another one - 4 NFSd threads):
+> >>1) start as many threads, as requested. I.e 7 threads for specified
+> >>case (simplest case, but probably this is to much - 100 containers
+> >>will start ~800 threads by default).
+> >>2) start maximum number of requested threads. I.e. 4 threads for
+> >>specified case (if NFSd server in container, requested 4 threads,
+> >>will be stopped, then 3 thread will left working; will require some
+> >>way to manage - rb tree of sorted list).
+> >>3) There could be some other (more flexible) policy: combine second
+> >>one with running of one more thread for each second and further
+> >>network namespace, started NFS server. I.e.:
+> >>1 net ns: 3 threads request = 3 threads started
+> >>2 net ns: 4 threads request = 4 + 1 (per-net thread: 1 net ns) = 5 threads started
+> >>3 net ns: 8 threads request = 8 + 2 (per-net threads: 2 net ns) = 10 threads started
+> >>
+> >>Bruce and community, what do you think about all this?
+> >
+> >I agree that options 2 or 3 seem more likely to be optimal.
+> >
+> >However, looking at the problems with, for example, getting race-free
+> >shutdown correct: I'd *strongly* prefer that we start with 1, because I
+> >think it will be simplest to get right.
+> >
+> >I'd rather put off figuring out how to scale to hundreds of containers
+> >until after we demonstrate something simple and obviously correct.
+> >
+> 
+> Ok. Then I think we could implement even a better and simpler solution:
+> make the whole nfsd_serv per network namespace.
+> This solution is easy to implement, non-racy on shutdown and will
+> give us a rather easy way to apply scheduler policy to NFSd threads
+> (this will be most probably required in future).
+> Does it sounds good to you?
 
-If the LSM has a secid_to_secctx hook it supports labeling.
-Today that's SELinux and Smack. You already have support in
-for SELinux, and providing Smack's review and possibly updates
-is #2 on my gotta do list. On the whole, I think that, except
-for the fundamental philosophical difference between label
-support and xattr support, it should be a simple matter to
-get support in for any LSM that has secid_to_secctx.
+Yes, that sounds good, thanks!
 
-But I'm still working on the review.
-
->
->
->>
->>> I'll switch it over if you guys want it
->>> done that way, I think though that this provides more flexibility.
->>> Although anything that makes me carry around fewer patches is good
->>> in my book.
->>>
->>> Dave
->
-> -- 
-> To unsubscribe from this list: send the line "unsubscribe
-> linux-security-module" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
-
+--b.
