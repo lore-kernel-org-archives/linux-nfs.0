@@ -1,66 +1,147 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from peace.netnation.com ([204.174.223.2]:36171 "EHLO
-	peace.netnation.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750934Ab2LACjR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Nov 2012 21:39:17 -0500
-Date: Fri, 30 Nov 2012 18:18:17 -0800
-From: Simon Kirby <sim@hostway.ca>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Patrick McLean <patrick@cim.mcgill.ca>,
-        Patrick McLean <patrickm@gaikai.com>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: Regression with initramfs and nfsroot (appears to be in the
- dcache)
-Message-ID: <20121201021817.GA11921@hostway.ca>
-References: <CAE2NFgWCnmgSCsw7MzRkqBLTHgRDG-FvKKcbTHN6UqePK6Ef+Q@mail.gmail.com>
- <20121129222109.GW4939@ZenIV.linux.org.uk>
- <50B7E759.9070007@gaikai.com>
- <20121129234326.GX4939@ZenIV.linux.org.uk>
- <50B7FBA7.2030300@gaikai.com>
- <20121130003502.GY4939@ZenIV.linux.org.uk>
- <50B8046F.7030308@cim.mcgill.ca>
- <20121130013628.GZ4939@ZenIV.linux.org.uk>
- <50B811BA.6070503@cim.mcgill.ca>
- <20121130020047.GA4939@ZenIV.linux.org.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20121130020047.GA4939@ZenIV.linux.org.uk>
+Received: from mx2.netapp.com ([216.240.18.37]:55950 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754030Ab2K0Of0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Nov 2012 09:35:26 -0500
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 06/10] NFSD: Clean up forgetting and recalling delegations
+Date: Tue, 27 Nov 2012 09:35:15 -0500
+Message-Id: <1354026919-13313-7-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1354026919-13313-1-git-send-email-bjschuma@netapp.com>
+References: <1354026919-13313-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 30, 2012 at 02:00:48AM +0000, Al Viro wrote:
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-> OK, that settles it.  WARN_ON() and printks in the area can be dropped;
-> the right fix is below.  However, there's a similar place in cifs that
-> also needs to be dealt with and I really, really wonder why the hell do
-> we do d_drop() in nfs_revalidate_lookup().  It's not relevant in this
-> bug, but I would like to understand what's wrong with simply returning
-> 0 from ->d_revalidate() and letting the caller (in fs/namei.c) take care
-> of unhashing, etc. itself.  Would make have_submounts() in there pointless
-> as well - we could just return 0 and let d_invalidate() take care of the
-> checks...  Trond?
-> 
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -450,7 +450,8 @@ void nfs_prime_dcache(struct dentry *parent, struct nfs_entry *entry)
->  			nfs_refresh_inode(dentry->d_inode, entry->fattr);
->  			goto out;
->  		} else {
-> -			d_drop(dentry);
-> +			if (d_invalidate(dentry) != 0)
-> +				goto out;
->  			dput(dentry);
->  		}
->  	}
+Once I have a client, I can easily use its delegation list rather than
+searching the file hash table for delegations to remove.
 
-Hello,
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfsd/nfs4state.c | 94 ++++++++++++++++++++++++++++-------------------------
+ 1 file changed, 50 insertions(+), 44 deletions(-)
 
-With your previous patch (with the WARN_ON), I hit the WARN_ON() in the
-test case described here: https://patchwork.kernel.org/patch/1446851/ .
-The __d_move()ing mountpoint case no longer hits, and there is no longer
-an EBUSY, so this seems to work for me (in 3.6, where it broke).
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 94c009e..84bd4c4 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4645,6 +4645,52 @@ u64 nfsd_forget_client_openowners(struct nfsd_net *nn, struct nfs4_client *clp,
+ 	return nfsd_foreach_client_open(nn, clp, max, release_openowner);
+ }
+ 
++static u64 nfsd_find_all_delegations(struct nfs4_client *clp, u64 max,
++				     struct list_head *victims)
++{
++	struct nfs4_delegation *dp, *next;
++	u64 count = 0;
++
++	list_for_each_entry_safe(dp, next, &clp->cl_delegations, dl_perclnt) {
++		if (victims)
++			list_move(&dp->dl_recall_lru, victims);
++		if (++count == max)
++			break;
++	}
++	return count;
++}
++
++u64 nfsd_forget_client_delegations(struct nfsd_net *nn, struct nfs4_client *clp, u64 max)
++{
++	struct nfs4_delegation *dp, *next;
++	LIST_HEAD(victims);
++	u64 count;
++
++	spin_lock(&recall_lock);
++	count = nfsd_find_all_delegations(clp, max, &victims);
++	spin_unlock(&recall_lock);
++
++	list_for_each_entry_safe(dp, next, &victims, dl_recall_lru)
++		unhash_delegation(dp);
++
++	return count;
++}
++
++u64 nfsd_recall_client_delegations(struct nfsd_net *nn, struct nfs4_client *clp, u64 max)
++{
++	struct nfs4_delegation *dp, *next;
++	LIST_HEAD(victims);
++	u64 count;
++
++	spin_lock(&recall_lock);
++	count = nfsd_find_all_delegations(clp, max, &victims);
++	list_for_each_entry_safe(dp, next, &victims, dl_recall_lru)
++		nfsd_break_one_deleg(dp);
++	spin_unlock(&recall_lock);
++
++	return count;
++}
++
+ static u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfsd_net *, struct nfs4_client *, u64))
+ {
+ 	struct nfs4_client *clp, *next;
+@@ -4678,56 +4724,16 @@ void nfsd_forget_openowners(u64 num)
+ 	printk(KERN_INFO "NFSD: Forgot %llu open owners", count);
+ }
+ 
+-static int nfsd_process_n_delegations(u64 num, struct list_head *list)
+-{
+-	int i, count = 0;
+-	struct nfs4_file *fp, *fnext;
+-	struct nfs4_delegation *dp, *dnext;
+-
+-	for (i = 0; i < FILE_HASH_SIZE; i++) {
+-		list_for_each_entry_safe(fp, fnext, &file_hashtbl[i], fi_hash) {
+-			list_for_each_entry_safe(dp, dnext, &fp->fi_delegations, dl_perfile) {
+-				list_move(&dp->dl_recall_lru, list);
+-				if (++count == num)
+-					return count;
+-			}
+-		}
+-	}
+-
+-	return count;
+-}
+-
+ void nfsd_forget_delegations(u64 num)
+ {
+-	unsigned int count;
+-	LIST_HEAD(victims);
+-	struct nfs4_delegation *dp, *dnext;
+-
+-	spin_lock(&recall_lock);
+-	count = nfsd_process_n_delegations(num, &victims);
+-	spin_unlock(&recall_lock);
+-
+-	list_for_each_entry_safe(dp, dnext, &victims, dl_recall_lru)
+-		unhash_delegation(dp);
+-
+-	printk(KERN_INFO "NFSD: Forgot %d delegations", count);
++	u64 count = nfsd_for_n_state(num, nfsd_forget_client_delegations);
++	printk(KERN_INFO "NFSD: Forgot %llu delegations", count);
+ }
+ 
+ void nfsd_recall_delegations(u64 num)
+ {
+-	unsigned int count;
+-	LIST_HEAD(victims);
+-	struct nfs4_delegation *dp, *dnext;
+-
+-	spin_lock(&recall_lock);
+-	count = nfsd_process_n_delegations(num, &victims);
+-	list_for_each_entry_safe(dp, dnext, &victims, dl_recall_lru) {
+-		list_del(&dp->dl_recall_lru);
+-		nfsd_break_one_deleg(dp);
+-	}
+-	spin_unlock(&recall_lock);
+-
+-	printk(KERN_INFO "NFSD: Recalled %d delegations", count);
++	u64 count = nfsd_for_n_state(num, nfsd_recall_client_delegations);
++	printk(KERN_INFO "NFSD: Recalled %llu delegations", count);
+ }
+ 
+ #endif /* CONFIG_NFSD_FAULT_INJECTION */
+-- 
+1.8.0.1
 
-Simon-
