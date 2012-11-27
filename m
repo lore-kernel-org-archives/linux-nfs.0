@@ -1,31 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:39226 "EHLO
+Received: from relay.parallels.com ([195.214.232.42]:57269 "EHLO
 	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754193Ab2K2OLV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2012 09:11:21 -0500
-Message-ID: <50B76CF7.8050804@parallels.com>
-Date: Thu, 29 Nov 2012 18:11:03 +0400
+	with ESMTP id S1758215Ab2K0IEi convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Nov 2012 03:04:38 -0500
+Message-ID: <50B4740A.6000302@parallels.com>
+Date: Tue, 27 Nov 2012 12:04:26 +0400
 From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
-Subject: Re: NFSd in container - it works
-References: <50B64628.4070007@parallels.com> <20121128200126.GA17875@fieldses.org> <20121128152813.2b4c388d@tlielax.poochiereds.net> <50B74CCB.9080000@parallels.com> <20121129071309.6550614e@tlielax.poochiereds.net> <50B759AB.6010504@parallels.com> <20121129075508.6f6f1c76@tlielax.poochiereds.net>
-In-Reply-To: <20121129075508.6f6f1c76@tlielax.poochiereds.net>
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Subject: Re: NFSd threads amount policy in containers context
+References: <50B3941D.9030202@parallels.com> <20121126220849.GA18186@fieldses.org>
+In-Reply-To: <20121126220849.GA18186@fieldses.org>
 Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-29.11.2012 16:55, Jeff Layton пишет:
+27.11.2012 02:08, bfields@fieldses.org пишет:
+> On Mon, Nov 26, 2012 at 08:09:01PM +0400, Stanislav Kinsbursky wrote:
+>> Hello.
+>> I would like to discuss how to control NFSd threads amount from
+>> container environment (is this particular case it means start of NFS
+>> server in network namespace different to init_net).
+>>
+>> So, I see three possible policies (let's assume, that there are two containers - one requested 3 NFSd threads and another one - 4 NFSd threads):
+>> 1) start as many threads, as requested. I.e 7 threads for specified
+>> case (simplest case, but probably this is to much - 100 containers
+>> will start ~800 threads by default).
+>> 2) start maximum number of requested threads. I.e. 4 threads for
+>> specified case (if NFSd server in container, requested 4 threads,
+>> will be stopped, then 3 thread will left working; will require some
+>> way to manage - rb tree of sorted list).
+>> 3) There could be some other (more flexible) policy: combine second
+>> one with running of one more thread for each second and further
+>> network namespace, started NFS server. I.e.:
+>> 1 net ns: 3 threads request = 3 threads started
+>> 2 net ns: 4 threads request = 4 + 1 (per-net thread: 1 net ns) = 5 threads started
+>> 3 net ns: 8 threads request = 8 + 2 (per-net threads: 2 net ns) = 10 threads started
+>>
+>> Bruce and community, what do you think about all this?
 >
-> nfsdcld is being ripped out in 3.10. The binaries for it are already
-> gone from nfs-utils. If you disable the legacy and usermode helper
-> trackers, then you have nothing left. :)
+> I agree that options 2 or 3 seem more likely to be optimal.
+>
+> However, looking at the problems with, for example, getting race-free
+> shutdown correct: I'd *strongly* prefer that we start with 1, because I
+> think it will be simplest to get right.
+>
+> I'd rather put off figuring out how to scale to hundreds of containers
+> until after we demonstrate something simple and obviously correct.
 >
 
-BTW, I'm going to remove your init_net check and enable legacy tracker for containers.
+Ok. Then I think we could implement even a better and simpler solution:
+make the whole nfsd_serv per network namespace.
+This solution is easy to implement, non-racy on shutdown and will give us a rather easy way to apply scheduler policy to NFSd threads (this will be most 
+probably required in future).
+Does it sounds good to you?
 
 
 
