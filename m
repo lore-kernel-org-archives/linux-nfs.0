@@ -1,39 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from plane.gmane.org ([80.91.229.3]:47146 "EHLO plane.gmane.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:26822 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751947Ab2KCIY5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 3 Nov 2012 04:24:57 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1TUZ2O-00025P-2I
-	for linux-nfs@vger.kernel.org; Sat, 03 Nov 2012 09:25:04 +0100
-Received: from 72.52.96.29 ([72.52.96.29])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Sat, 03 Nov 2012 09:25:04 +0100
-Received: from xiaojuntime by 72.52.96.29 with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Sat, 03 Nov 2012 09:25:04 +0100
-To: linux-nfs@vger.kernel.org
-From: Jun Xiao <xiaojuntime@gmail.com>
-Subject: Re: pNFS Block layout issues / questions
-Date: Sat, 3 Nov 2012 07:28:17 +0000 (UTC)
-Message-ID: <loom.20121103T072206-631@post.gmane.org>
-References: <loom.20110328T230906-552@post.gmane.org> <4D977456.1040303@panasas.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+	id S1751588Ab2K0LJc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Nov 2012 06:09:32 -0500
+Subject: [PATCH 0/2] NFSd: NFSv4 state - lease and grace times per net
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Tue, 27 Nov 2012 14:11:38 +0300
+Message-ID: <20121127111007.10271.54338.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Seems the thread didn't get any reply for quite a long time.
+This two variables are parts of NFSv4 state and should be containerized too.
 
-I'm trying to set up pNFS block layout MDS/DS server, and some 
-similar questions as Phil.
+The following series implements...
 
-- For block layout, is it necessary to make DS export nfs share?
-- How could add a block layout DS into pNFS server?
-- Does spnfs also work for block layout/
+---
 
-Thanks,
-Jun
+Stanislav Kinsbursky (2):
+      nfsd: make NFSv4 lease time per net
+      nfsd: make NFSv4 grace time per net
+
+
+ fs/nfsd/netns.h        |    3 +++
+ fs/nfsd/nfs4callback.c |    8 +++++---
+ fs/nfsd/nfs4state.c    |   18 +++++++-----------
+ fs/nfsd/nfs4xdr.c      |    4 +++-
+ fs/nfsd/nfsctl.c       |    9 +++++++--
+ fs/nfsd/nfsd.h         |    3 ---
+ 6 files changed, 25 insertions(+), 20 deletions(-)
 
