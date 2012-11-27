@@ -1,97 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:24897 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:53468 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755166Ab2KZMT4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Nov 2012 07:19:56 -0500
-Subject: [PATCH 3/5] nfsd: cleanup NFSd state shutdown a bit
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Mon, 26 Nov 2012 15:22:08 +0300
-Message-ID: <20121126122208.955.49674.stgit@localhost.localdomain>
-In-Reply-To: <20121126121907.955.25349.stgit@localhost.localdomain>
-References: <20121126121907.955.25349.stgit@localhost.localdomain>
+	id S1755851Ab2K0QxE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Nov 2012 11:53:04 -0500
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id qARGr4nT004880
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 27 Nov 2012 11:53:04 -0500
+Message-ID: <50B4EFEF.1060504@RedHat.com>
+Date: Tue, 27 Nov 2012 11:53:03 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Steve Dickson <steved@redhat.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/3] mount.nfs: Continue to trying address when the server
+ return ENOENT
+References: <1353961029-6317-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1353961029-6317-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch renames __nfs4_state_shutdown_net() into nfs4_state_shutdown_net(),
-__nfs4_state_shutdown() into nfs4_state_shutdown_net() and moves all network
-related shutdown operations to nfs4_state_shutdown_net().
+Hello,
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfsd/nfs4state.c |   19 +++++++++----------
- 1 files changed, 9 insertions(+), 10 deletions(-)
+On 26/11/12 15:17, Steve Dickson wrote:
+> With recent changes to the /etc/hosts file, the 'localhost'
+> is now multiply defined as both an IPv4 address (127.0.01)
+> and an IPv6 address (::1). This change causes first address
+> returned by getaddrinfo('localhost') to be the IPv6 address
+> instead of the IPv4 address.
+> 
+> The change in the default 'localhost' address type causes
+> existing exports using '127.0.0.1' to fail, because the
+> '::1' address is tried first and fails. The problem
+> being not all the addresses that are returned by
+> getaddrinfo('localhost') are tried.
+> 
+> So this patch allows that address list to continue to be
+> process when the 'ENOENT' error is returned by the server.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+After further review and some chat on IRC (thanks Frank!) using
+EACCES, instead of ENOENT, to cause the next address to be tried 
+is much more straightforward and simpler... V2 is on the way...
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 149f7b1..edff2cc 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4825,7 +4825,7 @@ err:
- }
- 
- static void
--__nfs4_state_shutdown_net(struct net *net)
-+nfs4_state_destroy_net(struct net *net)
- {
- 	int i;
- 	struct nfs4_client *clp = NULL;
-@@ -4853,6 +4853,7 @@ __nfs4_state_shutdown_net(struct net *net)
- 	kfree(nn->ownerstr_hashtbl);
- 	kfree(nn->unconf_id_hashtbl);
- 	kfree(nn->conf_id_hashtbl);
-+	put_net(net);
- }
- 
- /* initialization to perform when the nfsd service is started: */
-@@ -4902,19 +4903,20 @@ out_free_laundry:
- 	destroy_workqueue(laundry_wq);
- out_recovery:
- 	nfsd4_client_tracking_exit(net);
--	__nfs4_state_shutdown_net(net);
--	put_net(net);
-+	nfs4_state_destroy_net(net);
- 	return ret;
- }
- 
- /* should be called with the state lock held */
- static void
--__nfs4_state_shutdown(struct net *net)
-+nfs4_state_shutdown_net(struct net *net)
- {
- 	struct nfs4_delegation *dp = NULL;
- 	struct list_head *pos, *next, reaplist;
-+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
--	__nfs4_state_shutdown_net(net);
-+	cancel_delayed_work_sync(&nn->laundromat_work);
-+	locks_end_grace(&nn->nfsd4_manager);
- 
- 	INIT_LIST_HEAD(&reaplist);
- 	spin_lock(&recall_lock);
-@@ -4931,19 +4933,16 @@ __nfs4_state_shutdown(struct net *net)
- 	}
- 
- 	nfsd4_client_tracking_exit(net);
--	put_net(net);
-+	nfs4_state_destroy_net(net);
- }
- 
- void
- nfs4_state_shutdown(void)
- {
- 	struct net *net = &init_net;
--	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
--	cancel_delayed_work_sync(&nn->laundromat_work);
-+	nfs4_state_shutdown_net(net);
- 	destroy_workqueue(laundry_wq);
--	locks_end_grace(&nn->nfsd4_manager);
--	__nfs4_state_shutdown(net);
- 	nfsd4_destroy_callback_queue();
- }
- 
-
+steved.
