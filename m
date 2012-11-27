@@ -1,93 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:8800 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:21925 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751149Ab2KGUf5 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Nov 2012 15:35:57 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Andrey Borzenkov <arvidjaar@gmail.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: Effective process GID is ignored when client creates file on NFS
-Date: Wed, 7 Nov 2012 20:35:55 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092AE579@SACEXCMBX04-PRD.hq.netapp.com>
-References: <CAA91j0VBWhT58iyNDTMXVnMU8skJTEwHyezD_HyhmaqW5+pt3w@mail.gmail.com>
-	<20121107191336.GE7421@fieldses.org> <20121107232801.27afef92@opensuse.site>
-In-Reply-To: <20121107232801.27afef92@opensuse.site>
-Content-Type: text/plain; charset="koi8-r"
+	id S1756123Ab2K0QoC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Nov 2012 11:44:02 -0500
+Message-ID: <50B4EDCF.3000704@RedHat.com>
+Date: Tue, 27 Nov 2012 11:43:59 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Bruce Fields <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] gssd: Fix bugs in process_krb5_upcall
+References: <1353969081-17842-1-git-send-email-Trond.Myklebust@netapp.com> <4FA345DA4F4AE44899BD2B03EEEC2FA90B309AAD@sacexcmbx05-prd.hq.netapp.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90B309AAD@sacexcmbx05-prd.hq.netapp.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> owner@vger.kernel.org] On Behalf Of Andrey Borzenkov
-> Sent: Wednesday, November 07, 2012 2:28 PM
-> To: J. Bruce Fields
-> Cc: linux-nfs@vger.kernel.org
-> Subject: Re: Effective process GID is ignored when client creates file on NFS
-> 
-> В Wed, 7 Nov 2012 14:13:36 -0500
-> "J. Bruce Fields" <bfields@fieldses.org> пишет:
-> 
-> > On Mon, Oct 29, 2012 at 06:09:29PM +0400, Andrey Borzenkov wrote:
-> > > I have met application that is badly broken when installed on NFS.
-> > > The reason is - it expects files to belong to specific group. It
-> > > switches to this group on startup (explicit setgid) and creates
-> > > files. But files come out as belonging to GID 0.
-> > >
-> > > I finally reduced it to this trivial script:
-> > >
-> > > === cut here ===
-> > > #include <sys/types.h>
-> > > #include <sys/stat.h>
-> > > #include <fcntl.h>
-> > > #include <unistd.h>
-> > >
-> > > main()
-> > > {
-> > >         int fd;
-> > >
-> > >         setgid(107);
-> > >         fd = open("bar", O_CREAT, 0666);
-> > >         close(fd);
-> > > }
-> > > === cut here ===
-> > >
-> > > On local storage file comes with GID 107; on NFS file comes with GID
-> > > 0.
-> > >
-> > > Linux is SLES10 SP3 with relatively old kernel:
-> > > 2.6.16.60-0.89.1-smp, server(s) are NetApp with different Data ONTAP
-> > > versions (7.x and 8.1.1 as the last).
-> > >
-> > > Client passes correct credentials (UID:0, GID:107), but does not
-> >
-> > Those are the credentials in the rpc header on the CREATE call?
-> >
-> 
-> Yes.
-> 
-> > > explicitly request file ownership in CREATE call (uid set_it - 0,
-> > > gid set_it - 0).
-> >
-> > The client shouldn't have to set the owner or group itself.
-> >
-> > So this is server behavior.
-> >
-> > Have you checked that the directory you're creating in doesn't have
-> > the sgid bit?
-> 
-> Yes. It does not.
-> 
-> >              Or perhaps there's some other server configuration that
-> > causes this.
-> 
-> It appears that server ignores passed group if UID == 0. It correctly creates
-> files if UID != 0. I got bug number from support but it is non-public and no
-> information is visible so far. I asked about possible workaround (or
-> undocumented options) but have not got any reply as yet.
 
-So is it possible that you forgot to turn off root squashing on the server before testing?
 
-Cheers
-  Trond
+On 27/11/12 11:05, Myklebust, Trond wrote:
+>> -----Original Message-----
+>> From: Trond Myklebust [mailto:Trond.Myklebust@netapp.com]
+>> Sent: Monday, November 26, 2012 5:31 PM
+>> To: Steve Dickson
+>> Cc: Bruce Fields; linux-nfs@vger.kernel.org
+>> Subject: [PATCH 1/2] gssd: Fix bugs in process_krb5_upcall
+>>
+>> The 'tgtname' parameter is the _server_ name, not the service name.
+>>
+>> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+>> ---
+>>  utils/gssd/gssd_proc.c | 6 ++----
+>>  1 file changed, 2 insertions(+), 4 deletions(-)
+>>
+>> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c index
+>> ec251fa..b79e872 100644
+>> --- a/utils/gssd/gssd_proc.c
+>> +++ b/utils/gssd/gssd_proc.c
+>> @@ -963,10 +963,8 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid,
+>> int fd, char *tgtname,
+>>  	printerr(1, "handling krb5 upcall (%s)\n", clp->dirname);
+>>
+>>  	if (tgtname) {
+>> -		if (clp->servicename) {
+>> -			free(clp->servicename);
+>> -			clp->servicename = strdup(tgtname);
+>> -		}
+>> +		free(clp->servername);
+>> +		clp->servername = strdup(tgtname);
+>>  	}
+>>  	token.length = 0;
+>>  	token.value = NULL;
+>> --
+> 
+> Sigh... Actually, this isn't right either. The log comment for commit 8b1c7bf5b624c9bc91b41ae577b9fc5c21641705 (rpc: add target field to new upcall) on the Linux client does indeed talk about who we want to authenticate to, but the choice of 'clnt->cl_principal' will actually give us our client hostname.
+> 
+> It turns out that nfs@"client hostname "is indeed the correct machine cred name when we're acting as the client, but when doing _callbacks_, the server has to authenticate using the same principal used by the client in the SETCLIENTID call (See Section 3.4, RFC3530). i.e. the nfs@hostname used does in fact include the NFS client's hostname (not the server's)!
+> 
+> So while PATCH 2/2 is still good, this patch appears to be incorrect and should be dropped for now.
+> 
+Duly noted... 
+
+steved.
+  
