@@ -1,121 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:55950 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755187Ab2K0Of3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Nov 2012 09:35:29 -0500
-From: bjschuma@netapp.com
+Received: from userp1040.oracle.com ([156.151.31.81]:50850 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932070Ab2K0QbZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Nov 2012 11:31:25 -0500
+From: Sasha Levin <sasha.levin@oracle.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 09/10] NFSD: Add a custom file operations structure for fault injection
-Date: Tue, 27 Nov 2012 09:35:18 -0500
-Message-Id: <1354026919-13313-10-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1354026919-13313-1-git-send-email-bjschuma@netapp.com>
-References: <1354026919-13313-1-git-send-email-bjschuma@netapp.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Sasha Levin <sasha.levin@oracle.com>
+Subject: [PATCH] nfsd: prevent NULL ptr derefs on fault injection
+Date: Tue, 27 Nov 2012 11:31:11 -0500
+Message-Id: <1354033871-25815-1-git-send-email-sasha.levin@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+A recent patch series has moved hashtable initialization to when the net
+struct is initialized.
 
-Controlling the read and write functions allows me to add in "forget
-client w.x.y.z", since we won't be limited to reading and writing only
-u64 values.
+When injecting faults, we tried accessing the hashtables even if the struct
+wasn't really initialized (nfsd wasn't in use) - this caused a NULL ptr
+deref.
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+A simple test would be:
+
+	echo 1 > /sys/kernel/debug/nfsd/forget_locks
+
+Signed-off-by: Sasha Levin <sasha.levin@oracle.com>
 ---
- fs/nfsd/fault_inject.c | 56 +++++++++++++++++++++++++++++++++++++++++++-------
- 1 file changed, 49 insertions(+), 7 deletions(-)
+ fs/nfsd/netns.h     | 3 +++
+ fs/nfsd/nfs4state.c | 9 +++++++++
+ 2 files changed, 12 insertions(+)
 
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-index 43a591b..bf3b869 100644
---- a/fs/nfsd/fault_inject.c
-+++ b/fs/nfsd/fault_inject.c
-@@ -8,6 +8,7 @@
- #include <linux/fs.h>
- #include <linux/debugfs.h>
- #include <linux/module.h>
-+#include <asm/uaccess.h>
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index 227b93e..c5806a57 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -83,5 +83,8 @@ struct nfsd_net {
+ 	struct delayed_work laundromat_work;
+ };
  
- #include "state.h"
++/* Simple check to find out if a given net was properly initialized */
++#define nfsd_netns_ready(nn) ((nn)->sessionid_hashtbl)
++
+ extern int nfsd_net_id;
+ #endif /* __NFSD_NETNS_H__ */
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e75872f..0e7428c 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4598,6 +4598,9 @@ void nfsd_forget_clients(u64 num)
+ 	int count = 0;
+ 	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns, nfsd_net_id);
  
-@@ -48,10 +49,9 @@ static struct nfsd_fault_inject_op inject_ops[] = {
- static long int NUM_INJECT_OPS = sizeof(inject_ops) / sizeof(struct nfsd_fault_inject_op);
- static struct dentry *debug_dir;
- 
--static int nfsd_inject_set(void *op_ptr, u64 val)
-+static void nfsd_inject_set(struct nfsd_fault_inject_op *op, u64 val)
- {
- 	u64 count = 0;
--	struct nfsd_fault_inject_op *op = op_ptr;
- 
- 	if (val == 0)
- 		printk(KERN_INFO "NFSD Fault Injection: %s (all)", op->file);
-@@ -62,19 +62,61 @@ static int nfsd_inject_set(void *op_ptr, u64 val)
- 	count = nfsd_for_n_state(val, op->forget);
- 	nfs4_unlock_state();
- 	printk(KERN_INFO "NFSD: %s: found %llu", op->file, count);
--	return 0;
- }
- 
--static int nfsd_inject_get(void *op_ptr, u64 *val)
-+static void nfsd_inject_get(struct nfsd_fault_inject_op *op, u64 *val)
- {
--	struct nfsd_fault_inject_op *op = op_ptr;
++	if (!nfsd_netns_ready(nn))
++		return;
++
  	nfs4_lock_state();
- 	*val = nfsd_for_n_state(0, op->print);
+ 	list_for_each_entry_safe(clp, next, &nn->client_lru, cl_lru) {
+ 		expire_client(clp);
+@@ -4643,6 +4646,9 @@ void nfsd_forget_locks(u64 num)
+ 	int count;
+ 	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
+ 
++	if (!nfsd_netns_ready(nn))
++		return;
++
+ 	nfs4_lock_state();
+ 	count = nfsd_release_n_owners(num, false, release_lockowner_sop, nn);
  	nfs4_unlock_state();
--	return 0;
- }
+@@ -4655,6 +4661,9 @@ void nfsd_forget_openowners(u64 num)
+ 	int count;
+ 	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
  
--DEFINE_SIMPLE_ATTRIBUTE(fops_nfsd, nfsd_inject_get, nfsd_inject_set, "%llu\n");
-+static ssize_t fault_inject_read(struct file *file, char __user *buf,
-+				 size_t len, loff_t *ppos)
-+{
-+	static u64 val;
-+	char read_buf[25];
-+	size_t size, ret;
-+	loff_t pos = *ppos;
++	if (!nfsd_netns_ready(nn))
++		return;
 +
-+	if (!pos)
-+		nfsd_inject_get(file->f_dentry->d_inode->i_private, &val);
-+	size = scnprintf(read_buf, sizeof(read_buf), "%llu\n", val);
-+
-+	if (pos < 0)
-+		return -EINVAL;
-+	if (pos >= size || !len)
-+		return 0;
-+	if (len > size - pos)
-+		len = size - pos;
-+	ret = copy_to_user(buf, read_buf + pos, len);
-+	if (ret == len)
-+		return -EFAULT;
-+	len -= ret;
-+	*ppos = pos + len;
-+	return len;
-+}
-+
-+static ssize_t fault_inject_write(struct file *file, const char __user *buf,
-+				  size_t len, loff_t *ppos)
-+{
-+	char write_buf[24];
-+	size_t size = min(sizeof(write_buf), len) - 1;
-+	u64 val;
-+
-+	if (copy_from_user(write_buf, buf, size))
-+		return -EFAULT;
-+
-+	val = simple_strtoll(write_buf, NULL, 0);
-+	nfsd_inject_set(file->f_dentry->d_inode->i_private, val);
-+	return len; /* on success, claim we got the whole input */
-+}
-+
-+static const struct file_operations fops_nfsd = {
-+	.owner   = THIS_MODULE,
-+	.read    = fault_inject_read,
-+	.write   = fault_inject_write,
-+};
- 
- void nfsd_fault_inject_cleanup(void)
- {
+ 	nfs4_lock_state();
+ 	count = nfsd_release_n_owners(num, true, release_openowner_sop, nn);
+ 	nfs4_unlock_state();
 -- 
-1.8.0.1
+1.8.0
 
