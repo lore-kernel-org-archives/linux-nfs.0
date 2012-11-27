@@ -1,99 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay1.sgi.com ([192.48.179.29]:50836 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755117Ab2KIRUT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 9 Nov 2012 12:20:19 -0500
-Date: Fri, 9 Nov 2012 11:20:14 -0600
-From: Ben Myers <bpm@sgi.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Florian Pritz <bluewind@xinu.at>, linux-nfs@vger.kernel.org,
-        Alex Elder <elder@kernel.org>, xfs@oss.sgi.com
-Subject: Re: NFS stalls when writing - linux 3.6.x
-Message-ID: <20121109172014.GT9783@sgi.com>
-References: <50957087.6050008@xinu.at>
- <20121107190724.GD7421@fieldses.org>
- <509D2993.4050604@xinu.at>
- <20121109163658.GE6171@fieldses.org>
-MIME-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:19433 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753217Ab2K0VeH convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Nov 2012 16:34:07 -0500
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20121109163658.GE6171@fieldses.org>
+Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
+Subject: Re: [PATCH] Revert "mountd: handle allocation failures in auth_unix_ip upcall"
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20121127213127.GH27142@fieldses.org>
+Date: Tue, 27 Nov 2012 16:33:57 -0500
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Message-Id: <59B5C309-166F-44FD-BBCD-0B467A476F2C@oracle.com>
+References: <20121126220343.GA18140@fieldses.org> <73EFE585-98D4-40BE-9EDF-15CC6B14BDB2@oracle.com> <20121126221535.GB18186@fieldses.org> <A954A569-E030-4119-A349-6CB888979738@oracle.com> <20121126225116.GE18186@fieldses.org> <20121127213127.GH27142@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Bruce & Florian,
 
-On Fri, Nov 09, 2012 at 11:36:58AM -0500, J. Bruce Fields wrote:
-> On Fri, Nov 09, 2012 at 05:04:35PM +0100, Florian Pritz wrote:
-> > On 07.11.2012 20:07, J. Bruce Fields wrote:
-> > >> Sadly I don't know when this started happening.
-> > > 
-> > > It would be helpful to know that--especially if you find an easy way to
-> > > reproduce this, it would be worth booting to older kernels and seeing if
-> > > you can figure when the problem started.
-> > 
-> > I'll try that unless the sysrq output helps.
-> > 
-> > >> top on the server now shows lots of nfsd threads in D state.
-> > > 
-> > > Next time you find in that state, could you try
-> > > 
-> > > 	echo t >/proc/sysrq-trigger
-> > > 
-> > > on the server?  That will dump a bunch of data to the logs which we
-> > > might be able to use.
-> > 
-> > Data should be attached if the ML allows it. Hope it helps. sysrq output
-> > is after line 883.
+On Nov 27, 2012, at 4:31 PM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Mon, Nov 26, 2012 at 05:51:16PM -0500, J. Bruce Fields wrote:
+>> On Mon, Nov 26, 2012 at 05:38:49PM -0500, Chuck Lever wrote:
+>>> What exactly is the problem with the current code?
+>>> 
+>>> client_resolve() can return a NULL in some cases.  Why is it OK to
+>>> pass a NULL "ai" to client_compose() ?  Looks like that can result in
+>>> a mountd segfault.
+>> 
+>> Bah, I thought I'd checked this and found it was prepared to handle
+>> that, but no:
+>> 
+>> 	client_check->check_wildcard()
+>> 
+>> looks like it can oops.
 > 
-> The nfsd threads are all stuck in _vfs_lock_force_lsn in xfs_file_fsync;
-> for example:
+> Right, so the real problem is just that we're skipping the downcall on
+> failure instead of responding with a negative cache entry.  Thus we're
+> leaving the client hanging instead of returning an error.
 > 
-> > [99390.866452] nfsd            D ffff880075723060     0  1342      2 0x00000000
-> > [99390.866455]  ffff88007988d8b0 0000000000000046 ffff880075723060 ffff88007988dfd8
-> > [99390.866460]  ffff88007988dfd8 ffff88007988dfd8 ffff88007bbcd0a0 ffff880075723060
-> > [99390.866464]  ffff88007553b998 ffff88007553b980 ffff88005cd2d0c0 0000000000000001
-> > [99390.866468] Call Trace:
-> > [99390.866484]  [<ffffffffa0af521e>] ? xlog_cil_force_lsn+0xce/0x160 [xfs]
-> > [99390.866488]  [<ffffffff81491b79>] schedule+0x29/0x70
-> > [99390.866504]  [<ffffffffa0af3a17>] _xfs_log_force_lsn+0x287/0x2d0 [xfs]
-> > [99390.866508]  [<ffffffff8108bbd0>] ? try_to_wake_up+0x2f0/0x2f0
-> > [99390.866519]  [<ffffffffa0a9ecff>] xfs_file_fsync+0x1bf/0x230 [xfs]
-> > [99390.866524]  [<ffffffff811ae21d>] generic_write_sync+0x4d/0x60
-> > [99390.866536]  [<ffffffffa0a9fbcf>] xfs_file_aio_write+0x12f/0x160 [xfs]
-> > [99390.866547]  [<ffffffffa0a9faa0>] ? xfs_file_buffered_aio_write+0x1f0/0x1f0 [xfs]
-> > [99390.866552]  [<ffffffff8117fb73>] do_sync_readv_writev+0xa3/0xe0
-> > [99390.866557]  [<ffffffff8117fe54>] do_readv_writev+0xd4/0x1e0
-> > [99390.866565]  [<ffffffffa0ba3170>] ? _fh_update.isra.9.part.10+0x60/0x60 [nfsd]
-> > [99390.866572]  [<ffffffffa0ba3170>] ? _fh_update.isra.9.part.10+0x60/0x60 [nfsd]
-> > [99390.866576]  [<ffffffff811f64cf>] ? exportfs_decode_fh+0xaf/0x310
-> > [99390.866581]  [<ffffffff8117ff95>] vfs_writev+0x35/0x60
-> > [99390.866588]  [<ffffffffa0ba44fb>] nfsd_vfs_write.isra.11+0xeb/0x300 [nfsd]
-> > [99390.866598]  [<ffffffffa0bbb262>] ? find_confirmed_client+0xb2/0x100 [nfsd]
-> > [99390.866607]  [<ffffffffa0bbc1ba>] ? nfsd4_lookup_stateid+0xea/0x120 [nfsd]
-> > [99390.866615]  [<ffffffffa0ba6b22>] nfsd_write+0xa2/0x110 [nfsd]
-> > [99390.866623]  [<ffffffffa0bb1463>] nfsd4_write+0xe3/0x110 [nfsd]
-> > [99390.866632]  [<ffffffffa0bb20bc>] nfsd4_proc_compound+0x2fc/0x650 [nfsd]
-> > [99390.866639]  [<ffffffffa0ba0b3e>] nfsd_dispatch+0xbe/0x1c0 [nfsd]
-> > [99390.866651]  [<ffffffffa027020e>] svc_process+0x48e/0x790 [sunrpc]
-> > [99390.866658]  [<ffffffffa0ba0115>] nfsd+0xb5/0x1a0 [nfsd]
-> > [99390.866664]  [<ffffffffa0ba0060>] ? nfsd_get_default_max_blksize+0x60/0x60 [nfsd]
-> > [99390.866668]  [<ffffffff81079a03>] kthread+0x93/0xa0
-> > [99390.866673]  [<ffffffff8149b144>] kernel_thread_helper+0x4/0x10
-> > [99390.866678]  [<ffffffff81079970>] ? kthread_freezable_should_stop+0x70/0x70
-> > [99390.866682]  [<ffffffff8149b140>] ? gs_change+0x13/0x13
+> So, I suppose we should do the below, based on steved's suggestion
+> (compiled, otherwise untested).
+
+Thanks, this seems reasonable.
+
+
 > 
-> Maybe xfs folks would have an idea?  (More context:
+> --b.
 > 
-> 	http://thread.gmane.org/gmane.linux.nfs/53123/focus=53180
-> )
+> commit dfb31d861261c8461a2dc4fb7e8823f5169a9079
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Tue Nov 27 16:10:41 2012 -0500
+> 
+>    mountd: auth_unix_ip should downcall on error to prevent hangs
+> 
+>    Since bf6a4febaa78bf188896b7b5b02c46562dd08b70 "mountd: handle
+>    allocation failures in auth_unix_ip upcall", a failure to map the
+>    address of an incoming client to a name could result in a hang.
+> 
+>    We should be responding with an error in the case, not just skipping the
+>    downcall and leaving everybody hanging.
+> 
+>    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> 
+> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+> index e950ec6..c13f305 100644
+> --- a/utils/mountd/cache.c
+> +++ b/utils/mountd/cache.c
+> @@ -109,12 +109,10 @@ static void auth_unix_ip(FILE *f)
+> 		struct addrinfo *ai = NULL;
+> 
+> 		ai = client_resolve(tmp->ai_addr);
+> -		if (ai == NULL)
+> -			goto out;
+> -		client = client_compose(ai);
+> -		freeaddrinfo(ai);
+> -		if (!client)
+> -			goto out;
+> +		if (ai) {
+> +			client = client_compose(ai);
+> +			freeaddrinfo(ai);
+> +		}
+> 	}
+> 	qword_print(f, "nfsd");
+> 	qword_print(f, ipaddr);
+> @@ -127,7 +125,6 @@ static void auth_unix_ip(FILE *f)
+> 	xlog(D_CALL, "auth_unix_ip: client %p '%s'", client, client?client: "DEFAULT");
+> 
+> 	free(client);
+> -out:
+> 	freeaddrinfo(tmp);
+> 
+> }
 
-I took a brief look but there were no slam dunks.  This seems like it might be
-a candidate:
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-8375f922 - xfs: re-enable xfsaild idle mode and fix associated races
 
-The sysrq-trigger information would definately be helpful.  Meanwhile I'll see
-if I can reproduce the issue.
 
-Thanks,
-	Ben
