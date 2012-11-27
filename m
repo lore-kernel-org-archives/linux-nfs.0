@@ -1,79 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:33997 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:24129 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753562Ab2KNVgg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Nov 2012 16:36:36 -0500
+	id S1753382Ab2K0QFt convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Nov 2012 11:05:49 -0500
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: Re: [PATCH v3] SUNRPC: set desired file system root before
- connecting local transports
-Date: Wed, 14 Nov 2012 21:36:33 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092E0A40@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20121008105437.18668.99905.stgit@localhost.localdomain>
-	 <20121009193506.GA19680@fieldses.org> <5098E31A.5080801@parallels.com>
-	 <20121106120642.GA6718@fieldses.org> <20121106124035.GA20522@infradead.org>
-	 <20121106130705.GC6718@fieldses.org> <20121106131018.GA12211@infradead.org>
-	 <20121106133605.GD6718@fieldses.org> <20121107183355.GA7421@fieldses.org>
-	 <50A0B562.2090807@parallels.com> <20121114210112.GA539@fieldses.org>
-In-Reply-To: <20121114210112.GA539@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Steve Dickson <steved@redhat.com>
+CC: Bruce Fields <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: [PATCH 1/2] gssd: Fix bugs in process_krb5_upcall
+Date: Tue, 27 Nov 2012 16:05:47 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90B309AAD@sacexcmbx05-prd.hq.netapp.com>
+References: <1353969081-17842-1-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1353969081-17842-1-git-send-email-Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTExLTE0IGF0IDE2OjAxIC0wNTAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IE9uIE1vbiwgTm92IDEyLCAyMDEyIGF0IDEyOjM3OjU0UE0gKzA0MDAsIFN0YW5pc2xhdiBL
-aW5zYnVyc2t5IHdyb3RlOg0KPiA+IDA3LjExLjIwMTIgMjI6MzMsIEouIEJydWNlIEZpZWxkcyDQ
-v9C40YjQtdGCOg0KPiA+ID5PbiBUdWUsIE5vdiAwNiwgMjAxMiBhdCAwODozNjowNUFNIC0wNTAw
-LCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6DQo+ID4gPj5PbiBUdWUsIE5vdiAwNiwgMjAxMiBhdCAw
-ODoxMDoxOEFNIC0wNTAwLCBDaHJpc3RvcGggSGVsbHdpZyB3cm90ZToNCj4gPiA+Pj5PbiBUdWUs
-IE5vdiAwNiwgMjAxMiBhdCAwODowNzowNkFNIC0wNTAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+ID4gPj4+PlNvIHlvdSdyZSB3b3JyaWVkIHRoYXQgYSBidWcgaW4gdGhlIG5mcyBjb2RlIGNv
-dWxkIG1vZGlmeSB0aGUgcm9vdCBhbmQNCj4gPiA+Pj4+dGhlbiBub3QgcmVzdG9yZSBpdD8NCj4g
-PiA+Pj4NCj4gPiA+Pj5BdCBsZWFzdCB0aGUgbGluayB5b3UgcG9pbnRlZCB0byBlYXJsaWVyIG5l
-dmVyIHNldHMgaXQgYmFjay4NCj4gPiA+Pg0KPiA+ID4+VGhpcz8gaHR0cDovL3RocmVhZC5nbWFu
-ZS5vcmcvZ21hbmUubGludXgua2VybmVsLzEyNTk5ODYvZm9jdXM9NDc2ODcNCj4gPiA+Pg0KPiA+
-ID4+CSsJZ2V0X2ZzX3Jvb3QoY3VycmVudC0+ZnMsICZyb290KTsNCj4gPiA+PgkrCXNldF9mc19y
-b290KGN1cnJlbnQtPmZzLCAmdHJhbnNwb3J0LT5yb290KTsNCj4gPiA+PgkrDQo+ID4gPj4JIAlz
-dGF0dXMgPSB4c19sb2NhbF9maW5pc2hfY29ubmVjdGluZyh4cHJ0LCBzb2NrKTsNCj4gPiA+Pgkr
-DQo+ID4gPj4JKwlzZXRfZnNfcm9vdChjdXJyZW50LT5mcywgJnJvb3QpOw0KPiA+ID4+CSsJcGF0
-aF9wdXQoJnJvb3QpOw0KPiA+ID4+DQo+ID4gPj4+SW5zdGVhZA0KPiA+ID4+Pm9mIG1lc3Npbmcg
-d2l0aCBpdCBJJ2QgcmF0aGVyIGhhdmUgdGhlIHN1bnJwYyBjb2RlIHVzZSB2ZnNfcGF0aF9sb29r
-dXANCj4gPiA+Pj5hbmQgbm90IGNhcmUgYWJvdXQgY3VycmVudC0+ZnMtPnJvb3QgYXQgYWxsLg0K
-PiA+ID4+DQo+ID4gPj5UaGUgYW5ub3lhbmNlIGlzIHRoYXQgdGhlIGxvb2t1cCBoYXBwZW5zIHNv
-bWV3aGVyZSBsb3dlciBkb3duIGluIHRoZQ0KPiA+ID4+bmV0d29ya2luZyBjb2RlIChuZXQvdW5p
-eC9hZl91bml4LmM6dW5peF9maW5kX290aGVyLCBJIHRoaW5rKS4gIFNvIHdlJ2QNCj4gPiA+Pm5l
-ZWQgc29tZSBuZXcgKGludGVybmFsKSBBUEkuICBXZSdkIGxpa2VseSBiZSB0aGUgb25seSB1c2Vy
-IG9mIHRoYXQgbmV3DQo+ID4gPj5BUEkuDQo+ID4gPg0KPiA+ID5TbywgaWYgdGhlIG9ubHkgZHJh
-d2JhY2sgaXMgcmVhbGx5IGp1c3QgdGhlIHJpc2sgb2YgaW50cm9kdWNpbmcgYSBidWcNCj4gPiA+
-dGhhdCBsZWF2ZXMgdGhlIGZzX3Jvb3QgY2hhbmdlZC0tdGhlIGFib3ZlIHNlZW1zIHNpbXBsZSBl
-bm91Z2ggZm9yIHRoYXQNCj4gPiA+bm90IHRvIGJlIGEgZ3JlYXQgcmlzaywgcmlnaHQ/DQo+ID4g
-Pg0KPiA+IA0KPiA+IElmIHdlIHVuc2hhcmUgcnBjaW9kIGZzIHN0cnVjdCAod2hpY2ggaXMgZXhw
-b3J0ZWQgYWxyZWFkeSksIHRoZW4gd2UNCj4gDQo+IEknbSBub3Qgc3VyZSB3aGF0IHlvdSBtZWFu
-IGJ5IHRoYXQuICBEbyB3b3JrcXVldWVzIGFjdHVhbGx5IGhhdmUgdGhlaXINCj4gb3duIGRlZGlj
-YXRlZCBzZXQgb2YgYXNzb2NpYXRlZCB0YXNrcz8gIEkgdGhvdWdodCBhbGwgd29ya3F1ZXVlcyBz
-aGFyZWQNCj4gYSBjb21tb24gcG9vbCBvZiB0YXNrcyB0aGVzZSBkYXlzLg0KPiANCj4gPiB3b24n
-dCBhZmZlY3Qgb3RoZXIga3RocmVhZHMgYnkgcm9vdCBzd2FwcGluZy4NCj4gPiBCdXQgd291bGQg
-YmUgZ3JlYXQgdG8gaGVhciBUcm9uZCdzIG9waW5pb24gYWJvdXQgdGhpcyBhcHByb2FjaC4NCj4g
-PiANCj4gPiBUcm9uZCwgY291bGQgeW91IHRlbGwgdXMgeW91ciBmZWVsaW5nIGFib3V0IGFsbCB0
-aGlzPw0KPiANCj4gSSB0aGluayBpdCdzIG9mdGVuIGVhc2llciB0byBnZXQgcGVvcGxlIHRvIGNv
-bW1lbnQgb24gYW4gYWN0dWFsIHBhdGNoLA0KPiBhbmQgdGhpcyBvbmUgd291bGQgYmUgcXVpdGUg
-c2hvcnQsIHNvIHRyeSB0aGF0Li4uLg0KDQp1bnNoYXJlKCkgd291bGQgYnJlYWsgZXhwZWN0YXRp
-b25zIGZvciBvdGhlciB1c2VycyBvZiB3b3JrcXVldWUgdGhyZWFkcw0KdW5sZXNzIHlvdSAicmVz
-aGFyZSgpIiBhZnRlcndhcmRzLiBFaXRoZXIgd2F5IHRoYXQncyBnb2luZyB0byBiZQ0Kc2VyaW91
-c2x5IHVnbHkuDQoNCk9LLCBsZXQncyBsb29rIGF0IHRoaXMgYWdhaW4uIERvIHdlIGV2ZXIgdXNl
-IEFGX0xPQ0FMIGNvbm5lY3Rpb25zIGZvcg0KYW55dGhpbmcgb3RoZXIgdGhhbiBzeW5jaHJvbm91
-cyBycGMgY2FsbHMgdG8gdGhlIGxvY2FsIHJwY2JpbmQgZGFlbW9uIGluDQpvcmRlciB0byByZWdp
-c3Rlci91bnJlZ2lzdGVyIG5ldyBzZXJ2aWNlcz8gSWYgbm90LCB0aGVuIGxldCdzIGp1c3QgbW92
-ZQ0KdGhlIEFGX0xPQ0FMIGNvbm5lY3Rpb24gYmFjayBpbnRvIHRoZSBwcm9jZXNzIGNvbnRleHQg
-YW5kIG91dCBvZiBycGNpb2QuDQoNClRoYXQgaW1wbGllcyB0aGF0IHRoZSBwcm9jZXNzIG5lZWRz
-IHRvIGJlIHByaXZpbGVnZWQsIGJ1dCBpdCBuZWVkcw0KcHJpdmlsZWdlcyBpbiBvcmRlciB0byBz
-dGFydCBSUEMgZGFlbW9ucyBhbnl3YXkuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBO
-RlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNv
-bQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+> -----Original Message-----
+> From: Trond Myklebust [mailto:Trond.Myklebust@netapp.com]
+> Sent: Monday, November 26, 2012 5:31 PM
+> To: Steve Dickson
+> Cc: Bruce Fields; linux-nfs@vger.kernel.org
+> Subject: [PATCH 1/2] gssd: Fix bugs in process_krb5_upcall
+> 
+> The 'tgtname' parameter is the _server_ name, not the service name.
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+>  utils/gssd/gssd_proc.c | 6 ++----
+>  1 file changed, 2 insertions(+), 4 deletions(-)
+> 
+> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c index
+> ec251fa..b79e872 100644
+> --- a/utils/gssd/gssd_proc.c
+> +++ b/utils/gssd/gssd_proc.c
+> @@ -963,10 +963,8 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid,
+> int fd, char *tgtname,
+>  	printerr(1, "handling krb5 upcall (%s)\n", clp->dirname);
+> 
+>  	if (tgtname) {
+> -		if (clp->servicename) {
+> -			free(clp->servicename);
+> -			clp->servicename = strdup(tgtname);
+> -		}
+> +		free(clp->servername);
+> +		clp->servername = strdup(tgtname);
+>  	}
+>  	token.length = 0;
+>  	token.value = NULL;
+> --
+
+Sigh... Actually, this isn't right either. The log comment for commit 8b1c7bf5b624c9bc91b41ae577b9fc5c21641705 (rpc: add target field to new upcall) on the Linux client does indeed talk about who we want to authenticate to, but the choice of 'clnt->cl_principal' will actually give us our client hostname.
+
+It turns out that nfs@"client hostname "is indeed the correct machine cred name when we're acting as the client, but when doing _callbacks_, the server has to authenticate using the same principal used by the client in the SETCLIENTID call (See Section 3.4, RFC3530). i.e. the nfs@hostname used does in fact include the NFS client's hostname (not the server's)!
+
+So while PATCH 2/2 is still good, this patch appears to be incorrect and should be dropped for now.
+
+Cheers
+  Trond
