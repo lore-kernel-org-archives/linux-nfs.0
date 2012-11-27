@@ -1,49 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:6329 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1423427Ab2KNXMM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 Nov 2012 18:12:12 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs(5): Document the minorversion= mount option
-Date: Wed, 14 Nov 2012 23:12:10 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092E0E75@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20121114223600.48062.5680.stgit@seurat.1015granger.net>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9092E0DB4@SACEXCMBX04-PRD.hq.netapp.com>
-	 <A7E004BD-A5DA-4258-978A-80E46DBE3D32@oracle.com>
-In-Reply-To: <A7E004BD-A5DA-4258-978A-80E46DBE3D32@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from nm28-vm1.bullet.mail.sg3.yahoo.com ([106.10.151.144]:35717 "EHLO
+	nm28-vm1.bullet.mail.sg3.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755614Ab2K0CSR convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 26 Nov 2012 21:18:17 -0500
+References: <1353479256.92520.YahooMailNeo@web190605.mail.sg3.yahoo.com> <1353481809.32623.YahooMailNeo@web190605.mail.sg3.yahoo.com> <1353816433.24972.YahooMailNeo@web190603.mail.sg3.yahoo.com> <20121125144816.GA31110@fieldses.org>
+Message-ID: <1353982692.94013.YahooMailNeo@web190603.mail.sg3.yahoo.com>
+Date: Tue, 27 Nov 2012 10:18:12 +0800 (SGT)
+From: Kks Kbase <kks.kbase@yahoo.in>
+Reply-To: Kks Kbase <kks.kbase@yahoo.in>
+Subject: Re: NFS exportfs options
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Linux NFS <linux-nfs@vger.kernel.org>
+In-Reply-To: <20121125144816.GA31110@fieldses.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTExLTE0IGF0IDE4OjAzIC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gTm92IDE0LCAyMDEyLCBhdCA2OjAxIFBNLCAiTXlrbGVidXN0LCBUcm9uZCIgPFRyb25kLk15
-a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+ID4+IC0tLS0tT3JpZ2luYWwgTWVzc2Fn
-ZS0tLS0tDQo+ID4+IEZyb206IGxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmcgW21haWx0
-bzpsaW51eC1uZnMtDQo+ID4+IG93bmVyQHZnZXIua2VybmVsLm9yZ10gT24gQmVoYWxmIE9mIENo
-dWNrIExldmVyDQo+ID4+IFNlbnQ6IFdlZG5lc2RheSwgTm92ZW1iZXIgMTQsIDIwMTIgNTozOSBQ
-TQ0KPiA+PiBUbzogbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiA+PiBTdWJqZWN0OiBbUEFU
-Q0hdIG5mcyg1KTogRG9jdW1lbnQgdGhlIG1pbm9ydmVyc2lvbj0gbW91bnQgb3B0aW9uDQo+ID4+
-IA0KPiA+PiBTaWduZWQtb2ZmLWJ5OiBDaHVjayBMZXZlciA8Y2h1Y2subGV2ZXJAb3JhY2xlLmNv
-bT4NCj4gPj4gLS0tDQo+ID4+IA0KPiA+PiBPdXIgcGFscyBvbiB0aGUgU29sYXJpcyB0ZWFtIHJl
-Y2VudGx5IG5vdGljZWQgdGhhdCB0aGUgbWlub3J2ZXJzaW9uPSBvcHRpb24NCj4gPj4gaXMgbm90
-IGRvY3VtZW50ZWQgaW4gbmZzKDUpLiAgVGhpcyBpcyBhIGZpcnN0IHRha2UsIGp1c3QgdG8gc3Rh
-cnQgdGhlIGNvbnZlcnNhdGlvbi4NCj4gPj4gSSdtIHByZXR0eSBzdXJlIEkgZ290IHRoZSBrZXJu
-ZWwgdmVyc2lvbiBpbmZvcm1hdGlvbiB3cm9uZywgZm9yIGluc3RhbmNlLg0KPiA+PiANCj4gPj4g
-QW55IG90aGVyIGNvbW1lbnRzPw0KPiA+IA0KPiA+IFlvdSBtaWdodCB3YW50IHRvIG5vdGUgdGhh
-dCBpdCBpcyBkZXByZWNhdGVkIGluIGZhdm91ciBvZiB0aGUgInZlcnM9NC4xIiBub3RhdGlvbiwg
-YW5kIGZvciB0aGF0IHJlYXNvbiB3ZSBtaWdodCB3YW50IHRvIGZvcmdvIGRvY3VtZW50aW5nIGl0
-IGFsdG9nZXRoZXIuDQo+IA0KPiBPSy4gIG1pbm9ydmVyc2lvbj0gaXMgdGhlIG9ubHkgd2F5IHRv
-IGdldCBORlN2NC4xIG9uIEVMNi1iYXNlZCBkaXN0cmlidXRpb25zLCBpc24ndCBpdD8NCg0KWW91
-IGRpZG4ndCBzZWVtIHRvIGJlIHdyaXRpbmcgYSBtYW5wYWdlIGZvciB0aGUgUkhFTC02IGRpc3Ry
-b3M6ICJCZWZvcmUNCmtlcm5lbCAyLjYuMzgsIHRoZSBtaW5vciB2ZXJzaW9uIGlzIGFsd2F5cyB6
-ZXJvLi4uIi4gQXMgZmFyIGFzIEkga25vdywNClJIRUwtNiBpcyBzdGlsbCBiYXNlZCBvbiAyLjYu
-MzIuLi4NCg0KPiBCeSAiZGVwcmVjYXRlZCIgZG8geW91IG1lYW4gdGhhdCB5b3UgaW50ZW5kIHRv
-IHJlbW92ZSBpdD8NCg0KSSBtZWFuIGZvciBpbnN0YW5jZSB0aGF0ICdjYXQgL3Byb2MvbW91bnRz
-JyBhbmQgZnJpZW5kcyB3aWxsIHVzZSB0aGUNCid2ZXJzPTQuMScgbm90YXRpb24uIFRoZXkgd29u
-J3QgZXZlciBkaXNwbGF5ICdtaW5vcnZlcnNpb249Jy4NCg0KV2UgbWF5IGVuZCB1cCByZW1vdmlu
-ZyBzdXBwb3J0IGZvciBpdCBzb21lIGRheS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4
-IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAu
-Y29tDQp3d3cubmV0YXBwLmNvbQ0K
+Here is the command that I have used to mount.
+
+
+mount -f nfs 1.2.3.4:/home/nfstest1 /mnt
+
+
+# ls -al /mnt/
+total 28
+drwxr-xr-x  2 root root 4096 Nov 22 01:50 .
+drwxr-xr-x 25 root root 4096 Nov 23 20:21 ..
+-rw-r--r--  1 root root    0 Nov 22 01:50 1
+-rw-r--r--  1 root root    0 Nov 22 01:50 2
+-rw-r--r--  1 root root    0 Nov 22 01:50 3
+# ls -ld /mnt/
+drwxr-xr-x 2 root root 4096 Nov 22 01:50 /mnt/
+
+
+
+Here is the output in mount command,
+
+1.2.3.4:/home/nfstest1 on /mnt type nfs (rw,addr=1.2.3.4)
+
+
+
+
+----- Original Message -----
+From: J. Bruce Fields <bfields@fieldses.org>
+To: Kks Kbase <kks.kbase@yahoo.in>
+Cc: Linux NFS <linux-nfs@vger.kernel.org>
+Sent: Sunday, 25 November 2012 8:18 PM
+Subject: Re: NFS exportfs options
+
+On Sun, Nov 25, 2012 at 12:07:13PM +0800, Kks Kbase wrote:
+> Hi,
+> 
+> Here is the mounted option on /var/lib/nfs/etab
+> 
+> # cat /var/lib/nfs/etab
+> /home/nfstest1  *(rw,sync,wdelay,hide,nocrossmnt,secure,root_squash,no_all_squash,no_subtree_check,secure_locks,no_acl,mapping=identity,anonuid=65534,anongid=65534)
+> 
+> 
+> 
+> 
+> 
+> 
+> ----- Original Message -----
+> From: Kks Kbase <kks.kbase@yahoo.in>
+> To: Linux NFS <linux-nfs@vger.kernel.org>
+> Cc: 
+> Sent: Wednesday, 21 November 2012 12:40 PM
+> Subject: NFS exportfs options
+> 
+> 
+> 
+> Hi,
+> 
+> Today I have tried to setup the NFS share. 
+> 
+> 
+> Here is the exportsfs on NFS server
+> 
+> /home/nfstest1   *(rw)
+> 
+> Then I have mounted the nfs share folder and tried to create folders and files. But I am always getting the error as permission denied either root or normal user.
+> 
+> Any ideas please?
+
+How are you mounting this on the client?
+
+Have you checked permissions on the exported directory?  (ls -ld
+/home/nfstest1).
+
+--b.
+
