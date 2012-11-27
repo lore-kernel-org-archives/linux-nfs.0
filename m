@@ -1,58 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f44.google.com ([74.125.82.44]:48904 "EHLO
-	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1423489Ab2KNW0a (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Nov 2012 17:26:30 -0500
-Received: by mail-wg0-f44.google.com with SMTP id dr13so465334wgb.1
-        for <linux-nfs@vger.kernel.org>; Wed, 14 Nov 2012 14:26:28 -0800 (PST)
-Date: Wed, 14 Nov 2012 23:26:06 +0100 (CET)
-From: Eldad Zack <eldad@fogrefinery.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-cc: Sven Geggus <lists@fuchsschwanzdomain.de>, linux-nfs@vger.kernel.org
-Subject: Re: Kernel update 3.5.7 -> 3.6.3 breaks NFS4
-In-Reply-To: <20121114160712.GG23604@fieldses.org>
-Message-ID: <alpine.LNX.2.00.1211142325510.1216@xoschi>
-References: <20121109200730.GI6171@fieldses.org> <E1TWxKX-00025I-J2@diesel.geggus.net> <20121109232410.GK6171@fieldses.org> <20121112091717.GA1610@geggus.net> <20121113224005.GA11545@fieldses.org> <20121114005815.GA23604@fieldses.org>
- <20121114160712.GG23604@fieldses.org>
+Received: from fieldses.org ([174.143.236.118]:51844 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752728Ab2K0WJq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Nov 2012 17:09:46 -0500
+Date: Tue, 27 Nov 2012 17:09:39 -0500
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFSd state: nfs4_lock_state() and nfs4_lock_state()
+Message-ID: <20121127220939.GI27142@fieldses.org>
+References: <50A622AE.3080809@parallels.com>
+ <20121116165845.GA32183@fieldses.org>
+ <50A9F03B.1010909@parallels.com>
+ <20121119124618.GA30084@fieldses.org>
+ <50AF5E7F.2010006@parallels.com>
+ <20121126223639.GC18186@fieldses.org>
+ <50B471B6.2010407@parallels.com>
 MIME-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <50B471B6.2010407@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Wed, 14 Nov 2012, J. Bruce Fields wrote:
-> On Tue, Nov 13, 2012 at 07:58:15PM -0500, J. Bruce Fields wrote:
-> > On Tue, Nov 13, 2012 at 05:40:05PM -0500, J. Bruce Fields wrote:
-> > > On Mon, Nov 12, 2012 at 10:17:17AM +0100, Sven Geggus wrote:
-> > > > J. Bruce Fields schrieb am Samstag, den 10. November um 00:24 Uhr:
-> > > > 
-> > > > 4294967295 is UINT_MAX and this place is where it behaves differently on a good
-> > > > kernel where the write call will succeed:
-> > > > 
-> > > > write(4, "4294967295 1352710828 0 \n", 25) = 25
-> > > > 
-> > > > Sven
-> > > > 
-> > > > P.S.: Your patched svcauth_gss.c will give me an "access denied by server"
-> > > > while mounting instead of the infinite delay:
-> > > >  ~/ # mount -t nfs4 -o sec=krb5 testsrv:/storage /mnt/
-> > > > mount.nfs4: access denied by server while mounting testsrv:/storage
-> > > 
-> > > So, looks like the same get_int problem exists in several other places.
-> > > Could you try the following instead of the previous patch?  I think I
-> > > got them all this time....
-> > 
-> > Oh, cripes, but this isn't good enough--svcgssd actually passes down -1
-> > id's.  Ugh--I'll take a closer look tomorrow.
+On Tue, Nov 27, 2012 at 11:54:30AM +0400, Stanislav Kinsbursky wrote:
+> 27.11.2012 02:36, bfields@fieldses.org пишет:
+> >On Fri, Nov 23, 2012 at 03:31:11PM +0400, Stanislav Kinsbursky wrote:
+> >>19.11.2012 16:46, bfields@fieldses.org пишет:
+> >>>On Mon, Nov 19, 2012 at 12:39:23PM +0400, Stanislav Kinsbursky wrote:
+> >>>>16.11.2012 20:58, bfields@fieldses.org пишет:
+> >>>>>
+> >>>>>A patch follows: note it's a two-line patch, with 20 lines of changelog
+> >>>>>showing that I looked at what state might be shared by other threads and
+> >>>>>explaining why I think this is safe.
+> >>>>>
+> >>>>
+> >>>>Acked-by: Stanislav Kinsburskiy <skinsbursky@parallels.com>
+> >>>>
+> >>>>>I think that's what we need to do: little patches that remove it from
+> >>>>>one or another part of the code with careful explanation of why it
+> >>>>>works.
+> >>>>>
+> >>>>
+> >>>>Yes, thanks. I'll also try to simplify nfsd_open() by little patches.
+> >>>>In general it looks like client_mutex protect two different things:
+> >>>>open owner state (which is containerised already, actually) and
+> >>>>files access.
+> >>>>So, probably, this client mutex have to be converted into two:
+> >>>>per-net one, which protects open owner state, and static one, which
+> >>>>protects files operations.
+> >>>>What do you think about it?
+> >>>
+> >>>That sounds right.
+> >>>
+> >>
+> >>Looked into the code, and few more questions raised.
+> >>So, currently, this mutex protects different NFS4 state structures and VFS file operations (like open, read, write, etc.).
+> >>I would like this mutex to be converted into per-net one. Since NFS4
+> >>state structures are per-net already (with my previous patch set),
+> >>the only thing left is VFS operations.
+> >>But do we really need to protect them somehow from concurrent access?
+> >>I.e. do we have some RPCs, which does more that one file manipulation, but this manipulations sequence have to be "atomic" in NFSd terms?
+> >
+> >Probably not, but open is the most likely problem, as it does several
+> >things which are not all atomic from the point of view of the vfs.  The
+> >mutex can't prevent races between an nfs client and a local user, but it
+> >can at least prevent races between nfs clients.
+> >
 > 
-> Yeah, for backwards compatibility reasons we probably don't want to
-> reject either -1 or 4294967295.
-> 
-> So I'm inclined to revert unless Eldad has a better idea.
+> Ok then.
+> You said, that you are going to optimize open a bit?
 
-I support that - please revert. I don't know my way around the code 
-enough to suggest a good solution at this point.
+It's on my todo list, but I'm not sure when it will be done.
 
-Cheers,
-Eldad
+> I think client_mutex containerization can be delayed for a while.
 
+OK.--b.
