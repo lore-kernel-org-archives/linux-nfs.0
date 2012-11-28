@@ -1,55 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f46.google.com ([209.85.213.46]:61781 "EHLO
-	mail-yh0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933056Ab2KEPXH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Nov 2012 10:23:07 -0500
-Received: by mail-yh0-f46.google.com with SMTP id m54so972013yhm.19
-        for <linux-nfs@vger.kernel.org>; Mon, 05 Nov 2012 07:23:07 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v9 25/34] vfs: make listxattr retry once on ESTALE error
-Date: Mon,  5 Nov 2012 10:22:04 -0500
-Message-Id: <1352128933-28526-26-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
-References: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:47810 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754885Ab2K1Txh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Nov 2012 14:53:37 -0500
+Message-ID: <50B66BBF.4040404@RedHat.com>
+Date: Wed, 28 Nov 2012 14:53:35 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: Bruce Fields <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] gssd: Remove insane sanity checks of the service
+ name
+References: <1353969081-17842-1-git-send-email-Trond.Myklebust@netapp.com> <1353969081-17842-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1353969081-17842-2-git-send-email-Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/xattr.c | 15 ++++++++++-----
- 1 file changed, 10 insertions(+), 5 deletions(-)
 
-diff --git a/fs/xattr.c b/fs/xattr.c
-index 3a5e3ff..8a318a4 100644
---- a/fs/xattr.c
-+++ b/fs/xattr.c
-@@ -576,12 +576,17 @@ SYSCALL_DEFINE3(listxattr, const char __user *, pathname, char __user *, list,
- {
- 	struct path path;
- 	ssize_t error;
-+	unsigned int try = 0;
-+	unsigned int lookup_flags = LOOKUP_FOLLOW;
- 
--	error = user_path(pathname, &path);
--	if (error)
--		return error;
--	error = listxattr(path.dentry, list, size);
--	path_put(&path);
-+	do {
-+		error = user_path_at(AT_FDCWD, pathname, lookup_flags, &path);
-+		if (error)
-+			break;
-+		error = listxattr(path.dentry, list, size);
-+		path_put(&path);
-+		lookup_flags |= LOOKUP_REVAL;
-+	} while (retry_estale(error, try++));
- 	return error;
- }
- 
--- 
-1.7.11.7
 
+On 26/11/12 17:31, Trond Myklebust wrote:
+> Either we trust the info file, or we don't. The current
+> 'checks' only work for the combination 'nfs', '100003' and
+> a version number between 2 and 4.
+> The problem is that the callback channel also wants to use
+> 'nfs' in combination with a different program number and
+> version number.
+> 
+> This patch throws the bogus checks out altogether and lets the
+> kernel use whatever combination it wants....
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Committed... 
+
+steved.
+
+> ---
+>  utils/gssd/gssd_proc.c | 13 +------------
+>  1 file changed, 1 insertion(+), 12 deletions(-)
+> 
+> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+> index b79e872..8c00201 100644
+> --- a/utils/gssd/gssd_proc.c
+> +++ b/utils/gssd/gssd_proc.c
+> @@ -250,21 +250,10 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+>  	if ((p = strstr(buf, "port")) != NULL)
+>  		sscanf(p, "port: %127s\n", port);
+>  
+> -	/* check service, program, and version */
+> -	if (memcmp(service, "nfs", 3) != 0)
+> -		return -1;
+> +	/* get program, and version numbers */
+>  	*prog = atoi(program + 1); /* skip open paren */
+>  	*vers = atoi(version);
+>  
+> -	if (strlen(service) == 3 ) {
+> -		if ((*prog != 100003) || ((*vers != 2) && (*vers != 3) &&
+> -		    (*vers != 4)))
+> -			goto fail;
+> -	} else if (memcmp(service, "nfs4_cb", 7) == 0) {
+> -		if (*vers != 1)
+> -			goto fail;
+> -	}
+> -
+>  	if (!addrstr_to_sockaddr(addr, address, port))
+>  		goto fail;
+>  
+> 
