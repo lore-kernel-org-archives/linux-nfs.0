@@ -1,43 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:10285 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:28552 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755875Ab2KZUQ6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Nov 2012 15:16:58 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 05/28] NFSv4.1: nfs4_alloc_slots doesn't need zeroing
-Date: Mon, 26 Nov 2012 15:16:22 -0500
-Message-Id: <1353961005-63874-6-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1353961005-63874-5-git-send-email-Trond.Myklebust@netapp.com>
-References: <1353961005-63874-1-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-2-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-3-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-4-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-5-git-send-email-Trond.Myklebust@netapp.com>
+	id S1751719Ab2K1OlC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Nov 2012 09:41:02 -0500
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id qASEepvl004938
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 28 Nov 2012 09:40:51 -0500
+Message-ID: <50B6224C.1040405@RedHat.com>
+Date: Wed, 28 Nov 2012 09:40:12 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Steve Dickson <steved@redhat.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2 V2] mount.nfs: Continue to trying address when the
+ server return EACCES
+References: <1354035684-15802-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1354035684-15802-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-All that memory is going to be initialised to non-zero by
-nfs4_add_and_init_slots anyway.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 1ac339b..0402ebb 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5658,7 +5658,7 @@ int nfs4_proc_get_lease_time(struct nfs_client *clp, struct nfs_fsinfo *fsinfo)
- 
- static struct nfs4_slot *nfs4_alloc_slots(u32 max_slots, gfp_t gfp_flags)
- {
--	return kcalloc(max_slots, sizeof(struct nfs4_slot), gfp_flags);
-+	return kmalloc_array(max_slots, sizeof(struct nfs4_slot), gfp_flags);
- }
- 
- static void nfs4_add_and_init_slots(struct nfs4_slot_table *tbl,
--- 
-1.7.11.7
+On 27/11/12 12:01, Steve Dickson wrote:
+> With recent changes to the /etc/hosts file, the 'localhost'
+> host name is now multiply defined as both an IPv4 address (127.0.01)
+> and an IPv6 address (::1). This causes first address returned
+> by getaddrinfo('localhost') to be the IPv6 address instead of
+> the IPv4 address.
+> 
+> The change in the default 'localhost' address type causes
+> existing exports using '127.0.0.1' to fail, because the
+> '::1' address is tried first and fails. The problem is
+> not all the addresses in the address list are being tried.
+> 
+> So this patch allows that address list to continue to be
+> process when a 'EACCES' error is returned by the server.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed...
 
+steved.
+> ---
+>  utils/mount/stropts.c | 2 ++
+>  1 file changed, 2 insertions(+)
+> 
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index 9b4197b..8ee3024 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -666,6 +666,7 @@ static int nfs_try_mount_v3v2(struct nfsmount_info *mi)
+>  		case EOPNOTSUPP:
+>  		case EHOSTUNREACH:
+>  		case ETIMEDOUT:
+> +		case EACCES:
+>  			continue;
+>  		default:
+>  			goto out;
+> @@ -761,6 +762,7 @@ static int nfs_try_mount_v4(struct nfsmount_info *mi)
+>  		case ECONNREFUSED:
+>  		case EHOSTUNREACH:
+>  		case ETIMEDOUT:
+> +		case EACCES:
+>  			continue;
+>  		default:
+>  			goto out;
+> 
