@@ -1,51 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:57313 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750922Ab2KBEYJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Nov 2012 00:24:09 -0400
+Received: from relay.parallels.com ([195.214.232.42]:33545 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752841Ab2K1Pfh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Nov 2012 10:35:37 -0500
+Message-ID: <50B62F38.4010205@parallels.com>
+Date: Wed, 28 Nov 2012 19:35:20 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-In-Reply-To: <CA+55aFxK+xr0Gc+ZLgi3Ch8YgoV78vvr+Q-7cP=kC7asFB5k5w@mail.gmail.com>
-References: <1351622772-16400-1-git-send-email-levinsasha928@gmail.com>
- <20121030214257.GB2681@htj.dyndns.org> <CA+1xoqeCKS2E4TWCUCELjDqV2pWS4v6EyV6K-=w-GRi_K6quiQ@mail.gmail.com>
- <1351646186.4004.41.camel@gandalf.local.home> <CA+55aFzFMrOUwdHHJ5-YUtEzTHGvdRosQc+K+trjub0K-w-D3A@mail.gmail.com>
- <CA+1xoqd8vAn+N1JuhpXRjSr74OPtnnw_1UBhf8=c4WDC3jOirw@mail.gmail.com> <CA+55aFxK+xr0Gc+ZLgi3Ch8YgoV78vvr+Q-7cP=kC7asFB5k5w@mail.gmail.com>
-From: Sasha Levin <levinsasha928@gmail.com>
-Date: Fri, 2 Nov 2012 00:23:48 -0400
-Message-ID: <CA+1xoqdu-ar=-hh-+uVPtj=jy=rN0OiOGr09OxZsyphYzyJuEw@mail.gmail.com>
-Subject: Re: [PATCH v8 01/16] hashtable: introduce a small and naive hashtable
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Steven Rostedt <rostedt@goodmis.org>, Tejun Heo <tj@kernel.org>,
-        akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, paul.gortmaker@windriver.com, davem@davemloft.net,
-        mingo@elte.hu, ebiederm@xmission.com, aarcange@redhat.com,
-        ericvh@gmail.com, netdev@vger.kernel.org, josh@joshtriplett.org,
-        eric.dumazet@gmail.com, mathieu.desnoyers@efficios.com,
-        axboe@kernel.dk, agk@redhat.com, dm-devel@redhat.com, neilb@suse.de,
-        ccaulfie@redhat.com, teigland@redhat.com, Trond.Myklebust@netapp.com,
-        bfields@fieldses.org, fweisbec@gmail.com, jesse@nicira.com,
-        venkat.x.venkatsubra@oracle.com, ejt@redhat.com, snitzer@redhat.com,
-        edumazet@google.com, linux-nfs@vger.kernel.org, dev@openvswitch.org,
-        rds-devel@oss.oracle.com, lw@cn.fujitsu.com
-Content-Type: text/plain; charset=ISO-8859-1
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>, <Trond.Myklebust@netapp.com>,
+        <linux-kernel@vger.kernel.org>, <devel@openvz.org>
+Subject: Re: [PATCH 1/2] nfsd: make NFSv4 lease time per net
+References: <20121127111007.10271.54338.stgit@localhost.localdomain> <20121127111144.10271.97169.stgit@localhost.localdomain> <20121128150941.GF11651@fieldses.org> <50B629C3.4050903@parallels.com> <20121128151542.GI11651@fieldses.org>
+In-Reply-To: <20121128151542.GI11651@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 30, 2012 at 10:23 PM, Linus Torvalds
-<torvalds@linux-foundation.org> wrote:
-> On Tue, Oct 30, 2012 at 6:36 PM, Sasha Levin <levinsasha928@gmail.com> wrote:
+28.11.2012 19:15, J. Bruce Fields пишет:
+> On Wed, Nov 28, 2012 at 07:12:03PM +0400, Stanislav Kinsbursky wrote:
+>> 28.11.2012 19:09, J. Bruce Fields пишет:
+>>> On Tue, Nov 27, 2012 at 02:11:44PM +0300, Stanislav Kinsbursky wrote:
+>>>> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+>>>> index dab350d..4930981 100644
+>>>> --- a/fs/nfsd/nfsctl.c
+>>>> +++ b/fs/nfsd/nfsctl.c
+>>>> @@ -912,7 +912,8 @@ static ssize_t nfsd4_write_time(struct file *file, char *buf, size_t size, time_
+>>>>    */
+>>>>   static ssize_t write_leasetime(struct file *file, char *buf, size_t size)
+>>>>   {
+>>>> -	return nfsd4_write_time(file, buf, size, &nfsd4_lease);
+>>>> +	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
+>>>> +	return nfsd4_write_time(file, buf, size, &nn->nfsd4_lease);
+>>>
+>>> This is called in the context of whatever process writes to
+>>> nfsv4leasetime, so should be using its network namespace, right?
+>>>
 >>
->> I can either rebase that on top of mainline, or we can ask maintainers
->> to take it to their own trees if you take only 01/16 into mainline.
->> What would you prefer?
+>> This is, actually, a interim solution to preserve existent logic.
+>> I.e. I'm going to convert "nfsd" filesystem into per-net one (like rpc_pipefs). I, actually, already done it in my tree.
+>> Thus proper network namespace will be taken from nfsd superblock.
 >
-> I don't really care deeply. The only reason to merge it now would be
-> to avoid any pain with it during the next merge window. Just taking
-> 01/16 might be the sanest way to do that, then the rest can trickle in
-> independently at their own leisure.
+> OK, remind me how that works?  It's mounted just once, but each network
+> namespace gets a different view of the filesystem?
+>
 
-Okay, I'll keep working on converting everything else as soon as 01/16
-makes it in your tree.
+Nope. It's a single mount point, but per-namespace (network, in our case) - not globally.
+Pointer to namespace will be placed on sb->s_fs_info.
+
+> --b.
+>
 
 
-Thanks,
-Sasha
+-- 
+Best regards,
+Stanislav Kinsbursky
