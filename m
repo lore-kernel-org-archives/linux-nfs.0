@@ -1,58 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:56530 "EHLO mx1.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:47466 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755476Ab2KVSnn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Nov 2012 13:43:43 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 16/20] NFSv4.1: Allow the server to recall all but one slot
-Date: Wed, 21 Nov 2012 17:43:15 -0500
-Message-Id: <1353537799-60488-17-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1353537799-60488-16-git-send-email-Trond.Myklebust@netapp.com>
-References: <1353537799-60488-1-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-2-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-3-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-4-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-5-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-6-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-7-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-8-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-9-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-10-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-11-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-12-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-13-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-14-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-15-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-16-git-send-email-Trond.Myklebust@netapp.com>
+	id S1752263Ab2K1BMV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Nov 2012 20:12:21 -0500
+From: Neil Brown <neilb@suse.de>
+To: Steve Dickson <steved@redhat.com>
+Date: Wed, 28 Nov 2012 12:11:22 +1100
+Subject: [PATCH 0/3] Make size of gssd_proc fd array a little more dynamic
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <20121128010939.2475.13123.stgit@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the server wants to leave us with only one slot, or it wants
-to "shrink" our slot table to something larger than we have now,
-then so be it.
+We recently had a request to raise the number of fds that gssd can
+work with - again.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Rather than just change the hard-coded number I seemed to make sense
+to have it depend on RLIMIT_NOFILE - as poll won't work with more than
+that anyway.
+So the default becomes 1024, but it is easily raised further without
+code change.
+
+These patches implement that.
+
+NeilBrown
+
+
 ---
- fs/nfs/callback_proc.c | 5 -----
- 1 file changed, 5 deletions(-)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index ed0b446..a0546ec 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -567,11 +567,6 @@ __be32 nfs4_callback_recallslot(struct cb_recallslotargs *args, void *dummy,
- 
- 	fc_tbl = &cps->clp->cl_session->fc_slot_table;
- 
--	status = htonl(NFS4ERR_BAD_HIGH_SLOT);
--	if (args->crsa_target_highest_slotid >= fc_tbl->max_slots ||
--	    args->crsa_target_highest_slotid < 1)
--		goto out;
--
- 	status = htonl(NFS4_OK);
- 
- 	nfs41_set_target_slotid(fc_tbl, args->crsa_target_highest_slotid);
+Neil Brown (3):
+      gssd_proc: use pollsize, not FD_ALLOC_BLOCK, in get_poll_index().
+      gssd_proc: remove pointless test against FD_ALLOC_BLOCK in process_pipedir
+      gssd: base the size of the fd array on the RLIMIT_NOFILE limit.
+
+
+ utils/gssd/gssd_proc.c |   14 +++++++++-----
+ 1 file changed, 9 insertions(+), 5 deletions(-)
+
 -- 
-1.7.11.7
+Signature
 
