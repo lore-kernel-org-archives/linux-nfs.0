@@ -1,57 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33594 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:17249 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751903Ab2KFNgM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Nov 2012 08:36:12 -0500
-Date: Tue, 6 Nov 2012 08:36:05 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@infradead.org>
+	id S1754967Ab2K1U2U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Nov 2012 15:28:20 -0500
+Date: Wed, 28 Nov 2012 15:28:13 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>
 Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>,
-        "Eric W. Biederman" <ebiederm@xmission.com>
-Subject: Re: [PATCH v3] SUNRPC: set desired file system root before
- connecting local transports
-Message-ID: <20121106133605.GD6718@fieldses.org>
-References: <20121008105437.18668.99905.stgit@localhost.localdomain>
- <20121009193506.GA19680@fieldses.org>
- <5098E31A.5080801@parallels.com>
- <20121106120642.GA6718@fieldses.org>
- <20121106124035.GA20522@infradead.org>
- <20121106130705.GC6718@fieldses.org>
- <20121106131018.GA12211@infradead.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20121106131018.GA12211@infradead.org>
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
+Subject: Re: NFSd in container - it works
+Message-ID: <20121128152813.2b4c388d@tlielax.poochiereds.net>
+In-Reply-To: <20121128200126.GA17875@fieldses.org>
+References: <50B64628.4070007@parallels.com>
+	<20121128200126.GA17875@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 06, 2012 at 08:10:18AM -0500, Christoph Hellwig wrote:
-> On Tue, Nov 06, 2012 at 08:07:06AM -0500, J. Bruce Fields wrote:
-> > So you're worried that a bug in the nfs code could modify the root and
-> > then not restore it?
+On Wed, 28 Nov 2012 15:01:26 -0500
+"bfields@fieldses.org" <bfields@fieldses.org> wrote:
+
+> > 3) Holding net by tracker looks redundant. What was the reason for this?
 > 
-> At least the link you pointed to earlier never sets it back.
+> I don't understand, what's tracker?
 
-This? http://thread.gmane.org/gmane.linux.kernel/1259986/focus=47687
+I assume he means the clientid tracker. That was necessary for the
+nfsdcld upcall because it used rpc_pipefs files, and those were
+net-namespacified. Once we deprecate that in 3.10, I don't think we'll
+need to worry about the net namespace in the clientid tracker.
 
-	+	get_fs_root(current->fs, &root);
-	+	set_fs_root(current->fs, &transport->root);
-	+
-	 	status = xs_local_finish_connecting(xprt, sock);
-	+
-	+	set_fs_root(current->fs, &root);
-	+	path_put(&root);
+We probably *will* need to concern ourselves with the mnt namespace
+there though since each container will presumably have its own clientid
+database...
 
-> Instead
-> of messing with it I'd rather have the sunrpc code use vfs_path_lookup
-> and not care about current->fs->root at all.
-
-The annoyance is that the lookup happens somewhere lower down in the
-networking code (net/unix/af_unix.c:unix_find_other, I think).  So we'd
-need some new (internal) API.  We'd likely be the only user of that new
-API.
-
---b.
+-- 
+Jeff Layton <jlayton@redhat.com>
