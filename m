@@ -1,30 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46181 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:23067 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751283Ab2KLPXh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Nov 2012 10:23:37 -0500
-Date: Mon, 12 Nov 2012 10:23:35 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: David Quigley <dpquigl@davequigley.com>
-Cc: trond.myklebust@netapp.com, sds@tycho.nsa.gov, linux-nfs@vger.kernel.org,
-        selinux@tycho.nsa.gov, linux-security-module@vger.kernel.org
-Subject: Re: Labeled NFS [v5]
-Message-ID: <20121112152335.GH30713@fieldses.org>
-References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com>
+	id S1755048Ab2K1TEI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Nov 2012 14:04:08 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id qASJ48VV018363
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 28 Nov 2012 14:04:08 -0500
+Received: from smallhat.bos.devel.redhat.com (smallhat.boston.devel.redhat.com [10.16.60.65])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id qASIe3qi031210
+	for <linux-nfs@vger.kernel.org>; Wed, 28 Nov 2012 13:40:07 -0500
+Message-ID: <50B65A82.6030005@RedHat.com>
+Date: Wed, 28 Nov 2012 13:40:02 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Linux pNFS status meeting 11/29/12
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 12, 2012 at 01:15:34AM -0500, David Quigley wrote:
-> The NFSv4 working group has finally accepted Labeled NFS as part of the NFSv4.2
-> specification and it has been decided that a reposting of the Labeled NFS code
-> for inclusion into mainline was a good idea. The patches have been rebased onto
-> v3.7-rc2 and have been tested against the SELinux testsuite with the only
-> failures being for features not supported by NFS.
+A reminder....  There will be a status meeting tomorrow (Thur Nov 11)
 
-By the way, is there wireshark support anywhere for the labeled NFS
-protocol?
 
---b.
+Time: 9:30 AM PST (12:30 PM EST)
+
+The call in numbers are:
+U.S. and Canada: (800) 451-8679
+International dial-in number: (212) 729-5016
+Israel Toll-Free: 1-809-462-557
+Conference code: 564.272.1552
+
+steved.
+
