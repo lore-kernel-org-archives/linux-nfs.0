@@ -1,81 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f174.google.com ([209.85.220.174]:38044 "EHLO
-	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752655Ab2KLUBJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Nov 2012 15:01:09 -0500
-Received: by mail-vc0-f174.google.com with SMTP id fk26so6536744vcb.19
-        for <linux-nfs@vger.kernel.org>; Mon, 12 Nov 2012 12:01:08 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 02/11] nfsd: change heuristic for selecting the client_tracking_ops
-Date: Mon, 12 Nov 2012 15:00:49 -0500
-Message-Id: <1352750458-16857-3-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1352750458-16857-1-git-send-email-jlayton@redhat.com>
-References: <1352750458-16857-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:16971 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754035Ab2K1Uxf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Nov 2012 15:53:35 -0500
+Message-ID: <50B679CD.40409@netapp.com>
+Date: Wed, 28 Nov 2012 15:53:33 -0500
+From: Bryan Schumaker <bjschuma@netapp.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v3 03/10] NFSD: Clean up forgetting clients
+References: <1354026919-13313-1-git-send-email-bjschuma@netapp.com> <1354026919-13313-4-git-send-email-bjschuma@netapp.com> <20121128162920.GK11651@fieldses.org> <50B63D20.7050300@netapp.com> <20121128164721.GA15966@fieldses.org> <50B640B1.7060302@netapp.com> <20121128165642.GB15966@fieldses.org> <20121128165714.GC15966@fieldses.org>
+In-Reply-To: <20121128165714.GC15966@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-First, try to use the new usermodehelper upcall. It should succeed or
-fail quickly, so there's little cost to doing so.
+On 11/28/2012 11:57 AM, J. Bruce Fields wrote:
+> On Wed, Nov 28, 2012 at 11:56:42AM -0500, J. Bruce Fields wrote:
+>> On Wed, Nov 28, 2012 at 11:49:53AM -0500, Bryan Schumaker wrote:
+>>> On 11/28/2012 11:47 AM, J. Bruce Fields wrote:
+>>>> On Wed, Nov 28, 2012 at 11:34:40AM -0500, Bryan Schumaker wrote:
+>>>>> On 11/28/2012 11:29 AM, J. Bruce Fields wrote:
+>>>>>> On Tue, Nov 27, 2012 at 09:35:12AM -0500, bjschuma@netapp.com wrote:
+>>>>>>> From: Bryan Schumaker <bjschuma@netapp.com>
+>>>>>>>
+>>>>>>> I added in a generic for-each loop that takes a pass over the
+>>>>>>> client_lru list and calls some function.  The next few patches will
+>>>>>>> update other operations to use this function as well.  A value of 0
+>>>>>>> still means "forget everything that is found".
+>>>>>>>
+>>>>>>> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com> ---
+>>>>>>> fs/nfsd/nfs4state.c | 23 ++++++++++++++++++----- 1 file changed, 18
+>>>>>>> insertions(+), 5 deletions(-)
+>>>>>>>
+>>>>>>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c index
+>>>>>>> 050a35e..07abca5 100644 --- a/fs/nfsd/nfs4state.c +++
+>>>>>>> b/fs/nfsd/nfs4state.c @@ -4591,19 +4591,32 @@
+>>>>>>> nfs4_check_open_reclaim(clientid_t *clid, bool sessions, struct
+>>>>>>> nfsd_net *nn)
+>>>>>>>  
+>>>>>>>  #ifdef CONFIG_NFSD_FAULT_INJECTION
+>>>>>>>  
+>>>>>>> -void nfsd_forget_clients(u64 num) +u64 nfsd_forget_client(struct
+>>>>>>> nfsd_net *nn, struct nfs4_client *clp, u64 max)
+>>>>>>
+>>>>>> It doesn't look like you really need nfsd_net?
+>>>>>
+>>>>> Not for this, but I find locks through the nn->ownerstr_hashtable
+>>>>> since the nfs4_client doesn't have a "cl_locks" list similar to
+>>>>> "cl_openowners" (unless there is something I'm missing...?).
+>>>>
+>>>> That's because lockowners are all reachable from openowners (e.g. see
+>>>> how it's done in
+>>>> release_openowner->unhash_openowner->release_open_stateid->unhash_open_stateid->release_stateid_lockowners.
+>>>> Yeah, it's a little tangled.).
+>>>>
+>>>> Alternatively you can get to the network namespace from the client
+>>>> (clp->net).
+>>>
+>>> Both are good to know!  I'll look at getting lockowners from openowners first.
+>>
+>> OK.  I've also updated my for-3.8 with more of Stanislav's
+>> patches--doesn't look like there should be any interesting new
+>> conflicts, but please check.
 
-If it fails, and the legacy tracking dir exists, use that. If it
-doesn't exist then fall back to using nfsdcld.
+I've got something with multiple levels of list_for_each() loops that I'm attempting to unroll.  I just noticed that I've been releasing lock owners and open owners this whole time.  I wonder if it would be better to release lock and open stateids instead?
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/nfs4recover.c | 36 +++++++++++++++++++++++++++---------
- 1 file changed, 27 insertions(+), 9 deletions(-)
+- Bryan 
 
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index 2fc2f6c..e71f713 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -1064,17 +1064,35 @@ nfsd4_client_tracking_init(struct net *net)
- 	int status;
- 	struct path path;
- 
--	if (!client_tracking_ops) {
--		client_tracking_ops = &nfsd4_cld_tracking_ops;
--		status = kern_path(nfs4_recoverydir(), LOOKUP_FOLLOW, &path);
--		if (!status) {
--			if (S_ISDIR(path.dentry->d_inode->i_mode))
--				client_tracking_ops =
--						&nfsd4_legacy_tracking_ops;
--			path_put(&path);
--		}
-+	/* just run the init if it the method is already decided */
-+	if (client_tracking_ops)
-+		goto do_init;
-+
-+	/*
-+	 * First, try a UMH upcall. It should succeed or fail quickly, so
-+	 * there's little harm in trying that first.
-+	 */
-+	client_tracking_ops = &nfsd4_umh_tracking_ops;
-+	status = client_tracking_ops->init(net);
-+	if (!status)
-+		return status;
-+
-+	/*
-+	 * See if the recoverydir exists and is a directory. If it is,
-+	 * then use the legacy ops.
-+	 */
-+	client_tracking_ops = &nfsd4_legacy_tracking_ops;
-+	status = kern_path(nfs4_recoverydir(), LOOKUP_FOLLOW, &path);
-+	if (!status) {
-+		status = S_ISDIR(path.dentry->d_inode->i_mode);
-+		path_put(&path);
-+		if (status)
-+			goto do_init;
- 	}
- 
-+	/* Finally, try to use nfsdcld */
-+	client_tracking_ops = &nfsd4_cld_tracking_ops;
-+do_init:
- 	status = client_tracking_ops->init(net);
- 	if (status) {
- 		printk(KERN_WARNING "NFSD: Unable to initialize client "
--- 
-1.7.11.7
+> 
+> Oh, and maybe you can respin with that last bugfix folded in to the
+> right place, if that makes sense?
+> 
+> --b.
+> 
 
