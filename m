@@ -1,64 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f46.google.com ([209.85.213.46]:48417 "EHLO
-	mail-yh0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933006Ab2KEPW6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Nov 2012 10:22:58 -0500
-Received: by mail-yh0-f46.google.com with SMTP id m54so972001yhm.19
-        for <linux-nfs@vger.kernel.org>; Mon, 05 Nov 2012 07:22:58 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v9 20/34] vfs: allow utimensat() calls to retry once on an ESTALE error
-Date: Mon,  5 Nov 2012 10:21:59 -0500
-Message-Id: <1352128933-28526-21-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
-References: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
+Received: from relay.parallels.com ([195.214.232.42]:57454 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755550Ab2K1PMT convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Nov 2012 10:12:19 -0500
+Message-ID: <50B629C3.4050903@parallels.com>
+Date: Wed, 28 Nov 2012 19:12:03 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>, <Trond.Myklebust@netapp.com>,
+        <linux-kernel@vger.kernel.org>, <devel@openvz.org>
+Subject: Re: [PATCH 1/2] nfsd: make NFSv4 lease time per net
+References: <20121127111007.10271.54338.stgit@localhost.localdomain> <20121127111144.10271.97169.stgit@localhost.localdomain> <20121128150941.GF11651@fieldses.org>
+In-Reply-To: <20121128150941.GF11651@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clearly, we can't handle the NULL filename case, but we can deal with
-the case where there's a real pathname.
+28.11.2012 19:09, J. Bruce Fields пишет:
+> On Tue, Nov 27, 2012 at 02:11:44PM +0300, Stanislav Kinsbursky wrote:
+>> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+>> index dab350d..4930981 100644
+>> --- a/fs/nfsd/nfsctl.c
+>> +++ b/fs/nfsd/nfsctl.c
+>> @@ -912,7 +912,8 @@ static ssize_t nfsd4_write_time(struct file *file, char *buf, size_t size, time_
+>>    */
+>>   static ssize_t write_leasetime(struct file *file, char *buf, size_t size)
+>>   {
+>> -	return nfsd4_write_time(file, buf, size, &nfsd4_lease);
+>> +	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
+>> +	return nfsd4_write_time(file, buf, size, &nn->nfsd4_lease);
+>
+> This is called in the context of whatever process writes to
+> nfsv4leasetime, so should be using its network namespace, right?
+>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/utimes.c | 17 +++++++++++------
- 1 file changed, 11 insertions(+), 6 deletions(-)
+This is, actually, a interim solution to preserve existent logic.
+I.e. I'm going to convert "nfsd" filesystem into per-net one (like rpc_pipefs). I, actually, already done it in my tree.
+Thus proper network namespace will be taken from nfsd superblock.
 
-diff --git a/fs/utimes.c b/fs/utimes.c
-index bb0696a..c9ce931 100644
---- a/fs/utimes.c
-+++ b/fs/utimes.c
-@@ -154,17 +154,22 @@ long do_utimes(int dfd, const char __user *filename, struct timespec *times,
- 		fdput(f);
- 	} else {
- 		struct path path;
--		int lookup_flags = 0;
-+		unsigned int lookup_flags = 0;
-+		unsigned int try = 0;
- 
- 		if (!(flags & AT_SYMLINK_NOFOLLOW))
- 			lookup_flags |= LOOKUP_FOLLOW;
- 
--		error = user_path_at(dfd, filename, lookup_flags, &path);
--		if (error)
--			goto out;
-+		do {
-+			error = user_path_at(dfd, filename,
-+						lookup_flags, &path);
-+			if (error)
-+				break;
- 
--		error = utimes_common(&path, times);
--		path_put(&path);
-+			error = utimes_common(&path, times);
-+			path_put(&path);
-+			lookup_flags |= LOOKUP_REVAL;
-+		} while (retry_estale(error, try++));
- 	}
- 
- out:
+> --b.
+>
+
+
 -- 
-1.7.11.7
-
+Best regards,
+Stanislav Kinsbursky
