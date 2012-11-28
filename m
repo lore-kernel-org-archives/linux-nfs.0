@@ -1,34 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:41567 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:47475 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1423471Ab2KOItm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 Nov 2012 03:49:42 -0500
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id qAF8ngFd017775
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 15 Nov 2012 03:49:42 -0500
-Received: from smallhat.bos.devel.redhat.com (vpn-10-117.rdu.redhat.com [10.11.10.117])
-	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id qAF8nft3022796
-	for <linux-nfs@vger.kernel.org>; Thu, 15 Nov 2012 03:49:42 -0500
-Message-ID: <50A4ACA5.7000109@RedHat.com>
-Date: Thu, 15 Nov 2012 03:49:41 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1752452Ab2K1BMq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 Nov 2012 20:12:46 -0500
+From: Neil Brown <neilb@suse.de>
+To: Steve Dickson <steved@redhat.com>
+Date: Wed, 28 Nov 2012 12:11:23 +1100
+Subject: [PATCH 3/3] gssd: base the size of the fd array on the
+ RLIMIT_NOFILE limit.
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <20121128011123.2475.13691.stgit@notabene.brown>
+In-Reply-To: <20121128010939.2475.13123.stgit@notabene.brown>
+References: <20121128010939.2475.13123.stgit@notabene.brown>
 MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Linux pNFS status meeting 11/15/12 *today*
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sorry for the late notice... but the bi-weekly meeting is Today (Thur Nov 15)
+We have previously raised the size of the 'pollarray' once (32 -> 256)
+and I have had another request to make it bigger.
+Rather than changing the hard-coded value, make it depend on
+RLIMIT_NOFILE.  This is an upper limit on the size of the array
+that can be passed to poll() anyway.
 
-Time: 9:30 AM PST (12:30 PM EST)
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
+ utils/gssd/gssd_proc.c |    5 +++++
+ 1 file changed, 5 insertions(+)
 
-The call in numbers are:
-U.S. and Canada: (800) 451-8679
-International dial-in number: (212) 729-5016
-Israel Toll-Free: 1-809-462-557
-Conference code: 564.272.1552
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index 425b582..e32b2f0 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -52,6 +52,7 @@
+ #include <sys/socket.h>
+ #include <arpa/inet.h>
+ #include <sys/fsuid.h>
++#include <sys/resource.h>
+ 
+ #include <stdio.h>
+ #include <stdlib.h>
+@@ -483,9 +484,13 @@ fail_keep_client:
+ void
+ init_client_list(void)
+ {
++	struct rlimit rlim;
+ 	TAILQ_INIT(&clnt_list);
+ 	/* Eventually plan to grow/shrink poll array: */
+ 	pollsize = FD_ALLOC_BLOCK;
++	if (getrlimit(RLIMIT_NOFILE, &rlim) < 0 &&
++	    rlim.rlim_cur != RLIM_INFINITY)
++		pollsize = rlim.rlim_cur;
+ 	pollarray = calloc(pollsize, sizeof(struct pollfd));
+ }
+ 
 
-steved.
 
