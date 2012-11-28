@@ -1,39 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:32992 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751979Ab2KMDQJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Nov 2012 22:16:09 -0500
-Message-ID: <50A1BB75.2000303@davequigley.com>
-Date: Mon, 12 Nov 2012 22:16:05 -0500
-From: Dave Quigley <dpquigl@davequigley.com>
+Received: from mx1.redhat.com ([209.132.183.28]:12774 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754885Ab2K1TxN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Nov 2012 14:53:13 -0500
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id qASJrDPq015413
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 28 Nov 2012 14:53:13 -0500
+Message-ID: <50B66BA9.7070107@RedHat.com>
+Date: Wed, 28 Nov 2012 14:53:13 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: Casey Schaufler <casey@schaufler-ca.com>
-CC: bfields@fieldses.org, trond.myklebust@netapp.com, sds@tycho.nsa.gov,
-        linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
-        linux-security-module@vger.kernel.org
-Subject: Re: Labeled NFS [v5]
-References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com> <50A176CE.8010509@schaufler-ca.com>
-In-Reply-To: <50A176CE.8010509@schaufler-ca.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: Jeff Layton <jlayton@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsdcltrack: skip "." and ".." when trying to clean out
+ legacy recdir
+References: <1352753698-17693-1-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1352753698-17693-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/12/2012 5:23 PM, Casey Schaufler wrote:
-> On 11/11/2012 10:15 PM, David Quigley wrote:
->> The NFSv4 working group has finally accepted Labeled NFS as part of the NFSv4.2
->> specification and it has been decided that a reposting of the Labeled NFS code
->> for inclusion into mainline was a good idea. The patches have been rebased onto
->> v3.7-rc2 and have been tested against the SELinux testsuite with the only
->> failures being for features not supported by NFS.
->
-> It's going to take a few days (I'm traveling among other issues)
-> before I can have the Smack project comments ready. They are coming.
->
-> If you have pointers to test suites you found especially helpful
-> I could sure use them.
->
-> Thank you.
->
 
-The only testsuite I have is the SELinux one. Unfortunately you're on 
-your own for a smack testsuite.
+
+On 12/11/12 15:54, Jeff Layton wrote:
+> readdir picks up these two entries as "normal" dentries, but rmdir'ing
+> them won't work (and we wouldn't want to remove them anyway).
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Committed...
+
+steved.
+> ---
+>  utils/nfsdcltrack/nfsdcltrack.c | 11 +++++++++++
+>  1 file changed, 11 insertions(+)
+> 
+> diff --git a/utils/nfsdcltrack/nfsdcltrack.c b/utils/nfsdcltrack/nfsdcltrack.c
+> index 9801b9c..4334340 100644
+> --- a/utils/nfsdcltrack/nfsdcltrack.c
+> +++ b/utils/nfsdcltrack/nfsdcltrack.c
+> @@ -379,6 +379,17 @@ cltrack_legacy_gracedone(void)
+>  	while ((entry = readdir(v4recovery))) {
+>  		int len;
+>  
+> +		/* skip "." and ".." */
+> +		if (entry->d_name[0] == '.') {
+> +			switch (entry->d_name[1]) {
+> +			case '\0':
+> +				continue;
+> +			case '.':
+> +				if (entry->d_name[2] == '\0')
+> +					continue;
+> +			}
+> +		}
+> +
+>  		/* borrow the clientid blob for this */
+>  		len = snprintf((char *)blob, sizeof(blob), "%s/%s", dirname,
+>  				entry->d_name);
+> 
