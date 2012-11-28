@@ -1,45 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:29698 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:24007 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755357Ab2KVSmf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Nov 2012 13:42:35 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 03/20] NFSv4.1: We must bump the clientid sequence number after CREATE_SESSION
-Date: Wed, 21 Nov 2012 17:43:02 -0500
-Message-Id: <1353537799-60488-4-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1353537799-60488-3-git-send-email-Trond.Myklebust@netapp.com>
-References: <1353537799-60488-1-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-2-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-3-git-send-email-Trond.Myklebust@netapp.com>
+	id S1755404Ab2K1Oj6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Nov 2012 09:39:58 -0500
+Message-ID: <50B62236.3080208@RedHat.com>
+Date: Wed, 28 Nov 2012 09:39:50 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Revert "mountd: handle allocation failures in auth_unix_ip
+ upcall"
+References: <20121126220343.GA18140@fieldses.org> <73EFE585-98D4-40BE-9EDF-15CC6B14BDB2@oracle.com> <20121126221535.GB18186@fieldses.org> <A954A569-E030-4119-A349-6CB888979738@oracle.com> <20121126225116.GE18186@fieldses.org> <20121127213127.GH27142@fieldses.org>
+In-Reply-To: <20121127213127.GH27142@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We must always bump the clientid sequence number after a successful
-call to CREATE_SESSION on the server. The result of
-nfs4_verify_channel_attrs() is irrelevant to that requirement.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ee82cdd..1ac339b 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5917,10 +5917,9 @@ static int _nfs4_proc_create_session(struct nfs_client *clp,
- 
- 	status = rpc_call_sync(session->clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
- 
--	if (!status)
-+	if (!status) {
- 		/* Verify the session's negotiated channel_attrs values */
- 		status = nfs4_verify_channel_attrs(&args, session);
--	if (!status) {
- 		/* Increment the clientid slot sequence id */
- 		clp->cl_seqid++;
- 	}
--- 
-1.7.11.7
+On 27/11/12 16:31, J. Bruce Fields wrote:
+> On Mon, Nov 26, 2012 at 05:51:16PM -0500, J. Bruce Fields wrote:
+> commit dfb31d861261c8461a2dc4fb7e8823f5169a9079
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Tue Nov 27 16:10:41 2012 -0500
+> 
+>     mountd: auth_unix_ip should downcall on error to prevent hangs
+>     
+>     Since bf6a4febaa78bf188896b7b5b02c46562dd08b70 "mountd: handle
+>     allocation failures in auth_unix_ip upcall", a failure to map the
+>     address of an incoming client to a name could result in a hang.
+>     
+>     We should be responding with an error in the case, not just skipping the
+>     downcall and leaving everybody hanging.
+>     
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Committed.... 
 
+steved.
+> 
+> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+> index e950ec6..c13f305 100644
+> --- a/utils/mountd/cache.c
+> +++ b/utils/mountd/cache.c
+> @@ -109,12 +109,10 @@ static void auth_unix_ip(FILE *f)
+>  		struct addrinfo *ai = NULL;
+>  
+>  		ai = client_resolve(tmp->ai_addr);
+> -		if (ai == NULL)
+> -			goto out;
+> -		client = client_compose(ai);
+> -		freeaddrinfo(ai);
+> -		if (!client)
+> -			goto out;
+> +		if (ai) {
+> +			client = client_compose(ai);
+> +			freeaddrinfo(ai);
+> +		}
+>  	}
+>  	qword_print(f, "nfsd");
+>  	qword_print(f, ipaddr);
+> @@ -127,7 +125,6 @@ static void auth_unix_ip(FILE *f)
+>  	xlog(D_CALL, "auth_unix_ip: client %p '%s'", client, client?client: "DEFAULT");
+>  
+>  	free(client);
+> -out:
+>  	freeaddrinfo(tmp);
+>  
+>  }
+> 
