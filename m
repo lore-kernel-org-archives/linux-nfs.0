@@ -1,115 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:41830 "EHLO relay.sw.ru"
+Received: from fn.samba.org ([216.83.154.106]:50833 "EHLO mail.samba.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754046Ab2KMPrJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Nov 2012 10:47:09 -0500
-Subject: [PATCH 15/15] nfsd: make laundromat network namespace aware
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, devel@openvz.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, jlayton@redhat.com
-Date: Tue, 13 Nov 2012 18:49:35 +0300
-Message-ID: <20121113154935.12577.97422.stgit@localhost.localdomain>
-In-Reply-To: <20121113154722.12577.57671.stgit@localhost.localdomain>
-References: <20121113154722.12577.57671.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1752107Ab2K2W0j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Nov 2012 17:26:39 -0500
+Message-ID: <1354227998.4064.11.camel@pico.ipa.ssimo.org>
+Subject: Re: Possible to make nfs aware of a inotify watch has been set.
+From: simo <idra@samba.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Stef Bon <stefbon@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-cifs <linux-cifs@vger.kernel.org>
+Date: Thu, 29 Nov 2012 17:26:38 -0500
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90B32D9D4@SACEXCMBX04-PRD.hq.netapp.com>
+References: <CANXojcy9thLBwrENTkOTSSE17L3N17A8XsTmyNqq3oNdhW_Q_w@mail.gmail.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B329CFD@SACEXCMBX04-PRD.hq.netapp.com>
+	 <CANXojcxR9673fRObMLPSScogAN05RSVhPFoni=ENc6YDWq9T7w@mail.gmail.com>
+	 <1354202525.4064.1.camel@pico.ipa.ssimo.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B32AEB7@SACEXCMBX04-PRD.hq.netapp.com>
+	 <CANXojcys4wR8N-R3oSjWRWJLsObn0Qf+i41vBUaNnJctdcrKVw@mail.gmail.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B32B2A0@SACEXCMBX04-PRD.hq.netapp.com>
+	 <1354219557.4064.7.camel@pico.ipa.ssimo.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B32D9D4@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch moves laundromat_work to nfsd per-net context, thus allowing to run
-multiple laundries.
+On Thu, 2012-11-29 at 21:09 +0000, Myklebust, Trond wrote:
+> On Thu, 2012-11-29 at 15:05 -0500, simo wrote:
+> > On Thu, 2012-11-29 at 17:11 +0000, Myklebust, Trond wrote:
+> > > The idea that "if we build a bridge, they will come to us" is what
+> > > gave
+> > > rise to dnotify, then inotify (nobody came, so let's build a bigger
+> > > bridge) and fsnotify (make it a toll bridge). Nobody is using those
+> > > interfaces much on local filesystems, so why is adding it to NFS and
+> > > CIFS going to be such a game changer?
+> > 
+> > Sorry Trond,
+> > but this is simply not true.
+> > 
+> > inotify is a key feature at least in some packages I know, and makes
+> > some things *a lot* easier.
+> > 
+> > Of course this are less visible features, that are easy to overlook, but
+> > they are not unused for sure.
+> 
+> So why is it so difficult for anyone in this thread to name these killer
+> applications that would benefit from NFS+CIFS support? I keep asking,
+> and all I get is wishy-washy and hand-wavy answers.
+> 
+> Without use cases, there is nothing to discuss on the implementation
+> front.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfsd/netns.h     |    2 ++
- fs/nfsd/nfs4state.c |   21 +++++++++++++--------
- 2 files changed, 15 insertions(+), 8 deletions(-)
+Sorry for the misunderstanding, I wasn't talking about inotify *on
+CIFS/NFS*, I do not care about that use case, I'll gladly let Stef pitch
+it for himself :)
 
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index f024fe2..c135277 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -77,6 +77,8 @@ struct nfsd_net {
- 	 */
- 	struct list_head client_lru;
- 	struct list_head close_lru;
-+
-+	struct delayed_work laundromat_work;
- };
- 
- extern int nfsd_net_id;
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 4756176..bb109ae 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3157,7 +3157,7 @@ nfsd4_end_grace(struct nfsd_net *nn)
- }
- 
- static time_t
--nfs4_laundromat(void)
-+nfs4_laundromat(struct nfsd_net *nn)
- {
- 	struct nfs4_client *clp;
- 	struct nfs4_openowner *oo;
-@@ -3166,7 +3166,6 @@ nfs4_laundromat(void)
- 	time_t cutoff = get_seconds() - nfsd4_lease;
- 	time_t t, clientid_val = nfsd4_lease;
- 	time_t u, test_val = nfsd4_lease;
--	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
- 
- 	nfs4_lock_state();
- 
-@@ -3232,16 +3231,19 @@ nfs4_laundromat(void)
- 
- static struct workqueue_struct *laundry_wq;
- static void laundromat_main(struct work_struct *);
--static DECLARE_DELAYED_WORK(laundromat_work, laundromat_main);
- 
- static void
--laundromat_main(struct work_struct *not_used)
-+laundromat_main(struct work_struct *laundry)
- {
- 	time_t t;
-+	struct delayed_work *dwork = container_of(laundry, struct delayed_work,
-+						  work);
-+	struct nfsd_net *nn = container_of(dwork, struct nfsd_net,
-+					   laundromat_work);
- 
--	t = nfs4_laundromat();
-+	t = nfs4_laundromat(nn);
- 	dprintk("NFSD: laundromat_main - sleeping for %ld seconds\n", t);
--	queue_delayed_work(laundry_wq, &laundromat_work, t*HZ);
-+	queue_delayed_work(laundry_wq, &nn->laundromat_work, t*HZ);
- }
- 
- static inline __be32 nfs4_check_fh(struct svc_fh *fhp, struct nfs4_ol_stateid *stp)
-@@ -4781,6 +4783,8 @@ static int nfs4_state_start_net(struct net *net)
- 	INIT_LIST_HEAD(&nn->client_lru);
- 	INIT_LIST_HEAD(&nn->close_lru);
- 
-+	INIT_DELAYED_WORK(&nn->laundromat_work, laundromat_main);
-+
- 	return 0;
- 
- err_sessionid:
-@@ -4864,7 +4868,8 @@ nfs4_state_start(void)
- 	ret = nfsd4_create_callback_queue();
- 	if (ret)
- 		goto out_free_laundry;
--	queue_delayed_work(laundry_wq, &laundromat_work, nfsd4_grace * HZ);
-+
-+	queue_delayed_work(laundry_wq, &nn->laundromat_work, nfsd4_grace * HZ);
- 	set_max_delegations();
- 	return 0;
- out_free_laundry:
-@@ -4906,7 +4911,7 @@ nfs4_state_shutdown(void)
- 	struct net *net = &init_net;
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
--	cancel_delayed_work_sync(&laundromat_work);
-+	cancel_delayed_work_sync(&nn->laundromat_work);
- 	destroy_workqueue(laundry_wq);
- 	locks_end_grace(&nn->nfsd4_manager);
- 	nfs4_lock_state();
+Simo.
+
+-- 
+Simo Sorce
+Samba Team GPL Compliance Officer <simo@samba.org>
+Principal Software Engineer at Red Hat, Inc. <simo@redhat.com>
 
