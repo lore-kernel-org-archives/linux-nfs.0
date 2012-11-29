@@ -1,166 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:38251 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754530Ab2KMPp4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 Nov 2012 10:45:56 -0500
-Subject: [PATCH 02/15] nfsd: make nfs4_client network namespace dependent
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, devel@openvz.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, jlayton@redhat.com
-Date: Tue, 13 Nov 2012 18:48:28 +0300
-Message-ID: <20121113154828.12577.80401.stgit@localhost.localdomain>
-In-Reply-To: <20121113154722.12577.57671.stgit@localhost.localdomain>
-References: <20121113154722.12577.57671.stgit@localhost.localdomain>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:56625 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755089Ab2K2VQ2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2012 16:16:28 -0500
+Date: Thu, 29 Nov 2012 21:16:24 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Stef Bon <stefbon@gmail.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>, simo <idra@samba.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-cifs <linux-cifs@vger.kernel.org>
+Subject: Re: Possible to make nfs aware of a inotify watch has been set.
+Message-ID: <20121129211624.GS4939@ZenIV.linux.org.uk>
+References: <CANXojcy9thLBwrENTkOTSSE17L3N17A8XsTmyNqq3oNdhW_Q_w@mail.gmail.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90B329CFD@SACEXCMBX04-PRD.hq.netapp.com>
+ <CANXojcxR9673fRObMLPSScogAN05RSVhPFoni=ENc6YDWq9T7w@mail.gmail.com>
+ <1354202525.4064.1.camel@pico.ipa.ssimo.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90B32AEB7@SACEXCMBX04-PRD.hq.netapp.com>
+ <CANXojcys4wR8N-R3oSjWRWJLsObn0Qf+i41vBUaNnJctdcrKVw@mail.gmail.com>
+ <20121129202037.GQ4939@ZenIV.linux.org.uk>
+ <CANXojcw15RdJdRoZxB3Z59YbOda7vG7RDRegfpoCjG4Bv4AvsQ@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CANXojcw15RdJdRoZxB3Z59YbOda7vG7RDRegfpoCjG4Bv4AvsQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-And use it's net where possible.
+On Thu, Nov 29, 2012 at 09:31:05PM +0100, Stef Bon wrote:
+> 2012/11/29 Al Viro <viro@zeniv.linux.org.uk>:
+> > On Thu, Nov 29, 2012 at 05:39:27PM +0100, Stef Bon wrote:
+> >
+> >> And yes there is no such thing as a killer app, but in my opinion it's
+> >> the user experience.
+> >
+> > Ah, yes...  UX - the killer argument.  "Doing that would make qi flow better"
+> > and any objections are waved away, since the person objecting has no idea
+> > how qi behaves (since it doesn't exist, to start with).  Could we please keep
+> > the intellectual level above the Feng Shui scammers^W^W^WUX theorists usual?
+> 
+> Wow. Like I've said, I do not have a killer app, or anything else
+> which is as obvious like 1+1=2. No, but I give you my opinion. To me,
+> boldly stated, a system which is able to do fs notify events over
+> network filesystems is turning from a dump system into an intelligent
+> one.
+> 
+> With Ubuntu people started Unity, also without a killer app, but just
+> with an opinion, an impression, an idea. And anyone can dislike or
+> like it, it's a succes as far as I can see. What the hell is wrong
+> with suggesting things based upon an idea/impression?
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfsd/nfs4callback.c |    2 +-
- fs/nfsd/nfs4recover.c  |    9 +++------
- fs/nfsd/nfs4state.c    |   15 +++++++++------
- fs/nfsd/state.h        |    1 +
- 4 files changed, 14 insertions(+), 13 deletions(-)
+IOW, it was a true positive for "([Uu]ser experience)|UX" as BS predictor.
+Nice to know...
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 7bb187a..8bbe873 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -663,7 +663,7 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
- 		.to_retries	= 0,
- 	};
- 	struct rpc_create_args args = {
--		.net		= &init_net,
-+		.net		= clp->net,
- 		.address	= (struct sockaddr *) &conn->cb_addr,
- 		.addrsize	= conn->cb_addrlen,
- 		.saddress	= (struct sockaddr *) &conn->cb_saddr,
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index 151921b..83d2669 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -786,8 +786,7 @@ nfsd4_cld_create(struct nfs4_client *clp)
- {
- 	int ret;
- 	struct cld_upcall *cup;
--	/* FIXME: determine net from clp */
--	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 	struct cld_net *cn = nn->cld_net;
- 
- 	/* Don't upcall if it's already stored */
-@@ -824,8 +823,7 @@ nfsd4_cld_remove(struct nfs4_client *clp)
- {
- 	int ret;
- 	struct cld_upcall *cup;
--	/* FIXME: determine net from clp */
--	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 	struct cld_net *cn = nn->cld_net;
- 
- 	/* Don't upcall if it's already removed */
-@@ -862,8 +860,7 @@ nfsd4_cld_check(struct nfs4_client *clp)
- {
- 	int ret;
- 	struct cld_upcall *cup;
--	/* FIXME: determine net from clp */
--	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 	struct cld_net *cn = nn->cld_net;
- 
- 	/* Don't upcall if one was already stored during this grace pd */
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 6a3661b..865a793 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1247,10 +1247,9 @@ same_creds(struct svc_cred *cr1, struct svc_cred *cr2)
- 	return 0 == strcmp(cr1->cr_principal, cr2->cr_principal);
- }
- 
--static void gen_clid(struct nfs4_client *clp)
-+static void gen_clid(struct nfs4_client *clp, struct nfsd_net *nn)
- {
- 	static u32 current_clientid = 1;
--	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
- 
- 	clp->cl_clientid.cl_boot = nn->boot_time;
- 	clp->cl_clientid.cl_id = current_clientid++; 
-@@ -1289,6 +1288,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name, char *recdir,
- 	struct nfs4_client *clp;
- 	struct sockaddr *sa = svc_addr(rqstp);
- 	int ret;
-+	struct net *net = SVC_NET(rqstp);
- 
- 	clp = alloc_client(name);
- 	if (clp == NULL)
-@@ -1321,6 +1321,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name, char *recdir,
- 	rpc_copy_addr((struct sockaddr *) &clp->cl_addr, sa);
- 	gen_confirm(clp);
- 	clp->cl_cb_session = NULL;
-+	clp->net = net;
- 	return clp;
- }
- 
-@@ -1428,7 +1429,7 @@ gen_callback(struct nfs4_client *clp, struct nfsd4_setclientid *se, struct svc_r
- 	else
- 		goto out_err;
- 
--	conn->cb_addrlen = rpc_uaddr2sockaddr(&init_net, se->se_callback_addr_val,
-+	conn->cb_addrlen = rpc_uaddr2sockaddr(clp->net, se->se_callback_addr_val,
- 					    se->se_callback_addr_len,
- 					    (struct sockaddr *)&conn->cb_addr,
- 					    sizeof(conn->cb_addr));
-@@ -1578,6 +1579,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 	nfs4_verifier		verf = exid->verifier;
- 	struct sockaddr		*sa = svc_addr(rqstp);
- 	bool	update = exid->flags & EXCHGID4_FLAG_UPD_CONFIRMED_REC_A;
-+	struct nfsd_net		*nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 
- 	rpc_ntop(sa, addr_str, sizeof(addr_str));
- 	dprintk("%s rqstp=%p exid=%p clname.len=%u clname.data=%p "
-@@ -1667,7 +1669,7 @@ out_new:
- 	}
- 	new->cl_minorversion = 1;
- 
--	gen_clid(new);
-+	gen_clid(new, nn);
- 	add_to_unconfirmed(new, strhashval);
- out_copy:
- 	exid->clientid.cl_boot = new->cl_clientid.cl_boot;
-@@ -2199,7 +2201,8 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	struct nfs4_client	*conf, *unconf, *new;
- 	__be32 			status;
- 	char                    dname[HEXDIR_LEN];
--	
-+	struct nfsd_net		*nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
-+
- 	status = nfs4_make_rec_clidname(dname, &clname);
- 	if (status)
- 		return status;
-@@ -2234,7 +2237,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		/* case 1: probable callback update */
- 		copy_clid(new, conf);
- 	else /* case 4 (new client) or cases 2, 3 (client reboot): */
--		gen_clid(new);
-+		gen_clid(new, nn);
- 	new->cl_minorversion = 0;
- 	gen_callback(new, setclid, rqstp);
- 	add_to_unconfirmed(new, strhashval);
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 8053b57..b064577 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -283,6 +283,7 @@ struct nfs4_client {
- 	unsigned long		cl_cb_slot_busy;
- 	struct rpc_wait_queue	cl_cb_waitq;	/* backchannel callers may */
- 						/* wait here for slots */
-+	struct net		*net;
- };
- 
- static inline void
+Look, you'd been asked to give good reasons for doing some thing; replying with
+"it's My Opinion(tm), piss off if that's not enough reason for you" would at
+least have been honest.  References to UX, as your last reply has confirmed,
+had been basically an obfuscated equivalent of that.
 
+Sorry for being harsh, but I've had it with the GNOME crowd and their ilk
+using just such references to handwave away any questions.
+
+There's nothing wrong with having opinions/impressions/etc.  Everyone got
+their own, etc.  But "I believe so, period" is not a sufficient answer to
+"what makes that a good idea?" and obfuscating it up is even worse.
