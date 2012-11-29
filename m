@@ -1,67 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:65252 "EHLO mx12.netapp.com"
+Received: from fn.samba.org ([216.83.154.106]:49680 "EHLO mail.samba.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754206Ab2KVSnY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Nov 2012 13:43:24 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 00/20] NFSv4.1: Add support for session dynamic slot management
-Date: Wed, 21 Nov 2012 17:42:59 -0500
-Message-Id: <1353537799-60488-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1752947Ab2K2P1v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Nov 2012 10:27:51 -0500
+Message-ID: <1354202525.4064.1.camel@pico.ipa.ssimo.org>
+Subject: Re: Possible to make nfs aware of a inotify watch has been set.
+From: simo <idra@samba.org>
+To: Stef Bon <stefbon@gmail.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-cifs <linux-cifs@vger.kernel.org>
+Date: Thu, 29 Nov 2012 10:22:05 -0500
+In-Reply-To: <CANXojcxR9673fRObMLPSScogAN05RSVhPFoni=ENc6YDWq9T7w@mail.gmail.com>
+References: <CANXojcy9thLBwrENTkOTSSE17L3N17A8XsTmyNqq3oNdhW_Q_w@mail.gmail.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B329CFD@SACEXCMBX04-PRD.hq.netapp.com>
+	 <CANXojcxR9673fRObMLPSScogAN05RSVhPFoni=ENc6YDWq9T7w@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch series adds support for session dynamic slot management
-in accordance with Section 2.10.6.1 of RFC5661.
+On Thu, 2012-11-29 at 15:49 +0100, Stef Bon wrote:
+> 2012/11/29 Myklebust, Trond <Trond.Myklebust@netapp.com>:
+> >> -----Original Message-----
+> >>
+> >> 1. while the filesystems are using credentails or tickets to get access to a
+> >> remote resource, this is a bit difficult for notifyfs.
+> >> Notifyfs bypasses that. Maybe this leads to permissions/abuse I cannot see
+> >> directly.
+> >
+> > Lack of security is a showstopper. There are good reasons why inotify won't allow you to monitor files for which you don't have access permissions.
+> >
+> 
+> Let me explain, I think you not understand fully.
+> 
+> Notifyfs does not allow users/clients to set a watch if there are no
+> read permissions (the object and access for the whole path to it), so
+> there are no security issues there.
+> 
+> What I mean is that any program can contact the remote notifyfs
+> server, and this remote notifyfs server cannot figure out it's a valid
+> request from another notifyfs server, or a program faking that.
+> In the construction I describe it does not check that (yet).
+> 
+> >>
+> >> What do you think, is the latest option possible??
+> >
+> > So what is the killer app for inotify on NFS/CIFS/FUSE? What programs do you need to run on a NFS/CIFS/FUSE client that use inotify and that wouldn't be better off running on the server instead?
+> >
+> 
+> What do you mean with "better off running on the server instead"?
+> There are a lot of programs interested in fs changes, like a simple
+> file manager. I think it's a very nice feature to see changes right
+> away in the view.
+> It's not a killer app, but a think the whole user experience is
+> improving when your system is able to keep a view (like a view in the
+> file manager) up to date.
+> 
+> > IOW: whose problem are you trying to solve?
+> 
+> I think that enabling fs notify on network filesystems like nfs, cifs
+> and fuse is a good thing (see above). On systems like Windows and iOS
+> since long time this works.
 
-By tracking the sr_target_highest_slotid and sr_highest_slotid in the
-server's replies to our SEQUENCE operations, we can figure out when
-it is safe to increase the number of RPC requests that go in parallel
-to the server, and when we should decrease that number.
+CIFS has notification capabilities built in (oplocks), as does NFS
+(leases), is this not sufficient ?
 
-
-Trond Myklebust (20):
-  NFSv4.1: Don't confuse CREATE_SESSION arguments and results
-  NFSv4.1: Adjust CREATE_SESSION arguments when mounting a new
-    filesystem
-  NFSv4.1: We must bump the clientid sequence number after
-    CREATE_SESSION
-  NFSv4.1: nfs4_alloc_slots doesn't need zeroing
-  NFSv4.1: clean up nfs4_recall_slot to use nfs4_alloc_slots
-  NFSv4.1: Shrink struct nfs4_sequence_res by moving sr_renewal_time
-  NFSv4.1: Shrink struct nfs4_sequence_res by moving the session
-    pointer
-  NFSv4.1: Label each entry in the session slot tables with its slot
-    number
-  NFSv4.1: Simplify struct nfs4_sequence_args too
-  NFSv4.1: Simplify slot allocation
-  NFSv4.1: Clean up nfs4_free_slot
-  NFSv4.1: Ensure that the client tracks the server
-    target_highest_slotid
-  NFSv4.1: Reset the sequence number for slots that have been
-    deallocated
-  NFSv4.1: Fix nfs4_callback_recallslot to work with dynamic slot
-    allocation
-  NFSv4.1: Don't confuse target_highest_slotid and max_slots in
-    cb_recall_slot
-  NFSv4.1: Allow the server to recall all but one slot
-  NFSv4.1: Support dynamic resizing of the session slot table
-  NFSv4.1: Allow SEQUENCE to resize the slot table on the fly
-  NFSv4.1: Remove the state manager code to resize the slot table
-  NFSv4.1: CB_RECALL_SLOT must schedule a sequence op after updating
-    targets
-
- fs/nfs/callback.h         |   2 +-
- fs/nfs/callback_proc.c    |  15 +--
- fs/nfs/callback_xdr.c     |   2 +-
- fs/nfs/nfs4_fs.h          |   6 +-
- fs/nfs/nfs4proc.c         | 316 ++++++++++++++++++++++++++++++++--------------
- fs/nfs/nfs4state.c        |  52 +-------
- fs/nfs/nfs4xdr.c          |  37 +++---
- include/linux/nfs_fs_sb.h |  11 +-
- include/linux/nfs_xdr.h   |  12 +-
- 9 files changed, 275 insertions(+), 178 deletions(-)
+Simo.
 
 -- 
-1.7.11.7
+Simo Sorce
+Samba Team GPL Compliance Officer <simo@samba.org>
+Principal Software Engineer at Red Hat, Inc. <simo@redhat.com>
 
