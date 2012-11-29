@@ -1,62 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42842 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:36259 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752517Ab2K2OHq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Nov 2012 09:07:46 -0500
-Date: Thu, 29 Nov 2012 09:07:45 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kks Kbase <kks.kbase@yahoo.in>
-Cc: Linux NFS <linux-nfs@vger.kernel.org>
-Subject: Re: NFS exportfs options
-Message-ID: <20121129140745.GA29524@fieldses.org>
-References: <1353479256.92520.YahooMailNeo@web190605.mail.sg3.yahoo.com>
- <1353481809.32623.YahooMailNeo@web190605.mail.sg3.yahoo.com>
- <1353816433.24972.YahooMailNeo@web190603.mail.sg3.yahoo.com>
- <20121125144816.GA31110@fieldses.org>
- <1353982692.94013.YahooMailNeo@web190603.mail.sg3.yahoo.com>
- <20121127023927.GB18930@fieldses.org>
- <1354001852.79169.YahooMailNeo@web190602.mail.sg3.yahoo.com>
- <20121127142409.GA28131@fieldses.org>
- <1354078956.45522.YahooMailNeo@web190604.mail.sg3.yahoo.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <1354078956.45522.YahooMailNeo@web190604.mail.sg3.yahoo.com>
+	id S1751269Ab2K2Qku (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Nov 2012 11:40:50 -0500
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 1/9] NFSD: Lock state before calling fault injection function
+Date: Thu, 29 Nov 2012 11:40:38 -0500
+Message-Id: <1354207246-32343-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1354207246-32343-1-git-send-email-bjschuma@netapp.com>
+References: <1354207246-32343-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 28, 2012 at 01:02:36PM +0800, Kks Kbase wrote:
-> Sorry I am unable to get the exact information from the man page.
-> 
-> If I use no_root_squash then root only can do anything but other users still can't.
-> 
-> Can you let me know how can I give write permission to other users?
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-See "man chmod", or "info file permissions"; or
+Each function touches state in some way, so getting the lock earlier
+can help simplify code.
 
-	http://www.tuxfiles.org/linuxhelp/filepermissions.html
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfsd/fault_inject.c |  2 ++
+ fs/nfsd/nfs4state.c    | 18 ++----------------
+ 2 files changed, 4 insertions(+), 16 deletions(-)
 
-looks like one possible good starting point (just the first google hit
-for "linux permissions").
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index 0278112..4b385a1 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -51,7 +51,9 @@ static int nfsd_inject_set(void *op_ptr, u64 val)
+ 	else
+ 		printk(KERN_INFO "NFSD Fault Injection: %s (n = %llu)", op->file, val);
+ 
++	nfs4_lock_state();
+ 	op->func(val);
++	nfs4_unlock_state();
+ 	return 0;
+ }
+ 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index b1aa577..8e19c69 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4611,13 +4611,11 @@ void nfsd_forget_clients(u64 num)
+ 	int count = 0;
+ 	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns, nfsd_net_id);
+ 
+-	nfs4_lock_state();
+ 	list_for_each_entry_safe(clp, next, &nn->client_lru, cl_lru) {
+ 		expire_client(clp);
+ 		if (++count == num)
+ 			break;
+ 	}
+-	nfs4_unlock_state();
+ 
+ 	printk(KERN_INFO "NFSD: Forgot %d clients", count);
+ }
+@@ -4653,25 +4651,15 @@ static int nfsd_release_n_owners(u64 num, bool is_open_owner,
+ 
+ void nfsd_forget_locks(u64 num)
+ {
+-	int count;
+ 	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
+-
+-	nfs4_lock_state();
+-	count = nfsd_release_n_owners(num, false, release_lockowner_sop, nn);
+-	nfs4_unlock_state();
+-
++	int count = nfsd_release_n_owners(num, false, release_lockowner_sop, nn);
+ 	printk(KERN_INFO "NFSD: Forgot %d locks", count);
+ }
+ 
+ void nfsd_forget_openowners(u64 num)
+ {
+-	int count;
+ 	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
+-
+-	nfs4_lock_state();
+-	count = nfsd_release_n_owners(num, true, release_openowner_sop, nn);
+-	nfs4_unlock_state();
+-
++	int count = nfsd_release_n_owners(num, true, release_openowner_sop, nn);
+ 	printk(KERN_INFO "NFSD: Forgot %d open owners", count);
+ }
+ 
+@@ -4704,10 +4692,8 @@ void nfsd_forget_delegations(u64 num)
+ 	count = nfsd_process_n_delegations(num, &victims);
+ 	spin_unlock(&recall_lock);
+ 
+-	nfs4_lock_state();
+ 	list_for_each_entry_safe(dp, dnext, &victims, dl_recall_lru)
+ 		unhash_delegation(dp);
+-	nfs4_unlock_state();
+ 
+ 	printk(KERN_INFO "NFSD: Forgot %d delegations", count);
+ }
+-- 
+1.8.0.1
 
-This isn't really an nfs question.
-
---b.
-
-> 
-> 
-> 
-> ----- Original Message -----
-> From: J. Bruce Fields <bfields@fieldses.org>
-> To: Kks Kbase <kks.kbase@yahoo.in>
-> Cc: Linux NFS <linux-nfs@vger.kernel.org>
-> Sent: Tuesday, 27 November 2012 7:54 PM
-> Subject: Re: NFS exportfs options
-> 
-> On Tue, Nov 27, 2012 at 03:37:32PM +0800, Kks Kbase wrote:
-> > I have tried to all_squash but no luck. Even I have tried to access it as root itself which have the same issue,
-> 
-> all_squash won't help, you need to use no_root_squash or write
-> permissions to other than root.  Please read the relevant parts of the
-> export man page carefully.
-> 
-> --b.
