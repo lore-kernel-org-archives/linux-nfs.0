@@ -1,124 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f46.google.com ([209.85.213.46]:34402 "EHLO
-	mail-yh0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932895Ab2KEPWj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Nov 2012 10:22:39 -0500
-Received: by mail-yh0-f46.google.com with SMTP id m54so971985yhm.19
-        for <linux-nfs@vger.kernel.org>; Mon, 05 Nov 2012 07:22:39 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, michael.brantley@deshaw.com,
-        hch@infradead.org, miklos@szeredi.hu, pstaubach@exagrid.com
-Subject: [PATCH v9 10/34] vfs: make rmdir retry on ESTALE errors
-Date: Mon,  5 Nov 2012 10:21:49 -0500
-Message-Id: <1352128933-28526-11-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
-References: <1352128933-28526-1-git-send-email-jlayton@redhat.com>
+Received: from mx2.netapp.com ([216.240.18.37]:36259 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751689Ab2K2Qkv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Nov 2012 11:40:51 -0500
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 2/9] NFSD: Clean up forgetting clients
+Date: Thu, 29 Nov 2012 11:40:39 -0500
+Message-Id: <1354207246-32343-3-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1354207246-32343-1-git-send-email-bjschuma@netapp.com>
+References: <1354207246-32343-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/namei.c | 79 +++++++++++++++++++++++++++++++++-----------------------------
- 1 file changed, 42 insertions(+), 37 deletions(-)
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 1569ccd..0b70e6d 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3344,49 +3344,54 @@ static long do_rmdir(int dfd, const char __user *pathname)
- 	struct filename *name;
- 	struct dentry *dentry;
- 	struct nameidata nd;
-+	unsigned int try = 0;
+I added in a generic for-each loop that takes a pass over the client_lru
+list for the current net namespace and calls some function.  The next few
+patches will update other operations to use this function as well.  A value
+of 0 still means "forget everything that is found".
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfsd/netns.h     |  3 +++
+ fs/nfsd/nfs4state.c | 25 ++++++++++++++++++++-----
+ 2 files changed, 23 insertions(+), 5 deletions(-)
+
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index 2c4b2e2..964b554 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -92,5 +92,8 @@ struct nfsd_net {
+ 	time_t nfsd4_grace;
+ };
  
--	name = user_path_parent(dfd, pathname, &nd, 0);
--	if (IS_ERR(name))
--		return PTR_ERR(name);
--
--	switch(nd.last_type) {
--	case LAST_DOTDOT:
--		error = -ENOTEMPTY;
--		goto exit1;
--	case LAST_DOT:
--		error = -EINVAL;
--		goto exit1;
--	case LAST_ROOT:
--		error = -EBUSY;
--		goto exit1;
--	}
-+	do {
-+		name = user_path_parent(dfd, pathname, &nd, try);
-+		if (IS_ERR(name))
-+			return PTR_ERR(name);
++/* Simple check to find out if a given net was properly initialized */
++#define nfsd_netns_ready(nn) ((nn)->sessionid_hashtbl)
 +
-+		switch (nd.last_type) {
-+		case LAST_DOTDOT:
-+			error = -ENOTEMPTY;
-+			goto exit1;
-+		case LAST_DOT:
-+			error = -EINVAL;
-+			goto exit1;
-+		case LAST_ROOT:
-+			error = -EBUSY;
-+			goto exit1;
-+		}
+ extern int nfsd_net_id;
+ #endif /* __NFSD_NETNS_H__ */
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 8e19c69..2478c89 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4605,19 +4605,34 @@ nfs4_check_open_reclaim(clientid_t *clid, bool sessions, struct nfsd_net *nn)
  
--	nd.flags &= ~LOOKUP_PARENT;
--	error = mnt_want_write(nd.path.mnt);
--	if (error)
--		goto exit1;
-+		nd.flags &= ~LOOKUP_PARENT;
-+		error = mnt_want_write(nd.path.mnt);
-+		if (error)
-+			goto exit1;
+ #ifdef CONFIG_NFSD_FAULT_INJECTION
  
--	mutex_lock_nested(&nd.path.dentry->d_inode->i_mutex, I_MUTEX_PARENT);
--	dentry = lookup_hash(&nd);
--	error = PTR_ERR(dentry);
--	if (IS_ERR(dentry))
--		goto exit2;
--	if (!dentry->d_inode) {
--		error = -ENOENT;
--		goto exit3;
--	}
--	error = security_path_rmdir(&nd.path, dentry);
--	if (error)
--		goto exit3;
--	error = vfs_rmdir(nd.path.dentry->d_inode, dentry);
-+		mutex_lock_nested(&nd.path.dentry->d_inode->i_mutex,
-+					I_MUTEX_PARENT);
-+		dentry = lookup_hash(&nd);
-+		if (IS_ERR(dentry)) {
-+			error = PTR_ERR(dentry);
-+			goto exit2;
-+		}
-+		if (!dentry->d_inode) {
-+			error = -ENOENT;
-+			goto exit3;
-+		}
-+		error = security_path_rmdir(&nd.path, dentry);
-+		if (error)
-+			goto exit3;
-+		error = vfs_rmdir(nd.path.dentry->d_inode, dentry);
- exit3:
--	dput(dentry);
-+		dput(dentry);
- exit2:
--	mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
--	mnt_drop_write(nd.path.mnt);
-+		mutex_unlock(&nd.path.dentry->d_inode->i_mutex);
-+		mnt_drop_write(nd.path.mnt);
- exit1:
--	path_put(&nd.path);
--	putname(name);
-+		path_put(&nd.path);
-+		putname(name);
-+	} while (retry_estale(error, try++));
- 	return error;
+-void nfsd_forget_clients(u64 num)
++u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
++{
++	expire_client(clp);
++	return 1;
++}
++
++u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
+ {
+ 	struct nfs4_client *clp, *next;
+-	int count = 0;
++	u64 count = 0;
+ 	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns, nfsd_net_id);
+ 
++	if (!nfsd_netns_ready(nn))
++		return 0;
++
+ 	list_for_each_entry_safe(clp, next, &nn->client_lru, cl_lru) {
+-		expire_client(clp);
+-		if (++count == num)
++		count += func(clp, max - count);
++		if ((max != 0) && (count >= max))
+ 			break;
+ 	}
+ 
+-	printk(KERN_INFO "NFSD: Forgot %d clients", count);
++	return count;
++}
++
++void nfsd_forget_clients(u64 num)
++{
++	u64 count = nfsd_for_n_state(num, nfsd_forget_client);
++	printk(KERN_INFO "NFSD: Forgot %llu clients", count);
  }
  
+ static void release_lockowner_sop(struct nfs4_stateowner *sop)
 -- 
-1.7.11.7
+1.8.0.1
 
