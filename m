@@ -1,91 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from esgaroth.petrovitsch.at ([78.47.184.11]:4344 "EHLO
-	esgaroth.petrovitsch.priv.at" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1758399Ab2K3OUK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Nov 2012 09:20:10 -0500
-Subject: Re: Possible to make nfs aware of a inotify watch has been set.
-From: Bernd Petrovitsch <bernd@petrovitsch.priv.at>
-To: Stef Bon <stefbon@gmail.com>
-Cc: Steve French <smfrench@gmail.com>,
+Received: from mx1.redhat.com ([209.132.183.28]:19523 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753766Ab2K2MNV convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2012 07:13:21 -0500
+Date: Thu, 29 Nov 2012 07:13:09 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-cifs <linux-cifs@vger.kernel.org>
-Date: Fri, 30 Nov 2012 14:37:20 +0100
-In-Reply-To: <CANXojcwRy5cBz=E1S567J-1BFC4AiamLr=35bKrX0Zq-Me2b3w@mail.gmail.com>
-References: <CANXojcy9thLBwrENTkOTSSE17L3N17A8XsTmyNqq3oNdhW_Q_w@mail.gmail.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B329CFD@SACEXCMBX04-PRD.hq.netapp.com>
-	 <CANXojcxR9673fRObMLPSScogAN05RSVhPFoni=ENc6YDWq9T7w@mail.gmail.com>
-	 <1354202525.4064.1.camel@pico.ipa.ssimo.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B32AEB7@SACEXCMBX04-PRD.hq.netapp.com>
-	 <CANXojcys4wR8N-R3oSjWRWJLsObn0Qf+i41vBUaNnJctdcrKVw@mail.gmail.com>
-	 <20121129202037.GQ4939@ZenIV.linux.org.uk>
-	 <CANXojcw15RdJdRoZxB3Z59YbOda7vG7RDRegfpoCjG4Bv4AvsQ@mail.gmail.com>
-	 <20121129211624.GS4939@ZenIV.linux.org.uk>
-	 <CANXojcxfrO+Ar4JSd0NiDJh7+_gg6s6cq5=UA7Pu1h4DRZ8Vkg@mail.gmail.com>
-	 <CAH2r5muw1U2XNMZsCq0gApuTMyj+6SN6S9KsUq52YM8CyZEG4A@mail.gmail.com>
-	 <CANXojcwRy5cBz=E1S567J-1BFC4AiamLr=35bKrX0Zq-Me2b3w@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1354282642.22426.7.camel@thorin>
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
+Subject: Re: NFSd in container - it works
+Message-ID: <20121129071309.6550614e@tlielax.poochiereds.net>
+In-Reply-To: <50B74CCB.9080000@parallels.com>
+References: <50B64628.4070007@parallels.com>
+	<20121128200126.GA17875@fieldses.org>
+	<20121128152813.2b4c388d@tlielax.poochiereds.net>
+	<50B74CCB.9080000@parallels.com>
 Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi!
+On Thu, 29 Nov 2012 15:53:47 +0400
+Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
 
-Since you introduced the "user experience" ignoring the fact that each
-user is quite different - especially if it comes to the "Average Joes
-using Ubuntu vs techies" department -, you should be prepared to eat
-your own dog food:
-
-On Fre, 2012-11-30 at 08:10 +0100, Stef Bon wrote:
-[...]
-> At this moment the different events look like:
-
-Perhaps you should have used hexadecimal notation so that it is easier
-for the usual/average users of source code to see the bits more easily.
-In short: Please improve the user experience. Thank you.
-
-> #define NOTIFYFS_FSEVENT_META_ATTRIB_NOTSET                     2
-> #define NOTIFYFS_FSEVENT_META_ATTRIB_MODE                       4
-> #define NOTIFYFS_FSEVENT_META_ATTRIB_OWNER                      8
-> #define NOTIFYFS_FSEVENT_META_ATTRIB_GROUP                      16
-> #define NOTIFYFS_FSEVENT_META_ATTRIB                            28
-And that number seems pretty random - not a power of 2 or a bit mask or
-the sum of the above.
-
-> #define NOTIFYFS_FSEVENT_META_XATTR_NOTSET                      32
-> #define NOTIFYFS_FSEVENT_META_XATTR_CREATE                      64
-> #define NOTIFYFS_FSEVENT_META_XATTR_MODIFY                      128
-> #define NOTIFYFS_FSEVENT_META_XATTR_DELETE                      256
-> #define NOTIFYFS_FSEVENT_META_XATTR                             448
-And that number seems pretty random too - not a power of 2 or a bit mask
-or the sum of the above.
-
-> #define NOTIFYFS_FSEVENT_FILE_NOTSET                            512
-> #define NOTIFYFS_FSEVENT_FILE_MODIFIED                          1024
-> #define NOTIFYFS_FSEVENT_FILE_SIZE                              2048
-> #define NOTIFYFS_FSEVENT_FILE_OPEN                              4096
-> #define NOTIFYFS_FSEVENT_FILE_READ                              8192
-> #define NOTIFYFS_FSEVENT_FILE_CLOSE_WRITE                       16384
-> #define NOTIFYFS_FSEVENT_FILE_CLOSE_NOWRITE                     32768
-
-> #define NOTIFYFS_FSEVENT_MOVE_NOTSET                            65536
-
-And from here own I'm too lazy to calculate (or even guess) if these are
-actually powers of 2 or not.
-> #define NOTIFYFS_FSEVENT_MOVE_CREATED                           131072
-> #define NOTIFYFS_FSEVENT_MOVE_MOVED                             262144
-> #define NOTIFYFS_FSEVENT_MOVE_MOVED_FROM                        524288
-> #define NOTIFYFS_FSEVENT_MOVE_MOVED_TO                          1048576
-> #define NOTIFYFS_FSEVENT_MOVE_DELETED                           2097152
+> 29.11.2012 00:28, Jeff Layton пишет:
+> > On Wed, 28 Nov 2012 15:01:26 -0500
+> > "bfields@fieldses.org" <bfields@fieldses.org> wrote:
+> >
+> >>> 3) Holding net by tracker looks redundant. What was the reason for this?
+> >>
+> >> I don't understand, what's tracker?
+> >
+> > I assume he means the clientid tracker. That was necessary for the
+> > nfsdcld upcall because it used rpc_pipefs files, and those were
+> > net-namespacified. Once we deprecate that in 3.10, I don't think we'll
+> > need to worry about the net namespace in the clientid tracker.
+> >
 > 
-> #define NOTIFYFS_FSEVENT_FS_NOTSET                              4194304
-> #define NOTIFYFS_FSEVENT_FS_MOUNT                               8388608
-> #define NOTIFYFS_FSEVENT_FS_UNMOUNT                             16777216
-> #define NOTIFYFS_FSEVENT_FS_NLINKS                              33554432
+> Sorry, I don't understand. Rpc_pipefs superblock already holds network namespace.
+> 
 
-MfG,
-	Bernd
+...and how do you know which rpc_pipefs superblock you're dealing with?
+In any case, I'm ok with ripping out references to the net namespace
+there if you think it's valid.
+
+> > We probably *will* need to concern ourselves with the mnt namespace
+> > there though since each container will presumably have its own clientid
+> > database...
+> 
+> Since NFSd server in network namespace based, it means, that we can create one server for more than one mount namespace.
+> And clietid tracker holds files opened. Thus holds mount.
+> Mount namespace itself doesn't look that important to me.
+> Or I'm wrong?
+> 
+
+I confess I don't understand the design well enough to reasonably
+comment here...
+
+Both the new clientid tracker and the legacy one involve storing data
+on a local filesystem somewhere. In the case of the new tracker, we
+upcall using call_usermodehelper to spawn a process to handle access to
+the on disk database. In the legacy tracker, it's done directly by the
+kernel using vfs calls.
+
+Presumably, you will have multiple containers serving NFS, so you'll
+have multiple sets of client id data being stored. You'll need some
+mechanism to ensure that the usermodehelper is spawned within the
+correct container or that the legacy tracker accesses the files in the
+correct container.
+
+My assumption there was that you'd need to ensure that it's using the
+right mount namespace in order to do that...
+
 -- 
-Bernd Petrovitsch                  Email : bernd@petrovitsch.priv.at
-                     LUGA : http://www.luga.at
-
+Jeff Layton <jlayton@redhat.com>
