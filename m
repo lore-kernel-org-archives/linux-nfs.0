@@ -1,66 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:21925 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:10246 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756123Ab2K0QoC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Nov 2012 11:44:02 -0500
-Message-ID: <50B4EDCF.3000704@RedHat.com>
-Date: Tue, 27 Nov 2012 11:43:59 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1752464Ab2K2RLY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Nov 2012 12:11:24 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Stef Bon <stefbon@gmail.com>
+CC: simo <idra@samba.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-cifs <linux-cifs@vger.kernel.org>
+Subject: Re: Possible to make nfs aware of a inotify watch has been set.
+Date: Thu, 29 Nov 2012 17:11:22 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90B32B2A0@SACEXCMBX04-PRD.hq.netapp.com>
+References: <CANXojcy9thLBwrENTkOTSSE17L3N17A8XsTmyNqq3oNdhW_Q_w@mail.gmail.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B329CFD@SACEXCMBX04-PRD.hq.netapp.com>
+	 <CANXojcxR9673fRObMLPSScogAN05RSVhPFoni=ENc6YDWq9T7w@mail.gmail.com>
+	 <1354202525.4064.1.camel@pico.ipa.ssimo.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B32AEB7@SACEXCMBX04-PRD.hq.netapp.com>
+	 <CANXojcys4wR8N-R3oSjWRWJLsObn0Qf+i41vBUaNnJctdcrKVw@mail.gmail.com>
+In-Reply-To: <CANXojcys4wR8N-R3oSjWRWJLsObn0Qf+i41vBUaNnJctdcrKVw@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Bruce Fields <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] gssd: Fix bugs in process_krb5_upcall
-References: <1353969081-17842-1-git-send-email-Trond.Myklebust@netapp.com> <4FA345DA4F4AE44899BD2B03EEEC2FA90B309AAD@sacexcmbx05-prd.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90B309AAD@sacexcmbx05-prd.hq.netapp.com>
-Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 27/11/12 11:05, Myklebust, Trond wrote:
->> -----Original Message-----
->> From: Trond Myklebust [mailto:Trond.Myklebust@netapp.com]
->> Sent: Monday, November 26, 2012 5:31 PM
->> To: Steve Dickson
->> Cc: Bruce Fields; linux-nfs@vger.kernel.org
->> Subject: [PATCH 1/2] gssd: Fix bugs in process_krb5_upcall
->>
->> The 'tgtname' parameter is the _server_ name, not the service name.
->>
->> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
->> ---
->>  utils/gssd/gssd_proc.c | 6 ++----
->>  1 file changed, 2 insertions(+), 4 deletions(-)
->>
->> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c index
->> ec251fa..b79e872 100644
->> --- a/utils/gssd/gssd_proc.c
->> +++ b/utils/gssd/gssd_proc.c
->> @@ -963,10 +963,8 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid,
->> int fd, char *tgtname,
->>  	printerr(1, "handling krb5 upcall (%s)\n", clp->dirname);
->>
->>  	if (tgtname) {
->> -		if (clp->servicename) {
->> -			free(clp->servicename);
->> -			clp->servicename = strdup(tgtname);
->> -		}
->> +		free(clp->servername);
->> +		clp->servername = strdup(tgtname);
->>  	}
->>  	token.length = 0;
->>  	token.value = NULL;
->> --
-> 
-> Sigh... Actually, this isn't right either. The log comment for commit 8b1c7bf5b624c9bc91b41ae577b9fc5c21641705 (rpc: add target field to new upcall) on the Linux client does indeed talk about who we want to authenticate to, but the choice of 'clnt->cl_principal' will actually give us our client hostname.
-> 
-> It turns out that nfs@"client hostname "is indeed the correct machine cred name when we're acting as the client, but when doing _callbacks_, the server has to authenticate using the same principal used by the client in the SETCLIENTID call (See Section 3.4, RFC3530). i.e. the nfs@hostname used does in fact include the NFS client's hostname (not the server's)!
-> 
-> So while PATCH 2/2 is still good, this patch appears to be incorrect and should be dropped for now.
-> 
-Duly noted... 
-
-steved.
-  
+T24gVGh1LCAyMDEyLTExLTI5IGF0IDE3OjM5ICswMTAwLCBTdGVmIEJvbiB3cm90ZToNCj4gMjAx
+Mi8xMS8yOSBNeWtsZWJ1c3QsIFRyb25kIDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT46DQo+
+ID4gT24gVGh1LCAyMDEyLTExLTI5IGF0IDEwOjIyIC0wNTAwLCBzaW1vIHdyb3RlOg0KPiA+PiBP
+biBUaHUsIDIwMTItMTEtMjkgYXQgMTU6NDkgKzAxMDAsIFN0ZWYgQm9uIHdyb3RlOg0KPiA+PiA+
+IDIwMTIvMTEvMjkgTXlrbGVidXN0LCBUcm9uZCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+
+Og0KPiA+PiA+ID4+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+ID4+ID4gPj4NCj4gPiBO
+RlN2NC4xIGFjdHVhbGx5IGhhcyBkaXJlY3Rvcnkgbm90aWZpY2F0aW9ucyB3aGljaCBkdXBsaWNh
+dGUgbW9zdCBvZiB0aGUNCj4gPiBmdW5jdGlvbmFsaXR5IG9mIGRub3RpZnkuIFRoZSBxdWVzdGlv
+biBJJ20gYXNraW5nIGlzICJXaHkgc2hvdWxkIHdlIGRvDQo+ID4gaXQ/Iiwgbm90ICJjYW4gd2Ug
+ZG8gaXQ/Ii4NCj4gPg0KPiA+IEFuc3dlcnMgbGlrZSAid2VsbCBXaW5kb3dzIGFuZCBpT1MgZG8g
+aXQiIGFyZW4ndCBoZWxwZnVsIHVubGVzcyB0aGV5DQo+ID4gaW5jbHVkZSBhIGRlc2NyaXB0aW9u
+IG9mIHdoYXQgV2luZG93cyBhbmQgaU9TIGFwcHMgdXNlIGl0IGZvciB0aGF0IHdlDQo+ID4gY2Fu
+J3QgYWxyZWFkeSBkbyBvbiBMaW51eC4NCj4gPiBJZiB0aGUgb25seSBhcHBsaWNhdGlvbiBpcyBi
+ZWFnbGUsIHRoZW4gTGludXggaGFzIHRoaXMgcmVhbGx5IGhlbHBmdWwNCj4gPiB1dGlsaXR5IGNh
+bGxlZCAic3NoIiwgd2hpY2ggYWxsb3dzIHlvdSB0byBhdm9pZCB3YXN0aW5nIGEgbG9hZCBvZg0K
+PiA+IG5ldHdvcmsgYmFuZHdpZHRoLi4uDQo+IA0KPiBObywgc3VyZSwgeW91IHNob3VsZCBub3Qg
+ZG8gYW55dGhpbmcgYmVjYXVzZSBvdGhlcnMgZG8gaXQuIEJ1dCBvbiB0aGUNCj4gb3RoZXIgaGFu
+ZCwgaWYgb3RoZXJzIGRvIGl0LCB3aHkgZG9uJ3QgeW91PyBCZXR0ZXIgY29weSBhIGdvb2QgaWRl
+YQ0KPiB0aGFuIGJlIHN0dWJib3JuIGZvciBldmVyLg0KDQpUaGUgaWRlYSB0aGF0ICJpZiB3ZSBi
+dWlsZCBhIGJyaWRnZSwgdGhleSB3aWxsIGNvbWUgdG8gdXMiIGlzIHdoYXQgZ2F2ZQ0KcmlzZSB0
+byBkbm90aWZ5LCB0aGVuIGlub3RpZnkgKG5vYm9keSBjYW1lLCBzbyBsZXQncyBidWlsZCBhIGJp
+Z2dlcg0KYnJpZGdlKSBhbmQgZnNub3RpZnkgKG1ha2UgaXQgYSB0b2xsIGJyaWRnZSkuIE5vYm9k
+eSBpcyB1c2luZyB0aG9zZQ0KaW50ZXJmYWNlcyBtdWNoIG9uIGxvY2FsIGZpbGVzeXN0ZW1zLCBz
+byB3aHkgaXMgYWRkaW5nIGl0IHRvIE5GUyBhbmQNCkNJRlMgZ29pbmcgdG8gYmUgc3VjaCBhIGdh
+bWUgY2hhbmdlcj8NCg0KPiBBbmQgeWVzIHRoZXJlIGlzIG5vIHN1Y2ggdGhpbmcgYXMgYSBraWxs
+ZXIgYXBwLCBidXQgaW4gbXkgb3BpbmlvbiBpdCdzDQo+IHRoZSB1c2VyIGV4cGVyaWVuY2UuIEl0
+J3Mgc28gbXVjaCBiZXR0ZXIgd2hlbiB5b3VyIHN5c3RlbSBrZWVwcyB0cmFjaw0KPiBvbiBzaGFy
+ZWQgbmV0d29yayByZXNvdXJjZXMuDQoNCldoYXQgZG9lcyBpdCBlbmFibGUgdXMgdG8gZG8gdGhh
+dCB3ZSBjYW4ndCBhbHJlYWR5IGRvPyBUaGlzIGlzIHByZWNpc2VseQ0KdGhlIHF1ZXN0aW9uIHRo
+YXQgSSBhc2tlZCB5b3UgaW4gdGhlIHByZXZpb3VzIGVtYWlsLg0KDQotLSANClRyb25kIE15a2xl
+YnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVi
+dXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
