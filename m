@@ -1,59 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:33671 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752489Ab2KUAEJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Nov 2012 19:04:09 -0500
-Message-ID: <50AC1A74.7080105@davequigley.com>
-Date: Tue, 20 Nov 2012 19:04:04 -0500
-From: Dave Quigley <dpquigl@davequigley.com>
+Received: from mx2.netapp.com ([216.240.18.37]:33940 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755163Ab2K2VJ4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Nov 2012 16:09:56 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: simo <idra@samba.org>
+CC: Stef Bon <stefbon@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-cifs <linux-cifs@vger.kernel.org>
+Subject: Re: Possible to make nfs aware of a inotify watch has been set.
+Date: Thu, 29 Nov 2012 21:09:54 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90B32D9D4@SACEXCMBX04-PRD.hq.netapp.com>
+References: <CANXojcy9thLBwrENTkOTSSE17L3N17A8XsTmyNqq3oNdhW_Q_w@mail.gmail.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B329CFD@SACEXCMBX04-PRD.hq.netapp.com>
+	 <CANXojcxR9673fRObMLPSScogAN05RSVhPFoni=ENc6YDWq9T7w@mail.gmail.com>
+	 <1354202525.4064.1.camel@pico.ipa.ssimo.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B32AEB7@SACEXCMBX04-PRD.hq.netapp.com>
+	 <CANXojcys4wR8N-R3oSjWRWJLsObn0Qf+i41vBUaNnJctdcrKVw@mail.gmail.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B32B2A0@SACEXCMBX04-PRD.hq.netapp.com>
+	 <1354219557.4064.7.camel@pico.ipa.ssimo.org>
+In-Reply-To: <1354219557.4064.7.camel@pico.ipa.ssimo.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Casey Schaufler <casey@schaufler-ca.com>
-CC: bfields@fieldses.org, trond.myklebust@netapp.com, sds@tycho.nsa.gov,
-        linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
-        linux-security-module@vger.kernel.org
-Subject: Re: Labeled NFS [v5]
-References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com> <50ABF1A5.2010406@schaufler-ca.com>
-In-Reply-To: <50ABF1A5.2010406@schaufler-ca.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/20/2012 4:09 PM, Casey Schaufler wrote:
-> On 11/11/2012 10:15 PM, David Quigley wrote:
->> The NFSv4 working group has finally accepted Labeled NFS as part of the NFSv4.2
->> specification and it has been decided that a reposting of the Labeled NFS code
->> for inclusion into mainline was a good idea. The patches have been rebased onto
->> v3.7-rc2 and have been tested against the SELinux testsuite with the only
->> failures being for features not supported by NFS.
->
-> I'm trying to get the user space tools built so that I can
-> do Smack testing. The instructions on selinuxproject.org
-> seen out of date with regard to the packages required to
-> build the NFS tools. I have failed to build on Fedora 17
-> and Ubuntu 12.04. Any pointers beyond what's on the wiki?
->
-> Thank you.
->
->
->   --
-> This message was distributed to subscribers of the selinux mailing list.
-> If you no longer wish to subscribe, send mail to majordomo@tycho.nsa.gov with
-> the words "unsubscribe selinux" without quotes as the message.
->
->
-
-There are a bunch of libs that need to be installed for it to compile 
-properly. Unfortunately there are new dependencies which have been added 
-since I updated the wiki last. I unfortunately don't remember what they 
-are. What I did to build it last time though was to apply the one patch 
-onto the latest tag from the nfs-utils tree. Unfortunately I don't have 
-a clean vm on hand at the moment so I can't manually go through and list 
-all the packages for you. A heavy handed approach that should still work 
-is that I can give you my rpm list from my VM and then you can just make 
-sure you have all the devel packages installed. Another option would be 
-to grab the nfs-utils srpm for fedora 17 and just add the patch into the 
-spec file. That would work too and tell you the build dependencies you 
-need. I could also just try to make that for you and put the RPM up but 
-that wouldn't be for a few days at the earliest.
-
-Dave
+T24gVGh1LCAyMDEyLTExLTI5IGF0IDE1OjA1IC0wNTAwLCBzaW1vIHdyb3RlOg0KPiBPbiBUaHUs
+IDIwMTItMTEtMjkgYXQgMTc6MTEgKzAwMDAsIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4g
+VGhlIGlkZWEgdGhhdCAiaWYgd2UgYnVpbGQgYSBicmlkZ2UsIHRoZXkgd2lsbCBjb21lIHRvIHVz
+IiBpcyB3aGF0DQo+ID4gZ2F2ZQ0KPiA+IHJpc2UgdG8gZG5vdGlmeSwgdGhlbiBpbm90aWZ5IChu
+b2JvZHkgY2FtZSwgc28gbGV0J3MgYnVpbGQgYSBiaWdnZXINCj4gPiBicmlkZ2UpIGFuZCBmc25v
+dGlmeSAobWFrZSBpdCBhIHRvbGwgYnJpZGdlKS4gTm9ib2R5IGlzIHVzaW5nIHRob3NlDQo+ID4g
+aW50ZXJmYWNlcyBtdWNoIG9uIGxvY2FsIGZpbGVzeXN0ZW1zLCBzbyB3aHkgaXMgYWRkaW5nIGl0
+IHRvIE5GUyBhbmQNCj4gPiBDSUZTIGdvaW5nIHRvIGJlIHN1Y2ggYSBnYW1lIGNoYW5nZXI/DQo+
+IA0KPiBTb3JyeSBUcm9uZCwNCj4gYnV0IHRoaXMgaXMgc2ltcGx5IG5vdCB0cnVlLg0KPiANCj4g
+aW5vdGlmeSBpcyBhIGtleSBmZWF0dXJlIGF0IGxlYXN0IGluIHNvbWUgcGFja2FnZXMgSSBrbm93
+LCBhbmQgbWFrZXMNCj4gc29tZSB0aGluZ3MgKmEgbG90KiBlYXNpZXIuDQo+IA0KPiBPZiBjb3Vy
+c2UgdGhpcyBhcmUgbGVzcyB2aXNpYmxlIGZlYXR1cmVzLCB0aGF0IGFyZSBlYXN5IHRvIG92ZXJs
+b29rLCBidXQNCj4gdGhleSBhcmUgbm90IHVudXNlZCBmb3Igc3VyZS4NCg0KU28gd2h5IGlzIGl0
+IHNvIGRpZmZpY3VsdCBmb3IgYW55b25lIGluIHRoaXMgdGhyZWFkIHRvIG5hbWUgdGhlc2Uga2ls
+bGVyDQphcHBsaWNhdGlvbnMgdGhhdCB3b3VsZCBiZW5lZml0IGZyb20gTkZTK0NJRlMgc3VwcG9y
+dD8gSSBrZWVwIGFza2luZywNCmFuZCBhbGwgSSBnZXQgaXMgd2lzaHktd2FzaHkgYW5kIGhhbmQt
+d2F2eSBhbnN3ZXJzLg0KDQpXaXRob3V0IHVzZSBjYXNlcywgdGhlcmUgaXMgbm90aGluZyB0byBk
+aXNjdXNzIG9uIHRoZSBpbXBsZW1lbnRhdGlvbg0KZnJvbnQuDQoNCi0tIA0KVHJvbmQgTXlrbGVi
+dXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1
+c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
