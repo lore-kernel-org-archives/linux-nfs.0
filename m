@@ -1,236 +1,139 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:48876 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752097Ab2KLO7f (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Nov 2012 09:59:35 -0500
-Message-ID: <50A10D4A.2030001@davequigley.com>
-Date: Mon, 12 Nov 2012 09:52:58 -0500
-From: Dave Quigley <dpquigl@davequigley.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: trond.myklebust@netapp.com, sds@tycho.nsa.gov, linux-nfs@vger.kernel.org,
-        selinux@tycho.nsa.gov, linux-security-module@vger.kernel.org,
-        "Matthew N. Dodd" <Matthew.Dodd@sparta.com>,
-        Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>,
-        Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>,
-        Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
-Subject: Re: [PATCH 01/13] Security: Add hook to calculate context based on
- a negative dentry.
-References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com> <1352700947-3915-2-git-send-email-dpquigl@davequigley.com> <20121112121356.GC30713@fieldses.org>
-In-Reply-To: <20121112121356.GC30713@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx2.netapp.com ([216.240.18.37]:59109 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751734Ab2K2Qk6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Nov 2012 11:40:58 -0500
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 9/9] NFSD: Forget state for a specific client
+Date: Thu, 29 Nov 2012 11:40:46 -0500
+Message-Id: <1354207246-32343-10-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1354207246-32343-1-git-send-email-bjschuma@netapp.com>
+References: <1354207246-32343-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/12/2012 7:13 AM, J. Bruce Fields wrote:
-> On Mon, Nov 12, 2012 at 01:15:35AM -0500, David Quigley wrote:
->> From: David Quigley <dpquigl@davequigley.com>
->>
->> There is a time where we need to calculate a context without the
->> inode having been created yet. To do this we take the negative dentry and
->> calculate a context based on the process and the parent directory contexts.
->>
->> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
->> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
->> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
->> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
->> Signed-off-by: David Quigley <dpquigl@davequigley.com>
->> ---
->>   include/linux/security.h | 27 +++++++++++++++++++++++++++
->>   security/capability.c    |  8 ++++++++
->>   security/security.c      | 10 ++++++++++
->>   security/selinux/hooks.c | 35 +++++++++++++++++++++++++++++++++++
->>   4 files changed, 80 insertions(+)
->>
->> diff --git a/include/linux/security.h b/include/linux/security.h
->> index 05e88bd..c9f5eec 100644
->> --- a/include/linux/security.h
->> +++ b/include/linux/security.h
->> @@ -26,6 +26,7 @@
->>   #include <linux/capability.h>
->>   #include <linux/slab.h>
->>   #include <linux/err.h>
->> +#include <linux/string.h>
->>
->>   struct linux_binprm;
->>   struct cred;
->> @@ -306,6 +307,15 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
->>    *	Parse a string of security data filling in the opts structure
->>    *	@options string containing all mount options known by the LSM
->>    *	@opts binary data structure usable by the LSM
->> + * @dentry_init_security:
->> + *	Compute a context for a dentry as the inode is not yet available
->> + *	since NFSv4 has no label backed by an EA anyway.
->
-> I don't understand this comment.  Why exactly is NFSv4 the first user
-> that needs this?
->
-> --b.
->
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Normally the calculation of a label for an inode is based on the inode 
-and the parent directory. We unfortunately don't have all of that 
-information available in NFSv4 where we need it so instead we base the 
-calculation off of the dentry instead. That is the best I can remember 
-for why we do it. Unfortunately that decision was made so long ago its 
-hard to remember the fine details.
+Write the client's ip address to any state file and all appropriate
+state for that client will be forgotten.
 
->> + *	@dentry dentry to use in calculating the context.
->> + *	@mode mode used to determine resource type.
->> + *	@name name of the last path component used to create file
->> + *	@ctx pointer to place the pointer to the resulting context in.
->> + *	@ctxlen point to place the length of the resulting context.
->> + *
->>    *
->>    * Security hooks for inode operations.
->>    *
->> @@ -1421,6 +1431,10 @@ struct security_operations {
->>   	void (*sb_clone_mnt_opts) (const struct super_block *oldsb,
->>   				   struct super_block *newsb);
->>   	int (*sb_parse_opts_str) (char *options, struct security_mnt_opts *opts);
->> +	int (*dentry_init_security) (struct dentry *dentry, int mode,
->> +					struct qstr *name, void **ctx,
->> +					u32 *ctxlen);
->> +
->>
->>   #ifdef CONFIG_SECURITY_PATH
->>   	int (*path_unlink) (struct path *dir, struct dentry *dentry);
->> @@ -1702,6 +1716,9 @@ int security_sb_set_mnt_opts(struct super_block *sb, struct security_mnt_opts *o
->>   void security_sb_clone_mnt_opts(const struct super_block *oldsb,
->>   				struct super_block *newsb);
->>   int security_sb_parse_opts_str(char *options, struct security_mnt_opts *opts);
->> +int security_dentry_init_security(struct dentry *dentry, int mode,
->> +					struct qstr *name, void **ctx,
->> +					u32 *ctxlen);
->>
->>   int security_inode_alloc(struct inode *inode);
->>   void security_inode_free(struct inode *inode);
->> @@ -2005,6 +2022,16 @@ static inline int security_inode_alloc(struct inode *inode)
->>   static inline void security_inode_free(struct inode *inode)
->>   { }
->>
->> +static inline int security_dentry_init_security(struct dentry *dentry,
->> +						 int mode,
->> +						 struct qstr *name,
->> +						 void **ctx,
->> +						 u32 *ctxlen)
->> +{
->> +	return -EOPNOTSUPP;
->> +}
->> +
->> +
->>   static inline int security_inode_init_security(struct inode *inode,
->>   						struct inode *dir,
->>   						const struct qstr *qstr,
->> diff --git a/security/capability.c b/security/capability.c
->> index b14a30c..f1eb284 100644
->> --- a/security/capability.c
->> +++ b/security/capability.c
->> @@ -108,6 +108,13 @@ static int cap_sb_parse_opts_str(char *options, struct security_mnt_opts *opts)
->>   	return 0;
->>   }
->>
->> +static int cap_dentry_init_security(struct dentry *dentry, int mode,
->> +					struct qstr *name, void **ctx,
->> +					u32 *ctxlen)
->> +{
->> +	return 0;
->> +}
->> +
->>   static int cap_inode_alloc_security(struct inode *inode)
->>   {
->>   	return 0;
->> @@ -905,6 +912,7 @@ void __init security_fixup_ops(struct security_operations *ops)
->>   	set_to_cap_if_null(ops, sb_set_mnt_opts);
->>   	set_to_cap_if_null(ops, sb_clone_mnt_opts);
->>   	set_to_cap_if_null(ops, sb_parse_opts_str);
->> +	set_to_cap_if_null(ops, dentry_init_security);
->>   	set_to_cap_if_null(ops, inode_alloc_security);
->>   	set_to_cap_if_null(ops, inode_free_security);
->>   	set_to_cap_if_null(ops, inode_init_security);
->> diff --git a/security/security.c b/security/security.c
->> index 8dcd4ae..b4b2017 100644
->> --- a/security/security.c
->> +++ b/security/security.c
->> @@ -12,6 +12,7 @@
->>    */
->>
->>   #include <linux/capability.h>
->> +#include <linux/dcache.h>
->>   #include <linux/module.h>
->>   #include <linux/init.h>
->>   #include <linux/kernel.h>
->> @@ -324,6 +325,15 @@ void security_inode_free(struct inode *inode)
->>   	security_ops->inode_free_security(inode);
->>   }
->>
->> +int security_dentry_init_security(struct dentry *dentry, int mode,
->> +					struct qstr *name, void **ctx,
->> +					u32 *ctxlen)
->> +{
->> +	return security_ops->dentry_init_security(dentry, mode, name,
->> +							ctx, ctxlen);
->> +}
->> +EXPORT_SYMBOL(security_dentry_init_security);
->> +
->>   int security_inode_init_security(struct inode *inode, struct inode *dir,
->>   				 const struct qstr *qstr,
->>   				 const initxattrs initxattrs, void *fs_data)
->> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
->> index 61a5336..22d9adf 100644
->> --- a/security/selinux/hooks.c
->> +++ b/security/selinux/hooks.c
->> @@ -2483,6 +2483,40 @@ static void selinux_inode_free_security(struct inode *inode)
->>   	inode_free_security(inode);
->>   }
->>
->> +static int selinux_dentry_init_security(struct dentry *dentry, int mode,
->> +					struct qstr *name, void **ctx,
->> +					u32 *ctxlen)
->> +{
->> +	struct cred *cred = current_cred();
->> +	struct task_security_struct *tsec;
->> +	struct inode_security_struct *dsec;
->> +	struct superblock_security_struct *sbsec;
->> +	struct inode *dir = dentry->d_parent->d_inode;
->> +	u32 newsid;
->> +	int rc;
->> +
->> +	tsec = cred->security;
->> +	dsec = dir->i_security;
->> +	sbsec = dir->i_sb->s_security;
->> +
->> +	if (tsec->create_sid && sbsec->behavior != SECURITY_FS_USE_MNTPOINT) {
->> +		newsid = tsec->create_sid;
->> +	} else {
->> +		rc = security_transition_sid(tsec->sid, dsec->sid,
->> +					     inode_mode_to_security_class(mode),
->> +					     name,
->> +					     &newsid);
->> +		if (rc) {
->> +			printk(KERN_WARNING
->> +				"%s: security_transition_sid failed, rc=%d\n",
->> +			       __func__, -rc);
->> +			return rc;
->> +		}
->> +	}
->> +
->> +	return security_sid_to_context(newsid, (char **)ctx, ctxlen);
->> +}
->> +
->>   static int selinux_inode_init_security(struct inode *inode, struct inode *dir,
->>   				       const struct qstr *qstr, char **name,
->>   				       void **value, size_t *len)
->> @@ -5509,6 +5543,7 @@ static struct security_operations selinux_ops = {
->>   	.sb_clone_mnt_opts =		selinux_sb_clone_mnt_opts,
->>   	.sb_parse_opts_str = 		selinux_parse_opts_str,
->>
->> +	.dentry_init_security =		selinux_dentry_init_security,
->>
->>   	.inode_alloc_security =		selinux_inode_alloc_security,
->>   	.inode_free_security =		selinux_inode_free_security,
->> --
->> 1.7.11.7
->>
->
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfsd/fault_inject.c | 37 +++++++++++++++++++++++++++++++++----
+ fs/nfsd/nfs4state.c    | 15 +++++++++++++++
+ fs/nfsd/state.h        |  1 +
+ 3 files changed, 49 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index 19f9094..96ffdf5 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -8,9 +8,12 @@
+ #include <linux/fs.h>
+ #include <linux/debugfs.h>
+ #include <linux/module.h>
++#include <linux/nsproxy.h>
++#include <linux/sunrpc/clnt.h>
+ #include <asm/uaccess.h>
+ 
+ #include "state.h"
++#include "netns.h"
+ 
+ struct nfsd_fault_inject_op {
+ 	char *file;
+@@ -64,6 +67,24 @@ static void nfsd_inject_set(struct nfsd_fault_inject_op *op, u64 val)
+ 	printk(KERN_INFO "NFSD: %s: found %llu", op->file, count);
+ }
+ 
++static void nfsd_inject_set_client(struct nfsd_fault_inject_op *op,
++				   struct sockaddr_storage *addr,
++				   size_t addr_size)
++{
++	char buf[INET6_ADDRSTRLEN];
++	struct nfs4_client *clp;
++	u64 count;
++
++	nfs4_lock_state();
++	clp = nfsd_find_client(addr, addr_size);
++	if (clp) {
++		count = op->forget(clp, 0);
++		rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, 129);
++		printk(KERN_INFO "NFSD [%s]: Client %s had %llu state object(s)\n", op->file, buf, count);
++	}
++	nfs4_unlock_state();
++}
++
+ static void nfsd_inject_get(struct nfsd_fault_inject_op *op, u64 *val)
+ {
+ 	nfs4_lock_state();
+@@ -100,15 +121,23 @@ static ssize_t fault_inject_read(struct file *file, char __user *buf,
+ static ssize_t fault_inject_write(struct file *file, const char __user *buf,
+ 				  size_t len, loff_t *ppos)
+ {
+-	char write_buf[24];
++	char write_buf[INET6_ADDRSTRLEN];
+ 	size_t size = min(sizeof(write_buf), len) - 1;
++	struct net *net = current->nsproxy->net_ns;
++	struct sockaddr_storage sa;
+ 	u64 val;
+ 
+ 	if (copy_from_user(write_buf, buf, size))
+ 		return -EFAULT;
+-
+-	val = simple_strtoll(write_buf, NULL, 0);
+-	nfsd_inject_set(file->f_dentry->d_inode->i_private, val);
++	write_buf[size] = '\0';
++
++	size = rpc_pton(net, write_buf, size, (struct sockaddr *)&sa, sizeof(sa));
++	if (size > 0)
++		nfsd_inject_set_client(file->f_dentry->d_inode->i_private, &sa, size);
++	else {
++		val = simple_strtoll(write_buf, NULL, 0);
++		nfsd_inject_set(file->f_dentry->d_inode->i_private, val);
++	}
+ 	return len; /* on success, claim we got the whole input */
+ }
+ 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 9fb8e52..eff7340 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4763,6 +4763,21 @@ u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
+ 	return count;
+ }
+ 
++struct nfs4_client *nfsd_find_client(struct sockaddr_storage *addr, size_t addr_size)
++{
++	struct nfs4_client *clp;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns, nfsd_net_id);
++
++	if (!nfsd_netns_ready(nn))
++		return NULL;
++
++	list_for_each_entry(clp, &nn->client_lru, cl_lru) {
++		if (memcmp(&clp->cl_addr, addr, addr_size) == 0)
++			return clp;
++	}
++	return NULL;
++}
++
+ #endif /* CONFIG_NFSD_FAULT_INJECTION */
+ 
+ /* initialization to perform at module load time: */
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 4017f35..d1c229f 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -502,6 +502,7 @@ extern void nfsd4_record_grace_done(struct nfsd_net *nn, time_t boot_time);
+ int nfsd_fault_inject_init(void);
+ void nfsd_fault_inject_cleanup(void);
+ u64 nfsd_for_n_state(u64, u64 (*)(struct nfs4_client *, u64));
++struct nfs4_client *nfsd_find_client(struct sockaddr_storage *, size_t);
+ 
+ u64 nfsd_forget_client(struct nfs4_client *, u64);
+ u64 nfsd_forget_client_locks(struct nfs4_client*, u64);
+-- 
+1.8.0.1
 
