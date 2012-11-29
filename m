@@ -1,57 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:34831 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1756619Ab2K2BOl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Nov 2012 20:14:41 -0500
-Message-ID: <50B6B706.1010002@davequigley.com>
-Date: Wed, 28 Nov 2012 20:14:46 -0500
-From: Dave Quigley <dpquigl@davequigley.com>
-MIME-Version: 1.0
-To: Casey Schaufler <casey@schaufler-ca.com>
-CC: bfields@fieldses.org, trond.myklebust@netapp.com, sds@tycho.nsa.gov,
-        linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
-        linux-security-module@vger.kernel.org
-Subject: Re: Labeled NFS [v5]
-References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com> <50ABF1A5.2010406@schaufler-ca.com> <50AC1A74.7080105@davequigley.com> <50AC2117.801@schaufler-ca.com> <50AC224D.3080108@davequigley.com> <50AC41DC.5070607@schaufler-ca.com> <50AC4A7A.6010208@davequigley.com> <50B65E7E.4030607@schaufler-ca.com>
-In-Reply-To: <50B65E7E.4030607@schaufler-ca.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Received: from fn.samba.org ([216.83.154.106]:42032 "EHLO mail.samba.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752497Ab2K2UF6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Nov 2012 15:05:58 -0500
+Message-ID: <1354219557.4064.7.camel@pico.ipa.ssimo.org>
+Subject: Re: Possible to make nfs aware of a inotify watch has been set.
+From: simo <idra@samba.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Stef Bon <stefbon@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-cifs <linux-cifs@vger.kernel.org>
+Date: Thu, 29 Nov 2012 15:05:57 -0500
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90B32B2A0@SACEXCMBX04-PRD.hq.netapp.com>
+References: <CANXojcy9thLBwrENTkOTSSE17L3N17A8XsTmyNqq3oNdhW_Q_w@mail.gmail.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B329CFD@SACEXCMBX04-PRD.hq.netapp.com>
+	 <CANXojcxR9673fRObMLPSScogAN05RSVhPFoni=ENc6YDWq9T7w@mail.gmail.com>
+	 <1354202525.4064.1.camel@pico.ipa.ssimo.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B32AEB7@SACEXCMBX04-PRD.hq.netapp.com>
+	 <CANXojcys4wR8N-R3oSjWRWJLsObn0Qf+i41vBUaNnJctdcrKVw@mail.gmail.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B32B2A0@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/28/2012 1:57 PM, Casey Schaufler wrote:
-> On 11/20/2012 7:28 PM, Dave Quigley wrote:
->> On 11/20/2012 9:52 PM, Casey Schaufler wrote:
->>> On 11/20/2012 4:37 PM, Dave Quigley wrote:
->>>> ...
->>>>
->>>>
->>>> Or I could just give you this link and you should be good to go ;)
->>>>
->>>> http://www.selinuxproject.org/~dpquigl/nfs-utils-rpms/
->>>>
->>>> I haven't tried it but it should work. If it doesn't let me know and
->>>> i'll try to fix it on my end. I'd imagine you might need to yum remove
->>>> nfs-utils first before adding this new one or you could also try an
->>>> rpm with the upgrade flag for this instead. Good luck.
->>>
-> ...
->
->
-> I've tried on Fedora17 and Ubuntu12.04, and I'm getting the
-> attached stack trace on mount. After mounting I'm getting
-> denials when I should, but also when I shouldn't.
->
-> I've tried tracking down the issue, but there's a lot going on
-> that I don't find obvious. I added a dentry_init hook just for
-> grins, but it's not getting called.
->
-> .
->
->
+On Thu, 2012-11-29 at 17:11 +0000, Myklebust, Trond wrote:
+> The idea that "if we build a bridge, they will come to us" is what
+> gave
+> rise to dnotify, then inotify (nobody came, so let's build a bigger
+> bridge) and fsnotify (make it a toll bridge). Nobody is using those
+> interfaces much on local filesystems, so why is adding it to NFS and
+> CIFS going to be such a game changer?
 
-Any chance of you throwing a kickstart file my way that's configured 
-with SMACK so I can use it for a test box (both server and client)? I 
-can have the guys working with me test for SMACK as well if you provide 
-an appropriate test harness and image for testing.
+Sorry Trond,
+but this is simply not true.
 
-Dave
+inotify is a key feature at least in some packages I know, and makes
+some things *a lot* easier.
+
+Of course this are less visible features, that are easy to overlook, but
+they are not unused for sure.
+
+(dnotify on the other hand was underused because it was almost useless)
+
+Simo.
+
+-- 
+Simo Sorce
+Samba Team GPL Compliance Officer <simo@samba.org>
+Principal Software Engineer at Red Hat, Inc. <simo@redhat.com>
+
