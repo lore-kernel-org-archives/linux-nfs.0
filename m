@@ -1,63 +1,156 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:37054 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S933372Ab2K3Q7O (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Nov 2012 11:59:14 -0500
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Date: Fri, 30 Nov 2012 11:59:12 -0500
-From: David Quigley <dpquigl@davequigley.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Stephen Smalley <sds@tycho.nsa.gov>,
-        Casey Schaufler <casey@schaufler-ca.com>, <trond.myklebust@netapp.com>,
-        <linux-nfs@vger.kernel.org>, <selinux@tycho.nsa.gov>,
-        <linux-security-module@vger.kernel.org>
-Subject: Re: Labeled NFS [v5]
-In-Reply-To: <20121130165544.GF614@fieldses.org>
-References: <50B7FEFB.30109@schaufler-ca.com>
- <579e850139bd3d5a0c9155270d5d9fbe@countercultured.net>
- <50B810D2.2000401@schaufler-ca.com>
- <3ea3f70e0a5cdb99f1594019b7bd619d@countercultured.net>
- <20121130121437.GC614@fieldses.org>
- <607a8005d6c33a19c53b5ede29d81ef5@countercultured.net>
- <5170c3bd8900c36b372217af96e5e764@countercultured.net>
- <50B8B47F.5050206@tycho.nsa.gov>
- <c00cec058c2bd0cb7104a53ca680f6cb@countercultured.net>
- <50B8B9BF.7000802@tycho.nsa.gov> <20121130165544.GF614@fieldses.org>
-Message-ID: <dd7dc9e3fcd4fe2ddc3a0678c6377c4b@countercultured.net>
+Received: from mx2.netapp.com ([216.240.18.37]:59109 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751269Ab2K2Qkz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Nov 2012 11:40:55 -0500
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 6/9] NFSD: Fault injection operations take a per-client forget function
+Date: Thu, 29 Nov 2012 11:40:43 -0500
+Message-Id: <1354207246-32343-7-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1354207246-32343-1-git-send-email-bjschuma@netapp.com>
+References: <1354207246-32343-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/30/2012 11:55, J. Bruce Fields wrote:
-> On Fri, Nov 30, 2012 at 08:50:55AM -0500, Stephen Smalley wrote:
->> On the SELinux side, we don't require CAP_MAC_ADMIN to set the
->> SELinux attribute on a file in the normal case, only when the
->> SELinux attribute is not known to the security policy yet.  So
->> granting CAP_MAC_ADMIN there means that a client will be able to set
->> security contexts on files that are unknown to the server.  I guess
->> that might even be desirable in some instances where client and
->> server policy are different.
->
-> Note (as you probably know) this first pass at labeled NFS only lets 
-> us
-> label files, not rpc calls--if we want the server to know who's doing
-> something (beyond the information the rpc headers already carry), 
-> we'll
-> need to implement rpcsec_gss v3, and that's a project for another 
-> day.
->
-> I've been assuming that makes server-side enforcement less useful for
-> now.
->
-> --b.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Ideally what will happen is that when we get RPCSECGSSv3 in we'll set 
-the security context in the same place that we set uid and gid for the 
-process in the auth code. Until then you're right server side 
-enforcement really isn't possible because we have whatever context the 
-kernel gives to the thread being our security context. In the SELinux 
-case this is the all powerful kernel_t in the smack case its the floor 
-context.
+The eventual goal is to forget state based on ip address, so it makes
+sense to call this function in a for-each-client loop until the correct
+amount of state is forgotten.  I also use this patch as an opportunity
+to rename the forget function from "func()" to "forget()".
 
-Dave
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfsd/fault_inject.c | 16 +++++++++-------
+ fs/nfsd/nfs4state.c    | 30 ------------------------------
+ fs/nfsd/state.h        | 12 +++++++-----
+ 3 files changed, 16 insertions(+), 42 deletions(-)
+
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index 4b385a1..bf6161a 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -13,29 +13,29 @@
+ 
+ struct nfsd_fault_inject_op {
+ 	char *file;
+-	void (*func)(u64);
++	u64 (*forget)(struct nfs4_client *, u64);
+ };
+ 
+ static struct nfsd_fault_inject_op inject_ops[] = {
+ 	{
+ 		.file   = "forget_clients",
+-		.func   = nfsd_forget_clients,
++		.forget = nfsd_forget_client,
+ 	},
+ 	{
+ 		.file   = "forget_locks",
+-		.func   = nfsd_forget_locks,
++		.forget = nfsd_forget_client_locks,
+ 	},
+ 	{
+ 		.file   = "forget_openowners",
+-		.func   = nfsd_forget_openowners,
++		.forget = nfsd_forget_client_openowners,
+ 	},
+ 	{
+ 		.file   = "forget_delegations",
+-		.func   = nfsd_forget_delegations,
++		.forget = nfsd_forget_client_delegations,
+ 	},
+ 	{
+ 		.file   = "recall_delegations",
+-		.func   = nfsd_recall_delegations,
++		.forget = nfsd_recall_client_delegations,
+ 	},
+ };
+ 
+@@ -44,6 +44,7 @@ static struct dentry *debug_dir;
+ 
+ static int nfsd_inject_set(void *op_ptr, u64 val)
+ {
++	u64 count = 0;
+ 	struct nfsd_fault_inject_op *op = op_ptr;
+ 
+ 	if (val == 0)
+@@ -52,8 +53,9 @@ static int nfsd_inject_set(void *op_ptr, u64 val)
+ 		printk(KERN_INFO "NFSD Fault Injection: %s (n = %llu)", op->file, val);
+ 
+ 	nfs4_lock_state();
+-	op->func(val);
++	count = nfsd_for_n_state(val, op->forget);
+ 	nfs4_unlock_state();
++	printk(KERN_INFO "NFSD: %s: found %llu", op->file, count);
+ 	return 0;
+ }
+ 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index dc7c22f..ab45cdd 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4721,36 +4721,6 @@ u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
+ 	return count;
+ }
+ 
+-void nfsd_forget_clients(u64 num)
+-{
+-	u64 count = nfsd_for_n_state(num, nfsd_forget_client);
+-	printk(KERN_INFO "NFSD: Forgot %llu clients", count);
+-}
+-
+-void nfsd_forget_locks(u64 num)
+-{
+-	u64 count = nfsd_for_n_state(num, nfsd_forget_client_locks);
+-	printk(KERN_INFO "NFSD: Forgot %llu locks", count);
+-}
+-
+-void nfsd_forget_openowners(u64 num)
+-{
+-	u64 count = nfsd_for_n_state(num, nfsd_forget_client_openowners);
+-	printk(KERN_INFO "NFSD: Forgot %llu open owners", count);
+-}
+-
+-void nfsd_forget_delegations(u64 num)
+-{
+-	u64 count = nfsd_for_n_state(num, nfsd_forget_client_delegations);
+-	printk(KERN_INFO "NFSD: Forgot %llu delegations", count);
+-}
+-
+-void nfsd_recall_delegations(u64 num)
+-{
+-	u64 count = nfsd_for_n_state(num, nfsd_recall_client_delegations);
+-	printk(KERN_INFO "NFSD: Recalled %llu delegations", count);
+-}
+-
+ #endif /* CONFIG_NFSD_FAULT_INJECTION */
+ 
+ /* initialization to perform at module load time: */
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index b542bf2..423ac64 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -501,11 +501,13 @@ extern void nfsd4_record_grace_done(struct nfsd_net *nn, time_t boot_time);
+ #ifdef CONFIG_NFSD_FAULT_INJECTION
+ int nfsd_fault_inject_init(void);
+ void nfsd_fault_inject_cleanup(void);
+-void nfsd_forget_clients(u64);
+-void nfsd_forget_locks(u64);
+-void nfsd_forget_openowners(u64);
+-void nfsd_forget_delegations(u64);
+-void nfsd_recall_delegations(u64);
++u64 nfsd_for_n_state(u64, u64 (*)(struct nfs4_client *, u64));
++
++u64 nfsd_forget_client(struct nfs4_client *, u64);
++u64 nfsd_forget_client_locks(struct nfs4_client*, u64);
++u64 nfsd_forget_client_openowners(struct nfs4_client *, u64);
++u64 nfsd_forget_client_delegations(struct nfs4_client *, u64);
++u64 nfsd_recall_client_delegations(struct nfs4_client *, u64);
+ #else /* CONFIG_NFSD_FAULT_INJECTION */
+ static inline int nfsd_fault_inject_init(void) { return 0; }
+ static inline void nfsd_fault_inject_cleanup(void) {}
+-- 
+1.8.0.1
+
