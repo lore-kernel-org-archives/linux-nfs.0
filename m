@@ -1,96 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:19732 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752003Ab2KLVKu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 Nov 2012 16:10:50 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: Andy Adamson <androsadamson@gmail.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFS: Add sequence_priviliged_ops for
- nfs4_proc_sequence()
-Date: Mon, 12 Nov 2012 21:10:48 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9092D81D5@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1352745355-31157-1-git-send-email-bjschuma@netapp.com>
-	  <CAHVgHyWyKhjOc4AFY3LvK57k8JK5zNJDkRGwUjqNA4LMYcSzdw@mail.gmail.com>
-	  <4FA345DA4F4AE44899BD2B03EEEC2FA9092D7F52@SACEXCMBX04-PRD.hq.netapp.com>
-	  <CAHVgHyWzO6UxnQEBoBFY4uHxTx9PBHKxP+hvJfYaW-OTqWLgMA@mail.gmail.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9092D80BB@SACEXCMBX04-PRD.hq.netapp.com>
-	 <50A163E6.9020604@netapp.com>
-In-Reply-To: <50A163E6.9020604@netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ia0-f174.google.com ([209.85.210.174]:49435 "EHLO
+	mail-ia0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751334Ab2K2UbG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2012 15:31:06 -0500
 MIME-Version: 1.0
+In-Reply-To: <20121129202037.GQ4939@ZenIV.linux.org.uk>
+References: <CANXojcy9thLBwrENTkOTSSE17L3N17A8XsTmyNqq3oNdhW_Q_w@mail.gmail.com>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA90B329CFD@SACEXCMBX04-PRD.hq.netapp.com>
+	<CANXojcxR9673fRObMLPSScogAN05RSVhPFoni=ENc6YDWq9T7w@mail.gmail.com>
+	<1354202525.4064.1.camel@pico.ipa.ssimo.org>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA90B32AEB7@SACEXCMBX04-PRD.hq.netapp.com>
+	<CANXojcys4wR8N-R3oSjWRWJLsObn0Qf+i41vBUaNnJctdcrKVw@mail.gmail.com>
+	<20121129202037.GQ4939@ZenIV.linux.org.uk>
+Date: Thu, 29 Nov 2012 21:31:05 +0100
+Message-ID: <CANXojcw15RdJdRoZxB3Z59YbOda7vG7RDRegfpoCjG4Bv4AvsQ@mail.gmail.com>
+Subject: Re: Possible to make nfs aware of a inotify watch has been set.
+From: Stef Bon <stefbon@gmail.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>, simo <idra@samba.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-cifs <linux-cifs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTExLTEyIGF0IDE2OjAyIC0wNTAwLCBCcnlhbiBTY2h1bWFrZXIgd3JvdGU6
-DQo+IE9uIDExLzEyLzIwMTIgMDM6NTQgUE0sIE15a2xlYnVzdCwgVHJvbmQgd3JvdGU6DQo+ID4g
-T24gTW9uLCAyMDEyLTExLTEyIGF0IDE1OjQ5IC0wNTAwLCBBbmR5IEFkYW1zb24gd3JvdGU6DQo+
-ID4+IE9uIE1vbiwgTm92IDEyLCAyMDEyIGF0IDM6MjkgUE0sIE15a2xlYnVzdCwgVHJvbmQNCj4g
-Pj4gPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPj4+IE9uIE1vbiwgMjAx
-Mi0xMS0xMiBhdCAxNToyMiAtMDUwMCwgQW5keSBBZGFtc29uIHdyb3RlOg0KPiA+Pj4+IE9uIE1v
-biwgTm92IDEyLCAyMDEyIGF0IDE6MzUgUE0sICA8YmpzY2h1bWFAbmV0YXBwLmNvbT4gd3JvdGU6
-DQo+ID4+Pj4+IEZyb206IEJyeWFuIFNjaHVtYWtlciA8YmpzY2h1bWFAbmV0YXBwLmNvbT4NCj4g
-Pj4+Pj4NCj4gPj4+Pj4gRHVyaW5nIHJlY292ZXJ5IHRoZSBORlM0X1NFU1NJT05fRFJBSU5JTkcg
-ZmxhZyBtaWdodCBiZSBzZXQgb24gdGhlDQo+ID4+Pj4+IGNsaWVudCBzdHJ1Y3R1cmUuICBUaGlz
-IGNhbiBjYXVzZSBsZWFzZSByZW5ld2FsIHRvIGFib3J0IHdoZW4NCj4gPj4+DQo+ID4+PiBOb3Qg
-bGVhc2UgcmVuZXdhbC4gSXQgaXMgbGVhc2UgdmVyaWZpY2F0aW9uIChpLmUuIGNoZWNraW5nIHRo
-YXQgd2UgaGF2ZQ0KPiA+Pj4gYSB2YWxpZCBsZWFzZSBhbmQgc2Vzc2lvbikgdGhhdCB3aWxsIGRl
-YWRsb2NrLg0KPiA+Pj4NCj4gPj4+Pj4gbmZzNDFfc2V0dXBfc2VxdWVuY2Ugc2VlcyB0aGF0IHdl
-IGFyZSBkb2luZyByZWNvdmVyeS4gIEFzIGEgcmVzdWx0LCB0aGUNCj4gPj4+Pj4gY2xpZW50IG5l
-dmVyIHJlY292ZXJzIGFuZCBhbGwgYWN0aXZpdHkgd2l0aCB0aGUgTkZTIHNlcnZlciBoYWx0cy4N
-Cj4gPj4+Pg0KPiA+Pj4+DQo+ID4+Pj4gV2hlbiBkb2VzIHRoaXMgaGFwcGVuPyBTYXkgdGhlIHNl
-c3Npb24gaXMgZHJhaW5pbmcsIGFuZCBhbiBSUEMgcmV0dXJucw0KPiA+Pj4+IGZyb20gb25lIG9m
-IHRoZSBjb21wb3VuZHMgc3VjaCBhcyBuZnNfb3BlbiwgbmZzX2xvY2t1IGV0YyB3aG9zZQ0KPiA+
-Pj4+IHJwY19jYWxsX2RvbmUgcm91dGluZSBjYWxscyByZW5ld19sZWFzZSBhZnRlciBmcmVlaW5n
-IGl0J3Mgc2xvdC4gIExpa2UNCj4gPj4+PiBhbGwgY2FsbHMgb24gYSBkcmFpbmluZyBzZXNzaW9u
-LCB0aGUgcmVuZXdfbGVhc2Ugc2xlZXBzIG9uIHRoZSBzZXNzaW9uDQo+ID4+Pj4gc2xvdF90Ymxf
-d2FpdHEgLSBpcyB0aGlzIHdoYXQgeW91IG1lYW4gYnkgImNhdXNlcyBsZWFzZSByZW5ld2FsIHRv
-DQo+ID4+Pj4gYWJvcnQiPyBIb3cgZG9lcyB0aGlzIGNhdXNlIHRoZSBjbGllbnQgdG8gbmV2ZXIg
-cmVjb3Zlcj8NCj4gPj4+Pg0KPiA+Pj4+IFRoZSBvbmx5IG90aGVyIGNhbGwgdG8gcmVuZXdfbGVh
-c2UgaXMgZnJvbSB0aGUgc3RhdGUgbWFuYWdlciBpdHNlbGYNCj4gPj4+PiB3aGljaCBydW5zIG9u
-ZSBmdW5jdGlvbiBhdCBhIHRpbWUsIGFuZCB3aWxsIG5vdCBjYWxsIHJlbmV3X2xlYXNlIHVudGls
-DQo+ID4+Pj4gdGhlIHJlY292ZXJ5IGlzIG92ZXIuLi4uDQo+ID4+Pj4NCj4gPj4+PiBXaGF0IGFt
-IEkgbWlzc2luZy4uLi4/DQo+ID4+Pg0KPiA+Pj4gbmZzNF9jaGVja19sZWFzZSgpIGlzIHJ1biBl
-eGNsdXNpdmVseSBieSB0aGUgc3RhdGUgbWFuYWdlciB0aHJlYWQgaW4NCj4gPj4+IG9yZGVyIHRv
-IGNoZWNrIHRoYXQgdGhlIGNsaWVudGlkIChhbmQgc2Vzc2lvbiBpZCBvbiBORlN2NC4xKSBhcmUg
-dmFsaWQuDQo+ID4+PiBJdCB3aWxsIGRlYWRsb2NrIHRoZSBzdGF0ZSBtYW5hZ2VyIHRocmVhZCBp
-ZiBORlM0X1NFU1NJT05fRFJBSU5JTkcgaXMNCj4gPj4+IGFscmVhZHkgc2V0Lg0KPiA+Pg0KPiA+
-PiBPSy4gTkZTNF9TRVNTSU9OX0RSQUlOSU5HIGlzIGFsc28gc2V0IGV4Y2x1c2l2ZWx5IGJ5IHRo
-ZSBzdGF0ZSBtYW5hZ2VyDQo+ID4+IHRocmVhZC4gV2h5IGlzIHRoZSBzdGF0ZSBtYW5hZ2VyIHRv
-bGQgdG8gY2hlY2sgdGhlIGxlYXNlIHdoZW4gaXQncw0KPiA+PiBhbHNvIGRyYWluaW5nIGEgc2Vz
-c2lvbj8NCj4gPiANCj4gPiBORlM0X1NFU1NJT05fRFJBSU5JTkcgZG9lcyBub3QganVzdCBtZWFu
-IHRoYXQgdGhlIHNlc3Npb24gaXMgYmVpbmcNCj4gPiBkcmFpbmVkOyBpdCByZW1haW5zIHNldCB1
-bnRpbCBvcGVuIGFuZCBsb2NrIHN0YXRlIHJlY292ZXJ5IGlzIGNvbXBsZXRlZC4NCj4gPiANCj4g
-PiBJT1c6IGlmIHNvbWV0aGluZyBoYXBwZW5zIGR1cmluZyBzdGF0ZSByZWNvdmVyeSB0aGF0IHJl
-cXVpcmVzIHVzIHRvDQo+ID4gY2hlY2sgdGhlIGxlYXNlIChlLmcuIHNvbWV0aGluZyByZXR1cm5z
-IE5GUzRFUlJfRVhQSVJFRCkgdGhlbiB0aGUNCj4gPiBjdXJyZW50IGNvZGUgd2lsbCBkZWFkbG9j
-ay4NCj4gPiANCj4gPj4gTm8gbWF0dGVyIHdoYXQgdGhlIGFuc3dlciwgcGxlYXNlIHVwZGF0ZSB0
-aGUgcGF0Y2ggZGVzY3JpcHRpb24gdG8NCj4gPj4gYmV0dGVyIGV4cGxhaW4gdGhlIHByb2JsZW0g
-YmVpbmcgc29sdmVkLg0KPiA+IA0KPiA+IEFDSy4gSSBhZ3JlZSB0aGF0IHRoZSBjaGFuZ2Vsb2cg
-ZW50cnkgY2FuIGJlIGltcHJvdmVkLg0KPiA+IA0KPiANCj4gRG9lcyB0aGlzIHJlYWQgYW55IGJl
-dHRlciAoYW5kIHNob3VsZCBJIHJlc2VuZCB0aGUgcGF0Y2gpPw0KPiANCj4gTkZTOiBBZGQgc2Vx
-dWVuY2VfcHJpdmlsaWdlZF9vcHMgZm9yIG5mczRfcHJvY19zZXF1ZW5jZSgpDQo+IA0KPiBJZiBJ
-IG1vdW50IGFuIE5GUyB2NC4xIHNlcnZlciB0byBhIHNpbmdsZSBjbGllbnQgbXVsdGlwbGUgdGlt
-ZXMgYW5kIHRoZW4NCj4gcnVuIHhmc3Rlc3RzIG92ZXIgZWFjaCBtb3VudHBvaW50IEkgdXN1YWxs
-eSBnZXQgdGhlIGNsaWVudCBpbnRvIGEgc3RhdGUNCj4gd2hlcmUgcmVjb3ZlcnkgZGVhZGxvY2tz
-LiAgVGhlIHNlcnZlciBpbmZvcm1zIHRoZSBjbGllbnQgb2YgYQ0KPiBjYl9wYXRoX2Rvd24gc2Vx
-dWVuY2UgZXJyb3IsIHRoZSBjbGllbnQgdGhlbiBkb2VzIGENCj4gYmluZF9jb25uZWN0aW9uX3Rv
-X3Nlc3Npb24gYW5kIGNoZWNrcyB0aGUgc3RhdHVzIG9mIHRoZSBsZWFzZS4NCg0KV2h5IGFyZSB5
-b3UgZ2V0dGluZyB0aGUgY2JfcGF0aF9kb3duPyBJcyB0aGF0IGEgcmVzdWx0IG9mIGEgZmF1bHQN
-CmluamVjdGlvbiwgb3IgaXMgaXQgYSBnZW51aW5lIGVycm9yPw0KDQpXaGlsZSBjYl9wYXRoX2Rv
-d24gaXMgYSB2YWxpZCBlcnJvciwgYW5kIHdlIGRvIHdhbnQgdGhlIHJlY292ZXJ5IHRvIHdvcmsN
-CmNvcnJlY3RseSwgSSB3b3VsZCBleHBlY3QgaXQgdG8gYmUgcmFyZSBzaW5jZSBpdCBpbXBsaWVz
-IHRoYXQgd2UgbG9zdA0KdGhlIFRDUCBjb25uZWN0aW9uIHRvIHRoZSBzZXJ2ZXIgZm9yIHNvbWUg
-cmVhc29uLiBGaW5kaW5nIG91dCB3aHkgaXQNCmhhcHBlbnMgaXMgdGhlcmVmb3JlIHdvcnRoIGRv
-aW5nLg0KDQo+IEkgZm91bmQgdGhhdCBiaW5kX2Nvbm5lY3Rpb25fdG9fc2Vzc2lvbiBzZXRzIHRo
-ZSBORlM0X1NFU1NJT05fRFJBSU5JTkcNCj4gZmxhZyBvbiB0aGUgY2xpZW50LCBidXQgdGhpcyBm
-bGFnIGlzIG5ldmVyIHVuc2V0IGJlZm9yZQ0KPiBuZnM0X2NoZWNrX2xlYXNlKCkgcmVhY2hlcyBu
-ZnM0X3Byb2Nfc2VxdWVuY2UoKS4gIFRoaXMgY2F1c2VzIHRoZSBjbGllbnQNCj4gdG8gZGVhZGxv
-Y2ssIGhhbHRpbmcgYWxsIE5GUyBhY3Rpdml0eSB0byB0aGUgc2VydmVyLg0KDQpPdGhlcndpc2Us
-IHRoZSB0ZXh0IGlzIG1vcmUgb3IgbGVzcyBPSy4gVGhlIG9uZSB0aGluZyB0aGF0IEknbSBtaXNz
-aW5nDQppcyBhIHN0YXRlbWVudCBhYm91dCB3aHkgbmZzNF9wcm9jX3NlcXVlbmNlKCkgbmVlZHMg
-dG8gYmUgYSBwcml2aWxlZ2VkDQpvcGVyYXRpb24uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpM
-aW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0
-YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+2012/11/29 Al Viro <viro@zeniv.linux.org.uk>:
+> On Thu, Nov 29, 2012 at 05:39:27PM +0100, Stef Bon wrote:
+>
+>> And yes there is no such thing as a killer app, but in my opinion it's
+>> the user experience.
+>
+> Ah, yes...  UX - the killer argument.  "Doing that would make qi flow better"
+> and any objections are waved away, since the person objecting has no idea
+> how qi behaves (since it doesn't exist, to start with).  Could we please keep
+> the intellectual level above the Feng Shui scammers^W^W^WUX theorists usual?
+
+Wow. Like I've said, I do not have a killer app, or anything else
+which is as obvious like 1+1=2. No, but I give you my opinion. To me,
+boldly stated, a system which is able to do fs notify events over
+network filesystems is turning from a dump system into an intelligent
+one.
+
+With Ubuntu people started Unity, also without a killer app, but just
+with an opinion, an impression, an idea. And anyone can dislike or
+like it, it's a succes as far as I can see. What the hell is wrong
+with suggesting things based upon an idea/impression?
+
+Stef
