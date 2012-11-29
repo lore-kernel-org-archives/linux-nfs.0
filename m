@@ -1,180 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:2052 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:5592 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755357Ab2KZMUE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Nov 2012 07:20:04 -0500
-Subject: [PATCH 5/5] nfsd: call state init and shutdown twice
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Mon, 26 Nov 2012 15:22:18 +0300
-Message-ID: <20121126122218.955.65863.stgit@localhost.localdomain>
-In-Reply-To: <20121126121907.955.25349.stgit@localhost.localdomain>
-References: <20121126121907.955.25349.stgit@localhost.localdomain>
-MIME-Version: 1.0
+	id S1753173Ab2K2OD3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Nov 2012 09:03:29 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Stef Bon <stefbon@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+CC: linux-cifs <linux-cifs@vger.kernel.org>
+Subject: RE: Possible to make nfs aware of a inotify watch has been set.
+Date: Thu, 29 Nov 2012 14:03:28 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90B329CFD@SACEXCMBX04-PRD.hq.netapp.com>
+References: <CANXojcy9thLBwrENTkOTSSE17L3N17A8XsTmyNqq3oNdhW_Q_w@mail.gmail.com>
+In-Reply-To: <CANXojcy9thLBwrENTkOTSSE17L3N17A8XsTmyNqq3oNdhW_Q_w@mail.gmail.com>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Split NFSv4 state init and shutdown into two different calls: per-net one and
-generic one.
-Per-net cwinit/shutdown pair have to be called for any namespace, generic pair
-- only once on NSFd kthreads start and shutdown respectively.
-
-Refresh of diff-nfsd-call-state-init-twice
----
- fs/nfsd/nfs4state.c |   30 ++++++++++++------------------
- fs/nfsd/nfsd.h      |    4 ++++
- fs/nfsd/nfssvc.c    |   15 +++++++++++++--
- 3 files changed, 29 insertions(+), 20 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 72df721..93c7882 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4857,12 +4857,22 @@ nfs4_state_destroy_net(struct net *net)
- 	put_net(net);
- }
- 
--static int
-+int
- nfs4_state_start_net(struct net *net)
- {
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 	int ret;
- 
-+	/*
-+	 * FIXME: For now, we hang most of the pernet global stuff off of
-+	 * init_net until nfsd is fully containerized. Eventually, we'll
-+	 * need to pass a net pointer into this function, take a reference
-+	 * to that instead and then do most of the rest of this on a per-net
-+	 * basis.
-+	 */
-+	if (net != &init_net)
-+		return -EINVAL;
-+
- 	ret = nfs4_state_create_net(net);
- 	if (ret)
- 		return ret;
-@@ -4897,21 +4907,8 @@ nfs4_state_start(void)
- 
- 	set_max_delegations();
- 
--	/*
--	 * FIXME: For now, we hang most of the pernet global stuff off of
--	 * init_net until nfsd is fully containerized. Eventually, we'll
--	 * need to pass a net pointer into this function, take a reference
--	 * to that instead and then do most of the rest of this on a per-net
--	 * basis.
--	 */
--	ret = nfs4_state_start_net(&init_net);
--	if (ret)
--		goto out_free_callback;
--
- 	return 0;
- 
--out_free_callback:
--	nfsd4_destroy_callback_queue();
- out_free_laundry:
- 	destroy_workqueue(laundry_wq);
- out_recovery:
-@@ -4919,7 +4916,7 @@ out_recovery:
- }
- 
- /* should be called with the state lock held */
--static void
-+void
- nfs4_state_shutdown_net(struct net *net)
- {
- 	struct nfs4_delegation *dp = NULL;
-@@ -4950,9 +4947,6 @@ nfs4_state_shutdown_net(struct net *net)
- void
- nfs4_state_shutdown(void)
- {
--	struct net *net = &init_net;
--
--	nfs4_state_shutdown_net(net);
- 	destroy_workqueue(laundry_wq);
- 	nfsd4_destroy_callback_queue();
- }
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 80d5ce4..d7b210b 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -121,7 +121,9 @@ void nfs4_state_init(void);
- int nfsd4_init_slabs(void);
- void nfsd4_free_slabs(void);
- int nfs4_state_start(void);
-+int nfs4_state_start_net(struct net *net);
- void nfs4_state_shutdown(void);
-+void nfs4_state_shutdown_net(struct net *net);
- void nfs4_reset_lease(time_t leasetime);
- int nfs4_reset_recoverydir(char *recdir);
- char * nfs4_recoverydir(void);
-@@ -130,7 +132,9 @@ static inline void nfs4_state_init(void) { }
- static inline int nfsd4_init_slabs(void) { return 0; }
- static inline void nfsd4_free_slabs(void) { }
- static inline int nfs4_state_start(void) { return 0; }
-+static inline int nfs4_state_start_net(struct net *net) { return 0; }
- static inline void nfs4_state_shutdown(void) { }
-+static inline void nfs4_state_shutdown_net(struct net *net) { }
- static inline void nfs4_reset_lease(time_t leasetime) { }
- static inline int nfs4_reset_recoverydir(char *recdir) { return 0; }
- static inline char * nfs4_recoverydir(void) {return NULL; }
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 2013aa0..6dffa74 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -207,6 +207,7 @@ static bool nfsd_up = false;
- static int nfsd_startup(int nrservs)
- {
- 	int ret;
-+	struct net *net = &init_net;
- 
- 	if (nfsd_up)
- 		return 0;
-@@ -221,14 +222,21 @@ static int nfsd_startup(int nrservs)
- 	ret = nfsd_init_socks();
- 	if (ret)
- 		goto out_racache;
--	ret = lockd_up(&init_net);
-+	ret = lockd_up(net);
- 	if (ret)
- 		goto out_racache;
- 	ret = nfs4_state_start();
- 	if (ret)
- 		goto out_lockd;
-+
-+	ret = nfs4_state_start_net(net);
-+	if (ret)
-+		goto out_net_state;
-+
- 	nfsd_up = true;
- 	return 0;
-+out_net_state:
-+	nfs4_state_shutdown();
- out_lockd:
- 	lockd_down(&init_net);
- out_racache:
-@@ -238,6 +246,8 @@ out_racache:
- 
- static void nfsd_shutdown(void)
- {
-+	struct net *net = &init_net;
-+
- 	/*
- 	 * write_ports can create the server without actually starting
- 	 * any threads--if we get shut down before any threads are
-@@ -246,8 +256,9 @@ static void nfsd_shutdown(void)
- 	 */
- 	if (!nfsd_up)
- 		return;
-+	nfs4_state_shutdown_net(net);
- 	nfs4_state_shutdown();
--	lockd_down(&init_net);
-+	lockd_down(net);
- 	nfsd_racache_shutdown();
- 	nfsd_up = false;
- }
-
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
+ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLQ0KPiBvd25lckB2Z2VyLmtlcm5lbC5vcmdd
+IE9uIEJlaGFsZiBPZiBTdGVmIEJvbg0KPiBTZW50OiBUaHVyc2RheSwgTm92ZW1iZXIgMjksIDIw
+MTIgNDozMyBBTQ0KPiBUbzogbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiBDYzogbGludXgt
+Y2lmcw0KPiBTdWJqZWN0OiBQb3NzaWJsZSB0byBtYWtlIG5mcyBhd2FyZSBvZiBhIGlub3RpZnkg
+d2F0Y2ggaGFzIGJlZW4gc2V0Lg0KPiANCj4gSGksDQo+IA0KPiBhcyBmYXIgYXMgSSBrbm93IGlu
+ZGl2aWR1YWwgZmlsZXN5c3RlbXMgYXJlIG5vdCBhd2FyZSBhbiBpbm90aWZ5IHdhdGNoIGhhcw0K
+PiBiZWVuIHNldCBvbiBhIGlub2RlIG1hbmFnZWQgYnkgdGhhdCBmaWxlc3lzdGVtLg0KPiANCj4g
+Rm9yIGxvY2FsIG9ubHkgZmlsZXN5c3RlbXMgbGlrZSBleHQyLzMvNCBldGNldGVyYSB0aGlzIGlz
+IG5vIHByb2JsZW0uDQo+IEJ1dCB3aXRoIG5ldHdvcmsgZmlsZXN5c3RlbXMNCj4gbGlrZSBuZnMg
+YW5kIGNpZnMgKGFuZCBhbHNvIGZ1c2UgdHlwZXMpIHRoaXMgaXMgbm90IGlkZWFsLCBzaW5jZSBj
+aGFuZ2VzIG1hZGUgYnkNCj4gb3RoZXJzIChzaW5jZSB0aGUgYmFja2VuZCBpcyBzaGFyZWQgd2l0
+aCBvdGhlcnMpIGFyZSBuZXZlciB3YXRjaGVkLg0KPiANCj4gSSdtIHdvcmtpbmcgb24gYSBmaWxl
+c3lzdGVtIGNoYW5nZSB3YXRjaGVyIG5vdGlmeWZzLCBhbmQgcHV6emxpbmcgYWxyZWFkeSBmb3IN
+Cj4gYSBsb25nIHRpbWUgaG93dG8gZW5hYmxlIHRoZSB3YXRjaGluZyBvZiBmcyBldmVudHMgb24g
+dGhlc2UgZmlsZXN5c3RlbXMuDQo+IA0KPiBJJ3ZlIHNvbWUgaWRlYSdzOg0KPiANCj4gYS4gbm90
+aWZ5ZnMgaXMgd29ya2luZyBvbiB0aGUgbG9jYWwgKEEpIGFuZCB0aGUgcmVtb3RlIGhvc3QgKEIp
+LCBhbmQgaXMgZG9pbmcgaXQncw0KPiB0aGluZyB3aXRob3V0IHVzaW5nIHRoZSBmaWxlc3lzdGVt
+LiBXaGVuIGEgY2xpZW50IGNvbnRhY3RzIG5vdGlmeWZzIHRvIHNldCBhDQo+IHdhdGNoIG9uIGEg
+bmZzIChvciBjaWZzKSBzaGFyZSwgbm90aWZ5ZnMgZGV0ZWN0cyBpdCBhIG5mcyBzaGFyZS4gSXQg
+ZmluZHMgb3V0IHRoZQ0KPiByZW1vdGUgaG9zdCBieSBhbmFseXppbmcgdGhlIG1vdW50LCBhbmQg
+Z2V0cyB0aGUgZGV0YWlscyBsaWtlIHJlbW90ZQ0KPiBhZGRyZXNzIGFuZCBkaXJlY3RvcnkuIFdp
+dGggbmZzIHRoYXQncyBlYXN5LCBzaW5jZSB0aGUgbW91bnQgaXMgbGlrZQ0KPiByZW1vdGVob3N0
+Oi9kaXJlY3RvcnksIHdpdGggY2lmcyB0aGlzIGlzIGEgYml0IG1vcmUgZGlmZmljdWx0LCBidXQg
+ZG9hYmxlLg0KPiBBZnRlciBnZXR0aW5nIHRoZSBkZXRhaWxzLCBpdCBjYW4gZm9yd2FyZCB0aGUg
+d2F0Y2ggdG8gdGhlIHJlbW90ZSBob3N0IChCKSwgb24NCj4gd2hpY2ggYWxzbyBub3RpZnlmcyBp
+cyBydW5uaW5nLCBhbmQgbGlzdG5pbmcgdG8gYSB0Y3AgcG9ydC4NCj4gVGhpcyBub3RpZnlmcyBw
+cm9jZXNzIG9uIGhpcyB0dXJuIHdhdGNoZXMgdGhlIGRlc2lyZWQgZnMgb2JqZWN0IHVzaW5nIHRo
+ZQ0KPiBhYmlsaXRpZXMgb24gdGhhdCBob3N0LCBhbmQgc2VuZHMgYW55dGhpbmcgYmFjayB0byB0
+aGUgbG9jYWwgaG9zdCAoQSkuDQo+IA0KPiBJJ3ZlIGV4cGVyaW1lbnRlZCB3aXRoIHRoaXMsIGFu
+ZCBnb3QgaXQgd29ya2luZyB3aGVuIHVzaW5nIHNzaGZzLg0KPiANCj4gVGhpcyBpcyB2ZXJ5IGVh
+c3kgdG8gc2V0dXAsIGFuZCBzaW1wbGUgdG8gdW5kZXJzdGFuZCwgYnV0IHNvbWUgZHJhd2JhY2tz
+Og0KPiANCj4gMS4gd2hpbGUgdGhlIGZpbGVzeXN0ZW1zIGFyZSB1c2luZyBjcmVkZW50YWlscyBv
+ciB0aWNrZXRzIHRvIGdldCBhY2Nlc3MgdG8gYQ0KPiByZW1vdGUgcmVzb3VyY2UsIHRoaXMgaXMg
+YSBiaXQgZGlmZmljdWx0IGZvciBub3RpZnlmcy4NCj4gTm90aWZ5ZnMgYnlwYXNzZXMgdGhhdC4g
+TWF5YmUgdGhpcyBsZWFkcyB0byBwZXJtaXNzaW9ucy9hYnVzZSBJIGNhbm5vdCBzZWUNCj4gZGly
+ZWN0bHkuDQoNCkxhY2sgb2Ygc2VjdXJpdHkgaXMgYSBzaG93c3RvcHBlci4gVGhlcmUgYXJlIGdv
+b2QgcmVhc29ucyB3aHkgaW5vdGlmeSB3b24ndCBhbGxvdyB5b3UgdG8gbW9uaXRvciBmaWxlcyBm
+b3Igd2hpY2ggeW91IGRvbid0IGhhdmUgYWNjZXNzIHBlcm1pc3Npb25zLg0KDQo+IDIuIHRoZSBm
+aWxlc3lzdGVtIHN0aWxsIGRvZXMgbm90IGtub3cgdGhhdCBzb21ldGhpbmcgaGFzIGNoYW5nZWQg
+KG9uIEIpLiBJdA0KPiBzaG91bGQgYmUgbWFkZSBhd2FyZSBhcyBmYXN0IGFzIHBvc3NpYmxlIHRv
+IG1ha2UgdGhlIGNoYW5nZXMgZWZmZWN0aXZlIG9uDQo+IGxvY2FsaG9zdCBBLiBNYXliZSBub3Rp
+ZnlmcyBzaG91bGQganVzdCB0cmlnZ2VyIHRoYXQgYnkgZG9pbmcgYSBsb29rdXAgb24gYW4NCj4g
+ZW50cnkgd2hlbiBpdCBoYXMgYmVlbiByZW1vdmVkIG9uIHRoZSByZW1vdGUgaG9zdCBmb3IgZXhh
+bXBsZS4NCj4gDQo+IGIuIG5vdGlmeWZzIGZvcndhcmRzIHRoZSB3YXRjaCB0byBuZnMgKGFuZCBj
+aWZzKSB1c2luZyBuZXRsaW5rLiBTaW5jZSBuZnMgYW5kDQo+IGNpZnMgYXJlIGluIGtlcm5lbHNw
+YWNlLCBhbmQgbm90aWZ5ZnMgaXMgaW4gdXNlcnNwYWNlLCBuZXRsaW5rIGlzIHRoZSB3YXkgdG8g
+Z28gdG8NCj4gY29tbXVuaWNhdGUuVGhpcyBpcyBwb3NzaWJsZSwgYW5kIEkndmUgdGhvdWdodCB0
+aGlzIGlzIHRoZSBiZXN0IHdheSB0byBnbyBmb3IgYQ0KPiBsb25nIHRpbWUsIGJ1dCBjb21wbGlj
+YXRlZCB3aGVuIGNvbXBhcmVkIHRvIHRoZSBsYXN0IG1ldGhvZDoNCj4gDQo+IGMuICBtYWtlIGZp
+bGVzeXN0ZW1zIGxpa2UgbmZzIGFuZCBjaWZzIGF3YXJlIGEgaW5vdGlmeSB3YXRjaCBoYXMgYmVl
+biBzZXQuIFVudGlsbA0KPiBub3cgdGhlIGZpbGVzeXN0ZW1zIHNlbGYgYXJlIHRvdGFsbHkgbm90
+IG5vdGlmaWVkIGEgd2F0Y2ggaGFzIGJlZW4gc2V0IChhbmQgb2YNCj4gY291cnNlIGFsc28gY2hh
+bmdlZC9yZW1vdmVkKS4gVGhpcyBpcyBieSBkZXNpZ24uDQo+IEZvciBsb2NhbCBmaWxlc3lzdGVt
+cyBpdCdzIG5vdCByZXF1aXJlZCwgaXQgd2lsbCBub3QgZ2V0IGFueSBleHRyYSwgYnV0IG5mcyBh
+bmQgY2lmcw0KPiBhbmQgZnVzZSBmcydzIGNhbiB1c2UgdGhpcyBpbmZvIHRvIHNldCBhIHdhdGNo
+IG9uIHRoZSBiYWNrZW5kIHVzaW5nIHRoZQ0KPiBtZXRob2RzL2FwaSBzcGVjaWZpYyB0byB0aGUg
+ZmlsZXN5c3RlbS4gRm9yIGV4YW1wbGUgY2lmcyB3aWxsIHNlbmQgYQ0KPiBTTUIyX0NIQU5HRV9O
+T1RJRlkgdG8gdGhlIHNlcnZlciwgYW5kIHdhaXRpbmcgZm9yIHJlc3VsdHMuDQo+IA0KPiBXaGF0
+IGRvIHlvdSB0aGluaywgaXMgdGhlIGxhdGVzdCBvcHRpb24gcG9zc2libGU/Pw0KDQpTbyB3aGF0
+IGlzIHRoZSBraWxsZXIgYXBwIGZvciBpbm90aWZ5IG9uIE5GUy9DSUZTL0ZVU0U/IFdoYXQgcHJv
+Z3JhbXMgZG8geW91IG5lZWQgdG8gcnVuIG9uIGEgTkZTL0NJRlMvRlVTRSBjbGllbnQgdGhhdCB1
+c2UgaW5vdGlmeSBhbmQgdGhhdCB3b3VsZG4ndCBiZSBiZXR0ZXIgb2ZmIHJ1bm5pbmcgb24gdGhl
+IHNlcnZlciBpbnN0ZWFkPw0KDQpJT1c6IHdob3NlIHByb2JsZW0gYXJlIHlvdSB0cnlpbmcgdG8g
+c29sdmU/DQoNClRyb25kDQo=
