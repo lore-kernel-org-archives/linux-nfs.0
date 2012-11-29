@@ -1,97 +1,163 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:58231 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:61467 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755047Ab2K1QrW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Nov 2012 11:47:22 -0500
-Date: Wed, 28 Nov 2012 11:47:21 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Bryan Schumaker <bjschuma@netapp.com>
+	id S932299Ab2K2DRx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Nov 2012 22:17:53 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 03/10] NFSD: Clean up forgetting clients
-Message-ID: <20121128164721.GA15966@fieldses.org>
-References: <1354026919-13313-1-git-send-email-bjschuma@netapp.com>
- <1354026919-13313-4-git-send-email-bjschuma@netapp.com>
- <20121128162920.GK11651@fieldses.org>
- <50B63D20.7050300@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <50B63D20.7050300@netapp.com>
+Subject: [PATCH 4/4] NFSD: Add support for dynamic slot changes
+Date: Wed, 28 Nov 2012 22:17:43 -0500
+Message-Id: <1354159063-17343-5-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1354159063-17343-4-git-send-email-Trond.Myklebust@netapp.com>
+References: <1354159063-17343-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1354159063-17343-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1354159063-17343-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1354159063-17343-4-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 28, 2012 at 11:34:40AM -0500, Bryan Schumaker wrote:
-> On 11/28/2012 11:29 AM, J. Bruce Fields wrote:
-> > On Tue, Nov 27, 2012 at 09:35:12AM -0500, bjschuma@netapp.com wrote:
-> >> From: Bryan Schumaker <bjschuma@netapp.com>
-> >>
-> >> I added in a generic for-each loop that takes a pass over the
-> >> client_lru list and calls some function.  The next few patches will
-> >> update other operations to use this function as well.  A value of 0
-> >> still means "forget everything that is found".
-> >>
-> >> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com> ---
-> >> fs/nfsd/nfs4state.c | 23 ++++++++++++++++++----- 1 file changed, 18
-> >> insertions(+), 5 deletions(-)
-> >>
-> >> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c index
-> >> 050a35e..07abca5 100644 --- a/fs/nfsd/nfs4state.c +++
-> >> b/fs/nfsd/nfs4state.c @@ -4591,19 +4591,32 @@
-> >> nfs4_check_open_reclaim(clientid_t *clid, bool sessions, struct
-> >> nfsd_net *nn)
-> >>  
-> >>  #ifdef CONFIG_NFSD_FAULT_INJECTION
-> >>  
-> >> -void nfsd_forget_clients(u64 num) +u64 nfsd_forget_client(struct
-> >> nfsd_net *nn, struct nfs4_client *clp, u64 max)
-> > 
-> > It doesn't look like you really need nfsd_net?
-> 
-> Not for this, but I find locks through the nn->ownerstr_hashtable
-> since the nfs4_client doesn't have a "cl_locks" list similar to
-> "cl_openowners" (unless there is something I'm missing...?).
+The algorithm chosen for growing/shrinking the dynamic slot table
+size is as follows:
 
-That's because lockowners are all reachable from openowners (e.g. see
-how it's done in
-release_openowner->unhash_openowner->release_open_stateid->unhash_open_stateid->release_stateid_lockowners.
-Yeah, it's a little tangled.).
+If the client is sending a sa_highest_slotid value that is greater than
+or equal to the our server target_highest_slotid, then multiply the
+value of the latter by 5/4.
 
-Alternatively you can get to the network namespace from the client
-(clp->net).
+If, on the other hand, the sa_highest_slotid value is smaller than
+our target_highest_slotid, then try adjusting the latter to half its
+current value, or to the value of sa_highest_slotid+1, whichever is larger.
 
---b.
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfsd/nfs4state.c | 72 +++++++++++++++++++++++++++++++++++++++++++++++++----
+ fs/nfsd/state.h     |  2 ++
+ 2 files changed, 69 insertions(+), 5 deletions(-)
 
-> I
-> figured I would introduce the function with the nfsd_net pointer
-> early, rather than change it in the next patch.
-> 
-> I suppose I could have also put the locks patch first...
-> 
-> - Bryan
-> 
-> > 
-> > --b.
-> > 
-> >> +{ +	nfsd4_client_record_remove(clp); +
-> >> expire_client(clp); +	return 1; +} + +static u64
-> >> nfsd_for_n_state(u64 max, u64 (*func)(struct nfsd_net *, struct
-> >> nfs4_client *, u64)) { struct nfs4_client *clp, *next; -	int
-> >> count = 0; +	u64 count = 0; struct nfsd_net *nn =
-> >> net_generic(current->nsproxy->net_ns, nfsd_net_id);
-> >>  
-> >>  	list_for_each_entry_safe(clp, next, &nn->client_lru, cl_lru) { -
-> >>  	expire_client(clp); -		if (++count == num) +
-> >>  	count += func(nn, clp, max - count); +		if ((max != 0)
-> >>  	&& (count >= max)) break; }
-> >>  
-> >> -	printk(KERN_INFO "NFSD: Forgot %d clients", count); +	return
-> >> count; +} + +void nfsd_forget_clients(u64 num) +{ +	u64
-> >> count = nfsd_for_n_state(num, nfsd_forget_client); +
-> >> printk(KERN_INFO "NFSD: Forgot %llu clients", count); }
-> >>  
-> >>  static void release_lockowner_sop(struct nfs4_stateowner *sop) --
-> >>  1.8.0.1
-> >>
-> 
-> -- To unsubscribe from this list: send the line "unsubscribe
-> linux-nfs" in the body of a message to majordomo@vger.kernel.org More
-> majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index a1208cc..88d0de9 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -807,6 +807,7 @@ static bool nfsd4_grow_slot_table_locked(struct nfsd4_slot_table *tbl,
+ 		if (slot != NULL){
+ 			if (!nfsd4_get_drc_mem(tbl))
+ 				break;
++			slot->sl_generation = tbl->slt_generation - 1;
+ 			slot->sl_slotid = next_slotid;
+ 			list_add_tail(&slot->sl_list, &tbl->slt_head);
+ 		}
+@@ -853,6 +854,30 @@ static void nfsd4_free_slot_table(struct nfsd4_slot_table *tbl)
+ 	spin_unlock(&tbl->slt_lock);
+ }
+ 
++static void nfsd4_fc_set_highest_slotid_locked(struct nfsd4_session *session,
++		struct nfsd4_slot_table *tbl,
++		u32 target_highest_slotid,
++		u32 highest_slotid)
++{
++	/* Lower limit for target_highest_slotid is negotiated limit */
++	target_highest_slotid = max(target_highest_slotid,
++			session->se_fchannel.maxreqs - 1);
++	/* Lower limit for highest_slotid is target_highest_slotid */
++	highest_slotid = max(highest_slotid, target_highest_slotid);
++
++	if (target_highest_slotid == tbl->slt_target_highest_slotid &&
++			highest_slotid == tbl->slt_highest_slotid)
++		return;
++
++	if (!nfsd4_grow_slot_table_locked(tbl, highest_slotid, GFP_KERNEL))
++		return;
++
++	tbl->slt_target_highest_slotid = target_highest_slotid;
++	tbl->slt_highest_slotid = highest_slotid;
++	tbl->slt_generation++;
++	nfsd4_truncate_slot_table_locked(tbl, tbl->slt_highest_slotid);
++}
++
+ static void nfsd4_init_slot_table(struct nfsd4_slot_table *tbl,
+ 		size_t slotsize, u32 highest_slotid)
+ {
+@@ -2039,6 +2064,45 @@ out:
+ 	return status;
+ }
+ 
++static void nfsd4_sequence_adjust_slot_table(struct nfsd4_session *session,
++		struct nfsd4_slot *slot, u32 sa_highest_slotid,
++		struct nfsd4_sequence *res)
++{
++	struct nfsd4_slot_table *tbl = &session->se_slots;
++	u32 next_target;
++	u32 next_highest;
++
++	spin_lock(&tbl->slt_lock);
++	/*
++	 * If this slot hasn't seen our previous values, then don't trust
++	 * that the client has seen them. Don't adjust the slot table yet.
++	 */
++	if (slot->sl_generation != tbl->slt_generation)
++		goto out;
++
++	next_target = tbl->slt_target_highest_slotid;
++
++	/* Is the client bumping against our current window limits? */
++	if (sa_highest_slotid >= tbl->slt_target_highest_slotid) {
++		/* Yes! Grow the window size by 1/4 */
++		next_target += 1 + (tbl->slt_target_highest_slotid >> 2);
++		next_highest = next_target;
++	} else {
++		/* No! Try to shrink the window size by 1/2 */
++		next_target >>= 1;
++		if (sa_highest_slotid + 1 > next_target)
++			next_target = sa_highest_slotid + 1;
++		next_highest = tbl->slt_target_highest_slotid;
++	}
++	nfsd4_fc_set_highest_slotid_locked(session, tbl,
++			next_target, next_highest);
++out:
++	slot->sl_generation = tbl->slt_generation;
++	res->highest_slotid = tbl->slt_highest_slotid;
++	res->target_highest_slotid = tbl->slt_target_highest_slotid;
++	spin_unlock(&tbl->slt_lock);
++}
++
+ static struct nfsd4_conn *__nfsd4_find_conn(struct svc_xprt *xpt, struct nfsd4_session *s)
+ {
+ 	struct nfsd4_conn *c;
+@@ -2159,11 +2223,9 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ 	else
+ 		slot->sl_flags &= ~NFSD4_SLOT_CACHETHIS;
+ 
+-	/* Retrieve new target/highest slotid values */
+-	spin_lock(&session->se_slots.slt_lock);
+-	seq->target_highest_slotid = session->se_slots.slt_target_highest_slotid;
+-	seq->highest_slotid = session->se_slots.slt_highest_slotid;
+-	spin_unlock(&session->se_slots.slt_lock);
++	/* Adjust slot table, and retrieve new target/highest slotid values */
++	nfsd4_sequence_adjust_slot_table(session, slot,
++			seq->highest_slotid, seq);
+ 
+ 	cstate->slot = slot;
+ 	cstate->session = session;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 7a0d8e4..c2f897f 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -129,6 +129,7 @@ static inline struct nfs4_delegation *delegstateid(struct nfs4_stid *s)
+ 
+ struct nfsd4_slot {
+ 	struct list_head sl_list;
++	unsigned long sl_generation;
+ 	u32	sl_slotid;
+ 	u32	sl_seqid;
+ 	__be32	sl_status;
+@@ -146,6 +147,7 @@ struct nfsd4_slot_table {
+ 	spinlock_t		slt_lock;
+ 	size_t			slt_slotsize;
+ 	unsigned long		slt_memused;
++	unsigned long		slt_generation;
+ 	u32			slt_target_highest_slotid;
+ 	u32			slt_highest_slotid;
+ };
+-- 
+1.7.11.7
+
