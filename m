@@ -1,41 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54853 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755404Ab2K1OsZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Nov 2012 09:48:25 -0500
-Date: Wed, 28 Nov 2012 09:48:21 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Subject: Re: [PATCH 0/2] nfsd: containerise NFSv4 recovery state
-Message-ID: <20121128144821.GC11651@fieldses.org>
-References: <20121126131404.8822.65870.stgit@localhost.localdomain>
+Received: from relay.parallels.com ([195.214.232.42]:39846 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754389Ab2K2LyC convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2012 06:54:02 -0500
+Message-ID: <50B74CCB.9080000@parallels.com>
+Date: Thu, 29 Nov 2012 15:53:47 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20121126131404.8822.65870.stgit@localhost.localdomain>
+To: Jeff Layton <jlayton@redhat.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
+Subject: Re: NFSd in container - it works
+References: <50B64628.4070007@parallels.com> <20121128200126.GA17875@fieldses.org> <20121128152813.2b4c388d@tlielax.poochiereds.net>
+In-Reply-To: <20121128152813.2b4c388d@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 26, 2012 at 04:16:18PM +0300, Stanislav Kinsbursky wrote:
-> This patch set makes rec_file and in_grace global static variables allocated
-> per network namespace.
-> Both of them are a part of client tracking engine, which is containerised
-> already.
+29.11.2012 00:28, Jeff Layton пишет:
+> On Wed, 28 Nov 2012 15:01:26 -0500
+> "bfields@fieldses.org" <bfields@fieldses.org> wrote:
+>
+>>> 3) Holding net by tracker looks redundant. What was the reason for this?
+>>
+>> I don't understand, what's tracker?
+>
+> I assume he means the clientid tracker. That was necessary for the
+> nfsdcld upcall because it used rpc_pipefs files, and those were
+> net-namespacified. Once we deprecate that in 3.10, I don't think we'll
+> need to worry about the net namespace in the clientid tracker.
+>
 
-Thanks, applying for 3.8.--b.
+Sorry, I don't understand. Rpc_pipefs superblock already holds network namespace.
 
-> 
-> The following series implements...
-> 
-> ---
-> 
-> Stanislav Kinsbursky (2):
->       nfsd: recovery - make rec_file per net
->       nfsd: recovery - make in_grace per net
-> 
-> 
->  fs/nfsd/netns.h       |    3 ++
->  fs/nfsd/nfs4recover.c |   79 ++++++++++++++++++++++++-------------------------
->  2 files changed, 42 insertions(+), 40 deletions(-)
-> 
+> We probably *will* need to concern ourselves with the mnt namespace
+> there though since each container will presumably have its own clientid
+> database...
+
+Since NFSd server in network namespace based, it means, that we can create one server for more than one mount namespace.
+And clietid tracker holds files opened. Thus holds mount.
+Mount namespace itself doesn't look that important to me.
+Or I'm wrong?
+
+-- 
+Best regards,
+Stanislav Kinsbursky
