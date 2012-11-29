@@ -1,66 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:42483 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:36259 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754375Ab2K2NRU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 Nov 2012 08:17:20 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: =?utf-8?B?xYF1a2FzeiBUYXN6?= <lukasz@tasz.eu>,
-        Adrien Kunysz <adk@acunu.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: nfs performance - idea.
-Date: Thu, 29 Nov 2012 13:17:18 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90B329B2A@SACEXCMBX04-PRD.hq.netapp.com>
-References: <CAGRr-NiRkkhoVG4ss5WG7RXXOUWQ5dcOaVAxbQ2yA2c1NbPjKw@mail.gmail.com>
- <CAA4Z2ZQHAvZoUE6h9aqHSZwWF8jvY5QSYai0nXK9gZr6-BN+qA@mail.gmail.com>
- <CAGRr-NjKsSGoL5P8n8nsfk3eoAY8zZt+h1K6rU19cLitTD78uw@mail.gmail.com>
-In-Reply-To: <CAGRr-NjKsSGoL5P8n8nsfk3eoAY8zZt+h1K6rU19cLitTD78uw@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1751269Ab2K2Qku (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Nov 2012 11:40:50 -0500
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 0/9] NFSD: Improve fault injection
+Date: Thu, 29 Nov 2012 11:40:37 -0500
+Message-Id: <1354207246-32343-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
-ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLQ0KPiBvd25lckB2Z2VyLmtlcm5lbC5vcmdd
-IE9uIEJlaGFsZiBPZiBMdWthc3ogVGFzeg0KPiBTZW50OiBUaHVyc2RheSwgTm92ZW1iZXIgMjks
-IDIwMTIgNDo0MSBBTQ0KPiBUbzogQWRyaWVuIEt1bnlzeg0KPiBDYzogbGludXgtbmZzQHZnZXIu
-a2VybmVsLm9yZw0KPiBTdWJqZWN0OiBSZTogbmZzIHBlcmZvcm1hbmNlIC0gaWRlYS4NCj4gDQo+
-IEFueSBpZGVhIG9uIHRoaXMgdG9waWM/DQo+IA0KPiBDYW4gSSBhc3N1bWUgdGhhdCAidG91Y2gi
-IGNvdWxkIGJlIGludGVyZmFjZSBmb3IgdHJpZ2dlcmluZyBzeW5jaHJvbmlzaW5nDQo+IGNsaWVu
-dCBzdGF0ZSB3aXRoIHNlcnZlciBzdGF0ZT8NCj4gDQoNCidscycgaXMgYmV0dGVyLiBBbGwgb3Bl
-bmRpcigpIGNhbGxzIHdpbGwgdHJpZ2dlciBhIHJldmFsaWRhdGlvbiBvZiB0aGUgZGlyZWN0b3J5
-IGNhY2hlLg0KDQoNCj4gbWFueSB0aGFua3MgZm9yIGhlbHAhDQo+IHJlZ2FyZHMNCj4gTHVrYXN6
-IFRhc3oNCj4gDQo+IA0KPiAyMDEyLzExLzE0IEFkcmllbiBLdW55c3ogPGFka0BhY3VudS5jb20+
-Og0KPiA+IE9uIFdlZCwgTm92IDE0LCAyMDEyIGF0IDE6MzggUE0sIMWBdWthc3ogVGFzeiA8bHVr
-YXN6QHRhc3ouZXU+IHdyb3RlOg0KPiA+PiBIaSBhbGwsDQo+ID4+DQo+ID4+IEkgd291bGQgbGlr
-ZSB0byBjb25zdWx0IHNvbWUgaWRlYSB3aXRoIHlvdSwNCj4gPj4NCj4gPj4gUHJvYmxlbToNCj4g
-Pj4gSSBoYXZlIHR3byBwcm9jZXNzZXMgd2hpY2ggYXJlIGRvaW5nIHNvbWUgYWN0aW9ucyBhbmQg
-b25lIG9mIHRoZQ0KPiA+PiBhY3Rpb24gaXMgZG9uZSBvbiBhIHNoYXJlZCBmaWxlIHN5c3RlbS4N
-Cj4gPj4gSXNzdWUgaXMgdGhhdCB0aGlzIHRoaW5nIGNvdWxkIGJlIGRvbmUgb25seSBieSBvbmUg
-cHJvY2VzcywgYW5kIGZvcg0KPiA+PiB0aGlzIGlzc3VlLCBsb2NraW5nIG1lY2hhbmlzbSBpcyBp
-bXBsZW1lbnRlZC4NCj4gPj4gUHJvYmxlbSBpcyB0aGF0IHdoaWxlIG9uZSBwcm9jZXNzIGlzIHJl
-bGVhc2luZyBsb2NrLCBzZWNvbmQgb25lIGlzDQo+ID4+IGluZm9ybWVkIHRoYXQgZmlsZSBwcm9j
-ZXNzaW5nIGlzIGZpbmlzaGVkLCBidXQgdW5mb3J0dW5hdGVseSBmaWxlcw0KPiA+PiBkb2VzIG5v
-dCBleGlzdHMgaW4gY29udGV4dCBvZiBzZWNvbmQgcHJvY2Vzcy4NCj4gPj4gVHdvIHByb2Nlc3Nl
-cyBhcmUgZXhlY3V0ZWQgb24gdHdvIGRpZmZlcmVudCBob3N0cy4gTkZTIHNoYXJlIGlzDQo+ID4+
-IG1vdW50ZWQgaW4gYSBzdGFuZGFyZCB3YXksIG5vIHNwZWNpYWwgZmxhZy4NCj4gPj4gUHJvYmxl
-bSBJIGd1ZXNzIGlzIHdpdGggY2FjaGVzLCBsb29rdXBjYWNoZT1ub25lIHNvbHZlcyB0aGUgcHJv
-YmxlbSwNCj4gPj4gYnV0IGFsc28gY2F1c2VzIG90aGVycyA6KSAtIHBlcmZvcm1hbmNlLg0KPiA+
-Pg0KPiA+PiBJIGtub3csIGl0IG5vdCBwb3NzaWJsZSB0byBoYXZlIGFsbCB0aGluZ3MgYXQgb25j
-ZSAtIG5vIGNvbXBsYWlucy4NCj4gPj4gQnV0IHNpbXBsZSBpZGVhIGlzIHRoYXQgaW5zaWRlIHNl
-Y29uZCBwcm9jZXNzIGFmdGVyIG5vdGlmaWNhdGlvbiB0aGF0DQo+ID4+IGZpbGVzIGFyZSBnZW5l
-cmF0ZWQgZXhlY3V0ZSB0b3VjaCBmdW5jdGlvbiBvbiBkaXJlY3Rvcnkgd2hpY2ggaG9sZHMNCj4g
-Pj4gZmlsZXMsIFRoaXMgd2lsbCBjYXVzZSB1bm5lY2Vzc2FyeSB1cGRhdGUgb2YgbW9kaWZpY2F0
-aW9uIGRhdGUsIGJ1dA0KPiA+PiBhcyBhIHNpZGUgZWZmZWN0IEkgbm90aWNlZCAgdGhhdCBhbHNv
-IGZpbGUgZ2V0cyB2aXNpYmxlIGltbWVkaWF0ZWx5DQo+ID4+IG9uIGNsaWVudCBob3N0cy4NCj4g
-Pj4NCj4gPj4gVGhhdCdzIHdoeSBteSBxdWVzdGlvbiBpcyBpZiB0aGlzIGlzIGV4cGVjdGVkIGFu
-ZCByZWFzb25hYmxlIGJlaGF2aW91cj8NCj4gPj4gQXQgdGhlIGVuZCBJJ20gbG9va2luZyBmb3Ig
-a2luZCBvZiAnc3luYycgY29tbWFuZCB3aGljaCB3aWxsIGNhdXNlDQo+ID4+IHN5bmNocm9uaXph
-dGlvbiBvZiBkaXJlY3RvcmllcyBjb250ZW50IGluc2lkZSBjbGllbnQgYW5kIHNlcnZlcg0KPiA+
-PiBzb21ldGhpbmcgbGlrZSBmbHVzaCgpIC0gYnV0IGluIE5GUyBpdCdzIG1vcmUgY29tcGxleC4N
-Cj4gPg0KPiA+IERvZXNuJ3QgZnN5bmMoMikgZG8gd2hhdCB5b3Ugd2FudD8gSWYgbm90LCBjYW4g
-eW91IGV4cGxhaW4gd2h5Pw0KPiA+DQo+ID4+IHRoYW5rcyBpbiBhZHZhbmNlIGZvciBoZWxwLA0K
-PiA+Pg0KPiA+PiByZWdhcmRzDQo+ID4+IEx1a2Fzeg0KPiAtLQ0KPiBUbyB1bnN1YnNjcmliZSBm
-cm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBpbiB0
-aGUNCj4gYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZyBNb3Jl
-IG1ham9yZG9tbyBpbmZvIGF0DQo+IGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWlu
-Zm8uaHRtbA0K
+From: Bryan Schumaker <bjschuma@netapp.com>
+
+While working on p2p-nfs, I discovered that I sometimes need to clear
+state for a specific client to test all possible error recovery conditions.
+The current fault injection code deletes state as it find it, so it can
+be difficult to guess which state will be forgotten.  In addition, I
+currently print out the amount of state forgotten but I don't give details
+like "Forgot 3 locks from client w.x.y.z".  These patches set out to
+improve that.
+
+The first 6 patches clean up the current code and prepare it for specific
+client state removal.  Patch 7 adds printing information to the server's logs
+when a fault injection file is read (such as "Client w.x.y.z has 3 open
+files").  Patch 8 adds in a custom file operations structure so users can
+write strings to fault injection files in addition to u64s.  Finally, patch
+9 allows users to remove state by writing a client's IP address to one of
+the files.
+
+Changes in v4:
+- Access lock state from open owners rather than requiring a network namespace
+  pointer.
+- Don't produce a null pointer expection if fault injection is attempted after
+  loading the nfsd module but before running any nfsd threads.
+
+- Bryan
+
+Bryan Schumaker (9):
+  NFSD: Lock state before calling fault injection function
+  NFSD: Clean up forgetting clients
+  NFSD: Clean up forgetting locks
+  NFSD: Clean up forgetting openowners
+  NFSD: Clean up forgetting and recalling delegations
+  NFSD: Fault injection operations take a per-client forget function
+  NFSD: Reading a fault injection file prints a state count
+  NFSD: Add a custom file operations structure for fault injection
+  NFSD: Forget state for a specific client
+
+ fs/nfsd/fault_inject.c | 112 ++++++++++++++++++++++++----
+ fs/nfsd/netns.h        |   3 +
+ fs/nfsd/nfs4state.c    | 197 ++++++++++++++++++++++++++++++-------------------
+ fs/nfsd/state.h        |  18 +++--
+ 4 files changed, 237 insertions(+), 93 deletions(-)
+
+-- 
+1.8.0.1
+
