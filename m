@@ -1,85 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40121 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:45195 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932204Ab2K3MOl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 30 Nov 2012 07:14:41 -0500
-Date: Fri, 30 Nov 2012 07:14:37 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: David Quigley <dpquigl@davequigley.com>
-Cc: Casey Schaufler <casey@schaufler-ca.com>, trond.myklebust@netapp.com,
-        sds@tycho.nsa.gov, linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
-        linux-security-module@vger.kernel.org
-Subject: Re: Labeled NFS [v5]
-Message-ID: <20121130121437.GC614@fieldses.org>
-References: <50AC4A7A.6010208@davequigley.com>
- <50B65E7E.4030607@schaufler-ca.com>
- <50B6B706.1010002@davequigley.com>
- <50B6C398.90002@schaufler-ca.com>
- <50B7E189.80200@schaufler-ca.com>
- <d0817140372d745df0b4952b796610f2@countercultured.net>
- <50B7FEFB.30109@schaufler-ca.com>
- <579e850139bd3d5a0c9155270d5d9fbe@countercultured.net>
- <50B810D2.2000401@schaufler-ca.com>
- <3ea3f70e0a5cdb99f1594019b7bd619d@countercultured.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <3ea3f70e0a5cdb99f1594019b7bd619d@countercultured.net>
+	id S1945979Ab2K2AbL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 Nov 2012 19:31:11 -0500
+Date: Thu, 29 Nov 2012 11:30:51 +1100
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/3] gssd: base the size of the fd array on the
+ RLIMIT_NOFILE limit.
+Message-ID: <20121129113051.046bc658@notabene.brown>
+In-Reply-To: <20121128131054.GB11651@fieldses.org>
+References: <20121128010939.2475.13123.stgit@notabene.brown>
+	<20121128011123.2475.13691.stgit@notabene.brown>
+	<20121128131054.GB11651@fieldses.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_//i1lZFFD=uFYlm1inq5SOXo"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 29, 2012 at 09:02:49PM -0500, David Quigley wrote:
-> On 11/29/2012 20:50, Casey Schaufler wrote:
-> >On 11/29/2012 4:46 PM, David Quigley wrote:
-> >>On 11/29/2012 19:34, Casey Schaufler wrote:
-> >>>I would think that were it not for the case that access is denied
-> >>>and I get an audit record for nfsd that reports a subject
-> >>>label of "_"
-> >>>(which is correct for nfsd but not the process attempting
-> >>>access) and
-> >>>an object label of "WhooHoo", which is correct. The server side
-> >>>looks like it might be working right, given the information that it
-> >>>has.
-> >>>
-> >>
-> >>Ok so this is the problem. nfsd is a kernel thread I believe. In
-> >>SELinux land it has the type kernel_t which is all powerful. We
-> >>don't
-> >>have client label transport yet (That requires RPCSECGSSv3). Is
-> >>there
-> >>a way you can have that kernel thread running as a type that has
-> >>access to everything?
-> >
-> >That would be having CAP_MAC_ADMIN and CAP_MAC_OVERRIDE in Smackese.
-> >Looking at /proc/<pid-of-nfsd>/status we see CapEff of fff...fff
-> >which
-> >is to say, all capabilities.
-> >
-> 
-> Hmm thats interesting then. You could try using rpcdebug -m nfsd to
-> turn on some of the debugging to look around the internals and
-> figure out whats going on. If you pass -v it will give you all of
-> the potential flags.
-> 
-> >
-> >>I think that is the current problem. Which makes perfect sense. If
-> >>your kernel threads don't get started with max privilege then the
-> >>server would be denied access on all of the file attributes and
-> >>wouldn't be able to ship it over the wire properly.
-> >
-> >OK. I haven't had to do anything with kernel threads so far.
-> >Where is NFS setting these up? Poking around fs/nfsd looks like
-> >the place, but I haven't seen anything there that makes it look
-> >like they would be running without capabilities. Clearly, that's
-> >what I'm seeing. It looks as if the credential of nfsd does not
-> >match what /proc reports. Bother.
-> >
-> 
-> I'm not entirely sure whats up either. If you want to look for the
-> NFSd threads they are in fs/nfsd/nfssvc.c. The main function starts
-> on line 487.
+--Sig_//i1lZFFD=uFYlm1inq5SOXo
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-I'm not following the discussion, but: maybe you want to look at
-fs/nfsd/auth.c:nfsd_setuser() ?  In particular, the
-cap_{drop/raise}_nfsd_set() calls at the end.
+On Wed, 28 Nov 2012 08:10:55 -0500 "J. Bruce Fields" <bfields@fieldses.org>
+wrote:
 
---b.
+> On Wed, Nov 28, 2012 at 12:11:23PM +1100, Neil Brown wrote:
+> > We have previously raised the size of the 'pollarray' once (32 -> 256)
+> > and I have had another request to make it bigger.
+> > Rather than changing the hard-coded value, make it depend on
+> > RLIMIT_NOFILE.  This is an upper limit on the size of the array
+> > that can be passed to poll() anyway.
+>=20
+> Sounds like a good idea.
+>=20
+> Just out of curiosity: how does it fail?  I guess mounts just start
+> failing at some point--how do people find the workaround?
+
+Error seems to be
+
+rpcsec_gss: gss_init_sec_context: (major) Miscellaneous failure - (minor) C=
+annot contact any KDC for requested realm
+
+in rpc.gssd logs.
+
+I guess people could read the source to find the work around .... not ideal
+though.  I guess we should get gssd to generate some more helpful message.
+
+The seem to be further problems that the customer is experiencing so I might
+wait until they are completely resolved to ensure I have complete
+understanding before I propose a further patch.
+
+NeilBrown
+
+
+--Sig_//i1lZFFD=uFYlm1inq5SOXo
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIVAwUBULaswjnsnt1WYoG5AQKQ4Q/+N5cvBYAlpDbYVBP/TJES6vA7no94qDP7
+s+QkHEHXuHiA9Zxx6hSsd54Y6wAaEGsiMKsBncPJ70qDS0JeA7bIkoPcI20R/XP7
+FeXuz1gPoprYoLQYkqhRGwDidVuwtTg0slPapfMFeoUPbJakNkaRvebDyXyFWvIx
+/bBXGeR4hmYamkSblRGan/l+20NQwtle4jaseTdfKG3nhIPFHF9bBGDc6ecMKBtE
+R380v4xlak34cYQQYH1RMzIrD1KiwJyI+YOU47HLWPk9T9ryGVF939VXwS1Kvlu/
+iSuYxeQP04XEZTPxqMktq5zgk47dc28qppQHkdh34tDFlotcXuNimaAsx+6alBe3
+HWxyS/WG+ZrCheeRGLANop2ZNKTHnyQvnBAHUtImhNy9fTfw3I3qnQjbj1dPll3E
+GmbUVazgYY+yPyKMvy1/zY43MiX7LezZFdAAAHNO2WsnHinox80iEqvCdIGMNOax
+FrJPgx7wnqdGS2VwtCC2KZ9WWVf4jWc16kOGaTSp7gfQYbKv1/3X1Rg/oBijYrwJ
+LGw1wWu9emwo653Gh+AiRaUA5PM/ogB0Xpy/06CWQ7m1OrrqHhpBmBgkPDpWvJMr
+NPajZzp7gTzkwWI4ggG/riOlBRI59jnJCnjsSDCdZ8ClaVI19vdODizvYRQi1+tp
+Au2+7C5iXuc=
+=bUL9
+-----END PGP SIGNATURE-----
+
+--Sig_//i1lZFFD=uFYlm1inq5SOXo--
