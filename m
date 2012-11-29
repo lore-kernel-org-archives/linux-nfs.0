@@ -1,94 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.gnuher.de ([78.47.12.54]:55014 "EHLO mail.gnuher.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751042Ab2KFKHt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 Nov 2012 05:07:49 -0500
-Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
-	by mail.gnuher.de (envelope-from
-	<sven@gegg.us>)
-	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.72)
-	id 1TVfVb-0002Lr-Qw
-	for linux-nfs@vger.kernel.org; Tue, 06 Nov 2012 10:31:48 +0100
-Received: from sven  by ultimate100.geggus.net (envelope-from
-	<sven@gegg.us>)
-	with local (Exim 4.72)
-	id 1TVfVY-00067a-6T
-	for linux-nfs@vger.kernel.org; Tue, 06 Nov 2012 10:31:44 +0100
-Date: Mon, 5 Nov 2012 17:55:01 +0100
-From: Sven Geggus <lists@fuchsschwanzdomain.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Kernel update 3.5.7 -> 3.6.3 breaks NFS4
-Message-ID: <20121105165459.GA2958@geggus.net>
-References: <k6ebva$1kf$1@ultimate100.geggus.net>
- <20121026171549.GA11806@fieldses.org>
- <20121029094038.GA14836@geggus.net>
- <20121029150203.GB9502@fieldses.org>
+Received: from relay.parallels.com ([195.214.232.42]:36335 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752645Ab2K2Le5 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2012 06:34:57 -0500
+Message-ID: <50B7484A.1030005@parallels.com>
+Date: Thu, 29 Nov 2012 15:34:34 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20121029150203.GB9502@fieldses.org>
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Jeff Layton <jlayton@redhat.com>,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
+Subject: Re: NFSd in container - it works
+References: <50B64628.4070007@parallels.com> <20121128200126.GA17875@fieldses.org>
+In-Reply-To: <20121128200126.GA17875@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-J. Bruce Fields schrieb am Montag, den 29. Oktober um 16:02 Uhr:
+29.11.2012 00:01, bfields@fieldses.org пишет:
+> On Wed, Nov 28, 2012 at 09:13:12PM +0400, Stanislav Kinsbursky wrote:
+>> Hi.
+>> I have about ~10 more patches, which makes NFS server works in container (mnt + pid + net namesapces). And it passes basic tests.
+>
+> Good, congratulations.
+>
 
-> I'd be curious to understand what changed on the server to make a
-> difference.  I can't think of anything.
+Thanks.
 
-OK, I now figured out which commit did cause the problem:
+>> But there are some issues I would like to discuss:
+>> 1) NFSd threads are running in init_pid namespace. This makes
+>> impossible to stop NFS server by signals from container.
+>
+> Note "rpc.nfsd 0" (which writes to /proc/fs/nfsd/threads) is what
+> current Fedora, for example, uses to shut down the server.
+>
 
-commit 08843b79fb35d33859e0f8f11a7318341076e4d1
-Merge: cc8362b 2c142ba
-Author: Linus Torvalds <torvalds@linux-foundation.org>
-Date:   Tue Jul 31 14:42:28 2012 -0700
+Yes. this is the only right way. And this is another issue: on containers with old operation system (rhel6, for example), init scripts have to be updated.
 
-    Merge branch 'nfsd-next' of git://linux-nfs.org/~bfields/linux
-    
-    Pull nfsd changes from J. Bruce Fields:
-     "This has been an unusually quiet cycle--mostly bugfixes and cleanup.
-      The one large piece is Stanislav's work to containerize the server's
-      grace period--but that in itself is just one more step in a
-      not-yet-complete project to allow fully containerized nfs service.
-    
-      There are a number of outstanding delegation, container, v4 state, and
-      gss patches that aren't quite ready yet; 3.7 may be wilder."
-    
-    * 'nfsd-next' of git://linux-nfs.org/~bfields/linux: (35 commits)
-      NFSd: make boot_time variable per network namespace
-      NFSd: make grace end flag per network namespace
-      Lockd: move grace period management from lockd() to per-net functions
-      LockD: pass actual network namespace to grace period management
-      functions
-      LockD: manage grace list per network namespace
-      SUNRPC: service request network namespace helper introduced
-      NFSd: make nfsd4_manager allocated per network namespace context.
-      LockD: make lockd manager allocated per network namespace
-      LockD: manage grace period per network namespace
-      Lockd: add more debug to host shutdown functions
-      Lockd: host complaining function introduced
-      LockD: manage used host count per networks namespace
-      LockD: manage garbage collection timeout per networks namespace
-      LockD: make garbage collector network namespace aware.
-      LockD: mark host per network namespace on garbage collect
-      nfsd4: fix missing fault_inject.h include
-      locks: move lease-specific code out of locks_delete_lock
-      locks: prevent side-effects of locks_release_private before file_lock
-      is initialized
-      NFSd: set nfsd_serv to NULL after service destruction
-      NFSd: introduce nfsd_destroy() helper
-      ...
+> It's not ideal, but for now we can tell people "if you're in a container
+> and want to shut down nfsd, you need to use /proc/fs/nfsd/threads, not
+> signals."
+>
 
-Thus "git diff 08843b79..cc8362b1" on a linux-stable tree from
-git://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git should
-give us the relevant changes.
+Ok. But there is another issue.
+Imagine, that you have container with it's own pid and network namespaces (like OpenVZ container).
+You can start NFS server in such container and then kill containers "init" (child reaper), from outside.
+Child reaper and all it's children will die. But NFSd kthreads will remain running. And note, that they are holding network namespace currently. Which, actually 
+means, that NFS server is still running. Then add one more namespace to this example - mount namespace. Currently it's not hold by NFSd kthreads. And thus NFSd 
+kthreads and network namespace can disappear from under NFSd file system (which will be mounted per-net). I'm afraid, that this will lead to kernel panic 
+shortly right after any request will be received by NFS server.
 
+So, I see only one proper solution so far:
+1) NFSd doesn't hold network references, but instead register it's callback in per-net operations, which will allow to properly shutdown all NFSd kthreads on 
+network namespace destruction. This looks sane, because kthreads are started by kernel, and such approach allows to shutdown NFS server properly in case of it's 
+child reaper has been killed.
+2) NFSd file system holds network namespace. I don't really like this solution, but it look like the only way to make sure, that we don't get to kernel panic, 
+mentioned earlier. Moreover, if NFSd file system will be mounted in separated mount namespace, it (mount point) will be unmounted during child reaper exit 
+before destroying network namespace.
 
-Regards
+Have to notice, that if mount namespace is shared between host and container, then NFSd mount point won't be unmounted on child reaper exit, containers NFSd 
+kthreads will be running and thus the whole NFSd server will be active after container stop. Situation is not look pleasant, but it's sane and the whole NFSd 
+will be properly destructed when NFSd fs is unmounted.
 
-Sven
+One more note: unmounting of NFSd file system on network namespace shutdown (instead of holding network reference) is another possible solution. This one is 
+even better, because we can fully shutdown NFS server on child reaper exit.
+But there are a couple of problems:1
+1) we have to tie network namespace and mount point (which is not good and not that simple).
+2) we have to make sure, that mount point is destroyed before shutdown of kthreads (again, not good and simple).
+
+>> Also is
+>> makes possible to stop and destroy container without stopping its
+>> NFS server (network namespace thus will stay alive). So, there
+>> should be implemented some way to destroy these threads, when
+>> container's child reaper is exiting.
+>> 2) We need to solve this issue with registering in wrong portmapper.
+>> Sync connects suits both Lockd and NFSd. Bruce, what about gss
+>> daemon? Maybe some other socket (abstract UNIX or loopback) can be
+>> used instead? Or PipeFS?
+>
+> My vague thought was that the gss-proxy can do a write to a special file
+> to indicate that it's up (and thus that it should be used and not the
+> old svcgssd interface), and that we could use that process context to do
+> the connect....  Not sure if that works.
+>
+
+Does it mean, that you don't object against sync transports connect to UNIX sockets?
+
+>> 3) Holding net by tracker looks redundant. What was the reason for this?
+>
+> I don't understand, what's tracker?
+>
+> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+
 
 -- 
-Das allgemeine Persönlichkeitsrecht (Art. 2 Abs.1 i.V.m. Art.1 Abs. 1GG)
-umfasst das Grundrecht auf Gewährleistung der Vertraulichkeit und Integrität
-informationstechnischer Systeme. (BVerfG, 1BvR 370/07)
-/me is giggls@ircnet, http://sven.gegg.us/ on the Web
+Best regards,
+Stanislav Kinsbursky
