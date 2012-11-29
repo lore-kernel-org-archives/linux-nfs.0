@@ -1,83 +1,154 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:40787 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1422829Ab2KNNXR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Nov 2012 08:23:17 -0500
-Message-ID: <50A39B2D.6070206@parallels.com>
-Date: Wed, 14 Nov 2012 17:22:53 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from mail-ob0-f174.google.com ([209.85.214.174]:61330 "EHLO
+	mail-ob0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754483Ab2K2OUs convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2012 09:20:48 -0500
+Received: by mail-ob0-f174.google.com with SMTP id wc20so13046467obb.19
+        for <linux-nfs@vger.kernel.org>; Thu, 29 Nov 2012 06:20:48 -0800 (PST)
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH 03/15] nfsd: make reclaim_str_hashtbl allocated per net
-References: <20121113154722.12577.57671.stgit@localhost.localdomain> <20121113154833.12577.8139.stgit@localhost.localdomain> <20121114080247.67cd6b45@tlielax.poochiereds.net>
-In-Reply-To: <20121114080247.67cd6b45@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90B329D17@SACEXCMBX04-PRD.hq.netapp.com>
+References: <CAGRr-NiRkkhoVG4ss5WG7RXXOUWQ5dcOaVAxbQ2yA2c1NbPjKw@mail.gmail.com>
+ <CAA4Z2ZQHAvZoUE6h9aqHSZwWF8jvY5QSYai0nXK9gZr6-BN+qA@mail.gmail.com>
+ <CAGRr-NjKsSGoL5P8n8nsfk3eoAY8zZt+h1K6rU19cLitTD78uw@mail.gmail.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90B329B2A@SACEXCMBX04-PRD.hq.netapp.com>
+ <CAGRr-Niowy4W6wmqjCHesv9r66B0Ok2kha-7=xBp69gksaXt-A@mail.gmail.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90B329C21@SACEXCMBX04-PRD.hq.netapp.com>
+ <CAGRr-Nj9t+jaKf_DFL+zjYMgS1b5EaFjMnDc6XMdad3PJMDvnA@mail.gmail.com> <4FA345DA4F4AE44899BD2B03EEEC2FA90B329D17@SACEXCMBX04-PRD.hq.netapp.com>
+From: =?UTF-8?B?xYF1a2FzeiBUYXN6?= <lukasz@tasz.eu>
+Date: Thu, 29 Nov 2012 15:20:18 +0100
+Message-ID: <CAGRr-NgZR_UD9HKOH9Pdmm_caNxOo+NqsdrV4877NHfqQhh2gA@mail.gmail.com>
+Subject: Re: nfs performance - idea.
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Adrien Kunysz <adk@acunu.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-14.11.2012 17:02, Jeff Layton пишет:
-> On Tue, 13 Nov 2012 18:48:33 +0300
-> Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
->
-<snip>
+2012/11/29 Myklebust, Trond <Trond.Myklebust@netapp.com>:
+>> -----Original Message-----
+>> From: Łukasz Tasz [mailto:lukasz@tasz.eu]
+>> Sent: Thursday, November 29, 2012 9:00 AM
+>> To: Myklebust, Trond
+>> Cc: Adrien Kunysz; linux-nfs@vger.kernel.org
+>> Subject: Re: nfs performance - idea.
 >>
->> +
->> +static int
->> +nfs4_legacy_state_init(struct net *net)
->> +{
->> +     struct nfsd_net *nn = net_generic(net, nfsd_net_id);
->> +     int i;
->> +
->> +     nn->reclaim_str_hashtbl = kmalloc(sizeof(struct list_head) *
->> +                                       CLIENT_HASH_SIZE, GFP_KERNEL);
->> +     if (!nn->reclaim_str_hashtbl)
->> +             return -ENOMEM;
->> +
->> +     for (i = 0; i < CLIENT_HASH_SIZE; i++)
->> +             INIT_LIST_HEAD(&nn->reclaim_str_hashtbl[i]);
->> +     nn->reclaim_str_hashtbl_size = 0;
->> +
->> +     return 0;
->> +}
->> +
->> +static void
->> +nfs4_legacy_state_shutdown(struct net *net)
->> +{
->> +     struct nfsd_net *nn = net_generic(net, nfsd_net_id);
->> +
->> +     kfree(nn->reclaim_str_hashtbl);
->> +}
->> +
->>   static int
->>   nfsd4_load_reboot_recovery_data(struct net *net)
->>   {
->> @@ -425,13 +454,23 @@ nfsd4_load_reboot_recovery_data(struct net *net)
->>                return -EINVAL;
->>        }
+>> 2012/11/29 Myklebust, Trond <Trond.Myklebust@netapp.com>:
+>> >> -----Original Message-----
+>> >> From: Łukasz Tasz [mailto:lukasz@tasz.eu]
+>> >> Sent: Thursday, November 29, 2012 8:47 AM
+>> >> To: Myklebust, Trond
+>> >> Cc: Adrien Kunysz; linux-nfs@vger.kernel.org
+>> >> Subject: Re: nfs performance - idea.
+>> >>
+>> >> Hi, thanks a lot for answer,
+>> >>
+>> >> looks then even better! so to be 100% sure it good to traverse whole
+>> >> path and open directory content.
+>> >
+>> > No. All you really need is the opendir(). If you want to make your own
+>> > hack, all you need is a program that does something along the lines of
+>> >
+>> > DIR* p = opendir(".");
+>> > if (p)
+>> >      closedir(p);
+>> >
+>> I think I got what you mean, but in case of ./a/b/c/d/e just
+>> opendir('./a/b/c/d/e') could end with "No such file or directory"
 >>
->> +     status = nfs4_legacy_state_init(net);
->> +     if (status)
->> +             return status;
->> +
+>> that's why I'm thinking about:
+>> for d in "./a/b/c/d/e".split('/')
+>>    opendir(d)
+>>
+>>
+>> >> One remark, since I did not mentioned it, I'm using NFSv3, is this
+>> >> behavior same in NFSv3 and NFSv4?
+>> >
+>> > Yes. It is a consequence of the NFS close-to-open caching model, which is
+>> common to all versions of NFS.
+>> great,
+>> could you please point me to document/manual which describe this model?
+>>
 >
-> nit: might be clearer to create a new legacy ->init function and have
-> it call the state_init and then load the recovery data.
->
-
-Yep, sure.
+> http://nfs.sourceforge.net/#faq_a8
+again, many thanks!
 
 >
-> Looks like a reasonable and good change, but may need reconciling with
-> the patches from me that Bruce merged recently into his for-next tree.
->
-
-Thanks. Already working on it.
-
--- 
-Best regards,
-Stanislav Kinsbursky
+>> thanks a lot for your help!
+>> Łukasz
+>>
+>> >
+>> >> thanks & regards
+>> >> Lukasz Tasz
+>> >> Łukasz Tasz
+>> >>
+>> >>
+>> >> 2012/11/29 Myklebust, Trond <Trond.Myklebust@netapp.com>:
+>> >> >> -----Original Message-----
+>> >> >> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+>> >> >> owner@vger.kernel.org] On Behalf Of Lukasz Tasz
+>> >> >> Sent: Thursday, November 29, 2012 4:41 AM
+>> >> >> To: Adrien Kunysz
+>> >> >> Cc: linux-nfs@vger.kernel.org
+>> >> >> Subject: Re: nfs performance - idea.
+>> >> >>
+>> >> >> Any idea on this topic?
+>> >> >>
+>> >> >> Can I assume that "touch" could be interface for triggering
+>> >> >> synchronising client state with server state?
+>> >> >>
+>> >> >
+>> >> > 'ls' is better. All opendir() calls will trigger a revalidation of
+>> >> > the directory
+>> >> cache.
+>> >> >
+>> >> >
+>> >> >> many thanks for help!
+>> >> >> regards
+>> >> >> Lukasz Tasz
+>> >> >>
+>> >> >>
+>> >> >> 2012/11/14 Adrien Kunysz <adk@acunu.com>:
+>> >> >> > On Wed, Nov 14, 2012 at 1:38 PM, Łukasz Tasz <lukasz@tasz.eu>
+>> wrote:
+>> >> >> >> Hi all,
+>> >> >> >>
+>> >> >> >> I would like to consult some idea with you,
+>> >> >> >>
+>> >> >> >> Problem:
+>> >> >> >> I have two processes which are doing some actions and one of
+>> >> >> >> the action is done on a shared file system.
+>> >> >> >> Issue is that this thing could be done only by one process, and
+>> >> >> >> for this issue, locking mechanism is implemented.
+>> >> >> >> Problem is that while one process is releasing lock, second one
+>> >> >> >> is informed that file processing is finished, but unfortunately
+>> >> >> >> files does not exists in context of second process.
+>> >> >> >> Two processes are executed on two different hosts. NFS share is
+>> >> >> >> mounted in a standard way, no special flag.
+>> >> >> >> Problem I guess is with caches, lookupcache=none solves the
+>> >> >> >> problem, but also causes others :) - performance.
+>> >> >> >>
+>> >> >> >> I know, it not possible to have all things at once - no complains.
+>> >> >> >> But simple idea is that inside second process after
+>> >> >> >> notification that files are generated execute touch function on
+>> >> >> >> directory which holds files, This will cause unnecessary update
+>> >> >> >> of modification date, but as a side effect I noticed  that also
+>> >> >> >> file gets visible immediately on client hosts.
+>> >> >> >>
+>> >> >> >> That's why my question is if this is expected and reasonable
+>> >> behaviour?
+>> >> >> >> At the end I'm looking for kind of 'sync' command which will
+>> >> >> >> cause synchronization of directories content inside client and
+>> >> >> >> server something like flush() - but in NFS it's more complex.
+>> >> >> >
+>> >> >> > Doesn't fsync(2) do what you want? If not, can you explain why?
+>> >> >> >
+>> >> >> >> thanks in advance for help,
+>> >> >> >>
+>> >> >> >> regards
+>> >> >> >> Lukasz
+>> >> >> --
+>> >> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+>> >> >> in the body of a message to majordomo@vger.kernel.org More
+>> >> majordomo
+>> >> >> info at http://vger.kernel.org/majordomo-info.html
