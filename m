@@ -1,95 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:54380 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1754745Ab2K3AH7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2012 19:07:59 -0500
+Received: from zeniv.linux.org.uk ([195.92.253.2]:56846 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751303Ab2K2Xn2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2012 18:43:28 -0500
+Date: Thu, 29 Nov 2012 23:43:26 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Patrick McLean <patrickm@gaikai.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: Regression with initramfs and nfsroot (appears to be in the
+ dcache)
+Message-ID: <20121129234326.GX4939@ZenIV.linux.org.uk>
+References: <CAE2NFgU+4QDcLaVE5dKDvZCxey7qEf7FAbYNjNmcjVU=HLhF=A@mail.gmail.com>
+ <20121129213316.GU4939@ZenIV.linux.org.uk>
+ <CAE2NFgWCnmgSCsw7MzRkqBLTHgRDG-FvKKcbTHN6UqePK6Ef+Q@mail.gmail.com>
+ <20121129222109.GW4939@ZenIV.linux.org.uk>
+ <50B7E759.9070007@gaikai.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Date: Thu, 29 Nov 2012 19:07:57 -0500
-From: David Quigley <dpquigl@davequigley.com>
-To: Casey Schaufler <casey@schaufler-ca.com>
-Cc: <bfields@fieldses.org>, <trond.myklebust@netapp.com>, <sds@tycho.nsa.gov>,
-        <linux-nfs@vger.kernel.org>, <selinux@tycho.nsa.gov>,
-        <linux-security-module@vger.kernel.org>
-Subject: Re: Labeled NFS [v5]
-In-Reply-To: <50B7E189.80200@schaufler-ca.com>
-References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com>
- <50ABF1A5.2010406@schaufler-ca.com> <50AC1A74.7080105@davequigley.com>
- <50AC2117.801@schaufler-ca.com> <50AC224D.3080108@davequigley.com>
- <50AC41DC.5070607@schaufler-ca.com> <50AC4A7A.6010208@davequigley.com>
- <50B65E7E.4030607@schaufler-ca.com> <50B6B706.1010002@davequigley.com>
- <50B6C398.90002@schaufler-ca.com> <50B7E189.80200@schaufler-ca.com>
-Message-ID: <d0817140372d745df0b4952b796610f2@countercultured.net>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <50B7E759.9070007@gaikai.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/29/2012 17:28, Casey Schaufler wrote:
-> On 11/28/2012 6:08 PM, Casey Schaufler wrote:
->> On 11/28/2012 5:14 PM, Dave Quigley wrote:
->>> On 11/28/2012 1:57 PM, Casey Schaufler wrote:
->>>> On 11/20/2012 7:28 PM, Dave Quigley wrote:
->>>>> On 11/20/2012 9:52 PM, Casey Schaufler wrote:
->>>>>> On 11/20/2012 4:37 PM, Dave Quigley wrote:
->>>>>>> ...
->>>>>>>
->>>>>>>
->>>>>>> Or I could just give you this link and you should be good to go 
->>>>>>> ;)
->>>>>>>
->>>>>>> http://www.selinuxproject.org/~dpquigl/nfs-utils-rpms/
->>>>>>>
->>>>>>> I haven't tried it but it should work. If it doesn't let me 
->>>>>>> know and
->>>>>>> i'll try to fix it on my end. I'd imagine you might need to yum
->>>>>>> remove
->>>>>>> nfs-utils first before adding this new one or you could also 
->>>>>>> try an
->>>>>>> rpm with the upgrade flag for this instead. Good luck.
->>>> ...
->>>>
->>>>
->>>> I've tried on Fedora17 and Ubuntu12.04, and I'm getting the
->>>> attached stack trace on mount. After mounting I'm getting
->>>> denials when I should, but also when I shouldn't.
->>>>
->>>> I've tried tracking down the issue, but there's a lot going on
->>>> that I don't find obvious. I added a dentry_init hook just for
->>>> grins, but it's not getting called.
->>>>
->>>> .
->>>>
->>>>
->>> Any chance of you throwing a kickstart file my way that's 
->>> configured
->>> with SMACK so I can use it for a test box (both server and client)? 
->>> I
->>> can have the guys working with me test for SMACK as well if you
->>> provide an appropriate test harness and image for testing.
->> I've attached the .config from my Fedora17 machine. Who knows, maybe
->> I got something wrong there. I get the error doing the test on the
->> loopback interface (mount -t nfs4 localhist:/ /mnt).
->
-> I've done some instrumentation and security_ismaclabel() is getting
-> called with "selinux", but never "SMACK64". I would guess that 
-> somewhere
-> in the tools you're telling the kernel to expect "selinux". Where is
-> that, so that I can tell it to try "SMACK64" instead?
->
->
->
-> --
-> This message was distributed to subscribers of the selinux mailing 
-> list.
-> If you no longer wish to subscribe, send mail to 
-> majordomo@tycho.nsa.gov with
-> the words "unsubscribe selinux" without quotes as the message.
+On Thu, Nov 29, 2012 at 02:53:13PM -0800, Patrick McLean wrote:
+> On 29/11/12 02:21 PM, Al Viro wrote:
+> > On Thu, Nov 29, 2012 at 02:06:22PM -0800, Patrick McLean wrote:
+> > 
+> >> I have a trivial reproducer and am happy to help debug in any way that
+> >> I can. That patch seems to fix the problem, and produces these
+> >> warnings in dmesg:
+> > 
+> > OK...  So we have differing entry->fh and NFS_FH(dentry->d_inode).  Something
+> > like
+> > static void dump_fh(const struct nfs_fh *fh)
+> > {
+> > 	int i;
+> > 	printk(KERN_INFO "FH(%d)", fh->size);
+> > 	for (i = 0; i < fh->size; i++)
+> > 		printk(KERN_CONT "%c%02x", i ? ' ' : '[', fh->data[i]);
+> > 	printk(KERN_CONT "]\n");
+> > }
+> > with dump_fh(entry->fh); dump_fh(NFS_FH(dentry->d_inode)); added next to
+> > that WARN_ON(1) would probably be interesting.  And probably would make
+> > sense to print filename->name as well, to see which files it is about.
 
+> [    8.821584] FH(0)]
+> [    8.821586] FH(36)[01 00 07 01 89 00 00 00 00 00 00 00 e1 21 fe c4 9e 38 44 dc bf 1b d5 95 d6 76 d6 d9 a7 3c 1b 80 33 38 e3 62]
+> [    8.821601] filename: proc
 
-What tools do you use in SMACK to see the labels? Do you just use 
-getxattr? If so can you try calling that and seeing what happens? I'm 
-concerned that you aren't getting any attribute information on that 
-file. Do you have a disto that I can use that has full smack integration 
-and is easy to setup?
+*whoa*
 
-Dave
+So we have zero entry->fh->size?  No wonder it doesn't match...  Which NFS
+version it is?  entry->fh->size is set by nfs[34]_decode_dirent().
+
+NFS folks: any ideas on best way to debug it?  The brute-force way would be
+to capture all NFS traffic with tcpdump and see what's going on, but that
+would be a lot of work...
+
+Looks like we have READDIRPLUS attempted and succeeded, but fhandle was not
+given.  Result: nfs_prime_dcache() is doing blind d_drop() on perfectly
+valid dentries, no matter how busy.
