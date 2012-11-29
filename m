@@ -1,72 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ia0-f174.google.com ([209.85.210.174]:43243 "EHLO
-	mail-ia0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753639Ab2KHDDX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Nov 2012 22:03:23 -0500
-Received: by mail-ia0-f174.google.com with SMTP id y32so1619044iag.19
-        for <linux-nfs@vger.kernel.org>; Wed, 07 Nov 2012 19:03:23 -0800 (PST)
+Received: from mx2.netapp.com ([216.240.18.37]:7504 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754765Ab2K2OyD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Nov 2012 09:54:03 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Stef Bon <stefbon@gmail.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-cifs <linux-cifs@vger.kernel.org>
+Subject: RE: Possible to make nfs aware of a inotify watch has been set.
+Date: Thu, 29 Nov 2012 14:54:00 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90B329DFF@SACEXCMBX04-PRD.hq.netapp.com>
+References: <CANXojcy9thLBwrENTkOTSSE17L3N17A8XsTmyNqq3oNdhW_Q_w@mail.gmail.com>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA90B329CFD@SACEXCMBX04-PRD.hq.netapp.com>
+ <CANXojcxR9673fRObMLPSScogAN05RSVhPFoni=ENc6YDWq9T7w@mail.gmail.com>
+In-Reply-To: <CANXojcxR9673fRObMLPSScogAN05RSVhPFoni=ENc6YDWq9T7w@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <20121107190111.GC7421@fieldses.org>
-References: <1351760297.5369.1.camel@localhost>
-	<CA+res+RTz9DC8TK3N3kFrSpeT-rgad1nk7amJdWP_Up9OW9KSg@mail.gmail.com>
-	<CAJLw8+WJGPiWW6K7UEX72eYdgeYWsDLcoZKNP7V1UvvQGnMxXA@mail.gmail.com>
-	<CA+res+RhNJT1D0MpdSBJoywemainEJVZKSzG1BxhXTrQ3kQCbw@mail.gmail.com>
-	<20121107190111.GC7421@fieldses.org>
-Date: Thu, 8 Nov 2012 11:03:22 +0800
-Message-ID: <CA+res+SD_mradA6grZz_80uWiidb_r9Kv_aW8rXVXpNLSozjWA@mail.gmail.com>
-Subject: Re: hang problem when umount a nfs point
-From: Jack Wang <jack.wang.usish@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: =?UTF-8?Q?Mart=C3=ADn_Cigorraga?= <msx@archlinux.us>, dahai_tian@usish.com,
-        linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2012/11/8 J. Bruce Fields <bfields@fieldses.org>:
-> On Wed, Nov 07, 2012 at 09:05:51AM +0800, Jack Wang wrote:
->> 2012/11/7 Martín Cigorraga <msx@archlinux.us>:
->> > On Mon, Nov 5, 2012 at 10:27 PM, Jack Wang <jack.wang.usish@gmail.com>
->> > wrote:
->> >>
->> >> Hi all,
->> >>
->> >> Anyone who can kindly give some suggestion? or we just put question to
->> >> the wrong list?
->> >>
->> >> Thanks.
->> >>
->> >> Jack
->> >>
->> >> 2012/11/1 dahai_tian <dahai_tian@usish.com>:
->> >> > Hi all:
->> >> >         I mount a local directory to a nfs server. When nfs server is
->> >> > stopped
->> >> > for some accidental cause, I try to umount the mount point, the umount
->> >> > command will hang and 'time out' messages are continually printed in the
->> >> > terminal. How can I avoid hanging in this case? BTW, This issue does not
->> >> > exist when I changed nfs version from 4 to 3.
->> >> >         Look forward to your response, thanks!
->>
->> >
->> > Hi Jack, use the -l (lazy) switch:
->> > # umount -l {your mounted nfs share}
->> >
->> > Also, I wouldn't recommend 'just to kill' the NFS proces(ses) as it (them)
->> > may leave shared memory a mess.
->> > (And I would like to see how do you make to mount any NFS share again
->> > without booting)
->>
->> Thanks Martin for kindly help.
->>
->> umount -l did work, but why nfsv3 do not have this problem?
->
-> I don't know what it is exactly.  But in general I wouldn't expect
-> umount to work when the server's unavailable.
->
-> --b.
-
-Thanks for your time Bruce, but there are chance the server
-unavailable , why you think umount don't work is expected?
-
-Jack
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBTdGVmIEJvbiBbbWFpbHRvOnN0
+ZWZib25AZ21haWwuY29tXQ0KPiBTZW50OiBUaHVyc2RheSwgTm92ZW1iZXIgMjksIDIwMTIgOTo0
+OSBBTQ0KPiBUbzogTXlrbGVidXN0LCBUcm9uZA0KPiBDYzogbGludXgtbmZzQHZnZXIua2VybmVs
+Lm9yZzsgbGludXgtY2lmcw0KPiBTdWJqZWN0OiBSZTogUG9zc2libGUgdG8gbWFrZSBuZnMgYXdh
+cmUgb2YgYSBpbm90aWZ5IHdhdGNoIGhhcyBiZWVuIHNldC4NCj4gDQo+IDIwMTIvMTEvMjkgTXlr
+bGVidXN0LCBUcm9uZCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+Og0KPiA+PiAtLS0tLU9y
+aWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiA+Pg0KPiA+PiAxLiB3aGlsZSB0aGUgZmlsZXN5c3RlbXMg
+YXJlIHVzaW5nIGNyZWRlbnRhaWxzIG9yIHRpY2tldHMgdG8gZ2V0DQo+ID4+IGFjY2VzcyB0byBh
+IHJlbW90ZSByZXNvdXJjZSwgdGhpcyBpcyBhIGJpdCBkaWZmaWN1bHQgZm9yIG5vdGlmeWZzLg0K
+PiA+PiBOb3RpZnlmcyBieXBhc3NlcyB0aGF0LiBNYXliZSB0aGlzIGxlYWRzIHRvIHBlcm1pc3Np
+b25zL2FidXNlIEkNCj4gPj4gY2Fubm90IHNlZSBkaXJlY3RseS4NCj4gPg0KPiA+IExhY2sgb2Yg
+c2VjdXJpdHkgaXMgYSBzaG93c3RvcHBlci4gVGhlcmUgYXJlIGdvb2QgcmVhc29ucyB3aHkgaW5v
+dGlmeSB3b24ndA0KPiBhbGxvdyB5b3UgdG8gbW9uaXRvciBmaWxlcyBmb3Igd2hpY2ggeW91IGRv
+bid0IGhhdmUgYWNjZXNzIHBlcm1pc3Npb25zLg0KPiA+DQo+IA0KPiBMZXQgbWUgZXhwbGFpbiwg
+SSB0aGluayB5b3Ugbm90IHVuZGVyc3RhbmQgZnVsbHkuDQo+IA0KPiBOb3RpZnlmcyBkb2VzIG5v
+dCBhbGxvdyB1c2Vycy9jbGllbnRzIHRvIHNldCBhIHdhdGNoIGlmIHRoZXJlIGFyZSBubyByZWFk
+DQo+IHBlcm1pc3Npb25zICh0aGUgb2JqZWN0IGFuZCBhY2Nlc3MgZm9yIHRoZSB3aG9sZSBwYXRo
+IHRvIGl0KSwgc28gdGhlcmUgYXJlIG5vDQo+IHNlY3VyaXR5IGlzc3VlcyB0aGVyZS4NCj4gDQo+
+IFdoYXQgSSBtZWFuIGlzIHRoYXQgYW55IHByb2dyYW0gY2FuIGNvbnRhY3QgdGhlIHJlbW90ZSBu
+b3RpZnlmcyBzZXJ2ZXIsIGFuZA0KPiB0aGlzIHJlbW90ZSBub3RpZnlmcyBzZXJ2ZXIgY2Fubm90
+IGZpZ3VyZSBvdXQgaXQncyBhIHZhbGlkIHJlcXVlc3QgZnJvbSBhbm90aGVyDQo+IG5vdGlmeWZz
+IHNlcnZlciwgb3IgYSBwcm9ncmFtIGZha2luZyB0aGF0Lg0KPiBJbiB0aGUgY29uc3RydWN0aW9u
+IEkgZGVzY3JpYmUgaXQgZG9lcyBub3QgY2hlY2sgdGhhdCAoeWV0KS4NCj4gDQo+ID4+DQo+ID4+
+IFdoYXQgZG8geW91IHRoaW5rLCBpcyB0aGUgbGF0ZXN0IG9wdGlvbiBwb3NzaWJsZT8/DQo+ID4N
+Cj4gPiBTbyB3aGF0IGlzIHRoZSBraWxsZXIgYXBwIGZvciBpbm90aWZ5IG9uIE5GUy9DSUZTL0ZV
+U0U/IFdoYXQgcHJvZ3JhbXMgZG8NCj4geW91IG5lZWQgdG8gcnVuIG9uIGEgTkZTL0NJRlMvRlVT
+RSBjbGllbnQgdGhhdCB1c2UgaW5vdGlmeSBhbmQgdGhhdCB3b3VsZG4ndA0KPiBiZSBiZXR0ZXIg
+b2ZmIHJ1bm5pbmcgb24gdGhlIHNlcnZlciBpbnN0ZWFkPw0KPiA+DQo+IA0KPiBXaGF0IGRvIHlv
+dSBtZWFuIHdpdGggImJldHRlciBvZmYgcnVubmluZyBvbiB0aGUgc2VydmVyIGluc3RlYWQiPw0K
+PiBUaGVyZSBhcmUgYSBsb3Qgb2YgcHJvZ3JhbXMgaW50ZXJlc3RlZCBpbiBmcyBjaGFuZ2VzLCBs
+aWtlIGEgc2ltcGxlIGZpbGUNCj4gbWFuYWdlci4gSSB0aGluayBpdCdzIGEgdmVyeSBuaWNlIGZl
+YXR1cmUgdG8gc2VlIGNoYW5nZXMgcmlnaHQgYXdheSBpbiB0aGUgdmlldy4NCj4gSXQncyBub3Qg
+YSBraWxsZXIgYXBwLCBidXQgYSB0aGluayB0aGUgd2hvbGUgdXNlciBleHBlcmllbmNlIGlzIGlt
+cHJvdmluZyB3aGVuDQo+IHlvdXIgc3lzdGVtIGlzIGFibGUgdG8ga2VlcCBhIHZpZXcgKGxpa2Ug
+YSB2aWV3IGluIHRoZSBmaWxlIG1hbmFnZXIpIHVwIHRvDQo+IGRhdGUuDQo+IA0KPiA+IElPVzog
+d2hvc2UgcHJvYmxlbSBhcmUgeW91IHRyeWluZyB0byBzb2x2ZT8NCj4gDQo+IEkgdGhpbmsgdGhh
+dCBlbmFibGluZyBmcyBub3RpZnkgb24gbmV0d29yayBmaWxlc3lzdGVtcyBsaWtlIG5mcywgY2lm
+cyBhbmQgZnVzZSBpcw0KPiBhIGdvb2QgdGhpbmcgKHNlZSBhYm92ZSkuIE9uIHN5c3RlbXMgbGlr
+ZSBXaW5kb3dzIGFuZCBpT1Mgc2luY2UgbG9uZyB0aW1lDQo+IHRoaXMgd29ya3MuDQo+IA0KPiBZ
+b3UgZG8gbm90IGFncmVlPz8NCg0KTm8uIEkgbGlrZSBoYXZpbmcgYSByZWFzb24gZm9yIGFkZGlu
+ZyBrZXJuZWwgZnVuY3Rpb25hbGl0eS4NCg0KVHJvbmQNCiANCg==
