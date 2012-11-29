@@ -1,100 +1,177 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:40465 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:59109 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755933Ab2KZURG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Nov 2012 15:17:06 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 16/28] NFSv4.1: Don't confuse target_highest_slotid and max_slots in cb_recall_slot
-Date: Mon, 26 Nov 2012 15:16:33 -0500
-Message-Id: <1353961005-63874-17-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1353961005-63874-16-git-send-email-Trond.Myklebust@netapp.com>
-References: <1353961005-63874-1-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-2-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-3-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-4-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-5-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-6-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-7-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-8-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-9-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-10-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-11-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-12-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-13-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-14-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-15-git-send-email-Trond.Myklebust@netapp.com>
- <1353961005-63874-16-git-send-email-Trond.Myklebust@netapp.com>
+	id S1751938Ab2K2Qk4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Nov 2012 11:40:56 -0500
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 7/9] NFSD: Reading a fault injection file prints a state count
+Date: Thu, 29 Nov 2012 11:40:44 -0500
+Message-Id: <1354207246-32343-8-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1354207246-32343-1-git-send-email-bjschuma@netapp.com>
+References: <1354207246-32343-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Don't confuse the table size and the target_highest_slotid...
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+I also log basic information that I can figure out about the type of
+state (such as number of locks for each client IP address).  This can be
+useful for checking that state was actually dropped and later for
+checking if the client was able to recover.
+
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfs/callback.h      |  2 +-
- fs/nfs/callback_proc.c | 12 +++++-------
- fs/nfs/callback_xdr.c  |  2 +-
- 3 files changed, 7 insertions(+), 9 deletions(-)
+ fs/nfsd/fault_inject.c | 13 +++++++++++--
+ fs/nfsd/nfs4state.c    | 42 ++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/state.h        |  5 +++++
+ 3 files changed, 58 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index 4251c2a..e75631e 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -142,7 +142,7 @@ extern __be32 nfs4_callback_recallany(struct cb_recallanyargs *args,
- 
- struct cb_recallslotargs {
- 	struct sockaddr	*crsa_addr;
--	uint32_t	crsa_target_max_slots;
-+	uint32_t	crsa_target_highest_slotid;
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index bf6161a..545f8e4 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -14,28 +14,34 @@
+ struct nfsd_fault_inject_op {
+ 	char *file;
+ 	u64 (*forget)(struct nfs4_client *, u64);
++	u64 (*print)(struct nfs4_client *, u64);
  };
- extern __be32 nfs4_callback_recallslot(struct cb_recallslotargs *args,
- 					 void *dummy,
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 15b9879..ed0b446 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -561,22 +561,20 @@ __be32 nfs4_callback_recallslot(struct cb_recallslotargs *args, void *dummy,
- 	if (!cps->clp) /* set in cb_sequence */
- 		goto out;
  
--	dprintk_rcu("NFS: CB_RECALL_SLOT request from %s target max slots %d\n",
-+	dprintk_rcu("NFS: CB_RECALL_SLOT request from %s target highest slotid %d\n",
- 		rpc_peeraddr2str(cps->clp->cl_rpcclient, RPC_DISPLAY_ADDR),
--		args->crsa_target_max_slots);
-+		args->crsa_target_highest_slotid);
+ static struct nfsd_fault_inject_op inject_ops[] = {
+ 	{
+ 		.file   = "forget_clients",
+ 		.forget = nfsd_forget_client,
++		.print  = nfsd_print_client,
+ 	},
+ 	{
+ 		.file   = "forget_locks",
+ 		.forget = nfsd_forget_client_locks,
++		.print  = nfsd_print_client_locks,
+ 	},
+ 	{
+ 		.file   = "forget_openowners",
+ 		.forget = nfsd_forget_client_openowners,
++		.print  = nfsd_print_client_openowners,
+ 	},
+ 	{
+ 		.file   = "forget_delegations",
+ 		.forget = nfsd_forget_client_delegations,
++		.print  = nfsd_print_client_delegations,
+ 	},
+ 	{
+ 		.file   = "recall_delegations",
+ 		.forget = nfsd_recall_client_delegations,
++		.print  = nfsd_print_client_delegations,
+ 	},
+ };
  
- 	fc_tbl = &cps->clp->cl_session->fc_slot_table;
- 
- 	status = htonl(NFS4ERR_BAD_HIGH_SLOT);
--	if (args->crsa_target_max_slots > fc_tbl->max_slots ||
--	    args->crsa_target_max_slots < 1)
-+	if (args->crsa_target_highest_slotid >= fc_tbl->max_slots ||
-+	    args->crsa_target_highest_slotid < 1)
- 		goto out;
- 
- 	status = htonl(NFS4_OK);
--	if (args->crsa_target_max_slots == fc_tbl->max_slots)
--		goto out;
- 
--	nfs41_set_target_slotid(fc_tbl, args->crsa_target_max_slots);
-+	nfs41_set_target_slotid(fc_tbl, args->crsa_target_highest_slotid);
- 	nfs41_handle_recall_slot(cps->clp);
- out:
- 	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 742ff4f..81e8c7d 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -520,7 +520,7 @@ static __be32 decode_recallslot_args(struct svc_rqst *rqstp,
- 	p = read_buf(xdr, 4);
- 	if (unlikely(p == NULL))
- 		return htonl(NFS4ERR_BADXDR);
--	args->crsa_target_max_slots = ntohl(*p++);
-+	args->crsa_target_highest_slotid = ntohl(*p++);
+@@ -59,9 +65,12 @@ static int nfsd_inject_set(void *op_ptr, u64 val)
  	return 0;
  }
  
+-static int nfsd_inject_get(void *data, u64 *val)
++static int nfsd_inject_get(void *op_ptr, u64 *val)
+ {
+-	*val = 0;
++	struct nfsd_fault_inject_op *op = op_ptr;
++	nfs4_lock_state();
++	*val = nfsd_for_n_state(0, op->print);
++	nfs4_unlock_state();
+ 	return 0;
+ }
+ 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index ab45cdd..9fb8e52 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4611,6 +4611,22 @@ u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
+ 	return 1;
+ }
+ 
++u64 nfsd_print_client(struct nfs4_client *clp, u64 num)
++{
++	char buf[INET6_ADDRSTRLEN];
++	rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, 129);
++	printk(KERN_INFO "NFS Client: %s\n", buf);
++	return 1;
++}
++
++static void nfsd_print_count(struct nfs4_client *clp, unsigned int count,
++			     const char *type)
++{
++	char buf[INET6_ADDRSTRLEN];
++	rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, 129);
++	printk(KERN_INFO "NFS Client: %s has %u %s\n", buf, count, type);
++}
++
+ static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max, void (*func)(struct nfs4_lockowner *))
+ {
+ 	struct nfs4_openowner *oop;
+@@ -4637,6 +4653,13 @@ u64 nfsd_forget_client_locks(struct nfs4_client *clp, u64 max)
+ 	return nfsd_foreach_client_lock(clp, max, release_lockowner);
+ }
+ 
++u64 nfsd_print_client_locks(struct nfs4_client *clp, u64 max)
++{
++	u64 count = nfsd_foreach_client_lock(clp, max, NULL);
++	nfsd_print_count(clp, count, "locked files");
++	return count;
++}
++
+ static u64 nfsd_foreach_client_open(struct nfs4_client *clp, u64 max, void (*func)(struct nfs4_openowner *))
+ {
+ 	struct nfs4_openowner *oop, *next;
+@@ -4657,6 +4680,13 @@ u64 nfsd_forget_client_openowners(struct nfs4_client *clp, u64 max)
+ 	return nfsd_foreach_client_open(clp, max, release_openowner);
+ }
+ 
++u64 nfsd_print_client_openowners(struct nfs4_client *clp, u64 max)
++{
++	u64 count = nfsd_foreach_client_open(clp, max, NULL);
++	nfsd_print_count(clp, count, "open files");
++	return count;
++}
++
+ static u64 nfsd_find_all_delegations(struct nfs4_client *clp, u64 max,
+ 				     struct list_head *victims)
+ {
+@@ -4703,6 +4733,18 @@ u64 nfsd_recall_client_delegations(struct nfs4_client *clp, u64 max)
+ 	return count;
+ }
+ 
++u64 nfsd_print_client_delegations(struct nfs4_client *clp, u64 max)
++{
++	u64 count = 0;
++
++	spin_lock(&recall_lock);
++	count = nfsd_find_all_delegations(clp, max, NULL);
++	spin_unlock(&recall_lock);
++
++	nfsd_print_count(clp, count, "delegations");
++	return count;
++}
++
+ u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
+ {
+ 	struct nfs4_client *clp, *next;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 423ac64..4017f35 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -508,6 +508,11 @@ u64 nfsd_forget_client_locks(struct nfs4_client*, u64);
+ u64 nfsd_forget_client_openowners(struct nfs4_client *, u64);
+ u64 nfsd_forget_client_delegations(struct nfs4_client *, u64);
+ u64 nfsd_recall_client_delegations(struct nfs4_client *, u64);
++
++u64 nfsd_print_client(struct nfs4_client *, u64);
++u64 nfsd_print_client_locks(struct nfs4_client *, u64);
++u64 nfsd_print_client_openowners(struct nfs4_client *, u64);
++u64 nfsd_print_client_delegations(struct nfs4_client *, u64);
+ #else /* CONFIG_NFSD_FAULT_INJECTION */
+ static inline int nfsd_fault_inject_init(void) { return 0; }
+ static inline void nfsd_fault_inject_cleanup(void) {}
 -- 
-1.7.11.7
+1.8.0.1
 
