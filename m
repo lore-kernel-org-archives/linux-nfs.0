@@ -1,101 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:12946 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755058Ab2K1Qt4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Nov 2012 11:49:56 -0500
-Message-ID: <50B640B1.7060302@netapp.com>
-Date: Wed, 28 Nov 2012 11:49:53 -0500
-From: Bryan Schumaker <bjschuma@netapp.com>
+Received: from mail-qa0-f46.google.com ([209.85.216.46]:47624 "EHLO
+	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751510Ab2K2Q2F (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2012 11:28:05 -0500
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 03/10] NFSD: Clean up forgetting clients
-References: <1354026919-13313-1-git-send-email-bjschuma@netapp.com> <1354026919-13313-4-git-send-email-bjschuma@netapp.com> <20121128162920.GK11651@fieldses.org> <50B63D20.7050300@netapp.com> <20121128164721.GA15966@fieldses.org>
-In-Reply-To: <20121128164721.GA15966@fieldses.org>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90B32AEB7@SACEXCMBX04-PRD.hq.netapp.com>
+References: <CANXojcy9thLBwrENTkOTSSE17L3N17A8XsTmyNqq3oNdhW_Q_w@mail.gmail.com>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA90B329CFD@SACEXCMBX04-PRD.hq.netapp.com>
+	<CANXojcxR9673fRObMLPSScogAN05RSVhPFoni=ENc6YDWq9T7w@mail.gmail.com>
+	<1354202525.4064.1.camel@pico.ipa.ssimo.org>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA90B32AEB7@SACEXCMBX04-PRD.hq.netapp.com>
+Date: Thu, 29 Nov 2012 10:28:04 -0600
+Message-ID: <CAH2r5muVNPGx74ppc6MZPZRcsCRdP=xM4gvmrzEnw5bAb3jW8w@mail.gmail.com>
+Subject: Re: Possible to make nfs aware of a inotify watch has been set.
+From: Steve French <smfrench@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: simo <idra@samba.org>, Stef Bon <stefbon@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-cifs <linux-cifs@vger.kernel.org>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/28/2012 11:47 AM, J. Bruce Fields wrote:
-> On Wed, Nov 28, 2012 at 11:34:40AM -0500, Bryan Schumaker wrote:
->> On 11/28/2012 11:29 AM, J. Bruce Fields wrote:
->>> On Tue, Nov 27, 2012 at 09:35:12AM -0500, bjschuma@netapp.com wrote:
->>>> From: Bryan Schumaker <bjschuma@netapp.com>
->>>>
->>>> I added in a generic for-each loop that takes a pass over the
->>>> client_lru list and calls some function.  The next few patches will
->>>> update other operations to use this function as well.  A value of 0
->>>> still means "forget everything that is found".
->>>>
->>>> Signed-off-by: Bryan Schumaker <bjschuma@netapp.com> ---
->>>> fs/nfsd/nfs4state.c | 23 ++++++++++++++++++----- 1 file changed, 18
->>>> insertions(+), 5 deletions(-)
->>>>
->>>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c index
->>>> 050a35e..07abca5 100644 --- a/fs/nfsd/nfs4state.c +++
->>>> b/fs/nfsd/nfs4state.c @@ -4591,19 +4591,32 @@
->>>> nfs4_check_open_reclaim(clientid_t *clid, bool sessions, struct
->>>> nfsd_net *nn)
->>>>  
->>>>  #ifdef CONFIG_NFSD_FAULT_INJECTION
->>>>  
->>>> -void nfsd_forget_clients(u64 num) +u64 nfsd_forget_client(struct
->>>> nfsd_net *nn, struct nfs4_client *clp, u64 max)
->>>
->>> It doesn't look like you really need nfsd_net?
+On Thu, Nov 29, 2012 at 9:33 AM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> On Thu, 2012-11-29 at 10:22 -0500, simo wrote:
+>> On Thu, 2012-11-29 at 15:49 +0100, Stef Bon wrote:
+>> > 2012/11/29 Myklebust, Trond <Trond.Myklebust@netapp.com>:
+>> > >> -----Original Message-----
+>> > >>
+>> > >> 1. while the filesystems are using credentails or tickets to get access to a
+>> > >> remote resource, this is a bit difficult for notifyfs.
+>> > >> Notifyfs bypasses that. Maybe this leads to permissions/abuse I cannot see
+>> > >> directly.
+>> > >
+>> > > Lack of security is a showstopper. There are good reasons why inotify won't allow you to monitor files for which you don't have access permissions.
+>> > >
+>> >
+>> > Let me explain, I think you not understand fully.
+>> >
+>> > Notifyfs does not allow users/clients to set a watch if there are no
+>> > read permissions (the object and access for the whole path to it), so
+>> > there are no security issues there.
+>> >
+>> > What I mean is that any program can contact the remote notifyfs
+>> > server, and this remote notifyfs server cannot figure out it's a valid
+>> > request from another notifyfs server, or a program faking that.
+>> > In the construction I describe it does not check that (yet).
+>> >
+>> > >>
+>> > >> What do you think, is the latest option possible??
+>> > >
+>> > > So what is the killer app for inotify on NFS/CIFS/FUSE? What programs do you need to run on a NFS/CIFS/FUSE client that use inotify and that wouldn't be better off running on the server instead?
+>> > >
+>> >
+>> > What do you mean with "better off running on the server instead"?
+>> > There are a lot of programs interested in fs changes, like a simple
+>> > file manager. I think it's a very nice feature to see changes right
+>> > away in the view.
+>> > It's not a killer app, but a think the whole user experience is
+>> > improving when your system is able to keep a view (like a view in the
+>> > file manager) up to date.
+>> >
+>> > > IOW: whose problem are you trying to solve?
+>> >
+>> > I think that enabling fs notify on network filesystems like nfs, cifs
+>> > and fuse is a good thing (see above). On systems like Windows and iOS
+>> > since long time this works.
 >>
->> Not for this, but I find locks through the nn->ownerstr_hashtable
->> since the nfs4_client doesn't have a "cl_locks" list similar to
->> "cl_openowners" (unless there is something I'm missing...?).
-> 
-> That's because lockowners are all reachable from openowners (e.g. see
-> how it's done in
-> release_openowner->unhash_openowner->release_open_stateid->unhash_open_stateid->release_stateid_lockowners.
-> Yeah, it's a little tangled.).
-> 
-> Alternatively you can get to the network namespace from the client
-> (clp->net).
+>> CIFS has notification capabilities built in (oplocks), as does NFS
+>> (leases), is this not sufficient ?
+>
+> NFSv4.1 actually has directory notifications which duplicate most of the
+> functionality of dnotify. The question I'm asking is "Why should we do
+> it?", not "can we do it?".
+>
+> Answers like "well Windows and iOS do it" aren't helpful unless they
+> include a description of what Windows and iOS apps use it for that we
+> can't already do on Linux.
+> If the only application is beagle, then Linux has this really helpful
+> utility called "ssh", which allows you to avoid wasting a load of
+> network bandwidth...
 
-Both are good to know!  I'll look at getting lockowners from openowners first.
+Of course one reason that file managers like directory notifications is that
+it avoids wasting a load of network bandwidth - as the alternative to
+directory change
+notifications is polling the directories for every open window.   Also note that
+network file systems where possible should implement similar semantics and
+interfaces to the local file systems, and inotify/dnotify are mappable
+to network
+'file systems (presumably not just cifs/smb2/smb3).   Support for
+keeping file manager
+views reasonably up to date would be a good enough reason for something like
+inotify/dnotify (and it has been used by file managers for over 20
+years, even before
+Windows and iOS) - and we want to get to the point where home directories
+work as well on network mounts as on local storage.
 
-- Bryan
+Directory oplocks (in smb3) may be helpful in reducing the number of remote
+directory change notifications further.
 
-> 
-> --b.
-> 
->> I
->> figured I would introduce the function with the nfsd_net pointer
->> early, rather than change it in the next patch.
->>
->> I suppose I could have also put the locks patch first...
->>
->> - Bryan
->>
->>>
->>> --b.
->>>
->>>> +{ +	nfsd4_client_record_remove(clp); +
->>>> expire_client(clp); +	return 1; +} + +static u64
->>>> nfsd_for_n_state(u64 max, u64 (*func)(struct nfsd_net *, struct
->>>> nfs4_client *, u64)) { struct nfs4_client *clp, *next; -	int
->>>> count = 0; +	u64 count = 0; struct nfsd_net *nn =
->>>> net_generic(current->nsproxy->net_ns, nfsd_net_id);
->>>>  
->>>>  	list_for_each_entry_safe(clp, next, &nn->client_lru, cl_lru) { -
->>>>  	expire_client(clp); -		if (++count == num) +
->>>>  	count += func(nn, clp, max - count); +		if ((max != 0)
->>>>  	&& (count >= max)) break; }
->>>>  
->>>> -	printk(KERN_INFO "NFSD: Forgot %d clients", count); +	return
->>>> count; +} + +void nfsd_forget_clients(u64 num) +{ +	u64
->>>> count = nfsd_for_n_state(num, nfsd_forget_client); +
->>>> printk(KERN_INFO "NFSD: Forgot %llu clients", count); }
->>>>  
->>>>  static void release_lockowner_sop(struct nfs4_stateowner *sop) --
->>>>  1.8.0.1
->>>>
->>
->> -- To unsubscribe from this list: send the line "unsubscribe
->> linux-nfs" in the body of a message to majordomo@vger.kernel.org More
->> majordomo info at  http://vger.kernel.org/majordomo-info.html
 
+
+-- 
+Thanks,
+
+Steve
