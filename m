@@ -1,94 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:59016 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1754678Ab2K3M5V (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Nov 2012 07:57:21 -0500
+Received: from mx2.netapp.com ([216.240.18.37]:42483 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754375Ab2K2NRU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Nov 2012 08:17:20 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: =?utf-8?B?xYF1a2FzeiBUYXN6?= <lukasz@tasz.eu>,
+        Adrien Kunysz <adk@acunu.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: nfs performance - idea.
+Date: Thu, 29 Nov 2012 13:17:18 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90B329B2A@SACEXCMBX04-PRD.hq.netapp.com>
+References: <CAGRr-NiRkkhoVG4ss5WG7RXXOUWQ5dcOaVAxbQ2yA2c1NbPjKw@mail.gmail.com>
+ <CAA4Z2ZQHAvZoUE6h9aqHSZwWF8jvY5QSYai0nXK9gZr6-BN+qA@mail.gmail.com>
+ <CAGRr-NjKsSGoL5P8n8nsfk3eoAY8zZt+h1K6rU19cLitTD78uw@mail.gmail.com>
+In-Reply-To: <CAGRr-NjKsSGoL5P8n8nsfk3eoAY8zZt+h1K6rU19cLitTD78uw@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Date: Fri, 30 Nov 2012 07:57:19 -0500
-From: David Quigley <dpquigl@davequigley.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Casey Schaufler <casey@schaufler-ca.com>, <trond.myklebust@netapp.com>,
-        <sds@tycho.nsa.gov>, <linux-nfs@vger.kernel.org>,
-        <selinux@tycho.nsa.gov>, <linux-security-module@vger.kernel.org>
-Subject: Re: Labeled NFS [v5]
-In-Reply-To: <20121130121437.GC614@fieldses.org>
-References: <50AC4A7A.6010208@davequigley.com>
- <50B65E7E.4030607@schaufler-ca.com> <50B6B706.1010002@davequigley.com>
- <50B6C398.90002@schaufler-ca.com> <50B7E189.80200@schaufler-ca.com>
- <d0817140372d745df0b4952b796610f2@countercultured.net>
- <50B7FEFB.30109@schaufler-ca.com>
- <579e850139bd3d5a0c9155270d5d9fbe@countercultured.net>
- <50B810D2.2000401@schaufler-ca.com>
- <3ea3f70e0a5cdb99f1594019b7bd619d@countercultured.net>
- <20121130121437.GC614@fieldses.org>
-Message-ID: <607a8005d6c33a19c53b5ede29d81ef5@countercultured.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/30/2012 07:14, J. Bruce Fields wrote:
-> On Thu, Nov 29, 2012 at 09:02:49PM -0500, David Quigley wrote:
->> On 11/29/2012 20:50, Casey Schaufler wrote:
->> >On 11/29/2012 4:46 PM, David Quigley wrote:
->> >>On 11/29/2012 19:34, Casey Schaufler wrote:
->> >>>I would think that were it not for the case that access is denied
->> >>>and I get an audit record for nfsd that reports a subject
->> >>>label of "_"
->> >>>(which is correct for nfsd but not the process attempting
->> >>>access) and
->> >>>an object label of "WhooHoo", which is correct. The server side
->> >>>looks like it might be working right, given the information that 
->> it
->> >>>has.
->> >>>
->> >>
->> >>Ok so this is the problem. nfsd is a kernel thread I believe. In
->> >>SELinux land it has the type kernel_t which is all powerful. We
->> >>don't
->> >>have client label transport yet (That requires RPCSECGSSv3). Is
->> >>there
->> >>a way you can have that kernel thread running as a type that has
->> >>access to everything?
->> >
->> >That would be having CAP_MAC_ADMIN and CAP_MAC_OVERRIDE in 
->> Smackese.
->> >Looking at /proc/<pid-of-nfsd>/status we see CapEff of fff...fff
->> >which
->> >is to say, all capabilities.
->> >
->>
->> Hmm thats interesting then. You could try using rpcdebug -m nfsd to
->> turn on some of the debugging to look around the internals and
->> figure out whats going on. If you pass -v it will give you all of
->> the potential flags.
->>
->> >
->> >>I think that is the current problem. Which makes perfect sense. If
->> >>your kernel threads don't get started with max privilege then the
->> >>server would be denied access on all of the file attributes and
->> >>wouldn't be able to ship it over the wire properly.
->> >
->> >OK. I haven't had to do anything with kernel threads so far.
->> >Where is NFS setting these up? Poking around fs/nfsd looks like
->> >the place, but I haven't seen anything there that makes it look
->> >like they would be running without capabilities. Clearly, that's
->> >what I'm seeing. It looks as if the credential of nfsd does not
->> >match what /proc reports. Bother.
->> >
->>
->> I'm not entirely sure whats up either. If you want to look for the
->> NFSd threads they are in fs/nfsd/nfssvc.c. The main function starts
->> on line 487.
->
-> I'm not following the discussion, but: maybe you want to look at
-> fs/nfsd/auth.c:nfsd_setuser() ?  In particular, the
-> cap_{drop/raise}_nfsd_set() calls at the end.
->
-> --b.
-
-
-I'm not as familiar with the capabilities code as Casey is so I'll 
-leave this ball in his court. I think you are correct though and the 
-problem is that NFSd is dropping and raising caps and we need to make 
-sure that MAC_ADMIN and MAC_OVERRIDE is in there in the SMACK case.
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
+ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLQ0KPiBvd25lckB2Z2VyLmtlcm5lbC5vcmdd
+IE9uIEJlaGFsZiBPZiBMdWthc3ogVGFzeg0KPiBTZW50OiBUaHVyc2RheSwgTm92ZW1iZXIgMjks
+IDIwMTIgNDo0MSBBTQ0KPiBUbzogQWRyaWVuIEt1bnlzeg0KPiBDYzogbGludXgtbmZzQHZnZXIu
+a2VybmVsLm9yZw0KPiBTdWJqZWN0OiBSZTogbmZzIHBlcmZvcm1hbmNlIC0gaWRlYS4NCj4gDQo+
+IEFueSBpZGVhIG9uIHRoaXMgdG9waWM/DQo+IA0KPiBDYW4gSSBhc3N1bWUgdGhhdCAidG91Y2gi
+IGNvdWxkIGJlIGludGVyZmFjZSBmb3IgdHJpZ2dlcmluZyBzeW5jaHJvbmlzaW5nDQo+IGNsaWVu
+dCBzdGF0ZSB3aXRoIHNlcnZlciBzdGF0ZT8NCj4gDQoNCidscycgaXMgYmV0dGVyLiBBbGwgb3Bl
+bmRpcigpIGNhbGxzIHdpbGwgdHJpZ2dlciBhIHJldmFsaWRhdGlvbiBvZiB0aGUgZGlyZWN0b3J5
+IGNhY2hlLg0KDQoNCj4gbWFueSB0aGFua3MgZm9yIGhlbHAhDQo+IHJlZ2FyZHMNCj4gTHVrYXN6
+IFRhc3oNCj4gDQo+IA0KPiAyMDEyLzExLzE0IEFkcmllbiBLdW55c3ogPGFka0BhY3VudS5jb20+
+Og0KPiA+IE9uIFdlZCwgTm92IDE0LCAyMDEyIGF0IDE6MzggUE0sIMWBdWthc3ogVGFzeiA8bHVr
+YXN6QHRhc3ouZXU+IHdyb3RlOg0KPiA+PiBIaSBhbGwsDQo+ID4+DQo+ID4+IEkgd291bGQgbGlr
+ZSB0byBjb25zdWx0IHNvbWUgaWRlYSB3aXRoIHlvdSwNCj4gPj4NCj4gPj4gUHJvYmxlbToNCj4g
+Pj4gSSBoYXZlIHR3byBwcm9jZXNzZXMgd2hpY2ggYXJlIGRvaW5nIHNvbWUgYWN0aW9ucyBhbmQg
+b25lIG9mIHRoZQ0KPiA+PiBhY3Rpb24gaXMgZG9uZSBvbiBhIHNoYXJlZCBmaWxlIHN5c3RlbS4N
+Cj4gPj4gSXNzdWUgaXMgdGhhdCB0aGlzIHRoaW5nIGNvdWxkIGJlIGRvbmUgb25seSBieSBvbmUg
+cHJvY2VzcywgYW5kIGZvcg0KPiA+PiB0aGlzIGlzc3VlLCBsb2NraW5nIG1lY2hhbmlzbSBpcyBp
+bXBsZW1lbnRlZC4NCj4gPj4gUHJvYmxlbSBpcyB0aGF0IHdoaWxlIG9uZSBwcm9jZXNzIGlzIHJl
+bGVhc2luZyBsb2NrLCBzZWNvbmQgb25lIGlzDQo+ID4+IGluZm9ybWVkIHRoYXQgZmlsZSBwcm9j
+ZXNzaW5nIGlzIGZpbmlzaGVkLCBidXQgdW5mb3J0dW5hdGVseSBmaWxlcw0KPiA+PiBkb2VzIG5v
+dCBleGlzdHMgaW4gY29udGV4dCBvZiBzZWNvbmQgcHJvY2Vzcy4NCj4gPj4gVHdvIHByb2Nlc3Nl
+cyBhcmUgZXhlY3V0ZWQgb24gdHdvIGRpZmZlcmVudCBob3N0cy4gTkZTIHNoYXJlIGlzDQo+ID4+
+IG1vdW50ZWQgaW4gYSBzdGFuZGFyZCB3YXksIG5vIHNwZWNpYWwgZmxhZy4NCj4gPj4gUHJvYmxl
+bSBJIGd1ZXNzIGlzIHdpdGggY2FjaGVzLCBsb29rdXBjYWNoZT1ub25lIHNvbHZlcyB0aGUgcHJv
+YmxlbSwNCj4gPj4gYnV0IGFsc28gY2F1c2VzIG90aGVycyA6KSAtIHBlcmZvcm1hbmNlLg0KPiA+
+Pg0KPiA+PiBJIGtub3csIGl0IG5vdCBwb3NzaWJsZSB0byBoYXZlIGFsbCB0aGluZ3MgYXQgb25j
+ZSAtIG5vIGNvbXBsYWlucy4NCj4gPj4gQnV0IHNpbXBsZSBpZGVhIGlzIHRoYXQgaW5zaWRlIHNl
+Y29uZCBwcm9jZXNzIGFmdGVyIG5vdGlmaWNhdGlvbiB0aGF0DQo+ID4+IGZpbGVzIGFyZSBnZW5l
+cmF0ZWQgZXhlY3V0ZSB0b3VjaCBmdW5jdGlvbiBvbiBkaXJlY3Rvcnkgd2hpY2ggaG9sZHMNCj4g
+Pj4gZmlsZXMsIFRoaXMgd2lsbCBjYXVzZSB1bm5lY2Vzc2FyeSB1cGRhdGUgb2YgbW9kaWZpY2F0
+aW9uIGRhdGUsIGJ1dA0KPiA+PiBhcyBhIHNpZGUgZWZmZWN0IEkgbm90aWNlZCAgdGhhdCBhbHNv
+IGZpbGUgZ2V0cyB2aXNpYmxlIGltbWVkaWF0ZWx5DQo+ID4+IG9uIGNsaWVudCBob3N0cy4NCj4g
+Pj4NCj4gPj4gVGhhdCdzIHdoeSBteSBxdWVzdGlvbiBpcyBpZiB0aGlzIGlzIGV4cGVjdGVkIGFu
+ZCByZWFzb25hYmxlIGJlaGF2aW91cj8NCj4gPj4gQXQgdGhlIGVuZCBJJ20gbG9va2luZyBmb3Ig
+a2luZCBvZiAnc3luYycgY29tbWFuZCB3aGljaCB3aWxsIGNhdXNlDQo+ID4+IHN5bmNocm9uaXph
+dGlvbiBvZiBkaXJlY3RvcmllcyBjb250ZW50IGluc2lkZSBjbGllbnQgYW5kIHNlcnZlcg0KPiA+
+PiBzb21ldGhpbmcgbGlrZSBmbHVzaCgpIC0gYnV0IGluIE5GUyBpdCdzIG1vcmUgY29tcGxleC4N
+Cj4gPg0KPiA+IERvZXNuJ3QgZnN5bmMoMikgZG8gd2hhdCB5b3Ugd2FudD8gSWYgbm90LCBjYW4g
+eW91IGV4cGxhaW4gd2h5Pw0KPiA+DQo+ID4+IHRoYW5rcyBpbiBhZHZhbmNlIGZvciBoZWxwLA0K
+PiA+Pg0KPiA+PiByZWdhcmRzDQo+ID4+IEx1a2Fzeg0KPiAtLQ0KPiBUbyB1bnN1YnNjcmliZSBm
+cm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBpbiB0
+aGUNCj4gYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZyBNb3Jl
+IG1ham9yZG9tbyBpbmZvIGF0DQo+IGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWlu
+Zm8uaHRtbA0K
