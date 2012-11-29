@@ -1,103 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57990 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:53361 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932251Ab2K0Cj2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 26 Nov 2012 21:39:28 -0500
-Date: Mon, 26 Nov 2012 21:39:27 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kks Kbase <kks.kbase@yahoo.in>
-Cc: Linux NFS <linux-nfs@vger.kernel.org>
-Subject: Re: NFS exportfs options
-Message-ID: <20121127023927.GB18930@fieldses.org>
-References: <1353479256.92520.YahooMailNeo@web190605.mail.sg3.yahoo.com>
- <1353481809.32623.YahooMailNeo@web190605.mail.sg3.yahoo.com>
- <1353816433.24972.YahooMailNeo@web190603.mail.sg3.yahoo.com>
- <20121125144816.GA31110@fieldses.org>
- <1353982692.94013.YahooMailNeo@web190603.mail.sg3.yahoo.com>
+	id S1752566Ab2K2RGX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 Nov 2012 12:06:23 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Steve French <smfrench@gmail.com>
+CC: simo <idra@samba.org>, Stef Bon <stefbon@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-cifs <linux-cifs@vger.kernel.org>
+Subject: Re: Possible to make nfs aware of a inotify watch has been set.
+Date: Thu, 29 Nov 2012 17:05:41 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90B32B27E@SACEXCMBX04-PRD.hq.netapp.com>
+References: <CANXojcy9thLBwrENTkOTSSE17L3N17A8XsTmyNqq3oNdhW_Q_w@mail.gmail.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B329CFD@SACEXCMBX04-PRD.hq.netapp.com>
+	 <CANXojcxR9673fRObMLPSScogAN05RSVhPFoni=ENc6YDWq9T7w@mail.gmail.com>
+	 <1354202525.4064.1.camel@pico.ipa.ssimo.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B32AEB7@SACEXCMBX04-PRD.hq.netapp.com>
+	 <CAH2r5muVNPGx74ppc6MZPZRcsCRdP=xM4gvmrzEnw5bAb3jW8w@mail.gmail.com>
+In-Reply-To: <CAH2r5muVNPGx74ppc6MZPZRcsCRdP=xM4gvmrzEnw5bAb3jW8w@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <1353982692.94013.YahooMailNeo@web190603.mail.sg3.yahoo.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 27, 2012 at 10:18:12AM +0800, Kks Kbase wrote:
-> Here is the command that I have used to mount.
-> 
-> 
-> mount -f nfs 1.2.3.4:/home/nfstest1 /mnt
-> 
-> 
-> # ls -al /mnt/
-> total 28
-> drwxr-xr-x  2 root root 4096 Nov 22 01:50 .
-
-Only root is permitted to write to this directory.  But you have
-root_squash turned on (which is the default; see "man export").
-
---b.
-
-> drwxr-xr-x 25 root root 4096 Nov 23 20:21 ..
-> -rw-r--r--  1 root root    0 Nov 22 01:50 1
-> -rw-r--r--  1 root root    0 Nov 22 01:50 2
-> -rw-r--r--  1 root root    0 Nov 22 01:50 3
-> # ls -ld /mnt/
-> drwxr-xr-x 2 root root 4096 Nov 22 01:50 /mnt/
-> 
-> 
-> 
-> Here is the output in mount command,
-> 
-> 1.2.3.4:/home/nfstest1 on /mnt type nfs (rw,addr=1.2.3.4)
-> 
-> 
-> 
-> 
-> ----- Original Message -----
-> From: J. Bruce Fields <bfields@fieldses.org>
-> To: Kks Kbase <kks.kbase@yahoo.in>
-> Cc: Linux NFS <linux-nfs@vger.kernel.org>
-> Sent: Sunday, 25 November 2012 8:18 PM
-> Subject: Re: NFS exportfs options
-> 
-> On Sun, Nov 25, 2012 at 12:07:13PM +0800, Kks Kbase wrote:
-> > Hi,
-> > 
-> > Here is the mounted option on /var/lib/nfs/etab
-> > 
-> > # cat /var/lib/nfs/etab
-> > /home/nfstest1  *(rw,sync,wdelay,hide,nocrossmnt,secure,root_squash,no_all_squash,no_subtree_check,secure_locks,no_acl,mapping=identity,anonuid=65534,anongid=65534)
-> > 
-> > 
-> > 
-> > 
-> > 
-> > 
-> > ----- Original Message -----
-> > From: Kks Kbase <kks.kbase@yahoo.in>
-> > To: Linux NFS <linux-nfs@vger.kernel.org>
-> > Cc: 
-> > Sent: Wednesday, 21 November 2012 12:40 PM
-> > Subject: NFS exportfs options
-> > 
-> > 
-> > 
-> > Hi,
-> > 
-> > Today I have tried to setup the NFS share. 
-> > 
-> > 
-> > Here is the exportsfs on NFS server
-> > 
-> > /home/nfstest1   *(rw)
-> > 
-> > Then I have mounted the nfs share folder and tried to create folders and files. But I am always getting the error as permission denied either root or normal user.
-> > 
-> > Any ideas please?
-> 
-> How are you mounting this on the client?
-> 
-> Have you checked permissions on the exported directory?  (ls -ld
-> /home/nfstest1).
-> 
-> --b.
-> 
+T24gVGh1LCAyMDEyLTExLTI5IGF0IDEwOjI4IC0wNjAwLCBTdGV2ZSBGcmVuY2ggd3JvdGU6DQo+
+IE9uIFRodSwgTm92IDI5LCAyMDEyIGF0IDk6MzMgQU0sIE15a2xlYnVzdCwgVHJvbmQNCj4gPFRy
+b25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPiBPbiBUaHUsIDIwMTItMTEtMjkg
+YXQgMTA6MjIgLTA1MDAsIHNpbW8gd3JvdGU6DQo+ID4+IE9uIFRodSwgMjAxMi0xMS0yOSBhdCAx
+NTo0OSArMDEwMCwgU3RlZiBCb24gd3JvdGU6DQo+ID4+ID4gMjAxMi8xMS8yOSBNeWtsZWJ1c3Qs
+IFRyb25kIDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT46DQo+ID4+ID4gPj4gLS0tLS1Pcmln
+aW5hbCBNZXNzYWdlLS0tLS0NCj4gPj4gPiA+Pg0KPiA+PiA+ID4+IDEuIHdoaWxlIHRoZSBmaWxl
+c3lzdGVtcyBhcmUgdXNpbmcgY3JlZGVudGFpbHMgb3IgdGlja2V0cyB0byBnZXQgYWNjZXNzIHRv
+IGENCj4gPj4gPiA+PiByZW1vdGUgcmVzb3VyY2UsIHRoaXMgaXMgYSBiaXQgZGlmZmljdWx0IGZv
+ciBub3RpZnlmcy4NCj4gPj4gPiA+PiBOb3RpZnlmcyBieXBhc3NlcyB0aGF0LiBNYXliZSB0aGlz
+IGxlYWRzIHRvIHBlcm1pc3Npb25zL2FidXNlIEkgY2Fubm90IHNlZQ0KPiA+PiA+ID4+IGRpcmVj
+dGx5Lg0KPiA+PiA+ID4NCj4gPj4gPiA+IExhY2sgb2Ygc2VjdXJpdHkgaXMgYSBzaG93c3RvcHBl
+ci4gVGhlcmUgYXJlIGdvb2QgcmVhc29ucyB3aHkgaW5vdGlmeSB3b24ndCBhbGxvdyB5b3UgdG8g
+bW9uaXRvciBmaWxlcyBmb3Igd2hpY2ggeW91IGRvbid0IGhhdmUgYWNjZXNzIHBlcm1pc3Npb25z
+Lg0KPiA+PiA+ID4NCj4gPj4gPg0KPiA+PiA+IExldCBtZSBleHBsYWluLCBJIHRoaW5rIHlvdSBu
+b3QgdW5kZXJzdGFuZCBmdWxseS4NCj4gPj4gPg0KPiA+PiA+IE5vdGlmeWZzIGRvZXMgbm90IGFs
+bG93IHVzZXJzL2NsaWVudHMgdG8gc2V0IGEgd2F0Y2ggaWYgdGhlcmUgYXJlIG5vDQo+ID4+ID4g
+cmVhZCBwZXJtaXNzaW9ucyAodGhlIG9iamVjdCBhbmQgYWNjZXNzIGZvciB0aGUgd2hvbGUgcGF0
+aCB0byBpdCksIHNvDQo+ID4+ID4gdGhlcmUgYXJlIG5vIHNlY3VyaXR5IGlzc3VlcyB0aGVyZS4N
+Cj4gPj4gPg0KPiA+PiA+IFdoYXQgSSBtZWFuIGlzIHRoYXQgYW55IHByb2dyYW0gY2FuIGNvbnRh
+Y3QgdGhlIHJlbW90ZSBub3RpZnlmcw0KPiA+PiA+IHNlcnZlciwgYW5kIHRoaXMgcmVtb3RlIG5v
+dGlmeWZzIHNlcnZlciBjYW5ub3QgZmlndXJlIG91dCBpdCdzIGEgdmFsaWQNCj4gPj4gPiByZXF1
+ZXN0IGZyb20gYW5vdGhlciBub3RpZnlmcyBzZXJ2ZXIsIG9yIGEgcHJvZ3JhbSBmYWtpbmcgdGhh
+dC4NCj4gPj4gPiBJbiB0aGUgY29uc3RydWN0aW9uIEkgZGVzY3JpYmUgaXQgZG9lcyBub3QgY2hl
+Y2sgdGhhdCAoeWV0KS4NCj4gPj4gPg0KPiA+PiA+ID4+DQo+ID4+ID4gPj4gV2hhdCBkbyB5b3Ug
+dGhpbmssIGlzIHRoZSBsYXRlc3Qgb3B0aW9uIHBvc3NpYmxlPz8NCj4gPj4gPiA+DQo+ID4+ID4g
+PiBTbyB3aGF0IGlzIHRoZSBraWxsZXIgYXBwIGZvciBpbm90aWZ5IG9uIE5GUy9DSUZTL0ZVU0U/
+IFdoYXQgcHJvZ3JhbXMgZG8geW91IG5lZWQgdG8gcnVuIG9uIGEgTkZTL0NJRlMvRlVTRSBjbGll
+bnQgdGhhdCB1c2UgaW5vdGlmeSBhbmQgdGhhdCB3b3VsZG4ndCBiZSBiZXR0ZXIgb2ZmIHJ1bm5p
+bmcgb24gdGhlIHNlcnZlciBpbnN0ZWFkPw0KPiA+PiA+ID4NCj4gPj4gPg0KPiA+PiA+IFdoYXQg
+ZG8geW91IG1lYW4gd2l0aCAiYmV0dGVyIG9mZiBydW5uaW5nIG9uIHRoZSBzZXJ2ZXIgaW5zdGVh
+ZCI/DQo+ID4+ID4gVGhlcmUgYXJlIGEgbG90IG9mIHByb2dyYW1zIGludGVyZXN0ZWQgaW4gZnMg
+Y2hhbmdlcywgbGlrZSBhIHNpbXBsZQ0KPiA+PiA+IGZpbGUgbWFuYWdlci4gSSB0aGluayBpdCdz
+IGEgdmVyeSBuaWNlIGZlYXR1cmUgdG8gc2VlIGNoYW5nZXMgcmlnaHQNCj4gPj4gPiBhd2F5IGlu
+IHRoZSB2aWV3Lg0KPiA+PiA+IEl0J3Mgbm90IGEga2lsbGVyIGFwcCwgYnV0IGEgdGhpbmsgdGhl
+IHdob2xlIHVzZXIgZXhwZXJpZW5jZSBpcw0KPiA+PiA+IGltcHJvdmluZyB3aGVuIHlvdXIgc3lz
+dGVtIGlzIGFibGUgdG8ga2VlcCBhIHZpZXcgKGxpa2UgYSB2aWV3IGluIHRoZQ0KPiA+PiA+IGZp
+bGUgbWFuYWdlcikgdXAgdG8gZGF0ZS4NCj4gPj4gPg0KPiA+PiA+ID4gSU9XOiB3aG9zZSBwcm9i
+bGVtIGFyZSB5b3UgdHJ5aW5nIHRvIHNvbHZlPw0KPiA+PiA+DQo+ID4+ID4gSSB0aGluayB0aGF0
+IGVuYWJsaW5nIGZzIG5vdGlmeSBvbiBuZXR3b3JrIGZpbGVzeXN0ZW1zIGxpa2UgbmZzLCBjaWZz
+DQo+ID4+ID4gYW5kIGZ1c2UgaXMgYSBnb29kIHRoaW5nIChzZWUgYWJvdmUpLiBPbiBzeXN0ZW1z
+IGxpa2UgV2luZG93cyBhbmQgaU9TDQo+ID4+ID4gc2luY2UgbG9uZyB0aW1lIHRoaXMgd29ya3Mu
+DQo+ID4+DQo+ID4+IENJRlMgaGFzIG5vdGlmaWNhdGlvbiBjYXBhYmlsaXRpZXMgYnVpbHQgaW4g
+KG9wbG9ja3MpLCBhcyBkb2VzIE5GUw0KPiA+PiAobGVhc2VzKSwgaXMgdGhpcyBub3Qgc3VmZmlj
+aWVudCA/DQo+ID4NCj4gPiBORlN2NC4xIGFjdHVhbGx5IGhhcyBkaXJlY3Rvcnkgbm90aWZpY2F0
+aW9ucyB3aGljaCBkdXBsaWNhdGUgbW9zdCBvZiB0aGUNCj4gPiBmdW5jdGlvbmFsaXR5IG9mIGRu
+b3RpZnkuIFRoZSBxdWVzdGlvbiBJJ20gYXNraW5nIGlzICJXaHkgc2hvdWxkIHdlIGRvDQo+ID4g
+aXQ/Iiwgbm90ICJjYW4gd2UgZG8gaXQ/Ii4NCj4gPg0KPiA+IEFuc3dlcnMgbGlrZSAid2VsbCBX
+aW5kb3dzIGFuZCBpT1MgZG8gaXQiIGFyZW4ndCBoZWxwZnVsIHVubGVzcyB0aGV5DQo+ID4gaW5j
+bHVkZSBhIGRlc2NyaXB0aW9uIG9mIHdoYXQgV2luZG93cyBhbmQgaU9TIGFwcHMgdXNlIGl0IGZv
+ciB0aGF0IHdlDQo+ID4gY2FuJ3QgYWxyZWFkeSBkbyBvbiBMaW51eC4NCj4gPiBJZiB0aGUgb25s
+eSBhcHBsaWNhdGlvbiBpcyBiZWFnbGUsIHRoZW4gTGludXggaGFzIHRoaXMgcmVhbGx5IGhlbHBm
+dWwNCj4gPiB1dGlsaXR5IGNhbGxlZCAic3NoIiwgd2hpY2ggYWxsb3dzIHlvdSB0byBhdm9pZCB3
+YXN0aW5nIGEgbG9hZCBvZg0KPiA+IG5ldHdvcmsgYmFuZHdpZHRoLi4uDQo+IA0KPiBPZiBjb3Vy
+c2Ugb25lIHJlYXNvbiB0aGF0IGZpbGUgbWFuYWdlcnMgbGlrZSBkaXJlY3Rvcnkgbm90aWZpY2F0
+aW9ucyBpcyB0aGF0DQo+IGl0IGF2b2lkcyB3YXN0aW5nIGEgbG9hZCBvZiBuZXR3b3JrIGJhbmR3
+aWR0aCAtIGFzIHRoZSBhbHRlcm5hdGl2ZSB0bw0KPiBkaXJlY3RvcnkgY2hhbmdlDQo+IG5vdGlm
+aWNhdGlvbnMgaXMgcG9sbGluZyB0aGUgZGlyZWN0b3JpZXMgZm9yIGV2ZXJ5IG9wZW4gd2luZG93
+LiAgIEFsc28gbm90ZSB0aGF0DQo+IG5ldHdvcmsgZmlsZSBzeXN0ZW1zIHdoZXJlIHBvc3NpYmxl
+IHNob3VsZCBpbXBsZW1lbnQgc2ltaWxhciBzZW1hbnRpY3MgYW5kDQo+IGludGVyZmFjZXMgdG8g
+dGhlIGxvY2FsIGZpbGUgc3lzdGVtcywgYW5kIGlub3RpZnkvZG5vdGlmeSBhcmUgbWFwcGFibGUN
+Cj4gdG8gbmV0d29yaw0KPiAnZmlsZSBzeXN0ZW1zIChwcmVzdW1hYmx5IG5vdCBqdXN0IGNpZnMv
+c21iMi9zbWIzKS4gICBTdXBwb3J0IGZvcg0KPiBrZWVwaW5nIGZpbGUgbWFuYWdlcg0KPiB2aWV3
+cyByZWFzb25hYmx5IHVwIHRvIGRhdGUgd291bGQgYmUgYSBnb29kIGVub3VnaCByZWFzb24gZm9y
+IHNvbWV0aGluZyBsaWtlDQo+IGlub3RpZnkvZG5vdGlmeSAoYW5kIGl0IGhhcyBiZWVuIHVzZWQg
+YnkgZmlsZSBtYW5hZ2VycyBmb3Igb3ZlciAyMA0KPiB5ZWFycywgZXZlbiBiZWZvcmUNCj4gV2lu
+ZG93cyBhbmQgaU9TKSAtIGFuZCB3ZSB3YW50IHRvIGdldCB0byB0aGUgcG9pbnQgd2hlcmUgaG9t
+ZSBkaXJlY3Rvcmllcw0KPiB3b3JrIGFzIHdlbGwgb24gbmV0d29yayBtb3VudHMgYXMgb24gbG9j
+YWwgc3RvcmFnZS4NCg0KZ2FtaW4gYW5kIHRoZSBGQU0gcHJvdG9jb2wgYWxyZWFkeSBmaWxscyB0
+aGUgZmlsZSBtYW5hZ2VyL2Jyb3dzZXIgZ2FwIGFzDQpmYXIgYXMgSSBrbm93LiBOb2JvZHkgaGFz
+IGNvbWUga25vY2tpbmcgb24gbXkgZG9vciBmcm9tIHRoZSBHTk9NRSBvciBLREUNCnByb2plY3Rz
+IGFza2luZyBmb3IgbW9yZSBmdW5jdGlvbmFsaXR5IGZyb20gdGhlIE5GUyBjbGllbnQuDQoNCj4g
+RGlyZWN0b3J5IG9wbG9ja3MgKGluIHNtYjMpIG1heSBiZSBoZWxwZnVsIGluIHJlZHVjaW5nIHRo
+ZSBudW1iZXIgb2YgcmVtb3RlDQo+IGRpcmVjdG9yeSBjaGFuZ2Ugbm90aWZpY2F0aW9ucyBmdXJ0
+aGVyLg0KDQpXaGVuIENJVEkgdHJpZWQgdG8gYWN0dWFsbHkgbWVhc3VyZSB0aGUgZWZmZWN0IG9m
+IE5GU3Y0LjEgZGlyZWN0b3J5DQpkZWxlZ2F0aW9ucyBvbiBuZXR3b3JrIGJhbmR3aWR0aCwgdGhl
+eSBmb3VuZCBub3RoaW5nLiBXZSdyZSBhbHJlYWR5DQpiZWluZyBlZmZpY2llbnQgZm9yIHRoZSBj
+YXNlIHdoZXJlIHRoZSBkaXJlY3RvcnkgaXMgbm90IGJlaW5nIGNoYW5nZWQgYnkNCmFueW9uZSBv
+dGhlciB0aGFuIHVzLg0KQlRXOiBpbm90aWZ5IGFscmVhZHkgd29ya3MgZm9yIHRoYXQgY2FzZSBv
+biBib3RoIENJRlMgYW5kIE5GUy4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBj
+bGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3
+d3cubmV0YXBwLmNvbQ0K
