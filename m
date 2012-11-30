@@ -1,68 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from zeniv.linux.org.uk ([195.92.253.2]:56997 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753530Ab2K3Bgb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2012 20:36:31 -0500
-Date: Fri, 30 Nov 2012 01:36:28 +0000
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Patrick McLean <patrick@cim.mcgill.ca>
-Cc: Patrick McLean <patrickm@gaikai.com>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
+Received: from mx2.netapp.com ([216.240.18.37]:55981 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755302Ab2K3N6U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 30 Nov 2012 08:58:20 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Al Viro <viro@ZenIV.linux.org.uk>
+CC: Patrick McLean <patrick@cim.mcgill.ca>,
+        Patrick McLean <patrickm@gaikai.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: Regression with initramfs and nfsroot (appears to be in the
  dcache)
-Message-ID: <20121130013628.GZ4939@ZenIV.linux.org.uk>
-References: <CAE2NFgU+4QDcLaVE5dKDvZCxey7qEf7FAbYNjNmcjVU=HLhF=A@mail.gmail.com>
- <20121129213316.GU4939@ZenIV.linux.org.uk>
- <CAE2NFgWCnmgSCsw7MzRkqBLTHgRDG-FvKKcbTHN6UqePK6Ef+Q@mail.gmail.com>
- <20121129222109.GW4939@ZenIV.linux.org.uk>
- <50B7E759.9070007@gaikai.com>
- <20121129234326.GX4939@ZenIV.linux.org.uk>
- <50B7FBA7.2030300@gaikai.com>
- <20121130003502.GY4939@ZenIV.linux.org.uk>
- <50B8046F.7030308@cim.mcgill.ca>
+Date: Fri, 30 Nov 2012 13:58:18 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90B32EECB@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20121129213316.GU4939@ZenIV.linux.org.uk>
+	 <CAE2NFgWCnmgSCsw7MzRkqBLTHgRDG-FvKKcbTHN6UqePK6Ef+Q@mail.gmail.com>
+	 <20121129222109.GW4939@ZenIV.linux.org.uk> <50B7E759.9070007@gaikai.com>
+	 <20121129234326.GX4939@ZenIV.linux.org.uk> <50B7FBA7.2030300@gaikai.com>
+	 <20121130003502.GY4939@ZenIV.linux.org.uk> <50B8046F.7030308@cim.mcgill.ca>
+	 <20121130013628.GZ4939@ZenIV.linux.org.uk> <50B811BA.6070503@cim.mcgill.ca>
+	 <20121130020047.GA4939@ZenIV.linux.org.uk>
+In-Reply-To: <20121130020047.GA4939@ZenIV.linux.org.uk>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <50B8046F.7030308@cim.mcgill.ca>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 29, 2012 at 04:57:19PM -0800, Patrick McLean wrote:
-> > Interesting...  Server-side that should've been produced by
-> > encode_entryplus_baggage(), which looks like failing compose_entry_fh()...
-> > which has explicit
-> >         if (d_mountpoint(dchild))
-> >                 goto out;
-> > resulting in ENOENT on everything that's overmounted on server.
-> > 
-> > Do you, by any chance, have the server really exporting its own root
-> > filesystem?  Another thing to check: have nfs_prime_dcache() print
-> > filename.name of everything that fails nfs_same_entry() and has
-> > zero entry->fh->size, regardless of d_invalidate() results.
-> 
-> The server is running 3.6.6 and is just exporting a subdir of an xfs filesystem (which does not happen to be the root filesystem).
-> 
-> The client is running as a KVM guest on the machine that is serving the NFS. I am reproducing this by booting the guest via an initramfs, and doing
-> "ls /" at in single user mode.
-> 
-> I added a check that prints the filename.name of everything that fails nfs_same_file, and it appears to just be triggered by the same filesystems that
-> are triggering the WARN_ON, the relevant dmesg is below.
-
-[the same /dev, /proc and /sys]
-
-	Very interesting.  Do you have anything mounted on the corresponding
-directories on server?  The picture looks like you are getting empty
-fhandles in readdir+ respons for exactly the same directories that happen
-to be mountpoints on client.  In any case, we shouldn't do that blind
-d_drop() - empty fhandles can happen.  The only remaining question is
-why do they happen on that set of entries.  From my reading of
-encode_entryplus_baggage() it looks like we have compose_entry_fh()
-failing for those entries and those entries alone.  One possible cause
-would be d_mountpoint(dchild) being true on server.  If it is true, we
-can declare the case closed; if not, I really wonder what's going on.
-
-Note that if the same fs is mounted elsewhere, d_mountpoint() would mean
-that something is mounted on top of that directory in _some_ instance;
-not necessary the exported one.  Can you slap printks on fs/nfsd/nfs3xdr.c
-compose_entry_fh() failure exits and see which one triggers server-side?
+T24gRnJpLCAyMDEyLTExLTMwIGF0IDAyOjAwICswMDAwLCBBbCBWaXJvIHdyb3RlOg0KPiBPbiBU
+aHUsIE5vdiAyOSwgMjAxMiBhdCAwNTo1NDowMlBNIC0wODAwLCBQYXRyaWNrIE1jTGVhbiB3cm90
+ZToNCj4gPiA+IAlWZXJ5IGludGVyZXN0aW5nLiAgRG8geW91IGhhdmUgYW55dGhpbmcgbW91bnRl
+ZCBvbiB0aGUgY29ycmVzcG9uZGluZw0KPiA+ID4gZGlyZWN0b3JpZXMgb24gc2VydmVyPyAgVGhl
+IHBpY3R1cmUgbG9va3MgbGlrZSB5b3UgYXJlIGdldHRpbmcgZW1wdHkNCj4gPiA+IGZoYW5kbGVz
+IGluIHJlYWRkaXIrIHJlc3BvbnMgZm9yIGV4YWN0bHkgdGhlIHNhbWUgZGlyZWN0b3JpZXMgdGhh
+dCBoYXBwZW4NCj4gPiA+IHRvIGJlIG1vdW50cG9pbnRzIG9uIGNsaWVudC4gIEluIGFueSBjYXNl
+LCB3ZSBzaG91bGRuJ3QgZG8gdGhhdCBibGluZA0KPiA+ID4gZF9kcm9wKCkgLSBlbXB0eSBmaGFu
+ZGxlcyBjYW4gaGFwcGVuLiAgVGhlIG9ubHkgcmVtYWluaW5nIHF1ZXN0aW9uIGlzDQo+ID4gPiB3
+aHkgZG8gdGhleSBoYXBwZW4gb24gdGhhdCBzZXQgb2YgZW50cmllcy4gIEZyb20gbXkgcmVhZGlu
+ZyBvZg0KPiA+ID4gZW5jb2RlX2VudHJ5cGx1c19iYWdnYWdlKCkgaXQgbG9va3MgbGlrZSB3ZSBo
+YXZlIGNvbXBvc2VfZW50cnlfZmgoKQ0KPiA+ID4gZmFpbGluZyBmb3IgdGhvc2UgZW50cmllcyBh
+bmQgdGhvc2UgZW50cmllcyBhbG9uZS4gIE9uZSBwb3NzaWJsZSBjYXVzZQ0KPiA+ID4gd291bGQg
+YmUgZF9tb3VudHBvaW50KGRjaGlsZCkgYmVpbmcgdHJ1ZSBvbiBzZXJ2ZXIuICBJZiBpdCBpcyB0
+cnVlLCB3ZQ0KPiA+ID4gY2FuIGRlY2xhcmUgdGhlIGNhc2UgY2xvc2VkOyBpZiBub3QsIEkgcmVh
+bGx5IHdvbmRlciB3aGF0J3MgZ29pbmcgb24uDQo+ID4gDQo+ID4gVGhvc2UgZGlyZWN0b3JpZXMg
+ZG8gaGF2ZSB0aGUgc2VydmVyJ3Mgb3duIGNvcGllcyBvZiB0aGUgc2FpZCBkaXJlY3RvcmllcyBi
+aW5kIG1vdW50ZWQgYXQgdGhlIG1vbWVudCBpbiBhIHNlcGFyYXRlIG1vdW50IG5hbWVzcGFjZS4N
+Cj4gPiANCj4gPiBVbm1vdW50aW5nIHRob3NlIGRpcmVjdG9yaWVzIG9uIHRoZSBzZXJ2ZXIgZG9l
+cyBhcHBlYXIgdG8gc3RvcCB0aGUgV0FSTl9PTiBmcm9tIHRyaWdnZXJpbmcuDQo+IA0KPiBPSywg
+dGhhdCBzZXR0bGVzIGl0LiAgV0FSTl9PTigpIGFuZCBwcmludGtzIGluIHRoZSBhcmVhIGNhbiBi
+ZSBkcm9wcGVkOw0KPiB0aGUgcmlnaHQgZml4IGlzIGJlbG93LiAgSG93ZXZlciwgdGhlcmUncyBh
+IHNpbWlsYXIgcGxhY2UgaW4gY2lmcyB0aGF0DQo+IGFsc28gbmVlZHMgdG8gYmUgZGVhbHQgd2l0
+aCBhbmQgSSByZWFsbHksIHJlYWxseSB3b25kZXIgd2h5IHRoZSBoZWxsIGRvDQo+IHdlIGRvIGRf
+ZHJvcCgpIGluIG5mc19yZXZhbGlkYXRlX2xvb2t1cCgpLiAgSXQncyBub3QgcmVsZXZhbnQgaW4g
+dGhpcw0KPiBidWcsIGJ1dCBJIHdvdWxkIGxpa2UgdG8gdW5kZXJzdGFuZCB3aGF0J3Mgd3Jvbmcg
+d2l0aCBzaW1wbHkgcmV0dXJuaW5nDQo+IDAgZnJvbSAtPmRfcmV2YWxpZGF0ZSgpIGFuZCBsZXR0
+aW5nIHRoZSBjYWxsZXIgKGluIGZzL25hbWVpLmMpIHRha2UgY2FyZQ0KPiBvZiB1bmhhc2hpbmcs
+IGV0Yy4gaXRzZWxmLiAgV291bGQgbWFrZSBoYXZlX3N1Ym1vdW50cygpIGluIHRoZXJlIHBvaW50
+bGVzcw0KPiBhcyB3ZWxsIC0gd2UgY291bGQganVzdCByZXR1cm4gMCBhbmQgbGV0IGRfaW52YWxp
+ZGF0ZSgpIHRha2UgY2FyZSBvZiB0aGUNCj4gY2hlY2tzLi4uICBUcm9uZD8NCg0KVGhlIHJlYXNv
+biBmb3IgdGhlIGNob2ljZSBvZiBkX2Ryb3Agb3ZlciBkX2ludmFsaWRhdGUoKSBpcyB0aGUgZF9j
+b3VudA0KY2hlY2tzLiBJdCByZWFsbHkgZG9lc24ndCBtYXR0ZXIgd2hldGhlciBvciBub3QgdGhl
+IGNsaWVudCB0aGlua3MgaXQgaGFzDQp1c2VycyBmb3IgYSBkaXJlY3RvcnkgaWYgdGhlIHNlcnZl
+ciBpcyB0ZWxsaW5nIHlvdSB0aGF0IGl0IGlzIEVTVEFMRS4gU28NCndlIGZvcmNlIGEgZF9kcm9w
+IHRvIHByZXZlbnQgZnVydGhlciBsb29rdXBzIGZyb20gZmluZGluZyBpdC4NCg0KSU9XOiBJdCBp
+cyB0aGVyZSBpbiBvcmRlciB0byBmaXggdGhlIGNhc2Ugd2hlcmUgdGhlIHVzZXIgZG9lcw0KJ3Jt
+ZGlyKCJmb28iKTsgbWtkaXIoImZvbyIpJyBvbiB0aGUgc2VydmVyLg0KDQoNCi0tIA0KVHJvbmQg
+TXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5N
+eWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
