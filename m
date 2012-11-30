@@ -1,31 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42578 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751118Ab2KHMem (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 Nov 2012 07:34:42 -0500
-Date: Thu, 8 Nov 2012 07:34:41 -0500
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org, faisaman4@gmail.com
-Subject: Re: implement backchannel security negotation
-Message-ID: <20121108123441.GC22735@fieldses.org>
-References: <1352335463-29084-1-git-send-email-bfields@redhat.com>
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:58406 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750809Ab2K3HTw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Nov 2012 02:19:52 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1352335463-29084-1-git-send-email-bfields@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <CANXojcwRy5cBz=E1S567J-1BFC4AiamLr=35bKrX0Zq-Me2b3w@mail.gmail.com>
+References: <CANXojcy9thLBwrENTkOTSSE17L3N17A8XsTmyNqq3oNdhW_Q_w@mail.gmail.com>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA90B329CFD@SACEXCMBX04-PRD.hq.netapp.com>
+	<CANXojcxR9673fRObMLPSScogAN05RSVhPFoni=ENc6YDWq9T7w@mail.gmail.com>
+	<1354202525.4064.1.camel@pico.ipa.ssimo.org>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA90B32AEB7@SACEXCMBX04-PRD.hq.netapp.com>
+	<CANXojcys4wR8N-R3oSjWRWJLsObn0Qf+i41vBUaNnJctdcrKVw@mail.gmail.com>
+	<20121129202037.GQ4939@ZenIV.linux.org.uk>
+	<CANXojcw15RdJdRoZxB3Z59YbOda7vG7RDRegfpoCjG4Bv4AvsQ@mail.gmail.com>
+	<20121129211624.GS4939@ZenIV.linux.org.uk>
+	<CANXojcxfrO+Ar4JSd0NiDJh7+_gg6s6cq5=UA7Pu1h4DRZ8Vkg@mail.gmail.com>
+	<CAH2r5muw1U2XNMZsCq0gApuTMyj+6SN6S9KsUq52YM8CyZEG4A@mail.gmail.com>
+	<CANXojcwRy5cBz=E1S567J-1BFC4AiamLr=35bKrX0Zq-Me2b3w@mail.gmail.com>
+Date: Fri, 30 Nov 2012 08:19:52 +0100
+Message-ID: <CANXojcxa98W7buVOgmsjMgrOukiiyVuafHS-NFz_yaSC2OFE1w@mail.gmail.com>
+Subject: Re: Possible to make nfs aware of a inotify watch has been set.
+From: Stef Bon <stefbon@gmail.com>
+To: Steve French <smfrench@gmail.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-cifs <linux-cifs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 07, 2012 at 07:44:18PM -0500, J. Bruce Fields wrote:
-> This is an incomplete implementation of the (mandatory) NFSv4.1
-> backchannel security negotation, only enough to handle auth_unix and
-> auth_null; auth_gss will need more work.
+2012/11/30 Stef Bon <stefbon@gmail.com>:
+> 2012/11/30 Steve French <smfrench@gmail.com>:
 
-And I've also pushed out corresponding pynfs tests to
+>> match closely to the existing Linux API.
+>
+> Hi,
+>
+> I start working on the seperate notifyfs servers.
+> The whole advantage of that approach is that you can design the api
+> from scratch. Notifyfs is not bound to the api of inotify. There
+> remains the problem of mapping it to the fs event api on the host,
+> which will be inotify probably on linux.
+>
+> At this moment the different events look like:
+>
 
-	git://linux-nfs.org/~bfields/pynfs.git
 
-Fred, could you please pull the master branch from there?  It's got a
-hundred-some commits outstanding at this point.
+Maybe I will add locking information as well. I see that the
+/proc/locks file can be monitored as well.
 
---b.
+To me, information is very valuable.  It would be very nice (yes my
+opinion) to have information about a file on a nfs (or cifs) share
+about it lockstatus, and by who, and get notified when it's unlocked.
+
+And no nobody asked me to do so.
+
+Stef
