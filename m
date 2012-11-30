@@ -1,49 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:52477 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:46363 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932184Ab2K1PPt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 Nov 2012 10:15:49 -0500
-Date: Wed, 28 Nov 2012 10:15:42 -0500
+	id S1751848Ab2K3Qzt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 30 Nov 2012 11:55:49 -0500
+Date: Fri, 30 Nov 2012 11:55:44 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Subject: Re: [PATCH 1/2] nfsd: make NFSv4 lease time per net
-Message-ID: <20121128151542.GI11651@fieldses.org>
-References: <20121127111007.10271.54338.stgit@localhost.localdomain>
- <20121127111144.10271.97169.stgit@localhost.localdomain>
- <20121128150941.GF11651@fieldses.org>
- <50B629C3.4050903@parallels.com>
+To: Stephen Smalley <sds@tycho.nsa.gov>
+Cc: David Quigley <dpquigl@davequigley.com>,
+        Casey Schaufler <casey@schaufler-ca.com>, trond.myklebust@netapp.com,
+        linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
+        linux-security-module@vger.kernel.org
+Subject: Re: Labeled NFS [v5]
+Message-ID: <20121130165544.GF614@fieldses.org>
+References: <50B7FEFB.30109@schaufler-ca.com>
+ <579e850139bd3d5a0c9155270d5d9fbe@countercultured.net>
+ <50B810D2.2000401@schaufler-ca.com>
+ <3ea3f70e0a5cdb99f1594019b7bd619d@countercultured.net>
+ <20121130121437.GC614@fieldses.org>
+ <607a8005d6c33a19c53b5ede29d81ef5@countercultured.net>
+ <5170c3bd8900c36b372217af96e5e764@countercultured.net>
+ <50B8B47F.5050206@tycho.nsa.gov>
+ <c00cec058c2bd0cb7104a53ca680f6cb@countercultured.net>
+ <50B8B9BF.7000802@tycho.nsa.gov>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <50B629C3.4050903@parallels.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <50B8B9BF.7000802@tycho.nsa.gov>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 28, 2012 at 07:12:03PM +0400, Stanislav Kinsbursky wrote:
-> 28.11.2012 19:09, J. Bruce Fields пишет:
-> >On Tue, Nov 27, 2012 at 02:11:44PM +0300, Stanislav Kinsbursky wrote:
-> >>diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> >>index dab350d..4930981 100644
-> >>--- a/fs/nfsd/nfsctl.c
-> >>+++ b/fs/nfsd/nfsctl.c
-> >>@@ -912,7 +912,8 @@ static ssize_t nfsd4_write_time(struct file *file, char *buf, size_t size, time_
-> >>   */
-> >>  static ssize_t write_leasetime(struct file *file, char *buf, size_t size)
-> >>  {
-> >>-	return nfsd4_write_time(file, buf, size, &nfsd4_lease);
-> >>+	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
-> >>+	return nfsd4_write_time(file, buf, size, &nn->nfsd4_lease);
-> >
-> >This is called in the context of whatever process writes to
-> >nfsv4leasetime, so should be using its network namespace, right?
-> >
-> 
-> This is, actually, a interim solution to preserve existent logic.
-> I.e. I'm going to convert "nfsd" filesystem into per-net one (like rpc_pipefs). I, actually, already done it in my tree.
-> Thus proper network namespace will be taken from nfsd superblock.
+On Fri, Nov 30, 2012 at 08:50:55AM -0500, Stephen Smalley wrote:
+> On the SELinux side, we don't require CAP_MAC_ADMIN to set the
+> SELinux attribute on a file in the normal case, only when the
+> SELinux attribute is not known to the security policy yet.  So
+> granting CAP_MAC_ADMIN there means that a client will be able to set
+> security contexts on files that are unknown to the server.  I guess
+> that might even be desirable in some instances where client and
+> server policy are different.
 
-OK, remind me how that works?  It's mounted just once, but each network
-namespace gets a different view of the filesystem?
+Note (as you probably know) this first pass at labeled NFS only lets us
+label files, not rpc calls--if we want the server to know who's doing
+something (beyond the information the rpc headers already carry), we'll
+need to implement rpcsec_gss v3, and that's a project for another day.
+
+I've been assuming that makes server-side enforcement less useful for
+now.
 
 --b.
