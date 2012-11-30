@@ -1,34 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from sr-smtp.usish.com ([210.5.144.203]:47907 "EHLO
-	sr-smtp.usish.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760746Ab2KANgE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Nov 2012 09:36:04 -0400
-Received: from outbound.usish.com (unknown [192.168.40.103])
-	by sr-smtp.usish.com (Postfix) with ESMTP id B777877821C
-	for <linux-nfs@vger.kernel.org>; Thu,  1 Nov 2012 16:26:27 +0800 (CST)
-Received: from outbound.usish.com (outbound.usish.com [127.0.0.1])
-	by postfix.imss70 (Postfix) with ESMTP id 61EF74280A8
-	for <linux-nfs@vger.kernel.org>; Thu,  1 Nov 2012 16:58:47 +0800 (CST)
-Received: from [192.168.58.59] (unknown [192.168.58.59])
-	by outbound.usish.com (Postfix) with ESMTP id 3FF7E428041
-	for <linux-nfs@vger.kernel.org>; Thu,  1 Nov 2012 16:58:47 +0800 (CST)
-Subject: hang problem when umount a nfs point
-From: dahai_tian <dahai_tian@usish.com>
-Reply-To: dahai_tian@usish.com
-To: linux-nfs@vger.kernel.org
-Date: Thu, 01 Nov 2012 16:58:17 +0800
-Content-Type: text/plain; charset="UTF-8"
-Message-ID: <1351760297.5369.1.camel@localhost>
-Mime-Version: 1.0
+Received: from countercultured.net ([209.51.175.25]:54315 "HELO
+	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1754777Ab2K3ACb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2012 19:02:31 -0500
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8;
+ format=flowed
+Date: Thu, 29 Nov 2012 19:02:28 -0500
+From: David Quigley <dpquigl@davequigley.com>
+To: Casey Schaufler <casey@schaufler-ca.com>
+Cc: <bfields@fieldses.org>, <trond.myklebust@netapp.com>, <sds@tycho.nsa.gov>,
+        <linux-nfs@vger.kernel.org>, <selinux@tycho.nsa.gov>,
+        <linux-security-module@vger.kernel.org>
+Subject: Re: Labeled NFS [v5]
+In-Reply-To: <0ff94ca24f0c686ac7035c6dd9292746@countercultured.net>
+References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com>
+ <50ABF1A5.2010406@schaufler-ca.com> <50AC1A74.7080105@davequigley.com>
+ <50AC2117.801@schaufler-ca.com> <50AC224D.3080108@davequigley.com>
+ <50AC41DC.5070607@schaufler-ca.com> <50AC4A7A.6010208@davequigley.com>
+ <50B65E7E.4030607@schaufler-ca.com> <50B6B706.1010002@davequigley.com>
+ <50B6C398.90002@schaufler-ca.com> <50B7E189.80200@schaufler-ca.com>
+ <0ff94ca24f0c686ac7035c6dd9292746@countercultured.net>
+Message-ID: <366126a9d2f81c76c116059d4e3202d1@countercultured.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi all:
-        I mount a local directory to a nfs server. When nfs server is
-stopped
-for some accidental cause, I try to umount the mount point, the umount
-command will hang and 'time out' messages are continually printed in the
-terminal. How can I avoid hanging in this case? BTW, This issue does not
-exist when I changed nfs version from 4 to 3. 
-        Look forward to your response, thanks!
+On 11/29/2012 17:49, David Quigley wrote:
+> I have an idea of what it is then. I'm cloning the tree so I can take
+> a look really quick but I have a feeling that I didn't convey
+> something properly and it got messed up in the implementation. If
+> that's the case I'll make sure to be clearer next time to avoid
+> confusion.
+>
+> --
+> This message was distributed to subscribers of the selinux mailing 
+> list.
+> If you no longer wish to subscribe, send mail to 
+> majordomo@tycho.nsa.gov with
+> the words "unsubscribe selinux" without quotes as the message.
+
+
+So the problem isn't clear to me. If we look in fs/nfs/nfs4proc.c we'll 
+see the xattr handlers for the security namespace. This will strip off 
+the security and should pass the second part to the security_ismaclabel 
+call on the key.
+
+The code in question is below.
+
+
+static int nfs4_xattr_get_nfs4_label(struct dentry *dentry, const char 
+*key,
+                                    void *buf, size_t buflen, int type)
+{
+         if (security_ismaclabel(key))
+                 return nfs4_get_security_label(dentry->d_inode, buf, 
+buflen);
+         return -EOPNOTSUPP;
+}
+
+This means whatever is making the getxattr call from userspace is 
+requesting security.selinux instead of security.smack. Is there a 
+different command to ls that will give you security.smack (or whatever 
+it is)? what happens if you install getfattr and do getfattr -n 
+security.whatever -m security.* /mnt/file
 
