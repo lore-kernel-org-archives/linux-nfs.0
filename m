@@ -1,79 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f46.google.com ([209.85.215.46]:43174 "EHLO
-	mail-la0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754503Ab2K3KUx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Nov 2012 05:20:53 -0500
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 1/3] fcntl: Introduce new O_DENY* open flags for network filesystems
-Date: Fri, 30 Nov 2012 14:20:38 +0400
-Message-Id: <1354270840-7272-2-git-send-email-piastry@etersoft.ru>
-In-Reply-To: <1354270840-7272-1-git-send-email-piastry@etersoft.ru>
-References: <1354270840-7272-1-git-send-email-piastry@etersoft.ru>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:56932 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753813Ab2K3AfF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2012 19:35:05 -0500
+Date: Fri, 30 Nov 2012 00:35:02 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Patrick McLean <patrickm@gaikai.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: Regression with initramfs and nfsroot (appears to be in the
+ dcache)
+Message-ID: <20121130003502.GY4939@ZenIV.linux.org.uk>
+References: <CAE2NFgU+4QDcLaVE5dKDvZCxey7qEf7FAbYNjNmcjVU=HLhF=A@mail.gmail.com>
+ <20121129213316.GU4939@ZenIV.linux.org.uk>
+ <CAE2NFgWCnmgSCsw7MzRkqBLTHgRDG-FvKKcbTHN6UqePK6Ef+Q@mail.gmail.com>
+ <20121129222109.GW4939@ZenIV.linux.org.uk>
+ <50B7E759.9070007@gaikai.com>
+ <20121129234326.GX4939@ZenIV.linux.org.uk>
+ <50B7FBA7.2030300@gaikai.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <50B7FBA7.2030300@gaikai.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch adds 3 flags:
-1) O_DENYREAD that doesn't permit read access
-2) O_DENYWRITE that doesn't permit write access
-3) O_DENYDELETE that doesn't permit delete or rename
+On Thu, Nov 29, 2012 at 04:19:51PM -0800, Patrick McLean wrote:
+> >> [    8.821584] FH(0)]
+> >> [    8.821586] FH(36)[01 00 07 01 89 00 00 00 00 00 00 00 e1 21 fe c4 9e 38 44 dc bf 1b d5 95 d6 76 d6 d9 a7 3c 1b 80 33 38 e3 62]
+> >> [    8.821601] filename: proc
+> > 
+> > *whoa*
+> > 
+> > So we have zero entry->fh->size?  No wonder it doesn't match...  Which NFS
+> > version it is?  entry->fh->size is set by nfs[34]_decode_dirent().
+> 
+> This is nfs v3 over TCP on Linus git at commit e9296e89b85604862bd9ec2d54dc43edad775c0d with nfs-utils-1.2.6 userspace.
 
-Network filesystems CIFS, SMB2.0, SMB3.0 and NFSv4 have such flags -
-this change can benefit cifs and nfs modules. While this change is ok
-for network filesystems, itsn't not targeted for local filesystems due
-to security problems (e.g. when a user process can deny root to delete
-a file).
+So we have nfs3_decode_dirent(), stepping into
+                /* In fact, a post_op_fh3: */
+                p = xdr_inline_decode(xdr, 4);
+                if (unlikely(p == NULL))
+                        goto out_overflow;
+                if (*p != xdr_zero) {
+                        error = decode_nfs_fh3(xdr, entry->fh);
+                        if (unlikely(error)) {
+                                if (error == -E2BIG)
+                                        goto out_truncated;
+                                return error;
+                        }
+                } else
+                        zero_nfs_fh3(entry->fh);
+Interesting...  Server-side that should've been produced by
+encode_entryplus_baggage(), which looks like failing compose_entry_fh()...
+which has explicit
+        if (d_mountpoint(dchild))
+                goto out;
+resulting in ENOENT on everything that's overmounted on server.
 
-Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
----
- fs/fcntl.c                       |    5 +++--
- include/uapi/asm-generic/fcntl.h |   11 +++++++++++
- 2 files changed, 14 insertions(+), 2 deletions(-)
-
-diff --git a/fs/fcntl.c b/fs/fcntl.c
-index 71a600a..7abce5a 100644
---- a/fs/fcntl.c
-+++ b/fs/fcntl.c
-@@ -730,14 +730,15 @@ static int __init fcntl_init(void)
- 	 * Exceptions: O_NONBLOCK is a two bit define on parisc; O_NDELAY
- 	 * is defined as O_NONBLOCK on some platforms and not on others.
- 	 */
--	BUILD_BUG_ON(19 - 1 /* for O_RDONLY being 0 */ != HWEIGHT32(
-+	BUILD_BUG_ON(22 - 1 /* for O_RDONLY being 0 */ != HWEIGHT32(
- 		O_RDONLY	| O_WRONLY	| O_RDWR	|
- 		O_CREAT		| O_EXCL	| O_NOCTTY	|
- 		O_TRUNC		| O_APPEND	| /* O_NONBLOCK	| */
- 		__O_SYNC	| O_DSYNC	| FASYNC	|
- 		O_DIRECT	| O_LARGEFILE	| O_DIRECTORY	|
- 		O_NOFOLLOW	| O_NOATIME	| O_CLOEXEC	|
--		__FMODE_EXEC	| O_PATH
-+		__FMODE_EXEC	| O_PATH	| O_DENYREAD	|
-+		O_DENYWRITE	| O_DENYDELETE
- 		));
- 
- 	fasync_cache = kmem_cache_create("fasync_cache",
-diff --git a/include/uapi/asm-generic/fcntl.h b/include/uapi/asm-generic/fcntl.h
-index a48937d..5ac0d49 100644
---- a/include/uapi/asm-generic/fcntl.h
-+++ b/include/uapi/asm-generic/fcntl.h
-@@ -84,6 +84,17 @@
- #define O_PATH		010000000
- #endif
- 
-+#ifndef O_DENYREAD
-+#define O_DENYREAD	020000000	/* Do not permit read access */
-+#endif
-+#ifndef O_DENYWRITE
-+#define O_DENYWRITE	040000000	/* Do not permit write access */
-+#endif
-+/* FMODE_NONOTIFY	0100000000 */
-+#ifndef O_DENYDELETE
-+#define O_DENYDELETE	0200000000	/* Do not permit delete or rename */
-+#endif
-+
- #ifndef O_NDELAY
- #define O_NDELAY	O_NONBLOCK
- #endif
--- 
-1.7.10.4
-
+Do you, by any chance, have the server really exporting its own root
+filesystem?  Another thing to check: have nfs_prime_dcache() print
+filename.name of everything that fails nfs_same_entry() and has
+zero entry->fh->size, regardless of d_invalidate() results.
