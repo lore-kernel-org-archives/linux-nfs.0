@@ -1,78 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51844 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752728Ab2K0WJq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 Nov 2012 17:09:46 -0500
-Date: Tue, 27 Nov 2012 17:09:39 -0500
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFSd state: nfs4_lock_state() and nfs4_lock_state()
-Message-ID: <20121127220939.GI27142@fieldses.org>
-References: <50A622AE.3080809@parallels.com>
- <20121116165845.GA32183@fieldses.org>
- <50A9F03B.1010909@parallels.com>
- <20121119124618.GA30084@fieldses.org>
- <50AF5E7F.2010006@parallels.com>
- <20121126223639.GC18186@fieldses.org>
- <50B471B6.2010407@parallels.com>
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:37755 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757791Ab2K3LKk convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Nov 2012 06:10:40 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <50B471B6.2010407@parallels.com>
+In-Reply-To: <1354270840-7272-1-git-send-email-piastry@etersoft.ru>
+References: <1354270840-7272-1-git-send-email-piastry@etersoft.ru>
+Date: Fri, 30 Nov 2012 15:10:39 +0400
+Message-ID: <CAKywueSiE_8ahAW4ky=7fLxkSo+uLg5U-YE6Jf9mbaEKRLk60g@mail.gmail.com>
+Subject: Re: [PATCH 0/3] Add O_DENY* flags to fcntl and cifs
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org
+Cc: wine-devel@winehq.org
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 27, 2012 at 11:54:30AM +0400, Stanislav Kinsbursky wrote:
-> 27.11.2012 02:36, bfields@fieldses.org пишет:
-> >On Fri, Nov 23, 2012 at 03:31:11PM +0400, Stanislav Kinsbursky wrote:
-> >>19.11.2012 16:46, bfields@fieldses.org пишет:
-> >>>On Mon, Nov 19, 2012 at 12:39:23PM +0400, Stanislav Kinsbursky wrote:
-> >>>>16.11.2012 20:58, bfields@fieldses.org пишет:
-> >>>>>
-> >>>>>A patch follows: note it's a two-line patch, with 20 lines of changelog
-> >>>>>showing that I looked at what state might be shared by other threads and
-> >>>>>explaining why I think this is safe.
-> >>>>>
-> >>>>
-> >>>>Acked-by: Stanislav Kinsburskiy <skinsbursky@parallels.com>
-> >>>>
-> >>>>>I think that's what we need to do: little patches that remove it from
-> >>>>>one or another part of the code with careful explanation of why it
-> >>>>>works.
-> >>>>>
-> >>>>
-> >>>>Yes, thanks. I'll also try to simplify nfsd_open() by little patches.
-> >>>>In general it looks like client_mutex protect two different things:
-> >>>>open owner state (which is containerised already, actually) and
-> >>>>files access.
-> >>>>So, probably, this client mutex have to be converted into two:
-> >>>>per-net one, which protects open owner state, and static one, which
-> >>>>protects files operations.
-> >>>>What do you think about it?
-> >>>
-> >>>That sounds right.
-> >>>
-> >>
-> >>Looked into the code, and few more questions raised.
-> >>So, currently, this mutex protects different NFS4 state structures and VFS file operations (like open, read, write, etc.).
-> >>I would like this mutex to be converted into per-net one. Since NFS4
-> >>state structures are per-net already (with my previous patch set),
-> >>the only thing left is VFS operations.
-> >>But do we really need to protect them somehow from concurrent access?
-> >>I.e. do we have some RPCs, which does more that one file manipulation, but this manipulations sequence have to be "atomic" in NFSd terms?
-> >
-> >Probably not, but open is the most likely problem, as it does several
-> >things which are not all atomic from the point of view of the vfs.  The
-> >mutex can't prevent races between an nfs client and a local user, but it
-> >can at least prevent races between nfs clients.
-> >
-> 
-> Ok then.
-> You said, that you are going to optimize open a bit?
+2012/11/30 Pavel Shilovsky <piastry@etersoft.ru>:
+> Network filesystems CIFS, SMB2.0, SMB3.0 and NFSv4 have such flags - this change can benefit cifs and nfs modules. While this change is ok for network filesystems, itsn't not targeted for local filesystems due security problems (e.g. when a user process can deny root to delete a file).
+>
+> Share flags are used by Windows applications and WINE have to deal with them too. While WINE can process open share flags itself on local filesystems, it can't do it if a file stored on a network share and is used by several clients. This patchset makes it possible for CIFS/SMB2.0/SMB3.0.
+>
+> Pavel Shilovsky (3):
+>   fcntl: Introduce new O_DENY* open flags for network filesystems
+>   CIFS: Add O_DENY* open flags support
+>   CIFS: Use NT_CREATE_ANDX command for forcemand mounts
+>
+>  fs/cifs/cifsacl.c                |   10 ++++----
+>  fs/cifs/cifsglob.h               |   11 ++++++++-
+>  fs/cifs/cifsproto.h              |    9 ++++----
+>  fs/cifs/cifssmb.c                |   47 ++++++++++++++++++++------------------
+>  fs/cifs/dir.c                    |   14 ++++++++----
+>  fs/cifs/file.c                   |   18 ++++++++++-----
+>  fs/cifs/inode.c                  |   11 +++++----
+>  fs/cifs/link.c                   |   10 ++++----
+>  fs/cifs/readdir.c                |    2 +-
+>  fs/cifs/smb1ops.c                |   15 ++++++------
+>  fs/cifs/smb2file.c               |   10 ++++----
+>  fs/cifs/smb2inode.c              |    4 ++--
+>  fs/cifs/smb2ops.c                |   10 ++++----
+>  fs/cifs/smb2pdu.c                |    6 ++---
+>  fs/cifs/smb2proto.h              |   14 +++++++-----
+>  fs/fcntl.c                       |    5 ++--
+>  include/uapi/asm-generic/fcntl.h |   11 +++++++++
+>  17 files changed, 125 insertions(+), 82 deletions(-)
+>
+> --
+> 1.7.10.4
+>
 
-It's on my todo list, but I'm not sure when it will be done.
+CC'ing wine-devel@.
 
-> I think client_mutex containerization can be delayed for a while.
-
-OK.--b.
+-- 
+Best regards,
+Pavel Shilovsky.
