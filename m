@@ -1,91 +1,163 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cn.fujitsu.com ([222.73.24.84]:23859 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1750841Ab2KWFRI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Nov 2012 00:17:08 -0500
-Message-ID: <50AF0850.6060901@cn.fujitsu.com>
-Date: Fri, 23 Nov 2012 13:23:28 +0800
-From: fanchaoting <fanchaoting@cn.fujitsu.com>
+Received: from emvm-gh1-uea08.nsa.gov ([63.239.67.9]:63999 "EHLO nsa.gov"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1756794Ab2K3Nwa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 30 Nov 2012 08:52:30 -0500
+Message-ID: <50B8B9BF.7000802@tycho.nsa.gov>
+Date: Fri, 30 Nov 2012 08:50:55 -0500
+From: Stephen Smalley <sds@tycho.nsa.gov>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        =?UTF-8?B?6IyD5pyd5oy6?= <fanchaoting@cn.fujitsu.com>
-Subject: Re: nfs cache bug (when server delete the file ,nfs client can read
- file also)
-References: <50AEF92B.4080900@cn.fujitsu.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9092F7F07@SACEXCMBX04-PRD.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9092F7F07@SACEXCMBX04-PRD.hq.netapp.com>
-Content-Type: text/plain; charset=utf-8
+To: David Quigley <dpquigl@davequigley.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Casey Schaufler <casey@schaufler-ca.com>, trond.myklebust@netapp.com,
+        linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
+        linux-security-module@vger.kernel.org
+Subject: Re: Labeled NFS [v5]
+References: <50AC4A7A.6010208@davequigley.com> <50B65E7E.4030607@schaufler-ca.com> <50B6B706.1010002@davequigley.com> <50B6C398.90002@schaufler-ca.com> <50B7E189.80200@schaufler-ca.com> <d0817140372d745df0b4952b796610f2@countercultured.net> <50B7FEFB.30109@schaufler-ca.com> <579e850139bd3d5a0c9155270d5d9fbe@countercultured.net> <50B810D2.2000401@schaufler-ca.com> <3ea3f70e0a5cdb99f1594019b7bd619d@countercultured.net> <20121130121437.GC614@fieldses.org> <607a8005d6c33a19c53b5ede29d81ef5@countercultured.net> <5170c3bd8900c36b372217af96e5e764@countercultured.net> <50B8B47F.5050206@tycho.nsa.gov> <c00cec058c2bd0cb7104a53ca680f6cb@countercultured.net>
+In-Reply-To: <c00cec058c2bd0cb7104a53ca680f6cb@countercultured.net>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Myklebust, Trond 写道:
-> On Fri, 2012-11-23 at 12:18 +0800, fanchaoting wrote:
->> Hi,everyone. I found a big bug abount nfs cache.
+On 11/30/2012 08:35 AM, David Quigley wrote:
+> On 11/30/2012 08:28, Stephen Smalley wrote:
+>> On 11/30/2012 08:17 AM, David Quigley wrote:
+>>> On 11/30/2012 07:57, David Quigley wrote:
+>>>> On 11/30/2012 07:14, J. Bruce Fields wrote:
+>>>>> On Thu, Nov 29, 2012 at 09:02:49PM -0500, David Quigley wrote:
+>>>>>> On 11/29/2012 20:50, Casey Schaufler wrote:
+>>>>>> >On 11/29/2012 4:46 PM, David Quigley wrote:
+>>>>>> >>On 11/29/2012 19:34, Casey Schaufler wrote:
+>>>>>> >>>I would think that were it not for the case that access is denied
+>>>>>> >>>and I get an audit record for nfsd that reports a subject
+>>>>>> >>>label of "_"
+>>>>>> >>>(which is correct for nfsd but not the process attempting
+>>>>>> >>>access) and
+>>>>>> >>>an object label of "WhooHoo", which is correct. The server side
+>>>>>> >>>looks like it might be working right, given the information
+>>>>>> that it
+>>>>>> >>>has.
+>>>>>> >>>
+>>>>>> >>
+>>>>>> >>Ok so this is the problem. nfsd is a kernel thread I believe. In
+>>>>>> >>SELinux land it has the type kernel_t which is all powerful. We
+>>>>>> >>don't
+>>>>>> >>have client label transport yet (That requires RPCSECGSSv3). Is
+>>>>>> >>there
+>>>>>> >>a way you can have that kernel thread running as a type that has
+>>>>>> >>access to everything?
+>>>>>> >
+>>>>>> >That would be having CAP_MAC_ADMIN and CAP_MAC_OVERRIDE in Smackese.
+>>>>>> >Looking at /proc/<pid-of-nfsd>/status we see CapEff of fff...fff
+>>>>>> >which
+>>>>>> >is to say, all capabilities.
+>>>>>> >
+>>>>>>
+>>>>>> Hmm thats interesting then. You could try using rpcdebug -m nfsd to
+>>>>>> turn on some of the debugging to look around the internals and
+>>>>>> figure out whats going on. If you pass -v it will give you all of
+>>>>>> the potential flags.
+>>>>>>
+>>>>>> >
+>>>>>> >>I think that is the current problem. Which makes perfect sense. If
+>>>>>> >>your kernel threads don't get started with max privilege then the
+>>>>>> >>server would be denied access on all of the file attributes and
+>>>>>> >>wouldn't be able to ship it over the wire properly.
+>>>>>> >
+>>>>>> >OK. I haven't had to do anything with kernel threads so far.
+>>>>>> >Where is NFS setting these up? Poking around fs/nfsd looks like
+>>>>>> >the place, but I haven't seen anything there that makes it look
+>>>>>> >like they would be running without capabilities. Clearly, that's
+>>>>>> >what I'm seeing. It looks as if the credential of nfsd does not
+>>>>>> >match what /proc reports. Bother.
+>>>>>> >
+>>>>>>
+>>>>>> I'm not entirely sure whats up either. If you want to look for the
+>>>>>> NFSd threads they are in fs/nfsd/nfssvc.c. The main function starts
+>>>>>> on line 487.
+>>>>>
+>>>>> I'm not following the discussion, but: maybe you want to look at
+>>>>> fs/nfsd/auth.c:nfsd_setuser() ?  In particular, the
+>>>>> cap_{drop/raise}_nfsd_set() calls at the end.
+>>>>>
+>>>>> --b.
+>>>>
+>>>>
+>>>> I'm not as familiar with the capabilities code as Casey is so I'll
+>>>> leave this ball in his court. I think you are correct though and the
+>>>> problem is that NFSd is dropping and raising caps and we need to make
+>>>> sure that MAC_ADMIN and MAC_OVERRIDE is in there in the SMACK case.
+>>>>
+>>>> --
+>>>> This message was distributed to subscribers of the selinux mailing
+>>>> list.
+>>>> If you no longer wish to subscribe, send mail to
+>>>> majordomo@tycho.nsa.gov with
+>>>> the words "unsubscribe selinux" without quotes as the message.
+>>>
+>>>
+>>> I think I found the offending code. I can't test it for a while so
+>>> hopefully Casey can.
+>>>
+>>> In include/linux/capability.h we have the following defines
+>>>
+>>>
+>>> # define CAP_FS_MASK_B0     (CAP_TO_MASK(CAP_CHOWN)             \
+>>>                              | CAP_TO_MASK(CAP_MKNOD)            \
+>>>                              | CAP_TO_MASK(CAP_DAC_OVERRIDE)     \
+>>>                              | CAP_TO_MASK(CAP_DAC_READ_SEARCH)  \
+>>>                              | CAP_TO_MASK(CAP_FOWNER)           \
+>>>                              | CAP_TO_MASK(CAP_FSETID))
+>>>
+>>> # define CAP_FS_MASK_B1     (CAP_TO_MASK(CAP_MAC_OVERRIDE))
+>>>
+>>> #if _KERNEL_CAPABILITY_U32S != 2
+>>> # error Fix up hand-coded capability macro initializers
+>>> #else /* HAND-CODED capability initializers */
+>>>
+>>> # define CAP_EMPTY_SET    ((kernel_cap_t){{ 0, 0 }})
+>>> # define CAP_FULL_SET     ((kernel_cap_t){{ ~0, ~0 }})
+>>> # define CAP_FS_SET       ((kernel_cap_t){{ CAP_FS_MASK_B0 \
+>>>                                      |
+>>> CAP_TO_MASK(CAP_LINUX_IMMUTABLE), \
+>>>                                      CAP_FS_MASK_B1 } })
+>>> # define CAP_NFSD_SET     ((kernel_cap_t){{ CAP_FS_MASK_B0 \
+>>>                                      | CAP_TO_MASK(CAP_SYS_RESOURCE), \
+>>>                                      CAP_FS_MASK_B1 } })
+>>>
+>>> So raise and drop nfsd caps uses CAP_NFSD_SET. In CAP_NFSD_SET we have
+>>> CAP_MAC_OVERRIDE but we don't have CAP_MAC_ADMIN. I think maybe if we
+>>> had both then Casey should be able to use the code with SMACK. However
+>>> I'm not sure what implications this has for every other LSM. Honestly
+>>> I'm not sure if we use either of those caps for SELinux at all (I think
+>>> we ignore them completely).
 >>
->> when server delete the file ,nfs client can read file also.
->>
->> the following is the reproduce.
->>
->> ip: 192.168.0.19  nfs-client
->> ip: 192.168.0.20  nfs-client
->> ip: 192.168.0.21  nfs-server
->>
->> ############################################################################
->>
->> /usr/bin/ssh -n 192.168.0.21 service nfs start
->> /usr/bin/ssh -n 192.168.0.21 /usr/sbin/rpc.idmapd
->> /usr/bin/ssh -n 192.168.0.19 /usr/sbin/rpc.idmapd
->> /usr/bin/ssh -n 192.168.0.20 /usr/sbin/rpc.idmapd
->> /usr/bin/ssh -n 192.168.0.21 "rm -rf /nfsroot; mkdir -p /nfsroot"
->> /usr/bin/ssh -n 192.168.0.21 /usr/sbin/exportfs -au
->> /usr/bin/ssh -n 192.168.0.21 /usr/sbin/exportfs -i -o insecure,no_root_squash,rw,fsid=0 *:/nfsroot
->> /usr/bin/ssh -n 192.168.0.19 test -d /nfsroot || (rm -rf /nfsroot; mkdir -p /nfsroot)
->> /usr/bin/ssh -n 192.168.0.20 test -d /nfsroot || (rm -rf /nfsroot; mkdir -p /nfsroot)
->>
->> /usr/bin/ssh -n 192.168.0.19 umount /nfsroot
->> /usr/bin/ssh -n 192.168.0.20 umount /nfsroot
->> cmd="echo \"hello world\" > /nfsroot/tmpfile"
->> /usr/bin/ssh -n 192.168.0.21 $cmd
->> /usr/bin/ssh -n 192.168.0.21 mkdir /nfsroot/tmpdir
->> /usr/bin/ssh -n 192.168.0.21 touch /nfsroot/tmpdir/tmpdfile
->> /usr/bin/ssh -n 192.168.0.19 mount -t nfs4 192.168.0.21:/ /nfsroot
->> /usr/bin/ssh -n 192.168.0.20 mount -t nfs4 192.168.0.21:/ /nfsroot
->> /usr/bin/ssh -n 192.168.0.21 cat  /nfsroot/tmpfile
->> /usr/bin/ssh -n 192.168.0.21 ls -l /nfsroot/tmpdir
->> /usr/bin/ssh -n 192.168.0.19 cat  /nfsroot/tmpfile
->> /usr/bin/ssh -n 192.168.0.19 ls -l  /nfsroot/tmpdir
->> /usr/bin/ssh -n 192.168.0.20 cat  /nfsroot/tmpfile
->> /usr/bin/ssh -n 192.168.0.20 ls -l  /nfsroot/tmpdir
->> /usr/bin/ssh -n 192.168.0.19 cat /nfsroot/tmpfile > /dev/null
->> /usr/bin/ssh -n 192.168.0.20 cat /nfsroot/tmpfile > /dev/null
->> /usr/bin/ssh -n 192.168.0.21 rm -rf /nfsroot/tmpfile
->> echo -e "sleep 60~~~~~~~~\n"
->> sleep 60
->>
->> #############################################################################
->>
->> last: In 192.168.0.19 I do:
->>
->> #cat /nfsroot/tmpfile           <--the nfs server delete the file,but nfs client can read the file
->>  hello world
->>
->>
->> I think  when the nfs server delete the file ,
->> the  server should notice the nfs client,
->> but the upstream kernel does't this.
-> 
-> So is this a problem with the client or the server? In other words, if
-> you use a different server/client combination, do you see a different
-> result?
-> 
+>> CAP_MAC_ADMIN is used by SELinux these days, but only to control the
+>> ability to get or set security contexts that are not yet defined in
+>> the policy (for package managers that lay down the security contexts
+>> before reloading policy and for installing a distro within a chroot on
+>> a build host running a different policy).
+>
+>
+> Do you think its reasonable to add that cap into the NFSd thread then?
+> I'm not sure what other solution there would be. Casey needs it just so
+> SMACK can work with it at all (assuming what I think is happening is
+> actually happening).
 
-I think that the server has the problem .when the server deletes the file ,
-it should notice the client immediately.
+Looks like Smack requires CAP_MAC_ADMIN in order to set Smack attributes 
+on a file at all.  So nfsd would require that capability for Smack.  I 
+think this means however that setting Smack labels on NFS files won't 
+work in any case where root is squashed, which seems unfortunate.
 
-> Which kernels are you using in your tests for the client and server?
-> 
+On the SELinux side, we don't require CAP_MAC_ADMIN to set the SELinux 
+attribute on a file in the normal case, only when the SELinux attribute 
+is not known to the security policy yet.  So granting CAP_MAC_ADMIN 
+there means that a client will be able to set security contexts on files 
+that are unknown to the server.  I guess that might even be desirable in 
+some instances where client and server policy are different.  We do have 
+the option of denying mac_admin permission in policy for nfsd 
+(kernel_t?), in which case we would block such attempts to set unknown 
+contexts but would still support setting of known security contexts.
 
-I found the problem in kernel  3.7.0-rc6
-
+So I think it is workable, albeit a bit confusing.
 
