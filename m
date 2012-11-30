@@ -1,129 +1,163 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:20129 "EHLO mx1.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751315Ab2KVSpz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 Nov 2012 13:45:55 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 09/20] NFSv4.1: Simplify struct nfs4_sequence_args too
-Date: Wed, 21 Nov 2012 17:43:08 -0500
-Message-Id: <1353537799-60488-10-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1353537799-60488-9-git-send-email-Trond.Myklebust@netapp.com>
-References: <1353537799-60488-1-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-2-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-3-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-4-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-5-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-6-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-7-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-8-git-send-email-Trond.Myklebust@netapp.com>
- <1353537799-60488-9-git-send-email-Trond.Myklebust@netapp.com>
+Received: from smtp109.biz.mail.bf1.yahoo.com ([98.139.244.33]:44973 "HELO
+	smtp109.biz.mail.bf1.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1755270Ab2K3BuF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2012 20:50:05 -0500
+Message-ID: <50B810D2.2000401@schaufler-ca.com>
+Date: Thu, 29 Nov 2012 17:50:10 -0800
+From: Casey Schaufler <casey@schaufler-ca.com>
+MIME-Version: 1.0
+To: David Quigley <dpquigl@davequigley.com>
+CC: bfields@fieldses.org, trond.myklebust@netapp.com, sds@tycho.nsa.gov,
+        linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
+        linux-security-module@vger.kernel.org
+Subject: Re: Labeled NFS [v5]
+References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com> <50ABF1A5.2010406@schaufler-ca.com> <50AC1A74.7080105@davequigley.com> <50AC2117.801@schaufler-ca.com> <50AC224D.3080108@davequigley.com> <50AC41DC.5070607@schaufler-ca.com> <50AC4A7A.6010208@davequigley.com> <50B65E7E.4030607@schaufler-ca.com> <50B6B706.1010002@davequigley.com> <50B6C398.90002@schaufler-ca.com> <50B7E189.80200@schaufler-ca.com> <d0817140372d745df0b4952b796610f2@countercultured.net> <50B7FEFB.30109@schaufler-ca.com> <579e850139bd3d5a0c9155270d5d9fbe@countercultured.net>
+In-Reply-To: <579e850139bd3d5a0c9155270d5d9fbe@countercultured.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Replace the session pointer + slotid with a pointer to the
-allocated slot.
+On 11/29/2012 4:46 PM, David Quigley wrote:
+> On 11/29/2012 19:34, Casey Schaufler wrote:
+>> On 11/29/2012 4:07 PM, David Quigley wrote:
+>>> On 11/29/2012 17:28, Casey Schaufler wrote:
+>>>> On 11/28/2012 6:08 PM, Casey Schaufler wrote:
+>>>>> On 11/28/2012 5:14 PM, Dave Quigley wrote:
+>>>>>> On 11/28/2012 1:57 PM, Casey Schaufler wrote:
+>>>>>>> On 11/20/2012 7:28 PM, Dave Quigley wrote:
+>>>>>>>> On 11/20/2012 9:52 PM, Casey Schaufler wrote:
+>>>>>>>>> On 11/20/2012 4:37 PM, Dave Quigley wrote:
+>>>>>>>>>> ...
+>>>>>>>>>>
+>>>>>>>>>>
+>>>>>>>>>> Or I could just give you this link and you should be good to
+>>>>>>>>>> go ;)
+>>>>>>>>>>
+>>>>>>>>>> http://www.selinuxproject.org/~dpquigl/nfs-utils-rpms/
+>>>>>>>>>>
+>>>>>>>>>> I haven't tried it but it should work. If it doesn't let me
+>>>>>>>>>> know and
+>>>>>>>>>> i'll try to fix it on my end. I'd imagine you might need to yum
+>>>>>>>>>> remove
+>>>>>>>>>> nfs-utils first before adding this new one or you could also
+>>>>>>>>>> try an
+>>>>>>>>>> rpm with the upgrade flag for this instead. Good luck.
+>>>>>>> ...
+>>>>>>>
+>>>>>>>
+>>>>>>> I've tried on Fedora17 and Ubuntu12.04, and I'm getting the
+>>>>>>> attached stack trace on mount. After mounting I'm getting
+>>>>>>> denials when I should, but also when I shouldn't.
+>>>>>>>
+>>>>>>> I've tried tracking down the issue, but there's a lot going on
+>>>>>>> that I don't find obvious. I added a dentry_init hook just for
+>>>>>>> grins, but it's not getting called.
+>>>>>>>
+>>>>>>> .
+>>>>>>>
+>>>>>>>
+>>>>>> Any chance of you throwing a kickstart file my way that's configured
+>>>>>> with SMACK so I can use it for a test box (both server and
+>>>>>> client)? I
+>>>>>> can have the guys working with me test for SMACK as well if you
+>>>>>> provide an appropriate test harness and image for testing.
+>>>>> I've attached the .config from my Fedora17 machine. Who knows, maybe
+>>>>> I got something wrong there. I get the error doing the test on the
+>>>>> loopback interface (mount -t nfs4 localhist:/ /mnt).
+>>>>
+>>>> I've done some instrumentation and security_ismaclabel() is getting
+>>>> called with "selinux", but never "SMACK64". I would guess that
+>>>> somewhere
+>>>> in the tools you're telling the kernel to expect "selinux". Where is
+>>>> that, so that I can tell it to try "SMACK64" instead?
+>>>>
+>>>>
+>>>>
+>>>> -- 
+>>>> This message was distributed to subscribers of the selinux mailing
+>>>> list.
+>>>> If you no longer wish to subscribe, send mail to
+>>>> majordomo@tycho.nsa.gov with
+>>>> the words "unsubscribe selinux" without quotes as the message.
+>>>
+>>>
+>>> What tools do you use in SMACK to see the labels?
+>>
+>> attr -S -g SMACK64 <path>
+>
+> ok so that seems to work for SELinux as well. Never knew about that.
+> I'd always just rip the xattr out of the inode with getfattr.
+>
+>
+>>
+>>> Do you just use getxattr? If so can you try calling that and seeing
+>>> what happens? I'm concerned that you aren't getting any attribute
+>>> information on that file.
+>>
+>> I would think that were it not for the case that access is denied
+>> and I get an audit record for nfsd that reports a subject label of "_"
+>> (which is correct for nfsd but not the process attempting access) and
+>> an object label of "WhooHoo", which is correct. The server side
+>> looks like it might be working right, given the information that it
+>> has.
+>>
+>
+> Ok so this is the problem. nfsd is a kernel thread I believe. In
+> SELinux land it has the type kernel_t which is all powerful. We don't
+> have client label transport yet (That requires RPCSECGSSv3). Is there
+> a way you can have that kernel thread running as a type that has
+> access to everything?
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c       |  6 +++---
- fs/nfs/nfs4xdr.c        | 21 ++++++++++-----------
- include/linux/nfs_xdr.h |  3 +--
- 3 files changed, 14 insertions(+), 16 deletions(-)
+That would be having CAP_MAC_ADMIN and CAP_MAC_OVERRIDE in Smackese.
+Looking at /proc/<pid-of-nfsd>/status we see CapEff of fff...fff which
+is to say, all capabilities.
+ 
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 4f2d058..7c2b037 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -592,7 +592,7 @@ out:
- static void nfs41_init_sequence(struct nfs4_sequence_args *args,
- 		struct nfs4_sequence_res *res, int cache_reply)
- {
--	args->sa_session = NULL;
-+	args->sa_slot = NULL;
- 	args->sa_cache_this = 0;
- 	if (cache_reply)
- 		args->sa_cache_this = 1;
-@@ -645,8 +645,8 @@ int nfs41_setup_sequence(struct nfs4_session *session,
- 	rpc_task_set_priority(task, RPC_PRIORITY_NORMAL);
- 	slot = tbl->slots + slotid;
- 	slot->renewal_time = jiffies;
--	args->sa_session = session;
--	args->sa_slotid = slotid;
-+
-+	args->sa_slot = slot;
- 
- 	dprintk("<-- %s slotid=%d seqid=%d\n", __func__, slotid, slot->seq_nr);
- 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 50bac70..27b0fec 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1833,18 +1833,16 @@ static void encode_sequence(struct xdr_stream *xdr,
- 			    struct compound_hdr *hdr)
- {
- #if defined(CONFIG_NFS_V4_1)
--	struct nfs4_session *session = args->sa_session;
-+	struct nfs4_session *session;
- 	struct nfs4_slot_table *tp;
--	struct nfs4_slot *slot;
-+	struct nfs4_slot *slot = args->sa_slot;
- 	__be32 *p;
- 
--	if (!session)
-+	if (slot == NULL)
- 		return;
- 
--	tp = &session->fc_slot_table;
--
--	WARN_ON(args->sa_slotid == NFS4_MAX_SLOT_TABLE);
--	slot = tp->slots + args->sa_slotid;
-+	tp = slot->table;
-+	session = tp->session;
- 
- 	encode_op_hdr(xdr, OP_SEQUENCE, decode_sequence_maxsz, hdr);
- 
-@@ -1858,12 +1856,12 @@ static void encode_sequence(struct xdr_stream *xdr,
- 		((u32 *)session->sess_id.data)[1],
- 		((u32 *)session->sess_id.data)[2],
- 		((u32 *)session->sess_id.data)[3],
--		slot->seq_nr, args->sa_slotid,
-+		slot->seq_nr, slot->slot_nr,
- 		tp->highest_used_slotid, args->sa_cache_this);
- 	p = reserve_space(xdr, NFS4_MAX_SESSIONID_LEN + 16);
- 	p = xdr_encode_opaque_fixed(p, session->sess_id.data, NFS4_MAX_SESSIONID_LEN);
- 	*p++ = cpu_to_be32(slot->seq_nr);
--	*p++ = cpu_to_be32(args->sa_slotid);
-+	*p++ = cpu_to_be32(slot->slot_nr);
- 	*p++ = cpu_to_be32(tp->highest_used_slotid);
- 	*p = cpu_to_be32(args->sa_cache_this);
- #endif /* CONFIG_NFS_V4_1 */
-@@ -2025,8 +2023,9 @@ static void encode_free_stateid(struct xdr_stream *xdr,
- static u32 nfs4_xdr_minorversion(const struct nfs4_sequence_args *args)
- {
- #if defined(CONFIG_NFS_V4_1)
--	if (args->sa_session)
--		return args->sa_session->clp->cl_mvops->minor_version;
-+
-+	if (args->sa_slot)
-+		return args->sa_slot->table->session->clp->cl_mvops->minor_version;
- #endif /* CONFIG_NFS_V4_1 */
- 	return 0;
- }
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 9c9b76c..deb31bb 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -194,8 +194,7 @@ struct nfs4_slot {
- };
- 
- struct nfs4_sequence_args {
--	struct nfs4_session	*sa_session;
--	u32			sa_slotid;
-+	struct nfs4_slot	*sa_slot;
- 	u8			sa_cache_this;
- };
- 
--- 
-1.7.11.7
+> I think that is the current problem. Which makes perfect sense. If
+> your kernel threads don't get started with max privilege then the
+> server would be denied access on all of the file attributes and
+> wouldn't be able to ship it over the wire properly.
+
+OK. I haven't had to do anything with kernel threads so far.
+Where is NFS setting these up? Poking around fs/nfsd looks like
+the place, but I haven't seen anything there that makes it look
+like they would be running without capabilities. Clearly, that's
+what I'm seeing. It looks as if the credential of nfsd does not
+match what /proc reports. Bother.
+
+
+> I'm not sure what you need to do but you'll probably have to work this
+> out. We have a usage mode in the IETF spec which has a non-mac
+> enforcing server which still support object labeling. In the SELinux
+> case it works for us since kernel_t can access anything. Ideally when
+> RPCSECGSSv3 is finished and merged we'll be able to choose whether to
+> use the label of the process on the client side or kernel_t for the
+> server if its not available.
+>
+>>> Do you have a disto that I can use that has full smack integration and
+>>> is easy to setup?
+>>
+>> There's no full integration, but Ubuntu is easy to set up because they
+>> compile in all the LSMs.
+>> Set "security=smack" on the boot line in grub.cfg and reboot.
+>>
+>> All processes and files will get the floor ("_") label unless you change
+>> one. You can change
+>> a file label with:
+>>      # attr -S -s SMACK64 WhooHoo path
+>> or execute at a different label with:
+>>     # (echo WhooHoo > /proc/self/attr/current ; command)
+>>
+>
+> I'm not out of here until really late tonight so getting an Ubuntu VM
+> setup probably won't happen until sometime next week when everything
+> calms down. However I think we isolated the problem above. If I'm
+> correct this is strictly a smack labeling problem. I don't know if you
+> need to put some code into smack to init kernel threads with a more
+> powerful label or not so I'll leave it up to you on how to address this.
+>
+>
+> Dave
+>
 
