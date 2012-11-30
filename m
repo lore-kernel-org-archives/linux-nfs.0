@@ -1,77 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:19523 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753766Ab2K2MNV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2012 07:13:21 -0500
-Date: Thu, 29 Nov 2012 07:13:09 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>
-Subject: Re: NFSd in container - it works
-Message-ID: <20121129071309.6550614e@tlielax.poochiereds.net>
-In-Reply-To: <50B74CCB.9080000@parallels.com>
-References: <50B64628.4070007@parallels.com>
-	<20121128200126.GA17875@fieldses.org>
-	<20121128152813.2b4c388d@tlielax.poochiereds.net>
-	<50B74CCB.9080000@parallels.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from countercultured.net ([209.51.175.25]:54380 "HELO
+	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1754745Ab2K3AH7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2012 19:07:59 -0500
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8;
+ format=flowed
+Date: Thu, 29 Nov 2012 19:07:57 -0500
+From: David Quigley <dpquigl@davequigley.com>
+To: Casey Schaufler <casey@schaufler-ca.com>
+Cc: <bfields@fieldses.org>, <trond.myklebust@netapp.com>, <sds@tycho.nsa.gov>,
+        <linux-nfs@vger.kernel.org>, <selinux@tycho.nsa.gov>,
+        <linux-security-module@vger.kernel.org>
+Subject: Re: Labeled NFS [v5]
+In-Reply-To: <50B7E189.80200@schaufler-ca.com>
+References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com>
+ <50ABF1A5.2010406@schaufler-ca.com> <50AC1A74.7080105@davequigley.com>
+ <50AC2117.801@schaufler-ca.com> <50AC224D.3080108@davequigley.com>
+ <50AC41DC.5070607@schaufler-ca.com> <50AC4A7A.6010208@davequigley.com>
+ <50B65E7E.4030607@schaufler-ca.com> <50B6B706.1010002@davequigley.com>
+ <50B6C398.90002@schaufler-ca.com> <50B7E189.80200@schaufler-ca.com>
+Message-ID: <d0817140372d745df0b4952b796610f2@countercultured.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 29 Nov 2012 15:53:47 +0400
-Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+On 11/29/2012 17:28, Casey Schaufler wrote:
+> On 11/28/2012 6:08 PM, Casey Schaufler wrote:
+>> On 11/28/2012 5:14 PM, Dave Quigley wrote:
+>>> On 11/28/2012 1:57 PM, Casey Schaufler wrote:
+>>>> On 11/20/2012 7:28 PM, Dave Quigley wrote:
+>>>>> On 11/20/2012 9:52 PM, Casey Schaufler wrote:
+>>>>>> On 11/20/2012 4:37 PM, Dave Quigley wrote:
+>>>>>>> ...
+>>>>>>>
+>>>>>>>
+>>>>>>> Or I could just give you this link and you should be good to go 
+>>>>>>> ;)
+>>>>>>>
+>>>>>>> http://www.selinuxproject.org/~dpquigl/nfs-utils-rpms/
+>>>>>>>
+>>>>>>> I haven't tried it but it should work. If it doesn't let me 
+>>>>>>> know and
+>>>>>>> i'll try to fix it on my end. I'd imagine you might need to yum
+>>>>>>> remove
+>>>>>>> nfs-utils first before adding this new one or you could also 
+>>>>>>> try an
+>>>>>>> rpm with the upgrade flag for this instead. Good luck.
+>>>> ...
+>>>>
+>>>>
+>>>> I've tried on Fedora17 and Ubuntu12.04, and I'm getting the
+>>>> attached stack trace on mount. After mounting I'm getting
+>>>> denials when I should, but also when I shouldn't.
+>>>>
+>>>> I've tried tracking down the issue, but there's a lot going on
+>>>> that I don't find obvious. I added a dentry_init hook just for
+>>>> grins, but it's not getting called.
+>>>>
+>>>> .
+>>>>
+>>>>
+>>> Any chance of you throwing a kickstart file my way that's 
+>>> configured
+>>> with SMACK so I can use it for a test box (both server and client)? 
+>>> I
+>>> can have the guys working with me test for SMACK as well if you
+>>> provide an appropriate test harness and image for testing.
+>> I've attached the .config from my Fedora17 machine. Who knows, maybe
+>> I got something wrong there. I get the error doing the test on the
+>> loopback interface (mount -t nfs4 localhist:/ /mnt).
+>
+> I've done some instrumentation and security_ismaclabel() is getting
+> called with "selinux", but never "SMACK64". I would guess that 
+> somewhere
+> in the tools you're telling the kernel to expect "selinux". Where is
+> that, so that I can tell it to try "SMACK64" instead?
+>
+>
+>
+> --
+> This message was distributed to subscribers of the selinux mailing 
+> list.
+> If you no longer wish to subscribe, send mail to 
+> majordomo@tycho.nsa.gov with
+> the words "unsubscribe selinux" without quotes as the message.
 
-> 29.11.2012 00:28, Jeff Layton пишет:
-> > On Wed, 28 Nov 2012 15:01:26 -0500
-> > "bfields@fieldses.org" <bfields@fieldses.org> wrote:
-> >
-> >>> 3) Holding net by tracker looks redundant. What was the reason for this?
-> >>
-> >> I don't understand, what's tracker?
-> >
-> > I assume he means the clientid tracker. That was necessary for the
-> > nfsdcld upcall because it used rpc_pipefs files, and those were
-> > net-namespacified. Once we deprecate that in 3.10, I don't think we'll
-> > need to worry about the net namespace in the clientid tracker.
-> >
-> 
-> Sorry, I don't understand. Rpc_pipefs superblock already holds network namespace.
-> 
 
-...and how do you know which rpc_pipefs superblock you're dealing with?
-In any case, I'm ok with ripping out references to the net namespace
-there if you think it's valid.
+What tools do you use in SMACK to see the labels? Do you just use 
+getxattr? If so can you try calling that and seeing what happens? I'm 
+concerned that you aren't getting any attribute information on that 
+file. Do you have a disto that I can use that has full smack integration 
+and is easy to setup?
 
-> > We probably *will* need to concern ourselves with the mnt namespace
-> > there though since each container will presumably have its own clientid
-> > database...
-> 
-> Since NFSd server in network namespace based, it means, that we can create one server for more than one mount namespace.
-> And clietid tracker holds files opened. Thus holds mount.
-> Mount namespace itself doesn't look that important to me.
-> Or I'm wrong?
-> 
-
-I confess I don't understand the design well enough to reasonably
-comment here...
-
-Both the new clientid tracker and the legacy one involve storing data
-on a local filesystem somewhere. In the case of the new tracker, we
-upcall using call_usermodehelper to spawn a process to handle access to
-the on disk database. In the legacy tracker, it's done directly by the
-kernel using vfs calls.
-
-Presumably, you will have multiple containers serving NFS, so you'll
-have multiple sets of client id data being stored. You'll need some
-mechanism to ensure that the usermodehelper is spawned within the
-correct container or that the legacy tracker accesses the files in the
-correct container.
-
-My assumption there was that you'd need to ensure that it's using the
-right mount namespace in order to do that...
-
--- 
-Jeff Layton <jlayton@redhat.com>
+Dave
