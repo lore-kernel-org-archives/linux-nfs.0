@@ -1,48 +1,129 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga01.intel.com ([192.55.52.88]:51063 "EHLO mga01.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751334Ab2KWFtL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 Nov 2012 00:49:11 -0500
-Date: Fri, 23 Nov 2012 13:48:15 +0800
-From: kbuild test robot <fengguang.wu@intel.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [nfs:devel 73/73] fs/nfs/nfs4proc.c:743:31: error: expected ')'
- before ';' token
-Message-ID: <50af0e1f.4y40S77mWeEZCRr9%fengguang.wu@intel.com>
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:46844 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750929Ab2K3HKZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Nov 2012 02:10:25 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAH2r5muw1U2XNMZsCq0gApuTMyj+6SN6S9KsUq52YM8CyZEG4A@mail.gmail.com>
+References: <CANXojcy9thLBwrENTkOTSSE17L3N17A8XsTmyNqq3oNdhW_Q_w@mail.gmail.com>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA90B329CFD@SACEXCMBX04-PRD.hq.netapp.com>
+	<CANXojcxR9673fRObMLPSScogAN05RSVhPFoni=ENc6YDWq9T7w@mail.gmail.com>
+	<1354202525.4064.1.camel@pico.ipa.ssimo.org>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA90B32AEB7@SACEXCMBX04-PRD.hq.netapp.com>
+	<CANXojcys4wR8N-R3oSjWRWJLsObn0Qf+i41vBUaNnJctdcrKVw@mail.gmail.com>
+	<20121129202037.GQ4939@ZenIV.linux.org.uk>
+	<CANXojcw15RdJdRoZxB3Z59YbOda7vG7RDRegfpoCjG4Bv4AvsQ@mail.gmail.com>
+	<20121129211624.GS4939@ZenIV.linux.org.uk>
+	<CANXojcxfrO+Ar4JSd0NiDJh7+_gg6s6cq5=UA7Pu1h4DRZ8Vkg@mail.gmail.com>
+	<CAH2r5muw1U2XNMZsCq0gApuTMyj+6SN6S9KsUq52YM8CyZEG4A@mail.gmail.com>
+Date: Fri, 30 Nov 2012 08:10:24 +0100
+Message-ID: <CANXojcwRy5cBz=E1S567J-1BFC4AiamLr=35bKrX0Zq-Me2b3w@mail.gmail.com>
+Subject: Re: Possible to make nfs aware of a inotify watch has been set.
+From: Stef Bon <stefbon@gmail.com>
+To: Steve French <smfrench@gmail.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        linux-cifs <linux-cifs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git devel
-head:   29c32c56a420896f372c6efd3b6588b41b735ae8
-commit: 29c32c56a420896f372c6efd3b6588b41b735ae8 [73/73] NFSv4.1: If slot allocation fails due to OOM, retry more quickly
-config: make ARCH=x86_64 allmodconfig
+2012/11/30 Steve French <smfrench@gmail.com>:
+> On Thu, Nov 29, 2012 at 5:14 PM, Stef Bon <stefbon@gmail.com> wrote:
+>> 2012/11/29 Al Viro <viro@zeniv.linux.org.uk>:
+>>> On Thu, Nov 29, 2012 at 09:31:05PM +0100, Stef Bon wrote:
+>>>> 2012/11/29 Al Viro <viro@zeniv.linux.org.uk>:
+>>>> > On Thu, Nov 29, 2012 at 05:39:27PM +0100, Stef Bon wrote:
+>>>> >
+>>
+>>>> With Ubuntu people started Unity, also without a killer app, but just
+>>>> with an opinion, an impression, an idea. And anyone can dislike or
+>>>> like it, it's a succes as far as I can see. What the hell is wrong
+>>>> with suggesting things based upon an idea/impression?
+>>>
+>>> IOW, it was a true positive for "([Uu]ser experience)|UX" as BS predictor.
+>>> Nice to know...
+>>>
+>>> Look, you'd been asked to give good reasons for doing some thing; replying with
+>>> "it's My Opinion(tm), piss off if that's not enough reason for you" would at
+>>> least have been honest.  References to UX, as your last reply has confirmed,
+>>> had been basically an obfuscated equivalent of that.
+>>
+>> No no, I do not say "piss off". If that is what my message looked
+>> like, I'm sorry for that. But I do not have any killer app or
+>> something. I cannot convince you otherwise that saying it's my
+>> opinion. I do not have numbers or something like that proving I have a
+>> point. I wish I have. But I do understand you do not agree with me,
+>> and see things different.
+>>>
+>>> Sorry for being harsh, but I've had it with the GNOME crowd and their ilk
+>>> using just such references to handwave away any questions.
+>>>
+>>> There's nothing wrong with having opinions/impressions/etc.  Everyone got
+>>> their own, etc.  But "I believe so, period" is not a sufficient answer to
+>>> "what makes that a good idea?" and obfuscating it up is even worse.
+>>
+>> So, no I do not say "I believe so, period" . But I cannot convince you
+>> ...and we have different opinions here.. I don't know any method here
+>> of "proving having a point".
+>
+> One question that hasn't been answered AFAIK is how well the current
+> Linux directory change notification API maps to the needs of its principal user
+> (presumably Samba, and kde/gnome file managers), and a loosely
+> related question of how well the change notification API maps to the
+> corresponding network file system protocol operations
+> (TRANSACT_NOTIFY_CHANGE) which is a fairly common operation
+> sent to Samba, and obviously for the cifs/smb2/smb3 case would limit
+> what types of events the client can notify the desktop/file manager about.
+>
+> In particular, the 10 or 15 filter flags, and the (at least) 8 events
+> (add/remove/modify/rename etc.),
+> available in tne network protocol AFAIK have not been matched to see if they
+> match closely to the existing Linux API.
 
-All error/warnings:
+Hi,
 
-fs/nfs/nfs4proc.c: In function 'nfs41_setup_sequence':
-fs/nfs/nfs4proc.c:743:31: error: expected ')' before ';' token
-fs/nfs/nfs4proc.c:747:2: error: expected expression before '}' token
+I start working on the seperate notifyfs servers.
+The whole advantage of that approach is that you can design the api
+from scratch. Notifyfs is not bound to the api of inotify. There
+remains the problem of mapping it to the fs event api on the host,
+which will be inotify probably on linux.
 
-vim +743 fs/nfs/nfs4proc.c
+At this moment the different events look like:
 
-cc9673a8 Trond Myklebust 2012-11-01  737  		goto out_sleep;
-b069d94a Andy Adamson    2009-04-01  738  	}
-b069d94a Andy Adamson    2009-04-01  739  
-779b9e08 Trond Myklebust 2012-11-16  740  	slot = nfs4_alloc_slot(tbl);
-29c32c56 Trond Myklebust 2012-11-22  741  	if (IS_ERR(slot)) {
-29c32c56 Trond Myklebust 2012-11-22  742  		/* If out of memory, try again in 1/4 second */
-29c32c56 Trond Myklebust 2012-11-22 @743  		if (slot == ERR_PTR(-ENOMEM);
-29c32c56 Trond Myklebust 2012-11-22  744  			task->tk_timeout = HZ >> 2;
-fbcd4abc Andy Adamson    2009-04-01  745  		dprintk("<-- %s: no free slots\n", __func__);
-cc9673a8 Trond Myklebust 2012-11-01  746  		goto out_sleep;
-fbcd4abc Andy Adamson    2009-04-01 @747  	}
-fbcd4abc Andy Adamson    2009-04-01  748  	spin_unlock(&tbl->slot_tbl_lock);
-fbcd4abc Andy Adamson    2009-04-01  749  
-b23acb7c Trond Myklebust 2012-11-16  750  	args->sa_slot = slot;
+#define NOTIFYFS_FSEVENT_META_ATTRIB_NOTSET                     2
+#define NOTIFYFS_FSEVENT_META_ATTRIB_MODE                       4
+#define NOTIFYFS_FSEVENT_META_ATTRIB_OWNER                      8
+#define NOTIFYFS_FSEVENT_META_ATTRIB_GROUP                      16
+#define NOTIFYFS_FSEVENT_META_ATTRIB                            28
 
----
-0-DAY kernel build testing backend         Open Source Technology Center
-Fengguang Wu, Yuanhan Liu                              Intel Corporation
+#define NOTIFYFS_FSEVENT_META_XATTR_NOTSET                      32
+#define NOTIFYFS_FSEVENT_META_XATTR_CREATE                      64
+#define NOTIFYFS_FSEVENT_META_XATTR_MODIFY                      128
+#define NOTIFYFS_FSEVENT_META_XATTR_DELETE                      256
+#define NOTIFYFS_FSEVENT_META_XATTR                             448
+
+#define NOTIFYFS_FSEVENT_FILE_NOTSET                            512
+#define NOTIFYFS_FSEVENT_FILE_MODIFIED                          1024
+#define NOTIFYFS_FSEVENT_FILE_SIZE                              2048
+#define NOTIFYFS_FSEVENT_FILE_OPEN                              4096
+#define NOTIFYFS_FSEVENT_FILE_READ                              8192
+#define NOTIFYFS_FSEVENT_FILE_CLOSE_WRITE                       16384
+#define NOTIFYFS_FSEVENT_FILE_CLOSE_NOWRITE                     32768
+
+#define NOTIFYFS_FSEVENT_MOVE_NOTSET                            65536
+#define NOTIFYFS_FSEVENT_MOVE_CREATED                           131072
+#define NOTIFYFS_FSEVENT_MOVE_MOVED                             262144
+#define NOTIFYFS_FSEVENT_MOVE_MOVED_FROM                        524288
+#define NOTIFYFS_FSEVENT_MOVE_MOVED_TO                          1048576
+#define NOTIFYFS_FSEVENT_MOVE_DELETED                           2097152
+
+#define NOTIFYFS_FSEVENT_FS_NOTSET                              4194304
+#define NOTIFYFS_FSEVENT_FS_MOUNT                               8388608
+#define NOTIFYFS_FSEVENT_FS_UNMOUNT                             16777216
+#define NOTIFYFS_FSEVENT_FS_NLINKS                              33554432
+
+Note that there is no such thing as watching changing xattr at this
+moment right now on linux. The field st_ctime is changed, nothing
+more.
+
+Stef
