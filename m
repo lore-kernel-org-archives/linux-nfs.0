@@ -1,64 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from zeniv.linux.org.uk ([195.92.253.2]:56625 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755089Ab2K2VQ2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Nov 2012 16:16:28 -0500
-Date: Thu, 29 Nov 2012 21:16:24 +0000
-From: Al Viro <viro@ZenIV.linux.org.uk>
+Received: from esgaroth.petrovitsch.at ([78.47.184.11]:4344 "EHLO
+	esgaroth.petrovitsch.priv.at" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1758399Ab2K3OUK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Nov 2012 09:20:10 -0500
+Subject: Re: Possible to make nfs aware of a inotify watch has been set.
+From: Bernd Petrovitsch <bernd@petrovitsch.priv.at>
 To: Stef Bon <stefbon@gmail.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>, simo <idra@samba.org>,
+Cc: Steve French <smfrench@gmail.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         linux-cifs <linux-cifs@vger.kernel.org>
-Subject: Re: Possible to make nfs aware of a inotify watch has been set.
-Message-ID: <20121129211624.GS4939@ZenIV.linux.org.uk>
+Date: Fri, 30 Nov 2012 14:37:20 +0100
+In-Reply-To: <CANXojcwRy5cBz=E1S567J-1BFC4AiamLr=35bKrX0Zq-Me2b3w@mail.gmail.com>
 References: <CANXojcy9thLBwrENTkOTSSE17L3N17A8XsTmyNqq3oNdhW_Q_w@mail.gmail.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA90B329CFD@SACEXCMBX04-PRD.hq.netapp.com>
- <CANXojcxR9673fRObMLPSScogAN05RSVhPFoni=ENc6YDWq9T7w@mail.gmail.com>
- <1354202525.4064.1.camel@pico.ipa.ssimo.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA90B32AEB7@SACEXCMBX04-PRD.hq.netapp.com>
- <CANXojcys4wR8N-R3oSjWRWJLsObn0Qf+i41vBUaNnJctdcrKVw@mail.gmail.com>
- <20121129202037.GQ4939@ZenIV.linux.org.uk>
- <CANXojcw15RdJdRoZxB3Z59YbOda7vG7RDRegfpoCjG4Bv4AvsQ@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CANXojcw15RdJdRoZxB3Z59YbOda7vG7RDRegfpoCjG4Bv4AvsQ@mail.gmail.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B329CFD@SACEXCMBX04-PRD.hq.netapp.com>
+	 <CANXojcxR9673fRObMLPSScogAN05RSVhPFoni=ENc6YDWq9T7w@mail.gmail.com>
+	 <1354202525.4064.1.camel@pico.ipa.ssimo.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B32AEB7@SACEXCMBX04-PRD.hq.netapp.com>
+	 <CANXojcys4wR8N-R3oSjWRWJLsObn0Qf+i41vBUaNnJctdcrKVw@mail.gmail.com>
+	 <20121129202037.GQ4939@ZenIV.linux.org.uk>
+	 <CANXojcw15RdJdRoZxB3Z59YbOda7vG7RDRegfpoCjG4Bv4AvsQ@mail.gmail.com>
+	 <20121129211624.GS4939@ZenIV.linux.org.uk>
+	 <CANXojcxfrO+Ar4JSd0NiDJh7+_gg6s6cq5=UA7Pu1h4DRZ8Vkg@mail.gmail.com>
+	 <CAH2r5muw1U2XNMZsCq0gApuTMyj+6SN6S9KsUq52YM8CyZEG4A@mail.gmail.com>
+	 <CANXojcwRy5cBz=E1S567J-1BFC4AiamLr=35bKrX0Zq-Me2b3w@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Message-ID: <1354282642.22426.7.camel@thorin>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 29, 2012 at 09:31:05PM +0100, Stef Bon wrote:
-> 2012/11/29 Al Viro <viro@zeniv.linux.org.uk>:
-> > On Thu, Nov 29, 2012 at 05:39:27PM +0100, Stef Bon wrote:
-> >
-> >> And yes there is no such thing as a killer app, but in my opinion it's
-> >> the user experience.
-> >
-> > Ah, yes...  UX - the killer argument.  "Doing that would make qi flow better"
-> > and any objections are waved away, since the person objecting has no idea
-> > how qi behaves (since it doesn't exist, to start with).  Could we please keep
-> > the intellectual level above the Feng Shui scammers^W^W^WUX theorists usual?
+Hi!
+
+Since you introduced the "user experience" ignoring the fact that each
+user is quite different - especially if it comes to the "Average Joes
+using Ubuntu vs techies" department -, you should be prepared to eat
+your own dog food:
+
+On Fre, 2012-11-30 at 08:10 +0100, Stef Bon wrote:
+[...]
+> At this moment the different events look like:
+
+Perhaps you should have used hexadecimal notation so that it is easier
+for the usual/average users of source code to see the bits more easily.
+In short: Please improve the user experience. Thank you.
+
+> #define NOTIFYFS_FSEVENT_META_ATTRIB_NOTSET                     2
+> #define NOTIFYFS_FSEVENT_META_ATTRIB_MODE                       4
+> #define NOTIFYFS_FSEVENT_META_ATTRIB_OWNER                      8
+> #define NOTIFYFS_FSEVENT_META_ATTRIB_GROUP                      16
+> #define NOTIFYFS_FSEVENT_META_ATTRIB                            28
+And that number seems pretty random - not a power of 2 or a bit mask or
+the sum of the above.
+
+> #define NOTIFYFS_FSEVENT_META_XATTR_NOTSET                      32
+> #define NOTIFYFS_FSEVENT_META_XATTR_CREATE                      64
+> #define NOTIFYFS_FSEVENT_META_XATTR_MODIFY                      128
+> #define NOTIFYFS_FSEVENT_META_XATTR_DELETE                      256
+> #define NOTIFYFS_FSEVENT_META_XATTR                             448
+And that number seems pretty random too - not a power of 2 or a bit mask
+or the sum of the above.
+
+> #define NOTIFYFS_FSEVENT_FILE_NOTSET                            512
+> #define NOTIFYFS_FSEVENT_FILE_MODIFIED                          1024
+> #define NOTIFYFS_FSEVENT_FILE_SIZE                              2048
+> #define NOTIFYFS_FSEVENT_FILE_OPEN                              4096
+> #define NOTIFYFS_FSEVENT_FILE_READ                              8192
+> #define NOTIFYFS_FSEVENT_FILE_CLOSE_WRITE                       16384
+> #define NOTIFYFS_FSEVENT_FILE_CLOSE_NOWRITE                     32768
+
+> #define NOTIFYFS_FSEVENT_MOVE_NOTSET                            65536
+
+And from here own I'm too lazy to calculate (or even guess) if these are
+actually powers of 2 or not.
+> #define NOTIFYFS_FSEVENT_MOVE_CREATED                           131072
+> #define NOTIFYFS_FSEVENT_MOVE_MOVED                             262144
+> #define NOTIFYFS_FSEVENT_MOVE_MOVED_FROM                        524288
+> #define NOTIFYFS_FSEVENT_MOVE_MOVED_TO                          1048576
+> #define NOTIFYFS_FSEVENT_MOVE_DELETED                           2097152
 > 
-> Wow. Like I've said, I do not have a killer app, or anything else
-> which is as obvious like 1+1=2. No, but I give you my opinion. To me,
-> boldly stated, a system which is able to do fs notify events over
-> network filesystems is turning from a dump system into an intelligent
-> one.
-> 
-> With Ubuntu people started Unity, also without a killer app, but just
-> with an opinion, an impression, an idea. And anyone can dislike or
-> like it, it's a succes as far as I can see. What the hell is wrong
-> with suggesting things based upon an idea/impression?
+> #define NOTIFYFS_FSEVENT_FS_NOTSET                              4194304
+> #define NOTIFYFS_FSEVENT_FS_MOUNT                               8388608
+> #define NOTIFYFS_FSEVENT_FS_UNMOUNT                             16777216
+> #define NOTIFYFS_FSEVENT_FS_NLINKS                              33554432
 
-IOW, it was a true positive for "([Uu]ser experience)|UX" as BS predictor.
-Nice to know...
+MfG,
+	Bernd
+-- 
+Bernd Petrovitsch                  Email : bernd@petrovitsch.priv.at
+                     LUGA : http://www.luga.at
 
-Look, you'd been asked to give good reasons for doing some thing; replying with
-"it's My Opinion(tm), piss off if that's not enough reason for you" would at
-least have been honest.  References to UX, as your last reply has confirmed,
-had been basically an obfuscated equivalent of that.
-
-Sorry for being harsh, but I've had it with the GNOME crowd and their ilk
-using just such references to handwave away any questions.
-
-There's nothing wrong with having opinions/impressions/etc.  Everyone got
-their own, etc.  But "I believe so, period" is not a sufficient answer to
-"what makes that a good idea?" and obfuscating it up is even worse.
