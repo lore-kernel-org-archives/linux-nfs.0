@@ -1,120 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cn.fujitsu.com ([222.73.24.84]:19473 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1753821Ab2LZKAA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 26 Dec 2012 05:00:00 -0500
-Received: from fnstmail02.fnst.cn.fujitsu.com (tang.cn.fujitsu.com [127.0.0.1])
-	by tang.cn.fujitsu.com (8.14.3/8.13.1) with ESMTP id qBQ9HOHC016496
-	for <linux-nfs@vger.kernel.org>; Wed, 26 Dec 2012 17:17:25 +0800
-Message-ID: <50DAC21B.5020305@cn.fujitsu.com>
-Date: Wed, 26 Dec 2012 17:23:39 +0800
-From: fanchaoting <fanchaoting@cn.fujitsu.com>
+Received: from mail-ie0-f176.google.com ([209.85.223.176]:51745 "EHLO
+	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755214Ab2LCRW4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Dec 2012 12:22:56 -0500
+Received: by mail-ie0-f176.google.com with SMTP id 13so5461777iea.21
+        for <linux-nfs@vger.kernel.org>; Mon, 03 Dec 2012 09:22:55 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/5] mountd clean-ups for nfs-utils 1.2.8
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 03 Dec 2012 12:17:22 -0500
+Message-ID: <20121203171549.1390.64007.stgit@lebasque.1015granger.net>
 MIME-Version: 1.0
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        LINE <fnst-xmlinux@cn.fujitsu.com>
-Subject: [PATCH] nfs4-acl-tools: when who's length is very big, nfs4_getacl
- core dump
-Content-Type: text/plain; charset=ISO-2022-JP
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Fan Chaoting <fanchaoting@cn.fujitsu.com>
+Hi-
 
-nfsv4 server can return an arbitrary
-sized who's len(eg. wholen = 62343534343) in an FATTR4_WORD0_ACL request.
-It can cause program core dump when call 'malloc((wholen + 1) * sizeof(char))'.
-
- This patch checked if who's len bigger than xattr_size when getfacl.
-
- This patch also fixed some code style.
-
-Signed-off-by: Fan Chaoting <fanchaoting@cn.fujitsu.com>
-
-the reproduce of this problem:
-#####################################################################
-
-1. change the nfs server's code.
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 731587c..5b12a6f 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2163,6 +2163,13 @@ out_acl:
-        }
-
-        *attrlenp = htonl((char *)p - (char *)attrlenp - 4);
-+
-+       static int j;
-+       j++;
-+
-+       if (j % 10 == 0 & bmval0 & FATTR4_WORD0_ACL) {
-+               *attrlenp = 6000;
-+       }
-        *countp = p - buffer;
-        status = nfs_ok;
-
-@@ -3323,7 +3330,7 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
-        else
-                iov = &rqstp->rq_res.head[0];
-        iov->iov_len = ((char*)resp->p) - (char*)iov->iov_base;
--       BUG_ON(iov->iov_len > PAGE_SIZE);
-+//     BUG_ON(iov->iov_len > PAGE_SIZE);
-        if (nfsd4_has_session(cs)) {
-                if (cs->status != nfserr_replay_cache) {
-                        nfsd4_store_cache_entry(resp);
-
-2. mount -t nfs4 -o acl NFSSERVERIP:/ /mnt
-3. touch /mnt/test
-4. nfs4_getfacl  /mnt/test               <--core dump
-
-######################################################################
+Here are four clean-up patches I've had for a while, and one patch
+that augments junction resolution debugging messages.
 
 ---
- libnfs4acl/acl_nfs4_xattr_load.c |    6 ++++++
- libnfs4acl/nfs4_acl_for_path.c   |    8 ++++----
- 2 files changed, 10 insertions(+), 4 deletions(-)
 
-diff --git a/libnfs4acl/acl_nfs4_xattr_load.c b/libnfs4acl/acl_nfs4_xattr_load.c
-index 089a139..ced1c95 100644
---- a/libnfs4acl/acl_nfs4_xattr_load.c
-+++ b/libnfs4acl/acl_nfs4_xattr_load.c
-@@ -139,6 +139,12 @@ struct nfs4_acl * acl_nfs4_xattr_load(char *xattr_v, int xattr_size, u32 is_dir)
- 			goto err1;
- 		}
- 
-+		/*wholen should less than xattr_size*/
-+		if (wholen > xattr_size) {
-+			errno = EINVAL;
-+			goto err1;
-+		}
-+
- 		who = (char *) malloc((wholen+1) * sizeof(char));
- 		if (who == NULL) {
- 			errno = ENOMEM;
-diff --git a/libnfs4acl/nfs4_acl_for_path.c b/libnfs4acl/nfs4_acl_for_path.c
-index 7461005..577dd1f 100644
---- a/libnfs4acl/nfs4_acl_for_path.c
-+++ b/libnfs4acl/nfs4_acl_for_path.c
-@@ -92,14 +92,14 @@ static int nfs4_getxattr(const char *path, void *value, size_t size)
- 
- 	res = getxattr(path, ACL_NFS4_XATTR, value, size);
- 	if (res < -10000) {
--		fprintf(stderr,"An internal NFS server error code (%d) was returned; this should never happen.\n",res);
-+		fprintf(stderr, "An internal NFS server error code (%d) was returned; this should never happen.\n", res);
- 	} else if (res < 0) {
- 		if (errno == ENOATTR)
--			fprintf(stderr,"Attribute not found on file.\n");
-+			fprintf(stderr, "Attribute not found on file.\n");
- 		else if (errno == EREMOTEIO)
--		    fprintf(stderr,"An NFS server error occurred.\n");
-+		    fprintf(stderr, "An NFS server error occurred.\n");
- 		else if (errno == EOPNOTSUPP)
--			fprintf(stderr,"Operation to request attribute not supported.\n");
-+			fprintf(stderr, "Operation to request attribute not supported.\n");
- 		else
- 			perror("Failed getxattr operation");
- 	}
+Chuck Lever (5):
+      mountd: Report the absolute path used to load the junction plug-in
+      libexport.a: xtab.c no longer needs #include xmalloc.h
+      libexport.a: rmtab.c no longer needs #include xmalloc.h
+      mountd: cache.c no longer needs #include xmalloc.h
+      mountd: auth.c no longer needs #include xmalloc.h
+
+
+ support/export/rmtab.c |    6 +++---
+ support/export/xtab.c  |    2 +-
+ utils/mountd/auth.c    |    3 ++-
+ utils/mountd/cache.c   |    8 +++++++-
+ 4 files changed, 13 insertions(+), 6 deletions(-)
+
 -- 
-1.7.1
-
-
+Chuck Lever
