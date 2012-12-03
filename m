@@ -1,77 +1,189 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.agmk.net ([91.192.224.71]:57326 "EHLO mail.agmk.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751175Ab2LSVQM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Dec 2012 16:16:12 -0500
-From: =?utf-8?B?UGF3ZcWC?= Sikora <pawel.sikora@agmk.net>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [3.6.11] NFS: Cache request denied due to non-unique superblock keys.
-Date: Wed, 19 Dec 2012 22:16:06 +0100
-Message-ID: <2073442.2DDQICUc2y@localhost>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91196AB48@SACEXCMBX04-PRD.hq.netapp.com>
-References: <6078496.RFsWrNWv86@localhost> <4FA345DA4F4AE44899BD2B03EEEC2FA91196AB48@SACEXCMBX04-PRD.hq.netapp.com>
+Received: from countercultured.net ([209.51.175.25]:36472 "HELO
+	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1750944Ab2LCVf1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Dec 2012 16:35:27 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=UTF-8;
+ format=flowed
+Date: Mon, 03 Dec 2012 16:35:24 -0500
+From: David Quigley <dpquigl@davequigley.com>
+To: "Myklebust, Trond" <trond.myklebust@netapp.com>
+Cc: Steve Dickson <steved@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] lnfs: Cleaned up compile warnings when
+ =?UTF-8?Q?NFS=5FV=34=5FSECURITY=5FLABEL=20is=20not=20set=2E?=
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90B334191@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1354566254-546-1-git-send-email-steved@redhat.com>
+ <3e20ecd2416fc5a995ca152c8508f86c@countercultured.net>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA90B334191@SACEXCMBX04-PRD.hq.netapp.com>
+Message-ID: <b2b9b2c59fd53d0c0100d7097920f7f3@countercultured.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wednesday 19 of December 2012 19:35:50 Myklebust, Trond wrote:
-> On Wed, 2012-12-19 at 19:58 +-0100, Pawe+AUI- Sikora wrote:
-> +AD4- Hi,
-> +AD4- 
-> +AD4- i'm testing the 3.6.11 kernel on some small internal nfs network (1 server +ADw--+AD4- 2 clients)
-> +AD4- and observing such info in dmesg on the client side. could you put some light on this dmesg entry?
-> +AD4- is it a bug or misconfiguration? i can provide more information about nfs configuration
-> +AD4- if necessary but denying caching doesn't look nicely.
-> +AD4- 
-> +AD4- i'm using following nfs related packages:
-> +AD4- 
-> +AD4- autofs-5.0.5-1.x86+AF8-64
-> +AD4- libnfsidmap-0.25-4.x86+AF8-64
-> +AD4- nfs-utils-1.2.7-1.x86+AF8-64
-> +AD4- nfs-utils-clients-1.2.7-1.x86+AF8-64
-> +AD4- nfs-utils-common-1.2.7-1.x86+AF8-64
-> +AD4- 
-> +AD4- BR,
-> +AD4- Pawe+AUI-.
-> 
-> It's hard to guess when you don't tell us anything about what you are
-> doing to trigger this message, but it sounds as if you are trying to use
-> the cachefs mount options incorrectly.
+On 12/03/2012 16:24, Myklebust, Trond wrote:
+> On Mon, 2012-12-03 at 16:18 -0500, David Quigley wrote:
+>> On 12/03/2012 15:24, Steve Dickson wrote:
+>> > This patch cleans up a number compile warnings when the
+>> > label NFS code exists but is not configured to compile.
+>> >
+>> > Signed-off-by: Steve Dickson <steved@redhat.com>
+>> > ---
+>> >  fs/nfs/nfs4proc.c      | 36 ++++++++++++++++++++++++------------
+>> >  include/linux/nfs_fs.h |  4 ++--
+>> >  2 files changed, 26 insertions(+), 14 deletions(-)
+>> >
+>> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> > index 2c8dd55..02e3303 100644
+>> > --- a/fs/nfs/nfs4proc.c
+>> > +++ b/fs/nfs/nfs4proc.c
+>> > @@ -926,8 +926,8 @@ err_free_label:
+>> >  #ifdef CONFIG_NFS_V4_SECURITY_LABEL
+>> >  	if (server->caps & NFS_CAP_SECURITY_LABEL)
+>> >  		nfs4_label_free(p->f_label);
+>> > -#endif
+>> >  err_free_p:
+>> > +#endif
+>> >  	kfree(p);
+>> >  err:
+>> >  	dput(parent);
+>> > @@ -2438,9 +2438,10 @@ static struct inode *
+>> >  nfs4_atomic_open(struct inode *dir, struct nfs_open_context *ctx,
+>> > int open_flags, struct iattr *attr)
+>> >  {
+>> >  	struct nfs4_state *state;
+>> > -	struct nfs4_label l, *label = NULL;
+>> > -
+>> > +	struct nfs4_label *label = NULL;
+>> >  #ifdef CONFIG_NFS_V4_SECURITY_LABEL
+>> > +	struct nfs4_label l;
+>> > +
+>> >  	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL)) {
+>> >  		struct dentry *dentry = ctx->dentry;
+>> >  		int error;
+>> > @@ -3026,8 +3027,8 @@ static int _nfs4_proc_access(struct inode
+>> > *inode, struct nfs_access_entry *entry
+>> >  #ifdef CONFIG_NFS_V4_SECURITY_LABEL
+>> >  	if (server->caps & NFS_CAP_SECURITY_LABEL)
+>> >  		nfs4_label_free(res.label);
+>> > -#endif
+>> >  out:
+>> > +#endif
+>> >  	nfs_free_fattr(res.fattr);
+>> >  	return status;
+>> >  }
+>> > @@ -3105,7 +3106,10 @@ static int
+>> >  nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct
+>> > iattr *sattr,
+>> >  		 int flags)
+>> >  {
+>> > -	struct nfs4_label l, *ilabel = NULL;
+>> > +	struct nfs4_label *ilabel = NULL;
+>> > +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
+>> > +	struct nfs4_label l;
+>> > +#endif
+>> >  	struct nfs_open_context *ctx;
+>> >  	struct nfs4_state *state;
+>> >  	int status = 0;
+>> > @@ -3298,8 +3302,8 @@ static int _nfs4_proc_rename(struct inode
+>> > *old_dir, struct qstr *old_name,
+>> >  		nfs4_label_free(res.old_label);
+>> >  		nfs4_label_free(res.new_label);
+>> >  	}
+>> > -#endif
+>> >  out:
+>> > +#endif
+>> >  	return status;
+>> >  }
+>> >
+>> > @@ -3418,7 +3422,9 @@ static struct nfs4_createdata
+>> > *nfs4_alloc_createdata(struct inode *dir,
+>> >  		nfs_fattr_init(data->res.fattr);
+>> >  	}
+>> >  	return data;
+>> > +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
+>> >  out_free:
+>> > +#endif
+>> >  	kfree(data);
+>> >  	return NULL;
+>> >  }
+>> > @@ -3474,11 +3480,11 @@ static int nfs4_proc_symlink(struct inode
+>> > *dir, struct dentry *dentry,
+>> >  		struct page *page, unsigned int len, struct iattr *sattr)
+>> >  {
+>> >  	struct nfs4_exception exception = { };
+>> > -	struct nfs4_label l, *label = NULL;
+>> >  	int err;
+>> > -
+>> > -
+>> > +	struct nfs4_label *label = NULL;
+>> >  #ifdef CONFIG_NFS_V4_SECURITY_LABEL
+>> > +	struct nfs4_label l;
+>> > +
+>> >  	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL)) {
+>> >  		err = security_dentry_init_security(dentry, sattr->ia_mode,
+>> >  					&dentry->d_name, &l.label, &l.len);
+>> > @@ -3522,7 +3528,10 @@ static int nfs4_proc_mkdir(struct inode 
+>> *dir,
+>> > struct dentry *dentry,
+>> >  		struct iattr *sattr)
+>> >  {
+>> >  	struct nfs4_exception exception = { };
+>> > -	struct nfs4_label l, *label = NULL;
+>> > +	struct nfs4_label *label = NULL;
+>> > +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
+>> > +	struct nfs4_label l;
+>> > +#endif
+>> >  	int err;
+>> >
+>> >  #ifdef CONFIG_NFS_V4_SECURITY_LABEL
+>> > @@ -3640,9 +3649,12 @@ out:
+>> >  static int nfs4_proc_mknod(struct inode *dir, struct dentry 
+>> *dentry,
+>> >  		struct iattr *sattr, dev_t rdev)
+>> >  {
+>> > -	struct nfs4_exception exception = { };
+>> > -	struct nfs4_label l, *label = NULL;
+>> >  	int err;
+>> > +	struct nfs4_exception exception = { };
+>> > +	struct nfs4_label *label = NULL;
+>> > +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
+>> > +	struct nfs4_label l;
+>> > +#endif
+>> >
+>> >  #ifdef CONFIG_NFS_V4_SECURITY_LABEL
+>> >  	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL)) {
+>> > diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+>> > index 2ef01f8..f4bb5c4 100644
+>> > --- a/include/linux/nfs_fs.h
+>> > +++ b/include/linux/nfs_fs.h
+>> > @@ -502,8 +502,8 @@ extern void nfs4_label_init(struct nfs4_label 
+>> *);
+>> >  extern void nfs4_label_free(struct nfs4_label *);
+>> >  #else
+>> >  static inline struct nfs4_label *nfs4_label_alloc(gfp_t flags) {
+>> > return NULL; }
+>> > -static inline void nfs4_label_init(struct nfs4_label *) {}
+>> > -static inline void nfs4_label_free(struct nfs4_label *label) {}
+>> > +static inline void nfs4_label_init(void *label) {}
+>> > +static inline void nfs4_label_free(void *label) {}
+>> >  #endif
+>> >
+>> >  /*
+>>
+>> Thanks for the patch. The question I have here is should I tag 
+>> Steve's
+>> patch on the end of the patch set or should I integrate it back into 
+>> the
+>> original patches?
+>
+> It is up to you, however it would be nice to have the final patch 
+> series
+> be fully bisectible.
+>
+> Cheers
+>   Trond
 
-on the server side there're following exports:
-
-# exportfs -v
-/home/atest/farm-local
-                <world>(rw,async,wdelay,nohide,crossmnt,no_root_squash,no_subtree_check,insecure_locks)
-/home/atest/farm
-                <world>(rw,async,wdelay,nohide,crossmnt,no_root_squash,no_subtree_check,insecure_locks)
-/home/users     <world>(rw,no_root_squash,no_subtree_check,insecure_locks)
-
-in the exported /home/atest/* there're crossmounted/binded directories:
-
-# fstab
-/home/atest/farm-local/results  /home/atest/farm/results        none bind
-/home/services/ftp              /var/lib/ftp                    none bind
-/home/services/ftp              /home/atest/farm-local/ftp      none bind
-
-# df -h
-Filesystem                   Size  Used Avail Use% Mounted on
-rootfs                       7.6G  4.5G  2.7G  63% /
-/dev/md0                     7.6G  4.5G  2.7G  63% /
-run                           32G  264K   32G   1% /run
-devtmpfs                      32G     0   32G   0% /dev
-/dev/md1                     7.2T  794G  6.4T  11% /home
-none                          32G     0   32G   0% /dev/shm
-/dev/md1                     7.2T  794G  6.4T  11% /home/atest/farm/results
-/dev/md1                     7.2T  794G  6.4T  11% /var/lib/ftp
-/dev/md1                     7.2T  794G  6.4T  11% /home/atest/farm-local/ftp
-
-
-on the client side there's only a simple autofs configuration:
-
-# cat /etc/autofs/auto.server
-farm           -rw,soft,rsize=32768,wsize=32768,intr,vers=4,async,bg,noatime,retry=30,retrans=10        192.168.2.100:/home/atest/farm-local
-home           -rw,soft,vers=4        192.168.2.100:/home/users
-
+Is it not currently bisectible? Before I release I apply each patch one 
+by one and compile between them to make sure they build. Has anyone had 
+problems with it not bisecting properly?
