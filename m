@@ -1,156 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:41027 "EHLO e9.ny.us.ibm.com"
+Received: from mx1.netapp.com ([216.240.18.38]:3012 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754603Ab2LKTBx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Dec 2012 14:01:53 -0500
-Received: from /spool/local
-	by e9.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
-	Tue, 11 Dec 2012 14:01:52 -0500
-Received: from d01relay05.pok.ibm.com (d01relay05.pok.ibm.com [9.56.227.237])
-	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id 988006E8053
-	for <linux-nfs@vger.kernel.org>; Tue, 11 Dec 2012 14:01:48 -0500 (EST)
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay05.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id qBBJ1mkk310398
-	for <linux-nfs@vger.kernel.org>; Tue, 11 Dec 2012 14:01:48 -0500
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id qBBJ1mWk008353
-	for <linux-nfs@vger.kernel.org>; Tue, 11 Dec 2012 14:01:48 -0500
-In-Reply-To: <50C71712.2030909@tonian.com>
-References: <OFF752FE87.86716271-ON88257AC7.002025E3-88257AC7.00206C04@us.ibm.com>	<50C45D17.5090000@tonian.com> <OFA6E36E77.727ADDF2-ON88257ACF.005B56C9-88257ACF.005BE4BB@us.ibm.com> <CAEMWVhsh0SvLX8MY8cghOmbYExpqFLYgUFVuai_RyaYu3EErvw@mail.gmail.com> <OF0F796F1E.99986A09-ON88257ACF.0063225B-88257ACF.0063629E@us.ibm.com> <50C71712.2030909@tonian.com>
-To: Benny Halevy <bhalevy@tonian.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@netapp.com>, nfsv4@ietf.org
+	id S1750944Ab2LCVlD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 3 Dec 2012 16:41:03 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: David Quigley <dpquigl@davequigley.com>
+CC: Steve Dickson <steved@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] lnfs: Cleaned up compile warnings when
+ NFS_V4_SECURITY_LABEL is not set.
+Date: Mon, 3 Dec 2012 21:41:01 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90B33436C@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1354566254-546-1-git-send-email-steved@redhat.com>
+	 <3e20ecd2416fc5a995ca152c8508f86c@countercultured.net>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B334191@SACEXCMBX04-PRD.hq.netapp.com>
+	 <b2b9b2c59fd53d0c0100d7097920f7f3@countercultured.net>
+In-Reply-To: <b2b9b2c59fd53d0c0100d7097920f7f3@countercultured.net>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Subject: Re: notify_deviceid_type4
-Message-ID: <OF8606E01D.38BFFF7E-ON88257AD1.0067EE8C-88257AD1.006889C8@us.ibm.com>
-From: Marc Eshel <eshel@us.ibm.com>
-Date: Tue, 11 Dec 2012 11:01:45 -0800
-Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-That sound like the correct thing to do, I which we have the agreement 
-from all implementations to make sure we all do the same thing. I will 
-copy the ietf mailing list to see that there are no objections. I guess we 
-will find out in the next cton what breaks.
-Marc.
-
-Benny Halevy <bhalevy@tonian.com> wrote on 12/11/2012 03:20:50 AM:
-
-> From: Benny Halevy <bhalevy@tonian.com>
-> To: Marc Eshel/Almaden/IBM@IBMUS, 
-> Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-
-> nfs@vger.kernel.org, Trond Myklebust <trond.myklebust@netapp.com>, 
-> Trond Myklebust <trond.myklebust@netapp.com>
-> Date: 12/11/2012 03:21 AM
-> Subject: Re: notify_deviceid_type4
-> 
-> On 2012-12-09 20:05, Marc Eshel wrote:
-> > Can you provide with the spec information that supports your 
-> > interpretation?
-> 
-> Marc, section 18.40.3. says the following:
-> 
->    The notification mask is
->    composed in the same manner as the bitmap for file attributes
->    (Section 3.3.7).  The numbers of bit positions are listed in the
->    notify_device_type4 enumeration type (Section 20.12).
-> 
-> The linux implementation chose to reflect the bit masks in the header
-> file rather than the bit numbers but it's clear the masks should equal
-> 2 (1<<1) and 4 (1<<2) rather than 1 and 2.
-> 
-> For clarity, I'm OK with a patch that fixes the definition in nfs4.h to:
-> 
-> enum pnfs_notify_deviceid_type4 {
->          NOTIFY_DEVICEID4_CHANGE = 1,
->          NOTIFY_DEVICEID4_DELETE = 2,
-> };
-> 
-> But every place these values are currently used verbatim should be fixed
-> respectively to use the shifted value, e.g. (1 << 
-NOTIFY_DEVICEID4_CHANGE).
-> 
-> Benny
-> 
-> > Marc.
-> > 
-> > 
-> > 
-> > From:   Benny Halevy <bhalevy@tonian.com>
-> > To:     Marc Eshel/Almaden/IBM@IBMUS, 
-> > Cc:     linux-nfs-owner@vger.kernel.org, Trond Myklebust 
-> > <trond.myklebust@netapp.com>, linux-nfs@vger.kernel.org, "J. Bruce 
-Fields" 
-> > <bfields@redhat.com>
-> > Date:   12/09/2012 09:50 AM
-> > Subject:        Re: notify_deviceid_type4
-> > 
-> > 
-> > 
-> > The enum values in the spec correspond to bit _numbers_ in the bitmap, 
-not 
-> > to bitmasks.
-> > On Dec 9, 2012 6:43 PM, "Marc Eshel" <eshel@us.ibm.com> wrote:
-> > I am not sure what you are saying, I am showing the definition from 
-the
-> > spec. that show NOTIFY_DEVICEID4_CHANGE = 1, and nfs4.h has it as (1<< 
-1)
-> > which is not 1, it is 2.
-> > Marc.
-> > 
-> > Benny Halevy <bhalevy@tonian.com> wrote on 12/09/2012 01:42:47 AM:
-> > 
-> >> From: Benny Halevy <bhalevy@tonian.com>
-> >> To: Marc Eshel/Almaden/IBM@IBMUS,
-> >> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, "J. Bruce Fields"
-> >> <bfields@redhat.com>, linux-nfs-owner@vger.kernel.org, linux-
-> >> nfs@vger.kernel.org
-> >> Date: 12/09/2012 01:44 AM
-> >> Subject: Re: notify_deviceid_type4
-> >>
-> >> On 2012-12-01 07:54, Marc Eshel wrote:
-> >>> The spec defines notify_deviceid_type4 as:
-> >>>
-> >>> 20.12.1.  ARGUMENT
-> >>>    /*
-> >>>     * Device notification types.
-> >>>     */
-> >>>    enum notify_deviceid_type4 {
-> >>>            NOTIFY_DEVICEID4_CHANGE = 1,
-> >>>            NOTIFY_DEVICEID4_DELETE = 2
-> >>>    };
-> >>>
-> >>>
-> >>> but the Linux code in nfs4.h has, is that going to be fixed?
-> >>>
-> >>> enum pnfs_notify_deviceid_type4 {
-> >>>         NOTIFY_DEVICEID4_CHANGE = 1 << 1,
-> >>>         NOTIFY_DEVICEID4_DELETE = 1 << 2,
-> >>> };
-> >>
-> >> notify_deviceid_type4 specifies bit numbers same as notify_type4
-> >> It seems to me like the definition in nfs4.h is correct.
-> >>
-> >> Benny
-> >>
-> >>>
-> >>> --
-> >>> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
-> > in
-> >>> the body of a message to majordomo@vger.kernel.org
-> >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >>>
-> >>
-> > 
-> > 
-> 
-> -- 
-> Benny Halevy
-> CTO, Tonian Inc.
-> 
-> Tel: +972-54-802-8340
-> bhalevy@tonian.com
-> 
-
+T24gTW9uLCAyMDEyLTEyLTAzIGF0IDE2OjM1IC0wNTAwLCBEYXZpZCBRdWlnbGV5IHdyb3RlOg0K
+PiBPbiAxMi8wMy8yMDEyIDE2OjI0LCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+IE9uIE1v
+biwgMjAxMi0xMi0wMyBhdCAxNjoxOCAtMDUwMCwgRGF2aWQgUXVpZ2xleSB3cm90ZToNCj4gPj4g
+T24gMTIvMDMvMjAxMiAxNToyNCwgU3RldmUgRGlja3NvbiB3cm90ZToNCj4gPj4gPiBUaGlzIHBh
+dGNoIGNsZWFucyB1cCBhIG51bWJlciBjb21waWxlIHdhcm5pbmdzIHdoZW4gdGhlDQo+ID4+ID4g
+bGFiZWwgTkZTIGNvZGUgZXhpc3RzIGJ1dCBpcyBub3QgY29uZmlndXJlZCB0byBjb21waWxlLg0K
+PiA+PiA+DQo+ID4+ID4gU2lnbmVkLW9mZi1ieTogU3RldmUgRGlja3NvbiA8c3RldmVkQHJlZGhh
+dC5jb20+DQo+ID4+ID4gLS0tDQo+ID4+ID4gIGZzL25mcy9uZnM0cHJvYy5jICAgICAgfCAzNiAr
+KysrKysrKysrKysrKysrKysrKysrKystLS0tLS0tLS0tLS0NCj4gPj4gPiAgaW5jbHVkZS9saW51
+eC9uZnNfZnMuaCB8ICA0ICsrLS0NCj4gPj4gPiAgMiBmaWxlcyBjaGFuZ2VkLCAyNiBpbnNlcnRp
+b25zKCspLCAxNCBkZWxldGlvbnMoLSkNCj4gPj4gPg0KPiA+PiA+IGRpZmYgLS1naXQgYS9mcy9u
+ZnMvbmZzNHByb2MuYyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+ID4+ID4gaW5kZXggMmM4ZGQ1NS4u
+MDJlMzMwMyAxMDA2NDQNCj4gPj4gPiAtLS0gYS9mcy9uZnMvbmZzNHByb2MuYw0KPiA+PiA+ICsr
+KyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+ID4+ID4gQEAgLTkyNiw4ICs5MjYsOCBAQCBlcnJfZnJl
+ZV9sYWJlbDoNCj4gPj4gPiAgI2lmZGVmIENPTkZJR19ORlNfVjRfU0VDVVJJVFlfTEFCRUwNCj4g
+Pj4gPiAgCWlmIChzZXJ2ZXItPmNhcHMgJiBORlNfQ0FQX1NFQ1VSSVRZX0xBQkVMKQ0KPiA+PiA+
+ICAJCW5mczRfbGFiZWxfZnJlZShwLT5mX2xhYmVsKTsNCj4gPj4gPiAtI2VuZGlmDQo+ID4+ID4g
+IGVycl9mcmVlX3A6DQo+ID4+ID4gKyNlbmRpZg0KPiA+PiA+ICAJa2ZyZWUocCk7DQo+ID4+ID4g
+IGVycjoNCj4gPj4gPiAgCWRwdXQocGFyZW50KTsNCj4gPj4gPiBAQCAtMjQzOCw5ICsyNDM4LDEw
+IEBAIHN0YXRpYyBzdHJ1Y3QgaW5vZGUgKg0KPiA+PiA+ICBuZnM0X2F0b21pY19vcGVuKHN0cnVj
+dCBpbm9kZSAqZGlyLCBzdHJ1Y3QgbmZzX29wZW5fY29udGV4dCAqY3R4LA0KPiA+PiA+IGludCBv
+cGVuX2ZsYWdzLCBzdHJ1Y3QgaWF0dHIgKmF0dHIpDQo+ID4+ID4gIHsNCj4gPj4gPiAgCXN0cnVj
+dCBuZnM0X3N0YXRlICpzdGF0ZTsNCj4gPj4gPiAtCXN0cnVjdCBuZnM0X2xhYmVsIGwsICpsYWJl
+bCA9IE5VTEw7DQo+ID4+ID4gLQ0KPiA+PiA+ICsJc3RydWN0IG5mczRfbGFiZWwgKmxhYmVsID0g
+TlVMTDsNCj4gPj4gPiAgI2lmZGVmIENPTkZJR19ORlNfVjRfU0VDVVJJVFlfTEFCRUwNCj4gPj4g
+PiArCXN0cnVjdCBuZnM0X2xhYmVsIGw7DQo+ID4+ID4gKw0KPiA+PiA+ICAJaWYgKG5mc19zZXJ2
+ZXJfY2FwYWJsZShkaXIsIE5GU19DQVBfU0VDVVJJVFlfTEFCRUwpKSB7DQo+ID4+ID4gIAkJc3Ry
+dWN0IGRlbnRyeSAqZGVudHJ5ID0gY3R4LT5kZW50cnk7DQo+ID4+ID4gIAkJaW50IGVycm9yOw0K
+PiA+PiA+IEBAIC0zMDI2LDggKzMwMjcsOCBAQCBzdGF0aWMgaW50IF9uZnM0X3Byb2NfYWNjZXNz
+KHN0cnVjdCBpbm9kZQ0KPiA+PiA+ICppbm9kZSwgc3RydWN0IG5mc19hY2Nlc3NfZW50cnkgKmVu
+dHJ5DQo+ID4+ID4gICNpZmRlZiBDT05GSUdfTkZTX1Y0X1NFQ1VSSVRZX0xBQkVMDQo+ID4+ID4g
+IAlpZiAoc2VydmVyLT5jYXBzICYgTkZTX0NBUF9TRUNVUklUWV9MQUJFTCkNCj4gPj4gPiAgCQlu
+ZnM0X2xhYmVsX2ZyZWUocmVzLmxhYmVsKTsNCj4gPj4gPiAtI2VuZGlmDQo+ID4+ID4gIG91dDoN
+Cj4gPj4gPiArI2VuZGlmDQo+ID4+ID4gIAluZnNfZnJlZV9mYXR0cihyZXMuZmF0dHIpOw0KPiA+
+PiA+ICAJcmV0dXJuIHN0YXR1czsNCj4gPj4gPiAgfQ0KPiA+PiA+IEBAIC0zMTA1LDcgKzMxMDYs
+MTAgQEAgc3RhdGljIGludA0KPiA+PiA+ICBuZnM0X3Byb2NfY3JlYXRlKHN0cnVjdCBpbm9kZSAq
+ZGlyLCBzdHJ1Y3QgZGVudHJ5ICpkZW50cnksIHN0cnVjdA0KPiA+PiA+IGlhdHRyICpzYXR0ciwN
+Cj4gPj4gPiAgCQkgaW50IGZsYWdzKQ0KPiA+PiA+ICB7DQo+ID4+ID4gLQlzdHJ1Y3QgbmZzNF9s
+YWJlbCBsLCAqaWxhYmVsID0gTlVMTDsNCj4gPj4gPiArCXN0cnVjdCBuZnM0X2xhYmVsICppbGFi
+ZWwgPSBOVUxMOw0KPiA+PiA+ICsjaWZkZWYgQ09ORklHX05GU19WNF9TRUNVUklUWV9MQUJFTA0K
+PiA+PiA+ICsJc3RydWN0IG5mczRfbGFiZWwgbDsNCj4gPj4gPiArI2VuZGlmDQo+ID4+ID4gIAlz
+dHJ1Y3QgbmZzX29wZW5fY29udGV4dCAqY3R4Ow0KPiA+PiA+ICAJc3RydWN0IG5mczRfc3RhdGUg
+KnN0YXRlOw0KPiA+PiA+ICAJaW50IHN0YXR1cyA9IDA7DQo+ID4+ID4gQEAgLTMyOTgsOCArMzMw
+Miw4IEBAIHN0YXRpYyBpbnQgX25mczRfcHJvY19yZW5hbWUoc3RydWN0IGlub2RlDQo+ID4+ID4g
+Km9sZF9kaXIsIHN0cnVjdCBxc3RyICpvbGRfbmFtZSwNCj4gPj4gPiAgCQluZnM0X2xhYmVsX2Zy
+ZWUocmVzLm9sZF9sYWJlbCk7DQo+ID4+ID4gIAkJbmZzNF9sYWJlbF9mcmVlKHJlcy5uZXdfbGFi
+ZWwpOw0KPiA+PiA+ICAJfQ0KPiA+PiA+IC0jZW5kaWYNCj4gPj4gPiAgb3V0Og0KPiA+PiA+ICsj
+ZW5kaWYNCj4gPj4gPiAgCXJldHVybiBzdGF0dXM7DQo+ID4+ID4gIH0NCj4gPj4gPg0KPiA+PiA+
+IEBAIC0zNDE4LDcgKzM0MjIsOSBAQCBzdGF0aWMgc3RydWN0IG5mczRfY3JlYXRlZGF0YQ0KPiA+
+PiA+ICpuZnM0X2FsbG9jX2NyZWF0ZWRhdGEoc3RydWN0IGlub2RlICpkaXIsDQo+ID4+ID4gIAkJ
+bmZzX2ZhdHRyX2luaXQoZGF0YS0+cmVzLmZhdHRyKTsNCj4gPj4gPiAgCX0NCj4gPj4gPiAgCXJl
+dHVybiBkYXRhOw0KPiA+PiA+ICsjaWZkZWYgQ09ORklHX05GU19WNF9TRUNVUklUWV9MQUJFTA0K
+PiA+PiA+ICBvdXRfZnJlZToNCj4gPj4gPiArI2VuZGlmDQo+ID4+ID4gIAlrZnJlZShkYXRhKTsN
+Cj4gPj4gPiAgCXJldHVybiBOVUxMOw0KPiA+PiA+ICB9DQo+ID4+ID4gQEAgLTM0NzQsMTEgKzM0
+ODAsMTEgQEAgc3RhdGljIGludCBuZnM0X3Byb2Nfc3ltbGluayhzdHJ1Y3QgaW5vZGUNCj4gPj4g
+PiAqZGlyLCBzdHJ1Y3QgZGVudHJ5ICpkZW50cnksDQo+ID4+ID4gIAkJc3RydWN0IHBhZ2UgKnBh
+Z2UsIHVuc2lnbmVkIGludCBsZW4sIHN0cnVjdCBpYXR0ciAqc2F0dHIpDQo+ID4+ID4gIHsNCj4g
+Pj4gPiAgCXN0cnVjdCBuZnM0X2V4Y2VwdGlvbiBleGNlcHRpb24gPSB7IH07DQo+ID4+ID4gLQlz
+dHJ1Y3QgbmZzNF9sYWJlbCBsLCAqbGFiZWwgPSBOVUxMOw0KPiA+PiA+ICAJaW50IGVycjsNCj4g
+Pj4gPiAtDQo+ID4+ID4gLQ0KPiA+PiA+ICsJc3RydWN0IG5mczRfbGFiZWwgKmxhYmVsID0gTlVM
+TDsNCj4gPj4gPiAgI2lmZGVmIENPTkZJR19ORlNfVjRfU0VDVVJJVFlfTEFCRUwNCj4gPj4gPiAr
+CXN0cnVjdCBuZnM0X2xhYmVsIGw7DQo+ID4+ID4gKw0KPiA+PiA+ICAJaWYgKG5mc19zZXJ2ZXJf
+Y2FwYWJsZShkaXIsIE5GU19DQVBfU0VDVVJJVFlfTEFCRUwpKSB7DQo+ID4+ID4gIAkJZXJyID0g
+c2VjdXJpdHlfZGVudHJ5X2luaXRfc2VjdXJpdHkoZGVudHJ5LCBzYXR0ci0+aWFfbW9kZSwNCj4g
+Pj4gPiAgCQkJCQkmZGVudHJ5LT5kX25hbWUsICZsLmxhYmVsLCAmbC5sZW4pOw0KPiA+PiA+IEBA
+IC0zNTIyLDcgKzM1MjgsMTAgQEAgc3RhdGljIGludCBuZnM0X3Byb2NfbWtkaXIoc3RydWN0IGlu
+b2RlIA0KPiA+PiAqZGlyLA0KPiA+PiA+IHN0cnVjdCBkZW50cnkgKmRlbnRyeSwNCj4gPj4gPiAg
+CQlzdHJ1Y3QgaWF0dHIgKnNhdHRyKQ0KPiA+PiA+ICB7DQo+ID4+ID4gIAlzdHJ1Y3QgbmZzNF9l
+eGNlcHRpb24gZXhjZXB0aW9uID0geyB9Ow0KPiA+PiA+IC0Jc3RydWN0IG5mczRfbGFiZWwgbCwg
+KmxhYmVsID0gTlVMTDsNCj4gPj4gPiArCXN0cnVjdCBuZnM0X2xhYmVsICpsYWJlbCA9IE5VTEw7
+DQo+ID4+ID4gKyNpZmRlZiBDT05GSUdfTkZTX1Y0X1NFQ1VSSVRZX0xBQkVMDQo+ID4+ID4gKwlz
+dHJ1Y3QgbmZzNF9sYWJlbCBsOw0KPiA+PiA+ICsjZW5kaWYNCj4gPj4gPiAgCWludCBlcnI7DQo+
+ID4+ID4NCj4gPj4gPiAgI2lmZGVmIENPTkZJR19ORlNfVjRfU0VDVVJJVFlfTEFCRUwNCj4gPj4g
+PiBAQCAtMzY0MCw5ICszNjQ5LDEyIEBAIG91dDoNCj4gPj4gPiAgc3RhdGljIGludCBuZnM0X3By
+b2NfbWtub2Qoc3RydWN0IGlub2RlICpkaXIsIHN0cnVjdCBkZW50cnkgDQo+ID4+ICpkZW50cnks
+DQo+ID4+ID4gIAkJc3RydWN0IGlhdHRyICpzYXR0ciwgZGV2X3QgcmRldikNCj4gPj4gPiAgew0K
+PiA+PiA+IC0Jc3RydWN0IG5mczRfZXhjZXB0aW9uIGV4Y2VwdGlvbiA9IHsgfTsNCj4gPj4gPiAt
+CXN0cnVjdCBuZnM0X2xhYmVsIGwsICpsYWJlbCA9IE5VTEw7DQo+ID4+ID4gIAlpbnQgZXJyOw0K
+PiA+PiA+ICsJc3RydWN0IG5mczRfZXhjZXB0aW9uIGV4Y2VwdGlvbiA9IHsgfTsNCj4gPj4gPiAr
+CXN0cnVjdCBuZnM0X2xhYmVsICpsYWJlbCA9IE5VTEw7DQo+ID4+ID4gKyNpZmRlZiBDT05GSUdf
+TkZTX1Y0X1NFQ1VSSVRZX0xBQkVMDQo+ID4+ID4gKwlzdHJ1Y3QgbmZzNF9sYWJlbCBsOw0KPiA+
+PiA+ICsjZW5kaWYNCj4gPj4gPg0KPiA+PiA+ICAjaWZkZWYgQ09ORklHX05GU19WNF9TRUNVUklU
+WV9MQUJFTA0KPiA+PiA+ICAJaWYgKG5mc19zZXJ2ZXJfY2FwYWJsZShkaXIsIE5GU19DQVBfU0VD
+VVJJVFlfTEFCRUwpKSB7DQo+ID4+ID4gZGlmZiAtLWdpdCBhL2luY2x1ZGUvbGludXgvbmZzX2Zz
+LmggYi9pbmNsdWRlL2xpbnV4L25mc19mcy5oDQo+ID4+ID4gaW5kZXggMmVmMDFmOC4uZjRiYjVj
+NCAxMDA2NDQNCj4gPj4gPiAtLS0gYS9pbmNsdWRlL2xpbnV4L25mc19mcy5oDQo+ID4+ID4gKysr
+IGIvaW5jbHVkZS9saW51eC9uZnNfZnMuaA0KPiA+PiA+IEBAIC01MDIsOCArNTAyLDggQEAgZXh0
+ZXJuIHZvaWQgbmZzNF9sYWJlbF9pbml0KHN0cnVjdCBuZnM0X2xhYmVsIA0KPiA+PiAqKTsNCj4g
+Pj4gPiAgZXh0ZXJuIHZvaWQgbmZzNF9sYWJlbF9mcmVlKHN0cnVjdCBuZnM0X2xhYmVsICopOw0K
+PiA+PiA+ICAjZWxzZQ0KPiA+PiA+ICBzdGF0aWMgaW5saW5lIHN0cnVjdCBuZnM0X2xhYmVsICpu
+ZnM0X2xhYmVsX2FsbG9jKGdmcF90IGZsYWdzKSB7DQo+ID4+ID4gcmV0dXJuIE5VTEw7IH0NCj4g
+Pj4gPiAtc3RhdGljIGlubGluZSB2b2lkIG5mczRfbGFiZWxfaW5pdChzdHJ1Y3QgbmZzNF9sYWJl
+bCAqKSB7fQ0KPiA+PiA+IC1zdGF0aWMgaW5saW5lIHZvaWQgbmZzNF9sYWJlbF9mcmVlKHN0cnVj
+dCBuZnM0X2xhYmVsICpsYWJlbCkge30NCj4gPj4gPiArc3RhdGljIGlubGluZSB2b2lkIG5mczRf
+bGFiZWxfaW5pdCh2b2lkICpsYWJlbCkge30NCj4gPj4gPiArc3RhdGljIGlubGluZSB2b2lkIG5m
+czRfbGFiZWxfZnJlZSh2b2lkICpsYWJlbCkge30NCj4gPj4gPiAgI2VuZGlmDQo+ID4+ID4NCj4g
+Pj4gPiAgLyoNCj4gPj4NCj4gPj4gVGhhbmtzIGZvciB0aGUgcGF0Y2guIFRoZSBxdWVzdGlvbiBJ
+IGhhdmUgaGVyZSBpcyBzaG91bGQgSSB0YWcgDQo+ID4+IFN0ZXZlJ3MNCj4gPj4gcGF0Y2ggb24g
+dGhlIGVuZCBvZiB0aGUgcGF0Y2ggc2V0IG9yIHNob3VsZCBJIGludGVncmF0ZSBpdCBiYWNrIGlu
+dG8gDQo+ID4+IHRoZQ0KPiA+PiBvcmlnaW5hbCBwYXRjaGVzPw0KPiA+DQo+ID4gSXQgaXMgdXAg
+dG8geW91LCBob3dldmVyIGl0IHdvdWxkIGJlIG5pY2UgdG8gaGF2ZSB0aGUgZmluYWwgcGF0Y2gg
+DQo+ID4gc2VyaWVzDQo+ID4gYmUgZnVsbHkgYmlzZWN0aWJsZS4NCj4gPg0KPiA+IENoZWVycw0K
+PiA+ICAgVHJvbmQNCj4gDQo+IElzIGl0IG5vdCBjdXJyZW50bHkgYmlzZWN0aWJsZT8gQmVmb3Jl
+IEkgcmVsZWFzZSBJIGFwcGx5IGVhY2ggcGF0Y2ggb25lIA0KPiBieSBvbmUgYW5kIGNvbXBpbGUg
+YmV0d2VlbiB0aGVtIHRvIG1ha2Ugc3VyZSB0aGV5IGJ1aWxkLiBIYXMgYW55b25lIGhhZCANCj4g
+cHJvYmxlbXMgd2l0aCBpdCBub3QgYmlzZWN0aW5nIHByb3Blcmx5Pw0KDQpOZXZlciBtaW5kOyBJ
+IG1pc3JlYWQgImNvbXBpbGVyIHdhcm5pbmdzIiBhcyByZWZlcnJpbmcgdG8gY29tcGlsZXINCmVy
+cm9ycy4gSW4gdGhhdCBjYXNlLCBqdXN0IGFwcGVuZCB0aGlzIHBhdGNoLg0KDQotLSANClRyb25k
+IE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQu
+TXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
