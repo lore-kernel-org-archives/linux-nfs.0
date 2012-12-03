@@ -1,56 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f53.google.com ([209.85.216.53]:60609 "EHLO
-	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754256Ab2LLQiz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Dec 2012 11:38:55 -0500
-Received: by mail-qa0-f53.google.com with SMTP id a19so1224517qad.19
-        for <linux-nfs@vger.kernel.org>; Wed, 12 Dec 2012 08:38:53 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, iisaman@netapp.com, eguan@redhat.com
-Subject: [PATCH] nfs: don't zero out the rest of the page if we hit the EOF on a DIO READ
-Date: Wed, 12 Dec 2012 11:38:44 -0500
-Message-Id: <1355330324-3233-1-git-send-email-jlayton@redhat.com>
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:34497 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755334Ab2LCRRn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Dec 2012 12:17:43 -0500
+Received: by mail-ie0-f174.google.com with SMTP id c11so4554894ieb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 03 Dec 2012 09:17:43 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 2/5] mountd: cache.c no longer needs #include xmalloc.h
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 03 Dec 2012 12:17:42 -0500
+Message-ID: <20121203171742.1390.71394.stgit@lebasque.1015granger.net>
+In-Reply-To: <20121203171549.1390.64007.stgit@lebasque.1015granger.net>
+References: <20121203171549.1390.64007.stgit@lebasque.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Eryu provided a test program that would segfault when attempting to read
-past the EOF on file that was opened O_DIRECT. The buffer given to the
-read() call was on the stack, and when he attempted to read past it it
-would scribble over the rest of the stack page.
-
-If we hit the end of the file on a DIO READ request, then we don't want
-to zero out the rest of the buffer. These aren't pagecache pages after
-all, and there's no guarantee that the buffers that were passed in
-represent entire pages.
-
-Cc: <stable@vger.kernel.org> # v3.5+
-Cc: Fred Isaman <iisaman@netapp.com>
-Reported-by: Eryu Guan <eguan@redhat.com>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/direct.c | 8 --------
- 1 file changed, 8 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index cae26cb..594f4e7 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -266,14 +266,6 @@ static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
- 		struct nfs_page *req = nfs_list_entry(hdr->pages.next);
- 		struct page *page = req->wb_page;
+ utils/mountd/cache.c |    1 -
+ 1 files changed, 0 insertions(+), 1 deletions(-)
+
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index c13f305..c264e14 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -29,7 +29,6 @@
+ #include "nfslib.h"
+ #include "exportfs.h"
+ #include "mountd.h"
+-#include "xmalloc.h"
+ #include "fsloc.h"
+ #include "pseudoflavors.h"
  
--		if (test_bit(NFS_IOHDR_EOF, &hdr->flags)) {
--			if (bytes > hdr->good_bytes)
--				zero_user(page, 0, PAGE_SIZE);
--			else if (hdr->good_bytes - bytes < PAGE_SIZE)
--				zero_user_segment(page,
--					hdr->good_bytes & ~PAGE_MASK,
--					PAGE_SIZE);
--		}
- 		if (!PageCompound(page)) {
- 			if (test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
- 				if (bytes < hdr->good_bytes)
--- 
-1.7.11.7
 
