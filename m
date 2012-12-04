@@ -1,51 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54842 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:18754 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1422904Ab2LGQwO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Dec 2012 11:52:14 -0500
-Date: Fri, 7 Dec 2012 11:52:11 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Subject: Re: [PATCH 3/6] nfsd: pass net to nfsd_create_serv()
-Message-ID: <20121207165211.GK17115@fieldses.org>
-References: <20121204134920.24504.95261.stgit@localhost.localdomain>
- <20121204135016.24504.74168.stgit@localhost.localdomain>
+	id S1753244Ab2LDO4G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Dec 2012 09:56:06 -0500
+Received: from vmwexceht02-prd.hq.netapp.com (vmwexceht02-prd.hq.netapp.com [10.106.76.240])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id qB4Eu4vn027930
+	for <linux-nfs@vger.kernel.org>; Tue, 4 Dec 2012 06:56:04 -0800 (PST)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] SUNRPC: new keyring key_type for gss context
+ destruction at kdestroy
+Date: Tue, 4 Dec 2012 14:56:03 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90B33595E@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1354560315-2393-1-git-send-email-andros@netapp.com>
+	 <1354560315-2393-2-git-send-email-andros@netapp.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B334027@SACEXCMBX04-PRD.hq.netapp.com>
+	 <7851A663D3BF5E41B9E166C2C7A42145104F61E8@SACEXCMBX02-PRD.hq.netapp.com>
+In-Reply-To: <7851A663D3BF5E41B9E166C2C7A42145104F61E8@SACEXCMBX02-PRD.hq.netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20121204135016.24504.74168.stgit@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 04, 2012 at 04:50:16PM +0300, Stanislav Kinsbursky wrote:
-> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> index 21cba3d..6448391 100644
-> --- a/fs/nfsd/nfssvc.c
-> +++ b/fs/nfsd/nfssvc.c
-> @@ -334,10 +334,9 @@ static int nfsd_get_default_max_blksize(void)
->  	return ret;
->  }
->  
-> -int nfsd_create_serv(void)
-> +int nfsd_create_serv(struct net *net)
->  {
->  	int error;
-> -	struct net *net = &init_net;
-
-What does this apply to?  Since 3.6-rc1 we have 
-57c8b13e3cd0f94944c9691ce7f58e5fcef8a12d "NFSd: set nfsd_serv to NULL
-after service destruction" which includes:
-
-@@ -332,6 +330,7 @@ static int nfsd_get_default_max_blksize(void)
- int nfsd_create_serv(void)
- {
-        int error;
-+       struct net *net = current->nsproxy->net_ns;
- 
-        WARN_ON(!mutex_is_locked(&nfsd_mutex));
-        if (nfsd_serv) {
-
-Am I missing some later patch?
-
---b.
+T24gTW9uLCAyMDEyLTEyLTAzIGF0IDIyOjM5ICswMDAwLCBBZGFtc29uLCBBbmR5IHdyb3RlOg0K
+PiBPbiBEZWMgMywgMjAxMiwgYXQgNDowNiBQTSwgIk15a2xlYnVzdCwgVHJvbmQiIDxUcm9uZC5N
+eWtsZWJ1c3RAbmV0YXBwLmNvbT4NCj4gIHdyb3RlOg0KDQo+ID4gSXQgc2VlbXMgdG8gbWUgdGhh
+dCB0aGlzIGNvZGUgYWxsb3dzIG1lIHRvIGtpbGwgYW55b25lJ3MgcnBjc2VjX2dzcw0KPiA+IHNl
+c3Npb25zIGJ5IGNyZWF0aW5nIGEga2V5IHdpdGggdGhlaXIgdWlkLCBhbmQgdGhlbiBkZXN0cm95
+aW5nIGl0Lg0KPiANCj4gWWVzIC0ganVzdCBwcm9vZiBvZiBjb25jZXB0IGNvZGUuIFRoZXJlIGlz
+IGEgbG90IHRvIGNvbnNpZGVyLg0KPiANCj4gPiANCj4gPiBPbmUgc29sdXRpb24gaXMgdG8gcmVw
+bGFjZSB1c2VyX2luc3RhbnRpYXRlKCkgd2l0aCBzb21ldGhpbmcgdGhhdCBzZXRzDQo+ID4gdGhl
+IHBheWxvYWQgdG8gYSB2YWx1ZSBkZXRlcm1pbmVkIGJ5IHRoZSBrZXJuZWwgaXRzZWxmLiBXZSdk
+IGRlZmluaXRlbHkNCj4gPiB3YW50IHRvIGluY2x1ZGUgdGhlIHVpZCwgYnV0IHBlcmhhcHMgYWxz
+byBhZGQgYSBjb29raWUgdGhhdCBpcyB1bmlxdWUgdG8NCj4gPiB0aGlzIGtleSAodXNpbmcgdGhl
+IGlkci9pZGEgc3R1ZmYgZnJvbSBpbmNsdWRlL2xpbnV4L2lkci5oID8pLCBhbmQgdGhhdA0KPiA+
+IGNhbiBiZSB1c2VkIHRvIGRpc3Rpbmd1aXNoIGl0IGZyb20ga2V5cyBnZW5lcmF0ZWQgZnJvbSBv
+dGhlciBwcm9jZXNzZXMuDQo+ID4gSWYgd2Ugd2VyZSB0byB1c2UgdGhlIHNhbWUga2V5IHRvIGxh
+YmVsIHRoZSBhdXRoX2dzcyBjcmVkcywgdGhlbiB3ZQ0KPiA+IGNvdWxkIGhhdmUgdXNlcl9nc3Nf
+ZGVzdHJveSgpIGtpbGwgX29ubHlfIHRoZSBhdXRoX2dzcyBjcmVkcyB0aGF0IGl0DQo+ID4gc3Bh
+d25lZC4NCj4gDQo+IFllcywga2lsbGluZyBvbmx5IHRoZSBhdXRoIGl0IHNwYXduZWQgaXMgaW5k
+ZWVkIHdoYXQgd2Ugd2FudC4NCj4gDQo+ID4gDQo+ID4gVWx0aW1hdGVseSwgdGhvdWdoLCBJIHRo
+aW5rIHdlIG1pZ2h0IHdhbnQgdG8gbGV0IHRoZSB1c2VyIHNldCBhdCBsZWFzdA0KPiA+IF9wYXJ0
+XyBvZiB0aGUgcGF5bG9hZCB0byBzb21ldGhpbmcgdGhhdCBtaWdodCBiZSB1c2VmdWwgdG8gZ3Nz
+ZCB3aGVuIGl0DQo+ID4gZ29lcyBsb29raW5nIGZvciBjcmVkZW50aWFscy4gU2luY2UgdGhlIG5m
+c2xvZ2luIGFuZCBnc3NkIHdpbGwgYmUNCj4gPiBzaGlwcGVkIGFzIHBhcnQgb2YgdGhlIG5mcy11
+dGlscyBwYWNrYWdlLCBpdCB3b3VsZCBiZSBuaWNlIHRvIGFsbG93IHRoZW0NCj4gPiB0byB1c2Ug
+dGhlIGdzcy1jdHgga2V5IGluIG9yZGVyIHRvIGNvbW11bmljYXRlLiBJbnRlcmVzdGluZyBpbmZv
+cm1hdGlvbg0KPiA+IG1pZ2h0IGluY2x1ZGUgdGhlIEtSQjVDQ05BTUUuDQo+IA0KPiBUaGFua3Mg
+Zm9yIHRoZSBnb29kIHN1Z2dlc3Rpb25zLg0KDQpTbywgSSd2ZSBnb3QgYSBxdWVzdGlvbjogQ2Fu
+IHdlIHJlcGxhY2Ugc29tZSBvZiB0aGUgc3R1ZmYgaW4gdGhlICJSRkMNCkF2b2lkIGV4cGlyZWQg
+Y3JlZGVudGlhbCBrZXlzIGZvciBidWZmZXJlZCB3cml0ZXMiIHBhdGNoIHNlcmllcyB3aXRoDQp0
+aGlzPw0KDQpNeSB0aGlua2luZyBpcyB0aGF0IHNpbmNlIHRoZSB1c2VyX2dzc19kZXN0cm95KCkg
+aGFzIHRvIHN5bmMgYWxsIGZpbGVzDQphbmQgdGhlbiBpbnZhbGlkYXRlIHRoZSBycGNzZWNfZ3Nz
+IGNyZWRzLCB3ZSdyZSBwcmV0dHkgbXVjaCBkb2luZyB0aGUNCnNhbWUgdGhpbmcgYXMgaW4gdGhl
+IGFib3ZlIFJGQyBwYXRjaCBzZXJpZXMuIElmIG5mc2xvZ2luIHdlcmUgdG8gdGVsbA0KdGhlIGdz
+cy1jdHgga2V5IGhvdyBsb25nIHVudGlsIHRoZSBrZXJiZXJvcyB0Z3QgZXhwaXJlcywgY291bGRu
+J3Qgd2UNCmhhdmUgYSB3b3JrIHF1ZXVlIGpvYiB3YWtlIHVwIGp1c3QgYmVmb3JlIHRoZSB0Z3Qg
+aXMgYWJvdXQgdG8gZXhwaXJlLA0KYW5kIHNpbXBseSBjYWxsIHVzZXJfZ3NzX2Rlc3Ryb3kgYnkg
+cmV2b2tpbmcgdGhlIGdzcy1jdHgga2V5Pw0KSWYsIG9uIHRoZSBvdGhlciBoYW5kLCB0aGUgdXNl
+ciByZW5ld3MgdGhlIHRndCB1c2luZyBuZnNsb2dpbiwgdGhlbiB3ZQ0KY291bGQgdXBkYXRlIHRo
+ZSBnc3MtY3R4IGtleSwgYW5kIGRlZmVyIHRoZSB3b3JrIHF1ZXVlIGpvYiB1bnRpbCB0aGUgbmV3
+DQpleHBpcnQgdGltZS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQg
+bWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0
+YXBwLmNvbQ0K
