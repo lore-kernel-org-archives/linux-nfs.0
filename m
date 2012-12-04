@@ -1,78 +1,31 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:55912 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752107Ab2LTUlD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Dec 2012 15:41:03 -0500
+Received: from fieldses.org ([174.143.236.118]:60452 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752912Ab2LDPyI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Dec 2012 10:54:08 -0500
+Date: Tue, 4 Dec 2012 10:54:07 -0500
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: server support for multiple tcp fragments
+Message-ID: <20121204155407.GD18674@fieldses.org>
+References: <1354625926-18527-1-git-send-email-bfields@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Date: Thu, 20 Dec 2012 15:41:00 -0500
-From: David Quigley <dpquigl@davequigley.com>
-To: <joseph_vu@hotmail.com>, <steved@redhat.com>, <trond.myklebust@netapp.com>,
-        <bfields@fieldses.org>, <rodel_fm@dsi.a-star.edu.sg>,
-        <casey@schaufler-ca.com>
-Cc: <linux-nfs@vger.kernel.org>, <selinux@tycho.nsa.gov>
-Subject: Labeled NFS Meeting Info for Tonight Dec 20/Dec 21st for our
- friends in Singapore
-Message-ID: <cd02d79979bf6c825152f3bcf3a7f33d@countercultured.net>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1354625926-18527-1-git-send-email-bfields@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello Everyone,
+On Tue, Dec 04, 2012 at 07:58:41AM -0500, J. Bruce Fields wrote:
+> I wanted to use pynfs to reproduce a bug with the server's handling of
+> certain large compounds, but ran into trouble because pynfs likes to
+> break up rpc's into 2k fragments.  Rather than fixing pynfs I decided
+> it's long past time we should have fixed this bug in the server....
+> 
+> I'm planning to queue this up for 3.8.--b.
 
-The meeting info and agenda is listed below. I will try to have the 
-google+ hangout posted and running a half an hour before the meeting so 
-people can join. just add me to a circle and I will add you to my LNFS 
-Meeting circle and send out the invite. You can add me earlier in the 
-day if you like I should be able to add people whenever.
+To help test I also added a test that does a maximum-size write to:
 
+	git://linux-nfs.org/~bfields/pynfs.git master
 
-Time: Thursday Dec 20th 10:00pm-12:00pm (The latest) Eastern
-			8:00pm-10:00pm Central
-			7:00pm-9:00pm Pacific
-       Friday Dec 21st 11:00am-1:00pm Singapore
-
-Where: Google+ Hangout Hosted by +SELinux or +Dave Quigley (If you see 
-a blue 350z you have the right dave quigley).
-
-
-
-
-Proposed Agenda
--------------------------
-
-+ Discuss merge windows and which one we'd like to target
-
-Do we want to shoot for 3.9 or will we attempt to implement the 
-remaining features and go for 3.10
-
-+ Discuss current feedback from Bruce Fields
-
-Patch 1/13: Cleanup comment for dentry_init_security
-Patch 2/13: Cleanup comment to reflect that xattrs aren't being used in 
-the protocol.
-Patch 5/13: Add warning that the functionality is highly experimental 
-and still volatile.
-Patch 7/13: Concern about nfs4_label_alloc doing higher order 
-allocations (more than 4096).
-Patch 10/13: Investigate removing ifdefs from server code and making 
-sure that nfs_server_capable and other functions handle it being 
-configured off.
-Patch 13/13: Similar comments about removing ifdefs if possible and 
-hiding it away in other areas. Find out why security_inode_setsecctx may 
-fail and see if it can in its usecase here. Remove BUGONs and cleanup 
-whitespace.
-
-
-+ Discuss current feedback from Trond Myklebust
-
-Trond commented about changing the definition of encode_getfattr. He 
-would rather instead of modifying getfattr we mimic 
-encode/decode_fsinfo. We should look at that and determine what to do.
-
-+ Discuss implementing remaining features from NFSv4.2 specification
-
-Attribute change notification
-RPCSECGSSv3?
-
-+ Discuss viability of future every other week meetings
+--b.
