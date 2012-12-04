@@ -1,29 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:54278 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1751285Ab2LTQkM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Dec 2012 11:40:12 -0500
+Received: from mx2.netapp.com ([216.240.18.37]:47252 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751347Ab2LDQEt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Dec 2012 11:04:49 -0500
+Received: from vmwexceht04-prd.hq.netapp.com (vmwexceht04-prd.hq.netapp.com [10.106.77.34])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id qB4G4mZo016249
+	for <linux-nfs@vger.kernel.org>; Tue, 4 Dec 2012 08:04:48 -0800 (PST)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] SUNRPC: new keyring key_type for gss context
+ destruction at kdestroy
+Date: Tue, 4 Dec 2012 16:04:47 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90B335C07@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1354560315-2393-1-git-send-email-andros@netapp.com>
+	 <1354560315-2393-2-git-send-email-andros@netapp.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B334027@SACEXCMBX04-PRD.hq.netapp.com>
+	 <7851A663D3BF5E41B9E166C2C7A42145104F61E8@SACEXCMBX02-PRD.hq.netapp.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B33595E@SACEXCMBX04-PRD.hq.netapp.com>
+	 <7851A663D3BF5E41B9E166C2C7A42145104F6C13@SACEXCMBX02-PRD.hq.netapp.com>
+In-Reply-To: <7851A663D3BF5E41B9E166C2C7A42145104F6C13@SACEXCMBX02-PRD.hq.netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Date: Thu, 20 Dec 2012 11:40:10 -0500
-From: David Quigley <dpquigl@davequigley.com>
-To: Steve Dickson <steved@redhat.com>
-Cc: Trond Myklebust <trond.myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 00/13] NFSv4: Label NFS Patches
-In-Reply-To: <1355758991-30049-1-git-send-email-steved@redhat.com>
-References: <1355758991-30049-1-git-send-email-steved@redhat.com>
-Message-ID: <5fdb88495f9dad9720a7f349a84362d9@countercultured.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks for the repost Steve (I just noticed it today). I've been having 
-horrible problems with my mail provider and git-send-email so I 
-appreciate you sending these out. Did you add your patch in here that 
-fixes the compiler warnings?
-
-Dave
-
-P.S I'll be posting the meeting details for tonight in a bit.
+T24gVHVlLCAyMDEyLTEyLTA0IGF0IDE1OjU4ICswMDAwLCBBZGFtc29uLCBBbmR5IHdyb3RlOg0K
+PiBPbiBEZWMgNCwgMjAxMiwgYXQgOTo1NiBBTSwgIk15a2xlYnVzdCwgVHJvbmQiIDxUcm9uZC5N
+eWtsZWJ1c3RAbmV0YXBwLmNvbT4NCj4gIHdyb3RlOg0KPiANCj4gPiBPbiBNb24sIDIwMTItMTIt
+MDMgYXQgMjI6MzkgKzAwMDAsIEFkYW1zb24sIEFuZHkgd3JvdGU6DQo+ID4+IE9uIERlYyAzLCAy
+MDEyLCBhdCA0OjA2IFBNLCAiTXlrbGVidXN0LCBUcm9uZCIgPFRyb25kLk15a2xlYnVzdEBuZXRh
+cHAuY29tPg0KPiA+PiB3cm90ZToNCj4gPiANCj4gPj4+IEl0IHNlZW1zIHRvIG1lIHRoYXQgdGhp
+cyBjb2RlIGFsbG93cyBtZSB0byBraWxsIGFueW9uZSdzIHJwY3NlY19nc3MNCj4gPj4+IHNlc3Np
+b25zIGJ5IGNyZWF0aW5nIGEga2V5IHdpdGggdGhlaXIgdWlkLCBhbmQgdGhlbiBkZXN0cm95aW5n
+IGl0Lg0KPiA+PiANCj4gPj4gWWVzIC0ganVzdCBwcm9vZiBvZiBjb25jZXB0IGNvZGUuIFRoZXJl
+IGlzIGEgbG90IHRvIGNvbnNpZGVyLg0KPiA+PiANCj4gPj4+IA0KPiA+Pj4gT25lIHNvbHV0aW9u
+IGlzIHRvIHJlcGxhY2UgdXNlcl9pbnN0YW50aWF0ZSgpIHdpdGggc29tZXRoaW5nIHRoYXQgc2V0
+cw0KPiA+Pj4gdGhlIHBheWxvYWQgdG8gYSB2YWx1ZSBkZXRlcm1pbmVkIGJ5IHRoZSBrZXJuZWwg
+aXRzZWxmLiBXZSdkIGRlZmluaXRlbHkNCj4gPj4+IHdhbnQgdG8gaW5jbHVkZSB0aGUgdWlkLCBi
+dXQgcGVyaGFwcyBhbHNvIGFkZCBhIGNvb2tpZSB0aGF0IGlzIHVuaXF1ZSB0bw0KPiA+Pj4gdGhp
+cyBrZXkgKHVzaW5nIHRoZSBpZHIvaWRhIHN0dWZmIGZyb20gaW5jbHVkZS9saW51eC9pZHIuaCA/
+KSwgYW5kIHRoYXQNCj4gPj4+IGNhbiBiZSB1c2VkIHRvIGRpc3Rpbmd1aXNoIGl0IGZyb20ga2V5
+cyBnZW5lcmF0ZWQgZnJvbSBvdGhlciBwcm9jZXNzZXMuDQo+ID4+PiBJZiB3ZSB3ZXJlIHRvIHVz
+ZSB0aGUgc2FtZSBrZXkgdG8gbGFiZWwgdGhlIGF1dGhfZ3NzIGNyZWRzLCB0aGVuIHdlDQo+ID4+
+PiBjb3VsZCBoYXZlIHVzZXJfZ3NzX2Rlc3Ryb3koKSBraWxsIF9vbmx5XyB0aGUgYXV0aF9nc3Mg
+Y3JlZHMgdGhhdCBpdA0KPiA+Pj4gc3Bhd25lZC4NCj4gPj4gDQo+ID4+IFllcywga2lsbGluZyBv
+bmx5IHRoZSBhdXRoIGl0IHNwYXduZWQgaXMgaW5kZWVkIHdoYXQgd2Ugd2FudC4NCj4gPj4gDQo+
+ID4+PiANCj4gPj4+IFVsdGltYXRlbHksIHRob3VnaCwgSSB0aGluayB3ZSBtaWdodCB3YW50IHRv
+IGxldCB0aGUgdXNlciBzZXQgYXQgbGVhc3QNCj4gPj4+IF9wYXJ0XyBvZiB0aGUgcGF5bG9hZCB0
+byBzb21ldGhpbmcgdGhhdCBtaWdodCBiZSB1c2VmdWwgdG8gZ3NzZCB3aGVuIGl0DQo+ID4+PiBn
+b2VzIGxvb2tpbmcgZm9yIGNyZWRlbnRpYWxzLiBTaW5jZSB0aGUgbmZzbG9naW4gYW5kIGdzc2Qg
+d2lsbCBiZQ0KPiA+Pj4gc2hpcHBlZCBhcyBwYXJ0IG9mIHRoZSBuZnMtdXRpbHMgcGFja2FnZSwg
+aXQgd291bGQgYmUgbmljZSB0byBhbGxvdyB0aGVtDQo+ID4+PiB0byB1c2UgdGhlIGdzcy1jdHgg
+a2V5IGluIG9yZGVyIHRvIGNvbW11bmljYXRlLiBJbnRlcmVzdGluZyBpbmZvcm1hdGlvbg0KPiA+
+Pj4gbWlnaHQgaW5jbHVkZSB0aGUgS1JCNUNDTkFNRS4NCj4gPj4gDQo+ID4+IFRoYW5rcyBmb3Ig
+dGhlIGdvb2Qgc3VnZ2VzdGlvbnMuDQo+ID4gDQo+ID4gU28sIEkndmUgZ290IGEgcXVlc3Rpb246
+IENhbiB3ZSByZXBsYWNlIHNvbWUgb2YgdGhlIHN0dWZmIGluIHRoZSAiUkZDDQo+ID4gQXZvaWQg
+ZXhwaXJlZCBjcmVkZW50aWFsIGtleXMgZm9yIGJ1ZmZlcmVkIHdyaXRlcyIgcGF0Y2ggc2VyaWVz
+IHdpdGgNCj4gPiB0aGlzPw0KPiA+IA0KPiA+IE15IHRoaW5raW5nIGlzIHRoYXQgc2luY2UgdGhl
+IHVzZXJfZ3NzX2Rlc3Ryb3koKSBoYXMgdG8gc3luYyBhbGwgZmlsZXMNCj4gPiBhbmQgdGhlbiBp
+bnZhbGlkYXRlIHRoZSBycGNzZWNfZ3NzIGNyZWRzLCB3ZSdyZSBwcmV0dHkgbXVjaCBkb2luZyB0
+aGUNCj4gPiBzYW1lIHRoaW5nIGFzIGluIHRoZSBhYm92ZSBSRkMgcGF0Y2ggc2VyaWVzLg0KPiAN
+Cj4gSSB3YXMgdGhpbmtpbmcgdGhlIG90aGVyIHdheSAncm91bmQuIFdoZW4gZ3NzX3VzZXJfZGVz
+dHJveSBnZXRzIGNhbGxlZCBkdWUgdG8gbmZzbG9nb3V0IChrZGVzdHJveSkgaXQgdHJpZ2dlcnMg
+dGhlIFJQQyBhdm9pZCBleHBpcmF0aW9uIG9uIGJ1ZmZlcmVkIHdyaXRlcyBjb2RlIHdpdGggb25l
+IGRpZmZlcmVuY2U6IEl0IGRvZXMgbm90IGFsbG93IF9hbnlfIG5ldyB3cml0ZXMgb3IgX2FueV8g
+b3RoZXIgUlBDcyB0byB1c2UgYSBHU1MgY29udGV4dCAgd2l0aCBhIHZhbGlkIGxpZmV0aW1lIGJ1
+dCB0byBiZSBkZXN0cm95ZWQgZHVlIHRvIGxvZ291dC4gDQo+IA0KPiBTbyBpbnN0ZWFkIG9mIGdz
+c191c2VyX2Rlc3Ryb3kgbWFya2luZyBhIEdTUyBjb250ZXh0IGFzIG91dCBvZiBkYXRlLCBpdCB3
+aWxsIGJlIG1hcmtlZCBhcyB0byBiZSBPTkxZIHVzZWQgZm9yIGZsdXNoaW5nIHdyaXRlcyB0aGF0
+IHdlcmUgYnVmZmVyZWQgYmVmb3JlIHRoZSBuZnNsb2dvdXQgKGtkZXN0cm95KSBhbmQgYXNzb2Np
+YXRlZCBjb21taXRzLg0KPiANCj4gPiBJZiBuZnNsb2dpbiB3ZXJlIHRvIHRlbGwNCj4gPiB0aGUg
+Z3NzLWN0eCBrZXkgaG93IGxvbmcgdW50aWwgdGhlIGtlcmJlcm9zIHRndCBleHBpcmVzLA0KPiAN
+Cj4gV2UgYWxyZWFkeSBoYXZlIGFuIGV4cGlyZWQgdGltZSBmb3IgdGhlIFRHVCBpbiB0aGUgR1NT
+IGNvbnRleHQgZG93bmNhbGwuIFdoeSBkbyB3ZSBuZWVkIG5mc2xvZ2luIHRvIHJlcGVhdCB0aGUg
+aW5mb3JtYXRpb24/IElmIHlvdSB3YW50IHRvIGhhdmUgYSB3b3JrIHF1ZXVlIGpvYiB3YWtlIHVw
+IGJhc2VkIG9uIHRoZSBUR1QgbGlmZXRpbWUsIHRoZSBpbmZvIGlzIGFscmVhZHkgaW4gdGhlIEdT
+UyBjb250ZXh0Lg0KDQpGb3IgZGVhbGluZyB3aXRoIHRndCByZW5ld2Fscy4gVGhlIEdTUyBjb250
+ZXh0IG9ubHkgY29udGFpbnMgdGhlIGV4cGlyZQ0KdGltZSB0aGF0IHdhcyBrbm93biB3aGVuIHRo
+ZSBjb250ZXh0IHdhcyBjcmVhdGVkLiBJdCBkb2Vzbid0IGtub3csIGFuZA0KY2FuJ3QgdHJhY2sg
+d2hldGhlciBvciBub3QgdGhlIHVzZXIgcmVuZXdlZCB0aGUgdGd0Lg0KDQo+ID4gY291bGRuJ3Qg
+d2UNCj4gPiBoYXZlIGEgd29yayBxdWV1ZSBqb2Igd2FrZSB1cCBqdXN0IGJlZm9yZSB0aGUgdGd0
+IGlzIGFib3V0IHRvIGV4cGlyZSwNCj4gPiBhbmQgc2ltcGx5IGNhbGwgdXNlcl9nc3NfZGVzdHJv
+eSBieSByZXZva2luZyB0aGUgZ3NzLWN0eCBrZXk/DQo+IA0KPiBJIHRoaW5rIHVzaW5nICB0aGUg
+VEdUIGxpZmV0aW1lIHRoYXQgZXhpc3RlZCB0byBhdCB0aGUgY3JlYXRpb24gb2YgdGhlIEdTUyBj
+b250ZXh0IHRyaWdnZXIgdGhlIFJQQyBhdm9pZCBjcmVkIGV4cGlyYXRpb24gY29kZSB3b3JrcyBy
+ZWFsbHkgd2VsbC4gSSBkb24ndCBzZWUgYSBuZWVkIGZvciBhIHdvcmtxdWV1ZSB0aHJlYWQuDQo+
+IA0KPiA+IElmLCBvbiB0aGUgb3RoZXIgaGFuZCwgdGhlIHVzZXIgcmVuZXdzIHRoZSB0Z3QgdXNp
+bmcgbmZzbG9naW4sDQo+IA0KPiBZZXMgLSB0aGlzIGlzIGluIHBsYW4uIG5mc2xvZ2luIChlLmcu
+IFRHVCByZW5ld2FsKSB3aWxsIHVwZGF0ZSBhbiBleGlzdGluZyBnc3MtY3R4IGtleSB3aGljaCBp
+biB0dXJuIHdpbGwgdHJpZ2dlciBhbiB1cGNhbGwgb24gYXNzb2NpYXRlZCBHU1MgY29udGV4dHMg
+dG8gaGF2ZSB0aGVtIHJlbmV3ZWQuICBJIGRpZG4ndCB3YW50IHRvIGJvdGhlciB3aXRoIHRoaXMg
+dW50aWwgdGhlIGlkZWEgb2YgbmZzbG9naW4vbmZzbG9nb3V0IGhhZCBiZWVuIGZsb3duIDopDQo+
+IA0KPiA+IHRoZW4gd2UNCj4gPiBjb3VsZCB1cGRhdGUgdGhlIGdzcy1jdHgga2V5LCBhbmQgZGVm
+ZXIgdGhlIHdvcmsgcXVldWUgam9iIHVudGlsIHRoZSBuZXcNCj4gPiBleHBpcnQgdGltZS4NCj4g
+DQo+IFdpdGggbmZzbG9naW4gdXBkYXRpbmcgdGhlIEdTUyBjb250ZXh0LCB0aGUgc2FtZSB3aWxs
+IGhhcHBlbiB3aXRoIHRoZSBjdXJyZW50IFJQQyBhdm9pZCBleHBpcmVkIGNyZWQgY29kZS4NCj4g
+DQo+IC0tPkFuZHkNCj4gDQo+ID4gDQo+ID4gLS0gDQo+ID4gVHJvbmQgTXlrbGVidXN0DQo+ID4g
+TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQo+ID4gDQo+ID4gTmV0QXBwDQo+ID4gVHJvbmQu
+TXlrbGVidXN0QG5ldGFwcC5jb20NCj4gPiB3d3cubmV0YXBwLmNvbQ0KPiANCg0KLS0gDQpUcm9u
+ZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25k
+Lk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
