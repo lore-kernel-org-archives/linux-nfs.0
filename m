@@ -1,104 +1,132 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:33453 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753159Ab2LQPCm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Dec 2012 10:02:42 -0500
-From: Sasha Levin <sasha.levin@oracle.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc: Sasha Levin <sasha.levin@oracle.com>
-Subject: [PATCH 08/15] SUNRPC/cache: use new hashtable implementation
-Date: Mon, 17 Dec 2012 10:01:28 -0500
-Message-Id: <1355756497-15834-8-git-send-email-sasha.levin@oracle.com>
-In-Reply-To: <1355756497-15834-1-git-send-email-sasha.levin@oracle.com>
-References: <1355756497-15834-1-git-send-email-sasha.levin@oracle.com>
+Received: from fieldses.org ([174.143.236.118]:57633 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752725Ab2LDM6u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Dec 2012 07:58:50 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 4/5] svcrpc: track rpc data length separately from sk_tcplen
+Date: Tue,  4 Dec 2012 07:58:45 -0500
+Message-Id: <1354625926-18527-5-git-send-email-bfields@redhat.com>
+In-Reply-To: <1354625926-18527-1-git-send-email-bfields@redhat.com>
+References: <1354625926-18527-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Switch cache to use the new hashtable implementation. This reduces the amount
-of generic unrelated code in the cache implementation.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-This patch depends on d9b482c ("hashtable: introduce a small and naive
-hashtable") which was merged in v3.6.
+Keep a separate field, sk_datalen, that tracks only the data contained
+in a fragment, not including the fragment header.
 
-Tested-by: J. Bruce Fields <bfields@fieldses.org>
-Signed-off-by: Sasha Levin <sasha.levin@oracle.com>
+For now, this is always just max(0, sk_tcplen - 4), but after we allow
+multiple fragments sk_datalen will accumulate the total rpc data size
+while sk_tcplen only tracks progress receiving the current fragment.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- net/sunrpc/cache.c | 18 +++++++-----------
- 1 file changed, 7 insertions(+), 11 deletions(-)
+ include/linux/sunrpc/svcsock.h |   11 +++++++++--
+ net/sunrpc/svcsock.c           |   19 ++++++++++++-------
+ 2 files changed, 21 insertions(+), 9 deletions(-)
 
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 9afa439..d4539b6 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -28,6 +28,7 @@
- #include <linux/workqueue.h>
- #include <linux/mutex.h>
- #include <linux/pagemap.h>
-+#include <linux/hashtable.h>
- #include <asm/ioctls.h>
- #include <linux/sunrpc/types.h>
- #include <linux/sunrpc/cache.h>
-@@ -524,19 +525,18 @@ EXPORT_SYMBOL_GPL(cache_purge);
-  * it to be revisited when cache info is available
-  */
+diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+index 613cf42..62fd1b7 100644
+--- a/include/linux/sunrpc/svcsock.h
++++ b/include/linux/sunrpc/svcsock.h
+@@ -26,8 +26,15 @@ struct svc_sock {
+ 	void			(*sk_owspace)(struct sock *);
  
--#define	DFR_HASHSIZE	(PAGE_SIZE/sizeof(struct list_head))
--#define	DFR_HASH(item)	((((long)item)>>4 ^ (((long)item)>>13)) % DFR_HASHSIZE)
-+#define	DFR_HASH_BITS	9
+ 	/* private TCP part */
+-	__be32			sk_reclen;	/* length of record */
+-	u32			sk_tcplen;	/* current read length */
++	/* On-the-wire fragment header: */
++	__be32			sk_reclen;
++	/* As we receive a record, this includes the length received so
++	 * far (including the fragment header): */
++	u32			sk_tcplen;
++	/* Total length of the data (not including fragment headers)
++	 * received so far in the fragments making up this rpc: */
++	u32			sk_datalen;
++
+ 	struct page *		sk_pages[RPCSVC_MAXPAGES];	/* received data */
+ };
  
- #define	DFR_MAX	300	/* ??? */
- 
- static DEFINE_SPINLOCK(cache_defer_lock);
- static LIST_HEAD(cache_defer_list);
--static struct hlist_head cache_defer_hash[DFR_HASHSIZE];
-+static DEFINE_HASHTABLE(cache_defer_hash, DFR_HASH_BITS);
- static int cache_defer_cnt;
- 
- static void __unhash_deferred_req(struct cache_deferred_req *dreq)
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 1db42b1..2b09e23 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -874,9 +874,9 @@ static unsigned int svc_tcp_restore_pages(struct svc_sock *svsk, struct svc_rqst
  {
--	hlist_del_init(&dreq->hash);
-+	hash_del(&dreq->hash);
- 	if (!list_empty(&dreq->recent)) {
- 		list_del_init(&dreq->recent);
- 		cache_defer_cnt--;
-@@ -545,10 +545,7 @@ static void __unhash_deferred_req(struct cache_deferred_req *dreq)
+ 	unsigned int i, len, npages;
  
- static void __hash_deferred_req(struct cache_deferred_req *dreq, struct cache_head *item)
+-	if (svsk->sk_tcplen <= sizeof(rpc_fraghdr))
++	if (svsk->sk_datalen == 0)
+ 		return 0;
+-	len = svsk->sk_tcplen - sizeof(rpc_fraghdr);
++	len = svsk->sk_datalen;
+ 	npages = (len + PAGE_SIZE - 1) >> PAGE_SHIFT;
+ 	for (i = 0; i < npages; i++) {
+ 		if (rqstp->rq_pages[i] != NULL)
+@@ -893,9 +893,9 @@ static void svc_tcp_save_pages(struct svc_sock *svsk, struct svc_rqst *rqstp)
  {
--	int hash = DFR_HASH(item);
--
--	INIT_LIST_HEAD(&dreq->recent);
--	hlist_add_head(&dreq->hash, &cache_defer_hash[hash]);
-+	hash_add(cache_defer_hash, &dreq->hash, (unsigned long)item);
+ 	unsigned int i, len, npages;
+ 
+-	if (svsk->sk_tcplen <= sizeof(rpc_fraghdr))
++	if (svsk->sk_datalen == 0)
+ 		return;
+-	len = svsk->sk_tcplen - sizeof(rpc_fraghdr);
++	len = svsk->sk_datalen;
+ 	npages = (len + PAGE_SIZE - 1) >> PAGE_SHIFT;
+ 	for (i = 0; i < npages; i++) {
+ 		svsk->sk_pages[i] = rqstp->rq_pages[i];
+@@ -907,9 +907,9 @@ static void svc_tcp_clear_pages(struct svc_sock *svsk)
+ {
+ 	unsigned int i, len, npages;
+ 
+-	if (svsk->sk_tcplen <= sizeof(rpc_fraghdr))
++	if (svsk->sk_datalen == 0)
+ 		goto out;
+-	len = svsk->sk_tcplen - sizeof(rpc_fraghdr);
++	len = svsk->sk_datalen;
+ 	npages = (len + PAGE_SIZE - 1) >> PAGE_SHIFT;
+ 	for (i = 0; i < npages; i++) {
+ 		BUG_ON(svsk->sk_pages[i] == NULL);
+@@ -918,6 +918,7 @@ static void svc_tcp_clear_pages(struct svc_sock *svsk)
+ 	}
+ out:
+ 	svsk->sk_tcplen = 0;
++	svsk->sk_datalen = 0;
  }
  
- static void setup_deferral(struct cache_deferred_req *dreq,
-@@ -600,7 +597,7 @@ static void cache_wait_req(struct cache_req *req, struct cache_head *item)
- 		 * to clean up
- 		 */
- 		spin_lock(&cache_defer_lock);
--		if (!hlist_unhashed(&sleeper.handle.hash)) {
-+		if (hash_hashed(&sleeper.handle.hash)) {
- 			__unhash_deferred_req(&sleeper.handle);
- 			spin_unlock(&cache_defer_lock);
- 		} else {
-@@ -671,12 +668,11 @@ static void cache_revisit_request(struct cache_head *item)
- 	struct cache_deferred_req *dreq;
- 	struct list_head pending;
- 	struct hlist_node *lp, *tmp;
--	int hash = DFR_HASH(item);
+ /*
+@@ -1066,8 +1067,10 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
  
- 	INIT_LIST_HEAD(&pending);
- 	spin_lock(&cache_defer_lock);
+ 	/* Now receive data */
+ 	len = svc_partial_recvfrom(rqstp, vec, pnum, want, base);
+-	if (len >= 0)
++	if (len >= 0) {
+ 		svsk->sk_tcplen += len;
++		svsk->sk_datalen += len;
++	}
+ 	if (len != want) {
+ 		svc_tcp_save_pages(svsk, rqstp);
+ 		if (len < 0 && len != -EAGAIN)
+@@ -1100,6 +1103,7 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 	/* Reset TCP read info */
+ 	svsk->sk_reclen = 0;
+ 	svsk->sk_tcplen = 0;
++	svsk->sk_datalen = 0;
+ 	/* If we have more data, signal svc_xprt_enqueue() to try again */
+ 	if (svc_recv_available(svsk) > sizeof(rpc_fraghdr))
+ 		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+@@ -1296,6 +1300,7 @@ static void svc_tcp_init(struct svc_sock *svsk, struct svc_serv *serv)
  
--	hlist_for_each_entry_safe(dreq, lp, tmp, &cache_defer_hash[hash], hash)
-+	hash_for_each_possible_safe(cache_defer_hash, dreq, lp, tmp, hash, (unsigned long)item)
- 		if (dreq->item == item) {
- 			__unhash_deferred_req(dreq);
- 			list_add(&dreq->recent, &pending);
+ 		svsk->sk_reclen = 0;
+ 		svsk->sk_tcplen = 0;
++		svsk->sk_datalen = 0;
+ 		memset(&svsk->sk_pages[0], 0, sizeof(svsk->sk_pages));
+ 
+ 		tcp_sk(sk)->nonagle |= TCP_NAGLE_OFF;
 -- 
-1.8.0
+1.7.9.5
 
