@@ -1,46 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mercury.cora.nwra.com ([4.28.99.165]:46072 "EHLO
-	mail.cora.nwra.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751416Ab2LTVwp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Dec 2012 16:52:45 -0500
-Message-ID: <50D388A9.9060300@cora.nwra.com>
-Date: Thu, 20 Dec 2012 14:52:41 -0700
-From: Orion Poplawski <orion@cora.nwra.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:36162 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753895Ab2LDNt5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Dec 2012 08:49:57 -0500
+Subject: [PATCH 5/6] nfsd: pass net to nfsd_set_nrthreads()
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Tue, 04 Dec 2012 16:50:27 +0300
+Message-ID: <20121204135027.24504.79673.stgit@localhost.localdomain>
+In-Reply-To: <20121204134920.24504.95261.stgit@localhost.localdomain>
+References: <20121204134920.24504.95261.stgit@localhost.localdomain>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: umount(,MNT_DETACH) for nfsv4 hangs when using sec=krb5 and network
- is down
-References: <loom.20121219T214634-616@post.gmane.org>   <4FA345DA4F4AE44899BD2B03EEEC2FA91196AE42@SACEXCMBX04-PRD.hq.netapp.com>   <50D236A4.6060906@cora.nwra.com>  <4FA345DA4F4AE44899BD2B03EEEC2FA91196C146@SACEXCMBX04-PRD.hq.netapp.com>  <50D3758D.9060808@cora.nwra.com> <4FA345DA4F4AE44899BD2B03EEEC2FA91196FF19@SACEXCMBX04-PRD.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91196FF19@SACEXCMBX04-PRD.hq.netapp.com>
-Content-Type: text/plain; charset=UTF-7
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 12/20/2012 01:47 PM, Myklebust, Trond wrote:
-> On Thu, 2012-12-20 at 13:31 -0700, Orion Poplawski wrote:
->> On 12/19/2012 03:19 PM, Myklebust, Trond wrote:
->>>
->>> Commit eb96d5c97b0825d542e9c4ba5e0a22b519355166 (SUNRPC handle
->>> EKEYEXPIRED in call_refreshresult), which will be in 3.8-rc1 when Linus
->>> releases it, may help.
->>>
->>
->> FWIW - I cherry picked that into the latest Fedora rawhide kernel but no
->> effect.  Sounds like a nice patch though, the current hang forever behavior
->> doesn't seem the trigger the needed "ah, need a new ticket" response.
->>
-> 
-> So does simply killing the rpc.gssd process help?
-> 
+Precursor patch. Hard-coded "init_net" will be replaced by proper one in
+future.
 
-Yes, if automount is already stopped (these are automounted directories).  If
-automount is running, it still seems to hang.  I think I'm going to need to
-spend some time talking to Ian.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfsd/nfsctl.c |    3 ++-
+ fs/nfsd/nfsd.h   |    2 +-
+ fs/nfsd/nfssvc.c |    3 +--
+ 3 files changed, 4 insertions(+), 4 deletions(-)
 
--- 
-Orion Poplawski
-Technical Manager                     303-415-9701 x222
-NWRA, Boulder Office                  FAX: 303-415-9702
-3380 Mitchell Lane                       orion@nwra.com
-Boulder, CO 80301                   http://www.nwra.com
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 68e229c..58f0ae4 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -447,6 +447,7 @@ static ssize_t write_pool_threads(struct file *file, char *buf, size_t size)
+ 	int len;
+ 	int npools;
+ 	int *nthreads;
++	struct net *net = &init_net;
+ 
+ 	mutex_lock(&nfsd_mutex);
+ 	npools = nfsd_nrpools();
+@@ -477,7 +478,7 @@ static ssize_t write_pool_threads(struct file *file, char *buf, size_t size)
+ 			if (nthreads[i] < 0)
+ 				goto out_free;
+ 		}
+-		rv = nfsd_set_nrthreads(i, nthreads);
++		rv = nfsd_set_nrthreads(i, nthreads, net);
+ 		if (rv)
+ 			goto out_free;
+ 	}
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 8226c1b..18f9996 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -71,7 +71,7 @@ int		nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp);
+ int		nfsd_nrthreads(void);
+ int		nfsd_nrpools(void);
+ int		nfsd_get_nrthreads(int n, int *);
+-int		nfsd_set_nrthreads(int n, int *);
++int		nfsd_set_nrthreads(int n, int *, struct net *);
+ int		nfsd_pool_stats_open(struct inode *, struct file *);
+ int		nfsd_pool_stats_release(struct inode *, struct file *);
+ 
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index f199b53..b144658 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -382,12 +382,11 @@ int nfsd_get_nrthreads(int n, int *nthreads)
+ 	return 0;
+ }
+ 
+-int nfsd_set_nrthreads(int n, int *nthreads)
++int nfsd_set_nrthreads(int n, int *nthreads, struct net *net)
+ {
+ 	int i = 0;
+ 	int tot = 0;
+ 	int err = 0;
+-	struct net *net = &init_net;
+ 
+ 	WARN_ON(!mutex_is_locked(&nfsd_mutex));
+ 
+
