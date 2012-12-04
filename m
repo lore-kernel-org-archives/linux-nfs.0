@@ -1,152 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:47984 "EHLO
-	Dobby.4dicksons.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752443Ab2LCU3O (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Dec 2012 15:29:14 -0500
-From: Steve Dickson <steved@redhat.com>
-To: David Quigley <selinux@davequigley.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH] lnfs: Cleaned up compile warnings when NFS_V4_SECURITY_LABEL is not set.
-Date: Mon,  3 Dec 2012 15:24:14 -0500
-Message-Id: <1354566254-546-1-git-send-email-steved@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:57639 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751347Ab2LDNBz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Dec 2012 08:01:55 -0500
+Date: Tue, 4 Dec 2012 08:01:53 -0500
+To: linux-nfs@vger.kernel.org
+Cc: Frank Filz <ffilzlnx@us.ibm.com>
+Subject: [PATCH] nfsd4: lockt, release_lockowner should renew clients
+Message-ID: <20121204130153.GA18674@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch cleans up a number compile warnings when the
-label NFS code exists but is not configured to compile.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Fix nfsd4_lockt and release_lockowner to lookup the referenced client,
+so that we can renew the client, or correctly return "expired", as
+appropriate.
+
+Also share some code while we're here.
+
+Reported-by: Frank Filz <ffilzlnx@us.ibm.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/nfs4proc.c      | 36 ++++++++++++++++++++++++------------
- include/linux/nfs_fs.h |  4 ++--
- 2 files changed, 26 insertions(+), 14 deletions(-)
+ fs/nfsd/nfs4state.c |   41 +++++++++++++++++++++++------------------
+ 1 file changed, 23 insertions(+), 18 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 2c8dd55..02e3303 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -926,8 +926,8 @@ err_free_label:
- #ifdef CONFIG_NFS_V4_SECURITY_LABEL
- 	if (server->caps & NFS_CAP_SECURITY_LABEL)
- 		nfs4_label_free(p->f_label);
--#endif
- err_free_p:
-+#endif
- 	kfree(p);
- err:
- 	dput(parent);
-@@ -2438,9 +2438,10 @@ static struct inode *
- nfs4_atomic_open(struct inode *dir, struct nfs_open_context *ctx, int open_flags, struct iattr *attr)
- {
- 	struct nfs4_state *state;
--	struct nfs4_label l, *label = NULL;
--
-+	struct nfs4_label *label = NULL;
- #ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	struct nfs4_label l;
+I intend to commit this for 3.8.
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index eff7340..16e954c 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3132,6 +3132,18 @@ void nfsd4_cleanup_open_state(struct nfsd4_open *open, __be32 status)
+ 		free_generic_stateid(open->op_stp);
+ }
+ 
++static __be32 lookup_clientid(clientid_t *clid, bool session, struct nfsd_net *nn, struct nfs4_client **clp)
++{
++	struct nfs4_client *found;
 +
- 	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL)) {
- 		struct dentry *dentry = ctx->dentry;
- 		int error;
-@@ -3026,8 +3027,8 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
- #ifdef CONFIG_NFS_V4_SECURITY_LABEL
- 	if (server->caps & NFS_CAP_SECURITY_LABEL)
- 		nfs4_label_free(res.label);
--#endif
- out:
-+#endif
- 	nfs_free_fattr(res.fattr);
- 	return status;
- }
-@@ -3105,7 +3106,10 @@ static int
- nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
- 		 int flags)
- {
--	struct nfs4_label l, *ilabel = NULL;
-+	struct nfs4_label *ilabel = NULL;
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	struct nfs4_label l;
-+#endif
- 	struct nfs_open_context *ctx;
- 	struct nfs4_state *state;
- 	int status = 0;
-@@ -3298,8 +3302,8 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 		nfs4_label_free(res.old_label);
- 		nfs4_label_free(res.new_label);
- 	}
--#endif
- out:
-+#endif
- 	return status;
- }
- 
-@@ -3418,7 +3422,9 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
- 		nfs_fattr_init(data->res.fattr);
- 	}
- 	return data;
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
- out_free:
-+#endif
- 	kfree(data);
- 	return NULL;
- }
-@@ -3474,11 +3480,11 @@ static int nfs4_proc_symlink(struct inode *dir, struct dentry *dentry,
- 		struct page *page, unsigned int len, struct iattr *sattr)
- {
- 	struct nfs4_exception exception = { };
--	struct nfs4_label l, *label = NULL;
- 	int err;
--
--
-+	struct nfs4_label *label = NULL;
- #ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	struct nfs4_label l;
++	if (STALE_CLIENTID(clid, nn))
++		return nfserr_stale_clientid;
++	found = find_confirmed_client(clid, session, nn);
++	if (clp)
++		*clp = found;
++	return found ? nfs_ok : nfserr_expired;
++}
 +
- 	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL)) {
- 		err = security_dentry_init_security(dentry, sattr->ia_mode,
- 					&dentry->d_name, &l.label, &l.len);
-@@ -3522,7 +3528,10 @@ static int nfs4_proc_mkdir(struct inode *dir, struct dentry *dentry,
- 		struct iattr *sattr)
- {
- 	struct nfs4_exception exception = { };
--	struct nfs4_label l, *label = NULL;
-+	struct nfs4_label *label = NULL;
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	struct nfs4_label l;
-+#endif
- 	int err;
+ __be32
+ nfsd4_renew(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	    clientid_t *clid)
+@@ -3143,16 +3155,9 @@ nfsd4_renew(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	nfs4_lock_state();
+ 	dprintk("process_renew(%08x/%08x): starting\n", 
+ 			clid->cl_boot, clid->cl_id);
+-	status = nfserr_stale_clientid;
+-	if (STALE_CLIENTID(clid, nn))
+-		goto out;
+-	clp = find_confirmed_client(clid, cstate->minorversion, nn);
+-	status = nfserr_expired;
+-	if (clp == NULL) {
+-		/* We assume the client took too long to RENEW. */
+-		dprintk("nfsd4_renew: clientid not found!\n");
++	status = lookup_clientid(clid, cstate->minorversion, nn, &clp);
++	if (status)
+ 		goto out;
+-	}
+ 	status = nfserr_cb_path_down;
+ 	if (!list_empty(&clp->cl_delegations)
+ 			&& clp->cl_cb_state != NFSD4_CB_UP)
+@@ -4293,9 +4298,11 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
  
- #ifdef CONFIG_NFS_V4_SECURITY_LABEL
-@@ -3640,9 +3649,12 @@ out:
- static int nfs4_proc_mknod(struct inode *dir, struct dentry *dentry,
- 		struct iattr *sattr, dev_t rdev)
- {
--	struct nfs4_exception exception = { };
--	struct nfs4_label l, *label = NULL;
- 	int err;
-+	struct nfs4_exception exception = { };
-+	struct nfs4_label *label = NULL;
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	struct nfs4_label l;
-+#endif
+ 	nfs4_lock_state();
  
- #ifdef CONFIG_NFS_V4_SECURITY_LABEL
- 	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL)) {
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 2ef01f8..f4bb5c4 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -502,8 +502,8 @@ extern void nfs4_label_init(struct nfs4_label *);
- extern void nfs4_label_free(struct nfs4_label *);
- #else
- static inline struct nfs4_label *nfs4_label_alloc(gfp_t flags) { return NULL; }
--static inline void nfs4_label_init(struct nfs4_label *) {}
--static inline void nfs4_label_free(struct nfs4_label *label) {}
-+static inline void nfs4_label_init(void *label) {}
-+static inline void nfs4_label_free(void *label) {}
- #endif
+-	status = nfserr_stale_clientid;
+-	if (!nfsd4_has_session(cstate) && STALE_CLIENTID(&lockt->lt_clientid, nn))
+-		goto out;
++	if (!nfsd4_has_session(cstate)) {
++		status = lookup_clientid(&lockt->lt_clientid, false, nn, NULL);
++		if (status)
++			goto out;
++	}
  
- /*
+ 	if ((status = fh_verify(rqstp, &cstate->current_fh, S_IFREG, 0)))
+ 		goto out;
+@@ -4466,14 +4473,12 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 	dprintk("nfsd4_release_lockowner clientid: (%08x/%08x):\n",
+ 		clid->cl_boot, clid->cl_id);
+ 
+-	/* XXX check for lease expiration */
+-
+-	status = nfserr_stale_clientid;
+-	if (STALE_CLIENTID(clid, nn))
+-		return status;
+-
+ 	nfs4_lock_state();
+ 
++	status = lookup_clientid(clid, cstate->minorversion, nn, NULL);
++	if (status)
++		goto out;
++
+ 	status = nfserr_locks_held;
+ 	INIT_LIST_HEAD(&matches);
+ 
 -- 
-1.7.11.7
+1.7.9.5
 
