@@ -1,115 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:9866 "EHLO relay.sw.ru"
+Received: from mga09.intel.com ([134.134.136.24]:58349 "EHLO mga09.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751676Ab2LFLWf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Dec 2012 06:22:35 -0500
-Subject: [PATCH 1/8] nfsd: move per-net startup code to separated function
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Thu, 06 Dec 2012 14:23:09 +0300
-Message-ID: <20121206112309.29559.7502.stgit@localhost.localdomain>
-In-Reply-To: <20121206111903.29559.4853.stgit@localhost.localdomain>
-References: <20121206111903.29559.4853.stgit@localhost.localdomain>
+	id S1751436Ab2LDXEe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Dec 2012 18:04:34 -0500
+Date: Wed, 05 Dec 2012 07:03:58 +0800
+From: kbuild test robot <fengguang.wu@intel.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [nfs:devel 83/89] fs/nfsd/nfssvc.c:306:2: warning: format '%u'
+ expects argument of type 'unsigned int', but argument 3 has type 'long
+ unsigned int'
+Message-ID: <50be815e.k+1HrQIWo0JgAoaq%fengguang.wu@intel.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFSd resources are partially per-net and partially globally used.
-This patch splits resources init and shutdown and moves per-net code to
-separated functions.
-Generic and per-net init and shutdown are called sequentially for a while.
+tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git devel
+head:   5aa86f21b8166d55aa4cf8c30130743c686abc6d
+commit: d0aeb64e7d5478dbab86933278fdf3d0f1082b8c [83/89] NFSD: Make DRC memory limits work with dynamic slot allocation
+config: make ARCH=m68k allmodconfig
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+All warnings:
+
+fs/nfsd/nfssvc.c: In function 'set_max_drc':
+fs/nfsd/nfssvc.c:306:2: warning: format '%u' expects argument of type 'unsigned int', but argument 3 has type 'long unsigned int' [-Wformat]
+
+vim +306 fs/nfsd/nfssvc.c
+
+c3d06f9c Andy Adamson    2009-04-03  290   * NFSv4.1 server might want to use more memory for a DRC than a machine
+c3d06f9c Andy Adamson    2009-04-03  291   * with mutiple services.
+c3d06f9c Andy Adamson    2009-04-03  292   *
+c3d06f9c Andy Adamson    2009-04-03  293   * Impose a hard limit on the number of pages for the DRC which varies
+c3d06f9c Andy Adamson    2009-04-03  294   * according to the machines free pages. This is of course only a default.
+c3d06f9c Andy Adamson    2009-04-03  295   *
+c3d06f9c Andy Adamson    2009-04-03  296   * For now this is a #defined shift which could be under admin control
+c3d06f9c Andy Adamson    2009-04-03  297   * in the future.
+c3d06f9c Andy Adamson    2009-04-03  298   */
+c3d06f9c Andy Adamson    2009-04-03  299  static void set_max_drc(void)
+c3d06f9c Andy Adamson    2009-04-03  300  {
+6a14dd1a Andy Adamson    2009-07-27  301  	#define NFSD_DRC_SIZE_SHIFT	10
+0c193054 Andy Adamson    2009-07-27  302  	nfsd_drc_max_mem = (nr_free_buffer_pages()
+0c193054 Andy Adamson    2009-07-27  303  					>> NFSD_DRC_SIZE_SHIFT) * PAGE_SIZE;
+0c193054 Andy Adamson    2009-07-27  304  	nfsd_drc_mem_used = 0;
+4bd9b0f4 Andy Adamson    2009-06-24  305  	spin_lock_init(&nfsd_drc_lock);
+0c193054 Andy Adamson    2009-07-27 @306  	dprintk("%s nfsd_drc_max_mem %u \n", __func__, nfsd_drc_max_mem);
+c3d06f9c Andy Adamson    2009-04-03  307  }
+bedbdd8b Neil Brown      2008-06-10  308  
+87b0fc7d J. Bruce Fields 2012-01-30  309  static int nfsd_get_default_max_blksize(void)
+02a375f0 NeilBrown       2006-10-02  310  {
+87b0fc7d J. Bruce Fields 2012-01-30  311  	struct sysinfo i;
+87b0fc7d J. Bruce Fields 2012-01-30  312  	unsigned long long target;
+87b0fc7d J. Bruce Fields 2012-01-30  313  	unsigned long ret;
+bedbdd8b Neil Brown      2008-06-10  314  
+
 ---
- fs/nfsd/nfssvc.c |   48 +++++++++++++++++++++++++++++++++---------------
- 1 files changed, 33 insertions(+), 15 deletions(-)
-
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index b144658..038348b 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -203,6 +203,27 @@ static int nfsd_init_socks(struct net *net)
- 
- static bool nfsd_up = false;
- 
-+static int nfsd_startup_net(struct net *net)
-+{
-+	int ret;
-+
-+	ret = nfsd_init_socks(net);
-+	if (ret)
-+		return ret;
-+	ret = lockd_up(net);
-+	if (ret)
-+		return ret;
-+	ret = nfs4_state_start_net(net);
-+	if (ret)
-+		goto out_lockd;
-+
-+	return 0;
-+
-+out_lockd:
-+	lockd_down(net);
-+	return ret;
-+}
-+
- static int nfsd_startup(int nrservs, struct net *net)
- {
- 	int ret;
-@@ -217,31 +238,29 @@ static int nfsd_startup(int nrservs, struct net *net)
- 	ret = nfsd_racache_init(2*nrservs);
- 	if (ret)
- 		return ret;
--	ret = nfsd_init_socks(net);
--	if (ret)
--		goto out_racache;
--	ret = lockd_up(net);
--	if (ret)
--		goto out_racache;
- 	ret = nfs4_state_start();
- 	if (ret)
--		goto out_lockd;
--
--	ret = nfs4_state_start_net(net);
-+		goto out_racache;
-+	ret = nfsd_startup_net(net);
- 	if (ret)
--		goto out_net_state;
-+		goto out_net;
- 
- 	nfsd_up = true;
- 	return 0;
--out_net_state:
-+
-+out_net:
- 	nfs4_state_shutdown();
--out_lockd:
--	lockd_down(net);
- out_racache:
- 	nfsd_racache_shutdown();
- 	return ret;
- }
- 
-+static void nfsd_shutdown_net(struct net *net)
-+{
-+	nfs4_state_shutdown_net(net);
-+	lockd_down(net);
-+}
-+
- static void nfsd_shutdown(struct net *net)
- {
- 	/*
-@@ -252,9 +271,8 @@ static void nfsd_shutdown(struct net *net)
- 	 */
- 	if (!nfsd_up)
- 		return;
--	nfs4_state_shutdown_net(net);
-+	nfsd_shutdown_net(net);
- 	nfs4_state_shutdown();
--	lockd_down(net);
- 	nfsd_racache_shutdown();
- 	nfsd_up = false;
- }
-
+0-DAY kernel build testing backend         Open Source Technology Center
+Fengguang Wu, Yuanhan Liu                              Intel Corporation
