@@ -1,40 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.perfora.net ([74.208.4.194]:61769 "EHLO mout.perfora.net"
+Received: from mailhub.sw.ru ([195.214.232.25]:40786 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757465Ab2LHBYd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Dec 2012 20:24:33 -0500
-Date: Fri, 7 Dec 2012 20:24:27 -0500
-From: Jim Rees <rees@umich.edu>
-To: Marc Eshel <eshel@us.ibm.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: notify_deviceid_type4
-Message-ID: <20121208012427.GA11565@umich.edu>
-References: <OFF752FE87.86716271-ON88257AC7.002025E3-88257AC7.00206C04@LocalDomain>
- <OF13B342CA.3B3F39AC-ON88257ACD.0080BC4F-88257ACD.00815B0B@us.ibm.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA90B33D909@SACEXCMBX04-PRD.hq.netapp.com>
- <OF0F29D082.A262ED54-ON88257ACE.0000B379-88257ACE.0000F121@us.ibm.com>
+	id S1753310Ab2LDNtl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Dec 2012 08:49:41 -0500
+Subject: [PATCH 2/6] nfsd: pass net to nfsd_startup() and nfsd_shutdown()
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Tue, 04 Dec 2012 16:50:11 +0300
+Message-ID: <20121204135011.24504.43375.stgit@localhost.localdomain>
+In-Reply-To: <20121204134920.24504.95261.stgit@localhost.localdomain>
+References: <20121204134920.24504.95261.stgit@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <OF0F29D082.A262ED54-ON88257ACE.0000B379-88257ACE.0000F121@us.ibm.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Marc Eshel wrote:
+Precursor patch. Hard-coded "init_net" will be replaced by proper one in
+future.
 
-  commit 1013e2ea88384da2e7326f40047bbc92deb9e516
-  Author: Marc Eshel <eshel@almaden.ibm.com>
-  Date:   Fri Dec 7 15:58:07 2012 -0800
-  
-  Change definition of notify_deviceid_type4 to correspond to the NFSv4.1 
-  spec.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfsd/nfssvc.c |   15 ++++++---------
+ 1 files changed, 6 insertions(+), 9 deletions(-)
 
-Doesn't apply for me:
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 9fd8496..21cba3d 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -203,10 +203,9 @@ static int nfsd_init_socks(struct net *net)
+ 
+ static bool nfsd_up = false;
+ 
+-static int nfsd_startup(int nrservs)
++static int nfsd_startup(int nrservs, struct net *net)
+ {
+ 	int ret;
+-	struct net *net = &init_net;
+ 
+ 	if (nfsd_up)
+ 		return 0;
+@@ -237,16 +236,14 @@ static int nfsd_startup(int nrservs)
+ out_net_state:
+ 	nfs4_state_shutdown();
+ out_lockd:
+-	lockd_down(&init_net);
++	lockd_down(net);
+ out_racache:
+ 	nfsd_racache_shutdown();
+ 	return ret;
+ }
+ 
+-static void nfsd_shutdown(void)
++static void nfsd_shutdown(struct net *net)
+ {
+-	struct net *net = &init_net;
+-
+ 	/*
+ 	 * write_ports can create the server without actually starting
+ 	 * any threads--if we get shut down before any threads are
+@@ -264,7 +261,7 @@ static void nfsd_shutdown(void)
+ 
+ static void nfsd_last_thread(struct svc_serv *serv, struct net *net)
+ {
+-	nfsd_shutdown();
++	nfsd_shutdown(net);
+ 
+ 	svc_rpcb_cleanup(serv, net);
+ 
+@@ -468,7 +465,7 @@ nfsd_svc(int nrservs)
+ 
+ 	nfsd_up_before = nfsd_up;
+ 
+-	error = nfsd_startup(nrservs);
++	error = nfsd_startup(nrservs, net);
+ 	if (error)
+ 		goto out_destroy;
+ 	error = svc_set_num_threads(nfsd_serv, NULL, nrservs);
+@@ -481,7 +478,7 @@ nfsd_svc(int nrservs)
+ 	error = nfsd_serv->sv_nrthreads - 1;
+ out_shutdown:
+ 	if (error < 0 && !nfsd_up_before)
+-		nfsd_shutdown();
++		nfsd_shutdown(net);
+ out_destroy:
+ 	nfsd_destroy(net);		/* Release server */
+ out:
 
-% git am ~/Mail/tmp/89
-Applying: RE: notify_deviceid_type4
-fatal: corrupt patch at line 9
-Patch failed at 0001 RE: notify_deviceid_type4
-When you have resolved this problem run "git am --resolved".
-If you would prefer to skip this patch, instead run "git am --skip".
-To restore the original branch and stop patching run "git am --abort".
