@@ -1,41 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from tirith.ics.muni.cz ([147.251.4.36]:34018 "EHLO
-	tirith.ics.muni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753277Ab2LMNwH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Dec 2012 08:52:07 -0500
-Received: from anubis.ics.muni.cz (anubis.ics.muni.cz [147.251.17.147])
-	(authenticated user=xhejtman@META bits=0)
-	by tirith.ics.muni.cz (8.13.8/8.13.8/SuSE Linux 0.8) with ESMTP id qBDDZs6Q004187
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Thu, 13 Dec 2012 14:35:55 +0100
-Received: from xhejtman by anubis.ics.muni.cz with local (Exim 4.80)
-	(envelope-from <xhejtman@ics.muni.cz>)
-	id 1Tj8x8-00009f-60
-	for linux-nfs@vger.kernel.org; Thu, 13 Dec 2012 14:35:54 +0100
-Date: Thu, 13 Dec 2012 14:35:54 +0100
-From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
-To: linux-nfs@vger.kernel.org
-Subject: local_lock mount option
-Message-ID: <20121213133554.GO10897@ics.muni.cz>
+Received: from mx1.netapp.com ([216.240.18.38]:16440 "EHLO mx1.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752055Ab2LEPl4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Dec 2012 10:41:56 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Florian Manschwetus <florianmanschwetus@gmx.de>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: nfs4 acl problems using Nexenta-Communityedition Server and
+ debian testing clients
+Date: Wed, 5 Dec 2012 15:41:53 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90B337973@SACEXCMBX04-PRD.hq.netapp.com>
+References: <50BF1854.1020204@gmx.de>
+In-Reply-To: <50BF1854.1020204@gmx.de>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-2
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
-
-is this option supported and should work?
-
-It seems that in SLES and RHEL kernel, it is ignored:
-mount nfs.server:/ /storage -t nfs4 -o sec=krb5,local_lock=all
-
-cat /proc/mounts  | grep storage
-nfs.server:/ /storage nfs4
-rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=krb5,clientaddr=xxx.xxx.xxx.xxx,minorversion=0,local_lock=none,addr=xxx.xxx.xxx.xxx 0 0
-
-and it seems, that it actually tries to lock through NFS.
-
-Has this been fixed in later kernels or this is broken at all?
-
--- 
-Luká¹ Hejtmánek
+T24gV2VkLCAyMDEyLTEyLTA1IGF0IDEwOjQ4ICswMTAwLCBGbG9yaWFuIE1hbnNjaHdldHVzIHdy
+b3RlOg0KPiBJIHNldHVwIGEgbGl0dGxlIG5ldHdvcmsgdXNpbmcgYSBjZW50cmFsIHN0b3JhZ2Ug
+c2VydmVyIGJhc2VkIG9uIA0KPiBuZXhlbnRhLUNvbW11bml0eWVkaXRpb24gY2xpZW50cyB1c2Ug
+aG9tZXMgYW5kIHNldmVyYWwgc2hhcmVzIHZpYSBuZnM0Lg0KPiBBcyB3ZSBoYXZlIHNvbWUgc2hh
+cmVzIHVzZWQgZm9yIHdlYmRldmVsb3BtZW50IHB1cnBvc2VzIGl0IGlzIGRlc2lyZWQgdG8gDQo+
+IGhhdmUgYWNscyBpbmhlcml0ZWQgZm9yIHNwZWNpZmljIGdyb3VwcyBhY2Nlc3MgYW5kIHVzZXIg
+YWNjZXNzIA0KDQpJbmhlcml0ZWQgYWNscyBhcmUgaW5oZXJlbnRseSBpbmNvbXBhdGlibGUgd2l0
+aCBiYXNpYyBQT1NJWA0Kb3BlbihPX0NSRUFUKS4gVGhlIGxhdHRlciB0YWtlcyBhIG1vZGUgYml0
+IGFyZ3VtZW50IHRoYXQgd2lsbCBjbG9iYmVyDQp5b3VyIGluaGVyaXRlZCBhY2wuDQoNCj4gKHdl
+YnNlcnZlciB1c2VyKS4gSSBhbHNvIGhhdmUgdHJvdWJsZSB3aXRoIHN0aWNreS1iaXQgaW5oZXJp
+dGFuY2UsIHdoaWNoIA0KPiBpcyBuZWVkZWQgYXMgdGhlIGxpbnV4IGd1aSB0b29scyB1bmF3YXJl
+IG9mIG5mcy1hY2xzLiBBcmUgdGhlcmUgcGxhbnMgdG8gDQo+IGltcHJvdmUgc3VwcG9ydCBmb3Ig
+bmZzIGFjbHM/DQo+DQo+IE1heWJlIHNvbWVvbmUgaGVyZSBoYXZlIHN1Y2Nlc3NmdWxseSBhIHNv
+bGFyaXMgbmZzIHNlcnZlciBydW5uaW5nIHdpdGggDQo+IGxpbnV4IGNsaWVudHMgdXNpbmcgZXh0
+ZW5kZWQgYWNscywgd2l0aCBpbmhlcml0YW5jZSB3b3JraW5nIGFzIGV4cGVjdGVkPw0KPiANCj4g
+SXQgaXMgcmVhbGx5IGFubm95aW5nIGhhdmluZyB1c2VycyBub3QgYWxsb3dlZCB0byB2aWV3L2Vk
+aXQgZmlsZXMvZGlycyANCj4gdGhleSBjb3BpZWQganVzdCB0aGUgbW9tZW50Lg0KDQpUaGlzIGlz
+IG5vdCB0aGUgcmlnaHQgbGlzdCBmb3IgcmVxdWVzdGluZyBndWkgdG9vbCBjaGFuZ2VzLiBUaGUg
+cmlnaHQNCmFkZHJlc3Mgd291bGQgYmUgdGhlIEdOT01FLCBLREUgYW5kIFhGQ0UgcHJvamVjdCBt
+YWlsIGxpc3RzLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWlu
+dGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAu
+Y29tDQo=
