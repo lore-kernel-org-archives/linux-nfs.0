@@ -1,189 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:36472 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1750944Ab2LCVf1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Dec 2012 16:35:27 -0500
+Received: from mga14.intel.com ([143.182.124.37]:10386 "EHLO mga14.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751660Ab2LEIeJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Dec 2012 03:34:09 -0500
+Date: Wed, 05 Dec 2012 16:32:39 +0800
+From: kbuild test robot <fengguang.wu@intel.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [nfs:testing 53/84] fs/nfs/callback_proc.c:579:8: error: 'struct
+ nfs4_slot_table' has no member named 'target_max_slots'
+Message-ID: <50bf06a7.E74VS7UWGC6h0lke%fengguang.wu@intel.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Date: Mon, 03 Dec 2012 16:35:24 -0500
-From: David Quigley <dpquigl@davequigley.com>
-To: "Myklebust, Trond" <trond.myklebust@netapp.com>
-Cc: Steve Dickson <steved@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] lnfs: Cleaned up compile warnings when
- =?UTF-8?Q?NFS=5FV=34=5FSECURITY=5FLABEL=20is=20not=20set=2E?=
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90B334191@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1354566254-546-1-git-send-email-steved@redhat.com>
- <3e20ecd2416fc5a995ca152c8508f86c@countercultured.net>
- <4FA345DA4F4AE44899BD2B03EEEC2FA90B334191@SACEXCMBX04-PRD.hq.netapp.com>
-Message-ID: <b2b9b2c59fd53d0c0100d7097920f7f3@countercultured.net>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 12/03/2012 16:24, Myklebust, Trond wrote:
-> On Mon, 2012-12-03 at 16:18 -0500, David Quigley wrote:
->> On 12/03/2012 15:24, Steve Dickson wrote:
->> > This patch cleans up a number compile warnings when the
->> > label NFS code exists but is not configured to compile.
->> >
->> > Signed-off-by: Steve Dickson <steved@redhat.com>
->> > ---
->> >  fs/nfs/nfs4proc.c      | 36 ++++++++++++++++++++++++------------
->> >  include/linux/nfs_fs.h |  4 ++--
->> >  2 files changed, 26 insertions(+), 14 deletions(-)
->> >
->> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> > index 2c8dd55..02e3303 100644
->> > --- a/fs/nfs/nfs4proc.c
->> > +++ b/fs/nfs/nfs4proc.c
->> > @@ -926,8 +926,8 @@ err_free_label:
->> >  #ifdef CONFIG_NFS_V4_SECURITY_LABEL
->> >  	if (server->caps & NFS_CAP_SECURITY_LABEL)
->> >  		nfs4_label_free(p->f_label);
->> > -#endif
->> >  err_free_p:
->> > +#endif
->> >  	kfree(p);
->> >  err:
->> >  	dput(parent);
->> > @@ -2438,9 +2438,10 @@ static struct inode *
->> >  nfs4_atomic_open(struct inode *dir, struct nfs_open_context *ctx,
->> > int open_flags, struct iattr *attr)
->> >  {
->> >  	struct nfs4_state *state;
->> > -	struct nfs4_label l, *label = NULL;
->> > -
->> > +	struct nfs4_label *label = NULL;
->> >  #ifdef CONFIG_NFS_V4_SECURITY_LABEL
->> > +	struct nfs4_label l;
->> > +
->> >  	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL)) {
->> >  		struct dentry *dentry = ctx->dentry;
->> >  		int error;
->> > @@ -3026,8 +3027,8 @@ static int _nfs4_proc_access(struct inode
->> > *inode, struct nfs_access_entry *entry
->> >  #ifdef CONFIG_NFS_V4_SECURITY_LABEL
->> >  	if (server->caps & NFS_CAP_SECURITY_LABEL)
->> >  		nfs4_label_free(res.label);
->> > -#endif
->> >  out:
->> > +#endif
->> >  	nfs_free_fattr(res.fattr);
->> >  	return status;
->> >  }
->> > @@ -3105,7 +3106,10 @@ static int
->> >  nfs4_proc_create(struct inode *dir, struct dentry *dentry, struct
->> > iattr *sattr,
->> >  		 int flags)
->> >  {
->> > -	struct nfs4_label l, *ilabel = NULL;
->> > +	struct nfs4_label *ilabel = NULL;
->> > +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
->> > +	struct nfs4_label l;
->> > +#endif
->> >  	struct nfs_open_context *ctx;
->> >  	struct nfs4_state *state;
->> >  	int status = 0;
->> > @@ -3298,8 +3302,8 @@ static int _nfs4_proc_rename(struct inode
->> > *old_dir, struct qstr *old_name,
->> >  		nfs4_label_free(res.old_label);
->> >  		nfs4_label_free(res.new_label);
->> >  	}
->> > -#endif
->> >  out:
->> > +#endif
->> >  	return status;
->> >  }
->> >
->> > @@ -3418,7 +3422,9 @@ static struct nfs4_createdata
->> > *nfs4_alloc_createdata(struct inode *dir,
->> >  		nfs_fattr_init(data->res.fattr);
->> >  	}
->> >  	return data;
->> > +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
->> >  out_free:
->> > +#endif
->> >  	kfree(data);
->> >  	return NULL;
->> >  }
->> > @@ -3474,11 +3480,11 @@ static int nfs4_proc_symlink(struct inode
->> > *dir, struct dentry *dentry,
->> >  		struct page *page, unsigned int len, struct iattr *sattr)
->> >  {
->> >  	struct nfs4_exception exception = { };
->> > -	struct nfs4_label l, *label = NULL;
->> >  	int err;
->> > -
->> > -
->> > +	struct nfs4_label *label = NULL;
->> >  #ifdef CONFIG_NFS_V4_SECURITY_LABEL
->> > +	struct nfs4_label l;
->> > +
->> >  	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL)) {
->> >  		err = security_dentry_init_security(dentry, sattr->ia_mode,
->> >  					&dentry->d_name, &l.label, &l.len);
->> > @@ -3522,7 +3528,10 @@ static int nfs4_proc_mkdir(struct inode 
->> *dir,
->> > struct dentry *dentry,
->> >  		struct iattr *sattr)
->> >  {
->> >  	struct nfs4_exception exception = { };
->> > -	struct nfs4_label l, *label = NULL;
->> > +	struct nfs4_label *label = NULL;
->> > +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
->> > +	struct nfs4_label l;
->> > +#endif
->> >  	int err;
->> >
->> >  #ifdef CONFIG_NFS_V4_SECURITY_LABEL
->> > @@ -3640,9 +3649,12 @@ out:
->> >  static int nfs4_proc_mknod(struct inode *dir, struct dentry 
->> *dentry,
->> >  		struct iattr *sattr, dev_t rdev)
->> >  {
->> > -	struct nfs4_exception exception = { };
->> > -	struct nfs4_label l, *label = NULL;
->> >  	int err;
->> > +	struct nfs4_exception exception = { };
->> > +	struct nfs4_label *label = NULL;
->> > +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
->> > +	struct nfs4_label l;
->> > +#endif
->> >
->> >  #ifdef CONFIG_NFS_V4_SECURITY_LABEL
->> >  	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL)) {
->> > diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
->> > index 2ef01f8..f4bb5c4 100644
->> > --- a/include/linux/nfs_fs.h
->> > +++ b/include/linux/nfs_fs.h
->> > @@ -502,8 +502,8 @@ extern void nfs4_label_init(struct nfs4_label 
->> *);
->> >  extern void nfs4_label_free(struct nfs4_label *);
->> >  #else
->> >  static inline struct nfs4_label *nfs4_label_alloc(gfp_t flags) {
->> > return NULL; }
->> > -static inline void nfs4_label_init(struct nfs4_label *) {}
->> > -static inline void nfs4_label_free(struct nfs4_label *label) {}
->> > +static inline void nfs4_label_init(void *label) {}
->> > +static inline void nfs4_label_free(void *label) {}
->> >  #endif
->> >
->> >  /*
->>
->> Thanks for the patch. The question I have here is should I tag 
->> Steve's
->> patch on the end of the patch set or should I integrate it back into 
->> the
->> original patches?
->
-> It is up to you, however it would be nice to have the final patch 
-> series
-> be fully bisectible.
->
-> Cheers
->   Trond
+tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git testing
+head:   6a7055a331aaff115b0b81f62ef5767511dcfd72
+commit: ab388b1b587abb5001f30f7b0ec58e4eab082139 [53/84] NFSv4.1: Ensure that the client tracks the server target_highest_slotid
+config: make ARCH=x86_64 allmodconfig
 
-Is it not currently bisectible? Before I release I apply each patch one 
-by one and compile between them to make sure they build. Has anyone had 
-problems with it not bisecting properly?
+Note: the nfs/testing HEAD 6a7055a builds fine.
+      It only hurts bisectibility.
+
+All error/warnings:
+
+fs/nfs/callback_proc.c: In function 'nfs4_callback_recallslot':
+fs/nfs/callback_proc.c:579:8: error: 'struct nfs4_slot_table' has no member named 'target_max_slots'
+
+vim +579 fs/nfs/callback_proc.c
+
+c36fca52 Andy Adamson 2011-01-06  573  		goto out;
+bae0ac0e Andy Adamson 2010-01-21  574  
+bae0ac0e Andy Adamson 2010-01-21  575  	status = htonl(NFS4_OK);
+bae0ac0e Andy Adamson 2010-01-21  576  	if (args->crsa_target_max_slots == fc_tbl->max_slots)
+c36fca52 Andy Adamson 2011-01-06  577  		goto out;
+b9efa1b2 Andy Adamson 2010-01-20  578  
+b9efa1b2 Andy Adamson 2010-01-20 @579  	fc_tbl->target_max_slots = args->crsa_target_max_slots;
+c36fca52 Andy Adamson 2011-01-06  580  	nfs41_handle_recall_slot(cps->clp);
+b9efa1b2 Andy Adamson 2010-01-20  581  out:
+b9efa1b2 Andy Adamson 2010-01-20  582  	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
+
+---
+0-DAY kernel build testing backend         Open Source Technology Center
+Fengguang Wu, Yuanhan Liu                              Intel Corporation
