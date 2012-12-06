@@ -1,65 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:9768 "EHLO relay.sw.ru"
+Received: from fn.samba.org ([216.83.154.106]:32955 "EHLO mail.samba.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1423191Ab2LFLXL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Dec 2012 06:23:11 -0500
-Subject: [PATCH 8/8] nfsd: simplify service shutdown
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Thu, 06 Dec 2012 14:23:44 +0300
-Message-ID: <20121206112344.29559.87559.stgit@localhost.localdomain>
-In-Reply-To: <20121206111903.29559.4853.stgit@localhost.localdomain>
-References: <20121206111903.29559.4853.stgit@localhost.localdomain>
+	id S1755452Ab2LFUII (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Dec 2012 15:08:08 -0500
+Date: Thu, 6 Dec 2012 11:57:52 -0800
+From: Jeremy Allison <jra@samba.org>
+To: Alan Cox <alan@lxorguk.ukuu.org.uk>
+Cc: Pavel Shilovsky <piastry@etersoft.ru>, linux-cifs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        wine-devel@winehq.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/3] Add O_DENY* flags to fcntl and cifs
+Message-ID: <20121206195752.GA18585@samba2>
+Reply-To: Jeremy Allison <jra@samba.org>
+References: <1354818391-7968-1-git-send-email-piastry@etersoft.ru>
+ <20121206194949.7ab20d56@pyramind.ukuu.org.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121206194949.7ab20d56@pyramind.ukuu.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Function nfsd_shutdown is called from two places: nfsd_last_thread (when last
-kernel thread is exiting) and nfsd_svc (in case of kthreads starting error).
-When calling from nfsd_svc(), we can be sure that per-net resources are
-allocated, so we don't need to check per-net nfsd_net_up boolean flag.
-This allows us to remove nfsd_shutdown function at all and move check for
-per-net nfsd_net_up boolean flag to nfsd_last_thread.
+On Thu, Dec 06, 2012 at 07:49:49PM +0000, Alan Cox wrote:
+> On Thu,  6 Dec 2012 22:26:28 +0400
+> Pavel Shilovsky <piastry@etersoft.ru> wrote:
+> 
+> > Network filesystems CIFS, SMB2.0, SMB3.0 and NFSv4 have such flags - this change can benefit cifs and nfs modules. While this change is ok for network filesystems, itsn't not targeted for local filesystems due security problems (e.g. when a user process can deny root to delete a file).
+> 
+> If I have my root fs on NFS then the same applies does it not.
+> 
+> Your patches fail to describe the security semantics and what file rights
+> I must have to apply each option. How do I track down a lock user, what
+> tools are provided ? How do the new options interact with the security
+> layer?
+> 
+> I don't have a problem with the idea, but it needs a lot more clear
+> description of how it works so the model can be checked and if need be
+> things tweaked (eg needing write to denywrite etc)
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfsd/nfssvc.c |    9 ++-------
- 1 files changed, 2 insertions(+), 7 deletions(-)
+And this is where things get really ugly of course :-).
 
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 5bb4a33..2cfd9c6 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -281,7 +281,7 @@ static void nfsd_shutdown_net(struct net *net)
- 	nfsd_shutdown_generic();
- }
- 
--static void nfsd_shutdown(struct net *net)
-+static void nfsd_last_thread(struct svc_serv *serv, struct net *net)
- {
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
-@@ -294,11 +294,6 @@ static void nfsd_shutdown(struct net *net)
- 	if (!nn->nfsd_net_up)
- 		return;
- 	nfsd_shutdown_net(net);
--}
--
--static void nfsd_last_thread(struct svc_serv *serv, struct net *net)
--{
--	nfsd_shutdown(net);
- 
- 	svc_rpcb_cleanup(serv, net);
- 
-@@ -530,7 +525,7 @@ nfsd_svc(int nrservs, struct net *net)
- 	error = nn->nfsd_serv->sv_nrthreads - 1;
- out_shutdown:
- 	if (error < 0 && !nfsd_up_before)
--		nfsd_shutdown(net);
-+		nfsd_shutdown_net(net);
- out_destroy:
- 	nfsd_destroy(net);		/* Release server */
- out:
+For the CIFSFS client they're expecting to be able to
+just ship them to a Windows server, where they'll
+get the (insane) Windows semantics. These semantics
+are not what would be wanted on a local filesystem.
 
+So unless we just say "these things have Windows
+semantics" (where openers of files can lock out others
+under dubious circumstances) there'll be this horrible
+difference between (I'm assuming) the sane semantics that
+are defined for local filesystems and the insane ones
+that you get when you're connecting remotely.
+
+I don't know a good way to fix that, but I'm pretty
+sure you don't want the Windows semantics defined
+locally :-).
+
+Jeremy.
