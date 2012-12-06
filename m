@@ -1,89 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:41616 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753820Ab2LJJSj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Dec 2012 04:18:39 -0500
-Subject: [PATCH 3/7] nfsd: pass net to nfsd_startup() and nfsd_shutdown()
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Mon, 10 Dec 2012 12:19:14 +0300
-Message-ID: <20121210091914.8855.60002.stgit@localhost.localdomain>
-In-Reply-To: <20121210091832.8855.26672.stgit@localhost.localdomain>
-References: <20121210091832.8855.26672.stgit@localhost.localdomain>
+Received: from mail-oa0-f46.google.com ([209.85.219.46]:58299 "EHLO
+	mail-oa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932088Ab2LFOKJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Dec 2012 09:10:09 -0500
+Received: by mail-oa0-f46.google.com with SMTP id h16so6288155oag.19
+        for <linux-nfs@vger.kernel.org>; Thu, 06 Dec 2012 06:10:09 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90B33820F@SACEXCMBX04-PRD.hq.netapp.com>
+References: <50BF07C4.7060505@tonian.com> <4FA345DA4F4AE44899BD2B03EEEC2FA90B33820F@SACEXCMBX04-PRD.hq.netapp.com>
+From: Benny Halevy <bhalevy@tonian.com>
+Date: Thu, 6 Dec 2012 16:09:48 +0200
+Message-ID: <CAEMWVhvHQ_Hhp9zbYw9pzj8PGCRO9ap8dwitMTU=OY_9LKO+oA@mail.gmail.com>
+Subject: Re: pnfs wiki pages
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: NFS list <linux-nfs@vger.kernel.org>,
+        "Douglas O'Flaherty" <douglas@tonian.com>,
+        Ross Safko <ross@tonian.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Precursor patch. Hard-coded "init_net" will be replaced by proper one in
-future.
+On Thu, Dec 6, 2012 at 12:36 AM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+>> -----Original Message-----
+>> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+>> owner@vger.kernel.org] On Behalf Of Benny Halevy
+>> Sent: Wednesday, December 05, 2012 9:37 AM
+>> To: NFS list
+>> Cc: Douglas O'Flaherty; Ross Safko
+>> Subject: pnfs wiki pages
+>>
+>> The pages under http://wiki.linux-
+>> nfs.org/wiki/index.php/PNFS_prototype_design
+>> are terribly outdated.
+>>
+>> I'd like to move the obsolete stuff under "Historical Contents", leave what's
+>> current, and refresh some of the pages.
+>
+> Do we really need to document the "pNFS prototype" design at this point? :-)
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfsd/nfssvc.c |   15 ++++++---------
- 1 files changed, 6 insertions(+), 9 deletions(-)
+Good point.
 
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 9fd8496..21cba3d 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -203,10 +203,9 @@ static int nfsd_init_socks(struct net *net)
- 
- static bool nfsd_up = false;
- 
--static int nfsd_startup(int nrservs)
-+static int nfsd_startup(int nrservs, struct net *net)
- {
- 	int ret;
--	struct net *net = &init_net;
- 
- 	if (nfsd_up)
- 		return 0;
-@@ -237,16 +236,14 @@ static int nfsd_startup(int nrservs)
- out_net_state:
- 	nfs4_state_shutdown();
- out_lockd:
--	lockd_down(&init_net);
-+	lockd_down(net);
- out_racache:
- 	nfsd_racache_shutdown();
- 	return ret;
- }
- 
--static void nfsd_shutdown(void)
-+static void nfsd_shutdown(struct net *net)
- {
--	struct net *net = &init_net;
--
- 	/*
- 	 * write_ports can create the server without actually starting
- 	 * any threads--if we get shut down before any threads are
-@@ -264,7 +261,7 @@ static void nfsd_shutdown(void)
- 
- static void nfsd_last_thread(struct svc_serv *serv, struct net *net)
- {
--	nfsd_shutdown();
-+	nfsd_shutdown(net);
- 
- 	svc_rpcb_cleanup(serv, net);
- 
-@@ -468,7 +465,7 @@ nfsd_svc(int nrservs)
- 
- 	nfsd_up_before = nfsd_up;
- 
--	error = nfsd_startup(nrservs);
-+	error = nfsd_startup(nrservs, net);
- 	if (error)
- 		goto out_destroy;
- 	error = svc_set_num_threads(nfsd_serv, NULL, nrservs);
-@@ -481,7 +478,7 @@ nfsd_svc(int nrservs)
- 	error = nfsd_serv->sv_nrthreads - 1;
- out_shutdown:
- 	if (error < 0 && !nfsd_up_before)
--		nfsd_shutdown();
-+		nfsd_shutdown(net);
- out_destroy:
- 	nfsd_destroy(net);		/* Release server */
- out:
+> Documentation on the _final_ pNFS code design on the other hand will be very welcome (and, yes, I do include the server design as part of the "final" label).
 
+I added http://wiki.linux-nfs.org/wiki/index.php/PNFS_Server_Filesystem_API_Design
+
+We probably want to have something similar for the layout driver API,
+as well as more detailed documentation under
+Documentation/filesystems/nfs,
+as well as some internal design topics like locking, memory
+allocation, page operations etc.
+
+Benny
+
+>
+>> Any objections?
+>
+> None whatsoever. By all means do please proceed...
+>
+> Thanks!
+>    Trond
