@@ -1,45 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:54108 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:9866 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754789Ab2LLQcp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Dec 2012 11:32:45 -0500
-Message-ID: <50C8A55C.7040502@RedHat.com>
-Date: Wed, 12 Dec 2012 10:40:12 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1751676Ab2LFLWf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Dec 2012 06:22:35 -0500
+Subject: [PATCH 1/8] nfsd: move per-net startup code to separated function
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Thu, 06 Dec 2012 14:23:09 +0300
+Message-ID: <20121206112309.29559.7502.stgit@localhost.localdomain>
+In-Reply-To: <20121206111903.29559.4853.stgit@localhost.localdomain>
+References: <20121206111903.29559.4853.stgit@localhost.localdomain>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/5] mountd clean-ups for nfs-utils 1.2.8
-References: <20121203171549.1390.64007.stgit@lebasque.1015granger.net>
-In-Reply-To: <20121203171549.1390.64007.stgit@lebasque.1015granger.net>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+NFSd resources are partially per-net and partially globally used.
+This patch splits resources init and shutdown and moves per-net code to
+separated functions.
+Generic and per-net init and shutdown are called sequentially for a while.
 
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfsd/nfssvc.c |   48 +++++++++++++++++++++++++++++++++---------------
+ 1 files changed, 33 insertions(+), 15 deletions(-)
 
-On 03/12/12 12:17, Chuck Lever wrote:
-> Hi-
-> 
-> Here are four clean-up patches I've had for a while, and one patch
-> that augments junction resolution debugging messages.
-> 
-> ---
-> 
-> Chuck Lever (5):
->       mountd: Report the absolute path used to load the junction plug-in
->       libexport.a: xtab.c no longer needs #include xmalloc.h
->       libexport.a: rmtab.c no longer needs #include xmalloc.h
->       mountd: cache.c no longer needs #include xmalloc.h
->       mountd: auth.c no longer needs #include xmalloc.h
-> 
-> 
->  support/export/rmtab.c |    6 +++---
->  support/export/xtab.c  |    2 +-
->  utils/mountd/auth.c    |    3 ++-
->  utils/mountd/cache.c   |    8 +++++++-
->  4 files changed, 13 insertions(+), 6 deletions(-)
-> 
-All 5 Committed.... 
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index b144658..038348b 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -203,6 +203,27 @@ static int nfsd_init_socks(struct net *net)
+ 
+ static bool nfsd_up = false;
+ 
++static int nfsd_startup_net(struct net *net)
++{
++	int ret;
++
++	ret = nfsd_init_socks(net);
++	if (ret)
++		return ret;
++	ret = lockd_up(net);
++	if (ret)
++		return ret;
++	ret = nfs4_state_start_net(net);
++	if (ret)
++		goto out_lockd;
++
++	return 0;
++
++out_lockd:
++	lockd_down(net);
++	return ret;
++}
++
+ static int nfsd_startup(int nrservs, struct net *net)
+ {
+ 	int ret;
+@@ -217,31 +238,29 @@ static int nfsd_startup(int nrservs, struct net *net)
+ 	ret = nfsd_racache_init(2*nrservs);
+ 	if (ret)
+ 		return ret;
+-	ret = nfsd_init_socks(net);
+-	if (ret)
+-		goto out_racache;
+-	ret = lockd_up(net);
+-	if (ret)
+-		goto out_racache;
+ 	ret = nfs4_state_start();
+ 	if (ret)
+-		goto out_lockd;
+-
+-	ret = nfs4_state_start_net(net);
++		goto out_racache;
++	ret = nfsd_startup_net(net);
+ 	if (ret)
+-		goto out_net_state;
++		goto out_net;
+ 
+ 	nfsd_up = true;
+ 	return 0;
+-out_net_state:
++
++out_net:
+ 	nfs4_state_shutdown();
+-out_lockd:
+-	lockd_down(net);
+ out_racache:
+ 	nfsd_racache_shutdown();
+ 	return ret;
+ }
+ 
++static void nfsd_shutdown_net(struct net *net)
++{
++	nfs4_state_shutdown_net(net);
++	lockd_down(net);
++}
++
+ static void nfsd_shutdown(struct net *net)
+ {
+ 	/*
+@@ -252,9 +271,8 @@ static void nfsd_shutdown(struct net *net)
+ 	 */
+ 	if (!nfsd_up)
+ 		return;
+-	nfs4_state_shutdown_net(net);
++	nfsd_shutdown_net(net);
+ 	nfs4_state_shutdown();
+-	lockd_down(net);
+ 	nfsd_racache_shutdown();
+ 	nfsd_up = false;
+ }
 
-steved.
