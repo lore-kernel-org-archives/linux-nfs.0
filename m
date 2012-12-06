@@ -1,46 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f46.google.com ([209.85.215.46]:42990 "EHLO
-	mail-la0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1946536Ab2LFS0m (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Dec 2012 13:26:42 -0500
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:57893 "EHLO
+	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1946536Ab2LFS0t (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Dec 2012 13:26:49 -0500
 From: Pavel Shilovsky <piastry@etersoft.ru>
 To: linux-cifs@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         wine-devel@winehq.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 0/3] Add O_DENY* flags to fcntl and cifs
-Date: Thu,  6 Dec 2012 22:26:28 +0400
-Message-Id: <1354818391-7968-1-git-send-email-piastry@etersoft.ru>
+Subject: [PATCH 3/3] CIFS: Use NT_CREATE_ANDX command for forcemand mounts
+Date: Thu,  6 Dec 2012 22:26:31 +0400
+Message-Id: <1354818391-7968-4-git-send-email-piastry@etersoft.ru>
+In-Reply-To: <1354818391-7968-1-git-send-email-piastry@etersoft.ru>
+References: <1354818391-7968-1-git-send-email-piastry@etersoft.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Network filesystems CIFS, SMB2.0, SMB3.0 and NFSv4 have such flags - this change can benefit cifs and nfs modules. While this change is ok for network filesystems, itsn't not targeted for local filesystems due security problems (e.g. when a user process can deny root to delete a file).
+forcemand mount option now lets us use Windows mandatory style of
+byte-range locks even if server supports posix ones - switches on
+Windows locking mechanism. Share flags is another locking mehanism
+provided by Windows semantic that can be used by NT_CREATE_ANDX
+command. This patch combines all Windows locking mechanism in one
+mount option by using NT_CREATE_ANDX to open files if forcemand is on.
 
-Share flags are used by Windows applications and WINE have to deal with them too. While WINE can process open share flags itself on local filesystems, it can't do it if a file stored on a network share and is used by several clients. This patchset makes it possible for CIFS/SMB2.0/SMB3.0.
+Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
+---
+ fs/cifs/dir.c  |    1 +
+ fs/cifs/file.c |    6 ++++--
+ 2 files changed, 5 insertions(+), 2 deletions(-)
 
-Pavel Shilovsky (3):
-  fcntl: Introduce new O_DENY* open flags for network filesystems
-  CIFS: Add O_DENY* open flags support
-  CIFS: Use NT_CREATE_ANDX command for forcemand mounts
-
- fs/cifs/cifsacl.c                |   10 ++++----
- fs/cifs/cifsglob.h               |   11 ++++++++-
- fs/cifs/cifsproto.h              |    9 ++++----
- fs/cifs/cifssmb.c                |   47 ++++++++++++++++++++------------------
- fs/cifs/dir.c                    |   14 ++++++++----
- fs/cifs/file.c                   |   18 ++++++++++-----
- fs/cifs/inode.c                  |   11 +++++----
- fs/cifs/link.c                   |   10 ++++----
- fs/cifs/readdir.c                |    2 +-
- fs/cifs/smb1ops.c                |   15 ++++++------
- fs/cifs/smb2file.c               |   10 ++++----
- fs/cifs/smb2inode.c              |    4 ++--
- fs/cifs/smb2ops.c                |   10 ++++----
- fs/cifs/smb2pdu.c                |    6 ++---
- fs/cifs/smb2proto.h              |   14 +++++++-----
- fs/fcntl.c                       |    5 ++--
- include/uapi/asm-generic/fcntl.h |   11 +++++++++
- 17 files changed, 125 insertions(+), 82 deletions(-)
-
+diff --git a/fs/cifs/dir.c b/fs/cifs/dir.c
+index 4784d53..8edd950 100644
+--- a/fs/cifs/dir.c
++++ b/fs/cifs/dir.c
+@@ -216,6 +216,7 @@ cifs_do_create(struct inode *inode, struct dentry *direntry, unsigned int xid,
+ 	}
+ 
+ 	if (tcon->unix_ext && cap_unix(tcon->ses) && !tcon->broken_posix_open &&
++	    ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NOPOSIXBRL) == 0) &&
+ 	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
+ 			le64_to_cpu(tcon->fsUnixInfo.Capability))) {
+ 		rc = cifs_posix_open(full_path, &newinode, inode->i_sb, mode,
+diff --git a/fs/cifs/file.c b/fs/cifs/file.c
+index e2614b9..8cfda53 100644
+--- a/fs/cifs/file.c
++++ b/fs/cifs/file.c
+@@ -426,8 +426,9 @@ int cifs_open(struct inode *inode, struct file *file)
+ 	else
+ 		oplock = 0;
+ 
+-	if (!tcon->broken_posix_open && tcon->unix_ext &&
+-	    cap_unix(tcon->ses) && (CIFS_UNIX_POSIX_PATH_OPS_CAP &
++	if (!tcon->broken_posix_open && tcon->unix_ext && cap_unix(tcon->ses)
++	    && ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NOPOSIXBRL) == 0) &&
++	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
+ 				le64_to_cpu(tcon->fsUnixInfo.Capability))) {
+ 		/* can not refresh inode info since size could be stale */
+ 		rc = cifs_posix_open(full_path, &inode, inode->i_sb,
+@@ -595,6 +596,7 @@ cifs_reopen_file(struct cifsFileInfo *cfile, bool can_flush)
+ 		oplock = 0;
+ 
+ 	if (tcon->unix_ext && cap_unix(tcon->ses) &&
++	    ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NOPOSIXBRL) == 0) &&
+ 	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
+ 				le64_to_cpu(tcon->fsUnixInfo.Capability))) {
+ 		/*
 -- 
 1.7.10.4
 
