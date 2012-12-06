@@ -1,71 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49513 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:38675 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755018Ab2LCOxW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Dec 2012 09:53:22 -0500
-Date: Mon, 3 Dec 2012 09:53:21 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: bjschuma@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 0/9] NFSD: Improve fault injection
-Message-ID: <20121203145321.GA8241@fieldses.org>
-References: <1354207246-32343-1-git-send-email-bjschuma@netapp.com>
+	id S1751676Ab2LFLWl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Dec 2012 06:22:41 -0500
+Subject: [PATCH 2/8] nfsd: per-net NFSd up flag introduced
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Thu, 06 Dec 2012 14:23:14 +0300
+Message-ID: <20121206112314.29559.48129.stgit@localhost.localdomain>
+In-Reply-To: <20121206111903.29559.4853.stgit@localhost.localdomain>
+References: <20121206111903.29559.4853.stgit@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1354207246-32343-1-git-send-email-bjschuma@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 29, 2012 at 11:40:37AM -0500, bjschuma@netapp.com wrote:
-> From: Bryan Schumaker <bjschuma@netapp.com>
-> 
-> While working on p2p-nfs, I discovered that I sometimes need to clear
-> state for a specific client to test all possible error recovery conditions.
-> The current fault injection code deletes state as it find it, so it can
-> be difficult to guess which state will be forgotten.  In addition, I
-> currently print out the amount of state forgotten but I don't give details
-> like "Forgot 3 locks from client w.x.y.z".  These patches set out to
-> improve that.
-> 
-> The first 6 patches clean up the current code and prepare it for specific
-> client state removal.  Patch 7 adds printing information to the server's logs
-> when a fault injection file is read (such as "Client w.x.y.z has 3 open
-> files").  Patch 8 adds in a custom file operations structure so users can
-> write strings to fault injection files in addition to u64s.  Finally, patch
-> 9 allows users to remove state by writing a client's IP address to one of
-> the files.
-> 
-> Changes in v4:
-> - Access lock state from open owners rather than requiring a network namespace
->   pointer.
-> - Don't produce a null pointer expection if fault injection is attempted after
->   loading the nfsd module but before running any nfsd threads.
+This patch introduces introduces per-net "nfsd_net_up" boolean flag, which has
+the same purpose as general "nfsd_up" flag - skip init or shutdown of per-net
+resources in case of they are inited on shutted down respectively.
 
-OK, thanks for your patience, applying this version (pending some basic
-testing).
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfsd/netns.h  |    2 ++
+ fs/nfsd/nfssvc.c |   12 ++++++++++++
+ 2 files changed, 14 insertions(+), 0 deletions(-)
 
---b.
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index bca789d..da8741b 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -92,6 +92,8 @@ struct nfsd_net {
+ 
+ 	time_t nfsd4_lease;
+ 	time_t nfsd4_grace;
++
++	bool nfsd_net_up;
+ };
+ 
+ extern int nfsd_net_id;
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 038348b..6e17efd 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -21,6 +21,7 @@
+ #include "nfsd.h"
+ #include "cache.h"
+ #include "vfs.h"
++#include "netns.h"
+ 
+ #define NFSDDBG_FACILITY	NFSDDBG_SVC
+ 
+@@ -205,8 +206,12 @@ static bool nfsd_up = false;
+ 
+ static int nfsd_startup_net(struct net *net)
+ {
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 	int ret;
+ 
++	if (nn->nfsd_net_up)
++		return 0;
++
+ 	ret = nfsd_init_socks(net);
+ 	if (ret)
+ 		return ret;
+@@ -217,6 +222,7 @@ static int nfsd_startup_net(struct net *net)
+ 	if (ret)
+ 		goto out_lockd;
+ 
++	nn->nfsd_net_up = true;
+ 	return 0;
+ 
+ out_lockd:
+@@ -257,8 +263,14 @@ out_racache:
+ 
+ static void nfsd_shutdown_net(struct net *net)
+ {
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++
++	if (!nn->nfsd_net_up)
++		return;
++
+ 	nfs4_state_shutdown_net(net);
+ 	lockd_down(net);
++	nn->nfsd_net_up = false;
+ }
+ 
+ static void nfsd_shutdown(struct net *net)
 
-> 
-> - Bryan
-> 
-> Bryan Schumaker (9):
->   NFSD: Lock state before calling fault injection function
->   NFSD: Clean up forgetting clients
->   NFSD: Clean up forgetting locks
->   NFSD: Clean up forgetting openowners
->   NFSD: Clean up forgetting and recalling delegations
->   NFSD: Fault injection operations take a per-client forget function
->   NFSD: Reading a fault injection file prints a state count
->   NFSD: Add a custom file operations structure for fault injection
->   NFSD: Forget state for a specific client
-> 
->  fs/nfsd/fault_inject.c | 112 ++++++++++++++++++++++++----
->  fs/nfsd/netns.h        |   3 +
->  fs/nfsd/nfs4state.c    | 197 ++++++++++++++++++++++++++++++-------------------
->  fs/nfsd/state.h        |  18 +++--
->  4 files changed, 237 insertions(+), 93 deletions(-)
-> 
-> -- 
-> 1.8.0.1
-> 
