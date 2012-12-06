@@ -1,40 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60447 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753221Ab2LREp6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Dec 2012 23:45:58 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        Tigran Mkrtchyan <kofemann@gmail.com>
-Subject: [PATCH 3/4] nfsd4: free_stateid can use the current stateid
-Date: Mon, 17 Dec 2012 23:45:52 -0500
-Message-Id: <1355805953-2473-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <1355805953-2473-1-git-send-email-bfields@redhat.com>
-References: <1355805953-2473-1-git-send-email-bfields@redhat.com>
+Received: from li9-11.members.linode.com ([67.18.176.11]:37209 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1424779Ab2LFVbp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Dec 2012 16:31:45 -0500
+Date: Thu, 6 Dec 2012 16:31:33 -0500
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: Jeremy Allison <jra@samba.org>
+Cc: Alan Cox <alan@lxorguk.ukuu.org.uk>, Pavel Shilovsky <piastry@etersoft.ru>,
+        linux-cifs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, wine-devel@winehq.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/3] Add O_DENY* flags to fcntl and cifs
+Message-ID: <20121206213133.GB4821@thunk.org>
+References: <1354818391-7968-1-git-send-email-piastry@etersoft.ru>
+ <20121206194949.7ab20d56@pyramind.ukuu.org.uk>
+ <20121206195752.GA18585@samba2>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121206195752.GA18585@samba2>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Thu, Dec 06, 2012 at 11:57:52AM -0800, Jeremy Allison wrote:
+> 
+> And this is where things get really ugly of course :-).
+> 
+> For the CIFSFS client they're expecting to be able to
+> just ship them to a Windows server, where they'll
+> get the (insane) Windows semantics. These semantics
+> are not what would be wanted on a local filesystem.
 
-Cc: Tigran Mkrtchyan <kofemann@gmail.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4proc.c |    1 +
- 1 file changed, 1 insertion(+)
+I'm confused; why would a userspace application need to be able to
+request this behavior?  I can understand why an SMB client might
+depend on this so it can use Windows' insane cache coherency scheme.
+Are you trying to let Samba act as a middle man, where a remote file
+system is mounted on Linux, and then Samba will try to act as a SMB
+server, so you want to be able to pass through these semantics, i.e.:
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 2a2d9b0..9d1c5db 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1766,6 +1766,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_func = (nfsd4op_func)nfsd4_free_stateid,
- 		.op_flags = ALLOWED_WITHOUT_FH | OP_MODIFIES_SOMETHING,
- 		.op_name = "OP_FREE_STATEID",
-+		.op_get_currentstateid = (stateid_getter)nfsd4_get_freestateid,
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
- 	},
- };
--- 
-1.7.9.5
+   Windows SMB Server <--->  Linux cifs remote file system <--->
+      Linux Samba server <---> Windows SMB client
 
+Is this somewhat contrivuewd example the intended use case?  Or
+something else?
+
+					- Ted
