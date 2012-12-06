@@ -1,57 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:31223 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753676Ab2LKSo3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Dec 2012 13:44:29 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 6/7] NFSD: Don't call nfsd4_sequence_adjust_slot_table under the client_lock
-Date: Tue, 11 Dec 2012 13:44:18 -0500
-Message-Id: <1355251459-18034-6-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1355251459-18034-5-git-send-email-Trond.Myklebust@netapp.com>
-References: <1355251459-18034-1-git-send-email-Trond.Myklebust@netapp.com>
- <1355251459-18034-2-git-send-email-Trond.Myklebust@netapp.com>
- <1355251459-18034-3-git-send-email-Trond.Myklebust@netapp.com>
- <1355251459-18034-4-git-send-email-Trond.Myklebust@netapp.com>
- <1355251459-18034-5-git-send-email-Trond.Myklebust@netapp.com>
+Received: from lxorguk.ukuu.org.uk ([81.2.110.251]:55415 "EHLO
+	lxorguk.ukuu.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1947077Ab2LFTod (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Dec 2012 14:44:33 -0500
+Date: Thu, 6 Dec 2012 19:49:49 +0000
+From: Alan Cox <alan@lxorguk.ukuu.org.uk>
+To: Pavel Shilovsky <piastry@etersoft.ru>
+Cc: linux-cifs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, wine-devel@winehq.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/3] Add O_DENY* flags to fcntl and cifs
+Message-ID: <20121206194949.7ab20d56@pyramind.ukuu.org.uk>
+In-Reply-To: <1354818391-7968-1-git-send-email-piastry@etersoft.ru>
+References: <1354818391-7968-1-git-send-email-piastry@etersoft.ru>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We may have to grow the session table.
+On Thu,  6 Dec 2012 22:26:28 +0400
+Pavel Shilovsky <piastry@etersoft.ru> wrote:
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfsd/nfs4state.c | 9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
+> Network filesystems CIFS, SMB2.0, SMB3.0 and NFSv4 have such flags - this change can benefit cifs and nfs modules. While this change is ok for network filesystems, itsn't not targeted for local filesystems due security problems (e.g. when a user process can deny root to delete a file).
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index a380a61..ed937c8 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2224,10 +2224,6 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	else
- 		slot->sl_flags &= ~NFSD4_SLOT_CACHETHIS;
- 
--	/* Adjust slot table, and retrieve new target/highest slotid values */
--	nfsd4_sequence_adjust_slot_table(session, slot,
--			seq->highest_slotid, seq);
--
- 	cstate->slot = slot;
- 	cstate->session = session;
- 
-@@ -2251,6 +2247,11 @@ out:
- 	}
- 	kfree(conn);
- 	spin_unlock(&client_lock);
-+	/* Adjust slot table, and retrieve new target/highest slotid values */
-+	if (cstate->session)
-+		nfsd4_sequence_adjust_slot_table(cstate->session,
-+				cstate->slot, seq->highest_slotid, seq);
-+
- 	dprintk("%s: return %d\n", __func__, ntohl(status));
- 	return status;
- }
--- 
-1.7.11.7
+If I have my root fs on NFS then the same applies does it not.
 
+Your patches fail to describe the security semantics and what file rights
+I must have to apply each option. How do I track down a lock user, what
+tools are provided ? How do the new options interact with the security
+layer?
+
+I don't have a problem with the idea, but it needs a lot more clear
+description of how it works so the model can be checked and if need be
+things tweaked (eg needing write to denywrite etc)
+
+Alan
