@@ -1,153 +1,175 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f175.google.com ([209.85.223.175]:37122 "EHLO
-	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753377Ab2LXXan (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Dec 2012 18:30:43 -0500
-Received: by mail-ie0-f175.google.com with SMTP id qd14so9367422ieb.34
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Dec 2012 15:30:43 -0800 (PST)
+Received: from fieldses.org ([174.143.236.118]:60108 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1423441Ab2LFV3K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Dec 2012 16:29:10 -0500
+Date: Thu, 6 Dec 2012 16:29:08 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/4] NFSD: Add support for dynamic slot changes
+Message-ID: <20121206212908.GB17115@fieldses.org>
+References: <1354159063-17343-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1354159063-17343-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1354159063-17343-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1354159063-17343-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1354159063-17343-5-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
-Date: Tue, 25 Dec 2012 00:30:42 +0100
-Message-ID: <CALS3df0FR0XD9wnzVhCMDXbS-Q2OejH2TfgYf6uL8gF4cKDRng@mail.gmail.com>
-Subject: [PATCH] nfsd: Don't overuse NFS?ERR_PERM error code
-From: Pawel Dziepak <pdziepak@quarnos.org>
-To: bfields@fieldses.org
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1354159063-17343-5-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Pawel Dziepak <pdziepak@quarnos.org>
+On Wed, Nov 28, 2012 at 10:17:43PM -0500, Trond Myklebust wrote:
+> The algorithm chosen for growing/shrinking the dynamic slot table
+> size is as follows:
+> 
+> If the client is sending a sa_highest_slotid value that is greater than
+> or equal to the our server target_highest_slotid, then multiply the
+> value of the latter by 5/4.
+> 
+> If, on the other hand, the sa_highest_slotid value is smaller than
+> our target_highest_slotid, then try adjusting the latter to half its
+> current value, or to the value of sa_highest_slotid+1, whichever is larger.
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+>  fs/nfsd/nfs4state.c | 72 +++++++++++++++++++++++++++++++++++++++++++++++++----
+>  fs/nfsd/state.h     |  2 ++
+>  2 files changed, 69 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index a1208cc..88d0de9 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -807,6 +807,7 @@ static bool nfsd4_grow_slot_table_locked(struct nfsd4_slot_table *tbl,
+>  		if (slot != NULL){
+>  			if (!nfsd4_get_drc_mem(tbl))
+>  				break;
+> +			slot->sl_generation = tbl->slt_generation - 1;
+>  			slot->sl_slotid = next_slotid;
+>  			list_add_tail(&slot->sl_list, &tbl->slt_head);
+>  		}
+> @@ -853,6 +854,30 @@ static void nfsd4_free_slot_table(struct nfsd4_slot_table *tbl)
+>  	spin_unlock(&tbl->slt_lock);
+>  }
+>  
+> +static void nfsd4_fc_set_highest_slotid_locked(struct nfsd4_session *session,
+> +		struct nfsd4_slot_table *tbl,
+> +		u32 target_highest_slotid,
+> +		u32 highest_slotid)
+> +{
+> +	/* Lower limit for target_highest_slotid is negotiated limit */
+> +	target_highest_slotid = max(target_highest_slotid,
+> +			session->se_fchannel.maxreqs - 1);
+> +	/* Lower limit for highest_slotid is target_highest_slotid */
+> +	highest_slotid = max(highest_slotid, target_highest_slotid);
+> +
+> +	if (target_highest_slotid == tbl->slt_target_highest_slotid &&
+> +			highest_slotid == tbl->slt_highest_slotid)
+> +		return;
+> +
+> +	if (!nfsd4_grow_slot_table_locked(tbl, highest_slotid, GFP_KERNEL))
+> +		return;
+> +
+> +	tbl->slt_target_highest_slotid = target_highest_slotid;
+> +	tbl->slt_highest_slotid = highest_slotid;
+> +	tbl->slt_generation++;
+> +	nfsd4_truncate_slot_table_locked(tbl, tbl->slt_highest_slotid);
+> +}
+> +
+>  static void nfsd4_init_slot_table(struct nfsd4_slot_table *tbl,
+>  		size_t slotsize, u32 highest_slotid)
+>  {
+> @@ -2039,6 +2064,45 @@ out:
+>  	return status;
+>  }
+>  
+> +static void nfsd4_sequence_adjust_slot_table(struct nfsd4_session *session,
+> +		struct nfsd4_slot *slot, u32 sa_highest_slotid,
+> +		struct nfsd4_sequence *res)
+> +{
+> +	struct nfsd4_slot_table *tbl = &session->se_slots;
+> +	u32 next_target;
+> +	u32 next_highest;
+> +
+> +	spin_lock(&tbl->slt_lock);
+> +	/*
+> +	 * If this slot hasn't seen our previous values, then don't trust
+> +	 * that the client has seen them. Don't adjust the slot table yet.
+> +	 */
+> +	if (slot->sl_generation != tbl->slt_generation)
+> +		goto out;
+> +
+> +	next_target = tbl->slt_target_highest_slotid;
+> +
+> +	/* Is the client bumping against our current window limits? */
+> +	if (sa_highest_slotid >= tbl->slt_target_highest_slotid) {
+> +		/* Yes! Grow the window size by 1/4 */
+> +		next_target += 1 + (tbl->slt_target_highest_slotid >> 2);
+> +		next_highest = next_target;
+> +	} else {
+> +		/* No! Try to shrink the window size by 1/2 */
+> +		next_target >>= 1;
+> +		if (sa_highest_slotid + 1 > next_target)
+> +			next_target = sa_highest_slotid + 1;
+> +		next_highest = tbl->slt_target_highest_slotid;
+> +	}
+> +	nfsd4_fc_set_highest_slotid_locked(session, tbl,
+> +			next_target, next_highest);
+> +out:
+> +	slot->sl_generation = tbl->slt_generation;
+> +	res->highest_slotid = tbl->slt_highest_slotid;
+> +	res->target_highest_slotid = tbl->slt_target_highest_slotid;
+> +	spin_unlock(&tbl->slt_lock);
+> +}
+> +
+>  static struct nfsd4_conn *__nfsd4_find_conn(struct svc_xprt *xpt, struct nfsd4_session *s)
+>  {
+>  	struct nfsd4_conn *c;
+> @@ -2159,11 +2223,9 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+>  	else
+>  		slot->sl_flags &= ~NFSD4_SLOT_CACHETHIS;
+>  
+> -	/* Retrieve new target/highest slotid values */
+> -	spin_lock(&session->se_slots.slt_lock);
+> -	seq->target_highest_slotid = session->se_slots.slt_target_highest_slotid;
+> -	seq->highest_slotid = session->se_slots.slt_highest_slotid;
+> -	spin_unlock(&session->se_slots.slt_lock);
+> +	/* Adjust slot table, and retrieve new target/highest slotid values */
+> +	nfsd4_sequence_adjust_slot_table(session, slot,
+> +			seq->highest_slotid, seq);
 
-Unlike EPERM, NFS?ERR_PERM error code applies only when the operation could
-not be completed because the caller is either not the owner or not a
-privileged user. Actually, only OPEN, CREATE and SETATTR are supposed to
-ever return such error code when a problem occurs when changing or setting
-access permissions.
+This is allocating under a spin lock (see the client_lock that most of
+nfsd4_sequence is under.)
 
-Generally, this patch replaces NFS?ERR_PERM with NFS?ERR_ACCESS which is a more
-appropriate error code indicating that the caller is not allowed to perform the
-requested operation.
+(But I'm not sure what we should be doing instead.)
 
-In case of incorrect {file,directory} names either NFS?ERR_INVAL or
-NFS4ERR_BADNAME is returned.
+--b.
 
-Opening for write files with append-only bit set or mandatory locking enabled
-results in NFS4ERR_SHARE_DENIED.
-
-Signed-off-by: Pawel Dziepak <pdziepak@quarnos.org>
----
- fs/nfsd/nfsfh.c |  2 +-
- fs/nfsd/vfs.c   | 28 ++++++++++++++++------------
- 2 files changed, 17 insertions(+), 13 deletions(-)
-
-diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-index 814afaa..b18382c 100644
---- a/fs/nfsd/nfsfh.c
-+++ b/fs/nfsd/nfsfh.c
-@@ -91,7 +91,7 @@ static __be32 nfsd_setuser_and_check_port(struct
-svc_rqst *rqstp,
-  dprintk(KERN_WARNING
-        "nfsd: request from insecure port %s!\n",
-        svc_print_addr(rqstp, buf, sizeof(buf)));
-- return nfserr_perm;
-+ return nfserr_acces;
-  }
-
-  /* Set user creds for this exportpoint */
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index d586117..a9964de 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -777,7 +777,7 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh
-*fhp, umode_t type,
-  /* Disallow write access to files with the append-only bit set
-  * or any access when mandatory locking enabled
-  */
-- err = nfserr_perm;
-+ err = nfserr_share_denied;
-  if (IS_APPEND(inode) && (may_flags & NFSD_MAY_WRITE))
-  goto out;
-  /*
-@@ -924,8 +924,6 @@ nfsd_vfs_read(struct svc_rqst *rqstp, struct
-svc_fh *fhp, struct file *file,
-  __be32 err;
-  int host_err;
-
-- err = nfserr_perm;
--
-  if (file->f_op->splice_read && rqstp->rq_splice_ok) {
-  struct splice_desc sd = {
-  .len = 0,
-@@ -1246,7 +1244,7 @@ nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
-  __be32 err2;
-  int host_err;
-
-- err = nfserr_perm;
-+ err = nfserr_inval;
-  if (!flen)
-  goto out;
-  err = nfserr_exist;
-@@ -1387,7 +1385,7 @@ do_nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
-  int host_err;
-  __u32 v_mtime=0, v_atime=0;
-
-- err = nfserr_perm;
-+ err = nfserr_inval;
-  if (!flen)
-  goto out;
-  err = nfserr_exist;
-@@ -1675,7 +1673,7 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
-  err = nfserr_isdir;
-  if (S_ISDIR(tfhp->fh_dentry->d_inode->i_mode))
-  goto out;
-- err = nfserr_perm;
-+ err = nfserr_inval;
-  if (!len)
-  goto out;
-  err = nfserr_exist;
-@@ -1761,8 +1759,11 @@ nfsd_rename(struct svc_rqst *rqstp, struct
-svc_fh *ffhp, char *fname, int flen,
-  if (ffhp->fh_export != tfhp->fh_export)
-  goto out;
-
-- err = nfserr_perm;
-- if (!flen || isdotent(fname, flen) || !tlen || isdotent(tname, tlen))
-+ err = nfserr_inval;
-+ if (!flen || !tlen)
-+ goto out;
-+ err = nfsd_v4client(rqstp) ? nfserr_badname : nfserr_inval;
-+ if (isdotent(fname, flen) || isdotent(tname, tlen))
-  goto out;
-
-  host_err = fh_want_write(ffhp);
-@@ -1850,8 +1851,11 @@ nfsd_unlink(struct svc_rqst *rqstp, struct
-svc_fh *fhp, int type,
-  __be32 err;
-  int host_err;
-
-- err = nfserr_acces;
-- if (!flen || isdotent(fname, flen))
-+ err = nfserr_inval;
-+ if (!flen)
-+ goto out;
-+ err = nfsd_v4client(rqstp) ? nfserr_badname : nfserr_inval;
-+ if (isdotent(fname, flen))
-  goto out;
-  err = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_REMOVE);
-  if (err)
-@@ -2120,10 +2124,10 @@ nfsd_permission(struct svc_rqst *rqstp, struct
-svc_export *exp,
-     __mnt_is_readonly(exp->ex_path.mnt))
-  return nfserr_rofs;
-  if (/* (acc & NFSD_MAY_WRITE) && */ IS_IMMUTABLE(inode))
-- return nfserr_perm;
-+ return nfserr_acces;
-  }
-  if ((acc & NFSD_MAY_TRUNC) && IS_APPEND(inode))
-- return nfserr_perm;
-+ return nfserr_acces;
-
-  if (acc & NFSD_MAY_LOCK) {
-  /* If we cannot rely on authentication in NLM requests,
---
-1.7.11.7
+>  
+>  	cstate->slot = slot;
+>  	cstate->session = session;
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index 7a0d8e4..c2f897f 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -129,6 +129,7 @@ static inline struct nfs4_delegation *delegstateid(struct nfs4_stid *s)
+>  
+>  struct nfsd4_slot {
+>  	struct list_head sl_list;
+> +	unsigned long sl_generation;
+>  	u32	sl_slotid;
+>  	u32	sl_seqid;
+>  	__be32	sl_status;
+> @@ -146,6 +147,7 @@ struct nfsd4_slot_table {
+>  	spinlock_t		slt_lock;
+>  	size_t			slt_slotsize;
+>  	unsigned long		slt_memused;
+> +	unsigned long		slt_generation;
+>  	u32			slt_target_highest_slotid;
+>  	u32			slt_highest_slotid;
+>  };
+> -- 
+> 1.7.11.7
+> 
