@@ -1,109 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60653 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:20800 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756543Ab2LGQKD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Dec 2012 11:10:03 -0500
-Date: Fri, 7 Dec 2012 11:09:49 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: simo <idra@samba.org>
-Cc: Pavel Shilovsky <piastry@etersoft.ru>, linux-cifs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        wine-devel@winehq.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/3] Add O_DENY* flags to fcntl and cifs
-Message-ID: <20121207160949.GJ17115@fieldses.org>
-References: <1354818391-7968-1-git-send-email-piastry@etersoft.ru>
- <CAKywueQ3d=wdq2nw5f-QS-D9PY70Axa3Cn0gi5GRk4Xso+iquA@mail.gmail.com>
- <20121207145206.GF17115@fieldses.org>
- <1354894665.14719.87.camel@pico.ipa.ssimo.org>
+	id S964938Ab2LFPeH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Dec 2012 10:34:07 -0500
+Subject: [PATCH 0/6] nfsd: make is works in a container
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Thu, 06 Dec 2012 18:34:36 +0300
+Message-ID: <20121206153204.30693.11408.stgit@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1354894665.14719.87.camel@pico.ipa.ssimo.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 07, 2012 at 10:37:45AM -0500, simo wrote:
-> On Fri, 2012-12-07 at 09:52 -0500, J. Bruce Fields wrote:
-> > On Fri, Dec 07, 2012 at 01:08:46PM +0400, Pavel Shilovsky wrote:
-> > > 2012/12/6 Pavel Shilovsky <piastry@etersoft.ru>:
-> > > > Network filesystems CIFS, SMB2.0, SMB3.0 and NFSv4 have such flags - this change can benefit cifs and nfs modules. While this change is ok for network filesystems, itsn't not targeted for local filesystems due security problems (e.g. when a user process can deny root to delete a file).
-> > > >
-> > > > Share flags are used by Windows applications and WINE have to deal with them too. While WINE can process open share flags itself on local filesystems, it can't do it if a file stored on a network share and is used by several clients. This patchset makes it possible for CIFS/SMB2.0/SMB3.0.
-> > > >
-> > > > Pavel Shilovsky (3):
-> > > >   fcntl: Introduce new O_DENY* open flags for network filesystems
-> > > >   CIFS: Add O_DENY* open flags support
-> > > >   CIFS: Use NT_CREATE_ANDX command for forcemand mounts
-> > > >
-> > > >  fs/cifs/cifsacl.c                |   10 ++++----
-> > > >  fs/cifs/cifsglob.h               |   11 ++++++++-
-> > > >  fs/cifs/cifsproto.h              |    9 ++++----
-> > > >  fs/cifs/cifssmb.c                |   47 ++++++++++++++++++++------------------
-> > > >  fs/cifs/dir.c                    |   14 ++++++++----
-> > > >  fs/cifs/file.c                   |   18 ++++++++++-----
-> > > >  fs/cifs/inode.c                  |   11 +++++----
-> > > >  fs/cifs/link.c                   |   10 ++++----
-> > > >  fs/cifs/readdir.c                |    2 +-
-> > > >  fs/cifs/smb1ops.c                |   15 ++++++------
-> > > >  fs/cifs/smb2file.c               |   10 ++++----
-> > > >  fs/cifs/smb2inode.c              |    4 ++--
-> > > >  fs/cifs/smb2ops.c                |   10 ++++----
-> > > >  fs/cifs/smb2pdu.c                |    6 ++---
-> > > >  fs/cifs/smb2proto.h              |   14 +++++++-----
-> > > >  fs/fcntl.c                       |    5 ++--
-> > > >  include/uapi/asm-generic/fcntl.h |   11 +++++++++
-> > > >  17 files changed, 125 insertions(+), 82 deletions(-)
-> > > >
-> > > > --
-> > > > 1.7.10.4
-> > > >
-> > > 
-> > > First of all, sorry for being unclear at this proposal.
-> > > 
-> > > 
-> > > I am not from Wine team but I am working on things related to
-> > > Wine+CIFS-client+Samba.
-> > > 
-> > > We (at Etersoft) need to organize the work of Wine applications
-> > > through cifs-client share mounted to Samba (or Windows server). They
-> > > are related to accounting (mostly Russian ones - e.g.
-> > > http://www.1c.ru/eng/title.htm). So, the problem is that such
-> > > applications use share flags to control the parallel access to the
-> > > same files of several clients on a remote share. Also, there can be a
-> > > situation where Windows (native) clients and Wine clients are working
-> > > together in the same time.
-> > > 
-> > > That's why we need such flags in the kernel (patch #1). With these
-> > > flags Wine can pass them to every open and they will be used by CIFS
-> > > (and probably NFS) file systems to pass to the Samba server. In the
-> > > same time if the file is on local filesystem - these flags will be
-> > > simply ignored (not implemented).
-> > 
-> > NFS supports the deny-read and deny-write bits but not deny-delete.
-> > 
-> > If we could do such opens in-kernel on local and clustered filesystems,
-> > that could also be useful for multi-protocol (Samba and NFS) and
-> > clustered exports.
-> > 
-> > Currently knfsd tries to enforce deny bits in the nfsd code, which is a
-> > bit ugly.
-> > 
-> > And knfsd currently requires write permissions for deny-read.  My
-> > understanding is that Windows considers that wrong, but I'd be curious
-> > to know whether that breaks Windows applications in practice.
-> 
-> It probably does if you look hard enough.
-> IIRC Deny-reads are very loosely like read locks, and you can take read
-> locks if you have read-only access.
+This patch set finally enables NFSd in container.
+I've tested it in container with it's own root, and also pid, net and mount
+namespaces.
 
-I had the impression they didn't care about read or write permissions at
-all, but I don't know.
+There are some limitations, which are listed below:
+1) only nfsdclt client tracker supported for container. It's deprecated and
+going to be removed soon. UMH tracker requires switching root. Legacy tracker
+requires something like RB tree of opened inodes to make sure, that any
+recovery directory will be opened only once.
+2) Enabled versions are controlled globally, which is should be fixed.
+3) Server should be stopped by writing "0" to
+/proc/fs/nfsd/threads instead of sending signals to NFSd threads (they are
+working in init_pid). Sending signals will either won't work if container wich
+its own pid namespace, or will kill all nfsd threads for all containers in
+init_pid namesapce.
+4) Currently, if container was stopped without stopping NFS server (i.e. it's
+init was killed), NFSd kthreads will remain running. One of possible solutions
+is to not hold network by NFSd service sockets, but register oer-net callback
+and kill all the threads on network namespace exit.
+5) NFSd filesystem superblock holds network namespace. I.e. if some process
+will hold container's NFSd supeblock, then sthe whole container's network
+naemspace will stay alive even is container is destroyed already.
 
-> Why does knfsd restrict deny-read to read-write access ?
+There may be more limitations, which are not clear to me yet.
 
-Because I think it's normal to want files that everyone's able to read
-without giving everyone the right to DOS readers indefinitely.
+The following series implements...
 
-And because I'm having a hard time thinking why you'd care to keep
-everyone from reading a file that you don't intend to modify.
+---
 
---b.
+Stanislav Kinsbursky (6):
+      nfsd: pass proper net to nfsd_destroy() from NFSd kthreads
+      nfsd: swap fs root in NFSd kthreads
+      nfsd: make containerise NFSd filesystem
+      nfsd: use proper net while reading "exports" file
+      nfsd: disable usermode helper client tracker in container
+      nfsd: enable NFSv4 state in containers
+
+
+ fs/nfsd/netns.h       |    1 +
+ fs/nfsd/nfs4recover.c |    6 ++++
+ fs/nfsd/nfs4state.c   |   10 ------
+ fs/nfsd/nfsctl.c      |   77 +++++++++++++++++++++++++++++++++++++------------
+ fs/nfsd/nfssvc.c      |   42 ++++++++++++++++++++++++---
+ 5 files changed, 102 insertions(+), 34 deletions(-)
+
