@@ -1,43 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57631 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:45967 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752853Ab2LDM6u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Dec 2012 07:58:50 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 3/5] svcrpc: fix off-by-4 error in "incomplete TCP record" dprintk
-Date: Tue,  4 Dec 2012 07:58:44 -0500
-Message-Id: <1354625926-18527-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <1354625926-18527-1-git-send-email-bfields@redhat.com>
-References: <1354625926-18527-1-git-send-email-bfields@redhat.com>
+	id S1423202Ab2LFLXG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Dec 2012 06:23:06 -0500
+Subject: [PATCH 7/8] nfsd: replace boolean nfsd_up flag by users counter
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Thu, 06 Dec 2012 14:23:39 +0300
+Message-ID: <20121206112339.29559.46130.stgit@localhost.localdomain>
+In-Reply-To: <20121206111903.29559.4853.stgit@localhost.localdomain>
+References: <20121206111903.29559.4853.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Since we have generic NFSd resurces, we have to introduce some way how to
+allocate and destroy those resources on first per-net NFSd start and on
+last per-net NFSd stop respectively.
+This patch replaces global boolean nfsd_up flag (which is unused now) by users
+counter and use it to determine either we need to allocate generic resources
+or destroy them.
 
-The full reclen doesn't include the fragment header, but sk_tcplen does.
-Fix this to make it an apples-to-apples comparison.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 ---
- net/sunrpc/svcsock.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/nfsd/nfssvc.c |    9 +++++----
+ 1 files changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 1557179..1db42b1 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1073,7 +1073,8 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 		if (len < 0 && len != -EAGAIN)
- 			goto err_delete;
- 		dprintk("svc: incomplete TCP record (%d of %d)\n",
--			svsk->sk_tcplen, svc_sock_reclen(svsk));
-+			svsk->sk_tcplen - sizeof(rpc_fraghdr),
-+			svc_sock_reclen(svsk));
- 		goto err_noclose;
- 	}
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 0c87b4e..5bb4a33 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -204,13 +204,13 @@ static int nfsd_init_socks(struct net *net)
+ 	return 0;
+ }
  
--- 
-1.7.9.5
+-static bool nfsd_up = false;
++static int nfsd_users = 0;
+ 
+ static int nfsd_startup_generic(int nrservs)
+ {
+ 	int ret;
+ 
+-	if (nfsd_up)
++	if (nfsd_users++)
+ 		return 0;
+ 
+ 	/*
+@@ -233,9 +233,11 @@ out_racache:
+ 
+ static void nfsd_shutdown_generic(void)
+ {
++	if (--nfsd_users)
++		return;
++
+ 	nfs4_state_shutdown();
+ 	nfsd_racache_shutdown();
+-	nfsd_up = false;
+ }
+ 
+ static int nfsd_startup_net(int nrservs, struct net *net)
+@@ -260,7 +262,6 @@ static int nfsd_startup_net(int nrservs, struct net *net)
+ 		goto out_lockd;
+ 
+ 	nn->nfsd_net_up = true;
+-	nfsd_up = true;
+ 	return 0;
+ 
+ out_lockd:
 
