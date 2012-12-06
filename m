@@ -1,101 +1,114 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:9038 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:29654 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752823Ab2LKPdP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Dec 2012 10:33:15 -0500
-Received: from vmwexceht01-prd.hq.netapp.com (exchsmtp.hq.netapp.com [10.106.76.239])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id qBBFWtRL009161
-	for <linux-nfs@vger.kernel.org>; Tue, 11 Dec 2012 07:32:55 -0800 (PST)
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] SUNRPC: release clear_bit memory barrier
-Date: Tue, 11 Dec 2012 15:32:54 +0000
-Message-ID: <7851A663D3BF5E41B9E166C2C7A42145104FBF62@SACEXCMBX02-PRD.hq.netapp.com>
-References: <1354298985-2344-1-git-send-email-andros@netapp.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91191F135@SACEXCMBX04-PRD.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91191F135@SACEXCMBX04-PRD.hq.netapp.com>
-Content-Type: text/plain; charset="us-ascii"
+	id S1423193Ab2LFLWz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Dec 2012 06:22:55 -0500
+Subject: [PATCH 5/8] nfsd: introduce helpers for generic resources init and
+	shutdown
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Thu, 06 Dec 2012 14:23:29 +0300
+Message-ID: <20121206112329.29559.66447.stgit@localhost.localdomain>
+In-Reply-To: <20121206111903.29559.4853.stgit@localhost.localdomain>
+References: <20121206111903.29559.4853.stgit@localhost.localdomain>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+NFSd have per-net resources and resources, used globally.
+Let's move generic resources init and shutdown to separated functions since
+they are going to be allocated on first NFSd service start and destroyed after
+last NFSd service shutdown.
 
-On Dec 10, 2012, at 3:02 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfsd/nfssvc.c |   50 ++++++++++++++++++++++++++++++++++----------------
+ 1 files changed, 34 insertions(+), 16 deletions(-)
 
-> On Fri, 2012-11-30 at 13:09 -0500, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
->> 
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> ---
->> A cleanup patch.
->> 
->> net/sunrpc/auth.c              |    1 +
->> net/sunrpc/auth_gss/auth_gss.c |    1 +
->> 2 files changed, 2 insertions(+), 0 deletions(-)
->> 
->> diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
->> index b5c067b..8b76753 100644
->> --- a/net/sunrpc/auth.c
->> +++ b/net/sunrpc/auth.c
->> @@ -225,6 +225,7 @@ rpcauth_unhash_cred_locked(struct rpc_cred *cred)
->> 	hlist_del_rcu(&cred->cr_hash);
->> 	smp_mb__before_clear_bit();
->> 	clear_bit(RPCAUTH_CRED_HASHED, &cred->cr_flags);
->> +	smp_mb__after_clear_bit();
->> }
->> 
->> static int
->> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
->> index 909dc0c..92a7d6d 100644
->> --- a/net/sunrpc/auth_gss/auth_gss.c
->> +++ b/net/sunrpc/auth_gss/auth_gss.c
->> @@ -126,6 +126,7 @@ gss_cred_set_ctx(struct rpc_cred *cred, struct gss_cl_ctx *ctx)
->> 	set_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags);
->> 	smp_mb__before_clear_bit();
->> 	clear_bit(RPCAUTH_CRED_NEW, &cred->cr_flags);
->> +	smp_mb__after_clear_bit();
->> }
->> 
->> static const void *
-> 
-> Why are these needed?
-
-AFAICS the documentation says to either call both smp_mb__before_clear_bit and smp_mp__after_clear_bit to ensure that memory operations before and after the clear_bit call are strongly ordered, or don't call either. Since there can be multiple threads looking at a gss_cred cr_flags, it seems to me that we want the memory barriers to get the correct value of the bit.
-
--->Andy
-
-
-from Documentation/atomic_ops.txt:
-
-If explicit memory barriers are required around clear_bit() (which
-does not return a value, and thus does not need to provide memory
-barrier semantics), two interfaces are provided:
-
-        void smp_mb__before_clear_bit(void);
-        void smp_mb__after_clear_bit(void);
-
-They are used as follows, and are akin to their atomic_t operation
-brothers:
-
-        /* All memory operations before this call will
-         * be globally visible before the clear_bit().
-         */
-        smp_mb__before_clear_bit();
-        clear_bit( ... );
-
-        /* The clear_bit() will be visible before all
-         * subsequent memory operations.
-         */
-         smp_mb__after_clear_bit();
-
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 0e8622a..f9d147f 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -206,6 +206,37 @@ static int nfsd_init_socks(struct net *net)
+ 
+ static bool nfsd_up = false;
+ 
++static int nfsd_startup_generic(int nrservs)
++{
++	int ret;
++
++	if (nfsd_up)
++		return 0;
++
++	/*
++	 * Readahead param cache - will no-op if it already exists.
++	 * (Note therefore results will be suboptimal if number of
++	 * threads is modified after nfsd start.)
++	 */
++	ret = nfsd_racache_init(2*nrservs);
++	if (ret)
++		return ret;
++	ret = nfs4_state_start();
++	if (ret)
++		goto out_racache;
++	return 0;
++
++out_racache:
++	nfsd_racache_shutdown();
++	return ret;
++}
++
++static void nfsd_shutdown_generic(void)
++{
++	nfs4_state_shutdown();
++	nfsd_racache_shutdown();
++}
++
+ static int nfsd_startup_net(struct net *net)
+ {
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+@@ -236,19 +267,9 @@ static int nfsd_startup(int nrservs, struct net *net)
+ {
+ 	int ret;
+ 
+-	if (nfsd_up)
+-		return 0;
+-	/*
+-	 * Readahead param cache - will no-op if it already exists.
+-	 * (Note therefore results will be suboptimal if number of
+-	 * threads is modified after nfsd start.)
+-	 */
+-	ret = nfsd_racache_init(2*nrservs);
++	ret = nfsd_startup_generic(nrservs);
+ 	if (ret)
+ 		return ret;
+-	ret = nfs4_state_start();
+-	if (ret)
+-		goto out_racache;
+ 	ret = nfsd_startup_net(net);
+ 	if (ret)
+ 		goto out_net;
+@@ -257,9 +278,7 @@ static int nfsd_startup(int nrservs, struct net *net)
+ 	return 0;
+ 
+ out_net:
+-	nfs4_state_shutdown();
+-out_racache:
+-	nfsd_racache_shutdown();
++	nfsd_shutdown_generic();
+ 	return ret;
+ }
+ 
+@@ -286,8 +305,7 @@ static void nfsd_shutdown(struct net *net)
+ 	if (!nfsd_up)
+ 		return;
+ 	nfsd_shutdown_net(net);
+-	nfs4_state_shutdown();
+-	nfsd_racache_shutdown();
++	nfsd_shutdown_generic();
+ 	nfsd_up = false;
+ }
+ 
 
