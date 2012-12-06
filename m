@@ -1,34 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from tirith.ics.muni.cz ([147.251.4.36]:47157 "EHLO
-	tirith.ics.muni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755698Ab2LMO4Z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Dec 2012 09:56:25 -0500
-Date: Thu, 13 Dec 2012 15:56:21 +0100
-From: Lukas Hejtmanek <xhejtman@gmail.com>
-To: Fred Isaman <faisaman4@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: local_lock mount option
-Message-ID: <20121213145621.GB1045@ics.muni.cz>
-References: <20121213133554.GO10897@ics.muni.cz>
- <CADnza44SJ0JZN05OtMZcjsm+NwdMVPGTa2f2vG9TbpUJR_B4Zw@mail.gmail.com>
- <20121213142336.GP10897@ics.muni.cz>
- <CADnza44SGwAJTJ8sFnAOoLHRPp1Mt9pJKk-scWmrigxD2G=zpQ@mail.gmail.com>
- <20121213144025.GA1045@ics.muni.cz>
- <CADnza45K-LgvNDt1_AoybesMobwsnw=vGX9D4wkvwKLKMkes5A@mail.gmail.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:17599 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S965164Ab2LFPeN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Dec 2012 10:34:13 -0500
+Subject: [PATCH 2/6] nfsd: swap fs root in NFSd kthreads
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Thu, 06 Dec 2012 18:34:47 +0300
+Message-ID: <20121206153447.30693.54128.stgit@localhost.localdomain>
+In-Reply-To: <20121206153204.30693.11408.stgit@localhost.localdomain>
+References: <20121206153204.30693.11408.stgit@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-2
-In-Reply-To: <CADnza45K-LgvNDt1_AoybesMobwsnw=vGX9D4wkvwKLKMkes5A@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 13, 2012 at 09:48:25AM -0500, Fred Isaman wrote:
-> The idea is that delegations are a better way to decide whether the
-> client should cache locks.
+NFSd does lookup. Lookup is done starting from current->fs->root.
+NFSd is a kthread, cloned by kthreadd, and thus have global (but luckely
+unshared) root.
+So we have to swap root to those, which process, started NFSd, has. Because
+that process can be in a container with it's own root.
 
-well, but I need to fake locks on client, i.e., client's lock always succeeds
-independently of NFS server. I know that's wrong approchach but until I got
-fix for NFS+CXFS, I dont' see any other option. And I believe that
-local_locks=any does exactly what I need.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfsd/netns.h  |    1 +
+ fs/nfsd/nfssvc.c |   33 ++++++++++++++++++++++++++++++++-
+ 2 files changed, 33 insertions(+), 1 deletions(-)
 
--- 
-Luká¹ Hejtmánek
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index abfc97c..5c423c6 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -101,6 +101,7 @@ struct nfsd_net {
+ 	struct timeval nfssvc_boot;
+ 
+ 	struct svc_serv *nfsd_serv;
++	struct path	root;
+ };
+ 
+ extern int nfsd_net_id;
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index cee62ab..177bb60 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -392,6 +392,7 @@ int nfsd_create_serv(struct net *net)
+ 
+ 	set_max_drc();
+ 	do_gettimeofday(&nn->nfssvc_boot);		/* record boot time */
++	get_fs_root(current->fs, &nn->root);
+ 	return 0;
+ }
+ 
+@@ -426,8 +427,10 @@ void nfsd_destroy(struct net *net)
+ 	if (destroy)
+ 		svc_shutdown_net(nn->nfsd_serv, net);
+ 	svc_destroy(nn->nfsd_serv);
+-	if (destroy)
++	if (destroy) {
++		path_put(&nn->root);
+ 		nn->nfsd_serv = NULL;
++	}
+ }
+ 
+ int nfsd_set_nrthreads(int n, int *nthreads, struct net *net)
+@@ -533,6 +536,25 @@ out:
+ 	return error;
+ }
+ 
++/*
++ * This function is actually slightly modified set_fs_root()<F9>
++ */
++static void nfsd_swap_root(struct net *net)
++{
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++	struct fs_struct *fs = current->fs;
++	struct path old_root;
++
++	path_get(&nn->root);
++	spin_lock(&fs->lock);
++	write_seqcount_begin(&fs->seq);
++	old_root = fs->root;
++	fs->root = nn->root;
++	write_seqcount_end(&fs->seq);
++	spin_unlock(&fs->lock);
++	if (old_root.dentry)
++		path_put(&old_root);
++}
+ 
+ /*
+  * This is the NFS server kernel thread
+@@ -559,6 +581,15 @@ nfsd(void *vrqstp)
+ 	current->fs->umask = 0;
+ 
+ 	/*
++	 * We have to swap NFSd kthread's fs->root.
++	 * Why so? Because NFSd can be started in container, which has it's own
++	 * root.
++	 * And so what? NFSd lookup files, and lookup start from
++	 * current->fs->root.
++	 */
++	nfsd_swap_root(net);
++
++	/*
+ 	 * thread is spawned with all signals set to SIG_IGN, re-enable
+ 	 * the ones that will bring down the thread
+ 	 */
+
