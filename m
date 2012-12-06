@@ -1,66 +1,163 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:18754 "EHLO mx2.netapp.com"
+Received: from mx1.netapp.com ([216.240.18.38]:40245 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753244Ab2LDO4G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Dec 2012 09:56:06 -0500
-Received: from vmwexceht02-prd.hq.netapp.com (vmwexceht02-prd.hq.netapp.com [10.106.76.240])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id qB4Eu4vn027930
-	for <linux-nfs@vger.kernel.org>; Tue, 4 Dec 2012 06:56:04 -0800 (PST)
+	id S1754882Ab2LFXUg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Dec 2012 18:20:36 -0500
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] SUNRPC: new keyring key_type for gss context
- destruction at kdestroy
-Date: Tue, 4 Dec 2012 14:56:03 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90B33595E@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1354560315-2393-1-git-send-email-andros@netapp.com>
-	 <1354560315-2393-2-git-send-email-andros@netapp.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B334027@SACEXCMBX04-PRD.hq.netapp.com>
-	 <7851A663D3BF5E41B9E166C2C7A42145104F61E8@SACEXCMBX02-PRD.hq.netapp.com>
-In-Reply-To: <7851A663D3BF5E41B9E166C2C7A42145104F61E8@SACEXCMBX02-PRD.hq.netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Subject: RE: [PATCH 4/4] NFSD: Add support for dynamic slot changes
+Date: Thu, 6 Dec 2012 23:20:15 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90B33C86C@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1354159063-17343-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1354159063-17343-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1354159063-17343-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1354159063-17343-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1354159063-17343-5-git-send-email-Trond.Myklebust@netapp.com>
+ <20121206212908.GB17115@fieldses.org>
+In-Reply-To: <20121206212908.GB17115@fieldses.org>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTEyLTAzIGF0IDIyOjM5ICswMDAwLCBBZGFtc29uLCBBbmR5IHdyb3RlOg0K
-PiBPbiBEZWMgMywgMjAxMiwgYXQgNDowNiBQTSwgIk15a2xlYnVzdCwgVHJvbmQiIDxUcm9uZC5N
-eWtsZWJ1c3RAbmV0YXBwLmNvbT4NCj4gIHdyb3RlOg0KDQo+ID4gSXQgc2VlbXMgdG8gbWUgdGhh
-dCB0aGlzIGNvZGUgYWxsb3dzIG1lIHRvIGtpbGwgYW55b25lJ3MgcnBjc2VjX2dzcw0KPiA+IHNl
-c3Npb25zIGJ5IGNyZWF0aW5nIGEga2V5IHdpdGggdGhlaXIgdWlkLCBhbmQgdGhlbiBkZXN0cm95
-aW5nIGl0Lg0KPiANCj4gWWVzIC0ganVzdCBwcm9vZiBvZiBjb25jZXB0IGNvZGUuIFRoZXJlIGlz
-IGEgbG90IHRvIGNvbnNpZGVyLg0KPiANCj4gPiANCj4gPiBPbmUgc29sdXRpb24gaXMgdG8gcmVw
-bGFjZSB1c2VyX2luc3RhbnRpYXRlKCkgd2l0aCBzb21ldGhpbmcgdGhhdCBzZXRzDQo+ID4gdGhl
-IHBheWxvYWQgdG8gYSB2YWx1ZSBkZXRlcm1pbmVkIGJ5IHRoZSBrZXJuZWwgaXRzZWxmLiBXZSdk
-IGRlZmluaXRlbHkNCj4gPiB3YW50IHRvIGluY2x1ZGUgdGhlIHVpZCwgYnV0IHBlcmhhcHMgYWxz
-byBhZGQgYSBjb29raWUgdGhhdCBpcyB1bmlxdWUgdG8NCj4gPiB0aGlzIGtleSAodXNpbmcgdGhl
-IGlkci9pZGEgc3R1ZmYgZnJvbSBpbmNsdWRlL2xpbnV4L2lkci5oID8pLCBhbmQgdGhhdA0KPiA+
-IGNhbiBiZSB1c2VkIHRvIGRpc3Rpbmd1aXNoIGl0IGZyb20ga2V5cyBnZW5lcmF0ZWQgZnJvbSBv
-dGhlciBwcm9jZXNzZXMuDQo+ID4gSWYgd2Ugd2VyZSB0byB1c2UgdGhlIHNhbWUga2V5IHRvIGxh
-YmVsIHRoZSBhdXRoX2dzcyBjcmVkcywgdGhlbiB3ZQ0KPiA+IGNvdWxkIGhhdmUgdXNlcl9nc3Nf
-ZGVzdHJveSgpIGtpbGwgX29ubHlfIHRoZSBhdXRoX2dzcyBjcmVkcyB0aGF0IGl0DQo+ID4gc3Bh
-d25lZC4NCj4gDQo+IFllcywga2lsbGluZyBvbmx5IHRoZSBhdXRoIGl0IHNwYXduZWQgaXMgaW5k
-ZWVkIHdoYXQgd2Ugd2FudC4NCj4gDQo+ID4gDQo+ID4gVWx0aW1hdGVseSwgdGhvdWdoLCBJIHRo
-aW5rIHdlIG1pZ2h0IHdhbnQgdG8gbGV0IHRoZSB1c2VyIHNldCBhdCBsZWFzdA0KPiA+IF9wYXJ0
-XyBvZiB0aGUgcGF5bG9hZCB0byBzb21ldGhpbmcgdGhhdCBtaWdodCBiZSB1c2VmdWwgdG8gZ3Nz
-ZCB3aGVuIGl0DQo+ID4gZ29lcyBsb29raW5nIGZvciBjcmVkZW50aWFscy4gU2luY2UgdGhlIG5m
-c2xvZ2luIGFuZCBnc3NkIHdpbGwgYmUNCj4gPiBzaGlwcGVkIGFzIHBhcnQgb2YgdGhlIG5mcy11
-dGlscyBwYWNrYWdlLCBpdCB3b3VsZCBiZSBuaWNlIHRvIGFsbG93IHRoZW0NCj4gPiB0byB1c2Ug
-dGhlIGdzcy1jdHgga2V5IGluIG9yZGVyIHRvIGNvbW11bmljYXRlLiBJbnRlcmVzdGluZyBpbmZv
-cm1hdGlvbg0KPiA+IG1pZ2h0IGluY2x1ZGUgdGhlIEtSQjVDQ05BTUUuDQo+IA0KPiBUaGFua3Mg
-Zm9yIHRoZSBnb29kIHN1Z2dlc3Rpb25zLg0KDQpTbywgSSd2ZSBnb3QgYSBxdWVzdGlvbjogQ2Fu
-IHdlIHJlcGxhY2Ugc29tZSBvZiB0aGUgc3R1ZmYgaW4gdGhlICJSRkMNCkF2b2lkIGV4cGlyZWQg
-Y3JlZGVudGlhbCBrZXlzIGZvciBidWZmZXJlZCB3cml0ZXMiIHBhdGNoIHNlcmllcyB3aXRoDQp0
-aGlzPw0KDQpNeSB0aGlua2luZyBpcyB0aGF0IHNpbmNlIHRoZSB1c2VyX2dzc19kZXN0cm95KCkg
-aGFzIHRvIHN5bmMgYWxsIGZpbGVzDQphbmQgdGhlbiBpbnZhbGlkYXRlIHRoZSBycGNzZWNfZ3Nz
-IGNyZWRzLCB3ZSdyZSBwcmV0dHkgbXVjaCBkb2luZyB0aGUNCnNhbWUgdGhpbmcgYXMgaW4gdGhl
-IGFib3ZlIFJGQyBwYXRjaCBzZXJpZXMuIElmIG5mc2xvZ2luIHdlcmUgdG8gdGVsbA0KdGhlIGdz
-cy1jdHgga2V5IGhvdyBsb25nIHVudGlsIHRoZSBrZXJiZXJvcyB0Z3QgZXhwaXJlcywgY291bGRu
-J3Qgd2UNCmhhdmUgYSB3b3JrIHF1ZXVlIGpvYiB3YWtlIHVwIGp1c3QgYmVmb3JlIHRoZSB0Z3Qg
-aXMgYWJvdXQgdG8gZXhwaXJlLA0KYW5kIHNpbXBseSBjYWxsIHVzZXJfZ3NzX2Rlc3Ryb3kgYnkg
-cmV2b2tpbmcgdGhlIGdzcy1jdHgga2V5Pw0KSWYsIG9uIHRoZSBvdGhlciBoYW5kLCB0aGUgdXNl
-ciByZW5ld3MgdGhlIHRndCB1c2luZyBuZnNsb2dpbiwgdGhlbiB3ZQ0KY291bGQgdXBkYXRlIHRo
-ZSBnc3MtY3R4IGtleSwgYW5kIGRlZmVyIHRoZSB3b3JrIHF1ZXVlIGpvYiB1bnRpbCB0aGUgbmV3
-DQpleHBpcnQgdGltZS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQg
-bWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0
-YXBwLmNvbQ0K
+> -----Original Message-----
+> From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> Sent: Thursday, December 06, 2012 10:29 PM
+> To: Myklebust, Trond
+> Cc: linux-nfs@vger.kernel.org
+> Subject: Re: [PATCH 4/4] NFSD: Add support for dynamic slot changes
+> 
+> On Wed, Nov 28, 2012 at 10:17:43PM -0500, Trond Myklebust wrote:
+> > The algorithm chosen for growing/shrinking the dynamic slot table size
+> > is as follows:
+> >
+> > If the client is sending a sa_highest_slotid value that is greater
+> > than or equal to the our server target_highest_slotid, then multiply
+> > the value of the latter by 5/4.
+> >
+> > If, on the other hand, the sa_highest_slotid value is smaller than our
+> > target_highest_slotid, then try adjusting the latter to half its
+> > current value, or to the value of sa_highest_slotid+1, whichever is larger.
+> >
+> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > ---
+> >  fs/nfsd/nfs4state.c | 72
+> +++++++++++++++++++++++++++++++++++++++++++++++++----
+> >  fs/nfsd/state.h     |  2 ++
+> >  2 files changed, 69 insertions(+), 5 deletions(-)
+> >
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c index
+> > a1208cc..88d0de9 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+> > @@ -807,6 +807,7 @@ static bool nfsd4_grow_slot_table_locked(struct
+> nfsd4_slot_table *tbl,
+> >  		if (slot != NULL){
+> >  			if (!nfsd4_get_drc_mem(tbl))
+> >  				break;
+> > +			slot->sl_generation = tbl->slt_generation - 1;
+> >  			slot->sl_slotid = next_slotid;
+> >  			list_add_tail(&slot->sl_list, &tbl->slt_head);
+> >  		}
+> > @@ -853,6 +854,30 @@ static void nfsd4_free_slot_table(struct
+> nfsd4_slot_table *tbl)
+> >  	spin_unlock(&tbl->slt_lock);
+> >  }
+> >
+> > +static void nfsd4_fc_set_highest_slotid_locked(struct nfsd4_session
+> *session,
+> > +		struct nfsd4_slot_table *tbl,
+> > +		u32 target_highest_slotid,
+> > +		u32 highest_slotid)
+> > +{
+> > +	/* Lower limit for target_highest_slotid is negotiated limit */
+> > +	target_highest_slotid = max(target_highest_slotid,
+> > +			session->se_fchannel.maxreqs - 1);
+> > +	/* Lower limit for highest_slotid is target_highest_slotid */
+> > +	highest_slotid = max(highest_slotid, target_highest_slotid);
+> > +
+> > +	if (target_highest_slotid == tbl->slt_target_highest_slotid &&
+> > +			highest_slotid == tbl->slt_highest_slotid)
+> > +		return;
+> > +
+> > +	if (!nfsd4_grow_slot_table_locked(tbl, highest_slotid, GFP_KERNEL))
+> > +		return;
+> > +
+> > +	tbl->slt_target_highest_slotid = target_highest_slotid;
+> > +	tbl->slt_highest_slotid = highest_slotid;
+> > +	tbl->slt_generation++;
+> > +	nfsd4_truncate_slot_table_locked(tbl, tbl->slt_highest_slotid); }
+> > +
+> >  static void nfsd4_init_slot_table(struct nfsd4_slot_table *tbl,
+> >  		size_t slotsize, u32 highest_slotid)  { @@ -2039,6 +2064,45
+> @@ out:
+> >  	return status;
+> >  }
+> >
+> > +static void nfsd4_sequence_adjust_slot_table(struct nfsd4_session
+> *session,
+> > +		struct nfsd4_slot *slot, u32 sa_highest_slotid,
+> > +		struct nfsd4_sequence *res)
+> > +{
+> > +	struct nfsd4_slot_table *tbl = &session->se_slots;
+> > +	u32 next_target;
+> > +	u32 next_highest;
+> > +
+> > +	spin_lock(&tbl->slt_lock);
+> > +	/*
+> > +	 * If this slot hasn't seen our previous values, then don't trust
+> > +	 * that the client has seen them. Don't adjust the slot table yet.
+> > +	 */
+> > +	if (slot->sl_generation != tbl->slt_generation)
+> > +		goto out;
+> > +
+> > +	next_target = tbl->slt_target_highest_slotid;
+> > +
+> > +	/* Is the client bumping against our current window limits? */
+> > +	if (sa_highest_slotid >= tbl->slt_target_highest_slotid) {
+> > +		/* Yes! Grow the window size by 1/4 */
+> > +		next_target += 1 + (tbl->slt_target_highest_slotid >> 2);
+> > +		next_highest = next_target;
+> > +	} else {
+> > +		/* No! Try to shrink the window size by 1/2 */
+> > +		next_target >>= 1;
+> > +		if (sa_highest_slotid + 1 > next_target)
+> > +			next_target = sa_highest_slotid + 1;
+> > +		next_highest = tbl->slt_target_highest_slotid;
+> > +	}
+> > +	nfsd4_fc_set_highest_slotid_locked(session, tbl,
+> > +			next_target, next_highest);
+> > +out:
+> > +	slot->sl_generation = tbl->slt_generation;
+> > +	res->highest_slotid = tbl->slt_highest_slotid;
+> > +	res->target_highest_slotid = tbl->slt_target_highest_slotid;
+> > +	spin_unlock(&tbl->slt_lock);
+> > +}
+> > +
+> >  static struct nfsd4_conn *__nfsd4_find_conn(struct svc_xprt *xpt,
+> > struct nfsd4_session *s)  {
+> >  	struct nfsd4_conn *c;
+> > @@ -2159,11 +2223,9 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+> >  	else
+> >  		slot->sl_flags &= ~NFSD4_SLOT_CACHETHIS;
+> >
+> > -	/* Retrieve new target/highest slotid values */
+> > -	spin_lock(&session->se_slots.slt_lock);
+> > -	seq->target_highest_slotid = session-
+> >se_slots.slt_target_highest_slotid;
+> > -	seq->highest_slotid = session->se_slots.slt_highest_slotid;
+> > -	spin_unlock(&session->se_slots.slt_lock);
+> > +	/* Adjust slot table, and retrieve new target/highest slotid values */
+> > +	nfsd4_sequence_adjust_slot_table(session, slot,
+> > +			seq->highest_slotid, seq);
+> 
+> This is allocating under a spin lock (see the client_lock that most of
+> nfsd4_sequence is under.)
+> 
+> (But I'm not sure what we should be doing instead.)
+
+I've already fixed this issue in the latest patches: the right thing is simply to do all this after we drop the client lock. I'll send the updated patches when I get a moment: probably Saturday...
+
+Cheers
+  Trond
