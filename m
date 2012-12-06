@@ -1,42 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:32266 "EHLO mx2.netapp.com"
+Received: from fn.samba.org ([216.83.154.106]:39047 "EHLO mail.samba.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030863Ab2LGVRc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Dec 2012 16:17:32 -0500
-From: bjschuma@netapp.com
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] NFSD: Correct the size calculation in fault_inject_write
-Date: Fri,  7 Dec 2012 16:17:29 -0500
-Message-Id: <1354915049-6892-2-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1354915049-6892-1-git-send-email-bjschuma@netapp.com>
-References: <1354915049-6892-1-git-send-email-bjschuma@netapp.com>
+	id S1754672Ab2LFVjq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Dec 2012 16:39:46 -0500
+Date: Thu, 6 Dec 2012 13:39:44 -0800
+From: Jeremy Allison <jra@samba.org>
+To: "Theodore Ts'o" <tytso@mit.edu>, Jeremy Allison <jra@samba.org>,
+        Alan Cox <alan@lxorguk.ukuu.org.uk>,
+        Pavel Shilovsky <piastry@etersoft.ru>, linux-cifs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        wine-devel@winehq.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/3] Add O_DENY* flags to fcntl and cifs
+Message-ID: <20121206213944.GD24076@samba2>
+Reply-To: Jeremy Allison <jra@samba.org>
+References: <1354818391-7968-1-git-send-email-piastry@etersoft.ru>
+ <20121206194949.7ab20d56@pyramind.ukuu.org.uk>
+ <20121206195752.GA18585@samba2>
+ <20121206213133.GB4821@thunk.org>
+ <20121206213329.GB24076@samba2>
+ <20121206213727.GC4821@thunk.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121206213727.GC4821@thunk.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bryan Schumaker <bjschuma@netapp.com>
+On Thu, Dec 06, 2012 at 04:37:27PM -0500, Theodore Ts'o wrote:
+> On Thu, Dec 06, 2012 at 01:33:29PM -0800, Jeremy Allison wrote:
+> > > I'm confused; why would a userspace application need to be able to
+> > > request this behavior?
+> > 
+> > This isn't my proposal Ted, I'm just commenting on it :-).
+> 
+> Ah, sorry, I thought was coming from the Samba team.  :-)
 
-If len == 0 we end up with size = (0 - 1), which could cause bad things
-to happen in copy_from_user().
+Well it sort of is, as the people working on cifsfs are also
+Samba Team members, but this isn't an official "Samba" thing,
+as I can't see exactly what apps would want this either (other
+than Samba smbd running on top of smbd, re-exporting a cifsfs
+share, pointing to a Samba server, running on a... ERROR STACK
+OVERFLOW :-).
 
-Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
----
- fs/nfsd/fault_inject.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+> Hmm... I see wine-devel is cc'ed; is this coming from the Wine team,
+> wanting to do SMB paravirtualization?  It would be useful if the
+> commit description described how these flags are intended to be used....
 
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-index 7a7b079..e761ee9 100644
---- a/fs/nfsd/fault_inject.c
-+++ b/fs/nfsd/fault_inject.c
-@@ -122,7 +122,7 @@ static ssize_t fault_inject_write(struct file *file, const char __user *buf,
- 				  size_t len, loff_t *ppos)
- {
- 	char write_buf[INET6_ADDRSTRLEN];
--	size_t size = min(sizeof(write_buf), len) - 1;
-+	size_t size = min(sizeof(write_buf) - 1, len);
- 	struct net *net = current->nsproxy->net_ns;
- 	struct sockaddr_storage sa;
- 	u64 val;
--- 
-1.8.0.1
+Indeed :-).
 
+Jeremy.
