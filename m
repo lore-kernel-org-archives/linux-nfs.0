@@ -1,68 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59366 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751329Ab2LJMet (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Dec 2012 07:34:49 -0500
-Date: Mon, 10 Dec 2012 07:34:46 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Subject: Re: [Devel] [PATCH 3/6] nfsd: pass net to nfsd_create_serv()
-Message-ID: <20121210123446.GB13327@fieldses.org>
-References: <20121204134920.24504.95261.stgit@localhost.localdomain>
- <20121204135016.24504.74168.stgit@localhost.localdomain>
- <20121207165211.GK17115@fieldses.org>
- <50C59C68.30803@parallels.com>
- <50C5A889.2080604@parallels.com>
+Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:33423
+	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1161012Ab2LGQQE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Dec 2012 11:16:04 -0500
+Date: Fri, 7 Dec 2012 11:16:02 -0500
+From: Christoph Hellwig <hch@infradead.org>
+To: Pavel Shilovsky <piastry@etersoft.ru>
+Cc: linux-cifs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, wine-devel@winehq.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/3] Add O_DENY* flags to fcntl and cifs
+Message-ID: <20121207161602.GA17710@infradead.org>
+References: <1354818391-7968-1-git-send-email-piastry@etersoft.ru>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <50C5A889.2080604@parallels.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1354818391-7968-1-git-send-email-piastry@etersoft.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 10, 2012 at 01:16:57PM +0400, Stanislav Kinsbursky wrote:
-> 10.12.2012 12:25, Stanislav Kinsbursky пишет:
-> >07.12.2012 20:52, J. Bruce Fields пишет:
-> >>On Tue, Dec 04, 2012 at 04:50:16PM +0300, Stanislav Kinsbursky wrote:
-> >>>diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> >>>index 21cba3d..6448391 100644
-> >>>--- a/fs/nfsd/nfssvc.c
-> >>>+++ b/fs/nfsd/nfssvc.c
-> >>>@@ -334,10 +334,9 @@ static int nfsd_get_default_max_blksize(void)
-> >>>      return ret;
-> >>>  }
-> >>>
-> >>>-int nfsd_create_serv(void)
-> >>>+int nfsd_create_serv(struct net *net)
-> >>>  {
-> >>>      int error;
-> >>>-    struct net *net = &init_net;
-> >>
-> >>What does this apply to?  Since 3.6-rc1 we have
-> >>57c8b13e3cd0f94944c9691ce7f58e5fcef8a12d "NFSd: set nfsd_serv to NULL
-> >>after service destruction" which includes:
-> >>
-> >>@@ -332,6 +330,7 @@ static int nfsd_get_default_max_blksize(void)
-> >>  int nfsd_create_serv(void)
-> >>  {
-> >>         int error;
-> >>+       struct net *net = current->nsproxy->net_ns;
-> >>
-> >>         WARN_ON(!mutex_is_locked(&nfsd_mutex));
-> >>         if (nfsd_serv) {
-> >>
-> >>Am I missing some later patch?
-> >>
-> >
-> >Maybe I'm missing something.
-> >My tree is based on yours branch "for-3.8".
-> >Doe I need to rebase?
-> >
+On Thu, Dec 06, 2012 at 10:26:28PM +0400, Pavel Shilovsky wrote:
+> Network filesystems CIFS, SMB2.0, SMB3.0 and NFSv4 have such flags - this change can benefit cifs and nfs modules. While this change is ok for network filesystems, itsn't not targeted for local filesystems due security problems (e.g. when a user process can deny root to delete a file).
 > 
-> My bad, sorry.
-> I forgot to send one patch in this series.
+> Share flags are used by Windows applications and WINE have to deal with them too. While WINE can process open share flags itself on local filesystems, it can't do it if a file stored on a network share and is used by several clients. This patchset makes it possible for CIFS/SMB2.0/SMB3.0.
 
-Thanks, discarding this series, applying the resent version.
+I don't think introducing user visible flags that are only supported on
+a single network filesystem is a good idea.
 
---b.
+I'm not even sure adding these flags does make a lot of sense, but
+assuming we'd actually want this (and I'd like some more detailed
+explanation) I think we'd at least need to make sure that:
+
+ a) opening files with the new modes gives a proper error message if not
+    supported
+ b) there needs to be local support for them as well
+ c) we need to think really hard when they should be supported, and need
+    a good rational for it.  I can't see how we could do it
+    unconditionally for all users as that would introduce easy denial
+    of services attacks the way I understand the semantics (correct me
+    if I'm wrong).  So a mount option like you currently do probably is
+    the least bad even if don't fell overly happy about that version.
+
+What is the reason your special wine use case can't simply use a
+userspace cifs client?  Given that wine uses windows filesystem
+semantics and cifs does as well tunnelling it through a Posix-like API
+inbetween is never going to be perfect.
+
