@@ -1,63 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49958 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:32266 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030510Ab2LGN65 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Dec 2012 08:58:57 -0500
-Date: Fri, 7 Dec 2012 08:58:55 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 4/4] NFSD: Add support for dynamic slot changes
-Message-ID: <20121207135855.GE17115@fieldses.org>
-References: <1354159063-17343-1-git-send-email-Trond.Myklebust@netapp.com>
- <1354159063-17343-2-git-send-email-Trond.Myklebust@netapp.com>
- <1354159063-17343-3-git-send-email-Trond.Myklebust@netapp.com>
- <1354159063-17343-4-git-send-email-Trond.Myklebust@netapp.com>
- <1354159063-17343-5-git-send-email-Trond.Myklebust@netapp.com>
- <20121206212908.GB17115@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA90B33C86C@SACEXCMBX04-PRD.hq.netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90B33C86C@SACEXCMBX04-PRD.hq.netapp.com>
+	id S1751783Ab2LGVRb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Dec 2012 16:17:31 -0500
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] NFSD: Pass correct buffer size to rpc_ntop
+Date: Fri,  7 Dec 2012 16:17:28 -0500
+Message-Id: <1354915049-6892-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 06, 2012 at 11:20:15PM +0000, Myklebust, Trond wrote:
-> > -----Original Message-----
-> > From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> > Sent: Thursday, December 06, 2012 10:29 PM
-> > To: Myklebust, Trond
-> > Cc: linux-nfs@vger.kernel.org
-> > Subject: Re: [PATCH 4/4] NFSD: Add support for dynamic slot changes
-> > 
-> > On Wed, Nov 28, 2012 at 10:17:43PM -0500, Trond Myklebust wrote:
-> > > @@ -2159,11 +2223,9 @@ nfsd4_sequence(struct svc_rqst *rqstp,
-> > >  	else
-> > >  		slot->sl_flags &= ~NFSD4_SLOT_CACHETHIS;
-> > >
-> > > -	/* Retrieve new target/highest slotid values */
-> > > -	spin_lock(&session->se_slots.slt_lock);
-> > > -	seq->target_highest_slotid = session-
-> > >se_slots.slt_target_highest_slotid;
-> > > -	seq->highest_slotid = session->se_slots.slt_highest_slotid;
-> > > -	spin_unlock(&session->se_slots.slt_lock);
-> > > +	/* Adjust slot table, and retrieve new target/highest slotid values */
-> > > +	nfsd4_sequence_adjust_slot_table(session, slot,
-> > > +			seq->highest_slotid, seq);
-> > 
-> > This is allocating under a spin lock (see the client_lock that most of
-> > nfsd4_sequence is under.)
-> > 
-> > (But I'm not sure what we should be doing instead.)
-> 
-> I've already fixed this issue in the latest patches: the right thing
-> is simply to do all this after we drop the client lock.
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-Oh, sounds reasonable.
+I honestly have no idea where I got 129 from, but it's a much bigger
+value than the actual buffer size (INET6_ADDRSTRLEN).
 
-> I'll send the
-> updated patches when I get a moment: probably Saturday...
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfsd/fault_inject.c | 2 +-
+ fs/nfsd/nfs4state.c    | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 
-Thanks!
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index 96ffdf5..7a7b079 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -79,7 +79,7 @@ static void nfsd_inject_set_client(struct nfsd_fault_inject_op *op,
+ 	clp = nfsd_find_client(addr, addr_size);
+ 	if (clp) {
+ 		count = op->forget(clp, 0);
+-		rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, 129);
++		rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, sizeof(buf));
+ 		printk(KERN_INFO "NFSD [%s]: Client %s had %llu state object(s)\n", op->file, buf, count);
+ 	}
+ 	nfs4_unlock_state();
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index eff7340..ce94174 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4614,7 +4614,7 @@ u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
+ u64 nfsd_print_client(struct nfs4_client *clp, u64 num)
+ {
+ 	char buf[INET6_ADDRSTRLEN];
+-	rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, 129);
++	rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, sizeof(buf));
+ 	printk(KERN_INFO "NFS Client: %s\n", buf);
+ 	return 1;
+ }
+@@ -4623,7 +4623,7 @@ static void nfsd_print_count(struct nfs4_client *clp, unsigned int count,
+ 			     const char *type)
+ {
+ 	char buf[INET6_ADDRSTRLEN];
+-	rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, 129);
++	rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, sizeof(buf));
+ 	printk(KERN_INFO "NFS Client: %s has %u %s\n", buf, count, type);
+ }
+ 
+-- 
+1.8.0.1
 
---b.
