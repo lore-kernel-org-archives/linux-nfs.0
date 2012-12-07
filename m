@@ -1,47 +1,188 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 173-166-109-252-newengland.hfc.comcastbusiness.net ([173.166.109.252]:33423
-	"EHLO bombadil.infradead.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1161012Ab2LGQQE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Dec 2012 11:16:04 -0500
-Date: Fri, 7 Dec 2012 11:16:02 -0500
-From: Christoph Hellwig <hch@infradead.org>
-To: Pavel Shilovsky <piastry@etersoft.ru>
-Cc: linux-cifs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, wine-devel@winehq.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/3] Add O_DENY* flags to fcntl and cifs
-Message-ID: <20121207161602.GA17710@infradead.org>
-References: <1354818391-7968-1-git-send-email-piastry@etersoft.ru>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1354818391-7968-1-git-send-email-piastry@etersoft.ru>
+Received: from mx1.redhat.com ([209.132.183.28]:32805 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S964865Ab2LGPXS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Dec 2012 10:23:18 -0500
+Date: Fri, 7 Dec 2012 10:23:01 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
+        Trond.Myklebust@netapp.com, linux-kernel@vger.kernel.org,
+        devel@openvz.org
+Subject: Re: [PATCH] nfsd: make NFSv4 recovery client tracking options per
+ net
+Message-ID: <20121207102301.7cafcbdc@tlielax.poochiereds.net>
+In-Reply-To: <20121204112925.23999.28249.stgit@localhost.localdomain>
+References: <20121204112925.23999.28249.stgit@localhost.localdomain>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 06, 2012 at 10:26:28PM +0400, Pavel Shilovsky wrote:
-> Network filesystems CIFS, SMB2.0, SMB3.0 and NFSv4 have such flags - this change can benefit cifs and nfs modules. While this change is ok for network filesystems, itsn't not targeted for local filesystems due security problems (e.g. when a user process can deny root to delete a file).
+On Tue, 04 Dec 2012 14:29:27 +0300
+Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+
+> Pointer to client tracking operations - client_tracking_ops - have to be
+> containerized, because different environment can support different trackers
+> (for example, legacy tracker currently is not suported in container).
 > 
-> Share flags are used by Windows applications and WINE have to deal with them too. While WINE can process open share flags itself on local filesystems, it can't do it if a file stored on a network share and is used by several clients. This patchset makes it possible for CIFS/SMB2.0/SMB3.0.
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> ---
+>  fs/nfsd/netns.h       |    2 ++
+>  fs/nfsd/nfs4recover.c |   48 ++++++++++++++++++++++++++++--------------------
+>  2 files changed, 30 insertions(+), 20 deletions(-)
+> 
+> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+> index 2c4b2e2..bca789d 100644
+> --- a/fs/nfsd/netns.h
+> +++ b/fs/nfsd/netns.h
+> @@ -35,6 +35,7 @@
+>  #define SESSION_HASH_SIZE	512
+>  
+>  struct cld_net;
+> +struct nfsd4_client_tracking_ops;
+>  
+>  struct nfsd_net {
+>  	struct cld_net *cld_net;
+> @@ -87,6 +88,7 @@ struct nfsd_net {
+>  
+>  	struct file *rec_file;
+>  	bool in_grace;
+> +	struct nfsd4_client_tracking_ops *client_tracking_ops;
+>  
+>  	time_t nfsd4_lease;
+>  	time_t nfsd4_grace;
+> diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+> index 359793f..ba6fdd4 100644
+> --- a/fs/nfsd/nfs4recover.c
+> +++ b/fs/nfsd/nfs4recover.c
+> @@ -63,7 +63,6 @@ struct nfsd4_client_tracking_ops {
+>  
+>  /* Globals */
+>  static char user_recovery_dirname[PATH_MAX] = "/var/lib/nfs/v4recovery";
+> -static struct nfsd4_client_tracking_ops *client_tracking_ops;
+>  
+>  static int
+>  nfs4_save_creds(const struct cred **original_creds)
+> @@ -1262,17 +1261,18 @@ nfsd4_client_tracking_init(struct net *net)
+>  {
+>  	int status;
+>  	struct path path;
+> +	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+>  
+>  	/* just run the init if it the method is already decided */
+> -	if (client_tracking_ops)
+> +	if (nn->client_tracking_ops)
+>  		goto do_init;
+>  
+>  	/*
+>  	 * First, try a UMH upcall. It should succeed or fail quickly, so
+>  	 * there's little harm in trying that first.
+>  	 */
+> -	client_tracking_ops = &nfsd4_umh_tracking_ops;
+> -	status = client_tracking_ops->init(net);
+> +	nn->client_tracking_ops = &nfsd4_umh_tracking_ops;
+> +	status = nn->client_tracking_ops->init(net);
+>  	if (!status)
+>  		return status;
+>  
+> @@ -1280,7 +1280,7 @@ nfsd4_client_tracking_init(struct net *net)
+>  	 * See if the recoverydir exists and is a directory. If it is,
+>  	 * then use the legacy ops.
+>  	 */
+> -	client_tracking_ops = &nfsd4_legacy_tracking_ops;
+> +	nn->client_tracking_ops = &nfsd4_legacy_tracking_ops;
+>  	status = kern_path(nfs4_recoverydir(), LOOKUP_FOLLOW, &path);
+>  	if (!status) {
+>  		status = S_ISDIR(path.dentry->d_inode->i_mode);
+> @@ -1290,16 +1290,16 @@ nfsd4_client_tracking_init(struct net *net)
+>  	}
+>  
+>  	/* Finally, try to use nfsdcld */
+> -	client_tracking_ops = &nfsd4_cld_tracking_ops;
+> +	nn->client_tracking_ops = &nfsd4_cld_tracking_ops;
+>  	printk(KERN_WARNING "NFSD: the nfsdcld client tracking upcall will be "
+>  			"removed in 3.10. Please transition to using "
+>  			"nfsdcltrack.\n");
+>  do_init:
+> -	status = client_tracking_ops->init(net);
+> +	status = nn->client_tracking_ops->init(net);
+>  	if (status) {
+>  		printk(KERN_WARNING "NFSD: Unable to initialize client "
+>  				    "recovery tracking! (%d)\n", status);
+> -		client_tracking_ops = NULL;
+> +		nn->client_tracking_ops = NULL;
+>  	}
+>  	return status;
+>  }
+> @@ -1307,32 +1307,40 @@ do_init:
+>  void
+>  nfsd4_client_tracking_exit(struct net *net)
+>  {
+> -	if (client_tracking_ops) {
+> -		if (client_tracking_ops->exit)
+> -			client_tracking_ops->exit(net);
+> -		client_tracking_ops = NULL;
+> +	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+> +
+> +	if (nn->client_tracking_ops) {
+> +		if (nn->client_tracking_ops->exit)
+> +			nn->client_tracking_ops->exit(net);
+> +		nn->client_tracking_ops = NULL;
+>  	}
+>  }
+>  
+>  void
+>  nfsd4_client_record_create(struct nfs4_client *clp)
+>  {
+> -	if (client_tracking_ops)
+> -		client_tracking_ops->create(clp);
+> +	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+> +
+> +	if (nn->client_tracking_ops)
+> +		nn->client_tracking_ops->create(clp);
+>  }
+>  
+>  void
+>  nfsd4_client_record_remove(struct nfs4_client *clp)
+>  {
+> -	if (client_tracking_ops)
+> -		client_tracking_ops->remove(clp);
+> +	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+> +
+> +	if (nn->client_tracking_ops)
+> +		nn->client_tracking_ops->remove(clp);
+>  }
+>  
+>  int
+>  nfsd4_client_record_check(struct nfs4_client *clp)
+>  {
+> -	if (client_tracking_ops)
+> -		return client_tracking_ops->check(clp);
+> +	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+> +
+> +	if (nn->client_tracking_ops)
+> +		return nn->client_tracking_ops->check(clp);
+>  
+>  	return -EOPNOTSUPP;
+>  }
+> @@ -1340,8 +1348,8 @@ nfsd4_client_record_check(struct nfs4_client *clp)
+>  void
+>  nfsd4_record_grace_done(struct nfsd_net *nn, time_t boot_time)
+>  {
+> -	if (client_tracking_ops)
+> -		client_tracking_ops->grace_done(nn, boot_time);
+> +	if (nn->client_tracking_ops)
+> +		nn->client_tracking_ops->grace_done(nn, boot_time);
+>  }
+>  
+>  static int
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-I don't think introducing user visible flags that are only supported on
-a single network filesystem is a good idea.
+Looks reasonable...
 
-I'm not even sure adding these flags does make a lot of sense, but
-assuming we'd actually want this (and I'd like some more detailed
-explanation) I think we'd at least need to make sure that:
-
- a) opening files with the new modes gives a proper error message if not
-    supported
- b) there needs to be local support for them as well
- c) we need to think really hard when they should be supported, and need
-    a good rational for it.  I can't see how we could do it
-    unconditionally for all users as that would introduce easy denial
-    of services attacks the way I understand the semantics (correct me
-    if I'm wrong).  So a mount option like you currently do probably is
-    the least bad even if don't fell overly happy about that version.
-
-What is the reason your special wine use case can't simply use a
-userspace cifs client?  Given that wine uses windows filesystem
-semantics and cifs does as well tunnelling it through a Posix-like API
-inbetween is never going to be perfect.
-
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
