@@ -1,115 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:12385 "EHLO mx2.netapp.com"
+Received: from fn.samba.org ([216.83.154.106]:51617 "EHLO mail.samba.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751486Ab2LCSqV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Dec 2012 13:46:21 -0500
-From: andros@netapp.com
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 2/2] GSSD: gssd_setup_krb5_user_keyring_ccache
-Date: Mon,  3 Dec 2012 13:46:09 -0500
-Message-Id: <1354560369-2427-3-git-send-email-andros@netapp.com>
-In-Reply-To: <1354560369-2427-1-git-send-email-andros@netapp.com>
-References: <1354560369-2427-1-git-send-email-andros@netapp.com>
+	id S1756397Ab2LGPhr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Dec 2012 10:37:47 -0500
+Message-ID: <1354894665.14719.87.camel@pico.ipa.ssimo.org>
+Subject: Re: [PATCH 0/3] Add O_DENY* flags to fcntl and cifs
+From: simo <idra@samba.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Pavel Shilovsky <piastry@etersoft.ru>, linux-cifs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        wine-devel@winehq.org, linux-nfs@vger.kernel.org
+Date: Fri, 07 Dec 2012 10:37:45 -0500
+In-Reply-To: <20121207145206.GF17115@fieldses.org>
+References: <1354818391-7968-1-git-send-email-piastry@etersoft.ru>
+	 <CAKywueQ3d=wdq2nw5f-QS-D9PY70Axa3Cn0gi5GRk4Xso+iquA@mail.gmail.com>
+	 <20121207145206.GF17115@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On Fri, 2012-12-07 at 09:52 -0500, J. Bruce Fields wrote:
+> On Fri, Dec 07, 2012 at 01:08:46PM +0400, Pavel Shilovsky wrote:
+> > 2012/12/6 Pavel Shilovsky <piastry@etersoft.ru>:
+> > > Network filesystems CIFS, SMB2.0, SMB3.0 and NFSv4 have such flags - this change can benefit cifs and nfs modules. While this change is ok for network filesystems, itsn't not targeted for local filesystems due security problems (e.g. when a user process can deny root to delete a file).
+> > >
+> > > Share flags are used by Windows applications and WINE have to deal with them too. While WINE can process open share flags itself on local filesystems, it can't do it if a file stored on a network share and is used by several clients. This patchset makes it possible for CIFS/SMB2.0/SMB3.0.
+> > >
+> > > Pavel Shilovsky (3):
+> > >   fcntl: Introduce new O_DENY* open flags for network filesystems
+> > >   CIFS: Add O_DENY* open flags support
+> > >   CIFS: Use NT_CREATE_ANDX command for forcemand mounts
+> > >
+> > >  fs/cifs/cifsacl.c                |   10 ++++----
+> > >  fs/cifs/cifsglob.h               |   11 ++++++++-
+> > >  fs/cifs/cifsproto.h              |    9 ++++----
+> > >  fs/cifs/cifssmb.c                |   47 ++++++++++++++++++++------------------
+> > >  fs/cifs/dir.c                    |   14 ++++++++----
+> > >  fs/cifs/file.c                   |   18 ++++++++++-----
+> > >  fs/cifs/inode.c                  |   11 +++++----
+> > >  fs/cifs/link.c                   |   10 ++++----
+> > >  fs/cifs/readdir.c                |    2 +-
+> > >  fs/cifs/smb1ops.c                |   15 ++++++------
+> > >  fs/cifs/smb2file.c               |   10 ++++----
+> > >  fs/cifs/smb2inode.c              |    4 ++--
+> > >  fs/cifs/smb2ops.c                |   10 ++++----
+> > >  fs/cifs/smb2pdu.c                |    6 ++---
+> > >  fs/cifs/smb2proto.h              |   14 +++++++-----
+> > >  fs/fcntl.c                       |    5 ++--
+> > >  include/uapi/asm-generic/fcntl.h |   11 +++++++++
+> > >  17 files changed, 125 insertions(+), 82 deletions(-)
+> > >
+> > > --
+> > > 1.7.10.4
+> > >
+> > 
+> > First of all, sorry for being unclear at this proposal.
+> > 
+> > 
+> > I am not from Wine team but I am working on things related to
+> > Wine+CIFS-client+Samba.
+> > 
+> > We (at Etersoft) need to organize the work of Wine applications
+> > through cifs-client share mounted to Samba (or Windows server). They
+> > are related to accounting (mostly Russian ones - e.g.
+> > http://www.1c.ru/eng/title.htm). So, the problem is that such
+> > applications use share flags to control the parallel access to the
+> > same files of several clients on a remote share. Also, there can be a
+> > situation where Windows (native) clients and Wine clients are working
+> > together in the same time.
+> > 
+> > That's why we need such flags in the kernel (patch #1). With these
+> > flags Wine can pass them to every open and they will be used by CIFS
+> > (and probably NFS) file systems to pass to the Samba server. In the
+> > same time if the file is on local filesystem - these flags will be
+> > simply ignored (not implemented).
+> 
+> NFS supports the deny-read and deny-write bits but not deny-delete.
+> 
+> If we could do such opens in-kernel on local and clustered filesystems,
+> that could also be useful for multi-protocol (Samba and NFS) and
+> clustered exports.
+> 
+> Currently knfsd tries to enforce deny bits in the nfsd code, which is a
+> bit ugly.
+> 
+> And knfsd currently requires write permissions for deny-read.  My
+> understanding is that Windows considers that wrong, but I'd be curious
+> to know whether that breaks Windows applications in practice.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- utils/gssd/gssd_proc.c |   15 +++++++++++++++
- utils/gssd/krb5_util.c |   31 +++++++++++++++++++++++++++++++
- utils/gssd/krb5_util.h |    1 +
- 3 files changed, 47 insertions(+), 0 deletions(-)
+It probably does if you look hard enough.
+IIRC Deny-reads are very loosely like read locks, and you can take read
+locks if you have read-only access.
+Why does knfsd restrict deny-read to read-write access ?
 
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index 97e8f99..e24dbcb 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -984,6 +984,20 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
- 		 service ? service : "<null>");
- 	if (uid != 0 || (uid == 0 && root_uses_machine_creds == 0 &&
- 				service == NULL)) {
-+		if (use_keyring) {
-+			err = gssd_setup_krb5_user_keyring_ccache(uid,
-+							clp->servername);
-+			if (err == -EKEYEXPIRED)
-+				downcall_err = -EKEYEXPIRED;
-+			else if (!err)
-+				create_resp = create_auth_rpc_client(clp,
-+							&rpc_clnt, &auth, uid,
-+							AUTHTYPE_KRB5);
-+			if (create_resp == 0)
-+				goto resp_found;
-+
-+		}
-+
- 		/* Tell krb5 gss which credentials cache to use */
- 		for (dirname = ccachesearch; *dirname != NULL; dirname++) {
- 			err = gssd_setup_krb5_user_gss_ccache(uid, clp->servername, *dirname);
-@@ -1055,6 +1069,7 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
- 		goto out_return_error;
- 	}
- 
-+resp_found:
- 	if (!authgss_get_private_data(auth, &pd)) {
- 		printerr(1, "WARNING: Failed to obtain authentication "
- 			    "data for user with uid %d for server %s\n",
-diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index 8d42e8f..ae701a5 100644
---- a/utils/gssd/krb5_util.c
-+++ b/utils/gssd/krb5_util.c
-@@ -1039,6 +1039,37 @@ err_cache:
- /*==========================*/
- 
- /*
-+ * Attempt to find a KEYRING cache of the form KEYRING:krb5cc_<UID>.
-+ *
-+ * Returns 0 if a ccache was found, and a non-zero error code otherwise.
-+ */
-+int
-+gssd_setup_krb5_user_keyring_ccache(uid_t uid, char *servername)
-+{
-+	char	buf[MAX_NETOBJ_SZ];
-+	char	*princ = NULL, *realm = NULL;
-+	int	err = -EKEYEXPIRED;
-+
-+	snprintf(buf, sizeof(buf), "%s:%s_%u", "KEYRING",
-+		GSSD_DEFAULT_CRED_PREFIX, uid);
-+
-+	if (!query_krb5_ccache(buf, &princ, &realm)) {
-+		printerr(3, "CC '%s' is expired or corrupt\n", buf);
-+		goto out;
-+	}
-+	err = 0;
-+	printerr(2, "Using CC '%s' as credentials cache for %s@%s with "
-+		"uid %u for server %s\n", buf, princ, realm, uid, servername);
-+
-+	free(princ);
-+	free(realm);
-+
-+	gssd_set_krb5_ccache_name(buf);
-+out:
-+	return err;
-+}
-+
-+/*
-  * Attempt to find the best match for a credentials cache file
-  * given only a UID.  We really need more information, but we
-  * do the best we can.
-diff --git a/utils/gssd/krb5_util.h b/utils/gssd/krb5_util.h
-index 9f41625..472b65e 100644
---- a/utils/gssd/krb5_util.h
-+++ b/utils/gssd/krb5_util.h
-@@ -25,6 +25,7 @@ struct gssd_k5_kt_princ {
- 
- int gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername,
- 				     char *dirname);
-+int gssd_setup_krb5_user_keyring_ccache(uid_t uid, char *servername);
- int  gssd_get_krb5_machine_cred_list(char ***list);
- void gssd_free_krb5_machine_cred_list(char **list);
- void gssd_setup_krb5_machine_gss_ccache(char *servername);
+Simo.
+
 -- 
-1.7.7.6
+Simo Sorce
+Samba Team GPL Compliance Officer <simo@samba.org>
+Principal Software Engineer at Red Hat, Inc. <simo@redhat.com>
 
