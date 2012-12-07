@@ -1,35 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from tirith.ics.muni.cz ([147.251.4.36]:55968 "EHLO
-	tirith.ics.muni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932230Ab2LMOk3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Dec 2012 09:40:29 -0500
-Date: Thu, 13 Dec 2012 15:40:25 +0100
-From: Lukas Hejtmanek <xhejtman@gmail.com>
-To: Fred Isaman <faisaman4@gmail.com>
+Received: from mx2.netapp.com ([216.240.18.37]:32266 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1030863Ab2LGVRc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Dec 2012 16:17:32 -0500
+From: bjschuma@netapp.com
+To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: local_lock mount option
-Message-ID: <20121213144025.GA1045@ics.muni.cz>
-References: <20121213133554.GO10897@ics.muni.cz>
- <CADnza44SJ0JZN05OtMZcjsm+NwdMVPGTa2f2vG9TbpUJR_B4Zw@mail.gmail.com>
- <20121213142336.GP10897@ics.muni.cz>
- <CADnza44SGwAJTJ8sFnAOoLHRPp1Mt9pJKk-scWmrigxD2G=zpQ@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-2
-In-Reply-To: <CADnza44SGwAJTJ8sFnAOoLHRPp1Mt9pJKk-scWmrigxD2G=zpQ@mail.gmail.com>
+Subject: [PATCH 2/2] NFSD: Correct the size calculation in fault_inject_write
+Date: Fri,  7 Dec 2012 16:17:29 -0500
+Message-Id: <1354915049-6892-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1354915049-6892-1-git-send-email-bjschuma@netapp.com>
+References: <1354915049-6892-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 13, 2012 at 09:38:04AM -0500, Fred Isaman wrote:
-> It is turned off here:
-> 
-> static void nfs4_validate_mount_flags(struct nfs_parsed_mount_data *args)
-> {
-> 	args->flags &= ~(NFS_MOUNT_NONLM|NFS_MOUNT_NOACL|NFS_MOUNT_VER3|
-> 			 NFS_MOUNT_LOCAL_FLOCK|NFS_MOUNT_LOCAL_FCNTL);
-> }
+From: Bryan Schumaker <bjschuma@netapp.com>
 
-ok, thanks. Is there any reason for this? I need to turn of locks for NFSv4 as
-they seem to not work properly with NFS server on CXFS.
+If len == 0 we end up with size = (0 - 1), which could cause bad things
+to happen in copy_from_user().
 
+Signed-off-by: Bryan Schumaker <bjschuma@netapp.com>
+---
+ fs/nfsd/fault_inject.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index 7a7b079..e761ee9 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -122,7 +122,7 @@ static ssize_t fault_inject_write(struct file *file, const char __user *buf,
+ 				  size_t len, loff_t *ppos)
+ {
+ 	char write_buf[INET6_ADDRSTRLEN];
+-	size_t size = min(sizeof(write_buf), len) - 1;
++	size_t size = min(sizeof(write_buf) - 1, len);
+ 	struct net *net = current->nsproxy->net_ns;
+ 	struct sockaddr_storage sa;
+ 	u64 val;
 -- 
-Luká¹ Hejtmánek
+1.8.0.1
+
