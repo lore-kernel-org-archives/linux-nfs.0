@@ -1,81 +1,160 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57138 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:53652 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752288Ab2LUXIv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Dec 2012 18:08:51 -0500
-Date: Fri, 21 Dec 2012 18:08:49 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Dave Jones <davej@redhat.com>, Linux Kernel <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Adamson, Dros" <Weston.Adamson@netapp.com>
-Subject: Re: nfsd oops on Linus' current tree.
-Message-ID: <20121221230849.GB29739@fieldses.org>
-References: <20121221153348.GA32151@redhat.com>
- <20121221180824.GA27729@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91197273D@SACEXCMBX04-PRD.hq.netapp.com>
+	id S1754268Ab2LGWuh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Dec 2012 17:50:37 -0500
+Date: Fri, 7 Dec 2012 17:50:36 -0500
+From: "J.Bruce Fields" <bfields@fieldses.org>
+To: Neil Brown <neilb@suse.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] - avoid permission checks on EXCLUSIVE_CREATE replay
+Message-ID: <20121207225036.GA4078@fieldses.org>
+References: <20100422101042.226f71d6@notabene.brown>
+ <20100422162533.GH5926@fieldses.org>
+ <20100423071631.27ff3a5a@notabene.brown>
+ <20100422211801.GF10302@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91197273D@SACEXCMBX04-PRD.hq.netapp.com>
+In-Reply-To: <20100422211801.GF10302@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 21, 2012 at 06:40:54PM +0000, Myklebust, Trond wrote:
-> On Fri, 2012-12-21 at 13:08 -0500, J. Bruce Fields wrote:
-> > On Fri, Dec 21, 2012 at 10:33:48AM -0500, Dave Jones wrote:
-> > > Did a mount from a client (also running Linus current), and the
-> > > server spat this out..
+On Thu, Apr 22, 2010 at 05:18:01PM -0400, J.Bruce Fields wrote:
+> On Fri, Apr 23, 2010 at 07:16:31AM +1000, Neil Brown wrote:
+> > On Thu, 22 Apr 2010 12:25:33 -0400
+
+Always fun to reply on 2-year-old threads:
+
+> > "J.Bruce Fields" <bfields@fieldses.org> wrote:
+> > 
+> > > On Thu, Apr 22, 2010 at 10:10:42AM +1000, Neil Brown wrote:
+> > > > 
+> > > > With NFSv4, if we create a file then open it we explicit avoid checking the
+> > > > permissions on the file during the open because the fact that we created it
+> > > > ensures we should be allow to open it (the create and the open should appear
+> > > > to be a single operation).
+> > > > 
+> > > > However if the reply to an EXCLUSIVE create gets lots and the client resends
+> > > > the create, the current code will perform the permission check - because it
+> > > > doesn't realise that it did the open already..
+> > > > 
+> > > > This patch should fix this.
 > > > 
-> > > [ 6936.306135] ------------[ cut here ]------------
-> > > [ 6936.306154] WARNING: at net/sunrpc/clnt.c:617 rpc_shutdown_client+0x12a/0x1b0 [sunrpc]()
+> > > Thanks, but: hm, does this leave a loophole for a clever attacker?
+> > > They'll still have to get past the initial
+> > > 
+> > > 	fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_CREATE)
+> > > 
+> > > but that just checks the parent directory; if the existing file is
+> > > actually owned by someone else, do we allow an open that we shouldn't?
+> > > 
+> > > Maybe when "created" is set we should keep the permission check but add
+> > > NFSD_ALLOW_OWNER_OVERRIDE?
+> > > 
 > > 
-> > This is a warning added by 168e4b39d1afb79a7e3ea6c3bb246b4c82c6bdb9
-> > "SUNRPC: add WARN_ON_ONCE for potential deadlock", pointing out that
-> > nfsd is calling shutdown_client from a workqueue, which is a problem
-> > because shutdown_client has to wait on rpc tasks that run on a
-> > workqueue.
+> > I think that is possibly a good idea.  However......
 > > 
-> > I don't believe there's any circular dependency among the workqueues
-> > (we're calling shutdown_client from callback_wq, not rpciod_workqueue),
+> > commit 81ac95c5569d7a60ab5db6c1ccec56c12b3ebcb5
+> > Author: J. Bruce Fields <bfields@fieldses.org>
+> > Date:   Wed Nov 8 17:44:40 2006 -0800
+> > 
+> >     [PATCH] nfsd4: fix open-create permissions
+> >     
+> >     In the case where an open creates the file, we shouldn't be rechecking
+> >     permissions to open the file; the open succeeds regardless of what the new
+> >     file's mode bits say.
+> >     
+> >     This patch fixes the problem, but only by introducing yet another parameter
+> >     to nfsd_create_v3.  This is ugly.  This will be fixed by later patches.
+> >     
+> > 
+> > I wouldn't want to get in the way of these 'later patches' that might be
+> > going to remove the 'created' flag from nfsd_create_v3 :-)
 > 
-> We were getting deadlocks with rpciod when calling rpc_shutdown_client
-> from the nfsiod workqueue.
+> Har.  I was optimistic.
 > 
-> The problem here is that the workqueues all run using the same pool of
-> threads, and so you can get "interesting" deadlocks when one of these
-> threads has to wait for another one.
+> That code *is* really hairy.  I'll take another look.
 
-OK, coming back after reviewing Documentation/workqueue.txt: the
-workqueues potentially involved here are rpciod and the server's
-laundromat and callback workqueues.
+Well, it remains as ugly as ever, but pynfs just reminded me that I'd
+forgotten that the original bug still needed fixing!
 
-The former is created with
+Version I plan to merge follows.
 
-	alloc_workqueue("rpciod", WQ_MEM_RECLAIM, 1);
+commit 1895f5075c59f6a7b5e4c3a59ffe108e881f69d4
+Author: Neil Brown <neilb@suse.de>
+Date:   Fri Dec 7 15:40:55 2012 -0500
 
-and the latter two are both created with
-create_singlethread_workqueue(), which also sets WQ_MEM_RECLAIM.
+    nfsd: avoid permission checks on EXCLUSIVE_CREATE replay
+    
+    With NFSv4, if we create a file then open it we explicit avoid checking
+    the permissions on the file during the open because the fact that we
+    created it ensures we should be allow to open it (the create and the
+    open should appear to be a single operation).
+    
+    However if the reply to an EXCLUSIVE create gets lots and the client
+    resends the create, the current code will perform the permission check -
+    because it doesn't realise that it did the open already..
+    
+    This patch should fix this.
+    
+    Note that I haven't actually seen this cause a problem.  I was just
+    looking at the code trying to figure out a different EXCLUSIVE open
+    related issue, and this looked wrong.
+    
+    Cc: stable@kernel.org
+    Signed-off-by: NeilBrown <neilb@suse.de>
+    [bfields: use OWNER_OVERRIDE and update for 4.1]
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-As I understand it, that ensures that each of the three has at least one
-"rescuer" thread dedicated to it--so there shouldn't be any deadlock as
-long as there's no circular dependency among the three.
-
-So think this is a false positive--am I missing something?
-
-> > but 168e4b39d1afb.. says that we could get a deadlock if both are
-> > running on the same kworker thread.
-> > 
-> > I'm not sure what to do about that.
-> > 
-> 
-> The question is if you really do need the call to rpc_killall_tasks and
-> the synchronous wait for completion of old tasks? If you don't care,
-> then we could just have you call rpc_release_client() in order to
-> release your reference on the rpc_client.
-
-No, the waiting's intentional: for example, the laundromat wq is what's
-responsible for reaping expired clients, and it wants to wait for
-callback rpc's to exit.  (If I remember right they may reference data
-structures we're about to clean up).
-
---b.
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 85a6915..beaa99f 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -195,6 +195,7 @@ static __be32
+ do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_open *open)
+ {
+ 	struct svc_fh *resfh;
++	int accmode;
+ 	__be32 status;
+ 
+ 	resfh = kmalloc(sizeof(struct svc_fh), GFP_KERNEL);
+@@ -254,9 +255,10 @@ do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_o
+ 	/* set reply cache */
+ 	fh_copy_shallow(&open->op_openowner->oo_owner.so_replay.rp_openfh,
+ 			&resfh->fh_handle);
+-	if (!open->op_created)
+-		status = do_open_permission(rqstp, resfh, open,
+-					    NFSD_MAY_NOP);
++	accmode = NFSD_MAY_NOP;
++	if (open->op_created)
++		accmode |= NFSD_MAY_OWNER_OVERRIDE;
++	status = do_open_permission(rqstp, resfh, open, accmode);
+ 	set_change_info(&open->op_cinfo, current_fh);
+ 	fh_dup2(current_fh, resfh);
+ out:
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index b584205..0ef9b6b 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1471,13 +1471,19 @@ do_nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		case NFS3_CREATE_EXCLUSIVE:
+ 			if (   dchild->d_inode->i_mtime.tv_sec == v_mtime
+ 			    && dchild->d_inode->i_atime.tv_sec == v_atime
+-			    && dchild->d_inode->i_size  == 0 )
++			    && dchild->d_inode->i_size  == 0 ) {
++				if (created)
++					*created = 1;
+ 				break;
++			}
+ 		case NFS4_CREATE_EXCLUSIVE4_1:
+ 			if (   dchild->d_inode->i_mtime.tv_sec == v_mtime
+ 			    && dchild->d_inode->i_atime.tv_sec == v_atime
+-			    && dchild->d_inode->i_size  == 0 )
++			    && dchild->d_inode->i_size  == 0 ) {
++				if (created)
++					*created = 1;
+ 				goto set_attr;
++			}
+ 			 /* fallthru */
+ 		case NFS3_CREATE_GUARDED:
+ 			err = nfserr_exist;
