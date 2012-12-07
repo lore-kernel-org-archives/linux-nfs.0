@@ -1,50 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:22937 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751674Ab2LFLWf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Dec 2012 06:22:35 -0500
-Subject: [PATCH 0/8] nfsd: make service created per net
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Thu, 06 Dec 2012 14:22:57 +0300
-Message-ID: <20121206111903.29559.4853.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from lxorguk.ukuu.org.uk ([81.2.110.251]:56629 "EHLO
+	lxorguk.ukuu.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1422762Ab2LGQaI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Dec 2012 11:30:08 -0500
+Date: Fri, 7 Dec 2012 16:34:58 +0000
+From: Alan Cox <alan@lxorguk.ukuu.org.uk>
+To: Steve French <smfrench@gmail.com>
+Cc: Jeremy Allison <jra@samba.org>, Pavel Shilovsky <piastry@etersoft.ru>,
+        linux-cifs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, wine-devel@winehq.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/3] Add O_DENY* flags to fcntl and cifs
+Message-ID: <20121207163458.435f676a@pyramind.ukuu.org.uk>
+In-Reply-To: <CAH2r5msoPiu7wz-HjnnqTxeBLVEQiMYSnLMaZ+dEr11j6Fo4Ew@mail.gmail.com>
+References: <1354818391-7968-1-git-send-email-piastry@etersoft.ru>
+	<20121206194949.7ab20d56@pyramind.ukuu.org.uk>
+	<20121206195752.GA18585@samba2>
+	<CAH2r5msoPiu7wz-HjnnqTxeBLVEQiMYSnLMaZ+dEr11j6Fo4Ew@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch set prepares service control to be able to start separated
-independent NFSd services in different network namespace environments.
-Key changes are:
-1) Create independent instances of NFSd service (and thus threads pool) for
-each network namespace.
-2) Control generic resources allocation and destruction by usage counter.
-3) Cleanup and simplify Nfsd service start and shutdown.
-4) Move some more NFSd state parts (like boot_time and "nfsd is up" flag to
-per-net data).
+> I suspect that WINE would have the same need
 
-The following series implements...
+Tricky - Wine needs to enforce this behaviour solely between Wine and
+the file server, Trying to muck up non emulated local behaviour would be
+a bad mistake.
 
----
+One way perhaps to look at this is you want some tasks to be able to *opt
+in* to this behaviour.
 
-Stanislav Kinsbursky (8):
-      nfsd: move per-net startup code to separated function
-      nfsd: per-net NFSd up flag introduced
-      nfsd: make NFSd service boot time per-net
-      nfsd: make NFSd service structure allocated per net
-      nfsd: introduce helpers for generic resources init and shutdown
-      nfsd: simplify NFSv4 state init and shutdown
-      nfsd: replace boolean nfsd_up flag by users counter
-      nfsd: simplify service shutdown
-
-
- fs/nfsd/netns.h     |    9 ++
- fs/nfsd/nfs3xdr.c   |   14 +++-
- fs/nfsd/nfs4proc.c  |   11 ++-
- fs/nfsd/nfs4state.c |   14 ++--
- fs/nfsd/nfsctl.c    |   63 ++++++++++-------
- fs/nfsd/nfsd.h      |   23 +-----
- fs/nfsd/nfssvc.c    |  185 +++++++++++++++++++++++++++++++++------------------
- 7 files changed, 195 insertions(+), 124 deletions(-)
-
+First however I think we need a much better description of the setup that
+uses them and why it matters.
