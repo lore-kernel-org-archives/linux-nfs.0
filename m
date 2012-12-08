@@ -1,217 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60753 "EHLO fieldses.org"
+Received: from e9.ny.us.ibm.com ([32.97.182.139]:39364 "EHLO e9.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752164Ab2LTT0y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Dec 2012 14:26:54 -0500
-Date: Thu, 20 Dec 2012 14:26:53 -0500
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: nfsd changes for 3.8
-Message-ID: <20121220192653.GA19049@fieldses.org>
+	id S1757186Ab2LHALN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Dec 2012 19:11:13 -0500
+Received: from /spool/local
+	by e9.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
+	Fri, 7 Dec 2012 19:11:12 -0500
+Received: from d01relay03.pok.ibm.com (d01relay03.pok.ibm.com [9.56.227.235])
+	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id 3E2EE6E8047
+	for <linux-nfs@vger.kernel.org>; Fri,  7 Dec 2012 19:11:09 -0500 (EST)
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id qB80B9TS313264
+	for <linux-nfs@vger.kernel.org>; Fri, 7 Dec 2012 19:11:09 -0500
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id qB80B8Au022558
+	for <linux-nfs@vger.kernel.org>; Fri, 7 Dec 2012 22:11:09 -0200
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90B33D909@SACEXCMBX04-PRD.hq.netapp.com>
+References: <OFF752FE87.86716271-ON88257AC7.002025E3-88257AC7.00206C04@LocalDomain> <OF13B342CA.3B3F39AC-ON88257ACD.0080BC4F-88257ACD.00815B0B@us.ibm.com> <4FA345DA4F4AE44899BD2B03EEEC2FA90B33D909@SACEXCMBX04-PRD.hq.netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: RE: notify_deviceid_type4
+Message-ID: <OF0F29D082.A262ED54-ON88257ACE.0000B379-88257ACE.0000F121@us.ibm.com>
+From: Marc Eshel <eshel@us.ibm.com>
+Date: Fri, 7 Dec 2012 16:10:39 -0800
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please pull nfsd changes for 3.8 from the for-3.8 branch at
+Y29tbWl0IDEwMTNlMmVhODgzODRkYTJlNzMyNmY0MDA0N2JiYzkyZGViOWU1MTYNCkF1dGhvcjog
+TWFyYyBFc2hlbCA8ZXNoZWxAYWxtYWRlbi5pYm0uY29tPg0KRGF0ZTogICBGcmkgRGVjIDcgMTU6
+NTg6MDcgMjAxMiAtMDgwMA0KDQpDaGFuZ2UgZGVmaW5pdGlvbiBvZiBub3RpZnlfZGV2aWNlaWRf
+dHlwZTQgdG8gY29ycmVzcG9uZCB0byB0aGUgTkZTdjQuMSANCnNwZWMuDQoNClNpZ25lZC1vZmYt
+Ynk6IE1hcmMgRXNoZWwgPGVzaGVsQHVzLmlibS5jb20+DQotLS0NCg0KZGlmZiAtLWdpdCBhL2lu
+Y2x1ZGUvbGludXgvbmZzNC5oIGIvaW5jbHVkZS9saW51eC9uZnM0LmgNCmluZGV4IDU5Y2M4MzMu
+LmFkMzJkZjUgMTAwNjQ0DQotLS0gYS9pbmNsdWRlL2xpbnV4L25mczQuaA0KKysrIGIvaW5jbHVk
+ZS9saW51eC9uZnM0LmgNCkBAIC00OTksOCArNDk5LDggQEAgZW51bSBwbmZzX2lvbW9kZSB7DQog
+fTsNCg0KIGVudW0gcG5mc19ub3RpZnlfZGV2aWNlaWRfdHlwZTQgew0KLSAgICAgICBOT1RJRllf
+REVWSUNFSUQ0X0NIQU5HRSA9IDEgPDwgMSwNCi0gICAgICAgTk9USUZZX0RFVklDRUlENF9ERUxF
+VEUgPSAxIDw8IDIsDQorICAgICAgIE5PVElGWV9ERVZJQ0VJRDRfQ0hBTkdFID0gMSwNCisgICAg
+ICAgTk9USUZZX0RFVklDRUlENF9ERUxFVEUgPSAyLA0KIH07DQoNCiAjZGVmaW5lIE5GTDRfVUZM
+R19NQVNLICAgICAgICAgICAgICAgICAweDAwMDAwMDNGDQoNCg0KDQpGcm9tOiAgICJNeWtsZWJ1
+c3QsIFRyb25kIiA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQpUbzogICAgIE1hcmMgRXNo
+ZWwvQWxtYWRlbi9JQk1ASUJNVVMsIA0KQ2M6ICAgICAiSi4gQnJ1Y2UgRmllbGRzIiA8YmZpZWxk
+c0ByZWRoYXQuY29tPiwgDQoibGludXgtbmZzQHZnZXIua2VybmVsLm9yZyIgPGxpbnV4LW5mc0B2
+Z2VyLmtlcm5lbC5vcmc+LCANCiJsaW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnIiA8bGlu
+dXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZz4NCkRhdGU6ICAgMTIvMDcvMjAxMiAwMzo0NSBQ
+TQ0KU3ViamVjdDogICAgICAgIFJFOiBub3RpZnlfZGV2aWNlaWRfdHlwZTQNCg0KDQoNCkhpIE1h
+cmMsDQogDQpJ4oCZdmUgYmVlbiB3YWl0aW5nIGZvciBhIHBhdGNoIGZyb20geW91IGZvciB0aGlz
+IChJIHNhdyB5b3VyIG9yaWdpbmFsIGJ1ZyANCnJlcG9ydCkuIENvdWxkIHlvdSBwbGVhc2UgcmVz
+ZW5kIHdpdGggYSBmb3JtYWwgY2hhbmdlbG9nIGVudHJ5IGFuZCANCnNpZ25lZC1vZmYtYnkgbGlu
+ZT8gSSBrbm93IHRoYXQgd291bGQgbWFrZSB5b3VyIGxlZ2FsIGNvbGxlYWd1ZXMgaW4gSUJNIA0K
+dmVyeSBoYXBweS4gSg0KIA0KQ2hlZXJzDQogIFRyb25kDQogDQpGcm9tOiBNYXJjIEVzaGVsIFtt
+YWlsdG86ZXNoZWxAdXMuaWJtLmNvbV0gDQpTZW50OiBTYXR1cmRheSwgRGVjZW1iZXIgMDgsIDIw
+MTIgMTI6MzMgQU0NClRvOiBNeWtsZWJ1c3QsIFRyb25kDQpDYzogSi4gQnJ1Y2UgRmllbGRzOyBs
+aW51eC1uZnNAdmdlci5rZXJuZWwub3JnOyANCmxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5v
+cmcNClN1YmplY3Q6IFJlOiBub3RpZnlfZGV2aWNlaWRfdHlwZTQNCiANClRyb25kLCBjYW4geW91
+IHBsZWFzZSBhcHBseSB0aGUgZm9sbG93aW5nIHBhdGNoIHNvIHdlIGFyZSBpbiBjb21wbGlhbmNl
+IA0Kd2l0aCB0aGUgc3BlYy4gDQpUaGFua3MsIE1hcmMuIA0KDQpkaWZmIC0tZ2l0IGEvaW5jbHVk
+ZS9saW51eC9uZnM0LmggYi9pbmNsdWRlL2xpbnV4L25mczQuaCANCmluZGV4IDU5Y2M4MzMuLmFk
+MzJkZjUgMTAwNjQ0IA0KLS0tIGEvaW5jbHVkZS9saW51eC9uZnM0LmggDQorKysgYi9pbmNsdWRl
+L2xpbnV4L25mczQuaCANCkBAIC00OTksOCArNDk5LDggQEAgZW51bSBwbmZzX2lvbW9kZSB7IA0K
+IH07IA0KICANCiBlbnVtIHBuZnNfbm90aWZ5X2RldmljZWlkX3R5cGU0IHsgDQotICAgICAgIE5P
+VElGWV9ERVZJQ0VJRDRfQ0hBTkdFID0gMSA8PCAxLCANCi0gICAgICAgTk9USUZZX0RFVklDRUlE
+NF9ERUxFVEUgPSAxIDw8IDIsIA0KKyAgICAgICBOT1RJRllfREVWSUNFSUQ0X0NIQU5HRSA9IDEs
+IA0KKyAgICAgICBOT1RJRllfREVWSUNFSUQ0X0RFTEVURSA9IDIsIA0KIH07IA0KICANCiAjZGVm
+aW5lIE5GTDRfVUZMR19NQVNLICAgICAgICAgICAgICAgICAweDAwMDAwMDNGIA0KDQoNCg0KRnJv
+bTogICAgICAgIE1hcmMgRXNoZWwvQWxtYWRlbi9JQk0gDQpUbzogICAgICAgICJUcm9uZCBNeWts
+ZWJ1c3QiIDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4sICJKLiBCcnVjZSANCkZpZWxkcyIg
+PGJmaWVsZHNAcmVkaGF0LmNvbT4sIA0KQ2M6ICAgICAgICBsaW51eC1uZnMtb3duZXJAdmdlci5r
+ZXJuZWwub3JnLCBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnIA0KRGF0ZTogICAgICAgIDExLzMw
+LzIwMTIgMDk6NTQgUE0gDQpTdWJqZWN0OiAgICAgICAgbm90aWZ5X2RldmljZWlkX3R5cGU0IA0K
+DQoNCg0KVGhlIHNwZWMgZGVmaW5lcyBub3RpZnlfZGV2aWNlaWRfdHlwZTQgYXM6IA0KDQoyMC4x
+Mi4xLiAgQVJHVU1FTlQNCiAgLyoNCiAgICogRGV2aWNlIG5vdGlmaWNhdGlvbiB0eXBlcy4NCiAg
+ICovDQogIGVudW0gbm90aWZ5X2RldmljZWlkX3R5cGU0IHsNCiAgICAgICAgICBOT1RJRllfREVW
+SUNFSUQ0X0NIQU5HRSA9IDEsDQogICAgICAgICAgTk9USUZZX0RFVklDRUlENF9ERUxFVEUgPSAy
+DQogIH07IA0KDQoNCmJ1dCB0aGUgTGludXggY29kZSBpbiBuZnM0LmggaGFzLCBpcyB0aGF0IGdv
+aW5nIHRvIGJlIGZpeGVkPyANCg0KZW51bSBwbmZzX25vdGlmeV9kZXZpY2VpZF90eXBlNCB7IA0K
+ICAgICAgICBOT1RJRllfREVWSUNFSUQ0X0NIQU5HRSA9IDEgPDwgMSwgDQogICAgICAgIE5PVElG
+WV9ERVZJQ0VJRDRfREVMRVRFID0gMSA8PCAyLCANCn07IA0KDQo=
 
-  git://linux-nfs.org/~bfields/linux.git for-3.8
-
-Included this time:
-
-  - more nfsd containerization work from Stanislav Kinsbursky: we're not
-    quite there yet, but should be by 3.9.
-
-  - NFSv4.1 progress: implementation of basic backchannel security
-    negotiation and the mandatory BACKCHANNEL_CTL operation.  See
-
-	  http://wiki.linux-nfs.org/wiki/index.php/Server_4.0_and_4.1_issues
-
-    for remaining TODO's
-
-  - Fixes for some bugs that could be triggered by unusual compounds.
-    Our xdr code wasn't designed with v4 compounds in mind, and it
-    shows.  A more thorough rewrite is still a todo.
-
-  - If you've ever seen "RPC: multiple fragments per record not
-    supported" logged while using some sort of odd userland NFS client,
-    that should now be fixed.
-
-  - Further work from Jeff Layton on our mechanism for storing
-    information about NFSv4 clients across reboots.
-
-  - Further work from Bryan Schumaker on his fault-injection mechanism
-    (which allows us to discard selective NFSv4 state, to excercise
-    rarely-taken recovery code paths in the client.)
-
-  - The usual mix of miscellaneous bugs and cleanup.
-
-Thanks to everyone who tested or contributed this cycle.
-
---b.
-
-----------------------------------------------------------------
-Bryan Schumaker (12):
-      NFSD: Fold fault_inject.h into state.h
-      NFSD: Lock state before calling fault injection function
-      NFSD: Clean up forgetting clients
-      NFSD: Clean up forgetting locks
-      NFSD: Clean up forgetting openowners
-      NFSD: Clean up forgetting and recalling delegations
-      NFSD: Fault injection operations take a per-client forget function
-      NFSD: Reading a fault injection file prints a state count
-      NFSD: Add a custom file operations structure for fault injection
-      NFSD: Forget state for a specific client
-      NFSD: Pass correct buffer size to rpc_ntop
-      NFSD: Correct the size calculation in fault_inject_write
-
-Fengguang Wu (2):
-      nfsd4: init_session should be declared static
-      nfsd4: get_backchannel_cred should be static
-
-J. Bruce Fields (36):
-      nfsd4: helper function for getting mounted_on ino
-      nfsd4: remove unused init_session return
-      svcrpc: demote some printks to a dprintk
-      nfsd4: don't BUG in delegation break callback
-      nfsd: assume writeable exportabled filesystems have f_sync
-      nfsd: use vfs_fsync_range(), not O_SYNC, for stable writes
-      nfsd4: clean up callback security parsing
-      nfsd4: use callback security parameters in create_session
-      nfsd4: implement backchannel_ctl operation
-      nfsd4: common helper to initialize callback work
-      nfsd4: backchannel should use client-provided security flavor
-      nfsd4: update documentation on 4.1 progress
-      svcrpc: Revert "sunrpc/cache.h: replace simple_strtoul"
-      nfsd: fix v4 reply caching
-      nfsd4: no, we're not going to check tags for utf8
-      nfsd4: simplify reading of opnum
-      nfsd4: reorganize write decoding
-      nfsd4: move more write parameters into xdr argument
-      nfsd4: delay filling in write iovec array till after xdr decoding
-      nfsd4: downgrade some fs/nfsd/nfs4state.c BUG's
-      nfsd4: return badname, not inval, on "." or "..", or "/"
-      nfsd4: remove state lock from nfsd4_load_reboot_recovery_data
-      nfsd4: discard some unused nfsd4_verify xdr code
-      svcrpc: don't byte-swap sk_reclen in place
-      svcrpc: delay minimum-rpc-size check till later
-      svcrpc: fix off-by-4 error in "incomplete TCP record" dprintk
-      svcrpc: track rpc data length separately from sk_tcplen
-      svcrpc: support multiple-fragment rpc's
-      nfsd4: lockt, release_lockowner should renew clients
-      svcrpc: fix some printks
-      nfsd4: disable zero-copy on non-final read ops
-      nfsd4: fix oops on unusual readlike compound
-      nfsd: warn on odd reply state in nfsd_vfs_read
-      nfsd4: cleanup: replace rq_resused count by rq_next_page pointer
-      nfsd4: free_stateid can use the current stateid
-      nfsd4: don't leave freed stateid hashed
-
-Jeff Layton (13):
-      nfsd: fix error handling in nfsd4_remove_clid_dir
-      nfsd: remove unused argument to nfs4_has_reclaimed_state
-      nfsd: add a usermodehelper upcall for NFSv4 client ID tracking
-      nfsd: change heuristic for selecting the client_tracking_ops
-      nfsd: pass info about the legacy recoverydir in environment variables
-      nfsd: warn about impending removal of nfsdcld upcall
-      nfsd: have nfsd4_find_reclaim_client take a char * argument
-      nfsd: break out reclaim record removal into separate function
-      nfsd: make nfs4_client_to_reclaim return a pointer to the reclaim record
-      nfsd: don't search for client by hash on legacy reboot recovery gracedone
-      nfsd: move the confirmed and unconfirmed hlists to a rbtree
-      nfsd: get rid of cl_recdir field
-      nfsd: release the legacy reclaimable clients list in grace_done
-
-Namjae Jeon (1):
-      exportfs: add FILEID_INVALID to indicate invalid fid_type
-
-Neil Brown (1):
-      nfsd: avoid permission checks on EXCLUSIVE_CREATE replay
-
-Stanislav Kinsbursky (44):
-      nfsd: use service net instead of hard-coded net where possible
-      nfsd: make nfs4_client network namespace dependent
-      nfsd: make reclaim_str_hashtbl allocated per net
-      nfsd: make conf_id_hashtbl allocated per net
-      nfsd: make conf_name_tree per net
-      nfsd: make unconf_id_hashtbl allocated per net
-      nfsd: make unconf_name_tree per net
-      nfsd: make ownerstr_hashtbl allocated per net
-      nfsd: make lockowner_ino_hashtbl allocated per net
-      nfsd: make sessionid_hashtbl allocated per net
-      nfsd: make client_lru list per net
-      nfsd: make close_lru list per net
-      nfsd: use service net instead of hard-coded init_net
-      nfsd: pass nfsd_net instead of net to grace enders
-      nfsd: make laundromat network namespace aware
-      nfsd4: remove state lock from nfs4_state_shutdown
-      nfsd: make client_lock per net
-      nfsd: make delegations shutdown network namespace aware
-      nfsd: cleanup NFSd state shutdown a bit
-      nfsd: cleanup NFSd state start a bit
-      nfsd: call state init and shutdown twice
-      nfsd: recovery - make rec_file per net
-      nfsd: recovery - make in_grace per net
-      nfsd: remove redundant declarations
-      nfsd: make NFSv4 lease time per net
-      nfsd: make NFSv4 grace time per net
-      nfsd: make NFSv4 recovery client tracking options per net
-      SUNRPC: remove redundant "linux/nsproxy.h" includes
-      nfsd: use "init_net" for portmapper
-      nfsd: pass net to nfsd_init_socks()
-      nfsd: pass net to nfsd_startup() and nfsd_shutdown()
-      nfsd: pass net to nfsd_create_serv()
-      nfsd: pass net to nfsd_svc()
-      nfsd: pass net to nfsd_set_nrthreads()
-      nfsd: pass net to __write_ports() and down
-      nfsd: move per-net startup code to separated function
-      nfsd: per-net NFSd up flag introduced
-      nfsd: make NFSd service boot time per-net
-      nfsd: make NFSd service structure allocated per net
-      nfsd: introduce helpers for generic resources init and shutdown
-      nfsd: simplify NFSv4 state init and shutdown
-      nfsd: replace boolean nfsd_up flag by users counter
-      nfsd: simplify service shutdown
-      nfsd: pass proper net to nfsd_destroy() from NFSd kthreads
-
-Wei Yongjun (1):
-      nfsd4: remove unused variable in nfsd4_delegreturn()
-
-Yanchuan Nian (1):
-      nfs: fix wrong object type in lockowner_slab
-
- Documentation/filesystems/nfs/nfs41-server.txt |   20 +-
- fs/exportfs/expfs.c                            |    4 +-
- fs/fhandle.c                                   |    2 +-
- fs/nfsd/fault_inject.c                         |  113 ++-
- fs/nfsd/fault_inject.h                         |   28 -
- fs/nfsd/netns.h                                |   66 ++
- fs/nfsd/nfs2acl.c                              |    2 +-
- fs/nfsd/nfs3acl.c                              |    2 +-
- fs/nfsd/nfs3proc.c                             |    6 +-
- fs/nfsd/nfs3xdr.c                              |   47 +-
- fs/nfsd/nfs4callback.c                         |   69 +-
- fs/nfsd/nfs4proc.c                             |   74 +-
- fs/nfsd/nfs4recover.c                          |  561 ++++++++++---
- fs/nfsd/nfs4state.c                            | 1015 ++++++++++++++----------
- fs/nfsd/nfs4xdr.c                              |  324 ++++----
- fs/nfsd/nfsctl.c                               |  100 ++-
- fs/nfsd/nfsd.h                                 |   36 +-
- fs/nfsd/nfsfh.c                                |    4 +-
- fs/nfsd/nfssvc.c                               |  203 +++--
- fs/nfsd/nfsxdr.c                               |   11 +-
- fs/nfsd/state.h                                |   64 +-
- fs/nfsd/vfs.c                                  |   53 +-
- fs/nfsd/xdr4.h                                 |   15 +-
- include/linux/exportfs.h                       |    5 +
- include/linux/sunrpc/cache.h                   |    6 +-
- include/linux/sunrpc/svc.h                     |    6 +-
- include/linux/sunrpc/svcsock.h                 |   21 +-
- net/sunrpc/rpcb_clnt.c                         |    1 -
- net/sunrpc/svc.c                               |    8 +-
- net/sunrpc/svcsock.c                           |   98 +--
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c        |   10 +-
- net/sunrpc/xprtrdma/svc_rdma_sendto.c          |    4 +-
- 32 files changed, 1911 insertions(+), 1067 deletions(-)
- delete mode 100644 fs/nfsd/fault_inject.h
