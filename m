@@ -1,92 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:21333 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753895Ab2LDNuC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Dec 2012 08:50:02 -0500
-Subject: [PATCH 6/6] nfsd: pass net to __write_ports() and down
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Tue, 04 Dec 2012 16:50:32 +0300
-Message-ID: <20121204135032.24504.66113.stgit@localhost.localdomain>
-In-Reply-To: <20121204134920.24504.95261.stgit@localhost.localdomain>
-References: <20121204134920.24504.95261.stgit@localhost.localdomain>
+Received: from smtp1.stealer.net ([88.198.224.204]:46644 "EHLO
+	smtp1.stealer.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753068Ab2LHOgv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 8 Dec 2012 09:36:51 -0500
+Date: Sat, 8 Dec 2012 15:30:18 +0100 (CET)
+From: Sven Wegener <sven.wegener@stealer.net>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv4: Check for buffer length in __nfs4_get_acl_uncached
+Message-ID: <alpine.LNX.2.02.1212081528430.10324@titan.int.lan.stealer.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Precursor patch. Hard-coded "init_net" will be replaced by proper one in
-future.
+Commit 1f1ea6c "NFSv4: Fix buffer overflow checking in
+__nfs4_get_acl_uncached" accidently dropped the checking for too small
+result buffer length.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+If someone uses getxattr on "system.nfs4_acl" on an NFSv4 mount
+supporting ACLs, the ACL has not been cached and the buffer suplied is
+too short, we still copy the complete ACL, resulting in kernel and user
+space memory corruption.
+
+Signed-off-by: Sven Wegener <sven.wegener@stealer.net>
+Cc: stable@kernel.org
 ---
- fs/nfsd/nfsctl.c |   16 ++++++++--------
- 1 files changed, 8 insertions(+), 8 deletions(-)
+ fs/nfs/nfs4proc.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 58f0ae4..8536100 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -657,11 +657,10 @@ static ssize_t __write_ports_names(char *buf)
-  * a socket of a supported family/protocol, and we use it as an
-  * nfsd listener.
-  */
--static ssize_t __write_ports_addfd(char *buf)
-+static ssize_t __write_ports_addfd(char *buf, struct net *net)
- {
- 	char *mesg = buf;
- 	int fd, err;
--	struct net *net = &init_net;
- 
- 	err = get_int(&mesg, &fd);
- 	if (err != 0 || fd < 0)
-@@ -686,12 +685,11 @@ static ssize_t __write_ports_addfd(char *buf)
-  * A transport listener is added by writing it's transport name and
-  * a port number.
-  */
--static ssize_t __write_ports_addxprt(char *buf)
-+static ssize_t __write_ports_addxprt(char *buf, struct net *net)
- {
- 	char transport[16];
- 	struct svc_xprt *xprt;
- 	int port, err;
--	struct net *net = &init_net;
- 
- 	if (sscanf(buf, "%15s %5u", transport, &port) != 2)
- 		return -EINVAL;
-@@ -727,16 +725,17 @@ out_err:
- 	return err;
- }
- 
--static ssize_t __write_ports(struct file *file, char *buf, size_t size)
-+static ssize_t __write_ports(struct file *file, char *buf, size_t size,
-+			     struct net *net)
- {
- 	if (size == 0)
- 		return __write_ports_names(buf);
- 
- 	if (isdigit(buf[0]))
--		return __write_ports_addfd(buf);
-+		return __write_ports_addfd(buf, net);
- 
- 	if (isalpha(buf[0]))
--		return __write_ports_addxprt(buf);
-+		return __write_ports_addxprt(buf, net);
- 
- 	return -EINVAL;
- }
-@@ -787,9 +786,10 @@ static ssize_t __write_ports(struct file *file, char *buf, size_t size)
- static ssize_t write_ports(struct file *file, char *buf, size_t size)
- {
- 	ssize_t rv;
-+	struct net *net = &init_net;
- 
- 	mutex_lock(&nfsd_mutex);
--	rv = __write_ports(file, buf, size);
-+	rv = __write_ports(file, buf, size, net);
- 	mutex_unlock(&nfsd_mutex);
- 	return rv;
- }
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 7bff871..f15be6b 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3831,8 +3831,13 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
+ 		goto out_free;
+ 	}
+ 	nfs4_write_cached_acl(inode, pages, res.acl_data_offset, res.acl_len);
+-	if (buf)
++	if (buf) {
++		if (res.acl_len > buflen) {
++			ret = -ERANGE;
++			goto out_free;
++		}
+ 		_copy_from_pages(buf, pages, res.acl_data_offset, res.acl_len);
++	}
+ out_ok:
+ 	ret = res.acl_len;
+ out_free:
