@@ -1,46 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from li9-11.members.linode.com ([67.18.176.11]:37209 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1424779Ab2LFVbp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Dec 2012 16:31:45 -0500
-Date: Thu, 6 Dec 2012 16:31:33 -0500
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: Jeremy Allison <jra@samba.org>
-Cc: Alan Cox <alan@lxorguk.ukuu.org.uk>, Pavel Shilovsky <piastry@etersoft.ru>,
-        linux-cifs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, wine-devel@winehq.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/3] Add O_DENY* flags to fcntl and cifs
-Message-ID: <20121206213133.GB4821@thunk.org>
-References: <1354818391-7968-1-git-send-email-piastry@etersoft.ru>
- <20121206194949.7ab20d56@pyramind.ukuu.org.uk>
- <20121206195752.GA18585@samba2>
+Received: from e7.ny.us.ibm.com ([32.97.182.137]:45394 "EHLO e7.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750787Ab2LIQn7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 9 Dec 2012 11:43:59 -0500
+Received: from /spool/local
+	by e7.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
+	Sun, 9 Dec 2012 11:43:57 -0500
+In-Reply-To: <50C45D17.5090000@tonian.com>
+References: <OFF752FE87.86716271-ON88257AC7.002025E3-88257AC7.00206C04@us.ibm.com> <50C45D17.5090000@tonian.com>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-nfs-owner@vger.kernel.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20121206195752.GA18585@samba2>
+Subject: Re: notify_deviceid_type4
+Message-ID: <OFA6E36E77.727ADDF2-ON88257ACF.005B56C9-88257ACF.005BE4BB@us.ibm.com>
+From: Marc Eshel <eshel@us.ibm.com>
+Date: Sun, 9 Dec 2012 08:43:37 -0800
+Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 06, 2012 at 11:57:52AM -0800, Jeremy Allison wrote:
+I am not sure what you are saying, I am showing the definition from the 
+spec. that show NOTIFY_DEVICEID4_CHANGE = 1, and nfs4.h has it as (1<< 1) 
+which is not 1, it is 2.
+Marc.
+
+Benny Halevy <bhalevy@tonian.com> wrote on 12/09/2012 01:42:47 AM:
+
+> From: Benny Halevy <bhalevy@tonian.com>
+> To: Marc Eshel/Almaden/IBM@IBMUS, 
+> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, "J. Bruce Fields" 
+> <bfields@redhat.com>, linux-nfs-owner@vger.kernel.org, linux-
+> nfs@vger.kernel.org
+> Date: 12/09/2012 01:44 AM
+> Subject: Re: notify_deviceid_type4
 > 
-> And this is where things get really ugly of course :-).
+> On 2012-12-01 07:54, Marc Eshel wrote:
+> > The spec defines notify_deviceid_type4 as:
+> > 
+> > 20.12.1.  ARGUMENT
+> >    /*
+> >     * Device notification types.
+> >     */
+> >    enum notify_deviceid_type4 {
+> >            NOTIFY_DEVICEID4_CHANGE = 1,
+> >            NOTIFY_DEVICEID4_DELETE = 2
+> >    };
+> > 
+> > 
+> > but the Linux code in nfs4.h has, is that going to be fixed?
+> > 
+> > enum pnfs_notify_deviceid_type4 {
+> >         NOTIFY_DEVICEID4_CHANGE = 1 << 1,
+> >         NOTIFY_DEVICEID4_DELETE = 1 << 2,
+> > };
 > 
-> For the CIFSFS client they're expecting to be able to
-> just ship them to a Windows server, where they'll
-> get the (insane) Windows semantics. These semantics
-> are not what would be wanted on a local filesystem.
+> notify_deviceid_type4 specifies bit numbers same as notify_type4
+> It seems to me like the definition in nfs4.h is correct.
+> 
+> Benny
+> 
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" 
+in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
+> 
 
-I'm confused; why would a userspace application need to be able to
-request this behavior?  I can understand why an SMB client might
-depend on this so it can use Windows' insane cache coherency scheme.
-Are you trying to let Samba act as a middle man, where a remote file
-system is mounted on Linux, and then Samba will try to act as a SMB
-server, so you want to be able to pass through these semantics, i.e.:
-
-   Windows SMB Server <--->  Linux cifs remote file system <--->
-      Linux Samba server <---> Windows SMB client
-
-Is this somewhat contrivuewd example the intended use case?  Or
-something else?
-
-					- Ted
