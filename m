@@ -1,89 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:23460 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:51186 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753496Ab2LJJSp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Dec 2012 04:18:45 -0500
-Subject: [PATCH 4/7] nfsd: pass net to nfsd_create_serv()
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Mon, 10 Dec 2012 12:19:20 +0300
-Message-ID: <20121210091920.8855.8081.stgit@localhost.localdomain>
-In-Reply-To: <20121210091832.8855.26672.stgit@localhost.localdomain>
-References: <20121210091832.8855.26672.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1752036Ab2LJQFu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Dec 2012 11:05:50 -0500
+Date: Mon, 10 Dec 2012 11:05:47 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "jiali@redhat.com" <jiali@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs: don't extend writes to cover entire page if
+ pagecache is invalid
+Message-ID: <20121210110547.2eade853@corrin.poochiereds.net>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91191BACE@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1355149548-4225-1-git-send-email-jlayton@redhat.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA91191BACE@SACEXCMBX04-PRD.hq.netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Precursor patch. Hard-coded "init_net" will be replaced by proper one in
-future.
+On Mon, 10 Dec 2012 14:42:23 +0000
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfsd/nfsctl.c |    4 ++--
- fs/nfsd/nfsd.h   |    2 +-
- fs/nfsd/nfssvc.c |    5 ++---
- 3 files changed, 5 insertions(+), 6 deletions(-)
+> On Mon, 2012-12-10 at 09:25 -0500, Jeff Layton wrote:
+> > Jian reported that the following sequence would leave "testfile" with
+> > corrupt data:
+> > 
+> >     # mount localhost:/export /mnt/nfs/ -o vers=3
+> >     # echo abc > /mnt/nfs/testfile; echo def >> /export/testfile; echo ghi >> /mnt/nfs/testfile
+> >     # cat -v /export/testfile
+> >     abc
+> >     ^@^@^@^@ghi
+> > 
+> > While there's no locking involved here, the operations are serialized,
+> > so CTO should prevent corruption.
+> > 
+> > The first write to the file is fine and writes 4 bytes. The file is then
+> > extended on the server. When it's reopened a GETATTR is issued and the
+> > size change is noticed. This causes NFS_INO_INVALID_DATA to be set on
+> > the file. Because the file is opened for write only,
+> > nfs_want_read_modify_write() returns 0 to nfs_write_begin().
+> > nfs_updatepage then calls nfs_write_pageuptodate() to see if it should
+> > extend the nfs_page to cover the whole page. NFS_INO_INVALID_DATA is
+> > still set on the file at that point, but that flag is ignored and
+> > nfs_pageuptodate erroneously extends the write to cover the whole page,
+> > with the write done on the server side filled in with zeroes.
+> > 
+> > This patch just has that function check for NFS_INO_INVALID_DATA in
+> > addition to NFS_INO_REVAL_PAGECACHE. This fixes the bug, but looking
+> > over the code, I wonder if we might have a similar bug in
+> > nfs_revalidate_size(). The difference between those two flags is very
+> > subtle, so it seems like we ought to be checking for
+> > NFS_INO_INVALID_DATA in most of the places that we look for
+> > NFS_INO_REVAL_PAGECACHE.
+> > 
+> > I believe this is regression introduced by commit 8d197a568. The code
+> > did check for NFS_INO_INVALID_DATA prior to that patch.
+> > 
+> > Original bug report is here:
+> > 
+> >     https://bugzilla.redhat.com/show_bug.cgi?id=885743
+> 
+> Hi Jeff,
+> 
+> The point of NFS_INO_REVAL_PAGECACHE is to be able to distinguish
+> between situations where the file size or change attribute is in doubt
+> (and so the page cache validity is in doubt), and situations where other
+> attributes are in doubt (such as ACCESS caches, file owner, nlinks,...).
+> This is why we're only checking for NFS_INO_REVAL_PAGECACHE and not
+> NFS_INO_INVALID_DATA in the functions you mention above.
+> 
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index e13cbdd..ae1d143 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -664,7 +664,7 @@ static ssize_t __write_ports_addfd(char *buf)
- 	if (err != 0 || fd < 0)
- 		return -EINVAL;
- 
--	err = nfsd_create_serv();
-+	err = nfsd_create_serv(net);
- 	if (err != 0)
- 		return err;
- 
-@@ -696,7 +696,7 @@ static ssize_t __write_ports_addxprt(char *buf)
- 	if (port < 1 || port > USHRT_MAX)
- 		return -EINVAL;
- 
--	err = nfsd_create_serv();
-+	err = nfsd_create_serv(net);
- 	if (err != 0)
- 		return err;
- 
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 5eea0f5..acddf71 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -103,7 +103,7 @@ enum vers_op {NFSD_SET, NFSD_CLEAR, NFSD_TEST, NFSD_AVAIL };
- int nfsd_vers(int vers, enum vers_op change);
- int nfsd_minorversion(u32 minorversion, enum vers_op change);
- void nfsd_reset_versions(void);
--int nfsd_create_serv(void);
-+int nfsd_create_serv(struct net *net);
- 
- extern int nfsd_max_blksize;
- 
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 21cba3d..6448391 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -334,10 +334,9 @@ static int nfsd_get_default_max_blksize(void)
- 	return ret;
- }
- 
--int nfsd_create_serv(void)
-+int nfsd_create_serv(struct net *net)
- {
- 	int error;
--	struct net *net = &init_net;
- 
- 	WARN_ON(!mutex_is_locked(&nfsd_mutex));
- 	if (nfsd_serv) {
-@@ -459,7 +458,7 @@ nfsd_svc(int nrservs)
- 	if (nrservs == 0 && nfsd_serv == NULL)
- 		goto out;
- 
--	error = nfsd_create_serv();
-+	error = nfsd_create_serv(net);
- 	if (error)
- 		goto out;
- 
+Ok, now I'm really confused... I thought that:
 
+NFS_INO_INVALID_DATA == pagecache data was known to be wrong
+NFS_INO_REVAL_PAGECACHE == pagecache data is questionable
+
+...but if I understand what you're saying above, the "data" that
+NFS_INO_INVALID_DATA refers to is in peripheral caches, like the ACCESS
+cache? I guess then I don't quite understand what NFS_INO_INVALID_ATTR
+and NFS_INO_INVALID_ACCESS are for. Aren't they supposed to indicate that
+the attrs and access caches are invalid?
+
+> So the fix here should be to set NFS_INO_REVAL_PAGECACHE when the change
+> attribute and/or size change is noticed. The only function I can see
+> that appears to get this wrong is nfs_wcc_update_inode(). Does fixing
+> that lay the bug to rest?
+> 
+
+No, that doesn't fix it. There's another place that misses setting that
+flag too in nfs_update_inode() where the size changes. I added it there
+too and that also didn't fix it. Here's why (I think):
+
+When the size change is noticed via the CTO GETATTR call, then my
+patched kernel now sets NFS_INO_REVAL_PAGECACHE in nfs_update_inode.
+Now cache_validity is set to 0x2a. The kernel then makes an ACCESS call
+that also ultimately ends up in nfs_update_inode.
+
+nfs_update_inode saves off the cache_validity flags and clears all of
+them except for NFS_INO_INVALID_DATA. As best I can tell, the
+saved_cache_validity is then ending up discarded and on exit the
+cache_validity is ending up set to just NFS_INO_INVALID_DATA.
+
+It seems like we ought to be restoring the save_cache_validity flags
+before exiting that function, but I confess that I don't quite grasp
+the logic in nfs_update_inode. Thoughts?
+
+-- 
+Jeff Layton <jlayton@redhat.com>
