@@ -1,67 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:40165 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:46611 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753045Ab2LKPlP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Dec 2012 10:41:15 -0500
-Received: from vmwexceht05-prd.hq.netapp.com (exchsmtp.hq.netapp.com [10.106.77.35])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id qBBFfEPt017894
-	for <linux-nfs@vger.kernel.org>; Tue, 11 Dec 2012 07:41:15 -0800 (PST)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] SUNRPC: release clear_bit memory barrier
-Date: Tue, 11 Dec 2012 15:41:13 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA911922936@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1354298985-2344-1-git-send-email-andros@netapp.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA91191F135@SACEXCMBX04-PRD.hq.netapp.com>
-	 <7851A663D3BF5E41B9E166C2C7A42145104FBF62@SACEXCMBX02-PRD.hq.netapp.com>
-In-Reply-To: <7851A663D3BF5E41B9E166C2C7A42145104FBF62@SACEXCMBX02-PRD.hq.netapp.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1750826Ab2LJQlY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Dec 2012 11:41:24 -0500
+Date: Mon, 10 Dec 2012 11:41:16 -0500
+To: Pavel Shilovsky <piastry@etersoft.ru>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-cifs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        wine-devel@winehq.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/3] Add O_DENY* flags to fcntl and cifs
+Message-ID: <20121210164116.GC13327@fieldses.org>
+References: <1354818391-7968-1-git-send-email-piastry@etersoft.ru>
+ <20121207161602.GA17710@infradead.org>
+ <495d17310e0a687d446afc86def0f058@office.etersoft.ru>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <495d17310e0a687d446afc86def0f058@office.etersoft.ru>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTEyLTExIGF0IDE1OjMyICswMDAwLCBBZGFtc29uLCBBbmR5IHdyb3RlOg0K
-PiBPbiBEZWMgMTAsIDIwMTIsIGF0IDM6MDIgUE0sICJNeWtsZWJ1c3QsIFRyb25kIiA8VHJvbmQu
-TXlrbGVidXN0QG5ldGFwcC5jb20+IHdyb3RlOg0KPiANCj4gPiBPbiBGcmksIDIwMTItMTEtMzAg
-YXQgMTM6MDkgLTA1MDAsIGFuZHJvc0BuZXRhcHAuY29tIHdyb3RlOg0KPiA+PiBGcm9tOiBBbmR5
-IEFkYW1zb24gPGFuZHJvc0BuZXRhcHAuY29tPg0KPiA+PiANCj4gPj4gU2lnbmVkLW9mZi1ieTog
-QW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gPj4gLS0tDQo+ID4+IEEgY2xlYW51
-cCBwYXRjaC4NCj4gPj4gDQo+ID4+IG5ldC9zdW5ycGMvYXV0aC5jICAgICAgICAgICAgICB8ICAg
-IDEgKw0KPiA+PiBuZXQvc3VucnBjL2F1dGhfZ3NzL2F1dGhfZ3NzLmMgfCAgICAxICsNCj4gPj4g
-MiBmaWxlcyBjaGFuZ2VkLCAyIGluc2VydGlvbnMoKyksIDAgZGVsZXRpb25zKC0pDQo+ID4+IA0K
-PiA+PiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy9hdXRoLmMgYi9uZXQvc3VucnBjL2F1dGguYw0K
-PiA+PiBpbmRleCBiNWMwNjdiLi44Yjc2NzUzIDEwMDY0NA0KPiA+PiAtLS0gYS9uZXQvc3VucnBj
-L2F1dGguYw0KPiA+PiArKysgYi9uZXQvc3VucnBjL2F1dGguYw0KPiA+PiBAQCAtMjI1LDYgKzIy
-NSw3IEBAIHJwY2F1dGhfdW5oYXNoX2NyZWRfbG9ja2VkKHN0cnVjdCBycGNfY3JlZCAqY3JlZCkN
-Cj4gPj4gCWhsaXN0X2RlbF9yY3UoJmNyZWQtPmNyX2hhc2gpOw0KPiA+PiAJc21wX21iX19iZWZv
-cmVfY2xlYXJfYml0KCk7DQo+ID4+IAljbGVhcl9iaXQoUlBDQVVUSF9DUkVEX0hBU0hFRCwgJmNy
-ZWQtPmNyX2ZsYWdzKTsNCj4gPj4gKwlzbXBfbWJfX2FmdGVyX2NsZWFyX2JpdCgpOw0KPiA+PiB9
-DQo+ID4+IA0KPiA+PiBzdGF0aWMgaW50DQo+ID4+IGRpZmYgLS1naXQgYS9uZXQvc3VucnBjL2F1
-dGhfZ3NzL2F1dGhfZ3NzLmMgYi9uZXQvc3VucnBjL2F1dGhfZ3NzL2F1dGhfZ3NzLmMNCj4gPj4g
-aW5kZXggOTA5ZGMwYy4uOTJhN2Q2ZCAxMDA2NDQNCj4gPj4gLS0tIGEvbmV0L3N1bnJwYy9hdXRo
-X2dzcy9hdXRoX2dzcy5jDQo+ID4+ICsrKyBiL25ldC9zdW5ycGMvYXV0aF9nc3MvYXV0aF9nc3Mu
-Yw0KPiA+PiBAQCAtMTI2LDYgKzEyNiw3IEBAIGdzc19jcmVkX3NldF9jdHgoc3RydWN0IHJwY19j
-cmVkICpjcmVkLCBzdHJ1Y3QgZ3NzX2NsX2N0eCAqY3R4KQ0KPiA+PiAJc2V0X2JpdChSUENBVVRI
-X0NSRURfVVBUT0RBVEUsICZjcmVkLT5jcl9mbGFncyk7DQo+ID4+IAlzbXBfbWJfX2JlZm9yZV9j
-bGVhcl9iaXQoKTsNCj4gPj4gCWNsZWFyX2JpdChSUENBVVRIX0NSRURfTkVXLCAmY3JlZC0+Y3Jf
-ZmxhZ3MpOw0KPiA+PiArCXNtcF9tYl9fYWZ0ZXJfY2xlYXJfYml0KCk7DQo+ID4+IH0NCj4gPj4g
-DQo+ID4+IHN0YXRpYyBjb25zdCB2b2lkICoNCj4gPiANCj4gPiBXaHkgYXJlIHRoZXNlIG5lZWRl
-ZD8NCj4gDQo+IEFGQUlDUyB0aGUgZG9jdW1lbnRhdGlvbiBzYXlzIHRvIGVpdGhlciBjYWxsIGJv
-dGggc21wX21iX19iZWZvcmVfY2xlYXJfYml0IGFuZCBzbXBfbXBfX2FmdGVyX2NsZWFyX2JpdCB0
-byBlbnN1cmUgdGhhdCBtZW1vcnkgb3BlcmF0aW9ucyBiZWZvcmUgYW5kIGFmdGVyIHRoZSBjbGVh
-cl9iaXQgY2FsbCBhcmUgc3Ryb25nbHkgb3JkZXJlZCwgb3IgZG9uJ3QgY2FsbCBlaXRoZXIuIFNp
-bmNlIHRoZXJlIGNhbiBiZSBtdWx0aXBsZSB0aHJlYWRzIGxvb2tpbmcgYXQgYSBnc3NfY3JlZCBj
-cl9mbGFncywgaXQgc2VlbXMgdG8gbWUgdGhhdCB3ZSB3YW50IHRoZSBtZW1vcnkgYmFycmllcnMg
-dG8gZ2V0IHRoZSBjb3JyZWN0IHZhbHVlIG9mIHRoZSBiaXQuDQoNCk5vLiBJdCBkb2Vzbid0IHNh
-eSBkbyBlaXRoZXIgYm90aCBvciBub3RoaW5nLiBJdCBzYXlzIHRoYXQgaWYgeW91IGNhbGwNCnNt
-cF9tYl9fYWZ0ZXJfY2xlYXJfYml0KCksIHRoZW4gdGhlIGNsZWFyX2JpdCgpIHdpbGwgYmUgc3Ry
-b25nbHkgb3JkZXJlZA0Kdy5yLnQuIGZ1dHVyZSBtZW1vcnkgb3BlcmF0aW9ucyBkb25lIGJ5IHRo
-aXMgdGhyZWFkLiBNeSBxdWVzdGlvbiBpcyB3aHkNCndlIG5lZWQgdGhpcyBzdHJvbmcgb3JkZXJp
-bmc/DQoNClRoZSBjdXJyZW50IGNvZGUgYWxyZWFkeSBvcmRlcnMgdGhlIGhsaXN0X2RlbF9yY3Uo
-KSBhbmQgdGhlDQpzZXRfYml0KFJQQ0FVVEhfQ1JFRF9VUFRPREFURSkgdy5yLnQuIHRoZSBjbGVh
-cl9iaXQoKSwgc28gYW55IHRocmVhZA0KdGhhdCBzZWVzIHRoZSBSUENBVVRIX0NSRURfSEFTSEVE
-L1JQQ0FVVEhfQ1JFRF9ORVcgYml0cyBjbGVhcmVkIHdpbGwNCmFsc28gc2VlIHRoZSBsaXN0IHJl
-bW92YWwvdXB0b2RhdGUgY3JlZC4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBj
-bGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3
-d3cubmV0YXBwLmNvbQ0K
+On Sat, Dec 08, 2012 at 12:43:14AM +0400, Pavel Shilovsky wrote:
+> The problem is the possibility of denial-of-service attacks here. We
+> can try to prevent them by:
+> 1) specifying an extra security bit on the file that indicates that
+> share flags are accepted (like we have for mandatory locks now) and
+> setting it for neccessary files only, or
+> 2) adding a special mount option (but it it probably makes sense if
+> we decided to add this support for CIFS and NFS only).
+
+In the case of knfsd and samba exporting a common filesystem, you'd also
+want to be able to enforce it on the exported filesystem.
+
+--b.
