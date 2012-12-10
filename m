@@ -1,106 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:14438 "EHLO mx2.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:35369 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752861Ab2LDP6I convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Dec 2012 10:58:08 -0500
-Received: from vmwexceht02-prd.hq.netapp.com (vmwexceht02-prd.hq.netapp.com [10.106.76.240])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id qB4Fw7Vt006485
-	for <linux-nfs@vger.kernel.org>; Tue, 4 Dec 2012 07:58:07 -0800 (PST)
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] SUNRPC: new keyring key_type for gss context
- destruction at kdestroy
-Date: Tue, 4 Dec 2012 15:58:05 +0000
-Message-ID: <7851A663D3BF5E41B9E166C2C7A42145104F6C13@SACEXCMBX02-PRD.hq.netapp.com>
-References: <1354560315-2393-1-git-send-email-andros@netapp.com>
- <1354560315-2393-2-git-send-email-andros@netapp.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA90B334027@SACEXCMBX04-PRD.hq.netapp.com>
- <7851A663D3BF5E41B9E166C2C7A42145104F61E8@SACEXCMBX02-PRD.hq.netapp.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA90B33595E@SACEXCMBX04-PRD.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90B33595E@SACEXCMBX04-PRD.hq.netapp.com>
-Content-Type: text/plain; charset="us-ascii"
+	id S1751442Ab2LJUCZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Dec 2012 15:02:25 -0500
+Received: from vmwexceht05-prd.hq.netapp.com (exchsmtp.hq.netapp.com [10.106.77.35])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id qBAK2PMZ010457
+	for <linux-nfs@vger.kernel.org>; Mon, 10 Dec 2012 12:02:25 -0800 (PST)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] SUNRPC: release clear_bit memory barrier
+Date: Mon, 10 Dec 2012 20:02:24 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91191F135@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1354298985-2344-1-git-send-email-andros@netapp.com>
+In-Reply-To: <1354298985-2344-1-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Dec 4, 2012, at 9:56 AM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
- wrote:
-
-> On Mon, 2012-12-03 at 22:39 +0000, Adamson, Andy wrote:
->> On Dec 3, 2012, at 4:06 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
->> wrote:
-> 
->>> It seems to me that this code allows me to kill anyone's rpcsec_gss
->>> sessions by creating a key with their uid, and then destroying it.
->> 
->> Yes - just proof of concept code. There is a lot to consider.
->> 
->>> 
->>> One solution is to replace user_instantiate() with something that sets
->>> the payload to a value determined by the kernel itself. We'd definitely
->>> want to include the uid, but perhaps also add a cookie that is unique to
->>> this key (using the idr/ida stuff from include/linux/idr.h ?), and that
->>> can be used to distinguish it from keys generated from other processes.
->>> If we were to use the same key to label the auth_gss creds, then we
->>> could have user_gss_destroy() kill _only_ the auth_gss creds that it
->>> spawned.
->> 
->> Yes, killing only the auth it spawned is indeed what we want.
->> 
->>> 
->>> Ultimately, though, I think we might want to let the user set at least
->>> _part_ of the payload to something that might be useful to gssd when it
->>> goes looking for credentials. Since the nfslogin and gssd will be
->>> shipped as part of the nfs-utils package, it would be nice to allow them
->>> to use the gss-ctx key in order to communicate. Interesting information
->>> might include the KRB5CCNAME.
->> 
->> Thanks for the good suggestions.
-> 
-> So, I've got a question: Can we replace some of the stuff in the "RFC
-> Avoid expired credential keys for buffered writes" patch series with
-> this?
-> 
-> My thinking is that since the user_gss_destroy() has to sync all files
-> and then invalidate the rpcsec_gss creds, we're pretty much doing the
-> same thing as in the above RFC patch series.
-
-I was thinking the other way 'round. When gss_user_destroy gets called due to nfslogout (kdestroy) it triggers the RPC avoid expiration on buffered writes code with one difference: It does not allow _any_ new writes or _any_ other RPCs to use a GSS context  with a valid lifetime but to be destroyed due to logout. 
-
-So instead of gss_user_destroy marking a GSS context as out of date, it will be marked as to be ONLY used for flushing writes that were buffered before the nfslogout (kdestroy) and associated commits.
-
-> If nfslogin were to tell
-> the gss-ctx key how long until the kerberos tgt expires,
-
-We already have an expired time for the TGT in the GSS context downcall. Why do we need nfslogin to repeat the information? If you want to have a work queue job wake up based on the TGT lifetime, the info is already in the GSS context.
-
-> couldn't we
-> have a work queue job wake up just before the tgt is about to expire,
-> and simply call user_gss_destroy by revoking the gss-ctx key?
-
-I think using  the TGT lifetime that existed to at the creation of the GSS context trigger the RPC avoid cred expiration code works really well. I don't see a need for a workqueue thread.
-
-> If, on the other hand, the user renews the tgt using nfslogin,
-
-Yes - this is in plan. nfslogin (e.g. TGT renewal) will update an existing gss-ctx key which in turn will trigger an upcall on associated GSS contexts to have them renewed.  I didn't want to bother with this until the idea of nfslogin/nfslogout had been flown :)
-
-> then we
-> could update the gss-ctx key, and defer the work queue job until the new
-> expirt time.
-
-With nfslogin updating the GSS context, the same will happen with the current RPC avoid expired cred code.
-
--->Andy
-
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-
+T24gRnJpLCAyMDEyLTExLTMwIGF0IDEzOjA5IC0wNTAwLCBhbmRyb3NAbmV0YXBwLmNvbSB3cm90
+ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4gDQo+IFNpZ25l
+ZC1vZmYtYnk6IEFuZHkgQWRhbXNvbiA8YW5kcm9zQG5ldGFwcC5jb20+DQo+IC0tLQ0KPiBBIGNs
+ZWFudXAgcGF0Y2guDQo+IA0KPiAgbmV0L3N1bnJwYy9hdXRoLmMgICAgICAgICAgICAgIHwgICAg
+MSArDQo+ICBuZXQvc3VucnBjL2F1dGhfZ3NzL2F1dGhfZ3NzLmMgfCAgICAxICsNCj4gIDIgZmls
+ZXMgY2hhbmdlZCwgMiBpbnNlcnRpb25zKCspLCAwIGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAt
+LWdpdCBhL25ldC9zdW5ycGMvYXV0aC5jIGIvbmV0L3N1bnJwYy9hdXRoLmMNCj4gaW5kZXggYjVj
+MDY3Yi4uOGI3Njc1MyAxMDA2NDQNCj4gLS0tIGEvbmV0L3N1bnJwYy9hdXRoLmMNCj4gKysrIGIv
+bmV0L3N1bnJwYy9hdXRoLmMNCj4gQEAgLTIyNSw2ICsyMjUsNyBAQCBycGNhdXRoX3VuaGFzaF9j
+cmVkX2xvY2tlZChzdHJ1Y3QgcnBjX2NyZWQgKmNyZWQpDQo+ICAJaGxpc3RfZGVsX3JjdSgmY3Jl
+ZC0+Y3JfaGFzaCk7DQo+ICAJc21wX21iX19iZWZvcmVfY2xlYXJfYml0KCk7DQo+ICAJY2xlYXJf
+Yml0KFJQQ0FVVEhfQ1JFRF9IQVNIRUQsICZjcmVkLT5jcl9mbGFncyk7DQo+ICsJc21wX21iX19h
+ZnRlcl9jbGVhcl9iaXQoKTsNCj4gIH0NCj4gIA0KPiAgc3RhdGljIGludA0KPiBkaWZmIC0tZ2l0
+IGEvbmV0L3N1bnJwYy9hdXRoX2dzcy9hdXRoX2dzcy5jIGIvbmV0L3N1bnJwYy9hdXRoX2dzcy9h
+dXRoX2dzcy5jDQo+IGluZGV4IDkwOWRjMGMuLjkyYTdkNmQgMTAwNjQ0DQo+IC0tLSBhL25ldC9z
+dW5ycGMvYXV0aF9nc3MvYXV0aF9nc3MuYw0KPiArKysgYi9uZXQvc3VucnBjL2F1dGhfZ3NzL2F1
+dGhfZ3NzLmMNCj4gQEAgLTEyNiw2ICsxMjYsNyBAQCBnc3NfY3JlZF9zZXRfY3R4KHN0cnVjdCBy
+cGNfY3JlZCAqY3JlZCwgc3RydWN0IGdzc19jbF9jdHggKmN0eCkNCj4gIAlzZXRfYml0KFJQQ0FV
+VEhfQ1JFRF9VUFRPREFURSwgJmNyZWQtPmNyX2ZsYWdzKTsNCj4gIAlzbXBfbWJfX2JlZm9yZV9j
+bGVhcl9iaXQoKTsNCj4gIAljbGVhcl9iaXQoUlBDQVVUSF9DUkVEX05FVywgJmNyZWQtPmNyX2Zs
+YWdzKTsNCj4gKwlzbXBfbWJfX2FmdGVyX2NsZWFyX2JpdCgpOw0KPiAgfQ0KPiAgDQo+ICBzdGF0
+aWMgY29uc3Qgdm9pZCAqDQoNCldoeSBhcmUgdGhlc2UgbmVlZGVkPw0KDQotLSANClRyb25kIE15
+a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlr
+bGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
