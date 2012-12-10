@@ -1,207 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:40217 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1423825Ab2LFPeS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Dec 2012 10:34:18 -0500
-Subject: [PATCH 3/6] nfsd: make containerise NFSd filesystem
-To: bfields@fieldses.org
+Received: from relay.parallels.com ([195.214.232.42]:36987 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750739Ab2LJJR2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Dec 2012 04:17:28 -0500
+Message-ID: <50C5A889.2080604@parallels.com>
+Date: Mon, 10 Dec 2012 13:16:57 +0400
 From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Thu, 06 Dec 2012 18:34:52 +0300
-Message-ID: <20121206153452.30693.55597.stgit@localhost.localdomain>
-In-Reply-To: <20121206153204.30693.11408.stgit@localhost.localdomain>
-References: <20121206153204.30693.11408.stgit@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>, <Trond.Myklebust@netapp.com>,
+        <linux-kernel@vger.kernel.org>, <devel@openvz.org>
+Subject: Re: [Devel] [PATCH 3/6] nfsd: pass net to nfsd_create_serv()
+References: <20121204134920.24504.95261.stgit@localhost.localdomain> <20121204135016.24504.74168.stgit@localhost.localdomain> <20121207165211.GK17115@fieldses.org> <50C59C68.30803@parallels.com>
+In-Reply-To: <50C59C68.30803@parallels.com>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch makes NFSD file system superblock to be created per net.
-This makes possible to get proper network namespace from superblock instead of
-using hard-coded "init_net".
+10.12.2012 12:25, Stanislav Kinsbursky пишет:
+> 07.12.2012 20:52, J. Bruce Fields пишет:
+>> On Tue, Dec 04, 2012 at 04:50:16PM +0300, Stanislav Kinsbursky wrote:
+>>> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+>>> index 21cba3d..6448391 100644
+>>> --- a/fs/nfsd/nfssvc.c
+>>> +++ b/fs/nfsd/nfssvc.c
+>>> @@ -334,10 +334,9 @@ static int nfsd_get_default_max_blksize(void)
+>>>       return ret;
+>>>   }
+>>>
+>>> -int nfsd_create_serv(void)
+>>> +int nfsd_create_serv(struct net *net)
+>>>   {
+>>>       int error;
+>>> -    struct net *net = &init_net;
+>>
+>> What does this apply to?  Since 3.6-rc1 we have
+>> 57c8b13e3cd0f94944c9691ce7f58e5fcef8a12d "NFSd: set nfsd_serv to NULL
+>> after service destruction" which includes:
+>>
+>> @@ -332,6 +330,7 @@ static int nfsd_get_default_max_blksize(void)
+>>   int nfsd_create_serv(void)
+>>   {
+>>          int error;
+>> +       struct net *net = current->nsproxy->net_ns;
+>>
+>>          WARN_ON(!mutex_is_locked(&nfsd_mutex));
+>>          if (nfsd_serv) {
+>>
+>> Am I missing some later patch?
+>>
+>
+> Maybe I'm missing something.
+> My tree is based on yours branch "for-3.8".
+> Doe I need to rebase?
+>
 
-Note: NFSd fs super-block holds network namespace. This garantees, that
-network namespace won't disappear from underneath of it.
+My bad, sorry.
+I forgot to send one patch in this series.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfsd/nfsctl.c |   46 +++++++++++++++++++++++++++++++++-------------
- fs/nfsd/nfssvc.c |    5 ++---
- 2 files changed, 35 insertions(+), 16 deletions(-)
+>> --b.
+>>
+>
+>
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 7493428..873438f 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -220,6 +220,7 @@ static ssize_t write_unlock_ip(struct file *file, char *buf, size_t size)
- 	struct sockaddr *sap = (struct sockaddr *)&address;
- 	size_t salen = sizeof(address);
- 	char *fo_path;
-+	struct net *net = file->f_dentry->d_sb->s_fs_info;
- 
- 	/* sanity check */
- 	if (size == 0)
-@@ -232,7 +233,7 @@ static ssize_t write_unlock_ip(struct file *file, char *buf, size_t size)
- 	if (qword_get(&buf, fo_path, size) < 0)
- 		return -EINVAL;
- 
--	if (rpc_pton(&init_net, fo_path, size, sap, salen) == 0)
-+	if (rpc_pton(net, fo_path, size, sap, salen) == 0)
- 		return -EINVAL;
- 
- 	return nlmsvc_unlock_all_by_ip(sap);
-@@ -317,6 +318,7 @@ static ssize_t write_filehandle(struct file *file, char *buf, size_t size)
- 	int len;
- 	struct auth_domain *dom;
- 	struct knfsd_fh fh;
-+	struct net *net = file->f_dentry->d_sb->s_fs_info;
- 
- 	if (size == 0)
- 		return -EINVAL;
-@@ -352,7 +354,7 @@ static ssize_t write_filehandle(struct file *file, char *buf, size_t size)
- 	if (!dom)
- 		return -ENOMEM;
- 
--	len = exp_rootfh(&init_net, dom, path, &fh,  maxsize);
-+	len = exp_rootfh(net, dom, path, &fh,  maxsize);
- 	auth_domain_put(dom);
- 	if (len)
- 		return len;
-@@ -396,7 +398,7 @@ static ssize_t write_threads(struct file *file, char *buf, size_t size)
- {
- 	char *mesg = buf;
- 	int rv;
--	struct net *net = &init_net;
-+	struct net *net = file->f_dentry->d_sb->s_fs_info;
- 
- 	if (size > 0) {
- 		int newthreads;
-@@ -447,7 +449,7 @@ static ssize_t write_pool_threads(struct file *file, char *buf, size_t size)
- 	int len;
- 	int npools;
- 	int *nthreads;
--	struct net *net = &init_net;
-+	struct net *net = file->f_dentry->d_sb->s_fs_info;
- 
- 	mutex_lock(&nfsd_mutex);
- 	npools = nfsd_nrpools(net);
-@@ -510,7 +512,7 @@ static ssize_t __write_versions(struct file *file, char *buf, size_t size)
- 	unsigned minor;
- 	ssize_t tlen = 0;
- 	char *sep;
--	struct net *net = &init_net;
-+	struct net *net = file->f_dentry->d_sb->s_fs_info;
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
- 	if (size>0) {
-@@ -792,7 +794,7 @@ static ssize_t __write_ports(struct file *file, char *buf, size_t size,
- static ssize_t write_ports(struct file *file, char *buf, size_t size)
- {
- 	ssize_t rv;
--	struct net *net = &init_net;
-+	struct net *net = file->f_dentry->d_sb->s_fs_info;
- 
- 	mutex_lock(&nfsd_mutex);
- 	rv = __write_ports(file, buf, size, net);
-@@ -827,7 +829,7 @@ int nfsd_max_blksize;
- static ssize_t write_maxblksize(struct file *file, char *buf, size_t size)
- {
- 	char *mesg = buf;
--	struct net *net = &init_net;
-+	struct net *net = file->f_dentry->d_sb->s_fs_info;
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
- 	if (size > 0) {
-@@ -923,7 +925,8 @@ static ssize_t nfsd4_write_time(struct file *file, char *buf, size_t size,
-  */
- static ssize_t write_leasetime(struct file *file, char *buf, size_t size)
- {
--	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
-+	struct net *net = file->f_dentry->d_sb->s_fs_info;
-+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 	return nfsd4_write_time(file, buf, size, &nn->nfsd4_lease, nn);
- }
- 
-@@ -939,7 +942,8 @@ static ssize_t write_leasetime(struct file *file, char *buf, size_t size)
-  */
- static ssize_t write_gracetime(struct file *file, char *buf, size_t size)
- {
--	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
-+	struct net *net = file->f_dentry->d_sb->s_fs_info;
-+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 	return nfsd4_write_time(file, buf, size, &nn->nfsd4_grace, nn);
- }
- 
-@@ -995,7 +999,8 @@ static ssize_t __write_recoverydir(struct file *file, char *buf, size_t size,
- static ssize_t write_recoverydir(struct file *file, char *buf, size_t size)
- {
- 	ssize_t rv;
--	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
-+	struct net *net = file->f_dentry->d_sb->s_fs_info;
-+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
- 	mutex_lock(&nfsd_mutex);
- 	rv = __write_recoverydir(file, buf, size, nn);
-@@ -1037,20 +1042,35 @@ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
- #endif
- 		/* last one */ {""}
- 	};
--	return simple_fill_super(sb, 0x6e667364, nfsd_files);
-+	struct net *net = data;
-+	int ret;
-+
-+	ret = simple_fill_super(sb, 0x6e667364, nfsd_files);
-+	if (ret)
-+		return ret;
-+	sb->s_fs_info = get_net(net);
-+	return 0;
- }
- 
- static struct dentry *nfsd_mount(struct file_system_type *fs_type,
- 	int flags, const char *dev_name, void *data)
- {
--	return mount_single(fs_type, flags, data, nfsd_fill_super);
-+	return mount_ns(fs_type, flags, current->nsproxy->net_ns, nfsd_fill_super);
-+}
-+
-+static void nfsd_umount(struct super_block *sb)
-+{
-+	struct net *net = sb->s_fs_info;
-+
-+	kill_litter_super(sb);
-+	put_net(net);
- }
- 
- static struct file_system_type nfsd_fs_type = {
- 	.owner		= THIS_MODULE,
- 	.name		= "nfsd",
- 	.mount		= nfsd_mount,
--	.kill_sb	= kill_litter_super,
-+	.kill_sb	= nfsd_umount,
- };
- 
- #ifdef CONFIG_PROC_FS
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 177bb60..bf1c4d3 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -734,8 +734,7 @@ nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp)
- int nfsd_pool_stats_open(struct inode *inode, struct file *file)
- {
- 	int ret;
--	struct net *net = &init_net;
--	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-+	struct nfsd_net *nn = net_generic(inode->i_sb->s_fs_info, nfsd_net_id);
- 
- 	mutex_lock(&nfsd_mutex);
- 	if (nn->nfsd_serv == NULL) {
-@@ -752,7 +751,7 @@ int nfsd_pool_stats_open(struct inode *inode, struct file *file)
- int nfsd_pool_stats_release(struct inode *inode, struct file *file)
- {
- 	int ret = seq_release(inode, file);
--	struct net *net = &init_net;
-+	struct net *net = inode->i_sb->s_fs_info;
- 
- 	mutex_lock(&nfsd_mutex);
- 	/* this function really, really should have been called svc_put() */
 
+-- 
+Best regards,
+Stanislav Kinsbursky
