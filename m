@@ -1,35 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f46.google.com ([209.85.216.46]:37322 "EHLO
-	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932744Ab2LGOa4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Dec 2012 09:30:56 -0500
+Received: from mailhub.sw.ru ([195.214.232.25]:32959 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753496Ab2LJJSu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Dec 2012 04:18:50 -0500
+Subject: [PATCH 5/7] nfsd: pass net to nfsd_svc()
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Mon, 10 Dec 2012 12:19:25 +0300
+Message-ID: <20121210091925.8855.12510.stgit@localhost.localdomain>
+In-Reply-To: <20121210091832.8855.26672.stgit@localhost.localdomain>
+References: <20121210091832.8855.26672.stgit@localhost.localdomain>
 MIME-Version: 1.0
-In-Reply-To: <CAH2r5msoPiu7wz-HjnnqTxeBLVEQiMYSnLMaZ+dEr11j6Fo4Ew@mail.gmail.com>
-References: <1354818391-7968-1-git-send-email-piastry@etersoft.ru>
-	<20121206194949.7ab20d56@pyramind.ukuu.org.uk>
-	<20121206195752.GA18585@samba2>
-	<CAH2r5msoPiu7wz-HjnnqTxeBLVEQiMYSnLMaZ+dEr11j6Fo4Ew@mail.gmail.com>
-Date: Fri, 7 Dec 2012 08:30:54 -0600
-Message-ID: <CAH2r5mtsv5C-=xt4XPgq5i-jCmSoTVABUOAMutmPrr8QjZeo2Q@mail.gmail.com>
-Subject: Re: [PATCH 0/3] Add O_DENY* flags to fcntl and cifs
-From: Steve French <smfrench@gmail.com>
-To: Jeremy Allison <jra@samba.org>
-Cc: Alan Cox <alan@lxorguk.ukuu.org.uk>, Pavel Shilovsky <piastry@etersoft.ru>,
-        linux-cifs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, wine-devel@winehq.org,
-        linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 7, 2012 at 8:29 AM, Steve French <smfrench@gmail.com> wrote:
-> although I could not find the same level of detail that MS-FSA
-> provides (e.g. see section 2.14.10 for the detailed
+Precursor patch. Hard-coded "init_net" will be replaced by proper one in
+future.
 
-Typo It is section 2.1.4.10
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfsd/nfsctl.c |    4 +++-
+ fs/nfsd/nfsd.h   |    2 +-
+ fs/nfsd/nfssvc.c |    3 +--
+ 3 files changed, 5 insertions(+), 4 deletions(-)
 
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index ae1d143..68e229c 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -396,6 +396,8 @@ static ssize_t write_threads(struct file *file, char *buf, size_t size)
+ {
+ 	char *mesg = buf;
+ 	int rv;
++	struct net *net = &init_net;
++
+ 	if (size > 0) {
+ 		int newthreads;
+ 		rv = get_int(&mesg, &newthreads);
+@@ -403,7 +405,7 @@ static ssize_t write_threads(struct file *file, char *buf, size_t size)
+ 			return rv;
+ 		if (newthreads < 0)
+ 			return -EINVAL;
+-		rv = nfsd_svc(newthreads);
++		rv = nfsd_svc(newthreads, net);
+ 		if (rv < 0)
+ 			return rv;
+ 	} else
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index acddf71..8226c1b 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -65,7 +65,7 @@ extern const struct seq_operations nfs_exports_op;
+ /*
+  * Function prototypes.
+  */
+-int		nfsd_svc(int nrservs);
++int		nfsd_svc(int nrservs, struct net *net);
+ int		nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp);
+ 
+ int		nfsd_nrthreads(void);
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 6448391..f199b53 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -442,11 +442,10 @@ int nfsd_set_nrthreads(int n, int *nthreads)
+  * this is the first time nrservs is nonzero.
+  */
+ int
+-nfsd_svc(int nrservs)
++nfsd_svc(int nrservs, struct net *net)
+ {
+ 	int	error;
+ 	bool	nfsd_up_before;
+-	struct net *net = &init_net;
+ 
+ 	mutex_lock(&nfsd_mutex);
+ 	dprintk("nfsd: creating service\n");
 
--- 
-Thanks,
-
-Steve
