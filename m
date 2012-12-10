@@ -1,56 +1,121 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60265 "EHLO fieldses.org"
+Received: from e8.ny.us.ibm.com ([32.97.182.138]:42826 "EHLO e8.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752909Ab2LQPgy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Dec 2012 10:36:54 -0500
-Date: Mon, 17 Dec 2012 10:36:44 -0500
-To: Steve French <smfrench@gmail.com>
-Cc: Alan Cox <alan@lxorguk.ukuu.org.uk>, Pavel Shilovsky <piastry@etersoft.ru>,
-        David Laight <david@l8s.co.uk>, Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        wine-devel@winehq.org
-Subject: Re: [PATCH 0/3] Add O_DENY* flags to fcntl and cifs
-Message-ID: <20121217153644.GD23546@fieldses.org>
-References: <1354818391-7968-1-git-send-email-piastry@etersoft.ru>
- <20121207161602.GA17710@infradead.org>
- <495d17310e0a687d446afc86def0f058@office.etersoft.ru>
- <20121212083401.GW5010@snowdrop.l8s.co.uk>
- <CAKywueSN++ZCNJ1zbET_axuwXd2ZujvSof9H82E3AdeZWY_BgQ@mail.gmail.com>
- <20121214153000.62af6cbc@pyramind.ukuu.org.uk>
- <CAH2r5muRyB2529EcQXFysrSDpMKe0m3JfiEc5929O6oTmG-ThQ@mail.gmail.com>
+	id S1751198Ab2LJCv0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 9 Dec 2012 21:51:26 -0500
+Received: from /spool/local
+	by e8.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
+	Sun, 9 Dec 2012 21:51:24 -0500
+In-Reply-To: <CAEMWVhv3GwJh1nTNYeCm4AnrDVdZbrJLS4DeKn4C6iHkJ5-jbA@mail.gmail.com>
+References: <OFF752FE87.86716271-ON88257AC7.002025E3-88257AC7.00206C04@us.ibm.com>	<50C45D17.5090000@tonian.com>
+	<OFA6E36E77.727ADDF2-ON88257ACF.005B56C9-88257ACF.005BE4BB@us.ibm.com>	<CAEMWVhsh0SvLX8MY8cghOmbYExpqFLYgUFVuai_RyaYu3EErvw@mail.gmail.com>
+	<OF0F796F1E.99986A09-ON88257ACF.0063225B-88257ACF.0063629E@us.ibm.com> <CAEMWVhv3GwJh1nTNYeCm4AnrDVdZbrJLS4DeKn4C6iHkJ5-jbA@mail.gmail.com>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        NFS list <linux-nfs@vger.kernel.org>, linux-nfs-owner@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAH2r5muRyB2529EcQXFysrSDpMKe0m3JfiEc5929O6oTmG-ThQ@mail.gmail.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: notify_deviceid_type4
+Message-ID: <OFE10FE4A9.8615D094-ON88257AD0.000F006F-88257AD0.000FAFA2@us.ibm.com>
+From: Marc Eshel <eshel@us.ibm.com>
+Date: Sun, 9 Dec 2012 18:51:13 -0800
+Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 14, 2012 at 01:19:18PM -0600, Steve French wrote:
-> On Fri, Dec 14, 2012 at 9:30 AM, Alan Cox <alan@lxorguk.ukuu.org.uk> wrote:
-> >> We can make this feature (passing O_DENY* flags received from clients
-> >> to filesystem) can be turned on/off on Samba/NFS server to let this
-> >> particular use case work. In general, I think we really need to be
-> >> sure that nobody has a read access for files that a Windows process
-> >> opened with O_DENYREAD (because there can be important reasons for the
-> >> Windows process to do so).
+I don't see that we are following notify_type4 either. notify_type4 is 
+enum 0,1,2,3,.... so notify_deviceid_type4 should be enum 0,1 or 1,2 since 
+it was already defined this way in the spec. Defining it as 2, 4 make no 
+sense if it is a bit number, way skip bits?. The use of shift is used for 
+bit mask which you claim it is not. 
+Marc.
+
+
+
+From:   Benny Halevy <bhalevy@tonian.com>
+To:     Marc Eshel/Almaden/IBM@IBMUS, 
+Cc:     linux-nfs-owner@vger.kernel.org, NFS list 
+<linux-nfs@vger.kernel.org>, "J. Bruce Fields" <bfields@redhat.com>, Trond 
+Myklebust <trond.myklebust@netapp.com>
+Date:   12/09/2012 11:54 AM
+Subject:        Re: notify_deviceid_type4
+
+
+
+I'm not sure if and whete that's saud explicitly but another example to 
+support that inrerpretation are the values of notify_type4 that apply to 
+the same bitmap that too are defined as sequential numbers (though zero 
+based) and not as single bit masks.
+Benny
+On Dec 9, 2012 8:05 PM, "Marc Eshel" <eshel@us.ibm.com> wrote:
+Can you provide with the spec information that supports your
+interpretation?
+Marc.
+
+
+
+From:   Benny Halevy <bhalevy@tonian.com>
+To:     Marc Eshel/Almaden/IBM@IBMUS,
+Cc:     linux-nfs-owner@vger.kernel.org, Trond Myklebust
+<trond.myklebust@netapp.com>, linux-nfs@vger.kernel.org, "J. Bruce Fields"
+<bfields@redhat.com>
+Date:   12/09/2012 09:50 AM
+Subject:        Re: notify_deviceid_type4
+
+
+
+The enum values in the spec correspond to bit _numbers_ in the bitmap, not
+to bitmasks.
+On Dec 9, 2012 6:43 PM, "Marc Eshel" <eshel@us.ibm.com> wrote:
+I am not sure what you are saying, I am showing the definition from the
+spec. that show NOTIFY_DEVICEID4_CHANGE = 1, and nfs4.h has it as (1<< 1)
+which is not 1, it is 2.
+Marc.
+
+Benny Halevy <bhalevy@tonian.com> wrote on 12/09/2012 01:42:47 AM:
+
+> From: Benny Halevy <bhalevy@tonian.com>
+> To: Marc Eshel/Almaden/IBM@IBMUS,
+> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, "J. Bruce Fields"
+> <bfields@redhat.com>, linux-nfs-owner@vger.kernel.org, linux-
+> nfs@vger.kernel.org
+> Date: 12/09/2012 01:44 AM
+> Subject: Re: notify_deviceid_type4
+>
+> On 2012-12-01 07:54, Marc Eshel wrote:
+> > The spec defines notify_deviceid_type4 as:
 > >
-> > It should only affect windows emulated tasks, nothing else
-> 
-> yes, but not just wine - there is probably a case for Samba server and
-> NFSv4 to optionally request such behafvior).
+> > 20.12.1.  ARGUMENT
+> >    /*
+> >     * Device notification types.
+> >     */
+> >    enum notify_deviceid_type4 {
+> >            NOTIFY_DEVICEID4_CHANGE = 1,
+> >            NOTIFY_DEVICEID4_DELETE = 2
+> >    };
+> >
+> >
+> > but the Linux code in nfs4.h has, is that going to be fixed?
+> >
+> > enum pnfs_notify_deviceid_type4 {
+> >         NOTIFY_DEVICEID4_CHANGE = 1 << 1,
+> >         NOTIFY_DEVICEID4_DELETE = 1 << 2,
+> > };
+>
+> notify_deviceid_type4 specifies bit numbers same as notify_type4
+> It seems to me like the definition in nfs4.h is correct.
+>
+> Benny
+>
+> >
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >
+>
 
-Agreed, but:
 
-> Also we are likely to
-> see more cases where users want to run Samba over an NFS mount and
-> vice versa.
 
-I don't personally see the interest in this case.
-
-(And in fact I'd rather we removed the nfs export code for cifs; I seem
-to recall from the last discussion that filehandle lookups get ESTALE
-for inodes that have gone out of cache, and that that wasn't really
-fixable.)
-
---b.
