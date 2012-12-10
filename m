@@ -1,81 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:21667 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754779Ab2LLQbp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Dec 2012 11:31:45 -0500
-Date: Wed, 12 Dec 2012 11:31:40 -0500
+Received: from mail-qa0-f53.google.com ([209.85.216.53]:47788 "EHLO
+	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752691Ab2LJOZ5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Dec 2012 09:25:57 -0500
+Received: by mail-qa0-f53.google.com with SMTP id a19so1486481qad.19
+        for <linux-nfs@vger.kernel.org>; Mon, 10 Dec 2012 06:25:56 -0800 (PST)
 From: Jeff Layton <jlayton@redhat.com>
-To: Fred Isaman <faisaman4@gmail.com>
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org, eguan@redhat.com
-Subject: Re: non-aligned DIO reads on NFS are corrupting memory in 3.7.0
-Message-ID: <20121212113140.145fc424@tlielax.poochiereds.net>
-In-Reply-To: <CADnza44_ZTHuuFHbQds9TBcSAdHD-FBoSJLwym7ETcC-HeFjZw@mail.gmail.com>
-References: <20121212094654.5ce53d89@tlielax.poochiereds.net>
-	<CADnza44_ZTHuuFHbQds9TBcSAdHD-FBoSJLwym7ETcC-HeFjZw@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: trond.myklebust@netapp.com
+Cc: jiali@redhat.com, linux-nfs@vger.kernel.org
+Subject: [PATCH] nfs: don't extend writes to cover entire page if pagecache is invalid
+Date: Mon, 10 Dec 2012 09:25:48 -0500
+Message-Id: <1355149548-4225-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 12 Dec 2012 11:20:11 -0500
-Fred Isaman <faisaman4@gmail.com> wrote:
+Jian reported that the following sequence would leave "testfile" with
+corrupt data:
 
-> On Wed, Dec 12, 2012 at 9:46 AM, Jeff Layton <jlayton@redhat.com> wrote:
-> > One of our QA folks found that the attached testcase would segfault
-> > when run on a recent rhel6 kernel that has a backport of the pnfs dio
-> > code. I get the same segfault when I run it on a 3.7.0 kernel as well.
-> >
-> > I think the problem is that because the buffer we're reading into is on
-> > the stack, the kernel is scribbling over the rest of the page after the
-> > read and corrupting it.
-> >
-> > The problem, I think is this block in nfs_direct_read_completion():
-> >
-> > -----------------------[snip]-----------------------
-> >                 if (test_bit(NFS_IOHDR_EOF, &hdr->flags)) {
-> >                         if (bytes > hdr->good_bytes)
-> >                                 zero_user(page, 0, PAGE_SIZE);
-> >                         else if (hdr->good_bytes - bytes < PAGE_SIZE)
-> >                                 zero_user_segment(page,
-> >                                         hdr->good_bytes & ~PAGE_MASK,
-> >                                         PAGE_SIZE);
-> >                 }
-> > -----------------------[snip]-----------------------
-> >
-> > If I comment that out, then the test passes and it doesn't scribble
-> > over memory. I'm not clear on what that block is trying to accomplish.
-> > If we get a short read in the DIO codepath, I don't think we ought to
-> > be zeroing out the rest of the page. We should just return the number
-> > of bytes read and be done with it.
-> >
-> 
-> I would say the problem is not zeroing memory, but that the code isn't
-> taking into account the offsets into the page.
-> 
+    # mount localhost:/export /mnt/nfs/ -o vers=3
+    # echo abc > /mnt/nfs/testfile; echo def >> /export/testfile; echo ghi >> /mnt/nfs/testfile
+    # cat -v /export/testfile
+    abc
+    ^@^@^@^@ghi
 
-Erm maybe...
+While there's no locking involved here, the operations are serialized,
+so CTO should prevent corruption.
 
-I don't get it though. Why would you ever want to zero out the rest of
-the buffer on a DIO read() request? You're certainly under no obligation
-to do so. If you didn't get all of the data requested, you're going to
-return a number that's less than "count", and you should be fine to
-just ignore the rest of the buffer.
+The first write to the file is fine and writes 4 bytes. The file is then
+extended on the server. When it's reopened a GETATTR is issued and the
+size change is noticed. This causes NFS_INO_INVALID_DATA to be set on
+the file. Because the file is opened for write only,
+nfs_want_read_modify_write() returns 0 to nfs_write_begin().
+nfs_updatepage then calls nfs_write_pageuptodate() to see if it should
+extend the nfs_page to cover the whole page. NFS_INO_INVALID_DATA is
+still set on the file at that point, but that flag is ignored and
+nfs_pageuptodate erroneously extends the write to cover the whole page,
+with the write done on the server side filled in with zeroes.
 
-> 
-> > I'm also suspicious of the "if (!PageCompound(page))" check in that
-> > function as well. It doesn't seem like we ought to be marking pages
-> > dirty in the DIO codepaths, should we?
-> >
-> 
-> I'm not sure if we should, but code to do so has been around forever.
-> The exception for PageCompound is from commit 566dd6064e89b "NFS: Make
-> directIO aware of compound pages", almost 7 years ago.
-> 
-> Fred
->
+This patch just has that function check for NFS_INO_INVALID_DATA in
+addition to NFS_INO_REVAL_PAGECACHE. This fixes the bug, but looking
+over the code, I wonder if we might have a similar bug in
+nfs_revalidate_size(). The difference between those two flags is very
+subtle, so it seems like we ought to be checking for
+NFS_INO_INVALID_DATA in most of the places that we look for
+NFS_INO_REVAL_PAGECACHE.
 
-Yeah. Maybe it's concern with someone doing DIO reads into a mmapped
-buffer? Dunno...
+I believe this is regression introduced by commit 8d197a568. The code
+did check for NFS_INO_INVALID_DATA prior to that patch.
 
+Original bug report is here:
+
+    https://bugzilla.redhat.com/show_bug.cgi?id=885743
+
+Cc: <stable@vger.kernel.org> # 3.5+
+Reported-by: Jian Li <jiali@redhat.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/write.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 9347ab7..83aec9b 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -884,7 +884,7 @@ static bool nfs_write_pageuptodate(struct page *page, struct inode *inode)
+ {
+ 	if (nfs_have_delegated_attributes(inode))
+ 		goto out;
+-	if (NFS_I(inode)->cache_validity & NFS_INO_REVAL_PAGECACHE)
++	if (NFS_I(inode)->cache_validity & (NFS_INO_INVALID_DATA|NFS_INO_REVAL_PAGECACHE))
+ 		return false;
+ out:
+ 	return PageUptodate(page) != 0;
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.11.7
+
