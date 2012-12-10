@@ -1,39 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from tirith.ics.muni.cz ([147.251.4.36]:41001 "EHLO
-	tirith.ics.muni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932346Ab2LMOuE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Dec 2012 09:50:04 -0500
-Date: Thu, 13 Dec 2012 15:23:36 +0100
-From: Lukas Hejtmanek <xhejtman@gmail.com>
-To: Fred Isaman <faisaman4@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: local_lock mount option
-Message-ID: <20121213142336.GP10897@ics.muni.cz>
-References: <20121213133554.GO10897@ics.muni.cz>
- <CADnza44SJ0JZN05OtMZcjsm+NwdMVPGTa2f2vG9TbpUJR_B4Zw@mail.gmail.com>
+Received: from fieldses.org ([174.143.236.118]:56425 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751140Ab2LJUSQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Dec 2012 15:18:16 -0500
+Date: Mon, 10 Dec 2012 15:18:15 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Subject: Re: [PATCH 0/8] nfsd: make service created per net
+Message-ID: <20121210201815.GA17350@fieldses.org>
+References: <20121206111903.29559.4853.stgit@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-2
-In-Reply-To: <CADnza44SJ0JZN05OtMZcjsm+NwdMVPGTa2f2vG9TbpUJR_B4Zw@mail.gmail.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121206111903.29559.4853.stgit@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 13, 2012 at 09:10:14AM -0500, Fred Isaman wrote:
-> local_lock is a v2/v3 option.  It does not currently effect the behavior of v4.
+On Thu, Dec 06, 2012 at 02:22:57PM +0300, Stanislav Kinsbursky wrote:
+> This patch set prepares service control to be able to start separated
+> independent NFSd services in different network namespace environments.
+> Key changes are:
+> 1) Create independent instances of NFSd service (and thus threads pool) for
+> each network namespace.
+> 2) Control generic resources allocation and destruction by usage counter.
+> 3) Cleanup and simplify Nfsd service start and shutdown.
+> 4) Move some more NFSd state parts (like boot_time and "nfsd is up" flag to
+> per-net data).
 
-if I understand correctly source codes, it should:
-nfs/file.c:
+OK, thanks, applying.--b.
 
-const struct file_operations nfs4_file_operations = {
-[...]
-        .lock           = nfs_lock,
-        .flock          = nfs_flock,
-
-and nfs_(f)lock contains tests for:
-NFS_MOUNT_LOCAL_FCNTL
-NFS_MOUNT_LOCAL_FLOCK
-
-but for some reason, it is not propageted from mount call. Dunno why. Or am
-I something missing?
-
--- 
-Luká¹ Hejtmánek
+> 
+> The following series implements...
+> 
+> ---
+> 
+> Stanislav Kinsbursky (8):
+>       nfsd: move per-net startup code to separated function
+>       nfsd: per-net NFSd up flag introduced
+>       nfsd: make NFSd service boot time per-net
+>       nfsd: make NFSd service structure allocated per net
+>       nfsd: introduce helpers for generic resources init and shutdown
+>       nfsd: simplify NFSv4 state init and shutdown
+>       nfsd: replace boolean nfsd_up flag by users counter
+>       nfsd: simplify service shutdown
+> 
+> 
+>  fs/nfsd/netns.h     |    9 ++
+>  fs/nfsd/nfs3xdr.c   |   14 +++-
+>  fs/nfsd/nfs4proc.c  |   11 ++-
+>  fs/nfsd/nfs4state.c |   14 ++--
+>  fs/nfsd/nfsctl.c    |   63 ++++++++++-------
+>  fs/nfsd/nfsd.h      |   23 +-----
+>  fs/nfsd/nfssvc.c    |  185 +++++++++++++++++++++++++++++++++------------------
+>  7 files changed, 195 insertions(+), 124 deletions(-)
+> 
