@@ -1,56 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:6615 "EHLO mx12.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:33986 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932395Ab2LNWzj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 Dec 2012 17:55:39 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFS: nfs_lookup_revalidate should not trust an inode with i_nlink == 0
-Date: Fri, 14 Dec 2012 17:55:33 -0500
-Message-Id: <1355525733-53242-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1753820Ab2LJJSe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Dec 2012 04:18:34 -0500
+Subject: [PATCH 1/7] nfsd: use "init_net" for portmapper
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Mon, 10 Dec 2012 12:19:04 +0300
+Message-ID: <20121210091904.8855.89077.stgit@localhost.localdomain>
+In-Reply-To: <20121210091832.8855.26672.stgit@localhost.localdomain>
+References: <20121210091832.8855.26672.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the inode has no links, then we should force a new lookup.
+There could be a situation, when NFSd was started in one network namespace, but
+stopped in another one.
+This will trigger kernel panic, because RPCBIND client is stored on per-net
+NFSd data, and will be NULL on NFSd shutdown.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 ---
- fs/nfs/dir.c | 11 ++++++++---
- 1 file changed, 8 insertions(+), 3 deletions(-)
+ fs/nfsd/nfssvc.c |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index a46a746..d8e58ed 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -978,10 +978,11 @@ static int nfs_is_exclusive_create(struct inode *dir, unsigned int flags)
-  * particular file and the "nocto" mount flag is not set.
-  *
-  */
--static inline
-+static
- int nfs_lookup_verify_inode(struct inode *inode, unsigned int flags)
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index b34a67d..9beace6 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -11,7 +11,6 @@
+ #include <linux/module.h>
+ #include <linux/fs_struct.h>
+ #include <linux/swap.h>
+-#include <linux/nsproxy.h>
+ 
+ #include <linux/sunrpc/stats.h>
+ #include <linux/sunrpc/svcsock.h>
+@@ -341,7 +340,7 @@ static int nfsd_get_default_max_blksize(void)
+ int nfsd_create_serv(void)
  {
- 	struct nfs_server *server = NFS_SERVER(inode);
-+	int ret;
+ 	int error;
+-	struct net *net = current->nsproxy->net_ns;
++	struct net *net = &init_net;
  
- 	if (IS_AUTOMOUNT(inode))
- 		return 0;
-@@ -992,9 +993,13 @@ int nfs_lookup_verify_inode(struct inode *inode, unsigned int flags)
- 	if ((flags & LOOKUP_OPEN) && !(server->flags & NFS_MOUNT_NOCTO) &&
- 	    (S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode)))
- 		goto out_force;
--	return 0;
-+out:
-+	return (inode->i_nlink == 0) ? -ENOENT : 0;
- out_force:
--	return __nfs_revalidate_inode(server, inode);
-+	ret = __nfs_revalidate_inode(server, inode);
-+	if (ret != 0)
-+		return ret;
-+	goto out;
- }
- 
- /*
--- 
-1.7.11.7
+ 	WARN_ON(!mutex_is_locked(&nfsd_mutex));
+ 	if (nfsd_serv) {
 
