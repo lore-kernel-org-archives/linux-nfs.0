@@ -1,43 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:24825 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:23460 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752432Ab2LQRSW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Dec 2012 12:18:22 -0500
-Subject: [PATCH] SUNRPC: continue run over clients list on PipeFS event
-	instead of break
-To: Trond.Myklebust@netapp.com
+	id S1753496Ab2LJJSp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Dec 2012 04:18:45 -0500
+Subject: [PATCH 4/7] nfsd: pass net to nfsd_create_serv()
+To: bfields@fieldses.org
 From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Mon, 17 Dec 2012 20:18:52 +0300
-Message-ID: <20121217171852.26922.37774.stgit@localhost.localdomain>
+Date: Mon, 10 Dec 2012 12:19:20 +0300
+Message-ID: <20121210091920.8855.8081.stgit@localhost.localdomain>
+In-Reply-To: <20121210091832.8855.26672.stgit@localhost.localdomain>
+References: <20121210091832.8855.26672.stgit@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There are SUNRPC clients, which program doesn't have pipe_dir_name. These
-clients can be skipped on PipeFS events, because nothing have to be created or
-destroyed. But instead of breaking in case of such a client was found, search
-for suitable client over clients list have to be continued. Otherwise some
-clients could not be covered by PipeFS event handler.
+Precursor patch. Hard-coded "init_net" will be replaced by proper one in
+future.
 
 Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: stable@vger.kernel.org [>= v3.4]
 ---
- net/sunrpc/clnt.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ fs/nfsd/nfsctl.c |    4 ++--
+ fs/nfsd/nfsd.h   |    2 +-
+ fs/nfsd/nfssvc.c |    5 ++---
+ 3 files changed, 5 insertions(+), 6 deletions(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index cdc7564..10b18b2 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -234,7 +234,7 @@ static struct rpc_clnt *rpc_get_client_for_event(struct net *net, int event)
- 	spin_lock(&sn->rpc_client_lock);
- 	list_for_each_entry(clnt, &sn->all_clients, cl_clients) {
- 		if (clnt->cl_program->pipe_dir_name == NULL)
--			break;
-+			continue;
- 		if (rpc_clnt_skip_event(clnt, event))
- 			continue;
- 		if (atomic_inc_not_zero(&clnt->cl_count) == 0)
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index e13cbdd..ae1d143 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -664,7 +664,7 @@ static ssize_t __write_ports_addfd(char *buf)
+ 	if (err != 0 || fd < 0)
+ 		return -EINVAL;
+ 
+-	err = nfsd_create_serv();
++	err = nfsd_create_serv(net);
+ 	if (err != 0)
+ 		return err;
+ 
+@@ -696,7 +696,7 @@ static ssize_t __write_ports_addxprt(char *buf)
+ 	if (port < 1 || port > USHRT_MAX)
+ 		return -EINVAL;
+ 
+-	err = nfsd_create_serv();
++	err = nfsd_create_serv(net);
+ 	if (err != 0)
+ 		return err;
+ 
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 5eea0f5..acddf71 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -103,7 +103,7 @@ enum vers_op {NFSD_SET, NFSD_CLEAR, NFSD_TEST, NFSD_AVAIL };
+ int nfsd_vers(int vers, enum vers_op change);
+ int nfsd_minorversion(u32 minorversion, enum vers_op change);
+ void nfsd_reset_versions(void);
+-int nfsd_create_serv(void);
++int nfsd_create_serv(struct net *net);
+ 
+ extern int nfsd_max_blksize;
+ 
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 21cba3d..6448391 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -334,10 +334,9 @@ static int nfsd_get_default_max_blksize(void)
+ 	return ret;
+ }
+ 
+-int nfsd_create_serv(void)
++int nfsd_create_serv(struct net *net)
+ {
+ 	int error;
+-	struct net *net = &init_net;
+ 
+ 	WARN_ON(!mutex_is_locked(&nfsd_mutex));
+ 	if (nfsd_serv) {
+@@ -459,7 +458,7 @@ nfsd_svc(int nrservs)
+ 	if (nrservs == 0 && nfsd_serv == NULL)
+ 		goto out;
+ 
+-	error = nfsd_create_serv();
++	error = nfsd_create_serv(net);
+ 	if (error)
+ 		goto out;
+ 
 
