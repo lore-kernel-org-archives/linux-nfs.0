@@ -1,129 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:18754 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:38673 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752137Ab2LDLKN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Dec 2012 06:10:13 -0500
-Subject: [PATCH] SUNRPC: connect to UNIX sockets synchronously
-To: Trond.Myklebust@netapp.com
+	id S1753319Ab2LJJSz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Dec 2012 04:18:55 -0500
+Subject: [PATCH 6/7] nfsd: pass net to nfsd_set_nrthreads()
+To: bfields@fieldses.org
 From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Tue, 04 Dec 2012 14:10:27 +0300
-Message-ID: <20121204111006.23758.22102.stgit@localhost.localdomain>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Mon, 10 Dec 2012 12:19:30 +0300
+Message-ID: <20121210091930.8855.96738.stgit@localhost.localdomain>
+In-Reply-To: <20121210091832.8855.26672.stgit@localhost.localdomain>
+References: <20121210091832.8855.26672.stgit@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Local tranports uses UNIX sockets and connecting of these sockets is done in
-context of file system namespace (i.e. task file system root).
-Currenly, all sockets connect operations are performed by rpciod work queue,
-which actually means, that any service will be registered in the same
-rpcbind instance regardless to process file system root.
-This is not suitable for containers, which usually have it's own nested root.
-There are 2 approaches, how the problem can be solved.
-
-First one is to store proper root in transport and switch to it in rpciod
-workqueue function for connect operations. But this looks ugly and such
-approach was rejected by community.
-
-The second one is to connect to unix sockets synchronously, which is
-implemented by this patch.
-
-But there should be noted, that such implementation introduces limitation
-(Trond's quote):
-"That approach can fall afoul of the selinux restrictions on the process
-context. Processes that are allowed to write data, may not be allowed to
-create sockets or call connect(). That is the main reason for doing it
-in the rpciod context, which is a clean kernel process context."
+Precursor patch. Hard-coded "init_net" will be replaced by proper one in
+future.
 
 Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 ---
- net/sunrpc/xprtsock.c |   46 ++++++++++++++++++++++++++++++++++++++--------
- 1 files changed, 38 insertions(+), 8 deletions(-)
+ fs/nfsd/nfsctl.c |    3 ++-
+ fs/nfsd/nfsd.h   |    2 +-
+ fs/nfsd/nfssvc.c |    3 +--
+ 3 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index aaaadfb..362a5a6 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1882,12 +1882,10 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
-  * @transport: socket transport to connect
-  * @create_sock: function to create a socket of the correct type
-  *
-- * Invoked by a work queue tasklet.
-+ * Used to synchronously connect to UNIX sockets.
-  */
--static void xs_local_setup_socket(struct work_struct *work)
-+static void xs_local_setup_socket(struct sock_xprt *transport)
- {
--	struct sock_xprt *transport =
--		container_of(work, struct sock_xprt, connect_worker.work);
- 	struct rpc_xprt *xprt = &transport->xprt;
- 	struct socket *sock;
- 	int status = -EIO;
-@@ -2463,19 +2461,53 @@ static void bc_destroy(struct rpc_xprt *xprt)
- {
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 68e229c..58f0ae4 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -447,6 +447,7 @@ static ssize_t write_pool_threads(struct file *file, char *buf, size_t size)
+ 	int len;
+ 	int npools;
+ 	int *nthreads;
++	struct net *net = &init_net;
+ 
+ 	mutex_lock(&nfsd_mutex);
+ 	npools = nfsd_nrpools();
+@@ -477,7 +478,7 @@ static ssize_t write_pool_threads(struct file *file, char *buf, size_t size)
+ 			if (nthreads[i] < 0)
+ 				goto out_free;
+ 		}
+-		rv = nfsd_set_nrthreads(i, nthreads);
++		rv = nfsd_set_nrthreads(i, nthreads, net);
+ 		if (rv)
+ 			goto out_free;
+ 	}
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 8226c1b..18f9996 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -71,7 +71,7 @@ int		nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp);
+ int		nfsd_nrthreads(void);
+ int		nfsd_nrpools(void);
+ int		nfsd_get_nrthreads(int n, int *);
+-int		nfsd_set_nrthreads(int n, int *);
++int		nfsd_set_nrthreads(int n, int *, struct net *);
+ int		nfsd_pool_stats_open(struct inode *, struct file *);
+ int		nfsd_pool_stats_release(struct inode *, struct file *);
+ 
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index f199b53..b144658 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -382,12 +382,11 @@ int nfsd_get_nrthreads(int n, int *nthreads)
+ 	return 0;
  }
  
-+/**
-+ * xs_local_connect - connect a socket to a remote endpoint
-+ * @task: address of RPC task that manages state of connect request
-+ *
-+ * Used for UNIX transports only.
-+ */
-+static void xs_local_connect(struct rpc_task *task)
-+{
-+	struct rpc_xprt *xprt = task->tk_xprt;
-+	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
-+
-+	if (transport->sock != NULL) {
-+		printk(KERN_WARNING "Local xprt %p is connected already\n", xprt);
-+		return;
-+	}
-+	dprintk("RPC:       xs_local_connect for xprt %p\n", xprt);
-+	xs_local_setup_socket(transport);
-+}
-+
-+/**
-+ * xs_local_destroy - prepare to shutdown a local transport
-+ * @xprt: doomed transport
-+ *
-+ */
-+static void xs_local_destroy(struct rpc_xprt *xprt)
-+{
-+	dprintk("RPC:       xs_local_destroy xprt %p\n", xprt);
-+
-+	xs_close(xprt);
-+	xs_free_peer_addresses(xprt);
-+	xprt_free(xprt);
-+	module_put(THIS_MODULE);
-+}
-+
- static struct rpc_xprt_ops xs_local_ops = {
- 	.reserve_xprt		= xprt_reserve_xprt,
- 	.release_xprt		= xs_tcp_release_xprt,
- 	.alloc_slot		= xprt_alloc_slot,
- 	.rpcbind		= xs_local_rpcbind,
- 	.set_port		= xs_local_set_port,
--	.connect		= xs_connect,
-+	.connect		= xs_local_connect,
- 	.buf_alloc		= rpc_malloc,
- 	.buf_free		= rpc_free,
- 	.send_request		= xs_local_send_request,
- 	.set_retrans_timeout	= xprt_set_retrans_timeout_def,
- 	.close			= xs_close,
--	.destroy		= xs_destroy,
-+	.destroy		= xs_local_destroy,
- 	.print_stats		= xs_local_print_stats,
- };
+-int nfsd_set_nrthreads(int n, int *nthreads)
++int nfsd_set_nrthreads(int n, int *nthreads, struct net *net)
+ {
+ 	int i = 0;
+ 	int tot = 0;
+ 	int err = 0;
+-	struct net *net = &init_net;
  
-@@ -2642,8 +2674,6 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
- 			goto out_err;
- 		}
- 		xprt_set_bound(xprt);
--		INIT_DELAYED_WORK(&transport->connect_worker,
--					xs_local_setup_socket);
- 		xs_format_peer_addresses(xprt, "local", RPCBIND_NETID_LOCAL);
- 		break;
- 	default:
+ 	WARN_ON(!mutex_is_locked(&nfsd_mutex));
+ 
 
