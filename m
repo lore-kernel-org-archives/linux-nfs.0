@@ -1,69 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:34120 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754290Ab2LLQaf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Dec 2012 11:30:35 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Fred Isaman <faisaman4@gmail.com>
-CC: Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "eguan@redhat.com" <eguan@redhat.com>
-Subject: Re: non-aligned DIO reads on NFS are corrupting memory in 3.7.0
-Date: Wed, 12 Dec 2012 16:30:30 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9119261B6@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20121212094654.5ce53d89@tlielax.poochiereds.net>
-	 <CADnza44_ZTHuuFHbQds9TBcSAdHD-FBoSJLwym7ETcC-HeFjZw@mail.gmail.com>
-In-Reply-To: <CADnza44_ZTHuuFHbQds9TBcSAdHD-FBoSJLwym7ETcC-HeFjZw@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from relay.parallels.com ([195.214.232.42]:46097 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753787Ab2LKO61 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Dec 2012 09:58:27 -0500
+Message-ID: <50C749E0.4040107@parallels.com>
+Date: Tue, 11 Dec 2012 18:57:36 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
+To: Al Viro <viro@ZenIV.linux.org.uk>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>, <devel@openvz.org>
+Subject: Re: [PATCH 2/6] nfsd: swap fs root in NFSd kthreads
+References: <20121206153204.30693.11408.stgit@localhost.localdomain> <20121206153447.30693.54128.stgit@localhost.localdomain> <20121210202842.GB17350@fieldses.org> <50C73C60.8060405@parallels.com> <20121211145443.GH4939@ZenIV.linux.org.uk>
+In-Reply-To: <20121211145443.GH4939@ZenIV.linux.org.uk>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTEyLTEyIGF0IDExOjIwIC0wNTAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4g
-T24gV2VkLCBEZWMgMTIsIDIwMTIgYXQgOTo0NiBBTSwgSmVmZiBMYXl0b24gPGpsYXl0b25AcmVk
-aGF0LmNvbT4gd3JvdGU6DQo+ID4gT25lIG9mIG91ciBRQSBmb2xrcyBmb3VuZCB0aGF0IHRoZSBh
-dHRhY2hlZCB0ZXN0Y2FzZSB3b3VsZCBzZWdmYXVsdA0KPiA+IHdoZW4gcnVuIG9uIGEgcmVjZW50
-IHJoZWw2IGtlcm5lbCB0aGF0IGhhcyBhIGJhY2twb3J0IG9mIHRoZSBwbmZzIGRpbw0KPiA+IGNv
-ZGUuIEkgZ2V0IHRoZSBzYW1lIHNlZ2ZhdWx0IHdoZW4gSSBydW4gaXQgb24gYSAzLjcuMCBrZXJu
-ZWwgYXMgd2VsbC4NCj4gPg0KPiA+IEkgdGhpbmsgdGhlIHByb2JsZW0gaXMgdGhhdCBiZWNhdXNl
-IHRoZSBidWZmZXIgd2UncmUgcmVhZGluZyBpbnRvIGlzIG9uDQo+ID4gdGhlIHN0YWNrLCB0aGUg
-a2VybmVsIGlzIHNjcmliYmxpbmcgb3ZlciB0aGUgcmVzdCBvZiB0aGUgcGFnZSBhZnRlciB0aGUN
-Cj4gPiByZWFkIGFuZCBjb3JydXB0aW5nIGl0Lg0KPiA+DQo+ID4gVGhlIHByb2JsZW0sIEkgdGhp
-bmsgaXMgdGhpcyBibG9jayBpbiBuZnNfZGlyZWN0X3JlYWRfY29tcGxldGlvbigpOg0KPiA+DQo+
-ID4gLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS1bc25pcF0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0K
-PiA+ICAgICAgICAgICAgICAgICBpZiAodGVzdF9iaXQoTkZTX0lPSERSX0VPRiwgJmhkci0+Zmxh
-Z3MpKSB7DQo+ID4gICAgICAgICAgICAgICAgICAgICAgICAgaWYgKGJ5dGVzID4gaGRyLT5nb29k
-X2J5dGVzKQ0KPiA+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgemVyb191c2VyKHBh
-Z2UsIDAsIFBBR0VfU0laRSk7DQo+ID4gICAgICAgICAgICAgICAgICAgICAgICAgZWxzZSBpZiAo
-aGRyLT5nb29kX2J5dGVzIC0gYnl0ZXMgPCBQQUdFX1NJWkUpDQo+ID4gICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICB6ZXJvX3VzZXJfc2VnbWVudChwYWdlLA0KPiA+ICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICBoZHItPmdvb2RfYnl0ZXMgJiB+UEFHRV9NQVNL
-LA0KPiA+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBQQUdFX1NJWkUp
-Ow0KPiA+ICAgICAgICAgICAgICAgICB9DQo+ID4gLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS1bc25p
-cF0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KPiA+DQo+ID4gSWYgSSBjb21tZW50IHRoYXQgb3V0
-LCB0aGVuIHRoZSB0ZXN0IHBhc3NlcyBhbmQgaXQgZG9lc24ndCBzY3JpYmJsZQ0KPiA+IG92ZXIg
-bWVtb3J5LiBJJ20gbm90IGNsZWFyIG9uIHdoYXQgdGhhdCBibG9jayBpcyB0cnlpbmcgdG8gYWNj
-b21wbGlzaC4NCj4gPiBJZiB3ZSBnZXQgYSBzaG9ydCByZWFkIGluIHRoZSBESU8gY29kZXBhdGgs
-IEkgZG9uJ3QgdGhpbmsgd2Ugb3VnaHQgdG8NCj4gPiBiZSB6ZXJvaW5nIG91dCB0aGUgcmVzdCBv
-ZiB0aGUgcGFnZS4gV2Ugc2hvdWxkIGp1c3QgcmV0dXJuIHRoZSBudW1iZXINCj4gPiBvZiBieXRl
-cyByZWFkIGFuZCBiZSBkb25lIHdpdGggaXQuDQo+ID4NCj4gDQo+IEkgd291bGQgc2F5IHRoZSBw
-cm9ibGVtIGlzIG5vdCB6ZXJvaW5nIG1lbW9yeSwgYnV0IHRoYXQgdGhlIGNvZGUgaXNuJ3QNCj4g
-dGFraW5nIGludG8gYWNjb3VudCB0aGUgb2Zmc2V0cyBpbnRvIHRoZSBwYWdlLg0KDQpUaGUgbWVt
-b3J5IHJlZ2lvbiBsaWVzIGFmdGVyIHRoZSBFT0YsIHNvIHdlJ3JlIG5vdCBjb3VudGluZyBpdCBp
-bg0KZHJlcS0+Y291bnQuIE1vcmUgaW1wb3J0YW50bHksIGl0IHdvbid0IGJlIGFjY291bnRlZCBm
-b3IgaW4gdGhlIHJlYWQoKQ0Kc3lzdGVtIGNhbGwgcmV0dXJuIHZhbHVlLCBzbyBJIHRoaW5rIHdl
-IHNob3VsZCBhdm9pZCB0b3VjaGluZyBpdC4NCg0KPiA+IEknbSBhbHNvIHN1c3BpY2lvdXMgb2Yg
-dGhlICJpZiAoIVBhZ2VDb21wb3VuZChwYWdlKSkiIGNoZWNrIGluIHRoYXQNCj4gPiBmdW5jdGlv
-biBhcyB3ZWxsLiBJdCBkb2Vzbid0IHNlZW0gbGlrZSB3ZSBvdWdodCB0byBiZSBtYXJraW5nIHBh
-Z2VzDQo+ID4gZGlydHkgaW4gdGhlIERJTyBjb2RlcGF0aHMsIHNob3VsZCB3ZT8NCj4gPg0KPiA+
-IC0tDQo+ID4gSmVmZiBMYXl0b24gPGpsYXl0b25AcmVkaGF0LmNvbT4NCj4gDQo+IEknbSBub3Qg
-c3VyZSBpZiB3ZSBzaG91bGQsIGJ1dCBjb2RlIHRvIGRvIHNvIGhhcyBiZWVuIGFyb3VuZCBmb3Jl
-dmVyLg0KPiBUaGUgZXhjZXB0aW9uIGZvciBQYWdlQ29tcG91bmQgaXMgZnJvbSBjb21taXQgNTY2
-ZGQ2MDY0ZTg5YiAiTkZTOiBNYWtlDQo+IGRpcmVjdElPIGF3YXJlIG9mIGNvbXBvdW5kIHBhZ2Vz
-IiwgYWxtb3N0IDcgeWVhcnMgYWdvLg0KDQpSaWdodC4gVGhlIGNvZGUgZm9yIGRvaW5nIHRoaXMg
-Z29lcyBiYWNrIHRvIHRoZSBvcmlnaW5hbCBPX0RJUkVDVA0KaW1wbGVtZW50YXRpb24gaW4gMjAw
-My4gSUlSQywgQW5kcmV3IE1vcnRvbiBhc2tlZCB1cyB0byBkbyBpdCBpbiBvcmRlcg0KdG8gbWFr
-ZSB0aGluZ3MgbGlrZSBPX0RJUkVDVCByZWFkIGludG8gYW4gbW1hcHBlZCBtZW1vcnkgcmVnaW9u
-IHdvcmsNCmNvcnJlY3RseS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGll
-bnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cu
-bmV0YXBwLmNvbQ0K
+11.12.2012 18:54, Al Viro пишет:
+> On Tue, Dec 11, 2012 at 06:00:00PM +0400, Stanislav Kinsbursky wrote:
+>> 11.12.2012 00:28, J. Bruce Fields ??????????:
+>>> On Thu, Dec 06, 2012 at 06:34:47PM +0300, Stanislav Kinsbursky wrote:
+>>>> NFSd does lookup. Lookup is done starting from current->fs->root.
+>>>> NFSd is a kthread, cloned by kthreadd, and thus have global (but luckely
+>>>> unshared) root.
+>>>> So we have to swap root to those, which process, started NFSd, has. Because
+>>>> that process can be in a container with it's own root.
+>>>
+>>> This doesn't sound right to me.
+>>>
+>>> Which lookups exactly do you see being done relative to
+>>> current->fs->root ?
+>>>
+>>
+>> Ok, you are right. I was mistaken here.
+>> This is not a exactly lookup, but d_path() problem in svc_export_request().
+>> I.e. without root swapping, d_path() will give not local export path (like "/export")
+>> but something like this "/root/containers_root/export".
+>
+> Now, *that* is a different story (and makes some sense).  Take a look
+> at __d_path(), please.  You don't need to set ->fs->root to get d_path()
+> equivalent relative to given point.
+>
+
+Thanks, Al.
+But __d_path() is not exported and this code is called from NFSd module.
+Is it suitable for you to export __d_path()?
+
+-- 
+Best regards,
+Stanislav Kinsbursky
