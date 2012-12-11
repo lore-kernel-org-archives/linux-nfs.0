@@ -1,74 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-oa0-f44.google.com ([209.85.219.44]:55884 "EHLO
-	mail-oa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752527Ab2LZPRH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Dec 2012 10:17:07 -0500
-Received: by mail-oa0-f44.google.com with SMTP id n5so8157903oag.17
-        for <linux-nfs@vger.kernel.org>; Wed, 26 Dec 2012 07:17:06 -0800 (PST)
+Received: from mx2.netapp.com ([216.240.18.37]:21616 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754052Ab2LKXUv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Dec 2012 18:20:51 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: NeilBrown <neilb@suse.de>
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: NFS regression - EIO is returned instead of ENOSPC
+Date: Tue, 11 Dec 2012 23:20:38 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA911923813@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20121212092813.23afbc5f@notabene.brown>
+	 <20121212095304.368c9708@notabene.brown>
+	 <1355267807.23203.16.camel@lade.trondhjem.org>
+In-Reply-To: <1355267807.23203.16.camel@lade.trondhjem.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Date: Wed, 26 Dec 2012 17:09:07 +0200
-Message-ID: <CADug+U6-=+_Xy41Lw3hnOqSR84Bo7MjKDL_PykiZVdUx=b8tAA@mail.gmail.com>
-Subject: [PATCH 1/1] sunrpc: Fix lockd sleeping until timeout
-From: Andriy Skulysh <andriy_skulysh@xyratex.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There is a race in enqueueing thread to a pool and
-waking up a thread.
-lockd doesn't wake up on reception of lock granted callback
-if svc_wake_up() is called before lockd's thread is added
-to a pool.
-
-Signed-off-by: Andriy Skulysh <Andriy_Skulysh@xyratex.com>
----
- include/linux/sunrpc/svc.h |    1 +
- net/sunrpc/svc_xprt.c      |    9 ++++++++-
- 2 files changed, 9 insertions(+), 1 deletions(-)
-
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 676ddf5..1f0216b 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -50,6 +50,7 @@ struct svc_pool {
- 	unsigned int		sp_nrthreads;	/* # of threads in pool */
- 	struct list_head	sp_all_threads;	/* all server threads */
- 	struct svc_pool_stats	sp_stats;	/* statistics on pool operation */
-+	int			sp_task_pending;/* has pending task */
- } ____cacheline_aligned_in_smp;
-
- /*
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index b8e47fa..c7ab6f5 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -499,7 +499,8 @@ void svc_wake_up(struct svc_serv *serv)
- 			rqstp->rq_xprt = NULL;
- 			 */
- 			wake_up(&rqstp->rq_wait);
--		}
-+		} else
-+			pool->sp_task_pending = 1;
- 		spin_unlock_bh(&pool->sp_lock);
- 	}
- }
-@@ -634,7 +635,13 @@ struct svc_xprt *svc_get_next_xprt(struct
-svc_rqst *rqstp, long timeout)
- 		 * long for cache updates.
- 		 */
- 		rqstp->rq_chandle.thread_wait = 1*HZ;
-+		pool->sp_task_pending = 0;
- 	} else {
-+		if (pool->sp_task_pending) {
-+			pool->sp_task_pending = 0;
-+			spin_unlock_bh(&pool->sp_lock);
-+			return -EAGAIN;
-+		}
- 		/* No data pending. Go to sleep */
- 		svc_thread_enqueue(pool, rqstp);
-
--- 
-1.7.1
+T24gVHVlLCAyMDEyLTEyLTExIGF0IDE4OjE2IC0wNTAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
+DQo+IEhtbS4uLiBJIGNhbiBzZWUgMiBwbGFjZXMgd2hlcmUgd2UncmUgc2V0dGluZyB0aGUgUGFn
+ZUVycm9yIGZsYWcuDQo+IA0KPiAgICAgIDEuIG5mc191cGRhdGVwYWdlKCk6IGluIHRoaXMgY2Fz
+ZSwgdGhlIGVycm9yIG9jY3VycmVkIHdoZW4gd2UgdHJpZWQNCj4gICAgICAgICB0byBjaGFuZ2Ug
+dGhlIHBhZ2UgY29udGVudHMuIFNpbmNlIHdlJ3JlIGhvbGRpbmcgdGhlIHBhZ2UgbG9jaywNCj4g
+ICAgICAgICBhbmQgc28gcmF0aGVyIHRoYW4gbWFyayB0aGUgcGFnZSBhcyBiYWQsIHdlIGNvdWxk
+IHByb2JhYmx5IGp1c3QNCj4gICAgICAgICB3cml0ZSBiYWNrIGV4aXN0aW5nIGRpcnR5IGFyZWFz
+ICh1c2luZyBuZnNfd2JfcGFnZSgpKSBhbmQgdGhlbg0KPiAgICAgICAgIHJlbW92ZSBpdCBmcm9t
+IHRoZSBtYXBwaW5nLg0KPiAgICAgIDIuICBuZnNfd3JpdGVfY29tcGxldGlvbigpOiBoZXJlIHRo
+ZSB3cml0ZWJhY2sgZXJyb3IgYXBwbGllcyB0byB0aGUNCj4gICAgICAgICBlbnRpcmUgZGlydHkg
+YXJlYSBvbiB0aGUgcGFnZSwgYW5kIHRoZXJlIGlzIG5vIHBvaW50IGluIHRyeSB0bw0KPiAgICAg
+ICAgIHdyaXRlIGJhY2sgYWdhaW4uIEJldHRlciBqdXN0IGV2aWN0IHRoZSBwYWdlIGZyb20gdGhl
+IHBhZ2UgY2FjaGUNCj4gICAgICAgICAod2hpY2ggaXMgd2hhdCBuZnNfemFwX21hcHBpbmcoKSBp
+cyBzdXBwb3NlZCB0byBkbykuIFdoaWxlDQo+ICAgICAgICAgc2V0dGluZyB0aGUgUGFnZUVycm9y
+IGZsYWcgZG9lcyBjYXVzZSBzb21lIG9mIHRoZSB3cml0ZWJhY2sNCj4gICAgICAgICBmdW5jdGlv
+bnMgdG8gcmV0dXJuIEVJTywgdGhhdCdzIG5vdCByZWFsbHkgd2hhdCB3ZSdyZSBhZnRlcjsgd2UN
+Cj4gICAgICAgICBhbHJlYWR5IHJlcG9ydCBlcnJvcnMgbW9yZSBjb21wbGV0ZWx5IHZpYSB0aGUg
+b3BlbiBjb250ZXh0Lg0KPiANCj4gU28gZm9yIG5vdywgY2FuJ3Qgd2UganVzdCBjaGFuZ2UgbmZz
+X3NldF9wYWdlZXJyb3IoKSB0byBub3QgYm90aGVyDQo+IHNldHRpbmcgdGhlIFBHX2Vycm9yIGZs
+YWc/IFRoZW4gaW4gdGhlIGZ1dHVyZSB3ZSBtaWdodCB3YW50IHRvIG1ha2UNCj4gbmZzX3VwZGF0
+ZXBhZ2UgYSBiaXQgbW9yZSBzb3BoaXN0aWNhdGVkIGluIGhvdyBpdCBkZWFscyB3aXRoIHRob3Nl
+DQo+IGVycm9ycy4uLg0KDQpVbHRpbWF0ZWx5LCB3aGF0IEknbSBzYXlpbmcgaXMgdGhhdCBQYWdl
+RXJyb3IgaXMgYSBoYWNrIGZvciBwYXNzaW5nDQplcnJvcnMgYXJvdW5kLiBTaW5jZSB3ZSBoYXZl
+IG91ciBvd24gaGFjayBmb3IgZG9pbmcgdGhlIHNhbWUsIHRoZW4gd2h5DQp1c2UgUGFnZUVycm9y
+IGF0IGFsbD8NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRh
+aW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNv
+bQ0K
