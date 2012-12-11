@@ -1,59 +1,142 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga09.intel.com ([134.134.136.24]:58349 "EHLO mga09.intel.com"
+Received: from mx11.netapp.com ([216.240.18.76]:6207 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751436Ab2LDXEe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Dec 2012 18:04:34 -0500
-Date: Wed, 05 Dec 2012 07:03:58 +0800
-From: kbuild test robot <fengguang.wu@intel.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+	id S1753679Ab2LKSo1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Dec 2012 13:44:27 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [nfs:devel 83/89] fs/nfsd/nfssvc.c:306:2: warning: format '%u'
- expects argument of type 'unsigned int', but argument 3 has type 'long
- unsigned int'
-Message-ID: <50be815e.k+1HrQIWo0JgAoaq%fengguang.wu@intel.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Subject: [PATCH v2 3/7] NFSD: Add slot table support for target_highest_slotid and highest_slotid
+Date: Tue, 11 Dec 2012 13:44:15 -0500
+Message-Id: <1355251459-18034-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1355251459-18034-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1355251459-18034-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1355251459-18034-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git devel
-head:   5aa86f21b8166d55aa4cf8c30130743c686abc6d
-commit: d0aeb64e7d5478dbab86933278fdf3d0f1082b8c [83/89] NFSD: Make DRC memory limits work with dynamic slot allocation
-config: make ARCH=m68k allmodconfig
+This commit just enables the slot table to set and maintain values for
+the target_highest_slotid and highest_slotid, as used in the replies
+to a SEQUENCE request from the client.
 
-All warnings:
-
-fs/nfsd/nfssvc.c: In function 'set_max_drc':
-fs/nfsd/nfssvc.c:306:2: warning: format '%u' expects argument of type 'unsigned int', but argument 3 has type 'long unsigned int' [-Wformat]
-
-vim +306 fs/nfsd/nfssvc.c
-
-c3d06f9c Andy Adamson    2009-04-03  290   * NFSv4.1 server might want to use more memory for a DRC than a machine
-c3d06f9c Andy Adamson    2009-04-03  291   * with mutiple services.
-c3d06f9c Andy Adamson    2009-04-03  292   *
-c3d06f9c Andy Adamson    2009-04-03  293   * Impose a hard limit on the number of pages for the DRC which varies
-c3d06f9c Andy Adamson    2009-04-03  294   * according to the machines free pages. This is of course only a default.
-c3d06f9c Andy Adamson    2009-04-03  295   *
-c3d06f9c Andy Adamson    2009-04-03  296   * For now this is a #defined shift which could be under admin control
-c3d06f9c Andy Adamson    2009-04-03  297   * in the future.
-c3d06f9c Andy Adamson    2009-04-03  298   */
-c3d06f9c Andy Adamson    2009-04-03  299  static void set_max_drc(void)
-c3d06f9c Andy Adamson    2009-04-03  300  {
-6a14dd1a Andy Adamson    2009-07-27  301  	#define NFSD_DRC_SIZE_SHIFT	10
-0c193054 Andy Adamson    2009-07-27  302  	nfsd_drc_max_mem = (nr_free_buffer_pages()
-0c193054 Andy Adamson    2009-07-27  303  					>> NFSD_DRC_SIZE_SHIFT) * PAGE_SIZE;
-0c193054 Andy Adamson    2009-07-27  304  	nfsd_drc_mem_used = 0;
-4bd9b0f4 Andy Adamson    2009-06-24  305  	spin_lock_init(&nfsd_drc_lock);
-0c193054 Andy Adamson    2009-07-27 @306  	dprintk("%s nfsd_drc_max_mem %u \n", __func__, nfsd_drc_max_mem);
-c3d06f9c Andy Adamson    2009-04-03  307  }
-bedbdd8b Neil Brown      2008-06-10  308  
-87b0fc7d J. Bruce Fields 2012-01-30  309  static int nfsd_get_default_max_blksize(void)
-02a375f0 NeilBrown       2006-10-02  310  {
-87b0fc7d J. Bruce Fields 2012-01-30  311  	struct sysinfo i;
-87b0fc7d J. Bruce Fields 2012-01-30  312  	unsigned long long target;
-87b0fc7d J. Bruce Fields 2012-01-30  313  	unsigned long ret;
-bedbdd8b Neil Brown      2008-06-10  314  
-
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
-0-DAY kernel build testing backend         Open Source Technology Center
-Fengguang Wu, Yuanhan Liu                              Intel Corporation
+ fs/nfsd/nfs4state.c | 18 +++++++++++-------
+ fs/nfsd/nfs4xdr.c   |  7 +++----
+ fs/nfsd/state.h     |  2 ++
+ fs/nfsd/xdr4.h      |  6 ++----
+ 4 files changed, 18 insertions(+), 15 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 9cb2450..a1208cc 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -853,11 +853,14 @@ static void nfsd4_free_slot_table(struct nfsd4_slot_table *tbl)
+ 	spin_unlock(&tbl->slt_lock);
+ }
+ 
+-static void nfsd4_init_slot_table(struct nfsd4_slot_table *tbl, size_t slotsize)
++static void nfsd4_init_slot_table(struct nfsd4_slot_table *tbl,
++		size_t slotsize, u32 highest_slotid)
+ {
+ 	INIT_LIST_HEAD(&tbl->slt_head);
+ 	spin_lock_init(&tbl->slt_lock);
+ 	tbl->slt_slotsize = slotsize;
++	tbl->slt_highest_slotid = highest_slotid;
++	tbl->slt_target_highest_slotid = highest_slotid;
+ }
+ 
+ static struct nfsd4_session *__alloc_session(size_t slotsize, u32 highest_slotid)
+@@ -867,7 +870,7 @@ static struct nfsd4_session *__alloc_session(size_t slotsize, u32 highest_slotid
+ 	new = kzalloc(sizeof(*new), GFP_KERNEL);
+ 	if (!new)
+ 		return NULL;
+-	nfsd4_init_slot_table(&new->se_slots, slotsize);
++	nfsd4_init_slot_table(&new->se_slots, slotsize, highest_slotid);
+ 	/* allocate each struct nfsd4_slot and data cache in one piece */
+ 	if (nfsd4_grow_slot_table(&new->se_slots, highest_slotid, GFP_KERNEL))
+ 		return new;
+@@ -2128,11 +2131,6 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ 		goto out;
+ 	dprintk("%s: slotid %d\n", __func__, seq->slotid);
+ 
+-	/* We do not negotiate the number of slots yet, so set the
+-	 * maxslots to the session maxreqs which is used to encode
+-	 * sr_highest_slotid and the sr_target_slot id to maxslots */
+-	seq->maxslots = session->se_fchannel.maxreqs;
+-
+ 	status = check_slot_seqid(seq->seqid, slot->sl_seqid,
+ 					slot->sl_flags & NFSD4_SLOT_INUSE);
+ 	if (status == nfserr_replay_cache) {
+@@ -2161,6 +2159,12 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ 	else
+ 		slot->sl_flags &= ~NFSD4_SLOT_CACHETHIS;
+ 
++	/* Retrieve new target/highest slotid values */
++	spin_lock(&session->se_slots.slt_lock);
++	seq->target_highest_slotid = session->se_slots.slt_target_highest_slotid;
++	seq->highest_slotid = session->se_slots.slt_highest_slotid;
++	spin_unlock(&session->se_slots.slt_lock);
++
+ 	cstate->slot = slot;
+ 	cstate->session = session;
+ 
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index fd548d1..52e2923 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1371,7 +1371,7 @@ nfsd4_decode_sequence(struct nfsd4_compoundargs *argp,
+ 	COPYMEM(seq->sessionid.data, NFS4_MAX_SESSIONID_LEN);
+ 	READ32(seq->seqid);
+ 	READ32(seq->slotid);
+-	READ32(seq->maxslots);
++	READ32(seq->highest_slotid);
+ 	READ32(seq->cachethis);
+ 
+ 	DECODE_TAIL;
+@@ -3415,9 +3415,8 @@ nfsd4_encode_sequence(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 	WRITEMEM(seq->sessionid.data, NFS4_MAX_SESSIONID_LEN);
+ 	WRITE32(seq->seqid);
+ 	WRITE32(seq->slotid);
+-	/* Note slotid's are numbered from zero: */
+-	WRITE32(seq->maxslots - 1); /* sr_highest_slotid */
+-	WRITE32(seq->maxslots - 1); /* sr_target_highest_slotid */
++	WRITE32(seq->highest_slotid);
++	WRITE32(seq->target_highest_slotid);
+ 	WRITE32(seq->status_flags);
+ 
+ 	ADJUST_ARGS();
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 6bcc8a1..7a0d8e4 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -146,6 +146,8 @@ struct nfsd4_slot_table {
+ 	spinlock_t		slt_lock;
+ 	size_t			slt_slotsize;
+ 	unsigned long		slt_memused;
++	u32			slt_target_highest_slotid;
++	u32			slt_highest_slotid;
+ };
+ 
+ struct nfsd4_channel_attrs {
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index acd127d..0c5c704 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -405,11 +405,9 @@ struct nfsd4_sequence {
+ 	struct nfs4_sessionid	sessionid;		/* request/response */
+ 	u32			seqid;			/* request/response */
+ 	u32			slotid;			/* request/response */
+-	u32			maxslots;		/* request/response */
++	u32			highest_slotid;		/* request/response */
+ 	u32			cachethis;		/* request */
+-#if 0
+-	u32			target_maxslots;	/* response */
+-#endif /* not yet */
++	u32			target_highest_slotid;	/* response */
+ 	u32			status_flags;		/* response */
+ };
+ 
+-- 
+1.7.11.7
+
