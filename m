@@ -1,66 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:53607 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:40527 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753972Ab2LKXQv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Dec 2012 18:16:51 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: NeilBrown <neilb@suse.de>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: NFS regression - EIO is returned instead of ENOSPC
-Date: Tue, 11 Dec 2012 23:16:49 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9119237C2@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20121212092813.23afbc5f@notabene.brown>
-	 <20121212095304.368c9708@notabene.brown>
-In-Reply-To: <20121212095304.368c9708@notabene.brown>
-Content-Type: text/plain; charset="utf-8"
+	id S1752972Ab2LKPf3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Dec 2012 10:35:29 -0500
+Date: Tue, 11 Dec 2012 10:35:28 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Subject: Re: [Devel] [PATCH 2/6] nfsd: swap fs root in NFSd kthreads
+Message-ID: <20121211153527.GC3336@fieldses.org>
+References: <20121206153204.30693.11408.stgit@localhost.localdomain>
+ <20121206153447.30693.54128.stgit@localhost.localdomain>
+ <20121210202842.GB17350@fieldses.org>
+ <50C73C60.8060405@parallels.com>
+ <50C73F58.1080005@parallels.com>
+ <20121211145621.GA3336@fieldses.org>
+ <50C74C14.8030807@parallels.com>
+ <20121211152036.GB3336@fieldses.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121211152036.GB3336@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTEyLTEyIGF0IDA5OjUzICsxMTAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IE9u
-IFdlZCwgMTIgRGVjIDIwMTIgMDk6Mjg6MTMgKzExMDAgTmVpbEJyb3duIDxuZWlsYkBzdXNlLmRl
-PiB3cm90ZToNCj4gDQo+ID4gDQo+ID4gSGkgVHJvbmQgZXQgYWwsDQo+ID4gIHdlIHNlZW0gdG8g
-aGF2ZSBhIHJlZ3Jlc3Npb24gaW50cm9kdWNlZCBieSANCj4gPiANCj4gPiBjb21taXQgN2IyODFl
-ZTAyNjU1MmYxMDg2MmI2MTdhMmE1MWFjZjQ5YzgyOTU1NA0KPiA+ICAgICBORlM6IGZzeW5jKCkg
-bXVzdCBleGl0IHdpdGggYW4gZXJyb3IgaWYgcGFnZSB3cml0ZWJhY2sgZmFpbGVkDQo+ID4gDQo+
-ID4gd2hpY2ggaGFzIGZvdW5kIGl0J3Mgd2F5IChpbiBkaWZmZXJlbnQgZm9ybSBpbnRvIC1zdGFi
-bGUgcmVsZWFzZXMpLg0KPiANCj4gQml0IG9mIGEgY2xhcmlmaWNhdGlvbiBoZXJlLiAgSXQgZGlk
-bid0IGdldCBpbnRvIC1zdGFibGUsIGJ1dCB3ZSBoYXZlIHRoZSBidWcNCj4gaW4gb3VyIDMuMCBi
-YXNlZCBTTEVTMTEtU1AyIHRocm91Z2ggYSBkaWZmZXJlbnQgcm91dGUgKEkgYXNzdW1lZCBpdCBj
-YW1lDQo+IHRocm91Z2ggc3RhYmxlIGJ1dCB3YXMgYmVpbmcgdG9vIGhhc3R5KS4NCj4gDQo+IFRo
-ZSBidWcgZmlyc3QgYXJyaXZlZCBpbiB2My4xLXJjMQ0KPiANCj4gY29tbWl0IDAyYzI0YTgyMTg3
-ZDVhNjI4YzY4ZWRmZTcxYWU2MGRjMTM1Y2QxNzgNCj4gICAgIGZzOiBwdXNoIGlfbXV0ZXggYW5k
-IGZpbGVtYXBfd3JpdGVfYW5kX3dhaXQgZG93biBpbnRvIC0+ZnN5bmMoKSBoYW5kbGVycw0KPiAN
-Cj4gDQo+IHdhcyBmaXhlZCBieSBtZSBpbiB2My4zLXJjMQ0KPiANCj4gY29tbWl0IDJlZGI2YmMz
-ODUyYzY4MWMwZDk0ODI0NWJkNTUxMDhkYzY0MDc2MDQNCj4gICAgIE5GUyAtIGZpeCByZWNlbnQg
-YnJlYWthZ2UgdG8gTkZTIGVycm9yIGhhbmRsaW5nLg0KPiANCj4gdGhlIGNvZGUgd2FzIHRoZW4g
-bWVzc2VkIHVwIGEgYml0IGJ5IA0KPiANCj4gY29tbWl0IGE1YzU4ODkyYjQyN2EyNzUyZTNlYzQ0
-YjBhYWQ0Y2U5MjIxZGM2M2INCj4gICAgIE5GUzogQ3JlYXRlIGEgdjQtc3BlY2lmaWMgZnN5bmMg
-ZnVuY3Rpb24NCj4gaW4gdjMuNi1yYzENCj4gDQo+IGFuZCB0aGF0IG1lc3Mgd2FzIGZpeGVkIGJ5
-IA0KPiANCj4gY29tbWl0IDdiMjgxZWUwMjY1NTJmMTA4NjJiNjE3YTJhNTFhY2Y0OWM4Mjk1NTQN
-Cj4gICAgIE5GUzogZnN5bmMoKSBtdXN0IGV4aXQgd2l0aCBhbiBlcnJvciBpZiBwYWdlIHdyaXRl
-YmFjayBmYWlsZWQNCj4gDQo+IHdoaWNoIHJlLWludHJvZHVjZWQgdGhlIG9yaWdpbmFsIHByb2Js
-ZW0gaW4gdjMuNi1yYzYuDQo+IA0KPiBUaGF0IGZpcnN0IHBhdGNoIGhhcyBiZWVuIGJhY2twb3J0
-ZWQgdG8gU0xFUzExIHNvIG5vdyBJJ20gZml4aW5nIHRoZSBidWcNCj4gYWdhaW4gYW5kIGZpbmRp
-bmcgaXQgaW4gbWFpbmxpbmUgYWdhaW4gOi0pDQoNCkhtbS4uLiBJIGNhbiBzZWUgMiBwbGFjZXMg
-d2hlcmUgd2UncmUgc2V0dGluZyB0aGUgUGFnZUVycm9yIGZsYWcuDQoNCiAgICAgMS4gbmZzX3Vw
-ZGF0ZXBhZ2UoKTogaW4gdGhpcyBjYXNlLCB0aGUgZXJyb3Igb2NjdXJyZWQgd2hlbiB3ZSB0cmll
-ZA0KICAgICAgICB0byBjaGFuZ2UgdGhlIHBhZ2UgY29udGVudHMuIFNpbmNlIHdlJ3JlIGhvbGRp
-bmcgdGhlIHBhZ2UgbG9jaywNCiAgICAgICAgYW5kIHNvIHJhdGhlciB0aGFuIG1hcmsgdGhlIHBh
-Z2UgYXMgYmFkLCB3ZSBjb3VsZCBwcm9iYWJseSBqdXN0DQogICAgICAgIHdyaXRlIGJhY2sgZXhp
-c3RpbmcgZGlydHkgYXJlYXMgKHVzaW5nIG5mc193Yl9wYWdlKCkpIGFuZCB0aGVuDQogICAgICAg
-IHJlbW92ZSBpdCBmcm9tIHRoZSBtYXBwaW5nLg0KICAgICAyLiAgbmZzX3dyaXRlX2NvbXBsZXRp
-b24oKTogaGVyZSB0aGUgd3JpdGViYWNrIGVycm9yIGFwcGxpZXMgdG8gdGhlDQogICAgICAgIGVu
-dGlyZSBkaXJ0eSBhcmVhIG9uIHRoZSBwYWdlLCBhbmQgdGhlcmUgaXMgbm8gcG9pbnQgaW4gdHJ5
-IHRvDQogICAgICAgIHdyaXRlIGJhY2sgYWdhaW4uIEJldHRlciBqdXN0IGV2aWN0IHRoZSBwYWdl
-IGZyb20gdGhlIHBhZ2UgY2FjaGUNCiAgICAgICAgKHdoaWNoIGlzIHdoYXQgbmZzX3phcF9tYXBw
-aW5nKCkgaXMgc3VwcG9zZWQgdG8gZG8pLiBXaGlsZQ0KICAgICAgICBzZXR0aW5nIHRoZSBQYWdl
-RXJyb3IgZmxhZyBkb2VzIGNhdXNlIHNvbWUgb2YgdGhlIHdyaXRlYmFjaw0KICAgICAgICBmdW5j
-dGlvbnMgdG8gcmV0dXJuIEVJTywgdGhhdCdzIG5vdCByZWFsbHkgd2hhdCB3ZSdyZSBhZnRlcjsg
-d2UNCiAgICAgICAgYWxyZWFkeSByZXBvcnQgZXJyb3JzIG1vcmUgY29tcGxldGVseSB2aWEgdGhl
-IG9wZW4gY29udGV4dC4NCg0KU28gZm9yIG5vdywgY2FuJ3Qgd2UganVzdCBjaGFuZ2UgbmZzX3Nl
-dF9wYWdlZXJyb3IoKSB0byBub3QgYm90aGVyDQpzZXR0aW5nIHRoZSBQR19lcnJvciBmbGFnPyBU
-aGVuIGluIHRoZSBmdXR1cmUgd2UgbWlnaHQgd2FudCB0byBtYWtlDQpuZnNfdXBkYXRlcGFnZSBh
-IGJpdCBtb3JlIHNvcGhpc3RpY2F0ZWQgaW4gaG93IGl0IGRlYWxzIHdpdGggdGhvc2UNCmVycm9y
-cy4uLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVy
-DQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+On Tue, Dec 11, 2012 at 10:20:36AM -0500, J. Bruce Fields wrote:
+> On Tue, Dec 11, 2012 at 07:07:00PM +0400, Stanislav Kinsbursky wrote:
+> > I don't really understand, how  mountd's root can be wrong. I.e.
+> > its' always right as I see it. NFSd kthreads have to swap/use
+> > relative path/whatever to communicate with proper mountd.
+> > Or I'm missing something?
+> 
+> Ugh, I see the problem: I thought svc_export_request was called at the
+> time mountd does the read, but instead its done at the time nfsd does
+> the upcall.
+> 
+> I suspect that's wrong, and we really want this done in the context of
+> the mountd process when it does the read call.  If d_path is called
+> there then we have no problem.
+
+Right, so I'd be happier if we could modify sunrpc_cache_pipe_upcall to
+skip calling cache_request and instead delay that until cache_read().  I
+think that should be possible.
+
+--b.
