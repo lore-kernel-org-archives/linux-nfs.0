@@ -1,416 +1,259 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:8511 "EHLO mx1.redhat.com"
+Received: from mx11.netapp.com ([216.240.18.76]:22482 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753025Ab2LQPnS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Dec 2012 10:43:18 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 10/13] NFS: Add label lifecycle management
-Date: Mon, 17 Dec 2012 10:43:08 -0500
-Message-Id: <1355758991-30049-11-git-send-email-steved@redhat.com>
-In-Reply-To: <1355758991-30049-1-git-send-email-steved@redhat.com>
-References: <1355758991-30049-1-git-send-email-steved@redhat.com>
+	id S1753604Ab2LKSoZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Dec 2012 13:44:25 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 1/7] NFSD: Convert the slot table to use a linked list
+Date: Tue, 11 Dec 2012 13:44:13 -0500
+Message-Id: <1355251459-18034-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Dave Quigley <dpquigl@taiga.selinuxproject.org>
+In preparation for the dynamic slot table allocation, convert the nfsd
+slot table to a linked list model.
 
->From David Quigley <dpquigl@davequigley.com>
-
-This patch adds the lifecycle management for the security label structure
-introduced in an earlier patch. The label is not used yet but allocations and
-freeing of the structure is handled.
-
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/dir.c      |  30 +++++++++++++-
- fs/nfs/getroot.c  |   1 -
- fs/nfs/inode.c    |  13 ++++++
- fs/nfs/nfs4proc.c | 116 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 4 files changed, 156 insertions(+), 4 deletions(-)
+ fs/nfsd/nfs4state.c | 151 +++++++++++++++++++++++++++++++++++++++++-----------
+ fs/nfsd/state.h     |  10 +++-
+ 2 files changed, 129 insertions(+), 32 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 1339e44..561d2fb 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -581,7 +581,8 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
- 	entry.fh = nfs_alloc_fhandle();
- 	entry.fattr = nfs_alloc_fattr();
- 	entry.server = NFS_SERVER(inode);
--	if (entry.fh == NULL || entry.fattr == NULL)
-+	entry.label = nfs4_label_alloc(GFP_NOWAIT);
-+	if (entry.fh == NULL || entry.fattr == NULL || entry.label == NULL)
- 		goto out;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index d0237f8..5717ea1 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -704,15 +704,6 @@ gen_sessionid(struct nfsd4_session *ses)
+  */
+ #define NFSD_MIN_HDR_SEQ_SZ  (24 + 12 + 44)
  
- 	array = nfs_readdir_get_array(page);
-@@ -616,6 +617,7 @@ out_release_array:
- out:
- 	nfs_free_fattr(entry.fattr);
- 	nfs_free_fhandle(entry.fh);
-+	nfs4_label_free(entry.label);
- 	return status;
+-static void
+-free_session_slots(struct nfsd4_session *ses)
+-{
+-	int i;
+-
+-	for (i = 0; i < ses->se_fchannel.maxreqs; i++)
+-		kfree(ses->se_slots[i]);
+-}
+-
+ /*
+  * We don't actually need to cache the rpc and session headers, so we
+  * can allocate a little less for each slot:
+@@ -758,29 +749,127 @@ static void nfsd4_put_drc_mem(int slotsize, int num)
+ 	spin_unlock(&nfsd_drc_lock);
  }
  
-@@ -1077,6 +1079,14 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
- 	if (fhandle == NULL || fattr == NULL)
- 		goto out_error;
- 
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL)) {
-+		label = nfs4_label_alloc(GFP_NOWAIT);
-+		if (label == NULL)
-+			goto out_error;
-+	}
-+#endif
-+
- 	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr, label);
- 	if (error)
- 		goto out_bad;
-@@ -1087,6 +1097,12 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
- 
- 	nfs_free_fattr(fattr);
- 	nfs_free_fhandle(fhandle);
-+
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL))
-+		nfs4_label_free(label);
-+#endif
-+
- out_set_verifier:
- 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
-  out_valid:
-@@ -1123,6 +1139,7 @@ out_zap_parent:
- out_error:
- 	nfs_free_fattr(fattr);
- 	nfs_free_fhandle(fhandle);
-+	nfs4_label_free(label);
- 	dput(parent);
- 	dfprintk(LOOKUPCACHE, "NFS: %s(%s/%s) lookup returned error %d\n",
- 			__func__, dentry->d_parent->d_name.name,
-@@ -1235,6 +1252,13 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
- 	if (fhandle == NULL || fattr == NULL)
- 		goto out;
- 
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL)) {
-+		label = nfs4_label_alloc(GFP_NOWAIT);
-+		if (label == NULL)
-+			goto out;
-+	}
-+#endif
- 	parent = dentry->d_parent;
- 	/* Protect against concurrent sillydeletes */
- 	nfs_block_sillyrename(parent);
-@@ -1264,6 +1288,10 @@ no_entry:
- out_unblock_sillyrename:
- 	nfs_unblock_sillyrename(parent);
- out:
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL))
-+		nfs4_label_free(label);
-+#endif
- 	nfs_free_fattr(fattr);
- 	nfs_free_fhandle(fhandle);
- 	return res;
-diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
-index 3b68bb6..14bd667 100644
---- a/fs/nfs/getroot.c
-+++ b/fs/nfs/getroot.c
-@@ -75,7 +75,6 @@ struct dentry *nfs_get_root(struct super_block *sb, struct nfs_fh *mntfh,
- 	struct nfs_fsinfo fsinfo;
- 	struct dentry *ret;
- 	struct inode *inode;
--	struct nfs4_label *label = NULL;
- 	void *name = kstrdup(devname, GFP_KERNEL);
- 	int error;
- 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index daca08c..ab08d0d 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -835,6 +835,15 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
- 		goto out;
- 
- 	nfs_inc_stats(inode, NFSIOS_INODEREVALIDATE);
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (nfs_server_capable(inode, NFS_CAP_SECURITY_LABEL)) {
-+		label = nfs4_label_alloc(GFP_KERNEL);
-+		if (label == NULL) {
-+			status = -ENOMEM;
-+			goto out;
-+		}
-+	}
-+#endif
- 	status = NFS_PROTO(inode)->getattr(server, NFS_FH(inode), fattr, label);
- 	if (status != 0) {
- 		dfprintk(PAGECACHE, "nfs_revalidate_inode: (%s/%Ld) getattr failed, error=%d\n",
-@@ -864,6 +873,10 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
- 		(long long)NFS_FILEID(inode));
- 
-  out:
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (nfs_server_capable(inode, NFS_CAP_SECURITY_LABEL))
-+		nfs4_label_free(label);
-+#endif
- 	nfs_free_fattr(fattr);
- 	return status;
- }
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 8e0378c..4ab2738 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -865,9 +865,16 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
- 	p = kzalloc(sizeof(*p), gfp_mask);
- 	if (p == NULL)
- 		goto err;
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (server->caps & NFS_CAP_SECURITY_LABEL) {
-+		p->f_label = nfs4_label_alloc(gfp_mask);
-+		if (p->f_label == NULL)
-+			goto err_free_p;
-+	}
-+#endif
- 	p->o_arg.seqid = nfs_alloc_seqid(&sp->so_seqid, gfp_mask);
- 	if (p->o_arg.seqid == NULL)
--		goto err_free;
-+		goto err_free_label;
- 	nfs_sb_active(dentry->d_sb);
- 	p->dentry = dget(dentry);
- 	p->dir = parent;
-@@ -910,7 +917,13 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
- 	nfs4_init_opendata_res(p);
- 	kref_init(&p->kref);
- 	return p;
--err_free:
-+
-+err_free_label:
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (server->caps & NFS_CAP_SECURITY_LABEL)
-+		nfs4_label_free(p->f_label);
-+#endif
-+err_free_p:
- 	kfree(p);
- err:
- 	dput(parent);
-@@ -927,6 +940,10 @@ static void nfs4_opendata_free(struct kref *kref)
- 	if (p->state != NULL)
- 		nfs4_put_open_state(p->state);
- 	nfs4_put_state_owner(p->owner);
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (p->o_arg.server->caps & NFS_CAP_SECURITY_LABEL)
-+		nfs4_label_free(p->f_label);
-+#endif
- 	dput(p->dir);
- 	dput(p->dentry);
- 	nfs_sb_deactive(sb);
-@@ -1998,6 +2015,16 @@ static int _nfs4_do_open(struct inode *dir,
- 	if (opendata == NULL)
- 		goto err_put_state_owner;
- 
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (label && nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL)) {
-+		olabel = nfs4_label_alloc(GFP_KERNEL);
-+		if (olabel == NULL) {
-+			status = -ENOMEM;
-+			goto err_opendata_put;
-+		}
-+	}
-+#endif
-+
- 	if (ctx_th && server->attr_bitmask[2] & FATTR4_WORD2_MDSTHRESHOLD) {
- 		opendata->f_attr.mdsthreshold = pnfs_mdsthreshold_alloc();
- 		if (!opendata->f_attr.mdsthreshold)
-@@ -2041,6 +2068,10 @@ static int _nfs4_do_open(struct inode *dir,
- 		kfree(opendata->f_attr.mdsthreshold);
- 	opendata->f_attr.mdsthreshold = NULL;
- 
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL))
-+		nfs4_label_free(olabel);
-+#endif
- 	nfs4_opendata_put(opendata);
- 	nfs4_put_state_owner(sp);
- 	*res = state;
-@@ -2607,6 +2638,12 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *mntfh,
- 		return error;
- 	}
- 
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	label = nfs4_label_alloc(GFP_KERNEL);
-+	if (label == NULL)
-+		return -ENOMEM;
-+#endif
-+
- 	error = nfs4_proc_getattr(server, mntfh, fattr, label);
- 	if (error < 0) {
- 		dprintk("nfs4_get_root: getattr error = %d\n", -error);
-@@ -2617,6 +2654,11 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *mntfh,
- 	    !nfs_fsid_equal(&server->fsid, &fattr->fsid))
- 		memcpy(&server->fsid, &fattr->fsid, sizeof(server->fsid));
- 
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (server->caps & NFS_CAP_SECURITY_LABEL)
-+		nfs4_label_free(label);
-+#endif
-+
- 	return error;
- }
- 
-@@ -2728,6 +2770,10 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- 	if (pnfs_ld_layoutret_on_setattr(inode))
- 		pnfs_return_layout(inode);
- 
-+	olabel = nfs4_label_alloc(GFP_KERNEL);
-+	if (olabel == NULL)
-+		return -ENOMEM;
-+
- 	nfs_fattr_init(fattr);
- 	
- 	/* Deal with open(O_TRUNC) */
-@@ -2905,12 +2951,27 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
- 	res.fattr = nfs_alloc_fattr();
- 	if (res.fattr == NULL)
- 		return -ENOMEM;
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (server->caps & NFS_CAP_SECURITY_LABEL) {
-+		res.label = nfs4_label_alloc(GFP_KERNEL);
-+		if (res.label == NULL) {
-+			status = -ENOMEM;
-+			goto out;
-+		}
-+	}
-+#endif
- 
- 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
- 	if (!status) {
- 		nfs_access_set_mask(entry, res.access);
- 		nfs_refresh_inode(inode, res.fattr, res.label);
- 	}
-+
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (server->caps & NFS_CAP_SECURITY_LABEL)
-+		nfs4_label_free(res.label);
-+#endif
-+out:
- 	nfs_free_fattr(res.fattr);
- 	return status;
- }
-@@ -3034,6 +3095,7 @@ static int _nfs4_proc_remove(struct inode *dir, struct qstr *name)
- 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 1);
- 	if (status == 0)
- 		update_changeattr(dir, &res.cinfo);
-+
- 	return status;
- }
- 
-@@ -3079,6 +3141,7 @@ static int nfs4_proc_unlink_done(struct rpc_task *task, struct inode *dir)
- 	if (nfs4_async_handle_error(task, res->server, NULL) == -EAGAIN)
- 		return 0;
- 	update_changeattr(dir, &res->cinfo);
-+
- 	return 1;
- }
- 
-@@ -3139,12 +3202,33 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
- 		.rpc_resp = &res,
- 	};
- 	int status = -ENOMEM;
-+
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (server->caps & NFS_CAP_SECURITY_LABEL) {
-+		res.old_label = nfs4_label_alloc(GFP_NOWAIT);
-+		if (res.old_label == NULL)
-+			goto out;
-+		res.new_label = nfs4_label_alloc(GFP_NOWAIT);
-+		if (res.new_label == NULL) {
-+			nfs4_label_free(res.old_label);
-+			goto out;
-+		}
-+	}
-+#endif
- 	
- 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (!status) {
- 		update_changeattr(old_dir, &res.old_cinfo);
- 		update_changeattr(new_dir, &res.new_cinfo);
- 	}
-+
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (server->caps & NFS_CAP_SECURITY_LABEL) {
-+		nfs4_label_free(res.old_label);
-+		nfs4_label_free(res.new_label);
-+	}
-+#endif
-+out:
- 	return status;
- }
- 
-@@ -3186,11 +3270,25 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, struct qstr *
- 	if (res.fattr == NULL)
- 		goto out;
- 
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (server->caps & NFS_CAP_SECURITY_LABEL) {
-+		res.label = nfs4_label_alloc(GFP_KERNEL);
-+		if (res.label == NULL)
-+			goto out;
-+	}
-+#endif
-+
- 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
- 	if (!status) {
- 		update_changeattr(dir, &res.cinfo);
- 		nfs_post_op_update_inode(inode, res.fattr, res.label);
- 	}
-+
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (server->caps & NFS_CAP_SECURITY_LABEL)
-+		nfs4_label_free(res.label);
-+#endif
-+
- out:
- 	nfs_free_fattr(res.fattr);
- 	return status;
-@@ -3226,6 +3324,13 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
- 	if (data != NULL) {
- 		struct nfs_server *server = NFS_SERVER(dir);
- 
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+		if (server->caps & NFS_CAP_SECURITY_LABEL) {
-+			data->label = nfs4_label_alloc(GFP_KERNEL);
-+			if (data->label == NULL)
-+				goto out_free;
-+		}
-+#endif
- 		data->msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CREATE];
- 		data->msg.rpc_argp = &data->arg;
- 		data->msg.rpc_resp = &data->res;
-@@ -3242,6 +3347,9 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
- 		nfs_fattr_init(data->res.fattr);
- 	}
- 	return data;
-+out_free:
-+	kfree(data);
-+	return NULL;
- }
- 
- static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_createdata *data)
-@@ -3257,6 +3365,10 @@ static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_
- 
- static void nfs4_free_createdata(struct nfs4_createdata *data)
+-static struct nfsd4_session *__alloc_session(int slotsize, int numslots)
++static void nfsd4_free_slot(struct nfsd4_slot *slot)
  {
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	if (data->arg.server->caps & NFS_CAP_SECURITY_LABEL)
-+		nfs4_label_free(data->label);
-+#endif
- 	kfree(data);
+-	struct nfsd4_session *new;
+-	int mem, i;
++	kfree(slot);
++}
++
++static struct nfsd4_slot *nfsd4_new_slot(size_t slotsize, gfp_t gfp_mask)
++{
++	return kzalloc(sizeof(struct nfsd4_slot) + slotsize, gfp_mask);
++}
++
++static struct nfsd4_slot *nfsd4_find_slot_locked(const struct nfsd4_slot_table *tbl,
++		u32 slotid)
++{
++	struct nfsd4_slot *slot;
++
++	list_for_each_entry(slot, &tbl->slt_head, sl_list) {
++		if (slot->sl_slotid == slotid)
++			return slot;
++	}
++	return NULL;
++}
++
++static struct nfsd4_slot *nfsd4_find_slot(struct nfsd4_slot_table *tbl,
++		u32 slotid)
++{
++	struct nfsd4_slot *slot;
++
++	spin_lock(&tbl->slt_lock);
++	slot = nfsd4_find_slot_locked(tbl, slotid);
++	spin_unlock(&tbl->slt_lock);
++	return slot;
++}
++
++static struct nfsd4_slot *nfsd4_find_last_slot_locked(const struct nfsd4_slot_table *tbl)
++{
++	if (list_empty(&tbl->slt_head))
++		return NULL;
++	return list_entry(tbl->slt_head.prev, struct nfsd4_slot, sl_list);
++}
++
++static bool nfsd4_grow_slot_table_locked(struct nfsd4_slot_table *tbl,
++		u32 slotid, gfp_t gfp_mask)
++{
++	struct nfsd4_slot *slot = NULL;
++	struct nfsd4_slot *prev;
++	u32 next_slotid;
++
++	for (;;) {
++		prev = nfsd4_find_last_slot_locked(tbl);
++		if (prev != NULL) {
++			if (prev->sl_slotid >= slotid)
++				break;
++			next_slotid = prev->sl_slotid + 1;
++		} else
++			next_slotid = 0;
++		if (slot != NULL){
++			slot->sl_slotid = next_slotid;
++			list_add_tail(&slot->sl_list, &tbl->slt_head);
++		}
++		spin_unlock(&tbl->slt_lock);
++		slot = nfsd4_new_slot(tbl->slt_slotsize, gfp_mask);
++		spin_lock(&tbl->slt_lock);
++		if (slot == NULL)
++			return false;
++	}
++	nfsd4_free_slot(slot);
++	return true;
++}
++
++static bool nfsd4_grow_slot_table(struct nfsd4_slot_table *tbl,
++		u32 slotid, gfp_t gfp_mask)
++{
++	bool ret;
++
++	spin_lock(&tbl->slt_lock);
++	ret = nfsd4_grow_slot_table_locked(tbl, slotid, gfp_mask);
++	spin_unlock(&tbl->slt_lock);
++	return ret;
++}
++
++static void nfsd4_truncate_slot_table_locked(struct nfsd4_slot_table *tbl,
++		u32 slotid)
++{
++	struct nfsd4_slot *slot;
++
++	for (;;) {
++		slot = nfsd4_find_last_slot_locked(tbl);
++		if (slot == NULL || slot->sl_slotid < slotid)
++			break;
++		list_del(&slot->sl_list);
++		nfsd4_free_slot(slot);
++	}
++}
++
++static void nfsd4_free_slot_table(struct nfsd4_slot_table *tbl)
++{
++	spin_lock(&tbl->slt_lock);
++	nfsd4_truncate_slot_table_locked(tbl, 0);
++	spin_unlock(&tbl->slt_lock);
++}
++
++static void nfsd4_init_slot_table(struct nfsd4_slot_table *tbl, size_t slotsize)
++{
++	INIT_LIST_HEAD(&tbl->slt_head);
++	spin_lock_init(&tbl->slt_lock);
++	tbl->slt_slotsize = slotsize;
++}
+ 
+-	BUILD_BUG_ON(NFSD_MAX_SLOTS_PER_SESSION * sizeof(struct nfsd4_slot *)
+-			+ sizeof(struct nfsd4_session) > PAGE_SIZE);
+-	mem = numslots * sizeof(struct nfsd4_slot *);
++static struct nfsd4_session *__alloc_session(size_t slotsize, u32 highest_slotid)
++{
++	struct nfsd4_session *new;
+ 
+-	new = kzalloc(sizeof(*new) + mem, GFP_KERNEL);
++	new = kzalloc(sizeof(*new), GFP_KERNEL);
+ 	if (!new)
+ 		return NULL;
++	nfsd4_init_slot_table(&new->se_slots, slotsize);
+ 	/* allocate each struct nfsd4_slot and data cache in one piece */
+-	for (i = 0; i < numslots; i++) {
+-		mem = sizeof(struct nfsd4_slot) + slotsize;
+-		new->se_slots[i] = kzalloc(mem, GFP_KERNEL);
+-		if (!new->se_slots[i])
+-			goto out_free;
+-	}
+-	return new;
+-out_free:
+-	while (i--)
+-		kfree(new->se_slots[i]);
++	if (nfsd4_grow_slot_table(&new->se_slots, highest_slotid, GFP_KERNEL))
++		return new;
++
++	nfsd4_free_slot_table(&new->se_slots);
+ 	kfree(new);
+ 	return NULL;
+ }
+@@ -899,7 +988,7 @@ static void nfsd4_del_conns(struct nfsd4_session *s)
+ static void __free_session(struct nfsd4_session *ses)
+ {
+ 	nfsd4_put_drc_mem(slot_bytes(&ses->se_fchannel), ses->se_fchannel.maxreqs);
+-	free_session_slots(ses);
++	nfsd4_free_slot_table(&ses->se_slots);
+ 	kfree(ses);
  }
  
+@@ -936,7 +1025,7 @@ static struct nfsd4_session *alloc_session(struct nfsd4_channel_attrs *fchan)
+ 	if (numslots < 1)
+ 		return NULL;
+ 
+-	new = __alloc_session(slotsize, numslots);
++	new = __alloc_session(slotsize, numslots - 1);
+ 	if (!new) {
+ 		nfsd4_put_drc_mem(slotsize, fchan->maxreqs);
+ 		return NULL;
+@@ -2032,11 +2121,11 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ 	if (nfsd4_request_too_big(rqstp, session))
+ 		goto out;
+ 
++	/* Note: nfsd4_find_slot checks the validity of seq->slotid */
+ 	status = nfserr_badslot;
+-	if (seq->slotid >= session->se_fchannel.maxreqs)
++	slot = nfsd4_find_slot(&session->se_slots, seq->slotid);
++	if (slot == NULL)
+ 		goto out;
+-
+-	slot = session->se_slots[seq->slotid];
+ 	dprintk("%s: slotid %d\n", __func__, seq->slotid);
+ 
+ 	/* We do not negotiate the number of slots yet, so set the
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index e036894..7d319e9a 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -128,6 +128,8 @@ static inline struct nfs4_delegation *delegstateid(struct nfs4_stid *s)
+ 		(NFSD_CACHE_SIZE_SLOTS_PER_SESSION * NFSD_SLOT_CACHE_SIZE)
+ 
+ struct nfsd4_slot {
++	struct list_head sl_list;
++	u32	sl_slotid;
+ 	u32	sl_seqid;
+ 	__be32	sl_status;
+ 	u32	sl_datalen;
+@@ -139,6 +141,12 @@ struct nfsd4_slot {
+ 	char	sl_data[];
+ };
+ 
++struct nfsd4_slot_table {
++	struct list_head	slt_head;
++	spinlock_t		slt_lock;
++	size_t			slt_slotsize;
++};
++
+ struct nfsd4_channel_attrs {
+ 	u32		headerpadsz;
+ 	u32		maxreq_sz;
+@@ -195,7 +203,7 @@ struct nfsd4_session {
+ 	struct list_head	se_conns;
+ 	u32			se_cb_prog;
+ 	u32			se_cb_seq_nr;
+-	struct nfsd4_slot	*se_slots[];	/* forward channel slots */
++	struct nfsd4_slot_table	se_slots;
+ };
+ 
+ extern void nfsd4_put_session(struct nfsd4_session *ses);
 -- 
 1.7.11.7
 
