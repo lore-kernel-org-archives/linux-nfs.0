@@ -1,53 +1,145 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:54734 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932796Ab2LIJmw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 9 Dec 2012 04:42:52 -0500
-Received: by mail-ee0-f46.google.com with SMTP id e53so1017458eek.19
-        for <linux-nfs@vger.kernel.org>; Sun, 09 Dec 2012 01:42:51 -0800 (PST)
-Message-ID: <50C45D17.5090000@tonian.com>
-Date: Sun, 09 Dec 2012 11:42:47 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from fieldses.org ([174.143.236.118]:55206 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753500Ab2LKQQg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Dec 2012 11:16:36 -0500
+Date: Tue, 11 Dec 2012 11:16:33 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/3] gssd: base the size of the fd array on the
+ RLIMIT_NOFILE limit.
+Message-ID: <20121211161633.GE3336@fieldses.org>
+References: <20121128010939.2475.13123.stgit@notabene.brown>
+ <20121128011123.2475.13691.stgit@notabene.brown>
+ <20121128131054.GB11651@fieldses.org>
+ <20121129113051.046bc658@notabene.brown>
+ <20121211110228.0159fc4f@notabene.brown>
 MIME-Version: 1.0
-To: Marc Eshel <eshel@us.ibm.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        linux-nfs-owner@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: notify_deviceid_type4
-References: <OFF752FE87.86716271-ON88257AC7.002025E3-88257AC7.00206C04@us.ibm.com>
-In-Reply-To: <OFF752FE87.86716271-ON88257AC7.002025E3-88257AC7.00206C04@us.ibm.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121211110228.0159fc4f@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2012-12-01 07:54, Marc Eshel wrote:
-> The spec defines notify_deviceid_type4 as:
+On Tue, Dec 11, 2012 at 11:02:28AM +1100, NeilBrown wrote:
+> On Thu, 29 Nov 2012 11:30:51 +1100 NeilBrown <neilb@suse.de> wrote:
 > 
-> 20.12.1.  ARGUMENT
->    /*
->     * Device notification types.
->     */
->    enum notify_deviceid_type4 {
->            NOTIFY_DEVICEID4_CHANGE = 1,
->            NOTIFY_DEVICEID4_DELETE = 2
->    };
+> > On Wed, 28 Nov 2012 08:10:55 -0500 "J. Bruce Fields" <bfields@fieldses.org>
+> > wrote:
+> > 
+> > > On Wed, Nov 28, 2012 at 12:11:23PM +1100, Neil Brown wrote:
+> > > > We have previously raised the size of the 'pollarray' once (32 -> 256)
+> > > > and I have had another request to make it bigger.
+> > > > Rather than changing the hard-coded value, make it depend on
+> > > > RLIMIT_NOFILE.  This is an upper limit on the size of the array
+> > > > that can be passed to poll() anyway.
+> > > 
+> > > Sounds like a good idea.
+> > > 
+> > > Just out of curiosity: how does it fail?  I guess mounts just start
+> > > failing at some point--how do people find the workaround?
+> > 
+> > Error seems to be
+> > 
+> > rpcsec_gss: gss_init_sec_context: (major) Miscellaneous failure - (minor) Cannot contact any KDC for requested realm
+> > 
+> > in rpc.gssd logs.
+> > 
+> > I guess people could read the source to find the work around .... not ideal
+> > though.  I guess we should get gssd to generate some more helpful message.
+> > 
+> > The seem to be further problems that the customer is experiencing so I might
+> > wait until they are completely resolved to ensure I have complete
+> > understanding before I propose a further patch.
 > 
+> The "further problem" was that krb5 libraries use select() in a way that does
+> not support file descriptors higher than 1024.  This is fixed in the latest
+> krb5 so that is no longer an issue.
 > 
-> but the Linux code in nfs4.h has, is that going to be fixed?
-> 
-> enum pnfs_notify_deviceid_type4 {
->         NOTIFY_DEVICEID4_CHANGE = 1 << 1,
->         NOTIFY_DEVICEID4_DELETE = 1 << 2,
-> };
+> I've been thinking about your question, and about how best to deliver a fix
+> to customers, and I really think it should all "just work".
+> i.e. the array that gssd should be sized dynamically and RLIMIT_NOFILE should
+> be increased as needed.
 
-notify_deviceid_type4 specifies bit numbers same as notify_type4
-It seems to me like the definition in nfs4.h is correct.
+Neat-o.
 
-Benny
+> I haven't tested this, but what do people think?   I don't have a problem
+> changing the rlim_cur limit like this, but I wonder if it is OK to
+> dynamically set rlim_max.
+
+What would be the concern, that we'd be depriving an admin of the
+ability to set a limit?
+
+We could instead set only the current limit and set set the max to an
+admin-configurable quantity (default very large) when we start gssd.
+
+But that sounds more complicated, and off hand I can't think of a reason
+an admin would want to do that.
+
+--b.
 
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Thoughts?
 > 
+> NeilBrown
+> 
+> 
+> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+> index d01ba2f..3576a6f 100644
+> --- a/utils/gssd/gssd_proc.c
+> +++ b/utils/gssd/gssd_proc.c
+> @@ -389,18 +389,36 @@ static int
+>  get_poll_index(int *ind)
+>  {
+>  	unsigned int i;
+> +	struct pollfd *new_pollarray;
+> +	struct rlimit rlim;
+>  
+>  	*ind = -1;
+>  	for (i=0; i<pollsize; i++) {
+>  		if (pollarray[i].events == 0) {
+>  			*ind = i;
+> -			break;
+> +			return 0;
+>  		}
+>  	}
+> -	if (*ind == -1) {
+> +
+> +	new_pollarray = realloc(pollarray, pollsize * 2 * sizeof(*pollarray));
+> +	if (!new_pollarray) {
+>  		printerr(0, "ERROR: No pollarray slots open\n");
+>  		return -1;
+>  	}
+> +	pollarray = new_pollarray;
+> +	memset(pollarray + pollsize, 0, sizeof(*pollarray) * pollsize);
+> +	*ind = pollsize;
+> +	pollsize *= 2;
+> +
+> +	/* We will need lots of file descriptors too */
+> +	if (getrlimit(RLIMIT_NOFILE, &rlim) == 0) {
+> +		if (rlim.rlim_cur < pollsize+20) {
+> +			rlim.rlim_cur = pollsize + 20;
+> +			if (rlim.rlim_max < rlim.rlim_cur)
+> +				rlim.rlim_max = rlim.rlim_cur;
+> +			setrlimit(RLIMIT_NOFILE, &rlim);
+> +		}
+> +	}
+>  	return 0;
+>  }
+>  
+> @@ -473,13 +491,9 @@ fail_keep_client:
+>  void
+>  init_client_list(void)
+>  {
+> -	struct rlimit rlim;
+>  	TAILQ_INIT(&clnt_list);
+>  	/* Eventually plan to grow/shrink poll array: */
+>  	pollsize = FD_ALLOC_BLOCK;
+> -	if (getrlimit(RLIMIT_NOFILE, &rlim) < 0 &&
+> -	    rlim.rlim_cur != RLIM_INFINITY)
+> -		pollsize = rlim.rlim_cur;
+>  	pollarray = calloc(pollsize, sizeof(struct pollfd));
+>  }
+>  
+
+
