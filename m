@@ -1,109 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:17599 "EHLO relay.sw.ru"
+Received: from cantor2.suse.de ([195.135.220.15]:38359 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965164Ab2LFPeN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Dec 2012 10:34:13 -0500
-Subject: [PATCH 2/6] nfsd: swap fs root in NFSd kthreads
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Thu, 06 Dec 2012 18:34:47 +0300
-Message-ID: <20121206153447.30693.54128.stgit@localhost.localdomain>
-In-Reply-To: <20121206153204.30693.11408.stgit@localhost.localdomain>
-References: <20121206153204.30693.11408.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1753784Ab2LKWxR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Dec 2012 17:53:17 -0500
+Date: Wed, 12 Dec 2012 09:53:04 +1100
+From: NeilBrown <neilb@suse.de>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: NFS regression - EIO is returned instead of ENOSPC
+Message-ID: <20121212095304.368c9708@notabene.brown>
+In-Reply-To: <20121212092813.23afbc5f@notabene.brown>
+References: <20121212092813.23afbc5f@notabene.brown>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/jP_6mJlCAv8rHPfuNWH8bxC"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFSd does lookup. Lookup is done starting from current->fs->root.
-NFSd is a kthread, cloned by kthreadd, and thus have global (but luckely
-unshared) root.
-So we have to swap root to those, which process, started NFSd, has. Because
-that process can be in a container with it's own root.
+--Sig_/jP_6mJlCAv8rHPfuNWH8bxC
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfsd/netns.h  |    1 +
- fs/nfsd/nfssvc.c |   33 ++++++++++++++++++++++++++++++++-
- 2 files changed, 33 insertions(+), 1 deletions(-)
+On Wed, 12 Dec 2012 09:28:13 +1100 NeilBrown <neilb@suse.de> wrote:
 
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index abfc97c..5c423c6 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -101,6 +101,7 @@ struct nfsd_net {
- 	struct timeval nfssvc_boot;
- 
- 	struct svc_serv *nfsd_serv;
-+	struct path	root;
- };
- 
- extern int nfsd_net_id;
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index cee62ab..177bb60 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -392,6 +392,7 @@ int nfsd_create_serv(struct net *net)
- 
- 	set_max_drc();
- 	do_gettimeofday(&nn->nfssvc_boot);		/* record boot time */
-+	get_fs_root(current->fs, &nn->root);
- 	return 0;
- }
- 
-@@ -426,8 +427,10 @@ void nfsd_destroy(struct net *net)
- 	if (destroy)
- 		svc_shutdown_net(nn->nfsd_serv, net);
- 	svc_destroy(nn->nfsd_serv);
--	if (destroy)
-+	if (destroy) {
-+		path_put(&nn->root);
- 		nn->nfsd_serv = NULL;
-+	}
- }
- 
- int nfsd_set_nrthreads(int n, int *nthreads, struct net *net)
-@@ -533,6 +536,25 @@ out:
- 	return error;
- }
- 
-+/*
-+ * This function is actually slightly modified set_fs_root()<F9>
-+ */
-+static void nfsd_swap_root(struct net *net)
-+{
-+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-+	struct fs_struct *fs = current->fs;
-+	struct path old_root;
-+
-+	path_get(&nn->root);
-+	spin_lock(&fs->lock);
-+	write_seqcount_begin(&fs->seq);
-+	old_root = fs->root;
-+	fs->root = nn->root;
-+	write_seqcount_end(&fs->seq);
-+	spin_unlock(&fs->lock);
-+	if (old_root.dentry)
-+		path_put(&old_root);
-+}
- 
- /*
-  * This is the NFS server kernel thread
-@@ -559,6 +581,15 @@ nfsd(void *vrqstp)
- 	current->fs->umask = 0;
- 
- 	/*
-+	 * We have to swap NFSd kthread's fs->root.
-+	 * Why so? Because NFSd can be started in container, which has it's own
-+	 * root.
-+	 * And so what? NFSd lookup files, and lookup start from
-+	 * current->fs->root.
-+	 */
-+	nfsd_swap_root(net);
-+
-+	/*
- 	 * thread is spawned with all signals set to SIG_IGN, re-enable
- 	 * the ones that will bring down the thread
- 	 */
+>=20
+> Hi Trond et al,
+>  we seem to have a regression introduced by=20
+>=20
+> commit 7b281ee026552f10862b617a2a51acf49c829554
+>     NFS: fsync() must exit with an error if page writeback failed
+>=20
+> which has found it's way (in different form into -stable releases).
 
+Bit of a clarification here.  It didn't get into -stable, but we have the b=
+ug
+in our 3.0 based SLES11-SP2 through a different route (I assumed it came
+through stable but was being too hasty).
+
+The bug first arrived in v3.1-rc1
+
+commit 02c24a82187d5a628c68edfe71ae60dc135cd178
+    fs: push i_mutex and filemap_write_and_wait down into ->fsync() handlers
+
+
+was fixed by me in v3.3-rc1
+
+commit 2edb6bc3852c681c0d948245bd55108dc6407604
+    NFS - fix recent breakage to NFS error handling.
+
+the code was then messed up a bit by=20
+
+commit a5c58892b427a2752e3ec44b0aad4ce9221dc63b
+    NFS: Create a v4-specific fsync function
+in v3.6-rc1
+
+and that mess was fixed by=20
+
+commit 7b281ee026552f10862b617a2a51acf49c829554
+    NFS: fsync() must exit with an error if page writeback failed
+
+which re-introduced the original problem in v3.6-rc6.
+
+That first patch has been backported to SLES11 so now I'm fixing the bug
+again and finding it in mainline again :-)
+
+NeilBrown
+
+
+
+
+
+--Sig_/jP_6mJlCAv8rHPfuNWH8bxC
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIVAwUBUMe5UDnsnt1WYoG5AQJ0WBAArXXJbB+xlVL12pIqW2Vk4+Nw9nwby0pT
+d3ip4BBWTN4pbQfyjlInArHTICiSub6+Nx3tpx4NJvuNTTnH7Mgi3fhzJ0bggRW5
+QvQSxW2NN2wQlaVMB4uo6TehMjG9iyoC3XwGT5iUSbCAQlL0CaNYTH+pcNWyXVEL
+qGnED1l6ONyBSZbGr1FRkzgiAGZKASmlhiAnjwjvR19I2VoYLW1FBMzDudP4h34r
+lP2NWW29jMHsng3X3T/TE3dL4vgCfLG5wCFIagchzBwkAsDf6CJ8ndZ3WTqz8uea
+iI1LN9OYJnD8PunDXT6PLdcdHN8E7zo3E/28x84IMQrMhrCWQtWaFFI/uK2Bh0yt
+olMGaQ79CMTb5+wKy3OMwEa5r5Y3H+wxMa2s6xWudTri5alVUsyGwNNqtlSUPAZ6
+LQFMJa++nk6fnaSmjNPvLFr65Z4yKLelVBBFmsq/yB1oHZPDfPsenL36hJO2qU2F
+MwfZWwj419FsIv1eXETi0t9TgtIWkYotvThoVKQoizOjrkGzRaTRPOJyRVZ+SNsk
+/Tw862IQPn3xNJIDMz5pQ4w20zgyaDp37E1uHhi8gupsbyIRb13HbrTfE55Z3xzJ
+Z017exr6WsLrnrlmJ0Ph6DDqYhn71qa0TmtdWWWCuBivZCMSxopgLt0gqZFdW8CK
+lSXoxckB3V4=
+=0DBh
+-----END PGP SIGNATURE-----
+
+--Sig_/jP_6mJlCAv8rHPfuNWH8bxC--
