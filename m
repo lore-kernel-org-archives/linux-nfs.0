@@ -1,139 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:20237 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1423191Ab2LFLXB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Dec 2012 06:23:01 -0500
-Subject: [PATCH 6/8] nfsd: simplify NFSv4 state init and shutdown
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Thu, 06 Dec 2012 14:23:34 +0300
-Message-ID: <20121206112334.29559.58420.stgit@localhost.localdomain>
-In-Reply-To: <20121206111903.29559.4853.stgit@localhost.localdomain>
-References: <20121206111903.29559.4853.stgit@localhost.localdomain>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:38003 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752781Ab2LKO7A (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Dec 2012 09:59:00 -0500
+Date: Tue, 11 Dec 2012 14:58:58 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        devel@openvz.org
+Subject: Re: [Devel] [PATCH 2/6] nfsd: swap fs root in NFSd kthreads
+Message-ID: <20121211145858.GI4939@ZenIV.linux.org.uk>
+References: <20121206153204.30693.11408.stgit@localhost.localdomain>
+ <20121206153447.30693.54128.stgit@localhost.localdomain>
+ <20121210202842.GB17350@fieldses.org>
+ <50C73C60.8060405@parallels.com>
+ <50C73F58.1080005@parallels.com>
+ <20121211145621.GA3336@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121211145621.GA3336@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch moves nfsd_startup_generic() and nfsd_shutdown_generic() calls to
-nfsd_startup_net() and nfsd_shutdown_net() respectively, which allow to call
-nfsd_startup_net() instead of nfsd_startup() and makes code looks clearer.
-It alos modifies nfsd_svc() and nfsd_shutdown() to check for nn->nfsd_net_up
-variable instead of global nfsd_up.
-Last one is now used only generic resources shutdown and currently useless.
-But it will replaced by NFSd users counter later in this series.
+On Tue, Dec 11, 2012 at 09:56:21AM -0500, J. Bruce Fields wrote:
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfsd/nfssvc.c |   44 +++++++++++++++-----------------------------
- 1 files changed, 15 insertions(+), 29 deletions(-)
+> That looks simpler, but I still don't understand why we need it.
+> 
+> I'm confused about how d_path works; I would have thought that
+> filesystem namespaces would have their own vfsmount trees and hence that
+> the (vfsmount, dentry) would be enough to specify the path.  Is the root
+> argument for the case of chroot?  Do we care about that?
 
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index f9d147f..0c87b4e 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -235,9 +235,10 @@ static void nfsd_shutdown_generic(void)
- {
- 	nfs4_state_shutdown();
- 	nfsd_racache_shutdown();
-+	nfsd_up = false;
- }
- 
--static int nfsd_startup_net(struct net *net)
-+static int nfsd_startup_net(int nrservs, struct net *net)
- {
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 	int ret;
-@@ -245,39 +246,26 @@ static int nfsd_startup_net(struct net *net)
- 	if (nn->nfsd_net_up)
- 		return 0;
- 
--	ret = nfsd_init_socks(net);
-+	ret = nfsd_startup_generic(nrservs);
- 	if (ret)
- 		return ret;
-+	ret = nfsd_init_socks(net);
-+	if (ret)
-+		goto out_socks;
- 	ret = lockd_up(net);
- 	if (ret)
--		return ret;
-+		goto out_socks;
- 	ret = nfs4_state_start_net(net);
- 	if (ret)
- 		goto out_lockd;
- 
- 	nn->nfsd_net_up = true;
-+	nfsd_up = true;
- 	return 0;
- 
- out_lockd:
- 	lockd_down(net);
--	return ret;
--}
--
--static int nfsd_startup(int nrservs, struct net *net)
--{
--	int ret;
--
--	ret = nfsd_startup_generic(nrservs);
--	if (ret)
--		return ret;
--	ret = nfsd_startup_net(net);
--	if (ret)
--		goto out_net;
--
--	nfsd_up = true;
--	return 0;
--
--out_net:
-+out_socks:
- 	nfsd_shutdown_generic();
- 	return ret;
- }
-@@ -286,27 +274,25 @@ static void nfsd_shutdown_net(struct net *net)
- {
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
--	if (!nn->nfsd_net_up)
--		return;
--
- 	nfs4_state_shutdown_net(net);
- 	lockd_down(net);
- 	nn->nfsd_net_up = false;
-+	nfsd_shutdown_generic();
- }
- 
- static void nfsd_shutdown(struct net *net)
- {
-+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-+
- 	/*
- 	 * write_ports can create the server without actually starting
- 	 * any threads--if we get shut down before any threads are
- 	 * started, then nfsd_last_thread will be run before any of this
- 	 * other initialization has been done.
- 	 */
--	if (!nfsd_up)
-+	if (!nn->nfsd_net_up)
- 		return;
- 	nfsd_shutdown_net(net);
--	nfsd_shutdown_generic();
--	nfsd_up = false;
- }
- 
- static void nfsd_last_thread(struct svc_serv *serv, struct net *net)
-@@ -528,9 +514,9 @@ nfsd_svc(int nrservs, struct net *net)
- 	if (error)
- 		goto out;
- 
--	nfsd_up_before = nfsd_up;
-+	nfsd_up_before = nn->nfsd_net_up;
- 
--	error = nfsd_startup(nrservs, net);
-+	error = nfsd_startup_net(nrservs, net);
- 	if (error)
- 		goto out_destroy;
- 	error = svc_set_num_threads(nn->nfsd_serv, NULL, nrservs);
+__d_path() is relative pathname from here to there.  Whether (and what for)
+is it wanted in case of nfsd patches is a separate question...
 
+> Also, svc_export_request is called from mountd's read of
+> /proc/net/rpc/nfsd.export/channel.  If mountd's root is wrong, then
+> nothing's going to work anyway.
