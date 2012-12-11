@@ -1,133 +1,197 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:3012 "EHLO mx1.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:37641 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750944Ab2LCVlD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Dec 2012 16:41:03 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: David Quigley <dpquigl@davequigley.com>
-CC: Steve Dickson <steved@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] lnfs: Cleaned up compile warnings when
- NFS_V4_SECURITY_LABEL is not set.
-Date: Mon, 3 Dec 2012 21:41:01 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90B33436C@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1354566254-546-1-git-send-email-steved@redhat.com>
-	 <3e20ecd2416fc5a995ca152c8508f86c@countercultured.net>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA90B334191@SACEXCMBX04-PRD.hq.netapp.com>
-	 <b2b9b2c59fd53d0c0100d7097920f7f3@countercultured.net>
-In-Reply-To: <b2b9b2c59fd53d0c0100d7097920f7f3@countercultured.net>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1754115Ab2LKW21 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Dec 2012 17:28:27 -0500
+Date: Wed, 12 Dec 2012 09:28:13 +1100
+From: NeilBrown <neilb@suse.de>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: NFS regression - EIO is returned instead of ENOSPC
+Message-ID: <20121212092813.23afbc5f@notabene.brown>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/.jI5rOcUhwaiUEawiFwst6X"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTEyLTAzIGF0IDE2OjM1IC0wNTAwLCBEYXZpZCBRdWlnbGV5IHdyb3RlOg0K
-PiBPbiAxMi8wMy8yMDEyIDE2OjI0LCBNeWtsZWJ1c3QsIFRyb25kIHdyb3RlOg0KPiA+IE9uIE1v
-biwgMjAxMi0xMi0wMyBhdCAxNjoxOCAtMDUwMCwgRGF2aWQgUXVpZ2xleSB3cm90ZToNCj4gPj4g
-T24gMTIvMDMvMjAxMiAxNToyNCwgU3RldmUgRGlja3NvbiB3cm90ZToNCj4gPj4gPiBUaGlzIHBh
-dGNoIGNsZWFucyB1cCBhIG51bWJlciBjb21waWxlIHdhcm5pbmdzIHdoZW4gdGhlDQo+ID4+ID4g
-bGFiZWwgTkZTIGNvZGUgZXhpc3RzIGJ1dCBpcyBub3QgY29uZmlndXJlZCB0byBjb21waWxlLg0K
-PiA+PiA+DQo+ID4+ID4gU2lnbmVkLW9mZi1ieTogU3RldmUgRGlja3NvbiA8c3RldmVkQHJlZGhh
-dC5jb20+DQo+ID4+ID4gLS0tDQo+ID4+ID4gIGZzL25mcy9uZnM0cHJvYy5jICAgICAgfCAzNiAr
-KysrKysrKysrKysrKysrKysrKysrKystLS0tLS0tLS0tLS0NCj4gPj4gPiAgaW5jbHVkZS9saW51
-eC9uZnNfZnMuaCB8ICA0ICsrLS0NCj4gPj4gPiAgMiBmaWxlcyBjaGFuZ2VkLCAyNiBpbnNlcnRp
-b25zKCspLCAxNCBkZWxldGlvbnMoLSkNCj4gPj4gPg0KPiA+PiA+IGRpZmYgLS1naXQgYS9mcy9u
-ZnMvbmZzNHByb2MuYyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+ID4+ID4gaW5kZXggMmM4ZGQ1NS4u
-MDJlMzMwMyAxMDA2NDQNCj4gPj4gPiAtLS0gYS9mcy9uZnMvbmZzNHByb2MuYw0KPiA+PiA+ICsr
-KyBiL2ZzL25mcy9uZnM0cHJvYy5jDQo+ID4+ID4gQEAgLTkyNiw4ICs5MjYsOCBAQCBlcnJfZnJl
-ZV9sYWJlbDoNCj4gPj4gPiAgI2lmZGVmIENPTkZJR19ORlNfVjRfU0VDVVJJVFlfTEFCRUwNCj4g
-Pj4gPiAgCWlmIChzZXJ2ZXItPmNhcHMgJiBORlNfQ0FQX1NFQ1VSSVRZX0xBQkVMKQ0KPiA+PiA+
-ICAJCW5mczRfbGFiZWxfZnJlZShwLT5mX2xhYmVsKTsNCj4gPj4gPiAtI2VuZGlmDQo+ID4+ID4g
-IGVycl9mcmVlX3A6DQo+ID4+ID4gKyNlbmRpZg0KPiA+PiA+ICAJa2ZyZWUocCk7DQo+ID4+ID4g
-IGVycjoNCj4gPj4gPiAgCWRwdXQocGFyZW50KTsNCj4gPj4gPiBAQCAtMjQzOCw5ICsyNDM4LDEw
-IEBAIHN0YXRpYyBzdHJ1Y3QgaW5vZGUgKg0KPiA+PiA+ICBuZnM0X2F0b21pY19vcGVuKHN0cnVj
-dCBpbm9kZSAqZGlyLCBzdHJ1Y3QgbmZzX29wZW5fY29udGV4dCAqY3R4LA0KPiA+PiA+IGludCBv
-cGVuX2ZsYWdzLCBzdHJ1Y3QgaWF0dHIgKmF0dHIpDQo+ID4+ID4gIHsNCj4gPj4gPiAgCXN0cnVj
-dCBuZnM0X3N0YXRlICpzdGF0ZTsNCj4gPj4gPiAtCXN0cnVjdCBuZnM0X2xhYmVsIGwsICpsYWJl
-bCA9IE5VTEw7DQo+ID4+ID4gLQ0KPiA+PiA+ICsJc3RydWN0IG5mczRfbGFiZWwgKmxhYmVsID0g
-TlVMTDsNCj4gPj4gPiAgI2lmZGVmIENPTkZJR19ORlNfVjRfU0VDVVJJVFlfTEFCRUwNCj4gPj4g
-PiArCXN0cnVjdCBuZnM0X2xhYmVsIGw7DQo+ID4+ID4gKw0KPiA+PiA+ICAJaWYgKG5mc19zZXJ2
-ZXJfY2FwYWJsZShkaXIsIE5GU19DQVBfU0VDVVJJVFlfTEFCRUwpKSB7DQo+ID4+ID4gIAkJc3Ry
-dWN0IGRlbnRyeSAqZGVudHJ5ID0gY3R4LT5kZW50cnk7DQo+ID4+ID4gIAkJaW50IGVycm9yOw0K
-PiA+PiA+IEBAIC0zMDI2LDggKzMwMjcsOCBAQCBzdGF0aWMgaW50IF9uZnM0X3Byb2NfYWNjZXNz
-KHN0cnVjdCBpbm9kZQ0KPiA+PiA+ICppbm9kZSwgc3RydWN0IG5mc19hY2Nlc3NfZW50cnkgKmVu
-dHJ5DQo+ID4+ID4gICNpZmRlZiBDT05GSUdfTkZTX1Y0X1NFQ1VSSVRZX0xBQkVMDQo+ID4+ID4g
-IAlpZiAoc2VydmVyLT5jYXBzICYgTkZTX0NBUF9TRUNVUklUWV9MQUJFTCkNCj4gPj4gPiAgCQlu
-ZnM0X2xhYmVsX2ZyZWUocmVzLmxhYmVsKTsNCj4gPj4gPiAtI2VuZGlmDQo+ID4+ID4gIG91dDoN
-Cj4gPj4gPiArI2VuZGlmDQo+ID4+ID4gIAluZnNfZnJlZV9mYXR0cihyZXMuZmF0dHIpOw0KPiA+
-PiA+ICAJcmV0dXJuIHN0YXR1czsNCj4gPj4gPiAgfQ0KPiA+PiA+IEBAIC0zMTA1LDcgKzMxMDYs
-MTAgQEAgc3RhdGljIGludA0KPiA+PiA+ICBuZnM0X3Byb2NfY3JlYXRlKHN0cnVjdCBpbm9kZSAq
-ZGlyLCBzdHJ1Y3QgZGVudHJ5ICpkZW50cnksIHN0cnVjdA0KPiA+PiA+IGlhdHRyICpzYXR0ciwN
-Cj4gPj4gPiAgCQkgaW50IGZsYWdzKQ0KPiA+PiA+ICB7DQo+ID4+ID4gLQlzdHJ1Y3QgbmZzNF9s
-YWJlbCBsLCAqaWxhYmVsID0gTlVMTDsNCj4gPj4gPiArCXN0cnVjdCBuZnM0X2xhYmVsICppbGFi
-ZWwgPSBOVUxMOw0KPiA+PiA+ICsjaWZkZWYgQ09ORklHX05GU19WNF9TRUNVUklUWV9MQUJFTA0K
-PiA+PiA+ICsJc3RydWN0IG5mczRfbGFiZWwgbDsNCj4gPj4gPiArI2VuZGlmDQo+ID4+ID4gIAlz
-dHJ1Y3QgbmZzX29wZW5fY29udGV4dCAqY3R4Ow0KPiA+PiA+ICAJc3RydWN0IG5mczRfc3RhdGUg
-KnN0YXRlOw0KPiA+PiA+ICAJaW50IHN0YXR1cyA9IDA7DQo+ID4+ID4gQEAgLTMyOTgsOCArMzMw
-Miw4IEBAIHN0YXRpYyBpbnQgX25mczRfcHJvY19yZW5hbWUoc3RydWN0IGlub2RlDQo+ID4+ID4g
-Km9sZF9kaXIsIHN0cnVjdCBxc3RyICpvbGRfbmFtZSwNCj4gPj4gPiAgCQluZnM0X2xhYmVsX2Zy
-ZWUocmVzLm9sZF9sYWJlbCk7DQo+ID4+ID4gIAkJbmZzNF9sYWJlbF9mcmVlKHJlcy5uZXdfbGFi
-ZWwpOw0KPiA+PiA+ICAJfQ0KPiA+PiA+IC0jZW5kaWYNCj4gPj4gPiAgb3V0Og0KPiA+PiA+ICsj
-ZW5kaWYNCj4gPj4gPiAgCXJldHVybiBzdGF0dXM7DQo+ID4+ID4gIH0NCj4gPj4gPg0KPiA+PiA+
-IEBAIC0zNDE4LDcgKzM0MjIsOSBAQCBzdGF0aWMgc3RydWN0IG5mczRfY3JlYXRlZGF0YQ0KPiA+
-PiA+ICpuZnM0X2FsbG9jX2NyZWF0ZWRhdGEoc3RydWN0IGlub2RlICpkaXIsDQo+ID4+ID4gIAkJ
-bmZzX2ZhdHRyX2luaXQoZGF0YS0+cmVzLmZhdHRyKTsNCj4gPj4gPiAgCX0NCj4gPj4gPiAgCXJl
-dHVybiBkYXRhOw0KPiA+PiA+ICsjaWZkZWYgQ09ORklHX05GU19WNF9TRUNVUklUWV9MQUJFTA0K
-PiA+PiA+ICBvdXRfZnJlZToNCj4gPj4gPiArI2VuZGlmDQo+ID4+ID4gIAlrZnJlZShkYXRhKTsN
-Cj4gPj4gPiAgCXJldHVybiBOVUxMOw0KPiA+PiA+ICB9DQo+ID4+ID4gQEAgLTM0NzQsMTEgKzM0
-ODAsMTEgQEAgc3RhdGljIGludCBuZnM0X3Byb2Nfc3ltbGluayhzdHJ1Y3QgaW5vZGUNCj4gPj4g
-PiAqZGlyLCBzdHJ1Y3QgZGVudHJ5ICpkZW50cnksDQo+ID4+ID4gIAkJc3RydWN0IHBhZ2UgKnBh
-Z2UsIHVuc2lnbmVkIGludCBsZW4sIHN0cnVjdCBpYXR0ciAqc2F0dHIpDQo+ID4+ID4gIHsNCj4g
-Pj4gPiAgCXN0cnVjdCBuZnM0X2V4Y2VwdGlvbiBleGNlcHRpb24gPSB7IH07DQo+ID4+ID4gLQlz
-dHJ1Y3QgbmZzNF9sYWJlbCBsLCAqbGFiZWwgPSBOVUxMOw0KPiA+PiA+ICAJaW50IGVycjsNCj4g
-Pj4gPiAtDQo+ID4+ID4gLQ0KPiA+PiA+ICsJc3RydWN0IG5mczRfbGFiZWwgKmxhYmVsID0gTlVM
-TDsNCj4gPj4gPiAgI2lmZGVmIENPTkZJR19ORlNfVjRfU0VDVVJJVFlfTEFCRUwNCj4gPj4gPiAr
-CXN0cnVjdCBuZnM0X2xhYmVsIGw7DQo+ID4+ID4gKw0KPiA+PiA+ICAJaWYgKG5mc19zZXJ2ZXJf
-Y2FwYWJsZShkaXIsIE5GU19DQVBfU0VDVVJJVFlfTEFCRUwpKSB7DQo+ID4+ID4gIAkJZXJyID0g
-c2VjdXJpdHlfZGVudHJ5X2luaXRfc2VjdXJpdHkoZGVudHJ5LCBzYXR0ci0+aWFfbW9kZSwNCj4g
-Pj4gPiAgCQkJCQkmZGVudHJ5LT5kX25hbWUsICZsLmxhYmVsLCAmbC5sZW4pOw0KPiA+PiA+IEBA
-IC0zNTIyLDcgKzM1MjgsMTAgQEAgc3RhdGljIGludCBuZnM0X3Byb2NfbWtkaXIoc3RydWN0IGlu
-b2RlIA0KPiA+PiAqZGlyLA0KPiA+PiA+IHN0cnVjdCBkZW50cnkgKmRlbnRyeSwNCj4gPj4gPiAg
-CQlzdHJ1Y3QgaWF0dHIgKnNhdHRyKQ0KPiA+PiA+ICB7DQo+ID4+ID4gIAlzdHJ1Y3QgbmZzNF9l
-eGNlcHRpb24gZXhjZXB0aW9uID0geyB9Ow0KPiA+PiA+IC0Jc3RydWN0IG5mczRfbGFiZWwgbCwg
-KmxhYmVsID0gTlVMTDsNCj4gPj4gPiArCXN0cnVjdCBuZnM0X2xhYmVsICpsYWJlbCA9IE5VTEw7
-DQo+ID4+ID4gKyNpZmRlZiBDT05GSUdfTkZTX1Y0X1NFQ1VSSVRZX0xBQkVMDQo+ID4+ID4gKwlz
-dHJ1Y3QgbmZzNF9sYWJlbCBsOw0KPiA+PiA+ICsjZW5kaWYNCj4gPj4gPiAgCWludCBlcnI7DQo+
-ID4+ID4NCj4gPj4gPiAgI2lmZGVmIENPTkZJR19ORlNfVjRfU0VDVVJJVFlfTEFCRUwNCj4gPj4g
-PiBAQCAtMzY0MCw5ICszNjQ5LDEyIEBAIG91dDoNCj4gPj4gPiAgc3RhdGljIGludCBuZnM0X3By
-b2NfbWtub2Qoc3RydWN0IGlub2RlICpkaXIsIHN0cnVjdCBkZW50cnkgDQo+ID4+ICpkZW50cnks
-DQo+ID4+ID4gIAkJc3RydWN0IGlhdHRyICpzYXR0ciwgZGV2X3QgcmRldikNCj4gPj4gPiAgew0K
-PiA+PiA+IC0Jc3RydWN0IG5mczRfZXhjZXB0aW9uIGV4Y2VwdGlvbiA9IHsgfTsNCj4gPj4gPiAt
-CXN0cnVjdCBuZnM0X2xhYmVsIGwsICpsYWJlbCA9IE5VTEw7DQo+ID4+ID4gIAlpbnQgZXJyOw0K
-PiA+PiA+ICsJc3RydWN0IG5mczRfZXhjZXB0aW9uIGV4Y2VwdGlvbiA9IHsgfTsNCj4gPj4gPiAr
-CXN0cnVjdCBuZnM0X2xhYmVsICpsYWJlbCA9IE5VTEw7DQo+ID4+ID4gKyNpZmRlZiBDT05GSUdf
-TkZTX1Y0X1NFQ1VSSVRZX0xBQkVMDQo+ID4+ID4gKwlzdHJ1Y3QgbmZzNF9sYWJlbCBsOw0KPiA+
-PiA+ICsjZW5kaWYNCj4gPj4gPg0KPiA+PiA+ICAjaWZkZWYgQ09ORklHX05GU19WNF9TRUNVUklU
-WV9MQUJFTA0KPiA+PiA+ICAJaWYgKG5mc19zZXJ2ZXJfY2FwYWJsZShkaXIsIE5GU19DQVBfU0VD
-VVJJVFlfTEFCRUwpKSB7DQo+ID4+ID4gZGlmZiAtLWdpdCBhL2luY2x1ZGUvbGludXgvbmZzX2Zz
-LmggYi9pbmNsdWRlL2xpbnV4L25mc19mcy5oDQo+ID4+ID4gaW5kZXggMmVmMDFmOC4uZjRiYjVj
-NCAxMDA2NDQNCj4gPj4gPiAtLS0gYS9pbmNsdWRlL2xpbnV4L25mc19mcy5oDQo+ID4+ID4gKysr
-IGIvaW5jbHVkZS9saW51eC9uZnNfZnMuaA0KPiA+PiA+IEBAIC01MDIsOCArNTAyLDggQEAgZXh0
-ZXJuIHZvaWQgbmZzNF9sYWJlbF9pbml0KHN0cnVjdCBuZnM0X2xhYmVsIA0KPiA+PiAqKTsNCj4g
-Pj4gPiAgZXh0ZXJuIHZvaWQgbmZzNF9sYWJlbF9mcmVlKHN0cnVjdCBuZnM0X2xhYmVsICopOw0K
-PiA+PiA+ICAjZWxzZQ0KPiA+PiA+ICBzdGF0aWMgaW5saW5lIHN0cnVjdCBuZnM0X2xhYmVsICpu
-ZnM0X2xhYmVsX2FsbG9jKGdmcF90IGZsYWdzKSB7DQo+ID4+ID4gcmV0dXJuIE5VTEw7IH0NCj4g
-Pj4gPiAtc3RhdGljIGlubGluZSB2b2lkIG5mczRfbGFiZWxfaW5pdChzdHJ1Y3QgbmZzNF9sYWJl
-bCAqKSB7fQ0KPiA+PiA+IC1zdGF0aWMgaW5saW5lIHZvaWQgbmZzNF9sYWJlbF9mcmVlKHN0cnVj
-dCBuZnM0X2xhYmVsICpsYWJlbCkge30NCj4gPj4gPiArc3RhdGljIGlubGluZSB2b2lkIG5mczRf
-bGFiZWxfaW5pdCh2b2lkICpsYWJlbCkge30NCj4gPj4gPiArc3RhdGljIGlubGluZSB2b2lkIG5m
-czRfbGFiZWxfZnJlZSh2b2lkICpsYWJlbCkge30NCj4gPj4gPiAgI2VuZGlmDQo+ID4+ID4NCj4g
-Pj4gPiAgLyoNCj4gPj4NCj4gPj4gVGhhbmtzIGZvciB0aGUgcGF0Y2guIFRoZSBxdWVzdGlvbiBJ
-IGhhdmUgaGVyZSBpcyBzaG91bGQgSSB0YWcgDQo+ID4+IFN0ZXZlJ3MNCj4gPj4gcGF0Y2ggb24g
-dGhlIGVuZCBvZiB0aGUgcGF0Y2ggc2V0IG9yIHNob3VsZCBJIGludGVncmF0ZSBpdCBiYWNrIGlu
-dG8gDQo+ID4+IHRoZQ0KPiA+PiBvcmlnaW5hbCBwYXRjaGVzPw0KPiA+DQo+ID4gSXQgaXMgdXAg
-dG8geW91LCBob3dldmVyIGl0IHdvdWxkIGJlIG5pY2UgdG8gaGF2ZSB0aGUgZmluYWwgcGF0Y2gg
-DQo+ID4gc2VyaWVzDQo+ID4gYmUgZnVsbHkgYmlzZWN0aWJsZS4NCj4gPg0KPiA+IENoZWVycw0K
-PiA+ICAgVHJvbmQNCj4gDQo+IElzIGl0IG5vdCBjdXJyZW50bHkgYmlzZWN0aWJsZT8gQmVmb3Jl
-IEkgcmVsZWFzZSBJIGFwcGx5IGVhY2ggcGF0Y2ggb25lIA0KPiBieSBvbmUgYW5kIGNvbXBpbGUg
-YmV0d2VlbiB0aGVtIHRvIG1ha2Ugc3VyZSB0aGV5IGJ1aWxkLiBIYXMgYW55b25lIGhhZCANCj4g
-cHJvYmxlbXMgd2l0aCBpdCBub3QgYmlzZWN0aW5nIHByb3Blcmx5Pw0KDQpOZXZlciBtaW5kOyBJ
-IG1pc3JlYWQgImNvbXBpbGVyIHdhcm5pbmdzIiBhcyByZWZlcnJpbmcgdG8gY29tcGlsZXINCmVy
-cm9ycy4gSW4gdGhhdCBjYXNlLCBqdXN0IGFwcGVuZCB0aGlzIHBhdGNoLg0KDQotLSANClRyb25k
-IE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQu
-TXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+--Sig_/.jI5rOcUhwaiUEawiFwst6X
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
+
+
+Hi Trond et al,
+ we seem to have a regression introduced by=20
+
+commit 7b281ee026552f10862b617a2a51acf49c829554
+    NFS: fsync() must exit with an error if page writeback failed
+
+which has found it's way (in different form into -stable releases).
+
+The problem is that an NFSERR_NOSPC comes through as EIO.
+
+e.g. if /mnt2/ if an nfs mounted filesystem that has no space then
+
+strace dd if=3D/dev/zero conv=3Dfsync >> /mnt2/afile count=3D1
+
+reported Input/output error and the relevant parts of the strace output are:
+
+write(1, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"=
+..., 512) =3D 512
+fsync(1)                                =3D -1 EIO (Input/output error)
+close(1)                                =3D -1 ENOSPC (No space left on dev=
+ice)
+
+i.e. we get an EIO from fsync, then the ENOSPC comes with the close.
+
+If don't do the fsync, then:
+
+strace dd if=3D/dev/zero >> /mnt2/afile count=3D1
+
+
+write(1, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"=
+..., 512) =3D 512
+close(1)                                =3D -1 EIO (Input/output error)
+
+
+we don't see the ENOSPC at all.
+
+The problem is that filemap_fdatawait_range, when it sees a page with
+PageError set, will return -EIO unless AS_ENOSPC is set.  NFS never sets
+AS_ENOSPC so we get -EIO.
+
+Then nfs_file_fsync() will return as soon as it sees an error from
+filemap_write_and_wait_range(), which will be that EIO.
+
+nfs_file_fsync_commit knows to prefer the error from ctx->error over any
+other error, but nfs_file_fsync() doesn't.
+
+I see two ways to "fix" this.
+
+We could get nfs{,4}_file_fsync() to always call nfs_file_fsync_commit() and
+use the error from the later in preference to the error from
+filemap_write_and_wait_range().
+
+That results in this, more correct, behaviour:
+
+write(1, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"=
+..., 512) =3D 512
+fsync(1)                                =3D -1 ENOSPC (No space left on dev=
+ice)
+close(1)                                =3D 0
+
+Or we could get nfs_context_set_write_error() to call mapping_set_error(),
+which would result in AS_ENOSPC being set and so
+filemap_write_and_wait_range() will return the "correct" error.
+This results in this behaviour:
+
+write(1, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"=
+..., 512) =3D 512
+fsync(1)                                =3D -1 ENOSPC (No space left on dev=
+ice)
+close(1)                                =3D -1 ENOSPC (No space left on dev=
+ice)
+
+which is a bit odd.  The first ENOSPC is from AS_ENOSPC.  The second is from
+ctx->error.
+
+I feel that calling mapping_set_error() is the "right" thing to do, but it
+would need a bit more work to avoid the double errors.
+
+What approach would you prefer?
+
+The two patches I used are:
+
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 582bb88..19c06b9 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -295,12 +295,12 @@ nfs_file_fsync(struct file *file, loff_t start, loff_=
+t end, int datasync)
+ 	struct inode *inode =3D file->f_path.dentry->d_inode;
+=20
+ 	do {
+-		ret =3D filemap_write_and_wait_range(inode->i_mapping, start, end);
+-		if (ret !=3D 0)
+-			break;
++		int ret1 =3D filemap_write_and_wait_range(inode->i_mapping, start, end);
+ 		mutex_lock(&inode->i_mutex);
+ 		ret =3D nfs_file_fsync_commit(file, start, end, datasync);
+ 		mutex_unlock(&inode->i_mutex);
++		if (ret =3D=3D 0)
++			ret =3D ret1;
+ 		/*
+ 		 * If nfs_file_fsync_commit detected a server reboot, then
+ 		 * resend all dirty pages that might have been covered by
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index afddd66..f0d9a88 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -96,15 +96,15 @@ nfs4_file_fsync(struct file *file, loff_t start, loff_t=
+ end, int datasync)
+ 	struct inode *inode =3D file->f_path.dentry->d_inode;
+=20
+ 	do {
+-		ret =3D filemap_write_and_wait_range(inode->i_mapping, start, end);
+-		if (ret !=3D 0)
+-			break;
++		int ret1 =3D filemap_write_and_wait_range(inode->i_mapping, start, end);
+ 		mutex_lock(&inode->i_mutex);
+ 		ret =3D nfs_file_fsync_commit(file, start, end, datasync);
+ 		if (!ret && !datasync)
+ 			/* application has asked for meta-data sync */
+ 			ret =3D pnfs_layoutcommit_inode(inode, true);
+ 		mutex_unlock(&inode->i_mutex);
++		if (ret =3D=3D 0)
++			ret =3D ret1;
+ 		/*
+ 		 * If nfs_file_fsync_commit detected a server reboot, then
+ 		 * resend all dirty pages that might have been covered by
+
+
+and=20
+
+
+
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 9347ab7..b0f5bb7 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -140,6 +140,7 @@ static void nfs_context_set_write_error(struct nfs_open=
+_context *ctx, int error)
+ 	ctx->error =3D error;
+ 	smp_wmb();
+ 	set_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
++	mapping_set_error(ctx->dentry->d_inode->i_mapping, error);
+ }
+=20
+ static struct nfs_page *
+
+
+
+Thanks,
+NeilBrown
+
+--Sig_/.jI5rOcUhwaiUEawiFwst6X
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIVAwUBUMezfjnsnt1WYoG5AQIWiBAAiZyKlf1Qu7Ar59AVfD1g4TVJ2+Pi8Jai
+rAOJRL7/s23M8Z/VtTonMVNk0yHokQ1AllL6dXmYe+oohu8yahGq+TqAxHfhqndz
+OGVTPlbIgWz+JKvP0MnmhVbgaimnpGc+U3zEaNXOFwYhvHQ/DCljTtgvZRFM6HsM
+s51gsM9HlR9CyY1TnPbWPbsOT0EBoojcJh5MFE8jKLKmNVzrE5s8uel1p9Ait1a7
+zl7K3zisINBNNPNZsLkBqFruVyrd8/WfbSEogbDoByZbFzD5OKFF//xiOg97nvnZ
+VffVuzQlqqj96nymMKtN1fOz9H3tgTdw1WIcK9D43zqJSYaeG3LudVmYsNYFczon
+YfD/GRhLR0rYPMw8rXJDfbwJd+tA0rxuQungFuI+4duHsOHhIvNkUgejm20XNp9O
+vuqimjXD0ueJ6AvdcmdlfJzCj4LSYbmRWYUEOkioMxyFKJJjOBeh8c4i11jDhexI
+i53tskJ18B5tapHEsZ2y17xkSoji95dBuJE7dnbjO1lzBT0H8QJkkHf0UdMAgsSt
+dRuK70Z/tBiqoN6COwSjVOS/OJFzyCiTymP9toPlmLAVsUluYdonRfG/j9DvAeCt
+7vCr/IcW3bAGiZRlbVkmGawjd0BqRGtfoivk8XfZsI1uEpW3oWv7DgCezs5p3KI3
+XCGMN3IBgEs=
+=52g4
+-----END PGP SIGNATURE-----
+
+--Sig_/.jI5rOcUhwaiUEawiFwst6X--
