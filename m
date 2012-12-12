@@ -1,58 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60267 "EHLO fieldses.org"
+Received: from mx1.netapp.com ([216.240.18.38]:7286 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752768Ab2LQPhk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Dec 2012 10:37:40 -0500
-Received: from bfields by fieldses.org with local (Exim 4.76)
-	(envelope-from <bfields@fieldses.org>)
-	id 1TkclA-0007V0-HW
-	for linux-nfs@vger.kernel.org; Mon, 17 Dec 2012 10:37:40 -0500
-Date: Mon, 17 Dec 2012 10:37:40 -0500
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] svcrpc: fix some printks
-Message-ID: <20121217153740.GE23546@fieldses.org>
+	id S1754049Ab2LLQqb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Dec 2012 11:46:31 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Isaman, Fred" <Fred.Isaman@netapp.com>,
+        "eguan@redhat.com" <eguan@redhat.com>
+Subject: Re: [PATCH] nfs: don't zero out the rest of the page if we hit the
+ EOF on a DIO READ
+Date: Wed, 12 Dec 2012 16:46:15 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9119262E7@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1355330324-3233-1-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1355330324-3233-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
-
-Reported-by: kbuild test robot <fengguang.wu@intel.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- net/sunrpc/svcsock.c |    8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
-
-Hopefully I got this right this time.  Queueing up for 3.8.--b.
-
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 38ec968..b250e27 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -952,8 +952,8 @@ static int svc_tcp_recv_record(struct svc_sock *svsk, struct svc_rqst *rqstp)
- 		dprintk("svc: TCP record, %d bytes\n", svc_sock_reclen(svsk));
- 		if (svc_sock_reclen(svsk) + svsk->sk_datalen >
- 							serv->sv_max_mesg) {
--			net_notice_ratelimited("RPC: fragment too large: 0x%08lx\n",
--					       (unsigned long)svsk->sk_reclen);
-+			net_notice_ratelimited("RPC: fragment too large: 0x%08x\n",
-+					svc_sock_reclen(svsk));
- 			goto err_delete;
- 		}
- 	}
-@@ -1080,8 +1080,8 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 		if (len == want)
- 			svc_tcp_fragment_received(svsk);
- 		else
--			dprintk("svc: incomplete TCP record (%ld of %d)\n",
--				svsk->sk_tcplen - sizeof(rpc_fraghdr),
-+			dprintk("svc: incomplete TCP record (%d of %d)\n",
-+				svsk->sk_tcplen - (int)sizeof(rpc_fraghdr),
- 				svc_sock_reclen(svsk));
- 		goto err_noclose;
- 	}
--- 
-1.7.9.5
-
+T24gV2VkLCAyMDEyLTEyLTEyIGF0IDExOjM4IC0wNTAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
+RXJ5dSBwcm92aWRlZCBhIHRlc3QgcHJvZ3JhbSB0aGF0IHdvdWxkIHNlZ2ZhdWx0IHdoZW4gYXR0
+ZW1wdGluZyB0byByZWFkDQo+IHBhc3QgdGhlIEVPRiBvbiBmaWxlIHRoYXQgd2FzIG9wZW5lZCBP
+X0RJUkVDVC4gVGhlIGJ1ZmZlciBnaXZlbiB0byB0aGUNCj4gcmVhZCgpIGNhbGwgd2FzIG9uIHRo
+ZSBzdGFjaywgYW5kIHdoZW4gaGUgYXR0ZW1wdGVkIHRvIHJlYWQgcGFzdCBpdCBpdA0KPiB3b3Vs
+ZCBzY3JpYmJsZSBvdmVyIHRoZSByZXN0IG9mIHRoZSBzdGFjayBwYWdlLg0KPiANCj4gSWYgd2Ug
+aGl0IHRoZSBlbmQgb2YgdGhlIGZpbGUgb24gYSBESU8gUkVBRCByZXF1ZXN0LCB0aGVuIHdlIGRv
+bid0IHdhbnQNCj4gdG8gemVybyBvdXQgdGhlIHJlc3Qgb2YgdGhlIGJ1ZmZlci4gVGhlc2UgYXJl
+bid0IHBhZ2VjYWNoZSBwYWdlcyBhZnRlcg0KPiBhbGwsIGFuZCB0aGVyZSdzIG5vIGd1YXJhbnRl
+ZSB0aGF0IHRoZSBidWZmZXJzIHRoYXQgd2VyZSBwYXNzZWQgaW4NCj4gcmVwcmVzZW50IGVudGly
+ZSBwYWdlcy4NCj4gDQo+IENjOiA8c3RhYmxlQHZnZXIua2VybmVsLm9yZz4gIyB2My41Kw0KPiBD
+YzogRnJlZCBJc2FtYW4gPGlpc2FtYW5AbmV0YXBwLmNvbT4NCj4gUmVwb3J0ZWQtYnk6IEVyeXUg
+R3VhbiA8ZWd1YW5AcmVkaGF0LmNvbT4NCj4gU2lnbmVkLW9mZi1ieTogSmVmZiBMYXl0b24gPGps
+YXl0b25AcmVkaGF0LmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvZGlyZWN0LmMgfCA4IC0tLS0tLS0t
+DQo+ICAxIGZpbGUgY2hhbmdlZCwgOCBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9m
+cy9uZnMvZGlyZWN0LmMgYi9mcy9uZnMvZGlyZWN0LmMNCj4gaW5kZXggY2FlMjZjYi4uNTk0ZjRl
+NyAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL2RpcmVjdC5jDQo+ICsrKyBiL2ZzL25mcy9kaXJlY3Qu
+Yw0KPiBAQCAtMjY2LDE0ICsyNjYsNiBAQCBzdGF0aWMgdm9pZCBuZnNfZGlyZWN0X3JlYWRfY29t
+cGxldGlvbihzdHJ1Y3QgbmZzX3BnaW9faGVhZGVyICpoZHIpDQo+ICAJCXN0cnVjdCBuZnNfcGFn
+ZSAqcmVxID0gbmZzX2xpc3RfZW50cnkoaGRyLT5wYWdlcy5uZXh0KTsNCj4gIAkJc3RydWN0IHBh
+Z2UgKnBhZ2UgPSByZXEtPndiX3BhZ2U7DQo+ICANCj4gLQkJaWYgKHRlc3RfYml0KE5GU19JT0hE
+Ul9FT0YsICZoZHItPmZsYWdzKSkgew0KPiAtCQkJaWYgKGJ5dGVzID4gaGRyLT5nb29kX2J5dGVz
+KQ0KPiAtCQkJCXplcm9fdXNlcihwYWdlLCAwLCBQQUdFX1NJWkUpOw0KPiAtCQkJZWxzZSBpZiAo
+aGRyLT5nb29kX2J5dGVzIC0gYnl0ZXMgPCBQQUdFX1NJWkUpDQo+IC0JCQkJemVyb191c2VyX3Nl
+Z21lbnQocGFnZSwNCj4gLQkJCQkJaGRyLT5nb29kX2J5dGVzICYgflBBR0VfTUFTSywNCj4gLQkJ
+CQkJUEFHRV9TSVpFKTsNCj4gLQkJfQ0KPiAgCQlpZiAoIVBhZ2VDb21wb3VuZChwYWdlKSkgew0K
+PiAgCQkJaWYgKHRlc3RfYml0KE5GU19JT0hEUl9FUlJPUiwgJmhkci0+ZmxhZ3MpKSB7DQo+ICAJ
+CQkJaWYgKGJ5dGVzIDwgaGRyLT5nb29kX2J5dGVzKQ0KDQpJJ20gbm90IHNheWluZyB0aGF0IHNo
+b3VsZCBiZSBpbiB0aGUgc2FtZSBwYXRjaCwgYnV0IGl0IGxvb2tzIHRvIG1lIGFzDQppZiB3ZSBu
+ZWVkIHRvIHJlc3BlY3QgdGhlIEVPRiBib3VuZGFyeSBmb3IgdGhlIHBhZ2UgZGlydHlpbmcgY29k
+ZSB0b28uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWlu
+ZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20N
+Cg==
