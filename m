@@ -1,50 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx.scalarmail.ca ([98.158.95.75]:48035 "EHLO
-	ironport-01.sms.scalar.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755598Ab2LMTcl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Dec 2012 14:32:41 -0500
-Date: Thu, 13 Dec 2012 14:32:38 -0500
-From: Nick Bowler <nbowler@elliptictech.com>
-To: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 WARNING: at linux/fs/inode.c:280 drop_nlink+0x23/0x44()
-Message-ID: <20121213193238.GA5155@elliptictech.com>
-References: <20120818175750.GA12736@elliptictech.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20120818175750.GA12736@elliptictech.com>
+Received: from mail-qa0-f53.google.com ([209.85.216.53]:50716 "EHLO
+	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754314Ab2LLRgj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Dec 2012 12:36:39 -0500
+Received: by mail-qa0-f53.google.com with SMTP id a19so1356915qad.19
+        for <linux-nfs@vger.kernel.org>; Wed, 12 Dec 2012 09:36:38 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, iisaman@netapp.com
+Subject: [PATCH] nfs: fix page dirtying in NFS DIO read codepath
+Date: Wed, 12 Dec 2012 12:36:31 -0500
+Message-Id: <1355333791-4814-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2012-08-18 13:57 -0400, Nick Bowler wrote:
-> I just noticed the following WARNING in my logs.  Looking through the
-> older logs, I see quite a few of these going (at least) all the way back
-> to 3.3.x days.  The process which triggers the warning always seems to
-> be the same (icecat).
-> 
-> This is on a Linux 3.5.2 NFSv4 client machine using sec=krb5.  Other
-> than the log noise, there seems to be no adverse effects.
+The NFS DIO code will dirty pages that catch read responses in order to
+handle the case where someone is doing DIO reads into an mmapped buffer.
+The existing code doesn't really do the right thing though since it
+doesn't take into account the case where we might be attempting to read
+past the EOF.
 
-FWIW, I'm still seeing this on 3.7.0; this time on a machine with NFSv3
-mounts and sec=sys.  Still apparently caused by firefox/icecat.
+Fix the logic in that code to only dirty pages that ended up receiving
+data from the read. Note too that it really doesn't matter if
+NFS_IOHDR_ERROR is set or not. All that matters is if the page was
+altered by the read.
 
-> ------------[ cut here ]------------
-> WARNING: at /home/nbowler/misc/linux/fs/inode.c:280 drop_nlink+0x23/0x44()
-> Hardware name: System Product Name
-> Modules linked in: sha1_ssse3 sha1_generic hmac aes_x86_64 aes_generic cbc cts rpcsec_gss_krb5 nfs lockd auth_rpcgss nfs_acl sunrpc ipv6 nls_iso8859_1 nls_cp437 vfat fat w83627ehf hwmon_vid snd_pcm_oss snd_mixer_oss acpi_cpufreq mperf i915 drm_kms_helper drm snd_hda_codec_hdmi snd_hda_codec_realtek arc4 ath9k mac80211 ath9k_common ath9k_hw intel_agp i2c_algo_bit intel_gtt snd_hda_intel snd_hda_codec snd_pcm snd_timer coretemp agpgart hwmon kvm_intel snd ath cfg80211 soundcore snd_page_alloc i2c_i801 r8169 mii psmouse kvm evdev video sg
-> Pid: 1995, comm: icecat Not tainted 3.5.2 #46
-> Call Trace:
->  [<ffffffff8102b8b3>] warn_slowpath_common+0x80/0x98
->  [<ffffffff8102b8e0>] warn_slowpath_null+0x15/0x17
->  [<ffffffff810c5195>] drop_nlink+0x23/0x44
->  [<ffffffffa03aa2a1>] nfs_dentry_iput+0x35/0x4d [nfs]
->  [<ffffffff810c25d0>] dentry_kill+0x149/0x171
->  [<ffffffff810c2850>] dput+0xed/0xfe
->  [<ffffffff810b2ff4>] fput+0x1a5/0x1bd
->  [<ffffffff810b0454>] filp_close+0x6b/0x76
->  [<ffffffff810b04f1>] sys_close+0x92/0xd4
->  [<ffffffff8131efa2>] system_call_fastpath+0x16/0x1b
-> ---[ end trace b160c7dc08b4910c ]---
-> 
-> Please let me know if you need any more info,
+Cc: Fred Isaman <iisaman@netapp.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/direct.c | 9 ++-------
+ 1 file changed, 2 insertions(+), 7 deletions(-)
+
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 594f4e7..0bd7a55 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -266,13 +266,8 @@ static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
+ 		struct nfs_page *req = nfs_list_entry(hdr->pages.next);
+ 		struct page *page = req->wb_page;
+ 
+-		if (!PageCompound(page)) {
+-			if (test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
+-				if (bytes < hdr->good_bytes)
+-					set_page_dirty(page);
+-			} else
+-				set_page_dirty(page);
+-		}
++		if (!PageCompound(page) && bytes < hdr->good_bytes)
++			set_page_dirty(page);
+ 		bytes += req->wb_bytes;
+ 		nfs_list_remove_request(req);
+ 		nfs_direct_readpage_release(req);
 -- 
-Nick Bowler, Elliptic Technologies (http://www.elliptictech.com/)
+1.7.11.7
+
