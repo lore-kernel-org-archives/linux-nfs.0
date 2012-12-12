@@ -1,72 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:28509 "EHLO mx12.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:48972 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750974Ab2LSVJC convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Dec 2012 16:09:02 -0500
+	id S1754366Ab2LLRoi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Dec 2012 12:44:38 -0500
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Orion Poplawski <orion@cora.nwra.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: umount(,MNT_DETACH) for nfsv4 hangs when using sec=krb5 and
- network is down
-Date: Wed, 19 Dec 2012 21:08:59 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91196AE42@SACEXCMBX04-PRD.hq.netapp.com>
-References: <loom.20121219T214634-616@post.gmane.org>
-In-Reply-To: <loom.20121219T214634-616@post.gmane.org>
-Content-Type: text/plain; charset="utf-7"
+To: Jeff Layton <jlayton@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Isaman, Fred" <Fred.Isaman@netapp.com>
+Subject: Re: [PATCH] nfs: fix page dirtying in NFS DIO read codepath
+Date: Wed, 12 Dec 2012 17:44:32 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9119284F2@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1355333791-4814-1-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1355333791-4814-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2012-12-19 at 20:47 +-0000, Orion Poplawski wrote:
-+AD4- nfs4 mounts with sec+AD0-krb5 cannot be unmounted with the network down, even with
-+AD4- umount -l because umount() with MNT+AF8-DETACH set will hang, presumably somewhere
-+AD4- in the gss stack.
-+AD4- 
-+AD4- A successful umount yields the following packet trace:
-+AD4- 
-+AD4-   1 0.000000000   10.10.20.2 -+AD4- 10.10.10.1   NFS 218 V4 Call GETATTR FH:0x3b470ee7
-+AD4-   2 0.000236000   10.10.10.1 -+AD4- 10.10.20.2   NFS 318 V4 Reply (Call In 1) GETATTR
-+AD4-   3 0.000282000   10.10.20.2 -+AD4- 10.10.10.1   TCP 66 943 +AD4- nfs +AFs-ACK+AF0- Seq+AD0-153
-+AD4- Ack+AD0-253 Win+AD0-331 Len+AD0-0 TSval+AD0-3468186 TSecr+AD0-878557922
-+AD4-   4 0.008761000   10.10.20.2 -+AD4- 10.10.10.1   TCP 66 943 +AD4- nfs +AFs-FIN, ACK+AF0- Seq+AD0-153
-+AD4- Ack+AD0-253 Win+AD0-331 Len+AD0-0 TSval+AD0-3468195 TSecr+AD0-878557922
-+AD4-   5 0.008923000   10.10.10.1 -+AD4- 10.10.20.2   TCP 66 nfs +AD4- 943 +AFs-FIN, ACK+AF0- Seq+AD0-253
-+AD4- Ack+AD0-154 Win+AD0-683 Len+AD0-0 TSval+AD0-878557930 TSecr+AD0-3468195
-+AD4-   6 0.008970000   10.10.20.2 -+AD4- 10.10.10.1   TCP 66 943 +AD4- nfs +AFs-ACK+AF0- Seq+AD0-154
-+AD4- Ack+AD0-254 Win+AD0-331 Len+AD0-0 TSval+AD0-3468195 TSecr+AD0-878557930
-+AD4- 
-+AD4- So my guess is that something in the gss stack is preventing the GETATTR call
-+AD4- from succeeding as unmounting succeeds without sec+AD0-krb5.  Although running
-+AD4- rpc.gssd and rpcidmap with -vvvv does not appear to produce any output.  A
-+AD4- successful unmount produces:
-+AD4- 
-+AD4- Dec 19 13:42:44 orca rpc.gssd+AFs-18495+AF0-: destroying client
-+AD4- /var/lib/nfs/rpc+AF8-pipefs/nfs/clnt27
-+AD4- Dec 19 13:42:44 orca rpc.gssd+AFs-18495+AF0-: destroying client
-+AD4- /var/lib/nfs/rpc+AF8-pipefs/nfs/clnt24
-+AD4- 
-+AD4- However, we need someway to be able to drop mounts after the network connection
-+AD4- has been removed.  This behavior is causing sever problems for our laptop and
-+AD4- vpn users.
-+AD4- 
-+AD4- Tested with:
-+AD4- 
-+AD4- 3.6.11-3.fc18
-+AD4- nfs-utils-1.2.7-2.fc18
-+AD4- 
-+AD4- I've also filed https://bugzilla.redhat.com/show+AF8-bug.cgi?id+AD0-888942
-
-No. What you need is a way to unmount +AF8-before+AF8- you kill the network.
-Once the network is gone, you are in severe data loss territory, and you
-are entirely on your own dealing with that problem...
-
-Maybe one day we will get round to supporting offline mounts, but that's
-not the case today.
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust+AEA-netapp.com
-www.netapp.com
+T24gV2VkLCAyMDEyLTEyLTEyIGF0IDEyOjM2IC0wNTAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
+VGhlIE5GUyBESU8gY29kZSB3aWxsIGRpcnR5IHBhZ2VzIHRoYXQgY2F0Y2ggcmVhZCByZXNwb25z
+ZXMgaW4gb3JkZXIgdG8NCj4gaGFuZGxlIHRoZSBjYXNlIHdoZXJlIHNvbWVvbmUgaXMgZG9pbmcg
+RElPIHJlYWRzIGludG8gYW4gbW1hcHBlZCBidWZmZXIuDQo+IFRoZSBleGlzdGluZyBjb2RlIGRv
+ZXNuJ3QgcmVhbGx5IGRvIHRoZSByaWdodCB0aGluZyB0aG91Z2ggc2luY2UgaXQNCj4gZG9lc24n
+dCB0YWtlIGludG8gYWNjb3VudCB0aGUgY2FzZSB3aGVyZSB3ZSBtaWdodCBiZSBhdHRlbXB0aW5n
+IHRvIHJlYWQNCj4gcGFzdCB0aGUgRU9GLg0KPiANCj4gRml4IHRoZSBsb2dpYyBpbiB0aGF0IGNv
+ZGUgdG8gb25seSBkaXJ0eSBwYWdlcyB0aGF0IGVuZGVkIHVwIHJlY2VpdmluZw0KPiBkYXRhIGZy
+b20gdGhlIHJlYWQuIE5vdGUgdG9vIHRoYXQgaXQgcmVhbGx5IGRvZXNuJ3QgbWF0dGVyIGlmDQo+
+IE5GU19JT0hEUl9FUlJPUiBpcyBzZXQgb3Igbm90LiBBbGwgdGhhdCBtYXR0ZXJzIGlzIGlmIHRo
+ZSBwYWdlIHdhcw0KPiBhbHRlcmVkIGJ5IHRoZSByZWFkLg0KPiANCj4gQ2M6IEZyZWQgSXNhbWFu
+IDxpaXNhbWFuQG5ldGFwcC5jb20+DQo+IFNpZ25lZC1vZmYtYnk6IEplZmYgTGF5dG9uIDxqbGF5
+dG9uQHJlZGhhdC5jb20+DQo+IC0tLQ0KPiAgZnMvbmZzL2RpcmVjdC5jIHwgOSArKy0tLS0tLS0N
+Cj4gIDEgZmlsZSBjaGFuZ2VkLCAyIGluc2VydGlvbnMoKyksIDcgZGVsZXRpb25zKC0pDQo+IA0K
+PiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2RpcmVjdC5jIGIvZnMvbmZzL2RpcmVjdC5jDQo+IGluZGV4
+IDU5NGY0ZTcuLjBiZDdhNTUgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9kaXJlY3QuYw0KPiArKysg
+Yi9mcy9uZnMvZGlyZWN0LmMNCj4gQEAgLTI2NiwxMyArMjY2LDggQEAgc3RhdGljIHZvaWQgbmZz
+X2RpcmVjdF9yZWFkX2NvbXBsZXRpb24oc3RydWN0IG5mc19wZ2lvX2hlYWRlciAqaGRyKQ0KPiAg
+CQlzdHJ1Y3QgbmZzX3BhZ2UgKnJlcSA9IG5mc19saXN0X2VudHJ5KGhkci0+cGFnZXMubmV4dCk7
+DQo+ICAJCXN0cnVjdCBwYWdlICpwYWdlID0gcmVxLT53Yl9wYWdlOw0KPiAgDQo+IC0JCWlmICgh
+UGFnZUNvbXBvdW5kKHBhZ2UpKSB7DQo+IC0JCQlpZiAodGVzdF9iaXQoTkZTX0lPSERSX0VSUk9S
+LCAmaGRyLT5mbGFncykpIHsNCj4gLQkJCQlpZiAoYnl0ZXMgPCBoZHItPmdvb2RfYnl0ZXMpDQo+
+IC0JCQkJCXNldF9wYWdlX2RpcnR5KHBhZ2UpOw0KPiAtCQkJfSBlbHNlDQo+IC0JCQkJc2V0X3Bh
+Z2VfZGlydHkocGFnZSk7DQo+IC0JCX0NCj4gKwkJaWYgKCFQYWdlQ29tcG91bmQocGFnZSkgJiYg
+Ynl0ZXMgPCBoZHItPmdvb2RfYnl0ZXMpDQo+ICsJCQlzZXRfcGFnZV9kaXJ0eShwYWdlKTsNCj4g
+IAkJYnl0ZXMgKz0gcmVxLT53Yl9ieXRlczsNCj4gIAkJbmZzX2xpc3RfcmVtb3ZlX3JlcXVlc3Qo
+cmVxKTsNCj4gIAkJbmZzX2RpcmVjdF9yZWFkcGFnZV9yZWxlYXNlKHJlcSk7DQoNClRoYW5rcyBK
+ZWZmIQ0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0K
+DQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
