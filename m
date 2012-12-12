@@ -1,308 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:63688 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:34120 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753310Ab2LQPnR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Dec 2012 10:43:17 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 07/13] NFSv4: Introduce new label structure
-Date: Mon, 17 Dec 2012 10:43:05 -0500
-Message-Id: <1355758991-30049-8-git-send-email-steved@redhat.com>
-In-Reply-To: <1355758991-30049-1-git-send-email-steved@redhat.com>
-References: <1355758991-30049-1-git-send-email-steved@redhat.com>
+	id S1754290Ab2LLQaf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Dec 2012 11:30:35 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Fred Isaman <faisaman4@gmail.com>
+CC: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "eguan@redhat.com" <eguan@redhat.com>
+Subject: Re: non-aligned DIO reads on NFS are corrupting memory in 3.7.0
+Date: Wed, 12 Dec 2012 16:30:30 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9119261B6@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20121212094654.5ce53d89@tlielax.poochiereds.net>
+	 <CADnza44_ZTHuuFHbQds9TBcSAdHD-FBoSJLwym7ETcC-HeFjZw@mail.gmail.com>
+In-Reply-To: <CADnza44_ZTHuuFHbQds9TBcSAdHD-FBoSJLwym7ETcC-HeFjZw@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
-
-In order to mimic the way that NFSv4 ACLs are implemented we have created a
-structure to be used to pass label data up and down the call chain. This patch
-adds the new structure and new members to the required NFSv4 call structures.
-
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- fs/nfs/inode.c          | 40 ++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/xdr4.h          |  3 +++
- include/linux/nfs4.h    |  8 ++++++++
- include/linux/nfs_fs.h  | 14 ++++++++++++++
- include/linux/nfs_xdr.h | 20 ++++++++++++++++++++
- 5 files changed, 85 insertions(+)
-
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 5c7325c..0963ad9 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -246,6 +246,46 @@ nfs_init_locked(struct inode *inode, void *opaque)
- 	return 0;
- }
- 
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+struct nfs4_label *nfs4_label_alloc(gfp_t flags)
-+{
-+	struct nfs4_label *label = NULL;
-+
-+	label = kzalloc(sizeof(struct nfs4_label) + NFS4_MAXLABELLEN, flags);
-+	if (label == NULL)
-+		return NULL;
-+
-+	label->label = (void *)(label + 1);
-+	label->len = NFS4_MAXLABELLEN;
-+	/* 0 is the null format meaning that the data is not to be translated */
-+	label->lfs = 0;
-+	label->pi = 0;
-+	return label;
-+}
-+EXPORT_SYMBOL_GPL(nfs4_label_alloc);
-+
-+void nfs4_label_init(struct nfs4_label *label)
-+{
-+	if (label && label->label) {
-+		*(unsigned char *)label->label = 0;
-+		label->len = NFS4_MAXLABELLEN;
-+		/* 0 is the null format meaning that the data is not
-+		to be translated */
-+		label->lfs = 0;
-+		label->pi = 0;
-+	}
-+	return;
-+}
-+EXPORT_SYMBOL_GPL(nfs4_label_init);
-+
-+void nfs4_label_free(struct nfs4_label *label)
-+{
-+	kfree(label);
-+	return;
-+}
-+EXPORT_SYMBOL_GPL(nfs4_label_free);
-+#endif
-+
- /*
-  * This is our front-end to iget that looks up inodes by file handle
-  * instead of inode number.
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index acd127d..ca8f30b 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -118,6 +118,7 @@ struct nfsd4_create {
- 	struct iattr	cr_iattr;           /* request */
- 	struct nfsd4_change_info  cr_cinfo; /* response */
- 	struct nfs4_acl *cr_acl;
-+	struct nfs4_label *cr_label;
- };
- #define cr_linklen	u.link.namelen
- #define cr_linkname	u.link.name
-@@ -246,6 +247,7 @@ struct nfsd4_open {
- 	struct nfs4_file *op_file;          /* used during processing */
- 	struct nfs4_ol_stateid *op_stp;	    /* used during processing */
- 	struct nfs4_acl *op_acl;
-+	struct nfs4_label *op_label;
- };
- #define op_iattr	iattr
- 
-@@ -330,6 +332,7 @@ struct nfsd4_setattr {
- 	u32		sa_bmval[3];        /* request */
- 	struct iattr	sa_iattr;           /* request */
- 	struct nfs4_acl *sa_acl;
-+	struct nfs4_label *sa_label;
- };
- 
- struct nfsd4_setclientid {
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index f9235b4..862471f 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -28,6 +28,14 @@ struct nfs4_acl {
- 	struct nfs4_ace	aces[0];
- };
- 
-+struct nfs4_label {
-+	uint32_t	lfs;
-+	uint32_t	pi;
-+	u32		len;
-+	void		*label;
-+};
-+
-+
- typedef struct { char data[NFS4_VERIFIER_SIZE]; } nfs4_verifier;
- 
- struct nfs_stateid4 {
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 1cc2568..37a862c 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -489,6 +489,20 @@ extern int nfs_mountpoint_expiry_timeout;
- extern void nfs_release_automount_timer(void);
- 
- /*
-+ * linux/fs/nfs/nfs4proc.c
-+ */
-+
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+extern struct nfs4_label *nfs4_label_alloc(gfp_t flags);
-+extern void nfs4_label_init(struct nfs4_label *);
-+extern void nfs4_label_free(struct nfs4_label *);
-+#else
-+static inline struct nfs4_label *nfs4_label_alloc(gfp_t flags) { return NULL; }
-+static inline void nfs4_label_init(struct nfs4_label *) {}
-+static inline void nfs4_label_free(struct nfs4_label *label) {}
-+#endif
-+
-+/*
-  * linux/fs/nfs/unlink.c
-  */
- extern void nfs_complete_unlink(struct dentry *dentry, struct inode *);
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index a0669d3..7e9347a 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -352,6 +352,7 @@ struct nfs_openargs {
- 	const u32 *		bitmask;
- 	const u32 *		open_bitmap;
- 	__u32			claim;
-+	const struct nfs4_label *label;
- 	struct nfs4_sequence_args	seq_args;
- };
- 
-@@ -361,6 +362,7 @@ struct nfs_openres {
- 	struct nfs4_change_info	cinfo;
- 	__u32                   rflags;
- 	struct nfs_fattr *      f_attr;
-+	struct nfs4_label	*f_label;
- 	struct nfs_seqid *	seqid;
- 	const struct nfs_server *server;
- 	fmode_t			delegation_type;
-@@ -405,6 +407,7 @@ struct nfs_closeargs {
- struct nfs_closeres {
- 	nfs4_stateid            stateid;
- 	struct nfs_fattr *	fattr;
-+	struct nfs4_label	*label;
- 	struct nfs_seqid *	seqid;
- 	const struct nfs_server *server;
- 	struct nfs4_sequence_res	seq_res;
-@@ -478,6 +481,7 @@ struct nfs4_delegreturnargs {
- 
- struct nfs4_delegreturnres {
- 	struct nfs_fattr * fattr;
-+	struct nfs4_label	*label;
- 	const struct nfs_server *server;
- 	struct nfs4_sequence_res	seq_res;
- };
-@@ -498,6 +502,7 @@ struct nfs_readargs {
- 
- struct nfs_readres {
- 	struct nfs_fattr *	fattr;
-+	struct nfs4_label	*label;
- 	__u32			count;
- 	int                     eof;
- 	struct nfs4_sequence_res	seq_res;
-@@ -566,6 +571,7 @@ struct nfs_removeargs {
- struct nfs_removeres {
- 	const struct nfs_server *server;
- 	struct nfs_fattr	*dir_attr;
-+	struct nfs4_label	*dir_label;
- 	struct nfs4_change_info	cinfo;
- 	struct nfs4_sequence_res 	seq_res;
- };
-@@ -578,6 +584,8 @@ struct nfs_renameargs {
- 	const struct nfs_fh		*new_dir;
- 	const struct qstr		*old_name;
- 	const struct qstr		*new_name;
-+	const struct nfs4_label		*old_label;
-+	const struct nfs4_label		*new_label;
- 	struct nfs4_sequence_args	seq_args;
- };
- 
-@@ -585,8 +593,10 @@ struct nfs_renameres {
- 	const struct nfs_server		*server;
- 	struct nfs4_change_info		old_cinfo;
- 	struct nfs_fattr		*old_fattr;
-+	struct nfs4_label		*old_label;
- 	struct nfs4_change_info		new_cinfo;
- 	struct nfs_fattr		*new_fattr;
-+	struct nfs4_label		*new_label;
- 	struct nfs4_sequence_res	seq_res;
- };
- 
-@@ -634,6 +644,7 @@ struct nfs_setattrargs {
- 	struct iattr *                  iap;
- 	const struct nfs_server *	server; /* Needed for name mapping */
- 	const u32 *			bitmask;
-+	const struct nfs4_label		*label;
- 	struct nfs4_sequence_args 	seq_args;
- };
- 
-@@ -669,6 +680,7 @@ struct nfs_getaclres {
- 
- struct nfs_setattrres {
- 	struct nfs_fattr *              fattr;
-+	struct nfs4_label		*label;
- 	const struct nfs_server *	server;
- 	struct nfs4_sequence_res	seq_res;
- };
-@@ -715,6 +727,7 @@ struct nfs3_setaclargs {
- struct nfs_diropok {
- 	struct nfs_fh *		fh;
- 	struct nfs_fattr *	fattr;
-+	struct nfs4_label	*label;
- };
- 
- struct nfs_readlinkargs {
-@@ -844,6 +857,7 @@ struct nfs4_accessargs {
- struct nfs4_accessres {
- 	const struct nfs_server *	server;
- 	struct nfs_fattr *		fattr;
-+	struct nfs4_label		*label;
- 	u32				supported;
- 	u32				access;
- 	struct nfs4_sequence_res	seq_res;
-@@ -866,6 +880,7 @@ struct nfs4_create_arg {
- 	const struct iattr *		attrs;
- 	const struct nfs_fh *		dir_fh;
- 	const u32 *			bitmask;
-+	const struct nfs4_label		*label;
- 	struct nfs4_sequence_args 	seq_args;
- };
- 
-@@ -873,6 +888,7 @@ struct nfs4_create_res {
- 	const struct nfs_server *	server;
- 	struct nfs_fh *			fh;
- 	struct nfs_fattr *		fattr;
-+	struct nfs4_label		*label;
- 	struct nfs4_change_info		dir_cinfo;
- 	struct nfs4_sequence_res	seq_res;
- };
-@@ -898,6 +914,7 @@ struct nfs4_getattr_res {
- 	const struct nfs_server *	server;
- 	struct nfs_fattr *		fattr;
- 	struct nfs4_sequence_res	seq_res;
-+	struct nfs4_label		*label;
- };
- 
- struct nfs4_link_arg {
-@@ -911,8 +928,10 @@ struct nfs4_link_arg {
- struct nfs4_link_res {
- 	const struct nfs_server *	server;
- 	struct nfs_fattr *		fattr;
-+	struct nfs4_label		*label;
- 	struct nfs4_change_info		cinfo;
- 	struct nfs_fattr *		dir_attr;
-+	struct nfs4_label		*dir_label;
- 	struct nfs4_sequence_res	seq_res;
- };
- 
-@@ -928,6 +947,7 @@ struct nfs4_lookup_res {
- 	const struct nfs_server *	server;
- 	struct nfs_fattr *		fattr;
- 	struct nfs_fh *			fh;
-+	struct nfs4_label		*label;
- 	struct nfs4_sequence_res	seq_res;
- };
- 
--- 
-1.7.11.7
-
+T24gV2VkLCAyMDEyLTEyLTEyIGF0IDExOjIwIC0wNTAwLCBGcmVkIElzYW1hbiB3cm90ZToNCj4g
+T24gV2VkLCBEZWMgMTIsIDIwMTIgYXQgOTo0NiBBTSwgSmVmZiBMYXl0b24gPGpsYXl0b25AcmVk
+aGF0LmNvbT4gd3JvdGU6DQo+ID4gT25lIG9mIG91ciBRQSBmb2xrcyBmb3VuZCB0aGF0IHRoZSBh
+dHRhY2hlZCB0ZXN0Y2FzZSB3b3VsZCBzZWdmYXVsdA0KPiA+IHdoZW4gcnVuIG9uIGEgcmVjZW50
+IHJoZWw2IGtlcm5lbCB0aGF0IGhhcyBhIGJhY2twb3J0IG9mIHRoZSBwbmZzIGRpbw0KPiA+IGNv
+ZGUuIEkgZ2V0IHRoZSBzYW1lIHNlZ2ZhdWx0IHdoZW4gSSBydW4gaXQgb24gYSAzLjcuMCBrZXJu
+ZWwgYXMgd2VsbC4NCj4gPg0KPiA+IEkgdGhpbmsgdGhlIHByb2JsZW0gaXMgdGhhdCBiZWNhdXNl
+IHRoZSBidWZmZXIgd2UncmUgcmVhZGluZyBpbnRvIGlzIG9uDQo+ID4gdGhlIHN0YWNrLCB0aGUg
+a2VybmVsIGlzIHNjcmliYmxpbmcgb3ZlciB0aGUgcmVzdCBvZiB0aGUgcGFnZSBhZnRlciB0aGUN
+Cj4gPiByZWFkIGFuZCBjb3JydXB0aW5nIGl0Lg0KPiA+DQo+ID4gVGhlIHByb2JsZW0sIEkgdGhp
+bmsgaXMgdGhpcyBibG9jayBpbiBuZnNfZGlyZWN0X3JlYWRfY29tcGxldGlvbigpOg0KPiA+DQo+
+ID4gLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS1bc25pcF0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0K
+PiA+ICAgICAgICAgICAgICAgICBpZiAodGVzdF9iaXQoTkZTX0lPSERSX0VPRiwgJmhkci0+Zmxh
+Z3MpKSB7DQo+ID4gICAgICAgICAgICAgICAgICAgICAgICAgaWYgKGJ5dGVzID4gaGRyLT5nb29k
+X2J5dGVzKQ0KPiA+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgemVyb191c2VyKHBh
+Z2UsIDAsIFBBR0VfU0laRSk7DQo+ID4gICAgICAgICAgICAgICAgICAgICAgICAgZWxzZSBpZiAo
+aGRyLT5nb29kX2J5dGVzIC0gYnl0ZXMgPCBQQUdFX1NJWkUpDQo+ID4gICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICB6ZXJvX3VzZXJfc2VnbWVudChwYWdlLA0KPiA+ICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICBoZHItPmdvb2RfYnl0ZXMgJiB+UEFHRV9NQVNL
+LA0KPiA+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBQQUdFX1NJWkUp
+Ow0KPiA+ICAgICAgICAgICAgICAgICB9DQo+ID4gLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS1bc25p
+cF0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KPiA+DQo+ID4gSWYgSSBjb21tZW50IHRoYXQgb3V0
+LCB0aGVuIHRoZSB0ZXN0IHBhc3NlcyBhbmQgaXQgZG9lc24ndCBzY3JpYmJsZQ0KPiA+IG92ZXIg
+bWVtb3J5LiBJJ20gbm90IGNsZWFyIG9uIHdoYXQgdGhhdCBibG9jayBpcyB0cnlpbmcgdG8gYWNj
+b21wbGlzaC4NCj4gPiBJZiB3ZSBnZXQgYSBzaG9ydCByZWFkIGluIHRoZSBESU8gY29kZXBhdGgs
+IEkgZG9uJ3QgdGhpbmsgd2Ugb3VnaHQgdG8NCj4gPiBiZSB6ZXJvaW5nIG91dCB0aGUgcmVzdCBv
+ZiB0aGUgcGFnZS4gV2Ugc2hvdWxkIGp1c3QgcmV0dXJuIHRoZSBudW1iZXINCj4gPiBvZiBieXRl
+cyByZWFkIGFuZCBiZSBkb25lIHdpdGggaXQuDQo+ID4NCj4gDQo+IEkgd291bGQgc2F5IHRoZSBw
+cm9ibGVtIGlzIG5vdCB6ZXJvaW5nIG1lbW9yeSwgYnV0IHRoYXQgdGhlIGNvZGUgaXNuJ3QNCj4g
+dGFraW5nIGludG8gYWNjb3VudCB0aGUgb2Zmc2V0cyBpbnRvIHRoZSBwYWdlLg0KDQpUaGUgbWVt
+b3J5IHJlZ2lvbiBsaWVzIGFmdGVyIHRoZSBFT0YsIHNvIHdlJ3JlIG5vdCBjb3VudGluZyBpdCBp
+bg0KZHJlcS0+Y291bnQuIE1vcmUgaW1wb3J0YW50bHksIGl0IHdvbid0IGJlIGFjY291bnRlZCBm
+b3IgaW4gdGhlIHJlYWQoKQ0Kc3lzdGVtIGNhbGwgcmV0dXJuIHZhbHVlLCBzbyBJIHRoaW5rIHdl
+IHNob3VsZCBhdm9pZCB0b3VjaGluZyBpdC4NCg0KPiA+IEknbSBhbHNvIHN1c3BpY2lvdXMgb2Yg
+dGhlICJpZiAoIVBhZ2VDb21wb3VuZChwYWdlKSkiIGNoZWNrIGluIHRoYXQNCj4gPiBmdW5jdGlv
+biBhcyB3ZWxsLiBJdCBkb2Vzbid0IHNlZW0gbGlrZSB3ZSBvdWdodCB0byBiZSBtYXJraW5nIHBh
+Z2VzDQo+ID4gZGlydHkgaW4gdGhlIERJTyBjb2RlcGF0aHMsIHNob3VsZCB3ZT8NCj4gPg0KPiA+
+IC0tDQo+ID4gSmVmZiBMYXl0b24gPGpsYXl0b25AcmVkaGF0LmNvbT4NCj4gDQo+IEknbSBub3Qg
+c3VyZSBpZiB3ZSBzaG91bGQsIGJ1dCBjb2RlIHRvIGRvIHNvIGhhcyBiZWVuIGFyb3VuZCBmb3Jl
+dmVyLg0KPiBUaGUgZXhjZXB0aW9uIGZvciBQYWdlQ29tcG91bmQgaXMgZnJvbSBjb21taXQgNTY2
+ZGQ2MDY0ZTg5YiAiTkZTOiBNYWtlDQo+IGRpcmVjdElPIGF3YXJlIG9mIGNvbXBvdW5kIHBhZ2Vz
+IiwgYWxtb3N0IDcgeWVhcnMgYWdvLg0KDQpSaWdodC4gVGhlIGNvZGUgZm9yIGRvaW5nIHRoaXMg
+Z29lcyBiYWNrIHRvIHRoZSBvcmlnaW5hbCBPX0RJUkVDVA0KaW1wbGVtZW50YXRpb24gaW4gMjAw
+My4gSUlSQywgQW5kcmV3IE1vcnRvbiBhc2tlZCB1cyB0byBkbyBpdCBpbiBvcmRlcg0KdG8gbWFr
+ZSB0aGluZ3MgbGlrZSBPX0RJUkVDVCByZWFkIGludG8gYW4gbW1hcHBlZCBtZW1vcnkgcmVnaW9u
+IHdvcmsNCmNvcnJlY3RseS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGll
+bnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cu
+bmV0YXBwLmNvbQ0K
