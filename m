@@ -1,75 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33869 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:21667 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753421Ab2LMPxt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Dec 2012 10:53:49 -0500
-Date: Thu, 13 Dec 2012 10:53:47 -0500
-To: NeilBrown <neilb@suse.de>
-Cc: Steve Dickson <SteveD@redhat.com>, NFS <linux-nfs@vger.kernel.org>,
-        Sean Finney <sean.finney@sonyericsson.com>
-Subject: Re: [nfs-utils PATCH] mountd: fix checking for errors when exporting
- filesystems.
-Message-ID: <20121213155347.GD24855@fieldses.org>
-References: <20121213112529.06ebda22@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20121213112529.06ebda22@notabene.brown>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1754779Ab2LLQbp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Dec 2012 11:31:45 -0500
+Date: Wed, 12 Dec 2012 11:31:40 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Fred Isaman <faisaman4@gmail.com>
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org, eguan@redhat.com
+Subject: Re: non-aligned DIO reads on NFS are corrupting memory in 3.7.0
+Message-ID: <20121212113140.145fc424@tlielax.poochiereds.net>
+In-Reply-To: <CADnza44_ZTHuuFHbQds9TBcSAdHD-FBoSJLwym7ETcC-HeFjZw@mail.gmail.com>
+References: <20121212094654.5ce53d89@tlielax.poochiereds.net>
+	<CADnza44_ZTHuuFHbQds9TBcSAdHD-FBoSJLwym7ETcC-HeFjZw@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 13, 2012 at 11:25:29AM +1100, NeilBrown wrote:
-> 
-> 
-> commit 5604b35a61e22930873ffc4e9971002f578e7978
->   nfs-utils: Increase the stdio file buffer size for procfs files
-> 
-> changed writes to some sysfs files to be line buffered (_IOLBF) where
-> they weren't before.  While this probably makes sense, it introduced a bug.
-> 
-> With fully buffered streams, you don't expect to get an error until you
-> call fflush().
-> With line buffered streams you can get the error from fprintf() et al.
-> 
-> qword_eol() only tests the return from fflush(), not from fprintf().  Consequently
-> errors were not noticed.
-> 
-> One result of this is that if you export, with crossmnt, a filesystem underneath
-> which are mounted non-exportable filesystems (e.g. /proc) then an 'ls -l' on the
-> client will block indefinitely waiting for a meaningful 'yes' or 'no' from the
-> server, but will never get one.
-> 
-> This patch changes qword_eol to test both fprintf and fflush.
+On Wed, 12 Dec 2012 11:20:11 -0500
+Fred Isaman <faisaman4@gmail.com> wrote:
 
-Makes sense to me.--b.
+> On Wed, Dec 12, 2012 at 9:46 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> > One of our QA folks found that the attached testcase would segfault
+> > when run on a recent rhel6 kernel that has a backport of the pnfs dio
+> > code. I get the same segfault when I run it on a 3.7.0 kernel as well.
+> >
+> > I think the problem is that because the buffer we're reading into is on
+> > the stack, the kernel is scribbling over the rest of the page after the
+> > read and corrupting it.
+> >
+> > The problem, I think is this block in nfs_direct_read_completion():
+> >
+> > -----------------------[snip]-----------------------
+> >                 if (test_bit(NFS_IOHDR_EOF, &hdr->flags)) {
+> >                         if (bytes > hdr->good_bytes)
+> >                                 zero_user(page, 0, PAGE_SIZE);
+> >                         else if (hdr->good_bytes - bytes < PAGE_SIZE)
+> >                                 zero_user_segment(page,
+> >                                         hdr->good_bytes & ~PAGE_MASK,
+> >                                         PAGE_SIZE);
+> >                 }
+> > -----------------------[snip]-----------------------
+> >
+> > If I comment that out, then the test passes and it doesn't scribble
+> > over memory. I'm not clear on what that block is trying to accomplish.
+> > If we get a short read in the DIO codepath, I don't think we ought to
+> > be zeroing out the rest of the page. We should just return the number
+> > of bytes read and be done with it.
+> >
+> 
+> I would say the problem is not zeroing memory, but that the code isn't
+> taking into account the offsets into the page.
+> 
+
+Erm maybe...
+
+I don't get it though. Why would you ever want to zero out the rest of
+the buffer on a DIO read() request? You're certainly under no obligation
+to do so. If you didn't get all of the data requested, you're going to
+return a number that's less than "count", and you should be fine to
+just ignore the rest of the buffer.
 
 > 
-> Signed-off-by: NeilBrown <neilb@suse.de>
+> > I'm also suspicious of the "if (!PageCompound(page))" check in that
+> > function as well. It doesn't seem like we ought to be marking pages
+> > dirty in the DIO codepaths, should we?
+> >
 > 
-> diff --git a/support/nfs/cacheio.c b/support/nfs/cacheio.c
-> index e641c45..61e07a8 100644
-> --- a/support/nfs/cacheio.c
-> +++ b/support/nfs/cacheio.c
-> @@ -162,11 +162,16 @@ int qword_eol(FILE *f)
->  {
->  	int err;
->  
-> -	fprintf(f,"\n");
-> -	err = fflush(f);
-> -	if (err) {
-> -		xlog_warn("qword_eol: fflush failed: errno %d (%s)",
-> +	err = fprintf(f,"\n");
-> +	if (err < 0) {
-> +		xlog_warn("qword_eol: fprintf failed: errno %d (%s)",
->  			    errno, strerror(errno));
-> +	} else {
-> +		err = fflush(f);
-> +		if (err) {
-> +			xlog_warn("qword_eol: fflush failed: errno %d (%s)",
-> +				  errno, strerror(errno));
-> +		}
->  	}
->  	/*
->  	 * We must send one line (and one line only) in a single write
+> I'm not sure if we should, but code to do so has been around forever.
+> The exception for PageCompound is from commit 566dd6064e89b "NFS: Make
+> directIO aware of compound pages", almost 7 years ago.
+> 
+> Fred
+>
 
+Yeah. Maybe it's concern with someone doing DIO reads into a mmapped
+buffer? Dunno...
 
+-- 
+Jeff Layton <jlayton@redhat.com>
