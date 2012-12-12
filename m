@@ -1,48 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:48972 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:60349 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754366Ab2LLRoi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Dec 2012 12:44:38 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Isaman, Fred" <Fred.Isaman@netapp.com>
-Subject: Re: [PATCH] nfs: fix page dirtying in NFS DIO read codepath
-Date: Wed, 12 Dec 2012 17:44:32 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9119284F2@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1355333791-4814-1-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1355333791-4814-1-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1754076Ab2LLS6A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Dec 2012 13:58:00 -0500
+Date: Wed, 12 Dec 2012 13:57:57 -0500
+To: Sven Geggus <lists@fuchsschwanzdomain.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Kernel update 3.5.7 -> 3.6.3 breaks NFS4
+Message-ID: <20121212185757.GA17868@fieldses.org>
+References: <E1TWxKX-00025I-J2@diesel.geggus.net>
+ <20121109232410.GK6171@fieldses.org>
+ <20121112091717.GA1610@geggus.net>
+ <20121113224005.GA11545@fieldses.org>
+ <20121114005815.GA23604@fieldses.org>
+ <20121114160712.GG23604@fieldses.org>
+ <20121114160808.GH23604@fieldses.org>
+ <20121115165823.GA5505@geggus.net>
+ <20121116191934.GA6358@fieldses.org>
+ <ka9p0f$7nc$1@ultimate100.geggus.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <ka9p0f$7nc$1@ultimate100.geggus.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTEyLTEyIGF0IDEyOjM2IC0wNTAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-VGhlIE5GUyBESU8gY29kZSB3aWxsIGRpcnR5IHBhZ2VzIHRoYXQgY2F0Y2ggcmVhZCByZXNwb25z
-ZXMgaW4gb3JkZXIgdG8NCj4gaGFuZGxlIHRoZSBjYXNlIHdoZXJlIHNvbWVvbmUgaXMgZG9pbmcg
-RElPIHJlYWRzIGludG8gYW4gbW1hcHBlZCBidWZmZXIuDQo+IFRoZSBleGlzdGluZyBjb2RlIGRv
-ZXNuJ3QgcmVhbGx5IGRvIHRoZSByaWdodCB0aGluZyB0aG91Z2ggc2luY2UgaXQNCj4gZG9lc24n
-dCB0YWtlIGludG8gYWNjb3VudCB0aGUgY2FzZSB3aGVyZSB3ZSBtaWdodCBiZSBhdHRlbXB0aW5n
-IHRvIHJlYWQNCj4gcGFzdCB0aGUgRU9GLg0KPiANCj4gRml4IHRoZSBsb2dpYyBpbiB0aGF0IGNv
-ZGUgdG8gb25seSBkaXJ0eSBwYWdlcyB0aGF0IGVuZGVkIHVwIHJlY2VpdmluZw0KPiBkYXRhIGZy
-b20gdGhlIHJlYWQuIE5vdGUgdG9vIHRoYXQgaXQgcmVhbGx5IGRvZXNuJ3QgbWF0dGVyIGlmDQo+
-IE5GU19JT0hEUl9FUlJPUiBpcyBzZXQgb3Igbm90LiBBbGwgdGhhdCBtYXR0ZXJzIGlzIGlmIHRo
-ZSBwYWdlIHdhcw0KPiBhbHRlcmVkIGJ5IHRoZSByZWFkLg0KPiANCj4gQ2M6IEZyZWQgSXNhbWFu
-IDxpaXNhbWFuQG5ldGFwcC5jb20+DQo+IFNpZ25lZC1vZmYtYnk6IEplZmYgTGF5dG9uIDxqbGF5
-dG9uQHJlZGhhdC5jb20+DQo+IC0tLQ0KPiAgZnMvbmZzL2RpcmVjdC5jIHwgOSArKy0tLS0tLS0N
-Cj4gIDEgZmlsZSBjaGFuZ2VkLCAyIGluc2VydGlvbnMoKyksIDcgZGVsZXRpb25zKC0pDQo+IA0K
-PiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2RpcmVjdC5jIGIvZnMvbmZzL2RpcmVjdC5jDQo+IGluZGV4
-IDU5NGY0ZTcuLjBiZDdhNTUgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9kaXJlY3QuYw0KPiArKysg
-Yi9mcy9uZnMvZGlyZWN0LmMNCj4gQEAgLTI2NiwxMyArMjY2LDggQEAgc3RhdGljIHZvaWQgbmZz
-X2RpcmVjdF9yZWFkX2NvbXBsZXRpb24oc3RydWN0IG5mc19wZ2lvX2hlYWRlciAqaGRyKQ0KPiAg
-CQlzdHJ1Y3QgbmZzX3BhZ2UgKnJlcSA9IG5mc19saXN0X2VudHJ5KGhkci0+cGFnZXMubmV4dCk7
-DQo+ICAJCXN0cnVjdCBwYWdlICpwYWdlID0gcmVxLT53Yl9wYWdlOw0KPiAgDQo+IC0JCWlmICgh
-UGFnZUNvbXBvdW5kKHBhZ2UpKSB7DQo+IC0JCQlpZiAodGVzdF9iaXQoTkZTX0lPSERSX0VSUk9S
-LCAmaGRyLT5mbGFncykpIHsNCj4gLQkJCQlpZiAoYnl0ZXMgPCBoZHItPmdvb2RfYnl0ZXMpDQo+
-IC0JCQkJCXNldF9wYWdlX2RpcnR5KHBhZ2UpOw0KPiAtCQkJfSBlbHNlDQo+IC0JCQkJc2V0X3Bh
-Z2VfZGlydHkocGFnZSk7DQo+IC0JCX0NCj4gKwkJaWYgKCFQYWdlQ29tcG91bmQocGFnZSkgJiYg
-Ynl0ZXMgPCBoZHItPmdvb2RfYnl0ZXMpDQo+ICsJCQlzZXRfcGFnZV9kaXJ0eShwYWdlKTsNCj4g
-IAkJYnl0ZXMgKz0gcmVxLT53Yl9ieXRlczsNCj4gIAkJbmZzX2xpc3RfcmVtb3ZlX3JlcXVlc3Qo
-cmVxKTsNCj4gIAkJbmZzX2RpcmVjdF9yZWFkcGFnZV9yZWxlYXNlKHJlcSk7DQoNClRoYW5rcyBK
-ZWZmIQ0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0K
-DQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+Please don't drop me off the cc: line.
+
+On Wed, Dec 12, 2012 at 11:15:27AM +0000, Sven Geggus wrote:
+> J. Bruce Fields <bfields@fieldses.org> wrote:
+> 
+> >> OK, so this can be marked as resolved (for now) on my todo list, right? Will
+> >> this go into 3.6.7 and of course 3.7?
+> > 
+> > Yep, I'll pass this along by next week.
+> 
+> As 3.7 has been relased now:
+> 
+> It looks like the unreverted Version is still present in Linux 3.7.0 as well
+> as 3.6.10
+> 
+> While it is easy enough to use
+> "git revert bbf43dc888833ac0539e437dbaeb28bfd4fbab9f" I would rather be able
+> to use vanilla kernels again.
+
+Right, apologies, I ended up deciding to hold that for the merge window.
+It's marked for stable so should make it into 3.7.x as well.
+
+--b.
