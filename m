@@ -1,131 +1,132 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42385 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:53730 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755466Ab2LMPu4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Dec 2012 10:50:56 -0500
-Date: Thu, 13 Dec 2012 10:50:54 -0500
-To: NeilBrown <neilb@suse.de>
-Cc: Steve Dickson <SteveD@redhat.com>, NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [nfs-utils PATCH] mountd: fix is_subdirectory to understand '/'
-Message-ID: <20121213155054.GC24855@fieldses.org>
-References: <20121213112342.720ddc6d@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20121213112342.720ddc6d@notabene.brown>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1754502Ab2LLOq5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Dec 2012 09:46:57 -0500
+Date: Wed, 12 Dec 2012 09:46:54 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, eguan@redhat.com
+Subject: non-aligned DIO reads on NFS are corrupting memory in 3.7.0
+Message-ID: <20121212094654.5ce53d89@tlielax.poochiereds.net>
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary="MP_/+NN_8c_THJeYJ0A_pQSw=Vu"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 13, 2012 at 11:23:42AM +1100, NeilBrown wrote:
-> 
-> The is_subdirectory() function checks if a given 'child' is a subdirectory
-> of the given 'parent'.
-> However it always fails if 'parent' == "/"  (because 'child' doesn't begin
-> with 'parent' followed by "/").
-> 
-> So change is_subdirectory() to special-case "/".
+--MP_/+NN_8c_THJeYJ0A_pQSw=Vu
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-Might be slightly more elegant to deal with this as a case of a parent
-directory with a terminating "/" rather than as a special case, and that
-might make this a little more robust.  E.g.:
+One of our QA folks found that the attached testcase would segfault
+when run on a recent rhel6 kernel that has a backport of the pnfs dio
+code. I get the same segfault when I run it on a 3.7.0 kernel as well.
 
-	size_t l = strlen(parent);
+I think the problem is that because the buffer we're reading into is on
+the stack, the kernel is scribbling over the rest of the page after the
+read and corrupting it.
 
-	while (l && parent[l-1] == '/')
-		l--;
-	return (l <= strlen(child))
-		&& strncmp(parent, child, l) == 0
-		&& (child[l] == '/' || child[l] == '\0');
+The problem, I think is this block in nfs_direct_read_completion():
 
-?
+-----------------------[snip]-----------------------
+                if (test_bit(NFS_IOHDR_EOF, &hdr->flags)) {
+                        if (bytes > hdr->good_bytes)
+                                zero_user(page, 0, PAGE_SIZE);
+                        else if (hdr->good_bytes - bytes < PAGE_SIZE)
+                                zero_user_segment(page,
+                                        hdr->good_bytes & ~PAGE_MASK,
+                                        PAGE_SIZE);
+                }
+-----------------------[snip]-----------------------
 
---b.
+If I comment that out, then the test passes and it doesn't scribble
+over memory. I'm not clear on what that block is trying to accomplish.
+If we get a short read in the DIO codepath, I don't think we ought to
+be zeroing out the rest of the page. We should just return the number
+of bytes read and be done with it.
 
-> 
-> subexport() also tests if one directory is a subdirectory of the
-> other, and contains the same bug.  So change it to use is_subdirectory().
-> 
-> Finally, move is_subdirectory() and related path_matches() and
-> export_matches() earlier in the file to avoid a forward-reference.
-> 
-> This patch fixes a bug wherein if you export "/" with 'crossmnt', the
-> crossmnt flag is ineffective and you can only access the root
-> filesystem, not any descendants.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> 
-> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> index 3853bb6..45012be 100644
-> --- a/utils/mountd/cache.c
-> +++ b/utils/mountd/cache.c
-> @@ -343,6 +343,30 @@ static char *next_mnt(void **v, char *p)
->  	return me->mnt_dir;
->  }
->  
-> +static int is_subdirectory(char *child, char *parent)
-> +{
-> +	size_t l = strlen(parent);
-> +
-> +	if (strcmp(parent, "/") == 0)
-> +		return 1;
-> +
-> +	return strcmp(child, parent) == 0
-> +		|| (strncmp(child, parent, l) == 0 && child[l] == '/');
-> +}
-> +
-> +static int path_matches(nfs_export *exp, char *path)
-> +{
-> +	if (exp->m_export.e_flags & NFSEXP_CROSSMOUNT)
-> +		return is_subdirectory(path, exp->m_export.e_path);
-> +	return strcmp(path, exp->m_export.e_path) == 0;
-> +}
-> +
-> +static int
-> +export_matches(nfs_export *exp, char *dom, char *path, struct addrinfo *ai)
-> +{
-> +	return path_matches(exp, path) && client_matches(exp, dom, ai);
-> +}
-> +
->  /* True iff e1 is a child of e2 and e2 has crossmnt set: */
->  static bool subexport(struct exportent *e1, struct exportent *e2)
->  {
-> @@ -350,8 +374,7 @@ static bool subexport(struct exportent *e1, struct exportent *e2)
->  	size_t l2 = strlen(p2);
->  
->  	return e2->e_flags & NFSEXP_CROSSMOUNT
-> -	       && strncmp(p1, p2, l2) == 0
-> -	       && p1[l2] == '/';
-> +		&& is_subdirectory(p1, p2);
->  }
->  
->  struct parsed_fsid {
-> @@ -752,27 +775,6 @@ static int dump_to_cache(FILE *f, char *domain, char *path, struct exportent *ex
->  	return qword_eol(f);
->  }
->  
-> -static int is_subdirectory(char *child, char *parent)
-> -{
-> -	size_t l = strlen(parent);
-> -
-> -	return strcmp(child, parent) == 0
-> -		|| (strncmp(child, parent, l) == 0 && child[l] == '/');
-> -}
-> -
-> -static int path_matches(nfs_export *exp, char *path)
-> -{
-> -	if (exp->m_export.e_flags & NFSEXP_CROSSMOUNT)
-> -		return is_subdirectory(path, exp->m_export.e_path);
-> -	return strcmp(path, exp->m_export.e_path) == 0;
-> -}
-> -
-> -static int
-> -export_matches(nfs_export *exp, char *dom, char *path, struct addrinfo *ai)
-> -{
-> -	return path_matches(exp, path) && client_matches(exp, dom, ai);
-> -}
-> -
->  static nfs_export *
->  lookup_export(char *dom, char *path, struct addrinfo *ai)
->  {
+I'm also suspicious of the "if (!PageCompound(page))" check in that
+function as well. It doesn't seem like we ought to be marking pages
+dirty in the DIO codepaths, should we?
 
+-- 
+Jeff Layton <jlayton@redhat.com>
 
+--MP_/+NN_8c_THJeYJ0A_pQSw=Vu
+Content-Type: text/x-csrc
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment; filename=dio.c
+
+#define _GNU_SOURCE
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+#define T_TEST_TEXT "This is a test\n"
+#define BUF_SIZE 32
+/* 16 won't work, 17 will cause segfault */
+//#define READ_SIZE 16
+#define READ_SIZE 17
+
+int test_write(char *testfile)
+{
+	int fd;
+	int ret;
+	int status;
+	char buf[BUF_SIZE];
+
+	status = 0;
+	printf("Write file with O_DIRECT\n");
+	memset(buf, 'a', BUF_SIZE);
+	/* Buffered write or direct write both work */
+	fd = open(testfile, O_CREAT | O_RDWR | O_DIRECT | O_TRUNC, 0644);
+//	fd = open(testfile, O_CREAT | O_RDWR | O_TRUNC, 0644);
+	if (fd == -1) {
+		printf("FAIL - open: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
+	ret = write(fd, T_TEST_TEXT, sizeof(T_TEST_TEXT));
+	if (ret == -1) {
+		printf("FAIL - write: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
+	close(fd);
+
+	printf("Read file with O_DIRECT\n");
+	/* Only direct read would get segfault */
+	fd = open(testfile, O_RDONLY | O_DIRECT);
+//	fd = open(testfile, O_RDONLY);
+	ret = read(fd, buf, READ_SIZE);
+	if (ret == -1) {
+		printf("FAIL - re-read: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
+	if (!strcmp(buf, T_TEST_TEXT)) {
+		printf("PASS\n");
+	} else {
+		printf("FAIL - expect \"%s\" - got \"%s\"\n",
+			T_TEST_TEXT, buf);
+		status++;
+	}
+	close(fd);
+
+	return status;
+}
+
+int main(int argc, char *argv[])
+{
+	int ret;
+	ret = test_write(argv[1]);
+	exit(ret);
+}
+
+--MP_/+NN_8c_THJeYJ0A_pQSw=Vu--
