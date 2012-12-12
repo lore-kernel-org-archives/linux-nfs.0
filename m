@@ -1,48 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:23662 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1423892Ab2LFPee (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Dec 2012 10:34:34 -0500
-Subject: [PATCH 6/6] nfsd: enable NFSv4 state in containers
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Thu, 06 Dec 2012 18:35:07 +0300
-Message-ID: <20121206153507.30693.72204.stgit@localhost.localdomain>
-In-Reply-To: <20121206153204.30693.11408.stgit@localhost.localdomain>
-References: <20121206153204.30693.11408.stgit@localhost.localdomain>
+Received: from smtp1.stealer.net ([88.198.224.204]:60051 "EHLO
+	smtp1.stealer.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754724Ab2LLXOm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Dec 2012 18:14:42 -0500
+Date: Thu, 13 Dec 2012 00:14:37 +0100 (CET)
+From: Sven Wegener <sven.wegener@stealer.net>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH] NFSv4: Check for buffer length in __nfs4_get_acl_uncached
+Message-ID: <alpine.LNX.2.02.1212130009400.10324@titan.int.lan.stealer.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, NFSd is ready to operate in network namespace based containers.
-So let's drop check for "init_net" and make it able to fly.
+Commit 1f1ea6c "NFSv4: Fix buffer overflow checking in
+__nfs4_get_acl_uncached" accidently dropped the checking for too small
+result buffer length.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+If someone uses getxattr on "system.nfs4_acl" on an NFSv4 mount
+supporting ACLs, the ACL has not been cached and the buffer suplied is
+too short, we still copy the complete ACL, resulting in kernel and user
+space memory corruption.
+
+Signed-off-by: Sven Wegener <sven.wegener@stealer.net>
+Cc: stable@kernel.org
 ---
- fs/nfsd/nfs4state.c |   10 ----------
- 1 files changed, 0 insertions(+), 10 deletions(-)
+ fs/nfs/nfs4proc.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 39605c1..b3b6daa 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4866,16 +4866,6 @@ nfs4_state_start_net(struct net *net)
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 	int ret;
- 
--	/*
--	 * FIXME: For now, we hang most of the pernet global stuff off of
--	 * init_net until nfsd is fully containerized. Eventually, we'll
--	 * need to pass a net pointer into this function, take a reference
--	 * to that instead and then do most of the rest of this on a per-net
--	 * basis.
--	 */
--	if (net != &init_net)
--		return -EINVAL;
--
- 	ret = nfs4_state_create_net(net);
- 	if (ret)
- 		return ret;
+Resending, because it did not get any response.
 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 7bff871..f15be6b 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3831,8 +3831,13 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
+ 		goto out_free;
+ 	}
+ 	nfs4_write_cached_acl(inode, pages, res.acl_data_offset, res.acl_len);
+-	if (buf)
++	if (buf) {
++		if (res.acl_len > buflen) {
++			ret = -ERANGE;
++			goto out_free;
++		}
+ 		_copy_from_pages(buf, pages, res.acl_data_offset, res.acl_len);
++	}
+ out_ok:
+ 	ret = res.acl_len;
+ out_free:
