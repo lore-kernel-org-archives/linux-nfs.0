@@ -1,69 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:50516 "EHLO
-	Dobby.4dicksons.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750800Ab2LUULF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Dec 2012 15:11:05 -0500
-From: Steve Dickson <steved@redhat.com>
-To: David Quigley <selinux@davequigley.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH] lnfs: remove export flag for label NFS exports
-Date: Fri, 21 Dec 2012 15:05:50 -0500
-Message-Id: <1356120350-6325-1-git-send-email-steved@redhat.com>
+Received: from 82-69-66-36.dsl.in-addr.zen.co.uk ([82.69.66.36]:65471 "EHLO
+	gateway.l8s.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751411Ab2LLImn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Dec 2012 03:42:43 -0500
+Date: Wed, 12 Dec 2012 08:34:01 +0000
+From: David Laight <david@l8s.co.uk>
+To: Pavel Shilovsky <piastry@etersoft.ru>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, wine-devel@winehq.org
+Subject: Re: [PATCH 0/3] Add O_DENY* flags to fcntl and cifs
+Message-ID: <20121212083401.GW5010@snowdrop.l8s.co.uk>
+References: <1354818391-7968-1-git-send-email-piastry@etersoft.ru> <20121207161602.GA17710@infradead.org> <495d17310e0a687d446afc86def0f058@office.etersoft.ru>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <495d17310e0a687d446afc86def0f058@office.etersoft.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It was deemed through code review, that having an
-"security_label" export flag was not needed.
+On Sat, Dec 08, 2012 at 12:43:14AM +0400, Pavel Shilovsky wrote:
+> 
+> The problem is the possibility of denial-of-service attacks here. We 
+> can try to prevent them by:
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- fs/nfsd/export.c                 | 3 ---
- fs/nfsd/nfs4xdr.c                | 5 +----
- include/uapi/linux/nfsd/export.h | 1 -
- 3 files changed, 1 insertion(+), 8 deletions(-)
+FWIW I already see a DoS 'attack'.
+I have some filestore shared using NFS (to Linux and Solaris) and 
+using samba (to Windows).
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index 251eca7..a3946cf 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -1112,9 +1112,6 @@ static struct flags {
- 	{ NFSEXP_ASYNC, {"async", "sync"}},
- 	{ NFSEXP_GATHERED_WRITES, {"wdelay", "no_wdelay"}},
- 	{ NFSEXP_NOHIDE, {"nohide", ""}},
--#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
--	{ NFSEXP_SECURITY_LABEL, {"security_label", ""}},
--#endif
- 	{ NFSEXP_CROSSMOUNT, {"crossmnt", ""}},
- 	{ NFSEXP_NOSUBTREECHECK, {"no_subtree_check", ""}},
- 	{ NFSEXP_NOAUTHNLM, {"insecure_locks", ""}},
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 58e205c..a234ed4 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2214,10 +2214,7 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
- 		if (!aclsupport)
- 			word0 &= ~FATTR4_WORD0_ACL;
- #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
--		if (exp->ex_flags & NFSEXP_SECURITY_LABEL)
--			word2 |= FATTR4_WORD2_SECURITY_LABEL;
--		else
--			word2 &= ~FATTR4_WORD2_SECURITY_LABEL;
-+		word2 |= FATTR4_WORD2_SECURITY_LABEL;
- #else
- 		word2 &= ~FATTR4_WORD2_SECURITY_LABEL;
- #endif
-diff --git a/include/uapi/linux/nfsd/export.h b/include/uapi/linux/nfsd/export.h
-index e6c76d9..b892b6a 100644
---- a/include/uapi/linux/nfsd/export.h
-+++ b/include/uapi/linux/nfsd/export.h
-@@ -28,7 +28,6 @@
- #define NFSEXP_ALLSQUASH	0x0008
- #define NFSEXP_ASYNC		0x0010
- #define NFSEXP_GATHERED_WRITES	0x0020
--#define NFSEXP_SECURITY_LABEL	0x0040  /* Support security label fattr4 */
- /* 80 100 currently unused */
- #define NFSEXP_NOHIDE		0x0200
- #define NFSEXP_NOSUBTREECHECK	0x0400
+I use it for release builds of a product to ensure the versions
+built for the different operating systems match, and because some
+files have to be built on an 'alien' system (eg gcc targetted at
+embedded card).
+
+I can't run the windows build at the same time as the others
+because the windows C compiler manages to obtain exclusive access
+to the source files - stopping the other systems from reading them.
+
+	David
+
 -- 
-1.7.11.7
-
+David Laight: david@l8s.co.uk
