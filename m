@@ -1,54 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:7286 "EHLO mx1.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754049Ab2LLQqb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Dec 2012 11:46:31 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Isaman, Fred" <Fred.Isaman@netapp.com>,
-        "eguan@redhat.com" <eguan@redhat.com>
-Subject: Re: [PATCH] nfs: don't zero out the rest of the page if we hit the
- EOF on a DIO READ
-Date: Wed, 12 Dec 2012 16:46:15 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9119262E7@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1355330324-3233-1-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1355330324-3233-1-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-pa0-f46.google.com ([209.85.220.46]:35253 "EHLO
+	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751426Ab2LMGsG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Dec 2012 01:48:06 -0500
+From: ycnian@gmail.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Yanchuan Nian <ycnian@gmail.com>
+Subject: [PATCH] nfs: Remove unused list nfs4_clientid_list
+Date: Thu, 13 Dec 2012 14:37:52 +0800
+Message-Id: <1355380672-10982-1-git-send-email-ycnian@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTEyLTEyIGF0IDExOjM4IC0wNTAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-RXJ5dSBwcm92aWRlZCBhIHRlc3QgcHJvZ3JhbSB0aGF0IHdvdWxkIHNlZ2ZhdWx0IHdoZW4gYXR0
-ZW1wdGluZyB0byByZWFkDQo+IHBhc3QgdGhlIEVPRiBvbiBmaWxlIHRoYXQgd2FzIG9wZW5lZCBP
-X0RJUkVDVC4gVGhlIGJ1ZmZlciBnaXZlbiB0byB0aGUNCj4gcmVhZCgpIGNhbGwgd2FzIG9uIHRo
-ZSBzdGFjaywgYW5kIHdoZW4gaGUgYXR0ZW1wdGVkIHRvIHJlYWQgcGFzdCBpdCBpdA0KPiB3b3Vs
-ZCBzY3JpYmJsZSBvdmVyIHRoZSByZXN0IG9mIHRoZSBzdGFjayBwYWdlLg0KPiANCj4gSWYgd2Ug
-aGl0IHRoZSBlbmQgb2YgdGhlIGZpbGUgb24gYSBESU8gUkVBRCByZXF1ZXN0LCB0aGVuIHdlIGRv
-bid0IHdhbnQNCj4gdG8gemVybyBvdXQgdGhlIHJlc3Qgb2YgdGhlIGJ1ZmZlci4gVGhlc2UgYXJl
-bid0IHBhZ2VjYWNoZSBwYWdlcyBhZnRlcg0KPiBhbGwsIGFuZCB0aGVyZSdzIG5vIGd1YXJhbnRl
-ZSB0aGF0IHRoZSBidWZmZXJzIHRoYXQgd2VyZSBwYXNzZWQgaW4NCj4gcmVwcmVzZW50IGVudGly
-ZSBwYWdlcy4NCj4gDQo+IENjOiA8c3RhYmxlQHZnZXIua2VybmVsLm9yZz4gIyB2My41Kw0KPiBD
-YzogRnJlZCBJc2FtYW4gPGlpc2FtYW5AbmV0YXBwLmNvbT4NCj4gUmVwb3J0ZWQtYnk6IEVyeXUg
-R3VhbiA8ZWd1YW5AcmVkaGF0LmNvbT4NCj4gU2lnbmVkLW9mZi1ieTogSmVmZiBMYXl0b24gPGps
-YXl0b25AcmVkaGF0LmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvZGlyZWN0LmMgfCA4IC0tLS0tLS0t
-DQo+ICAxIGZpbGUgY2hhbmdlZCwgOCBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9m
-cy9uZnMvZGlyZWN0LmMgYi9mcy9uZnMvZGlyZWN0LmMNCj4gaW5kZXggY2FlMjZjYi4uNTk0ZjRl
-NyAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL2RpcmVjdC5jDQo+ICsrKyBiL2ZzL25mcy9kaXJlY3Qu
-Yw0KPiBAQCAtMjY2LDE0ICsyNjYsNiBAQCBzdGF0aWMgdm9pZCBuZnNfZGlyZWN0X3JlYWRfY29t
-cGxldGlvbihzdHJ1Y3QgbmZzX3BnaW9faGVhZGVyICpoZHIpDQo+ICAJCXN0cnVjdCBuZnNfcGFn
-ZSAqcmVxID0gbmZzX2xpc3RfZW50cnkoaGRyLT5wYWdlcy5uZXh0KTsNCj4gIAkJc3RydWN0IHBh
-Z2UgKnBhZ2UgPSByZXEtPndiX3BhZ2U7DQo+ICANCj4gLQkJaWYgKHRlc3RfYml0KE5GU19JT0hE
-Ul9FT0YsICZoZHItPmZsYWdzKSkgew0KPiAtCQkJaWYgKGJ5dGVzID4gaGRyLT5nb29kX2J5dGVz
-KQ0KPiAtCQkJCXplcm9fdXNlcihwYWdlLCAwLCBQQUdFX1NJWkUpOw0KPiAtCQkJZWxzZSBpZiAo
-aGRyLT5nb29kX2J5dGVzIC0gYnl0ZXMgPCBQQUdFX1NJWkUpDQo+IC0JCQkJemVyb191c2VyX3Nl
-Z21lbnQocGFnZSwNCj4gLQkJCQkJaGRyLT5nb29kX2J5dGVzICYgflBBR0VfTUFTSywNCj4gLQkJ
-CQkJUEFHRV9TSVpFKTsNCj4gLQkJfQ0KPiAgCQlpZiAoIVBhZ2VDb21wb3VuZChwYWdlKSkgew0K
-PiAgCQkJaWYgKHRlc3RfYml0KE5GU19JT0hEUl9FUlJPUiwgJmhkci0+ZmxhZ3MpKSB7DQo+ICAJ
-CQkJaWYgKGJ5dGVzIDwgaGRyLT5nb29kX2J5dGVzKQ0KDQpJJ20gbm90IHNheWluZyB0aGF0IHNo
-b3VsZCBiZSBpbiB0aGUgc2FtZSBwYXRjaCwgYnV0IGl0IGxvb2tzIHRvIG1lIGFzDQppZiB3ZSBu
-ZWVkIHRvIHJlc3BlY3QgdGhlIEVPRiBib3VuZGFyeSBmb3IgdGhlIHBhZ2UgZGlydHlpbmcgY29k
-ZSB0b28uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWlu
-ZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20N
-Cg==
+From: Yanchuan Nian <ycnian@gmail.com>
+
+This list was designed to store struct nfs4_client in the client side.
+But nfs4_client was obsolete and has been removed from the source code. 
+So remove the unused list.
+
+Signed-off-by: Yanchuan Nian <ycnian@gmail.com>
+---
+ fs/nfs/nfs4state.c |    1 -
+ 1 files changed, 0 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index c351e6b..51c9b0b 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -66,7 +66,6 @@
+ 
+ const nfs4_stateid zero_stateid;
+ static DEFINE_MUTEX(nfs_clid_init_mutex);
+-static LIST_HEAD(nfs4_clientid_list);
+ 
+ int nfs4_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
+ {
+-- 
+1.7.4.4
+
