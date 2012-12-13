@@ -1,81 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f46.google.com ([209.85.215.46]:39448 "EHLO
-	mail-la0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1946537Ab2LFS0o (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Dec 2012 13:26:44 -0500
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: linux-cifs@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        wine-devel@winehq.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 1/3] fcntl: Introduce new O_DENY* open flags for network filesystems
-Date: Thu,  6 Dec 2012 22:26:29 +0400
-Message-Id: <1354818391-7968-2-git-send-email-piastry@etersoft.ru>
-In-Reply-To: <1354818391-7968-1-git-send-email-piastry@etersoft.ru>
-References: <1354818391-7968-1-git-send-email-piastry@etersoft.ru>
+Received: from mx12.netapp.com ([216.240.18.77]:35825 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752802Ab2LMOpW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Dec 2012 09:45:22 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: Ricky Ng-Adam <rngadam@lophilo.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "neilb@suse.de" <neilb@suse.de>
+Subject: Re: WARNING: at linux/fs/inode.c:280 drop_nlink
+Date: Thu, 13 Dec 2012 14:45:18 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91192A83F@SACEXCMBX04-PRD.hq.netapp.com>
+References: <CAOAMTYQ_9bPjCtobC9kfUJrgiT8hx7FsMXoi5ZgWo+P1qjDb0g@mail.gmail.com>
+	 <20121112095255.5c7babcc@tlielax.poochiereds.net>
+	 <20121213063147.44b1cf73@tlielax.poochiereds.net>
+In-Reply-To: <20121213063147.44b1cf73@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch adds 3 flags:
-1) O_DENYREAD that doesn't permit read access
-2) O_DENYWRITE that doesn't permit write access
-3) O_DENYDELETE that doesn't permit delete or rename
-
-Network filesystems CIFS, SMB2.0, SMB3.0 and NFSv4 have such flags -
-this change can benefit cifs and nfs modules. While this change is ok
-for network filesystems, itsn't not targeted for local filesystems due
-to security problems (e.g. when a user process can deny root to delete
-a file).
-
-Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
----
- fs/fcntl.c                       |    5 +++--
- include/uapi/asm-generic/fcntl.h |   11 +++++++++++
- 2 files changed, 14 insertions(+), 2 deletions(-)
-
-diff --git a/fs/fcntl.c b/fs/fcntl.c
-index 71a600a..7abce5a 100644
---- a/fs/fcntl.c
-+++ b/fs/fcntl.c
-@@ -730,14 +730,15 @@ static int __init fcntl_init(void)
- 	 * Exceptions: O_NONBLOCK is a two bit define on parisc; O_NDELAY
- 	 * is defined as O_NONBLOCK on some platforms and not on others.
- 	 */
--	BUILD_BUG_ON(19 - 1 /* for O_RDONLY being 0 */ != HWEIGHT32(
-+	BUILD_BUG_ON(22 - 1 /* for O_RDONLY being 0 */ != HWEIGHT32(
- 		O_RDONLY	| O_WRONLY	| O_RDWR	|
- 		O_CREAT		| O_EXCL	| O_NOCTTY	|
- 		O_TRUNC		| O_APPEND	| /* O_NONBLOCK	| */
- 		__O_SYNC	| O_DSYNC	| FASYNC	|
- 		O_DIRECT	| O_LARGEFILE	| O_DIRECTORY	|
- 		O_NOFOLLOW	| O_NOATIME	| O_CLOEXEC	|
--		__FMODE_EXEC	| O_PATH
-+		__FMODE_EXEC	| O_PATH	| O_DENYREAD	|
-+		O_DENYWRITE	| O_DENYDELETE
- 		));
- 
- 	fasync_cache = kmem_cache_create("fasync_cache",
-diff --git a/include/uapi/asm-generic/fcntl.h b/include/uapi/asm-generic/fcntl.h
-index a48937d..5ac0d49 100644
---- a/include/uapi/asm-generic/fcntl.h
-+++ b/include/uapi/asm-generic/fcntl.h
-@@ -84,6 +84,17 @@
- #define O_PATH		010000000
- #endif
- 
-+#ifndef O_DENYREAD
-+#define O_DENYREAD	020000000	/* Do not permit read access */
-+#endif
-+#ifndef O_DENYWRITE
-+#define O_DENYWRITE	040000000	/* Do not permit write access */
-+#endif
-+/* FMODE_NONOTIFY	0100000000 */
-+#ifndef O_DENYDELETE
-+#define O_DENYDELETE	0200000000	/* Do not permit delete or rename */
-+#endif
-+
- #ifndef O_NDELAY
- #define O_NDELAY	O_NONBLOCK
- #endif
--- 
-1.7.10.4
-
+T24gVGh1LCAyMDEyLTEyLTEzIGF0IDA2OjMxIC0wNTAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
+T24gTW9uLCAxMiBOb3YgMjAxMiAwOTo1Mjo1NSAtMDUwMA0KPiBKZWZmIExheXRvbiA8amxheXRv
+bkByZWRoYXQuY29tPiB3cm90ZToNCj4gDQo+ID4gT24gU2F0LCAyNyBPY3QgMjAxMiAyMDoxOToz
+OCArMDgwMA0KPiA+IFJpY2t5IE5nLUFkYW0gPHJuZ2FkYW1AbG9waGlsby5jb20+IHdyb3RlOg0K
+PiA+IA0KPiA+ID4gQSBvbmUgdGltZSB3YXJuaW5nIGFmdGVyIHF1aXRlIGEgYml0IG9mIHVzYWdl
+IHdpdGggbm8gb3RoZXIgcHJvYmxlbXM6DQo+ID4gPiANCj4gPiA+IC0tLS0tLS0tLS0tLVsgY3V0
+IGhlcmUgXS0tLS0tLS0tLS0tLQ0KPiA+ID4gV0FSTklORzogYXQgL2hvbWUvcm5nYWRhbS9sb3Bo
+aWxvL2xpbnV4L2ZzL2lub2RlLmM6MjgwIGRyb3BfbmxpbmsrMHg1NC8weDYwKCkNCj4gPiA+IE1v
+ZHVsZXMgbGlua2VkIGluOiBpcHRfUkVESVJFQ1QgeHRfdGNwdWRwIGlwdGFibGVfbmF0IG5mX25h
+dA0KPiA+ID4gbmZfY29ubnRyYWNrX2lwdjQgbmZfZGVmcmFnX2lwdjQgbmZfY29ubnRyYWNrIGlw
+X3RhYmxlcyB4X3RhYmxlcw0KPiA+ID4gc25kX2F0bWVsX2FjOTdjIHNuZF9hYzk3X2NvZGVjIGFj
+OTdfYnVzIHNuZF9wY20gc25kX3BhZ2VfYWxsb2MNCj4gPiA+IHNuZF90aW1lciBzbmQgc291bmRj
+b3JlIGxvcGhpbG8oTykgaXB2NiBhdXRvZnM0DQo+ID4gPiBbPGMwMDBkZmRjPl0gKHVud2luZF9i
+YWNrdHJhY2UrMHgwLzB4ZjApIGZyb20gWzxjMDAxNzc4ND5dDQo+ID4gPiAod2Fybl9zbG93cGF0
+aF9jb21tb24rMHg0Yy8weDY0KQ0KPiA+ID4gWzxjMDAxNzc4ND5dICh3YXJuX3Nsb3dwYXRoX2Nv
+bW1vbisweDRjLzB4NjQpIGZyb20gWzxjMDAxNzdiOD5dDQo+ID4gPiAod2Fybl9zbG93cGF0aF9u
+dWxsKzB4MWMvMHgyNCkNCj4gPiA+IFs8YzAwMTc3Yjg+XSAod2Fybl9zbG93cGF0aF9udWxsKzB4
+MWMvMHgyNCkgZnJvbSBbPGMwMGE5MDg0Pl0NCj4gPiA+IChkcm9wX25saW5rKzB4NTQvMHg2MCkN
+Cj4gPiA+IFs8YzAwYTkwODQ+XSAoZHJvcF9ubGluaysweDU0LzB4NjApIGZyb20gWzxjMDEzMTI2
+OD5dDQo+ID4gPiAobmZzX2RlbnRyeV9pcHV0KzB4MzgvMHg1MCkNCj4gPiA+IFs8YzAxMzEyNjg+
+XSAobmZzX2RlbnRyeV9pcHV0KzB4MzgvMHg1MCkgZnJvbSBbPGMwMGE2N2IwPl0gKGRfa2lsbCsw
+eDljLzB4ZWMpDQo+ID4gPiBbPGMwMGE2N2IwPl0gKGRfa2lsbCsweDljLzB4ZWMpIGZyb20gWzxj
+MDBhNmNmMD5dIChkcHV0KzB4NzgvMHgxMzQpDQo+ID4gPiBbPGMwMGE2Y2YwPl0gKGRwdXQrMHg3
+OC8weDEzNCkgZnJvbSBbPGMwMDk1MTI4Pl0gKGZwdXQrMHgxOTQvMHgyMzgpDQo+ID4gPiBbPGMw
+MDk1MTI4Pl0gKGZwdXQrMHgxOTQvMHgyMzgpIGZyb20gWzxjMDA5MjM4MD5dIChmaWxwX2Nsb3Nl
+KzB4NjgvMHg4MCkNCj4gPiA+IFs8YzAwOTIzODA+XSAoZmlscF9jbG9zZSsweDY4LzB4ODApIGZy
+b20gWzxjMDAxYWI4OD5dDQo+ID4gPiAocHV0X2ZpbGVzX3N0cnVjdCsweGI0LzB4ZDgpDQo+ID4g
+PiBbPGMwMDFhYjg4Pl0gKHB1dF9maWxlc19zdHJ1Y3QrMHhiNC8weGQ4KSBmcm9tIFs8YzAwMWFk
+MWM+XQ0KPiA+ID4gKGRvX2V4aXQrMHgxMzQvMHg3MmMpDQo+ID4gPiBbPGMwMDFhZDFjPl0gKGRv
+X2V4aXQrMHgxMzQvMHg3MmMpIGZyb20gWzxjMDAxYjU5Yz5dIChkb19ncm91cF9leGl0KzB4NDAv
+MHhhYykNCj4gPiA+IFs8YzAwMWI1OWM+XSAoZG9fZ3JvdXBfZXhpdCsweDQwLzB4YWMpIGZyb20g
+WzxjMDAxYjYxOD5dDQo+ID4gPiAoX193YWtlX3VwX3BhcmVudCsweDAvMHgxOCkNCj4gPiA+IC0t
+LVsgZW5kIHRyYWNlIDNiZGEwZWMzYjI3NmUwNDAgXS0tLQ0KPiA+ID4gDQo+ID4gPiBjbGllbnQ6
+DQo+ID4gPiANCj4gPiA+IExpbnV4IGxvcGhpbG8gMy40LjQrICMzNCBTYXQgT2N0IDYgMTY6Mjg6
+NTcgQ1NUIDIwMTIgYXJtdjV0ZWpsIEdOVS9MaW51eA0KPiA+ID4gDQo+ID4gPiBzZXJ2ZXI6DQo+
+ID4gPiANCj4gPiA+IExpbnV4IHJuZ2FkYW0tdGhpbmsgMy41LjAtMTctZ2VuZXJpYyAjMjgtVWJ1
+bnR1IFNNUCBUdWUgT2N0IDkgMTk6MzI6MDgNCj4gPiA+IFVUQyAyMDEyIGk2ODYgaTY4NiBpNjg2
+IEdOVS9MaW51eA0KPiA+ID4gDQo+ID4gPiAjIGV4cG9ydGZzIC12DQo+ID4gPiAvaG9tZS9ybmdh
+ZGFtL2xvcGhpbG8ubmZzDQo+ID4gPiA8d29ybGQ+KHJ3LGFzeW5jLHdkZWxheSxub19yb290X3Nx
+dWFzaCxub19zdWJ0cmVlX2NoZWNrKQ0KPiA+ID4gL2hvbWUvcm5nYWRhbS9sb3BoaWxvDQo+ID4g
+PiA8d29ybGQ+KHJ3LHdkZWxheSxyb290X3NxdWFzaCxhbGxfc3F1YXNoLG5vX3N1YnRyZWVfY2hl
+Y2ssYW5vbnVpZD0wLGFub25naWQ9MCkNCj4gPiA+IA0KPiA+ID4gc2VlbXMgdG8gaGF2ZSBvY2N1
+cnJlZCB3aGlsZSBhIGJ1bmNoIG9mIGZhaWlsbmcgbHN0YXQgb24gbG9uZyBwYXRocw0KPiA+ID4g
+d2VyZSBnb2luZyBvbjoNCj4gPiA+IA0KPiA+ID4gc3RhdCB7IFtFcnJvcjogRU5PRU5ULCBsc3Rh
+dA0KPiA+ID4gJy9ob21lL2xvcGhpbG8vbG9waGlsby9sbWMvdXNlcnMvcm5nYWRhbS9sb3BoaWxv
+anMtZXhhbXBsZS5naXQvY2xpZW50L2NvZGUvY29sb3JwaWNrZXIvaW1nL2NvbG9ycGlja2VyL2lt
+Zy9jb2xvcnBpY2tlci9pbWcvY29sb3JwaWNrZXIvanMvY29sb3JwaWNrZXIvY3NzL2NvbG9ycGlj
+a2VyJ10NCj4gPiA+ICAgZXJybm86IDM0LA0KPiA+ID4gICBjb2RlOiAnRU5PRU5UJywNCj4gPiA+
+ICAgcGF0aDogJy9ob21lL2xvcGhpbG8vbG9waGlsby9sbWMvdXNlcnMvcm5nYWRhbS9sb3BoaWxv
+anMtZXhhbXBsZS5naXQvY2xpZW50L2NvZGUvY29sb3JwaWNrZXIvaW1nL2NvbG9ycGlja2VyL2lt
+Zy9jb2xvcnBpY2tlci9pbWcvY29sb3JwaWNrZXIvanMvY29sb3JwaWNrZXIvY3NzL2NvbG9ycGlj
+a2VyJw0KPiA+ID4gfQ0KPiA+ID4gDQo+ID4gDQo+ID4gVGhlIHdhcm5pbmcgaXMgZmFpcmx5IGhh
+cm1sZXNzLCBidXQgaXQgZG9lcyBsb29rIHNjYXJ5LiBOZWlsIEJyb3duIGhhZA0KPiA+IGEgcGF0
+Y2ggdG8gZml4IGl0LCBidXQgSSBkb24ndCB0aGluayBUcm9uZCBldmVyIHRvb2sgaXQgb3IgY29t
+bWVudGVkIG9uDQo+ID4gaXQuDQo+ID4gDQo+ID4gVHJvbmQsIGFueSB0aG91Z2h0cyBvbiBOZWls
+J3Mgb25lLWxpbmUgcGF0Y2ggaGVyZT8NCj4gPiANCj4gPiAgICAgaHR0cHM6Ly9sa21sLm9yZy9s
+a21sLzIwMTIvOS8yNS8yNA0KPiA+IA0KPiA+IChOb3RlIHRoYXQgSSBzdGlsbCBoYXZlIG15IGRv
+dWJ0cyBhcyB0byB3aGV0aGVyIENJRlMgb3IgTkZTIG91Z2h0IHRvIGJlDQo+ID4gbWFuaXB1bGF0
+aW5nIG9yIHJlbHlpbmcgb24gdGhlIGlfbmxpbmsgbGlrZSB0aGlzLCBidXQgdGhlIHBhdGNoIGxv
+b2tzDQo+ID4gZmFpcmx5IGhhcm1sZXNzIGFzIGFuIGludGVyaW0gZml4KS4NCj4gPiANCj4gDQo+
+IEhpIFRyb25kLA0KPiANCj4gSSBhc2tlZCBhYm91dCB0aGlzIGEgd2hpbGUgYmFjayBhbmQgbmV2
+ZXIgZ290IGEgcmVzcG9uc2UuIEkgaGF2ZSBhDQo+IGZldyBidWdzIG9wZW4gYWdhaW5zdCBGZWRv
+cmEgb24gdGhpcyBhbmQgd291bGRuJ3QgbWluZCBsYXlpbmcgdGhpcyB0bw0KPiByZXN0LiBJcyB0
+aGVyZSBhbnkgcmVhc29uIG5vdCB0byB1c2UgdGhlIG5mc19kcm9wX25saW5rKCkgaGVscGVyIGlu
+DQo+IG5mc19kZW50cnlfaXB1dCgpPw0KDQpZb3UgbWVhbiBhc2lkZSBmcm9tIHRoZSBmYWN0IHRo
+YXQgc2ItPnNfcmVtb3ZlX2NvdW50IHJlbWFpbnMgYSByYWN5DQpwaWVjZSBvZiBjcmFwIHRoYXQg
+c2VydmVzIG5vIGdvb2QgcHVycG9zZSBmb3IgTkZTLCBhbmQgeWV0IHdpbGwgY29udGludWUNCnRv
+IGdpdmUgdXMgZ3JpZWY/DQoNCkknZCBwcmVmZXIgdG8gc2VlIGEgc29sdXRpb24gdGhhdCBnZXRz
+IHJpZCBvZg0KZHJvcF9ubGluaygpL2NsZWFyX25saW5rKCkvc2V0X25saW5rKCkgYWx0b2dldGhl
+ci4gVGhleSBhbGwgc3Vjay4uLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNs
+aWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3
+dy5uZXRhcHAuY29tDQo=
