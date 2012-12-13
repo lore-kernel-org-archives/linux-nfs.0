@@ -1,47 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:21616 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754052Ab2LKXUv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Dec 2012 18:20:51 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: NeilBrown <neilb@suse.de>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: NFS regression - EIO is returned instead of ENOSPC
-Date: Tue, 11 Dec 2012 23:20:38 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA911923813@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20121212092813.23afbc5f@notabene.brown>
-	 <20121212095304.368c9708@notabene.brown>
-	 <1355267807.23203.16.camel@lade.trondhjem.org>
-In-Reply-To: <1355267807.23203.16.camel@lade.trondhjem.org>
-Content-Type: text/plain; charset="utf-8"
+Received: from tirith.ics.muni.cz ([147.251.4.36]:34018 "EHLO
+	tirith.ics.muni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753277Ab2LMNwH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Dec 2012 08:52:07 -0500
+Received: from anubis.ics.muni.cz (anubis.ics.muni.cz [147.251.17.147])
+	(authenticated user=xhejtman@META bits=0)
+	by tirith.ics.muni.cz (8.13.8/8.13.8/SuSE Linux 0.8) with ESMTP id qBDDZs6Q004187
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Thu, 13 Dec 2012 14:35:55 +0100
+Received: from xhejtman by anubis.ics.muni.cz with local (Exim 4.80)
+	(envelope-from <xhejtman@ics.muni.cz>)
+	id 1Tj8x8-00009f-60
+	for linux-nfs@vger.kernel.org; Thu, 13 Dec 2012 14:35:54 +0100
+Date: Thu, 13 Dec 2012 14:35:54 +0100
+From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+To: linux-nfs@vger.kernel.org
+Subject: local_lock mount option
+Message-ID: <20121213133554.GO10897@ics.muni.cz>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-2
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDEyLTEyLTExIGF0IDE4OjE2IC0wNTAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+IEhtbS4uLiBJIGNhbiBzZWUgMiBwbGFjZXMgd2hlcmUgd2UncmUgc2V0dGluZyB0aGUgUGFn
-ZUVycm9yIGZsYWcuDQo+IA0KPiAgICAgIDEuIG5mc191cGRhdGVwYWdlKCk6IGluIHRoaXMgY2Fz
-ZSwgdGhlIGVycm9yIG9jY3VycmVkIHdoZW4gd2UgdHJpZWQNCj4gICAgICAgICB0byBjaGFuZ2Ug
-dGhlIHBhZ2UgY29udGVudHMuIFNpbmNlIHdlJ3JlIGhvbGRpbmcgdGhlIHBhZ2UgbG9jaywNCj4g
-ICAgICAgICBhbmQgc28gcmF0aGVyIHRoYW4gbWFyayB0aGUgcGFnZSBhcyBiYWQsIHdlIGNvdWxk
-IHByb2JhYmx5IGp1c3QNCj4gICAgICAgICB3cml0ZSBiYWNrIGV4aXN0aW5nIGRpcnR5IGFyZWFz
-ICh1c2luZyBuZnNfd2JfcGFnZSgpKSBhbmQgdGhlbg0KPiAgICAgICAgIHJlbW92ZSBpdCBmcm9t
-IHRoZSBtYXBwaW5nLg0KPiAgICAgIDIuICBuZnNfd3JpdGVfY29tcGxldGlvbigpOiBoZXJlIHRo
-ZSB3cml0ZWJhY2sgZXJyb3IgYXBwbGllcyB0byB0aGUNCj4gICAgICAgICBlbnRpcmUgZGlydHkg
-YXJlYSBvbiB0aGUgcGFnZSwgYW5kIHRoZXJlIGlzIG5vIHBvaW50IGluIHRyeSB0bw0KPiAgICAg
-ICAgIHdyaXRlIGJhY2sgYWdhaW4uIEJldHRlciBqdXN0IGV2aWN0IHRoZSBwYWdlIGZyb20gdGhl
-IHBhZ2UgY2FjaGUNCj4gICAgICAgICAod2hpY2ggaXMgd2hhdCBuZnNfemFwX21hcHBpbmcoKSBp
-cyBzdXBwb3NlZCB0byBkbykuIFdoaWxlDQo+ICAgICAgICAgc2V0dGluZyB0aGUgUGFnZUVycm9y
-IGZsYWcgZG9lcyBjYXVzZSBzb21lIG9mIHRoZSB3cml0ZWJhY2sNCj4gICAgICAgICBmdW5jdGlv
-bnMgdG8gcmV0dXJuIEVJTywgdGhhdCdzIG5vdCByZWFsbHkgd2hhdCB3ZSdyZSBhZnRlcjsgd2UN
-Cj4gICAgICAgICBhbHJlYWR5IHJlcG9ydCBlcnJvcnMgbW9yZSBjb21wbGV0ZWx5IHZpYSB0aGUg
-b3BlbiBjb250ZXh0Lg0KPiANCj4gU28gZm9yIG5vdywgY2FuJ3Qgd2UganVzdCBjaGFuZ2UgbmZz
-X3NldF9wYWdlZXJyb3IoKSB0byBub3QgYm90aGVyDQo+IHNldHRpbmcgdGhlIFBHX2Vycm9yIGZs
-YWc/IFRoZW4gaW4gdGhlIGZ1dHVyZSB3ZSBtaWdodCB3YW50IHRvIG1ha2UNCj4gbmZzX3VwZGF0
-ZXBhZ2UgYSBiaXQgbW9yZSBzb3BoaXN0aWNhdGVkIGluIGhvdyBpdCBkZWFscyB3aXRoIHRob3Nl
-DQo+IGVycm9ycy4uLg0KDQpVbHRpbWF0ZWx5LCB3aGF0IEknbSBzYXlpbmcgaXMgdGhhdCBQYWdl
-RXJyb3IgaXMgYSBoYWNrIGZvciBwYXNzaW5nDQplcnJvcnMgYXJvdW5kLiBTaW5jZSB3ZSBoYXZl
-IG91ciBvd24gaGFjayBmb3IgZG9pbmcgdGhlIHNhbWUsIHRoZW4gd2h5DQp1c2UgUGFnZUVycm9y
-IGF0IGFsbD8NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRh
-aW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNv
-bQ0K
+Hi,
+
+is this option supported and should work?
+
+It seems that in SLES and RHEL kernel, it is ignored:
+mount nfs.server:/ /storage -t nfs4 -o sec=krb5,local_lock=all
+
+cat /proc/mounts  | grep storage
+nfs.server:/ /storage nfs4
+rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=krb5,clientaddr=xxx.xxx.xxx.xxx,minorversion=0,local_lock=none,addr=xxx.xxx.xxx.xxx 0 0
+
+and it seems, that it actually tries to lock through NFS.
+
+Has this been fixed in later kernels or this is broken at all?
+
+-- 
+Luká¹ Hejtmánek
