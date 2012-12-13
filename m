@@ -1,56 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f53.google.com ([209.85.216.53]:50716 "EHLO
-	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754314Ab2LLRgj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Dec 2012 12:36:39 -0500
-Received: by mail-qa0-f53.google.com with SMTP id a19so1356915qad.19
-        for <linux-nfs@vger.kernel.org>; Wed, 12 Dec 2012 09:36:38 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, iisaman@netapp.com
-Subject: [PATCH] nfs: fix page dirtying in NFS DIO read codepath
-Date: Wed, 12 Dec 2012 12:36:31 -0500
-Message-Id: <1355333791-4814-1-git-send-email-jlayton@redhat.com>
+Received: from mail-pa0-f46.google.com ([209.85.220.46]:40946 "EHLO
+	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750720Ab2LMGra (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Dec 2012 01:47:30 -0500
+From: ycnian@gmail.com
+To: Trond.Myklebust@netapp.com
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Yanchuan Nian <ycnian@gmail.com>
+Subject: [PATCH] nfs: Don't return referenced delegations
+Date: Thu, 13 Dec 2012 14:37:16 +0800
+Message-Id: <1355380636-10915-1-git-send-email-ycnian@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The NFS DIO code will dirty pages that catch read responses in order to
-handle the case where someone is doing DIO reads into an mmapped buffer.
-The existing code doesn't really do the right thing though since it
-doesn't take into account the case where we might be attempting to read
-past the EOF.
+From: Yanchuan Nian <ycnian@gmail.com>
 
-Fix the logic in that code to only dirty pages that ended up receiving
-data from the read. Note too that it really doesn't matter if
-NFS_IOHDR_ERROR is set or not. All that matters is if the page was
-altered by the read.
+The client returns unreferenced delegations in state management. It scans all
+delegations and tests the NFS_DELEGATION_REFERENCED flag. if this flag is not
+set, NFS_DELEGATION_RETURN will be set and the delegation will be returned. 
+But unfortunately NFS_DELEGATION_REFERENCED is cleared after the testing, so 
+delegations which are still being used will be returned in the next state
+management.
 
-Cc: Fred Isaman <iisaman@netapp.com>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Yanchuan Nian <ycnian@gmail.com>
 ---
- fs/nfs/direct.c | 9 ++-------
- 1 file changed, 2 insertions(+), 7 deletions(-)
+ fs/nfs/delegation.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 594f4e7..0bd7a55 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -266,13 +266,8 @@ static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
- 		struct nfs_page *req = nfs_list_entry(hdr->pages.next);
- 		struct page *page = req->wb_page;
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 81c5eec..485e8c0 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -506,7 +506,7 @@ static void nfs_mark_return_unreferenced_delegations(struct nfs_server *server)
+ 	struct nfs_delegation *delegation;
  
--		if (!PageCompound(page)) {
--			if (test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
--				if (bytes < hdr->good_bytes)
--					set_page_dirty(page);
--			} else
--				set_page_dirty(page);
--		}
-+		if (!PageCompound(page) && bytes < hdr->good_bytes)
-+			set_page_dirty(page);
- 		bytes += req->wb_bytes;
- 		nfs_list_remove_request(req);
- 		nfs_direct_readpage_release(req);
+ 	list_for_each_entry_rcu(delegation, &server->delegations, super_list) {
+-		if (test_and_clear_bit(NFS_DELEGATION_REFERENCED, &delegation->flags))
++		if (test_bit(NFS_DELEGATION_REFERENCED, &delegation->flags))
+ 			continue;
+ 		nfs_mark_return_delegation(server, delegation);
+ 	}
 -- 
-1.7.11.7
+1.7.4.4
 
