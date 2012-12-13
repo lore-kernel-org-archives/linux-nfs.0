@@ -1,38 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from lxorguk.ukuu.org.uk ([81.2.110.251]:57008 "EHLO
-	lxorguk.ukuu.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751271Ab2LGVaA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Dec 2012 16:30:00 -0500
-Date: Fri, 7 Dec 2012 21:35:20 +0000
-From: Alan Cox <alan@lxorguk.ukuu.org.uk>
-To: Pavel Shilovsky <piastry@etersoft.ru>
-Cc: Christoph Hellwig <hch@infradead.org>, <linux-cifs@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>,
-        <wine-devel@winehq.org>, <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/3] Add O_DENY* flags to fcntl and cifs
-Message-ID: <20121207213520.05dd5a3b@pyramind.ukuu.org.uk>
-In-Reply-To: <495d17310e0a687d446afc86def0f058@office.etersoft.ru>
-References: <1354818391-7968-1-git-send-email-piastry@etersoft.ru>
-	<20121207161602.GA17710@infradead.org>
-	<495d17310e0a687d446afc86def0f058@office.etersoft.ru>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mx1.netapp.com ([216.240.18.38]:30779 "EHLO mx1.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932857Ab2LMOe4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Dec 2012 09:34:56 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "ycnian@gmail.com" <ycnian@gmail.com>
+CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs: Don't return referenced delegations
+Date: Thu, 13 Dec 2012 14:34:53 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91192A73F@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1355380636-10915-1-git-send-email-ycnian@gmail.com>
+In-Reply-To: <1355380636-10915-1-git-send-email-ycnian@gmail.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> The problem is the possibility of denial-of-service attacks here. We 
-> can try to prevent them by:
-> 1) specifying an extra security bit on the file that indicates that 
-> share flags are accepted (like we have for mandatory locks now) and 
-> setting it for neccessary files only, or
-> 2) adding a special mount option (but it it probably makes sense if we 
-> decided to add this support for CIFS and NFS only).
-
-3) making it a property that the process opts into - the same fs can have
-Linux and wine users at once.
-
-But for such a big set of changes and with the kind of potential fallout
-you need to demonstrate a good practical use case IMHO, not just a "neat
-idea I had".
-
-Alan
+T24gVGh1LCAyMDEyLTEyLTEzIGF0IDE0OjM3ICswODAwLCB5Y25pYW5AZ21haWwuY29tIHdyb3Rl
+Og0KPiBGcm9tOiBZYW5jaHVhbiBOaWFuIDx5Y25pYW5AZ21haWwuY29tPg0KPiANCj4gVGhlIGNs
+aWVudCByZXR1cm5zIHVucmVmZXJlbmNlZCBkZWxlZ2F0aW9ucyBpbiBzdGF0ZSBtYW5hZ2VtZW50
+LiBJdCBzY2FucyBhbGwNCj4gZGVsZWdhdGlvbnMgYW5kIHRlc3RzIHRoZSBORlNfREVMRUdBVElP
+Tl9SRUZFUkVOQ0VEIGZsYWcuIGlmIHRoaXMgZmxhZyBpcyBub3QNCj4gc2V0LCBORlNfREVMRUdB
+VElPTl9SRVRVUk4gd2lsbCBiZSBzZXQgYW5kIHRoZSBkZWxlZ2F0aW9uIHdpbGwgYmUgcmV0dXJu
+ZWQuIA0KPiBCdXQgdW5mb3J0dW5hdGVseSBORlNfREVMRUdBVElPTl9SRUZFUkVOQ0VEIGlzIGNs
+ZWFyZWQgYWZ0ZXIgdGhlIHRlc3RpbmcsIHNvIA0KPiBkZWxlZ2F0aW9ucyB3aGljaCBhcmUgc3Rp
+bGwgYmVpbmcgdXNlZCB3aWxsIGJlIHJldHVybmVkIGluIHRoZSBuZXh0IHN0YXRlDQo+IG1hbmFn
+ZW1lbnQuDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBZYW5jaHVhbiBOaWFuIDx5Y25pYW5AZ21haWwu
+Y29tPg0KPiAtLS0NCj4gIGZzL25mcy9kZWxlZ2F0aW9uLmMgfCAgICAyICstDQo+ICAxIGZpbGVz
+IGNoYW5nZWQsIDEgaW5zZXJ0aW9ucygrKSwgMSBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1n
+aXQgYS9mcy9uZnMvZGVsZWdhdGlvbi5jIGIvZnMvbmZzL2RlbGVnYXRpb24uYw0KPiBpbmRleCA4
+MWM1ZWVjLi40ODVlOGMwIDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvZGVsZWdhdGlvbi5jDQo+ICsr
+KyBiL2ZzL25mcy9kZWxlZ2F0aW9uLmMNCj4gQEAgLTUwNiw3ICs1MDYsNyBAQCBzdGF0aWMgdm9p
+ZCBuZnNfbWFya19yZXR1cm5fdW5yZWZlcmVuY2VkX2RlbGVnYXRpb25zKHN0cnVjdCBuZnNfc2Vy
+dmVyICpzZXJ2ZXIpDQo+ICAJc3RydWN0IG5mc19kZWxlZ2F0aW9uICpkZWxlZ2F0aW9uOw0KPiAg
+DQo+ICAJbGlzdF9mb3JfZWFjaF9lbnRyeV9yY3UoZGVsZWdhdGlvbiwgJnNlcnZlci0+ZGVsZWdh
+dGlvbnMsIHN1cGVyX2xpc3QpIHsNCj4gLQkJaWYgKHRlc3RfYW5kX2NsZWFyX2JpdChORlNfREVM
+RUdBVElPTl9SRUZFUkVOQ0VELCAmZGVsZWdhdGlvbi0+ZmxhZ3MpKQ0KPiArCQlpZiAodGVzdF9i
+aXQoTkZTX0RFTEVHQVRJT05fUkVGRVJFTkNFRCwgJmRlbGVnYXRpb24tPmZsYWdzKSkNCj4gIAkJ
+CWNvbnRpbnVlOw0KPiAgCQluZnNfbWFya19yZXR1cm5fZGVsZWdhdGlvbihzZXJ2ZXIsIGRlbGVn
+YXRpb24pOw0KPiAgCX0NCg0KVGhlIGNsZWFyaW5nIG9mIHRoZSBiaXQgaGVyZSBpcyAxMDAlIGlu
+dGVudGlvbmFsLiBUaGlzIGlzIGEgdmFyaWFudCBvbg0KYmFzaWMgbWFyay1hbmQtc3dlZXAgZ2Fy
+YmFnZSBjb2xsZWN0aW9uIHdoZXJlIGlmIHRoZSBiaXQgaGFzbid0IGJlZW4gc2V0DQphZ2FpbiB0
+aGUgbmV4dCB0aW1lIHdlIHNjYW4sIHRoZW4gd2UgYXNzdW1lIHRoZSBkZWxlZ2F0aW9uIGlzbid0
+IGJlaW5nDQp1c2VkLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBt
+YWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRh
+cHAuY29tDQo=
