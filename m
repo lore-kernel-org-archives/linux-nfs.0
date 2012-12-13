@@ -1,43 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:37295 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752654Ab2LTNmp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Dec 2012 08:42:45 -0500
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91196C0B0@SACEXCMBX04-PRD.hq.netapp.com>
-References: <4FA345DA4F4AE44899BD2B03EEEC2FA91196C0B0@SACEXCMBX04-PRD.hq.netapp.com> <6078496.RFsWrNWv86@localhost> <4FA345DA4F4AE44899BD2B03EEEC2FA91196AB48@SACEXCMBX04-PRD.hq.netapp.com> <2073442.2DDQICUc2y@localhost>
-To: "Myklebust\, Trond" <Trond.Myklebust@netapp.com>
-Cc: dhowells@redhat.com,
-        =?us-ascii?Q?=3D=3Futf-7=3FB=3FUGF3ZStBVUktIFNpa2?=
-	 =?us-ascii?Q?9yYQ=3D=3D=3F=3D?= <pawel.sikora@agmk.net>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [3.6.11] NFS: Cache request denied due to non-unique superblock keys.
+Received: from tirith.ics.muni.cz ([147.251.4.36]:55968 "EHLO
+	tirith.ics.muni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932230Ab2LMOk3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Dec 2012 09:40:29 -0500
+Date: Thu, 13 Dec 2012 15:40:25 +0100
+From: Lukas Hejtmanek <xhejtman@gmail.com>
+To: Fred Isaman <faisaman4@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: local_lock mount option
+Message-ID: <20121213144025.GA1045@ics.muni.cz>
+References: <20121213133554.GO10897@ics.muni.cz>
+ <CADnza44SJ0JZN05OtMZcjsm+NwdMVPGTa2f2vG9TbpUJR_B4Zw@mail.gmail.com>
+ <20121213142336.GP10897@ics.muni.cz>
+ <CADnza44SGwAJTJ8sFnAOoLHRPp1Mt9pJKk-scWmrigxD2G=zpQ@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Date: Thu, 20 Dec 2012 13:42:37 +0000
-Message-ID: <30146.1356010957@warthog.procyon.org.uk>
+Content-Type: text/plain; charset=iso-8859-2
+In-Reply-To: <CADnza44SGwAJTJ8sFnAOoLHRPp1Mt9pJKk-scWmrigxD2G=zpQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Myklebust, Trond <Trond.Myklebust@netapp.com> wrote:
-
-> From e8ed657ba5edc8c9339e00ab2fd235ab1dd94cd5 Mon Sep 17 00:00:00 2001
-> From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Date: Wed, 19 Dec 2012 16:56:28 -0500
-> Subject: [PATCH] NFS: Kill fscache warnings when mounting without -ofsc
-> MIME-Version: 1.0
-> Content-Type: text/plain; charset=UTF-8
-> Content-Transfer-Encoding: 8bit
+On Thu, Dec 13, 2012 at 09:38:04AM -0500, Fred Isaman wrote:
+> It is turned off here:
 > 
-> The fscache code will currently bleat a "non-unique superblock keys"
-> warning even if the user is mounting without the 'fsc' option.
-> There should be no reason to even initialise the superblock cache cookie
-> unless we're planning on using fscache for something, so ensure that
-> we check for the NFS_OPTION_FSCACHE flag before calling into the
-> fscache code.
-> 
-> Reported-by: Pawe≈Ç Sikora <pawel.sikora@agmk.net>
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Cc: David Howells <dhowells@redhat.com>
+> static void nfs4_validate_mount_flags(struct nfs_parsed_mount_data *args)
+> {
+> 	args->flags &= ~(NFS_MOUNT_NONLM|NFS_MOUNT_NOACL|NFS_MOUNT_VER3|
+> 			 NFS_MOUNT_LOCAL_FLOCK|NFS_MOUNT_LOCAL_FCNTL);
+> }
 
-Acked-by: David Howells <dhowells@redhat.com>
+ok, thanks. Is there any reason for this? I need to turn of locks for NFSv4 as
+they seem to not work properly with NFS server on CXFS.
+
+-- 
+Luk·π Hejtm·nek
