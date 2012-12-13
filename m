@@ -1,126 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:52729 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:55816 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754860Ab2LMBFV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Dec 2012 20:05:21 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: NeilBrown <neilb@suse.de>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: NULL dereference from nfs_destroy_server, with possible fix.
-Date: Thu, 13 Dec 2012 01:05:15 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91192944F@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20121213110528.0a04e399@notabene.brown>
-In-Reply-To: <20121213110528.0a04e399@notabene.brown>
-Content-Type: text/plain; charset="utf-8"
+	id S1756584Ab2LMQuc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Dec 2012 11:50:32 -0500
+Date: Thu, 13 Dec 2012 11:50:28 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Suresh Jayaraman <sjayaraman@suse.com>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] idmapd: allow non-ASCII characters (UTF-8) in NFSv4
+ domain name
+Message-ID: <20121213165028.GE24855@fieldses.org>
+References: <50CA0254.4030308@suse.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <50CA0254.4030308@suse.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTEyLTEzIGF0IDExOjA1ICsxMTAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IEhp
-LA0KPiANCj4gSSByZWNlbnRseSBtYW5hZ2VkIHRvIGdldCB0aGUgZm9sbG93aW5nIHN0YWNrIHRy
-YWNlLCB0aG91Z2ggSSBoYXZlbid0IGJlZW4NCj4gYWJsZSB0byByZXByb2R1Y2UgaXQuDQo+IA0K
-PiBEZWMgMTIgMTc6MTc6MDQgaHAga2VybmVsOiBbMjI2ODQuODk0NDM0XSBCVUc6IHVuYWJsZSB0
-byBoYW5kbGUga2VybmVsIE5VTEwgcG9pbnRlciBkZXJlZmVyZW5jZSBhdCAwMDAwMDAwMDAwMDAw
-MzEwDQo+IERlYyAxMiAxNzoxNzowNCBocCBrZXJuZWw6IFsyMjY4NC44OTQ0OTBdIElQOiBbPGZm
-ZmZmZmZmODEzMjQ4Zjk+XSBubG1jbG50X2RvbmUrMHg5LzB4MzANCj4gRGVjIDEyIDE3OjE3OjA0
-IGhwIGtlcm5lbDogWzIyNjg0Ljg5NDUyOV0gUEdEIDEzY2M1YTA2NyBQVUQgMTNjYTBhMDY3IFBN
-RCAwIA0KPiBEZWMgMTIgMTc6MTc6MDQgaHAga2VybmVsOiBbMjI2ODQuODk0NTkzXSBPb3BzOiAw
-MDAwIFsjMV0gUFJFRU1QVCBTTVAgREVCVUdfUEFHRUFMTE9DDQo+IERlYyAxMiAxNzoxNzowNCBo
-cCBrZXJuZWw6IFsyMjY4NC44OTQ2NjBdIE1vZHVsZXMgbGlua2VkIGluOg0KPiBEZWMgMTIgMTc6
-MTc6MDQgaHAga2VybmVsOiBbMjI2ODQuODk0NjkxXSBDUFUgMCANCj4gRGVjIDEyIDE3OjE3OjA0
-IGhwIGtlcm5lbDogWzIyNjg0Ljg5NDcwOF0gUGlkOiA2ODc0LCBjb21tOiBscyBOb3QgdGFpbnRl
-ZCAzLjcuMC1yYzErICMzMjMgSFAgUHJvTGlhbnQgTUwzMTAgRzMNCj4gRGVjIDEyIDE3OjE3OjA0
-IGhwIGtlcm5lbDogWzIyNjg0Ljg5NDc0NV0gUklQOiAwMDEwOls8ZmZmZmZmZmY4MTMyNDhmOT5d
-ICBbPGZmZmZmZmZmODEzMjQ4Zjk+XSBubG1jbG50X2RvbmUrMHg5LzB4MzANCj4gRGVjIDEyIDE3
-OjE3OjA0IGhwIGtlcm5lbDogWzIyNjg0Ljg5NDc4M10gUlNQOiAwMDE4OmZmZmY4ODAxMzlkNTk5
-NTggIEVGTEFHUzogMDAwMTAyOTINCj4gRGVjIDEyIDE3OjE3OjA0IGhwIGtlcm5lbDogWzIyNjg0
-Ljg5NDgwNF0gUkFYOiAwMDAwMDAwMDAwMDAwMDAwIFJCWDogZmZmZjg4MDEzNzYwZTdmMCBSQ1g6
-IDAwMDAwMDAwMDAwMDAwMDANCj4gRGVjIDEyIDE3OjE3OjA0IGhwIGtlcm5lbDogWzIyNjg0Ljg5
-NDgyOV0gUkRYOiAwMDAwMDAwMDAwMDAwMDQ2IFJTSTogMDAwMDAwMDAwMDAwMDAwMSBSREk6IDAw
-MDAwMDAwMDAwMDAwMDANCj4gRGVjIDEyIDE3OjE3OjA0IGhwIGtlcm5lbDogWzIyNjg0Ljg5NDg1
-Ml0gUkJQOiBmZmZmODgwMTM5ZDU5OTY4IFIwODogMDAwMDAwMDAwMDAwMDAwMCBSMDk6IDAwMDAw
-MDAwMDAwMDAwMDANCj4gRGVjIDEyIDE3OjE3OjA0IGhwIGtlcm5lbDogWzIyNjg0Ljg5NDg3OF0g
-UjEwOiAwMDAwMDAwMDAwMDAwMDAxIFIxMTogMDAwMDAwMDAwMDAwMDAwMCBSMTI6IGRlYWQwMDAw
-MDAyMDAyMDANCj4gRGVjIDEyIDE3OjE3OjA0IGhwIGtlcm5lbDogWzIyNjg0Ljg5NDkwMF0gUjEz
-OiBmZmZmODgwMTNiZGZhZWQwIFIxNDogZGVhZDAwMDAwMDIwMDIwMCBSMTU6IGZmZmY4ODAxMzlm
-ZGU3ZjANCj4gRGVjIDEyIDE3OjE3OjA0IGhwIGtlcm5lbDogWzIyNjg0Ljg5NDkyNF0gRlM6ICAw
-MDAwN2YyNzliYmY1N2MwKDAwMDApIEdTOmZmZmY4ODAxNDdjMDAwMDAoMDAwMCkga25sR1M6MDAw
-MDAwMDAwMDAwMDAwMA0KPiBEZWMgMTIgMTc6MTc6MDQgaHAga2VybmVsOiBbMjI2ODQuODk0OTQ3
-XSBDUzogIDAwMTAgRFM6IDAwMDAgRVM6IDAwMDAgQ1IwOiAwMDAwMDAwMDgwMDUwMDNiDQo+IERl
-YyAxMiAxNzoxNzowNCBocCBrZXJuZWw6IFsyMjY4NC44OTQ5NjhdIENSMjogMDAwMDAwMDAwMDAw
-MDMxMCBDUjM6IDAwMDAwMDAxMzdlYTEwMDAgQ1I0OiAwMDAwMDAwMDAwMDAwN2YwDQo+IERlYyAx
-MiAxNzoxNzowNCBocCBrZXJuZWw6IFsyMjY4NC44OTQ5OTVdIERSMDogMDAwMDAwMDAwMDAwMDAw
-MCBEUjE6IDAwMDAwMDAwMDAwMDAwMDAgRFIyOiAwMDAwMDAwMDAwMDAwMDAwDQo+IERlYyAxMiAx
-NzoxNzowNCBocCBrZXJuZWw6IFsyMjY4NC44OTUwMTddIERSMzogMDAwMDAwMDAwMDAwMDAwMCBE
-UjY6IDAwMDAwMDAwZmZmZjBmZjAgRFI3OiAwMDAwMDAwMDAwMDAwNDAwDQo+IERlYyAxMiAxNzox
-NzowNCBocCBrZXJuZWw6IFsyMjY4NC44OTUwMzldIFByb2Nlc3MgbHMgKHBpZDogNjg3NCwgdGhy
-ZWFkaW5mbyBmZmZmODgwMTM5ZDU4MDAwLCB0YXNrIGZmZmY4ODAxM2JiZGMwNTApDQo+IERlYyAx
-MiAxNzoxNzowNCBocCBrZXJuZWw6IFsyMjY4NC44OTUwNjFdIFN0YWNrOg0KPiBEZWMgMTIgMTc6
-MTc6MDQgaHAga2VybmVsOiBbMjI2ODQuODk1MDc5XSAgZmZmZjg4MDEzOWQ1OTk3OCBmZmZmODgw
-MTM3NjBlN2YwIGZmZmY4ODAxMzlkNTk5NzggZmZmZmZmZmY4MTJjNDFmZg0KPiBEZWMgMTIgMTc6
-MTc6MDQgaHAga2VybmVsOiBbMjI2ODQuODk1MTQ4XSAgZmZmZjg4MDEzOWQ1OTliOCBmZmZmZmZm
-ZjgxMmM0ZWFiIGZmZmZmZmZmODEyYzRkOWIgZmZmZjg4MDEzNzYwZTdmMA0KPiBEZWMgMTIgMTc6
-MTc6MDQgaHAga2VybmVsOiBbMjI2ODQuODk1MjIwXSAgZmZmZjg4MDEzNzYwZTdmMCBmZmZmZmZm
-ZmZmZmZmZjhjIGZmZmY4ODAxM2UzYTdlZjAgMDAwMDAwMDBmZmZmZmY4Yw0KPiBEZWMgMTIgMTc6
-MTc6MDQgaHAga2VybmVsOiBbMjI2ODQuODk1Mjg3XSBDYWxsIFRyYWNlOg0KPiBEZWMgMTIgMTc6
-MTc6MDQgaHAga2VybmVsOiBbMjI2ODQuODk1MzEyXSAgWzxmZmZmZmZmZjgxMmM0MWZmPl0gbmZz
-X2Rlc3Ryb3lfc2VydmVyKzB4MWYvMHgzMA0KPiBEZWMgMTIgMTc6MTc6MDQgaHAga2VybmVsOiBb
-MjI2ODQuODk1MzM3XSAgWzxmZmZmZmZmZjgxMmM0ZWFiPl0gbmZzX2ZyZWVfc2VydmVyKzB4MTNi
-LzB4MjAwDQo+IERlYyAxMiAxNzoxNzowNCBocCBrZXJuZWw6IFsyMjY4NC44OTUzNjJdICBbPGZm
-ZmZmZmZmODEyYzRkOWI+XSA/IG5mc19mcmVlX3NlcnZlcisweDJiLzB4MjAwDQo+IERlYyAxMiAx
-NzoxNzowNCBocCBrZXJuZWw6IFsyMjY4NC44OTUzODZdICBbPGZmZmZmZmZmODEyYzUxMWI+XSBu
-ZnNfY2xvbmVfc2VydmVyKzB4MWFiLzB4MjUwDQo+IERlYyAxMiAxNzoxNzowNCBocCBrZXJuZWw6
-IFsyMjY4NC44OTU0MTFdICBbPGZmZmZmZmZmODEyZGM0OTg+XSBuZnMzX2Nsb25lX3NlcnZlcisw
-eDE4LzB4NTANCj4gRGVjIDEyIDE3OjE3OjA0IGhwIGtlcm5lbDogWzIyNjg0Ljg5NTQzN10gIFs8
-ZmZmZmZmZmY4MTJjZTIwMj5dIG5mc194ZGV2X21vdW50KzB4ODIvMHgxMjANCj4gRGVjIDEyIDE3
-OjE3OjA0IGhwIGtlcm5lbDogWzIyNjg0Ljg5NTQ2Ml0gIFs8ZmZmZmZmZmY4MTJjZTMwMD5dID8g
-bmZzX3NldF9zdXBlcisweDYwLzB4NjANCj4gRGVjIDEyIDE3OjE3OjA0IGhwIGtlcm5lbDogWzIy
-Njg0Ljg5NTQ4Nl0gIFs8ZmZmZmZmZmY4MTJjZGQ2MD5dID8gbmZzX3NldF9zYl9zZWN1cml0eSsw
-eDEwLzB4MTANCj4gRGVjIDEyIDE3OjE3OjA0IGhwIGtlcm5lbDogWzIyNjg0Ljg5NTUxMl0gIFs8
-ZmZmZmZmZmY4MTE2YTNiYj5dIG1vdW50X2ZzKzB4MWIvMHhkMA0KPiBEZWMgMTIgMTc6MTc6MDQg
-aHAga2VybmVsOiBbMjI2ODQuODk1NTQ1XSAgWzxmZmZmZmZmZjgxMTg0M2JmPl0gdmZzX2tlcm5f
-bW91bnQrMHg2Zi8weDExMA0KPiBEZWMgMTIgMTc6MTc6MDQgaHAga2VybmVsOiBbMjI2ODQuODk1
-NTY5XSAgWzxmZmZmZmZmZjgxMmQ4ZjYyPl0gbmZzX2RvX3N1Ym1vdW50KzB4YTIvMHgxNTANCj4g
-RGVjIDEyIDE3OjE3OjA0IGhwIGtlcm5lbDogWzIyNjg0Ljg5NTU5M10gIFs8ZmZmZmZmZmY4MTJk
-OTA4ZT5dIG5mc19zdWJtb3VudCsweDdlLzB4YTANCj4gRGVjIDEyIDE3OjE3OjA0IGhwIGtlcm5l
-bDogWzIyNjg0Ljg5NTYxN10gIFs8ZmZmZmZmZmY4MTJkOTE3Yz5dIG5mc19kX2F1dG9tb3VudCsw
-eGNjLzB4MWMwDQo+IERlYyAxMiAxNzoxNzowNCBocCBrZXJuZWw6IFsyMjY4NC44OTU2NDNdICBb
-PGZmZmZmZmZmODExNzA2YzA+XSBmb2xsb3dfbWFuYWdlZCsweDE1MC8weDMxMA0KPiBEZWMgMTIg
-MTc6MTc6MDQgaHAga2VybmVsOiBbMjI2ODQuODk1NjY4XSAgWzxmZmZmZmZmZjgxMTcxMGUxPl0g
-bG9va3VwX2Zhc3QrMHgxYzEvMHgzMTANCj4gRGVjIDEyIDE3OjE3OjA0IGhwIGtlcm5lbDogWzIy
-Njg0Ljg5NTY5M10gIFs8ZmZmZmZmZmY4MTE3NDRhYz5dIGRvX2xhc3QuaXNyYS41NysweDE3Yy8w
-eGM1MA0KPiBEZWMgMTIgMTc6MTc6MDQgaHAga2VybmVsOiBbMjI2ODQuODk1NzE3XSAgWzxmZmZm
-ZmZmZjgxMTcxOGEzPl0gPyBpbm9kZV9wZXJtaXNzaW9uKzB4MTMvMHg1MA0KPiBEZWMgMTIgMTc6
-MTc6MDQgaHAga2VybmVsOiBbMjI2ODQuODk1NzQxXSAgWzxmZmZmZmZmZjgxMTcxZDZkPl0gPyBs
-aW5rX3BhdGhfd2FsaysweDIyZC8weDhmMA0KPiBEZWMgMTIgMTc6MTc6MDQgaHAga2VybmVsOiBb
-MjI2ODQuODk1NzY2XSAgWzxmZmZmZmZmZjgxMTc1MDMzPl0gcGF0aF9vcGVuYXQuaXNyYS41OCsw
-eGIzLzB4NGMwDQo+IERlYyAxMiAxNzoxNzowNCBocCBrZXJuZWw6IFsyMjY4NC44OTU3OTFdICBb
-PGZmZmZmZmZmODExNzE2ZGI+XSA/IGdldG5hbWVfZmxhZ3MrMHgyYi8weDExMA0KPiBEZWMgMTIg
-MTc6MTc6MDQgaHAga2VybmVsOiBbMjI2ODQuODk1ODE2XSAgWzxmZmZmZmZmZjgxMTgyODVmPl0g
-PyBfX2FsbG9jX2ZkKzB4MmYvMHgxMzANCj4gRGVjIDEyIDE3OjE3OjA0IGhwIGtlcm5lbDogWzIy
-Njg0Ljg5NTg0Ml0gIFs8ZmZmZmZmZmY4MTE3NTc5Yz5dIGRvX2ZpbHBfb3BlbisweDNjLzB4OTAN
-Cj4gRGVjIDEyIDE3OjE3OjA0IGhwIGtlcm5lbDogWzIyNjg0Ljg5NTg2Nl0gIFs8ZmZmZmZmZmY4
-MTE4MjkwOT5dID8gX19hbGxvY19mZCsweGQ5LzB4MTMwDQo+IERlYyAxMiAxNzoxNzowNCBocCBr
-ZXJuZWw6IFsyMjY4NC44OTU4OTFdICBbPGZmZmZmZmZmODExNjYxNGY+XSBkb19zeXNfb3Blbisw
-eGVmLzB4MWQwDQo+IA0KPiANCj4gVGhlIHByb2JsZW0gaXMgdGhhdCBuZnNfZGVzdHJveV9zZXJ2
-ZXIgaXMgY2FsbGluZyBubG1jbG50X2RvbmUoTlVMTCkuDQo+IFRoaXMgY2FuIGhhcHBlbiBpZiBu
-ZnNfY2xvbmVfc2VydmVyKCkgaXMgY2FsbGVkIG9uIGEgdjIvdjMgbW91bnQgYnV0IGdldHMgYW4N
-Cj4gZXJyb3IgYmV0d2Vlbg0KPiANCj4gCXNlcnZlci0+ZGVzdHJveSA9IHNvdXJjZS0+ZGVzdHJv
-eTsNCj4gDQo+ICh3aGljaCBzZXRzIHNlcnZlci0+ZGVzdHJveSB0byBuZnNfZGVzdHJveV9kZXZl
-ciB3aXRob3V0IHNldHRpbmcNCj4gc2VydmVyLT5ubG1faG9zdCkgYW5kDQo+IA0KPiAJZXJyb3Ig
-PSBuZnNfc3RhcnRfbG9ja2Qoc2VydmVyKTsNCj4gDQo+ICh3aGljaCBzZXRzIGJvdGggc2VydmVy
-LT5kZXN0cm95IGFuZCBzZXJ2ZXItPm5sbV9ob3N0KS4NCj4gDQo+IElmIHRoaXMgaGFwcGVucyB0
-aGVuIG5mc19mcmVlX3NlcnZlcigpIGNhbGxzIC0+ZGVzdHJveSgpIHdoaWNoIGNyYXNoZXMgYXMN
-Cj4gc2hvd24uDQo+IA0KPiBNYXliZSB0aGlzIHBhdGNoPw0KPiANCj4gU2lnbmVkLW9mZi1ieTog
-TmVpbEJyb3duIDxuZWlsYkBzdXNlLmRlPg0KPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2NsaWVudC5j
-IGIvZnMvbmZzL2NsaWVudC5jDQo+IGluZGV4IDhiMzlhNDIuLmI2NjAzYmIgMTAwNjQ0DQo+IC0t
-LSBhL2ZzL25mcy9jbGllbnQuYw0KPiArKysgYi9mcy9uZnMvY2xpZW50LmMNCj4gQEAgLTYxNyw3
-ICs2MTcsOCBAQCBzdGF0aWMgdm9pZCBuZnNfZGVzdHJveV9zZXJ2ZXIoc3RydWN0IG5mc19zZXJ2
-ZXIgKnNlcnZlcikNCj4gIHsNCj4gIAlpZiAoIShzZXJ2ZXItPmZsYWdzICYgTkZTX01PVU5UX0xP
-Q0FMX0ZMT0NLKSB8fA0KPiAgCQkJIShzZXJ2ZXItPmZsYWdzICYgTkZTX01PVU5UX0xPQ0FMX0ZD
-TlRMKSkNCj4gLQkJbmxtY2xudF9kb25lKHNlcnZlci0+bmxtX2hvc3QpOw0KPiArCQlpZiAoc2Vy
-dmVyLT5ubG1faG9zdCkNCj4gKwkJCW5sbWNsbnRfZG9uZShzZXJ2ZXItPm5sbV9ob3N0KTsNCj4g
-IH0NCg0KSG1tLi4uIERvIHdlIG5lZWQgYWxsIHRob3NlIHRlc3RzIG9mIHNlcnZlci0+ZmxhZ3Mg
-YWJvdmUgaWYgd2UgY2FuIGp1c3QNCmNoZWNrIHNlcnZlci0+bmxtX2hvc3QgZm9yIGEgTlVMTCB2
-YWx1ZT8NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5l
-cg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+On Thu, Dec 13, 2012 at 09:59:08PM +0530, Suresh Jayaraman wrote:
+> 
+> The validateascii() check in imconv() maps NFSv4 domain names with non-ASCII
+> characters to 'nobody'. In setups where Active directory or LDAP is used this
+> causes names with UTF-8 characters to be mapped to 'nobody' because of this
+> check.
+> 
+> As Bruce Fields puts it:
+> 
+> "idmapd doesn't seem like the right place to enforce restrictions on names.
+> Once the system has allowed a name it's too late to be complaining about it
+> here."
+> 
+> Remove the check from imconv() and remove the validateascii() function itself
+> as the only user of that function is being removed by this patch.
+
+Thanks, seem fine.  The only other thing I notice is that
+validateascii() also checks (in a slightly strange way) for null
+termination of the string, and it's the only place in idmapd that does.
+
+But I think it'd be a kernel bug to pass up a non-terminated string
+here, so skipping that check is fine too.
+
+Possibly worth a comment, or a check just for null-termination if you
+want to be extra-careful.
+
+--b.
+
+> @@ -652,10 +651,6 @@ imconv(struct idmap_client *ic, struct idmap_msg *im)
+>  			    im->im_id, im->im_name);
+>  		break;
+>  	case IDMAP_CONV_NAMETOID:
+> -		if (validateascii(im->im_name, sizeof(im->im_name)) == -1) {
+> -			im->im_status |= IDMAP_STATUS_INVALIDMSG;
+> -			return;
+> -		}
+>  		nametoidres(im);
+>  		if (verbose > 1)
+>  			xlog_warn("%s %s: (%s) name \"%s\" -> id \"%d\"",
+> @@ -855,25 +850,6 @@ nametoidres(struct idmap_msg *im)
+>  }
+>  
+>  static int
+> -validateascii(char *string, u_int32_t len)
+> -{
+> -	u_int32_t i;
+> -
+> -	for (i = 0; i < len; i++) {
+> -		if (string[i] == '\0')
+> -			break;
+> -
+> -		if (string[i] & 0x80)
+> -			return (-1);
+> -	}
+> -
+> -	if ((i >= len) || string[i] != '\0')
+> -		return (-1);
+> -
+> -	return (i + 1);
+> -}
+> -
+> -static int
+>  addfield(char **bpp, ssize_t *bsizp, char *fld)
+>  {
+>  	char ch, *bp = *bpp;
+> 
