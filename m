@@ -1,90 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:38675 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751676Ab2LFLWl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Dec 2012 06:22:41 -0500
-Subject: [PATCH 2/8] nfsd: per-net NFSd up flag introduced
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Thu, 06 Dec 2012 14:23:14 +0300
-Message-ID: <20121206112314.29559.48129.stgit@localhost.localdomain>
-In-Reply-To: <20121206111903.29559.4853.stgit@localhost.localdomain>
-References: <20121206111903.29559.4853.stgit@localhost.localdomain>
+Received: from mail-ia0-f174.google.com ([209.85.210.174]:58696 "EHLO
+	mail-ia0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932678Ab2LMOiF convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Dec 2012 09:38:05 -0500
+Received: by mail-ia0-f174.google.com with SMTP id y25so1998809iay.19
+        for <linux-nfs@vger.kernel.org>; Thu, 13 Dec 2012 06:38:05 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <20121213142336.GP10897@ics.muni.cz>
+References: <20121213133554.GO10897@ics.muni.cz>
+	<CADnza44SJ0JZN05OtMZcjsm+NwdMVPGTa2f2vG9TbpUJR_B4Zw@mail.gmail.com>
+	<20121213142336.GP10897@ics.muni.cz>
+Date: Thu, 13 Dec 2012 09:38:04 -0500
+Message-ID: <CADnza44SGwAJTJ8sFnAOoLHRPp1Mt9pJKk-scWmrigxD2G=zpQ@mail.gmail.com>
+Subject: Re: local_lock mount option
+From: Fred Isaman <faisaman4@gmail.com>
+To: Lukas Hejtmanek <xhejtman@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch introduces introduces per-net "nfsd_net_up" boolean flag, which has
-the same purpose as general "nfsd_up" flag - skip init or shutdown of per-net
-resources in case of they are inited on shutted down respectively.
+On Thu, Dec 13, 2012 at 9:23 AM, Lukas Hejtmanek <xhejtman@gmail.com> wrote:
+> On Thu, Dec 13, 2012 at 09:10:14AM -0500, Fred Isaman wrote:
+>> local_lock is a v2/v3 option.  It does not currently effect the behavior of v4.
+>
+> if I understand correctly source codes, it should:
+> nfs/file.c:
+>
+> const struct file_operations nfs4_file_operations = {
+> [...]
+>         .lock           = nfs_lock,
+>         .flock          = nfs_flock,
+>
+> and nfs_(f)lock contains tests for:
+> NFS_MOUNT_LOCAL_FCNTL
+> NFS_MOUNT_LOCAL_FLOCK
+>
+> but for some reason, it is not propageted from mount call. Dunno why. Or am
+> I something missing?
+>
+> --
+> Lukáš Hejtmánek
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfsd/netns.h  |    2 ++
- fs/nfsd/nfssvc.c |   12 ++++++++++++
- 2 files changed, 14 insertions(+), 0 deletions(-)
+It is turned off here:
 
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index bca789d..da8741b 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -92,6 +92,8 @@ struct nfsd_net {
- 
- 	time_t nfsd4_lease;
- 	time_t nfsd4_grace;
-+
-+	bool nfsd_net_up;
- };
- 
- extern int nfsd_net_id;
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 038348b..6e17efd 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -21,6 +21,7 @@
- #include "nfsd.h"
- #include "cache.h"
- #include "vfs.h"
-+#include "netns.h"
- 
- #define NFSDDBG_FACILITY	NFSDDBG_SVC
- 
-@@ -205,8 +206,12 @@ static bool nfsd_up = false;
- 
- static int nfsd_startup_net(struct net *net)
- {
-+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 	int ret;
- 
-+	if (nn->nfsd_net_up)
-+		return 0;
-+
- 	ret = nfsd_init_socks(net);
- 	if (ret)
- 		return ret;
-@@ -217,6 +222,7 @@ static int nfsd_startup_net(struct net *net)
- 	if (ret)
- 		goto out_lockd;
- 
-+	nn->nfsd_net_up = true;
- 	return 0;
- 
- out_lockd:
-@@ -257,8 +263,14 @@ out_racache:
- 
- static void nfsd_shutdown_net(struct net *net)
- {
-+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-+
-+	if (!nn->nfsd_net_up)
-+		return;
-+
- 	nfs4_state_shutdown_net(net);
- 	lockd_down(net);
-+	nn->nfsd_net_up = false;
- }
- 
- static void nfsd_shutdown(struct net *net)
+static void nfs4_validate_mount_flags(struct nfs_parsed_mount_data *args)
+{
+	args->flags &= ~(NFS_MOUNT_NONLM|NFS_MOUNT_NOACL|NFS_MOUNT_VER3|
+			 NFS_MOUNT_LOCAL_FLOCK|NFS_MOUNT_LOCAL_FCNTL);
+}
 
+Fred
