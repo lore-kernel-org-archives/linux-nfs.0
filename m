@@ -1,171 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:7960 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:17233 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753144Ab2LQPnP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Dec 2012 10:43:15 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 04/13] SELinux: Add new labeling type native labels
-Date: Mon, 17 Dec 2012 10:43:02 -0500
-Message-Id: <1355758991-30049-5-git-send-email-steved@redhat.com>
-In-Reply-To: <1355758991-30049-1-git-send-email-steved@redhat.com>
-References: <1355758991-30049-1-git-send-email-steved@redhat.com>
+	id S1753220Ab2LMLcf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Dec 2012 06:32:35 -0500
+Date: Thu, 13 Dec 2012 06:31:47 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: Ricky Ng-Adam <rngadam@lophilo.com>, linux-nfs@vger.kernel.org,
+        neilb@suse.de
+Subject: Re: WARNING: at linux/fs/inode.c:280 drop_nlink
+Message-ID: <20121213063147.44b1cf73@tlielax.poochiereds.net>
+In-Reply-To: <20121112095255.5c7babcc@tlielax.poochiereds.net>
+References: <CAOAMTYQ_9bPjCtobC9kfUJrgiT8hx7FsMXoi5ZgWo+P1qjDb0g@mail.gmail.com>
+	<20121112095255.5c7babcc@tlielax.poochiereds.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+On Mon, 12 Nov 2012 09:52:55 -0500
+Jeff Layton <jlayton@redhat.com> wrote:
 
-There currently doesn't exist a labeling type that is adequate for use with
-labeled NFS. Since NFS doesn't really support xattrs we can't use the use xattr
-labeling behavior. For this we developed a new labeling type. The native
-labeling type is used solely by NFS to ensure NFS inodes are labeled at runtime
-by the NFS code instead of relying on the SELinux security server on the client
-end.
+> On Sat, 27 Oct 2012 20:19:38 +0800
+> Ricky Ng-Adam <rngadam@lophilo.com> wrote:
+> 
+> > A one time warning after quite a bit of usage with no other problems:
+> > 
+> > ------------[ cut here ]------------
+> > WARNING: at /home/rngadam/lophilo/linux/fs/inode.c:280 drop_nlink+0x54/0x60()
+> > Modules linked in: ipt_REDIRECT xt_tcpudp iptable_nat nf_nat
+> > nf_conntrack_ipv4 nf_defrag_ipv4 nf_conntrack ip_tables x_tables
+> > snd_atmel_ac97c snd_ac97_codec ac97_bus snd_pcm snd_page_alloc
+> > snd_timer snd soundcore lophilo(O) ipv6 autofs4
+> > [<c000dfdc>] (unwind_backtrace+0x0/0xf0) from [<c0017784>]
+> > (warn_slowpath_common+0x4c/0x64)
+> > [<c0017784>] (warn_slowpath_common+0x4c/0x64) from [<c00177b8>]
+> > (warn_slowpath_null+0x1c/0x24)
+> > [<c00177b8>] (warn_slowpath_null+0x1c/0x24) from [<c00a9084>]
+> > (drop_nlink+0x54/0x60)
+> > [<c00a9084>] (drop_nlink+0x54/0x60) from [<c0131268>]
+> > (nfs_dentry_iput+0x38/0x50)
+> > [<c0131268>] (nfs_dentry_iput+0x38/0x50) from [<c00a67b0>] (d_kill+0x9c/0xec)
+> > [<c00a67b0>] (d_kill+0x9c/0xec) from [<c00a6cf0>] (dput+0x78/0x134)
+> > [<c00a6cf0>] (dput+0x78/0x134) from [<c0095128>] (fput+0x194/0x238)
+> > [<c0095128>] (fput+0x194/0x238) from [<c0092380>] (filp_close+0x68/0x80)
+> > [<c0092380>] (filp_close+0x68/0x80) from [<c001ab88>]
+> > (put_files_struct+0xb4/0xd8)
+> > [<c001ab88>] (put_files_struct+0xb4/0xd8) from [<c001ad1c>]
+> > (do_exit+0x134/0x72c)
+> > [<c001ad1c>] (do_exit+0x134/0x72c) from [<c001b59c>] (do_group_exit+0x40/0xac)
+> > [<c001b59c>] (do_group_exit+0x40/0xac) from [<c001b618>]
+> > (__wake_up_parent+0x0/0x18)
+> > ---[ end trace 3bda0ec3b276e040 ]---
+> > 
+> > client:
+> > 
+> > Linux lophilo 3.4.4+ #34 Sat Oct 6 16:28:57 CST 2012 armv5tejl GNU/Linux
+> > 
+> > server:
+> > 
+> > Linux rngadam-think 3.5.0-17-generic #28-Ubuntu SMP Tue Oct 9 19:32:08
+> > UTC 2012 i686 i686 i686 GNU/Linux
+> > 
+> > # exportfs -v
+> > /home/rngadam/lophilo.nfs
+> > <world>(rw,async,wdelay,no_root_squash,no_subtree_check)
+> > /home/rngadam/lophilo
+> > <world>(rw,wdelay,root_squash,all_squash,no_subtree_check,anonuid=0,anongid=0)
+> > 
+> > seems to have occurred while a bunch of faiilng lstat on long paths
+> > were going on:
+> > 
+> > stat { [Error: ENOENT, lstat
+> > '/home/lophilo/lophilo/lmc/users/rngadam/lophilojs-example.git/client/code/colorpicker/img/colorpicker/img/colorpicker/img/colorpicker/js/colorpicker/css/colorpicker']
+> >   errno: 34,
+> >   code: 'ENOENT',
+> >   path: '/home/lophilo/lophilo/lmc/users/rngadam/lophilojs-example.git/client/code/colorpicker/img/colorpicker/img/colorpicker/img/colorpicker/js/colorpicker/css/colorpicker'
+> > }
+> > 
+> 
+> The warning is fairly harmless, but it does look scary. Neil Brown had
+> a patch to fix it, but I don't think Trond ever took it or commented on
+> it.
+> 
+> Trond, any thoughts on Neil's one-line patch here?
+> 
+>     https://lkml.org/lkml/2012/9/25/24
+> 
+> (Note that I still have my doubts as to whether CIFS or NFS ought to be
+> manipulating or relying on the i_nlink like this, but the patch looks
+> fairly harmless as an interim fix).
+> 
 
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- include/linux/security.h            |  3 +++
- security/selinux/hooks.c            | 35 ++++++++++++++++++++++++++---------
- security/selinux/include/security.h |  2 ++
- security/selinux/ss/policydb.c      |  5 ++++-
- 4 files changed, 35 insertions(+), 10 deletions(-)
+Hi Trond,
 
-diff --git a/include/linux/security.h b/include/linux/security.h
-index c94bcf5..afddfec 100644
---- a/include/linux/security.h
-+++ b/include/linux/security.h
-@@ -61,6 +61,9 @@ struct mm_struct;
- #define SECURITY_CAP_NOAUDIT 0
- #define SECURITY_CAP_AUDIT 1
- 
-+/* LSM Agnostic defines for sb_set_mnt_opts */
-+#define SECURITY_LSM_NATIVE_LABELS	1
-+
- struct ctl_table;
- struct audit_krule;
- struct user_namespace;
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index 4e7e7c2..8f233ff 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -80,6 +80,7 @@
- #include <linux/syslog.h>
- #include <linux/user_namespace.h>
- #include <linux/export.h>
-+#include <linux/security.h>
- #include <linux/msg.h>
- #include <linux/shm.h>
- 
-@@ -283,13 +284,14 @@ static void superblock_free_security(struct super_block *sb)
- 
- /* The file system's label must be initialized prior to use. */
- 
--static const char *labeling_behaviors[6] = {
-+static const char *labeling_behaviors[7] = {
- 	"uses xattr",
- 	"uses transition SIDs",
- 	"uses task SIDs",
- 	"uses genfs_contexts",
- 	"not configured for labeling",
- 	"uses mountpoint labeling",
-+	"uses native labeling",
- };
- 
- static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dentry);
-@@ -677,14 +679,21 @@ static int selinux_set_mnt_opts(struct super_block *sb,
- 	if (strcmp(sb->s_type->name, "proc") == 0)
- 		sbsec->flags |= SE_SBPROC;
- 
--	/* Determine the labeling behavior to use for this filesystem type. */
--	rc = security_fs_use((sbsec->flags & SE_SBPROC) ? "proc" : sb->s_type->name, &sbsec->behavior, &sbsec->sid);
--	if (rc) {
--		printk(KERN_WARNING "%s: security_fs_use(%s) returned %d\n",
--		       __func__, sb->s_type->name, rc);
--		goto out;
-+	if (!sbsec->behavior) {
-+		/*
-+		 * Determine the labeling behavior to use for this
-+		 * filesystem type.
-+		 */
-+		rc = security_fs_use((sbsec->flags & SE_SBPROC) ?
-+					"proc" : sb->s_type->name,
-+					&sbsec->behavior, &sbsec->sid);
-+		if (rc) {
-+			printk(KERN_WARNING
-+				"%s: security_fs_use(%s) returned %d\n",
-+					__func__, sb->s_type->name, rc);
-+			goto out;
-+		}
- 	}
--
- 	/* sets the context of the superblock for the fs being mounted. */
- 	if (fscontext_sid) {
- 		rc = may_context_mount_sb_relabel(fscontext_sid, sbsec, cred);
-@@ -699,6 +708,11 @@ static int selinux_set_mnt_opts(struct super_block *sb,
- 	 * sets the label used on all file below the mountpoint, and will set
- 	 * the superblock context if not already set.
- 	 */
-+	if (kern_flags & SECURITY_LSM_NATIVE_LABELS && !context_sid) {
-+		sbsec->behavior = SECURITY_FS_USE_NATIVE;
-+		*set_kern_flags |= SECURITY_LSM_NATIVE_LABELS;
-+	}
-+
- 	if (context_sid) {
- 		if (!fscontext_sid) {
- 			rc = may_context_mount_sb_relabel(context_sid, sbsec,
-@@ -730,7 +744,8 @@ static int selinux_set_mnt_opts(struct super_block *sb,
- 	}
- 
- 	if (defcontext_sid) {
--		if (sbsec->behavior != SECURITY_FS_USE_XATTR) {
-+		if (sbsec->behavior != SECURITY_FS_USE_XATTR &&
-+			sbsec->behavior != SECURITY_FS_USE_NATIVE) {
- 			rc = -EINVAL;
- 			printk(KERN_WARNING "SELinux: defcontext option is "
- 			       "invalid for this filesystem type\n");
-@@ -1198,6 +1213,8 @@ static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dent
- 	}
- 
- 	switch (sbsec->behavior) {
-+	case SECURITY_FS_USE_NATIVE:
-+		break;
- 	case SECURITY_FS_USE_XATTR:
- 		if (!inode->i_op->getxattr) {
- 			isec->sid = sbsec->def_sid;
-diff --git a/security/selinux/include/security.h b/security/selinux/include/security.h
-index 6d38851..8fd8e18 100644
---- a/security/selinux/include/security.h
-+++ b/security/selinux/include/security.h
-@@ -169,6 +169,8 @@ int security_get_allow_unknown(void);
- #define SECURITY_FS_USE_GENFS		4 /* use the genfs support */
- #define SECURITY_FS_USE_NONE		5 /* no labeling support */
- #define SECURITY_FS_USE_MNTPOINT	6 /* use mountpoint labeling */
-+#define SECURITY_FS_USE_NATIVE		7 /* use native label support */
-+#define SECURITY_FS_USE_MAX		7 /* Highest SECURITY_FS_USE_XXX */
- 
- int security_fs_use(const char *fstype, unsigned int *behavior,
- 	u32 *sid);
-diff --git a/security/selinux/ss/policydb.c b/security/selinux/ss/policydb.c
-index 9cd9b7c..c8adde3 100644
---- a/security/selinux/ss/policydb.c
-+++ b/security/selinux/ss/policydb.c
-@@ -2168,7 +2168,10 @@ static int ocontext_read(struct policydb *p, struct policydb_compat_info *info,
- 
- 				rc = -EINVAL;
- 				c->v.behavior = le32_to_cpu(buf[0]);
--				if (c->v.behavior > SECURITY_FS_USE_NONE)
-+				/* Determined at runtime, not in policy DB. */
-+				if (c->v.behavior == SECURITY_FS_USE_MNTPOINT)
-+					goto out;
-+				if (c->v.behavior > SECURITY_FS_USE_MAX)
- 					goto out;
- 
- 				rc = -ENOMEM;
+I asked about this a while back and never got a response. I have a
+few bugs open against Fedora on this and wouldn't mind laying this to
+rest. Is there any reason not to use the nfs_drop_nlink() helper in
+nfs_dentry_iput()?
+
 -- 
-1.7.11.7
-
+Jeff Layton <jlayton@redhat.com>
