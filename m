@@ -1,85 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55816 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:29207 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756584Ab2LMQuc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Dec 2012 11:50:32 -0500
-Date: Thu, 13 Dec 2012 11:50:28 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Suresh Jayaraman <sjayaraman@suse.com>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] idmapd: allow non-ASCII characters (UTF-8) in NFSv4
- domain name
-Message-ID: <20121213165028.GE24855@fieldses.org>
-References: <50CA0254.4030308@suse.com>
+	id S1753854Ab2LMPyV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Dec 2012 10:54:21 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "ycnian@gmail.com" <ycnian@gmail.com>
+CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs: Remove duplicate function declaration in internal.h
+Date: Thu, 13 Dec 2012 15:54:19 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91192BF27@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1355380654-10949-1-git-send-email-ycnian@gmail.com>
+In-Reply-To: <1355380654-10949-1-git-send-email-ycnian@gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <50CA0254.4030308@suse.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 13, 2012 at 09:59:08PM +0530, Suresh Jayaraman wrote:
-> 
-> The validateascii() check in imconv() maps NFSv4 domain names with non-ASCII
-> characters to 'nobody'. In setups where Active directory or LDAP is used this
-> causes names with UTF-8 characters to be mapped to 'nobody' because of this
-> check.
-> 
-> As Bruce Fields puts it:
-> 
-> "idmapd doesn't seem like the right place to enforce restrictions on names.
-> Once the system has allowed a name it's too late to be complaining about it
-> here."
-> 
-> Remove the check from imconv() and remove the validateascii() function itself
-> as the only user of that function is being removed by this patch.
-
-Thanks, seem fine.  The only other thing I notice is that
-validateascii() also checks (in a slightly strange way) for null
-termination of the string, and it's the only place in idmapd that does.
-
-But I think it'd be a kernel bug to pass up a non-terminated string
-here, so skipping that check is fine too.
-
-Possibly worth a comment, or a check just for null-termination if you
-want to be extra-careful.
-
---b.
-
-> @@ -652,10 +651,6 @@ imconv(struct idmap_client *ic, struct idmap_msg *im)
->  			    im->im_id, im->im_name);
->  		break;
->  	case IDMAP_CONV_NAMETOID:
-> -		if (validateascii(im->im_name, sizeof(im->im_name)) == -1) {
-> -			im->im_status |= IDMAP_STATUS_INVALIDMSG;
-> -			return;
-> -		}
->  		nametoidres(im);
->  		if (verbose > 1)
->  			xlog_warn("%s %s: (%s) name \"%s\" -> id \"%d\"",
-> @@ -855,25 +850,6 @@ nametoidres(struct idmap_msg *im)
->  }
->  
->  static int
-> -validateascii(char *string, u_int32_t len)
-> -{
-> -	u_int32_t i;
-> -
-> -	for (i = 0; i < len; i++) {
-> -		if (string[i] == '\0')
-> -			break;
-> -
-> -		if (string[i] & 0x80)
-> -			return (-1);
-> -	}
-> -
-> -	if ((i >= len) || string[i] != '\0')
-> -		return (-1);
-> -
-> -	return (i + 1);
-> -}
-> -
-> -static int
->  addfield(char **bpp, ssize_t *bsizp, char *fld)
->  {
->  	char ch, *bp = *bpp;
-> 
+T24gVGh1LCAyMDEyLTEyLTEzIGF0IDE0OjM3ICswODAwLCB5Y25pYW5AZ21haWwuY29tIHdyb3Rl
+Og0KPiBGcm9tOiBZYW5jaHVhbiBOaWFuIDx5Y25pYW5AZ21haWwuY29tPg0KPiANCj4gUmVtb3Zl
+IGR1cGxpY2F0ZSBmdW5jdGlvbiBkZWNsYXJhdGlvbiBpbiBpbnRlcm5hbC5oDQo+IA0KPiBTaWdu
+ZWQtb2ZmLWJ5OiBZYW5jaHVhbiBOaWFuIDx5Y25pYW5AZ21haWwuY29tPg0KPiAtLS0NCj4gIGZz
+L25mcy9pbnRlcm5hbC5oIHwgICAgMyAtLS0NCj4gIDEgZmlsZXMgY2hhbmdlZCwgMCBpbnNlcnRp
+b25zKCspLCAzIGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9pbnRlcm5h
+bC5oIGIvZnMvbmZzL2ludGVybmFsLmgNCj4gaW5kZXggNTliMTMzYy4uNDQwNjc0ZiAxMDA2NDQN
+Cj4gLS0tIGEvZnMvbmZzL2ludGVybmFsLmgNCj4gKysrIGIvZnMvbmZzL2ludGVybmFsLmgNCj4g
+QEAgLTQwOSw5ICs0MDksNiBAQCBleHRlcm4gc3RydWN0IG5mc193cml0ZV9oZWFkZXIgKm5mc193
+cml0ZWhkcl9hbGxvYyh2b2lkKTsNCj4gIGV4dGVybiB2b2lkIG5mc193cml0ZWhkcl9mcmVlKHN0
+cnVjdCBuZnNfcGdpb19oZWFkZXIgKmhkcik7DQo+ICBleHRlcm4gaW50IG5mc19nZW5lcmljX2Zs
+dXNoKHN0cnVjdCBuZnNfcGFnZWlvX2Rlc2NyaXB0b3IgKmRlc2MsDQo+ICAJCQkgICAgIHN0cnVj
+dCBuZnNfcGdpb19oZWFkZXIgKmhkcik7DQo+IC1leHRlcm4gdm9pZCBuZnNfcGFnZWlvX2luaXRf
+d3JpdGUoc3RydWN0IG5mc19wYWdlaW9fZGVzY3JpcHRvciAqcGdpbywNCj4gLQkJCXN0cnVjdCBp
+bm9kZSAqaW5vZGUsIGludCBpb2ZsYWdzLA0KPiAtCQkJY29uc3Qgc3RydWN0IG5mc19wZ2lvX2Nv
+bXBsZXRpb25fb3BzICpjb21wbF9vcHMpOw0KPiAgZXh0ZXJuIHZvaWQgbmZzX3BhZ2Vpb19yZXNl
+dF93cml0ZV9tZHMoc3RydWN0IG5mc19wYWdlaW9fZGVzY3JpcHRvciAqcGdpbyk7DQo+ICBleHRl
+cm4gdm9pZCBuZnNfd3JpdGVkYXRhX3JlbGVhc2Uoc3RydWN0IG5mc193cml0ZV9kYXRhICp3ZGF0
+YSk7DQo+ICBleHRlcm4gdm9pZCBuZnNfY29tbWl0X2ZyZWUoc3RydWN0IG5mc19jb21taXRfZGF0
+YSAqcCk7DQoNCm5mc19wYWdlaW9faW5pdF9yZWFkKCkgd2FzIHN1ZmZlcmluZyBmcm9tIHRoZSBz
+YW1lIHByb2JsZW0sIHNvIEkgYWRkZWQNCnRoYXQgdG8gdGhpcyBwYXRjaCBhbmQgYXBwbGllZC4N
+Cg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpO
+ZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
