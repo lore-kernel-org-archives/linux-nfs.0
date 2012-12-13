@@ -1,63 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f46.google.com ([209.85.216.46]:60977 "EHLO
-	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1030754Ab2LGO3k convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Dec 2012 09:29:40 -0500
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:54822 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932274Ab2LMOs0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Dec 2012 09:48:26 -0500
+Received: by mail-ie0-f174.google.com with SMTP id c11so3984602ieb.19
+        for <linux-nfs@vger.kernel.org>; Thu, 13 Dec 2012 06:48:25 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <20121206195752.GA18585@samba2>
-References: <1354818391-7968-1-git-send-email-piastry@etersoft.ru>
-	<20121206194949.7ab20d56@pyramind.ukuu.org.uk>
-	<20121206195752.GA18585@samba2>
-Date: Fri, 7 Dec 2012 08:29:39 -0600
-Message-ID: <CAH2r5msoPiu7wz-HjnnqTxeBLVEQiMYSnLMaZ+dEr11j6Fo4Ew@mail.gmail.com>
-Subject: Re: [PATCH 0/3] Add O_DENY* flags to fcntl and cifs
-From: Steve French <smfrench@gmail.com>
-To: Jeremy Allison <jra@samba.org>
-Cc: Alan Cox <alan@lxorguk.ukuu.org.uk>, Pavel Shilovsky <piastry@etersoft.ru>,
-        linux-cifs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, wine-devel@winehq.org,
-        linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=US-ASCII
+In-Reply-To: <20121213144025.GA1045@ics.muni.cz>
+References: <20121213133554.GO10897@ics.muni.cz>
+	<CADnza44SJ0JZN05OtMZcjsm+NwdMVPGTa2f2vG9TbpUJR_B4Zw@mail.gmail.com>
+	<20121213142336.GP10897@ics.muni.cz>
+	<CADnza44SGwAJTJ8sFnAOoLHRPp1Mt9pJKk-scWmrigxD2G=zpQ@mail.gmail.com>
+	<20121213144025.GA1045@ics.muni.cz>
+Date: Thu, 13 Dec 2012 09:48:25 -0500
+Message-ID: <CADnza45K-LgvNDt1_AoybesMobwsnw=vGX9D4wkvwKLKMkes5A@mail.gmail.com>
+Subject: Re: local_lock mount option
+From: Fred Isaman <faisaman4@gmail.com>
+To: Lukas Hejtmanek <xhejtman@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 6, 2012 at 1:57 PM, Jeremy Allison <jra@samba.org> wrote:
-> On Thu, Dec 06, 2012 at 07:49:49PM +0000, Alan Cox wrote:
->> On Thu,  6 Dec 2012 22:26:28 +0400
->> Pavel Shilovsky <piastry@etersoft.ru> wrote:
+On Thu, Dec 13, 2012 at 9:40 AM, Lukas Hejtmanek <xhejtman@gmail.com> wrote:
+> On Thu, Dec 13, 2012 at 09:38:04AM -0500, Fred Isaman wrote:
+>> It is turned off here:
 >>
->> > Network filesystems CIFS, SMB2.0, SMB3.0 and NFSv4 have such flags - this change can benefit cifs and nfs modules. While this change is ok for network filesystems, itsn't not targeted for local filesystems due security problems (e.g. when a user process can deny root to delete a file).
->>
->> If I have my root fs on NFS then the same applies does it not.
->>
->> Your patches fail to describe the security semantics and what file rights
->> I must have to apply each option. How do I track down a lock user, what
->> tools are provided ? How do the new options interact with the security
->> layer?
->>
->> I don't have a problem with the idea, but it needs a lot more clear
->> description of how it works so the model can be checked and if need be
->> things tweaked (eg needing write to denywrite etc)
+>> static void nfs4_validate_mount_flags(struct nfs_parsed_mount_data *args)
+>> {
+>>       args->flags &= ~(NFS_MOUNT_NONLM|NFS_MOUNT_NOACL|NFS_MOUNT_VER3|
+>>                        NFS_MOUNT_LOCAL_FLOCK|NFS_MOUNT_LOCAL_FCNTL);
+>> }
 >
-> And this is where things get really ugly of course :-).
+> ok, thanks. Is there any reason for this? I need to turn of locks for NFSv4 as
+> they seem to not work properly with NFS server on CXFS.
 >
-> For the CIFSFS client they're expecting to be able to
-> just ship them to a Windows server, where they'll
-> get the (insane) Windows semantics. These semantics
-> are not what would be wanted on a local filesystem.
->
-> So unless we just say "these things have Windows
-> semantics" (where openers of files can lock out others
+> --
+> Lukáš Hejtmánek
 
-I suspect that WINE would have the same need
-to ship them to an NFS server as to a Windows server,
-and the NFS4 protocol specification also defines these,
-although I could not find the same level of detail that MS-FSA
-provides (e.g. see section 2.14.10 for the detailed
-description of how lock conflicts are checked) but the
-semantics are probably the same.
+The idea is that delegations are a better way to decide whether the
+client should cache locks.
 
--- 
-Thanks,
-
-Steve
+Fred
