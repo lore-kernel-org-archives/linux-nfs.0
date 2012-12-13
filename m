@@ -1,50 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f178.google.com ([209.85.223.178]:63938 "EHLO
-	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755214Ab2LCR0A (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Dec 2012 12:26:00 -0500
-Received: by mail-ie0-f178.google.com with SMTP id c12so5405474ieb.23
-        for <linux-nfs@vger.kernel.org>; Mon, 03 Dec 2012 09:25:59 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/5] libexport.a: rmtab.c no longer needs #include xmalloc.h
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 03 Dec 2012 12:17:50 -0500
-Message-ID: <20121203171750.1390.90667.stgit@lebasque.1015granger.net>
-In-Reply-To: <20121203171549.1390.64007.stgit@lebasque.1015granger.net>
-References: <20121203171549.1390.64007.stgit@lebasque.1015granger.net>
-MIME-Version: 1.0
+Received: from mx2.netapp.com ([216.240.18.37]:12322 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754462Ab2LMAo2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Dec 2012 19:44:28 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Sven Wegener <sven.wegener@stealer.net>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: RE: [PATCH] NFSv4: Check for buffer length in
+ __nfs4_get_acl_uncached
+Date: Thu, 13 Dec 2012 00:44:26 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA911929358@SACEXCMBX04-PRD.hq.netapp.com>
+References: <alpine.LNX.2.02.1212130009400.10324@titan.int.lan.stealer.net>
+In-Reply-To: <alpine.LNX.2.02.1212130009400.10324@titan.int.lan.stealer.net>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- support/export/rmtab.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/support/export/rmtab.c b/support/export/rmtab.c
-index 31c0f50..d16b3b3 100644
---- a/support/export/rmtab.c
-+++ b/support/export/rmtab.c
-@@ -1,7 +1,7 @@
- /*
-- * support/export/rmntab.c
-+ * support/export/rmtab.c
-  *
-- * Interface to the rmnt file.
-+ * Interface to the rmtab file.
-  *
-  */
- 
-@@ -12,7 +12,7 @@
- #include <stdlib.h>
- #include <string.h>
- #include <errno.h>
--#include "xmalloc.h"
-+
- #include "misc.h"
- #include "nfslib.h"
- #include "exportfs.h"
-
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
+ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLQ0KPiBvd25lckB2Z2VyLmtlcm5lbC5vcmdd
+IE9uIEJlaGFsZiBPZiBTdmVuIFdlZ2VuZXINCj4gU2VudDogV2VkbmVzZGF5LCBEZWNlbWJlciAx
+MiwgMjAxMiA2OjE1IFBNDQo+IFRvOiBNeWtsZWJ1c3QsIFRyb25kDQo+IENjOiBsaW51eC1uZnNA
+dmdlci5rZXJuZWwub3JnOyBsaW51eC1rZXJuZWxAdmdlci5rZXJuZWwub3JnDQo+IFN1YmplY3Q6
+IFtQQVRDSF0gTkZTdjQ6IENoZWNrIGZvciBidWZmZXIgbGVuZ3RoIGluDQo+IF9fbmZzNF9nZXRf
+YWNsX3VuY2FjaGVkDQo+IA0KPiBDb21taXQgMWYxZWE2YyAiTkZTdjQ6IEZpeCBidWZmZXIgb3Zl
+cmZsb3cgY2hlY2tpbmcgaW4NCj4gX19uZnM0X2dldF9hY2xfdW5jYWNoZWQiIGFjY2lkZW50bHkg
+ZHJvcHBlZCB0aGUgY2hlY2tpbmcgZm9yIHRvbyBzbWFsbA0KPiByZXN1bHQgYnVmZmVyIGxlbmd0
+aC4NCj4gDQo+IElmIHNvbWVvbmUgdXNlcyBnZXR4YXR0ciBvbiAic3lzdGVtLm5mczRfYWNsIiBv
+biBhbiBORlN2NCBtb3VudA0KPiBzdXBwb3J0aW5nIEFDTHMsIHRoZSBBQ0wgaGFzIG5vdCBiZWVu
+IGNhY2hlZCBhbmQgdGhlIGJ1ZmZlciBzdXBsaWVkIGlzIHRvbw0KPiBzaG9ydCwgd2Ugc3RpbGwg
+Y29weSB0aGUgY29tcGxldGUgQUNMLCByZXN1bHRpbmcgaW4ga2VybmVsIGFuZCB1c2VyIHNwYWNl
+DQo+IG1lbW9yeSBjb3JydXB0aW9uLg0KPiANCj4gU2lnbmVkLW9mZi1ieTogU3ZlbiBXZWdlbmVy
+IDxzdmVuLndlZ2VuZXJAc3RlYWxlci5uZXQ+DQo+IENjOiBzdGFibGVAa2VybmVsLm9yZw0KPiAt
+LS0NCj4gIGZzL25mcy9uZnM0cHJvYy5jIHwgNyArKysrKystDQo+ICAxIGZpbGUgY2hhbmdlZCwg
+NiBpbnNlcnRpb25zKCspLCAxIGRlbGV0aW9uKC0pDQo+IA0KPiBSZXNlbmRpbmcsIGJlY2F1c2Ug
+aXQgZGlkIG5vdCBnZXQgYW55IHJlc3BvbnNlLg0KDQpTb3JyeS4gSSd2ZSBhbHJlYWR5IGFwcGxp
+ZWQgaXQgdG8gdGhlIG5mcy1mb3ItbmV4dCBicmFuY2ggb24gZ2l0LmxpbnV4LW5mcy5vcmcsIHNv
+IGl0IHNob3VsZCBnbyBpbiBkdXJpbmcgdGhpcyBtZXJnZSB3aW5kb3cuDQoNCkNoZWVycw0KICBU
+cm9uZA0K
