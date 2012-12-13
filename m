@@ -1,66 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from eriks.xs4all.nl ([83.163.214.71]:41447 "EHLO eriks.xs4all.nl"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754482Ab2L3M64 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 30 Dec 2012 07:58:56 -0500
-Received: from nemesis.slagter.name (nemesis [10.1.1.1])
-	by nemesis.slagter.name (Postfix) with ESMTP id 2E4874E0080
-	for <linux-nfs@vger.kernel.org>; Sun, 30 Dec 2012 13:53:19 +0100 (CET)
-Received: from artemis.slagter.name (artemis [IPv6:2001:980:5fef:1::7])
-	by nemesis.slagter.name (Postfix) with ESMTP
-	for <linux-nfs@vger.kernel.org>; Sun, 30 Dec 2012 13:53:18 +0100 (CET)
-Received: from [10.1.1.5] (eos.ipv4.slagter.name [10.1.1.5])
-	by artemis.slagter.name (Postfix) with ESMTP id 51E233930A0A
-	for <linux-nfs@vger.kernel.org>; Sun, 30 Dec 2012 13:53:18 +0100 (CET)
-Message-ID: <50E0393E.7040204@slagter.name>
-Date: Sun, 30 Dec 2012 13:53:18 +0100
-From: Erik Slagter <erik@slagter.name>
+Received: from mx.scalarmail.ca ([98.158.95.75]:48035 "EHLO
+	ironport-01.sms.scalar.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755598Ab2LMTcl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Dec 2012 14:32:41 -0500
+Date: Thu, 13 Dec 2012 14:32:38 -0500
+From: Nick Bowler <nbowler@elliptictech.com>
+To: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: NFSv4 WARNING: at linux/fs/inode.c:280 drop_nlink+0x23/0x44()
+Message-ID: <20121213193238.GA5155@elliptictech.com>
+References: <20120818175750.GA12736@elliptictech.com>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: NFS client large rsize/wsize (tcp?) problems
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20120818175750.GA12736@elliptictech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello All,
+On 2012-08-18 13:57 -0400, Nick Bowler wrote:
+> I just noticed the following WARNING in my logs.  Looking through the
+> older logs, I see quite a few of these going (at least) all the way back
+> to 3.3.x days.  The process which triggers the warning always seems to
+> be the same (icecat).
+> 
+> This is on a Linux 3.5.2 NFSv4 client machine using sec=krb5.  Other
+> than the log noise, there seems to be no adverse effects.
 
-I am almost complete NOOB on this matter, so please be gentle ;-) I do 
-believe there is some sort of problem inside the NFS code though.
+FWIW, I'm still seeing this on 3.7.0; this time on a machine with NFSv3
+mounts and sec=sys.  Still apparently caused by firefox/icecat.
 
-Background: I have:
-  - linux server x86_64, vanilla kernel 3.6.7 sharing a few exports
-  - several set-top-boxes running linux, arch is mipsel32, they're 
-almost vanilla, but they have prioprietary closed source drivers for the 
-DVB frontends:
-    * MaxDigital XP1000, kernel 3.5.1
-    * DMM DM8000, kernel 3.2.0
-    * VU+ Ultimo, kernel 3.1.1
-
-These all suffer from the same problem. When they have a share mounted 
-with default parameters, using tcp, they crash sooner or later, notably 
-after heavy share access. The dm8000 has it's gui killed by the 
-OOM-killer whilst the xp1000 and the ultimo simply lock up.
-
-The OOM-killer reports it needs blocks of 128k (probably for NFS, but it 
-doesn't say it), but can't find them. For the other stb'es it's not 
-clear as they lock up.
-
-I've "discovered" a few interesting things:
-  - adding swap to the dm8000 makes the problem almost go away, although 
-without NFS it definitely doesn't need swap, ever.
-  - when I ran my laptop (x86_64!) with a slightly older kernel (2.6.35 
-iirc) from a rescue cd, at a certain point I also got nasty dmesg 
-reports and the "dd" proces got stuck in D state, this was reproducable 
-over reboots.
-  - all clients work flawlessly (over extended perdiods of time) if 
-mounted using udp and smaller rsize/wsize values (max 32k). Tcp seems to 
-work as well, as long as the size values are kept under 32k.
-  - the x86_64 laptop also worked fine when mounted this way
-  - so apparently it's not a stb/mipsel32/proprietary driver issue.
-  - stb's running older kernels (notably 2.6.18) don't suffer from this 
-problem
-
-Can please anyone enlighten me? I can't find similar reports other than 
-from fellow stb users.
-
-Thanks!
+> ------------[ cut here ]------------
+> WARNING: at /home/nbowler/misc/linux/fs/inode.c:280 drop_nlink+0x23/0x44()
+> Hardware name: System Product Name
+> Modules linked in: sha1_ssse3 sha1_generic hmac aes_x86_64 aes_generic cbc cts rpcsec_gss_krb5 nfs lockd auth_rpcgss nfs_acl sunrpc ipv6 nls_iso8859_1 nls_cp437 vfat fat w83627ehf hwmon_vid snd_pcm_oss snd_mixer_oss acpi_cpufreq mperf i915 drm_kms_helper drm snd_hda_codec_hdmi snd_hda_codec_realtek arc4 ath9k mac80211 ath9k_common ath9k_hw intel_agp i2c_algo_bit intel_gtt snd_hda_intel snd_hda_codec snd_pcm snd_timer coretemp agpgart hwmon kvm_intel snd ath cfg80211 soundcore snd_page_alloc i2c_i801 r8169 mii psmouse kvm evdev video sg
+> Pid: 1995, comm: icecat Not tainted 3.5.2 #46
+> Call Trace:
+>  [<ffffffff8102b8b3>] warn_slowpath_common+0x80/0x98
+>  [<ffffffff8102b8e0>] warn_slowpath_null+0x15/0x17
+>  [<ffffffff810c5195>] drop_nlink+0x23/0x44
+>  [<ffffffffa03aa2a1>] nfs_dentry_iput+0x35/0x4d [nfs]
+>  [<ffffffff810c25d0>] dentry_kill+0x149/0x171
+>  [<ffffffff810c2850>] dput+0xed/0xfe
+>  [<ffffffff810b2ff4>] fput+0x1a5/0x1bd
+>  [<ffffffff810b0454>] filp_close+0x6b/0x76
+>  [<ffffffff810b04f1>] sys_close+0x92/0xd4
+>  [<ffffffff8131efa2>] system_call_fastpath+0x16/0x1b
+> ---[ end trace b160c7dc08b4910c ]---
+> 
+> Please let me know if you need any more info,
+-- 
+Nick Bowler, Elliptic Technologies (http://www.elliptictech.com/)
