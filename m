@@ -1,56 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41971 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:32598 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756443Ab2LGPFB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Dec 2012 10:05:01 -0500
-Date: Fri, 7 Dec 2012 10:04:59 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Subject: Re: [PATCH] SUNRPC: remove redundant "linux/nsproxy.h" includes
-Message-ID: <20121207150459.GH17115@fieldses.org>
-References: <20121204121856.3029.355.stgit@localhost.localdomain>
+	id S1754851Ab2LNDWW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Dec 2012 22:22:22 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: Al Viro <viro@ZenIV.linux.org.uk>, Ricky Ng-Adam <rngadam@lophilo.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "neilb@suse.de" <neilb@suse.de>
+Subject: Re: WARNING: at linux/fs/inode.c:280 drop_nlink
+Date: Fri, 14 Dec 2012 03:22:20 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91192D34B@SACEXCMBX04-PRD.hq.netapp.com>
+References: <CAOAMTYQ_9bPjCtobC9kfUJrgiT8hx7FsMXoi5ZgWo+P1qjDb0g@mail.gmail.com>
+	 <20121112095255.5c7babcc@tlielax.poochiereds.net>
+	 <20121213063147.44b1cf73@tlielax.poochiereds.net>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA91192A83F@SACEXCMBX04-PRD.hq.netapp.com>
+	 <20121213210753.GQ4939@ZenIV.linux.org.uk>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA91192CBB6@SACEXCMBX04-PRD.hq.netapp.com>
+	 <20121213220636.4c70ec28@corrin.poochiereds.net>
+In-Reply-To: <20121213220636.4c70ec28@corrin.poochiereds.net>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20121204121856.3029.355.stgit@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 04, 2012 at 03:18:58PM +0300, Stanislav Kinsbursky wrote:
-> This is a cleanup patch.
-
-OK, applying.--b.
-
-> 
-> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> ---
->  net/sunrpc/rpcb_clnt.c |    1 -
->  net/sunrpc/svc.c       |    1 -
->  2 files changed, 0 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-> index a70acae..109a67a 100644
-> --- a/net/sunrpc/rpcb_clnt.c
-> +++ b/net/sunrpc/rpcb_clnt.c
-> @@ -23,7 +23,6 @@
->  #include <linux/errno.h>
->  #include <linux/mutex.h>
->  #include <linux/slab.h>
-> -#include <linux/nsproxy.h>
->  #include <net/ipv6.h>
->  
->  #include <linux/sunrpc/clnt.h>
-> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> index be301e1..529400d 100644
-> --- a/net/sunrpc/svc.c
-> +++ b/net/sunrpc/svc.c
-> @@ -20,7 +20,6 @@
->  #include <linux/module.h>
->  #include <linux/kthread.h>
->  #include <linux/slab.h>
-> -#include <linux/nsproxy.h>
->  
->  #include <linux/sunrpc/types.h>
->  #include <linux/sunrpc/xdr.h>
-> 
+T24gVGh1LCAyMDEyLTEyLTEzIGF0IDIyOjA2IC0wNTAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
+T24gVGh1LCAxMyBEZWMgMjAxMiAyMToyMjoyNiArMDAwMA0KPiAiTXlrbGVidXN0LCBUcm9uZCIg
+PFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+ID4gT24gVGh1LCAyMDEy
+LTEyLTEzIGF0IDIxOjA3ICswMDAwLCBBbCBWaXJvIHdyb3RlOg0KPiA+ID4gT24gVGh1LCBEZWMg
+MTMsIDIwMTIgYXQgMDI6NDU6MThQTSArMDAwMCwgTXlrbGVidXN0LCBUcm9uZCB3cm90ZToNCj4g
+PiA+IA0KPiA+ID4gPiBZb3UgbWVhbiBhc2lkZSBmcm9tIHRoZSBmYWN0IHRoYXQgc2ItPnNfcmVt
+b3ZlX2NvdW50IHJlbWFpbnMgYSByYWN5DQo+ID4gPiA+IHBpZWNlIG9mIGNyYXAgdGhhdCBzZXJ2
+ZXMgbm8gZ29vZCBwdXJwb3NlIGZvciBORlMsIGFuZCB5ZXQgd2lsbCBjb250aW51ZQ0KPiA+ID4g
+PiB0byBnaXZlIHVzIGdyaWVmPw0KPiA+ID4gDQo+ID4gPiBBcyBvcHBvc2VkIHRvIHNjYW5uaW5n
+IHRoZSBsaXN0IG9mIG9wZW5lZCBmaWxlcz8NCj4gPiANCj4gPiBGb3Igd2hhdCBpbmZvcm1hdGlv
+bj8gc2ItPnNfcmVtb3ZlX2NvdW50IHRlbGxzIHlvdSBub3RoaW5nIG5ldyBhYm91dCB0aGUNCj4g
+PiBzdGF0ZSBvZiB0aGUgTkZTIGZpbGVzeXN0ZW0uDQo+ID4gDQo+ID4gVGhpcyB3aG9sZSAiY2hl
+Y2sgZm9yIG5saW5rID09IDAiIHRoaW5nIGlzIGF0IGJlc3QgYSBoZXVyaXN0aWMsIHNpbmNlDQo+
+ID4gdGhlIGZpbGUgbWF5IHBlcnNpc3Qgb3IgZGlzYXBwZWFyIG9uIHRoZSBzZXJ2ZXIgaW5kZXBl
+bmRlbnRseSBvZg0KPiA+IHdoYXRldmVyIHdlIG1heSB0aGluayBhYm91dCB0aGUgdmFsdWUgb2Yg
+aW5vZGUtPmlfbmxpbmsuIFNldHRpbmcgc2lyZW5zDQo+ID4gdG8gYmxhcmUgYW5kIGFuZ2VscyB0
+byBzaW5nIHdoZW4gd2UgZ2V0IGl0IHdyb25nIChhcyB3ZSBvZnRlbiBkbykgaXMNCj4gPiBqdXN0
+IHBvaW50bGVzcy4uLg0KPiA+IA0KPiANCj4gU28uLi53aHkgZG8gZHJvcF9ubGluayBhdCBhbGwg
+aW4gTkZTIChvciBvdGhlciBzaW1pbGFyIGZpbGVzeXN0ZW1zIGxpa2UNCj4gQ0lGUyk/IEluIHBy
+aW5jaXBsZSwgaXQgc2VlbXMgbGlrZSB3ZSBvdWdodCB0byBqdXN0IG1hcmsgdGhlIGF0dHJpYnV0
+ZQ0KPiBjYWNoZSBpbnZhbGlkIGFuZCBhc3N1bWUgdGhhdCB3ZSdsbCBwaWNrIHVwIHRoZSBubGlu
+ayBjaGFuZ2Ugd2hlbiB3ZQ0KPiBuZXh0IGF0dGVtcHQgdG8gcmV2YWxpZGF0ZSB0aGUgaW5vZGUu
+DQo+IA0KPiBPbiB0aGF0IG5leHQgYXR0ZW1wdCwgd2UgbWlnaHQgZmluZCBpdCBzdGFsZSwgYnV0
+IHRoYXQncyBzb21ldGhpbmcgd2UNCj4gYWxyZWFkeSBoYXZlIHRvIGRlYWwgd2l0aC4NCg0KQXQg
+dGhpcyBwb2ludCwgSSBkb24ndCBjYXJlLiBNeSBhcmd1bWVudCBpcyB0aGF0IEkgaGF2ZW4ndCBz
+ZWVuIGEgU0lOR0xFDQppbnN0YW5jZSB3aGVyZSB0aGlzIHdhcm5pbmcgaGFzIGxlZCB0byB0aGUg
+ZGlzY292ZXJ5IG9mIGEgcG9zaXRpdmUgY2FzZS4NCkV2ZXJ5IHNpbmdsZSBzdGFjayBkdW1wIHRo
+YXQgSSd2ZSBzZWVuIHNvIGZhciBoYXMgYmVlbiBhIGZhbHNlIG5lZ2F0aXZlLA0Kd2hpY2gsIGFz
+IGZhciBhcyBJJ20gY29uY2VybmVkLCBzaG91bGQgYmUgY29uc2lkZXJlZCBhIHJlZ3Jlc3Npb24u
+DQoNCkZvcmdpdmUgbWUgZm9yIGJlaW5nIHBpc3NlZCBvZmYuLi4NCg0KLS0gDQpUcm9uZCBNeWts
+ZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xl
+YnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
