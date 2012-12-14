@@ -1,90 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57776 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:42478 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S964965Ab2LGOwN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Dec 2012 09:52:13 -0500
-Date: Fri, 7 Dec 2012 09:52:06 -0500
-To: Pavel Shilovsky <piastry@etersoft.ru>
-Cc: linux-cifs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, wine-devel@winehq.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/3] Add O_DENY* flags to fcntl and cifs
-Message-ID: <20121207145206.GF17115@fieldses.org>
-References: <1354818391-7968-1-git-send-email-piastry@etersoft.ru>
- <CAKywueQ3d=wdq2nw5f-QS-D9PY70Axa3Cn0gi5GRk4Xso+iquA@mail.gmail.com>
+	id S1753887Ab2LNNk0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 14 Dec 2012 08:40:26 -0500
+Message-ID: <50CB2C3E.8090306@suse.com>
+Date: Fri, 14 Dec 2012 19:10:14 +0530
+From: Suresh Jayaraman <sjayaraman@suse.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAKywueQ3d=wdq2nw5f-QS-D9PY70Axa3Cn0gi5GRk4Xso+iquA@mail.gmail.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: steved@redhat.com
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH] idmapd: allow non-ASCII characters (UTF-8) in NFSv4 domain
+ name
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 07, 2012 at 01:08:46PM +0400, Pavel Shilovsky wrote:
-> 2012/12/6 Pavel Shilovsky <piastry@etersoft.ru>:
-> > Network filesystems CIFS, SMB2.0, SMB3.0 and NFSv4 have such flags - this change can benefit cifs and nfs modules. While this change is ok for network filesystems, itsn't not targeted for local filesystems due security problems (e.g. when a user process can deny root to delete a file).
-> >
-> > Share flags are used by Windows applications and WINE have to deal with them too. While WINE can process open share flags itself on local filesystems, it can't do it if a file stored on a network share and is used by several clients. This patchset makes it possible for CIFS/SMB2.0/SMB3.0.
-> >
-> > Pavel Shilovsky (3):
-> >   fcntl: Introduce new O_DENY* open flags for network filesystems
-> >   CIFS: Add O_DENY* open flags support
-> >   CIFS: Use NT_CREATE_ANDX command for forcemand mounts
-> >
-> >  fs/cifs/cifsacl.c                |   10 ++++----
-> >  fs/cifs/cifsglob.h               |   11 ++++++++-
-> >  fs/cifs/cifsproto.h              |    9 ++++----
-> >  fs/cifs/cifssmb.c                |   47 ++++++++++++++++++++------------------
-> >  fs/cifs/dir.c                    |   14 ++++++++----
-> >  fs/cifs/file.c                   |   18 ++++++++++-----
-> >  fs/cifs/inode.c                  |   11 +++++----
-> >  fs/cifs/link.c                   |   10 ++++----
-> >  fs/cifs/readdir.c                |    2 +-
-> >  fs/cifs/smb1ops.c                |   15 ++++++------
-> >  fs/cifs/smb2file.c               |   10 ++++----
-> >  fs/cifs/smb2inode.c              |    4 ++--
-> >  fs/cifs/smb2ops.c                |   10 ++++----
-> >  fs/cifs/smb2pdu.c                |    6 ++---
-> >  fs/cifs/smb2proto.h              |   14 +++++++-----
-> >  fs/fcntl.c                       |    5 ++--
-> >  include/uapi/asm-generic/fcntl.h |   11 +++++++++
-> >  17 files changed, 125 insertions(+), 82 deletions(-)
-> >
-> > --
-> > 1.7.10.4
-> >
-> 
-> First of all, sorry for being unclear at this proposal.
-> 
-> 
-> I am not from Wine team but I am working on things related to
-> Wine+CIFS-client+Samba.
-> 
-> We (at Etersoft) need to organize the work of Wine applications
-> through cifs-client share mounted to Samba (or Windows server). They
-> are related to accounting (mostly Russian ones - e.g.
-> http://www.1c.ru/eng/title.htm). So, the problem is that such
-> applications use share flags to control the parallel access to the
-> same files of several clients on a remote share. Also, there can be a
-> situation where Windows (native) clients and Wine clients are working
-> together in the same time.
-> 
-> That's why we need such flags in the kernel (patch #1). With these
-> flags Wine can pass them to every open and they will be used by CIFS
-> (and probably NFS) file systems to pass to the Samba server. In the
-> same time if the file is on local filesystem - these flags will be
-> simply ignored (not implemented).
+The validateascii() check in imconv() maps NFSv4 domain names with non-ASCII
+characters to 'nobody'. In setups where Active directory or LDAP is used this
+causes names with UTF-8 characters to being mapped to 'nobody' because of this
+check.
 
-NFS supports the deny-read and deny-write bits but not deny-delete.
+As Bruce Fields puts it:
 
-If we could do such opens in-kernel on local and clustered filesystems,
-that could also be useful for multi-protocol (Samba and NFS) and
-clustered exports.
+"idmapd doesn't seem like the right place to enforce restrictions on names.
+Once the system has allowed a name it's too late to be complaining about it
+here."
 
-Currently knfsd tries to enforce deny bits in the nfsd code, which is a
-bit ugly.
+Replace the validateascii() call in imconv() with a check for null-termination
+just to be extra-careful and remove the validateascii() function itself
+as the only user of that function is being removed by this patch.
 
-And knfsd currently requires write permissions for deny-read.  My
-understanding is that Windows considers that wrong, but I'd be curious
-to know whether that breaks Windows applications in practice.
 
---b.
+Signed-off-by: Suresh Jayaraman <sjayaraman@suse.com>
+Cc: J. Bruce Fields <bfields@fieldses.org>
+---
+ utils/idmapd/idmapd.c |   28 +++++-----------------------
+ 1 file changed, 5 insertions(+), 23 deletions(-)
+
+diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
+index e80efb4..9d66225 100644
+--- a/utils/idmapd/idmapd.c
++++ b/utils/idmapd/idmapd.c
+@@ -145,7 +145,6 @@ static void svrreopen(int, short, void *);
+ static int  nfsopen(struct idmap_client *);
+ static void nfscb(int, short, void *);
+ static void nfsdcb(int, short, void *);
+-static int  validateascii(char *, u_int32_t);
+ static int  addfield(char **, ssize_t *, char *);
+ static int  getfield(char **, char *, size_t);
+ 
+@@ -642,6 +641,8 @@ out:
+ static void
+ imconv(struct idmap_client *ic, struct idmap_msg *im)
+ {
++	u_int32_t len;
++
+ 	switch (im->im_conv) {
+ 	case IDMAP_CONV_IDTONAME:
+ 		idtonameres(im);
+@@ -652,10 +653,10 @@ imconv(struct idmap_client *ic, struct idmap_msg *im)
+ 			    im->im_id, im->im_name);
+ 		break;
+ 	case IDMAP_CONV_NAMETOID:
+-		if (validateascii(im->im_name, sizeof(im->im_name)) == -1) {
+-			im->im_status |= IDMAP_STATUS_INVALIDMSG;
++		len = strnlen(im->im_name, IDMAP_NAMESZ - 1);
++		/* Check for NULL termination just to be careful */
++		if (im->im_name[len+1] != '\0')
+ 			return;
+-		}
+ 		nametoidres(im);
+ 		if (verbose > 1)
+ 			xlog_warn("%s %s: (%s) name \"%s\" -> id \"%d\"",
+@@ -855,25 +856,6 @@ nametoidres(struct idmap_msg *im)
+ }
+ 
+ static int
+-validateascii(char *string, u_int32_t len)
+-{
+-	u_int32_t i;
+-
+-	for (i = 0; i < len; i++) {
+-		if (string[i] == '\0')
+-			break;
+-
+-		if (string[i] & 0x80)
+-			return (-1);
+-	}
+-
+-	if ((i >= len) || string[i] != '\0')
+-		return (-1);
+-
+-	return (i + 1);
+-}
+-
+-static int
+ addfield(char **bpp, ssize_t *bsizp, char *fld)
+ {
+ 	char ch, *bp = *bpp;
