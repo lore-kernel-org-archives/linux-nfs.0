@@ -1,163 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:40245 "EHLO mx1.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754882Ab2LFXUg convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Dec 2012 18:20:36 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: [PATCH 4/4] NFSD: Add support for dynamic slot changes
-Date: Thu, 6 Dec 2012 23:20:15 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90B33C86C@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1354159063-17343-1-git-send-email-Trond.Myklebust@netapp.com>
- <1354159063-17343-2-git-send-email-Trond.Myklebust@netapp.com>
- <1354159063-17343-3-git-send-email-Trond.Myklebust@netapp.com>
- <1354159063-17343-4-git-send-email-Trond.Myklebust@netapp.com>
- <1354159063-17343-5-git-send-email-Trond.Myklebust@netapp.com>
- <20121206212908.GB17115@fieldses.org>
-In-Reply-To: <20121206212908.GB17115@fieldses.org>
-Content-Type: text/plain; charset="Windows-1252"
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:55598 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755743Ab2LNOMp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Dec 2012 09:12:45 -0500
 MIME-Version: 1.0
+In-Reply-To: <20121212083401.GW5010@snowdrop.l8s.co.uk>
+References: <1354818391-7968-1-git-send-email-piastry@etersoft.ru>
+	<20121207161602.GA17710@infradead.org>
+	<495d17310e0a687d446afc86def0f058@office.etersoft.ru>
+	<20121212083401.GW5010@snowdrop.l8s.co.uk>
+Date: Fri, 14 Dec 2012 18:12:44 +0400
+Message-ID: <CAKywueSN++ZCNJ1zbET_axuwXd2ZujvSof9H82E3AdeZWY_BgQ@mail.gmail.com>
+Subject: Re: [PATCH 0/3] Add O_DENY* flags to fcntl and cifs
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: David Laight <david@l8s.co.uk>, Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        wine-devel@winehq.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> Sent: Thursday, December 06, 2012 10:29 PM
-> To: Myklebust, Trond
-> Cc: linux-nfs@vger.kernel.org
-> Subject: Re: [PATCH 4/4] NFSD: Add support for dynamic slot changes
-> 
-> On Wed, Nov 28, 2012 at 10:17:43PM -0500, Trond Myklebust wrote:
-> > The algorithm chosen for growing/shrinking the dynamic slot table size
-> > is as follows:
-> >
-> > If the client is sending a sa_highest_slotid value that is greater
-> > than or equal to the our server target_highest_slotid, then multiply
-> > the value of the latter by 5/4.
-> >
-> > If, on the other hand, the sa_highest_slotid value is smaller than our
-> > target_highest_slotid, then try adjusting the latter to half its
-> > current value, or to the value of sa_highest_slotid+1, whichever is larger.
-> >
-> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > ---
-> >  fs/nfsd/nfs4state.c | 72
-> +++++++++++++++++++++++++++++++++++++++++++++++++----
-> >  fs/nfsd/state.h     |  2 ++
-> >  2 files changed, 69 insertions(+), 5 deletions(-)
-> >
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c index
-> > a1208cc..88d0de9 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -807,6 +807,7 @@ static bool nfsd4_grow_slot_table_locked(struct
-> nfsd4_slot_table *tbl,
-> >  		if (slot != NULL){
-> >  			if (!nfsd4_get_drc_mem(tbl))
-> >  				break;
-> > +			slot->sl_generation = tbl->slt_generation - 1;
-> >  			slot->sl_slotid = next_slotid;
-> >  			list_add_tail(&slot->sl_list, &tbl->slt_head);
-> >  		}
-> > @@ -853,6 +854,30 @@ static void nfsd4_free_slot_table(struct
-> nfsd4_slot_table *tbl)
-> >  	spin_unlock(&tbl->slt_lock);
-> >  }
-> >
-> > +static void nfsd4_fc_set_highest_slotid_locked(struct nfsd4_session
-> *session,
-> > +		struct nfsd4_slot_table *tbl,
-> > +		u32 target_highest_slotid,
-> > +		u32 highest_slotid)
-> > +{
-> > +	/* Lower limit for target_highest_slotid is negotiated limit */
-> > +	target_highest_slotid = max(target_highest_slotid,
-> > +			session->se_fchannel.maxreqs - 1);
-> > +	/* Lower limit for highest_slotid is target_highest_slotid */
-> > +	highest_slotid = max(highest_slotid, target_highest_slotid);
-> > +
-> > +	if (target_highest_slotid == tbl->slt_target_highest_slotid &&
-> > +			highest_slotid == tbl->slt_highest_slotid)
-> > +		return;
-> > +
-> > +	if (!nfsd4_grow_slot_table_locked(tbl, highest_slotid, GFP_KERNEL))
-> > +		return;
-> > +
-> > +	tbl->slt_target_highest_slotid = target_highest_slotid;
-> > +	tbl->slt_highest_slotid = highest_slotid;
-> > +	tbl->slt_generation++;
-> > +	nfsd4_truncate_slot_table_locked(tbl, tbl->slt_highest_slotid); }
-> > +
-> >  static void nfsd4_init_slot_table(struct nfsd4_slot_table *tbl,
-> >  		size_t slotsize, u32 highest_slotid)  { @@ -2039,6 +2064,45
-> @@ out:
-> >  	return status;
-> >  }
-> >
-> > +static void nfsd4_sequence_adjust_slot_table(struct nfsd4_session
-> *session,
-> > +		struct nfsd4_slot *slot, u32 sa_highest_slotid,
-> > +		struct nfsd4_sequence *res)
-> > +{
-> > +	struct nfsd4_slot_table *tbl = &session->se_slots;
-> > +	u32 next_target;
-> > +	u32 next_highest;
-> > +
-> > +	spin_lock(&tbl->slt_lock);
-> > +	/*
-> > +	 * If this slot hasn't seen our previous values, then don't trust
-> > +	 * that the client has seen them. Don't adjust the slot table yet.
-> > +	 */
-> > +	if (slot->sl_generation != tbl->slt_generation)
-> > +		goto out;
-> > +
-> > +	next_target = tbl->slt_target_highest_slotid;
-> > +
-> > +	/* Is the client bumping against our current window limits? */
-> > +	if (sa_highest_slotid >= tbl->slt_target_highest_slotid) {
-> > +		/* Yes! Grow the window size by 1/4 */
-> > +		next_target += 1 + (tbl->slt_target_highest_slotid >> 2);
-> > +		next_highest = next_target;
-> > +	} else {
-> > +		/* No! Try to shrink the window size by 1/2 */
-> > +		next_target >>= 1;
-> > +		if (sa_highest_slotid + 1 > next_target)
-> > +			next_target = sa_highest_slotid + 1;
-> > +		next_highest = tbl->slt_target_highest_slotid;
-> > +	}
-> > +	nfsd4_fc_set_highest_slotid_locked(session, tbl,
-> > +			next_target, next_highest);
-> > +out:
-> > +	slot->sl_generation = tbl->slt_generation;
-> > +	res->highest_slotid = tbl->slt_highest_slotid;
-> > +	res->target_highest_slotid = tbl->slt_target_highest_slotid;
-> > +	spin_unlock(&tbl->slt_lock);
-> > +}
-> > +
-> >  static struct nfsd4_conn *__nfsd4_find_conn(struct svc_xprt *xpt,
-> > struct nfsd4_session *s)  {
-> >  	struct nfsd4_conn *c;
-> > @@ -2159,11 +2223,9 @@ nfsd4_sequence(struct svc_rqst *rqstp,
-> >  	else
-> >  		slot->sl_flags &= ~NFSD4_SLOT_CACHETHIS;
-> >
-> > -	/* Retrieve new target/highest slotid values */
-> > -	spin_lock(&session->se_slots.slt_lock);
-> > -	seq->target_highest_slotid = session-
-> >se_slots.slt_target_highest_slotid;
-> > -	seq->highest_slotid = session->se_slots.slt_highest_slotid;
-> > -	spin_unlock(&session->se_slots.slt_lock);
-> > +	/* Adjust slot table, and retrieve new target/highest slotid values */
-> > +	nfsd4_sequence_adjust_slot_table(session, slot,
-> > +			seq->highest_slotid, seq);
-> 
-> This is allocating under a spin lock (see the client_lock that most of
-> nfsd4_sequence is under.)
-> 
-> (But I'm not sure what we should be doing instead.)
+2012/12/12 David Laight <david@l8s.co.uk>:
+> On Sat, Dec 08, 2012 at 12:43:14AM +0400, Pavel Shilovsky wrote:
+>>
+>> The problem is the possibility of denial-of-service attacks here. We
+>> can try to prevent them by:
+>
+> FWIW I already see a DoS 'attack'.
+> I have some filestore shared using NFS (to Linux and Solaris) and
+> using samba (to Windows).
+>
+> I use it for release builds of a product to ensure the versions
+> built for the different operating systems match, and because some
+> files have to be built on an 'alien' system (eg gcc targetted at
+> embedded card).
+>
+> I can't run the windows build at the same time as the others
+> because the windows C compiler manages to obtain exclusive access
+> to the source files - stopping the other systems from reading them.
 
-I've already fixed this issue in the latest patches: the right thing is simply to do all this after we drop the client lock. I'll send the updated patches when I get a moment: probably Saturday...
+We can make this feature (passing O_DENY* flags received from clients
+to filesystem) can be turned on/off on Samba/NFS server to let this
+particular use case work. In general, I think we really need to be
+sure that nobody has a read access for files that a Windows process
+opened with O_DENYREAD (because there can be important reasons for the
+Windows process to do so).
 
-Cheers
-  Trond
+-- 
+Best regards,
+Pavel Shilovsky.
