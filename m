@@ -1,209 +1,121 @@
-From: David Quigley <dpquigl@davequigley.com>
-Subject: [PATCH 08/13] NFSv4: Extend fattr bitmaps to support all 3 words
-Date: Mon, 12 Nov 2012 01:15:42 -0500
-Message-ID: <1352700947-3915-9-git-send-email-dpquigl@davequigley.com>
-References: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com>
-Cc: linux-nfs@vger.kernel.org, selinux@tycho.nsa.gov,
-        linux-security-module@vger.kernel.org,
-        David Quigley <dpquigl@davequigley.com>,
-        Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>,
-        Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>,
-        Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
-To: bfields@fieldses.org, trond.myklebust@netapp.com, sds@tycho.nsa.gov
-Return-path: <owner-selinux-MESi4pFTnrejpDF0oNHs+n7yKkN/O5/Z@public.gmane.org>
-In-Reply-To: <1352700947-3915-1-git-send-email-dpquigl@davequigley.com>
-Sender: owner-selinux@tycho.nsa.gov
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from mx2.netapp.com ([216.240.18.37]:45198 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752066Ab2LOUod (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 15 Dec 2012 15:44:33 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 3/3] NFSv4.1: Deal effectively with interrupted RPC calls.
+Date: Sat, 15 Dec 2012 15:44:26 -0500
+Message-Id: <1355604266-21183-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1355604266-21183-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1355604266-21183-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1355604266-21183-2-git-send-email-Trond.Myklebust@netapp.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+If an RPC call is interrupted, assume that the server hasn't processed
+the RPC call so that the next time we use the slot, we know that if we
+get a NFS4ERR_SEQ_MISORDERED or NFS4ERR_SEQ_FALSE_RETRY, we just have
+to bump the sequence number.
 
-The fattr handling bitmap code only uses the first two fattr words sofar. This
-patch adds the 3rd word to being sent but doesn't populate it yet.
-
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
-Signed-off-by: David Quigley <dpquigl@davequigley.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/nfs4_fs.h          |  6 +++---
- fs/nfs/nfs4proc.c         | 20 +++++++++++++-------
- fs/nfs/nfs4xdr.c          | 20 ++++++++++++--------
- fs/nfs/super.c            |  1 +
- include/linux/nfs_fs_sb.h |  2 +-
- 5 files changed, 30 insertions(+), 19 deletions(-)
+ fs/nfs/nfs4proc.c    | 32 +++++++++++++++++++++++---------
+ fs/nfs/nfs4session.c |  1 +
+ fs/nfs/nfs4session.h |  1 +
+ 3 files changed, 25 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index a525fde..f15015a 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -304,10 +304,10 @@ is_ds_client(struct nfs_client *clp)
- extern const struct nfs4_minor_version_ops *nfs_v4_minor_ops[];
- 
- extern const u32 nfs4_fattr_bitmap[3];
--extern const u32 nfs4_statfs_bitmap[2];
--extern const u32 nfs4_pathconf_bitmap[2];
-+extern const u32 nfs4_statfs_bitmap[3];
-+extern const u32 nfs4_pathconf_bitmap[3];
- extern const u32 nfs4_fsinfo_bitmap[3];
--extern const u32 nfs4_fs_locations_bitmap[2];
-+extern const u32 nfs4_fs_locations_bitmap[3];
- 
- void nfs4_free_client(struct nfs_client *);
- 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 68b21d8..3c49f3e 100644
+index afb428e..493f0f4 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -131,7 +131,8 @@ const u32 nfs4_fattr_bitmap[3] = {
- 	| FATTR4_WORD1_SPACE_USED
- 	| FATTR4_WORD1_TIME_ACCESS
- 	| FATTR4_WORD1_TIME_METADATA
--	| FATTR4_WORD1_TIME_MODIFY
-+	| FATTR4_WORD1_TIME_MODIFY,
-+	0
- };
+@@ -420,17 +420,9 @@ static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *
+ 	struct nfs4_session *session;
+ 	struct nfs4_slot *slot;
+ 	struct nfs_client *clp;
++	bool interrupted = false;
+ 	int ret = 1;
  
- static const u32 nfs4_pnfs_open_bitmap[3] = {
-@@ -158,18 +159,20 @@ static const u32 nfs4_open_noattr_bitmap[3] = {
- 	| FATTR4_WORD0_FILEID,
- };
+-	/*
+-	 * sr_status remains 1 if an RPC level error occurred. The server
+-	 * may or may not have processed the sequence operation..
+-	 * Proceed as if the server received and processed the sequence
+-	 * operation.
+-	 */
+-	if (res->sr_status == 1)
+-		res->sr_status = NFS_OK;
+-
+ 	/* don't increment the sequence number if the task wasn't sent */
+ 	if (!RPC_WAS_SENT(task))
+ 		goto out;
+@@ -438,6 +430,11 @@ static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *
+ 	slot = res->sr_slot;
+ 	session = slot->table->session;
  
--const u32 nfs4_statfs_bitmap[2] = {
-+const u32 nfs4_statfs_bitmap[3] = {
- 	FATTR4_WORD0_FILES_AVAIL
- 	| FATTR4_WORD0_FILES_FREE
- 	| FATTR4_WORD0_FILES_TOTAL,
- 	FATTR4_WORD1_SPACE_AVAIL
- 	| FATTR4_WORD1_SPACE_FREE
--	| FATTR4_WORD1_SPACE_TOTAL
-+	| FATTR4_WORD1_SPACE_TOTAL,
-+	0
- };
- 
--const u32 nfs4_pathconf_bitmap[2] = {
-+const u32 nfs4_pathconf_bitmap[3] = {
- 	FATTR4_WORD0_MAXLINK
- 	| FATTR4_WORD0_MAXNAME,
-+	0,
- 	0
- };
- 
-@@ -182,7 +185,7 @@ const u32 nfs4_fsinfo_bitmap[3] = { FATTR4_WORD0_MAXFILESIZE
- 			FATTR4_WORD2_LAYOUT_BLKSIZE
- };
- 
--const u32 nfs4_fs_locations_bitmap[2] = {
-+const u32 nfs4_fs_locations_bitmap[3] = {
- 	FATTR4_WORD0_TYPE
- 	| FATTR4_WORD0_CHANGE
- 	| FATTR4_WORD0_SIZE
-@@ -198,7 +201,8 @@ const u32 nfs4_fs_locations_bitmap[2] = {
- 	| FATTR4_WORD1_TIME_ACCESS
- 	| FATTR4_WORD1_TIME_METADATA
- 	| FATTR4_WORD1_TIME_MODIFY
--	| FATTR4_WORD1_MOUNTED_ON_FILEID
-+	| FATTR4_WORD1_MOUNTED_ON_FILEID,
-+	0
- };
- 
- static void nfs4_setup_readdir(u64 cookie, __be32 *verifier, struct dentry *dentry,
-@@ -5211,8 +5215,10 @@ static int _nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
- 				   struct page *page)
- {
- 	struct nfs_server *server = NFS_SERVER(dir);
--	u32 bitmask[2] = {
-+	u32 bitmask[3] = {
- 		[0] = FATTR4_WORD0_FSID | FATTR4_WORD0_FS_LOCATIONS,
-+		[1] = 0,
-+		[2] = 0
- 	};
- 	struct nfs4_fs_locations_arg args = {
- 		.dir_fh = NFS_FH(dir),
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 40836ee..146d4d3 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -980,15 +980,16 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
- 	int len;
- 	uint32_t bmval0 = 0;
- 	uint32_t bmval1 = 0;
-+	uint32_t bmval2 = 0;
- 
- 	/*
- 	 * We reserve enough space to write the entire attribute buffer at once.
- 	 * In the worst-case, this would be
--	 *   12(bitmap) + 4(attrlen) + 8(size) + 4(mode) + 4(atime) + 4(mtime)
--	 *          = 36 bytes, plus any contribution from variable-length fields
-+	 * 16(bitmap) + 4(attrlen) + 8(size) + 4(mode) + 4(atime) + 4(mtime)
-+	 * = 40 bytes, plus any contribution from variable-length fields
- 	 *            such as owner/group.
- 	 */
--	len = 16;
-+	len = 20;
- 
- 	/* Sigh */
- 	if (iap->ia_valid & ATTR_SIZE)
-@@ -1032,9 +1033,9 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
- 	 * We write the bitmap length now, but leave the bitmap and the attribute
- 	 * buffer length to be backfilled at the end of this routine.
- 	 */
--	*p++ = cpu_to_be32(2);
-+	*p++ = cpu_to_be32(3);
- 	q = p;
--	p += 3;
-+	p += 4;
- 
- 	if (iap->ia_valid & ATTR_SIZE) {
- 		bmval0 |= FATTR4_WORD0_SIZE;
-@@ -1083,9 +1084,10 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
- 				len, ((char *)p - (char *)q) + 4);
- 		BUG();
++	if (slot->interrupted) {
++		slot->interrupted = 0;
++		interrupted = true;
++	}
++
+ 	/* Check the SEQUENCE operation status */
+ 	switch (res->sr_status) {
+ 	case 0:
+@@ -450,6 +447,15 @@ static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *
+ 			nfs4_schedule_lease_recovery(clp);
+ 		nfs41_update_target_slotid(slot->table, slot, res);
+ 		break;
++	case 1:
++		/*
++		 * sr_status remains 1 if an RPC level error occurred.
++		 * The server may or may not have processed the sequence
++		 * operation..
++		 * Mark the slot as having hosted an interrupted RPC call.
++		 */
++		slot->interrupted = 1;
++		goto out;
+ 	case -NFS4ERR_DELAY:
+ 		/* The server detected a resend of the RPC call and
+ 		 * returned NFS4ERR_DELAY as per Section 2.10.6.2
+@@ -468,6 +474,14 @@ static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *
+ 		goto retry_nowait;
+ 	case -NFS4ERR_SEQ_MISORDERED:
+ 		/*
++		 * Was the last operation on this sequence interrupted?
++		 * If so, retry after bumping the sequence number.
++		 */
++		if (interrupted) {
++			++slot->seq_nr;
++			goto retry_nowait;
++		}
++		/*
+ 		 * Could this slot have been previously retired?
+ 		 * If so, then the server may be expecting seq_nr = 1!
+ 		 */
+diff --git a/fs/nfs/nfs4session.c b/fs/nfs/nfs4session.c
+index 0e1cc1f..ebda5f4 100644
+--- a/fs/nfs/nfs4session.c
++++ b/fs/nfs/nfs4session.c
+@@ -172,6 +172,7 @@ static void nfs4_reset_slot_table(struct nfs4_slot_table *tbl,
+ 	p = &tbl->slots;
+ 	while (*p) {
+ 		(*p)->seq_nr = ivalue;
++		(*p)->interrupted = 0;
+ 		p = &(*p)->next;
  	}
--	len = (char *)p - (char *)q - 12;
-+	len = (char *)p - (char *)q - 16;
- 	*q++ = htonl(bmval0);
- 	*q++ = htonl(bmval1);
-+	*q++ = htonl(bmval2);
- 	*q = htonl(len);
+ 	tbl->highest_used_slotid = NFS4_NO_SLOT;
+diff --git a/fs/nfs/nfs4session.h b/fs/nfs/nfs4session.h
+index d17b080..6f3cb39 100644
+--- a/fs/nfs/nfs4session.h
++++ b/fs/nfs/nfs4session.h
+@@ -21,6 +21,7 @@ struct nfs4_slot {
+ 	unsigned long		generation;
+ 	u32			slot_nr;
+ 	u32		 	seq_nr;
++	unsigned int		interrupted : 1;
+ };
  
- /* out: */
-@@ -1191,8 +1193,10 @@ encode_getattr_three(struct xdr_stream *xdr,
- 
- static void encode_getfattr(struct xdr_stream *xdr, const u32* bitmask, struct compound_hdr *hdr)
- {
--	encode_getattr_two(xdr, bitmask[0] & nfs4_fattr_bitmap[0],
--			   bitmask[1] & nfs4_fattr_bitmap[1], hdr);
-+	encode_getattr_three(xdr, bitmask[0] & nfs4_fattr_bitmap[0],
-+			   bitmask[1] & nfs4_fattr_bitmap[1],
-+			   bitmask[2] & nfs4_fattr_bitmap[2],
-+			   hdr);
- }
- 
- static void encode_getfattr_open(struct xdr_stream *xdr, const u32 *bitmask,
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index ee07a08..f4e13c3 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -826,6 +826,7 @@ int nfs_show_stats(struct seq_file *m, struct dentry *root)
- 		seq_printf(m, "\n\tnfsv4:\t");
- 		seq_printf(m, "bm0=0x%x", nfss->attr_bitmask[0]);
- 		seq_printf(m, ",bm1=0x%x", nfss->attr_bitmask[1]);
-+		seq_printf(m, ",bm2=0x%x", nfss->attr_bitmask[2]);
- 		seq_printf(m, ",acl=0x%x", nfss->acl_bitmask);
- 		show_sessions(m, nfss);
- 		show_pnfs(m, nfss);
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index a794715..383fe9c 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -145,7 +145,7 @@ struct nfs_server {
- 	u32			attr_bitmask[3];/* V4 bitmask representing the set
- 						   of attributes supported on this
- 						   filesystem */
--	u32			cache_consistency_bitmask[2];
-+	u32			cache_consistency_bitmask[3];
- 						/* V4 bitmask representing the subset
- 						   of change attribute, size, ctime
- 						   and mtime attributes supported by
+ /* Sessions */
 -- 
 1.7.11.7
+
