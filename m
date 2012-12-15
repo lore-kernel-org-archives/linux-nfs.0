@@ -1,96 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:40236 "EHLO relay.sw.ru"
+Received: from mx2.netapp.com ([216.240.18.37]:45198 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1423825Ab2LFPeY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Dec 2012 10:34:24 -0500
-Subject: [PATCH 4/6] nfsd: use proper net while reading "exports" file
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Thu, 06 Dec 2012 18:34:57 +0300
-Message-ID: <20121206153457.30693.90262.stgit@localhost.localdomain>
-In-Reply-To: <20121206153204.30693.11408.stgit@localhost.localdomain>
-References: <20121206153204.30693.11408.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1752058Ab2LOUoc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 15 Dec 2012 15:44:32 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/3] NFSv4.1: Move the RPC timestamp out of the slot.
+Date: Sat, 15 Dec 2012 15:44:25 -0500
+Message-Id: <1355604266-21183-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1355604266-21183-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1355604266-21183-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Functuon "exports_open" is used for both "/proc/fs/nfs/exports" and
-"/proc/fs/nfsd/exports" files.
-Now NFSd filesystem is containerised, so proper net can be taken from
-superblock for "/proc/fs/nfsd/exports" reader.
-But for "/proc/fs/nfsd/exports" only current->nsproxy->net_ns can be used.
+Shave a few bytes off the slot table size by moving the RPC timestamp
+into the sequence results.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfsd/nfsctl.c |   31 +++++++++++++++++++++++++------
- 1 files changed, 25 insertions(+), 6 deletions(-)
+ fs/nfs/nfs4proc.c       | 14 +++++++-------
+ fs/nfs/nfs4session.c    |  3 +--
+ fs/nfs/nfs4session.h    |  1 -
+ include/linux/nfs_xdr.h |  1 +
+ 4 files changed, 9 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 873438f..c36510e 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -125,11 +125,11 @@ static const struct file_operations transaction_ops = {
- 	.llseek		= default_llseek,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 9003b8f..afb428e 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -419,7 +419,6 @@ static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *
+ {
+ 	struct nfs4_session *session;
+ 	struct nfs4_slot *slot;
+-	unsigned long timestamp;
+ 	struct nfs_client *clp;
+ 	int ret = 1;
+ 
+@@ -444,9 +443,8 @@ static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *
+ 	case 0:
+ 		/* Update the slot's sequence and clientid lease timer */
+ 		++slot->seq_nr;
+-		timestamp = slot->renewal_time;
+ 		clp = session->clp;
+-		do_renew_lease(clp, timestamp);
++		do_renew_lease(clp, res->sr_timestamp);
+ 		/* Check sequence flags */
+ 		if (res->sr_status_flags != 0)
+ 			nfs4_schedule_lease_recovery(clp);
+@@ -473,10 +471,11 @@ static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *
+ 		 * Could this slot have been previously retired?
+ 		 * If so, then the server may be expecting seq_nr = 1!
+ 		 */
+-		if (slot->seq_nr == 1)
+-			break;
+-		slot->seq_nr = 1;
+-		goto retry_nowait;
++		if (slot->seq_nr != 1) {
++			slot->seq_nr = 1;
++			goto retry_nowait;
++		}
++		break;
+ 	case -NFS4ERR_SEQ_FALSE_RETRY:
+ 		++slot->seq_nr;
+ 		goto retry_nowait;
+@@ -567,6 +566,7 @@ int nfs41_setup_sequence(struct nfs4_session *session,
+ 			slot->slot_nr, slot->seq_nr);
+ 
+ 	res->sr_slot = slot;
++	res->sr_timestamp = jiffies;
+ 	res->sr_status_flags = 0;
+ 	/*
+ 	 * sr_status is only set in decode_sequence, and so will remain
+diff --git a/fs/nfs/nfs4session.c b/fs/nfs/nfs4session.c
+index 1e6c87c..0e1cc1f 100644
+--- a/fs/nfs/nfs4session.c
++++ b/fs/nfs/nfs4session.c
+@@ -143,7 +143,6 @@ struct nfs4_slot *nfs4_alloc_slot(struct nfs4_slot_table *tbl)
+ 	if (slotid > tbl->highest_used_slotid ||
+ 			tbl->highest_used_slotid == NFS4_NO_SLOT)
+ 		tbl->highest_used_slotid = slotid;
+-	ret->renewal_time = jiffies;
+ 	ret->generation = tbl->generation;
+ 
+ out:
+@@ -228,9 +227,9 @@ static bool nfs41_assign_slot(struct rpc_task *task, void *pslot)
+ 
+ 	if (nfs4_session_draining(tbl->session) && !args->sa_privileged)
+ 		return false;
+-	slot->renewal_time = jiffies;
+ 	slot->generation = tbl->generation;
+ 	args->sa_slot = slot;
++	res->sr_timestamp = jiffies;
+ 	res->sr_slot = slot;
+ 	res->sr_status_flags = 0;
+ 	res->sr_status = 1;
+diff --git a/fs/nfs/nfs4session.h b/fs/nfs/nfs4session.h
+index 04f834c..d17b080 100644
+--- a/fs/nfs/nfs4session.h
++++ b/fs/nfs/nfs4session.h
+@@ -19,7 +19,6 @@ struct nfs4_slot {
+ 	struct nfs4_slot_table	*table;
+ 	struct nfs4_slot	*next;
+ 	unsigned long		generation;
+-	unsigned long		renewal_time;
+ 	u32			slot_nr;
+ 	u32		 	seq_nr;
  };
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index a55abd4..29adb12 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -194,6 +194,7 @@ struct nfs4_sequence_args {
  
--static int exports_open(struct inode *inode, struct file *file)
-+static int exports_net_open(struct net *net, struct file *file)
- {
- 	int err;
- 	struct seq_file *seq;
--	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
-+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
- 	err = seq_open(file, &nfs_exports_op);
- 	if (err)
-@@ -140,8 +140,26 @@ static int exports_open(struct inode *inode, struct file *file)
- 	return 0;
- }
- 
--static const struct file_operations exports_operations = {
--	.open		= exports_open,
-+static int exports_proc_open(struct inode *inode, struct file *file)
-+{
-+	return exports_net_open(current->nsproxy->net_ns, file);
-+}
-+
-+static const struct file_operations exports_proc_operations = {
-+	.open		= exports_proc_open,
-+	.read		= seq_read,
-+	.llseek		= seq_lseek,
-+	.release	= seq_release,
-+	.owner		= THIS_MODULE,
-+};
-+
-+static int exports_nfsd_open(struct inode *inode, struct file *file)
-+{
-+	return exports_net_open(inode->i_sb->s_fs_info, file);
-+}
-+
-+static const struct file_operations exports_nfsd_operations = {
-+	.open		= exports_nfsd_open,
- 	.read		= seq_read,
- 	.llseek		= seq_lseek,
- 	.release	= seq_release,
-@@ -1018,7 +1036,7 @@ static ssize_t write_recoverydir(struct file *file, char *buf, size_t size)
- static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
- {
- 	static struct tree_descr nfsd_files[] = {
--		[NFSD_List] = {"exports", &exports_operations, S_IRUGO},
-+		[NFSD_List] = {"exports", &exports_nfsd_operations, S_IRUGO},
- 		[NFSD_Export_features] = {"export_features",
- 					&export_features_operations, S_IRUGO},
- 		[NFSD_FO_UnlockIP] = {"unlock_ip",
-@@ -1081,7 +1099,8 @@ static int create_proc_exports_entry(void)
- 	entry = proc_mkdir("fs/nfs", NULL);
- 	if (!entry)
- 		return -ENOMEM;
--	entry = proc_create("exports", 0, entry, &exports_operations);
-+	entry = proc_create("exports", 0, entry,
-+				 &exports_proc_operations);
- 	if (!entry)
- 		return -ENOMEM;
- 	return 0;
+ struct nfs4_sequence_res {
+ 	struct nfs4_slot	*sr_slot;	/* slot used to send request */
++	unsigned long		sr_timestamp;
+ 	int			sr_status;	/* sequence operation status */
+ 	u32			sr_status_flags;
+ 	u32			sr_highest_slotid;
+-- 
+1.7.11.7
 
