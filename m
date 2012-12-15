@@ -1,70 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:19662 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:35177 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751371Ab2LUPdy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Dec 2012 10:33:54 -0500
-Date: Fri, 21 Dec 2012 10:33:48 -0500
-From: Dave Jones <davej@redhat.com>
-To: Linux Kernel <linux-kernel@vger.kernel.org>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: nfsd oops on Linus' current tree.
-Message-ID: <20121221153348.GA32151@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+	id S1751404Ab2LOWck (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 15 Dec 2012 17:32:40 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFS: Don't use SetPageError in the NFS writeback code
+Date: Sat, 15 Dec 2012 17:32:33 -0500
+Message-Id: <1355610755-27787-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Did a mount from a client (also running Linus current), and the
-server spat this out..
+The writeback code is already capable of passing errors back to user space
+by means of the open_context->error. In the case of ENOSPC, Neil Brown
+is reporting seeing 2 errors being returned.
 
-[ 6936.306135] ------------[ cut here ]------------
-[ 6936.306154] WARNING: at net/sunrpc/clnt.c:617 rpc_shutdown_client+0x12a/0x1b0 [sunrpc]()
-[ 6936.306156] Hardware name:         
-[ 6936.306157] Modules linked in: ip6t_REJECT nf_conntrack_ipv6 nf_defrag_ipv6 xt_conntrack nf_conntrack ip6table_filter ip6_tables xfs coretemp iTCO_wdt iTCO_vendor_support snd_emu10k1 microcode snd_util_mem snd_ac97_codec ac97_bus snd_hwdep snd_seq snd_pcm snd_page_alloc snd_timer e1000e snd_rawmidi snd_seq_device snd emu10k1_gp pcspkr i2c_i801 soundcore gameport lpc_ich mfd_core i82975x_edac edac_core vhost_net tun macvtap macvlan kvm_intel kvm binfmt_misc nfsd auth_rpcgss nfs_acl lockd sunrpc btrfs libcrc32c zlib_deflate usb_storage firewire_ohci firewire_core sata_sil crc_itu_t radeon i2c_algo_bit drm_kms_helper ttm drm i2c_core floppy
-[ 6936.306214] Pid: 52, comm: kworker/u:2 Not tainted 3.7.0+ #34
-[ 6936.306216] Call Trace:
-[ 6936.306224]  [<ffffffff8106badf>] warn_slowpath_common+0x7f/0xc0
-[ 6936.306227]  [<ffffffff8106bb3a>] warn_slowpath_null+0x1a/0x20
-[ 6936.306235]  [<ffffffffa02c62ca>] rpc_shutdown_client+0x12a/0x1b0 [sunrpc]
-[ 6936.306240]  [<ffffffff81368318>] ? delay_tsc+0x98/0xf0
-[ 6936.306252]  [<ffffffffa034a60b>] nfsd4_process_cb_update.isra.16+0x4b/0x230 [nfsd]
-[ 6936.306256]  [<ffffffff8109677c>] ? __rcu_read_unlock+0x5c/0xa0
-[ 6936.306260]  [<ffffffff81370d46>] ? debug_object_deactivate+0x46/0x130
-[ 6936.306269]  [<ffffffffa034a87d>] nfsd4_do_callback_rpc+0x8d/0xa0 [nfsd]
-[ 6936.306272]  [<ffffffff810900f7>] process_one_work+0x207/0x760
-[ 6936.306274]  [<ffffffff81090087>] ? process_one_work+0x197/0x760
-[ 6936.306277]  [<ffffffff81090afe>] ? worker_thread+0x21e/0x440
-[ 6936.306285]  [<ffffffffa034a7f0>] ? nfsd4_process_cb_update.isra.16+0x230/0x230 [nfsd]
-[ 6936.306289]  [<ffffffff81090a3e>] worker_thread+0x15e/0x440
-[ 6936.306292]  [<ffffffff810908e0>] ? rescuer_thread+0x250/0x250
-[ 6936.306295]  [<ffffffff8109b16d>] kthread+0xed/0x100
-[ 6936.306299]  [<ffffffff810dd86e>] ? put_lock_stats.isra.25+0xe/0x40
-[ 6936.306302]  [<ffffffff8109b080>] ? kthread_create_on_node+0x160/0x160
-[ 6936.306307]  [<ffffffff81711e2c>] ret_from_fork+0x7c/0xb0
-[ 6936.306310]  [<ffffffff8109b080>] ? kthread_create_on_node+0x160/0x160
-[ 6936.306312] ---[ end trace 5bab69e086ae3c6f ]---
-[ 6936.363213] ------------[ cut here ]------------
-[ 6936.363226] WARNING: at fs/nfsd/vfs.c:937 nfsd_vfs_read.isra.13+0x197/0x1b0 [nfsd]()
-[ 6936.363229] Hardware name:         
-[ 6936.363230] Modules linked in: ip6t_REJECT nf_conntrack_ipv6 nf_defrag_ipv6 xt_conntrack nf_conntrack ip6table_filter ip6_tables xfs coretemp iTCO_wdt iTCO_vendor_support snd_emu10k1 microcode snd_util_mem snd_ac97_codec ac97_bus snd_hwdep snd_seq snd_pcm snd_page_alloc snd_timer e1000e snd_rawmidi snd_seq_device snd emu10k1_gp pcspkr i2c_i801 soundcore gameport lpc_ich mfd_core i82975x_edac edac_core vhost_net tun macvtap macvlan kvm_intel kvm binfmt_misc nfsd auth_rpcgss nfs_acl lockd sunrpc btrfs libcrc32c zlib_deflate usb_storage firewire_ohci firewire_core sata_sil crc_itu_t radeon i2c_algo_bit drm_kms_helper ttm drm i2c_core floppy
-[ 6936.363284] Pid: 699, comm: nfsd Tainted: G        W    3.7.0+ #34
-[ 6936.363286] Call Trace:
-[ 6936.363293]  [<ffffffff8106badf>] warn_slowpath_common+0x7f/0xc0
-[ 6936.363296]  [<ffffffff8106bb3a>] warn_slowpath_null+0x1a/0x20
-[ 6936.363302]  [<ffffffffa031ef77>] nfsd_vfs_read.isra.13+0x197/0x1b0 [nfsd]
-[ 6936.363310]  [<ffffffffa0321948>] nfsd_read_file+0x88/0xb0 [nfsd]
-[ 6936.363317]  [<ffffffffa0332956>] nfsd4_encode_read+0x186/0x260 [nfsd]
-[ 6936.363325]  [<ffffffffa03391cc>] nfsd4_encode_operation+0x5c/0xa0 [nfsd]
-[ 6936.363333]  [<ffffffffa032e5a9>] nfsd4_proc_compound+0x289/0x780 [nfsd]
-[ 6936.363339]  [<ffffffffa0319e5b>] nfsd_dispatch+0xeb/0x230 [nfsd]
-[ 6936.363355]  [<ffffffffa02d3d38>] svc_process_common+0x328/0x6d0 [sunrpc]
-[ 6936.363365]  [<ffffffffa02d4433>] svc_process+0x103/0x160 [sunrpc]
-[ 6936.363371]  [<ffffffffa031921b>] nfsd+0xdb/0x160 [nfsd]
-[ 6936.363378]  [<ffffffffa0319140>] ? nfsd_destroy+0x210/0x210 [nfsd]
-[ 6936.363381]  [<ffffffff8109b16d>] kthread+0xed/0x100
-[ 6936.363385]  [<ffffffff810dd86e>] ? put_lock_stats.isra.25+0xe/0x40
-[ 6936.363388]  [<ffffffff8109b080>] ? kthread_create_on_node+0x160/0x160
-[ 6936.363393]  [<ffffffff81711e2c>] ret_from_fork+0x7c/0xb0
-[ 6936.363396]  [<ffffffff8109b080>] ? kthread_create_on_node+0x160/0x160
-[ 6936.363398] ---[ end trace 5bab69e086ae3c70 ]---
+Neil writes:
+
+"e.g. if /mnt2/ if an nfs mounted filesystem that has no space then
+
+strace dd if=/dev/zero conv=fsync >> /mnt2/afile count=1
+
+reported Input/output error and the relevant parts of the strace output are:
+
+write(1, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"..., 512) = 512
+fsync(1)                                = -1 EIO (Input/output error)
+close(1)                                = -1 ENOSPC (No space left on device)"
+
+Neil then shows that the duplication of error messages appears to be due to
+the use of the PageError() mechanism, which causes filemap_fdatawait_range
+to return the extra EIO. The regression was introduced by
+commit 7b281ee026552f10862b617a2a51acf49c829554 (NFS: fsync() must exit
+with an error if page writeback failed).
+
+Fix this by removing the call to SetPageError(), and just relying on
+open_context->error reporting the ENOSPC back to fsync().
+
+Reported-by: Neil Brown <neilb@suse.de>
+Tested-by: Neil Brown <neilb@suse.de>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: stable@vger.kernel.org [3.6+]
+---
+ fs/nfs/write.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index f608ca6..5209916 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -202,7 +202,6 @@ out:
+ /* A writeback failed: mark the page as bad, and invalidate the page cache */
+ static void nfs_set_pageerror(struct page *page)
+ {
+-	SetPageError(page);
+ 	nfs_zap_mapping(page_file_mapping(page)->host, page_file_mapping(page));
+ }
+ 
+-- 
+1.7.11.7
 
