@@ -1,67 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:51172 "EHLO mx2.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:60267 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753856Ab2LJOm0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Dec 2012 09:42:26 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: "jiali@redhat.com" <jiali@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: don't extend writes to cover entire page if
- pagecache is invalid
-Date: Mon, 10 Dec 2012 14:42:23 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91191BACE@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1355149548-4225-1-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1355149548-4225-1-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1752768Ab2LQPhk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Dec 2012 10:37:40 -0500
+Received: from bfields by fieldses.org with local (Exim 4.76)
+	(envelope-from <bfields@fieldses.org>)
+	id 1TkclA-0007V0-HW
+	for linux-nfs@vger.kernel.org; Mon, 17 Dec 2012 10:37:40 -0500
+Date: Mon, 17 Dec 2012 10:37:40 -0500
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] svcrpc: fix some printks
+Message-ID: <20121217153740.GE23546@fieldses.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEyLTEyLTEwIGF0IDA5OjI1IC0wNTAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-SmlhbiByZXBvcnRlZCB0aGF0IHRoZSBmb2xsb3dpbmcgc2VxdWVuY2Ugd291bGQgbGVhdmUgInRl
-c3RmaWxlIiB3aXRoDQo+IGNvcnJ1cHQgZGF0YToNCj4gDQo+ICAgICAjIG1vdW50IGxvY2FsaG9z
-dDovZXhwb3J0IC9tbnQvbmZzLyAtbyB2ZXJzPTMNCj4gICAgICMgZWNobyBhYmMgPiAvbW50L25m
-cy90ZXN0ZmlsZTsgZWNobyBkZWYgPj4gL2V4cG9ydC90ZXN0ZmlsZTsgZWNobyBnaGkgPj4gL21u
-dC9uZnMvdGVzdGZpbGUNCj4gICAgICMgY2F0IC12IC9leHBvcnQvdGVzdGZpbGUNCj4gICAgIGFi
-Yw0KPiAgICAgXkBeQF5AXkBnaGkNCj4gDQo+IFdoaWxlIHRoZXJlJ3Mgbm8gbG9ja2luZyBpbnZv
-bHZlZCBoZXJlLCB0aGUgb3BlcmF0aW9ucyBhcmUgc2VyaWFsaXplZCwNCj4gc28gQ1RPIHNob3Vs
-ZCBwcmV2ZW50IGNvcnJ1cHRpb24uDQo+IA0KPiBUaGUgZmlyc3Qgd3JpdGUgdG8gdGhlIGZpbGUg
-aXMgZmluZSBhbmQgd3JpdGVzIDQgYnl0ZXMuIFRoZSBmaWxlIGlzIHRoZW4NCj4gZXh0ZW5kZWQg
-b24gdGhlIHNlcnZlci4gV2hlbiBpdCdzIHJlb3BlbmVkIGEgR0VUQVRUUiBpcyBpc3N1ZWQgYW5k
-IHRoZQ0KPiBzaXplIGNoYW5nZSBpcyBub3RpY2VkLiBUaGlzIGNhdXNlcyBORlNfSU5PX0lOVkFM
-SURfREFUQSB0byBiZSBzZXQgb24NCj4gdGhlIGZpbGUuIEJlY2F1c2UgdGhlIGZpbGUgaXMgb3Bl
-bmVkIGZvciB3cml0ZSBvbmx5LA0KPiBuZnNfd2FudF9yZWFkX21vZGlmeV93cml0ZSgpIHJldHVy
-bnMgMCB0byBuZnNfd3JpdGVfYmVnaW4oKS4NCj4gbmZzX3VwZGF0ZXBhZ2UgdGhlbiBjYWxscyBu
-ZnNfd3JpdGVfcGFnZXVwdG9kYXRlKCkgdG8gc2VlIGlmIGl0IHNob3VsZA0KPiBleHRlbmQgdGhl
-IG5mc19wYWdlIHRvIGNvdmVyIHRoZSB3aG9sZSBwYWdlLiBORlNfSU5PX0lOVkFMSURfREFUQSBp
-cw0KPiBzdGlsbCBzZXQgb24gdGhlIGZpbGUgYXQgdGhhdCBwb2ludCwgYnV0IHRoYXQgZmxhZyBp
-cyBpZ25vcmVkIGFuZA0KPiBuZnNfcGFnZXVwdG9kYXRlIGVycm9uZW91c2x5IGV4dGVuZHMgdGhl
-IHdyaXRlIHRvIGNvdmVyIHRoZSB3aG9sZSBwYWdlLA0KPiB3aXRoIHRoZSB3cml0ZSBkb25lIG9u
-IHRoZSBzZXJ2ZXIgc2lkZSBmaWxsZWQgaW4gd2l0aCB6ZXJvZXMuDQo+IA0KPiBUaGlzIHBhdGNo
-IGp1c3QgaGFzIHRoYXQgZnVuY3Rpb24gY2hlY2sgZm9yIE5GU19JTk9fSU5WQUxJRF9EQVRBIGlu
-DQo+IGFkZGl0aW9uIHRvIE5GU19JTk9fUkVWQUxfUEFHRUNBQ0hFLiBUaGlzIGZpeGVzIHRoZSBi
-dWcsIGJ1dCBsb29raW5nDQo+IG92ZXIgdGhlIGNvZGUsIEkgd29uZGVyIGlmIHdlIG1pZ2h0IGhh
-dmUgYSBzaW1pbGFyIGJ1ZyBpbg0KPiBuZnNfcmV2YWxpZGF0ZV9zaXplKCkuIFRoZSBkaWZmZXJl
-bmNlIGJldHdlZW4gdGhvc2UgdHdvIGZsYWdzIGlzIHZlcnkNCj4gc3VidGxlLCBzbyBpdCBzZWVt
-cyBsaWtlIHdlIG91Z2h0IHRvIGJlIGNoZWNraW5nIGZvcg0KPiBORlNfSU5PX0lOVkFMSURfREFU
-QSBpbiBtb3N0IG9mIHRoZSBwbGFjZXMgdGhhdCB3ZSBsb29rIGZvcg0KPiBORlNfSU5PX1JFVkFM
-X1BBR0VDQUNIRS4NCj4gDQo+IEkgYmVsaWV2ZSB0aGlzIGlzIHJlZ3Jlc3Npb24gaW50cm9kdWNl
-ZCBieSBjb21taXQgOGQxOTdhNTY4LiBUaGUgY29kZQ0KPiBkaWQgY2hlY2sgZm9yIE5GU19JTk9f
-SU5WQUxJRF9EQVRBIHByaW9yIHRvIHRoYXQgcGF0Y2guDQo+IA0KPiBPcmlnaW5hbCBidWcgcmVw
-b3J0IGlzIGhlcmU6DQo+IA0KPiAgICAgaHR0cHM6Ly9idWd6aWxsYS5yZWRoYXQuY29tL3Nob3df
-YnVnLmNnaT9pZD04ODU3NDMNCg0KSGkgSmVmZiwNCg0KVGhlIHBvaW50IG9mIE5GU19JTk9fUkVW
-QUxfUEFHRUNBQ0hFIGlzIHRvIGJlIGFibGUgdG8gZGlzdGluZ3Vpc2gNCmJldHdlZW4gc2l0dWF0
-aW9ucyB3aGVyZSB0aGUgZmlsZSBzaXplIG9yIGNoYW5nZSBhdHRyaWJ1dGUgaXMgaW4gZG91YnQN
-CihhbmQgc28gdGhlIHBhZ2UgY2FjaGUgdmFsaWRpdHkgaXMgaW4gZG91YnQpLCBhbmQgc2l0dWF0
-aW9ucyB3aGVyZSBvdGhlcg0KYXR0cmlidXRlcyBhcmUgaW4gZG91YnQgKHN1Y2ggYXMgQUNDRVNT
-IGNhY2hlcywgZmlsZSBvd25lciwgbmxpbmtzLC4uLikuDQpUaGlzIGlzIHdoeSB3ZSdyZSBvbmx5
-IGNoZWNraW5nIGZvciBORlNfSU5PX1JFVkFMX1BBR0VDQUNIRSBhbmQgbm90DQpORlNfSU5PX0lO
-VkFMSURfREFUQSBpbiB0aGUgZnVuY3Rpb25zIHlvdSBtZW50aW9uIGFib3ZlLg0KDQpTbyB0aGUg
-Zml4IGhlcmUgc2hvdWxkIGJlIHRvIHNldCBORlNfSU5PX1JFVkFMX1BBR0VDQUNIRSB3aGVuIHRo
-ZSBjaGFuZ2UNCmF0dHJpYnV0ZSBhbmQvb3Igc2l6ZSBjaGFuZ2UgaXMgbm90aWNlZC4gVGhlIG9u
-bHkgZnVuY3Rpb24gSSBjYW4gc2VlDQp0aGF0IGFwcGVhcnMgdG8gZ2V0IHRoaXMgd3JvbmcgaXMg
-bmZzX3djY191cGRhdGVfaW5vZGUoKS4gRG9lcyBmaXhpbmcNCnRoYXQgbGF5IHRoZSBidWcgdG8g
-cmVzdD8NCg0KQ2hlZXJzDQogIFRyb25kDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZT
-IGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20N
-Cnd3dy5uZXRhcHAuY29tDQo=
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+Reported-by: kbuild test robot <fengguang.wu@intel.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/svcsock.c |    8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+Hopefully I got this right this time.  Queueing up for 3.8.--b.
+
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 38ec968..b250e27 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -952,8 +952,8 @@ static int svc_tcp_recv_record(struct svc_sock *svsk, struct svc_rqst *rqstp)
+ 		dprintk("svc: TCP record, %d bytes\n", svc_sock_reclen(svsk));
+ 		if (svc_sock_reclen(svsk) + svsk->sk_datalen >
+ 							serv->sv_max_mesg) {
+-			net_notice_ratelimited("RPC: fragment too large: 0x%08lx\n",
+-					       (unsigned long)svsk->sk_reclen);
++			net_notice_ratelimited("RPC: fragment too large: 0x%08x\n",
++					svc_sock_reclen(svsk));
+ 			goto err_delete;
+ 		}
+ 	}
+@@ -1080,8 +1080,8 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 		if (len == want)
+ 			svc_tcp_fragment_received(svsk);
+ 		else
+-			dprintk("svc: incomplete TCP record (%ld of %d)\n",
+-				svsk->sk_tcplen - sizeof(rpc_fraghdr),
++			dprintk("svc: incomplete TCP record (%d of %d)\n",
++				svsk->sk_tcplen - (int)sizeof(rpc_fraghdr),
+ 				svc_sock_reclen(svsk));
+ 		goto err_noclose;
+ 	}
+-- 
+1.7.9.5
+
