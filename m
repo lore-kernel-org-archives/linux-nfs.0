@@ -1,83 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:39364 "EHLO e9.ny.us.ibm.com"
+Received: from fieldses.org ([174.143.236.118]:35426 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757186Ab2LHALN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Dec 2012 19:11:13 -0500
-Received: from /spool/local
-	by e9.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
-	Fri, 7 Dec 2012 19:11:12 -0500
-Received: from d01relay03.pok.ibm.com (d01relay03.pok.ibm.com [9.56.227.235])
-	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id 3E2EE6E8047
-	for <linux-nfs@vger.kernel.org>; Fri,  7 Dec 2012 19:11:09 -0500 (EST)
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay03.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id qB80B9TS313264
-	for <linux-nfs@vger.kernel.org>; Fri, 7 Dec 2012 19:11:09 -0500
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id qB80B8Au022558
-	for <linux-nfs@vger.kernel.org>; Fri, 7 Dec 2012 22:11:09 -0200
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90B33D909@SACEXCMBX04-PRD.hq.netapp.com>
-References: <OFF752FE87.86716271-ON88257AC7.002025E3-88257AC7.00206C04@LocalDomain> <OF13B342CA.3B3F39AC-ON88257ACD.0080BC4F-88257ACD.00815B0B@us.ibm.com> <4FA345DA4F4AE44899BD2B03EEEC2FA90B33D909@SACEXCMBX04-PRD.hq.netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+	id S1752559Ab2LQPPJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Dec 2012 10:15:09 -0500
+Date: Mon, 17 Dec 2012 10:15:02 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Suresh Jayaraman <sjayaraman@suse.com>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] idmapd: allow non-ASCII characters (UTF-8) in NFSv4
+ domain name
+Message-ID: <20121217151502.GB23546@fieldses.org>
+References: <50CB2C3E.8090306@suse.com>
 MIME-Version: 1.0
-Subject: RE: notify_deviceid_type4
-Message-ID: <OF0F29D082.A262ED54-ON88257ACE.0000B379-88257ACE.0000F121@us.ibm.com>
-From: Marc Eshel <eshel@us.ibm.com>
-Date: Fri, 7 Dec 2012 16:10:39 -0800
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <50CB2C3E.8090306@suse.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Y29tbWl0IDEwMTNlMmVhODgzODRkYTJlNzMyNmY0MDA0N2JiYzkyZGViOWU1MTYNCkF1dGhvcjog
-TWFyYyBFc2hlbCA8ZXNoZWxAYWxtYWRlbi5pYm0uY29tPg0KRGF0ZTogICBGcmkgRGVjIDcgMTU6
-NTg6MDcgMjAxMiAtMDgwMA0KDQpDaGFuZ2UgZGVmaW5pdGlvbiBvZiBub3RpZnlfZGV2aWNlaWRf
-dHlwZTQgdG8gY29ycmVzcG9uZCB0byB0aGUgTkZTdjQuMSANCnNwZWMuDQoNClNpZ25lZC1vZmYt
-Ynk6IE1hcmMgRXNoZWwgPGVzaGVsQHVzLmlibS5jb20+DQotLS0NCg0KZGlmZiAtLWdpdCBhL2lu
-Y2x1ZGUvbGludXgvbmZzNC5oIGIvaW5jbHVkZS9saW51eC9uZnM0LmgNCmluZGV4IDU5Y2M4MzMu
-LmFkMzJkZjUgMTAwNjQ0DQotLS0gYS9pbmNsdWRlL2xpbnV4L25mczQuaA0KKysrIGIvaW5jbHVk
-ZS9saW51eC9uZnM0LmgNCkBAIC00OTksOCArNDk5LDggQEAgZW51bSBwbmZzX2lvbW9kZSB7DQog
-fTsNCg0KIGVudW0gcG5mc19ub3RpZnlfZGV2aWNlaWRfdHlwZTQgew0KLSAgICAgICBOT1RJRllf
-REVWSUNFSUQ0X0NIQU5HRSA9IDEgPDwgMSwNCi0gICAgICAgTk9USUZZX0RFVklDRUlENF9ERUxF
-VEUgPSAxIDw8IDIsDQorICAgICAgIE5PVElGWV9ERVZJQ0VJRDRfQ0hBTkdFID0gMSwNCisgICAg
-ICAgTk9USUZZX0RFVklDRUlENF9ERUxFVEUgPSAyLA0KIH07DQoNCiAjZGVmaW5lIE5GTDRfVUZM
-R19NQVNLICAgICAgICAgICAgICAgICAweDAwMDAwMDNGDQoNCg0KDQpGcm9tOiAgICJNeWtsZWJ1
-c3QsIFRyb25kIiA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQpUbzogICAgIE1hcmMgRXNo
-ZWwvQWxtYWRlbi9JQk1ASUJNVVMsIA0KQ2M6ICAgICAiSi4gQnJ1Y2UgRmllbGRzIiA8YmZpZWxk
-c0ByZWRoYXQuY29tPiwgDQoibGludXgtbmZzQHZnZXIua2VybmVsLm9yZyIgPGxpbnV4LW5mc0B2
-Z2VyLmtlcm5lbC5vcmc+LCANCiJsaW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnIiA8bGlu
-dXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZz4NCkRhdGU6ICAgMTIvMDcvMjAxMiAwMzo0NSBQ
-TQ0KU3ViamVjdDogICAgICAgIFJFOiBub3RpZnlfZGV2aWNlaWRfdHlwZTQNCg0KDQoNCkhpIE1h
-cmMsDQogDQpJ4oCZdmUgYmVlbiB3YWl0aW5nIGZvciBhIHBhdGNoIGZyb20geW91IGZvciB0aGlz
-IChJIHNhdyB5b3VyIG9yaWdpbmFsIGJ1ZyANCnJlcG9ydCkuIENvdWxkIHlvdSBwbGVhc2UgcmVz
-ZW5kIHdpdGggYSBmb3JtYWwgY2hhbmdlbG9nIGVudHJ5IGFuZCANCnNpZ25lZC1vZmYtYnkgbGlu
-ZT8gSSBrbm93IHRoYXQgd291bGQgbWFrZSB5b3VyIGxlZ2FsIGNvbGxlYWd1ZXMgaW4gSUJNIA0K
-dmVyeSBoYXBweS4gSg0KIA0KQ2hlZXJzDQogIFRyb25kDQogDQpGcm9tOiBNYXJjIEVzaGVsIFtt
-YWlsdG86ZXNoZWxAdXMuaWJtLmNvbV0gDQpTZW50OiBTYXR1cmRheSwgRGVjZW1iZXIgMDgsIDIw
-MTIgMTI6MzMgQU0NClRvOiBNeWtsZWJ1c3QsIFRyb25kDQpDYzogSi4gQnJ1Y2UgRmllbGRzOyBs
-aW51eC1uZnNAdmdlci5rZXJuZWwub3JnOyANCmxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5v
-cmcNClN1YmplY3Q6IFJlOiBub3RpZnlfZGV2aWNlaWRfdHlwZTQNCiANClRyb25kLCBjYW4geW91
-IHBsZWFzZSBhcHBseSB0aGUgZm9sbG93aW5nIHBhdGNoIHNvIHdlIGFyZSBpbiBjb21wbGlhbmNl
-IA0Kd2l0aCB0aGUgc3BlYy4gDQpUaGFua3MsIE1hcmMuIA0KDQpkaWZmIC0tZ2l0IGEvaW5jbHVk
-ZS9saW51eC9uZnM0LmggYi9pbmNsdWRlL2xpbnV4L25mczQuaCANCmluZGV4IDU5Y2M4MzMuLmFk
-MzJkZjUgMTAwNjQ0IA0KLS0tIGEvaW5jbHVkZS9saW51eC9uZnM0LmggDQorKysgYi9pbmNsdWRl
-L2xpbnV4L25mczQuaCANCkBAIC00OTksOCArNDk5LDggQEAgZW51bSBwbmZzX2lvbW9kZSB7IA0K
-IH07IA0KICANCiBlbnVtIHBuZnNfbm90aWZ5X2RldmljZWlkX3R5cGU0IHsgDQotICAgICAgIE5P
-VElGWV9ERVZJQ0VJRDRfQ0hBTkdFID0gMSA8PCAxLCANCi0gICAgICAgTk9USUZZX0RFVklDRUlE
-NF9ERUxFVEUgPSAxIDw8IDIsIA0KKyAgICAgICBOT1RJRllfREVWSUNFSUQ0X0NIQU5HRSA9IDEs
-IA0KKyAgICAgICBOT1RJRllfREVWSUNFSUQ0X0RFTEVURSA9IDIsIA0KIH07IA0KICANCiAjZGVm
-aW5lIE5GTDRfVUZMR19NQVNLICAgICAgICAgICAgICAgICAweDAwMDAwMDNGIA0KDQoNCg0KRnJv
-bTogICAgICAgIE1hcmMgRXNoZWwvQWxtYWRlbi9JQk0gDQpUbzogICAgICAgICJUcm9uZCBNeWts
-ZWJ1c3QiIDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4sICJKLiBCcnVjZSANCkZpZWxkcyIg
-PGJmaWVsZHNAcmVkaGF0LmNvbT4sIA0KQ2M6ICAgICAgICBsaW51eC1uZnMtb3duZXJAdmdlci5r
-ZXJuZWwub3JnLCBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnIA0KRGF0ZTogICAgICAgIDExLzMw
-LzIwMTIgMDk6NTQgUE0gDQpTdWJqZWN0OiAgICAgICAgbm90aWZ5X2RldmljZWlkX3R5cGU0IA0K
-DQoNCg0KVGhlIHNwZWMgZGVmaW5lcyBub3RpZnlfZGV2aWNlaWRfdHlwZTQgYXM6IA0KDQoyMC4x
-Mi4xLiAgQVJHVU1FTlQNCiAgLyoNCiAgICogRGV2aWNlIG5vdGlmaWNhdGlvbiB0eXBlcy4NCiAg
-ICovDQogIGVudW0gbm90aWZ5X2RldmljZWlkX3R5cGU0IHsNCiAgICAgICAgICBOT1RJRllfREVW
-SUNFSUQ0X0NIQU5HRSA9IDEsDQogICAgICAgICAgTk9USUZZX0RFVklDRUlENF9ERUxFVEUgPSAy
-DQogIH07IA0KDQoNCmJ1dCB0aGUgTGludXggY29kZSBpbiBuZnM0LmggaGFzLCBpcyB0aGF0IGdv
-aW5nIHRvIGJlIGZpeGVkPyANCg0KZW51bSBwbmZzX25vdGlmeV9kZXZpY2VpZF90eXBlNCB7IA0K
-ICAgICAgICBOT1RJRllfREVWSUNFSUQ0X0NIQU5HRSA9IDEgPDwgMSwgDQogICAgICAgIE5PVElG
-WV9ERVZJQ0VJRDRfREVMRVRFID0gMSA8PCAyLCANCn07IA0KDQo=
+On Fri, Dec 14, 2012 at 07:10:14PM +0530, Suresh Jayaraman wrote:
+> The validateascii() check in imconv() maps NFSv4 domain names with non-ASCII
+> characters to 'nobody'. In setups where Active directory or LDAP is used this
+> causes names with UTF-8 characters to being mapped to 'nobody' because of this
+> check.
+> 
+> As Bruce Fields puts it:
+> 
+> "idmapd doesn't seem like the right place to enforce restrictions on names.
+> Once the system has allowed a name it's too late to be complaining about it
+> here."
+> 
+> Replace the validateascii() call in imconv() with a check for null-termination
+> just to be extra-careful and remove the validateascii() function itself
+> as the only user of that function is being removed by this patch.
 
+Seems OK, thanks.--b.
+
+> 
+> 
+> Signed-off-by: Suresh Jayaraman <sjayaraman@suse.com>
+> Cc: J. Bruce Fields <bfields@fieldses.org>
+> ---
+>  utils/idmapd/idmapd.c |   28 +++++-----------------------
+>  1 file changed, 5 insertions(+), 23 deletions(-)
+> 
+> diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
+> index e80efb4..9d66225 100644
+> --- a/utils/idmapd/idmapd.c
+> +++ b/utils/idmapd/idmapd.c
+> @@ -145,7 +145,6 @@ static void svrreopen(int, short, void *);
+>  static int  nfsopen(struct idmap_client *);
+>  static void nfscb(int, short, void *);
+>  static void nfsdcb(int, short, void *);
+> -static int  validateascii(char *, u_int32_t);
+>  static int  addfield(char **, ssize_t *, char *);
+>  static int  getfield(char **, char *, size_t);
+>  
+> @@ -642,6 +641,8 @@ out:
+>  static void
+>  imconv(struct idmap_client *ic, struct idmap_msg *im)
+>  {
+> +	u_int32_t len;
+> +
+>  	switch (im->im_conv) {
+>  	case IDMAP_CONV_IDTONAME:
+>  		idtonameres(im);
+> @@ -652,10 +653,10 @@ imconv(struct idmap_client *ic, struct idmap_msg *im)
+>  			    im->im_id, im->im_name);
+>  		break;
+>  	case IDMAP_CONV_NAMETOID:
+> -		if (validateascii(im->im_name, sizeof(im->im_name)) == -1) {
+> -			im->im_status |= IDMAP_STATUS_INVALIDMSG;
+> +		len = strnlen(im->im_name, IDMAP_NAMESZ - 1);
+> +		/* Check for NULL termination just to be careful */
+> +		if (im->im_name[len+1] != '\0')
+>  			return;
+> -		}
+>  		nametoidres(im);
+>  		if (verbose > 1)
+>  			xlog_warn("%s %s: (%s) name \"%s\" -> id \"%d\"",
+> @@ -855,25 +856,6 @@ nametoidres(struct idmap_msg *im)
+>  }
+>  
+>  static int
+> -validateascii(char *string, u_int32_t len)
+> -{
+> -	u_int32_t i;
+> -
+> -	for (i = 0; i < len; i++) {
+> -		if (string[i] == '\0')
+> -			break;
+> -
+> -		if (string[i] & 0x80)
+> -			return (-1);
+> -	}
+> -
+> -	if ((i >= len) || string[i] != '\0')
+> -		return (-1);
+> -
+> -	return (i + 1);
+> -}
+> -
+> -static int
+>  addfield(char **bpp, ssize_t *bsizp, char *fld)
+>  {
+>  	char ch, *bp = *bpp;
