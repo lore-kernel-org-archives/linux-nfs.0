@@ -1,124 +1,171 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:55666 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:7960 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750983Ab2LSWT4 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Dec 2012 17:19:56 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Orion Poplawski <orion@cora.nwra.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: umount(,MNT_DETACH) for nfsv4 hangs when using sec=krb5 and
- network is down
-Date: Wed, 19 Dec 2012 22:19:54 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91196C146@SACEXCMBX04-PRD.hq.netapp.com>
-References: <loom.20121219T214634-616@post.gmane.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA91196AE42@SACEXCMBX04-PRD.hq.netapp.com>
-	 <50D236A4.6060906@cora.nwra.com>
-In-Reply-To: <50D236A4.6060906@cora.nwra.com>
-Content-Type: text/plain; charset="utf-7"
-MIME-Version: 1.0
+	id S1753144Ab2LQPnP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Dec 2012 10:43:15 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 04/13] SELinux: Add new labeling type native labels
+Date: Mon, 17 Dec 2012 10:43:02 -0500
+Message-Id: <1355758991-30049-5-git-send-email-steved@redhat.com>
+In-Reply-To: <1355758991-30049-1-git-send-email-steved@redhat.com>
+References: <1355758991-30049-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2012-12-19 at 14:50 -0700, Orion Poplawski wrote:
-+AD4- On 12/19/2012 02:08 PM, Myklebust, Trond wrote:
-+AD4- +AD4- On Wed, 2012-12-19 at 20:47 +000-, Orion Poplawski wrote:
-+AD4- +AD4APg-
-+AD4- +AD4APg- However, we need someway to be able to drop mounts after the network connection
-+AD4- +AD4APg- has been removed.  This behavior is causing sever problems for our laptop and
-+AD4- +AD4APg- vpn users.
-+AD4- +AD4APg-
-+AD4- +AD4APg- Tested with:
-+AD4- +AD4APg-
-+AD4- +AD4APg- 3.6.11-3.fc18
-+AD4- +AD4APg- nfs-utils-1.2.7-2.fc18
-+AD4- +AD4APg-
-+AD4- +AD4APg- I've also filed https://bugzilla.redhat.com/show+AF8-bug.cgi?id+AD0-888942
-+AD4- +AD4- 
-+AD4- +AD4- No. What you need is a way to unmount +AF8-before+AF8- you kill the network.
-+AD4- +AD4- Once the network is gone, you are in severe data loss territory, and you
-+AD4- +AD4- are entirely on your own dealing with that problem...
-+AD4- +AD4- 
-+AD4- +AD4- Maybe one day we will get round to supporting offline mounts, but that's
-+AD4- +AD4- not the case today.
-+AD4- +AD4- 
-+AD4- 
-+AD4- I agree (see https://bugzilla.gnome.org/show+AF8-bug.cgi?id+AD0-387832 for example),
-+AD4- however it happens (and, because of lack of support as indicated by the bug,
-+AD4- hard to prevent) and it seems unfortunate to then subject the user to hanging
-+AD4- mounts (which will effectively lock up the desktop).  It currently is possible
-+AD4- for sec+AD0-sys mounts, so I thought it would be worth while making it work for
-+AD4- sec+AD0-krb5 mounts.  The same data loss issues are present for both.
+From: David Quigley <dpquigl@davequigley.com>
 
-Any application which is already hanging on a file in that filesystem
-will continue to hang across a 'umount -l'. The only thing you are doing
-is preventing future attempts to access the filesystem.
+There currently doesn't exist a labeling type that is adequate for use with
+labeled NFS. Since NFS doesn't really support xattrs we can't use the use xattr
+labeling behavior. For this we developed a new labeling type. The native
+labeling type is used solely by NFS to ensure NFS inodes are labeled at runtime
+by the NFS code instead of relying on the SELinux security server on the client
+end.
 
-As I said above, this whole thing really needs to be handled as part of
-the suspend scripts and/or networkmanager...
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ include/linux/security.h            |  3 +++
+ security/selinux/hooks.c            | 35 ++++++++++++++++++++++++++---------
+ security/selinux/include/security.h |  2 ++
+ security/selinux/ss/policydb.c      |  5 ++++-
+ 4 files changed, 35 insertions(+), 10 deletions(-)
 
-+AD4- We have put work in the past into making umount work for offline nfs mounts
-+AD4- (https://bugzilla.redhat.com/show+AF8-bug.cgi?id+AD0-820707).  In fact that looks
-+AD4- remarkably familiar :).
-+AD4- 
-+AD4- +AFs-  131.832005+AF0- umount.nfs4     D f1585bc8     0  1959   1958 0x00000080
-+AD4- +AFs-  131.832005+AF0-  f1585c34 00000086 0000ea8a f1585bc8 c045a297 f705f110 644b6440
-+AD4- 0000001c
-+AD4- +AFs-  131.832005+AF0-  f1585bd8 c0cd5080 c0cd5080 00000282 f1585c00 f7591080 f3a27110
-+AD4- f1585c24
-+AD4- +AFs-  131.832005+AF0-  00000000 c0d2e280 00000282 00000246 f1585c00 c097a273 f1585c2c
-+AD4- f7ee11c5
-+AD4- +AFs-  131.832005+AF0- Call Trace:
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-c045a297+AD4AXQ- ? +AF8AXw-internal+AF8-add+AF8-timer+0x77/0xc-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-c097a273+AD4AXQ- ? +AF8-raw+AF8-spin+AF8-unlock+AF8-bh+0x13/0x2-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-f7ee11c5+AD4AXQ- ? rpc+AF8-wake+AF8-up+AF8-first+0x65/0x1- +AFs-sunrpc+AF0-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-f7eda240+AD4AXQ- ? rpc+AF8-show+AF8-tasks+0x1b0/0x1b0- +AFs-sunrpc+AF0-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-c09794d3+AD4AXQ- schedule+0x23/0x6-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-f7ee064d+AD4AXQ- rpc+AF8-wait+AF8-bit+AF8-killable+0x2d/0x7- +AFs-sunrpc+AF0-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-c0977fc1+AD4AXQ- +AF8AXw-wait+AF8-on+AF8-bit+0x51/0x7-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-f7ee0620+AD4AXQ- ? +AF8AXw-rpc+AF8-wait+AF8-for+AF8-completion+AF8-task+0x30/0x3- +AFs-sunrpc+AF0-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-f7ee0620+AD4AXQ- ? +AF8AXw-rpc+AF8-wait+AF8-for+AF8-completion+AF8-task+0x30/0x3- +AFs-sunrpc+AF0-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-c0978041+AD4AXQ- out+AF8-of+AF8-line+AF8-wait+AF8-on+AF8-bit+0x61/0x7-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-c046c100+AD4AXQ- ? autoremove+AF8-wake+AF8-function+0x50/0x5-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-f7ee198f+AD4AXQ- +AF8AXw-rpc+AF8-execute+0x11f/0x//0- +AFs-sunrpc+AF0-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-c0507774+AD4AXQ- ? mempool+AF8-alloc+0x44/0x1-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-f7ed8a50+AD4AXQ- ? call+AF8-connect+0x90/0x9- +AFs-sunrpc+AF0-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-f7ed8a50+AD4AXQ- ? call+AF8-connect+0x90/0x9- +AFs-sunrpc+AF0-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-c046c0a3+AD4AXQ- ? wake+AF8-up+AF8-bit+0x23/0x3-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-f7ee1ec8+AD4AXQ- rpc+AF8-execute+0x48/0x8- +AFs-sunrpc+AF0-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-f7ed9929+AD4AXQ- rpc+AF8-run+AF8-task+0x59/0x7- +AFs-sunrpc+AF0-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-f7ed9a3c+AD4AXQ- rpc+AF8-call+AF8-sync+0x3//Ux6- +AFs-sunrpc+AF0-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-f8a402fc+AD4AXQ- +AF8-nfs4+AF8-call+AF8-sync+0x3//Ux5- +AFs-nfsv4+AF0-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-f8a403d5+AD4AXQ- +AF8-nfs4+AF8-proc+AF8-getattr+0x95/0xa- +AFs-nfsv4+AF0-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-f8a41bab+AD4AXQ- nfs4+AF8-proc+AF8-getattr+0x3//Ux6- +AFs-nfsv4+AF0-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-f897f891+AD4AXQ- +AF8AXw-nfs+AF8-revalidate+AF8-inode+0x81/0x2- +AFs-nfs+AF0-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-f897fbd2+AD4AXQ- nfs+AF8-revalidate+AF8-inode+0x62/0x9- +AFs-nfs+AF0-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-f89793ef+AD4AXQ- nfs+AF8-check+AF8-verifier+0x4f/0x8- +AFs-nfs+AF0-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-f897b4da+AD4AXQ- nfs+AF8-lookup+AF8-revalidate+0x2ba/0x440- +AFs-nfs+AF0-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-c055f8cb+AD4AXQ- ? follow+AF8-managed+0x19b/0x//0-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-c0560000+AD4AXQ- ? unlazy+AF8-walk+0xf0/0x1-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-f897c184+AD4AXQ- nfs4+AF8-lookup+AF8-revalidate+0x34/0xe- +AFs-nfs+AF0-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-c055fedc+AD4AXQ- complete+AF8-walk+0x8c/0xc-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-c05611b3+AD4AXQ- path+AF8-lookupat+0x63/0x6-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-c05617ca+AD4AXQ- do+AF8-path+AF8-lookup+0x2a/0xb-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-c0563df6+AD4AXQ- user+AF8-path+AF8-at+AF8-empty+0x46/0x8-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-c097d440+AD4AXQ- ? vmalloc+AF8-fault+0x176/0x174-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-c097d5f7+AD4AXQ- ? do+AF8-page+AF8-fault+0x1b7/0x450-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-c0563e4f+AD4AXQ- user+AF8-path+AF8-at+0x1f/0x3-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-c05707b1+AD4AXQ- sys+AF8-umount+0x41/0x3-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-c04bd59c+AD4AXQ- ? +AF8AXw-audit+AF8-syscall+AF8-entry+0xb//Ux2-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-c04bdac6+AD4AXQ- ? +AF8AXw-audit+AF8-syscall+AF8-exit+0x356/0x//0-
-+AD4- +AFs-  131.832005+AF0-  +AFsAPA-c0980fdf+AD4AXQ- sysenter+AF8-do+AF8-call+0x12/0x2-
-+AD4- 
-+AD4- I wonder if it never did get fixed for krb5 mounts then...
-
-Commit eb96d5c97b0825d542e9c4ba5e0a22b519355166 (SUNRPC handle
-EKEYEXPIRED in call+AF8-refreshresult), which will be in 3.8-rc1 when Linus
-releases it, may help.
-
+diff --git a/include/linux/security.h b/include/linux/security.h
+index c94bcf5..afddfec 100644
+--- a/include/linux/security.h
++++ b/include/linux/security.h
+@@ -61,6 +61,9 @@ struct mm_struct;
+ #define SECURITY_CAP_NOAUDIT 0
+ #define SECURITY_CAP_AUDIT 1
+ 
++/* LSM Agnostic defines for sb_set_mnt_opts */
++#define SECURITY_LSM_NATIVE_LABELS	1
++
+ struct ctl_table;
+ struct audit_krule;
+ struct user_namespace;
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index 4e7e7c2..8f233ff 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -80,6 +80,7 @@
+ #include <linux/syslog.h>
+ #include <linux/user_namespace.h>
+ #include <linux/export.h>
++#include <linux/security.h>
+ #include <linux/msg.h>
+ #include <linux/shm.h>
+ 
+@@ -283,13 +284,14 @@ static void superblock_free_security(struct super_block *sb)
+ 
+ /* The file system's label must be initialized prior to use. */
+ 
+-static const char *labeling_behaviors[6] = {
++static const char *labeling_behaviors[7] = {
+ 	"uses xattr",
+ 	"uses transition SIDs",
+ 	"uses task SIDs",
+ 	"uses genfs_contexts",
+ 	"not configured for labeling",
+ 	"uses mountpoint labeling",
++	"uses native labeling",
+ };
+ 
+ static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dentry);
+@@ -677,14 +679,21 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 	if (strcmp(sb->s_type->name, "proc") == 0)
+ 		sbsec->flags |= SE_SBPROC;
+ 
+-	/* Determine the labeling behavior to use for this filesystem type. */
+-	rc = security_fs_use((sbsec->flags & SE_SBPROC) ? "proc" : sb->s_type->name, &sbsec->behavior, &sbsec->sid);
+-	if (rc) {
+-		printk(KERN_WARNING "%s: security_fs_use(%s) returned %d\n",
+-		       __func__, sb->s_type->name, rc);
+-		goto out;
++	if (!sbsec->behavior) {
++		/*
++		 * Determine the labeling behavior to use for this
++		 * filesystem type.
++		 */
++		rc = security_fs_use((sbsec->flags & SE_SBPROC) ?
++					"proc" : sb->s_type->name,
++					&sbsec->behavior, &sbsec->sid);
++		if (rc) {
++			printk(KERN_WARNING
++				"%s: security_fs_use(%s) returned %d\n",
++					__func__, sb->s_type->name, rc);
++			goto out;
++		}
+ 	}
+-
+ 	/* sets the context of the superblock for the fs being mounted. */
+ 	if (fscontext_sid) {
+ 		rc = may_context_mount_sb_relabel(fscontext_sid, sbsec, cred);
+@@ -699,6 +708,11 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 	 * sets the label used on all file below the mountpoint, and will set
+ 	 * the superblock context if not already set.
+ 	 */
++	if (kern_flags & SECURITY_LSM_NATIVE_LABELS && !context_sid) {
++		sbsec->behavior = SECURITY_FS_USE_NATIVE;
++		*set_kern_flags |= SECURITY_LSM_NATIVE_LABELS;
++	}
++
+ 	if (context_sid) {
+ 		if (!fscontext_sid) {
+ 			rc = may_context_mount_sb_relabel(context_sid, sbsec,
+@@ -730,7 +744,8 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 	}
+ 
+ 	if (defcontext_sid) {
+-		if (sbsec->behavior != SECURITY_FS_USE_XATTR) {
++		if (sbsec->behavior != SECURITY_FS_USE_XATTR &&
++			sbsec->behavior != SECURITY_FS_USE_NATIVE) {
+ 			rc = -EINVAL;
+ 			printk(KERN_WARNING "SELinux: defcontext option is "
+ 			       "invalid for this filesystem type\n");
+@@ -1198,6 +1213,8 @@ static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dent
+ 	}
+ 
+ 	switch (sbsec->behavior) {
++	case SECURITY_FS_USE_NATIVE:
++		break;
+ 	case SECURITY_FS_USE_XATTR:
+ 		if (!inode->i_op->getxattr) {
+ 			isec->sid = sbsec->def_sid;
+diff --git a/security/selinux/include/security.h b/security/selinux/include/security.h
+index 6d38851..8fd8e18 100644
+--- a/security/selinux/include/security.h
++++ b/security/selinux/include/security.h
+@@ -169,6 +169,8 @@ int security_get_allow_unknown(void);
+ #define SECURITY_FS_USE_GENFS		4 /* use the genfs support */
+ #define SECURITY_FS_USE_NONE		5 /* no labeling support */
+ #define SECURITY_FS_USE_MNTPOINT	6 /* use mountpoint labeling */
++#define SECURITY_FS_USE_NATIVE		7 /* use native label support */
++#define SECURITY_FS_USE_MAX		7 /* Highest SECURITY_FS_USE_XXX */
+ 
+ int security_fs_use(const char *fstype, unsigned int *behavior,
+ 	u32 *sid);
+diff --git a/security/selinux/ss/policydb.c b/security/selinux/ss/policydb.c
+index 9cd9b7c..c8adde3 100644
+--- a/security/selinux/ss/policydb.c
++++ b/security/selinux/ss/policydb.c
+@@ -2168,7 +2168,10 @@ static int ocontext_read(struct policydb *p, struct policydb_compat_info *info,
+ 
+ 				rc = -EINVAL;
+ 				c->v.behavior = le32_to_cpu(buf[0]);
+-				if (c->v.behavior > SECURITY_FS_USE_NONE)
++				/* Determined at runtime, not in policy DB. */
++				if (c->v.behavior == SECURITY_FS_USE_MNTPOINT)
++					goto out;
++				if (c->v.behavior > SECURITY_FS_USE_MAX)
+ 					goto out;
+ 
+ 				rc = -ENOMEM;
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.7.11.7
 
-NetApp
-Trond.Myklebust+AEA-netapp.com
-www.netapp.com
