@@ -1,90 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:40786 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753310Ab2LDNtl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Dec 2012 08:49:41 -0500
-Subject: [PATCH 2/6] nfsd: pass net to nfsd_startup() and nfsd_shutdown()
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Tue, 04 Dec 2012 16:50:11 +0300
-Message-ID: <20121204135011.24504.43375.stgit@localhost.localdomain>
-In-Reply-To: <20121204134920.24504.95261.stgit@localhost.localdomain>
-References: <20121204134920.24504.95261.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from userp1040.oracle.com ([156.151.31.81]:33453 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753159Ab2LQPCm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Dec 2012 10:02:42 -0500
+From: Sasha Levin <sasha.levin@oracle.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: Sasha Levin <sasha.levin@oracle.com>
+Subject: [PATCH 08/15] SUNRPC/cache: use new hashtable implementation
+Date: Mon, 17 Dec 2012 10:01:28 -0500
+Message-Id: <1355756497-15834-8-git-send-email-sasha.levin@oracle.com>
+In-Reply-To: <1355756497-15834-1-git-send-email-sasha.levin@oracle.com>
+References: <1355756497-15834-1-git-send-email-sasha.levin@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Precursor patch. Hard-coded "init_net" will be replaced by proper one in
-future.
+Switch cache to use the new hashtable implementation. This reduces the amount
+of generic unrelated code in the cache implementation.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+This patch depends on d9b482c ("hashtable: introduce a small and naive
+hashtable") which was merged in v3.6.
+
+Tested-by: J. Bruce Fields <bfields@fieldses.org>
+Signed-off-by: Sasha Levin <sasha.levin@oracle.com>
 ---
- fs/nfsd/nfssvc.c |   15 ++++++---------
- 1 files changed, 6 insertions(+), 9 deletions(-)
+ net/sunrpc/cache.c | 18 +++++++-----------
+ 1 file changed, 7 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 9fd8496..21cba3d 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -203,10 +203,9 @@ static int nfsd_init_socks(struct net *net)
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 9afa439..d4539b6 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -28,6 +28,7 @@
+ #include <linux/workqueue.h>
+ #include <linux/mutex.h>
+ #include <linux/pagemap.h>
++#include <linux/hashtable.h>
+ #include <asm/ioctls.h>
+ #include <linux/sunrpc/types.h>
+ #include <linux/sunrpc/cache.h>
+@@ -524,19 +525,18 @@ EXPORT_SYMBOL_GPL(cache_purge);
+  * it to be revisited when cache info is available
+  */
  
- static bool nfsd_up = false;
+-#define	DFR_HASHSIZE	(PAGE_SIZE/sizeof(struct list_head))
+-#define	DFR_HASH(item)	((((long)item)>>4 ^ (((long)item)>>13)) % DFR_HASHSIZE)
++#define	DFR_HASH_BITS	9
  
--static int nfsd_startup(int nrservs)
-+static int nfsd_startup(int nrservs, struct net *net)
+ #define	DFR_MAX	300	/* ??? */
+ 
+ static DEFINE_SPINLOCK(cache_defer_lock);
+ static LIST_HEAD(cache_defer_list);
+-static struct hlist_head cache_defer_hash[DFR_HASHSIZE];
++static DEFINE_HASHTABLE(cache_defer_hash, DFR_HASH_BITS);
+ static int cache_defer_cnt;
+ 
+ static void __unhash_deferred_req(struct cache_deferred_req *dreq)
  {
- 	int ret;
--	struct net *net = &init_net;
+-	hlist_del_init(&dreq->hash);
++	hash_del(&dreq->hash);
+ 	if (!list_empty(&dreq->recent)) {
+ 		list_del_init(&dreq->recent);
+ 		cache_defer_cnt--;
+@@ -545,10 +545,7 @@ static void __unhash_deferred_req(struct cache_deferred_req *dreq)
  
- 	if (nfsd_up)
- 		return 0;
-@@ -237,16 +236,14 @@ static int nfsd_startup(int nrservs)
- out_net_state:
- 	nfs4_state_shutdown();
- out_lockd:
--	lockd_down(&init_net);
-+	lockd_down(net);
- out_racache:
- 	nfsd_racache_shutdown();
- 	return ret;
+ static void __hash_deferred_req(struct cache_deferred_req *dreq, struct cache_head *item)
+ {
+-	int hash = DFR_HASH(item);
+-
+-	INIT_LIST_HEAD(&dreq->recent);
+-	hlist_add_head(&dreq->hash, &cache_defer_hash[hash]);
++	hash_add(cache_defer_hash, &dreq->hash, (unsigned long)item);
  }
  
--static void nfsd_shutdown(void)
-+static void nfsd_shutdown(struct net *net)
- {
--	struct net *net = &init_net;
--
- 	/*
- 	 * write_ports can create the server without actually starting
- 	 * any threads--if we get shut down before any threads are
-@@ -264,7 +261,7 @@ static void nfsd_shutdown(void)
+ static void setup_deferral(struct cache_deferred_req *dreq,
+@@ -600,7 +597,7 @@ static void cache_wait_req(struct cache_req *req, struct cache_head *item)
+ 		 * to clean up
+ 		 */
+ 		spin_lock(&cache_defer_lock);
+-		if (!hlist_unhashed(&sleeper.handle.hash)) {
++		if (hash_hashed(&sleeper.handle.hash)) {
+ 			__unhash_deferred_req(&sleeper.handle);
+ 			spin_unlock(&cache_defer_lock);
+ 		} else {
+@@ -671,12 +668,11 @@ static void cache_revisit_request(struct cache_head *item)
+ 	struct cache_deferred_req *dreq;
+ 	struct list_head pending;
+ 	struct hlist_node *lp, *tmp;
+-	int hash = DFR_HASH(item);
  
- static void nfsd_last_thread(struct svc_serv *serv, struct net *net)
- {
--	nfsd_shutdown();
-+	nfsd_shutdown(net);
+ 	INIT_LIST_HEAD(&pending);
+ 	spin_lock(&cache_defer_lock);
  
- 	svc_rpcb_cleanup(serv, net);
- 
-@@ -468,7 +465,7 @@ nfsd_svc(int nrservs)
- 
- 	nfsd_up_before = nfsd_up;
- 
--	error = nfsd_startup(nrservs);
-+	error = nfsd_startup(nrservs, net);
- 	if (error)
- 		goto out_destroy;
- 	error = svc_set_num_threads(nfsd_serv, NULL, nrservs);
-@@ -481,7 +478,7 @@ nfsd_svc(int nrservs)
- 	error = nfsd_serv->sv_nrthreads - 1;
- out_shutdown:
- 	if (error < 0 && !nfsd_up_before)
--		nfsd_shutdown();
-+		nfsd_shutdown(net);
- out_destroy:
- 	nfsd_destroy(net);		/* Release server */
- out:
+-	hlist_for_each_entry_safe(dreq, lp, tmp, &cache_defer_hash[hash], hash)
++	hash_for_each_possible_safe(cache_defer_hash, dreq, lp, tmp, hash, (unsigned long)item)
+ 		if (dreq->item == item) {
+ 			__unhash_deferred_req(dreq);
+ 			list_add(&dreq->recent, &pending);
+-- 
+1.8.0
 
