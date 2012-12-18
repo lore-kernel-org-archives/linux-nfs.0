@@ -1,100 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:42478 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:42769 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753887Ab2LNNk0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 Dec 2012 08:40:26 -0500
-Message-ID: <50CB2C3E.8090306@suse.com>
-Date: Fri, 14 Dec 2012 19:10:14 +0530
-From: Suresh Jayaraman <sjayaraman@suse.com>
+	id S1751348Ab2LRSuI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 Dec 2012 13:50:08 -0500
+Date: Tue, 18 Dec 2012 13:50:06 -0500
+To: Keith Edmunds <kae@midnighthax.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFS access slow
+Message-ID: <20121218185006.GA14716@fieldses.org>
+References: <20121218155248.49dfa1fd@kae.tiger-computing.wbp>
 MIME-Version: 1.0
-To: steved@redhat.com
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH] idmapd: allow non-ASCII characters (UTF-8) in NFSv4 domain
- name
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121218155248.49dfa1fd@kae.tiger-computing.wbp>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The validateascii() check in imconv() maps NFSv4 domain names with non-ASCII
-characters to 'nobody'. In setups where Active directory or LDAP is used this
-causes names with UTF-8 characters to being mapped to 'nobody' because of this
-check.
+On Tue, Dec 18, 2012 at 03:52:48PM +0000, Keith Edmunds wrote:
+> Accessing disks locally on a server gives read speeds around 100MB/s,
+> write speeds around 267MB/s.
+> 
+> Mounting the same disks on the same server via NFS (ie, not using the
+> network at all) gives read speeds around 30MB/s, write speeds around
+> 80MB/s.
+> 
+> That's about 30% of the local access speed.
+> 
+> Is that to be expected? I'd expect a 10-15% slowdown, but not this much.
+> 
+> This is using NFSv4; using NFSv3 improves the speeds slightly (36MB/s
+> read, 95MB/s write).
 
-As Bruce Fields puts it:
+What are your disks?  How exactly are you getting those numbers?
+(Literally, step-by-step, what commands are you running?)
 
-"idmapd doesn't seem like the right place to enforce restrictions on names.
-Once the system has allowed a name it's too late to be complaining about it
-here."
+What kernel version?
 
-Replace the validateascii() call in imconv() with a check for null-termination
-just to be extra-careful and remove the validateascii() function itself
-as the only user of that function is being removed by this patch.
+Note loopback-mounts (client and server on same machine) aren't really
+fully supported.
 
+--b.
 
-Signed-off-by: Suresh Jayaraman <sjayaraman@suse.com>
-Cc: J. Bruce Fields <bfields@fieldses.org>
----
- utils/idmapd/idmapd.c |   28 +++++-----------------------
- 1 file changed, 5 insertions(+), 23 deletions(-)
-
-diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
-index e80efb4..9d66225 100644
---- a/utils/idmapd/idmapd.c
-+++ b/utils/idmapd/idmapd.c
-@@ -145,7 +145,6 @@ static void svrreopen(int, short, void *);
- static int  nfsopen(struct idmap_client *);
- static void nfscb(int, short, void *);
- static void nfsdcb(int, short, void *);
--static int  validateascii(char *, u_int32_t);
- static int  addfield(char **, ssize_t *, char *);
- static int  getfield(char **, char *, size_t);
- 
-@@ -642,6 +641,8 @@ out:
- static void
- imconv(struct idmap_client *ic, struct idmap_msg *im)
- {
-+	u_int32_t len;
-+
- 	switch (im->im_conv) {
- 	case IDMAP_CONV_IDTONAME:
- 		idtonameres(im);
-@@ -652,10 +653,10 @@ imconv(struct idmap_client *ic, struct idmap_msg *im)
- 			    im->im_id, im->im_name);
- 		break;
- 	case IDMAP_CONV_NAMETOID:
--		if (validateascii(im->im_name, sizeof(im->im_name)) == -1) {
--			im->im_status |= IDMAP_STATUS_INVALIDMSG;
-+		len = strnlen(im->im_name, IDMAP_NAMESZ - 1);
-+		/* Check for NULL termination just to be careful */
-+		if (im->im_name[len+1] != '\0')
- 			return;
--		}
- 		nametoidres(im);
- 		if (verbose > 1)
- 			xlog_warn("%s %s: (%s) name \"%s\" -> id \"%d\"",
-@@ -855,25 +856,6 @@ nametoidres(struct idmap_msg *im)
- }
- 
- static int
--validateascii(char *string, u_int32_t len)
--{
--	u_int32_t i;
--
--	for (i = 0; i < len; i++) {
--		if (string[i] == '\0')
--			break;
--
--		if (string[i] & 0x80)
--			return (-1);
--	}
--
--	if ((i >= len) || string[i] != '\0')
--		return (-1);
--
--	return (i + 1);
--}
--
--static int
- addfield(char **bpp, ssize_t *bsizp, char *fld)
- {
- 	char ch, *bp = *bpp;
+> 
+> Other parameters we've changed, none of which have a significant impact:
+> 
+>  - UDP/TCP
+>  - rsize and wsize
+>  - noatime
+>  - noacl
+>  - nocto
+> 
+> If that's an unexpected slow down, where should we be looking?
+> 
+> Thanks.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
