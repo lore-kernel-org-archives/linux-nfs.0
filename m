@@ -1,162 +1,271 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:31223 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:49133 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753676Ab2LKSo2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Dec 2012 13:44:28 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: bfields@fieldses.org
+	id S1753214Ab2LREPv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Dec 2012 23:15:51 -0500
+Date: Mon, 17 Dec 2012 23:15:50 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 4/7] NFSD: Add support for dynamic slot changes
-Date: Tue, 11 Dec 2012 13:44:16 -0500
-Message-Id: <1355251459-18034-4-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1355251459-18034-3-git-send-email-Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH v2 1/7] NFSD: Convert the slot table to use a linked list
+Message-ID: <20121218041550.GE31843@fieldses.org>
 References: <1355251459-18034-1-git-send-email-Trond.Myklebust@netapp.com>
- <1355251459-18034-2-git-send-email-Trond.Myklebust@netapp.com>
- <1355251459-18034-3-git-send-email-Trond.Myklebust@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1355251459-18034-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The algorithm chosen for growing/shrinking the dynamic slot table
-size is as follows:
+On Tue, Dec 11, 2012 at 01:44:13PM -0500, Trond Myklebust wrote:
+> In preparation for the dynamic slot table allocation, convert the nfsd
+> slot table to a linked list model.
 
-If the client is sending a sa_highest_slotid value that is greater than
-or equal to the our server target_highest_slotid, then multiply the
-value of the latter by 5/4.
+Thanks!  This looks OK to me.  But as long this is somewhat
+experimental, and we're late in the cycle, I'm going to drop this for
+now.
 
-If, on the other hand, the sa_highest_slotid value is smaller than
-our target_highest_slotid, then try adjusting the latter to half its
-current value, or to the value of sa_highest_slotid+1, whichever is larger.
+--b.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfsd/nfs4state.c | 72 +++++++++++++++++++++++++++++++++++++++++++++++++----
- fs/nfsd/state.h     |  2 ++
- 2 files changed, 69 insertions(+), 5 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index a1208cc..88d0de9 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -807,6 +807,7 @@ static bool nfsd4_grow_slot_table_locked(struct nfsd4_slot_table *tbl,
- 		if (slot != NULL){
- 			if (!nfsd4_get_drc_mem(tbl))
- 				break;
-+			slot->sl_generation = tbl->slt_generation - 1;
- 			slot->sl_slotid = next_slotid;
- 			list_add_tail(&slot->sl_list, &tbl->slt_head);
- 		}
-@@ -853,6 +854,30 @@ static void nfsd4_free_slot_table(struct nfsd4_slot_table *tbl)
- 	spin_unlock(&tbl->slt_lock);
- }
- 
-+static void nfsd4_fc_set_highest_slotid_locked(struct nfsd4_session *session,
-+		struct nfsd4_slot_table *tbl,
-+		u32 target_highest_slotid,
-+		u32 highest_slotid)
-+{
-+	/* Lower limit for target_highest_slotid is negotiated limit */
-+	target_highest_slotid = max(target_highest_slotid,
-+			session->se_fchannel.maxreqs - 1);
-+	/* Lower limit for highest_slotid is target_highest_slotid */
-+	highest_slotid = max(highest_slotid, target_highest_slotid);
-+
-+	if (target_highest_slotid == tbl->slt_target_highest_slotid &&
-+			highest_slotid == tbl->slt_highest_slotid)
-+		return;
-+
-+	if (!nfsd4_grow_slot_table_locked(tbl, highest_slotid, GFP_KERNEL))
-+		return;
-+
-+	tbl->slt_target_highest_slotid = target_highest_slotid;
-+	tbl->slt_highest_slotid = highest_slotid;
-+	tbl->slt_generation++;
-+	nfsd4_truncate_slot_table_locked(tbl, tbl->slt_highest_slotid);
-+}
-+
- static void nfsd4_init_slot_table(struct nfsd4_slot_table *tbl,
- 		size_t slotsize, u32 highest_slotid)
- {
-@@ -2039,6 +2064,45 @@ out:
- 	return status;
- }
- 
-+static void nfsd4_sequence_adjust_slot_table(struct nfsd4_session *session,
-+		struct nfsd4_slot *slot, u32 sa_highest_slotid,
-+		struct nfsd4_sequence *res)
-+{
-+	struct nfsd4_slot_table *tbl = &session->se_slots;
-+	u32 next_target;
-+	u32 next_highest;
-+
-+	spin_lock(&tbl->slt_lock);
-+	/*
-+	 * If this slot hasn't seen our previous values, then don't trust
-+	 * that the client has seen them. Don't adjust the slot table yet.
-+	 */
-+	if (slot->sl_generation != tbl->slt_generation)
-+		goto out;
-+
-+	next_target = tbl->slt_target_highest_slotid;
-+
-+	/* Is the client bumping against our current window limits? */
-+	if (sa_highest_slotid >= tbl->slt_target_highest_slotid) {
-+		/* Yes! Grow the window size by 1/4 */
-+		next_target += 1 + (tbl->slt_target_highest_slotid >> 2);
-+		next_highest = next_target;
-+	} else {
-+		/* No! Try to shrink the window size by 1/2 */
-+		next_target >>= 1;
-+		if (sa_highest_slotid + 1 > next_target)
-+			next_target = sa_highest_slotid + 1;
-+		next_highest = tbl->slt_target_highest_slotid;
-+	}
-+	nfsd4_fc_set_highest_slotid_locked(session, tbl,
-+			next_target, next_highest);
-+out:
-+	slot->sl_generation = tbl->slt_generation;
-+	res->highest_slotid = tbl->slt_highest_slotid;
-+	res->target_highest_slotid = tbl->slt_target_highest_slotid;
-+	spin_unlock(&tbl->slt_lock);
-+}
-+
- static struct nfsd4_conn *__nfsd4_find_conn(struct svc_xprt *xpt, struct nfsd4_session *s)
- {
- 	struct nfsd4_conn *c;
-@@ -2159,11 +2223,9 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	else
- 		slot->sl_flags &= ~NFSD4_SLOT_CACHETHIS;
- 
--	/* Retrieve new target/highest slotid values */
--	spin_lock(&session->se_slots.slt_lock);
--	seq->target_highest_slotid = session->se_slots.slt_target_highest_slotid;
--	seq->highest_slotid = session->se_slots.slt_highest_slotid;
--	spin_unlock(&session->se_slots.slt_lock);
-+	/* Adjust slot table, and retrieve new target/highest slotid values */
-+	nfsd4_sequence_adjust_slot_table(session, slot,
-+			seq->highest_slotid, seq);
- 
- 	cstate->slot = slot;
- 	cstate->session = session;
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 7a0d8e4..c2f897f 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -129,6 +129,7 @@ static inline struct nfs4_delegation *delegstateid(struct nfs4_stid *s)
- 
- struct nfsd4_slot {
- 	struct list_head sl_list;
-+	unsigned long sl_generation;
- 	u32	sl_slotid;
- 	u32	sl_seqid;
- 	__be32	sl_status;
-@@ -146,6 +147,7 @@ struct nfsd4_slot_table {
- 	spinlock_t		slt_lock;
- 	size_t			slt_slotsize;
- 	unsigned long		slt_memused;
-+	unsigned long		slt_generation;
- 	u32			slt_target_highest_slotid;
- 	u32			slt_highest_slotid;
- };
--- 
-1.7.11.7
-
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+>  fs/nfsd/nfs4state.c | 151 +++++++++++++++++++++++++++++++++++++++++-----------
+>  fs/nfsd/state.h     |  10 +++-
+>  2 files changed, 129 insertions(+), 32 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index d0237f8..5717ea1 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -704,15 +704,6 @@ gen_sessionid(struct nfsd4_session *ses)
+>   */
+>  #define NFSD_MIN_HDR_SEQ_SZ  (24 + 12 + 44)
+>  
+> -static void
+> -free_session_slots(struct nfsd4_session *ses)
+> -{
+> -	int i;
+> -
+> -	for (i = 0; i < ses->se_fchannel.maxreqs; i++)
+> -		kfree(ses->se_slots[i]);
+> -}
+> -
+>  /*
+>   * We don't actually need to cache the rpc and session headers, so we
+>   * can allocate a little less for each slot:
+> @@ -758,29 +749,127 @@ static void nfsd4_put_drc_mem(int slotsize, int num)
+>  	spin_unlock(&nfsd_drc_lock);
+>  }
+>  
+> -static struct nfsd4_session *__alloc_session(int slotsize, int numslots)
+> +static void nfsd4_free_slot(struct nfsd4_slot *slot)
+>  {
+> -	struct nfsd4_session *new;
+> -	int mem, i;
+> +	kfree(slot);
+> +}
+> +
+> +static struct nfsd4_slot *nfsd4_new_slot(size_t slotsize, gfp_t gfp_mask)
+> +{
+> +	return kzalloc(sizeof(struct nfsd4_slot) + slotsize, gfp_mask);
+> +}
+> +
+> +static struct nfsd4_slot *nfsd4_find_slot_locked(const struct nfsd4_slot_table *tbl,
+> +		u32 slotid)
+> +{
+> +	struct nfsd4_slot *slot;
+> +
+> +	list_for_each_entry(slot, &tbl->slt_head, sl_list) {
+> +		if (slot->sl_slotid == slotid)
+> +			return slot;
+> +	}
+> +	return NULL;
+> +}
+> +
+> +static struct nfsd4_slot *nfsd4_find_slot(struct nfsd4_slot_table *tbl,
+> +		u32 slotid)
+> +{
+> +	struct nfsd4_slot *slot;
+> +
+> +	spin_lock(&tbl->slt_lock);
+> +	slot = nfsd4_find_slot_locked(tbl, slotid);
+> +	spin_unlock(&tbl->slt_lock);
+> +	return slot;
+> +}
+> +
+> +static struct nfsd4_slot *nfsd4_find_last_slot_locked(const struct nfsd4_slot_table *tbl)
+> +{
+> +	if (list_empty(&tbl->slt_head))
+> +		return NULL;
+> +	return list_entry(tbl->slt_head.prev, struct nfsd4_slot, sl_list);
+> +}
+> +
+> +static bool nfsd4_grow_slot_table_locked(struct nfsd4_slot_table *tbl,
+> +		u32 slotid, gfp_t gfp_mask)
+> +{
+> +	struct nfsd4_slot *slot = NULL;
+> +	struct nfsd4_slot *prev;
+> +	u32 next_slotid;
+> +
+> +	for (;;) {
+> +		prev = nfsd4_find_last_slot_locked(tbl);
+> +		if (prev != NULL) {
+> +			if (prev->sl_slotid >= slotid)
+> +				break;
+> +			next_slotid = prev->sl_slotid + 1;
+> +		} else
+> +			next_slotid = 0;
+> +		if (slot != NULL){
+> +			slot->sl_slotid = next_slotid;
+> +			list_add_tail(&slot->sl_list, &tbl->slt_head);
+> +		}
+> +		spin_unlock(&tbl->slt_lock);
+> +		slot = nfsd4_new_slot(tbl->slt_slotsize, gfp_mask);
+> +		spin_lock(&tbl->slt_lock);
+> +		if (slot == NULL)
+> +			return false;
+> +	}
+> +	nfsd4_free_slot(slot);
+> +	return true;
+> +}
+> +
+> +static bool nfsd4_grow_slot_table(struct nfsd4_slot_table *tbl,
+> +		u32 slotid, gfp_t gfp_mask)
+> +{
+> +	bool ret;
+> +
+> +	spin_lock(&tbl->slt_lock);
+> +	ret = nfsd4_grow_slot_table_locked(tbl, slotid, gfp_mask);
+> +	spin_unlock(&tbl->slt_lock);
+> +	return ret;
+> +}
+> +
+> +static void nfsd4_truncate_slot_table_locked(struct nfsd4_slot_table *tbl,
+> +		u32 slotid)
+> +{
+> +	struct nfsd4_slot *slot;
+> +
+> +	for (;;) {
+> +		slot = nfsd4_find_last_slot_locked(tbl);
+> +		if (slot == NULL || slot->sl_slotid < slotid)
+> +			break;
+> +		list_del(&slot->sl_list);
+> +		nfsd4_free_slot(slot);
+> +	}
+> +}
+> +
+> +static void nfsd4_free_slot_table(struct nfsd4_slot_table *tbl)
+> +{
+> +	spin_lock(&tbl->slt_lock);
+> +	nfsd4_truncate_slot_table_locked(tbl, 0);
+> +	spin_unlock(&tbl->slt_lock);
+> +}
+> +
+> +static void nfsd4_init_slot_table(struct nfsd4_slot_table *tbl, size_t slotsize)
+> +{
+> +	INIT_LIST_HEAD(&tbl->slt_head);
+> +	spin_lock_init(&tbl->slt_lock);
+> +	tbl->slt_slotsize = slotsize;
+> +}
+>  
+> -	BUILD_BUG_ON(NFSD_MAX_SLOTS_PER_SESSION * sizeof(struct nfsd4_slot *)
+> -			+ sizeof(struct nfsd4_session) > PAGE_SIZE);
+> -	mem = numslots * sizeof(struct nfsd4_slot *);
+> +static struct nfsd4_session *__alloc_session(size_t slotsize, u32 highest_slotid)
+> +{
+> +	struct nfsd4_session *new;
+>  
+> -	new = kzalloc(sizeof(*new) + mem, GFP_KERNEL);
+> +	new = kzalloc(sizeof(*new), GFP_KERNEL);
+>  	if (!new)
+>  		return NULL;
+> +	nfsd4_init_slot_table(&new->se_slots, slotsize);
+>  	/* allocate each struct nfsd4_slot and data cache in one piece */
+> -	for (i = 0; i < numslots; i++) {
+> -		mem = sizeof(struct nfsd4_slot) + slotsize;
+> -		new->se_slots[i] = kzalloc(mem, GFP_KERNEL);
+> -		if (!new->se_slots[i])
+> -			goto out_free;
+> -	}
+> -	return new;
+> -out_free:
+> -	while (i--)
+> -		kfree(new->se_slots[i]);
+> +	if (nfsd4_grow_slot_table(&new->se_slots, highest_slotid, GFP_KERNEL))
+> +		return new;
+> +
+> +	nfsd4_free_slot_table(&new->se_slots);
+>  	kfree(new);
+>  	return NULL;
+>  }
+> @@ -899,7 +988,7 @@ static void nfsd4_del_conns(struct nfsd4_session *s)
+>  static void __free_session(struct nfsd4_session *ses)
+>  {
+>  	nfsd4_put_drc_mem(slot_bytes(&ses->se_fchannel), ses->se_fchannel.maxreqs);
+> -	free_session_slots(ses);
+> +	nfsd4_free_slot_table(&ses->se_slots);
+>  	kfree(ses);
+>  }
+>  
+> @@ -936,7 +1025,7 @@ static struct nfsd4_session *alloc_session(struct nfsd4_channel_attrs *fchan)
+>  	if (numslots < 1)
+>  		return NULL;
+>  
+> -	new = __alloc_session(slotsize, numslots);
+> +	new = __alloc_session(slotsize, numslots - 1);
+>  	if (!new) {
+>  		nfsd4_put_drc_mem(slotsize, fchan->maxreqs);
+>  		return NULL;
+> @@ -2032,11 +2121,11 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+>  	if (nfsd4_request_too_big(rqstp, session))
+>  		goto out;
+>  
+> +	/* Note: nfsd4_find_slot checks the validity of seq->slotid */
+>  	status = nfserr_badslot;
+> -	if (seq->slotid >= session->se_fchannel.maxreqs)
+> +	slot = nfsd4_find_slot(&session->se_slots, seq->slotid);
+> +	if (slot == NULL)
+>  		goto out;
+> -
+> -	slot = session->se_slots[seq->slotid];
+>  	dprintk("%s: slotid %d\n", __func__, seq->slotid);
+>  
+>  	/* We do not negotiate the number of slots yet, so set the
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index e036894..7d319e9a 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -128,6 +128,8 @@ static inline struct nfs4_delegation *delegstateid(struct nfs4_stid *s)
+>  		(NFSD_CACHE_SIZE_SLOTS_PER_SESSION * NFSD_SLOT_CACHE_SIZE)
+>  
+>  struct nfsd4_slot {
+> +	struct list_head sl_list;
+> +	u32	sl_slotid;
+>  	u32	sl_seqid;
+>  	__be32	sl_status;
+>  	u32	sl_datalen;
+> @@ -139,6 +141,12 @@ struct nfsd4_slot {
+>  	char	sl_data[];
+>  };
+>  
+> +struct nfsd4_slot_table {
+> +	struct list_head	slt_head;
+> +	spinlock_t		slt_lock;
+> +	size_t			slt_slotsize;
+> +};
+> +
+>  struct nfsd4_channel_attrs {
+>  	u32		headerpadsz;
+>  	u32		maxreq_sz;
+> @@ -195,7 +203,7 @@ struct nfsd4_session {
+>  	struct list_head	se_conns;
+>  	u32			se_cb_prog;
+>  	u32			se_cb_seq_nr;
+> -	struct nfsd4_slot	*se_slots[];	/* forward channel slots */
+> +	struct nfsd4_slot_table	se_slots;
+>  };
+>  
+>  extern void nfsd4_put_session(struct nfsd4_session *ses);
+> -- 
+> 1.7.11.7
+> 
