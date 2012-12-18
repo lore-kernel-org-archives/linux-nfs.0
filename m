@@ -1,42 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 82-69-66-36.dsl.in-addr.zen.co.uk ([82.69.66.36]:65471 "EHLO
-	gateway.l8s.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751411Ab2LLImn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Dec 2012 03:42:43 -0500
-Date: Wed, 12 Dec 2012 08:34:01 +0000
-From: David Laight <david@l8s.co.uk>
-To: Pavel Shilovsky <piastry@etersoft.ru>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, wine-devel@winehq.org
-Subject: Re: [PATCH 0/3] Add O_DENY* flags to fcntl and cifs
-Message-ID: <20121212083401.GW5010@snowdrop.l8s.co.uk>
-References: <1354818391-7968-1-git-send-email-piastry@etersoft.ru> <20121207161602.GA17710@infradead.org> <495d17310e0a687d446afc86def0f058@office.etersoft.ru>
+Received: from woodlands.midnighthax.com ([93.89.81.115]:44539 "EHLO
+	woodlands.midnighthax.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755252Ab2LRUJS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Dec 2012 15:09:18 -0500
+Date: Tue, 18 Dec 2012 19:42:51 +0000
+From: Keith Edmunds <kae@midnighthax.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFS access slow
+Message-ID: <20121218194251.5bf674ff@ws.the.cage>
+In-Reply-To: <20121218185006.GA14716@fieldses.org>
+References: <20121218155248.49dfa1fd@kae.tiger-computing.wbp>
+	<20121218185006.GA14716@fieldses.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <495d17310e0a687d446afc86def0f058@office.etersoft.ru>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Dec 08, 2012 at 12:43:14AM +0400, Pavel Shilovsky wrote:
-> 
-> The problem is the possibility of denial-of-service attacks here. We 
-> can try to prevent them by:
+> What are your disks?
 
-FWIW I already see a DoS 'attack'.
-I have some filestore shared using NFS (to Linux and Solaris) and 
-using samba (to Windows).
+They are Enterprise Nearline 6Gb/s SAS drives in an Infortrend disk array.
 
-I use it for release builds of a product to ensure the versions
-built for the different operating systems match, and because some
-files have to be built on an 'alien' system (eg gcc targetted at
-embedded card).
+>  How exactly are you getting those numbers?
+> (Literally, step-by-step, what commands are you running?)
 
-I can't run the windows build at the same time as the others
-because the windows C compiler manages to obtain exclusive access
-to the source files - stopping the other systems from reading them.
+Using postmark:
 
-	David
+pm> set location /mnt/tmp
+pm> set size 10000 10000000
+pm> run
 
--- 
-David Laight: david@l8s.co.uk
+The only difference is the 'set location' line, which points to either the
+NFS mountpoint or the local mountpoint.
+
+A test using dd ("dd if=/dev/zero of=/mnt/tmp bs=1M count=8192") gave a
+difference of about five times faster for direct access versus access via
+NFS.
+
+> What kernel version?
+
+3.2
+
+> Note loopback-mounts (client and server on same machine) aren't really
+> fully supported.
+
+OK, I wasn't aware of that. We were only testing that way to try to
+eliminate switches, cables, etc. I've just run a test from another server,
+both connected via 10G links, and I'm getting a read speed of just under
+20BM/s and a write speed of 52MB/s.
