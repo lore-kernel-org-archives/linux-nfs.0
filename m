@@ -1,84 +1,159 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:4112 "EHLO mx12.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:63726 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752622Ab2LNRpr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 Dec 2012 12:45:47 -0500
+	id S1751100Ab2LSWGO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Dec 2012 17:06:14 -0500
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Yanchuan Nian <ycnian@gmail.com>
+To: =?utf-7?B?UGF3ZStBVUktIFNpa29yYQ==?= <pawel.sikora@agmk.net>
 CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] nfs: Don't return referenced delegations
-Date: Fri, 14 Dec 2012 17:45:45 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91192E4A7@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1355380636-10915-1-git-send-email-ycnian@gmail.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA91192A73F@SACEXCMBX04-PRD.hq.netapp.com>
-	 <CAC5OsZMOQSD2dor-TRcrmwk5t3aupwmX-WB7dbxDryKYjWPcSw@mail.gmail.com>
-In-Reply-To: <CAC5OsZMOQSD2dor-TRcrmwk5t3aupwmX-WB7dbxDryKYjWPcSw@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+        David Howells <dhowells@redhat.com>
+Subject: Re: [3.6.11] NFS: Cache request denied due to non-unique superblock
+ keys.
+Date: Wed, 19 Dec 2012 22:06:12 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91196C0B0@SACEXCMBX04-PRD.hq.netapp.com>
+References: <6078496.RFsWrNWv86@localhost>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA91196AB48@SACEXCMBX04-PRD.hq.netapp.com>
+	 <2073442.2DDQICUc2y@localhost>
+In-Reply-To: <2073442.2DDQICUc2y@localhost>
+Content-Type: text/plain; charset="utf-7"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEyLTEyLTE0IGF0IDIwOjUzICswODAwLCBZYW5jaHVhbiBOaWFuIHdyb3RlOg0K
-PiANCj4gDQo+IDIwMTIvMTIvMTMgTXlrbGVidXN0LCBUcm9uZCA8VHJvbmQuTXlrbGVidXN0QG5l
-dGFwcC5jb20+DQo+ICAgICAgICAgT24gVGh1LCAyMDEyLTEyLTEzIGF0IDE0OjM3ICswODAwLCB5
-Y25pYW5AZ21haWwuY29tIHdyb3RlOg0KPiAgICAgICAgID4gRnJvbTogWWFuY2h1YW4gTmlhbiA8
-eWNuaWFuQGdtYWlsLmNvbT4NCj4gICAgICAgICA+DQo+ICAgICAgICAgPiBUaGUgY2xpZW50IHJl
-dHVybnMgdW5yZWZlcmVuY2VkIGRlbGVnYXRpb25zIGluIHN0YXRlDQo+ICAgICAgICAgbWFuYWdl
-bWVudC4gSXQgc2NhbnMgYWxsDQo+ICAgICAgICAgPiBkZWxlZ2F0aW9ucyBhbmQgdGVzdHMgdGhl
-IE5GU19ERUxFR0FUSU9OX1JFRkVSRU5DRUQgZmxhZy4gaWYNCj4gICAgICAgICB0aGlzIGZsYWcg
-aXMgbm90DQo+ICAgICAgICAgPiBzZXQsIE5GU19ERUxFR0FUSU9OX1JFVFVSTiB3aWxsIGJlIHNl
-dCBhbmQgdGhlIGRlbGVnYXRpb24NCj4gICAgICAgICB3aWxsIGJlIHJldHVybmVkLg0KPiAgICAg
-ICAgID4gQnV0IHVuZm9ydHVuYXRlbHkgTkZTX0RFTEVHQVRJT05fUkVGRVJFTkNFRCBpcyBjbGVh
-cmVkIGFmdGVyDQo+ICAgICAgICAgdGhlIHRlc3RpbmcsIHNvDQo+ICAgICAgICAgPiBkZWxlZ2F0
-aW9ucyB3aGljaCBhcmUgc3RpbGwgYmVpbmcgdXNlZCB3aWxsIGJlIHJldHVybmVkIGluDQo+ICAg
-ICAgICAgdGhlIG5leHQgc3RhdGUNCj4gICAgICAgICA+IG1hbmFnZW1lbnQuDQo+ICAgICAgICAg
-Pg0KPiAgICAgICAgID4gU2lnbmVkLW9mZi1ieTogWWFuY2h1YW4gTmlhbiA8eWNuaWFuQGdtYWls
-LmNvbT4NCj4gICAgICAgICA+IC0tLQ0KPiAgICAgICAgID4gIGZzL25mcy9kZWxlZ2F0aW9uLmMg
-fCAgICAyICstDQo+ICAgICAgICAgPiAgMSBmaWxlcyBjaGFuZ2VkLCAxIGluc2VydGlvbnMoKyks
-IDEgZGVsZXRpb25zKC0pDQo+ICAgICAgICAgPg0KPiAgICAgICAgID4gZGlmZiAtLWdpdCBhL2Zz
-L25mcy9kZWxlZ2F0aW9uLmMgYi9mcy9uZnMvZGVsZWdhdGlvbi5jDQo+ICAgICAgICAgPiBpbmRl
-eCA4MWM1ZWVjLi40ODVlOGMwIDEwMDY0NA0KPiAgICAgICAgID4gLS0tIGEvZnMvbmZzL2RlbGVn
-YXRpb24uYw0KPiAgICAgICAgID4gKysrIGIvZnMvbmZzL2RlbGVnYXRpb24uYw0KPiAgICAgICAg
-ID4gQEAgLTUwNiw3ICs1MDYsNyBAQCBzdGF0aWMgdm9pZA0KPiAgICAgICAgIG5mc19tYXJrX3Jl
-dHVybl91bnJlZmVyZW5jZWRfZGVsZWdhdGlvbnMoc3RydWN0IG5mc19zZXJ2ZXINCj4gICAgICAg
-ICAqc2VydmVyKQ0KPiAgICAgICAgID4gICAgICAgc3RydWN0IG5mc19kZWxlZ2F0aW9uICpkZWxl
-Z2F0aW9uOw0KPiAgICAgICAgID4NCj4gICAgICAgICA+ICAgICAgIGxpc3RfZm9yX2VhY2hfZW50
-cnlfcmN1KGRlbGVnYXRpb24sDQo+ICAgICAgICAgJnNlcnZlci0+ZGVsZWdhdGlvbnMsIHN1cGVy
-X2xpc3QpIHsNCj4gICAgICAgICA+IC0gICAgICAgICAgICAgaWYNCj4gICAgICAgICAodGVzdF9h
-bmRfY2xlYXJfYml0KE5GU19ERUxFR0FUSU9OX1JFRkVSRU5DRUQsDQo+ICAgICAgICAgJmRlbGVn
-YXRpb24tPmZsYWdzKSkNCj4gICAgICAgICA+ICsgICAgICAgICAgICAgaWYgKHRlc3RfYml0KE5G
-U19ERUxFR0FUSU9OX1JFRkVSRU5DRUQsDQo+ICAgICAgICAgJmRlbGVnYXRpb24tPmZsYWdzKSkN
-Cj4gICAgICAgICA+ICAgICAgICAgICAgICAgICAgICAgICBjb250aW51ZTsNCj4gICAgICAgICA+
-ICAgICAgICAgICAgICAgbmZzX21hcmtfcmV0dXJuX2RlbGVnYXRpb24oc2VydmVyLA0KPiAgICAg
-ICAgIGRlbGVnYXRpb24pOw0KPiAgICAgICAgID4gICAgICAgfQ0KPiAgICAgICAgIA0KPiAgICAg
-ICAgIA0KPiAgICAgICAgIFRoZSBjbGVhcmluZyBvZiB0aGUgYml0IGhlcmUgaXMgMTAwJSBpbnRl
-bnRpb25hbC4gVGhpcyBpcyBhDQo+ICAgICAgICAgdmFyaWFudCBvbg0KPiAgICAgICAgIGJhc2lj
-IG1hcmstYW5kLXN3ZWVwIGdhcmJhZ2UgY29sbGVjdGlvbiB3aGVyZSBpZiB0aGUgYml0DQo+ICAg
-ICAgICAgaGFzbid0IGJlZW4gc2V0DQo+ICAgICAgICAgYWdhaW4gdGhlIG5leHQgdGltZSB3ZSBz
-Y2FuLCB0aGVuIHdlIGFzc3VtZSB0aGUgZGVsZWdhdGlvbg0KPiAgICAgICAgIGlzbid0IGJlaW5n
-DQo+ICAgICAgICAgdXNlZC4NCj4gIA0KPiBPaCwgbm93IEkga25vdy4gSWYgdGhlIGNsaWVudCBn
-ZXRzIGFuIG9wZW4gZGVsZWdhdGlvbiBmcm9tIHRoZSBzZXJ2ZXINCj4gd2l0aG91dA0KPiBhbnkg
-b3BlcmF0aW9ucyBpbiB0aGUgZm9sbG93aW5nIGZldyBtaW51dGVzLCB0aGUgZGVsZWdhdGlvbiB3
-aWxsIGJlDQo+IHJldHVybmVkLg0KPiBBZnRlciB0aGF0LCBpZiB0aGUgY2xpZW50IHdhbnRzIHRv
-IHJlYWQgZGF0YSBmcm9tIHRoZSBzZXJ2ZXIsIGl0IGhhcw0KPiB0bw0KPiByZXZhbGlkYXRlIGxv
-Y2FsIGNhY2hlIGZpcnN0LiBJbiB0aGlzIHNpdHVhdGlvbiwgdGhlIGNsaWVudCBjYW4ndCBnZXQN
-Cj4gYmVuZWZpdCANCj4gZnJvbSBkZWxlZ2F0aW9uLiBSRkMgMzUzMCBzYXlzIFRoZSBzZXJ2ZXIg
-d2lsbCByZWNhbGwgYSBkZWxlZ2F0aW9uDQo+IGlmIHRoZXJlIGFyZSBjb25mbGljdGluZyBvcGVy
-YXRpb25zIGZyb20gYW5vdGhlciBjbGllbnQuIFNvIHdoeQ0KPiBkb2Vzbid0IHRoZQ0KPiBjbGll
-bnQgaG9sZCB0aGUgZGVsZWdhdGlvbiB1bnRpbCByZWNlaXZpbmcgdGhlIHJlY2FsbCByZXF1ZXN0
-PyBJcw0KPiB0aGVyZSBzb21lIA0KPiBzcGVjaWFsIHJlYXNvbj8gSSBhbSBuZXcgdG8gTkZTIGFu
-ZCBzb3JyeSB0byB0cm91YmxlIHlvdS4NCg0KSXQncyBhYm91dCByZXNvdXJjZSBtYW5hZ2VtZW50
-LiBCb3RoIHRoZSBjbGllbnQgYW5kIHRoZSBzZXJ2ZXIgbmVlZCB0bw0Ka2VlcCBzdGF0ZSBpbiBt
-ZW1vcnkgZm9yIGVhY2ggZGVsZWdhdGlvbiB0aGF0IGlzIGhlbGQuIFdoYXQgd2UndmUgc2Vlbg0K
-aXMgc2VydmVycyBydW5uaW5nIG91dCBvZiBzdGF0ZSBpZiB0aGUgY2xpZW50IGlzIHRvbyBncmVl
-ZHkgYWJvdXQNCmhvbGRpbmcgb250byBkZWxlZ2F0aW9ucyB0aGF0IGFyZW4ndCBiZWluZyB1c2Vk
-LiBJbiB0aGVvcnkgdGhlIHNlcnZlcg0KY291bGQgc3RhcnQgcmVjYWxsaW5nIHRob3NlIGRlbGVn
-YXRpb25zLCBidXQgaG93IGRvZXMgaXQga25vdyB3aGljaCBvbmVzDQphcmUgc3RpbGwgaW1wb3J0
-YW50IHRvIHRoZSBjbGllbnQ/DQoNCkZvciB0aGF0IHJlYXNvbiwgd2UgdHJ5IHRvIGJlIGdvb2Qg
-TkZTIGNpdGl6ZW5zIGJ5IHJldHVybmluZyBkZWxlZ2F0aW9ucw0KdGhhdCBhcmUgbm90IGJlaW5n
-IHVzZWQgYnkgcHJvY2Vzc2VzLiBUaGUgc2NhbiBpcyBkb25lIG9uY2UgZXZlcnkgbGVhc2UNCnBl
-cmlvZCAoc28gdHlwaWNhbGx5IG9uY2UgYSBtaW51dGUpLiBJZiBhIGRlbGVnYXRpb24gaGFzbid0
-IGJlZW4gdXNlZCBpbg0KdGhhdCBsZWFzZSBwZXJpb2QsIHRoZW4gaXQgaXMgcmV0dXJuZWQuDQoN
-Ci0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0
-QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
+On Wed, 2012-12-19 at 22:16 +-0100, Pawe+AUI- Sikora wrote:
++AD4- On Wednesday 19 of December 2012 19:35:50 Myklebust, Trond wrote:
++AD4- +AD4- On Wed, 2012-12-19 at 19:58 +--0100, Pawe+-AUI- Sikora wrote:
++AD4- +AD4- +-AD4- Hi,
++AD4- +AD4- +-AD4- 
++AD4- +AD4- +-AD4- i'm testing the 3.6.11 kernel on some small internal nfs network (1 server +-ADw--+-AD4- 2 clients)
++AD4- +AD4- +-AD4- and observing such info in dmesg on the client side. could you put some light on this dmesg entry?
++AD4- +AD4- +-AD4- is it a bug or misconfiguration? i can provide more information about nfs configuration
++AD4- +AD4- +-AD4- if necessary but denying caching doesn't look nicely.
++AD4- +AD4- +-AD4- 
++AD4- +AD4- +-AD4- i'm using following nfs related packages:
++AD4- +AD4- +-AD4- 
++AD4- +AD4- +-AD4- autofs-5.0.5-1.x86+-AF8-64
++AD4- +AD4- +-AD4- libnfsidmap-0.25-4.x86+-AF8-64
++AD4- +AD4- +-AD4- nfs-utils-1.2.7-1.x86+-AF8-64
++AD4- +AD4- +-AD4- nfs-utils-clients-1.2.7-1.x86+-AF8-64
++AD4- +AD4- +-AD4- nfs-utils-common-1.2.7-1.x86+-AF8-64
++AD4- +AD4- +-AD4- 
++AD4- +AD4- +-AD4- BR,
++AD4- +AD4- +-AD4- Pawe+-AUI-.
++AD4- +AD4- 
++AD4- +AD4- It's hard to guess when you don't tell us anything about what you are
++AD4- +AD4- doing to trigger this message, but it sounds as if you are trying to use
++AD4- +AD4- the cachefs mount options incorrectly.
++AD4- 
++AD4- on the server side there're following exports:
++AD4- 
++AD4- +ACM- exportfs -v
++AD4- /home/atest/farm-local
++AD4-                 +ADw-world+AD4-(rw,async,wdelay,nohide,crossmnt,no+AF8-root+AF8-squash,no+AF8-subtree+AF8-check,insecure+AF8-locks)
++AD4- /home/atest/farm
++AD4-                 +ADw-world+AD4-(rw,async,wdelay,nohide,crossmnt,no+AF8-root+AF8-squash,no+AF8-subtree+AF8-check,insecure+AF8-locks)
++AD4- /home/users     +ADw-world+AD4-(rw,no+AF8-root+AF8-squash,no+AF8-subtree+AF8-check,insecure+AF8-locks)
++AD4- 
++AD4- in the exported /home/atest/+ACo- there're crossmounted/binded directories:
++AD4- 
++AD4- +ACM- fstab
++AD4- /home/atest/farm-local/results  /home/atest/farm/results        none bind
++AD4- /home/services/ftp              /var/lib/ftp                    none bind
++AD4- /home/services/ftp              /home/atest/farm-local/ftp      none bind
++AD4- 
++AD4- +ACM- df -h
++AD4- Filesystem                   Size  Used Avail Use+ACU- Mounted on
++AD4- rootfs                       7.6G  4.5G  2.7G  63+ACU- /
++AD4- /dev/md0                     7.6G  4.5G  2.7G  63+ACU- /
++AD4- run                           32G  264K   32G   1+ACU- /run
++AD4- devtmpfs                      32G     0   32G   0+ACU- /dev
++AD4- /dev/md1                     7.2T  794G  6.4T  11+ACU- /home
++AD4- none                          32G     0   32G   0+ACU- /dev/shm
++AD4- /dev/md1                     7.2T  794G  6.4T  11+ACU- /home/atest/farm/results
++AD4- /dev/md1                     7.2T  794G  6.4T  11+ACU- /var/lib/ftp
++AD4- /dev/md1                     7.2T  794G  6.4T  11+ACU- /home/atest/farm-local/ftp
++AD4- 
++AD4- 
++AD4- on the client side there's only a simple autofs configuration:
++AD4- 
++AD4- +ACM- cat /etc/autofs/auto.server
++AD4- farm           -rw,soft,rsize+AD0-32768,wsize+AD0-32768,intr,vers+AD0-4,async,bg,noatime,retry+AD0-30,retrans+AD0-10        192.168.2.100:/home/atest/farm-local
++AD4- home           -rw,soft,vers+AD0-4        192.168.2.100:/home/users
++AD4- 
+
+OK. If you are not specifying '-ofsc', then that warning is 100+ACU-
+confusing. How about the following patch?
+
+8+ADw----------------------------------------------------------------
+>From e8ed657ba5edc8c9339e00ab2fd235ab1dd94cd5 Mon Sep 17 00:00:00 2001
+From: Trond Myklebust +ADw-Trond.Myklebust+AEA-netapp.com+AD4-
+Date: Wed, 19 Dec 2012 16:56:28 -0500
+Subject: +AFs-PATCH+AF0- NFS: Kill fscache warnings when mounting without -ofsc
+MIME-Version: 1.0
+Content-Type: text/plain+ADs- charset+AD0-UTF-8
+Content-Transfer-Encoding: 8bit
+
+The fscache code will currently bleat a +ACI-non-unique superblock keys+ACI-
+warning even if the user is mounting without the 'fsc' option.
+There should be no reason to even initialise the superblock cache cookie
+unless we're planning on using fscache for something, so ensure that
+we check for the NFS+AF8-OPTION+AF8-FSCACHE flag before calling into the
+fscache code.
+
+Reported-by: Pawe+AUI- Sikora +ADw-pawel.sikora+AEA-agmk.net+AD4-
+Signed-off-by: Trond Myklebust +ADw-Trond.Myklebust+AEA-netapp.com+AD4-
+Cc: David Howells +ADw-dhowells+AEA-redhat.com+AD4-
+---
+ fs/nfs/super.c +AHw- 19 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-----
+ 1 file changed, 15 insertions(+-), 4 deletions(-)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index aa5315b..c25cadf8 100644
+--- a/fs/nfs/super.c
++-+-+- b/fs/nfs/super.c
++AEAAQA- -2375,19 +-2375,30 +AEAAQA- static void nfs+AF8-get+AF8-cache+AF8-cookie(struct super+AF8-block +ACo-sb,
+ 				 struct nfs+AF8-parsed+AF8-mount+AF8-data +ACo-parsed,
+ 				 struct nfs+AF8-clone+AF8-mount +ACo-cloned)
+ +AHs-
++-	struct nfs+AF8-server +ACo-nfss +AD0- NFS+AF8-SB(sb)+ADs-
+ 	char +ACo-uniq +AD0- NULL+ADs-
+ 	int ulen +AD0- 0+ADs-
+ 
+-	if (parsed +ACYAJg- parsed-+AD4-fscache+AF8-uniq) +AHs-
+-		uniq +AD0- parsed-+AD4-fscache+AF8-uniq+ADs-
+-		ulen +AD0- strlen(parsed-+AD4-fscache+AF8-uniq)+ADs-
++-	nfss-+AD4-fscache+AF8-key +AD0- NULL+ADs-
++-	nfss-+AD4-fscache +AD0- NULL+ADs-
++-
++-	if (parsed) +AHs-
++-		if (+ACE-(parsed-+AD4-options +ACY- NFS+AF8-OPTION+AF8-FSCACHE))
++-			return+ADs-
++-		if (parsed-+AD4-fscache+AF8-uniq) +AHs-
++-			uniq +AD0- parsed-+AD4-fscache+AF8-uniq+ADs-
++-			ulen +AD0- strlen(parsed-+AD4-fscache+AF8-uniq)+ADs-
++-		+AH0-
+ 	+AH0- else if (cloned) +AHs-
+ 		struct nfs+AF8-server +ACo-mnt+AF8-s +AD0- NFS+AF8-SB(cloned-+AD4-sb)+ADs-
++-		if (+ACE-(mnt+AF8-s-+AD4-options +ACY- NFS+AF8-OPTION+AF8-FSCACHE))
++-			return+ADs-
+ 		if (mnt+AF8-s-+AD4-fscache+AF8-key) +AHs-
+ 			uniq +AD0- mnt+AF8-s-+AD4-fscache+AF8-key-+AD4-key.uniquifier+ADs-
+ 			ulen +AD0- mnt+AF8-s-+AD4-fscache+AF8-key-+AD4-key.uniq+AF8-len+ADs-
+ 		+AH0AOw-
+-	+AH0-
++-	+AH0- else
++-		return+ADs-
+ 
+ 	nfs+AF8-fscache+AF8-get+AF8-super+AF8-cookie(sb, uniq, ulen)+ADs-
+ +AH0-
+-- 
+1.7.11.7
+
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust+AEA-netapp.com
+www.netapp.com
