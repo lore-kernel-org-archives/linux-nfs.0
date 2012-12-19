@@ -1,41 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-da0-f46.google.com ([209.85.210.46]:57038 "EHLO
-	mail-da0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752899Ab2LMGrs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Dec 2012 01:47:48 -0500
-From: ycnian@gmail.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Yanchuan Nian <ycnian@gmail.com>
-Subject: [PATCH] nfs: Remove duplicate function declaration in internal.h
-Date: Thu, 13 Dec 2012 14:37:34 +0800
-Message-Id: <1355380654-10949-1-git-send-email-ycnian@gmail.com>
+Received: from mail.agmk.net ([91.192.224.71]:57326 "EHLO mail.agmk.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751175Ab2LSVQM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Dec 2012 16:16:12 -0500
+From: =?utf-8?B?UGF3ZcWC?= Sikora <pawel.sikora@agmk.net>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [3.6.11] NFS: Cache request denied due to non-unique superblock keys.
+Date: Wed, 19 Dec 2012 22:16:06 +0100
+Message-ID: <2073442.2DDQICUc2y@localhost>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91196AB48@SACEXCMBX04-PRD.hq.netapp.com>
+References: <6078496.RFsWrNWv86@localhost> <4FA345DA4F4AE44899BD2B03EEEC2FA91196AB48@SACEXCMBX04-PRD.hq.netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Yanchuan Nian <ycnian@gmail.com>
+On Wednesday 19 of December 2012 19:35:50 Myklebust, Trond wrote:
+> On Wed, 2012-12-19 at 19:58 +-0100, Pawe+AUI- Sikora wrote:
+> +AD4- Hi,
+> +AD4- 
+> +AD4- i'm testing the 3.6.11 kernel on some small internal nfs network (1 server +ADw--+AD4- 2 clients)
+> +AD4- and observing such info in dmesg on the client side. could you put some light on this dmesg entry?
+> +AD4- is it a bug or misconfiguration? i can provide more information about nfs configuration
+> +AD4- if necessary but denying caching doesn't look nicely.
+> +AD4- 
+> +AD4- i'm using following nfs related packages:
+> +AD4- 
+> +AD4- autofs-5.0.5-1.x86+AF8-64
+> +AD4- libnfsidmap-0.25-4.x86+AF8-64
+> +AD4- nfs-utils-1.2.7-1.x86+AF8-64
+> +AD4- nfs-utils-clients-1.2.7-1.x86+AF8-64
+> +AD4- nfs-utils-common-1.2.7-1.x86+AF8-64
+> +AD4- 
+> +AD4- BR,
+> +AD4- Pawe+AUI-.
+> 
+> It's hard to guess when you don't tell us anything about what you are
+> doing to trigger this message, but it sounds as if you are trying to use
+> the cachefs mount options incorrectly.
 
-Remove duplicate function declaration in internal.h
+on the server side there're following exports:
 
-Signed-off-by: Yanchuan Nian <ycnian@gmail.com>
----
- fs/nfs/internal.h |    3 ---
- 1 files changed, 0 insertions(+), 3 deletions(-)
+# exportfs -v
+/home/atest/farm-local
+                <world>(rw,async,wdelay,nohide,crossmnt,no_root_squash,no_subtree_check,insecure_locks)
+/home/atest/farm
+                <world>(rw,async,wdelay,nohide,crossmnt,no_root_squash,no_subtree_check,insecure_locks)
+/home/users     <world>(rw,no_root_squash,no_subtree_check,insecure_locks)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 59b133c..440674f 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -409,9 +409,6 @@ extern struct nfs_write_header *nfs_writehdr_alloc(void);
- extern void nfs_writehdr_free(struct nfs_pgio_header *hdr);
- extern int nfs_generic_flush(struct nfs_pageio_descriptor *desc,
- 			     struct nfs_pgio_header *hdr);
--extern void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
--			struct inode *inode, int ioflags,
--			const struct nfs_pgio_completion_ops *compl_ops);
- extern void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio);
- extern void nfs_writedata_release(struct nfs_write_data *wdata);
- extern void nfs_commit_free(struct nfs_commit_data *p);
--- 
-1.7.4.4
+in the exported /home/atest/* there're crossmounted/binded directories:
+
+# fstab
+/home/atest/farm-local/results  /home/atest/farm/results        none bind
+/home/services/ftp              /var/lib/ftp                    none bind
+/home/services/ftp              /home/atest/farm-local/ftp      none bind
+
+# df -h
+Filesystem                   Size  Used Avail Use% Mounted on
+rootfs                       7.6G  4.5G  2.7G  63% /
+/dev/md0                     7.6G  4.5G  2.7G  63% /
+run                           32G  264K   32G   1% /run
+devtmpfs                      32G     0   32G   0% /dev
+/dev/md1                     7.2T  794G  6.4T  11% /home
+none                          32G     0   32G   0% /dev/shm
+/dev/md1                     7.2T  794G  6.4T  11% /home/atest/farm/results
+/dev/md1                     7.2T  794G  6.4T  11% /var/lib/ftp
+/dev/md1                     7.2T  794G  6.4T  11% /home/atest/farm-local/ftp
+
+
+on the client side there's only a simple autofs configuration:
+
+# cat /etc/autofs/auto.server
+farm           -rw,soft,rsize=32768,wsize=32768,intr,vers=4,async,bg,noatime,retry=30,retrans=10        192.168.2.100:/home/atest/farm-local
+home           -rw,soft,vers=4        192.168.2.100:/home/users
 
