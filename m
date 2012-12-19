@@ -1,54 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailout-de.gmx.net ([213.165.64.22]:41618 "HELO
-	mailout-de.gmx.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752326Ab2LEQYA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Dec 2012 11:24:00 -0500
-Message-ID: <50BF751C.90808@gmx.de>
-Date: Wed, 05 Dec 2012 17:23:56 +0100
-From: Florian Manschwetus <florianmanschwetus@gmx.de>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mx12.netapp.com ([216.240.18.77]:4810 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751614Ab2LSTfv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Dec 2012 14:35:51 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: =?utf-7?B?UGF3ZStBVUktIFNpa29yYQ==?= <pawel.sikora@agmk.net>
 CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfs4 acl problems using Nexenta-Communityedition Server and debian
- testing clients
-References: <50BF1854.1020204@gmx.de> <4FA345DA4F4AE44899BD2B03EEEC2FA90B337973@SACEXCMBX04-PRD.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA90B337973@SACEXCMBX04-PRD.hq.netapp.com>
-Content-Type: text/plain; charset=ISO-8859-15; format=flowed
+Subject: Re: [3.6.11] NFS: Cache request denied due to non-unique superblock
+ keys.
+Date: Wed, 19 Dec 2012 19:35:50 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91196AB48@SACEXCMBX04-PRD.hq.netapp.com>
+References: <6078496.RFsWrNWv86@localhost>
+In-Reply-To: <6078496.RFsWrNWv86@localhost>
+Content-Type: text/plain; charset="utf-7"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Am 05.12.2012 16:41, schrieb Myklebust, Trond:
-> On Wed, 2012-12-05 at 10:48 +0100, Florian Manschwetus wrote:
->> I setup a little network using a central storage server based on
->> nexenta-Communityedition clients use homes and several shares via nfs4.
->> As we have some shares used for webdevelopment purposes it is desired to
->> have acls inherited for specific groups access and user access
->
-> Inherited acls are inherently incompatible with basic POSIX
-> open(O_CREAT). The latter takes a mode bit argument that will clobber
-> your inherited acl.
->
->> (webserver user). I also have trouble with sticky-bit inheritance, which
->> is needed as the linux gui tools unaware of nfs-acls. Are there plans to
->> improve support for nfs acls?
->>
->> Maybe someone here have successfully a solaris nfs server running with
->> linux clients using extended acls, with inheritance working as expected?
->>
->> It is really annoying having users not allowed to view/edit files/dirs
->> they copied just the moment.
->
-> This is not the right list for requesting gui tool changes. The right
-> address would be the GNOME, KDE and XFCE project mail lists.
->
-Sounds reasonable, but at least a cp -r /share/orig /share/copy should 
-produce a copy with expected acls (as defined on /share).
+On Wed, 2012-12-19 at 19:58 +-0100, Pawe+AUI- Sikora wrote:
++AD4- Hi,
++AD4- 
++AD4- i'm testing the 3.6.11 kernel on some small internal nfs network (1 server +ADw--+AD4- 2 clients)
++AD4- and observing such info in dmesg on the client side. could you put some light on this dmesg entry?
++AD4- is it a bug or misconfiguration? i can provide more information about nfs configuration
++AD4- if necessary but denying caching doesn't look nicely.
++AD4- 
++AD4- i'm using following nfs related packages:
++AD4- 
++AD4- autofs-5.0.5-1.x86+AF8-64
++AD4- libnfsidmap-0.25-4.x86+AF8-64
++AD4- nfs-utils-1.2.7-1.x86+AF8-64
++AD4- nfs-utils-clients-1.2.7-1.x86+AF8-64
++AD4- nfs-utils-common-1.2.7-1.x86+AF8-64
++AD4- 
++AD4- BR,
++AD4- Pawe+AUI-.
 
-My normal outcoming is that the user coping the directory is unallowed 
-to access it, by @owner-deny ace. Which is really ugly. Unfortunately I 
-can't find a mode making the server to enforce correct inheritance 
-(disallowing the users to alter acls, mode, etc via nfs, maybe with 
-nfs-acls tools but this isn't really needed).
+It's hard to guess when you don't tell us anything about what you are
+doing to trigger this message, but it sounds as if you are trying to use
+the cachefs mount options incorrectly.
 
-Regards,
-Florian
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust+AEA-netapp.com
+www.netapp.com
