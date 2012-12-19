@@ -1,31 +1,29 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:27116 "EHLO mx1.redhat.com"
+Received: from mout.perfora.net ([74.208.4.195]:51434 "EHLO mout.perfora.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751069Ab2LTSq6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Dec 2012 13:46:58 -0500
-Message-ID: <50D35D1F.9000200@RedHat.com>
-Date: Thu, 20 Dec 2012 13:46:55 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1752807Ab2LSTa6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Dec 2012 14:30:58 -0500
+Date: Wed, 19 Dec 2012 14:30:49 -0500
+From: Jim Rees <rees@umich.edu>
+To: =?utf-8?B?UGF3ZcWC?= Sikora <pawel.sikora@agmk.net>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [3.6.11] NFS: Cache request denied due to non-unique superblock
+ keys.
+Message-ID: <20121219193049.GA17560@umich.edu>
+References: <6078496.RFsWrNWv86@localhost>
 MIME-Version: 1.0
-To: David Quigley <dpquigl@davequigley.com>
-CC: Trond Myklebust <trond.myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 00/13] NFSv4: Label NFS Patches
-References: <1355758991-30049-1-git-send-email-steved@redhat.com> <5fdb88495f9dad9720a7f349a84362d9@countercultured.net>
-In-Reply-To: <5fdb88495f9dad9720a7f349a84362d9@countercultured.net>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <6078496.RFsWrNWv86@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Paweł Sikora wrote:
 
+  Hi,
+  
+  i'm testing the 3.6.11 kernel on some small internal nfs network (1 server <-> 2 clients)
+  and observing such info in dmesg on the client side. could you put some
+  light on this dmesg entry?
 
-On 20/12/12 11:40, David Quigley wrote:
-> Thanks for the repost Steve (I just noticed it today). I've been having horrible problems with my mail provider and git-send-email so I appreciate you sending these out. Did you add your patch in here that fixes the compiler warnings?
-Ah... good catch.... I did not... but I will..
-
-steved.
-> 
-> Dave
-> 
-> P.S I'll be posting the meeting details for tonight in a bit.
+Are you mounting the same file system more than once? Why? I thought I
+remembered a mount option to uniquify the mounts but I can't find it now.
