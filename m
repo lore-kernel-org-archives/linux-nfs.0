@@ -1,60 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:5275 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751567Ab2LTWB5 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Dec 2012 17:01:57 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Orion Poplawski <orion@cora.nwra.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: umount(,MNT_DETACH) for nfsv4 hangs when using sec=krb5 and
- network is down
-Date: Thu, 20 Dec 2012 22:01:54 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA911970163@SACEXCMBX04-PRD.hq.netapp.com>
-References: <loom.20121219T214634-616@post.gmane.org>
-	   <4FA345DA4F4AE44899BD2B03EEEC2FA91196AE42@SACEXCMBX04-PRD.hq.netapp.com>
-	   <50D236A4.6060906@cora.nwra.com>
-	  <4FA345DA4F4AE44899BD2B03EEEC2FA91196C146@SACEXCMBX04-PRD.hq.netapp.com>
-	  <50D3758D.9060808@cora.nwra.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA91196FF19@SACEXCMBX04-PRD.hq.netapp.com>
-	 <50D388A9.9060300@cora.nwra.com>
-In-Reply-To: <50D388A9.9060300@cora.nwra.com>
-Content-Type: text/plain; charset="utf-7"
+Received: from countercultured.net ([209.51.175.25]:55912 "HELO
+	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1752107Ab2LTUlD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Dec 2012 15:41:03 -0500
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8;
+ format=flowed
+Date: Thu, 20 Dec 2012 15:41:00 -0500
+From: David Quigley <dpquigl@davequigley.com>
+To: <joseph_vu@hotmail.com>, <steved@redhat.com>, <trond.myklebust@netapp.com>,
+        <bfields@fieldses.org>, <rodel_fm@dsi.a-star.edu.sg>,
+        <casey@schaufler-ca.com>
+Cc: <linux-nfs@vger.kernel.org>, <selinux@tycho.nsa.gov>
+Subject: Labeled NFS Meeting Info for Tonight Dec 20/Dec 21st for our
+ friends in Singapore
+Message-ID: <cd02d79979bf6c825152f3bcf3a7f33d@countercultured.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2012-12-20 at 14:52 -0700, Orion Poplawski wrote:
-+AD4- On 12/20/2012 01:47 PM, Myklebust, Trond wrote:
-+AD4- +AD4- On Thu, 2012-12-20 at 13:31 -0700, Orion Poplawski wrote:
-+AD4- +AD4APg- On 12/19/2012 03:19 PM, Myklebust, Trond wrote:
-+AD4- +AD4APgA+-
-+AD4- +AD4APgA+- Commit eb96d5c97b0825d542e9c4ba5e0a22b519355166 (SUNRPC handle
-+AD4- +AD4APgA+- EKEYEXPIRED in call+AF8-refreshresult), which will be in 3.8-rc1 when Linus
-+AD4- +AD4APgA+- releases it, may help.
-+AD4- +AD4APgA+-
-+AD4- +AD4APg-
-+AD4- +AD4APg- FWIW - I cherry picked that into the latest Fedora rawhide kernel but no
-+AD4- +AD4APg- effect.  Sounds like a nice patch though, the current hang forever behavior
-+AD4- +AD4APg- doesn't seem the trigger the needed +ACI-ah, need a new ticket+ACI- response.
-+AD4- +AD4APg-
-+AD4- +AD4- 
-+AD4- +AD4- So does simply killing the rpc.gssd process help?
-+AD4- +AD4- 
-+AD4- 
-+AD4- Yes, if automount is already stopped (these are automounted directories).  If
-+AD4- automount is running, it still seems to hang.  I think I'm going to need to
-+AD4- spend some time talking to Ian.
-+AD4- 
+Hello Everyone,
 
-I'd suggest also taking a long hard look at rpc.gssd and making sure
-that it handles ENETUNREACH, ECONNREFUSED and friends correctly. I
-suspect right now it is just baling out of the upcall instead of
-completing it by propagating the error reply to the kernel.
+The meeting info and agenda is listed below. I will try to have the 
+google+ hangout posted and running a half an hour before the meeting so 
+people can join. just add me to a circle and I will add you to my LNFS 
+Meeting circle and send out the invite. You can add me earlier in the 
+day if you like I should be able to add people whenever.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
 
-NetApp
-Trond.Myklebust+AEA-netapp.com
-www.netapp.com
+Time: Thursday Dec 20th 10:00pm-12:00pm (The latest) Eastern
+			8:00pm-10:00pm Central
+			7:00pm-9:00pm Pacific
+       Friday Dec 21st 11:00am-1:00pm Singapore
+
+Where: Google+ Hangout Hosted by +SELinux or +Dave Quigley (If you see 
+a blue 350z you have the right dave quigley).
+
+
+
+
+Proposed Agenda
+-------------------------
+
++ Discuss merge windows and which one we'd like to target
+
+Do we want to shoot for 3.9 or will we attempt to implement the 
+remaining features and go for 3.10
+
++ Discuss current feedback from Bruce Fields
+
+Patch 1/13: Cleanup comment for dentry_init_security
+Patch 2/13: Cleanup comment to reflect that xattrs aren't being used in 
+the protocol.
+Patch 5/13: Add warning that the functionality is highly experimental 
+and still volatile.
+Patch 7/13: Concern about nfs4_label_alloc doing higher order 
+allocations (more than 4096).
+Patch 10/13: Investigate removing ifdefs from server code and making 
+sure that nfs_server_capable and other functions handle it being 
+configured off.
+Patch 13/13: Similar comments about removing ifdefs if possible and 
+hiding it away in other areas. Find out why security_inode_setsecctx may 
+fail and see if it can in its usecase here. Remove BUGONs and cleanup 
+whitespace.
+
+
++ Discuss current feedback from Trond Myklebust
+
+Trond commented about changing the definition of encode_getfattr. He 
+would rather instead of modifying getfattr we mimic 
+encode/decode_fsinfo. We should look at that and determine what to do.
+
++ Discuss implementing remaining features from NFSv4.2 specification
+
+Attribute change notification
+RPCSECGSSv3?
+
++ Discuss viability of future every other week meetings
