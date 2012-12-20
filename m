@@ -1,53 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ia0-f174.google.com ([209.85.210.174]:58696 "EHLO
-	mail-ia0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932678Ab2LMOiF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Dec 2012 09:38:05 -0500
-Received: by mail-ia0-f174.google.com with SMTP id y25so1998809iay.19
-        for <linux-nfs@vger.kernel.org>; Thu, 13 Dec 2012 06:38:05 -0800 (PST)
+Received: from mx1.redhat.com ([209.132.183.28]:37295 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752654Ab2LTNmp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Dec 2012 08:42:45 -0500
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91196C0B0@SACEXCMBX04-PRD.hq.netapp.com>
+References: <4FA345DA4F4AE44899BD2B03EEEC2FA91196C0B0@SACEXCMBX04-PRD.hq.netapp.com> <6078496.RFsWrNWv86@localhost> <4FA345DA4F4AE44899BD2B03EEEC2FA91196AB48@SACEXCMBX04-PRD.hq.netapp.com> <2073442.2DDQICUc2y@localhost>
+To: "Myklebust\, Trond" <Trond.Myklebust@netapp.com>
+Cc: dhowells@redhat.com,
+        =?us-ascii?Q?=3D=3Futf-7=3FB=3FUGF3ZStBVUktIFNpa2?=
+	 =?us-ascii?Q?9yYQ=3D=3D=3F=3D?= <pawel.sikora@agmk.net>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [3.6.11] NFS: Cache request denied due to non-unique superblock keys.
 MIME-Version: 1.0
-In-Reply-To: <20121213142336.GP10897@ics.muni.cz>
-References: <20121213133554.GO10897@ics.muni.cz>
-	<CADnza44SJ0JZN05OtMZcjsm+NwdMVPGTa2f2vG9TbpUJR_B4Zw@mail.gmail.com>
-	<20121213142336.GP10897@ics.muni.cz>
-Date: Thu, 13 Dec 2012 09:38:04 -0500
-Message-ID: <CADnza44SGwAJTJ8sFnAOoLHRPp1Mt9pJKk-scWmrigxD2G=zpQ@mail.gmail.com>
-Subject: Re: local_lock mount option
-From: Fred Isaman <faisaman4@gmail.com>
-To: Lukas Hejtmanek <xhejtman@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8
+Date: Thu, 20 Dec 2012 13:42:37 +0000
+Message-ID: <30146.1356010957@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 13, 2012 at 9:23 AM, Lukas Hejtmanek <xhejtman@gmail.com> wrote:
-> On Thu, Dec 13, 2012 at 09:10:14AM -0500, Fred Isaman wrote:
->> local_lock is a v2/v3 option.  It does not currently effect the behavior of v4.
->
-> if I understand correctly source codes, it should:
-> nfs/file.c:
->
-> const struct file_operations nfs4_file_operations = {
-> [...]
->         .lock           = nfs_lock,
->         .flock          = nfs_flock,
->
-> and nfs_(f)lock contains tests for:
-> NFS_MOUNT_LOCAL_FCNTL
-> NFS_MOUNT_LOCAL_FLOCK
->
-> but for some reason, it is not propageted from mount call. Dunno why. Or am
-> I something missing?
->
-> --
-> Lukáš Hejtmánek
+Myklebust, Trond <Trond.Myklebust@netapp.com> wrote:
 
-It is turned off here:
+> From e8ed657ba5edc8c9339e00ab2fd235ab1dd94cd5 Mon Sep 17 00:00:00 2001
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Date: Wed, 19 Dec 2012 16:56:28 -0500
+> Subject: [PATCH] NFS: Kill fscache warnings when mounting without -ofsc
+> MIME-Version: 1.0
+> Content-Type: text/plain; charset=UTF-8
+> Content-Transfer-Encoding: 8bit
+> 
+> The fscache code will currently bleat a "non-unique superblock keys"
+> warning even if the user is mounting without the 'fsc' option.
+> There should be no reason to even initialise the superblock cache cookie
+> unless we're planning on using fscache for something, so ensure that
+> we check for the NFS_OPTION_FSCACHE flag before calling into the
+> fscache code.
+> 
+> Reported-by: Paweł Sikora <pawel.sikora@agmk.net>
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Cc: David Howells <dhowells@redhat.com>
 
-static void nfs4_validate_mount_flags(struct nfs_parsed_mount_data *args)
-{
-	args->flags &= ~(NFS_MOUNT_NONLM|NFS_MOUNT_NOACL|NFS_MOUNT_VER3|
-			 NFS_MOUNT_LOCAL_FLOCK|NFS_MOUNT_LOCAL_FCNTL);
-}
-
-Fred
+Acked-by: David Howells <dhowells@redhat.com>
