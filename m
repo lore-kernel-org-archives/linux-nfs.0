@@ -1,41 +1,29 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:16440 "EHLO mx1.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752055Ab2LEPl4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Dec 2012 10:41:56 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Florian Manschwetus <florianmanschwetus@gmx.de>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfs4 acl problems using Nexenta-Communityedition Server and
- debian testing clients
-Date: Wed, 5 Dec 2012 15:41:53 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90B337973@SACEXCMBX04-PRD.hq.netapp.com>
-References: <50BF1854.1020204@gmx.de>
-In-Reply-To: <50BF1854.1020204@gmx.de>
-Content-Type: text/plain; charset="utf-8"
+Received: from countercultured.net ([209.51.175.25]:54278 "HELO
+	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751285Ab2LTQkM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Dec 2012 11:40:12 -0500
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8;
+ format=flowed
+Date: Thu, 20 Dec 2012 11:40:10 -0500
+From: David Quigley <dpquigl@davequigley.com>
+To: Steve Dickson <steved@redhat.com>
+Cc: Trond Myklebust <trond.myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 00/13] NFSv4: Label NFS Patches
+In-Reply-To: <1355758991-30049-1-git-send-email-steved@redhat.com>
+References: <1355758991-30049-1-git-send-email-steved@redhat.com>
+Message-ID: <5fdb88495f9dad9720a7f349a84362d9@countercultured.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDEyLTEyLTA1IGF0IDEwOjQ4ICswMTAwLCBGbG9yaWFuIE1hbnNjaHdldHVzIHdy
-b3RlOg0KPiBJIHNldHVwIGEgbGl0dGxlIG5ldHdvcmsgdXNpbmcgYSBjZW50cmFsIHN0b3JhZ2Ug
-c2VydmVyIGJhc2VkIG9uIA0KPiBuZXhlbnRhLUNvbW11bml0eWVkaXRpb24gY2xpZW50cyB1c2Ug
-aG9tZXMgYW5kIHNldmVyYWwgc2hhcmVzIHZpYSBuZnM0Lg0KPiBBcyB3ZSBoYXZlIHNvbWUgc2hh
-cmVzIHVzZWQgZm9yIHdlYmRldmVsb3BtZW50IHB1cnBvc2VzIGl0IGlzIGRlc2lyZWQgdG8gDQo+
-IGhhdmUgYWNscyBpbmhlcml0ZWQgZm9yIHNwZWNpZmljIGdyb3VwcyBhY2Nlc3MgYW5kIHVzZXIg
-YWNjZXNzIA0KDQpJbmhlcml0ZWQgYWNscyBhcmUgaW5oZXJlbnRseSBpbmNvbXBhdGlibGUgd2l0
-aCBiYXNpYyBQT1NJWA0Kb3BlbihPX0NSRUFUKS4gVGhlIGxhdHRlciB0YWtlcyBhIG1vZGUgYml0
-IGFyZ3VtZW50IHRoYXQgd2lsbCBjbG9iYmVyDQp5b3VyIGluaGVyaXRlZCBhY2wuDQoNCj4gKHdl
-YnNlcnZlciB1c2VyKS4gSSBhbHNvIGhhdmUgdHJvdWJsZSB3aXRoIHN0aWNreS1iaXQgaW5oZXJp
-dGFuY2UsIHdoaWNoIA0KPiBpcyBuZWVkZWQgYXMgdGhlIGxpbnV4IGd1aSB0b29scyB1bmF3YXJl
-IG9mIG5mcy1hY2xzLiBBcmUgdGhlcmUgcGxhbnMgdG8gDQo+IGltcHJvdmUgc3VwcG9ydCBmb3Ig
-bmZzIGFjbHM/DQo+DQo+IE1heWJlIHNvbWVvbmUgaGVyZSBoYXZlIHN1Y2Nlc3NmdWxseSBhIHNv
-bGFyaXMgbmZzIHNlcnZlciBydW5uaW5nIHdpdGggDQo+IGxpbnV4IGNsaWVudHMgdXNpbmcgZXh0
-ZW5kZWQgYWNscywgd2l0aCBpbmhlcml0YW5jZSB3b3JraW5nIGFzIGV4cGVjdGVkPw0KPiANCj4g
-SXQgaXMgcmVhbGx5IGFubm95aW5nIGhhdmluZyB1c2VycyBub3QgYWxsb3dlZCB0byB2aWV3L2Vk
-aXQgZmlsZXMvZGlycyANCj4gdGhleSBjb3BpZWQganVzdCB0aGUgbW9tZW50Lg0KDQpUaGlzIGlz
-IG5vdCB0aGUgcmlnaHQgbGlzdCBmb3IgcmVxdWVzdGluZyBndWkgdG9vbCBjaGFuZ2VzLiBUaGUg
-cmlnaHQNCmFkZHJlc3Mgd291bGQgYmUgdGhlIEdOT01FLCBLREUgYW5kIFhGQ0UgcHJvamVjdCBt
-YWlsIGxpc3RzLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWlu
-dGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAu
-Y29tDQo=
+Thanks for the repost Steve (I just noticed it today). I've been having 
+horrible problems with my mail provider and git-send-email so I 
+appreciate you sending these out. Did you add your patch in here that 
+fixes the compiler warnings?
+
+Dave
+
+P.S I'll be posting the meeting details for tonight in a bit.
