@@ -1,48 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:30779 "EHLO mx1.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932857Ab2LMOe4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Dec 2012 09:34:56 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "ycnian@gmail.com" <ycnian@gmail.com>
-CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: Don't return referenced delegations
-Date: Thu, 13 Dec 2012 14:34:53 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91192A73F@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1355380636-10915-1-git-send-email-ycnian@gmail.com>
-In-Reply-To: <1355380636-10915-1-git-send-email-ycnian@gmail.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mercury.cora.nwra.com ([4.28.99.165]:43878 "EHLO
+	mail.cora.nwra.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750983Ab2LTUbP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Dec 2012 15:31:15 -0500
+Message-ID: <50D3758D.9060808@cora.nwra.com>
+Date: Thu, 20 Dec 2012 13:31:09 -0700
+From: Orion Poplawski <orion@cora.nwra.com>
 MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: umount(,MNT_DETACH) for nfsv4 hangs when using sec=krb5 and network
+ is down
+References: <loom.20121219T214634-616@post.gmane.org>  <4FA345DA4F4AE44899BD2B03EEEC2FA91196AE42@SACEXCMBX04-PRD.hq.netapp.com>  <50D236A4.6060906@cora.nwra.com> <4FA345DA4F4AE44899BD2B03EEEC2FA91196C146@SACEXCMBX04-PRD.hq.netapp.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91196C146@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset=UTF-7
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTEyLTEzIGF0IDE0OjM3ICswODAwLCB5Y25pYW5AZ21haWwuY29tIHdyb3Rl
-Og0KPiBGcm9tOiBZYW5jaHVhbiBOaWFuIDx5Y25pYW5AZ21haWwuY29tPg0KPiANCj4gVGhlIGNs
-aWVudCByZXR1cm5zIHVucmVmZXJlbmNlZCBkZWxlZ2F0aW9ucyBpbiBzdGF0ZSBtYW5hZ2VtZW50
-LiBJdCBzY2FucyBhbGwNCj4gZGVsZWdhdGlvbnMgYW5kIHRlc3RzIHRoZSBORlNfREVMRUdBVElP
-Tl9SRUZFUkVOQ0VEIGZsYWcuIGlmIHRoaXMgZmxhZyBpcyBub3QNCj4gc2V0LCBORlNfREVMRUdB
-VElPTl9SRVRVUk4gd2lsbCBiZSBzZXQgYW5kIHRoZSBkZWxlZ2F0aW9uIHdpbGwgYmUgcmV0dXJu
-ZWQuIA0KPiBCdXQgdW5mb3J0dW5hdGVseSBORlNfREVMRUdBVElPTl9SRUZFUkVOQ0VEIGlzIGNs
-ZWFyZWQgYWZ0ZXIgdGhlIHRlc3RpbmcsIHNvIA0KPiBkZWxlZ2F0aW9ucyB3aGljaCBhcmUgc3Rp
-bGwgYmVpbmcgdXNlZCB3aWxsIGJlIHJldHVybmVkIGluIHRoZSBuZXh0IHN0YXRlDQo+IG1hbmFn
-ZW1lbnQuDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBZYW5jaHVhbiBOaWFuIDx5Y25pYW5AZ21haWwu
-Y29tPg0KPiAtLS0NCj4gIGZzL25mcy9kZWxlZ2F0aW9uLmMgfCAgICAyICstDQo+ICAxIGZpbGVz
-IGNoYW5nZWQsIDEgaW5zZXJ0aW9ucygrKSwgMSBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1n
-aXQgYS9mcy9uZnMvZGVsZWdhdGlvbi5jIGIvZnMvbmZzL2RlbGVnYXRpb24uYw0KPiBpbmRleCA4
-MWM1ZWVjLi40ODVlOGMwIDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvZGVsZWdhdGlvbi5jDQo+ICsr
-KyBiL2ZzL25mcy9kZWxlZ2F0aW9uLmMNCj4gQEAgLTUwNiw3ICs1MDYsNyBAQCBzdGF0aWMgdm9p
-ZCBuZnNfbWFya19yZXR1cm5fdW5yZWZlcmVuY2VkX2RlbGVnYXRpb25zKHN0cnVjdCBuZnNfc2Vy
-dmVyICpzZXJ2ZXIpDQo+ICAJc3RydWN0IG5mc19kZWxlZ2F0aW9uICpkZWxlZ2F0aW9uOw0KPiAg
-DQo+ICAJbGlzdF9mb3JfZWFjaF9lbnRyeV9yY3UoZGVsZWdhdGlvbiwgJnNlcnZlci0+ZGVsZWdh
-dGlvbnMsIHN1cGVyX2xpc3QpIHsNCj4gLQkJaWYgKHRlc3RfYW5kX2NsZWFyX2JpdChORlNfREVM
-RUdBVElPTl9SRUZFUkVOQ0VELCAmZGVsZWdhdGlvbi0+ZmxhZ3MpKQ0KPiArCQlpZiAodGVzdF9i
-aXQoTkZTX0RFTEVHQVRJT05fUkVGRVJFTkNFRCwgJmRlbGVnYXRpb24tPmZsYWdzKSkNCj4gIAkJ
-CWNvbnRpbnVlOw0KPiAgCQluZnNfbWFya19yZXR1cm5fZGVsZWdhdGlvbihzZXJ2ZXIsIGRlbGVn
-YXRpb24pOw0KPiAgCX0NCg0KVGhlIGNsZWFyaW5nIG9mIHRoZSBiaXQgaGVyZSBpcyAxMDAlIGlu
-dGVudGlvbmFsLiBUaGlzIGlzIGEgdmFyaWFudCBvbg0KYmFzaWMgbWFyay1hbmQtc3dlZXAgZ2Fy
-YmFnZSBjb2xsZWN0aW9uIHdoZXJlIGlmIHRoZSBiaXQgaGFzbid0IGJlZW4gc2V0DQphZ2FpbiB0
-aGUgbmV4dCB0aW1lIHdlIHNjYW4sIHRoZW4gd2UgYXNzdW1lIHRoZSBkZWxlZ2F0aW9uIGlzbid0
-IGJlaW5nDQp1c2VkLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBt
-YWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20NCnd3dy5uZXRh
-cHAuY29tDQo=
+On 12/19/2012 03:19 PM, Myklebust, Trond wrote:
+> 
+> Commit eb96d5c97b0825d542e9c4ba5e0a22b519355166 (SUNRPC handle
+> EKEYEXPIRED in call_refreshresult), which will be in 3.8-rc1 when Linus
+> releases it, may help.
+> 
+
+FWIW - I cherry picked that into the latest Fedora rawhide kernel but no
+effect.  Sounds like a nice patch though, the current hang forever behavior
+doesn't seem the trigger the needed "ah, need a new ticket" response.
+
+-- 
+Orion Poplawski
+Technical Manager                     303-415-9701 x222
+NWRA, Boulder Office                  FAX: 303-415-9702
+3380 Mitchell Lane                       orion@nwra.com
+Boulder, CO 80301                   http://www.nwra.com
