@@ -1,42 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:55549 "EHLO mx1.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754292Ab2LEWhJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Dec 2012 17:37:09 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Benny Halevy <bhalevy@tonian.com>, NFS list <linux-nfs@vger.kernel.org>
-CC: "Douglas O'Flaherty" <douglas@tonian.com>, Ross Safko <ross@tonian.com>
-Subject: RE: pnfs wiki pages
-Date: Wed, 5 Dec 2012 22:36:07 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA90B33820F@SACEXCMBX04-PRD.hq.netapp.com>
-References: <50BF07C4.7060505@tonian.com>
-In-Reply-To: <50BF07C4.7060505@tonian.com>
-Content-Type: text/plain; charset="Windows-1252"
+Received: from us02smtp1.synopsys.com ([198.182.60.75]:45855 "EHLO
+	vaxjo.synopsys.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751339Ab2LUI7d (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Dec 2012 03:59:33 -0500
+From: Vineet Gupta <Vineet.Gupta1@synopsys.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        Vineet Gupta <Vineet.Gupta1@synopsys.com>
+Subject: [PATCH] NFS: Fix compile issue with !CONFIG_NFS_FSCACHE
+Date: Fri, 21 Dec 2012 14:21:01 +0530
+Message-ID: <1356079861-2503-1-git-send-email-vgupta@synopsys.com>
+In-Reply-To: <20121221083305.GB15226@liondog.tnic>
+References: <20121221083305.GB15226@liondog.tnic>
 MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> owner@vger.kernel.org] On Behalf Of Benny Halevy
-> Sent: Wednesday, December 05, 2012 9:37 AM
-> To: NFS list
-> Cc: Douglas O'Flaherty; Ross Safko
-> Subject: pnfs wiki pages
-> 
-> The pages under http://wiki.linux-
-> nfs.org/wiki/index.php/PNFS_prototype_design
-> are terribly outdated.
-> 
-> I'd like to move the obsolete stuff under "Historical Contents", leave what's
-> current, and refresh some of the pages.
+fs/nfs/inode.c: In function `nfs_invalidate_mapping`:
+fs/nfs/inode.c:887: error: implicit declaration of function
+`nfs_fscache_wait_on_invalidate`
 
-Do we really need to document the "pNFS prototype" design at this point? :-)
-Documentation on the _final_ pNFS code design on the other hand will be very welcome (and, yes, I do include the server design as part of the "final" label).
+Signed-off-by: Vineet Gupta <vgupta@synopsys.com>
+---
+ fs/nfs/fscache.h |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-> Any objections?
+diff --git a/fs/nfs/fscache.h b/fs/nfs/fscache.h
+index 277b027..4ecb766 100644
+--- a/fs/nfs/fscache.h
++++ b/fs/nfs/fscache.h
+@@ -222,6 +222,7 @@ static inline void nfs_readpage_to_fscache(struct inode *inode,
+ 
+ 
+ static inline void nfs_fscache_invalidate(struct inode *inode) {}
++static inline void nfs_fscache_wait_on_invalidate(struct inode *inode) {}
+ 
+ static inline const char *nfs_server_fscache_state(struct nfs_server *server)
+ {
+-- 
+1.7.4.1
 
-None whatsoever. By all means do please proceed...
-
-Thanks!
-   Trond
