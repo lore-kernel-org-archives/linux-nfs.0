@@ -1,93 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f50.google.com ([209.85.160.50]:61655 "EHLO
-	mail-pb0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752924Ab2LXCPQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Dec 2012 21:15:16 -0500
-From: Akinobu Mita <akinobu.mita@gmail.com>
-To: linux-kernel@vger.kernel.org, akpm@linux-foundation.org
-Cc: Akinobu Mita <akinobu.mita@gmail.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH 21/29] net/sunrpc: rename random32() and net_random() to prandom_u32()
-Date: Mon, 24 Dec 2012 11:14:08 +0900
-Message-Id: <1356315256-6572-22-git-send-email-akinobu.mita@gmail.com>
-In-Reply-To: <1356315256-6572-1-git-send-email-akinobu.mita@gmail.com>
-References: <1356315256-6572-1-git-send-email-akinobu.mita@gmail.com>
+Received: from mx12.netapp.com ([216.240.18.77]:36909 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751188Ab2LUQCk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Dec 2012 11:02:40 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        =?UTF-8?q?Pawe=C5=82=20Sikora?= <pawel.sikora@agmk.net>,
+        David Howells <dhowells@redhat.com>
+Subject: [PATCH] NFS: Kill fscache warnings when mounting without -ofsc
+Date: Fri, 21 Dec 2012 11:02:32 -0500
+Message-Id: <1356105752-711-1-git-send-email-Trond.Myklebust@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use more preferable function name which implies using a pseudo-random
-number generator.
+The fscache code will currently bleat a "non-unique superblock keys"
+warning even if the user is mounting without the 'fsc' option.
+There should be no reason to even initialise the superblock cache cookie
+unless we're planning on using fscache for something, so ensure that
+we check for the NFS_OPTION_FSCACHE flag before calling into the
+fscache code.
 
-Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: "David S. Miller" <davem@davemloft.net>
-Cc: netdev@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org
+Reported-by: Paweł Sikora <pawel.sikora@agmk.net>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: David Howells <dhowells@redhat.com>
+Acked-by: David Howells <dhowells@redhat.com>
 ---
- net/sunrpc/auth_gss/gss_krb5_wrap.c | 4 ++--
- net/sunrpc/cache.c                  | 2 +-
- net/sunrpc/xprt.c                   | 2 +-
- net/sunrpc/xprtsock.c               | 2 +-
- 4 files changed, 5 insertions(+), 5 deletions(-)
+ fs/nfs/super.c | 19 +++++++++++++++----
+ 1 file changed, 15 insertions(+), 4 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-index 107c452..daf301f 100644
---- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-@@ -130,8 +130,8 @@ gss_krb5_make_confounder(char *p, u32 conflen)
- 
- 	/* initialize to random value */
- 	if (i == 0) {
--		i = random32();
--		i = (i << 32) | random32();
-+		i = prandom_u32();
-+		i = (i << 32) | prandom_u32();
- 	}
- 
- 	switch (conflen) {
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 9afa439..0f85674 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -629,7 +629,7 @@ static void cache_limit_defers(void)
- 
- 	/* Consider removing either the first or the last */
- 	if (cache_defer_cnt > DFR_MAX) {
--		if (net_random() & 1)
-+		if (prandom_u32() & 1)
- 			discard = list_entry(cache_defer_list.next,
- 					     struct cache_deferred_req, recent);
- 		else
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index bd462a5..0b51154 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -1109,7 +1109,7 @@ static inline __be32 xprt_alloc_xid(struct rpc_xprt *xprt)
- 
- static inline void xprt_init_xid(struct rpc_xprt *xprt)
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index aa5315b..c25cadf8 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2375,19 +2375,30 @@ static void nfs_get_cache_cookie(struct super_block *sb,
+ 				 struct nfs_parsed_mount_data *parsed,
+ 				 struct nfs_clone_mount *cloned)
  {
--	xprt->xid = net_random();
-+	xprt->xid = prandom_u32();
- }
++	struct nfs_server *nfss = NFS_SB(sb);
+ 	char *uniq = NULL;
+ 	int ulen = 0;
  
- static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 68b0a81..3b126ae 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1654,7 +1654,7 @@ static void xs_udp_timer(struct rpc_task *task)
- static unsigned short xs_get_random_port(void)
- {
- 	unsigned short range = xprt_max_resvport - xprt_min_resvport;
--	unsigned short rand = (unsigned short) net_random() % range;
-+	unsigned short rand = (unsigned short) prandom_u32() % range;
- 	return rand + xprt_min_resvport;
- }
+-	if (parsed && parsed->fscache_uniq) {
+-		uniq = parsed->fscache_uniq;
+-		ulen = strlen(parsed->fscache_uniq);
++	nfss->fscache_key = NULL;
++	nfss->fscache = NULL;
++
++	if (parsed) {
++		if (!(parsed->options & NFS_OPTION_FSCACHE))
++			return;
++		if (parsed->fscache_uniq) {
++			uniq = parsed->fscache_uniq;
++			ulen = strlen(parsed->fscache_uniq);
++		}
+ 	} else if (cloned) {
+ 		struct nfs_server *mnt_s = NFS_SB(cloned->sb);
++		if (!(mnt_s->options & NFS_OPTION_FSCACHE))
++			return;
+ 		if (mnt_s->fscache_key) {
+ 			uniq = mnt_s->fscache_key->key.uniquifier;
+ 			ulen = mnt_s->fscache_key->key.uniq_len;
+ 		};
+-	}
++	} else
++		return;
  
+ 	nfs_fscache_get_super_cookie(sb, uniq, ulen);
+ }
 -- 
 1.7.11.7
 
