@@ -1,61 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:35177 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:45043 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751404Ab2LOWck (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 15 Dec 2012 17:32:40 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFS: Don't use SetPageError in the NFS writeback code
-Date: Sat, 15 Dec 2012 17:32:33 -0500
-Message-Id: <1355610755-27787-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1751445Ab2LVAtD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Dec 2012 19:49:03 -0500
+Date: Fri, 21 Dec 2012 19:48:59 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Dave Jones <davej@redhat.com>, Linux Kernel <linux-kernel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>
+Subject: [PATCH] Revert "nfsd: warn on odd reply state in nfsd_vfs_read"
+Message-ID: <20121222004859.GA30312@fieldses.org>
+References: <20121221153348.GA32151@redhat.com>
+ <20121221180824.GA27729@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20121221180824.GA27729@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The writeback code is already capable of passing errors back to user space
-by means of the open_context->error. In the case of ENOSPC, Neil Brown
-is reporting seeing 2 errors being returned.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Neil writes:
+This reverts commit 79f77bf9a4e3dd5ead006b8f17e7c4ff07d8374e.
 
-"e.g. if /mnt2/ if an nfs mounted filesystem that has no space then
+This is obviously wrong, and I have no idea how I missed seeing the
+warning in testing: I must just not have looked at the right logs.  The
+caller bumps rq_resused/rq_next_page, so it will always be hit on a
+large enough read.
 
-strace dd if=/dev/zero conv=fsync >> /mnt2/afile count=1
-
-reported Input/output error and the relevant parts of the strace output are:
-
-write(1, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"..., 512) = 512
-fsync(1)                                = -1 EIO (Input/output error)
-close(1)                                = -1 ENOSPC (No space left on device)"
-
-Neil then shows that the duplication of error messages appears to be due to
-the use of the PageError() mechanism, which causes filemap_fdatawait_range
-to return the extra EIO. The regression was introduced by
-commit 7b281ee026552f10862b617a2a51acf49c829554 (NFS: fsync() must exit
-with an error if page writeback failed).
-
-Fix this by removing the call to SetPageError(), and just relying on
-open_context->error reporting the ENOSPC back to fsync().
-
-Reported-by: Neil Brown <neilb@suse.de>
-Tested-by: Neil Brown <neilb@suse.de>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: stable@vger.kernel.org [3.6+]
+Reported-by: Dave Jones <davej@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/write.c | 1 -
+ fs/nfsd/vfs.c | 1 -
  1 file changed, 1 deletion(-)
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index f608ca6..5209916 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -202,7 +202,6 @@ out:
- /* A writeback failed: mark the page as bad, and invalidate the page cache */
- static void nfs_set_pageerror(struct page *page)
- {
--	SetPageError(page);
- 	nfs_zap_mapping(page_file_mapping(page)->host, page_file_mapping(page));
- }
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index f0a6d88..d586117 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -934,7 +934,6 @@ nfsd_vfs_read(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
+ 			.u.data		= rqstp,
+ 		};
  
+-		WARN_ON_ONCE(rqstp->rq_next_page != rqstp->rq_respages + 1);
+ 		rqstp->rq_next_page = rqstp->rq_respages + 1;
+ 		host_err = splice_direct_to_actor(file, &sd, nfsd_direct_splice_actor);
+ 	} else {
 -- 
 1.7.11.7
 
