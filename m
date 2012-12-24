@@ -1,42 +1,153 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:29207 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753854Ab2LMPyV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Dec 2012 10:54:21 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "ycnian@gmail.com" <ycnian@gmail.com>
-CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: Remove duplicate function declaration in internal.h
-Date: Thu, 13 Dec 2012 15:54:19 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91192BF27@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1355380654-10949-1-git-send-email-ycnian@gmail.com>
-In-Reply-To: <1355380654-10949-1-git-send-email-ycnian@gmail.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ie0-f175.google.com ([209.85.223.175]:37122 "EHLO
+	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753377Ab2LXXan (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Dec 2012 18:30:43 -0500
+Received: by mail-ie0-f175.google.com with SMTP id qd14so9367422ieb.34
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Dec 2012 15:30:43 -0800 (PST)
 MIME-Version: 1.0
+Date: Tue, 25 Dec 2012 00:30:42 +0100
+Message-ID: <CALS3df0FR0XD9wnzVhCMDXbS-Q2OejH2TfgYf6uL8gF4cKDRng@mail.gmail.com>
+Subject: [PATCH] nfsd: Don't overuse NFS?ERR_PERM error code
+From: Pawel Dziepak <pdziepak@quarnos.org>
+To: bfields@fieldses.org
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDEyLTEyLTEzIGF0IDE0OjM3ICswODAwLCB5Y25pYW5AZ21haWwuY29tIHdyb3Rl
-Og0KPiBGcm9tOiBZYW5jaHVhbiBOaWFuIDx5Y25pYW5AZ21haWwuY29tPg0KPiANCj4gUmVtb3Zl
-IGR1cGxpY2F0ZSBmdW5jdGlvbiBkZWNsYXJhdGlvbiBpbiBpbnRlcm5hbC5oDQo+IA0KPiBTaWdu
-ZWQtb2ZmLWJ5OiBZYW5jaHVhbiBOaWFuIDx5Y25pYW5AZ21haWwuY29tPg0KPiAtLS0NCj4gIGZz
-L25mcy9pbnRlcm5hbC5oIHwgICAgMyAtLS0NCj4gIDEgZmlsZXMgY2hhbmdlZCwgMCBpbnNlcnRp
-b25zKCspLCAzIGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9pbnRlcm5h
-bC5oIGIvZnMvbmZzL2ludGVybmFsLmgNCj4gaW5kZXggNTliMTMzYy4uNDQwNjc0ZiAxMDA2NDQN
-Cj4gLS0tIGEvZnMvbmZzL2ludGVybmFsLmgNCj4gKysrIGIvZnMvbmZzL2ludGVybmFsLmgNCj4g
-QEAgLTQwOSw5ICs0MDksNiBAQCBleHRlcm4gc3RydWN0IG5mc193cml0ZV9oZWFkZXIgKm5mc193
-cml0ZWhkcl9hbGxvYyh2b2lkKTsNCj4gIGV4dGVybiB2b2lkIG5mc193cml0ZWhkcl9mcmVlKHN0
-cnVjdCBuZnNfcGdpb19oZWFkZXIgKmhkcik7DQo+ICBleHRlcm4gaW50IG5mc19nZW5lcmljX2Zs
-dXNoKHN0cnVjdCBuZnNfcGFnZWlvX2Rlc2NyaXB0b3IgKmRlc2MsDQo+ICAJCQkgICAgIHN0cnVj
-dCBuZnNfcGdpb19oZWFkZXIgKmhkcik7DQo+IC1leHRlcm4gdm9pZCBuZnNfcGFnZWlvX2luaXRf
-d3JpdGUoc3RydWN0IG5mc19wYWdlaW9fZGVzY3JpcHRvciAqcGdpbywNCj4gLQkJCXN0cnVjdCBp
-bm9kZSAqaW5vZGUsIGludCBpb2ZsYWdzLA0KPiAtCQkJY29uc3Qgc3RydWN0IG5mc19wZ2lvX2Nv
-bXBsZXRpb25fb3BzICpjb21wbF9vcHMpOw0KPiAgZXh0ZXJuIHZvaWQgbmZzX3BhZ2Vpb19yZXNl
-dF93cml0ZV9tZHMoc3RydWN0IG5mc19wYWdlaW9fZGVzY3JpcHRvciAqcGdpbyk7DQo+ICBleHRl
-cm4gdm9pZCBuZnNfd3JpdGVkYXRhX3JlbGVhc2Uoc3RydWN0IG5mc193cml0ZV9kYXRhICp3ZGF0
-YSk7DQo+ICBleHRlcm4gdm9pZCBuZnNfY29tbWl0X2ZyZWUoc3RydWN0IG5mc19jb21taXRfZGF0
-YSAqcCk7DQoNCm5mc19wYWdlaW9faW5pdF9yZWFkKCkgd2FzIHN1ZmZlcmluZyBmcm9tIHRoZSBz
-YW1lIHByb2JsZW0sIHNvIEkgYWRkZWQNCnRoYXQgdG8gdGhpcyBwYXRjaCBhbmQgYXBwbGllZC4N
-Cg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpO
-ZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
+From: Pawel Dziepak <pdziepak@quarnos.org>
+
+Unlike EPERM, NFS?ERR_PERM error code applies only when the operation could
+not be completed because the caller is either not the owner or not a
+privileged user. Actually, only OPEN, CREATE and SETATTR are supposed to
+ever return such error code when a problem occurs when changing or setting
+access permissions.
+
+Generally, this patch replaces NFS?ERR_PERM with NFS?ERR_ACCESS which is a more
+appropriate error code indicating that the caller is not allowed to perform the
+requested operation.
+
+In case of incorrect {file,directory} names either NFS?ERR_INVAL or
+NFS4ERR_BADNAME is returned.
+
+Opening for write files with append-only bit set or mandatory locking enabled
+results in NFS4ERR_SHARE_DENIED.
+
+Signed-off-by: Pawel Dziepak <pdziepak@quarnos.org>
+---
+ fs/nfsd/nfsfh.c |  2 +-
+ fs/nfsd/vfs.c   | 28 ++++++++++++++++------------
+ 2 files changed, 17 insertions(+), 13 deletions(-)
+
+diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+index 814afaa..b18382c 100644
+--- a/fs/nfsd/nfsfh.c
++++ b/fs/nfsd/nfsfh.c
+@@ -91,7 +91,7 @@ static __be32 nfsd_setuser_and_check_port(struct
+svc_rqst *rqstp,
+  dprintk(KERN_WARNING
+        "nfsd: request from insecure port %s!\n",
+        svc_print_addr(rqstp, buf, sizeof(buf)));
+- return nfserr_perm;
++ return nfserr_acces;
+  }
+
+  /* Set user creds for this exportpoint */
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index d586117..a9964de 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -777,7 +777,7 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh
+*fhp, umode_t type,
+  /* Disallow write access to files with the append-only bit set
+  * or any access when mandatory locking enabled
+  */
+- err = nfserr_perm;
++ err = nfserr_share_denied;
+  if (IS_APPEND(inode) && (may_flags & NFSD_MAY_WRITE))
+  goto out;
+  /*
+@@ -924,8 +924,6 @@ nfsd_vfs_read(struct svc_rqst *rqstp, struct
+svc_fh *fhp, struct file *file,
+  __be32 err;
+  int host_err;
+
+- err = nfserr_perm;
+-
+  if (file->f_op->splice_read && rqstp->rq_splice_ok) {
+  struct splice_desc sd = {
+  .len = 0,
+@@ -1246,7 +1244,7 @@ nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
+  __be32 err2;
+  int host_err;
+
+- err = nfserr_perm;
++ err = nfserr_inval;
+  if (!flen)
+  goto out;
+  err = nfserr_exist;
+@@ -1387,7 +1385,7 @@ do_nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
+  int host_err;
+  __u32 v_mtime=0, v_atime=0;
+
+- err = nfserr_perm;
++ err = nfserr_inval;
+  if (!flen)
+  goto out;
+  err = nfserr_exist;
+@@ -1675,7 +1673,7 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
+  err = nfserr_isdir;
+  if (S_ISDIR(tfhp->fh_dentry->d_inode->i_mode))
+  goto out;
+- err = nfserr_perm;
++ err = nfserr_inval;
+  if (!len)
+  goto out;
+  err = nfserr_exist;
+@@ -1761,8 +1759,11 @@ nfsd_rename(struct svc_rqst *rqstp, struct
+svc_fh *ffhp, char *fname, int flen,
+  if (ffhp->fh_export != tfhp->fh_export)
+  goto out;
+
+- err = nfserr_perm;
+- if (!flen || isdotent(fname, flen) || !tlen || isdotent(tname, tlen))
++ err = nfserr_inval;
++ if (!flen || !tlen)
++ goto out;
++ err = nfsd_v4client(rqstp) ? nfserr_badname : nfserr_inval;
++ if (isdotent(fname, flen) || isdotent(tname, tlen))
+  goto out;
+
+  host_err = fh_want_write(ffhp);
+@@ -1850,8 +1851,11 @@ nfsd_unlink(struct svc_rqst *rqstp, struct
+svc_fh *fhp, int type,
+  __be32 err;
+  int host_err;
+
+- err = nfserr_acces;
+- if (!flen || isdotent(fname, flen))
++ err = nfserr_inval;
++ if (!flen)
++ goto out;
++ err = nfsd_v4client(rqstp) ? nfserr_badname : nfserr_inval;
++ if (isdotent(fname, flen))
+  goto out;
+  err = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_REMOVE);
+  if (err)
+@@ -2120,10 +2124,10 @@ nfsd_permission(struct svc_rqst *rqstp, struct
+svc_export *exp,
+     __mnt_is_readonly(exp->ex_path.mnt))
+  return nfserr_rofs;
+  if (/* (acc & NFSD_MAY_WRITE) && */ IS_IMMUTABLE(inode))
+- return nfserr_perm;
++ return nfserr_acces;
+  }
+  if ((acc & NFSD_MAY_TRUNC) && IS_APPEND(inode))
+- return nfserr_perm;
++ return nfserr_acces;
+
+  if (acc & NFSD_MAY_LOCK) {
+  /* If we cannot rely on authentication in NLM requests,
+--
+1.7.11.7
