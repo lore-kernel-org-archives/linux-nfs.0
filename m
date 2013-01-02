@@ -1,41 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ironport2-out.teksavvy.com ([206.248.154.182]:25566 "EHLO
-	ironport2-out.teksavvy.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751288Ab3AOEQD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jan 2013 23:16:03 -0500
-Message-ID: <50F4D800.5040703@teksavvy.com>
-Date: Mon, 14 Jan 2013 23:16:00 -0500
-From: Mark Lord <kernel@teksavvy.com>
+Received: from eriks.xs4all.nl ([83.163.214.71]:36882 "EHLO eriks.xs4all.nl"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752622Ab3ABTVl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Jan 2013 14:21:41 -0500
+Message-ID: <50E488C1.6040901@slagter.name>
+Date: Wed, 02 Jan 2013 20:21:37 +0100
+From: Erik Slagter <erik@slagter.name>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org, Linux Kernel <linux-kernel@vger.kernel.org>
-Subject: Re: BUG at net/sunrpc/svc_xprt.c:921
-References: <50F42F85.50907@teksavvy.com> <20130114203711.GA29982@fieldses.org>
-In-Reply-To: <20130114203711.GA29982@fieldses.org>
-Content-Type: text/plain; charset=UTF-8
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: NFS client large rsize/wsize (tcp?) problems
+References: <50E0393E.7040204@slagter.name>  <20130102182147.GA25450@fieldses.org> <50E47E83.1030208@slagter.name> <4FA345DA4F4AE44899BD2B03EEEC2FA91198300A@SACEXCMBX04-PRD.hq.netapp.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91198300A@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset=UTF-7
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 13-01-14 03:37 PM, J. Bruce Fields wrote:
-> Thanks for the report.
-> 
-> On Mon, Jan 14, 2013 at 11:17:09AM -0500, Mark Lord wrote:
->> Since upgrading to 3.7, and now 3.7.2, my AMD-450E based server
-> 
-> It's acting as an NFS client, right?
+On 02-01-13 19:47, Myklebust, Trond wrote:
 
-Client and server, with other Linux boxes all running 3.something kernels.
+> You probably have a NIC that doesn't support scatter-gather.
 
-> What did you upgrade from?
+I am not 100% sure, but as it's a satellite set-top-box, with very basic
+ethernet connectivity, I'd say you're right on the spot.
 
-3.4.something, I believe.
+Is there a way to workaround that?
 
->> is getting these BUG complaints.  The .config file is gzip'd/attached.
-> 
-> Is this easy to reproduce?
+>> As a temporary workaround (for "dumb users" that don't know what a mount
+>> option is, yes it's awful!) I'd like to modify the kernel of the clients
+>> to negotiate a smaller buffer size, 32k would probably suffice. I've had
+>> a few shots but have not been successful yet, can you give me a pointer
+>> please?
 
-So far, it seems to pop up within a day or so of any reboot.
-I normally only reboot that system for a kernel upgrade,
-but can do so a bit more often if there's useful info to collect.
+> man nfsmount.conf
 
-Cheers
+Thanks for the hint, I didn't know that! Unfortunately I can't use it,
+because the mount command on the stb is a "busybox" version, so it's
+very basic, and doesn't check this file (checked it using strace...)
