@@ -1,91 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ia0-f182.google.com ([209.85.210.182]:56688 "EHLO
-	mail-ia0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753531Ab3A1Ub7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2013 15:31:59 -0500
-Received: by mail-ia0-f182.google.com with SMTP id w33so4857673iag.27
-        for <linux-nfs@vger.kernel.org>; Mon, 28 Jan 2013 12:31:58 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1 4/5] SUNRPC: Find kernel module by OID
-To: linux-nfs@vger.kernel.org
-Cc: Chuck Lever <chuck.lever@oracle.com>
-Date: Mon, 28 Jan 2013 15:31:57 -0500
-Message-ID: <20130128203157.2523.17121.stgit@seurat.1015granger.net>
-In-Reply-To: <20130128195843.2523.34798.stgit@seurat.1015granger.net>
-References: <20130128195843.2523.34798.stgit@seurat.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:15705 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752233Ab3ABSvg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Jan 2013 13:51:36 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r02Ipat5029322
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 2 Jan 2013 13:51:36 -0500
+Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.16.60.55])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r02IpZUA004948
+	for <linux-nfs@vger.kernel.org>; Wed, 2 Jan 2013 13:51:36 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] rpc.idmapd: Ignore open failures in dirscancb()
+Date: Wed,  2 Jan 2013 13:47:53 -0500
+Message-Id: <1357152473-4260-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The current GSS mech switch can find and load GSS pseudoflavor
-modules by name or pseudoflavor number, but cannot find them by OID.
+From: David Jeffery <djeffery@redhat.com>
 
-This is important when dealing with a SECINFO request, especially
-early in the boot process.  A SECINFO reply has a list of flavors
-the server can support, but they are listed by OID.  Our client
-currently can choose only flavors that are already loaded.  We want
-to be able to choose flavors where the module is available but not
-yet loaded.
+The daemon "rpc.idmapd" scans the /var/lib/nfs/rpc_pipefs/nfs/ directory
+periodically looking for NFS client mounts to communicate to. The daemon
+tried to open communication with a client mount but it disappeared in
+between looking for directory entries and opening them. NFS mount was
+umounted just before rpc.idmapd tried to communicate with it. This
+behavior is usually seen when autofs is configured on the system.
 
-Add a way for the GSS mech switch to load GSS pseudoflavor support
-by OID.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
+ utils/idmapd/idmapd.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
- net/sunrpc/Kconfig                    |    1 +
- net/sunrpc/auth_gss/gss_krb5_mech.c   |    1 +
- net/sunrpc/auth_gss/gss_mech_switch.c |    7 +++++++
- 3 files changed, 9 insertions(+), 0 deletions(-)
-
-diff --git a/net/sunrpc/Kconfig b/net/sunrpc/Kconfig
-index 03d03e3..f97f555 100644
---- a/net/sunrpc/Kconfig
-+++ b/net/sunrpc/Kconfig
-@@ -3,6 +3,7 @@ config SUNRPC
+diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
+index 9d66225..beba9c4 100644
+--- a/utils/idmapd/idmapd.c
++++ b/utils/idmapd/idmapd.c
+@@ -424,7 +424,8 @@ dirscancb(int UNUSED(fd), short UNUSED(which), void *data)
+ 			    pipefsdir, ents[i]->d_name);
  
- config SUNRPC_GSS
- 	tristate
-+	select OID_REGISTRY
- 
- config SUNRPC_BACKCHANNEL
- 	bool
-diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
-index d3611f1..8b1005d 100644
---- a/net/sunrpc/auth_gss/gss_krb5_mech.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-@@ -750,6 +750,7 @@ MODULE_ALIAS("rpc-auth-gss-krb5p");
- MODULE_ALIAS("rpc-auth-gss-390003");
- MODULE_ALIAS("rpc-auth-gss-390004");
- MODULE_ALIAS("rpc-auth-gss-390005");
-+MODULE_ALIAS("rpc-auth-gss-1.2.840.113554.1.2.2");
- 
- static struct gss_api_mech gss_kerberos_mech = {
- 	.gm_name	= "krb5",
-diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
-index 883b5b8..64dbf07a 100644
---- a/net/sunrpc/auth_gss/gss_mech_switch.c
-+++ b/net/sunrpc/auth_gss/gss_mech_switch.c
-@@ -36,6 +36,7 @@
- #include <linux/types.h>
- #include <linux/slab.h>
- #include <linux/module.h>
-+#include <linux/oid_registry.h>
- #include <linux/sunrpc/msg_prot.h>
- #include <linux/sunrpc/gss_asn1.h>
- #include <linux/sunrpc/auth_gss.h>
-@@ -174,6 +175,12 @@ EXPORT_SYMBOL_GPL(gss_mech_get_by_name);
- static struct gss_api_mech *gss_mech_get_by_OID(struct rpcsec_gss_oid *obj)
- {
- 	struct gss_api_mech	*pos, *gm = NULL;
-+	char buf[32];
-+
-+	if (sprint_oid(obj->data, obj->len, buf, sizeof(buf)) < 0)
-+		return NULL;
-+	dprintk("RPC:       %s: oid: %s\n", __func__, buf);
-+	request_module("rpc-auth-gss-%s", buf);
- 
- 	spin_lock(&registered_mechs_lock);
- 	list_for_each_entry(pos, &registered_mechs, gm_list) {
+ 			if ((ic->ic_dirfd = open(path, O_RDONLY, 0)) == -1) {
+-				xlog_warn("dirscancb: open(%s): %s", path, strerror(errno));
++				if (verbose > 0)
++					xlog_warn("dirscancb: open(%s): %s", path, strerror(errno));
+ 				free(ic);
+ 				goto out;
+ 			}
+-- 
+1.7.11.7
 
