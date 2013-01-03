@@ -1,48 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:25499 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751878Ab3AYV3L convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Jan 2013 16:29:11 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mail-ie0-f176.google.com ([209.85.223.176]:54428 "EHLO
+	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754385Ab3ACWIU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jan 2013 17:08:20 -0500
+Date: Thu, 3 Jan 2013 17:08:14 -0500
+From: Tejun Heo <tj@kernel.org>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Ben Myers <bpm@sgi.com>, Olga Kornievskaia <aglo@citi.umich.edu>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Jim Rees <rees@umich.edu>
-Subject: RE: sunrpc: socket buffer size tuneable
-Date: Fri, 25 Jan 2013 21:29:09 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91833BFAB@sacexcmbx05-prd.hq.netapp.com>
-References: <20130125192935.GA32470@sgi.com>
- <20130125202107.GD29596@fieldses.org> <20130125203507.GW30652@sgi.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91833BF5A@sacexcmbx05-prd.hq.netapp.com>
- <20130125212106.GH29596@fieldses.org>
-In-Reply-To: <20130125212106.GH29596@fieldses.org>
-Content-Type: text/plain; charset="Windows-1252"
+Cc: "Adamson, Dros" <Weston.Adamson@netapp.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Dave Jones <davej@redhat.com>,
+        Linux Kernel <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: nfsd oops on Linus' current tree.
+Message-ID: <20130103220814.GB2753@mtj.dyndns.org>
+References: <20121221153348.GA32151@redhat.com>
+ <20121221180824.GA27729@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA91197273D@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121221230849.GB29739@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA911972C73@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121221232609.GC29739@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA911972CA1@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121221234530.GA30048@fieldses.org>
+ <0EC8763B847DB24D9ADF5EBD9CD7B4191259E4A2@SACEXCMBX02-PRD.hq.netapp.com>
+ <20130103201120.GA2096@fieldses.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130103201120.GA2096@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> Sent: Friday, January 25, 2013 4:21 PM
-> To: Myklebust, Trond
-> Cc: Ben Myers; Olga Kornievskaia; linux-nfs@vger.kernel.org; Jim Rees
-> Subject: Re: sunrpc: socket buffer size tuneable
-> 
-> On Fri, Jan 25, 2013 at 09:12:55PM +0000, Myklebust, Trond wrote:
+Hello,
 
-> > Why is it not sufficient to clamp the TCP values of 'snd' and 'rcv' using
-> sysctl_tcp_wmem/sysctl_tcp_rmem?
-> > ...and clamp the UDP values using
-> sysctl_[wr]mem_min/sysctl_[wr]mem_max?.
+On Thu, Jan 03, 2013 at 03:11:20PM -0500, J. Bruce Fields wrote:
+> Both rpciod and nfsiod already set WQ_MEM_RECLAIM.
 > 
-> Yeah, I was just looking at that--so, Ben, something like:
-> 
-> 	echo "1048576 1048576 4194304" >/proc/sys/net/ipv4/tcp_wmem
-> 
-> But I'm unclear on some of the details: do we need to set the minimum or
-> only the default?  And does it need any more allowance for protocol
-> overhead?
+> But, right, looking at kernel/workqueue.c, it seems that the dedicated
+> "rescuer" threads are invoked only in the case when work is stalled
+> because a new worker thread isn't allocated quickly enough.
 
-I meant adding a check either to svc_sock_setbufsize or to the 2 call-sites that enforces the above limits.
+Because that's the *only* case where progress can't be guaranteed
+otherwise.
 
-Trond
+> So, what to do that's simplest enough that it would work for
+> post-rc2/stable?  I was happy having just a simple dedicated
+> thread--these are only started when nfsd is, so there's no real thread
+> proliferation problem.
+
+The analysis is likely completely wrong, so please don't go off doing
+something unnecessary.  Please take look at what's causing the
+deadlocks again.
+
+Thanks.
+
+-- 
+tejun
