@@ -1,76 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f170.google.com ([209.85.161.170]:48848 "EHLO
-	mail-gg0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750906Ab3A1Tlw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2013 14:41:52 -0500
-Received: by mail-gg0-f170.google.com with SMTP id k4so465881ggn.1
-        for <linux-nfs@vger.kernel.org>; Mon, 28 Jan 2013 11:41:52 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 07/16] nfsd: clean up and clarify the cache expiration code
-Date: Mon, 28 Jan 2013 14:41:13 -0500
-Message-Id: <1359402082-29195-8-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
-References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
+Received: from mx12.netapp.com ([216.240.18.77]:42338 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753677Ab3ACQ2k convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jan 2013 11:28:40 -0500
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Dave Jones <davej@redhat.com>,
+        Linux Kernel <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Adamson, Dros" <Weston.Adamson@netapp.com>, Tejun Heo <tj@kernel.org>
+Subject: Re: nfsd oops on Linus' current tree.
+Date: Thu, 3 Jan 2013 16:28:37 +0000
+Message-ID: <0EC8763B847DB24D9ADF5EBD9CD7B4191259E4A2@SACEXCMBX02-PRD.hq.netapp.com>
+References: <20121221153348.GA32151@redhat.com>
+ <20121221180824.GA27729@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA91197273D@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121221230849.GB29739@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA911972C73@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121221232609.GC29739@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA911972CA1@SACEXCMBX04-PRD.hq.netapp.com>
+ <20121221234530.GA30048@fieldses.org>
+In-Reply-To: <20121221234530.GA30048@fieldses.org>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add a preprocessor constant for the expiry time of cache entries, and
-move the test for an expired entry into a function. Note that the current
-code does not test for RC_INPROG. It just assumes that it won't take more
-than 2 minutes to fill out an in-progress entry.
+Hey, sorry for the late response, I've been on vacation.
 
-I'm not sure how valid that assumption is though, so let's just ensure
-that we never consider an RC_INPROG entry to be expired.
+On Dec 21, 2012, at 6:45 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/cache.h    | 3 +++
- fs/nfsd/nfscache.c | 9 ++++++++-
- 2 files changed, 11 insertions(+), 1 deletion(-)
+> On Fri, Dec 21, 2012 at 11:36:51PM +0000, Myklebust, Trond wrote:
+>> Please reread what I said. There was no obvious circular dependency,
+>> because nfsiod and rpciod are separate workqueues, both created with
+>> WQ_MEM_RECLAIM.
+> 
+> Oh, sorry, I read "rpciod" as "nfsiod"!
+> 
+>> Dros' experience shows, however that a call to
+>> rpc_shutdown_client in an nfsiod work item will deadlock with rpciod
+>> if the RPC task's work item has been assigned to the same CPU as the
+>> one running the rpc_shutdown_client work item.
+>> 
+>> I can't tell right now if that is intentional (in which case the
+>> WARN_ON in the rpc code is correct), or if it is a bug in the
+>> workqueue code. For now, we're assuming the former.
+> 
+> Well, Documentation/workqueue.txt says:
+> 
+> 	"Each wq with WQ_MEM_RECLAIM set has an execution context
+> 	reserved for it.  If there is dependency among multiple work
+> 	items used during memory reclaim, they should be queued to
+> 	separate wq each with WQ_MEM_RECLAIM."
 
-diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
-index f8c6df8..9c7232b 100644
---- a/fs/nfsd/cache.h
-+++ b/fs/nfsd/cache.h
-@@ -70,6 +70,9 @@ enum {
-  */
- #define RC_DELAY		(HZ/5)
- 
-+/* Cache entries expire after this time period */
-+#define RC_EXPIRE		(120 * HZ)
-+
- int	nfsd_reply_cache_init(void);
- void	nfsd_reply_cache_shutdown(void);
- int	nfsd_cache_lookup(struct svc_rqst *);
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index 2cdc4be..634b856 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -142,6 +142,13 @@ hash_refile(struct svc_cacherep *rp)
- 	hlist_add_head(&rp->c_hash, cache_hash + request_hash(rp->c_xid));
- }
- 
-+static inline bool
-+nfsd_cache_entry_expired(struct svc_cacherep *rp)
-+{
-+	return rp->c_state != RC_INPROG &&
-+	       time_after(jiffies, rp->c_timestamp + RC_EXPIRE);
-+}
-+
- /*
-  * Try to find an entry matching the current call in the cache. When none
-  * is found, we grab the oldest unlocked entry off the LRU list.
-@@ -175,7 +182,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- 		if (rp->c_state != RC_UNUSED &&
- 		    xid == rp->c_xid && proc == rp->c_proc &&
- 		    proto == rp->c_prot && vers == rp->c_vers &&
--		    time_before(jiffies, rp->c_timestamp + 120*HZ) &&
-+		    !nfsd_cache_entry_expired(rp) &&
- 		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
- 		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr)) {
- 			nfsdstats.rchits++;
--- 
-1.7.11.7
+The deadlock we were seeing was:
+
+- task A gets queued on rpciod workqueue and assigned kworker-0:0
+- task B gets queued on rpciod workqueue and assigned the same kworker (kworker-0:0)
+- task A gets run, calls rpc_shutdown_client(), which will loop forever waiting for task B to run rpc_async_release()
+- task B will never run rpc_async_release() - it can't run until kworker-0:0 is free, which won't happen until task A (rpc_shutdown_client) is done
+
+The same deadlock happened when we tried queuing the tasks on a different workqueues -- queue_work() assigns the task to a kworker thread and it's luck of the draw if it's the same kworker as task A.  We tried the different workqueue options, but nothing changed this behavior.
+
+Once a work struct is queued, there is no way to back out of the deadlock.  From kernel/workqueue.c:insert_wq_barrier comment:
+
+ * Currently, a queued barrier can't be canceled.  This is because
+ * try_to_grab_pending() can't determine whether the work to be
+ * grabbed is at the head of the queue and thus can't clear LINKED
+ * flag of the previous work while there must be a valid next work
+ * after a work with LINKED flag set.
+
+So once a work struct is queued and there is an ordering dependency (i.e. task A is before task B), there is no way to back task B out - so we can't just call cancel_work() or something on task B in rpc_shutdown_client.
+
+The root of our issue is that rpc_shutdown_client is never safe to call from a workqueue context - it loops until there are no more tasks, marking tasks as killed and waiting for them to be cleaned up in each task's own workqueue context. Any tasks that have already been assigned to the same kworker thread will never have a chance to run this cleanup stage.
+
+When fixing this deadlock, Trond and I discussed changing how rpc_shutdown_client works (making it workqueue safe), but Trond felt that it'd be better to just not call it from a workqueue context and print a warning if it is.
+
+IIRC we tried using different workqueues with WQ_MEM_RECLAIM (with no success), but I'd argue that even if that did work it would still be very easy to call rpc_shutdown_client from the wrong context and MUCH harder to detect it.  It's also unclear to me if setting rpciod workqueue to WQ_MEM_RECLAIM would limit it to one kworker, etc...
+
+-dros
 
