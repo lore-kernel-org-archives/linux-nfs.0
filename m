@@ -1,107 +1,164 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f178.google.com ([209.85.161.178]:62274 "EHLO
-	mail-gg0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750906Ab3A1Tlf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2013 14:41:35 -0500
-Received: by mail-gg0-f178.google.com with SMTP id 21so462707ggh.37
-        for <linux-nfs@vger.kernel.org>; Mon, 28 Jan 2013 11:41:35 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 01/16] nfsd: fix IPv6 address handling in the DRC
-Date: Mon, 28 Jan 2013 14:41:07 -0500
-Message-Id: <1359402082-29195-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
-References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
+Received: from mx12.netapp.com ([216.240.18.77]:32544 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753808Ab3ACVdK convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jan 2013 16:33:10 -0500
+Received: from vmwexceht04-prd.hq.netapp.com (vmwexceht04-prd.hq.netapp.com [10.106.77.34])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id r03LX8P0013721
+	for <linux-nfs@vger.kernel.org>; Thu, 3 Jan 2013 13:33:09 -0800 (PST)
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: Fix access to suid/sgid executables
+Date: Thu, 3 Jan 2013 21:33:07 +0000
+Message-ID: <0EC8763B847DB24D9ADF5EBD9CD7B4191259FA59@SACEXCMBX02-PRD.hq.netapp.com>
+References: <1357245193-10375-1-git-send-email-dros@netapp.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA91198820D@SACEXCMBX04-PRD.hq.netapp.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91198820D@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, it only stores the first 16 bytes of any address. struct
-sockaddr_in6 is 28 bytes however, so we're currently ignoring the last
-12 bytes of the address.
 
-Expand the c_addr field to a sockaddr_in6, and cast it to a sockaddr_in
-as necessary. Also fix the comparitor to use the existing RPC
-helpers for this.
+On Jan 3, 2013, at 3:47 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/cache.h             | 6 +++++-
- fs/nfsd/nfscache.c          | 7 +++++--
- include/linux/sunrpc/clnt.h | 4 +++-
- 3 files changed, 13 insertions(+), 4 deletions(-)
+> On Thu, 2013-01-03 at 15:33 -0500, Weston Andros Adamson wrote:
+>> nfs_open_permission_mask() shouldn't check MAY_READ for suid/sgid files that
+>> are opened with __FMODE_EXEC.
+>> 
+>> Also fix NFSv4 access-in-open path in a similar way -- openflags must be
+>> used because fmode will not always have FMODE_EXEC set.
+>> 
+>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+>> ---
+>> 
+>> This patch fixes https://bugzilla.kernel.org/show_bug.cgi?id=49101
+>> 
+>> The fix is not as obvious or clean as I'd like, so here is a little background:
+>> 
+>> Not checking MAY_READ when a S_ISUID or S_ISGID file has MAY_EXEC causes
+>> suid/sgid executables to behave the same as on a local FS.
+>> 
+>> The second part is fixing open-in-access for NFSv4 - we want to do the same
+>> thing as in nfs_open_permission_mask, but oddly enough fmode doesn't always
+>> indicate that the file is being opened for execution.  Instead we have to
+>> use the openflags for this.
+>> 
+>> Adding some debug prints show that the first exec of a suid/sgid
+>> file will open with fmode containing FMODE_EXEC and FMODE_READ, but subsequent
+>> execs will open with fmode containing FMODE_READ, but not FMODE_EXEC.
+>> openflags always has __FMODE_EXEC set in these examples.
+>> 
+>> The first exec has these values in nfs4_opendata_access():
+>> 
+>> fmode = 0x21: contains read exec
+>> openflags = 0x8020: contains exec
+>> 
+>> The second (and subsequent) execs have these values in nfs4_opendata_access():
+>> 
+>> fmode = 0x1: contains read
+>> openflags = 0x8020: contains exec
+>> 
+>> -dros
+>> 
+>> fs/nfs/dir.c      |   12 +++++++++---
+>> fs/nfs/nfs4proc.c |   13 +++++++++++--
+>> 2 files changed, 20 insertions(+), 5 deletions(-)
+>> 
+>> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+>> index 32e6c53..5141243 100644
+>> --- a/fs/nfs/dir.c
+>> +++ b/fs/nfs/dir.c
+>> @@ -2149,7 +2149,7 @@ out:
+>> 	return -EACCES;
+>> }
+>> 
+>> -static int nfs_open_permission_mask(int openflags)
+>> +static int nfs_open_permission_mask(struct inode *inode, int openflags)
+>> {
+>> 	int mask = 0;
+>> 
+>> @@ -2157,14 +2157,20 @@ static int nfs_open_permission_mask(int openflags)
+>> 		mask |= MAY_READ;
+>> 	if ((openflags & O_ACCMODE) != O_RDONLY)
+>> 		mask |= MAY_WRITE;
+>> -	if (openflags & __FMODE_EXEC)
+>> +	if (openflags & __FMODE_EXEC) {
+>> 		mask |= MAY_EXEC;
+>> +		/* don't check MAY_READ for exec of suid/sgid */
+>> +		if (inode->i_mode & (S_ISUID | S_ISGID))
+>> +			mask &= ~MAY_READ;
+> 
+> Wait, this can't be right. Why does the presence of a suid/sgid flag
+> make a difference here? Either way, if __FMODE_EXEC access is requested,
+> then we should only need MAY_EXEC rights.
 
-diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
-index 93cc9d3..2cac76c 100644
---- a/fs/nfsd/cache.h
-+++ b/fs/nfsd/cache.h
-@@ -12,6 +12,10 @@
- 
- /*
-  * Representation of a reply cache entry.
-+ *
-+ * Note that we use a sockaddr_in6 to hold the address instead of the more
-+ * typical sockaddr_storage. This is for space reasons, since sockaddr_storage
-+ * is much larger than a sockaddr_in6.
-  */
- struct svc_cacherep {
- 	struct hlist_node	c_hash;
-@@ -20,7 +24,7 @@ struct svc_cacherep {
- 	unsigned char		c_state,	/* unused, inprog, done */
- 				c_type,		/* status, buffer */
- 				c_secure : 1;	/* req came from port < 1024 */
--	struct sockaddr_in	c_addr;
-+	struct sockaddr_in6	c_addr;
- 	__be32			c_xid;
- 	u32			c_prot;
- 	u32			c_proc;
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index 2cbac34..5dd9ec2 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -9,6 +9,7 @@
-  */
- 
- #include <linux/slab.h>
-+#include <linux/sunrpc/clnt.h>
- 
- #include "nfsd.h"
- #include "cache.h"
-@@ -146,7 +147,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- 		    xid == rp->c_xid && proc == rp->c_proc &&
- 		    proto == rp->c_prot && vers == rp->c_vers &&
- 		    time_before(jiffies, rp->c_timestamp + 120*HZ) &&
--		    memcmp((char*)&rqstp->rq_addr, (char*)&rp->c_addr, sizeof(rp->c_addr))==0) {
-+		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
-+		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr)) {
- 			nfsdstats.rchits++;
- 			goto found_entry;
- 		}
-@@ -183,7 +185,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- 	rp->c_state = RC_INPROG;
- 	rp->c_xid = xid;
- 	rp->c_proc = proc;
--	memcpy(&rp->c_addr, svc_addr_in(rqstp), sizeof(rp->c_addr));
-+	rpc_copy_addr((struct sockaddr *)&rp->c_addr, svc_addr(rqstp));
-+	rpc_set_port((struct sockaddr *)&rp->c_addr, rpc_get_port(svc_addr(rqstp)));
- 	rp->c_prot = proto;
- 	rp->c_vers = vers;
- 	rp->c_timestamp = jiffies;
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 34206b8..47354a2 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -263,7 +263,9 @@ static inline bool __rpc_copy_addr6(struct sockaddr *dst,
-  * @sap1: first sockaddr
-  * @sap2: second sockaddr
-  *
-- * Just compares the family and address portion. Ignores port, scope, etc.
-+ * Just compares the family and address portion. Ignores port, but
-+ * compares the scope if it's a link-local address.
-+ *
-  * Returns true if the addrs are equal, false if they aren't.
-  */
- static inline bool rpc_cmp_addr(const struct sockaddr *sap1,
--- 
-1.7.11.7
+Great point. Reposting after tests finish.
+
+-dros
+
+> 
+>> +	}
+>> +
+>> 	return mask;
+>> }
+>> 
+>> int nfs_may_open(struct inode *inode, struct rpc_cred *cred, int openflags)
+>> {
+>> -	return nfs_do_access(inode, cred, nfs_open_permission_mask(openflags));
+>> +	return nfs_do_access(inode, cred,
+>> +		nfs_open_permission_mask(inode, openflags));
+>> }
+>> EXPORT_SYMBOL_GPL(nfs_may_open);
+>> 
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index 5d864fb..23cf1a8 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -1626,7 +1626,8 @@ static int _nfs4_recover_proc_open(struct nfs4_opendata *data)
+>> 
+>> static int nfs4_opendata_access(struct rpc_cred *cred,
+>> 				struct nfs4_opendata *opendata,
+>> -				struct nfs4_state *state, fmode_t fmode)
+>> +				struct nfs4_state *state, fmode_t fmode,
+>> +				int openflags)
+>> {
+>> 	struct nfs_access_entry cache;
+>> 	u32 mask;
+>> @@ -1644,6 +1645,14 @@ static int nfs4_opendata_access(struct rpc_cred *cred,
+>> 	if (fmode & FMODE_EXEC)
+>> 		mask |= MAY_EXEC;
+>> 
+>> +	/* use openflags to check for exec of suid/sgid, because fmode won't
+>> +	 * always have FMODE_EXEC set by VFS.
+>> +	 * Also, don't check MAY_READ on a suid/sgid file being executed */
+>> +	if ((openflags & __FMODE_EXEC) &&
+>> +	    (state->inode->i_mode & (S_ISUID | S_ISGID))) {
+>> +		mask = MAY_EXEC;
+>> +	}
+> 
+> Ditto...
+> 
+>> +
+>> 	cache.cred = cred;
+>> 	cache.jiffies = jiffies;
+>> 	nfs_access_set_mask(&cache, opendata->o_res.access_result);
+>> @@ -1896,7 +1905,7 @@ static int _nfs4_do_open(struct inode *dir,
+>> 	if (server->caps & NFS_CAP_POSIX_LOCK)
+>> 		set_bit(NFS_STATE_POSIX_LOCKS, &state->flags);
+>> 
+>> -	status = nfs4_opendata_access(cred, opendata, state, fmode);
+>> +	status = nfs4_opendata_access(cred, opendata, state, fmode, flags);
+>> 	if (status != 0)
+>> 		goto err_opendata_put;
+>> 
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
 
