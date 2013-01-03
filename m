@@ -1,66 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:54629 "EHLO
-	Dobby.4dicksons.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752078Ab3AVN6Z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jan 2013 08:58:25 -0500
-From: Steve Dickson <steved@redhat.com>
-To: David Quigley <selinux@davequigley.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 14/14] lnfs: Do not sleep holding the inode spin lock.
-Date: Tue, 22 Jan 2013 08:40:42 -0500
-Message-Id: <1358862042-27520-15-git-send-email-steved@redhat.com>
-In-Reply-To: <1358862042-27520-1-git-send-email-steved@redhat.com>
-References: <1358862042-27520-1-git-send-email-steved@redhat.com>
+Received: from mx12.netapp.com ([216.240.18.77]:38712 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753624Ab3ACUdQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Jan 2013 15:33:16 -0500
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH] NFS: Fix access to suid/sgid executables
+Date: Thu,  3 Jan 2013 15:33:13 -0500
+Message-Id: <1357245193-10375-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The nfs_setsecurity code can sleep while allocating memory
-so the inode spin lock can not be held while during this call.
+nfs_open_permission_mask() shouldn't check MAY_READ for suid/sgid files that
+are opened with __FMODE_EXEC.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Also fix NFSv4 access-in-open path in a similar way -- openflags must be
+used because fmode will not always have FMODE_EXEC set.
+
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
 ---
- fs/nfs/inode.c | 12 +++++++++---
- 1 file changed, 9 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 56cd542..e5b030a 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1295,6 +1295,10 @@ int nfs_refresh_inode(struct inode *inode, struct nfs_fattr *fattr, struct nfs4_
- 	status = nfs_refresh_inode_locked(inode, fattr, label);
- 	spin_unlock(&inode->i_lock);
- 
-+	if (nfs_server_capable(inode, NFS_CAP_SECURITY_LABEL)) {
-+		if (label && !status)
-+			nfs_setsecurity(inode, fattr, label);
-+	}
- 	return status;
+This patch fixes https://bugzilla.kernel.org/show_bug.cgi?id=49101
+
+The fix is not as obvious or clean as I'd like, so here is a little background:
+
+Not checking MAY_READ when a S_ISUID or S_ISGID file has MAY_EXEC causes
+suid/sgid executables to behave the same as on a local FS.
+
+The second part is fixing open-in-access for NFSv4 - we want to do the same
+thing as in nfs_open_permission_mask, but oddly enough fmode doesn't always
+indicate that the file is being opened for execution.  Instead we have to
+use the openflags for this.
+
+Adding some debug prints show that the first exec of a suid/sgid
+file will open with fmode containing FMODE_EXEC and FMODE_READ, but subsequent
+execs will open with fmode containing FMODE_READ, but not FMODE_EXEC.
+openflags always has __FMODE_EXEC set in these examples.
+
+The first exec has these values in nfs4_opendata_access():
+
+fmode = 0x21: contains read exec
+openflags = 0x8020: contains exec
+
+The second (and subsequent) execs have these values in nfs4_opendata_access():
+
+fmode = 0x1: contains read
+openflags = 0x8020: contains exec
+
+ -dros
+
+ fs/nfs/dir.c      |   12 +++++++++---
+ fs/nfs/nfs4proc.c |   13 +++++++++++--
+ 2 files changed, 20 insertions(+), 5 deletions(-)
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 32e6c53..5141243 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -2149,7 +2149,7 @@ out:
+ 	return -EACCES;
  }
- EXPORT_SYMBOL_GPL(nfs_refresh_inode);
-@@ -1334,6 +1338,11 @@ int nfs_post_op_update_inode(struct inode *inode, struct nfs_fattr *fattr, struc
- 	spin_lock(&inode->i_lock);
- 	status = nfs_post_op_update_inode_locked(inode, fattr, label);
- 	spin_unlock(&inode->i_lock);
+ 
+-static int nfs_open_permission_mask(int openflags)
++static int nfs_open_permission_mask(struct inode *inode, int openflags)
+ {
+ 	int mask = 0;
+ 
+@@ -2157,14 +2157,20 @@ static int nfs_open_permission_mask(int openflags)
+ 		mask |= MAY_READ;
+ 	if ((openflags & O_ACCMODE) != O_RDONLY)
+ 		mask |= MAY_WRITE;
+-	if (openflags & __FMODE_EXEC)
++	if (openflags & __FMODE_EXEC) {
+ 		mask |= MAY_EXEC;
++		/* don't check MAY_READ for exec of suid/sgid */
++		if (inode->i_mode & (S_ISUID | S_ISGID))
++			mask &= ~MAY_READ;
++	}
 +
-+	if (nfs_server_capable(inode, NFS_CAP_SECURITY_LABEL)) {
-+		if (label && !status)
-+			nfs_setsecurity(inode, fattr, label);
-+	}
- 	return status;
+ 	return mask;
  }
- EXPORT_SYMBOL_GPL(nfs_post_op_update_inode);
-@@ -1553,9 +1562,6 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr, struct
- 				| NFS_INO_INVALID_ACL
- 				| NFS_INO_REVAL_FORCED);
  
--	if (label && (server->caps & NFS_CAP_SECURITY_LABEL))
--		nfs_setsecurity(inode, fattr, label);
--
- 	if (fattr->valid & NFS_ATTR_FATTR_NLINK) {
- 		if (inode->i_nlink != fattr->nlink) {
- 			invalid |= NFS_INO_INVALID_ATTR;
+ int nfs_may_open(struct inode *inode, struct rpc_cred *cred, int openflags)
+ {
+-	return nfs_do_access(inode, cred, nfs_open_permission_mask(openflags));
++	return nfs_do_access(inode, cred,
++		nfs_open_permission_mask(inode, openflags));
+ }
+ EXPORT_SYMBOL_GPL(nfs_may_open);
+ 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 5d864fb..23cf1a8 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1626,7 +1626,8 @@ static int _nfs4_recover_proc_open(struct nfs4_opendata *data)
+ 
+ static int nfs4_opendata_access(struct rpc_cred *cred,
+ 				struct nfs4_opendata *opendata,
+-				struct nfs4_state *state, fmode_t fmode)
++				struct nfs4_state *state, fmode_t fmode,
++				int openflags)
+ {
+ 	struct nfs_access_entry cache;
+ 	u32 mask;
+@@ -1644,6 +1645,14 @@ static int nfs4_opendata_access(struct rpc_cred *cred,
+ 	if (fmode & FMODE_EXEC)
+ 		mask |= MAY_EXEC;
+ 
++	/* use openflags to check for exec of suid/sgid, because fmode won't
++	 * always have FMODE_EXEC set by VFS.
++	 * Also, don't check MAY_READ on a suid/sgid file being executed */
++	if ((openflags & __FMODE_EXEC) &&
++	    (state->inode->i_mode & (S_ISUID | S_ISGID))) {
++		mask = MAY_EXEC;
++	}
++
+ 	cache.cred = cred;
+ 	cache.jiffies = jiffies;
+ 	nfs_access_set_mask(&cache, opendata->o_res.access_result);
+@@ -1896,7 +1905,7 @@ static int _nfs4_do_open(struct inode *dir,
+ 	if (server->caps & NFS_CAP_POSIX_LOCK)
+ 		set_bit(NFS_STATE_POSIX_LOCKS, &state->flags);
+ 
+-	status = nfs4_opendata_access(cred, opendata, state, fmode);
++	status = nfs4_opendata_access(cred, opendata, state, fmode, flags);
+ 	if (status != 0)
+ 		goto err_opendata_put;
+ 
 -- 
-1.8.1
+1.7.9.6 (Apple Git-31.1)
 
