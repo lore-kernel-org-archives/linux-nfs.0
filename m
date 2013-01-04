@@ -1,84 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f42.google.com ([209.85.215.42]:45479 "EHLO
-	mail-la0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752293Ab3AQQxT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jan 2013 11:53:19 -0500
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: linux-kernel@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, wine-devel@winehq.org
-Subject: [PATCH v2 2/8] fcntl: Introduce new O_DENY* open flags
-Date: Thu, 17 Jan 2013 20:52:58 +0400
-Message-Id: <1358441584-8783-2-git-send-email-piastry@etersoft.ru>
-In-Reply-To: <1358441584-8783-1-git-send-email-piastry@etersoft.ru>
-References: <1358441584-8783-1-git-send-email-piastry@etersoft.ru>
+Received: from fieldses.org ([174.143.236.118]:34342 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753819Ab3ADAxs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Jan 2013 19:53:48 -0500
+Date: Thu, 3 Jan 2013 19:53:45 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Andriy Skulysh <andriy_skulysh@xyratex.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 1/1] sunrpc: Fix lockd sleeping until timeout
+Message-ID: <20130104005345.GA4407@fieldses.org>
+References: <CADug+U6-=+_Xy41Lw3hnOqSR84Bo7MjKDL_PykiZVdUx=b8tAA@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CADug+U6-=+_Xy41Lw3hnOqSR84Bo7MjKDL_PykiZVdUx=b8tAA@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch adds 4 flags:
-1) O_DENYREAD that doesn't permit read access,
-2) O_DENYWRITE that doesn't permit write access,
-3) O_DENYDELETE that doesn't permit delete or rename,
-4) O_DENYMAND that enables O_DENY* flags checks.
+On Wed, Dec 26, 2012 at 05:09:07PM +0200, Andriy Skulysh wrote:
+> There is a race in enqueueing thread to a pool and
+> waking up a thread.
+> lockd doesn't wake up on reception of lock granted callback
+> if svc_wake_up() is called before lockd's thread is added
+> to a pool.
+> 
+> Signed-off-by: Andriy Skulysh <Andriy_Skulysh@xyratex.com>
+> ---
+>  include/linux/sunrpc/svc.h |    1 +
+>  net/sunrpc/svc_xprt.c      |    9 ++++++++-
+>  2 files changed, 9 insertions(+), 1 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> index 676ddf5..1f0216b 100644
+> --- a/include/linux/sunrpc/svc.h
+> +++ b/include/linux/sunrpc/svc.h
+> @@ -50,6 +50,7 @@ struct svc_pool {
+>  	unsigned int		sp_nrthreads;	/* # of threads in pool */
+>  	struct list_head	sp_all_threads;	/* all server threads */
+>  	struct svc_pool_stats	sp_stats;	/* statistics on pool operation */
+> +	int			sp_task_pending;/* has pending task */
+>  } ____cacheline_aligned_in_smp;
+> 
+>  /*
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index b8e47fa..c7ab6f5 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -499,7 +499,8 @@ void svc_wake_up(struct svc_serv *serv)
+>  			rqstp->rq_xprt = NULL;
+>  			 */
+>  			wake_up(&rqstp->rq_wait);
+> -		}
+> +		} else
+> +			pool->sp_task_pending = 1;
+>  		spin_unlock_bh(&pool->sp_lock);
+>  	}
+>  }
+> @@ -634,7 +635,13 @@ struct svc_xprt *svc_get_next_xprt(struct
+> svc_rqst *rqstp, long timeout)
+>  		 * long for cache updates.
+>  		 */
+>  		rqstp->rq_chandle.thread_wait = 1*HZ;
+> +		pool->sp_task_pending = 0;
+>  	} else {
+> +		if (pool->sp_task_pending) {
+> +			pool->sp_task_pending = 0;
+> +			spin_unlock_bh(&pool->sp_lock);
+> +			return -EAGAIN;
 
-Network filesystems CIFS, SMB2.0, SMB3.0 and NFSv4 have such flags -
-this change can benefit cifs and nfs modules as well as Samba and
-NFS file servers. These flags are only take affect for opens with
-O_DENYMAND flags - there is no impact on native Linux opens.
+That should be ERR_PTR(-EAGAIN).
 
-Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
----
- fs/fcntl.c                       |  5 +++--
- include/uapi/asm-generic/fcntl.h | 14 ++++++++++++++
- 2 files changed, 17 insertions(+), 2 deletions(-)
+Other than this this looks right to me....
 
-diff --git a/fs/fcntl.c b/fs/fcntl.c
-index 71a600a..d88a548 100644
---- a/fs/fcntl.c
-+++ b/fs/fcntl.c
-@@ -730,14 +730,15 @@ static int __init fcntl_init(void)
- 	 * Exceptions: O_NONBLOCK is a two bit define on parisc; O_NDELAY
- 	 * is defined as O_NONBLOCK on some platforms and not on others.
- 	 */
--	BUILD_BUG_ON(19 - 1 /* for O_RDONLY being 0 */ != HWEIGHT32(
-+	BUILD_BUG_ON(23 - 1 /* for O_RDONLY being 0 */ != HWEIGHT32(
- 		O_RDONLY	| O_WRONLY	| O_RDWR	|
- 		O_CREAT		| O_EXCL	| O_NOCTTY	|
- 		O_TRUNC		| O_APPEND	| /* O_NONBLOCK	| */
- 		__O_SYNC	| O_DSYNC	| FASYNC	|
- 		O_DIRECT	| O_LARGEFILE	| O_DIRECTORY	|
- 		O_NOFOLLOW	| O_NOATIME	| O_CLOEXEC	|
--		__FMODE_EXEC	| O_PATH
-+		__FMODE_EXEC	| O_PATH	| O_DENYREAD	|
-+		O_DENYWRITE	| O_DENYDELETE	| O_DENYMAND
- 		));
- 
- 	fasync_cache = kmem_cache_create("fasync_cache",
-diff --git a/include/uapi/asm-generic/fcntl.h b/include/uapi/asm-generic/fcntl.h
-index a48937d..6e4e979 100644
---- a/include/uapi/asm-generic/fcntl.h
-+++ b/include/uapi/asm-generic/fcntl.h
-@@ -84,6 +84,20 @@
- #define O_PATH		010000000
- #endif
- 
-+#ifndef O_DENYREAD
-+#define O_DENYREAD	020000000	/* Do not permit read access */
-+#endif
-+#ifndef O_DENYWRITE
-+#define O_DENYWRITE	040000000	/* Do not permit write access */
-+#endif
-+/* FMODE_NONOTIFY	0100000000 */
-+#ifndef O_DENYDELETE
-+#define O_DENYDELETE	0200000000	/* Do not permit delete or rename */
-+#endif
-+#ifndef O_DENYMAND
-+#define O_DENYMAND	0400000000	/* Enable O_DENY flags checks */
-+#endif
-+
- #ifndef O_NDELAY
- #define O_NDELAY	O_NONBLOCK
- #endif
--- 
-1.8.1.1
+Out of curiosity: how did you run across this problem, and how did you
+test the fix?
 
+--b.
+
+> +		}
+>  		/* No data pending. Go to sleep */
+>  		svc_thread_enqueue(pool, rqstp);
+> 
+> -- 
+> 1.7.1
