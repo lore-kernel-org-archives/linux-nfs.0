@@ -1,72 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:41442 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:59636 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750969Ab3AGOrn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Jan 2013 09:47:43 -0500
-Message-ID: <50EADFED.1070505@RedHat.com>
-Date: Mon, 07 Jan 2013 09:47:09 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1754013Ab3ADTM4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Jan 2013 14:12:56 -0500
+Date: Fri, 4 Jan 2013 14:12:55 -0500
+From: Bruce Fields <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Adamson, Dros" <Weston.Adamson@netapp.com>, Tejun Heo <tj@kernel.org>
+Subject: Re: [PATCH 2/3] NFS: Ensure that we free the rpc_task after read and
+ write cleanups are done
+Message-ID: <20130104191255.GA13828@fieldses.org>
+References: <0EC8763B847DB24D9ADF5EBD9CD7B419125A16A9@SACEXCMBX02-PRD.hq.netapp.com>
+ <1357323302-12944-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1357323302-12944-2-git-send-email-Trond.Myklebust@netapp.com>
+ <20130104182958.GA13471@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA91198C253@SACEXCMBX04-PRD.hq.netapp.com>
 MIME-Version: 1.0
-To: =?UTF-8?B?UGF3ZcWCIFNpa29yYQ==?= <pawel.sikora@agmk.net>
-CC: linux-nfs@vger.kernel.org, baggins@pld-linux.org,
-        Trond.Myklebust@netapp.com
-Subject: Re: mount.nfs: cannot allocate memory.
-References: <2891788.0SBnrhN2VX@pawels> <50E598B9.4000109@RedHat.com> <7762040.Ky7rEDhaoc@localhost>
-In-Reply-To: <7762040.Ky7rEDhaoc@localhost>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91198C253@SACEXCMBX04-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, Jan 04, 2013 at 06:52:12PM +0000, Myklebust, Trond wrote:
+> On Fri, 2013-01-04 at 13:29 -0500, Bruce Fields wrote:
+> > On Fri, Jan 04, 2013 at 01:15:01PM -0500, Trond Myklebust wrote:
+> > > This patch ensures that we free the rpc_task after the cleanup callbacks
+> > > are done in order to avoid a deadlock problem that can be triggered if
+> > > the callback needs to wait for another workqueue item to complete.
+> > 
+> > Makes sense to me!
+> > 
+> > (Dumb question: so read and write data are the only two cases where the
+> > calldata embeds an rpc task?  Why is that?)
+> 
+> nfs_commit_data and nfs_layoutcommit_data do too. The idea is to improve
+> reliability when writing back dirty data in low memory conditions. The
+> struct nfs_write_data and nfs_commit_data have their own mempool in
+> order to guarantee a minimum number of available slots. By embedding the
+> rpc_task, we can extend that guarantee to cover (part of) the RPC call
+> too.
+> 
+> The only reason why nfs_read_data has the same embedding is for symmetry
+> with nfs_write_data.
 
+OK, thanks for the explanation.
 
-On 05/01/13 05:08, Paweł Sikora wrote:
-> On Thursday 03 of January 2013 09:42:01 Steve Dickson wrote:
->>
->> On 03/01/13 04:27, Paweł Sikora wrote:
->>> Hi,
->>>
->>> with the latest nfs-1.2.7/kernel-3.7.1 tools i've noticed an error during autofs mounting.
->>> reduced testcase shows that mount.nfs with 'vers=4' has a problem:
->>>
->>> [root@chufu ~]# mount.nfs -v -o vers=4 192.168.2.100:/home/atest/farm-local /mnt
->>> mount.nfs: timeout set for Thu Jan  3 10:22:00 2013
->>> mount.nfs: trying text-based options 'vers=4,addr=192.168.2.100,clientaddr=192.168.2.103'
->>> mount.nfs: mount(2): Cannot allocate memory
->>> mount.nfs: Cannot allocate memory
->>>
->>> while the vers=3 works fine:
->>>
->>> [root@chufu ~]# mount.nfs -v -o vers=3 192.168.2.100:/home/atest/farm-local /mnt
->>> mount.nfs: timeout set for Thu Jan  3 10:22:04 2013
->>> mount.nfs: trying text-based options 'vers=3,addr=192.168.2.100'
->>> mount.nfs: prog 100003, trying vers=3, prot=6
->>> mount.nfs: trying 192.168.2.100 prog 100003 vers 3 prot TCP port 2049
->>> mount.nfs: prog 100005, trying vers=3, prot=17
->>> mount.nfs: trying 192.168.2.100 prog 100005 vers 3 prot UDP port 42412
->>>
->>> no obvious errors in logs on nfs server/client side :(
->>> i can provide more info if you need to diagnose this issue.
->>
->> Please set the kernel debugging with 'rpcdebug -m nfs -s mount' then post the out put found in /var/log/messages.
-> 
-> [root@pawels ~]# mount.nfs -v -o vers=4 192.168.2.100:/home/atest/farm-local /mnt
-> 
-> mount.nfs: timeout set for Sat Jan  5 11:08:42 2013
-> mount.nfs: trying text-based options 'vers=4,addr=192.168.2.100,clientaddr=10.0.2.35'
-> mount.nfs: mount(2): Cannot allocate memory
-> mount.nfs: Cannot allocate memory
-> 
-> [root@pawels ~]# dmesg|tail                                                      
-> 
-> [ 4187.654183] NFS: nfs mount opts='vers=4,addr=192.168.2.100,clientaddr=10.0.2.35'
-> [ 4187.654188] NFS:   parsing nfs mount option 'vers=4'
-> [ 4187.654193] NFS:   parsing nfs mount option 'addr=192.168.2.100'
-> [ 4187.654198] NFS:   parsing nfs mount option 'clientaddr=10.0.2.35'
-> [ 4187.654204] NFS: MNTPATH: '/home/atest/farm-local'
-> [ 4187.654206] --> nfs4_try_mount()
-> [ 4187.975255] <-- nfs4_try_mount() = -12 [error]
-> 
-Hmm... it appears to me that the kernel modules are not be loaded... 
-What does 'lsmod | grep nfs' show, anything?
-
-steved.
+--b.
