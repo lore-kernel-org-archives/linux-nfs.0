@@ -1,55 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38581 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:46358 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756419Ab3A3XBA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Jan 2013 18:01:00 -0500
-Date: Wed, 30 Jan 2013 18:00:52 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Subject: Re: [RFC PATCH 0/4] SUNRPC: rework cache upcall to avoid NFSd root
- swapping
-Message-ID: <20130130230052.GB16158@fieldses.org>
-References: <20130115080402.2996.74320.stgit@localhost.localdomain>
+	id S1753631Ab3ADSwP convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Jan 2013 13:52:15 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Bruce Fields <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Adamson, Dros" <Weston.Adamson@netapp.com>, Tejun Heo <tj@kernel.org>
+Subject: Re: [PATCH 2/3] NFS: Ensure that we free the rpc_task after read
+ and write cleanups are done
+Date: Fri, 4 Jan 2013 18:52:12 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91198C253@SACEXCMBX04-PRD.hq.netapp.com>
+References: <0EC8763B847DB24D9ADF5EBD9CD7B419125A16A9@SACEXCMBX02-PRD.hq.netapp.com>
+	 <1357323302-12944-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1357323302-12944-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <20130104182958.GA13471@fieldses.org>
+In-Reply-To: <20130104182958.GA13471@fieldses.org>
+Content-Type: text/plain; charset="utf-7"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130115080402.2996.74320.stgit@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 15, 2013 at 11:09:23AM +0300, Stanislav Kinsbursky wrote:
-> The main idea of this patch set is to call cache request not on kthread
-> upcall, but on userspace daemon cache_read call. This fixes the problem with
-> gaining of wrong dentry path after calling d_path() in kthread root context
-> (svc_export_request() callback), which always work in init root context, but
-> containers can work in "root jail" - i.e. have it's own nested root.
+On Fri, 2013-01-04 at 13:29 -0500, Bruce Fields wrote:
++AD4- On Fri, Jan 04, 2013 at 01:15:01PM -0500, Trond Myklebust wrote:
++AD4- +AD4- This patch ensures that we free the rpc+AF8-task after the cleanup callbacks
++AD4- +AD4- are done in order to avoid a deadlock problem that can be triggered if
++AD4- +AD4- the callback needs to wait for another workqueue item to complete.
++AD4- 
++AD4- Makes sense to me+ACE-
++AD4- 
++AD4- (Dumb question: so read and write data are the only two cases where the
++AD4- calldata embeds an rpc task?  Why is that?)
 
-Sorry for the delay.  This looks good to me--committing pending some
-testing.
+nfs+AF8-commit+AF8-data and nfs+AF8-layoutcommit+AF8-data do too. The idea is to improve
+reliability when writing back dirty data in low memory conditions. The
+struct nfs+AF8-write+AF8-data and nfs+AF8-commit+AF8-data have their own mempool in
+order to guarantee a minimum number of available slots. By embedding the
+rpc+AF8-task, we can extend that guarantee to cover (part of) the RPC call
+too.
 
-What's left now for basic containerized nfsd support?
+The only reason why nfs+AF8-read+AF8-data has the same embedding is for symmetry
+with nfs+AF8-write+AF8-data.
 
---b.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-> 
-> The following series implements...
-> 
-> ---
-> 
-> Stanislav Kinsbursky (4):
->       SUNRPC: introduce cache_detail->cache_request callback
->       SUNRPC: remove cache_detail->cache_upcall callback
->       SUNRPC: remove "cache_request" argument in sunrpc_cache_pipe_upcall() function
->       SUNRPC: move cache_detail->cache_request callback call to cache_read()
-> 
-> 
->  fs/nfs/dns_resolve.c              |    2 +-
->  fs/nfsd/export.c                  |   14 ++----------
->  fs/nfsd/nfs4idmap.c               |   16 ++-----------
->  include/linux/sunrpc/cache.h      |   11 +++------
->  net/sunrpc/auth_gss/svcauth_gss.c |    8 +------
->  net/sunrpc/cache.c                |   44 ++++++++++++++++++++-----------------
->  net/sunrpc/svcauth_unix.c         |   14 ++----------
->  7 files changed, 36 insertions(+), 73 deletions(-)
-> 
+NetApp
+Trond.Myklebust+AEA-netapp.com
+www.netapp.com
