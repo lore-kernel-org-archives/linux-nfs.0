@@ -1,136 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50318 "EHLO fieldses.org"
+Received: from plane.gmane.org ([80.91.229.3]:38983 "EHLO plane.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754325Ab3A3W3c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Jan 2013 17:29:32 -0500
-Date: Wed, 30 Jan 2013 17:29:28 -0500
-From: "J.Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: NeilBrown <neilb@suse.de>, Kevin Coffman <kwc@citi.umich.edu>,
-        Steve Dickson <SteveD@redhat.com>, NFS <linux-nfs@vger.kernel.org>
-Subject: Re: Corrupted RPC_GSS_PROC_DESTROY packets coming from Linux servers.
-Message-ID: <20130130222928.GA16158@fieldses.org>
-References: <20130124130243.449d5d92@notabene.brown>
- <FF0F3E98-5C30-4EFB-BE7C-783AB0660147@oracle.com>
-MIME-Version: 1.0
+	id S1752557Ab3ADKOx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Jan 2013 05:14:53 -0500
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1Tr4Iq-0007gK-8G
+	for linux-nfs@vger.kernel.org; Fri, 04 Jan 2013 11:15:04 +0100
+Received: from p549E60A8.dip.t-dialin.net ([84.158.96.168])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Fri, 04 Jan 2013 11:15:04 +0100
+Received: from mario.bachmann by p549E60A8.dip.t-dialin.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Fri, 04 Jan 2013 11:15:04 +0100
+To: linux-nfs@vger.kernel.org
+From: Mario Bachmann <mario.bachmann@gmail.com>
+Subject: Re: [PATCH 0/2] Fix regression on NFS in mainline kernel
+Date: Fri, 4 Jan 2013 10:05:22 +0000 (UTC)
+Message-ID: <loom.20130104T105915-661@post.gmane.org>
+References: <20120418105147.2a6f1c55@corrin.poochiereds.net> <1334770614-10653-1-git-send-email-Trond.Myklebust@netapp.com> <20120419093025.GA2916@zeus> <20120419134847.GC2916@zeus> <1334856549.21419.48.camel@lade.trondhjem.org> <20120419204638.GB22948@zeus>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <FF0F3E98-5C30-4EFB-BE7C-783AB0660147@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 24, 2013 at 11:13:51AM -0500, Chuck Lever wrote:
-> 
-> On Jan 23, 2013, at 9:02 PM, NeilBrown <neilb@suse.de> wrote:
-> 
-> > 
-> > Hi peoples,
-> > 
-> > this issue has appeared on the mailing list before (particularly around July
-> > 2011) but hasn't been resolved yet and it just bit me again so I figure it
-> > is time it got fixed.
-> > 
-> > 
-> > If you tcpdump the network connection while mounting an NFS filesystem
-> > using kerberos - or while the client is establishing a new context because
-> > e.g. the server rebooted - you will see a NULL RPC with an
-> > RPC_GSS_PROC_DESTROY credential but no verifier.  The lack of a verifier
-> > makes the packet corrupt so the server ignores it, but people see it and
-> > think something is wrong.
-> > 
-> > It is good that the server ignores it as it really shouldn't be there.
-> > What happens is that the NFS client calls up to rpc.gssd to request a
-> > credential.  rpc.gssd then establishes a connection directly with the
-> > server, including the establishment of the security context.  Then it
-> > gathers the context details and passed them down to the kernel.
-> > Then it closes the connection part of which involves calling
-> > AUTH_DESTROY(auth) - necessary to free up data structures and not leak
-> > memory.
-> > This AUTH_DESTROY tries to destroy the context completely, including telling
-> > the server that it has been destroyed! But it hasn't, it has just been
-> > passed down to the kernel for use on a different connection.
-> > 
-> > So there are two issues here:
-> >  - why is the GSS_PROC_DESTROY packet missing a verifier
-> >  - how can we get AUTH_DESTROY to *not* try to destroy the context on the
-> >    server - as that would be a bad thing.
-> > 
-> > The first I cannot completely answer.  I do  know that in libtirpc, in
-> > auth_gss.c, in authgss_marshal(), gss_get_mic is failing because it doesn't
-> > think it has a valid context.   I don't know why it thinks that, and I don't
-> > really care.
-> > 
-> > 
-> > The second question is more interesting and I see two possible options.
-> > 
-> > 1/ If we knew why gss_get_mic failed and had good reason to believe it would
-> > keep on failing, we could consider changing clnt_vc_call to respond to an
-> > error from AUTH_MARSHALL not by sending a truncated packet, but by purging
-> > the current message and not sending it at all.  This should be possible but
-> > might be messy.
-> > 
-> > 2/ Make libtirpc behave more like librpcsecgss.
-> >  In libtirpc, the authgss_get_private_data() function just hands over a
-> >  pointer to the private data, but keeps its own pointer so it can free it
-> >  when the client is finally destroyed.
-> > 
-> >  In librpcsecgss, since commit 07fce317cac267509b944a8191cafa8e49b5e328
-> >  (thanks Kevin), authgss_get_private_data() hands the data over to the
-> >  caller and doesn't keep it's own reference to it.  So the caller has to call
-> >  authgss_free_private_data() when it has finished with the data.
-> >  As the library no longer has the credential, it doesn't even bother trying
-> >  to send a GSS_PROC_DESTROY request.
-> > 
-> >  When Chuck noticed this difference between the two libraries, he resolved
-> >  it - in commit 336f8bca825416082d62ef38314f3e0b7e8f5cc2 as follow:
-> > 
-> >        if (token.value)
-> >                free(token.value);
-> > +#ifndef HAVE_LIBTIRPC
-> >        if (pd.pd_ctx_hndl.length != 0)
-> >                authgss_free_private_data(&pd);
-> > +#endif
-> > 
-> >  Clearly to significance of this difference was not obvious, and this was
-> >  the easiest fix.
-> > 
-> >  If we were to "fix" this properly, we would need to add a commit like the
-> >  one from Kevin to libtirpc, and remove that #ifndef from nfs-utils.
-> >  co-ordinating this might be tricking.  nfs-utils could presumably test if
-> >  libtirpc provided the function (at configure time) and call it if it does,
-> 
-> This seems to me like the best approach for 2.
-> 
-> >  However is someone updates libtirpc without updating or recompiling
-> >  nfs-utils they would get a memory leak.  May it would be slow enough not to
-> >  be serious, and if anyone noticed that could just upgrade and get a fix.
-> 
-> Telling people to upgrade for a fix is what we do for a living.  In all seriousness, though, in the common case, people will be using nfs-utils and libtirpc built by distributions, and we expect the distros will get the fix dependency right over time.
-
-Yes, I hate to be lax about library/application compatibility, but looks
-like the only consequence of the incompatibility here is a small memory
-leak, and nfs-utils and libtirpc are probably normally upgraded at the
-same time, so I think we could live with that.
-
---b.
+Luis Henriques <luis.henriques@...> writes:
 
 > 
-> >  Does this seem reasonable?   How is maintaining libtirpc these days?
-> >  Could we get the fix into 0.2.3, or would we need a minor version bump to
-> >  0.3.0??
-> 
-> A minor version bump shouldn't be necessary if we're not changing the synopsis of a published API, nor are we removing a published API.
-> 
-> > 3/ there is actually a third option.  We could change
-> > authgss_get_private_data() to set gc.gc_ctx.length to 0, but not free the
-> > buffer.  Then aithgss_destroy_context() could notice that the length is zero
-> > and the buffer is not NULL, and could free the buffer but not try to send
-> > the context_destroy request.   It's an ugly hack though and I think I'd
-> > rather not.
-> 
-> -- 
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-> 
+> On Thu, Apr 19, 2012 at 05:29:09PM +0000, Myklebust, Trond wrote:
+> > On Thu, 2012-04-19 at 14:48 +0100, Luis Henriques wrote:
+> > > On Thu, Apr 19, 2012 at 10:30:25AM +0100, Luis Henriques wrote:
+> > > > On Wed, Apr 18, 2012 at 01:36:52PM -0400, Trond Myklebust wrote:
+> > > > > The first patch addresses the Oops.
+> > > > > The second will hopefully address the looping.
+> > > > > 
+> > > > > Trond Myklebust (2):
+> > > > >   NFSv4: Ensure that the LOCK code sets exception->inode
+> > > > >   NFSv4: Ensure that we check lock exclusive/shared type against open
+> > > > >     modes
+> > > > > 
+> > > > >  fs/nfs/nfs4proc.c |   23 +++++++++++++++++++++--
+> > > > >  1 files changed, 21 insertions(+), 2 deletions(-)
+I use kernel 3.7.1 from kernel.org which has the patches included, 
+which should fix the problems (I checked the source code). But:
+I get "NFS: nfs4_reclaim_open_state: Lock reclaim failed!" on the 
+client, which mounts home over nfs4. 
+I get senseless network traffic (50MB/s on my gigabit network). 
+Finally I get Kernel Ops on the Server sometimes. 
+
+
