@@ -1,81 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.candelatech.com ([208.74.158.172]:59350 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754259Ab3ARXVP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jan 2013 18:21:15 -0500
-Message-ID: <50F9D8E8.6080803@candelatech.com>
-Date: Fri, 18 Jan 2013 15:21:12 -0800
-From: Ben Greear <greearb@candelatech.com>
+Received: from fieldses.org ([174.143.236.118]:44475 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753796Ab3ADSaA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Jan 2013 13:30:00 -0500
+Date: Fri, 4 Jan 2013 13:29:58 -0500
+From: Bruce Fields <bfields@fieldses.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>,
+        Tejun Heo <tj@kernel.org>
+Subject: Re: [PATCH 2/3] NFS: Ensure that we free the rpc_task after read and
+ write cleanups are done
+Message-ID: <20130104182958.GA13471@fieldses.org>
+References: <0EC8763B847DB24D9ADF5EBD9CD7B419125A16A9@SACEXCMBX02-PRD.hq.netapp.com>
+ <1357323302-12944-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1357323302-12944-2-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Question on nfs40_discover_server_trunking.
-References: <50F9BE66.6080608@candelatech.com> <0F001F0E-229D-4314-A42E-84402E4F1FC7@oracle.com> <1358546604.2872.6.camel@leira.trondhjem.org> <4FA345DA4F4AE44899BD2B03EEEC2FA915C04FE5@sacexcmbx05-prd.hq.netapp.com> <C11ACA70-EC3A-4FAD-8ADC-572F9B6B4CFE@oracle.com>
-In-Reply-To: <C11ACA70-EC3A-4FAD-8ADC-572F9B6B4CFE@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1357323302-12944-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/18/2013 03:14 PM, Chuck Lever wrote:
->
-> On Jan 18, 2013, at 5:59 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
->
->> On Fri, 2013-01-18 at 17:03 -0500, an unknown sender wrote:
->>> On Fri, 2013-01-18 at 16:33 -0500, Chuck Lever wrote:
->>>> On Jan 18, 2013, at 4:28 PM, Ben Greear <greearb@candelatech.com> wrote:
->>>>
->>>>> Any chance the STALE_CLIENTID case needs a 'break'?
->>>>
->>>> I don't think so.  LEASE_CONFIRM is set, and we want to wake the state renewal thread.
->>>>
->>>>>
->>>>> Twice I've seen kernel crashes after the nfs40_walk_client_list
->>>>> failed (though code comments say it should never fail).
->>>>
->>>> nfs40_walk_client_list() is looking for an nfs_client that is supposed to already be in the nfs_client list.  If the search fails, that's a bug.
->>>>
->>>> Eyeball the contents of your nfs_client list.  You should find an appropriate nfs_client in there, and then figure out why the search doesn't find it.
->>>
->>> You have considered the fact that the call to
->>> nfs4_proc_setclientid_confirm can potentially return
->>> NFS4ERR_STALE_CLIENTID if the server rebooted while the client was
->>> walking the list?
->>
->> In fact, as far as I can see, the correct behaviour in
->> nfs40_discover_server_trunking() should be to re-issue the setclientid
->> call, and then walk the list again if nfs40_walk_client_list() returns
->> NFS4ERR_STALE_CLIENTID.
->
-> When I wrote the server trunking detection logic, I think we hadn't clearly decided what needed to be done in the STALE_CLIENTID case.
->
->> Something like the attached patch:
->
-> A couple of comments:
->
->   o  nfs_get_client() already sticks the new client on the tail of the nfs_client list
->
->   o  We don't want to get stuck in a loop here.  Should the "do {}" loop in nfs40_discover_server_trunking() be bounded by a retry count?
->
-> However, I haven't heard Ben say "oh, yes, my server had rebooted."  I'd like some confirmation that the match failed for an explainable and expected reason.
+On Fri, Jan 04, 2013 at 01:15:01PM -0500, Trond Myklebust wrote:
+> This patch ensures that we free the rpc_task after the cleanup callbacks
+> are done in order to avoid a deadlock problem that can be triggered if
+> the callback needs to wait for another workqueue item to complete.
 
-The server machine did not reboot, but it's badly overloaded,
-trying to serve 3000 mount points that are
-constantly being brought up and torn down while
-NFS write traffic is going on.
+Makes sense to me!
 
-Even with all this, I've seen this particular problem only twice in
-around 2 days of solid testing (I've been optimizing my user-space
-app, and the better it gets, the more kernel bugs I find!)
+(Dumb question: so read and write data are the only two cases where the
+calldata embeds an rpc task?  Why is that?)
 
-If you have some particular debug info you want printed in
-the failure cause, I'll be happy to run with that.
+--b.
 
-Thanks,
-Ben
-
-
--- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
-
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Cc: Weston Andros Adamson <dros@netapp.com>
+> Cc: Tejun Heo <tj@kernel.org>
+> Cc: Bruce Fields <bfields@fieldses.org>
+> Cc: stable@vger.kernel.org [>= 3.5]
+> ---
+>  fs/nfs/read.c  | 10 +++++++---
+>  fs/nfs/write.c | 10 +++++++---
+>  2 files changed, 14 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+> index b6bdb18..a5e5d98 100644
+> --- a/fs/nfs/read.c
+> +++ b/fs/nfs/read.c
+> @@ -91,12 +91,16 @@ void nfs_readdata_release(struct nfs_read_data *rdata)
+>  	put_nfs_open_context(rdata->args.context);
+>  	if (rdata->pages.pagevec != rdata->pages.page_array)
+>  		kfree(rdata->pages.pagevec);
+> -	if (rdata != &read_header->rpc_data)
+> -		kfree(rdata);
+> -	else
+> +	if (rdata == &read_header->rpc_data) {
+>  		rdata->header = NULL;
+> +		rdata = NULL;
+> +	}
+>  	if (atomic_dec_and_test(&hdr->refcnt))
+>  		hdr->completion_ops->completion(hdr);
+> +	/* Note: we only free the rpc_task after callbacks are done.
+> +	 * See the comment in rpc_free_task() for why
+> +	 */
+> +	kfree(rdata);
+>  }
+>  EXPORT_SYMBOL_GPL(nfs_readdata_release);
+>  
+> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> index b673be3..c483cc5 100644
+> --- a/fs/nfs/write.c
+> +++ b/fs/nfs/write.c
+> @@ -126,12 +126,16 @@ void nfs_writedata_release(struct nfs_write_data *wdata)
+>  	put_nfs_open_context(wdata->args.context);
+>  	if (wdata->pages.pagevec != wdata->pages.page_array)
+>  		kfree(wdata->pages.pagevec);
+> -	if (wdata != &write_header->rpc_data)
+> -		kfree(wdata);
+> -	else
+> +	if (wdata == &write_header->rpc_data) {
+>  		wdata->header = NULL;
+> +		wdata = NULL;
+> +	}
+>  	if (atomic_dec_and_test(&hdr->refcnt))
+>  		hdr->completion_ops->completion(hdr);
+> +	/* Note: we only free the rpc_task after callbacks are done.
+> +	 * See the comment in rpc_free_task() for why
+> +	 */
+> +	kfree(wdata);
+>  }
+>  EXPORT_SYMBOL_GPL(nfs_writedata_release);
+>  
+> -- 
+> 1.7.11.7
+> 
