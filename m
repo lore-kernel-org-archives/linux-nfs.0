@@ -1,84 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:35517 "EHLO mx12.netapp.com"
+Received: from mail.agmk.net ([91.192.224.71]:49524 "EHLO mail.agmk.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755388Ab3AUOiW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Jan 2013 09:38:22 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Alex Bligh <alex@alex.org.uk>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Fatal crash with NFS, AIO & tcp retransmit
-Date: Mon, 21 Jan 2013 14:38:20 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA915C163B9@SACEXCMBX04-PRD.hq.netapp.com>
-References: <93D3AE9B4990994B2BCA75A9@Ximines.local>
-In-Reply-To: <93D3AE9B4990994B2BCA75A9@Ximines.local>
-Content-Type: text/plain; charset="utf-8"
+	id S1752360Ab3ADFRF convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Jan 2013 00:17:05 -0500
+From: =?utf-8?B?UGF3ZcWC?= Sikora <pawel.sikora@agmk.net>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org, baggins@pld-linux.org,
+        Trond.Myklebust@netapp.com
+Subject: Re: mount.nfs: cannot allocate memory.
+Date: Fri, 04 Jan 2013 06:16:58 +0100
+Message-ID: <14289664.zy0he5HnEB@localhost>
+In-Reply-To: <50E598B9.4000109@RedHat.com>
+References: <2891788.0SBnrhN2VX@pawels> <50E598B9.4000109@RedHat.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEzLTAxLTIxIGF0IDEzOjA2ICswMDAwLCBBbGV4IEJsaWdoIHdyb3RlOg0KPiBJ
-J20gdHJ5aW5nIHRvIHJlc29sdmUgYSBmYXRhbCBidWcgdGhhdCBoYXBwZW5zIHdpdGggTGludXgg
-My4yLjAtMzItZ2VuZXJpYw0KPiAoVWJ1bnR1IHZhcmlhbnQgb2YgMy4yKSwgYW5kIHRoZSBtYWdp
-YyBjb21iaW5hdGlvbiBvZg0KPiAxLiBORlN2NA0KPiAyLiBBSU8gZnJvbSBRZW11DQo+IDMuIFhl
-biB3aXRoIHVwc3RyZWFtIHFlbXUgRE0NCj4gNC4gUUNPVyBwbHVzIGJhY2tpbmcgZmlsZS4NCj4g
-DQo+IFRoZSBiYWNrZ3JvdW5kIGlzIGhlcmU6DQo+ICAgaHR0cDovL2xpc3RzLnhlbi5vcmcvYXJj
-aGl2ZXMvaHRtbC94ZW4tZGV2ZWwvMjAxMi0xMi9tc2cwMTE1NC5odG1sDQo+IEl0IGlzIGNvbXBs
-ZXRlbHkgcmVwbGljYWJsZSBvbiBkaWZmZXJlbnQgTkZTIGNsaWVudCBoYXJkd2FyZS4gV2UndmUN
-Cj4gdHJpZWQgb3RoZXIga2VybmVscyB0byBubyBhdmFpbC4NCj4gDQo+IFRoZSBidWcgaXMgcXVp
-dGUgbmFzdHkgaW4gdGhhdCBkb20wIGNyYXNoZXMgZmF0YWxseSBkdWUgdG8gYSBWTSBhY3Rpb24u
-DQo+IA0KPiBXaXRoaW4gdGhlIGxpbmssIHlvdSdsbCBzZWUgcmVmZXJlbmNlcyB0byBhbiBpc3N1
-ZSBmb3VuZCBieSBJYW4gQ2FtcGJlbGwNCj4gYSB3aGlsZSBhZ28sIHdoaWNoIHR1cm5lZCBvdXQg
-dG8gYmUgYW4gTkZTIGlzc3VlIGluZGVwZW5kZW50IG9mIFhlbiBidXQNCj4gYXBwYXJlbnRseSBu
-b3QgaW4gTkZTNC4gVGhlIGxpbmtzIGFyZToNCj4gIGh0dHA6Ly9idWdzLmRlYmlhbi5vcmcvY2dp
-LWJpbi9idWdyZXBvcnQuY2dpP2J1Zz02NDA5NDENCj4gIGh0dHA6Ly9tYXJjLmluZm8vP2w9bGlu
-dXgtbmZzJm09MTIyNDI0MTMyNzI5NzIwJnc9Mg0KPiANCj4gSW4gZXNzZW5jZSwgbXkgdW5kZXJz
-dGFuZGluZyBvZiB3aGF0IGFwcGVhcnMgdG8gYmUgaGFwcGVuaW5nICh3aGljaA0KPiBtYXkgYmUg
-ZW50aXJlbHkgd3JvbmcpIGlzOg0KPiAxLiBYZW4gNC4yIEhWTSBkb21VIFZNIGhhcyBhIFBWIGRp
-c2sgZHJpdmVyDQo+IDIuIGRvbVUgd3JpdGVzIGEgcGFnZQ0KPiAzLiBYZW4gbWFwcyBkb21VJ3Mg
-cGFnZSBpbnRvIGRvbTAncyBWTSBzcGFjZQ0KPiA0LiBYZW4gYXNrcyBRZW11ICh1c2Vyc3BhY2Up
-IHRvIHdyaXRlIGEgcGFnZQ0KPiA1LiBRZW11J3MgZGlzayAoYW5kIGJhY2tpbmcgZmlsZSBmb3Ig
-dGhlIGRpc2spIGFyZSBvbiBORlN2NA0KPiA2LiBRZW11IHVzZXMgQUlPIHRvIHdyaXRlIHRoZSBw
-YWdlIHRvIE5GUw0KPiA3LiBBSU8gY2xhaW1zIHRoZSBwYWdlIHdyaXRlIGlzIGNvbXBsZXRlDQo+
-IDguIFFlbXUgbWFya3MgdGhlIHdyaXRlIGFzIGNvbXBsZXRlDQo+IDkuIFhlbiB1bm1hcHMgdGhl
-IHBhZ2UgZnJvbSBkb20wJ3MgVk0gc3BhY2UNCj4gMTAuIEFwcGFyZW50bHksIHRoZSB3cml0ZSBp
-cyBub3QgYWN0dWFsbHkgY29tcGxldGUgYXQgdGhpcw0KPiAgICAgcG9pbnQNCj4gMTEuIFRDUCBy
-ZXRyYW5zbWl0IGlzIHRyaWdnZXJlZCAobm90IHF1aXRlIHN1cmUgd2h5LCBwb3NzaWJseQ0KPiAg
-ICAgZHVlIHRvIHNsb3cgZmlsZXIpDQo+IDEyLiBUQ1AgZ29lcyB0byByZXNlbmQgdGhlIHBhZ2Us
-IGFuZCBmaW5kcyBpdCdzIG5vdCBpbiBkb20wDQo+ICAgICBtZW1vcnkuDQo+IDEzLiBCYW5nDQo+
-IA0KPiBUaGUgWGVuIGZvbGtzIHRoaW5rIHRoaXMgaXMgbm90aGluZyB0byBkbyB3aXRoIGVpdGhl
-ciBYZW4gb3IgUUVNVSwgYW5kDQo+IGJlbGlldmUgdGhlIHByb2JsZW0gaXMgQUlPIG9uIE5GUy4g
-VGhlIGxpbmtzIHRvIGVhcmxpZXIgaW52ZXN0aWdhdGlvbnMNCj4gc3VnZ2VzdCB0aGlzIGlzL3dh
-cyB0cnVlLCBidXQgbm90IGZvciBORlN2NCwgYW5kIHdhcyBmaXhlZC4gQW4gTkZTdjQgY2FzZQ0K
-PiBtYXkgaGF2ZSBiZWVuIG1pc3NlZC4NCj4gDQo+IEFnYWluc3QgdGhpcyBleHBsYW5hdGlvbjoN
-Cj4gYSkgaXQgZG9lcyBub3QgaGFwcGVuIGluIEtWTSAoYWdhaW4gd2l0aCBRRU1VIGRvaW5nIEFJ
-TyB0bw0KPiAgICBORlMpIC0gdGhvdWdoIGhlcmUgdGhlIHBhZ2UgbWFwcGluZyBmYW5jaW5lc3Mg
-ZG9lc24ndA0KPiAgICBoYXBwZW4gYXMgS1ZNIFZNcyBzaGFyZSB0aGUgc2FtZSBtZW1vcnkgc3Bh
-Y2UgYXMgdGhlIGtlcm5lbA0KPiAgICBhcyBJIHVuZGVyc3RhbmQgaXQuDQo+IGIpIGl0IGRvZXMg
-bm90IGhhcHBlbiBvbiBYZW4gd2l0aG91dCBhIFFFTVUgYmFja2luZyBmaWxlICh0aG91Z2gNCj4g
-ICAgdGhhdCBtYXkgYmUganVzdCB3aGF0J3MgbmVjZXNzYXJ5IHRpbWluZyB3aXNlIHRvIHRyaWdn
-ZXINCj4gICAgdGhlIHJhY2UgY29uZGl0aW9uKS4NCj4gDQo+IEFueSBpbnNpZ2h0IHlvdSBoYXZl
-IHdvdWxkIGJlIGFwcHJlY2lhdGVkLg0KPiANCj4gU3BlY2lmaWNhbGx5LCB0aGUgcXVlc3Rpb24g
-SSdkIGFzayBpcyBhcyBmb2xsb3dzLiBJcyBpdCBjb3JyZWN0IGJlaGF2aW91cg0KPiB0aGF0IExp
-bnV4K05GU3Y0IG1hcmtzIGFuIEFJTyByZXF1ZXN0IGNvbXBsZXRlZCB3aGVuIGFsbCB0aGUgcmVs
-ZXZhbnQgZGF0YQ0KPiBtYXkgaGF2ZSBiZWVuIHNlbnQgYnkgVENQIGJ1dCBub3QgeWV0IEFDSydk
-PyBJZiBzbywgaG93IGlzIExpbnV4IG1lYW50IHRvDQo+IGRlYWwgd2l0aCByZXRyYW5zbWl0cz8g
-QXJlIHRoZSBwYWdlcyByZWZlcmVuY2VkIGJ5IHRoZSBUQ1Agc3RhY2sgbWVhbnQgdG8NCj4gYmUg
-bWFya2VkIENPVyBvciBzb21ldGhpbmc/IFdoYXQgaXMgbWVhbnQgdG8gaGFwcGVuIGlmIHRob3Nl
-IHBhZ2VzIGdldA0KPiByZW1vdmVkIGZyb20gdGhlIG1lbW9yeSBtYXAgZW50aXJlbHk/DQo+IA0K
-PiBBcyBhbiBhc2lkZSwgd2UncmUgbG9va2luZyBmb3Igc29tZW9uZSB0byBmaXggdGhpcyAoYW5k
-IHRoaW5ncyBsaWtlIGl0KSBvbg0KPiBhIGNvbnRyYWN0IGJhc2lzLiBDb250YWN0IG1lIG9mZiBs
-aXN0IGlmIGludGVyZXN0ZWQuDQo+IA0KDQpUaGUgT29wcyB3b3VsZCBiZSBkdWUgdG8gYSBidWcg
-aW4gdGhlIHNvY2tldCBsYXllcjogdGhlIHNvY2tldCBpcw0Kc3VwcG9zZWQgdG8gdGFrZSBhIHJl
-ZmVyZW5jZSBjb3VudCBvbiB0aGUgcGFnZSBpbiBvcmRlciB0byBlbnN1cmUgdGhhdA0KaXQgY2Fu
-IGNvcHkgdGhlIGNvbnRlbnRzLg0KDQpBcyBmb3IgdGhlIE9fRElSRUNUIGJ1ZywgdGhlIHByb2Js
-ZW0gdGhlcmUgaXMgdGhhdCB3ZSBoYXZlIG5vIHdheSBvZg0Ka25vd2luZyB3aGVuIHRoZSBzb2Nr
-ZXQgaXMgZG9uZSB3cml0aW5nIHRoZSBwYWdlLiBKdXN0IGJlY2F1c2Ugd2UgZ290IGFuDQphbnN3
-ZXIgZnJvbSB0aGUgc2VydmVyIGRvZXNuJ3QgbWVhbiB0aGF0IHRoZSBzb2NrZXQgaXMgZG9uZQ0K
-cmV0cmFuc21pdHRpbmcgdGhlIGRhdGEuIEl0IGlzIHF1aXRlIHBvc3NpYmxlIHRoYXQgdGhlIHNl
-cnZlciBpcyBqdXN0DQpyZXBseWluZyB0byB0aGUgZmlyc3QgdHJhbnNtaXNzaW9uLg0KSSB0aG91
-Z2h0IHRoYXQgSWFuIHdhcyB3b3JraW5nIG9uIGEgZml4IGZvciB0aGlzIGlzc3VlLiBBdCBvbmUg
-cG9pbnQsIGhlDQpoYWQgYSBidW5jaCBvZiBwYXRjaGVzIHRvIGFsbG93IHNlbmRwYWdlKCkgdG8g
-Y2FsbCB5b3UgYmFjayB3aGVuIHRoZQ0KdHJhbnNtaXNzaW9uIHdhcyBkb25lLiBXaGF0IGhhcHBl
-bmVkIHRvIHRob3NlIHBhdGNoZXM/DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMg
-Y2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0K
-d3d3Lm5ldGFwcC5jb20NCg==
+On Thursday 03 of January 2013 09:42:01 Steve Dickson wrote:
+> 
+> On 03/01/13 04:27, Paweł Sikora wrote:
+> > Hi,
+> > 
+> > with the latest nfs-1.2.7/kernel-3.7.1 tools i've noticed an error during autofs mounting.
+> > reduced testcase shows that mount.nfs with 'vers=4' has a problem:
+> > 
+> > [root@chufu ~]# mount.nfs -v -o vers=4 192.168.2.100:/home/atest/farm-local /mnt
+> > mount.nfs: timeout set for Thu Jan  3 10:22:00 2013
+> > mount.nfs: trying text-based options 'vers=4,addr=192.168.2.100,clientaddr=192.168.2.103'
+> > mount.nfs: mount(2): Cannot allocate memory
+> > mount.nfs: Cannot allocate memory
+> > 
+> > while the vers=3 works fine:
+> > 
+> > [root@chufu ~]# mount.nfs -v -o vers=3 192.168.2.100:/home/atest/farm-local /mnt
+> > mount.nfs: timeout set for Thu Jan  3 10:22:04 2013
+> > mount.nfs: trying text-based options 'vers=3,addr=192.168.2.100'
+> > mount.nfs: prog 100003, trying vers=3, prot=6
+> > mount.nfs: trying 192.168.2.100 prog 100003 vers 3 prot TCP port 2049
+> > mount.nfs: prog 100005, trying vers=3, prot=17
+> > mount.nfs: trying 192.168.2.100 prog 100005 vers 3 prot UDP port 42412
+> > 
+> > no obvious errors in logs on nfs server/client side :(
+> > i can provide more info if you need to diagnose this issue.
+> 
+> Please set the kernel debugging with 'rpcdebug -m nfs -s mount' then post the out put found in /var/log/messages.
+>
+
+rpcdebug can't find the /proc/sys/sunrpc/nfs_debug file in my system. how can i enable it?
+
