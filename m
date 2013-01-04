@@ -1,137 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:28659 "EHLO mx12.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:64150 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753992Ab3ARW7Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Jan 2013 17:59:25 -0500
+	id S1754837Ab3ADPvl convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Jan 2013 10:51:41 -0500
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Ben Greear <greearb@candelatech.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Question on nfs40_discover_server_trunking.
-Date: Fri, 18 Jan 2013 22:59:23 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA915C04FE5@sacexcmbx05-prd.hq.netapp.com>
-References: <50F9BE66.6080608@candelatech.com>
-	 <0F001F0E-229D-4314-A42E-84402E4F1FC7@oracle.com>
-	 <1358546604.2872.6.camel@leira.trondhjem.org>
-In-Reply-To: <1358546604.2872.6.camel@leira.trondhjem.org>
-Content-Type: multipart/mixed;
-	boundary="_002_4FA345DA4F4AE44899BD2B03EEEC2FA915C04FE5sacexcmbx05prdh_"
+To: "ycnian@gmail.com" <ycnian@gmail.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] pnfs: Increase the refcount when LAYOUTGET fails the
+ first time
+Date: Fri, 4 Jan 2013 15:51:39 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91198A99A@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1357301989-10278-1-git-send-email-ycnian@gmail.com>
+In-Reply-To: <1357301989-10278-1-git-send-email-ycnian@gmail.com>
+Content-Type: text/plain; charset="utf-7"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---_002_4FA345DA4F4AE44899BD2B03EEEC2FA915C04FE5sacexcmbx05prdh_
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <2AAE344384768E4A8FB1F08ACEF40510@tahoe.netapp.com>
-Content-Transfer-Encoding: base64
+On Fri, 2013-01-04 at 20:19 +-0800, ycnian+AEA-gmail.com wrote:
++AD4- From: Yanchuan Nian +ADw-ycnian+AEA-gmail.com+AD4-
++AD4- 
++AD4- The layout will be set unusable if LAYOUTGET fails. Is it reasonable to
++AD4- increase the refcount iff LAYOUTGET fails the first time?
++AD4- 
++AD4- Signed-off-by: Yanchuan Nian +ADw-ycnian+AEA-gmail.com+AD4-
++AD4- ---
++AD4-  fs/nfs/pnfs.c +AHw-    2 +--
++AD4-  1 files changed, 1 insertions(+-), 1 deletions(-)
++AD4- 
++AD4- diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
++AD4- index e7165d9..d00260b 100644
++AD4- --- a/fs/nfs/pnfs.c
++AD4- +-+-+- b/fs/nfs/pnfs.c
++AD4- +AEAAQA- -254,7 +-254,7 +AEAAQA- static void
++AD4-  pnfs+AF8-layout+AF8-set+AF8-fail+AF8-bit(struct pnfs+AF8-layout+AF8-hdr +ACo-lo, int fail+AF8-bit)
++AD4-  +AHs-
++AD4-  	lo-+AD4-plh+AF8-retry+AF8-timestamp +AD0- jiffies+ADs-
++AD4- -	if (test+AF8-and+AF8-set+AF8-bit(fail+AF8-bit, +ACY-lo-+AD4-plh+AF8-flags))
++AD4- +-	if (+ACE-test+AF8-and+AF8-set+AF8-bit(fail+AF8-bit, +ACY-lo-+AD4-plh+AF8-flags))
++AD4-  		atomic+AF8-inc(+ACY-lo-+AD4-plh+AF8-refcount)+ADs-
++AD4-  +AH0-
++AD4-  
+Thank for spotting this+ACE- Applying to the bugfixes branch...
 
-T24gRnJpLCAyMDEzLTAxLTE4IGF0IDE3OjAzIC0wNTAwLCBhbiB1bmtub3duIHNlbmRlciB3cm90
-ZToNCj4gT24gRnJpLCAyMDEzLTAxLTE4IGF0IDE2OjMzIC0wNTAwLCBDaHVjayBMZXZlciB3cm90
-ZToNCj4gPiBPbiBKYW4gMTgsIDIwMTMsIGF0IDQ6MjggUE0sIEJlbiBHcmVlYXIgPGdyZWVhcmJA
-Y2FuZGVsYXRlY2guY29tPiB3cm90ZToNCj4gPiANCj4gPiA+IEFueSBjaGFuY2UgdGhlIFNUQUxF
-X0NMSUVOVElEIGNhc2UgbmVlZHMgYSAnYnJlYWsnPw0KPiA+IA0KPiA+IEkgZG9uJ3QgdGhpbmsg
-c28uICBMRUFTRV9DT05GSVJNIGlzIHNldCwgYW5kIHdlIHdhbnQgdG8gd2FrZSB0aGUgc3RhdGUg
-cmVuZXdhbCB0aHJlYWQuDQo+ID4gDQo+ID4gPiANCj4gPiA+IFR3aWNlIEkndmUgc2VlbiBrZXJu
-ZWwgY3Jhc2hlcyBhZnRlciB0aGUgbmZzNDBfd2Fsa19jbGllbnRfbGlzdA0KPiA+ID4gZmFpbGVk
-ICh0aG91Z2ggY29kZSBjb21tZW50cyBzYXkgaXQgc2hvdWxkIG5ldmVyIGZhaWwpLg0KPiA+IA0K
-PiA+IG5mczQwX3dhbGtfY2xpZW50X2xpc3QoKSBpcyBsb29raW5nIGZvciBhbiBuZnNfY2xpZW50
-IHRoYXQgaXMgc3VwcG9zZWQgdG8gYWxyZWFkeSBiZSBpbiB0aGUgbmZzX2NsaWVudCBsaXN0LiAg
-SWYgdGhlIHNlYXJjaCBmYWlscywgdGhhdCdzIGEgYnVnLg0KPiA+IA0KPiA+IEV5ZWJhbGwgdGhl
-IGNvbnRlbnRzIG9mIHlvdXIgbmZzX2NsaWVudCBsaXN0LiAgWW91IHNob3VsZCBmaW5kIGFuIGFw
-cHJvcHJpYXRlIG5mc19jbGllbnQgaW4gdGhlcmUsIGFuZCB0aGVuIGZpZ3VyZSBvdXQgd2h5IHRo
-ZSBzZWFyY2ggZG9lc24ndCBmaW5kIGl0Lg0KPiANCj4gWW91IGhhdmUgY29uc2lkZXJlZCB0aGUg
-ZmFjdCB0aGF0IHRoZSBjYWxsIHRvDQo+IG5mczRfcHJvY19zZXRjbGllbnRpZF9jb25maXJtIGNh
-biBwb3RlbnRpYWxseSByZXR1cm4NCj4gTkZTNEVSUl9TVEFMRV9DTElFTlRJRCBpZiB0aGUgc2Vy
-dmVyIHJlYm9vdGVkIHdoaWxlIHRoZSBjbGllbnQgd2FzDQo+IHdhbGtpbmcgdGhlIGxpc3Q/DQoN
-CkluIGZhY3QsIGFzIGZhciBhcyBJIGNhbiBzZWUsIHRoZSBjb3JyZWN0IGJlaGF2aW91ciBpbg0K
-bmZzNDBfZGlzY292ZXJfc2VydmVyX3RydW5raW5nKCkgc2hvdWxkIGJlIHRvIHJlLWlzc3VlIHRo
-ZSBzZXRjbGllbnRpZA0KY2FsbCwgYW5kIHRoZW4gd2FsayB0aGUgbGlzdCBhZ2FpbiBpZiBuZnM0
-MF93YWxrX2NsaWVudF9saXN0KCkgcmV0dXJucw0KTkZTNEVSUl9TVEFMRV9DTElFTlRJRC4NCg0K
-U29tZXRoaW5nIGxpa2UgdGhlIGF0dGFjaGVkIHBhdGNoOg0KDQotLSANClRyb25kIE15a2xlYnVz
-dA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0
-QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
---_002_4FA345DA4F4AE44899BD2B03EEEC2FA915C04FE5sacexcmbx05prdh_
-Content-Type: text/x-patch;
-	name="0001-NFSv4-Fix-NFSv4.0-trunking-discovery.patch"
-Content-Description: 0001-NFSv4-Fix-NFSv4.0-trunking-discovery.patch
-Content-Disposition: attachment;
-	filename="0001-NFSv4-Fix-NFSv4.0-trunking-discovery.patch"; size=4018;
-	creation-date="Fri, 18 Jan 2013 22:59:23 GMT";
-	modification-date="Fri, 18 Jan 2013 22:59:23 GMT"
-Content-ID: <728BE39E92AC89479CDF6746DC7575DE@tahoe.netapp.com>
-Content-Transfer-Encoding: base64
-
-RnJvbSA4YWUwZGMwYWU2NGM5OTEzYzkwZjU1MGQzYzZiNzI0MzEzODgzZmZmIE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
-YXBwLmNvbT4NCkRhdGU6IEZyaSwgMTggSmFuIDIwMTMgMTc6NTQ6MzQgLTA1MDANClN1YmplY3Q6
-IFtQQVRDSF0gTkZTdjQ6IEZpeCBORlN2NC4wIHRydW5raW5nIGRpc2NvdmVyeQ0KDQpJZiB3YWxr
-aW5nIHRoZSBsaXN0IGluIG5mczQwX3dhbGtfY2xpZW50X2xpc3QgZmFpbHMsIHRoZW4gdGhlIG1v
-c3QNCmxpa2VseSBleHBsYW5hdGlvbiBpcyB0aGF0IHRoZSBzZXJ2ZXIgcmVib290ZWQuIEVuc3Vy
-ZSB0aGF0IHdlIGNhdGNoDQp0aGF0IGNhc2UgYnkgdGVzdGluZyBvdXIgbmV3IG5mc19jbGllbnQg
-bGFzdC4NCg0KUmVwb3J0ZWQtYnk6IEJlbiBHcmVlYXIgPGdyZWVhcmJAY2FuZGVsYXRlY2guY29t
-Pg0KU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBw
-LmNvbT4NCkNjOiBDaHVjayBMZXZlciA8Y2h1Y2subGV2ZXJAb3JhY2xlLmNvbT4NCkNjOiBzdGFi
-bGVAdmdlci5rZXJuZWwub3JnIFs+PTMuN10NCi0tLQ0KIGZzL25mcy9uZnM0Y2xpZW50LmMgfCAz
-NSArKysrKysrKysrKysrKysrKy0tLS0tLS0tLS0tLS0tLS0tLQ0KIGZzL25mcy9uZnM0c3RhdGUu
-YyAgfCAyMiArKysrKysrKysrLS0tLS0tLS0tLS0tDQogMiBmaWxlcyBjaGFuZ2VkLCAyNyBpbnNl
-cnRpb25zKCspLCAzMCBkZWxldGlvbnMoLSkNCg0KZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0Y2xp
-ZW50LmMgYi9mcy9uZnMvbmZzNGNsaWVudC5jDQppbmRleCBhY2MzNDcyLi41OTZiMzAzIDEwMDY0
-NA0KLS0tIGEvZnMvbmZzL25mczRjbGllbnQuYw0KKysrIGIvZnMvbmZzL25mczRjbGllbnQuYw0K
-QEAgLTMxMCw2ICszMTAsOSBAQCBpbnQgbmZzNDBfd2Fsa19jbGllbnRfbGlzdChzdHJ1Y3QgbmZz
-X2NsaWVudCAqbmV3LA0KIA0KIAlzcGluX2xvY2soJm5uLT5uZnNfY2xpZW50X2xvY2spOw0KIAls
-aXN0X2Zvcl9lYWNoX2VudHJ5X3NhZmUocG9zLCBuLCAmbm4tPm5mc19jbGllbnRfbGlzdCwgY2xf
-c2hhcmVfbGluaykgew0KKwkJLyogU2tpcCB0aGUgbmV3IGVudHJ5ICovDQorCQlpZiAocG9zID09
-IG5ldykNCisJCQljb250aW51ZTsNCiAJCS8qIElmICJwb3MiIGlzbid0IG1hcmtlZCByZWFkeSwg
-d2UgY2FuJ3QgdHJ1c3QgdGhlDQogCQkgKiByZW1haW5pbmcgZmllbGRzIGluICJwb3MiICovDQog
-CQlpZiAocG9zLT5jbF9jb25zX3N0YXRlIDwgTkZTX0NTX1JFQURZKQ0KQEAgLTMzMiw0MCArMzM1
-LDM2IEBAIGludCBuZnM0MF93YWxrX2NsaWVudF9saXN0KHN0cnVjdCBuZnNfY2xpZW50ICpuZXcs
-DQogDQogCQlpZiAocHJldikNCiAJCQluZnNfcHV0X2NsaWVudChwcmV2KTsNCisJCXByZXYgPSBw
-b3M7DQogDQogCQlzdGF0dXMgPSBuZnM0X3Byb2Nfc2V0Y2xpZW50aWRfY29uZmlybShwb3MsICZj
-bGlkLCBjcmVkKTsNCi0JCWlmIChzdGF0dXMgPT0gMCkgew0KKwkJc3dpdGNoIChzdGF0dXMpIHsN
-CisJCWNhc2UgMDoNCiAJCQluZnM0X3N3YXBfY2FsbGJhY2tfaWRlbnRzKHBvcywgbmV3KTsNCiAN
-Ci0JCQluZnNfcHV0X2NsaWVudChwb3MpOw0KKwkJCXByZXYgPSBOVUxMOw0KIAkJCSpyZXN1bHQg
-PSBwb3M7DQogCQkJZHByaW50aygiTkZTOiA8LS0gJXMgdXNpbmcgbmZzX2NsaWVudCA9ICVwICh7
-JWR9KVxuIiwNCiAJCQkJX19mdW5jX18sIHBvcywgYXRvbWljX3JlYWQoJnBvcy0+Y2xfY291bnQp
-KTsNCi0JCQlyZXR1cm4gMDsNCi0JCX0NCi0JCWlmIChzdGF0dXMgIT0gLU5GUzRFUlJfU1RBTEVf
-Q0xJRU5USUQpIHsNCi0JCQluZnNfcHV0X2NsaWVudChwb3MpOw0KLQkJCWRwcmludGsoIk5GUzog
-PC0tICVzIHN0YXR1cyA9ICVkLCBubyByZXN1bHRcbiIsDQotCQkJCV9fZnVuY19fLCBzdGF0dXMp
-Ow0KLQkJCXJldHVybiBzdGF0dXM7DQorCQlkZWZhdWx0Og0KKwkJCWdvdG8gb3V0Ow0KKwkJY2Fz
-ZSAtTkZTNEVSUl9TVEFMRV9DTElFTlRJRDoNCiAJCX0NCiANCiAJCXNwaW5fbG9jaygmbm4tPm5m
-c19jbGllbnRfbG9jayk7DQotCQlwcmV2ID0gcG9zOw0KIAl9DQorCXNwaW5fdW5sb2NrKCZubi0+
-bmZzX2NsaWVudF9sb2NrKTsNCiANCiAJLyoNCi0JICogTm8gbWF0Y2hpbmcgbmZzX2NsaWVudCBm
-b3VuZC4gIFRoaXMgc2hvdWxkIGJlIGltcG9zc2libGUsDQotCSAqIGJlY2F1c2UgdGhlIG5ldyBu
-ZnNfY2xpZW50IGhhcyBhbHJlYWR5IGJlZW4gYWRkZWQgdG8NCi0JICogbmZzX2NsaWVudF9saXN0
-IGJ5IG5mc19nZXRfY2xpZW50KCkuDQotCSAqDQotCSAqIERvbid0IEJVRygpLCBzaW5jZSB0aGUg
-Y2FsbGVyIGlzIGhvbGRpbmcgYSBtdXRleC4NCisJICogTm8gbWF0Y2ggZm91bmQuIFRyeSB0byBj
-b25maXJtIHRoZSBjbGllbnRpZCBvbiAibmV3Ii4NCiAJICovDQorCSpyZXN1bHQgPSBuZXc7DQor
-CXN0YXR1cyA9IG5mczRfcHJvY19zZXRjbGllbnRpZF9jb25maXJtKG5ldywgJmNsaWQsIGNyZWQp
-Ow0KK291dDoNCiAJaWYgKHByZXYpDQogCQluZnNfcHV0X2NsaWVudChwcmV2KTsNCi0Jc3Bpbl91
-bmxvY2soJm5uLT5uZnNfY2xpZW50X2xvY2spOw0KLQlwcl9lcnIoIk5GUzogJXMgRXJyb3I6IG5v
-IG1hdGNoaW5nIG5mc19jbGllbnQgZm91bmRcbiIsIF9fZnVuY19fKTsNCi0JcmV0dXJuIC1ORlM0
-RVJSX1NUQUxFX0NMSUVOVElEOw0KKwlkcHJpbnRrKCJORlM6IDwtLSAlcyBzdGF0dXMgPSAlZFxu
-IiwgX19mdW5jX18sIHN0YXR1cyk7DQorCXJldHVybiBzdGF0dXM7DQogfQ0KIA0KICNpZmRlZiBD
-T05GSUdfTkZTX1Y0XzENCmRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNHN0YXRlLmMgYi9mcy9uZnMv
-bmZzNHN0YXRlLmMNCmluZGV4IDk0NDhjNTcuLjEwMjg4NWQgMTAwNjQ0DQotLS0gYS9mcy9uZnMv
-bmZzNHN0YXRlLmMNCisrKyBiL2ZzL25mcy9uZnM0c3RhdGUuYw0KQEAgLTEyOSwyNCArMTI5LDIy
-IEBAIGludCBuZnM0MF9kaXNjb3Zlcl9zZXJ2ZXJfdHJ1bmtpbmcoc3RydWN0IG5mc19jbGllbnQg
-KmNscCwNCiAJaWYgKGNscC0+Y2xfYWRkci5zc19mYW1pbHkgPT0gQUZfSU5FVDYpDQogCQlwb3J0
-ID0gbm4tPm5mc19jYWxsYmFja190Y3Bwb3J0NjsNCiANCi0Jc3RhdHVzID0gbmZzNF9wcm9jX3Nl
-dGNsaWVudGlkKGNscCwgTkZTNF9DQUxMQkFDSywgcG9ydCwgY3JlZCwgJmNsaWQpOw0KLQlpZiAo
-c3RhdHVzICE9IDApDQotCQlnb3RvIG91dDsNCi0JY2xwLT5jbF9jbGllbnRpZCA9IGNsaWQuY2xp
-ZW50aWQ7DQotCWNscC0+Y2xfY29uZmlybSA9IGNsaWQuY29uZmlybTsNCisJZG8gew0KKwkJc3Rh
-dHVzID0gbmZzNF9wcm9jX3NldGNsaWVudGlkKGNscCwgTkZTNF9DQUxMQkFDSywgcG9ydCwgY3Jl
-ZCwgJmNsaWQpOw0KKwkJaWYgKHN0YXR1cyAhPSAwKQ0KKwkJCWJyZWFrOw0KKwkJY2xwLT5jbF9j
-bGllbnRpZCA9IGNsaWQuY2xpZW50aWQ7DQorCQljbHAtPmNsX2NvbmZpcm0gPSBjbGlkLmNvbmZp
-cm07DQogDQotCXN0YXR1cyA9IG5mczQwX3dhbGtfY2xpZW50X2xpc3QoY2xwLCByZXN1bHQsIGNy
-ZWQpOw0KLQlzd2l0Y2ggKHN0YXR1cykgew0KLQljYXNlIC1ORlM0RVJSX1NUQUxFX0NMSUVOVElE
-Og0KLQkJc2V0X2JpdChORlM0Q0xOVF9MRUFTRV9DT05GSVJNLCAmY2xwLT5jbF9zdGF0ZSk7DQot
-CWNhc2UgMDoNCisJCXN0YXR1cyA9IG5mczQwX3dhbGtfY2xpZW50X2xpc3QoY2xwLCByZXN1bHQs
-IGNyZWQpOw0KKwl9IHdoaWxlIChzdGF0dXMgPT0gLU5GUzRFUlJfU1RBTEVfQ0xJRU5USUQpOw0K
-Kw0KKwlpZiAoc3RhdHVzID09IDApIHsNCiAJCS8qIFN1c3RhaW4gdGhlIGxlYXNlLCBldmVuIGlm
-IGl0J3MgZW1wdHkuICBJZiB0aGUgY2xpZW50aWQ0DQogCQkgKiBnb2VzIHN0YWxlIGl0J3Mgb2Yg
-bm8gdXNlIGZvciB0cnVua2luZyBkaXNjb3ZlcnkuICovDQogCQluZnM0X3NjaGVkdWxlX3N0YXRl
-X3JlbmV3YWwoKnJlc3VsdCk7DQotCQlicmVhazsNCiAJfQ0KIA0KLW91dDoNCiAJcmV0dXJuIHN0
-YXR1czsNCiB9DQogDQotLSANCjEuOC4xDQoNCg==
-
---_002_4FA345DA4F4AE44899BD2B03EEEC2FA915C04FE5sacexcmbx05prdh_--
+NetApp
+Trond.Myklebust+AEA-netapp.com
+www.netapp.com
