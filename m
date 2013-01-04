@@ -1,52 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from plane.gmane.org ([80.91.229.3]:38983 "EHLO plane.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752557Ab3ADKOx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Jan 2013 05:14:53 -0500
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1Tr4Iq-0007gK-8G
-	for linux-nfs@vger.kernel.org; Fri, 04 Jan 2013 11:15:04 +0100
-Received: from p549E60A8.dip.t-dialin.net ([84.158.96.168])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Fri, 04 Jan 2013 11:15:04 +0100
-Received: from mario.bachmann by p549E60A8.dip.t-dialin.net with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Fri, 04 Jan 2013 11:15:04 +0100
-To: linux-nfs@vger.kernel.org
-From: Mario Bachmann <mario.bachmann@gmail.com>
-Subject: Re: [PATCH 0/2] Fix regression on NFS in mainline kernel
-Date: Fri, 4 Jan 2013 10:05:22 +0000 (UTC)
-Message-ID: <loom.20130104T105915-661@post.gmane.org>
-References: <20120418105147.2a6f1c55@corrin.poochiereds.net> <1334770614-10653-1-git-send-email-Trond.Myklebust@netapp.com> <20120419093025.GA2916@zeus> <20120419134847.GC2916@zeus> <1334856549.21419.48.camel@lade.trondhjem.org> <20120419204638.GB22948@zeus>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from cn.fujitsu.com ([222.73.24.84]:65138 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751077Ab3ADF53 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Jan 2013 00:57:29 -0500
+Message-ID: <50E670C8.6050400@cn.fujitsu.com>
+Date: Fri, 04 Jan 2013 14:03:52 +0800
+From: fanchaoting <fanchaoting@cn.fujitsu.com>
+MIME-Version: 1.0
+To: =?UTF-8?B?UGF3ZcWCIFNpa29yYQ==?= <pawel.sikora@agmk.net>
+CC: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org,
+        baggins@pld-linux.org, Trond.Myklebust@netapp.com
+Subject: Re: mount.nfs: cannot allocate memory.
+References: <2891788.0SBnrhN2VX@pawels> <50E598B9.4000109@RedHat.com> <14289664.zy0he5HnEB@localhost>
+In-Reply-To: <14289664.zy0he5HnEB@localhost>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Luis Henriques <luis.henriques@...> writes:
-
+Paweł Sikora 写道:
+> On Thursday 03 of January 2013 09:42:01 Steve Dickson wrote:
+>> On 03/01/13 04:27, Paweł Sikora wrote:
+>>> Hi,
+>>>
+>>> with the latest nfs-1.2.7/kernel-3.7.1 tools i've noticed an error during autofs mounting.
+>>> reduced testcase shows that mount.nfs with 'vers=4' has a problem:
+>>>
+>>> [root@chufu ~]# mount.nfs -v -o vers=4 192.168.2.100:/home/atest/farm-local /mnt
+>>> mount.nfs: timeout set for Thu Jan  3 10:22:00 2013
+>>> mount.nfs: trying text-based options 'vers=4,addr=192.168.2.100,clientaddr=192.168.2.103'
+>>> mount.nfs: mount(2): Cannot allocate memory
+>>> mount.nfs: Cannot allocate memory
+>>>
+>>> while the vers=3 works fine:
+>>>
+>>> [root@chufu ~]# mount.nfs -v -o vers=3 192.168.2.100:/home/atest/farm-local /mnt
+>>> mount.nfs: timeout set for Thu Jan  3 10:22:04 2013
+>>> mount.nfs: trying text-based options 'vers=3,addr=192.168.2.100'
+>>> mount.nfs: prog 100003, trying vers=3, prot=6
+>>> mount.nfs: trying 192.168.2.100 prog 100003 vers 3 prot TCP port 2049
+>>> mount.nfs: prog 100005, trying vers=3, prot=17
+>>> mount.nfs: trying 192.168.2.100 prog 100005 vers 3 prot UDP port 42412
+>>>
+>>> no obvious errors in logs on nfs server/client side :(
+>>> i can provide more info if you need to diagnose this issue.
+>> Please set the kernel debugging with 'rpcdebug -m nfs -s mount' then post the out put found in /var/log/messages.
+>>
 > 
-> On Thu, Apr 19, 2012 at 05:29:09PM +0000, Myklebust, Trond wrote:
-> > On Thu, 2012-04-19 at 14:48 +0100, Luis Henriques wrote:
-> > > On Thu, Apr 19, 2012 at 10:30:25AM +0100, Luis Henriques wrote:
-> > > > On Wed, Apr 18, 2012 at 01:36:52PM -0400, Trond Myklebust wrote:
-> > > > > The first patch addresses the Oops.
-> > > > > The second will hopefully address the looping.
-> > > > > 
-> > > > > Trond Myklebust (2):
-> > > > >   NFSv4: Ensure that the LOCK code sets exception->inode
-> > > > >   NFSv4: Ensure that we check lock exclusive/shared type against open
-> > > > >     modes
-> > > > > 
-> > > > >  fs/nfs/nfs4proc.c |   23 +++++++++++++++++++++--
-> > > > >  1 files changed, 21 insertions(+), 2 deletions(-)
-I use kernel 3.7.1 from kernel.org which has the patches included, 
-which should fix the problems (I checked the source code). But:
-I get "NFS: nfs4_reclaim_open_state: Lock reclaim failed!" on the 
-client, which mounts home over nfs4. 
-I get senseless network traffic (50MB/s on my gigabit network). 
-Finally I get Kernel Ops on the Server sometimes. 
+> rpcdebug can't find the /proc/sys/sunrpc/nfs_debug file in my system. how can i enable it?
+> 
+Hi, I found that the upstream kernel didn't create /proc/sys/sunrpc/nfs_debug default,
+if you want to debug rpc,you should set CONFIG_SUNRPC_DEBUG = y.
+
+#cat .config
+.............................
+CONFIG_SUNRPC_BACKCHANNEL=y
+CONFIG_SUNRPC_XPRT_RDMA=m
+CONFIG_RPCSEC_GSS_KRB5=m
+CONFIG_SUNRPC_DEBUG=y <-----CONFIG_SUNRPC_DEBUG = y
+CONFIG_CEPH_FS=m
+CONFIG_CIFS=m
+
+.......................
+
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
+
 
 
