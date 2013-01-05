@@ -1,39 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f45.google.com ([209.85.220.45]:47890 "EHLO
-	mail-pa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753599Ab3AWNfN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2013 08:35:13 -0500
-Subject: Re: 3.7.3+:  Bad paging request in ip_rcv_finish while running NFS
- traffic.
-From: Eric Dumazet <eric.dumazet@gmail.com>
-To: Ben Greear <greearb@candelatech.com>
-Cc: netdev <netdev@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-In-Reply-To: <50FF8DEC.9070901@candelatech.com>
-References: <50FDADF4.3060601@candelatech.com>
-	 <50FDDE35.7070806@candelatech.com>
-	 <1358829606.3464.3151.camel@edumazet-glaptop>
-	 <50FE2A57.3040804@candelatech.com>  <50FEC796.5090404@candelatech.com>
-	 <1358875020.3464.4006.camel@edumazet-glaptop>
-	 <1358875607.3464.4020.camel@edumazet-glaptop>
-	 <50FF102F.2050008@candelatech.com>  <50FF4BC9.1060206@candelatech.com>
-	 <1358921493.12374.737.camel@edumazet-glaptop>
-	 <50FF8DEC.9070901@candelatech.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 23 Jan 2013 05:35:10 -0800
-Message-ID: <1358948110.12374.748.camel@edumazet-glaptop>
-Mime-Version: 1.0
+Received: from mail.agmk.net ([91.192.224.71]:41943 "EHLO mail.agmk.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755445Ab3AEKJC convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 5 Jan 2013 05:09:02 -0500
+From: =?utf-8?B?UGF3ZcWC?= Sikora <pawel.sikora@agmk.net>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org, baggins@pld-linux.org,
+        Trond.Myklebust@netapp.com
+Subject: Re: mount.nfs: cannot allocate memory.
+Date: Sat, 05 Jan 2013 11:08:56 +0100
+Message-ID: <7762040.Ky7rEDhaoc@localhost>
+In-Reply-To: <50E598B9.4000109@RedHat.com>
+References: <2891788.0SBnrhN2VX@pawels> <50E598B9.4000109@RedHat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-01-22 at 23:14 -0800, Ben Greear wrote:
+On Thursday 03 of January 2013 09:42:01 Steve Dickson wrote:
+> 
+> On 03/01/13 04:27, Paweł Sikora wrote:
+> > Hi,
+> > 
+> > with the latest nfs-1.2.7/kernel-3.7.1 tools i've noticed an error during autofs mounting.
+> > reduced testcase shows that mount.nfs with 'vers=4' has a problem:
+> > 
+> > [root@chufu ~]# mount.nfs -v -o vers=4 192.168.2.100:/home/atest/farm-local /mnt
+> > mount.nfs: timeout set for Thu Jan  3 10:22:00 2013
+> > mount.nfs: trying text-based options 'vers=4,addr=192.168.2.100,clientaddr=192.168.2.103'
+> > mount.nfs: mount(2): Cannot allocate memory
+> > mount.nfs: Cannot allocate memory
+> > 
+> > while the vers=3 works fine:
+> > 
+> > [root@chufu ~]# mount.nfs -v -o vers=3 192.168.2.100:/home/atest/farm-local /mnt
+> > mount.nfs: timeout set for Thu Jan  3 10:22:04 2013
+> > mount.nfs: trying text-based options 'vers=3,addr=192.168.2.100'
+> > mount.nfs: prog 100003, trying vers=3, prot=6
+> > mount.nfs: trying 192.168.2.100 prog 100003 vers 3 prot TCP port 2049
+> > mount.nfs: prog 100005, trying vers=3, prot=17
+> > mount.nfs: trying 192.168.2.100 prog 100005 vers 3 prot UDP port 42412
+> > 
+> > no obvious errors in logs on nfs server/client side :(
+> > i can provide more info if you need to diagnose this issue.
+> 
+> Please set the kernel debugging with 'rpcdebug -m nfs -s mount' then post the out put found in /var/log/messages.
 
-> How are the non-ref-counted dst objects used safely?  Any chance
-> that tearing down the IP protocol on a device (or deleting a device)
-> could delete a dst that is referenced by an skb (and thus crashes as
-> I see)?
+[root@pawels ~]# mount.nfs -v -o vers=4 192.168.2.100:/home/atest/farm-local /mnt
 
-There is probably a bug. Normally it should be RCU protected.
+mount.nfs: timeout set for Sat Jan  5 11:08:42 2013
+mount.nfs: trying text-based options 'vers=4,addr=192.168.2.100,clientaddr=10.0.2.35'
+mount.nfs: mount(2): Cannot allocate memory
+mount.nfs: Cannot allocate memory
 
+[root@pawels ~]# dmesg|tail                                                      
 
+[ 4187.654183] NFS: nfs mount opts='vers=4,addr=192.168.2.100,clientaddr=10.0.2.35'
+[ 4187.654188] NFS:   parsing nfs mount option 'vers=4'
+[ 4187.654193] NFS:   parsing nfs mount option 'addr=192.168.2.100'
+[ 4187.654198] NFS:   parsing nfs mount option 'clientaddr=10.0.2.35'
+[ 4187.654204] NFS: MNTPATH: '/home/atest/farm-local'
+[ 4187.654206] --> nfs4_try_mount()
+[ 4187.975255] <-- nfs4_try_mount() = -12 [error]
 
