@@ -1,95 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:54568 "EHLO
-	Dobby.4dicksons.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753397Ab3AVNku (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jan 2013 08:40:50 -0500
-From: Steve Dickson <steved@redhat.com>
-To: David Quigley <selinux@davequigley.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 00/14] lNFS: 3.8-rc3 release
-Date: Tue, 22 Jan 2013 08:40:28 -0500
-Message-Id: <1358862042-27520-1-git-send-email-steved@redhat.com>
+Received: from plane.gmane.org ([80.91.229.3]:37216 "EHLO plane.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751598Ab3AFKtE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 6 Jan 2013 05:49:04 -0500
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1Trnn2-0004J7-KS
+	for linux-nfs@vger.kernel.org; Sun, 06 Jan 2013 11:49:16 +0100
+Received: from p4FE15490.dip.t-dialin.net ([79.225.84.144])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Sun, 06 Jan 2013 11:49:16 +0100
+Received: from mario.bachmann by p4FE15490.dip.t-dialin.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Sun, 06 Jan 2013 11:49:16 +0100
+To: linux-nfs@vger.kernel.org
+From: Mario Bachmann <mario.bachmann@gmail.com>
+Subject: Re: [PATCH 0/2] Fix regression on NFS in mainline kernel
+Date: Sun, 6 Jan 2013 10:48:48 +0000 (UTC)
+Message-ID: <loom.20130106T114119-13@post.gmane.org>
+References: <20120418105147.2a6f1c55@corrin.poochiereds.net>  <1334770614-10653-1-git-send-email-Trond.Myklebust@netapp.com>  <20120419093025.GA2916@zeus> <20120419134847.GC2916@zeus>  <1334856549.21419.48.camel@lade.trondhjem.org>  <20120419204638.GB22948@zeus> <loom.20130104T105915-661@post.gmane.org> <4FA345DA4F4AE44899BD2B03EEEC2FA91198A4B4@SACEXCMBX04-PRD.hq.netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is the latest version of the label NFS code that has
-been forward ported to 3.8-rc3. 
+Myklebust, Trond <Trond.Myklebust@...> writes:
 
-This release also contains the fix of not sleep while holding
-the inode spin lock. 
+> > I use kernel 3.7.1 from kernel.org which has the patches included, 
+> > which should fix the problems (I checked the source code). But:
+> > I get "NFS: nfs4_reclaim_open_state: Lock reclaim failed!" on the 
+> > client, which mounts home over nfs4. 
+> > I get senseless network traffic (50MB/s on my gigabit network). 
+> > Finally I get Kernel Ops on the Server sometimes. 
+> 
+> Lock reclaiming is not guaranteed to succeed; it all depends on why the
+> lock was lost in the first place. Did the server restart, or did a
+> network partition occur? Was some other process able to take that lock
+> (or even delete the file, doh!), before your client could reclaim it?
+> 
+> That said, if the server is Oopsing, then you have a broken server. I'd
+> suggest posting that Oops to this list first.
+> 
+Thanks for the hint, the server was really broken! The power supply of the
+server had some broken capacitors. With a new power supply there are no oopses
+any more!
 
-The Fedora kernel rpms that have the patches are under
-    http://steved.fedorapeople.org/lnfs/kernels/
-
-A wireshark rpm that can dissect the labels is under
-   http://steved.fedorapeople.org/lnfs/wireshark/
-
-The actual patches from the release are under
-   http://steved.fedorapeople.org/lnfs/patches/v3.8-rc3-lnfs/
-
-I did all my testing on Fedora 18, but I'm assuming these 
-rpms will work in on Fedora 17 as well. If that is not the
-case please let me know.
-
-Dave Quigley (2):
-  NFS:Add labels to client function prototypes
-  NFS: Add label lifecycle management
-
-David Quigley (11):
-  Security: Add hook to calculate context based on a negative dentry.
-  Security: Add Hook to test if the particular xattr is part of a MAC
-    model.
-  LSM: Add flags field to security_sb_set_mnt_opts for in kernel mount
-    data.
-  SELinux: Add new labeling type native labels
-  KConfig: Add KConfig entries for Labeled NFS
-  NFSv4: Add label recommended attribute and NFSv4 flags
-  NFSv4: Introduce new label structure
-  NFSv4: Extend fattr bitmaps to support all 3 words
-  NFS: Client implementation of Labeled-NFS
-  NFS: Extend NFS xattr handlers to accept the security namespace
-  NFSD: Server implementation of MAC Labeling
-
-Steve Dickson (1):
-  lnfs: Do not sleep holding the inode spin lock.
-
- fs/nfs/Kconfig                      |  16 +
- fs/nfs/client.c                     |   2 +-
- fs/nfs/dir.c                        |  49 ++-
- fs/nfs/getroot.c                    |   2 +-
- fs/nfs/inode.c                      | 146 +++++++--
- fs/nfs/namespace.c                  |   2 +-
- fs/nfs/nfs3acl.c                    |   4 +-
- fs/nfs/nfs3proc.c                   |  41 +--
- fs/nfs/nfs4_fs.h                    |   8 +-
- fs/nfs/nfs4namespace.c              |   2 +-
- fs/nfs/nfs4proc.c                   | 574 ++++++++++++++++++++++++++++++++----
- fs/nfs/nfs4xdr.c                    | 198 ++++++++++---
- fs/nfs/proc.c                       |  15 +-
- fs/nfs/super.c                      |  17 +-
- fs/nfsd/Kconfig                     |  13 +
- fs/nfsd/nfs4proc.c                  |  33 +++
- fs/nfsd/nfs4xdr.c                   | 115 +++++++-
- fs/nfsd/nfsd.h                      |   8 +-
- fs/nfsd/vfs.c                       |  31 ++
- fs/nfsd/vfs.h                       |   2 +
- fs/nfsd/xdr4.h                      |   3 +
- include/linux/nfs4.h                |   9 +
- include/linux/nfs_fs.h              |  28 +-
- include/linux/nfs_fs_sb.h           |  10 +-
- include/linux/nfs_xdr.h             |  30 +-
- include/linux/security.h            |  57 +++-
- include/uapi/linux/nfs4.h           |   1 +
- security/capability.c               |  19 +-
- security/security.c                 |  24 +-
- security/selinux/hooks.c            |  92 +++++-
- security/selinux/include/security.h |   2 +
- security/selinux/ss/policydb.c      |   5 +-
- security/smack/smack_lsm.c          |  11 +
- 33 files changed, 1366 insertions(+), 203 deletions(-)
-
--- 
-1.8.1
+So my reported problems with locking are worthless, because it happened with the
+broken server. 
 
