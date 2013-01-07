@@ -1,133 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:38712 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753624Ab3ACUdQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Jan 2013 15:33:16 -0500
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH] NFS: Fix access to suid/sgid executables
-Date: Thu,  3 Jan 2013 15:33:13 -0500
-Message-Id: <1357245193-10375-1-git-send-email-dros@netapp.com>
+Received: from mail-vb0-f45.google.com ([209.85.212.45]:40728 "EHLO
+	mail-vb0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750785Ab3AGUU3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jan 2013 15:20:29 -0500
+Received: by mail-vb0-f45.google.com with SMTP id p1so19763156vbi.4
+        for <linux-nfs@vger.kernel.org>; Mon, 07 Jan 2013 12:20:28 -0800 (PST)
+Date: Mon, 7 Jan 2013 15:20:21 -0500
+From: Chris Perl <chris.perl@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Possible Race Condition on SIGKILL
+Message-ID: <20130107202021.GC16957@nyc-qws-132.nyc.delacy.com>
+References: <20130107185848.GB16957@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA91199197E@SACEXCMBX04-PRD.hq.netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91199197E@SACEXCMBX04-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfs_open_permission_mask() shouldn't check MAY_READ for suid/sgid files that
-are opened with __FMODE_EXEC.
+On Mon, Jan 07, 2013 at 07:50:10PM +0000, Myklebust, Trond wrote:
+> Hi Chris,
+> 
+> Excellent sleuthing! Given the thoroughness of your explanation, I'm
+> pretty sure that the attached patch should fix the problem.
+> 
+> Cheers
+>   Trond
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
 
-Also fix NFSv4 access-in-open path in a similar way -- openflags must be
-used because fmode will not always have FMODE_EXEC set.
+> From ec8cbb4aff21cd0eac2c6f3fc4273ac72cdd91ef Mon Sep 17 00:00:00 2001
+> From: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Date: Mon, 7 Jan 2013 14:30:46 -0500
+> Subject: [PATCH] SUNRPC: Ensure we release the socket write lock if the
+>  rpc_task exits early
+> 
+> If the rpc_task exits while holding the socket write lock before it has
+> allocated an rpc slot, then the usual mechanism for releasing the write
+> lock in xprt_release() is defeated.
+> 
+> The problem occurs if the call to xprt_lock_write() initially fails, so
+> that the rpc_task is put on the xprt->sending wait queue. If the task
+> exits after being assigned the lock by __xprt_lock_write_func, but
+> before it has retried the call to xprt_lock_and_alloc_slot(), then
+> it calls xprt_release() while holding the write lock, but will
+> immediately exit due to the test for task->tk_rqstp != NULL.
+> 
+> Reported-by: Chris Perl <chris.perl@gmail.com>
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Cc: stable@vger.kernel.org [>= 3.1]
+> ---
+>  net/sunrpc/xprt.c | 6 ++++--
+>  1 file changed, 4 insertions(+), 2 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> index bd462a5..6676457 100644
+> --- a/net/sunrpc/xprt.c
+> +++ b/net/sunrpc/xprt.c
+> @@ -1136,10 +1136,12 @@ static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
+>  void xprt_release(struct rpc_task *task)
+>  {
+>  	struct rpc_xprt	*xprt;
+> -	struct rpc_rqst	*req;
+> +	struct rpc_rqst	*req = task->tk_rqstp;
+>  
+> -	if (!(req = task->tk_rqstp))
+> +	if (req == NULL) {
+> +		xprt_release_write(task->tk_xprt, task);
+>  		return;
+> +	}
+>  
+>  	xprt = req->rq_xprt;
+>  	if (task->tk_ops->rpc_count_stats != NULL)
+> -- 
+> 1.7.11.7
+> 
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
+Ah, I totally missed the call to `rpc_release_task' at the bottom of the
+`__rpc_execute' loop (at least thats how I think we'd get to this function
+you're patching).
 
-This patch fixes https://bugzilla.kernel.org/show_bug.cgi?id=49101
-
-The fix is not as obvious or clean as I'd like, so here is a little background:
-
-Not checking MAY_READ when a S_ISUID or S_ISGID file has MAY_EXEC causes
-suid/sgid executables to behave the same as on a local FS.
-
-The second part is fixing open-in-access for NFSv4 - we want to do the same
-thing as in nfs_open_permission_mask, but oddly enough fmode doesn't always
-indicate that the file is being opened for execution.  Instead we have to
-use the openflags for this.
-
-Adding some debug prints show that the first exec of a suid/sgid
-file will open with fmode containing FMODE_EXEC and FMODE_READ, but subsequent
-execs will open with fmode containing FMODE_READ, but not FMODE_EXEC.
-openflags always has __FMODE_EXEC set in these examples.
-
-The first exec has these values in nfs4_opendata_access():
-
-fmode = 0x21: contains read exec
-openflags = 0x8020: contains exec
-
-The second (and subsequent) execs have these values in nfs4_opendata_access():
-
-fmode = 0x1: contains read
-openflags = 0x8020: contains exec
-
- -dros
-
- fs/nfs/dir.c      |   12 +++++++++---
- fs/nfs/nfs4proc.c |   13 +++++++++++--
- 2 files changed, 20 insertions(+), 5 deletions(-)
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 32e6c53..5141243 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -2149,7 +2149,7 @@ out:
- 	return -EACCES;
- }
- 
--static int nfs_open_permission_mask(int openflags)
-+static int nfs_open_permission_mask(struct inode *inode, int openflags)
- {
- 	int mask = 0;
- 
-@@ -2157,14 +2157,20 @@ static int nfs_open_permission_mask(int openflags)
- 		mask |= MAY_READ;
- 	if ((openflags & O_ACCMODE) != O_RDONLY)
- 		mask |= MAY_WRITE;
--	if (openflags & __FMODE_EXEC)
-+	if (openflags & __FMODE_EXEC) {
- 		mask |= MAY_EXEC;
-+		/* don't check MAY_READ for exec of suid/sgid */
-+		if (inode->i_mode & (S_ISUID | S_ISGID))
-+			mask &= ~MAY_READ;
-+	}
-+
- 	return mask;
- }
- 
- int nfs_may_open(struct inode *inode, struct rpc_cred *cred, int openflags)
- {
--	return nfs_do_access(inode, cred, nfs_open_permission_mask(openflags));
-+	return nfs_do_access(inode, cred,
-+		nfs_open_permission_mask(inode, openflags));
- }
- EXPORT_SYMBOL_GPL(nfs_may_open);
- 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 5d864fb..23cf1a8 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1626,7 +1626,8 @@ static int _nfs4_recover_proc_open(struct nfs4_opendata *data)
- 
- static int nfs4_opendata_access(struct rpc_cred *cred,
- 				struct nfs4_opendata *opendata,
--				struct nfs4_state *state, fmode_t fmode)
-+				struct nfs4_state *state, fmode_t fmode,
-+				int openflags)
- {
- 	struct nfs_access_entry cache;
- 	u32 mask;
-@@ -1644,6 +1645,14 @@ static int nfs4_opendata_access(struct rpc_cred *cred,
- 	if (fmode & FMODE_EXEC)
- 		mask |= MAY_EXEC;
- 
-+	/* use openflags to check for exec of suid/sgid, because fmode won't
-+	 * always have FMODE_EXEC set by VFS.
-+	 * Also, don't check MAY_READ on a suid/sgid file being executed */
-+	if ((openflags & __FMODE_EXEC) &&
-+	    (state->inode->i_mode & (S_ISUID | S_ISGID))) {
-+		mask = MAY_EXEC;
-+	}
-+
- 	cache.cred = cred;
- 	cache.jiffies = jiffies;
- 	nfs_access_set_mask(&cache, opendata->o_res.access_result);
-@@ -1896,7 +1905,7 @@ static int _nfs4_do_open(struct inode *dir,
- 	if (server->caps & NFS_CAP_POSIX_LOCK)
- 		set_bit(NFS_STATE_POSIX_LOCKS, &state->flags);
- 
--	status = nfs4_opendata_access(cred, opendata, state, fmode);
-+	status = nfs4_opendata_access(cred, opendata, state, fmode, flags);
- 	if (status != 0)
- 		goto err_opendata_put;
- 
--- 
-1.7.9.6 (Apple Git-31.1)
-
+But wouldn't we need to update the call site in
+`rpc_release_resources_task' as well?  It contains an explicit check for
+`task->tk_rqstp' being non null.
