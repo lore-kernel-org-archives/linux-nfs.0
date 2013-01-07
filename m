@@ -1,92 +1,172 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:43110 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752863Ab3AXNfe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Jan 2013 08:35:34 -0500
-Message-ID: <5101388F.3070408@panasas.com>
-Date: Thu, 24 Jan 2013 15:35:11 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Steven Whitehouse <swhiteho@redhat.com>,
-        Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>
-CC: <lsf-pc@lists.linux-foundation.org>, <linux-fsdevel@vger.kernel.org>,
-        Abhijith Das <adas@redhat.com>, NFS list <linux-nfs@vger.kernel.org>,
+Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:52671 "EHLO
+	Dobby.4dicksons.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751597Ab3AGOxT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jan 2013 09:53:19 -0500
+From: Steve Dickson <steved@redhat.com>
+To: David Quigley <selinux@davequigley.com>,
         Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Steve Dickson <steved@redhat.com>
-Subject: [LSF/MM TOPIC] [ATTEND] New API's for better exporting of FSs from
- user-mode daemons, like readdirplus and more
-References: <1358934230.2728.16.camel@menhir>
-In-Reply-To: <1358934230.2728.16.camel@menhir>
-Content-Type: text/plain; charset="UTF-8"
+        "J. Bruce Fields" <bfields@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 04/12] SELinux: Add new labeling type native labels
+Date: Mon,  7 Jan 2013 09:47:25 -0500
+Message-Id: <1357570053-28849-5-git-send-email-steved@redhat.com>
+In-Reply-To: <1357570053-28849-1-git-send-email-steved@redhat.com>
+References: <1357570053-28849-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is of high interest also for the NFS-Ganesha project, a
-free software NFS user-mode daemon project. (CC: Ganesha ML)
+From: David Quigley <dpquigl@davequigley.com>
 
-I would (highly) second this topic, please, which is of cardinal
-importance for any such sharing servers from user-mode.
+There currently doesn't exist a labeling type that is adequate for use with
+labeled NFS. Since NFS doesn't really support xattrs we can't use the use xattr
+labeling behavior. For this we developed a new labeling type. The native
+labeling type is used solely by NFS to ensure NFS inodes are labeled at runtime
+by the NFS code instead of relying on the SELinux security server on the client
+end.
 
-Also in Ganesha we do not use (and cannot use) any form of
-POSIX readdir, we must directly open the directory, and retrieve
-the undocumented dirents structures. There are lots of reasons
-why we do this, but mainly because of the directory-seek and
-the readdir continuation "cookie". Which is impossible with
-POSIX.
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ include/linux/security.h            |  3 +++
+ security/selinux/hooks.c            | 35 ++++++++++++++++++++++++++---------
+ security/selinux/include/security.h |  2 ++
+ security/selinux/ss/policydb.c      |  5 ++++-
+ 4 files changed, 35 insertions(+), 10 deletions(-)
 
-I can't, remember all the details right now, but Trond has showed
-us how POSIX readdir is totally broken in regard to the continuation
-"cookie", because POSIX assumes that the directory is a flat array.
-
-So surly any implementation should also solve this issue.
-
-Also in Ganesha we have portability layers for other OSs, and
-we have been porting some Linux APIs to FreeBSD, A new proposal
-should be well defined and have Portability and "generic-ness"
-in mind. For example it should not only map readdirplus call
-from an NFS daemon to a Local file system, it should also fit
-well with an application API to an NFS client, with maximum
-efficiency and minimum overhead.
-
-Any implementation should also consider the in Kernel daemon.
-Any generic VFS code that could be shared should be considered.
-KNFSD should not be duplicating code already done by the above
-IOCTL layer.
-
-I would also like to propose that we might want to broaden this
-topic to more API's that we might need from user-mode, like
-delegation locks, and other. (We had a list of them I'll try
-to collect and produce a list)
-
-Thanks, and Steven, please forgive me if you feel I'm hijacking
-your topic, if you feel our topics should be kept separate, please
-tell me and I will send it as a separate topic.
-
-Thanks
-Boaz
-
-On 01/23/2013 11:43 AM, Steven Whitehouse wrote:
-> Hi,
-> 
-> As part of the work we've been doing in relation to integration between
-> NFS/Samba and GFS2, Abhi has been working on a readdirplus system call
-> in order to investigate the issues involved with creating such a call.
-> It is still early days yet, but by April there should be some
-> interesting results to present.
-> 
-> Please add Abhi to the attendee list as well as myself. 
-> 
-> Also, it has been some time since we had a NFS/Samba meeting to discuss
-> the other issues which are pending, such as locking, ACLs, etc. So we
-> could perhaps also allow some time to do that face to face rather than
-> over the phone as we've been doing up til now,
-> 
-> Steve.
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+diff --git a/include/linux/security.h b/include/linux/security.h
+index 096c0d7..6d26df4 100644
+--- a/include/linux/security.h
++++ b/include/linux/security.h
+@@ -61,6 +61,9 @@ struct mm_struct;
+ #define SECURITY_CAP_NOAUDIT 0
+ #define SECURITY_CAP_AUDIT 1
+ 
++/* LSM Agnostic defines for sb_set_mnt_opts */
++#define SECURITY_LSM_NATIVE_LABELS	1
++
+ struct ctl_table;
+ struct audit_krule;
+ struct user_namespace;
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index 4e7e7c2..8f233ff 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -80,6 +80,7 @@
+ #include <linux/syslog.h>
+ #include <linux/user_namespace.h>
+ #include <linux/export.h>
++#include <linux/security.h>
+ #include <linux/msg.h>
+ #include <linux/shm.h>
+ 
+@@ -283,13 +284,14 @@ static void superblock_free_security(struct super_block *sb)
+ 
+ /* The file system's label must be initialized prior to use. */
+ 
+-static const char *labeling_behaviors[6] = {
++static const char *labeling_behaviors[7] = {
+ 	"uses xattr",
+ 	"uses transition SIDs",
+ 	"uses task SIDs",
+ 	"uses genfs_contexts",
+ 	"not configured for labeling",
+ 	"uses mountpoint labeling",
++	"uses native labeling",
+ };
+ 
+ static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dentry);
+@@ -677,14 +679,21 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 	if (strcmp(sb->s_type->name, "proc") == 0)
+ 		sbsec->flags |= SE_SBPROC;
+ 
+-	/* Determine the labeling behavior to use for this filesystem type. */
+-	rc = security_fs_use((sbsec->flags & SE_SBPROC) ? "proc" : sb->s_type->name, &sbsec->behavior, &sbsec->sid);
+-	if (rc) {
+-		printk(KERN_WARNING "%s: security_fs_use(%s) returned %d\n",
+-		       __func__, sb->s_type->name, rc);
+-		goto out;
++	if (!sbsec->behavior) {
++		/*
++		 * Determine the labeling behavior to use for this
++		 * filesystem type.
++		 */
++		rc = security_fs_use((sbsec->flags & SE_SBPROC) ?
++					"proc" : sb->s_type->name,
++					&sbsec->behavior, &sbsec->sid);
++		if (rc) {
++			printk(KERN_WARNING
++				"%s: security_fs_use(%s) returned %d\n",
++					__func__, sb->s_type->name, rc);
++			goto out;
++		}
+ 	}
+-
+ 	/* sets the context of the superblock for the fs being mounted. */
+ 	if (fscontext_sid) {
+ 		rc = may_context_mount_sb_relabel(fscontext_sid, sbsec, cred);
+@@ -699,6 +708,11 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 	 * sets the label used on all file below the mountpoint, and will set
+ 	 * the superblock context if not already set.
+ 	 */
++	if (kern_flags & SECURITY_LSM_NATIVE_LABELS && !context_sid) {
++		sbsec->behavior = SECURITY_FS_USE_NATIVE;
++		*set_kern_flags |= SECURITY_LSM_NATIVE_LABELS;
++	}
++
+ 	if (context_sid) {
+ 		if (!fscontext_sid) {
+ 			rc = may_context_mount_sb_relabel(context_sid, sbsec,
+@@ -730,7 +744,8 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 	}
+ 
+ 	if (defcontext_sid) {
+-		if (sbsec->behavior != SECURITY_FS_USE_XATTR) {
++		if (sbsec->behavior != SECURITY_FS_USE_XATTR &&
++			sbsec->behavior != SECURITY_FS_USE_NATIVE) {
+ 			rc = -EINVAL;
+ 			printk(KERN_WARNING "SELinux: defcontext option is "
+ 			       "invalid for this filesystem type\n");
+@@ -1198,6 +1213,8 @@ static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dent
+ 	}
+ 
+ 	switch (sbsec->behavior) {
++	case SECURITY_FS_USE_NATIVE:
++		break;
+ 	case SECURITY_FS_USE_XATTR:
+ 		if (!inode->i_op->getxattr) {
+ 			isec->sid = sbsec->def_sid;
+diff --git a/security/selinux/include/security.h b/security/selinux/include/security.h
+index 6d38851..8fd8e18 100644
+--- a/security/selinux/include/security.h
++++ b/security/selinux/include/security.h
+@@ -169,6 +169,8 @@ int security_get_allow_unknown(void);
+ #define SECURITY_FS_USE_GENFS		4 /* use the genfs support */
+ #define SECURITY_FS_USE_NONE		5 /* no labeling support */
+ #define SECURITY_FS_USE_MNTPOINT	6 /* use mountpoint labeling */
++#define SECURITY_FS_USE_NATIVE		7 /* use native label support */
++#define SECURITY_FS_USE_MAX		7 /* Highest SECURITY_FS_USE_XXX */
+ 
+ int security_fs_use(const char *fstype, unsigned int *behavior,
+ 	u32 *sid);
+diff --git a/security/selinux/ss/policydb.c b/security/selinux/ss/policydb.c
+index 9cd9b7c..c8adde3 100644
+--- a/security/selinux/ss/policydb.c
++++ b/security/selinux/ss/policydb.c
+@@ -2168,7 +2168,10 @@ static int ocontext_read(struct policydb *p, struct policydb_compat_info *info,
+ 
+ 				rc = -EINVAL;
+ 				c->v.behavior = le32_to_cpu(buf[0]);
+-				if (c->v.behavior > SECURITY_FS_USE_NONE)
++				/* Determined at runtime, not in policy DB. */
++				if (c->v.behavior == SECURITY_FS_USE_MNTPOINT)
++					goto out;
++				if (c->v.behavior > SECURITY_FS_USE_MAX)
+ 					goto out;
+ 
+ 				rc = -ENOMEM;
+-- 
+1.7.11.7
 
