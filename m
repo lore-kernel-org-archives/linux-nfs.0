@@ -1,55 +1,280 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:17879 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752421Ab3AWWzk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Jan 2013 17:55:40 -0500
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r0NMteLq000600
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 23 Jan 2013 17:55:40 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 4/7] nfsd4: encode_rdattr_error cleanup
-Date: Wed, 23 Jan 2013 17:55:35 -0500
-Message-Id: <1358981738-5649-5-git-send-email-bfields@redhat.com>
-In-Reply-To: <1358981738-5649-1-git-send-email-bfields@redhat.com>
-References: <1358981738-5649-1-git-send-email-bfields@redhat.com>
+Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:52683 "EHLO
+	Dobby.4dicksons.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751816Ab3AGOxV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jan 2013 09:53:21 -0500
+From: Steve Dickson <steved@redhat.com>
+To: David Quigley <selinux@davequigley.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 07/12] NFSv4: Introduce new label structure
+Date: Mon,  7 Jan 2013 09:47:28 -0500
+Message-Id: <1357570053-28849-8-git-send-email-steved@redhat.com>
+In-Reply-To: <1357570053-28849-1-git-send-email-steved@redhat.com>
+References: <1357570053-28849-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: David Quigley <dpquigl@davequigley.com>
 
-There's a simpler way to write this.
+In order to mimic the way that NFSv4 ACLs are implemented we have created a
+structure to be used to pass label data up and down the call chain. This patch
+adds the new structure and new members to the required NFSv4 call structures.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
 ---
- fs/nfsd/nfs4xdr.c | 5 +----
- 1 file changed, 1 insertion(+), 4 deletions(-)
+ fs/nfs/inode.c          | 40 ++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfs4.h    |  8 ++++++++
+ include/linux/nfs_fs.h  | 14 ++++++++++++++
+ include/linux/nfs_xdr.h | 20 ++++++++++++++++++++
+ 4 files changed, 82 insertions(+)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index f1b6aac..a7876f7 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2514,17 +2514,14 @@ out_put:
- static __be32 *
- nfsd4_encode_rdattr_error(__be32 *p, int buflen, __be32 nfserr)
- {
--	__be32 *attrlenp;
--
- 	if (buflen < 6)
- 		return NULL;
- 	*p++ = htonl(2);
- 	*p++ = htonl(FATTR4_WORD0_RDATTR_ERROR); /* bmval0 */
- 	*p++ = htonl(0);			 /* bmval1 */
- 
--	attrlenp = p++;
-+	*p++ = htonl(4);     /* attribute length */
- 	*p++ = nfserr;       /* no htonl */
--	*attrlenp = htonl((char *)p - (char *)attrlenp - 4);
- 	return p;
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index ebeb94c..761bc17 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -255,6 +255,46 @@ nfs_init_locked(struct inode *inode, void *opaque)
+ 	return 0;
  }
  
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++struct nfs4_label *nfs4_label_alloc(gfp_t flags)
++{
++	struct nfs4_label *label = NULL;
++
++	label = kzalloc(sizeof(struct nfs4_label) + NFS4_MAXLABELLEN, flags);
++	if (label == NULL)
++		return NULL;
++
++	label->label = (void *)(label + 1);
++	label->len = NFS4_MAXLABELLEN;
++	/* 0 is the null format meaning that the data is not to be translated */
++	label->lfs = 0;
++	label->pi = 0;
++	return label;
++}
++EXPORT_SYMBOL_GPL(nfs4_label_alloc);
++
++void nfs4_label_init(struct nfs4_label *label)
++{
++	if (label && label->label) {
++		*(unsigned char *)label->label = 0;
++		label->len = NFS4_MAXLABELLEN;
++		/* 0 is the null format meaning that the data is not
++		to be translated */
++		label->lfs = 0;
++		label->pi = 0;
++	}
++	return;
++}
++EXPORT_SYMBOL_GPL(nfs4_label_init);
++
++void nfs4_label_free(struct nfs4_label *label)
++{
++	kfree(label);
++	return;
++}
++EXPORT_SYMBOL_GPL(nfs4_label_free);
++#endif
++
+ /*
+  * This is our front-end to iget that looks up inodes by file handle
+  * instead of inode number.
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index f9235b4..862471f 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -28,6 +28,14 @@ struct nfs4_acl {
+ 	struct nfs4_ace	aces[0];
+ };
+ 
++struct nfs4_label {
++	uint32_t	lfs;
++	uint32_t	pi;
++	u32		len;
++	void		*label;
++};
++
++
+ typedef struct { char data[NFS4_VERIFIER_SIZE]; } nfs4_verifier;
+ 
+ struct nfs_stateid4 {
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 1cc2568..f745f2c 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -489,6 +489,20 @@ extern int nfs_mountpoint_expiry_timeout;
+ extern void nfs_release_automount_timer(void);
+ 
+ /*
++ * linux/fs/nfs/nfs4proc.c
++ */
++
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++extern struct nfs4_label *nfs4_label_alloc(gfp_t flags);
++extern void nfs4_label_init(struct nfs4_label *);
++extern void nfs4_label_free(struct nfs4_label *);
++#else
++static inline struct nfs4_label *nfs4_label_alloc(gfp_t flags) { return NULL; }
++static inline void nfs4_label_init(void *label) {}
++static inline void nfs4_label_free(void *label) {}
++#endif
++
++/*
+  * linux/fs/nfs/unlink.c
+  */
+ extern void nfs_complete_unlink(struct dentry *dentry, struct inode *);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index fac114d..0b79127 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -350,6 +350,7 @@ struct nfs_openargs {
+ 	const u32 *		bitmask;
+ 	const u32 *		open_bitmap;
+ 	__u32			claim;
++	const struct nfs4_label *label;
+ };
+ 
+ struct nfs_openres {
+@@ -359,6 +360,7 @@ struct nfs_openres {
+ 	struct nfs4_change_info	cinfo;
+ 	__u32                   rflags;
+ 	struct nfs_fattr *      f_attr;
++	struct nfs4_label	*f_label;
+ 	struct nfs_seqid *	seqid;
+ 	const struct nfs_server *server;
+ 	fmode_t			delegation_type;
+@@ -403,6 +405,7 @@ struct nfs_closeres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	nfs4_stateid            stateid;
+ 	struct nfs_fattr *	fattr;
++	struct nfs4_label	*label;
+ 	struct nfs_seqid *	seqid;
+ 	const struct nfs_server *server;
+ };
+@@ -476,6 +479,7 @@ struct nfs4_delegreturnargs {
+ struct nfs4_delegreturnres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	struct nfs_fattr * fattr;
++	struct nfs4_label	*label;
+ 	const struct nfs_server *server;
+ };
+ 
+@@ -496,6 +500,7 @@ struct nfs_readargs {
+ struct nfs_readres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	struct nfs_fattr *	fattr;
++	struct nfs4_label	*label;
+ 	__u32			count;
+ 	int                     eof;
+ };
+@@ -564,6 +569,7 @@ struct nfs_removeres {
+ 	struct nfs4_sequence_res 	seq_res;
+ 	const struct nfs_server *server;
+ 	struct nfs_fattr	*dir_attr;
++	struct nfs4_label	*dir_label;
+ 	struct nfs4_change_info	cinfo;
+ };
+ 
+@@ -576,6 +582,8 @@ struct nfs_renameargs {
+ 	const struct nfs_fh		*new_dir;
+ 	const struct qstr		*old_name;
+ 	const struct qstr		*new_name;
++	const struct nfs4_label		*old_label;
++	const struct nfs4_label		*new_label;
+ };
+ 
+ struct nfs_renameres {
+@@ -583,8 +591,10 @@ struct nfs_renameres {
+ 	const struct nfs_server		*server;
+ 	struct nfs4_change_info		old_cinfo;
+ 	struct nfs_fattr		*old_fattr;
++	struct nfs4_label		*old_label;
+ 	struct nfs4_change_info		new_cinfo;
+ 	struct nfs_fattr		*new_fattr;
++	struct nfs4_label		*new_label;
+ };
+ 
+ /*
+@@ -632,6 +642,7 @@ struct nfs_setattrargs {
+ 	struct iattr *                  iap;
+ 	const struct nfs_server *	server; /* Needed for name mapping */
+ 	const u32 *			bitmask;
++	const struct nfs4_label		*label;
+ };
+ 
+ struct nfs_setaclargs {
+@@ -667,6 +678,7 @@ struct nfs_getaclres {
+ struct nfs_setattrres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	struct nfs_fattr *              fattr;
++	struct nfs4_label		*label;
+ 	const struct nfs_server *	server;
+ };
+ 
+@@ -712,6 +724,7 @@ struct nfs3_setaclargs {
+ struct nfs_diropok {
+ 	struct nfs_fh *		fh;
+ 	struct nfs_fattr *	fattr;
++	struct nfs4_label	*label;
+ };
+ 
+ struct nfs_readlinkargs {
+@@ -842,6 +855,7 @@ struct nfs4_accessres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
++	struct nfs4_label		*label;
+ 	u32				supported;
+ 	u32				access;
+ };
+@@ -864,6 +878,7 @@ struct nfs4_create_arg {
+ 	const struct iattr *		attrs;
+ 	const struct nfs_fh *		dir_fh;
+ 	const u32 *			bitmask;
++	const struct nfs4_label		*label;
+ };
+ 
+ struct nfs4_create_res {
+@@ -871,6 +886,7 @@ struct nfs4_create_res {
+ 	const struct nfs_server *	server;
+ 	struct nfs_fh *			fh;
+ 	struct nfs_fattr *		fattr;
++	struct nfs4_label		*label;
+ 	struct nfs4_change_info		dir_cinfo;
+ };
+ 
+@@ -895,6 +911,7 @@ struct nfs4_getattr_res {
+ 	struct nfs4_sequence_res	seq_res;
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
++	struct nfs4_label		*label;
+ };
+ 
+ struct nfs4_link_arg {
+@@ -909,8 +926,10 @@ struct nfs4_link_res {
+ 	struct nfs4_sequence_res	seq_res;
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
++	struct nfs4_label		*label;
+ 	struct nfs4_change_info		cinfo;
+ 	struct nfs_fattr *		dir_attr;
++	struct nfs4_label		*dir_label;
+ };
+ 
+ 
+@@ -926,6 +945,7 @@ struct nfs4_lookup_res {
+ 	const struct nfs_server *	server;
+ 	struct nfs_fattr *		fattr;
+ 	struct nfs_fh *			fh;
++	struct nfs4_label		*label;
+ };
+ 
+ struct nfs4_lookup_root_arg {
 -- 
 1.7.11.7
 
