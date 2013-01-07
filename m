@@ -1,39 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.candelatech.com ([208.74.158.172]:43648 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756670Ab3AUUso (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2013 15:48:44 -0500
-From: greearb@candelatech.com
-To: linux-nfs@vger.kernel.org
-Cc: Ben Greear <greearb@candelatech.com>
-Subject: [RFC 13/13] nfs:  Allow up to 5000 NFSv4 connections (instead of 1024).
-Date: Mon, 21 Jan 2013 12:45:59 -0800
-Message-Id: <1358801159-18829-14-git-send-email-greearb@candelatech.com>
-In-Reply-To: <1358801159-18829-1-git-send-email-greearb@candelatech.com>
-References: <1358801159-18829-1-git-send-email-greearb@candelatech.com>
+Received: from mail-oa0-f47.google.com ([209.85.219.47]:63850 "EHLO
+	mail-oa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753817Ab3AGNUG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jan 2013 08:20:06 -0500
+Received: by mail-oa0-f47.google.com with SMTP id h1so17511110oag.20
+        for <linux-nfs@vger.kernel.org>; Mon, 07 Jan 2013 05:20:05 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <1357296223-5796-1-git-send-email-ycnian@gmail.com>
+References: <1357296223-5796-1-git-send-email-ycnian@gmail.com>
+From: Benny Halevy <bhalevy@tonian.com>
+Date: Mon, 7 Jan 2013 15:19:44 +0200
+Message-ID: <CAEMWVhv9_hC9zbacdXoM-9m00dhtk-PJ-OqXnwgbh4YMqAm4Ow@mail.gmail.com>
+Subject: Re: [PATCH] pnfsd: Correct the buffer size of ds_list in dlm_device_entry
+To: ycnian@gmail.com
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Ben Greear <greearb@candelatech.com>
+On Fri, Jan 4, 2013 at 12:43 PM,  <ycnian@gmail.com> wrote:
+> From: Yanchuan Nian <ycnian@gmail.com>
+>
+> In nfsd4_set_pnfs_dlm_device(), if there is a device with the same disk_name as
+> the new device, pnfsd will clear the memory of ds_list, and then update it with
+> ds list from the new device. The size of ds_list in struct dlm_device_entry is
+> NFSD_DLM_DS_LIST_MAX, but not DISK_NAME_LEN.
+>
+> Signed-off-by: Yanchuan Nian <ycnian@gmail.com>
 
-Signed-off-by: Ben Greear <greearb@candelatech.com>
----
- fs/nfs/callback.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+Thanks. committed
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 5088b57..ceed971 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -335,7 +335,7 @@ static struct svc_serv *nfs_callback_create_svc(int minorversion)
- 	/* As there is only one thread we need to over-ride the
- 	 * default maximum of 80 connections
- 	 */
--	serv->sv_maxconn = 1024;
-+	serv->sv_maxconn = 5000;
- 	dprintk("nfs_callback_create_svc: service created\n");
- 	return serv;
- }
--- 
-1.7.3.4
+Benny
 
+> ---
+>  fs/nfsd/nfs4pnfsdlm.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+>
+> diff --git a/fs/nfsd/nfs4pnfsdlm.c b/fs/nfsd/nfs4pnfsdlm.c
+> index e8423e0..c138d41 100644
+> --- a/fs/nfsd/nfs4pnfsdlm.c
+> +++ b/fs/nfsd/nfs4pnfsdlm.c
+> @@ -187,7 +187,7 @@ nfsd4_set_pnfs_dlm_device(char *pnfs_dlm_device, int len)
+>                 dprintk("%s pnfs_dlm_device %s:%s already in cache "
+>                         " replace ds_list with new ds_list %s\n", __func__,
+>                         found->disk_name, found->ds_list, new->ds_list);
+> -               memset(found->ds_list, 0, DISK_NAME_LEN);
+> +               memset(found->ds_list, 0, NFSD_DLM_DS_LIST_MAX);
+>                 memcpy(found->ds_list, new->ds_list, strlen(new->ds_list));
+>                 found->num_ds = new->num_ds;
+>                 kfree(new);
+> --
+> 1.7.4.4
+>
