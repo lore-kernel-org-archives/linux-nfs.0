@@ -1,105 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.avalus.com ([89.16.176.221]:35920 "EHLO mail.avalus.com"
+Received: from mx12.netapp.com ([216.240.18.77]:62732 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755947Ab3AUPKS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Jan 2013 10:10:18 -0500
-Date: Mon, 21 Jan 2013 15:10:03 +0000
-From: Alex Bligh <alex@alex.org.uk>
-Reply-To: Alex Bligh <alex@alex.org.uk>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-cc: linux-nfs@vger.kernel.org, Ian Campbell <Ian.Campbell@citrix.com>,
-        Alex Bligh <alex@alex.org.uk>
-Subject: Re: Fatal crash with NFS, AIO & tcp retransmit
-Message-ID: <4B8CA29C9B365854E56ACBE6@Ximines.local>
-In-Reply-To: <E268D60FA8BCE2E18CCE24D7@Ximines.local>
-References: <93D3AE9B4990994B2BCA75A9@Ximines.local>
- <4FA345DA4F4AE44899BD2B03EEEC2FA915C163B9@SACEXCMBX04-PRD.hq.netapp.com>
- <E268D60FA8BCE2E18CCE24D7@Ximines.local>
+	id S1753338Ab3AGPpf convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jan 2013 10:45:35 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+CC: linux-kernel <linux-kernel@vger.kernel.org>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: [GIT PULL] Please pull NFS client bugfixes
+Date: Mon, 7 Jan 2013 15:45:32 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA911990F94@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset="utf-7"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-And again with Ian's correct email address. Sorry all.
+Hi Linus,
 
---On 21 January 2013 15:01:54 +0000 Alex Bligh <alex@alex.org.uk> wrote:
+The following changes since commit d1c3ed669a2d452cacfb48c2d171a1f364dae2ed:
 
-> Trond,
->
-> --On 21 January 2013 14:38:20 +0000 "Myklebust, Trond"
-> <Trond.Myklebust@netapp.com> wrote:
->
->> The Oops would be due to a bug in the socket layer: the socket is
->> supposed to take a reference count on the page in order to ensure that
->> it can copy the contents.
->
-> Looking at the original linux-nfs link, you said here:
-> http://marc.info/?l=linux-nfs&m=122424789508577&w=2
->
-> Trond:> I don't see how this could be an RPC bug. The networking
-> Trond:> layer is supposed to either copy the data sent to the socket,
-> Trond:> or take a reference to any pages that are pushed via
-> Trond:> the ->sendpage() abi.
->
-> which sounds suspiciously like the same thing.
->
-> The conversation then went:
-> http://marc.info/?l=linux-nfs&m=122424858109731&w=2
-> Ian:> The pages are still referenced by the networking layer. The problem
-> is
-> Ian:> that the userspace app has been told that the write has completed so
-> Ian:> it is free to write new data to those pages.
->
-> To which you replied:
-> http://marc.info/?l=linux-nfs&m=122424984612130&w=2
-> Trond:> OK, I see your point.
->
-> Following the thread, it then seems that Ian's test case did fail on
-> NFS4 on 2.6.18, but not on 2.6.27.
->
-> Note that Ian was seeing something slightly different from me. I think
-> what he was seeing was alterations to the page after AIO completes
-> being retransmitted when the page prior to the alteration should
-> be transmitted. That could presumably be fixed by some COW device.
->
-> What I'm seeing is more subtle. Xen thinks (because QEMU tells it,
-> because AIO tells it) that the memory is done with entirely, and
-> simply unmaps it. I don't think that's Qemu's fault.
->
-> If it is a referencing issue, then it seems to me the problem is
-> that Xen is releasing the grant structure (I don't quite understand
-> how this bit works) and unmapping memory when the networking stack
-> still holds a reference to the page concerned. However, even if it
-> did not do that, wouldn't a retransmit after the write had completed
-> risk writing the wrong data? I suppose it could mark the page
-> COW before it released the grant or something.
->
->> As for the O_DIRECT bug, the problem there is that we have no way of
->> knowing when the socket is done writing the page. Just because we got an
->> answer from the server doesn't mean that the socket is done
->> retransmitting the data. It is quite possible that the server is just
->> replying to the first transmission.
->
-> I don't think QEMU is actually using O_DIRECT unless I set cache=none
-> on the drive. That causes a different interesting failure which isn't
-> my focus just now!
->
->> I thought that Ian was working on a fix for this issue. At one point, he
->> had a bunch of patches to allow sendpage() to call you back when the
->> transmission was done. What happened to those patches?
->
-> No idea (I don't work with Ian but have taken the liberty of copy him).
->
-> However, what's happened in the intervening years is that Xen has changed
-> its device model and it's now QEMU doing the writing (the qcow2 driver
-> specifically). I'm not sure it's even using sendpage.
->
-> --
-> Alex Bligh
->
->
+  Linux 3.8-rc2 (2013-01-02 18:13:21 -0800)
 
+are available in the git repository at:
 
+  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-3.8-2
+
+for you to fetch changes up to ecf0eb9edbb607d74f74b73c14af8b43f3729528:
+
+  nfs: avoid dereferencing null pointer in initiate+AF8-bulk+AF8-draining (2013-01-05 14:26:51 -0500)
+
+----------------------------------------------------------------
+NFS client bugfixes for Linux 3.8
+
+- Fix a permissions problem when opening NFSv4 files that only have the
+  exec bit set.
+- Fix a couple of typos in pNFS (inverted logic), and the mount parsing
+  (missing pointer dereference).
+- Work around a series of deadlock issues due to workqueues using
+  struct work+AF8-struct pointer address comparisons in the re-entrancy
+  tests. Ensure that we don't free struct work+AF8-struct prematurely if
+  our work function involves waiting for completion of other work
+  items (e.g. by calling rpc+AF8-shutdown+AF8-client).
+- Revert the part of commit 168e4b3 that is causing unnecessary warnings
+  to be issued in the nfsd callback code.
+
+----------------------------------------------------------------
+Nickolai Zeldovich (1):
+      nfs: avoid dereferencing null pointer in initiate+AF8-bulk+AF8-draining
+
+Trond Myklebust (3):
+      SUNRPC: Ensure that we free the rpc+AF8-task after cleanups are done
+      NFS: Ensure that we free the rpc+AF8-task after read and write cleanups are done
+      SUNRPC: Partial revert of commit 168e4b39d1afb79a7e3ea6c3bb246b4c82c6bdb9
+
+Weston Andros Adamson (1):
+      NFS: Fix access to suid/sgid executables
+
+Xi Wang (1):
+      nfs: fix null checking in nfs+AF8-get+AF8-option+AF8-str()
+
+Yanchuan Nian (1):
+      pnfs: Increase the refcount when LAYOUTGET fails the first time
+
+ fs/nfs/callback+AF8-proc.c +AHw-  2 +--
+ fs/nfs/dir.c           +AHw- 16 +-+-+-+-+-+-+-+-+-+-------
+ fs/nfs/nfs4proc.c      +AHw- 18 +-+-+-+-+-+-+-+-+-+-+--------
+ fs/nfs/pnfs.c          +AHw-  2 +--
+ fs/nfs/read.c          +AHw- 10 +-+-+-+-+-+-+----
+ fs/nfs/super.c         +AHw-  2 +--
+ fs/nfs/write.c         +AHw- 10 +-+-+-+-+-+-+----
+ net/sunrpc/clnt.c      +AHw-  5 -----
+ net/sunrpc/sched.c     +AHw- 27 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-----
+ 9 files changed, 61 insertions(+-), 31 deletions(-)
 
 -- 
-Alex Bligh
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust+AEA-netapp.com
+www.netapp.com
