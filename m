@@ -1,42 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from caramon.arm.linux.org.uk ([78.32.30.218]:55730 "EHLO
-	caramon.arm.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753061Ab3AZLDj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Jan 2013 06:03:39 -0500
-Date: Sat, 26 Jan 2013 11:03:21 +0000
-From: Russell King - ARM Linux <linux@arm.linux.org.uk>
-To: Arnd Bergmann <arnd@arndb.de>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-arm-kernel@lists.infradead.org"
-	<linux-arm-kernel@lists.infradead.org>
-Subject: Re: [PATCH 15/19] sunrpc: don't warn for unused variable 'buf'
-Message-ID: <20130126110321.GE23505@n2100.arm.linux.org.uk>
-References: <1359123276-15833-1-git-send-email-arnd@arndb.de> <1359153858-31992-16-git-send-email-arnd@arndb.de> <4FA345DA4F4AE44899BD2B03EEEC2FA91833C205@sacexcmbx05-prd.hq.netapp.com> <201301252345.25829.arnd@arndb.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <201301252345.25829.arnd@arndb.de>
+Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:52650 "EHLO
+	Dobby.4dicksons.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751560Ab3AGOxQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jan 2013 09:53:16 -0500
+From: Steve Dickson <steved@redhat.com>
+To: David Quigley <selinux@davequigley.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 00/12] lNFS: 3.7 port
+Date: Mon,  7 Jan 2013 09:47:21 -0500
+Message-Id: <1357570053-28849-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 25, 2013 at 11:45:25PM +0000, Arnd Bergmann wrote:
-> On Friday 25 January 2013, Myklebust, Trond wrote:
-> > > -----Original Message-----
-> > > From: Arnd Bergmann [mailto:arnd@arndb.de]
-> > > Marking it as __maybe_unused avoids a harmless gcc warning.
-> > 
-> > Alternatively, just declare it using the RPC_IFDEBUG() macro.
-> 
-> Right, makes sense: that's more consistent with other functions
-> doing the same thing. Thanks for taking a look.
+I basically reworked the code in the following areas:
 
-NAK.
+1) Forward ported to Linux 3.7 kernel
 
-There is already a fix queued up as a result of a previous report I
-sent, but for some reason (which I didn't question) it was decided
-not to queue it for -rc.
+2) Separated the server patches from the client patches
 
-See Bruce's reply on lkml: 20130108212816.GA24572@fieldses.org
+3) Eliminated the need for the previous two clean up patches
+
+4) Eliminated a large number of #ifdefs 
+
+Dave Quigley (2):
+  NFS:Add labels to client function prototypes
+  NFS: Add label lifecycle management
+
+David Quigley (10):
+  Security: Add hook to calculate context based on a negative dentry.
+  Security: Add Hook to test if the particular xattr is part of a MAC
+    model.
+  LSM: Add flags field to security_sb_set_mnt_opts for in kernel mount
+    data.
+  SELinux: Add new labeling type native labels
+  KConfig: Add KConfig entries for Labeled NFS
+  NFSv4: Add label recommended attribute and NFSv4 flags
+  NFSv4: Introduce new label structure
+  NFSv4: Extend fattr bitmaps to support all 3 words
+  NFS: Client implementation of Labeled-NFS
+  NFSD: Server implementation of MAC Labeling
+
+ fs/nfs/Kconfig                      |  16 +
+ fs/nfs/client.c                     |   2 +-
+ fs/nfs/dir.c                        |  49 ++-
+ fs/nfs/getroot.c                    |   2 +-
+ fs/nfs/inode.c                      | 140 +++++++--
+ fs/nfs/namespace.c                  |   2 +-
+ fs/nfs/nfs3acl.c                    |   4 +-
+ fs/nfs/nfs3proc.c                   |  41 +--
+ fs/nfs/nfs4_fs.h                    |   8 +-
+ fs/nfs/nfs4namespace.c              |   2 +-
+ fs/nfs/nfs4proc.c                   | 574 ++++++++++++++++++++++++++++++++----
+ fs/nfs/nfs4xdr.c                    | 198 ++++++++++---
+ fs/nfs/proc.c                       |  15 +-
+ fs/nfs/super.c                      |  17 +-
+ fs/nfsd/Kconfig                     |  13 +
+ fs/nfsd/nfs4proc.c                  |  33 +++
+ fs/nfsd/nfs4xdr.c                   | 115 +++++++-
+ fs/nfsd/nfsd.h                      |   8 +-
+ fs/nfsd/vfs.c                       |  31 ++
+ fs/nfsd/vfs.h                       |   2 +
+ fs/nfsd/xdr4.h                      |   3 +
+ include/linux/nfs4.h                |   9 +
+ include/linux/nfs_fs.h              |  28 +-
+ include/linux/nfs_fs_sb.h           |  10 +-
+ include/linux/nfs_xdr.h             |  30 +-
+ include/linux/security.h            |  57 +++-
+ include/uapi/linux/nfs4.h           |   1 +
+ security/capability.c               |  19 +-
+ security/security.c                 |  24 +-
+ security/selinux/hooks.c            |  92 +++++-
+ security/selinux/include/security.h |   2 +
+ security/selinux/ss/policydb.c      |   5 +-
+ security/smack/smack_lsm.c          |  11 +
+ 33 files changed, 1360 insertions(+), 203 deletions(-)
+
+-- 
+1.7.11.7
+
