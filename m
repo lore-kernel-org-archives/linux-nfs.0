@@ -1,67 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:43194 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751869Ab3ARXOL convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jan 2013 18:14:11 -0500
+Received: from fieldses.org ([174.143.236.118]:42146 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751258Ab3AHV2X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Jan 2013 16:28:23 -0500
+Date: Tue, 8 Jan 2013 16:28:16 -0500
+To: Russell King <rmk@arm.linux.org.uk>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: Commit 7032a3dd9 (svcrpc: demote some printks to a dprintk) adds
+ warnings
+Message-ID: <20130108212816.GA24572@fieldses.org>
+References: <20130108121300.GA2251@flint.arm.linux.org.uk>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
-Subject: Re: Question on nfs40_discover_server_trunking.
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA915C04FE5@sacexcmbx05-prd.hq.netapp.com>
-Date: Fri, 18 Jan 2013 18:14:05 -0500
-Cc: Ben Greear <greearb@candelatech.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <C11ACA70-EC3A-4FAD-8ADC-572F9B6B4CFE@oracle.com>
-References: <50F9BE66.6080608@candelatech.com> <0F001F0E-229D-4314-A42E-84402E4F1FC7@oracle.com> <1358546604.2872.6.camel@leira.trondhjem.org> <4FA345DA4F4AE44899BD2B03EEEC2FA915C04FE5@sacexcmbx05-prd.hq.netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+In-Reply-To: <20130108121300.GA2251@flint.arm.linux.org.uk>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jan 18, 2013, at 5:59 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-
-> On Fri, 2013-01-18 at 17:03 -0500, an unknown sender wrote:
->> On Fri, 2013-01-18 at 16:33 -0500, Chuck Lever wrote:
->>> On Jan 18, 2013, at 4:28 PM, Ben Greear <greearb@candelatech.com> wrote:
->>> 
->>>> Any chance the STALE_CLIENTID case needs a 'break'?
->>> 
->>> I don't think so.  LEASE_CONFIRM is set, and we want to wake the state renewal thread.
->>> 
->>>> 
->>>> Twice I've seen kernel crashes after the nfs40_walk_client_list
->>>> failed (though code comments say it should never fail).
->>> 
->>> nfs40_walk_client_list() is looking for an nfs_client that is supposed to already be in the nfs_client list.  If the search fails, that's a bug.
->>> 
->>> Eyeball the contents of your nfs_client list.  You should find an appropriate nfs_client in there, and then figure out why the search doesn't find it.
->> 
->> You have considered the fact that the call to
->> nfs4_proc_setclientid_confirm can potentially return
->> NFS4ERR_STALE_CLIENTID if the server rebooted while the client was
->> walking the list?
+On Tue, Jan 08, 2013 at 12:13:00PM +0000, Russell King wrote:
+> Bruce,
 > 
-> In fact, as far as I can see, the correct behaviour in
-> nfs40_discover_server_trunking() should be to re-issue the setclientid
-> call, and then walk the list again if nfs40_walk_client_list() returns
-> NFS4ERR_STALE_CLIENTID.
+> Your commit below causes a new build warning in the kernel:
+> 
+> net/sunrpc/svc.c: In function 'svc_printk':
+> net/sunrpc/svc.c:1050:7: warning: unused variable 'buf'
+> 
+> which affects all ARM builds; it is the only warning in a lot of cases.
+> Please can you resolve this new warning using whatever method you feel
+> is most appropriate, thanks.
 
-When I wrote the server trunking detection logic, I think we hadn't clearly decided what needed to be done in the STALE_CLIENTID case.
+Bah, these "unused variable" warnings for buffers unused in the
+!RPC_DEBUG case keep popping up.
 
-> Something like the attached patch:
+I guess I'll commit the following for 3.9.
 
-A couple of comments:
+--b.
 
- o  nfs_get_client() already sticks the new client on the tail of the nfs_client list
+commit 31e815406973ef86e2e42a36086d65afb8f4e396
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Tue Jan 8 16:22:15 2013 -0500
 
- o  We don't want to get stuck in a loop here.  Should the "do {}" loop in nfs40_discover_server_trunking() be bounded by a retry count?
+    svcrpc: silence "unused variable" warning in !RPC_DEBUG case
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-However, I haven't heard Ben say "oh, yes, my server had rebooted."  I'd like some confirmation that the match failed for an explainable and expected reason.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index dbf12ac..b9ba2a8 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -1042,6 +1042,7 @@ static void svc_unregister(const struct svc_serv *serv, struct net *net)
+ /*
+  * dprintk the given error with the address of the client that caused it.
+  */
++#ifdef RPC_DEBUG
+ static __printf(2, 3)
+ void svc_printk(struct svc_rqst *rqstp, const char *fmt, ...)
+ {
+@@ -1058,6 +1059,9 @@ void svc_printk(struct svc_rqst *rqstp, const char *fmt, ...)
+ 
+ 	va_end(args);
+ }
++#else
++static __printf(2,3) void svc_printk(struct svc_rqst *rqstp, const char *fmt, ...) {}
++#endif
+ 
+ /*
+  * Common routine for processing the RPC request.
