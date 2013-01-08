@@ -1,66 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f50.google.com ([74.125.83.50]:44031 "EHLO
-	mail-ee0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753657Ab3AUOyz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2013 09:54:55 -0500
-Received: by mail-ee0-f50.google.com with SMTP id e51so2993972eek.9
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Jan 2013 06:54:54 -0800 (PST)
-From: Benny Halevy <bhalevy@tonian.com>
-To: linux-nfs@vger.kernel.org
-Cc: Benny Halevy <bhalevy@tonian.com>
-Subject: [PATCH 7/9] pnfsd: LR_FLAG_EMPTY layout return flag
-Date: Mon, 21 Jan 2013 16:54:51 +0200
-Message-Id: <1358780091-6151-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <50FD5646.4020206@tonian.com>
-References: <50FD5646.4020206@tonian.com>
+Received: from fieldses.org ([174.143.236.118]:50719 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752551Ab3AHVrp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Jan 2013 16:47:45 -0500
+Date: Tue, 8 Jan 2013 16:47:42 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Andriy Skulysh <andriy_skulysh@xyratex.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 1/1] sunrpc: Fix lockd sleeping until timeout
+Message-ID: <20130108214742.GB24572@fieldses.org>
+References: <CADug+U6-=+_Xy41Lw3hnOqSR84Bo7MjKDL_PykiZVdUx=b8tAA@mail.gmail.com>
+ <20130104005345.GA4407@fieldses.org>
+ <CADug+U698gbtJnxUEOn0b7MhejYugSSRsV9i_b7jMaRs08Wpog@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CADug+U698gbtJnxUEOn0b7MhejYugSSRsV9i_b7jMaRs08Wpog@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfsd/nfs4pnfsd.c             | 8 +++++++-
- include/linux/nfsd/nfsd4_pnfs.h | 1 +
- 2 files changed, 8 insertions(+), 1 deletion(-)
+On Mon, Jan 07, 2013 at 12:12:15AM +0200, Andriy Skulysh wrote:
+> There is a race in enqueueing thread to a pool and
+> waking up a thread.
+> lockd doesn't wake up on reception of lock granted callback
+> if svc_wake_up() is called before lockd's thread is added
+> to a pool.
+> 
+> Signed-off-by: Andriy Skulysh <Andriy_Skulysh@xyratex.com>
+> ---
+>  include/linux/sunrpc/svc.h |    1 +
+>  net/sunrpc/svc_xprt.c      |    9 ++++++++-
+>  2 files changed, 9 insertions(+), 1 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> index 676ddf5..1f0216b 100644
+> --- a/include/linux/sunrpc/svc.h
+> +++ b/include/linux/sunrpc/svc.h
+> @@ -50,6 +50,7 @@ struct svc_pool {
+>  	unsigned int		sp_nrthreads;	/* # of threads in pool */
+>  	struct list_head	sp_all_threads;	/* all server threads */
+>  	struct svc_pool_stats	sp_stats;	/* statistics on pool operation */
+> +	int			sp_task_pending;/* has pending task */
+>  } ____cacheline_aligned_in_smp;
+> 
+>  /*
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index b8e47fa..5a9d40c 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -499,7 +499,8 @@ void svc_wake_up(struct svc_serv *serv)
+>  			rqstp->rq_xprt = NULL;
+>  			 */
+>  			wake_up(&rqstp->rq_wait);
+> -		}
+> +		} else
+> +			pool->sp_task_pending = 1;
+>  		spin_unlock_bh(&pool->sp_lock);
+>  	}
+>  }
+> @@ -634,7 +635,13 @@ struct svc_xprt *svc_get_next_xprt(struct
+> svc_rqst *rqstp, long timeout)
+>  		 * long for cache updates.
+>  		 */
+>  		rqstp->rq_chandle.thread_wait = 1*HZ;
+> +		pool->sp_task_pending = 0;
+>  	} else {
+> +		if (pool->sp_task_pending) {
+> +			pool->sp_task_pending = 0;
+> +			spin_unlock_bh(&pool->sp_lock);
+> +			return ERR_PTR(-EAGAIN);
+> +		}
+>  		/* No data pending. Go to sleep */
+>  		svc_thread_enqueue(pool, rqstp);
+> 
+> -- 
+> 1.7.1
+> 
+> 
+> On 4 January 2013 02:53, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > That should be ERR_PTR(-EAGAIN).
+> fixed.
+> >
+> > Other than this this looks right to me....
+> >
+> > Out of curiosity: how did you run across this problem, and how did you
+> > test the fix?
+> I can reproduce it with single ping_pong with nfs on top of Lustre filesystem.
 
-diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-index 2d4f23d..0b8c502 100644
---- a/fs/nfsd/nfs4pnfsd.c
-+++ b/fs/nfsd/nfs4pnfsd.c
-@@ -921,15 +921,21 @@ struct super_block *
- 		struct inode *inode = lo->lo_file->fi_inode;
- 		struct nfsd4_pnfs_layoutreturn lr;
- 		bool empty;
-+		int lr_flags = flags;
- 
- 		memset(&lr, 0, sizeof(lr));
- 		lr.args.lr_return_type = RETURN_FILE;
- 		lr.args.lr_seg = lo->lo_seg;
- 
-+		spin_lock(&layout_lock);
-+		if (list_empty(&lo->lo_file->fi_layouts))
-+			lr_flags |= LR_FLAG_EMPTY;
-+		spin_unlock(&layout_lock);
-+
- 		list_del(&lo->lo_perfile);
- 		empty = list_empty(lo_destroy_list);
- 
--		fs_layout_return(inode, &lr, flags, empty ? cb_cookie : NULL);
-+		fs_layout_return(inode, &lr, lr_flags, empty ? cb_cookie : NULL);
- 
- 		destroy_layout(lo); /* this will put the lo_file */
- 	}
-diff --git a/include/linux/nfsd/nfsd4_pnfs.h b/include/linux/nfsd/nfsd4_pnfs.h
-index bfea9a6..ecb412e 100644
---- a/include/linux/nfsd/nfsd4_pnfs.h
-+++ b/include/linux/nfsd/nfsd4_pnfs.h
-@@ -114,6 +114,7 @@ enum layoutreturn_flags {
- 	LR_FLAG_INTERN = 1 << 0,	/* internal return */
- 	LR_FLAG_EXPIRE = 1 << 1,	/* return on client expiration */
- 	LR_FLAG_CL_EMPTY = 1 << 2,	/* No more layout for returning client */
-+	LR_FLAG_EMPTY = 1 << 3,		/* No more layout for file */
- };
- 
- struct nfsd4_pnfs_layoutreturn_arg {
--- 
-1.7.11.7
-
+Got it, thanks; applying for 3.9.--b.
