@@ -1,93 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:45566 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752543Ab3AUCtP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 20 Jan 2013 21:49:15 -0500
-Date: Mon, 21 Jan 2013 13:48:59 +1100
-From: NeilBrown <neilb@suse.de>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: NFSv4 cannot unmount ESTALE directories (in some cases).
-Message-ID: <20130121134859.24fbd103@notabene.brown>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/q_RJUD7sTZAO2to0Yf1LZG/"; protocol="application/pgp-signature"
+Received: from mail-qc0-f181.google.com ([209.85.216.181]:47176 "EHLO
+	mail-qc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753634Ab3AHWT1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jan 2013 17:19:27 -0500
+Received: by mail-qc0-f181.google.com with SMTP id x40so1146584qcp.12
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jan 2013 14:19:26 -0800 (PST)
+Date: Tue, 8 Jan 2013 17:19:21 -0500
+From: Chris Perl <chris.perl@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Possible Race Condition on SIGKILL
+Message-ID: <20130108221921.GE30872@nyc-qws-132.nyc.delacy.com>
+References: <1357590561.28341.11.camel@lade.trondhjem.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA911991BE9@SACEXCMBX04-PRD.hq.netapp.com>
+ <20130107220047.GA30814@nyc-qws-132.nyc.delacy.com>
+ <20130108184011.GA30872@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA911993608@SACEXCMBX04-PRD.hq.netapp.com>
+ <20130108210106.GB30872@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA911993A92@SACEXCMBX04-PRD.hq.netapp.com>
+ <20130108212343.GC30872@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA911993B82@SACEXCMBX04-PRD.hq.netapp.com>
+ <20130108221651.GD30872@nyc-qws-132.nyc.delacy.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130108221651.GD30872@nyc-qws-132.nyc.delacy.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/q_RJUD7sTZAO2to0Yf1LZG/
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Tue, Jan 08, 2013 at 05:16:51PM -0500, Chris Perl wrote:
+> > The lock is associated with the rpc_task. Threads can normally only
+> > access an rpc_task when it is on a wait queue (while holding the wait
+> > queue lock) unless they are given ownership of the rpc_task.
+> > 
+> > IOW: the scenario you describe should not be possible, since it relies
+> > on thread 1 assigning the lock to the rpc_task after it has been removed
+> > from the wait queue.
+> 
+> Hrm.  I guess I'm in over my head here. Apologoies if I'm just asking
+> silly bumbling questions.  You can start ignoring me at any time. :)
+> 
+> I was talking about setting (or leaving set) the XPRT_LOCKED bit in
+> rpc_xprt->state.  By "assigning the lock" I really just mean that thread
+> 1 leaves XPRT_LOCKED set in rpc_xprt->state and sets rpc_xprt->snd_task
+> to thread 2.
+> 
+> > If you are recompiling the kernel, perhaps you can also add in a patch
+> > to rpc_show_tasks() to display the current value of
+> > clnt->cl_xprt->snd_task?
+> 
+> Sure.  This is what 'echo 0 > /proc/sys/sunrpc/rpc_debug' shows after
+> the hang (with my extra prints):
+> 
+> # cat /proc/kmsg
+> ...
+> <6>client: ffff88082b6c9c00, xprt: ffff880824aef800, snd_task: ffff881029c63ec0
+> <6>client: ffff88082b6c9e00, xprt: ffff880824aef800, snd_task: ffff881029c63ec0
+> <6>-pid- flgs status -client- --rqstp- -timeout ---ops--
+> <6>18091 0080    -11 ffff88082b6c9e00   (null)      ffff0770ns3 ACCESS a:call_reserveresult q:xprt_sending
+> <6>client: ffff88082a244600, xprt: ffff88082a343000, snd_task:   (null)
+> <6>client: ffff880829181600, xprt: ffff88082a343000, snd_task:   (null)
+> <6>client: ffff880828170200, xprt: ffff880824aef800, snd_task: ffff881029c63ec0
 
+Sorry, that output was a little messed up.  Here it is again:
 
-If you use NFSv4 to "mount server:/foo/bar /mnt", then "rm -r" /foo/bar on =
-the
-server, then accesses to /mnt will naturally return ESTALE.
-
-Unfortunately "umount /mnt" will also return ESTALE and leave the stale
-directory mounted.  Adding "-l" or "-f" to "umount" doesn't help.
-
-The problem is that nfs_lookup_revalidate fails.  As the mountpoint is never
-not accessed by a lookup (after the initial mount) it seems a bit pointless
-calling d_revalidate in this case ... by maybe not.
-
-I can make the problem go away by testing for LOOKUP_JUMP and having
-nfs_lookup_revalidate never fail if that flag it set (for a directory).
-
-The resulting patch is:
----
- fs/nfs/dir.c |    7 +++++++
- 1 file changed, 7 insertions(+)
-
---- linux-3.0-SLE11-SP2.orig/fs/nfs/dir.c
-+++ linux-3.0-SLE11-SP2/fs/nfs/dir.c
-@@ -1183,6 +1183,13 @@ out_zap_parent:
- 			goto out_valid;
- 		if (dentry->d_flags & DCACHE_DISCONNECTED)
- 			goto out_valid;
-+		if (flags & LOOKUP_JUMPED)
-+			/* Didn't use a name to get here, so saying
-+			 * the name is invalid is pointless.
-+			 * This allows "umount" to succeed on a
-+			 * STALE mountpoint.
-+			 */
-+			goto out_valid;
- 		shrink_dcache_parent(dentry);
- 	}
- 	d_drop(dentry);
-
-
-However I cannot easily tell if this is an elegant solution of an ugly hack,
-and am hoping that someone who understands revalidation and LOOKUP_JUMPED
-better than I (who only discovered the latter today) could provide advice.
-
-Al?  Trond?  Should  I make this into a formal patch submission, or is there
-a better way?
-
-Thanks,
-NeilBrown
-
---Sig_/q_RJUD7sTZAO2to0Yf1LZG/
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.19 (GNU/Linux)
-
-iQIVAwUBUPysmznsnt1WYoG5AQL6dxAAi9hMEX4FlvflqnPHGVI6Om7DZuY/u1nV
-Gl2s7ZontRNEosysawSE0dfvlBANIdKQJdWDz2B8aslkl3sBONdUGENE3kS1cN7P
-lGGFPKUIcR3y0m+6/mOecW6td4jf4gmd2Y8CPhoDGdz2BpUTCfOQhYU/8bgufp3S
-g1Y4cGOKfRIBKFhuoevY17if3NsZNv+LjWUFE+sRT2QXPJslTi9Uf5L4Bv5okcFA
-BsHZSsGUy9UaKwVbpDRZGpRf7DFmw63Mnk1FMbgPifAyzx2/2oC29Mmf91taOpzx
-K6amtg+ex3oU0/JyfWEK0wsqt/vW3fh308eK/kGNY8MayPlrWIx47YGhGN1u5XPq
-uuftGSQRa1V5ijYydOMa2hmojsfjU8fnY0Rssl8zsYwTqFWiOvxcVIIsb/XtLqy8
-MqIO8zUGg34PB8doEomuJtCu/2R61FodADxkK+L2pEIlblhf0kRwuO+7RcEqSan3
-JhTXv+zuhVFNTOszEfeXTZIYD9ijA1uKOHBbgBM79rbTGdMCdEvI12Ivau1k6e0B
-IIvO00PFOSMgKf4HPW9uLHwxxTpGEcJTPuwBaZ31KOPnvyPxbsNBm3wWfRrkkbOk
-F1AQlKp9jpRmwO6PcLC7C1ElEAaRywADvaS8HUZTmfQ8lc21YbXBH827qgpRLZuh
-ugoVSokb/y4=
-=bkos
------END PGP SIGNATURE-----
-
---Sig_/q_RJUD7sTZAO2to0Yf1LZG/--
+<6>client: ffff88082b6c9c00, xprt: ffff880824aef800, snd_task: ffff881029c63ec0
+<6>client: ffff88082b6c9e00, xprt: ffff880824aef800, snd_task: ffff881029c63ec0
+<6>-pid- flgs status -client- --rqstp- -timeout ---ops--
+<6>18091 0080    -11 ffff88082b6c9e00   (null)        0 ffffffffa027b7e0 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
+<6>client: ffff88082a244600, xprt: ffff88082a343000, snd_task:   (null)
+<6>client: ffff880829181600, xprt: ffff88082a343000, snd_task:   (null)
+<6>client: ffff880828170200, xprt: ffff880824aef800, snd_task: ffff881029c63ec0
