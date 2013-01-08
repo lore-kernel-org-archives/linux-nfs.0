@@ -1,135 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:19034 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750906Ab3A1UFP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Jan 2013 15:05:15 -0500
-Date: Mon, 28 Jan 2013 15:05:02 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 01/16] nfsd: fix IPv6 address handling in the DRC
-Message-ID: <20130128150502.4c5f497b@tlielax.poochiereds.net>
-In-Reply-To: <5AD4F061-69A6-47F5-B20A-34B8DCC2EB5E@oracle.com>
-References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
-	<1359402082-29195-2-git-send-email-jlayton@redhat.com>
-	<5AD4F061-69A6-47F5-B20A-34B8DCC2EB5E@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-qc0-f181.google.com ([209.85.216.181]:51735 "EHLO
+	mail-qc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753210Ab3AHVXu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jan 2013 16:23:50 -0500
+Received: by mail-qc0-f181.google.com with SMTP id x40so1109878qcp.12
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jan 2013 13:23:49 -0800 (PST)
+Date: Tue, 8 Jan 2013 16:23:43 -0500
+From: Chris Perl <chris.perl@gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Possible Race Condition on SIGKILL
+Message-ID: <20130108212343.GC30872@nyc-qws-132.nyc.delacy.com>
+References: <20130107185848.GB16957@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA91199197E@SACEXCMBX04-PRD.hq.netapp.com>
+ <20130107202021.GC16957@nyc-qws-132.nyc.delacy.com>
+ <1357590561.28341.11.camel@lade.trondhjem.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA911991BE9@SACEXCMBX04-PRD.hq.netapp.com>
+ <20130107220047.GA30814@nyc-qws-132.nyc.delacy.com>
+ <20130108184011.GA30872@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA911993608@SACEXCMBX04-PRD.hq.netapp.com>
+ <20130108210106.GB30872@nyc-qws-132.nyc.delacy.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA911993A92@SACEXCMBX04-PRD.hq.netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA911993A92@SACEXCMBX04-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 28 Jan 2013 11:51:13 -0800 (PST)
-Chuck Lever <chuck.lever@oracle.com> wrote:
-
+On Tue, Jan 08, 2013 at 09:13:45PM +0000, Myklebust, Trond wrote:
+> On Tue, 2013-01-08 at 16:01 -0500, Chris Perl wrote:
+> > > My main interest is always the upstream (Linus) kernel, however the RPC
+> > > client in the CentOS 6.3 kernel does actually contain a lot of code that
+> > > was recently backported from upstream. As such, it is definitely of
+> > > interest to figure out corner case bugs so that we can compare to
+> > > upstream...
+> > 
+> > Ok, great.  I will try this version of the patch as well.  However, when just
+> > thinking about this, I'm concerned that the race still exists, but is just less
+> > likely to manifest.
+> > 
+> > I imagine something like this happening.  I assume there is some reason this
+> > can't happen that I'm not seeing?  These are functions from linus's current
+> > git, not the CentOS 6.3 code: 
+> > 
+> > thread 1                                          thread 2
+> > --------                                          --------
+> > __rpc_execute                                     __rpc_execute
+> > ...                                               ...
+> > call_reserve
+> > xprt_reserve
+> > xprt_lock_and_alloc_slot
+> > xprt_lock_write
+> > xprt_reserve_xprt
+> > ...
+> > xprt_release_write
+> >                                                   call_reserve
+> > 						  xprt_reserve
+> > 						  xprt_lock_and_alloc_slot
+> > 						  xprt_lock_write
+> > 						  xprt_reserve_xprt
+> > 						  rpc_sleep_on_priority
+> > 						  __rpc_sleep_on_priority
+> > 						  __rpc_add_wait_queue
+> > 						  __rpc_add_wait_queue_priority
+> > 						  (Now on the sending wait queue)
+> > xs_tcp_release_xprt
+> > xprt_release_xprt
+> > xprt_clear_locked
+> > __xprt_lock_write_next
+> > rpc_wake_up_first
+> > __rpc_find_next_queued
+> > __rpc_find_next_queued_priority
+> > ...
+> > (has now pulled thread 2 off the wait queue)
+> >                                                  out_of_line_wait_on_bit
+> > 						 (receive SIGKILL)
+> > 						 rpc_wait_bit_killable
+> > 						 rpc_exit
+> > 						 rpc_exit_task
+> > 						 rpc_release_task
+> > 						 (doesn't release xprt b/c he isn't listed in snd_task yet)
+> > 						 (returns from __rpc_execute)
+> > __xprt_lock_write_func
+> > (thread 2 now has the transport locked)
+> > rpc_wake_up_task_queue_locked
+> > __rpc_remove_wait_queue
+> > __rpc_remove_wait_queue_priority
+> > (continues on, potentially exiting early,
+> >  potentially blocking the next time it needs the transport)
+> > 
+> > With the patch we're discussing, it would fix the case where thread 2 is
+> > breaking out of the FSM loop after having been given the transport lock.  But
+> > what about the above.  Is there something else synchronizing things?
 > 
-> On Jan 28, 2013, at 2:41 PM, Jeff Layton <jlayton@redhat.com> wrote:
-> 
-> > Currently, it only stores the first 16 bytes of any address. struct
-> > sockaddr_in6 is 28 bytes however, so we're currently ignoring the last
-> > 12 bytes of the address.
-> > 
-> > Expand the c_addr field to a sockaddr_in6,
-> 
-> What do you do about link-local addresses?
-> 
+> I'm not sure I understand how the above would work. rpc_exit_task() will
+> remove the rpc_task from the xprt->sending rpc_wait_queue, at which
+> point __xprt_lock_write_func() can no longer find it.
 
-I use rpc_cmp_addr() which should handle the scope correctly for
-link-local addrs. Now that you mention it though, I think we may have a
-bug in __rpc_copy_addr6. It doesn't touch the scope_id at all --
-shouldn't we be setting the scopeid in that function as well?
+I'm imagining that thread 1 pulls thread 2 off the sending wait queue
+almost right after it was added, but before thread 2 has a chance to
+execute rpc_exit_task.  Now that thread 1 has a reference to
+thread 2, it proceeds to give it the lock on the transport, but before
+it does so, thread 2 completely finishes executing and returns from
+__rpc_execute.
 
+I'm probably missing something.
 
-> > and cast it to a sockaddr_in
-> > as necessary. Also fix the comparitor to use the existing RPC
-> > helpers for this.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> > fs/nfsd/cache.h             | 6 +++++-
-> > fs/nfsd/nfscache.c          | 7 +++++--
-> > include/linux/sunrpc/clnt.h | 4 +++-
-> > 3 files changed, 13 insertions(+), 4 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
-> > index 93cc9d3..2cac76c 100644
-> > --- a/fs/nfsd/cache.h
-> > +++ b/fs/nfsd/cache.h
-> > @@ -12,6 +12,10 @@
-> > 
-> > /*
-> >  * Representation of a reply cache entry.
-> > + *
-> > + * Note that we use a sockaddr_in6 to hold the address instead of the more
-> > + * typical sockaddr_storage. This is for space reasons, since sockaddr_storage
-> > + * is much larger than a sockaddr_in6.
-> >  */
-> > struct svc_cacherep {
-> > 	struct hlist_node	c_hash;
-> > @@ -20,7 +24,7 @@ struct svc_cacherep {
-> > 	unsigned char		c_state,	/* unused, inprog, done */
-> > 				c_type,		/* status, buffer */
-> > 				c_secure : 1;	/* req came from port < 1024 */
-> > -	struct sockaddr_in	c_addr;
-> > +	struct sockaddr_in6	c_addr;
-> > 	__be32			c_xid;
-> > 	u32			c_prot;
-> > 	u32			c_proc;
-> > diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-> > index 2cbac34..5dd9ec2 100644
-> > --- a/fs/nfsd/nfscache.c
-> > +++ b/fs/nfsd/nfscache.c
-> > @@ -9,6 +9,7 @@
-> >  */
-> > 
-> > #include <linux/slab.h>
-> > +#include <linux/sunrpc/clnt.h>
-> > 
-> > #include "nfsd.h"
-> > #include "cache.h"
-> > @@ -146,7 +147,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
-> > 		    xid == rp->c_xid && proc == rp->c_proc &&
-> > 		    proto == rp->c_prot && vers == rp->c_vers &&
-> > 		    time_before(jiffies, rp->c_timestamp + 120*HZ) &&
-> > -		    memcmp((char*)&rqstp->rq_addr, (char*)&rp->c_addr, sizeof(rp->c_addr))==0) {
-> > +		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
-> > +		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr)) {
-> > 			nfsdstats.rchits++;
-> > 			goto found_entry;
-> > 		}
-> > @@ -183,7 +185,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
-> > 	rp->c_state = RC_INPROG;
-> > 	rp->c_xid = xid;
-> > 	rp->c_proc = proc;
-> > -	memcpy(&rp->c_addr, svc_addr_in(rqstp), sizeof(rp->c_addr));
-> > +	rpc_copy_addr((struct sockaddr *)&rp->c_addr, svc_addr(rqstp));
-> > +	rpc_set_port((struct sockaddr *)&rp->c_addr, rpc_get_port(svc_addr(rqstp)));
-> > 	rp->c_prot = proto;
-> > 	rp->c_vers = vers;
-> > 	rp->c_timestamp = jiffies;
-> > diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-> > index 34206b8..47354a2 100644
-> > --- a/include/linux/sunrpc/clnt.h
-> > +++ b/include/linux/sunrpc/clnt.h
-> > @@ -263,7 +263,9 @@ static inline bool __rpc_copy_addr6(struct sockaddr *dst,
-> >  * @sap1: first sockaddr
-> >  * @sap2: second sockaddr
-> >  *
-> > - * Just compares the family and address portion. Ignores port, scope, etc.
-> > + * Just compares the family and address portion. Ignores port, but
-> > + * compares the scope if it's a link-local address.
-> > + *
-> >  * Returns true if the addrs are equal, false if they aren't.
-> >  */
-> > static inline bool rpc_cmp_addr(const struct sockaddr *sap1,
-> > -- 
-> > 1.7.11.7
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+> Is it really the same hang? Does 'echo 0 >/proc/sys/sunrpc/rpc_debug'
+> show you a similar list of rpc tasks waiting on xprt->sending?
 
+I'm not certain.  Its possible that its not.  I'm recompiling with your
+v4 of the patch right now and will test shortly.  I didn't know about
+echoing 0 out to that file, good to know! :)
 
--- 
-Jeff Layton <jlayton@redhat.com>
