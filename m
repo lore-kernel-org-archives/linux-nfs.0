@@ -1,134 +1,401 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.candelatech.com ([208.74.158.172]:40075 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755006Ab3ARWeJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jan 2013 17:34:09 -0500
-Message-ID: <50F9CDDF.4070609@candelatech.com>
-Date: Fri, 18 Jan 2013 14:34:07 -0800
-From: Ben Greear <greearb@candelatech.com>
-MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Question on nfs40_discover_server_trunking.
-References: <50F9BE66.6080608@candelatech.com> <0F001F0E-229D-4314-A42E-84402E4F1FC7@oracle.com> <50F9C5B4.5020000@candelatech.com> <1A56CC87-38FF-47B4-9CA9-7BAE394AF0D2@oracle.com>
-In-Reply-To: <1A56CC87-38FF-47B4-9CA9-7BAE394AF0D2@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from userp1040.oracle.com ([156.151.31.81]:23971 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932567Ab3AIT7x (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jan 2013 14:59:53 -0500
+From: Dave Kleikamp <dave.kleikamp@oracle.com>
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, Zach Brown <zab@zabbo.net>,
+        "Maxim V. Patlasov" <mpatlasov@parallels.com>,
+        Dave Kleikamp <dave.kleikamp@oracle.com>, Mel Gorman <mgorman@suse.de>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org, Rik van Riel <riel@redhat.com>
+Subject: [PATCH V5 22/30] nfs: simplify swap
+Date: Wed,  9 Jan 2013 13:58:37 -0600
+Message-Id: <1357761525-22718-23-git-send-email-dave.kleikamp@oracle.com>
+In-Reply-To: <1357761525-22718-1-git-send-email-dave.kleikamp@oracle.com>
+References: <1357761525-22718-1-git-send-email-dave.kleikamp@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/18/2013 02:29 PM, Chuck Lever wrote:
->
-> On Jan 18, 2013, at 4:59 PM, Ben Greear <greearb@candelatech.com> wrote:
->
->> On 01/18/2013 01:33 PM, Chuck Lever wrote:
->>>
->>> On Jan 18, 2013, at 4:28 PM, Ben Greear <greearb@candelatech.com> wrote:
->>>
->>>> Any chance the STALE_CLIENTID case needs a 'break'?
->>>
->>> I don't think so.  LEASE_CONFIRM is set, and we want to wake the state renewal thread.
->>>
->>>>
->>>> Twice I've seen kernel crashes after the nfs40_walk_client_list
->>>> failed (though code comments say it should never fail).
->>>
->>> nfs40_walk_client_list() is looking for an nfs_client that is supposed to already be in the nfs_client list.  If the search fails, that's a bug.
->>>
->>> Eyeball the contents of your nfs_client list.  You should find an appropriate nfs_client in there, and then figure out why the search doesn't find it.
->>
->> Ok, I think I found another issue.
->>
->> nfs4_client_init does not initialize 'old', but passes it to nfs4_discover_server_trunking.
->>
->> That gets passed to the detect_trunking operation, which is nfs40_discover_server_trunking
->> or nfs41_discover_server_trunking.
->
-> Yes, *result is an output parameter, not an input parameter.
->
->> This will call walk_client_list, which also may not ever assign a value to
->> 'result'.
->
-> It should always assign *result in the SUCCESS case.
->
->> The code in walk_client_list always dereferences result, however.
->>
->> So, that is probably why my system blows up shortly after the 'impossible'
->> error message...
->
-> In particular, nfs4_walk_client_list() does not set *result when it returns NFS4ERR_STALE_CLIENTID.  In nfs4_discover_server_trunking(), should we therefore have this:
->
->       status = nfs40_walk_client_list(clp, result, cred);
->       switch (status) {
->       case -NFS4ERR_STALE_CLIENTID:
->               set_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
->>>            nfs4_schedule_state_renewal(clp);
->>>            break;
->       case 0:
->
-> I'm not sure the nfs4_schedule_state_renewal() call is necessary here.
+swap_writepage can now call nfs's write_iter f_op, eliminating the need to
+implement for the special-case direct_IO a_op. There is no longer a need to
+pass the uio flag through the direct write path.
 
+Signed-off-by: Dave Kleikamp <dave.kleikamp@oracle.com>
+Cc: Mel Gorman <mgorman@suse.de>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Cc: Rik van Riel <riel@redhat.com>
+---
+ fs/nfs/direct.c           | 94 ++++++++++++++++-------------------------------
+ fs/nfs/file.c             |  4 +-
+ include/linux/blk_types.h |  2 -
+ include/linux/fs.h        |  2 -
+ include/linux/nfs_fs.h    |  4 +-
+ mm/page_io.c              | 13 +++----
+ 6 files changed, 42 insertions(+), 77 deletions(-)
 
-I'm not sure I follow you entirely..but I'm going to start testing this patch in
-a minute.  Looks like it should fix my crash, and maybe give clues about
-why we get to the error case in the first place.
-
-
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index d6b39a9..3188283 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -307,6 +307,8 @@ int nfs40_walk_client_list(struct nfs_client *new,
-         };
-         int status;
-
-+       *result = NULL;
-+
-         spin_lock(&nn->nfs_client_lock);
-         list_for_each_entry_safe(pos, n, &nn->nfs_client_list, cl_share_link) {
-                 /* If "pos" isn't marked ready, we can't trust the
-@@ -364,6 +366,7 @@ int nfs40_walk_client_list(struct nfs_client *new,
-                 nfs_put_client(prev);
-         spin_unlock(&nn->nfs_client_lock);
-         pr_err("NFS: %s Error: no matching nfs_client found\n", __func__);
-+       WARN_ON(1);
-         return -NFS4ERR_STALE_CLIENTID;
-  }
-
-@@ -433,6 +436,8 @@ int nfs41_walk_client_list(struct nfs_client *new,
-         struct nfs_client *pos, *n, *prev = NULL;
-         int error;
-
-+       *result = NULL;
-+
-         spin_lock(&nn->nfs_client_lock);
-         list_for_each_entry_safe(pos, n, &nn->nfs_client_list, cl_share_link) {
-                 /* If "pos" isn't marked ready, we can't trust the
-@@ -489,6 +494,7 @@ int nfs41_walk_client_list(struct nfs_client *new,
-          */
-         spin_unlock(&nn->nfs_client_lock);
-         pr_err("NFS: %s Error: no matching nfs_client found\n", __func__);
-+       WARN_ON(1);
-         return -NFS4ERR_STALE_CLIENTID;
-  }
-  #endif /* CONFIG_NFS_V4_1 */
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index c351e6b..54d29e2 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -142,7 +142,8 @@ int nfs40_discover_server_trunking(struct nfs_client *clp,
-         case 0:
-                 /* Sustain the lease, even if it's empty.  If the clientid4
-                  * goes stale it's of no use for trunking discovery. */
--               nfs4_schedule_state_renewal(*result);
-+               if (*result)
-+                       nfs4_schedule_state_renewal(*result);
-                 break;
-         }
-
-
-
-
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 2b0ebcb..239c2fe 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -118,29 +118,18 @@ static inline int put_dreq(struct nfs_direct_req *dreq)
+  * @nr_segs: size of iovec array
+  *
+  * The presence of this routine in the address space ops vector means
+- * the NFS client supports direct I/O. However, for most direct IO, we
+- * shunt off direct read and write requests before the VFS gets them,
+- * so this method is only ever called for swap.
++ * the NFS client supports direct I/O. However, we shunt off direct
++ * read and write requests before the VFS gets them, so this method
++ * should never be called.
+  */
+ ssize_t nfs_direct_IO(int rw, struct kiocb *iocb, struct iov_iter *iter,
+ 		      loff_t pos)
+ {
+-#ifndef CONFIG_NFS_SWAP
+ 	dprintk("NFS: nfs_direct_IO (%s) off/no(%Ld/%lu) EINVAL\n",
+ 			iocb->ki_filp->f_path.dentry->d_name.name,
+ 			(long long) pos, iter->nr_segs);
+ 
+ 	return -EINVAL;
+-#else
+-	VM_BUG_ON(iocb->ki_left != PAGE_SIZE);
+-	VM_BUG_ON(iocb->ki_nbytes != PAGE_SIZE);
+-
+-	if (rw == READ || rw == KERNEL_READ)
+-		return nfs_file_direct_read(iocb, iter, pos,
+-				rw == READ ? true : false);
+-	return nfs_file_direct_write(iocb, iter, pos,
+-				rw == WRITE ? true : false);
+-#endif /* CONFIG_NFS_SWAP */
+ }
+ 
+ static void nfs_direct_release_pages(struct page **pages, unsigned int npages)
+@@ -312,7 +301,7 @@ static const struct nfs_pgio_completion_ops nfs_direct_read_completion_ops = {
+  */
+ static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *desc,
+ 						const struct iovec *iov,
+-						loff_t pos, bool uio)
++						loff_t pos)
+ {
+ 	struct nfs_direct_req *dreq = desc->pg_dreq;
+ 	struct nfs_open_context *ctx = dreq->ctx;
+@@ -340,20 +329,12 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *de
+ 					  GFP_KERNEL);
+ 		if (!pagevec)
+ 			break;
+-		if (uio) {
+-			down_read(&current->mm->mmap_sem);
+-			result = get_user_pages(current, current->mm, user_addr,
++		down_read(&current->mm->mmap_sem);
++		result = get_user_pages(current, current->mm, user_addr,
+ 					npages, 1, 0, pagevec, NULL);
+-			up_read(&current->mm->mmap_sem);
+-			if (result < 0)
+-				break;
+-		} else {
+-			WARN_ON(npages != 1);
+-			result = get_kernel_page(user_addr, 1, pagevec);
+-			if (WARN_ON(result != 1))
+-				break;
+-		}
+-
++		up_read(&current->mm->mmap_sem);
++		if (result < 0)
++			break;
+ 		if ((unsigned)result < npages) {
+ 			bytes = result * PAGE_SIZE;
+ 			if (bytes <= pgbase) {
+@@ -403,7 +384,7 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *de
+ 
+ static ssize_t nfs_direct_do_schedule_read_iovec(
+ 		struct nfs_pageio_descriptor *desc, const struct iovec *iov,
+-		unsigned long nr_segs, loff_t pos, bool uio)
++		unsigned long nr_segs, loff_t pos)
+ {
+ 	ssize_t result = -EINVAL;
+ 	size_t requested_bytes = 0;
+@@ -411,7 +392,7 @@ static ssize_t nfs_direct_do_schedule_read_iovec(
+ 
+ 	for (seg = 0; seg < nr_segs; seg++) {
+ 		const struct iovec *vec = &iov[seg];
+-		result = nfs_direct_read_schedule_segment(desc, vec, pos, uio);
++		result = nfs_direct_read_schedule_segment(desc, vec, pos);
+ 		if (result < 0)
+ 			break;
+ 		requested_bytes += result;
+@@ -468,8 +449,7 @@ static ssize_t nfs_direct_do_schedule_read_bvec(
+ #endif /* CONFIG_BLOCK */
+ 
+ static ssize_t nfs_direct_read_schedule(struct nfs_direct_req *dreq,
+-					struct iov_iter *iter, loff_t pos,
+-					bool uio)
++					struct iov_iter *iter, loff_t pos)
+ {
+ 	struct nfs_pageio_descriptor desc;
+ 	ssize_t result;
+@@ -480,10 +460,8 @@ static ssize_t nfs_direct_read_schedule(struct nfs_direct_req *dreq,
+ 	desc.pg_dreq = dreq;
+ 
+ 	if (iov_iter_has_iovec(iter)) {
+-		if (uio)
+-			dreq->flags = NFS_ODIRECT_MARK_DIRTY;
+ 		result = nfs_direct_do_schedule_read_iovec(&desc,
+-				iov_iter_iovec(iter), iter->nr_segs, pos, uio);
++				iov_iter_iovec(iter), iter->nr_segs, pos);
+ #ifdef CONFIG_BLOCK
+ 	} else if (iov_iter_has_bvec(iter)) {
+ 		result = nfs_direct_do_schedule_read_bvec(&desc,
+@@ -509,7 +487,7 @@ static ssize_t nfs_direct_read_schedule(struct nfs_direct_req *dreq,
+ }
+ 
+ static ssize_t nfs_direct_read(struct kiocb *iocb, struct iov_iter *iter,
+-			       loff_t pos, bool uio)
++			       loff_t pos)
+ {
+ 	ssize_t result = -ENOMEM;
+ 	struct inode *inode = iocb->ki_filp->f_mapping->host;
+@@ -533,7 +511,7 @@ static ssize_t nfs_direct_read(struct kiocb *iocb, struct iov_iter *iter,
+ 		dreq->iocb = iocb;
+ 
+ 	NFS_I(inode)->read_io += iov_iter_count(iter);
+-	result = nfs_direct_read_schedule(dreq, iter, pos, uio);
++	result = nfs_direct_read_schedule(dreq, iter, pos);
+ 	if (!result)
+ 		result = nfs_direct_wait(dreq);
+ out_release:
+@@ -698,7 +676,7 @@ static void nfs_direct_write_complete(struct nfs_direct_req *dreq, struct inode
+  */
+ static ssize_t nfs_direct_write_schedule_segment(struct nfs_pageio_descriptor *desc,
+ 						 const struct iovec *iov,
+-						 loff_t pos, bool uio)
++						 loff_t pos)
+ {
+ 	struct nfs_direct_req *dreq = desc->pg_dreq;
+ 	struct nfs_open_context *ctx = dreq->ctx;
+@@ -726,19 +704,12 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_pageio_descriptor *d
+ 		if (!pagevec)
+ 			break;
+ 
+-		if (uio) {
+-			down_read(&current->mm->mmap_sem);
+-			result = get_user_pages(current, current->mm, user_addr,
+-						npages, 0, 0, pagevec, NULL);
+-			up_read(&current->mm->mmap_sem);
+-			if (result < 0)
+-				break;
+-		} else {
+-			WARN_ON(npages != 1);
+-			result = get_kernel_page(user_addr, 0, pagevec);
+-			if (WARN_ON(result != 1))
+-				break;
+-		}
++		down_read(&current->mm->mmap_sem);
++		result = get_user_pages(current, current->mm, user_addr,
++					npages, 0, 0, pagevec, NULL);
++		up_read(&current->mm->mmap_sem);
++		if (result < 0)
++			break;
+ 
+ 		if ((unsigned)result < npages) {
+ 			bytes = result * PAGE_SIZE;
+@@ -869,7 +840,7 @@ static const struct nfs_pgio_completion_ops nfs_direct_write_completion_ops = {
+ 
+ static ssize_t nfs_direct_do_schedule_write_iovec(
+ 		struct nfs_pageio_descriptor *desc, const struct iovec *iov,
+-		unsigned long nr_segs, loff_t pos, bool uio)
++		unsigned long nr_segs, loff_t pos)
+ {
+ 	ssize_t result = -EINVAL;
+ 	size_t requested_bytes = 0;
+@@ -878,7 +849,7 @@ static ssize_t nfs_direct_do_schedule_write_iovec(
+ 	for (seg = 0; seg < nr_segs; seg++) {
+ 		const struct iovec *vec = &iov[seg];
+ 		result = nfs_direct_write_schedule_segment(desc, vec,
+-							   pos, uio);
++							   pos);
+ 		if (result < 0)
+ 			break;
+ 		requested_bytes += result;
+@@ -936,8 +907,7 @@ static ssize_t nfs_direct_do_schedule_write_bvec(
+ #endif /* CONFIG_BLOCK */
+ 
+ static ssize_t nfs_direct_write_schedule(struct nfs_direct_req *dreq,
+-					 struct iov_iter *iter, loff_t pos,
+-					 bool uio)
++					 struct iov_iter *iter, loff_t pos)
+ {
+ 	struct nfs_pageio_descriptor desc;
+ 	struct inode *inode = dreq->inode;
+@@ -953,7 +923,7 @@ static ssize_t nfs_direct_write_schedule(struct nfs_direct_req *dreq,
+ 
+ 	if (iov_iter_has_iovec(iter)) {
+ 		result = nfs_direct_do_schedule_write_iovec(&desc,
+-				iov_iter_iovec(iter), iter->nr_segs, pos, uio);
++				iov_iter_iovec(iter), iter->nr_segs, pos);
+ #ifdef CONFIG_BLOCK
+ 	} else if (iov_iter_has_bvec(iter)) {
+ 		result = nfs_direct_do_schedule_write_bvec(&desc,
+@@ -980,7 +950,7 @@ static ssize_t nfs_direct_write_schedule(struct nfs_direct_req *dreq,
+ }
+ 
+ static ssize_t nfs_direct_write(struct kiocb *iocb, struct iov_iter *iter,
+-				loff_t pos, bool uio)
++				loff_t pos)
+ {
+ 	ssize_t result = -ENOMEM;
+ 	struct inode *inode = iocb->ki_filp->f_mapping->host;
+@@ -1003,7 +973,7 @@ static ssize_t nfs_direct_write(struct kiocb *iocb, struct iov_iter *iter,
+ 	if (!is_sync_kiocb(iocb))
+ 		dreq->iocb = iocb;
+ 
+-	result = nfs_direct_write_schedule(dreq, iter, pos, uio);
++	result = nfs_direct_write_schedule(dreq, iter, pos);
+ 	if (!result)
+ 		result = nfs_direct_wait(dreq);
+ out_release:
+@@ -1033,7 +1003,7 @@ out:
+  * cache.
+  */
+ ssize_t nfs_file_direct_read(struct kiocb *iocb, struct iov_iter *iter,
+-			     loff_t pos, bool uio)
++			     loff_t pos)
+ {
+ 	ssize_t retval = -EINVAL;
+ 	struct file *file = iocb->ki_filp;
+@@ -1058,7 +1028,7 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, struct iov_iter *iter,
+ 
+ 	task_io_account_read(count);
+ 
+-	retval = nfs_direct_read(iocb, iter, pos, uio);
++	retval = nfs_direct_read(iocb, iter, pos);
+ 	if (retval > 0)
+ 		iocb->ki_pos = pos + retval;
+ 
+@@ -1088,7 +1058,7 @@ out:
+  * is no atomic O_APPEND write facility in the NFS protocol.
+  */
+ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter,
+-			      loff_t pos, bool uio)
++			      loff_t pos)
+ {
+ 	ssize_t retval = -EINVAL;
+ 	struct file *file = iocb->ki_filp;
+@@ -1120,7 +1090,7 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter,
+ 
+ 	task_io_account_write(count);
+ 
+-	retval = nfs_direct_write(iocb, iter, pos, uio);
++	retval = nfs_direct_write(iocb, iter, pos);
+ 	if (retval > 0) {
+ 		struct inode *inode = mapping->host;
+ 
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 28119c5..83cbc6c 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -179,7 +179,7 @@ nfs_file_read_iter(struct kiocb *iocb, struct iov_iter *iter, loff_t pos)
+ 	ssize_t result;
+ 
+ 	if (iocb->ki_filp->f_flags & O_DIRECT)
+-		return nfs_file_direct_read(iocb, iter, pos, true);
++		return nfs_file_direct_read(iocb, iter, pos);
+ 
+ 	dprintk("NFS: read_iter(%s/%s, %lu@%lu)\n",
+ 		dentry->d_parent->d_name.name, dentry->d_name.name,
+@@ -619,7 +619,7 @@ ssize_t nfs_file_write_iter(struct kiocb *iocb, struct iov_iter *iter,
+ 	size_t count = iov_iter_count(iter);
+ 
+ 	if (iocb->ki_filp->f_flags & O_DIRECT)
+-		return nfs_file_direct_write(iocb, iter, pos, true);
++		return nfs_file_direct_write(iocb, iter, pos);
+ 
+ 	dprintk("NFS: write_iter(%s/%s, %lu@%lld)\n",
+ 		dentry->d_parent->d_name.name, dentry->d_name.name,
+diff --git a/include/linux/blk_types.h b/include/linux/blk_types.h
+index cdf1119..3134079 100644
+--- a/include/linux/blk_types.h
++++ b/include/linux/blk_types.h
+@@ -174,7 +174,6 @@ enum rq_flag_bits {
+ 	__REQ_FLUSH_SEQ,	/* request for flush sequence */
+ 	__REQ_IO_STAT,		/* account I/O stat */
+ 	__REQ_MIXED_MERGE,	/* merge of different types, fail separately */
+-	__REQ_KERNEL, 		/* direct IO to kernel pages */
+ 	__REQ_NR_BITS,		/* stops here */
+ };
+ 
+@@ -222,6 +221,5 @@ enum rq_flag_bits {
+ #define REQ_IO_STAT		(1 << __REQ_IO_STAT)
+ #define REQ_MIXED_MERGE		(1 << __REQ_MIXED_MERGE)
+ #define REQ_SECURE		(1 << __REQ_SECURE)
+-#define REQ_KERNEL		(1 << __REQ_KERNEL)
+ 
+ #endif /* __LINUX_BLK_TYPES_H */
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 31d2e17..679c7cc 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -180,8 +180,6 @@ typedef void (dio_iodone_t)(struct kiocb *iocb, loff_t offset,
+ #define READ			0
+ #define WRITE			RW_MASK
+ #define READA			RWA_MASK
+-#define KERNEL_READ		(READ|REQ_KERNEL)
+-#define KERNEL_WRITE		(WRITE|REQ_KERNEL)
+ 
+ #define READ_SYNC		(READ | REQ_SYNC)
+ #define WRITE_SYNC		(WRITE | REQ_SYNC | REQ_NOIDLE)
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 9f8e8a9..6033367 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -446,9 +446,9 @@ extern int nfs3_removexattr (struct dentry *, const char *name);
+  */
+ extern ssize_t nfs_direct_IO(int, struct kiocb *, struct iov_iter *, loff_t);
+ extern ssize_t nfs_file_direct_read(struct kiocb *iocb, struct iov_iter *iter,
+-			loff_t pos, bool uio);
++			loff_t pos);
+ extern ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter,
+-			loff_t pos, bool uio);
++			loff_t pos);
+ 
+ /*
+  * linux/fs/nfs/dir.c
+diff --git a/mm/page_io.c b/mm/page_io.c
+index 33da274..60a5503 100644
+--- a/mm/page_io.c
++++ b/mm/page_io.c
+@@ -203,14 +203,14 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
+ 	if (sis->flags & SWP_FILE) {
+ 		struct kiocb kiocb;
+ 		struct file *swap_file = sis->swap_file;
+-		struct address_space *mapping = swap_file->f_mapping;
+-		struct iovec iov = {
+-			.iov_base = kmap(page),
+-			.iov_len  = PAGE_SIZE,
++		struct bio_vec bvec = {
++			.bv_page = kmap(page),
++			.bv_len = PAGE_SIZE,
++			.bv_offset = 0,
+ 		};
+ 		struct iov_iter iter;
+ 
+-		iov_iter_init(&iter, &iov, 1, PAGE_SIZE, 0);
++		iov_iter_init_bvec(&iter, &bvec, 1, PAGE_SIZE, 0);
+ 
+ 		init_sync_kiocb(&kiocb, swap_file);
+ 		kiocb.ki_pos = page_file_offset(page);
+@@ -218,8 +218,7 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
+ 		kiocb.ki_nbytes = PAGE_SIZE;
+ 
+ 		unlock_page(page);
+-		ret = mapping->a_ops->direct_IO(KERNEL_WRITE, &kiocb, &iter,
+-						kiocb.ki_pos);
++		ret = swap_file->f_op->write_iter(&kiocb, &iter, kiocb.ki_pos);
+ 		kunmap(page);
+ 		if (ret == PAGE_SIZE) {
+ 			count_vm_event(PSWPOUT);
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+1.8.1
 
