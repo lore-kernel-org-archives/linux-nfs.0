@@ -1,86 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41021 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:49818 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753019Ab3AYV5N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2013 16:57:13 -0500
-Date: Fri, 25 Jan 2013 16:57:12 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Ben Myers <bpm@sgi.com>, Olga Kornievskaia <aglo@citi.umich.edu>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Jim Rees <rees@umich.edu>
-Subject: Re: sunrpc: socket buffer size tuneable
-Message-ID: <20130125215712.GJ29596@fieldses.org>
-References: <20130125192935.GA32470@sgi.com>
- <20130125202107.GD29596@fieldses.org>
- <20130125203507.GW30652@sgi.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91833BF5A@sacexcmbx05-prd.hq.netapp.com>
- <20130125212106.GH29596@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91833BFAB@sacexcmbx05-prd.hq.netapp.com>
- <20130125213503.GI29596@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91833BFFE@sacexcmbx05-prd.hq.netapp.com>
+	id S1753818Ab3AJPZk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Jan 2013 10:25:40 -0500
+Date: Thu, 10 Jan 2013 10:25:37 -0500
+To: Hemmo Nieminen <hemmo.nieminen@iki.fi>
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com,
+        Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [nfs-utils PATCH] Binding a privileged port in rpc.statd.
+Message-ID: <20130110152537.GD15401@fieldses.org>
+References: <20130110142710.GA2544@fcku.lan>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91833BFFE@sacexcmbx05-prd.hq.netapp.com>
+In-Reply-To: <20130110142710.GA2544@fcku.lan>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 25, 2013 at 09:45:12PM +0000, Myklebust, Trond wrote:
-> > -----Original Message----- From: J. Bruce Fields
-> > [mailto:bfields@fieldses.org] Sent: Friday, January 25, 2013 4:35 PM
-> > To: Myklebust, Trond Cc: Ben Myers; Olga Kornievskaia;
-> > linux-nfs@vger.kernel.org; Jim Rees Subject: Re: sunrpc: socket
-> > buffer size tuneable
-> > 
-> > On Fri, Jan 25, 2013 at 09:29:09PM +0000, Myklebust, Trond wrote:
-> > > > -----Original Message----- From: J. Bruce Fields
-> > > > [mailto:bfields@fieldses.org] Sent: Friday, January 25, 2013
-> > > > 4:21 PM To: Myklebust, Trond Cc: Ben Myers; Olga Kornievskaia;
-> > > > linux-nfs@vger.kernel.org; Jim Rees Subject: Re: sunrpc: socket
-> > > > buffer size tuneable
-> > > >
-> > > > On Fri, Jan 25, 2013 at 09:12:55PM +0000, Myklebust, Trond
-> > > > wrote:
-> > >
-> > > > > Why is it not sufficient to clamp the TCP values of 'snd' and
-> > > > > 'rcv' using
-> > > > sysctl_tcp_wmem/sysctl_tcp_rmem?
-> > > > > ...and clamp the UDP values using
-> > > > sysctl_[wr]mem_min/sysctl_[wr]mem_max?.
-> > > >
-> > > > Yeah, I was just looking at that--so, Ben, something like:
-> > > >
-> > > > 	echo "1048576 1048576 4194304"
-> > > > 	>/proc/sys/net/ipv4/tcp_wmem
-> > > >
-> > > > But I'm unclear on some of the details: do we need to set the
-> > > > minimum or only the default?  And does it need any more
-> > > > allowance for protocol overhead?
-> > >
-> > > I meant adding a check either to svc_sock_setbufsize or to the 2
-> > > call-sites
-> > that enforces the above limits.
-> > 
-> > I lost you.
-> > 
-> > It's not svc_sock_setbufsize that's setting too-small values, if
-> > that's what you mean.
-> > 
+On Thu, Jan 10, 2013 at 04:27:10PM +0200, Hemmo Nieminen wrote:
+> Hi,
 > 
-> I understood that the problem was svc_udp_recvfrom() and
-> svc_setup_socket() were using negative values in the calls to
-> svc_sock_setbufsize().  Looking again at svc_setup_socket(), I don't
-> see how that could do so, but svc_udp_recvfrom() definitely has
-> potential to cause damage.
+> It seems that rpc.statd will fail to bind to a (free) port, if
+> the first port it receives is listed in /etc/services. The
+> bindresvport will keep on returning the same port if we close
+> the socket too early.
+> 
+> The attached patch should fix this.
 
-Right, the changelog was confusing, the problem they're actually hitting
-is with tcp.  Looks like tcp autotuning is decreasing the send buffer
-below the size we requested in svc_sock_setbufsize().
-
---b.
+Looks right to me.--b.
 
 > 
-> The TCP layer should be taking care to always clamp the send/receive
-> buffer sizes in tcp_new_space(),tcp_clamp_window(), etc...
+> -- 
+> Hemmo
+
+> >From abdaa0c27d66c71c9500b983fc4366cb3e514fff Mon Sep 17 00:00:00 2001
+> From: Hemmo Nieminen <hemmo.nieminen@iki.fi>
+> Date: Thu, 3 Jan 2013 10:00:17 +0200
+> Subject: [PATCH] Fix socket binding loop.
 > 
-> Trond
+> Instead of closing the sockets before requesting a new one, keep them
+> open until a suitable one is found. Otherwise bindresvport will return
+> the same port over and over again.
+> ---
+>  utils/statd/rmtcall.c | 19 +++++++++++++------
+>  1 file changed, 13 insertions(+), 6 deletions(-)
+> 
+> diff --git a/utils/statd/rmtcall.c b/utils/statd/rmtcall.c
+> index 4ecb03c..fd576d9 100644
+> --- a/utils/statd/rmtcall.c
+> +++ b/utils/statd/rmtcall.c
+> @@ -68,21 +68,19 @@ statd_get_socket(void)
+>  {
+>  	struct sockaddr_in	sin;
+>  	struct servent *se;
+> -	int loopcnt = 100;
+> +	const int loopcnt = 100;
+> +	int i, tmp_sockets[loopcnt];
+>  
+>  	if (sockfd >= 0)
+>  		return sockfd;
+>  
+> -	while (loopcnt-- > 0) {
+> -
+> -		if (sockfd >= 0) close(sockfd);
+> +	for (i = 0; i < loopcnt; ++i) {
+>  
+>  		if ((sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
+>  			xlog(L_ERROR, "%s: Can't create socket: %m", __func__);
+> -			return -1;
+> +			break;
+>  		}
+>  
+> -
+>  		memset(&sin, 0, sizeof(sin));
+>  		sin.sin_family = AF_INET;
+>  		sin.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+> @@ -96,7 +94,16 @@ statd_get_socket(void)
+>  		if (se == NULL)
+>  			break;
+>  		/* rather not use that port, try again */
+> +
+> +		tmp_sockets[i] = sockfd;
+>  	}
+> +
+> +	while (--i >= 0)
+> +		close(tmp_sockets[i]);
+> +
+> +	if (sockfd < 0)
+> +		return -1;
+> +
+>  	FD_SET(sockfd, &SVC_FDSET);
+>  	return sockfd;
+>  }
+> -- 
+> 1.8.1
+> 
+
