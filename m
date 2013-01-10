@@ -1,26 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f50.google.com ([74.125.83.50]:52843 "EHLO
-	mail-ee0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753797Ab3AUOw7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2013 09:52:59 -0500
-Received: by mail-ee0-f50.google.com with SMTP id e51so2974427eek.23
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Jan 2013 06:52:58 -0800 (PST)
-Message-ID: <50FD5646.4020206@tonian.com>
-Date: Mon, 21 Jan 2013 16:52:54 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from natasha.panasas.com ([67.152.220.90]:35405 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751113Ab3AJO1g (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jan 2013 09:27:36 -0500
+Message-ID: <50EECFCA.1050706@panasas.com>
+Date: Thu, 10 Jan 2013 16:27:22 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-To: NFS list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 0/9] pnfsd fixes
-Content-Type: text/plain; charset=ISO-8859-1
+CC: amirfrankel <notifications@github.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [nfs-ganesha] For next (#5)
+References: <nfs-ganesha/nfs-ganesha/pull/5@github.com> <nfs-ganesha/nfs-ganesha/pull/5/c12098228@github.com>
+In-Reply-To: <nfs-ganesha/nfs-ganesha/pull/5/c12098228@github.com>
+Content-Type: text/plain; charset="UTF-8"
+To: unlisted-recipients:; (no To-header on input)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-[PATCH 1/9] SQUASHME: pnfsd: fix lrs_present calculation
-[PATCH 2/9] SQUASHME: pnfsd: return_on_close all layout segments
-[PATCH 3/9] SQUASHME: pnfsd: do not dequeue layout state on
-[PATCH 4/9] SQUASHME: pnfsd: remove fs_layout_return sb parameter
-[PATCH 5/9] SQUASHME: pnfsd: fix locking around fs_layout_return
-[PATCH 6/9] pnfsd: LR_FLAG_CL_EMPTY layout return flag
-[PATCH 7/9] pnfsd: LR_FLAG_EMPTY layout return flag
-[PATCH 8/9] SQUASHME: pnfsd: Something very wrong with
-[PATCH 9/9] SQUASHME: pnfsd: no use for fi_layout_states list
+On 01/10/2013 04:16 PM, amirfrankel wrote:
+> Another order patch (remove duplicate function from HashTable.
+> I also fixed a bug in locks in state_wipe_file - I think it is important to add it to the version.
+> 
+> —
+> Reply to this email directly or view it on GitHub <https://github.com/nfs-ganesha/nfs-ganesha/pull/5#issuecomment-12098228>.
+> 
+
+How are you sending these mails. Do I get them because I'm on git hub or through the
+mailing list?
+
+because if I "reply" It gets bounced all over the place.
+
+If this is sent through the list then please do a better email that actually
+shows me a link to the patch, the one I get here is to your tree and I now
+need to search for it in the long list.
+
+Thanks
+Boaz
+
