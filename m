@@ -1,52 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:37816 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752923Ab3AXEEH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2013 23:04:07 -0500
-Message-ID: <5100B12B.1090706@davequigley.com>
-Date: Wed, 23 Jan 2013 22:57:31 -0500
-From: Dave Quigley <selinux@davequigley.com>
+Received: from mx12.netapp.com ([216.240.18.77]:36765 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753679Ab3AKTT5 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jan 2013 14:19:57 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Samuel Li <samuel.li@isilon.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: nlm svid changes from pid --> nlm_lockowner
+Date: Fri, 11 Jan 2013 19:19:54 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91199BC94@SACEXCMBX04-PRD.hq.netapp.com>
+References: <50F05FFE.1020901@isilon.com>
+In-Reply-To: <50F05FFE.1020901@isilon.com>
+Content-Type: text/plain; charset="utf-7"
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Steve Dickson <steved@redhat.com>, "J. Bruce Fields" <bfields@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>, jmorris@namei.org,
-        Stephen Smalley <sds@tycho.nsa.gov>, eparis@redhat.com
-Subject: Re: [PATCH 03/14] LSM: Add flags field to security_sb_set_mnt_opts
- for in kernel mount data.
-References: <1358862042-27520-1-git-send-email-steved@redhat.com>  <1358862042-27520-4-git-send-email-steved@redhat.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9183324A2@sacexcmbx05-prd.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9183324A2@sacexcmbx05-prd.hq.netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 1/23/2013 1:35 PM, Myklebust, Trond wrote:
-> On Tue, 2013-01-22 at 08:40 -0500, Steve Dickson wrote:
->> From: David Quigley <dpquigl@davequigley.com>
->>
->> There is no way to differentiate if a text mount option is passed from user
->> space or the kernel. A flags field is being added to the
->> security_sb_set_mnt_opts hook to allow for in kernel security flags to be sent
->> to the LSM for processing in addition to the text options received from mount.
->> This patch also updated existing code to fix compilation errors.
->>
->> Signed-off-by: David P. Quigley <dpquigl@tycho.nsa.gov>
->> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
->> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
->> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
->> ---
->>   fs/nfs/super.c           |  3 ++-
->>   include/linux/security.h | 13 ++++++++++---
->>   security/capability.c    |  5 ++++-
->>   security/security.c      |  7 +++++--
->>   security/selinux/hooks.c | 12 ++++++++++--
->>   5 files changed, 31 insertions(+), 9 deletions(-)
->>
-> Ditto. Need Acks from James, Stephen and Eric.
->
+On Fri, 2013-01-11 at 13:54 -0500, Samuel Li wrote:
++AD4- A simple question with NLM svid implementation with after 2.6.16 or later.
++AD4- 
++AD4- In the old days when linux client request and NLM lock it submits a
++AD4- svid with the content of the client pid. However this appears to have
++AD4- changed a few year ago and I get an incremental number starting from 0.
++AD4- 
++AD4- from the NLM server side we only report the content of svid. I am trying 
++AD4- to find a way to identify the end user application request.
++AD4- 
++AD4- for example
++AD4- 
++AD4- +AFs-sli+AEA-fed16-vm nfs3+AF0AIw- ./gwaiting +ACY- ./gwaiting +ACY- ./gwaiting +ACY-  (excl lock 
++AD4- programs)
++AD4- +AFs-2+AF0- 977  +ADw---pid
++AD4- +AFs-3+AF0- 978
++AD4- +AFs-4+AF0- 979
++AD4- 
++AD4-     tshark -i eth0 -R +ACI-nlm+ACI- -V +AHw- grep -i svid
++AD4- OOPS: dissector table +ACI-sctp.ppi+ACI- doesn't exist
++AD4- Protocol being registered is +ACI-Datagram Transport Layer Security+ACI-
++AD4- Running as user +ACI-root+ACI- and group +ACI-root+ACI-. This could be dangerous.
++AD4- Capturing on eth0
++AD4-            svid: 4
++AD4-            svid: 3
++AD4-            svid: 5
++AD4-            svid: 3
++AD4-            svid: 4
++AD4-            svid: 4
++AD4-            svid: 4
++AD4-            svid: 5
++AD4-            svid: 5
++AD4- 
++AD4- How do I determine from the client side who owns these NLM processes?
++AD4- 
++AD4- The file lock in question was
++AD4- inode 4318756868 so I could determine the lock.
++AD4- 
++AD4- cat /proc/locks
++AD4- 1: POSIX  ADVISORY  WRITE 979 00:2a:4315692708 0 EOF
++AD4- 1: -+AD4- ACCESS ADVISORY  WRITE 978 00:2a:4315692708 0 EOF
++AD4- 2: POSIX  ADVISORY  WRITE 1778 00:10:16424 0 EOF
++AD4- 3: POSIX  ADVISORY  WRITE 1677 00:10:18376 0 EOF
++AD4- 
++AD4- Now assume I did not have the output of /proc/locks and only 
++AD4- nlm+AF8-lockowner number how would I debug this?
 
-Adding James Morris, Steve Smalley, and Eric Paris for an ACK. These 
-patches have been reviewed on the security list many times in the past 
-and we're just now trying to get them mainlined again. All past comments 
-were addressed in them.
+The POSIX lock inheritance rules under the clone() system call (where
+POSIX locks must follow the file descriptor table and +AF8-not+AF8- the pid
+inheritance rules) mean that the svid does not map naturally into a pid.
+So post-2.6.16 we no longer try to pretend that is the case.
 
+The bottom line is that you can use the svid as a debugging tool for
+figuring out which locks belong to the same lock owner, but you cannot
+map it to a pid.
 
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust+AEA-netapp.com
+www.netapp.com
