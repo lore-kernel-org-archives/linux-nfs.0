@@ -1,93 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55235 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754154Ab3APTta (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Jan 2013 14:49:30 -0500
-Date: Wed, 16 Jan 2013 14:49:29 -0500
-To: Paul Raines <raines@nmr.mgh.harvard.edu>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFS failover works RHEL6->5 but fails RHEL5->6
-Message-ID: <20130116194929.GB5002@fieldses.org>
-References: <alpine.LRH.2.00.1301101446340.26983@gate.nmr.mgh.harvard.edu>
+Received: from relay.parallels.com ([195.214.232.42]:48477 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754850Ab3AKO5D (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jan 2013 09:57:03 -0500
+Message-ID: <50F0283A.6040509@parallels.com>
+Date: Fri, 11 Jan 2013 18:56:58 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <alpine.LRH.2.00.1301101446340.26983@gate.nmr.mgh.harvard.edu>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        <devel@openvz.org>
+Subject: Re: [Devel] [PATCH 2/6] nfsd: swap fs root in NFSd kthreads
+References: <20121206153204.30693.11408.stgit@localhost.localdomain> <20121206153447.30693.54128.stgit@localhost.localdomain> <20121210202842.GB17350@fieldses.org> <50C73C60.8060405@parallels.com> <50C73F58.1080005@parallels.com> <20121211145621.GA3336@fieldses.org> <50C74C14.8030807@parallels.com> <20121211152036.GB3336@fieldses.org> <20121211153527.GC3336@fieldses.org>
+In-Reply-To: <20121211153527.GC3336@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 10, 2013 at 03:12:33PM -0500, Paul Raines wrote:
-> 
-> I have an IBM GPFS cluster of 8 servers on shared SAN running RHEL5.
-> They use GPFS's included Clustered NFS (CNFS) to load balance NFS to
-> clients via round-robin DNS and autofs.  This has worked fine for 3
-> years.  Recently I upgraded one of the boxes to RHEL6.  Base GPFS
-> works fine on it.  But CNFS does not.  My first issue was that once
-> CNFS was running on the RHEL6 server, it refused all mounts with the
-> error in the syslog of:
-> 
-> rpc.mountd[16482]: authenticated mount request from
->   bourget.nmr.mgh.harvard.edu:626 for /gpfs/nsdg01/itgroup
->   (/gpfs/nsdg01/itgroup)
-> rpc.mountd[16482]: internal: no supported addresses in nfs_client
-> rpc.mountd[16482]: getfh failed: Operation notpermitted
-> 
-> So I started a service ticket with IBM but got nowhere with them.
-> I eventually found this on the web about a bug in cltsetup()
-> 
-> http://comments.gmane.org/gmane.linux.nfs/41432
-> 
-> I applied this patch to the stock RHEL6 nfs-utils source and rebuilt
-> and the above problem went away.
-> 
-> The curious thing about this patch is I did not have the problem
-> when running RHEL6 NFS outside of GPFS nor did IBM have the problem
-> with CNFS on their test systems on RHEL6.  So it is a mystery what
-> was triggering it for me.  I mention this only in case it has
-> bearing on the current problem that has me stuck.
-> 
-> With CNFS running and allowing mounts on the RHEL6 box, I killed the
-> box. Everything failed over fine to one of the old RHEL5 servers.
-> Clients that had mounted NFS shares from the RHEL6 box could still
-> see them.  I then brought the RHEL6 box back up which retook the
-> virtual IP assigned to it.  But then client mounts now failed with
-> "Stale NFS file handle"
-> 
-> So essentially NFS failover from RHEL5 to the RHEL6 box of NFS fails
-> (but works the other way). And before you ask, yes, the /etc/exports
-> on all boxes are exactly the same and have the same "fsid=" assigned
-> on all shares.
-> 
-> IBM does not see this problem on their test systems.  They have no idea
-> and are just having me do "shot in the dark" upgrades and downgrades
-> on various things.
-> 
-> I am hoping someone on this list knows what a "Stale NFS file handle"
-> means in this situation when it is not a FSID mismatch that might
-> point me in a direction of what could be going wrong.
-> 
-> In case it helps here is a tcpdump of the packets on the server when
-> the Stale NFS file handle error happens
-> 
-> 15:08:04.543680 IP bourget.nmr.mgh.harvard.edu.12492987 >
-> gpfstest.nmr.mgh.harvard.edu.nfs: 112 getattr fh Unknown/01000100978A0100000000000000000000000000000000000000000000000000
-> 15:08:04.543721 IP gpfstest.nmr.mgh.harvard.edu.nfs >
-> bourget.nmr.mgh.harvard.edu.12492987: reply ok 28 getattr ERROR:
-> Stale NFS file handle
-> 15:08:04.544494 IP bourget.nmr.mgh.harvard.edu.979 >
-> gpfstest.nmr.mgh.harvard.edu.nfs: Flags [.], ack 1811398839, win
-> 1460, options [nop,nop,TS val 2056226500 ecr 1989675411], length 0
-> 
-> Also, if I bring down the RHEL6 box, so the failover occurs again to one
-> of the RHEL5 boxes, the client mount starts working again.
+11.12.2012 19:35, J. Bruce Fields пишет:
+> On Tue, Dec 11, 2012 at 10:20:36AM -0500, J. Bruce Fields wrote:
+>> On Tue, Dec 11, 2012 at 07:07:00PM +0400, Stanislav Kinsbursky wrote:
+>>> I don't really understand, how  mountd's root can be wrong. I.e.
+>>> its' always right as I see it. NFSd kthreads have to swap/use
+>>> relative path/whatever to communicate with proper mountd.
+>>> Or I'm missing something?
+>>
+>> Ugh, I see the problem: I thought svc_export_request was called at the
+>> time mountd does the read, but instead its done at the time nfsd does
+>> the upcall.
+>>
+>> I suspect that's wrong, and we really want this done in the context of
+>> the mountd process when it does the read call.  If d_path is called
+>> there then we have no problem.
+>
+> Right, so I'd be happier if we could modify sunrpc_cache_pipe_upcall to
+> skip calling cache_request and instead delay that until cache_read().  I
+> think that should be possible.
+>
 
-This really seems like a question for Red Hat or IBM support, but:
+So, Bruce, what we going to do (or what you want me to do) with the rest of NFSd changes?
+I.e. how I should solve this d_path() problem?
+I.e. I don't understand what did you mean by "I'd be happier if we could modify sunrpc_cache_pipe_upcall to
+skip calling cache_request and instead delay that until cache_read()".
+Could you give me a hint?
 
-It might be interesting to see the output of
+> --b.
+>
 
-	cat /proc/net/rpc/nfsd.fh/content
-	cat /proc/net/rpc/nfsd.export/content
 
-on the RHEL6 box just after reproducing the failure.
-
---b.
+-- 
+Best regards,
+Stanislav Kinsbursky
