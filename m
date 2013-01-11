@@ -1,88 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f175.google.com ([209.85.161.175]:54796 "EHLO
-	mail-gg0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750906Ab3A1TmF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2013 14:42:05 -0500
-Received: by mail-gg0-f175.google.com with SMTP id l1so468277ggn.6
-        for <linux-nfs@vger.kernel.org>; Mon, 28 Jan 2013 11:42:04 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 12/16] nfsd: when updating an entry with RC_NOCACHE, just free it
-Date: Mon, 28 Jan 2013 14:41:18 -0500
-Message-Id: <1359402082-29195-13-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
-References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:22390 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1753570Ab3AKJnt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Jan 2013 04:43:49 -0500
+Message-ID: <50EFDEEA.4040201@cn.fujitsu.com>
+Date: Fri, 11 Jan 2013 17:44:10 +0800
+From: fanchaoting <fanchaoting@cn.fujitsu.com>
+MIME-Version: 1.0
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        wireshark-dev@wireshark.org
+Subject: [PATCH] wireshark: can't decode callback if didn't caught CREATE_SESSION
+ and SETCLIENTID packets before
+Content-Type: multipart/mixed;
+ boundary="------------060006050406040401020606"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There's no need to keep entries around that we're declaring RC_NOCACHE.
-Ditto if there's a problem with the entry.
 
-With this change too, there's no need to test for RC_UNUSED in the
-search function. If the entry's in the hash table then it's either
-INPROG or DONE.
+--------------060006050406040401020606
+Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=ISO-2022-JP
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+now i found that nfs kernel use 0x40000000 as callback program number.
+the CREATE_SESSION and SETCLIENTID use 0x40000000 as callback program number,
+and they didn't change it.
+
+but i found that i use wireshark to decode nfsv4 callback procedures, it didn't
+decode them if the wireshark or tcpdump didn't caught CREATE_SESSION and SETCLIENTID
+packets before.
+
+Signed-off-by: Fan Chaoting <fanchaoting@cn.fujitsu.com>
+
 ---
- fs/nfsd/nfscache.c | 18 ++++++++++++++----
- 1 file changed, 14 insertions(+), 4 deletions(-)
+ epan/dissectors/packet-nfs.c |   10 ++++------
+ 1 file changed, 4 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index 5a39b82..6b4693c 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -66,6 +66,14 @@ nfsd_reply_cache_free_locked(struct svc_cacherep *rp)
- 	kmem_cache_free(drc_slab, rp);
- }
- 
-+static void
-+nfsd_reply_cache_free(struct svc_cacherep *rp)
-+{
-+	spin_lock(&cache_lock);
-+	nfsd_reply_cache_free_locked(rp);
-+	spin_unlock(&cache_lock);
-+}
-+
- int nfsd_reply_cache_init(void)
+diff --git a/epan/dissectors/packet-nfs.c b/epan/dissectors/packet-nfs.c
+index 63d1019..7b5ec88 100644
+--- a/epan/dissectors/packet-nfs.c
++++ b/epan/dissectors/packet-nfs.c
+@@ -7979,10 +7979,7 @@ dissect_nfs_cb_client4(tvbuff_t *tvb, int offset, proto_tree *tree)
  {
- 	drc_slab = kmem_cache_create("nfsd_drc", sizeof(struct svc_cacherep),
-@@ -148,8 +156,7 @@ nfsd_cache_search(struct svc_rqst *rqstp)
+ 	proto_tree *cb_location = NULL;
+ 	proto_item *fitem = NULL;
+-	int cbprog;
  
- 	rh = &cache_hash[request_hash(xid)];
- 	hlist_for_each_entry(rp, hn, rh, c_hash) {
--		if (rp->c_state != RC_UNUSED &&
--		    xid == rp->c_xid && proc == rp->c_proc &&
-+		if (xid == rp->c_xid && proc == rp->c_proc &&
- 		    proto == rp->c_prot && vers == rp->c_vers &&
- 		    !nfsd_cache_entry_expired(rp) &&
- 		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
-@@ -311,7 +318,7 @@ nfsd_cache_update(struct svc_rqst *rqstp, int cachetype, __be32 *statp)
+-	cbprog = tvb_get_ntohl(tvb, offset);
+-	reg_callback(cbprog);
+ 	offset = dissect_rpc_uint32(tvb, tree, hf_nfs_cb_program, offset);
+ 	fitem = proto_tree_add_text(tree, tvb, offset, 0, "cb_location");
  
- 	/* Don't cache excessive amounts of data and XDR failures */
- 	if (!statp || len > (256 >> 2)) {
--		rp->c_state = RC_UNUSED;
-+		nfsd_reply_cache_free(rp);
- 		return;
- 	}
+@@ -8991,7 +8988,6 @@ dissect_nfs_argop4(tvbuff_t *tvb, int offset, packet_info *pinfo,
+ 	proto_tree *ftree = NULL;
+ 	proto_tree *newftree = NULL;
+ 	guint32 string_length;
+-	int cbprog;
+ 	const char *name = NULL, *source_name = NULL, *dest_name=NULL;
+ 	const char *opname=NULL;
+ 	guint32 last_fh_hash=0;
+@@ -9012,6 +9008,10 @@ dissect_nfs_argop4(tvbuff_t *tvb, int offset, packet_info *pinfo,
+ 		"Operations (count: %u)", ops);
+ 	offset += 4;
  
-@@ -325,12 +332,15 @@ nfsd_cache_update(struct svc_rqst *rqstp, int cachetype, __be32 *statp)
- 		cachv = &rp->c_replvec;
- 		cachv->iov_base = kmalloc(len << 2, GFP_KERNEL);
- 		if (!cachv->iov_base) {
--			rp->c_state = RC_UNUSED;
-+			nfsd_reply_cache_free(rp);
- 			return;
- 		}
- 		cachv->iov_len = len << 2;
- 		memcpy(cachv->iov_base, statp, len << 2);
- 		break;
-+	case RC_NOCACHE:
-+		nfsd_reply_cache_free(rp);
-+		return;
- 	}
- 	spin_lock(&cache_lock);
- 	lru_put_end(rp);
++	 /*Now the nfs use '0x40000000' as callback's program number.*/
++#define CB_PROG 0x40000000
++	reg_callback(CB_PROG);
++
+ #define MAX_NFSV4_OPS 128
+ 
+ 	if (ops > MAX_NFSV4_OPS) {
+@@ -9469,8 +9469,6 @@ dissect_nfs_argop4(tvbuff_t *tvb, int offset, packet_info *pinfo,
+ 			offset = dissect_nfs_create_session_flags(tvb, offset, newftree, hf_nfs_create_session_flags_csa);
+ 			offset = dissect_rpc_chanattrs4(tvb, offset, newftree, "csa_fore_chan_attrs");
+ 			offset = dissect_rpc_chanattrs4(tvb, offset, newftree, "csa_back_chan_attrs");
+-			cbprog = tvb_get_ntohl(tvb, offset);
+-			reg_callback(cbprog);
+ 			offset = dissect_rpc_uint32(tvb, newftree, hf_nfs_cb_program, offset);
+ 			offset = dissect_rpc_secparms4(tvb, offset, newftree);
+ 			break;
 -- 
-1.7.11.7
+1.7.10.1
+
+--------------060006050406040401020606
+Content-Type: application/octet-stream;
+ name="callback.pcap"
+Content-Disposition: attachment;
+ filename="callback.pcap"
+Content-Transfer-Encoding: base64
+
+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
+
+
+--------------060006050406040401020606--
 
