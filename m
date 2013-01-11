@@ -1,59 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f44.google.com ([209.85.220.44]:48887 "EHLO
-	mail-pa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752052Ab3AWVna (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2013 16:43:30 -0500
-Subject: Re: 3.7.3+:  Bad paging request in ip_rcv_finish while running NFS
- traffic.
-From: Eric Dumazet <eric.dumazet@gmail.com>
-To: Ben Greear <greearb@candelatech.com>
-Cc: netdev <netdev@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-In-Reply-To: <510028A7.1080902@candelatech.com>
-References: <50FDADF4.3060601@candelatech.com>
-	 <50FDDE35.7070806@candelatech.com>
-	 <1358829606.3464.3151.camel@edumazet-glaptop>
-	 <50FE2A57.3040804@candelatech.com>  <50FEC796.5090404@candelatech.com>
-	 <1358875020.3464.4006.camel@edumazet-glaptop>
-	 <1358875607.3464.4020.camel@edumazet-glaptop>
-	 <50FF102F.2050008@candelatech.com>  <50FF4BC9.1060206@candelatech.com>
-	 <1358921493.12374.737.camel@edumazet-glaptop>
-	 <50FF8DEC.9070901@candelatech.com>
-	 <1358948110.12374.748.camel@edumazet-glaptop>
-	 <510028A7.1080902@candelatech.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 23 Jan 2013 13:43:28 -0800
-Message-ID: <1358977408.12374.1093.camel@edumazet-glaptop>
-Mime-Version: 1.0
+Received: from fieldses.org ([174.143.236.118]:35942 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754077Ab3AKRDO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Jan 2013 12:03:14 -0500
+Date: Fri, 11 Jan 2013 12:03:12 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org, devel@openvz.org
+Subject: Re: [Devel] [PATCH 2/6] nfsd: swap fs root in NFSd kthreads
+Message-ID: <20130111170312.GF17909@fieldses.org>
+References: <20121206153204.30693.11408.stgit@localhost.localdomain>
+ <20121206153447.30693.54128.stgit@localhost.localdomain>
+ <20121210202842.GB17350@fieldses.org>
+ <50C73C60.8060405@parallels.com>
+ <50C73F58.1080005@parallels.com>
+ <20121211145621.GA3336@fieldses.org>
+ <50C74C14.8030807@parallels.com>
+ <20121211152036.GB3336@fieldses.org>
+ <20121211153527.GC3336@fieldses.org>
+ <50F0283A.6040509@parallels.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <50F0283A.6040509@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2013-01-23 at 10:15 -0800, Ben Greear wrote:
-> On 01/23/2013 05:35 AM, Eric Dumazet wrote:
-> > On Tue, 2013-01-22 at 23:14 -0800, Ben Greear wrote:
+On Fri, Jan 11, 2013 at 06:56:58PM +0400, Stanislav Kinsbursky wrote:
+> 11.12.2012 19:35, J. Bruce Fields пишет:
+> >On Tue, Dec 11, 2012 at 10:20:36AM -0500, J. Bruce Fields wrote:
+> >>On Tue, Dec 11, 2012 at 07:07:00PM +0400, Stanislav Kinsbursky wrote:
+> >>>I don't really understand, how  mountd's root can be wrong. I.e.
+> >>>its' always right as I see it. NFSd kthreads have to swap/use
+> >>>relative path/whatever to communicate with proper mountd.
+> >>>Or I'm missing something?
+> >>
+> >>Ugh, I see the problem: I thought svc_export_request was called at the
+> >>time mountd does the read, but instead its done at the time nfsd does
+> >>the upcall.
+> >>
+> >>I suspect that's wrong, and we really want this done in the context of
+> >>the mountd process when it does the read call.  If d_path is called
+> >>there then we have no problem.
 > >
-> >> How are the non-ref-counted dst objects used safely?  Any chance
-> >> that tearing down the IP protocol on a device (or deleting a device)
-> >> could delete a dst that is referenced by an skb (and thus crashes as
-> >> I see)?
+> >Right, so I'd be happier if we could modify sunrpc_cache_pipe_upcall to
+> >skip calling cache_request and instead delay that until cache_read().  I
+> >think that should be possible.
 > >
-> > There is probably a bug. Normally it should be RCU protected.
 > 
-> I'm building net-next, and will do some testing on it later today
-> if all goes well.
-> 
-> In the meantime, a few questions about RCU.
-> 
-> If the non-ref-counted dst is protected by RCU, does that mean
-> that from the time we acquire the pointer (ie, set it in the skb),
-> to the time we clear the pointer from the skb, we must be under
-> RCU read lock?
-> 
-> If so, that means that ip_rcv_finish must be called under RCU
-> read lock, etc?
+> So, Bruce, what we going to do (or what you want me to do) with the rest of NFSd changes?
+> I.e. how I should solve this d_path() problem?
+> I.e. I don't understand what did you mean by "I'd be happier if we could modify sunrpc_cache_pipe_upcall to
+> skip calling cache_request and instead delay that until cache_read()".
+> Could you give me a hint?
 
-Obviously yes.  Check skb_dst_force() for the rare cases we want to
-escape the RCU section.
+Definitely.  So normally the way these upcalls happen are:
 
+	1. the kernel does a cache lookup, finds no matching item, and
+	   calls sunrpc_cache_pipe_upcall().
+	2. sunrpc_cache_pipe_upcall() formats the upcall: it allocates a
+	   struct cache_request crq and fills crq->buf with the upcall
+	   data by calling the cache's ->cache_request() method.
+	3. Then rpc.mountd realizes there's data available in
+	   /proc/net/rpc/nfsd.fh/content, so it does a read on that file.
+	4. cache_read copies the formatted upcall from crq->buf to
+	   to userspace.
 
+So all I'm suggesting is that instead of calling ->cache_request() at
+step 2, we do it at step 4.
 
+Then cache_request will be called from rpc.mountd's read.  So we'll know
+which container rpc.mountd is in.
+
+Does that make sense?
+
+--b.
