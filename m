@@ -1,121 +1,136 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.agmk.net ([91.192.224.71]:33193 "EHLO mail.agmk.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756667Ab3APTDV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jan 2013 14:03:21 -0500
-From: =?utf-8?B?UGF3ZcWC?= Sikora <pawel.sikora@agmk.net>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org, baggins@pld-linux.org,
-        Trond.Myklebust@netapp.com
-Subject: Re: mount.nfs: cannot allocate memory.
-Date: Wed, 16 Jan 2013 20:03:14 +0100
-Message-ID: <1435172.ktCUaNjhdC@localhost>
-In-Reply-To: <2367820.SDlsSOm8Xm@localhost>
-References: <2891788.0SBnrhN2VX@pawels> <50EADFED.1070505@RedHat.com> <2367820.SDlsSOm8Xm@localhost>
+Received: from mail-vb0-f48.google.com ([209.85.212.48]:45105 "EHLO
+	mail-vb0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753818Ab3AKQ47 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jan 2013 11:56:59 -0500
+Received: by mail-vb0-f48.google.com with SMTP id fc21so1624529vbb.35
+        for <linux-nfs@vger.kernel.org>; Fri, 11 Jan 2013 08:56:58 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Date: Fri, 11 Jan 2013 11:56:58 -0500
+Message-ID: <CAEaabxMbRuOeXKa84xyprpq-fiaOZ+jLw_1pt6ZOxoPeDyj6yQ@mail.gmail.com>
+Subject: NFSv3 client not handling all cookies in readdirplus reply
+From: Jesse Jarzynka <jessejoe@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wednesday 09 of January 2013 18:44:50 Paweł Sikora wrote:
-> On Monday 07 of January 2013 09:47:09 Steve Dickson wrote:
-> > 
-> > On 05/01/13 05:08, Paweł Sikora wrote:
-> > > On Thursday 03 of January 2013 09:42:01 Steve Dickson wrote:
-> > >>
-> > >> On 03/01/13 04:27, Paweł Sikora wrote:
-> > >>> Hi,
-> > >>>
-> > >>> with the latest nfs-1.2.7/kernel-3.7.1 tools i've noticed an error during autofs mounting.
-> > >>> reduced testcase shows that mount.nfs with 'vers=4' has a problem:
-> > >>>
-> > >>> [root@chufu ~]# mount.nfs -v -o vers=4 192.168.2.100:/home/atest/farm-local /mnt
-> > >>> mount.nfs: timeout set for Thu Jan  3 10:22:00 2013
-> > >>> mount.nfs: trying text-based options 'vers=4,addr=192.168.2.100,clientaddr=192.168.2.103'
-> > >>> mount.nfs: mount(2): Cannot allocate memory
-> > >>> mount.nfs: Cannot allocate memory
-> > >>>
-> > >>> while the vers=3 works fine:
-> > >>>
-> > >>> [root@chufu ~]# mount.nfs -v -o vers=3 192.168.2.100:/home/atest/farm-local /mnt
-> > >>> mount.nfs: timeout set for Thu Jan  3 10:22:04 2013
-> > >>> mount.nfs: trying text-based options 'vers=3,addr=192.168.2.100'
-> > >>> mount.nfs: prog 100003, trying vers=3, prot=6
-> > >>> mount.nfs: trying 192.168.2.100 prog 100003 vers 3 prot TCP port 2049
-> > >>> mount.nfs: prog 100005, trying vers=3, prot=17
-> > >>> mount.nfs: trying 192.168.2.100 prog 100005 vers 3 prot UDP port 42412
-> > >>>
-> > >>> no obvious errors in logs on nfs server/client side :(
-> > >>> i can provide more info if you need to diagnose this issue.
-> > >>
-> > >> Please set the kernel debugging with 'rpcdebug -m nfs -s mount' then post the out put found in /var/log/messages.
-> > > 
-> > > [root@pawels ~]# mount.nfs -v -o vers=4 192.168.2.100:/home/atest/farm-local /mnt
-> > > 
-> > > mount.nfs: timeout set for Sat Jan  5 11:08:42 2013
-> > > mount.nfs: trying text-based options 'vers=4,addr=192.168.2.100,clientaddr=10.0.2.35'
-> > > mount.nfs: mount(2): Cannot allocate memory
-> > > mount.nfs: Cannot allocate memory
-> > > 
-> > > [root@pawels ~]# dmesg|tail                                                      
-> > > 
-> > > [ 4187.654183] NFS: nfs mount opts='vers=4,addr=192.168.2.100,clientaddr=10.0.2.35'
-> > > [ 4187.654188] NFS:   parsing nfs mount option 'vers=4'
-> > > [ 4187.654193] NFS:   parsing nfs mount option 'addr=192.168.2.100'
-> > > [ 4187.654198] NFS:   parsing nfs mount option 'clientaddr=10.0.2.35'
-> > > [ 4187.654204] NFS: MNTPATH: '/home/atest/farm-local'
-> > > [ 4187.654206] --> nfs4_try_mount()
-> > > [ 4187.975255] <-- nfs4_try_mount() = -12 [error]
-> > > 
-> > Hmm... it appears to me that the kernel modules are not be loaded... 
-> > What does 'lsmod | grep nfs' show, anything?
-> > 
-> > steved.
-> 
-> in fact, all modules are automatically loaded by kernel. better log attached.
+Hi all,
 
+I noticed that when doing a readdirplus on the latest CentOS 6 stable
+kernel (2.6.32-279.19.1), the client, instead of sending the next call
+with the last cookie from the previous reply, is starting with a
+cookie somewhere in the middle of the previous reply. On a slightly
+earlier CentOS 6 kernel (2.6.32-71) I am not seeing this behavior. The
+readdirplus calls are always starting with the last cookie returned.
 
-with forced vers=3 the mount fails sometimes too :(
-i've no idea where's the problem :(
+To reproduce, I have an NFS server mounted at /mnt/jesse with '-o
+nfsvers=3'. I have a directory inside with 1000 empty files. If i run
+a simple 'ls -lh' on the directory and take a packet capture, I can
+see the first readdirplus call start at cookie 0, and end with cookie
+4096:
 
-# mount.nfs -v nexus:/R10 /mnt -o "rw,soft,vers=3"
-mount.nfs: timeout set for Wed Jan 16 19:56:43 2013
-mount.nfs: trying text-based options 'soft,vers=3,addr=10.0.2.28'
-mount.nfs: prog 100003, trying vers=3, prot=6
-mount.nfs: trying 10.0.2.28 prog 100003 vers 3 prot TCP port 2049
-mount.nfs: prog 100005, trying vers=3, prot=17
-mount.nfs: trying 10.0.2.28 prog 100005 vers 3 prot UDP port 50252
-mount.nfs: mount(2): Stale NFS file handle
-^C
+$ tshark -r tshark.pcap -V -R 'nfs.procedure_v3 == 17' | egrep -i
+'^frame|cookie'
+Frame 524 (238 bytes on wire, 238 bytes captured)
+    cookie: 0
+Frame 546 (402 bytes on wire, 402 bytes captured)
+        Cookie: 1
+        Cookie: 2
+        Cookie: 3
+        Cookie: 4
+        Cookie: 5
+        Cookie: 6
+<snip>
+        Cookie: 101
+        Cookie: 102
+        Cookie: 103
+        Cookie: 104
+        Cookie: 105
+        Cookie: 106
+        Cookie: 107
+        Cookie: 108
+        Cookie: 109
+        Cookie: 110
+        Cookie: 111
+        Cookie: 112
+        Cookie: 113
+        Cookie: 114
+        Cookie: 115
+        Cookie: 116
+        Cookie: 117
+        Cookie: 118
+        Cookie: 119
+        Cookie: 120
+        Cookie: 121
+        Cookie: 122
+        Cookie: 123
+        Cookie: 124
+        Cookie: 125
+        Cookie: 126
+        Cookie: 127
+        Cookie: 4096
 
-[259176.973751] NFS: nfs mount opts='soft,addr=10.0.2.28,vers=3,proto=tcp,mountvers=3,mountproto=udp,mountport=50252'
-[259176.973757] NFS:   parsing nfs mount option 'soft'
-[259176.973759] NFS:   parsing nfs mount option 'addr=10.0.2.28'
-[259176.973765] NFS:   parsing nfs mount option 'vers=3'
-[259176.973769] NFS:   parsing nfs mount option 'proto=tcp'
-[259176.973772] NFS:   parsing nfs mount option 'mountvers=3'
-[259176.973776] NFS:   parsing nfs mount option 'mountproto=udp'
-[259176.973779] NFS:   parsing nfs mount option 'mountport=50252'
-[259176.973784] NFS: MNTPATH: '/R10'
-[259176.973788] NFS: sending MNT request for nexus:/R10
-[259176.974620] NFS: received 1 auth flavors
-[259176.974623] NFS:   auth flavor[0]: 1
-[259176.974640] NFS: MNT request succeeded
-[259176.974643] NFS: using auth flavor 1
-[259176.974688] --> nfs_init_server()
-[259176.974691] --> nfs_get_client(nexus,v3)
-[259176.974698] NFS: get client cookie (0xffff88021146f800/0xffff8800ceb06640)
-[259176.975704] <-- nfs_init_server() = 0 [new ffff88021146f800]
-[259176.975708] --> nfs_probe_fsinfo()
-[259176.975711] NFS call  fsinfo
-[259176.975959] NFS reply fsinfo: -116
-[259176.975963] NFS call  fsinfo
-[259176.976182] NFS reply fsinfo: -116
-[259176.976184] nfs_probe_fsinfo: error = 116
-[259176.976186] --> nfs_free_server()
-[259176.976282] --> nfs_put_client({1})
-[259176.976285] --> nfs_free_client(3)
-[259176.976287] NFS: releasing client cookie (0xffff88021146f800/0xffff8800ceb06640)
-[259176.976308] <-- nfs_free_client()
-[259176.976322] <-- nfs_free_server()
+However the next call starts at cookie 102:
 
+Frame 547 (238 bytes on wire, 238 bytes captured)
+    cookie: 102
+
+This cycle repeats itself over and over, with the client seemingly
+disregarding many of the cookies returned at the end of the
+readdirplus replies. Looking at rpcdebug I can see the client thinks
+the filling has ended:
+
+Jan 10 22:36:47 jesse-centos-client kernel: NFS: dentry_delete(mpc/file_99, 8)
+Jan 10 22:36:47 jesse-centos-client kernel: NFS:
+nfs_update_inode(0:14/28512 ct=1 info=0x7e7f)
+Jan 10 22:36:47 jesse-centos-client kernel: NFS: dentry_delete(mpc/file_100, 8)
+Jan 10 22:36:47 jesse-centos-client kernel: NFS:
+nfs_update_inode(0:14/28513 ct=1 info=0x7e7f)
+Jan 10 22:36:47 jesse-centos-client kernel: NFS: dentry_delete(mpc/file_101, 8)
+Jan 10 22:36:47 jesse-centos-client kernel: NFS: nfs_do_filldir()
+filling ended @ cookie 102; returning = 0
+Jan 10 22:36:47 jesse-centos-client kernel: NFS call  readdirplus 102
+Jan 10 22:36:47 jesse-centos-client kernel: NFS:
+nfs_update_inode(0:14/8888 ct=1 info=0x7e7f)
+Jan 10 22:36:47 jesse-centos-client kernel: NFS reply readdirplus: 20488
+Jan 10 22:36:47 jesse-centos-client kernel: NFS:
+nfs_update_inode(0:14/28513 ct=1 info=0x7e7f)
+
+If I boot into an older kernel from CentOS, this behavior does not
+occur, I'm using the exact same mount options and procedure:
+
+$ tshark -r tshark.pcap -V -R 'nfs.procedure_v3 == 17' | egrep -i
+'^frame|cookie'
+Frame 1524 (238 bytes on wire, 238 bytes captured)
+    cookie: 0
+Frame 1526 (1306 bytes on wire, 1306 bytes captured)
+        Cookie: 1
+        Cookie: 2
+        Cookie: 3
+        Cookie: 4
+        Cookie: 5
+        Cookie: 6
+        Cookie: 7
+        Cookie: 8
+        Cookie: 9
+        Cookie: 10
+        Cookie: 11
+        Cookie: 12
+        Cookie: 13
+        Cookie: 14
+        Cookie: 15
+        Cookie: 16
+Frame 1529 (238 bytes on wire, 238 bytes captured)
+    cookie: 16
+
+Obviously many less entries returned (this appears to be as a result
+of dircount and maxcount changing between versions), but the cookie in
+every call is the same as the last cookie of the previous reply.
+
+I'm wondering if this was by design and has some benefit I'm not aware
+of, or if this is a bug?
+
+Thanks,
+
+-Jesse
