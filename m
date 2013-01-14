@@ -1,54 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:12945 "EHLO mx12.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:42307 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750962Ab3AXFWp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Jan 2013 00:22:45 -0500
+	id S1757429Ab3ANTgr convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jan 2013 14:36:47 -0500
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
+To: Chris Perl <chris.perl@gmail.com>
 CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 5/7] nfsd4: rewrite xdr encoding of attributes
-Date: Thu, 24 Jan 2013 05:22:43 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9183350A5@sacexcmbx05-prd.hq.netapp.com>
-References: <1358981738-5649-1-git-send-email-bfields@redhat.com>
-	 <1358981738-5649-6-git-send-email-bfields@redhat.com>
-In-Reply-To: <1358981738-5649-6-git-send-email-bfields@redhat.com>
-Content-Type: text/plain; charset=US-ASCII
+Subject: Re: Possible Race Condition on SIGKILL
+Date: Mon, 14 Jan 2013 19:36:43 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9119B5A2D@SACEXCMBX04-PRD.hq.netapp.com>
+References: <4FA345DA4F4AE44899BD2B03EEEC2FA911993B82@SACEXCMBX04-PRD.hq.netapp.com>
+	 <20130108221651.GD30872@nyc-qws-132.nyc.delacy.com>
+	 <20130108221921.GE30872@nyc-qws-132.nyc.delacy.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA911993F1B@SACEXCMBX04-PRD.hq.netapp.com>
+	 <20130109175503.GF30872@nyc-qws-132.nyc.delacy.com>
+	 <1357764777.9862.1.camel@lade.trondhjem.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA911997CA3@SACEXCMBX04-PRD.hq.netapp.com>
+	 <20130111161944.GG30872@nyc-qws-132.nyc.delacy.com>
+	 <20130114150948.GH30872@nyc-qws-132.nyc.delacy.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9119B307F@SACEXCMBX04-PRD.hq.netapp.com>
+	 <20130114191253.GI30872@nyc-qws-132.nyc.delacy.com>
+In-Reply-To: <20130114191253.GI30872@nyc-qws-132.nyc.delacy.com>
+Content-Type: text/plain; charset="utf-7"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2013-01-23 at 17:55 -0500, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> Write xdr encoding primitives that can handle crossing page boundaries,
-> and use them in nfsd4_encode_fattr.
-> 
-> The main practical advantage for now is that we can return arbitrarily
-> large ACLs (well, up to our maximum rpc size).  However, compounds with
-> other operations following such a getattr may fail.
-> 
-> Eventually we plan to use the same xdr code through v4 at least.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/nfsd/nfs4proc.c |   6 +-
->  fs/nfsd/nfs4xdr.c  | 705 +++++++++++++++++++++++++++++++++++------------------
->  fs/nfsd/xdr4.h     |  18 +-
->  3 files changed, 483 insertions(+), 246 deletions(-)
-> 
+On Mon, 2013-01-14 at 14:12 -0500, Chris Perl wrote:
++AD4- On Mon, Jan 14, 2013 at 03:25:50PM +-0000, Myklebust, Trond wrote:
++AD4- +AD4- On Mon, 2013-01-14 at 10:09 -0500, Chris Perl wrote:
++AD4- +AD4- +AD4- On Fri, Jan 11, 2013 at 11:19:44AM -0500, Chris Perl wrote:
++AD4- +AD4- +AD4- +AD4- On Thu, Jan 10, 2013 at 09:30:58PM +-0000, Myklebust, Trond wrote:
++AD4- +AD4- +AD4- +AD4- +AD4- On Wed, 2013-01-09 at 15:52 -0500, Trond Myklebust wrote:
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- On Wed, 2013-01-09 at 12:55 -0500, Chris Perl wrote:
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- Hrm.  I guess I'm in over my head here. Apologoies if I'm just asking
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- silly bumbling questions.  You can start ignoring me at any time. :)
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- I stared at the code for a while and more and now see why what I
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- outlined is not possible.  Thanks for helping to clarify+ACE-
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- I decided to pull your git repo and compile with HEAD at
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- 87ed50036b866db2ec2ba16b2a7aec4a2b0b7c39 (linux-next as of this
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- morning).  Using this kernel, I can no longer induce any hangs.
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- Interestingly, I tried recompiling the CentOS 6.3 kernel with
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- both the original patch (v4) and the last patch you sent about fixing
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- priority queues.  With both of those in place, I still run into a
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- problem.
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- echo 0 +AD4- /proc/sys/sunrpc/rpc+AF8-debug after the hang shows (I left in the
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- previous additional prints and added printing of the tasks pointer
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- itself):
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +ADw-6+AD4-client: ffff88082896c200, xprt: ffff880829011000, snd+AF8-task: ffff880829a1aac0
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +ADw-6+AD4-client: ffff8808282b5600, xprt: ffff880829011000, snd+AF8-task: ffff880829a1aac0
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +ADw-6+AD4---task-- -pid- flgs status -client- --rqstp- -timeout ---ops--
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +ADw-6+AD4-ffff88082a463180 22007 0080    -11 ffff8808282b5600   (null)        0 ffffffffa027b7a0 nfsv3 ACCESS a:call+AF8-reserveresult q:xprt+AF8-sending
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +ADw-6+AD4-client: ffff88082838cc00, xprt: ffff88082b7c5800, snd+AF8-task:   (null)
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +ADw-6+AD4-client: ffff8808283db400, xprt: ffff88082b7c5800, snd+AF8-task:   (null)
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +ADw-6+AD4-client: ffff8808283db200, xprt: ffff880829011000, snd+AF8-task: ffff880829a1aac0
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- +AD4- Any thoughts about other patches that might affect this?
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- Hmm... The only one that springs to mind is this one (see attachment)
++AD4- +AD4- +AD4- +AD4- +AD4- +AD4- and then the 'connect' fixes that you helped us with previously.
++AD4- +AD4- +AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- +AD4- +AD4- Never mind. I suspect that the main reason why RHEL-6.3 is still
++AD4- +AD4- +AD4- +AD4- +AD4- vulnerable is that it lacks commit
++AD4- +AD4- +AD4- +AD4- +AD4- 961a828df64979d2a9faeeeee043391670a193b9 (SUNRPC: Fix potential races in
++AD4- +AD4- +AD4- +AD4- +AD4- xprt+AF8-lock+AF8-write+AF8-next()).
++AD4- +AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- +AD4- Great, thanks+ACE-  I've add this on top of the others and am now testing.
++AD4- +AD4- +AD4- +AD4- I'll let you know how it goes.
++AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- With all 4 patches in place, I am no longer able to hang my CentOS 6.3
++AD4- +AD4- +AD4- system.  I have not tested all the various combinations of the 4
++AD4- +AD4- +AD4- patches, but can definitely confirm that without either of:
++AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- 961a828df64979d2a9faeeeee043391670a193b9 SUNRPC: Fix potential races in xprt+AF8-lock+AF8-write+AF8-next()
++AD4- +AD4- +AD4- 87ed50036b866db2ec2ba16b2a7aec4a2b0b7c39 SUNRPC: Ensure we release the socket write lock if the rpc+AF8-task exits early
++AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- I can hang the system using the test program I sent in my first email.
++AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- I'll follow up with Red Hat and ask that they include all 4 patches for
++AD4- +AD4- +AD4- 6.4 (some of the earlier ones they may already have).
++AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- Thanks so much for all the help+ACE-
++AD4- +AD4- 
++AD4- +AD4- Likewise. Thank you for all the work you did in debugging and testing.
++AD4- +AD4- It is much appreciated.
++AD4- 
++AD4- Oh, I had just one other question about the final version of the patch
++AD4- you created.  In xprt+AF8-release, is it safe to access xprt-+AD4-snd+AF8-task
++AD4- without the transport+AF8-lock because of the rcu+AF8-lock()/rcu+AF8-unlock() stuff,
++AD4- or because all architectures can atomically read pointer sized values
++AD4- that are aligned in certain ways, or something else?
 
-Why do these belong in the NFS server layer, and not the SUNRPC layer?
+It is safe to access the xprt structure because of the rcu+AF8-lock().
 
-Also, why are you inventing an entirely new server-specific structure
-instead of just reusing the existing struct xdr_stream? The xdr_stream
-already has support for bounce buffers to deal with crossing page
-boundaries (although I've only implemented the decode side of the
-equation so far)...
+As for xprt-+AD4-snd+AF8-task: no other processes are allowed to change the
+value of xprt-+AD4-snd+AF8-task once it has been assigned to +ACI-our+ACI- rpc+AF8-task, so
+if we just want to know the answer to the question +ACI-am I holding the
+socket lock+ACI-, then it is safe to read the value of xprt-+AD4-snd+AF8-task
+outside the transport lock.
 
+Cheers
+  Trond
 -- 
 Trond Myklebust
 Linux NFS client maintainer
 
 NetApp
-Trond.Myklebust@netapp.com
+Trond.Myklebust+AEA-netapp.com
 www.netapp.com
