@@ -1,53 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ia0-f175.google.com ([209.85.210.175]:61176 "EHLO
-	mail-ia0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755073Ab3A3XmJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jan 2013 18:42:09 -0500
-Received: by mail-ia0-f175.google.com with SMTP id r4so3123561iaj.6
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Jan 2013 15:42:09 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v2 1/9] SUNRPC: Missing module alias for auth_rpcgss.ko
-To: linux-nfs@vger.kernel.org
-Cc: Chuck Lever <chuck.lever@oracle.com>
-Date: Wed, 30 Jan 2013 18:42:07 -0500
-Message-ID: <20130130234207.47786.50988.stgit@seurat.1015granger.net>
-In-Reply-To: <20130130231546.47786.6016.stgit@seurat.1015granger.net>
-References: <20130130231546.47786.6016.stgit@seurat.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-pa0-f43.google.com ([209.85.220.43]:57966 "EHLO
+	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754869Ab3AODR0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jan 2013 22:17:26 -0500
+Received: by mail-pa0-f43.google.com with SMTP id fb10so2646935pad.16
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Jan 2013 19:17:26 -0800 (PST)
+From: ycnian@gmail.com
+To: bhalevy@tonian.com
+Cc: linux-nfs@vger.kernel.org, Yanchuan Nian <ycnian@gmail.com>
+Subject: [PATCH] pnfsd: Fix unlock bug on error path
+Date: Tue, 15 Jan 2013 11:07:41 +0800
+Message-Id: <1358219261-19974-1-git-send-email-ycnian@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit f344f6df "SUNRPC: Auto-load RPC authentication kernel
-modules", Mon Mar 20 13:44:08 2006, adds a request_module() call
-in rpcauth_create() to auto-load RPC security modules when a ULP
-tries to create a credential of that flavor.
+From: Yanchuan Nian <ycnian@gmail.com>
 
-In rpcauth_create(), the name of the module to load is built like
-this:
+LAYOUTGET procedure fails if the layout requested conflicts with the recalled.
+It needs to put the reference and unlock the state before exiting.
 
-	request_module("rpc-auth-%u", flavor);
-
-This means that for, say, RPC_AUTH_GSS, request_module() is looking
-for a module or alias called "rpc-auth-6".  I don't see such an
-alias -- the GSS module is named "auth_rpcgss".
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Yanchuan Nian <ycnian@gmail.com>
 ---
+ fs/nfsd/nfs4pnfsd.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
- net/sunrpc/auth_gss/auth_gss.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
-
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 6e5c824..4db065d 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -1721,6 +1721,7 @@ static void __exit exit_rpcsec_gss(void)
- 	rcu_barrier(); /* Wait for completion of call_rcu()'s */
- }
+diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+index dd7856c..4a1e17b 100644
+--- a/fs/nfsd/nfs4pnfsd.c
++++ b/fs/nfsd/nfs4pnfsd.c
+@@ -760,7 +760,7 @@ nfs4_pnfs_get_layout(struct nfsd4_pnfs_layoutget *lgp,
  
-+MODULE_ALIAS("rpc-auth-6");
- MODULE_LICENSE("GPL");
- module_param_named(expired_cred_retry_delay,
- 		   gss_expired_cred_retry_delay,
+ 	if (is_layout_recalled(clp, lgp->lg_fhp, &lgp->lg_seg)) {
+ 		nfserr = nfserr_recallconflict;
+-		goto out;
++		goto out_unlock;
+ 	}
+ 
+ 	/* pre-alloc layout in case we can't merge after we call
+-- 
+1.7.4.4
 
