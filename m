@@ -1,53 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f175.google.com ([209.85.223.175]:51337 "EHLO
-	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753808Ab3ACW0o (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jan 2013 17:26:44 -0500
-Date: Thu, 3 Jan 2013 17:26:39 -0500
-From: Tejun Heo <tj@kernel.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        "Adamson, Dros" <Weston.Adamson@netapp.com>,
-        Dave Jones <davej@redhat.com>,
-        Linux Kernel <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfsd oops on Linus' current tree.
-Message-ID: <20130103222639.GE2753@mtj.dyndns.org>
-References: <4FA345DA4F4AE44899BD2B03EEEC2FA91197273D@SACEXCMBX04-PRD.hq.netapp.com>
- <20121221230849.GB29739@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA911972C73@SACEXCMBX04-PRD.hq.netapp.com>
- <20121221232609.GC29739@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA911972CA1@SACEXCMBX04-PRD.hq.netapp.com>
- <20121221234530.GA30048@fieldses.org>
- <0EC8763B847DB24D9ADF5EBD9CD7B4191259E4A2@SACEXCMBX02-PRD.hq.netapp.com>
- <20130103201120.GA2096@fieldses.org>
- <20130103220814.GB2753@mtj.dyndns.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9119886EE@SACEXCMBX04-PRD.hq.netapp.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:5466 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756341Ab3AOII7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Jan 2013 03:08:59 -0500
+Subject: [PATCH 4/4] SUNRPC: move cache_detail->cache_request callback call to
+	cache_read()
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Tue, 15 Jan 2013 11:09:46 +0300
+Message-ID: <20130115080946.2996.96945.stgit@localhost.localdomain>
+In-Reply-To: <20130115080402.2996.74320.stgit@localhost.localdomain>
+References: <20130115080402.2996.74320.stgit@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9119886EE@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello, Trond.
+function
 
-On Thu, Jan 03, 2013 at 10:12:32PM +0000, Myklebust, Trond wrote:
-> > The analysis is likely completely wrong, so please don't go off doing
-> > something unnecessary.  Please take look at what's causing the
-> > deadlocks again.
-> 
-> The analysis is a no-brainer:
-> We see a deadlock due to one work item waiting for completion of another
-> work item that is queued on the same CPU. There is no other dependency
-> between the two work items.
+The reason to move cache_request() callback call from
+sunrpc_cache_pipe_upcall() to cache_read() is that this garantees, that cache
+access will be done userspace process context (only userspace process have
+proper root context).
+This is required for NFSd support in container: svc_export_request() (which is
+cache_request callback) calls d_path(), which, in turn, traverse dentry up to
+current->fs->root. Kernel threads always have global root, while container
+have be in "root jail" - i.e. have it's own nested root.
 
-What do you mean "waiting for completion of"?  Is one flushing the
-other?  Or is one waiting for the other to take certain action?  How
-are the two work items related?  Are they queued on the same
-workqueue?  Can you create a minimal repro case of the observed
-deadlock?
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ net/sunrpc/cache.c |   32 ++++++++++++++++++++------------
+ 1 files changed, 20 insertions(+), 12 deletions(-)
 
-Thanks.
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 901fdca..55f044c 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -750,6 +750,18 @@ struct cache_reader {
+ 	int			offset;	/* if non-0, we have a refcnt on next request */
+ };
+ 
++static int cache_request(struct cache_detail *detail,
++			       struct cache_request *crq)
++{
++	char *bp = crq->buf;
++	int len = PAGE_SIZE;
++
++	detail->cache_request(detail, crq->item, &bp, &len);
++	if (len < 0)
++		return -EAGAIN;
++	return PAGE_SIZE - len;
++}
++
+ static ssize_t cache_read(struct file *filp, char __user *buf, size_t count,
+ 			  loff_t *ppos, struct cache_detail *cd)
+ {
+@@ -784,6 +796,13 @@ static ssize_t cache_read(struct file *filp, char __user *buf, size_t count,
+ 		rq->readers++;
+ 	spin_unlock(&queue_lock);
+ 
++	if (rq->len == 0) {
++		err = cache_request(cd, rq);
++		if (err < 0)
++			goto out;
++		rq->len = err;
++	}
++
+ 	if (rp->offset == 0 && !test_bit(CACHE_PENDING, &rq->item->flags)) {
+ 		err = -EAGAIN;
+ 		spin_lock(&queue_lock);
+@@ -1145,8 +1164,6 @@ int sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h)
+ 
+ 	char *buf;
+ 	struct cache_request *crq;
+-	char *bp;
+-	int len;
+ 
+ 	if (!cache_listeners_exist(detail)) {
+ 		warn_no_listener(detail);
+@@ -1163,19 +1180,10 @@ int sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h)
+ 		return -EAGAIN;
+ 	}
+ 
+-	bp = buf; len = PAGE_SIZE;
+-
+-	detail->cache_request(detail, h, &bp, &len);
+-
+-	if (len < 0) {
+-		kfree(buf);
+-		kfree(crq);
+-		return -EAGAIN;
+-	}
+ 	crq->q.reader = 0;
+ 	crq->item = cache_get(h);
+ 	crq->buf = buf;
+-	crq->len = PAGE_SIZE - len;
++	crq->len = 0;
+ 	crq->readers = 0;
+ 	spin_lock(&queue_lock);
+ 	list_add_tail(&crq->q.list, &detail->queue);
 
--- 
-tejun
