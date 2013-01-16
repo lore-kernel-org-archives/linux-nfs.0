@@ -1,92 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.candelatech.com ([208.74.158.172]:46921 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752459Ab3ARVMr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jan 2013 16:12:47 -0500
-Received: from [192.168.100.226] (firewall.candelatech.com [70.89.124.249])
-	(authenticated bits=0)
-	by ns3.lanforge.com (8.14.2/8.14.2) with ESMTP id r0ILCkWi004713
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Fri, 18 Jan 2013 13:12:46 -0800
-Message-ID: <50F9BACE.8090900@candelatech.com>
-Date: Fri, 18 Jan 2013 13:12:46 -0800
-From: Ben Greear <greearb@candelatech.com>
+Received: from mx1.redhat.com ([209.132.183.28]:24894 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756238Ab3APUli (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Jan 2013 15:41:38 -0500
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r0GKf2TN016182
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 16 Jan 2013 15:41:38 -0500
+Message-ID: <50F71049.9050905@RedHat.com>
+Date: Wed, 16 Jan 2013 15:40:41 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: 3.7.2+ splat.
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: Steve Dickson <steved@redhat.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] rpc.idmapd: Ignore open failures in dirscancb()
+References: <1357152473-4260-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1357152473-4260-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I saw this on a patched kernel (has some NFS patches to allow
-binding to local IP address) and some other networking patches,
-so it could be my problem.
-
-But, curious if anyone else has seen something similar?
 
 
+On 02/01/13 13:47, Steve Dickson wrote:
+> From: David Jeffery <djeffery@redhat.com>
+> 
+> The daemon "rpc.idmapd" scans the /var/lib/nfs/rpc_pipefs/nfs/ directory
+> periodically looking for NFS client mounts to communicate to. The daemon
+> tried to open communication with a client mount but it disappeared in
+> between looking for directory entries and opening them. NFS mount was
+> umounted just before rpc.idmapd tried to communicate with it. This
+> behavior is usually seen when autofs is configured on the system.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed... 
 
-NFS: nfs40_walk_client_list Error: no matching nfs_client found
-BUG: spinlock bad magic on CPU#5, mount.nfs4/18612
-general protection fault: 0000 [#1] PREEMPT SMP
-Modules linked in: nf_nat_ipv4 nf_nat nfsv4 auth_rpcgss nfs fscache 8021q garp stp llc macvlan wanlink(O]
-CPU 5
-Pid: 18612, comm: mount.nfs4 Tainted: G         C O 3.7.2+ #32 Iron Systems Inc. EE2610R/X8ST3
-RIP: 0010:[<ffffffff81287033>]  [<ffffffff81287033>] spin_dump+0x5e/0x8c
-RSP: 0018:ffff88022e647808  EFLAGS: 00010286
-RAX: 0000000000000032 RBX: ffff8803cee0f318 RCX: ffffffff817ea493
-RDX: ffff88022e647fd8 RSI: 0000000000000001 RDI: 0000000000000246
-RBP: ffff88022e647818 R08: 00000000ffffffff R09: 000000008161d300
-R10: ffff88022e647708 R11: 0000000000000000 R12: dead4ead00000000
-R13: ffff8803de5f0780 R14: ffff88031297f840 R15: ffff8803de5f0780
-FS:  00007f530cc5a740(0000) GS:ffff88041fca0000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-CR2: 00007f22eeae4088 CR3: 000000022f88a000 CR4: 00000000000007e0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Process mount.nfs4 (pid: 18612, threadinfo ffff88022e646000, task ffff8803422cc590)
-Stack:
-  ffff8803cee0f318 ffff8803cee0f318 ffff88022e647838 ffffffff81287087
-  ffffffff817d6812 ffff8803cee0f318 ffff88022e647868 ffffffff81287137
-  0000000000000000 ffff8803cee0f318 ffff8803cee0f318 ffff8803de5f0780
-Call Trace:
-  [<ffffffff81287087>] spin_bug+0x26/0x28
-  [<ffffffff81287137>] do_raw_spin_lock+0x25/0x10a
-  [<ffffffff815246c5>] _raw_spin_lock+0x1e/0x23
-  [<ffffffffa044487f>] nfs4_schedule_state_renewal+0x19/0x77 [nfsv4]
-  [<ffffffffa0443b03>] nfs40_discover_server_trunking+0xb2/0xc0 [nfsv4]
-  [<ffffffffa044242b>] nfs4_discover_server_trunking+0xb3/0x1e7 [nfsv4]
-  [<ffffffffa044a0f4>] nfs4_init_client+0x143/0x1ad [nfsv4]
-  [<ffffffff81278dc7>] ? idr_get_new_above_int+0x1c/0x70
-  [<ffffffffa00f5474>] ? __rpc_init_priority_wait_queue+0x8d/0xb9 [sunrpc]
-  [<ffffffffa00f54ae>] ? rpc_init_wait_queue+0xe/0x10 [sunrpc]
-  [<ffffffffa044a330>] ? nfs4_alloc_client+0x12e/0x182 [nfsv4]
-  [<ffffffffa03bcfff>] nfs_get_client+0x235/0x287 [nfs]
-  [<ffffffffa0449461>] nfs4_set_client+0x71/0x8e [nfsv4]
-  [<ffffffffa03bd8ac>] ? nfs_alloc_server+0xfa/0x101 [nfs]
-  [<ffffffffa0449836>] nfs4_create_server+0xe2/0x25c [nfsv4]
-  [<ffffffffa0444e1c>] nfs4_remote_mount+0x2a/0x56 [nfsv4]
-  [<ffffffff8114aa69>] mount_fs+0x6b/0x152
-  [<ffffffff8111a849>] ? __alloc_percpu+0xb/0xd
-  [<ffffffff8116173f>] vfs_kern_mount+0x66/0xe5
-  [<ffffffffa0444bb6>] nfs_do_root_mount+0x96/0xb5 [nfsv4]
-  [<ffffffffa0444ddb>] nfs4_try_mount+0x32/0x49 [nfsv4]
-  [<ffffffffa03c63b2>] nfs_fs_mount+0x823/0x905 [nfs]
-  [<ffffffffa03c485e>] ? nfs_clone_super+0x66/0x66 [nfs]
-  [<ffffffffa03c4710>] ? nfs_clone_sb_security+0x49/0x49 [nfs]
-  [<ffffffff8114aa69>] mount_fs+0x6b/0x152
-  [<ffffffff8111a849>] ? __alloc_percpu+0xb/0xd
-  [<ffffffff8116173f>] vfs_kern_mount+0x66/0xe5
-  [<ffffffff8116182f>] do_kern_mount+0x48/0xd8
-  [<ffffffff81161fda>] do_mount+0x71b/0x77e
-  [<ffffffff811620c0>] sys_mount+0x83/0xbd
-  [<ffffffff81529829>] system_call_fastpath+0x16/0x1b
-Code: 00 48 8d 88 58 04 00 00 31 c0 65 8b 14 25 20 b0 00 00 e8 94 b1 29 00 41 83 c8 ff 4d 85 e4 44 8b 4b
-RIP  [<ffffffff81287033>] spin_dump+0x5e/0x8c
-  RSP <ffff88022e647808>
----[ end trace 2e56a2cc96df8e08 ]---
+steved.
 
--- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
-
+> ---
+>  utils/idmapd/idmapd.c | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+> 
+> diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
+> index 9d66225..beba9c4 100644
+> --- a/utils/idmapd/idmapd.c
+> +++ b/utils/idmapd/idmapd.c
+> @@ -424,7 +424,8 @@ dirscancb(int UNUSED(fd), short UNUSED(which), void *data)
+>  			    pipefsdir, ents[i]->d_name);
+>  
+>  			if ((ic->ic_dirfd = open(path, O_RDONLY, 0)) == -1) {
+> -				xlog_warn("dirscancb: open(%s): %s", path, strerror(errno));
+> +				if (verbose > 0)
+> +					xlog_warn("dirscancb: open(%s): %s", path, strerror(errno));
+>  				free(ic);
+>  				goto out;
+>  			}
+> 
