@@ -1,116 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:54621 "EHLO
-	Dobby.4dicksons.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751737Ab3AVN6Q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jan 2013 08:58:16 -0500
-From: Steve Dickson <steved@redhat.com>
-To: David Quigley <selinux@davequigley.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 12/14] NFS: Extend NFS xattr handlers to accept the security namespace
-Date: Tue, 22 Jan 2013 08:40:40 -0500
-Message-Id: <1358862042-27520-13-git-send-email-steved@redhat.com>
-In-Reply-To: <1358862042-27520-1-git-send-email-steved@redhat.com>
-References: <1358862042-27520-1-git-send-email-steved@redhat.com>
+Received: from relay.parallels.com ([195.214.232.42]:33956 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752594Ab3APFUO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jan 2013 00:20:14 -0500
+Message-ID: <50F63882.8000607@parallels.com>
+Date: Wed, 16 Jan 2013 09:20:02 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>, Mark Lord <kernel@teksavvy.com>
+CC: <linux-nfs@vger.kernel.org>, Linux Kernel <linux-kernel@vger.kernel.org>
+Subject: Re: BUG at net/sunrpc/svc_xprt.c:921
+References: <50F42F85.50907@teksavvy.com> <20130114203711.GA29982@fieldses.org> <50F4D800.5040703@teksavvy.com> <20130115205625.GH4940@fieldses.org>
+In-Reply-To: <20130115205625.GH4940@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+16.01.2013 00:56, J. Bruce Fields пишет:
+> On Mon, Jan 14, 2013 at 11:16:00PM -0500, Mark Lord wrote:
+>> On 13-01-14 03:37 PM, J. Bruce Fields wrote:
+>>> Thanks for the report.
+>>>
+>>> On Mon, Jan 14, 2013 at 11:17:09AM -0500, Mark Lord wrote:
+>>>> Since upgrading to 3.7, and now 3.7.2, my AMD-450E based server
+>>>
+>>> It's acting as an NFS client, right?
+>>
+>> Client and server, with other Linux boxes all running 3.something kernels.
+>>
+>>> What did you upgrade from?
+>>
+>> 3.4.something, I believe.
+>>
+>>>> is getting these BUG complaints.  The .config file is gzip'd/attached.
+>>>
+>>> Is this easy to reproduce?
+>>
+>> So far, it seems to pop up within a day or so of any reboot.
+>> I normally only reboot that system for a kernel upgrade,
+>> but can do so a bit more often if there's useful info to collect.
+>
+> So this means svc_delete_xprt was called on an xprt twice.
+>
+> That could happen if server threads are still running (and calling
+> svc_recv) after we start shutting down the server: svc_shutdown_net
+> assumes that server threads are already shut down, but that isn't true
+> any more after the containerization work.
+>
+> I thought that would only be a bug for users actually running multiple
+> containers, but looking at nfs_callback_down, I don't think that's
+> true--it seems to always shut down the thread last.
+>
 
-The existing NFSv4 xattr handlers do not accept xattr calls to the security
-namespace. This patch extends these handlers to accept xattrs from the security
-namespace in addition to the default NFSv4 ACL namespace.
+Thanks, Bruce. It reminds me the patch with additional protection for permanents sockets shutdown I've sent you a couple of mount ago...
+Look like I should revisit this patch at least.
 
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- fs/nfs/nfs4proc.c   | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
- security/security.c |  1 +
- 2 files changed, 51 insertions(+)
+Mark, could you provide any call traces?
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ba4f268..388730e 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5465,6 +5465,53 @@ static size_t nfs4_xattr_list_nfs4_acl(struct dentry *dentry, char *list,
- 	return len;
- }
- 
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+static inline int nfs4_server_supports_labels(struct nfs_server *server)
-+{
-+	return server->caps & NFS_CAP_SECURITY_LABEL;
-+}
-+
-+static int nfs4_xattr_set_nfs4_label(struct dentry *dentry, const char *key,
-+				   const void *buf, size_t buflen,
-+				   int flags, int type)
-+{
-+	if (security_ismaclabel(key))
-+		return nfs4_set_security_label(dentry, buf, buflen);
-+
-+	return -EOPNOTSUPP;
-+}
-+
-+static int nfs4_xattr_get_nfs4_label(struct dentry *dentry, const char *key,
-+				   void *buf, size_t buflen, int type)
-+{
-+	if (security_ismaclabel(key))
-+		return nfs4_get_security_label(dentry->d_inode, buf, buflen);
-+	return -EOPNOTSUPP;
-+}
-+
-+static size_t nfs4_xattr_list_nfs4_label(struct dentry *dentry, char *list,
-+				       size_t list_len, const char *name,
-+				       size_t name_len, int type)
-+{
-+	size_t len = 0;
-+
-+	if (nfs_server_capable(dentry->d_inode, NFS_CAP_SECURITY_LABEL)) {
-+		len = security_inode_listsecurity(dentry->d_inode, NULL, 0);
-+		if (list && len <= list_len)
-+			security_inode_listsecurity(dentry->d_inode, list, len);
-+	}
-+	return len;
-+}
-+
-+static const struct xattr_handler nfs4_xattr_nfs4_label_handler = {
-+	.prefix = XATTR_SECURITY_PREFIX,
-+	.list	= nfs4_xattr_list_nfs4_label,
-+	.get	= nfs4_xattr_get_nfs4_label,
-+	.set	= nfs4_xattr_set_nfs4_label,
-+};
-+#endif
-+
-+
- /*
-  * nfs_fhget will use either the mounted_on_fileid or the fileid
-  */
-@@ -7205,6 +7252,9 @@ static const struct xattr_handler nfs4_xattr_nfs4_acl_handler = {
- 
- const struct xattr_handler *nfs4_xattr_handlers[] = {
- 	&nfs4_xattr_nfs4_acl_handler,
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	&nfs4_xattr_nfs4_label_handler,
-+#endif
- 	NULL
- };
- 
-diff --git a/security/security.c b/security/security.c
-index d455c83..918b751 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -660,6 +660,7 @@ int security_inode_listsecurity(struct inode *inode, char *buffer, size_t buffer
- 		return 0;
- 	return security_ops->inode_listsecurity(inode, buffer, buffer_size);
- }
-+EXPORT_SYMBOL(security_inode_listsecurity);
- 
- void security_inode_getsecid(const struct inode *inode, u32 *secid)
- {
+> --b.
+>
+
+
 -- 
-1.8.1
-
+Best regards,
+Stanislav Kinsbursky
