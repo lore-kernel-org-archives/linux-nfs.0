@@ -1,57 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f181.google.com ([209.85.216.181]:55112 "EHLO
-	mail-qc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753934Ab3ACWWw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jan 2013 17:22:52 -0500
-Received: by mail-qc0-f181.google.com with SMTP id x40so8225484qcp.26
-        for <linux-nfs@vger.kernel.org>; Thu, 03 Jan 2013 14:22:51 -0800 (PST)
-Date: Thu, 3 Jan 2013 17:15:03 -0500
-From: Tejun Heo <tj@kernel.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "Adamson, Dros" <Weston.Adamson@netapp.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Dave Jones <davej@redhat.com>,
-        Linux Kernel <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfsd oops on Linus' current tree.
-Message-ID: <20130103221503.GC2753@mtj.dyndns.org>
-References: <4FA345DA4F4AE44899BD2B03EEEC2FA91197273D@SACEXCMBX04-PRD.hq.netapp.com>
- <20121221230849.GB29739@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA911972C73@SACEXCMBX04-PRD.hq.netapp.com>
- <20121221232609.GC29739@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA911972CA1@SACEXCMBX04-PRD.hq.netapp.com>
- <20121221234530.GA30048@fieldses.org>
- <0EC8763B847DB24D9ADF5EBD9CD7B4191259E4A2@SACEXCMBX02-PRD.hq.netapp.com>
- <20130103201120.GA2096@fieldses.org>
- <0EC8763B847DB24D9ADF5EBD9CD7B4191259F54D@SACEXCMBX02-PRD.hq.netapp.com>
- <20130103205221.GB2533@fieldses.org>
+Received: from fieldses.org ([174.143.236.118]:60721 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751363Ab3APUPP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Jan 2013 15:15:15 -0500
+Date: Wed, 16 Jan 2013 15:15:10 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: =?utf-8?B?UGF3ZcWC?= Sikora <pawel.sikora@agmk.net>
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org,
+        baggins@pld-linux.org, Trond.Myklebust@netapp.com
+Subject: Re: mount.nfs: cannot allocate memory.
+Message-ID: <20130116201510.GA6598@fieldses.org>
+References: <2891788.0SBnrhN2VX@pawels>
+ <1435172.ktCUaNjhdC@localhost>
+ <20130116193932.GA5002@fieldses.org>
+ <2365095.7zaHsQeZKG@localhost>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130103205221.GB2533@fieldses.org>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <2365095.7zaHsQeZKG@localhost>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It's getting a bit repetitive but I really wanna steer people away
-from implementing separate kthreads for wrong reasons.  kthread is
-surprisingly difficult to get right especially around freezing /
-exiting / hotplugs and people get it subtly wrong very often.
+On Wed, Jan 16, 2013 at 09:07:45PM +0100, Paweł Sikora wrote:
+> On Wednesday 16 of January 2013 14:39:32 J. Bruce Fields wrote:
+> > On Wed, Jan 16, 2013 at 08:03:14PM +0100, Paweł Sikora wrote:
+> > > [259176.973751] NFS: nfs mount opts='soft,addr=10.0.2.28,vers=3,proto=tcp,mountvers=3,mountproto=udp,mountport=50252'
+> > > [259176.973757] NFS:   parsing nfs mount option 'soft'
+> > > [259176.973759] NFS:   parsing nfs mount option 'addr=10.0.2.28'
+> > > [259176.973765] NFS:   parsing nfs mount option 'vers=3'
+> > > [259176.973769] NFS:   parsing nfs mount option 'proto=tcp'
+> > > [259176.973772] NFS:   parsing nfs mount option 'mountvers=3'
+> > > [259176.973776] NFS:   parsing nfs mount option 'mountproto=udp'
+> > > [259176.973779] NFS:   parsing nfs mount option 'mountport=50252'
+> > > [259176.973784] NFS: MNTPATH: '/R10'
+> > > [259176.973788] NFS: sending MNT request for nexus:/R10
+> > > [259176.974620] NFS: received 1 auth flavors
+> > > [259176.974623] NFS:   auth flavor[0]: 1
+> > > [259176.974640] NFS: MNT request succeeded
+> > > [259176.974643] NFS: using auth flavor 1
+> > > [259176.974688] --> nfs_init_server()
+> > > [259176.974691] --> nfs_get_client(nexus,v3)
+> > > [259176.974698] NFS: get client cookie (0xffff88021146f800/0xffff8800ceb06640)
+> > > [259176.975704] <-- nfs_init_server() = 0 [new ffff88021146f800]
+> > > [259176.975708] --> nfs_probe_fsinfo()
+> > > [259176.975711] NFS call  fsinfo
+> > > [259176.975959] NFS reply fsinfo: -116
+> > 
+> > That's ESTALE.  Might be interesting to see the network traffic between
+> > client and server.
+> 
+> here's the tcpdump result:  http://pluto.agmk.net/kernel/nfs.mount.estale.dump
 
-On Thu, Jan 03, 2013 at 03:52:21PM -0500, J. Bruce Fields wrote:
-> No, I meant I was happy having my workqueue handled by a single
-> dedicated thread, which I don't see a trivial way to do any more.
+On just a very quick skim (you may want to verify to see I've got it
+right), frame 30 shows the server returning a filehandle in a MNT reply,
+then frame 48 shows the same client that got that MNT reply using the
+same filehandle in an FSINFO reply, and getting an NFS3ERR_STALE
+response.
 
-Because you don't need that.  The old workqueue didn't give you
-anything better than the current one.  It was usually more difficult
-to get right in terms of execution dependency because it introduced a
-lot of unintended execution dependencies through
-one-(per-cpu)-worker-per-workqueue rule.
+Offhand seems like a server bug.  Might conceivably happen if there was
+some confusion whether the client was authorized to access that export?
 
-If anyone can show me workqueue is deadlocking when it shouldn't I'll
-be happy to look into it and fix it, but, up until now, most if not
-all reported cases were through incorrect usage, and things definitely
-don't work like described in this thread.
-
-Thanks.
-
--- 
-tejun
+--b.
