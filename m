@@ -1,66 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:5420 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752020Ab3ARCcG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Jan 2013 21:32:06 -0500
-Received: from vmwexceht04-prd.hq.netapp.com (vmwexceht04-prd.hq.netapp.com [10.106.77.34])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id r0I2W3S9020066
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Jan 2013 18:32:03 -0800 (PST)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: [CFP] Linux Storage, Filesystem and Memory Management Summit 2013
-Date: Fri, 18 Jan 2013 02:32:02 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9119C34FB@SACEXCMBX04-PRD.hq.netapp.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from ironport2-out.teksavvy.com ([206.248.154.182]:11179 "EHLO
+	ironport2-out.teksavvy.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757773Ab3APW6E (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jan 2013 17:58:04 -0500
+Message-ID: <50F7307A.4090808@teksavvy.com>
+Date: Wed, 16 Jan 2013 17:58:02 -0500
+From: Mark Lord <kernel@teksavvy.com>
 MIME-Version: 1.0
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        Linux Kernel <linux-kernel@vger.kernel.org>
+Subject: Re: BUG at net/sunrpc/svc_xprt.c:921
+References: <50F42F85.50907@teksavvy.com> <20130114203711.GA29982@fieldses.org> <50F4D800.5040703@teksavvy.com> <20130115205625.GH4940@fieldses.org> <50F63882.8000607@parallels.com> <50F72F03.5070806@teksavvy.com>
+In-Reply-To: <50F72F03.5070806@teksavvy.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQpUaGUgYW5udWFsIExpbnV4IFN0b3JhZ2UsIEZpbGVzeXN0ZW0gYW5kIE1lbW9yeSBNYW5hZ2Vt
-ZW50IFN1bW1pdCBmb3INCjIwMTMgd2lsbCBiZSBoZWxkIG9uIEFwcmlsIDE4dGggYW5kIDE5dGgg
-Zm9sbG93aW5nIHRoZSBMaW51eCBGb3VuZGF0aW9uDQpDb2xsYWJvcmF0aW9uIFN1bW1pdCBhdCBQ
-YXJjIDU1IEhvdGVsIGluIFNhbiBGcmFuY2lzY28sIENBOg0KDQoJaHR0cHM6Ly9ldmVudHMubGlu
-dXhmb3VuZGF0aW9uLm9yZy9ldmVudHMvY29sbGFib3JhdGlvbi1zdW1taXQNCglodHRwczovL2V2
-ZW50cy5saW51eGZvdW5kYXRpb24ub3JnL2V2ZW50cy9sc2ZtbS1zdW1taXQNCg0KV2UnZCB0aGVy
-ZWZvcmUgbGlrZSB0byBpc3N1ZSBhIGNhbGwgZm9yIGFnZW5kYSBwcm9wb3NhbHMgdGhhdCBhcmUN
-CnN1aXRhYmxlIGZvciBjcm9zcy10cmFjayBkaXNjdXNzaW9uIGFzIHdlbGwgYXMgbW9yZSB0ZWNo
-bmljYWwgc3ViamVjdHMNCmZvciBkaXNjdXNzaW9uIGluIHRoZSBicmVha291dCBzZXNzaW9ucy4N
-Cg0KMSkgU3VnZ2VzdGlvbnMgZm9yIGFnZW5kYSB0b3BpY3Mgc2hvdWxkIGJlIHNlbnQgYmVmb3Jl
-IEZlYnJ1YXJ5IDh0aA0KMjAxMyB0bzoNCg0KCWxzZi1wY0BsaXN0cy5saW51eC1mb3VuZGF0aW9u
-Lm9yZw0KDQphbmQgb3B0aW9uYWxseSBjYyB0aGUgTGludXggbGlzdCB3aGljaCB3b3VsZCBiZSBt
-b3N0IGludGVyZXN0ZWQgaW4gaXQ6DQoNCglBVEE6IGxpbnV4LWlkZUB2Z2VyLmtlcm5lbC5vcmcN
-CglTQ1NJOiBsaW51eC1zY3NpQHZnZXIua2VybmVsLm9yZw0KCUZTOiBsaW51eC1mc2RldmVsQHZn
-ZXIua2VybmVsLm9yZw0KCU1NOiBsaW51eC1tbUBrdmFjay5vcmcNCg0KUGxlYXNlIHJlbWVtYmVy
-IHRvIHRhZyB5b3VyIHN1YmplY3Qgd2l0aCBbTFNGL01NIFRPUElDXSB0byBtYWtlIGl0DQplYXNp
-ZXIgdG8gdHJhY2suIEFnZW5kYSB0b3BpY3MgYW5kIGF0dGVuZGVlcyB3aWxsIGJlIHNlbGVjdGVk
-IGJ5IHRoZQ0KcHJvZ3JhbSBjb21taXR0ZWUsIGJ1dCB0aGUgZmluYWwgYWdlbmRhIHdpbGwgYmUg
-Zm9ybWVkIGJ5IGNvbnNlbnN1cyBvZg0KdGhlIGF0dGVuZGVlcyBvbiB0aGUgZGF5Lg0KDQpXZSds
-bCB0cnkgdG8gY2FwIGF0dGVuZGFuY2UgYXQgYXJvdW5kIDI1LTMwIHBlciB0cmFjayB0byBmYWNp
-bGl0YXRlDQpkaXNjdXNzaW9ucyBhbHRob3VnaCB0aGUgZmluYWwgbnVtYmVycyB3aWxsIGRlcGVu
-ZCBvbiB0aGUgcm9vbSBzaXplcyBhdA0KdGhlIHZlbnVlLg0KDQoyKSBSZXF1ZXN0cyB0byBhdHRl
-bmQgdGhlIHN1bW1pdCBzaG91bGQgYmUgc2VudCB0bzoNCg0KCWxzZi1wY0BsaXN0cy5saW51eC1m
-b3VuZGF0aW9uLm9yZw0KDQpQbGVhc2Ugc3VtbWFyaXplIHdoYXQgZXhwZXJ0aXNlIHlvdSB3aWxs
-IGJyaW5nIHRvIHRoZSBtZWV0aW5nLCBhbmQgd2hhdA0KeW91J2QgbGlrZSB0byBkaXNjdXNzLiAg
-cGxlYXNlIGFsc28gdGFnIHlvdXIgZW1haWwgd2l0aCBbQVRURU5EXSBzbw0KdGhlcmUncyBsZXNz
-IGNoYW5jZSBvZiBpdCBnZXR0aW5nIGxvc3QgaW4gdGhlIGxhcmdlIG1haWwgcGlsZS4NCg0KUHJl
-c2VudGF0aW9ucyBhcmUgYWxsb3dlZCB0byBndWlkZSBkaXNjdXNzaW9uLCBidXQgYXJlIHN0cm9u
-Z2x5DQpkaXNjb3VyYWdlZC4gVGhlcmUgd2lsbCBiZSBubyByZWNvcmRpbmcgb3IgYXVkaW8gYnJp
-ZGdlLiBIb3dldmVyLA0Kd3JpdHRlbiBtaW51dGVzIHdpbGwgYmUgcHVibGlzaGVkIGFzIGluIHBy
-ZXZpb3VzIHllYXJzOg0KDQoyMDEyOg0KCWh0dHA6Ly9sd24ubmV0L0FydGljbGVzLzQ5MDExNC8N
-CglodHRwOi8vbHduLm5ldC9BcnRpY2xlcy80OTA1MDEvDQoNCjIwMTE6DQoJaHR0cDovL2x3bi5u
-ZXQvQXJ0aWNsZXMvNDM2ODcxLw0KCWh0dHA6Ly9sd24ubmV0L0FydGljbGVzLzQzNzA2Ni8NCg0K
-MjAxMDoNCglodHRwOi8vbHduLm5ldC9BcnRpY2xlcy8zOTkxNDgvDQoJaHR0cDovL2x3bi5uZXQv
-QXJ0aWNsZXMvMzk5MzEzLw0KCWh0dHA6Ly9sd24ubmV0L0FydGljbGVzLzQwMDU4OS8NCg0KMjAw
-OToNCglodHRwOi8vbHduLm5ldC9BcnRpY2xlcy8zMjc2MDEvDQoJaHR0cDovL2x3bi5uZXQvQXJ0
-aWNsZXMvMzI3NzQwLw0KCWh0dHA6Ly9sd24ubmV0L0FydGljbGVzLzMyODM0Ny8NCg0KUHJpb3Ig
-eWVhcnM6DQoJaHR0cDovL3d3dy51c2VuaXgub3JnL2V2ZW50cy9sc2YwOC90ZWNoL2xzZjA4c3Vt
-cy5wZGYNCglodHRwOi8vd3d3LnVzZW5peC5vcmcvcHVibGljYXRpb25zL2xvZ2luLzIwMDctMDYv
-b3BlbnBkZnMuLi4NCg0KMykgSWYgeW91IGhhdmUgZmVlZGJhY2sgb24gbGFzdCB5ZWFyJ3MgbWVl
-dGluZyB0aGF0IHdlIGNhbiB1c2UgdG8NCmltcHJvdmUgdGhpcyB5ZWFyJ3MsIHBsZWFzZSBhbHNv
-IHNlbmQgdGhhdCB0bzoNCg0KCWxzZi1wY0BsaXN0cy5saW51eC1mb3VuZGF0aW9uLm9yZw0KDQpU
-aGFuayB5b3Ugb24gYmVoYWxmIG9mIHRoZSBwcm9ncmFtIGNvbW1pdHRlZToNCg0KU3RvcmFnZToN
-CglNYXJ0aW4gSy4gUGV0ZXJzZW4NCglKZW5zIEF4Ym9lDQoJSmFtZXMgQm90dG9tbGV5DQoNCkZp
-bGVzeXN0ZW1zOg0KCVJpYyBXaGVlbGVyDQoJQ2hyaXN0b3BoIEhlbGx3aWcNCglKYWVnZXVrIEtp
-bQ0KCUplZmZyZXkgTGF5dG9uDQoJVGFvIE1hDQoJQ2hyaXMgTWFzb24NCglUcm9uZCBNeWtsZWJ1
-c3QNCglFcmljIFNhbmRlZW4NCglUaGVvZG9yZSBUcydvDQoJU2FnZSBXZWlsDQoNCk1NOg0KCVJp
-ayB2YW4gUmllbA0KCU1lbCBHb3JtYW4NCglZaW5nIEhhbg0KDQoNCg==
+On 13-01-16 05:51 PM, Mark Lord wrote:
+> On 13-01-16 12:20 AM, Stanislav Kinsbursky wrote:
+>>
+>> Mark, could you provide any call traces?
+> 
+> Call traces from where/what?
+> There's this one, posted earlier in the BUG report:
+> 
+> kernel BUG at net/sunrpc/svc_xprt.c:921!
+> Call Trace:
+>  [<ffffffffa016a56a>] ? svc_recv+0xcc/0x338 [sunrpc]
+>  [<ffffffffa0318bfc>] ? nfs_callback_authenticate+0x20/0x20 [nfsv4]
+>  [<ffffffffa0318c19>] ? nfs4_callback_svc+0x1d/0x3c [nfsv4]
+>  [<ffffffff810407e6>] ? kthread+0x81/0x89
+>  [<ffffffff81040765>] ? kthread_freezable_should_stop+0x36/0x36
+>  [<ffffffff812ea62c>] ? ret_from_fork+0x7c/0xb0
+>  [<ffffffff81040765>] ? kthread_freezable_should_stop+0x36/0x36
+..
+
+This might be of some interest.
+Here are the first few lines of the same BUG occurance,
+with timestamps and the dmesg lines that immediately preceeded it.
+Perhaps they might help indicate who's triggering the action
+that results in the BUG(?).
+
+Jan 14 10:58:05 zippy kernel: [66045.627952] NFS: Registering the id_resolver key type
+Jan 14 10:58:05 zippy kernel: [66045.628014] Key type id_resolver registered
+Jan 14 10:58:05 zippy kernel: [66045.628020] Key type id_legacy registered
+Jan 14 10:58:05 zippy kernel: [66045.636302] ------------[ cut here ]------------
+Jan 14 10:58:05 zippy kernel: [66045.648342] kernel BUG at net/sunrpc/svc_xprt.c:921!
+
