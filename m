@@ -1,48 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45044 "EHLO fieldses.org"
+Received: from mail.agmk.net ([91.192.224.71]:37974 "EHLO mail.agmk.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753023Ab3ACAeH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Jan 2013 19:34:07 -0500
-Date: Wed, 2 Jan 2013 19:34:05 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: ycnian@gmail.com
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: Pass correct slot number to nfsd4_put_drc_mem()
-Message-ID: <20130103003404.GC26356@fieldses.org>
-References: <1356343887-11952-1-git-send-email-ycnian@gmail.com>
+	id S1752076Ab3APUHu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jan 2013 15:07:50 -0500
+From: =?utf-8?B?UGF3ZcWC?= Sikora <pawel.sikora@agmk.net>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org,
+        baggins@pld-linux.org, Trond.Myklebust@netapp.com
+Subject: Re: mount.nfs: cannot allocate memory.
+Date: Wed, 16 Jan 2013 21:07:45 +0100
+Message-ID: <2365095.7zaHsQeZKG@localhost>
+In-Reply-To: <20130116193932.GA5002@fieldses.org>
+References: <2891788.0SBnrhN2VX@pawels> <1435172.ktCUaNjhdC@localhost> <20130116193932.GA5002@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1356343887-11952-1-git-send-email-ycnian@gmail.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 24, 2012 at 06:11:27PM +0800, ycnian@gmail.com wrote:
-> From: Yanchuan Nian <ycnian@gmail.com>
+On Wednesday 16 of January 2013 14:39:32 J. Bruce Fields wrote:
+> On Wed, Jan 16, 2013 at 08:03:14PM +0100, Paweł Sikora wrote:
+> > [259176.973751] NFS: nfs mount opts='soft,addr=10.0.2.28,vers=3,proto=tcp,mountvers=3,mountproto=udp,mountport=50252'
+> > [259176.973757] NFS:   parsing nfs mount option 'soft'
+> > [259176.973759] NFS:   parsing nfs mount option 'addr=10.0.2.28'
+> > [259176.973765] NFS:   parsing nfs mount option 'vers=3'
+> > [259176.973769] NFS:   parsing nfs mount option 'proto=tcp'
+> > [259176.973772] NFS:   parsing nfs mount option 'mountvers=3'
+> > [259176.973776] NFS:   parsing nfs mount option 'mountproto=udp'
+> > [259176.973779] NFS:   parsing nfs mount option 'mountport=50252'
+> > [259176.973784] NFS: MNTPATH: '/R10'
+> > [259176.973788] NFS: sending MNT request for nexus:/R10
+> > [259176.974620] NFS: received 1 auth flavors
+> > [259176.974623] NFS:   auth flavor[0]: 1
+> > [259176.974640] NFS: MNT request succeeded
+> > [259176.974643] NFS: using auth flavor 1
+> > [259176.974688] --> nfs_init_server()
+> > [259176.974691] --> nfs_get_client(nexus,v3)
+> > [259176.974698] NFS: get client cookie (0xffff88021146f800/0xffff8800ceb06640)
+> > [259176.975704] <-- nfs_init_server() = 0 [new ffff88021146f800]
+> > [259176.975708] --> nfs_probe_fsinfo()
+> > [259176.975711] NFS call  fsinfo
+> > [259176.975959] NFS reply fsinfo: -116
 > 
-> In alloc_session(), numslots is the correct slot number used by the session.
-> But the slot number passed to nfsd4_put_drc_mem() is the one from nfs client.
+> That's ESTALE.  Might be interesting to see the network traffic between
+> client and server.
 
-Thanks, applying for 3.9.--b.
+here's the tcpdump result:  http://pluto.agmk.net/kernel/nfs.mount.estale.dump
 
-> 
-> Signed-off-by: Yanchuan Nian <ycnian@gmail.com>
-> ---
->  fs/nfsd/nfs4state.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index ac8ed96..29924a0 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -905,7 +905,7 @@ static struct nfsd4_session *alloc_session(struct nfsd4_channel_attrs *fchan,
->  
->  	new = __alloc_session(slotsize, numslots);
->  	if (!new) {
-> -		nfsd4_put_drc_mem(slotsize, fchan->maxreqs);
-> +		nfsd4_put_drc_mem(slotsize, numslots);
->  		return NULL;
->  	}
->  	init_forechannel_attrs(&new->se_fchannel, fchan, numslots, slotsize, nn);
-> -- 
-> 1.7.4.4
-> 
