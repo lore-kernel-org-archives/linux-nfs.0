@@ -1,47 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:21317 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756480Ab3AWQUp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Jan 2013 11:20:45 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r0NGKiGM004896
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 23 Jan 2013 11:20:45 -0500
-Received: from smallhat.bos.devel.redhat.com (smallhat.boston.devel.redhat.com [10.16.60.65])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r0NGKisA030254
-	for <linux-nfs@vger.kernel.org>; Wed, 23 Jan 2013 11:20:44 -0500
-Message-ID: <51000DDF.1020300@RedHat.com>
-Date: Wed, 23 Jan 2013 11:20:47 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Linux NFS status meeting 1/24/13
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-lb0-f176.google.com ([209.85.217.176]:64839 "EHLO
+	mail-lb0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754680Ab3AQQx2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jan 2013 11:53:28 -0500
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: linux-kernel@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wine-devel@winehq.org
+Subject: [PATCH v2 7/8] NFSv4: Add O_DENY* open flags support
+Date: Thu, 17 Jan 2013 20:53:03 +0400
+Message-Id: <1358441584-8783-7-git-send-email-piastry@etersoft.ru>
+In-Reply-To: <1358441584-8783-1-git-send-email-piastry@etersoft.ru>
+References: <1358441584-8783-1-git-send-email-piastry@etersoft.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A reminder....  There will be a status meeting tomorrow (Thur Jan 23)
+by passing these flags to NFSv4 open request.
 
-Note, I've taking the 'p' off the 'NFS' in the subject line since 
-this meeting has become more of a general NFS community status meeting... 
+Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
+---
+ fs/nfs/nfs4xdr.c | 24 ++++++++++++++++++++----
+ 1 file changed, 20 insertions(+), 4 deletions(-)
 
-The general format is, Bruce will give server update, Trond will give
-a client update and I will give an nfs-utils and distor update.
-Then we open up the floor to any other contributors, like Andy, Benny,
-Boaz, etc, who have been active in recent development efforts...
-
-We try to keep the meeting under 30mins and very to-the-point. Meaning
-subjects are quickly take off-line or on to the mailing list. 
-
-Feel free to join if this something of interest...
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 40836ee..0a0cd1e 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1322,7 +1322,8 @@ static void encode_lookup(struct xdr_stream *xdr, const struct qstr *name, struc
+ 	encode_string(xdr, name->len, name->name);
+ }
  
-Time: 9:30 AM PST (12:30 PM EST)
-
-The call in numbers are:
-U.S. and Canada: (800) 451-8679
-International dial-in number: (212) 729-5016
-Israel Toll-Free: 1-809-462-557
-Conference code: 564.272.1552
-
-steved.
+-static void encode_share_access(struct xdr_stream *xdr, fmode_t fmode)
++static void encode_share_access(struct xdr_stream *xdr, fmode_t fmode,
++				int open_flags)
+ {
+ 	__be32 *p;
+ 
+@@ -1340,7 +1341,22 @@ static void encode_share_access(struct xdr_stream *xdr, fmode_t fmode)
+ 	default:
+ 		*p++ = cpu_to_be32(0);
+ 	}
+-	*p = cpu_to_be32(0);		/* for linux, share_deny = 0 always */
++	if (open_flags & O_DENYMAND) {
++		switch (open_flags & (O_DENYREAD|O_DENYWRITE)) {
++		case O_DENYREAD:
++			*p = cpu_to_be32(NFS4_SHARE_DENY_READ);
++			break;
++		case O_DENYWRITE:
++			*p = cpu_to_be32(NFS4_SHARE_DENY_WRITE);
++			break;
++		case O_DENYREAD|O_DENYWRITE:
++			*p = cpu_to_be32(NFS4_SHARE_DENY_BOTH);
++			break;
++		default:
++			*p = cpu_to_be32(0);
++		}
++	} else
++		*p = cpu_to_be32(0);
+ }
+ 
+ static inline void encode_openhdr(struct xdr_stream *xdr, const struct nfs_openargs *arg)
+@@ -1351,7 +1367,7 @@ static inline void encode_openhdr(struct xdr_stream *xdr, const struct nfs_opena
+  * owner 4 = 32
+  */
+ 	encode_nfs4_seqid(xdr, arg->seqid);
+-	encode_share_access(xdr, arg->fmode);
++	encode_share_access(xdr, arg->fmode, arg->open_flags);
+ 	p = reserve_space(xdr, 36);
+ 	p = xdr_encode_hyper(p, arg->clientid);
+ 	*p++ = cpu_to_be32(24);
+@@ -1489,7 +1505,7 @@ static void encode_open_downgrade(struct xdr_stream *xdr, const struct nfs_close
+ 	encode_op_hdr(xdr, OP_OPEN_DOWNGRADE, decode_open_downgrade_maxsz, hdr);
+ 	encode_nfs4_stateid(xdr, arg->stateid);
+ 	encode_nfs4_seqid(xdr, arg->seqid);
+-	encode_share_access(xdr, arg->fmode);
++	encode_share_access(xdr, arg->fmode, 0);
+ }
+ 
+ static void
+-- 
+1.8.1.1
 
