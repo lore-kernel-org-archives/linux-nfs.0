@@ -1,74 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.candelatech.com ([208.74.158.172]:52496 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753445Ab3AXSmM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Jan 2013 13:42:12 -0500
-Message-ID: <51018083.1000304@candelatech.com>
-Date: Thu, 24 Jan 2013 10:42:11 -0800
-From: Ben Greear <greearb@candelatech.com>
-MIME-Version: 1.0
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        netdev <netdev@vger.kernel.org>
-Subject: Re: Hung tasks related to do_filp_open in net-next (3.8.0-rc3+)
-References: <51005858.4040107@candelatech.com>
-In-Reply-To: <51005858.4040107@candelatech.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail-la0-f46.google.com ([209.85.215.46]:54522 "EHLO
+	mail-la0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751960Ab3AQQxR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jan 2013 11:53:17 -0500
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: linux-kernel@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wine-devel@winehq.org
+Subject: [PATCH v2 1/8] locks: make flock_lock_file take is_conflict callback parm
+Date: Thu, 17 Jan 2013 20:52:57 +0400
+Message-Id: <1358441584-8783-1-git-send-email-piastry@etersoft.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/23/2013 01:38 PM, Ben Greear wrote:
->
-> I cranked up my 3000 NFS mounts test case on today's net-next (3.8.0-rc3+)
-> and about 8 of these splats.  There were around 780 mounts active
-> when these occurred.
->
-> Seems like the system continues OK, so not sure how important
-> this is...
+This parm demetermines how to check if locks have conflicts.
+This let us use flock_lock_file funtions further to add
+O_DENY* flags support through flocks.
 
-I'm seeing this occasionally on 3.7.3 (plus Eric's patch to fix
-the crashes I was seeing), so it's not a regression.
+Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
+---
+ fs/locks.c | 14 ++++++++++----
+ 1 file changed, 10 insertions(+), 4 deletions(-)
 
-Maybe it's just expected on a very overloaded system....
-
-Thanks,
-Ben
-
->
-> INFO: task btserver:8756 blocked for more than 180 seconds.
-> "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-> btserver        D 0000000000000004     0  8756   5781 0x00000080
->   ffff880404ab1bf8 0000000000000046 0000000004ab1ba8 0000000000000432
->   ffff880404ab0010 ffff880402263f20 ffff880404ab1fd8 00000000000132c0
->   00000000000132c0 00000000000132c0 ffff880404ab1fd8 00000000000132c0
-> Call Trace:
->   [<ffffffff815491ea>] schedule+0x5f/0x61
->   [<ffffffff815494fa>] schedule_preempt_disabled+0x13/0x1f
->   [<ffffffff81547ea8>] __mutex_lock_common+0x264/0x42d
->   [<ffffffff8115fadb>] ? do_last+0x1db/0xa4e
->   [<ffffffff8115fadb>] ? do_last+0x1db/0xa4e
->   [<ffffffff815480d0>] mutex_lock_nested+0x16/0x18
->   [<ffffffff8115fadb>] do_last+0x1db/0xa4e
->   [<ffffffff8115f3a5>] ? path_init+0xcd/0x2b6
->   [<ffffffff8116090b>] path_openat+0xcb/0x363
->   [<ffffffff810d0055>] ? __lock_acquire+0x1df/0x53d
->   [<ffffffff81160ca8>] do_filp_open+0x38/0x84
->   [<ffffffff8154a2db>] ? _raw_spin_unlock+0x45/0x52
->   [<ffffffff8116c203>] ? __alloc_fd+0x106/0x11a
->   [<ffffffff815490f9>] ? __schedule+0x561/0x5a3
-> 8021q: adding VLAN 0 to HW filter on device eth4#621
->   [<ffffffff81153bfc>] do_sys_open+0x6d/0xff
-> 8021q: adding VLAN 0 to HW filter on device eth3#612
->   [<ffffffff81153cbb>] sys_open+0x1c/0x1e
->   [<ffffffff8154f629>] system_call_fastpath+0x16/0x1b
-> 2 locks held by btserver/8756:
->   #0:  (sb_writers#10){......}, at: [<ffffffff81170013>] mnt_want_write+0x1f/0x48
->   #1:  (&type->i_mutex_dir_key#4){......}, at: [<ffffffff8115fadb>] do_last+0x1db/0xa4e
->
->
->
-
-
+diff --git a/fs/locks.c b/fs/locks.c
+index a94e331..9edfec4 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -697,14 +697,20 @@ static int posix_locks_deadlock(struct file_lock *caller_fl,
+ 	return 0;
+ }
+ 
+-/* Try to create a FLOCK lock on filp. We always insert new FLOCK locks
++/*
++ * Try to create a FLOCK lock on filp. We always insert new FLOCK locks
+  * after any leases, but before any posix locks.
+  *
+  * Note that if called with an FL_EXISTS argument, the caller may determine
+  * whether or not a lock was successfully freed by testing the return
+  * value for -ENOENT.
++ *
++ * Take @is_conflict callback that determines how to check if locks have
++ * conflicts or not.
+  */
+-static int flock_lock_file(struct file *filp, struct file_lock *request)
++static int
++flock_lock_file(struct file *filp, struct file_lock *request,
++		int (*is_conflict)(struct file_lock *, struct file_lock *))
+ {
+ 	struct file_lock *new_fl = NULL;
+ 	struct file_lock **before;
+@@ -760,7 +766,7 @@ find_conflict:
+ 			break;
+ 		if (IS_LEASE(fl))
+ 			continue;
+-		if (!flock_locks_conflict(request, fl))
++		if (!is_conflict(request, fl))
+ 			continue;
+ 		error = -EAGAIN;
+ 		if (!(request->fl_flags & FL_SLEEP))
+@@ -1589,7 +1595,7 @@ int flock_lock_file_wait(struct file *filp, struct file_lock *fl)
+ 	int error;
+ 	might_sleep();
+ 	for (;;) {
+-		error = flock_lock_file(filp, fl);
++		error = flock_lock_file(filp, fl, flock_locks_conflict);
+ 		if (error != FILE_LOCK_DEFERRED)
+ 			break;
+ 		error = wait_event_interruptible(fl->fl_wait, !fl->fl_next);
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+1.8.1.1
 
