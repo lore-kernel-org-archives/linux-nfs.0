@@ -1,152 +1,223 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46504 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752032Ab3A3PYu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Jan 2013 10:24:50 -0500
-Date: Wed, 30 Jan 2013 10:24:49 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 15/16] nfsd: register a shrinker for DRC cache entries
-Message-ID: <20130130152449.GG12306@fieldses.org>
-References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
- <1359402082-29195-16-git-send-email-jlayton@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1359402082-29195-16-git-send-email-jlayton@redhat.com>
+Received: from mail-lb0-f169.google.com ([209.85.217.169]:52502 "EHLO
+	mail-lb0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757218Ab3AQQxV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jan 2013 11:53:21 -0500
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: linux-kernel@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wine-devel@winehq.org
+Subject: [PATCH v2 3/8] vfs: Add O_DENYREAD/WRITE flags support for open syscall
+Date: Thu, 17 Jan 2013 20:52:59 +0400
+Message-Id: <1358441584-8783-3-git-send-email-piastry@etersoft.ru>
+In-Reply-To: <1358441584-8783-1-git-send-email-piastry@etersoft.ru>
+References: <1358441584-8783-1-git-send-email-piastry@etersoft.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 28, 2013 at 02:41:21PM -0500, Jeff Layton wrote:
-> Since we dynamically allocate them now, allow the system to call us
-> up to release them if we get low on memory.
-> 
-> We set the "seeks" value very high, to discourage it and release
-> them in LRU order.
+If O_DENYMAND flag is specified, O_DENYREAD/WRITE/MAND flags are
+translated to flock's flags:
 
-I don't understand how the mm uses seeks.  I guess I'll do some reading.
+!O_DENYREAD  -> LOCK_READ
+!O_DENYWRITE -> LOCK_WRITE
+O_DENYMAND   -> LOCK_MAND
 
-This looks straightforward enough, but I'm not sure how to judge whether
-this is the correct policy.
+and set through flock_lock_file on a file.
 
---b.
+This change only affects opens that use O_DENYMAND flag - all other
+native Linux opens don't care about these flags. It allow us to
+enable this feature for applications that need it (e.g. NFS and
+Samba servers that export the same directory for Windows clients,
+or Wine applications that access the same files simultaneously).
 
-> We may end up releasing some prematurely if the
-> box is really low on memory.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/nfsd/nfscache.c | 54 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
->  1 file changed, 53 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-> index bd21230..27edd47 100644
-> --- a/fs/nfsd/nfscache.c
-> +++ b/fs/nfsd/nfscache.c
-> @@ -35,6 +35,18 @@ static inline u32 request_hash(u32 xid)
->  
->  static int	nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *vec);
->  static void	cache_cleaner_func(struct work_struct *unused);
-> +static int 	nfsd_reply_cache_shrink(struct shrinker *shrink,
-> +					struct shrink_control *sc);
-> +
-> +/*
-> + * We set "seeks" to a large value here since we really can't recreate these
-> + * entries. We're just gambling that they won't actually be needed if and
-> + * when the box comes under memory pressure.
-> + */
-> +struct shrinker nfsd_reply_cache_shrinker = {
-> +	.shrink	= nfsd_reply_cache_shrink,
-> +	.seeks	= 64,
-> +};
->  
->  /*
->   * locking for the reply cache:
-> @@ -80,6 +92,7 @@ nfsd_reply_cache_free(struct svc_cacherep *rp)
->  
->  int nfsd_reply_cache_init(void)
->  {
-> +	register_shrinker(&nfsd_reply_cache_shrinker);
->  	drc_slab = kmem_cache_create("nfsd_drc", sizeof(struct svc_cacherep),
->  					0, 0, NULL);
->  	if (!drc_slab)
-> @@ -102,6 +115,7 @@ void nfsd_reply_cache_shutdown(void)
->  {
->  	struct svc_cacherep	*rp;
->  
-> +	unregister_shrinker(&nfsd_reply_cache_shrinker);
->  	cancel_delayed_work_sync(&cache_cleaner);
->  
->  	while (!list_empty(&lru_head)) {
-> @@ -152,15 +166,17 @@ nfsd_cache_entry_expired(struct svc_cacherep *rp)
->   * if we hit one that isn't old enough, then we can stop the walking. Must
->   * be called with cache_lock held.
->   */
-> -static void
-> +static int
->  prune_old_cache_entries(void)
->  {
-> +	int freed = 0;
->  	struct svc_cacherep *rp, *tmp;
->  
->  	list_for_each_entry_safe(rp, tmp, &lru_head, c_lru) {
->  		if (!nfsd_cache_entry_expired(rp))
->  			break;
->  		nfsd_reply_cache_free_locked(rp);
-> +		++freed;
->  	}
->  
->  	/*
-> @@ -173,6 +189,8 @@ prune_old_cache_entries(void)
->  		cancel_delayed_work(&cache_cleaner);
->  	else
->  		mod_delayed_work(system_wq, &cache_cleaner, RC_EXPIRE);
-> +
-> +	return freed;
->  }
->  
->  static void
-> @@ -183,6 +201,40 @@ cache_cleaner_func(struct work_struct *unused)
->  	spin_unlock(&cache_lock);
->  }
->  
-> +static int
-> +nfsd_reply_cache_shrink(struct shrinker *shrink, struct shrink_control *sc)
-> +{
-> +	int nr_to_scan = sc->nr_to_scan;
-> +	unsigned int num;
-> +
-> +	spin_lock(&cache_lock);
-> +	if (!nr_to_scan)
-> +		goto out;
-> +
-> +	nr_to_scan -= prune_old_cache_entries();
-> +
-> +	/*
-> +	 * If that didn't free enough, then keep going. It's better to free
-> +	 * some prematurely than to have the box keel over due to lack of
-> +	 * memory.
-> +	 */
-> +	while (nr_to_scan > 0) {
-> +		struct svc_cacherep *rp;
-> +
-> +		if (list_empty(&lru_head))
-> +			break;
-> +		rp = list_first_entry(&lru_head, struct svc_cacherep, c_lru);
-> +		nfsd_reply_cache_free_locked(rp);
-> +		--nr_to_scan;
-> +	}
-> +
-> +out:
-> +	num = num_drc_entries;
-> +	spin_unlock(&cache_lock);
-> +
-> +	return num;
-> +}
-> +
->  /*
->   * Search the request hash for an entry that matches the given rqstp.
->   * Must be called with cache_lock held. Returns the found entry or
-> -- 
-> 1.7.11.7
-> 
+Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
+---
+ fs/locks.c         | 106 +++++++++++++++++++++++++++++++++++++++++++++++++++--
+ fs/namei.c         |  10 ++++-
+ include/linux/fs.h |   6 +++
+ 3 files changed, 118 insertions(+), 4 deletions(-)
+
+diff --git a/fs/locks.c b/fs/locks.c
+index 9edfec4..ebe9a30 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -605,12 +605,86 @@ static int posix_locks_conflict(struct file_lock *caller_fl, struct file_lock *s
+ 	return (locks_conflict(caller_fl, sys_fl));
+ }
+ 
+-/* Determine if lock sys_fl blocks lock caller_fl. FLOCK specific
++static unsigned int
++deny_flags_to_cmd(unsigned int flags)
++{
++	unsigned int cmd = LOCK_MAND;
++
++	if (!(flags & O_DENYREAD))
++		cmd |= LOCK_READ;
++	if (!(flags & O_DENYWRITE))
++		cmd |= LOCK_WRITE;
++
++	return cmd;
++}
++
++/*
++ * locks_mand_conflict - Determine if there's a share reservation conflict
++ * @caller_fl: lock we're attempting to acquire
++ * @sys_fl: lock already present on system that we're checking against
++ *
++ * Check to see if there's a share_reservation conflict. LOCK_READ/LOCK_WRITE
++ * tell us whether the reservation allows other readers and writers.
++ *
++ * We only check against other LOCK_MAND locks, so applications that want to
++ * use share mode locking will only conflict against one another. "normal"
++ * applications that open files won't be affected by and won't themselves
++ * affect the share reservations.
++ */
++static int
++locks_mand_conflict(struct file_lock *caller_fl, struct file_lock *sys_fl)
++{
++	unsigned char caller_type = caller_fl->fl_type;
++	unsigned char sys_type = sys_fl->fl_type;
++	fmode_t caller_fmode = caller_fl->fl_file->f_mode;
++	fmode_t sys_fmode = sys_fl->fl_file->f_mode;
++
++	/* they can only conflict if they're both LOCK_MAND */
++	if (!(caller_type & LOCK_MAND) || !(sys_type & LOCK_MAND))
++		return 0;
++
++	if (!(caller_type & LOCK_READ) && (sys_fmode & FMODE_READ))
++		return 1;
++	if (!(caller_type & LOCK_WRITE) && (sys_fmode & FMODE_WRITE))
++		return 1;
++	if (!(sys_type & LOCK_READ) && (caller_fmode & FMODE_READ))
++		return 1;
++	if (!(sys_type & LOCK_WRITE) && (caller_fmode & FMODE_WRITE))
++		return 1;
++
++	return 0;
++}
++
++/*
++ * Determine if lock sys_fl blocks lock caller_fl. O_DENY* flags specific
++ * checking before calling the locks_conflict().
++ */
++static int
++deny_locks_conflict(struct file_lock *caller_fl, struct file_lock *sys_fl)
++{
++	/*
++	 * FLOCK locks referring to the same filp do not conflict with
++	 * each other.
++	 */
++	if (!IS_FLOCK(sys_fl))
++		return 0;
++	if ((caller_fl->fl_type & LOCK_MAND) || (sys_fl->fl_type & LOCK_MAND))
++		return locks_mand_conflict(caller_fl, sys_fl);
++	if (caller_fl->fl_file == sys_fl->fl_file)
++		return 0;
++
++	return locks_conflict(caller_fl, sys_fl);
++}
++
++/*
++ * Determine if lock sys_fl blocks lock caller_fl. FLOCK specific
+  * checking before calling the locks_conflict().
+  */
+-static int flock_locks_conflict(struct file_lock *caller_fl, struct file_lock *sys_fl)
++static int
++flock_locks_conflict(struct file_lock *caller_fl, struct file_lock *sys_fl)
+ {
+-	/* FLOCK locks referring to the same filp do not conflict with
++	/*
++	 * FLOCK locks referring to the same filp do not conflict with
+ 	 * each other.
+ 	 */
+ 	if (!IS_FLOCK(sys_fl) || (caller_fl->fl_file == sys_fl->fl_file))
+@@ -789,6 +863,32 @@ out:
+ 	return error;
+ }
+ 
++/*
++ * Determine if a file is allowed to be opened with specified access and deny
++ * modes. Lock the file and return 0 if checks passed, otherwise return a error
++ * code.
++ */
++int
++deny_lock_file(struct file *filp)
++{
++	struct file_lock *lock;
++	int error = 0;
++
++	if (!(filp->f_flags & O_DENYMAND))
++		return error;
++
++	error = flock_make_lock(filp, &lock, deny_flags_to_cmd(filp->f_flags));
++	if (error)
++		return error;
++
++	error = flock_lock_file(filp, lock, deny_locks_conflict);
++	if (error == -EAGAIN)
++		error = -ETXTBSY;
++
++	locks_free_lock(lock);
++	return error;
++}
++
+ static int __posix_lock_file(struct inode *inode, struct file_lock *request, struct file_lock *conflock)
+ {
+ 	struct file_lock *fl;
+diff --git a/fs/namei.c b/fs/namei.c
+index 5f4cdf3..bf3bb34 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2569,9 +2569,14 @@ static int atomic_open(struct nameidata *nd, struct dentry *dentry,
+ 	 * here.
+ 	 */
+ 	error = may_open(&file->f_path, acc_mode, open_flag);
+-	if (error)
++	if (error) {
+ 		fput(file);
++		goto out;
++	}
+ 
++	error = deny_lock_file(file);
++	if (error)
++		fput(file);
+ out:
+ 	dput(dentry);
+ 	return error;
+@@ -2908,6 +2913,9 @@ opened:
+ 		if (error)
+ 			goto exit_fput;
+ 	}
++	error = deny_lock_file(file);
++	if (error)
++		goto exit_fput;
+ out:
+ 	if (got_write)
+ 		mnt_drop_write(nd->path.mnt);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 70a766ae..b8ed06e 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1004,6 +1004,7 @@ extern int lease_modify(struct file_lock **, int);
+ extern int lock_may_read(struct inode *, loff_t start, unsigned long count);
+ extern int lock_may_write(struct inode *, loff_t start, unsigned long count);
+ extern void locks_delete_block(struct file_lock *waiter);
++extern int deny_lock_file(struct file *);
+ extern void lock_flocks(void);
+ extern void unlock_flocks(void);
+ #else /* !CONFIG_FILE_LOCKING */
+@@ -1152,6 +1153,11 @@ static inline void locks_delete_block(struct file_lock *waiter)
+ {
+ }
+ 
++static inline int deny_lock_file(struct file *filp)
++{
++	return 0;
++}
++
+ static inline void lock_flocks(void)
+ {
+ }
+-- 
+1.8.1.1
+
