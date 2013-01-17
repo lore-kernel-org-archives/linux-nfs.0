@@ -1,58 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.candelatech.com ([208.74.158.172]:42274 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752329Ab3AVF5p (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jan 2013 00:57:45 -0500
-Message-ID: <50FE2A57.3040804@candelatech.com>
-Date: Mon, 21 Jan 2013 21:57:43 -0800
-From: Ben Greear <greearb@candelatech.com>
+Received: from relay.parallels.com ([195.214.232.42]:46785 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752298Ab3AQNYZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jan 2013 08:24:25 -0500
+Message-ID: <50F7FB7E.2020503@parallels.com>
+Date: Thu, 17 Jan 2013 17:24:14 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-To: Eric Dumazet <eric.dumazet@gmail.com>
-CC: netdev <netdev@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: 3.7.3+:  Bad paging request in ip_rcv_finish while running NFS
- traffic.
-References: <50FDADF4.3060601@candelatech.com>  <50FDDE35.7070806@candelatech.com> <1358829606.3464.3151.camel@edumazet-glaptop>
-In-Reply-To: <1358829606.3464.3151.camel@edumazet-glaptop>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Mark Lord <kernel@teksavvy.com>, <linux-nfs@vger.kernel.org>,
+        Linux Kernel <linux-kernel@vger.kernel.org>
+Subject: Re: BUG at net/sunrpc/svc_xprt.c:921
+References: <50F42F85.50907@teksavvy.com> <20130114203711.GA29982@fieldses.org> <50F4D800.5040703@teksavvy.com> <20130115205625.GH4940@fieldses.org> <50F63882.8000607@parallels.com> <50F72F03.5070806@teksavvy.com> <50F786AF.4070107@parallels.com> <20130117130335.GD6598@fieldses.org>
+In-Reply-To: <20130117130335.GD6598@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/21/2013 08:40 PM, Eric Dumazet wrote:
-> On Mon, 2013-01-21 at 16:32 -0800, Ben Greear wrote:
->> On 01/21/2013 01:07 PM, Ben Greear wrote:
->>> I posted about this a few days ago, but this time the patches applied
->>> are minimal and there are no out-of-tree kernel modules loaded.
+17.01.2013 17:03, J. Bruce Fields пишет:
+> On Thu, Jan 17, 2013 at 09:05:51AM +0400, Stanislav Kinsbursky wrote:
+>> 17.01.2013 02:51, Mark Lord пишет:
+>>> On 13-01-16 12:20 AM, Stanislav Kinsbursky wrote:
+>>>>
+>>>> Mark, could you provide any call traces?
+>>>
+>>> Call traces from where/what?
+>>> There's this one, posted earlier in the BUG report:
+>>>
+>>> kernel BUG at net/sunrpc/svc_xprt.c:921!
+>>> Call Trace:
+>>>   [<ffffffffa016a56a>] ? svc_recv+0xcc/0x338 [sunrpc]
+>>>   [<ffffffffa0318bfc>] ? nfs_callback_authenticate+0x20/0x20 [nfsv4]
+>>>   [<ffffffffa0318c19>] ? nfs4_callback_svc+0x1d/0x3c [nfsv4]
+>>>   [<ffffffff810407e6>] ? kthread+0x81/0x89
+>>>   [<ffffffff81040765>] ? kthread_freezable_should_stop+0x36/0x36
+>>>   [<ffffffff812ea62c>] ? ret_from_fork+0x7c/0xb0
+>>>   [<ffffffff81040765>] ? kthread_freezable_should_stop+0x36/0x36
+>>>
 >>
->> Here's another crash, this time with SLUB memory debugging turned on.
->>
->> Seems much harder to hit this way...I've only managed this one.  I
->> believe the RCX register might be interesting...that 6b is probably
->> freed memory poisioning.  Maybe skb or skb_dest() is already freed?
->>
->> I have added a 'verify_mem_not_deleted(skb)' before the
->> dst_input line in ip_rcv_finish..but so far, it hasn't
->> hit the problem...
->>
+>> Thanks!
+>> I haven't seen the bug report.
+>> Could you provide the link, please?
 >
-> There is no way skb is freed here.
+> There's no bz if that's what you're asking for.
 >
-> I would say macvlan is at fault here.
+> See the first message in the thread for the original report:
 >
-> It probably lacks a proper (dev->flags & IFF_UP) test.
+> 	http://mid.gmane.org/<50F42F85.50907@teksavvy.com>
+>
 
-Thanks for the patch.  It's running OK so far, but I'll need to
-do a bunch more testing tomorrow to make sure I'm not just getting
-lucky!
+Thanks, Bruce.
+This looks like the old issue I was trying to fix with "SUNRPC: protect service sockets lists during per-net shutdown".
+So, here is the problem as I see it: there is a transport, which is processed by service thread and it's processing is racing with per-net service shutdown:
 
-I'll let you know how it goes tomorrow.
+CPU#0:							CPU#1:
 
-Thanks,
-Ben
+svc_recv						svc_close_net
+svc_get_next_xprt (list_del_init(xpt_ready))
+							svc_close_list (set XPT_BUSY and XPT_CLOSE)
+							svc_clear_pools(xprt was gained on CPU#0 already)
+							svc_delete_xprt (set XPT_DEAD)
+svc_handle_xprt (is XPT_CLOSE => svc_delete_xprt()
+BUG()
 
+So, from my POW, we need some way to:
+1) Skip such in-progress transports on svc_close_net() call (there is not way to detect them, or at  least I don't see one)
+2) Delete the transport after somewhere after svc_xprt_received()
+
+But there is a problem with svc_xprt_received(): there is a call for svc_xprt_put() in it (svc_recv->svc_handle_xprt->svc_xprt_received->svc_xprt_put) . And if 
+we are the only user - then the transport will be destroyed. But transport is dereferenced later in svc_recv() after the svc_handle_xprt call.
+
+What do you think, Bruce?
+
+
+> --b.
+>
 
 
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
-
+Best regards,
+Stanislav Kinsbursky
