@@ -1,70 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f52.google.com ([74.125.83.52]:59113 "EHLO
-	mail-ee0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752612Ab3AUOyU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2013 09:54:20 -0500
-Received: by mail-ee0-f52.google.com with SMTP id b15so2726406eek.25
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Jan 2013 06:54:19 -0800 (PST)
-From: Benny Halevy <bhalevy@tonian.com>
-To: linux-nfs@vger.kernel.org
-Cc: Benny Halevy <bhalevy@tonian.com>
-Subject: [PATCH 1/9] SQUASHME: pnfsd: fix lrs_present calculation
-Date: Mon, 21 Jan 2013 16:54:15 +0200
-Message-Id: <1358780055-5884-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <50FD5646.4020206@tonian.com>
-References: <50FD5646.4020206@tonian.com>
+Received: from mail-la0-f42.google.com ([209.85.215.42]:45479 "EHLO
+	mail-la0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752293Ab3AQQxT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jan 2013 11:53:19 -0500
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: linux-kernel@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wine-devel@winehq.org
+Subject: [PATCH v2 2/8] fcntl: Introduce new O_DENY* open flags
+Date: Thu, 17 Jan 2013 20:52:58 +0400
+Message-Id: <1358441584-8783-2-git-send-email-piastry@etersoft.ru>
+In-Reply-To: <1358441584-8783-1-git-send-email-piastry@etersoft.ru>
+References: <1358441584-8783-1-git-send-email-piastry@etersoft.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-lrs_present must be set to zero iff the client holds no layout state on
-the respective file.
+This patch adds 4 flags:
+1) O_DENYREAD that doesn't permit read access,
+2) O_DENYWRITE that doesn't permit write access,
+3) O_DENYDELETE that doesn't permit delete or rename,
+4) O_DENYMAND that enables O_DENY* flags checks.
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+Network filesystems CIFS, SMB2.0, SMB3.0 and NFSv4 have such flags -
+this change can benefit cifs and nfs modules as well as Samba and
+NFS file servers. These flags are only take affect for opens with
+O_DENYMAND flags - there is no impact on native Linux opens.
+
+Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
 ---
- fs/nfsd/nfs4pnfsd.c | 15 +++++++++------
- 1 file changed, 9 insertions(+), 6 deletions(-)
+ fs/fcntl.c                       |  5 +++--
+ include/uapi/asm-generic/fcntl.h | 14 ++++++++++++++
+ 2 files changed, 17 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-index 3931e52..5c50d8a 100644
---- a/fs/nfsd/nfs4pnfsd.c
-+++ b/fs/nfsd/nfs4pnfsd.c
-@@ -893,7 +893,7 @@ struct super_block *
- 	struct nfs4_layout *lp, *nextlp;
+diff --git a/fs/fcntl.c b/fs/fcntl.c
+index 71a600a..d88a548 100644
+--- a/fs/fcntl.c
++++ b/fs/fcntl.c
+@@ -730,14 +730,15 @@ static int __init fcntl_init(void)
+ 	 * Exceptions: O_NONBLOCK is a two bit define on parisc; O_NDELAY
+ 	 * is defined as O_NONBLOCK on some platforms and not on others.
+ 	 */
+-	BUILD_BUG_ON(19 - 1 /* for O_RDONLY being 0 */ != HWEIGHT32(
++	BUILD_BUG_ON(23 - 1 /* for O_RDONLY being 0 */ != HWEIGHT32(
+ 		O_RDONLY	| O_WRONLY	| O_RDWR	|
+ 		O_CREAT		| O_EXCL	| O_NOCTTY	|
+ 		O_TRUNC		| O_APPEND	| /* O_NONBLOCK	| */
+ 		__O_SYNC	| O_DSYNC	| FASYNC	|
+ 		O_DIRECT	| O_LARGEFILE	| O_DIRECTORY	|
+ 		O_NOFOLLOW	| O_NOATIME	| O_CLOEXEC	|
+-		__FMODE_EXEC	| O_PATH
++		__FMODE_EXEC	| O_PATH	| O_DENYREAD	|
++		O_DENYWRITE	| O_DENYDELETE	| O_DENYMAND
+ 		));
  
- 	dprintk("%s: clp %p fp %p\n", __func__, clp, fp);
--	lrp->lrs_present = 1;
-+	lrp->lrs_present = 0;
- 	spin_lock(&layout_lock);
- 	list_for_each_entry_safe (lp, nextlp, &fp->fi_layouts, lo_perfile) {
- 		dprintk("%s: lp %p client %p,%p lo_type %x,%x iomode %d,%d\n",
-@@ -901,19 +901,22 @@ struct super_block *
- 			lp->lo_client, clp,
- 			lp->lo_seg.layout_type, lrp->args.lr_seg.layout_type,
- 			lp->lo_seg.iomode, lrp->args.lr_seg.iomode);
--		if (lp->lo_client != clp ||
--		    lp->lo_seg.layout_type != lrp->args.lr_seg.layout_type ||
-+		if (lp->lo_client != clp)
-+			continue;
-+		if (lp->lo_seg.layout_type != lrp->args.lr_seg.layout_type ||
- 		    (lp->lo_seg.iomode != lrp->args.lr_seg.iomode &&
- 		     lrp->args.lr_seg.iomode != IOMODE_ANY) ||
--		     !lo_seg_overlapping(&lp->lo_seg, &lrp->args.lr_seg))
-+		     !lo_seg_overlapping(&lp->lo_seg, &lrp->args.lr_seg)) {
-+			lrp->lrs_present = 1;
- 			continue;
-+		}
- 		layouts_found++;
- 		trim_layout(&lp->lo_seg, &lrp->args.lr_seg);
- 		if (!lp->lo_seg.length) {
--			lrp->lrs_present = 0;
- 			dequeue_layout(lp);
- 			destroy_layout(lp);
--		}
-+		} else
-+			lrp->lrs_present = 1;
- 	}
- 	if (ls && layouts_found && lrp->lrs_present)
- 		update_layout_stateid_locked(ls, &lrp->lr_sid);
+ 	fasync_cache = kmem_cache_create("fasync_cache",
+diff --git a/include/uapi/asm-generic/fcntl.h b/include/uapi/asm-generic/fcntl.h
+index a48937d..6e4e979 100644
+--- a/include/uapi/asm-generic/fcntl.h
++++ b/include/uapi/asm-generic/fcntl.h
+@@ -84,6 +84,20 @@
+ #define O_PATH		010000000
+ #endif
+ 
++#ifndef O_DENYREAD
++#define O_DENYREAD	020000000	/* Do not permit read access */
++#endif
++#ifndef O_DENYWRITE
++#define O_DENYWRITE	040000000	/* Do not permit write access */
++#endif
++/* FMODE_NONOTIFY	0100000000 */
++#ifndef O_DENYDELETE
++#define O_DENYDELETE	0200000000	/* Do not permit delete or rename */
++#endif
++#ifndef O_DENYMAND
++#define O_DENYMAND	0400000000	/* Enable O_DENY flags checks */
++#endif
++
+ #ifndef O_NDELAY
+ #define O_NDELAY	O_NONBLOCK
+ #endif
 -- 
-1.7.11.7
+1.8.1.1
 
