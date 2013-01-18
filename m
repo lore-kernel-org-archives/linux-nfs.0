@@ -1,47 +1,19 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34756 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751647Ab3A2W31 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Jan 2013 17:29:27 -0500
-Date: Tue, 29 Jan 2013 17:29:26 -0500
-From: bfields <bfields@fieldses.org>
-To: majianpeng <majianpeng@gmail.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>, Tejun Heo <tj@kernel.org>
-Subject: Re: [PATCH 2/2] nfsd: Fix memleak.
-Message-ID: <20130129222926.GA6219@fieldses.org>
-References: <201301291315585633212@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <201301291315585633212@gmail.com>
+From: =?utf-8?B?5YWI55Sf?= KI SANG JUNG <bacelar-i8RGptBMP/0qQfPySSLfAw@public.gmane.org>
+Subject: Please reply
+Date: Fri, 18 Jan 2013 14:51:32 +0000 (WET)
+Message-ID: <1691458926.71145.1358520692947.JavaMail.root__41586.993847932$1358520936$gmane$org@cm-coimbra.pt>
+Reply-To: =?utf-8?B?5YWI55Sf?= KI SANG JUNG <y4593-ksang@yahoo.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+To: undisclosed-recipients:;
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.cm-coimbra.pt ([194.79.83.226]:38557 "EHLO
+	mail.cm-coimbra.pt" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756298Ab3AROyw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jan 2013 09:54:52 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Tejun, maybe this could be added to your series?
 
-(Or should I just take it without the idr_remove_all()?)
 
---b.
-
-On Tue, Jan 29, 2013 at 01:16:06PM +0800, majianpeng wrote:
-> When free nfs-client, it must free the ->cl_stateids.
-> 
-> Signed-off-by: Jianpeng Ma <majianpeng@gmail.com>
-> ---
->  fs/nfsd/nfs4state.c |    2 ++
->  1 file changed, 2 insertions(+)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index ac8ed96..a8309c6 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1060,6 +1060,8 @@ free_client(struct nfs4_client *clp)
->  	}
->  	free_svc_cred(&clp->cl_cred);
->  	kfree(clp->cl_name.data);
-> +	idr_remove_all(&clp->cl_stateids);
-> +	idr_destroy(&clp->cl_stateids);
->  	kfree(clp);
->  }
->  
-> -- 
-> 1.7.9.5
+Hello, I need to discuss with you regarding a business deal. Contact me for more details.
