@@ -1,84 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:39752 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753109Ab3A3CSI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jan 2013 21:18:08 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Tejun Heo <tj@kernel.org>,
-        "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-        "rusty@rustcorp.com.au" <rusty@rustcorp.com.au>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 11/14] nfs: idr_destroy() no longer needs
- idr_remove_all()
-Date: Wed, 30 Jan 2013 02:18:06 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9183426FE@sacexcmbx05-prd.hq.netapp.com>
-References: <1359163872-1949-1-git-send-email-tj@kernel.org>
-	 <1359163872-1949-12-git-send-email-tj@kernel.org>
-	 <20130129225848.GD6219@fieldses.org>
-In-Reply-To: <20130129225848.GD6219@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail.candelatech.com ([208.74.158.172]:43161 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753252Ab3ARXGx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jan 2013 18:06:53 -0500
+Message-ID: <50F9D589.7090902@candelatech.com>
+Date: Fri, 18 Jan 2013 15:06:49 -0800
+From: Ben Greear <greearb@candelatech.com>
 MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Question on nfs40_discover_server_trunking.
+References: <50F9BE66.6080608@candelatech.com>  <0F001F0E-229D-4314-A42E-84402E4F1FC7@oracle.com>  <1358546604.2872.6.camel@leira.trondhjem.org> <4FA345DA4F4AE44899BD2B03EEEC2FA915C04FE5@sacexcmbx05-prd.hq.netapp.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA915C04FE5@sacexcmbx05-prd.hq.netapp.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-01-29 at 17:58 -0500, J. Bruce Fields wrote:
-> On Fri, Jan 25, 2013 at 05:31:09PM -0800, Tejun Heo wrote:
-> > idr_destroy() can destroy idr by itself and idr_remove_all() is being
-> > deprecated.  Drop reference to idr_remove_all().  Note that the code
-> > wasn't completely correct before because idr_remove() on all entries
-> > doesn't necessarily release all idr_layers which could lead to memory
-> > leak.
-> 
-> Seems fine, but actually this is client-side so I think you meant the cc
-> to be to Trond.
+On 01/18/2013 02:59 PM, Myklebust, Trond wrote:
+> On Fri, 2013-01-18 at 17:03 -0500, an unknown sender wrote:
+>> On Fri, 2013-01-18 at 16:33 -0500, Chuck Lever wrote:
+>>> On Jan 18, 2013, at 4:28 PM, Ben Greear <greearb@candelatech.com> wrote:
+>>>
+>>>> Any chance the STALE_CLIENTID case needs a 'break'?
+>>>
+>>> I don't think so.  LEASE_CONFIRM is set, and we want to wake the state renewal thread.
+>>>
+>>>>
+>>>> Twice I've seen kernel crashes after the nfs40_walk_client_list
+>>>> failed (though code comments say it should never fail).
+>>>
+>>> nfs40_walk_client_list() is looking for an nfs_client that is supposed to already be in the nfs_client list.  If the search fails, that's a bug.
+>>>
+>>> Eyeball the contents of your nfs_client list.  You should find an appropriate nfs_client in there, and then figure out why the search doesn't find it.
+>>
+>> You have considered the fact that the call to
+>> nfs4_proc_setclientid_confirm can potentially return
+>> NFS4ERR_STALE_CLIENTID if the server rebooted while the client was
+>> walking the list?
+>
+> In fact, as far as I can see, the correct behaviour in
+> nfs40_discover_server_trunking() should be to re-issue the setclientid
+> call, and then walk the list again if nfs40_walk_client_list() returns
+> NFS4ERR_STALE_CLIENTID.
 
-Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Thanks for the patch.  I'll add that to my tree as well.
 
-No problems whatsoever with removing a comment. :-)
-
-My worry is more about Tejun's comment that we did actually need a call
-to idr_remove_all() in the original code. Do we need to queue up a fix
-for the 3.8 and existing stable kernels?
-
-Cheers
-  Trond
-
-> > Signed-off-by: Tejun Heo <tj@kernel.org>
-> > Cc: "J. Bruce Fields" <bfields@fieldses.org>
-> > Cc: linux-nfs@vger.kernel.org
-> > ---
-> > This patch depends on an earlier idr patch and given the trivial
-> > nature of the patch, I think it would be best to route these together
-> > through -mm.  Please holler if there's any objection.
-> > 
-> > Thanks.
-> > 
-> >  fs/nfs/client.c | 1 -
-> >  1 file changed, 1 deletion(-)
-> > 
-> > diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> > index 9f3c664..84d8eae 100644
-> > --- a/fs/nfs/client.c
-> > +++ b/fs/nfs/client.c
-> > @@ -197,7 +197,6 @@ error_0:
-> >  EXPORT_SYMBOL_GPL(nfs_alloc_client);
-> >  
-> >  #if IS_ENABLED(CONFIG_NFS_V4)
-> > -/* idr_remove_all is not needed as all id's are removed by nfs_put_client */
-> >  void nfs_cleanup_cb_ident_idr(struct net *net)
-> >  {
-> >  	struct nfs_net *nn = net_generic(net, nfs_net_id);
-> > -- 
-> > 1.8.1
-> > 
+Thanks,
+Ben
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
