@@ -1,53 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.gnuher.de ([78.47.12.54]:35660 "EHLO mail.gnuher.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753364Ab3AVRYH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Jan 2013 12:24:07 -0500
-Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
-	by mail.gnuher.de (envelope-from
-	<news@geggus.net>)
-	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.72)
-	id 1Txh0x-0007rV-Py
-	for linux-nfs@vger.kernel.org; Tue, 22 Jan 2013 17:47:59 +0100
-Received: from news  by ultimate100.geggus.net (envelope-from
-	<news@geggus.net>)
-	with local (Exim 4.72)
-	id 1Txh0x-0003u6-3S
-	for linux-nfs@vger.kernel.org; Tue, 22 Jan 2013 17:47:59 +0100
-To: linux-nfs@vger.kernel.org
-From: Sven Geggus <lists@fuchsschwanzdomain.de>
-Subject: Re: Hanging nfs4+krb5 mounts with negative uids?
-Date: Tue, 22 Jan 2013 16:47:59 +0000 (UTC)
-Message-ID: <kdmfrv$ecd$1@ultimate100.geggus.net>
-References: <26b3643c253ee306d593bb4b20ff095b.squirrel@vdtoorn.nl>
+Received: from mail.candelatech.com ([208.74.158.172]:46323 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753381Ab3ARV7S (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jan 2013 16:59:18 -0500
+Message-ID: <50F9C5B4.5020000@candelatech.com>
+Date: Fri, 18 Jan 2013 13:59:16 -0800
+From: Ben Greear <greearb@candelatech.com>
+MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Question on nfs40_discover_server_trunking.
+References: <50F9BE66.6080608@candelatech.com> <0F001F0E-229D-4314-A42E-84402E4F1FC7@oracle.com>
+In-Reply-To: <0F001F0E-229D-4314-A42E-84402E4F1FC7@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-richard@vdtoorn.nl wrote:
+On 01/18/2013 01:33 PM, Chuck Lever wrote:
+>
+> On Jan 18, 2013, at 4:28 PM, Ben Greear <greearb@candelatech.com> wrote:
+>
+>> Any chance the STALE_CLIENTID case needs a 'break'?
+>
+> I don't think so.  LEASE_CONFIRM is set, and we want to wake the state renewal thread.
+>
+>>
+>> Twice I've seen kernel crashes after the nfs40_walk_client_list
+>> failed (though code comments say it should never fail).
+>
+> nfs40_walk_client_list() is looking for an nfs_client that is supposed to already be in the nfs_client list.  If the search fails, that's a bug.
+>
+> Eyeball the contents of your nfs_client list.  You should find an appropriate nfs_client in there, and then figure out why the search doesn't find it.
 
-> Can anyone give me any help understanding why this is, or point me in a
-> direction in getting this solved? I very well might have just
-> misconfigured my nfsv4 + krb5 system (asking myself why am I getting
-> negative uids?)
+Ok, I think I found another issue.
 
-Looks like this is exactly what I ran into with vanilla Kernel 3.6.x on
-debian wheezy.
+nfs4_client_init does not initialize 'old', but passes it to nfs4_discover_server_trunking.
 
-It worked fine using 3.5.something and it works again using 3.7.3 after J.
-Bruce Fields reverted the patch which caused the problem.
+That gets passed to the detect_trunking operation, which is nfs40_discover_server_trunking
+or nfs41_discover_server_trunking.
 
-See http://marc.info/?t=135126949200001&r=1
+This will call walk_client_list, which also may not ever assign a value to
+'result'.
 
-I'm not 100% certain about the cause of this problem, but I would assume it
-is because the mount is done as root which is not a valid kerberos realm (at
-least in my case). However this is always the case when autofs is used
-because "automount" is running as root.
+The code in walk_client_list always dereferences result, however.
 
-Sven
+So, that is probably why my system blows up shortly after the 'impossible'
+error message...
+
+Maybe initialize result to NULL in nfs4[10]_walk_client_list and properly check
+for null result in calling code?
+
+Thanks,
+Ben
+
 
 -- 
-"Those who do not understand Unix are condemned to reinvent it, poorly"
-(Henry Spencer)
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
-/me is giggls@ircnet, http://sven.gegg.us/ on the Web
