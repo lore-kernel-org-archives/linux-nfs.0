@@ -1,88 +1,164 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:41873 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754108Ab3AXO6U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 Jan 2013 09:58:20 -0500
-Date: Thu, 24 Jan 2013 09:58:18 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:43710 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751869Ab3ARWnt convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jan 2013 17:43:49 -0500
+Content-Type: text/plain; charset=US-ASCII
+Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
+Subject: Re: Question on nfs40_discover_server_trunking.
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <50F9CDDF.4070609@candelatech.com>
+Date: Fri, 18 Jan 2013 17:43:41 -0500
 Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 5/7] nfsd4: rewrite xdr encoding of attributes
-Message-ID: <20130124145818.GA16603@pad.fieldses.org>
-References: <1358981738-5649-1-git-send-email-bfields@redhat.com>
- <1358981738-5649-6-git-send-email-bfields@redhat.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9183350A5@sacexcmbx05-prd.hq.netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9183350A5@sacexcmbx05-prd.hq.netapp.com>
+Message-Id: <D275BA48-F082-424C-9DC6-A7ABAF6A4578@oracle.com>
+References: <50F9BE66.6080608@candelatech.com> <0F001F0E-229D-4314-A42E-84402E4F1FC7@oracle.com> <50F9C5B4.5020000@candelatech.com> <1A56CC87-38FF-47B4-9CA9-7BAE394AF0D2@oracle.com> <50F9CDDF.4070609@candelatech.com>
+To: Ben Greear <greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 24, 2013 at 05:22:43AM +0000, Myklebust, Trond wrote:
-> On Wed, 2013-01-23 at 17:55 -0500, J. Bruce Fields wrote:
-> > From: "J. Bruce Fields" <bfields@redhat.com>
-> > 
-> > Write xdr encoding primitives that can handle crossing page boundaries,
-> > and use them in nfsd4_encode_fattr.
-> > 
-> > The main practical advantage for now is that we can return arbitrarily
-> > large ACLs (well, up to our maximum rpc size).  However, compounds with
-> > other operations following such a getattr may fail.
-> > 
-> > Eventually we plan to use the same xdr code through v4 at least.
-> > 
-> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > ---
-> >  fs/nfsd/nfs4proc.c |   6 +-
-> >  fs/nfsd/nfs4xdr.c  | 705 +++++++++++++++++++++++++++++++++++------------------
-> >  fs/nfsd/xdr4.h     |  18 +-
-> >  3 files changed, 483 insertions(+), 246 deletions(-)
-> > 
+
+On Jan 18, 2013, at 5:34 PM, Ben Greear <greearb@candelatech.com> wrote:
+
+> On 01/18/2013 02:29 PM, Chuck Lever wrote:
+>> 
+>> On Jan 18, 2013, at 4:59 PM, Ben Greear <greearb@candelatech.com> wrote:
+>> 
+>>> On 01/18/2013 01:33 PM, Chuck Lever wrote:
+>>>> 
+>>>> On Jan 18, 2013, at 4:28 PM, Ben Greear <greearb@candelatech.com> wrote:
+>>>> 
+>>>>> Any chance the STALE_CLIENTID case needs a 'break'?
+>>>> 
+>>>> I don't think so.  LEASE_CONFIRM is set, and we want to wake the state renewal thread.
+>>>> 
+>>>>> 
+>>>>> Twice I've seen kernel crashes after the nfs40_walk_client_list
+>>>>> failed (though code comments say it should never fail).
+>>>> 
+>>>> nfs40_walk_client_list() is looking for an nfs_client that is supposed to already be in the nfs_client list.  If the search fails, that's a bug.
+>>>> 
+>>>> Eyeball the contents of your nfs_client list.  You should find an appropriate nfs_client in there, and then figure out why the search doesn't find it.
+>>> 
+>>> Ok, I think I found another issue.
+>>> 
+>>> nfs4_client_init does not initialize 'old', but passes it to nfs4_discover_server_trunking.
+>>> 
+>>> That gets passed to the detect_trunking operation, which is nfs40_discover_server_trunking
+>>> or nfs41_discover_server_trunking.
+>> 
+>> Yes, *result is an output parameter, not an input parameter.
+>> 
+>>> This will call walk_client_list, which also may not ever assign a value to
+>>> 'result'.
+>> 
+>> It should always assign *result in the SUCCESS case.
+>> 
+>>> The code in walk_client_list always dereferences result, however.
+>>> 
+>>> So, that is probably why my system blows up shortly after the 'impossible'
+>>> error message...
+>> 
+>> In particular, nfs4_walk_client_list() does not set *result when it returns NFS4ERR_STALE_CLIENTID.  In nfs4_discover_server_trunking(), should we therefore have this:
+>> 
+>>      status = nfs40_walk_client_list(clp, result, cred);
+>>      switch (status) {
+>>      case -NFS4ERR_STALE_CLIENTID:
+>>              set_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
+>>>>           nfs4_schedule_state_renewal(clp);
+>>>>           break;
+>>      case 0:
+>> 
+>> I'm not sure the nfs4_schedule_state_renewal() call is necessary here.
 > 
-> Why do these belong in the NFS server layer, and not the SUNRPC layer?
 > 
-> Also, why are you inventing an entirely new server-specific structure
-> instead of just reusing the existing struct xdr_stream?  The xdr_stream
-> already has support for bounce buffers to deal with crossing page
-> boundaries (although I've only implemented the decode side of the
-> equation so far)...
+> I'm not sure I follow you entirely..but I'm going to start testing this patch in
+> a minute.  Looks like it should fix my crash, and maybe give clues about
+> why we get to the error case in the first place.
+> 
+> 
+> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+> index d6b39a9..3188283 100644
+> --- a/fs/nfs/nfs4client.c
+> +++ b/fs/nfs/nfs4client.c
+> @@ -307,6 +307,8 @@ int nfs40_walk_client_list(struct nfs_client *new,
+>        };
+>        int status;
+> 
+> +       *result = NULL;
+> +
+>        spin_lock(&nn->nfs_client_lock);
+>        list_for_each_entry_safe(pos, n, &nn->nfs_client_list, cl_share_link) {
+>                /* If "pos" isn't marked ready, we can't trust the
+> @@ -364,6 +366,7 @@ int nfs40_walk_client_list(struct nfs_client *new,
+>                nfs_put_client(prev);
+>        spin_unlock(&nn->nfs_client_lock);
+>        pr_err("NFS: %s Error: no matching nfs_client found\n", __func__);
+> +       WARN_ON(1);
+>        return -NFS4ERR_STALE_CLIENTID;
+> }
+> 
+> @@ -433,6 +436,8 @@ int nfs41_walk_client_list(struct nfs_client *new,
+>        struct nfs_client *pos, *n, *prev = NULL;
+>        int error;
+> 
+> +       *result = NULL;
+> +
 
-I thought a little about using a bounce buffer.  What do you see as the
-advantage?
+The design of this code is that output parameters should never be touched except in the "success" case.
 
-A couple issues I ran into: I want to be able to encode fields out of
-order, and to measure the offset between two points in the buffer.
+>        spin_lock(&nn->nfs_client_lock);
+>        list_for_each_entry_safe(pos, n, &nn->nfs_client_list, cl_share_link) {
+>                /* If "pos" isn't marked ready, we can't trust the
+> @@ -489,6 +494,7 @@ int nfs41_walk_client_list(struct nfs_client *new,
+>         */
+>        spin_unlock(&nn->nfs_client_lock);
+>        pr_err("NFS: %s Error: no matching nfs_client found\n", __func__);
+> +       WARN_ON(1);
+>        return -NFS4ERR_STALE_CLIENTID;
+> }
+> #endif /* CONFIG_NFS_V4_1 */
+> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+> index c351e6b..54d29e2 100644
+> --- a/fs/nfs/nfs4state.c
+> +++ b/fs/nfs/nfs4state.c
+> @@ -142,7 +142,8 @@ int nfs40_discover_server_trunking(struct nfs_client *clp,
+>        case 0:
+>                /* Sustain the lease, even if it's empty.  If the clientid4
+>                 * goes stale it's of no use for trunking discovery. */
+> -               nfs4_schedule_state_renewal(*result);
+> +               if (*result)
+> +                       nfs4_schedule_state_renewal(*result);
 
-For example, we encode attributes by encoding a dummy length field at
-the beginning, encoding the attributes, then calculating the length of
-the encoded data and going back to reencode the length field; roughly:
+In the STALE_CLIENTID case, this would do state renewal on the wrong nfs_client.
 
-	nfsd4_encode_fattr:
+>                break;
+>        }
 
-		... encode bitmap
+Let's look at this again:
 
-		attrlenp = p;
+ 138         status = nfs40_walk_client_list(clp, result, cred);
+ 139         switch (status) {
+ 140         case -NFS4ERR_STALE_CLIENTID:
+ 141                 set_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
 
-		... encode attributes
+This arm of the switch operates on "clp" not on "*result".  So we want to add:
 
-		attrlen = (char *)p - (char *)attrlenp - 4;
-		*attrlenp = htonl(attrlen);
+       nfs4_schedule_state_renewal(clp);
+       break;
 
-Replacing p by a (__be32 *, page **) pair allows me to do basically the
-same thing:
+That makes initializing *result above completely unnecessary.
 
-		attrlenp = p;
-		...
-		attrlen = svcxdr_byte_offset(&attrlenp, &xdr->ptr) - 4;
-		write32(&attrlenp, attrlen);
+ 142         case 0:
+ 143                 /* Sustain the lease, even if it's empty.  If the clientid4
+ 144                  * goes stale it's of no use for trunking discovery. */
+ 145                 nfs4_schedule_state_renewal(*result);
+ 146                 break;
+ 147         }
 
-The "pointers" have all the information I need to calculate the length,
-and I don't have to worry about how many pages the attributes spanned or
-whether attrlenp itself spans a page boundary.  (OK, actually it won't
-because it's 4 bytes.  But we do the same thing elsewhere, e.g. when
-encoding readdir cookies.)
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Using a bounce buffer also sets an arbitrary limits on how much space I
-can reserve at once.  Maybe that's not a problem in practice.
 
---b.
+
+
