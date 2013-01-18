@@ -1,47 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga11.intel.com ([192.55.52.93]:52305 "EHLO mga11.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753540Ab3AKFWx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Jan 2013 00:22:53 -0500
-Date: Fri, 11 Jan 2013 13:22:50 +0800
-From: Fengguang Wu <fengguang.wu@intel.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [SUNPRC] BUG: unable to handle kernel NULL pointer dereference
- at 0000000000000070
-Message-ID: <20130111052250.GA13133@localhost>
-References: <20130111024644.GA9508@localhost>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9119984C5@SACEXCMBX04-PRD.hq.netapp.com>
+Received: from mail.candelatech.com ([208.74.158.172]:50493 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753967Ab3ARV2U (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jan 2013 16:28:20 -0500
+Message-ID: <50F9BE66.6080608@candelatech.com>
+Date: Fri, 18 Jan 2013 13:28:06 -0800
+From: Ben Greear <greearb@candelatech.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9119984C5@SACEXCMBX04-PRD.hq.netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Question on nfs40_discover_server_trunking.
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 11, 2013 at 04:24:45AM +0000, Trond Myklebust wrote:
-> On Fri, 2013-01-11 at 10:46 +0800, Fengguang Wu wrote:
-> > tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git linux-next
-> > commit: 51b63a538c54cb9c3b83c4d62572cf18da165cba [1/1] SUNRPC: Ensure we release the socket write lock if the rpc_task exits early
-> > 
-> > [  106.308511] md: autorun ...
-> > [  106.309477] md: ... autorun DONE.
-> > [  107.923634] BUG: unable to handle kernel NULL pointer dereference at 0000000000000070
-> > [  107.926207] IP: [<ffffffff82a7c8ac>] xprt_release+0x24/0x1cb
+Any chance the STALE_CLIENTID case needs a 'break'?
 
-> Hi Fengguang,
-> 
-> Thanks for testing! The above Oops should be fixed in commit
-> 87ed50036b866db2ec2ba16b2a7aec4a2b0b7c39, which is in the current
-> linux-next branch on git.linux-nfs.org. It was due to a missing test for
-> task->tk_client != NULL.
+Twice I've seen kernel crashes after the nfs40_walk_client_list
+failed (though code comments say it should never fail).
 
-Yes, sorry that bug was actually caught several days before, however
-I was too busy to look into it..
 
-> I should also have fixed the RCU dereference warning that the build
-> robot found on Tuesday.
 
-Trond, thank you for the fixes!
+int nfs40_discover_server_trunking(struct nfs_client *clp,
+				   struct nfs_client **result,
+				   struct rpc_cred *cred)
+{
+	struct nfs4_setclientid_res clid = {
+		.clientid = clp->cl_clientid,
+		.confirm = clp->cl_confirm,
+	};
+	struct nfs_net *nn = net_generic(clp->cl_net, nfs_net_id);
+	unsigned short port;
+	int status;
 
-Thanks,
-Fengguang
+	port = nn->nfs_callback_tcpport;
+	if (clp->cl_addr.ss_family == AF_INET6)
+		port = nn->nfs_callback_tcpport6;
+
+	status = nfs4_proc_setclientid(clp, NFS4_CALLBACK, port, cred, &clid);
+	if (status != 0)
+		goto out;
+	clp->cl_clientid = clid.clientid;
+	clp->cl_confirm = clid.confirm;
+
+	status = nfs40_walk_client_list(clp, result, cred);
+	switch (status) {
+	case -NFS4ERR_STALE_CLIENTID:
+		set_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
+	case 0:
+		/* Sustain the lease, even if it's empty.  If the clientid4
+		 * goes stale it's of no use for trunking discovery. */
+		nfs4_schedule_state_renewal(*result);
+		break;
+	}
+
+out:
+	return status;
+}
+
+-- 
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
+
