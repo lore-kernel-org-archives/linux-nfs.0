@@ -1,44 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ea0-f172.google.com ([209.85.215.172]:46533 "EHLO
-	mail-ea0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752612Ab3AUOy0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2013 09:54:26 -0500
-Received: by mail-ea0-f172.google.com with SMTP id f13so2561662eaa.3
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Jan 2013 06:54:25 -0800 (PST)
-From: Benny Halevy <bhalevy@tonian.com>
-To: linux-nfs@vger.kernel.org
-Cc: Benny Halevy <bhalevy@tonian.com>
-Subject: [PATCH 2/9] SQUASHME: pnfsd: return_on_close all layout segments
-Date: Mon, 21 Jan 2013 16:54:22 +0200
-Message-Id: <1358780062-5936-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <50FD5646.4020206@tonian.com>
-References: <50FD5646.4020206@tonian.com>
+Received: from mail.candelatech.com ([208.74.158.172]:36094 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751070Ab3ARXBH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jan 2013 18:01:07 -0500
+Message-ID: <50F9D431.5040600@candelatech.com>
+Date: Fri, 18 Jan 2013 15:01:05 -0800
+From: Ben Greear <greearb@candelatech.com>
+MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Question on nfs40_discover_server_trunking.
+References: <50F9BE66.6080608@candelatech.com> <0F001F0E-229D-4314-A42E-84402E4F1FC7@oracle.com> <50F9C5B4.5020000@candelatech.com> <1A56CC87-38FF-47B4-9CA9-7BAE394AF0D2@oracle.com> <50F9CDDF.4070609@candelatech.com> <D275BA48-F082-424C-9DC6-A7ABAF6A4578@oracle.com> <50F9D1E7.4080203@candelatech.com>
+In-Reply-To: <50F9D1E7.4080203@candelatech.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As per errata #3226
-http://www.rfc-editor.org/errata_search.php?rfc=5661
-return_on_close refers to all segments acquired by the client
-not only those marked with logr_return_on_close
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfsd/nfs4pnfsd.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Is this OK, or is the NULL assignment just not acceptable?  Due to the
+complexity of this code, I think it is a good idea to initialize
+the variable...
 
-diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-index 5c50d8a..fe3f693 100644
---- a/fs/nfsd/nfs4pnfsd.c
-+++ b/fs/nfsd/nfs4pnfsd.c
-@@ -1242,7 +1242,7 @@ void pnfsd_roc(struct nfs4_client *clp, struct nfs4_file *fp)
- 		bool empty;
- 
- 		/* Check for a match */
--		if (!lo->lo_state->ls_roc || lo->lo_client != clp)
-+		if (lo->lo_client != clp)
- 			continue;
- 
- 		/* Return the layout */
+
+
+[greearb@fs3 nfs]$ git diff
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index d6b39a9..cdc99bd 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -185,7 +185,7 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+                                     rpc_authflavor_t authflavour)
+  {
+         char buf[INET6_ADDRSTRLEN + 1];
+-       struct nfs_client *old;
++       struct nfs_client *old = NULL;
+         int error;
+
+         if (clp->cl_cons_state == NFS_CS_READY) {
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index c351e6b..7103617 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -139,6 +139,8 @@ int nfs40_discover_server_trunking(struct nfs_client *clp,
+         switch (status) {
+         case -NFS4ERR_STALE_CLIENTID:
+                 set_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
++               nfs4_schedule_state_renewal(clp);
++               break;
+         case 0:
+                 /* Sustain the lease, even if it's empty.  If the clientid4
+                  * goes stale it's of no use for trunking discovery. */
+[greearb@fs3 nfs]$
+
+
 -- 
-1.7.11.7
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
