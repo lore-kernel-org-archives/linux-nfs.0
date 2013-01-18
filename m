@@ -1,71 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60634 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756442Ab3AHOqJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Jan 2013 09:46:09 -0500
-Date: Tue, 8 Jan 2013 09:46:04 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Joe Perches <joe@perches.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Tom Tucker <tom@ogc.us>, steved@redhat.com,
-        Tom Talpey <ttalpey@microsoft.com>
-Subject: Re: [PATCH] sunrpc: verbs: Avoid 1kb stack
-Message-ID: <20130108144604.GB16343@fieldses.org>
-References: <1357587696.21481.48.camel@joe-AO722>
+Received: from mail-ie0-f177.google.com ([209.85.223.177]:61219 "EHLO
+	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750830Ab3ARG3z convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jan 2013 01:29:55 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1357587696.21481.48.camel@joe-AO722>
+In-Reply-To: <20130118095538.fdd0b3be90739b9fd9179b5d@canb.auug.org.au>
+References: <1358441537-8672-1-git-send-email-piastry@etersoft.ru>
+	<20130118095538.fdd0b3be90739b9fd9179b5d@canb.auug.org.au>
+Date: Fri, 18 Jan 2013 10:29:54 +0400
+Message-ID: <CAKywueQ33k3uGHP4LV=7KCq-V3D=3PEanbYTzVEnXwT0V-fXjA@mail.gmail.com>
+Subject: Re: [PATCH v2 0/8] Add O_DENY* support for VFS and CIFS/NFS
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: Stephen Rothwell <sfr@canb.auug.org.au>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        wine-devel@winehq.org
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 07, 2013 at 11:41:36AM -0800, Joe Perches wrote:
-> 16 * 64 is a bit much.
-> Use kmalloc_array instead.
+2013/1/18 Stephen Rothwell <sfr@canb.auug.org.au>:
+> Hi Pavel,
+>
+> On Thu, 17 Jan 2013 20:52:09 +0400 Pavel Shilovsky <piastry@etersoft.ru> wrote:
+>>
+>> This patchset adds support of O_DENY* flags for Linux fs layer. These flags can be used by any application that needs share reservations to organize a file access. VFS already has some sort of this capability - now it's done through flock/LOCK_MAND mechanis, but that approach is non-atomic. This patchset build new capabilities on top of the existing one but doesn't bring any changes into the flock call semantic.
+>
+> This has probably been discussed, but is Linux's leases implementation
+> not sufficient?  Just wondering.
 
-I thought there was some reason we didn't do this.
+As I understand it, leases play different role: they allow to cache a
+data for the particular open and then flush it when a lease break
+comes. But we need to protect opens from being done if their
+access/share mode is not suitable for previously done opens. E.g. if
+we have already opened a file with O_RDONLY | O_DENYWRITE we can't
+open it again with any of O_WRONLY, O_RDWR and O_DENYREAD flags (of
+course all these things should only work if O_DENYMAND is specified
+for the first and the second opens).
 
-Grepping up through the callers....  It looks like the result is
-xprt_rdma_send_request returns -EIO, and as far as I can tell that gets
-passed up to the application on the client.   That doesn't sound right.
-
---b.
-
-> 
-> Signed-off-by: Joe Perches <joe@perches.com>
-> ---
->  net/sunrpc/xprtrdma/verbs.c | 10 +++++++++-
->  1 file changed, 9 insertions(+), 1 deletion(-)
-> 
-> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-> index 745973b..9cfebb4 100644
-> --- a/net/sunrpc/xprtrdma/verbs.c
-> +++ b/net/sunrpc/xprtrdma/verbs.c
-> @@ -1736,8 +1736,13 @@ rpcrdma_register_default_external(struct rpcrdma_mr_seg *seg,
->  	int mem_priv = (writing ? IB_ACCESS_REMOTE_WRITE :
->  				  IB_ACCESS_REMOTE_READ);
->  	struct rpcrdma_mr_seg *seg1 = seg;
-> -	struct ib_phys_buf ipb[RPCRDMA_MAX_DATA_SEGS];
->  	int len, i, rc = 0;
-> +	struct ib_phys_buf *ipb = kmalloc_array(RPCRDMA_MAX_DATA_SEGS,
-> +						sizeof(*ipb),
-> +						GFP_KERNEL);
-> +
-> +	if (!ipb)
-> +		return -ENOMEM;
->  
->  	if (*nsegs > RPCRDMA_MAX_DATA_SEGS)
->  		*nsegs = RPCRDMA_MAX_DATA_SEGS;
-> @@ -1770,6 +1775,9 @@ rpcrdma_register_default_external(struct rpcrdma_mr_seg *seg,
->  		seg1->mr_len = len;
->  	}
->  	*nsegs = i;
-> +
-> +	kfree(ipb);
-> +
->  	return rc;
->  }
->  
-> 
-> 
+-- 
+Best regards,
+Pavel Shilovsky.
