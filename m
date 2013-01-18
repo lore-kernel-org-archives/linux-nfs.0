@@ -1,72 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:42404 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755040Ab3ADRLH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Jan 2013 12:11:07 -0500
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Tejun Heo <tj@kernel.org>, "J. Bruce Fields" <bfields@fieldses.org>,
-        "Adamson, Dros" <Weston.Adamson@netapp.com>,
-        Dave Jones <davej@redhat.com>,
-        Linux Kernel <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfsd oops on Linus' current tree.
-Date: Fri, 4 Jan 2013 17:11:04 +0000
-Message-ID: <0EC8763B847DB24D9ADF5EBD9CD7B419125A16A9@SACEXCMBX02-PRD.hq.netapp.com>
-References: <4FA345DA4F4AE44899BD2B03EEEC2FA91197273D@SACEXCMBX04-PRD.hq.netapp.com>
- <20121221230849.GB29739@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA911972C73@SACEXCMBX04-PRD.hq.netapp.com>
- <20121221232609.GC29739@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA911972CA1@SACEXCMBX04-PRD.hq.netapp.com>
- <20121221234530.GA30048@fieldses.org>
- <0EC8763B847DB24D9ADF5EBD9CD7B4191259E4A2@SACEXCMBX02-PRD.hq.netapp.com>
- <20130103201120.GA2096@fieldses.org> <20130103220814.GB2753@mtj.dyndns.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9119886EE@SACEXCMBX04-PRD.hq.netapp.com>
- <20130103222639.GE2753@mtj.dyndns.org>
- <1357254692.55285.33.camel@lade.trondhjem.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA911988B37@SACEXCMBX04-PRD.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA911988B37@SACEXCMBX04-PRD.hq.netapp.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mail.candelatech.com ([208.74.158.172]:59350 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754259Ab3ARXVP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jan 2013 18:21:15 -0500
+Message-ID: <50F9D8E8.6080803@candelatech.com>
+Date: Fri, 18 Jan 2013 15:21:12 -0800
+From: Ben Greear <greearb@candelatech.com>
 MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Question on nfs40_discover_server_trunking.
+References: <50F9BE66.6080608@candelatech.com> <0F001F0E-229D-4314-A42E-84402E4F1FC7@oracle.com> <1358546604.2872.6.camel@leira.trondhjem.org> <4FA345DA4F4AE44899BD2B03EEEC2FA915C04FE5@sacexcmbx05-prd.hq.netapp.com> <C11ACA70-EC3A-4FAD-8ADC-572F9B6B4CFE@oracle.com>
+In-Reply-To: <C11ACA70-EC3A-4FAD-8ADC-572F9B6B4CFE@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 01/18/2013 03:14 PM, Chuck Lever wrote:
+>
+> On Jan 18, 2013, at 5:59 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+>
+>> On Fri, 2013-01-18 at 17:03 -0500, an unknown sender wrote:
+>>> On Fri, 2013-01-18 at 16:33 -0500, Chuck Lever wrote:
+>>>> On Jan 18, 2013, at 4:28 PM, Ben Greear <greearb@candelatech.com> wrote:
+>>>>
+>>>>> Any chance the STALE_CLIENTID case needs a 'break'?
+>>>>
+>>>> I don't think so.  LEASE_CONFIRM is set, and we want to wake the state renewal thread.
+>>>>
+>>>>>
+>>>>> Twice I've seen kernel crashes after the nfs40_walk_client_list
+>>>>> failed (though code comments say it should never fail).
+>>>>
+>>>> nfs40_walk_client_list() is looking for an nfs_client that is supposed to already be in the nfs_client list.  If the search fails, that's a bug.
+>>>>
+>>>> Eyeball the contents of your nfs_client list.  You should find an appropriate nfs_client in there, and then figure out why the search doesn't find it.
+>>>
+>>> You have considered the fact that the call to
+>>> nfs4_proc_setclientid_confirm can potentially return
+>>> NFS4ERR_STALE_CLIENTID if the server rebooted while the client was
+>>> walking the list?
+>>
+>> In fact, as far as I can see, the correct behaviour in
+>> nfs40_discover_server_trunking() should be to re-issue the setclientid
+>> call, and then walk the list again if nfs40_walk_client_list() returns
+>> NFS4ERR_STALE_CLIENTID.
+>
+> When I wrote the server trunking detection logic, I think we hadn't clearly decided what needed to be done in the STALE_CLIENTID case.
+>
+>> Something like the attached patch:
+>
+> A couple of comments:
+>
+>   o  nfs_get_client() already sticks the new client on the tail of the nfs_client list
+>
+>   o  We don't want to get stuck in a loop here.  Should the "do {}" loop in nfs40_discover_server_trunking() be bounded by a retry count?
+>
+> However, I haven't heard Ben say "oh, yes, my server had rebooted."  I'd like some confirmation that the match failed for an explainable and expected reason.
 
-On Jan 3, 2013, at 6:26 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+The server machine did not reboot, but it's badly overloaded,
+trying to serve 3000 mount points that are
+constantly being brought up and torn down while
+NFS write traffic is going on.
 
-> On Thu, 2013-01-03 at 18:11 -0500, Trond Myklebust wrote:
->> On Thu, 2013-01-03 at 17:26 -0500, Tejun Heo wrote:
->>> Ooh, BTW, there was a bug where workqueue code created a false
->>> dependency between two work items.  Workqueue currently considers two
->>> work items to be the same if they're on the same address and won't
->>> execute them concurrently - ie. it makes a work item which is queued
->>> again while being executed wait for the previous execution to
->>> complete.
->>> 
->>> If a work function frees the work item, and then waits for an event
->>> which should be performed by another work item and *that* work item
->>> recycles the freed work item, it can create a false dependency loop.
->>> There really is no reliable way to detect this short of verifying
->>> every memory free.  A patch is queued to make such occurrences less
->>> likely (work functions should also match for two work items considered
->>> the same), but if you're seeing this, the best thing to do is freeing
->>> the work item at the end of the work function.
->> 
->> That's interesting... I wonder if we may have been hitting that issue.
->> 
->> From what I can see, we do actually free the write RPC task (and hence
->> the work_struct) before we call the asynchronous unlink completion...
->> 
->> Dros, can you see if reverting commit
->> 324d003b0cd82151adbaecefef57b73f7959a469 + commit 
->> 168e4b39d1afb79a7e3ea6c3bb246b4c82c6bdb9 and then applying the attached
->> patch also fixes the hang on a pristine 3.7.x kernel?
-> 
-> Actually, we probably also need to look at rpc_free_task, so the
-> following patch, instead...
+Even with all this, I've seen this particular problem only twice in
+around 2 days of solid testing (I've been optimizing my user-space
+app, and the better it gets, the more kernel bugs I find!)
 
-Yes, this patch fixes the hang!
+If you have some particular debug info you want printed in
+the failure cause, I'll be happy to run with that.
 
-Thank you for the explanation Tejun - that makes a lot of sense and explains the workqueue behavior that we were seeing.
+Thanks,
+Ben
 
--dros
+
+-- 
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
+
