@@ -1,56 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38984 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:5420 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753103Ab3ACAj7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Jan 2013 19:39:59 -0500
-Date: Wed, 2 Jan 2013 19:39:58 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: ycnian@gmail.com
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: Don't unlock the state while it's not locked
-Message-ID: <20130103003958.GD26356@fieldses.org>
-References: <1356343905-11990-1-git-send-email-ycnian@gmail.com>
+	id S1752020Ab3ARCcG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Jan 2013 21:32:06 -0500
+Received: from vmwexceht04-prd.hq.netapp.com (vmwexceht04-prd.hq.netapp.com [10.106.77.34])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id r0I2W3S9020066
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Jan 2013 18:32:03 -0800 (PST)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: [CFP] Linux Storage, Filesystem and Memory Management Summit 2013
+Date: Fri, 18 Jan 2013 02:32:02 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9119C34FB@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1356343905-11990-1-git-send-email-ycnian@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 24, 2012 at 06:11:45PM +0800, ycnian@gmail.com wrote:
-> From: Yanchuan Nian <ycnian@gmail.com>
-> 
-> In the procedure of CREATE_SESSION, the state is locked after
-> alloc_conn_from_crses(). If the allocation fails, the function
-> goes to "out_free_session", and then "out" where there is an
-> unlock function.
-
-Thanks, applying for 3.9.--b.
-
-> 
-> Signed-off-by: Yanchuan Nian <ycnian@gmail.com>
-> 
-> ---
->  fs/nfsd/nfs4state.c |    3 ++-
->  1 files changed, 2 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 29924a0..cc41bf4 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1844,11 +1844,12 @@ nfsd4_create_session(struct svc_rqst *rqstp,
->  
->  	/* cache solo and embedded create sessions under the state lock */
->  	nfsd4_cache_create_session(cr_ses, cs_slot, status);
-> -out:
->  	nfs4_unlock_state();
-> +out:
->  	dprintk("%s returns %d\n", __func__, ntohl(status));
->  	return status;
->  out_free_conn:
-> +	nfs4_unlock_state();
->  	free_conn(conn);
->  out_free_session:
->  	__free_session(new);
-> -- 
-> 1.7.4.4
-> 
+DQpUaGUgYW5udWFsIExpbnV4IFN0b3JhZ2UsIEZpbGVzeXN0ZW0gYW5kIE1lbW9yeSBNYW5hZ2Vt
+ZW50IFN1bW1pdCBmb3INCjIwMTMgd2lsbCBiZSBoZWxkIG9uIEFwcmlsIDE4dGggYW5kIDE5dGgg
+Zm9sbG93aW5nIHRoZSBMaW51eCBGb3VuZGF0aW9uDQpDb2xsYWJvcmF0aW9uIFN1bW1pdCBhdCBQ
+YXJjIDU1IEhvdGVsIGluIFNhbiBGcmFuY2lzY28sIENBOg0KDQoJaHR0cHM6Ly9ldmVudHMubGlu
+dXhmb3VuZGF0aW9uLm9yZy9ldmVudHMvY29sbGFib3JhdGlvbi1zdW1taXQNCglodHRwczovL2V2
+ZW50cy5saW51eGZvdW5kYXRpb24ub3JnL2V2ZW50cy9sc2ZtbS1zdW1taXQNCg0KV2UnZCB0aGVy
+ZWZvcmUgbGlrZSB0byBpc3N1ZSBhIGNhbGwgZm9yIGFnZW5kYSBwcm9wb3NhbHMgdGhhdCBhcmUN
+CnN1aXRhYmxlIGZvciBjcm9zcy10cmFjayBkaXNjdXNzaW9uIGFzIHdlbGwgYXMgbW9yZSB0ZWNo
+bmljYWwgc3ViamVjdHMNCmZvciBkaXNjdXNzaW9uIGluIHRoZSBicmVha291dCBzZXNzaW9ucy4N
+Cg0KMSkgU3VnZ2VzdGlvbnMgZm9yIGFnZW5kYSB0b3BpY3Mgc2hvdWxkIGJlIHNlbnQgYmVmb3Jl
+IEZlYnJ1YXJ5IDh0aA0KMjAxMyB0bzoNCg0KCWxzZi1wY0BsaXN0cy5saW51eC1mb3VuZGF0aW9u
+Lm9yZw0KDQphbmQgb3B0aW9uYWxseSBjYyB0aGUgTGludXggbGlzdCB3aGljaCB3b3VsZCBiZSBt
+b3N0IGludGVyZXN0ZWQgaW4gaXQ6DQoNCglBVEE6IGxpbnV4LWlkZUB2Z2VyLmtlcm5lbC5vcmcN
+CglTQ1NJOiBsaW51eC1zY3NpQHZnZXIua2VybmVsLm9yZw0KCUZTOiBsaW51eC1mc2RldmVsQHZn
+ZXIua2VybmVsLm9yZw0KCU1NOiBsaW51eC1tbUBrdmFjay5vcmcNCg0KUGxlYXNlIHJlbWVtYmVy
+IHRvIHRhZyB5b3VyIHN1YmplY3Qgd2l0aCBbTFNGL01NIFRPUElDXSB0byBtYWtlIGl0DQplYXNp
+ZXIgdG8gdHJhY2suIEFnZW5kYSB0b3BpY3MgYW5kIGF0dGVuZGVlcyB3aWxsIGJlIHNlbGVjdGVk
+IGJ5IHRoZQ0KcHJvZ3JhbSBjb21taXR0ZWUsIGJ1dCB0aGUgZmluYWwgYWdlbmRhIHdpbGwgYmUg
+Zm9ybWVkIGJ5IGNvbnNlbnN1cyBvZg0KdGhlIGF0dGVuZGVlcyBvbiB0aGUgZGF5Lg0KDQpXZSds
+bCB0cnkgdG8gY2FwIGF0dGVuZGFuY2UgYXQgYXJvdW5kIDI1LTMwIHBlciB0cmFjayB0byBmYWNp
+bGl0YXRlDQpkaXNjdXNzaW9ucyBhbHRob3VnaCB0aGUgZmluYWwgbnVtYmVycyB3aWxsIGRlcGVu
+ZCBvbiB0aGUgcm9vbSBzaXplcyBhdA0KdGhlIHZlbnVlLg0KDQoyKSBSZXF1ZXN0cyB0byBhdHRl
+bmQgdGhlIHN1bW1pdCBzaG91bGQgYmUgc2VudCB0bzoNCg0KCWxzZi1wY0BsaXN0cy5saW51eC1m
+b3VuZGF0aW9uLm9yZw0KDQpQbGVhc2Ugc3VtbWFyaXplIHdoYXQgZXhwZXJ0aXNlIHlvdSB3aWxs
+IGJyaW5nIHRvIHRoZSBtZWV0aW5nLCBhbmQgd2hhdA0KeW91J2QgbGlrZSB0byBkaXNjdXNzLiAg
+cGxlYXNlIGFsc28gdGFnIHlvdXIgZW1haWwgd2l0aCBbQVRURU5EXSBzbw0KdGhlcmUncyBsZXNz
+IGNoYW5jZSBvZiBpdCBnZXR0aW5nIGxvc3QgaW4gdGhlIGxhcmdlIG1haWwgcGlsZS4NCg0KUHJl
+c2VudGF0aW9ucyBhcmUgYWxsb3dlZCB0byBndWlkZSBkaXNjdXNzaW9uLCBidXQgYXJlIHN0cm9u
+Z2x5DQpkaXNjb3VyYWdlZC4gVGhlcmUgd2lsbCBiZSBubyByZWNvcmRpbmcgb3IgYXVkaW8gYnJp
+ZGdlLiBIb3dldmVyLA0Kd3JpdHRlbiBtaW51dGVzIHdpbGwgYmUgcHVibGlzaGVkIGFzIGluIHBy
+ZXZpb3VzIHllYXJzOg0KDQoyMDEyOg0KCWh0dHA6Ly9sd24ubmV0L0FydGljbGVzLzQ5MDExNC8N
+CglodHRwOi8vbHduLm5ldC9BcnRpY2xlcy80OTA1MDEvDQoNCjIwMTE6DQoJaHR0cDovL2x3bi5u
+ZXQvQXJ0aWNsZXMvNDM2ODcxLw0KCWh0dHA6Ly9sd24ubmV0L0FydGljbGVzLzQzNzA2Ni8NCg0K
+MjAxMDoNCglodHRwOi8vbHduLm5ldC9BcnRpY2xlcy8zOTkxNDgvDQoJaHR0cDovL2x3bi5uZXQv
+QXJ0aWNsZXMvMzk5MzEzLw0KCWh0dHA6Ly9sd24ubmV0L0FydGljbGVzLzQwMDU4OS8NCg0KMjAw
+OToNCglodHRwOi8vbHduLm5ldC9BcnRpY2xlcy8zMjc2MDEvDQoJaHR0cDovL2x3bi5uZXQvQXJ0
+aWNsZXMvMzI3NzQwLw0KCWh0dHA6Ly9sd24ubmV0L0FydGljbGVzLzMyODM0Ny8NCg0KUHJpb3Ig
+eWVhcnM6DQoJaHR0cDovL3d3dy51c2VuaXgub3JnL2V2ZW50cy9sc2YwOC90ZWNoL2xzZjA4c3Vt
+cy5wZGYNCglodHRwOi8vd3d3LnVzZW5peC5vcmcvcHVibGljYXRpb25zL2xvZ2luLzIwMDctMDYv
+b3BlbnBkZnMuLi4NCg0KMykgSWYgeW91IGhhdmUgZmVlZGJhY2sgb24gbGFzdCB5ZWFyJ3MgbWVl
+dGluZyB0aGF0IHdlIGNhbiB1c2UgdG8NCmltcHJvdmUgdGhpcyB5ZWFyJ3MsIHBsZWFzZSBhbHNv
+IHNlbmQgdGhhdCB0bzoNCg0KCWxzZi1wY0BsaXN0cy5saW51eC1mb3VuZGF0aW9uLm9yZw0KDQpU
+aGFuayB5b3Ugb24gYmVoYWxmIG9mIHRoZSBwcm9ncmFtIGNvbW1pdHRlZToNCg0KU3RvcmFnZToN
+CglNYXJ0aW4gSy4gUGV0ZXJzZW4NCglKZW5zIEF4Ym9lDQoJSmFtZXMgQm90dG9tbGV5DQoNCkZp
+bGVzeXN0ZW1zOg0KCVJpYyBXaGVlbGVyDQoJQ2hyaXN0b3BoIEhlbGx3aWcNCglKYWVnZXVrIEtp
+bQ0KCUplZmZyZXkgTGF5dG9uDQoJVGFvIE1hDQoJQ2hyaXMgTWFzb24NCglUcm9uZCBNeWtsZWJ1
+c3QNCglFcmljIFNhbmRlZW4NCglUaGVvZG9yZSBUcydvDQoJU2FnZSBXZWlsDQoNCk1NOg0KCVJp
+ayB2YW4gUmllbA0KCU1lbCBHb3JtYW4NCglZaW5nIEhhbg0KDQoNCg==
