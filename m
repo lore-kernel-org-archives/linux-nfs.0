@@ -1,39 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.candelatech.com ([208.74.158.172]:39850 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752783Ab3AUUqe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2013 15:46:34 -0500
-From: greearb@candelatech.com
-To: linux-nfs@vger.kernel.org
-Cc: Ben Greear <greearb@candelatech.com>
-Subject: [RFC 02/13] nfs: Two AF_UNSPEC addresses should always match each other.
-Date: Mon, 21 Jan 2013 12:45:48 -0800
-Message-Id: <1358801159-18829-3-git-send-email-greearb@candelatech.com>
-In-Reply-To: <1358801159-18829-1-git-send-email-greearb@candelatech.com>
-References: <1358801159-18829-1-git-send-email-greearb@candelatech.com>
+Received: from relay.parallels.com ([195.214.232.42]:38642 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750755Ab3ARFhP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jan 2013 00:37:15 -0500
+Message-ID: <50F8DF7E.8080107@parallels.com>
+Date: Fri, 18 Jan 2013 09:37:02 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: Mark Lord <kernel@teksavvy.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>,
+        Linux Kernel <linux-kernel@vger.kernel.org>
+Subject: Re: BUG at net/sunrpc/svc_xprt.c:921
+References: <50F42F85.50907@teksavvy.com> <20130114203711.GA29982@fieldses.org> <50F4D800.5040703@teksavvy.com> <20130115205625.GH4940@fieldses.org> <50F63882.8000607@parallels.com> <50F72F03.5070806@teksavvy.com> <50F786AF.4070107@parallels.com> <20130117130335.GD6598@fieldses.org> <50F7FB7E.2020503@parallels.com> <50F88C14.7030903@teksavvy.com>
+In-Reply-To: <50F88C14.7030903@teksavvy.com>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Ben Greear <greearb@candelatech.com>
+18.01.2013 03:41, Mark Lord пишет:
+> On 13-01-17 08:24 AM, Stanislav Kinsbursky wrote:
+> ..
+>> This looks like the old issue I was trying to fix with "SUNRPC: protect service sockets lists during
+>> per-net shutdown".
+>> So, here is the problem as I see it: there is a transport, which is processed by service thread and
+>> it's processing is racing with per-net service shutdown:
+>>
+>> CPU#0:                            CPU#1:
+>>
+>> svc_recv                        svc_close_net
+>> svc_get_next_xprt (list_del_init(xpt_ready))
+>>                              svc_close_list (set XPT_BUSY and XPT_CLOSE)
+>>                              svc_clear_pools(xprt was gained on CPU#0 already)
+>>                              svc_delete_xprt (set XPT_DEAD)
+>> svc_handle_xprt (is XPT_CLOSE => svc_delete_xprt()
+>> BUG()
+>>
+>> So, from my POW, we need some way to:
+>> 1) Skip such in-progress transports on svc_close_net() call (there is not way to detect them, or at
+>> least I don't see one)
+>> 2) Delete the transport after somewhere after svc_xprt_received()
+>>
+>> But there is a problem with svc_xprt_received(): there is a call for svc_xprt_put() in it
+>> (svc_recv->svc_handle_xprt->svc_xprt_received->svc_xprt_put) . And if we are the only user - then
+>> the transport will be destroyed. But transport is dereferenced later in svc_recv() after the
+>> svc_handle_xprt call.
+>
+> Sounds like a reference count type of problem/solution (kref) (?)
+>
 
-Signed-off-by: Ben Greear <greearb@candelatech.com>
----
- fs/nfs/client.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+No, it would be very simple.
+Unluckily, the problem is more complex. In few words, the problem is in dynamic resources (transports) creation/attaching
+and destruction/detaching for running (!) SUNRPC service.
+You have more than one NFS mount in different network namespaces, haven't you?
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 5e8d24d..809fd1e 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -369,6 +369,8 @@ int nfs_sockaddr_match_ipaddr(const struct sockaddr *sa1,
- 		return nfs_sockaddr_match_ipaddr4(sa1, sa2);
- 	case AF_INET6:
- 		return nfs_sockaddr_match_ipaddr6(sa1, sa2);
-+	case AF_UNSPEC:
-+		return 1; /* two UNSPEC addresses match */
- 	}
- 	return 0;
- }
 -- 
-1.7.3.4
-
+Best regards,
+Stanislav Kinsbursky
