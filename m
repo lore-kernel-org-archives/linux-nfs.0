@@ -1,180 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:53481 "EHLO mx12.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:28659 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751844Ab3AGU3Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Jan 2013 15:29:25 -0500
+	id S1753992Ab3ARW7Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Jan 2013 17:59:25 -0500
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chris Perl <chris.perl@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Possible Race Condition on SIGKILL
-Date: Mon, 7 Jan 2013 20:29:23 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA911991BC0@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20130107185848.GB16957@nyc-qws-132.nyc.delacy.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA91199197E@SACEXCMBX04-PRD.hq.netapp.com>
-	 <20130107202021.GC16957@nyc-qws-132.nyc.delacy.com>
-In-Reply-To: <20130107202021.GC16957@nyc-qws-132.nyc.delacy.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Ben Greear <greearb@candelatech.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Question on nfs40_discover_server_trunking.
+Date: Fri, 18 Jan 2013 22:59:23 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA915C04FE5@sacexcmbx05-prd.hq.netapp.com>
+References: <50F9BE66.6080608@candelatech.com>
+	 <0F001F0E-229D-4314-A42E-84402E4F1FC7@oracle.com>
+	 <1358546604.2872.6.camel@leira.trondhjem.org>
+In-Reply-To: <1358546604.2872.6.camel@leira.trondhjem.org>
 Content-Type: multipart/mixed;
-	boundary="_002_4FA345DA4F4AE44899BD2B03EEEC2FA911991BC0SACEXCMBX04PRDh_"
+	boundary="_002_4FA345DA4F4AE44899BD2B03EEEC2FA915C04FE5sacexcmbx05prdh_"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---_002_4FA345DA4F4AE44899BD2B03EEEC2FA911991BC0SACEXCMBX04PRDh_
-Content-Type: text/plain; charset="utf-7"
-Content-ID: <1CB151891DADF14E96686937FCE0D072@tahoe.netapp.com>
-Content-Transfer-Encoding: quoted-printable
-
-On Mon, 2013-01-07 at 15:20 -0500, Chris Perl wrote:
-+AD4- On Mon, Jan 07, 2013 at 07:50:10PM +-0000, Myklebust, Trond wrote:
-+AD4- +AD4- Hi Chris,
-+AD4- +AD4-=20
-+AD4- +AD4- Excellent sleuthing+ACE- Given the thoroughness of your explana=
-tion, I'm
-+AD4- +AD4- pretty sure that the attached patch should fix the problem.
-+AD4- +AD4-=20
-+AD4- +AD4- Cheers
-+AD4- +AD4-   Trond
-+AD4- +AD4- --=20
-+AD4- +AD4- Trond Myklebust
-+AD4- +AD4- Linux NFS client maintainer
-+AD4- +AD4-=20
-+AD4- +AD4- NetApp
-+AD4- +AD4- Trond.Myklebust+AEA-netapp.com
-+AD4- +AD4- www.netapp.com
-+AD4-=20
-+AD4- +AD4- From ec8cbb4aff21cd0eac2c6f3fc4273ac72cdd91ef Mon Sep 17 00:00:=
-00 2001
-+AD4- +AD4- From: Trond Myklebust +ADw-Trond.Myklebust+AEA-netapp.com+AD4-
-+AD4- +AD4- Date: Mon, 7 Jan 2013 14:30:46 -0500
-+AD4- +AD4- Subject: +AFs-PATCH+AF0- SUNRPC: Ensure we release the socket w=
-rite lock if the
-+AD4- +AD4-  rpc+AF8-task exits early
-+AD4- +AD4-=20
-+AD4- +AD4- If the rpc+AF8-task exits while holding the socket write lock b=
-efore it has
-+AD4- +AD4- allocated an rpc slot, then the usual mechanism for releasing t=
-he write
-+AD4- +AD4- lock in xprt+AF8-release() is defeated.
-+AD4- +AD4-=20
-+AD4- +AD4- The problem occurs if the call to xprt+AF8-lock+AF8-write() ini=
-tially fails, so
-+AD4- +AD4- that the rpc+AF8-task is put on the xprt-+AD4-sending wait queu=
-e. If the task
-+AD4- +AD4- exits after being assigned the lock by +AF8AXw-xprt+AF8-lock+AF=
-8-write+AF8-func, but
-+AD4- +AD4- before it has retried the call to xprt+AF8-lock+AF8-and+AF8-all=
-oc+AF8-slot(), then
-+AD4- +AD4- it calls xprt+AF8-release() while holding the write lock, but w=
-ill
-+AD4- +AD4- immediately exit due to the test for task-+AD4-tk+AF8-rqstp +AC=
-EAPQ- NULL.
-+AD4- +AD4-=20
-+AD4- +AD4- Reported-by: Chris Perl +ADw-chris.perl+AEA-gmail.com+AD4-
-+AD4- +AD4- Signed-off-by: Trond Myklebust +ADw-Trond.Myklebust+AEA-netapp.=
-com+AD4-
-+AD4- +AD4- Cc: stable+AEA-vger.kernel.org +AFsAPgA9- 3.1+AF0-
-+AD4- +AD4- ---
-+AD4- +AD4-  net/sunrpc/xprt.c +AHw- 6 +-+-+-+---
-+AD4- +AD4-  1 file changed, 4 insertions(+-), 2 deletions(-)
-+AD4- +AD4-=20
-+AD4- +AD4- diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-+AD4- +AD4- index bd462a5..6676457 100644
-+AD4- +AD4- --- a/net/sunrpc/xprt.c
-+AD4- +AD4- +-+-+- b/net/sunrpc/xprt.c
-+AD4- +AD4- +AEAAQA- -1136,10 +-1136,12 +AEAAQA- static void xprt+AF8-reque=
-st+AF8-init(struct rpc+AF8-task +ACo-task, struct rpc+AF8-xprt +ACo-xprt)
-+AD4- +AD4-  void xprt+AF8-release(struct rpc+AF8-task +ACo-task)
-+AD4- +AD4-  +AHs-
-+AD4- +AD4-  	struct rpc+AF8-xprt	+ACo-xprt+ADs-
-+AD4- +AD4- -	struct rpc+AF8-rqst	+ACo-req+ADs-
-+AD4- +AD4- +-	struct rpc+AF8-rqst	+ACo-req +AD0- task-+AD4-tk+AF8-rqstp+AD=
-s-
-+AD4- +AD4- =20
-+AD4- +AD4- -	if (+ACE-(req +AD0- task-+AD4-tk+AF8-rqstp))
-+AD4- +AD4- +-	if (req +AD0APQ- NULL) +AHs-
-+AD4- +AD4- +-		xprt+AF8-release+AF8-write(task-+AD4-tk+AF8-xprt, task)+ADs=
--
-+AD4- +AD4-  		return+ADs-
-+AD4- +AD4- +-	+AH0-
-+AD4- +AD4- =20
-+AD4- +AD4-  	xprt +AD0- req-+AD4-rq+AF8-xprt+ADs-
-+AD4- +AD4-  	if (task-+AD4-tk+AF8-ops-+AD4-rpc+AF8-count+AF8-stats +ACEAPQ=
-- NULL)
-+AD4- +AD4- --=20
-+AD4- +AD4- 1.7.11.7
-+AD4- +AD4-=20
-+AD4-=20
-+AD4- Ah, I totally missed the call to +AGA-rpc+AF8-release+AF8-task' at th=
-e bottom of the
-+AD4- +AGAAXwBf-rpc+AF8-execute' loop (at least thats how I think we'd get =
-to this function
-+AD4- you're patching).
-+AD4-=20
-+AD4- But wouldn't we need to update the call site in
-+AD4- +AGA-rpc+AF8-release+AF8-resources+AF8-task' as well?  It contains an=
- explicit check for
-+AD4- +AGA-task-+AD4-tk+AF8-rqstp' being non null.
-
-Ewww.... You're right: That's a wart that seems to have been copied and
-pasted quite a few times.
-
-Here is v2...
---=20
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust+AEA-netapp.com
-www.netapp.com
-
---_002_4FA345DA4F4AE44899BD2B03EEEC2FA911991BC0SACEXCMBX04PRDh_
-Content-Type: text/x-patch;
-	name="0001-SUNRPC-Ensure-we-release-the-socket-write-lock-if-th.patch"
-Content-Description: 0001-SUNRPC-Ensure-we-release-the-socket-write-lock-if-th.patch
-Content-Disposition: attachment;
-	filename="0001-SUNRPC-Ensure-we-release-the-socket-write-lock-if-th.patch";
-	size=2165; creation-date="Mon, 07 Jan 2013 20:29:23 GMT";
-	modification-date="Mon, 07 Jan 2013 20:29:23 GMT"
-Content-ID: <58331E0C73D3F749A4FE4F7244768158@tahoe.netapp.com>
+--_002_4FA345DA4F4AE44899BD2B03EEEC2FA915C04FE5sacexcmbx05prdh_
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <2AAE344384768E4A8FB1F08ACEF40510@tahoe.netapp.com>
 Content-Transfer-Encoding: base64
 
-RnJvbSA0MGIwZWYyOGZkYTBiM2VjZjhlNGYzNTg0NmQ5YjlhNzY1ZGY0YzQxIE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
-YXBwLmNvbT4NCkRhdGU6IE1vbiwgNyBKYW4gMjAxMyAxNDozMDo0NiAtMDUwMA0KU3ViamVjdDog
-W1BBVENIIHYyXSBTVU5SUEM6IEVuc3VyZSB3ZSByZWxlYXNlIHRoZSBzb2NrZXQgd3JpdGUgbG9j
-ayBpZiB0aGUNCiBycGNfdGFzayBleGl0cyBlYXJseQ0KDQpJZiB0aGUgcnBjX3Rhc2sgZXhpdHMg
-d2hpbGUgaG9sZGluZyB0aGUgc29ja2V0IHdyaXRlIGxvY2sgYmVmb3JlIGl0IGhhcw0KYWxsb2Nh
-dGVkIGFuIHJwYyBzbG90LCB0aGVuIHRoZSB1c3VhbCBtZWNoYW5pc20gZm9yIHJlbGVhc2luZyB0
-aGUgd3JpdGUNCmxvY2sgaW4geHBydF9yZWxlYXNlKCkgaXMgZGVmZWF0ZWQuDQoNClRoZSBwcm9i
-bGVtIG9jY3VycyBpZiB0aGUgY2FsbCB0byB4cHJ0X2xvY2tfd3JpdGUoKSBpbml0aWFsbHkgZmFp
-bHMsIHNvDQp0aGF0IHRoZSBycGNfdGFzayBpcyBwdXQgb24gdGhlIHhwcnQtPnNlbmRpbmcgd2Fp
-dCBxdWV1ZS4gSWYgdGhlIHRhc2sNCmV4aXRzIGFmdGVyIGJlaW5nIGFzc2lnbmVkIHRoZSBsb2Nr
-IGJ5IF9feHBydF9sb2NrX3dyaXRlX2Z1bmMsIGJ1dA0KYmVmb3JlIGl0IGhhcyByZXRyaWVkIHRo
-ZSBjYWxsIHRvIHhwcnRfbG9ja19hbmRfYWxsb2Nfc2xvdCgpLCB0aGVuDQppdCBjYWxscyB4cHJ0
-X3JlbGVhc2UoKSB3aGlsZSBob2xkaW5nIHRoZSB3cml0ZSBsb2NrLCBidXQgd2lsbA0KaW1tZWRp
-YXRlbHkgZXhpdCBkdWUgdG8gdGhlIHRlc3QgZm9yIHRhc2stPnRrX3Jxc3RwICE9IE5VTEwuDQoN
-ClJlcG9ydGVkLWJ5OiBDaHJpcyBQZXJsIDxjaHJpcy5wZXJsQGdtYWlsLmNvbT4NClNpZ25lZC1v
-ZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFwcC5jb20+DQpDYzog
-c3RhYmxlQHZnZXIua2VybmVsLm9yZyBbPj0gMy4xXQ0KLS0tDQogbmV0L3N1bnJwYy9zY2hlZC5j
-IHwgMyArLS0NCiBuZXQvc3VucnBjL3hwcnQuYyAgfCA2ICsrKystLQ0KIDIgZmlsZXMgY2hhbmdl
-ZCwgNSBpbnNlcnRpb25zKCspLCA0IGRlbGV0aW9ucygtKQ0KDQpkaWZmIC0tZ2l0IGEvbmV0L3N1
-bnJwYy9zY2hlZC5jIGIvbmV0L3N1bnJwYy9zY2hlZC5jDQppbmRleCBiNDEzM2JkLi5iZmEzMTcx
-IDEwMDY0NA0KLS0tIGEvbmV0L3N1bnJwYy9zY2hlZC5jDQorKysgYi9uZXQvc3VucnBjL3NjaGVk
-LmMNCkBAIC05NzIsOCArOTcyLDcgQEAgc3RhdGljIHZvaWQgcnBjX2FzeW5jX3JlbGVhc2Uoc3Ry
-dWN0IHdvcmtfc3RydWN0ICp3b3JrKQ0KIA0KIHN0YXRpYyB2b2lkIHJwY19yZWxlYXNlX3Jlc291
-cmNlc190YXNrKHN0cnVjdCBycGNfdGFzayAqdGFzaykNCiB7DQotCWlmICh0YXNrLT50a19ycXN0
-cCkNCi0JCXhwcnRfcmVsZWFzZSh0YXNrKTsNCisJeHBydF9yZWxlYXNlKHRhc2spOw0KIAlpZiAo
-dGFzay0+dGtfbXNnLnJwY19jcmVkKSB7DQogCQlwdXRfcnBjY3JlZCh0YXNrLT50a19tc2cucnBj
-X2NyZWQpOw0KIAkJdGFzay0+dGtfbXNnLnJwY19jcmVkID0gTlVMTDsNCmRpZmYgLS1naXQgYS9u
-ZXQvc3VucnBjL3hwcnQuYyBiL25ldC9zdW5ycGMveHBydC5jDQppbmRleCBiZDQ2MmE1Li42Njc2
-NDU3IDEwMDY0NA0KLS0tIGEvbmV0L3N1bnJwYy94cHJ0LmMNCisrKyBiL25ldC9zdW5ycGMveHBy
-dC5jDQpAQCAtMTEzNiwxMCArMTEzNiwxMiBAQCBzdGF0aWMgdm9pZCB4cHJ0X3JlcXVlc3RfaW5p
-dChzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2ssIHN0cnVjdCBycGNfeHBydCAqeHBydCkNCiB2b2lkIHhw
-cnRfcmVsZWFzZShzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2spDQogew0KIAlzdHJ1Y3QgcnBjX3hwcnQJ
-KnhwcnQ7DQotCXN0cnVjdCBycGNfcnFzdAkqcmVxOw0KKwlzdHJ1Y3QgcnBjX3Jxc3QJKnJlcSA9
-IHRhc2stPnRrX3Jxc3RwOw0KIA0KLQlpZiAoIShyZXEgPSB0YXNrLT50a19ycXN0cCkpDQorCWlm
-IChyZXEgPT0gTlVMTCkgew0KKwkJeHBydF9yZWxlYXNlX3dyaXRlKHRhc2stPnRrX3hwcnQsIHRh
-c2spOw0KIAkJcmV0dXJuOw0KKwl9DQogDQogCXhwcnQgPSByZXEtPnJxX3hwcnQ7DQogCWlmICh0
-YXNrLT50a19vcHMtPnJwY19jb3VudF9zdGF0cyAhPSBOVUxMKQ0KLS0gDQoxLjcuMTEuNw0KDQo=
+T24gRnJpLCAyMDEzLTAxLTE4IGF0IDE3OjAzIC0wNTAwLCBhbiB1bmtub3duIHNlbmRlciB3cm90
+ZToNCj4gT24gRnJpLCAyMDEzLTAxLTE4IGF0IDE2OjMzIC0wNTAwLCBDaHVjayBMZXZlciB3cm90
+ZToNCj4gPiBPbiBKYW4gMTgsIDIwMTMsIGF0IDQ6MjggUE0sIEJlbiBHcmVlYXIgPGdyZWVhcmJA
+Y2FuZGVsYXRlY2guY29tPiB3cm90ZToNCj4gPiANCj4gPiA+IEFueSBjaGFuY2UgdGhlIFNUQUxF
+X0NMSUVOVElEIGNhc2UgbmVlZHMgYSAnYnJlYWsnPw0KPiA+IA0KPiA+IEkgZG9uJ3QgdGhpbmsg
+c28uICBMRUFTRV9DT05GSVJNIGlzIHNldCwgYW5kIHdlIHdhbnQgdG8gd2FrZSB0aGUgc3RhdGUg
+cmVuZXdhbCB0aHJlYWQuDQo+ID4gDQo+ID4gPiANCj4gPiA+IFR3aWNlIEkndmUgc2VlbiBrZXJu
+ZWwgY3Jhc2hlcyBhZnRlciB0aGUgbmZzNDBfd2Fsa19jbGllbnRfbGlzdA0KPiA+ID4gZmFpbGVk
+ICh0aG91Z2ggY29kZSBjb21tZW50cyBzYXkgaXQgc2hvdWxkIG5ldmVyIGZhaWwpLg0KPiA+IA0K
+PiA+IG5mczQwX3dhbGtfY2xpZW50X2xpc3QoKSBpcyBsb29raW5nIGZvciBhbiBuZnNfY2xpZW50
+IHRoYXQgaXMgc3VwcG9zZWQgdG8gYWxyZWFkeSBiZSBpbiB0aGUgbmZzX2NsaWVudCBsaXN0LiAg
+SWYgdGhlIHNlYXJjaCBmYWlscywgdGhhdCdzIGEgYnVnLg0KPiA+IA0KPiA+IEV5ZWJhbGwgdGhl
+IGNvbnRlbnRzIG9mIHlvdXIgbmZzX2NsaWVudCBsaXN0LiAgWW91IHNob3VsZCBmaW5kIGFuIGFw
+cHJvcHJpYXRlIG5mc19jbGllbnQgaW4gdGhlcmUsIGFuZCB0aGVuIGZpZ3VyZSBvdXQgd2h5IHRo
+ZSBzZWFyY2ggZG9lc24ndCBmaW5kIGl0Lg0KPiANCj4gWW91IGhhdmUgY29uc2lkZXJlZCB0aGUg
+ZmFjdCB0aGF0IHRoZSBjYWxsIHRvDQo+IG5mczRfcHJvY19zZXRjbGllbnRpZF9jb25maXJtIGNh
+biBwb3RlbnRpYWxseSByZXR1cm4NCj4gTkZTNEVSUl9TVEFMRV9DTElFTlRJRCBpZiB0aGUgc2Vy
+dmVyIHJlYm9vdGVkIHdoaWxlIHRoZSBjbGllbnQgd2FzDQo+IHdhbGtpbmcgdGhlIGxpc3Q/DQoN
+CkluIGZhY3QsIGFzIGZhciBhcyBJIGNhbiBzZWUsIHRoZSBjb3JyZWN0IGJlaGF2aW91ciBpbg0K
+bmZzNDBfZGlzY292ZXJfc2VydmVyX3RydW5raW5nKCkgc2hvdWxkIGJlIHRvIHJlLWlzc3VlIHRo
+ZSBzZXRjbGllbnRpZA0KY2FsbCwgYW5kIHRoZW4gd2FsayB0aGUgbGlzdCBhZ2FpbiBpZiBuZnM0
+MF93YWxrX2NsaWVudF9saXN0KCkgcmV0dXJucw0KTkZTNEVSUl9TVEFMRV9DTElFTlRJRC4NCg0K
+U29tZXRoaW5nIGxpa2UgdGhlIGF0dGFjaGVkIHBhdGNoOg0KDQotLSANClRyb25kIE15a2xlYnVz
+dA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0
+QG5ldGFwcC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
 
---_002_4FA345DA4F4AE44899BD2B03EEEC2FA911991BC0SACEXCMBX04PRDh_--
+--_002_4FA345DA4F4AE44899BD2B03EEEC2FA915C04FE5sacexcmbx05prdh_
+Content-Type: text/x-patch;
+	name="0001-NFSv4-Fix-NFSv4.0-trunking-discovery.patch"
+Content-Description: 0001-NFSv4-Fix-NFSv4.0-trunking-discovery.patch
+Content-Disposition: attachment;
+	filename="0001-NFSv4-Fix-NFSv4.0-trunking-discovery.patch"; size=4018;
+	creation-date="Fri, 18 Jan 2013 22:59:23 GMT";
+	modification-date="Fri, 18 Jan 2013 22:59:23 GMT"
+Content-ID: <728BE39E92AC89479CDF6746DC7575DE@tahoe.netapp.com>
+Content-Transfer-Encoding: base64
+
+RnJvbSA4YWUwZGMwYWU2NGM5OTEzYzkwZjU1MGQzYzZiNzI0MzEzODgzZmZmIE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
+YXBwLmNvbT4NCkRhdGU6IEZyaSwgMTggSmFuIDIwMTMgMTc6NTQ6MzQgLTA1MDANClN1YmplY3Q6
+IFtQQVRDSF0gTkZTdjQ6IEZpeCBORlN2NC4wIHRydW5raW5nIGRpc2NvdmVyeQ0KDQpJZiB3YWxr
+aW5nIHRoZSBsaXN0IGluIG5mczQwX3dhbGtfY2xpZW50X2xpc3QgZmFpbHMsIHRoZW4gdGhlIG1v
+c3QNCmxpa2VseSBleHBsYW5hdGlvbiBpcyB0aGF0IHRoZSBzZXJ2ZXIgcmVib290ZWQuIEVuc3Vy
+ZSB0aGF0IHdlIGNhdGNoDQp0aGF0IGNhc2UgYnkgdGVzdGluZyBvdXIgbmV3IG5mc19jbGllbnQg
+bGFzdC4NCg0KUmVwb3J0ZWQtYnk6IEJlbiBHcmVlYXIgPGdyZWVhcmJAY2FuZGVsYXRlY2guY29t
+Pg0KU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBw
+LmNvbT4NCkNjOiBDaHVjayBMZXZlciA8Y2h1Y2subGV2ZXJAb3JhY2xlLmNvbT4NCkNjOiBzdGFi
+bGVAdmdlci5rZXJuZWwub3JnIFs+PTMuN10NCi0tLQ0KIGZzL25mcy9uZnM0Y2xpZW50LmMgfCAz
+NSArKysrKysrKysrKysrKysrKy0tLS0tLS0tLS0tLS0tLS0tLQ0KIGZzL25mcy9uZnM0c3RhdGUu
+YyAgfCAyMiArKysrKysrKysrLS0tLS0tLS0tLS0tDQogMiBmaWxlcyBjaGFuZ2VkLCAyNyBpbnNl
+cnRpb25zKCspLCAzMCBkZWxldGlvbnMoLSkNCg0KZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0Y2xp
+ZW50LmMgYi9mcy9uZnMvbmZzNGNsaWVudC5jDQppbmRleCBhY2MzNDcyLi41OTZiMzAzIDEwMDY0
+NA0KLS0tIGEvZnMvbmZzL25mczRjbGllbnQuYw0KKysrIGIvZnMvbmZzL25mczRjbGllbnQuYw0K
+QEAgLTMxMCw2ICszMTAsOSBAQCBpbnQgbmZzNDBfd2Fsa19jbGllbnRfbGlzdChzdHJ1Y3QgbmZz
+X2NsaWVudCAqbmV3LA0KIA0KIAlzcGluX2xvY2soJm5uLT5uZnNfY2xpZW50X2xvY2spOw0KIAls
+aXN0X2Zvcl9lYWNoX2VudHJ5X3NhZmUocG9zLCBuLCAmbm4tPm5mc19jbGllbnRfbGlzdCwgY2xf
+c2hhcmVfbGluaykgew0KKwkJLyogU2tpcCB0aGUgbmV3IGVudHJ5ICovDQorCQlpZiAocG9zID09
+IG5ldykNCisJCQljb250aW51ZTsNCiAJCS8qIElmICJwb3MiIGlzbid0IG1hcmtlZCByZWFkeSwg
+d2UgY2FuJ3QgdHJ1c3QgdGhlDQogCQkgKiByZW1haW5pbmcgZmllbGRzIGluICJwb3MiICovDQog
+CQlpZiAocG9zLT5jbF9jb25zX3N0YXRlIDwgTkZTX0NTX1JFQURZKQ0KQEAgLTMzMiw0MCArMzM1
+LDM2IEBAIGludCBuZnM0MF93YWxrX2NsaWVudF9saXN0KHN0cnVjdCBuZnNfY2xpZW50ICpuZXcs
+DQogDQogCQlpZiAocHJldikNCiAJCQluZnNfcHV0X2NsaWVudChwcmV2KTsNCisJCXByZXYgPSBw
+b3M7DQogDQogCQlzdGF0dXMgPSBuZnM0X3Byb2Nfc2V0Y2xpZW50aWRfY29uZmlybShwb3MsICZj
+bGlkLCBjcmVkKTsNCi0JCWlmIChzdGF0dXMgPT0gMCkgew0KKwkJc3dpdGNoIChzdGF0dXMpIHsN
+CisJCWNhc2UgMDoNCiAJCQluZnM0X3N3YXBfY2FsbGJhY2tfaWRlbnRzKHBvcywgbmV3KTsNCiAN
+Ci0JCQluZnNfcHV0X2NsaWVudChwb3MpOw0KKwkJCXByZXYgPSBOVUxMOw0KIAkJCSpyZXN1bHQg
+PSBwb3M7DQogCQkJZHByaW50aygiTkZTOiA8LS0gJXMgdXNpbmcgbmZzX2NsaWVudCA9ICVwICh7
+JWR9KVxuIiwNCiAJCQkJX19mdW5jX18sIHBvcywgYXRvbWljX3JlYWQoJnBvcy0+Y2xfY291bnQp
+KTsNCi0JCQlyZXR1cm4gMDsNCi0JCX0NCi0JCWlmIChzdGF0dXMgIT0gLU5GUzRFUlJfU1RBTEVf
+Q0xJRU5USUQpIHsNCi0JCQluZnNfcHV0X2NsaWVudChwb3MpOw0KLQkJCWRwcmludGsoIk5GUzog
+PC0tICVzIHN0YXR1cyA9ICVkLCBubyByZXN1bHRcbiIsDQotCQkJCV9fZnVuY19fLCBzdGF0dXMp
+Ow0KLQkJCXJldHVybiBzdGF0dXM7DQorCQlkZWZhdWx0Og0KKwkJCWdvdG8gb3V0Ow0KKwkJY2Fz
+ZSAtTkZTNEVSUl9TVEFMRV9DTElFTlRJRDoNCiAJCX0NCiANCiAJCXNwaW5fbG9jaygmbm4tPm5m
+c19jbGllbnRfbG9jayk7DQotCQlwcmV2ID0gcG9zOw0KIAl9DQorCXNwaW5fdW5sb2NrKCZubi0+
+bmZzX2NsaWVudF9sb2NrKTsNCiANCiAJLyoNCi0JICogTm8gbWF0Y2hpbmcgbmZzX2NsaWVudCBm
+b3VuZC4gIFRoaXMgc2hvdWxkIGJlIGltcG9zc2libGUsDQotCSAqIGJlY2F1c2UgdGhlIG5ldyBu
+ZnNfY2xpZW50IGhhcyBhbHJlYWR5IGJlZW4gYWRkZWQgdG8NCi0JICogbmZzX2NsaWVudF9saXN0
+IGJ5IG5mc19nZXRfY2xpZW50KCkuDQotCSAqDQotCSAqIERvbid0IEJVRygpLCBzaW5jZSB0aGUg
+Y2FsbGVyIGlzIGhvbGRpbmcgYSBtdXRleC4NCisJICogTm8gbWF0Y2ggZm91bmQuIFRyeSB0byBj
+b25maXJtIHRoZSBjbGllbnRpZCBvbiAibmV3Ii4NCiAJICovDQorCSpyZXN1bHQgPSBuZXc7DQor
+CXN0YXR1cyA9IG5mczRfcHJvY19zZXRjbGllbnRpZF9jb25maXJtKG5ldywgJmNsaWQsIGNyZWQp
+Ow0KK291dDoNCiAJaWYgKHByZXYpDQogCQluZnNfcHV0X2NsaWVudChwcmV2KTsNCi0Jc3Bpbl91
+bmxvY2soJm5uLT5uZnNfY2xpZW50X2xvY2spOw0KLQlwcl9lcnIoIk5GUzogJXMgRXJyb3I6IG5v
+IG1hdGNoaW5nIG5mc19jbGllbnQgZm91bmRcbiIsIF9fZnVuY19fKTsNCi0JcmV0dXJuIC1ORlM0
+RVJSX1NUQUxFX0NMSUVOVElEOw0KKwlkcHJpbnRrKCJORlM6IDwtLSAlcyBzdGF0dXMgPSAlZFxu
+IiwgX19mdW5jX18sIHN0YXR1cyk7DQorCXJldHVybiBzdGF0dXM7DQogfQ0KIA0KICNpZmRlZiBD
+T05GSUdfTkZTX1Y0XzENCmRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNHN0YXRlLmMgYi9mcy9uZnMv
+bmZzNHN0YXRlLmMNCmluZGV4IDk0NDhjNTcuLjEwMjg4NWQgMTAwNjQ0DQotLS0gYS9mcy9uZnMv
+bmZzNHN0YXRlLmMNCisrKyBiL2ZzL25mcy9uZnM0c3RhdGUuYw0KQEAgLTEyOSwyNCArMTI5LDIy
+IEBAIGludCBuZnM0MF9kaXNjb3Zlcl9zZXJ2ZXJfdHJ1bmtpbmcoc3RydWN0IG5mc19jbGllbnQg
+KmNscCwNCiAJaWYgKGNscC0+Y2xfYWRkci5zc19mYW1pbHkgPT0gQUZfSU5FVDYpDQogCQlwb3J0
+ID0gbm4tPm5mc19jYWxsYmFja190Y3Bwb3J0NjsNCiANCi0Jc3RhdHVzID0gbmZzNF9wcm9jX3Nl
+dGNsaWVudGlkKGNscCwgTkZTNF9DQUxMQkFDSywgcG9ydCwgY3JlZCwgJmNsaWQpOw0KLQlpZiAo
+c3RhdHVzICE9IDApDQotCQlnb3RvIG91dDsNCi0JY2xwLT5jbF9jbGllbnRpZCA9IGNsaWQuY2xp
+ZW50aWQ7DQotCWNscC0+Y2xfY29uZmlybSA9IGNsaWQuY29uZmlybTsNCisJZG8gew0KKwkJc3Rh
+dHVzID0gbmZzNF9wcm9jX3NldGNsaWVudGlkKGNscCwgTkZTNF9DQUxMQkFDSywgcG9ydCwgY3Jl
+ZCwgJmNsaWQpOw0KKwkJaWYgKHN0YXR1cyAhPSAwKQ0KKwkJCWJyZWFrOw0KKwkJY2xwLT5jbF9j
+bGllbnRpZCA9IGNsaWQuY2xpZW50aWQ7DQorCQljbHAtPmNsX2NvbmZpcm0gPSBjbGlkLmNvbmZp
+cm07DQogDQotCXN0YXR1cyA9IG5mczQwX3dhbGtfY2xpZW50X2xpc3QoY2xwLCByZXN1bHQsIGNy
+ZWQpOw0KLQlzd2l0Y2ggKHN0YXR1cykgew0KLQljYXNlIC1ORlM0RVJSX1NUQUxFX0NMSUVOVElE
+Og0KLQkJc2V0X2JpdChORlM0Q0xOVF9MRUFTRV9DT05GSVJNLCAmY2xwLT5jbF9zdGF0ZSk7DQot
+CWNhc2UgMDoNCisJCXN0YXR1cyA9IG5mczQwX3dhbGtfY2xpZW50X2xpc3QoY2xwLCByZXN1bHQs
+IGNyZWQpOw0KKwl9IHdoaWxlIChzdGF0dXMgPT0gLU5GUzRFUlJfU1RBTEVfQ0xJRU5USUQpOw0K
+Kw0KKwlpZiAoc3RhdHVzID09IDApIHsNCiAJCS8qIFN1c3RhaW4gdGhlIGxlYXNlLCBldmVuIGlm
+IGl0J3MgZW1wdHkuICBJZiB0aGUgY2xpZW50aWQ0DQogCQkgKiBnb2VzIHN0YWxlIGl0J3Mgb2Yg
+bm8gdXNlIGZvciB0cnVua2luZyBkaXNjb3ZlcnkuICovDQogCQluZnM0X3NjaGVkdWxlX3N0YXRl
+X3JlbmV3YWwoKnJlc3VsdCk7DQotCQlicmVhazsNCiAJfQ0KIA0KLW91dDoNCiAJcmV0dXJuIHN0
+YXR1czsNCiB9DQogDQotLSANCjEuOC4xDQoNCg==
+
+--_002_4FA345DA4F4AE44899BD2B03EEEC2FA915C04FE5sacexcmbx05prdh_--
