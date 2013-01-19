@@ -1,65 +1,173 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.agmk.net ([91.192.224.71]:41943 "EHLO mail.agmk.net"
+Received: from mx12.netapp.com ([216.240.18.77]:52883 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755445Ab3AEKJC convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 5 Jan 2013 05:09:02 -0500
-From: =?utf-8?B?UGF3ZcWC?= Sikora <pawel.sikora@agmk.net>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org, baggins@pld-linux.org,
-        Trond.Myklebust@netapp.com
-Subject: Re: mount.nfs: cannot allocate memory.
-Date: Sat, 05 Jan 2013 11:08:56 +0100
-Message-ID: <7762040.Ky7rEDhaoc@localhost>
-In-Reply-To: <50E598B9.4000109@RedHat.com>
-References: <2891788.0SBnrhN2VX@pawels> <50E598B9.4000109@RedHat.com>
+	id S1752744Ab3ASBBv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Jan 2013 20:01:51 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Ben Greear <greearb@candelatech.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Question on nfs40_discover_server_trunking.
+Date: Sat, 19 Jan 2013 01:01:48 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA915C0721A@sacexcmbx05-prd.hq.netapp.com>
+References: <50F9BE66.6080608@candelatech.com>
+	 <0F001F0E-229D-4314-A42E-84402E4F1FC7@oracle.com>
+	 <1358546604.2872.6.camel@leira.trondhjem.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA915C04FE5@sacexcmbx05-prd.hq.netapp.com>
+	 <C11ACA70-EC3A-4FAD-8ADC-572F9B6B4CFE@oracle.com>
+	 <1358556248.2835.10.camel@leira.trondhjem.org>
+In-Reply-To: <1358556248.2835.10.camel@leira.trondhjem.org>
+Content-Type: multipart/mixed;
+	boundary="_002_4FA345DA4F4AE44899BD2B03EEEC2FA915C0721Asacexcmbx05prdh_"
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thursday 03 of January 2013 09:42:01 Steve Dickson wrote:
-> 
-> On 03/01/13 04:27, Paweł Sikora wrote:
-> > Hi,
-> > 
-> > with the latest nfs-1.2.7/kernel-3.7.1 tools i've noticed an error during autofs mounting.
-> > reduced testcase shows that mount.nfs with 'vers=4' has a problem:
-> > 
-> > [root@chufu ~]# mount.nfs -v -o vers=4 192.168.2.100:/home/atest/farm-local /mnt
-> > mount.nfs: timeout set for Thu Jan  3 10:22:00 2013
-> > mount.nfs: trying text-based options 'vers=4,addr=192.168.2.100,clientaddr=192.168.2.103'
-> > mount.nfs: mount(2): Cannot allocate memory
-> > mount.nfs: Cannot allocate memory
-> > 
-> > while the vers=3 works fine:
-> > 
-> > [root@chufu ~]# mount.nfs -v -o vers=3 192.168.2.100:/home/atest/farm-local /mnt
-> > mount.nfs: timeout set for Thu Jan  3 10:22:04 2013
-> > mount.nfs: trying text-based options 'vers=3,addr=192.168.2.100'
-> > mount.nfs: prog 100003, trying vers=3, prot=6
-> > mount.nfs: trying 192.168.2.100 prog 100003 vers 3 prot TCP port 2049
-> > mount.nfs: prog 100005, trying vers=3, prot=17
-> > mount.nfs: trying 192.168.2.100 prog 100005 vers 3 prot UDP port 42412
-> > 
-> > no obvious errors in logs on nfs server/client side :(
-> > i can provide more info if you need to diagnose this issue.
-> 
-> Please set the kernel debugging with 'rpcdebug -m nfs -s mount' then post the out put found in /var/log/messages.
+--_002_4FA345DA4F4AE44899BD2B03EEEC2FA915C0721Asacexcmbx05prdh_
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <F7F1CA06B20192429DC73593196C8B72@tahoe.netapp.com>
+Content-Transfer-Encoding: base64
 
-[root@pawels ~]# mount.nfs -v -o vers=4 192.168.2.100:/home/atest/farm-local /mnt
+T24gRnJpLCAyMDEzLTAxLTE4IGF0IDE5OjQ0IC0wNTAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
+DQo+IE9uIEZyaSwgMjAxMy0wMS0xOCBhdCAxODoxNCAtMDUwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6
+DQo+ID4gT24gSmFuIDE4LCAyMDEzLCBhdCA1OjU5IFBNLCAiTXlrbGVidXN0LCBUcm9uZCIgPFRy
+b25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gPiANCj4gPiA+IE9uIEZyaSwgMjAx
+My0wMS0xOCBhdCAxNzowMyAtMDUwMCwgYW4gdW5rbm93biBzZW5kZXIgd3JvdGU6DQo+ID4gPj4g
+T24gRnJpLCAyMDEzLTAxLTE4IGF0IDE2OjMzIC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+PiA+Pj4gT24gSmFuIDE4LCAyMDEzLCBhdCA0OjI4IFBNLCBCZW4gR3JlZWFyIDxncmVlYXJiQGNh
+bmRlbGF0ZWNoLmNvbT4gd3JvdGU6DQo+ID4gPj4+IA0KPiA+ID4+Pj4gQW55IGNoYW5jZSB0aGUg
+U1RBTEVfQ0xJRU5USUQgY2FzZSBuZWVkcyBhICdicmVhayc/DQo+ID4gPj4+IA0KPiA+ID4+PiBJ
+IGRvbid0IHRoaW5rIHNvLiAgTEVBU0VfQ09ORklSTSBpcyBzZXQsIGFuZCB3ZSB3YW50IHRvIHdh
+a2UgdGhlIHN0YXRlIHJlbmV3YWwgdGhyZWFkLg0KPiA+ID4+PiANCj4gPiA+Pj4+IA0KPiA+ID4+
+Pj4gVHdpY2UgSSd2ZSBzZWVuIGtlcm5lbCBjcmFzaGVzIGFmdGVyIHRoZSBuZnM0MF93YWxrX2Ns
+aWVudF9saXN0DQo+ID4gPj4+PiBmYWlsZWQgKHRob3VnaCBjb2RlIGNvbW1lbnRzIHNheSBpdCBz
+aG91bGQgbmV2ZXIgZmFpbCkuDQo+ID4gPj4+IA0KPiA+ID4+PiBuZnM0MF93YWxrX2NsaWVudF9s
+aXN0KCkgaXMgbG9va2luZyBmb3IgYW4gbmZzX2NsaWVudCB0aGF0IGlzIHN1cHBvc2VkIHRvIGFs
+cmVhZHkgYmUgaW4gdGhlIG5mc19jbGllbnQgbGlzdC4gIElmIHRoZSBzZWFyY2ggZmFpbHMsIHRo
+YXQncyBhIGJ1Zy4NCj4gPiA+Pj4gDQo+ID4gPj4+IEV5ZWJhbGwgdGhlIGNvbnRlbnRzIG9mIHlv
+dXIgbmZzX2NsaWVudCBsaXN0LiAgWW91IHNob3VsZCBmaW5kIGFuIGFwcHJvcHJpYXRlIG5mc19j
+bGllbnQgaW4gdGhlcmUsIGFuZCB0aGVuIGZpZ3VyZSBvdXQgd2h5IHRoZSBzZWFyY2ggZG9lc24n
+dCBmaW5kIGl0Lg0KPiA+ID4+IA0KPiA+ID4+IFlvdSBoYXZlIGNvbnNpZGVyZWQgdGhlIGZhY3Qg
+dGhhdCB0aGUgY2FsbCB0bw0KPiA+ID4+IG5mczRfcHJvY19zZXRjbGllbnRpZF9jb25maXJtIGNh
+biBwb3RlbnRpYWxseSByZXR1cm4NCj4gPiA+PiBORlM0RVJSX1NUQUxFX0NMSUVOVElEIGlmIHRo
+ZSBzZXJ2ZXIgcmVib290ZWQgd2hpbGUgdGhlIGNsaWVudCB3YXMNCj4gPiA+PiB3YWxraW5nIHRo
+ZSBsaXN0Pw0KPiA+ID4gDQo+ID4gPiBJbiBmYWN0LCBhcyBmYXIgYXMgSSBjYW4gc2VlLCB0aGUg
+Y29ycmVjdCBiZWhhdmlvdXIgaW4NCj4gPiA+IG5mczQwX2Rpc2NvdmVyX3NlcnZlcl90cnVua2lu
+ZygpIHNob3VsZCBiZSB0byByZS1pc3N1ZSB0aGUgc2V0Y2xpZW50aWQNCj4gPiA+IGNhbGwsIGFu
+ZCB0aGVuIHdhbGsgdGhlIGxpc3QgYWdhaW4gaWYgbmZzNDBfd2Fsa19jbGllbnRfbGlzdCgpIHJl
+dHVybnMNCj4gPiA+IE5GUzRFUlJfU1RBTEVfQ0xJRU5USUQuDQo+ID4gDQo+ID4gV2hlbiBJIHdy
+b3RlIHRoZSBzZXJ2ZXIgdHJ1bmtpbmcgZGV0ZWN0aW9uIGxvZ2ljLCBJIHRoaW5rIHdlIGhhZG4n
+dCBjbGVhcmx5IGRlY2lkZWQgd2hhdCBuZWVkZWQgdG8gYmUgZG9uZSBpbiB0aGUgU1RBTEVfQ0xJ
+RU5USUQgY2FzZS4NCj4gPiANCj4gPiA+IFNvbWV0aGluZyBsaWtlIHRoZSBhdHRhY2hlZCBwYXRj
+aDoNCj4gPiANCj4gPiBBIGNvdXBsZSBvZiBjb21tZW50czoNCj4gPiANCj4gPiAgbyAgbmZzX2dl
+dF9jbGllbnQoKSBhbHJlYWR5IHN0aWNrcyB0aGUgbmV3IGNsaWVudCBvbiB0aGUgdGFpbCBvZiB0
+aGUgbmZzX2NsaWVudCBsaXN0DQo+IA0KPiBPSy4gVGhhdCBhbGxvd3MgdXMgdG8gZ2V0IHJpZCBv
+ZiA1LTYgbGluZXMgb2YgY29kZS4NCj4gDQo+ID4gIG8gIFdlIGRvbid0IHdhbnQgdG8gZ2V0IHN0
+dWNrIGluIGEgbG9vcCBoZXJlLiAgU2hvdWxkIHRoZSAiZG8ge30iIGxvb3AgaW4gbmZzNDBfZGlz
+Y292ZXJfc2VydmVyX3RydW5raW5nKCkgYmUgYm91bmRlZCBieSBhIHJldHJ5IGNvdW50Pw0KPiAN
+Cj4gTm90IGEgbnVtYmVyIG9mIHJldHJpZXMsIGJ1dCBwb3NzaWJseSBhIHRpbWVvdXQgdmFsdWUu
+DQo+IA0KPiA+IEhvd2V2ZXIsIEkgaGF2ZW4ndCBoZWFyZCBCZW4gc2F5ICJvaCwgeWVzLCBteSBz
+ZXJ2ZXIgaGFkIHJlYm9vdGVkLiIgIEknZCBsaWtlIHNvbWUgY29uZmlybWF0aW9uIHRoYXQgdGhl
+IG1hdGNoIGZhaWxlZCBmb3IgYW4gZXhwbGFpbmFibGUgYW5kIGV4cGVjdGVkIHJlYXNvbi4NCj4g
+DQo+IFRoZSBzcGVjIGFsbG93cyB0aGUgc2VydmVyIHRvIGRpc2NhcmQgdW5jb25maXJtZWQgY2xp
+ZW50aWRzLCBzbyBvdXIgY29kZQ0KPiBzaG91bGQgdGFrZSB0aGF0IGludG8gYWNjb3VudC4NCj4g
+DQo+IA0KPiBCVFc6IEknbSBnb2luZyBpbnNhbmUgdHJ5aW5nIHRvIGZpZ3VyZSBvdXQgaG93IHRo
+ZSByZWZjb3VudGluZyBpbiB0aGF0DQo+IGNvZGUgaXMgc3VwcG9zZWQgdG8gd29yay4gVGhlIGFz
+c3VtcHRpb24gdGhhdCB3ZSBjYW4gc29tZWhvdyBzYWZlbHkNCj4gcmV0dXJuIGEgbm9uLXJlZmVy
+ZW5jZWQgcG9pbnRlciBmcm9tIG5mczRfZGlzY292ZXJfc2VydmVyX3RydW5raW5nIGFuZA0KPiB0
+aGVuIGJ1bXAgdGhlIHJlZmVyZW5jZSBjb3VudCBpbiBuZnM0X2luaXRfY2xpZW50KCkgZHJpdmVz
+IG1lIG51dHMuLi4NCg0KQXR0YWNoZWQgaXMgdjIgb2YgdGhlIHBhdGNoIHRoYXQgYWRkcmVzc2Vz
+IGFsbCBvZiB0aGUgYWJvdmUuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xp
+ZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3
+Lm5ldGFwcC5jb20NCg==
 
-mount.nfs: timeout set for Sat Jan  5 11:08:42 2013
-mount.nfs: trying text-based options 'vers=4,addr=192.168.2.100,clientaddr=10.0.2.35'
-mount.nfs: mount(2): Cannot allocate memory
-mount.nfs: Cannot allocate memory
+--_002_4FA345DA4F4AE44899BD2B03EEEC2FA915C0721Asacexcmbx05prdh_
+Content-Type: text/x-patch;
+	name="0001-NFSv4-Fix-NFSv4.0-trunking-discovery.patch"
+Content-Description: 0001-NFSv4-Fix-NFSv4.0-trunking-discovery.patch
+Content-Disposition: attachment;
+	filename="0001-NFSv4-Fix-NFSv4.0-trunking-discovery.patch"; size=4371;
+	creation-date="Sat, 19 Jan 2013 01:01:48 GMT";
+	modification-date="Sat, 19 Jan 2013 01:01:48 GMT"
+Content-ID: <83970C721EBA71488189325F05379388@tahoe.netapp.com>
+Content-Transfer-Encoding: base64
 
-[root@pawels ~]# dmesg|tail                                                      
+RnJvbSA1ZmRiZTYxMjljYzc2N2I0ZDg5MjZkNGE1M2NlN2NlMDc1NDExMTU2IE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
+YXBwLmNvbT4NCkRhdGU6IEZyaSwgMTggSmFuIDIwMTMgMTc6NTQ6MzQgLTA1MDANClN1YmplY3Q6
+IFtQQVRDSCB2Ml0gTkZTdjQ6IEZpeCBORlN2NC4wIHRydW5raW5nIGRpc2NvdmVyeQ0KDQpJZiB3
+YWxraW5nIHRoZSBsaXN0IGluIG5mczQwX3dhbGtfY2xpZW50X2xpc3QgZmFpbHMsIHRoZW4gdGhl
+IG1vc3QNCmxpa2VseSBleHBsYW5hdGlvbiBpcyB0aGF0IHRoZSBzZXJ2ZXIgcmVib290ZWQuIEVu
+c3VyZSB0aGF0IHdlIGNhdGNoDQp0aGF0IGNhc2UgYnkgdGVzdGluZyBvdXIgbmV3IG5mc19jbGll
+bnQgbGFzdC4NCg0KQWxzbyBmaXggcmVmZXJlbmNlIGNvdW50aW5nIGlzc3VlcyB0aGF0IGNvdWxk
+IGxlYWQgdG8gYSBtZW1vcnkgbGVhaw0KZm9yIG5mc19jbGllbnQgc3RydWN0dXJlcy4NCg0KUmVw
+b3J0ZWQtYnk6IEJlbiBHcmVlYXIgPGdyZWVhcmJAY2FuZGVsYXRlY2guY29tPg0KU2lnbmVkLW9m
+Zi1ieTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCkNjOiBD
+aHVjayBMZXZlciA8Y2h1Y2subGV2ZXJAb3JhY2xlLmNvbT4NCkNjOiBzdGFibGVAdmdlci5rZXJu
+ZWwub3JnIFs+PTMuN10NCi0tLQ0KIGZzL25mcy9uZnM0Y2xpZW50LmMgfCAzNyArKysrKysrKysr
+KysrKystLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQogZnMvbmZzL25mczRzdGF0ZS5jICB8IDIyICsr
+KysrKysrKystLS0tLS0tLS0tLS0NCiAyIGZpbGVzIGNoYW5nZWQsIDI1IGluc2VydGlvbnMoKyks
+IDM0IGRlbGV0aW9ucygtKQ0KDQpkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRjbGllbnQuYyBiL2Zz
+L25mcy9uZnM0Y2xpZW50LmMNCmluZGV4IGFjYzM0NzIuLmJkNmVmZTggMTAwNjQ0DQotLS0gYS9m
+cy9uZnMvbmZzNGNsaWVudC5jDQorKysgYi9mcy9uZnMvbmZzNGNsaWVudC5jDQpAQCAtMjM0LDEz
+ICsyMzQsMTIgQEAgc3RydWN0IG5mc19jbGllbnQgKm5mczRfaW5pdF9jbGllbnQoc3RydWN0IG5m
+c19jbGllbnQgKmNscCwNCiAJCW5mc19tYXJrX2NsaWVudF9yZWFkeShjbHAsIE5GU19DU19SRUFE
+WSk7DQogDQogCWVycm9yID0gbmZzNF9kaXNjb3Zlcl9zZXJ2ZXJfdHJ1bmtpbmcoY2xwLCAmb2xk
+KTsNCisJbmZzX3B1dF9jbGllbnQoY2xwKTsNCiAJaWYgKGVycm9yIDwgMCkNCiAJCWdvdG8gZXJy
+b3I7DQogCWlmIChjbHAgIT0gb2xkKSB7DQogCQljbHAtPmNsX3ByZXNlcnZlX2NsaWQgPSB0cnVl
+Ow0KLQkJbmZzX3B1dF9jbGllbnQoY2xwKTsNCiAJCWNscCA9IG9sZDsNCi0JCWF0b21pY19pbmMo
+JmNscC0+Y2xfY291bnQpOw0KIAl9DQogDQogCXJldHVybiBjbHA7DQpAQCAtMzMyLDQwICszMzEs
+MzMgQEAgaW50IG5mczQwX3dhbGtfY2xpZW50X2xpc3Qoc3RydWN0IG5mc19jbGllbnQgKm5ldywN
+CiANCiAJCWlmIChwcmV2KQ0KIAkJCW5mc19wdXRfY2xpZW50KHByZXYpOw0KKwkJcHJldiA9IHBv
+czsNCiANCiAJCXN0YXR1cyA9IG5mczRfcHJvY19zZXRjbGllbnRpZF9jb25maXJtKHBvcywgJmNs
+aWQsIGNyZWQpOw0KLQkJaWYgKHN0YXR1cyA9PSAwKSB7DQorCQlzd2l0Y2ggKHN0YXR1cykgew0K
+KwkJY2FzZSAtTkZTNEVSUl9TVEFMRV9DTElFTlRJRDoNCisJCQlicmVhazsNCisJCWNhc2UgMDoN
+CiAJCQluZnM0X3N3YXBfY2FsbGJhY2tfaWRlbnRzKHBvcywgbmV3KTsNCiANCi0JCQluZnNfcHV0
+X2NsaWVudChwb3MpOw0KKwkJCXByZXYgPSBOVUxMOw0KIAkJCSpyZXN1bHQgPSBwb3M7DQogCQkJ
+ZHByaW50aygiTkZTOiA8LS0gJXMgdXNpbmcgbmZzX2NsaWVudCA9ICVwICh7JWR9KVxuIiwNCiAJ
+CQkJX19mdW5jX18sIHBvcywgYXRvbWljX3JlYWQoJnBvcy0+Y2xfY291bnQpKTsNCi0JCQlyZXR1
+cm4gMDsNCi0JCX0NCi0JCWlmIChzdGF0dXMgIT0gLU5GUzRFUlJfU1RBTEVfQ0xJRU5USUQpIHsN
+Ci0JCQluZnNfcHV0X2NsaWVudChwb3MpOw0KLQkJCWRwcmludGsoIk5GUzogPC0tICVzIHN0YXR1
+cyA9ICVkLCBubyByZXN1bHRcbiIsDQotCQkJCV9fZnVuY19fLCBzdGF0dXMpOw0KLQkJCXJldHVy
+biBzdGF0dXM7DQorCQlkZWZhdWx0Og0KKwkJCWdvdG8gb3V0Ow0KIAkJfQ0KIA0KIAkJc3Bpbl9s
+b2NrKCZubi0+bmZzX2NsaWVudF9sb2NrKTsNCi0JCXByZXYgPSBwb3M7DQogCX0NCisJc3Bpbl91
+bmxvY2soJm5uLT5uZnNfY2xpZW50X2xvY2spOw0KIA0KLQkvKg0KLQkgKiBObyBtYXRjaGluZyBu
+ZnNfY2xpZW50IGZvdW5kLiAgVGhpcyBzaG91bGQgYmUgaW1wb3NzaWJsZSwNCi0JICogYmVjYXVz
+ZSB0aGUgbmV3IG5mc19jbGllbnQgaGFzIGFscmVhZHkgYmVlbiBhZGRlZCB0bw0KLQkgKiBuZnNf
+Y2xpZW50X2xpc3QgYnkgbmZzX2dldF9jbGllbnQoKS4NCi0JICoNCi0JICogRG9uJ3QgQlVHKCks
+IHNpbmNlIHRoZSBjYWxsZXIgaXMgaG9sZGluZyBhIG11dGV4Lg0KLQkgKi8NCisJLyogTm8gbWF0
+Y2ggZm91bmQuIFRoZSBzZXJ2ZXIgbG9zdCBvdXIgY2xpZW50aWQgKi8NCitvdXQ6DQogCWlmIChw
+cmV2KQ0KIAkJbmZzX3B1dF9jbGllbnQocHJldik7DQotCXNwaW5fdW5sb2NrKCZubi0+bmZzX2Ns
+aWVudF9sb2NrKTsNCi0JcHJfZXJyKCJORlM6ICVzIEVycm9yOiBubyBtYXRjaGluZyBuZnNfY2xp
+ZW50IGZvdW5kXG4iLCBfX2Z1bmNfXyk7DQotCXJldHVybiAtTkZTNEVSUl9TVEFMRV9DTElFTlRJ
+RDsNCisJZHByaW50aygiTkZTOiA8LS0gJXMgc3RhdHVzID0gJWRcbiIsIF9fZnVuY19fLCBzdGF0
+dXMpOw0KKwlyZXR1cm4gc3RhdHVzOw0KIH0NCiANCiAjaWZkZWYgQ09ORklHX05GU19WNF8xDQpA
+QCAtNDczLDYgKzQ2NSw3IEBAIGludCBuZnM0MV93YWxrX2NsaWVudF9saXN0KHN0cnVjdCBuZnNf
+Y2xpZW50ICpuZXcsDQogCQlpZiAoIW5mczRfbWF0Y2hfc2VydmVyb3duZXJzKHBvcywgbmV3KSkN
+CiAJCQljb250aW51ZTsNCiANCisJCWF0b21pY19pbmMoJnBvcy0+Y2xfY291bnQpOw0KIAkJc3Bp
+bl91bmxvY2soJm5uLT5uZnNfY2xpZW50X2xvY2spOw0KIAkJZHByaW50aygiTkZTOiA8LS0gJXMg
+dXNpbmcgbmZzX2NsaWVudCA9ICVwICh7JWR9KVxuIiwNCiAJCQlfX2Z1bmNfXywgcG9zLCBhdG9t
+aWNfcmVhZCgmcG9zLT5jbF9jb3VudCkpOw0KZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0c3RhdGUu
+YyBiL2ZzL25mcy9uZnM0c3RhdGUuYw0KaW5kZXggOTQ0OGM1Ny4uMTAyODg1ZCAxMDA2NDQNCi0t
+LSBhL2ZzL25mcy9uZnM0c3RhdGUuYw0KKysrIGIvZnMvbmZzL25mczRzdGF0ZS5jDQpAQCAtMTI5
+LDI0ICsxMjksMjIgQEAgaW50IG5mczQwX2Rpc2NvdmVyX3NlcnZlcl90cnVua2luZyhzdHJ1Y3Qg
+bmZzX2NsaWVudCAqY2xwLA0KIAlpZiAoY2xwLT5jbF9hZGRyLnNzX2ZhbWlseSA9PSBBRl9JTkVU
+NikNCiAJCXBvcnQgPSBubi0+bmZzX2NhbGxiYWNrX3RjcHBvcnQ2Ow0KIA0KLQlzdGF0dXMgPSBu
+ZnM0X3Byb2Nfc2V0Y2xpZW50aWQoY2xwLCBORlM0X0NBTExCQUNLLCBwb3J0LCBjcmVkLCAmY2xp
+ZCk7DQotCWlmIChzdGF0dXMgIT0gMCkNCi0JCWdvdG8gb3V0Ow0KLQljbHAtPmNsX2NsaWVudGlk
+ID0gY2xpZC5jbGllbnRpZDsNCi0JY2xwLT5jbF9jb25maXJtID0gY2xpZC5jb25maXJtOw0KKwlk
+byB7DQorCQlzdGF0dXMgPSBuZnM0X3Byb2Nfc2V0Y2xpZW50aWQoY2xwLCBORlM0X0NBTExCQUNL
+LCBwb3J0LCBjcmVkLCAmY2xpZCk7DQorCQlpZiAoc3RhdHVzICE9IDApDQorCQkJYnJlYWs7DQor
+CQljbHAtPmNsX2NsaWVudGlkID0gY2xpZC5jbGllbnRpZDsNCisJCWNscC0+Y2xfY29uZmlybSA9
+IGNsaWQuY29uZmlybTsNCiANCi0Jc3RhdHVzID0gbmZzNDBfd2Fsa19jbGllbnRfbGlzdChjbHAs
+IHJlc3VsdCwgY3JlZCk7DQotCXN3aXRjaCAoc3RhdHVzKSB7DQotCWNhc2UgLU5GUzRFUlJfU1RB
+TEVfQ0xJRU5USUQ6DQotCQlzZXRfYml0KE5GUzRDTE5UX0xFQVNFX0NPTkZJUk0sICZjbHAtPmNs
+X3N0YXRlKTsNCi0JY2FzZSAwOg0KKwkJc3RhdHVzID0gbmZzNDBfd2Fsa19jbGllbnRfbGlzdChj
+bHAsIHJlc3VsdCwgY3JlZCk7DQorCX0gd2hpbGUgKHN0YXR1cyA9PSAtTkZTNEVSUl9TVEFMRV9D
+TElFTlRJRCk7DQorDQorCWlmIChzdGF0dXMgPT0gMCkgew0KIAkJLyogU3VzdGFpbiB0aGUgbGVh
+c2UsIGV2ZW4gaWYgaXQncyBlbXB0eS4gIElmIHRoZSBjbGllbnRpZDQNCiAJCSAqIGdvZXMgc3Rh
+bGUgaXQncyBvZiBubyB1c2UgZm9yIHRydW5raW5nIGRpc2NvdmVyeS4gKi8NCiAJCW5mczRfc2No
+ZWR1bGVfc3RhdGVfcmVuZXdhbCgqcmVzdWx0KTsNCi0JCWJyZWFrOw0KIAl9DQogDQotb3V0Og0K
+IAlyZXR1cm4gc3RhdHVzOw0KIH0NCiANCi0tIA0KMS44LjENCg0K
 
-[ 4187.654183] NFS: nfs mount opts='vers=4,addr=192.168.2.100,clientaddr=10.0.2.35'
-[ 4187.654188] NFS:   parsing nfs mount option 'vers=4'
-[ 4187.654193] NFS:   parsing nfs mount option 'addr=192.168.2.100'
-[ 4187.654198] NFS:   parsing nfs mount option 'clientaddr=10.0.2.35'
-[ 4187.654204] NFS: MNTPATH: '/home/atest/farm-local'
-[ 4187.654206] --> nfs4_try_mount()
-[ 4187.975255] <-- nfs4_try_mount() = -12 [error]
-
+--_002_4FA345DA4F4AE44899BD2B03EEEC2FA915C0721Asacexcmbx05prdh_--
