@@ -1,54 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from moutng.kundenserver.de ([212.227.17.10]:54330 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753138Ab3AYWpy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Jan 2013 17:45:54 -0500
-From: Arnd Bergmann <arnd@arndb.de>
-To: linux-arm-kernel@lists.infradead.org
-Cc: linux-kernel@vger.kernel.org, Arnd Bergmann <arnd@arndb.de>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org, netdev@vger.kernel.org
-Subject: [PATCH 15/19] sunrpc: don't warn for unused variable 'buf'
-Date: Fri, 25 Jan 2013 22:44:14 +0000
-Message-Id: <1359153858-31992-16-git-send-email-arnd@arndb.de>
-In-Reply-To: <1359153858-31992-1-git-send-email-arnd@arndb.de>
-References: <1359123276-15833-1-git-send-email-arnd@arndb.de>
- <1359153858-31992-1-git-send-email-arnd@arndb.de>
+Received: from mx1.netapp.com ([216.240.18.38]:14289 "EHLO mx1.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751835Ab3ASAoL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Jan 2013 19:44:11 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Ben Greear <greearb@candelatech.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Question on nfs40_discover_server_trunking.
+Date: Sat, 19 Jan 2013 00:44:09 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA915C071D7@sacexcmbx05-prd.hq.netapp.com>
+References: <50F9BE66.6080608@candelatech.com>
+	 <0F001F0E-229D-4314-A42E-84402E4F1FC7@oracle.com>
+	 <1358546604.2872.6.camel@leira.trondhjem.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA915C04FE5@sacexcmbx05-prd.hq.netapp.com>
+	 <C11ACA70-EC3A-4FAD-8ADC-572F9B6B4CFE@oracle.com>
+In-Reply-To: <C11ACA70-EC3A-4FAD-8ADC-572F9B6B4CFE@oracle.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When RPC_DEBUG is unset, the dprintk() macro does nothing,
-causing the 'buf' variable in svc_printk to become unused.
-Marking it as __maybe_unused avoids a harmless gcc warning.
-
-Without this patch, building at91_dt_defconfig results in:
-
-net/sunrpc/svc.c: In function 'svc_printk':
-net/sunrpc/svc.c:1051:7: warning: unused variable 'buf' [-Wunused-variable]
-
-Signed-off-by: Arnd Bergmann <arnd@arndb.de>
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Cc: netdev@vger.kernel.org
----
- net/sunrpc/svc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index dbf12ac..b1f5223 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1047,7 +1047,7 @@ void svc_printk(struct svc_rqst *rqstp, const char *fmt, ...)
- {
- 	struct va_format vaf;
- 	va_list args;
--	char 	buf[RPC_MAX_ADDRBUFLEN];
-+	char buf[RPC_MAX_ADDRBUFLEN] __maybe_unused;
- 
- 	va_start(args, fmt);
- 
--- 
-1.8.0
-
+T24gRnJpLCAyMDEzLTAxLTE4IGF0IDE4OjE0IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+T24gSmFuIDE4LCAyMDEzLCBhdCA1OjU5IFBNLCAiTXlrbGVidXN0LCBUcm9uZCIgPFRyb25kLk15
+a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+ID4gT24gRnJpLCAyMDEzLTAxLTE4IGF0
+IDE3OjAzIC0wNTAwLCBhbiB1bmtub3duIHNlbmRlciB3cm90ZToNCj4gPj4gT24gRnJpLCAyMDEz
+LTAxLTE4IGF0IDE2OjMzIC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4gPj4+IE9uIEphbiAx
+OCwgMjAxMywgYXQgNDoyOCBQTSwgQmVuIEdyZWVhciA8Z3JlZWFyYkBjYW5kZWxhdGVjaC5jb20+
+IHdyb3RlOg0KPiA+Pj4gDQo+ID4+Pj4gQW55IGNoYW5jZSB0aGUgU1RBTEVfQ0xJRU5USUQgY2Fz
+ZSBuZWVkcyBhICdicmVhayc/DQo+ID4+PiANCj4gPj4+IEkgZG9uJ3QgdGhpbmsgc28uICBMRUFT
+RV9DT05GSVJNIGlzIHNldCwgYW5kIHdlIHdhbnQgdG8gd2FrZSB0aGUgc3RhdGUgcmVuZXdhbCB0
+aHJlYWQuDQo+ID4+PiANCj4gPj4+PiANCj4gPj4+PiBUd2ljZSBJJ3ZlIHNlZW4ga2VybmVsIGNy
+YXNoZXMgYWZ0ZXIgdGhlIG5mczQwX3dhbGtfY2xpZW50X2xpc3QNCj4gPj4+PiBmYWlsZWQgKHRo
+b3VnaCBjb2RlIGNvbW1lbnRzIHNheSBpdCBzaG91bGQgbmV2ZXIgZmFpbCkuDQo+ID4+PiANCj4g
+Pj4+IG5mczQwX3dhbGtfY2xpZW50X2xpc3QoKSBpcyBsb29raW5nIGZvciBhbiBuZnNfY2xpZW50
+IHRoYXQgaXMgc3VwcG9zZWQgdG8gYWxyZWFkeSBiZSBpbiB0aGUgbmZzX2NsaWVudCBsaXN0LiAg
+SWYgdGhlIHNlYXJjaCBmYWlscywgdGhhdCdzIGEgYnVnLg0KPiA+Pj4gDQo+ID4+PiBFeWViYWxs
+IHRoZSBjb250ZW50cyBvZiB5b3VyIG5mc19jbGllbnQgbGlzdC4gIFlvdSBzaG91bGQgZmluZCBh
+biBhcHByb3ByaWF0ZSBuZnNfY2xpZW50IGluIHRoZXJlLCBhbmQgdGhlbiBmaWd1cmUgb3V0IHdo
+eSB0aGUgc2VhcmNoIGRvZXNuJ3QgZmluZCBpdC4NCj4gPj4gDQo+ID4+IFlvdSBoYXZlIGNvbnNp
+ZGVyZWQgdGhlIGZhY3QgdGhhdCB0aGUgY2FsbCB0bw0KPiA+PiBuZnM0X3Byb2Nfc2V0Y2xpZW50
+aWRfY29uZmlybSBjYW4gcG90ZW50aWFsbHkgcmV0dXJuDQo+ID4+IE5GUzRFUlJfU1RBTEVfQ0xJ
+RU5USUQgaWYgdGhlIHNlcnZlciByZWJvb3RlZCB3aGlsZSB0aGUgY2xpZW50IHdhcw0KPiA+PiB3
+YWxraW5nIHRoZSBsaXN0Pw0KPiA+IA0KPiA+IEluIGZhY3QsIGFzIGZhciBhcyBJIGNhbiBzZWUs
+IHRoZSBjb3JyZWN0IGJlaGF2aW91ciBpbg0KPiA+IG5mczQwX2Rpc2NvdmVyX3NlcnZlcl90cnVu
+a2luZygpIHNob3VsZCBiZSB0byByZS1pc3N1ZSB0aGUgc2V0Y2xpZW50aWQNCj4gPiBjYWxsLCBh
+bmQgdGhlbiB3YWxrIHRoZSBsaXN0IGFnYWluIGlmIG5mczQwX3dhbGtfY2xpZW50X2xpc3QoKSBy
+ZXR1cm5zDQo+ID4gTkZTNEVSUl9TVEFMRV9DTElFTlRJRC4NCj4gDQo+IFdoZW4gSSB3cm90ZSB0
+aGUgc2VydmVyIHRydW5raW5nIGRldGVjdGlvbiBsb2dpYywgSSB0aGluayB3ZSBoYWRuJ3QgY2xl
+YXJseSBkZWNpZGVkIHdoYXQgbmVlZGVkIHRvIGJlIGRvbmUgaW4gdGhlIFNUQUxFX0NMSUVOVElE
+IGNhc2UuDQo+IA0KPiA+IFNvbWV0aGluZyBsaWtlIHRoZSBhdHRhY2hlZCBwYXRjaDoNCj4gDQo+
+IEEgY291cGxlIG9mIGNvbW1lbnRzOg0KPiANCj4gIG8gIG5mc19nZXRfY2xpZW50KCkgYWxyZWFk
+eSBzdGlja3MgdGhlIG5ldyBjbGllbnQgb24gdGhlIHRhaWwgb2YgdGhlIG5mc19jbGllbnQgbGlz
+dA0KDQpPSy4gVGhhdCBhbGxvd3MgdXMgdG8gZ2V0IHJpZCBvZiA1LTYgbGluZXMgb2YgY29kZS4N
+Cg0KPiAgbyAgV2UgZG9uJ3Qgd2FudCB0byBnZXQgc3R1Y2sgaW4gYSBsb29wIGhlcmUuICBTaG91
+bGQgdGhlICJkbyB7fSIgbG9vcCBpbiBuZnM0MF9kaXNjb3Zlcl9zZXJ2ZXJfdHJ1bmtpbmcoKSBi
+ZSBib3VuZGVkIGJ5IGEgcmV0cnkgY291bnQ/DQoNCk5vdCBhIG51bWJlciBvZiByZXRyaWVzLCBi
+dXQgcG9zc2libHkgYSB0aW1lb3V0IHZhbHVlLg0KDQo+IEhvd2V2ZXIsIEkgaGF2ZW4ndCBoZWFy
+ZCBCZW4gc2F5ICJvaCwgeWVzLCBteSBzZXJ2ZXIgaGFkIHJlYm9vdGVkLiIgIEknZCBsaWtlIHNv
+bWUgY29uZmlybWF0aW9uIHRoYXQgdGhlIG1hdGNoIGZhaWxlZCBmb3IgYW4gZXhwbGFpbmFibGUg
+YW5kIGV4cGVjdGVkIHJlYXNvbi4NCg0KVGhlIHNwZWMgYWxsb3dzIHRoZSBzZXJ2ZXIgdG8gZGlz
+Y2FyZCB1bmNvbmZpcm1lZCBjbGllbnRpZHMsIHNvIG91ciBjb2RlDQpzaG91bGQgdGFrZSB0aGF0
+IGludG8gYWNjb3VudC4NCg0KDQpCVFc6IEknbSBnb2luZyBpbnNhbmUgdHJ5aW5nIHRvIGZpZ3Vy
+ZSBvdXQgaG93IHRoZSByZWZjb3VudGluZyBpbiB0aGF0DQpjb2RlIGlzIHN1cHBvc2VkIHRvIHdv
+cmsuIFRoZSBhc3N1bXB0aW9uIHRoYXQgd2UgY2FuIHNvbWVob3cgc2FmZWx5DQpyZXR1cm4gYSBu
+b24tcmVmZXJlbmNlZCBwb2ludGVyIGZyb20gbmZzNF9kaXNjb3Zlcl9zZXJ2ZXJfdHJ1bmtpbmcg
+YW5kDQp0aGVuIGJ1bXAgdGhlIHJlZmVyZW5jZSBjb3VudCBpbiBuZnM0X2luaXRfY2xpZW50KCkg
+ZHJpdmVzIG1lIG51dHMuLi4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGll
+bnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cu
+bmV0YXBwLmNvbQ0K
