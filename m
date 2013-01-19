@@ -1,62 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60721 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751363Ab3APUPP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Jan 2013 15:15:15 -0500
-Date: Wed, 16 Jan 2013 15:15:10 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: =?utf-8?B?UGF3ZcWC?= Sikora <pawel.sikora@agmk.net>
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org,
-        baggins@pld-linux.org, Trond.Myklebust@netapp.com
-Subject: Re: mount.nfs: cannot allocate memory.
-Message-ID: <20130116201510.GA6598@fieldses.org>
-References: <2891788.0SBnrhN2VX@pawels>
- <1435172.ktCUaNjhdC@localhost>
- <20130116193932.GA5002@fieldses.org>
- <2365095.7zaHsQeZKG@localhost>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <2365095.7zaHsQeZKG@localhost>
+Received: from aserp1040.oracle.com ([141.146.126.69]:32530 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755727Ab3ASB1r convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jan 2013 20:27:47 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
+Subject: Re: Question on nfs40_discover_server_trunking.
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA915C0721A@sacexcmbx05-prd.hq.netapp.com>
+Date: Fri, 18 Jan 2013 20:27:39 -0500
+Cc: Ben Greear <greearb@candelatech.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <A4F82546-02DA-4CB6-A2FB-D7A380E8D263@oracle.com>
+References: <50F9BE66.6080608@candelatech.com> <0F001F0E-229D-4314-A42E-84402E4F1FC7@oracle.com> <1358546604.2872.6.camel@leira.trondhjem.org> <4FA345DA4F4AE44899BD2B03EEEC2FA915C04FE5@sacexcmbx05-prd.hq.netapp.com> <C11ACA70-EC3A-4FAD-8ADC-572F9B6B4CFE@oracle.com> <1358556248.2835.10.camel@leira.trondhjem.org> <4FA345DA4F4AE44899BD2B03EEEC2FA915C0721A@sacexcmbx05-prd.hq.netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 16, 2013 at 09:07:45PM +0100, Paweł Sikora wrote:
-> On Wednesday 16 of January 2013 14:39:32 J. Bruce Fields wrote:
-> > On Wed, Jan 16, 2013 at 08:03:14PM +0100, Paweł Sikora wrote:
-> > > [259176.973751] NFS: nfs mount opts='soft,addr=10.0.2.28,vers=3,proto=tcp,mountvers=3,mountproto=udp,mountport=50252'
-> > > [259176.973757] NFS:   parsing nfs mount option 'soft'
-> > > [259176.973759] NFS:   parsing nfs mount option 'addr=10.0.2.28'
-> > > [259176.973765] NFS:   parsing nfs mount option 'vers=3'
-> > > [259176.973769] NFS:   parsing nfs mount option 'proto=tcp'
-> > > [259176.973772] NFS:   parsing nfs mount option 'mountvers=3'
-> > > [259176.973776] NFS:   parsing nfs mount option 'mountproto=udp'
-> > > [259176.973779] NFS:   parsing nfs mount option 'mountport=50252'
-> > > [259176.973784] NFS: MNTPATH: '/R10'
-> > > [259176.973788] NFS: sending MNT request for nexus:/R10
-> > > [259176.974620] NFS: received 1 auth flavors
-> > > [259176.974623] NFS:   auth flavor[0]: 1
-> > > [259176.974640] NFS: MNT request succeeded
-> > > [259176.974643] NFS: using auth flavor 1
-> > > [259176.974688] --> nfs_init_server()
-> > > [259176.974691] --> nfs_get_client(nexus,v3)
-> > > [259176.974698] NFS: get client cookie (0xffff88021146f800/0xffff8800ceb06640)
-> > > [259176.975704] <-- nfs_init_server() = 0 [new ffff88021146f800]
-> > > [259176.975708] --> nfs_probe_fsinfo()
-> > > [259176.975711] NFS call  fsinfo
-> > > [259176.975959] NFS reply fsinfo: -116
-> > 
-> > That's ESTALE.  Might be interesting to see the network traffic between
-> > client and server.
+
+On Jan 18, 2013, at 8:01 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+
+> On Fri, 2013-01-18 at 19:44 -0500, Trond Myklebust wrote:
+>> On Fri, 2013-01-18 at 18:14 -0500, Chuck Lever wrote:
+>>> On Jan 18, 2013, at 5:59 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+>>> 
+>>>> On Fri, 2013-01-18 at 17:03 -0500, an unknown sender wrote:
+>>>>> On Fri, 2013-01-18 at 16:33 -0500, Chuck Lever wrote:
+>>>>>> On Jan 18, 2013, at 4:28 PM, Ben Greear <greearb@candelatech.com> wrote:
+>>>>>> 
+>>>>>>> Any chance the STALE_CLIENTID case needs a 'break'?
+>>>>>> 
+>>>>>> I don't think so.  LEASE_CONFIRM is set, and we want to wake the state renewal thread.
+>>>>>> 
+>>>>>>> 
+>>>>>>> Twice I've seen kernel crashes after the nfs40_walk_client_list
+>>>>>>> failed (though code comments say it should never fail).
+>>>>>> 
+>>>>>> nfs40_walk_client_list() is looking for an nfs_client that is supposed to already be in the nfs_client list.  If the search fails, that's a bug.
+>>>>>> 
+>>>>>> Eyeball the contents of your nfs_client list.  You should find an appropriate nfs_client in there, and then figure out why the search doesn't find it.
+>>>>> 
+>>>>> You have considered the fact that the call to
+>>>>> nfs4_proc_setclientid_confirm can potentially return
+>>>>> NFS4ERR_STALE_CLIENTID if the server rebooted while the client was
+>>>>> walking the list?
+>>>> 
+>>>> In fact, as far as I can see, the correct behaviour in
+>>>> nfs40_discover_server_trunking() should be to re-issue the setclientid
+>>>> call, and then walk the list again if nfs40_walk_client_list() returns
+>>>> NFS4ERR_STALE_CLIENTID.
+>>> 
+>>> When I wrote the server trunking detection logic, I think we hadn't clearly decided what needed to be done in the STALE_CLIENTID case.
+>>> 
+>>>> Something like the attached patch:
+>>> 
+>>> A couple of comments:
+>>> 
+>>> o  nfs_get_client() already sticks the new client on the tail of the nfs_client list
+>> 
+>> OK. That allows us to get rid of 5-6 lines of code.
+>> 
+>>> o  We don't want to get stuck in a loop here.  Should the "do {}" loop in nfs40_discover_server_trunking() be bounded by a retry count?
+>> 
+>> Not a number of retries, but possibly a timeout value.
+>> 
+>>> However, I haven't heard Ben say "oh, yes, my server had rebooted."  I'd like some confirmation that the match failed for an explainable and expected reason.
+>> 
+>> The spec allows the server to discard unconfirmed clientids, so our code
+>> should take that into account.
+>> 
+>> 
+>> BTW: I'm going insane trying to figure out how the refcounting in that
+>> code is supposed to work. The assumption that we can somehow safely
+>> return a non-referenced pointer from nfs4_discover_server_trunking and
+>> then bump the reference count in nfs4_init_client() drives me nuts...
 > 
-> here's the tcpdump result:  http://pluto.agmk.net/kernel/nfs.mount.estale.dump
+> Attached is v2 of the patch that addresses all of the above.
 
-On just a very quick skim (you may want to verify to see I've got it
-right), frame 30 shows the server returning a filehandle in a MNT reply,
-then frame 48 shows the same client that got that MNT reply using the
-same filehandle in an FSINFO reply, and getting an NFS3ERR_STALE
-response.
+At first glance, it looks plausible.  Well done.  Perhaps the reference counting fix should be split into a separate patch.
 
-Offhand seems like a server bug.  Might conceivably happen if there was
-some confusion whether the client was authorized to access that export?
+This:
 
---b.
+"If walking the list in nfs40_walk_client_list fails, then the most
+likely explanation is that the server rebooted."
+
+I think in Ben's case the server may be dropping the unconfirmed client ID because it is so busy and the client is probably dealing with a thousand or more mount points, which causes trunking detection to take a lot of time.  I'd still like to see real evidence of this, but I can't think of any easy way for Ben to provide it.
+
+The "No match found." comment is good.
+
+Then:
+
+"Ensure that we catch that case by testing our new nfs_client last."
+
+"testing the new nfs_client last" is the way it's supposed to work -- that's why nfs_get_client() uses list_add_tail() now to insert the new client.  Adding the new client to the client list is supposed to guarantee that walk_client_list always finds an appropriate nfs_client on the list.
+
+So you're not actually changing the order of the tests.  What you're really changing is the recovery behavior in the "our new clientid is already stale" case.  The patch description is probably inaccurate in this regard.
+
+Do we need a similar change for STALE_CLIENTID in the NFSv4.1 path?
+
+Finally, because you are replacing that bogus switch statement in nfs40_discover_server_trunking(), you are fixing Ben's crash.  His GPF back trace should be included in your patch description if you are sending this to stable.
+
+I can test this a little more deeply in a week or two when I get back to the migration work.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
