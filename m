@@ -1,89 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:34718 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751783Ab3AYWUP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Jan 2013 17:20:15 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Ben Myers <bpm@sgi.com>, Olga Kornievskaia <aglo@citi.umich.edu>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Jim Rees <rees@umich.edu>
-Subject: RE: sunrpc: socket buffer size tuneable
-Date: Fri, 25 Jan 2013 22:20:12 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91833C0D5@sacexcmbx05-prd.hq.netapp.com>
-References: <20130125192935.GA32470@sgi.com>
- <20130125202107.GD29596@fieldses.org> <20130125203507.GW30652@sgi.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91833BF5A@sacexcmbx05-prd.hq.netapp.com>
- <20130125212106.GH29596@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91833BFAB@sacexcmbx05-prd.hq.netapp.com>
- <20130125213503.GI29596@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91833BFFE@sacexcmbx05-prd.hq.netapp.com>
- <20130125215712.GJ29596@fieldses.org>
-In-Reply-To: <20130125215712.GJ29596@fieldses.org>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+Received: from mail.candelatech.com ([208.74.158.172]:39867 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753973Ab3AUUq7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2013 15:46:59 -0500
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [RFC 07/13] nfs: Pass srcaddr into mount request.
+Date: Mon, 21 Jan 2013 12:45:53 -0800
+Message-Id: <1358801159-18829-8-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1358801159-18829-1-git-send-email-greearb@candelatech.com>
+References: <1358801159-18829-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> Sent: Friday, January 25, 2013 4:57 PM
-> To: Myklebust, Trond
-> Cc: Ben Myers; Olga Kornievskaia; linux-nfs@vger.kernel.org; Jim Rees
-> Subject: Re: sunrpc: socket buffer size tuneable
-> 
-> On Fri, Jan 25, 2013 at 09:45:12PM +0000, Myklebust, Trond wrote:
-> > > -----Original Message----- From: J. Bruce Fields
-> > > [mailto:bfields@fieldses.org] Sent: Friday, January 25, 2013 4:35 PM
-> > > To: Myklebust, Trond Cc: Ben Myers; Olga Kornievskaia;
-> > > linux-nfs@vger.kernel.org; Jim Rees Subject: Re: sunrpc: socket
-> > > buffer size tuneable
-> > >
-> > > On Fri, Jan 25, 2013 at 09:29:09PM +0000, Myklebust, Trond wrote:
-> > > > > -----Original Message----- From: J. Bruce Fields
-> > > > > [mailto:bfields@fieldses.org] Sent: Friday, January 25, 2013
-> > > > > 4:21 PM To: Myklebust, Trond Cc: Ben Myers; Olga Kornievskaia;
-> > > > > linux-nfs@vger.kernel.org; Jim Rees Subject: Re: sunrpc: socket
-> > > > > buffer size tuneable
-> > > > >
-> > > > > On Fri, Jan 25, 2013 at 09:12:55PM +0000, Myklebust, Trond
-> > > > > wrote:
-> > > >
-> > > > > > Why is it not sufficient to clamp the TCP values of 'snd' and
-> > > > > > 'rcv' using
-> > > > > sysctl_tcp_wmem/sysctl_tcp_rmem?
-> > > > > > ...and clamp the UDP values using
-> > > > > sysctl_[wr]mem_min/sysctl_[wr]mem_max?.
-> > > > >
-> > > > > Yeah, I was just looking at that--so, Ben, something like:
-> > > > >
-> > > > > 	echo "1048576 1048576 4194304"
-> > > > > 	>/proc/sys/net/ipv4/tcp_wmem
-> > > > >
-> > > > > But I'm unclear on some of the details: do we need to set the
-> > > > > minimum or only the default?  And does it need any more
-> > > > > allowance for protocol overhead?
-> > > >
-> > > > I meant adding a check either to svc_sock_setbufsize or to the 2
-> > > > call-sites
-> > > that enforces the above limits.
-> > >
-> > > I lost you.
-> > >
-> > > It's not svc_sock_setbufsize that's setting too-small values, if
-> > > that's what you mean.
-> > >
-> >
-> > I understood that the problem was svc_udp_recvfrom() and
-> > svc_setup_socket() were using negative values in the calls to
-> > svc_sock_setbufsize().  Looking again at svc_setup_socket(), I don't
-> > see how that could do so, but svc_udp_recvfrom() definitely has
-> > potential to cause damage.
-> 
-> Right, the changelog was confusing, the problem they're actually hitting is
-> with tcp.  Looks like tcp autotuning is decreasing the send buffer below the
-> size we requested in svc_sock_setbufsize().
+From: Ben Greear <greearb@candelatech.com>
 
-Yes. As far as I can tell, that is endemic unless you lock the sndbuf size. Grep for sk_stream_moderate_sndbuf(), and you'll see what I mean.
+This starts tying the srcaddr logic together.
 
-Trond
+Signed-off-by: Ben Greear <greearb@candelatech.com>
+---
+ fs/nfs/internal.h   |    1 +
+ fs/nfs/mount_clnt.c |    1 +
+ fs/nfs/super.c      |    2 ++
+ 3 files changed, 4 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index dbb2ee7..f4584b7 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -148,6 +148,7 @@ struct nfs_parsed_mount_data {
+ /* mount_clnt.c */
+ struct nfs_mount_request {
+ 	struct sockaddr		*sap;
++	struct sockaddr         *srcaddr;
+ 	size_t			salen;
+ 	char			*hostname;
+ 	char			*dirpath;
+diff --git a/fs/nfs/mount_clnt.c b/fs/nfs/mount_clnt.c
+index 015f71f..e574f3f 100644
+--- a/fs/nfs/mount_clnt.c
++++ b/fs/nfs/mount_clnt.c
+@@ -155,6 +155,7 @@ int nfs_mount(struct nfs_mount_request *info)
+ 	struct rpc_create_args args = {
+ 		.net		= info->net,
+ 		.protocol	= info->protocol,
++		.saddress	= info->srcaddr,
+ 		.address	= info->sap,
+ 		.addrsize	= info->salen,
+ 		.servername	= info->hostname,
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 61b3dc9..57f0da3 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1710,6 +1710,8 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
+ 	struct nfs_mount_request request = {
+ 		.sap		= (struct sockaddr *)
+ 						&args->mount_server.address,
++		.salen		= args->mount_server.addrlen,
++		.srcaddr	= (struct sockaddr *)&args->srcaddr.address,
+ 		.dirpath	= args->nfs_server.export_path,
+ 		.protocol	= args->mount_server.protocol,
+ 		.fh		= root_fh,
+-- 
+1.7.3.4
+
