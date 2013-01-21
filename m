@@ -1,56 +1,218 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55472 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753867Ab3AQNDh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Jan 2013 08:03:37 -0500
-Date: Thu, 17 Jan 2013 08:03:35 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Mark Lord <kernel@teksavvy.com>, linux-nfs@vger.kernel.org,
-        Linux Kernel <linux-kernel@vger.kernel.org>
-Subject: Re: BUG at net/sunrpc/svc_xprt.c:921
-Message-ID: <20130117130335.GD6598@fieldses.org>
-References: <50F42F85.50907@teksavvy.com>
- <20130114203711.GA29982@fieldses.org>
- <50F4D800.5040703@teksavvy.com>
- <20130115205625.GH4940@fieldses.org>
- <50F63882.8000607@parallels.com>
- <50F72F03.5070806@teksavvy.com>
- <50F786AF.4070107@parallels.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <50F786AF.4070107@parallels.com>
+Received: from mail.candelatech.com ([208.74.158.172]:43640 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752631Ab3AUUsU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2013 15:48:20 -0500
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [RFC 09/13] nfs: Bind to srcaddr in rpcb_create.
+Date: Mon, 21 Jan 2013 12:45:55 -0800
+Message-Id: <1358801159-18829-10-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1358801159-18829-1-git-send-email-greearb@candelatech.com>
+References: <1358801159-18829-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 17, 2013 at 09:05:51AM +0400, Stanislav Kinsbursky wrote:
-> 17.01.2013 02:51, Mark Lord пишет:
-> >On 13-01-16 12:20 AM, Stanislav Kinsbursky wrote:
-> >>
-> >>Mark, could you provide any call traces?
-> >
-> >Call traces from where/what?
-> >There's this one, posted earlier in the BUG report:
-> >
-> >kernel BUG at net/sunrpc/svc_xprt.c:921!
-> >Call Trace:
-> >  [<ffffffffa016a56a>] ? svc_recv+0xcc/0x338 [sunrpc]
-> >  [<ffffffffa0318bfc>] ? nfs_callback_authenticate+0x20/0x20 [nfsv4]
-> >  [<ffffffffa0318c19>] ? nfs4_callback_svc+0x1d/0x3c [nfsv4]
-> >  [<ffffffff810407e6>] ? kthread+0x81/0x89
-> >  [<ffffffff81040765>] ? kthread_freezable_should_stop+0x36/0x36
-> >  [<ffffffff812ea62c>] ? ret_from_fork+0x7c/0xb0
-> >  [<ffffffff81040765>] ? kthread_freezable_should_stop+0x36/0x36
-> >
-> 
-> Thanks!
-> I haven't seen the bug report.
-> Could you provide the link, please?
+From: Ben Greear <greearb@candelatech.com>
 
-There's no bz if that's what you're asking for.
+This more properly clones the existing client connection
+settings, allowing rpc calls to take advantage of routing
+rules based on source IP addresses.
 
-See the first message in the thread for the original report:
+Signed-off-by: Ben Greear <greearb@candelatech.com>
+---
+ net/sunrpc/rpcb_clnt.c |   31 ++++++++++++++++++++++++++++---
+ net/sunrpc/sunrpc.h    |   45 +++++++++++++++++++++++++++++++++++++++++++++
+ net/sunrpc/xprtsock.c  |   42 ------------------------------------------
+ 3 files changed, 73 insertions(+), 45 deletions(-)
 
-	http://mid.gmane.org/<50F42F85.50907@teksavvy.com>
+diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+index a70acae..462ee2a 100644
+--- a/net/sunrpc/rpcb_clnt.c
++++ b/net/sunrpc/rpcb_clnt.c
+@@ -31,6 +31,7 @@
+ #include <linux/sunrpc/xprtsock.h>
+ 
+ #include "netns.h"
++#include "sunrpc.h"
+ 
+ #ifdef RPC_DEBUG
+ # define RPCDBG_FACILITY	RPCDBG_BIND
+@@ -346,12 +347,14 @@ out:
+ }
+ 
+ static struct rpc_clnt *rpcb_create(struct net *net, const char *hostname,
+-				    struct sockaddr *srvaddr, size_t salen,
+-				    int proto, u32 version)
++				    struct sockaddr *srvaddr,
++				    size_t salen, int proto, u32 version,
++				    struct sockaddr *srcaddr)
+ {
+ 	struct rpc_create_args args = {
+ 		.net		= net,
+ 		.protocol	= proto,
++		.saddress	= srcaddr,
+ 		.address	= srvaddr,
+ 		.addrsize	= salen,
+ 		.servername	= hostname,
+@@ -655,16 +658,38 @@ void rpcb_getport_async(struct rpc_task *task)
+ 	struct rpc_task	*child;
+ 	struct sockaddr_storage addr;
+ 	struct sockaddr *sap = (struct sockaddr *)&addr;
++	struct sockaddr_storage srcaddr;
++	struct sockaddr *srcaddra = NULL;
+ 	size_t salen;
+ 	int status;
++	struct sock_xprt *sxprt;
+ 
+ 	rcu_read_lock();
+ 	do {
+ 		clnt = rpcb_find_transport_owner(task->tk_client);
+ 		xprt = xprt_get(rcu_dereference(clnt->cl_xprt));
+ 	} while (xprt == NULL);
++
++	sxprt = container_of(xprt, struct sock_xprt, xprt);
+ 	rcu_read_unlock();
+ 
++	/* We just want to bind to the IP, not the port */
++	memset(&srcaddr, 0, sizeof(srcaddr));
++	srcaddr.ss_family = sxprt->srcaddr.ss_family;
++	if (sxprt->srcaddr.ss_family == AF_INET) {
++		struct sockaddr_in *si = (struct sockaddr_in *)(&srcaddr);
++		struct sockaddr_in *si2;
++		si2 = (struct sockaddr_in *)(&sxprt->srcaddr);
++		si->sin_addr.s_addr = si2->sin_addr.s_addr;
++		srcaddra = (struct sockaddr *)(&srcaddr);
++	} else if (sxprt->srcaddr.ss_family == AF_INET6) {
++		struct sockaddr_in6 *si = (struct sockaddr_in6 *)(&srcaddr);
++		struct sockaddr_in6 *si2;
++		si2 = (struct sockaddr_in6 *)(&sxprt->srcaddr);
++		memcpy(&si->sin6_addr, &si2->sin6_addr, sizeof(si2->sin6_addr));
++		srcaddra = (struct sockaddr *)(&srcaddr);
++	}
++
+ 	dprintk("RPC: %5u %s(%s, %u, %u, %d)\n",
+ 		task->tk_pid, __func__,
+ 		xprt->servername, clnt->cl_prog, clnt->cl_vers, xprt->prot);
+@@ -719,7 +744,7 @@ void rpcb_getport_async(struct rpc_task *task)
+ 		task->tk_pid, __func__, bind_version);
+ 
+ 	rpcb_clnt = rpcb_create(xprt->xprt_net, xprt->servername, sap, salen,
+-				xprt->prot, bind_version);
++				xprt->prot, bind_version, srcaddra);
+ 	if (IS_ERR(rpcb_clnt)) {
+ 		status = PTR_ERR(rpcb_clnt);
+ 		dprintk("RPC: %5u %s: rpcb_create failed, error %ld\n",
+diff --git a/net/sunrpc/sunrpc.h b/net/sunrpc/sunrpc.h
+index 14c9f6d..08f2ec5 100644
+--- a/net/sunrpc/sunrpc.h
++++ b/net/sunrpc/sunrpc.h
+@@ -37,6 +37,51 @@ struct rpc_buffer {
+ 	char	data[];
+ };
+ 
++struct sock_xprt {
++	struct rpc_xprt		xprt;
++
++	/*
++	 * Network layer
++	 */
++	struct socket		*sock;
++	struct sock		*inet;
++
++	/*
++	 * State of TCP reply receive
++	 */
++	__be32			tcp_fraghdr,
++				tcp_xid,
++				tcp_calldir;
++
++	u32			tcp_offset,
++				tcp_reclen;
++
++	unsigned long		tcp_copied,
++				tcp_flags;
++
++	/*
++	 * Connection of transports
++	 */
++	struct delayed_work	connect_worker;
++	struct sockaddr_storage	srcaddr;
++	unsigned short		srcport;
++
++	/*
++	 * UDP socket buffer size parameters
++	 */
++	size_t			rcvsize,
++				sndsize;
++
++	/*
++	 * Saved socket callback addresses
++	 */
++	void			(*old_data_ready)(struct sock *, int);
++	void			(*old_state_change)(struct sock *);
++	void			(*old_write_space)(struct sock *);
++	void			(*old_error_report)(struct sock *);
++};
++
++
+ static inline int rpc_reply_expected(struct rpc_task *task)
+ {
+ 	return (task->tk_msg.rpc_proc != NULL) &&
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 32a016e..9cb9f16 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -213,48 +213,6 @@ static inline void xs_pktdump(char *msg, u32 *packet, unsigned int count)
+ }
+ #endif
+ 
+-struct sock_xprt {
+-	struct rpc_xprt		xprt;
+-
+-	/*
+-	 * Network layer
+-	 */
+-	struct socket *		sock;
+-	struct sock *		inet;
+-
+-	/*
+-	 * State of TCP reply receive
+-	 */
+-	__be32			tcp_fraghdr,
+-				tcp_xid,
+-				tcp_calldir;
+-
+-	u32			tcp_offset,
+-				tcp_reclen;
+-
+-	unsigned long		tcp_copied,
+-				tcp_flags;
+-
+-	/*
+-	 * Connection of transports
+-	 */
+-	struct delayed_work	connect_worker;
+-	struct sockaddr_storage	srcaddr;
+-	unsigned short		srcport;
+-
+-	/*
+-	 * UDP socket buffer size parameters
+-	 */
+-	size_t			rcvsize,
+-				sndsize;
+-
+-	/*
+-	 * Saved socket callback addresses
+-	 */
+-	void			(*old_data_ready)(struct sock *, int);
+-	void			(*old_state_change)(struct sock *);
+-	void			(*old_write_space)(struct sock *);
+-};
+ 
+ /*
+  * TCP receive state flags
+-- 
+1.7.3.4
 
---b.
