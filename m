@@ -1,41 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:22526 "EHLO mx1.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754520Ab3ARWD0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Jan 2013 17:03:26 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Ben Greear <greearb@candelatech.com>,
+Received: from smtp.eu.citrix.com ([46.33.159.39]:25091 "EHLO
+	SMTP.EU.CITRIX.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752612Ab3AUPbK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2013 10:31:10 -0500
+Message-ID: <1358781685.3279.222.camel@zakaz.uk.xensource.com>
+Subject: Re: Fatal crash with NFS, AIO & tcp retransmit
+From: Ian Campbell <Ian.Campbell@citrix.com>
+To: Alex Bligh <alex@alex.org.uk>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Question on nfs40_discover_server_trunking.
-Date: Fri, 18 Jan 2013 22:03:24 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA915C04DFE@sacexcmbx05-prd.hq.netapp.com>
-References: <50F9BE66.6080608@candelatech.com>
-	 <0F001F0E-229D-4314-A42E-84402E4F1FC7@oracle.com>
-In-Reply-To: <0F001F0E-229D-4314-A42E-84402E4F1FC7@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+Date: Mon, 21 Jan 2013 15:21:25 +0000
+In-Reply-To: <4B8CA29C9B365854E56ACBE6@Ximines.local>
+References: <93D3AE9B4990994B2BCA75A9@Ximines.local>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA915C163B9@SACEXCMBX04-PRD.hq.netapp.com>
+	 <E268D60FA8BCE2E18CCE24D7@Ximines.local>
+	 <4B8CA29C9B365854E56ACBE6@Ximines.local>
+Content-Type: text/plain; charset="UTF-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEzLTAxLTE4IGF0IDE2OjMzIC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gSmFuIDE4LCAyMDEzLCBhdCA0OjI4IFBNLCBCZW4gR3JlZWFyIDxncmVlYXJiQGNhbmRlbGF0
-ZWNoLmNvbT4gd3JvdGU6DQo+IA0KPiA+IEFueSBjaGFuY2UgdGhlIFNUQUxFX0NMSUVOVElEIGNh
-c2UgbmVlZHMgYSAnYnJlYWsnPw0KPiANCj4gSSBkb24ndCB0aGluayBzby4gIExFQVNFX0NPTkZJ
-Uk0gaXMgc2V0LCBhbmQgd2Ugd2FudCB0byB3YWtlIHRoZSBzdGF0ZSByZW5ld2FsIHRocmVhZC4N
-Cj4gDQo+ID4gDQo+ID4gVHdpY2UgSSd2ZSBzZWVuIGtlcm5lbCBjcmFzaGVzIGFmdGVyIHRoZSBu
-ZnM0MF93YWxrX2NsaWVudF9saXN0DQo+ID4gZmFpbGVkICh0aG91Z2ggY29kZSBjb21tZW50cyBz
-YXkgaXQgc2hvdWxkIG5ldmVyIGZhaWwpLg0KPiANCj4gbmZzNDBfd2Fsa19jbGllbnRfbGlzdCgp
-IGlzIGxvb2tpbmcgZm9yIGFuIG5mc19jbGllbnQgdGhhdCBpcyBzdXBwb3NlZCB0byBhbHJlYWR5
-IGJlIGluIHRoZSBuZnNfY2xpZW50IGxpc3QuICBJZiB0aGUgc2VhcmNoIGZhaWxzLCB0aGF0J3Mg
-YSBidWcuDQo+IA0KPiBFeWViYWxsIHRoZSBjb250ZW50cyBvZiB5b3VyIG5mc19jbGllbnQgbGlz
-dC4gIFlvdSBzaG91bGQgZmluZCBhbiBhcHByb3ByaWF0ZSBuZnNfY2xpZW50IGluIHRoZXJlLCBh
-bmQgdGhlbiBmaWd1cmUgb3V0IHdoeSB0aGUgc2VhcmNoIGRvZXNuJ3QgZmluZCBpdC4NCg0KWW91
-IGhhdmUgY29uc2lkZXJlZCB0aGUgZmFjdCB0aGF0IHRoZSBjYWxsIHRvDQpuZnM0X3Byb2Nfc2V0
-Y2xpZW50aWRfY29uZmlybSBjYW4gcG90ZW50aWFsbHkgcmV0dXJuDQpORlM0RVJSX1NUQUxFX0NM
-SUVOVElEIGlmIHRoZSBzZXJ2ZXIgcmVib290ZWQgd2hpbGUgdGhlIGNsaWVudCB3YXMNCndhbGtp
-bmcgdGhlIGxpc3Q/DQoNCkVpdGhlciB3YXksIHdlIHNob3VsZG4ndCBiZSBkZWxpYmVyYXRlbHkg
-cGFzc2luZyBhbiB1bmluaXRpYWxpc2VkDQp2YXJpYWJsZSBhcyBhbiBhcmd1bWVudCB0byBuZnM0
-X3NjaGVkdWxlX3N0YXRlX3JlbmV3YWwoKS4NCg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGlu
-dXggTkZTIGNsaWVudCBtYWludGFpbmVyDQoNCk5ldEFwcA0KVHJvbmQuTXlrbGVidXN0QG5ldGFw
-cC5jb20NCnd3dy5uZXRhcHAuY29tDQo=
+On Mon, 2013-01-21 at 15:10 +0000, Alex Bligh wrote:
+> >> I thought that Ian was working on a fix for this issue. At one point, he
+> >> had a bunch of patches to allow sendpage() to call you back when the
+> >> transmission was done. What happened to those patches?
+> >
+> > No idea (I don't work with Ian but have taken the liberty of copy him).
+
+I'm afraid I've rather dropped the ball on these patches due to lack of
+time.
+
+Ian.
+
