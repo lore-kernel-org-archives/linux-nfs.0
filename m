@@ -1,53 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.candelatech.com ([208.74.158.172]:41619 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752361Ab3AWVxr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2013 16:53:47 -0500
-Message-ID: <51005BE9.7060705@candelatech.com>
-Date: Wed, 23 Jan 2013 13:53:45 -0800
-From: Ben Greear <greearb@candelatech.com>
+Received: from mail.avalus.com ([89.16.176.221]:48119 "EHLO mail.avalus.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751273Ab3AUR3s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Jan 2013 12:29:48 -0500
+Date: Mon, 21 Jan 2013 17:29:35 +0000
+From: Alex Bligh <alex@alex.org.uk>
+Reply-To: Alex Bligh <alex@alex.org.uk>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+cc: linux-nfs@vger.kernel.org, ian.campbell@citrix.com,
+        Alex Bligh <alex@alex.org.uk>
+Subject: Re: Fatal crash with NFS, AIO & tcp retransmit
+Message-ID: <50A25C98A7223D35C994B64D@Ximines.local>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA915C1781E@SACEXCMBX04-PRD.hq.netapp.com>
+References: <93D3AE9B4990994B2BCA75A9@Ximines.local>		
+ <4FA345DA4F4AE44899BD2B03EEEC2FA915C163B9@SACEXCMBX04-PRD.hq.netapp.com>		
+ <E268D60FA8BCE2E18CCE24D7@Ximines.local>	
+ <4FA345DA4F4AE44899BD2B03EEEC2FA915C17543@SACEXCMBX04-PRD.hq.netapp.com>	
+ <734E2E0455BD4515C657BA69@Ximines.local>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA915C1781E@SACEXCMBX04-PRD.hq.netapp.com>
 MIME-Version: 1.0
-To: Eric Dumazet <eric.dumazet@gmail.com>
-CC: netdev <netdev@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: 3.7.3+:  Bad paging request in ip_rcv_finish while running NFS
- traffic.
-References: <50FDADF4.3060601@candelatech.com>  <50FDDE35.7070806@candelatech.com>  <1358829606.3464.3151.camel@edumazet-glaptop>  <50FE2A57.3040804@candelatech.com>  <50FEC796.5090404@candelatech.com>  <1358875020.3464.4006.camel@edumazet-glaptop>  <1358875607.3464.4020.camel@edumazet-glaptop>  <50FF102F.2050008@candelatech.com>  <50FF4BC9.1060206@candelatech.com>  <1358921493.12374.737.camel@edumazet-glaptop>  <50FF8DEC.9070901@candelatech.com> <1358952122.12374.791.camel@edumazet-glaptop>
-In-Reply-To: <1358952122.12374.791.camel@edumazet-glaptop>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/23/2013 06:42 AM, Eric Dumazet wrote:
-> On Tue, 2013-01-22 at 23:14 -0800, Ben Greear wrote:
->
->> I suspect the bug goes back at least as far as 3.3.  And since
->> I need the NFS patches for this test case, bisecting will be pure hell.
->
-> Make sure the bug is still present in net-next.
->
+Trond,
 
-My test case isn't running well on net-next.  Seems most
-of the file-io processes are hung trying to open a file:
+--On 21 January 2013 17:20:36 +0000 "Myklebust, Trond" 
+<Trond.Myklebust@netapp.com> wrote:
 
-[root@lf1011-12060006 lanforge]# cat /proc/10612/stack
-[<ffffffff8115fadb>] do_last+0x1db/0xa4e
-[<ffffffff8116090b>] path_openat+0xcb/0x363
-[<ffffffff81160ca8>] do_filp_open+0x38/0x84
-[<ffffffff81153bfc>] do_sys_open+0x6d/0xff
-[<ffffffff81153cbb>] sys_open+0x1c/0x1e
-[<ffffffff8154f629>] system_call_fastpath+0x16/0x1b
-[<ffffffffffffffff>] 0xffffffffffffffff
+> That is correct. If you want zero-copy, then O_DIRECT is your thing
+> (with or without aio). Otherwise, the kernel will always write to disk
+> by copying through the page cache.
 
-
-I'm going back to 3.7.3 and will try to learn some more
-about what it's doing there.
-
-Thanks,
-Ben
-
+Thanks. From the crash dump it appeared to be accessing mapped memory
+somehow, so I'll see whether QEMU is in fact using O_DIRECT contrary
+to documentation.
 
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
-
+Alex Bligh
