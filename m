@@ -1,52 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:48850 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:25144 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754681Ab3ADVMG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Jan 2013 16:12:06 -0500
-Date: Fri, 4 Jan 2013 16:12:05 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: ycnian@gmail.com
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: Remove write permission from file content
-Message-ID: <20130104211204.GA14712@fieldses.org>
-References: <1357299935-9321-1-git-send-email-ycnian@gmail.com>
+	id S1753360Ab3AUPuv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Jan 2013 10:50:51 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Alex Bligh <alex@alex.org.uk>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "ian.campbell@citrix.com" <ian.campbell@citrix.com>
+Subject: Re: Fatal crash with NFS, AIO & tcp retransmit
+Date: Mon, 21 Jan 2013 15:50:48 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA915C17543@SACEXCMBX04-PRD.hq.netapp.com>
+References: <93D3AE9B4990994B2BCA75A9@Ximines.local>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA915C163B9@SACEXCMBX04-PRD.hq.netapp.com>
+	 <E268D60FA8BCE2E18CCE24D7@Ximines.local>
+In-Reply-To: <E268D60FA8BCE2E18CCE24D7@Ximines.local>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1357299935-9321-1-git-send-email-ycnian@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 04, 2013 at 07:45:35PM +0800, ycnian@gmail.com wrote:
-> From: Yanchuan Nian <ycnian@gmail.com>
-> 
-> The write function doesn't be implemented in file content, and it's meaningless
-> to write data into this file directly. Remove write permission from it.
-
-So does it really matter either way?
-
-OK, applying, but I wonder.
-
---b.
-
-> 
-> Signed-off-by: Yanchuan Nian <ycnian@gmail.com>
-> ---
->  net/sunrpc/cache.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-> index 9afa439..9f84703 100644
-> --- a/net/sunrpc/cache.c
-> +++ b/net/sunrpc/cache.c
-> @@ -1614,7 +1614,7 @@ static int create_cache_proc_entries(struct cache_detail *cd, struct net *net)
->  			goto out_nomem;
->  	}
->  	if (cd->cache_show) {
-> -		p = proc_create_data("content", S_IFREG|S_IRUSR|S_IWUSR,
-> +		p = proc_create_data("content", S_IFREG|S_IRUSR,
->  				cd->u.procfs.proc_ent,
->  				&content_file_operations_procfs, cd);
->  		cd->u.procfs.content_ent = p;
-> -- 
-> 1.7.4.4
-> 
+T24gTW9uLCAyMDEzLTAxLTIxIGF0IDE1OjAxICswMDAwLCBBbGV4IEJsaWdoIHdyb3RlOg0KPiBU
+cm9uZCwNCj4gDQo+IC0tT24gMjEgSmFudWFyeSAyMDEzIDE0OjM4OjIwICswMDAwICJNeWtsZWJ1
+c3QsIFRyb25kIiANCj4gPFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+
+ID4gVGhlIE9vcHMgd291bGQgYmUgZHVlIHRvIGEgYnVnIGluIHRoZSBzb2NrZXQgbGF5ZXI6IHRo
+ZSBzb2NrZXQgaXMNCj4gPiBzdXBwb3NlZCB0byB0YWtlIGEgcmVmZXJlbmNlIGNvdW50IG9uIHRo
+ZSBwYWdlIGluIG9yZGVyIHRvIGVuc3VyZSB0aGF0DQo+ID4gaXQgY2FuIGNvcHkgdGhlIGNvbnRl
+bnRzLg0KPiANCj4gTG9va2luZyBhdCB0aGUgb3JpZ2luYWwgbGludXgtbmZzIGxpbmssIHlvdSBz
+YWlkIGhlcmU6DQo+IGh0dHA6Ly9tYXJjLmluZm8vP2w9bGludXgtbmZzJm09MTIyNDI0Nzg5NTA4
+NTc3Jnc9Mg0KPiANCj4gVHJvbmQ6PiBJIGRvbid0IHNlZSBob3cgdGhpcyBjb3VsZCBiZSBhbiBS
+UEMgYnVnLiBUaGUgbmV0d29ya2luZw0KPiBUcm9uZDo+IGxheWVyIGlzIHN1cHBvc2VkIHRvIGVp
+dGhlciBjb3B5IHRoZSBkYXRhIHNlbnQgdG8gdGhlIHNvY2tldCwNCj4gVHJvbmQ6PiBvciB0YWtl
+IGEgcmVmZXJlbmNlIHRvIGFueSBwYWdlcyB0aGF0IGFyZSBwdXNoZWQgdmlhDQo+IFRyb25kOj4g
+dGhlIC0+c2VuZHBhZ2UoKSBhYmkuDQo+IA0KPiB3aGljaCBzb3VuZHMgc3VzcGljaW91c2x5IGxp
+a2UgdGhlIHNhbWUgdGhpbmcuDQo+IA0KPiBUaGUgY29udmVyc2F0aW9uIHRoZW4gd2VudDoNCj4g
+aHR0cDovL21hcmMuaW5mby8/bD1saW51eC1uZnMmbT0xMjI0MjQ4NTgxMDk3MzEmdz0yDQo+IElh
+bjo+IFRoZSBwYWdlcyBhcmUgc3RpbGwgcmVmZXJlbmNlZCBieSB0aGUgbmV0d29ya2luZyBsYXll
+ci4gVGhlIHByb2JsZW0gaXMNCj4gSWFuOj4gdGhhdCB0aGUgdXNlcnNwYWNlIGFwcCBoYXMgYmVl
+biB0b2xkIHRoYXQgdGhlIHdyaXRlIGhhcyBjb21wbGV0ZWQgc28NCj4gSWFuOj4gaXQgaXMgZnJl
+ZSB0byB3cml0ZSBuZXcgZGF0YSB0byB0aG9zZSBwYWdlcy4NCj4gDQo+IFRvIHdoaWNoIHlvdSBy
+ZXBsaWVkOg0KPiBodHRwOi8vbWFyYy5pbmZvLz9sPWxpbnV4LW5mcyZtPTEyMjQyNDk4NDYxMjEz
+MCZ3PTINCj4gVHJvbmQ6PiBPSywgSSBzZWUgeW91ciBwb2ludC4NCg0KVGhlIG9yaWdpbmFsIHRo
+cmVhZCBkaWQgbm90IEFGQUlDUiBpbnZvbHZlIGFuIE9vcHMuIElmIHlvdSBhcmUgc2VlaW5nIGFu
+DQpPb3BzLCB0aGVuIHRoYXQgaXMgc29tZXRoaW5nIG5ldyBhbmQgd291bGQgYmUgYSBzb2NrZXQg
+bGV2ZWwgYnVnLg0KDQo+IEZvbGxvd2luZyB0aGUgdGhyZWFkLCBpdCB0aGVuIHNlZW1zIHRoYXQg
+SWFuJ3MgdGVzdCBjYXNlIGRpZCBmYWlsIG9uDQo+IE5GUzQgb24gMi42LjE4LCBidXQgbm90IG9u
+IDIuNi4yNy4NCj4gDQo+IE5vdGUgdGhhdCBJYW4gd2FzIHNlZWluZyBzb21ldGhpbmcgc2xpZ2h0
+bHkgZGlmZmVyZW50IGZyb20gbWUuIEkgdGhpbmsNCj4gd2hhdCBoZSB3YXMgc2VlaW5nIHdhcyBh
+bHRlcmF0aW9ucyB0byB0aGUgcGFnZSBhZnRlciBBSU8gY29tcGxldGVzDQo+IGJlaW5nIHJldHJh
+bnNtaXR0ZWQgd2hlbiB0aGUgcGFnZSBwcmlvciB0byB0aGUgYWx0ZXJhdGlvbiBzaG91bGQNCj4g
+YmUgdHJhbnNtaXR0ZWQuIFRoYXQgY291bGQgcHJlc3VtYWJseSBiZSBmaXhlZCBieSBzb21lIENP
+VyBkZXZpY2UuDQo+IA0KPiBXaGF0IEknbSBzZWVpbmcgaXMgbW9yZSBzdWJ0bGUuIFhlbiB0aGlu
+a3MgKGJlY2F1c2UgUUVNVSB0ZWxscyBpdCwNCj4gYmVjYXVzZSBBSU8gdGVsbHMgaXQpIHRoYXQg
+dGhlIG1lbW9yeSBpcyBkb25lIHdpdGggZW50aXJlbHksIGFuZA0KPiBzaW1wbHkgdW5tYXBzIGl0
+LiBJIGRvbid0IHRoaW5rIHRoYXQncyBRZW11J3MgZmF1bHQuDQo+IA0KPiBJZiBpdCBpcyBhIHJl
+ZmVyZW5jaW5nIGlzc3VlLCB0aGVuIGl0IHNlZW1zIHRvIG1lIHRoZSBwcm9ibGVtIGlzDQo+IHRo
+YXQgWGVuIGlzIHJlbGVhc2luZyB0aGUgZ3JhbnQgc3RydWN0dXJlIChJIGRvbid0IHF1aXRlIHVu
+ZGVyc3RhbmQNCj4gaG93IHRoaXMgYml0IHdvcmtzKSBhbmQgdW5tYXBwaW5nIG1lbW9yeSB3aGVu
+IHRoZSBuZXR3b3JraW5nIHN0YWNrDQo+IHN0aWxsIGhvbGRzIGEgcmVmZXJlbmNlIHRvIHRoZSBw
+YWdlIGNvbmNlcm5lZC4gSG93ZXZlciwgZXZlbiBpZiBpdA0KPiBkaWQgbm90IGRvIHRoYXQsIHdv
+dWxkbid0IGEgcmV0cmFuc21pdCBhZnRlciB0aGUgd3JpdGUgaGFkIGNvbXBsZXRlZA0KPiByaXNr
+IHdyaXRpbmcgdGhlIHdyb25nIGRhdGE/IEkgc3VwcG9zZSBpdCBjb3VsZCBtYXJrIHRoZSBwYWdl
+DQo+IENPVyBiZWZvcmUgaXQgcmVsZWFzZWQgdGhlIGdyYW50IG9yIHNvbWV0aGluZy4NCj4gDQo+
+ID4gQXMgZm9yIHRoZSBPX0RJUkVDVCBidWcsIHRoZSBwcm9ibGVtIHRoZXJlIGlzIHRoYXQgd2Ug
+aGF2ZSBubyB3YXkgb2YNCj4gPiBrbm93aW5nIHdoZW4gdGhlIHNvY2tldCBpcyBkb25lIHdyaXRp
+bmcgdGhlIHBhZ2UuIEp1c3QgYmVjYXVzZSB3ZSBnb3QgYW4NCj4gPiBhbnN3ZXIgZnJvbSB0aGUg
+c2VydmVyIGRvZXNuJ3QgbWVhbiB0aGF0IHRoZSBzb2NrZXQgaXMgZG9uZQ0KPiA+IHJldHJhbnNt
+aXR0aW5nIHRoZSBkYXRhLiBJdCBpcyBxdWl0ZSBwb3NzaWJsZSB0aGF0IHRoZSBzZXJ2ZXIgaXMg
+anVzdA0KPiA+IHJlcGx5aW5nIHRvIHRoZSBmaXJzdCB0cmFuc21pc3Npb24uDQo+IA0KPiBJIGRv
+bid0IHRoaW5rIFFFTVUgaXMgYWN0dWFsbHkgdXNpbmcgT19ESVJFQ1QgdW5sZXNzIEkgc2V0IGNh
+Y2hlPW5vbmUNCj4gb24gdGhlIGRyaXZlLiBUaGF0IGNhdXNlcyBhIGRpZmZlcmVudCBpbnRlcmVz
+dGluZyBmYWlsdXJlIHdoaWNoIGlzbid0DQo+IG15IGZvY3VzIGp1c3Qgbm93IQ0KDQpUaGVuIHlv
+dXIgcmVmZXJlbmNlIHRvIElhbidzIGJ1ZyBpcyBhIHJlZCBoZXJyaW5nLg0KDQpJZiB0aGUgYXBw
+bGljYXRpb24gaXMgdXNpbmcgYnVmZmVyZWQgd3JpdGVzLCB0aGVuIHRoZSBkYXRhIGlzDQppbW1l
+ZGlhdGVseSBjb3BpZWQgZnJvbSB1c2Vyc3BhY2UgdG8gdGhlIHBhZ2UgY2FjaGUuIE9uY2UgdGhl
+IGNvcHkgdG8NCnRoZSBwYWdlIGNhY2hlIGlzIGRvbmUsIHVzZXJzcGFjZSBjYW4gZG8gd2hhdGV2
+ZXIgaXQgd2FudHMgd2l0aCB0aGUNCm9yaWdpbmFsIGJ1ZmZlciwgYmVjYXVzZSBvbmx5IHRoZSBw
+YWdlIGNhY2hlIHBhZ2VzIGFyZSB1c2VkIGluIHRoZSBSUEMNCmNhbGxzLg0KDQphaW8gZG9lc24n
+dCBjaGFuZ2UgYW55IG9mIHRoaXMuLi4NCg0KPiA+IEkgdGhvdWdodCB0aGF0IElhbiB3YXMgd29y
+a2luZyBvbiBhIGZpeCBmb3IgdGhpcyBpc3N1ZS4gQXQgb25lIHBvaW50LCBoZQ0KPiA+IGhhZCBh
+IGJ1bmNoIG9mIHBhdGNoZXMgdG8gYWxsb3cgc2VuZHBhZ2UoKSB0byBjYWxsIHlvdSBiYWNrIHdo
+ZW4gdGhlDQo+ID4gdHJhbnNtaXNzaW9uIHdhcyBkb25lLiBXaGF0IGhhcHBlbmVkIHRvIHRob3Nl
+IHBhdGNoZXM/DQo+IA0KPiBObyBpZGVhIChJIGRvbid0IHdvcmsgd2l0aCBJYW4gYnV0IGhhdmUg
+dGFrZW4gdGhlIGxpYmVydHkgb2YgY29weSBoaW0pLg0KPiANCj4gSG93ZXZlciwgd2hhdCdzIGhh
+cHBlbmVkIGluIHRoZSBpbnRlcnZlbmluZyB5ZWFycyBpcyB0aGF0IFhlbiBoYXMgY2hhbmdlZA0K
+PiBpdHMgZGV2aWNlIG1vZGVsIGFuZCBpdCdzIG5vdyBRRU1VIGRvaW5nIHRoZSB3cml0aW5nICh0
+aGUgcWNvdzIgZHJpdmVyDQo+IHNwZWNpZmljYWxseSkuIEknbSBub3Qgc3VyZSBpdCdzIGV2ZW4g
+dXNpbmcgc2VuZHBhZ2UuDQoNClRoZSBrZXJuZWwgUlBDIGxheWVyIHVzZXMgc2VuZHBhZ2UgdG8g
+dHJhbnNtaXQgcGFnZXMgYXMgcGFydCBvZiBhbiBSUEMNCmNhbGwuDQoNCi0tIA0KVHJvbmQgTXlr
+bGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWts
+ZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3Lm5ldGFwcC5jb20NCg==
