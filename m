@@ -1,101 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53314 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751056Ab3AYVVI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2013 16:21:08 -0500
-Date: Fri, 25 Jan 2013 16:21:07 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Ben Myers <bpm@sgi.com>, Olga Kornievskaia <aglo@citi.umich.edu>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Jim Rees <rees@umich.edu>
-Subject: Re: sunrpc: socket buffer size tuneable
-Message-ID: <20130125212106.GH29596@fieldses.org>
-References: <20130125192935.GA32470@sgi.com>
- <20130125202107.GD29596@fieldses.org>
- <20130125203507.GW30652@sgi.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91833BF5A@sacexcmbx05-prd.hq.netapp.com>
+Received: from s22.webhostingserver.nl ([195.211.72.238]:63428 "EHLO
+	s22.webhostingserver.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756255Ab3AUQFl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2013 11:05:41 -0500
+Received: from localhost ([::1] helo=vdtoorn.nl)
+	by s22.webhostingserver.nl with esmtpa (Exim 4.80.1)
+	(envelope-from <richard@vdtoorn.nl>)
+	id 1TxJsS-0007VC-Dm
+	for linux-nfs@vger.kernel.org; Mon, 21 Jan 2013 17:05:40 +0100
+Message-ID: <f5c26f2aeca8be1bdca00072e749acd6.squirrel@vdtoorn.nl>
+In-Reply-To: <26b3643c253ee306d593bb4b20ff095b.squirrel@vdtoorn.nl>
+References: <26b3643c253ee306d593bb4b20ff095b.squirrel@vdtoorn.nl>
+Date: Mon, 21 Jan 2013 17:05:40 +0100
+Subject: Hanging nfs4+krb5 mounts with negative uids?
+From: richard@vdtoorn.nl
+To: linux-nfs@vger.kernel.org
+Reply-To: richard@vdtoorn.nl
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91833BF5A@sacexcmbx05-prd.hq.netapp.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 25, 2013 at 09:12:55PM +0000, Myklebust, Trond wrote:
-> > -----Original Message-----
-> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> > owner@vger.kernel.org] On Behalf Of Ben Myers
-> > Sent: Friday, January 25, 2013 3:35 PM
-> > To: J. Bruce Fields
-> > Cc: Olga Kornievskaia; linux-nfs@vger.kernel.org; Jim Rees
-> > Subject: Re: sunrpc: socket buffer size tuneable
-> > 
-> > Hey Bruce,
-> > 
-> > On Fri, Jan 25, 2013 at 03:21:07PM -0500, J. Bruce Fields wrote:
-> > > > On Fri, Jan 25, 2013 at 01:29:35PM -0600, Ben Myers wrote:
-> > > > > Hey Bruce & Jim & Olga,
-> > > > >
-> > > > > On Fri, Jan 25, 2013 at 02:16:20PM -0500, Jim Rees wrote:
-> > > > > > J. Bruce Fields wrote:
-> > > > > >
-> > > > > >   On Thu, Jan 24, 2013 at 06:59:30PM -0600, Ben Myers wrote:
-> > > > > >   > At 1020 threads the send buffer size wraps and becomes negative
-> > causing
-> > > > > >   > the nfs server to grind to a halt.  Rather than setting bufsize based
-> > > > > >   > upon the number of nfsd threads, make the buffer sizes tuneable
-> > via
-> > > > > >   > module parameters.
-> > > > > >   >
-> > > > > >   > Set the buffer sizes in terms of the number of rpcs you want to fit
-> > into
-> > > > > >   > the buffer.
-> > > > > >
-> > > > > >   From private communication, my understanding is that the original
-> > > > > >   problem here was due to memory pressure forcing the tcp send
-> > buffer size
-> > > > > >   below the size required to hold a single rpc.
-> > > > >
-> > > > > Years ago I did see wrapping of the buffer size when tcp was used
-> > > > > with many threads.  Today's problem is timeouts on a cluster with
-> > > > > a heavy read workload... and I seem to remember seeing that the
-> > > > > send buffer size was too small.
-> > > > >
-> > > > > >   In which case the important variable here is lock_bufsize, as that's
-> > > > > >   what prevents the buffer size from going too low.
-> > > > >
-> > > > > I tested removing the lock of bufsize and did hit the timeouts, so
-> > > > > the overflow is starting to look less relevant.  I will test your
-> > > > > minimal overflow fix to see if this is the case.
-> > > >
-> > > > The minimal overflow fix did not resolve the timeouts.
-> > >
-> > > OK, thanks, that's expected.
-> > >
-> > > > I will test with this to see if it resolves the timeouts:
-> > >
-> > > And I'd expect that to do the job--
-> > 
-> > It did.
-> > 
-> > > but at the expense of some tcp
-> > > bandwidth.  So you end up needing your other module parameters to get
-> > > the performance back.
-> > 
-> > I didn't put a timer on it, so I'm not sure.  Any ideas for an alternate fix?
-> > 
-> 
-> Why is it not sufficient to clamp the TCP values of 'snd' and 'rcv' using sysctl_tcp_wmem/sysctl_tcp_rmem?
-> ...and clamp the UDP values using sysctl_[wr]mem_min/sysctl_[wr]mem_max?.
+Hi all,
 
-Yeah, I was just looking at that--so, Ben, something like:
+I have a question about nfs-utils. It's about a patch that was submitted,
+way back in 2010, fixing hanging mounts because of a int/uint problem:
 
-	echo "1048576 1048576 4194304" >/proc/sys/net/ipv4/tcp_wmem
+you can read the commit message at:
+http://www.spinics.net/lists/linux-nfs/msg14723.html
 
-But I'm unclear on some of the details: do we need to set the minimum or
-only the default?  And does it need any more allowance for protocol
-overhead?
+This code gets hit, e.g. with the new debian stable release where
+nfs-kernel-server/nfs-common is upgraded to 1.2.6-3 (or upgrade
+nfs-kernel-server from debian stable to debian unstable). On my nfsv4+krb5
+system, this seems to do exactly the opposite of the patch: not fixing,
+but in fact introducing a hanging mount.
 
-Regardless, it's unfortunate if the server's buggy by default.
+When I change the code back from unsigned uid's to signed uid's the mount
+works again.
 
---b.
+Can anyone give me any help understanding why this is, or point me in a
+direction in getting this solved? I very well might have just
+misconfigured my nfsv4 + krb5 system (asking myself why am I getting
+negative uids?)
+
+Some more information to help debugging:
+
+1) I'm running a VM as a kerberos KDC/admin server (debian sid/unstable)
+2) I'm running a second VM as a nfsv4 server configured to use this
+kerberos VM (debian squeeze/stable)
+3) All VM's are running linux kernel 3.7 (no modules, crypto stuff
+configured), time is synchronized by ntpdate
+4) On both the nfs-server as an nfs-client, I can succesfully mount using
+krb5/5i/5p.
+
+Problem: once I dist-upgrade the nfs-server to unstable where
+nfs-utils=1.2.6-3, the mount hangs as described in debian bug #682709.
+When I delete the newly acquired
+machine credential /tmp/krb5cc_machine_***, and retry the mount, the
+syslog error is the following:
+
+ERROR: GSS-API: error in gss_acquire_cred(): Unspecified GSS failure.
+Minor code may provide more information - Unknown error
+
+I have a patch available for 1.2.6-3 (basically the opposite of the
+commit), that works for my environment. Just a few lines, can paste if
+anyone is interested.
+
+Thanks for the help!
+
+Richard van den Toorn
+(The Netherlands)
+
+
+
