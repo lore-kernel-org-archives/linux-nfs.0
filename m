@@ -1,80 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f42.google.com ([209.85.213.42]:56744 "EHLO
-	mail-yh0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750906Ab3A1Tlo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2013 14:41:44 -0500
-Received: by mail-yh0-f42.google.com with SMTP id w49so470035yhw.29
-        for <linux-nfs@vger.kernel.org>; Mon, 28 Jan 2013 11:41:43 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 04/16] nfsd: create a dedicated slabcache for DRC entries
-Date: Mon, 28 Jan 2013 14:41:10 -0500
-Message-Id: <1359402082-29195-5-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
-References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
+Received: from mail-ee0-f48.google.com ([74.125.83.48]:52706 "EHLO
+	mail-ee0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753657Ab3AUOzH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2013 09:55:07 -0500
+Received: by mail-ee0-f48.google.com with SMTP id t10so2856830eei.7
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Jan 2013 06:55:06 -0800 (PST)
+From: Benny Halevy <bhalevy@tonian.com>
+To: linux-nfs@vger.kernel.org
+Cc: Benny Halevy <bhalevy@tonian.com>
+Subject: [PATCH 9/9] SQUASHME: pnfsd: no use for fi_layout_states list anymore
+Date: Mon, 21 Jan 2013 16:55:03 +0200
+Message-Id: <1358780103-6229-1-git-send-email-bhalevy@tonian.com>
+In-Reply-To: <50FD5646.4020206@tonian.com>
+References: <50FD5646.4020206@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently we use kmalloc() which wastes a little bit of memory on each
-allocation since it's a power of 2 allocator. Since we're allocating a
-1024 of these now, and may need even more later, let's create a new
-slabcache for them.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
 ---
- fs/nfsd/nfscache.c | 15 +++++++++++++--
- 1 file changed, 13 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4pnfsd.c | 10 ----------
+ fs/nfsd/nfs4state.c |  1 -
+ fs/nfsd/pnfsd.h     |  1 -
+ fs/nfsd/state.h     |  1 -
+ 4 files changed, 13 deletions(-)
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index 972c14a..4aad9e4 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -26,6 +26,7 @@
- static struct hlist_head *	cache_hash;
- static struct list_head 	lru_head;
- static int			cache_disabled = 1;
-+static struct kmem_cache	*drc_slab;
+diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+index 3375554..4320914 100644
+--- a/fs/nfsd/nfs4pnfsd.c
++++ b/fs/nfsd/nfs4pnfsd.c
+@@ -157,10 +157,6 @@ void pnfs_clear_device_notify(struct nfs4_client *clp)
+ 		return new;
+ 	kref_init(&new->ls_ref);
+ 	nfsd4_init_stid(&new->ls_stid, clp, NFS4_LAYOUT_STID);
+-	INIT_LIST_HEAD(&new->ls_perfile);
+-	spin_lock(&layout_lock);
+-	list_add(&new->ls_perfile, &fp->fi_layout_states);
+-	spin_unlock(&layout_lock);
+ 	new->ls_roc = false;
+ 	return new;
+ }
+@@ -178,11 +174,6 @@ void pnfs_clear_device_notify(struct nfs4_client *clp)
+ 			container_of(kref, struct nfs4_layout_state, ls_ref);
  
- /*
-  * Calculate the hash index from an XID.
-@@ -51,10 +52,15 @@ int nfsd_reply_cache_init(void)
- 	struct svc_cacherep	*rp;
- 	int			i;
- 
-+	drc_slab = kmem_cache_create("nfsd_drc", sizeof(struct svc_cacherep),
-+					0, 0, NULL);
-+	if (!drc_slab)
-+		goto out_nomem;
-+
- 	INIT_LIST_HEAD(&lru_head);
- 	i = CACHESIZE;
- 	while (i) {
--		rp = kmalloc(sizeof(*rp), GFP_KERNEL);
-+		rp = kmem_cache_alloc(drc_slab, GFP_KERNEL);
- 		if (!rp)
- 			goto out_nomem;
- 		list_add(&rp->c_lru, &lru_head);
-@@ -85,13 +91,18 @@ void nfsd_reply_cache_shutdown(void)
- 		if (rp->c_state == RC_DONE && rp->c_type == RC_REPLBUFF)
- 			kfree(rp->c_replvec.iov_base);
- 		list_del(&rp->c_lru);
--		kfree(rp);
-+		kmem_cache_free(drc_slab, rp);
- 	}
- 
- 	cache_disabled = 1;
- 
- 	kfree (cache_hash);
- 	cache_hash = NULL;
-+
-+	if (drc_slab) {
-+		kmem_cache_destroy(drc_slab);
-+		drc_slab = NULL;
-+	}
+ 	nfsd4_unhash_stid(&ls->ls_stid);
+-	if (!list_empty(&ls->ls_perfile)) {
+-		spin_lock(&layout_lock);
+-		list_del(&ls->ls_perfile);
+-		spin_unlock(&layout_lock);
+-	}
+ 	kfree(ls);
  }
  
- /*
+@@ -1310,7 +1301,6 @@ void pnfsd_roc(struct nfs4_client *clp, struct nfs4_file *fp)
+ 			continue;
+ 
+ 		/* Return the layout */
+-		list_del_init(&lo->lo_state->ls_perfile);	/* just to be on the safe side */
+ 		dequeue_layout(lo);
+ 		list_add_tail(&lo->lo_perfile, &lo_destroy_list);
+ 	}
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 0553220..1682413 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2370,7 +2370,6 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino,
+ 	memset(fp->fi_access, 0, sizeof(fp->fi_access));
+ #if defined(CONFIG_PNFSD)
+ 	INIT_LIST_HEAD(&fp->fi_layouts);
+-	INIT_LIST_HEAD(&fp->fi_layout_states);
+ 	fp->fi_fsid.major = current_fh->fh_export->ex_fsid;
+ 	fp->fi_fsid.minor = 0;
+ 	fp->fi_fhlen = current_fh->fh_handle.fh_size;
+diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
+index 35859ff..fe35466 100644
+--- a/fs/nfsd/pnfsd.h
++++ b/fs/nfsd/pnfsd.h
+@@ -44,7 +44,6 @@
+ struct nfs4_layout_state {
+ 	struct nfs4_stid	ls_stid; /* must be first field */
+ 	struct kref		ls_ref;
+-	struct list_head	ls_perfile;
+ 	bool			ls_roc;
+ };
+ 
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 08a31a7..4ca6f2d 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -399,7 +399,6 @@ struct nfs4_file {
+ 	bool			fi_had_conflict;
+ #if defined(CONFIG_PNFSD)
+ 	struct list_head	fi_layouts;
+-	struct list_head	fi_layout_states;
+ 	/* used by layoutget / layoutrecall */
+ 	struct nfs4_fsid	fi_fsid;
+ 	u32			fi_fhlen;
 -- 
 1.7.11.7
 
