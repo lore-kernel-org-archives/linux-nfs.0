@@ -1,49 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59636 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754013Ab3ADTM4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Jan 2013 14:12:56 -0500
-Date: Fri, 4 Jan 2013 14:12:55 -0500
-From: Bruce Fields <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Adamson, Dros" <Weston.Adamson@netapp.com>, Tejun Heo <tj@kernel.org>
-Subject: Re: [PATCH 2/3] NFS: Ensure that we free the rpc_task after read and
- write cleanups are done
-Message-ID: <20130104191255.GA13828@fieldses.org>
-References: <0EC8763B847DB24D9ADF5EBD9CD7B419125A16A9@SACEXCMBX02-PRD.hq.netapp.com>
- <1357323302-12944-1-git-send-email-Trond.Myklebust@netapp.com>
- <1357323302-12944-2-git-send-email-Trond.Myklebust@netapp.com>
- <20130104182958.GA13471@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91198C253@SACEXCMBX04-PRD.hq.netapp.com>
+Received: from mail-ea0-f178.google.com ([209.85.215.178]:59602 "EHLO
+	mail-ea0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756101Ab3AUOrm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2013 09:47:42 -0500
+Received: by mail-ea0-f178.google.com with SMTP id a14so2547234eaa.23
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Jan 2013 06:47:39 -0800 (PST)
+Message-ID: <50FD5507.4010303@tonian.com>
+Date: Mon, 21 Jan 2013 16:47:35 +0200
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91198C253@SACEXCMBX04-PRD.hq.netapp.com>
+To: ycnian@gmail.com
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] pnfsd: Update the reference of nfs4_layout_state properly
+References: <1358217471-18458-1-git-send-email-ycnian@gmail.com>
+In-Reply-To: <1358217471-18458-1-git-send-email-ycnian@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 04, 2013 at 06:52:12PM +0000, Myklebust, Trond wrote:
-> On Fri, 2013-01-04 at 13:29 -0500, Bruce Fields wrote:
-> > On Fri, Jan 04, 2013 at 01:15:01PM -0500, Trond Myklebust wrote:
-> > > This patch ensures that we free the rpc_task after the cleanup callbacks
-> > > are done in order to avoid a deadlock problem that can be triggered if
-> > > the callback needs to wait for another workqueue item to complete.
-> > 
-> > Makes sense to me!
-> > 
-> > (Dumb question: so read and write data are the only two cases where the
-> > calldata embeds an rpc task?  Why is that?)
+On 2013-01-15 04:37, ycnian@gmail.com wrote:
+> From: Yanchuan Nian <ycnian@gmail.com>
 > 
-> nfs_commit_data and nfs_layoutcommit_data do too. The idea is to improve
-> reliability when writing back dirty data in low memory conditions. The
-> struct nfs_write_data and nfs_commit_data have their own mempool in
-> order to guarantee a minimum number of available slots. By embedding the
-> rpc_task, we can extend that guarantee to cover (part of) the RPC call
-> too.
+> The reference of nfs4_layout_state is set to 1 when creating.
+> it isn't necessary to increase the reference again in
+> nfs4_process_layout_stateid(), otherwise it will lead to a
+> memory leak.
 > 
-> The only reason why nfs_read_data has the same embedding is for symmetry
-> with nfs_write_data.
+> Signed-off-by: Yanchuan Nian <ycnian@gmail.com>
 
-OK, thanks for the explanation.
+Thanks. Committing for pnfs-all-3.7 and latest.
 
---b.
+Benny
+
+> ---
+>  fs/nfsd/nfs4pnfsd.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+> index 2211b50..dd7856c 100644
+> --- a/fs/nfsd/nfs4pnfsd.c
+> +++ b/fs/nfsd/nfs4pnfsd.c
+> @@ -248,10 +248,10 @@ nfs4_process_layout_stateid(struct nfs4_client *clp, struct nfs4_file *fp,
+>  			status = nfserr_bad_stateid;
+>  			goto out;
+>  		}
+> +		get_layout_state(ls);
+>  	}
+>  	status = 0;
+>  
+> -	get_layout_state(ls);
+>  	*lsp = ls;
+>  	dprintk("%s: layout stateid=" STATEID_FMT " ref=%d\n", __func__,
+>  		STATEID_VAL(&ls->ls_stid.sc_stateid), atomic_read(&ls->ls_ref.refcount));
+> 
