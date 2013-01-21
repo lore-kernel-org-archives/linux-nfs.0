@@ -1,71 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:14289 "EHLO mx1.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:45566 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751835Ab3ASAoL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Jan 2013 19:44:11 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Ben Greear <greearb@candelatech.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Question on nfs40_discover_server_trunking.
-Date: Sat, 19 Jan 2013 00:44:09 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA915C071D7@sacexcmbx05-prd.hq.netapp.com>
-References: <50F9BE66.6080608@candelatech.com>
-	 <0F001F0E-229D-4314-A42E-84402E4F1FC7@oracle.com>
-	 <1358546604.2872.6.camel@leira.trondhjem.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA915C04FE5@sacexcmbx05-prd.hq.netapp.com>
-	 <C11ACA70-EC3A-4FAD-8ADC-572F9B6B4CFE@oracle.com>
-In-Reply-To: <C11ACA70-EC3A-4FAD-8ADC-572F9B6B4CFE@oracle.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1752543Ab3AUCtP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 20 Jan 2013 21:49:15 -0500
+Date: Mon, 21 Jan 2013 13:48:59 +1100
+From: NeilBrown <neilb@suse.de>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: NFSv4 cannot unmount ESTALE directories (in some cases).
+Message-ID: <20130121134859.24fbd103@notabene.brown>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/q_RJUD7sTZAO2to0Yf1LZG/"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDEzLTAxLTE4IGF0IDE4OjE0IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gSmFuIDE4LCAyMDEzLCBhdCA1OjU5IFBNLCAiTXlrbGVidXN0LCBUcm9uZCIgPFRyb25kLk15
-a2xlYnVzdEBuZXRhcHAuY29tPiB3cm90ZToNCj4gDQo+ID4gT24gRnJpLCAyMDEzLTAxLTE4IGF0
-IDE3OjAzIC0wNTAwLCBhbiB1bmtub3duIHNlbmRlciB3cm90ZToNCj4gPj4gT24gRnJpLCAyMDEz
-LTAxLTE4IGF0IDE2OjMzIC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4gPj4+IE9uIEphbiAx
-OCwgMjAxMywgYXQgNDoyOCBQTSwgQmVuIEdyZWVhciA8Z3JlZWFyYkBjYW5kZWxhdGVjaC5jb20+
-IHdyb3RlOg0KPiA+Pj4gDQo+ID4+Pj4gQW55IGNoYW5jZSB0aGUgU1RBTEVfQ0xJRU5USUQgY2Fz
-ZSBuZWVkcyBhICdicmVhayc/DQo+ID4+PiANCj4gPj4+IEkgZG9uJ3QgdGhpbmsgc28uICBMRUFT
-RV9DT05GSVJNIGlzIHNldCwgYW5kIHdlIHdhbnQgdG8gd2FrZSB0aGUgc3RhdGUgcmVuZXdhbCB0
-aHJlYWQuDQo+ID4+PiANCj4gPj4+PiANCj4gPj4+PiBUd2ljZSBJJ3ZlIHNlZW4ga2VybmVsIGNy
-YXNoZXMgYWZ0ZXIgdGhlIG5mczQwX3dhbGtfY2xpZW50X2xpc3QNCj4gPj4+PiBmYWlsZWQgKHRo
-b3VnaCBjb2RlIGNvbW1lbnRzIHNheSBpdCBzaG91bGQgbmV2ZXIgZmFpbCkuDQo+ID4+PiANCj4g
-Pj4+IG5mczQwX3dhbGtfY2xpZW50X2xpc3QoKSBpcyBsb29raW5nIGZvciBhbiBuZnNfY2xpZW50
-IHRoYXQgaXMgc3VwcG9zZWQgdG8gYWxyZWFkeSBiZSBpbiB0aGUgbmZzX2NsaWVudCBsaXN0LiAg
-SWYgdGhlIHNlYXJjaCBmYWlscywgdGhhdCdzIGEgYnVnLg0KPiA+Pj4gDQo+ID4+PiBFeWViYWxs
-IHRoZSBjb250ZW50cyBvZiB5b3VyIG5mc19jbGllbnQgbGlzdC4gIFlvdSBzaG91bGQgZmluZCBh
-biBhcHByb3ByaWF0ZSBuZnNfY2xpZW50IGluIHRoZXJlLCBhbmQgdGhlbiBmaWd1cmUgb3V0IHdo
-eSB0aGUgc2VhcmNoIGRvZXNuJ3QgZmluZCBpdC4NCj4gPj4gDQo+ID4+IFlvdSBoYXZlIGNvbnNp
-ZGVyZWQgdGhlIGZhY3QgdGhhdCB0aGUgY2FsbCB0bw0KPiA+PiBuZnM0X3Byb2Nfc2V0Y2xpZW50
-aWRfY29uZmlybSBjYW4gcG90ZW50aWFsbHkgcmV0dXJuDQo+ID4+IE5GUzRFUlJfU1RBTEVfQ0xJ
-RU5USUQgaWYgdGhlIHNlcnZlciByZWJvb3RlZCB3aGlsZSB0aGUgY2xpZW50IHdhcw0KPiA+PiB3
-YWxraW5nIHRoZSBsaXN0Pw0KPiA+IA0KPiA+IEluIGZhY3QsIGFzIGZhciBhcyBJIGNhbiBzZWUs
-IHRoZSBjb3JyZWN0IGJlaGF2aW91ciBpbg0KPiA+IG5mczQwX2Rpc2NvdmVyX3NlcnZlcl90cnVu
-a2luZygpIHNob3VsZCBiZSB0byByZS1pc3N1ZSB0aGUgc2V0Y2xpZW50aWQNCj4gPiBjYWxsLCBh
-bmQgdGhlbiB3YWxrIHRoZSBsaXN0IGFnYWluIGlmIG5mczQwX3dhbGtfY2xpZW50X2xpc3QoKSBy
-ZXR1cm5zDQo+ID4gTkZTNEVSUl9TVEFMRV9DTElFTlRJRC4NCj4gDQo+IFdoZW4gSSB3cm90ZSB0
-aGUgc2VydmVyIHRydW5raW5nIGRldGVjdGlvbiBsb2dpYywgSSB0aGluayB3ZSBoYWRuJ3QgY2xl
-YXJseSBkZWNpZGVkIHdoYXQgbmVlZGVkIHRvIGJlIGRvbmUgaW4gdGhlIFNUQUxFX0NMSUVOVElE
-IGNhc2UuDQo+IA0KPiA+IFNvbWV0aGluZyBsaWtlIHRoZSBhdHRhY2hlZCBwYXRjaDoNCj4gDQo+
-IEEgY291cGxlIG9mIGNvbW1lbnRzOg0KPiANCj4gIG8gIG5mc19nZXRfY2xpZW50KCkgYWxyZWFk
-eSBzdGlja3MgdGhlIG5ldyBjbGllbnQgb24gdGhlIHRhaWwgb2YgdGhlIG5mc19jbGllbnQgbGlz
-dA0KDQpPSy4gVGhhdCBhbGxvd3MgdXMgdG8gZ2V0IHJpZCBvZiA1LTYgbGluZXMgb2YgY29kZS4N
-Cg0KPiAgbyAgV2UgZG9uJ3Qgd2FudCB0byBnZXQgc3R1Y2sgaW4gYSBsb29wIGhlcmUuICBTaG91
-bGQgdGhlICJkbyB7fSIgbG9vcCBpbiBuZnM0MF9kaXNjb3Zlcl9zZXJ2ZXJfdHJ1bmtpbmcoKSBi
-ZSBib3VuZGVkIGJ5IGEgcmV0cnkgY291bnQ/DQoNCk5vdCBhIG51bWJlciBvZiByZXRyaWVzLCBi
-dXQgcG9zc2libHkgYSB0aW1lb3V0IHZhbHVlLg0KDQo+IEhvd2V2ZXIsIEkgaGF2ZW4ndCBoZWFy
-ZCBCZW4gc2F5ICJvaCwgeWVzLCBteSBzZXJ2ZXIgaGFkIHJlYm9vdGVkLiIgIEknZCBsaWtlIHNv
-bWUgY29uZmlybWF0aW9uIHRoYXQgdGhlIG1hdGNoIGZhaWxlZCBmb3IgYW4gZXhwbGFpbmFibGUg
-YW5kIGV4cGVjdGVkIHJlYXNvbi4NCg0KVGhlIHNwZWMgYWxsb3dzIHRoZSBzZXJ2ZXIgdG8gZGlz
-Y2FyZCB1bmNvbmZpcm1lZCBjbGllbnRpZHMsIHNvIG91ciBjb2RlDQpzaG91bGQgdGFrZSB0aGF0
-IGludG8gYWNjb3VudC4NCg0KDQpCVFc6IEknbSBnb2luZyBpbnNhbmUgdHJ5aW5nIHRvIGZpZ3Vy
-ZSBvdXQgaG93IHRoZSByZWZjb3VudGluZyBpbiB0aGF0DQpjb2RlIGlzIHN1cHBvc2VkIHRvIHdv
-cmsuIFRoZSBhc3N1bXB0aW9uIHRoYXQgd2UgY2FuIHNvbWVob3cgc2FmZWx5DQpyZXR1cm4gYSBu
-b24tcmVmZXJlbmNlZCBwb2ludGVyIGZyb20gbmZzNF9kaXNjb3Zlcl9zZXJ2ZXJfdHJ1bmtpbmcg
-YW5kDQp0aGVuIGJ1bXAgdGhlIHJlZmVyZW5jZSBjb3VudCBpbiBuZnM0X2luaXRfY2xpZW50KCkg
-ZHJpdmVzIG1lIG51dHMuLi4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGll
-bnQgbWFpbnRhaW5lcg0KDQpOZXRBcHANClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cu
-bmV0YXBwLmNvbQ0K
+--Sig_/q_RJUD7sTZAO2to0Yf1LZG/
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
+
+
+If you use NFSv4 to "mount server:/foo/bar /mnt", then "rm -r" /foo/bar on =
+the
+server, then accesses to /mnt will naturally return ESTALE.
+
+Unfortunately "umount /mnt" will also return ESTALE and leave the stale
+directory mounted.  Adding "-l" or "-f" to "umount" doesn't help.
+
+The problem is that nfs_lookup_revalidate fails.  As the mountpoint is never
+not accessed by a lookup (after the initial mount) it seems a bit pointless
+calling d_revalidate in this case ... by maybe not.
+
+I can make the problem go away by testing for LOOKUP_JUMP and having
+nfs_lookup_revalidate never fail if that flag it set (for a directory).
+
+The resulting patch is:
+---
+ fs/nfs/dir.c |    7 +++++++
+ 1 file changed, 7 insertions(+)
+
+--- linux-3.0-SLE11-SP2.orig/fs/nfs/dir.c
++++ linux-3.0-SLE11-SP2/fs/nfs/dir.c
+@@ -1183,6 +1183,13 @@ out_zap_parent:
+ 			goto out_valid;
+ 		if (dentry->d_flags & DCACHE_DISCONNECTED)
+ 			goto out_valid;
++		if (flags & LOOKUP_JUMPED)
++			/* Didn't use a name to get here, so saying
++			 * the name is invalid is pointless.
++			 * This allows "umount" to succeed on a
++			 * STALE mountpoint.
++			 */
++			goto out_valid;
+ 		shrink_dcache_parent(dentry);
+ 	}
+ 	d_drop(dentry);
+
+
+However I cannot easily tell if this is an elegant solution of an ugly hack,
+and am hoping that someone who understands revalidation and LOOKUP_JUMPED
+better than I (who only discovered the latter today) could provide advice.
+
+Al?  Trond?  Should  I make this into a formal patch submission, or is there
+a better way?
+
+Thanks,
+NeilBrown
+
+--Sig_/q_RJUD7sTZAO2to0Yf1LZG/
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIVAwUBUPysmznsnt1WYoG5AQL6dxAAi9hMEX4FlvflqnPHGVI6Om7DZuY/u1nV
+Gl2s7ZontRNEosysawSE0dfvlBANIdKQJdWDz2B8aslkl3sBONdUGENE3kS1cN7P
+lGGFPKUIcR3y0m+6/mOecW6td4jf4gmd2Y8CPhoDGdz2BpUTCfOQhYU/8bgufp3S
+g1Y4cGOKfRIBKFhuoevY17if3NsZNv+LjWUFE+sRT2QXPJslTi9Uf5L4Bv5okcFA
+BsHZSsGUy9UaKwVbpDRZGpRf7DFmw63Mnk1FMbgPifAyzx2/2oC29Mmf91taOpzx
+K6amtg+ex3oU0/JyfWEK0wsqt/vW3fh308eK/kGNY8MayPlrWIx47YGhGN1u5XPq
+uuftGSQRa1V5ijYydOMa2hmojsfjU8fnY0Rssl8zsYwTqFWiOvxcVIIsb/XtLqy8
+MqIO8zUGg34PB8doEomuJtCu/2R61FodADxkK+L2pEIlblhf0kRwuO+7RcEqSan3
+JhTXv+zuhVFNTOszEfeXTZIYD9ijA1uKOHBbgBM79rbTGdMCdEvI12Ivau1k6e0B
+IIvO00PFOSMgKf4HPW9uLHwxxTpGEcJTPuwBaZ31KOPnvyPxbsNBm3wWfRrkkbOk
+F1AQlKp9jpRmwO6PcLC7C1ElEAaRywADvaS8HUZTmfQ8lc21YbXBH827qgpRLZuh
+ugoVSokb/y4=
+=bkos
+-----END PGP SIGNATURE-----
+
+--Sig_/q_RJUD7sTZAO2to0Yf1LZG/--
