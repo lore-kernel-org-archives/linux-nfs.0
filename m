@@ -1,73 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.candelatech.com ([208.74.158.172]:53965 "EHLO
+Received: from mail.candelatech.com ([208.74.158.172]:39879 "EHLO
 	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751143Ab3AWXzL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2013 18:55:11 -0500
-Message-ID: <5100785D.8040101@candelatech.com>
-Date: Wed, 23 Jan 2013 15:55:09 -0800
-From: Ben Greear <greearb@candelatech.com>
-MIME-Version: 1.0
-To: Eric Dumazet <eric.dumazet@gmail.com>
-CC: netdev <netdev@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: 3.7.3+:  Bad paging request in ip_rcv_finish while running NFS
- traffic.
-References: <50FDADF4.3060601@candelatech.com>  <50FDDE35.7070806@candelatech.com>  <1358829606.3464.3151.camel@edumazet-glaptop>  <50FE2A57.3040804@candelatech.com>  <50FEC796.5090404@candelatech.com>  <1358875020.3464.4006.camel@edumazet-glaptop> <1358875607.3464.4020.camel@edumazet-glaptop> <50FF102F.2050008@candelatech.com> <50FF4BC9.1060206@candelatech.com>
-In-Reply-To: <50FF4BC9.1060206@candelatech.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+	with ESMTP id S1752250Ab3AUUrO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2013 15:47:14 -0500
+From: greearb@candelatech.com
+To: linux-nfs@vger.kernel.org
+Cc: Ben Greear <greearb@candelatech.com>
+Subject: [RFC 05/13] nfs: Pay attention to srcaddr in v4.1 callback logic.
+Date: Mon, 21 Jan 2013 12:45:51 -0800
+Message-Id: <1358801159-18829-6-git-send-email-greearb@candelatech.com>
+In-Reply-To: <1358801159-18829-1-git-send-email-greearb@candelatech.com>
+References: <1358801159-18829-1-git-send-email-greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/22/2013 06:32 PM, Ben Greear wrote:
+From: Ben Greear <greearb@candelatech.com>
 
-So, I'm slowly making some progress.  I've verified that the skb
-has bogus dst (0xdeadbeef) at the top of the ip_rcv_finish
-method.  I'm trying to track it backwards and figure out which
-device it belongs to, etc....takes a while to reproduce though.
+Signed-off-by: Ben Greear <greearb@candelatech.com>
+---
+ fs/nfs/callback_proc.c |    3 ++-
+ fs/nfs/internal.h      |    6 ++++--
+ fs/nfs/nfs4client.c    |   24 +++++++++++++++++++++++-
+ 3 files changed, 29 insertions(+), 4 deletions(-)
 
-One thing about this stack trace below...the dev_seq_stop() does
-a rcu read-unlock.  Now, I can't figure out exactly how ip_rcv()
-can cause dev_seq_stop() to run, but if this stack is legit,
-then maybe by the time we enter the ip_rcv_finish() code we are
-running without rcu_readlock() held?
-
-If so, that would probably explain the bug.
-
-> Call Trace:
->   [<ffffffff814a8b02>] ? ip_rcv_finish+0x2f0/0x308
->   [<ffffffff814a8812>] ? skb_dst+0x5a/0x5a
->   [<ffffffff814a8eb5>] NF_HOOK.clone.1+0x4c/0x54
->   [<ffffffff81472e61>] ? dev_seq_stop+0xb/0xb
->   [<ffffffff814a9142>] ip_rcv+0x237/0x269
->   [<ffffffff81473def>] __netif_receive_skb+0x487/0x530
->   [<ffffffff81473f91>] process_backlog+0xf9/0x1da
->   [<ffffffff8147639a>] net_rx_action+0xad/0x218
->   [<ffffffff8108d50a>] __do_softirq+0x9c/0x161
->   [<ffffffff8108d5f2>] run_ksoftirqd+0x23/0x42
->   [<ffffffff810a7ebe>] smpboot_thread_fn+0x253/0x259
->   [<ffffffff810a7c6b>] ? test_ti_thread_flag.clone.0+0x11/0x11
->   [<ffffffff810a0a6d>] kthread+0xc2/0xca
->   [<ffffffff810a09ab>] ? __init_kthread_worker+0x56/0x56
->   [<ffffffff81537b7c>] ret_from_fork+0x7c/0xb0
->   [<ffffffff810a09ab>] ? __init_kthread_worker+0x56/0x56
-
-
-## This is from a slightly different kernel image...but probably this part is legit.
-
-0xffffffff814a92b3 is in ip_rcv (/home/greearb/git/linux-3.7.dev.y/net/ipv4/ip_input.c:466).
-461		/* Our transport medium may have padded the buffer out. Now we know it
-462		 * is IP we can trim to the true length of the frame.
-463		 * Note this now means skb->len holds ntohs(iph->tot_len).
-464		 */
-465		if (pskb_trim_rcsum(skb, len)) {
-466			IP_INC_STATS_BH(dev_net(dev), IPSTATS_MIB_INDISCARDS);
-467			goto drop;
-468		}
-469	
-470		/* Remove any debris in the socket control block */
-
-
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 36b2e7a..24a3457 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -451,7 +451,8 @@ __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
+ 	int i;
+ 	__be32 status = htonl(NFS4ERR_BADSESSION);
+ 
+-	clp = nfs4_find_client_sessionid(cps->net, args->csa_addr, &args->csa_sessionid);
++	clp = nfs4_find_client_sessionid(cps->net, args->csa_daddr, args->csa_addr,
++					 &args->csa_sessionid);
+ 	if (clp == NULL)
+ 		goto out;
+ 
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 80504e1..11c5ac7 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -190,8 +190,10 @@ extern void nfs_put_client(struct nfs_client *);
+ extern void nfs_free_client(struct nfs_client *);
+ extern struct nfs_client *nfs4_find_client_ident(struct net *, int);
+ extern struct nfs_client *
+-nfs4_find_client_sessionid(struct net *, const struct sockaddr *,
+-				struct nfs4_sessionid *);
++nfs4_find_client_sessionid(struct net *,
++			   const struct sockaddr *srcaddr,
++			   const struct sockaddr *addr,
++			   struct nfs4_sessionid *);
+ extern struct nfs_server *nfs_create_server(struct nfs_mount_info *,
+ 					struct nfs_subversion *);
+ extern struct nfs_server *nfs4_create_server(
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 1f55131..7c4dc21 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -543,11 +543,13 @@ static bool nfs4_cb_match_client(const struct sockaddr *addr,
+  * Returns NULL if no such client
+  */
+ struct nfs_client *
+-nfs4_find_client_sessionid(struct net *net, const struct sockaddr *addr,
++nfs4_find_client_sessionid(struct net *net, const struct sockaddr *srcaddr,
++			   const struct sockaddr *addr,
+ 			   struct nfs4_sessionid *sid)
+ {
+ 	struct nfs_client *clp;
+ 	struct nfs_net *nn = net_generic(net, nfs_net_id);
++	struct nfs_client *ok_fit = NULL;
+ 
+ 	spin_lock(&nn->nfs_client_lock);
+ 	list_for_each_entry(clp, &nn->nfs_client_list, cl_share_link) {
+@@ -562,10 +564,30 @@ nfs4_find_client_sessionid(struct net *net, const struct sockaddr *addr,
+ 		    sid->data, NFS4_MAX_SESSIONID_LEN) != 0)
+ 			continue;
+ 
++		if (srcaddr) {
++			const struct sockaddr *sa;
++			sa = (const struct sockaddr *)&clp->cl_addr;
++			if (!nfs_sockaddr_match_ipaddr(srcaddr, sa)) {
++				/* If clp doesn't bind to srcaddr, then
++				 * it is a potential match if we don't find
++				 * a better one.
++				 */
++				if (sa->sa_family == AF_UNSPEC && !ok_fit)
++					ok_fit = clp;
++				continue;
++			}
++		}
++found_one:
+ 		atomic_inc(&clp->cl_count);
+ 		spin_unlock(&nn->nfs_client_lock);
+ 		return clp;
+ 	}
++
++	if (ok_fit) {
++		clp = ok_fit;
++		goto found_one;
++	}
++
+ 	spin_unlock(&nn->nfs_client_lock);
+ 	return NULL;
+ }
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+1.7.3.4
 
