@@ -1,50 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from moutng.kundenserver.de ([212.227.17.10]:64380 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750751Ab3AZNfP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Jan 2013 08:35:15 -0500
-From: Arnd Bergmann <arnd@arndb.de>
-To: "Russell King - ARM Linux" <linux@arm.linux.org.uk>
-Subject: Re: [PATCH 15/19] sunrpc: don't warn for unused variable 'buf'
-Date: Sat, 26 Jan 2013 13:34:56 +0000
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-arm-kernel@lists.infradead.org"
-	<linux-arm-kernel@lists.infradead.org>
-References: <1359123276-15833-1-git-send-email-arnd@arndb.de> <201301252345.25829.arnd@arndb.de> <20130126110321.GE23505@n2100.arm.linux.org.uk>
-In-Reply-To: <20130126110321.GE23505@n2100.arm.linux.org.uk>
-MIME-Version: 1.0
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Message-Id: <201301261334.56398.arnd@arndb.de>
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:42426 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752612Ab3AUOyc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2013 09:54:32 -0500
+Received: by mail-ee0-f46.google.com with SMTP id e49so2982560eek.33
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Jan 2013 06:54:30 -0800 (PST)
+From: Benny Halevy <bhalevy@tonian.com>
+To: linux-nfs@vger.kernel.org
+Cc: Benny Halevy <bhalevy@tonian.com>
+Subject: [PATCH 3/9] SQUASHME: pnfsd: do not dequeue layout state on destroy_layout
+Date: Mon, 21 Jan 2013 16:54:28 +0200
+Message-Id: <1358780068-5983-1-git-send-email-bhalevy@tonian.com>
+In-Reply-To: <50FD5646.4020206@tonian.com>
+References: <50FD5646.4020206@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Saturday 26 January 2013, Russell King - ARM Linux wrote:
-> On Fri, Jan 25, 2013 at 11:45:25PM +0000, Arnd Bergmann wrote:
-> > On Friday 25 January 2013, Myklebust, Trond wrote:
-> > > > -----Original Message-----
-> > > > From: Arnd Bergmann [mailto:arnd@arndb.de]
-> > > > Marking it as __maybe_unused avoids a harmless gcc warning.
-> > > 
-> > > Alternatively, just declare it using the RPC_IFDEBUG() macro.
-> > 
-> > Right, makes sense: that's more consistent with other functions
-> > doing the same thing. Thanks for taking a look.
-> 
-> NAK.
-> 
-> There is already a fix queued up as a result of a previous report I
-> sent, but for some reason (which I didn't question) it was decided
-> not to queue it for -rc.
-> 
-> See Bruce's reply on lkml: 20130108212816.GA24572@fieldses.org
+the layout state may be shared by a number of layout segments,
+each held by struct nfs4_layout and we may be destroying just one of them
+e.g. on layoutreturn.
 
-Ok, makes sense. Then again, if that fix is queued for 3.9, maybe
-it still makes sense to take the simpler fix into 3.8, and remove
-it in 3.9 along with the other instances of RPC_IFDEBUG.
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+---
+ fs/nfsd/nfs4pnfsd.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-	Arnd
+diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+index fe3f693..c62af3d 100644
+--- a/fs/nfsd/nfs4pnfsd.c
++++ b/fs/nfsd/nfs4pnfsd.c
+@@ -345,7 +345,6 @@ static void update_layout_roc(struct nfs4_layout_state *ls, bool roc)
+ 		__func__, lp, clp, fp, fp->fi_inode);
+ 
+ 	kmem_cache_free(pnfs_layout_slab, lp);
+-	list_del_init(&ls->ls_perfile);
+ 	/* release references taken by init_layout */
+ 	put_layout_state(ls);
+ 	put_nfs4_file(fp);
+@@ -1249,6 +1248,7 @@ void pnfsd_roc(struct nfs4_client *clp, struct nfs4_file *fp)
+ 		memset(&lr, 0, sizeof(lr));
+ 		lr.args.lr_return_type = RETURN_FILE;
+ 		lr.args.lr_seg = lo->lo_seg;
++		list_del_init(&lo->lo_state->ls_perfile);	/* just to be on the safe side */
+ 		dequeue_layout(lo);
+ 		destroy_layout(lo); /* do not access lp after this */
+ 
+@@ -1301,6 +1301,7 @@ void pnfs_expire_client(struct nfs4_client *clp)
+ 			lr.args.lr_seg = lp->lo_seg;
+ 			empty = list_empty(&lp->lo_file->fi_layouts);
+ 			BUG_ON(lp->lo_client != clp);
++			list_del_init(&lp->lo_state->ls_perfile);	/* just to be on the safe side */
+ 			dequeue_layout(lp);
+ 			destroy_layout(lp); /* do not access lp after this */
+ 		}
+-- 
+1.7.11.7
+
