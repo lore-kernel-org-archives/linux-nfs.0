@@ -1,63 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:43533 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752551Ab3A1XSR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Jan 2013 18:18:17 -0500
-Date: Mon, 28 Jan 2013 18:18:03 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Arnd Bergmann <arnd@arndb.de>
-Cc: Russell King - ARM Linux <linux@arm.linux.org.uk>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-arm-kernel@lists.infradead.org"
-	<linux-arm-kernel@lists.infradead.org>
-Subject: Re: [PATCH 15/19] sunrpc: don't warn for unused variable 'buf'
-Message-ID: <20130128231803.GG5677@pad.fieldses.org>
-References: <1359123276-15833-1-git-send-email-arnd@arndb.de>
- <201301252345.25829.arnd@arndb.de>
- <20130126110321.GE23505@n2100.arm.linux.org.uk>
- <201301261334.56398.arnd@arndb.de>
+Received: from mail-ea0-f179.google.com ([209.85.215.179]:58768 "EHLO
+	mail-ea0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752697Ab3AUOnd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2013 09:43:33 -0500
+Received: by mail-ea0-f179.google.com with SMTP id d12so1651203eaa.10
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Jan 2013 06:43:32 -0800 (PST)
+Message-ID: <50FD5410.6070009@tonian.com>
+Date: Mon, 21 Jan 2013 16:43:28 +0200
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <201301261334.56398.arnd@arndb.de>
+To: ycnian@gmail.com
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] pnfsd: Fix unlock bug on error path
+References: <1358219261-19974-1-git-send-email-ycnian@gmail.com>
+In-Reply-To: <1358219261-19974-1-git-send-email-ycnian@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Jan 26, 2013 at 01:34:56PM +0000, Arnd Bergmann wrote:
-> On Saturday 26 January 2013, Russell King - ARM Linux wrote:
-> > On Fri, Jan 25, 2013 at 11:45:25PM +0000, Arnd Bergmann wrote:
-> > > On Friday 25 January 2013, Myklebust, Trond wrote:
-> > > > > -----Original Message-----
-> > > > > From: Arnd Bergmann [mailto:arnd@arndb.de]
-> > > > > Marking it as __maybe_unused avoids a harmless gcc warning.
-> > > > 
-> > > > Alternatively, just declare it using the RPC_IFDEBUG() macro.
-> > > 
-> > > Right, makes sense: that's more consistent with other functions
-> > > doing the same thing. Thanks for taking a look.
-> > 
-> > NAK.
-> > 
-> > There is already a fix queued up as a result of a previous report I
-> > sent, but for some reason (which I didn't question) it was decided
-> > not to queue it for -rc.
-> > 
-> > See Bruce's reply on lkml: 20130108212816.GA24572@fieldses.org
-
-Apologies, I've seen so many "stop sending me post-rc1 patches that
-don't fix serious crashes!" flames.
-
-I guess obviousl compile fixes should be an exception--if nothing else
-it'd save a lot of duplicated work as this is something like the 3rd
-patch I've seen for this.
-
---b.
-
+On 2013-01-15 05:07, ycnian@gmail.com wrote:
+> From: Yanchuan Nian <ycnian@gmail.com>
 > 
-> Ok, makes sense. Then again, if that fix is queued for 3.9, maybe
-> it still makes sense to take the simpler fix into 3.8, and remove
-> it in 3.9 along with the other instances of RPC_IFDEBUG.
+> LAYOUTGET procedure fails if the layout requested conflicts with the recalled.
+> It needs to put the reference and unlock the state before exiting.
+> 
+> Signed-off-by: Yanchuan Nian <ycnian@gmail.com>
 
+Good catch. Thanks.
+Committing for pnfs-all-3.7 and latest.
 
+Benny
+
+> ---
+>  fs/nfsd/nfs4pnfsd.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
+> index dd7856c..4a1e17b 100644
+> --- a/fs/nfsd/nfs4pnfsd.c
+> +++ b/fs/nfsd/nfs4pnfsd.c
+> @@ -760,7 +760,7 @@ nfs4_pnfs_get_layout(struct nfsd4_pnfs_layoutget *lgp,
+>  
+>  	if (is_layout_recalled(clp, lgp->lg_fhp, &lgp->lg_seg)) {
+>  		nfserr = nfserr_recallconflict;
+> -		goto out;
+> +		goto out_unlock;
+>  	}
+>  
+>  	/* pre-alloc layout in case we can't merge after we call
+> 
