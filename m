@@ -1,104 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:5466 "EHLO relay.sw.ru"
+Received: from mx12.netapp.com ([216.240.18.77]:35517 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756341Ab3AOII7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Jan 2013 03:08:59 -0500
-Subject: [PATCH 4/4] SUNRPC: move cache_detail->cache_request callback call to
-	cache_read()
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Tue, 15 Jan 2013 11:09:46 +0300
-Message-ID: <20130115080946.2996.96945.stgit@localhost.localdomain>
-In-Reply-To: <20130115080402.2996.74320.stgit@localhost.localdomain>
-References: <20130115080402.2996.74320.stgit@localhost.localdomain>
-MIME-Version: 1.0
+	id S1755388Ab3AUOiW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Jan 2013 09:38:22 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Alex Bligh <alex@alex.org.uk>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Fatal crash with NFS, AIO & tcp retransmit
+Date: Mon, 21 Jan 2013 14:38:20 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA915C163B9@SACEXCMBX04-PRD.hq.netapp.com>
+References: <93D3AE9B4990994B2BCA75A9@Ximines.local>
+In-Reply-To: <93D3AE9B4990994B2BCA75A9@Ximines.local>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-function
-
-The reason to move cache_request() callback call from
-sunrpc_cache_pipe_upcall() to cache_read() is that this garantees, that cache
-access will be done userspace process context (only userspace process have
-proper root context).
-This is required for NFSd support in container: svc_export_request() (which is
-cache_request callback) calls d_path(), which, in turn, traverse dentry up to
-current->fs->root. Kernel threads always have global root, while container
-have be in "root jail" - i.e. have it's own nested root.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- net/sunrpc/cache.c |   32 ++++++++++++++++++++------------
- 1 files changed, 20 insertions(+), 12 deletions(-)
-
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 901fdca..55f044c 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -750,6 +750,18 @@ struct cache_reader {
- 	int			offset;	/* if non-0, we have a refcnt on next request */
- };
- 
-+static int cache_request(struct cache_detail *detail,
-+			       struct cache_request *crq)
-+{
-+	char *bp = crq->buf;
-+	int len = PAGE_SIZE;
-+
-+	detail->cache_request(detail, crq->item, &bp, &len);
-+	if (len < 0)
-+		return -EAGAIN;
-+	return PAGE_SIZE - len;
-+}
-+
- static ssize_t cache_read(struct file *filp, char __user *buf, size_t count,
- 			  loff_t *ppos, struct cache_detail *cd)
- {
-@@ -784,6 +796,13 @@ static ssize_t cache_read(struct file *filp, char __user *buf, size_t count,
- 		rq->readers++;
- 	spin_unlock(&queue_lock);
- 
-+	if (rq->len == 0) {
-+		err = cache_request(cd, rq);
-+		if (err < 0)
-+			goto out;
-+		rq->len = err;
-+	}
-+
- 	if (rp->offset == 0 && !test_bit(CACHE_PENDING, &rq->item->flags)) {
- 		err = -EAGAIN;
- 		spin_lock(&queue_lock);
-@@ -1145,8 +1164,6 @@ int sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h)
- 
- 	char *buf;
- 	struct cache_request *crq;
--	char *bp;
--	int len;
- 
- 	if (!cache_listeners_exist(detail)) {
- 		warn_no_listener(detail);
-@@ -1163,19 +1180,10 @@ int sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h)
- 		return -EAGAIN;
- 	}
- 
--	bp = buf; len = PAGE_SIZE;
--
--	detail->cache_request(detail, h, &bp, &len);
--
--	if (len < 0) {
--		kfree(buf);
--		kfree(crq);
--		return -EAGAIN;
--	}
- 	crq->q.reader = 0;
- 	crq->item = cache_get(h);
- 	crq->buf = buf;
--	crq->len = PAGE_SIZE - len;
-+	crq->len = 0;
- 	crq->readers = 0;
- 	spin_lock(&queue_lock);
- 	list_add_tail(&crq->q.list, &detail->queue);
-
+T24gTW9uLCAyMDEzLTAxLTIxIGF0IDEzOjA2ICswMDAwLCBBbGV4IEJsaWdoIHdyb3RlOg0KPiBJ
+J20gdHJ5aW5nIHRvIHJlc29sdmUgYSBmYXRhbCBidWcgdGhhdCBoYXBwZW5zIHdpdGggTGludXgg
+My4yLjAtMzItZ2VuZXJpYw0KPiAoVWJ1bnR1IHZhcmlhbnQgb2YgMy4yKSwgYW5kIHRoZSBtYWdp
+YyBjb21iaW5hdGlvbiBvZg0KPiAxLiBORlN2NA0KPiAyLiBBSU8gZnJvbSBRZW11DQo+IDMuIFhl
+biB3aXRoIHVwc3RyZWFtIHFlbXUgRE0NCj4gNC4gUUNPVyBwbHVzIGJhY2tpbmcgZmlsZS4NCj4g
+DQo+IFRoZSBiYWNrZ3JvdW5kIGlzIGhlcmU6DQo+ICAgaHR0cDovL2xpc3RzLnhlbi5vcmcvYXJj
+aGl2ZXMvaHRtbC94ZW4tZGV2ZWwvMjAxMi0xMi9tc2cwMTE1NC5odG1sDQo+IEl0IGlzIGNvbXBs
+ZXRlbHkgcmVwbGljYWJsZSBvbiBkaWZmZXJlbnQgTkZTIGNsaWVudCBoYXJkd2FyZS4gV2UndmUN
+Cj4gdHJpZWQgb3RoZXIga2VybmVscyB0byBubyBhdmFpbC4NCj4gDQo+IFRoZSBidWcgaXMgcXVp
+dGUgbmFzdHkgaW4gdGhhdCBkb20wIGNyYXNoZXMgZmF0YWxseSBkdWUgdG8gYSBWTSBhY3Rpb24u
+DQo+IA0KPiBXaXRoaW4gdGhlIGxpbmssIHlvdSdsbCBzZWUgcmVmZXJlbmNlcyB0byBhbiBpc3N1
+ZSBmb3VuZCBieSBJYW4gQ2FtcGJlbGwNCj4gYSB3aGlsZSBhZ28sIHdoaWNoIHR1cm5lZCBvdXQg
+dG8gYmUgYW4gTkZTIGlzc3VlIGluZGVwZW5kZW50IG9mIFhlbiBidXQNCj4gYXBwYXJlbnRseSBu
+b3QgaW4gTkZTNC4gVGhlIGxpbmtzIGFyZToNCj4gIGh0dHA6Ly9idWdzLmRlYmlhbi5vcmcvY2dp
+LWJpbi9idWdyZXBvcnQuY2dpP2J1Zz02NDA5NDENCj4gIGh0dHA6Ly9tYXJjLmluZm8vP2w9bGlu
+dXgtbmZzJm09MTIyNDI0MTMyNzI5NzIwJnc9Mg0KPiANCj4gSW4gZXNzZW5jZSwgbXkgdW5kZXJz
+dGFuZGluZyBvZiB3aGF0IGFwcGVhcnMgdG8gYmUgaGFwcGVuaW5nICh3aGljaA0KPiBtYXkgYmUg
+ZW50aXJlbHkgd3JvbmcpIGlzOg0KPiAxLiBYZW4gNC4yIEhWTSBkb21VIFZNIGhhcyBhIFBWIGRp
+c2sgZHJpdmVyDQo+IDIuIGRvbVUgd3JpdGVzIGEgcGFnZQ0KPiAzLiBYZW4gbWFwcyBkb21VJ3Mg
+cGFnZSBpbnRvIGRvbTAncyBWTSBzcGFjZQ0KPiA0LiBYZW4gYXNrcyBRZW11ICh1c2Vyc3BhY2Up
+IHRvIHdyaXRlIGEgcGFnZQ0KPiA1LiBRZW11J3MgZGlzayAoYW5kIGJhY2tpbmcgZmlsZSBmb3Ig
+dGhlIGRpc2spIGFyZSBvbiBORlN2NA0KPiA2LiBRZW11IHVzZXMgQUlPIHRvIHdyaXRlIHRoZSBw
+YWdlIHRvIE5GUw0KPiA3LiBBSU8gY2xhaW1zIHRoZSBwYWdlIHdyaXRlIGlzIGNvbXBsZXRlDQo+
+IDguIFFlbXUgbWFya3MgdGhlIHdyaXRlIGFzIGNvbXBsZXRlDQo+IDkuIFhlbiB1bm1hcHMgdGhl
+IHBhZ2UgZnJvbSBkb20wJ3MgVk0gc3BhY2UNCj4gMTAuIEFwcGFyZW50bHksIHRoZSB3cml0ZSBp
+cyBub3QgYWN0dWFsbHkgY29tcGxldGUgYXQgdGhpcw0KPiAgICAgcG9pbnQNCj4gMTEuIFRDUCBy
+ZXRyYW5zbWl0IGlzIHRyaWdnZXJlZCAobm90IHF1aXRlIHN1cmUgd2h5LCBwb3NzaWJseQ0KPiAg
+ICAgZHVlIHRvIHNsb3cgZmlsZXIpDQo+IDEyLiBUQ1AgZ29lcyB0byByZXNlbmQgdGhlIHBhZ2Us
+IGFuZCBmaW5kcyBpdCdzIG5vdCBpbiBkb20wDQo+ICAgICBtZW1vcnkuDQo+IDEzLiBCYW5nDQo+
+IA0KPiBUaGUgWGVuIGZvbGtzIHRoaW5rIHRoaXMgaXMgbm90aGluZyB0byBkbyB3aXRoIGVpdGhl
+ciBYZW4gb3IgUUVNVSwgYW5kDQo+IGJlbGlldmUgdGhlIHByb2JsZW0gaXMgQUlPIG9uIE5GUy4g
+VGhlIGxpbmtzIHRvIGVhcmxpZXIgaW52ZXN0aWdhdGlvbnMNCj4gc3VnZ2VzdCB0aGlzIGlzL3dh
+cyB0cnVlLCBidXQgbm90IGZvciBORlN2NCwgYW5kIHdhcyBmaXhlZC4gQW4gTkZTdjQgY2FzZQ0K
+PiBtYXkgaGF2ZSBiZWVuIG1pc3NlZC4NCj4gDQo+IEFnYWluc3QgdGhpcyBleHBsYW5hdGlvbjoN
+Cj4gYSkgaXQgZG9lcyBub3QgaGFwcGVuIGluIEtWTSAoYWdhaW4gd2l0aCBRRU1VIGRvaW5nIEFJ
+TyB0bw0KPiAgICBORlMpIC0gdGhvdWdoIGhlcmUgdGhlIHBhZ2UgbWFwcGluZyBmYW5jaW5lc3Mg
+ZG9lc24ndA0KPiAgICBoYXBwZW4gYXMgS1ZNIFZNcyBzaGFyZSB0aGUgc2FtZSBtZW1vcnkgc3Bh
+Y2UgYXMgdGhlIGtlcm5lbA0KPiAgICBhcyBJIHVuZGVyc3RhbmQgaXQuDQo+IGIpIGl0IGRvZXMg
+bm90IGhhcHBlbiBvbiBYZW4gd2l0aG91dCBhIFFFTVUgYmFja2luZyBmaWxlICh0aG91Z2gNCj4g
+ICAgdGhhdCBtYXkgYmUganVzdCB3aGF0J3MgbmVjZXNzYXJ5IHRpbWluZyB3aXNlIHRvIHRyaWdn
+ZXINCj4gICAgdGhlIHJhY2UgY29uZGl0aW9uKS4NCj4gDQo+IEFueSBpbnNpZ2h0IHlvdSBoYXZl
+IHdvdWxkIGJlIGFwcHJlY2lhdGVkLg0KPiANCj4gU3BlY2lmaWNhbGx5LCB0aGUgcXVlc3Rpb24g
+SSdkIGFzayBpcyBhcyBmb2xsb3dzLiBJcyBpdCBjb3JyZWN0IGJlaGF2aW91cg0KPiB0aGF0IExp
+bnV4K05GU3Y0IG1hcmtzIGFuIEFJTyByZXF1ZXN0IGNvbXBsZXRlZCB3aGVuIGFsbCB0aGUgcmVs
+ZXZhbnQgZGF0YQ0KPiBtYXkgaGF2ZSBiZWVuIHNlbnQgYnkgVENQIGJ1dCBub3QgeWV0IEFDSydk
+PyBJZiBzbywgaG93IGlzIExpbnV4IG1lYW50IHRvDQo+IGRlYWwgd2l0aCByZXRyYW5zbWl0cz8g
+QXJlIHRoZSBwYWdlcyByZWZlcmVuY2VkIGJ5IHRoZSBUQ1Agc3RhY2sgbWVhbnQgdG8NCj4gYmUg
+bWFya2VkIENPVyBvciBzb21ldGhpbmc/IFdoYXQgaXMgbWVhbnQgdG8gaGFwcGVuIGlmIHRob3Nl
+IHBhZ2VzIGdldA0KPiByZW1vdmVkIGZyb20gdGhlIG1lbW9yeSBtYXAgZW50aXJlbHk/DQo+IA0K
+PiBBcyBhbiBhc2lkZSwgd2UncmUgbG9va2luZyBmb3Igc29tZW9uZSB0byBmaXggdGhpcyAoYW5k
+IHRoaW5ncyBsaWtlIGl0KSBvbg0KPiBhIGNvbnRyYWN0IGJhc2lzLiBDb250YWN0IG1lIG9mZiBs
+aXN0IGlmIGludGVyZXN0ZWQuDQo+IA0KDQpUaGUgT29wcyB3b3VsZCBiZSBkdWUgdG8gYSBidWcg
+aW4gdGhlIHNvY2tldCBsYXllcjogdGhlIHNvY2tldCBpcw0Kc3VwcG9zZWQgdG8gdGFrZSBhIHJl
+ZmVyZW5jZSBjb3VudCBvbiB0aGUgcGFnZSBpbiBvcmRlciB0byBlbnN1cmUgdGhhdA0KaXQgY2Fu
+IGNvcHkgdGhlIGNvbnRlbnRzLg0KDQpBcyBmb3IgdGhlIE9fRElSRUNUIGJ1ZywgdGhlIHByb2Js
+ZW0gdGhlcmUgaXMgdGhhdCB3ZSBoYXZlIG5vIHdheSBvZg0Ka25vd2luZyB3aGVuIHRoZSBzb2Nr
+ZXQgaXMgZG9uZSB3cml0aW5nIHRoZSBwYWdlLiBKdXN0IGJlY2F1c2Ugd2UgZ290IGFuDQphbnN3
+ZXIgZnJvbSB0aGUgc2VydmVyIGRvZXNuJ3QgbWVhbiB0aGF0IHRoZSBzb2NrZXQgaXMgZG9uZQ0K
+cmV0cmFuc21pdHRpbmcgdGhlIGRhdGEuIEl0IGlzIHF1aXRlIHBvc3NpYmxlIHRoYXQgdGhlIHNl
+cnZlciBpcyBqdXN0DQpyZXBseWluZyB0byB0aGUgZmlyc3QgdHJhbnNtaXNzaW9uLg0KSSB0aG91
+Z2h0IHRoYXQgSWFuIHdhcyB3b3JraW5nIG9uIGEgZml4IGZvciB0aGlzIGlzc3VlLiBBdCBvbmUg
+cG9pbnQsIGhlDQpoYWQgYSBidW5jaCBvZiBwYXRjaGVzIHRvIGFsbG93IHNlbmRwYWdlKCkgdG8g
+Y2FsbCB5b3UgYmFjayB3aGVuIHRoZQ0KdHJhbnNtaXNzaW9uIHdhcyBkb25lLiBXaGF0IGhhcHBl
+bmVkIHRvIHRob3NlIHBhdGNoZXM/DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMg
+Y2xpZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0K
+d3d3Lm5ldGFwcC5jb20NCg==
