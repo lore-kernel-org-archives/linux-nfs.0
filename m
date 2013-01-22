@@ -1,72 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from s22.webhostingserver.nl ([195.211.72.238]:59252 "EHLO
-	s22.webhostingserver.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752612Ab3AUQAH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2013 11:00:07 -0500
-Received: from localhost ([::1] helo=vdtoorn.nl)
-	by s22.webhostingserver.nl with esmtpa (Exim 4.80.1)
-	(envelope-from <richard@vdtoorn.nl>)
-	id 1TxIyJ-000PE4-Q6
-	for linux-nfs@vger.kernel.org; Mon, 21 Jan 2013 16:07:39 +0100
-Message-ID: <26b3643c253ee306d593bb4b20ff095b.squirrel@vdtoorn.nl>
-Date: Mon, 21 Jan 2013 16:07:39 +0100
-Subject: Hanging nfs4+krb5 mounts with negative uids?
-From: richard@vdtoorn.nl
-To: linux-nfs@vger.kernel.org
-Reply-To: richard@vdtoorn.nl
+Received: from mail.candelatech.com ([208.74.158.172]:42274 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752329Ab3AVF5p (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jan 2013 00:57:45 -0500
+Message-ID: <50FE2A57.3040804@candelatech.com>
+Date: Mon, 21 Jan 2013 21:57:43 -0800
+From: Ben Greear <greearb@candelatech.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: Eric Dumazet <eric.dumazet@gmail.com>
+CC: netdev <netdev@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: 3.7.3+:  Bad paging request in ip_rcv_finish while running NFS
+ traffic.
+References: <50FDADF4.3060601@candelatech.com>  <50FDDE35.7070806@candelatech.com> <1358829606.3464.3151.camel@edumazet-glaptop>
+In-Reply-To: <1358829606.3464.3151.camel@edumazet-glaptop>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi all,
+On 01/21/2013 08:40 PM, Eric Dumazet wrote:
+> On Mon, 2013-01-21 at 16:32 -0800, Ben Greear wrote:
+>> On 01/21/2013 01:07 PM, Ben Greear wrote:
+>>> I posted about this a few days ago, but this time the patches applied
+>>> are minimal and there are no out-of-tree kernel modules loaded.
+>>
+>> Here's another crash, this time with SLUB memory debugging turned on.
+>>
+>> Seems much harder to hit this way...I've only managed this one.  I
+>> believe the RCX register might be interesting...that 6b is probably
+>> freed memory poisioning.  Maybe skb or skb_dest() is already freed?
+>>
+>> I have added a 'verify_mem_not_deleted(skb)' before the
+>> dst_input line in ip_rcv_finish..but so far, it hasn't
+>> hit the problem...
+>>
+>
+> There is no way skb is freed here.
+>
+> I would say macvlan is at fault here.
+>
+> It probably lacks a proper (dev->flags & IFF_UP) test.
 
-I have a question about nfs-utils. It's about a patch that was submitted,
-way back in 2010, fixing hanging mounts because of a int/uint problem:
+Thanks for the patch.  It's running OK so far, but I'll need to
+do a bunch more testing tomorrow to make sure I'm not just getting
+lucky!
 
-you can read the commit message at:
-http://www.spinics.net/lists/linux-nfs/msg14723.html
+I'll let you know how it goes tomorrow.
 
-This code gets hit, e.g. with the new debian stable release where
-nfs-kernel-server/nfs-common is upgraded to 1.2.6-3 (or upgrade
-nfs-kernel-server from debian stable to debian unstable). On my nfsv4+krb5
-system, this seems to do exactly the opposite of the patch: not fixing,
-but in fact introducing a hanging mount.
+Thanks,
+Ben
 
-When I change the code back from unsigned uid's to signed uid's the mount
-works again.
 
-Can anyone give me any help understanding why this is, or point me in a
-direction in getting this solved? I very well might have just
-misconfigured my nfsv4 + krb5 system (asking myself why am I getting
-negative uids?)
 
-Some more information to help debugging:
-
-1) I'm running a VM as a kerberos KDC/admin server (debian sid/unstable)
-2) I'm running a second VM as a nfsv4 server configured to use this
-kerberos VM (debian squeeze/stable)
-3) All VM's are running linux kernel 3.7 (no modules, crypto stuff
-configured), time is synchronized by ntpdate
-4) On both the nfs-server as an nfs-client, I can succesfully mount using
-krb5/5i/5p.
-
-Problem: once I dist-upgrade the nfs-server to unstable where
-nfs-utils=1.2.6-3, the mount hangs as described in debian bug #682709.
-When I delete the newly acquired
-machine credential /tmp/krb5cc_machine_***, and retry the mount, the
-syslog error is the following:
-
-ERROR: GSS-API: error in gss_acquire_cred(): Unspecified GSS failure.
-Minor code may provide more information - Unknown error
-
-I have a patch available for 1.2.6-3 (basically the opposite of the
-commit), that works for my environment. Just a few lines, can paste if
-anyone is interested.
-
-Thanks for the help!
-
-Richard van den Toorn
-(The Netherlands)
-
+-- 
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
