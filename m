@@ -1,92 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.avalus.com ([89.16.176.221]:59722 "EHLO mail.avalus.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756101Ab3AUPCJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Jan 2013 10:02:09 -0500
-Date: Mon, 21 Jan 2013 15:01:54 +0000
-From: Alex Bligh <alex@alex.org.uk>
-Reply-To: Alex Bligh <alex@alex.org.uk>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-cc: linux-nfs@vger.kernel.org, Alex Bligh <alex@alex.org.uk>,
-        ian.campbell@centrix.com
-Subject: Re: Fatal crash with NFS, AIO & tcp retransmit
-Message-ID: <E268D60FA8BCE2E18CCE24D7@Ximines.local>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA915C163B9@SACEXCMBX04-PRD.hq.netapp.com>
-References: <93D3AE9B4990994B2BCA75A9@Ximines.local>
- <4FA345DA4F4AE44899BD2B03EEEC2FA915C163B9@SACEXCMBX04-PRD.hq.netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:54594 "EHLO
+	Dobby.4dicksons.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752563Ab3AVNky (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jan 2013 08:40:54 -0500
+From: Steve Dickson <steved@redhat.com>
+To: David Quigley <selinux@davequigley.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 06/14] NFSv4: Add label recommended attribute and NFSv4 flags
+Date: Tue, 22 Jan 2013 08:40:34 -0500
+Message-Id: <1358862042-27520-7-git-send-email-steved@redhat.com>
+In-Reply-To: <1358862042-27520-1-git-send-email-steved@redhat.com>
+References: <1358862042-27520-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond,
+From: David Quigley <dpquigl@davequigley.com>
 
---On 21 January 2013 14:38:20 +0000 "Myklebust, Trond" 
-<Trond.Myklebust@netapp.com> wrote:
+This patch adds several new flags to allow the NFS client and server to
+determine if this attribute is supported and if it is being sent over the wire.
 
-> The Oops would be due to a bug in the socket layer: the socket is
-> supposed to take a reference count on the page in order to ensure that
-> it can copy the contents.
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ include/linux/nfs4.h      | 1 +
+ include/linux/nfs_fs_sb.h | 1 +
+ include/linux/nfs_xdr.h   | 5 ++++-
+ include/uapi/linux/nfs4.h | 1 +
+ 4 files changed, 7 insertions(+), 1 deletion(-)
 
-Looking at the original linux-nfs link, you said here:
-http://marc.info/?l=linux-nfs&m=122424789508577&w=2
-
-Trond:> I don't see how this could be an RPC bug. The networking
-Trond:> layer is supposed to either copy the data sent to the socket,
-Trond:> or take a reference to any pages that are pushed via
-Trond:> the ->sendpage() abi.
-
-which sounds suspiciously like the same thing.
-
-The conversation then went:
-http://marc.info/?l=linux-nfs&m=122424858109731&w=2
-Ian:> The pages are still referenced by the networking layer. The problem is
-Ian:> that the userspace app has been told that the write has completed so
-Ian:> it is free to write new data to those pages.
-
-To which you replied:
-http://marc.info/?l=linux-nfs&m=122424984612130&w=2
-Trond:> OK, I see your point.
-
-Following the thread, it then seems that Ian's test case did fail on
-NFS4 on 2.6.18, but not on 2.6.27.
-
-Note that Ian was seeing something slightly different from me. I think
-what he was seeing was alterations to the page after AIO completes
-being retransmitted when the page prior to the alteration should
-be transmitted. That could presumably be fixed by some COW device.
-
-What I'm seeing is more subtle. Xen thinks (because QEMU tells it,
-because AIO tells it) that the memory is done with entirely, and
-simply unmaps it. I don't think that's Qemu's fault.
-
-If it is a referencing issue, then it seems to me the problem is
-that Xen is releasing the grant structure (I don't quite understand
-how this bit works) and unmapping memory when the networking stack
-still holds a reference to the page concerned. However, even if it
-did not do that, wouldn't a retransmit after the write had completed
-risk writing the wrong data? I suppose it could mark the page
-COW before it released the grant or something.
-
-> As for the O_DIRECT bug, the problem there is that we have no way of
-> knowing when the socket is done writing the page. Just because we got an
-> answer from the server doesn't mean that the socket is done
-> retransmitting the data. It is quite possible that the server is just
-> replying to the first transmission.
-
-I don't think QEMU is actually using O_DIRECT unless I set cache=none
-on the drive. That causes a different interesting failure which isn't
-my focus just now!
-
-> I thought that Ian was working on a fix for this issue. At one point, he
-> had a bunch of patches to allow sendpage() to call you back when the
-> transmission was done. What happened to those patches?
-
-No idea (I don't work with Ian but have taken the liberty of copy him).
-
-However, what's happened in the intervening years is that Xen has changed
-its device model and it's now QEMU doing the writing (the qcow2 driver
-specifically). I'm not sure it's even using sendpage.
-
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index e111fa4..f9235b4 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -373,6 +373,7 @@ enum lock_type4 {
+ #define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
+ #define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
+ #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
++#define FATTR4_WORD2_SECURITY_LABEL     (1UL << 17)
+ #define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
+ 
+ /* MDS threshold bitmap bits */
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 6c6ed15..d507357 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -197,5 +197,6 @@ struct nfs_server {
+ #define NFS_CAP_MTIME		(1U << 13)
+ #define NFS_CAP_POSIX_LOCK	(1U << 14)
+ #define NFS_CAP_UIDGID_NOMAP	(1U << 15)
++#define NFS_CAP_SECURITY_LABEL	(1U << 16)
+ 
+ #endif
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 29adb12..fac114d 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -104,6 +104,7 @@ struct nfs_fattr {
+ #define NFS_ATTR_FATTR_MOUNTED_ON_FILEID (1U << 22)
+ #define NFS_ATTR_FATTR_OWNER_NAME	(1U << 23)
+ #define NFS_ATTR_FATTR_GROUP_NAME	(1U << 24)
++#define NFS_ATTR_FATTR_V4_SECURITY_LABEL (1U << 25)
+ 
+ #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
+ 		| NFS_ATTR_FATTR_MODE \
+@@ -123,7 +124,8 @@ struct nfs_fattr {
+ #define NFS_ATTR_FATTR_V3 (NFS_ATTR_FATTR \
+ 		| NFS_ATTR_FATTR_SPACE_USED)
+ #define NFS_ATTR_FATTR_V4 (NFS_ATTR_FATTR \
+-		| NFS_ATTR_FATTR_SPACE_USED)
++		| NFS_ATTR_FATTR_SPACE_USED \
++		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
+ 
+ /*
+  * Info on the file system
+@@ -597,6 +599,7 @@ struct nfs_entry {
+ 	int			eof;
+ 	struct nfs_fh *		fh;
+ 	struct nfs_fattr *	fattr;
++	struct nfs4_label	*label;
+ 	unsigned char		d_type;
+ 	struct nfs_server *	server;
+ };
+diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
+index 788128e..dcc8582 100644
+--- a/include/uapi/linux/nfs4.h
++++ b/include/uapi/linux/nfs4.h
+@@ -25,6 +25,7 @@
+ #define NFS4_MAXNAMLEN		NAME_MAX
+ #define NFS4_OPAQUE_LIMIT	1024
+ #define NFS4_MAX_SESSIONID_LEN	16
++#define NFS4_MAXLABELLEN	4096
+ 
+ #define NFS4_ACCESS_READ        0x0001
+ #define NFS4_ACCESS_LOOKUP      0x0002
 -- 
-Alex Bligh
+1.8.1
+
