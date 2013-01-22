@@ -1,73 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from moutng.kundenserver.de ([212.227.126.187]:54213 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753547Ab3AYXp3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Jan 2013 18:45:29 -0500
-From: Arnd Bergmann <arnd@arndb.de>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 15/19] sunrpc: don't warn for unused variable 'buf'
-Date: Fri, 25 Jan 2013 23:45:25 +0000
-Cc: "linux-arm-kernel@lists.infradead.org"
-	<linux-arm-kernel@lists.infradead.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>
-References: <1359123276-15833-1-git-send-email-arnd@arndb.de> <1359153858-31992-16-git-send-email-arnd@arndb.de> <4FA345DA4F4AE44899BD2B03EEEC2FA91833C205@sacexcmbx05-prd.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91833C205@sacexcmbx05-prd.hq.netapp.com>
+Received: from mail.candelatech.com ([208.74.158.172]:57942 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752325Ab3AVAcy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2013 19:32:54 -0500
+Message-ID: <50FDDE35.7070806@candelatech.com>
+Date: Mon, 21 Jan 2013 16:32:53 -0800
+From: Ben Greear <greearb@candelatech.com>
 MIME-Version: 1.0
-Content-Type: Text/Plain;
-  charset="windows-1252"
-Message-Id: <201301252345.25829.arnd@arndb.de>
+To: netdev <netdev@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: 3.7.3+:  Bad paging request in ip_rcv_finish while running NFS
+ traffic.
+References: <50FDADF4.3060601@candelatech.com>
+In-Reply-To: <50FDADF4.3060601@candelatech.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Friday 25 January 2013, Myklebust, Trond wrote:
-> > -----Original Message-----
-> > From: Arnd Bergmann [mailto:arnd@arndb.de]
-> > Marking it as __maybe_unused avoids a harmless gcc warning.
-> 
-> Alternatively, just declare it using the RPC_IFDEBUG() macro.
+On 01/21/2013 01:07 PM, Ben Greear wrote:
+> I posted about this a few days ago, but this time the patches applied
+> are minimal and there are no out-of-tree kernel modules loaded.
 
-Right, makes sense: that's more consistent with other functions
-doing the same thing. Thanks for taking a look.
+Here's another crash, this time with SLUB memory debugging turned on.
 
-	Arnd
+Seems much harder to hit this way...I've only managed this one.  I
+believe the RCX register might be interesting...that 6b is probably
+freed memory poisioning.  Maybe skb or skb_dest() is already freed?
 
-8<----
+I have added a 'verify_mem_not_deleted(skb)' before the
+dst_input line in ip_rcv_finish..but so far, it hasn't
+hit the problem...
 
->From 3b2baeac061bd60dbf14bb61bcc03cbd64c85ac4 Mon Sep 17 00:00:00 2001
-From: Arnd Bergmann <arnd@arndb.de>
-Date: Mon, 26 Nov 2012 22:46:26 +0000
-Subject: [PATCH] sunrpc: don't warn for unused variable 'buf'
 
-When RPC_DEBUG is unset, the dprintk() macro does nothing,
-causing the 'buf' variable in svc_printk to become unused.
-Enclosing it in RPC_IFDEBUG avoids a harmless gcc warning.
+general protection fault: 0000 [#1] PREEMPT SMP
+Modules linked in: 8021q garp stp llc nfsv4 auth_rpcgss nfs fscache macvlan pktgen lockd sunrpc iTCO_wdt iTCO_vendor_support gpio_ich coretemp hwmon kvm_intel 
+kvm microcode pcspkr i2c_i801 lpc_ich igb e1000e ioatdma ptp i7core_edac pps_core edac_core dca uinput ipv6 mgag200 i2c_algo_bit drm_kms_helper ttm drm i2c_core 
+[last unloaded: macvlan]
+CPU 2
+Pid: 22, comm: rcuc/2 Tainted: G         C O 3.7.3+ #38 Iron Systems Inc. EE2610R/X8ST3
+RIP: 0010:[<ffffffff814c196d>]  [<ffffffff814c196d>] ip_rcv_finish+0x334/0x34f
+RSP: 0018:ffff88041fc43d98  EFLAGS: 00010282
+RAX: ffff880369f67180 RBX: ffff8803e4144fc0 RCX: 000000006b6b6b6b
+RDX: ffff8803dd632f64 RSI: ffffffff81a2a580 RDI: ffff8803e4144fc0
+RBP: ffff88041fc43db8 R08: ffffffff814c1639 R09: ffffffff814c1639
+R10: ffff8803dd632f64 R11: ffff8803dd632f64 R12: ffff8803dd632f64
+R13: ffff88041fc58420 R14: ffff88040cfa8000 R15: 0000000000000000
+FS:  0000000000000000(0000) GS:ffff88041fc40000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+CR2: 000000000079e008 CR3: 00000003d5759000 CR4: 00000000000007e0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+Process rcuc/2 (pid: 22, threadinfo ffff88040d7d4000, task ffff88040d7d8000)
+Stack:
+  ffff8803e4144fc0 ffffffff814c1639 ffff8803e4144fc0 ffff88040cfa8000
+  ffff88041fc43de8 ffffffff814c1e61 ffff880480000000 0000000000000246
+  ffff8803e4144fc0 ffff88040cfa8000 ffff88041fc43e18 ffffffff814c20ec
+Call Trace:
+  <IRQ>
+  [<ffffffff814c1639>] ? skb_dst+0x41/0x41
+  [<ffffffff814c1e61>] NF_HOOK.clone.1+0x4c/0x53
+  [<ffffffff814c20ec>] ip_rcv+0x237/0x267
+  [<ffffffff814887f0>] __netif_receive_skb+0x537/0x5e0
+  [<ffffffff8148895a>] process_backlog+0xc1/0x1b7
+  [<ffffffff8148b082>] ? net_rx_action+0x1c4/0x1e2
+  [<ffffffff8148af70>] net_rx_action+0xb2/0x1e2
+  [<ffffffff8108eeb8>] __do_softirq+0xab/0x17b
+  [<ffffffff81557cfc>] call_softirq+0x1c/0x30
+  <EOI>
+  [<ffffffff8100bd46>] do_softirq+0x46/0x9e
+  [<ffffffff810fb709>] ? rcu_cpu_kthread+0xf6/0x12f
+  [<ffffffff8108f08d>] _local_bh_enable_ip+0xb3/0xe7
+  [<ffffffff8108f0d9>] local_bh_enable+0xd/0x10
+  [<ffffffff810fb709>] rcu_cpu_kthread+0xf6/0x12f
+  [<ffffffff810aacde>] smpboot_thread_fn+0x253/0x259
+  [<ffffffff810aaa8b>] ? test_ti_thread_flag.clone.0+0x11/0x11
+  [<ffffffff810a3439>] kthread+0xc2/0xca
+  [<ffffffff810a3377>] ? __init_kthread_worker+0x56/0x56
+  [<ffffffff815569bc>] ret_from_fork+0x7c/0xb0
+  [<ffffffff810a3377>] ? __init_kthread_worker+0x56/0x56
+Code: 8b 80 58 04 00 00 48 8b 80 48 01 00 00 65 48 ff 80 c8 00 00 00 8b 53 68 65 48 01 90 e8 00 00 00 48 89 df e8
+8e fc ff ff 48 89 df <ff> 50 50 eb 0d 48 89 df e8 2c eb fb ff b8 01 00 00 00 5b 41 5c
+RIP  [<ffffffff814c196d>] ip_rcv_finish+0x334/0x34f
+  RSP <ffff88041fc43d98>
+[drm:mgag200_bo_reserve] *ERROR* reserve failed ffff8803feba9fb0
 
-Without this patch, building at91_dt_defconfig results in:
 
-net/sunrpc/svc.c: In function 'svc_printk':
-net/sunrpc/svc.c:1051:7: warning: unused variable 'buf' [-Wunused-variable]
-
-Signed-off-by: Arnd Bergmann <arnd@arndb.de>
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Cc: netdev@vger.kernel.org
-
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index dbf12ac..9485e66 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1047,7 +1047,7 @@ void svc_printk(struct svc_rqst *rqstp, const char *fmt, ...)
- {
- 	struct va_format vaf;
- 	va_list args;
--	char 	buf[RPC_MAX_ADDRBUFLEN];
-+	RPC_IFDEBUG(char buf[RPC_MAX_ADDRBUFLEN]);
- 
- 	va_start(args, fmt);
- 
-
+-- 
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
