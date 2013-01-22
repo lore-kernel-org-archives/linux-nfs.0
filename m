@@ -1,93 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:29860 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753605Ab3A1Uyh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2013 15:54:37 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
-Subject: Re: [PATCH v1 01/16] nfsd: fix IPv6 address handling in the DRC
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20130128154555.3a93c6dc@tlielax.poochiereds.net>
-Date: Mon, 28 Jan 2013 15:54:26 -0500
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Message-Id: <F6E767BA-D9F9-49FE-AABB-75EA20AF827A@oracle.com>
-References: <1359402082-29195-1-git-send-email-jlayton@redhat.com> <1359402082-29195-2-git-send-email-jlayton@redhat.com> <5AD4F061-69A6-47F5-B20A-34B8DCC2EB5E@oracle.com> <20130128150502.4c5f497b@tlielax.poochiereds.net> <321A7110-AD03-49EB-A158-246FC8BD24E1@oracle.com> <20130128152643.2b136d37@tlielax.poochiereds.net> <615875E4-820D-487E-99CF-9ABD46121966@oracle.com> <20130128154555.3a93c6dc@tlielax.poochiereds.net>
-To: Jeff Layton <jlayton@redhat.com>
+Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:54592 "EHLO
+	Dobby.4dicksons.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752078Ab3AVNky (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jan 2013 08:40:54 -0500
+From: Steve Dickson <steved@redhat.com>
+To: David Quigley <selinux@davequigley.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 05/14] KConfig: Add KConfig entries for Labeled NFS
+Date: Tue, 22 Jan 2013 08:40:33 -0500
+Message-Id: <1358862042-27520-6-git-send-email-steved@redhat.com>
+In-Reply-To: <1358862042-27520-1-git-send-email-steved@redhat.com>
+References: <1358862042-27520-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: David Quigley <dpquigl@davequigley.com>
 
-On Jan 28, 2013, at 3:45 PM, Jeff Layton <jlayton@redhat.com> wrote:
+This patch adds two entries into the fs/KConfig file. The first entry
+NFS_V4_SECURITY_LABEL enables security label support for the NFSv4 client while
+the second entry NFSD_V4_SECURITY_LABEL enables security labeling support on
+the server side.
 
-> On Mon, 28 Jan 2013 15:34:49 -0500
-> Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
->> 
->> On Jan 28, 2013, at 3:26 PM, Jeff Layton <jlayton@redhat.com> wrote:
->> 
->>> On Mon, 28 Jan 2013 12:16:17 -0800 (PST)
->>> Chuck Lever <chuck.lever@oracle.com> wrote:
->>> 
->>>> 
->>>> On Jan 28, 2013, at 3:05 PM, Jeff Layton <jlayton@redhat.com> wrote:
->>>> 
->>>>> On Mon, 28 Jan 2013 11:51:13 -0800 (PST)
->>>>> Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>> 
->>>>>> 
->>>>>> On Jan 28, 2013, at 2:41 PM, Jeff Layton <jlayton@redhat.com> wrote:
->>>>>> 
->>>>>>> Currently, it only stores the first 16 bytes of any address. struct
->>>>>>> sockaddr_in6 is 28 bytes however, so we're currently ignoring the last
->>>>>>> 12 bytes of the address.
->>>>>>> 
->>>>>>> Expand the c_addr field to a sockaddr_in6,
->>>>>> 
->>>>>> What do you do about link-local addresses?
->>>>>> 
->>>>> 
->>>>> I use rpc_cmp_addr() which should handle the scope correctly for
->>>>> link-local addrs.  Now that you mention it though, I think we may have a
->>>>> bug in __rpc_copy_addr6. It doesn't touch the scope_id at all --
->>>>> shouldn't we be setting the scopeid in that function as well?
->>>> 
->>>> It looks like rpc_copy_addr() is invoked to copy only source addresses, so the scope ID probably doesn't apply.  The comment over rpc_copy_addr() says it explicitly ignores port and scope ID.
->>>> 
->>> 
->>> Well, it copies the source address of the client, but all of the
->>> callers are in nfsd code. So I think it probably does matter:
->>> 
->>> Consider a server that has 2 interfaces, and 2 clients with identical
->>> link-local addresses hitting the link local address of each interface.
->>> The only way to distinguish them at that point is to look at their
->>> scope_ids.
->> 
->> Yes, but we want to use the server's scope IDs in this case, don't we?  Copying the client's scope IDs may not be the right thing to do.  That's why __rpc_copy_addr6() doesn't copy the scope ID.
->> 
-> 
-> Is there any real distinction between the two? Whenever we start
-> discussing scopeids I mentally substitute "interface index", since it's
-> the same thing on linux.
-> 
-> AIUI, scopeids only have a meaning on the host itself. When a
-> link-local address gets used, the sockaddr_in6 in question gets the
-> sin6_scope_id set to the index of the interface to which it is
-> associated.
-> 
-> So if we have a client and server "pair" using link-local addresses,
-> then they should have equivalent scope IDs since they are associated
-> with the same interface on the local machine.
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ fs/nfs/Kconfig  | 16 ++++++++++++++++
+ fs/nfsd/Kconfig | 13 +++++++++++++
+ 2 files changed, 29 insertions(+)
 
-I don't think we can assume that the interface indices are the same on both the client and server.  There is no co-ordination of that number space between separate hosts.
-
-What may be the case is that the server's network layer copies in the correct scope ID for the server when it exposes source addresses to its upper layers.  In that case, the ID's probably safe to use when comparing addresses locally on the server.
-
-Since we don't know for sure how this works, we should have someone create unit tests to explore this, fix any bugs that are discovered, and ensure that it continues to work.
-
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 13ca196..0077197 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -131,6 +131,22 @@ config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
+ 	  If the NFS client is unchanged from the upstream kernel, this
+ 	  option should be set to the default "kernel.org".
+ 
++config NFS_V4_SECURITY_LABEL
++	bool "Provide Security Label support for NFSv4 client"
++	depends on NFS_V4 && SECURITY
++	help
++
++	Say Y here if you want enable fine-grained security label attribute
++	support for NFS version 4.  Security labels allow security modules like
++	SELinux and Smack to label files to facilitate enforcement of their policies.
++	Without this an NFSv4 mount will have the same label on each file.
++
++	If you do not wish to enable fine-grained security labels SELinux or
++	Smack policies on NFSv4 files, say N.
++
++
++	  If unsure, say N.
++
+ config ROOT_NFS
+ 	bool "Root file system on NFS"
+ 	depends on NFS_FS=y && IP_PNP
+diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+index 8df1ea4..75ba894 100644
+--- a/fs/nfsd/Kconfig
++++ b/fs/nfsd/Kconfig
+@@ -81,6 +81,19 @@ config NFSD_V4
+ 
+ 	  If unsure, say N.
+ 
++config NFSD_V4_SECURITY_LABEL
++	bool "Provide Security Label support for NFSv4 server"
++	depends on NFSD_V4 && SECURITY
++	help
++
++	Say Y here if you want enable fine-grained security label attribute
++	support for NFS version 4.  Security labels allow security modules like
++	SELinux and Smack to label files to facilitate enforcement of their policies.
++	Without this an NFSv4 mount will have the same label on each file.
++
++	If you do not wish to enable fine-grained security labels SELinux or
++	Smack policies on NFSv4 files, say N.
++
+ config NFSD_FAULT_INJECTION
+ 	bool "NFS server manual fault injection"
+ 	depends on NFSD_V4 && DEBUG_KERNEL
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.8.1
 
