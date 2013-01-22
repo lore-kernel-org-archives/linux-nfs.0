@@ -1,51 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50076 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755647Ab3AQNxe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Jan 2013 08:53:34 -0500
-Date: Thu, 17 Jan 2013 08:53:33 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mark Lord <kernel@teksavvy.com>
-Cc: linux-nfs@vger.kernel.org, Linux Kernel <linux-kernel@vger.kernel.org>
-Subject: Re: BUG at net/sunrpc/svc_xprt.c:921
-Message-ID: <20130117135333.GF6598@fieldses.org>
-References: <50F42F85.50907@teksavvy.com>
- <50F7F898.5050605@teksavvy.com>
+Received: from mail.candelatech.com ([208.74.158.172]:59171 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754704Ab3AVQPF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jan 2013 11:15:05 -0500
+Received: from [50.54.140.2] (50-54-140-2.evrt.wa.frontiernet.net [50.54.140.2])
+	(authenticated bits=0)
+	by ns3.lanforge.com (8.14.2/8.14.2) with ESMTP id r0MGF4Ta017109
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Tue, 22 Jan 2013 08:15:05 -0800
+Message-ID: <50FEBB08.2090709@candelatech.com>
+Date: Tue, 22 Jan 2013 08:15:04 -0800
+From: Ben Greear <greearb@candelatech.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <50F7F898.5050605@teksavvy.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: NFS: Cache request denied due to non-unique superblock keys
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 17, 2013 at 08:11:52AM -0500, Mark Lord wrote:
-> On 13-01-14 11:17 AM, Mark Lord wrote:
-> >
-> > Here's the code with the BUG() at net/sunrpc/svc_xprt.c line 921:
-> > 
-> > /*
-> >  * Remove a dead transport
-> >  */
-> > static void svc_delete_xprt(struct svc_xprt *xprt)
-> > {
-> >         struct svc_serv *serv = xprt->xpt_server;
-> >         struct svc_deferred_req *dr;
-> > 
-> >         /* Only do this once */
-> >         if (test_and_set_bit(XPT_DEAD, &xprt->xpt_flags))
-> >                 BUG();
-> 
-> 
-> Shouldn't there also be a return statement after the BUG() line,
-> inside the if-stmt ?
+I saw this on an overnight run with 3000 NFSv4 mounts:
 
-BUG() kills the thread that calls it, so it never returns, and a
-following statement wouldn't be executed--I may not understand your
-question.
+NFS: Cache request denied due to non-unique superblock keys
 
---b.
 
-> 
-> I mean, the comment says "only do this once", but it actually
-> appears to end up doing it twice, despite the test.
-> 
-> ??
+Any idea if it's a problem or not?
+
+Thanks,
+Ben
+
+-- 
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
+
