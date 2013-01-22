@@ -1,102 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:52677 "EHLO
-	Dobby.4dicksons.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751751Ab3AGOxU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jan 2013 09:53:20 -0500
-From: Steve Dickson <steved@redhat.com>
-To: David Quigley <selinux@davequigley.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 06/12] NFSv4: Add label recommended attribute and NFSv4 flags
-Date: Mon,  7 Jan 2013 09:47:27 -0500
-Message-Id: <1357570053-28849-7-git-send-email-steved@redhat.com>
-In-Reply-To: <1357570053-28849-1-git-send-email-steved@redhat.com>
-References: <1357570053-28849-1-git-send-email-steved@redhat.com>
+Received: from mail-pb0-f52.google.com ([209.85.160.52]:63701 "EHLO
+	mail-pb0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752622Ab3AVR0y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jan 2013 12:26:54 -0500
+Subject: Re: 3.7.3+:  Bad paging request in ip_rcv_finish while running NFS
+ traffic.
+From: Eric Dumazet <eric.dumazet@gmail.com>
+To: Ben Greear <greearb@candelatech.com>
+Cc: netdev <netdev@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+In-Reply-To: <1358875020.3464.4006.camel@edumazet-glaptop>
+References: <50FDADF4.3060601@candelatech.com>
+	 <50FDDE35.7070806@candelatech.com>
+	 <1358829606.3464.3151.camel@edumazet-glaptop>
+	 <50FE2A57.3040804@candelatech.com>  <50FEC796.5090404@candelatech.com>
+	 <1358875020.3464.4006.camel@edumazet-glaptop>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 22 Jan 2013 09:26:47 -0800
+Message-ID: <1358875607.3464.4020.camel@edumazet-glaptop>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+On Tue, 2013-01-22 at 09:17 -0800, Eric Dumazet wrote:
+> On Tue, 2013-01-22 at 09:08 -0800, Ben Greear wrote:
+> 
+> > Unfortunately, I hit it again this morning after the first restart of
+> > my application (which bounces all 3000 interfaces).  Memory poisoning
+> > was disabled.
+> 
+> Is your NFS traffic using TCP or UDP ?
+> 
 
-This patch adds several new flags to allow the NFS client to
-determine if this attribute is supported and if it is being sent over the wire.
+Oh well, it seems macvlan.c has to skb_drop_dst(skb) before giving skb
+to netif_rx()
 
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- include/linux/nfs4.h      | 1 +
- include/linux/nfs_fs_sb.h | 1 +
- include/linux/nfs_xdr.h   | 5 ++++-
- include/uapi/linux/nfs4.h | 1 +
- 4 files changed, 7 insertions(+), 1 deletion(-)
+diff --git a/drivers/net/macvlan.c b/drivers/net/macvlan.c
+index 68a43fe..4f049ee 100644
+--- a/drivers/net/macvlan.c
++++ b/drivers/net/macvlan.c
+@@ -114,6 +114,7 @@ static int macvlan_broadcast_one(struct sk_buff *skb,
+ 	if (!skb)
+ 		return NET_RX_DROP;
+ 
++	skb_dst_drop(skb);
+ 	if (local)
+ 		return vlan->forward(dev, skb);
+ 
+@@ -220,6 +221,7 @@ static rx_handler_result_t macvlan_handle_frame(struct sk_buff **pskb)
+ 	if (!skb)
+ 		goto out;
+ 
++	skb_dst_drop(skb);
+ 	skb->dev = dev;
+ 	skb->pkt_type = PACKET_HOST;
+ 
 
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index e111fa4..f9235b4 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -373,6 +373,7 @@ enum lock_type4 {
- #define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
- #define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
- #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
-+#define FATTR4_WORD2_SECURITY_LABEL     (1UL << 17)
- #define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
- 
- /* MDS threshold bitmap bits */
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 6c6ed15..d507357 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -197,5 +197,6 @@ struct nfs_server {
- #define NFS_CAP_MTIME		(1U << 13)
- #define NFS_CAP_POSIX_LOCK	(1U << 14)
- #define NFS_CAP_UIDGID_NOMAP	(1U << 15)
-+#define NFS_CAP_SECURITY_LABEL	(1U << 16)
- 
- #endif
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 29adb12..fac114d 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -104,6 +104,7 @@ struct nfs_fattr {
- #define NFS_ATTR_FATTR_MOUNTED_ON_FILEID (1U << 22)
- #define NFS_ATTR_FATTR_OWNER_NAME	(1U << 23)
- #define NFS_ATTR_FATTR_GROUP_NAME	(1U << 24)
-+#define NFS_ATTR_FATTR_V4_SECURITY_LABEL (1U << 25)
- 
- #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
- 		| NFS_ATTR_FATTR_MODE \
-@@ -123,7 +124,8 @@ struct nfs_fattr {
- #define NFS_ATTR_FATTR_V3 (NFS_ATTR_FATTR \
- 		| NFS_ATTR_FATTR_SPACE_USED)
- #define NFS_ATTR_FATTR_V4 (NFS_ATTR_FATTR \
--		| NFS_ATTR_FATTR_SPACE_USED)
-+		| NFS_ATTR_FATTR_SPACE_USED \
-+		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
- 
- /*
-  * Info on the file system
-@@ -597,6 +599,7 @@ struct nfs_entry {
- 	int			eof;
- 	struct nfs_fh *		fh;
- 	struct nfs_fattr *	fattr;
-+	struct nfs4_label	*label;
- 	unsigned char		d_type;
- 	struct nfs_server *	server;
- };
-diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
-index 788128e..dcc8582 100644
---- a/include/uapi/linux/nfs4.h
-+++ b/include/uapi/linux/nfs4.h
-@@ -25,6 +25,7 @@
- #define NFS4_MAXNAMLEN		NAME_MAX
- #define NFS4_OPAQUE_LIMIT	1024
- #define NFS4_MAX_SESSIONID_LEN	16
-+#define NFS4_MAXLABELLEN	4096
- 
- #define NFS4_ACCESS_READ        0x0001
- #define NFS4_ACCESS_LOOKUP      0x0002
--- 
-1.7.11.7
 
