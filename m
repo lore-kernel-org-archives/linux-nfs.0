@@ -1,172 +1,454 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:54587 "EHLO
+Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:54613 "EHLO
 	Dobby.4dicksons.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752624Ab3AVNkw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jan 2013 08:40:52 -0500
+	with ESMTP id S1751737Ab3AVN6J (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jan 2013 08:58:09 -0500
 From: Steve Dickson <steved@redhat.com>
 To: David Quigley <selinux@davequigley.com>,
         Trond Myklebust <Trond.Myklebust@netapp.com>,
         "J. Bruce Fields" <bfields@redhat.com>
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 04/14] SELinux: Add new labeling type native labels
-Date: Tue, 22 Jan 2013 08:40:32 -0500
-Message-Id: <1358862042-27520-5-git-send-email-steved@redhat.com>
+Subject: [PATCH 10/14] NFS: Add label lifecycle management
+Date: Tue, 22 Jan 2013 08:40:38 -0500
+Message-Id: <1358862042-27520-11-git-send-email-steved@redhat.com>
 In-Reply-To: <1358862042-27520-1-git-send-email-steved@redhat.com>
 References: <1358862042-27520-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+From: Dave Quigley <dpquigl@taiga.selinuxproject.org>
 
-There currently doesn't exist a labeling type that is adequate for use with
-labeled NFS. Since NFS doesn't really support xattrs we can't use the use xattr
-labeling behavior. For this we developed a new labeling type. The native
-labeling type is used solely by NFS to ensure NFS inodes are labeled at runtime
-by the NFS code instead of relying on the SELinux security server on the client
-end.
+>From David Quigley <dpquigl@davequigley.com>
+
+This patch adds the lifecycle management for the security label structure
+introduced in an earlier patch. The label is not used yet but allocations and
+freeing of the structure is handled.
 
 Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
 Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
 Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
 Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
 ---
- include/linux/security.h            |  3 +++
- security/selinux/hooks.c            | 35 ++++++++++++++++++++++++++---------
- security/selinux/include/security.h |  2 ++
- security/selinux/ss/policydb.c      |  5 ++++-
- 4 files changed, 35 insertions(+), 10 deletions(-)
+ fs/nfs/dir.c           |  30 ++++++++++++++
+ fs/nfs/getroot.c       |   3 +-
+ fs/nfs/inode.c         |  15 ++++++-
+ fs/nfs/nfs4proc.c      | 105 +++++++++++++++++++++++++++++++++++++++++++++++--
+ include/linux/nfs_fs.h |   4 +-
+ 5 files changed, 150 insertions(+), 7 deletions(-)
 
-diff --git a/include/linux/security.h b/include/linux/security.h
-index 096c0d7..6d26df4 100644
---- a/include/linux/security.h
-+++ b/include/linux/security.h
-@@ -61,6 +61,9 @@ struct mm_struct;
- #define SECURITY_CAP_NOAUDIT 0
- #define SECURITY_CAP_AUDIT 1
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 7003931..d01fd1f 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -585,6 +585,12 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
+ 	if (entry.fh == NULL || entry.fattr == NULL)
+ 		goto out;
  
-+/* LSM Agnostic defines for sb_set_mnt_opts */
-+#define SECURITY_LSM_NATIVE_LABELS	1
-+
- struct ctl_table;
- struct audit_krule;
- struct user_namespace;
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index 4e7e7c2..8f233ff 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -80,6 +80,7 @@
- #include <linux/syslog.h>
- #include <linux/user_namespace.h>
- #include <linux/export.h>
-+#include <linux/security.h>
- #include <linux/msg.h>
- #include <linux/shm.h>
- 
-@@ -283,13 +284,14 @@ static void superblock_free_security(struct super_block *sb)
- 
- /* The file system's label must be initialized prior to use. */
- 
--static const char *labeling_behaviors[6] = {
-+static const char *labeling_behaviors[7] = {
- 	"uses xattr",
- 	"uses transition SIDs",
- 	"uses task SIDs",
- 	"uses genfs_contexts",
- 	"not configured for labeling",
- 	"uses mountpoint labeling",
-+	"uses native labeling",
- };
- 
- static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dentry);
-@@ -677,14 +679,21 @@ static int selinux_set_mnt_opts(struct super_block *sb,
- 	if (strcmp(sb->s_type->name, "proc") == 0)
- 		sbsec->flags |= SE_SBPROC;
- 
--	/* Determine the labeling behavior to use for this filesystem type. */
--	rc = security_fs_use((sbsec->flags & SE_SBPROC) ? "proc" : sb->s_type->name, &sbsec->behavior, &sbsec->sid);
--	if (rc) {
--		printk(KERN_WARNING "%s: security_fs_use(%s) returned %d\n",
--		       __func__, sb->s_type->name, rc);
--		goto out;
-+	if (!sbsec->behavior) {
-+		/*
-+		 * Determine the labeling behavior to use for this
-+		 * filesystem type.
-+		 */
-+		rc = security_fs_use((sbsec->flags & SE_SBPROC) ?
-+					"proc" : sb->s_type->name,
-+					&sbsec->behavior, &sbsec->sid);
-+		if (rc) {
-+			printk(KERN_WARNING
-+				"%s: security_fs_use(%s) returned %d\n",
-+					__func__, sb->s_type->name, rc);
-+			goto out;
-+		}
- 	}
--
- 	/* sets the context of the superblock for the fs being mounted. */
- 	if (fscontext_sid) {
- 		rc = may_context_mount_sb_relabel(fscontext_sid, sbsec, cred);
-@@ -699,6 +708,11 @@ static int selinux_set_mnt_opts(struct super_block *sb,
- 	 * sets the label used on all file below the mountpoint, and will set
- 	 * the superblock context if not already set.
- 	 */
-+	if (kern_flags & SECURITY_LSM_NATIVE_LABELS && !context_sid) {
-+		sbsec->behavior = SECURITY_FS_USE_NATIVE;
-+		*set_kern_flags |= SECURITY_LSM_NATIVE_LABELS;
++	entry.label = nfs4_label_alloc(GFP_NOWAIT);
++	if (NFS4_LABEL_ERR(entry.label)) {
++		status = PTR_ERR(entry.label);
++		goto out;
 +	}
 +
- 	if (context_sid) {
- 		if (!fscontext_sid) {
- 			rc = may_context_mount_sb_relabel(context_sid, sbsec,
-@@ -730,7 +744,8 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 	array = nfs_readdir_get_array(page);
+ 	if (IS_ERR(array)) {
+ 		status = PTR_ERR(array);
+@@ -617,6 +623,7 @@ out_release_array:
+ out:
+ 	nfs_free_fattr(entry.fattr);
+ 	nfs_free_fhandle(entry.fh);
++	nfs4_label_free(entry.label);
+ 	return status;
+ }
+ 
+@@ -1083,6 +1090,12 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
+ 	if (fhandle == NULL || fattr == NULL)
+ 		goto out_error;
+ 
++	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL)) {
++		label = nfs4_label_alloc(GFP_NOWAIT);
++		if (NFS4_LABEL_ERR(label))
++			goto out_error;
++	}
++
+ 	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr, label);
+ 	if (error)
+ 		goto out_bad;
+@@ -1093,6 +1106,12 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
+ 
+ 	nfs_free_fattr(fattr);
+ 	nfs_free_fhandle(fhandle);
++
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL))
++		nfs4_label_free(label);
++#endif
++
+ out_set_verifier:
+ 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
+  out_valid:
+@@ -1129,6 +1148,7 @@ out_zap_parent:
+ out_error:
+ 	nfs_free_fattr(fattr);
+ 	nfs_free_fhandle(fhandle);
++	nfs4_label_free(label);
+ 	dput(parent);
+ 	dfprintk(LOOKUPCACHE, "NFS: %s(%s/%s) lookup returned error %d\n",
+ 			__func__, dentry->d_parent->d_name.name,
+@@ -1244,6 +1264,12 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
+ 	if (fhandle == NULL || fattr == NULL)
+ 		goto out;
+ 
++	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL)) {
++		label = nfs4_label_alloc(GFP_NOWAIT);
++		if (NFS4_LABEL_ERR(label))
++			goto out;
++	}
++
+ 	parent = dentry->d_parent;
+ 	/* Protect against concurrent sillydeletes */
+ 	nfs_block_sillyrename(parent);
+@@ -1273,6 +1299,10 @@ no_entry:
+ out_unblock_sillyrename:
+ 	nfs_unblock_sillyrename(parent);
+ out:
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL))
++		nfs4_label_free(label);
++#endif
+ 	nfs_free_fattr(fattr);
+ 	nfs_free_fhandle(fhandle);
+ 	return res;
+diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
+index 08e14d3..14bd667 100644
+--- a/fs/nfs/getroot.c
++++ b/fs/nfs/getroot.c
+@@ -75,7 +75,6 @@ struct dentry *nfs_get_root(struct super_block *sb, struct nfs_fh *mntfh,
+ 	struct nfs_fsinfo fsinfo;
+ 	struct dentry *ret;
+ 	struct inode *inode;
+-	struct nfs4_label *label = NULL;
+ 	void *name = kstrdup(devname, GFP_KERNEL);
+ 	int error;
+ 
+@@ -96,7 +95,7 @@ struct dentry *nfs_get_root(struct super_block *sb, struct nfs_fh *mntfh,
+ 		goto out;
  	}
  
- 	if (defcontext_sid) {
--		if (sbsec->behavior != SECURITY_FS_USE_XATTR) {
-+		if (sbsec->behavior != SECURITY_FS_USE_XATTR &&
-+			sbsec->behavior != SECURITY_FS_USE_NATIVE) {
- 			rc = -EINVAL;
- 			printk(KERN_WARNING "SELinux: defcontext option is "
- 			       "invalid for this filesystem type\n");
-@@ -1198,6 +1213,8 @@ static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dent
+-	inode = nfs_fhget(sb, mntfh, fsinfo.fattr, label);
++	inode = nfs_fhget(sb, mntfh, fsinfo.fattr, NULL);
+ 	if (IS_ERR(inode)) {
+ 		dprintk("nfs_get_root: get root inode failed\n");
+ 		ret = ERR_CAST(inode);
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 269ba8f..30ce1e0 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -262,7 +262,7 @@ struct nfs4_label *nfs4_label_alloc(gfp_t flags)
+ 
+ 	label = kzalloc(sizeof(struct nfs4_label) + NFS4_MAXLABELLEN, flags);
+ 	if (label == NULL)
+-		return NULL;
++		return ERR_PTR(-ENOMEM);
+ 
+ 	label->label = (void *)(label + 1);
+ 	label->len = NFS4_MAXLABELLEN;
+@@ -847,6 +847,15 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+ 		goto out;
+ 
+ 	nfs_inc_stats(inode, NFSIOS_INODEREVALIDATE);
++
++	if (nfs_server_capable(inode, NFS_CAP_SECURITY_LABEL)) {
++		label = nfs4_label_alloc(GFP_KERNEL);
++		if (NFS4_LABEL_ERR(label)) {
++			status = -ENOMEM;
++			goto out;
++		}
++	}
++
+ 	status = NFS_PROTO(inode)->getattr(server, NFS_FH(inode), fattr, label);
+ 	if (status != 0) {
+ 		dfprintk(PAGECACHE, "nfs_revalidate_inode: (%s/%Ld) getattr failed, error=%d\n",
+@@ -876,6 +885,10 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+ 		(long long)NFS_FILEID(inode));
+ 
+  out:
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	if (nfs_server_capable(inode, NFS_CAP_SECURITY_LABEL))
++		nfs4_label_free(label);
++#endif
+ 	nfs_free_fattr(fattr);
+ 	return status;
+ }
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 4aeb71e..d08f033 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -790,9 +790,16 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	p = kzalloc(sizeof(*p), gfp_mask);
+ 	if (p == NULL)
+ 		goto err;
++
++	if (server->caps & NFS_CAP_SECURITY_LABEL) {
++		p->f_label = nfs4_label_alloc(gfp_mask);
++		if (NFS4_LABEL_ERR(p->f_label))
++			goto err_free_p;
++	}
++
+ 	p->o_arg.seqid = nfs_alloc_seqid(&sp->so_seqid, gfp_mask);
+ 	if (p->o_arg.seqid == NULL)
+-		goto err_free;
++		goto err_free_label;
+ 	nfs_sb_active(dentry->d_sb);
+ 	p->dentry = dget(dentry);
+ 	p->dir = parent;
+@@ -835,7 +842,11 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	nfs4_init_opendata_res(p);
+ 	kref_init(&p->kref);
+ 	return p;
+-err_free:
++
++err_free_label:
++	if (server->caps & NFS_CAP_SECURITY_LABEL)
++		nfs4_label_free(p->f_label);
++err_free_p:
+ 	kfree(p);
+ err:
+ 	dput(parent);
+@@ -852,6 +863,10 @@ static void nfs4_opendata_free(struct kref *kref)
+ 	if (p->state != NULL)
+ 		nfs4_put_open_state(p->state);
+ 	nfs4_put_state_owner(p->owner);
++
++	if (p->o_arg.server->caps & NFS_CAP_SECURITY_LABEL)
++		nfs4_label_free(p->f_label);
++
+ 	dput(p->dir);
+ 	dput(p->dentry);
+ 	nfs_sb_deactive(sb);
+@@ -1890,6 +1905,14 @@ static int _nfs4_do_open(struct inode *dir,
+ 	if (opendata == NULL)
+ 		goto err_put_state_owner;
+ 
++	if (label && nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL)) {
++		olabel = nfs4_label_alloc(GFP_KERNEL);
++		if (NFS4_LABEL_ERR(olabel)) {
++			status = -ENOMEM;
++			goto err_opendata_put;
++		}
++	}
++
+ 	if (ctx_th && server->attr_bitmask[2] & FATTR4_WORD2_MDSTHRESHOLD) {
+ 		opendata->f_attr.mdsthreshold = pnfs_mdsthreshold_alloc();
+ 		if (!opendata->f_attr.mdsthreshold)
+@@ -1933,6 +1956,9 @@ static int _nfs4_do_open(struct inode *dir,
+ 		kfree(opendata->f_attr.mdsthreshold);
+ 	opendata->f_attr.mdsthreshold = NULL;
+ 
++	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL))
++		nfs4_label_free(olabel);
++
+ 	nfs4_opendata_put(opendata);
+ 	nfs4_put_state_owner(sp);
+ 	*res = state;
+@@ -2500,6 +2526,11 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *mntfh,
+ 		return error;
  	}
  
- 	switch (sbsec->behavior) {
-+	case SECURITY_FS_USE_NATIVE:
-+		break;
- 	case SECURITY_FS_USE_XATTR:
- 		if (!inode->i_op->getxattr) {
- 			isec->sid = sbsec->def_sid;
-diff --git a/security/selinux/include/security.h b/security/selinux/include/security.h
-index 6d38851..8fd8e18 100644
---- a/security/selinux/include/security.h
-+++ b/security/selinux/include/security.h
-@@ -169,6 +169,8 @@ int security_get_allow_unknown(void);
- #define SECURITY_FS_USE_GENFS		4 /* use the genfs support */
- #define SECURITY_FS_USE_NONE		5 /* no labeling support */
- #define SECURITY_FS_USE_MNTPOINT	6 /* use mountpoint labeling */
-+#define SECURITY_FS_USE_NATIVE		7 /* use native label support */
-+#define SECURITY_FS_USE_MAX		7 /* Highest SECURITY_FS_USE_XXX */
++	if (server->caps & NFS_CAP_SECURITY_LABEL) {
++		label = nfs4_label_alloc(GFP_KERNEL);
++		if (NFS4_LABEL_ERR(label))
++			return -ENOMEM;
++	}
+ 	error = nfs4_proc_getattr(server, mntfh, fattr, label);
+ 	if (error < 0) {
+ 		dprintk("nfs4_get_root: getattr error = %d\n", -error);
+@@ -2510,6 +2541,9 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *mntfh,
+ 	    !nfs_fsid_equal(&server->fsid, &fattr->fsid))
+ 		memcpy(&server->fsid, &fattr->fsid, sizeof(server->fsid));
  
- int security_fs_use(const char *fstype, unsigned int *behavior,
- 	u32 *sid);
-diff --git a/security/selinux/ss/policydb.c b/security/selinux/ss/policydb.c
-index 9cd9b7c..c8adde3 100644
---- a/security/selinux/ss/policydb.c
-+++ b/security/selinux/ss/policydb.c
-@@ -2168,7 +2168,10 @@ static int ocontext_read(struct policydb *p, struct policydb_compat_info *info,
++	if (server->caps & NFS_CAP_SECURITY_LABEL)
++		nfs4_label_free(label);
++
+ 	return error;
+ }
  
- 				rc = -EINVAL;
- 				c->v.behavior = le32_to_cpu(buf[0]);
--				if (c->v.behavior > SECURITY_FS_USE_NONE)
-+				/* Determined at runtime, not in policy DB. */
-+				if (c->v.behavior == SECURITY_FS_USE_MNTPOINT)
-+					goto out;
-+				if (c->v.behavior > SECURITY_FS_USE_MAX)
- 					goto out;
+@@ -2615,11 +2649,19 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 	struct inode *inode = dentry->d_inode;
+ 	struct rpc_cred *cred = NULL;
+ 	struct nfs4_state *state = NULL;
++	struct nfs4_label *olabel = NULL;
+ 	int status;
  
- 				rc = -ENOMEM;
+ 	if (pnfs_ld_layoutret_on_setattr(inode))
+ 		pnfs_return_layout(inode);
+ 
++	olabel = nfs4_label_alloc(GFP_KERNEL);
++	if (NFS4_LABEL_ERR(olabel))
++		return PTR_ERR(olabel);
++
++	if (IS_ERR(olabel))
++		olabel = NULL;
++
+ 	nfs_fattr_init(fattr);
+ 	
+ 	/* Deal with open(O_TRUNC) */
+@@ -2641,7 +2683,7 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 		}
+ 	}
+ 
+-	status = nfs4_do_setattr(inode, cred, fattr, sattr, state, NULL, NULL);
++	status = nfs4_do_setattr(inode, cred, fattr, sattr, state, NULL, olabel);
+ 	if (status == 0)
+ 		nfs_setattr_update_inode(inode, sattr);
+ 	return status;
+@@ -2798,11 +2840,24 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
+ 	if (res.fattr == NULL)
+ 		return -ENOMEM;
+ 
++	if (server->caps & NFS_CAP_SECURITY_LABEL) {
++		res.label = nfs4_label_alloc(GFP_KERNEL);
++		if (NFS4_LABEL_ERR(res.label)) {
++			status = PTR_ERR(res.label);
++			goto out;
++		}
++	}
++
+ 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
+ 	if (!status) {
+ 		nfs_access_set_mask(entry, res.access);
+ 		nfs_refresh_inode(inode, res.fattr, res.label);
+ 	}
++
++	if (server->caps & NFS_CAP_SECURITY_LABEL)
++		nfs4_label_free(res.label);
++
++out:
+ 	nfs_free_fattr(res.fattr);
+ 	return status;
+ }
+@@ -2926,6 +2981,7 @@ static int _nfs4_proc_remove(struct inode *dir, struct qstr *name)
+ 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 1);
+ 	if (status == 0)
+ 		update_changeattr(dir, &res.cinfo);
++
+ 	return status;
+ }
+ 
+@@ -2969,6 +3025,7 @@ static int nfs4_proc_unlink_done(struct rpc_task *task, struct inode *dir)
+ 	if (nfs4_async_handle_error(task, res->server, NULL) == -EAGAIN)
+ 		return 0;
+ 	update_changeattr(dir, &res->cinfo);
++
+ 	return 1;
+ }
+ 
+@@ -3027,12 +3084,31 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 		.rpc_resp = &res,
+ 	};
+ 	int status = -ENOMEM;
++
++
++	if (server->caps & NFS_CAP_SECURITY_LABEL) {
++		res.old_label = nfs4_label_alloc(GFP_NOWAIT);
++		if (NFS4_LABEL_ERR(res.old_label))
++			goto out;
++		res.new_label = nfs4_label_alloc(GFP_NOWAIT);
++		if (NFS4_LABEL_ERR(res.new_label)) {
++			nfs4_label_free(res.old_label);
++			goto out;
++		}
++	}
++
+ 	
+ 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	if (!status) {
+ 		update_changeattr(old_dir, &res.old_cinfo);
+ 		update_changeattr(new_dir, &res.new_cinfo);
+ 	}
++
++	if (server->caps & NFS_CAP_SECURITY_LABEL) {
++		nfs4_label_free(res.old_label);
++		nfs4_label_free(res.new_label);
++	}
++out:
+ 	return status;
+ }
+ 
+@@ -3074,11 +3150,22 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, struct qstr *
+ 	if (res.fattr == NULL)
+ 		goto out;
+ 
++	if (server->caps & NFS_CAP_SECURITY_LABEL) {
++		res.label = nfs4_label_alloc(GFP_KERNEL);
++		if (NFS4_LABEL_ERR(res.label))
++			goto out;
++	}
++
+ 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	if (!status) {
+ 		update_changeattr(dir, &res.cinfo);
+ 		nfs_post_op_update_inode(inode, res.fattr, res.label);
+ 	}
++
++
++	if (server->caps & NFS_CAP_SECURITY_LABEL)
++		nfs4_label_free(res.label);
++
+ out:
+ 	nfs_free_fattr(res.fattr);
+ 	return status;
+@@ -3114,6 +3201,12 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
+ 	if (data != NULL) {
+ 		struct nfs_server *server = NFS_SERVER(dir);
+ 
++		if (server->caps & NFS_CAP_SECURITY_LABEL) {
++			data->label = nfs4_label_alloc(GFP_KERNEL);
++			if (NFS4_LABEL_ERR(data->label))
++				goto out_free;
++		}
++
+ 		data->msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CREATE];
+ 		data->msg.rpc_argp = &data->arg;
+ 		data->msg.rpc_resp = &data->res;
+@@ -3130,6 +3223,9 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
+ 		nfs_fattr_init(data->res.fattr);
+ 	}
+ 	return data;
++out_free:
++	kfree(data);
++	return NULL;
+ }
+ 
+ static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_createdata *data)
+@@ -3145,6 +3241,9 @@ static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_
+ 
+ static void nfs4_free_createdata(struct nfs4_createdata *data)
+ {
++	if (data->arg.server->caps & NFS_CAP_SECURITY_LABEL)
++		nfs4_label_free(data->label);
++
+ 	kfree(data);
+ }
+ 
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index c1e8c96..9082979 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -498,10 +498,12 @@ extern struct nfs4_label *nfs4_label_alloc(gfp_t flags);
+ extern void nfs4_label_init(struct nfs4_label *);
+ extern void nfs4_label_free(struct nfs4_label *);
+ #else
+-static inline struct nfs4_label *nfs4_label_alloc(gfp_t flags) { return NULL; }
++static inline struct nfs4_label *nfs4_label_alloc(gfp_t flags) { return ERR_PTR(ENOTSUPP); }
+ static inline void nfs4_label_init(void *label) {}
+ static inline void nfs4_label_free(void *label) {}
+ #endif
++#define NFS4_LABEL_ERR(_label) \
++	(IS_ERR(_label) && PTR_ERR(_label) != -ENOTSUPP)
+ 
+ /*
+  * linux/fs/nfs/unlink.c
 -- 
 1.8.1
 
