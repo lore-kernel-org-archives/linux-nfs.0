@@ -1,66 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.candelatech.com ([208.74.158.172]:50597 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751465Ab3AXANc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2013 19:13:32 -0500
-Message-ID: <51007CA8.2050105@candelatech.com>
-Date: Wed, 23 Jan 2013 16:13:28 -0800
-From: Ben Greear <greearb@candelatech.com>
-MIME-Version: 1.0
-To: Eric Dumazet <eric.dumazet@gmail.com>
-CC: netdev <netdev@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: 3.7.3+:  Bad paging request in ip_rcv_finish while running NFS
- traffic.
-References: <50FDADF4.3060601@candelatech.com>  <50FDDE35.7070806@candelatech.com>  <1358829606.3464.3151.camel@edumazet-glaptop>  <50FE2A57.3040804@candelatech.com>  <50FEC796.5090404@candelatech.com>  <1358875020.3464.4006.camel@edumazet-glaptop>  <1358875607.3464.4020.camel@edumazet-glaptop>  <50FF102F.2050008@candelatech.com> <50FF4BC9.1060206@candelatech.com>  <5100785D.8040101@candelatech.com> <1358985688.12374.1247.camel@edumazet-glaptop>
-In-Reply-To: <1358985688.12374.1247.camel@edumazet-glaptop>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:54621 "EHLO
+	Dobby.4dicksons.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751737Ab3AVN6Q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jan 2013 08:58:16 -0500
+From: Steve Dickson <steved@redhat.com>
+To: David Quigley <selinux@davequigley.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 12/14] NFS: Extend NFS xattr handlers to accept the security namespace
+Date: Tue, 22 Jan 2013 08:40:40 -0500
+Message-Id: <1358862042-27520-13-git-send-email-steved@redhat.com>
+In-Reply-To: <1358862042-27520-1-git-send-email-steved@redhat.com>
+References: <1358862042-27520-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/23/2013 04:01 PM, Eric Dumazet wrote:
-> On Wed, 2013-01-23 at 15:55 -0800, Ben Greear wrote:
->> On 01/22/2013 06:32 PM, Ben Greear wrote:
->>
->> So, I'm slowly making some progress.  I've verified that the skb
->> has bogus dst (0xdeadbeef) at the top of the ip_rcv_finish
->> method.  I'm trying to track it backwards and figure out which
->> device it belongs to, etc....takes a while to reproduce though.
->>
->> One thing about this stack trace below...the dev_seq_stop() does
->> a rcu read-unlock.  Now, I can't figure out exactly how ip_rcv()
->> can cause dev_seq_stop() to run, but if this stack is legit,
->> then maybe by the time we enter the ip_rcv_finish() code we are
->> running without rcu_readlock() held?
->>
->> If so, that would probably explain the bug.
->>
->
-> The whole thing is run under rcu_read_lock() done in
-> __netif_receive_skb()
+From: David Quigley <dpquigl@davequigley.com>
 
-I was worried that the dev_seq_stop might be called
-incorrectly causing an asymetric unlock.  I have no
-idea how that might happened, but several crashes
-have that dev_seq_stop method listed, so it got me suspicious.
+The existing NFSv4 xattr handlers do not accept xattr calls to the security
+namespace. This patch extends these handlers to accept xattrs from the security
+namespace in addition to the default NFSv4 ACL namespace.
 
->
-> My suspicion was that we called netif_rx() from macvlan leaving a
-> not refcounted skb dst.
->
-> But the patch I sent to you didnt solve the bug, so its something else.
->
-> You could trace at which point the dst was released. (where you set
-> dst->input/output to deadbeef)
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ fs/nfs/nfs4proc.c   | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ security/security.c |  1 +
+ 2 files changed, 51 insertions(+)
 
-My current code is in some garbage collector timer code, but I can
-work on saving the call-site that first pokes the dst into the
-garbage collection list...
-
-Thanks,
-Ben
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ba4f268..388730e 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5465,6 +5465,53 @@ static size_t nfs4_xattr_list_nfs4_acl(struct dentry *dentry, char *list,
+ 	return len;
+ }
+ 
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++static inline int nfs4_server_supports_labels(struct nfs_server *server)
++{
++	return server->caps & NFS_CAP_SECURITY_LABEL;
++}
++
++static int nfs4_xattr_set_nfs4_label(struct dentry *dentry, const char *key,
++				   const void *buf, size_t buflen,
++				   int flags, int type)
++{
++	if (security_ismaclabel(key))
++		return nfs4_set_security_label(dentry, buf, buflen);
++
++	return -EOPNOTSUPP;
++}
++
++static int nfs4_xattr_get_nfs4_label(struct dentry *dentry, const char *key,
++				   void *buf, size_t buflen, int type)
++{
++	if (security_ismaclabel(key))
++		return nfs4_get_security_label(dentry->d_inode, buf, buflen);
++	return -EOPNOTSUPP;
++}
++
++static size_t nfs4_xattr_list_nfs4_label(struct dentry *dentry, char *list,
++				       size_t list_len, const char *name,
++				       size_t name_len, int type)
++{
++	size_t len = 0;
++
++	if (nfs_server_capable(dentry->d_inode, NFS_CAP_SECURITY_LABEL)) {
++		len = security_inode_listsecurity(dentry->d_inode, NULL, 0);
++		if (list && len <= list_len)
++			security_inode_listsecurity(dentry->d_inode, list, len);
++	}
++	return len;
++}
++
++static const struct xattr_handler nfs4_xattr_nfs4_label_handler = {
++	.prefix = XATTR_SECURITY_PREFIX,
++	.list	= nfs4_xattr_list_nfs4_label,
++	.get	= nfs4_xattr_get_nfs4_label,
++	.set	= nfs4_xattr_set_nfs4_label,
++};
++#endif
++
++
+ /*
+  * nfs_fhget will use either the mounted_on_fileid or the fileid
+  */
+@@ -7205,6 +7252,9 @@ static const struct xattr_handler nfs4_xattr_nfs4_acl_handler = {
+ 
+ const struct xattr_handler *nfs4_xattr_handlers[] = {
+ 	&nfs4_xattr_nfs4_acl_handler,
++#ifdef CONFIG_NFS_V4_SECURITY_LABEL
++	&nfs4_xattr_nfs4_label_handler,
++#endif
+ 	NULL
+ };
+ 
+diff --git a/security/security.c b/security/security.c
+index d455c83..918b751 100644
+--- a/security/security.c
++++ b/security/security.c
+@@ -660,6 +660,7 @@ int security_inode_listsecurity(struct inode *inode, char *buffer, size_t buffer
+ 		return 0;
+ 	return security_ops->inode_listsecurity(inode, buffer, buffer_size);
+ }
++EXPORT_SYMBOL(security_inode_listsecurity);
+ 
+ void security_inode_getsecid(const struct inode *inode, u32 *secid)
+ {
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+1.8.1
 
