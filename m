@@ -1,68 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay1.sgi.com ([192.48.179.29]:37612 "EHLO relay.sgi.com"
+Received: from mx12.netapp.com ([216.240.18.77]:32958 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757262Ab3AYT3g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2013 14:29:36 -0500
-Date: Fri, 25 Jan 2013 13:29:35 -0600
-From: Ben Myers <bpm@sgi.com>
-To: Jim Rees <rees@umich.edu>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Olga Kornievskaia <aglo@citi.umich.edu>, linux-nfs@vger.kernel.org
-Subject: Re: sunrpc: socket buffer size tuneable
-Message-ID: <20130125192935.GA32470@sgi.com>
-References: <20130125005930.GC30652@sgi.com>
- <20130125185748.GC29596@fieldses.org>
- <20130125191620.GA12925@umich.edu>
+	id S1753559Ab3AVQgq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jan 2013 11:36:46 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Ben Greear <greearb@candelatech.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: Cache request denied due to non-unique superblock keys
+Date: Tue, 22 Jan 2013 16:36:44 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA915C1A030@SACEXCMBX04-PRD.hq.netapp.com>
+References: <50FEBB08.2090709@candelatech.com>
+In-Reply-To: <50FEBB08.2090709@candelatech.com>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130125191620.GA12925@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Bruce & Jim & Olga,
-
-On Fri, Jan 25, 2013 at 02:16:20PM -0500, Jim Rees wrote:
-> J. Bruce Fields wrote:
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> owner@vger.kernel.org] On Behalf Of Ben Greear
+> Sent: Tuesday, January 22, 2013 11:15 AM
+> To: linux-nfs@vger.kernel.org
+> Subject: NFS: Cache request denied due to non-unique superblock keys
 > 
->   On Thu, Jan 24, 2013 at 06:59:30PM -0600, Ben Myers wrote:
->   > At 1020 threads the send buffer size wraps and becomes negative causing
->   > the nfs server to grind to a halt.  Rather than setting bufsize based
->   > upon the number of nfsd threads, make the buffer sizes tuneable via
->   > module parameters.
->   > 
->   > Set the buffer sizes in terms of the number of rpcs you want to fit into
->   > the buffer.
->   
->   From private communication, my understanding is that the original
->   problem here was due to memory pressure forcing the tcp send buffer size
->   below the size required to hold a single rpc.
-
-Years ago I did see wrapping of the buffer size when tcp was used with many
-threads.  Today's problem is timeouts on a cluster with a heavy read
-workload... and I seem to remember seeing that the send buffer size was too
-small.
-
->   In which case the important variable here is lock_bufsize, as that's
->   what prevents the buffer size from going too low.
-
-I tested removing the lock of bufsize and did hit the timeouts, so the overflow
-is starting to look less relevant.  I will test your minimal overflow fix to
-see if this is the case.
-
->   Cc'ing Jim Rees in case he remembers: I seem to recall discussing this
->   possibility, wondering whether we needed a special interface to the
->   network layer allowing us to set a minimum, and deciding it wasn't
->   really necessary at the time as we didn't think the network layer would
->   actually do this.  Is that right?  In which case either we were wrong,
->   or something changed.
+> I saw this on an overnight run with 3000 NFSv4 mounts:
 > 
-> I do remember discussing this. My memory is that we needed it but no one
-> wanted to implement it and it never happened. But I could be
-> mis-remembering. Maybe ask Olga, she's the one who put the bufsize
-> autotuning patch in, commit 96604398.
+> NFS: Cache request denied due to non-unique superblock keys
 > 
-> I'll go back through my old mail and see if I can figure out what happened
-> with this.
+> 
+> Any idea if it's a problem or not?
 
-Thanks,
-	Ben
+You are missing commit c4271c6e37c32105492cbbed35f45330cb327b94 (NFS: Kill fscache warnings when mounting without -ofsc). That shouldn't be a problem, but if the warning bothers you, the commit should be easy to backport.
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
+
