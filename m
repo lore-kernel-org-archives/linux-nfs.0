@@ -1,293 +1,210 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vb0-f43.google.com ([209.85.212.43]:38136 "EHLO
-	mail-vb0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756589Ab3AHSpg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jan 2013 13:45:36 -0500
-Received: by mail-vb0-f43.google.com with SMTP id fs19so731716vbb.2
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jan 2013 10:45:36 -0800 (PST)
-Date: Tue, 8 Jan 2013 13:40:11 -0500
-From: Chris Perl <chris.perl@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Possible Race Condition on SIGKILL
-Message-ID: <20130108184011.GA30872@nyc-qws-132.nyc.delacy.com>
-References: <20130107185848.GB16957@nyc-qws-132.nyc.delacy.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91199197E@SACEXCMBX04-PRD.hq.netapp.com>
- <20130107202021.GC16957@nyc-qws-132.nyc.delacy.com>
- <1357590561.28341.11.camel@lade.trondhjem.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA911991BE9@SACEXCMBX04-PRD.hq.netapp.com>
- <20130107220047.GA30814@nyc-qws-132.nyc.delacy.com>
-MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="17pEHd4RhPHOinZp"
-In-Reply-To: <20130107220047.GA30814@nyc-qws-132.nyc.delacy.com>
+Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:54600 "EHLO
+	Dobby.4dicksons.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750955Ab3AVNk4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jan 2013 08:40:56 -0500
+From: Steve Dickson <steved@redhat.com>
+To: David Quigley <selinux@davequigley.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 08/14] NFSv4: Extend fattr bitmaps to support all 3 words
+Date: Tue, 22 Jan 2013 08:40:36 -0500
+Message-Id: <1358862042-27520-9-git-send-email-steved@redhat.com>
+In-Reply-To: <1358862042-27520-1-git-send-email-steved@redhat.com>
+References: <1358862042-27520-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: David Quigley <dpquigl@davequigley.com>
 
---17pEHd4RhPHOinZp
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+The fattr handling bitmap code only uses the first two fattr words sofar. This
+patch adds the 3rd word to being sent but doesn't populate it yet.
 
-On Mon, Jan 07, 2013 at 05:00:47PM -0500, Chris Perl wrote:
-> On Mon, Jan 07, 2013 at 08:35:31PM +0000, Myklebust, Trond wrote:
-> > On Mon, 2013-01-07 at 15:29 -0500, Trond Myklebust wrote:
-> > > On Mon, 2013-01-07 at 15:20 -0500, Chris Perl wrote:
-> > > > On Mon, Jan 07, 2013 at 07:50:10PM +0000, Myklebust, Trond wrote:
-> > > > > Hi Chris,
-> > > > > 
-> > > > > Excellent sleuthing! Given the thoroughness of your explanation, I'm
-> > > > > pretty sure that the attached patch should fix the problem.
-> > > > > 
-> > > > > Cheers
-> > > > >   Trond
-> > > > > -- 
-> > > > > Trond Myklebust
-> > > > > Linux NFS client maintainer
-> > > > > 
-> > > > > NetApp
-> > > > > Trond.Myklebust@netapp.com
-> > > > > www.netapp.com
-> > > > 
-> > > > > From ec8cbb4aff21cd0eac2c6f3fc4273ac72cdd91ef Mon Sep 17 00:00:00 2001
-> > > > > From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > > > > Date: Mon, 7 Jan 2013 14:30:46 -0500
-> > > > > Subject: [PATCH] SUNRPC: Ensure we release the socket write lock if the
-> > > > >  rpc_task exits early
-> > > > > 
-> > > > > If the rpc_task exits while holding the socket write lock before it has
-> > > > > allocated an rpc slot, then the usual mechanism for releasing the write
-> > > > > lock in xprt_release() is defeated.
-> > > > > 
-> > > > > The problem occurs if the call to xprt_lock_write() initially fails, so
-> > > > > that the rpc_task is put on the xprt->sending wait queue. If the task
-> > > > > exits after being assigned the lock by __xprt_lock_write_func, but
-> > > > > before it has retried the call to xprt_lock_and_alloc_slot(), then
-> > > > > it calls xprt_release() while holding the write lock, but will
-> > > > > immediately exit due to the test for task->tk_rqstp != NULL.
-> > > > > 
-> > > > > Reported-by: Chris Perl <chris.perl@gmail.com>
-> > > > > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > > > > Cc: stable@vger.kernel.org [>= 3.1]
-> > > > > ---
-> > > > >  net/sunrpc/xprt.c | 6 ++++--
-> > > > >  1 file changed, 4 insertions(+), 2 deletions(-)
-> > > > > 
-> > > > > diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-> > > > > index bd462a5..6676457 100644
-> > > > > --- a/net/sunrpc/xprt.c
-> > > > > +++ b/net/sunrpc/xprt.c
-> > > > > @@ -1136,10 +1136,12 @@ static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
-> > > > >  void xprt_release(struct rpc_task *task)
-> > > > >  {
-> > > > >  	struct rpc_xprt	*xprt;
-> > > > > -	struct rpc_rqst	*req;
-> > > > > +	struct rpc_rqst	*req = task->tk_rqstp;
-> > > > >  
-> > > > > -	if (!(req = task->tk_rqstp))
-> > > > > +	if (req == NULL) {
-> > > > > +		xprt_release_write(task->tk_xprt, task);
-> > > > >  		return;
-> > > > > +	}
-> > > > >  
-> > > > >  	xprt = req->rq_xprt;
-> > > > >  	if (task->tk_ops->rpc_count_stats != NULL)
-> > > > > -- 
-> > > > > 1.7.11.7
-> > > > > 
-> > > > 
-> > > > Ah, I totally missed the call to `rpc_release_task' at the bottom of the
-> > > > `__rpc_execute' loop (at least thats how I think we'd get to this function
-> > > > you're patching).
-> > > > 
-> > > > But wouldn't we need to update the call site in
-> > > > `rpc_release_resources_task' as well?  It contains an explicit check for
-> > > > `task->tk_rqstp' being non null.
-> > > 
-> > > Ewww.... You're right: That's a wart that seems to have been copied and
-> > > pasted quite a few times.
-> > > 
-> > > Here is v2...
-> > 
-> > ...and a v3 that adds a small optimisation to avoid taking the transport
-> > lock in cases where we really don't need it.
-> > 
-> > -- 
-> > Trond Myklebust
-> > Linux NFS client maintainer
-> > 
-> > NetApp
-> > Trond.Myklebust@netapp.com
-> > www.netapp.com
-> 
-> > From 51b63a538c54cb9c3b83c4d62572cf18da165cba Mon Sep 17 00:00:00 2001
-> > From: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > Date: Mon, 7 Jan 2013 14:30:46 -0500
-> > Subject: [PATCH v3] SUNRPC: Ensure we release the socket write lock if the
-> >  rpc_task exits early
-> > 
-> > If the rpc_task exits while holding the socket write lock before it has
-> > allocated an rpc slot, then the usual mechanism for releasing the write
-> > lock in xprt_release() is defeated.
-> > 
-> > The problem occurs if the call to xprt_lock_write() initially fails, so
-> > that the rpc_task is put on the xprt->sending wait queue. If the task
-> > exits after being assigned the lock by __xprt_lock_write_func, but
-> > before it has retried the call to xprt_lock_and_alloc_slot(), then
-> > it calls xprt_release() while holding the write lock, but will
-> > immediately exit due to the test for task->tk_rqstp != NULL.
-> > 
-> > Reported-by: Chris Perl <chris.perl@gmail.com>
-> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > Cc: stable@vger.kernel.org [>= 3.1]
-> > ---
-> >  net/sunrpc/sched.c | 3 +--
-> >  net/sunrpc/xprt.c  | 8 ++++++--
-> >  2 files changed, 7 insertions(+), 4 deletions(-)
-> > 
-> > diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-> > index b4133bd..bfa3171 100644
-> > --- a/net/sunrpc/sched.c
-> > +++ b/net/sunrpc/sched.c
-> > @@ -972,8 +972,7 @@ static void rpc_async_release(struct work_struct *work)
-> >  
-> >  static void rpc_release_resources_task(struct rpc_task *task)
-> >  {
-> > -	if (task->tk_rqstp)
-> > -		xprt_release(task);
-> > +	xprt_release(task);
-> >  	if (task->tk_msg.rpc_cred) {
-> >  		put_rpccred(task->tk_msg.rpc_cred);
-> >  		task->tk_msg.rpc_cred = NULL;
-> > diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-> > index bd462a5..6acc0c5 100644
-> > --- a/net/sunrpc/xprt.c
-> > +++ b/net/sunrpc/xprt.c
-> > @@ -1136,10 +1136,14 @@ static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
-> >  void xprt_release(struct rpc_task *task)
-> >  {
-> >  	struct rpc_xprt	*xprt;
-> > -	struct rpc_rqst	*req;
-> > +	struct rpc_rqst	*req = task->tk_rqstp;
-> >  
-> > -	if (!(req = task->tk_rqstp))
-> > +	if (req == NULL) {
-> > +		xprt = task->tk_xprt;
-> > +		if (xprt->snd_task == task)
-> > +			xprt_release_write(xprt, task);
-> >  		return;
-> > +	}
-> >  
-> >  	xprt = req->rq_xprt;
-> >  	if (task->tk_ops->rpc_count_stats != NULL)
-> > -- 
-> > 1.7.11.7
-> > 
-> 
-> Thanks, I will give this a shot tomorrow and let you know how it goes.
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ fs/nfs/nfs4_fs.h          |  6 +++---
+ fs/nfs/nfs4proc.c         | 20 +++++++++++++-------
+ fs/nfs/nfs4xdr.c          | 20 ++++++++++++--------
+ fs/nfs/super.c            |  1 +
+ include/linux/nfs_fs_sb.h |  2 +-
+ 5 files changed, 30 insertions(+), 19 deletions(-)
 
-I applied the patch to a CentOS 6.3 system (same kernel I referenced
-before) as I don't have my laptop available today to test the fedora
-system I was using prior.  It panic'd on attempting to mount the NFS
-share to start testing.
-
-The backtrace from crash shows it as:
-
-  crash> bt
-  PID: 6721   TASK: ffff8810284acae0  CPU: 2   COMMAND: "mount.nfs"
-   #0 [ffff881028c255b0] machine_kexec at ffffffff8103281b
-   #1 [ffff881028c25610] crash_kexec at ffffffff810ba8e2
-   #2 [ffff881028c256e0] oops_end at ffffffff815086b0
-   #3 [ffff881028c25710] no_context at ffffffff81043bab
-   #4 [ffff881028c25760] __bad_area_nosemaphore at ffffffff81043e35
-   #5 [ffff881028c257b0] bad_area at ffffffff81043f5e
-   #6 [ffff881028c257e0] __do_page_fault at ffffffff81044710
-   #7 [ffff881028c25900] do_page_fault at ffffffff8150a68e
-   #8 [ffff881028c25930] page_fault at ffffffff81507a45
-      [exception RIP: xprt_release+388]
-      RIP: ffffffffa025ec14  RSP: ffff881028c259e8  RFLAGS: 00010246
-      RAX: 0000000000000000  RBX: ffff880829be0080  RCX: 0000000000000000
-      RDX: 0000000000000002  RSI: 0000000000000000  RDI: ffff880829be0080
-      RBP: ffff881028c25a18   R8: 0000000000000000   R9: 0000000000000000
-      R10: 0000000000000000  R11: 0000000000000000  R12: 0000000000000000
-      R13: ffff880829be0080  R14: ffffffffa0285fe0  R15: ffff88082a3ef968
-      ORIG_RAX: ffffffffffffffff  CS: 0010  SS: 0018
-   #9 [ffff881028c25a20] rpc_release_resources_task at ffffffffa0266436 [sunrpc]
-  #10 [ffff881028c25a40] rpc_do_put_task at ffffffffa0266564 [sunrpc]
-  #11 [ffff881028c25a70] rpc_put_task at ffffffffa02665b0 [sunrpc]
-  #12 [ffff881028c25a80] rpc_call_sync at ffffffffa025d4b8 [sunrpc]
-  #13 [ffff881028c25ae0] rpc_ping at ffffffffa025d522 [sunrpc]
-  #14 [ffff881028c25b20] rpc_create at ffffffffa025df37 [sunrpc]
-  #15 [ffff881028c25bf0] nfs_mount at ffffffffa033f54a [nfs]
-  #16 [ffff881028c25cc0] nfs_try_mount at ffffffffa03329f3 [nfs]
-  #17 [ffff881028c25d80] nfs_get_sb at ffffffffa0333d86 [nfs]
-  #18 [ffff881028c25e00] vfs_kern_mount at ffffffff8117df2b
-  #19 [ffff881028c25e50] do_kern_mount at ffffffff8117e0d2
-  #20 [ffff881028c25ea0] do_mount at ffffffff8119c862
-  #21 [ffff881028c25f20] sys_mount at ffffffff8119cef0
-  #22 [ffff881028c25f80] system_call_fastpath at ffffffff8100b0f2
-      RIP: 00007ffff70aa8aa  RSP: 00007fffffffdac8  RFLAGS: 00000202
-      RAX: 00000000000000a5  RBX: ffffffff8100b0f2  RCX: 0000000073726576
-      RDX: 00007ffff7ff8edb  RSI: 00007ffff8205da0  RDI: 00007fffffffe2af
-      RBP: 00007ffff7fc76a8   R8: 00007ffff8210090   R9: fefeff3836333834
-      R10: 0000000000000000  R11: 0000000000000206  R12: 00007fffffffdbbc
-      R13: 00007fffffffdbbe  R14: 00007fffffffdcb0  R15: 00007ffff8206040
-      ORIG_RAX: 00000000000000a5  CS: 0033  SS: 002b
-
-Anyway, it appears that on mount the rpc_tasks tk_client member is NULL
-and therefore the double dereference of task->tk_xprt is what blew
-things up.  I ammended the patch for this [1] and am testing it
-now.
-
-Thus far, I've still hit hangs, it just seems to take longer.  I'll have
-to dig in a bit further to see what's going on now.
-
-Is this CentOS 6.3 kernel this system too old for you guys to care?
-I.e. should I spend time reporting digging into and reporting problems
-for this system as well or you only care about the fedora system?
-
-I'll report back again when I have further info and after testing the
-fedora system.
-
-[1] linux-kernel-test.patch
-
-
-
---17pEHd4RhPHOinZp
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename="linux-kernel-test.patch"
-
---- a/net/sunrpc/sched.c	2012-11-24 13:48:51.000000000 -0500
-+++ b/net/sunrpc/sched.c	2013-01-07 15:52:37.060355764 -0500
-@@ -894,8 +894,7 @@
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index a3f488b..dfaee53 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -291,10 +291,10 @@ is_ds_client(struct nfs_client *clp)
+ extern const struct nfs4_minor_version_ops *nfs_v4_minor_ops[];
  
- static void rpc_release_resources_task(struct rpc_task *task)
+ extern const u32 nfs4_fattr_bitmap[3];
+-extern const u32 nfs4_statfs_bitmap[2];
+-extern const u32 nfs4_pathconf_bitmap[2];
++extern const u32 nfs4_statfs_bitmap[3];
++extern const u32 nfs4_pathconf_bitmap[3];
+ extern const u32 nfs4_fsinfo_bitmap[3];
+-extern const u32 nfs4_fs_locations_bitmap[2];
++extern const u32 nfs4_fs_locations_bitmap[3];
+ 
+ void nfs4_free_client(struct nfs_client *);
+ 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index cf747ef..625ac4c 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -130,7 +130,8 @@ const u32 nfs4_fattr_bitmap[3] = {
+ 	| FATTR4_WORD1_SPACE_USED
+ 	| FATTR4_WORD1_TIME_ACCESS
+ 	| FATTR4_WORD1_TIME_METADATA
+-	| FATTR4_WORD1_TIME_MODIFY
++	| FATTR4_WORD1_TIME_MODIFY,
++	0
+ };
+ 
+ static const u32 nfs4_pnfs_open_bitmap[3] = {
+@@ -157,18 +158,20 @@ static const u32 nfs4_open_noattr_bitmap[3] = {
+ 	| FATTR4_WORD0_FILEID,
+ };
+ 
+-const u32 nfs4_statfs_bitmap[2] = {
++const u32 nfs4_statfs_bitmap[3] = {
+ 	FATTR4_WORD0_FILES_AVAIL
+ 	| FATTR4_WORD0_FILES_FREE
+ 	| FATTR4_WORD0_FILES_TOTAL,
+ 	FATTR4_WORD1_SPACE_AVAIL
+ 	| FATTR4_WORD1_SPACE_FREE
+-	| FATTR4_WORD1_SPACE_TOTAL
++	| FATTR4_WORD1_SPACE_TOTAL,
++	0
+ };
+ 
+-const u32 nfs4_pathconf_bitmap[2] = {
++const u32 nfs4_pathconf_bitmap[3] = {
+ 	FATTR4_WORD0_MAXLINK
+ 	| FATTR4_WORD0_MAXNAME,
++	0,
+ 	0
+ };
+ 
+@@ -181,7 +184,7 @@ const u32 nfs4_fsinfo_bitmap[3] = { FATTR4_WORD0_MAXFILESIZE
+ 			FATTR4_WORD2_LAYOUT_BLKSIZE
+ };
+ 
+-const u32 nfs4_fs_locations_bitmap[2] = {
++const u32 nfs4_fs_locations_bitmap[3] = {
+ 	FATTR4_WORD0_TYPE
+ 	| FATTR4_WORD0_CHANGE
+ 	| FATTR4_WORD0_SIZE
+@@ -197,7 +200,8 @@ const u32 nfs4_fs_locations_bitmap[2] = {
+ 	| FATTR4_WORD1_TIME_ACCESS
+ 	| FATTR4_WORD1_TIME_METADATA
+ 	| FATTR4_WORD1_TIME_MODIFY
+-	| FATTR4_WORD1_MOUNTED_ON_FILEID
++	| FATTR4_WORD1_MOUNTED_ON_FILEID,
++	0
+ };
+ 
+ static void nfs4_setup_readdir(u64 cookie, __be32 *verifier, struct dentry *dentry,
+@@ -5082,8 +5086,10 @@ static int _nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
+ 				   struct page *page)
  {
--	if (task->tk_rqstp)
--		xprt_release(task);
-+	xprt_release(task);
- 	if (task->tk_msg.rpc_cred)
- 		put_rpccred(task->tk_msg.rpc_cred);
- 	rpc_task_release_client(task);
---- a/net/sunrpc/xprt.c	2012-08-14 08:47:16.000000000 -0400
-+++ b/net/sunrpc/xprt.c	2013-01-08 13:01:05.996805810 -0500
-@@ -1128,10 +1128,16 @@
- void xprt_release(struct rpc_task *task)
+ 	struct nfs_server *server = NFS_SERVER(dir);
+-	u32 bitmask[2] = {
++	u32 bitmask[3] = {
+ 		[0] = FATTR4_WORD0_FSID | FATTR4_WORD0_FS_LOCATIONS,
++		[1] = 0,
++		[2] = 0
+ 	};
+ 	struct nfs4_fs_locations_arg args = {
+ 		.dir_fh = NFS_FH(dir),
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 26b1439..a9353d1 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -983,15 +983,16 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+ 	int len;
+ 	uint32_t bmval0 = 0;
+ 	uint32_t bmval1 = 0;
++	uint32_t bmval2 = 0;
+ 
+ 	/*
+ 	 * We reserve enough space to write the entire attribute buffer at once.
+ 	 * In the worst-case, this would be
+-	 *   12(bitmap) + 4(attrlen) + 8(size) + 4(mode) + 4(atime) + 4(mtime)
+-	 *          = 36 bytes, plus any contribution from variable-length fields
++	 * 16(bitmap) + 4(attrlen) + 8(size) + 4(mode) + 4(atime) + 4(mtime)
++	 * = 40 bytes, plus any contribution from variable-length fields
+ 	 *            such as owner/group.
+ 	 */
+-	len = 16;
++	len = 20;
+ 
+ 	/* Sigh */
+ 	if (iap->ia_valid & ATTR_SIZE)
+@@ -1035,9 +1036,9 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+ 	 * We write the bitmap length now, but leave the bitmap and the attribute
+ 	 * buffer length to be backfilled at the end of this routine.
+ 	 */
+-	*p++ = cpu_to_be32(2);
++	*p++ = cpu_to_be32(3);
+ 	q = p;
+-	p += 3;
++	p += 4;
+ 
+ 	if (iap->ia_valid & ATTR_SIZE) {
+ 		bmval0 |= FATTR4_WORD0_SIZE;
+@@ -1086,9 +1087,10 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+ 				len, ((char *)p - (char *)q) + 4);
+ 		BUG();
+ 	}
+-	len = (char *)p - (char *)q - 12;
++	len = (char *)p - (char *)q - 16;
+ 	*q++ = htonl(bmval0);
+ 	*q++ = htonl(bmval1);
++	*q++ = htonl(bmval2);
+ 	*q = htonl(len);
+ 
+ /* out: */
+@@ -1194,8 +1196,10 @@ encode_getattr_three(struct xdr_stream *xdr,
+ 
+ static void encode_getfattr(struct xdr_stream *xdr, const u32* bitmask, struct compound_hdr *hdr)
  {
- 	struct rpc_xprt	*xprt;
--	struct rpc_rqst	*req;
-+	struct rpc_rqst	*req = task->tk_rqstp;
+-	encode_getattr_two(xdr, bitmask[0] & nfs4_fattr_bitmap[0],
+-			   bitmask[1] & nfs4_fattr_bitmap[1], hdr);
++	encode_getattr_three(xdr, bitmask[0] & nfs4_fattr_bitmap[0],
++			   bitmask[1] & nfs4_fattr_bitmap[1],
++			   bitmask[2] & nfs4_fattr_bitmap[2],
++			   hdr);
+ }
  
--	if (!(req = task->tk_rqstp))
-+	if (req == NULL) {
-+		if (task->tk_client) {
-+			xprt = task->tk_xprt;
-+			if (xprt->snd_task == task)
-+				xprt_release_write(xprt, task);
-+		}
- 		return;
-+	}
- 
- 	xprt = req->rq_xprt;
- 	rpc_count_iostats(task);
+ static void encode_getfattr_open(struct xdr_stream *xdr, const u32 *bitmask,
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 6eeb94b..86442f4 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -877,6 +877,7 @@ int nfs_show_stats(struct seq_file *m, struct dentry *root)
+ 		seq_printf(m, "\n\tnfsv4:\t");
+ 		seq_printf(m, "bm0=0x%x", nfss->attr_bitmask[0]);
+ 		seq_printf(m, ",bm1=0x%x", nfss->attr_bitmask[1]);
++		seq_printf(m, ",bm2=0x%x", nfss->attr_bitmask[2]);
+ 		seq_printf(m, ",acl=0x%x", nfss->acl_bitmask);
+ 		show_sessions(m, nfss);
+ 		show_pnfs(m, nfss);
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index d507357..e6ed3c2 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -145,7 +145,7 @@ struct nfs_server {
+ 	u32			attr_bitmask[3];/* V4 bitmask representing the set
+ 						   of attributes supported on this
+ 						   filesystem */
+-	u32			cache_consistency_bitmask[2];
++	u32			cache_consistency_bitmask[3];
+ 						/* V4 bitmask representing the subset
+ 						   of change attribute, size, ctime
+ 						   and mtime attributes supported by
+-- 
+1.8.1
 
---17pEHd4RhPHOinZp--
