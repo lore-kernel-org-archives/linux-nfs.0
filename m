@@ -1,100 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f181.google.com ([209.85.160.181]:59547 "EHLO
-	mail-gh0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751176Ab3A1Tsf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2013 14:48:35 -0500
-Received: by mail-gh0-f181.google.com with SMTP id y8so477244ghb.40
-        for <linux-nfs@vger.kernel.org>; Mon, 28 Jan 2013 11:48:34 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 08/16] nfsd: break out hashtable search into separate function
-Date: Mon, 28 Jan 2013 14:41:14 -0500
-Message-Id: <1359402082-29195-9-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
-References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
+Received: from mail-pb0-f52.google.com ([209.85.160.52]:57657 "EHLO
+	mail-pb0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752688Ab3AVEkL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2013 23:40:11 -0500
+Subject: Re: 3.7.3+:  Bad paging request in ip_rcv_finish while running NFS
+ traffic.
+From: Eric Dumazet <eric.dumazet@gmail.com>
+To: Ben Greear <greearb@candelatech.com>
+Cc: netdev <netdev@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+In-Reply-To: <50FDDE35.7070806@candelatech.com>
+References: <50FDADF4.3060601@candelatech.com>
+	 <50FDDE35.7070806@candelatech.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 21 Jan 2013 20:40:06 -0800
+Message-ID: <1358829606.3464.3151.camel@edumazet-glaptop>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Later, we'll need more than one call site for this, so break it out
-into a new function.
+On Mon, 2013-01-21 at 16:32 -0800, Ben Greear wrote:
+> On 01/21/2013 01:07 PM, Ben Greear wrote:
+> > I posted about this a few days ago, but this time the patches applied
+> > are minimal and there are no out-of-tree kernel modules loaded.
+> 
+> Here's another crash, this time with SLUB memory debugging turned on.
+> 
+> Seems much harder to hit this way...I've only managed this one.  I
+> believe the RCX register might be interesting...that 6b is probably
+> freed memory poisioning.  Maybe skb or skb_dest() is already freed?
+> 
+> I have added a 'verify_mem_not_deleted(skb)' before the
+> dst_input line in ip_rcv_finish..but so far, it hasn't
+> hit the problem...
+> 
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/nfscache.c | 46 +++++++++++++++++++++++++++++++++-------------
- 1 file changed, 33 insertions(+), 13 deletions(-)
+There is no way skb is freed here.
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index 634b856..b89e7c8 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -150,6 +150,35 @@ nfsd_cache_entry_expired(struct svc_cacherep *rp)
- }
- 
- /*
-+ * Search the request hash for an entry that matches the given rqstp.
-+ * Must be called with cache_lock held. Returns the found entry or
-+ * NULL on failure.
-+ */
-+static struct svc_cacherep *
-+nfsd_cache_search(struct svc_rqst *rqstp)
-+{
-+	struct svc_cacherep	*rp;
-+	struct hlist_node	*hn;
-+	struct hlist_head 	*rh;
-+	__be32			xid = rqstp->rq_xid;
-+	u32			proto =  rqstp->rq_prot,
-+				vers = rqstp->rq_vers,
-+				proc = rqstp->rq_proc;
-+
-+	rh = &cache_hash[request_hash(xid)];
-+	hlist_for_each_entry(rp, hn, rh, c_hash) {
-+		if (rp->c_state != RC_UNUSED &&
-+		    xid == rp->c_xid && proc == rp->c_proc &&
-+		    proto == rp->c_prot && vers == rp->c_vers &&
-+		    !nfsd_cache_entry_expired(rp) &&
-+		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
-+		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr))
-+			return rp;
-+	}
-+	return NULL;
-+}
-+
-+/*
-  * Try to find an entry matching the current call in the cache. When none
-  * is found, we grab the oldest unlocked entry off the LRU list.
-  * Note that no operation within the loop may sleep.
-@@ -157,8 +186,6 @@ nfsd_cache_entry_expired(struct svc_cacherep *rp)
- int
- nfsd_cache_lookup(struct svc_rqst *rqstp)
+I would say macvlan is at fault here.
+
+It probably lacks a proper (dev->flags & IFF_UP) test.
+
+Please try :
+
+diff --git a/drivers/net/macvlan.c b/drivers/net/macvlan.c
+index d3fb97d..c07bdef 100644
+--- a/drivers/net/macvlan.c
++++ b/drivers/net/macvlan.c
+@@ -111,9 +111,15 @@ static int macvlan_broadcast_one(struct sk_buff *skb,
+ 				 const struct ethhdr *eth, bool local)
  {
--	struct hlist_node	*hn;
--	struct hlist_head 	*rh;
- 	struct svc_cacherep	*rp;
- 	__be32			xid = rqstp->rq_xid;
- 	u32			proto =  rqstp->rq_prot,
-@@ -177,17 +204,10 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- 	spin_lock(&cache_lock);
- 	rtn = RC_DOIT;
+ 	struct net_device *dev = vlan->dev;
++
+ 	if (!skb)
+ 		return NET_RX_DROP;
  
--	rh = &cache_hash[request_hash(xid)];
--	hlist_for_each_entry(rp, hn, rh, c_hash) {
--		if (rp->c_state != RC_UNUSED &&
--		    xid == rp->c_xid && proc == rp->c_proc &&
--		    proto == rp->c_prot && vers == rp->c_vers &&
--		    !nfsd_cache_entry_expired(rp) &&
--		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
--		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr)) {
--			nfsdstats.rchits++;
--			goto found_entry;
--		}
-+	rp = nfsd_cache_search(rqstp);
-+	if (rp) {
-+		nfsdstats.rchits++;
-+		goto found_entry;
- 	}
- 	nfsdstats.rcmisses++;
++	if (!(dev->flags & IFF_UP)) {
++		kfree_skb(skb);
++		return NET_RX_DROP;
++	}
++
+ 	if (local)
+ 		return vlan->forward(dev, skb);
  
--- 
-1.7.11.7
+
 
