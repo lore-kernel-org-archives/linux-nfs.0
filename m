@@ -1,116 +1,172 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:64897 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751163Ab3AWSlc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2013 13:41:32 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Steve Dickson <steved@redhat.com>
-CC: David Quigley <selinux@davequigley.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 06/14] NFSv4: Add label recommended attribute and NFSv4
- flags
-Date: Wed, 23 Jan 2013 18:41:31 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9183324D4@sacexcmbx05-prd.hq.netapp.com>
+Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:54587 "EHLO
+	Dobby.4dicksons.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752624Ab3AVNkw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jan 2013 08:40:52 -0500
+From: Steve Dickson <steved@redhat.com>
+To: David Quigley <selinux@davequigley.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 04/14] SELinux: Add new labeling type native labels
+Date: Tue, 22 Jan 2013 08:40:32 -0500
+Message-Id: <1358862042-27520-5-git-send-email-steved@redhat.com>
+In-Reply-To: <1358862042-27520-1-git-send-email-steved@redhat.com>
 References: <1358862042-27520-1-git-send-email-steved@redhat.com>
-	 <1358862042-27520-7-git-send-email-steved@redhat.com>
-In-Reply-To: <1358862042-27520-7-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-01-22 at 08:40 -0500, Steve Dickson wrote:
-> From: David Quigley <dpquigl@davequigley.com>
-> 
-> This patch adds several new flags to allow the NFS client and server to
-> determine if this attribute is supported and if it is being sent over the wire.
-> 
-> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
-> ---
->  include/linux/nfs4.h      | 1 +
->  include/linux/nfs_fs_sb.h | 1 +
->  include/linux/nfs_xdr.h   | 5 ++++-
->  include/uapi/linux/nfs4.h | 1 +
->  4 files changed, 7 insertions(+), 1 deletion(-)
-> 
-> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-> index e111fa4..f9235b4 100644
-> --- a/include/linux/nfs4.h
-> +++ b/include/linux/nfs4.h
-> @@ -373,6 +373,7 @@ enum lock_type4 {
->  #define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
->  #define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
->  #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
-> +#define FATTR4_WORD2_SECURITY_LABEL     (1UL << 17)
->  #define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
->  
->  /* MDS threshold bitmap bits */
-> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-> index 6c6ed15..d507357 100644
-> --- a/include/linux/nfs_fs_sb.h
-> +++ b/include/linux/nfs_fs_sb.h
-> @@ -197,5 +197,6 @@ struct nfs_server {
->  #define NFS_CAP_MTIME		(1U << 13)
->  #define NFS_CAP_POSIX_LOCK	(1U << 14)
->  #define NFS_CAP_UIDGID_NOMAP	(1U << 15)
-> +#define NFS_CAP_SECURITY_LABEL	(1U << 16)
->  
->  #endif
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index 29adb12..fac114d 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -104,6 +104,7 @@ struct nfs_fattr {
->  #define NFS_ATTR_FATTR_MOUNTED_ON_FILEID (1U << 22)
->  #define NFS_ATTR_FATTR_OWNER_NAME	(1U << 23)
->  #define NFS_ATTR_FATTR_GROUP_NAME	(1U << 24)
-> +#define NFS_ATTR_FATTR_V4_SECURITY_LABEL (1U << 25)
->  
->  #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
->  		| NFS_ATTR_FATTR_MODE \
-> @@ -123,7 +124,8 @@ struct nfs_fattr {
->  #define NFS_ATTR_FATTR_V3 (NFS_ATTR_FATTR \
->  		| NFS_ATTR_FATTR_SPACE_USED)
->  #define NFS_ATTR_FATTR_V4 (NFS_ATTR_FATTR \
-> -		| NFS_ATTR_FATTR_SPACE_USED)
-> +		| NFS_ATTR_FATTR_SPACE_USED \
-> +		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
->  
->  /*
->   * Info on the file system
-> @@ -597,6 +599,7 @@ struct nfs_entry {
->  	int			eof;
->  	struct nfs_fh *		fh;
->  	struct nfs_fattr *	fattr;
-> +	struct nfs4_label	*label;
+From: David Quigley <dpquigl@davequigley.com>
 
-This probably needs a forward declaration of struct nfs4_label.
-Particularly since the definition only appears in patch 07/14...
+There currently doesn't exist a labeling type that is adequate for use with
+labeled NFS. Since NFS doesn't really support xattrs we can't use the use xattr
+labeling behavior. For this we developed a new labeling type. The native
+labeling type is used solely by NFS to ensure NFS inodes are labeled at runtime
+by the NFS code instead of relying on the SELinux security server on the client
+end.
 
->  	unsigned char		d_type;
->  	struct nfs_server *	server;
->  };
-> diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
-> index 788128e..dcc8582 100644
-> --- a/include/uapi/linux/nfs4.h
-> +++ b/include/uapi/linux/nfs4.h
-> @@ -25,6 +25,7 @@
->  #define NFS4_MAXNAMLEN		NAME_MAX
->  #define NFS4_OPAQUE_LIMIT	1024
->  #define NFS4_MAX_SESSIONID_LEN	16
-> +#define NFS4_MAXLABELLEN	4096
->  
->  #define NFS4_ACCESS_READ        0x0001
->  #define NFS4_ACCESS_LOOKUP      0x0002
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ include/linux/security.h            |  3 +++
+ security/selinux/hooks.c            | 35 ++++++++++++++++++++++++++---------
+ security/selinux/include/security.h |  2 ++
+ security/selinux/ss/policydb.c      |  5 ++++-
+ 4 files changed, 35 insertions(+), 10 deletions(-)
 
+diff --git a/include/linux/security.h b/include/linux/security.h
+index 096c0d7..6d26df4 100644
+--- a/include/linux/security.h
++++ b/include/linux/security.h
+@@ -61,6 +61,9 @@ struct mm_struct;
+ #define SECURITY_CAP_NOAUDIT 0
+ #define SECURITY_CAP_AUDIT 1
+ 
++/* LSM Agnostic defines for sb_set_mnt_opts */
++#define SECURITY_LSM_NATIVE_LABELS	1
++
+ struct ctl_table;
+ struct audit_krule;
+ struct user_namespace;
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index 4e7e7c2..8f233ff 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -80,6 +80,7 @@
+ #include <linux/syslog.h>
+ #include <linux/user_namespace.h>
+ #include <linux/export.h>
++#include <linux/security.h>
+ #include <linux/msg.h>
+ #include <linux/shm.h>
+ 
+@@ -283,13 +284,14 @@ static void superblock_free_security(struct super_block *sb)
+ 
+ /* The file system's label must be initialized prior to use. */
+ 
+-static const char *labeling_behaviors[6] = {
++static const char *labeling_behaviors[7] = {
+ 	"uses xattr",
+ 	"uses transition SIDs",
+ 	"uses task SIDs",
+ 	"uses genfs_contexts",
+ 	"not configured for labeling",
+ 	"uses mountpoint labeling",
++	"uses native labeling",
+ };
+ 
+ static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dentry);
+@@ -677,14 +679,21 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 	if (strcmp(sb->s_type->name, "proc") == 0)
+ 		sbsec->flags |= SE_SBPROC;
+ 
+-	/* Determine the labeling behavior to use for this filesystem type. */
+-	rc = security_fs_use((sbsec->flags & SE_SBPROC) ? "proc" : sb->s_type->name, &sbsec->behavior, &sbsec->sid);
+-	if (rc) {
+-		printk(KERN_WARNING "%s: security_fs_use(%s) returned %d\n",
+-		       __func__, sb->s_type->name, rc);
+-		goto out;
++	if (!sbsec->behavior) {
++		/*
++		 * Determine the labeling behavior to use for this
++		 * filesystem type.
++		 */
++		rc = security_fs_use((sbsec->flags & SE_SBPROC) ?
++					"proc" : sb->s_type->name,
++					&sbsec->behavior, &sbsec->sid);
++		if (rc) {
++			printk(KERN_WARNING
++				"%s: security_fs_use(%s) returned %d\n",
++					__func__, sb->s_type->name, rc);
++			goto out;
++		}
+ 	}
+-
+ 	/* sets the context of the superblock for the fs being mounted. */
+ 	if (fscontext_sid) {
+ 		rc = may_context_mount_sb_relabel(fscontext_sid, sbsec, cred);
+@@ -699,6 +708,11 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 	 * sets the label used on all file below the mountpoint, and will set
+ 	 * the superblock context if not already set.
+ 	 */
++	if (kern_flags & SECURITY_LSM_NATIVE_LABELS && !context_sid) {
++		sbsec->behavior = SECURITY_FS_USE_NATIVE;
++		*set_kern_flags |= SECURITY_LSM_NATIVE_LABELS;
++	}
++
+ 	if (context_sid) {
+ 		if (!fscontext_sid) {
+ 			rc = may_context_mount_sb_relabel(context_sid, sbsec,
+@@ -730,7 +744,8 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 	}
+ 
+ 	if (defcontext_sid) {
+-		if (sbsec->behavior != SECURITY_FS_USE_XATTR) {
++		if (sbsec->behavior != SECURITY_FS_USE_XATTR &&
++			sbsec->behavior != SECURITY_FS_USE_NATIVE) {
+ 			rc = -EINVAL;
+ 			printk(KERN_WARNING "SELinux: defcontext option is "
+ 			       "invalid for this filesystem type\n");
+@@ -1198,6 +1213,8 @@ static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dent
+ 	}
+ 
+ 	switch (sbsec->behavior) {
++	case SECURITY_FS_USE_NATIVE:
++		break;
+ 	case SECURITY_FS_USE_XATTR:
+ 		if (!inode->i_op->getxattr) {
+ 			isec->sid = sbsec->def_sid;
+diff --git a/security/selinux/include/security.h b/security/selinux/include/security.h
+index 6d38851..8fd8e18 100644
+--- a/security/selinux/include/security.h
++++ b/security/selinux/include/security.h
+@@ -169,6 +169,8 @@ int security_get_allow_unknown(void);
+ #define SECURITY_FS_USE_GENFS		4 /* use the genfs support */
+ #define SECURITY_FS_USE_NONE		5 /* no labeling support */
+ #define SECURITY_FS_USE_MNTPOINT	6 /* use mountpoint labeling */
++#define SECURITY_FS_USE_NATIVE		7 /* use native label support */
++#define SECURITY_FS_USE_MAX		7 /* Highest SECURITY_FS_USE_XXX */
+ 
+ int security_fs_use(const char *fstype, unsigned int *behavior,
+ 	u32 *sid);
+diff --git a/security/selinux/ss/policydb.c b/security/selinux/ss/policydb.c
+index 9cd9b7c..c8adde3 100644
+--- a/security/selinux/ss/policydb.c
++++ b/security/selinux/ss/policydb.c
+@@ -2168,7 +2168,10 @@ static int ocontext_read(struct policydb *p, struct policydb_compat_info *info,
+ 
+ 				rc = -EINVAL;
+ 				c->v.behavior = le32_to_cpu(buf[0]);
+-				if (c->v.behavior > SECURITY_FS_USE_NONE)
++				/* Determined at runtime, not in policy DB. */
++				if (c->v.behavior == SECURITY_FS_USE_MNTPOINT)
++					goto out;
++				if (c->v.behavior > SECURITY_FS_USE_MAX)
+ 					goto out;
+ 
+ 				rc = -ENOMEM;
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.8.1
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
