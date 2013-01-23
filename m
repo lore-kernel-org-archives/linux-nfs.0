@@ -1,100 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f48.google.com ([74.125.83.48]:52706 "EHLO
-	mail-ee0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753657Ab3AUOzH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2013 09:55:07 -0500
-Received: by mail-ee0-f48.google.com with SMTP id t10so2856830eei.7
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Jan 2013 06:55:06 -0800 (PST)
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from mx1.redhat.com ([209.132.183.28]:7111 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752332Ab3AWWzk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Jan 2013 17:55:40 -0500
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r0NMtePW009534
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 23 Jan 2013 17:55:40 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
 To: linux-nfs@vger.kernel.org
-Cc: Benny Halevy <bhalevy@tonian.com>
-Subject: [PATCH 9/9] SQUASHME: pnfsd: no use for fi_layout_states list anymore
-Date: Mon, 21 Jan 2013 16:55:03 +0200
-Message-Id: <1358780103-6229-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <50FD5646.4020206@tonian.com>
-References: <50FD5646.4020206@tonian.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: draft server xdr rewrite
+Date: Wed, 23 Jan 2013 17:55:31 -0500
+Message-Id: <1358981738-5649-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
----
- fs/nfsd/nfs4pnfsd.c | 10 ----------
- fs/nfsd/nfs4state.c |  1 -
- fs/nfsd/pnfsd.h     |  1 -
- fs/nfsd/state.h     |  1 -
- 4 files changed, 13 deletions(-)
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-index 3375554..4320914 100644
---- a/fs/nfsd/nfs4pnfsd.c
-+++ b/fs/nfsd/nfs4pnfsd.c
-@@ -157,10 +157,6 @@ void pnfs_clear_device_notify(struct nfs4_client *clp)
- 		return new;
- 	kref_init(&new->ls_ref);
- 	nfsd4_init_stid(&new->ls_stid, clp, NFS4_LAYOUT_STID);
--	INIT_LIST_HEAD(&new->ls_perfile);
--	spin_lock(&layout_lock);
--	list_add(&new->ls_perfile, &fp->fi_layout_states);
--	spin_unlock(&layout_lock);
- 	new->ls_roc = false;
- 	return new;
- }
-@@ -178,11 +174,6 @@ void pnfs_clear_device_notify(struct nfs4_client *clp)
- 			container_of(kref, struct nfs4_layout_state, ls_ref);
- 
- 	nfsd4_unhash_stid(&ls->ls_stid);
--	if (!list_empty(&ls->ls_perfile)) {
--		spin_lock(&layout_lock);
--		list_del(&ls->ls_perfile);
--		spin_unlock(&layout_lock);
--	}
- 	kfree(ls);
- }
- 
-@@ -1310,7 +1301,6 @@ void pnfsd_roc(struct nfs4_client *clp, struct nfs4_file *fp)
- 			continue;
- 
- 		/* Return the layout */
--		list_del_init(&lo->lo_state->ls_perfile);	/* just to be on the safe side */
- 		dequeue_layout(lo);
- 		list_add_tail(&lo->lo_perfile, &lo_destroy_list);
- 	}
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 0553220..1682413 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2370,7 +2370,6 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino,
- 	memset(fp->fi_access, 0, sizeof(fp->fi_access));
- #if defined(CONFIG_PNFSD)
- 	INIT_LIST_HEAD(&fp->fi_layouts);
--	INIT_LIST_HEAD(&fp->fi_layout_states);
- 	fp->fi_fsid.major = current_fh->fh_export->ex_fsid;
- 	fp->fi_fsid.minor = 0;
- 	fp->fi_fhlen = current_fh->fh_handle.fh_size;
-diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
-index 35859ff..fe35466 100644
---- a/fs/nfsd/pnfsd.h
-+++ b/fs/nfsd/pnfsd.h
-@@ -44,7 +44,6 @@
- struct nfs4_layout_state {
- 	struct nfs4_stid	ls_stid; /* must be first field */
- 	struct kref		ls_ref;
--	struct list_head	ls_perfile;
- 	bool			ls_roc;
- };
- 
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 08a31a7..4ca6f2d 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -399,7 +399,6 @@ struct nfs4_file {
- 	bool			fi_had_conflict;
- #if defined(CONFIG_PNFSD)
- 	struct list_head	fi_layouts;
--	struct list_head	fi_layout_states;
- 	/* used by layoutget / layoutrecall */
- 	struct nfs4_fsid	fi_fsid;
- 	u32			fi_fhlen;
+The following patches fix two problems:
+	- The server can't support ACLs longer than 4k.
+	- The server can't return more than 4k of readdir data per rpc,
+	  limiting performance on large directories.
+
+At fault in both cases is the compound xdr encoding, which is unable to
+deal with page boundaries.
+
+Simplifying slightly:
+
+I want to be able to write server code something like:
+
+	__be32 *p;
+
+	p = reserve_space(12)
+		return nfserr_resource;
+	write64(&p, bignum);
+	write32(&p, smallernum);
+	p = reserve_space(xdr, &p, 4+namelen);
+	if (!p)
+		return nfserr_resource;
+	write32(&p, namelen);
+	writemem(&p, name);
+	...
+
+and have page boundaries handled under the covers.
+
+The following patches do that by replacing the __be32 * by
+approximately:
+
+	struct svcxdr_ptr {
+		__be32 *p;
+		struct page **next_page;
+	}
+
+with next_page a pointer into an array of available pages.  The encoders
+can then traverse to the next page with something like:
+
+	ptr->p = page_address(*ptr->next_page++);
+
+We also define a svcxdr_stream to keep track of various state.  That and
+not wanting a struct as a return value makes the reserve_space above
+into:
+
+	if (!reserve_space(xdr, &p, 12))
+		return nfserr_resource;
+	...
+
+Seem reasonable?
+
+If so, I plan to convert the rest of the v4 encoding.  (After revising
+these patches--e.g. readdir still has a few problems I want to fix.  But
+this does pass the usual connectathon and pynfs testing already.)
+
+--b.
+
+J. Bruce Fields (7):
+  nfsd4: reserve space for integrity/privacy
+  nfsd4: simplify nfsd4_encode_fattr interface slightly
+  nfsd4: nfsd4_encode_fattr cleanup
+  nfsd4: encode_rdattr_error cleanup
+  nfsd4: rewrite xdr encoding of attributes
+  nfsd4: track maximum bytes
+  nfsd4: readdir encoding
+
+ fs/nfsd/nfs4proc.c |  17 +-
+ fs/nfsd/nfs4xdr.c  | 892 +++++++++++++++++++++++++++++++++--------------------
+ fs/nfsd/xdr4.h     |  24 +-
+ 3 files changed, 588 insertions(+), 345 deletions(-)
+
 -- 
 1.7.11.7
 
