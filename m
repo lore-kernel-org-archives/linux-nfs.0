@@ -1,45 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.candelatech.com ([208.74.158.172]:60972 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751119Ab3ARVgm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jan 2013 16:36:42 -0500
-Message-ID: <50F9C069.8070106@candelatech.com>
-Date: Fri, 18 Jan 2013 13:36:41 -0800
-From: Ben Greear <greearb@candelatech.com>
+Received: from mx12.netapp.com ([216.240.18.77]:20951 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753906Ab3AWSNg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2013 13:13:36 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Peter Staubach <pstaubach@exagrid.com>
+CC: Alex Bligh <alex@alex.org.uk>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "ian.campbell@citrix.com" <ian.campbell@citrix.com>
+Subject: Re: Fatal crash with NFS, AIO & tcp retransmit
+Date: Wed, 23 Jan 2013 18:13:34 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA918332049@sacexcmbx05-prd.hq.netapp.com>
+References: <93D3AE9B4990994B2BCA75A9@Ximines.local>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA915C163B9@SACEXCMBX04-PRD.hq.netapp.com>
+	 <E268D60FA8BCE2E18CCE24D7@Ximines.local>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA915C17543@SACEXCMBX04-PRD.hq.netapp.com>
+	 <734E2E0455BD4515C657BA69@Ximines.local>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA915C1781E@SACEXCMBX04-PRD.hq.netapp.com>
+	 <DABFD69DFA23FF330123B298@nimrod.local>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA91832D572@sacexcmbx05-prd.hq.netapp.com>
+	 <5B18F9B0446E7F3CAA3BD81D@nimrod.local>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA918331EF5@sacexcmbx05-prd.hq.netapp.com>
+	 <F1BFF24EE9BEF6E4C8C66BF8@nimrod.local>
+	 <FA8A9A935BFD3A4D8F0CDA1C4F611BCC0C5DC79D53@IT-1874.Isys.com>
+In-Reply-To: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC0C5DC79D53@IT-1874.Isys.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Question on nfs40_discover_server_trunking.
-References: <50F9BE66.6080608@candelatech.com> <0F001F0E-229D-4314-A42E-84402E4F1FC7@oracle.com>
-In-Reply-To: <0F001F0E-229D-4314-A42E-84402E4F1FC7@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/18/2013 01:33 PM, Chuck Lever wrote:
->
-> On Jan 18, 2013, at 4:28 PM, Ben Greear <greearb@candelatech.com> wrote:
->
->> Any chance the STALE_CLIENTID case needs a 'break'?
->
-> I don't think so.  LEASE_CONFIRM is set, and we want to wake the state renewal thread.
->
->>
->> Twice I've seen kernel crashes after the nfs40_walk_client_list
->> failed (though code comments say it should never fail).
->
-> nfs40_walk_client_list() is looking for an nfs_client that is supposed to already be in the nfs_client list.  If the search fails, that's a bug.
->
-> Eyeball the contents of your nfs_client list.  You should find an appropriate nfs_client in there, and then figure out why the search doesn't find it.
+On Wed, 2013-01-23 at 12:48 -0500, Peter Staubach wrote:
+> Hi.
+> 
+> The theory is that the modified pages which need to get written to the server can't be released until they have been successfully written and committed to stable storage on the server.
+> 
+> They can't disappear until they have been successfully transmitted and a response received.  The problem here is that there were two requests sent or being sent and the page(s) can't be released until everyone, including TCP and such, are done with them.
+> 
+> 		ps
 
-Ok, I'll keep poking at the code.  My test case is 3000 individual mounts,
-and the system is working very hard, so not sure eyeballing printk's is
-going to help a whole lot :)
+Right. The O_DIRECT write() system call will not return until it gets a
+reply. Similarly, we don't mark an aio/dio request as complete until it
+too gets a reply. So the data for those requests that need
+retransmission is still available to be resent through the socket.
 
-Thanks,
-Ben
+Cheers
+  Trond
+
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Alex Bligh
+> Sent: Wednesday, January 23, 2013 12:42 PM
+> To: Myklebust, Trond
+> Cc: linux-nfs@vger.kernel.org; ian.campbell@citrix.com; Alex Bligh
+> Subject: Re: Fatal crash with NFS, AIO & tcp retransmit
+> 
+> Trond,
+> 
+> --On 23 January 2013 17:37:08 +0000 "Myklebust, Trond" 
+> <Trond.Myklebust@netapp.com> wrote:
+> 
+> >> If you break the connection, and the written data is now not 
+> >> available to dom0 (as it's been mapped out), how would it ever get 
+> >> resent? IE it's not going to be available to the RPC layer either.
+> >
+> > There are typically more than 1 outstanding RPC call at any one time.
+> > Breaking the connection would affect those other RPC calls.
+> 
+> I understand that. I meant 'how does the write which failed ever get retransmitted now the data to be written has been lost?'
+> 
+> --
+> Alex Bligh
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of a message to majordomo@vger.kernel.org More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
