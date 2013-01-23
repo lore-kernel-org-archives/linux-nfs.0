@@ -1,35 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f46.google.com ([209.85.220.46]:51395 "EHLO
-	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752911Ab3A2FQT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jan 2013 00:16:19 -0500
-Received: by mail-pa0-f46.google.com with SMTP id kp14so157172pab.19
-        for <linux-nfs@vger.kernel.org>; Mon, 28 Jan 2013 21:16:18 -0800 (PST)
-Date: Tue, 29 Jan 2013 13:16:01 +0800
-From: majianpeng <majianpeng@gmail.com>
-To: bfields <bfields@fieldses.org>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Reply-To: majianpeng <majianpeng@gmail.com>
-Subject: [PATCH 1/2] nfsd: Fix memleak.
-Mime-Version: 1.0
-Message-ID: <201301291315544246751@gmail.com>
-Content-Type: text/plain;
-	charset="gb2312"
+Received: from mail.candelatech.com ([208.74.158.172]:50943 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751885Ab3AWVic (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2013 16:38:32 -0500
+Message-ID: <51005858.4040107@candelatech.com>
+Date: Wed, 23 Jan 2013 13:38:32 -0800
+From: Ben Greear <greearb@candelatech.com>
+MIME-Version: 1.0
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        netdev <netdev@vger.kernel.org>
+Subject: Hung tasks related to do_filp_open in net-next (3.8.0-rc3+)
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SW4gZnVuYyBzdmNfZXhwb3J0X3BhcnNlLHRoZSB1dWlkIHdoaWNoIHVzZWQga21lbWR1cCB0byBh
-bGxvYyB3aWxsIGJlDQpjaGFuZ2VkIGluIGZ1bmMgZXhwb3J0X3VwZGF0ZS5TbyB0aGUgbGF0ZXIg
-a2ZyZWUgZG9uJ3QgZnJlZSB0aGlzIG1lbW9yeS4NCkFuZCBpdCBjYW4ndCBiZSBmcmVlIGluIGZ1
-bmMgc3ZjX2V4cG9ydF9wYXJzZSBiZWNhdXNlIG90aGVyIHBsYWNlIHN0aWxsDQp1c2VkLlNvIHB1
-dCB0aGlzIG9wZXJhdGlvbiBpbiBmdW5jIHN2Y19leHBvcnRfcHV0Lg0KDQpTaWduZWQtb2ZmLWJ5
-OiBKaWFucGVuZyBNYSA8bWFqaWFucGVuZ0BnbWFpbC5jb20+DQotLS0NCiBmcy9uZnNkL2V4cG9y
-dC5jIHwgICAgMSArDQogMSBmaWxlIGNoYW5nZWQsIDEgaW5zZXJ0aW9uKCspDQoNCmRpZmYgLS1n
-aXQgYS9mcy9uZnNkL2V4cG9ydC5jIGIvZnMvbmZzZC9leHBvcnQuYw0KaW5kZXggYTM5NDZjZi4u
-NDUxNTllZSAxMDA2NDQNCi0tLSBhL2ZzL25mc2QvZXhwb3J0LmMNCisrKyBiL2ZzL25mc2QvZXhw
-b3J0LmMNCkBAIC0zMTUsNiArMzE1LDcgQEAgc3RhdGljIHZvaWQgc3ZjX2V4cG9ydF9wdXQoc3Ry
-dWN0IGtyZWYgKnJlZikNCiAJcGF0aF9wdXQoJmV4cC0+ZXhfcGF0aCk7DQogCWF1dGhfZG9tYWlu
-X3B1dChleHAtPmV4X2NsaWVudCk7DQogCW5mc2Q0X2ZzbG9jc19mcmVlKCZleHAtPmV4X2ZzbG9j
-cyk7DQorCWtmcmVlKGV4cC0+ZXhfdXVpZCk7DQogCWtmcmVlKGV4cCk7DQogfQ0KIA0KLS0gDQox
-LjcuOS41DQo=
+
+I cranked up my 3000 NFS mounts test case on today's net-next (3.8.0-rc3+)
+and about 8 of these splats.  There were around 780 mounts active
+when these occurred.
+
+Seems like the system continues OK, so not sure how important
+this is...
+
+INFO: task btserver:8756 blocked for more than 180 seconds.
+"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+btserver        D 0000000000000004     0  8756   5781 0x00000080
+  ffff880404ab1bf8 0000000000000046 0000000004ab1ba8 0000000000000432
+  ffff880404ab0010 ffff880402263f20 ffff880404ab1fd8 00000000000132c0
+  00000000000132c0 00000000000132c0 ffff880404ab1fd8 00000000000132c0
+Call Trace:
+  [<ffffffff815491ea>] schedule+0x5f/0x61
+  [<ffffffff815494fa>] schedule_preempt_disabled+0x13/0x1f
+  [<ffffffff81547ea8>] __mutex_lock_common+0x264/0x42d
+  [<ffffffff8115fadb>] ? do_last+0x1db/0xa4e
+  [<ffffffff8115fadb>] ? do_last+0x1db/0xa4e
+  [<ffffffff815480d0>] mutex_lock_nested+0x16/0x18
+  [<ffffffff8115fadb>] do_last+0x1db/0xa4e
+  [<ffffffff8115f3a5>] ? path_init+0xcd/0x2b6
+  [<ffffffff8116090b>] path_openat+0xcb/0x363
+  [<ffffffff810d0055>] ? __lock_acquire+0x1df/0x53d
+  [<ffffffff81160ca8>] do_filp_open+0x38/0x84
+  [<ffffffff8154a2db>] ? _raw_spin_unlock+0x45/0x52
+  [<ffffffff8116c203>] ? __alloc_fd+0x106/0x11a
+  [<ffffffff815490f9>] ? __schedule+0x561/0x5a3
+8021q: adding VLAN 0 to HW filter on device eth4#621
+  [<ffffffff81153bfc>] do_sys_open+0x6d/0xff
+8021q: adding VLAN 0 to HW filter on device eth3#612
+  [<ffffffff81153cbb>] sys_open+0x1c/0x1e
+  [<ffffffff8154f629>] system_call_fastpath+0x16/0x1b
+2 locks held by btserver/8756:
+  #0:  (sb_writers#10){......}, at: [<ffffffff81170013>] mnt_want_write+0x1f/0x48
+  #1:  (&type->i_mutex_dir_key#4){......}, at: [<ffffffff8115fadb>] do_last+0x1db/0xa4e
+
+
+
+-- 
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
