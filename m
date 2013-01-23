@@ -1,36 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ironport2-out.teksavvy.com ([206.248.154.182]:50242 "EHLO
-	ironport2-out.teksavvy.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757717Ab3APWvt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jan 2013 17:51:49 -0500
-Message-ID: <50F72F03.5070806@teksavvy.com>
-Date: Wed, 16 Jan 2013 17:51:47 -0500
-From: Mark Lord <kernel@teksavvy.com>
-MIME-Version: 1.0
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        Linux Kernel <linux-kernel@vger.kernel.org>
-Subject: Re: BUG at net/sunrpc/svc_xprt.c:921
-References: <50F42F85.50907@teksavvy.com> <20130114203711.GA29982@fieldses.org> <50F4D800.5040703@teksavvy.com> <20130115205625.GH4940@fieldses.org> <50F63882.8000607@parallels.com>
-In-Reply-To: <50F63882.8000607@parallels.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:25841 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752582Ab3AWWzk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Jan 2013 17:55:40 -0500
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r0NMteFj007731
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 23 Jan 2013 17:55:40 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 3/7] nfsd4: nfsd4_encode_fattr cleanup
+Date: Wed, 23 Jan 2013 17:55:34 -0500
+Message-Id: <1358981738-5649-4-git-send-email-bfields@redhat.com>
+In-Reply-To: <1358981738-5649-1-git-send-email-bfields@redhat.com>
+References: <1358981738-5649-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 13-01-16 12:20 AM, Stanislav Kinsbursky wrote:
-> 
-> Mark, could you provide any call traces?
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Call traces from where/what?
-There's this one, posted earlier in the BUG report:
+Remove some pointless goto's.
 
-kernel BUG at net/sunrpc/svc_xprt.c:921!
-Call Trace:
- [<ffffffffa016a56a>] ? svc_recv+0xcc/0x338 [sunrpc]
- [<ffffffffa0318bfc>] ? nfs_callback_authenticate+0x20/0x20 [nfsv4]
- [<ffffffffa0318c19>] ? nfs4_callback_svc+0x1d/0x3c [nfsv4]
- [<ffffffff810407e6>] ? kthread+0x81/0x89
- [<ffffffff81040765>] ? kthread_freezable_should_stop+0x36/0x36
- [<ffffffff812ea62c>] ? ret_from_fork+0x7c/0xb0
- [<ffffffff81040765>] ? kthread_freezable_should_stop+0x36/0x36
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4xdr.c | 17 ++++-------------
+ 1 file changed, 4 insertions(+), 13 deletions(-)
+
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index fcb5bed..f1b6aac 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2129,8 +2129,10 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+ 		if ((buflen -= 4) < 0)
+ 			goto out_resource;
+ 		dummy = nfs4_file_type(stat.mode);
+-		if (dummy == NF4BAD)
+-			goto out_serverfault;
++		if (dummy == NF4BAD) {
++			status = nfserr_serverfault;
++			goto out;
++		}
+ 		WRITE32(dummy);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_FH_EXPIRE_TYPE) {
+@@ -2226,8 +2228,6 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+ 			status = nfsd4_encode_aclname(rqstp, ace->whotype,
+ 				ace->who, ace->flag & NFS4_ACE_IDENTIFIER_GROUP,
+ 				&p, &buflen);
+-			if (status == nfserr_resource)
+-				goto out_resource;
+ 			if (status)
+ 				goto out;
+ 		}
+@@ -2288,8 +2288,6 @@ out_acl:
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_FS_LOCATIONS) {
+ 		status = nfsd4_encode_fs_locations(rqstp, exp, &p, &buflen);
+-		if (status == nfserr_resource)
+-			goto out_resource;
+ 		if (status)
+ 			goto out;
+ 	}
+@@ -2340,15 +2338,11 @@ out_acl:
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_OWNER) {
+ 		status = nfsd4_encode_user(rqstp, stat.uid, &p, &buflen);
+-		if (status == nfserr_resource)
+-			goto out_resource;
+ 		if (status)
+ 			goto out;
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_OWNER_GROUP) {
+ 		status = nfsd4_encode_group(rqstp, stat.gid, &p, &buflen);
+-		if (status == nfserr_resource)
+-			goto out_resource;
+ 		if (status)
+ 			goto out;
+ 	}
+@@ -2444,9 +2438,6 @@ out_nfserr:
+ out_resource:
+ 	status = nfserr_resource;
+ 	goto out;
+-out_serverfault:
+-	status = nfserr_serverfault;
+-	goto out;
+ }
+ 
+ static inline int attributes_need_mount(u32 *bmval)
+-- 
+1.7.11.7
 
