@@ -1,95 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f176.google.com ([209.85.220.176]:42484 "EHLO
-	mail-vc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751349Ab3AHVBN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jan 2013 16:01:13 -0500
-Received: by mail-vc0-f176.google.com with SMTP id fo13so877172vcb.35
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jan 2013 13:01:12 -0800 (PST)
-Date: Tue, 8 Jan 2013 16:01:06 -0500
-From: Chris Perl <chris.perl@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Possible Race Condition on SIGKILL
-Message-ID: <20130108210106.GB30872@nyc-qws-132.nyc.delacy.com>
-References: <20130107185848.GB16957@nyc-qws-132.nyc.delacy.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91199197E@SACEXCMBX04-PRD.hq.netapp.com>
- <20130107202021.GC16957@nyc-qws-132.nyc.delacy.com>
- <1357590561.28341.11.camel@lade.trondhjem.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA911991BE9@SACEXCMBX04-PRD.hq.netapp.com>
- <20130107220047.GA30814@nyc-qws-132.nyc.delacy.com>
- <20130108184011.GA30872@nyc-qws-132.nyc.delacy.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA911993608@SACEXCMBX04-PRD.hq.netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA911993608@SACEXCMBX04-PRD.hq.netapp.com>
+Received: from mx1.redhat.com ([209.132.183.28]:5001 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752602Ab3AWWzl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Jan 2013 17:55:41 -0500
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r0NMtfF0000604
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 23 Jan 2013 17:55:41 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 6/7] nfsd4: track maximum bytes
+Date: Wed, 23 Jan 2013 17:55:37 -0500
+Message-Id: <1358981738-5649-7-git-send-email-bfields@redhat.com>
+In-Reply-To: <1358981738-5649-1-git-send-email-bfields@redhat.com>
+References: <1358981738-5649-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> My main interest is always the upstream (Linus) kernel, however the RPC
-> client in the CentOS 6.3 kernel does actually contain a lot of code that
-> was recently backported from upstream. As such, it is definitely of
-> interest to figure out corner case bugs so that we can compare to
-> upstream...
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Ok, great.  I will try this version of the patch as well.  However, when just
-thinking about this, I'm concerned that the race still exists, but is just less
-likely to manifest.
+All reserve_space is doing currently is checking that we don't run out
+of pages, but some users (e.g. readdir) also want to check some other
+limit.
 
-I imagine something like this happening.  I assume there is some reason this
-can't happen that I'm not seeing?  These are functions from linus's current
-git, not the CentOS 6.3 code: 
+XXX: also for 4.1 shouldn't we be checking session-negotiated maximum?
 
-thread 1                                          thread 2
---------                                          --------
-__rpc_execute                                     __rpc_execute
-...                                               ...
-call_reserve
-xprt_reserve
-xprt_lock_and_alloc_slot
-xprt_lock_write
-xprt_reserve_xprt
-...
-xprt_release_write
-                                                  call_reserve
-						  xprt_reserve
-						  xprt_lock_and_alloc_slot
-						  xprt_lock_write
-						  xprt_reserve_xprt
-						  rpc_sleep_on_priority
-						  __rpc_sleep_on_priority
-						  __rpc_add_wait_queue
-						  __rpc_add_wait_queue_priority
-						  (Now on the sending wait queue)
-xs_tcp_release_xprt
-xprt_release_xprt
-xprt_clear_locked
-__xprt_lock_write_next
-rpc_wake_up_first
-__rpc_find_next_queued
-__rpc_find_next_queued_priority
-...
-(has now pulled thread 2 off the wait queue)
-                                                 out_of_line_wait_on_bit
-						 (receive SIGKILL)
-						 rpc_wait_bit_killable
-						 rpc_exit
-						 rpc_exit_task
-						 rpc_release_task
-						 (doesn't release xprt b/c he isn't listed in snd_task yet)
-						 (returns from __rpc_execute)
-__xprt_lock_write_func
-(thread 2 now has the transport locked)
-rpc_wake_up_task_queue_locked
-__rpc_remove_wait_queue
-__rpc_remove_wait_queue_priority
-(continues on, potentially exiting early,
- potentially blocking the next time it needs the transport)
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4xdr.c | 11 +++++++++--
+ fs/nfsd/xdr4.h    |  1 +
+ 2 files changed, 10 insertions(+), 2 deletions(-)
 
-With the patch we're discussing, it would fix the case where thread 2 is
-breaking out of the FSM loop after having been given the transport lock.  But
-what about the above.  Is there something else synchronizing things?
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 19f773e..a378435 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1669,6 +1669,7 @@ static __be32 svcxdr_stream_init_from_resp(struct svcxdr_stream *xdr, struct nfs
+ 	buf->head[0].iov_len = (char *)resp->p - (char *)buf->head[0].iov_base;
+ 	buf->len = buf->head[0].iov_len;
+ 
++	xdr->maxbytes = INT_MAX;
+ 	xdr->buf = buf;
+ 	xdr->this_iov = buf->head;
+ 	xdr->ptr.p = resp->p;
+@@ -1683,6 +1684,7 @@ static __be32 svcxdr_stream_init_from_resp(struct svcxdr_stream *xdr, struct nfs
+  */
+ static void svcxdr_stream_init_from_buffer(struct svcxdr_stream *xdr, __be32 *buf, int len)
+ {
++	xdr->maxbytes = INT_MAX;
+ 	xdr->ptr.p = buf;
+ 	xdr->ptr.end = buf + len;
+ 	xdr->ptr.next_page = NULL;
+@@ -1724,8 +1726,12 @@ static bool svcxdr_reserve_space(struct svcxdr_stream *xdr, struct svcxdr_ptr *p
+ 	*ptr = xdr->ptr;
+ 
+ 	bytes = roundup(bytes, 4);
+-
+-	return svcxdr_seek(&xdr->ptr, bytes);
++	if (bytes > xdr->maxbytes)
++		return false;
++	if (!svcxdr_seek(&xdr->ptr, bytes))
++		return false;
++	xdr->maxbytes -= bytes;
++	return true;
+ }
+ 
+ /* XXX: basic idea here:
+@@ -1827,6 +1833,7 @@ static int svcxdr_byte_offset(struct svcxdr_ptr *from, struct svcxdr_ptr *to)
+ static void svcxdr_reset(struct svcxdr_stream *xdr, struct svcxdr_ptr *to)
+ {
+ 	WARN_ON_ONCE(svcxdr_ptr_misordered(&xdr->last_commit, to));
++	xdr->maxbytes += svcxdr_byte_offset(to, &xdr->ptr);
+ 	xdr->ptr = *to;
+ }
+ 
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 4d9c82b..36b8c2c 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -54,6 +54,7 @@ struct svcxdr_stream {
+ 	struct svcxdr_ptr ptr;
+ 	struct xdr_buf *buf;
+ 	struct kvec *this_iov;
++	int maxbytes;
+ };
+ 
+ #define CURRENT_STATE_ID_FLAG (1<<0)
+-- 
+1.7.11.7
 
-In my testing so far with my (not quite right) amended v3 of the patch, the
-timing has become such that I was having trouble reproducing the problem while
-attempting to instrument things with systemtap.  However, without systemtap
-running, I'm still able to reproduce the hang pretty easily.
