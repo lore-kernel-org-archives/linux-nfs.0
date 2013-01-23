@@ -1,52 +1,173 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:14431 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:51904 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750837Ab3AWSc6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2013 13:32:58 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Steve Dickson <steved@redhat.com>
-CC: David Quigley <selinux@davequigley.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 02/14] Security: Add Hook to test if the particular
- xattr is part of a MAC model.
-Date: Wed, 23 Jan 2013 18:32:57 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA918332485@sacexcmbx05-prd.hq.netapp.com>
-References: <1358862042-27520-1-git-send-email-steved@redhat.com>
-	 <1358862042-27520-3-git-send-email-steved@redhat.com>
-In-Reply-To: <1358862042-27520-3-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S1756544Ab3AWSVS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Jan 2013 13:21:18 -0500
+Message-ID: <51002A20.30700@RedHat.com>
+Date: Wed, 23 Jan 2013 13:21:20 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: Yao Zhao <yao.zhao@windriver.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH]fix bugs and compiling warnings in libgssglue
+References: <50577508.90004@windriver.com> <20121019122650.GA20324@fieldses.org> <50816199.9000900@RedHat.com> <50FDAC3A.3040806@windriver.com>
+In-Reply-To: <50FDAC3A.3040806@windriver.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-01-22 at 08:40 -0500, Steve Dickson wrote:
-> From: David Quigley <dpquigl@davequigley.com>
-> 
-> The interface to request security labels from user space is the xattr
-> interface. When requesting the security label from an NFS server it is
-> important to make sure the requested xattr actually is a MAC label. This allows
-> us to make sure that we get the desired semantics from the attribute instead of
-> something else such as capabilities or a time based LSM.
-> 
-> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
-> ---
->  include/linux/security.h   | 14 ++++++++++++++
->  security/capability.c      |  6 ++++++
->  security/security.c        |  6 ++++++
->  security/selinux/hooks.c   |  6 ++++++
->  security/smack/smack_lsm.c | 11 +++++++++++
->  5 files changed, 43 insertions(+)
-> 
-Ditto here. We'll need Acks from James, Stephen, Eric and Casey.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+On 21/01/13 15:59, Yao Zhao wrote:
+> On 12-10-19 10:20 AM, Steve Dickson wrote:
+>>
+>> On 19/10/12 08:26, J. Bruce Fields wrote:
+>>> Steve, is it you that maintains libgssglue now?
+>> Yes, I do. Thanks for the ping. I did miss this...
+> Hi Steve,
+> 
+> Just want to follow up whether these are fixed?
+Yes they were... in libgssglue-0.5
+
+steved.
+
+> 
+> thanks,
+> yao
+>> steved.
+>>
+>>> --b.
+>>>
+>>> On Mon, Sep 17, 2012 at 03:07:52PM -0400, Yao Zhao wrote:
+>>>> Hi,
+>>>>
+>>>> The 4 attached patches fixed a couple of warnings and bug found when
+>>>> compiling libgssglue.
+>>>>
+>>>> thanks,
+>>>> yao
+>>>> --- a/src/g_canon_name.c
+>>>> +++ b/src/g_canon_name.c
+>>>> fix the bug:
+>>>> g_canon_name.c:125:5: warning: passing argument 2 of '__gss_copy_namebuf' from incompatible pointer type [enabled by default]
+>>>>
+>>>> the 2nd argument of __gss_copy_namebuf should be address of *gss_buffer_t, \
+>>>> but a *gss_buffer_t is assigned.
+>>>>
+>>>> what __gss_copy_namebuf does is to alloc memory for a gss_buffer_desc and \
+>>>> copy from src and return its address.
+>>>>
+>>>> if following code failed, gss_release_name will free \
+>>>> union_canon_name->external_name.value if it is not NULL.
+>>>>
+>>>> OM_uint32 __gss_copy_namebuf(src, dest)
+>>>>      gss_buffer_t   src;
+>>>>      gss_buffer_t   *dest;
+>>>>
+>>>> typedef struct gss_union_name_t {
+>>>>     gss_mechanism        gss_mech;
+>>>>     gss_OID            name_type;
+>>>>     gss_buffer_desc        external_name;
+>>>>     /*
+>>>>      * These last two fields are only filled in for mechanism
+>>>>      * names.
+>>>>      */
+>>>>     gss_OID            mech_type;
+>>>>     gss_name_t        mech_name;
+>>>> } gss_union_name_desc, *gss_union_name_t;
+>>>>
+>>>> typedef struct gss_buffer_desc_struct {
+>>>>        size_t length;
+>>>>        void FAR *value;
+>>>> } gss_buffer_desc, FAR *gss_buffer_t;
+>>>>
+>>>> Upstream-Status: Pending
+>>>> Signed-off-by: Yao Zhao <yao.zhao@windriver.com>
+>>>>
+>>>> @@ -121,11 +121,17 @@ gss_canonicalize_name (OM_uint32 *minor_
+>>>>         union_canon_name->mech_name = mech_name;
+>>>>   -    status = __gss_copy_namebuf(&union_input_name->external_name,
+>>>> -                &union_canon_name->external_name);
+>>>> -    if (status != GSS_S_COMPLETE)
+>>>> -    goto failure;
+>>>> +    union_canon_name->external_name.value = (void*) malloc(
+>>>> +                      union_input_name->external_name.length + 1);
+>>>> +    if (!union_canon_name->external_name.value)
+>>>> +        goto failure;
+>>>>   +    memcpy(union_canon_name->external_name.value,
+>>>> +           union_input_name->external_name.value,
+>>>> +           union_input_name->external_name.length);
+>>>> +    union_canon_name->external_name.length =
+>>>> +                      union_input_name->external_name.length;
+>>>> +
+>>>>       if (union_input_name->name_type != GSS_C_NO_OID) {
+>>>>       status = generic_gss_copy_oid(minor_status,
+>>>>                         union_input_name->name_type,
+>>>> diff --git a/src/g_initialize.c b/src1/g_initialize.c
+>>>> index 82fcce1..200f173 100644
+>>>> --- a/src/g_initialize.c
+>>>> +++ b/src/g_initialize.c
+>>>>
+>>>> Fix the warning for getuid, geteuid
+>>>> g_initialize.c: In function 'linux_initialize':
+>>>> g_initialize.c:275:5: warning: implicit declaration of function 'getuid' [-Wimplicit-function-declaration]
+>>>> g_initialize.c:275:5: warning: implicit declaration of function 'geteuid' [-Wimplicit-function-declaration]
+>>>>
+>>>> Upstream-Status: Pending
+>>>> Signed-off-by: Yao Zhao <yao.zhao@windriver.com>
+>>>>
+>>>> @@ -29,6 +29,8 @@
+>>>>   #include "mglueP.h"
+>>>>   #include <stdlib.h>
+>>>>   +#include <unistd.h>   /*getuid, geteuid */
+>>>> +#include <sys/types.h>
+>>>>   #include <stdio.h>
+>>>>   #include <string.h>
+>>>>   #include <ctype.h>
+>>>> --- a/src/g_inq_cred.c
+>>>> +++ b/src/g_inq_cred.c
+>>>> 1) add free if malloc failed for (*mechanisms)->elements
+>>>> 2) g_inq_cred.c: In function 'gss_inquire_cred':
+>>>> g_inq_cred.c:161:8: warning: passing argument 3 of 'generic_gss_copy_oid' from incompatible pointer type [enabled by default]
+>>>>
+>>>> Upstream-Status: Pending
+>>>> Signed-off-by: Yao Zhao <yao.zhao@windriver.com>
+>>>>
+>>>> @@ -152,13 +152,15 @@ gss_OID_set *        mechanisms;
+>>>>                    union_cred->count);
+>>>>       if ((*mechanisms)->elements == NULL) {
+>>>>           *minor_status = ENOMEM;
+>>>> +        free(*mechanisms);
+>>>> +        *mechanisms = GSS_C_NO_OID_SET;
+>>>>           return (GSS_S_FAILURE);
+>>>>       }
+>>>>         for (i=0; i < union_cred->count; i++) {
+>>>> -        status = generic_gss_copy_oid(minor_status,
+>>>> +        status = generic_gss_add_oid_set_member(minor_status,
+>>>>                             &union_cred->mechs_array[i],
+>>>> -                      &((*mechanisms)->elements[i]));
+>>>> +                      mechanisms);
+>>>>           if (status != GSS_S_COMPLETE)
+>>>>               break;
+>>>>       }
+>>>> --- a/src/mglueP.h
+>>>> +++ b/src/mglueP.h
+>>>> fix the warning:
+>>>> warning: implicit declaration of function 'generic_gss_copy_oid_set' [-Wimplicit-function-declaration]
+>>>>
+>>>> Upstream-Status: Pending
+>>>> Signed-off-by: Yao Zhao <yao.zhao@windriver.com>
+>>>>
+>>>> @@ -447,6 +447,12 @@ OM_uint32 generic_gss_copy_oid
+>>>>           gss_OID *        /* new_oid */
+>>>>           );
+>>>>   +OM_uint32 generic_gss_copy_oid_set
+>>>> +       (OM_uint32 *minor_status,    /* minor_status */
+>>>> +        const gss_OID_set_desc * const oidset,    /* oid */
+>>>> +        gss_OID_set *new_oidset            /* new_oid */
+>>>> +       );
+>>>> +
+>>>>   OM_uint32 generic_gss_create_empty_oid_set
+>>>>          (OM_uint32 *,    /* minor_status */
+>>>>           gss_OID_set *    /* oid_set */
+> 
