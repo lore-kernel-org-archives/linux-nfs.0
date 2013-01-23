@@ -1,176 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail1.windriver.com ([147.11.146.13]:42000 "EHLO
-	mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754381Ab3AWSX6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2013 13:23:58 -0500
-Message-ID: <51002AA4.6090607@windriver.com>
-Date: Wed, 23 Jan 2013 13:23:32 -0500
-From: Yao Zhao <yao.zhao@windriver.com>
+Received: from mx12.netapp.com ([216.240.18.77]:64897 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751163Ab3AWSlc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2013 13:41:32 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Steve Dickson <steved@redhat.com>
+CC: David Quigley <selinux@davequigley.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 06/14] NFSv4: Add label recommended attribute and NFSv4
+ flags
+Date: Wed, 23 Jan 2013 18:41:31 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9183324D4@sacexcmbx05-prd.hq.netapp.com>
+References: <1358862042-27520-1-git-send-email-steved@redhat.com>
+	 <1358862042-27520-7-git-send-email-steved@redhat.com>
+In-Reply-To: <1358862042-27520-7-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-To: Steve Dickson <SteveD@redhat.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH]fix bugs and compiling warnings in libgssglue
-References: <50577508.90004@windriver.com> <20121019122650.GA20324@fieldses.org> <50816199.9000900@RedHat.com> <50FDAC3A.3040806@windriver.com> <51002A20.30700@RedHat.com>
-In-Reply-To: <51002A20.30700@RedHat.com>
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 13-01-23 01:21 PM, Steve Dickson wrote:
->
-> On 21/01/13 15:59, Yao Zhao wrote:
->> On 12-10-19 10:20 AM, Steve Dickson wrote:
->>> On 19/10/12 08:26, J. Bruce Fields wrote:
->>>> Steve, is it you that maintains libgssglue now?
->>> Yes, I do. Thanks for the ping. I did miss this...
->> Hi Steve,
->>
->> Just want to follow up whether these are fixed?
-> Yes they were... in libgssglue-0.5
-Thanks Steve!
-Could you give me a link where to find it? I couldn't find it at
-http://www.citi.umich.edu/projects/nfsv4/linux/libgssglue/
+On Tue, 2013-01-22 at 08:40 -0500, Steve Dickson wrote:
+> From: David Quigley <dpquigl@davequigley.com>
+> 
+> This patch adds several new flags to allow the NFS client and server to
+> determine if this attribute is supported and if it is being sent over the wire.
+> 
+> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+> ---
+>  include/linux/nfs4.h      | 1 +
+>  include/linux/nfs_fs_sb.h | 1 +
+>  include/linux/nfs_xdr.h   | 5 ++++-
+>  include/uapi/linux/nfs4.h | 1 +
+>  4 files changed, 7 insertions(+), 1 deletion(-)
+> 
+> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+> index e111fa4..f9235b4 100644
+> --- a/include/linux/nfs4.h
+> +++ b/include/linux/nfs4.h
+> @@ -373,6 +373,7 @@ enum lock_type4 {
+>  #define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
+>  #define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
+>  #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
+> +#define FATTR4_WORD2_SECURITY_LABEL     (1UL << 17)
+>  #define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
+>  
+>  /* MDS threshold bitmap bits */
+> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+> index 6c6ed15..d507357 100644
+> --- a/include/linux/nfs_fs_sb.h
+> +++ b/include/linux/nfs_fs_sb.h
+> @@ -197,5 +197,6 @@ struct nfs_server {
+>  #define NFS_CAP_MTIME		(1U << 13)
+>  #define NFS_CAP_POSIX_LOCK	(1U << 14)
+>  #define NFS_CAP_UIDGID_NOMAP	(1U << 15)
+> +#define NFS_CAP_SECURITY_LABEL	(1U << 16)
+>  
+>  #endif
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index 29adb12..fac114d 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -104,6 +104,7 @@ struct nfs_fattr {
+>  #define NFS_ATTR_FATTR_MOUNTED_ON_FILEID (1U << 22)
+>  #define NFS_ATTR_FATTR_OWNER_NAME	(1U << 23)
+>  #define NFS_ATTR_FATTR_GROUP_NAME	(1U << 24)
+> +#define NFS_ATTR_FATTR_V4_SECURITY_LABEL (1U << 25)
+>  
+>  #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
+>  		| NFS_ATTR_FATTR_MODE \
+> @@ -123,7 +124,8 @@ struct nfs_fattr {
+>  #define NFS_ATTR_FATTR_V3 (NFS_ATTR_FATTR \
+>  		| NFS_ATTR_FATTR_SPACE_USED)
+>  #define NFS_ATTR_FATTR_V4 (NFS_ATTR_FATTR \
+> -		| NFS_ATTR_FATTR_SPACE_USED)
+> +		| NFS_ATTR_FATTR_SPACE_USED \
+> +		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
+>  
+>  /*
+>   * Info on the file system
+> @@ -597,6 +599,7 @@ struct nfs_entry {
+>  	int			eof;
+>  	struct nfs_fh *		fh;
+>  	struct nfs_fattr *	fattr;
+> +	struct nfs4_label	*label;
 
-thanks,
-yao
-> steved.
->
->> thanks,
->> yao
->>> steved.
->>>
->>>> --b.
->>>>
->>>> On Mon, Sep 17, 2012 at 03:07:52PM -0400, Yao Zhao wrote:
->>>>> Hi,
->>>>>
->>>>> The 4 attached patches fixed a couple of warnings and bug found when
->>>>> compiling libgssglue.
->>>>>
->>>>> thanks,
->>>>> yao
->>>>> --- a/src/g_canon_name.c
->>>>> +++ b/src/g_canon_name.c
->>>>> fix the bug:
->>>>> g_canon_name.c:125:5: warning: passing argument 2 of '__gss_copy_namebuf' from incompatible pointer type [enabled by default]
->>>>>
->>>>> the 2nd argument of __gss_copy_namebuf should be address of *gss_buffer_t, \
->>>>> but a *gss_buffer_t is assigned.
->>>>>
->>>>> what __gss_copy_namebuf does is to alloc memory for a gss_buffer_desc and \
->>>>> copy from src and return its address.
->>>>>
->>>>> if following code failed, gss_release_name will free \
->>>>> union_canon_name->external_name.value if it is not NULL.
->>>>>
->>>>> OM_uint32 __gss_copy_namebuf(src, dest)
->>>>>       gss_buffer_t   src;
->>>>>       gss_buffer_t   *dest;
->>>>>
->>>>> typedef struct gss_union_name_t {
->>>>>      gss_mechanism        gss_mech;
->>>>>      gss_OID            name_type;
->>>>>      gss_buffer_desc        external_name;
->>>>>      /*
->>>>>       * These last two fields are only filled in for mechanism
->>>>>       * names.
->>>>>       */
->>>>>      gss_OID            mech_type;
->>>>>      gss_name_t        mech_name;
->>>>> } gss_union_name_desc, *gss_union_name_t;
->>>>>
->>>>> typedef struct gss_buffer_desc_struct {
->>>>>         size_t length;
->>>>>         void FAR *value;
->>>>> } gss_buffer_desc, FAR *gss_buffer_t;
->>>>>
->>>>> Upstream-Status: Pending
->>>>> Signed-off-by: Yao Zhao <yao.zhao@windriver.com>
->>>>>
->>>>> @@ -121,11 +121,17 @@ gss_canonicalize_name (OM_uint32 *minor_
->>>>>          union_canon_name->mech_name = mech_name;
->>>>>    -    status = __gss_copy_namebuf(&union_input_name->external_name,
->>>>> -                &union_canon_name->external_name);
->>>>> -    if (status != GSS_S_COMPLETE)
->>>>> -    goto failure;
->>>>> +    union_canon_name->external_name.value = (void*) malloc(
->>>>> +                      union_input_name->external_name.length + 1);
->>>>> +    if (!union_canon_name->external_name.value)
->>>>> +        goto failure;
->>>>>    +    memcpy(union_canon_name->external_name.value,
->>>>> +           union_input_name->external_name.value,
->>>>> +           union_input_name->external_name.length);
->>>>> +    union_canon_name->external_name.length =
->>>>> +                      union_input_name->external_name.length;
->>>>> +
->>>>>        if (union_input_name->name_type != GSS_C_NO_OID) {
->>>>>        status = generic_gss_copy_oid(minor_status,
->>>>>                          union_input_name->name_type,
->>>>> diff --git a/src/g_initialize.c b/src1/g_initialize.c
->>>>> index 82fcce1..200f173 100644
->>>>> --- a/src/g_initialize.c
->>>>> +++ b/src/g_initialize.c
->>>>>
->>>>> Fix the warning for getuid, geteuid
->>>>> g_initialize.c: In function 'linux_initialize':
->>>>> g_initialize.c:275:5: warning: implicit declaration of function 'getuid' [-Wimplicit-function-declaration]
->>>>> g_initialize.c:275:5: warning: implicit declaration of function 'geteuid' [-Wimplicit-function-declaration]
->>>>>
->>>>> Upstream-Status: Pending
->>>>> Signed-off-by: Yao Zhao <yao.zhao@windriver.com>
->>>>>
->>>>> @@ -29,6 +29,8 @@
->>>>>    #include "mglueP.h"
->>>>>    #include <stdlib.h>
->>>>>    +#include <unistd.h>   /*getuid, geteuid */
->>>>> +#include <sys/types.h>
->>>>>    #include <stdio.h>
->>>>>    #include <string.h>
->>>>>    #include <ctype.h>
->>>>> --- a/src/g_inq_cred.c
->>>>> +++ b/src/g_inq_cred.c
->>>>> 1) add free if malloc failed for (*mechanisms)->elements
->>>>> 2) g_inq_cred.c: In function 'gss_inquire_cred':
->>>>> g_inq_cred.c:161:8: warning: passing argument 3 of 'generic_gss_copy_oid' from incompatible pointer type [enabled by default]
->>>>>
->>>>> Upstream-Status: Pending
->>>>> Signed-off-by: Yao Zhao <yao.zhao@windriver.com>
->>>>>
->>>>> @@ -152,13 +152,15 @@ gss_OID_set *        mechanisms;
->>>>>                     union_cred->count);
->>>>>        if ((*mechanisms)->elements == NULL) {
->>>>>            *minor_status = ENOMEM;
->>>>> +        free(*mechanisms);
->>>>> +        *mechanisms = GSS_C_NO_OID_SET;
->>>>>            return (GSS_S_FAILURE);
->>>>>        }
->>>>>          for (i=0; i < union_cred->count; i++) {
->>>>> -        status = generic_gss_copy_oid(minor_status,
->>>>> +        status = generic_gss_add_oid_set_member(minor_status,
->>>>>                              &union_cred->mechs_array[i],
->>>>> -                      &((*mechanisms)->elements[i]));
->>>>> +                      mechanisms);
->>>>>            if (status != GSS_S_COMPLETE)
->>>>>                break;
->>>>>        }
->>>>> --- a/src/mglueP.h
->>>>> +++ b/src/mglueP.h
->>>>> fix the warning:
->>>>> warning: implicit declaration of function 'generic_gss_copy_oid_set' [-Wimplicit-function-declaration]
->>>>>
->>>>> Upstream-Status: Pending
->>>>> Signed-off-by: Yao Zhao <yao.zhao@windriver.com>
->>>>>
->>>>> @@ -447,6 +447,12 @@ OM_uint32 generic_gss_copy_oid
->>>>>            gss_OID *        /* new_oid */
->>>>>            );
->>>>>    +OM_uint32 generic_gss_copy_oid_set
->>>>> +       (OM_uint32 *minor_status,    /* minor_status */
->>>>> +        const gss_OID_set_desc * const oidset,    /* oid */
->>>>> +        gss_OID_set *new_oidset            /* new_oid */
->>>>> +       );
->>>>> +
->>>>>    OM_uint32 generic_gss_create_empty_oid_set
->>>>>           (OM_uint32 *,    /* minor_status */
->>>>>            gss_OID_set *    /* oid_set */
+This probably needs a forward declaration of struct nfs4_label.
+Particularly since the definition only appears in patch 07/14...
 
+>  	unsigned char		d_type;
+>  	struct nfs_server *	server;
+>  };
+> diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
+> index 788128e..dcc8582 100644
+> --- a/include/uapi/linux/nfs4.h
+> +++ b/include/uapi/linux/nfs4.h
+> @@ -25,6 +25,7 @@
+>  #define NFS4_MAXNAMLEN		NAME_MAX
+>  #define NFS4_OPAQUE_LIMIT	1024
+>  #define NFS4_MAX_SESSIONID_LEN	16
+> +#define NFS4_MAXLABELLEN	4096
+>  
+>  #define NFS4_ACCESS_READ        0x0001
+>  #define NFS4_ACCESS_LOOKUP      0x0002
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
