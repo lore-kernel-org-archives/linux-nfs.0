@@ -1,48 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:61119 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751639Ab3AGRyG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jan 2013 12:54:06 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Tejun Heo <tj@kernel.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Adamson, Dros" <Weston.Adamson@netapp.com>,
-        Bruce Fields <bfields@fieldses.org>
-Subject: Re: [PATCH 1/3] SUNRPC: Ensure that we free the rpc_task after
- cleanups are done
-Date: Mon, 7 Jan 2013 17:54:03 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA911991561@SACEXCMBX04-PRD.hq.netapp.com>
-References: <0EC8763B847DB24D9ADF5EBD9CD7B419125A16A9@SACEXCMBX02-PRD.hq.netapp.com>
-	 <1357323302-12944-1-git-send-email-Trond.Myklebust@netapp.com>
-	 <20130107174720.GN3926@htj.dyndns.org>
-In-Reply-To: <20130107174720.GN3926@htj.dyndns.org>
-Content-Type: text/plain; charset="utf-7"
+Received: from mail.candelatech.com ([208.74.158.172]:50573 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751345Ab3AWHOy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2013 02:14:54 -0500
+Message-ID: <50FF8DEC.9070901@candelatech.com>
+Date: Tue, 22 Jan 2013 23:14:52 -0800
+From: Ben Greear <greearb@candelatech.com>
 MIME-Version: 1.0
+To: Eric Dumazet <eric.dumazet@gmail.com>
+CC: netdev <netdev@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: 3.7.3+:  Bad paging request in ip_rcv_finish while running NFS
+ traffic.
+References: <50FDADF4.3060601@candelatech.com>  <50FDDE35.7070806@candelatech.com>  <1358829606.3464.3151.camel@edumazet-glaptop>  <50FE2A57.3040804@candelatech.com>  <50FEC796.5090404@candelatech.com>  <1358875020.3464.4006.camel@edumazet-glaptop>  <1358875607.3464.4020.camel@edumazet-glaptop>  <50FF102F.2050008@candelatech.com>  <50FF4BC9.1060206@candelatech.com> <1358921493.12374.737.camel@edumazet-glaptop>
+In-Reply-To: <1358921493.12374.737.camel@edumazet-glaptop>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2013-01-07 at 09:47 -0800, Tejun Heo wrote:
-+AD4- On Fri, Jan 04, 2013 at 01:15:00PM -0500, Trond Myklebust wrote:
-+AD4- +AD4- +- +ACo- Tejun Heo states:
-+AD4- +AD4- +- +ACo- +ACI-Workqueue currently considers two work items to be the same if they're
-+AD4- +AD4- +- +ACo- on the same address and won't execute them concurrently - ie. it
-+AD4- +AD4- +- +ACo- makes a work item which is queued again while being executed wait
-+AD4- +AD4- +- +ACo- for the previous execution to complete.
-+AD4- +AD4- +- +ACo-
-+AD4- +AD4- +- +ACo- If a work function frees the work item, and then waits for an event
-+AD4- +AD4- +- +ACo- which should be performed by another work item and +ACo-that+ACo- work item
-+AD4- +AD4- +- +ACo- recycles the freed work item, it can create a false dependency loop.
-+AD4- +AD4- +- +ACo- There really is no reliable way to detect this short of verifying
-+AD4- +AD4- +- +ACo- every memory free.+ACI-
-+AD4- 
-+AD4- I will document it in Documentation/workqueue.txt.
+On 01/22/2013 10:11 PM, Eric Dumazet wrote:
+> On Tue, 2013-01-22 at 18:32 -0800, Ben Greear wrote:
+>
+>> diff --git a/net/core/dst.c b/net/core/dst.c
+>> index ee6153e..234b168 100644
+>> --- a/net/core/dst.c
+>> +++ b/net/core/dst.c
+>> @@ -245,6 +245,7 @@ again:
+>>                   dst->ops->destroy(dst);
+>>           if (dst->dev)
+>>                   dev_put(dst->dev);
+>> +       dst->input = dst->output = 0xdeadbeef;
+>>           kmem_cache_free(dst->ops->kmem_cachep, dst);
+>
+> Great !
+>
+> You could comment the kmem_cache_free() as well to get better chances to
+> hit the bug, and maybe start a bisection to find the faulty commit ?
 
-Thanks Tejun+ACE-
+I suspect the bug goes back at least as far as 3.3.  And since
+I need the NFS patches for this test case, bisecting will be pure hell.
+
+I'll work on some more code instrumentation tomorrow.
+
+One thing that came to mind while I was looking at the code today:
+
+How are the non-ref-counted dst objects used safely?  Any chance
+that tearing down the IP protocol on a device (or deleting a device)
+could delete a dst that is referenced by an skb (and thus crashes as
+I see)?
+
+Thanks,
+Ben
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
-NetApp
-Trond.Myklebust+AEA-netapp.com
-www.netapp.com
