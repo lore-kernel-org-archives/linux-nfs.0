@@ -1,69 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42146 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751258Ab3AHV2X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Jan 2013 16:28:23 -0500
-Date: Tue, 8 Jan 2013 16:28:16 -0500
-To: Russell King <rmk@arm.linux.org.uk>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: Commit 7032a3dd9 (svcrpc: demote some printks to a dprintk) adds
- warnings
-Message-ID: <20130108212816.GA24572@fieldses.org>
-References: <20130108121300.GA2251@flint.arm.linux.org.uk>
+Received: from mail.windriver.com ([147.11.1.11]:35215 "EHLO
+	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751650Ab3AWUsR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2013 15:48:17 -0500
+Message-ID: <51004C7B.30409@windriver.com>
+Date: Wed, 23 Jan 2013 15:47:55 -0500
+From: Yao Zhao <yao.zhao@windriver.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130108121300.GA2251@flint.arm.linux.org.uk>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Steve Dickson <SteveD@redhat.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH]fix bugs and compiling warnings in libgssglue
+References: <50577508.90004@windriver.com> <20121019122650.GA20324@fieldses.org> <50816199.9000900@RedHat.com> <50FDAC3A.3040806@windriver.com> <51002A20.30700@RedHat.com> <51002AA4.6090607@windriver.com> <510042E6.4060701@RedHat.com>
+In-Reply-To: <510042E6.4060701@RedHat.com>
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 08, 2013 at 12:13:00PM +0000, Russell King wrote:
-> Bruce,
-> 
-> Your commit below causes a new build warning in the kernel:
-> 
-> net/sunrpc/svc.c: In function 'svc_printk':
-> net/sunrpc/svc.c:1050:7: warning: unused variable 'buf'
-> 
-> which affects all ARM builds; it is the only warning in a lot of cases.
-> Please can you resolve this new warning using whatever method you feel
-> is most appropriate, thanks.
+On 13-01-23 03:07 PM, Steve Dickson wrote:
+> On 23/01/13 13:23, Yao Zhao wrote:
+>> On 13-01-23 01:21 PM, Steve Dickson wrote:
+>> Could you give me a link where to find it? I couldn't find it at
+>> http://www.citi.umich.edu/projects/nfsv4/linux/libgssglue/
+> The git tree is at:
+>      git://linux-nfs.org/~steved/libgssglue.git
+>
+> steved.
+HI Steve,
 
-Bah, these "unused variable" warnings for buffers unused in the
-!RPC_DEBUG case keep popping up.
+I checked out this tree, the latest commit is from 2009.
 
-I guess I'll commit the following for 3.9.
+which branch you refer to for the 0.5? master?
 
---b.
+I didn't see changes.
 
-commit 31e815406973ef86e2e42a36086d65afb8f4e396
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Tue Jan 8 16:22:15 2013 -0500
-
-    svcrpc: silence "unused variable" warning in !RPC_DEBUG case
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index dbf12ac..b9ba2a8 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1042,6 +1042,7 @@ static void svc_unregister(const struct svc_serv *serv, struct net *net)
- /*
-  * dprintk the given error with the address of the client that caused it.
-  */
-+#ifdef RPC_DEBUG
- static __printf(2, 3)
- void svc_printk(struct svc_rqst *rqstp, const char *fmt, ...)
- {
-@@ -1058,6 +1059,9 @@ void svc_printk(struct svc_rqst *rqstp, const char *fmt, ...)
- 
- 	va_end(args);
- }
-+#else
-+static __printf(2,3) void svc_printk(struct svc_rqst *rqstp, const char *fmt, ...) {}
-+#endif
- 
- /*
-  * Common routine for processing the RPC request.
+yao
