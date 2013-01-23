@@ -1,40 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f45.google.com ([209.85.215.45]:60505 "EHLO
-	mail-la0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757365Ab3AQQx1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jan 2013 11:53:27 -0500
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: linux-kernel@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, wine-devel@winehq.org
-Subject: [PATCH v2 6/8] CIFS: Translate SHARING_VIOLATION to -ETXTBSY error code for SMB2
-Date: Thu, 17 Jan 2013 20:53:02 +0400
-Message-Id: <1358441584-8783-6-git-send-email-piastry@etersoft.ru>
-In-Reply-To: <1358441584-8783-1-git-send-email-piastry@etersoft.ru>
-References: <1358441584-8783-1-git-send-email-piastry@etersoft.ru>
+Received: from mail-pa0-f52.google.com ([209.85.220.52]:52793 "EHLO
+	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751465Ab3AWGLg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2013 01:11:36 -0500
+Subject: Re: 3.7.3+:  Bad paging request in ip_rcv_finish while running NFS
+ traffic.
+From: Eric Dumazet <eric.dumazet@gmail.com>
+To: Ben Greear <greearb@candelatech.com>
+Cc: netdev <netdev@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+In-Reply-To: <50FF4BC9.1060206@candelatech.com>
+References: <50FDADF4.3060601@candelatech.com>
+	 <50FDDE35.7070806@candelatech.com>
+	 <1358829606.3464.3151.camel@edumazet-glaptop>
+	 <50FE2A57.3040804@candelatech.com>  <50FEC796.5090404@candelatech.com>
+	 <1358875020.3464.4006.camel@edumazet-glaptop>
+	 <1358875607.3464.4020.camel@edumazet-glaptop>
+	 <50FF102F.2050008@candelatech.com>  <50FF4BC9.1060206@candelatech.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 22 Jan 2013 22:11:33 -0800
+Message-ID: <1358921493.12374.737.camel@edumazet-glaptop>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-to make it match CIFS and VFS variants.
+On Tue, 2013-01-22 at 18:32 -0800, Ben Greear wrote:
 
-Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
----
- fs/cifs/smb2maperror.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+> diff --git a/net/core/dst.c b/net/core/dst.c
+> index ee6153e..234b168 100644
+> --- a/net/core/dst.c
+> +++ b/net/core/dst.c
+> @@ -245,6 +245,7 @@ again:
+>                  dst->ops->destroy(dst);
+>          if (dst->dev)
+>                  dev_put(dst->dev);
+> +       dst->input = dst->output = 0xdeadbeef;
+>          kmem_cache_free(dst->ops->kmem_cachep, dst);
 
-diff --git a/fs/cifs/smb2maperror.c b/fs/cifs/smb2maperror.c
-index 494c912..11e589e 100644
---- a/fs/cifs/smb2maperror.c
-+++ b/fs/cifs/smb2maperror.c
-@@ -356,7 +356,7 @@ static const struct status_to_posix_error smb2_error_map_table[] = {
- 	{STATUS_PORT_CONNECTION_REFUSED, -ECONNREFUSED,
- 	"STATUS_PORT_CONNECTION_REFUSED"},
- 	{STATUS_INVALID_PORT_HANDLE, -EIO, "STATUS_INVALID_PORT_HANDLE"},
--	{STATUS_SHARING_VIOLATION, -EBUSY, "STATUS_SHARING_VIOLATION"},
-+	{STATUS_SHARING_VIOLATION, -ETXTBSY, "STATUS_SHARING_VIOLATION"},
- 	{STATUS_QUOTA_EXCEEDED, -EDQUOT, "STATUS_QUOTA_EXCEEDED"},
- 	{STATUS_INVALID_PAGE_PROTECTION, -EIO,
- 	"STATUS_INVALID_PAGE_PROTECTION"},
--- 
-1.8.1.1
+Great !
+
+You could comment the kmem_cache_free() as well to get better chances to
+hit the bug, and maybe start a bisection to find the faulty commit ?
+
+
 
