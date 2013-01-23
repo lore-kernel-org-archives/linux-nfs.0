@@ -1,61 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f178.google.com ([209.85.216.178]:51388 "EHLO
-	mail-qc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754677Ab3AHWYR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jan 2013 17:24:17 -0500
-Received: by mail-qc0-f178.google.com with SMTP id j34so1147628qco.9
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jan 2013 14:24:16 -0800 (PST)
-Date: Tue, 8 Jan 2013 17:16:51 -0500
-From: Chris Perl <chris.perl@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Possible Race Condition on SIGKILL
-Message-ID: <20130108221651.GD30872@nyc-qws-132.nyc.delacy.com>
-References: <20130107202021.GC16957@nyc-qws-132.nyc.delacy.com>
- <1357590561.28341.11.camel@lade.trondhjem.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA911991BE9@SACEXCMBX04-PRD.hq.netapp.com>
- <20130107220047.GA30814@nyc-qws-132.nyc.delacy.com>
- <20130108184011.GA30872@nyc-qws-132.nyc.delacy.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA911993608@SACEXCMBX04-PRD.hq.netapp.com>
- <20130108210106.GB30872@nyc-qws-132.nyc.delacy.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA911993A92@SACEXCMBX04-PRD.hq.netapp.com>
- <20130108212343.GC30872@nyc-qws-132.nyc.delacy.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA911993B82@SACEXCMBX04-PRD.hq.netapp.com>
+Received: from mx1.redhat.com ([209.132.183.28]:21317 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756480Ab3AWQUp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Jan 2013 11:20:45 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r0NGKiGM004896
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 23 Jan 2013 11:20:45 -0500
+Received: from smallhat.bos.devel.redhat.com (smallhat.boston.devel.redhat.com [10.16.60.65])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r0NGKisA030254
+	for <linux-nfs@vger.kernel.org>; Wed, 23 Jan 2013 11:20:44 -0500
+Message-ID: <51000DDF.1020300@RedHat.com>
+Date: Wed, 23 Jan 2013 11:20:47 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA911993B82@SACEXCMBX04-PRD.hq.netapp.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Linux NFS status meeting 1/24/13
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> The lock is associated with the rpc_task. Threads can normally only
-> access an rpc_task when it is on a wait queue (while holding the wait
-> queue lock) unless they are given ownership of the rpc_task.
-> 
-> IOW: the scenario you describe should not be possible, since it relies
-> on thread 1 assigning the lock to the rpc_task after it has been removed
-> from the wait queue.
+A reminder....  There will be a status meeting tomorrow (Thur Jan 23)
 
-Hrm.  I guess I'm in over my head here. Apologoies if I'm just asking
-silly bumbling questions.  You can start ignoring me at any time. :)
+Note, I've taking the 'p' off the 'NFS' in the subject line since 
+this meeting has become more of a general NFS community status meeting... 
 
-I was talking about setting (or leaving set) the XPRT_LOCKED bit in
-rpc_xprt->state.  By "assigning the lock" I really just mean that thread
-1 leaves XPRT_LOCKED set in rpc_xprt->state and sets rpc_xprt->snd_task
-to thread 2.
+The general format is, Bruce will give server update, Trond will give
+a client update and I will give an nfs-utils and distor update.
+Then we open up the floor to any other contributors, like Andy, Benny,
+Boaz, etc, who have been active in recent development efforts...
 
-> If you are recompiling the kernel, perhaps you can also add in a patch
-> to rpc_show_tasks() to display the current value of
-> clnt->cl_xprt->snd_task?
+We try to keep the meeting under 30mins and very to-the-point. Meaning
+subjects are quickly take off-line or on to the mailing list. 
 
-Sure.  This is what 'echo 0 > /proc/sys/sunrpc/rpc_debug' shows after
-the hang (with my extra prints):
+Feel free to join if this something of interest...
+ 
+Time: 9:30 AM PST (12:30 PM EST)
 
-# cat /proc/kmsg
-...
-<6>client: ffff88082b6c9c00, xprt: ffff880824aef800, snd_task: ffff881029c63ec0
-<6>client: ffff88082b6c9e00, xprt: ffff880824aef800, snd_task: ffff881029c63ec0
-<6>-pid- flgs status -client- --rqstp- -timeout ---ops--
-<6>18091 0080    -11 ffff88082b6c9e00   (null)      ffff0770ns3 ACCESS a:call_reserveresult q:xprt_sending
-<6>client: ffff88082a244600, xprt: ffff88082a343000, snd_task:   (null)
-<6>client: ffff880829181600, xprt: ffff88082a343000, snd_task:   (null)
-<6>client: ffff880828170200, xprt: ffff880824aef800, snd_task: ffff881029c63ec0
+The call in numbers are:
+U.S. and Canada: (800) 451-8679
+International dial-in number: (212) 729-5016
+Israel Toll-Free: 1-809-462-557
+Conference code: 564.272.1552
+
+steved.
+
