@@ -1,70 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f180.google.com ([209.85.216.180]:54281 "EHLO
-	mail-qc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753941Ab3ACWer (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jan 2013 17:34:47 -0500
-Date: Thu, 3 Jan 2013 17:34:44 -0500
-From: Tejun Heo <tj@kernel.org>
+Received: from mail.avalus.com ([89.16.176.221]:44655 "EHLO mail.avalus.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752867Ab3AWPXA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Jan 2013 10:23:00 -0500
+Date: Wed, 23 Jan 2013 15:22:46 +0000
+From: Alex Bligh <alex@alex.org.uk>
+Reply-To: Alex Bligh <alex@alex.org.uk>
 To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        "Adamson, Dros" <Weston.Adamson@netapp.com>,
-        Dave Jones <davej@redhat.com>,
-        Linux Kernel <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: nfsd oops on Linus' current tree.
-Message-ID: <20130103223444.GF2753@mtj.dyndns.org>
-References: <20121221230849.GB29739@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA911972C73@SACEXCMBX04-PRD.hq.netapp.com>
- <20121221232609.GC29739@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA911972CA1@SACEXCMBX04-PRD.hq.netapp.com>
- <20121221234530.GA30048@fieldses.org>
- <0EC8763B847DB24D9ADF5EBD9CD7B4191259E4A2@SACEXCMBX02-PRD.hq.netapp.com>
- <20130103201120.GA2096@fieldses.org>
- <20130103220814.GB2753@mtj.dyndns.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9119886EE@SACEXCMBX04-PRD.hq.netapp.com>
- <20130103222639.GE2753@mtj.dyndns.org>
+cc: linux-nfs@vger.kernel.org, ian.campbell@citrix.com,
+        Alex Bligh <alex@alex.org.uk>
+Subject: Re: Fatal crash with NFS, AIO & tcp retransmit
+Message-ID: <DABFD69DFA23FF330123B298@nimrod.local>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA915C1781E@SACEXCMBX04-PRD.hq.netapp.com>
+References: <93D3AE9B4990994B2BCA75A9@Ximines.local>		
+ <4FA345DA4F4AE44899BD2B03EEEC2FA915C163B9@SACEXCMBX04-PRD.hq.netapp.com>		
+ <E268D60FA8BCE2E18CCE24D7@Ximines.local>	
+ <4FA345DA4F4AE44899BD2B03EEEC2FA915C17543@SACEXCMBX04-PRD.hq.netapp.com>	
+ <734E2E0455BD4515C657BA69@Ximines.local>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA915C1781E@SACEXCMBX04-PRD.hq.netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130103222639.GE2753@mtj.dyndns.org>
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 03, 2013 at 05:26:39PM -0500, Tejun Heo wrote:
-> Hello, Trond.
-> 
-> On Thu, Jan 03, 2013 at 10:12:32PM +0000, Myklebust, Trond wrote:
-> > > The analysis is likely completely wrong, so please don't go off doing
-> > > something unnecessary.  Please take look at what's causing the
-> > > deadlocks again.
-> > 
-> > The analysis is a no-brainer:
-> > We see a deadlock due to one work item waiting for completion of another
-> > work item that is queued on the same CPU. There is no other dependency
-> > between the two work items.
-> 
-> What do you mean "waiting for completion of"?  Is one flushing the
-> other?  Or is one waiting for the other to take certain action?  How
-> are the two work items related?  Are they queued on the same
-> workqueue?  Can you create a minimal repro case of the observed
-> deadlock?
+Trond,
 
-Ooh, BTW, there was a bug where workqueue code created a false
-dependency between two work items.  Workqueue currently considers two
-work items to be the same if they're on the same address and won't
-execute them concurrently - ie. it makes a work item which is queued
-again while being executed wait for the previous execution to
-complete.
+--On 21 January 2013 17:20:36 +0000 "Myklebust, Trond" 
+<Trond.Myklebust@netapp.com> wrote:
 
-If a work function frees the work item, and then waits for an event
-which should be performed by another work item and *that* work item
-recycles the freed work item, it can create a false dependency loop.
-There really is no reliable way to detect this short of verifying
-every memory free.  A patch is queued to make such occurrences less
-likely (work functions should also match for two work items considered
-the same), but if you're seeing this, the best thing to do is freeing
-the work item at the end of the work function.
+>> So, just to be clear, if a process is using NFS and AIO with O_DSYNC
+>> (but not O_DIRECT) - which is I think what QEMU is meant to be doing -
+>> then it should *never* be zero copy (even if writes happen to be
+>> appropriately aligned). Is that correct? If so, I can strace the
+>> process and see exactly what flags it is using.
+>>
+>
+> That is correct. If you want zero-copy, then O_DIRECT is your thing
+> (with or without aio). Otherwise, the kernel will always write to disk
+> by copying through the page cache.
 
-Thanks.
+Just to follow up on this, QEMU (specifically hw/xen_disk.c) was using
+O_DIRECT. If O_DIRECT is turned off, we get an additional page copy
+but the bug does not appear.
+
+It thus appears that the root of the problem is that if an AIO NFS
+request is made with O_DIRECT, AIO can report the request is completed
+even when the segment may need to be retransmitted, and whilst the
+TCP stack correctly holds a reference to the page concerned, this
+is not currently preventing Xen unmapping it as Xen thinks the IO
+has completed.
+
+I believe this problem may apply to iSCSI and for that matter (e.g.)
+DRDB too.
 
 -- 
-tejun
+Alex Bligh
