@@ -1,218 +1,315 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.candelatech.com ([208.74.158.172]:43640 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752631Ab3AUUsU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2013 15:48:20 -0500
-From: greearb@candelatech.com
-To: linux-nfs@vger.kernel.org
-Cc: Ben Greear <greearb@candelatech.com>
-Subject: [RFC 09/13] nfs: Bind to srcaddr in rpcb_create.
-Date: Mon, 21 Jan 2013 12:45:55 -0800
-Message-Id: <1358801159-18829-10-git-send-email-greearb@candelatech.com>
-In-Reply-To: <1358801159-18829-1-git-send-email-greearb@candelatech.com>
-References: <1358801159-18829-1-git-send-email-greearb@candelatech.com>
+Received: from mx2.netapp.com ([216.240.18.37]:64911 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752449Ab3AWTHN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2013 14:07:13 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Steve Dickson <steved@redhat.com>
+CC: David Quigley <selinux@davequigley.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 07/14] NFSv4: Introduce new label structure
+Date: Wed, 23 Jan 2013 19:07:10 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA918333550@sacexcmbx05-prd.hq.netapp.com>
+References: <1358862042-27520-1-git-send-email-steved@redhat.com>
+	 <1358862042-27520-8-git-send-email-steved@redhat.com>
+In-Reply-To: <1358862042-27520-8-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Ben Greear <greearb@candelatech.com>
+On Tue, 2013-01-22 at 08:40 -0500, Steve Dickson wrote:
+> From: David Quigley <dpquigl@davequigley.com>
+> 
+> In order to mimic the way that NFSv4 ACLs are implemented we have created a
+> structure to be used to pass label data up and down the call chain. This patch
+> adds the new structure and new members to the required NFSv4 call structures.
+> 
+> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+> ---
+>  fs/nfs/inode.c          | 40 ++++++++++++++++++++++++++++++++++++++++
+>  include/linux/nfs4.h    |  8 ++++++++
+>  include/linux/nfs_fs.h  | 14 ++++++++++++++
+>  include/linux/nfs_xdr.h | 20 ++++++++++++++++++++
+>  4 files changed, 82 insertions(+)
+> 
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index ebeb94c..761bc17 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -255,6 +255,46 @@ nfs_init_locked(struct inode *inode, void *opaque)
+>  	return 0;
+>  }
+>  
+> +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
+> +struct nfs4_label *nfs4_label_alloc(gfp_t flags)
+> +{
+> +	struct nfs4_label *label = NULL;
+> +
+> +	label = kzalloc(sizeof(struct nfs4_label) + NFS4_MAXLABELLEN, flags);
+> +	if (label == NULL)
+> +		return NULL;
+> +
+> +	label->label = (void *)(label + 1);
 
-This more properly clones the existing client connection
-settings, allowing rpc calls to take advantage of routing
-rules based on source IP addresses.
+This is ugly. Why not use the more common construct of defining
 
-Signed-off-by: Ben Greear <greearb@candelatech.com>
----
- net/sunrpc/rpcb_clnt.c |   31 ++++++++++++++++++++++++++++---
- net/sunrpc/sunrpc.h    |   45 +++++++++++++++++++++++++++++++++++++++++++++
- net/sunrpc/xprtsock.c  |   42 ------------------------------------------
- 3 files changed, 73 insertions(+), 45 deletions(-)
+struct nfs4_label {
+	....
+	char label[NFS4_MAXLABELLEN];
+};
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index a70acae..462ee2a 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -31,6 +31,7 @@
- #include <linux/sunrpc/xprtsock.h>
- 
- #include "netns.h"
-+#include "sunrpc.h"
- 
- #ifdef RPC_DEBUG
- # define RPCDBG_FACILITY	RPCDBG_BIND
-@@ -346,12 +347,14 @@ out:
- }
- 
- static struct rpc_clnt *rpcb_create(struct net *net, const char *hostname,
--				    struct sockaddr *srvaddr, size_t salen,
--				    int proto, u32 version)
-+				    struct sockaddr *srvaddr,
-+				    size_t salen, int proto, u32 version,
-+				    struct sockaddr *srcaddr)
- {
- 	struct rpc_create_args args = {
- 		.net		= net,
- 		.protocol	= proto,
-+		.saddress	= srcaddr,
- 		.address	= srvaddr,
- 		.addrsize	= salen,
- 		.servername	= hostname,
-@@ -655,16 +658,38 @@ void rpcb_getport_async(struct rpc_task *task)
- 	struct rpc_task	*child;
- 	struct sockaddr_storage addr;
- 	struct sockaddr *sap = (struct sockaddr *)&addr;
-+	struct sockaddr_storage srcaddr;
-+	struct sockaddr *srcaddra = NULL;
- 	size_t salen;
- 	int status;
-+	struct sock_xprt *sxprt;
- 
- 	rcu_read_lock();
- 	do {
- 		clnt = rpcb_find_transport_owner(task->tk_client);
- 		xprt = xprt_get(rcu_dereference(clnt->cl_xprt));
- 	} while (xprt == NULL);
-+
-+	sxprt = container_of(xprt, struct sock_xprt, xprt);
- 	rcu_read_unlock();
- 
-+	/* We just want to bind to the IP, not the port */
-+	memset(&srcaddr, 0, sizeof(srcaddr));
-+	srcaddr.ss_family = sxprt->srcaddr.ss_family;
-+	if (sxprt->srcaddr.ss_family == AF_INET) {
-+		struct sockaddr_in *si = (struct sockaddr_in *)(&srcaddr);
-+		struct sockaddr_in *si2;
-+		si2 = (struct sockaddr_in *)(&sxprt->srcaddr);
-+		si->sin_addr.s_addr = si2->sin_addr.s_addr;
-+		srcaddra = (struct sockaddr *)(&srcaddr);
-+	} else if (sxprt->srcaddr.ss_family == AF_INET6) {
-+		struct sockaddr_in6 *si = (struct sockaddr_in6 *)(&srcaddr);
-+		struct sockaddr_in6 *si2;
-+		si2 = (struct sockaddr_in6 *)(&sxprt->srcaddr);
-+		memcpy(&si->sin6_addr, &si2->sin6_addr, sizeof(si2->sin6_addr));
-+		srcaddra = (struct sockaddr *)(&srcaddr);
-+	}
-+
- 	dprintk("RPC: %5u %s(%s, %u, %u, %d)\n",
- 		task->tk_pid, __func__,
- 		xprt->servername, clnt->cl_prog, clnt->cl_vers, xprt->prot);
-@@ -719,7 +744,7 @@ void rpcb_getport_async(struct rpc_task *task)
- 		task->tk_pid, __func__, bind_version);
- 
- 	rpcb_clnt = rpcb_create(xprt->xprt_net, xprt->servername, sap, salen,
--				xprt->prot, bind_version);
-+				xprt->prot, bind_version, srcaddra);
- 	if (IS_ERR(rpcb_clnt)) {
- 		status = PTR_ERR(rpcb_clnt);
- 		dprintk("RPC: %5u %s: rpcb_create failed, error %ld\n",
-diff --git a/net/sunrpc/sunrpc.h b/net/sunrpc/sunrpc.h
-index 14c9f6d..08f2ec5 100644
---- a/net/sunrpc/sunrpc.h
-+++ b/net/sunrpc/sunrpc.h
-@@ -37,6 +37,51 @@ struct rpc_buffer {
- 	char	data[];
- };
- 
-+struct sock_xprt {
-+	struct rpc_xprt		xprt;
-+
-+	/*
-+	 * Network layer
-+	 */
-+	struct socket		*sock;
-+	struct sock		*inet;
-+
-+	/*
-+	 * State of TCP reply receive
-+	 */
-+	__be32			tcp_fraghdr,
-+				tcp_xid,
-+				tcp_calldir;
-+
-+	u32			tcp_offset,
-+				tcp_reclen;
-+
-+	unsigned long		tcp_copied,
-+				tcp_flags;
-+
-+	/*
-+	 * Connection of transports
-+	 */
-+	struct delayed_work	connect_worker;
-+	struct sockaddr_storage	srcaddr;
-+	unsigned short		srcport;
-+
-+	/*
-+	 * UDP socket buffer size parameters
-+	 */
-+	size_t			rcvsize,
-+				sndsize;
-+
-+	/*
-+	 * Saved socket callback addresses
-+	 */
-+	void			(*old_data_ready)(struct sock *, int);
-+	void			(*old_state_change)(struct sock *);
-+	void			(*old_write_space)(struct sock *);
-+	void			(*old_error_report)(struct sock *);
-+};
-+
-+
- static inline int rpc_reply_expected(struct rpc_task *task)
- {
- 	return (task->tk_msg.rpc_proc != NULL) &&
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 32a016e..9cb9f16 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -213,48 +213,6 @@ static inline void xs_pktdump(char *msg, u32 *packet, unsigned int count)
- }
- #endif
- 
--struct sock_xprt {
--	struct rpc_xprt		xprt;
--
--	/*
--	 * Network layer
--	 */
--	struct socket *		sock;
--	struct sock *		inet;
--
--	/*
--	 * State of TCP reply receive
--	 */
--	__be32			tcp_fraghdr,
--				tcp_xid,
--				tcp_calldir;
--
--	u32			tcp_offset,
--				tcp_reclen;
--
--	unsigned long		tcp_copied,
--				tcp_flags;
--
--	/*
--	 * Connection of transports
--	 */
--	struct delayed_work	connect_worker;
--	struct sockaddr_storage	srcaddr;
--	unsigned short		srcport;
--
--	/*
--	 * UDP socket buffer size parameters
--	 */
--	size_t			rcvsize,
--				sndsize;
--
--	/*
--	 * Saved socket callback addresses
--	 */
--	void			(*old_data_ready)(struct sock *, int);
--	void			(*old_state_change)(struct sock *);
--	void			(*old_write_space)(struct sock *);
--};
- 
- /*
-  * TCP receive state flags
+Also, note that if NFS4_MAXLABELLEN == 4096, then the actual allocation
+above will result in an 8k memory slab being allocated. It would be nice
+to shrink that. Do we really expect 4k label sizes?
+
+> +	label->len = NFS4_MAXLABELLEN;
+> +	/* 0 is the null format meaning that the data is not to be translated */
+> +	label->lfs = 0;
+> +	label->pi = 0;
+
+If the label is allocated using kzalloc(), then the fields are trivially
+initialised to '0'.
+
+> +	return label;
+> +}
+> +EXPORT_SYMBOL_GPL(nfs4_label_alloc);
+> +
+> +void nfs4_label_init(struct nfs4_label *label)
+> +{
+> +	if (label && label->label) {
+> +		*(unsigned char *)label->label = 0;
+> +		label->len = NFS4_MAXLABELLEN;
+
+Is this the length of the label or of the buffer? If the latter, do we
+really need that, given that the size is a constant?
+
+> +		/* 0 is the null format meaning that the data is not
+> +		to be translated */
+> +		label->lfs = 0;
+> +		label->pi = 0;
+> +	}
+> +	return;
+> +}
+> +EXPORT_SYMBOL_GPL(nfs4_label_init);
+> +
+> +void nfs4_label_free(struct nfs4_label *label)
+> +{
+> +	kfree(label);
+> +	return;
+> +}
+> +EXPORT_SYMBOL_GPL(nfs4_label_free);
+> +#endif
+> +
+>  /*
+>   * This is our front-end to iget that looks up inodes by file handle
+>   * instead of inode number.
+> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+> index f9235b4..862471f 100644
+> --- a/include/linux/nfs4.h
+> +++ b/include/linux/nfs4.h
+> @@ -28,6 +28,14 @@ struct nfs4_acl {
+>  	struct nfs4_ace	aces[0];
+>  };
+>  
+> +struct nfs4_label {
+> +	uint32_t	lfs;
+> +	uint32_t	pi;
+> +	u32		len;
+> +	void		*label;
+> +};
+> +
+> +
+>  typedef struct { char data[NFS4_VERIFIER_SIZE]; } nfs4_verifier;
+>  
+>  struct nfs_stateid4 {
+> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+> index 1cc2568..f745f2c 100644
+> --- a/include/linux/nfs_fs.h
+> +++ b/include/linux/nfs_fs.h
+> @@ -489,6 +489,20 @@ extern int nfs_mountpoint_expiry_timeout;
+>  extern void nfs_release_automount_timer(void);
+>  
+>  /*
+> + * linux/fs/nfs/nfs4proc.c
+> + */
+> +
+> +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
+> +extern struct nfs4_label *nfs4_label_alloc(gfp_t flags);
+> +extern void nfs4_label_init(struct nfs4_label *);
+> +extern void nfs4_label_free(struct nfs4_label *);
+> +#else
+> +static inline struct nfs4_label *nfs4_label_alloc(gfp_t flags) { return NULL; }
+> +static inline void nfs4_label_init(void *label) {}
+> +static inline void nfs4_label_free(void *label) {}
+> +#endif
+> +
+> +/*
+>   * linux/fs/nfs/unlink.c
+>   */
+>  extern void nfs_complete_unlink(struct dentry *dentry, struct inode *);
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index fac114d..0b79127 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -350,6 +350,7 @@ struct nfs_openargs {
+>  	const u32 *		bitmask;
+>  	const u32 *		open_bitmap;
+>  	__u32			claim;
+> +	const struct nfs4_label *label;
+>  };
+>  
+>  struct nfs_openres {
+> @@ -359,6 +360,7 @@ struct nfs_openres {
+>  	struct nfs4_change_info	cinfo;
+>  	__u32                   rflags;
+>  	struct nfs_fattr *      f_attr;
+> +	struct nfs4_label	*f_label;
+>  	struct nfs_seqid *	seqid;
+>  	const struct nfs_server *server;
+>  	fmode_t			delegation_type;
+> @@ -403,6 +405,7 @@ struct nfs_closeres {
+>  	struct nfs4_sequence_res	seq_res;
+>  	nfs4_stateid            stateid;
+>  	struct nfs_fattr *	fattr;
+> +	struct nfs4_label	*label;
+>  	struct nfs_seqid *	seqid;
+>  	const struct nfs_server *server;
+>  };
+> @@ -476,6 +479,7 @@ struct nfs4_delegreturnargs {
+>  struct nfs4_delegreturnres {
+>  	struct nfs4_sequence_res	seq_res;
+>  	struct nfs_fattr * fattr;
+> +	struct nfs4_label	*label;
+
+Err... Is this needed? I couldn't find any code that uses it...
+
+Ditto on most of the struct nfs4_*args declarations, and several of the
+struct nfs4_*res too...
+
+>  	const struct nfs_server *server;
+>  };
+>  
+> @@ -496,6 +500,7 @@ struct nfs_readargs {
+>  struct nfs_readres {
+>  	struct nfs4_sequence_res	seq_res;
+>  	struct nfs_fattr *	fattr;
+> +	struct nfs4_label	*label;
+>  	__u32			count;
+>  	int                     eof;
+>  };
+> @@ -564,6 +569,7 @@ struct nfs_removeres {
+>  	struct nfs4_sequence_res 	seq_res;
+>  	const struct nfs_server *server;
+>  	struct nfs_fattr	*dir_attr;
+> +	struct nfs4_label	*dir_label;
+>  	struct nfs4_change_info	cinfo;
+>  };
+>  
+> @@ -576,6 +582,8 @@ struct nfs_renameargs {
+>  	const struct nfs_fh		*new_dir;
+>  	const struct qstr		*old_name;
+>  	const struct qstr		*new_name;
+> +	const struct nfs4_label		*old_label;
+> +	const struct nfs4_label		*new_label;
+>  };
+>  
+>  struct nfs_renameres {
+> @@ -583,8 +591,10 @@ struct nfs_renameres {
+>  	const struct nfs_server		*server;
+>  	struct nfs4_change_info		old_cinfo;
+>  	struct nfs_fattr		*old_fattr;
+> +	struct nfs4_label		*old_label;
+>  	struct nfs4_change_info		new_cinfo;
+>  	struct nfs_fattr		*new_fattr;
+> +	struct nfs4_label		*new_label;
+>  };
+>  
+>  /*
+> @@ -632,6 +642,7 @@ struct nfs_setattrargs {
+>  	struct iattr *                  iap;
+>  	const struct nfs_server *	server; /* Needed for name mapping */
+>  	const u32 *			bitmask;
+> +	const struct nfs4_label		*label;
+>  };
+>  
+>  struct nfs_setaclargs {
+> @@ -667,6 +678,7 @@ struct nfs_getaclres {
+>  struct nfs_setattrres {
+>  	struct nfs4_sequence_res	seq_res;
+>  	struct nfs_fattr *              fattr;
+> +	struct nfs4_label		*label;
+>  	const struct nfs_server *	server;
+>  };
+>  
+> @@ -712,6 +724,7 @@ struct nfs3_setaclargs {
+>  struct nfs_diropok {
+>  	struct nfs_fh *		fh;
+>  	struct nfs_fattr *	fattr;
+> +	struct nfs4_label	*label;
+>  };
+>  
+>  struct nfs_readlinkargs {
+> @@ -842,6 +855,7 @@ struct nfs4_accessres {
+>  	struct nfs4_sequence_res	seq_res;
+>  	const struct nfs_server *	server;
+>  	struct nfs_fattr *		fattr;
+> +	struct nfs4_label		*label;
+>  	u32				supported;
+>  	u32				access;
+>  };
+> @@ -864,6 +878,7 @@ struct nfs4_create_arg {
+>  	const struct iattr *		attrs;
+>  	const struct nfs_fh *		dir_fh;
+>  	const u32 *			bitmask;
+> +	const struct nfs4_label		*label;
+>  };
+>  
+>  struct nfs4_create_res {
+> @@ -871,6 +886,7 @@ struct nfs4_create_res {
+>  	const struct nfs_server *	server;
+>  	struct nfs_fh *			fh;
+>  	struct nfs_fattr *		fattr;
+> +	struct nfs4_label		*label;
+>  	struct nfs4_change_info		dir_cinfo;
+>  };
+>  
+> @@ -895,6 +911,7 @@ struct nfs4_getattr_res {
+>  	struct nfs4_sequence_res	seq_res;
+>  	const struct nfs_server *	server;
+>  	struct nfs_fattr *		fattr;
+> +	struct nfs4_label		*label;
+>  };
+>  
+>  struct nfs4_link_arg {
+> @@ -909,8 +926,10 @@ struct nfs4_link_res {
+>  	struct nfs4_sequence_res	seq_res;
+>  	const struct nfs_server *	server;
+>  	struct nfs_fattr *		fattr;
+> +	struct nfs4_label		*label;
+>  	struct nfs4_change_info		cinfo;
+>  	struct nfs_fattr *		dir_attr;
+> +	struct nfs4_label		*dir_label;
+>  };
+>  
+> 
+> @@ -926,6 +945,7 @@ struct nfs4_lookup_res {
+>  	const struct nfs_server *	server;
+>  	struct nfs_fattr *		fattr;
+>  	struct nfs_fh *			fh;
+> +	struct nfs4_label		*label;
+>  };
+>  
+>  struct nfs4_lookup_root_arg {
+
 -- 
-1.7.3.4
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
