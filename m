@@ -1,90 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-oa0-f47.google.com ([209.85.219.47]:45409 "EHLO
-	mail-oa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753139Ab3AFWMQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 6 Jan 2013 17:12:16 -0500
-Received: by mail-oa0-f47.google.com with SMTP id h1so17254620oag.34
-        for <linux-nfs@vger.kernel.org>; Sun, 06 Jan 2013 14:12:15 -0800 (PST)
+Received: from mx12.netapp.com ([216.240.18.77]:33365 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753010Ab3AWSbb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2013 13:31:31 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Steve Dickson <steved@redhat.com>
+CC: David Quigley <selinux@davequigley.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 01/14] Security: Add hook to calculate context based on
+ a negative dentry.
+Date: Wed, 23 Jan 2013 18:31:29 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91833244F@sacexcmbx05-prd.hq.netapp.com>
+References: <1358862042-27520-1-git-send-email-steved@redhat.com>
+	 <1358862042-27520-2-git-send-email-steved@redhat.com>
+In-Reply-To: <1358862042-27520-2-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-In-Reply-To: <20130104005345.GA4407@fieldses.org>
-References: <CADug+U6-=+_Xy41Lw3hnOqSR84Bo7MjKDL_PykiZVdUx=b8tAA@mail.gmail.com>
-	<20130104005345.GA4407@fieldses.org>
-Date: Mon, 7 Jan 2013 00:12:15 +0200
-Message-ID: <CADug+U698gbtJnxUEOn0b7MhejYugSSRsV9i_b7jMaRs08Wpog@mail.gmail.com>
-Subject: Re: [PATCH 1/1] sunrpc: Fix lockd sleeping until timeout
-From: Andriy Skulysh <andriy_skulysh@xyratex.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There is a race in enqueueing thread to a pool and
-waking up a thread.
-lockd doesn't wake up on reception of lock granted callback
-if svc_wake_up() is called before lockd's thread is added
-to a pool.
+On Tue, 2013-01-22 at 08:40 -0500, Steve Dickson wrote:
+> From: David Quigley <dpquigl@davequigley.com>
+> 
+> There is a time where we need to calculate a context without the
+> inode having been created yet. To do this we take the negative dentry and
+> calculate a context based on the process and the parent directory contexts.
+> 
+> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+> ---
+>  include/linux/security.h | 27 +++++++++++++++++++++++++++
+>  security/capability.c    |  8 ++++++++
+>  security/security.c      | 10 ++++++++++
+>  security/selinux/hooks.c | 35 +++++++++++++++++++++++++++++++++++
+>  4 files changed, 80 insertions(+)
 
-Signed-off-by: Andriy Skulysh <Andriy_Skulysh@xyratex.com>
----
- include/linux/sunrpc/svc.h |    1 +
- net/sunrpc/svc_xprt.c      |    9 ++++++++-
- 2 files changed, 9 insertions(+), 1 deletions(-)
+Linus won't accept a patch that changes the security code from Bruce or
+myself without acks from the security maintainers. I assume that means
+we need to get at least an ack from James Morris, and then possibly
+Stephen and Eric too...
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 676ddf5..1f0216b 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -50,6 +50,7 @@ struct svc_pool {
- 	unsigned int		sp_nrthreads;	/* # of threads in pool */
- 	struct list_head	sp_all_threads;	/* all server threads */
- 	struct svc_pool_stats	sp_stats;	/* statistics on pool operation */
-+	int			sp_task_pending;/* has pending task */
- } ____cacheline_aligned_in_smp;
-
- /*
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index b8e47fa..5a9d40c 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -499,7 +499,8 @@ void svc_wake_up(struct svc_serv *serv)
- 			rqstp->rq_xprt = NULL;
- 			 */
- 			wake_up(&rqstp->rq_wait);
--		}
-+		} else
-+			pool->sp_task_pending = 1;
- 		spin_unlock_bh(&pool->sp_lock);
- 	}
- }
-@@ -634,7 +635,13 @@ struct svc_xprt *svc_get_next_xprt(struct
-svc_rqst *rqstp, long timeout)
- 		 * long for cache updates.
- 		 */
- 		rqstp->rq_chandle.thread_wait = 1*HZ;
-+		pool->sp_task_pending = 0;
- 	} else {
-+		if (pool->sp_task_pending) {
-+			pool->sp_task_pending = 0;
-+			spin_unlock_bh(&pool->sp_lock);
-+			return ERR_PTR(-EAGAIN);
-+		}
- 		/* No data pending. Go to sleep */
- 		svc_thread_enqueue(pool, rqstp);
 
 -- 
-1.7.1
+Trond Myklebust
+Linux NFS client maintainer
 
-
-On 4 January 2013 02:53, J. Bruce Fields <bfields@fieldses.org> wrote:
-> That should be ERR_PTR(-EAGAIN).
-fixed.
->
-> Other than this this looks right to me....
->
-> Out of curiosity: how did you run across this problem, and how did you
-> test the fix?
-I can reproduce it with single ping_pong with nfs on top of Lustre filesystem.
-
-Andriy.
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
