@@ -1,59 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.candelatech.com ([208.74.158.172]:36094 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751070Ab3ARXBH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jan 2013 18:01:07 -0500
-Message-ID: <50F9D431.5040600@candelatech.com>
-Date: Fri, 18 Jan 2013 15:01:05 -0800
-From: Ben Greear <greearb@candelatech.com>
+Received: from countercultured.net ([209.51.175.25]:37816 "HELO
+	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1752923Ab3AXEEH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2013 23:04:07 -0500
+Message-ID: <5100B12B.1090706@davequigley.com>
+Date: Wed, 23 Jan 2013 22:57:31 -0500
+From: Dave Quigley <selinux@davequigley.com>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Question on nfs40_discover_server_trunking.
-References: <50F9BE66.6080608@candelatech.com> <0F001F0E-229D-4314-A42E-84402E4F1FC7@oracle.com> <50F9C5B4.5020000@candelatech.com> <1A56CC87-38FF-47B4-9CA9-7BAE394AF0D2@oracle.com> <50F9CDDF.4070609@candelatech.com> <D275BA48-F082-424C-9DC6-A7ABAF6A4578@oracle.com> <50F9D1E7.4080203@candelatech.com>
-In-Reply-To: <50F9D1E7.4080203@candelatech.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Steve Dickson <steved@redhat.com>, "J. Bruce Fields" <bfields@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>, jmorris@namei.org,
+        Stephen Smalley <sds@tycho.nsa.gov>, eparis@redhat.com
+Subject: Re: [PATCH 03/14] LSM: Add flags field to security_sb_set_mnt_opts
+ for in kernel mount data.
+References: <1358862042-27520-1-git-send-email-steved@redhat.com>  <1358862042-27520-4-git-send-email-steved@redhat.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9183324A2@sacexcmbx05-prd.hq.netapp.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9183324A2@sacexcmbx05-prd.hq.netapp.com>
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 1/23/2013 1:35 PM, Myklebust, Trond wrote:
+> On Tue, 2013-01-22 at 08:40 -0500, Steve Dickson wrote:
+>> From: David Quigley <dpquigl@davequigley.com>
+>>
+>> There is no way to differentiate if a text mount option is passed from user
+>> space or the kernel. A flags field is being added to the
+>> security_sb_set_mnt_opts hook to allow for in kernel security flags to be sent
+>> to the LSM for processing in addition to the text options received from mount.
+>> This patch also updated existing code to fix compilation errors.
+>>
+>> Signed-off-by: David P. Quigley <dpquigl@tycho.nsa.gov>
+>> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+>> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+>> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+>> ---
+>>   fs/nfs/super.c           |  3 ++-
+>>   include/linux/security.h | 13 ++++++++++---
+>>   security/capability.c    |  5 ++++-
+>>   security/security.c      |  7 +++++--
+>>   security/selinux/hooks.c | 12 ++++++++++--
+>>   5 files changed, 31 insertions(+), 9 deletions(-)
+>>
+> Ditto. Need Acks from James, Stephen and Eric.
+>
 
-Is this OK, or is the NULL assignment just not acceptable?  Due to the
-complexity of this code, I think it is a good idea to initialize
-the variable...
+Adding James Morris, Steve Smalley, and Eric Paris for an ACK. These 
+patches have been reviewed on the security list many times in the past 
+and we're just now trying to get them mainlined again. All past comments 
+were addressed in them.
 
-
-
-[greearb@fs3 nfs]$ git diff
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index d6b39a9..cdc99bd 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -185,7 +185,7 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
-                                     rpc_authflavor_t authflavour)
-  {
-         char buf[INET6_ADDRSTRLEN + 1];
--       struct nfs_client *old;
-+       struct nfs_client *old = NULL;
-         int error;
-
-         if (clp->cl_cons_state == NFS_CS_READY) {
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index c351e6b..7103617 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -139,6 +139,8 @@ int nfs40_discover_server_trunking(struct nfs_client *clp,
-         switch (status) {
-         case -NFS4ERR_STALE_CLIENTID:
-                 set_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
-+               nfs4_schedule_state_renewal(clp);
-+               break;
-         case 0:
-                 /* Sustain the lease, even if it's empty.  If the clientid4
-                  * goes stale it's of no use for trunking discovery. */
-[greearb@fs3 nfs]$
-
-
--- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
 
