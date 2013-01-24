@@ -1,64 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:12084 "EHLO mx1.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752884Ab3AXE35 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2013 23:29:57 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Dave Quigley <dpquigl@davequigley.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Steve Dickson <steved@redhat.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "Linux NFS Mailing list" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 01/14] Security: Add hook to calculate context based on
- a negative dentry.
-Date: Thu, 24 Jan 2013 04:29:54 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA918333F8D@sacexcmbx05-prd.hq.netapp.com>
-References: <1358862042-27520-1-git-send-email-steved@redhat.com>
-  <1358862042-27520-2-git-send-email-steved@redhat.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91833244F@sacexcmbx05-prd.hq.netapp.com>
- <5100AF22.7070403@davequigley.com>
-In-Reply-To: <5100AF22.7070403@davequigley.com>
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail.candelatech.com ([208.74.158.172]:50597 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751465Ab3AXANc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2013 19:13:32 -0500
+Message-ID: <51007CA8.2050105@candelatech.com>
+Date: Wed, 23 Jan 2013 16:13:28 -0800
+From: Ben Greear <greearb@candelatech.com>
 MIME-Version: 1.0
+To: Eric Dumazet <eric.dumazet@gmail.com>
+CC: netdev <netdev@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: 3.7.3+:  Bad paging request in ip_rcv_finish while running NFS
+ traffic.
+References: <50FDADF4.3060601@candelatech.com>  <50FDDE35.7070806@candelatech.com>  <1358829606.3464.3151.camel@edumazet-glaptop>  <50FE2A57.3040804@candelatech.com>  <50FEC796.5090404@candelatech.com>  <1358875020.3464.4006.camel@edumazet-glaptop>  <1358875607.3464.4020.camel@edumazet-glaptop>  <50FF102F.2050008@candelatech.com> <50FF4BC9.1060206@candelatech.com>  <5100785D.8040101@candelatech.com> <1358985688.12374.1247.camel@edumazet-glaptop>
+In-Reply-To: <1358985688.12374.1247.camel@edumazet-glaptop>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 01/23/2013 04:01 PM, Eric Dumazet wrote:
+> On Wed, 2013-01-23 at 15:55 -0800, Ben Greear wrote:
+>> On 01/22/2013 06:32 PM, Ben Greear wrote:
+>>
+>> So, I'm slowly making some progress.  I've verified that the skb
+>> has bogus dst (0xdeadbeef) at the top of the ip_rcv_finish
+>> method.  I'm trying to track it backwards and figure out which
+>> device it belongs to, etc....takes a while to reproduce though.
+>>
+>> One thing about this stack trace below...the dev_seq_stop() does
+>> a rcu read-unlock.  Now, I can't figure out exactly how ip_rcv()
+>> can cause dev_seq_stop() to run, but if this stack is legit,
+>> then maybe by the time we enter the ip_rcv_finish() code we are
+>> running without rcu_readlock() held?
+>>
+>> If so, that would probably explain the bug.
+>>
+>
+> The whole thing is run under rcu_read_lock() done in
+> __netif_receive_skb()
 
-On Jan 23, 2013, at 10:48 PM, Dave Quigley <dpquigl@davequigley.com>
- wrote:
+I was worried that the dev_seq_stop might be called
+incorrectly causing an asymetric unlock.  I have no
+idea how that might happened, but several crashes
+have that dev_seq_stop method listed, so it got me suspicious.
 
-> On 1/23/2013 1:31 PM, Myklebust, Trond wrote:
->> On Tue, 2013-01-22 at 08:40 -0500, Steve Dickson wrote:
->>> From: David Quigley <dpquigl@davequigley.com>
->>> 
->>> There is a time where we need to calculate a context without the
->>> inode having been created yet. To do this we take the negative dentry and
->>> calculate a context based on the process and the parent directory contexts.
->>> 
->>> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
->>> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
->>> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
->>> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
->>> ---
->>>  include/linux/security.h | 27 +++++++++++++++++++++++++++
->>>  security/capability.c    |  8 ++++++++
->>>  security/security.c      | 10 ++++++++++
->>>  security/selinux/hooks.c | 35 +++++++++++++++++++++++++++++++++++
->>>  4 files changed, 80 insertions(+)
->> 
->> Linus won't accept a patch that changes the security code from Bruce or
->> myself without acks from the security maintainers. I assume that means
->> we need to get at least an ack from James Morris, and then possibly
->> Stephen and Eric too...
->> 
->> 
-> 
-> I have an email from James Morris saying that the changes should go through your tree. Should I get him to ack these patches so you can pass them through?
-> 
-> Dave
+>
+> My suspicion was that we called netif_rx() from macvlan leaving a
+> not refcounted skb dst.
+>
+> But the patch I sent to you didnt solve the bug, so its something else.
+>
+> You could trace at which point the dst was released. (where you set
+> dst->input/output to deadbeef)
 
+My current code is in some garbage collector timer code, but I can
+work on saving the call-site that first pokes the dst into the
+garbage collection list...
 
-Please do, yes. Otherwise Linus will usually delay the pull while he asks for one.
+Thanks,
+Ben
 
-Cheers
-  Trond
+-- 
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
+
