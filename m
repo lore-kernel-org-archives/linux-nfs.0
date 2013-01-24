@@ -1,127 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:24182 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754061Ab3A1Tvw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2013 14:51:52 -0500
+Received: from natasha.panasas.com ([67.152.220.90]:48099 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752384Ab3AXPWj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Jan 2013 10:22:39 -0500
+Message-ID: <510151BA.3000006@panasas.com>
+Date: Thu, 24 Jan 2013 17:22:34 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Message-ID: <5AD4F061-69A6-47F5-B20A-34B8DCC2EB5E@oracle.com>
-Date: Mon, 28 Jan 2013 11:51:13 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 01/16] nfsd: fix IPv6 address handling in the DRC
-References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
- <1359402082-29195-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1359402082-29195-2-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset=us-ascii
+To: NFS list <linux-nfs@vger.kernel.org>
+CC: amitd <notifications@github.com>
+Subject: Re: [nfs-ganesha] Fix FATAL ERROR when FS_specific attribute is missing
+ or empty in VFS config (#8)
+References: <nfs-ganesha/nfs-ganesha/pull/8@github.com>
+In-Reply-To: <nfs-ganesha/nfs-ganesha/pull/8@github.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+I have a fix for this in my tree, for next push
 
-On Jan 28, 2013, at 2:41 PM, Jeff Layton <jlayton@redhat.com> wrote:
-
-> Currently, it only stores the first 16 bytes of any address. struct
-> sockaddr_in6 is 28 bytes however, so we're currently ignoring the last
-> 12 bytes of the address.
+On 01/24/2013 05:08 PM, amitd wrote:
+> This happened in Release build due to uninitialized variable ret in fs_specific_has()
 > 
-> Expand the c_addr field to a sockaddr_in6,
-
-What do you do about link-local addresses?
-
-> and cast it to a sockaddr_in
-> as necessary. Also fix the comparitor to use the existing RPC
-> helpers for this.
+> ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------!
+ ---
 > 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
-> fs/nfsd/cache.h             | 6 +++++-
-> fs/nfsd/nfscache.c          | 7 +++++--
-> include/linux/sunrpc/clnt.h | 4 +++-
-> 3 files changed, 13 insertions(+), 4 deletions(-)
 > 
-> diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
-> index 93cc9d3..2cac76c 100644
-> --- a/fs/nfsd/cache.h
-> +++ b/fs/nfsd/cache.h
-> @@ -12,6 +12,10 @@
+>         You can merge this Pull Request by running
 > 
-> /*
->  * Representation of a reply cache entry.
-> + *
-> + * Note that we use a sockaddr_in6 to hold the address instead of the more
-> + * typical sockaddr_storage. This is for space reasons, since sockaddr_storage
-> + * is much larger than a sockaddr_in6.
->  */
-> struct svc_cacherep {
-> 	struct hlist_node	c_hash;
-> @@ -20,7 +24,7 @@ struct svc_cacherep {
-> 	unsigned char		c_state,	/* unused, inprog, done */
-> 				c_type,		/* status, buffer */
-> 				c_secure : 1;	/* req came from port < 1024 */
-> -	struct sockaddr_in	c_addr;
-> +	struct sockaddr_in6	c_addr;
-> 	__be32			c_xid;
-> 	u32			c_prot;
-> 	u32			c_proc;
-> diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-> index 2cbac34..5dd9ec2 100644
-> --- a/fs/nfsd/nfscache.c
-> +++ b/fs/nfsd/nfscache.c
-> @@ -9,6 +9,7 @@
->  */
+>   git pull https://github.com/amitd/nfs-ganesha fix_fs_specific_has
 > 
-> #include <linux/slab.h>
-> +#include <linux/sunrpc/clnt.h>
+> Or view, comment on, or merge it at:
 > 
-> #include "nfsd.h"
-> #include "cache.h"
-> @@ -146,7 +147,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
-> 		    xid == rp->c_xid && proc == rp->c_proc &&
-> 		    proto == rp->c_prot && vers == rp->c_vers &&
-> 		    time_before(jiffies, rp->c_timestamp + 120*HZ) &&
-> -		    memcmp((char*)&rqstp->rq_addr, (char*)&rp->c_addr, sizeof(rp->c_addr))==0) {
-> +		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
-> +		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr)) {
-> 			nfsdstats.rchits++;
-> 			goto found_entry;
-> 		}
-> @@ -183,7 +185,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
-> 	rp->c_state = RC_INPROG;
-> 	rp->c_xid = xid;
-> 	rp->c_proc = proc;
-> -	memcpy(&rp->c_addr, svc_addr_in(rqstp), sizeof(rp->c_addr));
-> +	rpc_copy_addr((struct sockaddr *)&rp->c_addr, svc_addr(rqstp));
-> +	rpc_set_port((struct sockaddr *)&rp->c_addr, rpc_get_port(svc_addr(rqstp)));
-> 	rp->c_prot = proto;
-> 	rp->c_vers = vers;
-> 	rp->c_timestamp = jiffies;
-> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-> index 34206b8..47354a2 100644
-> --- a/include/linux/sunrpc/clnt.h
-> +++ b/include/linux/sunrpc/clnt.h
-> @@ -263,7 +263,9 @@ static inline bool __rpc_copy_addr6(struct sockaddr *dst,
->  * @sap1: first sockaddr
->  * @sap2: second sockaddr
->  *
-> - * Just compares the family and address portion. Ignores port, scope, etc.
-> + * Just compares the family and address portion. Ignores port, but
-> + * compares the scope if it's a link-local address.
-> + *
->  * Returns true if the addrs are equal, false if they aren't.
->  */
-> static inline bool rpc_cmp_addr(const struct sockaddr *sap1,
-> -- 
-> 1.7.11.7
+>   https://github.com/nfs-ganesha/nfs-ganesha/pull/8
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+> 
+>         Commit Summary
+> 
+>   * In fs_specific_has(), properly initialize ret
+> 
+> 
+>         File Changes
+> 
+>   * *M* src/FSAL/FSAL_VFS/export.c (3)
+> 
+> 
+>         Patch Links:
+> 
+>   * https://github.com/nfs-ganesha/nfs-ganesha/pull/8.patch
+>   * https://github.com/nfs-ganesha/nfs-ganesha/pull/8.diff
+> 
 
