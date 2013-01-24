@@ -1,64 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.candelatech.com ([208.74.158.172]:50493 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753967Ab3ARV2U (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jan 2013 16:28:20 -0500
-Message-ID: <50F9BE66.6080608@candelatech.com>
-Date: Fri, 18 Jan 2013 13:28:06 -0800
-From: Ben Greear <greearb@candelatech.com>
+Received: from countercultured.net ([209.51.175.25]:37835 "HELO
+	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1753197Ab3AXEFQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2013 23:05:16 -0500
+Message-ID: <5100B172.5040204@davequigley.com>
+Date: Wed, 23 Jan 2013 22:58:42 -0500
+From: Dave Quigley <selinux@davequigley.com>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Question on nfs40_discover_server_trunking.
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Steve Dickson <steved@redhat.com>, "J. Bruce Fields" <bfields@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 05/14] KConfig: Add KConfig entries for Labeled NFS
+References: <1358862042-27520-1-git-send-email-steved@redhat.com>  <1358862042-27520-6-git-send-email-steved@redhat.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9183324C0@sacexcmbx05-prd.hq.netapp.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9183324C0@sacexcmbx05-prd.hq.netapp.com>
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Any chance the STALE_CLIENTID case needs a 'break'?
+On 1/23/2013 1:37 PM, Myklebust, Trond wrote:
+> On Tue, 2013-01-22 at 08:40 -0500, Steve Dickson wrote:
+>> From: David Quigley <dpquigl@davequigley.com>
+>>
+>> This patch adds two entries into the fs/KConfig file. The first entry
+>> NFS_V4_SECURITY_LABEL enables security label support for the NFSv4 client while
+>> the second entry NFSD_V4_SECURITY_LABEL enables security labeling support on
+>> the server side.
+>>
+>> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+>> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+>> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+>> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+>> ---
+>>   fs/nfs/Kconfig  | 16 ++++++++++++++++
+>>   fs/nfsd/Kconfig | 13 +++++++++++++
+>>   2 files changed, 29 insertions(+)
+>
+> Please split this into 2 patches. They should probably be the 2 last
+> patches in the series.
+>
+>
 
-Twice I've seen kernel crashes after the nfs40_walk_client_list
-failed (though code comments say it should never fail).
+Added on to the list of things to do and we'll get it taken care of.
 
-
-
-int nfs40_discover_server_trunking(struct nfs_client *clp,
-				   struct nfs_client **result,
-				   struct rpc_cred *cred)
-{
-	struct nfs4_setclientid_res clid = {
-		.clientid = clp->cl_clientid,
-		.confirm = clp->cl_confirm,
-	};
-	struct nfs_net *nn = net_generic(clp->cl_net, nfs_net_id);
-	unsigned short port;
-	int status;
-
-	port = nn->nfs_callback_tcpport;
-	if (clp->cl_addr.ss_family == AF_INET6)
-		port = nn->nfs_callback_tcpport6;
-
-	status = nfs4_proc_setclientid(clp, NFS4_CALLBACK, port, cred, &clid);
-	if (status != 0)
-		goto out;
-	clp->cl_clientid = clid.clientid;
-	clp->cl_confirm = clid.confirm;
-
-	status = nfs40_walk_client_list(clp, result, cred);
-	switch (status) {
-	case -NFS4ERR_STALE_CLIENTID:
-		set_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
-	case 0:
-		/* Sustain the lease, even if it's empty.  If the clientid4
-		 * goes stale it's of no use for trunking discovery. */
-		nfs4_schedule_state_renewal(*result);
-		break;
-	}
-
-out:
-	return status;
-}
-
--- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
-
+Dave
