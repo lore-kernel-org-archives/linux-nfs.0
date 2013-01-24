@@ -1,51 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from plane.gmane.org ([80.91.229.3]:37216 "EHLO plane.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751598Ab3AFKtE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 6 Jan 2013 05:49:04 -0500
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1Trnn2-0004J7-KS
-	for linux-nfs@vger.kernel.org; Sun, 06 Jan 2013 11:49:16 +0100
-Received: from p4FE15490.dip.t-dialin.net ([79.225.84.144])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Sun, 06 Jan 2013 11:49:16 +0100
-Received: from mario.bachmann by p4FE15490.dip.t-dialin.net with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Sun, 06 Jan 2013 11:49:16 +0100
-To: linux-nfs@vger.kernel.org
-From: Mario Bachmann <mario.bachmann@gmail.com>
-Subject: Re: [PATCH 0/2] Fix regression on NFS in mainline kernel
-Date: Sun, 6 Jan 2013 10:48:48 +0000 (UTC)
-Message-ID: <loom.20130106T114119-13@post.gmane.org>
-References: <20120418105147.2a6f1c55@corrin.poochiereds.net>  <1334770614-10653-1-git-send-email-Trond.Myklebust@netapp.com>  <20120419093025.GA2916@zeus> <20120419134847.GC2916@zeus>  <1334856549.21419.48.camel@lade.trondhjem.org>  <20120419204638.GB22948@zeus> <loom.20130104T105915-661@post.gmane.org> <4FA345DA4F4AE44899BD2B03EEEC2FA91198A4B4@SACEXCMBX04-PRD.hq.netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from mail.candelatech.com ([208.74.158.172]:52496 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753445Ab3AXSmM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Jan 2013 13:42:12 -0500
+Message-ID: <51018083.1000304@candelatech.com>
+Date: Thu, 24 Jan 2013 10:42:11 -0800
+From: Ben Greear <greearb@candelatech.com>
+MIME-Version: 1.0
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        netdev <netdev@vger.kernel.org>
+Subject: Re: Hung tasks related to do_filp_open in net-next (3.8.0-rc3+)
+References: <51005858.4040107@candelatech.com>
+In-Reply-To: <51005858.4040107@candelatech.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Myklebust, Trond <Trond.Myklebust@...> writes:
+On 01/23/2013 01:38 PM, Ben Greear wrote:
+>
+> I cranked up my 3000 NFS mounts test case on today's net-next (3.8.0-rc3+)
+> and about 8 of these splats.  There were around 780 mounts active
+> when these occurred.
+>
+> Seems like the system continues OK, so not sure how important
+> this is...
 
-> > I use kernel 3.7.1 from kernel.org which has the patches included, 
-> > which should fix the problems (I checked the source code). But:
-> > I get "NFS: nfs4_reclaim_open_state: Lock reclaim failed!" on the 
-> > client, which mounts home over nfs4. 
-> > I get senseless network traffic (50MB/s on my gigabit network). 
-> > Finally I get Kernel Ops on the Server sometimes. 
-> 
-> Lock reclaiming is not guaranteed to succeed; it all depends on why the
-> lock was lost in the first place. Did the server restart, or did a
-> network partition occur? Was some other process able to take that lock
-> (or even delete the file, doh!), before your client could reclaim it?
-> 
-> That said, if the server is Oopsing, then you have a broken server. I'd
-> suggest posting that Oops to this list first.
-> 
-Thanks for the hint, the server was really broken! The power supply of the
-server had some broken capacitors. With a new power supply there are no oopses
-any more!
+I'm seeing this occasionally on 3.7.3 (plus Eric's patch to fix
+the crashes I was seeing), so it's not a regression.
 
-So my reported problems with locking are worthless, because it happened with the
-broken server. 
+Maybe it's just expected on a very overloaded system....
+
+Thanks,
+Ben
+
+>
+> INFO: task btserver:8756 blocked for more than 180 seconds.
+> "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+> btserver        D 0000000000000004     0  8756   5781 0x00000080
+>   ffff880404ab1bf8 0000000000000046 0000000004ab1ba8 0000000000000432
+>   ffff880404ab0010 ffff880402263f20 ffff880404ab1fd8 00000000000132c0
+>   00000000000132c0 00000000000132c0 ffff880404ab1fd8 00000000000132c0
+> Call Trace:
+>   [<ffffffff815491ea>] schedule+0x5f/0x61
+>   [<ffffffff815494fa>] schedule_preempt_disabled+0x13/0x1f
+>   [<ffffffff81547ea8>] __mutex_lock_common+0x264/0x42d
+>   [<ffffffff8115fadb>] ? do_last+0x1db/0xa4e
+>   [<ffffffff8115fadb>] ? do_last+0x1db/0xa4e
+>   [<ffffffff815480d0>] mutex_lock_nested+0x16/0x18
+>   [<ffffffff8115fadb>] do_last+0x1db/0xa4e
+>   [<ffffffff8115f3a5>] ? path_init+0xcd/0x2b6
+>   [<ffffffff8116090b>] path_openat+0xcb/0x363
+>   [<ffffffff810d0055>] ? __lock_acquire+0x1df/0x53d
+>   [<ffffffff81160ca8>] do_filp_open+0x38/0x84
+>   [<ffffffff8154a2db>] ? _raw_spin_unlock+0x45/0x52
+>   [<ffffffff8116c203>] ? __alloc_fd+0x106/0x11a
+>   [<ffffffff815490f9>] ? __schedule+0x561/0x5a3
+> 8021q: adding VLAN 0 to HW filter on device eth4#621
+>   [<ffffffff81153bfc>] do_sys_open+0x6d/0xff
+> 8021q: adding VLAN 0 to HW filter on device eth3#612
+>   [<ffffffff81153cbb>] sys_open+0x1c/0x1e
+>   [<ffffffff8154f629>] system_call_fastpath+0x16/0x1b
+> 2 locks held by btserver/8756:
+>   #0:  (sb_writers#10){......}, at: [<ffffffff81170013>] mnt_want_write+0x1f/0x48
+>   #1:  (&type->i_mutex_dir_key#4){......}, at: [<ffffffff8115fadb>] do_last+0x1db/0xa4e
+>
+>
+>
+
+
+-- 
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
