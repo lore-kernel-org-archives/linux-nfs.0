@@ -1,43 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga09.intel.com ([134.134.136.24]:30875 "EHLO mga09.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754482Ab3ASBoE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Jan 2013 20:44:04 -0500
-Date: Sat, 19 Jan 2013 09:42:41 +0800
-From: kbuild test robot <fengguang.wu@intel.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [nfs:bugfixes 11/11] fs/nfs/nfs4client.c:351:8: error: label at
- end of compound statement
-Message-ID: <50f9fa11.yIdHaCJJ8S6lX26G%fengguang.wu@intel.com>
+Received: from countercultured.net ([209.51.175.25]:37661 "HELO
+	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1752923Ab3AXDsn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2013 22:48:43 -0500
+Message-ID: <5100AF22.7070403@davequigley.com>
+Date: Wed, 23 Jan 2013 22:48:50 -0500
+From: Dave Quigley <dpquigl@davequigley.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Steve Dickson <steved@redhat.com>, "J. Bruce Fields" <bfields@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 01/14] Security: Add hook to calculate context based on
+ a negative dentry.
+References: <1358862042-27520-1-git-send-email-steved@redhat.com>  <1358862042-27520-2-git-send-email-steved@redhat.com> <4FA345DA4F4AE44899BD2B03EEEC2FA91833244F@sacexcmbx05-prd.hq.netapp.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91833244F@sacexcmbx05-prd.hq.netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git bugfixes
-head:   8ae0dc0ae64c9913c90f550d3c6b724313883fff
-commit: 8ae0dc0ae64c9913c90f550d3c6b724313883fff [11/11] NFSv4: Fix NFSv4.0 trunking discovery
-config: make ARCH=i386 allmodconfig
+On 1/23/2013 1:31 PM, Myklebust, Trond wrote:
+> On Tue, 2013-01-22 at 08:40 -0500, Steve Dickson wrote:
+>> From: David Quigley <dpquigl@davequigley.com>
+>>
+>> There is a time where we need to calculate a context without the
+>> inode having been created yet. To do this we take the negative dentry and
+>> calculate a context based on the process and the parent directory contexts.
+>>
+>> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+>> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+>> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+>> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+>> ---
+>>   include/linux/security.h | 27 +++++++++++++++++++++++++++
+>>   security/capability.c    |  8 ++++++++
+>>   security/security.c      | 10 ++++++++++
+>>   security/selinux/hooks.c | 35 +++++++++++++++++++++++++++++++++++
+>>   4 files changed, 80 insertions(+)
+>
+> Linus won't accept a patch that changes the security code from Bruce or
+> myself without acks from the security maintainers. I assume that means
+> we need to get at least an ack from James Morris, and then possibly
+> Stephen and Eric too...
+>
+>
 
-All error/warnings:
+I have an email from James Morris saying that the changes should go 
+through your tree. Should I get him to ack these patches so you can pass 
+them through?
 
-   fs/nfs/nfs4client.c: In function 'nfs40_walk_client_list':
->> fs/nfs/nfs4client.c:351:8: error: label at end of compound statement
-
-vim +351 fs/nfs/nfs4client.c
-
-   345				prev = NULL;
-   346				*result = pos;
-   347				dprintk("NFS: <-- %s using nfs_client = %p ({%d})\n",
-   348					__func__, pos, atomic_read(&pos->cl_count));
-   349			default:
-   350				goto out;
- > 351			case -NFS4ERR_STALE_CLIENTID:
-   352			}
-   353	
-   354			spin_lock(&nn->nfs_client_lock);
-
----
-0-DAY kernel build testing backend              Open Source Technology Center
-http://lists.01.org/mailman/listinfo/kbuild                 Intel Corporation
+Dave
