@@ -1,210 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ia0-f169.google.com ([209.85.210.169]:65025 "EHLO
-	mail-ia0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753963Ab3A1Ubm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2013 15:31:42 -0500
-Received: by mail-ia0-f169.google.com with SMTP id j5so4964876iaf.0
-        for <linux-nfs@vger.kernel.org>; Mon, 28 Jan 2013 12:31:41 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1 2/5] SUNRPC: Define rpcsec_gss_info structure
-To: linux-nfs@vger.kernel.org
-Cc: Chuck Lever <chuck.lever@oracle.com>
-Date: Mon, 28 Jan 2013 15:31:40 -0500
-Message-ID: <20130128203139.2523.43728.stgit@seurat.1015granger.net>
-In-Reply-To: <20130128195843.2523.34798.stgit@seurat.1015granger.net>
-References: <20130128195843.2523.34798.stgit@seurat.1015granger.net>
+Received: from smtp.eu.citrix.com ([46.33.159.39]:47219 "EHLO
+	SMTP.EU.CITRIX.COM" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752923Ab3AXKmT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Jan 2013 05:42:19 -0500
+Message-ID: <1359024131.17440.123.camel@zakaz.uk.xensource.com>
+Subject: Re: Fatal crash with NFS, AIO & tcp retransmit
+From: Ian Campbell <Ian.Campbell@citrix.com>
+To: Alex Bligh <alex@alex.org.uk>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Peter Staubach <pstaubach@exagrid.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Thu, 24 Jan 2013 10:42:11 +0000
+In-Reply-To: <7CD6CC530A524B9745F846FB@nimrod.local>
+References: <93D3AE9B4990994B2BCA75A9@Ximines.local>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA915C163B9@SACEXCMBX04-PRD.hq.netapp.com>
+	 <E268D60FA8BCE2E18CCE24D7@Ximines.local>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA915C17543@SACEXCMBX04-PRD.hq.netapp.com>
+	 <734E2E0455BD4515C657BA69@Ximines.local>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA915C1781E@SACEXCMBX04-PRD.hq.netapp.com>
+	 <DABFD69DFA23FF330123B298@nimrod.local>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA91832D572@sacexcmbx05-prd.hq.netapp.com>
+	 <5B18F9B0446E7F3CAA3BD81D@nimrod.local>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA918331EF5@sacexcmbx05-prd.hq.netapp.com>
+	 <F1BFF24EE9BEF6E4C8C66BF8@nimrod.local>
+	 <FA8A9A935BFD3A4D8F0CDA1C4F611BCC0C5DC79D53@IT-1874.Isys.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA918332049@sacexcmbx05-prd.hq.netapp.com>
+	 <7CD6CC530A524B9745F846FB@nimrod.local>
+Content-Type: text/plain; charset="UTF-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-rpcsec_gss_info is a collection of information used by the NFSv4
-SECINFO procedure.  For simplicity and efficiency, I'd like to
-return this structure from the NFSv4 XDR layer, and pass it
-straight into the RPC client.
+On Wed, 2013-01-23 at 19:37 +0000, Alex Bligh wrote:
+> 
+> --On 23 January 2013 18:13:34 +0000 "Myklebust, Trond" 
+> <Trond.Myklebust@netapp.com> wrote:
+> 
+> >> They can't disappear until they have been successfully transmitted and a
+> >> response received.  The problem here is that there were two requests
+> >> sent or being sent and the page(s) can't be released until everyone,
+> >> including TCP and such, are done with them.
+> >>
+> >> 		ps
+> >
+> > Right. The O_DIRECT write() system call will not return until it gets a
+> > reply. Similarly, we don't mark an aio/dio request as complete until it
+> > too gets a reply. So the data for those requests that need
+> > retransmission is still available to be resent through the socket.
+> 
+> I apologise for my stupidity here as I think I must be missing something.
+> 
+> I thought we'd established that Xen's grant system doesn't release the page
+> until QEMU says the block I/O is complete. QEMU only states that the block
+> I/O is complete when AIO says it is.
 
-Define an RPC client structure that can be shared between NFS and
-RPC.
+That's correct. Xen and qemu maintains the mapping until the kernel says
+the I/O is complete. To do otherwise would be a bug.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+>  What's happening (as far as I can tell
+> from the oops) is that the grant system is releasing the page AFTER the aio
+> request is complete (and dio may the same), but at that stage the page is
+> still referenced by the tcp stack. That contradicts what you say about not
+> marking the aio/dio request as complete until it gets a reply, unless it's
+> the case that you can get a reply to a request when there is still data
+> that the TCP stack can ask to retransmit (I suppose that's conceivable
+> if the reply gets sent before the ACK of the data received).
 
- fs/nfs/nfs4namespace.c          |   12 ++++++------
- fs/nfs/nfs4xdr.c                |   20 +++++++++++---------
- include/linux/nfs_xdr.h         |   21 +++++----------------
- include/linux/sunrpc/auth_gss.h |    6 ------
- include/linux/sunrpc/gss_api.h  |   18 ++++++++++++++++++
- 5 files changed, 40 insertions(+), 37 deletions(-)
+This is exactly what can happen:
 
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index 1e09eb7..f97b0a8 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -137,23 +137,23 @@ rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors)
- {
- 	struct gss_api_mech *mech;
- 	struct xdr_netobj oid;
--	int i;
-+	unsigned int i;
- 	rpc_authflavor_t pseudoflavor = RPC_AUTH_UNIX;
- 
- 	for (i = 0; i < flavors->num_flavors; i++) {
--		struct nfs4_secinfo_flavor *flavor;
--		flavor = &flavors->flavors[i];
-+		struct nfs4_secinfo4 *flavor = &flavors->flavors[i];
- 
- 		if (flavor->flavor == RPC_AUTH_NULL || flavor->flavor == RPC_AUTH_UNIX) {
- 			pseudoflavor = flavor->flavor;
- 			break;
- 		} else if (flavor->flavor == RPC_AUTH_GSS) {
--			oid.len  = flavor->gss.sec_oid4.len;
--			oid.data = flavor->gss.sec_oid4.data;
-+			oid.len  = flavor->flavor_info.oid.len;
-+			oid.data = flavor->flavor_info.oid.data;
- 			mech = gss_mech_get_by_OID(&oid);
- 			if (!mech)
- 				continue;
--			pseudoflavor = gss_svc_to_pseudoflavor(mech, flavor->gss.service);
-+			pseudoflavor = gss_svc_to_pseudoflavor(mech,
-+						flavor->flavor_info.service);
- 			gss_mech_put(mech);
- 			break;
- 		}
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 26b1439..c445b8c 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -5209,27 +5209,29 @@ static int decode_delegreturn(struct xdr_stream *xdr)
- 	return decode_op_hdr(xdr, OP_DELEGRETURN);
- }
- 
--static int decode_secinfo_gss(struct xdr_stream *xdr, struct nfs4_secinfo_flavor *flavor)
-+static int decode_secinfo_gss(struct xdr_stream *xdr, struct nfs4_secinfo4 *flavor)
- {
-+	u32 oid_len;
- 	__be32 *p;
- 
- 	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
- 		goto out_overflow;
--	flavor->gss.sec_oid4.len = be32_to_cpup(p);
--	if (flavor->gss.sec_oid4.len > GSS_OID_MAX_LEN)
-+	oid_len = be32_to_cpup(p);
-+	if (oid_len > GSS_OID_MAX_LEN)
- 		goto out_err;
- 
--	p = xdr_inline_decode(xdr, flavor->gss.sec_oid4.len);
-+	p = xdr_inline_decode(xdr, oid_len);
- 	if (unlikely(!p))
- 		goto out_overflow;
--	memcpy(flavor->gss.sec_oid4.data, p, flavor->gss.sec_oid4.len);
-+	memcpy(flavor->flavor_info.oid.data, p, oid_len);
-+	flavor->flavor_info.oid.len = oid_len;
- 
- 	p = xdr_inline_decode(xdr, 8);
- 	if (unlikely(!p))
- 		goto out_overflow;
--	flavor->gss.qop4 = be32_to_cpup(p++);
--	flavor->gss.service = be32_to_cpup(p);
-+	flavor->flavor_info.qop = be32_to_cpup(p++);
-+	flavor->flavor_info.service = be32_to_cpup(p);
- 
- 	return 0;
- 
-@@ -5242,10 +5244,10 @@ out_err:
- 
- static int decode_secinfo_common(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
- {
--	struct nfs4_secinfo_flavor *sec_flavor;
-+	struct nfs4_secinfo4 *sec_flavor;
-+	unsigned int i, num_flavors;
- 	int status;
- 	__be32 *p;
--	int i, num_flavors;
- 
- 	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 467167402..92a6e7c 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1046,25 +1046,14 @@ struct nfs4_fs_locations_res {
- 	struct nfs4_fs_locations       *fs_locations;
- };
- 
--struct nfs4_secinfo_oid {
--	unsigned int len;
--	char data[GSS_OID_MAX_LEN];
--};
--
--struct nfs4_secinfo_gss {
--	struct nfs4_secinfo_oid sec_oid4;
--	unsigned int qop4;
--	unsigned int service;
--};
--
--struct nfs4_secinfo_flavor {
--	unsigned int 		flavor;
--	struct nfs4_secinfo_gss	gss;
-+struct nfs4_secinfo4 {
-+	u32			flavor;
-+	struct rpcsec_gss_info	flavor_info;
- };
- 
- struct nfs4_secinfo_flavors {
--	unsigned int num_flavors;
--	struct nfs4_secinfo_flavor flavors[0];
-+	unsigned int		num_flavors;
-+	struct nfs4_secinfo4	flavors[0];
- };
- 
- struct nfs4_secinfo_arg {
-diff --git a/include/linux/sunrpc/auth_gss.h b/include/linux/sunrpc/auth_gss.h
-index f1cfd4c..39de1f30 100644
---- a/include/linux/sunrpc/auth_gss.h
-+++ b/include/linux/sunrpc/auth_gss.h
-@@ -28,12 +28,6 @@ enum rpc_gss_proc {
- 	RPC_GSS_PROC_DESTROY = 3
- };
- 
--enum rpc_gss_svc {
--	RPC_GSS_SVC_NONE = 1,
--	RPC_GSS_SVC_INTEGRITY = 2,
--	RPC_GSS_SVC_PRIVACY = 3
--};
--
- /* on-the-wire gss cred: */
- struct rpc_gss_wire_cred {
- 	u32			gc_v;		/* version */
-diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
-index a19e254..6381b5b 100644
---- a/include/linux/sunrpc/gss_api.h
-+++ b/include/linux/sunrpc/gss_api.h
-@@ -27,8 +27,26 @@ struct gss_ctx {
- #define GSS_C_NO_CONTEXT	((struct gss_ctx *) 0)
- #define GSS_C_NULL_OID		((struct xdr_netobj) 0)
- 
-+/* RPCSEC_GSS services, from RFC 2203, section 5 */
-+enum rpc_gss_svc {
-+	/* The enumerated value for 0 is reserved */
-+	RPC_GSS_SVC_NONE = 1,
-+	RPC_GSS_SVC_INTEGRITY = 2,
-+	RPC_GSS_SVC_PRIVACY = 3
-+};
-+
- /*XXX  arbitrary length - is this set somewhere? */
- #define GSS_OID_MAX_LEN 32
-+struct rpcsec_gss_oid {
-+	unsigned int	len;
-+	u8		data[GSS_OID_MAX_LEN];
-+};
-+
-+struct rpcsec_gss_info {
-+	struct rpcsec_gss_oid	oid;
-+	u32			qop;
-+	u32			service;
-+};
- 
- /* gss-api prototypes; note that these are somewhat simplified versions of
-  * the prototypes specified in RFC 2744. */
+     1. send request (A)
+     2. timeout waiting for ACK to (A)
+     3. queue TCP retransmit of (A) as (B)
+     4. receive ACK to original (A), sent at #1, and rpc reply to that
+        request.
+     5. return success to userspace
+     6. userspace reuses (or unmaps under Xen) the buffer
+     7. (B), queued at #3, reaches the head of the queue
+     8. Try to transmit (B), bug has now happened.
+
+You can also s/TCP/RPC/ and construct a similar issue at the next layer
+of the stack, which only happens on NFSv3 AIUI.
+
+> My understanding (which may well be completely wrong) is that the problem
+> was that xen was unmapping the page even though it still had kernel
+> references to it. This is why the problem does not happen in kvm (which
+> does not as I understand it do a similar map/unmap operation). From Ian C I
+> understand that just looking at the number of kernel references is not
+> sufficient.
+
+Under any userspace process (which includes KVM) you get retransmission
+of data which may have changed, because userspace believes the kernel
+when it has said it is done with it, and has reused the buffer. All that
+is different under Xen is that "changed" can mean "unmapped" which makes
+the symptom much worse.
+
+Ian.
 
