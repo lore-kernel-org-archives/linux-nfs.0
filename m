@@ -1,71 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:44553 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751133Ab3AYUvr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2013 15:51:47 -0500
-Date: Fri, 25 Jan 2013 15:51:45 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Ben Myers <bpm@sgi.com>
-Cc: Olga Kornievskaia <aglo@citi.umich.edu>, linux-nfs@vger.kernel.org,
-        Jim Rees <rees@umich.edu>
-Subject: Re: sunrpc: socket buffer size tuneable
-Message-ID: <20130125205145.GF29596@fieldses.org>
-References: <20130125192935.GA32470@sgi.com>
- <20130125202107.GD29596@fieldses.org>
- <20130125203521.GE29596@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130125203521.GE29596@fieldses.org>
+Received: from mail-pa0-f53.google.com ([209.85.220.53]:48513 "EHLO
+	mail-pa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752438Ab3AXAYI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2013 19:24:08 -0500
+Subject: Re: 3.7.3+:  Bad paging request in ip_rcv_finish while running NFS
+ traffic.
+From: Eric Dumazet <eric.dumazet@gmail.com>
+To: Ben Greear <greearb@candelatech.com>
+Cc: netdev <netdev@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+In-Reply-To: <51007CA8.2050105@candelatech.com>
+References: <50FDADF4.3060601@candelatech.com>
+	 <50FDDE35.7070806@candelatech.com>
+	 <1358829606.3464.3151.camel@edumazet-glaptop>
+	 <50FE2A57.3040804@candelatech.com>  <50FEC796.5090404@candelatech.com>
+	 <1358875020.3464.4006.camel@edumazet-glaptop>
+	 <1358875607.3464.4020.camel@edumazet-glaptop>
+	 <50FF102F.2050008@candelatech.com> <50FF4BC9.1060206@candelatech.com>
+	 <5100785D.8040101@candelatech.com>
+	 <1358985688.12374.1247.camel@edumazet-glaptop>
+	 <51007CA8.2050105@candelatech.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 23 Jan 2013 16:23:51 -0800
+Message-ID: <1358987031.12374.1276.camel@edumazet-glaptop>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 25, 2013 at 03:35:21PM -0500, J. Bruce Fields wrote:
-> On Fri, Jan 25, 2013 at 03:21:07PM -0500, J. Bruce Fields wrote:
-> > 
-> > > On Fri, Jan 25, 2013 at 01:29:35PM -0600, Ben Myers wrote:
-> > > > Hey Bruce & Jim & Olga,
-> > > > 
-> > > > On Fri, Jan 25, 2013 at 02:16:20PM -0500, Jim Rees wrote:
-> > > > > J. Bruce Fields wrote:
-> > > > > 
-> > > > >   On Thu, Jan 24, 2013 at 06:59:30PM -0600, Ben Myers wrote:
-> > > > >   > At 1020 threads the send buffer size wraps and becomes negative causing
-> > > > >   > the nfs server to grind to a halt.  Rather than setting bufsize based
-> > > > >   > upon the number of nfsd threads, make the buffer sizes tuneable via
-> > > > >   > module parameters.
-> > > > >   > 
-> > > > >   > Set the buffer sizes in terms of the number of rpcs you want to fit into
-> > > > >   > the buffer.
-> > > > >   
-> > > > >   From private communication, my understanding is that the original
-> > > > >   problem here was due to memory pressure forcing the tcp send buffer size
-> > > > >   below the size required to hold a single rpc.
-> > > > 
-> > > > Years ago I did see wrapping of the buffer size when tcp was used with many
-> > > > threads.  Today's problem is timeouts on a cluster with a heavy read
-> > > > workload... and I seem to remember seeing that the send buffer size was too
-> > > > small.
-> > > > 
-> > > > >   In which case the important variable here is lock_bufsize, as that's
-> > > > >   what prevents the buffer size from going too low.
-> > > > 
-> > > > I tested removing the lock of bufsize and did hit the timeouts, so the overflow
-> > > > is starting to look less relevant.  I will test your minimal overflow fix to
-> > > > see if this is the case.
-> > > 
-> > > The minimal overflow fix did not resolve the timeouts.
-> > 
-> > OK, thanks, that's expected.
-> > 
-> > > I will test with this to see if it resolves the timeouts:
-> > 
-> > And I'd expect that to do the job--but at the expense of some tcp
-> > bandwidth.  So you end up needing your other module parameters to get
-> > the performance back.
+On Wed, 2013-01-23 at 16:13 -0800, Ben Greear wrote:
+> On 01/23/2013 04:01 PM, Eric Dumazet wrote:
+> > On Wed, 2013-01-23 at 15:55 -0800, Ben Greear wrote:
+> >> On 01/22/2013 06:32 PM, Ben Greear wrote:
+> >>
+> >> So, I'm slowly making some progress.  I've verified that the skb
+> >> has bogus dst (0xdeadbeef) at the top of the ip_rcv_finish
+> >> method.  I'm trying to track it backwards and figure out which
+> >> device it belongs to, etc....takes a while to reproduce though.
+> >>
+> >> One thing about this stack trace below...the dev_seq_stop() does
+> >> a rcu read-unlock.  Now, I can't figure out exactly how ip_rcv()
+> >> can cause dev_seq_stop() to run, but if this stack is legit,
+> >> then maybe by the time we enter the ip_rcv_finish() code we are
+> >> running without rcu_readlock() held?
+> >>
+> >> If so, that would probably explain the bug.
+> >>
+> >
+> > The whole thing is run under rcu_read_lock() done in
+> > __netif_receive_skb()
 > 
-> Also, what do you see happening on the server in the problem case--are
-> threads blocking in svc_send, or are they dropping replies?
+> I was worried that the dev_seq_stop might be called
+> incorrectly causing an asymetric unlock.  I have no
+> idea how that might happened, but several crashes
+> have that dev_seq_stop method listed, so it got me suspicious.
 
-And what exactly is your test?
+dev_seq_stop() is some word in the kernel stack, result of a prior
+system call. Stack is not cleanup.
 
---b.
+Each function reserves an amount of stack but not always write on all
+reserved space (some automatic variables might be not set)
+
+Note the "? " before the name : linux printed the symbol but this was
+not a call site for this particular call graph. Its only an extra
+indication, that can be useful sometimes.
+
+
+
