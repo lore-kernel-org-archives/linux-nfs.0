@@ -1,141 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f53.google.com ([209.85.213.53]:36768 "EHLO
-	mail-yh0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753264Ab3A1TuL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2013 14:50:11 -0500
-Received: by mail-yh0-f53.google.com with SMTP id q3so469286yhf.12
-        for <linux-nfs@vger.kernel.org>; Mon, 28 Jan 2013 11:50:11 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 15/16] nfsd: register a shrinker for DRC cache entries
-Date: Mon, 28 Jan 2013 14:41:21 -0500
-Message-Id: <1359402082-29195-16-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
-References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
+Received: from relay1.sgi.com ([192.48.179.29]:37612 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757262Ab3AYT3g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2013 14:29:36 -0500
+Date: Fri, 25 Jan 2013 13:29:35 -0600
+From: Ben Myers <bpm@sgi.com>
+To: Jim Rees <rees@umich.edu>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Olga Kornievskaia <aglo@citi.umich.edu>, linux-nfs@vger.kernel.org
+Subject: Re: sunrpc: socket buffer size tuneable
+Message-ID: <20130125192935.GA32470@sgi.com>
+References: <20130125005930.GC30652@sgi.com>
+ <20130125185748.GC29596@fieldses.org>
+ <20130125191620.GA12925@umich.edu>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130125191620.GA12925@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since we dynamically allocate them now, allow the system to call us
-up to release them if we get low on memory.
+Hey Bruce & Jim & Olga,
 
-We set the "seeks" value very high, to discourage it and release
-them in LRU order. We may end up releasing some prematurely if the
-box is really low on memory.
+On Fri, Jan 25, 2013 at 02:16:20PM -0500, Jim Rees wrote:
+> J. Bruce Fields wrote:
+> 
+>   On Thu, Jan 24, 2013 at 06:59:30PM -0600, Ben Myers wrote:
+>   > At 1020 threads the send buffer size wraps and becomes negative causing
+>   > the nfs server to grind to a halt.  Rather than setting bufsize based
+>   > upon the number of nfsd threads, make the buffer sizes tuneable via
+>   > module parameters.
+>   > 
+>   > Set the buffer sizes in terms of the number of rpcs you want to fit into
+>   > the buffer.
+>   
+>   From private communication, my understanding is that the original
+>   problem here was due to memory pressure forcing the tcp send buffer size
+>   below the size required to hold a single rpc.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/nfscache.c | 54 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 53 insertions(+), 1 deletion(-)
+Years ago I did see wrapping of the buffer size when tcp was used with many
+threads.  Today's problem is timeouts on a cluster with a heavy read
+workload... and I seem to remember seeing that the send buffer size was too
+small.
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index bd21230..27edd47 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -35,6 +35,18 @@ static inline u32 request_hash(u32 xid)
- 
- static int	nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *vec);
- static void	cache_cleaner_func(struct work_struct *unused);
-+static int 	nfsd_reply_cache_shrink(struct shrinker *shrink,
-+					struct shrink_control *sc);
-+
-+/*
-+ * We set "seeks" to a large value here since we really can't recreate these
-+ * entries. We're just gambling that they won't actually be needed if and
-+ * when the box comes under memory pressure.
-+ */
-+struct shrinker nfsd_reply_cache_shrinker = {
-+	.shrink	= nfsd_reply_cache_shrink,
-+	.seeks	= 64,
-+};
- 
- /*
-  * locking for the reply cache:
-@@ -80,6 +92,7 @@ nfsd_reply_cache_free(struct svc_cacherep *rp)
- 
- int nfsd_reply_cache_init(void)
- {
-+	register_shrinker(&nfsd_reply_cache_shrinker);
- 	drc_slab = kmem_cache_create("nfsd_drc", sizeof(struct svc_cacherep),
- 					0, 0, NULL);
- 	if (!drc_slab)
-@@ -102,6 +115,7 @@ void nfsd_reply_cache_shutdown(void)
- {
- 	struct svc_cacherep	*rp;
- 
-+	unregister_shrinker(&nfsd_reply_cache_shrinker);
- 	cancel_delayed_work_sync(&cache_cleaner);
- 
- 	while (!list_empty(&lru_head)) {
-@@ -152,15 +166,17 @@ nfsd_cache_entry_expired(struct svc_cacherep *rp)
-  * if we hit one that isn't old enough, then we can stop the walking. Must
-  * be called with cache_lock held.
-  */
--static void
-+static int
- prune_old_cache_entries(void)
- {
-+	int freed = 0;
- 	struct svc_cacherep *rp, *tmp;
- 
- 	list_for_each_entry_safe(rp, tmp, &lru_head, c_lru) {
- 		if (!nfsd_cache_entry_expired(rp))
- 			break;
- 		nfsd_reply_cache_free_locked(rp);
-+		++freed;
- 	}
- 
- 	/*
-@@ -173,6 +189,8 @@ prune_old_cache_entries(void)
- 		cancel_delayed_work(&cache_cleaner);
- 	else
- 		mod_delayed_work(system_wq, &cache_cleaner, RC_EXPIRE);
-+
-+	return freed;
- }
- 
- static void
-@@ -183,6 +201,40 @@ cache_cleaner_func(struct work_struct *unused)
- 	spin_unlock(&cache_lock);
- }
- 
-+static int
-+nfsd_reply_cache_shrink(struct shrinker *shrink, struct shrink_control *sc)
-+{
-+	int nr_to_scan = sc->nr_to_scan;
-+	unsigned int num;
-+
-+	spin_lock(&cache_lock);
-+	if (!nr_to_scan)
-+		goto out;
-+
-+	nr_to_scan -= prune_old_cache_entries();
-+
-+	/*
-+	 * If that didn't free enough, then keep going. It's better to free
-+	 * some prematurely than to have the box keel over due to lack of
-+	 * memory.
-+	 */
-+	while (nr_to_scan > 0) {
-+		struct svc_cacherep *rp;
-+
-+		if (list_empty(&lru_head))
-+			break;
-+		rp = list_first_entry(&lru_head, struct svc_cacherep, c_lru);
-+		nfsd_reply_cache_free_locked(rp);
-+		--nr_to_scan;
-+	}
-+
-+out:
-+	num = num_drc_entries;
-+	spin_unlock(&cache_lock);
-+
-+	return num;
-+}
-+
- /*
-  * Search the request hash for an entry that matches the given rqstp.
-  * Must be called with cache_lock held. Returns the found entry or
--- 
-1.7.11.7
+>   In which case the important variable here is lock_bufsize, as that's
+>   what prevents the buffer size from going too low.
 
+I tested removing the lock of bufsize and did hit the timeouts, so the overflow
+is starting to look less relevant.  I will test your minimal overflow fix to
+see if this is the case.
+
+>   Cc'ing Jim Rees in case he remembers: I seem to recall discussing this
+>   possibility, wondering whether we needed a special interface to the
+>   network layer allowing us to set a minimum, and deciding it wasn't
+>   really necessary at the time as we didn't think the network layer would
+>   actually do this.  Is that right?  In which case either we were wrong,
+>   or something changed.
+> 
+> I do remember discussing this. My memory is that we needed it but no one
+> wanted to implement it and it never happened. But I could be
+> mis-remembering. Maybe ask Olga, she's the one who put the bufsize
+> autotuning patch in, commit 96604398.
+> 
+> I'll go back through my old mail and see if I can figure out what happened
+> with this.
+
+Thanks,
+	Ben
