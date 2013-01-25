@@ -1,71 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:44843 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751833Ab3AUIUN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2013 03:20:13 -0500
-Message-ID: <50FCFA24.6090109@parallels.com>
-Date: Mon, 21 Jan 2013 12:19:48 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from fieldses.org ([174.143.236.118]:41021 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753019Ab3AYV5N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2013 16:57:13 -0500
+Date: Fri, 25 Jan 2013 16:57:12 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Ben Myers <bpm@sgi.com>, Olga Kornievskaia <aglo@citi.umich.edu>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Jim Rees <rees@umich.edu>
+Subject: Re: sunrpc: socket buffer size tuneable
+Message-ID: <20130125215712.GJ29596@fieldses.org>
+References: <20130125192935.GA32470@sgi.com>
+ <20130125202107.GD29596@fieldses.org>
+ <20130125203507.GW30652@sgi.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA91833BF5A@sacexcmbx05-prd.hq.netapp.com>
+ <20130125212106.GH29596@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA91833BFAB@sacexcmbx05-prd.hq.netapp.com>
+ <20130125213503.GI29596@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA91833BFFE@sacexcmbx05-prd.hq.netapp.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Mark Lord <kernel@teksavvy.com>, <linux-nfs@vger.kernel.org>,
-        Linux Kernel <linux-kernel@vger.kernel.org>
-Subject: Re: BUG at net/sunrpc/svc_xprt.c:921
-References: <50F4D800.5040703@teksavvy.com> <20130115205625.GH4940@fieldses.org> <50F63882.8000607@parallels.com> <50F72F03.5070806@teksavvy.com> <50F786AF.4070107@parallels.com> <20130117130335.GD6598@fieldses.org> <50F7FB7E.2020503@parallels.com> <50F88C14.7030903@teksavvy.com> <50F8DF7E.8080107@parallels.com> <50F96EB2.3090605@teksavvy.com> <20130118155631.GA5227@fieldses.org>
-In-Reply-To: <20130118155631.GA5227@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91833BFFE@sacexcmbx05-prd.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-18.01.2013 19:56, J. Bruce Fields пишет:
-> On Fri, Jan 18, 2013 at 10:48:02AM -0500, Mark Lord wrote:
->> On 13-01-18 12:37 AM, Stanislav Kinsbursky wrote:
->>>
->>> You have more than one NFS mount in different network namespaces, haven't you?
->>>
->>
->> No, I don't (knowingly) use (multiple) namespaces at all.
->
-> Right, I don't think that's necessary.  Stanislav, look at
-> nfs_callback_down:
->
-> 	nfs_callback_down_net(minorversion, cb_info->serv, net);
->          cb_info->users--;
-> 	if (cb_info->users == 0 && cb_info->task != NULL) {
-> 		kthread_stop(cb_info->task);
-> 		...
->
-> It's first destroying the service, then destroying the thread.  That's
-> the wrong order.  So we could still have the thread running svc_recv()
-> after the rpc service is destroyed.
->
+On Fri, Jan 25, 2013 at 09:45:12PM +0000, Myklebust, Trond wrote:
+> > -----Original Message----- From: J. Bruce Fields
+> > [mailto:bfields@fieldses.org] Sent: Friday, January 25, 2013 4:35 PM
+> > To: Myklebust, Trond Cc: Ben Myers; Olga Kornievskaia;
+> > linux-nfs@vger.kernel.org; Jim Rees Subject: Re: sunrpc: socket
+> > buffer size tuneable
+> > 
+> > On Fri, Jan 25, 2013 at 09:29:09PM +0000, Myklebust, Trond wrote:
+> > > > -----Original Message----- From: J. Bruce Fields
+> > > > [mailto:bfields@fieldses.org] Sent: Friday, January 25, 2013
+> > > > 4:21 PM To: Myklebust, Trond Cc: Ben Myers; Olga Kornievskaia;
+> > > > linux-nfs@vger.kernel.org; Jim Rees Subject: Re: sunrpc: socket
+> > > > buffer size tuneable
+> > > >
+> > > > On Fri, Jan 25, 2013 at 09:12:55PM +0000, Myklebust, Trond
+> > > > wrote:
+> > >
+> > > > > Why is it not sufficient to clamp the TCP values of 'snd' and
+> > > > > 'rcv' using
+> > > > sysctl_tcp_wmem/sysctl_tcp_rmem?
+> > > > > ...and clamp the UDP values using
+> > > > sysctl_[wr]mem_min/sysctl_[wr]mem_max?.
+> > > >
+> > > > Yeah, I was just looking at that--so, Ben, something like:
+> > > >
+> > > > 	echo "1048576 1048576 4194304"
+> > > > 	>/proc/sys/net/ipv4/tcp_wmem
+> > > >
+> > > > But I'm unclear on some of the details: do we need to set the
+> > > > minimum or only the default?  And does it need any more
+> > > > allowance for protocol overhead?
+> > >
+> > > I meant adding a check either to svc_sock_setbufsize or to the 2
+> > > call-sites
+> > that enforces the above limits.
+> > 
+> > I lost you.
+> > 
+> > It's not svc_sock_setbufsize that's setting too-small values, if
+> > that's what you mean.
+> > 
+> 
+> I understood that the problem was svc_udp_recvfrom() and
+> svc_setup_socket() were using negative values in the calls to
+> svc_sock_setbufsize().  Looking again at svc_setup_socket(), I don't
+> see how that could do so, but svc_udp_recvfrom() definitely has
+> potential to cause damage.
 
-Sad, but no, this can't be done that easy in the way you are proposing. Have a look at lock_down_net() - it works in the same manner.
-Moreover, service shutdown was significantly reworked to support work across multiple namespaces. We, actually, came to this solution in one of our previous 
-discussions in the past because we were trying to reduce number of running threads and used memory for such non-heavily used services like lockd and nfs 
-callback. And existent approach works good enough except in-progress transports.
+Right, the changelog was confusing, the problem they're actually hitting
+is with tcp.  Looks like tcp autotuning is decreasing the send buffer
+below the size we requested in svc_sock_setbufsize().
 
-Now we can't just move  shutdown thread after transports because other problems will arise (BUG_ON() in svc_destroy will trigger and that's just the beginning). 
-I.e. to make it possible to shutdown service before transports, service should be rewritten to work in network namespace context (but not across all namespaces).
+--b.
 
-
-> --b.
->
->> Usually I disable them in the kernel .config,
->> though it appears the currently running kernel has this:
->>
->> CONFIG_NAMESPACES=y
->> # CONFIG_UTS_NS is not set
->> # CONFIG_IPC_NS is not set
->> # CONFIG_PID_NS is not set
->> # CONFIG_NET_NS is not set
->>
->> The full .config was attached to the first post in this thread.
->>
->> Cheers
->>
-
-
--- 
-Best regards,
-Stanislav Kinsbursky
+> 
+> The TCP layer should be taking care to always clamp the send/receive
+> buffer sizes in tcp_new_space(),tcp_clamp_window(), etc...
+> 
+> Trond
