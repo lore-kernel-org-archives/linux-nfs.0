@@ -1,83 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46803 "EHLO fieldses.org"
+Received: from relay1.sgi.com ([192.48.179.29]:49843 "EHLO relay.sgi.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751879Ab3AUQLY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Jan 2013 11:11:24 -0500
-Date: Mon, 21 Jan 2013 11:11:23 -0500
-To: richard@vdtoorn.nl
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Hanging nfs4+krb5 mounts with negative uids?
-Message-ID: <20130121161123.GB16357@fieldses.org>
-References: <26b3643c253ee306d593bb4b20ff095b.squirrel@vdtoorn.nl>
+	id S1753224Ab3AYWCu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2013 17:02:50 -0500
+Date: Fri, 25 Jan 2013 16:02:49 -0600
+From: Ben Myers <bpm@sgi.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Olga Kornievskaia <aglo@citi.umich.edu>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Jim Rees <rees@umich.edu>
+Subject: Re: sunrpc: socket buffer size tuneable
+Message-ID: <20130125220249.GY30652@sgi.com>
+References: <20130125192935.GA32470@sgi.com>
+ <20130125202107.GD29596@fieldses.org>
+ <20130125203507.GW30652@sgi.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA91833BF5A@sacexcmbx05-prd.hq.netapp.com>
+ <20130125212106.GH29596@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA91833BFAB@sacexcmbx05-prd.hq.netapp.com>
+ <20130125213503.GI29596@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA91833BFFE@sacexcmbx05-prd.hq.netapp.com>
+ <20130125215712.GJ29596@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <26b3643c253ee306d593bb4b20ff095b.squirrel@vdtoorn.nl>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20130125215712.GJ29596@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 21, 2013 at 04:07:39PM +0100, richard@vdtoorn.nl wrote:
-> Hi all,
+Hey,
+	
+On Fri, Jan 25, 2013 at 04:57:12PM -0500, J. Bruce Fields wrote:
+> On Fri, Jan 25, 2013 at 09:45:12PM +0000, Myklebust, Trond wrote:
+> > > -----Original Message----- From: J. Bruce Fields
+> > > [mailto:bfields@fieldses.org] Sent: Friday, January 25, 2013 4:35 PM
+> > > To: Myklebust, Trond Cc: Ben Myers; Olga Kornievskaia;
+> > > linux-nfs@vger.kernel.org; Jim Rees Subject: Re: sunrpc: socket
+> > > buffer size tuneable
+> > > 
+> > > On Fri, Jan 25, 2013 at 09:29:09PM +0000, Myklebust, Trond wrote:
+> > > > > -----Original Message----- From: J. Bruce Fields
+> > > > > [mailto:bfields@fieldses.org] Sent: Friday, January 25, 2013
+> > > > > 4:21 PM To: Myklebust, Trond Cc: Ben Myers; Olga Kornievskaia;
+> > > > > linux-nfs@vger.kernel.org; Jim Rees Subject: Re: sunrpc: socket
+> > > > > buffer size tuneable
+> > > > >
+> > > > > On Fri, Jan 25, 2013 at 09:12:55PM +0000, Myklebust, Trond
+> > > > > wrote:
+> > > >
+> > > > > > Why is it not sufficient to clamp the TCP values of 'snd' and
+> > > > > > 'rcv' using
+> > > > > sysctl_tcp_wmem/sysctl_tcp_rmem?
+> > > > > > ...and clamp the UDP values using
+> > > > > sysctl_[wr]mem_min/sysctl_[wr]mem_max?.
+> > > > >
+> > > > > Yeah, I was just looking at that--so, Ben, something like:
+> > > > >
+> > > > > 	echo "1048576 1048576 4194304"
+> > > > > 	>/proc/sys/net/ipv4/tcp_wmem
+> > > > >
+> > > > > But I'm unclear on some of the details: do we need to set the
+> > > > > minimum or only the default?  And does it need any more
+> > > > > allowance for protocol overhead?
+> > > >
+> > > > I meant adding a check either to svc_sock_setbufsize or to the 2
+> > > > call-sites
+> > > that enforces the above limits.
+> > > 
+> > > I lost you.
+> > > 
+> > > It's not svc_sock_setbufsize that's setting too-small values, if
+> > > that's what you mean.
+> > > 
+> > 
+> > I understood that the problem was svc_udp_recvfrom() and
+> > svc_setup_socket() were using negative values in the calls to
+> > svc_sock_setbufsize().  Looking again at svc_setup_socket(), I don't
+> > see how that could do so, but svc_udp_recvfrom() definitely has
+> > potential to cause damage.
 > 
-> I have a question about nfs-utils. It's about a patch that was submitted,
-> way back in 2010, fixing hanging mounts because of a int/uint problem:
-> 
-> you can read the commit message at:
-> http://www.spinics.net/lists/linux-nfs/msg14723.html
-> 
-> This code gets hit, e.g. with the new debian stable release where
-> nfs-kernel-server/nfs-common is upgraded to 1.2.6-3 (or upgrade
-> nfs-kernel-server from debian stable to debian unstable). On my nfsv4+krb5
-> system, this seems to do exactly the opposite of the patch: not fixing,
-> but in fact introducing a hanging mount.
-> 
-> When I change the code back from unsigned uid's to signed uid's the mount
-> works again.
+> Right, the changelog was confusing, the problem they're actually hitting
+> is with tcp.  Looks like tcp autotuning is decreasing the send buffer
+> below the size we requested in svc_sock_setbufsize().
 
-Assuming you're running kernel 3.7--this shoulds like the problem fixed
-by kernel commit 621eb19ce1ec.. "svcrpc: Revert "sunrpc/cache.h: replace
-simple_strtoul"", which has also been backported to 3.7.3.  Could you
-let us know whether applying that patch, or upgrading to 3.7.3, fixes
-the problem?
+echo "1048576 1048576 4194304" > /proc/sys/net/ipv4/tcp_wmem 
 
---b.
+Seems to have been effective.  I'll be toasting to you gents tonight.
 
-> 
-> Can anyone give me any help understanding why this is, or point me in a
-> direction in getting this solved? I very well might have just
-> misconfigured my nfsv4 + krb5 system (asking myself why am I getting
-> negative uids?)
-> 
-> Some more information to help debugging:
-> 
-> 1) I'm running a VM as a kerberos KDC/admin server (debian sid/unstable)
-> 2) I'm running a second VM as a nfsv4 server configured to use this
-> kerberos VM (debian squeeze/stable)
-> 3) All VM's are running linux kernel 3.7 (no modules, crypto stuff
-> configured), time is synchronized by ntpdate
-> 4) On both the nfs-server as an nfs-client, I can succesfully mount using
-> krb5/5i/5p.
-> 
-> Problem: once I dist-upgrade the nfs-server to unstable where
-> nfs-utils=1.2.6-3, the mount hangs as described in debian bug #682709.
-> When I delete the newly acquired
-> machine credential /tmp/krb5cc_machine_***, and retry the mount, the
-> syslog error is the following:
-> 
-> ERROR: GSS-API: error in gss_acquire_cred(): Unspecified GSS failure.
-> Minor code may provide more information - Unknown error
-> 
-> I have a patch available for 1.2.6-3 (basically the opposite of the
-> commit), that works for my environment. Just a few lines, can paste if
-> anyone is interested.
-> 
-> Thanks for the help!
-> 
-> Richard van den Toorn
-> (The Netherlands)
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I think it would be good if the server enforced a setting that is large enough.
+
+Thanks,
+	Ben
