@@ -1,99 +1,180 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:16026 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755348Ab3ANPZw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jan 2013 10:25:52 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chris Perl <chris.perl@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Possible Race Condition on SIGKILL
-Date: Mon, 14 Jan 2013 15:25:50 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9119B307F@SACEXCMBX04-PRD.hq.netapp.com>
-References: <4FA345DA4F4AE44899BD2B03EEEC2FA911993A92@SACEXCMBX04-PRD.hq.netapp.com>
-	 <20130108212343.GC30872@nyc-qws-132.nyc.delacy.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA911993B82@SACEXCMBX04-PRD.hq.netapp.com>
-	 <20130108221651.GD30872@nyc-qws-132.nyc.delacy.com>
-	 <20130108221921.GE30872@nyc-qws-132.nyc.delacy.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA911993F1B@SACEXCMBX04-PRD.hq.netapp.com>
-	 <20130109175503.GF30872@nyc-qws-132.nyc.delacy.com>
-	 <1357764777.9862.1.camel@lade.trondhjem.org>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA911997CA3@SACEXCMBX04-PRD.hq.netapp.com>
-	 <20130111161944.GG30872@nyc-qws-132.nyc.delacy.com>
-	 <20130114150948.GH30872@nyc-qws-132.nyc.delacy.com>
-In-Reply-To: <20130114150948.GH30872@nyc-qws-132.nyc.delacy.com>
-Content-Type: text/plain; charset="utf-7"
+Received: from relay2.sgi.com ([192.48.179.30]:37702 "EHLO relay.sgi.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1755886Ab3AYA7b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 Jan 2013 19:59:31 -0500
+Date: Thu, 24 Jan 2013 18:59:30 -0600
+From: Ben Myers <bpm@sgi.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: sunrpc: socket buffer size tuneable
+Message-ID: <20130125005930.GC30652@sgi.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2013-01-14 at 10:09 -0500, Chris Perl wrote:
-+AD4- On Fri, Jan 11, 2013 at 11:19:44AM -0500, Chris Perl wrote:
-+AD4- +AD4- On Thu, Jan 10, 2013 at 09:30:58PM +-0000, Myklebust, Trond wrote:
-+AD4- +AD4- +AD4- On Wed, 2013-01-09 at 15:52 -0500, Trond Myklebust wrote:
-+AD4- +AD4- +AD4- +AD4- On Wed, 2013-01-09 at 12:55 -0500, Chris Perl wrote:
-+AD4- +AD4- +AD4- +AD4- +AD4- +AD4- Hrm.  I guess I'm in over my head here. Apologoies if I'm just asking
-+AD4- +AD4- +AD4- +AD4- +AD4- +AD4- silly bumbling questions.  You can start ignoring me at any time. :)
-+AD4- +AD4- +AD4- +AD4- +AD4- 
-+AD4- +AD4- +AD4- +AD4- +AD4- I stared at the code for a while and more and now see why what I
-+AD4- +AD4- +AD4- +AD4- +AD4- outlined is not possible.  Thanks for helping to clarify+ACE-
-+AD4- +AD4- +AD4- +AD4- +AD4- 
-+AD4- +AD4- +AD4- +AD4- +AD4- I decided to pull your git repo and compile with HEAD at
-+AD4- +AD4- +AD4- +AD4- +AD4- 87ed50036b866db2ec2ba16b2a7aec4a2b0b7c39 (linux-next as of this
-+AD4- +AD4- +AD4- +AD4- +AD4- morning).  Using this kernel, I can no longer induce any hangs.
-+AD4- +AD4- +AD4- +AD4- +AD4- 
-+AD4- +AD4- +AD4- +AD4- +AD4- Interestingly, I tried recompiling the CentOS 6.3 kernel with
-+AD4- +AD4- +AD4- +AD4- +AD4- both the original patch (v4) and the last patch you sent about fixing
-+AD4- +AD4- +AD4- +AD4- +AD4- priority queues.  With both of those in place, I still run into a
-+AD4- +AD4- +AD4- +AD4- +AD4- problem.
-+AD4- +AD4- +AD4- +AD4- +AD4- 
-+AD4- +AD4- +AD4- +AD4- +AD4- echo 0 +AD4- /proc/sys/sunrpc/rpc+AF8-debug after the hang shows (I left in the
-+AD4- +AD4- +AD4- +AD4- +AD4- previous additional prints and added printing of the tasks pointer
-+AD4- +AD4- +AD4- +AD4- +AD4- itself):
-+AD4- +AD4- +AD4- +AD4- +AD4- 
-+AD4- +AD4- +AD4- +AD4- +AD4- +ADw-6+AD4-client: ffff88082896c200, xprt: ffff880829011000, snd+AF8-task: ffff880829a1aac0
-+AD4- +AD4- +AD4- +AD4- +AD4- +ADw-6+AD4-client: ffff8808282b5600, xprt: ffff880829011000, snd+AF8-task: ffff880829a1aac0
-+AD4- +AD4- +AD4- +AD4- +AD4- +ADw-6+AD4---task-- -pid- flgs status -client- --rqstp- -timeout ---ops--
-+AD4- +AD4- +AD4- +AD4- +AD4- +ADw-6+AD4-ffff88082a463180 22007 0080    -11 ffff8808282b5600   (null)        0 ffffffffa027b7a0 nfsv3 ACCESS a:call+AF8-reserveresult q:xprt+AF8-sending
-+AD4- +AD4- +AD4- +AD4- +AD4- +ADw-6+AD4-client: ffff88082838cc00, xprt: ffff88082b7c5800, snd+AF8-task:   (null)
-+AD4- +AD4- +AD4- +AD4- +AD4- +ADw-6+AD4-client: ffff8808283db400, xprt: ffff88082b7c5800, snd+AF8-task:   (null)
-+AD4- +AD4- +AD4- +AD4- +AD4- +ADw-6+AD4-client: ffff8808283db200, xprt: ffff880829011000, snd+AF8-task: ffff880829a1aac0
-+AD4- +AD4- +AD4- +AD4- +AD4- 
-+AD4- +AD4- +AD4- +AD4- +AD4- Any thoughts about other patches that might affect this?
-+AD4- +AD4- +AD4- +AD4- 
-+AD4- +AD4- +AD4- +AD4- Hmm... The only one that springs to mind is this one (see attachment)
-+AD4- +AD4- +AD4- +AD4- and then the 'connect' fixes that you helped us with previously.
-+AD4- +AD4- +AD4- 
-+AD4- +AD4- +AD4- Never mind. I suspect that the main reason why RHEL-6.3 is still
-+AD4- +AD4- +AD4- vulnerable is that it lacks commit
-+AD4- +AD4- +AD4- 961a828df64979d2a9faeeeee043391670a193b9 (SUNRPC: Fix potential races in
-+AD4- +AD4- +AD4- xprt+AF8-lock+AF8-write+AF8-next()).
-+AD4- +AD4- 
-+AD4- +AD4- Great, thanks+ACE-  I've add this on top of the others and am now testing.
-+AD4- +AD4- I'll let you know how it goes.
-+AD4- 
-+AD4- With all 4 patches in place, I am no longer able to hang my CentOS 6.3
-+AD4- system.  I have not tested all the various combinations of the 4
-+AD4- patches, but can definitely confirm that without either of:
-+AD4- 
-+AD4- 961a828df64979d2a9faeeeee043391670a193b9 SUNRPC: Fix potential races in xprt+AF8-lock+AF8-write+AF8-next()
-+AD4- 87ed50036b866db2ec2ba16b2a7aec4a2b0b7c39 SUNRPC: Ensure we release the socket write lock if the rpc+AF8-task exits early
-+AD4- 
-+AD4- I can hang the system using the test program I sent in my first email.
-+AD4- 
-+AD4- I'll follow up with Red Hat and ask that they include all 4 patches for
-+AD4- 6.4 (some of the earlier ones they may already have).
-+AD4- 
-+AD4- Thanks so much for all the help+ACE-
+At 1020 threads the send buffer size wraps and becomes negative causing
+the nfs server to grind to a halt.  Rather than setting bufsize based
+upon the number of nfsd threads, make the buffer sizes tuneable via
+module parameters.
 
-Likewise. Thank you for all the work you did in debugging and testing.
-It is much appreciated.
+Set the buffer sizes in terms of the number of rpcs you want to fit into
+the buffer.
 
-Cheers
-  Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Signed-off-by: Ben Myers <bpm@sgi.com>
+---
 
-NetApp
-Trond.Myklebust+AEA-netapp.com
-www.netapp.com
+v2: moved tuneables to net/sunrpc/svcsock.c, allow user to lock buffer 
+size
+
+ net/sunrpc/sunrpc_syms.c |   39 +++++++++++++++++++++++++++++++++++
+ net/sunrpc/svcsock.c     |   52 ++++++++++++++++++++++++++---------------------
+ 2 files changed, 68 insertions(+), 23 deletions(-)
+
+Index: xfs/net/sunrpc/svcsock.c
+===================================================================
+--- xfs.orig/net/sunrpc/svcsock.c
++++ xfs/net/sunrpc/svcsock.c
+@@ -57,6 +57,47 @@
+ 
+ #define RPCDBG_FACILITY	RPCDBG_SVCXPRT
+ 
++/*
++ * Size each socket's send and receive buffers based upon the number of rpcs
++ * we'd like to be able to fit into them.  The TCP rcvbuf is enough for just a
++ * few requests.  TCP sndbuf is the same as the tcp_slot_table_entries default,
++ * the maximum number of in-flight rpcs for a client.  UDP sndbuf and rcvbuf
++ * defaults are the same as the udp_slot_table_entries default.
++ *
++ * Setting these too small can cause nfsd threads to block when sending.
++ */
++static int tcp_rcvbuf_nrpc = 8;
++static int tcp_sndbuf_nrpc = 8;
++
++static int udp_rcvbuf_nrpc = 6;
++static int udp_sndbuf_nrpc = 6;
++
++static bool lock_bufsize = false;
++
++/*
++ * Minimum for bufsize settings is enough space for 6 rpcs, maximum is enough
++ * space for 128 rpcs.
++ */
++static int param_set_bufsize_nrpc(const char *val, struct kernel_param *kp)
++{
++	char	*endp;
++	int 	num = simple_strtol(val, &endp, 0);
++
++	if (endp == val || (*endp && *endp != '\n') || num < 6 || num > 128)
++		return -EINVAL;
++	*((int *)kp->arg) = num;
++	return 0;
++}
++
++module_param_call(tcp_rcvbuf_nrpc, param_set_bufsize_nrpc, param_get_int,
++	          &tcp_rcvbuf_nrpc, 0644);
++module_param_call(tcp_sndbuf_nrpc, param_set_bufsize_nrpc, param_get_int,
++		  &tcp_sndbuf_nrpc, 0644);
++module_param_call(udp_rcvbuf_nrpc, param_set_bufsize_nrpc, param_get_int,
++	          &udp_rcvbuf_nrpc, 0644);
++module_param_call(udp_sndbuf_nrpc, param_set_bufsize_nrpc, param_get_int,
++	          &udp_sndbuf_nrpc, 0644);
++module_param(lock_bufsize, bool, 0644);
+ 
+ static struct svc_sock *svc_setup_socket(struct svc_serv *, struct socket *,
+ 					 int flags);
+@@ -375,8 +416,8 @@ static int svc_partial_recvfrom(struct s
+ /*
+  * Set socket snd and rcv buffer lengths
+  */
+-static void svc_sock_setbufsize(struct socket *sock, unsigned int snd,
+-				unsigned int rcv)
++static void svc_sock_setbufsize(struct socket *sock, int snd, int rcv,
++				bool lock)
+ {
+ #if 0
+ 	mm_segment_t	oldfs;
+@@ -392,8 +433,17 @@ static void svc_sock_setbufsize(struct s
+ 	 * DaveM said I could!
+ 	 */
+ 	lock_sock(sock->sk);
+-	sock->sk->sk_sndbuf = snd * 2;
+-	sock->sk->sk_rcvbuf = rcv * 2;
++	sock->sk->sk_sndbuf = snd;
++	sock->sk->sk_rcvbuf = rcv;
++
++	if (lock) {
++		/*
++		 * The socket buffer can be resized by the networking code
++		 * unless you specify that this is not to be done.
++		 */
++		sock->sk->sk_userlocks |= SOCK_SNDBUF_LOCK|SOCK_RCVBUF_LOCK;
++	}
++
+ 	sock->sk->sk_write_space(sock->sk);
+ 	release_sock(sock->sk);
+ #endif
+@@ -525,18 +575,17 @@ static int svc_udp_recvfrom(struct svc_r
+ 	size_t len;
+ 	int err;
+ 
+-	if (test_and_clear_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags))
+-	    /* udp sockets need large rcvbuf as all pending
+-	     * requests are still in that buffer.  sndbuf must
+-	     * also be large enough that there is enough space
+-	     * for one reply per thread.  We count all threads
+-	     * rather than threads in a particular pool, which
+-	     * provides an upper bound on the number of threads
+-	     * which will access the socket.
+-	     */
+-	    svc_sock_setbufsize(svsk->sk_sock,
+-				(serv->sv_nrthreads+3) * serv->sv_max_mesg,
+-				(serv->sv_nrthreads+3) * serv->sv_max_mesg);
++	if (test_and_clear_bit(XPT_CHNGBUF, &svsk->sk_xprt.xpt_flags)) {
++		/*
++		 * UDP sockets need a large rcvbuf as all pending requests are
++		 * still in that buffer.  sndbuf must also be large enough to
++		 * fit a reply for each request the server could be processing.
++		 */
++		svc_sock_setbufsize(svsk->sk_sock,
++				    udp_sndbuf_nrpc * serv->sv_max_mesg,
++				    udp_rcvbuf_nrpc * serv->sv_max_mesg,
++				    lock_bufsize);
++	}
+ 
+ 	clear_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+ 	skb = NULL;
+@@ -695,13 +744,14 @@ static void svc_udp_init(struct svc_sock
+ 	svsk->sk_sk->sk_data_ready = svc_udp_data_ready;
+ 	svsk->sk_sk->sk_write_space = svc_write_space;
+ 
+-	/* initialise setting must have enough space to
+-	 * receive and respond to one request.
+-	 * svc_udp_recvfrom will re-adjust if necessary
++	/*
++	 * Initial setting must have enough space to receive and respond to one
++	 * request.  svc_udp_recvfrom will readjust if necessary.
+ 	 */
+ 	svc_sock_setbufsize(svsk->sk_sock,
+-			    3 * svsk->sk_xprt.xpt_server->sv_max_mesg,
+-			    3 * svsk->sk_xprt.xpt_server->sv_max_mesg);
++			    udp_sndbuf_nrpc * svsk->sk_xprt.xpt_server->sv_max_mesg,
++			    udp_rcvbuf_nrpc * svsk->sk_xprt.xpt_server->sv_max_mesg,
++			    lock_bufsize);
+ 
+ 	/* data might have come in before data_ready set up */
+ 	set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+@@ -1377,8 +1427,10 @@ static struct svc_sock *svc_setup_socket
+ 		/* initialise setting must have enough space to
+ 		 * receive and respond to one request.
+ 		 */
+-		svc_sock_setbufsize(svsk->sk_sock, 4 * serv->sv_max_mesg,
+-					4 * serv->sv_max_mesg);
++		svc_sock_setbufsize(svsk->sk_sock,
++				tcp_sndbuf_nrpc * serv->sv_max_mesg,
++				tcp_rcvbuf_nrpc * serv->sv_max_mesg,
++				lock_bufsize);
+ 		svc_tcp_init(svsk, serv);
+ 	}
+ 
