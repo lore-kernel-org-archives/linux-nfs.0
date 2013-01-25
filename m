@@ -1,96 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:40493 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:44228 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756705Ab3AOII5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Jan 2013 03:08:57 -0500
-Subject: [PATCH 3/4] SUNRPC: remove "cache_request" argument in
-	sunrpc_cache_pipe_upcall() function
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Tue, 15 Jan 2013 11:09:41 +0300
-Message-ID: <20130115080941.2996.98012.stgit@localhost.localdomain>
-In-Reply-To: <20130115080402.2996.74320.stgit@localhost.localdomain>
-References: <20130115080402.2996.74320.stgit@localhost.localdomain>
+	id S1751623Ab3AYVCn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2013 16:02:43 -0500
+Date: Fri, 25 Jan 2013 16:02:42 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Ben Myers <bpm@sgi.com>
+Cc: Olga Kornievskaia <aglo@citi.umich.edu>, linux-nfs@vger.kernel.org,
+        Jim Rees <rees@umich.edu>
+Subject: Re: sunrpc: socket buffer size tuneable
+Message-ID: <20130125210242.GG29596@fieldses.org>
+References: <20130125192935.GA32470@sgi.com>
+ <20130125202107.GD29596@fieldses.org>
+ <20130125203521.GE29596@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130125203521.GE29596@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Passing this pointer is redundant since it's stored on cache_detail structure,
-which is also passed to sunrpc_cache_pipe_upcall () function.
+On Fri, Jan 25, 2013 at 03:35:21PM -0500, J. Bruce Fields wrote:
+> On Fri, Jan 25, 2013 at 03:21:07PM -0500, J. Bruce Fields wrote:
+> > 
+> > > On Fri, Jan 25, 2013 at 01:29:35PM -0600, Ben Myers wrote:
+> > > > Hey Bruce & Jim & Olga,
+> > > > 
+> > > > On Fri, Jan 25, 2013 at 02:16:20PM -0500, Jim Rees wrote:
+> > > > > J. Bruce Fields wrote:
+> > > > > 
+> > > > >   On Thu, Jan 24, 2013 at 06:59:30PM -0600, Ben Myers wrote:
+> > > > >   > At 1020 threads the send buffer size wraps and becomes negative causing
+> > > > >   > the nfs server to grind to a halt.  Rather than setting bufsize based
+> > > > >   > upon the number of nfsd threads, make the buffer sizes tuneable via
+> > > > >   > module parameters.
+> > > > >   > 
+> > > > >   > Set the buffer sizes in terms of the number of rpcs you want to fit into
+> > > > >   > the buffer.
+> > > > >   
+> > > > >   From private communication, my understanding is that the original
+> > > > >   problem here was due to memory pressure forcing the tcp send buffer size
+> > > > >   below the size required to hold a single rpc.
+> > > > 
+> > > > Years ago I did see wrapping of the buffer size when tcp was used with many
+> > > > threads.  Today's problem is timeouts on a cluster with a heavy read
+> > > > workload... and I seem to remember seeing that the send buffer size was too
+> > > > small.
+> > > > 
+> > > > >   In which case the important variable here is lock_bufsize, as that's
+> > > > >   what prevents the buffer size from going too low.
+> > > > 
+> > > > I tested removing the lock of bufsize and did hit the timeouts, so the overflow
+> > > > is starting to look less relevant.  I will test your minimal overflow fix to
+> > > > see if this is the case.
+> > > 
+> > > The minimal overflow fix did not resolve the timeouts.
+> > 
+> > OK, thanks, that's expected.
+> > 
+> > > I will test with this to see if it resolves the timeouts:
+> > 
+> > And I'd expect that to do the job--but at the expense of some tcp
+> > bandwidth.  So you end up needing your other module parameters to get
+> > the performance back.
+> 
+> Also, what do you see happening on the server in the problem case--are
+> threads blocking in svc_send, or are they dropping replies?
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- fs/nfs/dns_resolve.c         |    2 +-
- include/linux/sunrpc/cache.h |    6 +-----
- net/sunrpc/cache.c           |   10 +++-------
- 3 files changed, 5 insertions(+), 13 deletions(-)
+Oh, never mind, right, it's almost certainly svc_tcp_has_wspace failing:
 
-diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
-index 90edbd0..f5c4c35 100644
---- a/fs/nfs/dns_resolve.c
-+++ b/fs/nfs/dns_resolve.c
-@@ -142,7 +142,7 @@ static int nfs_dns_upcall(struct cache_detail *cd,
- 
- 	ret = nfs_cache_upcall(cd, key->hostname);
- 	if (ret)
--		ret = sunrpc_cache_pipe_upcall(cd, ch, cd->cache_request);
-+		ret = sunrpc_cache_pipe_upcall(cd, ch);
- 	return ret;
- }
- 
-diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index 249e73a..ea927ea 100644
---- a/include/linux/sunrpc/cache.h
-+++ b/include/linux/sunrpc/cache.h
-@@ -158,11 +158,7 @@ sunrpc_cache_update(struct cache_detail *detail,
- 		    struct cache_head *new, struct cache_head *old, int hash);
- 
- extern int
--sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h,
--		void (*cache_request)(struct cache_detail *,
--				      struct cache_head *,
--				      char **,
--				      int *));
-+sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h);
- 
- 
- extern void cache_clean_deferred(void *owner);
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index ee6b5dd..901fdca 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -198,7 +198,7 @@ static int cache_make_upcall(struct cache_detail *cd, struct cache_head *h)
- {
- 	if (!cd->cache_request)
- 		return -EINVAL;
--	return sunrpc_cache_pipe_upcall(cd, h, cd->cache_request);
-+	return sunrpc_cache_pipe_upcall(cd, h);
- }
- 
- static inline int cache_is_valid(struct cache_detail *detail, struct cache_head *h)
-@@ -1140,11 +1140,7 @@ static bool cache_listeners_exist(struct cache_detail *detail)
-  *
-  * Each request is at most one page long.
-  */
--int sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h,
--		void (*cache_request)(struct cache_detail *,
--				      struct cache_head *,
--				      char **,
--				      int *))
-+int sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h)
- {
- 
- 	char *buf;
-@@ -1169,7 +1165,7 @@ int sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h,
- 
- 	bp = buf; len = PAGE_SIZE;
- 
--	cache_request(detail, h, &bp, &len);
-+	detail->cache_request(detail, h, &bp, &len);
- 
- 	if (len < 0) {
- 		kfree(buf);
+	required = atomic_read(&xprt->xpt_reserved) + serv->sv_max_mesg;
+	if (sk_stream_wspace(svsk->sk_sk) >= required)
+		return 1;
+	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+	return 0;
 
+That returns 0 once sk_stream_wspace falls below sv_max_mesg, so we
+never take the request and don't get to the point of failing in
+svc_send.
+
+--b.
