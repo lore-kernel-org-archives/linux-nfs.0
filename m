@@ -1,48 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ironport2-out.teksavvy.com ([206.248.154.182]:51029 "EHLO
-	ironport2-out.teksavvy.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751557Ab3AQXlJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jan 2013 18:41:09 -0500
-Message-ID: <50F88C14.7030903@teksavvy.com>
-Date: Thu, 17 Jan 2013 18:41:08 -0500
-From: Mark Lord <kernel@teksavvy.com>
+Received: from mail.avalus.com ([89.16.176.221]:50392 "EHLO mail.avalus.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754596Ab3AYNp4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2013 08:45:56 -0500
+Date: Fri, 25 Jan 2013 13:45:41 +0000
+From: Alex Bligh <alex@alex.org.uk>
+Reply-To: Alex Bligh <alex@alex.org.uk>
+To: Ian Campbell <Ian.Campbell@citrix.com>
+cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        Alex Bligh <alex@alex.org.uk>
+Subject: Re: Fatal crash with NFS, AIO & tcp retransmit
+Message-ID: <0CC0BE5DF792540B7B6F1A5A@nimrod.local>
+In-Reply-To: <1358781685.3279.222.camel@zakaz.uk.xensource.com>
+References: <93D3AE9B4990994B2BCA75A9@Ximines.local>	
+ <4FA345DA4F4AE44899BD2B03EEEC2FA915C163B9@SACEXCMBX04-PRD.hq.netapp.com>	
+ <E268D60FA8BCE2E18CCE24D7@Ximines.local>	
+ <4B8CA29C9B365854E56ACBE6@Ximines.local>
+ <1358781685.3279.222.camel@zakaz.uk.xensource.com>
 MIME-Version: 1.0
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        Linux Kernel <linux-kernel@vger.kernel.org>
-Subject: Re: BUG at net/sunrpc/svc_xprt.c:921
-References: <50F42F85.50907@teksavvy.com> <20130114203711.GA29982@fieldses.org> <50F4D800.5040703@teksavvy.com> <20130115205625.GH4940@fieldses.org> <50F63882.8000607@parallels.com> <50F72F03.5070806@teksavvy.com> <50F786AF.4070107@parallels.com> <20130117130335.GD6598@fieldses.org> <50F7FB7E.2020503@parallels.com>
-In-Reply-To: <50F7FB7E.2020503@parallels.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 13-01-17 08:24 AM, Stanislav Kinsbursky wrote:
-..
-> This looks like the old issue I was trying to fix with "SUNRPC: protect service sockets lists during
-> per-net shutdown".
-> So, here is the problem as I see it: there is a transport, which is processed by service thread and
-> it's processing is racing with per-net service shutdown:
-> 
-> CPU#0:                            CPU#1:
-> 
-> svc_recv                        svc_close_net
-> svc_get_next_xprt (list_del_init(xpt_ready))
->                             svc_close_list (set XPT_BUSY and XPT_CLOSE)
->                             svc_clear_pools(xprt was gained on CPU#0 already)
->                             svc_delete_xprt (set XPT_DEAD)
-> svc_handle_xprt (is XPT_CLOSE => svc_delete_xprt()
-> BUG()
-> 
-> So, from my POW, we need some way to:
-> 1) Skip such in-progress transports on svc_close_net() call (there is not way to detect them, or at 
-> least I don't see one)
-> 2) Delete the transport after somewhere after svc_xprt_received()
-> 
-> But there is a problem with svc_xprt_received(): there is a call for svc_xprt_put() in it
-> (svc_recv->svc_handle_xprt->svc_xprt_received->svc_xprt_put) . And if we are the only user - then
-> the transport will be destroyed. But transport is dereferenced later in svc_recv() after the
-> svc_handle_xprt call.
 
-Sounds like a reference count type of problem/solution (kref) (?)
 
+--On 21 January 2013 15:21:25 +0000 Ian Campbell <Ian.Campbell@citrix.com> 
+wrote:
+
+>> >> I thought that Ian was working on a fix for this issue. At one point,
+>> >> he had a bunch of patches to allow sendpage() to call you back when
+>> >> the transmission was done. What happened to those patches?
+>> >
+>> > No idea (I don't work with Ian but have taken the liberty of copy him).
+>
+> I'm afraid I've rather dropped the ball on these patches due to lack of
+> time.
+
+I have a rebase of your patch set for 3.2 (done by Mel Gorman) which
+whilst not onto the current version is better than nothing, so I shall
+send it along to netdev in case it is useful.
+
+-- 
+Alex Bligh
