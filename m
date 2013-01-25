@@ -1,55 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53723 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:46393 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750741Ab3A2SNp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Jan 2013 13:13:45 -0500
-Date: Tue, 29 Jan 2013 13:13:44 -0500
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: fanchaoting <fanchaoting@cn.fujitsu.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsd: Check the nfsd support version when enable or
- disable the minorversion
-Message-ID: <20130129181344.GA4209@fieldses.org>
-References: <50FFB43A.8030105@cn.fujitsu.com>
- <20130123232458.GB6565@fieldses.org>
- <510247B8.4020207@cn.fujitsu.com>
+	id S1751878Ab3AYVfG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2013 16:35:06 -0500
+Date: Fri, 25 Jan 2013 16:35:03 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Ben Myers <bpm@sgi.com>, Olga Kornievskaia <aglo@citi.umich.edu>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Jim Rees <rees@umich.edu>
+Subject: Re: sunrpc: socket buffer size tuneable
+Message-ID: <20130125213503.GI29596@fieldses.org>
+References: <20130125192935.GA32470@sgi.com>
+ <20130125202107.GD29596@fieldses.org>
+ <20130125203507.GW30652@sgi.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA91833BF5A@sacexcmbx05-prd.hq.netapp.com>
+ <20130125212106.GH29596@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA91833BFAB@sacexcmbx05-prd.hq.netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <510247B8.4020207@cn.fujitsu.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91833BFAB@sacexcmbx05-prd.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 25, 2013 at 04:52:08PM +0800, fanchaoting wrote:
-> when enable or disable the minorversion throw /proc/fs/nfsd/versions,
-> it should check the support version. now only nfs4 suppport minorversion.
+On Fri, Jan 25, 2013 at 09:29:09PM +0000, Myklebust, Trond wrote:
+> > -----Original Message-----
+> > From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> > Sent: Friday, January 25, 2013 4:21 PM
+> > To: Myklebust, Trond
+> > Cc: Ben Myers; Olga Kornievskaia; linux-nfs@vger.kernel.org; Jim Rees
+> > Subject: Re: sunrpc: socket buffer size tuneable
+> > 
+> > On Fri, Jan 25, 2013 at 09:12:55PM +0000, Myklebust, Trond wrote:
 > 
-> Signed-off-by: Fan Chaoting <fanchaoting@cn.fujitsu.com>
+> > > Why is it not sufficient to clamp the TCP values of 'snd' and 'rcv' using
+> > sysctl_tcp_wmem/sysctl_tcp_rmem?
+> > > ...and clamp the UDP values using
+> > sysctl_[wr]mem_min/sysctl_[wr]mem_max?.
+> > 
+> > Yeah, I was just looking at that--so, Ben, something like:
+> > 
+> > 	echo "1048576 1048576 4194304" >/proc/sys/net/ipv4/tcp_wmem
+> > 
+> > But I'm unclear on some of the details: do we need to set the minimum or
+> > only the default?  And does it need any more allowance for protocol
+> > overhead?
+> 
+> I meant adding a check either to svc_sock_setbufsize or to the 2 call-sites that enforces the above limits.
 
-Apologies, I'd already committed the same fix (and credited you with
-reported-by:) before seeing this.--b.
+I lost you.
 
-> 
-> ---
->  fs/nfsd/nfsctl.c |    2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index 7493428..65889ec 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -534,7 +534,7 @@ static ssize_t __write_versions(struct file *file, char *buf, size_t size)
->                         else
->                                 num = simple_strtol(vers, &minorp, 0);
->                         if (*minorp == '.') {
-> -                               if (num < 4)
-> +                               if (num != 4)
->                                         return -EINVAL;
->                                 minor = simple_strtoul(minorp+1, NULL, 0);
->                                 if (minor == 0)
-> --
-> 1.7.10.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+It's not svc_sock_setbufsize that's setting too-small values, if that's
+what you mean.
+
+--b.
