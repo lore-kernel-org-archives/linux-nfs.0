@@ -1,66 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.candelatech.com ([208.74.158.172]:47383 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750975Ab3AXT0S (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Jan 2013 14:26:18 -0500
-Message-ID: <51018AD9.2040608@candelatech.com>
-Date: Thu, 24 Jan 2013 11:26:17 -0800
-From: Ben Greear <greearb@candelatech.com>
+Received: from fieldses.org ([174.143.236.118]:39572 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751056Ab3AYUfX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jan 2013 15:35:23 -0500
+Date: Fri, 25 Jan 2013 15:35:21 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Ben Myers <bpm@sgi.com>
+Cc: Olga Kornievskaia <aglo@citi.umich.edu>, linux-nfs@vger.kernel.org,
+        Jim Rees <rees@umich.edu>
+Subject: Re: sunrpc: socket buffer size tuneable
+Message-ID: <20130125203521.GE29596@fieldses.org>
+References: <20130125192935.GA32470@sgi.com>
+ <20130125202107.GD29596@fieldses.org>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Comments on the bind-to-local IP patch series I posted?
-References: <51018157.9060000@candelatech.com> <4FA345DA4F4AE44899BD2B03EEEC2FA91833788D@sacexcmbx05-prd.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91833788D@sacexcmbx05-prd.hq.netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130125202107.GD29596@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/24/2013 11:12 AM, Myklebust, Trond wrote:
-> On Thu, 2013-01-24 at 10:45 -0800, Ben Greear wrote:
->> I'd really like to get some feedback on whether the patches I posted
->> have a chance at upstream inclusion.  If the whole idea is DOA,
->> then just let me know and I promise not to ask again for a few
->> years :)
->>
->> Otherwise, if any improvements are needed, I'll be happy to work on
->> them.
->
-> My stated goal has always been to support this kind of setup through net
-> namespaces and containers. Now that Stanislav has added that support (at
-> least for the RPC+NFS clients), why do we need a second solution?
->
-> IOW: Is there any reason why you can't just use 'virt-sandbox', for
-> instance, to start up an lxc session with its own network ip address and
-> then run your application?
+On Fri, Jan 25, 2013 at 03:21:07PM -0500, J. Bruce Fields wrote:
+> 
+> > On Fri, Jan 25, 2013 at 01:29:35PM -0600, Ben Myers wrote:
+> > > Hey Bruce & Jim & Olga,
+> > > 
+> > > On Fri, Jan 25, 2013 at 02:16:20PM -0500, Jim Rees wrote:
+> > > > J. Bruce Fields wrote:
+> > > > 
+> > > >   On Thu, Jan 24, 2013 at 06:59:30PM -0600, Ben Myers wrote:
+> > > >   > At 1020 threads the send buffer size wraps and becomes negative causing
+> > > >   > the nfs server to grind to a halt.  Rather than setting bufsize based
+> > > >   > upon the number of nfsd threads, make the buffer sizes tuneable via
+> > > >   > module parameters.
+> > > >   > 
+> > > >   > Set the buffer sizes in terms of the number of rpcs you want to fit into
+> > > >   > the buffer.
+> > > >   
+> > > >   From private communication, my understanding is that the original
+> > > >   problem here was due to memory pressure forcing the tcp send buffer size
+> > > >   below the size required to hold a single rpc.
+> > > 
+> > > Years ago I did see wrapping of the buffer size when tcp was used with many
+> > > threads.  Today's problem is timeouts on a cluster with a heavy read
+> > > workload... and I seem to remember seeing that the send buffer size was too
+> > > small.
+> > > 
+> > > >   In which case the important variable here is lock_bufsize, as that's
+> > > >   what prevents the buffer size from going too low.
+> > > 
+> > > I tested removing the lock of bufsize and did hit the timeouts, so the overflow
+> > > is starting to look less relevant.  I will test your minimal overflow fix to
+> > > see if this is the case.
+> > 
+> > The minimal overflow fix did not resolve the timeouts.
+> 
+> OK, thanks, that's expected.
+> 
+> > I will test with this to see if it resolves the timeouts:
+> 
+> And I'd expect that to do the job--but at the expense of some tcp
+> bandwidth.  So you end up needing your other module parameters to get
+> the performance back.
 
-My application would not work well with that..if for no other reason than it
-would be terribly complicated to manage 3000 sandboxes and whatever applications
-were running in those sandboxes.
+Also, what do you see happening on the server in the problem case--are
+threads blocking in svc_send, or are they dropping replies?
 
-In addition, on multi-homed machines, there can be some general advantages
-to allowing binding to specific IP addresses.  A somewhat contrived example
-would be two network interfaces on same subnet, wired to a 1G/10G switch.
-With binding, you could mount the same server two different times, and spread
-the load on the two 1G (client side) interfaces.
+--b.
 
-Or, just keep all nfs traffic on a particular interface for some other
-reason like some small level of security.
-
- From what I can tell, my patches should not add any real overhead,
-and the code is not that complex.
-
-But, I suspect that my handling of the callback binding address could be
-problematic if someone wanted to do some strange asymmetric routing,
-so I'd probably need a way to make that configurable and disabled
-by default.  If the rest of the series has a chance, I'd like to
-ask your opinion on a preferred way to configure this.
-
-
-Thanks,
-Ben
-
--- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
-
+> 
+> --b.
+> 
+> > 
+> > ---
+> >  net/sunrpc/svcsock.c |    7 +++++++
+> >  1 file changed, 7 insertions(+)
+> > 
+> > Index: b/net/sunrpc/svcsock.c
+> > ===================================================================
+> > --- a/net/sunrpc/svcsock.c	2013-01-25 13:48:05.000000000 -0600
+> > +++ b/net/sunrpc/svcsock.c	2013-01-25 13:49:42.000000000 -0600
+> > @@ -435,6 +435,13 @@ static void svc_sock_setbufsize(struct s
+> >  	lock_sock(sock->sk);
+> >  	sock->sk->sk_sndbuf = snd * 2;
+> >  	sock->sk->sk_rcvbuf = rcv * 2;
+> > +
+> > +	/*
+> > +	 * The socket buffer can be resized by the networking code
+> > +	 * unless you specify that this is not to be done.
+> > +	 */
+> > +	sock->sk->sk_userlocks |= SOCK_SNDBUF_LOCK|SOCK_RCVBUF_LOCK;
+> > +
+> >  	sock->sk->sk_write_space(sock->sk);
+> >  	release_sock(sock->sk);
+> >  #endif
+> > 
+> > Thanks,
+> > Ben
