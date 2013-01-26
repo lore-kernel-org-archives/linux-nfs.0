@@ -1,88 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:54592 "EHLO
-	Dobby.4dicksons.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752078Ab3AVNky (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jan 2013 08:40:54 -0500
-From: Steve Dickson <steved@redhat.com>
-To: David Quigley <selinux@davequigley.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 05/14] KConfig: Add KConfig entries for Labeled NFS
-Date: Tue, 22 Jan 2013 08:40:33 -0500
-Message-Id: <1358862042-27520-6-git-send-email-steved@redhat.com>
-In-Reply-To: <1358862042-27520-1-git-send-email-steved@redhat.com>
-References: <1358862042-27520-1-git-send-email-steved@redhat.com>
+Received: from moutng.kundenserver.de ([212.227.17.10]:64380 "EHLO
+	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750751Ab3AZNfP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Jan 2013 08:35:15 -0500
+From: Arnd Bergmann <arnd@arndb.de>
+To: "Russell King - ARM Linux" <linux@arm.linux.org.uk>
+Subject: Re: [PATCH 15/19] sunrpc: don't warn for unused variable 'buf'
+Date: Sat, 26 Jan 2013 13:34:56 +0000
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-arm-kernel@lists.infradead.org"
+	<linux-arm-kernel@lists.infradead.org>
+References: <1359123276-15833-1-git-send-email-arnd@arndb.de> <201301252345.25829.arnd@arndb.de> <20130126110321.GE23505@n2100.arm.linux.org.uk>
+In-Reply-To: <20130126110321.GE23505@n2100.arm.linux.org.uk>
+MIME-Version: 1.0
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Message-Id: <201301261334.56398.arnd@arndb.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+On Saturday 26 January 2013, Russell King - ARM Linux wrote:
+> On Fri, Jan 25, 2013 at 11:45:25PM +0000, Arnd Bergmann wrote:
+> > On Friday 25 January 2013, Myklebust, Trond wrote:
+> > > > -----Original Message-----
+> > > > From: Arnd Bergmann [mailto:arnd@arndb.de]
+> > > > Marking it as __maybe_unused avoids a harmless gcc warning.
+> > > 
+> > > Alternatively, just declare it using the RPC_IFDEBUG() macro.
+> > 
+> > Right, makes sense: that's more consistent with other functions
+> > doing the same thing. Thanks for taking a look.
+> 
+> NAK.
+> 
+> There is already a fix queued up as a result of a previous report I
+> sent, but for some reason (which I didn't question) it was decided
+> not to queue it for -rc.
+> 
+> See Bruce's reply on lkml: 20130108212816.GA24572@fieldses.org
 
-This patch adds two entries into the fs/KConfig file. The first entry
-NFS_V4_SECURITY_LABEL enables security label support for the NFSv4 client while
-the second entry NFSD_V4_SECURITY_LABEL enables security labeling support on
-the server side.
+Ok, makes sense. Then again, if that fix is queued for 3.9, maybe
+it still makes sense to take the simpler fix into 3.8, and remove
+it in 3.9 along with the other instances of RPC_IFDEBUG.
 
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- fs/nfs/Kconfig  | 16 ++++++++++++++++
- fs/nfsd/Kconfig | 13 +++++++++++++
- 2 files changed, 29 insertions(+)
-
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index 13ca196..0077197 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -131,6 +131,22 @@ config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
- 	  If the NFS client is unchanged from the upstream kernel, this
- 	  option should be set to the default "kernel.org".
- 
-+config NFS_V4_SECURITY_LABEL
-+	bool "Provide Security Label support for NFSv4 client"
-+	depends on NFS_V4 && SECURITY
-+	help
-+
-+	Say Y here if you want enable fine-grained security label attribute
-+	support for NFS version 4.  Security labels allow security modules like
-+	SELinux and Smack to label files to facilitate enforcement of their policies.
-+	Without this an NFSv4 mount will have the same label on each file.
-+
-+	If you do not wish to enable fine-grained security labels SELinux or
-+	Smack policies on NFSv4 files, say N.
-+
-+
-+	  If unsure, say N.
-+
- config ROOT_NFS
- 	bool "Root file system on NFS"
- 	depends on NFS_FS=y && IP_PNP
-diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-index 8df1ea4..75ba894 100644
---- a/fs/nfsd/Kconfig
-+++ b/fs/nfsd/Kconfig
-@@ -81,6 +81,19 @@ config NFSD_V4
- 
- 	  If unsure, say N.
- 
-+config NFSD_V4_SECURITY_LABEL
-+	bool "Provide Security Label support for NFSv4 server"
-+	depends on NFSD_V4 && SECURITY
-+	help
-+
-+	Say Y here if you want enable fine-grained security label attribute
-+	support for NFS version 4.  Security labels allow security modules like
-+	SELinux and Smack to label files to facilitate enforcement of their policies.
-+	Without this an NFSv4 mount will have the same label on each file.
-+
-+	If you do not wish to enable fine-grained security labels SELinux or
-+	Smack policies on NFSv4 files, say N.
-+
- config NFSD_FAULT_INJECTION
- 	bool "NFS server manual fault injection"
- 	depends on NFSD_V4 && DEBUG_KERNEL
--- 
-1.8.1
-
+	Arnd
