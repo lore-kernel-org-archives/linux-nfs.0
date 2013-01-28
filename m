@@ -1,45 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:38042 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751804Ab3AQFGH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jan 2013 00:06:07 -0500
-Message-ID: <50F786AF.4070107@parallels.com>
-Date: Thu, 17 Jan 2013 09:05:51 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from mail-ia0-f182.google.com ([209.85.210.182]:56688 "EHLO
+	mail-ia0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753531Ab3A1Ub7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2013 15:31:59 -0500
+Received: by mail-ia0-f182.google.com with SMTP id w33so4857673iag.27
+        for <linux-nfs@vger.kernel.org>; Mon, 28 Jan 2013 12:31:58 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1 4/5] SUNRPC: Find kernel module by OID
+To: linux-nfs@vger.kernel.org
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Date: Mon, 28 Jan 2013 15:31:57 -0500
+Message-ID: <20130128203157.2523.17121.stgit@seurat.1015granger.net>
+In-Reply-To: <20130128195843.2523.34798.stgit@seurat.1015granger.net>
+References: <20130128195843.2523.34798.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-To: Mark Lord <kernel@teksavvy.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>,
-        Linux Kernel <linux-kernel@vger.kernel.org>
-Subject: Re: BUG at net/sunrpc/svc_xprt.c:921
-References: <50F42F85.50907@teksavvy.com> <20130114203711.GA29982@fieldses.org> <50F4D800.5040703@teksavvy.com> <20130115205625.GH4940@fieldses.org> <50F63882.8000607@parallels.com> <50F72F03.5070806@teksavvy.com>
-In-Reply-To: <50F72F03.5070806@teksavvy.com>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-17.01.2013 02:51, Mark Lord пишет:
-> On 13-01-16 12:20 AM, Stanislav Kinsbursky wrote:
->>
->> Mark, could you provide any call traces?
->
-> Call traces from where/what?
-> There's this one, posted earlier in the BUG report:
->
-> kernel BUG at net/sunrpc/svc_xprt.c:921!
-> Call Trace:
->   [<ffffffffa016a56a>] ? svc_recv+0xcc/0x338 [sunrpc]
->   [<ffffffffa0318bfc>] ? nfs_callback_authenticate+0x20/0x20 [nfsv4]
->   [<ffffffffa0318c19>] ? nfs4_callback_svc+0x1d/0x3c [nfsv4]
->   [<ffffffff810407e6>] ? kthread+0x81/0x89
->   [<ffffffff81040765>] ? kthread_freezable_should_stop+0x36/0x36
->   [<ffffffff812ea62c>] ? ret_from_fork+0x7c/0xb0
->   [<ffffffff81040765>] ? kthread_freezable_should_stop+0x36/0x36
->
+The current GSS mech switch can find and load GSS pseudoflavor
+modules by name or pseudoflavor number, but cannot find them by OID.
 
-Thanks!
-I haven't seen the bug report.
-Could you provide the link, please?
+This is important when dealing with a SECINFO request, especially
+early in the boot process.  A SECINFO reply has a list of flavors
+the server can support, but they are listed by OID.  Our client
+currently can choose only flavors that are already loaded.  We want
+to be able to choose flavors where the module is available but not
+yet loaded.
 
--- 
-Best regards,
-Stanislav Kinsbursky
+Add a way for the GSS mech switch to load GSS pseudoflavor support
+by OID.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ net/sunrpc/Kconfig                    |    1 +
+ net/sunrpc/auth_gss/gss_krb5_mech.c   |    1 +
+ net/sunrpc/auth_gss/gss_mech_switch.c |    7 +++++++
+ 3 files changed, 9 insertions(+), 0 deletions(-)
+
+diff --git a/net/sunrpc/Kconfig b/net/sunrpc/Kconfig
+index 03d03e3..f97f555 100644
+--- a/net/sunrpc/Kconfig
++++ b/net/sunrpc/Kconfig
+@@ -3,6 +3,7 @@ config SUNRPC
+ 
+ config SUNRPC_GSS
+ 	tristate
++	select OID_REGISTRY
+ 
+ config SUNRPC_BACKCHANNEL
+ 	bool
+diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
+index d3611f1..8b1005d 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_mech.c
++++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
+@@ -750,6 +750,7 @@ MODULE_ALIAS("rpc-auth-gss-krb5p");
+ MODULE_ALIAS("rpc-auth-gss-390003");
+ MODULE_ALIAS("rpc-auth-gss-390004");
+ MODULE_ALIAS("rpc-auth-gss-390005");
++MODULE_ALIAS("rpc-auth-gss-1.2.840.113554.1.2.2");
+ 
+ static struct gss_api_mech gss_kerberos_mech = {
+ 	.gm_name	= "krb5",
+diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
+index 883b5b8..64dbf07a 100644
+--- a/net/sunrpc/auth_gss/gss_mech_switch.c
++++ b/net/sunrpc/auth_gss/gss_mech_switch.c
+@@ -36,6 +36,7 @@
+ #include <linux/types.h>
+ #include <linux/slab.h>
+ #include <linux/module.h>
++#include <linux/oid_registry.h>
+ #include <linux/sunrpc/msg_prot.h>
+ #include <linux/sunrpc/gss_asn1.h>
+ #include <linux/sunrpc/auth_gss.h>
+@@ -174,6 +175,12 @@ EXPORT_SYMBOL_GPL(gss_mech_get_by_name);
+ static struct gss_api_mech *gss_mech_get_by_OID(struct rpcsec_gss_oid *obj)
+ {
+ 	struct gss_api_mech	*pos, *gm = NULL;
++	char buf[32];
++
++	if (sprint_oid(obj->data, obj->len, buf, sizeof(buf)) < 0)
++		return NULL;
++	dprintk("RPC:       %s: oid: %s\n", __func__, buf);
++	request_module("rpc-auth-gss-%s", buf);
+ 
+ 	spin_lock(&registered_mechs_lock);
+ 	list_for_each_entry(pos, &registered_mechs, gm_list) {
+
