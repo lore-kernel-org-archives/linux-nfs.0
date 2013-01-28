@@ -1,111 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cn.fujitsu.com ([222.73.24.84]:36488 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1752241Ab3AXCAQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2013 21:00:16 -0500
-Message-ID: <51008CCA.3030002@cn.fujitsu.com>
-Date: Thu, 24 Jan 2013 09:22:18 +0800
-From: fanchaoting <fanchaoting@cn.fujitsu.com>
+Received: from mx1.redhat.com ([209.132.183.28]:43533 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752551Ab3A1XSR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Jan 2013 18:18:17 -0500
+Date: Mon, 28 Jan 2013 18:18:03 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Arnd Bergmann <arnd@arndb.de>
+Cc: Russell King - ARM Linux <linux@arm.linux.org.uk>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-arm-kernel@lists.infradead.org"
+	<linux-arm-kernel@lists.infradead.org>
+Subject: Re: [PATCH 15/19] sunrpc: don't warn for unused variable 'buf'
+Message-ID: <20130128231803.GG5677@pad.fieldses.org>
+References: <1359123276-15833-1-git-send-email-arnd@arndb.de>
+ <201301252345.25829.arnd@arndb.de>
+ <20130126110321.GE23505@n2100.arm.linux.org.uk>
+ <201301261334.56398.arnd@arndb.de>
 MIME-Version: 1.0
-To: "bfields@fieldses.org" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsd: Check the nfsd support version when enable or disable
- the minorversion
-References: <50FFB43A.8030105@cn.fujitsu.com> <20130123232458.GB6565@fieldses.org>
-In-Reply-To: <20130123232458.GB6565@fieldses.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <201301261334.56398.arnd@arndb.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-bfields@fieldses.org 写道:
-> On Wed, Jan 23, 2013 at 05:58:18PM +0800, fanchaoting wrote:
->> when enable or disable the minorversion throw /proc/fs/nfsd/versions,it
->> should check the support version.
->>
->> for example
->> if we do like following:
->>
->> echo "+2 +3 +4 +7.1">/proc/fs/nfsd/versions
->> echo "+2 +3 +4 -7.1">/proc/fs/nfsd/versions
->> it will enable or disable nfs4.1, but now the number nfs7 didn't support.
-> 
-> Actually, who knows whether a hypothetical NFSv7 would even support
-> minor versioning.  Let's just do this:
-> 
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index 7493428..65889ec 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -534,7 +534,7 @@ static ssize_t __write_versions(struct file *file, char *buf, size_t size)
->  			else
->  				num = simple_strtol(vers, &minorp, 0);
->  			if (*minorp == '.') {
-> -				if (num < 4)
-> +				if (num != 4)
->  					return -EINVAL;
->  				minor = simple_strtoul(minorp+1, NULL, 0);
->  				if (minor == 0)
-> 
+On Sat, Jan 26, 2013 at 01:34:56PM +0000, Arnd Bergmann wrote:
+> On Saturday 26 January 2013, Russell King - ARM Linux wrote:
+> > On Fri, Jan 25, 2013 at 11:45:25PM +0000, Arnd Bergmann wrote:
+> > > On Friday 25 January 2013, Myklebust, Trond wrote:
+> > > > > -----Original Message-----
+> > > > > From: Arnd Bergmann [mailto:arnd@arndb.de]
+> > > > > Marking it as __maybe_unused avoids a harmless gcc warning.
+> > > > 
+> > > > Alternatively, just declare it using the RPC_IFDEBUG() macro.
+> > > 
+> > > Right, makes sense: that's more consistent with other functions
+> > > doing the same thing. Thanks for taking a look.
+> > 
+> > NAK.
+> > 
+> > There is already a fix queued up as a result of a previous report I
+> > sent, but for some reason (which I didn't question) it was decided
+> > not to queue it for -rc.
+> > 
+> > See Bruce's reply on lkml: 20130108212816.GA24572@fieldses.org
 
-thanks ,maybe you are right.
+Apologies, I've seen so many "stop sending me post-rc1 patches that
+don't fix serious crashes!" flames.
 
-but if the kernel supports nfs5.1,nfs6.1. it may don't work.
-people don't know whether the kernel can support nfs5.1,nfs6.1,nfs7.1 or not. 
-if the kernel don't support nfs5.1,nfs6.1,nfs7.1 in the further. this change
-maybe right. 
+I guess obviousl compile fixes should be an exception--if nothing else
+it'd save a lot of duplicated work as this is something like the 3rd
+patch I've seen for this.
 
-> --b.
-> 
->> Signed-off-by: Fan Chaoting <fanchaoting@cn.fujitsu.com>
->>
->> ---
->>  fs/nfsd/nfsctl.c |    2 +-
->>  fs/nfsd/nfsd.h   |    1 +
->>  fs/nfsd/nfssvc.c |    4 ++++
->>  3 files changed, 6 insertions(+), 1 deletion(-)
->>
->> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
->> index dab350d..1a6e89c 100644
->> --- a/fs/nfsd/nfsctl.c
->> +++ b/fs/nfsd/nfsctl.c
->> @@ -532,7 +532,7 @@ static ssize_t __write_versions(struct file *file, char *buf, size_t size)
->>  			else
->>  				num = simple_strtol(vers, &minorp, 0);
->>  			if (*minorp == '.') {
->> -				if (num < 4)
->> +				if (num < 4 || num >= nfsd_number_vers())
->>  					return -EINVAL;
->>  				minor = simple_strtoul(minorp+1, NULL, 0);
->>  				if (minor == 0)
->> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
->> index 80d5ce4..c9d7203 100644
->> --- a/fs/nfsd/nfsd.h
->> +++ b/fs/nfsd/nfsd.h
->> @@ -104,6 +104,7 @@ int nfsd_vers(int vers, enum vers_op change);
->>  int nfsd_minorversion(u32 minorversion, enum vers_op change);
->>  void nfsd_reset_versions(void);
->>  int nfsd_create_serv(void);
->> +int nfsd_number_vers(void);
->>  
->>  extern int nfsd_max_blksize;
->>  
->> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
->> index 2013aa00..072cdb9 100644
->> --- a/fs/nfsd/nfssvc.c
->> +++ b/fs/nfsd/nfssvc.c
->> @@ -670,3 +670,7 @@ int nfsd_pool_stats_release(struct inode *inode, struct file *file)
->>  	mutex_unlock(&nfsd_mutex);
->>  	return ret;
->>  }
->> +
->> +int nfsd_number_vers(void) {
->> +	return NFSD_NRVERS;
->> +}
->> -- 
->> 1.7.10.1
->>
-> 
-> 
+--b.
 
+> 
+> Ok, makes sense. Then again, if that fix is queued for 3.9, maybe
+> it still makes sense to take the simpler fix into 3.8, and remove
+> it in 3.9 along with the other instances of RPC_IFDEBUG.
 
 
