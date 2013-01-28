@@ -1,112 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f48.google.com ([74.125.83.48]:61427 "EHLO
-	mail-ee0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752612Ab3AUOyh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2013 09:54:37 -0500
-Received: by mail-ee0-f48.google.com with SMTP id t10so2964403eei.35
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Jan 2013 06:54:36 -0800 (PST)
-From: Benny Halevy <bhalevy@tonian.com>
-To: linux-nfs@vger.kernel.org
-Cc: Boaz Harrosh <bharrosh@panasas.com>, Benny Halevy <bhalevy@tonian.com>
-Subject: [PATCH 4/9] SQUASHME: pnfsd: remove fs_layout_return sb parameter
-Date: Mon, 21 Jan 2013 16:54:33 +0200
-Message-Id: <1358780073-6026-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <50FD5646.4020206@tonian.com>
-References: <50FD5646.4020206@tonian.com>
+Received: from mail-gh0-f181.google.com ([209.85.160.181]:59547 "EHLO
+	mail-gh0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751176Ab3A1Tsf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2013 14:48:35 -0500
+Received: by mail-gh0-f181.google.com with SMTP id y8so477244ghb.40
+        for <linux-nfs@vger.kernel.org>; Mon, 28 Jan 2013 11:48:34 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v1 08/16] nfsd: break out hashtable search into separate function
+Date: Mon, 28 Jan 2013 14:41:14 -0500
+Message-Id: <1359402082-29195-9-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
+References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Boaz Harrosh <bharrosh@panasas.com>
+Later, we'll need more than one call site for this, so break it out
+into a new function.
 
-Derive the superblock from the inode argument.
-Let the caller provide the right inode, rather than NULL
-for RETURN_{FSID,ALL}
-
-Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/nfs4pnfsd.c | 25 ++++++++++---------------
- 1 file changed, 10 insertions(+), 15 deletions(-)
+ fs/nfsd/nfscache.c | 46 +++++++++++++++++++++++++++++++++-------------
+ 1 file changed, 33 insertions(+), 13 deletions(-)
 
-diff --git a/fs/nfsd/nfs4pnfsd.c b/fs/nfsd/nfs4pnfsd.c
-index c62af3d..b8d0db8 100644
---- a/fs/nfsd/nfs4pnfsd.c
-+++ b/fs/nfsd/nfs4pnfsd.c
-@@ -350,11 +350,12 @@ static void update_layout_roc(struct nfs4_layout_state *ls, bool roc)
- 	put_nfs4_file(fp);
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index 634b856..b89e7c8 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -150,6 +150,35 @@ nfsd_cache_entry_expired(struct svc_cacherep *rp)
  }
  
--void fs_layout_return(struct super_block *sb, struct inode *ino,
--		      struct nfsd4_pnfs_layoutreturn *lrp, int flags,
--		      void *recall_cookie)
-+static void fs_layout_return(struct inode *ino,
-+			     struct nfsd4_pnfs_layoutreturn *lrp,
-+			     int flags, void *recall_cookie)
+ /*
++ * Search the request hash for an entry that matches the given rqstp.
++ * Must be called with cache_lock held. Returns the found entry or
++ * NULL on failure.
++ */
++static struct svc_cacherep *
++nfsd_cache_search(struct svc_rqst *rqstp)
++{
++	struct svc_cacherep	*rp;
++	struct hlist_node	*hn;
++	struct hlist_head 	*rh;
++	__be32			xid = rqstp->rq_xid;
++	u32			proto =  rqstp->rq_prot,
++				vers = rqstp->rq_vers,
++				proc = rqstp->rq_proc;
++
++	rh = &cache_hash[request_hash(xid)];
++	hlist_for_each_entry(rp, hn, rh, c_hash) {
++		if (rp->c_state != RC_UNUSED &&
++		    xid == rp->c_xid && proc == rp->c_proc &&
++		    proto == rp->c_prot && vers == rp->c_vers &&
++		    !nfsd_cache_entry_expired(rp) &&
++		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
++		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr))
++			return rp;
++	}
++	return NULL;
++}
++
++/*
+  * Try to find an entry matching the current call in the cache. When none
+  * is found, we grab the oldest unlocked entry off the LRU list.
+  * Note that no operation within the loop may sleep.
+@@ -157,8 +186,6 @@ nfsd_cache_entry_expired(struct svc_cacherep *rp)
+ int
+ nfsd_cache_lookup(struct svc_rqst *rqstp)
  {
- 	int ret;
-+	struct super_block *sb = ino->i_sb;
+-	struct hlist_node	*hn;
+-	struct hlist_head 	*rh;
+ 	struct svc_cacherep	*rp;
+ 	__be32			xid = rqstp->rq_xid;
+ 	u32			proto =  rqstp->rq_prot,
+@@ -177,17 +204,10 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+ 	spin_lock(&cache_lock);
+ 	rtn = RC_DOIT;
  
- 	if (unlikely(!sb->s_pnfs_op->layout_return))
- 		return;
-@@ -362,9 +363,6 @@ void fs_layout_return(struct super_block *sb, struct inode *ino,
- 	lrp->args.lr_flags = flags;
- 	lrp->args.lr_cookie = recall_cookie;
- 
--	if (!ino) /* FSID or ALL */
--		ino = sb->s_root->d_inode;
--
- 	ret = sb->s_pnfs_op->layout_return(ino, &lrp->args);
- 	dprintk("%s: inode %lu iomode=%d offset=0x%llx length=0x%llx "
- 		"cookie = %p flags 0x%x status=%d\n",
-@@ -1081,7 +1079,7 @@ int nfs4_pnfs_return_layout(struct super_block *sb, struct svc_fh *current_fh,
- 	nfs4_unlock_state();
- 
- 	/* call exported filesystem layout_return (ignore return-code) */
--	fs_layout_return(sb, ino, lrp, 0, recall_cookie);
-+	fs_layout_return(ino, lrp, 0, recall_cookie);
- 
- out_no_fs_call:
- 	dprintk("pNFS %s: exit status %d\n", __func__, status);
-@@ -1201,9 +1199,8 @@ int nfs4_pnfs_return_layout(struct super_block *sb, struct svc_fh *current_fh,
- 		inode = igrab(clr->clr_file->fi_inode);
- 		if (WARN_ON(!inode))
- 			return;
--	} else {
--		inode = NULL;
--	}
-+	} else
-+		inode = clr->clr_sb->s_root->d_inode;
- 
- 	dprintk("%s: clp %p fp %p: simulating layout_return\n", __func__,
- 		clr->clr_client, clr->clr_file);
-@@ -1219,8 +1216,7 @@ int nfs4_pnfs_return_layout(struct super_block *sb, struct svc_fh *current_fh,
- 	recall_cookie = layoutrecall_done(clr);
- 	spin_unlock(&layout_lock);
- 
--	fs_layout_return(clr->clr_sb, inode, &lr, LR_FLAG_INTERN,
--			 recall_cookie);
-+	fs_layout_return(inode, &lr, LR_FLAG_INTERN, recall_cookie);
- 	iput(inode);
- }
- 
-@@ -1255,8 +1251,7 @@ void pnfsd_roc(struct nfs4_client *clp, struct nfs4_file *fp)
- 		empty = list_empty(&fp->fi_layouts);
- 		found = true;
- 		dprintk("%s: fp=%p clp=%p: return on close", __func__, fp, clp);
--		fs_layout_return(fp->fi_inode->i_sb, fp->fi_inode, &lr,
--				 LR_FLAG_INTERN,
-+		fs_layout_return(fp->fi_inode, &lr, LR_FLAG_INTERN,
- 				 empty ? PNFS_LAST_LAYOUT_NO_RECALLS : NULL);
+-	rh = &cache_hash[request_hash(xid)];
+-	hlist_for_each_entry(rp, hn, rh, c_hash) {
+-		if (rp->c_state != RC_UNUSED &&
+-		    xid == rp->c_xid && proc == rp->c_proc &&
+-		    proto == rp->c_prot && vers == rp->c_vers &&
+-		    !nfsd_cache_entry_expired(rp) &&
+-		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
+-		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr)) {
+-			nfsdstats.rchits++;
+-			goto found_entry;
+-		}
++	rp = nfsd_cache_search(rqstp);
++	if (rp) {
++		nfsdstats.rchits++;
++		goto found_entry;
  	}
- 	spin_unlock(&layout_lock);
-@@ -1315,7 +1310,7 @@ void pnfs_expire_client(struct nfs4_client *clp)
- 		dprintk("%s: inode %lu lp %p clp %p\n", __func__, inode->i_ino,
- 			lp, clp);
+ 	nfsdstats.rcmisses++;
  
--		fs_layout_return(inode->i_sb, inode, &lr, LR_FLAG_EXPIRE,
-+		fs_layout_return(inode, &lr, LR_FLAG_EXPIRE,
- 				 empty ? PNFS_LAST_LAYOUT_NO_RECALLS : NULL);
- 		iput(inode);
- 	}
 -- 
 1.7.11.7
 
