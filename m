@@ -1,75 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cn.fujitsu.com ([222.73.24.84]:28010 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1753972Ab3AWJ57 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Jan 2013 04:57:59 -0500
-Message-ID: <50FFB43A.8030105@cn.fujitsu.com>
-Date: Wed, 23 Jan 2013 17:58:18 +0800
-From: fanchaoting <fanchaoting@cn.fujitsu.com>
-MIME-Version: 1.0
-To: "bfields@fieldses.org" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH] nfsd: Check the nfsd support version when enable or disable
- the minorversion
-Content-Type: text/plain; charset=ISO-2022-JP
+Received: from mail-gh0-f172.google.com ([209.85.160.172]:62886 "EHLO
+	mail-gh0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753045Ab3A1Tsg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2013 14:48:36 -0500
+Received: by mail-gh0-f172.google.com with SMTP id z22so477373ghb.31
+        for <linux-nfs@vger.kernel.org>; Mon, 28 Jan 2013 11:48:35 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v1 14/16] nfsd: track the number of DRC entries in the cache
+Date: Mon, 28 Jan 2013 14:41:20 -0500
+Message-Id: <1359402082-29195-15-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
+References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-when enable or disable the minorversion throw /proc/fs/nfsd/versions,it
-should check the support version.
-
-for example
-if we do like following:
-
-echo "+2 +3 +4 +7.1">/proc/fs/nfsd/versions
-echo "+2 +3 +4 -7.1">/proc/fs/nfsd/versions
-it will enable or disable nfs4.1, but now the number nfs7 didn't support.
-
-Signed-off-by: Fan Chaoting <fanchaoting@cn.fujitsu.com>
-
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/nfsctl.c |    2 +-
- fs/nfsd/nfsd.h   |    1 +
- fs/nfsd/nfssvc.c |    4 ++++
- 3 files changed, 6 insertions(+), 1 deletion(-)
+ fs/nfsd/nfscache.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index dab350d..1a6e89c 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -532,7 +532,7 @@ static ssize_t __write_versions(struct file *file, char *buf, size_t size)
- 			else
- 				num = simple_strtol(vers, &minorp, 0);
- 			if (*minorp == '.') {
--				if (num < 4)
-+				if (num < 4 || num >= nfsd_number_vers())
- 					return -EINVAL;
- 				minor = simple_strtoul(minorp+1, NULL, 0);
- 				if (minor == 0)
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 80d5ce4..c9d7203 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -104,6 +104,7 @@ int nfsd_vers(int vers, enum vers_op change);
- int nfsd_minorversion(u32 minorversion, enum vers_op change);
- void nfsd_reset_versions(void);
- int nfsd_create_serv(void);
-+int nfsd_number_vers(void);
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index 896e1c0..bd21230 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -21,6 +21,7 @@
+ static struct hlist_head *	cache_hash;
+ static struct list_head 	lru_head;
+ static struct kmem_cache	*drc_slab;
++static unsigned int		num_drc_entries;
  
- extern int nfsd_max_blksize;
- 
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 2013aa00..072cdb9 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -670,3 +670,7 @@ int nfsd_pool_stats_release(struct inode *inode, struct file *file)
- 	mutex_unlock(&nfsd_mutex);
- 	return ret;
+ /*
+  * Calculate the hash index from an XID.
+@@ -65,6 +66,7 @@ nfsd_reply_cache_free_locked(struct svc_cacherep *rp)
+ 		kfree(rp->c_replvec.iov_base);
+ 	hlist_del(&rp->c_hash);
+ 	list_del(&rp->c_lru);
++	--num_drc_entries;
+ 	kmem_cache_free(drc_slab, rp);
  }
-+
-+int nfsd_number_vers(void) {
-+	return NFSD_NRVERS;
-+}
+ 
+@@ -88,6 +90,7 @@ int nfsd_reply_cache_init(void)
+ 		goto out_nomem;
+ 
+ 	INIT_LIST_HEAD(&lru_head);
++	num_drc_entries = 0;
+ 	return 0;
+ out_nomem:
+ 	printk(KERN_ERR "nfsd: failed to allocate reply cache\n");
+@@ -257,6 +260,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+ 		return RC_DOIT;
+ 	}
+ 	spin_lock(&cache_lock);
++	++num_drc_entries;
+ 
+ 	/*
+ 	 * Must search again just in case someone inserted one
 -- 
-1.7.10.1
+1.7.11.7
 
