@@ -1,43 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.agmk.net ([91.192.224.71]:38040 "EHLO mail.agmk.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750955Ab3ACJ11 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jan 2013 04:27:27 -0500
-From: =?utf-8?B?UGF3ZcWC?= Sikora <pawel.sikora@agmk.net>
-To: linux-nfs@vger.kernel.org, baggins@pld-linux.org
-Cc: Trond.Myklebust@netapp.com
-Subject: mount.nfs: cannot allocate memory.
-Date: Thu, 03 Jan 2013 10:27:19 +0100
-Message-ID: <2891788.0SBnrhN2VX@pawels>
+Received: from mail-ia0-f169.google.com ([209.85.210.169]:37282 "EHLO
+	mail-ia0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753963Ab3A1Ube (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2013 15:31:34 -0500
+Received: by mail-ia0-f169.google.com with SMTP id j5so4964672iaf.0
+        for <linux-nfs@vger.kernel.org>; Mon, 28 Jan 2013 12:31:32 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1 1/5] NFS: Remove unneeded forward declaration
+To: linux-nfs@vger.kernel.org
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Date: Mon, 28 Jan 2013 15:31:31 -0500
+Message-ID: <20130128203131.2523.51442.stgit@seurat.1015granger.net>
+In-Reply-To: <20130128195843.2523.34798.stgit@seurat.1015granger.net>
+References: <20130128195843.2523.34798.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+I've built with NFSv4 enabled and disabled.  This forward
+declaration does not seem to be required.
 
-with the latest nfs-1.2.7/kernel-3.7.1 tools i've noticed an error during autofs mounting.
-reduced testcase shows that mount.nfs with 'vers=4' has a problem:
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-[root@chufu ~]# mount.nfs -v -o vers=4 192.168.2.100:/home/atest/farm-local /mnt
-mount.nfs: timeout set for Thu Jan  3 10:22:00 2013
-mount.nfs: trying text-based options 'vers=4,addr=192.168.2.100,clientaddr=192.168.2.103'
-mount.nfs: mount(2): Cannot allocate memory
-mount.nfs: Cannot allocate memory
+ include/linux/nfs_xdr.h |    3 ---
+ 1 files changed, 0 insertions(+), 3 deletions(-)
 
-while the vers=3 works fine:
-
-[root@chufu ~]# mount.nfs -v -o vers=3 192.168.2.100:/home/atest/farm-local /mnt
-mount.nfs: timeout set for Thu Jan  3 10:22:04 2013
-mount.nfs: trying text-based options 'vers=3,addr=192.168.2.100'
-mount.nfs: prog 100003, trying vers=3, prot=6
-mount.nfs: trying 192.168.2.100 prog 100003 vers 3 prot TCP port 2049
-mount.nfs: prog 100005, trying vers=3, prot=17
-mount.nfs: trying 192.168.2.100 prog 100005 vers 3 prot UDP port 42412
-
-no obvious errors in logs on nfs server/client side :(
-i can provide more info if you need to diagnose this issue.
-
-BR,
-Paweł.
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 29adb12..467167402 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -14,9 +14,6 @@
+ #define NFS_DEF_FILE_IO_SIZE	(4096U)
+ #define NFS_MIN_FILE_IO_SIZE	(1024U)
+ 
+-/* Forward declaration for NFS v3 */
+-struct nfs4_secinfo_flavors;
+-
+ struct nfs4_string {
+ 	unsigned int len;
+ 	char *data;
 
