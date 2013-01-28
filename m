@@ -1,70 +1,141 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:43358 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751220Ab3A3FmZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jan 2013 00:42:25 -0500
-Message-ID: <5108B2B6.7010807@parallels.com>
-Date: Wed, 30 Jan 2013 09:42:14 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: <linux-nfs@vger.kernel.org>, <Trond.Myklebust@netapp.com>,
-        <linux-kernel@vger.kernel.org>, <devel@openvz.org>
-Subject: Re: [RFC PATCH] SUNRPC: protect transport processing with rw sem
-References: <20130129110317.29541.51920.stgit@localhost.localdomain> <20130129225736.GC6219@fieldses.org>
-In-Reply-To: <20130129225736.GC6219@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Received: from mail-yh0-f53.google.com ([209.85.213.53]:36768 "EHLO
+	mail-yh0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753264Ab3A1TuL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2013 14:50:11 -0500
+Received: by mail-yh0-f53.google.com with SMTP id q3so469286yhf.12
+        for <linux-nfs@vger.kernel.org>; Mon, 28 Jan 2013 11:50:11 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v1 15/16] nfsd: register a shrinker for DRC cache entries
+Date: Mon, 28 Jan 2013 14:41:21 -0500
+Message-Id: <1359402082-29195-16-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
+References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-30.01.2013 02:57, J. Bruce Fields пишет:
-> On Tue, Jan 29, 2013 at 02:03:30PM +0300, Stanislav Kinsbursky wrote:
->> There could be a service transport, which is processed by service thread and
->> racing in the same time with per-net service shutdown like listed below:
->>
->> CPU#0:                            CPU#1:
->>
->> svc_recv                        svc_close_net
->> svc_get_next_xprt (list_del_init(xpt_ready))
->>                              svc_close_list (set XPT_BUSY and XPT_CLOSE)
->>                              svc_clear_pools(xprt was gained on CPU#0 already)
->>                              svc_delete_xprt (set XPT_DEAD)
->> svc_handle_xprt (is XPT_CLOSE => svc_delete_xprt()
->> BUG()
->>
->> There could be different solutions of the problem.
->> Probably, the patch doesn't implement the best one, but I hope the simple one.
->> IOW, it protects critical section (dequeuing of pending transport and
->> enqueuing  it back to the pool) by per-service rw semaphore,
->
-> It's actually per-thread (per-struct svc_rqst) here.
->
+Since we dynamically allocate them now, allow the system to call us
+up to release them if we get low on memory.
 
-Yes, sure.
+We set the "seeks" value very high, to discourage it and release
+them in LRU order. We may end up releasing some prematurely if the
+box is really low on memory.
 
->> taken for read.
->> On per-net transports shutdown, this semaphore have to be taken for write.
->
-> There's no down_write in this patch.  Did you forget this part?
->
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfscache.c | 54 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 53 insertions(+), 1 deletion(-)
 
-See "fs/nfs/callback.c" part
-
-> The server rpc code goes to some care not to write to any global
-> structure, to prevent server threads running on multiple cores from
-> bouncing cache lines between them.
->
-
-This is just an idea. I.e. I wasn't trying to polish the patch - just to share the vision.
-
-> But my understanding is that even down_read() does modify the semaphore.
-> So we might want something like the percpu semaphore describe in
-> Documentation/percpu-rw-semaphore.txt.
->
-
-Sure, I'll have a look.
-
-
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index bd21230..27edd47 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -35,6 +35,18 @@ static inline u32 request_hash(u32 xid)
+ 
+ static int	nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *vec);
+ static void	cache_cleaner_func(struct work_struct *unused);
++static int 	nfsd_reply_cache_shrink(struct shrinker *shrink,
++					struct shrink_control *sc);
++
++/*
++ * We set "seeks" to a large value here since we really can't recreate these
++ * entries. We're just gambling that they won't actually be needed if and
++ * when the box comes under memory pressure.
++ */
++struct shrinker nfsd_reply_cache_shrinker = {
++	.shrink	= nfsd_reply_cache_shrink,
++	.seeks	= 64,
++};
+ 
+ /*
+  * locking for the reply cache:
+@@ -80,6 +92,7 @@ nfsd_reply_cache_free(struct svc_cacherep *rp)
+ 
+ int nfsd_reply_cache_init(void)
+ {
++	register_shrinker(&nfsd_reply_cache_shrinker);
+ 	drc_slab = kmem_cache_create("nfsd_drc", sizeof(struct svc_cacherep),
+ 					0, 0, NULL);
+ 	if (!drc_slab)
+@@ -102,6 +115,7 @@ void nfsd_reply_cache_shutdown(void)
+ {
+ 	struct svc_cacherep	*rp;
+ 
++	unregister_shrinker(&nfsd_reply_cache_shrinker);
+ 	cancel_delayed_work_sync(&cache_cleaner);
+ 
+ 	while (!list_empty(&lru_head)) {
+@@ -152,15 +166,17 @@ nfsd_cache_entry_expired(struct svc_cacherep *rp)
+  * if we hit one that isn't old enough, then we can stop the walking. Must
+  * be called with cache_lock held.
+  */
+-static void
++static int
+ prune_old_cache_entries(void)
+ {
++	int freed = 0;
+ 	struct svc_cacherep *rp, *tmp;
+ 
+ 	list_for_each_entry_safe(rp, tmp, &lru_head, c_lru) {
+ 		if (!nfsd_cache_entry_expired(rp))
+ 			break;
+ 		nfsd_reply_cache_free_locked(rp);
++		++freed;
+ 	}
+ 
+ 	/*
+@@ -173,6 +189,8 @@ prune_old_cache_entries(void)
+ 		cancel_delayed_work(&cache_cleaner);
+ 	else
+ 		mod_delayed_work(system_wq, &cache_cleaner, RC_EXPIRE);
++
++	return freed;
+ }
+ 
+ static void
+@@ -183,6 +201,40 @@ cache_cleaner_func(struct work_struct *unused)
+ 	spin_unlock(&cache_lock);
+ }
+ 
++static int
++nfsd_reply_cache_shrink(struct shrinker *shrink, struct shrink_control *sc)
++{
++	int nr_to_scan = sc->nr_to_scan;
++	unsigned int num;
++
++	spin_lock(&cache_lock);
++	if (!nr_to_scan)
++		goto out;
++
++	nr_to_scan -= prune_old_cache_entries();
++
++	/*
++	 * If that didn't free enough, then keep going. It's better to free
++	 * some prematurely than to have the box keel over due to lack of
++	 * memory.
++	 */
++	while (nr_to_scan > 0) {
++		struct svc_cacherep *rp;
++
++		if (list_empty(&lru_head))
++			break;
++		rp = list_first_entry(&lru_head, struct svc_cacherep, c_lru);
++		nfsd_reply_cache_free_locked(rp);
++		--nr_to_scan;
++	}
++
++out:
++	num = num_drc_entries;
++	spin_unlock(&cache_lock);
++
++	return num;
++}
++
+ /*
+  * Search the request hash for an entry that matches the given rqstp.
+  * Must be called with cache_lock held. Returns the found entry or
 -- 
-Best regards,
-Stanislav Kinsbursky
+1.7.11.7
+
