@@ -1,92 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay1.sgi.com ([192.48.179.29]:49843 "EHLO relay.sgi.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753224Ab3AYWCu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2013 17:02:50 -0500
-Date: Fri, 25 Jan 2013 16:02:49 -0600
-From: Ben Myers <bpm@sgi.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Olga Kornievskaia <aglo@citi.umich.edu>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Jim Rees <rees@umich.edu>
-Subject: Re: sunrpc: socket buffer size tuneable
-Message-ID: <20130125220249.GY30652@sgi.com>
-References: <20130125192935.GA32470@sgi.com>
- <20130125202107.GD29596@fieldses.org>
- <20130125203507.GW30652@sgi.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91833BF5A@sacexcmbx05-prd.hq.netapp.com>
- <20130125212106.GH29596@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91833BFAB@sacexcmbx05-prd.hq.netapp.com>
- <20130125213503.GI29596@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91833BFFE@sacexcmbx05-prd.hq.netapp.com>
- <20130125215712.GJ29596@fieldses.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:24182 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754061Ab3A1Tvw convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2013 14:51:52 -0500
 MIME-Version: 1.0
+Message-ID: <5AD4F061-69A6-47F5-B20A-34B8DCC2EB5E@oracle.com>
+Date: Mon, 28 Jan 2013 11:51:13 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 01/16] nfsd: fix IPv6 address handling in the DRC
+References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
+ <1359402082-29195-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1359402082-29195-2-git-send-email-jlayton@redhat.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130125215712.GJ29596@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey,
-	
-On Fri, Jan 25, 2013 at 04:57:12PM -0500, J. Bruce Fields wrote:
-> On Fri, Jan 25, 2013 at 09:45:12PM +0000, Myklebust, Trond wrote:
-> > > -----Original Message----- From: J. Bruce Fields
-> > > [mailto:bfields@fieldses.org] Sent: Friday, January 25, 2013 4:35 PM
-> > > To: Myklebust, Trond Cc: Ben Myers; Olga Kornievskaia;
-> > > linux-nfs@vger.kernel.org; Jim Rees Subject: Re: sunrpc: socket
-> > > buffer size tuneable
-> > > 
-> > > On Fri, Jan 25, 2013 at 09:29:09PM +0000, Myklebust, Trond wrote:
-> > > > > -----Original Message----- From: J. Bruce Fields
-> > > > > [mailto:bfields@fieldses.org] Sent: Friday, January 25, 2013
-> > > > > 4:21 PM To: Myklebust, Trond Cc: Ben Myers; Olga Kornievskaia;
-> > > > > linux-nfs@vger.kernel.org; Jim Rees Subject: Re: sunrpc: socket
-> > > > > buffer size tuneable
-> > > > >
-> > > > > On Fri, Jan 25, 2013 at 09:12:55PM +0000, Myklebust, Trond
-> > > > > wrote:
-> > > >
-> > > > > > Why is it not sufficient to clamp the TCP values of 'snd' and
-> > > > > > 'rcv' using
-> > > > > sysctl_tcp_wmem/sysctl_tcp_rmem?
-> > > > > > ...and clamp the UDP values using
-> > > > > sysctl_[wr]mem_min/sysctl_[wr]mem_max?.
-> > > > >
-> > > > > Yeah, I was just looking at that--so, Ben, something like:
-> > > > >
-> > > > > 	echo "1048576 1048576 4194304"
-> > > > > 	>/proc/sys/net/ipv4/tcp_wmem
-> > > > >
-> > > > > But I'm unclear on some of the details: do we need to set the
-> > > > > minimum or only the default?  And does it need any more
-> > > > > allowance for protocol overhead?
-> > > >
-> > > > I meant adding a check either to svc_sock_setbufsize or to the 2
-> > > > call-sites
-> > > that enforces the above limits.
-> > > 
-> > > I lost you.
-> > > 
-> > > It's not svc_sock_setbufsize that's setting too-small values, if
-> > > that's what you mean.
-> > > 
-> > 
-> > I understood that the problem was svc_udp_recvfrom() and
-> > svc_setup_socket() were using negative values in the calls to
-> > svc_sock_setbufsize().  Looking again at svc_setup_socket(), I don't
-> > see how that could do so, but svc_udp_recvfrom() definitely has
-> > potential to cause damage.
+
+On Jan 28, 2013, at 2:41 PM, Jeff Layton <jlayton@redhat.com> wrote:
+
+> Currently, it only stores the first 16 bytes of any address. struct
+> sockaddr_in6 is 28 bytes however, so we're currently ignoring the last
+> 12 bytes of the address.
 > 
-> Right, the changelog was confusing, the problem they're actually hitting
-> is with tcp.  Looks like tcp autotuning is decreasing the send buffer
-> below the size we requested in svc_sock_setbufsize().
+> Expand the c_addr field to a sockaddr_in6,
 
-echo "1048576 1048576 4194304" > /proc/sys/net/ipv4/tcp_wmem 
+What do you do about link-local addresses?
 
-Seems to have been effective.  I'll be toasting to you gents tonight.
+> and cast it to a sockaddr_in
+> as necessary. Also fix the comparitor to use the existing RPC
+> helpers for this.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+> fs/nfsd/cache.h             | 6 +++++-
+> fs/nfsd/nfscache.c          | 7 +++++--
+> include/linux/sunrpc/clnt.h | 4 +++-
+> 3 files changed, 13 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
+> index 93cc9d3..2cac76c 100644
+> --- a/fs/nfsd/cache.h
+> +++ b/fs/nfsd/cache.h
+> @@ -12,6 +12,10 @@
+> 
+> /*
+>  * Representation of a reply cache entry.
+> + *
+> + * Note that we use a sockaddr_in6 to hold the address instead of the more
+> + * typical sockaddr_storage. This is for space reasons, since sockaddr_storage
+> + * is much larger than a sockaddr_in6.
+>  */
+> struct svc_cacherep {
+> 	struct hlist_node	c_hash;
+> @@ -20,7 +24,7 @@ struct svc_cacherep {
+> 	unsigned char		c_state,	/* unused, inprog, done */
+> 				c_type,		/* status, buffer */
+> 				c_secure : 1;	/* req came from port < 1024 */
+> -	struct sockaddr_in	c_addr;
+> +	struct sockaddr_in6	c_addr;
+> 	__be32			c_xid;
+> 	u32			c_prot;
+> 	u32			c_proc;
+> diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+> index 2cbac34..5dd9ec2 100644
+> --- a/fs/nfsd/nfscache.c
+> +++ b/fs/nfsd/nfscache.c
+> @@ -9,6 +9,7 @@
+>  */
+> 
+> #include <linux/slab.h>
+> +#include <linux/sunrpc/clnt.h>
+> 
+> #include "nfsd.h"
+> #include "cache.h"
+> @@ -146,7 +147,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+> 		    xid == rp->c_xid && proc == rp->c_proc &&
+> 		    proto == rp->c_prot && vers == rp->c_vers &&
+> 		    time_before(jiffies, rp->c_timestamp + 120*HZ) &&
+> -		    memcmp((char*)&rqstp->rq_addr, (char*)&rp->c_addr, sizeof(rp->c_addr))==0) {
+> +		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
+> +		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr)) {
+> 			nfsdstats.rchits++;
+> 			goto found_entry;
+> 		}
+> @@ -183,7 +185,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+> 	rp->c_state = RC_INPROG;
+> 	rp->c_xid = xid;
+> 	rp->c_proc = proc;
+> -	memcpy(&rp->c_addr, svc_addr_in(rqstp), sizeof(rp->c_addr));
+> +	rpc_copy_addr((struct sockaddr *)&rp->c_addr, svc_addr(rqstp));
+> +	rpc_set_port((struct sockaddr *)&rp->c_addr, rpc_get_port(svc_addr(rqstp)));
+> 	rp->c_prot = proto;
+> 	rp->c_vers = vers;
+> 	rp->c_timestamp = jiffies;
+> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+> index 34206b8..47354a2 100644
+> --- a/include/linux/sunrpc/clnt.h
+> +++ b/include/linux/sunrpc/clnt.h
+> @@ -263,7 +263,9 @@ static inline bool __rpc_copy_addr6(struct sockaddr *dst,
+>  * @sap1: first sockaddr
+>  * @sap2: second sockaddr
+>  *
+> - * Just compares the family and address portion. Ignores port, scope, etc.
+> + * Just compares the family and address portion. Ignores port, but
+> + * compares the scope if it's a link-local address.
+> + *
+>  * Returns true if the addrs are equal, false if they aren't.
+>  */
+> static inline bool rpc_cmp_addr(const struct sockaddr *sap1,
+> -- 
+> 1.7.11.7
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-I think it would be good if the server enforced a setting that is large enough.
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Thanks,
-	Ben
+
+
+
