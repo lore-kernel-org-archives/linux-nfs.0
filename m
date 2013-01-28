@@ -1,90 +1,183 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50719 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752551Ab3AHVrp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Jan 2013 16:47:45 -0500
-Date: Tue, 8 Jan 2013 16:47:42 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Andriy Skulysh <andriy_skulysh@xyratex.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 1/1] sunrpc: Fix lockd sleeping until timeout
-Message-ID: <20130108214742.GB24572@fieldses.org>
-References: <CADug+U6-=+_Xy41Lw3hnOqSR84Bo7MjKDL_PykiZVdUx=b8tAA@mail.gmail.com>
- <20130104005345.GA4407@fieldses.org>
- <CADug+U698gbtJnxUEOn0b7MhejYugSSRsV9i_b7jMaRs08Wpog@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CADug+U698gbtJnxUEOn0b7MhejYugSSRsV9i_b7jMaRs08Wpog@mail.gmail.com>
+Received: from mail-yh0-f45.google.com ([209.85.213.45]:46962 "EHLO
+	mail-yh0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751155Ab3A1Tt1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2013 14:49:27 -0500
+Received: by mail-yh0-f45.google.com with SMTP id 24so475301yhr.32
+        for <linux-nfs@vger.kernel.org>; Mon, 28 Jan 2013 11:49:26 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v1 10/16] nfsd: dynamically allocate DRC entries
+Date: Mon, 28 Jan 2013 14:41:16 -0500
+Message-Id: <1359402082-29195-11-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
+References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 07, 2013 at 12:12:15AM +0200, Andriy Skulysh wrote:
-> There is a race in enqueueing thread to a pool and
-> waking up a thread.
-> lockd doesn't wake up on reception of lock granted callback
-> if svc_wake_up() is called before lockd's thread is added
-> to a pool.
-> 
-> Signed-off-by: Andriy Skulysh <Andriy_Skulysh@xyratex.com>
-> ---
->  include/linux/sunrpc/svc.h |    1 +
->  net/sunrpc/svc_xprt.c      |    9 ++++++++-
->  2 files changed, 9 insertions(+), 1 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-> index 676ddf5..1f0216b 100644
-> --- a/include/linux/sunrpc/svc.h
-> +++ b/include/linux/sunrpc/svc.h
-> @@ -50,6 +50,7 @@ struct svc_pool {
->  	unsigned int		sp_nrthreads;	/* # of threads in pool */
->  	struct list_head	sp_all_threads;	/* all server threads */
->  	struct svc_pool_stats	sp_stats;	/* statistics on pool operation */
-> +	int			sp_task_pending;/* has pending task */
->  } ____cacheline_aligned_in_smp;
-> 
->  /*
-> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> index b8e47fa..5a9d40c 100644
-> --- a/net/sunrpc/svc_xprt.c
-> +++ b/net/sunrpc/svc_xprt.c
-> @@ -499,7 +499,8 @@ void svc_wake_up(struct svc_serv *serv)
->  			rqstp->rq_xprt = NULL;
->  			 */
->  			wake_up(&rqstp->rq_wait);
-> -		}
-> +		} else
-> +			pool->sp_task_pending = 1;
->  		spin_unlock_bh(&pool->sp_lock);
->  	}
->  }
-> @@ -634,7 +635,13 @@ struct svc_xprt *svc_get_next_xprt(struct
-> svc_rqst *rqstp, long timeout)
->  		 * long for cache updates.
->  		 */
->  		rqstp->rq_chandle.thread_wait = 1*HZ;
-> +		pool->sp_task_pending = 0;
->  	} else {
-> +		if (pool->sp_task_pending) {
-> +			pool->sp_task_pending = 0;
-> +			spin_unlock_bh(&pool->sp_lock);
-> +			return ERR_PTR(-EAGAIN);
-> +		}
->  		/* No data pending. Go to sleep */
->  		svc_thread_enqueue(pool, rqstp);
-> 
-> -- 
-> 1.7.1
-> 
-> 
-> On 4 January 2013 02:53, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > That should be ERR_PTR(-EAGAIN).
-> fixed.
-> >
-> > Other than this this looks right to me....
-> >
-> > Out of curiosity: how did you run across this problem, and how did you
-> > test the fix?
-> I can reproduce it with single ping_pong with nfs on top of Lustre filesystem.
+The existing code keeps a fixed-size cache of 1024 entries. This is
+much too small for a busy server, and wastes memory on an idle one.
 
-Got it, thanks; applying for 3.9.--b.
+This patch changes the code to dynamically allocate and free these
+cache entries. For now, the cache growth is potentially boundless.
+We'll add some mechanisms to help control that in later patches.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfscache.c | 83 +++++++++++++++++++++++-------------------------------
+ 1 file changed, 35 insertions(+), 48 deletions(-)
+
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index 9d80dfa..ad96f1d 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -14,13 +14,8 @@
+ #include "nfsd.h"
+ #include "cache.h"
+ 
+-/* Size of reply cache. Common values are:
+- * 4.3BSD:	128
+- * 4.4BSD:	256
+- * Solaris2:	1024
+- * DEC Unix:	512-4096
+- */
+-#define CACHESIZE		1024
++#define NFSDDBG_FACILITY	NFSDDBG_REPCACHE
++
+ #define HASHSIZE		64
+ 
+ static struct hlist_head *	cache_hash;
+@@ -67,34 +62,23 @@ nfsd_reply_cache_free_locked(struct svc_cacherep *rp)
+ {
+ 	if (rp->c_type == RC_REPLBUFF)
+ 		kfree(rp->c_replvec.iov_base);
++	hlist_del(&rp->c_hash);
+ 	list_del(&rp->c_lru);
+ 	kmem_cache_free(drc_slab, rp);
+ }
+ 
+ int nfsd_reply_cache_init(void)
+ {
+-	int			i;
+-	struct svc_cacherep	*rp;
+-
+ 	drc_slab = kmem_cache_create("nfsd_drc", sizeof(struct svc_cacherep),
+ 					0, 0, NULL);
+ 	if (!drc_slab)
+ 		goto out_nomem;
+ 
+-	INIT_LIST_HEAD(&lru_head);
+-	i = CACHESIZE;
+-	while (i) {
+-		rp = nfsd_reply_cache_alloc();
+-		if (!rp)
+-			goto out_nomem;
+-		list_add(&rp->c_lru, &lru_head);
+-		i--;
+-	}
+-
+-	cache_hash = kcalloc (HASHSIZE, sizeof(struct hlist_head), GFP_KERNEL);
++	cache_hash = kcalloc(HASHSIZE, sizeof(struct hlist_head), GFP_KERNEL);
+ 	if (!cache_hash)
+ 		goto out_nomem;
+ 
++	INIT_LIST_HEAD(&lru_head);
+ 	cache_disabled = 0;
+ 	return 0;
+ out_nomem:
+@@ -187,7 +171,7 @@ nfsd_cache_search(struct svc_rqst *rqstp)
+ int
+ nfsd_cache_lookup(struct svc_rqst *rqstp)
+ {
+-	struct svc_cacherep	*rp;
++	struct svc_cacherep	*rp, *found;
+ 	__be32			xid = rqstp->rq_xid;
+ 	u32			proto =  rqstp->rq_prot,
+ 				vers = rqstp->rq_vers,
+@@ -206,38 +190,40 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+ 	rtn = RC_DOIT;
+ 
+ 	rp = nfsd_cache_search(rqstp);
+-	if (rp) {
+-		nfsdstats.rchits++;
++	if (rp)
+ 		goto found_entry;
+-	}
+-	nfsdstats.rcmisses++;
+ 
+-	/* This loop shouldn't take more than a few iterations normally */
+-	{
+-	int	safe = 0;
+-	list_for_each_entry(rp, &lru_head, c_lru) {
+-		if (rp->c_state != RC_INPROG)
+-			break;
+-		if (safe++ > CACHESIZE) {
+-			printk("nfsd: loop in repcache LRU list\n");
+-			cache_disabled = 1;
+-			goto out;
+-		}
+-	}
++	/*
++	 * Try to use the first entry on the LRU, if it's still good then we
++	 * know that the later ones will also be.
++	 */
++	if (!list_empty(&lru_head)) {
++		rp = list_first_entry(&lru_head, struct svc_cacherep, c_lru);
++		if (nfsd_cache_entry_expired(rp))
++			goto setup_entry;
+ 	}
+ 
+-	/* All entries on the LRU are in-progress. This should not happen */
+-	if (&rp->c_lru == &lru_head) {
+-		static int	complaints;
++	spin_unlock(&cache_lock);
++	rp = nfsd_reply_cache_alloc();
++	if (!rp) {
++		dprintk("nfsd: unable to allocate DRC entry!\n");
++		return RC_DOIT;
++	}
++	spin_lock(&cache_lock);
+ 
+-		printk(KERN_WARNING "nfsd: all repcache entries locked!\n");
+-		if (++complaints > 5) {
+-			printk(KERN_WARNING "nfsd: disabling repcache.\n");
+-			cache_disabled = 1;
+-		}
+-		goto out;
++	/*
++	 * Must search again just in case someone inserted one
++	 * after we dropped the lock above.
++	 */
++	found = nfsd_cache_search(rqstp);
++	if (found) {
++		nfsd_reply_cache_free_locked(rp);
++		rp = found;
++		goto found_entry;
+ 	}
+ 
++setup_entry:
++	nfsdstats.rcmisses++;
+ 	rqstp->rq_cacherep = rp;
+ 	rp->c_state = RC_INPROG;
+ 	rp->c_xid = xid;
+@@ -261,6 +247,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+ 	return rtn;
+ 
+ found_entry:
++	nfsdstats.rchits++;
+ 	/* We found a matching entry which is either in progress or done. */
+ 	age = jiffies - rp->c_timestamp;
+ 	lru_put_end(rp);
+@@ -291,7 +278,7 @@ found_entry:
+ 		break;
+ 	default:
+ 		printk(KERN_WARNING "nfsd: bad repcache type %d\n", rp->c_type);
+-		rp->c_state = RC_UNUSED;
++		nfsd_reply_cache_free_locked(rp);
+ 	}
+ 
+ 	goto out;
+-- 
+1.7.11.7
+
