@@ -1,60 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.candelatech.com ([208.74.158.172]:50943 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751885Ab3AWVic (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jan 2013 16:38:32 -0500
-Message-ID: <51005858.4040107@candelatech.com>
-Date: Wed, 23 Jan 2013 13:38:32 -0800
-From: Ben Greear <greearb@candelatech.com>
-MIME-Version: 1.0
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        netdev <netdev@vger.kernel.org>
-Subject: Hung tasks related to do_filp_open in net-next (3.8.0-rc3+)
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from aserp1040.oracle.com ([141.146.126.69]:48600 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753426Ab3A1UfD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2013 15:35:03 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
+Subject: Re: [PATCH v1 01/16] nfsd: fix IPv6 address handling in the DRC
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20130128152643.2b136d37@tlielax.poochiereds.net>
+Date: Mon, 28 Jan 2013 15:34:49 -0500
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Message-Id: <615875E4-820D-487E-99CF-9ABD46121966@oracle.com>
+References: <1359402082-29195-1-git-send-email-jlayton@redhat.com> <1359402082-29195-2-git-send-email-jlayton@redhat.com> <5AD4F061-69A6-47F5-B20A-34B8DCC2EB5E@oracle.com> <20130128150502.4c5f497b@tlielax.poochiereds.net> <321A7110-AD03-49EB-A158-246FC8BD24E1@oracle.com> <20130128152643.2b136d37@tlielax.poochiereds.net>
+To: Jeff Layton <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-I cranked up my 3000 NFS mounts test case on today's net-next (3.8.0-rc3+)
-and about 8 of these splats.  There were around 780 mounts active
-when these occurred.
+On Jan 28, 2013, at 3:26 PM, Jeff Layton <jlayton@redhat.com> wrote:
 
-Seems like the system continues OK, so not sure how important
-this is...
+> On Mon, 28 Jan 2013 12:16:17 -0800 (PST)
+> Chuck Lever <chuck.lever@oracle.com> wrote:
+> 
+>> 
+>> On Jan 28, 2013, at 3:05 PM, Jeff Layton <jlayton@redhat.com> wrote:
+>> 
+>>> On Mon, 28 Jan 2013 11:51:13 -0800 (PST)
+>>> Chuck Lever <chuck.lever@oracle.com> wrote:
+>>> 
+>>>> 
+>>>> On Jan 28, 2013, at 2:41 PM, Jeff Layton <jlayton@redhat.com> wrote:
+>>>> 
+>>>>> Currently, it only stores the first 16 bytes of any address. struct
+>>>>> sockaddr_in6 is 28 bytes however, so we're currently ignoring the last
+>>>>> 12 bytes of the address.
+>>>>> 
+>>>>> Expand the c_addr field to a sockaddr_in6,
+>>>> 
+>>>> What do you do about link-local addresses?
+>>>> 
+>>> 
+>>> I use rpc_cmp_addr() which should handle the scope correctly for
+>>> link-local addrs.  Now that you mention it though, I think we may have a
+>>> bug in __rpc_copy_addr6. It doesn't touch the scope_id at all --
+>>> shouldn't we be setting the scopeid in that function as well?
+>> 
+>> It looks like rpc_copy_addr() is invoked to copy only source addresses, so the scope ID probably doesn't apply.  The comment over rpc_copy_addr() says it explicitly ignores port and scope ID.
+>> 
+> 
+> Well, it copies the source address of the client, but all of the
+> callers are in nfsd code. So I think it probably does matter:
+> 
+> Consider a server that has 2 interfaces, and 2 clients with identical
+> link-local addresses hitting the link local address of each interface.
+> The only way to distinguish them at that point is to look at their
+> scope_ids.
 
-INFO: task btserver:8756 blocked for more than 180 seconds.
-"echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-btserver        D 0000000000000004     0  8756   5781 0x00000080
-  ffff880404ab1bf8 0000000000000046 0000000004ab1ba8 0000000000000432
-  ffff880404ab0010 ffff880402263f20 ffff880404ab1fd8 00000000000132c0
-  00000000000132c0 00000000000132c0 ffff880404ab1fd8 00000000000132c0
-Call Trace:
-  [<ffffffff815491ea>] schedule+0x5f/0x61
-  [<ffffffff815494fa>] schedule_preempt_disabled+0x13/0x1f
-  [<ffffffff81547ea8>] __mutex_lock_common+0x264/0x42d
-  [<ffffffff8115fadb>] ? do_last+0x1db/0xa4e
-  [<ffffffff8115fadb>] ? do_last+0x1db/0xa4e
-  [<ffffffff815480d0>] mutex_lock_nested+0x16/0x18
-  [<ffffffff8115fadb>] do_last+0x1db/0xa4e
-  [<ffffffff8115f3a5>] ? path_init+0xcd/0x2b6
-  [<ffffffff8116090b>] path_openat+0xcb/0x363
-  [<ffffffff810d0055>] ? __lock_acquire+0x1df/0x53d
-  [<ffffffff81160ca8>] do_filp_open+0x38/0x84
-  [<ffffffff8154a2db>] ? _raw_spin_unlock+0x45/0x52
-  [<ffffffff8116c203>] ? __alloc_fd+0x106/0x11a
-  [<ffffffff815490f9>] ? __schedule+0x561/0x5a3
-8021q: adding VLAN 0 to HW filter on device eth4#621
-  [<ffffffff81153bfc>] do_sys_open+0x6d/0xff
-8021q: adding VLAN 0 to HW filter on device eth3#612
-  [<ffffffff81153cbb>] sys_open+0x1c/0x1e
-  [<ffffffff8154f629>] system_call_fastpath+0x16/0x1b
-2 locks held by btserver/8756:
-  #0:  (sb_writers#10){......}, at: [<ffffffff81170013>] mnt_want_write+0x1f/0x48
-  #1:  (&type->i_mutex_dir_key#4){......}, at: [<ffffffff8115fadb>] do_last+0x1db/0xa4e
+Yes, but we want to use the server's scope IDs in this case, don't we?  Copying the client's scope IDs may not be the right thing to do.  That's why __rpc_copy_addr6() doesn't copy the scope ID.
+
+> In the event that we're not using link-local addresses, the scopeid
+> should just be ignored. So I think we probably need something like this
+> patch too:
+> 
+> ----------------------[snip]---------------------
+> 
+> sunrpc: copy scope ID in __rpc_copy_addr6
+> 
+> When copying an address, we should also copy the scopeid in the event
+> that this is a link-local address and the scope matters.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+> include/linux/sunrpc/clnt.h | 1 +
+> 1 file changed, 1 insertion(+)
+> 
+> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+> index 34206b8..4824286 100644
+> --- a/include/linux/sunrpc/clnt.h
+> +++ b/include/linux/sunrpc/clnt.h
+> @@ -242,6 +242,7 @@ static inline bool __rpc_copy_addr6(struct sockaddr *dst,
+> 
+> 	dsin6->sin6_family = ssin6->sin6_family;
+> 	dsin6->sin6_addr = ssin6->sin6_addr;
+> +	dsin6->sin6_scope_id = ssin6->sin6_scope_id;
+
+If you find this is the correct thing to do, you should fix the documenting comment before rpc_copy_addr().
 
 
+> 	return true;
+> }
+> #else	/* !(IS_ENABLED(CONFIG_IPV6) */
+> -- 
+> 1.7.11.7
+> 
+> 
+> -- 
+> Jeff Layton <jlayton@redhat.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
