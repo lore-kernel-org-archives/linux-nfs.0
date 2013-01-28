@@ -1,154 +1,156 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.candelatech.com ([208.74.158.172]:39884 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752308Ab3AUUrY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jan 2013 15:47:24 -0500
-From: greearb@candelatech.com
-To: linux-nfs@vger.kernel.org
-Cc: Ben Greear <greearb@candelatech.com>
-Subject: [RFC 12/13] lockd: Support binding nlm client to specific address.
-Date: Mon, 21 Jan 2013 12:45:58 -0800
-Message-Id: <1358801159-18829-13-git-send-email-greearb@candelatech.com>
-In-Reply-To: <1358801159-18829-1-git-send-email-greearb@candelatech.com>
-References: <1358801159-18829-1-git-send-email-greearb@candelatech.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:39177 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751166Ab3A1USG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2013 15:18:06 -0500
+MIME-Version: 1.0
+Message-ID: <321A7110-AD03-49EB-A158-246FC8BD24E1@oracle.com>
+Date: Mon, 28 Jan 2013 12:16:17 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 01/16] nfsd: fix IPv6 address handling in the DRC
+References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
+ <1359402082-29195-2-git-send-email-jlayton@redhat.com>
+ <5AD4F061-69A6-47F5-B20A-34B8DCC2EB5E@oracle.com>
+ <20130128150502.4c5f497b@tlielax.poochiereds.net>
+In-Reply-To: <20130128150502.4c5f497b@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Ben Greear <greearb@candelatech.com>
 
-This ensures that file locking messages use the proper
-source IP address if the file system has been mounted
-with a specified source IP address.
+On Jan 28, 2013, at 3:05 PM, Jeff Layton <jlayton@redhat.com> wrote:
 
-Signed-off-by: Ben Greear <greearb@candelatech.com>
----
- fs/lockd/clntlock.c         |    3 ++-
- fs/lockd/host.c             |   17 ++++++++++++++++-
- fs/nfs/client.c             |    1 +
- include/linux/lockd/bind.h  |    1 +
- include/linux/lockd/lockd.h |    1 +
- include/linux/sunrpc/clnt.h |    2 ++
- 6 files changed, 23 insertions(+), 2 deletions(-)
+> On Mon, 28 Jan 2013 11:51:13 -0800 (PST)
+> Chuck Lever <chuck.lever@oracle.com> wrote:
+> 
+>> 
+>> On Jan 28, 2013, at 2:41 PM, Jeff Layton <jlayton@redhat.com> wrote:
+>> 
+>>> Currently, it only stores the first 16 bytes of any address. struct
+>>> sockaddr_in6 is 28 bytes however, so we're currently ignoring the last
+>>> 12 bytes of the address.
+>>> 
+>>> Expand the c_addr field to a sockaddr_in6,
+>> 
+>> What do you do about link-local addresses?
+>> 
+> 
+> I use rpc_cmp_addr() which should handle the scope correctly for
+> link-local addrs.  Now that you mention it though, I think we may have a
+> bug in __rpc_copy_addr6. It doesn't touch the scope_id at all --
+> shouldn't we be setting the scopeid in that function as well?
 
-diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
-index ca0a080..0c21b41 100644
---- a/fs/lockd/clntlock.c
-+++ b/fs/lockd/clntlock.c
-@@ -60,7 +60,8 @@ struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init)
- 	if (status < 0)
- 		return ERR_PTR(status);
- 
--	host = nlmclnt_lookup_host(nlm_init->address, nlm_init->addrlen,
-+	host = nlmclnt_lookup_host(nlm_init->address, nlm_init->srcaddr,
-+				   nlm_init->addrlen,
- 				   nlm_init->protocol, nlm_version,
- 				   nlm_init->hostname, nlm_init->noresvport,
- 				   nlm_init->net);
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index f9b22e5..8ded384 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -51,6 +51,7 @@ static void			nlm_gc_hosts(struct net *net);
- struct nlm_lookup_host_info {
- 	const int		server;		/* search for server|client */
- 	const struct sockaddr	*sap;		/* address to search for */
-+	const struct sockaddr   *src_addr;      /* source address */
- 	const size_t		salen;		/* it's length */
- 	const unsigned short	protocol;	/* transport to search for*/
- 	const u32		version;	/* NLM version to search for */
-@@ -134,7 +135,12 @@ static struct nlm_host *nlm_alloc_host(struct nlm_lookup_host_info *ni,
- 	memcpy(nlm_addr(host), ni->sap, ni->salen);
- 	host->h_addrlen    = ni->salen;
- 	rpc_set_port(nlm_addr(host), 0);
--	host->h_srcaddrlen = 0;
-+	if (ni->src_addr && ni->src_addr->sa_family != AF_UNSPEC) {
-+		memcpy(nlm_srcaddr(host), ni->src_addr, ni->salen);
-+		host->h_srcaddrlen = ni->salen;
-+	} else {
-+		host->h_srcaddrlen = 0;
-+	}
- 
- 	host->h_rpcclnt    = NULL;
- 	host->h_name	   = nsm->sm_name;
-@@ -209,6 +215,7 @@ static void nlm_destroy_host_locked(struct nlm_host *host)
-  * created and returned.
-  */
- struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
-+				     const struct sockaddr *srcaddr,
- 				     const size_t salen,
- 				     const unsigned short protocol,
- 				     const u32 version,
-@@ -224,6 +231,7 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
- 		.version	= version,
- 		.hostname	= hostname,
- 		.hostname_len	= strlen(hostname),
-+		.src_addr       = srcaddr,
- 		.noresvport	= noresvport,
- 		.net		= net,
- 	};
-@@ -246,6 +254,13 @@ struct nlm_host *nlmclnt_lookup_host(const struct sockaddr *sap,
- 		if (!rpc_cmp_addr(nlm_addr(host), sap))
- 			continue;
- 
-+		/* Check for local binding match only if user
-+		 * has specified the source-address.
-+		 */
-+		if (srcaddr && srcaddr->sa_family != AF_UNSPEC &&
-+		    !rpc_cmp_addr(nlm_srcaddr(host), srcaddr))
-+			continue;
-+
- 		/* Same address. Share an NSM handle if we already have one */
- 		if (nsm == NULL)
- 			nsm = host->h_nsmhandle;
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 43b6205..b46b0ed 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -644,6 +644,7 @@ static int nfs_start_lockd(struct nfs_server *server)
- 	struct nlmclnt_initdata nlm_init = {
- 		.hostname	= clp->cl_hostname,
- 		.address	= (struct sockaddr *)&clp->cl_addr,
-+		.srcaddr        = (struct sockaddr *)&clp->srcaddr,
- 		.addrlen	= clp->cl_addrlen,
- 		.nfs_version	= clp->rpc_ops->version,
- 		.noresvport	= server->flags & NFS_MOUNT_NORESVPORT ?
-diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
-index 4d24d64..1a0176b 100644
---- a/include/linux/lockd/bind.h
-+++ b/include/linux/lockd/bind.h
-@@ -38,6 +38,7 @@ extern struct nlmsvc_binding *	nlmsvc_ops;
- struct nlmclnt_initdata {
- 	const char		*hostname;
- 	const struct sockaddr	*address;
-+	const struct sockaddr   *srcaddr;
- 	size_t			addrlen;
- 	unsigned short		protocol;
- 	u32			nfs_version;
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index f5a051a..82c998a 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -219,6 +219,7 @@ void		  nlmclnt_next_cookie(struct nlm_cookie *);
-  * Host cache
-  */
- struct nlm_host  *nlmclnt_lookup_host(const struct sockaddr *sap,
-+					const struct sockaddr *bindaddr,
- 					const size_t salen,
- 					const unsigned short protocol,
- 					const u32 version,
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 34206b8..6a5fe61 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -275,6 +275,8 @@ static inline bool rpc_cmp_addr(const struct sockaddr *sap1,
- 			return __rpc_cmp_addr4(sap1, sap2);
- 		case AF_INET6:
- 			return __rpc_cmp_addr6(sap1, sap2);
-+		case AF_UNSPEC:
-+			return true;
- 		}
- 	}
- 	return false;
+It looks like rpc_copy_addr() is invoked to copy only source addresses, so the scope ID probably doesn't apply.  The comment over rpc_copy_addr() says it explicitly ignores port and scope ID.
+
+Sounds like we need another class of unit tests.
+
+> 
+> 
+>>> and cast it to a sockaddr_in
+>>> as necessary. Also fix the comparitor to use the existing RPC
+>>> helpers for this.
+>>> 
+>>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+>>> ---
+>>> fs/nfsd/cache.h             | 6 +++++-
+>>> fs/nfsd/nfscache.c          | 7 +++++--
+>>> include/linux/sunrpc/clnt.h | 4 +++-
+>>> 3 files changed, 13 insertions(+), 4 deletions(-)
+>>> 
+>>> diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
+>>> index 93cc9d3..2cac76c 100644
+>>> --- a/fs/nfsd/cache.h
+>>> +++ b/fs/nfsd/cache.h
+>>> @@ -12,6 +12,10 @@
+>>> 
+>>> /*
+>>> * Representation of a reply cache entry.
+>>> + *
+>>> + * Note that we use a sockaddr_in6 to hold the address instead of the more
+>>> + * typical sockaddr_storage. This is for space reasons, since sockaddr_storage
+>>> + * is much larger than a sockaddr_in6.
+>>> */
+>>> struct svc_cacherep {
+>>> 	struct hlist_node	c_hash;
+>>> @@ -20,7 +24,7 @@ struct svc_cacherep {
+>>> 	unsigned char		c_state,	/* unused, inprog, done */
+>>> 				c_type,		/* status, buffer */
+>>> 				c_secure : 1;	/* req came from port < 1024 */
+>>> -	struct sockaddr_in	c_addr;
+>>> +	struct sockaddr_in6	c_addr;
+>>> 	__be32			c_xid;
+>>> 	u32			c_prot;
+>>> 	u32			c_proc;
+>>> diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+>>> index 2cbac34..5dd9ec2 100644
+>>> --- a/fs/nfsd/nfscache.c
+>>> +++ b/fs/nfsd/nfscache.c
+>>> @@ -9,6 +9,7 @@
+>>> */
+>>> 
+>>> #include <linux/slab.h>
+>>> +#include <linux/sunrpc/clnt.h>
+>>> 
+>>> #include "nfsd.h"
+>>> #include "cache.h"
+>>> @@ -146,7 +147,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+>>> 		    xid == rp->c_xid && proc == rp->c_proc &&
+>>> 		    proto == rp->c_prot && vers == rp->c_vers &&
+>>> 		    time_before(jiffies, rp->c_timestamp + 120*HZ) &&
+>>> -		    memcmp((char*)&rqstp->rq_addr, (char*)&rp->c_addr, sizeof(rp->c_addr))==0) {
+>>> +		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
+>>> +		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr)) {
+>>> 			nfsdstats.rchits++;
+>>> 			goto found_entry;
+>>> 		}
+>>> @@ -183,7 +185,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+>>> 	rp->c_state = RC_INPROG;
+>>> 	rp->c_xid = xid;
+>>> 	rp->c_proc = proc;
+>>> -	memcpy(&rp->c_addr, svc_addr_in(rqstp), sizeof(rp->c_addr));
+>>> +	rpc_copy_addr((struct sockaddr *)&rp->c_addr, svc_addr(rqstp));
+>>> +	rpc_set_port((struct sockaddr *)&rp->c_addr, rpc_get_port(svc_addr(rqstp)));
+>>> 	rp->c_prot = proto;
+>>> 	rp->c_vers = vers;
+>>> 	rp->c_timestamp = jiffies;
+>>> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+>>> index 34206b8..47354a2 100644
+>>> --- a/include/linux/sunrpc/clnt.h
+>>> +++ b/include/linux/sunrpc/clnt.h
+>>> @@ -263,7 +263,9 @@ static inline bool __rpc_copy_addr6(struct sockaddr *dst,
+>>> * @sap1: first sockaddr
+>>> * @sap2: second sockaddr
+>>> *
+>>> - * Just compares the family and address portion. Ignores port, scope, etc.
+>>> + * Just compares the family and address portion. Ignores port, but
+>>> + * compares the scope if it's a link-local address.
+>>> + *
+>>> * Returns true if the addrs are equal, false if they aren't.
+>>> */
+>>> static inline bool rpc_cmp_addr(const struct sockaddr *sap1,
+>>> -- 
+>>> 1.7.11.7
+>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+> 
+> 
+> -- 
+> Jeff Layton <jlayton@redhat.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 -- 
-1.7.3.4
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
