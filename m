@@ -1,58 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:24894 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756238Ab3APUli (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Jan 2013 15:41:38 -0500
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r0GKf2TN016182
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 16 Jan 2013 15:41:38 -0500
-Message-ID: <50F71049.9050905@RedHat.com>
-Date: Wed, 16 Jan 2013 15:40:41 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Steve Dickson <steved@redhat.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] rpc.idmapd: Ignore open failures in dirscancb()
-References: <1357152473-4260-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1357152473-4260-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-yh0-f42.google.com ([209.85.213.42]:56744 "EHLO
+	mail-yh0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750906Ab3A1Tlo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2013 14:41:44 -0500
+Received: by mail-yh0-f42.google.com with SMTP id w49so470035yhw.29
+        for <linux-nfs@vger.kernel.org>; Mon, 28 Jan 2013 11:41:43 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v1 04/16] nfsd: create a dedicated slabcache for DRC entries
+Date: Mon, 28 Jan 2013 14:41:10 -0500
+Message-Id: <1359402082-29195-5-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
+References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Currently we use kmalloc() which wastes a little bit of memory on each
+allocation since it's a power of 2 allocator. Since we're allocating a
+1024 of these now, and may need even more later, let's create a new
+slabcache for them.
 
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfscache.c | 15 +++++++++++++--
+ 1 file changed, 13 insertions(+), 2 deletions(-)
 
-On 02/01/13 13:47, Steve Dickson wrote:
-> From: David Jeffery <djeffery@redhat.com>
-> 
-> The daemon "rpc.idmapd" scans the /var/lib/nfs/rpc_pipefs/nfs/ directory
-> periodically looking for NFS client mounts to communicate to. The daemon
-> tried to open communication with a client mount but it disappeared in
-> between looking for directory entries and opening them. NFS mount was
-> umounted just before rpc.idmapd tried to communicate with it. This
-> behavior is usually seen when autofs is configured on the system.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-Committed... 
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index 972c14a..4aad9e4 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -26,6 +26,7 @@
+ static struct hlist_head *	cache_hash;
+ static struct list_head 	lru_head;
+ static int			cache_disabled = 1;
++static struct kmem_cache	*drc_slab;
+ 
+ /*
+  * Calculate the hash index from an XID.
+@@ -51,10 +52,15 @@ int nfsd_reply_cache_init(void)
+ 	struct svc_cacherep	*rp;
+ 	int			i;
+ 
++	drc_slab = kmem_cache_create("nfsd_drc", sizeof(struct svc_cacherep),
++					0, 0, NULL);
++	if (!drc_slab)
++		goto out_nomem;
++
+ 	INIT_LIST_HEAD(&lru_head);
+ 	i = CACHESIZE;
+ 	while (i) {
+-		rp = kmalloc(sizeof(*rp), GFP_KERNEL);
++		rp = kmem_cache_alloc(drc_slab, GFP_KERNEL);
+ 		if (!rp)
+ 			goto out_nomem;
+ 		list_add(&rp->c_lru, &lru_head);
+@@ -85,13 +91,18 @@ void nfsd_reply_cache_shutdown(void)
+ 		if (rp->c_state == RC_DONE && rp->c_type == RC_REPLBUFF)
+ 			kfree(rp->c_replvec.iov_base);
+ 		list_del(&rp->c_lru);
+-		kfree(rp);
++		kmem_cache_free(drc_slab, rp);
+ 	}
+ 
+ 	cache_disabled = 1;
+ 
+ 	kfree (cache_hash);
+ 	cache_hash = NULL;
++
++	if (drc_slab) {
++		kmem_cache_destroy(drc_slab);
++		drc_slab = NULL;
++	}
+ }
+ 
+ /*
+-- 
+1.7.11.7
 
-steved.
-
-> ---
->  utils/idmapd/idmapd.c | 3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
-> 
-> diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
-> index 9d66225..beba9c4 100644
-> --- a/utils/idmapd/idmapd.c
-> +++ b/utils/idmapd/idmapd.c
-> @@ -424,7 +424,8 @@ dirscancb(int UNUSED(fd), short UNUSED(which), void *data)
->  			    pipefsdir, ents[i]->d_name);
->  
->  			if ((ic->ic_dirfd = open(path, O_RDONLY, 0)) == -1) {
-> -				xlog_warn("dirscancb: open(%s): %s", path, strerror(errno));
-> +				if (verbose > 0)
-> +					xlog_warn("dirscancb: open(%s): %s", path, strerror(errno));
->  				free(ic);
->  				goto out;
->  			}
-> 
