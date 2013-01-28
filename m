@@ -1,52 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f42.google.com ([209.85.160.42]:44512 "EHLO
-	mail-pb0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755015Ab3AZBbh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Jan 2013 20:31:37 -0500
-From: Tejun Heo <tj@kernel.org>
-To: akpm@linux-foundation.org
-Cc: rusty@rustcorp.com.au, linux-kernel@vger.kernel.org,
-        Tejun Heo <tj@kernel.org>, "J. Bruce Fields" <bfields@fieldses.org>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH 11/14] nfs: idr_destroy() no longer needs idr_remove_all()
-Date: Fri, 25 Jan 2013 17:31:09 -0800
-Message-Id: <1359163872-1949-12-git-send-email-tj@kernel.org>
-In-Reply-To: <1359163872-1949-1-git-send-email-tj@kernel.org>
-References: <1359163872-1949-1-git-send-email-tj@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:13064 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751155Ab3A1VGU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Jan 2013 16:06:20 -0500
+Date: Mon, 28 Jan 2013 16:06:17 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 01/16] nfsd: fix IPv6 address handling in the DRC
+Message-ID: <20130128160617.3288501c@tlielax.poochiereds.net>
+In-Reply-To: <F6E767BA-D9F9-49FE-AABB-75EA20AF827A@oracle.com>
+References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
+	<1359402082-29195-2-git-send-email-jlayton@redhat.com>
+	<5AD4F061-69A6-47F5-B20A-34B8DCC2EB5E@oracle.com>
+	<20130128150502.4c5f497b@tlielax.poochiereds.net>
+	<321A7110-AD03-49EB-A158-246FC8BD24E1@oracle.com>
+	<20130128152643.2b136d37@tlielax.poochiereds.net>
+	<615875E4-820D-487E-99CF-9ABD46121966@oracle.com>
+	<20130128154555.3a93c6dc@tlielax.poochiereds.net>
+	<F6E767BA-D9F9-49FE-AABB-75EA20AF827A@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-idr_destroy() can destroy idr by itself and idr_remove_all() is being
-deprecated.  Drop reference to idr_remove_all().  Note that the code
-wasn't completely correct before because idr_remove() on all entries
-doesn't necessarily release all idr_layers which could lead to memory
-leak.
+On Mon, 28 Jan 2013 15:54:26 -0500
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-Signed-off-by: Tejun Heo <tj@kernel.org>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
----
-This patch depends on an earlier idr patch and given the trivial
-nature of the patch, I think it would be best to route these together
-through -mm.  Please holler if there's any objection.
+> 
+> On Jan 28, 2013, at 3:45 PM, Jeff Layton <jlayton@redhat.com> wrote:
+> 
+> > On Mon, 28 Jan 2013 15:34:49 -0500
+> > Chuck Lever <chuck.lever@oracle.com> wrote:
+> > 
+> >> 
+> >> On Jan 28, 2013, at 3:26 PM, Jeff Layton <jlayton@redhat.com> wrote:
+> >> 
+> >>> On Mon, 28 Jan 2013 12:16:17 -0800 (PST)
+> >>> Chuck Lever <chuck.lever@oracle.com> wrote:
+> >>> 
+> >>>> 
+> >>>> On Jan 28, 2013, at 3:05 PM, Jeff Layton <jlayton@redhat.com> wrote:
+> >>>> 
+> >>>>> On Mon, 28 Jan 2013 11:51:13 -0800 (PST)
+> >>>>> Chuck Lever <chuck.lever@oracle.com> wrote:
+> >>>>> 
+> >>>>>> 
+> >>>>>> On Jan 28, 2013, at 2:41 PM, Jeff Layton <jlayton@redhat.com> wrote:
+> >>>>>> 
+> >>>>>>> Currently, it only stores the first 16 bytes of any address. struct
+> >>>>>>> sockaddr_in6 is 28 bytes however, so we're currently ignoring the last
+> >>>>>>> 12 bytes of the address.
+> >>>>>>> 
+> >>>>>>> Expand the c_addr field to a sockaddr_in6,
+> >>>>>> 
+> >>>>>> What do you do about link-local addresses?
+> >>>>>> 
+> >>>>> 
+> >>>>> I use rpc_cmp_addr() which should handle the scope correctly for
+> >>>>> link-local addrs.  Now that you mention it though, I think we may have a
+> >>>>> bug in __rpc_copy_addr6. It doesn't touch the scope_id at all --
+> >>>>> shouldn't we be setting the scopeid in that function as well?
+> >>>> 
+> >>>> It looks like rpc_copy_addr() is invoked to copy only source addresses, so the scope ID probably doesn't apply.  The comment over rpc_copy_addr() says it explicitly ignores port and scope ID.
+> >>>> 
+> >>> 
+> >>> Well, it copies the source address of the client, but all of the
+> >>> callers are in nfsd code. So I think it probably does matter:
+> >>> 
+> >>> Consider a server that has 2 interfaces, and 2 clients with identical
+> >>> link-local addresses hitting the link local address of each interface.
+> >>> The only way to distinguish them at that point is to look at their
+> >>> scope_ids.
+> >> 
+> >> Yes, but we want to use the server's scope IDs in this case, don't we?  Copying the client's scope IDs may not be the right thing to do.  That's why __rpc_copy_addr6() doesn't copy the scope ID.
+> >> 
+> > 
+> > Is there any real distinction between the two? Whenever we start
+> > discussing scopeids I mentally substitute "interface index", since it's
+> > the same thing on linux.
+> > 
+> > AIUI, scopeids only have a meaning on the host itself. When a
+> > link-local address gets used, the sockaddr_in6 in question gets the
+> > sin6_scope_id set to the index of the interface to which it is
+> > associated.
+> > 
+> > So if we have a client and server "pair" using link-local addresses,
+> > then they should have equivalent scope IDs since they are associated
+> > with the same interface on the local machine.
+> 
+> I don't think we can assume that the interface indices are the same on both the client and server.  There is no co-ordination of that number space between separate hosts.
+> 
 
-Thanks.
+> What may be the case is that the server's network layer copies in the correct scope ID for the server when it exposes source addresses to its upper layers.  In that case, the ID's probably safe to use when comparing addresses locally on the server.
+> 
 
- fs/nfs/client.c | 1 -
- 1 file changed, 1 deletion(-)
+I wasn't suggesting they were the same on client and server. They are
+most definitely *not*. I look at it this way...
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 9f3c664..84d8eae 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -197,7 +197,6 @@ error_0:
- EXPORT_SYMBOL_GPL(nfs_alloc_client);
- 
- #if IS_ENABLED(CONFIG_NFS_V4)
--/* idr_remove_all is not needed as all id's are removed by nfs_put_client */
- void nfs_cleanup_cb_ident_idr(struct net *net)
- {
- 	struct nfs_net *nn = net_generic(net, nfs_net_id);
+A link-local address must have a scope ID (aka interface index)
+attached, since without that the address has no real meaning. At the
+same time scopeIDs are never passed around on the wire -- they don't
+have any meaning outside of a single host.
+
+Ultimately scopeids are always generated by the local host, so it's OK
+to copy them between client and server addresses within the host's
+kernel. When I have a socket with link-local addresses, the scopeids of
+both sockaddrs must be the same since they are associated with the same
+interface.
+
+> Since we don't know for sure how this works, we should have someone create unit tests to explore this, fix any bugs that are discovered, and ensure that it continues to work.
+> 
+
+I'm fairly sure I understand how it works (though I did need to go back
+and refresh my memory here). I'm not sure how you'd go about writing
+such a test for this, but let me know if you do and I'll be happy to
+take a look.
+
+In the meantime, I'll take a look at where we're copying and comparing
+ipv6 addrs and see whether we're missing scopeids in any of these
+places.
+
 -- 
-1.8.1
-
+Jeff Layton <jlayton@redhat.com>
