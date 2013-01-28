@@ -1,71 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:23020 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750887Ab3AYVpO convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Jan 2013 16:45:14 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Ben Myers <bpm@sgi.com>, Olga Kornievskaia <aglo@citi.umich.edu>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Jim Rees <rees@umich.edu>
-Subject: RE: sunrpc: socket buffer size tuneable
-Date: Fri, 25 Jan 2013 21:45:12 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91833BFFE@sacexcmbx05-prd.hq.netapp.com>
-References: <20130125192935.GA32470@sgi.com>
- <20130125202107.GD29596@fieldses.org> <20130125203507.GW30652@sgi.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91833BF5A@sacexcmbx05-prd.hq.netapp.com>
- <20130125212106.GH29596@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91833BFAB@sacexcmbx05-prd.hq.netapp.com>
- <20130125213503.GI29596@fieldses.org>
-In-Reply-To: <20130125213503.GI29596@fieldses.org>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+Received: from mail-gg0-f173.google.com ([209.85.161.173]:41953 "EHLO
+	mail-gg0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750906Ab3A1TsJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2013 14:48:09 -0500
+Received: by mail-gg0-f173.google.com with SMTP id b6so472658ggm.4
+        for <linux-nfs@vger.kernel.org>; Mon, 28 Jan 2013 11:48:09 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v1 00/16] nfsd: duplicate reply cache overhaul
+Date: Mon, 28 Jan 2013 14:41:06 -0500
+Message-Id: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> Sent: Friday, January 25, 2013 4:35 PM
-> To: Myklebust, Trond
-> Cc: Ben Myers; Olga Kornievskaia; linux-nfs@vger.kernel.org; Jim Rees
-> Subject: Re: sunrpc: socket buffer size tuneable
-> 
-> On Fri, Jan 25, 2013 at 09:29:09PM +0000, Myklebust, Trond wrote:
-> > > -----Original Message-----
-> > > From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> > > Sent: Friday, January 25, 2013 4:21 PM
-> > > To: Myklebust, Trond
-> > > Cc: Ben Myers; Olga Kornievskaia; linux-nfs@vger.kernel.org; Jim
-> > > Rees
-> > > Subject: Re: sunrpc: socket buffer size tuneable
-> > >
-> > > On Fri, Jan 25, 2013 at 09:12:55PM +0000, Myklebust, Trond wrote:
-> >
-> > > > Why is it not sufficient to clamp the TCP values of 'snd' and
-> > > > 'rcv' using
-> > > sysctl_tcp_wmem/sysctl_tcp_rmem?
-> > > > ...and clamp the UDP values using
-> > > sysctl_[wr]mem_min/sysctl_[wr]mem_max?.
-> > >
-> > > Yeah, I was just looking at that--so, Ben, something like:
-> > >
-> > > 	echo "1048576 1048576 4194304" >/proc/sys/net/ipv4/tcp_wmem
-> > >
-> > > But I'm unclear on some of the details: do we need to set the
-> > > minimum or only the default?  And does it need any more allowance
-> > > for protocol overhead?
-> >
-> > I meant adding a check either to svc_sock_setbufsize or to the 2 call-sites
-> that enforces the above limits.
-> 
-> I lost you.
-> 
-> It's not svc_sock_setbufsize that's setting too-small values, if that's what you
-> mean.
-> 
+Our QA group has been reporting on and off for the last several years
+about occasional failures in testing, especially on UDP. When we go to
+look at traces, we see a missing reply from a server on a non-idempotent
+request. The client then retransmits the request and the server tries to
+redo it instead of just sending the DRC entry.
 
-I understood that the problem was svc_udp_recvfrom() and svc_setup_socket() were using negative values in the calls to svc_sock_setbufsize(). Looking again at svc_setup_socket(), I don't see how that could do so, but svc_udp_recvfrom() definitely has potential to cause damage.
+With an instrumented kernel on the server and a synthetic reproducer, we
+found that it's quite easy to hammer the server so fast the DRC entries
+get flushed out long before a retransmit can come in.
 
-The TCP layer should be taking care to always clamp the send/receive buffer sizes in tcp_new_space(),tcp_clamp_window(), etc...
+This patchset is a first pass at fixing this. Instead of simply keeping
+a cache of the last 1024 entries, it allows nfsd to grow and shrink the
+DRC dynamically.
 
-Trond
+The first patch is a bugfix for IPv6 support. The next several are
+cleanups and reorganizations of the existing code. The tenth patch makes
+them dynamically allocated, and the ones following that add various
+mechanisms to help keep the cache to a manageable size. The final patch
+adds the ability to checksum the first part the request, intended as a
+way to mitigate the effects of an XID collision.
+
+While most of us will probably say "so what" when it comes to UDP
+failures, it's a potential problem on connected transports as well. I'm
+also inclined to try and fix things that screw up the people that are
+helping us test our code.
+
+I'd like to see this merged for 3.9 if possible...
+
+Jeff Layton (16):
+  nfsd: fix IPv6 address handling in the DRC
+  nfsd: remove unneeded spinlock in nfsd_cache_update
+  nfsd: get rid of RC_INTR
+  nfsd: create a dedicated slabcache for DRC entries
+  nfsd: add alloc and free functions for DRC entries
+  nfsd: remove redundant test from nfsd_reply_cache_free
+  nfsd: clean up and clarify the cache expiration code
+  nfsd: break out hashtable search into separate function
+  nfsd: always move DRC entries to the end of LRU list when updating
+    timestamp
+  nfsd: dynamically allocate DRC entries
+  nfsd: remove the cache_disabled flag
+  nfsd: when updating an entry with RC_NOCACHE, just free it
+  nfsd: add recurring workqueue job to clean the cache
+  nfsd: track the number of DRC entries in the cache
+  nfsd: register a shrinker for DRC cache entries
+  nfsd: keep a checksum of the first 256 bytes of request
+
+ fs/nfsd/cache.h             |  17 ++-
+ fs/nfsd/nfscache.c          | 337 ++++++++++++++++++++++++++++++++++----------
+ fs/nfsd/nfssvc.c            |   1 -
+ include/linux/sunrpc/clnt.h |   4 +-
+ 4 files changed, 278 insertions(+), 81 deletions(-)
+
+-- 
+1.7.11.7
+
