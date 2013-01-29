@@ -1,83 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:50733 "EHLO mx1.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753631Ab3ADSPL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Jan 2013 13:15:11 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Weston Andros Adamson <dros@netapp.com>, Tejun Heo <tj@kernel.org>,
-        Bruce Fields <bfields@fieldses.org>
-Subject: [PATCH 2/3] NFS: Ensure that we free the rpc_task after read and write cleanups are done
-Date: Fri,  4 Jan 2013 13:15:01 -0500
-Message-Id: <1357323302-12944-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1357323302-12944-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <0EC8763B847DB24D9ADF5EBD9CD7B419125A16A9@SACEXCMBX02-PRD.hq.netapp.com>
- <1357323302-12944-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-pa0-f46.google.com ([209.85.220.46]:51395 "EHLO
+	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752911Ab3A2FQT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jan 2013 00:16:19 -0500
+Received: by mail-pa0-f46.google.com with SMTP id kp14so157172pab.19
+        for <linux-nfs@vger.kernel.org>; Mon, 28 Jan 2013 21:16:18 -0800 (PST)
+Date: Tue, 29 Jan 2013 13:16:01 +0800
+From: majianpeng <majianpeng@gmail.com>
+To: bfields <bfields@fieldses.org>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Reply-To: majianpeng <majianpeng@gmail.com>
+Subject: [PATCH 1/2] nfsd: Fix memleak.
+Mime-Version: 1.0
+Message-ID: <201301291315544246751@gmail.com>
+Content-Type: text/plain;
+	charset="gb2312"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch ensures that we free the rpc_task after the cleanup callbacks
-are done in order to avoid a deadlock problem that can be triggered if
-the callback needs to wait for another workqueue item to complete.
-
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Weston Andros Adamson <dros@netapp.com>
-Cc: Tejun Heo <tj@kernel.org>
-Cc: Bruce Fields <bfields@fieldses.org>
-Cc: stable@vger.kernel.org [>= 3.5]
----
- fs/nfs/read.c  | 10 +++++++---
- fs/nfs/write.c | 10 +++++++---
- 2 files changed, 14 insertions(+), 6 deletions(-)
-
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index b6bdb18..a5e5d98 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -91,12 +91,16 @@ void nfs_readdata_release(struct nfs_read_data *rdata)
- 	put_nfs_open_context(rdata->args.context);
- 	if (rdata->pages.pagevec != rdata->pages.page_array)
- 		kfree(rdata->pages.pagevec);
--	if (rdata != &read_header->rpc_data)
--		kfree(rdata);
--	else
-+	if (rdata == &read_header->rpc_data) {
- 		rdata->header = NULL;
-+		rdata = NULL;
-+	}
- 	if (atomic_dec_and_test(&hdr->refcnt))
- 		hdr->completion_ops->completion(hdr);
-+	/* Note: we only free the rpc_task after callbacks are done.
-+	 * See the comment in rpc_free_task() for why
-+	 */
-+	kfree(rdata);
- }
- EXPORT_SYMBOL_GPL(nfs_readdata_release);
- 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index b673be3..c483cc5 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -126,12 +126,16 @@ void nfs_writedata_release(struct nfs_write_data *wdata)
- 	put_nfs_open_context(wdata->args.context);
- 	if (wdata->pages.pagevec != wdata->pages.page_array)
- 		kfree(wdata->pages.pagevec);
--	if (wdata != &write_header->rpc_data)
--		kfree(wdata);
--	else
-+	if (wdata == &write_header->rpc_data) {
- 		wdata->header = NULL;
-+		wdata = NULL;
-+	}
- 	if (atomic_dec_and_test(&hdr->refcnt))
- 		hdr->completion_ops->completion(hdr);
-+	/* Note: we only free the rpc_task after callbacks are done.
-+	 * See the comment in rpc_free_task() for why
-+	 */
-+	kfree(wdata);
- }
- EXPORT_SYMBOL_GPL(nfs_writedata_release);
- 
--- 
-1.7.11.7
+SW4gZnVuYyBzdmNfZXhwb3J0X3BhcnNlLHRoZSB1dWlkIHdoaWNoIHVzZWQga21lbWR1cCB0byBh
+bGxvYyB3aWxsIGJlDQpjaGFuZ2VkIGluIGZ1bmMgZXhwb3J0X3VwZGF0ZS5TbyB0aGUgbGF0ZXIg
+a2ZyZWUgZG9uJ3QgZnJlZSB0aGlzIG1lbW9yeS4NCkFuZCBpdCBjYW4ndCBiZSBmcmVlIGluIGZ1
+bmMgc3ZjX2V4cG9ydF9wYXJzZSBiZWNhdXNlIG90aGVyIHBsYWNlIHN0aWxsDQp1c2VkLlNvIHB1
+dCB0aGlzIG9wZXJhdGlvbiBpbiBmdW5jIHN2Y19leHBvcnRfcHV0Lg0KDQpTaWduZWQtb2ZmLWJ5
+OiBKaWFucGVuZyBNYSA8bWFqaWFucGVuZ0BnbWFpbC5jb20+DQotLS0NCiBmcy9uZnNkL2V4cG9y
+dC5jIHwgICAgMSArDQogMSBmaWxlIGNoYW5nZWQsIDEgaW5zZXJ0aW9uKCspDQoNCmRpZmYgLS1n
+aXQgYS9mcy9uZnNkL2V4cG9ydC5jIGIvZnMvbmZzZC9leHBvcnQuYw0KaW5kZXggYTM5NDZjZi4u
+NDUxNTllZSAxMDA2NDQNCi0tLSBhL2ZzL25mc2QvZXhwb3J0LmMNCisrKyBiL2ZzL25mc2QvZXhw
+b3J0LmMNCkBAIC0zMTUsNiArMzE1LDcgQEAgc3RhdGljIHZvaWQgc3ZjX2V4cG9ydF9wdXQoc3Ry
+dWN0IGtyZWYgKnJlZikNCiAJcGF0aF9wdXQoJmV4cC0+ZXhfcGF0aCk7DQogCWF1dGhfZG9tYWlu
+X3B1dChleHAtPmV4X2NsaWVudCk7DQogCW5mc2Q0X2ZzbG9jc19mcmVlKCZleHAtPmV4X2ZzbG9j
+cyk7DQorCWtmcmVlKGV4cC0+ZXhfdXVpZCk7DQogCWtmcmVlKGV4cCk7DQogfQ0KIA0KLS0gDQox
+LjcuOS41DQo=
 
