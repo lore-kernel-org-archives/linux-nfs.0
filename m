@@ -1,86 +1,193 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f173.google.com ([209.85.216.173]:38038 "EHLO
-	mail-qc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755686Ab3ANPJz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jan 2013 10:09:55 -0500
-Received: by mail-qc0-f173.google.com with SMTP id b12so2547394qca.18
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Jan 2013 07:09:55 -0800 (PST)
-Date: Mon, 14 Jan 2013 10:09:48 -0500
-From: Chris Perl <chris.perl@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Possible Race Condition on SIGKILL
-Message-ID: <20130114150948.GH30872@nyc-qws-132.nyc.delacy.com>
-References: <4FA345DA4F4AE44899BD2B03EEEC2FA911993A92@SACEXCMBX04-PRD.hq.netapp.com>
- <20130108212343.GC30872@nyc-qws-132.nyc.delacy.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA911993B82@SACEXCMBX04-PRD.hq.netapp.com>
- <20130108221651.GD30872@nyc-qws-132.nyc.delacy.com>
- <20130108221921.GE30872@nyc-qws-132.nyc.delacy.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA911993F1B@SACEXCMBX04-PRD.hq.netapp.com>
- <20130109175503.GF30872@nyc-qws-132.nyc.delacy.com>
- <1357764777.9862.1.camel@lade.trondhjem.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA911997CA3@SACEXCMBX04-PRD.hq.netapp.com>
- <20130111161944.GG30872@nyc-qws-132.nyc.delacy.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130111161944.GG30872@nyc-qws-132.nyc.delacy.com>
+Received: from mx1.redhat.com ([209.132.183.28]:53296 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753134Ab3A2SUz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Jan 2013 13:20:55 -0500
+Date: Tue, 29 Jan 2013 13:20:52 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 16/16] nfsd: keep a checksum of the first 256 bytes
+ of request
+Message-ID: <20130129132052.2d22a710@corrin.poochiereds.net>
+In-Reply-To: <1359402082-29195-17-git-send-email-jlayton@redhat.com>
+References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
+	<1359402082-29195-17-git-send-email-jlayton@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 11, 2013 at 11:19:44AM -0500, Chris Perl wrote:
-> On Thu, Jan 10, 2013 at 09:30:58PM +0000, Myklebust, Trond wrote:
-> > On Wed, 2013-01-09 at 15:52 -0500, Trond Myklebust wrote:
-> > > On Wed, 2013-01-09 at 12:55 -0500, Chris Perl wrote:
-> > > > > Hrm.  I guess I'm in over my head here. Apologoies if I'm just asking
-> > > > > silly bumbling questions.  You can start ignoring me at any time. :)
-> > > > 
-> > > > I stared at the code for a while and more and now see why what I
-> > > > outlined is not possible.  Thanks for helping to clarify!
-> > > > 
-> > > > I decided to pull your git repo and compile with HEAD at
-> > > > 87ed50036b866db2ec2ba16b2a7aec4a2b0b7c39 (linux-next as of this
-> > > > morning).  Using this kernel, I can no longer induce any hangs.
-> > > > 
-> > > > Interestingly, I tried recompiling the CentOS 6.3 kernel with
-> > > > both the original patch (v4) and the last patch you sent about fixing
-> > > > priority queues.  With both of those in place, I still run into a
-> > > > problem.
-> > > > 
-> > > > echo 0 > /proc/sys/sunrpc/rpc_debug after the hang shows (I left in the
-> > > > previous additional prints and added printing of the tasks pointer
-> > > > itself):
-> > > > 
-> > > > <6>client: ffff88082896c200, xprt: ffff880829011000, snd_task: ffff880829a1aac0
-> > > > <6>client: ffff8808282b5600, xprt: ffff880829011000, snd_task: ffff880829a1aac0
-> > > > <6>--task-- -pid- flgs status -client- --rqstp- -timeout ---ops--
-> > > > <6>ffff88082a463180 22007 0080    -11 ffff8808282b5600   (null)        0 ffffffffa027b7a0 nfsv3 ACCESS a:call_reserveresult q:xprt_sending
-> > > > <6>client: ffff88082838cc00, xprt: ffff88082b7c5800, snd_task:   (null)
-> > > > <6>client: ffff8808283db400, xprt: ffff88082b7c5800, snd_task:   (null)
-> > > > <6>client: ffff8808283db200, xprt: ffff880829011000, snd_task: ffff880829a1aac0
-> > > > 
-> > > > Any thoughts about other patches that might affect this?
-> > > 
-> > > Hmm... The only one that springs to mind is this one (see attachment)
-> > > and then the 'connect' fixes that you helped us with previously.
-> > 
-> > Never mind. I suspect that the main reason why RHEL-6.3 is still
-> > vulnerable is that it lacks commit
-> > 961a828df64979d2a9faeeeee043391670a193b9 (SUNRPC: Fix potential races in
-> > xprt_lock_write_next()).
+On Mon, 28 Jan 2013 14:41:22 -0500
+Jeff Layton <jlayton@redhat.com> wrote:
+
+> Now that we're dynamically allocating these entries, it becomes a lot
+> easier to hit problems with XID collisions. In order to mitigate those,
+> checksum up to the first 256 bytes of each request coming in and store
+> those in the cache entry, along with the total length of the request.
 > 
-> Great, thanks!  I've add this on top of the others and am now testing.
-> I'll let you know how it goes.
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/nfsd/cache.h    |  5 +++++
+>  fs/nfsd/nfscache.c | 44 ++++++++++++++++++++++++++++++++++++++++----
+>  2 files changed, 45 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
+> index 9c7232b..4822db3 100644
+> --- a/fs/nfsd/cache.h
+> +++ b/fs/nfsd/cache.h
+> @@ -29,6 +29,8 @@ struct svc_cacherep {
+>  	u32			c_prot;
+>  	u32			c_proc;
+>  	u32			c_vers;
+> +	unsigned int		c_len;
+> +	u32			c_crc;
+>  	unsigned long		c_timestamp;
+>  	union {
+>  		struct kvec	u_vec;
+> @@ -73,6 +75,9 @@ enum {
+>  /* Cache entries expire after this time period */
+>  #define RC_EXPIRE		(120 * HZ)
+>  
+> +/* Checksum this amount of the request */
+> +#define RC_CSUMLEN		(256U)
+> +
+>  int	nfsd_reply_cache_init(void);
+>  void	nfsd_reply_cache_shutdown(void);
+>  int	nfsd_cache_lookup(struct svc_rqst *);
+> diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+> index 27edd47..abbf956 100644
+> --- a/fs/nfsd/nfscache.c
+> +++ b/fs/nfsd/nfscache.c
+> @@ -10,6 +10,7 @@
+>  
+>  #include <linux/slab.h>
+>  #include <linux/sunrpc/clnt.h>
+> +#include <linux/crc32.h>
+>  
+>  #include "nfsd.h"
+>  #include "cache.h"
+> @@ -22,6 +23,7 @@ static struct hlist_head *	cache_hash;
+>  static struct list_head 	lru_head;
+>  static struct kmem_cache	*drc_slab;
+>  static unsigned int		num_drc_entries;
+> +static u32			crc_seed;
+>  
+>  /*
+>   * Calculate the hash index from an XID.
+> @@ -103,6 +105,9 @@ int nfsd_reply_cache_init(void)
+>  		goto out_nomem;
+>  
+>  	INIT_LIST_HEAD(&lru_head);
+> +
+> +	/* Is a random seed any better than some well-defined constant? */
+> +	get_random_bytes(&crc_seed, sizeof(crc_seed));
+>  	num_drc_entries = 0;
+>  	return 0;
+>  out_nomem:
+> @@ -236,12 +241,37 @@ out:
+>  }
+>  
+>  /*
+> + * Walk an xdr_buf and get a CRC for at most the first RC_CSUMLEN bytes
+> + */
+> +static u32
+> +nfsd_cache_crc(struct xdr_buf *buf)
+> +{
+> +	u32 crc;
+> +	const unsigned char *p = buf->head[0].iov_base;
+> +	size_t total_len = min(buf->len, RC_CSUMLEN);
+> +	size_t len = min(buf->head[0].iov_len, total_len);
+> +
+> +	/* rq_arg.head first */
+> +	crc = crc32(crc_seed, p, len);
+> +	total_len -= len;
+> +
+> +	/* Nothing left */
+> +	if (!total_len)
+> +		return crc;
+> +
+> +	/* checksum the rest from the page_array */
+> +	p = page_address(buf->pages[0]) + buf->page_base;
+> +	len = min(buf->len - len, total_len);
+> +	return crc32(crc, p, len);
+> +}
+> +
 
-With all 4 patches in place, I am no longer able to hang my CentOS 6.3
-system.  I have not tested all the various combinations of the 4
-patches, but can definitely confirm that without either of:
+My apologies...the above code is wrong and I was seeing test failures
+with pynfs from it.
 
-961a828df64979d2a9faeeeee043391670a193b9 SUNRPC: Fix potential races in xprt_lock_write_next()
-87ed50036b866db2ec2ba16b2a7aec4a2b0b7c39 SUNRPC: Ensure we release the socket write lock if the rpc_task exits early
+buf->len is set to the size of the received RPC + NFS frames in
+svc_recv. svc_process then advances head[0] as it scrapes out the RPC
+fields. So, when we get to vs_dispatch, buf->len is no longer valid
+(it's off by the size of the RPC header). I've got a new patch that
+avoids using buf->len, and with that the tests pass.
 
-I can hang the system using the test program I sent in my first email.
+I'll plan to send a respin of this whole set in a few days, once I've
+given enough chance for anyone interested to comment on it.
 
-I'll follow up with Red Hat and ask that they include all 4 patches for
-6.4 (some of the earlier ones they may already have).
+> +/*
+>   * Search the request hash for an entry that matches the given rqstp.
+>   * Must be called with cache_lock held. Returns the found entry or
+>   * NULL on failure.
+>   */
+>  static struct svc_cacherep *
+> -nfsd_cache_search(struct svc_rqst *rqstp)
+> +nfsd_cache_search(struct svc_rqst *rqstp, u32 crc)
+>  {
+>  	struct svc_cacherep	*rp;
+>  	struct hlist_node	*hn;
+> @@ -255,6 +285,7 @@ nfsd_cache_search(struct svc_rqst *rqstp)
+>  	hlist_for_each_entry(rp, hn, rh, c_hash) {
+>  		if (xid == rp->c_xid && proc == rp->c_proc &&
+>  		    proto == rp->c_prot && vers == rp->c_vers &&
+> +		    rqstp->rq_arg.len == rp->c_len && crc == rp->c_crc &&
+>  		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
+>  		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr))
+>  			return rp;
+> @@ -274,7 +305,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+>  	__be32			xid = rqstp->rq_xid;
+>  	u32			proto =  rqstp->rq_prot,
+>  				vers = rqstp->rq_vers,
+> -				proc = rqstp->rq_proc;
+> +				proc = rqstp->rq_proc,
+> +				crc;
+>  	unsigned long		age;
+>  	int type = rqstp->rq_cachetype;
+>  	int rtn;
+> @@ -285,10 +317,12 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+>  		return RC_DOIT;
+>  	}
+>  
+> +	crc = nfsd_cache_crc(&rqstp->rq_arg);
+> +
+>  	spin_lock(&cache_lock);
+>  	rtn = RC_DOIT;
+>  
+> -	rp = nfsd_cache_search(rqstp);
+> +	rp = nfsd_cache_search(rqstp, crc);
+>  	if (rp)
+>  		goto found_entry;
+>  
+> @@ -318,7 +352,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+>  	 * Must search again just in case someone inserted one
+>  	 * after we dropped the lock above.
+>  	 */
+> -	found = nfsd_cache_search(rqstp);
+> +	found = nfsd_cache_search(rqstp, crc);
+>  	if (found) {
+>  		nfsd_reply_cache_free_locked(rp);
+>  		rp = found;
+> @@ -335,6 +369,8 @@ setup_entry:
+>  	rpc_set_port((struct sockaddr *)&rp->c_addr, rpc_get_port(svc_addr(rqstp)));
+>  	rp->c_prot = proto;
+>  	rp->c_vers = vers;
+> +	rp->c_len = rqstp->rq_arg.len;
+> +	rp->c_crc = crc;
+>  
+>  	hash_refile(rp);
+>  	lru_put_end(rp);
 
-Thanks so much for all the help!
+
+-- 
+Jeff Layton <jlayton@redhat.com>
