@@ -1,135 +1,160 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:44042 "EHLO mx2.netapp.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:38170 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753430Ab3ACU1X convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jan 2013 15:27:23 -0500
-From: "Adamson, Dros" <Weston.Adamson@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "Adamson, Dros" <Weston.Adamson@netapp.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Dave Jones <davej@redhat.com>,
-        Linux Kernel <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Tejun Heo <tj@kernel.org>
-Subject: Re: nfsd oops on Linus' current tree.
-Date: Thu, 3 Jan 2013 20:27:20 +0000
-Message-ID: <0EC8763B847DB24D9ADF5EBD9CD7B4191259F54D@SACEXCMBX02-PRD.hq.netapp.com>
-References: <20121221153348.GA32151@redhat.com>
- <20121221180824.GA27729@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91197273D@SACEXCMBX04-PRD.hq.netapp.com>
- <20121221230849.GB29739@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA911972C73@SACEXCMBX04-PRD.hq.netapp.com>
- <20121221232609.GC29739@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA911972CA1@SACEXCMBX04-PRD.hq.netapp.com>
- <20121221234530.GA30048@fieldses.org>
- <0EC8763B847DB24D9ADF5EBD9CD7B4191259E4A2@SACEXCMBX02-PRD.hq.netapp.com>
- <20130103201120.GA2096@fieldses.org>
-In-Reply-To: <20130103201120.GA2096@fieldses.org>
-Content-Type: text/plain; charset="us-ascii"
+	id S1752052Ab3A2LCq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Jan 2013 06:02:46 -0500
+Subject: [RFC PATCH] SUNRPC: protect transport processing with rw sem
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Tue, 29 Jan 2013 14:03:30 +0300
+Message-ID: <20130129110317.29541.51920.stgit@localhost.localdomain>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+There could be a service transport, which is processed by service thread and
+racing in the same time with per-net service shutdown like listed below:
 
-On Jan 3, 2013, at 3:11 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+CPU#0:                            CPU#1:
 
-> On Thu, Jan 03, 2013 at 04:28:37PM +0000, Adamson, Dros wrote:
->> Hey, sorry for the late response, I've been on vacation.
->> 
->> On Dec 21, 2012, at 6:45 PM, J. Bruce Fields <bfields@fieldses.org>
->> wrote:
->> 
->>> On Fri, Dec 21, 2012 at 11:36:51PM +0000, Myklebust, Trond wrote:
->>>> Please reread what I said. There was no obvious circular
->>>> dependency, because nfsiod and rpciod are separate workqueues, both
->>>> created with WQ_MEM_RECLAIM.
->>> 
->>> Oh, sorry, I read "rpciod" as "nfsiod"!
->>> 
->>>> Dros' experience shows, however that a call to rpc_shutdown_client
->>>> in an nfsiod work item will deadlock with rpciod if the RPC task's
->>>> work item has been assigned to the same CPU as the one running the
->>>> rpc_shutdown_client work item.
->>>> 
->>>> I can't tell right now if that is intentional (in which case the
->>>> WARN_ON in the rpc code is correct), or if it is a bug in the
->>>> workqueue code. For now, we're assuming the former.
->>> 
->>> Well, Documentation/workqueue.txt says:
->>> 
->>> 	"Each wq with WQ_MEM_RECLAIM set has an execution context
->>> 	reserved for it.  If there is dependency among multiple work
->>> 	items used during memory reclaim, they should be queued to
->>> 	separate wq each with WQ_MEM_RECLAIM."
->> 
->> The deadlock we were seeing was:
->> 
->> - task A gets queued on rpciod workqueue and assigned kworker-0:0 -
->> task B gets queued on rpciod workqueue and assigned the same kworker
->> (kworker-0:0) - task A gets run, calls rpc_shutdown_client(), which
->> will loop forever waiting for task B to run rpc_async_release() - task
->> B will never run rpc_async_release() - it can't run until kworker-0:0
->> is free, which won't happen until task A (rpc_shutdown_client) is done
->> 
->> The same deadlock happened when we tried queuing the tasks on a
->> different workqueues -- queue_work() assigns the task to a kworker
->> thread and it's luck of the draw if it's the same kworker as task A.
->> We tried the different workqueue options, but nothing changed this
->> behavior.
->> 
->> Once a work struct is queued, there is no way to back out of the
->> deadlock.  From kernel/workqueue.c:insert_wq_barrier comment:
->> 
->> * Currently, a queued barrier can't be canceled.  This is because *
->> try_to_grab_pending() can't determine whether the work to be *
->> grabbed is at the head of the queue and thus can't clear LINKED *
->> flag of the previous work while there must be a valid next work *
->> after a work with LINKED flag set.
->> 
->> So once a work struct is queued and there is an ordering dependency
->> (i.e. task A is before task B), there is no way to back task B out -
->> so we can't just call cancel_work() or something on task B in
->> rpc_shutdown_client.
->> 
->> The root of our issue is that rpc_shutdown_client is never safe to
->> call from a workqueue context - it loops until there are no more
->> tasks, marking tasks as killed and waiting for them to be cleaned up
->> in each task's own workqueue context. Any tasks that have already been
->> assigned to the same kworker thread will never have a chance to run
->> this cleanup stage.
->> 
->> When fixing this deadlock, Trond and I discussed changing how
->> rpc_shutdown_client works (making it workqueue safe), but Trond felt
->> that it'd be better to just not call it from a workqueue context and
->> print a warning if it is.
->> 
->> IIRC we tried using different workqueues with WQ_MEM_RECLAIM (with no
->> success), but I'd argue that even if that did work it would still be
->> very easy to call rpc_shutdown_client from the wrong context and MUCH
->> harder to detect it.  It's also unclear to me if setting rpciod
->> workqueue to WQ_MEM_RECLAIM would limit it to one kworker, etc...
-> 
-> Both rpciod and nfsiod already set WQ_MEM_RECLAIM.
+svc_recv                        svc_close_net
+svc_get_next_xprt (list_del_init(xpt_ready))
+                            svc_close_list (set XPT_BUSY and XPT_CLOSE)
+                            svc_clear_pools(xprt was gained on CPU#0 already)
+                            svc_delete_xprt (set XPT_DEAD)
+svc_handle_xprt (is XPT_CLOSE => svc_delete_xprt()
+BUG()
 
-Heh, oh yeah :)
+There could be different solutions of the problem.
+Probably, the patch doesn't implement the best one, but I hope the simple one.
+IOW, it protects critical section (dequeuing of pending transport and
+enqueuing  it back to the pool) by per-service rw semaphore, taken for read.
+On per-net transports shutdown, this semaphore have to be taken for write.
 
-> 
-> But, right, looking at kernel/workqueue.c, it seems that the dedicated
-> "rescuer" threads are invoked only in the case when work is stalled
-> because a new worker thread isn't allocated quickly enough.
-> 
-> So, what to do that's simplest enough that it would work for
-> post-rc2/stable?  I was happy having just a simple dedicated
-> thread--these are only started when nfsd is, so there's no real thread
-> proliferation problem.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfs/callback.c          |    2 ++
+ include/linux/sunrpc/svc.h |    2 ++
+ net/sunrpc/svc.c           |    2 ++
+ net/sunrpc/svc_xprt.c      |   24 ++++++++++++++++++------
+ 4 files changed, 24 insertions(+), 6 deletions(-)
 
-That should work fine. The client went this way and spawns a new kthread before calling rpc_shutdown_client() from a workqueue context.  This should happen very infrequently.
-
--dros
-
-> 
-> I'll go quietly weep for a little while and then think about it some
-> more....
-
-
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 5088b57..76ba260 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -393,7 +393,9 @@ void nfs_callback_down(int minorversion, struct net *net)
+ 	struct nfs_callback_data *cb_info = &nfs_callback_info[minorversion];
+ 
+ 	mutex_lock(&nfs_callback_mutex);
++	down_write(&cb_info->rqst->rq_sem);
+ 	nfs_callback_down_net(minorversion, cb_info->serv, net);
++	up_write(&cb_info->rqst->rq_sem);
+ 	cb_info->users--;
+ 	if (cb_info->users == 0 && cb_info->task != NULL) {
+ 		kthread_stop(cb_info->task);
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 1f0216b..8145009 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -278,6 +278,8 @@ struct svc_rqst {
+ 						 * cache pages */
+ 	wait_queue_head_t	rq_wait;	/* synchronization */
+ 	struct task_struct	*rq_task;	/* service thread */
++
++	struct rw_semaphore	rq_sem;
+ };
+ 
+ #define SVC_NET(svc_rqst)	(svc_rqst->rq_xprt->xpt_net)
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index b9ba2a8..71a53c1 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -642,6 +642,8 @@ svc_prepare_thread(struct svc_serv *serv, struct svc_pool *pool, int node)
+ 	if (!svc_init_buffer(rqstp, serv->sv_max_mesg, node))
+ 		goto out_thread;
+ 
++	init_rwsem(&rqstp->rq_sem);
++
+ 	return rqstp;
+ out_thread:
+ 	svc_exit_thread(rqstp);
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 5a9d40c..e75b20c 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -470,6 +470,7 @@ static void svc_xprt_release(struct svc_rqst *rqstp)
+ 	rqstp->rq_res.head[0].iov_len = 0;
+ 	svc_reserve(rqstp, 0);
+ 	rqstp->rq_xprt = NULL;
++	up_read(&rqstp->rq_sem);
+ 
+ 	svc_xprt_put(xprt);
+ }
+@@ -624,6 +625,7 @@ struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
+ 	 */
+ 	rqstp->rq_chandle.thread_wait = 5*HZ;
+ 
++	down_read(&rqstp->rq_sem);
+ 	spin_lock_bh(&pool->sp_lock);
+ 	xprt = svc_xprt_dequeue(pool);
+ 	if (xprt) {
+@@ -640,7 +642,8 @@ struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
+ 		if (pool->sp_task_pending) {
+ 			pool->sp_task_pending = 0;
+ 			spin_unlock_bh(&pool->sp_lock);
+-			return ERR_PTR(-EAGAIN);
++			xprt = ERR_PTR(-EAGAIN);
++			goto out_err;
+ 		}
+ 		/* No data pending. Go to sleep */
+ 		svc_thread_enqueue(pool, rqstp);
+@@ -661,16 +664,19 @@ struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
+ 		if (kthread_should_stop()) {
+ 			set_current_state(TASK_RUNNING);
+ 			spin_unlock_bh(&pool->sp_lock);
+-			return ERR_PTR(-EINTR);
++			xprt = ERR_PTR(-EINTR);
++			goto out_err;
+ 		}
+ 
+ 		add_wait_queue(&rqstp->rq_wait, &wait);
+ 		spin_unlock_bh(&pool->sp_lock);
++		up_read(&rqstp->rq_sem);
+ 
+ 		time_left = schedule_timeout(timeout);
+ 
+ 		try_to_freeze();
+ 
++		down_read(&rqstp->rq_sem);
+ 		spin_lock_bh(&pool->sp_lock);
+ 		remove_wait_queue(&rqstp->rq_wait, &wait);
+ 		if (!time_left)
+@@ -681,13 +687,19 @@ struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
+ 			svc_thread_dequeue(pool, rqstp);
+ 			spin_unlock_bh(&pool->sp_lock);
+ 			dprintk("svc: server %p, no data yet\n", rqstp);
+-			if (signalled() || kthread_should_stop())
+-				return ERR_PTR(-EINTR);
+-			else
+-				return ERR_PTR(-EAGAIN);
++			if (signalled() || kthread_should_stop()) {
++				xprt = ERR_PTR(-EINTR);
++				goto out_err;
++			} else {
++				xprt = ERR_PTR(-EAGAIN);
++				goto out_err;
++			}
+ 		}
+ 	}
+ 	spin_unlock_bh(&pool->sp_lock);
++out_err:
++	if (IS_ERR(xprt))
++		up_read(&rqstp->rq_sem);
+ 	return xprt;
+ }
+ 
 
