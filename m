@@ -1,43 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:32958 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:53723 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753559Ab3AVQgq convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jan 2013 11:36:46 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Ben Greear <greearb@candelatech.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: Cache request denied due to non-unique superblock keys
-Date: Tue, 22 Jan 2013 16:36:44 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA915C1A030@SACEXCMBX04-PRD.hq.netapp.com>
-References: <50FEBB08.2090709@candelatech.com>
-In-Reply-To: <50FEBB08.2090709@candelatech.com>
-Content-Type: text/plain; charset="Windows-1252"
+	id S1750741Ab3A2SNp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Jan 2013 13:13:45 -0500
+Date: Tue, 29 Jan 2013 13:13:44 -0500
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: fanchaoting <fanchaoting@cn.fujitsu.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfsd: Check the nfsd support version when enable or
+ disable the minorversion
+Message-ID: <20130129181344.GA4209@fieldses.org>
+References: <50FFB43A.8030105@cn.fujitsu.com>
+ <20130123232458.GB6565@fieldses.org>
+ <510247B8.4020207@cn.fujitsu.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <510247B8.4020207@cn.fujitsu.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> owner@vger.kernel.org] On Behalf Of Ben Greear
-> Sent: Tuesday, January 22, 2013 11:15 AM
-> To: linux-nfs@vger.kernel.org
-> Subject: NFS: Cache request denied due to non-unique superblock keys
+On Fri, Jan 25, 2013 at 04:52:08PM +0800, fanchaoting wrote:
+> when enable or disable the minorversion throw /proc/fs/nfsd/versions,
+> it should check the support version. now only nfs4 suppport minorversion.
 > 
-> I saw this on an overnight run with 3000 NFSv4 mounts:
+> Signed-off-by: Fan Chaoting <fanchaoting@cn.fujitsu.com>
+
+Apologies, I'd already committed the same fix (and credited you with
+reported-by:) before seeing this.--b.
+
 > 
-> NFS: Cache request denied due to non-unique superblock keys
+> ---
+>  fs/nfsd/nfsctl.c |    2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
 > 
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index 7493428..65889ec 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -534,7 +534,7 @@ static ssize_t __write_versions(struct file *file, char *buf, size_t size)
+>                         else
+>                                 num = simple_strtol(vers, &minorp, 0);
+>                         if (*minorp == '.') {
+> -                               if (num < 4)
+> +                               if (num != 4)
+>                                         return -EINVAL;
+>                                 minor = simple_strtoul(minorp+1, NULL, 0);
+>                                 if (minor == 0)
+> --
+> 1.7.10.1
 > 
-> Any idea if it's a problem or not?
-
-You are missing commit c4271c6e37c32105492cbbed35f45330cb327b94 (NFS: Kill fscache warnings when mounting without -ofsc). That shouldn't be a problem, but if the warning bothers you, the commit should be easy to backport.
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
-
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
