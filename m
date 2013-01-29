@@ -1,76 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39570 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:51601 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753098Ab3A3OXN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Jan 2013 09:23:13 -0500
-Date: Wed, 30 Jan 2013 09:23:08 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Subject: Re: [RFC PATCH] SUNRPC: protect transport processing with rw sem
-Message-ID: <20130130142308.GC12306@fieldses.org>
-References: <20130129110317.29541.51920.stgit@localhost.localdomain>
- <20130129225736.GC6219@fieldses.org>
- <5108B2B6.7010807@parallels.com>
+	id S1753475Ab3A2Tr3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Jan 2013 14:47:29 -0500
+Date: Tue, 29 Jan 2013 14:47:29 -0500
+To: Thierry Moreau <thierry.moreau@connotech.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Kernel message when no support for NFSv4 compiled into it
+Message-ID: <20130129194729.GC4209@fieldses.org>
+References: <510812C0.1070307@connotech.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <5108B2B6.7010807@parallels.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <510812C0.1070307@connotech.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 30, 2013 at 09:42:14AM +0400, Stanislav Kinsbursky wrote:
-> 30.01.2013 02:57, J. Bruce Fields пишет:
-> >On Tue, Jan 29, 2013 at 02:03:30PM +0300, Stanislav Kinsbursky wrote:
-> >>There could be a service transport, which is processed by service thread and
-> >>racing in the same time with per-net service shutdown like listed below:
-> >>
-> >>CPU#0:                            CPU#1:
-> >>
-> >>svc_recv                        svc_close_net
-> >>svc_get_next_xprt (list_del_init(xpt_ready))
-> >>                             svc_close_list (set XPT_BUSY and XPT_CLOSE)
-> >>                             svc_clear_pools(xprt was gained on CPU#0 already)
-> >>                             svc_delete_xprt (set XPT_DEAD)
-> >>svc_handle_xprt (is XPT_CLOSE => svc_delete_xprt()
-> >>BUG()
-> >>
-> >>There could be different solutions of the problem.
-> >>Probably, the patch doesn't implement the best one, but I hope the simple one.
-> >>IOW, it protects critical section (dequeuing of pending transport and
-> >>enqueuing  it back to the pool) by per-service rw semaphore,
-> >
-> >It's actually per-thread (per-struct svc_rqst) here.
-> >
+On Tue, Jan 29, 2013 at 01:19:44PM -0500, Thierry Moreau wrote:
+> Dear nfs developers,
 > 
-> Yes, sure.
+> I just SOLVED my operational problem. Maybe the symptom vs solution
+> is of interest to you.
 > 
-> >>taken for read.
-> >>On per-net transports shutdown, this semaphore have to be taken for write.
-> >
-> >There's no down_write in this patch.  Did you forget this part?
-> >
+> Kernel 3.5.4, nfs-utils 1.2.7
 > 
-> See "fs/nfs/callback.c" part
+>     ./configure --prefix=/usr \
+>                 --mandir=/usr/man \
+>                 --sysconfdir=/etc \
+>                 --with-statedir=/var/lib/nfs \
+>                 --disable-gss \
+>                 --with-tcp-wrappers \
+>                 --enable-libmount-mount
+> 
+> starting script:
+> 
+>         /sbin/rpcbind -h 192.168.1.17
+>         /bin/mount -t nfsd nfsd $NFSD
+>         /bin/mount -t rpc_pipefs rpc_pipefs $PIPEFS
+>         /usr/sbin/rpc.idmapd
+>         /usr/sbin/exportfs -a
+>         /usr/sbin/rpc.mountd
+>         /usr/sbin/rpc.statd --no-notify
+>         /usr/sbin/rpc.nfsd --syslog 8A <==== this is where the
+> kernel would report an error
+>         /usr/sbin/sm-notify
+> 
+> kernel configuration changes
+> 
+> bash-4.2# diff config_02 config_04
+> d2437c2447,2448
+> < # CONFIG_NFSD_V4 is not set
+> ---
+> > CONFIG_NFSD_V4=y
+> > # CONFIG_NFSD_FAULT_INJECTION is not set
+> 2441a2453
+> > CONFIG_SUNRPC_GSS=m
+> d2622c2639,2641
+> < # CONFIG_KEYS is not set
+> ---
+> > CONFIG_KEYS=y
+> > CONFIG_ENCRYPTED_KEYS=m
+> > CONFIG_KEYS_DEBUG_PROC_KEYS=y
+> 2625a2645
+> > # CONFIG_DEFAULT_SECURITY_SELINUX is not set
+> 2646a2667
+> > CONFIG_CRYPTO_RNG=m
+> 2700c2721
+> < # CONFIG_CRYPTO_SHA256 is not set
+> ---
+> > CONFIG_CRYPTO_SHA256=m
+> 
+> With config_02 kernel, nfsd would not work (no big deal so far). But
+> it did work fine prior to a controlled system reboot where prior
+> live system had experienced extensive playing with nfsd installation
+> (not much help for you since I can not tell what made it work).
+> 
+> What may be of interest to you is that with config_02 kernel, it is
+> the *kernel* that reports an error message on the system console,
+> right upon nfsd startup. It is only by (painful) trial and error
+> that the cause for the kernel message was found. The kernel message
+> message occurred even with the --disable-nfsv4/nfsv41 configure
+> options.
+> 
+> I don't have the exact kernel messages at hand (circa memory mapping
+> then circa NULL pointer dereferencing during the trial-and-error
+> chase).
+> 
+> I might be able to provide additional information if you ask
+> politely. Maybe I owe it to this great free software contribution
+> anyway.
 
-Whoops, sorry; got it.--b.
+Most useful would probably be the exact kernel messages if you have a
+way to find them or regenerate them again.
 
-> 
-> >The server rpc code goes to some care not to write to any global
-> >structure, to prevent server threads running on multiple cores from
-> >bouncing cache lines between them.
-> >
-> 
-> This is just an idea. I.e. I wasn't trying to polish the patch - just to share the vision.
-> 
-> >But my understanding is that even down_read() does modify the semaphore.
-> >So we might want something like the percpu semaphore describe in
-> >Documentation/percpu-rw-semaphore.txt.
-> >
-> 
-> Sure, I'll have a look.
-> 
-> 
-> -- 
-> Best regards,
-> Stanislav Kinsbursky
+--b.
