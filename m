@@ -1,146 +1,193 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.agmk.net ([91.192.224.71]:58391 "EHLO mail.agmk.net"
+Received: from fieldses.org ([174.143.236.118]:59033 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756027Ab3AQPAF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jan 2013 10:00:05 -0500
-From: =?utf-8?B?UGF3ZcWC?= Sikora <pawel.sikora@agmk.net>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org,
-        baggins@pld-linux.org, Trond.Myklebust@netapp.com
-Subject: Re: mount.nfs: cannot allocate memory.
-Date: Thu, 17 Jan 2013 15:59:57 +0100
-Message-ID: <3670768.htx4NKnPRQ@pawels>
-In-Reply-To: <20130117134959.GE6598@fieldses.org>
-References: <2891788.0SBnrhN2VX@pawels> <4603964.W8GbJjCd8Z@localhost> <20130117134959.GE6598@fieldses.org>
+	id S1751722Ab3A3PQN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Jan 2013 10:16:13 -0500
+Date: Wed, 30 Jan 2013 10:16:07 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 10/16] nfsd: dynamically allocate DRC entries
+Message-ID: <20130130151607.GE12306@fieldses.org>
+References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
+ <1359402082-29195-11-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1359402082-29195-11-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thursday 17 of January 2013 08:49:59 J. Bruce Fields wrote:
-> On Wed, Jan 16, 2013 at 10:18:51PM +0100, Paweł Sikora wrote:
-> > On Wednesday 16 of January 2013 15:15:10 J. Bruce Fields wrote:
-> > > On Wed, Jan 16, 2013 at 09:07:45PM +0100, Paweł Sikora wrote:
-> > > > On Wednesday 16 of January 2013 14:39:32 J. Bruce Fields wrote:
-> > > > > On Wed, Jan 16, 2013 at 08:03:14PM +0100, Paweł Sikora wrote:
-> > > > > > [259176.973751] NFS: nfs mount opts='soft,addr=10.0.2.28,vers=3,proto=tcp,mountvers=3,mountproto=udp,mountport=50252'
-> > > > > > [259176.973757] NFS:   parsing nfs mount option 'soft'
-> > > > > > [259176.973759] NFS:   parsing nfs mount option 'addr=10.0.2.28'
-> > > > > > [259176.973765] NFS:   parsing nfs mount option 'vers=3'
-> > > > > > [259176.973769] NFS:   parsing nfs mount option 'proto=tcp'
-> > > > > > [259176.973772] NFS:   parsing nfs mount option 'mountvers=3'
-> > > > > > [259176.973776] NFS:   parsing nfs mount option 'mountproto=udp'
-> > > > > > [259176.973779] NFS:   parsing nfs mount option 'mountport=50252'
-> > > > > > [259176.973784] NFS: MNTPATH: '/R10'
-> > > > > > [259176.973788] NFS: sending MNT request for nexus:/R10
-> > > > > > [259176.974620] NFS: received 1 auth flavors
-> > > > > > [259176.974623] NFS:   auth flavor[0]: 1
-> > > > > > [259176.974640] NFS: MNT request succeeded
-> > > > > > [259176.974643] NFS: using auth flavor 1
-> > > > > > [259176.974688] --> nfs_init_server()
-> > > > > > [259176.974691] --> nfs_get_client(nexus,v3)
-> > > > > > [259176.974698] NFS: get client cookie (0xffff88021146f800/0xffff8800ceb06640)
-> > > > > > [259176.975704] <-- nfs_init_server() = 0 [new ffff88021146f800]
-> > > > > > [259176.975708] --> nfs_probe_fsinfo()
-> > > > > > [259176.975711] NFS call  fsinfo
-> > > > > > [259176.975959] NFS reply fsinfo: -116
-> > > > > 
-> > > > > That's ESTALE.  Might be interesting to see the network traffic between
-> > > > > client and server.
-> > > > 
-> > > > here's the tcpdump result:  http://pluto.agmk.net/kernel/nfs.mount.estale.dump
-> > > 
-> > > On just a very quick skim (you may want to verify to see I've got it
-> > > right), frame 30 shows the server returning a filehandle in a MNT reply,
-> > > then frame 48 shows the same client that got that MNT reply using the
-> > > same filehandle in an FSINFO reply, and getting an NFS3ERR_STALE
-> > > response.
-> > > 
-> > > Offhand seems like a server bug.  Might conceivably happen if there was
-> > > some confusion whether the client was authorized to access that export?
-> > 
-> > i have such nfs problems with only one server which have complicated exports/local-binds:
-> > 
-> > fstab:
-> > 
-> > /dev/md0        /                       ext3    defaults                1 1
-> > /dev/md1        /R0                     ext4    defaults,noatime        1 2
-> > /dev/md2        /R10                    ext4    defaults,noatime        1 2
-> > /home           /remote/nexus/home      none    bind
-> > /R0/atest_home  /home/atest                     none    bind
-> > /R0/farm/ftp    /var/lib/ftp            none    bind
-> > /R0             /remote/nexus/R0        none    bind
-> > /R10            /remote/nexus/R10       none    bind
-> > 
-> > exports:
-> > 
-> > /home           *(rw,sync,no_wdelay,no_subtree_check,no_root_squash,insecure_locks,nohide)
-> > /R0             *(rw,async,no_wdelay,no_subtree_check,no_root_squash,insecure_locks,nohide,crossmnt)
-> > /R0/farm/ftp    *(rw,async,no_wdelay,no_subtree_check,no_root_squash,insecure_locks,nohide,crossmnt)
-> > /R10            *(rw,sync,no_wdelay,no_subtree_check,no_root_squash,insecure_locks,nohide,crossmnt)
-> > /R10/farm       *(rw,sync,no_wdelay,no_subtree_check,no_root_squash,insecure_locks,nohide,crossmnt)
-> > /R10/farm/sources       *(rw,sync,no_wdelay,no_subtree_check,no_root_squash,insecure_locks,nohide,crossmnt)
-> > /R10/farm/soft          *(rw,sync,no_wdelay,no_subtree_check,no_root_squash,insecure_locks,nohide,crossmnt)
-> > 
-> > and finally, the /R0/farm contains cross symlinks to R10 via binded dirs:
-> > 
-> > soft -> /remote/nexus/R10/farm/soft
-> > sources -> /remote/nexus/R10/farm/sources
-> > 
-> > 
-> > maybe this crappy setup exposes some bug on the server side?
+On Mon, Jan 28, 2013 at 02:41:16PM -0500, Jeff Layton wrote:
+> The existing code keeps a fixed-size cache of 1024 entries. This is
+> much too small for a busy server, and wastes memory on an idle one.
 > 
-> So in the above setup, /R0 and /remote/nexus/R0, for example, both point
-> to the same superblock.
+> This patch changes the code to dynamically allocate and free these
+> cache entries. For now, the cache growth is potentially boundless.
+
+I'd prefer to be strict about not introducing regressions, even if
+they're fixed a few patches later.
+
+Could we make sure some limit is still enforced in this patch?
+
+--b.
+
+> We'll add some mechanisms to help control that in later patches.
 > 
-> The filehandle contains only a reference to the superblock, with no
-> information about how it was arrived at.  When nfsd gets the filehandle
-> it's resolved in two steps:
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/nfsd/nfscache.c | 83 +++++++++++++++++++++++-------------------------------
+>  1 file changed, 35 insertions(+), 48 deletions(-)
 > 
-> 	- first it asks mountd to tell it a path for the given
-> 	  filehandle data
-> 	- then it asks mountd for export options for that path
+> diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+> index 9d80dfa..ad96f1d 100644
+> --- a/fs/nfsd/nfscache.c
+> +++ b/fs/nfsd/nfscache.c
+> @@ -14,13 +14,8 @@
+>  #include "nfsd.h"
+>  #include "cache.h"
+>  
+> -/* Size of reply cache. Common values are:
+> - * 4.3BSD:	128
+> - * 4.4BSD:	256
+> - * Solaris2:	1024
+> - * DEC Unix:	512-4096
+> - */
+> -#define CACHESIZE		1024
+> +#define NFSDDBG_FACILITY	NFSDDBG_REPCACHE
+> +
+>  #define HASHSIZE		64
+>  
+>  static struct hlist_head *	cache_hash;
+> @@ -67,34 +62,23 @@ nfsd_reply_cache_free_locked(struct svc_cacherep *rp)
+>  {
+>  	if (rp->c_type == RC_REPLBUFF)
+>  		kfree(rp->c_replvec.iov_base);
+> +	hlist_del(&rp->c_hash);
+>  	list_del(&rp->c_lru);
+>  	kmem_cache_free(drc_slab, rp);
+>  }
+>  
+>  int nfsd_reply_cache_init(void)
+>  {
+> -	int			i;
+> -	struct svc_cacherep	*rp;
+> -
+>  	drc_slab = kmem_cache_create("nfsd_drc", sizeof(struct svc_cacherep),
+>  					0, 0, NULL);
+>  	if (!drc_slab)
+>  		goto out_nomem;
+>  
+> -	INIT_LIST_HEAD(&lru_head);
+> -	i = CACHESIZE;
+> -	while (i) {
+> -		rp = nfsd_reply_cache_alloc();
+> -		if (!rp)
+> -			goto out_nomem;
+> -		list_add(&rp->c_lru, &lru_head);
+> -		i--;
+> -	}
+> -
+> -	cache_hash = kcalloc (HASHSIZE, sizeof(struct hlist_head), GFP_KERNEL);
+> +	cache_hash = kcalloc(HASHSIZE, sizeof(struct hlist_head), GFP_KERNEL);
+>  	if (!cache_hash)
+>  		goto out_nomem;
+>  
+> +	INIT_LIST_HEAD(&lru_head);
+>  	cache_disabled = 0;
+>  	return 0;
+>  out_nomem:
+> @@ -187,7 +171,7 @@ nfsd_cache_search(struct svc_rqst *rqstp)
+>  int
+>  nfsd_cache_lookup(struct svc_rqst *rqstp)
+>  {
+> -	struct svc_cacherep	*rp;
+> +	struct svc_cacherep	*rp, *found;
+>  	__be32			xid = rqstp->rq_xid;
+>  	u32			proto =  rqstp->rq_prot,
+>  				vers = rqstp->rq_vers,
+> @@ -206,38 +190,40 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+>  	rtn = RC_DOIT;
+>  
+>  	rp = nfsd_cache_search(rqstp);
+> -	if (rp) {
+> -		nfsdstats.rchits++;
+> +	if (rp)
+>  		goto found_entry;
+> -	}
+> -	nfsdstats.rcmisses++;
+>  
+> -	/* This loop shouldn't take more than a few iterations normally */
+> -	{
+> -	int	safe = 0;
+> -	list_for_each_entry(rp, &lru_head, c_lru) {
+> -		if (rp->c_state != RC_INPROG)
+> -			break;
+> -		if (safe++ > CACHESIZE) {
+> -			printk("nfsd: loop in repcache LRU list\n");
+> -			cache_disabled = 1;
+> -			goto out;
+> -		}
+> -	}
+> +	/*
+> +	 * Try to use the first entry on the LRU, if it's still good then we
+> +	 * know that the later ones will also be.
+> +	 */
+> +	if (!list_empty(&lru_head)) {
+> +		rp = list_first_entry(&lru_head, struct svc_cacherep, c_lru);
+> +		if (nfsd_cache_entry_expired(rp))
+> +			goto setup_entry;
+>  	}
+>  
+> -	/* All entries on the LRU are in-progress. This should not happen */
+> -	if (&rp->c_lru == &lru_head) {
+> -		static int	complaints;
+> +	spin_unlock(&cache_lock);
+> +	rp = nfsd_reply_cache_alloc();
+> +	if (!rp) {
+> +		dprintk("nfsd: unable to allocate DRC entry!\n");
+> +		return RC_DOIT;
+> +	}
+> +	spin_lock(&cache_lock);
+>  
+> -		printk(KERN_WARNING "nfsd: all repcache entries locked!\n");
+> -		if (++complaints > 5) {
+> -			printk(KERN_WARNING "nfsd: disabling repcache.\n");
+> -			cache_disabled = 1;
+> -		}
+> -		goto out;
+> +	/*
+> +	 * Must search again just in case someone inserted one
+> +	 * after we dropped the lock above.
+> +	 */
+> +	found = nfsd_cache_search(rqstp);
+> +	if (found) {
+> +		nfsd_reply_cache_free_locked(rp);
+> +		rp = found;
+> +		goto found_entry;
+>  	}
+>  
+> +setup_entry:
+> +	nfsdstats.rcmisses++;
+>  	rqstp->rq_cacherep = rp;
+>  	rp->c_state = RC_INPROG;
+>  	rp->c_xid = xid;
+> @@ -261,6 +247,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+>  	return rtn;
+>  
+>  found_entry:
+> +	nfsdstats.rchits++;
+>  	/* We found a matching entry which is either in progress or done. */
+>  	age = jiffies - rp->c_timestamp;
+>  	lru_put_end(rp);
+> @@ -291,7 +278,7 @@ found_entry:
+>  		break;
+>  	default:
+>  		printk(KERN_WARNING "nfsd: bad repcache type %d\n", rp->c_type);
+> -		rp->c_state = RC_UNUSED;
+> +		nfsd_reply_cache_free_locked(rp);
+>  	}
+>  
+>  	goto out;
+> -- 
+> 1.7.11.7
 > 
-> You can see the former in /proc/net/rpc/nfsd.fh/content, and the latter
-> in /proc/net/rpc/nfsd.export/content, so it might be interesting to
-> compare those two after a success and after a failure.
-> 
-> Since there are multiple possible paths that each filehandle could be
-> mapped to, I suspect the outcome depends on which mountd chooses, which
-> could be random.  But I don't immediately see how that's causing the
-> problem, since all your exports have the same option.
-
-before failing mount attempt i see such values on the server side:
-
-[root@nexus ~]# ./nfs_debug.sh
-+ cat /proc/net/rpc/nfsd.fh/content
-#domain fsidtype fsid [path]
-* 6 0x40694572b34adc7d7535a982d692a864 /R10
-* 1 0x00000000 /
-* 6 0x0f5a4f040e452cbc5ba412a3a206b7c3 /R0
-# * 6 0xa75dfe547f9b43ac0000000000000000
-# * 6 0xf0ec5c351974d8650000000000000000
-+ cat /proc/net/rpc/nfsd.export/content
-#path domain(flags)
-/       *(ro,no_root_squash,sync,no_wdelay,no_subtree_check,v4root,fsid=0,uuid=44053428:4cfdc05e:00000000:00000000)
-/R0     *(rw,no_root_squash,sync,wdelay,nohide,crossmnt,no_subtree_check,insecure_locks,uuid=044f5a0f:bc2c450e:a312a45b:c3b706a2)
-/R10    *(rw,no_root_squash,sync,wdelay,nohide,crossmnt,no_subtree_check,insecure_locks,uuid=72456940:7ddc4ab3:82a93575:64a892d6)
-
-
-after R0 mount attempt there're two entries for R0 with different uuids. is it correct behaviour?
-
-[root@nexus ~]# ./nfs_debug.sh
-+ cat /proc/net/rpc/nfsd.fh/content
-#domain fsidtype fsid [path]
-* 6 0x40694572b34adc7d7535a982d692a864 /R10
-* 1 0x00000000 /
-* 6 0x0f5a4f040e452cbc5ba412a3a206b7c3 /R0
-# * 6 0xa75dfe547f9b43ac0000000000000000
-# * 6 0xf0ec5c351974d8650000000000000000
-+ cat /proc/net/rpc/nfsd.export/content
-#path domain(flags)
-/       *(ro,no_root_squash,sync,no_wdelay,no_subtree_check,v4root,fsid=0,uuid=44053428:4cfdc05e:00000000:00000000)
-/R0     *(rw,no_root_squash,sync,wdelay,nohide,crossmnt,no_subtree_check,insecure_locks,uuid=044f5a0f:bc2c450e:a312a45b:c3b706a2)
-/R0     *(rw,no_root_squash,sync,wdelay,nohide,crossmnt,no_subtree_check,insecure_locks,uuid=54fe5da7:ac439b7f:00000000:00000000)
-/R10    *(rw,no_root_squash,sync,wdelay,nohide,crossmnt,no_subtree_check,insecure_locks,uuid=72456940:7ddc4ab3:82a93575:64a892d6)
-
