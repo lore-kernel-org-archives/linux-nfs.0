@@ -1,72 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.avalus.com ([89.16.176.221]:58358 "EHLO mail.avalus.com"
+Received: from fieldses.org ([174.143.236.118]:45863 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751687Ab3AWTiM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Jan 2013 14:38:12 -0500
-Date: Wed, 23 Jan 2013 19:37:55 +0000
-From: Alex Bligh <alex@alex.org.uk>
-Reply-To: Alex Bligh <alex@alex.org.uk>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Peter Staubach <pstaubach@exagrid.com>
-cc: linux-nfs@vger.kernel.org, ian.campbell@citrix.com,
-        Alex Bligh <alex@alex.org.uk>
-Subject: Re: Fatal crash with NFS, AIO & tcp retransmit
-Message-ID: <7CD6CC530A524B9745F846FB@nimrod.local>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA918332049@sacexcmbx05-prd.hq.netapp.com>
-References: <93D3AE9B4990994B2BCA75A9@Ximines.local>	
- <4FA345DA4F4AE44899BD2B03EEEC2FA915C163B9@SACEXCMBX04-PRD.hq.netapp.com>	
- <E268D60FA8BCE2E18CCE24D7@Ximines.local>	
- <4FA345DA4F4AE44899BD2B03EEEC2FA915C17543@SACEXCMBX04-PRD.hq.netapp.com>	
- <734E2E0455BD4515C657BA69@Ximines.local>	
- <4FA345DA4F4AE44899BD2B03EEEC2FA915C1781E@SACEXCMBX04-PRD.hq.netapp.com>	
- <DABFD69DFA23FF330123B298@nimrod.local>	
- <4FA345DA4F4AE44899BD2B03EEEC2FA91832D572@sacexcmbx05-prd.hq.netapp.com>	
- <5B18F9B0446E7F3CAA3BD81D@nimrod.local>	
- <4FA345DA4F4AE44899BD2B03EEEC2FA918331EF5@sacexcmbx05-prd.hq.netapp.com>	
- <F1BFF24EE9BEF6E4C8C66BF8@nimrod.local>	
- <FA8A9A935BFD3A4D8F0CDA1C4F611BCC0C5DC79D53@IT-1874.Isys.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA918332049@sacexcmbx05-prd.hq.netapp.com>
+	id S1754467Ab3A3WLU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Jan 2013 17:11:20 -0500
+Date: Wed, 30 Jan 2013 17:11:18 -0500
+To: Pavel Shilovsky <piastry@etersoft.ru>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        wine-devel@winehq.org
+Subject: Re: [PATCH v2 0/8] Add O_DENY* support for VFS and CIFS/NFS
+Message-ID: <20130130221118.GB15584@fieldses.org>
+References: <1358441537-8672-1-git-send-email-piastry@etersoft.ru>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1358441537-8672-1-git-send-email-piastry@etersoft.ru>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Jan 17, 2013 at 08:52:09PM +0400, Pavel Shilovsky wrote:
+> This patchset adds support of O_DENY* flags for Linux fs layer. These flags can be used by any application that needs share reservations to organize a file access. VFS already has some sort of this capability - now it's done through flock/LOCK_MAND mechanis, but that approach is non-atomic. This patchset build new capabilities on top of the existing one but doesn't bring any changes into the flock call semantic.
+> 
+> These flags can be used by NFS (built-in-kernel) and CIFS (Samba) servers and Wine applications through VFS (for local filesystems) or CIFS/NFS modules. This will help when e.g. Samba and NFS server share the same directory for Windows and Linux users or Wine applications use Samba/NFS share to access the same data from different clients.
+> 
+> According to the previous discussions the most problematic question is how to prevent situations like DoS attacks where e.g /lib/liba.so file can be open with DENYREAD, or smth like this. That's why one extra flag O_DENYMAND is added. It indicates to underlying layer that an application want to use O_DENY* flags semantic. It allows us not affect native Linux applications (that don't use O_DENYMAND flag) - so, these flags (and the semantic of open syscall that they bring) are used only for those applications that really want it proccessed that way.
 
+Maybe that's good enough.  A mount flag might be simpler and give
+consistent enforcement for all users.
 
---On 23 January 2013 18:13:34 +0000 "Myklebust, Trond" 
-<Trond.Myklebust@netapp.com> wrote:
+> 
+> So, we have four new flags:
+> O_DENYREAD - to prevent other opens with read access,
+> O_DENYWRITE - to prevent other opens with write access,
+> O_DENYDELETE - to prevent delete operations (this flag is not implemented in VFS and NFS part and only suitable for CIFS module),
+> O_DENYMAND - to switch on/off three flags above.
 
->> They can't disappear until they have been successfully transmitted and a
->> response received.  The problem here is that there were two requests
->> sent or being sent and the page(s) can't be released until everyone,
->> including TCP and such, are done with them.
->>
->> 		ps
->
-> Right. The O_DIRECT write() system call will not return until it gets a
-> reply. Similarly, we don't mark an aio/dio request as complete until it
-> too gets a reply. So the data for those requests that need
-> retransmission is still available to be resent through the socket.
+It would be useful to have some really careful documentation of how
+these are meant to work.  Maybe try updating the open man page?
 
-I apologise for my stupidity here as I think I must be missing something.
-
-I thought we'd established that Xen's grant system doesn't release the page
-until QEMU says the block I/O is complete. QEMU only states that the block
-I/O is complete when AIO says it is. What's happening (as far as I can tell
-from the oops) is that the grant system is releasing the page AFTER the aio
-request is complete (and dio may the same), but at that stage the page is
-still referenced by the tcp stack. That contradicts what you say about not
-marking the aio/dio request as complete until it gets a reply, unless it's
-the case that you can get a reply to a request when there is still data
-that the TCP stack can ask to retransmit (I suppose that's conceivable
-if the reply gets sent before the ACK of the data received).
-
-My understanding (which may well be completely wrong) is that the problem
-was that xen was unmapping the page even though it still had kernel
-references to it. This is why the problem does not happen in kvm (which
-does not as I understand it do a similar map/unmap operation). From Ian C I
-understand that just looking at the number of kernel references is not
-sufficient.
-
--- 
-Alex Bligh
+--b.
+> 
+> The #1 patch bring infrastructure to let us add this capability easier. #2 patch adds flags to fcntl while #3 patch implement VFS part. Patches #4, #5, #6 are related to CIFS-specific changes. #7 and #8 describe NFS and NFSD parts.
+> 
+> Also, I created the preliminary patch for Samba that replaces the existing use of flock/LOCK_MAND mechanism with O_DENY* flags:
+> http://git.etersoft.ru/people/piastry/packages/?p=samba.git;a=commitdiff;h=f116c478bf9a1bc3985e9a719fb20d854914d67a
+> 
+> Pavel Shilovsky (8):
+>   locks: make flock_lock_file take is_conflict callback parm
+>   fcntl: Introduce new O_DENY* open flags
+>   vfs: Add O_DENYREAD/WRITE flags support for open syscall
+>   CIFS: Add O_DENY* open flags support
+>   CIFS: Use NT_CREATE_ANDX command for forcemand mounts
+>   CIFS: Translate SHARING_VIOLATION to -ETXTBSY error code for SMB2
+>   NFSv4: Add O_DENY* open flags support
+>   NFSD: Pass share reservations flags to VFS
+> 
+>  fs/cifs/cifsacl.c                |  10 ++--
+>  fs/cifs/cifsglob.h               |  12 +++-
+>  fs/cifs/cifsproto.h              |   9 +--
+>  fs/cifs/cifssmb.c                |  47 ++++++++-------
+>  fs/cifs/dir.c                    |  14 +++--
+>  fs/cifs/file.c                   |  18 ++++--
+>  fs/cifs/inode.c                  |  11 ++--
+>  fs/cifs/link.c                   |  10 ++--
+>  fs/cifs/readdir.c                |   2 +-
+>  fs/cifs/smb1ops.c                |  15 ++---
+>  fs/cifs/smb2file.c               |  10 ++--
+>  fs/cifs/smb2inode.c              |   4 +-
+>  fs/cifs/smb2maperror.c           |   2 +-
+>  fs/cifs/smb2ops.c                |  10 ++--
+>  fs/cifs/smb2pdu.c                |   6 +-
+>  fs/cifs/smb2proto.h              |  14 +++--
+>  fs/fcntl.c                       |   5 +-
+>  fs/locks.c                       | 121 ++++++++++++++++++++++++++++++++++++---
+>  fs/namei.c                       |  10 +++-
+>  fs/nfs/nfs4xdr.c                 |  24 ++++++--
+>  fs/nfsd/nfs4state.c              |  46 ++++++++++++++-
+>  include/linux/fs.h               |   6 ++
+>  include/uapi/asm-generic/fcntl.h |  14 +++++
+>  23 files changed, 324 insertions(+), 96 deletions(-)
+> 
+> -- 
+> 1.8.1.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
