@@ -1,43 +1,170 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f177.google.com ([209.85.223.177]:61219 "EHLO
-	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750830Ab3ARG3z convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jan 2013 01:29:55 -0500
-MIME-Version: 1.0
-In-Reply-To: <20130118095538.fdd0b3be90739b9fd9179b5d@canb.auug.org.au>
-References: <1358441537-8672-1-git-send-email-piastry@etersoft.ru>
-	<20130118095538.fdd0b3be90739b9fd9179b5d@canb.auug.org.au>
-Date: Fri, 18 Jan 2013 10:29:54 +0400
-Message-ID: <CAKywueQ33k3uGHP4LV=7KCq-V3D=3PEanbYTzVEnXwT0V-fXjA@mail.gmail.com>
-Subject: Re: [PATCH v2 0/8] Add O_DENY* support for VFS and CIFS/NFS
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: Stephen Rothwell <sfr@canb.auug.org.au>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        wine-devel@winehq.org
+Received: from mx1.redhat.com ([209.132.183.28]:57034 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751042Ab3A3Ph7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Jan 2013 10:37:59 -0500
+Date: Wed, 30 Jan 2013 10:37:57 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 15/16] nfsd: register a shrinker for DRC cache
+ entries
+Message-ID: <20130130103757.3578d254@corrin.poochiereds.net>
+In-Reply-To: <20130130152449.GG12306@fieldses.org>
+References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
+	<1359402082-29195-16-git-send-email-jlayton@redhat.com>
+	<20130130152449.GG12306@fieldses.org>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2013/1/18 Stephen Rothwell <sfr@canb.auug.org.au>:
-> Hi Pavel,
->
-> On Thu, 17 Jan 2013 20:52:09 +0400 Pavel Shilovsky <piastry@etersoft.ru> wrote:
->>
->> This patchset adds support of O_DENY* flags for Linux fs layer. These flags can be used by any application that needs share reservations to organize a file access. VFS already has some sort of this capability - now it's done through flock/LOCK_MAND mechanis, but that approach is non-atomic. This patchset build new capabilities on top of the existing one but doesn't bring any changes into the flock call semantic.
->
-> This has probably been discussed, but is Linux's leases implementation
-> not sufficient?  Just wondering.
+On Wed, 30 Jan 2013 10:24:49 -0500
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-As I understand it, leases play different role: they allow to cache a
-data for the particular open and then flush it when a lease break
-comes. But we need to protect opens from being done if their
-access/share mode is not suitable for previously done opens. E.g. if
-we have already opened a file with O_RDONLY | O_DENYWRITE we can't
-open it again with any of O_WRONLY, O_RDWR and O_DENYREAD flags (of
-course all these things should only work if O_DENYMAND is specified
-for the first and the second opens).
+> On Mon, Jan 28, 2013 at 02:41:21PM -0500, Jeff Layton wrote:
+> > Since we dynamically allocate them now, allow the system to call us
+> > up to release them if we get low on memory.
+> > 
+> > We set the "seeks" value very high, to discourage it and release
+> > them in LRU order.
+> 
+> I don't understand how the mm uses seeks.  I guess I'll do some reading.
+> 
+
+Me neither. It's part of a heuristic to make it prefer not to purge
+certain caches entries vs. others, but the logic escapes me...
+
+> This looks straightforward enough, but I'm not sure how to judge whether
+> this is the correct policy.
+> 
+
+Agreed. At the very least, it probably makes sense to purge anything
+already expired when we get a shrinker call. Beyond that, I'm not sure
+whether it makes sense or not.
+
+> --b.
+> 
+> > We may end up releasing some prematurely if the
+> > box is really low on memory.
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  fs/nfsd/nfscache.c | 54 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
+> >  1 file changed, 53 insertions(+), 1 deletion(-)
+> > 
+> > diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+> > index bd21230..27edd47 100644
+> > --- a/fs/nfsd/nfscache.c
+> > +++ b/fs/nfsd/nfscache.c
+> > @@ -35,6 +35,18 @@ static inline u32 request_hash(u32 xid)
+> >  
+> >  static int	nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *vec);
+> >  static void	cache_cleaner_func(struct work_struct *unused);
+> > +static int 	nfsd_reply_cache_shrink(struct shrinker *shrink,
+> > +					struct shrink_control *sc);
+> > +
+> > +/*
+> > + * We set "seeks" to a large value here since we really can't recreate these
+> > + * entries. We're just gambling that they won't actually be needed if and
+> > + * when the box comes under memory pressure.
+> > + */
+> > +struct shrinker nfsd_reply_cache_shrinker = {
+> > +	.shrink	= nfsd_reply_cache_shrink,
+> > +	.seeks	= 64,
+> > +};
+> >  
+> >  /*
+> >   * locking for the reply cache:
+> > @@ -80,6 +92,7 @@ nfsd_reply_cache_free(struct svc_cacherep *rp)
+> >  
+> >  int nfsd_reply_cache_init(void)
+> >  {
+> > +	register_shrinker(&nfsd_reply_cache_shrinker);
+> >  	drc_slab = kmem_cache_create("nfsd_drc", sizeof(struct svc_cacherep),
+> >  					0, 0, NULL);
+> >  	if (!drc_slab)
+> > @@ -102,6 +115,7 @@ void nfsd_reply_cache_shutdown(void)
+> >  {
+> >  	struct svc_cacherep	*rp;
+> >  
+> > +	unregister_shrinker(&nfsd_reply_cache_shrinker);
+> >  	cancel_delayed_work_sync(&cache_cleaner);
+> >  
+> >  	while (!list_empty(&lru_head)) {
+> > @@ -152,15 +166,17 @@ nfsd_cache_entry_expired(struct svc_cacherep *rp)
+> >   * if we hit one that isn't old enough, then we can stop the walking. Must
+> >   * be called with cache_lock held.
+> >   */
+> > -static void
+> > +static int
+> >  prune_old_cache_entries(void)
+> >  {
+> > +	int freed = 0;
+> >  	struct svc_cacherep *rp, *tmp;
+> >  
+> >  	list_for_each_entry_safe(rp, tmp, &lru_head, c_lru) {
+> >  		if (!nfsd_cache_entry_expired(rp))
+> >  			break;
+> >  		nfsd_reply_cache_free_locked(rp);
+> > +		++freed;
+> >  	}
+> >  
+> >  	/*
+> > @@ -173,6 +189,8 @@ prune_old_cache_entries(void)
+> >  		cancel_delayed_work(&cache_cleaner);
+> >  	else
+> >  		mod_delayed_work(system_wq, &cache_cleaner, RC_EXPIRE);
+> > +
+> > +	return freed;
+> >  }
+> >  
+> >  static void
+> > @@ -183,6 +201,40 @@ cache_cleaner_func(struct work_struct *unused)
+> >  	spin_unlock(&cache_lock);
+> >  }
+> >  
+> > +static int
+> > +nfsd_reply_cache_shrink(struct shrinker *shrink, struct shrink_control *sc)
+> > +{
+> > +	int nr_to_scan = sc->nr_to_scan;
+> > +	unsigned int num;
+> > +
+> > +	spin_lock(&cache_lock);
+> > +	if (!nr_to_scan)
+> > +		goto out;
+> > +
+> > +	nr_to_scan -= prune_old_cache_entries();
+> > +
+> > +	/*
+> > +	 * If that didn't free enough, then keep going. It's better to free
+> > +	 * some prematurely than to have the box keel over due to lack of
+> > +	 * memory.
+> > +	 */
+> > +	while (nr_to_scan > 0) {
+> > +		struct svc_cacherep *rp;
+> > +
+> > +		if (list_empty(&lru_head))
+> > +			break;
+> > +		rp = list_first_entry(&lru_head, struct svc_cacherep, c_lru);
+> > +		nfsd_reply_cache_free_locked(rp);
+> > +		--nr_to_scan;
+> > +	}
+> > +
+> > +out:
+> > +	num = num_drc_entries;
+> > +	spin_unlock(&cache_lock);
+> > +
+> > +	return num;
+> > +}
+> > +
+> >  /*
+> >   * Search the request hash for an entry that matches the given rqstp.
+> >   * Must be called with cache_lock held. Returns the found entry or
+> > -- 
+> > 1.7.11.7
+> > 
+
 
 -- 
-Best regards,
-Pavel Shilovsky.
+Jeff Layton <jlayton@redhat.com>
