@@ -1,107 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:17637 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:39570 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753643Ab3ACVmb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Jan 2013 16:42:31 -0500
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH] NFS: Fix access to suid/sgid executables
-Date: Thu,  3 Jan 2013 16:42:29 -0500
-Message-Id: <1357249349-12074-1-git-send-email-dros@netapp.com>
+	id S1753098Ab3A3OXN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Jan 2013 09:23:13 -0500
+Date: Wed, 30 Jan 2013 09:23:08 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Subject: Re: [RFC PATCH] SUNRPC: protect transport processing with rw sem
+Message-ID: <20130130142308.GC12306@fieldses.org>
+References: <20130129110317.29541.51920.stgit@localhost.localdomain>
+ <20130129225736.GC6219@fieldses.org>
+ <5108B2B6.7010807@parallels.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <5108B2B6.7010807@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfs_open_permission_mask() should only check MAY_EXEC for files that
-are opened with __FMODE_EXEC.
+On Wed, Jan 30, 2013 at 09:42:14AM +0400, Stanislav Kinsbursky wrote:
+> 30.01.2013 02:57, J. Bruce Fields пишет:
+> >On Tue, Jan 29, 2013 at 02:03:30PM +0300, Stanislav Kinsbursky wrote:
+> >>There could be a service transport, which is processed by service thread and
+> >>racing in the same time with per-net service shutdown like listed below:
+> >>
+> >>CPU#0:                            CPU#1:
+> >>
+> >>svc_recv                        svc_close_net
+> >>svc_get_next_xprt (list_del_init(xpt_ready))
+> >>                             svc_close_list (set XPT_BUSY and XPT_CLOSE)
+> >>                             svc_clear_pools(xprt was gained on CPU#0 already)
+> >>                             svc_delete_xprt (set XPT_DEAD)
+> >>svc_handle_xprt (is XPT_CLOSE => svc_delete_xprt()
+> >>BUG()
+> >>
+> >>There could be different solutions of the problem.
+> >>Probably, the patch doesn't implement the best one, but I hope the simple one.
+> >>IOW, it protects critical section (dequeuing of pending transport and
+> >>enqueuing  it back to the pool) by per-service rw semaphore,
+> >
+> >It's actually per-thread (per-struct svc_rqst) here.
+> >
+> 
+> Yes, sure.
+> 
+> >>taken for read.
+> >>On per-net transports shutdown, this semaphore have to be taken for write.
+> >
+> >There's no down_write in this patch.  Did you forget this part?
+> >
+> 
+> See "fs/nfs/callback.c" part
 
-Also fix NFSv4 access-in-open path in a similar way -- openflags must be
-used because fmode will not always have FMODE_EXEC set.
+Whoops, sorry; got it.--b.
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
-
-This patch fixes https://bugzilla.kernel.org/show_bug.cgi?id=49101
-
-Patch v2 - apply Trond's comment: only check MAY_EXEC when openflags has 
-__FMODE_EXEC.
-
- fs/nfs/dir.c      |   16 ++++++++++------
- fs/nfs/nfs4proc.c |   18 ++++++++++++------
- 2 files changed, 22 insertions(+), 12 deletions(-)
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 32e6c53..1b2d7eb 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -2153,12 +2153,16 @@ static int nfs_open_permission_mask(int openflags)
- {
- 	int mask = 0;
- 
--	if ((openflags & O_ACCMODE) != O_WRONLY)
--		mask |= MAY_READ;
--	if ((openflags & O_ACCMODE) != O_RDONLY)
--		mask |= MAY_WRITE;
--	if (openflags & __FMODE_EXEC)
--		mask |= MAY_EXEC;
-+	if (openflags & __FMODE_EXEC) {
-+		/* ONLY check exec rights */
-+		mask = MAY_EXEC;
-+	} else {
-+		if ((openflags & O_ACCMODE) != O_WRONLY)
-+			mask |= MAY_READ;
-+		if ((openflags & O_ACCMODE) != O_RDONLY)
-+			mask |= MAY_WRITE;
-+	}
-+
- 	return mask;
- }
- 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 5d864fb..3b70588 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1626,7 +1626,8 @@ static int _nfs4_recover_proc_open(struct nfs4_opendata *data)
- 
- static int nfs4_opendata_access(struct rpc_cred *cred,
- 				struct nfs4_opendata *opendata,
--				struct nfs4_state *state, fmode_t fmode)
-+				struct nfs4_state *state, fmode_t fmode,
-+				int openflags)
- {
- 	struct nfs_access_entry cache;
- 	u32 mask;
-@@ -1637,12 +1638,17 @@ static int nfs4_opendata_access(struct rpc_cred *cred,
- 		return 0;
- 
- 	mask = 0;
-+
-+	/* use openflags to check for exec, because fmode won't
-+	 * always have FMODE_EXEC set when file open for exec. */
-+	if (openflags & __FMODE_EXEC)
-+		/* ONLY check for exec rights */
-+		mask = MAY_EXEC;
-+
- 	/* don't check MAY_WRITE - a newly created file may not have
- 	 * write mode bits, but POSIX allows the creating process to write */
--	if (fmode & FMODE_READ)
--		mask |= MAY_READ;
--	if (fmode & FMODE_EXEC)
--		mask |= MAY_EXEC;
-+	else if (fmode & FMODE_READ)
-+		mask = MAY_READ;
- 
- 	cache.cred = cred;
- 	cache.jiffies = jiffies;
-@@ -1896,7 +1902,7 @@ static int _nfs4_do_open(struct inode *dir,
- 	if (server->caps & NFS_CAP_POSIX_LOCK)
- 		set_bit(NFS_STATE_POSIX_LOCKS, &state->flags);
- 
--	status = nfs4_opendata_access(cred, opendata, state, fmode);
-+	status = nfs4_opendata_access(cred, opendata, state, fmode, flags);
- 	if (status != 0)
- 		goto err_opendata_put;
- 
--- 
-1.7.9.6 (Apple Git-31.1)
-
+> 
+> >The server rpc code goes to some care not to write to any global
+> >structure, to prevent server threads running on multiple cores from
+> >bouncing cache lines between them.
+> >
+> 
+> This is just an idea. I.e. I wasn't trying to polish the patch - just to share the vision.
+> 
+> >But my understanding is that even down_read() does modify the semaphore.
+> >So we might want something like the percpu semaphore describe in
+> >Documentation/percpu-rw-semaphore.txt.
+> >
+> 
+> Sure, I'll have a look.
+> 
+> 
+> -- 
+> Best regards,
+> Stanislav Kinsbursky
