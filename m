@@ -1,56 +1,236 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46393 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:52518 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751878Ab3AYVfG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2013 16:35:06 -0500
-Date: Fri, 25 Jan 2013 16:35:03 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Ben Myers <bpm@sgi.com>, Olga Kornievskaia <aglo@citi.umich.edu>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Jim Rees <rees@umich.edu>
-Subject: Re: sunrpc: socket buffer size tuneable
-Message-ID: <20130125213503.GI29596@fieldses.org>
-References: <20130125192935.GA32470@sgi.com>
- <20130125202107.GD29596@fieldses.org>
- <20130125203507.GW30652@sgi.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91833BF5A@sacexcmbx05-prd.hq.netapp.com>
- <20130125212106.GH29596@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91833BFAB@sacexcmbx05-prd.hq.netapp.com>
+	id S1753021Ab3A3U1n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Jan 2013 15:27:43 -0500
+Date: Wed, 30 Jan 2013 15:27:42 -0500
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] SUNRPC: Pin GSS module while handling flavor lookups
+Message-ID: <20130130202742.GE14256@fieldses.org>
+References: <20130130193120.1289.33936.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91833BFAB@sacexcmbx05-prd.hq.netapp.com>
+In-Reply-To: <20130130193120.1289.33936.stgit@seurat.1015granger.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 25, 2013 at 09:29:09PM +0000, Myklebust, Trond wrote:
-> > -----Original Message-----
-> > From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> > Sent: Friday, January 25, 2013 4:21 PM
-> > To: Myklebust, Trond
-> > Cc: Ben Myers; Olga Kornievskaia; linux-nfs@vger.kernel.org; Jim Rees
-> > Subject: Re: sunrpc: socket buffer size tuneable
-> > 
-> > On Fri, Jan 25, 2013 at 09:12:55PM +0000, Myklebust, Trond wrote:
+On Wed, Jan 30, 2013 at 02:34:30PM -0500, Chuck Lever wrote:
+> Add an API similar to rpcauth_lookup_pseudoflavor().  The NFS server
+> should not call GSS API functions directly without first pinning
+> the GSS module.
 > 
-> > > Why is it not sufficient to clamp the TCP values of 'snd' and 'rcv' using
-> > sysctl_tcp_wmem/sysctl_tcp_rmem?
-> > > ...and clamp the UDP values using
-> > sysctl_[wr]mem_min/sysctl_[wr]mem_max?.
-> > 
-> > Yeah, I was just looking at that--so, Ben, something like:
-> > 
-> > 	echo "1048576 1048576 4194304" >/proc/sys/net/ipv4/tcp_wmem
-> > 
-> > But I'm unclear on some of the details: do we need to set the minimum or
-> > only the default?  And does it need any more allowance for protocol
-> > overhead?
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
 > 
-> I meant adding a check either to svc_sock_setbufsize or to the 2 call-sites that enforces the above limits.
+> Bruce-
+> 
+> Are you interested in taking something like this (untested) patch
+> for 3.9?  (This has pre-requisites I posted earlier this week).
 
-I lost you.
+OK.  Let me know what you want me to do.
 
-It's not svc_sock_setbufsize that's setting too-small values, if that's
-what you mean.
+> Not sure what to do about svcauth_gss_flavor(), which has the same
+> issue.
+
+There's no risk of the gss module disappearing out from under us there:
+it's a symbol exported from that module, so there's a static dependency
+of the nfsd module on it.
 
 --b.
+
+> 
+> 
+>  fs/nfsd/nfs4xdr.c                     |   18 ++++++++---------
+>  include/linux/sunrpc/auth.h           |    2 ++
+>  include/linux/sunrpc/gss_api.h        |    3 +++
+>  net/sunrpc/auth.c                     |   35 +++++++++++++++++++++++++++++++++
+>  net/sunrpc/auth_gss/auth_gss.c        |    1 +
+>  net/sunrpc/auth_gss/gss_mech_switch.c |   31 +++++++++++++++++++++++++++++
+>  6 files changed, 80 insertions(+), 10 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 0dc1158..f986209 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -3129,8 +3129,7 @@ static __be32
+>  nfsd4_do_encode_secinfo(struct nfsd4_compoundres *resp,
+>  			 __be32 nfserr,struct svc_export *exp)
+>  {
+> -	int i = 0;
+> -	u32 nflavs;
+> +	u32 i, nflavs;
+>  	struct exp_flavor_info *flavs;
+>  	struct exp_flavor_info def_flavs[2];
+>  	__be32 *p;
+> @@ -3162,23 +3161,22 @@ nfsd4_do_encode_secinfo(struct nfsd4_compoundres *resp,
+>  	ADJUST_ARGS();
+>  	for (i = 0; i < nflavs; i++) {
+>  		u32 flav = flavs[i].pseudoflavor;
+> -		struct gss_api_mech *gm = gss_mech_get_by_pseudoflavor(flav);
+> +		struct rpcsec_gss_info info;
+>  
+> -		if (gm) {
+> +		if (rpcauth_lookup_gss_info(flav, &info) == 0) {
+>  			RESERVE_SPACE(4);
+>  			WRITE32(RPC_AUTH_GSS);
+>  			ADJUST_ARGS();
+> -			RESERVE_SPACE(4 + gm->gm_oid.len);
+> -			WRITE32(gm->gm_oid.len);
+> -			WRITEMEM(gm->gm_oid.data, gm->gm_oid.len);
+> +			RESERVE_SPACE(4 + info.oid.len);
+> +			WRITE32(info.oid.len);
+> +			WRITEMEM(info.oid.data, info.oid.len);
+>  			ADJUST_ARGS();
+>  			RESERVE_SPACE(4);
+> -			WRITE32(0); /* qop */
+> +			WRITE32(info.qop);
+>  			ADJUST_ARGS();
+>  			RESERVE_SPACE(4);
+> -			WRITE32(gss_pseudoflavor_to_service(gm, flav));
+> +			WRITE32(info.service);
+>  			ADJUST_ARGS();
+> -			gss_mech_put(gm);
+>  		} else {
+>  			RESERVE_SPACE(4);
+>  			WRITE32(flav);
+> diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
+> index b1a49a5..312684c 100644
+> --- a/include/linux/sunrpc/auth.h
+> +++ b/include/linux/sunrpc/auth.h
+> @@ -105,6 +105,7 @@ struct rpc_authops {
+>  	void			(*pipes_destroy)(struct rpc_auth *);
+>  	int			(*list_pseudoflavors)(rpc_authflavor_t *, int);
+>  	rpc_authflavor_t	(*lookup_pseudoflavor)(struct rpcsec_gss_info *);
+> +	int			(*lookup_gss_info)(rpc_authflavor_t, struct rpcsec_gss_info *);
+>  };
+>  
+>  struct rpc_credops {
+> @@ -140,6 +141,7 @@ int			rpcauth_unregister(const struct rpc_authops *);
+>  struct rpc_auth *	rpcauth_create(rpc_authflavor_t, struct rpc_clnt *);
+>  void			rpcauth_release(struct rpc_auth *);
+>  rpc_authflavor_t	rpcauth_lookup_gss_pseudoflavor(struct rpcsec_gss_info *);
+> +int			rpcauth_lookup_gss_info(rpc_authflavor_t, struct rpcsec_gss_info *);
+>  int			rpcauth_list_flavors(rpc_authflavor_t *, int);
+>  struct rpc_cred *	rpcauth_lookup_credcache(struct rpc_auth *, struct auth_cred *, int);
+>  void			rpcauth_init_cred(struct rpc_cred *, const struct auth_cred *, struct rpc_auth *, const struct rpc_credops *);
+> diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
+> index 6f40fd1..1293a7b 100644
+> --- a/include/linux/sunrpc/gss_api.h
+> +++ b/include/linux/sunrpc/gss_api.h
+> @@ -133,6 +133,9 @@ void gss_mech_unregister(struct gss_api_mech *);
+>  /* Given a GSS security tuple, look up a pseudoflavor */
+>  rpc_authflavor_t gss_mech_lookup_pseudoflavor(struct rpcsec_gss_info *);
+>  
+> +/* Given a pseudoflavor, look up a GSS security tuple */
+> +int gss_mech_lookup_info(rpc_authflavor_t, struct rpcsec_gss_info *);
+> +
+>  /* Returns a reference to a mechanism, given a name like "krb5" etc. */
+>  struct gss_api_mech *gss_mech_get_by_name(const char *);
+>  
+> diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+> index 32e305b..0cfffbc 100644
+> --- a/net/sunrpc/auth.c
+> +++ b/net/sunrpc/auth.c
+> @@ -157,6 +157,41 @@ rpcauth_lookup_gss_pseudoflavor(struct rpcsec_gss_info *info)
+>  EXPORT_SYMBOL_GPL(rpcauth_lookup_gss_pseudoflavor);
+>  
+>  /**
+> + * rpcauth_lookup_gss_info - find GSS tuple matching a pseudoflavor
+> + * @pseudoflavor: GSS pseudoflavor to match
+> + * @info: rpcsec_gss_info structure to fill in
+> + *
+> + * Returns zero and fills in "info" if pseudoflavor matches a
+> + * supported mechanism.
+> + */
+> +int
+> +rpcauth_lookup_gss_info(rpc_authflavor_t pseudoflavor, struct rpcsec_gss_info *info)
+> +{
+> +	const struct rpc_authops *ops;
+> +	int result;
+> +
+> +	if ((ops = auth_flavors[pseudoflavor]) == NULL)
+> +		request_module("rpc-auth-%u", RPC_AUTH_GSS);
+> +	spin_lock(&rpc_authflavor_lock);
+> +	ops = auth_flavors[pseudoflavor];
+> +	if (ops == NULL || !try_module_get(ops->owner)) {
+> +		spin_unlock(&rpc_authflavor_lock);
+> +		dprintk("RPC:       %s: failed to pin module\n", __func__);
+> +		return -ENOMEM;
+> +	}
+> +	spin_unlock(&rpc_authflavor_lock);
+> +
+> +	if (ops->lookup_gss_info == NULL)
+> +		result = -ENOMEM;
+> +	else
+> +		result = ops->lookup_gss_info(pseudoflavor, info);
+> +
+> +	module_put(ops->owner);
+> +	return result;
+> +}
+> +EXPORT_SYMBOL_GPL(rpcauth_lookup_gss_info);
+> +
+> +/**
+>   * rpcauth_list_flavors - discover registered flavors and pseudoflavors
+>   * @array: array to fill in
+>   * @size: size of "array"
+> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+> index f2e8f45..f1e92f4 100644
+> --- a/net/sunrpc/auth_gss/auth_gss.c
+> +++ b/net/sunrpc/auth_gss/auth_gss.c
+> @@ -1630,6 +1630,7 @@ static const struct rpc_authops authgss_ops = {
+>  	.pipes_destroy	= gss_pipes_dentries_destroy,
+>  	.list_pseudoflavors = gss_mech_list_pseudoflavors,
+>  	.lookup_pseudoflavor = gss_mech_lookup_pseudoflavor,
+> +	.lookup_gss_info = gss_mech_lookup_info,
+>  };
+>  
+>  static const struct rpc_credops gss_credops = {
+> diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
+> index 3ba0450..7331b0b 100644
+> --- a/net/sunrpc/auth_gss/gss_mech_switch.c
+> +++ b/net/sunrpc/auth_gss/gss_mech_switch.c
+> @@ -314,6 +314,37 @@ rpc_authflavor_t gss_mech_lookup_pseudoflavor(struct rpcsec_gss_info *info)
+>  	return pseudoflavor;
+>  }
+>  
+> +/**
+> + * gss_mech_lookup_info - look up a GSS tuple for a given pseudoflavor
+> + * @pseudoflavor: GSS pseudoflavor to match
+> + * @info: rpcsec_gss_info structure to fill in
+> + *
+> + * Returns zero and fills in "info" if pseudoflavor matches a
+> + * supported mechanism.
+> + */
+> +int gss_mech_lookup_info(rpc_authflavor_t pseudoflavor, struct rpcsec_gss_info *info)
+> +{
+> +	struct gss_api_mech *gm;
+> +	int i;
+> +
+> +	gm = gss_mech_get_by_pseudoflavor(pseudoflavor);
+> +	if (gm == NULL)
+> +		return -ENOMEM;
+> +
+> +	for (i = 0; i < gm->gm_pf_num; i++)
+> +		if (gm->gm_pfs[i].pseudoflavor == pseudoflavor) {
+> +			memcpy(info->oid.data, gm->gm_oid.data, gm->gm_oid.len);
+> +			info->oid.len = gm->gm_oid.len;
+> +			info->qop = gm->gm_pfs[i].qop;
+> +			info->service = gm->gm_pfs[i].service;
+> +			gss_mech_put(gm);
+> +			return 0;
+> +		}
+> +
+> +	gss_mech_put(gm);
+> +	return -ENOMEM;
+> +}
+> +
+>  u32
+>  gss_pseudoflavor_to_service(struct gss_api_mech *gm, u32 pseudoflavor)
+>  {
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
