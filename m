@@ -1,44 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.avalus.com ([89.16.176.221]:50392 "EHLO mail.avalus.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754596Ab3AYNp4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2013 08:45:56 -0500
-Date: Fri, 25 Jan 2013 13:45:41 +0000
-From: Alex Bligh <alex@alex.org.uk>
-Reply-To: Alex Bligh <alex@alex.org.uk>
-To: Ian Campbell <Ian.Campbell@citrix.com>
-cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
-        Alex Bligh <alex@alex.org.uk>
-Subject: Re: Fatal crash with NFS, AIO & tcp retransmit
-Message-ID: <0CC0BE5DF792540B7B6F1A5A@nimrod.local>
-In-Reply-To: <1358781685.3279.222.camel@zakaz.uk.xensource.com>
-References: <93D3AE9B4990994B2BCA75A9@Ximines.local>	
- <4FA345DA4F4AE44899BD2B03EEEC2FA915C163B9@SACEXCMBX04-PRD.hq.netapp.com>	
- <E268D60FA8BCE2E18CCE24D7@Ximines.local>	
- <4B8CA29C9B365854E56ACBE6@Ximines.local>
- <1358781685.3279.222.camel@zakaz.uk.xensource.com>
+Received: from relay.parallels.com ([195.214.232.42]:43358 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751220Ab3A3FmZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jan 2013 00:42:25 -0500
+Message-ID: <5108B2B6.7010807@parallels.com>
+Date: Wed, 30 Jan 2013 09:42:14 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>, <Trond.Myklebust@netapp.com>,
+        <linux-kernel@vger.kernel.org>, <devel@openvz.org>
+Subject: Re: [RFC PATCH] SUNRPC: protect transport processing with rw sem
+References: <20130129110317.29541.51920.stgit@localhost.localdomain> <20130129225736.GC6219@fieldses.org>
+In-Reply-To: <20130129225736.GC6219@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
---On 21 January 2013 15:21:25 +0000 Ian Campbell <Ian.Campbell@citrix.com> 
-wrote:
-
->> >> I thought that Ian was working on a fix for this issue. At one point,
->> >> he had a bunch of patches to allow sendpage() to call you back when
->> >> the transmission was done. What happened to those patches?
->> >
->> > No idea (I don't work with Ian but have taken the liberty of copy him).
+30.01.2013 02:57, J. Bruce Fields пишет:
+> On Tue, Jan 29, 2013 at 02:03:30PM +0300, Stanislav Kinsbursky wrote:
+>> There could be a service transport, which is processed by service thread and
+>> racing in the same time with per-net service shutdown like listed below:
+>>
+>> CPU#0:                            CPU#1:
+>>
+>> svc_recv                        svc_close_net
+>> svc_get_next_xprt (list_del_init(xpt_ready))
+>>                              svc_close_list (set XPT_BUSY and XPT_CLOSE)
+>>                              svc_clear_pools(xprt was gained on CPU#0 already)
+>>                              svc_delete_xprt (set XPT_DEAD)
+>> svc_handle_xprt (is XPT_CLOSE => svc_delete_xprt()
+>> BUG()
+>>
+>> There could be different solutions of the problem.
+>> Probably, the patch doesn't implement the best one, but I hope the simple one.
+>> IOW, it protects critical section (dequeuing of pending transport and
+>> enqueuing  it back to the pool) by per-service rw semaphore,
 >
-> I'm afraid I've rather dropped the ball on these patches due to lack of
-> time.
+> It's actually per-thread (per-struct svc_rqst) here.
+>
 
-I have a rebase of your patch set for 3.2 (done by Mel Gorman) which
-whilst not onto the current version is better than nothing, so I shall
-send it along to netdev in case it is useful.
+Yes, sure.
+
+>> taken for read.
+>> On per-net transports shutdown, this semaphore have to be taken for write.
+>
+> There's no down_write in this patch.  Did you forget this part?
+>
+
+See "fs/nfs/callback.c" part
+
+> The server rpc code goes to some care not to write to any global
+> structure, to prevent server threads running on multiple cores from
+> bouncing cache lines between them.
+>
+
+This is just an idea. I.e. I wasn't trying to polish the patch - just to share the vision.
+
+> But my understanding is that even down_read() does modify the semaphore.
+> So we might want something like the percpu semaphore describe in
+> Documentation/percpu-rw-semaphore.txt.
+>
+
+Sure, I'll have a look.
+
 
 -- 
-Alex Bligh
+Best regards,
+Stanislav Kinsbursky
