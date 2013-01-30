@@ -1,101 +1,152 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50248 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:46504 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751647Ab3A2TkK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Jan 2013 14:40:10 -0500
-Date: Tue, 29 Jan 2013 14:40:09 -0500
-To: Chuck Lever <chuck.lever@oracle.com>
+	id S1752032Ab3A3PYu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Jan 2013 10:24:50 -0500
+Date: Wed, 30 Jan 2013 10:24:49 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1 4/5] SUNRPC: Find kernel module by OID
-Message-ID: <20130129194009.GB4209@fieldses.org>
-References: <20130128195843.2523.34798.stgit@seurat.1015granger.net>
- <20130128203157.2523.17121.stgit@seurat.1015granger.net>
+Subject: Re: [PATCH v1 15/16] nfsd: register a shrinker for DRC cache entries
+Message-ID: <20130130152449.GG12306@fieldses.org>
+References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
+ <1359402082-29195-16-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130128203157.2523.17121.stgit@seurat.1015granger.net>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <1359402082-29195-16-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 28, 2013 at 03:31:57PM -0500, Chuck Lever wrote:
-> The current GSS mech switch can find and load GSS pseudoflavor
-> modules by name or pseudoflavor number, but cannot find them by OID.
+On Mon, Jan 28, 2013 at 02:41:21PM -0500, Jeff Layton wrote:
+> Since we dynamically allocate them now, allow the system to call us
+> up to release them if we get low on memory.
 > 
-> This is important when dealing with a SECINFO request, especially
-> early in the boot process.  A SECINFO reply has a list of flavors
-> the server can support, but they are listed by OID.  Our client
-> currently can choose only flavors that are already loaded.  We want
-> to be able to choose flavors where the module is available but not
-> yet loaded.
-> 
-> Add a way for the GSS mech switch to load GSS pseudoflavor support
-> by OID.
+> We set the "seeks" value very high, to discourage it and release
+> them in LRU order.
 
-OK, and I was wondering how you'd set up the module aliases--I didn't
-know about sprint_oid.  Looks nice.
+I don't understand how the mm uses seeks.  I guess I'll do some reading.
+
+This looks straightforward enough, but I'm not sure how to judge whether
+this is the correct policy.
 
 --b.
 
+> We may end up releasing some prematurely if the
+> box is really low on memory.
 > 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
 > ---
+>  fs/nfsd/nfscache.c | 54 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
+>  1 file changed, 53 insertions(+), 1 deletion(-)
 > 
->  net/sunrpc/Kconfig                    |    1 +
->  net/sunrpc/auth_gss/gss_krb5_mech.c   |    1 +
->  net/sunrpc/auth_gss/gss_mech_switch.c |    7 +++++++
->  3 files changed, 9 insertions(+), 0 deletions(-)
-> 
-> diff --git a/net/sunrpc/Kconfig b/net/sunrpc/Kconfig
-> index 03d03e3..f97f555 100644
-> --- a/net/sunrpc/Kconfig
-> +++ b/net/sunrpc/Kconfig
-> @@ -3,6 +3,7 @@ config SUNRPC
+> diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+> index bd21230..27edd47 100644
+> --- a/fs/nfsd/nfscache.c
+> +++ b/fs/nfsd/nfscache.c
+> @@ -35,6 +35,18 @@ static inline u32 request_hash(u32 xid)
 >  
->  config SUNRPC_GSS
->  	tristate
-> +	select OID_REGISTRY
->  
->  config SUNRPC_BACKCHANNEL
->  	bool
-> diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
-> index d3611f1..8b1005d 100644
-> --- a/net/sunrpc/auth_gss/gss_krb5_mech.c
-> +++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-> @@ -750,6 +750,7 @@ MODULE_ALIAS("rpc-auth-gss-krb5p");
->  MODULE_ALIAS("rpc-auth-gss-390003");
->  MODULE_ALIAS("rpc-auth-gss-390004");
->  MODULE_ALIAS("rpc-auth-gss-390005");
-> +MODULE_ALIAS("rpc-auth-gss-1.2.840.113554.1.2.2");
->  
->  static struct gss_api_mech gss_kerberos_mech = {
->  	.gm_name	= "krb5",
-> diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
-> index 883b5b8..64dbf07a 100644
-> --- a/net/sunrpc/auth_gss/gss_mech_switch.c
-> +++ b/net/sunrpc/auth_gss/gss_mech_switch.c
-> @@ -36,6 +36,7 @@
->  #include <linux/types.h>
->  #include <linux/slab.h>
->  #include <linux/module.h>
-> +#include <linux/oid_registry.h>
->  #include <linux/sunrpc/msg_prot.h>
->  #include <linux/sunrpc/gss_asn1.h>
->  #include <linux/sunrpc/auth_gss.h>
-> @@ -174,6 +175,12 @@ EXPORT_SYMBOL_GPL(gss_mech_get_by_name);
->  static struct gss_api_mech *gss_mech_get_by_OID(struct rpcsec_gss_oid *obj)
->  {
->  	struct gss_api_mech	*pos, *gm = NULL;
-> +	char buf[32];
+>  static int	nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *vec);
+>  static void	cache_cleaner_func(struct work_struct *unused);
+> +static int 	nfsd_reply_cache_shrink(struct shrinker *shrink,
+> +					struct shrink_control *sc);
 > +
-> +	if (sprint_oid(obj->data, obj->len, buf, sizeof(buf)) < 0)
-> +		return NULL;
-> +	dprintk("RPC:       %s: oid: %s\n", __func__, buf);
-> +	request_module("rpc-auth-gss-%s", buf);
+> +/*
+> + * We set "seeks" to a large value here since we really can't recreate these
+> + * entries. We're just gambling that they won't actually be needed if and
+> + * when the box comes under memory pressure.
+> + */
+> +struct shrinker nfsd_reply_cache_shrinker = {
+> +	.shrink	= nfsd_reply_cache_shrink,
+> +	.seeks	= 64,
+> +};
 >  
->  	spin_lock(&registered_mechs_lock);
->  	list_for_each_entry(pos, &registered_mechs, gm_list) {
+>  /*
+>   * locking for the reply cache:
+> @@ -80,6 +92,7 @@ nfsd_reply_cache_free(struct svc_cacherep *rp)
+>  
+>  int nfsd_reply_cache_init(void)
+>  {
+> +	register_shrinker(&nfsd_reply_cache_shrinker);
+>  	drc_slab = kmem_cache_create("nfsd_drc", sizeof(struct svc_cacherep),
+>  					0, 0, NULL);
+>  	if (!drc_slab)
+> @@ -102,6 +115,7 @@ void nfsd_reply_cache_shutdown(void)
+>  {
+>  	struct svc_cacherep	*rp;
+>  
+> +	unregister_shrinker(&nfsd_reply_cache_shrinker);
+>  	cancel_delayed_work_sync(&cache_cleaner);
+>  
+>  	while (!list_empty(&lru_head)) {
+> @@ -152,15 +166,17 @@ nfsd_cache_entry_expired(struct svc_cacherep *rp)
+>   * if we hit one that isn't old enough, then we can stop the walking. Must
+>   * be called with cache_lock held.
+>   */
+> -static void
+> +static int
+>  prune_old_cache_entries(void)
+>  {
+> +	int freed = 0;
+>  	struct svc_cacherep *rp, *tmp;
+>  
+>  	list_for_each_entry_safe(rp, tmp, &lru_head, c_lru) {
+>  		if (!nfsd_cache_entry_expired(rp))
+>  			break;
+>  		nfsd_reply_cache_free_locked(rp);
+> +		++freed;
+>  	}
+>  
+>  	/*
+> @@ -173,6 +189,8 @@ prune_old_cache_entries(void)
+>  		cancel_delayed_work(&cache_cleaner);
+>  	else
+>  		mod_delayed_work(system_wq, &cache_cleaner, RC_EXPIRE);
+> +
+> +	return freed;
+>  }
+>  
+>  static void
+> @@ -183,6 +201,40 @@ cache_cleaner_func(struct work_struct *unused)
+>  	spin_unlock(&cache_lock);
+>  }
+>  
+> +static int
+> +nfsd_reply_cache_shrink(struct shrinker *shrink, struct shrink_control *sc)
+> +{
+> +	int nr_to_scan = sc->nr_to_scan;
+> +	unsigned int num;
+> +
+> +	spin_lock(&cache_lock);
+> +	if (!nr_to_scan)
+> +		goto out;
+> +
+> +	nr_to_scan -= prune_old_cache_entries();
+> +
+> +	/*
+> +	 * If that didn't free enough, then keep going. It's better to free
+> +	 * some prematurely than to have the box keel over due to lack of
+> +	 * memory.
+> +	 */
+> +	while (nr_to_scan > 0) {
+> +		struct svc_cacherep *rp;
+> +
+> +		if (list_empty(&lru_head))
+> +			break;
+> +		rp = list_first_entry(&lru_head, struct svc_cacherep, c_lru);
+> +		nfsd_reply_cache_free_locked(rp);
+> +		--nr_to_scan;
+> +	}
+> +
+> +out:
+> +	num = num_drc_entries;
+> +	spin_unlock(&cache_lock);
+> +
+> +	return num;
+> +}
+> +
+>  /*
+>   * Search the request hash for an entry that matches the given rqstp.
+>   * Must be called with cache_lock held. Returns the found entry or
+> -- 
+> 1.7.11.7
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
