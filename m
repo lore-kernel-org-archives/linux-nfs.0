@@ -1,82 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay1.sgi.com ([192.48.179.29]:33460 "EHLO relay.sgi.com"
+Received: from mx12.netapp.com ([216.240.18.77]:53979 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751108Ab3AYUCp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Jan 2013 15:02:45 -0500
-Date: Fri, 25 Jan 2013 14:02:44 -0600
-From: Ben Myers <bpm@sgi.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Olga Kornievskaia <aglo@citi.umich.edu>, linux-nfs@vger.kernel.org,
-        Jim Rees <rees@umich.edu>
-Message-ID: <20130125200244.GB32470@sgi.com>
+	id S1756418Ab3A3XvF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Jan 2013 18:51:05 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: [PATCH v2 0/9] Dynamically load GSS pseudoflavors by OID
+Date: Wed, 30 Jan 2013 23:51:00 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91834404D@sacexcmbx05-prd.hq.netapp.com>
+References: <20130130231546.47786.6016.stgit@seurat.1015granger.net>
+In-Reply-To: <20130130231546.47786.6016.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bcc: 
-Subject: Re: sunrpc: socket buffer size tuneable
-Reply-To: 
-In-Reply-To: <20130125192935.GA32470@sgi.com>
-
-Hey, 
-
-On Fri, Jan 25, 2013 at 01:29:35PM -0600, Ben Myers wrote:
-> Hey Bruce & Jim & Olga,
-> 
-> On Fri, Jan 25, 2013 at 02:16:20PM -0500, Jim Rees wrote:
-> > J. Bruce Fields wrote:
-> > 
-> >   On Thu, Jan 24, 2013 at 06:59:30PM -0600, Ben Myers wrote:
-> >   > At 1020 threads the send buffer size wraps and becomes negative causing
-> >   > the nfs server to grind to a halt.  Rather than setting bufsize based
-> >   > upon the number of nfsd threads, make the buffer sizes tuneable via
-> >   > module parameters.
-> >   > 
-> >   > Set the buffer sizes in terms of the number of rpcs you want to fit into
-> >   > the buffer.
-> >   
-> >   From private communication, my understanding is that the original
-> >   problem here was due to memory pressure forcing the tcp send buffer size
-> >   below the size required to hold a single rpc.
-> 
-> Years ago I did see wrapping of the buffer size when tcp was used with many
-> threads.  Today's problem is timeouts on a cluster with a heavy read
-> workload... and I seem to remember seeing that the send buffer size was too
-> small.
-> 
-> >   In which case the important variable here is lock_bufsize, as that's
-> >   what prevents the buffer size from going too low.
-> 
-> I tested removing the lock of bufsize and did hit the timeouts, so the overflow
-> is starting to look less relevant.  I will test your minimal overflow fix to
-> see if this is the case.
-
-The minimal overflow fix did not resolve the timeouts.  I will test with this
-to see if it resolves the timeouts:
-
----
- net/sunrpc/svcsock.c |    7 +++++++
- 1 file changed, 7 insertions(+)
-
-Index: b/net/sunrpc/svcsock.c
-===================================================================
---- a/net/sunrpc/svcsock.c	2013-01-25 13:48:05.000000000 -0600
-+++ b/net/sunrpc/svcsock.c	2013-01-25 13:49:42.000000000 -0600
-@@ -435,6 +435,13 @@ static void svc_sock_setbufsize(struct s
- 	lock_sock(sock->sk);
- 	sock->sk->sk_sndbuf = snd * 2;
- 	sock->sk->sk_rcvbuf = rcv * 2;
-+
-+	/*
-+	 * The socket buffer can be resized by the networking code
-+	 * unless you specify that this is not to be done.
-+	 */
-+	sock->sk->sk_userlocks |= SOCK_SNDBUF_LOCK|SOCK_RCVBUF_LOCK;
-+
- 	sock->sk->sk_write_space(sock->sk);
- 	release_sock(sock->sk);
- #endif
-
-Thanks,
-Ben
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
+ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLQ0KPiBvd25lckB2Z2VyLmtlcm5lbC5vcmdd
+IE9uIEJlaGFsZiBPZiBDaHVjayBMZXZlcg0KPiBTZW50OiBXZWRuZXNkYXksIEphbnVhcnkgMzAs
+IDIwMTMgNjo0MiBQTQ0KPiBUbzogbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiBTdWJqZWN0
+OiBbUEFUQ0ggdjIgMC85XSBEeW5hbWljYWxseSBsb2FkIEdTUyBwc2V1ZG9mbGF2b3JzIGJ5IE9J
+RA0KPiANCj4gSGktDQo+IA0KPiBDdXJyZW50bHkgdGhlIFJQQyBjbGllbnQgaXMgYWJsZSB0byBk
+eW5hbWljYWxseSBsb2FkIEdTUyBzZWN1cml0eSBmbGF2b3INCj4gc3VwcG9ydCBieSBuYW1lIG9y
+IHBzZXVkb2ZsYXZvciBudW1iZXIsIGJ1dCBub3QgYnkgW09JRCwgcW9wLCBzZXJ2aWNlXQ0KPiB0
+dXBsZS4gIFN1Y2ggYSB0dXBsZSBjYW4gYmUgcHJvdmlkZWQgYnkgYW4gTkZTdjQgc2VydmVyIGlu
+IGEgU0VDSU5GTyByZXBseSwNCj4gZm9yIGV4YW1wbGUuDQo+IA0KPiBUaGlzIG1lYW5zIHRoYXQg
+aWYgYW4gTkZTdjQgc2VydmVyIGxpc3RzIGEgdHVwbGUgZm9yLCBzYXksIGtyYjVwLCBpbiBhIFNF
+Q0lORk8NCj4gcmVwbHksIG91ciBjbGllbnQgd2lsbCBwcmV0ZW5kIGl0IGRvZXNuJ3Qgc3VwcG9y
+dCBrcmI1cCBpZiB0aGUgcnBjLWF1dGgtZ3NzLWtyYjUNCj4gbW9kdWxlIGlzIGF2YWlsYWJsZSBv
+biB0aGUgc3lzdGVtIGJ1dCBkb2VzIG5vdCBoYXBwZW4gdG8gYmUgbG9hZGVkIGF0IHRoYXQNCj4g
+bW9tZW50Lg0KPiANCj4gVGhpcyBzZXJpZXMgaW1wbGVtZW50cyBzdXBwb3J0IGZvciBsb2FkaW5n
+IHRoZSBjb3JyZWN0IEdTUyBwc2V1ZG9mbGF2b3INCj4gbW9kdWxlIGJlZm9yZSBzZWFyY2hpbmcg
+YnkgR1NTIHR1cGxlLiAgVGhpcyB2ZXJzaW9uIG5lZWRzIHRlc3RpbmcsIHdoaWNoIEknbGwNCj4g
+Z2V0IHRvIGZpcnN0IHRoaW5nIHRvbW9ycm93LCBidXQgSSd2ZSBhbHJlYWR5IHRlc3RlZCBlYXJs
+aWVyIHZlcnNpb25zIG9mIHRoZXNlDQo+IHBhdGNoZXMgd2l0aCBzdWNjZXNzLg0KPiANCj4gVGhh
+bmtzIHRvIHJldmlld2VycyBvZiB2MS4gIENoYW5nZXMgc2luY2UgdjE6DQo+IA0KPiAgIDEuICBT
+aW1wbGlmeSBmdW5jdGlvbiBhbmQgbWV0aG9kIG5hbWVzDQo+ICAgMi4gIEFkZCBhbiBlcXVpdmFs
+ZW50IHNlcnZlci1zaWRlIGludGVyZmFjZQ0KPiAgIDMuICBJbXByb3ZlIGF1dG9tYXRpYyBsb2Fk
+aW5nIG9mIHRoZSBhdXRoX3JwY2dzcyBtb2R1bGUNCj4gICA0LiAgbmZzX2ZpbmRfYmVzdF9zZWMo
+KSBhbHNvIHZlcmlmaWVzIG5vbi1HU1MgZmxhdm9ycyBhZ2FpbnN0DQo+ICAgICAgIFJQQyBjbGll
+bnQncyBsaXN0IG9mIHJlZ2lzdGVyZWQgZmxhdm9ycw0KPiAgIDUuICBTZWFyY2ggZm9yIChxb3As
+IHN2YykgcGFpciB3aXRob3V0IGFkZGluZyBhIG5ldyBmdW5jdGlvbg0KPiAgIDYuICBDbGVhbiB1
+cCBHU1MgbWVjaCBzd2l0Y2gNCj4gICA3LiAgUmVtb3ZlIGRwcmludGsoKSBjYWxscw0KPiAgIDgu
+ICBJbXByb3ZlIHBhdGNoIGRlc2NyaXB0aW9ucw0KPiAgIDkuICBOdW1lcm91cyBzbWFsbCBpbXBy
+b3ZlbWVudHMgYW5kIGZpeGVzDQo+IA0KPiAtLS0NCj4gDQo+IENodWNrIExldmVyICg5KToNCj4g
+ICAgICAgU1VOUlBDOiBSZW1vdmUgRVhQT1JUX1NZTUJPTF9HUEwoKSBmcm9tIEdTUyBtZWNoIHN3
+aXRjaA0KPiAgICAgICBTVU5SUEM6IE1ha2UgZ3NzX21lY2hfZ2V0KCkgc3RhdGljDQo+ICAgICAg
+IFNVTlJQQzogUmVmYWN0b3IgbmZzZDRfZG9fZW5jb2RlX3NlY2luZm8oKQ0KPiAgICAgICBTVU5S
+UEM6IENvbnNpZGVyIHFvcCB3aGVuIGxvb2tpbmcgdXAgcHNldWRvZmxhdm9ycw0KPiAgICAgICBT
+VU5SUEM6IExvYWQgR1NTIGtlcm5lbCBtb2R1bGUgYnkgT0lEDQo+ICAgICAgIFNVTlJQQzogSW50
+cm9kdWNlIHJwY2F1dGhfZ2V0X3BzZXVkb2ZsYXZvcigpDQo+ICAgICAgIFNVTlJQQzogRGVmaW5l
+IHJwY3NlY19nc3NfaW5mbyBzdHJ1Y3R1cmUNCj4gICAgICAgTkZTOiBSZW1vdmUgdW5uZWVkZWQg
+Zm9yd2FyZCBkZWNsYXJhdGlvbg0KPiAgICAgICBTVU5SUEM6IE1pc3NpbmcgbW9kdWxlIGFsaWFz
+IGZvciBhdXRoX3JwY2dzcy5rbw0KPiANCj4gDQo+ICBmcy9uZnMvbmZzNG5hbWVzcGFjZS5jICAg
+ICAgICAgICAgICAgIHwgICA0MyArKysrKysrLS0tLS0NCj4gIGZzL25mcy9uZnM0eGRyLmMgICAg
+ICAgICAgICAgICAgICAgICAgfCAgIDIwICsrKy0tLQ0KPiAgZnMvbmZzZC9uZnM0eGRyLmMgICAg
+ICAgICAgICAgICAgICAgICB8ICAgNDMgKysrKysrLS0tLS0tDQo+ICBpbmNsdWRlL2xpbnV4L25m
+c194ZHIuaCAgICAgICAgICAgICAgIHwgICAyNCArLS0tLS0tDQo+ICBpbmNsdWRlL2xpbnV4L3N1
+bnJwYy9hdXRoLmggICAgICAgICAgIHwgICAgNiArKw0KPiAgaW5jbHVkZS9saW51eC9zdW5ycGMv
+Z3NzX2FwaS5oICAgICAgICB8ICAgMjkgKysrKysrLS0NCj4gIG5ldC9zdW5ycGMvS2NvbmZpZyAg
+ICAgICAgICAgICAgICAgICAgfCAgICAxDQo+ICBuZXQvc3VucnBjL2F1dGguYyAgICAgICAgICAg
+ICAgICAgICAgIHwgICA2OCArKysrKysrKysrKysrKysrKysrDQo+ICBuZXQvc3VucnBjL2F1dGhf
+Z3NzL2F1dGhfZ3NzLmMgICAgICAgIHwgICAgMyArDQo+ICBuZXQvc3VucnBjL2F1dGhfZ3NzL2dz
+c19rcmI1X21lY2guYyAgIHwgICAgNiArLQ0KPiAgbmV0L3N1bnJwYy9hdXRoX2dzcy9nc3NfbWVj
+aF9zd2l0Y2guYyB8ICAxMTcNCj4gKysrKysrKysrKysrKysrKysrKysrKysrKy0tLS0tLS0tDQo+
+ICBuZXQvc3VucnBjL2F1dGhfZ3NzL3N2Y2F1dGhfZ3NzLmMgICAgIHwgICAgNCArDQo+ICAxMiBm
+aWxlcyBjaGFuZ2VkLCAyNTcgaW5zZXJ0aW9ucygrKSwgMTA3IGRlbGV0aW9ucygtKQ0KPiANCg0K
+TG9va3MgZ29vZCEgSG93IGhhdmUgeW91IHRlc3RlZCBpdD8NCg0KQ2hlZXJzDQogIFRyb25kDQo=
