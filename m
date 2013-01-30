@@ -1,110 +1,162 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:48600 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753426Ab3A1UfD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jan 2013 15:35:03 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
-Subject: Re: [PATCH v1 01/16] nfsd: fix IPv6 address handling in the DRC
+Received: from mail-ia0-f171.google.com ([209.85.210.171]:60010 "EHLO
+	mail-ia0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756418Ab3A3Xmw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jan 2013 18:42:52 -0500
+Received: by mail-ia0-f171.google.com with SMTP id z13so3185087iaz.16
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Jan 2013 15:42:52 -0800 (PST)
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20130128152643.2b136d37@tlielax.poochiereds.net>
-Date: Mon, 28 Jan 2013 15:34:49 -0500
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Message-Id: <615875E4-820D-487E-99CF-9ABD46121966@oracle.com>
-References: <1359402082-29195-1-git-send-email-jlayton@redhat.com> <1359402082-29195-2-git-send-email-jlayton@redhat.com> <5AD4F061-69A6-47F5-B20A-34B8DCC2EB5E@oracle.com> <20130128150502.4c5f497b@tlielax.poochiereds.net> <321A7110-AD03-49EB-A158-246FC8BD24E1@oracle.com> <20130128152643.2b136d37@tlielax.poochiereds.net>
-To: Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH v2 6/9] SUNRPC: Consider qop when looking up pseudoflavors
+To: linux-nfs@vger.kernel.org
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Date: Wed, 30 Jan 2013 18:42:50 -0500
+Message-ID: <20130130234250.47786.74224.stgit@seurat.1015granger.net>
+In-Reply-To: <20130130231546.47786.6016.stgit@seurat.1015granger.net>
+References: <20130130231546.47786.6016.stgit@seurat.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The NFSv4 SECINFO operation returns a list of security flavors that
+the server supports for a particular share.  An NFSv4 client is
+supposed to pick a pseudoflavor it supports that corresponds to one
+of the flavors returned by the server.
 
-On Jan 28, 2013, at 3:26 PM, Jeff Layton <jlayton@redhat.com> wrote:
+GSS flavors in this list have a GSS tuple that identify a specific
+GSS pseudoflavor.
 
-> On Mon, 28 Jan 2013 12:16:17 -0800 (PST)
-> Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
->> 
->> On Jan 28, 2013, at 3:05 PM, Jeff Layton <jlayton@redhat.com> wrote:
->> 
->>> On Mon, 28 Jan 2013 11:51:13 -0800 (PST)
->>> Chuck Lever <chuck.lever@oracle.com> wrote:
->>> 
->>>> 
->>>> On Jan 28, 2013, at 2:41 PM, Jeff Layton <jlayton@redhat.com> wrote:
->>>> 
->>>>> Currently, it only stores the first 16 bytes of any address. struct
->>>>> sockaddr_in6 is 28 bytes however, so we're currently ignoring the last
->>>>> 12 bytes of the address.
->>>>> 
->>>>> Expand the c_addr field to a sockaddr_in6,
->>>> 
->>>> What do you do about link-local addresses?
->>>> 
->>> 
->>> I use rpc_cmp_addr() which should handle the scope correctly for
->>> link-local addrs.  Now that you mention it though, I think we may have a
->>> bug in __rpc_copy_addr6. It doesn't touch the scope_id at all --
->>> shouldn't we be setting the scopeid in that function as well?
->> 
->> It looks like rpc_copy_addr() is invoked to copy only source addresses, so the scope ID probably doesn't apply.  The comment over rpc_copy_addr() says it explicitly ignores port and scope ID.
->> 
-> 
-> Well, it copies the source address of the client, but all of the
-> callers are in nfsd code. So I think it probably does matter:
-> 
-> Consider a server that has 2 interfaces, and 2 clients with identical
-> link-local addresses hitting the link local address of each interface.
-> The only way to distinguish them at that point is to look at their
-> scope_ids.
+Currently our client ignores the GSS tuple's "qop" value.  A
+matching pseudoflavor is chosen based only on the OID and service
+value.
 
-Yes, but we want to use the server's scope IDs in this case, don't we?  Copying the client's scope IDs may not be the right thing to do.  That's why __rpc_copy_addr6() doesn't copy the scope ID.
+So far this omission has not had much effect on Linux.  The NFSv4
+protocol currently supports only one qop value: zero, or
+GSS_C_QOP_DEFAULT.
 
-> In the event that we're not using link-local addresses, the scopeid
-> should just be ignored. So I think we probably need something like this
-> patch too:
-> 
-> ----------------------[snip]---------------------
-> 
-> sunrpc: copy scope ID in __rpc_copy_addr6
-> 
-> When copying an address, we should also copy the scopeid in the event
-> that this is a link-local address and the scope matters.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
-> include/linux/sunrpc/clnt.h | 1 +
-> 1 file changed, 1 insertion(+)
-> 
-> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-> index 34206b8..4824286 100644
-> --- a/include/linux/sunrpc/clnt.h
-> +++ b/include/linux/sunrpc/clnt.h
-> @@ -242,6 +242,7 @@ static inline bool __rpc_copy_addr6(struct sockaddr *dst,
-> 
-> 	dsin6->sin6_family = ssin6->sin6_family;
-> 	dsin6->sin6_addr = ssin6->sin6_addr;
-> +	dsin6->sin6_scope_id = ssin6->sin6_scope_id;
+However, if an NFSv4 server happens to return something other than
+zero in the qop field, our client won't notice.  This could cause
+the client to behave in incorrect ways that could have security
+implications.
 
-If you find this is the correct thing to do, you should fix the documenting comment before rpc_copy_addr().
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
+ include/linux/sunrpc/gss_api.h        |    4 +++-
+ net/sunrpc/auth_gss/gss_krb5_mech.c   |    3 +++
+ net/sunrpc/auth_gss/gss_mech_switch.c |   19 +++++++++++++------
+ net/sunrpc/auth_gss/svcauth_gss.c     |    4 +++-
+ 4 files changed, 22 insertions(+), 8 deletions(-)
 
-> 	return true;
-> }
-> #else	/* !(IS_ENABLED(CONFIG_IPV6) */
-> -- 
-> 1.7.11.7
-> 
-> 
-> -- 
-> Jeff Layton <jlayton@redhat.com>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
+index aba7687..e8299b2 100644
+--- a/include/linux/sunrpc/gss_api.h
++++ b/include/linux/sunrpc/gss_api.h
+@@ -25,6 +25,7 @@ struct gss_ctx {
+ 
+ #define GSS_C_NO_BUFFER		((struct xdr_netobj) 0)
+ #define GSS_C_NO_CONTEXT	((struct gss_ctx *) 0)
++#define GSS_C_QOP_DEFAULT	(0)
+ 
+ /*XXX  arbitrary length - is this set somewhere? */
+ #define GSS_OID_MAX_LEN 32
+@@ -68,12 +69,13 @@ u32 gss_unwrap(
+ u32 gss_delete_sec_context(
+ 		struct gss_ctx		**ctx_id);
+ 
+-u32 gss_svc_to_pseudoflavor(struct gss_api_mech *, u32 service);
++rpc_authflavor_t gss_svc_to_pseudoflavor(struct gss_api_mech *, u32 qop, u32 service);
+ u32 gss_pseudoflavor_to_service(struct gss_api_mech *, u32 pseudoflavor);
+ char *gss_service_to_auth_domain_name(struct gss_api_mech *, u32 service);
+ 
+ struct pf_desc {
+ 	u32	pseudoflavor;
++	u32	qop;
+ 	u32	service;
+ 	char	*name;
+ 	char	*auth_domain_name;
+diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
+index b822ec5..33255ff 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_mech.c
++++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
+@@ -729,16 +729,19 @@ static const struct gss_api_ops gss_kerberos_ops = {
+ static struct pf_desc gss_kerberos_pfs[] = {
+ 	[0] = {
+ 		.pseudoflavor = RPC_AUTH_GSS_KRB5,
++		.qop = GSS_C_QOP_DEFAULT,
+ 		.service = RPC_GSS_SVC_NONE,
+ 		.name = "krb5",
+ 	},
+ 	[1] = {
+ 		.pseudoflavor = RPC_AUTH_GSS_KRB5I,
++		.qop = GSS_C_QOP_DEFAULT,
+ 		.service = RPC_GSS_SVC_INTEGRITY,
+ 		.name = "krb5i",
+ 	},
+ 	[2] = {
+ 		.pseudoflavor = RPC_AUTH_GSS_KRB5P,
++		.qop = GSS_C_QOP_DEFAULT,
+ 		.service = RPC_GSS_SVC_PRIVACY,
+ 		.name = "krb5p",
+ 	},
+diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
+index 8d03d32..c8da89e 100644
+--- a/net/sunrpc/auth_gss/gss_mech_switch.c
++++ b/net/sunrpc/auth_gss/gss_mech_switch.c
+@@ -271,19 +271,26 @@ int gss_mech_list_pseudoflavors(rpc_authflavor_t *array_ptr, int size)
+ 	return i;
+ }
+ 
+-u32
+-gss_svc_to_pseudoflavor(struct gss_api_mech *gm, u32 service)
++/**
++ * gss_svc_to_pseudoflavor - map a GSS service number to a pseudoflavor
++ * @gm: GSS mechanism handle
++ * @qop: GSS quality-of-protection value
++ * @service: GSS service value
++ *
++ * Returns a matching security flavor, or RPC_AUTH_MAXFLAVOR if none is found.
++ */
++rpc_authflavor_t gss_svc_to_pseudoflavor(struct gss_api_mech *gm, u32 qop, u32 service)
+ {
+ 	int i;
+ 
+ 	for (i = 0; i < gm->gm_pf_num; i++) {
+-		if (gm->gm_pfs[i].service == service) {
++		if (gm->gm_pfs[i].qop == qop &&
++		    gm->gm_pfs[i].service == service) {
+ 			return gm->gm_pfs[i].pseudoflavor;
+ 		}
+ 	}
+-	return RPC_AUTH_MAXFLAVOR; /* illegal value */
++	return RPC_AUTH_MAXFLAVOR;
+ }
+-EXPORT_SYMBOL_GPL(gss_svc_to_pseudoflavor);
+ 
+ /**
+  * gss_mech_info2flavor - look up a pseudoflavor given a GSS tuple
+@@ -301,7 +308,7 @@ rpc_authflavor_t gss_mech_info2flavor(struct rpcsec_gss_info *info)
+ 	if (gm == NULL)
+ 		return RPC_AUTH_MAXFLAVOR;
+ 
+-	pseudoflavor = gss_svc_to_pseudoflavor(gm, info->service);
++	pseudoflavor = gss_svc_to_pseudoflavor(gm, info->qop, info->service);
+ 
+ 	gss_mech_put(gm);
+ 	return pseudoflavor;
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 73e9573..2c0481d 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -1208,7 +1208,9 @@ svcauth_gss_accept(struct svc_rqst *rqstp, __be32 *authp)
+ 		svcdata->rsci = rsci;
+ 		cache_get(&rsci->h);
+ 		rqstp->rq_cred.cr_flavor = gss_svc_to_pseudoflavor(
+-					rsci->mechctx->mech_type, gc->gc_svc);
++					rsci->mechctx->mech_type,
++					GSS_C_QOP_DEFAULT,
++					gc->gc_svc);
+ 		ret = SVC_OK;
+ 		goto out;
+ 	}
 
