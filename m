@@ -1,64 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54442 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:23897 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751799Ab3ARP4d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Jan 2013 10:56:33 -0500
-Date: Fri, 18 Jan 2013 10:56:31 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mark Lord <kernel@teksavvy.com>
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        linux-nfs@vger.kernel.org, Linux Kernel <linux-kernel@vger.kernel.org>
-Subject: Re: BUG at net/sunrpc/svc_xprt.c:921
-Message-ID: <20130118155631.GA5227@fieldses.org>
-References: <50F4D800.5040703@teksavvy.com>
- <20130115205625.GH4940@fieldses.org>
- <50F63882.8000607@parallels.com>
- <50F72F03.5070806@teksavvy.com>
- <50F786AF.4070107@parallels.com>
- <20130117130335.GD6598@fieldses.org>
- <50F7FB7E.2020503@parallels.com>
- <50F88C14.7030903@teksavvy.com>
- <50F8DF7E.8080107@parallels.com>
- <50F96EB2.3090605@teksavvy.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <50F96EB2.3090605@teksavvy.com>
+	id S1751523Ab3AaVGz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 31 Jan 2013 16:06:55 -0500
+Date: Thu, 31 Jan 2013 16:06:46 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 01/16] nfsd: fix IPv6 address handling in the DRC
+Message-ID: <20130131160646.59c8de8f@corrin.poochiereds.net>
+In-Reply-To: <20130131205901.GC24252@fieldses.org>
+References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
+	<1359402082-29195-2-git-send-email-jlayton@redhat.com>
+	<20130131205901.GC24252@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 18, 2013 at 10:48:02AM -0500, Mark Lord wrote:
-> On 13-01-18 12:37 AM, Stanislav Kinsbursky wrote:
-> >
-> > You have more than one NFS mount in different network namespaces, haven't you?
-> >
-> 
-> No, I don't (knowingly) use (multiple) namespaces at all.
+On Thu, 31 Jan 2013 15:59:01 -0500
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-Right, I don't think that's necessary.  Stanislav, look at
-nfs_callback_down:
-
-	nfs_callback_down_net(minorversion, cb_info->serv, net);
-        cb_info->users--;
-	if (cb_info->users == 0 && cb_info->task != NULL) {
-		kthread_stop(cb_info->task);
-		...
-
-It's first destroying the service, then destroying the thread.  That's
-the wrong order.  So we could still have the thread running svc_recv()
-after the rpc service is destroyed.
-
---b.
-
-> Usually I disable them in the kernel .config,
-> though it appears the currently running kernel has this:
+> On Mon, Jan 28, 2013 at 02:41:07PM -0500, Jeff Layton wrote:
+> > Currently, it only stores the first 16 bytes of any address. struct
+> > sockaddr_in6 is 28 bytes however, so we're currently ignoring the last
+> > 12 bytes of the address.
+> > 
+> > Expand the c_addr field to a sockaddr_in6, and cast it to a sockaddr_in
+> > as necessary. Also fix the comparitor to use the existing RPC
+> > helpers for this.
 > 
-> CONFIG_NAMESPACES=y
-> # CONFIG_UTS_NS is not set
-> # CONFIG_IPC_NS is not set
-> # CONFIG_PID_NS is not set
-> # CONFIG_NET_NS is not set
+> Applying.  (Assuming the fix for link-local case will be separate.)
 > 
-> The full .config was attached to the first post in this thread.
+> --b.
 > 
-> Cheers
-> 
+
+Thanks. Yep, I'll do that as a separate patch.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
