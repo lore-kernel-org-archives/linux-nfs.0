@@ -1,55 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.candelatech.com ([208.74.158.172]:43161 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753252Ab3ARXGx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jan 2013 18:06:53 -0500
-Message-ID: <50F9D589.7090902@candelatech.com>
-Date: Fri, 18 Jan 2013 15:06:49 -0800
-From: Ben Greear <greearb@candelatech.com>
+Received: from fieldses.org ([174.143.236.118]:37927 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751523Ab3AaVXD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 31 Jan 2013 16:23:03 -0500
+Date: Thu, 31 Jan 2013 16:23:02 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 02/16] nfsd: remove unneeded spinlock in
+ nfsd_cache_update
+Message-ID: <20130131212301.GD24252@fieldses.org>
+References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
+ <1359402082-29195-3-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Question on nfs40_discover_server_trunking.
-References: <50F9BE66.6080608@candelatech.com>  <0F001F0E-229D-4314-A42E-84402E4F1FC7@oracle.com>  <1358546604.2872.6.camel@leira.trondhjem.org> <4FA345DA4F4AE44899BD2B03EEEC2FA915C04FE5@sacexcmbx05-prd.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA915C04FE5@sacexcmbx05-prd.hq.netapp.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1359402082-29195-3-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/18/2013 02:59 PM, Myklebust, Trond wrote:
-> On Fri, 2013-01-18 at 17:03 -0500, an unknown sender wrote:
->> On Fri, 2013-01-18 at 16:33 -0500, Chuck Lever wrote:
->>> On Jan 18, 2013, at 4:28 PM, Ben Greear <greearb@candelatech.com> wrote:
->>>
->>>> Any chance the STALE_CLIENTID case needs a 'break'?
->>>
->>> I don't think so.  LEASE_CONFIRM is set, and we want to wake the state renewal thread.
->>>
->>>>
->>>> Twice I've seen kernel crashes after the nfs40_walk_client_list
->>>> failed (though code comments say it should never fail).
->>>
->>> nfs40_walk_client_list() is looking for an nfs_client that is supposed to already be in the nfs_client list.  If the search fails, that's a bug.
->>>
->>> Eyeball the contents of your nfs_client list.  You should find an appropriate nfs_client in there, and then figure out why the search doesn't find it.
->>
->> You have considered the fact that the call to
->> nfs4_proc_setclientid_confirm can potentially return
->> NFS4ERR_STALE_CLIENTID if the server rebooted while the client was
->> walking the list?
->
-> In fact, as far as I can see, the correct behaviour in
-> nfs40_discover_server_trunking() should be to re-issue the setclientid
-> call, and then walk the list again if nfs40_walk_client_list() returns
-> NFS4ERR_STALE_CLIENTID.
+On Mon, Jan 28, 2013 at 02:41:08PM -0500, Jeff Layton wrote:
+> The locking rules for cache entries say that locking the cache_lock
+> isn't needed if you're just touching the current entry. Earlier
+> in this function we set rp->c_state to RC_UNUSED without any locking,
+> so I believe it's ok to do the same here.
 
-Thanks for the patch.  I'll add that to my tree as well.
+Also, the previous assignment to cachv->iov_base is a write to the same
+entry without a lock.
 
-Thanks,
-Ben
+It's still a little odd to be writing to this entry without holding any
+lock.  I have to stare at it for a while to convince myself it's OK, but
+I guess it is: this entry is transitioning from RC_INUSE to RC_UNUSED,
+but it's not modifying the entry otherwise (that cachv->iov_base
+assignment was actually a no-op in this case since it had to be NULL
+already).  So it shouldn't matter that there's no write barrier or
+anything.  At worst another thread may be a little late to notice this
+entry is free.
 
--- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+OK, applying.  Could use a comment or something though.
 
+--b.
+
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/nfsd/nfscache.c | 2 --
+>  1 file changed, 2 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+> index 5dd9ec2..972c14a 100644
+> --- a/fs/nfsd/nfscache.c
+> +++ b/fs/nfsd/nfscache.c
+> @@ -286,9 +286,7 @@ nfsd_cache_update(struct svc_rqst *rqstp, int cachetype, __be32 *statp)
+>  		cachv = &rp->c_replvec;
+>  		cachv->iov_base = kmalloc(len << 2, GFP_KERNEL);
+>  		if (!cachv->iov_base) {
+> -			spin_lock(&cache_lock);
+>  			rp->c_state = RC_UNUSED;
+> -			spin_unlock(&cache_lock);
+>  			return;
+>  		}
+>  		cachv->iov_len = len << 2;
+> -- 
+> 1.7.11.7
+> 
