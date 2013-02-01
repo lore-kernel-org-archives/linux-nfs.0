@@ -1,64 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ia0-f172.google.com ([209.85.210.172]:34204 "EHLO
-	mail-ia0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751146Ab3BELdW convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Feb 2013 06:33:22 -0500
+Received: from mailhub.sw.ru ([195.214.232.25]:30733 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755530Ab3BAL1m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Feb 2013 06:27:42 -0500
+Subject: [PATCH 0/2] NFSD: fix races in service per-net resources allocation
+To: bfields@fieldses.org, akpm@linux-foundation.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Fri, 01 Feb 2013 14:28:21 +0300
+Message-ID: <20130201111046.24066.72836.stgit@localhost.localdomain>
 MIME-Version: 1.0
-In-Reply-To: <20130130221118.GB15584@fieldses.org>
-References: <1358441537-8672-1-git-send-email-piastry@etersoft.ru>
-	<20130130221118.GB15584@fieldses.org>
-Date: Tue, 5 Feb 2013 15:33:21 +0400
-Message-ID: <CAKywueQcia1jJfdVJFzfHdc5zQ_86r3T4bmee9cpP18qqbcLFA@mail.gmail.com>
-Subject: Re: [PATCH v2 0/8] Add O_DENY* support for VFS and CIFS/NFS
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        wine-devel@winehq.org
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2013/1/31 J. Bruce Fields <bfields@fieldses.org>:
-> On Thu, Jan 17, 2013 at 08:52:09PM +0400, Pavel Shilovsky wrote:
->> This patchset adds support of O_DENY* flags for Linux fs layer. These flags can be used by any application that needs share reservations to organize a file access. VFS already has some sort of this capability - now it's done through flock/LOCK_MAND mechanis, but that approach is non-atomic. This patchset build new capabilities on top of the existing one but doesn't bring any changes into the flock call semantic.
->>
->> These flags can be used by NFS (built-in-kernel) and CIFS (Samba) servers and Wine applications through VFS (for local filesystems) or CIFS/NFS modules. This will help when e.g. Samba and NFS server share the same directory for Windows and Linux users or Wine applications use Samba/NFS share to access the same data from different clients.
->>
->> According to the previous discussions the most problematic question is how to prevent situations like DoS attacks where e.g /lib/liba.so file can be open with DENYREAD, or smth like this. That's why one extra flag O_DENYMAND is added. It indicates to underlying layer that an application want to use O_DENY* flags semantic. It allows us not affect native Linux applications (that don't use O_DENYMAND flag) - so, these flags (and the semantic of open syscall that they bring) are used only for those applications that really want it proccessed that way.
->
-> Maybe that's good enough.  A mount flag might be simpler and give
-> consistent enforcement for all users.
->
->>
->> So, we have four new flags:
->> O_DENYREAD - to prevent other opens with read access,
->> O_DENYWRITE - to prevent other opens with write access,
->> O_DENYDELETE - to prevent delete operations (this flag is not implemented in VFS and NFS part and only suitable for CIFS module),
->> O_DENYMAND - to switch on/off three flags above.
->
-> It would be useful to have some really careful documentation of how
-> these are meant to work.  Maybe try updating the open man page?
+After "NFS" (SUNRPC + NFSd actually) containerization work some basic
+principles of SUNRPC service initialization and deinitialization has been
+changed: now one service can be shared between different network namespaces
+and network "resources" can be attached or detached from the running service.
+This leads to races, described here:
 
-Yes, that's a good idea. Do you mean smth like this?
+https://bugzilla.redhat.com/show_bug.cgi?id=904870
 
-O_DENYMAND - used to inforce a mandatory share reservation scheme of
-the file access. If this flag is passed,
-the open fails with -ETXTBSY in following cases:
+and which this small patch set is aimed to solve by using per-cpu rw semphores
+to sync per-net resources processing and shutdown.
 
-1) if O_DENYREAD flag is specified and there is another open with
-O_DENYMAND flag and READ access to the file;
-2) if O_DENYWRITE flag is specified and there is another open with
-O_DENYMAND flag and WRITE access to the file;
-3) if READ access is requested and there is another open with
-O_DENYMAND and O_DENYREAD flags;
-4) if WRITE access is requested and there is another open with
-O_DENYMAND and O_DENYWRITE flags;
+The following series implements...
 
-Also, if O_DENYDELETE flag is specified and the open succeded, any
-further unlink operation will fail with -ETXTBSY untill this open is
-closed. Now this flag is processed by CIFS filesystems only.
+---
 
--- 
-Best regards,
-Pavel Shilovsky.
+Stanislav Kinsbursky (2):
+      per-cpu semaphores: export symbols to modules
+      SUNRPC: protect transport processing with per-cpu rw semaphore
+
+
+ include/linux/sunrpc/svc.h |    2 ++
+ lib/Makefile               |    2 +-
+ lib/percpu-rwsem.c         |    6 ++++++
+ net/sunrpc/Kconfig         |    1 +
+ net/sunrpc/svc.c           |    2 ++
+ net/sunrpc/svc_xprt.c      |   33 +++++++++++++++++++++++++++------
+ 6 files changed, 39 insertions(+), 7 deletions(-)
+
