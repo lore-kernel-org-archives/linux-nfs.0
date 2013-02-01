@@ -1,74 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ia0-f182.google.com ([209.85.210.182]:38027 "EHLO
-	mail-ia0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757293Ab3BGJk7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Feb 2013 04:40:59 -0500
+Received: from fieldses.org ([174.143.236.118]:45555 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753140Ab3BAQFD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Feb 2013 11:05:03 -0500
+Date: Fri, 1 Feb 2013 11:05:01 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>
+Subject: Re: [PATCH v1 08/16] nfsd: break out hashtable search into separate
+ function
+Message-ID: <20130201160501.GB6508@fieldses.org>
+References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
+ <1359402082-29195-9-git-send-email-jlayton@redhat.com>
+ <20130201131409.GB30668@fieldses.org>
+ <20130201102640.6b1898cb@tlielax.poochiereds.net>
+ <20130201155131.GA6508@fieldses.org>
+ <20130201110118.210f428a@tlielax.poochiereds.net>
 MIME-Version: 1.0
-In-Reply-To: <20130205143813.GB9886@fieldses.org>
-References: <1358441537-8672-1-git-send-email-piastry@etersoft.ru>
-	<20130130221118.GB15584@fieldses.org>
-	<CAKywueQcia1jJfdVJFzfHdc5zQ_86r3T4bmee9cpP18qqbcLFA@mail.gmail.com>
-	<20130205143813.GB9886@fieldses.org>
-Date: Thu, 7 Feb 2013 13:40:57 +0400
-Message-ID: <CAKywueQ=YJ3L9=uQfqo7jMF1Fw+TP37Wo39o1-ayu453xhmDtg@mail.gmail.com>
-Subject: Re: [PATCH v2 0/8] Add O_DENY* support for VFS and CIFS/NFS
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        wine-devel@winehq.org
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130201110118.210f428a@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2013/2/5 J. Bruce Fields <bfields@fieldses.org>:
-> On Tue, Feb 05, 2013 at 03:33:21PM +0400, Pavel Shilovsky wrote:
->> 2013/1/31 J. Bruce Fields <bfields@fieldses.org>:
->> > On Thu, Jan 17, 2013 at 08:52:09PM +0400, Pavel Shilovsky wrote:
->> >> This patchset adds support of O_DENY* flags for Linux fs layer. These flags can be used by any application that needs share reservations to organize a file access. VFS already has some sort of this capability - now it's done through flock/LOCK_MAND mechanis, but that approach is non-atomic. This patchset build new capabilities on top of the existing one but doesn't bring any changes into the flock call semantic.
->> >>
->> >> These flags can be used by NFS (built-in-kernel) and CIFS (Samba) servers and Wine applications through VFS (for local filesystems) or CIFS/NFS modules. This will help when e.g. Samba and NFS server share the same directory for Windows and Linux users or Wine applications use Samba/NFS share to access the same data from different clients.
->> >>
->> >> According to the previous discussions the most problematic question is how to prevent situations like DoS attacks where e.g /lib/liba.so file can be open with DENYREAD, or smth like this. That's why one extra flag O_DENYMAND is added. It indicates to underlying layer that an application want to use O_DENY* flags semantic. It allows us not affect native Linux applications (that don't use O_DENYMAND flag) - so, these flags (and the semantic of open syscall that they bring) are used only for those applications that really want it proccessed that way.
->> >
->> > Maybe that's good enough.  A mount flag might be simpler and give
->> > consistent enforcement for all users.
->> >
->> >>
->> >> So, we have four new flags:
->> >> O_DENYREAD - to prevent other opens with read access,
->> >> O_DENYWRITE - to prevent other opens with write access,
->> >> O_DENYDELETE - to prevent delete operations (this flag is not implemented in VFS and NFS part and only suitable for CIFS module),
->> >> O_DENYMAND - to switch on/off three flags above.
->> >
->> > It would be useful to have some really careful documentation of how
->> > these are meant to work.  Maybe try updating the open man page?
->>
->> Yes, that's a good idea. Do you mean smth like this?
->>
->> O_DENYMAND - used to inforce a mandatory share reservation scheme of
->> the file access. If this flag is passed,
->> the open fails with -ETXTBSY in following cases:
->>
->> 1) if O_DENYREAD flag is specified and there is another open with
->> O_DENYMAND flag and READ access to the file;
->> 2) if O_DENYWRITE flag is specified and there is another open with
->> O_DENYMAND flag and WRITE access to the file;
->> 3) if READ access is requested and there is another open with
->> O_DENYMAND and O_DENYREAD flags;
->> 4) if WRITE access is requested and there is another open with
->> O_DENYMAND and O_DENYWRITE flags;
->>
->> Also, if O_DENYDELETE flag is specified and the open succeded, any
->> further unlink operation will fail with -ETXTBSY untill this open is
->> closed. Now this flag is processed by CIFS filesystems only.
->
-> Do you need to document interactions with flock() as well?
+On Fri, Feb 01, 2013 at 11:01:18AM -0500, Jeff Layton wrote:
+> On Fri, 1 Feb 2013 10:51:31 -0500
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> 
+> > On Fri, Feb 01, 2013 at 10:26:40AM -0500, Jeff Layton wrote:
+> > > On Fri, 1 Feb 2013 08:14:09 -0500
+> > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > 
+> > > > On Mon, Jan 28, 2013 at 02:41:14PM -0500, Jeff Layton wrote:
+> > > > > Later, we'll need more than one call site for this, so break it out
+> > > > > into a new function.
+> > > > 
+> > > > I'm applying these first 8 to the for-3.9 branch at:
+> > > > 
+> > > > 	git://linux-nfs.org/~bfields/linux.git for-3.9
+> > > > 
+> > > > --b.
+> > > > 
+> > > 
+> > > Thanks Bruce. I rebased the remaining patches on top of these, and now
+> > > I'm seeing this when I try to test against it. I don't think it's due
+> > > to the DRC patches, but I haven't started tracking it down yet:
+> > 
+> > Probably Stanislav's latest patches to the cache upcall code.  I'm
+> > surprised I didn't hit it.
+> > 
+> > --b.
+> > 
+> 
+> My apologies... it was a kABI issue ;)
+> 
+> I had built a nfsd.ko module to test my changes, but didn't build
+> sunrpc.ko to make sure that I got Stanislav's changes. When I did that,
+> the oops went away...
 
-Yes, this needs to be documented, thanks. I am going to propose ver2
-of this patchset (with regards to your suggestions) - will add this
-part to open man page patch too.
-
--- 
-Best regards,
-Pavel Shilovsky.
+Ah, ok, good.--b.
