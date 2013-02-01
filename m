@@ -1,112 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:55251 "EHLO mx2.suse.de"
+Received: from mailhub.sw.ru ([195.214.232.25]:38839 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755915Ab3BZGi6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Feb 2013 01:38:58 -0500
-From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Tue, 26 Feb 2013 17:36:42 +1100
-Subject: [PATCH 2/2] sunrpc/cache: use cache_fresh_unlocked consistently and
- correctly.
-Cc: Bodo Stroesser <bstroesser@ts.fujitsu.com>, linux-nfs@vger.kernel.org
-Message-ID: <20130226063642.6063.79219.stgit@notabene.brown>
-In-Reply-To: <20130226063637.6063.34934.stgit@notabene.brown>
-References: <20130226063637.6063.34934.stgit@notabene.brown>
+	id S1756104Ab3BAL1n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Feb 2013 06:27:43 -0500
+Subject: [PATCH 1/2] per-cpu semaphores: export symbols to modules
+To: bfields@fieldses.org, akpm@linux-foundation.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Fri, 01 Feb 2013 14:28:30 +0300
+Message-ID: <20130201112830.24066.48656.stgit@localhost.localdomain>
+In-Reply-To: <20130201111046.24066.72836.stgit@localhost.localdomain>
+References: <20130201111046.24066.72836.stgit@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-cache_fresh_unlocked() is called when a cache entry
-has been updated and ensures that if there were any
-pending upcalls, they are cleared.
+Per-cpu semaphores are desired to be used by NFS kernel server.
+As Bruce Fields suggested:
 
-So every time we update a cache entry, we should call this,
-and this should be the only way that we try to clear
-pending calls (that sort of uniformity makes code sooo much
-easier to read).
+	"The server rpc code goes to some care not to write to any global
+	structure, to prevent server threads running on multiple cores from
+	bouncing cache lines between them.
 
-try_to_negate_entry() will (possibly) mark an entry as
-negative.  If it doesn't, it is because the entry already
-is VALID.
-So the entry will be valid on exit, so it is appropriate to
-call cache_fresh_unlocked().
-So tidy up try_to_negate_entry() to do that, and remove
-partial open-coded cache_fresh_unlocked() from the one
-call-site of try_to_negate_entry().
+	But my understanding is that even down_read() does modify the semaphore.
+	So we might want something like the percpu semaphore describe in
+	Documentation/percpu-rw-semaphore.txt."
 
-In the other branch of the 'switch(cache_make_upcall())',
-we again have a partial open-coded version of cache_fresh_unlocked().
-Replace that with a real call.
 
-And again in cache_clean(), use a real call to cache_fresh_unlocked().
+So add EXPORT_SYMBOL_GPL() for all publically accessible per-cpu rw semaphores
+and move to obj-y so that modules may use this library.
 
-These call sites might previously have called
-cache_revisit_request() if CACHE_PENDING wasn't set.
-This is never necessary because cache_revisit_request() can
-only do anything if the item is in the cache_defer_hash,
-However any time that an item is added to the cache_defer_hash
-(setup_deferral), the code immediately tests CACHE_PENDING,
-and removes the entry again if it is clear.  So all other
-places we only need to 'cache_revisit_request' if we've
-just cleared CACHE_PENDING.
-
-Reported-by: Bodo Stroesser <bstroesser@ts.fujitsu.com>
-Signed-off-by: NeilBrown  <neilb@suse.de>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 ---
- net/sunrpc/cache.c |   20 +++++++-------------
- 1 file changed, 7 insertions(+), 13 deletions(-)
+ lib/Makefile       |    2 +-
+ lib/percpu-rwsem.c |    6 ++++++
+ 2 files changed, 7 insertions(+), 1 deletions(-)
 
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index b48c8ef..7ebee64 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -228,15 +228,14 @@ static int try_to_negate_entry(struct cache_detail *detail, struct cache_head *h
+diff --git a/lib/Makefile b/lib/Makefile
+index 02ed6c0..22e0c03 100644
+--- a/lib/Makefile
++++ b/lib/Makefile
+@@ -40,7 +40,7 @@ obj-$(CONFIG_DEBUG_LOCKING_API_SELFTESTS) += locking-selftest.o
+ obj-$(CONFIG_DEBUG_SPINLOCK) += spinlock_debug.o
+ lib-$(CONFIG_RWSEM_GENERIC_SPINLOCK) += rwsem-spinlock.o
+ lib-$(CONFIG_RWSEM_XCHGADD_ALGORITHM) += rwsem.o
+-lib-$(CONFIG_PERCPU_RWSEM) += percpu-rwsem.o
++obj-$(CONFIG_PERCPU_RWSEM) += percpu-rwsem.o
  
- 	write_lock(&detail->hash_lock);
- 	rv = cache_is_valid(detail, h);
--	if (rv != -EAGAIN) {
--		write_unlock(&detail->hash_lock);
--		return rv;
-+	if (rv == -EAGAIN) {
-+		set_bit(CACHE_NEGATIVE, &h->flags);
-+		cache_fresh_locked(h, seconds_since_boot()+CACHE_NEW_EXPIRY);
-+		rv = -ENOENT;
- 	}
--	set_bit(CACHE_NEGATIVE, &h->flags);
--	cache_fresh_locked(h, seconds_since_boot()+CACHE_NEW_EXPIRY);
- 	write_unlock(&detail->hash_lock);
- 	cache_fresh_unlocked(h, detail);
--	return -ENOENT;
-+	return rv;
+ CFLAGS_hweight.o = $(subst $(quote),,$(CONFIG_ARCH_HWEIGHT_CFLAGS))
+ obj-$(CONFIG_GENERIC_HWEIGHT) += hweight.o
+diff --git a/lib/percpu-rwsem.c b/lib/percpu-rwsem.c
+index 652a8ee..7f6aa71 100644
+--- a/lib/percpu-rwsem.c
++++ b/lib/percpu-rwsem.c
+@@ -7,6 +7,7 @@
+ #include <linux/rcupdate.h>
+ #include <linux/sched.h>
+ #include <linux/errno.h>
++#include <linux/export.h>
+ 
+ int __percpu_init_rwsem(struct percpu_rw_semaphore *brw,
+ 			const char *name, struct lock_class_key *rwsem_key)
+@@ -22,6 +23,7 @@ int __percpu_init_rwsem(struct percpu_rw_semaphore *brw,
+ 	init_waitqueue_head(&brw->write_waitq);
+ 	return 0;
  }
++EXPORT_SYMBOL_GPL(__percpu_init_rwsem);
  
- /*
-@@ -275,13 +274,10 @@ int cache_check(struct cache_detail *detail,
- 		if (!test_and_set_bit(CACHE_PENDING, &h->flags)) {
- 			switch (cache_make_upcall(detail, h)) {
- 			case -EINVAL:
--				clear_bit(CACHE_PENDING, &h->flags);
--				cache_revisit_request(h);
- 				rv = try_to_negate_entry(detail, h);
- 				break;
- 			case -EAGAIN:
--				clear_bit(CACHE_PENDING, &h->flags);
--				cache_revisit_request(h);
-+				cache_fresh_unlocked(h, detail);
- 				break;
- 			}
- 		}
-@@ -457,9 +453,7 @@ static int cache_clean(void)
- 			current_index ++;
- 		spin_unlock(&cache_list_lock);
- 		if (ch) {
--			if (test_and_clear_bit(CACHE_PENDING, &ch->flags))
--				cache_dequeue(current_detail, ch);
--			cache_revisit_request(ch);
-+			cache_fresh_unlocked(ch, d);
- 			cache_put(ch, d);
- 		}
- 	} else
-
+ void percpu_free_rwsem(struct percpu_rw_semaphore *brw)
+ {
+@@ -87,6 +89,7 @@ void percpu_down_read(struct percpu_rw_semaphore *brw)
+ 	/* avoid up_read()->rwsem_release() */
+ 	__up_read(&brw->rw_sem);
+ }
++EXPORT_SYMBOL_GPL(percpu_down_read);
+ 
+ void percpu_up_read(struct percpu_rw_semaphore *brw)
+ {
+@@ -99,6 +102,7 @@ void percpu_up_read(struct percpu_rw_semaphore *brw)
+ 	if (atomic_dec_and_test(&brw->slow_read_ctr))
+ 		wake_up_all(&brw->write_waitq);
+ }
++EXPORT_SYMBOL_GPL(percpu_up_read);
+ 
+ static int clear_fast_ctr(struct percpu_rw_semaphore *brw)
+ {
+@@ -150,6 +154,7 @@ void percpu_down_write(struct percpu_rw_semaphore *brw)
+ 	/* wait for all readers to complete their percpu_up_read() */
+ 	wait_event(brw->write_waitq, !atomic_read(&brw->slow_read_ctr));
+ }
++EXPORT_SYMBOL_GPL(percpu_down_write);
+ 
+ void percpu_up_write(struct percpu_rw_semaphore *brw)
+ {
+@@ -163,3 +168,4 @@ void percpu_up_write(struct percpu_rw_semaphore *brw)
+ 	/* the last writer unblocks update_fast_ctr() */
+ 	atomic_dec(&brw->write_ctr);
+ }
++EXPORT_SYMBOL_GPL(percpu_up_write);
 
