@@ -1,102 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:42670 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:19696 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754266Ab3BDLCI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Feb 2013 06:02:08 -0500
-Subject: [PATCH v2 6/6] SUNRPC: move cache_detail->cache_request callback call
-	to cache_read()
+	id S1753885Ab3BAMzZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Feb 2013 07:55:25 -0500
+Subject: [PATCH 2/4] nfsd: use proper net while reading "exports" file
 To: bfields@fieldses.org
 From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
         linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Mon, 04 Feb 2013 14:03:03 +0300
-Message-ID: <20130204110303.11633.95912.stgit@localhost.localdomain>
-In-Reply-To: <20130204105728.11633.53621.stgit@localhost.localdomain>
-References: <20130204105728.11633.53621.stgit@localhost.localdomain>
+Date: Fri, 01 Feb 2013 15:56:17 +0300
+Message-ID: <20130201125617.3257.30957.stgit@localhost.localdomain>
+In-Reply-To: <20130201125210.3257.46454.stgit@localhost.localdomain>
+References: <20130201125210.3257.46454.stgit@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The reason to move cache_request() callback call from
-sunrpc_cache_pipe_upcall() to cache_read() is that this garantees, that cache
-access will be done userspace process context (only userspace process have
-proper root context).
-This is required for NFSd support in container: svc_export_request() (which is
-cache_request callback) calls d_path(), which, in turn, traverse dentry up to
-current->fs->root. Kernel threads always have global root, while container
-have be in "root jail" - i.e. have it's own nested root.
+Functuon "exports_open" is used for both "/proc/fs/nfs/exports" and
+"/proc/fs/nfsd/exports" files.
+Now NFSd filesystem is containerised, so proper net can be taken from
+superblock for "/proc/fs/nfsd/exports" reader.
+But for "/proc/fs/nfsd/exports" only current->nsproxy->net_ns can be used.
 
 Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 ---
- net/sunrpc/cache.c |   32 ++++++++++++++++++++------------
- 1 files changed, 20 insertions(+), 12 deletions(-)
+ fs/nfsd/nfsctl.c |   31 +++++++++++++++++++++++++------
+ 1 files changed, 25 insertions(+), 6 deletions(-)
 
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 8ffec5a..5502471 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -750,6 +750,18 @@ struct cache_reader {
- 	int			offset;	/* if non-0, we have a refcnt on next request */
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 2eb03c1..1825f72 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -125,11 +125,11 @@ static const struct file_operations transaction_ops = {
+ 	.llseek		= default_llseek,
  };
  
-+static int cache_request(struct cache_detail *detail,
-+			       struct cache_request *crq)
+-static int exports_open(struct inode *inode, struct file *file)
++static int exports_net_open(struct net *net, struct file *file)
+ {
+ 	int err;
+ 	struct seq_file *seq;
+-	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
+ 	err = seq_open(file, &nfs_exports_op);
+ 	if (err)
+@@ -140,8 +140,26 @@ static int exports_open(struct inode *inode, struct file *file)
+ 	return 0;
+ }
+ 
+-static const struct file_operations exports_operations = {
+-	.open		= exports_open,
++static int exports_proc_open(struct inode *inode, struct file *file)
 +{
-+	char *bp = crq->buf;
-+	int len = PAGE_SIZE;
-+
-+	detail->cache_request(detail, crq->item, &bp, &len);
-+	if (len < 0)
-+		return -EAGAIN;
-+	return PAGE_SIZE - len;
++	return exports_net_open(current->nsproxy->net_ns, file);
 +}
 +
- static ssize_t cache_read(struct file *filp, char __user *buf, size_t count,
- 			  loff_t *ppos, struct cache_detail *cd)
- {
-@@ -784,6 +796,13 @@ static ssize_t cache_read(struct file *filp, char __user *buf, size_t count,
- 		rq->readers++;
- 	spin_unlock(&queue_lock);
- 
-+	if (rq->len == 0) {
-+		err = cache_request(cd, rq);
-+		if (err < 0)
-+			goto out;
-+		rq->len = err;
-+	}
++static const struct file_operations exports_proc_operations = {
++	.open		= exports_proc_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= seq_release,
++	.owner		= THIS_MODULE,
++};
 +
- 	if (rp->offset == 0 && !test_bit(CACHE_PENDING, &rq->item->flags)) {
- 		err = -EAGAIN;
- 		spin_lock(&queue_lock);
-@@ -1145,8 +1164,6 @@ int sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h)
- 
- 	char *buf;
- 	struct cache_request *crq;
--	char *bp;
--	int len;
- 
- 	if (!detail->cache_request)
- 		return -EINVAL;
-@@ -1166,19 +1183,10 @@ int sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h)
- 		return -EAGAIN;
- 	}
- 
--	bp = buf; len = PAGE_SIZE;
--
--	detail->cache_request(detail, h, &bp, &len);
--
--	if (len < 0) {
--		kfree(buf);
--		kfree(crq);
--		return -EAGAIN;
--	}
- 	crq->q.reader = 0;
- 	crq->item = cache_get(h);
- 	crq->buf = buf;
--	crq->len = PAGE_SIZE - len;
-+	crq->len = 0;
- 	crq->readers = 0;
- 	spin_lock(&queue_lock);
- 	list_add_tail(&crq->q.list, &detail->queue);
++static int exports_nfsd_open(struct inode *inode, struct file *file)
++{
++	return exports_net_open(inode->i_sb->s_fs_info, file);
++}
++
++static const struct file_operations exports_nfsd_operations = {
++	.open		= exports_nfsd_open,
+ 	.read		= seq_read,
+ 	.llseek		= seq_lseek,
+ 	.release	= seq_release,
+@@ -1018,7 +1036,7 @@ static ssize_t write_recoverydir(struct file *file, char *buf, size_t size)
+ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
+ {
+ 	static struct tree_descr nfsd_files[] = {
+-		[NFSD_List] = {"exports", &exports_operations, S_IRUGO},
++		[NFSD_List] = {"exports", &exports_nfsd_operations, S_IRUGO},
+ 		[NFSD_Export_features] = {"export_features",
+ 					&export_features_operations, S_IRUGO},
+ 		[NFSD_FO_UnlockIP] = {"unlock_ip",
+@@ -1081,7 +1099,8 @@ static int create_proc_exports_entry(void)
+ 	entry = proc_mkdir("fs/nfs", NULL);
+ 	if (!entry)
+ 		return -ENOMEM;
+-	entry = proc_create("exports", 0, entry, &exports_operations);
++	entry = proc_create("exports", 0, entry,
++				 &exports_proc_operations);
+ 	if (!entry)
+ 		return -ENOMEM;
+ 	return 0;
 
