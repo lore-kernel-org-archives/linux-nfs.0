@@ -1,103 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:38839 "EHLO relay.sw.ru"
+Received: from fieldses.org ([174.143.236.118]:43964 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756104Ab3BAL1n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Feb 2013 06:27:43 -0500
-Subject: [PATCH 1/2] per-cpu semaphores: export symbols to modules
-To: bfields@fieldses.org, akpm@linux-foundation.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Fri, 01 Feb 2013 14:28:30 +0300
-Message-ID: <20130201112830.24066.48656.stgit@localhost.localdomain>
-In-Reply-To: <20130201111046.24066.72836.stgit@localhost.localdomain>
-References: <20130201111046.24066.72836.stgit@localhost.localdomain>
+	id S1422874Ab3BANOK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Feb 2013 08:14:10 -0500
+Date: Fri, 1 Feb 2013 08:14:09 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 08/16] nfsd: break out hashtable search into separate
+ function
+Message-ID: <20130201131409.GB30668@fieldses.org>
+References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
+ <1359402082-29195-9-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1359402082-29195-9-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Per-cpu semaphores are desired to be used by NFS kernel server.
-As Bruce Fields suggested:
+On Mon, Jan 28, 2013 at 02:41:14PM -0500, Jeff Layton wrote:
+> Later, we'll need more than one call site for this, so break it out
+> into a new function.
 
-	"The server rpc code goes to some care not to write to any global
-	structure, to prevent server threads running on multiple cores from
-	bouncing cache lines between them.
+I'm applying these first 8 to the for-3.9 branch at:
 
-	But my understanding is that even down_read() does modify the semaphore.
-	So we might want something like the percpu semaphore describe in
-	Documentation/percpu-rw-semaphore.txt."
+	git://linux-nfs.org/~bfields/linux.git for-3.9
 
+--b.
 
-So add EXPORT_SYMBOL_GPL() for all publically accessible per-cpu rw semaphores
-and move to obj-y so that modules may use this library.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
----
- lib/Makefile       |    2 +-
- lib/percpu-rwsem.c |    6 ++++++
- 2 files changed, 7 insertions(+), 1 deletions(-)
-
-diff --git a/lib/Makefile b/lib/Makefile
-index 02ed6c0..22e0c03 100644
---- a/lib/Makefile
-+++ b/lib/Makefile
-@@ -40,7 +40,7 @@ obj-$(CONFIG_DEBUG_LOCKING_API_SELFTESTS) += locking-selftest.o
- obj-$(CONFIG_DEBUG_SPINLOCK) += spinlock_debug.o
- lib-$(CONFIG_RWSEM_GENERIC_SPINLOCK) += rwsem-spinlock.o
- lib-$(CONFIG_RWSEM_XCHGADD_ALGORITHM) += rwsem.o
--lib-$(CONFIG_PERCPU_RWSEM) += percpu-rwsem.o
-+obj-$(CONFIG_PERCPU_RWSEM) += percpu-rwsem.o
- 
- CFLAGS_hweight.o = $(subst $(quote),,$(CONFIG_ARCH_HWEIGHT_CFLAGS))
- obj-$(CONFIG_GENERIC_HWEIGHT) += hweight.o
-diff --git a/lib/percpu-rwsem.c b/lib/percpu-rwsem.c
-index 652a8ee..7f6aa71 100644
---- a/lib/percpu-rwsem.c
-+++ b/lib/percpu-rwsem.c
-@@ -7,6 +7,7 @@
- #include <linux/rcupdate.h>
- #include <linux/sched.h>
- #include <linux/errno.h>
-+#include <linux/export.h>
- 
- int __percpu_init_rwsem(struct percpu_rw_semaphore *brw,
- 			const char *name, struct lock_class_key *rwsem_key)
-@@ -22,6 +23,7 @@ int __percpu_init_rwsem(struct percpu_rw_semaphore *brw,
- 	init_waitqueue_head(&brw->write_waitq);
- 	return 0;
- }
-+EXPORT_SYMBOL_GPL(__percpu_init_rwsem);
- 
- void percpu_free_rwsem(struct percpu_rw_semaphore *brw)
- {
-@@ -87,6 +89,7 @@ void percpu_down_read(struct percpu_rw_semaphore *brw)
- 	/* avoid up_read()->rwsem_release() */
- 	__up_read(&brw->rw_sem);
- }
-+EXPORT_SYMBOL_GPL(percpu_down_read);
- 
- void percpu_up_read(struct percpu_rw_semaphore *brw)
- {
-@@ -99,6 +102,7 @@ void percpu_up_read(struct percpu_rw_semaphore *brw)
- 	if (atomic_dec_and_test(&brw->slow_read_ctr))
- 		wake_up_all(&brw->write_waitq);
- }
-+EXPORT_SYMBOL_GPL(percpu_up_read);
- 
- static int clear_fast_ctr(struct percpu_rw_semaphore *brw)
- {
-@@ -150,6 +154,7 @@ void percpu_down_write(struct percpu_rw_semaphore *brw)
- 	/* wait for all readers to complete their percpu_up_read() */
- 	wait_event(brw->write_waitq, !atomic_read(&brw->slow_read_ctr));
- }
-+EXPORT_SYMBOL_GPL(percpu_down_write);
- 
- void percpu_up_write(struct percpu_rw_semaphore *brw)
- {
-@@ -163,3 +168,4 @@ void percpu_up_write(struct percpu_rw_semaphore *brw)
- 	/* the last writer unblocks update_fast_ctr() */
- 	atomic_dec(&brw->write_ctr);
- }
-+EXPORT_SYMBOL_GPL(percpu_up_write);
-
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/nfsd/nfscache.c | 46 +++++++++++++++++++++++++++++++++-------------
+>  1 file changed, 33 insertions(+), 13 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+> index 634b856..b89e7c8 100644
+> --- a/fs/nfsd/nfscache.c
+> +++ b/fs/nfsd/nfscache.c
+> @@ -150,6 +150,35 @@ nfsd_cache_entry_expired(struct svc_cacherep *rp)
+>  }
+>  
+>  /*
+> + * Search the request hash for an entry that matches the given rqstp.
+> + * Must be called with cache_lock held. Returns the found entry or
+> + * NULL on failure.
+> + */
+> +static struct svc_cacherep *
+> +nfsd_cache_search(struct svc_rqst *rqstp)
+> +{
+> +	struct svc_cacherep	*rp;
+> +	struct hlist_node	*hn;
+> +	struct hlist_head 	*rh;
+> +	__be32			xid = rqstp->rq_xid;
+> +	u32			proto =  rqstp->rq_prot,
+> +				vers = rqstp->rq_vers,
+> +				proc = rqstp->rq_proc;
+> +
+> +	rh = &cache_hash[request_hash(xid)];
+> +	hlist_for_each_entry(rp, hn, rh, c_hash) {
+> +		if (rp->c_state != RC_UNUSED &&
+> +		    xid == rp->c_xid && proc == rp->c_proc &&
+> +		    proto == rp->c_prot && vers == rp->c_vers &&
+> +		    !nfsd_cache_entry_expired(rp) &&
+> +		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
+> +		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr))
+> +			return rp;
+> +	}
+> +	return NULL;
+> +}
+> +
+> +/*
+>   * Try to find an entry matching the current call in the cache. When none
+>   * is found, we grab the oldest unlocked entry off the LRU list.
+>   * Note that no operation within the loop may sleep.
+> @@ -157,8 +186,6 @@ nfsd_cache_entry_expired(struct svc_cacherep *rp)
+>  int
+>  nfsd_cache_lookup(struct svc_rqst *rqstp)
+>  {
+> -	struct hlist_node	*hn;
+> -	struct hlist_head 	*rh;
+>  	struct svc_cacherep	*rp;
+>  	__be32			xid = rqstp->rq_xid;
+>  	u32			proto =  rqstp->rq_prot,
+> @@ -177,17 +204,10 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+>  	spin_lock(&cache_lock);
+>  	rtn = RC_DOIT;
+>  
+> -	rh = &cache_hash[request_hash(xid)];
+> -	hlist_for_each_entry(rp, hn, rh, c_hash) {
+> -		if (rp->c_state != RC_UNUSED &&
+> -		    xid == rp->c_xid && proc == rp->c_proc &&
+> -		    proto == rp->c_prot && vers == rp->c_vers &&
+> -		    !nfsd_cache_entry_expired(rp) &&
+> -		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
+> -		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr)) {
+> -			nfsdstats.rchits++;
+> -			goto found_entry;
+> -		}
+> +	rp = nfsd_cache_search(rqstp);
+> +	if (rp) {
+> +		nfsdstats.rchits++;
+> +		goto found_entry;
+>  	}
+>  	nfsdstats.rcmisses++;
+>  
+> -- 
+> 1.7.11.7
+> 
