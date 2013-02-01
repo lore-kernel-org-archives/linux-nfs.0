@@ -1,181 +1,196 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f182.google.com ([209.85.161.182]:59766 "EHLO
-	mail-gg0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759303Ab3BGUdl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Feb 2013 15:33:41 -0500
-Received: by mail-gg0-f182.google.com with SMTP id d1so352532ggn.41
-        for <linux-nfs@vger.kernel.org>; Thu, 07 Feb 2013 12:33:40 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: chuck.lever@oracle.com, rees@umich.edu, trond.myklebust@netapp.com,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH RFC] nfsd: change to using IP-style checksums for DRC entries
-Date: Thu,  7 Feb 2013 15:33:35 -0500
-Message-Id: <1360269215-32037-1-git-send-email-jlayton@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:49050 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756800Ab3BAUNG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Feb 2013 15:13:06 -0500
+Date: Fri, 1 Feb 2013 15:13:04 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: handle vfs_getattr errors in acl protocol
+Message-ID: <20130201201304.GE30668@fieldses.org>
+References: <20130201131537.GC30668@fieldses.org>
+ <20130201185721.GP4503@ZenIV.linux.org.uk>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130201185721.GP4503@ZenIV.linux.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck and Jim pointed out that crc32 is probably more heavyweight
-than we really need for generating these checksums, and recommended
-looking at using the same routines that are used to generate
-checksums for IP packets.
+On Fri, Feb 01, 2013 at 06:57:22PM +0000, Al Viro wrote:
+> On Fri, Feb 01, 2013 at 08:15:37AM -0500, J. Bruce Fields wrote:
+> > From: "J. Bruce Fields" <bfields@redhat.com>
+> > 
+> > We're currently ignoring errors from vfs_getattr.
+> > 
+> > The correct thing to do is to do the stat in the main service procedure
+> > not in the response encoding.
+> 
+> FWIW, I'd combine that with parts of commit I've got in my tree; I think
+> nfsd_getattr() in your variant isn't the best API here.  All callers
+> that want nfserrno want vfsmount/dentry coming from some fhandle.  Diff
+> below is introducing such helper and switching to its use (warning: edited
+> patch; only obvious editing done there, but still).  It does *not* address
+> the issue your patch deals with (see /* BUG */ in there), but I really
+> think it's a better interface than your variant.
 
-This patch converts the code to use csum_partial instead of crc32.
-Unfortunately, I don't have a great way to verify the overhead of
-calculating the checksum here, so I don't know of a good way to
-verify that this is significantly cheaper than crc32...
+Actually, we have precisely the same interface except for the name:
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/cache.h    |  2 +-
- fs/nfsd/nfscache.c | 33 +++++++++++++++------------------
- 2 files changed, 16 insertions(+), 19 deletions(-)
+	__be32 fh_getattr(struct svc_fh *fh, struct kstat *stat)
+vs.
+	__be32 nfsd_getattr(struct svc_fh *fh, struct kstat *stat)
 
-diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
-index 4822db3..87fd141 100644
---- a/fs/nfsd/cache.h
-+++ b/fs/nfsd/cache.h
-@@ -30,7 +30,7 @@ struct svc_cacherep {
- 	u32			c_proc;
- 	u32			c_vers;
- 	unsigned int		c_len;
--	u32			c_crc;
-+	__wsum			c_csum;
- 	unsigned long		c_timestamp;
- 	union {
- 		struct kvec	u_vec;
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index bd3d8e2..40db57e 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -11,7 +11,7 @@
- #include <linux/slab.h>
- #include <linux/sunrpc/addr.h>
- #include <linux/highmem.h>
--#include <linux/crc32.h>
-+#include <net/checksum.h>
+but I'm fine with your name.
+
+Do you want to take these patches, or should I?
+
+Assuming the latter: this is a version of my bugfix rebased on top of
+what you just sent me.  I did a quick test and verified it doesn't crash
+when I asked for an acl....
+
+--b.
+
+commit 7afea2b2cd951c3a566356206d84a0f5b8aa0e1a
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Wed Jan 30 16:10:19 2013 -0500
+
+    nfsd: handle vfs_getattr errors in acl protocol
+    
+    We're currently ignoring errors from vfs_getattr.
+    
+    The correct thing to do is to do the stat in the main service procedure
+    not in the response encoding.
+    
+    Reported-by: Al Viro <viro@zeniv.linux.org.uk>
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
+index 9170861..95d76dc 100644
+--- a/fs/nfsd/nfs2acl.c
++++ b/fs/nfsd/nfs2acl.c
+@@ -45,6 +45,10 @@ static __be32 nfsacld_proc_getacl(struct svc_rqst * rqstp,
+ 		RETURN_STATUS(nfserr_inval);
+ 	resp->mask = argp->mask;
  
- #include "nfsd.h"
- #include "cache.h"
-@@ -25,7 +25,6 @@ static struct list_head 	lru_head;
- static struct kmem_cache	*drc_slab;
- static unsigned int		num_drc_entries;
- static unsigned int		max_drc_entries;
--static u32			crc_seed;
- 
- /*
-  * Calculate the hash index from an XID.
-@@ -133,8 +132,6 @@ int nfsd_reply_cache_init(void)
- 	max_drc_entries = nfsd_cache_size_limit();
- 	num_drc_entries = 0;
- 
--	/* Is a random seed any better than some well-defined constant? */
--	get_random_bytes(&crc_seed, sizeof(crc_seed));
- 	return 0;
- out_nomem:
- 	printk(KERN_ERR "nfsd: failed to allocate reply cache\n");
-@@ -245,12 +242,12 @@ nfsd_reply_cache_shrink(struct shrinker *shrink, struct shrink_control *sc)
- /*
-  * Walk an xdr_buf and get a CRC for at most the first RC_CSUMLEN bytes
-  */
--static u32
--nfsd_cache_crc(struct svc_rqst *rqstp)
-+static __wsum
-+nfsd_cache_csum(struct svc_rqst *rqstp)
- {
- 	int idx;
- 	unsigned int base;
--	u32 crc;
-+	__wsum csum;
- 	struct xdr_buf *buf = &rqstp->rq_arg;
- 	const unsigned char *p = buf->head[0].iov_base;
- 	size_t csum_len = min_t(size_t, buf->head[0].iov_len + buf->page_len,
-@@ -258,7 +255,7 @@ nfsd_cache_crc(struct svc_rqst *rqstp)
- 	size_t len = min(buf->head[0].iov_len, csum_len);
- 
- 	/* rq_arg.head first */
--	crc = crc32(crc_seed, p, len);
-+	csum = csum_partial(p, len, 0);
- 	csum_len -= len;
- 
- 	/* Continue into page array */
-@@ -267,12 +264,12 @@ nfsd_cache_crc(struct svc_rqst *rqstp)
- 	while (csum_len) {
- 		p = page_address(buf->pages[idx]) + base;
- 		len = min(PAGE_SIZE - base, csum_len);
--		crc = crc32(crc, p, len);
-+		csum = csum_partial(p, len, csum);
- 		csum_len -= len;
- 		base = 0;
- 		++idx;
++	nfserr = fh_getattr(fh, &resp->stat);
++	if (nfserr)
++		goto fail;
++
+ 	if (resp->mask & (NFS_ACL|NFS_ACLCNT)) {
+ 		acl = nfsd_get_posix_acl(fh, ACL_TYPE_ACCESS);
+ 		if (IS_ERR(acl)) {
+@@ -115,6 +119,9 @@ static __be32 nfsacld_proc_setacl(struct svc_rqst * rqstp,
+ 		nfserr = nfserrno( nfsd_set_posix_acl(
+ 			fh, ACL_TYPE_DEFAULT, argp->acl_default) );
  	}
--	return crc;
-+	return csum;
++	if (!nfserr) {
++		nfserr = fh_getattr(fh, &resp->stat);
++	}
+ 
+ 	/* argp->acl_{access,default} may have been allocated in
+ 	   nfssvc_decode_setaclargs. */
+@@ -129,10 +136,15 @@ static __be32 nfsacld_proc_setacl(struct svc_rqst * rqstp,
+ static __be32 nfsacld_proc_getattr(struct svc_rqst * rqstp,
+ 		struct nfsd_fhandle *argp, struct nfsd_attrstat *resp)
+ {
++	__be32 nfserr;
+ 	dprintk("nfsd: GETATTR  %s\n", SVCFH_fmt(&argp->fh));
+ 
+ 	fh_copy(&resp->fh, &argp->fh);
+-	return fh_verify(rqstp, &resp->fh, 0, NFSD_MAY_NOP);
++	nfserr = fh_verify(rqstp, &resp->fh, 0, NFSD_MAY_NOP);
++	if (nfserr)
++		return nfserr;
++	nfserr = fh_getattr(&resp->fh, &resp->stat);
++	return nfserr;
  }
  
  /*
-@@ -281,7 +278,7 @@ nfsd_cache_crc(struct svc_rqst *rqstp)
-  * NULL on failure.
-  */
- static struct svc_cacherep *
--nfsd_cache_search(struct svc_rqst *rqstp, u32 crc)
-+nfsd_cache_search(struct svc_rqst *rqstp, __wsum csum)
+@@ -150,6 +162,9 @@ static __be32 nfsacld_proc_access(struct svc_rqst *rqstp, struct nfsd3_accessarg
+ 	fh_copy(&resp->fh, &argp->fh);
+ 	resp->access = argp->access;
+ 	nfserr = nfsd_access(rqstp, &resp->fh, &resp->access, NULL);
++	if (nfserr)
++		return nfserr;
++	nfserr = fh_getattr(&resp->fh, &resp->stat);
+ 	return nfserr;
+ }
+ 
+@@ -243,7 +258,7 @@ static int nfsaclsvc_encode_getaclres(struct svc_rqst *rqstp, __be32 *p,
+ 		return 0;
+ 	inode = dentry->d_inode;
+ 
+-	p = nfs2svc_encode_fattr(rqstp, p, &resp->fh);
++	p = nfs2svc_encode_fattr(rqstp, p, &resp->fh, &resp->stat);
+ 	*p++ = htonl(resp->mask);
+ 	if (!xdr_ressize_check(rqstp, p))
+ 		return 0;
+@@ -274,7 +289,7 @@ static int nfsaclsvc_encode_getaclres(struct svc_rqst *rqstp, __be32 *p,
+ static int nfsaclsvc_encode_attrstatres(struct svc_rqst *rqstp, __be32 *p,
+ 		struct nfsd_attrstat *resp)
  {
- 	struct svc_cacherep	*rp;
- 	struct hlist_node	*hn;
-@@ -295,7 +292,7 @@ nfsd_cache_search(struct svc_rqst *rqstp, u32 crc)
- 	hlist_for_each_entry(rp, hn, rh, c_hash) {
- 		if (xid == rp->c_xid && proc == rp->c_proc &&
- 		    proto == rp->c_prot && vers == rp->c_vers &&
--		    rqstp->rq_arg.len == rp->c_len && crc == rp->c_crc &&
-+		    rqstp->rq_arg.len == rp->c_len && csum == rp->c_csum &&
- 		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
- 		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr))
- 			return rp;
-@@ -315,8 +312,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- 	__be32			xid = rqstp->rq_xid;
- 	u32			proto =  rqstp->rq_prot,
- 				vers = rqstp->rq_vers,
--				proc = rqstp->rq_proc,
--				crc;
-+				proc = rqstp->rq_proc;
-+	__wsum			csum;
- 	unsigned long		age;
- 	int type = rqstp->rq_cachetype;
- 	int rtn;
-@@ -327,12 +324,12 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- 		return RC_DOIT;
- 	}
+-	p = nfs2svc_encode_fattr(rqstp, p, &resp->fh);
++	p = nfs2svc_encode_fattr(rqstp, p, &resp->fh, &resp->stat);
+ 	return xdr_ressize_check(rqstp, p);
+ }
  
--	crc = nfsd_cache_crc(rqstp);
-+	csum = nfsd_cache_csum(rqstp);
+@@ -282,7 +297,7 @@ static int nfsaclsvc_encode_attrstatres(struct svc_rqst *rqstp, __be32 *p,
+ static int nfsaclsvc_encode_accessres(struct svc_rqst *rqstp, __be32 *p,
+ 		struct nfsd3_accessres *resp)
+ {
+-	p = nfs2svc_encode_fattr(rqstp, p, &resp->fh);
++	p = nfs2svc_encode_fattr(rqstp, p, &resp->fh, &resp->stat);
+ 	*p++ = htonl(resp->access);
+ 	return xdr_ressize_check(rqstp, p);
+ }
+diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
+index bf6d3bc..96e5619 100644
+--- a/fs/nfsd/nfsxdr.c
++++ b/fs/nfsd/nfsxdr.c
+@@ -195,11 +195,9 @@ encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp,
+ }
  
- 	spin_lock(&cache_lock);
- 	rtn = RC_DOIT;
+ /* Helper function for NFSv2 ACL code */
+-__be32 *nfs2svc_encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp)
++__be32 *nfs2svc_encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp, struct kstat *stat)
+ {
+-	struct kstat stat;
+-	fh_getattr(fhp, &stat);	/* BUG */
+-	return encode_fattr(rqstp, p, fhp, &stat);
++	return encode_fattr(rqstp, p, fhp, stat);
+ }
  
--	rp = nfsd_cache_search(rqstp, crc);
-+	rp = nfsd_cache_search(rqstp, csum);
- 	if (rp)
- 		goto found_entry;
+ /*
+diff --git a/fs/nfsd/xdr.h b/fs/nfsd/xdr.h
+index 53b1863..4f0481d 100644
+--- a/fs/nfsd/xdr.h
++++ b/fs/nfsd/xdr.h
+@@ -167,7 +167,7 @@ int nfssvc_encode_entry(void *, const char *name,
+ int nfssvc_release_fhandle(struct svc_rqst *, __be32 *, struct nfsd_fhandle *);
  
-@@ -360,7 +357,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- 	 * Must search again just in case someone inserted one
- 	 * after we dropped the lock above.
- 	 */
--	found = nfsd_cache_search(rqstp, crc);
-+	found = nfsd_cache_search(rqstp, csum);
- 	if (found) {
- 		nfsd_reply_cache_free_locked(rp);
- 		rp = found;
-@@ -387,7 +384,7 @@ setup_entry:
- 	rp->c_prot = proto;
- 	rp->c_vers = vers;
- 	rp->c_len = rqstp->rq_arg.len;
--	rp->c_crc = crc;
-+	rp->c_csum = csum;
+ /* Helper functions for NFSv2 ACL code */
+-__be32 *nfs2svc_encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp);
++__be32 *nfs2svc_encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp, struct kstat *stat);
+ __be32 *nfs2svc_decode_fh(__be32 *p, struct svc_fh *fhp);
  
- 	hash_refile(rp);
- 	lru_put_end(rp);
--- 
-1.7.11.7
-
+ #endif /* LINUX_NFSD_H */
+diff --git a/fs/nfsd/xdr3.h b/fs/nfsd/xdr3.h
+index 7df980e..b6d5542 100644
+--- a/fs/nfsd/xdr3.h
++++ b/fs/nfsd/xdr3.h
+@@ -136,6 +136,7 @@ struct nfsd3_accessres {
+ 	__be32			status;
+ 	struct svc_fh		fh;
+ 	__u32			access;
++	struct kstat		stat;
+ };
+ 
+ struct nfsd3_readlinkres {
+@@ -225,6 +226,7 @@ struct nfsd3_getaclres {
+ 	int			mask;
+ 	struct posix_acl	*acl_access;
+ 	struct posix_acl	*acl_default;
++	struct kstat		stat;
+ };
+ 
+ /* dummy type for release */
