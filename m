@@ -1,109 +1,268 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:34335 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1946647Ab3BHP5H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Feb 2013 10:57:07 -0500
-Date: Fri, 8 Feb 2013 10:57:01 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, rees@umich.edu
-Subject: Re: [PATCH v3 2/2] nfsd: keep a checksum of the first 256 bytes of
- request
-Message-ID: <20130208105701.61ca0c34@tlielax.poochiereds.net>
-In-Reply-To: <F6C70BBF-1B66-4142-A2A3-BFBFAE452807@oracle.com>
-References: <1360248701-23963-1-git-send-email-jlayton@redhat.com>
-	<1360248701-23963-3-git-send-email-jlayton@redhat.com>
-	<DF2DA489-3D72-4DBF-8C65-1B7DA9866B63@oracle.com>
-	<20130207130316.0cf29993@corrin.poochiereds.net>
-	<20130208082706.614035e2@tlielax.poochiereds.net>
-	<F6C70BBF-1B66-4142-A2A3-BFBFAE452807@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-ia0-f174.google.com ([209.85.210.174]:51714 "EHLO
+	mail-ia0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757930Ab3BAWnr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Feb 2013 17:43:47 -0500
+Received: by mail-ia0-f174.google.com with SMTP id o25so6038819iad.33
+        for <linux-nfs@vger.kernel.org>; Fri, 01 Feb 2013 14:43:47 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] SUNRPC: Refactor nfsd4_do_encode_secinfo()
+To: bfields@fields.org
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 01 Feb 2013 17:43:44 -0500
+Message-ID: <20130201220308.13518.82164.stgit@seurat.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 8 Feb 2013 10:42:20 -0500
-Chuck Lever <chuck.lever@oracle.com> wrote:
+Clean up.  This matches a similar API for the client side, and
+keeps ULP fingers out the of the GSS mech switch.
 
-> 
-> On Feb 8, 2013, at 8:27 AM, Jeff Layton <jlayton@redhat.com> wrote:
-> 
-> > On Thu, 7 Feb 2013 13:03:16 -0500
-> > Jeff Layton <jlayton@redhat.com> wrote:
-> > 
-> >> On Thu, 7 Feb 2013 10:51:02 -0500
-> >> Chuck Lever <chuck.lever@oracle.com> wrote:
-> >> 
-> >>> 
-> >>> On Feb 7, 2013, at 9:51 AM, Jeff Layton <jlayton@redhat.com> wrote:
-> >>> 
-> >>>> Now that we're allowing more DRC entries, it becomes a lot easier to hit
-> >>>> problems with XID collisions. In order to mitigate those, calculate the
-> >>>> crc32 of up to the first 256 bytes of each request coming in and store
-> >>>> that in the cache entry, along with the total length of the request.
-> >>> 
-> >>> I'm happy to see a checksummed DRC finally become reality for the Linux NFS server.
-> >>> 
-> >>> Have you measured the CPU utilization impact and CPU cache footprint of performing a CRC computation for every incoming RPC?  I'm wondering if a simpler checksum might be just as useful but less costly to compute.
-> >>> 
-> >> 
-> >> No, I haven't, at least not in any sort of rigorous way. It's pretty
-> >> negligible on "normal" PC hardware, but I think most intel and amd cpus
-> >> have instructions for handling crc32. I'm ok with a different checksum,
-> >> we don't need anything cryptographically secure here. I simply chose
-> >> crc32 since it has an easily available API, and I figured it would be
-> >> fairly lightweight.
-> >> 
-> > 
-> > After an abortive attempt to measure this with ftrace, I ended up
-> > hacking together a patch to just measure the latency of the
-> > nfsd_cache_csum/_crc functions to get some rough numbers. On my x86_64
-> > KVM guest, the avg time to calculate the crc32 is ~1750ns. Using IP
-> > checksums cuts that roughly in half to ~800ns. I'm not sure how best to
-> > measure the cache footprint however.
-> 
-> Thanks for sorting that, I feel better having a real data point.
-> 
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Acked-by: J. Bruce Fields <bfields@redhat.com>
+---
 
-Me too -- thanks for raising the question.
+Bruce-
 
-> > Neither seems terribly significant, especially given the other
-> > inefficiencies in this code. OTOH, I guess those latencies can add up,
-> > and I don't see any need to use crc32 over the net/checksum.h routines.
-> > We probably ought to go with my RFC patch from yesterday.
-> > 
-> > This could look very different on other arches too of course, but I
-> > don't have a test rig for any other arches at the moment.
-> 
-> Going with the IP checksum seems perfectly adequate to me.
-> 
+This version of the patch follows the existing logic in
+nfsd4_do_encode_secinfo(): If the RPC layer can't find GSS info
+that matches an export security flavor, it assumes the flavor is
+not a GSS pseudoflavor, and simply puts it on the wire.
 
-Agreed.
+However, if the below XDR encoding logic is given a legitimate GSS
+pseudoflavor but the RPC layer says it does not support that
+pseudoflavor for some reason, then we leak GSS pseudoflavor numbers
+onto the wire.
 
-> Bruce made a good point that it is difficult to know how to test the efficacy of this change.  We don't really know of any especially bad cases that defeat the current DRC, though I know the Red Hat Q/A team likes to use NFS/UDP and they seem to run into problems with some frequency.  Having a chat with Rick Macklem and/or Tom Talpey on this topic might have some value, and likewise perhaps the bug's OP might have some ideas about what test cases they prefer.
-> 
+I confirmed this happens by blacklisting rpcsec_gss_krb5, then
+attempted a client transition from the pseudo-fs to a Kerberos-only
+share.  The client received a flavor list containing the Kerberos
+pseudoflavor numbers, rather than GSS tuples.
 
-It is difficult to know since XID collisions are so rare (or at least
-we think so). When they do happen they're often not noticeable, but we
-do have some documented cases of it happening in the field...
+The encoder logic can check that each pseudoflavor is less than
+MAXFLAVOR before writing it into the buffer, to prevent this.  But
+after "nflavs" is written into the XDR buffer, the encoder can't
+skip writing flavor information into the buffer when it discovers
+the RPC layer doesn't support that flavor.
 
-RH's QA team does test with NFS/UDP but I'm not aware of any problems
-with XID collisions, per-se. The problems they've had are that the DRC
-sometimes just plain doesn't work. Based on some testing we've done
-internally, I think the problem is likely due to the fact that it's
-trivial to blow out the current fixed-size DRC cache. Until I backport
-this and get them to deploy it onto our test NFS servers though, it's
-going to be hard to know for certain.
+Is there some way of writing "nflavs" into the XDR buffer after
+the loop that writes the flavor information is complete?
 
-I decided to add in the extra checksumming for 3 main reasons:
+What if "nflavs" turns out to be zero?  RFC 3530bis, 15.33.4 does
+not explicitly say what should be done if the array of security
+mechanisms for that client and file handle contains zero items.
 
-1) I was in here anyway, and it didn't seem too tough to do
+Or is there a better way to handle this situation?  Also, should we
+care about this scenario?
 
-2) the potential for xid collisions will be greater with a larger DRC
 
-3) we've had people request it in the past
+ fs/nfsd/nfs4xdr.c                     |   24 +++++++++++------------
+ include/linux/sunrpc/auth.h           |    2 ++
+ include/linux/sunrpc/gss_api.h        |    3 +++
+ net/sunrpc/auth.c                     |   34 +++++++++++++++++++++++++++++++++
+ net/sunrpc/auth_gss/auth_gss.c        |    1 +
+ net/sunrpc/auth_gss/gss_mech_switch.c |   34 +++++++++++++++++++++++++++++++--
+ 6 files changed, 83 insertions(+), 15 deletions(-)
 
-Given that it seems fairly cheap to add this, we might as well do it.
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 0dc1158..424f5a2 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3127,10 +3127,9 @@ nfsd4_encode_rename(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
+ 
+ static __be32
+ nfsd4_do_encode_secinfo(struct nfsd4_compoundres *resp,
+-			 __be32 nfserr,struct svc_export *exp)
++			 __be32 nfserr, struct svc_export *exp)
+ {
+-	int i = 0;
+-	u32 nflavs;
++	u32 i, nflavs;
+ 	struct exp_flavor_info *flavs;
+ 	struct exp_flavor_info def_flavs[2];
+ 	__be32 *p;
+@@ -3161,30 +3160,29 @@ nfsd4_do_encode_secinfo(struct nfsd4_compoundres *resp,
+ 	WRITE32(nflavs);
+ 	ADJUST_ARGS();
+ 	for (i = 0; i < nflavs; i++) {
+-		u32 flav = flavs[i].pseudoflavor;
+-		struct gss_api_mech *gm = gss_mech_get_by_pseudoflavor(flav);
++		struct rpcsec_gss_info info;
+ 
+-		if (gm) {
++		if (rpcauth_get_gssinfo(flavs[i].pseudoflavor, &info) == 0) {
+ 			RESERVE_SPACE(4);
+ 			WRITE32(RPC_AUTH_GSS);
+ 			ADJUST_ARGS();
+-			RESERVE_SPACE(4 + gm->gm_oid.len);
+-			WRITE32(gm->gm_oid.len);
+-			WRITEMEM(gm->gm_oid.data, gm->gm_oid.len);
++			RESERVE_SPACE(4 + info.oid.len);
++			WRITE32(info.oid.len);
++			WRITEMEM(info.oid.data, info.oid.len);
+ 			ADJUST_ARGS();
+ 			RESERVE_SPACE(4);
+-			WRITE32(0); /* qop */
++			WRITE32(info.qop);
+ 			ADJUST_ARGS();
+ 			RESERVE_SPACE(4);
+-			WRITE32(gss_pseudoflavor_to_service(gm, flav));
++			WRITE32(info.service);
+ 			ADJUST_ARGS();
+-			gss_mech_put(gm);
+ 		} else {
+ 			RESERVE_SPACE(4);
+-			WRITE32(flav);
++			WRITE32(flavs[i].pseudoflavor);
+ 			ADJUST_ARGS();
+ 		}
+ 	}
++
+ out:
+ 	if (exp)
+ 		exp_put(exp);
+diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
+index 476e97c..c34ac17 100644
+--- a/include/linux/sunrpc/auth.h
++++ b/include/linux/sunrpc/auth.h
+@@ -105,6 +105,7 @@ struct rpc_authops {
+ 	void			(*pipes_destroy)(struct rpc_auth *);
+ 	int			(*list_pseudoflavors)(rpc_authflavor_t *, int);
+ 	rpc_authflavor_t	(*info2flavor)(struct rpcsec_gss_info *);
++	int			(*flavor2info)(rpc_authflavor_t, struct rpcsec_gss_info *);
+ };
+ 
+ struct rpc_credops {
+@@ -140,6 +141,7 @@ int			rpcauth_unregister(const struct rpc_authops *);
+ struct rpc_auth *	rpcauth_create(rpc_authflavor_t, struct rpc_clnt *);
+ void			rpcauth_release(struct rpc_auth *);
+ rpc_authflavor_t	rpcauth_get_pseudoflavor(rpc_authflavor_t, struct rpcsec_gss_info *);
++int			rpcauth_get_gssinfo(rpc_authflavor_t, struct rpcsec_gss_info *);
+ int			rpcauth_list_flavors(rpc_authflavor_t *, int);
+ struct rpc_cred *	rpcauth_lookup_credcache(struct rpc_auth *, struct auth_cred *, int);
+ void			rpcauth_init_cred(struct rpc_cred *, const struct auth_cred *, struct rpc_auth *, const struct rpc_credops *);
+diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
+index e8299b2..dc1e51b 100644
+--- a/include/linux/sunrpc/gss_api.h
++++ b/include/linux/sunrpc/gss_api.h
+@@ -132,6 +132,9 @@ void gss_mech_unregister(struct gss_api_mech *);
+ /* Given a GSS security tuple, look up a pseudoflavor */
+ rpc_authflavor_t gss_mech_info2flavor(struct rpcsec_gss_info *);
+ 
++/* Given a pseudoflavor, look up a GSS security tuple */
++int gss_mech_flavor2info(rpc_authflavor_t, struct rpcsec_gss_info *);
++
+ /* Returns a reference to a mechanism, given a name like "krb5" etc. */
+ struct gss_api_mech *gss_mech_get_by_name(const char *);
+ 
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index ec18827..4c551f9 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -158,6 +158,40 @@ rpcauth_get_pseudoflavor(rpc_authflavor_t flavor, struct rpcsec_gss_info *info)
+ EXPORT_SYMBOL_GPL(rpcauth_get_pseudoflavor);
+ 
+ /**
++ * rpcauth_get_gssinfo - find GSS tuple matching a GSS pseudoflavor
++ * @pseudoflavor: GSS pseudoflavor to match
++ * @info: rpcsec_gss_info structure to fill in
++ *
++ * Returns zero and fills in "info" if pseudoflavor matches a
++ * supported mechanism.
++ */
++int
++rpcauth_get_gssinfo(rpc_authflavor_t pseudoflavor, struct rpcsec_gss_info *info)
++{
++	rpc_authflavor_t flavor = pseudoflavor_to_flavor(pseudoflavor);
++	const struct rpc_authops *ops;
++	int result;
++
++	if ((ops = auth_flavors[flavor]) == NULL)
++		request_module("rpc-auth-%u", flavor);
++	spin_lock(&rpc_authflavor_lock);
++	ops = auth_flavors[flavor];
++	if (ops == NULL || !try_module_get(ops->owner)) {
++		spin_unlock(&rpc_authflavor_lock);
++		return -ENOENT;
++	}
++	spin_unlock(&rpc_authflavor_lock);
++
++	result = -ENOENT;
++	if (ops->flavor2info != NULL)
++		result = ops->flavor2info(pseudoflavor, info);
++
++	module_put(ops->owner);
++	return result;
++}
++EXPORT_SYMBOL_GPL(rpcauth_get_gssinfo);
++
++/**
+  * rpcauth_list_flavors - discover registered flavors and pseudoflavors
+  * @array: array to fill in
+  * @size: size of "array"
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 4522297..ade24b2 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -1630,6 +1630,7 @@ static const struct rpc_authops authgss_ops = {
+ 	.pipes_destroy	= gss_pipes_dentries_destroy,
+ 	.list_pseudoflavors = gss_mech_list_pseudoflavors,
+ 	.info2flavor	= gss_mech_info2flavor,
++	.flavor2info	= gss_mech_flavor2info,
+ };
+ 
+ static const struct rpc_credops gss_credops = {
+diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
+index c8da89e..a8d6ee5 100644
+--- a/net/sunrpc/auth_gss/gss_mech_switch.c
++++ b/net/sunrpc/auth_gss/gss_mech_switch.c
+@@ -240,8 +240,6 @@ gss_mech_get_by_pseudoflavor(u32 pseudoflavor)
+ 	return gm;
+ }
+ 
+-EXPORT_SYMBOL_GPL(gss_mech_get_by_pseudoflavor);
+-
+ /**
+  * gss_mech_list_pseudoflavors - Discover registered GSS pseudoflavors
+  * @array: array to fill in
+@@ -314,6 +312,38 @@ rpc_authflavor_t gss_mech_info2flavor(struct rpcsec_gss_info *info)
+ 	return pseudoflavor;
+ }
+ 
++/**
++ * gss_mech_flavor2info - look up a GSS tuple for a given pseudoflavor
++ * @pseudoflavor: GSS pseudoflavor to match
++ * @info: rpcsec_gss_info structure to fill in
++ *
++ * Returns zero and fills in "info" if pseudoflavor matches a
++ * supported mechanism.  Otherwise a negative errno is returned.
++ */
++int gss_mech_flavor2info(rpc_authflavor_t pseudoflavor, struct rpcsec_gss_info *info)
++{
++	struct gss_api_mech *gm;
++	int i;
++
++	gm = gss_mech_get_by_pseudoflavor(pseudoflavor);
++	if (gm == NULL)
++		return -ENOENT;
++
++	for (i = 0; i < gm->gm_pf_num; i++) {
++		if (gm->gm_pfs[i].pseudoflavor == pseudoflavor) {
++			memcpy(info->oid.data, gm->gm_oid.data, gm->gm_oid.len);
++			info->oid.len = gm->gm_oid.len;
++			info->qop = gm->gm_pfs[i].qop;
++			info->service = gm->gm_pfs[i].service;
++			gss_mech_put(gm);
++			return 0;
++		}
++	}
++
++	gss_mech_put(gm);
++	return -ENOENT;
++}
++
+ u32
+ gss_pseudoflavor_to_service(struct gss_api_mech *gm, u32 pseudoflavor)
+ {
 
--- 
-Jeff Layton <jlayton@redhat.com>
