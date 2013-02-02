@@ -1,183 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ye0-f179.google.com ([209.85.213.179]:49139 "EHLO
-	mail-ye0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757903Ab3BGOvt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Feb 2013 09:51:49 -0500
-Received: by mail-ye0-f179.google.com with SMTP id m4so632336yen.38
-        for <linux-nfs@vger.kernel.org>; Thu, 07 Feb 2013 06:51:48 -0800 (PST)
+Received: from mail-gh0-f170.google.com ([209.85.160.170]:62848 "EHLO
+	mail-gh0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756008Ab3BBKzV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Feb 2013 05:55:21 -0500
+Received: by mail-gh0-f170.google.com with SMTP id g14so1201658ghb.15
+        for <linux-nfs@vger.kernel.org>; Sat, 02 Feb 2013 02:55:20 -0800 (PST)
 From: Jeff Layton <jlayton@redhat.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 2/2] nfsd: keep a checksum of the first 256 bytes of request
-Date: Thu,  7 Feb 2013 09:51:41 -0500
-Message-Id: <1360248701-23963-3-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1360248701-23963-1-git-send-email-jlayton@redhat.com>
-References: <1360248701-23963-1-git-send-email-jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, majianpeng@gmail.com
+Subject: [PATCH] nfsd: initialize the exp->ex_uuid field in svc_export_init
+Date: Sat,  2 Feb 2013 05:55:08 -0500
+Message-Id: <1359802508-28622-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that we're allowing more DRC entries, it becomes a lot easier to hit
-problems with XID collisions. In order to mitigate those, calculate the
-crc32 of up to the first 256 bytes of each request coming in and store
-that in the cache entry, along with the total length of the request.
+commit 885c91f7466 in Bruce's tree was causing oopses for me:
 
+general protection fault: 0000 [#1] SMP
+Modules linked in: nfsd(OF) nfs_acl(OF) auth_rpcgss(OF) lockd(OF) sunrpc(OF) kvm_amd kvm microcode i2c_piix4 virtio_net virtio_balloon cirrus drm_kms_helper ttm drm virtio_blk i2c_core
+CPU 0
+Pid: 564, comm: exportfs Tainted: GF          O 3.8.0-0.rc5.git2.1.fc19.x86_64 #1 Bochs Bochs
+RIP: 0010:[<ffffffff811b1509>]  [<ffffffff811b1509>] kfree+0x49/0x280
+RSP: 0018:ffff88007a3d7c50  EFLAGS: 00010203
+RAX: 01adaf8dadadad80 RBX: 6b6b6b6b6b6b6b6b RCX: 0000000000000001
+RDX: ffffffff7fffffff RSI: 0000000000000000 RDI: 6b6b6b6b6b6b6b6b
+RBP: ffff88007a3d7c80 R08: 6b6b6b6b6b6b6b6b R09: 0000000000000000
+R10: 0000000000000018 R11: 0000000000000000 R12: ffff88006a117b50
+R13: ffffffffa01a589c R14: ffff8800631b0f50 R15: 01ad998dadadad80
+FS:  00007fcaa3616740(0000) GS:ffff88007fc00000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+CR2: 00007f5d84b6fdd8 CR3: 0000000064db4000 CR4: 00000000000006f0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+Process exportfs (pid: 564, threadinfo ffff88007a3d6000, task ffff88006af28000)
+Stack:
+ ffff88007a3d7c80 ffff88006a117b68 ffff88006a117b50 0000000000000000
+ ffff8800631b0f50 ffff88006a117b50 ffff88007a3d7ca0 ffffffffa01a589c
+ ffff880036be1148 ffff88007a3d7cf8 ffff88007a3d7e28 ffffffffa01a6a98
+Call Trace:
+ [<ffffffffa01a589c>] svc_export_put+0x5c/0x70 [nfsd]
+ [<ffffffffa01a6a98>] svc_export_parse+0x328/0x7e0 [nfsd]
+ [<ffffffffa016f1c7>] cache_do_downcall+0x57/0x70 [sunrpc]
+ [<ffffffffa016f25e>] cache_downcall+0x7e/0x100 [sunrpc]
+ [<ffffffffa016f338>] cache_write_procfs+0x58/0x90 [sunrpc]
+ [<ffffffffa016f2e0>] ? cache_downcall+0x100/0x100 [sunrpc]
+ [<ffffffff8123b0e5>] proc_reg_write+0x75/0xb0
+ [<ffffffff811ccecf>] vfs_write+0x9f/0x170
+ [<ffffffff811cd089>] sys_write+0x49/0xa0
+ [<ffffffff816e0919>] system_call_fastpath+0x16/0x1b
+Code: 66 66 66 90 48 83 fb 10 0f 86 c3 00 00 00 48 89 df 49 bf 00 00 00 00 00 ea ff ff e8 f2 12 ea ff 48 c1 e8 0c 48 c1 e0 06 49 01 c7 <49> 8b 07 f6 c4 80 0f 85 1d 02 00 00 49 8b 07 a8 80 0f 84 ee 01
+RIP  [<ffffffff811b1509>] kfree+0x49/0x280
+ RSP <ffff88007a3d7c50>
+
+I think Majianpeng's patch is correct, but incomplete. In order for it
+to be safe to free the ex_uuid unconditionally in svc_export_put, we
+need to make sure it's initialized to NULL in the init routine.
+
+Cc: majianpeng <majianpeng@gmail.com>
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/cache.h    |  5 +++++
- fs/nfsd/nfscache.c | 53 +++++++++++++++++++++++++++++++++++++++++++++++++----
- 2 files changed, 54 insertions(+), 4 deletions(-)
+ fs/nfsd/export.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
-index 9c7232b..4822db3 100644
---- a/fs/nfsd/cache.h
-+++ b/fs/nfsd/cache.h
-@@ -29,6 +29,8 @@ struct svc_cacherep {
- 	u32			c_prot;
- 	u32			c_proc;
- 	u32			c_vers;
-+	unsigned int		c_len;
-+	u32			c_crc;
- 	unsigned long		c_timestamp;
- 	union {
- 		struct kvec	u_vec;
-@@ -73,6 +75,9 @@ enum {
- /* Cache entries expire after this time period */
- #define RC_EXPIRE		(120 * HZ)
- 
-+/* Checksum this amount of the request */
-+#define RC_CSUMLEN		(256U)
-+
- int	nfsd_reply_cache_init(void);
- void	nfsd_reply_cache_shutdown(void);
- int	nfsd_cache_lookup(struct svc_rqst *);
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index f754469..a8c3f1e 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -11,6 +11,8 @@
- #include <linux/slab.h>
- #include <linux/sunrpc/addr.h>
- #include <linux/highmem.h>
-+#include <linux/crc32.h>
-+#include <linux/sunrpc/svcauth_gss.h>
- 
- #include "nfsd.h"
- #include "cache.h"
-@@ -24,6 +26,7 @@ static struct list_head 	lru_head;
- static struct kmem_cache	*drc_slab;
- static unsigned int		num_drc_entries;
- static unsigned int		max_drc_entries;
-+static u32			crc_seed;
- 
- /*
-  * Calculate the hash index from an XID.
-@@ -130,6 +133,9 @@ int nfsd_reply_cache_init(void)
- 	INIT_LIST_HEAD(&lru_head);
- 	max_drc_entries = nfsd_cache_size_limit();
- 	num_drc_entries = 0;
-+
-+	/* Is a random seed any better than some well-defined constant? */
-+	get_random_bytes(&crc_seed, sizeof(crc_seed));
- 	return 0;
- out_nomem:
- 	printk(KERN_ERR "nfsd: failed to allocate reply cache\n");
-@@ -238,12 +244,45 @@ nfsd_reply_cache_shrink(struct shrinker *shrink, struct shrink_control *sc)
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index 30a572d..15ebf91 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -661,6 +661,7 @@ static void svc_export_init(struct cache_head *cnew, struct cache_head *citem)
+ 	new->ex_fslocs.locations = NULL;
+ 	new->ex_fslocs.locations_count = 0;
+ 	new->ex_fslocs.migrated = 0;
++	new->ex_uuid = NULL;
+ 	new->cd = item->cd;
  }
  
- /*
-+ * Walk an xdr_buf and get a CRC for at most the first RC_CSUMLEN bytes
-+ */
-+static u32
-+nfsd_cache_crc(struct svc_rqst *rqstp)
-+{
-+	int idx;
-+	unsigned int base;
-+	u32 crc;
-+	struct xdr_buf *buf = &rqstp->rq_arg;
-+	const unsigned char *p = buf->head[0].iov_base;
-+	size_t csum_len = min_t(size_t, buf->head[0].iov_len + buf->page_len,
-+				RC_CSUMLEN);
-+	size_t len = min(buf->head[0].iov_len, csum_len);
-+
-+	/* rq_arg.head first */
-+	crc = crc32(crc_seed, p, len);
-+	csum_len -= len;
-+
-+	/* Continue into page array */
-+	idx = buf->page_base / PAGE_SIZE;
-+	base = buf->page_base & ~PAGE_MASK;
-+	while (csum_len) {
-+		p = page_address(buf->pages[idx]) + base;
-+		len = min(PAGE_SIZE - base, csum_len);
-+		crc = crc32(crc, p, len);
-+		csum_len -= len;
-+		base = 0;
-+		++idx;
-+	}
-+	return crc;
-+}
-+
-+/*
-  * Search the request hash for an entry that matches the given rqstp.
-  * Must be called with cache_lock held. Returns the found entry or
-  * NULL on failure.
-  */
- static struct svc_cacherep *
--nfsd_cache_search(struct svc_rqst *rqstp)
-+nfsd_cache_search(struct svc_rqst *rqstp, u32 crc)
- {
- 	struct svc_cacherep	*rp;
- 	struct hlist_node	*hn;
-@@ -257,6 +296,7 @@ nfsd_cache_search(struct svc_rqst *rqstp)
- 	hlist_for_each_entry(rp, hn, rh, c_hash) {
- 		if (xid == rp->c_xid && proc == rp->c_proc &&
- 		    proto == rp->c_prot && vers == rp->c_vers &&
-+		    rqstp->rq_arg.len == rp->c_len && crc == rp->c_crc &&
- 		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
- 		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr))
- 			return rp;
-@@ -276,7 +316,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- 	__be32			xid = rqstp->rq_xid;
- 	u32			proto =  rqstp->rq_prot,
- 				vers = rqstp->rq_vers,
--				proc = rqstp->rq_proc;
-+				proc = rqstp->rq_proc,
-+				crc;
- 	unsigned long		age;
- 	int type = rqstp->rq_cachetype;
- 	int rtn;
-@@ -287,10 +328,12 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- 		return RC_DOIT;
- 	}
- 
-+	crc = nfsd_cache_crc(rqstp);
-+
- 	spin_lock(&cache_lock);
- 	rtn = RC_DOIT;
- 
--	rp = nfsd_cache_search(rqstp);
-+	rp = nfsd_cache_search(rqstp, crc);
- 	if (rp)
- 		goto found_entry;
- 
-@@ -318,7 +361,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- 	 * Must search again just in case someone inserted one
- 	 * after we dropped the lock above.
- 	 */
--	found = nfsd_cache_search(rqstp);
-+	found = nfsd_cache_search(rqstp, crc);
- 	if (found) {
- 		nfsd_reply_cache_free_locked(rp);
- 		rp = found;
-@@ -344,6 +387,8 @@ setup_entry:
- 	rpc_set_port((struct sockaddr *)&rp->c_addr, rpc_get_port(svc_addr(rqstp)));
- 	rp->c_prot = proto;
- 	rp->c_vers = vers;
-+	rp->c_len = rqstp->rq_arg.len;
-+	rp->c_crc = crc;
- 
- 	hash_refile(rp);
- 	lru_put_end(rp);
 -- 
 1.7.11.7
 
