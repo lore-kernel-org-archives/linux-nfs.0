@@ -1,214 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ia0-f182.google.com ([209.85.210.182]:33565 "EHLO
-	mail-ia0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754500Ab3BDUTX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2013 15:19:23 -0500
-Received: by mail-ia0-f182.google.com with SMTP id w33so8494899iag.41
-        for <linux-nfs@vger.kernel.org>; Mon, 04 Feb 2013 12:19:23 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v3 3/9] SUNRPC: Define rpcsec_gss_info structure
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 04 Feb 2013 15:19:21 -0500
-Message-ID: <20130204201921.1518.25651.stgit@seurat.1015granger.net>
-In-Reply-To: <20130204201458.1518.12931.stgit@seurat.1015granger.net>
-References: <20130204201458.1518.12931.stgit@seurat.1015granger.net>
+Received: from mail-pb0-f45.google.com ([209.85.160.45]:51808 "EHLO
+	mail-pb0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750799Ab3BBG3h (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Feb 2013 01:29:37 -0500
+Received: by mail-pb0-f45.google.com with SMTP id rq13so2457799pbb.32
+        for <linux-nfs@vger.kernel.org>; Fri, 01 Feb 2013 22:29:36 -0800 (PST)
+Message-ID: <510CB210.6010804@gmail.com>
+Date: Sat, 02 Feb 2013 11:58:32 +0530
+From: "dE ." <de.techno@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: linux-nfs@vger.kernel.org
+Subject: Re: NFSv4 cannot unmount ESTALE directories (in some cases).
+References: <20130121134859.24fbd103@notabene.brown> <20130121030940.GS4939@ZenIV.linux.org.uk>
+In-Reply-To: <20130121030940.GS4939@ZenIV.linux.org.uk>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The NFSv4 SECINFO procedure returns a list of security flavors.  Any
-GSS flavor also has a GSS tuple containing an OID, a quality-of-
-protection value, and a service value, which specifies a particular
-GSS pseudoflavor.
+On 01/21/13 08:39, Al Viro wrote:
+> On Mon, Jan 21, 2013 at 01:48:59PM +1100, NeilBrown wrote:
+>> If you use NFSv4 to "mount server:/foo/bar /mnt", then "rm -r" /foo/bar on the
+>> server, then accesses to /mnt will naturally return ESTALE.
+>>
+>> Unfortunately "umount /mnt" will also return ESTALE and leave the stale
+>> directory mounted.  Adding "-l" or "-f" to "umount" doesn't help.
+>>
+>> The problem is that nfs_lookup_revalidate fails.  As the mountpoint is never
+>> not accessed by a lookup (after the initial mount) it seems a bit pointless
+>> calling d_revalidate in this case ... by maybe not.
+>>
+>> I can make the problem go away by testing for LOOKUP_JUMP and having
+>> nfs_lookup_revalidate never fail if that flag it set (for a directory).
+>> However I cannot easily tell if this is an elegant solution of an ugly hack,
+> The latter.  Definitely.
+>
+>> and am hoping that someone who understands revalidation and LOOKUP_JUMPED
+>> better than I (who only discovered the latter today) could provide advice.
+>>
+>> Al?  Trond?  Should  I make this into a formal patch submission, or is there
+>> a better way?
+> I really suspect that mountpoint crossing on umount ought to be done
+> differently.  I'll need to play with possible variants a bit before I can
+> offer any replacement though...
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-For simplicity and efficiency, I'd like to return each GSS tuple
-from the NFSv4 SECINFO XDR decoder and pass it straight into the RPC
-client.
-
-Define a data structure that is visible to both the NFS client and
-the RPC client.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- fs/nfs/nfs4namespace.c              |   12 ++++++------
- fs/nfs/nfs4xdr.c                    |   20 +++++++++++---------
- include/linux/nfs_xdr.h             |   21 +++++----------------
- include/linux/sunrpc/gss_api.h      |   14 ++++++++++++--
- net/sunrpc/auth_gss/gss_krb5_mech.c |    2 +-
- 5 files changed, 35 insertions(+), 34 deletions(-)
-
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index 1e09eb7..f97b0a8 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -137,23 +137,23 @@ rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors)
- {
- 	struct gss_api_mech *mech;
- 	struct xdr_netobj oid;
--	int i;
-+	unsigned int i;
- 	rpc_authflavor_t pseudoflavor = RPC_AUTH_UNIX;
- 
- 	for (i = 0; i < flavors->num_flavors; i++) {
--		struct nfs4_secinfo_flavor *flavor;
--		flavor = &flavors->flavors[i];
-+		struct nfs4_secinfo4 *flavor = &flavors->flavors[i];
- 
- 		if (flavor->flavor == RPC_AUTH_NULL || flavor->flavor == RPC_AUTH_UNIX) {
- 			pseudoflavor = flavor->flavor;
- 			break;
- 		} else if (flavor->flavor == RPC_AUTH_GSS) {
--			oid.len  = flavor->gss.sec_oid4.len;
--			oid.data = flavor->gss.sec_oid4.data;
-+			oid.len  = flavor->flavor_info.oid.len;
-+			oid.data = flavor->flavor_info.oid.data;
- 			mech = gss_mech_get_by_OID(&oid);
- 			if (!mech)
- 				continue;
--			pseudoflavor = gss_svc_to_pseudoflavor(mech, flavor->gss.service);
-+			pseudoflavor = gss_svc_to_pseudoflavor(mech,
-+						flavor->flavor_info.service);
- 			gss_mech_put(mech);
- 			break;
- 		}
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 26b1439..c445b8c 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -5209,27 +5209,29 @@ static int decode_delegreturn(struct xdr_stream *xdr)
- 	return decode_op_hdr(xdr, OP_DELEGRETURN);
- }
- 
--static int decode_secinfo_gss(struct xdr_stream *xdr, struct nfs4_secinfo_flavor *flavor)
-+static int decode_secinfo_gss(struct xdr_stream *xdr, struct nfs4_secinfo4 *flavor)
- {
-+	u32 oid_len;
- 	__be32 *p;
- 
- 	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
- 		goto out_overflow;
--	flavor->gss.sec_oid4.len = be32_to_cpup(p);
--	if (flavor->gss.sec_oid4.len > GSS_OID_MAX_LEN)
-+	oid_len = be32_to_cpup(p);
-+	if (oid_len > GSS_OID_MAX_LEN)
- 		goto out_err;
- 
--	p = xdr_inline_decode(xdr, flavor->gss.sec_oid4.len);
-+	p = xdr_inline_decode(xdr, oid_len);
- 	if (unlikely(!p))
- 		goto out_overflow;
--	memcpy(flavor->gss.sec_oid4.data, p, flavor->gss.sec_oid4.len);
-+	memcpy(flavor->flavor_info.oid.data, p, oid_len);
-+	flavor->flavor_info.oid.len = oid_len;
- 
- 	p = xdr_inline_decode(xdr, 8);
- 	if (unlikely(!p))
- 		goto out_overflow;
--	flavor->gss.qop4 = be32_to_cpup(p++);
--	flavor->gss.service = be32_to_cpup(p);
-+	flavor->flavor_info.qop = be32_to_cpup(p++);
-+	flavor->flavor_info.service = be32_to_cpup(p);
- 
- 	return 0;
- 
-@@ -5242,10 +5244,10 @@ out_err:
- 
- static int decode_secinfo_common(struct xdr_stream *xdr, struct nfs4_secinfo_res *res)
- {
--	struct nfs4_secinfo_flavor *sec_flavor;
-+	struct nfs4_secinfo4 *sec_flavor;
-+	unsigned int i, num_flavors;
- 	int status;
- 	__be32 *p;
--	int i, num_flavors;
- 
- 	p = xdr_inline_decode(xdr, 4);
- 	if (unlikely(!p))
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 467167402..92a6e7c 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1046,25 +1046,14 @@ struct nfs4_fs_locations_res {
- 	struct nfs4_fs_locations       *fs_locations;
- };
- 
--struct nfs4_secinfo_oid {
--	unsigned int len;
--	char data[GSS_OID_MAX_LEN];
--};
--
--struct nfs4_secinfo_gss {
--	struct nfs4_secinfo_oid sec_oid4;
--	unsigned int qop4;
--	unsigned int service;
--};
--
--struct nfs4_secinfo_flavor {
--	unsigned int 		flavor;
--	struct nfs4_secinfo_gss	gss;
-+struct nfs4_secinfo4 {
-+	u32			flavor;
-+	struct rpcsec_gss_info	flavor_info;
- };
- 
- struct nfs4_secinfo_flavors {
--	unsigned int num_flavors;
--	struct nfs4_secinfo_flavor flavors[0];
-+	unsigned int		num_flavors;
-+	struct nfs4_secinfo4	flavors[0];
- };
- 
- struct nfs4_secinfo_arg {
-diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
-index a19e254..98950e5 100644
---- a/include/linux/sunrpc/gss_api.h
-+++ b/include/linux/sunrpc/gss_api.h
-@@ -25,10 +25,20 @@ struct gss_ctx {
- 
- #define GSS_C_NO_BUFFER		((struct xdr_netobj) 0)
- #define GSS_C_NO_CONTEXT	((struct gss_ctx *) 0)
--#define GSS_C_NULL_OID		((struct xdr_netobj) 0)
- 
- /*XXX  arbitrary length - is this set somewhere? */
- #define GSS_OID_MAX_LEN 32
-+struct rpcsec_gss_oid {
-+	unsigned int	len;
-+	u8		data[GSS_OID_MAX_LEN];
-+};
-+
-+/* From RFC 3530 */
-+struct rpcsec_gss_info {
-+	struct rpcsec_gss_oid	oid;
-+	u32			qop;
-+	u32			service;
-+};
- 
- /* gss-api prototypes; note that these are somewhat simplified versions of
-  * the prototypes specified in RFC 2744. */
-@@ -76,7 +86,7 @@ struct pf_desc {
- struct gss_api_mech {
- 	struct list_head	gm_list;
- 	struct module		*gm_owner;
--	struct xdr_netobj	gm_oid;
-+	struct rpcsec_gss_oid	gm_oid;
- 	char			*gm_name;
- 	const struct gss_api_ops *gm_ops;
- 	/* pseudoflavors supported by this mechanism: */
-diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
-index d3611f1..61d36ce 100644
---- a/net/sunrpc/auth_gss/gss_krb5_mech.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-@@ -754,7 +754,7 @@ MODULE_ALIAS("rpc-auth-gss-390005");
- static struct gss_api_mech gss_kerberos_mech = {
- 	.gm_name	= "krb5",
- 	.gm_owner	= THIS_MODULE,
--	.gm_oid		= {9, (void *)"\x2a\x86\x48\x86\xf7\x12\x01\x02\x02"},
-+	.gm_oid		= { 9, "\x2a\x86\x48\x86\xf7\x12\x01\x02\x02" },
- 	.gm_ops		= &gss_kerberos_ops,
- 	.gm_pf_num	= ARRAY_SIZE(gss_kerberos_pfs),
- 	.gm_pfs		= gss_kerberos_pfs,
-
+I'm affected. I've to do exportfs -f to fix the issue. This problem only 
+persists with loop mounts.
