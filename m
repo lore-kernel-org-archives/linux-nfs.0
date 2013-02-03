@@ -1,102 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:61191 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:46493 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754271Ab3BRSsK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Feb 2013 13:48:10 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 00/14] lnfs: 3.8-rc7 release
-Date: Mon, 18 Feb 2013 13:47:42 -0500
-Message-Id: <1361213276-17962-1-git-send-email-SteveD@redhat.com>
+	id S1753072Ab3BCQbf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 3 Feb 2013 11:31:35 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 03/12] vfs: rename I_MUTEX_QUOTA now that it's not used for quotas
+Date: Sun,  3 Feb 2013 11:31:23 -0500
+Message-Id: <1359909092-24857-4-git-send-email-bfields@redhat.com>
+In-Reply-To: <1359909092-24857-1-git-send-email-bfields@redhat.com>
+References: <1359909092-24857-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Steve Dickson <steved@redhat.com>
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Here is the next release of the Label NFS patches, forward 
-ported to linux-3.8-rc7
+I_MUTEX_QUOTA is now just being used whenever we want to lock two
+non-directories.  So the name isn't right.  I_MUTEX_NONDIR2 isn't
+especially elegant but it's the best I could think of.
 
-I believe I've  incorporated all code review that were made
-from the last release, including reworking how the labels are 
-allocated and freed on both client and server. Thank you 
-for those cycles!
+Also fix some outdated documentation.
 
-I have every intention on bring these bits to next week's Connectathon
-so hopefully we can resolve any outstanding issues before then,
-if there are any... ;-) 
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/inode.c         |    4 ++--
+ include/linux/fs.h |    9 ++++++---
+ 2 files changed, 8 insertions(+), 5 deletions(-)
 
-The Fedora kernel rpms that have the patches are under
-    http://steved.fedorapeople.org/lnfs/kernels/
-
-A wireshark rpm that can dissect the labels is under
-   http://steved.fedorapeople.org/lnfs/wireshark/
-
-The actual patches from this release are under
-   http://steved.fedorapeople.org/lnfs/patches/lnfs-v3.8-rc7
-
-Dave Quigley (2):
-  NFS:Add labels to client function prototypes
-  NFS: Add label lifecycle management
-
-David Quigley (10):
-  Security: Add hook to calculate context based on a negative dentry.
-  Security: Add Hook to test if the particular xattr is part of a MAC
-    model.
-  LSM: Add flags field to security_sb_set_mnt_opts for in kernel mount
-    data.
-  SELinux: Add new labeling type native labels
-  NFSv4: Add label recommended attribute and NFSv4 flags
-  NFSv4: Introduce new label structure
-  NFSv4: Extend fattr bitmaps to support all 3 words
-  NFS: Client implementation of Labeled-NFS
-  NFS: Extend NFS xattr handlers to accept the security namespace
-  NFSD: Server implementation of MAC Labeling
-
-Steve Dickson (2):
-  Kconfig: Add Kconfig entry for Labeled NFS V4 client
-  Kconfig: Add Kconfig entry for Labeled NFS V4 server
-
- fs/nfs/Kconfig                      |  18 ++
- fs/nfs/client.c                     |   2 +-
- fs/nfs/dir.c                        |  46 ++-
- fs/nfs/getroot.c                    |   2 +-
- fs/nfs/inode.c                      | 129 +++++++--
- fs/nfs/namespace.c                  |   2 +-
- fs/nfs/nfs3acl.c                    |   4 +-
- fs/nfs/nfs3proc.c                   |  41 +--
- fs/nfs/nfs4_fs.h                    |   8 +-
- fs/nfs/nfs4namespace.c              |   2 +-
- fs/nfs/nfs4proc.c                   | 563 ++++++++++++++++++++++++++++++++----
- fs/nfs/nfs4xdr.c                    | 192 +++++++++---
- fs/nfs/proc.c                       |  15 +-
- fs/nfs/super.c                      |  17 +-
- fs/nfsd/Kconfig                     |  16 +
- fs/nfsd/nfs4proc.c                  |  41 +++
- fs/nfsd/nfs4xdr.c                   | 116 +++++++-
- fs/nfsd/nfsd.h                      |   6 +-
- fs/nfsd/vfs.c                       |  29 ++
- fs/nfsd/vfs.h                       |   2 +
- fs/nfsd/xdr4.h                      |   3 +
- include/linux/nfs4.h                |   8 +
- include/linux/nfs_fs.h              |  30 +-
- include/linux/nfs_fs_sb.h           |  10 +-
- include/linux/nfs_xdr.h             |  30 +-
- include/linux/security.h            |  57 +++-
- include/uapi/linux/nfs4.h           |   2 +-
- security/capability.c               |  19 +-
- security/security.c                 |  24 +-
- security/selinux/hooks.c            |  92 +++++-
- security/selinux/include/security.h |   2 +
- security/selinux/ss/policydb.c      |   5 +-
- security/smack/smack_lsm.c          |  11 +
- 33 files changed, 1333 insertions(+), 211 deletions(-)
-
+diff --git a/fs/inode.c b/fs/inode.c
+index f85c250..c57c551 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -990,10 +990,10 @@ void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
+ {
+ 	if (inode1 < inode2) {
+ 		mutex_lock(&inode1->i_mutex);
+-		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_QUOTA);
++		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_NONDIR2);
+ 	} else {
+ 		mutex_lock(&inode2->i_mutex);
+-		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_QUOTA);
++		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_NONDIR2);
+ 	}
+ }
+ EXPORT_SYMBOL(lock_two_nondirectories);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 89a66d4..4a434ce 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -620,10 +620,13 @@ static inline int inode_unhashed(struct inode *inode)
+  * 0: the object of the current VFS operation
+  * 1: parent
+  * 2: child/target
+- * 3: quota file
++ * 3: xattr
++ * 4: second non-directory
++ * The last is for certain operations (such as rename) which lock two
++ * non-directories at once.
+  *
+  * The locking order between these classes is
+- * parent -> child -> normal -> xattr -> quota
++ * parent -> child -> normal -> xattr -> second non-directory
+  */
+ enum inode_i_mutex_lock_class
+ {
+@@ -631,7 +634,7 @@ enum inode_i_mutex_lock_class
+ 	I_MUTEX_PARENT,
+ 	I_MUTEX_CHILD,
+ 	I_MUTEX_XATTR,
+-	I_MUTEX_QUOTA
++	I_MUTEX_NONDIR2
+ };
+ 
+ void lock_two_nondirectories(struct inode *, struct inode*);
 -- 
-1.8.1.2
+1.7.9.5
 
