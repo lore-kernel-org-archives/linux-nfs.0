@@ -1,55 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:27966 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:46498 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758718Ab3BKTaM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Feb 2013 14:30:12 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/6] Fix NFSv4.1 deadlocks during reboot recover
-Date: Mon, 11 Feb 2013 14:29:20 -0500
-Message-Id: <1360610966-15398-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1753270Ab3BCQbg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 3 Feb 2013 11:31:36 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 02/12] vfs: don't use PARENT/CHILD lock classes for non-directories
+Date: Sun,  3 Feb 2013 11:31:22 -0500
+Message-Id: <1359909092-24857-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1359909092-24857-1-git-send-email-bfields@redhat.com>
+References: <1359909092-24857-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The following patches address a couple of deadlocks that we've been
-seeing during reboot recovery and/or delegation recovery.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-For NFSv4, it was safe for ordinary processes to grab the nfs_inode->rwsem
-across an NFSv4 RPC call, since if the stateid needed recovery, the server
-would return an appropriate error, the rpc call would return, and the
-process would release the nfs_inode->rwsem so that the state recovery
-thread could proceed.
+Reserve I_MUTEX_PARENT and I_MUTEX_CHILD for locking of actual
+directories.
 
-In NFSv4.1, things get a little more interesting: the state recovery
-thread will block all outstanding RPC calls using the NFS4_SESSION_DRAINING
-flag. It needs to be able to do this so that we can safely recover
-session state, stateids, etc.
+(Also I_MUTEX_QUOTA isn't really a meaningful name for this locking
+class any more; fixed in a later patch.)
 
-The problem is that if a process is holding a lock, then that lock will
-remain held until we call nfs4_end_drain_session(). So if the recovery
-process needs to take that lock, we end up deadlocking...
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/inode.c |    8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-The following patchset attempts to address this issue by adjusting the
-locking in the state recovery and delegation recovery.
-
-Trond Myklebust (6):
-  NFSv4: Allow the state manager to mark an open_owner as being
-    recovered
-  NFSv4.1: Prevent deadlocks between state recovery and file locking
-  NFSv4.1: Don't lose locks when a server reboots during delegation
-    return
-  NFSv4: Fix up the return values of nfs4_open_delegation_recall
-  NFSv4: Ensure delegation recall and byte range lock removal don't
-    conflict
-  NFSv4: Fix a reboot recovery race when opening a file
-
- fs/nfs/delegation.c | 154 +++++++++++++++++++++++++++++++++++++---------------
- fs/nfs/delegation.h |   1 +
- fs/nfs/nfs4_fs.h    |   4 ++
- fs/nfs/nfs4proc.c   |  96 +++++++++++++++++++++++---------
- fs/nfs/nfs4state.c  |  10 +++-
- 5 files changed, 193 insertions(+), 72 deletions(-)
-
+diff --git a/fs/inode.c b/fs/inode.c
+index 6e58fb4..f85c250 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -989,11 +989,11 @@ EXPORT_SYMBOL(unlock_new_inode);
+ void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
+ {
+ 	if (inode1 < inode2) {
+-		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
+-		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
++		mutex_lock(&inode1->i_mutex);
++		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_QUOTA);
+ 	} else {
+-		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
+-		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
++		mutex_lock(&inode2->i_mutex);
++		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_QUOTA);
+ 	}
+ }
+ EXPORT_SYMBOL(lock_two_nondirectories);
 -- 
-1.8.1.2
+1.7.9.5
 
