@@ -1,16 +1,18 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46489 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:46499 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752960Ab3BCQbf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 3 Feb 2013 11:31:35 -0500
+	id S1753281Ab3BCQbg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 3 Feb 2013 11:31:36 -0500
 From: "J. Bruce Fields" <bfields@redhat.com>
 To: Al Viro <viro@zeniv.linux.org.uk>
 Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         Linus Torvalds <torvalds@linux-foundation.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 04/12] vfs: take i_mutex on renamed file
-Date: Sun,  3 Feb 2013 11:31:24 -0500
-Message-Id: <1359909092-24857-5-git-send-email-bfields@redhat.com>
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>
+Subject: [PATCH 01/12] vfs: pull ext4's double-i_mutex-locking into common code
+Date: Sun,  3 Feb 2013 11:31:21 -0500
+Message-Id: <1359909092-24857-2-git-send-email-bfields@redhat.com>
 In-Reply-To: <1359909092-24857-1-git-send-email-bfields@redhat.com>
 References: <1359909092-24857-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -18,149 +20,136 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-A read delegation is used by NFSv4 as a guarantee that a client can
-perform local read opens without informing the server.
+We want to do this elsewhere as well.
 
-The open operation takes the last component of the pathname as an
-argument, thus is also a lookup operation, and giving the client the
-above guarantee means informing the client before we allow anything that
-would change the set of names pointing to the inode.
-
-Therefore, we need to break delegations on rename, link, and unlink.
-
-We also need to prevent new delegations from being acquired while one of
-these operations is in progress.
-
-We could add some completely new locking for that purpose, but it's
-simpler to use the i_mutex, since that's already taken by all the
-operations we care about.
-
-The single exception is rename.  So, modify rename to take the i_mutex
-on the file that is being renamed.
-
-Also fix up lockdep and Documentation/filesystems/directory-locking to
-reflect the change.
-
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Andreas Dilger <adilger.kernel@dilger.ca>
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- Documentation/filesystems/directory-locking |   31 +++++++++++++++++++--------
- fs/namei.c                                  |   12 ++++++++---
- 2 files changed, 31 insertions(+), 12 deletions(-)
+ fs/ext4/move_extent.c |   40 ++--------------------------------------
+ fs/inode.c            |   29 +++++++++++++++++++++++++++++
+ include/linux/fs.h    |    3 +++
+ 3 files changed, 34 insertions(+), 38 deletions(-)
 
-diff --git a/Documentation/filesystems/directory-locking b/Documentation/filesystems/directory-locking
-index ff7b611..09bbf9a 100644
---- a/Documentation/filesystems/directory-locking
-+++ b/Documentation/filesystems/directory-locking
-@@ -2,6 +2,10 @@
- kinds of locks - per-inode (->i_mutex) and per-filesystem
- (->s_vfs_rename_mutex).
- 
-+	When taking the i_mutex on multiple non-directory objects, we
-+always acquire the locks in order by increasing address.  We'll call
-+that "inode pointer" order in the following.
-+
- 	For our purposes all operations fall in 5 classes:
- 
- 1) read access.  Locking rules: caller locks directory we are accessing.
-@@ -12,8 +16,9 @@ kinds of locks - per-inode (->i_mutex) and per-filesystem
- locks victim and calls the method.
- 
- 4) rename() that is _not_ cross-directory.  Locking rules: caller locks
--the parent, finds source and target, if target already exists - locks it
--and then calls the method.
-+the parent and finds source and target.  If target already exists, lock
-+it.  If source is a non-directory, lock it.  If that means we need to
-+lock both, lock them in inode pointer order.
- 
- 5) link creation.  Locking rules:
- 	* lock parent
-@@ -30,7 +35,9 @@ rules:
- 		fail with -ENOTEMPTY
- 	* if new parent is equal to or is a descendent of source
- 		fail with -ELOOP
--	* if target exists - lock it.
-+	* If target exists, lock it.  If source is a non-directory, lock
-+	  it.  In case that means we need to lock both source and target,
-+	  do so in inode pointer order.
- 	* call the method.
- 
- 
-@@ -56,9 +63,11 @@ objects - A < B iff A is an ancestor of B.
-     renames will be blocked on filesystem lock and we don't start changing
-     the order until we had acquired all locks).
- 
--(3) any operation holds at most one lock on non-directory object and
--    that lock is acquired after all other locks.  (Proof: see descriptions
--    of operations).
-+(3) locks on non-directory objects are acquired only after locks on
-+    directory objects, and are acquired in inode pointer order.
-+    (Proof: all operations but renames take lock on at most one
-+    non-directory object, except renames, which take locks on source and
-+    target in inode pointer order in the case they are not directories.)
- 
- 	Now consider the minimal deadlock.  Each process is blocked on
- attempt to acquire some lock and already holds at least one lock.  Let's
-@@ -66,9 +75,13 @@ consider the set of contended locks.  First of all, filesystem lock is
- not contended, since any process blocked on it is not holding any locks.
- Thus all processes are blocked on ->i_mutex.
- 
--	Non-directory objects are not contended due to (3).  Thus link
--creation can't be a part of deadlock - it can't be blocked on source
--and it means that it doesn't hold any locks.
-+	By (3), any process holding a non-directory lock can only be
-+waiting on another non-directory lock with a larger address.  Therefore
-+the process holding the "largest" such lock can always make progress, and
-+non-directory objects are not included in the set of contended locks.
-+
-+	Thus link creation can't be a part of deadlock - it can't be
-+blocked on source and it means that it doesn't hold any locks.
- 
- 	Any contended object is either held by cross-directory rename or
- has a child that is also contended.  Indeed, suppose that it is held by
-diff --git a/fs/namei.c b/fs/namei.c
-index 43a97ee..6ca5b11 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3688,7 +3688,8 @@ SYSCALL_DEFINE2(link, const char __user *, oldname, const char __user *, newname
-  *	   That's where 4.4 screws up. Current fix: serialization on
-  *	   sb->s_vfs_rename_mutex. We might be more accurate, but that's another
-  *	   story.
-- *	c) we have to lock _three_ objects - parents and victim (if it exists).
-+ *	c) we have to lock _four_ objects - parents and victim (if it exists),
-+ *	   and source (if it is not a directory).
-  *	   And that - after we got ->i_mutex on parents (until then we don't know
-  *	   whether the target exists).  Solution: try to be smart with locking
-  *	   order for inodes.  We rely on the fact that tree topology may change
-@@ -3764,6 +3765,7 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
- 			    struct inode *new_dir, struct dentry *new_dentry)
- {
- 	struct inode *target = new_dentry->d_inode;
-+	struct inode *source = old_dentry->d_inode;
- 	int error;
- 
- 	error = security_inode_rename(old_dir, old_dentry, new_dir, new_dentry);
-@@ -3772,7 +3774,9 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
- 
- 	dget(new_dentry);
- 	if (target)
--		mutex_lock(&target->i_mutex);
-+		lock_two_nondirectories(source, target);
-+	else
-+		mutex_lock(&source->i_mutex);
- 
- 	error = -EBUSY;
- 	if (d_mountpoint(old_dentry)||d_mountpoint(new_dentry))
-@@ -3788,7 +3792,9 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
- 		d_move(old_dentry, new_dentry);
- out:
- 	if (target)
--		mutex_unlock(&target->i_mutex);
-+		unlock_two_nondirectories(source, target);
-+	else
-+		mutex_unlock(&source->i_mutex);
- 	dput(new_dentry);
- 	return error;
+diff --git a/fs/ext4/move_extent.c b/fs/ext4/move_extent.c
+index d9cc5ee..3e5d117 100644
+--- a/fs/ext4/move_extent.c
++++ b/fs/ext4/move_extent.c
+@@ -1198,42 +1198,6 @@ mext_check_arguments(struct inode *orig_inode,
  }
+ 
+ /**
+- * mext_inode_double_lock - Lock i_mutex on both @inode1 and @inode2
+- *
+- * @inode1:	the inode structure
+- * @inode2:	the inode structure
+- *
+- * Lock two inodes' i_mutex
+- */
+-static void
+-mext_inode_double_lock(struct inode *inode1, struct inode *inode2)
+-{
+-	BUG_ON(inode1 == inode2);
+-	if (inode1 < inode2) {
+-		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
+-		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
+-	} else {
+-		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
+-		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
+-	}
+-}
+-
+-/**
+- * mext_inode_double_unlock - Release i_mutex on both @inode1 and @inode2
+- *
+- * @inode1:     the inode that is released first
+- * @inode2:     the inode that is released second
+- *
+- */
+-
+-static void
+-mext_inode_double_unlock(struct inode *inode1, struct inode *inode2)
+-{
+-	mutex_unlock(&inode1->i_mutex);
+-	mutex_unlock(&inode2->i_mutex);
+-}
+-
+-/**
+  * ext4_move_extents - Exchange the specified range of a file
+  *
+  * @o_filp:		file structure of the original file
+@@ -1322,7 +1286,7 @@ ext4_move_extents(struct file *o_filp, struct file *d_filp,
+ 		return -EINVAL;
+ 	}
+ 	/* Protect orig and donor inodes against a truncate */
+-	mext_inode_double_lock(orig_inode, donor_inode);
++	lock_two_nondirectories(orig_inode, donor_inode);
+ 
+ 	/* Wait for all existing dio workers */
+ 	ext4_inode_block_unlocked_dio(orig_inode);
+@@ -1530,7 +1494,7 @@ out:
+ 	double_up_write_data_sem(orig_inode, donor_inode);
+ 	ext4_inode_resume_unlocked_dio(orig_inode);
+ 	ext4_inode_resume_unlocked_dio(donor_inode);
+-	mext_inode_double_unlock(orig_inode, donor_inode);
++	unlock_two_nondirectories(orig_inode, donor_inode);
+ 
+ 	return ret;
+ }
+diff --git a/fs/inode.c b/fs/inode.c
+index 14084b7..6e58fb4 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -982,6 +982,35 @@ void unlock_new_inode(struct inode *inode)
+ EXPORT_SYMBOL(unlock_new_inode);
+ 
+ /**
++ * lock_two_nondirectories - take two i_mutexes on non-directory objects
++ * @inode1: first inode to lock
++ * @inode2: second inode to lock
++ */
++void lock_two_nondirectories(struct inode *inode1, struct inode *inode2)
++{
++	if (inode1 < inode2) {
++		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_PARENT);
++		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_CHILD);
++	} else {
++		mutex_lock_nested(&inode2->i_mutex, I_MUTEX_PARENT);
++		mutex_lock_nested(&inode1->i_mutex, I_MUTEX_CHILD);
++	}
++}
++EXPORT_SYMBOL(lock_two_nondirectories);
++
++/**
++ * unlock_two_nondirectories - release locks from lock_two_nondirectories()
++ * @inode1: first inode to unlock
++ * @inode2: second inode to unlock
++ */
++void unlock_two_nondirectories(struct inode *inode1, struct inode *inode2)
++{
++	mutex_unlock(&inode1->i_mutex);
++	mutex_unlock(&inode2->i_mutex);
++}
++EXPORT_SYMBOL(unlock_two_nondirectories);
++
++/**
+  * iget5_locked - obtain an inode from a mounted file system
+  * @sb:		super block of file system
+  * @hashval:	hash value (usually inode number) to get
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 7617ee0..89a66d4 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -634,6 +634,9 @@ enum inode_i_mutex_lock_class
+ 	I_MUTEX_QUOTA
+ };
+ 
++void lock_two_nondirectories(struct inode *, struct inode*);
++void unlock_two_nondirectories(struct inode *, struct inode*);
++
+ /*
+  * NOTE: in a 32bit arch with a preemptable kernel and
+  * an UP compile the i_size_read/write must be atomic
 -- 
 1.7.9.5
 
