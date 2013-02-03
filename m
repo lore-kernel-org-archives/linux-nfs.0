@@ -1,69 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f177.google.com ([209.85.161.177]:43929 "EHLO
-	mail-gg0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754819Ab3BDNSP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2013 08:18:15 -0500
-Received: by mail-gg0-f177.google.com with SMTP id q1so181717gge.22
-        for <linux-nfs@vger.kernel.org>; Mon, 04 Feb 2013 05:18:14 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 1/8] nfsd: always move DRC entries to the end of LRU list when updating timestamp
-Date: Mon,  4 Feb 2013 08:18:00 -0500
-Message-Id: <1359983887-28535-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1359983887-28535-1-git-send-email-jlayton@redhat.com>
-References: <1359983887-28535-1-git-send-email-jlayton@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:46490 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753029Ab3BCQbf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 3 Feb 2013 11:31:35 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 00/12] Implement NFSv4 delegations, take 6
+Date: Sun,  3 Feb 2013 11:31:20 -0500
+Message-Id: <1359909092-24857-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...otherwise, we end up with the list ordering wrong. Currently, it's
-not a problem since we skip RC_INPROG entries, but keeping the ordering
-strict will be necessary for a later patch that adds a cache cleaner.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/nfscache.c | 5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
+Previous posting:
+	http://mid.gmane.org/<1350424897-26894-1-git-send-email-bfields@redhat.com>
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index b89e7c8..9d80dfa 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -129,6 +129,7 @@ void nfsd_reply_cache_shutdown(void)
- static void
- lru_put_end(struct svc_cacherep *rp)
- {
-+	rp->c_timestamp = jiffies;
- 	list_move_tail(&rp->c_lru, &lru_head);
- }
- 
-@@ -245,9 +246,9 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- 	rpc_set_port((struct sockaddr *)&rp->c_addr, rpc_get_port(svc_addr(rqstp)));
- 	rp->c_prot = proto;
- 	rp->c_vers = vers;
--	rp->c_timestamp = jiffies;
- 
- 	hash_refile(rp);
-+	lru_put_end(rp);
- 
- 	/* release any buffer */
- 	if (rp->c_type == RC_REPLBUFF) {
-@@ -262,7 +263,6 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- found_entry:
- 	/* We found a matching entry which is either in progress or done. */
- 	age = jiffies - rp->c_timestamp;
--	rp->c_timestamp = jiffies;
- 	lru_put_end(rp);
- 
- 	rtn = RC_DROPIT;
-@@ -354,7 +354,6 @@ nfsd_cache_update(struct svc_rqst *rqstp, int cachetype, __be32 *statp)
- 	rp->c_secure = rqstp->rq_secure;
- 	rp->c_type = cachetype;
- 	rp->c_state = RC_DONE;
--	rp->c_timestamp = jiffies;
- 	spin_unlock(&cache_lock);
- 	return;
- }
+This patch series implements read delegations, which allow NFSv4 clients
+to perform read opens without contacting the server, by promising to
+call back to clients before modifying the data, metadata, or set of
+links pointing to a file.
+
+The main recent change was in response to review from Linus, who didn't
+want us to hang under directory i_mutex's on timeouts communicating with
+unresponsive clients.
+
+So, this version of the series drops the i_mutex before waiting.  The
+logic ends up looking something like:
+
+	acquire locks
+	look up inode
+	test for delegation; if found:
+		take reference on inode
+		release locks
+		wait for delegation break
+		drop reference on inode
+		retry 
+
+
+The initial test for a delegation happens after the lock on the
+delegated inode is acquired, but additional directory mutexes may have
+been acquired further up the call stack.  I therefore add a "struct
+inode **" argument to any intervening functions, which we use to pass
+the inode back up to the caller in the case it needs to wait for the
+delegation to be broken.
+
+I also allow callers to pass in NULL for the "struct inode **" argument
+to indicate they'd rather just fail than wait for a delegation.  For
+example, as long as ecryptfs isn't exportable I assume they'd rather not
+see retry logic there that they won't use.  But I may have misjudged in
+some of these cases.
+
+Maybe there's a simpler approach.  Happy for any feedback.
+
+That aside, I don't know of any bugs at this point, so as far as I'm
+concerned it's ready for 3.9.
+
+--b.
+
+
+J. Bruce Fields (12):
+  vfs: pull ext4's double-i_mutex-locking into common code
+  vfs: don't use PARENT/CHILD lock classes for non-directories
+  vfs: rename I_MUTEX_QUOTA now that it's not used for quotas
+  vfs: take i_mutex on renamed file
+  locks: introduce new FL_DELEG lock flag
+  locks: implement delegations
+  namei: minor vfs_unlink cleanup
+  locks: break delegations on unlink
+  locks: helper functions for delegation breaking
+  locks: break delegations on rename
+  locks: break delegations on link
+  locks: break delegations on any attribute modification
+
+ Documentation/filesystems/directory-locking |   31 ++++++++---
+ drivers/base/devtmpfs.c                     |    6 +-
+ fs/attr.c                                   |    5 +-
+ fs/cachefiles/interface.c                   |    4 +-
+ fs/cachefiles/namei.c                       |    4 +-
+ fs/ecryptfs/inode.c                         |    6 +-
+ fs/ext4/move_extent.c                       |   40 +-------------
+ fs/hpfs/namei.c                             |    2 +-
+ fs/inode.c                                  |   35 +++++++++++-
+ fs/locks.c                                  |   51 +++++++++++++----
+ fs/namei.c                                  |   79 +++++++++++++++++++++------
+ fs/nfsd/nfs4state.c                         |    2 +-
+ fs/nfsd/vfs.c                               |   14 +++--
+ fs/open.c                                   |   21 +++++--
+ fs/utimes.c                                 |    9 ++-
+ include/linux/fs.h                          |   72 ++++++++++++++++++++----
+ ipc/mqueue.c                                |    2 +-
+ 17 files changed, 271 insertions(+), 112 deletions(-)
+
 -- 
-1.7.11.7
+1.7.9.5
 
