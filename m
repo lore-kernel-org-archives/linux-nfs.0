@@ -1,89 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:52214 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:46507 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751406Ab3BROjy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Feb 2013 09:39:54 -0500
-Date: Mon, 18 Feb 2013 09:39:48 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC] nfsd: report length of the largest hash chain in
- reply cache stats
-Message-ID: <20130218093948.670ddb06@tlielax.poochiereds.net>
-In-Reply-To: <BA5562CC-9236-4EC1-BC7A-341387B9F452@oracle.com>
-References: <20130215133406.20b1ef09@tlielax.poochiereds.net>
-	<1360958672-5692-1-git-send-email-jlayton@redhat.com>
-	<299C8DF9-5BFC-4E26-8F7E-CE3415D1140F@oracle.com>
-	<20130215172058.29941a54@tlielax.poochiereds.net>
-	<20130216133927.GA28824@fieldses.org>
-	<BA5562CC-9236-4EC1-BC7A-341387B9F452@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1753327Ab3BCQbh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 3 Feb 2013 11:31:37 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 09/12] locks: helper functions for delegation breaking
+Date: Sun,  3 Feb 2013 11:31:29 -0500
+Message-Id: <1359909092-24857-10-git-send-email-bfields@redhat.com>
+In-Reply-To: <1359909092-24857-1-git-send-email-bfields@redhat.com>
+References: <1359909092-24857-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 16 Feb 2013 12:18:18 -0500
-Chuck Lever <chuck.lever@oracle.com> wrote:
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-> 
-> On Feb 16, 2013, at 8:39 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> 
-> > On Fri, Feb 15, 2013 at 05:20:58PM -0500, Jeff Layton wrote:
-> >> An excellent question, and not an easy one to answer. Clearly 1024
-> >> entries was not enough. We now cap the size as a function of the
-> >> available low memory, which I think is a reasonable way to keep it from
-> >> ballooning so large that the box falls over. We also have a shrinker
-> >> and periodic cache cleaner to prune off entries that have expired.
-> >> 
-> >> Of course one thing I haven't really considered enough is the
-> >> performance implications of walking the potentially much longer hash
-> >> chains here.
-> >> 
-> >> If that is a problem, then one way to counter that without moving to a
-> >> different structure altogether might be to alter the hash function
-> >> based on the max size of the cache. IOW, grow the number of hash buckets
-> >> as the max cache size grows?
-> 
-> The trouble with a hash table is that once you've allocated it, it's a heavy lift to increase the table size.  That sort of logic adds complexity and additional locking, and is often difficult to test.
-> 
+We'll need the same logic for rename and link.
 
-I wasn't suggesting that we resize/rebalance the table on the fly. We
-determine the max allowable number of cache entries when the server
-starts. We could also determine the number of buckets at the same time,
-and alter the hashing function to take that number into account.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/namei.c         |   13 +++----------
+ include/linux/fs.h |   33 +++++++++++++++++++++++++++++++--
+ 2 files changed, 34 insertions(+), 12 deletions(-)
 
-Of course, more buckets may not help if the hash function just sucks.
-
-> > Another reason to organize the cache per client address?
-> 
-> 
-> In theory, an active single client could evict all entries for other clients, but do we know this happens in practice?
-> 
-
-I'm pretty sure that's what's been happening to our QA group. They have
-some shared NFS servers set up in the test lab for client testing. When
-things get busy, they the DRC just plain doesn't appear to work. It's
-hard to know for sure though since the problem only crops up very
-rarely.
-
-My hope is that the massive increase in the size of the DRC should
-prevent that from occurring now.
-
-> > With a per-client maximum number of entries, sizing the hash tables
-> > should be easier.
-> 
-> 
-> When a server has only one client, should that client be allowed to maximize the use of a server's resources (eg, use all of the DRC resource the server has available)?  How about when a server has one active client and multiple quiescent clients?
-> 
-
-Again, we have two "problems" to solve, and we need to take care not to
-conflate them too much.
-
-1) how do we best organize the cache for efficient lookups?
-
-2) what cache eviction policy should we use?
-
-Organizing the cache based on client address might help both of those,
-but we'll need to determine whether it's worth the extra complexity.
+diff --git a/fs/namei.c b/fs/namei.c
+index 882c1c3..b8d0e31 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3412,14 +3412,9 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegate
+ 	else {
+ 		error = security_inode_unlink(dir, dentry);
+ 		if (!error) {
+-			error = break_deleg(target, O_WRONLY|O_NONBLOCK);
+-			if (error) {
+-				if (error == -EWOULDBLOCK && delegated_inode) {
+-					*delegated_inode = target;
+-					ihold(target);
+-				}
++			error = try_break_deleg(target, delegated_inode);
++			if (error)
+ 				goto out;
+-			}
+ 			error = dir->i_op->unlink(dir, dentry);
+ 			if (!error)
+ 				dont_mount(dentry);
+@@ -3489,9 +3484,7 @@ exit2:
+ 		iput(inode);	/* truncate the inode here */
+ 	inode = NULL;
+ 	if (delegated_inode) {
+-		error = break_deleg(delegated_inode, O_WRONLY);
+-		iput(delegated_inode);
+-		delegated_inode = NULL;
++		error = break_deleg_wait(&delegated_inode);
+ 		if (!error)
+ 			goto retry_deleg;
+ 	}
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 0985016..62d374f 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1891,6 +1891,9 @@ extern bool our_mnt(struct vfsmount *mnt);
+ 
+ extern int current_umask(void);
+ 
++extern void ihold(struct inode * inode);
++extern void iput(struct inode *);
++
+ /* /sys/fs */
+ extern struct kobject *fs_kobj;
+ 
+@@ -1959,6 +1962,28 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
+ 	return 0;
+ }
+ 
++static inline int try_break_deleg(struct inode *inode, struct inode **delegated_inode)
++{
++	int ret;
++
++	ret = break_deleg(inode, O_WRONLY|O_NONBLOCK);
++	if (ret == -EWOULDBLOCK && delegated_inode) {
++		*delegated_inode = inode;
++		ihold(inode);
++	}
++	return ret;
++}
++
++static inline int break_deleg_wait(struct inode **delegated_inode)
++{
++	int ret;
++
++	ret = break_deleg(*delegated_inode, O_WRONLY);
++	iput(*delegated_inode);
++	*delegated_inode = NULL;
++	return ret;
++}
++
+ #else /* !CONFIG_FILE_LOCKING */
+ static inline int locks_mandatory_locked(struct inode *inode)
+ {
+@@ -2002,6 +2027,12 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
+ {
+ 	return 0;
+ }
++
++static inline int try_break_deleg(struct inode *inode, struct delegated_inode **inode)
++{
++	return 0;
++}
++
+ #endif /* CONFIG_FILE_LOCKING */
+ 
+ /* fs/open.c */
+@@ -2310,8 +2341,6 @@ extern loff_t vfs_llseek(struct file *file, loff_t offset, int whence);
+ extern int inode_init_always(struct super_block *, struct inode *);
+ extern void inode_init_once(struct inode *);
+ extern void address_space_init_once(struct address_space *mapping);
+-extern void ihold(struct inode * inode);
+-extern void iput(struct inode *);
+ extern struct inode * igrab(struct inode *);
+ extern ino_t iunique(struct super_block *, ino_t);
+ extern int inode_needs_sync(struct inode *inode);
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.9.5
+
