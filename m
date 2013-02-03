@@ -1,48 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:58742 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:60255 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756339Ab3BOSSf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Feb 2013 13:18:35 -0500
-Date: Fri, 15 Feb 2013 13:18:33 -0500
-To: Sven Geggus <lists@fuchsschwanzdomain.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFS4: "Value too large for defined data type" problem
-Message-ID: <20130215181833.GA19923@fieldses.org>
-References: <kfkvll$adm$1@ultimate100.geggus.net>
+	id S1751604Ab3BCOrk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 3 Feb 2013 09:47:40 -0500
+Date: Sun, 3 Feb 2013 09:47:39 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, majianpeng@gmail.com
+Subject: Re: [PATCH] nfsd: initialize the exp->ex_uuid field in
+ svc_export_init
+Message-ID: <20130203144739.GB22854@fieldses.org>
+References: <1359802508-28622-1-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <kfkvll$adm$1@ultimate100.geggus.net>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <1359802508-28622-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 15, 2013 at 09:37:57AM +0000, Sven Geggus wrote:
-> Hello,
-> 
-> is there something which can be done server-side to work around the "Value
-> too large for defined data type" problem with huge inode Numbers?
-> 
-> First of all, I'm not shure if this is an NFS problem or one of the
-> underlying filesystem.
-> 
-> Background:
-> I set up a new NFS-server (NFS4) recently. The server works fine so far with
-> 64 bit Linux clients.
-> 
-> It also mostly works with 32 bit Linux clients when either the stat system
-> call is not used or "-D_FILE_OFFSET_BITS=64" has been used.
-> 
-> This is because on 32 bit Linux ino_t is not 64-bit otherwise.
-> 
-> Unfortunately at least the 32bit Version of Debian stable (6.0) seems to
-> break all over the place. E.g. in gnome when stat ~/.gnome2_private/ fails
-> it is assumed that the directory has to be created which will of course make
-> the subsequent call to mkdir also fail and break the whole desktop
-> environment afterwords.
+Thanks, applying.--b.
 
-What filesystem are you exporting?
-
-For xfs, as an example, see the discussion of 64-bit inode numbers in
-the mkfs.xfs man page.
-
---b.
+On Sat, Feb 02, 2013 at 05:55:08AM -0500, Jeff Layton wrote:
+> commit 885c91f7466 in Bruce's tree was causing oopses for me:
+> 
+> general protection fault: 0000 [#1] SMP
+> Modules linked in: nfsd(OF) nfs_acl(OF) auth_rpcgss(OF) lockd(OF) sunrpc(OF) kvm_amd kvm microcode i2c_piix4 virtio_net virtio_balloon cirrus drm_kms_helper ttm drm virtio_blk i2c_core
+> CPU 0
+> Pid: 564, comm: exportfs Tainted: GF          O 3.8.0-0.rc5.git2.1.fc19.x86_64 #1 Bochs Bochs
+> RIP: 0010:[<ffffffff811b1509>]  [<ffffffff811b1509>] kfree+0x49/0x280
+> RSP: 0018:ffff88007a3d7c50  EFLAGS: 00010203
+> RAX: 01adaf8dadadad80 RBX: 6b6b6b6b6b6b6b6b RCX: 0000000000000001
+> RDX: ffffffff7fffffff RSI: 0000000000000000 RDI: 6b6b6b6b6b6b6b6b
+> RBP: ffff88007a3d7c80 R08: 6b6b6b6b6b6b6b6b R09: 0000000000000000
+> R10: 0000000000000018 R11: 0000000000000000 R12: ffff88006a117b50
+> R13: ffffffffa01a589c R14: ffff8800631b0f50 R15: 01ad998dadadad80
+> FS:  00007fcaa3616740(0000) GS:ffff88007fc00000(0000) knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+> CR2: 00007f5d84b6fdd8 CR3: 0000000064db4000 CR4: 00000000000006f0
+> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> Process exportfs (pid: 564, threadinfo ffff88007a3d6000, task ffff88006af28000)
+> Stack:
+>  ffff88007a3d7c80 ffff88006a117b68 ffff88006a117b50 0000000000000000
+>  ffff8800631b0f50 ffff88006a117b50 ffff88007a3d7ca0 ffffffffa01a589c
+>  ffff880036be1148 ffff88007a3d7cf8 ffff88007a3d7e28 ffffffffa01a6a98
+> Call Trace:
+>  [<ffffffffa01a589c>] svc_export_put+0x5c/0x70 [nfsd]
+>  [<ffffffffa01a6a98>] svc_export_parse+0x328/0x7e0 [nfsd]
+>  [<ffffffffa016f1c7>] cache_do_downcall+0x57/0x70 [sunrpc]
+>  [<ffffffffa016f25e>] cache_downcall+0x7e/0x100 [sunrpc]
+>  [<ffffffffa016f338>] cache_write_procfs+0x58/0x90 [sunrpc]
+>  [<ffffffffa016f2e0>] ? cache_downcall+0x100/0x100 [sunrpc]
+>  [<ffffffff8123b0e5>] proc_reg_write+0x75/0xb0
+>  [<ffffffff811ccecf>] vfs_write+0x9f/0x170
+>  [<ffffffff811cd089>] sys_write+0x49/0xa0
+>  [<ffffffff816e0919>] system_call_fastpath+0x16/0x1b
+> Code: 66 66 66 90 48 83 fb 10 0f 86 c3 00 00 00 48 89 df 49 bf 00 00 00 00 00 ea ff ff e8 f2 12 ea ff 48 c1 e8 0c 48 c1 e0 06 49 01 c7 <49> 8b 07 f6 c4 80 0f 85 1d 02 00 00 49 8b 07 a8 80 0f 84 ee 01
+> RIP  [<ffffffff811b1509>] kfree+0x49/0x280
+>  RSP <ffff88007a3d7c50>
+> 
+> I think Majianpeng's patch is correct, but incomplete. In order for it
+> to be safe to free the ex_uuid unconditionally in svc_export_put, we
+> need to make sure it's initialized to NULL in the init routine.
+> 
+> Cc: majianpeng <majianpeng@gmail.com>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/nfsd/export.c | 1 +
+>  1 file changed, 1 insertion(+)
+> 
+> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+> index 30a572d..15ebf91 100644
+> --- a/fs/nfsd/export.c
+> +++ b/fs/nfsd/export.c
+> @@ -661,6 +661,7 @@ static void svc_export_init(struct cache_head *cnew, struct cache_head *citem)
+>  	new->ex_fslocs.locations = NULL;
+>  	new->ex_fslocs.locations_count = 0;
+>  	new->ex_fslocs.migrated = 0;
+> +	new->ex_uuid = NULL;
+>  	new->cd = item->cd;
+>  }
+>  
+> -- 
+> 1.7.11.7
+> 
