@@ -1,55 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from li9-11.members.linode.com ([67.18.176.11]:48199 "EHLO
-	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S965011Ab3BMWr1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Feb 2013 17:47:27 -0500
-Date: Wed, 13 Feb 2013 17:47:20 -0500
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Anand Avati <anand.avati@gmail.com>,
-        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>, sandeen@redhat.com,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        gluster-devel@nongnu.org
-Subject: Re: [Gluster-devel] regressions due to 64-bit ext4 directory cookies
-Message-ID: <20130213224720.GE5938@thunk.org>
-References: <20130212202841.GC10267@fieldses.org>
- <20130213040003.GB2614@thunk.org>
- <20130213133131.GE14195@fieldses.org>
- <20130213151455.GB17431@thunk.org>
- <20130213151953.GJ14195@fieldses.org>
- <20130213153654.GC17431@thunk.org>
- <20130213162059.GL14195@fieldses.org>
- <CAFboF2wXvP+vttiff8iRE9rAgvV8UWGbFprgVp8p7kE43TU=PA@mail.gmail.com>
- <20130213222052.GD5938@thunk.org>
- <20130213224141.GU14195@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130213224141.GU14195@fieldses.org>
+Received: from fieldses.org ([174.143.236.118]:46506 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753258Ab3BCQbh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 3 Feb 2013 11:31:37 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 07/12] namei: minor vfs_unlink cleanup
+Date: Sun,  3 Feb 2013 11:31:27 -0500
+Message-Id: <1359909092-24857-8-git-send-email-bfields@redhat.com>
+In-Reply-To: <1359909092-24857-1-git-send-email-bfields@redhat.com>
+References: <1359909092-24857-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 13, 2013 at 05:41:41PM -0500, J. Bruce Fields wrote:
-> > What if we have an ioctl or a process personality flag where a broken
-> > application can tell the file system "I'm broken, please give me a
-> > degraded telldir/seekdir cookie"?  That way we don't penalize programs
-> > that are doing the right thing, while providing some accomodation for
-> > programs who are abusing the telldir cookie.
-> 
-> Yeah, if there's a simple way to do that, maybe it would be worth it.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Doing this as an ioctl which gets called right after opendir, i.e
-(ignoring error checking):
+We'll be using dentry->d_inode in one more place.
 
-      DIR *dir = opendir("/foo/bar/baz");
-      ioctl(dirfd(dir), EXT4_IOC_DEGRADED_READDIR, 1);
-      ...
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/namei.c |    7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
-should be quite easy.  It would be a very ext3/4 specific thing,
-though.
-
-It would be more work to get something in as a process personality
-flag, mostly due to the politics of assiging a bit out of the
-bitfield.
-
-						- Ted
+diff --git a/fs/namei.c b/fs/namei.c
+index 6ca5b11..bd38624 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3397,6 +3397,7 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
+ 
+ int vfs_unlink(struct inode *dir, struct dentry *dentry)
+ {
++	struct inode *target = dentry->d_inode;
+ 	int error = may_delete(dir, dentry, 0);
+ 
+ 	if (error)
+@@ -3405,7 +3406,7 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
+ 	if (!dir->i_op->unlink)
+ 		return -EPERM;
+ 
+-	mutex_lock(&dentry->d_inode->i_mutex);
++	mutex_lock(&target->i_mutex);
+ 	if (d_mountpoint(dentry))
+ 		error = -EBUSY;
+ 	else {
+@@ -3416,11 +3417,11 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
+ 				dont_mount(dentry);
+ 		}
+ 	}
+-	mutex_unlock(&dentry->d_inode->i_mutex);
++	mutex_unlock(&target->i_mutex);
+ 
+ 	/* We don't d_delete() NFS sillyrenamed files--they still exist. */
+ 	if (!error && !(dentry->d_flags & DCACHE_NFSFS_RENAMED)) {
+-		fsnotify_link_count(dentry->d_inode);
++		fsnotify_link_count(target);
+ 		d_delete(dentry);
+ 	}
+ 
+-- 
+1.7.9.5
 
