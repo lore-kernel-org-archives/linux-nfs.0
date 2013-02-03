@@ -1,242 +1,296 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:56408 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:46541 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752643Ab3BILhA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 9 Feb 2013 06:37:00 -0500
-Date: Sat, 9 Feb 2013 06:36:48 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-        rees@umich.edu
-Subject: Re: [PATCH v3 2/2] nfsd: keep a checksum of the first 256 bytes of
- request
-Message-ID: <20130209063648.5933529b@tlielax.poochiereds.net>
-In-Reply-To: <20130208205555.GC21040@fieldses.org>
-References: <1360248701-23963-1-git-send-email-jlayton@redhat.com>
-	<1360248701-23963-3-git-send-email-jlayton@redhat.com>
-	<DF2DA489-3D72-4DBF-8C65-1B7DA9866B63@oracle.com>
-	<20130207130316.0cf29993@corrin.poochiereds.net>
-	<20130208082706.614035e2@tlielax.poochiereds.net>
-	<20130208205555.GC21040@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1753413Ab3BCQbk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 3 Feb 2013 11:31:40 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>,
+        David Howells <dhowells@redhat.com>,
+        Tyler Hicks <tyhicks@canonical.com>,
+        Dustin Kirkland <dustin.kirkland@gazzang.com>
+Subject: [PATCH 12/12] locks: break delegations on any attribute modification
+Date: Sun,  3 Feb 2013 11:31:32 -0500
+Message-Id: <1359909092-24857-13-git-send-email-bfields@redhat.com>
+In-Reply-To: <1359909092-24857-1-git-send-email-bfields@redhat.com>
+References: <1359909092-24857-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 8 Feb 2013 15:55:55 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-> On Fri, Feb 08, 2013 at 08:27:06AM -0500, Jeff Layton wrote:
-> > On Thu, 7 Feb 2013 13:03:16 -0500
-> > Jeff Layton <jlayton@redhat.com> wrote:
-> > 
-> > > On Thu, 7 Feb 2013 10:51:02 -0500
-> > > Chuck Lever <chuck.lever@oracle.com> wrote:
-> > > 
-> > > > 
-> > > > On Feb 7, 2013, at 9:51 AM, Jeff Layton <jlayton@redhat.com> wrote:
-> > > > 
-> > > > > Now that we're allowing more DRC entries, it becomes a lot easier to hit
-> > > > > problems with XID collisions. In order to mitigate those, calculate the
-> > > > > crc32 of up to the first 256 bytes of each request coming in and store
-> > > > > that in the cache entry, along with the total length of the request.
-> > > > 
-> > > > I'm happy to see a checksummed DRC finally become reality for the Linux NFS server.
-> > > > 
-> > > > Have you measured the CPU utilization impact and CPU cache footprint of performing a CRC computation for every incoming RPC?  I'm wondering if a simpler checksum might be just as useful but less costly to compute.
-> > > > 
-> > > 
-> > > No, I haven't, at least not in any sort of rigorous way. It's pretty
-> > > negligible on "normal" PC hardware, but I think most intel and amd cpus
-> > > have instructions for handling crc32. I'm ok with a different checksum,
-> > > we don't need anything cryptographically secure here. I simply chose
-> > > crc32 since it has an easily available API, and I figured it would be
-> > > fairly lightweight.
-> > > 
-> > 
-> > After an abortive attempt to measure this with ftrace, I ended up
-> > hacking together a patch to just measure the latency of the
-> > nfsd_cache_csum/_crc functions to get some rough numbers. On my x86_64
-> > KVM guest, the avg time to calculate the crc32 is ~1750ns. Using IP
-> > checksums cuts that roughly in half to ~800ns. I'm not sure how best to
-> > measure the cache footprint however.
-> > 
-> > Neither seems terribly significant, especially given the other
-> > inefficiencies in this code. OTOH, I guess those latencies can add up,
-> > and I don't see any need to use crc32 over the net/checksum.h routines.
-> > We probably ought to go with my RFC patch from yesterday.
-> 
-> OK, I hadn't committed the original yet, so I've just rolled them
-> together and added a little of the above to the changelog.  Look OK?
-> Chuck, should I add a Reviewed-by: ?
-> 
-> --b.
-> 
-> commit a937bd422ccc4306cdc81b5aa60b12a7212b70d3
-> Author: Jeff Layton <jlayton@redhat.com>
-> Date:   Mon Feb 4 11:57:27 2013 -0500
-> 
->     nfsd: keep a checksum of the first 256 bytes of request
->     
->     Now that we're allowing more DRC entries, it becomes a lot easier to hit
->     problems with XID collisions. In order to mitigate those, calculate a
->     checksum of up to the first 256 bytes of each request coming in and store
->     that in the cache entry, along with the total length of the request.
->     
->     This initially used crc32, but Chuck Lever and Jim Rees pointed out that
->     crc32 is probably more heavyweight than we really need for generating
->     these checksums, and recommended looking at using the same routines that
->     are used to generate checksums for IP packets.
->     
->     On an x86_64 KVM guest measurements with ftrace showed ~800ns to use
->     csum_partial vs ~1750ns for crc32.  The difference probably isn't
->     terribly significant, but for now we may as well use csum_partial.
->     
->     Signed-off-by: Jeff Layton <jlayton@redhat.com>
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
+NFSv4 uses leases to guarantee that clients can cache metadata as well
+as data.
 
+Cc: Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>
+Cc: David Howells <dhowells@redhat.com>
+Cc: Tyler Hicks <tyhicks@canonical.com>
+Cc: Dustin Kirkland <dustin.kirkland@gazzang.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ drivers/base/devtmpfs.c   |    4 ++--
+ fs/attr.c                 |    5 ++++-
+ fs/cachefiles/interface.c |    4 ++--
+ fs/ecryptfs/inode.c       |    2 +-
+ fs/hpfs/namei.c           |    2 +-
+ fs/inode.c                |    6 +++++-
+ fs/nfsd/vfs.c             |    8 ++++++--
+ fs/open.c                 |   21 +++++++++++++++++----
+ fs/utimes.c               |    9 ++++++++-
+ include/linux/fs.h        |    2 +-
+ 10 files changed, 47 insertions(+), 16 deletions(-)
 
-Thanks Bruce. Looks good to me.
-
-> diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
-> index 9c7232b..87fd141 100644
-> --- a/fs/nfsd/cache.h
-> +++ b/fs/nfsd/cache.h
-> @@ -29,6 +29,8 @@ struct svc_cacherep {
->  	u32			c_prot;
->  	u32			c_proc;
->  	u32			c_vers;
-> +	unsigned int		c_len;
-> +	__wsum			c_csum;
->  	unsigned long		c_timestamp;
->  	union {
->  		struct kvec	u_vec;
-> @@ -73,6 +75,9 @@ enum {
->  /* Cache entries expire after this time period */
->  #define RC_EXPIRE		(120 * HZ)
->  
-> +/* Checksum this amount of the request */
-> +#define RC_CSUMLEN		(256U)
-> +
->  int	nfsd_reply_cache_init(void);
->  void	nfsd_reply_cache_shutdown(void);
->  int	nfsd_cache_lookup(struct svc_rqst *);
-> diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-> index f754469..40db57e 100644
-> --- a/fs/nfsd/nfscache.c
-> +++ b/fs/nfsd/nfscache.c
-> @@ -11,6 +11,7 @@
->  #include <linux/slab.h>
->  #include <linux/sunrpc/addr.h>
->  #include <linux/highmem.h>
-> +#include <net/checksum.h>
->  
->  #include "nfsd.h"
->  #include "cache.h"
-> @@ -130,6 +131,7 @@ int nfsd_reply_cache_init(void)
->  	INIT_LIST_HEAD(&lru_head);
->  	max_drc_entries = nfsd_cache_size_limit();
->  	num_drc_entries = 0;
-> +
->  	return 0;
->  out_nomem:
->  	printk(KERN_ERR "nfsd: failed to allocate reply cache\n");
-> @@ -238,12 +240,45 @@ nfsd_reply_cache_shrink(struct shrinker *shrink, struct shrink_control *sc)
->  }
->  
->  /*
-> + * Walk an xdr_buf and get a CRC for at most the first RC_CSUMLEN bytes
-> + */
-> +static __wsum
-> +nfsd_cache_csum(struct svc_rqst *rqstp)
-> +{
-> +	int idx;
-> +	unsigned int base;
-> +	__wsum csum;
-> +	struct xdr_buf *buf = &rqstp->rq_arg;
-> +	const unsigned char *p = buf->head[0].iov_base;
-> +	size_t csum_len = min_t(size_t, buf->head[0].iov_len + buf->page_len,
-> +				RC_CSUMLEN);
-> +	size_t len = min(buf->head[0].iov_len, csum_len);
-> +
-> +	/* rq_arg.head first */
-> +	csum = csum_partial(p, len, 0);
-> +	csum_len -= len;
-> +
-> +	/* Continue into page array */
-> +	idx = buf->page_base / PAGE_SIZE;
-> +	base = buf->page_base & ~PAGE_MASK;
-> +	while (csum_len) {
-> +		p = page_address(buf->pages[idx]) + base;
-> +		len = min(PAGE_SIZE - base, csum_len);
-> +		csum = csum_partial(p, len, csum);
-> +		csum_len -= len;
-> +		base = 0;
-> +		++idx;
-> +	}
-> +	return csum;
-> +}
-> +
-> +/*
->   * Search the request hash for an entry that matches the given rqstp.
->   * Must be called with cache_lock held. Returns the found entry or
->   * NULL on failure.
->   */
->  static struct svc_cacherep *
-> -nfsd_cache_search(struct svc_rqst *rqstp)
-> +nfsd_cache_search(struct svc_rqst *rqstp, __wsum csum)
->  {
->  	struct svc_cacherep	*rp;
->  	struct hlist_node	*hn;
-> @@ -257,6 +292,7 @@ nfsd_cache_search(struct svc_rqst *rqstp)
->  	hlist_for_each_entry(rp, hn, rh, c_hash) {
->  		if (xid == rp->c_xid && proc == rp->c_proc &&
->  		    proto == rp->c_prot && vers == rp->c_vers &&
-> +		    rqstp->rq_arg.len == rp->c_len && csum == rp->c_csum &&
->  		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
->  		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr))
->  			return rp;
-> @@ -277,6 +313,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
->  	u32			proto =  rqstp->rq_prot,
->  				vers = rqstp->rq_vers,
->  				proc = rqstp->rq_proc;
-> +	__wsum			csum;
->  	unsigned long		age;
->  	int type = rqstp->rq_cachetype;
->  	int rtn;
-> @@ -287,10 +324,12 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
->  		return RC_DOIT;
->  	}
->  
-> +	csum = nfsd_cache_csum(rqstp);
-> +
->  	spin_lock(&cache_lock);
->  	rtn = RC_DOIT;
->  
-> -	rp = nfsd_cache_search(rqstp);
-> +	rp = nfsd_cache_search(rqstp, csum);
->  	if (rp)
->  		goto found_entry;
->  
-> @@ -318,7 +357,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
->  	 * Must search again just in case someone inserted one
->  	 * after we dropped the lock above.
->  	 */
-> -	found = nfsd_cache_search(rqstp);
-> +	found = nfsd_cache_search(rqstp, csum);
->  	if (found) {
->  		nfsd_reply_cache_free_locked(rp);
->  		rp = found;
-> @@ -344,6 +383,8 @@ setup_entry:
->  	rpc_set_port((struct sockaddr *)&rp->c_addr, rpc_get_port(svc_addr(rqstp)));
->  	rp->c_prot = proto;
->  	rp->c_vers = vers;
-> +	rp->c_len = rqstp->rq_arg.len;
-> +	rp->c_csum = csum;
->  
->  	hash_refile(rp);
->  	lru_put_end(rp);
-
+diff --git a/drivers/base/devtmpfs.c b/drivers/base/devtmpfs.c
+index 5ed94f7..e4cc3cf 100644
+--- a/drivers/base/devtmpfs.c
++++ b/drivers/base/devtmpfs.c
+@@ -210,7 +210,7 @@ static int handle_create(const char *nodename, umode_t mode, struct device *dev)
+ 		newattrs.ia_mode = mode;
+ 		newattrs.ia_valid = ATTR_MODE;
+ 		mutex_lock(&dentry->d_inode->i_mutex);
+-		notify_change(dentry, &newattrs);
++		notify_change(dentry, &newattrs, NULL);
+ 		mutex_unlock(&dentry->d_inode->i_mutex);
+ 
+ 		/* mark as kernel-created inode */
+@@ -315,7 +315,7 @@ static int handle_remove(const char *nodename, struct device *dev)
+ 			newattrs.ia_valid =
+ 				ATTR_UID|ATTR_GID|ATTR_MODE;
+ 			mutex_lock(&dentry->d_inode->i_mutex);
+-			notify_change(dentry, &newattrs);
++			notify_change(dentry, &newattrs, NULL);
+ 			mutex_unlock(&dentry->d_inode->i_mutex);
+ 			err = vfs_unlink(parent.dentry->d_inode, dentry, NULL);
+ 			if (!err || err == -ENOENT)
+diff --git a/fs/attr.c b/fs/attr.c
+index 1449adb..261f5c9 100644
+--- a/fs/attr.c
++++ b/fs/attr.c
+@@ -167,7 +167,7 @@ void setattr_copy(struct inode *inode, const struct iattr *attr)
+ }
+ EXPORT_SYMBOL(setattr_copy);
+ 
+-int notify_change(struct dentry * dentry, struct iattr * attr)
++int notify_change(struct dentry * dentry, struct iattr * attr, struct inode **delegated_inode)
+ {
+ 	struct inode *inode = dentry->d_inode;
+ 	umode_t mode = inode->i_mode;
+@@ -243,6 +243,9 @@ int notify_change(struct dentry * dentry, struct iattr * attr)
+ 	error = security_inode_setattr(dentry, attr);
+ 	if (error)
+ 		return error;
++	error = try_break_deleg(inode, delegated_inode);
++	if (error)
++		return error;
+ 
+ 	if (inode->i_op->setattr)
+ 		error = inode->i_op->setattr(dentry, attr);
+diff --git a/fs/cachefiles/interface.c b/fs/cachefiles/interface.c
+index 746ce53..40f5917 100644
+--- a/fs/cachefiles/interface.c
++++ b/fs/cachefiles/interface.c
+@@ -417,14 +417,14 @@ static int cachefiles_attr_changed(struct fscache_object *_object)
+ 		_debug("discard tail %llx", oi_size);
+ 		newattrs.ia_valid = ATTR_SIZE;
+ 		newattrs.ia_size = oi_size & PAGE_MASK;
+-		ret = notify_change(object->backer, &newattrs);
++		ret = notify_change(object->backer, &newattrs, NULL);
+ 		if (ret < 0)
+ 			goto truncate_failed;
+ 	}
+ 
+ 	newattrs.ia_valid = ATTR_SIZE;
+ 	newattrs.ia_size = ni_size;
+-	ret = notify_change(object->backer, &newattrs);
++	ret = notify_change(object->backer, &newattrs, NULL);
+ 
+ truncate_failed:
+ 	mutex_unlock(&object->backer->d_inode->i_mutex);
+diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
+index a3b2b08..d751d8a 100644
+--- a/fs/ecryptfs/inode.c
++++ b/fs/ecryptfs/inode.c
+@@ -992,7 +992,7 @@ static int ecryptfs_setattr(struct dentry *dentry, struct iattr *ia)
+ 		lower_ia.ia_valid &= ~ATTR_MODE;
+ 
+ 	mutex_lock(&lower_dentry->d_inode->i_mutex);
+-	rc = notify_change(lower_dentry, &lower_ia);
++	rc = notify_change(lower_dentry, &lower_ia, NULL);
+ 	mutex_unlock(&lower_dentry->d_inode->i_mutex);
+ out:
+ 	fsstack_copy_attr_all(inode, lower_inode);
+diff --git a/fs/hpfs/namei.c b/fs/hpfs/namei.c
+index 345713d..1b39afd 100644
+--- a/fs/hpfs/namei.c
++++ b/fs/hpfs/namei.c
+@@ -407,7 +407,7 @@ again:
+ 			/*printk("HPFS: truncating file before delete.\n");*/
+ 			newattrs.ia_size = 0;
+ 			newattrs.ia_valid = ATTR_SIZE | ATTR_CTIME;
+-			err = notify_change(dentry, &newattrs);
++			err = notify_change(dentry, &newattrs, NULL);
+ 			put_write_access(inode);
+ 			if (!err)
+ 				goto again;
+diff --git a/fs/inode.c b/fs/inode.c
+index c57c551..549feba 100644
+--- a/fs/inode.c
++++ b/fs/inode.c
+@@ -1638,7 +1638,11 @@ static int __remove_suid(struct dentry *dentry, int kill)
+ 	struct iattr newattrs;
+ 
+ 	newattrs.ia_valid = ATTR_FORCE | kill;
+-	return notify_change(dentry, &newattrs);
++	/*
++	 * Note we call this on write, so notify_change will not
++	 * encounter any conflicting delegations:
++	 */
++	return notify_change(dentry, &newattrs, NULL);
+ }
+ 
+ int file_remove_suid(struct file *file)
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 99ec672..eb38ca3 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -426,7 +426,7 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+ 			goto out_nfserr;
+ 		fh_lock(fhp);
+ 
+-		host_err = notify_change(dentry, iap);
++		host_err = notify_change(dentry, iap, NULL);
+ 		err = nfserrno(host_err);
+ 		fh_unlock(fhp);
+ 	}
+@@ -959,7 +959,11 @@ static void kill_suid(struct dentry *dentry)
+ 	ia.ia_valid = ATTR_KILL_SUID | ATTR_KILL_SGID | ATTR_KILL_PRIV;
+ 
+ 	mutex_lock(&dentry->d_inode->i_mutex);
+-	notify_change(dentry, &ia);
++	/*
++	 * Note we call this on write, so notify_change will not
++	 * encounter any conflicting delegations:
++	 */
++	notify_change(dentry, &ia, NULL);
+ 	mutex_unlock(&dentry->d_inode->i_mutex);
+ }
+ 
+diff --git a/fs/open.c b/fs/open.c
+index 9b33c0c..7436919 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -56,7 +56,7 @@ int do_truncate(struct dentry *dentry, loff_t length, unsigned int time_attrs,
+ 		newattrs.ia_valid |= ret | ATTR_FORCE;
+ 
+ 	mutex_lock(&dentry->d_inode->i_mutex);
+-	ret = notify_change(dentry, &newattrs);
++	ret = notify_change(dentry, &newattrs, NULL);
+ 	mutex_unlock(&dentry->d_inode->i_mutex);
+ 	return ret;
+ }
+@@ -477,21 +477,28 @@ out:
+ static int chmod_common(struct path *path, umode_t mode)
+ {
+ 	struct inode *inode = path->dentry->d_inode;
++	struct inode *delegated_inode = NULL;
+ 	struct iattr newattrs;
+ 	int error;
+ 
+ 	error = mnt_want_write(path->mnt);
+ 	if (error)
+ 		return error;
++retry_deleg:
+ 	mutex_lock(&inode->i_mutex);
+ 	error = security_path_chmod(path, mode);
+ 	if (error)
+ 		goto out_unlock;
+ 	newattrs.ia_mode = (mode & S_IALLUGO) | (inode->i_mode & ~S_IALLUGO);
+ 	newattrs.ia_valid = ATTR_MODE | ATTR_CTIME;
+-	error = notify_change(path->dentry, &newattrs);
++	error = notify_change(path->dentry, &newattrs, &delegated_inode);
+ out_unlock:
+ 	mutex_unlock(&inode->i_mutex);
++	if (delegated_inode) {
++		error = break_deleg_wait(&delegated_inode);
++		if (!error)
++			goto retry_deleg;
++	}
+ 	mnt_drop_write(path->mnt);
+ 	return error;
+ }
+@@ -536,6 +543,7 @@ SYSCALL_DEFINE2(chmod, const char __user *, filename, umode_t, mode)
+ static int chown_common(struct path *path, uid_t user, gid_t group)
+ {
+ 	struct inode *inode = path->dentry->d_inode;
++	struct inode *delegated_inode = NULL;
+ 	int error;
+ 	struct iattr newattrs;
+ 	kuid_t uid;
+@@ -560,12 +568,17 @@ static int chown_common(struct path *path, uid_t user, gid_t group)
+ 	if (!S_ISDIR(inode->i_mode))
+ 		newattrs.ia_valid |=
+ 			ATTR_KILL_SUID | ATTR_KILL_SGID | ATTR_KILL_PRIV;
++retry_deleg:
+ 	mutex_lock(&inode->i_mutex);
+ 	error = security_path_chown(path, uid, gid);
+ 	if (!error)
+-		error = notify_change(path->dentry, &newattrs);
++		error = notify_change(path->dentry, &newattrs, &delegated_inode);
+ 	mutex_unlock(&inode->i_mutex);
+-
++	if (delegated_inode) {
++		error = break_deleg_wait(&delegated_inode);
++		if (!error)
++			goto retry_deleg;
++	}
+ 	return error;
+ }
+ 
+diff --git a/fs/utimes.c b/fs/utimes.c
+index f4fb7ec..aa138d6 100644
+--- a/fs/utimes.c
++++ b/fs/utimes.c
+@@ -53,6 +53,7 @@ static int utimes_common(struct path *path, struct timespec *times)
+ 	int error;
+ 	struct iattr newattrs;
+ 	struct inode *inode = path->dentry->d_inode;
++	struct inode *delegated_inode = NULL;
+ 
+ 	error = mnt_want_write(path->mnt);
+ 	if (error)
+@@ -101,9 +102,15 @@ static int utimes_common(struct path *path, struct timespec *times)
+ 				goto mnt_drop_write_and_out;
+ 		}
+ 	}
++retry_deleg:
+ 	mutex_lock(&inode->i_mutex);
+-	error = notify_change(path->dentry, &newattrs);
++	error = notify_change(path->dentry, &newattrs, &delegated_inode);
+ 	mutex_unlock(&inode->i_mutex);
++	if (delegated_inode) {
++		error = break_deleg_wait(&delegated_inode);
++		if (!error)
++			goto retry_deleg;
++	}
+ 
+ mnt_drop_write_and_out:
+ 	mnt_drop_write(path->mnt);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index cf5758e..3cb7f24 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2258,7 +2258,7 @@ extern void emergency_remount(void);
+ #ifdef CONFIG_BLOCK
+ extern sector_t bmap(struct inode *, sector_t);
+ #endif
+-extern int notify_change(struct dentry *, struct iattr *);
++extern int notify_change(struct dentry *, struct iattr *, struct inode **);
+ extern int inode_permission(struct inode *, int);
+ extern int generic_permission(struct inode *, int);
+ 
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.7.9.5
+
