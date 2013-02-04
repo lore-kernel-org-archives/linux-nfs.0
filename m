@@ -1,1667 +1,651 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34332 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:56610 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755029Ab3BUQi3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Feb 2013 11:38:29 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond.Myklebust@netapp.com, chuck.lever@oracle.com, simo@redhat.com,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 5/6] SUNRPC: Add RPC based upcall mechanism for RPCGSS auth
-Date: Thu, 21 Feb 2013 11:38:24 -0500
-Message-Id: <1361464705-12340-6-git-send-email-bfields@redhat.com>
-In-Reply-To: <1361464705-12340-1-git-send-email-bfields@redhat.com>
-References: <1361464705-12340-1-git-send-email-bfields@redhat.com>
+	id S1755068Ab3BDSK5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Feb 2013 13:10:57 -0500
+Date: Mon, 4 Feb 2013 13:10:54 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org,
+        chuck.lever@oracle.com
+Subject: Re: [PATCH v2] sunrpc: move address copy/cmp/convert routines and
+ prototypes from clnt.h to addr.h
+Message-ID: <20130204181054.GJ815@fieldses.org>
+References: <1359991431-25579-1-git-send-email-jlayton@redhat.com>
+ <1360000200-12710-1-git-send-email-jlayton@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1360000200-12710-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Simo Sorce <simo@redhat.com>
+On Mon, Feb 04, 2013 at 12:50:00PM -0500, Jeff Layton wrote:
+> These routines are used by server and client code, so having them in a
+> separate header would be best.
 
-This patch implements a sunrpc client to use the services of the gssproxy
-userspace daemon.
+Got it, thanks.
 
-In particular it allows to perform calls in user space using an RPC
-call instead of custom hand-coded upcall/downcall messages.
-
-Currently only accept_sec_context is implemented as that is all is needed for
-the server case.
-
-File server modules like NFS and CIFS can use full gssapi services this way,
-once init_sec_context is also implemented.
-
-For the NFS server case this code allow to lift the limit of max 2k krb5
-tickets. This limit is prevents legitimate kerberos deployments from using krb5
-authentication with the Linux NFS server as they have normally ticket that are
-many kilobytes large.
-
-It will also allow to lift the limitation on the size of the credential set
-(uid,gid,gids) passed down from user space for users that have very many groups
-associated. Currently the downcall mechanism used by rpc.svcgssd is limited
-to around 2k secondary groups of the 65k allowed by kernel structures.
-
-Signed-off-by: Simo Sorce <simo@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- net/sunrpc/auth_gss/Makefile         |    3 +-
- net/sunrpc/auth_gss/gss_rpc_upcall.c |  353 +++++++++++++
- net/sunrpc/auth_gss/gss_rpc_upcall.h |   43 ++
- net/sunrpc/auth_gss/gss_rpc_xdr.c    |  906 ++++++++++++++++++++++++++++++++++
- net/sunrpc/auth_gss/gss_rpc_xdr.h    |  269 ++++++++++
- 5 files changed, 1573 insertions(+), 1 deletion(-)
- create mode 100644 net/sunrpc/auth_gss/gss_rpc_upcall.c
- create mode 100644 net/sunrpc/auth_gss/gss_rpc_upcall.h
- create mode 100644 net/sunrpc/auth_gss/gss_rpc_xdr.c
- create mode 100644 net/sunrpc/auth_gss/gss_rpc_xdr.h
-
-diff --git a/net/sunrpc/auth_gss/Makefile b/net/sunrpc/auth_gss/Makefile
-index 9e4cb59..14e9e53 100644
---- a/net/sunrpc/auth_gss/Makefile
-+++ b/net/sunrpc/auth_gss/Makefile
-@@ -5,7 +5,8 @@
- obj-$(CONFIG_SUNRPC_GSS) += auth_rpcgss.o
- 
- auth_rpcgss-y := auth_gss.o gss_generic_token.o \
--	gss_mech_switch.o svcauth_gss.o
-+	gss_mech_switch.o svcauth_gss.o \
-+	gss_rpc_upcall.o gss_rpc_xdr.o
- 
- obj-$(CONFIG_RPCSEC_GSS_KRB5) += rpcsec_gss_krb5.o
- 
-diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.c b/net/sunrpc/auth_gss/gss_rpc_upcall.c
-new file mode 100644
-index 0000000..5fd8c91
---- /dev/null
-+++ b/net/sunrpc/auth_gss/gss_rpc_upcall.c
-@@ -0,0 +1,353 @@
-+/*
-+ *  linux/net/sunrpc/gss_rpc_upcall.c
-+ *
-+ *  Copyright (C) 2012 Simo Sorce <simo@redhat.com>
-+ *
-+ * This program is free software; you can redistribute it and/or modify
-+ * it under the terms of the GNU General Public License as published by
-+ * the Free Software Foundation; either version 2 of the License, or
-+ * (at your option) any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public License
-+ * along with this program; if not, write to the Free Software
-+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-+ */
-+
-+#include <linux/types.h>
-+#include <linux/un.h>
-+
-+#include <linux/sunrpc/svcauth.h>
-+#include "gss_rpc_upcall.h"
-+
-+#define GSSPROXY_SOCK_PATHNAME	"/var/run/gssproxy.sock"
-+
-+#define GSSPROXY_PROGRAM	(400112u)
-+#define GSSPROXY_VERS_1		(1u)
-+
-+DEFINE_MUTEX(gssp_clnt_mutex);
-+struct rpc_clnt *gssp_clnt;
-+
-+/*
-+ * Encoding/Decoding functions
-+ */
-+
-+enum {
-+	GSSX_NULL = 0,	/* Unused */
-+        GSSX_INDICATE_MECHS = 1,
-+        GSSX_GET_CALL_CONTEXT = 2,
-+        GSSX_IMPORT_AND_CANON_NAME = 3,
-+        GSSX_EXPORT_CRED = 4,
-+        GSSX_IMPORT_CRED = 5,
-+        GSSX_ACQUIRE_CRED = 6,
-+        GSSX_STORE_CRED = 7,
-+        GSSX_INIT_SEC_CONTEXT = 8,
-+        GSSX_ACCEPT_SEC_CONTEXT = 9,
-+        GSSX_RELEASE_HANDLE = 10,
-+        GSSX_GET_MIC = 11,
-+        GSSX_VERIFY = 12,
-+        GSSX_WRAP = 13,
-+        GSSX_UNWRAP = 14,
-+        GSSX_WRAP_SIZE_LIMIT = 15,
-+};
-+
-+#define PROC(proc, name)				\
-+[GSSX_##proc] = {					\
-+	.p_proc   = GSSX_##proc,			\
-+	.p_encode = (kxdreproc_t)gssx_enc_##name,	\
-+	.p_decode = (kxdrdproc_t)gssx_dec_##name,	\
-+	.p_arglen = GSSX_ARG_##name##_sz,		\
-+	.p_replen = GSSX_RES_##name##_sz, 		\
-+	.p_statidx = GSSX_##proc,			\
-+	.p_name   = #proc,				\
-+}
-+
-+struct rpc_procinfo gssp_procedures[] = {
-+	PROC(INDICATE_MECHS, indicate_mechs),
-+        PROC(GET_CALL_CONTEXT, get_call_context),
-+        PROC(IMPORT_AND_CANON_NAME, import_and_canon_name),
-+        PROC(EXPORT_CRED, export_cred),
-+        PROC(IMPORT_CRED, import_cred),
-+        PROC(ACQUIRE_CRED, acquire_cred),
-+        PROC(STORE_CRED, store_cred),
-+        PROC(INIT_SEC_CONTEXT, init_sec_context),
-+        PROC(ACCEPT_SEC_CONTEXT, accept_sec_context),
-+        PROC(RELEASE_HANDLE, release_handle),
-+        PROC(GET_MIC, get_mic),
-+        PROC(VERIFY, verify),
-+        PROC(WRAP, wrap),
-+        PROC(UNWRAP, unwrap),
-+        PROC(WRAP_SIZE_LIMIT, wrap_size_limit),
-+};
-+
-+
-+
-+/*
-+ * Common transport functions
-+ */
-+
-+static const struct rpc_program gssp_program;
-+
-+static int gssp_rpc_create(struct net *net, struct rpc_clnt **_clnt)
-+{
-+	static const struct sockaddr_un gssp_localaddr = {
-+		.sun_family		= AF_LOCAL,
-+		.sun_path		= GSSPROXY_SOCK_PATHNAME,
-+	};
-+	struct rpc_create_args args = {
-+		.net		= net,
-+		.protocol	= XPRT_TRANSPORT_LOCAL,
-+		.address	= (struct sockaddr *)&gssp_localaddr,
-+		.addrsize	= sizeof(gssp_localaddr),
-+		.servername	= "localhost",
-+		.program	= &gssp_program,
-+		.version	= GSSPROXY_VERS_1,
-+		.authflavor	= RPC_AUTH_NULL,
-+		.flags		= RPC_CLNT_CREATE_NOPING,
-+	};
-+	struct rpc_clnt *clnt;
-+	int result = 0;
-+
-+	clnt = rpc_create(&args);
-+	if (IS_ERR(clnt)) {
-+		dprintk("RPC:       failed to create AF_LOCAL gssproxy "
-+				"client (errno %ld).\n", PTR_ERR(clnt));
-+		result = -PTR_ERR(clnt);
-+		*_clnt = NULL;
-+		goto out;
-+	}
-+
-+	dprintk("RPC:       created new gssp local client (gssp_local_clnt: "
-+			"%p)\n", clnt);
-+	*_clnt = clnt;
-+
-+out:
-+	return result;
-+}
-+
-+static struct rpc_clnt *get_clnt(struct net *net, bool global_clnt)
-+{
-+	struct rpc_clnt *clnt;
-+	int err;
-+
-+	mutex_lock(&gssp_clnt_mutex);
-+
-+	if (global_clnt && gssp_clnt)
-+		return gssp_clnt;
-+
-+	err = gssp_rpc_create(net, &clnt);
-+	if (err) {
-+		mutex_unlock(&gssp_clnt_mutex);
-+		return NULL;
-+	}
-+	if (global_clnt)
-+		gssp_clnt = clnt;
-+
-+	mutex_unlock(&gssp_clnt_mutex);
-+	return clnt;
-+}
-+
-+static void kill_clnt(struct rpc_clnt *clnt)
-+{
-+	BUG_ON(clnt == NULL);
-+
-+	mutex_lock(&gssp_clnt_mutex);
-+
-+	rpc_shutdown_client(clnt);
-+	if (clnt == gssp_clnt)
-+		gssp_clnt = NULL;
-+
-+	mutex_unlock(&gssp_clnt_mutex);
-+}
-+
-+static int gssp_call(struct net *net, struct rpc_message *msg)
-+{
-+	struct rpc_clnt *clnt;
-+	int status;
-+
-+	/* for now always create new one */
-+	clnt = get_clnt(net, false);
-+
-+	status = rpc_call_sync(clnt, msg, 0);
-+	if (status < 0) {
-+		dprintk("gssp: rpc_call returned error %d\n", -status);
-+		switch (status) {
-+		case -EPROTONOSUPPORT:
-+			status = -EINVAL;
-+			break;
-+		case -ECONNREFUSED:
-+		case -ETIMEDOUT:
-+		case -ENOTCONN:
-+			status = -EAGAIN;
-+			break;
-+		case -ERESTARTSYS:
-+			if (signalled ())
-+				status = -EINTR;
-+			break;
-+		default:
-+			break;
-+		}
-+	}
-+
-+	/* always kill connection for now */
-+	kill_clnt(clnt);
-+
-+	return status;
-+}
-+
-+
-+/*
-+ * Public functions
-+ */
-+
-+/* numbers somewhat arbitrary but large enough for current needs */
-+#define GSSX_MAX_OUT_HANDLE	128
-+#define GSSX_MAX_MECH_OID	16
-+#define GSSX_MAX_SRC_PRINC	256
-+#define GSSX_KMEMBUF (GSSX_max_output_handle_sz + \
-+			GSSX_max_oid_sz + \
-+			GSSX_max_princ_sz + \
-+			sizeof(struct svc_cred))
-+
-+int gssp_accept_sec_context_upcall(struct net *net,
-+				struct gssp_upcall_data *data)
-+{
-+	struct gssx_arg_accept_sec_context arg;
-+	struct gssx_res_accept_sec_context res;
-+	struct gssx_ctx ctxh;
-+	struct gssx_ctx rctxh;
-+	struct gssx_cred delegcred;
-+	struct rpc_message msg = {
-+		.rpc_proc = &gssp_procedures[GSSX_ACCEPT_SEC_CONTEXT],
-+		.rpc_argp = &arg,
-+		.rpc_resp = &res,
-+		.rpc_cred = NULL, /* FIXME ? */
-+	};
-+	struct xdr_netobj client_name = { 0 , NULL };
-+	int ret;
-+
-+	/* fill in arg */
-+	memset(&arg, 0, sizeof(arg));
-+	if (data->in_handle.len != 0) {
-+		memset(&ctxh, 0, sizeof(ctxh));
-+		arg.context_handle = &ctxh;
-+		ctxh.state = data->in_handle;
-+	}
-+	arg.input_token = data->in_token;
-+
-+	/* use nfs/ for targ_name ? */
-+
-+	/* prepare res */
-+	memset(&res, 0, sizeof(res));
-+	memset(&rctxh, 0, sizeof(rctxh));
-+	res.context_handle = &rctxh;
-+
-+	/* pass in the max length we expect for each of these
-+	 * buffers but let the xdr code kmalloc them */
-+	rctxh.exported_context_token.len = GSSX_max_output_handle_sz;
-+	rctxh.mech.len = GSSX_max_oid_sz;
-+	rctxh.src_name.display_name.len = GSSX_max_princ_sz;
-+
-+	res.output_token = &data->out_token;
-+	res.output_token->len = GSSX_max_output_token_sz;
-+
-+	/* we are never interested in delegated credentials */
-+	memset(&delegcred, 0, sizeof(delegcred));
-+	res.delegated_cred_handle = &delegcred;
-+
-+	/* make upcall */
-+	ret = gssp_call(net, &msg);
-+
-+	/* we need to fetch all data even in case of error so
-+	 * that we can free special strctures is they have been allocated */
-+	data->major_status = res.status.major_status;
-+	data->minor_status = res.status.minor_status;
-+	if (res.context_handle) {
-+		data->out_handle = rctxh.exported_context_token;
-+		data->mech_oid = rctxh.mech;
-+		client_name = rctxh.src_name.display_name;
-+	}
-+
-+	if (res.options.count == 1) {
-+		gssx_buffer *value = &res.options.data[0].value;
-+		/* Currently we only decode CREDS_VALUE, if we add
-+		 * anything else we'll have to loop and match on the
-+		 * option name */
-+		if (value->len == 1) {
-+			/* steal group info from struct svc_cred */
-+			data->creds = *(struct svc_cred *)value->data;
-+			data->found_creds = 1;
-+		}
-+		/* whether we use it or not, free data */
-+		kfree(value->data);
-+	}
-+
-+	if (res.options.count != 0) {
-+		kfree(res.options.data);
-+	}
-+
-+	/* convert to GSS_NT_HOSTBASED_SERVICE form and set into creds */
-+	if (data->found_creds && client_name.data != NULL) {
-+		char *c;
-+
-+		data->creds.cr_principal = kstrndup(client_name.data,
-+						client_name.len, GFP_KERNEL);
-+		if (data->creds.cr_principal) {
-+			/* terminate and remove realm part */
-+			c = strchr(data->creds.cr_principal, '@');
-+			if (c) {
-+				*c = '\0';
-+
-+				/* change service-hostname delimiter */
-+				c = strchr(data->creds.cr_principal, '/');
-+				if (c) *c = '@';
-+			}
-+			if (!c) {
-+				/* not a service principal */
-+				kfree(data->creds.cr_principal);
-+				data->creds.cr_principal = NULL;
-+			}
-+		}
-+	}
-+	kfree(client_name.data);
-+
-+	return ret;
-+}
-+
-+void gssp_free_upcall_data(struct gssp_upcall_data *data)
-+{
-+	kfree(data->in_handle.data);
-+	kfree(data->out_handle.data);
-+	kfree(data->out_token.data);
-+	kfree(data->mech_oid.data);
-+	free_svc_cred(&data->creds);
-+}
-+
-+/*
-+ * Initialization stuff
-+ */
-+
-+static const struct rpc_version gssp_version1 = {
-+	.number		= GSSPROXY_VERS_1,
-+	.nrprocs	= ARRAY_SIZE(gssp_procedures),
-+	.procs		= gssp_procedures,
-+};
-+
-+static const struct rpc_version *gssp_version[] = {
-+	NULL,
-+	&gssp_version1,
-+};
-+
-+static struct rpc_stat gssp_stats;
-+
-+static const struct rpc_program gssp_program = {
-+	.name		= "gssproxy",
-+	.number		= GSSPROXY_PROGRAM,
-+	.nrvers		= ARRAY_SIZE(gssp_version),
-+	.version	= gssp_version,
-+	.stats		= &gssp_stats,
-+};
-diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.h b/net/sunrpc/auth_gss/gss_rpc_upcall.h
-new file mode 100644
-index 0000000..83aca5a
---- /dev/null
-+++ b/net/sunrpc/auth_gss/gss_rpc_upcall.h
-@@ -0,0 +1,43 @@
-+/*
-+ *  linux/net/sunrpc/gss_rpc_upcall.h
-+ *
-+ *  Copyright (C) 2012 Simo Sorce <simo@redhat.com>
-+ *
-+ * This program is free software; you can redistribute it and/or modify
-+ * it under the terms of the GNU General Public License as published by
-+ * the Free Software Foundation; either version 2 of the License, or
-+ * (at your option) any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public License
-+ * along with this program; if not, write to the Free Software
-+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-+ */
-+
-+#ifndef _GSS_RPC_UPCALL_H
-+#define _GSS_RPC_UPCALL_H
-+
-+#include <linux/sunrpc/auth_gss.h>
-+#include "gss_rpc_xdr.h"
-+
-+struct gssp_upcall_data {
-+	struct xdr_netobj in_handle;
-+	struct gssp_in_token in_token;
-+	struct xdr_netobj out_handle;
-+	struct xdr_netobj out_token;
-+	struct xdr_netobj mech_oid;
-+	struct svc_cred creds;
-+	int found_creds;
-+	int major_status;
-+	int minor_status;
-+};
-+
-+int gssp_accept_sec_context_upcall(struct net *net,
-+				struct gssp_upcall_data *data);
-+void gssp_free_upcall_data(struct gssp_upcall_data *data);
-+
-+#endif /* _GSS_RPC_UPCALL_H */
-diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-new file mode 100644
-index 0000000..490c80b
---- /dev/null
-+++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-@@ -0,0 +1,906 @@
-+/*
-+ * GSS Proxy upcall module
-+ *
-+ *  Copyright (C) 2012 Simo Sorce <simo@redhat.com>
-+ *
-+ * This program is free software; you can redistribute it and/or modify
-+ * it under the terms of the GNU General Public License as published by
-+ * the Free Software Foundation; either version 2 of the License, or
-+ * (at your option) any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public License
-+ * along with this program; if not, write to the Free Software
-+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-+ */
-+
-+#include <linux/sunrpc/svcauth.h>
-+#include "gss_rpc_xdr.h"
-+
-+static bool gssx_check_pointer(struct xdr_stream *xdr)
-+{
-+	__be32 *p;
-+
-+	p = xdr_reserve_space(xdr, 4);
-+	if (unlikely(p == NULL))
-+		return -ENOSPC;
-+	return *p?true:false;
-+}
-+
-+static int gssx_enc_bool(struct xdr_stream *xdr, int v)
-+{
-+	__be32 *p;
-+
-+	p = xdr_reserve_space(xdr, 4);
-+	if (unlikely(p == NULL))
-+		return -ENOSPC;
-+	*p = v ? xdr_one : xdr_zero;
-+	return 0;
-+}
-+
-+static int gssx_dec_bool(struct xdr_stream *xdr, u32 *v)
-+{
-+	__be32 *p;
-+
-+	p = xdr_inline_decode(xdr, 4);
-+	if (unlikely(p == NULL))
-+		return -ENOSPC;
-+	*v = be32_to_cpu(*p);
-+	return 0;
-+}
-+
-+static int gssx_enc_buffer(struct xdr_stream *xdr,
-+			   gssx_buffer *buf)
-+{
-+	__be32 *p;
-+
-+	p = xdr_reserve_space(xdr, sizeof(u32) + buf->len);
-+	if (!p)
-+		return -ENOSPC;
-+	xdr_encode_opaque(p, buf->data, buf->len);
-+	return 0;
-+}
-+
-+static int gssx_enc_in_token(struct xdr_stream *xdr,
-+			     struct gssp_in_token *in)
-+{
-+	__be32 *p;
-+
-+	p = xdr_reserve_space(xdr, 4);
-+	if (!p)
-+		return -ENOSPC;
-+	*p = cpu_to_be32(in->page_len);
-+
-+	/* all we need to do is to write pages */
-+	xdr_write_pages(xdr, in->pages, in->page_base, in->page_len);
-+
-+	return 0;
-+}
-+
-+
-+static int gssx_dec_buffer(struct xdr_stream *xdr,
-+			   gssx_buffer *buf)
-+{
-+	u32 length;
-+	__be32 *p;
-+
-+	p = xdr_inline_decode(xdr, 4);
-+	if (unlikely(p == NULL))
-+		return -ENOSPC;
-+
-+	length = be32_to_cpup(p);
-+	p = xdr_inline_decode(xdr, length);
-+	if (unlikely(p == NULL))
-+		return -ENOSPC;
-+
-+	if (buf->len == 0) {
-+		/* we intentionally are not interested in this buffer */
-+		return 0;
-+	}
-+	if (length > buf->len)
-+		return -ENOSPC;
-+
-+	if (!buf->data) {
-+		buf->data = kmemdup(p, length, GFP_KERNEL);
-+		if (!buf->data)
-+			return -ENOMEM;
-+	} else {
-+		memcpy(buf->data, p, length);
-+	}
-+	buf->len = length;
-+	return 0;
-+}
-+
-+static int gssx_enc_option(struct xdr_stream *xdr,
-+			   struct gssx_option *opt)
-+{
-+	int err;
-+
-+	err = gssx_enc_buffer(xdr, &opt->option);
-+	if (err)
-+		return err;
-+	err = gssx_enc_buffer(xdr, &opt->value);
-+	return err;
-+}
-+
-+static int gssx_dec_option(struct xdr_stream *xdr,
-+			   struct gssx_option *opt)
-+{
-+	int err;
-+
-+	err = gssx_dec_buffer(xdr, &opt->option);
-+	if (err)
-+		return err;
-+	err = gssx_dec_buffer(xdr, &opt->value);
-+	return err;
-+}
-+
-+static int dummy_enc_opt_array(struct xdr_stream *xdr,
-+				struct gssx_option_array *oa)
-+{
-+	__be32 *p;
-+
-+	if (oa->count != 0)
-+		return -EINVAL;
-+
-+	p = xdr_reserve_space(xdr, 4);
-+	if (!p)
-+		return -ENOSPC;
-+	*p = 0;
-+
-+	return 0;
-+}
-+
-+static int dummy_dec_opt_array(struct xdr_stream *xdr,
-+				struct gssx_option_array *oa)
-+{
-+	struct gssx_option dummy;
-+	u32 count, i;
-+	__be32 *p;
-+
-+	p = xdr_inline_decode(xdr, 4);
-+	if (unlikely(p == NULL))
-+		return -ENOSPC;
-+	count = be32_to_cpup(p++);
-+	memset(&dummy, 0, sizeof(dummy));
-+	for (i = 0; i < count; i++) {
-+		gssx_dec_option(xdr, &dummy);
-+	}
-+
-+	oa->count = 0;
-+	oa->data = NULL;
-+	return 0;
-+}
-+
-+static int get_s32(void **p, void *max, s32 *res)
-+{
-+	void *base = *p;
-+	void *next = (void *)((char *)base + sizeof(s32));
-+	if (unlikely(next > max || next < base))
-+		return -EINVAL;
-+	memcpy(res, base, sizeof(s32));
-+	*p = next;
-+	return 0;
-+}
-+
-+static int gssx_dec_linux_creds(struct xdr_stream *xdr,
-+				struct svc_cred *creds)
-+{
-+	u32 length;
-+	__be32 *p;
-+	void *q, *end;
-+	s32 tmp;
-+	int N, i, err;
-+
-+	p = xdr_inline_decode(xdr, 4);
-+	if (unlikely(p == NULL))
-+		return -ENOSPC;
-+
-+	length = be32_to_cpup(p);
-+
-+	/* FIXME: we do not want to use the scratch buffer for this one
-+	 * may need to use functions that allows us to access an io vector
-+	 * directly */
-+	p = xdr_inline_decode(xdr, length);
-+	if (unlikely(p == NULL))
-+		return -ENOSPC;
-+
-+	q = p;
-+	end = q + length;
-+
-+	/* uid */
-+	err = get_s32(&q, end, &tmp);
-+	if (err)
-+		return err;
-+	creds->cr_uid = tmp;
-+
-+	/* gid */
-+	err = get_s32(&q, end, &tmp);
-+	if (err)
-+		return err;
-+	creds->cr_gid = tmp;
-+
-+	/* number of additional gid's */
-+	err = get_s32(&q, end, &tmp);
-+	if (err)
-+		return err;
-+	N = tmp;
-+	creds->cr_group_info = groups_alloc(N);
-+	if (creds->cr_group_info == NULL)
-+		return -ENOMEM;
-+
-+	/* gid's */
-+	for (i = 0; i < N; i++) {
-+		err = get_s32(&q, end, &tmp);
-+		if (err) {
-+			groups_free(creds->cr_group_info);
-+			return err;
-+		}
-+		GROUP_AT(creds->cr_group_info, i) = tmp;
-+	}
-+
-+	return 0;
-+}
-+
-+static int gssx_dec_option_array(struct xdr_stream *xdr,
-+				 struct gssx_option_array *oa)
-+{
-+	struct svc_cred *creds;
-+	u32 count, i;
-+	__be32 *p;
-+	int err;
-+
-+	p = xdr_inline_decode(xdr, 4);
-+	if (unlikely(p == NULL))
-+		return -ENOSPC;
-+	count = be32_to_cpup(p++);
-+	if (count != 0) {
-+		/* we recognize only 1 currently: CREDS_VALUE */
-+		oa->count = 1;
-+
-+		oa->data = kmalloc(sizeof(struct gssx_option), GFP_KERNEL);
-+		if (!oa->data)
-+			return -ENOMEM;
-+
-+		creds = kmalloc(sizeof(struct svc_cred), GFP_KERNEL);
-+		if (!creds) {
-+			kfree(oa->data);
-+			return -ENOMEM;
-+		}
-+
-+		oa->data[0].option.data = CREDS_VALUE;
-+		oa->data[0].option.len = sizeof(CREDS_VALUE);
-+		oa->data[0].value.data = (void *)creds;
-+		oa->data[0].value.len = 0;
-+	}
-+	for (i = 0; i < count; i++) {
-+		gssx_buffer dummy = { 0, NULL };
-+		u32 length;
-+
-+		/* option buffer */
-+		p = xdr_inline_decode(xdr, 4);
-+		if (unlikely(p == NULL))
-+			return -ENOSPC;
-+
-+		length = be32_to_cpup(p);
-+		p = xdr_inline_decode(xdr, length);
-+		if (unlikely(p == NULL))
-+			return -ENOSPC;
-+
-+		if (length == sizeof(CREDS_VALUE) &&
-+		    memcmp(p, CREDS_VALUE, sizeof(CREDS_VALUE)) == 0) {
-+			/* We have creds here. parse them */
-+			err = gssx_dec_linux_creds(xdr, creds);
-+			if (err)
-+				return err;
-+			oa->data[0].value.len = 1; /* presence */
-+		} else {
-+			/* consume uninteresting buffer */
-+			err = gssx_dec_buffer(xdr, &dummy);
-+			if (err)
-+				return err;
-+		}
-+	}
-+	return 0;
-+}
-+
-+static int gssx_dec_status(struct xdr_stream *xdr,
-+			   struct gssx_status *status)
-+{
-+	__be32 *p;
-+	int err;
-+
-+	/* status->major_status */
-+	p = xdr_inline_decode(xdr, 8);
-+	if (unlikely(p == NULL))
-+		return -ENOSPC;
-+	p = xdr_decode_hyper(p, &status->major_status);
-+
-+	/* status->mech */
-+	err = gssx_dec_buffer(xdr, &status->mech);
-+	if (err)
-+		return err;
-+
-+	/* status->minor_status */
-+	p = xdr_inline_decode(xdr, 8);
-+	if (unlikely(p == NULL))
-+		return -ENOSPC;
-+	p = xdr_decode_hyper(p, &status->minor_status);
-+
-+	/* status->major_status_string */
-+	err = gssx_dec_buffer(xdr, &status->major_status_string);
-+	if (err)
-+		return err;
-+
-+	/* status->minor_status_string */
-+	err = gssx_dec_buffer(xdr, &status->minor_status_string);
-+	if (err)
-+		return err;
-+
-+	/* status->server_ctx */
-+	err = gssx_dec_buffer(xdr, &status->server_ctx);
-+	if (err)
-+		return err;
-+
-+	/* we assume we have no options for now, so simply consume them */
-+	/* status->options */
-+	err = dummy_dec_opt_array(xdr, &status->options);
-+
-+	return err;
-+}
-+
-+static int gssx_enc_call_ctx(struct xdr_stream *xdr,
-+			     struct gssx_call_ctx *ctx)
-+{
-+	struct gssx_option opt;
-+	__be32 *p;
-+	int err;
-+
-+	/* ctx->locale */
-+	err = gssx_enc_buffer(xdr, &ctx->locale);
-+	if (err)
-+		return err;
-+
-+	/* ctx->server_ctx */
-+	err = gssx_enc_buffer(xdr, &ctx->server_ctx);
-+	if (err)
-+		return err;
-+
-+	/* we always want to ask for lucid contexts */
-+	/* ctx->options */
-+	p = xdr_reserve_space(xdr, 4);
-+	*p = cpu_to_be32(2);
-+
-+	/* we want a lucid_v1 context */
-+	opt.option.data = LUCID_OPTION;
-+	opt.option.len = sizeof(LUCID_OPTION);
-+	opt.value.data = LUCID_VALUE;
-+	opt.value.len = sizeof(LUCID_VALUE);
-+	err = gssx_enc_option(xdr, &opt);
-+
-+	/* ..and user creds */
-+	opt.option.data = CREDS_OPTION;
-+	opt.option.len = sizeof(CREDS_OPTION);
-+	opt.value.data = CREDS_VALUE;
-+	opt.value.len = sizeof(CREDS_VALUE);
-+	err = gssx_enc_option(xdr, &opt);
-+
-+	return err;
-+}
-+
-+static int gssx_dec_name_attr(struct xdr_stream *xdr,
-+			     struct gssx_name_attr *attr)
-+{
-+	int err;
-+
-+	/* attr->attr */
-+	err = gssx_dec_buffer(xdr, &attr->attr);
-+	if (err)
-+		return err;
-+
-+	/* attr->value */
-+	err = gssx_dec_buffer(xdr, &attr->value);
-+	if (err)
-+		return err;
-+
-+	/* attr->extensions */
-+	err = dummy_dec_opt_array(xdr, &attr->extensions);
-+
-+	return err;
-+}
-+
-+static int dummy_enc_nameattr_array(struct xdr_stream *xdr,
-+				    struct gssx_name_attr_array *naa)
-+{
-+	__be32 *p;
-+
-+	if (naa->count != 0)
-+		return -EINVAL;
-+
-+	p = xdr_reserve_space(xdr, 4);
-+	if (!p)
-+		return -ENOSPC;
-+	*p = 0;
-+
-+	return 0;
-+}
-+
-+static int dummy_dec_nameattr_array(struct xdr_stream *xdr,
-+				    struct gssx_name_attr_array *naa)
-+{
-+	struct gssx_name_attr dummy;
-+	u32 count, i;
-+	__be32 *p;
-+
-+	p = xdr_inline_decode(xdr, 4);
-+	if (unlikely(p == NULL))
-+		return -ENOSPC;
-+	count = be32_to_cpup(p++);
-+	for (i = 0; i < count; i++) {
-+		gssx_dec_name_attr(xdr, &dummy);
-+	}
-+
-+	naa->count = 0;
-+	naa->data = NULL;
-+	return 0;
-+}
-+
-+static int gssx_enc_name(struct xdr_stream *xdr,
-+			 struct gssx_name *name)
-+{
-+	int err;
-+
-+	/* name->display_name */
-+	err = gssx_enc_buffer(xdr, &name->display_name);
-+	if (err)
-+		return err;
-+
-+	/* name->name_type */
-+	err = gssx_enc_buffer(xdr, &name->name_type);
-+	if (err)
-+		return err;
-+
-+	/* name->exported_name */
-+	err = gssx_enc_buffer(xdr, &name->exported_name);
-+	if (err)
-+		return err;
-+
-+	/* name->exported_composite_name */
-+	err = gssx_enc_buffer(xdr, &name->exported_composite_name);
-+	if (err)
-+		return err;
-+
-+	/* leave name_attributes empty for now, will add once we have any
-+	 * to pass up at all */
-+	/* name->name_attributes */
-+	err = dummy_enc_nameattr_array(xdr, &name->name_attributes);
-+	if (err)
-+		return err;
-+
-+	/* leave options empty for now, will add once we have any options
-+	 * to pass up at all */
-+	/* name->extensions */
-+	err = dummy_enc_opt_array(xdr, &name->extensions);
-+
-+	return err;
-+}
-+
-+static int gssx_dec_name(struct xdr_stream *xdr,
-+			 struct gssx_name *name)
-+{
-+	int err;
-+
-+	/* name->display_name */
-+	err = gssx_dec_buffer(xdr, &name->display_name);
-+	if (err)
-+		return err;
-+
-+	/* name->name_type */
-+	err = gssx_dec_buffer(xdr, &name->name_type);
-+	if (err)
-+		return err;
-+
-+	/* name->exported_name */
-+	err = gssx_dec_buffer(xdr, &name->exported_name);
-+	if (err)
-+		return err;
-+
-+	/* name->exported_composite_name */
-+	err = gssx_dec_buffer(xdr, &name->exported_composite_name);
-+	if (err)
-+		return err;
-+
-+	/* we assume we have no attributes for now, so simply consume them */
-+	/* name->name_attributes */
-+	err = dummy_dec_nameattr_array(xdr, &name->name_attributes);
-+	if (err)
-+		return err;
-+
-+	/* we assume we have no options for now, so simply consume them */
-+	/* name->extensions */
-+	err = dummy_dec_opt_array(xdr, &name->extensions);
-+
-+	return err;
-+}
-+
-+static int gssx_dec_cred_element(struct xdr_stream *xdr,
-+				 struct gssx_cred_element *el)
-+{
-+	__be32 *p;
-+	int err;
-+
-+	/* el->MN */
-+	err = gssx_dec_name(xdr, &el->MN);
-+	if (err)
-+		return err;
-+
-+	/* el->mech */
-+	err = gssx_dec_buffer(xdr, &el->mech);
-+	if (err)
-+		return err;
-+
-+	/* el->cred_usage */
-+	p = xdr_inline_decode(xdr, 4+8+8);
-+	if (!p)
-+		return -ENOSPC;
-+	el->cred_usage = be32_to_cpup(p++);
-+
-+	/* el->initiator_time_rec */
-+	p = xdr_decode_hyper(p, &el->initiator_time_rec);
-+
-+	/* el->acceptor_time_rec */
-+	p = xdr_decode_hyper(p, &el->initiator_time_rec);
-+
-+	/* we assume we have no options for now, so simply consume them */
-+	/* el->options */
-+	err = dummy_dec_opt_array(xdr, &el->options);
-+
-+	return err;
-+}
-+
-+static int dummy_enc_credel_array(struct xdr_stream *xdr,
-+				  struct gssx_cred_element_array *cea)
-+{
-+	__be32 *p;
-+
-+	if (cea->count != 0)
-+		return -EINVAL;
-+
-+	p = xdr_reserve_space(xdr, 4);
-+	if (!p)
-+		return -ENOSPC;
-+	*p = 0;
-+
-+	return 0;
-+}
-+
-+static int dummy_dec_credel_array(struct xdr_stream *xdr,
-+				  struct gssx_cred_element_array *cea)
-+{
-+	struct gssx_cred_element dummy;
-+	u32 count, i;
-+	__be32 *p;
-+
-+	p = xdr_inline_decode(xdr, 4);
-+	if (unlikely(p == NULL))
-+		return -ENOSPC;
-+	count = be32_to_cpup(p++);
-+	for (i = 0; i < count; i++) {
-+		gssx_dec_cred_element(xdr, &dummy);
-+	}
-+
-+	cea->count = 0;
-+	cea->data = NULL;
-+	return 0;
-+}
-+
-+static int gssx_enc_cred(struct xdr_stream *xdr,
-+			 struct gssx_cred *cred)
-+{
-+	int err;
-+
-+	/* cred->desired_name */
-+	err = gssx_enc_name(xdr, &cred->desired_name);
-+	if (err)
-+		return err;
-+
-+	/* cred->elements */
-+	err = dummy_enc_credel_array(xdr, &cred->elements);
-+
-+	/* cred->cred_handle_reference */
-+	err = gssx_enc_buffer(xdr, &cred->cred_handle_reference);
-+	if (err)
-+		return err;
-+
-+	/* cred->needs_release */
-+	err = gssx_enc_bool(xdr, cred->needs_release);
-+
-+	return err;
-+}
-+
-+static int gssx_dec_cred(struct xdr_stream *xdr,
-+			 struct gssx_cred *cred)
-+{
-+	int err;
-+
-+	/* cred->desired_name */
-+	err = gssx_dec_name(xdr, &cred->desired_name);
-+	if (err)
-+		return err;
-+
-+	/* cred->elements */
-+	err = dummy_dec_credel_array(xdr, &cred->elements);
-+
-+	/* cred->cred_handle_reference */
-+	err = gssx_dec_buffer(xdr, &cred->cred_handle_reference);
-+	if (err)
-+		return err;
-+
-+	/* cred->needs_release */
-+	err = gssx_dec_bool(xdr, &cred->needs_release);
-+
-+	return err;
-+}
-+
-+static int gssx_enc_ctx(struct xdr_stream *xdr,
-+			struct gssx_ctx *ctx)
-+{
-+	__be32 *p;
-+	int err;
-+
-+	/* ctx->exported_context_token */
-+	err = gssx_enc_buffer(xdr, &ctx->exported_context_token);
-+	if (err)
-+		return err;
-+
-+	/* ctx->state */
-+	err = gssx_enc_buffer(xdr, &ctx->state);
-+	if (err)
-+		return err;
-+
-+	/* ctx->need_release */
-+	err = gssx_enc_bool(xdr, ctx->need_release);
-+	if (err)
-+		return err;
-+
-+	/* ctx->mech */
-+	err = gssx_enc_buffer(xdr, &ctx->mech);
-+	if (err)
-+		return err;
-+
-+	/* ctx->src_name */
-+	err = gssx_enc_name(xdr, &ctx->src_name);
-+	if (err)
-+		return err;
-+
-+	/* ctx->targ_name */
-+	err = gssx_enc_name(xdr, &ctx->targ_name);
-+	if (err)
-+		return err;
-+
-+	/* ctx->lifetime */
-+	p = xdr_reserve_space(xdr, 8+8);
-+	if (!p)
-+		return -ENOSPC;
-+	p = xdr_encode_hyper(p, ctx->lifetime);
-+
-+	/* ctx->ctx_flags */
-+	p = xdr_encode_hyper(p, ctx->ctx_flags);
-+
-+	/* ctx->locally_initiated */
-+	err = gssx_enc_bool(xdr, ctx->locally_initiated);
-+	if (err)
-+		return err;
-+
-+	/* ctx->open */
-+	err = gssx_enc_bool(xdr, ctx->open);
-+	if (err)
-+		return err;
-+
-+	/* leave options empty for now, will add once we have any options
-+	 * to pass up at all */
-+	/* ctx->options */
-+	err = dummy_enc_opt_array(xdr, &ctx->options);
-+
-+	return err;
-+}
-+
-+static int gssx_dec_ctx(struct xdr_stream *xdr,
-+			struct gssx_ctx *ctx)
-+{
-+	__be32 *p;
-+	int err;
-+
-+	/* ctx->exported_context_token */
-+	err = gssx_dec_buffer(xdr, &ctx->exported_context_token);
-+	if (err)
-+		return err;
-+
-+	/* ctx->state */
-+	err = gssx_dec_buffer(xdr, &ctx->state);
-+	if (err)
-+		return err;
-+
-+	/* ctx->need_release */
-+	err = gssx_dec_bool(xdr, &ctx->need_release);
-+	if (err)
-+		return err;
-+
-+	/* ctx->mech */
-+	err = gssx_dec_buffer(xdr, &ctx->mech);
-+	if (err)
-+		return err;
-+
-+	/* ctx->src_name */
-+	err = gssx_dec_name(xdr, &ctx->src_name);
-+	if (err)
-+		return err;
-+
-+	/* ctx->targ_name */
-+	err = gssx_dec_name(xdr, &ctx->targ_name);
-+	if (err)
-+		return err;
-+
-+	/* ctx->lifetime */
-+	p = xdr_inline_decode(xdr, 8+8);
-+	if (unlikely(p == NULL))
-+		return -ENOSPC;
-+	p = xdr_decode_hyper(p, &ctx->lifetime);
-+
-+	/* ctx->ctx_flags */
-+	p = xdr_decode_hyper(p, &ctx->ctx_flags);
-+
-+	/* ctx->locally_initiated */
-+	err = gssx_dec_bool(xdr, &ctx->locally_initiated);
-+	if (err)
-+		return err;
-+
-+	/* ctx->open */
-+	err = gssx_dec_bool(xdr, &ctx->open);
-+	if (err)
-+		return err;
-+
-+	/* we assume we have no options for now, so simply consume them */
-+	/* ctx->options */
-+	err = dummy_dec_opt_array(xdr, &ctx->options);
-+
-+	return err;
-+}
-+
-+static int gssx_enc_cb(struct xdr_stream *xdr, struct gssx_cb *cb)
-+{
-+	__be32 *p;
-+	int err;
-+
-+	/* cb->initiator_addrtype */
-+	p = xdr_reserve_space(xdr, 8);
-+	if (!p)
-+		return -ENOSPC;
-+	p = xdr_encode_hyper(p, cb->initiator_addrtype);
-+
-+	/* cb->initiator_address */
-+	err = gssx_enc_buffer(xdr, &cb->initiator_address);
-+	if (err)
-+		return err;
-+
-+	/* cb->acceptor_addrtype */
-+	p = xdr_reserve_space(xdr, 8);
-+	if (!p)
-+		return -ENOSPC;
-+	p = xdr_encode_hyper(p, cb->acceptor_addrtype);
-+
-+	/* cb->acceptor_address */
-+	err = gssx_enc_buffer(xdr, &cb->acceptor_address);
-+	if (err)
-+		return err;
-+
-+	/* cb->application_data */
-+	err = gssx_enc_buffer(xdr, &cb->application_data);
-+
-+	return err;
-+}
-+
-+void gssx_enc_accept_sec_context(struct rpc_rqst *req,
-+				 struct xdr_stream *xdr,
-+				 struct gssx_arg_accept_sec_context *arg)
-+{
-+	int err;
-+
-+	err = gssx_enc_call_ctx(xdr, &arg->call_ctx);
-+	if (err)
-+		goto done;
-+
-+	/* arg->context_handle */
-+	if (arg->context_handle) {
-+		err = gssx_enc_ctx(xdr, arg->context_handle);
-+		if (err)
-+			goto done;
-+	} else {
-+		err = gssx_enc_bool(xdr, 0);
-+	}
-+
-+	/* arg->cred_handle */
-+	if (arg->cred_handle) {
-+		err = gssx_enc_cred(xdr, arg->cred_handle);
-+		if (err)
-+			goto done;
-+	} else {
-+		err = gssx_enc_bool(xdr, 0);
-+	}
-+
-+	/* arg->input_token */
-+	err = gssx_enc_in_token(xdr, &arg->input_token);
-+	if (err)
-+		goto done;
-+
-+	/* arg->input_cb */
-+	if (arg->input_cb) {
-+		err = gssx_enc_cb(xdr, arg->input_cb);
-+		if (err)
-+			goto done;
-+	} else {
-+		err = gssx_enc_bool(xdr, 0);
-+	}
-+
-+	err = gssx_enc_bool(xdr, arg->ret_deleg_cred);
-+	if (err)
-+		goto done;
-+
-+	/* leave options empty for now, will add once we have any options
-+	 * to pass up at all */
-+	/* arg->options */
-+	err = dummy_enc_opt_array(xdr, &arg->options);
-+
-+done:
-+	if (err)
-+		dprintk("RPC:       gssx_enc_accept_sec_context: %d\n", err);
-+}
-+
-+int gssx_dec_accept_sec_context(struct rpc_rqst *rqstp,
-+				struct xdr_stream *xdr,
-+				struct gssx_res_accept_sec_context *res)
-+{
-+	int err;
-+
-+	/* res->status */
-+	err = gssx_dec_status(xdr, &res->status);
-+	if (err)
-+		return err;
-+
-+	/* res->context_handle */
-+	if (gssx_check_pointer(xdr)) {
-+		err = gssx_dec_ctx(xdr, res->context_handle);
-+		if (err)
-+			return err;
-+	} else {
-+		res->context_handle = NULL;
-+	}
-+
-+	/* res->output_token */
-+	if (gssx_check_pointer(xdr)) {
-+		err = gssx_dec_buffer(xdr, res->output_token);
-+		if (err)
-+			return err;
-+	} else {
-+		res->output_token = NULL;
-+	}
-+
-+	/* res->delegated_cred_handle */
-+	if (gssx_check_pointer(xdr)) {
-+		err = gssx_dec_cred(xdr, res->delegated_cred_handle);
-+		if (err)
-+			return err;
-+	} else {
-+		res->delegated_cred_handle = NULL;
-+	}
-+
-+	/* we assume we have no options for now, so simply consume them */
-+	/* res->options */
-+	err = gssx_dec_option_array(xdr, &res->options);
-+
-+	return err;
-+}
-diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.h b/net/sunrpc/auth_gss/gss_rpc_xdr.h
-new file mode 100644
-index 0000000..9256a58
---- /dev/null
-+++ b/net/sunrpc/auth_gss/gss_rpc_xdr.h
-@@ -0,0 +1,269 @@
-+/*
-+ * GSS Proxy upcall module
-+ *
-+ *  Copyright (C) 2012 Simo Sorce <simo@redhat.com>
-+ *
-+ * This program is free software; you can redistribute it and/or modify
-+ * it under the terms of the GNU General Public License as published by
-+ * the Free Software Foundation; either version 2 of the License, or
-+ * (at your option) any later version.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU General Public License
-+ * along with this program; if not, write to the Free Software
-+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-+ */
-+
-+#ifndef _LINUX_GSS_RPC_XDR_H
-+#define _LINUX_GSS_RPC_XDR_H
-+
-+#include <linux/sunrpc/xdr.h>
-+#include <linux/sunrpc/clnt.h>
-+#include <linux/sunrpc/xprtsock.h>
-+
-+#ifdef RPC_DEBUG
-+# define RPCDBG_FACILITY	RPCDBG_AUTH
-+#endif
-+
-+#define LUCID_OPTION "exported_context_type"
-+#define LUCID_VALUE  "linux_lucid_v1"
-+#define CREDS_OPTION "exported_creds_type"
-+#define CREDS_VALUE  "linux_creds_v1"
-+
-+typedef struct xdr_netobj gssx_buffer;
-+typedef struct xdr_netobj utf8string;
-+typedef struct xdr_netobj gssx_OID;
-+
-+enum gssx_cred_usage {
-+	GSSX_C_INITIATE = 1,
-+	GSSX_C_ACCEPT = 2,
-+	GSSX_C_BOTH = 3,
-+};
-+
-+struct gssx_option {
-+	gssx_buffer option;
-+	gssx_buffer value;
-+};
-+
-+struct gssx_option_array {
-+	u32 count;
-+	struct gssx_option *data;
-+};
-+
-+struct gssx_status {
-+	u64 major_status;
-+	gssx_OID mech;
-+	u64 minor_status;
-+	utf8string major_status_string;
-+	utf8string minor_status_string;
-+	gssx_buffer server_ctx;
-+	struct gssx_option_array options;
-+};
-+
-+struct gssx_call_ctx {
-+	utf8string locale;
-+	gssx_buffer server_ctx;
-+	struct gssx_option_array options;
-+};
-+
-+struct gssx_name_attr {
-+	gssx_buffer attr;
-+	gssx_buffer value;
-+	struct gssx_option_array extensions;
-+};
-+
-+struct gssx_name_attr_array {
-+	u32 count;
-+	struct gssx_name_attr *data;
-+};
-+
-+struct gssx_name {
-+	gssx_buffer display_name;
-+	gssx_OID name_type;
-+	gssx_buffer exported_name;
-+	gssx_buffer exported_composite_name;
-+	struct gssx_name_attr_array name_attributes;
-+	struct gssx_option_array extensions;
-+};
-+typedef struct gssx_name gssx_name;
-+
-+struct gssx_cred_element {
-+	gssx_name MN;
-+	gssx_OID mech;
-+	u32 cred_usage;
-+	u64 initiator_time_rec;
-+	u64 acceptor_time_rec;
-+	struct gssx_option_array options;
-+};
-+
-+struct gssx_cred_element_array {
-+	u32 count;
-+	struct gssx_cred_element *data;
-+};
-+
-+struct gssx_cred {
-+	gssx_name desired_name;
-+	struct gssx_cred_element_array elements;
-+	gssx_buffer cred_handle_reference;
-+	u32 needs_release;
-+};
-+
-+struct gssx_ctx {
-+	gssx_buffer exported_context_token;
-+	gssx_buffer state;
-+	u32 need_release;
-+	gssx_OID mech;
-+	gssx_name src_name;
-+	gssx_name targ_name;
-+	u64 lifetime;
-+	u64 ctx_flags;
-+	u32 locally_initiated;
-+	u32 open;
-+	struct gssx_option_array options;
-+};
-+
-+struct gssx_cb {
-+	u64 initiator_addrtype;
-+	gssx_buffer initiator_address;
-+	u64 acceptor_addrtype;
-+	gssx_buffer acceptor_address;
-+	gssx_buffer application_data;
-+};
-+
-+
-+/* This structure is not defined in the protocol.
-+ * It is used in the kernel to carry around a big buffer
-+ * as a set of pages */
-+struct gssp_in_token {
-+	struct page **pages;	/* Array of contiguous pages */
-+	unsigned int page_base;	/* Start of page data */
-+	unsigned int page_len;	/* Length of page data */
-+};
-+
-+struct gssx_arg_accept_sec_context {
-+	struct gssx_call_ctx call_ctx;
-+	struct gssx_ctx *context_handle;
-+	struct gssx_cred *cred_handle;
-+	struct gssp_in_token input_token;
-+	struct gssx_cb *input_cb;
-+	u32 ret_deleg_cred;
-+	struct gssx_option_array options;
-+};
-+
-+struct gssx_res_accept_sec_context {
-+	struct gssx_status status;
-+	struct gssx_ctx *context_handle;
-+	gssx_buffer *output_token;
-+	struct gssx_cred *delegated_cred_handle;
-+	struct gssx_option_array options;
-+};
-+
-+
-+
-+#define gssx_enc_indicate_mechs NULL
-+#define gssx_dec_indicate_mechs NULL
-+#define gssx_enc_get_call_context NULL
-+#define gssx_dec_get_call_context NULL
-+#define gssx_enc_import_and_canon_name NULL
-+#define gssx_dec_import_and_canon_name NULL
-+#define gssx_enc_export_cred NULL
-+#define gssx_dec_export_cred NULL
-+#define gssx_enc_import_cred NULL
-+#define gssx_dec_import_cred NULL
-+#define gssx_enc_acquire_cred NULL
-+#define gssx_dec_acquire_cred NULL
-+#define gssx_enc_store_cred NULL
-+#define gssx_dec_store_cred NULL
-+#define gssx_enc_init_sec_context NULL
-+#define gssx_dec_init_sec_context NULL
-+void gssx_enc_accept_sec_context(struct rpc_rqst *req,
-+				 struct xdr_stream *xdr,
-+				 struct gssx_arg_accept_sec_context *args);
-+int gssx_dec_accept_sec_context(struct rpc_rqst *rqstp,
-+				struct xdr_stream *xdr,
-+				struct gssx_res_accept_sec_context *res);
-+#define gssx_enc_release_handle NULL
-+#define gssx_dec_release_handle NULL
-+#define gssx_enc_get_mic NULL
-+#define gssx_dec_get_mic NULL
-+#define gssx_enc_verify NULL
-+#define gssx_dec_verify NULL
-+#define gssx_enc_wrap NULL
-+#define gssx_dec_wrap NULL
-+#define gssx_enc_unwrap NULL
-+#define gssx_dec_unwrap NULL
-+#define gssx_enc_wrap_size_limit NULL
-+#define gssx_dec_wrap_size_limit NULL
-+
-+/* non implemented calls are set to 0 size */
-+#define GSSX_ARG_indicate_mechs_sz 0
-+#define GSSX_RES_indicate_mechs_sz 0
-+#define GSSX_ARG_get_call_context_sz 0
-+#define GSSX_RES_get_call_context_sz 0
-+#define GSSX_ARG_import_and_canon_name_sz 0
-+#define GSSX_RES_import_and_canon_name_sz 0
-+#define GSSX_ARG_export_cred_sz 0
-+#define GSSX_RES_export_cred_sz 0
-+#define GSSX_ARG_import_cred_sz 0
-+#define GSSX_RES_import_cred_sz 0
-+#define GSSX_ARG_acquire_cred_sz 0
-+#define GSSX_RES_acquire_cred_sz 0
-+#define GSSX_ARG_store_cred_sz 0
-+#define GSSX_RES_store_cred_sz 0
-+#define GSSX_ARG_init_sec_context_sz 0
-+#define GSSX_RES_init_sec_context_sz 0
-+
-+#define GSSX_default_in_call_ctx_sz (4 + 4 + 4 + \
-+			8 + sizeof(LUCID_OPTION) + sizeof(LUCID_VALUE) + \
-+			8 + sizeof(CREDS_OPTION) + sizeof(CREDS_VALUE))
-+#define GSSX_default_in_ctx_hndl_sz (4 + 4+8 + 4 + 4 + 6*4 + 6*4 + 8 + 8 + \
-+					4 + 4 + 4)
-+#define GSSX_default_in_cred_sz 4 /* we send in no cred_handle */
-+#define GSSX_default_in_token_sz 4 /* does *not* include token data */
-+#define GSSX_default_in_cb_sz 4 /* we do not use channel bindings */
-+#define GSSX_ARG_accept_sec_context_sz (GSSX_default_in_call_ctx_sz + \
-+					GSSX_default_in_ctx_hndl_sz + \
-+					GSSX_default_in_cred_sz + \
-+					GSSX_default_in_token_sz + \
-+					GSSX_default_in_cb_sz + \
-+					4 /* no deleg creds boolean */ + \
-+					4) /* empty options */
-+
-+/* somewhat arbitrary numbers but large enough (we ignore some of the data
-+ * sent down, but it is part of the protocol so we need enough space to take
-+ * it in) */
-+#define GSSX_default_status_sz 8 + 24 + 8 + 256 + 256 + 16 + 4
-+#define GSSX_max_output_handle_sz 128
-+#define GSSX_max_oid_sz 16
-+#define GSSX_max_princ_sz 256
-+#define GSSX_default_ctx_sz (GSSX_max_output_handle_sz + \
-+			     16 + 4 + GSSX_max_oid_sz + \
-+			     2 * GSSX_max_princ_sz + \
-+			     8 + 8 + 4 + 4 + 4)
-+#define GSSX_max_output_token_sz 1024
-+#define GSSX_max_creds_sz (4 + 4 + 4 + NGROUPS_MAX * 4)
-+#define GSSX_RES_accept_sec_context_sz (GSSX_default_status_sz + \
-+					GSSX_default_ctx_sz + \
-+					GSSX_max_output_token_sz + \
-+					4 + GSSX_max_creds_sz)
-+
-+#define GSSX_ARG_release_handle_sz 0
-+#define GSSX_RES_release_handle_sz 0
-+#define GSSX_ARG_get_mic_sz 0
-+#define GSSX_RES_get_mic_sz 0
-+#define GSSX_ARG_verify_sz 0
-+#define GSSX_RES_verify_sz 0
-+#define GSSX_ARG_wrap_sz 0
-+#define GSSX_RES_wrap_sz 0
-+#define GSSX_ARG_unwrap_sz 0
-+#define GSSX_RES_unwrap_sz 0
-+#define GSSX_ARG_wrap_size_limit_sz 0
-+#define GSSX_RES_wrap_size_limit_sz 0
-+
-+
-+
-+#endif /* _LINUX_GSS_RPC_XDR_H */
--- 
-1.7.9.5
-
+--b.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/lockd/clntlock.c             |   2 +-
+>  fs/lockd/host.c                 |   1 +
+>  fs/lockd/mon.c                  |   1 +
+>  fs/lockd/svcsubs.c              |   2 +-
+>  fs/nfs/dns_resolve.c            |   2 +
+>  fs/nfs/nfs4client.c             |   1 +
+>  fs/nfs/nfs4filelayoutdev.c      |   1 +
+>  fs/nfs/nfs4namespace.c          |   1 +
+>  fs/nfs/super.c                  |   1 +
+>  fs/nfsd/fault_inject.c          |   2 +-
+>  fs/nfsd/nfs4state.c             |   2 +-
+>  fs/nfsd/nfscache.c              |   2 +-
+>  fs/nfsd/nfsctl.c                |   2 +-
+>  include/linux/sunrpc/addr.h     | 170 ++++++++++++++++++++++++++++++++++++++++
+>  include/linux/sunrpc/clnt.h     | 155 ------------------------------------
+>  net/sunrpc/addr.c               |   3 +-
+>  net/sunrpc/clnt.c               |   1 +
+>  net/sunrpc/rpcb_clnt.c          |   1 +
+>  net/sunrpc/svcauth_unix.c       |   2 +-
+>  net/sunrpc/xprtrdma/transport.c |   1 +
+>  net/sunrpc/xprtsock.c           |   1 +
+>  21 files changed, 191 insertions(+), 163 deletions(-)
+>  create mode 100644 include/linux/sunrpc/addr.h
+> 
+> diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
+> index ca0a080..4885b53 100644
+> --- a/fs/lockd/clntlock.c
+> +++ b/fs/lockd/clntlock.c
+> @@ -11,7 +11,7 @@
+>  #include <linux/slab.h>
+>  #include <linux/time.h>
+>  #include <linux/nfs_fs.h>
+> -#include <linux/sunrpc/clnt.h>
+> +#include <linux/sunrpc/addr.h>
+>  #include <linux/sunrpc/svc.h>
+>  #include <linux/lockd/lockd.h>
+>  #include <linux/kthread.h>
+> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+> index 0e17090..764c4d2 100644
+> --- a/fs/lockd/host.c
+> +++ b/fs/lockd/host.c
+> @@ -13,6 +13,7 @@
+>  #include <linux/in.h>
+>  #include <linux/in6.h>
+>  #include <linux/sunrpc/clnt.h>
+> +#include <linux/sunrpc/addr.h>
+>  #include <linux/sunrpc/svc.h>
+>  #include <linux/lockd/lockd.h>
+>  #include <linux/mutex.h>
+> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+> index 3c2cfc6..1812f02 100644
+> --- a/fs/lockd/mon.c
+> +++ b/fs/lockd/mon.c
+> @@ -12,6 +12,7 @@
+>  #include <linux/slab.h>
+>  
+>  #include <linux/sunrpc/clnt.h>
+> +#include <linux/sunrpc/addr.h>
+>  #include <linux/sunrpc/xprtsock.h>
+>  #include <linux/sunrpc/svc.h>
+>  #include <linux/lockd/lockd.h>
+> diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
+> index 0deb5f6..8064435 100644
+> --- a/fs/lockd/svcsubs.c
+> +++ b/fs/lockd/svcsubs.c
+> @@ -13,7 +13,7 @@
+>  #include <linux/slab.h>
+>  #include <linux/mutex.h>
+>  #include <linux/sunrpc/svc.h>
+> -#include <linux/sunrpc/clnt.h>
+> +#include <linux/sunrpc/addr.h>
+>  #include <linux/nfsd/nfsfh.h>
+>  #include <linux/nfsd/export.h>
+>  #include <linux/lockd/lockd.h>
+> diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
+> index ca4b11e..62c8c41 100644
+> --- a/fs/nfs/dns_resolve.c
+> +++ b/fs/nfs/dns_resolve.c
+> @@ -10,6 +10,7 @@
+>  
+>  #include <linux/module.h>
+>  #include <linux/sunrpc/clnt.h>
+> +#include <linux/sunrpc/addr.h>
+>  #include <linux/dns_resolver.h>
+>  #include "dns_resolve.h"
+>  
+> @@ -42,6 +43,7 @@ EXPORT_SYMBOL_GPL(nfs_dns_resolve_name);
+>  #include <linux/seq_file.h>
+>  #include <linux/inet.h>
+>  #include <linux/sunrpc/clnt.h>
+> +#include <linux/sunrpc/addr.h>
+>  #include <linux/sunrpc/cache.h>
+>  #include <linux/sunrpc/svcauth.h>
+>  #include <linux/sunrpc/rpc_pipe_fs.h>
+> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+> index acc3472..e5f2fad 100644
+> --- a/fs/nfs/nfs4client.c
+> +++ b/fs/nfs/nfs4client.c
+> @@ -6,6 +6,7 @@
+>  #include <linux/nfs_fs.h>
+>  #include <linux/nfs_idmap.h>
+>  #include <linux/nfs_mount.h>
+> +#include <linux/sunrpc/addr.h>
+>  #include <linux/sunrpc/auth.h>
+>  #include <linux/sunrpc/xprt.h>
+>  #include <linux/sunrpc/bc_xprt.h>
+> diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+> index b720064..1fe284f 100644
+> --- a/fs/nfs/nfs4filelayoutdev.c
+> +++ b/fs/nfs/nfs4filelayoutdev.c
+> @@ -31,6 +31,7 @@
+>  #include <linux/nfs_fs.h>
+>  #include <linux/vmalloc.h>
+>  #include <linux/module.h>
+> +#include <linux/sunrpc/addr.h>
+>  
+>  #include "internal.h"
+>  #include "nfs4session.h"
+> diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+> index 1e09eb7..0dd7660 100644
+> --- a/fs/nfs/nfs4namespace.c
+> +++ b/fs/nfs/nfs4namespace.c
+> @@ -14,6 +14,7 @@
+>  #include <linux/slab.h>
+>  #include <linux/string.h>
+>  #include <linux/sunrpc/clnt.h>
+> +#include <linux/sunrpc/addr.h>
+>  #include <linux/vfs.h>
+>  #include <linux/inet.h>
+>  #include "internal.h"
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index c25cadf8..3250b41 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -31,6 +31,7 @@
+>  #include <linux/errno.h>
+>  #include <linux/unistd.h>
+>  #include <linux/sunrpc/clnt.h>
+> +#include <linux/sunrpc/addr.h>
+>  #include <linux/sunrpc/stats.h>
+>  #include <linux/sunrpc/metrics.h>
+>  #include <linux/sunrpc/xprtsock.h>
+> diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+> index e761ee9..247c00c 100644
+> --- a/fs/nfsd/fault_inject.c
+> +++ b/fs/nfsd/fault_inject.c
+> @@ -9,7 +9,7 @@
+>  #include <linux/debugfs.h>
+>  #include <linux/module.h>
+>  #include <linux/nsproxy.h>
+> -#include <linux/sunrpc/clnt.h>
+> +#include <linux/sunrpc/addr.h>
+>  #include <asm/uaccess.h>
+>  
+>  #include "state.h"
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 4db46aa..8c2bdfa 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -40,7 +40,7 @@
+>  #include <linux/pagemap.h>
+>  #include <linux/ratelimit.h>
+>  #include <linux/sunrpc/svcauth_gss.h>
+> -#include <linux/sunrpc/clnt.h>
+> +#include <linux/sunrpc/addr.h>
+>  #include "xdr4.h"
+>  #include "vfs.h"
+>  #include "current_stateid.h"
+> diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+> index 56b3070..5d93b5d 100644
+> --- a/fs/nfsd/nfscache.c
+> +++ b/fs/nfsd/nfscache.c
+> @@ -9,7 +9,7 @@
+>   */
+>  
+>  #include <linux/slab.h>
+> -#include <linux/sunrpc/clnt.h>
+> +#include <linux/sunrpc/addr.h>
+>  #include <linux/highmem.h>
+>  #include <linux/crc32.h>
+>  
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index 65889ec..29c3f0d 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -10,7 +10,7 @@
+>  
+>  #include <linux/sunrpc/svcsock.h>
+>  #include <linux/lockd/lockd.h>
+> -#include <linux/sunrpc/clnt.h>
+> +#include <linux/sunrpc/addr.h>
+>  #include <linux/sunrpc/gss_api.h>
+>  #include <linux/sunrpc/gss_krb5_enctypes.h>
+>  #include <linux/sunrpc/rpc_pipe_fs.h>
+> diff --git a/include/linux/sunrpc/addr.h b/include/linux/sunrpc/addr.h
+> new file mode 100644
+> index 0000000..07d8e53
+> --- /dev/null
+> +++ b/include/linux/sunrpc/addr.h
+> @@ -0,0 +1,170 @@
+> +/*
+> + * linux/include/linux/sunrpc/addr.h
+> + *
+> + * Various routines for copying and comparing sockaddrs and for
+> + * converting them to and from presentation format.
+> + */
+> +#ifndef _LINUX_SUNRPC_ADDR_H
+> +#define _LINUX_SUNRPC_ADDR_H
+> +
+> +#include <linux/socket.h>
+> +#include <linux/in.h>
+> +#include <linux/in6.h>
+> +#include <net/ipv6.h>
+> +
+> +size_t		rpc_ntop(const struct sockaddr *, char *, const size_t);
+> +size_t		rpc_pton(struct net *, const char *, const size_t,
+> +			 struct sockaddr *, const size_t);
+> +char *		rpc_sockaddr2uaddr(const struct sockaddr *, gfp_t);
+> +size_t		rpc_uaddr2sockaddr(struct net *, const char *, const size_t,
+> +				   struct sockaddr *, const size_t);
+> +
+> +static inline unsigned short rpc_get_port(const struct sockaddr *sap)
+> +{
+> +	switch (sap->sa_family) {
+> +	case AF_INET:
+> +		return ntohs(((struct sockaddr_in *)sap)->sin_port);
+> +	case AF_INET6:
+> +		return ntohs(((struct sockaddr_in6 *)sap)->sin6_port);
+> +	}
+> +	return 0;
+> +}
+> +
+> +static inline void rpc_set_port(struct sockaddr *sap,
+> +				const unsigned short port)
+> +{
+> +	switch (sap->sa_family) {
+> +	case AF_INET:
+> +		((struct sockaddr_in *)sap)->sin_port = htons(port);
+> +		break;
+> +	case AF_INET6:
+> +		((struct sockaddr_in6 *)sap)->sin6_port = htons(port);
+> +		break;
+> +	}
+> +}
+> +
+> +#define IPV6_SCOPE_DELIMITER		'%'
+> +#define IPV6_SCOPE_ID_LEN		sizeof("%nnnnnnnnnn")
+> +
+> +static inline bool __rpc_cmp_addr4(const struct sockaddr *sap1,
+> +				   const struct sockaddr *sap2)
+> +{
+> +	const struct sockaddr_in *sin1 = (const struct sockaddr_in *)sap1;
+> +	const struct sockaddr_in *sin2 = (const struct sockaddr_in *)sap2;
+> +
+> +	return sin1->sin_addr.s_addr == sin2->sin_addr.s_addr;
+> +}
+> +
+> +static inline bool __rpc_copy_addr4(struct sockaddr *dst,
+> +				    const struct sockaddr *src)
+> +{
+> +	const struct sockaddr_in *ssin = (struct sockaddr_in *) src;
+> +	struct sockaddr_in *dsin = (struct sockaddr_in *) dst;
+> +
+> +	dsin->sin_family = ssin->sin_family;
+> +	dsin->sin_addr.s_addr = ssin->sin_addr.s_addr;
+> +	return true;
+> +}
+> +
+> +#if IS_ENABLED(CONFIG_IPV6)
+> +static inline bool __rpc_cmp_addr6(const struct sockaddr *sap1,
+> +				   const struct sockaddr *sap2)
+> +{
+> +	const struct sockaddr_in6 *sin1 = (const struct sockaddr_in6 *)sap1;
+> +	const struct sockaddr_in6 *sin2 = (const struct sockaddr_in6 *)sap2;
+> +
+> +	if (!ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr))
+> +		return false;
+> +	else if (ipv6_addr_type(&sin1->sin6_addr) & IPV6_ADDR_LINKLOCAL)
+> +		return sin1->sin6_scope_id == sin2->sin6_scope_id;
+> +
+> +	return true;
+> +}
+> +
+> +static inline bool __rpc_copy_addr6(struct sockaddr *dst,
+> +				    const struct sockaddr *src)
+> +{
+> +	const struct sockaddr_in6 *ssin6 = (const struct sockaddr_in6 *) src;
+> +	struct sockaddr_in6 *dsin6 = (struct sockaddr_in6 *) dst;
+> +
+> +	dsin6->sin6_family = ssin6->sin6_family;
+> +	dsin6->sin6_addr = ssin6->sin6_addr;
+> +	dsin6->sin6_scope_id = ssin6->sin6_scope_id;
+> +	return true;
+> +}
+> +#else	/* !(IS_ENABLED(CONFIG_IPV6) */
+> +static inline bool __rpc_cmp_addr6(const struct sockaddr *sap1,
+> +				   const struct sockaddr *sap2)
+> +{
+> +	return false;
+> +}
+> +
+> +static inline bool __rpc_copy_addr6(struct sockaddr *dst,
+> +				    const struct sockaddr *src)
+> +{
+> +	return false;
+> +}
+> +#endif	/* !(IS_ENABLED(CONFIG_IPV6) */
+> +
+> +/**
+> + * rpc_cmp_addr - compare the address portion of two sockaddrs.
+> + * @sap1: first sockaddr
+> + * @sap2: second sockaddr
+> + *
+> + * Just compares the family and address portion. Ignores port, but
+> + * compares the scope if it's a link-local address.
+> + *
+> + * Returns true if the addrs are equal, false if they aren't.
+> + */
+> +static inline bool rpc_cmp_addr(const struct sockaddr *sap1,
+> +				const struct sockaddr *sap2)
+> +{
+> +	if (sap1->sa_family == sap2->sa_family) {
+> +		switch (sap1->sa_family) {
+> +		case AF_INET:
+> +			return __rpc_cmp_addr4(sap1, sap2);
+> +		case AF_INET6:
+> +			return __rpc_cmp_addr6(sap1, sap2);
+> +		}
+> +	}
+> +	return false;
+> +}
+> +
+> +/**
+> + * rpc_copy_addr - copy the address portion of one sockaddr to another
+> + * @dst: destination sockaddr
+> + * @src: source sockaddr
+> + *
+> + * Just copies the address portion and family. Ignores port, scope, etc.
+> + * Caller is responsible for making certain that dst is large enough to hold
+> + * the address in src. Returns true if address family is supported. Returns
+> + * false otherwise.
+> + */
+> +static inline bool rpc_copy_addr(struct sockaddr *dst,
+> +				 const struct sockaddr *src)
+> +{
+> +	switch (src->sa_family) {
+> +	case AF_INET:
+> +		return __rpc_copy_addr4(dst, src);
+> +	case AF_INET6:
+> +		return __rpc_copy_addr6(dst, src);
+> +	}
+> +	return false;
+> +}
+> +
+> +/**
+> + * rpc_get_scope_id - return scopeid for a given sockaddr
+> + * @sa: sockaddr to get scopeid from
+> + *
+> + * Returns the value of the sin6_scope_id for AF_INET6 addrs, or 0 if
+> + * not an AF_INET6 address.
+> + */
+> +static inline u32 rpc_get_scope_id(const struct sockaddr *sa)
+> +{
+> +	if (sa->sa_family != AF_INET6)
+> +		return 0;
+> +
+> +	return ((struct sockaddr_in6 *) sa)->sin6_scope_id;
+> +}
+> +
+> +#endif /* _LINUX_SUNRPC_ADDR_H */
+> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+> index 6a7c261..4a4abde 100644
+> --- a/include/linux/sunrpc/clnt.h
+> +++ b/include/linux/sunrpc/clnt.h
+> @@ -165,160 +165,5 @@ size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
+>  const char	*rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_format_t);
+>  int		rpc_localaddr(struct rpc_clnt *, struct sockaddr *, size_t);
+>  
+> -size_t		rpc_ntop(const struct sockaddr *, char *, const size_t);
+> -size_t		rpc_pton(struct net *, const char *, const size_t,
+> -			 struct sockaddr *, const size_t);
+> -char *		rpc_sockaddr2uaddr(const struct sockaddr *, gfp_t);
+> -size_t		rpc_uaddr2sockaddr(struct net *, const char *, const size_t,
+> -				   struct sockaddr *, const size_t);
+> -
+> -static inline unsigned short rpc_get_port(const struct sockaddr *sap)
+> -{
+> -	switch (sap->sa_family) {
+> -	case AF_INET:
+> -		return ntohs(((struct sockaddr_in *)sap)->sin_port);
+> -	case AF_INET6:
+> -		return ntohs(((struct sockaddr_in6 *)sap)->sin6_port);
+> -	}
+> -	return 0;
+> -}
+> -
+> -static inline void rpc_set_port(struct sockaddr *sap,
+> -				const unsigned short port)
+> -{
+> -	switch (sap->sa_family) {
+> -	case AF_INET:
+> -		((struct sockaddr_in *)sap)->sin_port = htons(port);
+> -		break;
+> -	case AF_INET6:
+> -		((struct sockaddr_in6 *)sap)->sin6_port = htons(port);
+> -		break;
+> -	}
+> -}
+> -
+> -#define IPV6_SCOPE_DELIMITER		'%'
+> -#define IPV6_SCOPE_ID_LEN		sizeof("%nnnnnnnnnn")
+> -
+> -static inline bool __rpc_cmp_addr4(const struct sockaddr *sap1,
+> -				   const struct sockaddr *sap2)
+> -{
+> -	const struct sockaddr_in *sin1 = (const struct sockaddr_in *)sap1;
+> -	const struct sockaddr_in *sin2 = (const struct sockaddr_in *)sap2;
+> -
+> -	return sin1->sin_addr.s_addr == sin2->sin_addr.s_addr;
+> -}
+> -
+> -static inline bool __rpc_copy_addr4(struct sockaddr *dst,
+> -				    const struct sockaddr *src)
+> -{
+> -	const struct sockaddr_in *ssin = (struct sockaddr_in *) src;
+> -	struct sockaddr_in *dsin = (struct sockaddr_in *) dst;
+> -
+> -	dsin->sin_family = ssin->sin_family;
+> -	dsin->sin_addr.s_addr = ssin->sin_addr.s_addr;
+> -	return true;
+> -}
+> -
+> -#if IS_ENABLED(CONFIG_IPV6)
+> -static inline bool __rpc_cmp_addr6(const struct sockaddr *sap1,
+> -				   const struct sockaddr *sap2)
+> -{
+> -	const struct sockaddr_in6 *sin1 = (const struct sockaddr_in6 *)sap1;
+> -	const struct sockaddr_in6 *sin2 = (const struct sockaddr_in6 *)sap2;
+> -
+> -	if (!ipv6_addr_equal(&sin1->sin6_addr, &sin2->sin6_addr))
+> -		return false;
+> -	else if (ipv6_addr_type(&sin1->sin6_addr) & IPV6_ADDR_LINKLOCAL)
+> -		return sin1->sin6_scope_id == sin2->sin6_scope_id;
+> -
+> -	return true;
+> -}
+> -
+> -static inline bool __rpc_copy_addr6(struct sockaddr *dst,
+> -				    const struct sockaddr *src)
+> -{
+> -	const struct sockaddr_in6 *ssin6 = (const struct sockaddr_in6 *) src;
+> -	struct sockaddr_in6 *dsin6 = (struct sockaddr_in6 *) dst;
+> -
+> -	dsin6->sin6_family = ssin6->sin6_family;
+> -	dsin6->sin6_addr = ssin6->sin6_addr;
+> -	dsin6->sin6_scope_id = ssin6->sin6_scope_id;
+> -	return true;
+> -}
+> -#else	/* !(IS_ENABLED(CONFIG_IPV6) */
+> -static inline bool __rpc_cmp_addr6(const struct sockaddr *sap1,
+> -				   const struct sockaddr *sap2)
+> -{
+> -	return false;
+> -}
+> -
+> -static inline bool __rpc_copy_addr6(struct sockaddr *dst,
+> -				    const struct sockaddr *src)
+> -{
+> -	return false;
+> -}
+> -#endif	/* !(IS_ENABLED(CONFIG_IPV6) */
+> -
+> -/**
+> - * rpc_cmp_addr - compare the address portion of two sockaddrs.
+> - * @sap1: first sockaddr
+> - * @sap2: second sockaddr
+> - *
+> - * Just compares the family and address portion. Ignores port, but
+> - * compares the scope if it's a link-local address.
+> - *
+> - * Returns true if the addrs are equal, false if they aren't.
+> - */
+> -static inline bool rpc_cmp_addr(const struct sockaddr *sap1,
+> -				const struct sockaddr *sap2)
+> -{
+> -	if (sap1->sa_family == sap2->sa_family) {
+> -		switch (sap1->sa_family) {
+> -		case AF_INET:
+> -			return __rpc_cmp_addr4(sap1, sap2);
+> -		case AF_INET6:
+> -			return __rpc_cmp_addr6(sap1, sap2);
+> -		}
+> -	}
+> -	return false;
+> -}
+> -
+> -/**
+> - * rpc_copy_addr - copy the address portion of one sockaddr to another
+> - * @dst: destination sockaddr
+> - * @src: source sockaddr
+> - *
+> - * Just copies the address portion and family. Ignores port, scope, etc.
+> - * Caller is responsible for making certain that dst is large enough to hold
+> - * the address in src. Returns true if address family is supported. Returns
+> - * false otherwise.
+> - */
+> -static inline bool rpc_copy_addr(struct sockaddr *dst,
+> -				 const struct sockaddr *src)
+> -{
+> -	switch (src->sa_family) {
+> -	case AF_INET:
+> -		return __rpc_copy_addr4(dst, src);
+> -	case AF_INET6:
+> -		return __rpc_copy_addr6(dst, src);
+> -	}
+> -	return false;
+> -}
+> -
+> -/**
+> - * rpc_get_scope_id - return scopeid for a given sockaddr
+> - * @sa: sockaddr to get scopeid from
+> - *
+> - * Returns the value of the sin6_scope_id for AF_INET6 addrs, or 0 if
+> - * not an AF_INET6 address.
+> - */
+> -static inline u32 rpc_get_scope_id(const struct sockaddr *sa)
+> -{
+> -	if (sa->sa_family != AF_INET6)
+> -		return 0;
+> -
+> -	return ((struct sockaddr_in6 *) sa)->sin6_scope_id;
+> -}
+> -
+>  #endif /* __KERNEL__ */
+>  #endif /* _LINUX_SUNRPC_CLNT_H */
+> diff --git a/net/sunrpc/addr.c b/net/sunrpc/addr.c
+> index d11418f..a622ad6 100644
+> --- a/net/sunrpc/addr.c
+> +++ b/net/sunrpc/addr.c
+> @@ -17,7 +17,8 @@
+>   */
+>  
+>  #include <net/ipv6.h>
+> -#include <linux/sunrpc/clnt.h>
+> +#include <linux/sunrpc/addr.h>
+> +#include <linux/sunrpc/msg_prot.h>
+>  #include <linux/slab.h>
+>  #include <linux/export.h>
+>  
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index 822f020..c8193ce 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -33,6 +33,7 @@
+>  #include <linux/rcupdate.h>
+>  
+>  #include <linux/sunrpc/clnt.h>
+> +#include <linux/sunrpc/addr.h>
+>  #include <linux/sunrpc/rpc_pipe_fs.h>
+>  #include <linux/sunrpc/metrics.h>
+>  #include <linux/sunrpc/bc_xprt.h>
+> diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
+> index 795a0f4..3df764d 100644
+> --- a/net/sunrpc/rpcb_clnt.c
+> +++ b/net/sunrpc/rpcb_clnt.c
+> @@ -26,6 +26,7 @@
+>  #include <net/ipv6.h>
+>  
+>  #include <linux/sunrpc/clnt.h>
+> +#include <linux/sunrpc/addr.h>
+>  #include <linux/sunrpc/sched.h>
+>  #include <linux/sunrpc/xprtsock.h>
+>  
+> diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+> index 4d01292..ce34c8e 100644
+> --- a/net/sunrpc/svcauth_unix.c
+> +++ b/net/sunrpc/svcauth_unix.c
+> @@ -6,6 +6,7 @@
+>  #include <linux/sunrpc/svcsock.h>
+>  #include <linux/sunrpc/svcauth.h>
+>  #include <linux/sunrpc/gss_api.h>
+> +#include <linux/sunrpc/addr.h>
+>  #include <linux/err.h>
+>  #include <linux/seq_file.h>
+>  #include <linux/hash.h>
+> @@ -17,7 +18,6 @@
+>  #include <linux/user_namespace.h>
+>  #define RPCDBG_FACILITY	RPCDBG_AUTH
+>  
+> -#include <linux/sunrpc/clnt.h>
+>  
+>  #include "netns.h"
+>  
+> diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+> index c9aa7a3..66591dc 100644
+> --- a/net/sunrpc/xprtrdma/transport.c
+> +++ b/net/sunrpc/xprtrdma/transport.c
+> @@ -51,6 +51,7 @@
+>  #include <linux/init.h>
+>  #include <linux/slab.h>
+>  #include <linux/seq_file.h>
+> +#include <linux/sunrpc/addr.h>
+>  
+>  #include "xprt_rdma.h"
+>  
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index 68b0a81..bbc0915 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -33,6 +33,7 @@
+>  #include <linux/udp.h>
+>  #include <linux/tcp.h>
+>  #include <linux/sunrpc/clnt.h>
+> +#include <linux/sunrpc/addr.h>
+>  #include <linux/sunrpc/sched.h>
+>  #include <linux/sunrpc/svcsock.h>
+>  #include <linux/sunrpc/xprtsock.h>
+> -- 
+> 1.7.11.7
+> 
