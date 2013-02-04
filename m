@@ -1,70 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47101 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758235Ab3BNWBR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Feb 2013 17:01:17 -0500
-Date: Thu, 14 Feb 2013 17:01:10 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Dave Chinner <david@fromorbit.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Anand Avati <anand.avati@gmail.com>,
-        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>, sandeen@redhat.com,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        gluster-devel@nongnu.org
-Subject: Re: [Gluster-devel] regressions due to 64-bit ext4 directory cookies
-Message-ID: <20130214220110.GE8343@fieldses.org>
-References: <20130212202841.GC10267@fieldses.org>
- <20130213040003.GB2614@thunk.org>
- <20130213133131.GE14195@fieldses.org>
- <20130213151455.GB17431@thunk.org>
- <20130213151953.GJ14195@fieldses.org>
- <20130213153654.GC17431@thunk.org>
- <20130213162059.GL14195@fieldses.org>
- <CAFboF2wXvP+vttiff8iRE9rAgvV8UWGbFprgVp8p7kE43TU=PA@mail.gmail.com>
- <20130213222052.GD5938@thunk.org>
- <20130214061002.GM26694@dastard>
+Received: from mail-ia0-f171.google.com ([209.85.210.171]:59849 "EHLO
+	mail-ia0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754838Ab3BDUUH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2013 15:20:07 -0500
+Received: by mail-ia0-f171.google.com with SMTP id z13so8617972iaz.30
+        for <linux-nfs@vger.kernel.org>; Mon, 04 Feb 2013 12:20:07 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v3 8/9] SUNRPC: Make gss_mech_get() static
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 04 Feb 2013 15:20:06 -0500
+Message-ID: <20130204202006.1518.45889.stgit@seurat.1015granger.net>
+In-Reply-To: <20130204201458.1518.12931.stgit@seurat.1015granger.net>
+References: <20130204201458.1518.12931.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130214061002.GM26694@dastard>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 14, 2013 at 05:10:02PM +1100, Dave Chinner wrote:
-> On Wed, Feb 13, 2013 at 05:20:52PM -0500, Theodore Ts'o wrote:
-> > Telldir() and seekdir() are basically implementation horrors for any
-> > file system that is using anything other than a simple array of
-> > directory entries ala the V7 Unix file system or the BSD FFS.  For any
-> > file system which is using a more advanced data structure, like
-> > b-trees hash trees, etc, there **can't** possibly be a "offset" into a
-> > readdir stream. 
-> 
-> I'll just point you to this:
-> 
-> http://marc.info/?l=linux-ext4&m=136081996316453&w=2
-> 
-> so you can see that XFS implements what you say can't possibly be
-> done. ;)
-> 
-> FWIW, that post only talked about the data segment. I didn't mention
-> that XFS has 2 other segments in the directory file (both beyond
-> EOF) for the directory data indexes. One contains the name-hash btree
-> index used for name based lookups and the other contains a freespace
-> index for tracking free space in the data segment.
+gss_mech_get() is no longer used outside of gss_mech_switch.c.
 
-OK, so in some sense that reduces the problem to that of implementing
-readdir cookies for directories that are stored in a simple linear
-array.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Which I should know how to do but I don't: I guess all you need is a
-provision for making holes on remove (so that you aren't required move
-existing entries, messing up offsets for concurrent readers)?
+ include/linux/sunrpc/gss_api.h        |    3 ---
+ net/sunrpc/auth_gss/gss_mech_switch.c |    5 +----
+ 2 files changed, 1 insertions(+), 7 deletions(-)
 
-Purely out of curiosity: is there a more detailed writeup of XFS's
-directory format?  (Or a pointer to a piece of the code a person could
-understand without losing a month to it?)
-
---b.
-
-> 
-> IOWs persistent, deterministic, low cost telldir/seekdir behaviour
-> was a problem solved in the 1990s. :)
+diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
+index dc1e51b..59cfcff 100644
+--- a/include/linux/sunrpc/gss_api.h
++++ b/include/linux/sunrpc/gss_api.h
+@@ -144,9 +144,6 @@ struct gss_api_mech *gss_mech_get_by_pseudoflavor(u32);
+ /* Fill in an array with a list of supported pseudoflavors */
+ int gss_mech_list_pseudoflavors(rpc_authflavor_t *, int);
+ 
+-/* Just increments the mechanism's reference count and returns its input: */
+-struct gss_api_mech * gss_mech_get(struct gss_api_mech *);
+-
+ /* For every successful gss_mech_get or gss_mech_get_by_* call there must be a
+  * corresponding call to gss_mech_put. */
+ void gss_mech_put(struct gss_api_mech *);
+diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
+index a8d6ee5..b9f4f7b 100644
+--- a/net/sunrpc/auth_gss/gss_mech_switch.c
++++ b/net/sunrpc/auth_gss/gss_mech_switch.c
+@@ -132,15 +132,12 @@ gss_mech_unregister(struct gss_api_mech *gm)
+ 
+ EXPORT_SYMBOL_GPL(gss_mech_unregister);
+ 
+-struct gss_api_mech *
+-gss_mech_get(struct gss_api_mech *gm)
++static struct gss_api_mech *gss_mech_get(struct gss_api_mech *gm)
+ {
+ 	__module_get(gm->gm_owner);
+ 	return gm;
+ }
+ 
+-EXPORT_SYMBOL_GPL(gss_mech_get);
+-
+ struct gss_api_mech *
+ _gss_mech_get_by_name(const char *name)
+ {
 
