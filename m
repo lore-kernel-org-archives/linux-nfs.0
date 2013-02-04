@@ -1,128 +1,214 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ax13.adsl.tnnet.fi ([217.112.254.13]:54588 "EHLO
-	mail.opinsys.fi" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756589Ab3BMPnh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Feb 2013 10:43:37 -0500
-Received: from localhost (localhost [127.0.0.1])
-	by mail.opinsys.fi (Postfix) with ESMTP id 7E46C281E0D
-	for <linux-nfs@vger.kernel.org>; Wed, 13 Feb 2013 15:29:29 +0000 (UTC)
-Received: from mail.opinsys.fi ([127.0.0.1])
-	by localhost (mail.opinsys.fi [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id 6uPvXGKvdC1v for <linux-nfs@vger.kernel.org>;
-	Wed, 13 Feb 2013 15:29:29 +0000 (UTC)
-Received: from localhost (localhost [127.0.0.1])
-	by mail.opinsys.fi (Postfix) with ESMTP id C43E5281E06
-	for <linux-nfs@vger.kernel.org>; Wed, 13 Feb 2013 15:29:28 +0000 (UTC)
-Received: from mail.opinsys.fi ([127.0.0.1])
-	by localhost (mail.opinsys.fi [127.0.0.1]) (amavisd-new, port 10026)
-	with ESMTP id YkTgBDRjUNNN for <linux-nfs@vger.kernel.org>;
-	Wed, 13 Feb 2013 15:29:28 +0000 (UTC)
-Received: from mail.opinsys.fi (mail.opinsys.fi [10.246.133.21])
-	by mail.opinsys.fi (Postfix) with ESMTP id 44147281E0D
-	for <linux-nfs@vger.kernel.org>; Wed, 13 Feb 2013 15:29:28 +0000 (UTC)
-Date: Wed, 13 Feb 2013 15:29:27 +0000 (UTC)
-From: Veli-Matti Lintu <veli-matti.lintu@opinsys.fi>
-To: linux-nfs@vger.kernel.org
-Message-ID: <127351146.98508.1360769367943.JavaMail.root@opinsys.fi>
-In-Reply-To: <471074187.98491.1360768929786.JavaMail.root@opinsys.fi>
-Subject: Kernels 3.7 and newer break rpc.gssd -n
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Received: from mx1.redhat.com ([209.132.183.28]:22675 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756404Ab3BDQQY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Feb 2013 11:16:24 -0500
+Date: Mon, 4 Feb 2013 11:16:22 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 8/8] nfsd: keep a checksum of the first 256 bytes of
+ request
+Message-ID: <20130204111622.2e44a198@tlielax.poochiereds.net>
+In-Reply-To: <20130204155420.GB815@fieldses.org>
+References: <1359983887-28535-1-git-send-email-jlayton@redhat.com>
+	<1359983887-28535-9-git-send-email-jlayton@redhat.com>
+	<20130204155420.GB815@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, 4 Feb 2013 10:54:20 -0500
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-I've been using kerberized nfs4 mounts without machine credentials for 
-quite some time by running rpc.gssd with the -n option. This has 
-resulted rpc.gssd in using ccache in /tmp/krb5cc_0 when doing the mount 
-instead of machine credentials. This functionality seems to break when 
-using kernel 3.7 or newer. 3.6.11 and earlier work like expected.
+> On Mon, Feb 04, 2013 at 08:18:07AM -0500, Jeff Layton wrote:
+> > Now that we're allowing more DRC entries, it becomes a lot easier to hit
+> > problems with XID collisions. In order to mitigate those, calculate the
+> > crc32 of up to the first 256 bytes of each request coming in and store
+> > that in the cache entry, along with the total length of the request.
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  fs/nfsd/cache.h    |  5 +++++
+> >  fs/nfsd/nfscache.c | 44 ++++++++++++++++++++++++++++++++++++++++----
+> >  2 files changed, 45 insertions(+), 4 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
+> > index 9c7232b..4822db3 100644
+> > --- a/fs/nfsd/cache.h
+> > +++ b/fs/nfsd/cache.h
+> > @@ -29,6 +29,8 @@ struct svc_cacherep {
+> >  	u32			c_prot;
+> >  	u32			c_proc;
+> >  	u32			c_vers;
+> > +	unsigned int		c_len;
+> > +	u32			c_crc;
+> >  	unsigned long		c_timestamp;
+> >  	union {
+> >  		struct kvec	u_vec;
+> > @@ -73,6 +75,9 @@ enum {
+> >  /* Cache entries expire after this time period */
+> >  #define RC_EXPIRE		(120 * HZ)
+> >  
+> > +/* Checksum this amount of the request */
+> > +#define RC_CSUMLEN		(256U)
+> > +
+> >  int	nfsd_reply_cache_init(void);
+> >  void	nfsd_reply_cache_shutdown(void);
+> >  int	nfsd_cache_lookup(struct svc_rqst *);
+> > diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+> > index d16a5d6..cb655f3 100644
+> > --- a/fs/nfsd/nfscache.c
+> > +++ b/fs/nfsd/nfscache.c
+> > @@ -11,6 +11,7 @@
+> >  #include <linux/slab.h>
+> >  #include <linux/sunrpc/clnt.h>
+> >  #include <linux/highmem.h>
+> > +#include <linux/crc32.h>
+> >  
+> >  #include "nfsd.h"
+> >  #include "cache.h"
+> > @@ -24,6 +25,7 @@ static struct list_head 	lru_head;
+> >  static struct kmem_cache	*drc_slab;
+> >  static unsigned int		num_drc_entries;
+> >  static unsigned int		max_drc_entries;
+> > +static u32			crc_seed;
+> >  
+> >  /*
+> >   * Calculate the hash index from an XID.
+> > @@ -130,6 +132,9 @@ int nfsd_reply_cache_init(void)
+> >  	INIT_LIST_HEAD(&lru_head);
+> >  	max_drc_entries = nfsd_cache_size_limit();
+> >  	num_drc_entries = 0;
+> > +
+> > +	/* Is a random seed any better than some well-defined constant? */
+> > +	get_random_bytes(&crc_seed, sizeof(crc_seed));
+> >  	return 0;
+> >  out_nomem:
+> >  	printk(KERN_ERR "nfsd: failed to allocate reply cache\n");
+> > @@ -238,12 +243,37 @@ nfsd_reply_cache_shrink(struct shrinker *shrink, struct shrink_control *sc)
+> >  }
+> >  
+> >  /*
+> > + * Walk an xdr_buf and get a CRC for at most the first RC_CSUMLEN bytes
+> > + */
+> > +static u32
+> > +nfsd_cache_crc(struct xdr_buf *buf)
+> > +{
+> > +	u32 crc;
+> > +	const unsigned char *p = buf->head[0].iov_base;
+> > +	size_t csum_len = min_t(size_t, buf->head[0].iov_len + buf->page_len,
+> > +					RC_CSUMLEN);
+> > +	size_t len = min(buf->head[0].iov_len, csum_len);
+> > +
+> > +	/* rq_arg.head first */
+> > +	crc = crc32(crc_seed, p, len);
+> > +	csum_len -= len;
+> > +
+> > +	/* Nothing left */
+> > +	if (!csum_len)
+> > +		return crc;
+> > +
+> > +	/* checksum the rest from the page_array */
+> > +	p = page_address(buf->pages[0]) + buf->page_base;
+> 
+> If buf->page_base is large (close to PAGE_SIZE), then reads past the end
+> of the page when it should be continuing to the next page.
+> 
+> In practice page_base is always 0 here, and I think it's unlikely that
+> will change.  But it would be worth a comment.  (Or maybe even a
+> WARN_ON_ONCE(buf->page_base).)
+> 
 
-The use case for this is diskless workstations that do not have machine 
-credentials stored on them as they have no secure storage medium. When a 
-user logs in, the home directory is mounted using the user's credentials 
-only.
+When I looked at the rpc_rqst definition, it said:
 
-Steps to reproduce the problem:
+        struct page **  pages;          /* Array of contiguous pages */
 
-# kinit user (this creates /tmp/krb5cc_0)
-# rpc.gssd -f -n -vvvv
-# mount -t nfs4 -o sec=krb5 server.example.org:/home /mnt
+...but now that I look at svc_alloc_arg, I see that they aren't
+necessarily contiguous. I'd probably feel more comfortable fixing this
+up to be generally correct in the event that page_base is ever non-zero.
 
-The mount works when using kernel 3.6.11 or earlier and fails on 3.7-rc1 
-or later. Testing was done on Ubuntu 12.04 and 12.10 using Ubuntu kernels
-and kernel.org kernels (up to 3.8-rc7) with similar results.
+Perhaps I can just respin this patch to account for that possibility?
 
-nfs-utils versions 1.2.5 and the latest version from git master head 
-(git://linux-nfs.org/nfs-utils) behave the same way.
+> > +	return crc32(crc, p, csum_len);
+> > +}
+> > +
+> > +/*
+> >   * Search the request hash for an entry that matches the given rqstp.
+> >   * Must be called with cache_lock held. Returns the found entry or
+> >   * NULL on failure.
+> >   */
+> >  static struct svc_cacherep *
+> > -nfsd_cache_search(struct svc_rqst *rqstp)
+> > +nfsd_cache_search(struct svc_rqst *rqstp, u32 crc)
+> >  {
+> >  	struct svc_cacherep	*rp;
+> >  	struct hlist_node	*hn;
+> > @@ -257,6 +287,7 @@ nfsd_cache_search(struct svc_rqst *rqstp)
+> >  	hlist_for_each_entry(rp, hn, rh, c_hash) {
+> >  		if (xid == rp->c_xid && proc == rp->c_proc &&
+> >  		    proto == rp->c_prot && vers == rp->c_vers &&
+> > +		    rqstp->rq_arg.len == rp->c_len && crc == rp->c_crc &&
+> >  		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
+> >  		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr))
+> >  			return rp;
+> > @@ -276,7 +307,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+> >  	__be32			xid = rqstp->rq_xid;
+> >  	u32			proto =  rqstp->rq_prot,
+> >  				vers = rqstp->rq_vers,
+> > -				proc = rqstp->rq_proc;
+> > +				proc = rqstp->rq_proc,
+> > +				crc;
+> >  	unsigned long		age;
+> >  	int type = rqstp->rq_cachetype;
+> >  	int rtn;
+> > @@ -287,10 +319,12 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+> >  		return RC_DOIT;
+> >  	}
+> >  
+> > +	crc = nfsd_cache_crc(&rqstp->rq_arg);
+> > +
+> 
+> For a moment I was wondering whether we should delay calculating that
+> till we need it--but of course we need it in all cases but allocation
+> failure (either to match an existing entry or populate a new one).  OK!
+> 
+> Looks fine.--b.
+> 
+
+Correct, and by doing it early, we can keep that outside the spinlock.
+
+> >  	spin_lock(&cache_lock);
+> >  	rtn = RC_DOIT;
+> >  
+> > -	rp = nfsd_cache_search(rqstp);
+> > +	rp = nfsd_cache_search(rqstp, crc);
+> >  	if (rp)
+> >  		goto found_entry;
+> >  
+> > @@ -318,7 +352,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+> >  	 * Must search again just in case someone inserted one
+> >  	 * after we dropped the lock above.
+> >  	 */
+> > -	found = nfsd_cache_search(rqstp);
+> > +	found = nfsd_cache_search(rqstp, crc);
+> >  	if (found) {
+> >  		nfsd_reply_cache_free_locked(rp);
+> >  		rp = found;
+> > @@ -344,6 +378,8 @@ setup_entry:
+> >  	rpc_set_port((struct sockaddr *)&rp->c_addr, rpc_get_port(svc_addr(rqstp)));
+> >  	rp->c_prot = proto;
+> >  	rp->c_vers = vers;
+> > +	rp->c_len = rqstp->rq_arg.len;
+> > +	rp->c_crc = crc;
+> >  
+> >  	hash_refile(rp);
+> >  	lru_put_end(rp);
+> > -- 
+> > 1.7.11.7
+> > 
 
 
-rpc.gssd outputs the following when the mount command is given:
-
-3.6.11:
-
-# rpc.gssd -f -n -vvvv
-beginning poll
-dir_notify_handler: sig 37 si 0xbfb2c4ec data 0xbfb2c56c
-dir_notify_handler: sig 37 si 0xbfb2c4ec data 0xbfb2c56c
-dir_notify_handler: sig 37 si 0xbfb2c4ec data 0xbfb2c56c
-dir_notify_handler: sig 37 si 0xbfb26bac data 0xbfb26c2c
-dir_notify_handler: sig 37 si 0xbfb2c4ec data 0xbfb2c56c
-handling gssd upcall (/run/rpc_pipefs/nfs/clnt0)
-handle_gssd_upcall: 'mech=krb5 uid=0 enctypes=18,17,16,23,3,1,2 '
-handling krb5 upcall (/run/rpc_pipefs/nfs/clnt0)
-process_krb5_upcall: service is '<null>'
-getting credentials for client with uid 0 for server server.example.org
-...
-
-3.7-rc1:
-
-# rpc.gssd -f -n -vvvv
-beginning poll
-dir_notify_handler: sig 37 si 0xbf9e2d8c data 0xbf9e2e0c
-dir_notify_handler: sig 37 si 0xbf9de3cc data 0xbf9de44c
-handling gssd upcall (/run/rpc_pipefs/nfs/clnt1a)
-handle_gssd_upcall: 'mech=krb5 uid=0 service=* enctypes=18,17,16,23,3,1,2 '
-handling krb5 upcall (/run/rpc_pipefs/nfs/clnt1a)
-process_krb5_upcall: service is '*'
-...
-
-
-It seems like the kernel now asks rpc.gssd to fetch credentials for 
-service '*' instead of NULL like with 3.6 and earlier.
-
-This leads to method process_krb5_upcall() in 
-nfs-utils/utils/gssd/gssd_proc.c where there's a comment saying:
-
-        /*
-         * If "service" is specified, then the kernel is indicating that
-         * we must use machine credentials for this request.  (Regardless
-         * of the uid value or the setting of root_uses_machine_creds.)
-         * If the service value is "*", then any service name can be used.
-         * Otherwise, it specifies the service name that should be used.
-         * (For now, the values of service will only be "*" or "nfs".)
-         *
-         * Restricting gssd to use "nfs" service name is needed for when
-         * the NFS server is doing a callback to the NFS client.  In this
-         * case, the NFS server has to authenticate itself as "nfs" --
-         * even if there are other service keys such as "host" or "root"
-         * in the keytab.
-         *
-         * Another case when the kernel may specify the service attribute
-         * is when gssd is being asked to create the context for a
-         * SETCLIENT_ID operation.  In this case, machine credentials
-         * must be used for the authentication.  However, the service name
-         * used for this case is not important.
-         *
-         */
-
-It looks like rpc.gssd does not want to load the user credentials 
-because the service name is * instead of null like before. When I 
-patched gssd_proc.c in gssd sources to ignore the check for 
-service_name==NULL, rpc.gssd returned the user credentials and the nfs 
-mount succeeded.
-
-Is this something that should be still be supported? Any pointers where I 
-should start looking for a fix?
-
-Veli-Matti
+-- 
+Jeff Layton <jlayton@redhat.com>
