@@ -1,69 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33489 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751540Ab3BMXFP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Feb 2013 18:05:15 -0500
-Date: Wed, 13 Feb 2013 18:05:11 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Anand Avati <anand.avati@gmail.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>, sandeen@redhat.com,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        gluster-devel@nongnu.org
-Subject: Re: [Gluster-devel] regressions due to 64-bit ext4 directory cookies
-Message-ID: <20130213230511.GW14195@fieldses.org>
-References: <20130213133131.GE14195@fieldses.org>
- <20130213151455.GB17431@thunk.org>
- <20130213151953.GJ14195@fieldses.org>
- <20130213153654.GC17431@thunk.org>
- <20130213162059.GL14195@fieldses.org>
- <CAFboF2wXvP+vttiff8iRE9rAgvV8UWGbFprgVp8p7kE43TU=PA@mail.gmail.com>
- <20130213222052.GD5938@thunk.org>
- <20130213224141.GU14195@fieldses.org>
- <20130213224720.GE5938@thunk.org>
- <CAFboF2z1akN_edrY_fT915xfehfHGioA2M=PSHv0Fp3rD-5v5A@mail.gmail.com>
+Received: from mail-ia0-f178.google.com ([209.85.210.178]:42085 "EHLO
+	mail-ia0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755033Ab3BDUUR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2013 15:20:17 -0500
+Received: by mail-ia0-f178.google.com with SMTP id y26so8430834iab.23
+        for <linux-nfs@vger.kernel.org>; Mon, 04 Feb 2013 12:20:16 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v3 9/9] SUNRPC: Remove EXPORT_SYMBOL_GPL() from GSS mech switch
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 04 Feb 2013 15:20:14 -0500
+Message-ID: <20130204202014.1518.26600.stgit@seurat.1015granger.net>
+In-Reply-To: <20130204201458.1518.12931.stgit@seurat.1015granger.net>
+References: <20130204201458.1518.12931.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAFboF2z1akN_edrY_fT915xfehfHGioA2M=PSHv0Fp3rD-5v5A@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 13, 2013 at 02:57:13PM -0800, Anand Avati wrote:
-> On Wed, Feb 13, 2013 at 2:47 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> 
-> > On Wed, Feb 13, 2013 at 05:41:41PM -0500, J. Bruce Fields wrote:
-> > > > What if we have an ioctl or a process personality flag where a broken
-> > > > application can tell the file system "I'm broken, please give me a
-> > > > degraded telldir/seekdir cookie"?  That way we don't penalize programs
-> > > > that are doing the right thing, while providing some accomodation for
-> > > > programs who are abusing the telldir cookie.
-> > >
-> > > Yeah, if there's a simple way to do that, maybe it would be worth it.
-> >
-> > Doing this as an ioctl which gets called right after opendir, i.e
-> > (ignoring error checking):
-> >
-> >       DIR *dir = opendir("/foo/bar/baz");
-> >       ioctl(dirfd(dir), EXT4_IOC_DEGRADED_READDIR, 1);
-> >       ...
-> >
-> > should be quite easy.  It would be a very ext3/4 specific thing,
-> > though.
-> 
-> 
-> That would work, even though it would be ext3/4 specific. What is the
-> recommended programmatic way to detect if the file is on ext3/4 -- we would
-> not want to attempt that blindly on a non-ext3/4 FS as the numerical value
-> of EXT4_IOC_DEGRADED_READDIR might get interpreted in dangerous ways?
+Clean up: Reduce the symbol table footprint for auth_rpcgss.ko by
+removing exported symbols for functions that are not used outside of
+auth_rpcgss.
 
-We must have been through this before, but: is the only way to generate
-a collision-free readdir cookie really to use a larger hash?
+The remaining two EXPORTs in gss_mech_switch.c get documenting
+comments.
 
-Would it be possible to make something work like, for example, a 31-bit
-hash plus an offset into a hash bucket?
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-I have trouble thinking about this, partly because I can't remember
-where to find the requirements for readdir on concurrently modified
-directories....
+ net/sunrpc/auth_gss/gss_mech_switch.c |   26 +++++++++++++-------------
+ 1 files changed, 13 insertions(+), 13 deletions(-)
 
---b.
+diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
+index b9f4f7b..719ee68 100644
+--- a/net/sunrpc/auth_gss/gss_mech_switch.c
++++ b/net/sunrpc/auth_gss/gss_mech_switch.c
+@@ -103,8 +103,13 @@ out:
+ 	return status;
+ }
+ 
+-int
+-gss_mech_register(struct gss_api_mech *gm)
++/**
++ * gss_mech_register - register a GSS mechanism
++ * @gm: GSS mechanism handle
++ *
++ * Returns zero if successful, or a negative errno.
++ */
++int gss_mech_register(struct gss_api_mech *gm)
+ {
+ 	int status;
+ 
+@@ -117,11 +122,14 @@ gss_mech_register(struct gss_api_mech *gm)
+ 	dprintk("RPC:       registered gss mechanism %s\n", gm->gm_name);
+ 	return 0;
+ }
+-
+ EXPORT_SYMBOL_GPL(gss_mech_register);
+ 
+-void
+-gss_mech_unregister(struct gss_api_mech *gm)
++/**
++ * gss_mech_unregister - release a GSS mechanism
++ * @gm: GSS mechanism handle
++ *
++ */
++void gss_mech_unregister(struct gss_api_mech *gm)
+ {
+ 	spin_lock(&registered_mechs_lock);
+ 	list_del(&gm->gm_list);
+@@ -129,7 +137,6 @@ gss_mech_unregister(struct gss_api_mech *gm)
+ 	dprintk("RPC:       unregistered gss mechanism %s\n", gm->gm_name);
+ 	gss_mech_free(gm);
+ }
+-
+ EXPORT_SYMBOL_GPL(gss_mech_unregister);
+ 
+ static struct gss_api_mech *gss_mech_get(struct gss_api_mech *gm)
+@@ -167,7 +174,6 @@ struct gss_api_mech * gss_mech_get_by_name(const char *name)
+ 	}
+ 	return gm;
+ }
+-EXPORT_SYMBOL_GPL(gss_mech_get_by_name);
+ 
+ static struct gss_api_mech *gss_mech_get_by_OID(struct rpcsec_gss_oid *obj)
+ {
+@@ -353,8 +359,6 @@ gss_pseudoflavor_to_service(struct gss_api_mech *gm, u32 pseudoflavor)
+ 	return 0;
+ }
+ 
+-EXPORT_SYMBOL_GPL(gss_pseudoflavor_to_service);
+-
+ char *
+ gss_service_to_auth_domain_name(struct gss_api_mech *gm, u32 service)
+ {
+@@ -367,8 +371,6 @@ gss_service_to_auth_domain_name(struct gss_api_mech *gm, u32 service)
+ 	return NULL;
+ }
+ 
+-EXPORT_SYMBOL_GPL(gss_service_to_auth_domain_name);
+-
+ void
+ gss_mech_put(struct gss_api_mech * gm)
+ {
+@@ -376,8 +378,6 @@ gss_mech_put(struct gss_api_mech * gm)
+ 		module_put(gm->gm_owner);
+ }
+ 
+-EXPORT_SYMBOL_GPL(gss_mech_put);
+-
+ /* The mech could probably be determined from the token instead, but it's just
+  * as easy for now to pass it in. */
+ int
+
