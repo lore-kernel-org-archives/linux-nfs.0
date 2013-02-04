@@ -1,72 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40602 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:40379 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935864Ab3BOQUX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Feb 2013 11:20:23 -0500
-Date: Fri, 15 Feb 2013 11:20:21 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+	id S1752478Ab3BDLBq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Feb 2013 06:01:46 -0500
+Subject: [PATCH v2 2/6] NFS; simlify and clean cache library
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
         linux-kernel@vger.kernel.org, devel@openvz.org
-Subject: Re: [PATCH v2 0/4] nfsd: make is works in a container
-Message-ID: <20130215162021.GK8343@fieldses.org>
-References: <20130201125210.3257.46454.stgit@localhost.localdomain>
+Date: Mon, 04 Feb 2013 14:02:40 +0300
+Message-ID: <20130204110240.11633.89082.stgit@localhost.localdomain>
+In-Reply-To: <20130204105728.11633.53621.stgit@localhost.localdomain>
+References: <20130204105728.11633.53621.stgit@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130201125210.3257.46454.stgit@localhost.localdomain>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 01, 2013 at 03:56:05PM +0300, Stanislav Kinsbursky wrote:
-> This patch set finally enables NFSd in container.
-> I've tested it in container with it's own root, and also pid, net and mount
-> namespaces.
+This is a cleanup patch.
+Such helpers like nfs_cache_init() and nfs_cache_destroy() are redundant,
+because they are just a wrappers around sunrpc_init_cache_detail() and
+sunrpc_destroy_cache_detail() respectively.
+So let's remove them completely and move corresponding logic to
+nfs_cache_register_net() and nfs_cache_unregister_net() respectively (since
+they are called together anyway).
 
-Thanks, these look fine to me; applying.  They should show up in my
-for-3.9 branch sometime today.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfs/cache_lib.c   |   12 +++---------
+ fs/nfs/cache_lib.h   |    2 --
+ fs/nfs/dns_resolve.c |    6 +-----
+ 3 files changed, 4 insertions(+), 16 deletions(-)
 
---b.
+diff --git a/fs/nfs/cache_lib.c b/fs/nfs/cache_lib.c
+index 862a2f1..5f7b053 100644
+--- a/fs/nfs/cache_lib.c
++++ b/fs/nfs/cache_lib.c
+@@ -128,10 +128,13 @@ int nfs_cache_register_net(struct net *net, struct cache_detail *cd)
+ 	struct super_block *pipefs_sb;
+ 	int ret = 0;
+ 
++	sunrpc_init_cache_detail(cd);
+ 	pipefs_sb = rpc_get_sb_net(net);
+ 	if (pipefs_sb) {
+ 		ret = nfs_cache_register_sb(pipefs_sb, cd);
+ 		rpc_put_sb_net(net);
++		if (ret)
++			sunrpc_destroy_cache_detail(cd);
+ 	}
+ 	return ret;
+ }
+@@ -151,14 +154,5 @@ void nfs_cache_unregister_net(struct net *net, struct cache_detail *cd)
+ 		nfs_cache_unregister_sb(pipefs_sb, cd);
+ 		rpc_put_sb_net(net);
+ 	}
+-}
+-
+-void nfs_cache_init(struct cache_detail *cd)
+-{
+-	sunrpc_init_cache_detail(cd);
+-}
+-
+-void nfs_cache_destroy(struct cache_detail *cd)
+-{
+ 	sunrpc_destroy_cache_detail(cd);
+ }
+diff --git a/fs/nfs/cache_lib.h b/fs/nfs/cache_lib.h
+index 317db95..4116d2c 100644
+--- a/fs/nfs/cache_lib.h
++++ b/fs/nfs/cache_lib.h
+@@ -23,8 +23,6 @@ extern struct nfs_cache_defer_req *nfs_cache_defer_req_alloc(void);
+ extern void nfs_cache_defer_req_put(struct nfs_cache_defer_req *dreq);
+ extern int nfs_cache_wait_for_upcall(struct nfs_cache_defer_req *dreq);
+ 
+-extern void nfs_cache_init(struct cache_detail *cd);
+-extern void nfs_cache_destroy(struct cache_detail *cd);
+ extern int nfs_cache_register_net(struct net *net, struct cache_detail *cd);
+ extern void nfs_cache_unregister_net(struct net *net, struct cache_detail *cd);
+ extern int nfs_cache_register_sb(struct super_block *sb,
+diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
+index 5015447..499834b 100644
+--- a/fs/nfs/dns_resolve.c
++++ b/fs/nfs/dns_resolve.c
+@@ -375,14 +375,12 @@ int nfs_dns_resolver_cache_init(struct net *net)
+ 	if (IS_ERR(nn->nfs_dns_resolve))
+ 		return PTR_ERR(nn->nfs_dns_resolve);
+ 
+-	nfs_cache_init(nn->nfs_dns_resolve);
+ 	err = nfs_cache_register_net(net, nn->nfs_dns_resolve);
+ 	if (err)
+ 		goto err_reg;
+ 	return 0;
+ 
+ err_reg:
+-	nfs_cache_destroy(nn->nfs_dns_resolve);
+ 	cache_destroy_net(nn->nfs_dns_resolve, net);
+ 	return err;
+ }
+@@ -390,10 +388,8 @@ err_reg:
+ void nfs_dns_resolver_cache_destroy(struct net *net)
+ {
+ 	struct nfs_net *nn = net_generic(net, nfs_net_id);
+-	struct cache_detail *cd = nn->nfs_dns_resolve;
+ 
+-	nfs_cache_unregister_net(net, cd);
+-	nfs_cache_destroy(cd);
++	nfs_cache_unregister_net(net, nn->nfs_dns_resolve);
+ 	cache_destroy_net(nn->nfs_dns_resolve, net);
+ }
+ 
 
-> 
-> There are some limitations, which are listed below:
-> 1) only nfsdclt client tracker supported for container. It's deprecated and
-> going to be removed soon. UMH tracker requires switching root. Legacy tracker
-> requires something like RB tree of opened inodes to make sure, that any
-> recovery directory will be opened only once.
-> 2) Enabled versions are controlled globally (should be fixed).
-> 3) Server should be stopped by writing "0" to
-> /proc/fs/nfsd/threads instead of sending signals to NFSd threads (they are
-> working in init_pid). Sending signals will either won't work if container wich
-> its own pid namespace, or will kill all nfsd threads for all containers in
-> init_pid namesapce.
-> 4) Currently, if container was stopped without stopping NFS server (i.e. it's
-> init was killed), NFSd kthreads will remain running. One of possible solutions
-> is to not hold network by NFSd service sockets, but register oer-net callback
-> and kill all the threads on network namespace exit.
-> 5) NFSd filesystem superblock holds network namespace. I.e. if some process
-> will hold container's NFSd supeblock, then sthe whole container's network
-> naemspace will stay alive even is container is destroyed already.
-> 
-> There may be more limitations, which are not clear to me yet.
-> 
-> v2:
-> 1) removed root swap - deprecated
-> 2) rebased on current tree
-> 
-> The following series implements...
-> 
-> ---
-> 
-> Stanislav Kinsbursky (4):
->       nfsd: containerize NFSd filesystem
->       nfsd: use proper net while reading "exports" file
->       nfsd: disable usermode helper client tracker in container
->       nfsd: enable NFSv4 state in containers
-> 
-> 
->  fs/nfsd/nfs4recover.c |    6 ++++
->  fs/nfsd/nfs4state.c   |   10 ------
->  fs/nfsd/nfsctl.c      |   77 +++++++++++++++++++++++++++++++++++++------------
->  fs/nfsd/nfssvc.c      |    5 +--
->  4 files changed, 66 insertions(+), 32 deletions(-)
-> 
