@@ -1,126 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59301 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759940Ab3BMQVE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Feb 2013 11:21:04 -0500
-Date: Wed, 13 Feb 2013 11:20:59 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org, sandeen@redhat.com,
-        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        gluster-devel@nongnu.org, linux-nfs@vger.kernel.org
-Subject: Re: regressions due to 64-bit ext4 directory cookies
-Message-ID: <20130213162059.GL14195@fieldses.org>
-References: <20130212202841.GC10267@fieldses.org>
- <20130213040003.GB2614@thunk.org>
- <20130213133131.GE14195@fieldses.org>
- <20130213151455.GB17431@thunk.org>
- <20130213151953.GJ14195@fieldses.org>
- <20130213153654.GC17431@thunk.org>
+Received: from mail-ie0-f170.google.com ([209.85.223.170]:55892 "EHLO
+	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754500Ab3BDUTF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2013 15:19:05 -0500
+Received: by mail-ie0-f170.google.com with SMTP id c11so6409863ieb.29
+        for <linux-nfs@vger.kernel.org>; Mon, 04 Feb 2013 12:19:05 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v3 1/9] SUNRPC: Missing module alias for auth_rpcgss.ko
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 04 Feb 2013 15:19:03 -0500
+Message-ID: <20130204201903.1518.91133.stgit@seurat.1015granger.net>
+In-Reply-To: <20130204201458.1518.12931.stgit@seurat.1015granger.net>
+References: <20130204201458.1518.12931.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130213153654.GC17431@thunk.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Oops, probably should have cc'd linux-nfs.
+Commit f344f6df "SUNRPC: Auto-load RPC authentication kernel
+modules", Mon Mar 20 13:44:08 2006, adds a request_module() call
+in rpcauth_create() to auto-load RPC security modules when a ULP
+tries to create a credential of that flavor.
 
-On Wed, Feb 13, 2013 at 10:36:54AM -0500, Theodore Ts'o wrote:
-> On Wed, Feb 13, 2013 at 10:19:53AM -0500, J. Bruce Fields wrote:
-> > > > (In more detail: they're spreading a single directory across multiple
-> > > > nodes, and encoding a node ID into the cookie they return, so they can
-> > > > tell which node the cookie came from when they get it back.)
-> > > > 
-> > > > That works if you assume the cookie is an "offset" bounded above by some
-> > > > measure of the directory size, hence unlikely to ever use the high
-> > > > bits....
-> > > 
-> > > Right, but why wouldn't a nfs export option solave the problem for
-> > > gluster?
-> > 
-> > No, gluster is running on ext4 directly.
-> 
-> OK, so let me see if I can get this straight.  Each local gluster node
-> is running a userspace NFS server, right?
+In rpcauth_create(), the name of the module to load is built like
+this:
 
-My understanding is that only one frontend server is running the server.
-So in your picture below, "NFS v3" should be some internal gluster
-protocol:
+	request_module("rpc-auth-%u", flavor);
 
+This means that for, say, RPC_AUTH_GSS, request_module() is looking
+for a module or alias called "rpc-auth-6".
 
-                                                   /------ GFS Storage
-                                                  /        Server #1
-   GFS Cluster     NFS V3      GFS Cluster      -- gluster protocol
-   Client        <--------->   Frontend Server  ---------- GFS Storage
-                                                --         Server #2
-                                                  \
-                                                   \------ GFS Storage
-                                                           Server #3
+The GSS module is named "auth_rpcgss", and commit f344f6df does not
+add any new module aliases.  There is also no such alias provided in
+/etc/modprobe.d on my system (Fedora 16).  Without this alias, the
+GSS module is not loaded on demand.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ net/sunrpc/auth_gss/auth_gss.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 6e5c824..4db065d 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -1721,6 +1721,7 @@ static void __exit exit_rpcsec_gss(void)
+ 	rcu_barrier(); /* Wait for completion of call_rcu()'s */
+ }
  
++MODULE_ALIAS("rpc-auth-6");
+ MODULE_LICENSE("GPL");
+ module_param_named(expired_cred_retry_delay,
+ 		   gss_expired_cred_retry_delay,
 
-That frontend server gets a readdir request for a directory which is
-stored across several of the storage servers.  It has to return a
-cookie.  It will get that cookie back from the client at some unknown
-later time (possibly after the server has rebooted).  So their solution
-is to return a cookie from one of the storage servers, plus some kind of
-node id in the top bits so they can remember which server it came from.
-
-(I don't know much about gluster, but I think that's the basic idea.)
-
-I've assumed that users of directory cookies should treat them as
-opaque, so I don't think what gluster is doing is correct.  But on the
-other hand they are defined as integers and described as offsets here
-and there.  And I can't actually think of anything else that would work,
-short of gluster generating and storing its own cookies.
-
-> Because if it were running
-> a kernel-side NFS server, it would be sufficient to use an nfs export
-> option.
-> 
-> A client which mounts a "gluster file system" is also doing this via
-> NFSv3, right?  Or are they using their own protocol?  If they are
-> using their own protocol, why can't they encode the node ID somewhere
-> else?
-> 
-> So this a correct picture of what is going on:
-> 
->                                                   /------ GFS Storage
->                                                  /        Server #1
->   GFS Cluster     NFS V3      GFS Cluster      -- NFS v3
->   Client        <--------->   Frontend Server  ---------- GFS Storage
->                                                --         Server #2
->                                                  \
->                                                   \------ GFS Storage
->                                                           Server #3
-> 
-> 
-> And the reason why it needs to use the high bits is because when it
-> needs to coalesce the results from each GFS Storage Server to the GFS
-> Cluster client?
-> 
-> The other thing that I'd note is that the readdir cookie has been
-> 64-bit since NFSv3, which was released in June ***1995***.  And the
-> explicit, stated purpose of making it be a 64-bit value (as stated in
-> RFC 1813) was to reduce interoperability problems.  If that were the
-> case, are you telling me that Sun (who has traditionally been pretty
-> good worrying about interoperability concerns, and in fact employed
-> the editors of RFC 1813) didn't get this right?  This seems
-> quite.... surprising to me.
-> 
-> I thought this was the whole point of the various NFS interoperability
-> testing done at Connectathon, for which Sun was a major sponsor?!?  No
-> one noticed?!?
-
-Beats me.  But it's not necessarily easy to replace clients running
-legacy applications, so we're stuck working with the clients we have....
-
-The linux client does remap the server-provided cookies to small
-integers, I believe exactly because older applications had trouble with
-servers returning "large" cookies.  So presumably ext4-exporting-Linux
-servers aren't the first to do this.
-
-I don't know which client versions are affected--Connectathon's next
-week and I'll talk to people and make sure there's an ext4 export with
-this turned on to test against.
-
---b.
