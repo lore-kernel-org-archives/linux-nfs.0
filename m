@@ -1,126 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:36994 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758115Ab3BNPTl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Feb 2013 10:19:41 -0500
-Date: Thu, 14 Feb 2013 10:19:37 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Tim Gardner <tim.gardner@canonical.com>
-Cc: linux-kernel@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH linux-next] lockd: nlmclnt_reclaim(): avoid stack
- overflow
-Message-ID: <20130214101937.1bbc1b61@tlielax.poochiereds.net>
-In-Reply-To: <1360697595-62460-1-git-send-email-tim.gardner@canonical.com>
-References: <1360697595-62460-1-git-send-email-tim.gardner@canonical.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from relay.parallels.com ([195.214.232.42]:56812 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753072Ab3BDKWu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2013 05:22:50 -0500
+Message-ID: <510F8BE6.6030108@parallels.com>
+Date: Mon, 4 Feb 2013 14:22:30 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>, <Trond.Myklebust@netapp.com>,
+        <linux-kernel@vger.kernel.org>, <devel@openvz.org>
+Subject: Re: [RFC PATCH 0/4] SUNRPC: rework cache upcall to avoid NFSd root
+ swapping
+References: <20130115080402.2996.74320.stgit@localhost.localdomain> <20130130230052.GB16158@fieldses.org>
+In-Reply-To: <20130130230052.GB16158@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 12 Feb 2013 12:33:15 -0700
-Tim Gardner <tim.gardner@canonical.com> wrote:
+Bruce, there is a nfs_dns_upcall, which is not just a wrapper around sunrpc_cache_pipe_upcall().
+So, please, drop this series. I'll send another one to replace soon.
+BTW, there will be two more cleanup patches in the series for NFS DNS cache part.
 
-> Even though nlmclnt_reclaim() is only one call into the stack frame,
-> 928 bytes on the stack seems like a lot. Recode to dynamically
-> allocate the request structure once from within the reclaimer task,
-> then pass this pointer into nlmclnt_reclaim() for reuse on
-> subsequent calls.
-> 
-> smatch analysis:
-> 
-> fs/lockd/clntproc.c:620 nlmclnt_reclaim() warn: 'reqst' puts
->  928 bytes on stack
-> 
-> Also remove redundant assignment of 0 after memset.
-> 
-> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Cc: "J. Bruce Fields" <bfields@fieldses.org>
-> Cc: linux-nfs@vger.kernel.org
-> Signed-off-by: Tim Gardner <tim.gardner@canonical.com>
-> ---
->  fs/lockd/clntlock.c         |    8 +++++++-
->  fs/lockd/clntproc.c         |    6 ++----
->  include/linux/lockd/lockd.h |    3 ++-
->  3 files changed, 11 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
-> index 4885b53..5dd23ef 100644
-> --- a/fs/lockd/clntlock.c
-> +++ b/fs/lockd/clntlock.c
-> @@ -220,10 +220,15 @@ reclaimer(void *ptr)
->  {
->  	struct nlm_host	  *host = (struct nlm_host *) ptr;
->  	struct nlm_wait	  *block;
-> +	struct nlm_rqst   *req;
->  	struct file_lock *fl, *next;
->  	u32 nsmstate;
->  	struct net *net = host->net;
->  
-> +	req = kmalloc(sizeof(*req), GFP_KERNEL);
-> +	if (!req)
-> +		return -ENOMEM;
-> +
+31.01.2013 03:00, J. Bruce Fields пишет:
+> On Tue, Jan 15, 2013 at 11:09:23AM +0300, Stanislav Kinsbursky wrote:
+>> The main idea of this patch set is to call cache request not on kthread
+>> upcall, but on userspace daemon cache_read call. This fixes the problem with
+>> gaining of wrong dentry path after calling d_path() in kthread root context
+>> (svc_export_request() callback), which always work in init root context, but
+>> containers can work in "root jail" - i.e. have it's own nested root.
+>
+> Sorry for the delay.  This looks good to me--committing pending some
+> testing.
+>
+> What's left now for basic containerized nfsd support?
+>
+> --b.
+>
+>>
+>> The following series implements...
+>>
+>> ---
+>>
+>> Stanislav Kinsbursky (4):
+>>        SUNRPC: introduce cache_detail->cache_request callback
+>>        SUNRPC: remove cache_detail->cache_upcall callback
+>>        SUNRPC: remove "cache_request" argument in sunrpc_cache_pipe_upcall() function
+>>        SUNRPC: move cache_detail->cache_request callback call to cache_read()
+>>
+>>
+>>   fs/nfs/dns_resolve.c              |    2 +-
+>>   fs/nfsd/export.c                  |   14 ++----------
+>>   fs/nfsd/nfs4idmap.c               |   16 ++-----------
+>>   include/linux/sunrpc/cache.h      |   11 +++------
+>>   net/sunrpc/auth_gss/svcauth_gss.c |    8 +------
+>>   net/sunrpc/cache.c                |   44 ++++++++++++++++++++-----------------
+>>   net/sunrpc/svcauth_unix.c         |   14 ++----------
+>>   7 files changed, 36 insertions(+), 73 deletions(-)
+>>
 
-The basic idea here seems sound, but if this allocation fails then the
-user will have no indication that lock reclaim didn't work. Might it
-make sense to emit a printk like the one in nlmclnt_recovery() in this
-case?
 
->  	allow_signal(SIGKILL);
->  
->  	down_write(&host->h_rwsem);
-> @@ -253,7 +258,7 @@ restart:
->  		 */
->  		if (signalled())
->  			continue;
-> -		if (nlmclnt_reclaim(host, fl) != 0)
-> +		if (nlmclnt_reclaim(host, fl, req) != 0)
->  			continue;
->  		list_add_tail(&fl->fl_u.nfs_fl.list, &host->h_granted);
->  		if (host->h_nsmstate != nsmstate) {
-> @@ -279,5 +284,6 @@ restart:
->  	/* Release host handle after use */
->  	nlmclnt_release_host(host);
->  	lockd_down(net);
-> +	kfree(req);
->  	return 0;
->  }
-> diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-> index 54f9e6c..b43114c 100644
-> --- a/fs/lockd/clntproc.c
-> +++ b/fs/lockd/clntproc.c
-> @@ -615,17 +615,15 @@ out_unlock:
->   * RECLAIM: Try to reclaim a lock
->   */
->  int
-> -nlmclnt_reclaim(struct nlm_host *host, struct file_lock *fl)
-> +nlmclnt_reclaim(struct nlm_host *host, struct file_lock *fl,
-> +		struct nlm_rqst *req)
->  {
-> -	struct nlm_rqst reqst, *req;
->  	int		status;
->  
-> -	req = &reqst;
->  	memset(req, 0, sizeof(*req));
->  	locks_init_lock(&req->a_args.lock.fl);
->  	locks_init_lock(&req->a_res.lock.fl);
->  	req->a_host  = host;
-> -	req->a_flags = 0;
->  
->  	/* Set up the argument struct */
->  	nlmclnt_setlockargs(req, fl);
-> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-> index f5a051a..a395f1e 100644
-> --- a/include/linux/lockd/lockd.h
-> +++ b/include/linux/lockd/lockd.h
-> @@ -212,7 +212,8 @@ int		  nlmclnt_block(struct nlm_wait *block, struct nlm_rqst *req, long timeout)
->  __be32		  nlmclnt_grant(const struct sockaddr *addr,
->  				const struct nlm_lock *lock);
->  void		  nlmclnt_recovery(struct nlm_host *);
-> -int		  nlmclnt_reclaim(struct nlm_host *, struct file_lock *);
-> +int		  nlmclnt_reclaim(struct nlm_host *, struct file_lock *,
-> +				  struct nlm_rqst *);
->  void		  nlmclnt_next_cookie(struct nlm_cookie *);
->  
->  /*
+-- 
+Best regards,
+Stanislav Kinsbursky
