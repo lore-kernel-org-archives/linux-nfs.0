@@ -1,40 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-lb0-f172.google.com ([209.85.217.172]:51965 "EHLO
-	mail-lb0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757377Ab3B1PW4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Feb 2013 10:22:56 -0500
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: linux-kernel@vger.kernel.org
-Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, wine-devel@winehq.org
-Subject: [PATCH v3 5/7] CIFS: Translate SHARING_VIOLATION to -ETXTBSY error code for SMB2
-Date: Thu, 28 Feb 2013 19:25:31 +0400
-Message-Id: <1362065133-9490-6-git-send-email-piastry@etersoft.ru>
-In-Reply-To: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
-References: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
+Received: from mx1.redhat.com ([209.132.183.28]:60958 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755902Ab3BDPMc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Feb 2013 10:12:32 -0500
+Date: Mon, 4 Feb 2013 10:12:27 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+Subject: Re: [PATCH] sunrpc: copy scope ID in __rpc_copy_addr6
+Message-ID: <20130204101227.79223d53@tlielax.poochiereds.net>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91835B4C4@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1359983408-28337-1-git-send-email-jlayton@redhat.com>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA91835B2E9@SACEXCMBX04-PRD.hq.netapp.com>
+	<20130204094204.24c6f9a5@tlielax.poochiereds.net>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA91835B4C4@SACEXCMBX04-PRD.hq.netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-to make it match CIFS and VFS variants.
+On Mon, 4 Feb 2013 14:52:16 +0000
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
----
- fs/cifs/smb2maperror.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+> > -----Original Message-----
+> > From: Jeff Layton [mailto:jlayton@redhat.com]
+> > Sent: Monday, February 04, 2013 9:42 AM
+> > To: Myklebust, Trond
+> > Cc: bfields@fieldses.org; linux-nfs@vger.kernel.org; chuck.lever@oracle.com
+> > Subject: Re: [PATCH] sunrpc: copy scope ID in __rpc_copy_addr6
+> > 
+> > On Mon, 4 Feb 2013 14:22:47 +0000
+> > "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+> > 
+> > > > -----Original Message-----
+> > > > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> > > > owner@vger.kernel.org] On Behalf Of Jeff Layton
+> > > > Sent: Monday, February 04, 2013 8:10 AM
+> > > > To: bfields@fieldses.org
+> > > > Cc: linux-nfs@vger.kernel.org; chuck.lever@oracle.com
+> > > > Subject: [PATCH] sunrpc: copy scope ID in __rpc_copy_addr6
+> > > >
+> > > > When copying an address, we should also copy the scopeid in the
+> > > > event that this is a link-local address and the scope matters.
+> > > >
+> > > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > > > ---
+> > > >  include/linux/sunrpc/clnt.h | 1 +
+> > > >  1 file changed, 1 insertion(+)
+> > > >
+> > > > diff --git a/include/linux/sunrpc/clnt.h
+> > > > b/include/linux/sunrpc/clnt.h index
+> > > > 47354a2..6a7c261 100644
+> > > > --- a/include/linux/sunrpc/clnt.h
+> > > > +++ b/include/linux/sunrpc/clnt.h
+> > > > @@ -242,6 +242,7 @@ static inline bool __rpc_copy_addr6(struct
+> > > > sockaddr *dst,
+> > > >
+> > > >  	dsin6->sin6_family = ssin6->sin6_family;
+> > > >  	dsin6->sin6_addr = ssin6->sin6_addr;
+> > > > +	dsin6->sin6_scope_id = ssin6->sin6_scope_id;
+> > > >  	return true;
+> > > >  }
+> > > >  #else	/* !(IS_ENABLED(CONFIG_IPV6) */
+> > > > --
+> > >
+> > >
+> > > Can we please move these helpers into a separate header, say
+> > include/Linux/sunrpc/inet.h?
+> > >
+> > 
+> > Yes, that's long overdue. I'll spin up a patch on top of this one to do that. I'd
+> > suggest that we call it "addr.h" to keep it in parity with the "addr.c" file that's
+> > in the sunrpc directory, since we'll need to move the prototypes for those
+> > functions as well.
+> > 
+> > > Oh... Also note that you probably want to apply the above scopeid to the
+> > NFSv4 callback address that is supplied by the client in the setclientid call.
+> > >
+> > 
+> > I'm not clear on what you mean here. This patch should make it so that the
+> > server keeps the correct scopeid along with the cb address that it tracks for a
+> > client (something that I don't think it does properly today).
+> > 
+> I mean that the NFSv4 client supplies an address in "universal address" format (i.e. a string) as part of the setclientid call. If that address is a link-local address, then it won't contain a scopeid ('cos the scopeid is an identifier that is local to the _server_). In that case the server should apply the scopeid from the nfs4_clientid in the gen_callback() helper.
+> 
+> Cheers
+>   Trond
+> 
 
-diff --git a/fs/cifs/smb2maperror.c b/fs/cifs/smb2maperror.c
-index 494c912..11e589e 100644
---- a/fs/cifs/smb2maperror.c
-+++ b/fs/cifs/smb2maperror.c
-@@ -356,7 +356,7 @@ static const struct status_to_posix_error smb2_error_map_table[] = {
- 	{STATUS_PORT_CONNECTION_REFUSED, -ECONNREFUSED,
- 	"STATUS_PORT_CONNECTION_REFUSED"},
- 	{STATUS_INVALID_PORT_HANDLE, -EIO, "STATUS_INVALID_PORT_HANDLE"},
--	{STATUS_SHARING_VIOLATION, -EBUSY, "STATUS_SHARING_VIOLATION"},
-+	{STATUS_SHARING_VIOLATION, -ETXTBSY, "STATUS_SHARING_VIOLATION"},
- 	{STATUS_QUOTA_EXCEEDED, -EDQUOT, "STATUS_QUOTA_EXCEEDED"},
- 	{STATUS_INVALID_PAGE_PROTECTION, -EIO,
- 	"STATUS_INVALID_PAGE_PROTECTION"},
+I believe we already handle that correctly in gen_callback(), unless
+I'm missing something...
+
 -- 
-1.8.1.2
-
+Jeff Layton <jlayton@redhat.com>
