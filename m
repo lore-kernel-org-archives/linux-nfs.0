@@ -1,84 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:5115 "EHLO mx1.redhat.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:40505 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760020Ab3BHPl2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Feb 2013 10:41:28 -0500
-Date: Fri, 8 Feb 2013 10:41:18 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 2/2] nfsd: keep a checksum of the first 256 bytes of
- request
-Message-ID: <20130208104118.032b1c10@tlielax.poochiereds.net>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91836525F@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1360248701-23963-1-git-send-email-jlayton@redhat.com>
-	<1360248701-23963-3-git-send-email-jlayton@redhat.com>
-	<DF2DA489-3D72-4DBF-8C65-1B7DA9866B63@oracle.com>
-	<20130207160032.GF3222@fieldses.org>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA91836525F@SACEXCMBX04-PRD.hq.netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1754178Ab3BDLBr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Feb 2013 06:01:47 -0500
+Subject: [PATCH v2 1/6] NFS: use SUNRPC cache creation and destruction helper
+	for DNS cache
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Mon, 04 Feb 2013 14:02:35 +0300
+Message-ID: <20130204110235.11633.59600.stgit@localhost.localdomain>
+In-Reply-To: <20130204105728.11633.53621.stgit@localhost.localdomain>
+References: <20130204105728.11633.53621.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 7 Feb 2013 16:32:20 +0000
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+This cache was the first containerized and doesn't use net-aware cache
+creation and destruction helpers.
+This is a cleanup patch which just makes code looks clearer and reduce amount
+of lines of code.
 
-> > -----Original Message-----
-> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> > owner@vger.kernel.org] On Behalf Of J. Bruce Fields
-> > Sent: Thursday, February 07, 2013 11:01 AM
-> > To: Chuck Lever
-> > Cc: Jeff Layton; linux-nfs@vger.kernel.org
-> > Subject: Re: [PATCH v3 2/2] nfsd: keep a checksum of the first 256 bytes of
-> > request
-> > 
-> > On Thu, Feb 07, 2013 at 10:51:02AM -0500, Chuck Lever wrote:
-> > >
-> > > On Feb 7, 2013, at 9:51 AM, Jeff Layton <jlayton@redhat.com> wrote:
-> > >
-> > > > Now that we're allowing more DRC entries, it becomes a lot easier to
-> > > > hit problems with XID collisions. In order to mitigate those,
-> > > > calculate the crc32 of up to the first 256 bytes of each request
-> > > > coming in and store that in the cache entry, along with the total
-> > > > length of the request.
-> > >
-> > > I'm happy to see a checksummed DRC finally become reality for the
-> > > Linux NFS server.
-> > >
-> > > Have you measured the CPU utilization impact and CPU cache footprint
-> > > of performing a CRC computation for every incoming RPC?
-> > 
-> > Note this is over the first 256 bytes of the request--which we're probably just
-> > about to read for xdr decoding anyway.
-> 
-> - Would it make sense perhaps to generate the checksum as you are reading the data?
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfs/dns_resolve.c |   60 +++++++++++++++++++++-----------------------------
+ 1 files changed, 25 insertions(+), 35 deletions(-)
 
-Maybe, but I'm not sure it's worth the engineering effort. On my highly
-unscientific test rig, the time to calculate the checksum is ~800ns
-using the IP checksum routine. If we can run the checksum while we read
-the data off the socket, then we might shave some of that off, but that
-"feels" like small potatoes to me.
+diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
+index ca4b11e..5015447 100644
+--- a/fs/nfs/dns_resolve.c
++++ b/fs/nfs/dns_resolve.c
+@@ -351,48 +351,39 @@ ssize_t nfs_dns_resolve_name(struct net *net, char *name,
+ }
+ EXPORT_SYMBOL_GPL(nfs_dns_resolve_name);
+ 
++static struct cache_detail nfs_dns_resolve_template = {
++	.owner		= THIS_MODULE,
++	.hash_size	= NFS_DNS_HASHTBL_SIZE,
++	.name		= "dns_resolve",
++	.cache_put	= nfs_dns_ent_put,
++	.cache_upcall	= nfs_dns_upcall,
++	.cache_parse	= nfs_dns_parse,
++	.cache_show	= nfs_dns_show,
++	.match		= nfs_dns_match,
++	.init		= nfs_dns_ent_init,
++	.update		= nfs_dns_ent_update,
++	.alloc		= nfs_dns_ent_alloc,
++};
++
++
+ int nfs_dns_resolver_cache_init(struct net *net)
+ {
+-	int err = -ENOMEM;
++	int err;
+ 	struct nfs_net *nn = net_generic(net, nfs_net_id);
+-	struct cache_detail *cd;
+-	struct cache_head **tbl;
+ 
+-	cd = kzalloc(sizeof(struct cache_detail), GFP_KERNEL);
+-	if (cd == NULL)
+-		goto err_cd;
+-
+-	tbl = kzalloc(NFS_DNS_HASHTBL_SIZE * sizeof(struct cache_head *),
+-			GFP_KERNEL);
+-	if (tbl == NULL)
+-		goto err_tbl;
+-
+-	cd->owner = THIS_MODULE,
+-	cd->hash_size = NFS_DNS_HASHTBL_SIZE,
+-	cd->hash_table = tbl,
+-	cd->name = "dns_resolve",
+-	cd->cache_put = nfs_dns_ent_put,
+-	cd->cache_upcall = nfs_dns_upcall,
+-	cd->cache_parse = nfs_dns_parse,
+-	cd->cache_show = nfs_dns_show,
+-	cd->match = nfs_dns_match,
+-	cd->init = nfs_dns_ent_init,
+-	cd->update = nfs_dns_ent_update,
+-	cd->alloc = nfs_dns_ent_alloc,
+-
+-	nfs_cache_init(cd);
+-	err = nfs_cache_register_net(net, cd);
++	nn->nfs_dns_resolve = cache_create_net(&nfs_dns_resolve_template, net);
++	if (IS_ERR(nn->nfs_dns_resolve))
++		return PTR_ERR(nn->nfs_dns_resolve);
++
++	nfs_cache_init(nn->nfs_dns_resolve);
++	err = nfs_cache_register_net(net, nn->nfs_dns_resolve);
+ 	if (err)
+ 		goto err_reg;
+-	nn->nfs_dns_resolve = cd;
+ 	return 0;
+ 
+ err_reg:
+-	nfs_cache_destroy(cd);
+-	kfree(cd->hash_table);
+-err_tbl:
+-	kfree(cd);
+-err_cd:
++	nfs_cache_destroy(nn->nfs_dns_resolve);
++	cache_destroy_net(nn->nfs_dns_resolve, net);
+ 	return err;
+ }
+ 
+@@ -403,8 +394,7 @@ void nfs_dns_resolver_cache_destroy(struct net *net)
+ 
+ 	nfs_cache_unregister_net(net, cd);
+ 	nfs_cache_destroy(cd);
+-	kfree(cd->hash_table);
+-	kfree(cd);
++	cache_destroy_net(nn->nfs_dns_resolve, net);
+ }
+ 
+ static int rpc_pipefs_event(struct notifier_block *nb, unsigned long event,
 
-OTOH, I don't have a good way to measure what the effect of this is on
-the CPU cache. Any ideas of how to measure whether that's significant?
-
-> - Also, is 256 bytes sufficient? How far does that get you with your average WRITE compound?
-
-I also had a look at this, and it looks like the data portion of a
-WRITE compound from the Linux client starts at ~80 bytes from the
-beginning of the NFS part of the frame. So with a 256 byte checksum
-length, we're checksumming over about 176 bytes of write data from a
-typical NFSv4.0 WRITE request.
-
-It might not hurt to extend that out to 384 bytes or so? We have to
-figure that some clients also set the tag field, so having a bit of
-fudge factor for that might be reasonable.
-
-Making it variable doesn't seem like it would buy us too much since
-most calls are much smaller than 256 bytes to begin with.
-
--- 
-Jeff Layton <jlayton@redhat.com>
