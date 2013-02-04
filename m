@@ -1,113 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:3644 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752786Ab3BUUCz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Feb 2013 15:02:55 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
-        "simo@redhat.com" <simo@redhat.com>
-Subject: Re: [PATCH 1/6] SUNRPC: make AF_LOCAL connect synchronous
-Date: Thu, 21 Feb 2013 20:02:30 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9235DA946@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1361464705-12340-1-git-send-email-bfields@redhat.com>
-	 <1361464705-12340-2-git-send-email-bfields@redhat.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9235DA5F3@SACEXCMBX04-PRD.hq.netapp.com>
-	 <20130221194804.GC3531@pad.fieldses.org>
-In-Reply-To: <20130221194804.GC3531@pad.fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
+Received: from cn.fujitsu.com ([222.73.24.84]:29075 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1754062Ab3BDNOl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Feb 2013 08:14:41 -0500
+Message-ID: <510FB456.6040208@cn.fujitsu.com>
+Date: Mon, 04 Feb 2013 21:15:02 +0800
+From: fanchaoting <fanchaoting@cn.fujitsu.com>
 MIME-Version: 1.0
+To: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH] umount oops when remove  blocklayoutdriver first
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-02-21 at 14:48 -0500, J. Bruce Fields wrote:
-> On Thu, Feb 21, 2013 at 06:17:47PM +0000, Myklebust, Trond wrote:
-> > On Thu, 2013-02-21 at 11:38 -0500, J. Bruce Fields wrote:
-> > > From: "J. Bruce Fields" <bfields@redhat.com>
-> > > 
-> > > It doesn't appear that anyone actually needs to connect asynchronously.
-> > > 
-> > > Also, using a workqueue for the connect means we lose the namespace
-> > > information from the original process.  This is a problem since there's
-> > > no way to explicitly pass in a filesystem namespace for resolution of an
-> > > AF_LOCAL address.
-> > > 
-> > > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > > ---
-> > >  net/sunrpc/xprtsock.c |   35 +++++++++++++++++++++++++++--------
-> > >  1 file changed, 27 insertions(+), 8 deletions(-)
-> > > 
-> > > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> > > index bbc0915..b1df874 100644
-> > > --- a/net/sunrpc/xprtsock.c
-> > > +++ b/net/sunrpc/xprtsock.c
-> > > @@ -1866,13 +1866,9 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
-> > >   * @xprt: RPC transport to connect
-> > >   * @transport: socket transport to connect
-> > >   * @create_sock: function to create a socket of the correct type
-> > > - *
-> > > - * Invoked by a work queue tasklet.
-> > >   */
-> > > -static void xs_local_setup_socket(struct work_struct *work)
-> > > +static void xs_local_setup_socket(struct sock_xprt *transport)
-> > >  {
-> > > -	struct sock_xprt *transport =
-> > > -		container_of(work, struct sock_xprt, connect_worker.work);
-> > >  	struct rpc_xprt *xprt = &transport->xprt;
-> > >  	struct socket *sock;
-> > >  	int status = -EIO;
-> > > @@ -1919,6 +1915,31 @@ out:
-> > >  	current->flags &= ~PF_FSTRANS;
-> > >  }
-> > >  
-> > > +static void xs_local_connect(struct rpc_task *task)
-> > > +{
-> > > +	struct rpc_xprt *xprt = task->tk_xprt;
-> > > +	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
-> > > +	unsigned long timeout;
-> > > +
-> > > +	 if (RPC_IS_ASYNC(task))
-> > > +	 	rpc_exit(task, -ENOTCONN);
-> > 
-> > Needs a "return"...
-> 
-> Fixed, thanks.
-> 
-> > 
-> > 
-> > > +
-> > > +	if (transport->sock != NULL && !RPC_IS_SOFTCONN(task)) {
-> > > +		dprintk("RPC:       xs_connect delayed xprt %p for %lu "
-> > > +				"seconds\n",
-> > > +				xprt, xprt->reestablish_timeout / HZ);
-> > > +		timeout = xprt->reestablish_timeout;
-> > > +		xprt->reestablish_timeout <<= 1;
-> > > +		if (xprt->reestablish_timeout < XS_TCP_INIT_REEST_TO)
-> > > +			xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
-> > > +		if (xprt->reestablish_timeout > XS_TCP_MAX_REEST_TO)
-> > > +			xprt->reestablish_timeout = XS_TCP_MAX_REEST_TO;
-> > > +		rpc_delay(task, timeout);
-> > 
-> > This too needs to exit in order to sleep.
-> 
-> Oops, so maybe simplest would be just to connect first and then delay if
-> there's a failure.
-> 
-> (Or is there any problem just making that rpc_delay() an msleep() since
-> we know we're in the synchronous case?)
+now pnfs client uses block layout, maybe we can remove
+blocklayoutdriver first. if we umount later,
+it can cause oops in unset_pnfs_layoutdriver.
+because nfss->pnfs_curr_ld->clear_layoutdriver is invalid.
 
-A 5 minute msleep() is probably a bit excessive. Making it interruptible
-might help, but ...
-That does however raise the issue of why we need exponential back off
-here? An AF_LOCAL connect call is pretty efficient.
+reproduce it:
+ modprobe  blocklayoutdriver
+ mount -t nfs4 -o minorversion=1 pnfsip:/ /mnt/
+ rmmod blocklayoutdriver
+ umount /mnt
 
-Cheers
-  Trond
+then you can see following
+
+#############################################################
+CPU 0
+Pid: 17023, comm: umount.nfs4 Tainted: GF          O 3.7.0-rc6-pnfs #1 VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform
+RIP: 0010:[<ffffffffa04cfe6d>]  [<ffffffffa04cfe6d>] unset_pnfs_layoutdriver+0x1d/0x70 [nfsv4]
+RSP: 0018:ffff8800022d9e48  EFLAGS: 00010286
+RAX: ffffffffa04a1b00 RBX: ffff88000b013800 RCX: 0000000000000001
+RDX: ffffffff81ae8ee0 RSI: ffff880001ee94b8 RDI: ffff88000b013800
+RBP: ffff8800022d9e58 R08: 0000000000000001 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000000 R12: ffff880001ee9400
+R13: ffff8800105978c0 R14: 00007fff25846c08 R15: 0000000001bba550
+FS:  00007f45ae7f0700(0000) GS:ffff880012c00000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+CR2: ffffffffa04a1b38 CR3: 0000000002c0c000 CR4: 00000000000006f0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+Process umount.nfs4 (pid: 17023, threadinfo ffff8800022d8000, task ffff880006e48aa0)
+Stack:
+ffff8800105978c0 ffff88000b013800 ffff8800022d9e78 ffffffffa04cd0ce
+ffff8800022d9e78 ffff88000b013800 ffff8800022d9ea8 ffffffffa04755a7
+ffff8800022d9ea8 ffff880002f96400 ffff88000b013800 ffff880002f96400
+Call Trace:
+[<ffffffffa04cd0ce>] nfs4_destroy_server+0x1e/0x30 [nfsv4]
+[<ffffffffa04755a7>] nfs_free_server+0xb7/0x150 [nfs]
+[<ffffffffa047d4d5>] nfs_kill_super+0x35/0x40 [nfs]
+[<ffffffff81178d35>] deactivate_locked_super+0x45/0x70
+[<ffffffff8117986a>] deactivate_super+0x4a/0x70
+[<ffffffff81193ee2>] mntput_no_expire+0xd2/0x130
+[<ffffffff81194d62>] sys_umount+0x72/0xe0
+[<ffffffff8154af59>] system_call_fastpath+0x16/0x1b
+Code: 06 e1 b8 ea ff ff ff eb 9e 0f 1f 44 00 00 55 48 89 e5 53 48 83 ec 08 66 66 66 66 90 48 8b 87 80 03 00 00 48 89 fb 48 85 c0 74 29 <48> 8b 40 38 48 85 c0 74 02 ff d0 48 8b 03 3e ff 48 04 0f 94 c2
+RIP  [<ffffffffa04cfe6d>] unset_pnfs_layoutdriver+0x1d/0x70 [nfsv4]
+RSP <ffff8800022d9e48>
+CR2: ffffffffa04a1b38
+---[ end trace 29f75aaedda058bf ]---
+
+#############################################################
+
+
+Signed-off-by: fanchaoting<fanchaoting@cn.fujitsu.com>
+---
+ fs/nfs/blocklayout/blocklayout.c |    1 +
+ fs/nfs/objlayout/objio_osd.c     |    1 +
+ 2 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index f1027b0..1e481c5 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -1272,6 +1272,7 @@ static const struct nfs_pageio_ops bl_pg_write_ops = {
+ static struct pnfs_layoutdriver_type blocklayout_type = {
+ 	.id				= LAYOUT_BLOCK_VOLUME,
+ 	.name				= "LAYOUT_BLOCK_VOLUME",
++	.owner				= THIS_MODULE,
+ 	.read_pagelist			= bl_read_pagelist,
+ 	.write_pagelist			= bl_write_pagelist,
+ 	.alloc_layout_hdr		= bl_alloc_layout_hdr,
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index c6f9906..88f9611 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -647,6 +647,7 @@ static struct pnfs_layoutdriver_type objlayout_type = {
+ 	.flags                   = PNFS_LAYOUTRET_ON_SETATTR |
+ 				   PNFS_LAYOUTRET_ON_ERROR,
+ 
++	.owner		       	 = THIS_MODULE,
+ 	.alloc_layout_hdr        = objlayout_alloc_layout_hdr,
+ 	.free_layout_hdr         = objlayout_free_layout_hdr,
+ 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.7.1
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
