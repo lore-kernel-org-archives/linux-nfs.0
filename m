@@ -1,63 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:35824 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753326Ab3BPPLn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 16 Feb 2013 10:11:43 -0500
-Message-ID: <511FA1A6.2060903@RedHat.com>
-Date: Sat, 16 Feb 2013 10:11:34 -0500
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-ia0-f176.google.com ([209.85.210.176]:58622 "EHLO
+	mail-ia0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754500Ab3BDUS5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2013 15:18:57 -0500
+Received: by mail-ia0-f176.google.com with SMTP id i18so8395889iac.7
+        for <linux-nfs@vger.kernel.org>; Mon, 04 Feb 2013 12:18:56 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v3 0/9] Dynamically load GSS pseudoflavors by OID
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 04 Feb 2013 15:18:52 -0500
+Message-ID: <20130204201458.1518.12931.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: V4 unmount causes a GETATTR
-References: <511E5838.2020103@RedHat.com> <20130215182531.GB19923@fieldses.org> <511EAC8B.3050403@RedHat.com> <4FA345DA4F4AE44899BD2B03EEEC2FA91F3DA928@sacexcmbx05-prd.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91F3DA928@sacexcmbx05-prd.hq.netapp.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Currently the RPC client is able to dynamically load GSS security
+flavor support by name or pseudoflavor number, but not by
+[OID, qop, service] tuple.  Such a tuple can be provided by an NFSv4
+server in a SECINFO reply, for example.
+
+This means that if an NFSv4 server lists a tuple for, say, krb5p, in
+a SECINFO reply, our client will pretend it doesn't support krb5p if
+the rpc-auth-gss-krb5 module is available on the system but does not
+happen to be loaded at that moment.
+
+This series implements support for loading the correct GSS
+pseudoflavor module before searching by GSS tuple.
+
+This version of the series seems ready for linux-next or 3.9.
+
+Changes since v2:
+
+ 1.  Some polish
+ 2.  Server-side [9/9] rewritten based on testing results
+
+Changes since v1:
+
+ 1.  Simplify function and method names
+ 2.  Add an equivalent server-side interface
+ 3.  Improve automatic loading of the auth_rpcgss module
+ 4.  nfs_find_best_sec() also verifies non-GSS flavors against
+     RPC client's list of registered flavors
+ 5.  Search for (qop, svc) pair without adding a new function
+ 6.  Clean up GSS mech switch
+ 7.  Remove dprintk() calls
+ 8.  Improve patch descriptions
+ 9.  Numerous small improvements and fixes
 
 
-On 16/02/13 00:17, Myklebust, Trond wrote:
->> -----Original Message-----
->> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
->> owner@vger.kernel.org] On Behalf Of Steve Dickson
->> Sent: Friday, February 15, 2013 4:46 PM
->> To: J. Bruce Fields
->> Cc: linux-nfs@vger.kernel.org
->> Subject: Re: V4 unmount causes a GETATTR
->>
->>
->>
->> On 15/02/13 13:25, J. Bruce Fields wrote:
->>> On Fri, Feb 15, 2013 at 10:46:00AM -0500, Steve Dickson wrote:
->>>> Hello,
->>>>
->>>> I have not tracked down as to the exact reason, but it appears umount
->>>> of v4 file system cause the directory to be revalidating causing the
->>>> GETATTR.
->>>>
->>>> Is this revalidation really necessary on an unmount?
->>>
->>> I don't know, maybe not.  But even if it's not, there are other things
->>> (like cleaning up state) that the client will likely try to do on
->>> unmount.  In the presence of delegations it could have dirty data that
->>> it's required to write back even if applications don't currently hold
->>> any open files.
->> Understood with dirty data... but what I as seeing was a v4 mount and then a
->> reboot with no activity on the mount point...
->>
->>>
->>> So I don't think we can promise umount will work without the network.
->> Again with open files (aka activity on the mount point) I agree but with no
->> activity or open files, I'm think that GETATTR is simply not necessary...
-> 
-> You'd need to add a lookup intent specifically for umount. Otherwise the filesystem will not be able distinguish between path lookups for umount and other activity.
-> 
-> Also note that "no activity or open files" is no guarantee that you won't be holding delegations or pNFS layouts to return; you may still see hangs.
-> 
-I've also noticed force mounts this clean up does not happen (aka the GETATTR is not sent)... which is the price of doing forced mounts... 
+---
 
-steved.
+Chuck Lever (9):
+      SUNRPC: Remove EXPORT_SYMBOL_GPL() from GSS mech switch
+      SUNRPC: Make gss_mech_get() static
+      SUNRPC: Refactor nfsd4_do_encode_secinfo()
+      SUNRPC: Consider qop when looking up pseudoflavors
+      SUNRPC: Load GSS kernel module by OID
+      SUNRPC: Introduce rpcauth_get_pseudoflavor()
+      SUNRPC: Define rpcsec_gss_info structure
+      NFS: Remove unneeded forward declaration
+      SUNRPC: Missing module alias for auth_rpcgss.ko
 
+
+ fs/nfs/nfs4namespace.c                |   43 +++++++-----
+ fs/nfs/nfs4xdr.c                      |   20 +++---
+ fs/nfsd/nfs4xdr.c                     |   24 +++----
+ include/linux/nfs_xdr.h               |   24 +------
+ include/linux/sunrpc/auth.h           |    6 ++
+ include/linux/sunrpc/gss_api.h        |   29 ++++++--
+ net/sunrpc/Kconfig                    |    1 
+ net/sunrpc/auth.c                     |   68 +++++++++++++++++++
+ net/sunrpc/auth_gss/auth_gss.c        |    3 +
+ net/sunrpc/auth_gss/gss_krb5_mech.c   |    6 +-
+ net/sunrpc/auth_gss/gss_mech_switch.c |  117 +++++++++++++++++++++++++--------
+ net/sunrpc/auth_gss/svcauth_gss.c     |    4 +
+ 12 files changed, 245 insertions(+), 100 deletions(-)
+
+-- 
+Chuck Lever
