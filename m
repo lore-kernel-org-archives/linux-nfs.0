@@ -1,59 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:29053 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933677Ab3BSSyi convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Feb 2013 13:54:38 -0500
+Received: from fieldses.org ([174.143.236.118]:52269 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752388Ab3BDORX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Feb 2013 09:17:23 -0500
+Date: Mon, 4 Feb 2013 09:17:19 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Subject: Re: [PATCH v2 0/6] SUNRPC: rework cache upcall to avoid NFSd root
+Message-ID: <20130204141719.GA815@fieldses.org>
+References: <20130204105728.11633.53621.stgit@localhost.localdomain>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
-Subject: Re: [PATCH [rpcbind]] fix building one systems w/out nss.h
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1361299690-19402-1-git-send-email-vapier@gentoo.org>
-Date: Tue, 19 Feb 2013 13:54:19 -0500
-Cc: libtirpc-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org
-Message-Id: <D1025EAD-8EEB-40A4-8EA4-0D21ECC16B66@oracle.com>
-References: <1361299690-19402-1-git-send-email-vapier@gentoo.org>
-To: Mike Frysinger <vapier@gentoo.org>
+In-Reply-To: <20130204105728.11633.53621.stgit@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi-
-
-On Feb 19, 2013, at 1:48 PM, Mike Frysinger <vapier@gentoo.org> wrote:
-
-> The nss.h header is glibc-specific, so use the existing HAVE_NSS_H define
-> to avoid including/using it when it is not available.
+On Mon, Feb 04, 2013 at 02:02:29PM +0300, Stanislav Kinsbursky wrote:
+> swapping
 > 
-> URL: http://bugs.gentoo.org/458024
-> Reported-by: Mark Reiche <porphyr@gmx.de>
-> Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+> The main idea of this patch set is to call cache request not on kthread
+> upcall, but on userspace daemon cache_read call. This fixes the problem with
+> gaining of wrong dentry path after calling d_path() in kthread root context
+> (svc_export_request() callback), which always work in init root context, but
+> containers can work in "root jail" - i.e. have it's own nested root.
+> 
+> v2:
+> 1) NFS DNS cache update wasn't done in the firest version. So this patch set
+> does preparation cleanup of the NFS DNS cache routines.
+> 2) Also, this patch set doesn't remove cache_upcall helper anymore, because
+> it's still required for NFS DNS cache.
+
+Argh--I really prefer incremental patches once I've already committed
+something, but OK.
+
+Backing out the old patches, I'll take a look at these.  The first two
+should probably get an ACK from Trond.
+
+--b.
+
+> 
+> The following series implements...
+> 
 > ---
-> src/rpcbind.c | 4 ++++
-> 1 file changed, 4 insertions(+)
 > 
-> diff --git a/src/rpcbind.c b/src/rpcbind.c
-> index 9a0504d..83dbe93 100644
-> --- a/src/rpcbind.c
-> +++ b/src/rpcbind.c
-> @@ -67,7 +67,11 @@
-> #include <pwd.h>
-> #include <string.h>
-> #include <errno.h>
-> +#ifdef HAVE_NSS_H
-> #include <nss.h>
-> +#else
-> +static inline void __nss_configure_lookup(const char *db, const char *s) {}
-> +#endif
-
-Where is rpcbind getting the __nss_configure_lookup() function in this case?  I don't see that the call sites are ifdef-d out if HAVE_NSS_H is not defined.
-
-> #include "rpcbind.h"
+> Stanislav Kinsbursky (6):
+>       NFS: use SUNRPC cache creation and destruction helper for DNS cache
+>       NFS; simlify and clean cache library
+>       SUNRPC: introduce cache_detail->cache_request callback
+>       SUNRPC: rework cache upcall logic
+>       SUNRPC: remove "cache_request" argument in sunrpc_cache_pipe_upcall() function
+>       SUNRPC: move cache_detail->cache_request callback call to cache_read()
 > 
-> /*#define RPCBIND_DEBUG*/
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+> 
+>  fs/nfs/cache_lib.c                |   12 ++-----
+>  fs/nfs/cache_lib.h                |    2 -
+>  fs/nfs/dns_resolve.c              |   65 +++++++++++++++----------------------
+>  fs/nfsd/export.c                  |   14 +-------
+>  fs/nfsd/nfs4idmap.c               |   16 +--------
+>  include/linux/sunrpc/cache.h      |   10 +++---
+>  net/sunrpc/auth_gss/svcauth_gss.c |    8 +----
+>  net/sunrpc/cache.c                |   49 ++++++++++++++++------------
+>  net/sunrpc/svcauth_unix.c         |   14 +-------
+>  9 files changed, 69 insertions(+), 121 deletions(-)
+> 
