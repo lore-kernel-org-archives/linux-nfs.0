@@ -1,119 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:26457 "EHLO
-	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751831Ab3BNFpj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Feb 2013 00:45:39 -0500
-Date: Thu, 14 Feb 2013 16:45:36 +1100
-From: Dave Chinner <david@fromorbit.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, "Theodore Ts'o" <tytso@mit.edu>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "sandeen@redhat.com" <sandeen@redhat.com>,
-        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        "gluster-devel@nongnu.org" <gluster-devel@nongnu.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: regressions due to 64-bit ext4 directory cookies
-Message-ID: <20130214054536.GL26694@dastard>
-References: <20130212202841.GC10267@fieldses.org>
- <20130213040003.GB2614@thunk.org>
- <20130213133131.GE14195@fieldses.org>
- <20130213151455.GB17431@thunk.org>
- <20130213151953.GJ14195@fieldses.org>
- <20130213153654.GC17431@thunk.org>
- <20130213162059.GL14195@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91F3D625D@sacexcmbx05-prd.hq.netapp.com>
- <20130213213346.GQ14195@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91F3D6BAB@sacexcmbx05-prd.hq.netapp.com>
+Received: from mx12.netapp.com ([216.240.18.77]:1643 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754491Ab3BDOWx convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2013 09:22:53 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+Subject: RE: [PATCH] sunrpc: copy scope ID in __rpc_copy_addr6
+Date: Mon, 4 Feb 2013 14:22:47 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91835B2E9@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1359983408-28337-1-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1359983408-28337-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91F3D6BAB@sacexcmbx05-prd.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 14, 2013 at 03:59:17AM +0000, Myklebust, Trond wrote:
-> > -----Original Message-----
-> > From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> > Sent: Wednesday, February 13, 2013 4:34 PM
-> > To: Myklebust, Trond
-> > Cc: Theodore Ts'o; linux-ext4@vger.kernel.org; sandeen@redhat.com;
-> > Bernd Schubert; gluster-devel@nongnu.org; linux-nfs@vger.kernel.org
-> > Subject: Re: regressions due to 64-bit ext4 directory cookies
-> > 
-> > On Wed, Feb 13, 2013 at 04:43:05PM +0000, Myklebust, Trond wrote:
-> > > On Wed, 2013-02-13 at 11:20 -0500, J. Bruce Fields wrote:
-> > > > Oops, probably should have cc'd linux-nfs.
-> > > >
-> > > > On Wed, Feb 13, 2013 at 10:36:54AM -0500, Theodore Ts'o wrote:
-> > > > > The other thing that I'd note is that the readdir cookie has been
-> > > > > 64-bit since NFSv3, which was released in June ***1995***.  And
-> > > > > the explicit, stated purpose of making it be a 64-bit value (as
-> > > > > stated in RFC 1813) was to reduce interoperability problems.  If
-> > > > > that were the case, are you telling me that Sun (who has
-> > > > > traditionally been pretty good worrying about interoperability
-> > > > > concerns, and in fact employed the editors of RFC 1813) didn't get
-> > > > > this right?  This seems quite.... surprising to me.
-> > > > >
-> > > > > I thought this was the whole point of the various NFS
-> > > > > interoperability testing done at Connectathon, for which Sun was a
-> > > > > major sponsor?!?  No one noticed?!?
-> > > >
-> > > > Beats me.  But it's not necessarily easy to replace clients running
-> > > > legacy applications, so we're stuck working with the clients we have....
-> > > >
-> > > > The linux client does remap the server-provided cookies to small
-> > > > integers, I believe exactly because older applications had trouble
-> > > > with servers returning "large" cookies.  So presumably
-> > > > ext4-exporting-Linux servers aren't the first to do this.
-> > > >
-> > > > I don't know which client versions are affected--Connectathon's next
-> > > > week and I'll talk to people and make sure there's an ext4 export
-> > > > with this turned on to test against.
-> > >
-> > > Actually, one of the main reasons for the Linux client not exporting
-> > > raw readdir cookies is because the glibc-2 folks in their infinite
-> > > wisdom declared that telldir()/seekdir() use an off_t. They then went
-> > > yet one further and decided to declare negative offsets to be illegal
-> > > so that they could use the negative values internally in their syscall
-> > wrappers.
-> > >
-> > > The POSIX definition has none of the above rubbish
-> > > (http://pubs.opengroup.org/onlinepubs/009695399/functions/telldir.html
-> > > ) and so glibc brilliantly saddled Linux with a crippled readdir
-> > > implementation that is _not_ POSIX compatible.
-> > >
-> > > No, I'm not at all bitter...
-> > 
-> > Oh, right, I knew I'd forgotten part of the story....
-> > 
-> > But then you must have actually been testing against servers that were using
-> > that 32nd bit?
-> > 
-> > I think ext4 actually only uses 31 bits even in the 32-bit case.  And for a server
-> > that was literally using an offset inside a directory file, that would be a
-> > colossal directory.
-
-That's exactly what XFS directory cookies are - a direct encoding of
-the dirent offset into the directory file. Which means a overflow
-would occur at 16GB of directory data for XFS. That is in the realm
-of several hundreds of millions of files in a single directory,
-which I have seen done before....
-
-> > So I'm wondering how you ran across it.
-> > 
-> > Partly just pure curiosity.
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> owner@vger.kernel.org] On Behalf Of Jeff Layton
+> Sent: Monday, February 04, 2013 8:10 AM
+> To: bfields@fieldses.org
+> Cc: linux-nfs@vger.kernel.org; chuck.lever@oracle.com
+> Subject: [PATCH] sunrpc: copy scope ID in __rpc_copy_addr6
 > 
-> IIRC, XFS on IRIX used 0xFFFFF as the readdir eof marker, which caused us to generate an EIO...
+> When copying an address, we should also copy the scopeid in the event that
+> this is a link-local address and the scope matters.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  include/linux/sunrpc/clnt.h | 1 +
+>  1 file changed, 1 insertion(+)
+> 
+> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h index
+> 47354a2..6a7c261 100644
+> --- a/include/linux/sunrpc/clnt.h
+> +++ b/include/linux/sunrpc/clnt.h
+> @@ -242,6 +242,7 @@ static inline bool __rpc_copy_addr6(struct sockaddr
+> *dst,
+> 
+>  	dsin6->sin6_family = ssin6->sin6_family;
+>  	dsin6->sin6_addr = ssin6->sin6_addr;
+> +	dsin6->sin6_scope_id = ssin6->sin6_scope_id;
+>  	return true;
+>  }
+>  #else	/* !(IS_ENABLED(CONFIG_IPV6) */
+> --
 
-And this discussion explains the magic 0x7fffffff offset mask in the
-linux XFS readdir code. I've been trying to find out for years
-exactly why that was necessary, and now I know.
+Oh... Also note that you probably want to apply the above scopeid to the NFSv4 callback address that is supplied by the client in the setclientid call.
 
-I probably should write a patch that makes it a "non-magic" number
-and remove it completely for 64 bit platforms before I forget again...
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+Trond
