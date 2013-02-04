@@ -1,53 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from minas.ics.muni.cz ([147.251.4.40]:40081 "EHLO minas.ics.muni.cz"
+Received: from mailhub.sw.ru ([195.214.232.25]:18247 "EHLO relay.sw.ru"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751160Ab3BOQwE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Feb 2013 11:52:04 -0500
-Received: from anubis.ics.muni.cz (anubis.ics.muni.cz [147.251.17.147])
-	(authenticated user=xhejtman@META bits=0)
-	by minas.ics.muni.cz (8.13.8/8.13.8/SuSE Linux 0.8) with ESMTP id r1FGZ687021364
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Fri, 15 Feb 2013 17:35:07 +0100
-Received: from xhejtman by anubis.ics.muni.cz with local (Exim 4.80)
-	(envelope-from <xhejtman@ics.muni.cz>)
-	id 1U6OFd-0003HR-2H
-	for linux-nfs@vger.kernel.org; Fri, 15 Feb 2013 17:35:05 +0100
-Date: Fri, 15 Feb 2013 17:35:05 +0100
-From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
-To: linux-nfs@vger.kernel.org
-Subject: gssd - expired credentials problem
-Message-ID: <20130215163505.GQ22743@ics.muni.cz>
+	id S1751660Ab3BDLBm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Feb 2013 06:01:42 -0500
+Subject: [PATCH v2 0/6] SUNRPC: rework cache upcall to avoid NFSd root
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Mon, 04 Feb 2013 14:02:29 +0300
+Message-ID: <20130204105728.11633.53621.stgit@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-2
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+swapping
 
-I noticed that there is a problem with expired credentials if NFS client's
-time is even few seconds behind KDC's or NFS server's time. Client's kernel
-requests new GSS context but rpc.gssd is happy with existing krb cache as it
-valid according to local time.
+The main idea of this patch set is to call cache request not on kthread
+upcall, but on userspace daemon cache_read call. This fixes the problem with
+gaining of wrong dentry path after calling d_path() in kthread root context
+(svc_export_request() callback), which always work in init root context, but
+containers can work in "root jail" - i.e. have it's own nested root.
 
-Is there any reason for gssd to check validity of existing cache when kernel
-requests a new context?
+v2:
+1) NFS DNS cache update wasn't done in the firest version. So this patch set
+does preparation cleanup of the NFS DNS cache routines.
+2) Also, this patch set doesn't remove cache_upcall helper anymore, because
+it's still required for NFS DNS cache.
 
-However, it seems that this trivial patch solves this issue:
+The following series implements...
 
-diff -rNu nfs-utils-1.2.7.orig/utils/gssd/krb5_util.c nfs-utils-1.2.7/utils/gssd/krb5_util.c
---- nfs-utils-1.2.7.orig/utils/gssd/krb5_util.c 2012-11-12 00:01:23.000000000 +0100
-+++ nfs-utils-1.2.7/utils/gssd/krb5_util.c      2013-02-15 16:35:35.652482164 +0100
-@@ -343,7 +343,7 @@
-        char kt_name[BUFSIZ];
-        char cc_name[BUFSIZ];
-        int code;
--       time_t now = time(0);
-+       time_t now = time(0)+300; // workaround for clock skew among NFS server, NFS client and KDC
-        char *cache_type;
-        char *pname = NULL;
-        char *k5err = NULL;
+---
 
-300 is because I believe that clock skew must be within 300sec for kerberos.
+Stanislav Kinsbursky (6):
+      NFS: use SUNRPC cache creation and destruction helper for DNS cache
+      NFS; simlify and clean cache library
+      SUNRPC: introduce cache_detail->cache_request callback
+      SUNRPC: rework cache upcall logic
+      SUNRPC: remove "cache_request" argument in sunrpc_cache_pipe_upcall() function
+      SUNRPC: move cache_detail->cache_request callback call to cache_read()
 
--- 
-Luká¹ Hejtmánek
+
+ fs/nfs/cache_lib.c                |   12 ++-----
+ fs/nfs/cache_lib.h                |    2 -
+ fs/nfs/dns_resolve.c              |   65 +++++++++++++++----------------------
+ fs/nfsd/export.c                  |   14 +-------
+ fs/nfsd/nfs4idmap.c               |   16 +--------
+ include/linux/sunrpc/cache.h      |   10 +++---
+ net/sunrpc/auth_gss/svcauth_gss.c |    8 +----
+ net/sunrpc/cache.c                |   49 ++++++++++++++++------------
+ net/sunrpc/svcauth_unix.c         |   14 +-------
+ 9 files changed, 69 insertions(+), 121 deletions(-)
+
