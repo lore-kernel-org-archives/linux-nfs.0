@@ -1,57 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:58472 "EHLO
-	Dobby.4dicksons.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755932Ab3BVIrR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Feb 2013 03:47:17 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/2] NFSDv4.2: Added NFS v4.2 support to the NFS server
-Date: Fri, 22 Feb 2013 03:47:12 -0500
-Message-Id: <1361522832-11177-3-git-send-email-steved@redhat.com>
-In-Reply-To: <1361522832-11177-1-git-send-email-steved@redhat.com>
-References: <1361522832-11177-1-git-send-email-steved@redhat.com>
+Received: from mailhub.sw.ru ([195.214.232.25]:16310 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754254Ab3BDLCF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Feb 2013 06:02:05 -0500
+Subject: [PATCH v2 5/6] SUNRPC: remove "cache_request" argument in
+	sunrpc_cache_pipe_upcall() function
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Mon, 04 Feb 2013 14:02:55 +0300
+Message-ID: <20130204110255.11633.3726.stgit@localhost.localdomain>
+In-Reply-To: <20130204105728.11633.53621.stgit@localhost.localdomain>
+References: <20130204105728.11633.53621.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This enable NFSv4.2 support for the server. To enable this
-code do the following:
-  echo "+4.2" >/proc/fs/nfsd/versions
+Passing this pointer is redundant since it's stored on cache_detail structure,
+which is also passed to sunrpc_cache_pipe_upcall () function.
 
-after the nfsd kernel module is loaded.
-
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 ---
- fs/nfsd/nfs4xdr.c | 1 +
- fs/nfsd/nfsd.h    | 2 +-
- 2 files changed, 2 insertions(+), 1 deletion(-)
+ fs/nfs/dns_resolve.c         |    2 +-
+ include/linux/sunrpc/cache.h |    6 +-----
+ net/sunrpc/cache.c           |   10 +++-------
+ 3 files changed, 5 insertions(+), 13 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index d2ae8db..86be853 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1621,6 +1621,7 @@ struct nfsd4_minorversion_ops {
- static struct nfsd4_minorversion_ops nfsd4_minorversion[] = {
- 	[0] = { nfsd4_dec_ops, ARRAY_SIZE(nfsd4_dec_ops) },
- 	[1] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
-+	[2] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
- };
+diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
+index 53109f0..88b46c7 100644
+--- a/fs/nfs/dns_resolve.c
++++ b/fs/nfs/dns_resolve.c
+@@ -142,7 +142,7 @@ static int nfs_dns_upcall(struct cache_detail *cd,
  
- static __be32
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 26a457b..0e3ccd1 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -24,7 +24,7 @@
- /*
-  * nfsd version
+ 	ret = nfs_cache_upcall(cd, key->hostname);
+ 	if (ret)
+-		ret = sunrpc_cache_pipe_upcall(cd, ch, cd->cache_request);
++		ret = sunrpc_cache_pipe_upcall(cd, ch);
+ 	return ret;
+ }
+ 
+diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
+index 4f1c858..303399b 100644
+--- a/include/linux/sunrpc/cache.h
++++ b/include/linux/sunrpc/cache.h
+@@ -161,11 +161,7 @@ sunrpc_cache_update(struct cache_detail *detail,
+ 		    struct cache_head *new, struct cache_head *old, int hash);
+ 
+ extern int
+-sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h,
+-		void (*cache_request)(struct cache_detail *,
+-				      struct cache_head *,
+-				      char **,
+-				      int *));
++sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h);
+ 
+ 
+ extern void cache_clean_deferred(void *owner);
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 51853d8..8ffec5a 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -198,7 +198,7 @@ static int cache_make_upcall(struct cache_detail *cd, struct cache_head *h)
+ {
+ 	if (cd->cache_upcall)
+ 		return cd->cache_upcall(cd, h);
+-	return sunrpc_cache_pipe_upcall(cd, h, cd->cache_request);
++	return sunrpc_cache_pipe_upcall(cd, h);
+ }
+ 
+ static inline int cache_is_valid(struct cache_detail *detail, struct cache_head *h)
+@@ -1140,11 +1140,7 @@ static bool cache_listeners_exist(struct cache_detail *detail)
+  *
+  * Each request is at most one page long.
   */
--#define NFSD_SUPPORTED_MINOR_VERSION	1
-+#define NFSD_SUPPORTED_MINOR_VERSION	2
- /*
-  * Maximum blocksizes supported by daemon under various circumstances.
-  */
--- 
-1.8.1.2
+-int sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h,
+-		void (*cache_request)(struct cache_detail *,
+-				      struct cache_head *,
+-				      char **,
+-				      int *))
++int sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h)
+ {
+ 
+ 	char *buf;
+@@ -1172,7 +1168,7 @@ int sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h,
+ 
+ 	bp = buf; len = PAGE_SIZE;
+ 
+-	cache_request(detail, h, &bp, &len);
++	detail->cache_request(detail, h, &bp, &len);
+ 
+ 	if (len < 0) {
+ 		kfree(buf);
 
