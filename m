@@ -1,65 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:29862 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751571Ab3CABaN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Feb 2013 20:30:13 -0500
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 2/3] SUNRPC: add call to get configured timeout
-Date: Thu, 28 Feb 2013 20:30:09 -0500
-Message-Id: <1362101410-22544-2-git-send-email-dros@netapp.com>
-In-Reply-To: <1362101410-22544-1-git-send-email-dros@netapp.com>
-References: <1362101410-22544-1-git-send-email-dros@netapp.com>
+Received: from mail-ie0-f180.google.com ([209.85.223.180]:46602 "EHLO
+	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754500Ab3BDUTl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2013 15:19:41 -0500
+Received: by mail-ie0-f180.google.com with SMTP id bn7so5395133ieb.11
+        for <linux-nfs@vger.kernel.org>; Mon, 04 Feb 2013 12:19:41 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v3 5/9] SUNRPC: Load GSS kernel module by OID
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 04 Feb 2013 15:19:39 -0500
+Message-ID: <20130204201939.1518.55236.stgit@seurat.1015granger.net>
+In-Reply-To: <20130204201458.1518.12931.stgit@seurat.1015granger.net>
+References: <20130204201458.1518.12931.stgit@seurat.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Returns the configured timeout for the xprt of the rpc client.
+The current GSS mech switch can find and load GSS pseudoflavor
+modules by name ("krb5") or pseudoflavor number ("390003"), but
+cannot find GSS modules by GSS tuple:
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+  [ "1.2.840.113554.1.2.2", GSS_C_QOP_DEFAULT, RPC_GSS_SVC_NONE ]
+
+This is important when dealing with a SECINFO request.  A SECINFO
+reply contains a list of flavors the server supports for the
+requested export, but GSS flavors also have a GSS tuple that maps
+to a pseudoflavor (like 390003 for krb5).
+
+If the GSS module that supports the OID in the tuple is not loaded,
+our client is not able to load that module dynamically to support
+that pseudoflavor.
+
+Add a way for the GSS mech switch to load GSS pseudoflavor support
+by OID before searching for the pseudoflavor that matches the OID
+and service.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: David Howells <dhowells@redhat.com>
 ---
- include/linux/sunrpc/clnt.h |  1 +
- net/sunrpc/clnt.c           | 15 +++++++++++++++
- 2 files changed, 16 insertions(+)
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 34206b8..21d52d0 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -160,6 +160,7 @@ void		rpc_setbufsize(struct rpc_clnt *, unsigned int, unsigned int);
- int		rpc_protocol(struct rpc_clnt *);
- struct net *	rpc_net_ns(struct rpc_clnt *);
- size_t		rpc_max_payload(struct rpc_clnt *);
-+unsigned long	rpc_get_timeout(struct rpc_clnt *clnt);
- void		rpc_force_rebind(struct rpc_clnt *);
- size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
- const char	*rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_format_t);
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index a9f7906..09dc0c2 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -1196,6 +1196,21 @@ size_t rpc_max_payload(struct rpc_clnt *clnt)
- EXPORT_SYMBOL_GPL(rpc_max_payload);
+ net/sunrpc/Kconfig                    |    1 +
+ net/sunrpc/auth_gss/gss_krb5_mech.c   |    1 +
+ net/sunrpc/auth_gss/gss_mech_switch.c |    7 +++++++
+ 3 files changed, 9 insertions(+), 0 deletions(-)
+
+diff --git a/net/sunrpc/Kconfig b/net/sunrpc/Kconfig
+index 03d03e3..f97f555 100644
+--- a/net/sunrpc/Kconfig
++++ b/net/sunrpc/Kconfig
+@@ -3,6 +3,7 @@ config SUNRPC
  
- /**
-+ * rpc_get_timeout - Get timeout for transport in tenths of seconds
-+ * @clnt: RPC client to query
-+ */
-+unsigned long rpc_get_timeout(struct rpc_clnt *clnt)
-+{
-+	unsigned long ret;
+ config SUNRPC_GSS
+ 	tristate
++	select OID_REGISTRY
+ 
+ config SUNRPC_BACKCHANNEL
+ 	bool
+diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
+index 61d36ce..b822ec5 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_mech.c
++++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
+@@ -750,6 +750,7 @@ MODULE_ALIAS("rpc-auth-gss-krb5p");
+ MODULE_ALIAS("rpc-auth-gss-390003");
+ MODULE_ALIAS("rpc-auth-gss-390004");
+ MODULE_ALIAS("rpc-auth-gss-390005");
++MODULE_ALIAS("rpc-auth-gss-1.2.840.113554.1.2.2");
+ 
+ static struct gss_api_mech gss_kerberos_mech = {
+ 	.gm_name	= "krb5",
+diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
+index b09f25b..8d03d32 100644
+--- a/net/sunrpc/auth_gss/gss_mech_switch.c
++++ b/net/sunrpc/auth_gss/gss_mech_switch.c
+@@ -36,6 +36,7 @@
+ #include <linux/types.h>
+ #include <linux/slab.h>
+ #include <linux/module.h>
++#include <linux/oid_registry.h>
+ #include <linux/sunrpc/msg_prot.h>
+ #include <linux/sunrpc/gss_asn1.h>
+ #include <linux/sunrpc/auth_gss.h>
+@@ -174,6 +175,12 @@ EXPORT_SYMBOL_GPL(gss_mech_get_by_name);
+ static struct gss_api_mech *gss_mech_get_by_OID(struct rpcsec_gss_oid *obj)
+ {
+ 	struct gss_api_mech	*pos, *gm = NULL;
++	char buf[32];
 +
-+	rcu_read_lock();
-+	ret = rcu_dereference(clnt->cl_xprt)->timeout->to_initval;
-+	rcu_read_unlock();
-+	return ret;
-+}
-+EXPORT_SYMBOL_GPL(rpc_get_timeout);
-+
-+/**
-  * rpc_force_rebind - force transport to check that remote port is unchanged
-  * @clnt: client to rebind
-  *
--- 
-1.7.12.4 (Apple Git-37)
++	if (sprint_oid(obj->data, obj->len, buf, sizeof(buf)) < 0)
++		return NULL;
++	dprintk("RPC:       %s(%s)\n", __func__, buf);
++	request_module("rpc-auth-gss-%s", buf);
+ 
+ 	spin_lock(&registered_mechs_lock);
+ 	list_for_each_entry(pos, &registered_mechs, gm_list) {
 
