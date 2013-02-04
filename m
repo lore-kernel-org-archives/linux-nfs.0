@@ -1,47 +1,192 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:44402 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:38636 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754791Ab3BRVCV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Feb 2013 16:02:21 -0500
-Date: Mon, 18 Feb 2013 16:02:18 -0500
+	id S1754185Ab3BDPyV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Feb 2013 10:54:21 -0500
+Date: Mon, 4 Feb 2013 10:54:20 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 00/14] lnfs: 3.8-rc7 release
-Message-ID: <20130218210218.GB3391@fieldses.org>
-References: <1361213276-17962-1-git-send-email-SteveD@redhat.com>
- <20130218195834.GA3391@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 8/8] nfsd: keep a checksum of the first 256 bytes of
+ request
+Message-ID: <20130204155420.GB815@fieldses.org>
+References: <1359983887-28535-1-git-send-email-jlayton@redhat.com>
+ <1359983887-28535-9-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130218195834.GA3391@fieldses.org>
+In-Reply-To: <1359983887-28535-9-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 18, 2013 at 02:58:34PM -0500, bfields wrote:
-> On Mon, Feb 18, 2013 at 01:47:42PM -0500, Steve Dickson wrote:
-> > From: Steve Dickson <steved@redhat.com>
-> > 
-> > Here is the next release of the Label NFS patches, forward 
-> > ported to linux-3.8-rc7
-> > 
-> > I believe I've  incorporated all code review that were made
-> > from the last release,
+On Mon, Feb 04, 2013 at 08:18:07AM -0500, Jeff Layton wrote:
+> Now that we're allowing more DRC entries, it becomes a lot easier to hit
+> problems with XID collisions. In order to mitigate those, calculate the
+> crc32 of up to the first 256 bytes of each request coming in and store
+> that in the cache entry, along with the total length of the request.
 > 
-> Except I think this doesn't turn on minor version 2?
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/nfsd/cache.h    |  5 +++++
+>  fs/nfsd/nfscache.c | 44 ++++++++++++++++++++++++++++++++++++++++----
+>  2 files changed, 45 insertions(+), 4 deletions(-)
 > 
-> Also: did you figure out why NFSv4 wasn't working when the labeled NFS
-> support is configured out?
+> diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
+> index 9c7232b..4822db3 100644
+> --- a/fs/nfsd/cache.h
+> +++ b/fs/nfsd/cache.h
+> @@ -29,6 +29,8 @@ struct svc_cacherep {
+>  	u32			c_prot;
+>  	u32			c_proc;
+>  	u32			c_vers;
+> +	unsigned int		c_len;
+> +	u32			c_crc;
+>  	unsigned long		c_timestamp;
+>  	union {
+>  		struct kvec	u_vec;
+> @@ -73,6 +75,9 @@ enum {
+>  /* Cache entries expire after this time period */
+>  #define RC_EXPIRE		(120 * HZ)
+>  
+> +/* Checksum this amount of the request */
+> +#define RC_CSUMLEN		(256U)
+> +
+>  int	nfsd_reply_cache_init(void);
+>  void	nfsd_reply_cache_shutdown(void);
+>  int	nfsd_cache_lookup(struct svc_rqst *);
+> diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+> index d16a5d6..cb655f3 100644
+> --- a/fs/nfsd/nfscache.c
+> +++ b/fs/nfsd/nfscache.c
+> @@ -11,6 +11,7 @@
+>  #include <linux/slab.h>
+>  #include <linux/sunrpc/clnt.h>
+>  #include <linux/highmem.h>
+> +#include <linux/crc32.h>
+>  
+>  #include "nfsd.h"
+>  #include "cache.h"
+> @@ -24,6 +25,7 @@ static struct list_head 	lru_head;
+>  static struct kmem_cache	*drc_slab;
+>  static unsigned int		num_drc_entries;
+>  static unsigned int		max_drc_entries;
+> +static u32			crc_seed;
+>  
+>  /*
+>   * Calculate the hash index from an XID.
+> @@ -130,6 +132,9 @@ int nfsd_reply_cache_init(void)
+>  	INIT_LIST_HEAD(&lru_head);
+>  	max_drc_entries = nfsd_cache_size_limit();
+>  	num_drc_entries = 0;
+> +
+> +	/* Is a random seed any better than some well-defined constant? */
+> +	get_random_bytes(&crc_seed, sizeof(crc_seed));
+>  	return 0;
+>  out_nomem:
+>  	printk(KERN_ERR "nfsd: failed to allocate reply cache\n");
+> @@ -238,12 +243,37 @@ nfsd_reply_cache_shrink(struct shrinker *shrink, struct shrink_control *sc)
+>  }
+>  
+>  /*
+> + * Walk an xdr_buf and get a CRC for at most the first RC_CSUMLEN bytes
+> + */
+> +static u32
+> +nfsd_cache_crc(struct xdr_buf *buf)
+> +{
+> +	u32 crc;
+> +	const unsigned char *p = buf->head[0].iov_base;
+> +	size_t csum_len = min_t(size_t, buf->head[0].iov_len + buf->page_len,
+> +					RC_CSUMLEN);
+> +	size_t len = min(buf->head[0].iov_len, csum_len);
+> +
+> +	/* rq_arg.head first */
+> +	crc = crc32(crc_seed, p, len);
+> +	csum_len -= len;
+> +
+> +	/* Nothing left */
+> +	if (!csum_len)
+> +		return crc;
+> +
+> +	/* checksum the rest from the page_array */
+> +	p = page_address(buf->pages[0]) + buf->page_base;
 
-Did a quick check, and that's still failing.
+If buf->page_base is large (close to PAGE_SIZE), then reads past the end
+of the page when it should be continuing to the next page.
 
-Both of those things need to be fixed before this can be merged.
+In practice page_base is always 0 here, and I think it's unlikely that
+will change.  But it would be worth a comment.  (Or maybe even a
+WARN_ON_ONCE(buf->page_base).)
 
-And we still need an ACK from security people.
+> +	return crc32(crc, p, csum_len);
+> +}
+> +
+> +/*
+>   * Search the request hash for an entry that matches the given rqstp.
+>   * Must be called with cache_lock held. Returns the found entry or
+>   * NULL on failure.
+>   */
+>  static struct svc_cacherep *
+> -nfsd_cache_search(struct svc_rqst *rqstp)
+> +nfsd_cache_search(struct svc_rqst *rqstp, u32 crc)
+>  {
+>  	struct svc_cacherep	*rp;
+>  	struct hlist_node	*hn;
+> @@ -257,6 +287,7 @@ nfsd_cache_search(struct svc_rqst *rqstp)
+>  	hlist_for_each_entry(rp, hn, rh, c_hash) {
+>  		if (xid == rp->c_xid && proc == rp->c_proc &&
+>  		    proto == rp->c_prot && vers == rp->c_vers &&
+> +		    rqstp->rq_arg.len == rp->c_len && crc == rp->c_crc &&
+>  		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
+>  		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr))
+>  			return rp;
+> @@ -276,7 +307,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+>  	__be32			xid = rqstp->rq_xid;
+>  	u32			proto =  rqstp->rq_prot,
+>  				vers = rqstp->rq_vers,
+> -				proc = rqstp->rq_proc;
+> +				proc = rqstp->rq_proc,
+> +				crc;
+>  	unsigned long		age;
+>  	int type = rqstp->rq_cachetype;
+>  	int rtn;
+> @@ -287,10 +319,12 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+>  		return RC_DOIT;
+>  	}
+>  
+> +	crc = nfsd_cache_crc(&rqstp->rq_arg);
+> +
 
---b.
+For a moment I was wondering whether we should delay calculating that
+till we need it--but of course we need it in all cases but allocation
+failure (either to match an existing entry or populate a new one).  OK!
+
+Looks fine.--b.
+
+>  	spin_lock(&cache_lock);
+>  	rtn = RC_DOIT;
+>  
+> -	rp = nfsd_cache_search(rqstp);
+> +	rp = nfsd_cache_search(rqstp, crc);
+>  	if (rp)
+>  		goto found_entry;
+>  
+> @@ -318,7 +352,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+>  	 * Must search again just in case someone inserted one
+>  	 * after we dropped the lock above.
+>  	 */
+> -	found = nfsd_cache_search(rqstp);
+> +	found = nfsd_cache_search(rqstp, crc);
+>  	if (found) {
+>  		nfsd_reply_cache_free_locked(rp);
+>  		rp = found;
+> @@ -344,6 +378,8 @@ setup_entry:
+>  	rpc_set_port((struct sockaddr *)&rp->c_addr, rpc_get_port(svc_addr(rqstp)));
+>  	rp->c_prot = proto;
+>  	rp->c_vers = vers;
+> +	rp->c_len = rqstp->rq_arg.len;
+> +	rp->c_crc = crc;
+>  
+>  	hash_refile(rp);
+>  	lru_put_end(rp);
+> -- 
+> 1.7.11.7
+> 
