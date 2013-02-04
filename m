@@ -1,94 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:19717 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753820Ab3BRXOl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Feb 2013 18:14:41 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Kernels 3.7 and newer break rpc.gssd -n
-Date: Mon, 18 Feb 2013 23:14:40 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9235D18B2@SACEXCMBX04-PRD.hq.netapp.com>
-References: <127351146.98508.1360769367943.JavaMail.root@opinsys.fi>
-	 <73594034-4F9D-4DA6-A979-1E2745BCDF05@oracle.com>
-	 <CFDAB21B-48E2-4567-A579-DEB6BC77890F@oracle.com>
-In-Reply-To: <CFDAB21B-48E2-4567-A579-DEB6BC77890F@oracle.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mailsrv.ikr.uni-stuttgart.de ([129.69.170.2]:39321 "EHLO
+	mailsrv.ikr.uni-stuttgart.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751023Ab3BDKU0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2013 05:20:26 -0500
+Received: from netsrv1.ikr.uni-stuttgart.de (netsrv1-c [10.11.12.12])
+	by mailsrv.ikr.uni-stuttgart.de (Postfix) with ESMTP id B7A48600FF
+	for <linux-nfs@vger.kernel.org>; Mon,  4 Feb 2013 11:12:03 +0100 (CET)
+Received: from ikr.uni-stuttgart.de (pc001 [10.21.21.1])
+	by netsrv1.ikr.uni-stuttgart.de (Postfix) with SMTP id A21D6600FE
+	for <linux-nfs@vger.kernel.org>; Mon,  4 Feb 2013 11:12:03 +0100 (CET)
+From: Ulrich Gemkow <ulrich.gemkow@ikr.uni-stuttgart.de>
+To: linux-nfs@vger.kernel.org
+Subject: Linux 3.7 + Sun solaris 10: Problems when reading dir from application
+Date: Mon, 4 Feb 2013 11:12:03 +0100
 MIME-Version: 1.0
+Content-Type: Text/Plain;
+  charset="us-ascii"
+Message-Id: <201302041112.03587.ulrich.gemkow@ikr.uni-stuttgart.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDEzLTAyLTE4IGF0IDE3OjQ4IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-T24gRmViIDE4LCAyMDEzLCBhdCA0OjE2IFBNLCBDaHVjayBMZXZlciA8Y2h1Y2subGV2ZXJAb3Jh
-Y2xlLmNvbT4gd3JvdGU6DQo+IA0KPiA+IA0KPiA+IE9uIEZlYiAxMywgMjAxMywgYXQgMTA6Mjkg
-QU0sIFZlbGktTWF0dGkgTGludHUgPHZlbGktbWF0dGkubGludHVAb3BpbnN5cy5maT4gd3JvdGU6
-DQo+ID4gDQo+ID4+IEkndmUgYmVlbiB1c2luZyBrZXJiZXJpemVkIG5mczQgbW91bnRzIHdpdGhv
-dXQgbWFjaGluZSBjcmVkZW50aWFscyBmb3IgDQo+ID4+IHF1aXRlIHNvbWUgdGltZSBieSBydW5u
-aW5nIHJwYy5nc3NkIHdpdGggdGhlIC1uIG9wdGlvbi4gVGhpcyBoYXMgDQo+ID4+IHJlc3VsdGVk
-IHJwYy5nc3NkIGluIHVzaW5nIGNjYWNoZSBpbiAvdG1wL2tyYjVjY18wIHdoZW4gZG9pbmcgdGhl
-IG1vdW50IA0KPiA+PiBpbnN0ZWFkIG9mIG1hY2hpbmUgY3JlZGVudGlhbHMuIFRoaXMgZnVuY3Rp
-b25hbGl0eSBzZWVtcyB0byBicmVhayB3aGVuIA0KPiA+PiB1c2luZyBrZXJuZWwgMy43IG9yIG5l
-d2VyLiAzLjYuMTEgYW5kIGVhcmxpZXIgd29yayBsaWtlIGV4cGVjdGVkLg0KPiA+PiANCj4gPj4g
-VGhlIHVzZSBjYXNlIGZvciB0aGlzIGlzIGRpc2tsZXNzIHdvcmtzdGF0aW9ucyB0aGF0IGRvIG5v
-dCBoYXZlIG1hY2hpbmUgDQo+ID4+IGNyZWRlbnRpYWxzIHN0b3JlZCBvbiB0aGVtIGFzIHRoZXkg
-aGF2ZSBubyBzZWN1cmUgc3RvcmFnZSBtZWRpdW0uIFdoZW4gYSANCj4gPj4gdXNlciBsb2dzIGlu
-LCB0aGUgaG9tZSBkaXJlY3RvcnkgaXMgbW91bnRlZCB1c2luZyB0aGUgdXNlcidzIGNyZWRlbnRp
-YWxzIA0KPiA+PiBvbmx5Lg0KPiA+PiANCj4gPj4gU3RlcHMgdG8gcmVwcm9kdWNlIHRoZSBwcm9i
-bGVtOg0KPiA+PiANCj4gPj4gIyBraW5pdCB1c2VyICh0aGlzIGNyZWF0ZXMgL3RtcC9rcmI1Y2Nf
-MCkNCj4gPj4gIyBycGMuZ3NzZCAtZiAtbiAtdnZ2dg0KPiA+PiAjIG1vdW50IC10IG5mczQgLW8g
-c2VjPWtyYjUgc2VydmVyLmV4YW1wbGUub3JnOi9ob21lIC9tbnQNCj4gPj4gDQo+ID4+IFRoZSBt
-b3VudCB3b3JrcyB3aGVuIHVzaW5nIGtlcm5lbCAzLjYuMTEgb3IgZWFybGllciBhbmQgZmFpbHMg
-b24gMy43LXJjMSANCj4gPj4gb3IgbGF0ZXIuIFRlc3Rpbmcgd2FzIGRvbmUgb24gVWJ1bnR1IDEy
-LjA0IGFuZCAxMi4xMCB1c2luZyBVYnVudHUga2VybmVscw0KPiA+PiBhbmQga2VybmVsLm9yZyBr
-ZXJuZWxzICh1cCB0byAzLjgtcmM3KSB3aXRoIHNpbWlsYXIgcmVzdWx0cy4NCj4gPj4gDQo+ID4+
-IG5mcy11dGlscyB2ZXJzaW9ucyAxLjIuNSBhbmQgdGhlIGxhdGVzdCB2ZXJzaW9uIGZyb20gZ2l0
-IG1hc3RlciBoZWFkIA0KPiA+PiAoZ2l0Oi8vbGludXgtbmZzLm9yZy9uZnMtdXRpbHMpIGJlaGF2
-ZSB0aGUgc2FtZSB3YXkuDQo+ID4gDQo+ID4gUmVwcm9kdWNlZC4gIE5vdCBjbGVhciB5ZXQgaWYg
-dGhpcyBpcyBhIGtlcm5lbCByZWdyZXNzaW9uIG9yIGEgbGF0ZW50IGdzc2QgYnVnLg0KPiANCj4g
-V2l0aCBwcmUtMy43IGtlcm5lbHMsIGtlcm5lbCB1cGNhbGxzIHdpdGggInNlcnZpY2U9PG51bGw+
-IiBiZWNhdXNlIHRoZSBmaXJzdCBvcGVyYXRpb24gaXMgYSBMT09LVVBfUk9PVCwgYW5kIGEgbWFj
-aGluZSBjcmVkZW50aWFsIGlzIG5vdCBuZWVkZWQuICBXaXRoIDMuNywga2VybmVsIGlzIHVwY2Fs
-bGluZyB0byBnZXQgYSBjb250ZXh0IHRvIHBlcmZvcm0gU0VUQ0xJRU5USUQsIGFuZCBpdCdzIHNw
-ZWNpZnlpbmcgInNlcnZpY2U9JyonIiBhcyBhIHdheSB0byBnZXQgbWFjaGluZSBjcmVkZW50aWFs
-cy4NCj4gDQo+IEluIHRoZSBjYXNlIHdoZXJlIHRoZXJlIGlzIG5vIGtleXRhYiBhbmQgcnBjLmdz
-c2QgaXMgaW52b2tlZCB3aXRoICItbiIsIGdzc2QgaXMgdHJ5aW5nIHRvIHVzZSAvZXRjL2tyYjUu
-a2V5dGFiIGFueXdheSwgYW5kIGZhaWxpbmcuDQo+IA0KPiAibWFuIHJwYy5nc3NkIiBzYXlzIHRo
-aXMgYWJvdXQgIi1uIjoNCj4gDQo+ID4gQnkgZGVmYXVsdCwgcnBjLmdzc2QgdHJlYXRzIGFjY2Vz
-c2VzIGJ5IHRoZSB1c2VyIHdpdGggVUlEIDAgIHNwZWNpYWxseSwNCj4gPiBhbmQgIHVzZXMgICJt
-YWNoaW5lICBjcmVkZW50aWFscyIgIGZvciAgYWxsIGFjY2Vzc2VzIGJ5IHRoYXQgdXNlciB3aGlj
-aA0KPiA+IHJlcXVpcmUgS2VyYmVyb3MgYXV0aGVudGljYXRpb24uICBXaXRoIHRoZSAtbiBvcHRp
-b24sICJtYWNoaW5lICBjcmVkZW7igJANCj4gPiB0aWFscyIgIHdpbGwgIG5vdCAgYmUgdXNlZCBm
-b3IgYWNjZXNzZXMgYnkgVUlEIDAuICBJbnN0ZWFkLCBjcmVkZW50aWFscw0KPiA+IG11c3QgYmUg
-b2J0YWluZWQgbWFudWFsbHkgbGlrZSBhbGwgb3RoZXIgdXNlcnMuICAgVXNlICBvZiAgdGhpcyAg
-b3B0aW9uDQo+ID4gbWVhbnMgIHRoYXQgICJyb290IiAgbXVzdCAgbWFudWFsbHkgIG9idGFpbiBL
-ZXJiZXJvcyBjcmVkZW50aWFscyBiZWZvcmUNCj4gPiBhdHRlbXB0aW5nIHRvIG1vdW50IGFuIG5m
-cyBmaWxlc3lzdGVtICByZXF1aXJpbmcgIEtlcmJlcm9zICBhdXRoZW50aWNh4oCQDQo+ID4gdGlv
-bi4NCj4gDQo+IEl0IHNlZW1zIHRvIG1lIHRoYXQgaWYgdGhlIGtlcm5lbCBhc2tzIGZvciAic2Vy
-dmljZT0nKiciIGFuZCBnc3NkIHdhcyBpbnZva2VkIHdpdGggIi1uIiwgZ3NzZCBzaG91bGQgcmV0
-cmlldmUgdGhlIG1hbnVhbGx5LW9idGFpbmVkIEtlcmJlcm9zIGNyZWRlbnRpYWxzIGluIHRoYXQg
-Y2FzZS4NCg0KV2h5PyBUaGF0IGlzIG5vdCB3aGF0IHRoZSBkb2N1bWVudGF0aW9uIGFib3ZlIHNh
-eXMuIEFzIEkgcmVhZCBpdCwgdGhlDQpkb2N1bWVudGF0aW9uIHN0YXRlcyB0aGF0IGFjY2Vzc2Vz
-IGJ5IHVpZCBfMF8gd2lsbCBubyBsb25nZXIgdXNlIG1hY2hpbmUNCmNyZWRzLiBJdCBzYXlzIG5v
-dGhpbmcgYWJvdXQgYWNjZXNzZXMgdGhhdCBhY3R1YWxseSByZXF1ZXN0IHRoZSB1c2Ugb2YNCm1h
-Y2hpbmUgY3JlZHMsIHN1Y2ggYXMgTkZTdjQgc3RhdGUgb3duZXJzaGlwLi4uDQoNCj4gSSdtIHN0
-YXJpbmcgYXQgcHJvY2Vzc19rcmI1X3VwY2FsbCgpLCBqdXN0IHBhc3QgdGhhdCBiaWcgYmxvY2sg
-Y29tbWVudCBhcm91bmQgbGluZSA5NjIuICBJIHRoaW5rIHRoYXQgbG9naWMgaXMgcHJvYmFibHkg
-d3JvbmcgdG8gY2hlY2sgZm9yICJzZXJ2aWNlX25hbWU9PU5VTEwiIGJ1dCBzaG91bGQgcmF0aGVy
-IGNoZWNrIHRoYXQgdGhlIHNlcnZpY2VfbmFtZSBpcyBub3QgIm5mcyIuICBUaGlzIGEgZml4IHRo
-YXQgVmVsaS1NYXR0aSBoaW50ZWQgYXQgZWFybGllci4NCj4gDQo+IFRob3VnaHRzPw0KDQpKdXN0
-IGJsaW5kbHkgY2hhbmdpbmcgdGhlIG1lYW5pbmcgb2YgJy1uJyB3b3VsZCBiZSB3cm9uZyBJTU8u
-IFRoZSB3aG9sZQ0KcG9pbnQgb2YgYWRkaW5nIHRoZSBuZXcgInYxIiB1cGNhbGwgd2FzIHRvIGVu
-YWJsZSB0aGUga2VybmVsIHRvIGJlDQpzcGVjaWZpYyBhYm91dCB3aGVuIGl0IHJlcXVpcmVzIG1h
-Y2hpbmUgY3JlZGVudGlhbHMgc28gdGhhdCB3ZSBjb3VsZA0KYXZvaWQgdGhlIHdob2xlIGF1dGgo
-bWFjaGluZSk9PWF1dGgocm9vdCkgYnJhaW4tZGFtYWdlLg0KDQpOb3RlIHRoYXQgdGhlIG9sZCBi
-ZWhhdmlvdXIgY2FuIGJlIHJlLWVuYWJsZWQgYnkgdXNpbmcgYSB2ZXJzaW9uIG9mDQpycGMuZ3Nz
-ZCB0aGF0IG9ubHkgc3VwcG9ydHMgdGhlICd2MCcgdXBjYWxsLiBTbyBvbmUgYWx0ZXJuYXRpdmUg
-bWlnaHQgYmUNCnRvIHNpbXBseSBhZGQgYW4gb3B0aW9uIHRvIHJwYy5nc3NkIHRoYXQgdHVybnMg
-b2ZmICd2MScgdXBjYWxsIHN1cHBvcnQuDQoNCkFub3RoZXIsIG1vcmUgZnV0dXJlLXByb29mIGFs
-dGVybmF0aXZlLCBtYXkgYmUgdG8gaGF2ZSBycGMuZ3NzZA0Kc3Vic3RpdHV0ZSBhIHVzZXIgY3Jl
-ZCBpZiB0aGVyZSBhcmUgbm8gbWFjaGluZSBjcmVkcywgYW5kIF9pZl8gdGhlIGFkbWluDQplbmFi
-bGVzIGFuIG9wdGlvbiB0aGF0IHNwZWNpZmllcyBleGFjdGx5IHdoaWNoIGNyZWRlbnRpYWwgZmls
-ZSBzaG91bGQgYmUNCnVzZWQuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xp
-ZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3
-Lm5ldGFwcC5jb20NCg==
+Hello,
+
+we upgraded our fileserver from Linux 3.2 to linux 3.7.6 and now have
+problems when accessing our nfs-mounted user homes from some sun-
+applications (i.e. Adobe Framemaker):
+
+In the applications file open box, no files are displayed. When entering
+the filename by path, the file can be opened. So it seems some kind of
+dir enumeration which is used by the sun applications is broken.
+
+Other programs on the sun like ls work as before and show all files.
+
+We are using NFSv3 (and cannot switch to v4). Our sun is a very old
+machine running Sun Solaris 10.
+
+Is there any help?
+
+Thanks and best regards
+
+Ulrich
+
+-- 
+|-----------------------------------------------------------------------
+| Ulrich Gemkow
+| University of Stuttgart
+| Institute of Communication Networks and Computer Engineering (IKR)
+|-----------------------------------------------------------------------
