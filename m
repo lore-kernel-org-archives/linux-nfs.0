@@ -1,41 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:29055 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933529Ab3BSUUU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Feb 2013 15:20:20 -0500
-Message-ID: <5123DE7F.7050803@RedHat.com>
-Date: Tue, 19 Feb 2013 15:20:15 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Steve Dickson <SteveD@redhat.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 00/14] lnfs: 3.8-rc7 release
-References: <1361213276-17962-1-git-send-email-SteveD@redhat.com> <20130218195834.GA3391@fieldses.org> <512395D7.5010205@RedHat.com> <20130219151808.GE3391@fieldses.org> <51239CFF.9000600@RedHat.com>
-In-Reply-To: <51239CFF.9000600@RedHat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-gg0-f177.google.com ([209.85.161.177]:43929 "EHLO
+	mail-gg0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754819Ab3BDNSP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2013 08:18:15 -0500
+Received: by mail-gg0-f177.google.com with SMTP id q1so181717gge.22
+        for <linux-nfs@vger.kernel.org>; Mon, 04 Feb 2013 05:18:14 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 1/8] nfsd: always move DRC entries to the end of LRU list when updating timestamp
+Date: Mon,  4 Feb 2013 08:18:00 -0500
+Message-Id: <1359983887-28535-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1359983887-28535-1-git-send-email-jlayton@redhat.com>
+References: <1359983887-28535-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 19/02/13 10:40, Steve Dickson wrote:
->>>> >>> Also: did you figure out why NFSv4 wasn't working when the labeled NFS
->>>> >>> support is configured out?
->>> >> I'll look into this but this was not the case the last time I checked...
->> > 
->> > Let me know how I can help reproduce the problem.  All I did was:
->> > 
->> > 	- build a kernel with CONFIG_NFS_V4_SECURITY_LABEL and
->> > 	  CONFIG_NFSD_V4_SECURITY_LABEL both off.
->> > 	- attempt a v4 mount between client and server both running that
->> > 	  kernel.
-The bug is due to the fact the the bit masked used when labels are not
-wanted (attr_bitmask_nl) was not being initialized when CONFIG_NFS_V4_SECURITY_LABEL
-is not defined. Nice catch!
+...otherwise, we end up with the list ordering wrong. Currently, it's
+not a problem since we skip RC_INPROG entries, but keeping the ordering
+strict will be necessary for a later patch that adds a cache cleaner.
 
-steved.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfscache.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index b89e7c8..9d80dfa 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -129,6 +129,7 @@ void nfsd_reply_cache_shutdown(void)
+ static void
+ lru_put_end(struct svc_cacherep *rp)
+ {
++	rp->c_timestamp = jiffies;
+ 	list_move_tail(&rp->c_lru, &lru_head);
+ }
+ 
+@@ -245,9 +246,9 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+ 	rpc_set_port((struct sockaddr *)&rp->c_addr, rpc_get_port(svc_addr(rqstp)));
+ 	rp->c_prot = proto;
+ 	rp->c_vers = vers;
+-	rp->c_timestamp = jiffies;
+ 
+ 	hash_refile(rp);
++	lru_put_end(rp);
+ 
+ 	/* release any buffer */
+ 	if (rp->c_type == RC_REPLBUFF) {
+@@ -262,7 +263,6 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+ found_entry:
+ 	/* We found a matching entry which is either in progress or done. */
+ 	age = jiffies - rp->c_timestamp;
+-	rp->c_timestamp = jiffies;
+ 	lru_put_end(rp);
+ 
+ 	rtn = RC_DROPIT;
+@@ -354,7 +354,6 @@ nfsd_cache_update(struct svc_rqst *rqstp, int cachetype, __be32 *statp)
+ 	rp->c_secure = rqstp->rq_secure;
+ 	rp->c_type = cachetype;
+ 	rp->c_state = RC_DONE;
+-	rp->c_timestamp = jiffies;
+ 	spin_unlock(&cache_lock);
+ 	return;
+ }
+-- 
+1.7.11.7
+
