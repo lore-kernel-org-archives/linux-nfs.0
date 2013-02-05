@@ -1,35 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:50400 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751888Ab3BRFK6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Feb 2013 00:10:58 -0500
-Message-ID: <5121B7BA.7020509@parallels.com>
-Date: Mon, 18 Feb 2013 09:10:18 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: <linux-nfs@vger.kernel.org>, <Trond.Myklebust@netapp.com>,
-        <linux-kernel@vger.kernel.org>, <devel@openvz.org>
-Subject: Re: [PATCH v2 0/4] nfsd: make is works in a container
-References: <20130201125210.3257.46454.stgit@localhost.localdomain> <20130215162021.GK8343@fieldses.org>
-In-Reply-To: <20130215162021.GK8343@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Received: from userp1040.oracle.com ([156.151.31.81]:25097 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754036Ab3BEAEK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2013 19:04:10 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
+Subject: Re: Probable rpc.mountd regression in nfs-utils-1.2.6
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1360021461/oystr@maui.cs.washington.edu>
+Date: Mon, 4 Feb 2013 19:04:05 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <63123289-EEE8-4A48-B88C-36A1A062ACFE@oracle.com>
+References: <1360021461/oystr@maui.cs.washington.edu>
+To: Jan Sanislo <oystr@cs.washington.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-15.02.2013 20:20, J. Bruce Fields пишет:
-> On Fri, Feb 01, 2013 at 03:56:05PM +0300, Stanislav Kinsbursky wrote:
->> This patch set finally enables NFSd in container.
->> I've tested it in container with it's own root, and also pid, net and mount
->> namespaces.
->
-> Thanks, these look fine to me; applying.  They should show up in my
-> for-3.9 branch sometime today.
->
 
-Thanks!
+On Feb 4, 2013, at 6:44 PM, Jan Sanislo <oystr@cs.washington.edu> wrote:
 
+> Attempting to NFSv4 mount a file system from an NFS server running the
+> rpc.mountd from nfs-utils-1.2.6 will hang indefinitely if the file
+> system in question is not exported to the client machine.  Attempting
+> to mount the same, non-exported file system using NFSv3 will produce
+> the expected error message: "mount.nfs: access denied by server while
+> mounting ....".
+> 
+> This problem seems to stem from a change in the 1.2.6 version of
+> the nfs-utils mountd program: utils/mountd/cache.c[auth_unix_ip()].
+> 
+> In the 1.2.5 version of auth_unix_ip the code is:
+> 
+>        /* addr is a valid, interesting address, find the domain name... */
+>        if (!use_ipaddr) {
+>                ai = client_resolve(tmp->ai_addr);
+>                client = client_compose(ai);
+>                freeaddrinfo(ai);
+>        }
+>        freeaddrinfo(tmp);
+> 
+>        qword_print(f, "nfsd");
+> 	qword_print(f, ipaddr);
+> 	....
+> 
+> I.e., mountd *always* wrote at least the ip address down the
+> /proc/net/rpc/auth.unix.ip/channel pipe in response to kernel upcall.
+> 
+> In the 1.2.6 version of auth_unix_ip the code is:
+> 
+>        /* addr is a valid, interesting address, find the domain name... */
+>        if (!use_ipaddr) {
+>                struct addrinfo *ai = NULL;
+> 
+>                ai = client_resolve(tmp->ai_addr);
+>                if (ai == NULL)
+>                        goto out;
+>                client = client_compose(ai);
+>                freeaddrinfo(ai);
+>                if (!client)
+>                        goto out;
+>        }
+>        qword_print(f, "nfsd");
+>        qword_print(f, ipaddr);
+> 	...
+>  out:
+> 
+> In this latter case, the kernel upcall is responded to only if the
+> requesting IP address is associated with an exported file system.
+> Without the response the kernel waits about 5 seconds and then
+> drops the NFS request (PUTROOTFH,GETATTR,...) and leaves the client
+> hanging.
+
+Probably fixed by commit cb3b81d6, in nfs-utils 1.2.8-rc1.
 
 -- 
-Best regards,
-Stanislav Kinsbursky
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
