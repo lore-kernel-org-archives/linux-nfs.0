@@ -1,35 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mouse.start.ca ([64.140.120.56]:56592 "EHLO mouse.start.ca"
+Received: from mx1.redhat.com ([209.132.183.28]:43346 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759703Ab3BMPXH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Feb 2013 10:23:07 -0500
-Message-ID: <511BAAAA.9040804@start.ca>
-Date: Wed, 13 Feb 2013 10:00:58 -0500
-From: Mark Lord <kernel@start.ca>
-MIME-Version: 1.0
+	id S1756047Ab3BEP6K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Feb 2013 10:58:10 -0500
+Date: Tue, 5 Feb 2013 10:58:04 -0500
+From: Jeff Layton <jlayton@redhat.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Mark Lord <kernel@teksavvy.com>,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        linux-nfs@vger.kernel.org, Linux Kernel <linux-kernel@vger.kernel.org>,
-        =?UTF-8?B?UGF3ZcWCIFNpa29yYQ==?= <pawel.sikora@agmk.net>,
-        Tom Horsley <horsley1953@gmail.com>
-Subject: Re: BUG at net/sunrpc/svc_xprt.c:921 (another one)
-References: <50F4D800.5040703@teksavvy.com> <20130115205625.GH4940@fieldses.org> <50F63882.8000607@parallels.com> <50F72F03.5070806@teksavvy.com> <50F786AF.4070107@parallels.com> <20130117130335.GD6598@fieldses.org> <50F7FB7E.2020503@parallels.com> <50F88C14.7030903@teksavvy.com> <50F8DF7E.8080107@parallels.com> <50FC74E0.20305@teksavvy.com> <20130212205216.GE10267@fieldses.org>
-In-Reply-To: <20130212205216.GE10267@fieldses.org>
-Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 0/8] nfsd: duplicate reply cache overhaul
+Message-ID: <20130205105804.0c15bdaa@tlielax.poochiereds.net>
+In-Reply-To: <20130205151505.GE9886@fieldses.org>
+References: <1359983887-28535-1-git-send-email-jlayton@redhat.com>
+	<20130205151505.GE9886@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 13-02-12 03:52 PM, J. Bruce Fields wrote:
-> On Sun, Jan 20, 2013 at 05:51:12PM -0500, Mark Lord wrote:
->> Got it again, this time on a different system
->> running mostly the same software.
+On Tue, 5 Feb 2013 10:15:05 -0500
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Mon, Feb 04, 2013 at 08:17:59AM -0500, Jeff Layton wrote:
+> > This patchset is a first pass at fixing this. Instead of simply keeping
+> > a cache of the last 1024 entries, it allows nfsd to grow and shrink the
+> > DRC dynamically.
 > 
-> Mark, Paweł, Tom, could any of you confirm whether this helps?
-..
+> One other thing I think we should try is to organize the cache per
+> client address and evict cache entries from clients with more entries
+> first, on the theory that:
+> 
+> 	- There are diminishing returns from keeping huge numbers of
+> 	  entries from a single client: a client that has sent us lots
+> 	  of new requests is likely to have processed replies to the
+> 	  older ones.
+> 
 
-No, I cannot confirm one way or the other,
-because I haven't noticed it again since the most recent
-couple of occurrences I posted earlier here.
+Ok, but you'd need to be careful here. You don't want to drop any entry
+before the client has had a chance to retransmit the request, but we
+don't have a way to know what timeo= value the client is using.
 
-Cheers
+> 	- We should still try to hang on to a few of the most recent
+> 	  entries from a client that hasn't made any requests recently,
+> 	  because such a client may have just temporarily lost contact,
+> 	  in which case it's particularly likely to need to retry a
+> 	  request, and we don't want its entries pushed out by clients
+> 	  that remain active.
+> 
+
+Sounds tricky to get the heuristics right, but interesting. Maybe we
+can try to hash them out while we're at cthon?
+
+-- 
+Jeff Layton <jlayton@redhat.com>
