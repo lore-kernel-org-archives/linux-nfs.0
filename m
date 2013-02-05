@@ -1,74 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:59784 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753974Ab3BDOmI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Feb 2013 09:42:08 -0500
-Date: Mon, 4 Feb 2013 09:42:04 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-Subject: Re: [PATCH] sunrpc: copy scope ID in __rpc_copy_addr6
-Message-ID: <20130204094204.24c6f9a5@tlielax.poochiereds.net>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91835B2E9@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1359983408-28337-1-git-send-email-jlayton@redhat.com>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA91835B2E9@SACEXCMBX04-PRD.hq.netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from relay.parallels.com ([195.214.232.42]:36387 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751137Ab3BEFgy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Feb 2013 00:36:54 -0500
+Message-ID: <51109A64.8010904@parallels.com>
+Date: Tue, 5 Feb 2013 09:36:36 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
+CC: <Trond.Myklebust@netapp.com>, <linux-kernel@vger.kernel.org>,
+        <devel@openvz.org>
+Subject: Re: [PATCH v2 0/6] SUNRPC: rework cache upcall to avoid NFSd root
+References: <20130204105728.11633.53621.stgit@localhost.localdomain> <20130204141719.GA815@fieldses.org>
+In-Reply-To: <20130204141719.GA815@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 4 Feb 2013 14:22:47 +0000
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-
-> > -----Original Message-----
-> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> > owner@vger.kernel.org] On Behalf Of Jeff Layton
-> > Sent: Monday, February 04, 2013 8:10 AM
-> > To: bfields@fieldses.org
-> > Cc: linux-nfs@vger.kernel.org; chuck.lever@oracle.com
-> > Subject: [PATCH] sunrpc: copy scope ID in __rpc_copy_addr6
-> > 
-> > When copying an address, we should also copy the scopeid in the event that
-> > this is a link-local address and the scope matters.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  include/linux/sunrpc/clnt.h | 1 +
-> >  1 file changed, 1 insertion(+)
-> > 
-> > diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h index
-> > 47354a2..6a7c261 100644
-> > --- a/include/linux/sunrpc/clnt.h
-> > +++ b/include/linux/sunrpc/clnt.h
-> > @@ -242,6 +242,7 @@ static inline bool __rpc_copy_addr6(struct sockaddr
-> > *dst,
-> > 
-> >  	dsin6->sin6_family = ssin6->sin6_family;
-> >  	dsin6->sin6_addr = ssin6->sin6_addr;
-> > +	dsin6->sin6_scope_id = ssin6->sin6_scope_id;
-> >  	return true;
-> >  }
-> >  #else	/* !(IS_ENABLED(CONFIG_IPV6) */
-> > --
-> 
+04.02.2013 18:17, J. Bruce Fields пишет:
+> On Mon, Feb 04, 2013 at 02:02:29PM +0300, Stanislav Kinsbursky wrote:
+>> swapping
+>>
+>> The main idea of this patch set is to call cache request not on kthread
+>> upcall, but on userspace daemon cache_read call. This fixes the problem with
+>> gaining of wrong dentry path after calling d_path() in kthread root context
+>> (svc_export_request() callback), which always work in init root context, but
+>> containers can work in "root jail" - i.e. have it's own nested root.
+>>
+>> v2:
+>> 1) NFS DNS cache update wasn't done in the firest version. So this patch set
+>> does preparation cleanup of the NFS DNS cache routines.
+>> 2) Also, this patch set doesn't remove cache_upcall helper anymore, because
+>> it's still required for NFS DNS cache.
 >
-> Can we please move these helpers into a separate header, say include/Linux/sunrpc/inet.h?
+> Argh--I really prefer incremental patches once I've already committed
+> something, but OK.
 >
 
-Yes, that's long overdue. I'll spin up a patch on top of this one to do
-that. I'd suggest that we call it "addr.h" to keep it in parity with
-the "addr.c" file that's in the sunrpc directory, since we'll need to
-move the prototypes for those functions as well.
+Sorry. I was thinking about incremental patches. Next time I'll do so.
 
-> Oh... Also note that you probably want to apply the above scopeid to the NFSv4 callback address that is supplied by the client in the setclientid call.
-> 
+> Backing out the old patches, I'll take a look at these.  The first two
+> should probably get an ACK from Trond.
+>
 
-I'm not clear on what you mean here. This patch should make it so that
-the server keeps the correct scopeid along with the cb address that it
-tracks for a client (something that I don't think it does properly
-today).
+Trond, could you review first two patches, please?
+They are just clean-ups, actually. Nothing special. Required to unify the interfaces for latter patches in the series.
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Best regards,
+Stanislav Kinsbursky
