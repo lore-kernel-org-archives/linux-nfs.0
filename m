@@ -1,44 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.cdf.utoronto.ca ([128.100.31.106]:36637 "HELO
-	smtp.cdf.toronto.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1754342Ab3B1QYN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Feb 2013 11:24:13 -0500
-Message-ID: <512F84AC.1020705@cdf.toronto.edu>
-Date: Thu, 28 Feb 2013 11:24:12 -0500
-From: Iordan Iordanov <iordan@cdf.toronto.edu>
+Received: from mail-ia0-f172.google.com ([209.85.210.172]:34204 "EHLO
+	mail-ia0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751146Ab3BELdW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Feb 2013 06:33:22 -0500
 MIME-Version: 1.0
+In-Reply-To: <20130130221118.GB15584@fieldses.org>
+References: <1358441537-8672-1-git-send-email-piastry@etersoft.ru>
+	<20130130221118.GB15584@fieldses.org>
+Date: Tue, 5 Feb 2013 15:33:21 +0400
+Message-ID: <CAKywueQcia1jJfdVJFzfHdc5zQ_86r3T4bmee9cpP18qqbcLFA@mail.gmail.com>
+Subject: Re: [PATCH v2 0/8] Add O_DENY* support for VFS and CIFS/NFS
+From: Pavel Shilovsky <piastry@etersoft.ru>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: NFS v3 hangs with kernel version v3.2.0, 32-bit
-References: <511BFB74.3060803@cdf.toronto.edu> <51253F36.40501@cdf.toronto.edu> <20130222150158.GB20588@fieldses.org>
-In-Reply-To: <20130222150158.GB20588@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        wine-devel@winehq.org
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce,
-
-On 02/22/13 10:01, J. Bruce Fields wrote:
-> Some of that debugging is extremely verbose, yes.
+2013/1/31 J. Bruce Fields <bfields@fieldses.org>:
+> On Thu, Jan 17, 2013 at 08:52:09PM +0400, Pavel Shilovsky wrote:
+>> This patchset adds support of O_DENY* flags for Linux fs layer. These flags can be used by any application that needs share reservations to organize a file access. VFS already has some sort of this capability - now it's done through flock/LOCK_MAND mechanis, but that approach is non-atomic. This patchset build new capabilities on top of the existing one but doesn't bring any changes into the flock call semantic.
+>>
+>> These flags can be used by NFS (built-in-kernel) and CIFS (Samba) servers and Wine applications through VFS (for local filesystems) or CIFS/NFS modules. This will help when e.g. Samba and NFS server share the same directory for Windows and Linux users or Wine applications use Samba/NFS share to access the same data from different clients.
+>>
+>> According to the previous discussions the most problematic question is how to prevent situations like DoS attacks where e.g /lib/liba.so file can be open with DENYREAD, or smth like this. That's why one extra flag O_DENYMAND is added. It indicates to underlying layer that an application want to use O_DENY* flags semantic. It allows us not affect native Linux applications (that don't use O_DENYMAND flag) - so, these flags (and the semantic of open syscall that they bring) are used only for those applications that really want it proccessed that way.
 >
-> Since this list is for upstream (not ubuntu) development, most useful
-> would probably be if you could work out whether the problem is
-> reproduceable on the latest upstream kernel.
+> Maybe that's good enough.  A mount flag might be simpler and give
+> consistent enforcement for all users.
+>
+>>
+>> So, we have four new flags:
+>> O_DENYREAD - to prevent other opens with read access,
+>> O_DENYWRITE - to prevent other opens with write access,
+>> O_DENYDELETE - to prevent delete operations (this flag is not implemented in VFS and NFS part and only suitable for CIFS module),
+>> O_DENYMAND - to switch on/off three flags above.
+>
+> It would be useful to have some really careful documentation of how
+> these are meant to work.  Maybe try updating the open man page?
 
-Understandable.
+Yes, that's a good idea. Do you mean smth like this?
 
-We've been unable to pin down what triggers this bug, so we are unable 
-to reproduce it synthetically. It only appears to happen on shared 
-servers with lots of NFS traffic, and in all cases it happened with more 
-than a month of uptime. Also, we are unable to put an upstream kernel on 
-a production machine.
+O_DENYMAND - used to inforce a mandatory share reservation scheme of
+the file access. If this flag is passed,
+the open fails with -ETXTBSY in following cases:
 
-These two conditions will make it exceedingly unlikely that we would be 
-able to work this out with an upstream kernel.
+1) if O_DENYREAD flag is specified and there is another open with
+O_DENYMAND flag and READ access to the file;
+2) if O_DENYWRITE flag is specified and there is another open with
+O_DENYMAND flag and WRITE access to the file;
+3) if READ access is requested and there is another open with
+O_DENYMAND and O_DENYREAD flags;
+4) if WRITE access is requested and there is another open with
+O_DENYMAND and O_DENYWRITE flags;
 
-Even if we were able to reproduce this with an upstream kernel, if it 
-takes such a long time to reproduce could that have aged the kernel 
-we're testing enough to invalidate our testing results?
+Also, if O_DENYDELETE flag is specified and the open succeded, any
+further unlink operation will fail with -ETXTBSY untill this open is
+closed. Now this flag is processed by CIFS filesystems only.
 
-Cheers!
-Iordan
+-- 
+Best regards,
+Pavel Shilovsky.
