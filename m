@@ -1,53 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from dgate10.ts.fujitsu.com ([80.70.172.49]:33684 "EHLO
-	dgate10.ts.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754253Ab3BUPon (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Feb 2013 10:44:43 -0500
-Message-Id: <d6437a$43941t@dgate10u.abg.fsc.net>
-Date: 21 Feb 2013 16:44:41 +0100
-From: Bodo Stroesser <bstroesser@ts.fujitsu.com>
-To: neilb@suse.de
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, bstroesser@ts.fujitsu.com
-Subject: Re: [PATCH] sunrpc.ko: RPC cache fix races
+Received: from fieldses.org ([174.143.236.118]:43645 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754354Ab3BEOiT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Feb 2013 09:38:19 -0500
+Date: Tue, 5 Feb 2013 09:38:14 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Pavel Shilovsky <piastry@etersoft.ru>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        wine-devel@winehq.org
+Subject: Re: [PATCH v2 0/8] Add O_DENY* support for VFS and CIFS/NFS
+Message-ID: <20130205143813.GB9886@fieldses.org>
+References: <1358441537-8672-1-git-send-email-piastry@etersoft.ru>
+ <20130130221118.GB15584@fieldses.org>
+ <CAKywueQcia1jJfdVJFzfHdc5zQ_86r3T4bmee9cpP18qqbcLFA@mail.gmail.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAKywueQcia1jJfdVJFzfHdc5zQ_86r3T4bmee9cpP18qqbcLFA@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gMjEgRmViIDIwMTMgMDA6NTU6MDAgKzAxMDAgbmVpbGJAc3VzZS5kZSB3cm90ZToKCj4g
-T24gMjAgRmViIDIwMTMgMTQ6NTc6MDcgKzAxMDAgYnN0cm9lc3NlckB0cy5mdWppdHN1LmNv
-bSB3cm90ZToKPiAKPiA+IE9uIDIwIEZlYiAyMDEzIDA0OjA5OjAwICswMTAwIG5laWxiQHN1
-c2UuZGUgd3JvdGU6CgpzbmlwCgo+ID4gPiBNYXliZToKPiA+ID4gCj4gPiA+ICAgc3dpdGNo
-KGNhY2hlX21ha2VfdXBjYWxsKGRldGFpbCwgaCkpIHsKPiA+ID4gICBjYXNlIC1FSU5WQUw6
-Cj4gPiA+ICAgICAgICAgaWYgKHJ2KSB7Cj4gPiA+IAkJc2V0X2JpdChDQUNIRV9ORUdBVElW
-RSwgJmgtPmZsYWdzKTsKPiA+ID4gCQljYWNoZV9mcmVzaF9sb2NrZWQoaCwgZ2V0X3NlY29u
-ZHMoKSArIENBQ0hFX05FV19FWFBJUlkpOwo+ID4gPiAJCXJ2ID0gLUVOT0VOVDsKPiA+ID4g
-CX0KPiA+ID4gCS8qIEZBTExUSFJPVUdIICovCj4gPiA+ICAgY2FzZSAtRUFHQUlOOgo+ID4g
-PiAJY2FjaGVfZnJlc2hfdW5sb2NrZWQoaCwgZGV0YWlsKTsKPiA+ID4gICB9Cj4gPiAKPiA+
-IEkgYWdyZWUsIHlvdXIgcGF0Y2ggaXMgb2J2aW91c2x5IGJldHRlciB0aGFuIHRoZSBtaW5l
-Lgo+ID4gQnV0IGxldCBtZSBzdWdnZXN0IG9uZSBsaXR0bGUgY2hhbmdlOiBJIHdvdWxkIGxp
-a2UgdG8gc3Vic3RpdHV0ZQo+ID4gY2FjaGVfZnJlc2hfdW5sb2NrZWQoKSBieSBjbGVhcl9i
-aXQoKSBhbmQgY2FjaGVfcmV2aXNpdF9yZXF1ZXN0KCksCj4gPiBhcyB0aGUgY2FsbCB0byBj
-YWNoZV9kZXF1ZXVlKCkgaW4gY2FjaGVfZnJlc2hfdW5sb2NrZWQoKSBzZWVtcyB0bwo+ID4g
-YmUgb2Jzb2xldGUgaGVyZToKPiAKPiBJdCBpcyBleGFjdGx5IHRoaXMgc29ydCBvZiB0aGlu
-a2luZyAob24gbXkgcGFydCkgdGhhdCBnb3QgdXMgaW50byB0aGlzIG1lc3MKPiBpbiB0aGUg
-Zmlyc3QgcGxhY2UuICBJIHJlYXNvbmVkIHRoYXQgdGhlIGZ1bGwgbG9ja2luZy90ZXN0aW5n
-L3doYXRldmVyIHdhc24ndAo+IG5lY2Vzc2FyeSBhbmQgdG9vayBhIHNob3J0IGN1dC4gIEl0
-IHdhc24ndCBhIGdvb2QgaWRlYS4KCk1heWJlIEknbSB0b3RhbGx5IHdyb25nLCBidXQgQUZB
-SUNTLCBjYWxsaW5nIGNhY2hlX2RlcXVldWUoKSBoZXJlIGluIGV4dHJlbWUKc2l0dWF0aW9u
-cyAodHdvIHRocmVhZHMgaW4gcGFyYWxsZWwgY2FsbGluZyBjaGVja19jYWNoZSgpIHdoaWxl
-IGEgZmlyc3QgcmVhZGVyCmlzIGdvaW5nIHRvIG9wZW4gY2FjaGUgYWNjZXNzKSBjb3VsZCBh
-Z2FpbiBjYXVzZSBhIHJhY2UgKD8pCgpCVFc6IGlmIHRoZXJlIGlzIGEgcmVhZGVyIGZvciBh
-IGNhY2hlLCBpcyB0aGVyZSBhbnkgcHJvdGVjdGlvbiBhZ2FpbnN0IG1hbnkKdXBjYWxscyBi
-ZWluZyBxdWV1ZWQgZm9yIHRoZSBzYW1lIGNhY2hlIGVudHJ5PwoKQm9kbwoKPiAKPiBHaXZl
-biB0aGF0IHRoaXMgaXMgb2J2aW91c2x5IGRpZmZpY3VsdCBjb2RlIHRvIGdldCByaWdodCwg
-d2Ugc2hvdWxkIG1ha2UgaXQKPiBhcyBlYXN5IHRvIHJldmlldyBhcyBwb3NzaWJsZS4gIEhh
-dmUgImNhY2hlX2ZyZXNoX3VubG9ja2VkIiBtYWtlcyBpdCBtb3JlCj4gb2J2aW91c2x5IGNv
-cnJlY3QsIGFuZCB0aGF0IGlzIGEgZ29vZCB0aGluZy4KPiBNYXliZSBjYWNoZV9kZXF1ZXVl
-IGlzbid0IG5lZWRlZCBoZXJlLCBidXQgaXQgd29uJ3QgaHVydCBzbyBJJ2QgbXVjaCByYXRo
-ZXIKPiBoYXZlIHRoZSBjbGVhcmVyIGNvZGUuCj4gSW4gZmFjdCwgSSdkIGFsc28gbGlrZSB0
-byBjaGFuZ2UKPiAKPiAJCQlpZiAodGVzdF9hbmRfY2xlYXJfYml0KENBQ0hFX1BFTkRJTkcs
-ICZjaC0+ZmxhZ3MpKQo+IAkJCQljYWNoZV9kZXF1ZXVlKGN1cnJlbnRfZGV0YWlsLCBjaCk7
-Cj4gCQkJY2FjaGVfcmV2aXNpdF9yZXF1ZXN0KGNoKTsKPiAKPiBuZWFyIHRoZSBlbmQgb2Yg
-Y2FjaGVfY2xlYW4gdG8gY2FsbCAgY2FjaGVfZnJlc2hfdW5sb2NrZWQoKS4KPiAK
+On Tue, Feb 05, 2013 at 03:33:21PM +0400, Pavel Shilovsky wrote:
+> 2013/1/31 J. Bruce Fields <bfields@fieldses.org>:
+> > On Thu, Jan 17, 2013 at 08:52:09PM +0400, Pavel Shilovsky wrote:
+> >> This patchset adds support of O_DENY* flags for Linux fs layer. These flags can be used by any application that needs share reservations to organize a file access. VFS already has some sort of this capability - now it's done through flock/LOCK_MAND mechanis, but that approach is non-atomic. This patchset build new capabilities on top of the existing one but doesn't bring any changes into the flock call semantic.
+> >>
+> >> These flags can be used by NFS (built-in-kernel) and CIFS (Samba) servers and Wine applications through VFS (for local filesystems) or CIFS/NFS modules. This will help when e.g. Samba and NFS server share the same directory for Windows and Linux users or Wine applications use Samba/NFS share to access the same data from different clients.
+> >>
+> >> According to the previous discussions the most problematic question is how to prevent situations like DoS attacks where e.g /lib/liba.so file can be open with DENYREAD, or smth like this. That's why one extra flag O_DENYMAND is added. It indicates to underlying layer that an application want to use O_DENY* flags semantic. It allows us not affect native Linux applications (that don't use O_DENYMAND flag) - so, these flags (and the semantic of open syscall that they bring) are used only for those applications that really want it proccessed that way.
+> >
+> > Maybe that's good enough.  A mount flag might be simpler and give
+> > consistent enforcement for all users.
+> >
+> >>
+> >> So, we have four new flags:
+> >> O_DENYREAD - to prevent other opens with read access,
+> >> O_DENYWRITE - to prevent other opens with write access,
+> >> O_DENYDELETE - to prevent delete operations (this flag is not implemented in VFS and NFS part and only suitable for CIFS module),
+> >> O_DENYMAND - to switch on/off three flags above.
+> >
+> > It would be useful to have some really careful documentation of how
+> > these are meant to work.  Maybe try updating the open man page?
+> 
+> Yes, that's a good idea. Do you mean smth like this?
+> 
+> O_DENYMAND - used to inforce a mandatory share reservation scheme of
+> the file access. If this flag is passed,
+> the open fails with -ETXTBSY in following cases:
+> 
+> 1) if O_DENYREAD flag is specified and there is another open with
+> O_DENYMAND flag and READ access to the file;
+> 2) if O_DENYWRITE flag is specified and there is another open with
+> O_DENYMAND flag and WRITE access to the file;
+> 3) if READ access is requested and there is another open with
+> O_DENYMAND and O_DENYREAD flags;
+> 4) if WRITE access is requested and there is another open with
+> O_DENYMAND and O_DENYWRITE flags;
+> 
+> Also, if O_DENYDELETE flag is specified and the open succeded, any
+> further unlink operation will fail with -ETXTBSY untill this open is
+> closed. Now this flag is processed by CIFS filesystems only.
 
+Do you need to document interactions with flock() as well?
 
+--b.
