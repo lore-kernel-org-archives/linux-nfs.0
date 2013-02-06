@@ -1,76 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qe0-f51.google.com ([209.85.128.51]:52865 "EHLO
-	mail-qe0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756207Ab3BUS2t (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Feb 2013 13:28:49 -0500
-Received: by mail-qe0-f51.google.com with SMTP id 6so4538644qea.10
-        for <linux-nfs@vger.kernel.org>; Thu, 21 Feb 2013 10:28:48 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 4/5] nfsd: report length of the longest hash chain in reply cache stats
-Date: Thu, 21 Feb 2013 13:28:37 -0500
-Message-Id: <1361471318-17971-5-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1361471318-17971-1-git-send-email-jlayton@redhat.com>
-References: <1361471318-17971-1-git-send-email-jlayton@redhat.com>
+Received: from mail-ie0-f176.google.com ([209.85.223.176]:57330 "EHLO
+	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757553Ab3BFXaJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Feb 2013 18:30:09 -0500
+Received: by mail-ie0-f176.google.com with SMTP id k13so2665730iea.7
+        for <linux-nfs@vger.kernel.org>; Wed, 06 Feb 2013 15:30:09 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v1 1/4] NFS: Handle missing rpc.gssd when looking up root FH
+To: linux-nfs@vger.kernel.org
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        Bryan Schumaker <bjschuma@netapp.com>
+Date: Wed, 06 Feb 2013 18:30:06 -0500
+Message-ID: <20130206233005.1535.33518.stgit@seurat.1015granger.net>
+In-Reply-To: <20130206230045.1535.48770.stgit@seurat.1015granger.net>
+References: <20130206230045.1535.48770.stgit@seurat.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-So we can get a feel for how effective the hashing function is.
+When rpc.gssd is not running, any NFS operation that needs to use a
+GSS security flavor of course does not work.
 
-As Chuck Lever pointed out to me, it's generally acceptable to do
-"expensive" stuff when reading the stats since that's a relatively
-rare activity. When we go to read the file, walk all of the hash
-chains and count the number of entries in each. Report the length
-of the longest one.
+If looking up a server's root file handle results in an
+NFS4ERR_WRONGSEC, nfs4_find_root_sec() is called to try a bunch of
+security flavors until one works (or until all reasonable flavors
+are tried).  But if rpc.gssd isn't running, it seems to fail
+immediately after rpcauth_create() craps out on the first GSS
+flavor.
 
-Cc: Chuck Lever <chuck.lever@oracle.com>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+When the rpcauth_create() call in nfs4_lookup_root_sec() fails
+because rpc.gssd is not available, nfs4_lookup_root_sec()
+unconditionally returns -EIO.  This prevents nfs4_find_root_sec()
+from retrying any other flavors; it drops out of its loop and fails
+immediately.
+
+Having nfs4_lookup_root_sec() return -EACCES instead allows
+nfs4_find_root_sec() to try all flavors in its list.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: Bryan Schumaker <bjschuma@netapp.com>
 ---
- fs/nfsd/nfscache.c | 23 +++++++++++++++++++++++
- 1 file changed, 23 insertions(+)
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index a5ac9ab..52493cb 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -552,6 +552,28 @@ nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *data)
- }
+ fs/nfs/nfs4proc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index cf747ef..debeb2d 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2408,7 +2408,7 @@ static int nfs4_lookup_root_sec(struct nfs_server *server, struct nfs_fh *fhandl
  
- /*
-+ * Walk each hash chain and count the number of entries. Return the length of
-+ * the longest one. Must be called with the cache_lock held.
-+ */
-+static unsigned int
-+nfsd_repcache_max_chain_len(void)
-+{
-+	int i;
-+	struct hlist_node *pos;
-+	unsigned int max = 0;
-+
-+	for (i = 0; i < HASHSIZE; ++i) {
-+		unsigned int cur = 0;
-+
-+		hlist_for_each(pos, &cache_hash[i])
-+			++cur;
-+		max = max(cur, max);
-+	}
-+
-+	return max;
-+}
-+
-+/*
-  * Note that fields may be added, removed or reordered in the future. Programs
-  * scraping this file for info should test the labels to ensure they're
-  * getting the correct field.
-@@ -566,6 +588,7 @@ static int nfsd_reply_cache_stats_show(struct seq_file *m, void *v)
- 	seq_printf(m, "cache misses:    %u\n", nfsdstats.rcmisses);
- 	seq_printf(m, "not cached:      %u\n", nfsdstats.rcnocache);
- 	seq_printf(m, "checksum misses: %u\n", csum_misses);
-+	seq_printf(m, "max chain len:   %u\n", nfsd_repcache_max_chain_len());
- 	spin_unlock(&cache_lock);
- 	return 0;
- }
--- 
-1.7.11.7
+ 	auth = rpcauth_create(flavor, server->client);
+ 	if (IS_ERR(auth)) {
+-		ret = -EIO;
++		ret = -EACCES;
+ 		goto out;
+ 	}
+ 	ret = nfs4_lookup_root(server, fhandle, info);
 
