@@ -1,54 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:43346 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756047Ab3BEP6K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Feb 2013 10:58:10 -0500
-Date: Tue, 5 Feb 2013 10:58:04 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 0/8] nfsd: duplicate reply cache overhaul
-Message-ID: <20130205105804.0c15bdaa@tlielax.poochiereds.net>
-In-Reply-To: <20130205151505.GE9886@fieldses.org>
-References: <1359983887-28535-1-git-send-email-jlayton@redhat.com>
-	<20130205151505.GE9886@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-oa0-f45.google.com ([209.85.219.45]:57685 "EHLO
+	mail-oa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758108Ab3BFTtl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Feb 2013 14:49:41 -0500
+From: Tejun Heo <tj@kernel.org>
+To: akpm@linux-foundation.org
+Cc: linux-kernel@vger.kernel.org, Tejun Heo <tj@kernel.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH 12/77] nfs: idr_destroy() no longer needs idr_remove_all()
+Date: Wed,  6 Feb 2013 11:39:44 -0800
+Message-Id: <1360179649-22465-13-git-send-email-tj@kernel.org>
+In-Reply-To: <1360179649-22465-1-git-send-email-tj@kernel.org>
+References: <1360179649-22465-1-git-send-email-tj@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 5 Feb 2013 10:15:05 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+idr_destroy() can destroy idr by itself and idr_remove_all() is being
+deprecated.  Drop reference to idr_remove_all().  Note that the code
+wasn't completely correct before because idr_remove() on all entries
+doesn't necessarily release all idr_layers which could lead to memory
+leak.
 
-> On Mon, Feb 04, 2013 at 08:17:59AM -0500, Jeff Layton wrote:
-> > This patchset is a first pass at fixing this. Instead of simply keeping
-> > a cache of the last 1024 entries, it allows nfsd to grow and shrink the
-> > DRC dynamically.
-> 
-> One other thing I think we should try is to organize the cache per
-> client address and evict cache entries from clients with more entries
-> first, on the theory that:
-> 
-> 	- There are diminishing returns from keeping huge numbers of
-> 	  entries from a single client: a client that has sent us lots
-> 	  of new requests is likely to have processed replies to the
-> 	  older ones.
-> 
+Signed-off-by: Tejun Heo <tj@kernel.org>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+---
+ fs/nfs/client.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-Ok, but you'd need to be careful here. You don't want to drop any entry
-before the client has had a chance to retransmit the request, but we
-don't have a way to know what timeo= value the client is using.
-
-> 	- We should still try to hang on to a few of the most recent
-> 	  entries from a client that hasn't made any requests recently,
-> 	  because such a client may have just temporarily lost contact,
-> 	  in which case it's particularly likely to need to retry a
-> 	  request, and we don't want its entries pushed out by clients
-> 	  that remain active.
-> 
-
-Sounds tricky to get the heuristics right, but interesting. Maybe we
-can try to hash them out while we're at cthon?
-
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 9f3c664..84d8eae 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -197,7 +197,6 @@ error_0:
+ EXPORT_SYMBOL_GPL(nfs_alloc_client);
+ 
+ #if IS_ENABLED(CONFIG_NFS_V4)
+-/* idr_remove_all is not needed as all id's are removed by nfs_put_client */
+ void nfs_cleanup_cb_ident_idr(struct net *net)
+ {
+ 	struct nfs_net *nn = net_generic(net, nfs_net_id);
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.8.1
+
