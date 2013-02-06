@@ -1,89 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:30114 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753387Ab3BDODr convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2013 09:03:47 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: fanchaoting <fanchaoting@cn.fujitsu.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: [PATCH] umount oops when remove  blocklayoutdriver first
-Date: Mon, 4 Feb 2013 14:03:43 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91835B281@SACEXCMBX04-PRD.hq.netapp.com>
-References: <510FB456.6040208@cn.fujitsu.com>
-In-Reply-To: <510FB456.6040208@cn.fujitsu.com>
-Content-Type: text/plain; charset="iso-2022-jp"
-MIME-Version: 1.0
+Received: from mail-pa0-f44.google.com ([209.85.220.44]:61913 "EHLO
+	mail-pa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758228Ab3BFUBq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Feb 2013 15:01:46 -0500
+From: Tejun Heo <tj@kernel.org>
+To: akpm@linux-foundation.org
+Cc: linux-kernel@vger.kernel.org, Tejun Heo <tj@kernel.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH 77/77] nfs4client: convert to idr_alloc()
+Date: Wed,  6 Feb 2013 11:40:49 -0800
+Message-Id: <1360179649-22465-78-git-send-email-tj@kernel.org>
+In-Reply-To: <1360179649-22465-1-git-send-email-tj@kernel.org>
+References: <1360179649-22465-1-git-send-email-tj@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> owner@vger.kernel.org] On Behalf Of fanchaoting
-> Sent: Monday, February 04, 2013 8:15 AM
-> To: bfields@fieldses.org; Myklebust, Trond
-> Cc: linux-nfs@vger.kernel.org
-> Subject: [PATCH] umount oops when remove blocklayoutdriver first
-> 
-> now pnfs client uses block layout, maybe we can remove blocklayoutdriver
-> first. if we umount later, it can cause oops in unset_pnfs_layoutdriver.
-> because nfss->pnfs_curr_ld->clear_layoutdriver is invalid.
-> 
-> reproduce it:
->  modprobe  blocklayoutdriver
->  mount -t nfs4 -o minorversion=1 pnfsip:/ /mnt/  rmmod blocklayoutdriver
-> umount /mnt
-> 
-> then you can see following
-> 
-> ##########################################################
-> ###
-> CPU 0
-> Pid: 17023, comm: umount.nfs4 Tainted: GF          O 3.7.0-rc6-pnfs #1 VMware,
-> Inc. VMware Virtual Platform/440BX Desktop Reference Platform
-> RIP: 0010:[<ffffffffa04cfe6d>]  [<ffffffffa04cfe6d>]
-> unset_pnfs_layoutdriver+0x1d/0x70 [nfsv4]
-> RSP: 0018:ffff8800022d9e48  EFLAGS: 00010286
-> RAX: ffffffffa04a1b00 RBX: ffff88000b013800 RCX: 0000000000000001
-> RDX: ffffffff81ae8ee0 RSI: ffff880001ee94b8 RDI: ffff88000b013800
-> RBP: ffff8800022d9e58 R08: 0000000000000001 R09: 0000000000000000
-> R10: 0000000000000000 R11: 0000000000000000 R12: ffff880001ee9400
-> R13: ffff8800105978c0 R14: 00007fff25846c08 R15: 0000000001bba550
-> FS:  00007f45ae7f0700(0000) GS:ffff880012c00000(0000)
-> knlGS:0000000000000000
-> CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> CR2: ffffffffa04a1b38 CR3: 0000000002c0c000 CR4: 00000000000006f0
-> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> Process umount.nfs4 (pid: 17023, threadinfo ffff8800022d8000, task
-> ffff880006e48aa0)
-> Stack:
-> ffff8800105978c0 ffff88000b013800 ffff8800022d9e78 ffffffffa04cd0ce
-> ffff8800022d9e78 ffff88000b013800 ffff8800022d9ea8 ffffffffa04755a7
-> ffff8800022d9ea8 ffff880002f96400 ffff88000b013800 ffff880002f96400 Call
-> Trace:
-> [<ffffffffa04cd0ce>] nfs4_destroy_server+0x1e/0x30 [nfsv4]
-> [<ffffffffa04755a7>] nfs_free_server+0xb7/0x150 [nfs] [<ffffffffa047d4d5>]
-> nfs_kill_super+0x35/0x40 [nfs] [<ffffffff81178d35>]
-> deactivate_locked_super+0x45/0x70 [<ffffffff8117986a>]
-> deactivate_super+0x4a/0x70 [<ffffffff81193ee2>]
-> mntput_no_expire+0xd2/0x130 [<ffffffff81194d62>]
-> sys_umount+0x72/0xe0 [<ffffffff8154af59>]
-> system_call_fastpath+0x16/0x1b
-> Code: 06 e1 b8 ea ff ff ff eb 9e 0f 1f 44 00 00 55 48 89 e5 53 48 83 ec 08 66 66 66
-> 66 90 48 8b 87 80 03 00 00 48 89 fb 48 85 c0 74 29 <48> 8b 40 38 48 85 c0 74 02 ff
-> d0 48 8b 03 3e ff 48 04 0f 94 c2 RIP  [<ffffffffa04cfe6d>]
-> unset_pnfs_layoutdriver+0x1d/0x70 [nfsv4] RSP <ffff8800022d9e48>
-> CR2: ffffffffa04a1b38
-> ---[ end trace 29f75aaedda058bf ]---
-> 
-> ##########################################################
-> ###
-> 
-> 
-> Signed-off-by: fanchaoting<fanchaoting@cn.fujitsu.com>
-> ---
+Convert to the much saner new idr interface.
 
-Ooh... That's bad... I never knew that try_module_get() will return success if the argument is a NULL pointer. Anyhow, thanks! I will apply.
+Only compile tested.
 
-Trond
+Signed-off-by: Tejun Heo <tj@kernel.org>
+
+Signed-off-by: Tejun Heo <tj@kernel.org>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+---
+ fs/nfs/nfs4client.c | 13 ++++++-------
+ 1 file changed, 6 insertions(+), 7 deletions(-)
+
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 2e9779b..47d1008 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -29,15 +29,14 @@ static int nfs_get_cb_ident_idr(struct nfs_client *clp, int minorversion)
+ 
+ 	if (clp->rpc_ops->version != 4 || minorversion != 0)
+ 		return ret;
+-retry:
+-	if (!idr_pre_get(&nn->cb_ident_idr, GFP_KERNEL))
+-		return -ENOMEM;
++	idr_preload(GFP_KERNEL);
+ 	spin_lock(&nn->nfs_client_lock);
+-	ret = idr_get_new(&nn->cb_ident_idr, clp, &clp->cl_cb_ident);
++	ret = idr_alloc(&nn->cb_ident_idr, clp, 0, 0, GFP_NOWAIT);
++	if (ret >= 0)
++		clp->cl_cb_ident = ret;
+ 	spin_unlock(&nn->nfs_client_lock);
+-	if (ret == -EAGAIN)
+-		goto retry;
+-	return ret;
++	idr_preload_end();
++	return ret < 0 ? ret : 0;
+ }
+ 
+ #ifdef CONFIG_NFS_V4_1
+-- 
+1.8.1
+
