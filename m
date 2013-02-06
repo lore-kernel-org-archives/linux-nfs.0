@@ -1,61 +1,62 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ax13.adsl.tnnet.fi ([217.112.254.13]:51530 "EHLO
-	mail.opinsys.fi" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751297Ab3BRI1Y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Feb 2013 03:27:24 -0500
-Date: Mon, 18 Feb 2013 08:23:12 +0000 (UTC)
-From: Veli-Matti Lintu <veli-matti.lintu@opinsys.fi>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Tuomas =?utf-8?B?UsOkc8OkbmVu?= <tuomasjjrasanen@opinsys.fi>,
-        linux-nfs@vger.kernel.org
-Message-ID: <505003638.18320.1361175792539.JavaMail.root@opinsys.fi>
-In-Reply-To: <74874B5C-CDDE-4F77-B69D-FC40FF5DD933@oracle.com>
-References: <127351146.98508.1360769367943.JavaMail.root@opinsys.fi> <1117889154.119108.1360851840169.JavaMail.root@opinsys.fi> <CED6E6AF-B551-4099-89CE-861E5F46D31A@oracle.com> <654867786.10283.1360929631448.JavaMail.root@opinsys.fi> <74874B5C-CDDE-4F77-B69D-FC40FF5DD933@oracle.com>
-Subject: Re: Kernels 3.7 and newer break rpc.gssd -n
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-ia0-f169.google.com ([209.85.210.169]:49308 "EHLO
+	mail-ia0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756893Ab3BFX37 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Feb 2013 18:29:59 -0500
+Received: by mail-ia0-f169.google.com with SMTP id j5so2366589iaf.0
+        for <linux-nfs@vger.kernel.org>; Wed, 06 Feb 2013 15:29:59 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v1 0/4] Improving WRONGSEC recovery during lookup_root
+To: linux-nfs@vger.kernel.org
+Date: Wed, 06 Feb 2013 18:29:55 -0500
+Message-ID: <20130206230045.1535.48770.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
+MIME-Version: 1.0
 
-> > Yes. With commit 05f4c350 + the compilation fix, the problem occurs, but
-> > without
-> > 05f4c350, the parent (6f2ea7f) works as expected, requesting for service
-> > <null>.
+I've been playing with some improvements to how the Linux NFS client
+behaves when a server requires a stronger security flavor than
+AUTH_UNIX to access its pseudo-fs.
 
-> >> When the mount operation fails, is it the first time this client attempts
-> >> to
-> >> mount a share on server.example.org, or does the client already have
-> >> mounts
-> >> of server.example.org, possibly using other security flavors?
+AUTH_UNIX is the default flavor our client uses when no security
+flavor preference was specified on the mount command.  The client
+has to be smart enough to negotiate the security flavor when the
+server may require something a little stronger.
 
-> > Yes, the problem occurs on the very first mount attempt.
-> 
-> Thanks for confirming.  Did you try updating nfs-utils on your NFS client to
-> 1.2.8-rc1 or later (specifically to replace rpc.gssd)?
+Typically servers take a union of security flavors on all their
+current real shares and use that set as the security flavors
+required for the pseudo-fs.  If a server's real shares are exported
+with only various flavors of Kerberos, for instance, then the
+server's pseudo-fs will not allow AUTH_UNIX access, though the
+server might still allow a SETCLIENTID operation with AUTH_UNIX in
+this case.
 
-Yes, gssd from nfs-utils 1.2.8-rc3 behaves the same way and fails when service 
-name is not null.
+This work is also relevant if we want to consider using an
+integrity-protecting security flavor for lease management operations
+(such as SETCLIENTID and RENEW) while allowing other flavors for
+accessing data or the pseudo-fs.
 
-The code in gssd that checks for the service name seems to be the same if I
-understand the code correctly.
+Version 1 of this series is the result.  I've done some testing with
+a Linux NFS server configured to require a flavor of Kerberos to
+access its pseudo-fs.  I also tried some testing with a Solaris NFS
+server.
 
-http://git.linux-nfs.org/?p=steved/nfs-utils.git;a=blob;f=utils/gssd/gssd_proc.c;h=c17ab3bf914526f433fb6c76ace1daa63c10d921;hb=HEAD#l985
+Bryan, I copied you because you originally wrote the find_root_sec
+code: any comments, review, or testing is appreciated.
 
----------------------------------------------------------------------------------
-        if (uid != 0 || (uid == 0 && root_uses_machine_creds == 0 &&
-                                service == NULL)) {
-                /* Tell krb5 gss which credentials cache to use */
-                for (dirname = ccachesearch; *dirname != NULL; dirname++) {
-                        err = gssd_setup_krb5_user_gss_ccache(uid, clp->servername, *dirname);
-                        if (err == -EKEYEXPIRED)
-                                downcall_err = -EKEYEXPIRED;
-                        else if (!err)
-                                create_resp = create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
-                                                             AUTHTYPE_KRB5);
-                        if (create_resp == 0)
-                                break;
-                }
-        }
----------------------------------------------------------------------------------
+---
 
-Veli-Matti
+Chuck Lever (4):
+      NFS: Use static list of security flavors during root FH lookup recovery
+      NFS: Avoid PUTROOTFH when managing leases
+      NFS: Clean up nfs4_proc_get_rootfh
+      NFS: Handle missing rpc.gssd when looking up root FH
+
+
+ fs/nfs/nfs4proc.c |  134 ++++++++++++++++++++++++++++++++++++++++-------------
+ fs/nfs/nfs4xdr.c  |   18 +------
+ 2 files changed, 104 insertions(+), 48 deletions(-)
+
+-- 
+Chuck Lever
