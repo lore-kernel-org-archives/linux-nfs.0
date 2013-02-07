@@ -1,196 +1,163 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49050 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756800Ab3BAUNG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Feb 2013 15:13:06 -0500
-Date: Fri, 1 Feb 2013 15:13:04 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Al Viro <viro@ZenIV.linux.org.uk>
+Received: from mail-gg0-f182.google.com ([209.85.161.182]:60498 "EHLO
+	mail-gg0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757809Ab3BGOvr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Feb 2013 09:51:47 -0500
+Received: by mail-gg0-f182.google.com with SMTP id d1so295534ggn.27
+        for <linux-nfs@vger.kernel.org>; Thu, 07 Feb 2013 06:51:46 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: handle vfs_getattr errors in acl protocol
-Message-ID: <20130201201304.GE30668@fieldses.org>
-References: <20130201131537.GC30668@fieldses.org>
- <20130201185721.GP4503@ZenIV.linux.org.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130201185721.GP4503@ZenIV.linux.org.uk>
+Subject: [PATCH v3 1/2] sunrpc: trim off trailing checksum before returning decrypted or integrity authenticated buffer
+Date: Thu,  7 Feb 2013 09:51:40 -0500
+Message-Id: <1360248701-23963-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1360248701-23963-1-git-send-email-jlayton@redhat.com>
+References: <1360248701-23963-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 01, 2013 at 06:57:22PM +0000, Al Viro wrote:
-> On Fri, Feb 01, 2013 at 08:15:37AM -0500, J. Bruce Fields wrote:
-> > From: "J. Bruce Fields" <bfields@redhat.com>
-> > 
-> > We're currently ignoring errors from vfs_getattr.
-> > 
-> > The correct thing to do is to do the stat in the main service procedure
-> > not in the response encoding.
-> 
-> FWIW, I'd combine that with parts of commit I've got in my tree; I think
-> nfsd_getattr() in your variant isn't the best API here.  All callers
-> that want nfserrno want vfsmount/dentry coming from some fhandle.  Diff
-> below is introducing such helper and switching to its use (warning: edited
-> patch; only obvious editing done there, but still).  It does *not* address
-> the issue your patch deals with (see /* BUG */ in there), but I really
-> think it's a better interface than your variant.
+When GSSAPI integrity signatures are in use, or when we're using GSSAPI
+privacy with the v2 token format, there is a trailing checksum on the
+xdr_buf that is returned.
 
-Actually, we have precisely the same interface except for the name:
+It's checked during the authentication stage, and afterward nothing
+cares about it. Ordinarily, it's not a problem since the XDR code
+generally ignores it, but it will be when we try to compute a checksum
+over the buffer to help prevent XID collisions in the duplicate reply
+cache.
 
-	__be32 fh_getattr(struct svc_fh *fh, struct kstat *stat)
-vs.
-	__be32 nfsd_getattr(struct svc_fh *fh, struct kstat *stat)
+Fix the code to trim off the checksums after verifying them. Note that
+in unwrap_integ_data, we must avoid trying to reverify the checksum if
+the request was deferred since it will no longer be present when it's
+revisited.
 
-but I'm fine with your name.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ include/linux/sunrpc/xdr.h          |  1 +
+ net/sunrpc/auth_gss/gss_krb5_wrap.c |  2 ++
+ net/sunrpc/auth_gss/svcauth_gss.c   | 10 +++++++--
+ net/sunrpc/xdr.c                    | 42 +++++++++++++++++++++++++++++++++++++
+ 4 files changed, 53 insertions(+), 2 deletions(-)
 
-Do you want to take these patches, or should I?
-
-Assuming the latter: this is a version of my bugfix rebased on top of
-what you just sent me.  I did a quick test and verified it doesn't crash
-when I asked for an acl....
-
---b.
-
-commit 7afea2b2cd951c3a566356206d84a0f5b8aa0e1a
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Wed Jan 30 16:10:19 2013 -0500
-
-    nfsd: handle vfs_getattr errors in acl protocol
-    
-    We're currently ignoring errors from vfs_getattr.
-    
-    The correct thing to do is to do the stat in the main service procedure
-    not in the response encoding.
-    
-    Reported-by: Al Viro <viro@zeniv.linux.org.uk>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
-index 9170861..95d76dc 100644
---- a/fs/nfsd/nfs2acl.c
-+++ b/fs/nfsd/nfs2acl.c
-@@ -45,6 +45,10 @@ static __be32 nfsacld_proc_getacl(struct svc_rqst * rqstp,
- 		RETURN_STATUS(nfserr_inval);
- 	resp->mask = argp->mask;
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index 224d060..15f9204 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -152,6 +152,7 @@ xdr_adjust_iovec(struct kvec *iov, __be32 *p)
+ extern void xdr_shift_buf(struct xdr_buf *, size_t);
+ extern void xdr_buf_from_iov(struct kvec *, struct xdr_buf *);
+ extern int xdr_buf_subsegment(struct xdr_buf *, struct xdr_buf *, unsigned int, unsigned int);
++extern void xdr_buf_trim(struct xdr_buf *, unsigned int);
+ extern int xdr_buf_read_netobj(struct xdr_buf *, struct xdr_netobj *, unsigned int);
+ extern int read_bytes_from_xdr_buf(struct xdr_buf *, unsigned int, void *, unsigned int);
+ extern int write_bytes_to_xdr_buf(struct xdr_buf *, unsigned int, void *, unsigned int);
+diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+index 107c452..88edec9 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
++++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+@@ -574,6 +574,8 @@ gss_unwrap_kerberos_v2(struct krb5_ctx *kctx, int offset, struct xdr_buf *buf)
+ 	buf->head[0].iov_len -= GSS_KRB5_TOK_HDR_LEN + headskip;
+ 	buf->len -= GSS_KRB5_TOK_HDR_LEN + headskip;
  
-+	nfserr = fh_getattr(fh, &resp->stat);
-+	if (nfserr)
-+		goto fail;
++	/* Trim off the checksum blob */
++	xdr_buf_trim(buf, GSS_KRB5_TOK_HDR_LEN + tailskip);
+ 	return GSS_S_COMPLETE;
+ }
+ 
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 73e9573..a5b41e2 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -817,13 +817,17 @@ read_u32_from_xdr_buf(struct xdr_buf *buf, int base, u32 *obj)
+  *	The server uses base of head iovec as read pointer, while the
+  *	client uses separate pointer. */
+ static int
+-unwrap_integ_data(struct xdr_buf *buf, u32 seq, struct gss_ctx *ctx)
++unwrap_integ_data(struct svc_rqst *rqstp, struct xdr_buf *buf, u32 seq, struct gss_ctx *ctx)
+ {
+ 	int stat = -EINVAL;
+ 	u32 integ_len, maj_stat;
+ 	struct xdr_netobj mic;
+ 	struct xdr_buf integ_buf;
+ 
++	/* Did we already verify the signature on the original pass through? */
++	if (rqstp->rq_deferred)
++		return 0;
 +
- 	if (resp->mask & (NFS_ACL|NFS_ACLCNT)) {
- 		acl = nfsd_get_posix_acl(fh, ACL_TYPE_ACCESS);
- 		if (IS_ERR(acl)) {
-@@ -115,6 +119,9 @@ static __be32 nfsacld_proc_setacl(struct svc_rqst * rqstp,
- 		nfserr = nfserrno( nfsd_set_posix_acl(
- 			fh, ACL_TYPE_DEFAULT, argp->acl_default) );
- 	}
-+	if (!nfserr) {
-+		nfserr = fh_getattr(fh, &resp->stat);
+ 	integ_len = svc_getnl(&buf->head[0]);
+ 	if (integ_len & 3)
+ 		return stat;
+@@ -846,6 +850,8 @@ unwrap_integ_data(struct xdr_buf *buf, u32 seq, struct gss_ctx *ctx)
+ 		goto out;
+ 	if (svc_getnl(&buf->head[0]) != seq)
+ 		goto out;
++	/* trim off the mic at the end before returning */
++	xdr_buf_trim(buf, mic.len + 4);
+ 	stat = 0;
+ out:
+ 	kfree(mic.data);
+@@ -1190,7 +1196,7 @@ svcauth_gss_accept(struct svc_rqst *rqstp, __be32 *authp)
+ 			/* placeholders for length and seq. number: */
+ 			svc_putnl(resv, 0);
+ 			svc_putnl(resv, 0);
+-			if (unwrap_integ_data(&rqstp->rq_arg,
++			if (unwrap_integ_data(rqstp, &rqstp->rq_arg,
+ 					gc->gc_seq, rsci->mechctx))
+ 				goto garbage_args;
+ 			break;
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index 5605563..02c1577 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -879,6 +879,48 @@ xdr_buf_subsegment(struct xdr_buf *buf, struct xdr_buf *subbuf,
+ }
+ EXPORT_SYMBOL_GPL(xdr_buf_subsegment);
+ 
++/**
++ * xdr_buf_trim - lop at most "len" bytes off the end of "buf"
++ * @buf: buf to be trimmed
++ * @len: number of bytes to reduce "buf" by
++ *
++ * Trim an xdr_buf by the given number of bytes by fixing up the lengths. Note
++ * that it's possible that we'll trim less than that amount if the xdr_buf is
++ * too small, or if (for instance) it's all in the head and the parser has
++ * already read too far into it.
++ */
++void xdr_buf_trim(struct xdr_buf *buf, unsigned int len)
++{
++	size_t cur;
++	unsigned int trim = len;
++
++	if (buf->tail[0].iov_len) {
++		cur = min_t(size_t, buf->tail[0].iov_len, trim);
++		buf->tail[0].iov_len -= cur;
++		trim -= cur;
++		/* XXX: ok to leave tail[0].iov_base as non-NULL here? */
++		if (!trim)
++			goto fix_len;
 +	}
- 
- 	/* argp->acl_{access,default} may have been allocated in
- 	   nfssvc_decode_setaclargs. */
-@@ -129,10 +136,15 @@ static __be32 nfsacld_proc_setacl(struct svc_rqst * rqstp,
- static __be32 nfsacld_proc_getattr(struct svc_rqst * rqstp,
- 		struct nfsd_fhandle *argp, struct nfsd_attrstat *resp)
++
++	if (buf->page_len) {
++		cur = min_t(unsigned int, buf->page_len, trim);
++		buf->page_len -= cur;
++		trim -= cur;
++		if (!trim)
++			goto fix_len;
++	}
++
++	if (buf->head[0].iov_len) {
++		cur = min_t(size_t, buf->head[0].iov_len, trim);
++		buf->head[0].iov_len -= cur;
++		trim -= cur;
++	}
++fix_len:
++	buf->len -= (len - trim);
++}
++EXPORT_SYMBOL_GPL(xdr_buf_trim);
++
+ static void __read_bytes_from_xdr_buf(struct xdr_buf *subbuf, void *obj, unsigned int len)
  {
-+	__be32 nfserr;
- 	dprintk("nfsd: GETATTR  %s\n", SVCFH_fmt(&argp->fh));
- 
- 	fh_copy(&resp->fh, &argp->fh);
--	return fh_verify(rqstp, &resp->fh, 0, NFSD_MAY_NOP);
-+	nfserr = fh_verify(rqstp, &resp->fh, 0, NFSD_MAY_NOP);
-+	if (nfserr)
-+		return nfserr;
-+	nfserr = fh_getattr(&resp->fh, &resp->stat);
-+	return nfserr;
- }
- 
- /*
-@@ -150,6 +162,9 @@ static __be32 nfsacld_proc_access(struct svc_rqst *rqstp, struct nfsd3_accessarg
- 	fh_copy(&resp->fh, &argp->fh);
- 	resp->access = argp->access;
- 	nfserr = nfsd_access(rqstp, &resp->fh, &resp->access, NULL);
-+	if (nfserr)
-+		return nfserr;
-+	nfserr = fh_getattr(&resp->fh, &resp->stat);
- 	return nfserr;
- }
- 
-@@ -243,7 +258,7 @@ static int nfsaclsvc_encode_getaclres(struct svc_rqst *rqstp, __be32 *p,
- 		return 0;
- 	inode = dentry->d_inode;
- 
--	p = nfs2svc_encode_fattr(rqstp, p, &resp->fh);
-+	p = nfs2svc_encode_fattr(rqstp, p, &resp->fh, &resp->stat);
- 	*p++ = htonl(resp->mask);
- 	if (!xdr_ressize_check(rqstp, p))
- 		return 0;
-@@ -274,7 +289,7 @@ static int nfsaclsvc_encode_getaclres(struct svc_rqst *rqstp, __be32 *p,
- static int nfsaclsvc_encode_attrstatres(struct svc_rqst *rqstp, __be32 *p,
- 		struct nfsd_attrstat *resp)
- {
--	p = nfs2svc_encode_fattr(rqstp, p, &resp->fh);
-+	p = nfs2svc_encode_fattr(rqstp, p, &resp->fh, &resp->stat);
- 	return xdr_ressize_check(rqstp, p);
- }
- 
-@@ -282,7 +297,7 @@ static int nfsaclsvc_encode_attrstatres(struct svc_rqst *rqstp, __be32 *p,
- static int nfsaclsvc_encode_accessres(struct svc_rqst *rqstp, __be32 *p,
- 		struct nfsd3_accessres *resp)
- {
--	p = nfs2svc_encode_fattr(rqstp, p, &resp->fh);
-+	p = nfs2svc_encode_fattr(rqstp, p, &resp->fh, &resp->stat);
- 	*p++ = htonl(resp->access);
- 	return xdr_ressize_check(rqstp, p);
- }
-diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-index bf6d3bc..96e5619 100644
---- a/fs/nfsd/nfsxdr.c
-+++ b/fs/nfsd/nfsxdr.c
-@@ -195,11 +195,9 @@ encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp,
- }
- 
- /* Helper function for NFSv2 ACL code */
--__be32 *nfs2svc_encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp)
-+__be32 *nfs2svc_encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp, struct kstat *stat)
- {
--	struct kstat stat;
--	fh_getattr(fhp, &stat);	/* BUG */
--	return encode_fattr(rqstp, p, fhp, &stat);
-+	return encode_fattr(rqstp, p, fhp, stat);
- }
- 
- /*
-diff --git a/fs/nfsd/xdr.h b/fs/nfsd/xdr.h
-index 53b1863..4f0481d 100644
---- a/fs/nfsd/xdr.h
-+++ b/fs/nfsd/xdr.h
-@@ -167,7 +167,7 @@ int nfssvc_encode_entry(void *, const char *name,
- int nfssvc_release_fhandle(struct svc_rqst *, __be32 *, struct nfsd_fhandle *);
- 
- /* Helper functions for NFSv2 ACL code */
--__be32 *nfs2svc_encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp);
-+__be32 *nfs2svc_encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp, struct kstat *stat);
- __be32 *nfs2svc_decode_fh(__be32 *p, struct svc_fh *fhp);
- 
- #endif /* LINUX_NFSD_H */
-diff --git a/fs/nfsd/xdr3.h b/fs/nfsd/xdr3.h
-index 7df980e..b6d5542 100644
---- a/fs/nfsd/xdr3.h
-+++ b/fs/nfsd/xdr3.h
-@@ -136,6 +136,7 @@ struct nfsd3_accessres {
- 	__be32			status;
- 	struct svc_fh		fh;
- 	__u32			access;
-+	struct kstat		stat;
- };
- 
- struct nfsd3_readlinkres {
-@@ -225,6 +226,7 @@ struct nfsd3_getaclres {
- 	int			mask;
- 	struct posix_acl	*acl_access;
- 	struct posix_acl	*acl_default;
-+	struct kstat		stat;
- };
- 
- /* dummy type for release */
+ 	unsigned int this_len;
+-- 
+1.7.11.7
+
