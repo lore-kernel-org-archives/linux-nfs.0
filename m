@@ -1,121 +1,203 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54246 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758971Ab3BGQlf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Feb 2013 11:41:35 -0500
-Date: Thu, 7 Feb 2013 11:41:34 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Yan Burman <yanb@mellanox.com>
-Cc: linux-nfs@vger.kernel.org, swise@opengridcomputing.com,
-        linux-rdma@vger.kernel.org, Or Gerlitz <ogerlitz@mellanox.com>
-Subject: Re: NFS over RDMA crashing
-Message-ID: <20130207164134.GK3222@fieldses.org>
-References: <51127B3F.2090200@mellanox.com>
- <20130206222435.GL16417@fieldses.org>
-MIME-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:20541 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757884Ab3BGPvN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Feb 2013 10:51:13 -0500
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130206222435.GL16417@fieldses.org>
+Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
+Subject: Re: [PATCH v3 2/2] nfsd: keep a checksum of the first 256 bytes of request
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1360248701-23963-3-git-send-email-jlayton@redhat.com>
+Date: Thu, 7 Feb 2013 10:51:02 -0500
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Message-Id: <DF2DA489-3D72-4DBF-8C65-1B7DA9866B63@oracle.com>
+References: <1360248701-23963-1-git-send-email-jlayton@redhat.com> <1360248701-23963-3-git-send-email-jlayton@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 06, 2013 at 05:24:35PM -0500, J. Bruce Fields wrote:
-> On Wed, Feb 06, 2013 at 05:48:15PM +0200, Yan Burman wrote:
-> > When killing mount command that got stuck:
-> > -------------------------------------------
-> > 
-> > BUG: unable to handle kernel paging request at ffff880324dc7ff8
-> > IP: [<ffffffffa05f3dfb>] rdma_read_xdr+0x8bb/0xd40 [svcrdma]
-> > PGD 1a0c063 PUD 32f82e063 PMD 32f2fd063 PTE 8000000324dc7161
-> > Oops: 0003 [#1] PREEMPT SMP
-> > Modules linked in: md5 ib_ipoib xprtrdma svcrdma rdma_cm ib_cm iw_cm
-> > ib_addr nfsd exportfs netconsole ip6table_filter ip6_tables
-> > iptable_filter ip_tables ebtable_nat nfsv3 nfs_acl ebtables x_tables
-> > nfsv4 auth_rpcgss nfs lockd autofs4 sunrpc target_core_iblock
-> > target_core_file target_core_pscsi target_core_mod configfs 8021q
-> > bridge stp llc ipv6 dm_mirror dm_region_hash dm_log vhost_net
-> > macvtap macvlan tun uinput iTCO_wdt iTCO_vendor_support kvm_intel
-> > kvm crc32c_intel microcode pcspkr joydev i2c_i801 lpc_ich mfd_core
-> > ehci_pci ehci_hcd sg ioatdma ixgbe mdio mlx4_ib ib_sa ib_mad ib_core
-> > mlx4_en mlx4_core igb hwmon dca ptp pps_core button dm_mod ext3 jbd
-> > sd_mod ata_piix libata uhci_hcd megaraid_sas scsi_mod
-> > CPU 6
-> > Pid: 4744, comm: nfsd Not tainted 3.8.0-rc5+ #4 Supermicro
-> > X8DTH-i/6/iF/6F/X8DTH
-> > RIP: 0010:[<ffffffffa05f3dfb>]  [<ffffffffa05f3dfb>]
-> > rdma_read_xdr+0x8bb/0xd40 [svcrdma]
-> > RSP: 0018:ffff880324c3dbf8  EFLAGS: 00010297
-> > RAX: ffff880324dc8000 RBX: 0000000000000001 RCX: ffff880324dd8428
-> > RDX: ffff880324dc7ff8 RSI: ffff880324dd8428 RDI: ffffffff81149618
-> > RBP: ffff880324c3dd78 R08: 000060f9c0000860 R09: 0000000000000001
-> > R10: ffff880324dd8000 R11: 0000000000000001 R12: ffff8806299dcb10
-> > R13: 0000000000000003 R14: 0000000000000001 R15: 0000000000000010
-> > FS:  0000000000000000(0000) GS:ffff88063fc00000(0000) knlGS:0000000000000000
-> > CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> > CR2: ffff880324dc7ff8 CR3: 0000000001a0b000 CR4: 00000000000007e0
-> > DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> > DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> > Process nfsd (pid: 4744, threadinfo ffff880324c3c000, task ffff880330550000)
-> > Stack:
-> >  ffff880324c3dc78 ffff880324c3dcd8 0000000000000282 ffff880631cec000
-> >  ffff880324dd8000 ffff88062ed33040 0000000124c3dc48 ffff880324dd8000
-> >  ffff88062ed33058 ffff880630ce2b90 ffff8806299e8000 0000000000000003
-> > Call Trace:
-> >  [<ffffffffa05f466e>] svc_rdma_recvfrom+0x3ee/0xd80 [svcrdma]
-> >  [<ffffffff81086540>] ? try_to_wake_up+0x2f0/0x2f0
-> >  [<ffffffffa045963f>] svc_recv+0x3ef/0x4b0 [sunrpc]
-> >  [<ffffffffa0571db0>] ? nfsd_svc+0x740/0x740 [nfsd]
-> >  [<ffffffffa0571e5d>] nfsd+0xad/0x130 [nfsd]
-> >  [<ffffffffa0571db0>] ? nfsd_svc+0x740/0x740 [nfsd]
-> >  [<ffffffff81071df6>] kthread+0xd6/0xe0
-> >  [<ffffffff81071d20>] ? __init_kthread_worker+0x70/0x70
-> >  [<ffffffff814b462c>] ret_from_fork+0x7c/0xb0
-> >  [<ffffffff81071d20>] ? __init_kthread_worker+0x70/0x70
-> > Code: 63 c2 49 8d 8c c2 18 02 00 00 48 39 ce 77 e1 49 8b 82 40 0a 00
-> > 00 48 39 c6 0f 84 92 f7 ff ff 90 48 8d 50 f8 49 89 92 40 0a 00 00
-> > <48> c7 40 f8 00 00 00 00 49 8b 82 40 0a 00 00 49 3b 82 30 0a 00
-> > RIP  [<ffffffffa05f3dfb>] rdma_read_xdr+0x8bb/0xd40 [svcrdma]
-> >  RSP <ffff880324c3dbf8>
-> > CR2: ffff880324dc7ff8
-> > ---[ end trace 06d0384754e9609a ]---
-> > 
-> > 
-> > It seems that commit afc59400d6c65bad66d4ad0b2daf879cbff8e23e
-> > "nfsd4: cleanup: replace rq_resused count by rq_next_page pointer"
-> > is responsible for the crash (it seems to be crashing in
-> > net/sunrpc/xprtrdma/svc_rdma_recvfrom.c:527)
-> > It may be because I have CONFIG_DEBUG_SET_MODULE_RONX and
-> > CONFIG_DEBUG_RODATA enabled. I did not try to disable them yet.
-> > 
-> > When I moved to commit 79f77bf9a4e3dd5ead006b8f17e7c4ff07d8374e I
-> > was no longer getting the server crashes,
-> > so the reset of my tests were done using that point (it is somewhere
-> > in the middle of 3.7.0-rc2).
+
+On Feb 7, 2013, at 9:51 AM, Jeff Layton <jlayton@redhat.com> wrote:
+
+> Now that we're allowing more DRC entries, it becomes a lot easier to hit
+> problems with XID collisions. In order to mitigate those, calculate the
+> crc32 of up to the first 256 bytes of each request coming in and store
+> that in the cache entry, along with the total length of the request.
+
+I'm happy to see a checksummed DRC finally become reality for the Linux NFS server.
+
+Have you measured the CPU utilization impact and CPU cache footprint of performing a CRC computation for every incoming RPC?  I'm wondering if a simpler checksum might be just as useful but less costly to compute.
+
+
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+> fs/nfsd/cache.h    |  5 +++++
+> fs/nfsd/nfscache.c | 53 +++++++++++++++++++++++++++++++++++++++++++++++++----
+> 2 files changed, 54 insertions(+), 4 deletions(-)
 > 
-> OK, so this part's clearly my fault--I'll work on a patch, but the
-> rdma's use of the ->rq_pages array is pretty confusing.
+> diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
+> index 9c7232b..4822db3 100644
+> --- a/fs/nfsd/cache.h
+> +++ b/fs/nfsd/cache.h
+> @@ -29,6 +29,8 @@ struct svc_cacherep {
+> 	u32			c_prot;
+> 	u32			c_proc;
+> 	u32			c_vers;
+> +	unsigned int		c_len;
+> +	u32			c_crc;
+> 	unsigned long		c_timestamp;
+> 	union {
+> 		struct kvec	u_vec;
+> @@ -73,6 +75,9 @@ enum {
+> /* Cache entries expire after this time period */
+> #define RC_EXPIRE		(120 * HZ)
+> 
+> +/* Checksum this amount of the request */
+> +#define RC_CSUMLEN		(256U)
+> +
+> int	nfsd_reply_cache_init(void);
+> void	nfsd_reply_cache_shutdown(void);
+> int	nfsd_cache_lookup(struct svc_rqst *);
+> diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+> index f754469..a8c3f1e 100644
+> --- a/fs/nfsd/nfscache.c
+> +++ b/fs/nfsd/nfscache.c
+> @@ -11,6 +11,8 @@
+> #include <linux/slab.h>
+> #include <linux/sunrpc/addr.h>
+> #include <linux/highmem.h>
+> +#include <linux/crc32.h>
+> +#include <linux/sunrpc/svcauth_gss.h>
+> 
+> #include "nfsd.h"
+> #include "cache.h"
+> @@ -24,6 +26,7 @@ static struct list_head 	lru_head;
+> static struct kmem_cache	*drc_slab;
+> static unsigned int		num_drc_entries;
+> static unsigned int		max_drc_entries;
+> +static u32			crc_seed;
+> 
+> /*
+>  * Calculate the hash index from an XID.
+> @@ -130,6 +133,9 @@ int nfsd_reply_cache_init(void)
+> 	INIT_LIST_HEAD(&lru_head);
+> 	max_drc_entries = nfsd_cache_size_limit();
+> 	num_drc_entries = 0;
+> +
+> +	/* Is a random seed any better than some well-defined constant? */
+> +	get_random_bytes(&crc_seed, sizeof(crc_seed));
+> 	return 0;
+> out_nomem:
+> 	printk(KERN_ERR "nfsd: failed to allocate reply cache\n");
+> @@ -238,12 +244,45 @@ nfsd_reply_cache_shrink(struct shrinker *shrink, struct shrink_control *sc)
+> }
+> 
+> /*
+> + * Walk an xdr_buf and get a CRC for at most the first RC_CSUMLEN bytes
+> + */
+> +static u32
+> +nfsd_cache_crc(struct svc_rqst *rqstp)
+> +{
+> +	int idx;
+> +	unsigned int base;
+> +	u32 crc;
+> +	struct xdr_buf *buf = &rqstp->rq_arg;
+> +	const unsigned char *p = buf->head[0].iov_base;
+> +	size_t csum_len = min_t(size_t, buf->head[0].iov_len + buf->page_len,
+> +				RC_CSUMLEN);
+> +	size_t len = min(buf->head[0].iov_len, csum_len);
+> +
+> +	/* rq_arg.head first */
+> +	crc = crc32(crc_seed, p, len);
+> +	csum_len -= len;
+> +
+> +	/* Continue into page array */
+> +	idx = buf->page_base / PAGE_SIZE;
+> +	base = buf->page_base & ~PAGE_MASK;
+> +	while (csum_len) {
+> +		p = page_address(buf->pages[idx]) + base;
+> +		len = min(PAGE_SIZE - base, csum_len);
+> +		crc = crc32(crc, p, len);
+> +		csum_len -= len;
+> +		base = 0;
+> +		++idx;
+> +	}
+> +	return crc;
+> +}
+> +
+> +/*
+>  * Search the request hash for an entry that matches the given rqstp.
+>  * Must be called with cache_lock held. Returns the found entry or
+>  * NULL on failure.
+>  */
+> static struct svc_cacherep *
+> -nfsd_cache_search(struct svc_rqst *rqstp)
+> +nfsd_cache_search(struct svc_rqst *rqstp, u32 crc)
+> {
+> 	struct svc_cacherep	*rp;
+> 	struct hlist_node	*hn;
+> @@ -257,6 +296,7 @@ nfsd_cache_search(struct svc_rqst *rqstp)
+> 	hlist_for_each_entry(rp, hn, rh, c_hash) {
+> 		if (xid == rp->c_xid && proc == rp->c_proc &&
+> 		    proto == rp->c_prot && vers == rp->c_vers &&
+> +		    rqstp->rq_arg.len == rp->c_len && crc == rp->c_crc &&
+> 		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
+> 		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr))
+> 			return rp;
+> @@ -276,7 +316,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+> 	__be32			xid = rqstp->rq_xid;
+> 	u32			proto =  rqstp->rq_prot,
+> 				vers = rqstp->rq_vers,
+> -				proc = rqstp->rq_proc;
+> +				proc = rqstp->rq_proc,
+> +				crc;
+> 	unsigned long		age;
+> 	int type = rqstp->rq_cachetype;
+> 	int rtn;
+> @@ -287,10 +328,12 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+> 		return RC_DOIT;
+> 	}
+> 
+> +	crc = nfsd_cache_crc(rqstp);
+> +
+> 	spin_lock(&cache_lock);
+> 	rtn = RC_DOIT;
+> 
+> -	rp = nfsd_cache_search(rqstp);
+> +	rp = nfsd_cache_search(rqstp, crc);
+> 	if (rp)
+> 		goto found_entry;
+> 
+> @@ -318,7 +361,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+> 	 * Must search again just in case someone inserted one
+> 	 * after we dropped the lock above.
+> 	 */
+> -	found = nfsd_cache_search(rqstp);
+> +	found = nfsd_cache_search(rqstp, crc);
+> 	if (found) {
+> 		nfsd_reply_cache_free_locked(rp);
+> 		rp = found;
+> @@ -344,6 +387,8 @@ setup_entry:
+> 	rpc_set_port((struct sockaddr *)&rp->c_addr, rpc_get_port(svc_addr(rqstp)));
+> 	rp->c_prot = proto;
+> 	rp->c_vers = vers;
+> +	rp->c_len = rqstp->rq_arg.len;
+> +	rp->c_crc = crc;
+> 
+> 	hash_refile(rp);
+> 	lru_put_end(rp);
+> -- 
+> 1.7.11.7
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Does this help?
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-They must have added this for some reason, but I'm not seeing how it
-could have ever done anything....
 
---b.
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index 0ce7552..e8f25ec 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -520,13 +520,6 @@ next_sge:
- 	for (ch_no = 0; &rqstp->rq_pages[ch_no] < rqstp->rq_respages; ch_no++)
- 		rqstp->rq_pages[ch_no] = NULL;
- 
--	/*
--	 * Detach res pages. If svc_release sees any it will attempt to
--	 * put them.
--	 */
--	while (rqstp->rq_next_page != rqstp->rq_respages)
--		*(--rqstp->rq_next_page) = NULL;
--
- 	return err;
- }
- 
+
