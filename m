@@ -1,100 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46490 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753029Ab3BCQbf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 3 Feb 2013 11:31:35 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 00/12] Implement NFSv4 delegations, take 6
-Date: Sun,  3 Feb 2013 11:31:20 -0500
-Message-Id: <1359909092-24857-1-git-send-email-bfields@redhat.com>
+Received: from mail-ie0-f172.google.com ([209.85.223.172]:58627 "EHLO
+	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754325Ab3BGQAO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Feb 2013 11:00:14 -0500
+MIME-Version: 1.0
+In-Reply-To: <20130207144156.GB3222@fieldses.org>
+References: <1358441584-8783-1-git-send-email-piastry@etersoft.ru>
+	<1358441584-8783-3-git-send-email-piastry@etersoft.ru>
+	<20130130221602.GC15584@fieldses.org>
+	<CAKywueRh++TBazK8_kRN7AUb=EFhGv=Sv2CV0BESkfLFy+g5wA@mail.gmail.com>
+	<20130205143514.GA9886@fieldses.org>
+	<CAKywueS6oGNu9r_bypu32A89pOoiGb47kjXqw2ZcZQhZK+JV3g@mail.gmail.com>
+	<20130207141832.GA3222@fieldses.org>
+	<CAKywueTmU_L5cwwJSoUY6753eHf_38VtHadZGt9tcLS59sqmOA@mail.gmail.com>
+	<20130207144156.GB3222@fieldses.org>
+Date: Thu, 7 Feb 2013 20:00:13 +0400
+Message-ID: <CAKywueShbPd9b+WmJwnfwPR_vzk_atBVRBZNTf-HpS7N2CK+AA@mail.gmail.com>
+Subject: Re: [PATCH v2 3/8] vfs: Add O_DENYREAD/WRITE flags support for open syscall
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        wine-devel@winehq.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+2013/2/7 J. Bruce Fields <bfields@fieldses.org>:
+> On Thu, Feb 07, 2013 at 06:32:38PM +0400, Pavel Shilovsky wrote:
+>> 2013/2/7 J. Bruce Fields <bfields@fieldses.org>:
+>> > On Thu, Feb 07, 2013 at 01:53:46PM +0400, Pavel Shilovsky wrote:
+>> >> Nothing prevents it. If somebody grabbed a share mode lock on a file
+>> >> before we call deny_lock_file, we simply close this file and return
+>> >> -ETXTBSY.
+>> >
+>> > But leave the newly-created file there--ugh.
+>> >
+>> >> We can't grab it before atomic_open because we don't have an
+>> >> inode there.
+>> >
+>> > If you can get the lock while still holding the directory i_mutex can't
+>> > you prevent anyone else from looking up the new file until you've gotten
+>> > the lock?
+>> >
+>>
+>> Hm..., seems you are right, I missed this part:
+>> mutex_lock
+>> lookup_open -> atomic_open -> deny_lock_file
+>> mutex_unlock
+>>
+>> that means that nobody can open and of course set flock on the newly
+>> created file (because flock is done through file descriptor). So, it
+>> should be fine to call flock after f_ops->atomic_open in atomic_open
+>> function. Thanks.
+>
+> Whether that works may also depend on how the new dentry is set up?  If
+> it's hashed before you call flock then I suppose it's already visible to
+> others.
 
-Previous posting:
-	http://mid.gmane.org/<1350424897-26894-1-git-send-email-bfields@redhat.com>
+It seems it should be hashed in f_ops->atomic_open() (at least cifs
+and nfs do it this way). In do_last when we do an ordinary open, we
+don't hit parent i_mutex if lookup is succeeded through lookup_fast.
+lookup_fast can catch newly created dentry and set it's share mode
+before atomic_open codepath hits deny_lock_file.
 
-This patch series implements read delegations, which allow NFSv4 clients
-to perform read opens without contacting the server, by promising to
-call back to clients before modifying the data, metadata, or set of
-links pointing to a file.
-
-The main recent change was in response to review from Linus, who didn't
-want us to hang under directory i_mutex's on timeouts communicating with
-unresponsive clients.
-
-So, this version of the series drops the i_mutex before waiting.  The
-logic ends up looking something like:
-
-	acquire locks
-	look up inode
-	test for delegation; if found:
-		take reference on inode
-		release locks
-		wait for delegation break
-		drop reference on inode
-		retry 
-
-
-The initial test for a delegation happens after the lock on the
-delegated inode is acquired, but additional directory mutexes may have
-been acquired further up the call stack.  I therefore add a "struct
-inode **" argument to any intervening functions, which we use to pass
-the inode back up to the caller in the case it needs to wait for the
-delegation to be broken.
-
-I also allow callers to pass in NULL for the "struct inode **" argument
-to indicate they'd rather just fail than wait for a delegation.  For
-example, as long as ecryptfs isn't exportable I assume they'd rather not
-see retry logic there that they won't use.  But I may have misjudged in
-some of these cases.
-
-Maybe there's a simpler approach.  Happy for any feedback.
-
-That aside, I don't know of any bugs at this point, so as far as I'm
-concerned it's ready for 3.9.
-
---b.
-
-
-J. Bruce Fields (12):
-  vfs: pull ext4's double-i_mutex-locking into common code
-  vfs: don't use PARENT/CHILD lock classes for non-directories
-  vfs: rename I_MUTEX_QUOTA now that it's not used for quotas
-  vfs: take i_mutex on renamed file
-  locks: introduce new FL_DELEG lock flag
-  locks: implement delegations
-  namei: minor vfs_unlink cleanup
-  locks: break delegations on unlink
-  locks: helper functions for delegation breaking
-  locks: break delegations on rename
-  locks: break delegations on link
-  locks: break delegations on any attribute modification
-
- Documentation/filesystems/directory-locking |   31 ++++++++---
- drivers/base/devtmpfs.c                     |    6 +-
- fs/attr.c                                   |    5 +-
- fs/cachefiles/interface.c                   |    4 +-
- fs/cachefiles/namei.c                       |    4 +-
- fs/ecryptfs/inode.c                         |    6 +-
- fs/ext4/move_extent.c                       |   40 +-------------
- fs/hpfs/namei.c                             |    2 +-
- fs/inode.c                                  |   35 +++++++++++-
- fs/locks.c                                  |   51 +++++++++++++----
- fs/namei.c                                  |   79 +++++++++++++++++++++------
- fs/nfsd/nfs4state.c                         |    2 +-
- fs/nfsd/vfs.c                               |   14 +++--
- fs/open.c                                   |   21 +++++--
- fs/utimes.c                                 |    9 ++-
- include/linux/fs.h                          |   72 ++++++++++++++++++++----
- ipc/mqueue.c                                |    2 +-
- 17 files changed, 271 insertions(+), 112 deletions(-)
+Also, I noted that: atomic open does f_ops->atomic_open and then it
+processes may_open check; if may_open fails, the file is closed and
+open returns with a error code (but file is created anyway) . I think
+there is no difference between this case and the situation with
+deny_lock_file there.
 
 -- 
-1.7.9.5
-
+Best regards,
+Pavel Shilovsky.
