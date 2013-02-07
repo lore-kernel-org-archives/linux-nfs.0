@@ -1,116 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:12064 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932711Ab3BSMeE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Feb 2013 07:34:04 -0500
-Date: Tue, 19 Feb 2013 07:33:18 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: NeilBrown <neilb@suse.de>
-Cc: Al Viro <viro@ZenIV.linux.org.uk>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        NFS <linux-nfs@vger.kernel.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: More fun with unmounting ESTALE directories.
-Message-ID: <20130219073318.2b822c56@tlielax.poochiereds.net>
-In-Reply-To: <20130219101450.42c1752c@notabene.brown>
-References: <20130212113813.427b8e05@notabene.brown>
-	<20130214104230.013b7f71@tlielax.poochiereds.net>
-	<20130218132509.0ce779de@notabene.brown>
-	<20130218184609.GF4503@ZenIV.linux.org.uk>
-	<20130218144655.42b3f3e3@tlielax.poochiereds.net>
-	<20130218201502.GH4503@ZenIV.linux.org.uk>
-	<20130219101450.42c1752c@notabene.brown>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/=thgERu36yQ8Z.minFw.pDW"; protocol="application/pgp-signature"
+Received: from aserp1040.oracle.com ([141.146.126.69]:21227 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756047Ab3BGQ0w convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Feb 2013 11:26:52 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
+Subject: Re: [PATCH] SUNRPC: Refactor nfsd4_do_encode_secinfo()
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20130207162308.GI3222@fieldses.org>
+Date: Thu, 7 Feb 2013 11:26:43 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <F0DAA0C6-DBA2-457B-8C68-13A2BC3CB4AC@oracle.com>
+References: <20130201220308.13518.82164.stgit@seurat.1015granger.net> <20130207150213.GC3222@fieldses.org> <87316F41-4E5E-473C-A372-0AFC6721A355@oracle.com> <20130207162308.GI3222@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/=thgERu36yQ8Z.minFw.pDW
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
 
-On Tue, 19 Feb 2013 10:14:50 +1100
-NeilBrown <neilb@suse.de> wrote:
+On Feb 7, 2013, at 11:23 AM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-> On Mon, 18 Feb 2013 20:15:02 +0000 Al Viro <viro@ZenIV.linux.org.uk> wrot=
-e:
->=20
-> > On Mon, Feb 18, 2013 at 02:46:55PM -0500, Jeff Layton wrote:
-> >=20
-> > > Ok, that helps. In that case, this patch might be a reasonable
-> > > forward-port of the one Neil sent earlier today. Note that this doesn=
-'t
-> > > really do anything for the umount problem, but it does seem to fix the
-> > > testcase for the problem I've been looking at.
-> > >=20
-> > > Thoughts?
-> >=20
-> > If we really go for "in this case revalidate should be weaker", we might
-> > as well introduce a separate method for it.
-> >=20
-> > As it is, we have several callers of ->d_revalidate(); this one (in
-> > complete_walk(), only for FS_REVAL_DOT filesystems) and ones in
-> > lookup_dcache() and lookup_fast() (in both cases we have and want the
-> > name to match).  There are only two fs with FS_REVAL_DOT present - nfs
-> > and 9p.  *IF* we want to make ->d_revalidate() on NFS behave differently
-> > in complete_walk() case, it would argue for just splitting the method
-> > in two, replacing FS_REVAL_DOT with "dentry has this method" and probab=
-ly
-> > taking a good look at what 9p needs in the same case.
->=20
-> Sounds good to me.
->=20
-> Reminds me that we used to have an i_op->revalidate() method for revalida=
-ting
-> just the inode (not the dentry).  It called nfs_revalidate_inode() for NF=
-S.
->=20
-> We lost it over a decade ago:
->=20
-> commit cc41b90f8a9ad3cd85a39dd4fcc71f965a675b0e
-> Author: Alexander Viro <viro@math.psu.edu>
-> Date:   Tue May 21 21:12:46 2002 -0700
->=20
->     [PATCH] kill ->i_op->revalidate()
->    =20
->     kill ->i_op->revalidate()
->=20
->=20
->=20
-> :-)
->=20
-> (this doesn't help my umount problem though)
->=20
+> On Thu, Feb 07, 2013 at 10:58:25AM -0500, Chuck Lever wrote:
+>> 
+>> On Feb 7, 2013, at 10:02 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>> 
+>>> On Fri, Feb 01, 2013 at 05:43:44PM -0500, Chuck Lever wrote:
+>>>> Clean up.  This matches a similar API for the client side, and
+>>>> keeps ULP fingers out the of the GSS mech switch.
+>>>> 
+>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>>> Acked-by: J. Bruce Fields <bfields@redhat.com>
+>>>> ---
+>>>> 
+>>>> Bruce-
+>>>> 
+>>>> This version of the patch follows the existing logic in
+>>>> nfsd4_do_encode_secinfo(): If the RPC layer can't find GSS info
+>>>> that matches an export security flavor, it assumes the flavor is
+>>>> not a GSS pseudoflavor, and simply puts it on the wire.
+>>>> 
+>>>> However, if the below XDR encoding logic is given a legitimate GSS
+>>>> pseudoflavor but the RPC layer says it does not support that
+>>>> pseudoflavor for some reason, then we leak GSS pseudoflavor numbers
+>>>> onto the wire.
+>>>> 
+>>>> I confirmed this happens by blacklisting rpcsec_gss_krb5, then
+>>>> attempted a client transition from the pseudo-fs to a Kerberos-only
+>>>> share.  The client received a flavor list containing the Kerberos
+>>>> pseudoflavor numbers, rather than GSS tuples.
+>>>> 
+>>>> The encoder logic can check that each pseudoflavor is less than
+>>>> MAXFLAVOR before writing it into the buffer, to prevent this.  But
+>>>> after "nflavs" is written into the XDR buffer, the encoder can't
+>>>> skip writing flavor information into the buffer when it discovers
+>>>> the RPC layer doesn't support that flavor.
+>>>> 
+>>>> Is there some way of writing "nflavs" into the XDR buffer after
+>>>> the loop that writes the flavor information is complete?
+>>> 
+>>> Yes, you can save a pointer and then go back and fill that in--see
+>>> encode_fattr for an example.
+>> 
+>> Thanks, I will submit an additional patch that describes this issue and fixes it.
+>> 
+>> I asked David Noveck, as one of the authors of RFC 3530, whether an NFS server should return a zero-length flavor list or an error if SECINFO can't find any flavors a client is allowed to use. His opinion was to return NFS4_OK and a zero-length flavor list.
+> 
+> Fine with me for this code.
 
-That would work for NFS, but unfortunately I think 9p needs a dentry
-operation here if we're not going to break it. Anyone want to suggest a
-new name for it? I'm using d_reval_dot for now, but a better name would
-be welcome...
+OK, will go with that.
 
---=20
-Jeff Layton <jlayton@redhat.com>
+> (In practice though we should probably be warning somewhere (exportfs?)
+> if somebody creates an export like that.)
 
---Sig_/=thgERu36yQ8Z.minFw.pDW
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
+The problem can also arise because gssd isn't running or auth_rpcgss.ko or rpcsec_gss_krb5.ko are not loadable for some reason.  In other words, an empty flavor list might also be the result of a transient server misconfiguration.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.19 (GNU/Linux)
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-iQIcBAEBAgAGBQJRI3EOAAoJEAAOaEEZVoIVYq8P/2sNQ8Ro5zY9Q7+mNuwLPVHF
-OS9ZxI4tg7nzU1Y7vMo8qOSr6/ekU0ptZ0uxW2r/vRHOAOVqlt8gTgU+naJrlRED
-P+Z4MKVp1nyw59vupGc7A0/HQVZf5JFBOZwZfvOX5ZUox1+RPcpvPOrTco5fhh5B
-0CltmLHr9agqm3inuBQM9N85APnd2oJ4Sun1A9GnRG+XKml98TdBRYvNsCPCNwS0
-Ixkw9Nh6XU9FSJuXkxZOdbwqPZU7YdhIeIgjXM8pbnfMQ1UUI9t6wTIIquR9Qngq
-WmjulAhnXNIJBtaLFZmg1Pn2azjzXYBVBQDLTxHqwshmD4iAiECcDEaPA0v0tK4O
-dSnmAud6+fycm+Xs2w6Vd5qFkBW7Y8D6cuR6JFf9O2iJ4KCf5eX2sC7hpGaJKH1O
-h/jfgerDUDSIwvZr/vUCewnE98MIf+KAs6sXOCMhY9UNW6wDD08p2bzcktdb4VMn
-c+CBbFIHPCTO2T9YoIi+1wVwyWz38jrZZa8RCt7ZkoWqeHcqB/Hcey+adA4xS8XA
-DyKZESzyktjR1Tf3dGskvS4BIgsfTfS+piDHT2IJJE8GDir/zYctywoVwpMgSZI6
-rz2lmelw6NZYGn4ww7S8s3SUyblM4kFX90INf5jIRZ9w7NTF8XAnXdq5d4Hvzk2r
-UTk43IEtVoez2gALpUW+
-=hKud
------END PGP SIGNATURE-----
 
---Sig_/=thgERu36yQ8Z.minFw.pDW--
+
+
