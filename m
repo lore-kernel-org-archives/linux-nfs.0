@@ -1,188 +1,253 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from zeniv.linux.org.uk ([195.92.253.2]:51546 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752921Ab3BAS5X (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Feb 2013 13:57:23 -0500
-Date: Fri, 1 Feb 2013 18:57:22 +0000
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: handle vfs_getattr errors in acl protocol
-Message-ID: <20130201185721.GP4503@ZenIV.linux.org.uk>
-References: <20130201131537.GC30668@fieldses.org>
-MIME-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:18951 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754288Ab3BGQX2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Feb 2013 11:23:28 -0500
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130201131537.GC30668@fieldses.org>
+Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
+Subject: Re: [PATCH v3 2/2] nfsd: keep a checksum of the first 256 bytes of request
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20130207160032.GF3222@fieldses.org>
+Date: Thu, 7 Feb 2013 11:23:17 -0500
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+Message-Id: <7AE3520E-0F1E-4BDF-9977-B110180E99E3@oracle.com>
+References: <1360248701-23963-1-git-send-email-jlayton@redhat.com> <1360248701-23963-3-git-send-email-jlayton@redhat.com> <DF2DA489-3D72-4DBF-8C65-1B7DA9866B63@oracle.com> <20130207160032.GF3222@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 01, 2013 at 08:15:37AM -0500, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
+
+On Feb 7, 2013, at 11:00 AM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Thu, Feb 07, 2013 at 10:51:02AM -0500, Chuck Lever wrote:
+>> 
+>> On Feb 7, 2013, at 9:51 AM, Jeff Layton <jlayton@redhat.com> wrote:
+>> 
+>>> Now that we're allowing more DRC entries, it becomes a lot easier to
+>>> hit problems with XID collisions. In order to mitigate those,
+>>> calculate the crc32 of up to the first 256 bytes of each request
+>>> coming in and store that in the cache entry, along with the total
+>>> length of the request.
+>> 
+>> I'm happy to see a checksummed DRC finally become reality for the
+>> Linux NFS server.
+>> 
+>> Have you measured the CPU utilization impact and CPU cache footprint
+>> of performing a CRC computation for every incoming RPC?
 > 
-> We're currently ignoring errors from vfs_getattr.
+> Note this is over the first 256 bytes of the request--which we're
+> probably just about to read for xdr decoding anyway.
+
+XDR decoding is copying and branching.  Computing a CRC involves real math, which tends to be significantly more expensive than successfully predicted branches, especially on low-power CPUs that might be found in SOHO NAS products.
+
+
 > 
-> The correct thing to do is to do the stat in the main service procedure
-> not in the response encoding.
+>> I'm wondering if a simpler checksum might be just as useful but less
+>> costly to compute.
+> 
+> What would be an example of a simpler checksum?
 
-FWIW, I'd combine that with parts of commit I've got in my tree; I think
-nfsd_getattr() in your variant isn't the best API here.  All callers
-that want nfserrno want vfsmount/dentry coming from some fhandle.  Diff
-below is introducing such helper and switching to its use (warning: edited
-patch; only obvious editing done there, but still).  It does *not* address
-the issue your patch deals with (see /* BUG */ in there), but I really
-think it's a better interface than your variant.  FWIW, the rest of the
-commit in question is switching vfs_getattr() to struct path *; I'd
-edited those parts out of the diff below.  Comments?
+The same one TCP uses, like a simple additive sum, or an XOR.  Is a heavyweight checksum needed because checksums generated with a simple function are more likely to collide?
 
-new helper: fh_getattr
+Not that this should hold up merging Jeff's work!  We can easily tweak or replace the checksum algorithm after it's upstream.  It's not kABI.
 
-A bunch of places in nfsd want vfs_getattr() done on object an fhandle
-refers to, with nfs-encoded error (__be32).  fh_getattr(fh, stat) does
-just that; open-coded instances switched to it.
- 
-Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
----
-diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index 1fc02df..4012899 100644
---- a/fs/nfsd/nfs3proc.c
-+++ b/fs/nfsd/nfs3proc.c
-@@ -43,7 +43,6 @@ static __be32
- nfsd3_proc_getattr(struct svc_rqst *rqstp, struct nfsd_fhandle  *argp,
- 					   struct nfsd3_attrstat *resp)
- {
--	int	err;
- 	__be32	nfserr;
- 
- 	dprintk("nfsd: GETATTR(3)  %s\n",
-@@ -55,9 +54,7 @@ nfsd3_proc_getattr(struct svc_rqst *rqstp, struct nfsd_fhandle  *argp,
- 	if (nfserr)
- 		RETURN_STATUS(nfserr);
- 
--	err = vfs_getattr(resp->fh.fh_export->ex_path.mnt,
--			  resp->fh.fh_dentry, &resp->stat);
--	nfserr = nfserrno(err);
-+	nfserr = fh_getattr(&resp->fh, &resp->stat);
- 
- 	RETURN_STATUS(nfserr);
- }
-diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index 324c0ba..7af9417b 100644
---- a/fs/nfsd/nfs3xdr.c
-+++ b/fs/nfsd/nfs3xdr.c
-@@ -11,6 +11,7 @@
- #include "xdr3.h"
- #include "auth.h"
- #include "netns.h"
-+#include "vfs.h"
- 
- #define NFSDDBG_FACILITY		NFSDDBG_XDR
- 
-@@ -204,10 +205,10 @@ encode_post_op_attr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp)
- {
- 	struct dentry *dentry = fhp->fh_dentry;
- 	if (dentry && dentry->d_inode) {
--	        int err;
-+	        __be32 err;
- 		struct kstat stat;
- 
--		err = vfs_getattr(fhp->fh_export->ex_path.mnt, dentry, &stat);
-+		err = fh_getattr(fhp, &stat);
- 		if (!err) {
- 			*p++ = xdr_one;		/* attributes follow */
- 			lease_get_mtime(dentry->d_inode, &stat.mtime);
-@@ -254,13 +255,12 @@ encode_wcc_data(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp)
-  */
- void fill_post_wcc(struct svc_fh *fhp)
- {
--	int err;
-+	__be32 err;
- 
- 	if (fhp->fh_post_saved)
- 		printk("nfsd: inode locked twice during operation.\n");
- 
--	err = vfs_getattr(fhp->fh_export->ex_path.mnt, fhp->fh_dentry,
--			&fhp->fh_post_attr);
-+	err = fh_getattr(fhp, &fhp->fh_post_attr);
- 	fhp->fh_post_change = fhp->fh_dentry->d_inode->i_version;
- 	if (err) {
- 		fhp->fh_post_saved = 0;
-diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index aad6d45..54c6b3d 100644
---- a/fs/nfsd/nfsproc.c
-+++ b/fs/nfsd/nfsproc.c
-@@ -26,17 +26,13 @@ static __be32
- nfsd_return_attrs(__be32 err, struct nfsd_attrstat *resp)
- {
- 	if (err) return err;
--	return nfserrno(vfs_getattr(resp->fh.fh_export->ex_path.mnt,
--				    resp->fh.fh_dentry,
--				    &resp->stat));
-+	return fh_getattr(&resp->fh, &resp->stat);
- }
- static __be32
- nfsd_return_dirop(__be32 err, struct nfsd_diropres *resp)
- {
- 	if (err) return err;
--	return nfserrno(vfs_getattr(resp->fh.fh_export->ex_path.mnt,
--				    resp->fh.fh_dentry,
--				    &resp->stat));
-+	return fh_getattr(&resp->fh, &resp->stat);
- }
- /*
-  * Get a file's attributes
-@@ -150,9 +146,7 @@ nfsd_proc_read(struct svc_rqst *rqstp, struct nfsd_readargs *argp,
- 				  &resp->count);
- 
- 	if (nfserr) return nfserr;
--	return nfserrno(vfs_getattr(resp->fh.fh_export->ex_path.mnt,
--				    resp->fh.fh_dentry,
--				    &resp->stat));
-+	return fh_getattr(&resp->fh, &resp->stat);
- }
- 
- /*
-diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-index 979b421..bf6d3bc 100644
---- a/fs/nfsd/nfsxdr.c
-+++ b/fs/nfsd/nfsxdr.c
-@@ -4,6 +4,7 @@
-  * Copyright (C) 1995, 1996 Olaf Kirch <okir@monad.swb.de>
-  */
- 
-+#include "vfs.h"
- #include "xdr.h"
- #include "auth.h"
- 
-@@ -197,7 +198,7 @@ encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp,
- __be32 *nfs2svc_encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp)
- {
- 	struct kstat stat;
--	vfs_getattr(fhp->fh_export->ex_path.mnt, fhp->fh_dentry, &stat);
-+	fh_getattr(fhp, &stat);	/* BUG */
- 	return encode_fattr(rqstp, p, fhp, &stat);
- }
- 
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index 359594c..5b58941 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -6,6 +6,7 @@
- #define LINUX_NFSD_VFS_H
- 
- #include "nfsfh.h"
-+#include "nfsd.h"
- 
- /*
-  * Flags for nfsd_permission
-@@ -125,4 +126,11 @@ static inline void fh_drop_write(struct svc_fh *fh)
- 	}
- }
- 
-+static inline __be32 fh_getattr(struct svc_fh *fh, struct kstat *stat)
-+{
-+	return nfserrno(vfs_getattr(fh->fh_export->ex_path.mnt,
-+				    fh->fh_dentry,
-+				    stat));
-+}
-+
- #endif /* LINUX_NFSD_VFS_H */
+But someone should assess the impact of the additional checksum computation.  CRC seems to me heavier than is needed here.
+
+
+Possible tweaks:
+
+Why 256 bytes?  Is that too much?  Or not enough for some NFSv4 compounds that might often start with the same data?  Could we, for instance, use fewer bytes for NFSv2 and NFSv3?  Or even a variable checksum length depending on the NFS operation?  Is 256 bytes enough for NFSv4.1, whose compounds always start with the same operation?
+
+If integrity or privacy is in play, can we use that information in place of a separate DRC checksum?
+
+
+
+> 
+> --b.
+> 
+>> 
+>> 
+>>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+>>> ---
+>>> fs/nfsd/cache.h    |  5 +++++
+>>> fs/nfsd/nfscache.c | 53 +++++++++++++++++++++++++++++++++++++++++++++++++----
+>>> 2 files changed, 54 insertions(+), 4 deletions(-)
+>>> 
+>>> diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
+>>> index 9c7232b..4822db3 100644
+>>> --- a/fs/nfsd/cache.h
+>>> +++ b/fs/nfsd/cache.h
+>>> @@ -29,6 +29,8 @@ struct svc_cacherep {
+>>> 	u32			c_prot;
+>>> 	u32			c_proc;
+>>> 	u32			c_vers;
+>>> +	unsigned int		c_len;
+>>> +	u32			c_crc;
+>>> 	unsigned long		c_timestamp;
+>>> 	union {
+>>> 		struct kvec	u_vec;
+>>> @@ -73,6 +75,9 @@ enum {
+>>> /* Cache entries expire after this time period */
+>>> #define RC_EXPIRE		(120 * HZ)
+>>> 
+>>> +/* Checksum this amount of the request */
+>>> +#define RC_CSUMLEN		(256U)
+>>> +
+>>> int	nfsd_reply_cache_init(void);
+>>> void	nfsd_reply_cache_shutdown(void);
+>>> int	nfsd_cache_lookup(struct svc_rqst *);
+>>> diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+>>> index f754469..a8c3f1e 100644
+>>> --- a/fs/nfsd/nfscache.c
+>>> +++ b/fs/nfsd/nfscache.c
+>>> @@ -11,6 +11,8 @@
+>>> #include <linux/slab.h>
+>>> #include <linux/sunrpc/addr.h>
+>>> #include <linux/highmem.h>
+>>> +#include <linux/crc32.h>
+>>> +#include <linux/sunrpc/svcauth_gss.h>
+>>> 
+>>> #include "nfsd.h"
+>>> #include "cache.h"
+>>> @@ -24,6 +26,7 @@ static struct list_head 	lru_head;
+>>> static struct kmem_cache	*drc_slab;
+>>> static unsigned int		num_drc_entries;
+>>> static unsigned int		max_drc_entries;
+>>> +static u32			crc_seed;
+>>> 
+>>> /*
+>>> * Calculate the hash index from an XID.
+>>> @@ -130,6 +133,9 @@ int nfsd_reply_cache_init(void)
+>>> 	INIT_LIST_HEAD(&lru_head);
+>>> 	max_drc_entries = nfsd_cache_size_limit();
+>>> 	num_drc_entries = 0;
+>>> +
+>>> +	/* Is a random seed any better than some well-defined constant? */
+>>> +	get_random_bytes(&crc_seed, sizeof(crc_seed));
+>>> 	return 0;
+>>> out_nomem:
+>>> 	printk(KERN_ERR "nfsd: failed to allocate reply cache\n");
+>>> @@ -238,12 +244,45 @@ nfsd_reply_cache_shrink(struct shrinker *shrink, struct shrink_control *sc)
+>>> }
+>>> 
+>>> /*
+>>> + * Walk an xdr_buf and get a CRC for at most the first RC_CSUMLEN bytes
+>>> + */
+>>> +static u32
+>>> +nfsd_cache_crc(struct svc_rqst *rqstp)
+>>> +{
+>>> +	int idx;
+>>> +	unsigned int base;
+>>> +	u32 crc;
+>>> +	struct xdr_buf *buf = &rqstp->rq_arg;
+>>> +	const unsigned char *p = buf->head[0].iov_base;
+>>> +	size_t csum_len = min_t(size_t, buf->head[0].iov_len + buf->page_len,
+>>> +				RC_CSUMLEN);
+>>> +	size_t len = min(buf->head[0].iov_len, csum_len);
+>>> +
+>>> +	/* rq_arg.head first */
+>>> +	crc = crc32(crc_seed, p, len);
+>>> +	csum_len -= len;
+>>> +
+>>> +	/* Continue into page array */
+>>> +	idx = buf->page_base / PAGE_SIZE;
+>>> +	base = buf->page_base & ~PAGE_MASK;
+>>> +	while (csum_len) {
+>>> +		p = page_address(buf->pages[idx]) + base;
+>>> +		len = min(PAGE_SIZE - base, csum_len);
+>>> +		crc = crc32(crc, p, len);
+>>> +		csum_len -= len;
+>>> +		base = 0;
+>>> +		++idx;
+>>> +	}
+>>> +	return crc;
+>>> +}
+>>> +
+>>> +/*
+>>> * Search the request hash for an entry that matches the given rqstp.
+>>> * Must be called with cache_lock held. Returns the found entry or
+>>> * NULL on failure.
+>>> */
+>>> static struct svc_cacherep *
+>>> -nfsd_cache_search(struct svc_rqst *rqstp)
+>>> +nfsd_cache_search(struct svc_rqst *rqstp, u32 crc)
+>>> {
+>>> 	struct svc_cacherep	*rp;
+>>> 	struct hlist_node	*hn;
+>>> @@ -257,6 +296,7 @@ nfsd_cache_search(struct svc_rqst *rqstp)
+>>> 	hlist_for_each_entry(rp, hn, rh, c_hash) {
+>>> 		if (xid == rp->c_xid && proc == rp->c_proc &&
+>>> 		    proto == rp->c_prot && vers == rp->c_vers &&
+>>> +		    rqstp->rq_arg.len == rp->c_len && crc == rp->c_crc &&
+>>> 		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
+>>> 		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr))
+>>> 			return rp;
+>>> @@ -276,7 +316,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+>>> 	__be32			xid = rqstp->rq_xid;
+>>> 	u32			proto =  rqstp->rq_prot,
+>>> 				vers = rqstp->rq_vers,
+>>> -				proc = rqstp->rq_proc;
+>>> +				proc = rqstp->rq_proc,
+>>> +				crc;
+>>> 	unsigned long		age;
+>>> 	int type = rqstp->rq_cachetype;
+>>> 	int rtn;
+>>> @@ -287,10 +328,12 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+>>> 		return RC_DOIT;
+>>> 	}
+>>> 
+>>> +	crc = nfsd_cache_crc(rqstp);
+>>> +
+>>> 	spin_lock(&cache_lock);
+>>> 	rtn = RC_DOIT;
+>>> 
+>>> -	rp = nfsd_cache_search(rqstp);
+>>> +	rp = nfsd_cache_search(rqstp, crc);
+>>> 	if (rp)
+>>> 		goto found_entry;
+>>> 
+>>> @@ -318,7 +361,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+>>> 	 * Must search again just in case someone inserted one
+>>> 	 * after we dropped the lock above.
+>>> 	 */
+>>> -	found = nfsd_cache_search(rqstp);
+>>> +	found = nfsd_cache_search(rqstp, crc);
+>>> 	if (found) {
+>>> 		nfsd_reply_cache_free_locked(rp);
+>>> 		rp = found;
+>>> @@ -344,6 +387,8 @@ setup_entry:
+>>> 	rpc_set_port((struct sockaddr *)&rp->c_addr, rpc_get_port(svc_addr(rqstp)));
+>>> 	rp->c_prot = proto;
+>>> 	rp->c_vers = vers;
+>>> +	rp->c_len = rqstp->rq_arg.len;
+>>> +	rp->c_crc = crc;
+>>> 
+>>> 	hash_refile(rp);
+>>> 	lru_put_end(rp);
+>>> -- 
+>>> 1.7.11.7
+>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+>> -- 
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+>> 
+>> 
+>> 
+>> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
