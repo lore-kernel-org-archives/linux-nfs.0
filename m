@@ -1,124 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:36631 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:37055 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759814Ab3BUUgH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Feb 2013 15:36:07 -0500
-Date: Thu, 21 Feb 2013 15:36:04 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
-        "simo@redhat.com" <simo@redhat.com>
-Subject: Re: [PATCH 1/6] SUNRPC: make AF_LOCAL connect synchronous
-Message-ID: <20130221203603.GE3531@pad.fieldses.org>
-References: <1361464705-12340-1-git-send-email-bfields@redhat.com>
- <1361464705-12340-2-git-send-email-bfields@redhat.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9235DA5F3@SACEXCMBX04-PRD.hq.netapp.com>
- <20130221194804.GC3531@pad.fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9235DA946@SACEXCMBX04-PRD.hq.netapp.com>
+	id S1758867Ab3BGROB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Feb 2013 12:14:01 -0500
+Date: Thu, 7 Feb 2013 12:14:00 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] SUNRPC: Refactor nfsd4_do_encode_secinfo()
+Message-ID: <20130207171400.GO3222@fieldses.org>
+References: <20130201220308.13518.82164.stgit@seurat.1015granger.net>
+ <20130207150213.GC3222@fieldses.org>
+ <87316F41-4E5E-473C-A372-0AFC6721A355@oracle.com>
+ <20130207162308.GI3222@fieldses.org>
+ <F0DAA0C6-DBA2-457B-8C68-13A2BC3CB4AC@oracle.com>
+ <20130207165509.GM3222@fieldses.org>
+ <436D6F2C-E520-4375-A518-2E55031E70F7@oracle.com>
+ <A98AFAD6-2E43-4646-8287-8C023DFA65DF@oracle.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9235DA946@SACEXCMBX04-PRD.hq.netapp.com>
+In-Reply-To: <A98AFAD6-2E43-4646-8287-8C023DFA65DF@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 21, 2013 at 08:02:30PM +0000, Myklebust, Trond wrote:
-> On Thu, 2013-02-21 at 14:48 -0500, J. Bruce Fields wrote:
-> > On Thu, Feb 21, 2013 at 06:17:47PM +0000, Myklebust, Trond wrote:
-> > > On Thu, 2013-02-21 at 11:38 -0500, J. Bruce Fields wrote:
-> > > > From: "J. Bruce Fields" <bfields@redhat.com>
-> > > > 
-> > > > It doesn't appear that anyone actually needs to connect asynchronously.
-> > > > 
-> > > > Also, using a workqueue for the connect means we lose the namespace
-> > > > information from the original process.  This is a problem since there's
-> > > > no way to explicitly pass in a filesystem namespace for resolution of an
-> > > > AF_LOCAL address.
-> > > > 
-> > > > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > > > ---
-> > > >  net/sunrpc/xprtsock.c |   35 +++++++++++++++++++++++++++--------
-> > > >  1 file changed, 27 insertions(+), 8 deletions(-)
-> > > > 
-> > > > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> > > > index bbc0915..b1df874 100644
-> > > > --- a/net/sunrpc/xprtsock.c
-> > > > +++ b/net/sunrpc/xprtsock.c
-> > > > @@ -1866,13 +1866,9 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
-> > > >   * @xprt: RPC transport to connect
-> > > >   * @transport: socket transport to connect
-> > > >   * @create_sock: function to create a socket of the correct type
-> > > > - *
-> > > > - * Invoked by a work queue tasklet.
-> > > >   */
-> > > > -static void xs_local_setup_socket(struct work_struct *work)
-> > > > +static void xs_local_setup_socket(struct sock_xprt *transport)
-> > > >  {
-> > > > -	struct sock_xprt *transport =
-> > > > -		container_of(work, struct sock_xprt, connect_worker.work);
-> > > >  	struct rpc_xprt *xprt = &transport->xprt;
-> > > >  	struct socket *sock;
-> > > >  	int status = -EIO;
-> > > > @@ -1919,6 +1915,31 @@ out:
-> > > >  	current->flags &= ~PF_FSTRANS;
-> > > >  }
-> > > >  
-> > > > +static void xs_local_connect(struct rpc_task *task)
-> > > > +{
-> > > > +	struct rpc_xprt *xprt = task->tk_xprt;
-> > > > +	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
-> > > > +	unsigned long timeout;
-> > > > +
-> > > > +	 if (RPC_IS_ASYNC(task))
-> > > > +	 	rpc_exit(task, -ENOTCONN);
-> > > 
-> > > Needs a "return"...
-> > 
-> > Fixed, thanks.
-> > 
-> > > 
-> > > 
-> > > > +
-> > > > +	if (transport->sock != NULL && !RPC_IS_SOFTCONN(task)) {
-> > > > +		dprintk("RPC:       xs_connect delayed xprt %p for %lu "
-> > > > +				"seconds\n",
-> > > > +				xprt, xprt->reestablish_timeout / HZ);
-> > > > +		timeout = xprt->reestablish_timeout;
-> > > > +		xprt->reestablish_timeout <<= 1;
-> > > > +		if (xprt->reestablish_timeout < XS_TCP_INIT_REEST_TO)
-> > > > +			xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
-> > > > +		if (xprt->reestablish_timeout > XS_TCP_MAX_REEST_TO)
-> > > > +			xprt->reestablish_timeout = XS_TCP_MAX_REEST_TO;
-> > > > +		rpc_delay(task, timeout);
-> > > 
-> > > This too needs to exit in order to sleep.
-> > 
-> > Oops, so maybe simplest would be just to connect first and then delay if
-> > there's a failure.
-> > 
-> > (Or is there any problem just making that rpc_delay() an msleep() since
-> > we know we're in the synchronous case?)
+On Thu, Feb 07, 2013 at 12:12:24PM -0500, Chuck Lever wrote:
 > 
-> A 5 minute msleep() is probably a bit excessive. Making it interruptible
-> might help, but ...
-> That does however raise the issue of why we need exponential back off
-> here? An AF_LOCAL connect call is pretty efficient.
+> On Feb 7, 2013, at 12:03 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> > I've thought a little about that.  There is already a logged warning if a gssd upcall times out.  But it's hard to tell inside the kernel why a module doesn't load.  These all look pretty much the same to the RPC layer:
+> > 
+> >   -  module is blacklisted or not installed?
+> >   -  GSS support wasn't built?
+> >   -  filesystem corruption?
+> >   -  export specifies a security flavor the RPC client doesn't recognize?
+> > 
+> > I suppose I could add something here, but I wonder about the false alarms.
+> 
+> How about this:
+> 
+>   "Warning: export specifies a security flavor that isn't supported"
 
-And the only excuse for the connect not succeeding is, what, rpcbind
-just crashed or something?  In which case I think our only
-responsibility is just not to spin furiously.  How about just something
-like
+Sounds fine.  With a guard so we just say it once.
 
-	ret = xs_local_setup_socket(transport);
-	if (ret && !RPC_IS_SOFTCONN(task))
-		msleep_interruptible(1000);
-	return;
-
-?
-
-Or we could keep the same exponential timeout logic and just adjust the
-min/max.
-
-I have no strong opinions here....
+Bonus if we could say which export or which flavor?
 
 --b.
