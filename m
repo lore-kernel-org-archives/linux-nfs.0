@@ -1,66 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43637 "EHLO fieldses.org"
+Received: from mx2.netapp.com ([216.240.18.37]:30965 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754354Ab3BEOfS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Feb 2013 09:35:18 -0500
-Date: Tue, 5 Feb 2013 09:35:15 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Pavel Shilovsky <piastry@etersoft.ru>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        wine-devel@winehq.org
-Subject: Re: [PATCH v2 3/8] vfs: Add O_DENYREAD/WRITE flags support for open
- syscall
-Message-ID: <20130205143514.GA9886@fieldses.org>
-References: <1358441584-8783-1-git-send-email-piastry@etersoft.ru>
- <1358441584-8783-3-git-send-email-piastry@etersoft.ru>
- <20130130221602.GC15584@fieldses.org>
- <CAKywueRh++TBazK8_kRN7AUb=EFhGv=Sv2CV0BESkfLFy+g5wA@mail.gmail.com>
+	id S1754648Ab3BGQcW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Feb 2013 11:32:22 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>
+CC: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: [PATCH v3 2/2] nfsd: keep a checksum of the first 256 bytes of
+ request
+Date: Thu, 7 Feb 2013 16:32:20 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91836525F@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1360248701-23963-1-git-send-email-jlayton@redhat.com>
+ <1360248701-23963-3-git-send-email-jlayton@redhat.com>
+ <DF2DA489-3D72-4DBF-8C65-1B7DA9866B63@oracle.com>
+ <20130207160032.GF3222@fieldses.org>
+In-Reply-To: <20130207160032.GF3222@fieldses.org>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAKywueRh++TBazK8_kRN7AUb=EFhGv=Sv2CV0BESkfLFy+g5wA@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Feb 05, 2013 at 03:45:31PM +0400, Pavel Shilovsky wrote:
-> 2013/1/31 J. Bruce Fields <bfields@fieldses.org>:
-> > On Thu, Jan 17, 2013 at 08:52:59PM +0400, Pavel Shilovsky wrote:
-> >> If O_DENYMAND flag is specified, O_DENYREAD/WRITE/MAND flags are
-> >> translated to flock's flags:
-> >>
-> >> !O_DENYREAD  -> LOCK_READ
-> >> !O_DENYWRITE -> LOCK_WRITE
-> >> O_DENYMAND   -> LOCK_MAND
-> >>
-> >> and set through flock_lock_file on a file.
-> >>
-> >> This change only affects opens that use O_DENYMAND flag - all other
-> >> native Linux opens don't care about these flags. It allow us to
-> >> enable this feature for applications that need it (e.g. NFS and
-> >> Samba servers that export the same directory for Windows clients,
-> >> or Wine applications that access the same files simultaneously).
-> >
-> > The use of an is_conflict callback seems unnecessarily convoluted.
-> >
-> > If we need two different behaviors, let's just use another flag (or an
-> > extra boolean argument if we need to, or something).
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> owner@vger.kernel.org] On Behalf Of J. Bruce Fields
+> Sent: Thursday, February 07, 2013 11:01 AM
+> To: Chuck Lever
+> Cc: Jeff Layton; linux-nfs@vger.kernel.org
+> Subject: Re: [PATCH v3 2/2] nfsd: keep a checksum of the first 256 bytes of
+> request
 > 
-> Ok, we can pass "bool is_mand" to flock_lock_file that will pass it
-> further to flock_locks_conflict.
-> 
+> On Thu, Feb 07, 2013 at 10:51:02AM -0500, Chuck Lever wrote:
 > >
-> > The only caller for this new deny_lock_file is in the nfs code--I'm a
-> > little unclear why that is.
+> > On Feb 7, 2013, at 9:51 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> >
+> > > Now that we're allowing more DRC entries, it becomes a lot easier to
+> > > hit problems with XID collisions. In order to mitigate those,
+> > > calculate the crc32 of up to the first 256 bytes of each request
+> > > coming in and store that in the cache entry, along with the total
+> > > length of the request.
+> >
+> > I'm happy to see a checksummed DRC finally become reality for the
+> > Linux NFS server.
+> >
+> > Have you measured the CPU utilization impact and CPU cache footprint
+> > of performing a CRC computation for every incoming RPC?
 > 
-> deny_lock_file is called not only in the nfs code but also in 2 places
-> of fs/namei.c -- that enable this logic for VFS.
+> Note this is over the first 256 bytes of the request--which we're probably just
+> about to read for xdr decoding anyway.
 
-Oops, apologies, I overlooked those somehow.
+- Would it make sense perhaps to generate the checksum as you are reading the data?
+- Also, is 256 bytes sufficient? How far does that get you with your average WRITE compound?
+- Could the integrity checksum in RPCSEC_GSS/krbi be reused as a DRC checksum?
 
-What prevents somebody else from grabbing a lock on a newly-created file
-before we grab our own lock?
-
-I couldn't tell on a quick look whether we hold some lock that prevents
-that.
-
---b.
+Cheers
+   Trond
