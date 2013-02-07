@@ -1,74 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:65433 "EHLO mx1.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:40000 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933749Ab3BTR11 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Feb 2013 12:27:27 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "simo@redhat.com" <simo@redhat.com>
-Subject: Re: synchronous AF_LOCAL connect
-Date: Wed, 20 Feb 2013 17:27:25 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9235D7E49@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20130218225424.GD3391@fieldses.org>
-	 <20130220154751.GH14606@fieldses.org>
-	 <2F275139-9861-4414-8C9F-BD74544C9AD7@oracle.com>
-	 <20130220160350.GJ14606@fieldses.org>
-	 <EA9EE56A-73BB-4866-AA86-1EE4150AFE87@oracle.com>
-	 <20130220163424.GK14606@fieldses.org>
-	 <FB21B277-FA7D-490C-B389-58A91C46B490@oracle.com>
-In-Reply-To: <FB21B277-FA7D-490C-B389-58A91C46B490@oracle.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S1755656Ab3BGRDC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Feb 2013 12:03:02 -0500
+Date: Thu, 7 Feb 2013 12:03:00 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Pavel Shilovsky <piastry@etersoft.ru>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        wine-devel@winehq.org
+Subject: Re: [PATCH v2 3/8] vfs: Add O_DENYREAD/WRITE flags support for open
+ syscall
+Message-ID: <20130207170300.GN3222@fieldses.org>
+References: <20130130221602.GC15584@fieldses.org>
+ <CAKywueRh++TBazK8_kRN7AUb=EFhGv=Sv2CV0BESkfLFy+g5wA@mail.gmail.com>
+ <20130205143514.GA9886@fieldses.org>
+ <CAKywueS6oGNu9r_bypu32A89pOoiGb47kjXqw2ZcZQhZK+JV3g@mail.gmail.com>
+ <20130207141832.GA3222@fieldses.org>
+ <CAKywueTmU_L5cwwJSoUY6753eHf_38VtHadZGt9tcLS59sqmOA@mail.gmail.com>
+ <20130207144156.GB3222@fieldses.org>
+ <CAKywueShbPd9b+WmJwnfwPR_vzk_atBVRBZNTf-HpS7N2CK+AA@mail.gmail.com>
+ <20130207161948.GG3222@fieldses.org>
+ <CAKywueQDtjTxDF4-pcoBaJfXGS7Q+mvf+Jk3KE=2US=gFn_vTQ@mail.gmail.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAKywueQDtjTxDF4-pcoBaJfXGS7Q+mvf+Jk3KE=2US=gFn_vTQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2013-02-20 at 12:04 -0500, Chuck Lever wrote:
+On Thu, Feb 07, 2013 at 08:50:16PM +0400, Pavel Shilovsky wrote:
+> 2013/2/7 J. Bruce Fields <bfields@fieldses.org>:
+> > That would be a bug, I think.  E.g. "man 3posix open":
+> >
+> >         No  files  shall  be created or modified if the function returns
+> >         -1.
+> >
+> > Looking at the code...  See the references to FILE_CREATED in
+> > atomic_open--looks like that's trying to prevent may_open from failing
+> > in this case.
+> >
+> >> I think
+> >> there is no difference between this case and the situation with
+> >> deny_lock_file there.
+> >
+> > Looks to me like it would be a bug in either case.
+> 
+> Then we returned from lookup_open in do_last we go to 'opened' lable.
+> Then we have a 3(!) chances to return -1 while a file is created
+> (open_check_o_direct, ima_file_check, handle_truncate
 
-> Yes, but AF_LOCAL is supposed to be a generic transport for RPC.  This is not a feature we just made up, it's actually a well-defined API that exists on other platforms (it's even specified in RFCs).  Right now I would hesitate to restrict the use of AF_LOCAL upcalls to only synchronous contexts, because eventually we may want to use the transport in asynchronous contexts.
+I don't know about the first two, but handle_truncate won't be hit since
+will_truncate is false.
 
-The whole problem is that it is a piss-poorly defined feature in an
-asynchronous kernel context.
+> ). In this case
+> these places are bugs too.
+> 
+> We can call vfs_unlink if we failed after a file was created, but
+> possible affects need to be investigated.
 
-Sockets carry around a well defined net namespace context that allow
-them to resolve IP addresses. However they carry none of the file
-namespace context information that is required to make sense of AF_LOCAL
-"addresses".
+We definitely don't want to try to undo the create with an unlink.
 
-IOW we have 3 options:
-
-     1. Drop AF_LOCAL support altogether
-     2. Add file namespace context to the RPC or socket layers
-     3. Drop asynchronous support, so that we have a reliable
-        userspace-defined context.
-
-1) involves a user space api change, which will bring down the iron fist
-of the Finn.
-2) involves cooperation from the VFS and socket folks which doesn't seem
-to be happening.
-
-so that leaves (3), which is perfectly doable since we do _not_ want to
-expose the rpc layer to anything outside the kernel. It's not intended
-as a generic libtirpc...
-
-> If we were to go with using a synchronous connect, however, I think there should be some kind of safety check to make sure the xs connect function is not being invoked from an asynchronous context.  This is a restriction that does not exist for other transports supported by the kernel RPC client, so it should be underscored in the code.
-
-void xs_connect_local(struct rpc_task *task)
-{
-	if (RPC_IS_ASYNC(task))
-		rpc_exit(task, -ENOTCONN);
-.....
-}
-
-...done.
-
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+--b.
