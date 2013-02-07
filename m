@@ -1,175 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:43999 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:32011 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757781Ab3BUWWv convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Feb 2013 17:22:51 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Steve Dickson <steved@redhat.com>
-CC: "J. Bruce Fields" <bfields@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFSv4.2: Added NFS v4.2 support to the NFS client
-Date: Thu, 21 Feb 2013 22:22:49 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9235DAEC7@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1361484911-17537-1-git-send-email-steved@redhat.com>
-	 <1361484911-17537-2-git-send-email-steved@redhat.com>
-In-Reply-To: <1361484911-17537-2-git-send-email-steved@redhat.com>
+	id S1030205Ab3BGSDY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Feb 2013 13:03:24 -0500
+Date: Thu, 7 Feb 2013 13:03:16 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v3 2/2] nfsd: keep a checksum of the first 256 bytes of
+ request
+Message-ID: <20130207130316.0cf29993@corrin.poochiereds.net>
+In-Reply-To: <DF2DA489-3D72-4DBF-8C65-1B7DA9866B63@oracle.com>
+References: <1360248701-23963-1-git-send-email-jlayton@redhat.com>
+	<1360248701-23963-3-git-send-email-jlayton@redhat.com>
+	<DF2DA489-3D72-4DBF-8C65-1B7DA9866B63@oracle.com>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-02-21 at 17:15 -0500, Steve Dickson wrote:
-> This enable NFSv4.2 support. To enable this code the
-> CONFIG_NFS_V4_2 Kconfig define needs to be set and
-> the -o v4.2 mount option need to be used.
+On Thu, 7 Feb 2013 10:51:02 -0500
+Chuck Lever <chuck.lever@oracle.com> wrote:
+
 > 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  fs/nfs/Kconfig       | 11 ++++++++++-
->  fs/nfs/callback.c    |  3 +++
->  fs/nfs/nfs4client.c  |  5 +++++
->  fs/nfs/nfs4proc.c    |  3 +++
->  fs/nfs/super.c       |  7 ++++++-
->  include/linux/nfs4.h |  4 ++++
->  6 files changed, 31 insertions(+), 2 deletions(-)
+> On Feb 7, 2013, at 9:51 AM, Jeff Layton <jlayton@redhat.com> wrote:
 > 
-> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-> index 3861a1f..247db6d 100644
-> --- a/fs/nfs/Kconfig
-> +++ b/fs/nfs/Kconfig
-> @@ -104,6 +104,15 @@ config NFS_V4_1
->  
->  	  If unsure, say N.
->  
-> +config NFS_V4_2
-> +	bool "NFS client support for NFSv4.2"
-> +	depends on NFS_V4_1
-> +	help
-> +	  This option enables support for minor version 1 of the NFSv4 protocol
-> +	  (RFC 5661) in the kernel's NFS client.
-> +
-> +	  If unsure, say N.
-> +
->  config PNFS_FILE_LAYOUT
->  	tristate
->  	depends on NFS_V4_1
-> @@ -133,7 +142,7 @@ config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
->  
->  config NFS_V4_SECURITY_LABEL
->  	bool "Provide Security Label support for NFSv4 client"
-> -	depends on NFS_V4 && SECURITY
-> +	depends on NFS_V4_2 && SECURITY
->  	help
+> > Now that we're allowing more DRC entries, it becomes a lot easier to hit
+> > problems with XID collisions. In order to mitigate those, calculate the
+> > crc32 of up to the first 256 bytes of each request coming in and store
+> > that in the cache entry, along with the total length of the request.
+> 
+> I'm happy to see a checksummed DRC finally become reality for the Linux NFS server.
+> 
+> Have you measured the CPU utilization impact and CPU cache footprint of performing a CRC computation for every incoming RPC?  I'm wondering if a simpler checksum might be just as useful but less costly to compute.
+> 
 
-Just have NFS_V4_SECURITY_LABEL be automatically selected by NFS_V4_2.
-Requiring users to manually select both makes little sense...
+No, I haven't, at least not in any sort of rigorous way. It's pretty
+negligible on "normal" PC hardware, but I think most intel and amd cpus
+have instructions for handling crc32. I'm ok with a different checksum,
+we don't need anything cryptographically secure here. I simply chose
+crc32 since it has an easily available API, and I figured it would be
+fairly lightweight.
 
+I originally had hopes of just using the checksum in the TCP/UDP
+header, but that's handled in hw by some cards and so isn't available.
+There are also things that change during a retransmit (like GSS sequence
+numbers), so we can't just scrape those out anyway.
 
->  	Say Y here if you want enable fine-grained security label attribute
-> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> index 5088b57..4058ec8 100644
-> --- a/fs/nfs/callback.c
-> +++ b/fs/nfs/callback.c
-> @@ -281,6 +281,9 @@ static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct n
->  		case 1:
-
-		case 2:
-
->  			ret = nfs41_callback_up_net(serv, net);
->  			break;
-> +		case 2:
-> +			ret = nfs41_callback_up_net(serv, net);
-> +			break;
->  		default:
->  			printk(KERN_ERR "NFS: unknown callback version: %d\n",
->  					minorversion);
-> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-> index 2e9779b..2987fd6 100644
-> --- a/fs/nfs/nfs4client.c
-> +++ b/fs/nfs/nfs4client.c
-> @@ -66,6 +66,11 @@ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
->  	if (err)
->  		goto error;
->  
-> +	if (cl_init->minorversion > NFS4_MAX_MINOR_VERSION) {
-> +		err = -EINVAL;
-> +		goto error;
-> +	}
-> +		
->  	spin_lock_init(&clp->cl_lock);
->  	INIT_DELAYED_WORK(&clp->cl_renewd, nfs4_renew_state);
->  	rpc_init_wait_queue(&clp->cl_rpcwaitq, "NFS client");
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 40c1d1f..08fc8e2 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -7136,6 +7136,9 @@ const struct nfs4_minor_version_ops *nfs_v4_minor_ops[] = {
->  #if defined(CONFIG_NFS_V4_1)
->  	[1] = &nfs_v4_1_minor_ops,
->  #endif
-> +#if defined(CONFIG_NFS_V4_2)
-> +	[2] = &nfs_v4_1_minor_ops,
-> +#endif
->  };
->  
->  const struct inode_operations nfs4_dir_inode_operations = {
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index 4e78f93..d35582c 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -269,7 +269,7 @@ static match_table_t nfs_local_lock_tokens = {
->  
->  enum {
->  	Opt_vers_2, Opt_vers_3, Opt_vers_4, Opt_vers_4_0,
-> -	Opt_vers_4_1,
-> +	Opt_vers_4_1, Opt_vers_4_2,
->  
->  	Opt_vers_err
->  };
-> @@ -280,6 +280,7 @@ static match_table_t nfs_vers_tokens = {
->  	{ Opt_vers_4, "4" },
->  	{ Opt_vers_4_0, "4.0" },
->  	{ Opt_vers_4_1, "4.1" },
-> +	{ Opt_vers_4_2, "4.2" },
->  
->  	{ Opt_vers_err, NULL }
->  };
-> @@ -1143,6 +1144,10 @@ static int nfs_parse_version_string(char *string,
->  		mnt->version = 4;
->  		mnt->minorversion = 1;
->  		break;
-> +	case Opt_vers_4_2:
-> +		mnt->version = 4;
-> +		mnt->minorversion = 2;
-> +		break;
->  	default:
->  		return 0;
->  	}
-> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-> index aab8bd8..e9c040a 100644
-> --- a/include/linux/nfs4.h
-> +++ b/include/linux/nfs4.h
-> @@ -394,11 +394,15 @@ enum lock_type4 {
->  #define NFS4_VERSION 4
->  #define NFS4_MINOR_VERSION 0
->  
-> +#if defined(CONFIG_NFS_V4_2)
-> +#define NFS4_MAX_MINOR_VERSION 2
-> +#else
->  #if defined(CONFIG_NFS_V4_1)
->  #define NFS4_MAX_MINOR_VERSION 1
->  #else
->  #define NFS4_MAX_MINOR_VERSION 0
->  #endif /* CONFIG_NFS_V4_1 */
-> +#endif /* CONFIG_NFS_V4_2 */
->  
->  #define NFS4_DEBUG 1
->  
+As far as why 256 bytes, we had had a bug opened a while back (by
+Oracle, I think), that asked us to add this capability and suggested
+200 bytes. I like powers of 2 so I rounded up. We could easily extend
+that though by just changing RC_CSUMLEN if we think it's not enough.
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Jeff Layton <jlayton@redhat.com>
