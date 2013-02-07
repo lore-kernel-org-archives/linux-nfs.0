@@ -1,82 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:58181 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:42643 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934180Ab3BTP7k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Feb 2013 10:59:40 -0500
-Date: Wed, 20 Feb 2013 10:59:33 -0500
+	id S1754325Ab3BGQXJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Feb 2013 11:23:09 -0500
+Date: Thu, 7 Feb 2013 11:23:08 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 00/14] lnfs: 3.8-rc7 release
-Message-ID: <20130220155933.GI14606@fieldses.org>
-References: <1361213276-17962-1-git-send-email-SteveD@redhat.com>
- <20130218195834.GA3391@fieldses.org>
- <512395D7.5010205@RedHat.com>
- <20130219151808.GE3391@fieldses.org>
- <51239CFF.9000600@RedHat.com>
- <20130219205608.GB14606@fieldses.org>
- <5124F1EA.2090902@RedHat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] SUNRPC: Refactor nfsd4_do_encode_secinfo()
+Message-ID: <20130207162308.GI3222@fieldses.org>
+References: <20130201220308.13518.82164.stgit@seurat.1015granger.net>
+ <20130207150213.GC3222@fieldses.org>
+ <87316F41-4E5E-473C-A372-0AFC6721A355@oracle.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5124F1EA.2090902@RedHat.com>
+In-Reply-To: <87316F41-4E5E-473C-A372-0AFC6721A355@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 20, 2013 at 10:55:22AM -0500, Steve Dickson wrote:
-> Trimming the cc list to just Linux NFS list since I'm
-> sure they will not care about this part of the discussion.
-> I'll add them back on my next release...   
+On Thu, Feb 07, 2013 at 10:58:25AM -0500, Chuck Lever wrote:
 > 
-> On 19/02/13 15:56, J. Bruce Fields wrote:
-> > On Tue, Feb 19, 2013 at 10:40:47AM -0500, Steve Dickson wrote:
-> >> On 19/02/13 10:18, J. Bruce Fields wrote:
-> >>> On Tue, Feb 19, 2013 at 10:10:15AM -0500, Steve Dickson wrote:
-> >>>>
-> >>>>
-> >>>> On 18/02/13 14:58, J. Bruce Fields wrote:
-> >>>>> On Mon, Feb 18, 2013 at 01:47:42PM -0500, Steve Dickson wrote:
-> >>>>>>> From: Steve Dickson <steved@redhat.com>
-> >>>>>>>
-> >>>>>>> Here is the next release of the Label NFS patches, forward 
-> >>>>>>> ported to linux-3.8-rc7
-> >>>>>>>
-> >>>>>>> I believe I've  incorporated all code review that were made
-> >>>>>>> from the last release,
-> >>>>> Except I think this doesn't turn on minor version 2?
-> >>>> Are you saying we need a -o v4.2 mount option to enable this feature?
-> >>> Yes.  And the client needs to send requests with minor version 2, and
-> >>> server needs to accept such requests.
-> >> Boy this puts a damper on the party.... ;-)
-> > 
-> > I'm hoping it's not that much work: we already have two minor versions
-> > (0 and 1), in theory adding a third should be pretty straightforward.
-> > 
-> > Labeled NFS will be our only 4.2 feature for now, so there's nothing
-> > else to do other than turn on support for the new minor version number.
-> > 
-> > I think so?
-> On the client the actual change is very straightforward. Simply added
-> another case to the switch in  nfs_parse_version_string() and set the
-> minorversion to 2
+> On Feb 7, 2013, at 10:02 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
 > 
->     case Opt_vers_4_2:
->         mnt->version = 4;
->         mnt->minorversion = 2;
->         break;
+> > On Fri, Feb 01, 2013 at 05:43:44PM -0500, Chuck Lever wrote:
+> >> Clean up.  This matches a similar API for the client side, and
+> >> keeps ULP fingers out the of the GSS mech switch.
+> >> 
+> >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> >> Acked-by: J. Bruce Fields <bfields@redhat.com>
+> >> ---
+> >> 
+> >> Bruce-
+> >> 
+> >> This version of the patch follows the existing logic in
+> >> nfsd4_do_encode_secinfo(): If the RPC layer can't find GSS info
+> >> that matches an export security flavor, it assumes the flavor is
+> >> not a GSS pseudoflavor, and simply puts it on the wire.
+> >> 
+> >> However, if the below XDR encoding logic is given a legitimate GSS
+> >> pseudoflavor but the RPC layer says it does not support that
+> >> pseudoflavor for some reason, then we leak GSS pseudoflavor numbers
+> >> onto the wire.
+> >> 
+> >> I confirmed this happens by blacklisting rpcsec_gss_krb5, then
+> >> attempted a client transition from the pseudo-fs to a Kerberos-only
+> >> share.  The client received a flavor list containing the Kerberos
+> >> pseudoflavor numbers, rather than GSS tuples.
+> >> 
+> >> The encoder logic can check that each pseudoflavor is less than
+> >> MAXFLAVOR before writing it into the buffer, to prevent this.  But
+> >> after "nflavs" is written into the XDR buffer, the encoder can't
+> >> skip writing flavor information into the buffer when it discovers
+> >> the RPC layer doesn't support that flavor.
+> >> 
+> >> Is there some way of writing "nflavs" into the XDR buffer after
+> >> the loop that writes the flavor information is complete?
+> > 
+> > Yes, you can save a pointer and then go back and fill that in--see
+> > encode_fattr for an example.
 > 
-> But my question is what type of ramification well there be bumping 
-> minorversion from 1 to 2?  I bet servers are not going to like this
-> too much... ;-)
+> Thanks, I will submit an additional patch that describes this issue and fixes it.
+> 
+> I asked David Noveck, as one of the authors of RFC 3530, whether an NFS server should return a zero-length flavor list or an error if SECINFO can't find any flavors a client is allowed to use. His opinion was to return NFS4_OK and a zero-length flavor list.
 
-If they support labeld NFS, they have to support minor version 2.
+Fine with me for this code.
 
-> and not to mention all the xdr and callback routines
-> that look at minorversion... a bit worrisome...
->
-> Speaking of servers... Do you think its about time to rpc.nfsd the
-> ability to enable 4.x versions?
-
-	echo "+4.2" >/proc/fs/nfsd/versions
+(In practice though we should probably be warning somewhere (exportfs?)
+if somebody creates an export like that.)
 
 --b.
