@@ -1,138 +1,221 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38509 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:56161 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756757Ab3BRV6i (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Feb 2013 16:58:38 -0500
-Date: Mon, 18 Feb 2013 16:58:29 -0500
+	id S1758240Ab3BGQAg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Feb 2013 11:00:36 -0500
+Date: Thu, 7 Feb 2013 11:00:32 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Jeff Layton <jlayton@redhat.com>, NeilBrown <neilb@suse.de>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        NFS <linux-nfs@vger.kernel.org>, steved@redhat.com
-Subject: Re: More fun with unmounting ESTALE directories.
-Message-ID: <20130218215829.GC3391@fieldses.org>
-References: <20130212113813.427b8e05@notabene.brown>
- <20130214104230.013b7f71@tlielax.poochiereds.net>
- <20130218132509.0ce779de@notabene.brown>
- <20130218074105.38cf49ea@tlielax.poochiereds.net>
- <343C8851-62FD-448D-BFD6-5CBAB8C9DCB5@oracle.com>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v3 2/2] nfsd: keep a checksum of the first 256 bytes of
+ request
+Message-ID: <20130207160032.GF3222@fieldses.org>
+References: <1360248701-23963-1-git-send-email-jlayton@redhat.com>
+ <1360248701-23963-3-git-send-email-jlayton@redhat.com>
+ <DF2DA489-3D72-4DBF-8C65-1B7DA9866B63@oracle.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <343C8851-62FD-448D-BFD6-5CBAB8C9DCB5@oracle.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <DF2DA489-3D72-4DBF-8C65-1B7DA9866B63@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 18, 2013 at 10:36:52AM -0500, Chuck Lever wrote:
-> Before removing FS_REVAL_DOT, I recommend some archaeology:  find out what was fixed by adding that for NFS.  I worked on something related years ago and have a vague recollection about this that there is a situation where revalidating dot is important.
+On Thu, Feb 07, 2013 at 10:51:02AM -0500, Chuck Lever wrote:
 > 
-> Unfortunately I don't see it in a quick browse through the commit log for fs/nfs/dir.c.  It may be in BitKeeper.
+> On Feb 7, 2013, at 9:51 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> 
+> > Now that we're allowing more DRC entries, it becomes a lot easier to
+> > hit problems with XID collisions. In order to mitigate those,
+> > calculate the crc32 of up to the first 256 bytes of each request
+> > coming in and store that in the cache entry, along with the total
+> > length of the request.
+> 
+> I'm happy to see a checksummed DRC finally become reality for the
+> Linux NFS server.
+> 
+> Have you measured the CPU utilization impact and CPU cache footprint
+> of performing a CRC computation for every incoming RPC?
 
-Everybody should have one of these historical git repos set up--they're
-awesome.
+Note this is over the first 256 bytes of the request--which we're
+probably just about to read for xdr decoding anyway.
 
-(No idea if this is helpful, I just note this seems to be where
-FS_REVAL_DOT got added to fs_flags.)
+> I'm wondering if a simpler checksum might be just as useful but less
+> costly to compute.
+
+What would be an example of a simpler checksum?
 
 --b.
 
-commit e14720a157f5d8745006f44520dfa3b8ac498328
-Author: Trond Myklebust <trond.myklebust@fys.uio.no>
-Date:   Tue Aug 19 21:35:45 2003 -0700
-
-    [PATCH] Support dentry revalidation under open(".")
-    
-    link_path_walk() currently treats the special filenames ".", ".."
-    and "/" differently in that it does not call down to the filesystem in
-    order to revalidate the cached dentry, but just assumes that it is
-    fine.
-    
-      For most filesystems this is OK, but it the case of the stateless
-    NFS, this means that it circumvents path staleness detection, and the
-    attribute+data cache revalidation code on such common commands as
-    opendir(".").
-    
-    This change provides a way to do such revalidation for NFS without
-    impacting other filesystems.
-    
-    Note: the failure to revalidate the path here does not result in a
-    call to d_invalidate() unlike (all?) other calls to d_revalidate(). It
-    only results in an ESTALE error being returned to the caller.
-
-diff --git a/fs/namei.c b/fs/namei.c
-index f922236..9e1fcb9 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -572,7 +572,7 @@ int link_path_walk(const char * name, struct nameidata *nd)
- 	while (*name=='/')
- 		name++;
- 	if (!*name)
--		goto return_base;
-+		goto return_reval;
- 
- 	inode = nd->dentry->d_inode;
- 	if (current->link_count)
-@@ -693,7 +693,7 @@ last_component:
- 				inode = nd->dentry->d_inode;
- 				/* fallthrough */
- 			case 1:
--				goto return_base;
-+				goto return_reval;
- 		}
- 		if (nd->dentry->d_op && nd->dentry->d_op->d_hash) {
- 			err = nd->dentry->d_op->d_hash(nd->dentry, &this);
-@@ -737,6 +737,20 @@ lookup_parent:
- 			nd->last_type = LAST_DOT;
- 		else if (this.len == 2 && this.name[1] == '.')
- 			nd->last_type = LAST_DOTDOT;
-+		else
-+			goto return_base;
-+return_reval:
-+		/*
-+		 * We bypassed the ordinary revalidation routines.
-+		 * We may need to check the cached dentry for staleness.
-+		 */
-+		if (nd->dentry && nd->dentry->d_sb &&
-+		    (nd->dentry->d_sb->s_type->fs_flags & FS_REVAL_DOT)) {
-+			err = -ESTALE;
-+			/* Note: we do not d_invalidate() */
-+			if (!nd->dentry->d_op->d_revalidate(nd->dentry, nd))
-+				break;
-+		}
- return_base:
- 		return 0;
- out_dput:
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 1bae8c1..c8e3191 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1343,7 +1343,7 @@ static struct file_system_type nfs_fs_type = {
- 	.name		= "nfs",
- 	.get_sb		= nfs_get_sb,
- 	.kill_sb	= nfs_kill_super,
--	.fs_flags	= FS_ODD_RENAME,
-+	.fs_flags	= FS_ODD_RENAME|FS_REVAL_DOT,
- };
- 
- #ifdef CONFIG_NFS_V4
-@@ -1575,7 +1575,7 @@ static struct file_system_type nfs4_fs_type = {
- 	.name		= "nfs4",
- 	.get_sb		= nfs4_get_sb,
- 	.kill_sb	= nfs_kill_super,
--	.fs_flags	= FS_ODD_RENAME,
-+	.fs_flags	= FS_ODD_RENAME|FS_REVAL_DOT,
- };
- 
- #define nfs4_zero_state(nfsi) \
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 8df205c..a9e02e3 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -89,6 +89,7 @@ extern int leases_enable, dir_notify_enable, lease_break_time;
- 
- /* public flags for file_system_type */
- #define FS_REQUIRES_DEV 1 
-+#define FS_REVAL_DOT	16384	/* Check the paths ".", ".." for staleness */
- #define FS_ODD_RENAME	32768	/* Temporary stuff; will go away as soon
- 				  * as nfs_rename() will be cleaned up
- 				  */
+> 
+> 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> > fs/nfsd/cache.h    |  5 +++++
+> > fs/nfsd/nfscache.c | 53 +++++++++++++++++++++++++++++++++++++++++++++++++----
+> > 2 files changed, 54 insertions(+), 4 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
+> > index 9c7232b..4822db3 100644
+> > --- a/fs/nfsd/cache.h
+> > +++ b/fs/nfsd/cache.h
+> > @@ -29,6 +29,8 @@ struct svc_cacherep {
+> > 	u32			c_prot;
+> > 	u32			c_proc;
+> > 	u32			c_vers;
+> > +	unsigned int		c_len;
+> > +	u32			c_crc;
+> > 	unsigned long		c_timestamp;
+> > 	union {
+> > 		struct kvec	u_vec;
+> > @@ -73,6 +75,9 @@ enum {
+> > /* Cache entries expire after this time period */
+> > #define RC_EXPIRE		(120 * HZ)
+> > 
+> > +/* Checksum this amount of the request */
+> > +#define RC_CSUMLEN		(256U)
+> > +
+> > int	nfsd_reply_cache_init(void);
+> > void	nfsd_reply_cache_shutdown(void);
+> > int	nfsd_cache_lookup(struct svc_rqst *);
+> > diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+> > index f754469..a8c3f1e 100644
+> > --- a/fs/nfsd/nfscache.c
+> > +++ b/fs/nfsd/nfscache.c
+> > @@ -11,6 +11,8 @@
+> > #include <linux/slab.h>
+> > #include <linux/sunrpc/addr.h>
+> > #include <linux/highmem.h>
+> > +#include <linux/crc32.h>
+> > +#include <linux/sunrpc/svcauth_gss.h>
+> > 
+> > #include "nfsd.h"
+> > #include "cache.h"
+> > @@ -24,6 +26,7 @@ static struct list_head 	lru_head;
+> > static struct kmem_cache	*drc_slab;
+> > static unsigned int		num_drc_entries;
+> > static unsigned int		max_drc_entries;
+> > +static u32			crc_seed;
+> > 
+> > /*
+> >  * Calculate the hash index from an XID.
+> > @@ -130,6 +133,9 @@ int nfsd_reply_cache_init(void)
+> > 	INIT_LIST_HEAD(&lru_head);
+> > 	max_drc_entries = nfsd_cache_size_limit();
+> > 	num_drc_entries = 0;
+> > +
+> > +	/* Is a random seed any better than some well-defined constant? */
+> > +	get_random_bytes(&crc_seed, sizeof(crc_seed));
+> > 	return 0;
+> > out_nomem:
+> > 	printk(KERN_ERR "nfsd: failed to allocate reply cache\n");
+> > @@ -238,12 +244,45 @@ nfsd_reply_cache_shrink(struct shrinker *shrink, struct shrink_control *sc)
+> > }
+> > 
+> > /*
+> > + * Walk an xdr_buf and get a CRC for at most the first RC_CSUMLEN bytes
+> > + */
+> > +static u32
+> > +nfsd_cache_crc(struct svc_rqst *rqstp)
+> > +{
+> > +	int idx;
+> > +	unsigned int base;
+> > +	u32 crc;
+> > +	struct xdr_buf *buf = &rqstp->rq_arg;
+> > +	const unsigned char *p = buf->head[0].iov_base;
+> > +	size_t csum_len = min_t(size_t, buf->head[0].iov_len + buf->page_len,
+> > +				RC_CSUMLEN);
+> > +	size_t len = min(buf->head[0].iov_len, csum_len);
+> > +
+> > +	/* rq_arg.head first */
+> > +	crc = crc32(crc_seed, p, len);
+> > +	csum_len -= len;
+> > +
+> > +	/* Continue into page array */
+> > +	idx = buf->page_base / PAGE_SIZE;
+> > +	base = buf->page_base & ~PAGE_MASK;
+> > +	while (csum_len) {
+> > +		p = page_address(buf->pages[idx]) + base;
+> > +		len = min(PAGE_SIZE - base, csum_len);
+> > +		crc = crc32(crc, p, len);
+> > +		csum_len -= len;
+> > +		base = 0;
+> > +		++idx;
+> > +	}
+> > +	return crc;
+> > +}
+> > +
+> > +/*
+> >  * Search the request hash for an entry that matches the given rqstp.
+> >  * Must be called with cache_lock held. Returns the found entry or
+> >  * NULL on failure.
+> >  */
+> > static struct svc_cacherep *
+> > -nfsd_cache_search(struct svc_rqst *rqstp)
+> > +nfsd_cache_search(struct svc_rqst *rqstp, u32 crc)
+> > {
+> > 	struct svc_cacherep	*rp;
+> > 	struct hlist_node	*hn;
+> > @@ -257,6 +296,7 @@ nfsd_cache_search(struct svc_rqst *rqstp)
+> > 	hlist_for_each_entry(rp, hn, rh, c_hash) {
+> > 		if (xid == rp->c_xid && proc == rp->c_proc &&
+> > 		    proto == rp->c_prot && vers == rp->c_vers &&
+> > +		    rqstp->rq_arg.len == rp->c_len && crc == rp->c_crc &&
+> > 		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
+> > 		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr))
+> > 			return rp;
+> > @@ -276,7 +316,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+> > 	__be32			xid = rqstp->rq_xid;
+> > 	u32			proto =  rqstp->rq_prot,
+> > 				vers = rqstp->rq_vers,
+> > -				proc = rqstp->rq_proc;
+> > +				proc = rqstp->rq_proc,
+> > +				crc;
+> > 	unsigned long		age;
+> > 	int type = rqstp->rq_cachetype;
+> > 	int rtn;
+> > @@ -287,10 +328,12 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+> > 		return RC_DOIT;
+> > 	}
+> > 
+> > +	crc = nfsd_cache_crc(rqstp);
+> > +
+> > 	spin_lock(&cache_lock);
+> > 	rtn = RC_DOIT;
+> > 
+> > -	rp = nfsd_cache_search(rqstp);
+> > +	rp = nfsd_cache_search(rqstp, crc);
+> > 	if (rp)
+> > 		goto found_entry;
+> > 
+> > @@ -318,7 +361,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+> > 	 * Must search again just in case someone inserted one
+> > 	 * after we dropped the lock above.
+> > 	 */
+> > -	found = nfsd_cache_search(rqstp);
+> > +	found = nfsd_cache_search(rqstp, crc);
+> > 	if (found) {
+> > 		nfsd_reply_cache_free_locked(rp);
+> > 		rp = found;
+> > @@ -344,6 +387,8 @@ setup_entry:
+> > 	rpc_set_port((struct sockaddr *)&rp->c_addr, rpc_get_port(svc_addr(rqstp)));
+> > 	rp->c_prot = proto;
+> > 	rp->c_vers = vers;
+> > +	rp->c_len = rqstp->rq_arg.len;
+> > +	rp->c_crc = crc;
+> > 
+> > 	hash_refile(rp);
+> > 	lru_put_end(rp);
+> > -- 
+> > 1.7.11.7
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> -- 
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
+> 
