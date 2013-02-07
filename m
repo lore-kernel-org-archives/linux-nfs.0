@@ -1,117 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:7365 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934661Ab3BNPnO convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Feb 2013 10:43:14 -0500
-Date: Thu, 14 Feb 2013 10:42:30 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: NeilBrown <neilb@suse.de>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        NFS <linux-nfs@vger.kernel.org>
-Subject: Re: More fun with unmounting ESTALE directories.
-Message-ID: <20130214104230.013b7f71@tlielax.poochiereds.net>
-In-Reply-To: <20130212113813.427b8e05@notabene.brown>
-References: <20130212113813.427b8e05@notabene.brown>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:33129 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758635Ab3BGOcj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Feb 2013 09:32:39 -0500
+MIME-Version: 1.0
+In-Reply-To: <20130207141832.GA3222@fieldses.org>
+References: <1358441584-8783-1-git-send-email-piastry@etersoft.ru>
+	<1358441584-8783-3-git-send-email-piastry@etersoft.ru>
+	<20130130221602.GC15584@fieldses.org>
+	<CAKywueRh++TBazK8_kRN7AUb=EFhGv=Sv2CV0BESkfLFy+g5wA@mail.gmail.com>
+	<20130205143514.GA9886@fieldses.org>
+	<CAKywueS6oGNu9r_bypu32A89pOoiGb47kjXqw2ZcZQhZK+JV3g@mail.gmail.com>
+	<20130207141832.GA3222@fieldses.org>
+Date: Thu, 7 Feb 2013 18:32:38 +0400
+Message-ID: <CAKywueTmU_L5cwwJSoUY6753eHf_38VtHadZGt9tcLS59sqmOA@mail.gmail.com>
+Subject: Re: [PATCH v2 3/8] vfs: Add O_DENYREAD/WRITE flags support for open syscall
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        wine-devel@winehq.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 12 Feb 2013 11:38:13 +1100
-NeilBrown <neilb@suse.de> wrote:
+2013/2/7 J. Bruce Fields <bfields@fieldses.org>:
+> On Thu, Feb 07, 2013 at 01:53:46PM +0400, Pavel Shilovsky wrote:
+>> Nothing prevents it. If somebody grabbed a share mode lock on a file
+>> before we call deny_lock_file, we simply close this file and return
+>> -ETXTBSY.
+>
+> But leave the newly-created file there--ugh.
+>
+>> We can't grab it before atomic_open because we don't have an
+>> inode there.
+>
+> If you can get the lock while still holding the directory i_mutex can't
+> you prevent anyone else from looking up the new file until you've gotten
+> the lock?
+>
 
-> 
-> I've been exploring difficulties with unmounting stale directories and
-> discovered another bug.
-> 
-> If I:
-> 
-> SERVER:  mkdir /foo/bar  #and make sure it is exported
-> CLIENT:  mount -o vers=4 server:/foo/bar /mnt
-> SERVER:  rm -r /foo
-> CLIENT:  > /mnt/baz # gets an error of course
-> CLIENT:  ls -l /mnt # error again
-> CLIENT:  umount /mnt
-> 
-> The result of that last command is:
-> 
-> /mnt was not found in /proc/mounts
-> /mnt was not found in /proc/mounts
-> 
-> Strange?
-> 
-> cat /proc/mounts
-> 
-> .....
-> 10.0.2.2://foo/bar /mnt\040(deleted) nfs4 rw,relatime,vers=4,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=10.0.2.15,minorversion=0,local_lock=none,addr=10.0.2.2 0 0
-> ....
-> 
-> Notice the "\040(deleted)".
-> 
-> NFS has unhashed that directory because it is obviously bad, and d_path()
-> notices and adds " (deleted)".
-> 
-> Now I might be able to argue that NFS shouldn't be unhashing a directory that
-> is a mountpoint - it certainly seems strange behaviour.
-> 
-> But I think I can more strongly argue that /proc/mounts shouldn't be showing
-> the mounted directory, but instead the directory that it is mounted on.
-> Obviously these both have the same name so it shouldn't matter ... except
-> that here is a case where it does.
-> 
-> I "fixed" it with
-> 
-> --- a/fs/proc_namespace.c
-> +++ b/fs/proc_namespace.c
-> @@ -93,7 +93,7 @@ static int show_vfsmnt(struct seq_file *m, struct vfsmount *mnt)
->  {
->  	struct mount *r = real_mount(mnt);
->  	int err = 0;
-> -	struct path mnt_path = { .dentry = mnt->mnt_root, .mnt = mnt };
-> +	struct path mnt_path = { .dentry = r->mnt_mountpoint, .mnt = &(r->mnt_parent)->mnt };
->  	struct super_block *sb = mnt_path.dentry->d_sb;
->  
->  	if (sb->s_op->show_devname) {
-> 
-> though I suspect that isn't safe and needs some locking.
-> 
-> Probably both should be fixed:  NFS should not invalidate any mounted
-> directory, and show_vfsmnt() should report the mointpoint, not the mounted
-> directory.
-> 
-> I can't figure out any way to get NFS to not invalidate the mounted directory.
-> I think it happens in nfs_lookup_revalidate() when it calls d_drop(), but I
-> don't know how to tell if a given dentry is a mnt_root for any mountpoint.
-> 
-> Suggestions?  Thoughts?
-> 
-> Thanks,
-> NeilBrown
-> 
+Hm..., seems you are right, I missed this part:
+mutex_lock
+lookup_open -> atomic_open -> deny_lock_file
+mutex_unlock
 
-I've also been looking at some weird ESTALE problems. Here's another
-fun one that doesn't involve mountpoints. Assume here that we're
-working in the same exported directory on client and server:
-
-    server# mkdir a
-    client# cd a
-    server# mv a a.bak
-    client# sleep 30  # (or whatever the dir attrcache timeout is)
-    client# stat .
-    stat: cannot stat ‘.’: Stale NFS file handle
-
-Obviously, "." should not be stale. It got renamed, but the inode still
-exists on the server.
-
-If you sniff on the wire, you'll see that the server doesn't ever send
-an ESTALE here. What happens is that due to FS_REVAL_DOT being set, we
-end up trying to revalidate the dentry that "." refers to. We find that
-the parent changed (obviously) and then try to redo the lookup of "a".
-At that point we notice that it doesn't exist and turn it into ESTALE.
-
-I don't really understand the point of FS_REVAL_DOT. What does that
-actually buy us? I wonder if removing it would also help your testcase?
+that means that nobody can open and of course set flock on the newly
+created file (because flock is done through file descriptor). So, it
+should be fine to call flock after f_ops->atomic_open in atomic_open
+function. Thanks.
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Best regards,
+Pavel Shilovsky.
