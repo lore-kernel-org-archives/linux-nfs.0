@@ -1,96 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54907 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:16341 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758750Ab3BKSWS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Feb 2013 13:22:18 -0500
-Date: Mon, 11 Feb 2013 13:22:12 -0500
-To: Jiri Horky <jiri.horky@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 server ignores local filesystem's POSIX ACL
-Message-ID: <20130211182212.GB30117@fieldses.org>
-References: <51190E62.5090304@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <51190E62.5090304@gmail.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1946451Ab3BHMjc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Feb 2013 07:39:32 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 05/15] NFSv4: Add label recommended attribute and NFSv4 flags
+Date: Fri,  8 Feb 2013 07:39:13 -0500
+Message-Id: <1360327163-20360-6-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
+References: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 11, 2013 at 04:29:38PM +0100, Jiri Horky wrote:
-> Hi all,
-> 
-> we use NFSv4 with Kerberos and a custom idmap mapping plugin. The
-> mapping is configured in a way that all principals that are not
-> explicitly defined are mapped to nobody/nogroup on a server.
-> Recently, the kerberos infrastructure within our organization
-> expanded by crossrealming with other parties which should not be
-> allowed to use our NFSv4 mounts.
-> It is my understanding that everybody who is able to authenticate
-> against the used kerberos infrastructure can mount the filesystems
-> but nonauthorized users will be mapped to user nobody/nogroup and
-> according to server's filesystem rights can do other actions. Now, I
-> would like to set deny ACL for user nobody to the server's /exports
-> directory to restrict nobody user access. But it seems this ACL is
-> ignored. In fact, local POSIX ACL's on any directory seems to
-> ignored:
-> 
-> SERVER:
-> root@store4 /exports # mkdir local_tmp
-> root@store4 /exports # chmod 777 local_tmp/
-> root@store4 /exports # setfacl -m u:nobody:--- /exports/local_tmp/
-> root@store4 /exports # getfacl /exports/local_tmp/
-> getfacl: Removing leading '/' from absolute path names
-> # file: exports/local_tmp/
-> # owner: root
-> # group: root
-> user::rwx
-> user:nobody:---
-> group::rwx
-> mask::rwx
-> other::rwx
-> root@store4 /exports # su nobody -c "touch /exports/local_tmp/filelocal"
-> touch: cannot touch `/exports/local_tmp/filelocal': Permission denied
-> 
-> so far so good, now on a client:
-> 
-> CLIENT:
-> metex-1:~# mount -t nfs4 -o sec=krb5 store4.du1.cesnet.cz:/ /mnt
-> metex-1:~# touch /mnt/local_tmp/a
-> metex-1:~# ls -l /mnt/local_tmp/a
-> -rw-r--r-- 1 nobody nogroup 0 Feb 11 15:23 /mnt/local_tmp/a
-> 
-> and on the SERVER again:
-> root@store4 /exports # ls -l /exports/local_tmp/a
-> -rw-r--r-- 1 nobody nogroup 0 Feb 11 15:23 /exports/local_tmp/a
-> 
-> So the ACL is ignored when accessing through NFS. Is it the expected
-> behavior and I am just doing something terribly wrong?
+From: David Quigley <dpquigl@davequigley.com>
 
-That looks like a bug, but I'm at a loss to explain how it could have
-happened.  A network trace (tcpdump -s0 -wtmp.pcap, then send me
-tmp.pcap) taken during the file creation above might be interesting.
+This patch adds several new flags to allow the NFS client and server to
+determine if this attribute is supported and if it is being sent over the wire.
 
-> Some more info about server:
-> 
-> root@store4 /exports # cat /etc/exports
-> /exports *(sec=krb5:krb5i:krb5p,rw,fsid=0,sync,no_subtree_check,no_root_squash,insecure,crossmnt)
-> root@store4 /exports # uname -a
-> Linux fe4 2.6.32.59-0.7.1.du2-default #1 SMP 2012-07-13 15:50:56
-> +0200 x86_64 x86_64 x86_64 GNU/Linux
-> OS is: SLES 11 SP1
-> 
-> root@store4 /exports # modinfo nfsd
-> filename: /lib/modules/2.6.32.59-0.7.1.du2-default/kernel/fs/nfsd/nfsd.ko
-> license:        GPL
-> author:         Olaf Kirch <okir@monad.swb.de>
-> srcversion:     74D3604622B7912E7C96E03
-> depends:        auth_rpcgss,sunrpc,lockd,exportfs,nfs_acl
-> supported:      yes
-> vermagic:       2.6.32.59-0.7.1.du2-default SMP mod_unload modversions
-> 
-> Our intention is  simply to force nobody users out of our NFS servers.
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ include/linux/nfs4.h      | 1 +
+ include/linux/nfs_fs_sb.h | 1 +
+ include/linux/nfs_xdr.h   | 4 +++-
+ 3 files changed, 5 insertions(+), 1 deletion(-)
 
-It might be better to teach rpc.svcgssd to fail authentications from any
-users outside your local domain.  I'm not sure how to do that.
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index e111fa4..f9235b4 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -373,6 +373,7 @@ enum lock_type4 {
+ #define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
+ #define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
+ #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
++#define FATTR4_WORD2_SECURITY_LABEL     (1UL << 17)
+ #define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
+ 
+ /* MDS threshold bitmap bits */
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 6c6ed15..d507357 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -197,5 +197,6 @@ struct nfs_server {
+ #define NFS_CAP_MTIME		(1U << 13)
+ #define NFS_CAP_POSIX_LOCK	(1U << 14)
+ #define NFS_CAP_UIDGID_NOMAP	(1U << 15)
++#define NFS_CAP_SECURITY_LABEL	(1U << 16)
+ 
+ #endif
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 29adb12..ac9ba69 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -104,6 +104,7 @@ struct nfs_fattr {
+ #define NFS_ATTR_FATTR_MOUNTED_ON_FILEID (1U << 22)
+ #define NFS_ATTR_FATTR_OWNER_NAME	(1U << 23)
+ #define NFS_ATTR_FATTR_GROUP_NAME	(1U << 24)
++#define NFS_ATTR_FATTR_V4_SECURITY_LABEL (1U << 25)
+ 
+ #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
+ 		| NFS_ATTR_FATTR_MODE \
+@@ -123,7 +124,8 @@ struct nfs_fattr {
+ #define NFS_ATTR_FATTR_V3 (NFS_ATTR_FATTR \
+ 		| NFS_ATTR_FATTR_SPACE_USED)
+ #define NFS_ATTR_FATTR_V4 (NFS_ATTR_FATTR \
+-		| NFS_ATTR_FATTR_SPACE_USED)
++		| NFS_ATTR_FATTR_SPACE_USED \
++		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
+ 
+ /*
+  * Info on the file system
+-- 
+1.7.11.7
 
---b.
