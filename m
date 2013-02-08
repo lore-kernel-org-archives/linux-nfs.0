@@ -1,132 +1,231 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f44.google.com ([74.125.82.44]:57931 "EHLO
-	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759129Ab3BYKTI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Feb 2013 05:19:08 -0500
-Received: by mail-wg0-f44.google.com with SMTP id dr12so2272659wgb.35
-        for <linux-nfs@vger.kernel.org>; Mon, 25 Feb 2013 02:19:07 -0800 (PST)
-Message-ID: <512B3A98.4020602@tonian.com>
-Date: Mon, 25 Feb 2013 12:19:04 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from fieldses.org ([174.143.236.118]:37811 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1947017Ab3BHUz5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Feb 2013 15:55:57 -0500
+Date: Fri, 8 Feb 2013 15:55:55 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        rees@umich.edu
+Subject: Re: [PATCH v3 2/2] nfsd: keep a checksum of the first 256 bytes of
+ request
+Message-ID: <20130208205555.GC21040@fieldses.org>
+References: <1360248701-23963-1-git-send-email-jlayton@redhat.com>
+ <1360248701-23963-3-git-send-email-jlayton@redhat.com>
+ <DF2DA489-3D72-4DBF-8C65-1B7DA9866B63@oracle.com>
+ <20130207130316.0cf29993@corrin.poochiereds.net>
+ <20130208082706.614035e2@tlielax.poochiereds.net>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] pnfs: fix resend_to_mds for directio
-References: <1361712947-1778-1-git-send-email-bhalevy@tonian.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9235DDE9E@SACEXCMBX04-PRD.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9235DDE9E@SACEXCMBX04-PRD.hq.netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130208082706.614035e2@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-02-24 17:09, Myklebust, Trond wrote:
-> On Sun, 2013-02-24 at 15:35 +0200, Benny Halevy wrote:
->> Pass the directio request on pageio_init to clean up the API.
->>
->> Percolate pg_dreq from original nfs_pageio_descriptor to the
->> pnfs_{read,write}_done_resend_to_mds and use it on respective
->> call to nfs_pageio_init_{read,write} on the newly created
->> nfs_pageio_descriptor.
->>
->> Reproduced by:
->>
->> Server: linux-pnfs pnfs-all-3.7 42aba94
->>
->> Client: linux-nfs/bugfixes 666b3d8
->>
->> Command:
->> # mount -o minorversion=1 server:/ /mnt
->> # dd bs=128k count=8 if=/dev/zero of=/mnt/dd.out oflag=direct
->>
->> BUG: unable to handle kernel NULL pointer dereference at 0000000000000028
->> IP: [<ffffffffa021a3a8>] atomic_inc+0x4/0x9 [nfs]
->> PGD 34786067 PUD 34794067 PMD 0 
->> Oops: 0002 [#1] SMP 
->> Modules linked in: nfs_layout_nfsv41_files nfsv4 nfs nfsd lockd nfs_acl auth_rpcgss exportfs sunrpc btrfs zlib_deflate libcrc32c ipv6 autofs4
->> CPU 1 
->> Pid: 259, comm: kworker/1:2 Not tainted 3.8.0-rc6 #2 Bochs Bochs
->> RIP: 0010:[<ffffffffa021a3a8>]  [<ffffffffa021a3a8>] atomic_inc+0x4/0x9 [nfs]
->> RSP: 0018:ffff880038f8fa68  EFLAGS: 00010206
->> RAX: ffffffffa021a6a9 RBX: ffff880038f8fb48 RCX: 00000000000a0000
->> RDX: ffffffffa021e616 RSI: ffff8800385e9a40 RDI: 0000000000000028
->> RBP: ffff880038f8fa68 R08: ffffffff81ad6720 R09: ffff8800385e9510
->> R10: ffffffffa0228450 R11: ffff880038e87418 R12: ffff8800385e9a40
->> R13: ffff8800385e9a70 R14: ffff880038f8fb38 R15: ffffffffa0148878
->> FS:  0000000000000000(0000) GS:ffff88003e400000(0000) knlGS:0000000000000000
->> CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
->> CR2: 0000000000000028 CR3: 0000000034789000 CR4: 00000000000006e0
->> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
->> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
->> Process kworker/1:2 (pid: 259, threadinfo ffff880038f8e000, task ffff880038302480)
->> Stack:
->>  ffff880038f8fa78 ffffffffa021a6bf ffff880038f8fa88 ffffffffa021bb82
->>  ffff880038f8fae8 ffffffffa021f454 ffff880038f8fae8 ffffffff8109689d
->>  ffff880038f8fab8 ffffffff00000006 0000000000000000 ffff880038f8fb48
->> Call Trace:
->>  [<ffffffffa021a6bf>] nfs_direct_pgio_init+0x16/0x18 [nfs]
->>  [<ffffffffa021bb82>] nfs_pgheader_init+0x6a/0x6c [nfs]
->>  [<ffffffffa021f454>] nfs_generic_pg_writepages+0x51/0xf8 [nfs]
->>  [<ffffffff8109689d>] ? mark_held_locks+0x71/0x99
->>  [<ffffffffa0148878>] ? rpc_release_resources_task+0x37/0x37 [sunrpc]
->>  [<ffffffffa021bc25>] nfs_pageio_doio+0x1a/0x43 [nfs]
->>  [<ffffffffa021be7c>] nfs_pageio_complete+0x16/0x2c [nfs]
->>  [<ffffffffa02608be>] pnfs_write_done_resend_to_mds+0x95/0xc5 [nfsv4]
->>  [<ffffffffa0148878>] ? rpc_release_resources_task+0x37/0x37 [sunrpc]
->>  [<ffffffffa028e27f>] filelayout_reset_write+0x8c/0x99 [nfs_layout_nfsv41_files]
->>  [<ffffffffa028e5f9>] filelayout_write_done_cb+0x4d/0xc1 [nfs_layout_nfsv41_files]
->>  [<ffffffffa024587a>] nfs4_write_done+0x36/0x49 [nfsv4]
->>  [<ffffffffa021f996>] nfs_writeback_done+0x53/0x1cc [nfs]
->>  [<ffffffffa021fb1d>] nfs_writeback_done_common+0xe/0x10 [nfs]
->>  [<ffffffffa028e03d>] filelayout_write_call_done+0x28/0x2a [nfs_layout_nfsv41_files]
->>  [<ffffffffa01488a1>] rpc_exit_task+0x29/0x87 [sunrpc]
->>  [<ffffffffa014a0c9>] __rpc_execute+0x11d/0x3cc [sunrpc]
->>  [<ffffffff810969dc>] ? trace_hardirqs_on_caller+0x117/0x173
->>  [<ffffffffa014a39f>] rpc_async_schedule+0x27/0x32 [sunrpc]
->>  [<ffffffffa014a378>] ? __rpc_execute+0x3cc/0x3cc [sunrpc]
->>  [<ffffffff8105f8c1>] process_one_work+0x226/0x422
->>  [<ffffffff8105f7f4>] ? process_one_work+0x159/0x422
->>  [<ffffffff81094757>] ? lock_acquired+0x210/0x249
->>  [<ffffffffa014a378>] ? __rpc_execute+0x3cc/0x3cc [sunrpc]
->>  [<ffffffff810600d8>] worker_thread+0x126/0x1c4
->>  [<ffffffff8105ffb2>] ? manage_workers+0x240/0x240
->>  [<ffffffff81064ef8>] kthread+0xb1/0xb9
->>  [<ffffffff81064e47>] ? __kthread_parkme+0x65/0x65
->>  [<ffffffff815206ec>] ret_from_fork+0x7c/0xb0
->>  [<ffffffff81064e47>] ? __kthread_parkme+0x65/0x65
->> Code: 00 83 38 02 74 12 48 81 4b 50 00 00 01 00 c7 83 60 07 00 00 01 00 00 00 48 89 df e8 55 fe ff ff 5b 41 5c 5d c3 66 90 55 48 89 e5 <f0> ff 07 5d c3 55 48 89 e5 f0 ff 0f 0f 94 c0 84 c0 0f 95 c0 0f 
->> RIP  [<ffffffffa021a3a8>] atomic_inc+0x4/0x9 [nfs]
->>  RSP <ffff880038f8fa68>
->> CR2: 0000000000000028
->>
->> Cc: Since 3.6 <stable@kernel.org>
->> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
->> ---
->>  fs/nfs/direct.c          |  9 +++------
->>  fs/nfs/internal.h        |  6 ++++--
->>  fs/nfs/nfs4filelayout.c  |  6 ++++--
->>  fs/nfs/pagelist.c        |  5 +++--
->>  fs/nfs/pnfs.c            | 30 ++++++++++++++++++------------
->>  fs/nfs/pnfs.h            | 12 ++++++++----
->>  fs/nfs/read.c            |  9 +++++----
->>  fs/nfs/write.c           | 10 ++++++----
->>  include/linux/nfs_page.h |  3 ++-
->>  include/linux/nfs_xdr.h  |  6 ++++--
->>  10 files changed, 57 insertions(+), 39 deletions(-)
->>
+On Fri, Feb 08, 2013 at 08:27:06AM -0500, Jeff Layton wrote:
+> On Thu, 7 Feb 2013 13:03:16 -0500
+> Jeff Layton <jlayton@redhat.com> wrote:
 > 
-> Hi Benny,
+> > On Thu, 7 Feb 2013 10:51:02 -0500
+> > Chuck Lever <chuck.lever@oracle.com> wrote:
+> > 
+> > > 
+> > > On Feb 7, 2013, at 9:51 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> > > 
+> > > > Now that we're allowing more DRC entries, it becomes a lot easier to hit
+> > > > problems with XID collisions. In order to mitigate those, calculate the
+> > > > crc32 of up to the first 256 bytes of each request coming in and store
+> > > > that in the cache entry, along with the total length of the request.
+> > > 
+> > > I'm happy to see a checksummed DRC finally become reality for the Linux NFS server.
+> > > 
+> > > Have you measured the CPU utilization impact and CPU cache footprint of performing a CRC computation for every incoming RPC?  I'm wondering if a simpler checksum might be just as useful but less costly to compute.
+> > > 
+> > 
+> > No, I haven't, at least not in any sort of rigorous way. It's pretty
+> > negligible on "normal" PC hardware, but I think most intel and amd cpus
+> > have instructions for handling crc32. I'm ok with a different checksum,
+> > we don't need anything cryptographically secure here. I simply chose
+> > crc32 since it has an easily available API, and I figured it would be
+> > fairly lightweight.
+> > 
 > 
-> Can we please trim away the cleanups if this is a stable patch? As far
-> as I can see, we can achieve the same result without having to propagate
-> the dreq argument all the way to nfs_pageio_init.
+> After an abortive attempt to measure this with ftrace, I ended up
+> hacking together a patch to just measure the latency of the
+> nfsd_cache_csum/_crc functions to get some rough numbers. On my x86_64
+> KVM guest, the avg time to calculate the crc32 is ~1750ns. Using IP
+> checksums cuts that roughly in half to ~800ns. I'm not sure how best to
+> measure the cache footprint however.
 > 
-> How about the following?
+> Neither seems terribly significant, especially given the other
+> inefficiencies in this code. OTOH, I guess those latencies can add up,
+> and I don't see any need to use crc32 over the net/checksum.h routines.
+> We probably ought to go with my RFC patch from yesterday.
 
-Looks good.
-Testing...
+OK, I hadn't committed the original yet, so I've just rolled them
+together and added a little of the above to the changelog.  Look OK?
+Chuck, should I add a Reviewed-by: ?
 
-Benny
+--b.
 
-> 
-> Cheers
->   Trond
-> 
+commit a937bd422ccc4306cdc81b5aa60b12a7212b70d3
+Author: Jeff Layton <jlayton@redhat.com>
+Date:   Mon Feb 4 11:57:27 2013 -0500
+
+    nfsd: keep a checksum of the first 256 bytes of request
+    
+    Now that we're allowing more DRC entries, it becomes a lot easier to hit
+    problems with XID collisions. In order to mitigate those, calculate a
+    checksum of up to the first 256 bytes of each request coming in and store
+    that in the cache entry, along with the total length of the request.
+    
+    This initially used crc32, but Chuck Lever and Jim Rees pointed out that
+    crc32 is probably more heavyweight than we really need for generating
+    these checksums, and recommended looking at using the same routines that
+    are used to generate checksums for IP packets.
+    
+    On an x86_64 KVM guest measurements with ftrace showed ~800ns to use
+    csum_partial vs ~1750ns for crc32.  The difference probably isn't
+    terribly significant, but for now we may as well use csum_partial.
+    
+    Signed-off-by: Jeff Layton <jlayton@redhat.com>
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
+index 9c7232b..87fd141 100644
+--- a/fs/nfsd/cache.h
++++ b/fs/nfsd/cache.h
+@@ -29,6 +29,8 @@ struct svc_cacherep {
+ 	u32			c_prot;
+ 	u32			c_proc;
+ 	u32			c_vers;
++	unsigned int		c_len;
++	__wsum			c_csum;
+ 	unsigned long		c_timestamp;
+ 	union {
+ 		struct kvec	u_vec;
+@@ -73,6 +75,9 @@ enum {
+ /* Cache entries expire after this time period */
+ #define RC_EXPIRE		(120 * HZ)
+ 
++/* Checksum this amount of the request */
++#define RC_CSUMLEN		(256U)
++
+ int	nfsd_reply_cache_init(void);
+ void	nfsd_reply_cache_shutdown(void);
+ int	nfsd_cache_lookup(struct svc_rqst *);
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index f754469..40db57e 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -11,6 +11,7 @@
+ #include <linux/slab.h>
+ #include <linux/sunrpc/addr.h>
+ #include <linux/highmem.h>
++#include <net/checksum.h>
+ 
+ #include "nfsd.h"
+ #include "cache.h"
+@@ -130,6 +131,7 @@ int nfsd_reply_cache_init(void)
+ 	INIT_LIST_HEAD(&lru_head);
+ 	max_drc_entries = nfsd_cache_size_limit();
+ 	num_drc_entries = 0;
++
+ 	return 0;
+ out_nomem:
+ 	printk(KERN_ERR "nfsd: failed to allocate reply cache\n");
+@@ -238,12 +240,45 @@ nfsd_reply_cache_shrink(struct shrinker *shrink, struct shrink_control *sc)
+ }
+ 
+ /*
++ * Walk an xdr_buf and get a CRC for at most the first RC_CSUMLEN bytes
++ */
++static __wsum
++nfsd_cache_csum(struct svc_rqst *rqstp)
++{
++	int idx;
++	unsigned int base;
++	__wsum csum;
++	struct xdr_buf *buf = &rqstp->rq_arg;
++	const unsigned char *p = buf->head[0].iov_base;
++	size_t csum_len = min_t(size_t, buf->head[0].iov_len + buf->page_len,
++				RC_CSUMLEN);
++	size_t len = min(buf->head[0].iov_len, csum_len);
++
++	/* rq_arg.head first */
++	csum = csum_partial(p, len, 0);
++	csum_len -= len;
++
++	/* Continue into page array */
++	idx = buf->page_base / PAGE_SIZE;
++	base = buf->page_base & ~PAGE_MASK;
++	while (csum_len) {
++		p = page_address(buf->pages[idx]) + base;
++		len = min(PAGE_SIZE - base, csum_len);
++		csum = csum_partial(p, len, csum);
++		csum_len -= len;
++		base = 0;
++		++idx;
++	}
++	return csum;
++}
++
++/*
+  * Search the request hash for an entry that matches the given rqstp.
+  * Must be called with cache_lock held. Returns the found entry or
+  * NULL on failure.
+  */
+ static struct svc_cacherep *
+-nfsd_cache_search(struct svc_rqst *rqstp)
++nfsd_cache_search(struct svc_rqst *rqstp, __wsum csum)
+ {
+ 	struct svc_cacherep	*rp;
+ 	struct hlist_node	*hn;
+@@ -257,6 +292,7 @@ nfsd_cache_search(struct svc_rqst *rqstp)
+ 	hlist_for_each_entry(rp, hn, rh, c_hash) {
+ 		if (xid == rp->c_xid && proc == rp->c_proc &&
+ 		    proto == rp->c_prot && vers == rp->c_vers &&
++		    rqstp->rq_arg.len == rp->c_len && csum == rp->c_csum &&
+ 		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
+ 		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr))
+ 			return rp;
+@@ -277,6 +313,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+ 	u32			proto =  rqstp->rq_prot,
+ 				vers = rqstp->rq_vers,
+ 				proc = rqstp->rq_proc;
++	__wsum			csum;
+ 	unsigned long		age;
+ 	int type = rqstp->rq_cachetype;
+ 	int rtn;
+@@ -287,10 +324,12 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+ 		return RC_DOIT;
+ 	}
+ 
++	csum = nfsd_cache_csum(rqstp);
++
+ 	spin_lock(&cache_lock);
+ 	rtn = RC_DOIT;
+ 
+-	rp = nfsd_cache_search(rqstp);
++	rp = nfsd_cache_search(rqstp, csum);
+ 	if (rp)
+ 		goto found_entry;
+ 
+@@ -318,7 +357,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+ 	 * Must search again just in case someone inserted one
+ 	 * after we dropped the lock above.
+ 	 */
+-	found = nfsd_cache_search(rqstp);
++	found = nfsd_cache_search(rqstp, csum);
+ 	if (found) {
+ 		nfsd_reply_cache_free_locked(rp);
+ 		rp = found;
+@@ -344,6 +383,8 @@ setup_entry:
+ 	rpc_set_port((struct sockaddr *)&rp->c_addr, rpc_get_port(svc_addr(rqstp)));
+ 	rp->c_prot = proto;
+ 	rp->c_vers = vers;
++	rp->c_len = rqstp->rq_arg.len;
++	rp->c_csum = csum;
+ 
+ 	hash_refile(rp);
+ 	lru_put_end(rp);
