@@ -1,85 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49017 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:31072 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758830Ab3BGQzK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Feb 2013 11:55:10 -0500
-Date: Thu, 7 Feb 2013 11:55:09 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] SUNRPC: Refactor nfsd4_do_encode_secinfo()
-Message-ID: <20130207165509.GM3222@fieldses.org>
-References: <20130201220308.13518.82164.stgit@seurat.1015granger.net>
- <20130207150213.GC3222@fieldses.org>
- <87316F41-4E5E-473C-A372-0AFC6721A355@oracle.com>
- <20130207162308.GI3222@fieldses.org>
- <F0DAA0C6-DBA2-457B-8C68-13A2BC3CB4AC@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <F0DAA0C6-DBA2-457B-8C68-13A2BC3CB4AC@oracle.com>
+	id S1946469Ab3BHMji (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Feb 2013 07:39:38 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 12/15] lnfs: Do not sleep holding the inode spin lock
+Date: Fri,  8 Feb 2013 07:39:20 -0500
+Message-Id: <1360327163-20360-13-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
+References: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 07, 2013 at 11:26:43AM -0500, Chuck Lever wrote:
-> 
-> On Feb 7, 2013, at 11:23 AM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Thu, Feb 07, 2013 at 10:58:25AM -0500, Chuck Lever wrote:
-> >> 
-> >> On Feb 7, 2013, at 10:02 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >> 
-> >>> On Fri, Feb 01, 2013 at 05:43:44PM -0500, Chuck Lever wrote:
-> >>>> Clean up.  This matches a similar API for the client side, and
-> >>>> keeps ULP fingers out the of the GSS mech switch.
-> >>>> 
-> >>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> >>>> Acked-by: J. Bruce Fields <bfields@redhat.com>
-> >>>> ---
-> >>>> 
-> >>>> Bruce-
-> >>>> 
-> >>>> This version of the patch follows the existing logic in
-> >>>> nfsd4_do_encode_secinfo(): If the RPC layer can't find GSS info
-> >>>> that matches an export security flavor, it assumes the flavor is
-> >>>> not a GSS pseudoflavor, and simply puts it on the wire.
-> >>>> 
-> >>>> However, if the below XDR encoding logic is given a legitimate GSS
-> >>>> pseudoflavor but the RPC layer says it does not support that
-> >>>> pseudoflavor for some reason, then we leak GSS pseudoflavor numbers
-> >>>> onto the wire.
-> >>>> 
-> >>>> I confirmed this happens by blacklisting rpcsec_gss_krb5, then
-> >>>> attempted a client transition from the pseudo-fs to a Kerberos-only
-> >>>> share.  The client received a flavor list containing the Kerberos
-> >>>> pseudoflavor numbers, rather than GSS tuples.
-> >>>> 
-> >>>> The encoder logic can check that each pseudoflavor is less than
-> >>>> MAXFLAVOR before writing it into the buffer, to prevent this.  But
-> >>>> after "nflavs" is written into the XDR buffer, the encoder can't
-> >>>> skip writing flavor information into the buffer when it discovers
-> >>>> the RPC layer doesn't support that flavor.
-> >>>> 
-> >>>> Is there some way of writing "nflavs" into the XDR buffer after
-> >>>> the loop that writes the flavor information is complete?
-> >>> 
-> >>> Yes, you can save a pointer and then go back and fill that in--see
-> >>> encode_fattr for an example.
-> >> 
-> >> Thanks, I will submit an additional patch that describes this issue and fixes it.
-> >> 
-> >> I asked David Noveck, as one of the authors of RFC 3530, whether an NFS server should return a zero-length flavor list or an error if SECINFO can't find any flavors a client is allowed to use. His opinion was to return NFS4_OK and a zero-length flavor list.
-> > 
-> > Fine with me for this code.
-> 
-> OK, will go with that.
-> 
-> > (In practice though we should probably be warning somewhere (exportfs?)
-> > if somebody creates an export like that.)
-> 
-> The problem can also arise because gssd isn't running or auth_rpcgss.ko or rpcsec_gss_krb5.ko are not loadable for some reason.  In other words, an empty flavor list might also be the result of a transient server misconfiguration.
+From: Dave Quigley <dpquigl@taiga.selinuxproject.org>
 
-OK.  Do you think the kernel could help by providing a once-only warning
-in such a case?  (Or in the case when we're not able to find support for
-a security flavor set on the export.)
+The nfs_setsecurity code can sleep while allocating memory
+so the inode spin lock can not be held while during this call.
 
---b.
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ fs/nfs/inode.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 0d412c4..65bf9ca 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1285,6 +1285,9 @@ int nfs_refresh_inode(struct inode *inode, struct nfs_fattr *fattr, struct nfs4_
+ 	status = nfs_refresh_inode_locked(inode, fattr, label);
+ 	spin_unlock(&inode->i_lock);
+ 
++	if (label && !status)
++		nfs_setsecurity(inode, fattr, label);
++
+ 	return status;
+ }
+ EXPORT_SYMBOL_GPL(nfs_refresh_inode);
+@@ -1324,6 +1327,10 @@ int nfs_post_op_update_inode(struct inode *inode, struct nfs_fattr *fattr, struc
+ 	spin_lock(&inode->i_lock);
+ 	status = nfs_post_op_update_inode_locked(inode, fattr, label);
+ 	spin_unlock(&inode->i_lock);
++	if (nfs_server_capable(inode, NFS_CAP_SECURITY_LABEL)) {
++		if (label && !status)
++			nfs_setsecurity(inode, fattr, label);
++	}
+ 	return status;
+ }
+ EXPORT_SYMBOL_GPL(nfs_post_op_update_inode);
+@@ -1543,9 +1550,6 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr, struct
+ 				| NFS_INO_INVALID_ACL
+ 				| NFS_INO_REVAL_FORCED);
+ 
+-	if (label && (server->caps & NFS_CAP_SECURITY_LABEL))
+-		nfs_setsecurity(inode, fattr, label);
+-
+ 	if (fattr->valid & NFS_ATTR_FATTR_NLINK) {
+ 		if (inode->i_nlink != fattr->nlink) {
+ 			invalid |= NFS_INO_INVALID_ATTR;
+-- 
+1.7.11.7
+
