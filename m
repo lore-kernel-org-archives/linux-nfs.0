@@ -1,108 +1,193 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:5758 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:55415 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757125Ab3BMAas (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Feb 2013 19:30:48 -0500
-Message-ID: <511ADEB2.8030108@RedHat.com>
-Date: Tue, 12 Feb 2013 19:30:42 -0500
+	id S1946460Ab3BHMje (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Feb 2013 07:39:34 -0500
 From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
         "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
         Linux FS devel list <linux-fsdevel@vger.kernel.org>,
         Linux Security List <linux-security-module@vger.kernel.org>,
         SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 06/15] NFSv4: Introduce new label structure
-References: <1360327163-20360-1-git-send-email-SteveD@redhat.com> <1360327163-20360-7-git-send-email-SteveD@redhat.com> <20130212220741.GJ10267@fieldses.org> <4FA345DA4F4AE44899BD2B03EEEC2FA91F3CE55C@sacexcmbx05-prd.hq.netapp.com> <20130212223226.GL10267@fieldses.org> <4FA345DA4F4AE44899BD2B03EEEC2FA91F3CE58F@sacexcmbx05-prd.hq.netapp.com> <20130212230623.GO10267@fieldses.org>
-In-Reply-To: <20130212230623.GO10267@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Subject: [PATCH 07/15] NFSv4: Extend fattr bitmaps to support all 3 words
+Date: Fri,  8 Feb 2013 07:39:15 -0500
+Message-Id: <1360327163-20360-8-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
+References: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: David Quigley <dpquigl@davequigley.com>
 
+The fattr handling bitmap code only uses the first two fattr words sofar. This
+patch adds the 3rd word to being sent but doesn't populate it yet.
 
-On 12/02/13 18:06, J. Bruce Fields wrote:
-> On Tue, Feb 12, 2013 at 10:40:46PM +0000, Myklebust, Trond wrote:
->> On Tue, 2013-02-12 at 17:32 -0500, J. Bruce Fields wrote:
->>> On Tue, Feb 12, 2013 at 10:28:16PM +0000, Myklebust, Trond wrote:
->>>> On Tue, 2013-02-12 at 17:07 -0500, J. Bruce Fields wrote:
->>>>> On Fri, Feb 08, 2013 at 07:39:14AM -0500, Steve Dickson wrote:
->>>>>> From: David Quigley <dpquigl@davequigley.com>
->>>>>>
->>>>>> In order to mimic the way that NFSv4 ACLs are implemented we have created a
->>>>>> structure to be used to pass label data up and down the call chain. This patch
->>>>>> adds the new structure and new members to the required NFSv4 call structures.
->>>>>>
->>>>>> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
->>>>>> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
->>>>>> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
->>>>>> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
->>>>>> ---
->>>>>>  fs/nfs/inode.c            | 33 +++++++++++++++++++++++++++++++++
->>>>>>  include/linux/nfs4.h      |  7 +++++++
->>>>>>  include/linux/nfs_fs.h    | 17 +++++++++++++++++
->>>>>>  include/linux/nfs_xdr.h   | 21 +++++++++++++++++++++
->>>>>>  include/uapi/linux/nfs4.h |  2 +-
->>>>>>  5 files changed, 79 insertions(+), 1 deletion(-)
->>>>>>
->>>>>> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
->>>>>> index ebeb94c..8d5f01b 100644
->>>>>> --- a/fs/nfs/inode.c
->>>>>> +++ b/fs/nfs/inode.c
->>>>>> @@ -255,6 +255,39 @@ nfs_init_locked(struct inode *inode, void *opaque)
->>>>>>  	return 0;
->>>>>>  }
->>>>>>  
->>>>>> +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
->>>>>> +struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags)
->>>>>> +{
->>>>>> +	struct nfs4_label *label = NULL;
->>>>>> +
->>>>>> +	if (!(server->caps & NFS_CAP_SECURITY_LABEL))
->>>>>> +		return label;
->>>>>> +
->>>>>> +	label = kzalloc(NFS4_MAXLABELLEN, flags);
->>>>>> +	if (label == NULL)
->>>>>> +		return ERR_PTR(-ENOMEM);
->>>>>> +
->>>>>> +	label->label = (char *)(label + 1);
->>>>>> +	label->len = NFS4_MAXLABELLEN;
->>>>>
->>>>> If you're expecting to be able to store up to NFS4_MAXLABELLEN of data
->>>>> after the end of the struct, then you want:
->>>>>
->>>>> 	label = kzalloc(sizeof(struct nfs4_label) + NFS4_MAXLABELLEN, flags);
->>>>
->>>> Sigh... No.
->>>>
->>>> I keep telling Steve that the 'label' needs to be defined as an array,
->>>
->>> Yeah, I know, he said in 0/15 that he couldn't do that, so I've been
->>> reading through these on the assumption I'll find out why not at some
->>> point....  (Still not seeing it, though.)
->>
->> It only makes sense to define label->label as a pointer if you need to
->> change the pointer value at some time. However, if that is the case,
->> then why allocate the struct nfs4_label and label string as a single
->> memory block? It would make more sense to allocate them separately so
->> that you can free the old label storage after you change the pointer.
-> 
-> nfs4_get_security_label() in a later patch is indeed using some
-> passed-in storage instead, but I'm not sure it's doing it correctly.
-Exactly, this is the interface where I'm thinking it makes sense to
-keep label->label a pointer.
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ fs/nfs/nfs4_fs.h          |  6 +++---
+ fs/nfs/nfs4proc.c         | 10 +++++-----
+ fs/nfs/nfs4xdr.c          | 20 ++++++++++++--------
+ fs/nfs/super.c            |  1 +
+ include/linux/nfs_fs_sb.h |  2 +-
+ 5 files changed, 22 insertions(+), 17 deletions(-)
 
-steved.
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index a3f488b..dfaee53 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -291,10 +291,10 @@ is_ds_client(struct nfs_client *clp)
+ extern const struct nfs4_minor_version_ops *nfs_v4_minor_ops[];
+ 
+ extern const u32 nfs4_fattr_bitmap[3];
+-extern const u32 nfs4_statfs_bitmap[2];
+-extern const u32 nfs4_pathconf_bitmap[2];
++extern const u32 nfs4_statfs_bitmap[3];
++extern const u32 nfs4_pathconf_bitmap[3];
+ extern const u32 nfs4_fsinfo_bitmap[3];
+-extern const u32 nfs4_fs_locations_bitmap[2];
++extern const u32 nfs4_fs_locations_bitmap[3];
+ 
+ void nfs4_free_client(struct nfs_client *);
+ 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index cf747ef..7723f8c 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -157,7 +157,7 @@ static const u32 nfs4_open_noattr_bitmap[3] = {
+ 	| FATTR4_WORD0_FILEID,
+ };
+ 
+-const u32 nfs4_statfs_bitmap[2] = {
++const u32 nfs4_statfs_bitmap[3] = {
+ 	FATTR4_WORD0_FILES_AVAIL
+ 	| FATTR4_WORD0_FILES_FREE
+ 	| FATTR4_WORD0_FILES_TOTAL,
+@@ -166,7 +166,7 @@ const u32 nfs4_statfs_bitmap[2] = {
+ 	| FATTR4_WORD1_SPACE_TOTAL
+ };
+ 
+-const u32 nfs4_pathconf_bitmap[2] = {
++const u32 nfs4_pathconf_bitmap[3] = {
+ 	FATTR4_WORD0_MAXLINK
+ 	| FATTR4_WORD0_MAXNAME,
+ 	0
+@@ -181,7 +181,7 @@ const u32 nfs4_fsinfo_bitmap[3] = { FATTR4_WORD0_MAXFILESIZE
+ 			FATTR4_WORD2_LAYOUT_BLKSIZE
+ };
+ 
+-const u32 nfs4_fs_locations_bitmap[2] = {
++const u32 nfs4_fs_locations_bitmap[3] = {
+ 	FATTR4_WORD0_TYPE
+ 	| FATTR4_WORD0_CHANGE
+ 	| FATTR4_WORD0_SIZE
+@@ -197,7 +197,7 @@ const u32 nfs4_fs_locations_bitmap[2] = {
+ 	| FATTR4_WORD1_TIME_ACCESS
+ 	| FATTR4_WORD1_TIME_METADATA
+ 	| FATTR4_WORD1_TIME_MODIFY
+-	| FATTR4_WORD1_MOUNTED_ON_FILEID
++	| FATTR4_WORD1_MOUNTED_ON_FILEID,
+ };
+ 
+ static void nfs4_setup_readdir(u64 cookie, __be32 *verifier, struct dentry *dentry,
+@@ -5082,7 +5082,7 @@ static int _nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
+ 				   struct page *page)
+ {
+ 	struct nfs_server *server = NFS_SERVER(dir);
+-	u32 bitmask[2] = {
++	u32 bitmask[3] = {
+ 		[0] = FATTR4_WORD0_FSID | FATTR4_WORD0_FS_LOCATIONS,
+ 	};
+ 	struct nfs4_fs_locations_arg args = {
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 26b1439..a9353d1 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -983,15 +983,16 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+ 	int len;
+ 	uint32_t bmval0 = 0;
+ 	uint32_t bmval1 = 0;
++	uint32_t bmval2 = 0;
+ 
+ 	/*
+ 	 * We reserve enough space to write the entire attribute buffer at once.
+ 	 * In the worst-case, this would be
+-	 *   12(bitmap) + 4(attrlen) + 8(size) + 4(mode) + 4(atime) + 4(mtime)
+-	 *          = 36 bytes, plus any contribution from variable-length fields
++	 * 16(bitmap) + 4(attrlen) + 8(size) + 4(mode) + 4(atime) + 4(mtime)
++	 * = 40 bytes, plus any contribution from variable-length fields
+ 	 *            such as owner/group.
+ 	 */
+-	len = 16;
++	len = 20;
+ 
+ 	/* Sigh */
+ 	if (iap->ia_valid & ATTR_SIZE)
+@@ -1035,9 +1036,9 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+ 	 * We write the bitmap length now, but leave the bitmap and the attribute
+ 	 * buffer length to be backfilled at the end of this routine.
+ 	 */
+-	*p++ = cpu_to_be32(2);
++	*p++ = cpu_to_be32(3);
+ 	q = p;
+-	p += 3;
++	p += 4;
+ 
+ 	if (iap->ia_valid & ATTR_SIZE) {
+ 		bmval0 |= FATTR4_WORD0_SIZE;
+@@ -1086,9 +1087,10 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
+ 				len, ((char *)p - (char *)q) + 4);
+ 		BUG();
+ 	}
+-	len = (char *)p - (char *)q - 12;
++	len = (char *)p - (char *)q - 16;
+ 	*q++ = htonl(bmval0);
+ 	*q++ = htonl(bmval1);
++	*q++ = htonl(bmval2);
+ 	*q = htonl(len);
+ 
+ /* out: */
+@@ -1194,8 +1196,10 @@ encode_getattr_three(struct xdr_stream *xdr,
+ 
+ static void encode_getfattr(struct xdr_stream *xdr, const u32* bitmask, struct compound_hdr *hdr)
+ {
+-	encode_getattr_two(xdr, bitmask[0] & nfs4_fattr_bitmap[0],
+-			   bitmask[1] & nfs4_fattr_bitmap[1], hdr);
++	encode_getattr_three(xdr, bitmask[0] & nfs4_fattr_bitmap[0],
++			   bitmask[1] & nfs4_fattr_bitmap[1],
++			   bitmask[2] & nfs4_fattr_bitmap[2],
++			   hdr);
+ }
+ 
+ static void encode_getfattr_open(struct xdr_stream *xdr, const u32 *bitmask,
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 623c216..c98b434 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -877,6 +877,7 @@ int nfs_show_stats(struct seq_file *m, struct dentry *root)
+ 		seq_printf(m, "\n\tnfsv4:\t");
+ 		seq_printf(m, "bm0=0x%x", nfss->attr_bitmask[0]);
+ 		seq_printf(m, ",bm1=0x%x", nfss->attr_bitmask[1]);
++		seq_printf(m, ",bm2=0x%x", nfss->attr_bitmask[2]);
+ 		seq_printf(m, ",acl=0x%x", nfss->acl_bitmask);
+ 		show_sessions(m, nfss);
+ 		show_pnfs(m, nfss);
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index d507357..e6ed3c2 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -145,7 +145,7 @@ struct nfs_server {
+ 	u32			attr_bitmask[3];/* V4 bitmask representing the set
+ 						   of attributes supported on this
+ 						   filesystem */
+-	u32			cache_consistency_bitmask[2];
++	u32			cache_consistency_bitmask[3];
+ 						/* V4 bitmask representing the subset
+ 						   of change attribute, size, ctime
+ 						   and mtime attributes supported by
+-- 
+1.7.11.7
 
-> 
-> It would seem simpler to pick either inline or separate storage and
-> stick with it throughout.
-> 
-> I'd be inclined to favor inline even if it means larger allocations than
-> necessary or an extra copy.  Just because it seems harder to mess up.
-> 
-> --b.
-> 
