@@ -1,261 +1,175 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ia0-f177.google.com ([209.85.210.177]:35851 "EHLO
-	mail-ia0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754500Ab3BDUTc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2013 15:19:32 -0500
-Received: by mail-ia0-f177.google.com with SMTP id h8so8630336iaa.36
-        for <linux-nfs@vger.kernel.org>; Mon, 04 Feb 2013 12:19:32 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v3 4/9] SUNRPC: Introduce rpcauth_get_pseudoflavor()
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 04 Feb 2013 15:19:30 -0500
-Message-ID: <20130204201930.1518.29020.stgit@seurat.1015granger.net>
-In-Reply-To: <20130204201458.1518.12931.stgit@seurat.1015granger.net>
-References: <20130204201458.1518.12931.stgit@seurat.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:42767 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1946442Ab3BHMjb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Feb 2013 07:39:31 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 04/15] SELinux: Add new labeling type native labels
+Date: Fri,  8 Feb 2013 07:39:12 -0500
+Message-Id: <1360327163-20360-5-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
+References: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfs_find_best_sec() now verifies all flavors requested in a SECINFO
-reply against those that have been explicitly registered via
-rpcauth_register().  For GSS pseudoflavors, these are verified
-against the list of GSS pseudoflavors registered via
-gss_mech_register().
+From: David Quigley <dpquigl@davequigley.com>
 
-Note that the current version of nfs_find_best_sec() can return
-RPC_AUTH_MAXFLAVOR if the server returns a recognized OID but an
-unsupported "service" value.  The new code returns RPC_AUTH_UNIX in
-this case.
+There currently doesn't exist a labeling type that is adequate for use with
+labeled NFS. Since NFS doesn't really support xattrs we can't use the use xattr
+labeling behavior. For this we developed a new labeling type. The native
+labeling type is used solely by NFS to ensure NFS inodes are labeled at runtime
+by the NFS code instead of relying on the SELinux security server on the client
+end.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
 ---
+ include/linux/security.h            |  3 +++
+ security/selinux/hooks.c            | 35 ++++++++++++++++++++++++++---------
+ security/selinux/include/security.h |  2 ++
+ security/selinux/ss/policydb.c      |  5 ++++-
+ 4 files changed, 35 insertions(+), 10 deletions(-)
 
- fs/nfs/nfs4namespace.c                |   41 +++++++++++++++++++--------------
- include/linux/sunrpc/auth.h           |    4 +++
- include/linux/sunrpc/gss_api.h        |    5 ++--
- net/sunrpc/auth.c                     |   34 +++++++++++++++++++++++++++
- net/sunrpc/auth_gss/auth_gss.c        |    1 +
- net/sunrpc/auth_gss/gss_mech_switch.c |   28 +++++++++++++++++++----
- 6 files changed, 87 insertions(+), 26 deletions(-)
-
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index f97b0a8..2187ae7 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -133,33 +133,38 @@ static size_t nfs_parse_server_name(char *string, size_t len,
- 	return ret;
- }
+diff --git a/include/linux/security.h b/include/linux/security.h
+index 5c4179a..9dc244e 100644
+--- a/include/linux/security.h
++++ b/include/linux/security.h
+@@ -61,6 +61,9 @@ struct mm_struct;
+ #define SECURITY_CAP_NOAUDIT 0
+ #define SECURITY_CAP_AUDIT 1
  
-+/**
-+ * nfs_find_best_sec - Find a security mechanism supported locally
-+ * @flavors: List of security tuples returned by SECINFO procedure
-+ *
-+ * Return the pseudoflavor of the first security mechanism in
-+ * "flavors" that is locally supported.  Return RPC_AUTH_UNIX if
-+ * no matching flavor is found in the array.  The "flavors" array
-+ * is searched in the order returned from the server, per RFC 3530
-+ * recommendation.
-+ */
- rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors)
- {
--	struct gss_api_mech *mech;
--	struct xdr_netobj oid;
-+	rpc_authflavor_t pseudoflavor;
-+	struct nfs4_secinfo4 *secinfo;
- 	unsigned int i;
--	rpc_authflavor_t pseudoflavor = RPC_AUTH_UNIX;
- 
- 	for (i = 0; i < flavors->num_flavors; i++) {
--		struct nfs4_secinfo4 *flavor = &flavors->flavors[i];
--
--		if (flavor->flavor == RPC_AUTH_NULL || flavor->flavor == RPC_AUTH_UNIX) {
--			pseudoflavor = flavor->flavor;
--			break;
--		} else if (flavor->flavor == RPC_AUTH_GSS) {
--			oid.len  = flavor->flavor_info.oid.len;
--			oid.data = flavor->flavor_info.oid.data;
--			mech = gss_mech_get_by_OID(&oid);
--			if (!mech)
--				continue;
--			pseudoflavor = gss_svc_to_pseudoflavor(mech,
--						flavor->flavor_info.service);
--			gss_mech_put(mech);
-+		secinfo = &flavors->flavors[i];
++/* LSM Agnostic defines for sb_set_mnt_opts */
++#define SECURITY_LSM_NATIVE_LABELS	1
 +
-+		switch (secinfo->flavor) {
-+		case RPC_AUTH_NULL:
-+		case RPC_AUTH_UNIX:
-+		case RPC_AUTH_GSS:
-+			pseudoflavor = rpcauth_get_pseudoflavor(secinfo->flavor,
-+							&secinfo->flavor_info);
-+			if (pseudoflavor != RPC_AUTH_MAXFLAVOR)
-+				return pseudoflavor;
- 			break;
- 		}
- 	}
+ struct ctl_table;
+ struct audit_krule;
+ struct user_namespace;
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index 972db08..dda436f 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -80,6 +80,7 @@
+ #include <linux/syslog.h>
+ #include <linux/user_namespace.h>
+ #include <linux/export.h>
++#include <linux/security.h>
+ #include <linux/msg.h>
+ #include <linux/shm.h>
  
--	return pseudoflavor;
-+	return RPC_AUTH_UNIX;
- }
+@@ -283,13 +284,14 @@ static void superblock_free_security(struct super_block *sb)
  
- static rpc_authflavor_t nfs4_negotiate_security(struct inode *inode, struct qstr *name)
-diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
-index f25ba92..476e97c 100644
---- a/include/linux/sunrpc/auth.h
-+++ b/include/linux/sunrpc/auth.h
-@@ -21,6 +21,8 @@
- /* size of the nodename buffer */
- #define UNX_MAXNODENAME	32
+ /* The file system's label must be initialized prior to use. */
  
-+struct rpcsec_gss_info;
-+
- /* Work around the lack of a VFS credential */
- struct auth_cred {
- 	uid_t	uid;
-@@ -102,6 +104,7 @@ struct rpc_authops {
- 	int			(*pipes_create)(struct rpc_auth *);
- 	void			(*pipes_destroy)(struct rpc_auth *);
- 	int			(*list_pseudoflavors)(rpc_authflavor_t *, int);
-+	rpc_authflavor_t	(*info2flavor)(struct rpcsec_gss_info *);
+-static const char *labeling_behaviors[6] = {
++static const char *labeling_behaviors[7] = {
+ 	"uses xattr",
+ 	"uses transition SIDs",
+ 	"uses task SIDs",
+ 	"uses genfs_contexts",
+ 	"not configured for labeling",
+ 	"uses mountpoint labeling",
++	"uses native labeling",
  };
  
- struct rpc_credops {
-@@ -136,6 +139,7 @@ int			rpcauth_register(const struct rpc_authops *);
- int			rpcauth_unregister(const struct rpc_authops *);
- struct rpc_auth *	rpcauth_create(rpc_authflavor_t, struct rpc_clnt *);
- void			rpcauth_release(struct rpc_auth *);
-+rpc_authflavor_t	rpcauth_get_pseudoflavor(rpc_authflavor_t, struct rpcsec_gss_info *);
- int			rpcauth_list_flavors(rpc_authflavor_t *, int);
- struct rpc_cred *	rpcauth_lookup_credcache(struct rpc_auth *, struct auth_cred *, int);
- void			rpcauth_init_cred(struct rpc_cred *, const struct auth_cred *, struct rpc_auth *, const struct rpc_credops *);
-diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
-index 98950e5..aba7687 100644
---- a/include/linux/sunrpc/gss_api.h
-+++ b/include/linux/sunrpc/gss_api.h
-@@ -127,9 +127,8 @@ struct gss_api_ops {
- int gss_mech_register(struct gss_api_mech *);
- void gss_mech_unregister(struct gss_api_mech *);
+ static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dentry);
+@@ -677,14 +679,21 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 	if (strcmp(sb->s_type->name, "proc") == 0)
+ 		sbsec->flags |= SE_SBPROC;
  
--/* returns a mechanism descriptor given an OID, and increments the mechanism's
-- * reference count. */
--struct gss_api_mech * gss_mech_get_by_OID(struct xdr_netobj *);
-+/* Given a GSS security tuple, look up a pseudoflavor */
-+rpc_authflavor_t gss_mech_info2flavor(struct rpcsec_gss_info *);
- 
- /* Returns a reference to a mechanism, given a name like "krb5" etc. */
- struct gss_api_mech *gss_mech_get_by_name(const char *);
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index b5c067b..ec18827 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -124,6 +124,40 @@ rpcauth_unregister(const struct rpc_authops *ops)
- EXPORT_SYMBOL_GPL(rpcauth_unregister);
- 
- /**
-+ * rpcauth_get_pseudoflavor - check if security flavor is supported
-+ * @flavor: a security flavor
-+ * @info: a GSS mech OID, quality of protection, and service value
-+ *
-+ * Verifies that an appropriate kernel module is available or already loaded.
-+ * Returns an equivalent pseudoflavor, or RPC_AUTH_MAXFLAVOR if "flavor" is
-+ * not supported locally.
-+ */
-+rpc_authflavor_t
-+rpcauth_get_pseudoflavor(rpc_authflavor_t flavor, struct rpcsec_gss_info *info)
-+{
-+	const struct rpc_authops *ops;
-+	rpc_authflavor_t pseudoflavor;
-+
-+	if ((ops = auth_flavors[flavor]) == NULL)
-+		request_module("rpc-auth-%u", flavor);
-+	spin_lock(&rpc_authflavor_lock);
-+	ops = auth_flavors[flavor];
-+	if (ops == NULL || !try_module_get(ops->owner)) {
-+		spin_unlock(&rpc_authflavor_lock);
-+		return RPC_AUTH_MAXFLAVOR;
+-	/* Determine the labeling behavior to use for this filesystem type. */
+-	rc = security_fs_use((sbsec->flags & SE_SBPROC) ? "proc" : sb->s_type->name, &sbsec->behavior, &sbsec->sid);
+-	if (rc) {
+-		printk(KERN_WARNING "%s: security_fs_use(%s) returned %d\n",
+-		       __func__, sb->s_type->name, rc);
+-		goto out;
++	if (!sbsec->behavior) {
++		/*
++		 * Determine the labeling behavior to use for this
++		 * filesystem type.
++		 */
++		rc = security_fs_use((sbsec->flags & SE_SBPROC) ?
++					"proc" : sb->s_type->name,
++					&sbsec->behavior, &sbsec->sid);
++		if (rc) {
++			printk(KERN_WARNING
++				"%s: security_fs_use(%s) returned %d\n",
++					__func__, sb->s_type->name, rc);
++			goto out;
++		}
+ 	}
+-
+ 	/* sets the context of the superblock for the fs being mounted. */
+ 	if (fscontext_sid) {
+ 		rc = may_context_mount_sb_relabel(fscontext_sid, sbsec, cred);
+@@ -699,6 +708,11 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 	 * sets the label used on all file below the mountpoint, and will set
+ 	 * the superblock context if not already set.
+ 	 */
++	if (kern_flags & SECURITY_LSM_NATIVE_LABELS && !context_sid) {
++		sbsec->behavior = SECURITY_FS_USE_NATIVE;
++		*set_kern_flags |= SECURITY_LSM_NATIVE_LABELS;
 +	}
-+	spin_unlock(&rpc_authflavor_lock);
 +
-+	pseudoflavor = flavor;
-+	if (ops->info2flavor != NULL)
-+		pseudoflavor = ops->info2flavor(info);
-+
-+	module_put(ops->owner);
-+	return pseudoflavor;
-+}
-+EXPORT_SYMBOL_GPL(rpcauth_get_pseudoflavor);
-+
-+/**
-  * rpcauth_list_flavors - discover registered flavors and pseudoflavors
-  * @array: array to fill in
-  * @size: size of "array"
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 4db065d..4522297 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -1629,6 +1629,7 @@ static const struct rpc_authops authgss_ops = {
- 	.pipes_create	= gss_pipes_dentries_create,
- 	.pipes_destroy	= gss_pipes_dentries_destroy,
- 	.list_pseudoflavors = gss_mech_list_pseudoflavors,
-+	.info2flavor	= gss_mech_info2flavor,
- };
- 
- static const struct rpc_credops gss_credops = {
-diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
-index b174fcd..b09f25b 100644
---- a/net/sunrpc/auth_gss/gss_mech_switch.c
-+++ b/net/sunrpc/auth_gss/gss_mech_switch.c
-@@ -171,8 +171,7 @@ struct gss_api_mech * gss_mech_get_by_name(const char *name)
- }
- EXPORT_SYMBOL_GPL(gss_mech_get_by_name);
- 
--struct gss_api_mech *
--gss_mech_get_by_OID(struct xdr_netobj *obj)
-+static struct gss_api_mech *gss_mech_get_by_OID(struct rpcsec_gss_oid *obj)
- {
- 	struct gss_api_mech	*pos, *gm = NULL;
- 
-@@ -188,11 +187,8 @@ gss_mech_get_by_OID(struct xdr_netobj *obj)
+ 	if (context_sid) {
+ 		if (!fscontext_sid) {
+ 			rc = may_context_mount_sb_relabel(context_sid, sbsec,
+@@ -730,7 +744,8 @@ static int selinux_set_mnt_opts(struct super_block *sb,
  	}
- 	spin_unlock(&registered_mechs_lock);
- 	return gm;
--
- }
  
--EXPORT_SYMBOL_GPL(gss_mech_get_by_OID);
--
- static inline int
- mech_supports_pseudoflavor(struct gss_api_mech *gm, u32 pseudoflavor)
- {
-@@ -282,6 +278,28 @@ gss_svc_to_pseudoflavor(struct gss_api_mech *gm, u32 service)
- }
- EXPORT_SYMBOL_GPL(gss_svc_to_pseudoflavor);
+ 	if (defcontext_sid) {
+-		if (sbsec->behavior != SECURITY_FS_USE_XATTR) {
++		if (sbsec->behavior != SECURITY_FS_USE_XATTR &&
++			sbsec->behavior != SECURITY_FS_USE_NATIVE) {
+ 			rc = -EINVAL;
+ 			printk(KERN_WARNING "SELinux: defcontext option is "
+ 			       "invalid for this filesystem type\n");
+@@ -1198,6 +1213,8 @@ static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dent
+ 	}
  
-+/**
-+ * gss_mech_info2flavor - look up a pseudoflavor given a GSS tuple
-+ * @info: a GSS mech OID, quality of protection, and service value
-+ *
-+ * Returns a matching pseudoflavor, or RPC_AUTH_MAXFLAVOR if the tuple is
-+ * not supported.
-+ */
-+rpc_authflavor_t gss_mech_info2flavor(struct rpcsec_gss_info *info)
-+{
-+	rpc_authflavor_t pseudoflavor;
-+	struct gss_api_mech *gm;
-+
-+	gm = gss_mech_get_by_OID(&info->oid);
-+	if (gm == NULL)
-+		return RPC_AUTH_MAXFLAVOR;
-+
-+	pseudoflavor = gss_svc_to_pseudoflavor(gm, info->service);
-+
-+	gss_mech_put(gm);
-+	return pseudoflavor;
-+}
-+
- u32
- gss_pseudoflavor_to_service(struct gss_api_mech *gm, u32 pseudoflavor)
- {
+ 	switch (sbsec->behavior) {
++	case SECURITY_FS_USE_NATIVE:
++		break;
+ 	case SECURITY_FS_USE_XATTR:
+ 		if (!inode->i_op->getxattr) {
+ 			isec->sid = sbsec->def_sid;
+diff --git a/security/selinux/include/security.h b/security/selinux/include/security.h
+index 6d38851..8fd8e18 100644
+--- a/security/selinux/include/security.h
++++ b/security/selinux/include/security.h
+@@ -169,6 +169,8 @@ int security_get_allow_unknown(void);
+ #define SECURITY_FS_USE_GENFS		4 /* use the genfs support */
+ #define SECURITY_FS_USE_NONE		5 /* no labeling support */
+ #define SECURITY_FS_USE_MNTPOINT	6 /* use mountpoint labeling */
++#define SECURITY_FS_USE_NATIVE		7 /* use native label support */
++#define SECURITY_FS_USE_MAX		7 /* Highest SECURITY_FS_USE_XXX */
+ 
+ int security_fs_use(const char *fstype, unsigned int *behavior,
+ 	u32 *sid);
+diff --git a/security/selinux/ss/policydb.c b/security/selinux/ss/policydb.c
+index 9cd9b7c..c8adde3 100644
+--- a/security/selinux/ss/policydb.c
++++ b/security/selinux/ss/policydb.c
+@@ -2168,7 +2168,10 @@ static int ocontext_read(struct policydb *p, struct policydb_compat_info *info,
+ 
+ 				rc = -EINVAL;
+ 				c->v.behavior = le32_to_cpu(buf[0]);
+-				if (c->v.behavior > SECURITY_FS_USE_NONE)
++				/* Determined at runtime, not in policy DB. */
++				if (c->v.behavior == SECURITY_FS_USE_MNTPOINT)
++					goto out;
++				if (c->v.behavior > SECURITY_FS_USE_MAX)
+ 					goto out;
+ 
+ 				rc = -ENOMEM;
+-- 
+1.7.11.7
 
