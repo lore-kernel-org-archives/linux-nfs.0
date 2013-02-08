@@ -1,82 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:21227 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756047Ab3BGQ0w convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Feb 2013 11:26:52 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
-Subject: Re: [PATCH] SUNRPC: Refactor nfsd4_do_encode_secinfo()
+Received: from mail-ia0-f169.google.com ([209.85.210.169]:36822 "EHLO
+	mail-ia0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1947086Ab3BHV2I (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Feb 2013 16:28:08 -0500
+Received: by mail-ia0-f169.google.com with SMTP id j5so4822169iaf.0
+        for <linux-nfs@vger.kernel.org>; Fri, 08 Feb 2013 13:28:05 -0800 (PST)
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20130207162308.GI3222@fieldses.org>
-Date: Thu, 7 Feb 2013 11:26:43 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <F0DAA0C6-DBA2-457B-8C68-13A2BC3CB4AC@oracle.com>
-References: <20130201220308.13518.82164.stgit@seurat.1015granger.net> <20130207150213.GC3222@fieldses.org> <87316F41-4E5E-473C-A372-0AFC6721A355@oracle.com> <20130207162308.GI3222@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH v1 2/3] NFSD: SECINFO doesn't handle unsupported pseudoflavors
+ correctly
+To: linux-nfs@vger.kernel.org
+Date: Fri, 08 Feb 2013 16:28:03 -0500
+Message-ID: <20130208212803.2234.60073.stgit@seurat.1015granger.net>
+In-Reply-To: <20130208212007.2234.35721.stgit@seurat.1015granger.net>
+References: <20130208212007.2234.35721.stgit@seurat.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+If nfsd4_do_encode_secinfo() can't find GSS info that matches an
+export security flavor, it assumes the flavor is not a GSS
+pseudoflavor, and simply puts it on the wire.
 
-On Feb 7, 2013, at 11:23 AM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+However, if this XDR encoding logic is given a legitimate GSS
+pseudoflavor but the RPC layer says it does not support that
+pseudoflavor for some reason, then the server leaks GSS pseudoflavor
+numbers onto the wire.
 
-> On Thu, Feb 07, 2013 at 10:58:25AM -0500, Chuck Lever wrote:
->> 
->> On Feb 7, 2013, at 10:02 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
->> 
->>> On Fri, Feb 01, 2013 at 05:43:44PM -0500, Chuck Lever wrote:
->>>> Clean up.  This matches a similar API for the client side, and
->>>> keeps ULP fingers out the of the GSS mech switch.
->>>> 
->>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>> Acked-by: J. Bruce Fields <bfields@redhat.com>
->>>> ---
->>>> 
->>>> Bruce-
->>>> 
->>>> This version of the patch follows the existing logic in
->>>> nfsd4_do_encode_secinfo(): If the RPC layer can't find GSS info
->>>> that matches an export security flavor, it assumes the flavor is
->>>> not a GSS pseudoflavor, and simply puts it on the wire.
->>>> 
->>>> However, if the below XDR encoding logic is given a legitimate GSS
->>>> pseudoflavor but the RPC layer says it does not support that
->>>> pseudoflavor for some reason, then we leak GSS pseudoflavor numbers
->>>> onto the wire.
->>>> 
->>>> I confirmed this happens by blacklisting rpcsec_gss_krb5, then
->>>> attempted a client transition from the pseudo-fs to a Kerberos-only
->>>> share.  The client received a flavor list containing the Kerberos
->>>> pseudoflavor numbers, rather than GSS tuples.
->>>> 
->>>> The encoder logic can check that each pseudoflavor is less than
->>>> MAXFLAVOR before writing it into the buffer, to prevent this.  But
->>>> after "nflavs" is written into the XDR buffer, the encoder can't
->>>> skip writing flavor information into the buffer when it discovers
->>>> the RPC layer doesn't support that flavor.
->>>> 
->>>> Is there some way of writing "nflavs" into the XDR buffer after
->>>> the loop that writes the flavor information is complete?
->>> 
->>> Yes, you can save a pointer and then go back and fill that in--see
->>> encode_fattr for an example.
->> 
->> Thanks, I will submit an additional patch that describes this issue and fixes it.
->> 
->> I asked David Noveck, as one of the authors of RFC 3530, whether an NFS server should return a zero-length flavor list or an error if SECINFO can't find any flavors a client is allowed to use. His opinion was to return NFS4_OK and a zero-length flavor list.
-> 
-> Fine with me for this code.
+I confirmed this happens by blacklisting rpcsec_gss_krb5, then
+attempted a client transition from the pseudo-fs to a Kerberos-only
+share.  The client received a flavor list containing the Kerberos
+pseudoflavor numbers, rather than GSS tuples.
 
-OK, will go with that.
+The encoder logic can check that each pseudoflavor in flavs[] is
+less than MAXFLAVOR before writing it into the buffer, to prevent
+this.  But after "nflavs" is written into the XDR buffer, the
+encoder can't skip writing flavor information into the buffer when
+it discovers the RPC layer doesn't support that flavor.
 
-> (In practice though we should probably be warning somewhere (exportfs?)
-> if somebody creates an export like that.)
+So count the number of valid flavors as they are written into the
+XDR buffer, then write that count into the XDR buffer when all
+recognized flavors have been encoded.
+---
 
-The problem can also arise because gssd isn't running or auth_rpcgss.ko or rpcsec_gss_krb5.ko are not loadable for some reason.  In other words, an empty flavor list might also be the result of a transient server misconfiguration.
+ fs/nfsd/nfs4xdr.c |   26 ++++++++++++++++++++------
+ 1 files changed, 20 insertions(+), 6 deletions(-)
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 0c1ae2c..4e9f0b5 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3129,10 +3129,11 @@ static __be32
+ nfsd4_do_encode_secinfo(struct nfsd4_compoundres *resp,
+ 			 __be32 nfserr, struct svc_export *exp)
+ {
+-	u32 i, nflavs;
++	u32 i, nflavs, supported;
+ 	struct exp_flavor_info *flavs;
+ 	struct exp_flavor_info def_flavs[2];
+-	__be32 *p;
++	__be32 *p, *flavorsp;
++	static bool report = true;
+ 
+ 	if (nfserr)
+ 		goto out;
+@@ -3156,13 +3157,17 @@ nfsd4_do_encode_secinfo(struct nfsd4_compoundres *resp,
+ 		}
+ 	}
+ 
++	supported = 0;
+ 	RESERVE_SPACE(4);
+-	WRITE32(nflavs);
++	flavorsp = p++;		/* to be backfilled later */
+ 	ADJUST_ARGS();
++
+ 	for (i = 0; i < nflavs; i++) {
++		rpc_authflavor_t pf = flavs[i].pseudoflavor;
+ 		struct rpcsec_gss_info info;
+ 
+-		if (rpcauth_get_gssinfo(flavs[i].pseudoflavor, &info) == 0) {
++		if (rpcauth_get_gssinfo(pf, &info) == 0) {
++			supported++;
+ 			RESERVE_SPACE(4 + 4 + info.oid.len + 4 + 4);
+ 			WRITE32(RPC_AUTH_GSS);
+ 			WRITE32(info.oid.len);
+@@ -3170,13 +3175,22 @@ nfsd4_do_encode_secinfo(struct nfsd4_compoundres *resp,
+ 			WRITE32(info.qop);
+ 			WRITE32(info.service);
+ 			ADJUST_ARGS();
+-		} else {
++		} else if (pf < RPC_AUTH_MAXFLAVOR) {
++			supported++;
+ 			RESERVE_SPACE(4);
+-			WRITE32(flavs[i].pseudoflavor);
++			WRITE32(pf);
+ 			ADJUST_ARGS();
++		} else {
++			if (report)
++				pr_warn("NFS: SECINFO: security flavor %u "
++					"is not supported\n", pf);
+ 		}
+ 	}
+ 
++	if (nflavs != supported)
++		report = false;
++	*flavorsp = htonl(supported);
++
+ out:
+ 	if (exp)
+ 		exp_put(exp);
 
