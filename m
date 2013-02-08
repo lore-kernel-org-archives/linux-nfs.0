@@ -1,44 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.gnuher.de ([78.47.12.54]:49230 "EHLO mail.gnuher.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754780Ab3BVI5I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Feb 2013 03:57:08 -0500
-Received: from ultimate100.geggus.net ([2a01:198:297:1::1])
-	by mail.gnuher.de (envelope-from
-	<news@geggus.net>)
-	with esmtpsa (TLS1.0:RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.72)
-	id 1U8oRF-0000Nj-SZ
-	for linux-nfs@vger.kernel.org; Fri, 22 Feb 2013 09:57:06 +0100
-Received: from news  by ultimate100.geggus.net (envelope-from
-	<news@geggus.net>)
-	with local (Exim 4.72)
-	id 1U8oRD-0002gF-V0
-	for linux-nfs@vger.kernel.org; Fri, 22 Feb 2013 09:57:04 +0100
+Received: from mail-ie0-f176.google.com ([209.85.223.176]:45875 "EHLO
+	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1947146Ab3BHV1r (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Feb 2013 16:27:47 -0500
+Received: by mail-ie0-f176.google.com with SMTP id k13so5494300iea.7
+        for <linux-nfs@vger.kernel.org>; Fri, 08 Feb 2013 13:27:46 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v1 0/3] Improve server SECINFO robustness
 To: linux-nfs@vger.kernel.org
-From: Sven Geggus <lists@fuchsschwanzdomain.de>
-Subject: Re: NFS4: "Value too large for defined data type" problem
-Date: Fri, 22 Feb 2013 08:57:03 +0000 (UTC)
-Message-ID: <kg7bsv$a1f$1@ultimate100.geggus.net>
-References: <kfkvll$adm$1@ultimate100.geggus.net> <4FA345DA4F4AE44899BD2B03EEEC2FA91F3DA465@sacexcmbx05-prd.hq.netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Date: Fri, 08 Feb 2013 16:27:44 -0500
+Message-ID: <20130208212007.2234.35721.stgit@seurat.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Myklebust, Trond <Trond.Myklebust@netapp.com> wrote:
+Hi-
 
-> If your applications are unable to cope with 64-bit inode numbers, then
-> you can turn back on the inode number mapping on the nfs client:
-> 
-> echo "options nfs enable_ino64=N" >/etc/modprobe.d/options-local.conf
+This series addresses the concern I posted about here:
 
-Thanks, works fine.
+  http://marc.info/?l=linux-nfs&m=135975864104672&w=2
 
-Sven
+If a transient or permanent configuration error is introduced on a
+Linux NFS server, it could cause the server to form an invalid reply
+to a SECINFO request.  GSS flavors listed in the reply would appear
+as their pseudoflavor numbers rather than as GSS triples.
+
+This series applies on top of the series I posted last week:
+
+  [PATCH v3 0/9] Dynamically load GSS pseudoflavors by OID
+
+---
+
+Chuck Lever (3):
+      NFSD: Kill some mixed sign comparisons in fs/nfsd/nfs4xdr.c
+      NFSD: SECINFO doesn't handle unsupported pseudoflavors correctly
+      NFSD: Simplify GSS flavor encoding in nfsd4_do_encode_secinfo()
+
+
+ fs/nfsd/nfs4xdr.c |   43 +++++++++++++++++++++++++------------------
+ fs/nfsd/xdr4.h    |    2 +-
+ 2 files changed, 26 insertions(+), 19 deletions(-)
 
 -- 
-Das allgemeine Persönlichkeitsrecht (Art. 2 Abs.1 i.V.m. Art.1 Abs. 1GG)
-umfasst das Grundrecht auf Gewährleistung der Vertraulichkeit und Integrität
-informationstechnischer Systeme. (BVerfG, 1BvR 370/07)
-/me is giggls@ircnet, http://sven.gegg.us/ on the Web
+Chuck Lever
