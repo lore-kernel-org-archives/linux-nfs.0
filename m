@@ -1,130 +1,184 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f51.google.com ([209.85.213.51]:63124 "EHLO
-	mail-yh0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754135Ab3BORXU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Feb 2013 12:23:20 -0500
-Received: by mail-yh0-f51.google.com with SMTP id q1so566358yhf.24
-        for <linux-nfs@vger.kernel.org>; Fri, 15 Feb 2013 09:23:18 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 3/3] nfsd: add new reply_cache_stats file in nfsdfs
-Date: Fri, 15 Feb 2013 12:23:10 -0500
-Message-Id: <1360948990-2265-4-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1360948990-2265-1-git-send-email-jlayton@redhat.com>
-References: <1360948990-2265-1-git-send-email-jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:42735 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1946438Ab3BHMj3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Feb 2013 07:39:29 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 02/15] Security: Add Hook to test if the particular xattr is part of a MAC model.
+Date: Fri,  8 Feb 2013 07:39:10 -0500
+Message-Id: <1360327163-20360-3-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
+References: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-For presenting statistics relating to duplicate reply cache.
+From: David Quigley <dpquigl@davequigley.com>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+The interface to request security labels from user space is the xattr
+interface. When requesting the security label from an NFS server it is
+important to make sure the requested xattr actually is a MAC label. This allows
+us to make sure that we get the desired semantics from the attribute instead of
+something else such as capabilities or a time based LSM.
+
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
 ---
- fs/nfsd/cache.h    |  1 +
- fs/nfsd/nfscache.c | 37 +++++++++++++++++++++++++++++++++----
- fs/nfsd/nfsctl.c   |  9 +++++++++
- 3 files changed, 43 insertions(+), 4 deletions(-)
+ include/linux/security.h   | 14 ++++++++++++++
+ security/capability.c      |  6 ++++++
+ security/security.c        |  6 ++++++
+ security/selinux/hooks.c   |  6 ++++++
+ security/smack/smack_lsm.c | 11 +++++++++++
+ 5 files changed, 43 insertions(+)
 
-diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
-index 87fd141..d5c5b3e 100644
---- a/fs/nfsd/cache.h
-+++ b/fs/nfsd/cache.h
-@@ -82,6 +82,7 @@ int	nfsd_reply_cache_init(void);
- void	nfsd_reply_cache_shutdown(void);
- int	nfsd_cache_lookup(struct svc_rqst *);
- void	nfsd_cache_update(struct svc_rqst *, int, __be32 *);
-+int	nfsd_reply_cache_stats_open(struct inode *, struct file *);
+diff --git a/include/linux/security.h b/include/linux/security.h
+index a957e7a..8a6faff 100644
+--- a/include/linux/security.h
++++ b/include/linux/security.h
+@@ -1319,6 +1319,13 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
+  *	@pages contains the number of pages.
+  *	Return 0 if permission is granted.
+  *
++ * @ismaclabel:
++ *	Check if the extended attribute specified by @name
++ *	represents a MAC label. Returns 0 if name is a MAC
++ *	attribute otherwise returns non-zero.
++ *	@name full extended attribute name to check against
++ *	LSM as a MAC label.
++ *
+  * @secid_to_secctx:
+  *	Convert secid to security context.  If secdata is NULL the length of
+  *	the result will be returned in seclen, but no secdata will be returned.
+@@ -1600,6 +1607,7 @@ struct security_operations {
  
- #ifdef CONFIG_NFSD_V4
- void	nfsd4_set_statp(struct svc_rqst *rqstp, __be32 *statp);
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index ad1d069..b155afa 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -23,12 +23,17 @@
- static struct hlist_head *	cache_hash;
- static struct list_head 	lru_head;
- static struct kmem_cache	*drc_slab;
--static unsigned int		num_drc_entries;
--static unsigned int		max_drc_entries;
--static unsigned int		drc_mem_usage;
--static unsigned int		csum_misses;
- 
- /*
-+ * Stats on the duplicate reply cache code. All of these and the "rc" fields
-+ * in nfsdstats are protected by the cache_lock
-+ */
-+static unsigned int		num_drc_entries; /* number of entries */
-+static unsigned int		max_drc_entries; /* max number of entries */
-+static unsigned int		drc_mem_usage;   /* memory used by cache */
-+static unsigned int		csum_misses;     /* cache misses due only to
-+						    csum comparison failures */
-+/*
-  * Calculate the hash index from an XID.
-  */
- static inline u32 request_hash(u32 xid)
-@@ -545,3 +550,27 @@ nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *data)
- 	vec->iov_len += data->iov_len;
- 	return 1;
+ 	int (*getprocattr) (struct task_struct *p, char *name, char **value);
+ 	int (*setprocattr) (struct task_struct *p, char *name, void *value, size_t size);
++	int (*ismaclabel) (const char *name);
+ 	int (*secid_to_secctx) (u32 secid, char **secdata, u32 *seclen);
+ 	int (*secctx_to_secid) (const char *secdata, u32 seclen, u32 *secid);
+ 	void (*release_secctx) (char *secdata, u32 seclen);
+@@ -1852,6 +1860,7 @@ void security_d_instantiate(struct dentry *dentry, struct inode *inode);
+ int security_getprocattr(struct task_struct *p, char *name, char **value);
+ int security_setprocattr(struct task_struct *p, char *name, void *value, size_t size);
+ int security_netlink_send(struct sock *sk, struct sk_buff *skb);
++int security_ismaclabel(const char *name);
+ int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen);
+ int security_secctx_to_secid(const char *secdata, u32 seclen, u32 *secid);
+ void security_release_secctx(char *secdata, u32 seclen);
+@@ -2540,6 +2549,11 @@ static inline int security_netlink_send(struct sock *sk, struct sk_buff *skb)
+ 	return cap_netlink_send(sk, skb);
  }
-+
-+/*
-+ * Note that fields may be added, removed or reordered in the future. Programs
-+ * scraping this file for info should test the labels to ensure they're
-+ * getting the correct field.
-+ */
-+static int nfsd_reply_cache_stats_show(struct seq_file *m, void *v)
+ 
++static inline int security_ismaclabel(const char *name)
 +{
-+	spin_lock(&cache_lock);
-+	seq_printf(m, "max entries:     %u\n", max_drc_entries);
-+	seq_printf(m, "num entries:     %u\n", num_drc_entries);
-+	seq_printf(m, "mem usage:       %u\n", drc_mem_usage);
-+	seq_printf(m, "cache hits:      %u\n", nfsdstats.rchits);
-+	seq_printf(m, "cache misses:    %u\n", nfsdstats.rcmisses);
-+	seq_printf(m, "not cached:      %u\n", nfsdstats.rcnocache);
-+	seq_printf(m, "checksum misses: %u\n", csum_misses);
-+	spin_unlock(&cache_lock);
 +	return 0;
 +}
 +
-+int nfsd_reply_cache_stats_open(struct inode *inode, struct file *file)
-+{
-+	return single_open(file, nfsd_reply_cache_stats_show, NULL);
-+}
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 29c3f0d..5dea5af 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -35,6 +35,7 @@ enum {
- 	NFSD_Threads,
- 	NFSD_Pool_Threads,
- 	NFSD_Pool_Stats,
-+	NFSD_Reply_Cache_Stats,
- 	NFSD_Versions,
- 	NFSD_Ports,
- 	NFSD_MaxBlkSize,
-@@ -194,6 +195,13 @@ static const struct file_operations pool_stats_operations = {
- 	.owner		= THIS_MODULE,
- };
+ static inline int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+ {
+ 	return -EOPNOTSUPP;
+diff --git a/security/capability.c b/security/capability.c
+index 456bd9d..07a6484 100644
+--- a/security/capability.c
++++ b/security/capability.c
+@@ -817,6 +817,11 @@ static int cap_setprocattr(struct task_struct *p, char *name, void *value,
+ 	return -EINVAL;
+ }
  
-+static struct file_operations reply_cache_stats_operations = {
-+	.open		= nfsd_reply_cache_stats_open,
-+	.read		= seq_read,
-+	.llseek		= seq_lseek,
-+	.release	= single_release,
-+};
++static int cap_ismaclabel(const char *name)
++{
++	return 0;
++}
 +
- /*----------------------------------------------------------------------------*/
- /*
-  * payload - write methods
-@@ -1024,6 +1032,7 @@ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
- 		[NFSD_Threads] = {"threads", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_Pool_Threads] = {"pool_threads", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_Pool_Stats] = {"pool_stats", &pool_stats_operations, S_IRUGO},
-+		[NFSD_Reply_Cache_Stats] = {"reply_cache_stats", &reply_cache_stats_operations, S_IRUGO},
- 		[NFSD_Versions] = {"versions", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_Ports] = {"portlist", &transaction_ops, S_IWUSR|S_IRUGO},
- 		[NFSD_MaxBlkSize] = {"max_block_size", &transaction_ops, S_IWUSR|S_IRUGO},
+ static int cap_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+ {
+ 	return -EOPNOTSUPP;
+@@ -1036,6 +1041,7 @@ void __init security_fixup_ops(struct security_operations *ops)
+ 	set_to_cap_if_null(ops, d_instantiate);
+ 	set_to_cap_if_null(ops, getprocattr);
+ 	set_to_cap_if_null(ops, setprocattr);
++	set_to_cap_if_null(ops, ismaclabel);
+ 	set_to_cap_if_null(ops, secid_to_secctx);
+ 	set_to_cap_if_null(ops, secctx_to_secid);
+ 	set_to_cap_if_null(ops, release_secctx);
+diff --git a/security/security.c b/security/security.c
+index 723a10c..6d7389c 100644
+--- a/security/security.c
++++ b/security/security.c
+@@ -1057,6 +1057,12 @@ int security_netlink_send(struct sock *sk, struct sk_buff *skb)
+ 	return security_ops->netlink_send(sk, skb);
+ }
+ 
++int security_ismaclabel(const char *name)
++{
++	return security_ops->ismaclabel(name);
++}
++EXPORT_SYMBOL(security_ismaclabel);
++
+ int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+ {
+ 	return security_ops->secid_to_secctx(secid, secdata, seclen);
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index 2664ed3..03659ab 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -5426,6 +5426,11 @@ abort_change:
+ 	return error;
+ }
+ 
++static int selinux_ismaclabel(const char *name)
++{
++	return (strcmp(name, XATTR_SELINUX_SUFFIX) == 0);
++}
++
+ static int selinux_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
+ {
+ 	return security_sid_to_context(secid, secdata, seclen);
+@@ -5664,6 +5669,7 @@ static struct security_operations selinux_ops = {
+ 	.getprocattr =			selinux_getprocattr,
+ 	.setprocattr =			selinux_setprocattr,
+ 
++	.ismaclabel =			selinux_ismaclabel,
+ 	.secid_to_secctx =		selinux_secid_to_secctx,
+ 	.secctx_to_secid =		selinux_secctx_to_secid,
+ 	.release_secctx =		selinux_release_secctx,
+diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
+index 38be92c..82c3c72 100644
+--- a/security/smack/smack_lsm.c
++++ b/security/smack/smack_lsm.c
+@@ -3335,6 +3335,16 @@ static void smack_audit_rule_free(void *vrule)
+ #endif /* CONFIG_AUDIT */
+ 
+ /**
++ * smack_ismaclabel - check if xattr @name references a smack MAC label
++ * @name: Full xattr name to check.
++ */
++static int smack_ismaclabel(const char *name)
++{
++	return (strcmp(name, XATTR_SMACK_SUFFIX) == 0);
++}
++
++
++/**
+  * smack_secid_to_secctx - return the smack label for a secid
+  * @secid: incoming integer
+  * @secdata: destination
+@@ -3530,6 +3540,7 @@ struct security_operations smack_ops = {
+ 	.audit_rule_free =		smack_audit_rule_free,
+ #endif /* CONFIG_AUDIT */
+ 
++	.ismaclabel =			smack_ismaclabel,
+ 	.secid_to_secctx = 		smack_secid_to_secctx,
+ 	.secctx_to_secid = 		smack_secctx_to_secid,
+ 	.release_secctx = 		smack_release_secctx,
 -- 
 1.7.11.7
 
