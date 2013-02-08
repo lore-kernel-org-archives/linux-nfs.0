@@ -1,91 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f53.google.com ([209.85.216.53]:49953 "EHLO
-	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756449Ab3BUS2p (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Feb 2013 13:28:45 -0500
-Received: by mail-qa0-f53.google.com with SMTP id z4so3168166qan.19
-        for <linux-nfs@vger.kernel.org>; Thu, 21 Feb 2013 10:28:45 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 1/5] nfsd: break out comparator into separate function
-Date: Thu, 21 Feb 2013 13:28:34 -0500
-Message-Id: <1361471318-17971-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1361471318-17971-1-git-send-email-jlayton@redhat.com>
-References: <1361471318-17971-1-git-send-email-jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:54880 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1946494Ab3BHMjl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Feb 2013 07:39:41 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 15/15] Kconfig: Add Kconfig entry for Labeled NFS V4 server
+Date: Fri,  8 Feb 2013 07:39:23 -0500
+Message-Id: <1360327163-20360-16-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
+References: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Break out the function that compares the rqstp and checksum against a
-reply cache entry. While we're at it, track the efficacy of the checksum
-over the NFS data by tracking the cases where we would have incorrectly
-matched a DRC entry if we had not tracked it or the length.
+From: Steve Dickson <steved@redhat.com>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+This patch adds the NFSd_V4_SECURITY_LABEL entry which
+enables security label support for the NFSv4 server
+
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- fs/nfsd/nfscache.c | 33 +++++++++++++++++++++++----------
- 1 file changed, 23 insertions(+), 10 deletions(-)
+ fs/nfsd/Kconfig | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index ca43664..8986568 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -25,6 +25,7 @@ static struct list_head 	lru_head;
- static struct kmem_cache	*drc_slab;
- static unsigned int		num_drc_entries;
- static unsigned int		max_drc_entries;
-+static unsigned int		csum_misses;
+diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+index 8df1ea4..a569dc1 100644
+--- a/fs/nfsd/Kconfig
++++ b/fs/nfsd/Kconfig
+@@ -81,6 +81,22 @@ config NFSD_V4
  
- /*
-  * Calculate the hash index from an XID.
-@@ -272,6 +273,26 @@ nfsd_cache_csum(struct svc_rqst *rqstp)
- 	return csum;
- }
+ 	  If unsure, say N.
  
-+static bool
-+nfsd_cache_match(struct svc_rqst *rqstp, __wsum csum, struct svc_cacherep *rp)
-+{
-+	/* Check RPC header info first */
-+	if (rqstp->rq_xid != rp->c_xid || rqstp->rq_proc != rp->c_proc ||
-+	    rqstp->rq_prot != rp->c_prot || rqstp->rq_vers != rp->c_vers ||
-+	    rqstp->rq_arg.len != rp->c_len ||
-+	    !rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) ||
-+	    rpc_get_port(svc_addr(rqstp)) != rpc_get_port((struct sockaddr *)&rp->c_addr))
-+		return false;
++config NFSD_V4_SECURITY_LABEL
++	bool "Provide Security Label support for NFSv4 server"
++	depends on NFSD_V4 && SECURITY
++	help
 +
-+	/* compare checksum of NFS data */
-+	if (csum != rp->c_csum) {
-+		++csum_misses;
-+		return false;
-+	}
++	Say Y here if you want enable fine-grained security label attribute
++	support for NFS version 4.  Security labels allow security modules like
++	SELinux and Smack to label files to facilitate enforcement of their policies.
++	Without this an NFSv4 mount will have the same label on each file.
 +
-+	return true;
-+}
++	If you do not wish to enable fine-grained security labels SELinux or
++	Smack policies on NFSv4 files, say N.
 +
- /*
-  * Search the request hash for an entry that matches the given rqstp.
-  * Must be called with cache_lock held. Returns the found entry or
-@@ -283,18 +304,10 @@ nfsd_cache_search(struct svc_rqst *rqstp, __wsum csum)
- 	struct svc_cacherep	*rp;
- 	struct hlist_node	*hn;
- 	struct hlist_head 	*rh;
--	__be32			xid = rqstp->rq_xid;
--	u32			proto =  rqstp->rq_prot,
--				vers = rqstp->rq_vers,
--				proc = rqstp->rq_proc;
- 
--	rh = &cache_hash[request_hash(xid)];
-+	rh = &cache_hash[request_hash(rqstp->rq_xid)];
- 	hlist_for_each_entry(rp, hn, rh, c_hash) {
--		if (xid == rp->c_xid && proc == rp->c_proc &&
--		    proto == rp->c_prot && vers == rp->c_vers &&
--		    rqstp->rq_arg.len == rp->c_len && csum == rp->c_csum &&
--		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
--		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr))
-+		if (nfsd_cache_match(rqstp, csum, rp))
- 			return rp;
- 	}
- 	return NULL;
++	WARNING: there is still a chance of backwards-incompatible protocol changes.  
++	For now we recommend "Y" only for developers and testers."
++
+ config NFSD_FAULT_INJECTION
+ 	bool "NFS server manual fault injection"
+ 	depends on NFSD_V4 && DEBUG_KERNEL
 -- 
 1.7.11.7
 
