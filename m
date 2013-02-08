@@ -1,149 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:45534 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752006Ab3BOR3U convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Feb 2013 12:29:20 -0500
+Received: from fieldses.org ([174.143.236.118]:43433 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1947173Ab3BHVOJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Feb 2013 16:14:09 -0500
+Date: Fri, 8 Feb 2013 16:14:06 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Subject: Re: [PATCH v2 2/6] NFS; simlify and clean cache library
+Message-ID: <20130208211406.GB22748@fieldses.org>
+References: <20130204105728.11633.53621.stgit@localhost.localdomain>
+ <20130204110240.11633.89082.stgit@localhost.localdomain>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
-Subject: Re: [PATCH v2 3/3] nfsd: add new reply_cache_stats file in nfsdfs
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1360948990-2265-4-git-send-email-jlayton@redhat.com>
-Date: Fri, 15 Feb 2013 12:29:08 -0500
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Message-Id: <D3E38097-34BE-4A2D-91F6-200176FEA3F0@oracle.com>
-References: <1360948990-2265-1-git-send-email-jlayton@redhat.com> <1360948990-2265-4-git-send-email-jlayton@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
+In-Reply-To: <20130204110240.11633.89082.stgit@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, Feb 04, 2013 at 02:02:40PM +0300, Stanislav Kinsbursky wrote:
+> This is a cleanup patch.
+> Such helpers like nfs_cache_init() and nfs_cache_destroy() are redundant,
+> because they are just a wrappers around sunrpc_init_cache_detail() and
+> sunrpc_destroy_cache_detail() respectively.
+> So let's remove them completely and move corresponding logic to
+> nfs_cache_register_net() and nfs_cache_unregister_net() respectively (since
+> they are called together anyway).
 
-On Feb 15, 2013, at 12:23 PM, Jeff Layton <jlayton@redhat.com> wrote:
+Ditto for this one--Trond, any objection?
 
-> For presenting statistics relating to duplicate reply cache.
+--b.
+
 > 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 > ---
-> fs/nfsd/cache.h    |  1 +
-> fs/nfsd/nfscache.c | 37 +++++++++++++++++++++++++++++++++----
-> fs/nfsd/nfsctl.c   |  9 +++++++++
-> 3 files changed, 43 insertions(+), 4 deletions(-)
+>  fs/nfs/cache_lib.c   |   12 +++---------
+>  fs/nfs/cache_lib.h   |    2 --
+>  fs/nfs/dns_resolve.c |    6 +-----
+>  3 files changed, 4 insertions(+), 16 deletions(-)
 > 
-> diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
-> index 87fd141..d5c5b3e 100644
-> --- a/fs/nfsd/cache.h
-> +++ b/fs/nfsd/cache.h
-> @@ -82,6 +82,7 @@ int	nfsd_reply_cache_init(void);
-> void	nfsd_reply_cache_shutdown(void);
-> int	nfsd_cache_lookup(struct svc_rqst *);
-> void	nfsd_cache_update(struct svc_rqst *, int, __be32 *);
-> +int	nfsd_reply_cache_stats_open(struct inode *, struct file *);
+> diff --git a/fs/nfs/cache_lib.c b/fs/nfs/cache_lib.c
+> index 862a2f1..5f7b053 100644
+> --- a/fs/nfs/cache_lib.c
+> +++ b/fs/nfs/cache_lib.c
+> @@ -128,10 +128,13 @@ int nfs_cache_register_net(struct net *net, struct cache_detail *cd)
+>  	struct super_block *pipefs_sb;
+>  	int ret = 0;
+>  
+> +	sunrpc_init_cache_detail(cd);
+>  	pipefs_sb = rpc_get_sb_net(net);
+>  	if (pipefs_sb) {
+>  		ret = nfs_cache_register_sb(pipefs_sb, cd);
+>  		rpc_put_sb_net(net);
+> +		if (ret)
+> +			sunrpc_destroy_cache_detail(cd);
+>  	}
+>  	return ret;
+>  }
+> @@ -151,14 +154,5 @@ void nfs_cache_unregister_net(struct net *net, struct cache_detail *cd)
+>  		nfs_cache_unregister_sb(pipefs_sb, cd);
+>  		rpc_put_sb_net(net);
+>  	}
+> -}
+> -
+> -void nfs_cache_init(struct cache_detail *cd)
+> -{
+> -	sunrpc_init_cache_detail(cd);
+> -}
+> -
+> -void nfs_cache_destroy(struct cache_detail *cd)
+> -{
+>  	sunrpc_destroy_cache_detail(cd);
+>  }
+> diff --git a/fs/nfs/cache_lib.h b/fs/nfs/cache_lib.h
+> index 317db95..4116d2c 100644
+> --- a/fs/nfs/cache_lib.h
+> +++ b/fs/nfs/cache_lib.h
+> @@ -23,8 +23,6 @@ extern struct nfs_cache_defer_req *nfs_cache_defer_req_alloc(void);
+>  extern void nfs_cache_defer_req_put(struct nfs_cache_defer_req *dreq);
+>  extern int nfs_cache_wait_for_upcall(struct nfs_cache_defer_req *dreq);
+>  
+> -extern void nfs_cache_init(struct cache_detail *cd);
+> -extern void nfs_cache_destroy(struct cache_detail *cd);
+>  extern int nfs_cache_register_net(struct net *net, struct cache_detail *cd);
+>  extern void nfs_cache_unregister_net(struct net *net, struct cache_detail *cd);
+>  extern int nfs_cache_register_sb(struct super_block *sb,
+> diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
+> index 5015447..499834b 100644
+> --- a/fs/nfs/dns_resolve.c
+> +++ b/fs/nfs/dns_resolve.c
+> @@ -375,14 +375,12 @@ int nfs_dns_resolver_cache_init(struct net *net)
+>  	if (IS_ERR(nn->nfs_dns_resolve))
+>  		return PTR_ERR(nn->nfs_dns_resolve);
+>  
+> -	nfs_cache_init(nn->nfs_dns_resolve);
+>  	err = nfs_cache_register_net(net, nn->nfs_dns_resolve);
+>  	if (err)
+>  		goto err_reg;
+>  	return 0;
+>  
+>  err_reg:
+> -	nfs_cache_destroy(nn->nfs_dns_resolve);
+>  	cache_destroy_net(nn->nfs_dns_resolve, net);
+>  	return err;
+>  }
+> @@ -390,10 +388,8 @@ err_reg:
+>  void nfs_dns_resolver_cache_destroy(struct net *net)
+>  {
+>  	struct nfs_net *nn = net_generic(net, nfs_net_id);
+> -	struct cache_detail *cd = nn->nfs_dns_resolve;
+>  
+> -	nfs_cache_unregister_net(net, cd);
+> -	nfs_cache_destroy(cd);
+> +	nfs_cache_unregister_net(net, nn->nfs_dns_resolve);
+>  	cache_destroy_net(nn->nfs_dns_resolve, net);
+>  }
+>  
 > 
-> #ifdef CONFIG_NFSD_V4
-> void	nfsd4_set_statp(struct svc_rqst *rqstp, __be32 *statp);
-> diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-> index ad1d069..b155afa 100644
-> --- a/fs/nfsd/nfscache.c
-> +++ b/fs/nfsd/nfscache.c
-> @@ -23,12 +23,17 @@
-> static struct hlist_head *	cache_hash;
-> static struct list_head 	lru_head;
-> static struct kmem_cache	*drc_slab;
-> -static unsigned int		num_drc_entries;
-> -static unsigned int		max_drc_entries;
-> -static unsigned int		drc_mem_usage;
-> -static unsigned int		csum_misses;
-> 
-> /*
-> + * Stats on the duplicate reply cache code. All of these and the "rc" fields
-> + * in nfsdstats are protected by the cache_lock
-> + */
-> +static unsigned int		num_drc_entries; /* number of entries */
-> +static unsigned int		max_drc_entries; /* max number of entries */
-> +static unsigned int		drc_mem_usage;   /* memory used by cache */
-> +static unsigned int		csum_misses;     /* cache misses due only to
-> +						    csum comparison failures */
-> +/*
->  * Calculate the hash index from an XID.
->  */
-> static inline u32 request_hash(u32 xid)
-> @@ -545,3 +550,27 @@ nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *data)
-> 	vec->iov_len += data->iov_len;
-> 	return 1;
-> }
-> +
-> +/*
-> + * Note that fields may be added, removed or reordered in the future. Programs
-> + * scraping this file for info should test the labels to ensure they're
-> + * getting the correct field.
-> + */
-> +static int nfsd_reply_cache_stats_show(struct seq_file *m, void *v)
-> +{
-> +	spin_lock(&cache_lock);
-> +	seq_printf(m, "max entries:     %u\n", max_drc_entries);
-> +	seq_printf(m, "num entries:     %u\n", num_drc_entries);
-> +	seq_printf(m, "mem usage:       %u\n", drc_mem_usage);
-> +	seq_printf(m, "cache hits:      %u\n", nfsdstats.rchits);
-> +	seq_printf(m, "cache misses:    %u\n", nfsdstats.rcmisses);
-> +	seq_printf(m, "not cached:      %u\n", nfsdstats.rcnocache);
-> +	seq_printf(m, "checksum misses: %u\n", csum_misses);
-> +	spin_unlock(&cache_lock);
-> +	return 0;
-> +}
-
-Would it be hard to add a statistic that quantified the distribution of entries in the cache hash table?  Something like "maximum length of cache hash chain" ?
-
-
-> +
-> +int nfsd_reply_cache_stats_open(struct inode *inode, struct file *file)
-> +{
-> +	return single_open(file, nfsd_reply_cache_stats_show, NULL);
-> +}
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index 29c3f0d..5dea5af 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -35,6 +35,7 @@ enum {
-> 	NFSD_Threads,
-> 	NFSD_Pool_Threads,
-> 	NFSD_Pool_Stats,
-> +	NFSD_Reply_Cache_Stats,
-> 	NFSD_Versions,
-> 	NFSD_Ports,
-> 	NFSD_MaxBlkSize,
-> @@ -194,6 +195,13 @@ static const struct file_operations pool_stats_operations = {
-> 	.owner		= THIS_MODULE,
-> };
-> 
-> +static struct file_operations reply_cache_stats_operations = {
-> +	.open		= nfsd_reply_cache_stats_open,
-> +	.read		= seq_read,
-> +	.llseek		= seq_lseek,
-> +	.release	= single_release,
-> +};
-> +
-> /*----------------------------------------------------------------------------*/
-> /*
->  * payload - write methods
-> @@ -1024,6 +1032,7 @@ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
-> 		[NFSD_Threads] = {"threads", &transaction_ops, S_IWUSR|S_IRUSR},
-> 		[NFSD_Pool_Threads] = {"pool_threads", &transaction_ops, S_IWUSR|S_IRUSR},
-> 		[NFSD_Pool_Stats] = {"pool_stats", &pool_stats_operations, S_IRUGO},
-> +		[NFSD_Reply_Cache_Stats] = {"reply_cache_stats", &reply_cache_stats_operations, S_IRUGO},
-> 		[NFSD_Versions] = {"versions", &transaction_ops, S_IWUSR|S_IRUSR},
-> 		[NFSD_Ports] = {"portlist", &transaction_ops, S_IWUSR|S_IRUGO},
-> 		[NFSD_MaxBlkSize] = {"max_block_size", &transaction_ops, S_IWUSR|S_IRUGO},
-> -- 
-> 1.7.11.7
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
