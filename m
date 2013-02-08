@@ -1,93 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:59435 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:34335 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757033Ab3BVP0E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Feb 2013 10:26:04 -0500
-Date: Fri, 22 Feb 2013 10:26:03 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Steve Dickson <steved@redhat.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] NFSDv4.2: Added NFS v4.2 support to the NFS server
-Message-ID: <20130222152548.GB10157@pad.fieldses.org>
-References: <1361484911-17537-1-git-send-email-steved@redhat.com>
- <1361484911-17537-3-git-send-email-steved@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1361484911-17537-3-git-send-email-steved@redhat.com>
+	id S1946647Ab3BHP5H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Feb 2013 10:57:07 -0500
+Date: Fri, 8 Feb 2013 10:57:01 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, rees@umich.edu
+Subject: Re: [PATCH v3 2/2] nfsd: keep a checksum of the first 256 bytes of
+ request
+Message-ID: <20130208105701.61ca0c34@tlielax.poochiereds.net>
+In-Reply-To: <F6C70BBF-1B66-4142-A2A3-BFBFAE452807@oracle.com>
+References: <1360248701-23963-1-git-send-email-jlayton@redhat.com>
+	<1360248701-23963-3-git-send-email-jlayton@redhat.com>
+	<DF2DA489-3D72-4DBF-8C65-1B7DA9866B63@oracle.com>
+	<20130207130316.0cf29993@corrin.poochiereds.net>
+	<20130208082706.614035e2@tlielax.poochiereds.net>
+	<F6C70BBF-1B66-4142-A2A3-BFBFAE452807@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 21, 2013 at 05:15:11PM -0500, Steve Dickson wrote:
-> This enable NFSv4.2 support for the server. To enable this
-> code do the following:
->   echo "+4.2" >/proc/fs/nfsd/versions
+On Fri, 8 Feb 2013 10:42:20 -0500
+Chuck Lever <chuck.lever@oracle.com> wrote:
+
 > 
-> after the nfsd kernel module is loaded.
+> On Feb 8, 2013, at 8:27 AM, Jeff Layton <jlayton@redhat.com> wrote:
 > 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  fs/nfsd/nfs4xdr.c | 1 +
->  fs/nfsd/nfsd.h    | 2 +-
->  2 files changed, 2 insertions(+), 1 deletion(-)
+> > On Thu, 7 Feb 2013 13:03:16 -0500
+> > Jeff Layton <jlayton@redhat.com> wrote:
+> > 
+> >> On Thu, 7 Feb 2013 10:51:02 -0500
+> >> Chuck Lever <chuck.lever@oracle.com> wrote:
+> >> 
+> >>> 
+> >>> On Feb 7, 2013, at 9:51 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> >>> 
+> >>>> Now that we're allowing more DRC entries, it becomes a lot easier to hit
+> >>>> problems with XID collisions. In order to mitigate those, calculate the
+> >>>> crc32 of up to the first 256 bytes of each request coming in and store
+> >>>> that in the cache entry, along with the total length of the request.
+> >>> 
+> >>> I'm happy to see a checksummed DRC finally become reality for the Linux NFS server.
+> >>> 
+> >>> Have you measured the CPU utilization impact and CPU cache footprint of performing a CRC computation for every incoming RPC?  I'm wondering if a simpler checksum might be just as useful but less costly to compute.
+> >>> 
+> >> 
+> >> No, I haven't, at least not in any sort of rigorous way. It's pretty
+> >> negligible on "normal" PC hardware, but I think most intel and amd cpus
+> >> have instructions for handling crc32. I'm ok with a different checksum,
+> >> we don't need anything cryptographically secure here. I simply chose
+> >> crc32 since it has an easily available API, and I figured it would be
+> >> fairly lightweight.
+> >> 
+> > 
+> > After an abortive attempt to measure this with ftrace, I ended up
+> > hacking together a patch to just measure the latency of the
+> > nfsd_cache_csum/_crc functions to get some rough numbers. On my x86_64
+> > KVM guest, the avg time to calculate the crc32 is ~1750ns. Using IP
+> > checksums cuts that roughly in half to ~800ns. I'm not sure how best to
+> > measure the cache footprint however.
 > 
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index d2ae8db..86be853 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -1621,6 +1621,7 @@ struct nfsd4_minorversion_ops {
->  static struct nfsd4_minorversion_ops nfsd4_minorversion[] = {
->  	[0] = { nfsd4_dec_ops, ARRAY_SIZE(nfsd4_dec_ops) },
->  	[1] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
-> +	[2] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
->  };
->  
->  static __be32
-> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-> index 26a457b..0e3ccd1 100644
-> --- a/fs/nfsd/nfsd.h
-> +++ b/fs/nfsd/nfsd.h
-> @@ -24,7 +24,7 @@
->  /*
->   * nfsd version
->   */
-> -#define NFSD_SUPPORTED_MINOR_VERSION	1
-> +#define NFSD_SUPPORTED_MINOR_VERSION	2
->  /*
->   * Maximum blocksizes supported by daemon under various circumstances.
->   */
+> Thanks for sorting that, I feel better having a real data point.
+> 
 
-Looks OK to me, except this should be behind a config for now.
+Me too -- thanks for raising the question.
 
-On a grep for "minorversion" I notice two oversights, below: one just a
-comment, one might result in getting the wrong minorversion on
-callbacks.
+> > Neither seems terribly significant, especially given the other
+> > inefficiencies in this code. OTOH, I guess those latencies can add up,
+> > and I don't see any need to use crc32 over the net/checksum.h routines.
+> > We probably ought to go with my RFC patch from yesterday.
+> > 
+> > This could look very different on other arches too of course, but I
+> > don't have a test rig for any other arches at the moment.
+> 
+> Going with the IP checksum seems perfectly adequate to me.
+> 
 
---b.
+Agreed.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 503e15e..b86cf07 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1665,7 +1665,7 @@ out_new:
- 		status = nfserr_jukebox;
- 		goto out;
- 	}
--	new->cl_minorversion = 1;
-+	new->cl_minorversion = cstate->minorversion;
- 
- 	gen_clid(new);
- 	add_to_unconfirmed(new, strhashval);
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index e036894..28d41ef 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -108,7 +108,7 @@ struct nfs4_cb_conn {
- 	u32                     cb_prog; /* used only in 4.0 case;
- 					    per-session otherwise */
- 	u32                     cb_ident;	/* minorversion 0 only */
--	struct svc_xprt		*cb_xprt;	/* minorversion 1 only */
-+	struct svc_xprt		*cb_xprt;	/* minorversion >=1 only */
- };
- 
- static inline struct nfs4_delegation *delegstateid(struct nfs4_stid *s)
+> Bruce made a good point that it is difficult to know how to test the efficacy of this change.  We don't really know of any especially bad cases that defeat the current DRC, though I know the Red Hat Q/A team likes to use NFS/UDP and they seem to run into problems with some frequency.  Having a chat with Rick Macklem and/or Tom Talpey on this topic might have some value, and likewise perhaps the bug's OP might have some ideas about what test cases they prefer.
+> 
+
+It is difficult to know since XID collisions are so rare (or at least
+we think so). When they do happen they're often not noticeable, but we
+do have some documented cases of it happening in the field...
+
+RH's QA team does test with NFS/UDP but I'm not aware of any problems
+with XID collisions, per-se. The problems they've had are that the DRC
+sometimes just plain doesn't work. Based on some testing we've done
+internally, I think the problem is likely due to the fact that it's
+trivial to blow out the current fixed-size DRC cache. Until I backport
+this and get them to deploy it onto our test NFS servers though, it's
+going to be hard to know for certain.
+
+I decided to add in the extra checksumming for 3 main reasons:
+
+1) I was in here anyway, and it didn't seem too tough to do
+
+2) the potential for xid collisions will be greater with a larger DRC
+
+3) we've had people request it in the past
+
+Given that it seems fairly cheap to add this, we might as well do it.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
