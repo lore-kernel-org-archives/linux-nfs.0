@@ -1,47 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ndmsnpf02.ndc.nasa.gov ([198.117.0.122]:44741 "EHLO
-	ndmsnpf02.ndc.nasa.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757454Ab3BFR10 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Feb 2013 12:27:26 -0500
-Message-ID: <51128DAC.9000206@nasa.gov>
-Date: Wed, 6 Feb 2013 09:06:52 -0800
-From: Jeff Becker <jeffrey.c.becker@nasa.gov>
+Received: from fieldses.org ([174.143.236.118]:43430 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1947115Ab3BHVNs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Feb 2013 16:13:48 -0500
+Date: Fri, 8 Feb 2013 16:13:45 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Subject: Re: [PATCH v2 1/6] NFS: use SUNRPC cache creation and destruction
+ helper for DNS cache
+Message-ID: <20130208211345.GA22748@fieldses.org>
+References: <20130204105728.11633.53621.stgit@localhost.localdomain>
+ <20130204110235.11633.59600.stgit@localhost.localdomain>
 MIME-Version: 1.0
-To: Steve Wise <swise@opengridcomputing.com>
-CC: Yan Burman <yanb@mellanox.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        Or Gerlitz <ogerlitz@mellanox.com>,
-        Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: NFS over RDMA crashing
-References: <51127B3F.2090200@mellanox.com> <51127DB1.6070804@opengridcomputing.com>
-In-Reply-To: <51127DB1.6070804@opengridcomputing.com>
-Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130204110235.11633.59600.stgit@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi. In case you're interested, I did the NFS/RDMA backports for OFED. I 
-tested that NFS/RDMA in OFED 3.5 works on kernel 3.5, and also the RHEL 
-6.3 kernel. However, I did not test it with SRIOV. If you test it 
-(OFED-3.5-rc6 was released last week), I'd like to know how it goes. Thanks.
+On Mon, Feb 04, 2013 at 02:02:35PM +0300, Stanislav Kinsbursky wrote:
+> This cache was the first containerized and doesn't use net-aware cache
+> creation and destruction helpers.
+> This is a cleanup patch which just makes code looks clearer and reduce amount
+> of lines of code.
 
-Jeff Becker
+This looks like uncontroversial cleanup, and should probably go in
+with the rest through my tree, so I'm inclined to just merge it.
 
-On 02/06/2013 07:58 AM, Steve Wise wrote:
-> On 2/6/2013 9:48 AM, Yan Burman wrote:
->> When I moved to commit 79f77bf9a4e3dd5ead006b8f17e7c4ff07d8374e I was
->> no longer getting the server crashes,
->> so the reset of my tests were done using that point (it is somewhere
->> in the middle of 3.7.0-rc2)
->>
-> +tom tucker
->
-> I'd try going back a few kernels, like to 3.5.x and see if things are
-> more stable.  If you find a point that works, then git bisect might help
-> identify the regression.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+But an "ACK" from Trond would be reassuring.--b.
 
+> 
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> ---
+>  fs/nfs/dns_resolve.c |   60 +++++++++++++++++++++-----------------------------
+>  1 files changed, 25 insertions(+), 35 deletions(-)
+> 
+> diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
+> index ca4b11e..5015447 100644
+> --- a/fs/nfs/dns_resolve.c
+> +++ b/fs/nfs/dns_resolve.c
+> @@ -351,48 +351,39 @@ ssize_t nfs_dns_resolve_name(struct net *net, char *name,
+>  }
+>  EXPORT_SYMBOL_GPL(nfs_dns_resolve_name);
+>  
+> +static struct cache_detail nfs_dns_resolve_template = {
+> +	.owner		= THIS_MODULE,
+> +	.hash_size	= NFS_DNS_HASHTBL_SIZE,
+> +	.name		= "dns_resolve",
+> +	.cache_put	= nfs_dns_ent_put,
+> +	.cache_upcall	= nfs_dns_upcall,
+> +	.cache_parse	= nfs_dns_parse,
+> +	.cache_show	= nfs_dns_show,
+> +	.match		= nfs_dns_match,
+> +	.init		= nfs_dns_ent_init,
+> +	.update		= nfs_dns_ent_update,
+> +	.alloc		= nfs_dns_ent_alloc,
+> +};
+> +
+> +
+>  int nfs_dns_resolver_cache_init(struct net *net)
+>  {
+> -	int err = -ENOMEM;
+> +	int err;
+>  	struct nfs_net *nn = net_generic(net, nfs_net_id);
+> -	struct cache_detail *cd;
+> -	struct cache_head **tbl;
+>  
+> -	cd = kzalloc(sizeof(struct cache_detail), GFP_KERNEL);
+> -	if (cd == NULL)
+> -		goto err_cd;
+> -
+> -	tbl = kzalloc(NFS_DNS_HASHTBL_SIZE * sizeof(struct cache_head *),
+> -			GFP_KERNEL);
+> -	if (tbl == NULL)
+> -		goto err_tbl;
+> -
+> -	cd->owner = THIS_MODULE,
+> -	cd->hash_size = NFS_DNS_HASHTBL_SIZE,
+> -	cd->hash_table = tbl,
+> -	cd->name = "dns_resolve",
+> -	cd->cache_put = nfs_dns_ent_put,
+> -	cd->cache_upcall = nfs_dns_upcall,
+> -	cd->cache_parse = nfs_dns_parse,
+> -	cd->cache_show = nfs_dns_show,
+> -	cd->match = nfs_dns_match,
+> -	cd->init = nfs_dns_ent_init,
+> -	cd->update = nfs_dns_ent_update,
+> -	cd->alloc = nfs_dns_ent_alloc,
+> -
+> -	nfs_cache_init(cd);
+> -	err = nfs_cache_register_net(net, cd);
+> +	nn->nfs_dns_resolve = cache_create_net(&nfs_dns_resolve_template, net);
+> +	if (IS_ERR(nn->nfs_dns_resolve))
+> +		return PTR_ERR(nn->nfs_dns_resolve);
+> +
+> +	nfs_cache_init(nn->nfs_dns_resolve);
+> +	err = nfs_cache_register_net(net, nn->nfs_dns_resolve);
+>  	if (err)
+>  		goto err_reg;
+> -	nn->nfs_dns_resolve = cd;
+>  	return 0;
+>  
+>  err_reg:
+> -	nfs_cache_destroy(cd);
+> -	kfree(cd->hash_table);
+> -err_tbl:
+> -	kfree(cd);
+> -err_cd:
+> +	nfs_cache_destroy(nn->nfs_dns_resolve);
+> +	cache_destroy_net(nn->nfs_dns_resolve, net);
+>  	return err;
+>  }
+>  
+> @@ -403,8 +394,7 @@ void nfs_dns_resolver_cache_destroy(struct net *net)
+>  
+>  	nfs_cache_unregister_net(net, cd);
+>  	nfs_cache_destroy(cd);
+> -	kfree(cd->hash_table);
+> -	kfree(cd);
+> +	cache_destroy_net(nn->nfs_dns_resolve, net);
+>  }
+>  
+>  static int rpc_pipefs_event(struct notifier_block *nb, unsigned long event,
+> 
