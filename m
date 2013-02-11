@@ -1,62 +1,135 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:50192 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:38349 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753948Ab3CAAan (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Feb 2013 19:30:43 -0500
-Date: Thu, 28 Feb 2013 19:30:38 -0500
-From: Dave Jones <davej@redhat.com>
-To: Linux Kernel <linux-kernel@vger.kernel.org>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: lockdep trace from nfsd
-Message-ID: <20130301003038.GA26533@redhat.com>
+	id S1751037Ab3BKA0D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 10 Feb 2013 19:26:03 -0500
+Date: Sun, 10 Feb 2013 19:25:58 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: akpm@linux-foundation.org, linux-nfs@vger.kernel.org,
+        Trond.Myklebust@netapp.com, linux-kernel@vger.kernel.org,
+        devel@openvz.org
+Subject: Re: [PATCH 0/2] NFSD: fix races in service per-net resources
+ allocation
+Message-ID: <20130211002558.GD10161@fieldses.org>
+References: <20130201111046.24066.72836.stgit@localhost.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130201111046.24066.72836.stgit@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-[   39.878535] =====================================
-[   39.879670] [ BUG: rpc.nfsd/666 still has locks held! ]
-[   39.880871] 3.8.0+ #3 Not tainted
-[   39.881858] -------------------------------------
-[   39.882850] 2 locks on stack by rpc.nfsd/666:
-[   39.883868]  #0: held:     (nfsd_mutex){+.+.+.}, instance: ffffffffa01cf0b8, at: [<ffffffffa0193d57>] write_ports+0x37/0x7a0 [nfsd]
-[   39.884750]  #1: held:     (rpcb_create_local_mutex){+.+.+.}, instance: ffffffffa016d878, at: [<ffffffffa0153916>] rpcb_create_local+0x46/0x90 [sunrpc]
-[   39.885903] 
-stack backtrace:
-[   39.897044] Pid: 666, comm: rpc.nfsd Not tainted 3.8.0+ #3
-[   39.898186] Call Trace:
-[   39.900755]  [<ffffffff810b9c6a>] debug_check_no_locks_held+0x9a/0xa0
-[   39.901823]  [<ffffffffa0145965>] rpc_wait_bit_killable+0x85/0xb0 [sunrpc]
-[   39.902866]  [<ffffffff8161bf10>] __wait_on_bit+0x60/0x90
-[   39.903879]  [<ffffffffa0147860>] ? __rpc_execute+0x170/0x5a0 [sunrpc]
-[   39.904900]  [<ffffffffa01458e0>] ? __rpc_wait_for_completion_task+0x30/0x30 [sunrpc]
-[   39.905969]  [<ffffffff8161bfbc>] out_of_line_wait_on_bit+0x7c/0x90
-[   39.907010]  [<ffffffffa0147860>] ? __rpc_execute+0x170/0x5a0 [sunrpc]
-[   39.908070]  [<ffffffff81075f00>] ? autoremove_wake_function+0x50/0x50
-[   39.909124]  [<ffffffffa0139b50>] ? call_connect+0xa0/0xa0 [sunrpc]
-[   39.910154]  [<ffffffffa0147891>] __rpc_execute+0x1a1/0x5a0 [sunrpc]
-[   39.911176]  [<ffffffff81075e9e>] ? wake_up_bit+0x2e/0x40
-[   39.912058]  [<ffffffffa0147d49>] rpc_execute+0x59/0x180 [sunrpc]
-[   39.912745]  [<ffffffffa013da00>] rpc_run_task+0x70/0x90 [sunrpc]
-[   39.913446]  [<ffffffffa013db23>] rpc_call_sync+0x43/0xa0 [sunrpc]
-[   39.914280]  [<ffffffffa013dbd2>] rpc_ping+0x52/0x70 [sunrpc]
-[   39.914992]  [<ffffffffa013de08>] rpc_create+0x188/0x230 [sunrpc]
-[   39.915735]  [<ffffffff8100a4a9>] ? sched_clock+0x9/0x10
-[   39.916577]  [<ffffffff810b807e>] ? put_lock_stats.isra.25+0xe/0x40
-[   39.917635]  [<ffffffff810b871c>] ? lock_release_holdtime.part.26+0xcc/0x140
-[   39.918667]  [<ffffffffa015331c>] rpcb_create_local_unix+0x5c/0xe0 [sunrpc]
-[   39.919669]  [<ffffffffa0153948>] rpcb_create_local+0x78/0x90 [sunrpc]
-[   39.920705]  [<ffffffffa014a653>] svc_rpcb_setup+0x23/0x50 [sunrpc]
-[   39.921725]  [<ffffffffa014a6b4>] svc_bind+0x34/0x50 [sunrpc]
-[   39.921733]  [<ffffffffa01909ed>] nfsd_create_serv+0x1cd/0x320 [nfsd]
-[   39.921738]  [<ffffffffa0190825>] ? nfsd_create_serv+0x5/0x320 [nfsd]
-[   39.921742]  [<ffffffffa019424a>] write_ports+0x52a/0x7a0 [nfsd]
-[   39.921746]  [<ffffffffa0194138>] ? write_ports+0x418/0x7a0 [nfsd]
-[   39.921750]  [<ffffffff816203c5>] ? _raw_spin_unlock+0x35/0x60
-[   39.921754]  [<ffffffff811de09a>] ? simple_transaction_get+0xca/0xe0
-[   39.921759]  [<ffffffffa0193d20>] ? write_maxblksize+0x2e0/0x2e0 [nfsd]
-[   39.921764]  [<ffffffffa0192367>] nfsctl_transaction_write+0x57/0x90 [nfsd]
-[   39.921768]  [<ffffffff811b45ff>] vfs_write+0xaf/0x190
-[   39.921771]  [<ffffffff811b4955>] sys_write+0x55/0xa0
-[   39.921775]  [<ffffffff81628b99>] system_call_fastpath+0x16/0x1b
+On Fri, Feb 01, 2013 at 02:28:21PM +0300, Stanislav Kinsbursky wrote:
+> After "NFS" (SUNRPC + NFSd actually) containerization work some basic
+> principles of SUNRPC service initialization and deinitialization has been
+> changed: now one service can be shared between different network namespaces
+> and network "resources" can be attached or detached from the running service.
+> This leads to races, described here:
+> 
+> https://bugzilla.redhat.com/show_bug.cgi?id=904870
+> 
+> and which this small patch set is aimed to solve by using per-cpu rw semphores
+> to sync per-net resources processing and shutdown.
 
+Sorry for the slow response.  I think this is probably correct.
+
+But I think we got into this mess because the server shutdown logic is
+too complicated.  So I'd prefer to find a way to fix the problem by
+simplifying things rather than by adding another lock.
+
+Do you see anything wrong with the following?
+
+--b
+
+commit e8202f39f84b8863337f55159dd18478b9ccb616
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Sun Feb 10 16:08:11 2013 -0500
+
+    svcrpc: fix and simplify server shutdown
+    
+    Simplify server shutdown, and make it correct whether or not there are
+    still threads running (as will happen in the case we're only shutting
+    down the service in one network namespace).
+    
+    Do that by doing what we'd do in normal circumstances: just CLOSE each
+    socket, then enqueue it.
+    
+    Since there may not be threads to handle the resulting queued xprts,
+    also run a simplified version of the svc_recv() loop run by a server to
+    clean up any closed xprts afterwards.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 024a241..a98e818 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -966,12 +966,12 @@ static void svc_close_list(struct svc_serv *serv, struct list_head *xprt_list, s
+ 		if (xprt->xpt_net != net)
+ 			continue;
+ 		set_bit(XPT_CLOSE, &xprt->xpt_flags);
+-		set_bit(XPT_BUSY, &xprt->xpt_flags);
++		svc_xprt_enqueue(xprt);
+ 	}
+ 	spin_unlock(&serv->sv_lock);
+ }
+ 
+-static void svc_clear_pools(struct svc_serv *serv, struct net *net)
++static struct svc_xprt *svc_dequeue_net(struct svc_serv *serv, struct net *net)
+ {
+ 	struct svc_pool *pool;
+ 	struct svc_xprt *xprt;
+@@ -986,42 +986,31 @@ static void svc_clear_pools(struct svc_serv *serv, struct net *net)
+ 			if (xprt->xpt_net != net)
+ 				continue;
+ 			list_del_init(&xprt->xpt_ready);
++			spin_unlock_bh(&pool->sp_lock);
++			return xprt;
+ 		}
+ 		spin_unlock_bh(&pool->sp_lock);
+ 	}
++	return NULL;
+ }
+ 
+-static void svc_clear_list(struct svc_serv *serv, struct list_head *xprt_list, struct net *net)
++static void svc_clean_up_xprts(struct svc_serv *serv, struct net *net)
+ {
+ 	struct svc_xprt *xprt;
+-	struct svc_xprt *tmp;
+-	LIST_HEAD(victims);
+ 
+-	spin_lock(&serv->sv_lock);
+-	list_for_each_entry_safe(xprt, tmp, xprt_list, xpt_list) {
+-		if (xprt->xpt_net != net)
+-			continue;
+-		list_move(&xprt->xpt_list, &victims);
+-	}
+-	spin_unlock(&serv->sv_lock);
+-
+-	list_for_each_entry_safe(xprt, tmp, &victims, xpt_list)
++	while ((xprt = svc_dequeue_net(serv, net))) {
++		if (!test_bit(XPT_CLOSE, &xprt->xpt_flags))
++			pr_err("found un-closed xprt on service shutdown\n");
+ 		svc_delete_xprt(xprt);
++	}
+ }
+ 
+ void svc_close_net(struct svc_serv *serv, struct net *net)
+ {
+-	svc_close_list(serv, &serv->sv_tempsocks, net);
+ 	svc_close_list(serv, &serv->sv_permsocks, net);
+-
+-	svc_clear_pools(serv, net);
+-	/*
+-	 * At this point the sp_sockets lists will stay empty, since
+-	 * svc_xprt_enqueue will not add new entries without taking the
+-	 * sp_lock and checking XPT_BUSY.
+-	 */
+-	svc_clear_list(serv, &serv->sv_tempsocks, net);
+-	svc_clear_list(serv, &serv->sv_permsocks, net);
++	svc_clean_up_xprts(serv, net);
++	svc_close_list(serv, &serv->sv_tempsocks, net);
++	svc_clean_up_xprts(serv, net);
+ }
+ 
+ /*
