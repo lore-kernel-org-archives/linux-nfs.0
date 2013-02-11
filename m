@@ -1,119 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:52009 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:54907 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1946467Ab3BHMjh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Feb 2013 07:39:37 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 11/15] NFS: Extend NFS xattr handlers to accept the security namespace
-Date: Fri,  8 Feb 2013 07:39:19 -0500
-Message-Id: <1360327163-20360-12-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
-References: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
+	id S1758750Ab3BKSWS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Feb 2013 13:22:18 -0500
+Date: Mon, 11 Feb 2013 13:22:12 -0500
+To: Jiri Horky <jiri.horky@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFSv4 server ignores local filesystem's POSIX ACL
+Message-ID: <20130211182212.GB30117@fieldses.org>
+References: <51190E62.5090304@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <51190E62.5090304@gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+On Mon, Feb 11, 2013 at 04:29:38PM +0100, Jiri Horky wrote:
+> Hi all,
+> 
+> we use NFSv4 with Kerberos and a custom idmap mapping plugin. The
+> mapping is configured in a way that all principals that are not
+> explicitly defined are mapped to nobody/nogroup on a server.
+> Recently, the kerberos infrastructure within our organization
+> expanded by crossrealming with other parties which should not be
+> allowed to use our NFSv4 mounts.
+> It is my understanding that everybody who is able to authenticate
+> against the used kerberos infrastructure can mount the filesystems
+> but nonauthorized users will be mapped to user nobody/nogroup and
+> according to server's filesystem rights can do other actions. Now, I
+> would like to set deny ACL for user nobody to the server's /exports
+> directory to restrict nobody user access. But it seems this ACL is
+> ignored. In fact, local POSIX ACL's on any directory seems to
+> ignored:
+> 
+> SERVER:
+> root@store4 /exports # mkdir local_tmp
+> root@store4 /exports # chmod 777 local_tmp/
+> root@store4 /exports # setfacl -m u:nobody:--- /exports/local_tmp/
+> root@store4 /exports # getfacl /exports/local_tmp/
+> getfacl: Removing leading '/' from absolute path names
+> # file: exports/local_tmp/
+> # owner: root
+> # group: root
+> user::rwx
+> user:nobody:---
+> group::rwx
+> mask::rwx
+> other::rwx
+> root@store4 /exports # su nobody -c "touch /exports/local_tmp/filelocal"
+> touch: cannot touch `/exports/local_tmp/filelocal': Permission denied
+> 
+> so far so good, now on a client:
+> 
+> CLIENT:
+> metex-1:~# mount -t nfs4 -o sec=krb5 store4.du1.cesnet.cz:/ /mnt
+> metex-1:~# touch /mnt/local_tmp/a
+> metex-1:~# ls -l /mnt/local_tmp/a
+> -rw-r--r-- 1 nobody nogroup 0 Feb 11 15:23 /mnt/local_tmp/a
+> 
+> and on the SERVER again:
+> root@store4 /exports # ls -l /exports/local_tmp/a
+> -rw-r--r-- 1 nobody nogroup 0 Feb 11 15:23 /exports/local_tmp/a
+> 
+> So the ACL is ignored when accessing through NFS. Is it the expected
+> behavior and I am just doing something terribly wrong?
 
-The existing NFSv4 xattr handlers do not accept xattr calls to the security
-namespace. This patch extends these handlers to accept xattrs from the security
-namespace in addition to the default NFSv4 ACL namespace.
+That looks like a bug, but I'm at a loss to explain how it could have
+happened.  A network trace (tcpdump -s0 -wtmp.pcap, then send me
+tmp.pcap) taken during the file creation above might be interesting.
 
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- fs/nfs/nfs4proc.c   | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
- security/security.c |  1 +
- 2 files changed, 51 insertions(+)
+> Some more info about server:
+> 
+> root@store4 /exports # cat /etc/exports
+> /exports *(sec=krb5:krb5i:krb5p,rw,fsid=0,sync,no_subtree_check,no_root_squash,insecure,crossmnt)
+> root@store4 /exports # uname -a
+> Linux fe4 2.6.32.59-0.7.1.du2-default #1 SMP 2012-07-13 15:50:56
+> +0200 x86_64 x86_64 x86_64 GNU/Linux
+> OS is: SLES 11 SP1
+> 
+> root@store4 /exports # modinfo nfsd
+> filename: /lib/modules/2.6.32.59-0.7.1.du2-default/kernel/fs/nfsd/nfsd.ko
+> license:        GPL
+> author:         Olaf Kirch <okir@monad.swb.de>
+> srcversion:     74D3604622B7912E7C96E03
+> depends:        auth_rpcgss,sunrpc,lockd,exportfs,nfs_acl
+> supported:      yes
+> vermagic:       2.6.32.59-0.7.1.du2-default SMP mod_unload modversions
+> 
+> Our intention is  simply to force nobody users out of our NFS servers.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 280bb22..2b026c4 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5452,6 +5452,53 @@ static size_t nfs4_xattr_list_nfs4_acl(struct dentry *dentry, char *list,
- 	return len;
- }
- 
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+static inline int nfs4_server_supports_labels(struct nfs_server *server)
-+{
-+	return server->caps & NFS_CAP_SECURITY_LABEL;
-+}
-+
-+static int nfs4_xattr_set_nfs4_label(struct dentry *dentry, const char *key,
-+				   const void *buf, size_t buflen,
-+				   int flags, int type)
-+{
-+	if (security_ismaclabel(key))
-+		return nfs4_set_security_label(dentry, buf, buflen);
-+
-+	return -EOPNOTSUPP;
-+}
-+
-+static int nfs4_xattr_get_nfs4_label(struct dentry *dentry, const char *key,
-+				   void *buf, size_t buflen, int type)
-+{
-+	if (security_ismaclabel(key))
-+		return nfs4_get_security_label(dentry->d_inode, buf, buflen);
-+	return -EOPNOTSUPP;
-+}
-+
-+static size_t nfs4_xattr_list_nfs4_label(struct dentry *dentry, char *list,
-+				       size_t list_len, const char *name,
-+				       size_t name_len, int type)
-+{
-+	size_t len = 0;
-+
-+	if (nfs_server_capable(dentry->d_inode, NFS_CAP_SECURITY_LABEL)) {
-+		len = security_inode_listsecurity(dentry->d_inode, NULL, 0);
-+		if (list && len <= list_len)
-+			security_inode_listsecurity(dentry->d_inode, list, len);
-+	}
-+	return len;
-+}
-+
-+static const struct xattr_handler nfs4_xattr_nfs4_label_handler = {
-+	.prefix = XATTR_SECURITY_PREFIX,
-+	.list	= nfs4_xattr_list_nfs4_label,
-+	.get	= nfs4_xattr_get_nfs4_label,
-+	.set	= nfs4_xattr_set_nfs4_label,
-+};
-+#endif
-+
-+
- /*
-  * nfs_fhget will use either the mounted_on_fileid or the fileid
-  */
-@@ -7190,6 +7237,9 @@ static const struct xattr_handler nfs4_xattr_nfs4_acl_handler = {
- 
- const struct xattr_handler *nfs4_xattr_handlers[] = {
- 	&nfs4_xattr_nfs4_acl_handler,
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	&nfs4_xattr_nfs4_label_handler,
-+#endif
- 	NULL
- };
- 
-diff --git a/security/security.c b/security/security.c
-index dd9e4c8..af835e3 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -660,6 +660,7 @@ int security_inode_listsecurity(struct inode *inode, char *buffer, size_t buffer
- 		return 0;
- 	return security_ops->inode_listsecurity(inode, buffer, buffer_size);
- }
-+EXPORT_SYMBOL(security_inode_listsecurity);
- 
- void security_inode_getsecid(const struct inode *inode, u32 *secid)
- {
--- 
-1.7.11.7
+It might be better to teach rpc.svcgssd to fail authentications from any
+users outside your local domain.  I'm not sure how to do that.
 
+--b.
