@@ -1,63 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qe0-f51.google.com ([209.85.128.51]:35622 "EHLO
-	mail-qe0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751512Ab3BRNVw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Feb 2013 08:21:52 -0500
-Received: by mail-qe0-f51.google.com with SMTP id 6so2414367qea.38
-        for <linux-nfs@vger.kernel.org>; Mon, 18 Feb 2013 05:21:50 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@netapp.com
-Cc: andros@netapp.com, linux-nfs@vger.kernel.org
-Subject: [PATCH v2] sunrpc: silence build warning in gss_fill_context
-Date: Mon, 18 Feb 2013 08:21:45 -0500
-Message-Id: <1361193705-14440-1-git-send-email-jlayton@redhat.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91F3EA286@sacexcmbx05-prd.hq.netapp.com>
-References: <4FA345DA4F4AE44899BD2B03EEEC2FA91F3EA286@sacexcmbx05-prd.hq.netapp.com>
+Received: from fieldses.org ([174.143.236.118]:47620 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758821Ab3BKStj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Feb 2013 13:49:39 -0500
+Date: Mon, 11 Feb 2013 13:49:36 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Jiri Horky <jiri.horky@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4 server ignores local filesystem's POSIX ACL
+Message-ID: <20130211184936.GC30117@fieldses.org>
+References: <51190E62.5090304@gmail.com>
+ <20130211182212.GB30117@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA91F3C2047@sacexcmbx05-prd.hq.netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91F3C2047@sacexcmbx05-prd.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since commit 620038f6d23, gcc is throwing the following warning:
+On Mon, Feb 11, 2013 at 06:32:26PM +0000, Myklebust, Trond wrote:
+> > -----Original Message-----
+> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> > owner@vger.kernel.org] On Behalf Of J. Bruce Fields
+> > Sent: Monday, February 11, 2013 1:22 PM
+> > To: Jiri Horky
+> > Cc: linux-nfs@vger.kernel.org
+> > Subject: Re: NFSv4 server ignores local filesystem's POSIX ACL
+> > 
+> > On Mon, Feb 11, 2013 at 04:29:38PM +0100, Jiri Horky wrote:
+> > > Hi all,
+> > >
+> > > we use NFSv4 with Kerberos and a custom idmap mapping plugin. The
+> > > mapping is configured in a way that all principals that are not
+> > > explicitly defined are mapped to nobody/nogroup on a server.
+> > > Recently, the kerberos infrastructure within our organization expanded
+> > > by crossrealming with other parties which should not be allowed to use
+> > > our NFSv4 mounts.
+> > > It is my understanding that everybody who is able to authenticate
+> > > against the used kerberos infrastructure can mount the filesystems but
+> > > nonauthorized users will be mapped to user nobody/nogroup and
+> > > according to server's filesystem rights can do other actions. Now, I
+> > > would like to set deny ACL for user nobody to the server's /exports
+> > > directory to restrict nobody user access. But it seems this ACL is
+> > > ignored. In fact, local POSIX ACL's on any directory seems to
+> > > ignored:
+> > >
+> > > SERVER:
+> > > root@store4 /exports # mkdir local_tmp
+> > > root@store4 /exports # chmod 777 local_tmp/
+> > > root@store4 /exports # setfacl -m u:nobody:--- /exports/local_tmp/
+> > > root@store4 /exports # getfacl /exports/local_tmp/
+> > > getfacl: Removing leading '/' from absolute path names # file:
+> > > exports/local_tmp/ # owner: root # group: root user::rwx
+> > > user:nobody:---
+> > > group::rwx
+> > > mask::rwx
+> > > other::rwx
+> > > root@store4 /exports # su nobody -c "touch /exports/local_tmp/filelocal"
+> > > touch: cannot touch `/exports/local_tmp/filelocal': Permission denied
+> > >
+> > > so far so good, now on a client:
+> > >
+> > > CLIENT:
+> > > metex-1:~# mount -t nfs4 -o sec=krb5 store4.du1.cesnet.cz:/ /mnt
+> > > metex-1:~# touch /mnt/local_tmp/a metex-1:~# ls -l /mnt/local_tmp/a
+> > > -rw-r--r-- 1 nobody nogroup 0 Feb 11 15:23 /mnt/local_tmp/a
+> > >
+> > > and on the SERVER again:
+> > > root@store4 /exports # ls -l /exports/local_tmp/a
+> > > -rw-r--r-- 1 nobody nogroup 0 Feb 11 15:23 /exports/local_tmp/a
+> > >
+> > > So the ACL is ignored when accessing through NFS. Is it the expected
+> > > behavior and I am just doing something terribly wrong?
+> > 
+> > That looks like a bug, but I'm at a loss to explain how it could have happened.
+> > A network trace (tcpdump -s0 -wtmp.pcap, then send me
+> > tmp.pcap) taken during the file creation above might be interesting.
+> 
+> If everyone is being squashed to user, nobody and the 'nobody' user owns the file, isn't that just expected behaviour? NFSv3 servers are always supposed to allow reads and writes from the owner, since the protocol itself has no stateful equivalent of open("foo", O_RDWR|O_CREAT, 0);
 
-  CC [M]  net/sunrpc/auth_gss/auth_gss.o
-In file included from include/linux/sunrpc/types.h:14:0,
-                 from include/linux/sunrpc/sched.h:14,
-                 from include/linux/sunrpc/clnt.h:18,
-                 from net/sunrpc/auth_gss/auth_gss.c:45:
-net/sunrpc/auth_gss/auth_gss.c: In function ‘gss_pipe_downcall’:
-include/linux/sunrpc/debug.h:45:10: warning: ‘timeout’ may be used
-uninitialized in this function [-Wmaybe-uninitialized]
-    printk(KERN_DEFAULT args); \
-          ^
-net/sunrpc/auth_gss/auth_gss.c:194:15: note: ‘timeout’ was declared here
-  unsigned int timeout;
-               ^
-If simple_get_bytes returns an error, then we'll end up calling printk
-with an uninitialized timeout value. Remove the timeout from the
-dprintk in order to remove the warning.
+Oops, I was assuming the second touch above was doing a create--based on
+the timestamps in the two ls's, you're right the second touch wasn't
+creating.
 
-Cc: Andy Adamson <andros@netapp.com>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- net/sunrpc/auth_gss/auth_gss.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+So, agreed, this looks normal.
 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 6e5c824..9f25403 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -247,8 +247,8 @@ gss_fill_context(const void *p, const void *end, struct gss_cl_ctx *ctx, struct
- 		__func__, ctx->gc_expiry, now, timeout);
- 	return q;
- err:
--	dprintk("RPC:       %s returns %ld gc_expiry %lu now %lu timeout %u\n",
--		__func__, -PTR_ERR(p), ctx->gc_expiry, now, timeout);
-+	dprintk("RPC:       %s returns %ld gc_expiry %lu now %lu\n",
-+		__func__, -PTR_ERR(p), ctx->gc_expiry, now);
- 	return p;
- }
- 
--- 
-1.7.11.7
+--b.
 
+> 
+> > 
+> > > Some more info about server:
+> > >
+> > > root@store4 /exports # cat /etc/exports /exports
+> > >
+> > *(sec=krb5:krb5i:krb5p,rw,fsid=0,sync,no_subtree_check,no_root_squash,
+> > > insecure,crossmnt)
+> > > root@store4 /exports # uname -a
+> > > Linux fe4 2.6.32.59-0.7.1.du2-default #1 SMP 2012-07-13 15:50:56
+> > > +0200 x86_64 x86_64 x86_64 GNU/Linux
+> > > OS is: SLES 11 SP1
+> > >
+> > > root@store4 /exports # modinfo nfsd
+> > > filename: /lib/modules/2.6.32.59-0.7.1.du2-default/kernel/fs/nfsd/nfsd.ko
+> > > license:        GPL
+> > > author:         Olaf Kirch <okir@monad.swb.de>
+> > > srcversion:     74D3604622B7912E7C96E03
+> > > depends:        auth_rpcgss,sunrpc,lockd,exportfs,nfs_acl
+> > > supported:      yes
+> > > vermagic:       2.6.32.59-0.7.1.du2-default SMP mod_unload modversions
+> > >
+> > > Our intention is  simply to force nobody users out of our NFS servers.
+> > 
+> > It might be better to teach rpc.svcgssd to fail authentications from any users
+> > outside your local domain.  I'm not sure how to do that.
+> > 
+> > --b.
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the
+> > body of a message to majordomo@vger.kernel.org More majordomo info at
+> > http://vger.kernel.org/majordomo-info.html
