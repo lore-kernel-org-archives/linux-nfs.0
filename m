@@ -1,88 +1,153 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f177.google.com ([209.85.160.177]:39281 "EHLO
-	mail-gh0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754819Ab3BDNSX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2013 08:18:23 -0500
-Received: by mail-gh0-f177.google.com with SMTP id g22so1504413ghb.22
-        for <linux-nfs@vger.kernel.org>; Mon, 04 Feb 2013 05:18:22 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 5/8] nfsd: when updating an entry with RC_NOCACHE, just free it
-Date: Mon,  4 Feb 2013 08:18:04 -0500
-Message-Id: <1359983887-28535-6-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1359983887-28535-1-git-send-email-jlayton@redhat.com>
-References: <1359983887-28535-1-git-send-email-jlayton@redhat.com>
+Received: from relay.parallels.com ([195.214.232.42]:52945 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751369Ab3BKGTl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Feb 2013 01:19:41 -0500
+Message-ID: <51188D2A.4070605@parallels.com>
+Date: Mon, 11 Feb 2013 10:18:18 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: <akpm@linux-foundation.org>, <linux-nfs@vger.kernel.org>,
+        <Trond.Myklebust@netapp.com>, <linux-kernel@vger.kernel.org>,
+        <devel@openvz.org>
+Subject: Re: [PATCH 0/2] NFSD: fix races in service per-net resources allocation
+References: <20130201111046.24066.72836.stgit@localhost.localdomain> <20130211002558.GD10161@fieldses.org>
+In-Reply-To: <20130211002558.GD10161@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There's no need to keep entries around that we're declaring RC_NOCACHE.
-Ditto if there's a problem with the entry.
+11.02.2013 04:25, J. Bruce Fields пишет:
+> On Fri, Feb 01, 2013 at 02:28:21PM +0300, Stanislav Kinsbursky wrote:
+>> After "NFS" (SUNRPC + NFSd actually) containerization work some basic
+>> principles of SUNRPC service initialization and deinitialization has been
+>> changed: now one service can be shared between different network namespaces
+>> and network "resources" can be attached or detached from the running service.
+>> This leads to races, described here:
+>>
+>> https://bugzilla.redhat.com/show_bug.cgi?id=904870
+>>
+>> and which this small patch set is aimed to solve by using per-cpu rw semphores
+>> to sync per-net resources processing and shutdown.
+>
+> Sorry for the slow response.  I think this is probably correct.
+>
+> But I think we got into this mess because the server shutdown logic is
+> too complicated.  So I'd prefer to find a way to fix the problem by
+> simplifying things rather than by adding another lock.
+>
 
-With this change too, there's no need to test for RC_UNUSED in the
-search function. If the entry's in the hash table then it's either
-INPROG or DONE.
+Yeah, I wasn't satisfied with the patch I send. It was just an attempt to fix the issue fast.
+Simplifying the logic instead of one more lock (there are too many of them already) is much better.
+Thanks!
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/nfscache.c | 18 ++++++++++++++----
- 1 file changed, 14 insertions(+), 4 deletions(-)
+> Do you see anything wrong with the following?
+>
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index 69d29d4..e8ea785 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -98,6 +98,14 @@ nfsd_reply_cache_free_locked(struct svc_cacherep *rp)
- 	kmem_cache_free(drc_slab, rp);
- }
- 
-+static void
-+nfsd_reply_cache_free(struct svc_cacherep *rp)
-+{
-+	spin_lock(&cache_lock);
-+	nfsd_reply_cache_free_locked(rp);
-+	spin_unlock(&cache_lock);
-+}
-+
- int nfsd_reply_cache_init(void)
- {
- 	drc_slab = kmem_cache_create("nfsd_drc", sizeof(struct svc_cacherep),
-@@ -182,8 +190,7 @@ nfsd_cache_search(struct svc_rqst *rqstp)
- 
- 	rh = &cache_hash[request_hash(xid)];
- 	hlist_for_each_entry(rp, hn, rh, c_hash) {
--		if (rp->c_state != RC_UNUSED &&
--		    xid == rp->c_xid && proc == rp->c_proc &&
-+		if (xid == rp->c_xid && proc == rp->c_proc &&
- 		    proto == rp->c_prot && vers == rp->c_vers &&
- 		    !nfsd_cache_entry_expired(rp) &&
- 		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
-@@ -353,7 +360,7 @@ nfsd_cache_update(struct svc_rqst *rqstp, int cachetype, __be32 *statp)
- 
- 	/* Don't cache excessive amounts of data and XDR failures */
- 	if (!statp || len > (256 >> 2)) {
--		rp->c_state = RC_UNUSED;
-+		nfsd_reply_cache_free(rp);
- 		return;
- 	}
- 
-@@ -367,12 +374,15 @@ nfsd_cache_update(struct svc_rqst *rqstp, int cachetype, __be32 *statp)
- 		cachv = &rp->c_replvec;
- 		cachv->iov_base = kmalloc(len << 2, GFP_KERNEL);
- 		if (!cachv->iov_base) {
--			rp->c_state = RC_UNUSED;
-+			nfsd_reply_cache_free(rp);
- 			return;
- 		}
- 		cachv->iov_len = len << 2;
- 		memcpy(cachv->iov_base, statp, len << 2);
- 		break;
-+	case RC_NOCACHE:
-+		nfsd_reply_cache_free(rp);
-+		return;
- 	}
- 	spin_lock(&cache_lock);
- 	lru_put_end(rp);
+This one looks a bit complicated and confusing to me. Probably because I'm not that familiar with service transports processing logic.
+So, as I can see, we now try to run over all per-net pool-assigned transports, remove them from "ready" queue and delete one by one.
+Then we try to enqueue all temporary sockets. But where in enqueueing of permanent sockets? I.e. how does they be destroyed with this patch?
+Then we once again try to run over all per-net pool-assigned transports, remove them from "ready" queue and delete one by one.
+Why twice? I.e. why not just lose them, then enqueue them and svc_clean_up_xprts()?
+
+> --b
+>
+> commit e8202f39f84b8863337f55159dd18478b9ccb616
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Sun Feb 10 16:08:11 2013 -0500
+>
+>      svcrpc: fix and simplify server shutdown
+>
+>      Simplify server shutdown, and make it correct whether or not there are
+>      still threads running (as will happen in the case we're only shutting
+>      down the service in one network namespace).
+>
+>      Do that by doing what we'd do in normal circumstances: just CLOSE each
+>      socket, then enqueue it.
+>
+>      Since there may not be threads to handle the resulting queued xprts,
+>      also run a simplified version of the svc_recv() loop run by a server to
+>      clean up any closed xprts afterwards.
+>
+>      Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+>
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index 024a241..a98e818 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -966,12 +966,12 @@ static void svc_close_list(struct svc_serv *serv, struct list_head *xprt_list, s
+>   		if (xprt->xpt_net != net)
+>   			continue;
+>   		set_bit(XPT_CLOSE, &xprt->xpt_flags);
+> -		set_bit(XPT_BUSY, &xprt->xpt_flags);
+> +		svc_xprt_enqueue(xprt);
+>   	}
+>   	spin_unlock(&serv->sv_lock);
+>   }
+>
+> -static void svc_clear_pools(struct svc_serv *serv, struct net *net)
+> +static struct svc_xprt *svc_dequeue_net(struct svc_serv *serv, struct net *net)
+>   {
+>   	struct svc_pool *pool;
+>   	struct svc_xprt *xprt;
+> @@ -986,42 +986,31 @@ static void svc_clear_pools(struct svc_serv *serv, struct net *net)
+>   			if (xprt->xpt_net != net)
+>   				continue;
+>   			list_del_init(&xprt->xpt_ready);
+> +			spin_unlock_bh(&pool->sp_lock);
+> +			return xprt;
+>   		}
+>   		spin_unlock_bh(&pool->sp_lock);
+>   	}
+> +	return NULL;
+>   }
+>
+> -static void svc_clear_list(struct svc_serv *serv, struct list_head *xprt_list, struct net *net)
+> +static void svc_clean_up_xprts(struct svc_serv *serv, struct net *net)
+>   {
+>   	struct svc_xprt *xprt;
+> -	struct svc_xprt *tmp;
+> -	LIST_HEAD(victims);
+>
+> -	spin_lock(&serv->sv_lock);
+> -	list_for_each_entry_safe(xprt, tmp, xprt_list, xpt_list) {
+> -		if (xprt->xpt_net != net)
+> -			continue;
+> -		list_move(&xprt->xpt_list, &victims);
+> -	}
+> -	spin_unlock(&serv->sv_lock);
+> -
+> -	list_for_each_entry_safe(xprt, tmp, &victims, xpt_list)
+> +	while ((xprt = svc_dequeue_net(serv, net))) {
+> +		if (!test_bit(XPT_CLOSE, &xprt->xpt_flags))
+> +			pr_err("found un-closed xprt on service shutdown\n");
+>   		svc_delete_xprt(xprt);
+> +	}
+>   }
+>
+>   void svc_close_net(struct svc_serv *serv, struct net *net)
+>   {
+> -	svc_close_list(serv, &serv->sv_tempsocks, net);
+>   	svc_close_list(serv, &serv->sv_permsocks, net);
+> -
+> -	svc_clear_pools(serv, net);
+> -	/*
+> -	 * At this point the sp_sockets lists will stay empty, since
+> -	 * svc_xprt_enqueue will not add new entries without taking the
+> -	 * sp_lock and checking XPT_BUSY.
+> -	 */
+> -	svc_clear_list(serv, &serv->sv_tempsocks, net);
+> -	svc_clear_list(serv, &serv->sv_permsocks, net);
+> +	svc_clean_up_xprts(serv, net);
+> +	svc_close_list(serv, &serv->sv_tempsocks, net);
+> +	svc_clean_up_xprts(serv, net);
+>   }
+>
+>   /*
+>
+
+
 -- 
-1.7.11.7
-
+Best regards,
+Stanislav Kinsbursky
