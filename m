@@ -1,103 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50077 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:7209 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755834Ab3BVPB6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Feb 2013 10:01:58 -0500
-Date: Fri, 22 Feb 2013 10:01:58 -0500
-To: Iordan Iordanov <iordan@cdf.toronto.edu>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFS v3 hangs with kernel version v3.2.0, 32-bit
-Message-ID: <20130222150158.GB20588@fieldses.org>
-References: <511BFB74.3060803@cdf.toronto.edu>
- <51253F36.40501@cdf.toronto.edu>
+	id S1752140Ab3BLWkt convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Feb 2013 17:40:49 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Steve Dickson <SteveD@redhat.com>, "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 06/15] NFSv4: Introduce new label structure
+Date: Tue, 12 Feb 2013 22:40:46 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91F3CE58F@sacexcmbx05-prd.hq.netapp.com>
+References: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
+	 <1360327163-20360-7-git-send-email-SteveD@redhat.com>
+	 <20130212220741.GJ10267@fieldses.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA91F3CE55C@sacexcmbx05-prd.hq.netapp.com>
+	 <20130212223226.GL10267@fieldses.org>
+In-Reply-To: <20130212223226.GL10267@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <51253F36.40501@cdf.toronto.edu>
-From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 20, 2013 at 04:25:10PM -0500, Iordan Iordanov wrote:
-> I've put the broken server back into production (we need the
-> capacity), however, we are open to enabling whatever RPC/NFS
-> debugging would help to get to the source of this problem. Can
-> anybody suggest which kernel parameters would be most beneficial to
-> determining the cause of the problem? I am talking about one of
-> these, or something else which I'm not aware of:
+On Tue, 2013-02-12 at 17:32 -0500, J. Bruce Fields wrote:
+> On Tue, Feb 12, 2013 at 10:28:16PM +0000, Myklebust, Trond wrote:
+> > On Tue, 2013-02-12 at 17:07 -0500, J. Bruce Fields wrote:
+> > > On Fri, Feb 08, 2013 at 07:39:14AM -0500, Steve Dickson wrote:
+> > > > From: David Quigley <dpquigl@davequigley.com>
+> > > > 
+> > > > In order to mimic the way that NFSv4 ACLs are implemented we have created a
+> > > > structure to be used to pass label data up and down the call chain. This patch
+> > > > adds the new structure and new members to the required NFSv4 call structures.
+> > > > 
+> > > > Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+> > > > Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+> > > > Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+> > > > Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+> > > > ---
+> > > >  fs/nfs/inode.c            | 33 +++++++++++++++++++++++++++++++++
+> > > >  include/linux/nfs4.h      |  7 +++++++
+> > > >  include/linux/nfs_fs.h    | 17 +++++++++++++++++
+> > > >  include/linux/nfs_xdr.h   | 21 +++++++++++++++++++++
+> > > >  include/uapi/linux/nfs4.h |  2 +-
+> > > >  5 files changed, 79 insertions(+), 1 deletion(-)
+> > > > 
+> > > > diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> > > > index ebeb94c..8d5f01b 100644
+> > > > --- a/fs/nfs/inode.c
+> > > > +++ b/fs/nfs/inode.c
+> > > > @@ -255,6 +255,39 @@ nfs_init_locked(struct inode *inode, void *opaque)
+> > > >  	return 0;
+> > > >  }
+> > > >  
+> > > > +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
+> > > > +struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags)
+> > > > +{
+> > > > +	struct nfs4_label *label = NULL;
+> > > > +
+> > > > +	if (!(server->caps & NFS_CAP_SECURITY_LABEL))
+> > > > +		return label;
+> > > > +
+> > > > +	label = kzalloc(NFS4_MAXLABELLEN, flags);
+> > > > +	if (label == NULL)
+> > > > +		return ERR_PTR(-ENOMEM);
+> > > > +
+> > > > +	label->label = (char *)(label + 1);
+> > > > +	label->len = NFS4_MAXLABELLEN;
+> > > 
+> > > If you're expecting to be able to store up to NFS4_MAXLABELLEN of data
+> > > after the end of the struct, then you want:
+> > > 
+> > > 	label = kzalloc(sizeof(struct nfs4_label) + NFS4_MAXLABELLEN, flags);
+> > 
+> > Sigh... No.
+> > 
+> > I keep telling Steve that the 'label' needs to be defined as an array,
 > 
-> sunrpc.rpc_debug
-> sunrpc.nfs_debug
-> sunrpc.nfsd_debug
-> sunrpc.nlm_debug
-> 
-> If somebody suggests any options to be enabled, can you also comment
-> on whether there would be any performance hit related to enabling
-> the option?
+> Yeah, I know, he said in 0/15 that he couldn't do that, so I've been
+> reading through these on the assumption I'll find out why not at some
+> point....  (Still not seeing it, though.)
 
-Some of that debugging is extremely verbose, yes.
+It only makes sense to define label->label as a pointer if you need to
+change the pointer value at some time. However, if that is the case,
+then why allocate the struct nfs4_label and label string as a single
+memory block? It would make more sense to allocate them separately so
+that you can free the old label storage after you change the pointer.
 
-Since this list is for upstream (not ubuntu) development, most useful
-would probably be if you could work out whether the problem is
-reproduceable on the latest upstream kernel.
-
---b.
-
-> 
-> Thanks!
-> Iordan Iordanov
-> 
-> 
-> On 02/13/13 15:45, Iordan Iordanov wrote:
-> >Hello!
-> >
-> >We've been suffering from NFS mounts and data transfers hanging on our
-> >Ubuntu Precise 12.04 32-bit shared servers since last summer. The
-> >problem has reoccurred over TCP and UDP.
-> >
-> >Every month or so, some of our more heavily used shared servers would
-> >see its NFS mounts hang, and a bunch of flush-(major:minor) processes
-> >would sit at 100% in top. If the hang occurred while NFS over TCP was
-> >being used, mounting over UDP would still work, but mounting over TCP
-> >would hang (indefinitely). The reverse is also true. When we experienced
-> >the hang while using UDP, mounts over TCP would work on the affected
-> >system.
-> >
-> >I've located a very similar discussion/bug-report for v3.1-rc4 which
-> >ended seemingly without a resolution here:
-> >http://lkml.indiana.edu/hypermail/linux/kernel/1109.1/00728.html
-> >
-> >We're also seeing the:
-> >
-> >[3121466.072728] RPC: 43506 failed to lock transport e030a000
-> >
-> >errors when RPC debugging is enabled. In addition, we're also seeing the
-> >socket in CLOSE_WAIT state symptom in netstat's output:
-> >
-> >tcp 0 0 x.x.x.x:967 y.y.y.y:2049     CLOSE_WAIT
-> >
-> >Running tcpdump on our file-server and specifying the hung host in
-> >question results in NO NFS-related traffic unless a mount request is
-> >executed on the nfs client. I've attached two tcpdumps representing a
-> >successful mount over UDP and an unsuccessful mount over TCP in case
-> >they are useful. The tcpdumps were captured on the fileserver.
-> >
-> >The machine in question is currently in this hung state, and we would be
-> >happy to provide any additional information you may need!
-> >
-> >Here is the result of uname -a on the hung machine:
-> >
-> >Linux gambo 3.2.0-35-generic-pae #55-Ubuntu SMP Wed Dec 5 18:04:39 UTC
-> >2012 i686 athlon i386 GNU/Linux
-> >
-> >Our NFS server is an up-to-date Debian Squeeze 6.0 box, and we would be
-> >happy to provide information on that machine if you think it is relevant.
-> >
-> >Any help in resolving this would be greatly appreciated, as we are
-> >constantly suffering from this issue.
-> >
-> >Many thanks in advance!
-> >Iordan
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Trond
