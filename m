@@ -1,62 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46693 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:46127 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756345Ab3BDQS2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Feb 2013 11:18:28 -0500
-Date: Mon, 4 Feb 2013 11:18:25 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] sunrpc: move address copy/cmp/convert routines and
- prototypes from clnt.h to addr.h
-Message-ID: <20130204161825.GF815@fieldses.org>
-References: <1359991431-25579-1-git-send-email-jlayton@redhat.com>
- <20130204160955.GD815@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91835C73B@SACEXCMBX04-PRD.hq.netapp.com>
+	id S1758375Ab3BLWN1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Feb 2013 17:13:27 -0500
+Date: Tue, 12 Feb 2013 17:13:18 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Casey Schaufler <casey@schaufler-ca.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Steve Dickson <SteveD@redhat.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 00/15] lnfs: 3.8-rc6 release
+Message-ID: <20130212221317.GC12593@pad.fieldses.org>
+References: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
+ <20130212214131.GI10267@fieldses.org>
+ <511ABC09.3040605@schaufler-ca.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91835C73B@SACEXCMBX04-PRD.hq.netapp.com>
+In-Reply-To: <511ABC09.3040605@schaufler-ca.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 04, 2013 at 04:15:43PM +0000, Myklebust, Trond wrote:
-> On Mon, 2013-02-04 at 11:09 -0500, J. Bruce Fields wrote:
-> > On Mon, Feb 04, 2013 at 10:23:51AM -0500, Jeff Layton wrote:
-> > > These routines are used by server and client code, so having them in a
-> > > separate header would be best.
-> > 
-> > I'll apply this and the scope id patch if it gets Trond's ACK.
-> > 
-> > (Or they have my ACK if Trond wants to take them.)
+On Tue, Feb 12, 2013 at 02:02:49PM -0800, Casey Schaufler wrote:
+> On 2/12/2013 1:41 PM, J. Bruce Fields wrote:
+> > On Fri, Feb 08, 2013 at 07:39:08AM -0500, Steve Dickson wrote:
+> >>  include/linux/security.h            |  57 +++-
+> > ...
+> >>  security/capability.c               |  19 +-
+> >>  security/security.c                 |  24 +-
+> >>  security/selinux/hooks.c            |  92 +++++-
+> >>  security/selinux/include/security.h |   2 +
+> >>  security/selinux/ss/policydb.c      |   5 +-
+> >>  security/smack/smack_lsm.c          |  11 +
+> >>  33 files changed, 1352 insertions(+), 214 deletions(-)
+> > Are we still waiting on ACKs from the security people for these bits?
 > 
-> Feel free to take them through the nfsd tree.
+> I'm not going to NAK it, because I don't know it won't work,
+> but I'm not going to ACK it either, because I have not been
+> able to get it to work. I have no idea what the problem
+> might be, and the "obvious" things we've tried have proven
+> ineffective. I may have a bad set of user space tools. There
+> may be more work on Smack hooks required. I can't tell, and
+> there's way too much NFS set-up involved to make progress in
+> the limited time I have available.
 > 
-> Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> If you're waiting for my ACK, no, you don't have it.
+> If you're OK with a lack of NAK, go ahead. There will
+> be changes someday I suspect, but I can't put this high
+> enough on my priorities to devote the time required
+> just now.
 
-Thanks.  I needed to add the following.
+OK, completely understood.
 
-We should make sure none of the other files including clnt.h might also
-need one of these.
+We need someone to ack the security and selinux pieces, though.  (That
+would be James, Stephen, or Eric?)
 
 --b.
-
-commit a487a5ec9e2f37472097a3ff3535c87c6af334e9
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Mon Feb 4 11:13:24 2013 -0500
-
-    foldme
-
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-index e761ee9..255ae32 100644
---- a/fs/nfsd/fault_inject.c
-+++ b/fs/nfsd/fault_inject.c
-@@ -10,6 +10,7 @@
- #include <linux/module.h>
- #include <linux/nsproxy.h>
- #include <linux/sunrpc/clnt.h>
-+#include <linux/sunrpc/addr.h>
- #include <asm/uaccess.h>
- 
- #include "state.h"
