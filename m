@@ -1,95 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54048 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932179Ab3BFWYg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Feb 2013 17:24:36 -0500
-Date: Wed, 6 Feb 2013 17:24:35 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Yan Burman <yanb@mellanox.com>
-Cc: linux-nfs@vger.kernel.org, swise@opengridcomputing.com,
-        linux-rdma@vger.kernel.org, Or Gerlitz <ogerlitz@mellanox.com>
-Subject: Re: NFS over RDMA crashing
-Message-ID: <20130206222435.GL16417@fieldses.org>
-References: <51127B3F.2090200@mellanox.com>
+Received: from p02c11o145.mxlogic.net ([208.65.144.78]:39381 "EHLO
+	p02c11o145.mxlogic.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751263Ab3BLV1l (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Feb 2013 16:27:41 -0500
+From: Peter Staubach <pstaubach@exagrid.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>
+CC: "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "devel@openvz.org" <devel@openvz.org>
+Date: Tue, 12 Feb 2013 16:18:31 -0500
+Subject: RE: [PATCH 0/2] NFSD: fix races in service per-net resources
+ allocation
+Message-ID: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC0C5DF98826@IT-1874.Isys.com>
+References: <20130201111046.24066.72836.stgit@localhost.localdomain>
+ <20130211002558.GD10161@fieldses.org> <51188D2A.4070605@parallels.com>
+ <20130211163715.GA19342@fieldses.org> <20130211205845.GE30117@fieldses.org>
+ <511A10E0.1000604@parallels.com> <20130212204533.GD10267@fieldses.org>
+In-Reply-To: <20130212204533.GD10267@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <51127B3F.2090200@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 06, 2013 at 05:48:15PM +0200, Yan Burman wrote:
-> When killing mount command that got stuck:
-> -------------------------------------------
-> 
-> BUG: unable to handle kernel paging request at ffff880324dc7ff8
-> IP: [<ffffffffa05f3dfb>] rdma_read_xdr+0x8bb/0xd40 [svcrdma]
-> PGD 1a0c063 PUD 32f82e063 PMD 32f2fd063 PTE 8000000324dc7161
-> Oops: 0003 [#1] PREEMPT SMP
-> Modules linked in: md5 ib_ipoib xprtrdma svcrdma rdma_cm ib_cm iw_cm
-> ib_addr nfsd exportfs netconsole ip6table_filter ip6_tables
-> iptable_filter ip_tables ebtable_nat nfsv3 nfs_acl ebtables x_tables
-> nfsv4 auth_rpcgss nfs lockd autofs4 sunrpc target_core_iblock
-> target_core_file target_core_pscsi target_core_mod configfs 8021q
-> bridge stp llc ipv6 dm_mirror dm_region_hash dm_log vhost_net
-> macvtap macvlan tun uinput iTCO_wdt iTCO_vendor_support kvm_intel
-> kvm crc32c_intel microcode pcspkr joydev i2c_i801 lpc_ich mfd_core
-> ehci_pci ehci_hcd sg ioatdma ixgbe mdio mlx4_ib ib_sa ib_mad ib_core
-> mlx4_en mlx4_core igb hwmon dca ptp pps_core button dm_mod ext3 jbd
-> sd_mod ata_piix libata uhci_hcd megaraid_sas scsi_mod
-> CPU 6
-> Pid: 4744, comm: nfsd Not tainted 3.8.0-rc5+ #4 Supermicro
-> X8DTH-i/6/iF/6F/X8DTH
-> RIP: 0010:[<ffffffffa05f3dfb>]  [<ffffffffa05f3dfb>]
-> rdma_read_xdr+0x8bb/0xd40 [svcrdma]
-> RSP: 0018:ffff880324c3dbf8  EFLAGS: 00010297
-> RAX: ffff880324dc8000 RBX: 0000000000000001 RCX: ffff880324dd8428
-> RDX: ffff880324dc7ff8 RSI: ffff880324dd8428 RDI: ffffffff81149618
-> RBP: ffff880324c3dd78 R08: 000060f9c0000860 R09: 0000000000000001
-> R10: ffff880324dd8000 R11: 0000000000000001 R12: ffff8806299dcb10
-> R13: 0000000000000003 R14: 0000000000000001 R15: 0000000000000010
-> FS:  0000000000000000(0000) GS:ffff88063fc00000(0000) knlGS:0000000000000000
-> CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> CR2: ffff880324dc7ff8 CR3: 0000000001a0b000 CR4: 00000000000007e0
-> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> Process nfsd (pid: 4744, threadinfo ffff880324c3c000, task ffff880330550000)
-> Stack:
->  ffff880324c3dc78 ffff880324c3dcd8 0000000000000282 ffff880631cec000
->  ffff880324dd8000 ffff88062ed33040 0000000124c3dc48 ffff880324dd8000
->  ffff88062ed33058 ffff880630ce2b90 ffff8806299e8000 0000000000000003
-> Call Trace:
->  [<ffffffffa05f466e>] svc_rdma_recvfrom+0x3ee/0xd80 [svcrdma]
->  [<ffffffff81086540>] ? try_to_wake_up+0x2f0/0x2f0
->  [<ffffffffa045963f>] svc_recv+0x3ef/0x4b0 [sunrpc]
->  [<ffffffffa0571db0>] ? nfsd_svc+0x740/0x740 [nfsd]
->  [<ffffffffa0571e5d>] nfsd+0xad/0x130 [nfsd]
->  [<ffffffffa0571db0>] ? nfsd_svc+0x740/0x740 [nfsd]
->  [<ffffffff81071df6>] kthread+0xd6/0xe0
->  [<ffffffff81071d20>] ? __init_kthread_worker+0x70/0x70
->  [<ffffffff814b462c>] ret_from_fork+0x7c/0xb0
->  [<ffffffff81071d20>] ? __init_kthread_worker+0x70/0x70
-> Code: 63 c2 49 8d 8c c2 18 02 00 00 48 39 ce 77 e1 49 8b 82 40 0a 00
-> 00 48 39 c6 0f 84 92 f7 ff ff 90 48 8d 50 f8 49 89 92 40 0a 00 00
-> <48> c7 40 f8 00 00 00 00 49 8b 82 40 0a 00 00 49 3b 82 30 0a 00
-> RIP  [<ffffffffa05f3dfb>] rdma_read_xdr+0x8bb/0xd40 [svcrdma]
->  RSP <ffff880324c3dbf8>
-> CR2: ffff880324dc7ff8
-> ---[ end trace 06d0384754e9609a ]---
-> 
-> 
-> It seems that commit afc59400d6c65bad66d4ad0b2daf879cbff8e23e
-> "nfsd4: cleanup: replace rq_resused count by rq_next_page pointer"
-> is responsible for the crash (it seems to be crashing in
-> net/sunrpc/xprtrdma/svc_rdma_recvfrom.c:527)
-> It may be because I have CONFIG_DEBUG_SET_MODULE_RONX and
-> CONFIG_DEBUG_RODATA enabled. I did not try to disable them yet.
-> 
-> When I moved to commit 79f77bf9a4e3dd5ead006b8f17e7c4ff07d8374e I
-> was no longer getting the server crashes,
-> so the reset of my tests were done using that point (it is somewhere
-> in the middle of 3.7.0-rc2).
-
-OK, so this part's clearly my fault--I'll work on a patch, but the
-rdma's use of the ->rq_pages array is pretty confusing.
-
---b.
+VGhlICIrIiB0aGluZyBzZWVtcyBhIGxpdHRsZSBvZGQuICBXaHkgbm90IHVzZSAifHwiIGluc3Rl
+YWQ/ICBUaGUgc3VtIG9mIHRoZSB0d28gcmV0dXJucyBpc24ndCByZWFsbHkgdGhlIGltcG9ydGFu
+dCB0aGluZywgaXMgaXQ/ICBJdCBpcyB0aGF0IGVpdGhlciBjYWxsIHRvIHN2Y19jbG9zZV9saXN0
+KCkgcmV0dXJucyBub24temVyby4NCg0KCVRoYW54Li4uDQoNCgkJcHMNCg0KDQotLS0tLU9yaWdp
+bmFsIE1lc3NhZ2UtLS0tLQ0KRnJvbTogbGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZyBb
+bWFpbHRvOmxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmddIE9uIEJlaGFsZiBPZiBKLiBC
+cnVjZSBGaWVsZHMNClNlbnQ6IFR1ZXNkYXksIEZlYnJ1YXJ5IDEyLCAyMDEzIDM6NDYgUE0NClRv
+OiBTdGFuaXNsYXYgS2luc2J1cnNreQ0KQ2M6IGFrcG1AbGludXgtZm91bmRhdGlvbi5vcmc7IGxp
+bnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmc7IFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tOyBsaW51
+eC1rZXJuZWxAdmdlci5rZXJuZWwub3JnOyBkZXZlbEBvcGVudnoub3JnDQpTdWJqZWN0OiBSZTog
+W1BBVENIIDAvMl0gTkZTRDogZml4IHJhY2VzIGluIHNlcnZpY2UgcGVyLW5ldCByZXNvdXJjZXMg
+YWxsb2NhdGlvbg0KDQpPbiBUdWUsIEZlYiAxMiwgMjAxMyBhdCAwMTo1MjozMlBNICswNDAwLCBT
+dGFuaXNsYXYgS2luc2J1cnNreSB3cm90ZToNCj4gMTIuMDIuMjAxMyAwMDo1OCwgSi4gQnJ1Y2Ug
+RmllbGRzINC/0LjRiNC10YI6DQo+IDxzbmlwPg0KPiA+ICB2b2lkIHN2Y19jbG9zZV9uZXQoc3Ry
+dWN0IHN2Y19zZXJ2ICpzZXJ2LCBzdHJ1Y3QgbmV0ICpuZXQpDQo+ID4gIHsNCj4gPi0Jc3ZjX2Ns
+b3NlX2xpc3Qoc2VydiwgJnNlcnYtPnN2X3RlbXBzb2NrcywgbmV0KTsNCj4gPi0Jc3ZjX2Nsb3Nl
+X2xpc3Qoc2VydiwgJnNlcnYtPnN2X3Blcm1zb2NrcywgbmV0KTsNCj4gPi0NCj4gPi0Jc3ZjX2Ns
+ZWFyX3Bvb2xzKHNlcnYsIG5ldCk7DQo+ID4tCS8qDQo+ID4tCSAqIEF0IHRoaXMgcG9pbnQgdGhl
+IHNwX3NvY2tldHMgbGlzdHMgd2lsbCBzdGF5IGVtcHR5LCBzaW5jZQ0KPiA+LQkgKiBzdmNfeHBy
+dF9lbnF1ZXVlIHdpbGwgbm90IGFkZCBuZXcgZW50cmllcyB3aXRob3V0IHRha2luZyB0aGUNCj4g
+Pi0JICogc3BfbG9jayBhbmQgY2hlY2tpbmcgWFBUX0JVU1kuDQo+ID4tCSAqLw0KPiA+LQlzdmNf
+Y2xlYXJfbGlzdChzZXJ2LCAmc2Vydi0+c3ZfdGVtcHNvY2tzLCBuZXQpOw0KPiA+LQlzdmNfY2xl
+YXJfbGlzdChzZXJ2LCAmc2Vydi0+c3ZfcGVybXNvY2tzLCBuZXQpOw0KPiA+KwlpbnQgY2xvc2Vk
+Ow0KPiA+KwlpbnQgZGVsYXkgPSAwOw0KPiA+Kw0KPiA+K2FnYWluOg0KPiA+KwljbG9zZWQgPSBz
+dmNfY2xvc2VfbGlzdChzZXJ2LCAmc2Vydi0+c3ZfcGVybXNvY2tzLCBuZXQpOw0KPiA+KwljbG9z
+ZWQgKz0gc3ZjX2Nsb3NlX2xpc3Qoc2VydiwgJnNlcnYtPnN2X3RlbXBzb2NrcywgbmV0KTsNCj4g
+PisJaWYgKGNsb3NlZCkgew0KPiA+KwkJc3ZjX2NsZWFuX3VwX3hwcnRzKHNlcnYsIG5ldCk7DQo+
+ID4rCQltc2xlZXAoZGVsYXkrKyk7DQo+ID4rCQlnb3RvIGFnYWluOw0KPiA+Kwl9DQo+IA0KPiBG
+cmFua2x5LCB0aGlzIGh1bmsgYWJvdmUgbWFrZXMgbWUgZmVlbCBzaWNrLi4uIDooIEJ1dCBJIGhh
+dmUgbm8gYmV0dGVyIA0KPiBpZGVhIHJpZ2h0IG5vdy4uLg0KPiBNYXliZSBtYWtlIHRoaXMgaHVu
+ayBhIGJpdCBsZXNzIHdlaXJkICh0aGlzIGlzIGZyb20gbXkgUE9XIG9ubHksIG9mIGNvdXJzZSks
+IGxpa2UgdGhpczoNCj4gDQo+ID4gKwl3aGlsZSAoc3ZjX2Nsb3NlX2xpc3Qoc2VydiwgJnNlcnYt
+PnN2X3Blcm1zb2NrcywgbmV0KSArDQo+ID4gKwkgICAgICAgc3ZjX2Nsb3NlX2xpc3Qoc2Vydiwg
+JnNlcnYtPnN2X3RlbXBzb2NrcywgbmV0KSkgew0KPiA+ICsJCXN2Y19jbGVhbl91cF94cHJ0cyhz
+ZXJ2LCBuZXQpOw0KPiA+ICsJCW1zbGVlcChkZWxheSsrKTsNCj4gPiArCX0NCj4gDQo+ID8NCg0K
+T0ssIHRoYXQncyBhIGxpdHRsZSBtb3JlIGNvbXBhY3QgYXQgbGVhc3QuDQoNCi0tYi4NCg0KPiAN
+Cj4gQW55d2F5LCB0aGFua3MhDQo+IA0KPiBBY2tlZC1ieTogU3RhbmlzbGF2IEtpbnNidXJza3kg
+PHNraW5zYnVyc2t5QHBhcmFsbGVscy5jb20+DQo+IA0KPiAtLQ0KPiBCZXN0IHJlZ2FyZHMsDQo+
+IFN0YW5pc2xhdiBLaW5zYnVyc2t5DQotLQ0KVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6
+IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIgaW4gdGhlIGJvZHkgb2YgYSBt
+ZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcgTW9yZSBtYWpvcmRvbW8gaW5mbyBh
+dCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQo=
