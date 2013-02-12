@@ -1,46 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:56210 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751035Ab3BOTqb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Feb 2013 14:46:31 -0500
-Date: Fri, 15 Feb 2013 14:46:28 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tom Horsley <horsley1953@gmail.com>
-Cc: Mark Lord <kernel@start.ca>, Mark Lord <kernel@teksavvy.com>,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        linux-nfs@vger.kernel.org, Linux Kernel <linux-kernel@vger.kernel.org>,
-        =?utf-8?B?UGF3ZcWC?= Sikora <pawel.sikora@agmk.net>,
-        Jason Tibbitts <tibbs@math.uh.edu>
-Subject: Re: BUG at net/sunrpc/svc_xprt.c:921 (another one)
-Message-ID: <20130215194628.GF19923@fieldses.org>
-References: <50F786AF.4070107@parallels.com>
- <20130117130335.GD6598@fieldses.org>
- <50F7FB7E.2020503@parallels.com>
- <50F88C14.7030903@teksavvy.com>
- <50F8DF7E.8080107@parallels.com>
- <50FC74E0.20305@teksavvy.com>
- <20130212205216.GE10267@fieldses.org>
- <511BAAAA.9040804@start.ca>
- <20130215192229.GC19923@fieldses.org>
- <20130215144208.56de59f3@tomh>
+Received: from relay.parallels.com ([195.214.232.42]:44191 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755627Ab3BLGtm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Feb 2013 01:49:42 -0500
+Message-ID: <5119E5E8.9030803@parallels.com>
+Date: Tue, 12 Feb 2013 10:49:12 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130215144208.56de59f3@tomh>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: <akpm@linux-foundation.org>, <linux-nfs@vger.kernel.org>,
+        <Trond.Myklebust@netapp.com>, <linux-kernel@vger.kernel.org>,
+        <devel@openvz.org>
+Subject: Re: [PATCH 0/2] NFSD: fix races in service per-net resources allocation
+References: <20130201111046.24066.72836.stgit@localhost.localdomain> <20130211002558.GD10161@fieldses.org> <51188D2A.4070605@parallels.com> <20130211163715.GA19342@fieldses.org>
+In-Reply-To: <20130211163715.GA19342@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 15, 2013 at 02:42:08PM -0500, Tom Horsley wrote:
-> On Fri, 15 Feb 2013 14:22:29 -0500
-> J. Bruce Fields wrote:
-> 
-> > Any more reports positive or negative welcome.
-> 
-> Well, I don't have the time or energy to try patches on my
-> system at work, but these seem to be concerned with terminating
-> an NFS connection. My aborts all happen at boot when it
-> is trying to do the mount to begin with.
+11.02.2013 20:37, J. Bruce Fields пишет:
+> On Mon, Feb 11, 2013 at 10:18:18AM +0400, Stanislav Kinsbursky wrote:
+>> This one looks a bit complicated and confusing to me. Probably because
+>> I'm not that familiar with service transports processing logic.  So,
+>> as I can see, we now try to run over all per-net pool-assigned
+>> transports, remove them from "ready" queue and delete one by one.
+>> Then we try to enqueue all temporary sockets. But where in enqueueing
+>> of permanent sockets? I.e. how does they be destroyed with this patch?
+>> Then we once again try to run over all per-net pool-assigned
+>> transports, remove them from "ready" queue and delete one by one.  Why
+>> twice? I.e. why not just lose them, then enqueue them and
+>> svc_clean_up_xprts()?
+>
+> I think you missed the first svc_close_list?:
+>
 
-The rpc server it's tearing down is a callback server that runs on the
-nfs client.
+Yeah, thanks! To many deleted lines confused me.
 
---b.
+>>>   	svc_close_list(serv, &serv->sv_permsocks, net);
+>>> +	svc_clean_up_xprts(serv, net);
+>>> +	svc_close_list(serv, &serv->sv_tempsocks, net);
+>>> +	svc_clean_up_xprts(serv, net);
+>
+> The idea is that before we'd like to close all the listeners first, so
+> that they aren't busy creating more tempsocks while we're trying to
+> close them.
+>
+> I overlooked a race, though: if another thread was already handling an
+> accept for one of the listeners then it might not get closed by that
+> first svc_clean_up_xprts.
+>
+> I guess we could do something like:
+>
+> 	delay = 0;
+>
+>      again:
+> 	numclosed = svc_close_list(serv, &serv->sv_permsocks, net);
+> 	numclosed += svc_close_list(serv, &serv->sv_tempsocks, net);
+> 	if (numclosed) {
+> 		svc_clean_up_xprts(serv, net);
+> 		msleep(delay++);
+> 		goto again;
+> 	}
+>
+> Seems a little cheesy, but if we don't care much about shutdown
+> performance in a rare corner case, maybe it's the simplest way out?
+>
+
+Agreed. This part (per-net shutdown) has enough logical complexity already and would be great to not
+increase it.
+
+
+-- 
+Best regards,
+Stanislav Kinsbursky
