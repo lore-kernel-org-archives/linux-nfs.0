@@ -1,47 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:40237 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756229Ab3BOQeE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Feb 2013 11:34:04 -0500
-Content-Type: text/plain; charset=iso-8859-1
-Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
-Subject: Re: Kernels 3.7 and newer break rpc.gssd -n
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <654867786.10283.1360929631448.JavaMail.root@opinsys.fi>
-Date: Fri, 15 Feb 2013 11:33:58 -0500
-Cc: Veli-Matti Lintu <veli-matti.lintu@opinsys.fi>, linux-nfs@vger.kernel.org
-Message-Id: <74874B5C-CDDE-4F77-B69D-FC40FF5DD933@oracle.com>
-References: <127351146.98508.1360769367943.JavaMail.root@opinsys.fi> <1117889154.119108.1360851840169.JavaMail.root@opinsys.fi> <CED6E6AF-B551-4099-89CE-861E5F46D31A@oracle.com> <654867786.10283.1360929631448.JavaMail.root@opinsys.fi>
-To: =?iso-8859-1?Q?Tuomas_R=E4s=E4nen?= <tuomasjjrasanen@opinsys.fi>
+Received: from ipo2-out.fzu.cz ([147.231.27.21]:35927 "EHLO ipo2-out.fzu.cz"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932953Ab3BLODu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Feb 2013 09:03:50 -0500
+Message-ID: <511A4B90.9010007@gmail.com>
+Date: Tue, 12 Feb 2013 15:02:56 +0100
+From: Jiri Horky <jiri.horky@gmail.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4 server ignores local filesystem's POSIX ACL
+References: <51190E62.5090304@gmail.com> <20130211182212.GB30117@fieldses.org> <4FA345DA4F4AE44899BD2B03EEEC2FA91F3C2047@sacexcmbx05-prd.hq.netapp.com> <20130211184936.GC30117@fieldses.org> <5119572C.3080000@gmail.com> <20130211210133.GF30117@fieldses.org> <20130211214144.GA32745@fieldses.org>
+In-Reply-To: <20130211214144.GA32745@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi,
+On 02/11/2013 10:41 PM, J. Bruce Fields wrote:
+> On Mon, Feb 11, 2013 at 04:01:33PM -0500, J. Bruce Fields wrote:
+>> That shouldn't matter (assuming it's not actually owned by "nobody" on
+>> the server.)
+> Beats me.  The network trace does indeed seem to show a succesful create
+> (and a preceding access op that allows access that I would have expected
+> to fail).
+>
+> I don't see how that could have happened--the server doesn't actually
+> enforce the ACL itself, it depends on common vfs code for that, so
+> there's probably something obvious we're overlooking.  You're positive
+> the file's being created in the same directory that you set that acl on?
+>
+> --b.
+we tracked the cause down to the "enhanced xfs" module from SGI 
+(sgi-enhancedxfs-kmp-default-2.5_2.6.32.12_0.7-sgi250rp13.sles11). With 
+a standard xfs module 
+(sgi-xfs-kmp-default-6.5.0.14_2.6.32.12_0.7-sgi12111921) or on a ext3 
+file systems, the server respects ACL correctly. Seems like the 
+enhancement went into wrong direction :) Lets file a bug against the vendor.
 
-On Feb 15, 2013, at 7:00 AM, Tuomas Räsänen <tuomasjjrasanen@opinsys.fi> wrote:
-
-> ----- Original Message -----
->> From: "Chuck Lever" <chuck.lever@oracle.com>
->> 
->> Have you tried a kernel at commit 05f4c350 but with the compilation fix
->> applied, then one with 05f4c350 removed, to confirm that this indeed is the
->> commit that introduces the problem?
-> 
-> Yes. With commit 05f4c350 + the compilation fix, the problem occurs, but without
-> 05f4c350, the parent (6f2ea7f) works as expected, requesting for service <null>.
-> 
->> 
->> When the mount operation fails, is it the first time this client attempts to
->> mount a share on server.example.org, or does the client already have mounts
->> of server.example.org, possibly using other security flavors?
-> 
-> Yes, the problem occurs on the very first mount attempt.
-
-Thanks for confirming.  Did you try updating nfs-utils on your NFS client to 1.2.8-rc1 or later (specifically to replace rpc.gssd)?
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+Cheers
+Jiri Horky
 
