@@ -1,49 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailsrv.ikr.uni-stuttgart.de ([129.69.170.2]:39321 "EHLO
-	mailsrv.ikr.uni-stuttgart.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751023Ab3BDKU0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2013 05:20:26 -0500
-Received: from netsrv1.ikr.uni-stuttgart.de (netsrv1-c [10.11.12.12])
-	by mailsrv.ikr.uni-stuttgart.de (Postfix) with ESMTP id B7A48600FF
-	for <linux-nfs@vger.kernel.org>; Mon,  4 Feb 2013 11:12:03 +0100 (CET)
-Received: from ikr.uni-stuttgart.de (pc001 [10.21.21.1])
-	by netsrv1.ikr.uni-stuttgart.de (Postfix) with SMTP id A21D6600FE
-	for <linux-nfs@vger.kernel.org>; Mon,  4 Feb 2013 11:12:03 +0100 (CET)
-From: Ulrich Gemkow <ulrich.gemkow@ikr.uni-stuttgart.de>
-To: linux-nfs@vger.kernel.org
-Subject: Linux 3.7 + Sun solaris 10: Problems when reading dir from application
-Date: Mon, 4 Feb 2013 11:12:03 +0100
+Received: from fieldses.org ([174.143.236.118]:58793 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758761Ab3BLUph (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Feb 2013 15:45:37 -0500
+Date: Tue, 12 Feb 2013 15:45:34 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: akpm@linux-foundation.org, linux-nfs@vger.kernel.org,
+        Trond.Myklebust@netapp.com, linux-kernel@vger.kernel.org,
+        devel@openvz.org
+Subject: Re: [PATCH 0/2] NFSD: fix races in service per-net resources
+ allocation
+Message-ID: <20130212204533.GD10267@fieldses.org>
+References: <20130201111046.24066.72836.stgit@localhost.localdomain>
+ <20130211002558.GD10161@fieldses.org>
+ <51188D2A.4070605@parallels.com>
+ <20130211163715.GA19342@fieldses.org>
+ <20130211205845.GE30117@fieldses.org>
+ <511A10E0.1000604@parallels.com>
 MIME-Version: 1.0
-Content-Type: Text/Plain;
-  charset="us-ascii"
-Message-Id: <201302041112.03587.ulrich.gemkow@ikr.uni-stuttgart.de>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <511A10E0.1000604@parallels.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On Tue, Feb 12, 2013 at 01:52:32PM +0400, Stanislav Kinsbursky wrote:
+> 12.02.2013 00:58, J. Bruce Fields пишет:
+> <snip>
+> >  void svc_close_net(struct svc_serv *serv, struct net *net)
+> >  {
+> >-	svc_close_list(serv, &serv->sv_tempsocks, net);
+> >-	svc_close_list(serv, &serv->sv_permsocks, net);
+> >-
+> >-	svc_clear_pools(serv, net);
+> >-	/*
+> >-	 * At this point the sp_sockets lists will stay empty, since
+> >-	 * svc_xprt_enqueue will not add new entries without taking the
+> >-	 * sp_lock and checking XPT_BUSY.
+> >-	 */
+> >-	svc_clear_list(serv, &serv->sv_tempsocks, net);
+> >-	svc_clear_list(serv, &serv->sv_permsocks, net);
+> >+	int closed;
+> >+	int delay = 0;
+> >+
+> >+again:
+> >+	closed = svc_close_list(serv, &serv->sv_permsocks, net);
+> >+	closed += svc_close_list(serv, &serv->sv_tempsocks, net);
+> >+	if (closed) {
+> >+		svc_clean_up_xprts(serv, net);
+> >+		msleep(delay++);
+> >+		goto again;
+> >+	}
+> 
+> Frankly, this hunk above makes me feel sick... :(
+> But I have no better idea right now...
+> Maybe make this hunk a bit less weird (this is from my POW only, of course), like this:
+> 
+> > +	while (svc_close_list(serv, &serv->sv_permsocks, net) +
+> > +	       svc_close_list(serv, &serv->sv_tempsocks, net)) {
+> > +		svc_clean_up_xprts(serv, net);
+> > +		msleep(delay++);
+> > +	}
+> 
+> ?
 
-we upgraded our fileserver from Linux 3.2 to linux 3.7.6 and now have
-problems when accessing our nfs-mounted user homes from some sun-
-applications (i.e. Adobe Framemaker):
+OK, that's a little more compact at least.
 
-In the applications file open box, no files are displayed. When entering
-the filename by path, the file can be opened. So it seems some kind of
-dir enumeration which is used by the sun applications is broken.
+--b.
 
-Other programs on the sun like ls work as before and show all files.
-
-We are using NFSv3 (and cannot switch to v4). Our sun is a very old
-machine running Sun Solaris 10.
-
-Is there any help?
-
-Thanks and best regards
-
-Ulrich
-
--- 
-|-----------------------------------------------------------------------
-| Ulrich Gemkow
-| University of Stuttgart
-| Institute of Communication Networks and Computer Engineering (IKR)
-|-----------------------------------------------------------------------
+> 
+> Anyway, thanks!
+> 
+> Acked-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> 
+> -- 
+> Best regards,
+> Stanislav Kinsbursky
