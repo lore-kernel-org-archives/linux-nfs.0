@@ -1,87 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:41851 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:46016 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757423Ab3BGSfm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Feb 2013 13:35:42 -0500
-Date: Thu, 7 Feb 2013 13:35:38 -0500
-From: Jeff Layton <jlayton@redhat.com>
+	id S1754896Ab3BLXGZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Feb 2013 18:06:25 -0500
+Date: Tue, 12 Feb 2013 18:06:23 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
 To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 2/2] nfsd: keep a checksum of the first 256 bytes of
- request
-Message-ID: <20130207133538.4dab321b@corrin.poochiereds.net>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91836525F@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1360248701-23963-1-git-send-email-jlayton@redhat.com>
-	<1360248701-23963-3-git-send-email-jlayton@redhat.com>
-	<DF2DA489-3D72-4DBF-8C65-1B7DA9866B63@oracle.com>
-	<20130207160032.GF3222@fieldses.org>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA91836525F@SACEXCMBX04-PRD.hq.netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Cc: Steve Dickson <SteveD@redhat.com>, "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 06/15] NFSv4: Introduce new label structure
+Message-ID: <20130212230623.GO10267@fieldses.org>
+References: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
+ <1360327163-20360-7-git-send-email-SteveD@redhat.com>
+ <20130212220741.GJ10267@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA91F3CE55C@sacexcmbx05-prd.hq.netapp.com>
+ <20130212223226.GL10267@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA91F3CE58F@sacexcmbx05-prd.hq.netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91F3CE58F@sacexcmbx05-prd.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 7 Feb 2013 16:32:20 +0000
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-
-> > -----Original Message-----
-> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> > owner@vger.kernel.org] On Behalf Of J. Bruce Fields
-> > Sent: Thursday, February 07, 2013 11:01 AM
-> > To: Chuck Lever
-> > Cc: Jeff Layton; linux-nfs@vger.kernel.org
-> > Subject: Re: [PATCH v3 2/2] nfsd: keep a checksum of the first 256 bytes of
-> > request
+On Tue, Feb 12, 2013 at 10:40:46PM +0000, Myklebust, Trond wrote:
+> On Tue, 2013-02-12 at 17:32 -0500, J. Bruce Fields wrote:
+> > On Tue, Feb 12, 2013 at 10:28:16PM +0000, Myklebust, Trond wrote:
+> > > On Tue, 2013-02-12 at 17:07 -0500, J. Bruce Fields wrote:
+> > > > On Fri, Feb 08, 2013 at 07:39:14AM -0500, Steve Dickson wrote:
+> > > > > From: David Quigley <dpquigl@davequigley.com>
+> > > > > 
+> > > > > In order to mimic the way that NFSv4 ACLs are implemented we have created a
+> > > > > structure to be used to pass label data up and down the call chain. This patch
+> > > > > adds the new structure and new members to the required NFSv4 call structures.
+> > > > > 
+> > > > > Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+> > > > > Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+> > > > > Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+> > > > > Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+> > > > > ---
+> > > > >  fs/nfs/inode.c            | 33 +++++++++++++++++++++++++++++++++
+> > > > >  include/linux/nfs4.h      |  7 +++++++
+> > > > >  include/linux/nfs_fs.h    | 17 +++++++++++++++++
+> > > > >  include/linux/nfs_xdr.h   | 21 +++++++++++++++++++++
+> > > > >  include/uapi/linux/nfs4.h |  2 +-
+> > > > >  5 files changed, 79 insertions(+), 1 deletion(-)
+> > > > > 
+> > > > > diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> > > > > index ebeb94c..8d5f01b 100644
+> > > > > --- a/fs/nfs/inode.c
+> > > > > +++ b/fs/nfs/inode.c
+> > > > > @@ -255,6 +255,39 @@ nfs_init_locked(struct inode *inode, void *opaque)
+> > > > >  	return 0;
+> > > > >  }
+> > > > >  
+> > > > > +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
+> > > > > +struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags)
+> > > > > +{
+> > > > > +	struct nfs4_label *label = NULL;
+> > > > > +
+> > > > > +	if (!(server->caps & NFS_CAP_SECURITY_LABEL))
+> > > > > +		return label;
+> > > > > +
+> > > > > +	label = kzalloc(NFS4_MAXLABELLEN, flags);
+> > > > > +	if (label == NULL)
+> > > > > +		return ERR_PTR(-ENOMEM);
+> > > > > +
+> > > > > +	label->label = (char *)(label + 1);
+> > > > > +	label->len = NFS4_MAXLABELLEN;
+> > > > 
+> > > > If you're expecting to be able to store up to NFS4_MAXLABELLEN of data
+> > > > after the end of the struct, then you want:
+> > > > 
+> > > > 	label = kzalloc(sizeof(struct nfs4_label) + NFS4_MAXLABELLEN, flags);
+> > > 
+> > > Sigh... No.
+> > > 
+> > > I keep telling Steve that the 'label' needs to be defined as an array,
 > > 
-> > On Thu, Feb 07, 2013 at 10:51:02AM -0500, Chuck Lever wrote:
-> > >
-> > > On Feb 7, 2013, at 9:51 AM, Jeff Layton <jlayton@redhat.com> wrote:
-> > >
-> > > > Now that we're allowing more DRC entries, it becomes a lot easier to
-> > > > hit problems with XID collisions. In order to mitigate those,
-> > > > calculate the crc32 of up to the first 256 bytes of each request
-> > > > coming in and store that in the cache entry, along with the total
-> > > > length of the request.
-> > >
-> > > I'm happy to see a checksummed DRC finally become reality for the
-> > > Linux NFS server.
-> > >
-> > > Have you measured the CPU utilization impact and CPU cache footprint
-> > > of performing a CRC computation for every incoming RPC?
-> > 
-> > Note this is over the first 256 bytes of the request--which we're probably just
-> > about to read for xdr decoding anyway.
+> > Yeah, I know, he said in 0/15 that he couldn't do that, so I've been
+> > reading through these on the assumption I'll find out why not at some
+> > point....  (Still not seeing it, though.)
 > 
-> - Would it make sense perhaps to generate the checksum as you are reading the data?
+> It only makes sense to define label->label as a pointer if you need to
+> change the pointer value at some time. However, if that is the case,
+> then why allocate the struct nfs4_label and label string as a single
+> memory block? It would make more sense to allocate them separately so
+> that you can free the old label storage after you change the pointer.
 
-It would be nice, but that would require some significant
-reengineering, AFAICT. I'm not sure this is worth doing all of that,
-but maybe there's an easy way to do that that I'm not seeing.
+nfs4_get_security_label() in a later patch is indeed using some
+passed-in storage instead, but I'm not sure it's doing it correctly.
 
-> - Also, is 256 bytes sufficient? How far does that get you with your average WRITE compound?
+It would seem simpler to pick either inline or separate storage and
+stick with it throughout.
 
-Mostly that length comes from a bug we had opened a while back which was
-entitled "Oracle has insisted of all the NAS vendors that for all the
-dNFS IO, the first 200 bytes check-sum of every write to be validated
-before the commit takes place." The bug is marked private or I'd post a
-link to it here.
+I'd be inclined to favor inline even if it means larger allocations than
+necessary or an extra copy.  Just because it seems harder to mess up.
 
-In any case, the title is poorly worded, but basically they were saying
-we should checksum the first 200 bytes of write data as a guard against
-xid collisions in the DRC. I rounded it up to 256 just because I like
-powers of 2 and we needed some extra to cover the NFS header anyway.
-
-We could always extend that, or even make it variable based on some
-criteria.
-
-> - Could the integrity checksum in RPCSEC_GSS/krbi be reused as a DRC checksum?
-> 
-
-Sadly, no. As Bruce pointed out, that has GSSAPI sequence numbers,
-which change on a retransmit. Scraping the checksum out of the TCP/UDP
-headers somehow is also problematic for similar reasons...
-
--- 
-Jeff Layton <jlayton@redhat.com>
+--b.
