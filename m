@@ -1,40 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from knm.org ([173.10.24.5]:45195 "EHLO knm.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933408Ab3BSXhM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Feb 2013 18:37:12 -0500
-Received: from [192.168.20.65] (account mark@knm.org HELO shell)
-  by knm.org (CommuniGate Pro SMTP 5.4.8 _community_)
-  with ESMTPSA id 9040134 for linux-nfs@vger.kernel.org; Tue, 19 Feb 2013 15:36:25 -0700
-Date: Tue, 19 Feb 2013 15:36:25 -0700 (MST)
-From: Mark Lehrer <mark@tpsit.com>
-To: linux-nfs@vger.kernel.org
-Subject: Time to declare war on "stale nfs file handle"
-Message-ID: <alpine.DEB.1.00.1302191507240.5816@shell>
+Received: from nm7-vm0.access.bullet.mail.mud.yahoo.com ([66.94.237.189]:45217
+	"EHLO nm7-vm0.access.bullet.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757456Ab3BLWII (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Feb 2013 17:08:08 -0500
+Message-ID: <511ABC09.3040605@schaufler-ca.com>
+Date: Tue, 12 Feb 2013 14:02:49 -0800
+From: Casey Schaufler <casey@schaufler-ca.com>
 MIME-Version: 1.0
-Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Steve Dickson <SteveD@redhat.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>,
+        Casey Schaufler <casey@schaufler-ca.com>
+Subject: Re: [PATCH 00/15] lnfs: 3.8-rc6 release
+References: <1360327163-20360-1-git-send-email-SteveD@redhat.com> <20130212214131.GI10267@fieldses.org>
+In-Reply-To: <20130212214131.GI10267@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 2/12/2013 1:41 PM, J. Bruce Fields wrote:
+> On Fri, Feb 08, 2013 at 07:39:08AM -0500, Steve Dickson wrote:
+>>  include/linux/security.h            |  57 +++-
+> ...
+>>  security/capability.c               |  19 +-
+>>  security/security.c                 |  24 +-
+>>  security/selinux/hooks.c            |  92 +++++-
+>>  security/selinux/include/security.h |   2 +
+>>  security/selinux/ss/policydb.c      |   5 +-
+>>  security/smack/smack_lsm.c          |  11 +
+>>  33 files changed, 1352 insertions(+), 214 deletions(-)
+> Are we still waiting on ACKs from the security people for these bits?
 
-I set up a pair of servers with DRBD, Pacemaker, and a virtual IP address.  I am mounting with NFSv3 & TCP.  The /etc/exports entry looks like this:
+I'm not going to NAK it, because I don't know it won't work,
+but I'm not going to ACK it either, because I have not been
+able to get it to work. I have no idea what the problem
+might be, and the "obvious" things we've tried have proven
+ineffective. I may have a bad set of user space tools. There
+may be more work on Smack hooks required. I can't tell, and
+there's way too much NFS set-up involved to make progress in
+the limited time I have available.
 
-/nfs/volume01   *(rw,no_root_squash,fsid=778,insecure,async)
+If you're waiting for my ACK, no, you don't have it.
+If you're OK with a lack of NAK, go ahead. There will
+be changes someday I suspect, but I can't put this high
+enough on my priorities to devote the time required
+just now.
 
-
-Failing between nodes seems to work well whenever I am testing it.
-However, it seems that whenever I get into a situation where it has
-been running for awhile and then I fail over, clients get the dreaded
-Stale NFS file handle error on any open files.  In this case they are
-VM images, which means lots of rebooting.
-
-What should I do to prevent this error from happening?  I didn't have any
-luck with exportfs -f.  Unfortunately this is a tough one to duplicate so
-I am just trying to prepare a few tests for the next time it happens.
-
-Also, I understand that NFSv4 is not quite as stateless as the older versions.
-Will this kind of arrangement have potential data loss issues on NFSv4?
-
-Thanks,
-Mark
+>
+> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-security-module" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
 
