@@ -1,120 +1,486 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:58701 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752102Ab3BHGHZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Feb 2013 01:07:25 -0500
-Message-ID: <51148F1D.4020007@opengridcomputing.com>
-Date: Thu, 07 Feb 2013 22:37:33 -0700
-From: Tom Tucker <tom@opengridcomputing.com>
+Received: from fieldses.org ([174.143.236.118]:46021 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759067Ab3BLXHr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Feb 2013 18:07:47 -0500
+Date: Tue, 12 Feb 2013 18:07:45 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 14/15] NFSD: Server implementation of MAC Labeling
+Message-ID: <20130212230745.GP10267@fieldses.org>
+References: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
+ <1360327163-20360-15-git-send-email-SteveD@redhat.com>
+ <20130212225425.GM10267@fieldses.org>
 MIME-Version: 1.0
-To: Steve Wise <swise@opengridcomputing.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, Yan Burman <yanb@mellanox.com>,
-        linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org,
-        Or Gerlitz <ogerlitz@mellanox.com>
-Subject: Re: NFS over RDMA crashing
-References: <51127B3F.2090200@mellanox.com> <20130206222435.GL16417@fieldses.org> <5112D903.9010601@opengridcomputing.com>
-In-Reply-To: <5112D903.9010601@opengridcomputing.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130212225425.GM10267@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2/6/13 3:28 PM, Steve Wise wrote:
-> On 2/6/2013 4:24 PM, J. Bruce Fields wrote:
->> On Wed, Feb 06, 2013 at 05:48:15PM +0200, Yan Burman wrote:
->>> When killing mount command that got stuck:
->>> -------------------------------------------
->>>
->>> BUG: unable to handle kernel paging request at ffff880324dc7ff8
->>> IP: [<ffffffffa05f3dfb>] rdma_read_xdr+0x8bb/0xd40 [svcrdma]
->>> PGD 1a0c063 PUD 32f82e063 PMD 32f2fd063 PTE 8000000324dc7161
->>> Oops: 0003 [#1] PREEMPT SMP
->>> Modules linked in: md5 ib_ipoib xprtrdma svcrdma rdma_cm ib_cm iw_cm
->>> ib_addr nfsd exportfs netconsole ip6table_filter ip6_tables
->>> iptable_filter ip_tables ebtable_nat nfsv3 nfs_acl ebtables x_tables
->>> nfsv4 auth_rpcgss nfs lockd autofs4 sunrpc target_core_iblock
->>> target_core_file target_core_pscsi target_core_mod configfs 8021q
->>> bridge stp llc ipv6 dm_mirror dm_region_hash dm_log vhost_net
->>> macvtap macvlan tun uinput iTCO_wdt iTCO_vendor_support kvm_intel
->>> kvm crc32c_intel microcode pcspkr joydev i2c_i801 lpc_ich mfd_core
->>> ehci_pci ehci_hcd sg ioatdma ixgbe mdio mlx4_ib ib_sa ib_mad ib_core
->>> mlx4_en mlx4_core igb hwmon dca ptp pps_core button dm_mod ext3 jbd
->>> sd_mod ata_piix libata uhci_hcd megaraid_sas scsi_mod
->>> CPU 6
->>> Pid: 4744, comm: nfsd Not tainted 3.8.0-rc5+ #4 Supermicro
->>> X8DTH-i/6/iF/6F/X8DTH
->>> RIP: 0010:[<ffffffffa05f3dfb>] [<ffffffffa05f3dfb>]
->>> rdma_read_xdr+0x8bb/0xd40 [svcrdma]
->>> RSP: 0018:ffff880324c3dbf8  EFLAGS: 00010297
->>> RAX: ffff880324dc8000 RBX: 0000000000000001 RCX: ffff880324dd8428
->>> RDX: ffff880324dc7ff8 RSI: ffff880324dd8428 RDI: ffffffff81149618
->>> RBP: ffff880324c3dd78 R08: 000060f9c0000860 R09: 0000000000000001
->>> R10: ffff880324dd8000 R11: 0000000000000001 R12: ffff8806299dcb10
->>> R13: 0000000000000003 R14: 0000000000000001 R15: 0000000000000010
->>> FS:  0000000000000000(0000) GS:ffff88063fc00000(0000) 
->>> knlGS:0000000000000000
->>> CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
->>> CR2: ffff880324dc7ff8 CR3: 0000000001a0b000 CR4: 00000000000007e0
->>> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
->>> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
->>> Process nfsd (pid: 4744, threadinfo ffff880324c3c000, task 
->>> ffff880330550000)
->>> Stack:
->>>   ffff880324c3dc78 ffff880324c3dcd8 0000000000000282 ffff880631cec000
->>>   ffff880324dd8000 ffff88062ed33040 0000000124c3dc48 ffff880324dd8000
->>>   ffff88062ed33058 ffff880630ce2b90 ffff8806299e8000 0000000000000003
->>> Call Trace:
->>>   [<ffffffffa05f466e>] svc_rdma_recvfrom+0x3ee/0xd80 [svcrdma]
->>>   [<ffffffff81086540>] ? try_to_wake_up+0x2f0/0x2f0
->>>   [<ffffffffa045963f>] svc_recv+0x3ef/0x4b0 [sunrpc]
->>>   [<ffffffffa0571db0>] ? nfsd_svc+0x740/0x740 [nfsd]
->>>   [<ffffffffa0571e5d>] nfsd+0xad/0x130 [nfsd]
->>>   [<ffffffffa0571db0>] ? nfsd_svc+0x740/0x740 [nfsd]
->>>   [<ffffffff81071df6>] kthread+0xd6/0xe0
->>>   [<ffffffff81071d20>] ? __init_kthread_worker+0x70/0x70
->>>   [<ffffffff814b462c>] ret_from_fork+0x7c/0xb0
->>>   [<ffffffff81071d20>] ? __init_kthread_worker+0x70/0x70
->>> Code: 63 c2 49 8d 8c c2 18 02 00 00 48 39 ce 77 e1 49 8b 82 40 0a 00
->>> 00 48 39 c6 0f 84 92 f7 ff ff 90 48 8d 50 f8 49 89 92 40 0a 00 00
->>> <48> c7 40 f8 00 00 00 00 49 8b 82 40 0a 00 00 49 3b 82 30 0a 00
->>> RIP  [<ffffffffa05f3dfb>] rdma_read_xdr+0x8bb/0xd40 [svcrdma]
->>>   RSP <ffff880324c3dbf8>
->>> CR2: ffff880324dc7ff8
->>> ---[ end trace 06d0384754e9609a ]---
->>>
->>>
->>> It seems that commit afc59400d6c65bad66d4ad0b2daf879cbff8e23e
->>> "nfsd4: cleanup: replace rq_resused count by rq_next_page pointer"
->>> is responsible for the crash (it seems to be crashing in
->>> net/sunrpc/xprtrdma/svc_rdma_recvfrom.c:527)
->>> It may be because I have CONFIG_DEBUG_SET_MODULE_RONX and
->>> CONFIG_DEBUG_RODATA enabled. I did not try to disable them yet.
->>>
->>> When I moved to commit 79f77bf9a4e3dd5ead006b8f17e7c4ff07d8374e I
->>> was no longer getting the server crashes,
->>> so the reset of my tests were done using that point (it is somewhere
->>> in the middle of 3.7.0-rc2).
->> OK, so this part's clearly my fault--I'll work on a patch, but the
->> rdma's use of the ->rq_pages array is pretty confusing.
->
-> Maybe Tom can shed some light?
+On Tue, Feb 12, 2013 at 05:54:25PM -0500, bfields wrote:
+> On Fri, Feb 08, 2013 at 07:39:22AM -0500, Steve Dickson wrote:
+> > From: David Quigley <dpquigl@davequigley.com>
+> > 
+> > This patch adds the ability to encode and decode file labels on the server for
+> > the purpose of sending them to the client and also to process label change
+> > requests from the client.
+> > 
+> > Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+> > Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+> > Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+> > Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+> > ---
+> >  fs/nfsd/nfs4proc.c |  41 +++++++++++++++++++
+> >  fs/nfsd/nfs4xdr.c  | 116 ++++++++++++++++++++++++++++++++++++++++++++++++++---
+> >  fs/nfsd/nfsd.h     |   8 ++--
+> >  fs/nfsd/vfs.c      |  30 ++++++++++++++
+> >  fs/nfsd/vfs.h      |   2 +
+> >  fs/nfsd/xdr4.h     |   3 ++
+> >  6 files changed, 191 insertions(+), 9 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> > index 9d1c5db..898092d 100644
+> > --- a/fs/nfsd/nfs4proc.c
+> > +++ b/fs/nfsd/nfs4proc.c
+> > @@ -42,6 +42,36 @@
+> >  #include "current_stateid.h"
+> >  #include "netns.h"
+> >  
+> > +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> > +#include <linux/security.h>
+> > +
+> > +static inline void
+> > +nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct nfs4_label *label, u32 *bmval)
+> > +{
+> > +	struct inode *inode = resfh->fh_dentry->d_inode;
+> > +	int status;
+> > +
+> > +	mutex_lock(&inode->i_mutex);
+> > +	status = security_inode_setsecctx(resfh->fh_dentry,
+> > +		label->label, label->len);
+> > +	mutex_unlock(&inode->i_mutex);
+> > +
+> > +	if (status)
+> > +		/*
+> > +		 * We should probably fail the whole open at this point,
+> > +		 * but we've already created or opened the file, so it's 
+> > +		 * too late; So this seems the least of evils:
+> > +		 */
+> > +		bmval[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
+> > +		
+> > +	return;
+> > +}
+> > +#else 
+> > +static inline void 
+> > +nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct nfs4_label *label, u32 *bmval)
+> > +{ }
+> > +#endif
+> > +
+> >  #define NFSDDBG_FACILITY		NFSDDBG_PROC
+> >  
+> >  static u32 nfsd_attrmask[] = {
+> > @@ -230,6 +260,9 @@ do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_o
+> >  					(u32 *)open->op_verf.data,
+> >  					&open->op_truncate, &open->op_created);
+> >  
+> > +		if (!status && open->op_label != NULL) 
+> > +			nfsd4_security_inode_setsecctx(resfh, open->op_label, open->op_bmval);
+> > +
+> >  		/*
+> >  		 * Following rfc 3530 14.2.16, use the returned bitmask
+> >  		 * to indicate which attributes we used to store the
+> > @@ -599,6 +632,9 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >  	if (status)
+> >  		goto out;
+> >  
+> > +	if (create->cr_label != NULL)
+> > +		nfsd4_security_inode_setsecctx(&resfh, create->cr_label, create->cr_bmval);
+> > +
+> >  	if (create->cr_acl != NULL)
+> >  		do_set_nfs4_acl(rqstp, &resfh, create->cr_acl,
+> >  				create->cr_bmval);
+> > @@ -888,6 +924,11 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >  					    setattr->sa_acl);
+> >  	if (status)
+> >  		goto out;
+> > +	if (setattr->sa_label != NULL)
+> > +		status = nfsd4_set_nfs4_label(rqstp, &cstate->current_fh,
+> > +				setattr->sa_label);
+> > +	if (status)
+> > +		goto out;
+> >  	status = nfsd_setattr(rqstp, &cstate->current_fh, &setattr->sa_iattr,
+> >  				0, (time_t)0);
+> >  out:
+> > diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> > index 0dc1158..0124b43 100644
+> > --- a/fs/nfsd/nfs4xdr.c
+> > +++ b/fs/nfsd/nfs4xdr.c
+> > @@ -55,6 +55,11 @@
+> >  #include "cache.h"
+> >  #include "netns.h"
+> >  
+> > +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> > +#include <linux/security.h>
+> > +#endif
+> > +
+> > +
+> >  #define NFSDDBG_FACILITY		NFSDDBG_XDR
+> >  
+> >  /*
+> > @@ -242,7 +247,8 @@ nfsd4_decode_bitmap(struct nfsd4_compoundargs *argp, u32 *bmval)
+> >  
+> >  static __be32
+> >  nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+> > -		   struct iattr *iattr, struct nfs4_acl **acl)
+> > +		   struct iattr *iattr, struct nfs4_acl **acl,
+> > +		   struct nfs4_label **label)
+> >  {
+> >  	int expected_len, len = 0;
+> >  	u32 dummy32;
+> > @@ -386,6 +392,50 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+> >  			goto xdr_error;
+> >  		}
+> >  	}
+> > +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> > +	if (bmval[2] & FATTR4_WORD2_SECURITY_LABEL) {
+> > +		uint32_t pi;
+> > +		uint32_t lfs;
+> > +
+> > +		READ_BUF(4);
+> > +		len += 4;
+> > +		READ32(lfs);
+> > +		READ_BUF(4);
+> > +		len += 4;
+> > +		READ32(pi);
+> > +		READ_BUF(4);
+> > +		len += 4;
+> > +		READ32(dummy32);
+> > +		READ_BUF(dummy32);
+> > +		len += (XDR_QUADLEN(dummy32) << 2);
+> > +		READMEM(buf, dummy32);
+> > +
+> > +		if (dummy32 > NFS4_MAXLABELLEN)
+> > +			return nfserr_resource;
+> > +
+> > +		*label = kzalloc(sizeof(struct nfs4_label), GFP_KERNEL);
+> 
+> So we don't want to allocate these the same way we did on the client?
+> 
+> > +		if (*label == NULL) {
+> > +			host_err = -ENOMEM;
+> > +			goto out_nfserr;
+> > +		}
+> > +
+> > +		(*label)->label = kmalloc(dummy32 + 1, GFP_KERNEL);
+> > +		if ((*label)->label == NULL) {
+> > +			host_err = -ENOMEM;
+> > +			kfree(*label);
+> > +			goto out_nfserr;
+> > +		}
+> > +
+> > +		(*label)->len = dummy32;
+> > +		memcpy((*label)->label, buf, dummy32);
+> > +		((char *)(*label)->label)[dummy32] = '\0';
+> > +		(*label)->pi = pi;
+> > +		(*label)->lfs = lfs;
+> > +
+> > +		defer_free(argp, kfree, (*label)->label);
+> > +		defer_free(argp, kfree, *label);
+> 
+> Hm: looking at defer_free and nfsd4_release_compoundargs: looks like
+> argp->to_free is effectively a stack, so these will get freed in the
+> reverse order: *label first, then (*label)->label.  That's trouble.
+> 
+> So, I think we want the order of those two defer_free()'s reversed.
+> 
+> Or we could just allocate the whole things as one chunk as on the client
+> and not have to worry about this kind of thing.  I think I'd prefer that
+> to trying to keep the allocation as small as possible.  We're only using
+> this memory temporarily so it's not as though we need to have tons of
+> struct nfs4_labels allocated at the same time anyway.
 
-Yes, the RDMA transport has two confusing tweaks on rq_pages. Most 
-transports (UDP/TCP) use the rq_pages allocated by SVC. For RDMA, 
-however, the RQ already contains pre-allocated memory that will contain 
-inbound NFS requests from the client. Instead of copying this data from 
-the per-registered receive buffer into the buffer in rq_pages, I just 
-replace the page in rq_pages with the one that already contains the data.
+If you do want to stick with allocating label->label separately, please
+just define a free_nfs4_label() and do one
 
-The second somewhat strange thing is that the NFS request contains an 
-NFSRDMA header. This is just like TCP (i.e. the 4B length), however, the 
-difference is that (unlike TCP) this header is needed for the response 
-because it maps out where in the client the response data will be written.
+	defer_free(argp, free_nfs4_label, *label)
 
-Tom
+That'll be less fragile.
 
->
-> -- 
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--b.
 
+> 
+> > +	}
+> > +#endif
+> >  	if (bmval[0] & ~NFSD_WRITEABLE_ATTRS_WORD0
+> >  	    || bmval[1] & ~NFSD_WRITEABLE_ATTRS_WORD1
+> >  	    || bmval[2] & ~NFSD_WRITEABLE_ATTRS_WORD2)
+> > @@ -575,7 +625,7 @@ nfsd4_decode_create(struct nfsd4_compoundargs *argp, struct nfsd4_create *create
+> >  		return status;
+> >  
+> >  	status = nfsd4_decode_fattr(argp, create->cr_bmval, &create->cr_iattr,
+> > -				    &create->cr_acl);
+> > +				    &create->cr_acl, &create->cr_label);
+> >  	if (status)
+> >  		goto out;
+> >  
+> > @@ -825,7 +875,7 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
+> >  		case NFS4_CREATE_UNCHECKED:
+> >  		case NFS4_CREATE_GUARDED:
+> >  			status = nfsd4_decode_fattr(argp, open->op_bmval,
+> > -				&open->op_iattr, &open->op_acl);
+> > +				&open->op_iattr, &open->op_acl, &open->op_label);
+> >  			if (status)
+> >  				goto out;
+> >  			break;
+> > @@ -839,7 +889,7 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
+> >  			READ_BUF(NFS4_VERIFIER_SIZE);
+> >  			COPYMEM(open->op_verf.data, NFS4_VERIFIER_SIZE);
+> >  			status = nfsd4_decode_fattr(argp, open->op_bmval,
+> > -				&open->op_iattr, &open->op_acl);
+> > +				&open->op_iattr, &open->op_acl, &open->op_label);
+> >  			if (status)
+> >  				goto out;
+> >  			break;
+> > @@ -1061,7 +1111,7 @@ nfsd4_decode_setattr(struct nfsd4_compoundargs *argp, struct nfsd4_setattr *seta
+> >  	if (status)
+> >  		return status;
+> >  	return nfsd4_decode_fattr(argp, setattr->sa_bmval, &setattr->sa_iattr,
+> > -				  &setattr->sa_acl);
+> > +				  &setattr->sa_acl, &setattr->sa_label);
+> >  }
+> >  
+> >  static __be32
+> > @@ -1970,6 +2020,50 @@ nfsd4_encode_aclname(struct svc_rqst *rqstp, int whotype, uid_t id, int group,
+> >  			      FATTR4_WORD0_RDATTR_ERROR)
+> >  #define WORD1_ABSENT_FS_ATTRS FATTR4_WORD1_MOUNTED_ON_FILEID
+> >  
+> > +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> > +static inline __be32
+> > +nfsd4_encode_security_label(struct svc_rqst *rqstp, struct dentry *dentry, __be32 **pp, int *buflen)
+> > +{
+> > +	void *context;
+> > +	int err;
+> > +	int len;
+> > +	uint32_t pi = 0;
+> > +	uint32_t lfs = 0;
+> > +	__be32 *p = *pp;
+> > +
+> > +	err = 0;
+> > +	(void)security_inode_getsecctx(dentry->d_inode, &context, &len);
+> > +	if (len < 0)
+> > +		return nfserrno(len);
+> > +
+> > +	if (*buflen < ((XDR_QUADLEN(len) << 2) + 4 + 4 + 4)) {
+> > +		err = nfserr_resource;
+> > +		goto out;
+> > +	}
+> > +
+> > +	/* XXX: A call to the translation code should be placed here
+> > +	 * for now send 0  until we have that to indicate the null
+> > +	 * translation */ 
+> > +
+> > +	if ((*buflen -= 4) < 0)
+> > +		return nfserr_resource;
+> > +
+> > +	WRITE32(lfs);	
+> > +	WRITE32(pi);
+> > +	p = xdr_encode_opaque(p, context, len);
+> > +	*buflen -= (XDR_QUADLEN(len) << 2) + 4;
+> > +
+> > +	*pp = p;
+> > +out:
+> > +	security_release_secctx(context, len);
+> > +	return err;
+> > +}
+> > +#else
+> > +static inline __be32
+> > +nfsd4_encode_security_label(struct svc_rqst *rqstp, struct dentry *dentry, __be32 **pp, int *buflen)
+> > +{ return 0; }
+> > +#endif
+> > +
+> >  static __be32 fattr_handle_absent_fs(u32 *bmval0, u32 *bmval1, u32 *rdattr_err)
+> >  {
+> >  	/* As per referral draft:  */
+> > @@ -2111,6 +2205,10 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+> >  
+> >  		if (!aclsupport)
+> >  			word0 &= ~FATTR4_WORD0_ACL;
+> > +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> > +		if (word2)
+> > +			word2 |= FATTR4_WORD2_SECURITY_LABEL;
+> > +#endif
+> 
+> Please just fix the definition of NFSD4_1_SUPPORTED_ATTRS_WORD2.  (The
+> ifdef can go in that definition.)
+> 
+> Although: don't we need to check whether the exported filesystem
+> supports security labels?
+> 
+> >  		if (!word2) {
+> >  			if ((buflen -= 12) < 0)
+> >  				goto out_resource;
+> > @@ -2423,6 +2521,14 @@ out_acl:
+> >  			get_parent_attributes(exp, &stat);
+> >  		WRITE64(stat.ino);
+> >  	}
+> > +	if (bmval2 & FATTR4_WORD2_SECURITY_LABEL) {
+> > +		status = nfsd4_encode_security_label(rqstp, dentry,
+> > +				&p, &buflen);
+> > +		if (status == nfserr_resource)
+> > +			goto out_resource;
+> 
+> Just remove that, there's no real point to the out_resource goto.
+> 
+> > +		if (status)
+> > +			goto out;
+> 
+> > +	}
+> >  	if (bmval2 & FATTR4_WORD2_SUPPATTR_EXCLCREAT) {
+> >  		WRITE32(3);
+> >  		WRITE32(NFSD_SUPPATTR_EXCLCREAT_WORD0);
+> > diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+> > index de23db2..727fe44 100644
+> > --- a/fs/nfsd/nfsd.h
+> > +++ b/fs/nfsd/nfsd.h
+> > @@ -308,10 +308,10 @@ void		nfsd_lockd_shutdown(void);
+> >   | FATTR4_WORD1_OWNER	        | FATTR4_WORD1_OWNER_GROUP  | FATTR4_WORD1_RAWDEV           \
+> >   | FATTR4_WORD1_SPACE_AVAIL     | FATTR4_WORD1_SPACE_FREE   | FATTR4_WORD1_SPACE_TOTAL      \
+> >   | FATTR4_WORD1_SPACE_USED      | FATTR4_WORD1_TIME_ACCESS  | FATTR4_WORD1_TIME_ACCESS_SET  \
+> > - | FATTR4_WORD1_TIME_DELTA   | FATTR4_WORD1_TIME_METADATA    \
+> > - | FATTR4_WORD1_TIME_MODIFY     | FATTR4_WORD1_TIME_MODIFY_SET | FATTR4_WORD1_MOUNTED_ON_FILEID)
+> > + | FATTR4_WORD1_TIME_DELTA	| FATTR4_WORD1_TIME_METADATA | FATTR4_WORD1_TIME_MODIFY     \
+> > + | FATTR4_WORD1_TIME_MODIFY_SET | FATTR4_WORD1_MOUNTED_ON_FILEID)
+> 
+> Did that actually change anything?  If not, just leave the formatting
+> alone.
+> 
+> >  
+> > -#define NFSD4_SUPPORTED_ATTRS_WORD2 0
+> > +#define NFSD4_SUPPORTED_ATTRS_WORD2 FATTR4_WORD2_SECURITY_LABEL
+> 
+> That should be conditional on CONFIG_NFSD_V4_SECURITY_LABEL, shouldn't
+> it?
+> 
+> >  
+> >  #define NFSD4_1_SUPPORTED_ATTRS_WORD0 \
+> >  	NFSD4_SUPPORTED_ATTRS_WORD0
+> > @@ -350,7 +350,7 @@ static inline u32 nfsd_suppattrs2(u32 minorversion)
+> >  #define NFSD_WRITEABLE_ATTRS_WORD1 \
+> >  	(FATTR4_WORD1_MODE | FATTR4_WORD1_OWNER | FATTR4_WORD1_OWNER_GROUP \
+> >  	| FATTR4_WORD1_TIME_ACCESS_SET | FATTR4_WORD1_TIME_MODIFY_SET)
+> > -#define NFSD_WRITEABLE_ATTRS_WORD2 0
+> > +#define NFSD_WRITEABLE_ATTRS_WORD2 FATTR4_WORD2_SECURITY_LABEL
+> >  
+> >  #define NFSD_SUPPATTR_EXCLCREAT_WORD0 \
+> >  	NFSD_WRITEABLE_ATTRS_WORD0
+> > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> > index d586117..0567fdc 100644
+> > --- a/fs/nfsd/vfs.c
+> > +++ b/fs/nfsd/vfs.c
+> > @@ -28,6 +28,7 @@
+> >  #include <asm/uaccess.h>
+> >  #include <linux/exportfs.h>
+> >  #include <linux/writeback.h>
+> > +#include <linux/security.h>
+> >  
+> >  #ifdef CONFIG_NFSD_V3
+> >  #include "xdr3.h"
+> > @@ -621,6 +622,35 @@ int nfsd4_is_junction(struct dentry *dentry)
+> >  		return 0;
+> >  	return 1;
+> >  }
+> > +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> > +__be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
+> > +		struct nfs4_label *label)
+> > +{
+> > +	__be32 error;
+> > +	int host_error;
+> > +	struct dentry *dentry;
+> > +
+> > +	/* Get inode */
+> 
+> That comment's unnecessary.
+> 
+> > +	/* XXX: should we have a MAY_SSECCTX? */
+> 
+> I don't know, should we?
+> 
+> --b.
+> 
+> > +	error = fh_verify(rqstp, fhp, 0 /* S_IFREG */, NFSD_MAY_SATTR);
+> > +	if (error)
+> > +		return error;
+> > +
+> > +	dentry = fhp->fh_dentry;
+> > +
+> > +	mutex_lock(&dentry->d_inode->i_mutex);
+> > +	host_error = security_inode_setsecctx(dentry, label->label, label->len);
+> > +	mutex_unlock(&dentry->d_inode->i_mutex);
+> > +	return nfserrno(host_error);
+> > +}
+> > +#else
+> > +__be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
+> > +		struct nfs4_label *label)
+> > +{
+> > +	return -EOPNOTSUPP;
+> > +}
+> > +#endif
+> > +
+> >  #endif /* defined(CONFIG_NFSD_V4) */
+> >  
+> >  #ifdef CONFIG_NFSD_V3
+> > diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+> > index 359594c..49c6cc0 100644
+> > --- a/fs/nfsd/vfs.h
+> > +++ b/fs/nfsd/vfs.h
+> > @@ -55,6 +55,8 @@ int nfsd_mountpoint(struct dentry *, struct svc_export *);
+> >  __be32          nfsd4_set_nfs4_acl(struct svc_rqst *, struct svc_fh *,
+> >                      struct nfs4_acl *);
+> >  int             nfsd4_get_nfs4_acl(struct svc_rqst *, struct dentry *, struct nfs4_acl **);
+> > +__be32          nfsd4_set_nfs4_label(struct svc_rqst *, struct svc_fh *,
+> > +		    struct nfs4_label *);
+> >  #endif /* CONFIG_NFSD_V4 */
+> >  __be32		nfsd_create(struct svc_rqst *, struct svc_fh *,
+> >  				char *name, int len, struct iattr *attrs,
+> > diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> > index 0889bfb..9e7e663 100644
+> > --- a/fs/nfsd/xdr4.h
+> > +++ b/fs/nfsd/xdr4.h
+> > @@ -118,6 +118,7 @@ struct nfsd4_create {
+> >  	struct iattr	cr_iattr;           /* request */
+> >  	struct nfsd4_change_info  cr_cinfo; /* response */
+> >  	struct nfs4_acl *cr_acl;
+> > +	struct nfs4_label *cr_label;
+> >  };
+> >  #define cr_linklen	u.link.namelen
+> >  #define cr_linkname	u.link.name
+> > @@ -246,6 +247,7 @@ struct nfsd4_open {
+> >  	struct nfs4_file *op_file;          /* used during processing */
+> >  	struct nfs4_ol_stateid *op_stp;	    /* used during processing */
+> >  	struct nfs4_acl *op_acl;
+> > +	struct nfs4_label *op_label;
+> >  };
+> >  #define op_iattr	iattr
+> >  
+> > @@ -330,6 +332,7 @@ struct nfsd4_setattr {
+> >  	u32		sa_bmval[3];        /* request */
+> >  	struct iattr	sa_iattr;           /* request */
+> >  	struct nfs4_acl *sa_acl;
+> > +	struct nfs4_label *sa_label;
+> >  };
+> >  
+> >  struct nfsd4_setclientid {
+> > -- 
+> > 1.7.11.7
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
