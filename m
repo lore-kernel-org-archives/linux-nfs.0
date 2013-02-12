@@ -1,124 +1,150 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:25245 "EHLO mx1.redhat.com"
+Received: from mx1.netapp.com ([216.240.18.38]:56857 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758567Ab3BNWRw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Feb 2013 17:17:52 -0500
-Date: Thu, 14 Feb 2013 17:17:45 -0500
-From: Jeff Layton <jlayton@redhat.com>
+	id S1752138Ab3BLW2S convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Feb 2013 17:28:18 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/3] nfsd: break out comparator into separate function
-Message-ID: <20130214171745.3eaef3e8@tlielax.poochiereds.net>
-In-Reply-To: <20130214220802.GG8343@fieldses.org>
-References: <1360878315-21578-1-git-send-email-jlayton@redhat.com>
-	<1360878315-21578-3-git-send-email-jlayton@redhat.com>
-	<20130214220802.GG8343@fieldses.org>
-Mime-Version: 1.0
+CC: Steve Dickson <SteveD@redhat.com>, "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 06/15] NFSv4: Introduce new label structure
+Date: Tue, 12 Feb 2013 22:28:16 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91F3CE55C@sacexcmbx05-prd.hq.netapp.com>
+References: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
+	 <1360327163-20360-7-git-send-email-SteveD@redhat.com>
+	 <20130212220741.GJ10267@fieldses.org>
+In-Reply-To: <20130212220741.GJ10267@fieldses.org>
 Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 14 Feb 2013 17:08:02 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+On Tue, 2013-02-12 at 17:07 -0500, J. Bruce Fields wrote:
+> On Fri, Feb 08, 2013 at 07:39:14AM -0500, Steve Dickson wrote:
+> > From: David Quigley <dpquigl@davequigley.com>
+> > 
+> > In order to mimic the way that NFSv4 ACLs are implemented we have created a
+> > structure to be used to pass label data up and down the call chain. This patch
+> > adds the new structure and new members to the required NFSv4 call structures.
+> > 
+> > Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+> > Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+> > Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+> > Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+> > ---
+> >  fs/nfs/inode.c            | 33 +++++++++++++++++++++++++++++++++
+> >  include/linux/nfs4.h      |  7 +++++++
+> >  include/linux/nfs_fs.h    | 17 +++++++++++++++++
+> >  include/linux/nfs_xdr.h   | 21 +++++++++++++++++++++
+> >  include/uapi/linux/nfs4.h |  2 +-
+> >  5 files changed, 79 insertions(+), 1 deletion(-)
+> > 
+> > diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> > index ebeb94c..8d5f01b 100644
+> > --- a/fs/nfs/inode.c
+> > +++ b/fs/nfs/inode.c
+> > @@ -255,6 +255,39 @@ nfs_init_locked(struct inode *inode, void *opaque)
+> >  	return 0;
+> >  }
+> >  
+> > +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
+> > +struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags)
+> > +{
+> > +	struct nfs4_label *label = NULL;
+> > +
+> > +	if (!(server->caps & NFS_CAP_SECURITY_LABEL))
+> > +		return label;
+> > +
+> > +	label = kzalloc(NFS4_MAXLABELLEN, flags);
+> > +	if (label == NULL)
+> > +		return ERR_PTR(-ENOMEM);
+> > +
+> > +	label->label = (char *)(label + 1);
+> > +	label->len = NFS4_MAXLABELLEN;
+> 
+> If you're expecting to be able to store up to NFS4_MAXLABELLEN of data
+> after the end of the struct, then you want:
+> 
+> 	label = kzalloc(sizeof(struct nfs4_label) + NFS4_MAXLABELLEN, flags);
 
-> On Thu, Feb 14, 2013 at 04:45:14PM -0500, Jeff Layton wrote:
-> > Break the function that compares the rqstp and checksum against a reply
-> > cache entry. While we're at it, track the efficacy of the checksum over
-> > the NFS data by tracking the cases where we would have incorrectly
-> > matched a DRC entry if we had not tracked it or the length.
+Sigh... No.
+
+I keep telling Steve that the 'label' needs to be defined as an array,
+not a pointer. Having it be a pointer gives rise to a completely
+unnecessary extra indirection (the CPU first needs to look up the
+content of 'label->label', then dereference that pointer)...
+
+IOW: we should just be defining struct nfs4_label as
+
+struct nfs4_label {
+
+	.... lots of definitions ...
+
+	char label[NFS4_MAXLABELLEN];
+};
+
+in which case the above allocation becomes a trivial
+
+	label = kzalloc(sizeof(*label), flags);
+
+
+
+> > +
+> > +	return label;
+> > +}
+> > +EXPORT_SYMBOL_GPL(nfs4_label_alloc);
+> > +
+> > +void nfs4_label_init(struct nfs4_label *label)
+> > +{
+> > +	if (label && label->label) {
+> > +		/* 0 is the null format meaning that the data is not
+> > +		to be translated */
+> > +		label->lfs = 0;
+> > +		label->pi = 0;
+> > +		label->len = NFS4_MAXLABELLEN;
 > 
-> Why the checksum and length, as opposed to just the checksum?
+> This logic seems a little odd to me; why would we pass NULL to this?
+> Why would we skip the other initialization in the !label->label case?
+> Why is NFS4_MAXLABELLEN the default?  (And wasn't that just set in
+> nfs4_label_alloc?)
 > 
-> Seems to me that comparing the length is no more expensive than any of
-> the other comparisons (xid, proc, etc.) that we're already doing, so
-> we're less likely to wonder whether it's worth it.
+> But OK maybe I need to read the rest of the patches.
+> 
+> > +	}
+> > +	return;
+> > +}
+> > +EXPORT_SYMBOL_GPL(nfs4_label_init);
+> > +#endif
+> 
+> > diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
+> > index 788128e..b8014a2 100644
+> > --- a/include/uapi/linux/nfs4.h
+> > +++ b/include/uapi/linux/nfs4.h
+> > @@ -25,7 +25,7 @@
+> >  #define NFS4_MAXNAMLEN		NAME_MAX
+> >  #define NFS4_OPAQUE_LIMIT	1024
+> >  #define NFS4_MAX_SESSIONID_LEN	16
+> > -
+> > +#define NFS4_MAXLABELLEN (4095 - offsetof(struct nfs4_label , label))
+> 
+> The way you've defined things, that should be just
+> 
+> 			    (4095 - sizeof(struct nfs4_label))
+
+No. See above. If the 'label' field is an array, then the offsetof() is
+100% correct.
+
+> (Is there typically some more alloc overhead that would push this
+> allocation over 4k?  I don't know well enough how the allocator(s) work
+> to answer that.)
 > 
 > --b.
 > 
+> >  #define NFS4_ACCESS_READ        0x0001
+> >  #define NFS4_ACCESS_LOOKUP      0x0002
+> >  #define NFS4_ACCESS_MODIFY      0x0004
 
-I guess I was thinking that the length was sort of a property of the
-NFS hunk of the packet, so it belonged with the checksum. OTOH, you
-have a good point...
-
-It's fairly trivial to change, so I'll plan to respin this once others
-have had a chance to comment.
-
-Thanks...
-
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  fs/nfsd/nfscache.c | 37 +++++++++++++++++++++++++++----------
-> >  1 file changed, 27 insertions(+), 10 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-> > index 2f9c2d2..bccf74f 100644
-> > --- a/fs/nfsd/nfscache.c
-> > +++ b/fs/nfsd/nfscache.c
-> > @@ -25,6 +25,7 @@ static struct list_head 	lru_head;
-> >  static struct kmem_cache	*drc_slab;
-> >  static unsigned int		num_drc_entries;
-> >  static unsigned int		max_drc_entries;
-> > +static unsigned int		csum_misses;
-> >  
-> >  /*
-> >   * Calculate the hash index from an XID.
-> > @@ -272,6 +273,30 @@ nfsd_cache_csum(struct svc_rqst *rqstp)
-> >  	return csum;
-> >  }
-> >  
-> > +static bool
-> > +nfsd_cache_match(struct svc_rqst *rqstp, __wsum csum, struct svc_cacherep *rp)
-> > +{
-> > +	__be32			xid = rqstp->rq_xid;
-> > +	u32			proto =  rqstp->rq_prot,
-> > +				vers = rqstp->rq_vers,
-> > +				proc = rqstp->rq_proc;
-> > +
-> > +	/* Check RPC header info first */
-> > +	if (xid != rp->c_xid || proc != rp->c_proc ||
-> > +	    proto != rp->c_prot || vers != rp->c_vers ||
-> > +	    !rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) ||
-> > +	    rpc_get_port(svc_addr(rqstp)) != rpc_get_port((struct sockaddr *)&rp->c_addr))
-> > +		return false;
-> > +
-> > +	/* check contents of the NFS data */
-> > +	if (rqstp->rq_arg.len != rp->c_len || csum != rp->c_csum) {
-> > +		++csum_misses;
-> > +		return false;
-> > +	}
-> > +
-> > +	return true;
-> > +}
-> > +
-> >  /*
-> >   * Search the request hash for an entry that matches the given rqstp.
-> >   * Must be called with cache_lock held. Returns the found entry or
-> > @@ -283,18 +308,10 @@ nfsd_cache_search(struct svc_rqst *rqstp, __wsum csum)
-> >  	struct svc_cacherep	*rp;
-> >  	struct hlist_node	*hn;
-> >  	struct hlist_head 	*rh;
-> > -	__be32			xid = rqstp->rq_xid;
-> > -	u32			proto =  rqstp->rq_prot,
-> > -				vers = rqstp->rq_vers,
-> > -				proc = rqstp->rq_proc;
-> >  
-> > -	rh = &cache_hash[request_hash(xid)];
-> > +	rh = &cache_hash[request_hash(rqstp->rq_xid)];
-> >  	hlist_for_each_entry(rp, hn, rh, c_hash) {
-> > -		if (xid == rp->c_xid && proc == rp->c_proc &&
-> > -		    proto == rp->c_prot && vers == rp->c_vers &&
-> > -		    rqstp->rq_arg.len == rp->c_len && csum == rp->c_csum &&
-> > -		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
-> > -		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr))
-> > +		if (nfsd_cache_match(rqstp, csum, rp))
-> >  			return rp;
-> >  	}
-> >  	return NULL;
-> > -- 
-> > 1.7.11.7
-> > 
-
-
--- 
-Jeff Layton <jlayton@redhat.com>
