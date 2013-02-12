@@ -1,69 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from p02c11o145.mxlogic.net ([208.65.144.78]:39381 "EHLO
-	p02c11o145.mxlogic.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751263Ab3BLV1l (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Feb 2013 16:27:41 -0500
-From: Peter Staubach <pstaubach@exagrid.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>
-CC: "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>
-Date: Tue, 12 Feb 2013 16:18:31 -0500
-Subject: RE: [PATCH 0/2] NFSD: fix races in service per-net resources
- allocation
-Message-ID: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC0C5DF98826@IT-1874.Isys.com>
-References: <20130201111046.24066.72836.stgit@localhost.localdomain>
- <20130211002558.GD10161@fieldses.org> <51188D2A.4070605@parallels.com>
- <20130211163715.GA19342@fieldses.org> <20130211205845.GE30117@fieldses.org>
- <511A10E0.1000604@parallels.com> <20130212204533.GD10267@fieldses.org>
-In-Reply-To: <20130212204533.GD10267@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:58826 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751915Ab3BLVle (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Feb 2013 16:41:34 -0500
+Date: Tue, 12 Feb 2013 16:41:31 -0500
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 00/15] lnfs: 3.8-rc6 release
+Message-ID: <20130212214131.GI10267@fieldses.org>
+References: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-VGhlICIrIiB0aGluZyBzZWVtcyBhIGxpdHRsZSBvZGQuICBXaHkgbm90IHVzZSAifHwiIGluc3Rl
-YWQ/ICBUaGUgc3VtIG9mIHRoZSB0d28gcmV0dXJucyBpc24ndCByZWFsbHkgdGhlIGltcG9ydGFu
-dCB0aGluZywgaXMgaXQ/ICBJdCBpcyB0aGF0IGVpdGhlciBjYWxsIHRvIHN2Y19jbG9zZV9saXN0
-KCkgcmV0dXJucyBub24temVyby4NCg0KCVRoYW54Li4uDQoNCgkJcHMNCg0KDQotLS0tLU9yaWdp
-bmFsIE1lc3NhZ2UtLS0tLQ0KRnJvbTogbGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZyBb
-bWFpbHRvOmxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmddIE9uIEJlaGFsZiBPZiBKLiBC
-cnVjZSBGaWVsZHMNClNlbnQ6IFR1ZXNkYXksIEZlYnJ1YXJ5IDEyLCAyMDEzIDM6NDYgUE0NClRv
-OiBTdGFuaXNsYXYgS2luc2J1cnNreQ0KQ2M6IGFrcG1AbGludXgtZm91bmRhdGlvbi5vcmc7IGxp
-bnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmc7IFRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tOyBsaW51
-eC1rZXJuZWxAdmdlci5rZXJuZWwub3JnOyBkZXZlbEBvcGVudnoub3JnDQpTdWJqZWN0OiBSZTog
-W1BBVENIIDAvMl0gTkZTRDogZml4IHJhY2VzIGluIHNlcnZpY2UgcGVyLW5ldCByZXNvdXJjZXMg
-YWxsb2NhdGlvbg0KDQpPbiBUdWUsIEZlYiAxMiwgMjAxMyBhdCAwMTo1MjozMlBNICswNDAwLCBT
-dGFuaXNsYXYgS2luc2J1cnNreSB3cm90ZToNCj4gMTIuMDIuMjAxMyAwMDo1OCwgSi4gQnJ1Y2Ug
-RmllbGRzINC/0LjRiNC10YI6DQo+IDxzbmlwPg0KPiA+ICB2b2lkIHN2Y19jbG9zZV9uZXQoc3Ry
-dWN0IHN2Y19zZXJ2ICpzZXJ2LCBzdHJ1Y3QgbmV0ICpuZXQpDQo+ID4gIHsNCj4gPi0Jc3ZjX2Ns
-b3NlX2xpc3Qoc2VydiwgJnNlcnYtPnN2X3RlbXBzb2NrcywgbmV0KTsNCj4gPi0Jc3ZjX2Nsb3Nl
-X2xpc3Qoc2VydiwgJnNlcnYtPnN2X3Blcm1zb2NrcywgbmV0KTsNCj4gPi0NCj4gPi0Jc3ZjX2Ns
-ZWFyX3Bvb2xzKHNlcnYsIG5ldCk7DQo+ID4tCS8qDQo+ID4tCSAqIEF0IHRoaXMgcG9pbnQgdGhl
-IHNwX3NvY2tldHMgbGlzdHMgd2lsbCBzdGF5IGVtcHR5LCBzaW5jZQ0KPiA+LQkgKiBzdmNfeHBy
-dF9lbnF1ZXVlIHdpbGwgbm90IGFkZCBuZXcgZW50cmllcyB3aXRob3V0IHRha2luZyB0aGUNCj4g
-Pi0JICogc3BfbG9jayBhbmQgY2hlY2tpbmcgWFBUX0JVU1kuDQo+ID4tCSAqLw0KPiA+LQlzdmNf
-Y2xlYXJfbGlzdChzZXJ2LCAmc2Vydi0+c3ZfdGVtcHNvY2tzLCBuZXQpOw0KPiA+LQlzdmNfY2xl
-YXJfbGlzdChzZXJ2LCAmc2Vydi0+c3ZfcGVybXNvY2tzLCBuZXQpOw0KPiA+KwlpbnQgY2xvc2Vk
-Ow0KPiA+KwlpbnQgZGVsYXkgPSAwOw0KPiA+Kw0KPiA+K2FnYWluOg0KPiA+KwljbG9zZWQgPSBz
-dmNfY2xvc2VfbGlzdChzZXJ2LCAmc2Vydi0+c3ZfcGVybXNvY2tzLCBuZXQpOw0KPiA+KwljbG9z
-ZWQgKz0gc3ZjX2Nsb3NlX2xpc3Qoc2VydiwgJnNlcnYtPnN2X3RlbXBzb2NrcywgbmV0KTsNCj4g
-PisJaWYgKGNsb3NlZCkgew0KPiA+KwkJc3ZjX2NsZWFuX3VwX3hwcnRzKHNlcnYsIG5ldCk7DQo+
-ID4rCQltc2xlZXAoZGVsYXkrKyk7DQo+ID4rCQlnb3RvIGFnYWluOw0KPiA+Kwl9DQo+IA0KPiBG
-cmFua2x5LCB0aGlzIGh1bmsgYWJvdmUgbWFrZXMgbWUgZmVlbCBzaWNrLi4uIDooIEJ1dCBJIGhh
-dmUgbm8gYmV0dGVyIA0KPiBpZGVhIHJpZ2h0IG5vdy4uLg0KPiBNYXliZSBtYWtlIHRoaXMgaHVu
-ayBhIGJpdCBsZXNzIHdlaXJkICh0aGlzIGlzIGZyb20gbXkgUE9XIG9ubHksIG9mIGNvdXJzZSks
-IGxpa2UgdGhpczoNCj4gDQo+ID4gKwl3aGlsZSAoc3ZjX2Nsb3NlX2xpc3Qoc2VydiwgJnNlcnYt
-PnN2X3Blcm1zb2NrcywgbmV0KSArDQo+ID4gKwkgICAgICAgc3ZjX2Nsb3NlX2xpc3Qoc2Vydiwg
-JnNlcnYtPnN2X3RlbXBzb2NrcywgbmV0KSkgew0KPiA+ICsJCXN2Y19jbGVhbl91cF94cHJ0cyhz
-ZXJ2LCBuZXQpOw0KPiA+ICsJCW1zbGVlcChkZWxheSsrKTsNCj4gPiArCX0NCj4gDQo+ID8NCg0K
-T0ssIHRoYXQncyBhIGxpdHRsZSBtb3JlIGNvbXBhY3QgYXQgbGVhc3QuDQoNCi0tYi4NCg0KPiAN
-Cj4gQW55d2F5LCB0aGFua3MhDQo+IA0KPiBBY2tlZC1ieTogU3RhbmlzbGF2IEtpbnNidXJza3kg
-PHNraW5zYnVyc2t5QHBhcmFsbGVscy5jb20+DQo+IA0KPiAtLQ0KPiBCZXN0IHJlZ2FyZHMsDQo+
-IFN0YW5pc2xhdiBLaW5zYnVyc2t5DQotLQ0KVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6
-IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIgaW4gdGhlIGJvZHkgb2YgYSBt
-ZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcgTW9yZSBtYWpvcmRvbW8gaW5mbyBh
-dCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQo=
+On Fri, Feb 08, 2013 at 07:39:08AM -0500, Steve Dickson wrote:
+>  include/linux/security.h            |  57 +++-
+...
+>  security/capability.c               |  19 +-
+>  security/security.c                 |  24 +-
+>  security/selinux/hooks.c            |  92 +++++-
+>  security/selinux/include/security.h |   2 +
+>  security/selinux/ss/policydb.c      |   5 +-
+>  security/smack/smack_lsm.c          |  11 +
+>  33 files changed, 1352 insertions(+), 214 deletions(-)
+
+Are we still waiting on ACKs from the security people for these bits?
+
+--b.
