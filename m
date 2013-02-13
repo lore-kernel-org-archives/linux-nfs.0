@@ -1,78 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([67.152.220.90]:46475 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752309Ab3BUTMK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Feb 2013 14:12:10 -0500
-Message-ID: <51267179.6060002@panasas.com>
-Date: Thu, 21 Feb 2013 21:11:53 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from fieldses.org ([174.143.236.118]:33489 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751540Ab3BMXFP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Feb 2013 18:05:15 -0500
+Date: Wed, 13 Feb 2013 18:05:11 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Anand Avati <anand.avati@gmail.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>, sandeen@redhat.com,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        gluster-devel@nongnu.org
+Subject: Re: [Gluster-devel] regressions due to 64-bit ext4 directory cookies
+Message-ID: <20130213230511.GW14195@fieldses.org>
+References: <20130213133131.GE14195@fieldses.org>
+ <20130213151455.GB17431@thunk.org>
+ <20130213151953.GJ14195@fieldses.org>
+ <20130213153654.GC17431@thunk.org>
+ <20130213162059.GL14195@fieldses.org>
+ <CAFboF2wXvP+vttiff8iRE9rAgvV8UWGbFprgVp8p7kE43TU=PA@mail.gmail.com>
+ <20130213222052.GD5938@thunk.org>
+ <20130213224141.GU14195@fieldses.org>
+ <20130213224720.GE5938@thunk.org>
+ <CAFboF2z1akN_edrY_fT915xfehfHGioA2M=PSHv0Fp3rD-5v5A@mail.gmail.com>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: NFSv4 on Linux on Linux mailing mailing list <nfsv4@ietf.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [nfsv4] Connectathon 2013 talks
-References: <8BD8BE06-E201-4704-AD4E-DB768F37255F@oracle.com>
-In-Reply-To: <8BD8BE06-E201-4704-AD4E-DB768F37255F@oracle.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAFboF2z1akN_edrY_fT915xfehfHGioA2M=PSHv0Fp3rD-5v5A@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/25/2013 06:00 PM, Chuck Lever wrote:
-> Hi-
+On Wed, Feb 13, 2013 at 02:57:13PM -0800, Anand Avati wrote:
+> On Wed, Feb 13, 2013 at 2:47 PM, Theodore Ts'o <tytso@mit.edu> wrote:
 > 
-> I'm organizing the talks at this year's Connectathon event.  
+> > On Wed, Feb 13, 2013 at 05:41:41PM -0500, J. Bruce Fields wrote:
+> > > > What if we have an ioctl or a process personality flag where a broken
+> > > > application can tell the file system "I'm broken, please give me a
+> > > > degraded telldir/seekdir cookie"?  That way we don't penalize programs
+> > > > that are doing the right thing, while providing some accomodation for
+> > > > programs who are abusing the telldir cookie.
+> > >
+> > > Yeah, if there's a simple way to do that, maybe it would be worth it.
+> >
+> > Doing this as an ioctl which gets called right after opendir, i.e
+> > (ignoring error checking):
+> >
+> >       DIR *dir = opendir("/foo/bar/baz");
+> >       ioctl(dirfd(dir), EXT4_IOC_DEGRADED_READDIR, 1);
+> >       ...
+> >
+> > should be quite easy.  It would be a very ext3/4 specific thing,
+> > though.
 > 
->   http://hub.opensolaris.org/bin/view/Community+Group+nfs/Connectathon13
 > 
-> If you are interested in presenting, please contact me with details
-> before Monday, February 25 (but the sooner the better). Remember that
-> the Connectathon test floor is covered by NDA, but the talks are open
-> to the public.
-> 
+> That would work, even though it would be ext3/4 specific. What is the
+> recommended programmatic way to detect if the file is on ext3/4 -- we would
+> not want to attempt that blindly on a non-ext3/4 FS as the numerical value
+> of EXT4_IOC_DEGRADED_READDIR might get interpreted in dangerous ways?
 
-Hi Chuck, as we said at the con-call here is my email
+We must have been through this before, but: is the only way to generate
+a collision-free readdir cookie really to use a larger hash?
 
-> 
-> For each talk, please provide:
-> 
->  o  A title
-> 
+Would it be possible to make something work like, for example, a 31-bit
+hash plus an offset into a hash bucket?
 
-title: How to solve the Linux-Client LAYOUT_COMMIT vs LAYOUT_GET deadlock
+I have trouble thinking about this, partly because I can't remember
+where to find the requirements for readdir on concurrently modified
+directories....
 
->  o  An abstract (a couple of sentences or so)
-> 
-
-abstract:
-	* I will describe the current problem we have since Kernel 3.5.
-	* I will show how I fix it for now, though in a way that violates the STD
-	  (It actually does works with all current pnfs servers I know of)
-	* I will introduce two possible solutions I can see, for this.
-
-	And would like people to:
-		1. See if there are more possible solutions
-		2. Choose (Trond) which way we would like to go, and I can start
-		   coding for that.
-
->  o  Who exactly is going to present (with e-mail if possible)
-> 
-
-presentor: Me
-
->  o  How long you think you need
-> 
-
-I hope not more then 1 hour at most, or even less
-
->  o  Whether you need more than just a projector
-> 
-
-No that will be just fine.
-
-> 
-> Thanks!
-> 
-
-Thanks in advance
-Boaz
-
+--b.
