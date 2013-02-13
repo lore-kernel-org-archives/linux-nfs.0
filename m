@@ -1,55 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:58623 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755870Ab3BOQay (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Feb 2013 11:30:54 -0500
-Date: Fri, 15 Feb 2013 11:30:51 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Tim Gardner <tim.gardner@canonical.com>, linux-kernel@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH linux-next v2] lockd: nlmclnt_reclaim(): avoid stack
- overflow
-Message-ID: <20130215163050.GL8343@fieldses.org>
-References: <20130212211800.GG10267@fieldses.org>
- <1360770016-69586-1-git-send-email-tim.gardner@canonical.com>
- <20130214102038.52b1d292@tlielax.poochiereds.net>
+Received: from li9-11.members.linode.com ([67.18.176.11]:48199 "EHLO
+	imap.thunk.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S965011Ab3BMWr1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Feb 2013 17:47:27 -0500
+Date: Wed, 13 Feb 2013 17:47:20 -0500
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Anand Avati <anand.avati@gmail.com>,
+        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>, sandeen@redhat.com,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        gluster-devel@nongnu.org
+Subject: Re: [Gluster-devel] regressions due to 64-bit ext4 directory cookies
+Message-ID: <20130213224720.GE5938@thunk.org>
+References: <20130212202841.GC10267@fieldses.org>
+ <20130213040003.GB2614@thunk.org>
+ <20130213133131.GE14195@fieldses.org>
+ <20130213151455.GB17431@thunk.org>
+ <20130213151953.GJ14195@fieldses.org>
+ <20130213153654.GC17431@thunk.org>
+ <20130213162059.GL14195@fieldses.org>
+ <CAFboF2wXvP+vttiff8iRE9rAgvV8UWGbFprgVp8p7kE43TU=PA@mail.gmail.com>
+ <20130213222052.GD5938@thunk.org>
+ <20130213224141.GU14195@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130214102038.52b1d292@tlielax.poochiereds.net>
+In-Reply-To: <20130213224141.GU14195@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 14, 2013 at 10:20:38AM -0500, Jeff Layton wrote:
-> On Wed, 13 Feb 2013 08:40:16 -0700
-> Tim Gardner <tim.gardner@canonical.com> wrote:
+On Wed, Feb 13, 2013 at 05:41:41PM -0500, J. Bruce Fields wrote:
+> > What if we have an ioctl or a process personality flag where a broken
+> > application can tell the file system "I'm broken, please give me a
+> > degraded telldir/seekdir cookie"?  That way we don't penalize programs
+> > that are doing the right thing, while providing some accomodation for
+> > programs who are abusing the telldir cookie.
 > 
-> > Even though nlmclnt_reclaim() is only one call into the stack frame,
-> > 928 bytes on the stack seems like a lot. Recode to dynamically
-> > allocate the request structure once from within the reclaimer task,
-> > then pass this pointer into nlmclnt_reclaim() for reuse on
-> > subsequent calls.
-> > 
-> > smatch analysis:
-> > 
-> > fs/lockd/clntproc.c:620 nlmclnt_reclaim() warn: 'reqst' puts
-> >  928 bytes on stack
-> > 
-> > Also remove redundant assignment of 0 after memset.
-> > 
-> > Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > Cc: "J. Bruce Fields" <bfields@fieldses.org>
-> > Cc: linux-nfs@vger.kernel.org
-> > Signed-off-by: Tim Gardner <tim.gardner@canonical.com>
-> > ---
-> > 
-> > Changes from v1 -- don't return -ENOMEM from a task thread because it is
-> > not propagated to the task creator. Instead print an error message and return.
-...
-> Oops, just noticed there was a later version of this patch. Please
-> disregard my earlier mail...
-> 
-> Reviewed-by: Jeff Layton <jlayton@redhat.com>
+> Yeah, if there's a simple way to do that, maybe it would be worth it.
 
-Thanks, applying.--b.
+Doing this as an ioctl which gets called right after opendir, i.e
+(ignoring error checking):
+
+      DIR *dir = opendir("/foo/bar/baz");
+      ioctl(dirfd(dir), EXT4_IOC_DEGRADED_READDIR, 1);
+      ...
+
+should be quite easy.  It would be a very ext3/4 specific thing,
+though.
+
+It would be more work to get something in as a process personality
+flag, mostly due to the politics of assiging a bit out of the
+bitfield.
+
+						- Ted
+
