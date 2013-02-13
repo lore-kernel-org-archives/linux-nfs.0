@@ -1,135 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38349 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751037Ab3BKA0D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 10 Feb 2013 19:26:03 -0500
-Date: Sun, 10 Feb 2013 19:25:58 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: akpm@linux-foundation.org, linux-nfs@vger.kernel.org,
-        Trond.Myklebust@netapp.com, linux-kernel@vger.kernel.org,
-        devel@openvz.org
-Subject: Re: [PATCH 0/2] NFSD: fix races in service per-net resources
- allocation
-Message-ID: <20130211002558.GD10161@fieldses.org>
-References: <20130201111046.24066.72836.stgit@localhost.localdomain>
+Received: from mercury.cora.nwra.com ([4.28.99.165]:47601 "EHLO
+	mail.cora.nwra.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756657Ab3BMTCi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Feb 2013 14:02:38 -0500
+Message-ID: <511BD448.5050901@cora.nwra.com>
+Date: Wed, 13 Feb 2013 10:58:32 -0700
+From: Orion Poplawski <orion@cora.nwra.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130201111046.24066.72836.stgit@localhost.localdomain>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: umount(,MNT_DETACH) for nfsv4 hangs when using sec=krb5 and network
+ is down
+References: <loom.20121219T214634-616@post.gmane.org>    <4FA345DA4F4AE44899BD2B03EEEC2FA91196AE42@SACEXCMBX04-PRD.hq.netapp.com>    <50D236A4.6060906@cora.nwra.com>   <4FA345DA4F4AE44899BD2B03EEEC2FA91196C146@SACEXCMBX04-PRD.hq.netapp.com>   <50D3758D.9060808@cora.nwra.com>  <4FA345DA4F4AE44899BD2B03EEEC2FA91196FF19@SACEXCMBX04-PRD.hq.netapp.com>  <50D388A9.9060300@cora.nwra.com> <4FA345DA4F4AE44899BD2B03EEEC2FA911970163@SACEXCMBX04-PRD.hq.netapp.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA911970163@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset=UTF-7
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 01, 2013 at 02:28:21PM +0300, Stanislav Kinsbursky wrote:
-> After "NFS" (SUNRPC + NFSd actually) containerization work some basic
-> principles of SUNRPC service initialization and deinitialization has been
-> changed: now one service can be shared between different network namespaces
-> and network "resources" can be attached or detached from the running service.
-> This leads to races, described here:
+On 12/20/2012 03:01 PM, Myklebust, Trond wrote:
+> On Thu, 2012-12-20 at 14:52 -0700, Orion Poplawski wrote:
+>> On 12/20/2012 01:47 PM, Myklebust, Trond wrote:
+>>> On Thu, 2012-12-20 at 13:31 -0700, Orion Poplawski wrote:
+>>>> On 12/19/2012 03:19 PM, Myklebust, Trond wrote:
+>>>>>
+>>>>> Commit eb96d5c97b0825d542e9c4ba5e0a22b519355166 (SUNRPC handle
+>>>>> EKEYEXPIRED in call_refreshresult), which will be in 3.8-rc1 when Linus
+>>>>> releases it, may help.
+>>>>>
+>>>>
+>>>> FWIW - I cherry picked that into the latest Fedora rawhide kernel but no
+>>>> effect.  Sounds like a nice patch though, the current hang forever behavior
+>>>> doesn't seem the trigger the needed "ah, need a new ticket" response.
+>>>>
+>>>
+>>> So does simply killing the rpc.gssd process help?
+>>>
+>>
+>> Yes, if automount is already stopped (these are automounted directories).  If
+>> automount is running, it still seems to hang.  I think I'm going to need to
+>> spend some time talking to Ian.
+>>
 > 
-> https://bugzilla.redhat.com/show_bug.cgi?id=904870
+> I'd suggest also taking a long hard look at rpc.gssd and making sure
+> that it handles ENETUNREACH, ECONNREFUSED and friends correctly. I
+> suspect right now it is just baling out of the upcall instead of
+> completing it by propagating the error reply to the kernel.
 > 
-> and which this small patch set is aimed to solve by using per-cpu rw semphores
-> to sync per-net resources processing and shutdown.
 
-Sorry for the slow response.  I think this is probably correct.
+Actually, I take that back - I'm not sure it's directly involved and killing
+rpc.gssd doesn't seem to be helping me now.  I connected to rpc.gssd with
+strace, dropped the interface and tried to umount.nfs4 -l but rpc.gssd is
+still in poll and doesn't do anyting.  kernel process trace shows:
 
-But I think we got into this mess because the server shutdown logic is
-too complicated.  So I'd prefer to find a way to fix the problem by
-simplifying things rather than by adding another lock.
+[ 2788.807017] umount.nfs4     D ffff88007cc13d40     0  3001   3000 0x00000084
+[ 2788.807017]  ffff8800361319a8 0000000000000082 ffff880036131fd8
+0000000000013d40
+[ 2788.807017]  ffff880036131fd8 0000000000013d40 ffff8800773add80
+ffff8800773add80
+[ 2788.807017]  ffff88007cfe2cb8 0000000000000082 ffffffffa0009cc0
+ffff880036131a20
+[ 2788.807017] Call Trace:
+[ 2788.807017]  [<ffffffffa0009cc0>] ?
+__rpc_wait_for_completion_task+0x30/0x30 [sunrpc]
+[ 2788.807017]  [<ffffffff81634b39>] schedule+0x29/0x70
+[ 2788.807017]  [<ffffffffa0009cf5>] rpc_wait_bit_killable+0x35/0x90 [sunrpc]
+[ 2788.807017]  [<ffffffff816335a0>] __wait_on_bit+0x60/0x90
+[ 2788.807017]  [<ffffffffa0001c50>] ? call_connect+0x90/0x90 [sunrpc]
+[ 2788.807017]  [<ffffffffa0009cc0>] ?
+__rpc_wait_for_completion_task+0x30/0x30 [sunrpc]
+[ 2788.807017]  [<ffffffff81633707>] out_of_line_wait_on_bit+0x77/0x90
+[ 2788.807017]  [<ffffffff81080560>] ? autoremove_wake_function+0x40/0x40
+[ 2788.807017]  [<ffffffffa0001c50>] ? call_connect+0x90/0x90 [sunrpc]
+[ 2788.807017]  [<ffffffffa0001c50>] ? call_connect+0x90/0x90 [sunrpc]
+[ 2788.807017]  [<ffffffffa000ac7a>] __rpc_execute+0x13a/0x3f0 [sunrpc]
+[ 2788.807017]  [<ffffffffa000bd65>] rpc_execute+0x55/0x90 [sunrpc]
+[ 2788.807017]  [<ffffffffa0002e60>] rpc_run_task+0x70/0x90 [sunrpc]
+[ 2788.807017]  [<ffffffffa0002ec3>] rpc_call_sync+0x43/0xa0 [sunrpc]
+[ 2788.807017]  [<ffffffffa01f5653>] _nfs4_call_sync+0x13/0x20 [nfsv4]
+[ 2788.807017]  [<ffffffffa01f4e50>] _nfs4_proc_getattr+0xb0/0xc0 [nfsv4]
+[ 2788.807017]  [<ffffffffa01f9b9e>] nfs4_proc_getattr+0x4e/0x70 [nfsv4]
+[ 2788.807017]  [<ffffffffa01b67bc>] __nfs_revalidate_inode+0x8c/0x200 [nfs]
+[ 2788.807017]  [<ffffffffa01b69a3>] nfs_revalidate_inode+0x73/0xa0 [nfs]
+[ 2788.807017]  [<ffffffffa01afc60>] nfs_check_verifier+0x50/0x80 [nfs]
+[ 2788.807017]  [<ffffffffa01b255b>] nfs_lookup_revalidate+0x2fb/0x470 [nfs]
+[ 2788.807017]  [<ffffffffa01b2705>] nfs4_lookup_revalidate+0x35/0xe0 [nfs]
+[ 2788.807017]  [<ffffffff811a18fb>] complete_walk+0xbb/0x110
+[ 2788.807017]  [<ffffffff811a3310>] path_lookupat+0x70/0x7f0
+[ 2788.807017]  [<ffffffff811a216f>] ? getname_flags+0x4f/0x1a0
+[ 2788.807017]  [<ffffffff811a3abb>] filename_lookup+0x2b/0xc0
+[ 2788.807017]  [<ffffffff811a67c4>] user_path_at_empty+0x54/0x90
+[ 2788.807017]  [<ffffffff8117e4e6>] ? kmem_cache_free+0x46/0x1f0
+[ 2788.807017]  [<ffffffff8115d4e3>] ? remove_vma+0x63/0x70
+[ 2788.807017]  [<ffffffff811a6811>] user_path_at+0x11/0x20
+[ 2788.807017]  [<ffffffff811b57af>] sys_umount+0x3f/0x3a0
+[ 2788.807017]  [<ffffffff81639f7e>] ? do_page_fault+0xe/0x10
+[ 2788.807017]  [<ffffffff8163e419>] system_call_fastpath+0x16/0x1b
 
-Do you see anything wrong with the following?
+But every other process in schedule.
 
---b
+The mount point gets "deleted":
 
-commit e8202f39f84b8863337f55159dd18478b9ccb616
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Sun Feb 10 16:08:11 2013 -0500
+# grep mnt /proc/mounts
+earth:/export/home/orion /mnt\040(deleted) nfs4
+rw,relatime,vers=4.0,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=krb5,clientaddr=10.10.11.101,local_lock=none,addr=10.10.10.1
+0 0
 
-    svcrpc: fix and simplify server shutdown
-    
-    Simplify server shutdown, and make it correct whether or not there are
-    still threads running (as will happen in the case we're only shutting
-    down the service in one network namespace).
-    
-    Do that by doing what we'd do in normal circumstances: just CLOSE each
-    socket, then enqueue it.
-    
-    Since there may not be threads to handle the resulting queued xprts,
-    also run a simplified version of the svc_recv() loop run by a server to
-    clean up any closed xprts afterwards.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+but that's it.
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 024a241..a98e818 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -966,12 +966,12 @@ static void svc_close_list(struct svc_serv *serv, struct list_head *xprt_list, s
- 		if (xprt->xpt_net != net)
- 			continue;
- 		set_bit(XPT_CLOSE, &xprt->xpt_flags);
--		set_bit(XPT_BUSY, &xprt->xpt_flags);
-+		svc_xprt_enqueue(xprt);
- 	}
- 	spin_unlock(&serv->sv_lock);
- }
- 
--static void svc_clear_pools(struct svc_serv *serv, struct net *net)
-+static struct svc_xprt *svc_dequeue_net(struct svc_serv *serv, struct net *net)
- {
- 	struct svc_pool *pool;
- 	struct svc_xprt *xprt;
-@@ -986,42 +986,31 @@ static void svc_clear_pools(struct svc_serv *serv, struct net *net)
- 			if (xprt->xpt_net != net)
- 				continue;
- 			list_del_init(&xprt->xpt_ready);
-+			spin_unlock_bh(&pool->sp_lock);
-+			return xprt;
- 		}
- 		spin_unlock_bh(&pool->sp_lock);
- 	}
-+	return NULL;
- }
- 
--static void svc_clear_list(struct svc_serv *serv, struct list_head *xprt_list, struct net *net)
-+static void svc_clean_up_xprts(struct svc_serv *serv, struct net *net)
- {
- 	struct svc_xprt *xprt;
--	struct svc_xprt *tmp;
--	LIST_HEAD(victims);
- 
--	spin_lock(&serv->sv_lock);
--	list_for_each_entry_safe(xprt, tmp, xprt_list, xpt_list) {
--		if (xprt->xpt_net != net)
--			continue;
--		list_move(&xprt->xpt_list, &victims);
--	}
--	spin_unlock(&serv->sv_lock);
--
--	list_for_each_entry_safe(xprt, tmp, &victims, xpt_list)
-+	while ((xprt = svc_dequeue_net(serv, net))) {
-+		if (!test_bit(XPT_CLOSE, &xprt->xpt_flags))
-+			pr_err("found un-closed xprt on service shutdown\n");
- 		svc_delete_xprt(xprt);
-+	}
- }
- 
- void svc_close_net(struct svc_serv *serv, struct net *net)
- {
--	svc_close_list(serv, &serv->sv_tempsocks, net);
- 	svc_close_list(serv, &serv->sv_permsocks, net);
--
--	svc_clear_pools(serv, net);
--	/*
--	 * At this point the sp_sockets lists will stay empty, since
--	 * svc_xprt_enqueue will not add new entries without taking the
--	 * sp_lock and checking XPT_BUSY.
--	 */
--	svc_clear_list(serv, &serv->sv_tempsocks, net);
--	svc_clear_list(serv, &serv->sv_permsocks, net);
-+	svc_clean_up_xprts(serv, net);
-+	svc_close_list(serv, &serv->sv_tempsocks, net);
-+	svc_clean_up_xprts(serv, net);
- }
- 
- /*
+-- 
+Orion Poplawski
+Technical Manager                     303-415-9701 x222
+NWRA, Boulder Office                  FAX: 303-415-9702
+3380 Mitchell Lane                       orion@nwra.com
+Boulder, CO 80301                   http://www.nwra.com
