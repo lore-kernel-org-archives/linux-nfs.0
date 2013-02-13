@@ -1,34 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from zeniv.linux.org.uk ([195.92.253.2]:37186 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751350Ab3BWRl3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 23 Feb 2013 12:41:29 -0500
-Date: Sat, 23 Feb 2013 17:41:28 +0000
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: handle vfs_getattr errors in acl protocol
-Message-ID: <20130223174127.GR4503@ZenIV.linux.org.uk>
-References: <20130201131537.GC30668@fieldses.org>
- <20130201185721.GP4503@ZenIV.linux.org.uk>
- <20130201201304.GE30668@fieldses.org>
- <20130222214634.GB30856@fieldses.org>
- <20130222221506.GM4503@ZenIV.linux.org.uk>
- <20130222221835.GC30856@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130222221835.GC30856@fieldses.org>
+Received: from mail.tpi.com ([70.99.223.143]:4937 "EHLO mail.tpi.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757615Ab3BMPkx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Feb 2013 10:40:53 -0500
+From: Tim Gardner <tim.gardner@canonical.com>
+To: linux-kernel@vger.kernel.org
+Cc: Tim Gardner <tim.gardner@canonical.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH linux-next v2] lockd: nlmclnt_reclaim(): avoid stack overflow
+Date: Wed, 13 Feb 2013 08:40:16 -0700
+Message-Id: <1360770016-69586-1-git-send-email-tim.gardner@canonical.com>
+In-Reply-To: <20130212211800.GG10267@fieldses.org>
+References: <20130212211800.GG10267@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 22, 2013 at 05:18:35PM -0500, J. Bruce Fields wrote:
+Even though nlmclnt_reclaim() is only one call into the stack frame,
+928 bytes on the stack seems like a lot. Recode to dynamically
+allocate the request structure once from within the reclaimer task,
+then pass this pointer into nlmclnt_reclaim() for reuse on
+subsequent calls.
 
-> > FWIW, I'm going to push the first part of VFS queue later tonight...
-> 
-> OK, I'll wait and see what's in that.
+smatch analysis:
 
-See for-next...
+fs/lockd/clntproc.c:620 nlmclnt_reclaim() warn: 'reqst' puts
+ 928 bytes on stack
 
-> (And what should I do with the delegation patches?)
+Also remove redundant assignment of 0 after memset.
 
-Looking through that stuff...
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Signed-off-by: Tim Gardner <tim.gardner@canonical.com>
+---
+
+Changes from v1 -- don't return -ENOMEM from a task thread because it is
+not propagated to the task creator. Instead print an error message and return.
+
+ fs/lockd/clntlock.c         |   12 +++++++++++-
+ fs/lockd/clntproc.c         |    6 ++----
+ include/linux/lockd/lockd.h |    3 ++-
+ 3 files changed, 15 insertions(+), 6 deletions(-)
+
+diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
+index 4885b53..6cd673d 100644
+--- a/fs/lockd/clntlock.c
++++ b/fs/lockd/clntlock.c
+@@ -220,10 +220,19 @@ reclaimer(void *ptr)
+ {
+ 	struct nlm_host	  *host = (struct nlm_host *) ptr;
+ 	struct nlm_wait	  *block;
++	struct nlm_rqst   *req;
+ 	struct file_lock *fl, *next;
+ 	u32 nsmstate;
+ 	struct net *net = host->net;
+ 
++	req = kmalloc(sizeof(*req), GFP_KERNEL);
++	if (!req) {
++		printk(KERN_ERR "lockd: reclaimer unable to alloc memory."
++				" Locks for %s won't be reclaimed!\n",
++				host->h_name);
++		return 0;
++	}
++
+ 	allow_signal(SIGKILL);
+ 
+ 	down_write(&host->h_rwsem);
+@@ -253,7 +262,7 @@ restart:
+ 		 */
+ 		if (signalled())
+ 			continue;
+-		if (nlmclnt_reclaim(host, fl) != 0)
++		if (nlmclnt_reclaim(host, fl, req) != 0)
+ 			continue;
+ 		list_add_tail(&fl->fl_u.nfs_fl.list, &host->h_granted);
+ 		if (host->h_nsmstate != nsmstate) {
+@@ -279,5 +288,6 @@ restart:
+ 	/* Release host handle after use */
+ 	nlmclnt_release_host(host);
+ 	lockd_down(net);
++	kfree(req);
+ 	return 0;
+ }
+diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+index 54f9e6c..b43114c 100644
+--- a/fs/lockd/clntproc.c
++++ b/fs/lockd/clntproc.c
+@@ -615,17 +615,15 @@ out_unlock:
+  * RECLAIM: Try to reclaim a lock
+  */
+ int
+-nlmclnt_reclaim(struct nlm_host *host, struct file_lock *fl)
++nlmclnt_reclaim(struct nlm_host *host, struct file_lock *fl,
++		struct nlm_rqst *req)
+ {
+-	struct nlm_rqst reqst, *req;
+ 	int		status;
+ 
+-	req = &reqst;
+ 	memset(req, 0, sizeof(*req));
+ 	locks_init_lock(&req->a_args.lock.fl);
+ 	locks_init_lock(&req->a_res.lock.fl);
+ 	req->a_host  = host;
+-	req->a_flags = 0;
+ 
+ 	/* Set up the argument struct */
+ 	nlmclnt_setlockargs(req, fl);
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index f5a051a..a395f1e 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -212,7 +212,8 @@ int		  nlmclnt_block(struct nlm_wait *block, struct nlm_rqst *req, long timeout)
+ __be32		  nlmclnt_grant(const struct sockaddr *addr,
+ 				const struct nlm_lock *lock);
+ void		  nlmclnt_recovery(struct nlm_host *);
+-int		  nlmclnt_reclaim(struct nlm_host *, struct file_lock *);
++int		  nlmclnt_reclaim(struct nlm_host *, struct file_lock *,
++				  struct nlm_rqst *);
+ void		  nlmclnt_next_cookie(struct nlm_cookie *);
+ 
+ /*
+-- 
+1.7.9.5
+
