@@ -1,118 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:13716 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754761Ab3BZCkb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Feb 2013 21:40:31 -0500
-Received: from vmwexceht02-prd.hq.netapp.com (vmwexceht02-prd.hq.netapp.com [10.106.76.240])
-	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id r1Q2eVkT005743
-	for <linux-nfs@vger.kernel.org>; Mon, 25 Feb 2013 18:40:31 -0800 (PST)
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Dros" <Weston.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4.1: Hold reference to layout hdr in layoutget
-Date: Tue, 26 Feb 2013 02:40:29 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA92869D572@sacexcmbx05-prd.hq.netapp.com>
-References: <1361845653-63782-1-git-send-email-dros@netapp.com>
-In-Reply-To: <1361845653-63782-1-git-send-email-dros@netapp.com>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:43173 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757931Ab3BNP53 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Feb 2013 10:57:29 -0500
+Content-Type: text/plain; charset=iso-8859-1
+Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
+Subject: Re: Kernels 3.7 and newer break rpc.gssd -n
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1117889154.119108.1360851840169.JavaMail.root@opinsys.fi>
+Date: Thu, 14 Feb 2013 10:57:22 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <DA37FD67-166A-4A41-9EC5-13DECE99511B@oracle.com>
+References: <127351146.98508.1360769367943.JavaMail.root@opinsys.fi> <1117889154.119108.1360851840169.JavaMail.root@opinsys.fi>
+To: Veli-Matti Lintu <veli-matti.lintu@opinsys.fi>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2013-02-25 at 21:27 -0500, Weston Andros Adamson wrote:
-> This fixes an oops where a LAYOUTGET is in still in the rpciod queue,
-> but the requesting processes has been killed.  Without this, killing
-> the process does the final pnfs_put_layout_hdr() and sets NFS_I(inode)->layout
-> to NULL while the LAYOUTGET rpc task still references it.
-> 
-> Example oops:
-> 
-> BUG: unable to handle kernel NULL pointer dereference at 0000000000000080
-> IP: [<ffffffffa01bd586>] pnfs_choose_layoutget_stateid+0x37/0xef [nfsv4]
-> PGD 7365b067 PUD 7365d067 PMD 0
-> Oops: 0000 [#1] SMP DEBUG_PAGEALLOC
-> Modules linked in: nfs_layout_nfsv41_files nfsv4 auth_rpcgss nfs lockd sunrpc ipt_MASQUERADE ip6table_mangle ip6t_REJECT nf_conntrack_ipv6 nf_defrag_ipv6 iptable_nat nf_nat_ipv4 nf_nat iptable_mangle ip6table_filter ip6_tables ppdev e1000 i2c_piix4 i2c_core shpchp parport_pc parport crc32c_intel aesni_intel xts aes_x86_64 lrw gf128mul ablk_helper cryptd mptspi scsi_transport_spi mptscsih mptbase floppy autofs4
-> CPU 0
-> Pid: 27, comm: kworker/0:1 Not tainted 3.8.0-dros_cthon2013+ #4 VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform
-> RIP: 0010:[<ffffffffa01bd586>]  [<ffffffffa01bd586>] pnfs_choose_layoutget_stateid+0x37/0xef [nfsv4]
-> RSP: 0018:ffff88007b0c1c88  EFLAGS: 00010246
-> RAX: ffff88006ed36678 RBX: 0000000000000000 RCX: 0000000ea877e3bc
-> RDX: ffff88007a729da8 RSI: 0000000000000000 RDI: ffff88007a72b958
-> RBP: ffff88007b0c1ca8 R08: 0000000000000002 R09: 0000000000000000
-> R10: 0000000000000000 R11: 0000000000000000 R12: ffff88007a72b958
-> R13: ffff88007a729da8 R14: 0000000000000000 R15: ffffffffa011077e
-> FS:  0000000000000000(0000) GS:ffff88007f600000(0000) knlGS:0000000000000000
-> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> CR2: 0000000000000080 CR3: 00000000735f8000 CR4: 00000000001407f0
-> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> Process kworker/0:1 (pid: 27, threadinfo ffff88007b0c0000, task ffff88007c2fa0c0)
-> Stack:
->  ffff88006fc05388 ffff88007a72b908 ffff88007b240900 ffff88006fc05388
->  ffff88007b0c1cd8 ffffffffa01a2170 ffff88007b240900 ffff88007b240900
->  ffff88007b240970 ffffffffa011077e ffff88007b0c1ce8 ffffffffa0110791
-> Call Trace:
->  [<ffffffffa01a2170>] nfs4_layoutget_prepare+0x7b/0x92 [nfsv4]
->  [<ffffffffa011077e>] ? __rpc_atrun+0x15/0x15 [sunrpc]
->  [<ffffffffa0110791>] rpc_prepare_task+0x13/0x15 [sunrpc]
-> 
-> Reported-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
-> Cc: stable@kernel.org
-> ---
->  fs/nfs/nfs4proc.c | 13 +++++++++++--
->  1 file changed, 11 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index eae83bf..a2de760 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -6129,12 +6129,14 @@ static struct page **nfs4_alloc_pages(size_t size, gfp_t gfp_flags)
->  static void nfs4_layoutget_release(void *calldata)
->  {
->  	struct nfs4_layoutget *lgp = calldata;
-> -	struct nfs_server *server = NFS_SERVER(lgp->args.inode);
-> +	struct inode *inode = lgp->args.inode;
-> +	struct nfs_server *server = NFS_SERVER(inode);
->  	size_t max_pages = max_response_pages(server);
->  
->  	dprintk("--> %s\n", __func__);
->  	nfs4_free_pages(lgp->args.layout.pages, max_pages);
->  	put_nfs_open_context(lgp->args.ctx);
-> +	pnfs_put_layout_hdr(NFS_I(inode)->layout);
->  	kfree(calldata);
->  	dprintk("<-- %s\n", __func__);
->  }
-> @@ -6148,7 +6150,8 @@ static const struct rpc_call_ops nfs4_layoutget_call_ops = {
->  struct pnfs_layout_segment *
->  nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
->  {
-> -	struct nfs_server *server = NFS_SERVER(lgp->args.inode);
-> +	struct inode *inode = lgp->args.inode;
-> +	struct nfs_server *server = NFS_SERVER(inode);
->  	size_t max_pages = max_response_pages(server);
->  	struct rpc_task *task;
->  	struct rpc_message msg = {
-> @@ -6178,6 +6181,12 @@ nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
->  	lgp->res.layoutp = &lgp->args.layout;
->  	lgp->res.seq_res.sr_slot = NULL;
->  	nfs41_init_sequence(&lgp->args.seq_args, &lgp->res.seq_res, 0);
-> +
-> +	spin_lock(&inode->i_lock);
-> +	/* nfs4_layoutget_release calls pnfs_put_layout_hdr */
-> +	pnfs_get_layout_hdr(NFS_I(inode)->layout);
-> +	spin_unlock(&inode->i_lock);
-> +
->  	task = rpc_run_task(&task_setup_data);
->  	if (IS_ERR(task))
->  		return ERR_CAST(task);
 
-Thanks! Added to the bugfixes and cthon2013 branch...
+On Feb 14, 2013, at 9:24 AM, Veli-Matti Lintu <veli-matti.lintu@opinsys.fi> wrote:
+
+> 
+>> I've been using kerberized nfs4 mounts without machine credentials for
+>> quite some time by running rpc.gssd with the -n option. This has
+>> resulted rpc.gssd in using ccache in /tmp/krb5cc_0 when doing the mount
+>> instead of machine credentials. This functionality seems to break when
+>> using kernel 3.7 or newer. 3.6.11 and earlier work like expected.
+>> 
+>> The use case for this is diskless workstations that do not have machine
+>> credentials stored on them as they have no secure storage medium. When a
+>> user logs in, the home directory is mounted using the user's credentials
+>> only.
+>> 
+>> Steps to reproduce the problem:
+>> 
+>> # kinit user (this creates /tmp/krb5cc_0)
+>> # rpc.gssd -f -n -vvvv
+>> # mount -t nfs4 -o sec=krb5 server.example.org:/home /mnt
+>> 
+>> The mount works when using kernel 3.6.11 or earlier and fails on 3.7-rc1
+>> or later. Testing was done on Ubuntu 12.04 and 12.10 using Ubuntu kernels
+>> and kernel.org kernels (up to 3.8-rc7) with similar results.
+>> 
+>> nfs-utils versions 1.2.5 and the latest version from git master head
+>> (git://linux-nfs.org/nfs-utils) behave the same way.
+> 
+> ...
+> 
+>> It seems like the kernel now asks rpc.gssd to fetch credentials for
+>> service '*' instead of NULL like with 3.6 and earlier.
+> 
+> I got some bisecting help from Tuomas Räsänen who managed to find the 
+> commit that introduces the change. Here's what he found. I haven't 
+> yet figured out what in the commit causes the change in behaviour. 
+> Before that patch the kernel asks rpc.gssd for service <null>, but 
+> with the patch applied, it requests for service '*' when doing the 
+> initial mount with sec=krb5.
+
+While I am trying to reproduce this, have a look at commit a56989b6 in nfs-utils 1.2.8-rc1.
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
