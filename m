@@ -1,65 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ia0-f171.google.com ([209.85.210.171]:59849 "EHLO
-	mail-ia0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754838Ab3BDUUH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2013 15:20:07 -0500
-Received: by mail-ia0-f171.google.com with SMTP id z13so8617972iaz.30
-        for <linux-nfs@vger.kernel.org>; Mon, 04 Feb 2013 12:20:07 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v3 8/9] SUNRPC: Make gss_mech_get() static
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 04 Feb 2013 15:20:06 -0500
-Message-ID: <20130204202006.1518.45889.stgit@seurat.1015granger.net>
-In-Reply-To: <20130204201458.1518.12931.stgit@seurat.1015granger.net>
-References: <20130204201458.1518.12931.stgit@seurat.1015granger.net>
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:39139 "EHLO
+	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750990Ab3BNGKG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Feb 2013 01:10:06 -0500
+Date: Thu, 14 Feb 2013 17:10:02 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Anand Avati <anand.avati@gmail.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>, sandeen@redhat.com,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        gluster-devel@nongnu.org
+Subject: Re: [Gluster-devel] regressions due to 64-bit ext4 directory cookies
+Message-ID: <20130214061002.GM26694@dastard>
+References: <20130212202841.GC10267@fieldses.org>
+ <20130213040003.GB2614@thunk.org>
+ <20130213133131.GE14195@fieldses.org>
+ <20130213151455.GB17431@thunk.org>
+ <20130213151953.GJ14195@fieldses.org>
+ <20130213153654.GC17431@thunk.org>
+ <20130213162059.GL14195@fieldses.org>
+ <CAFboF2wXvP+vttiff8iRE9rAgvV8UWGbFprgVp8p7kE43TU=PA@mail.gmail.com>
+ <20130213222052.GD5938@thunk.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130213222052.GD5938@thunk.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-gss_mech_get() is no longer used outside of gss_mech_switch.c.
+On Wed, Feb 13, 2013 at 05:20:52PM -0500, Theodore Ts'o wrote:
+> Telldir() and seekdir() are basically implementation horrors for any
+> file system that is using anything other than a simple array of
+> directory entries ala the V7 Unix file system or the BSD FFS.  For any
+> file system which is using a more advanced data structure, like
+> b-trees hash trees, etc, there **can't** possibly be a "offset" into a
+> readdir stream. 
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+I'll just point you to this:
 
- include/linux/sunrpc/gss_api.h        |    3 ---
- net/sunrpc/auth_gss/gss_mech_switch.c |    5 +----
- 2 files changed, 1 insertions(+), 7 deletions(-)
+http://marc.info/?l=linux-ext4&m=136081996316453&w=2
 
-diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
-index dc1e51b..59cfcff 100644
---- a/include/linux/sunrpc/gss_api.h
-+++ b/include/linux/sunrpc/gss_api.h
-@@ -144,9 +144,6 @@ struct gss_api_mech *gss_mech_get_by_pseudoflavor(u32);
- /* Fill in an array with a list of supported pseudoflavors */
- int gss_mech_list_pseudoflavors(rpc_authflavor_t *, int);
- 
--/* Just increments the mechanism's reference count and returns its input: */
--struct gss_api_mech * gss_mech_get(struct gss_api_mech *);
--
- /* For every successful gss_mech_get or gss_mech_get_by_* call there must be a
-  * corresponding call to gss_mech_put. */
- void gss_mech_put(struct gss_api_mech *);
-diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
-index a8d6ee5..b9f4f7b 100644
---- a/net/sunrpc/auth_gss/gss_mech_switch.c
-+++ b/net/sunrpc/auth_gss/gss_mech_switch.c
-@@ -132,15 +132,12 @@ gss_mech_unregister(struct gss_api_mech *gm)
- 
- EXPORT_SYMBOL_GPL(gss_mech_unregister);
- 
--struct gss_api_mech *
--gss_mech_get(struct gss_api_mech *gm)
-+static struct gss_api_mech *gss_mech_get(struct gss_api_mech *gm)
- {
- 	__module_get(gm->gm_owner);
- 	return gm;
- }
- 
--EXPORT_SYMBOL_GPL(gss_mech_get);
--
- struct gss_api_mech *
- _gss_mech_get_by_name(const char *name)
- {
+so you can see that XFS implements what you say can't possibly be
+done. ;)
 
+FWIW, that post only talked about the data segment. I didn't mention
+that XFS has 2 other segments in the directory file (both beyond
+EOF) for the directory data indexes. One contains the name-hash btree
+index used for name based lookups and the other contains a freespace
+index for tracking free space in the data segment.
+
+IOWs persistent, deterministic, low cost telldir/seekdir behaviour
+was a problem solved in the 1990s. :)
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
