@@ -1,84 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46807 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755886Ab3BMPQM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Feb 2013 10:16:12 -0500
-Date: Wed, 13 Feb 2013 10:16:10 -0500
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 12/15] lnfs: Do not sleep holding the inode spin lock
-Message-ID: <20130213151610.GI14195@fieldses.org>
-References: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
- <1360327163-20360-13-git-send-email-SteveD@redhat.com>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:44275 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753879Ab3BNCCC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Feb 2013 21:02:02 -0500
+Date: Thu, 14 Feb 2013 02:01:54 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Ram Pai <linuxram@us.ibm.com>
+Cc: Guo Chao <yan@linux.vnet.ibm.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [RFC PATCH 05/13] vfs: take i_mutex on renamed file
+Message-ID: <20130214020154.GA17947@ZenIV.linux.org.uk>
+References: <1346878524-10585-1-git-send-email-bfields@redhat.com>
+ <1346878524-10585-6-git-send-email-bfields@redhat.com>
+ <20120906030526.GB6679@yanx>
+ <20120906175118.GC21736@fieldses.org>
+ <20120907022705.GA20453@yanx>
+ <20120907213901.GA5927@fieldses.org>
+ <20120910024051.GA10405@yanx>
+ <20120910051037.GA2466@ram-ThinkPad-T61>
+ <20120910063724.GA6272@yanx>
+ <20120910072732.GL2387@ram-ThinkPad-T61>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1360327163-20360-13-git-send-email-SteveD@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20120910072732.GL2387@ram-ThinkPad-T61>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 08, 2013 at 07:39:20AM -0500, Steve Dickson wrote:
-> From: Dave Quigley <dpquigl@taiga.selinuxproject.org>
-> 
-> The nfs_setsecurity code can sleep while allocating memory
-> so the inode spin lock can not be held while during this call.
+On Mon, Sep 10, 2012 at 03:27:32PM +0800, Ram Pai wrote:
 
-If this is the right fix, it needs to be folded into patch 10/15, where
-the problem was introduced.
+> > This seems still conform to the statement in the manual, in a weird way 
+> > though.
+> 
+> I think the code that checks if the new dentry or the old dentry is a
+> mount point can be safely removed. It does not serve any purpose AFAICT.
 
---b.
+Yes, it does.  It's a _very_ traditional behaviour, on a lot of Unices,
+and changing it can screw all kinds of scripts.  Worse yet, screw them
+in rarely hit cases.
 
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  fs/nfs/inode.c | 10 +++++++---
->  1 file changed, 7 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> index 0d412c4..65bf9ca 100644
-> --- a/fs/nfs/inode.c
-> +++ b/fs/nfs/inode.c
-> @@ -1285,6 +1285,9 @@ int nfs_refresh_inode(struct inode *inode, struct nfs_fattr *fattr, struct nfs4_
->  	status = nfs_refresh_inode_locked(inode, fattr, label);
->  	spin_unlock(&inode->i_lock);
->  
-> +	if (label && !status)
-> +		nfs_setsecurity(inode, fattr, label);
-> +
->  	return status;
->  }
->  EXPORT_SYMBOL_GPL(nfs_refresh_inode);
-> @@ -1324,6 +1327,10 @@ int nfs_post_op_update_inode(struct inode *inode, struct nfs_fattr *fattr, struc
->  	spin_lock(&inode->i_lock);
->  	status = nfs_post_op_update_inode_locked(inode, fattr, label);
->  	spin_unlock(&inode->i_lock);
-> +	if (nfs_server_capable(inode, NFS_CAP_SECURITY_LABEL)) {
-> +		if (label && !status)
-> +			nfs_setsecurity(inode, fattr, label);
-> +	}
->  	return status;
->  }
->  EXPORT_SYMBOL_GPL(nfs_post_op_update_inode);
-> @@ -1543,9 +1550,6 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr, struct
->  				| NFS_INO_INVALID_ACL
->  				| NFS_INO_REVAL_FORCED);
->  
-> -	if (label && (server->caps & NFS_CAP_SECURITY_LABEL))
-> -		nfs_setsecurity(inode, fattr, label);
-> -
->  	if (fattr->valid & NFS_ATTR_FATTR_NLINK) {
->  		if (inode->i_nlink != fattr->nlink) {
->  			invalid |= NFS_INO_INVALID_ATTR;
-> -- 
-> 1.7.11.7
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+BTW, what do you expect to happen when the target is a mountpoint?  Suppose
+the mountpoint is a directory that happens to be empty; you are asking to
+rename another directory over it...
+
+Anyway, userland API stability considerations are sufficient to NAK any
+such change.  Sorry.
