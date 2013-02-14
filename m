@@ -1,97 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:60115 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757785Ab3BFW2J (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Feb 2013 17:28:09 -0500
-Message-ID: <5112D903.9010601@opengridcomputing.com>
-Date: Wed, 06 Feb 2013 16:28:19 -0600
-From: Steve Wise <swise@opengridcomputing.com>
+Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:26457 "EHLO
+	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751831Ab3BNFpj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Feb 2013 00:45:39 -0500
+Date: Thu, 14 Feb 2013 16:45:36 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, "Theodore Ts'o" <tytso@mit.edu>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "sandeen@redhat.com" <sandeen@redhat.com>,
+        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        "gluster-devel@nongnu.org" <gluster-devel@nongnu.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: regressions due to 64-bit ext4 directory cookies
+Message-ID: <20130214054536.GL26694@dastard>
+References: <20130212202841.GC10267@fieldses.org>
+ <20130213040003.GB2614@thunk.org>
+ <20130213133131.GE14195@fieldses.org>
+ <20130213151455.GB17431@thunk.org>
+ <20130213151953.GJ14195@fieldses.org>
+ <20130213153654.GC17431@thunk.org>
+ <20130213162059.GL14195@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA91F3D625D@sacexcmbx05-prd.hq.netapp.com>
+ <20130213213346.GQ14195@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA91F3D6BAB@sacexcmbx05-prd.hq.netapp.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Yan Burman <yanb@mellanox.com>, linux-nfs@vger.kernel.org,
-        linux-rdma@vger.kernel.org, Or Gerlitz <ogerlitz@mellanox.com>,
-        Tom Tucker <tom@opengridcomputing.com>
-Subject: Re: NFS over RDMA crashing
-References: <51127B3F.2090200@mellanox.com> <20130206222435.GL16417@fieldses.org>
-In-Reply-To: <20130206222435.GL16417@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91F3D6BAB@sacexcmbx05-prd.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2/6/2013 4:24 PM, J. Bruce Fields wrote:
-> On Wed, Feb 06, 2013 at 05:48:15PM +0200, Yan Burman wrote:
->> When killing mount command that got stuck:
->> -------------------------------------------
->>
->> BUG: unable to handle kernel paging request at ffff880324dc7ff8
->> IP: [<ffffffffa05f3dfb>] rdma_read_xdr+0x8bb/0xd40 [svcrdma]
->> PGD 1a0c063 PUD 32f82e063 PMD 32f2fd063 PTE 8000000324dc7161
->> Oops: 0003 [#1] PREEMPT SMP
->> Modules linked in: md5 ib_ipoib xprtrdma svcrdma rdma_cm ib_cm iw_cm
->> ib_addr nfsd exportfs netconsole ip6table_filter ip6_tables
->> iptable_filter ip_tables ebtable_nat nfsv3 nfs_acl ebtables x_tables
->> nfsv4 auth_rpcgss nfs lockd autofs4 sunrpc target_core_iblock
->> target_core_file target_core_pscsi target_core_mod configfs 8021q
->> bridge stp llc ipv6 dm_mirror dm_region_hash dm_log vhost_net
->> macvtap macvlan tun uinput iTCO_wdt iTCO_vendor_support kvm_intel
->> kvm crc32c_intel microcode pcspkr joydev i2c_i801 lpc_ich mfd_core
->> ehci_pci ehci_hcd sg ioatdma ixgbe mdio mlx4_ib ib_sa ib_mad ib_core
->> mlx4_en mlx4_core igb hwmon dca ptp pps_core button dm_mod ext3 jbd
->> sd_mod ata_piix libata uhci_hcd megaraid_sas scsi_mod
->> CPU 6
->> Pid: 4744, comm: nfsd Not tainted 3.8.0-rc5+ #4 Supermicro
->> X8DTH-i/6/iF/6F/X8DTH
->> RIP: 0010:[<ffffffffa05f3dfb>]  [<ffffffffa05f3dfb>]
->> rdma_read_xdr+0x8bb/0xd40 [svcrdma]
->> RSP: 0018:ffff880324c3dbf8  EFLAGS: 00010297
->> RAX: ffff880324dc8000 RBX: 0000000000000001 RCX: ffff880324dd8428
->> RDX: ffff880324dc7ff8 RSI: ffff880324dd8428 RDI: ffffffff81149618
->> RBP: ffff880324c3dd78 R08: 000060f9c0000860 R09: 0000000000000001
->> R10: ffff880324dd8000 R11: 0000000000000001 R12: ffff8806299dcb10
->> R13: 0000000000000003 R14: 0000000000000001 R15: 0000000000000010
->> FS:  0000000000000000(0000) GS:ffff88063fc00000(0000) knlGS:0000000000000000
->> CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
->> CR2: ffff880324dc7ff8 CR3: 0000000001a0b000 CR4: 00000000000007e0
->> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
->> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
->> Process nfsd (pid: 4744, threadinfo ffff880324c3c000, task ffff880330550000)
->> Stack:
->>   ffff880324c3dc78 ffff880324c3dcd8 0000000000000282 ffff880631cec000
->>   ffff880324dd8000 ffff88062ed33040 0000000124c3dc48 ffff880324dd8000
->>   ffff88062ed33058 ffff880630ce2b90 ffff8806299e8000 0000000000000003
->> Call Trace:
->>   [<ffffffffa05f466e>] svc_rdma_recvfrom+0x3ee/0xd80 [svcrdma]
->>   [<ffffffff81086540>] ? try_to_wake_up+0x2f0/0x2f0
->>   [<ffffffffa045963f>] svc_recv+0x3ef/0x4b0 [sunrpc]
->>   [<ffffffffa0571db0>] ? nfsd_svc+0x740/0x740 [nfsd]
->>   [<ffffffffa0571e5d>] nfsd+0xad/0x130 [nfsd]
->>   [<ffffffffa0571db0>] ? nfsd_svc+0x740/0x740 [nfsd]
->>   [<ffffffff81071df6>] kthread+0xd6/0xe0
->>   [<ffffffff81071d20>] ? __init_kthread_worker+0x70/0x70
->>   [<ffffffff814b462c>] ret_from_fork+0x7c/0xb0
->>   [<ffffffff81071d20>] ? __init_kthread_worker+0x70/0x70
->> Code: 63 c2 49 8d 8c c2 18 02 00 00 48 39 ce 77 e1 49 8b 82 40 0a 00
->> 00 48 39 c6 0f 84 92 f7 ff ff 90 48 8d 50 f8 49 89 92 40 0a 00 00
->> <48> c7 40 f8 00 00 00 00 49 8b 82 40 0a 00 00 49 3b 82 30 0a 00
->> RIP  [<ffffffffa05f3dfb>] rdma_read_xdr+0x8bb/0xd40 [svcrdma]
->>   RSP <ffff880324c3dbf8>
->> CR2: ffff880324dc7ff8
->> ---[ end trace 06d0384754e9609a ]---
->>
->>
->> It seems that commit afc59400d6c65bad66d4ad0b2daf879cbff8e23e
->> "nfsd4: cleanup: replace rq_resused count by rq_next_page pointer"
->> is responsible for the crash (it seems to be crashing in
->> net/sunrpc/xprtrdma/svc_rdma_recvfrom.c:527)
->> It may be because I have CONFIG_DEBUG_SET_MODULE_RONX and
->> CONFIG_DEBUG_RODATA enabled. I did not try to disable them yet.
->>
->> When I moved to commit 79f77bf9a4e3dd5ead006b8f17e7c4ff07d8374e I
->> was no longer getting the server crashes,
->> so the reset of my tests were done using that point (it is somewhere
->> in the middle of 3.7.0-rc2).
-> OK, so this part's clearly my fault--I'll work on a patch, but the
-> rdma's use of the ->rq_pages array is pretty confusing.
+On Thu, Feb 14, 2013 at 03:59:17AM +0000, Myklebust, Trond wrote:
+> > -----Original Message-----
+> > From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> > Sent: Wednesday, February 13, 2013 4:34 PM
+> > To: Myklebust, Trond
+> > Cc: Theodore Ts'o; linux-ext4@vger.kernel.org; sandeen@redhat.com;
+> > Bernd Schubert; gluster-devel@nongnu.org; linux-nfs@vger.kernel.org
+> > Subject: Re: regressions due to 64-bit ext4 directory cookies
+> > 
+> > On Wed, Feb 13, 2013 at 04:43:05PM +0000, Myklebust, Trond wrote:
+> > > On Wed, 2013-02-13 at 11:20 -0500, J. Bruce Fields wrote:
+> > > > Oops, probably should have cc'd linux-nfs.
+> > > >
+> > > > On Wed, Feb 13, 2013 at 10:36:54AM -0500, Theodore Ts'o wrote:
+> > > > > The other thing that I'd note is that the readdir cookie has been
+> > > > > 64-bit since NFSv3, which was released in June ***1995***.  And
+> > > > > the explicit, stated purpose of making it be a 64-bit value (as
+> > > > > stated in RFC 1813) was to reduce interoperability problems.  If
+> > > > > that were the case, are you telling me that Sun (who has
+> > > > > traditionally been pretty good worrying about interoperability
+> > > > > concerns, and in fact employed the editors of RFC 1813) didn't get
+> > > > > this right?  This seems quite.... surprising to me.
+> > > > >
+> > > > > I thought this was the whole point of the various NFS
+> > > > > interoperability testing done at Connectathon, for which Sun was a
+> > > > > major sponsor?!?  No one noticed?!?
+> > > >
+> > > > Beats me.  But it's not necessarily easy to replace clients running
+> > > > legacy applications, so we're stuck working with the clients we have....
+> > > >
+> > > > The linux client does remap the server-provided cookies to small
+> > > > integers, I believe exactly because older applications had trouble
+> > > > with servers returning "large" cookies.  So presumably
+> > > > ext4-exporting-Linux servers aren't the first to do this.
+> > > >
+> > > > I don't know which client versions are affected--Connectathon's next
+> > > > week and I'll talk to people and make sure there's an ext4 export
+> > > > with this turned on to test against.
+> > >
+> > > Actually, one of the main reasons for the Linux client not exporting
+> > > raw readdir cookies is because the glibc-2 folks in their infinite
+> > > wisdom declared that telldir()/seekdir() use an off_t. They then went
+> > > yet one further and decided to declare negative offsets to be illegal
+> > > so that they could use the negative values internally in their syscall
+> > wrappers.
+> > >
+> > > The POSIX definition has none of the above rubbish
+> > > (http://pubs.opengroup.org/onlinepubs/009695399/functions/telldir.html
+> > > ) and so glibc brilliantly saddled Linux with a crippled readdir
+> > > implementation that is _not_ POSIX compatible.
+> > >
+> > > No, I'm not at all bitter...
+> > 
+> > Oh, right, I knew I'd forgotten part of the story....
+> > 
+> > But then you must have actually been testing against servers that were using
+> > that 32nd bit?
+> > 
+> > I think ext4 actually only uses 31 bits even in the 32-bit case.  And for a server
+> > that was literally using an offset inside a directory file, that would be a
+> > colossal directory.
 
-Maybe Tom can shed some light?
+That's exactly what XFS directory cookies are - a direct encoding of
+the dirent offset into the directory file. Which means a overflow
+would occur at 16GB of directory data for XFS. That is in the realm
+of several hundreds of millions of files in a single directory,
+which I have seen done before....
 
+> > So I'm wondering how you ran across it.
+> > 
+> > Partly just pure curiosity.
+> 
+> IIRC, XFS on IRIX used 0xFFFFF as the readdir eof marker, which caused us to generate an EIO...
+
+And this discussion explains the magic 0x7fffffff offset mask in the
+linux XFS readdir code. I've been trying to find out for years
+exactly why that was necessary, and now I know.
+
+I probably should write a patch that makes it a "non-magic" number
+and remove it completely for 64 bit platforms before I forget again...
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
