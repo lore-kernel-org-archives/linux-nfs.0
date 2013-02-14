@@ -1,108 +1,158 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:58710 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757066Ab3BVPiD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Feb 2013 10:38:03 -0500
-Date: Fri, 22 Feb 2013 10:38:01 -0500
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, Steve Dickson <steved@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] NFSDv4.2: Added NFS v4.2 support to the NFS server
-Message-ID: <20130222153801.GD20588@fieldses.org>
-References: <1361484911-17537-1-git-send-email-steved@redhat.com>
- <1361484911-17537-3-git-send-email-steved@redhat.com>
- <20130222152548.GB10157@pad.fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9235DBFBA@SACEXCMBX04-PRD.hq.netapp.com>
+Received: from ax13.adsl.tnnet.fi ([217.112.254.13]:60215 "EHLO
+	mail.opinsys.fi" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S933950Ab3BNO1o convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Feb 2013 09:27:44 -0500
+Received: from localhost (localhost [127.0.0.1])
+	by mail.opinsys.fi (Postfix) with ESMTP id D817D281F16
+	for <linux-nfs@vger.kernel.org>; Thu, 14 Feb 2013 14:24:01 +0000 (UTC)
+Received: from mail.opinsys.fi ([127.0.0.1])
+	by localhost (mail.opinsys.fi [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id hg5bnGkaohgg for <linux-nfs@vger.kernel.org>;
+	Thu, 14 Feb 2013 14:24:01 +0000 (UTC)
+Received: from localhost (localhost [127.0.0.1])
+	by mail.opinsys.fi (Postfix) with ESMTP id 217FD281F11
+	for <linux-nfs@vger.kernel.org>; Thu, 14 Feb 2013 14:24:01 +0000 (UTC)
+Received: from mail.opinsys.fi ([127.0.0.1])
+	by localhost (mail.opinsys.fi [127.0.0.1]) (amavisd-new, port 10026)
+	with ESMTP id 4v3omtVzpVTH for <linux-nfs@vger.kernel.org>;
+	Thu, 14 Feb 2013 14:24:00 +0000 (UTC)
+Received: from mail.opinsys.fi (mail.opinsys.fi [10.246.133.21])
+	by mail.opinsys.fi (Postfix) with ESMTP id 6EDE4281F16
+	for <linux-nfs@vger.kernel.org>; Thu, 14 Feb 2013 14:24:00 +0000 (UTC)
+Date: Thu, 14 Feb 2013 14:24:00 +0000 (UTC)
+From: Veli-Matti Lintu <veli-matti.lintu@opinsys.fi>
+To: linux-nfs@vger.kernel.org
+Message-ID: <1117889154.119108.1360851840169.JavaMail.root@opinsys.fi>
+In-Reply-To: <127351146.98508.1360769367943.JavaMail.root@opinsys.fi>
+References: <127351146.98508.1360769367943.JavaMail.root@opinsys.fi>
+Subject: Re: Kernels 3.7 and newer break rpc.gssd -n
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9235DBFBA@SACEXCMBX04-PRD.hq.netapp.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 22, 2013 at 03:30:08PM +0000, Myklebust, Trond wrote:
-> On Fri, 2013-02-22 at 10:26 -0500, J. Bruce Fields wrote:
-> > On Thu, Feb 21, 2013 at 05:15:11PM -0500, Steve Dickson wrote:
-> > > This enable NFSv4.2 support for the server. To enable this
-> > > code do the following:
-> > >   echo "+4.2" >/proc/fs/nfsd/versions
-> > > 
-> > > after the nfsd kernel module is loaded.
-> > > 
-> > > Signed-off-by: Steve Dickson <steved@redhat.com>
-> > > ---
-> > >  fs/nfsd/nfs4xdr.c | 1 +
-> > >  fs/nfsd/nfsd.h    | 2 +-
-> > >  2 files changed, 2 insertions(+), 1 deletion(-)
-> > > 
-> > > diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> > > index d2ae8db..86be853 100644
-> > > --- a/fs/nfsd/nfs4xdr.c
-> > > +++ b/fs/nfsd/nfs4xdr.c
-> > > @@ -1621,6 +1621,7 @@ struct nfsd4_minorversion_ops {
-> > >  static struct nfsd4_minorversion_ops nfsd4_minorversion[] = {
-> > >  	[0] = { nfsd4_dec_ops, ARRAY_SIZE(nfsd4_dec_ops) },
-> > >  	[1] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
-> > > +	[2] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
-> > >  };
-> > >  
-> > >  static __be32
-> > > diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-> > > index 26a457b..0e3ccd1 100644
-> > > --- a/fs/nfsd/nfsd.h
-> > > +++ b/fs/nfsd/nfsd.h
-> > > @@ -24,7 +24,7 @@
-> > >  /*
-> > >   * nfsd version
-> > >   */
-> > > -#define NFSD_SUPPORTED_MINOR_VERSION	1
-> > > +#define NFSD_SUPPORTED_MINOR_VERSION	2
-> > >  /*
-> > >   * Maximum blocksizes supported by daemon under various circumstances.
-> > >   */
-> > 
-> > Looks OK to me, except this should be behind a config for now.
-> > 
-> > On a grep for "minorversion" I notice two oversights, below: one just a
-> > comment, one might result in getting the wrong minorversion on
-> > callbacks.
-> > 
-> > --b.
-> > 
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index 503e15e..b86cf07 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -1665,7 +1665,7 @@ out_new:
-> >  		status = nfserr_jukebox;
-> >  		goto out;
-> >  	}
-> > -	new->cl_minorversion = 1;
-> > +	new->cl_minorversion = cstate->minorversion;
-> >  
-> >  	gen_clid(new);
-> >  	add_to_unconfirmed(new, strhashval);
-> > diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-> > index e036894..28d41ef 100644
-> > --- a/fs/nfsd/state.h
-> > +++ b/fs/nfsd/state.h
-> > @@ -108,7 +108,7 @@ struct nfs4_cb_conn {
-> >  	u32                     cb_prog; /* used only in 4.0 case;
-> >  					    per-session otherwise */
-> >  	u32                     cb_ident;	/* minorversion 0 only */
-> > -	struct svc_xprt		*cb_xprt;	/* minorversion 1 only */
-> > +	struct svc_xprt		*cb_xprt;	/* minorversion >=1 only */
+
+> I've been using kerberized nfs4 mounts without machine credentials for
+> quite some time by running rpc.gssd with the -n option. This has
+> resulted rpc.gssd in using ccache in /tmp/krb5cc_0 when doing the mount
+> instead of machine credentials. This functionality seems to break when
+> using kernel 3.7 or newer. 3.6.11 and earlier work like expected.
 > 
-> Tagging things as being particlar to a give minorversion means that
-> we'll never stop having to change the comments.
+> The use case for this is diskless workstations that do not have machine
+> credentials stored on them as they have no secure storage medium. When a
+> user logs in, the home directory is mounted using the user's credentials
+> only.
+> 
+> Steps to reproduce the problem:
+> 
+> # kinit user (this creates /tmp/krb5cc_0)
+> # rpc.gssd -f -n -vvvv
+> # mount -t nfs4 -o sec=krb5 server.example.org:/home /mnt
+> 
+> The mount works when using kernel 3.6.11 or earlier and fails on 3.7-rc1
+> or later. Testing was done on Ubuntu 12.04 and 12.10 using Ubuntu kernels
+> and kernel.org kernels (up to 3.8-rc7) with similar results.
+> 
+> nfs-utils versions 1.2.5 and the latest version from git master head
+> (git://linux-nfs.org/nfs-utils) behave the same way.
 
-I don't see how "minorversion >=1 only" is likely to become untrue.  Are
-we really expecting to remove the session back channel in a future minor
-version?
+...
 
-> Why not just label it as being the session back channel?
+> It seems like the kernel now asks rpc.gssd to fetch credentials for
+> service '*' instead of NULL like with 3.6 and earlier.
 
-I don't really care.  Happy to take alternate text if you want to
-suggest something.
+I got some bisecting help from Tuomas Räsänen who managed to find the 
+commit that introduces the change. Here's what he found. I haven't 
+yet figured out what in the commit causes the change in behaviour. 
+Before that patch the kernel asks rpc.gssd for service <null>, but 
+with the patch applied, it requests for service '*' when doing the 
+initial mount with sec=krb5.
 
---b.
+Veli-Matti
+
+--------------------------------------------------------------
+
+I bisected between v3.6 (good) and v3.7-rc1 (bad) and it seems
+that the first commit which introduces the change Veli-Matti
+described in his mail is:
+
+  commit 05f4c350ee02e9461c6ae3a880ea326a06835e37
+  Author: Chuck Lever <chuck.lever@oracle.com>
+  Date:   Fri Sep 14 17:24:32 2012 -0400
+  
+      NFS: Discover NFSv4 server trunking when mounting
+
+That very same commit introduces also a compilation error, which is
+fixed in the merge commit a bit later in the tree
+(9f62387d6e26532bcbfb15606956074192ee526a). Therefore the bisect log
+below results in multiple skips. I picked the patch from
+9f62387d6e26532bcbfb15606956074192ee526a and applied it to
+05f4c350ee02e9461c6ae3a880ea326a06835e37, and then bisected the rest.
+
+git bisect start
+# bad: [ddffeb8c4d0331609ef2581d84de4d763607bd37] Linux 3.7-rc1
+git bisect bad ddffeb8c4d0331609ef2581d84de4d763607bd37
+# good: [a0d271cbfed1dd50278c6b06bead3d00ba0a88f9] Linux 3.6
+git bisect good a0d271cbfed1dd50278c6b06bead3d00ba0a88f9
+# good: [24d7b40a60cf19008334bcbcbd98da374d4d9c64] ARM: OMAP2+: PM: MPU DVFS: use generic CPU device for MPU-SS
+git bisect good 24d7b40a60cf19008334bcbcbd98da374d4d9c64
+# good: [21c8715f0a1f4df8bfa2bd6f3915e5e33c1c2e6e] ARM: integrator: use __iomem pointers for MMIO, part 2
+git bisect good 21c8715f0a1f4df8bfa2bd6f3915e5e33c1c2e6e
+# good: [23d5385f382a7c7d8b6bf19b0c2cfb3acbb12d31] Merge git://git.kernel.org/pub/scm/linux/kernel/git/davem/sparc
+git bisect good 23d5385f382a7c7d8b6bf19b0c2cfb3acbb12d31
+# bad: [35e9a274fdc9c8feb763e4970a32d7089f51393c] Merge branch 'kconfig' of git://git.kernel.org/pub/scm/linux/kernel/git/mmarek/kbuild
+git bisect bad 35e9a274fdc9c8feb763e4970a32d7089f51393c
+# bad: [ba0a5a36f60e4c1152af3a2ae2813251974405bf] Merge tag 'firewire-fix' of git://git.kernel.org/pub/scm/linux/kernel/git/ieee1394/linux1394
+git bisect bad ba0a5a36f60e4c1152af3a2ae2813251974405bf
+# good: [a188e7e93a36627fb3f0013f41857ab54f076d04] Merge branch 'for-next' of git://git.kernel.org/pub/scm/linux/kernel/git/nab/target-pending
+git bisect good a188e7e93a36627fb3f0013f41857ab54f076d04
+# bad: [ca57ccc48f6a9a3ec655f87acebab82bf01088e7] nfs: include NFSv4 header in netns.h
+git bisect bad ca57ccc48f6a9a3ec655f87acebab82bf01088e7
+# skip: [fcb6d9c6b719b633e9b98d26d8a7937209e8bf21] NFS: Always use the open stateid when checking for expired opens
+git bisect skip fcb6d9c6b719b633e9b98d26d8a7937209e8bf21
+# skip: [78e4e05c643768af170e5a4b21712d9a7a26cce5] NFSv4.1: Replace get_device_info() with filelayout_get_device_info()
+git bisect skip 78e4e05c643768af170e5a4b21712d9a7a26cce5
+# skip: [c8ceb4124b53a439edfe3fe89a646be1e067ef17] NFS: pass net to nfs_callback_down()
+git bisect skip c8ceb4124b53a439edfe3fe89a646be1e067ef17
+# skip: [e984a55a7418f777407c7edbb2bdf5eb9559b5e2] NFS: Use the same nfs_client_id4 for every server
+git bisect skip e984a55a7418f777407c7edbb2bdf5eb9559b5e2
+# skip: [65857d5768f7716da539933c2075d384b117812d] NFSv4.1: _pnfs_return_layout() shouldn't invalidate the layout on failure
+git bisect skip 65857d5768f7716da539933c2075d384b117812d
+# good: [896526174ce2b6a773e187ebe5a047b68230e2c4] NFS: Introduce "migration" mount option
+git bisect good 896526174ce2b6a773e187ebe5a047b68230e2c4
+# skip: [4e266229dbb0782d91b75633322edd632794b86d] pnfsblock: use list_move_tail instead of list_del/list_add_tail
+git bisect skip 4e266229dbb0782d91b75633322edd632794b86d
+# skip: [758201e2c94b7d26ea0ac64e55cab1d53742780a] NFSv4: Fix the minor version callback channel startup
+git bisect skip 758201e2c94b7d26ea0ac64e55cab1d53742780a
+# skip: [7297cb682acb506ada2e01fbc9b447b04d69936c] nfs: replace strict_strto* with kstrto*
+git bisect skip 7297cb682acb506ada2e01fbc9b447b04d69936c
+# skip: [6f2ea7f2a3ff3cd342bface43f8b4bf5e431cf36] NFS: Add nfs4_unique_id boot parameter
+git bisect skip 6f2ea7f2a3ff3cd342bface43f8b4bf5e431cf36
+# skip: [96c9eae638765c2bf2ca4f5a6325484f9bb69aa7] pnfsblock: fix non-aligned DIO write
+git bisect skip 96c9eae638765c2bf2ca4f5a6325484f9bb69aa7
+# good: [0cac120233305b614cfe3ad419f3655876066017] NFSv4: Ensure that idmap_pipe_downcall sanity-checks the downcall data
+git bisect good 0cac120233305b614cfe3ad419f3655876066017
+# skip: [f742dc4a32587bff50b13dde9d8894b96851951a] pnfsblock: fix non-aligned DIO read
+git bisect skip f742dc4a32587bff50b13dde9d8894b96851951a
+# skip: [7acdb026818455638543b04b68d4a580c367fba8] NFSv41: fix DIO write_io calculation
+git bisect skip 7acdb026818455638543b04b68d4a580c367fba8
+# skip: [ee34e13620d0678d420ce50101aaef94ab81fc74] NFS: Remove unnecessary semicolons (fs/nfs/client.c)
+git bisect skip ee34e13620d0678d420ce50101aaef94ab81fc74
+# skip: [dc182549d439f60c332bf74d7f220a1bccf37da6] NFS41: fix error of setting blocklayoutdriver
+git bisect skip dc182549d439f60c332bf74d7f220a1bccf37da6
+# skip: [fe6e1e8d9fad86873eb74a26e80a8f91f9e870b5] pnfsblock: fix partial page buffer wirte
+git bisect skip fe6e1e8d9fad86873eb74a26e80a8f91f9e870b5
+# skip: [05f4c350ee02e9461c6ae3a880ea326a06835e37] NFS: Discover NFSv4 server trunking when mounting
+git bisect skip 05f4c350ee02e9461c6ae3a880ea326a06835e37
+# skip: [5d0e3a004f02bffab51f542fa1d5b2e2854d8545] Revert "pnfsblock: bail out partial page IO"
+git bisect skip 5d0e3a004f02bffab51f542fa1d5b2e2854d8545
+# bad: [9f62387d6e26532bcbfb15606956074192ee526a] NFSv4: Fix up a merge conflict between migration and container changes
+git bisect bad 9f62387d6e26532bcbfb15606956074192ee526a
+# skip: [2afdfa5a846246de50e1881f71ba5c0aac0b415f] Merge branch 'bugfixes' into nfs-for-next
+git bisect skip 2afdfa5a846246de50e1881f71ba5c0aac0b415f
+
+-- 
+Tuomas
+
+--------------------------------------------------------------
