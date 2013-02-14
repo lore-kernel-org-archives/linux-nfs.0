@@ -1,101 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:50037 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750868Ab3BMFQc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Feb 2013 00:16:32 -0500
-Message-ID: <511B2190.2050006@parallels.com>
-Date: Wed, 13 Feb 2013 09:16:00 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: Peter Staubach <pstaubach@exagrid.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "devel@openvz.org" <devel@openvz.org>
-Subject: Re: [PATCH 0/2] NFSD: fix races in service per-net resources allocation
-References: <20130201111046.24066.72836.stgit@localhost.localdomain> <20130211002558.GD10161@fieldses.org> <51188D2A.4070605@parallels.com> <20130211163715.GA19342@fieldses.org> <20130211205845.GE30117@fieldses.org> <511A10E0.1000604@parallels.com> <20130212204533.GD10267@fieldses.org> <FA8A9A935BFD3A4D8F0CDA1C4F611BCC0C5DF98826@IT-1874.Isys.com>
-In-Reply-To: <FA8A9A935BFD3A4D8F0CDA1C4F611BCC0C5DF98826@IT-1874.Isys.com>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Received: from mx1.redhat.com ([209.132.183.28]:36994 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758115Ab3BNPTl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 14 Feb 2013 10:19:41 -0500
+Date: Thu, 14 Feb 2013 10:19:37 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Tim Gardner <tim.gardner@canonical.com>
+Cc: linux-kernel@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH linux-next] lockd: nlmclnt_reclaim(): avoid stack
+ overflow
+Message-ID: <20130214101937.1bbc1b61@tlielax.poochiereds.net>
+In-Reply-To: <1360697595-62460-1-git-send-email-tim.gardner@canonical.com>
+References: <1360697595-62460-1-git-send-email-tim.gardner@canonical.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-13.02.2013 01:18, Peter Staubach пишет:
-> The "+" thing seems a little odd.  Why not use "||" instead?  The sum of the two returns isn't really the important thing, is it?  It is that either call to svc_close_list() returns non-zero.
->
-> 	Thanx...
->
+On Tue, 12 Feb 2013 12:33:15 -0700
+Tim Gardner <tim.gardner@canonical.com> wrote:
 
-Yep, thanks for the notice.
+> Even though nlmclnt_reclaim() is only one call into the stack frame,
+> 928 bytes on the stack seems like a lot. Recode to dynamically
+> allocate the request structure once from within the reclaimer task,
+> then pass this pointer into nlmclnt_reclaim() for reuse on
+> subsequent calls.
+> 
+> smatch analysis:
+> 
+> fs/lockd/clntproc.c:620 nlmclnt_reclaim() warn: 'reqst' puts
+>  928 bytes on stack
+> 
+> Also remove redundant assignment of 0 after memset.
+> 
+> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Cc: "J. Bruce Fields" <bfields@fieldses.org>
+> Cc: linux-nfs@vger.kernel.org
+> Signed-off-by: Tim Gardner <tim.gardner@canonical.com>
+> ---
+>  fs/lockd/clntlock.c         |    8 +++++++-
+>  fs/lockd/clntproc.c         |    6 ++----
+>  include/linux/lockd/lockd.h |    3 ++-
+>  3 files changed, 11 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
+> index 4885b53..5dd23ef 100644
+> --- a/fs/lockd/clntlock.c
+> +++ b/fs/lockd/clntlock.c
+> @@ -220,10 +220,15 @@ reclaimer(void *ptr)
+>  {
+>  	struct nlm_host	  *host = (struct nlm_host *) ptr;
+>  	struct nlm_wait	  *block;
+> +	struct nlm_rqst   *req;
+>  	struct file_lock *fl, *next;
+>  	u32 nsmstate;
+>  	struct net *net = host->net;
+>  
+> +	req = kmalloc(sizeof(*req), GFP_KERNEL);
+> +	if (!req)
+> +		return -ENOMEM;
+> +
 
-> 		ps
->
->
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of J. Bruce Fields
-> Sent: Tuesday, February 12, 2013 3:46 PM
-> To: Stanislav Kinsbursky
-> Cc: akpm@linux-foundation.org; linux-nfs@vger.kernel.org; Trond.Myklebust@netapp.com; linux-kernel@vger.kernel.org; devel@openvz.org
-> Subject: Re: [PATCH 0/2] NFSD: fix races in service per-net resources allocation
->
-> On Tue, Feb 12, 2013 at 01:52:32PM +0400, Stanislav Kinsbursky wrote:
->> 12.02.2013 00:58, J. Bruce Fields пишет:
->> <snip>
->>>   void svc_close_net(struct svc_serv *serv, struct net *net)
->>>   {
->>> -	svc_close_list(serv, &serv->sv_tempsocks, net);
->>> -	svc_close_list(serv, &serv->sv_permsocks, net);
->>> -
->>> -	svc_clear_pools(serv, net);
->>> -	/*
->>> -	 * At this point the sp_sockets lists will stay empty, since
->>> -	 * svc_xprt_enqueue will not add new entries without taking the
->>> -	 * sp_lock and checking XPT_BUSY.
->>> -	 */
->>> -	svc_clear_list(serv, &serv->sv_tempsocks, net);
->>> -	svc_clear_list(serv, &serv->sv_permsocks, net);
->>> +	int closed;
->>> +	int delay = 0;
->>> +
->>> +again:
->>> +	closed = svc_close_list(serv, &serv->sv_permsocks, net);
->>> +	closed += svc_close_list(serv, &serv->sv_tempsocks, net);
->>> +	if (closed) {
->>> +		svc_clean_up_xprts(serv, net);
->>> +		msleep(delay++);
->>> +		goto again;
->>> +	}
->>
->> Frankly, this hunk above makes me feel sick... :( But I have no better
->> idea right now...
->> Maybe make this hunk a bit less weird (this is from my POW only, of course), like this:
->>
->>> +	while (svc_close_list(serv, &serv->sv_permsocks, net) +
->>> +	       svc_close_list(serv, &serv->sv_tempsocks, net)) {
->>> +		svc_clean_up_xprts(serv, net);
->>> +		msleep(delay++);
->>> +	}
->>
->> ?
->
-> OK, that's a little more compact at least.
->
-> --b.
->
->>
->> Anyway, thanks!
->>
->> Acked-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
->>
->> --
->> Best regards,
->> Stanislav Kinsbursky
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of a message to majordomo@vger.kernel.org More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+The basic idea here seems sound, but if this allocation fails then the
+user will have no indication that lock reclaim didn't work. Might it
+make sense to emit a printk like the one in nlmclnt_recovery() in this
+case?
 
-
--- 
-Best regards,
-Stanislav Kinsbursky
+>  	allow_signal(SIGKILL);
+>  
+>  	down_write(&host->h_rwsem);
+> @@ -253,7 +258,7 @@ restart:
+>  		 */
+>  		if (signalled())
+>  			continue;
+> -		if (nlmclnt_reclaim(host, fl) != 0)
+> +		if (nlmclnt_reclaim(host, fl, req) != 0)
+>  			continue;
+>  		list_add_tail(&fl->fl_u.nfs_fl.list, &host->h_granted);
+>  		if (host->h_nsmstate != nsmstate) {
+> @@ -279,5 +284,6 @@ restart:
+>  	/* Release host handle after use */
+>  	nlmclnt_release_host(host);
+>  	lockd_down(net);
+> +	kfree(req);
+>  	return 0;
+>  }
+> diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+> index 54f9e6c..b43114c 100644
+> --- a/fs/lockd/clntproc.c
+> +++ b/fs/lockd/clntproc.c
+> @@ -615,17 +615,15 @@ out_unlock:
+>   * RECLAIM: Try to reclaim a lock
+>   */
+>  int
+> -nlmclnt_reclaim(struct nlm_host *host, struct file_lock *fl)
+> +nlmclnt_reclaim(struct nlm_host *host, struct file_lock *fl,
+> +		struct nlm_rqst *req)
+>  {
+> -	struct nlm_rqst reqst, *req;
+>  	int		status;
+>  
+> -	req = &reqst;
+>  	memset(req, 0, sizeof(*req));
+>  	locks_init_lock(&req->a_args.lock.fl);
+>  	locks_init_lock(&req->a_res.lock.fl);
+>  	req->a_host  = host;
+> -	req->a_flags = 0;
+>  
+>  	/* Set up the argument struct */
+>  	nlmclnt_setlockargs(req, fl);
+> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+> index f5a051a..a395f1e 100644
+> --- a/include/linux/lockd/lockd.h
+> +++ b/include/linux/lockd/lockd.h
+> @@ -212,7 +212,8 @@ int		  nlmclnt_block(struct nlm_wait *block, struct nlm_rqst *req, long timeout)
+>  __be32		  nlmclnt_grant(const struct sockaddr *addr,
+>  				const struct nlm_lock *lock);
+>  void		  nlmclnt_recovery(struct nlm_host *);
+> -int		  nlmclnt_reclaim(struct nlm_host *, struct file_lock *);
+> +int		  nlmclnt_reclaim(struct nlm_host *, struct file_lock *,
+> +				  struct nlm_rqst *);
+>  void		  nlmclnt_next_cookie(struct nlm_cookie *);
+>  
+>  /*
