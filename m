@@ -1,119 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:47504 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756799Ab3BSALG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Feb 2013 19:11:06 -0500
-Content-Type: text/plain; charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
-Subject: Re: Kernels 3.7 and newer break rpc.gssd -n
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9235D18B2@SACEXCMBX04-PRD.hq.netapp.com>
-Date: Mon, 18 Feb 2013 19:10:54 -0500
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+Received: from mx12.netapp.com ([216.240.18.77]:22140 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752982Ab3BND7U convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Feb 2013 22:59:20 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "Theodore Ts'o" <tytso@mit.edu>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "sandeen@redhat.com" <sandeen@redhat.com>,
+        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
+        "gluster-devel@nongnu.org" <gluster-devel@nongnu.org>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <14355BBE-3126-4F26-A419-6B6434416A8A@oracle.com>
-References: <127351146.98508.1360769367943.JavaMail.root@opinsys.fi> <73594034-4F9D-4DA6-A979-1E2745BCDF05@oracle.com> <CFDAB21B-48E2-4567-A579-DEB6BC77890F@oracle.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9235D18B2@SACEXCMBX04-PRD.hq.netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Subject: RE: regressions due to 64-bit ext4 directory cookies
+Date: Thu, 14 Feb 2013 03:59:17 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91F3D6BAB@sacexcmbx05-prd.hq.netapp.com>
+References: <20130212202841.GC10267@fieldses.org>
+ <20130213040003.GB2614@thunk.org> <20130213133131.GE14195@fieldses.org>
+ <20130213151455.GB17431@thunk.org> <20130213151953.GJ14195@fieldses.org>
+ <20130213153654.GC17431@thunk.org> <20130213162059.GL14195@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA91F3D625D@sacexcmbx05-prd.hq.netapp.com>
+ <20130213213346.GQ14195@fieldses.org>
+In-Reply-To: <20130213213346.GQ14195@fieldses.org>
+Content-Type: text/plain; charset="Windows-1252"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Feb 18, 2013, at 6:14 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-
-> On Mon, 2013-02-18 at 17:48 -0500, Chuck Lever wrote:
->> On Feb 18, 2013, at 4:16 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->> 
->>> 
->>> On Feb 13, 2013, at 10:29 AM, Veli-Matti Lintu <veli-matti.lintu@opinsys.fi> wrote:
->>> 
->>>> I've been using kerberized nfs4 mounts without machine credentials for 
->>>> quite some time by running rpc.gssd with the -n option. This has 
->>>> resulted rpc.gssd in using ccache in /tmp/krb5cc_0 when doing the mount 
->>>> instead of machine credentials. This functionality seems to break when 
->>>> using kernel 3.7 or newer. 3.6.11 and earlier work like expected.
->>>> 
->>>> The use case for this is diskless workstations that do not have machine 
->>>> credentials stored on them as they have no secure storage medium. When a 
->>>> user logs in, the home directory is mounted using the user's credentials 
->>>> only.
->>>> 
->>>> Steps to reproduce the problem:
->>>> 
->>>> # kinit user (this creates /tmp/krb5cc_0)
->>>> # rpc.gssd -f -n -vvvv
->>>> # mount -t nfs4 -o sec=krb5 server.example.org:/home /mnt
->>>> 
->>>> The mount works when using kernel 3.6.11 or earlier and fails on 3.7-rc1 
->>>> or later. Testing was done on Ubuntu 12.04 and 12.10 using Ubuntu kernels
->>>> and kernel.org kernels (up to 3.8-rc7) with similar results.
->>>> 
->>>> nfs-utils versions 1.2.5 and the latest version from git master head 
->>>> (git://linux-nfs.org/nfs-utils) behave the same way.
->>> 
->>> Reproduced.  Not clear yet if this is a kernel regression or a latent gssd bug.
->> 
->> With pre-3.7 kernels, kernel upcalls with "service=<null>" because the first operation is a LOOKUP_ROOT, and a machine credential is not needed.  With 3.7, kernel is upcalling to get a context to perform SETCLIENTID, and it's specifying "service='*'" as a way to get machine credentials.
->> 
->> In the case where there is no keytab and rpc.gssd is invoked with "-n", gssd is trying to use /etc/krb5.keytab anyway, and failing.
->> 
->> "man rpc.gssd" says this about "-n":
->> 
->>> By default, rpc.gssd treats accesses by the user with UID 0  specially,
->>> and  uses  "machine  credentials"  for  all accesses by that user which
->>> require Kerberos authentication.  With the -n option, "machine  creden‐
->>> tials"  will  not  be used for accesses by UID 0.  Instead, credentials
->>> must be obtained manually like all other users.   Use  of  this  option
->>> means  that  "root"  must  manually  obtain Kerberos credentials before
->>> attempting to mount an nfs filesystem  requiring  Kerberos  authentica‐
->>> tion.
->> 
->> It seems to me that if the kernel asks for "service='*'" and gssd was invoked with "-n", gssd should retrieve the manually-obtained Kerberos credentials in that case.
+> -----Original Message-----
+> From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> Sent: Wednesday, February 13, 2013 4:34 PM
+> To: Myklebust, Trond
+> Cc: Theodore Ts'o; linux-ext4@vger.kernel.org; sandeen@redhat.com;
+> Bernd Schubert; gluster-devel@nongnu.org; linux-nfs@vger.kernel.org
+> Subject: Re: regressions due to 64-bit ext4 directory cookies
 > 
-> Why? That is not what the documentation above says. As I read it, the
-> documentation states that accesses by uid _0_ will no longer use machine
-> creds. It says nothing about accesses that actually request the use of
-> machine creds, such as NFSv4 state ownership...
-
-True, it doesn't, and the use of passive voice makes it easy for a reader to conflate the use of machine cred and UID 0.  But this:
-
-> "root" must manually obtain Kerberos credentials before attempting to mount an nfs filesystem requiring Kerberos authentication.
-
-
-Sure sounds to me like the use case that Veli-Matti presented is supposed to work by becoming root, kinit'ing, then mounting.
-
-We should make the man page more clear.  It would be especially helpful to describe what "machine credentials" are, and how to set up a machine that doesn't have a host key.  Or if there already is such an explanation, a citation in the man page would be nice.
-
+> On Wed, Feb 13, 2013 at 04:43:05PM +0000, Myklebust, Trond wrote:
+> > On Wed, 2013-02-13 at 11:20 -0500, J. Bruce Fields wrote:
+> > > Oops, probably should have cc'd linux-nfs.
+> > >
+> > > On Wed, Feb 13, 2013 at 10:36:54AM -0500, Theodore Ts'o wrote:
+> > > > The other thing that I'd note is that the readdir cookie has been
+> > > > 64-bit since NFSv3, which was released in June ***1995***.  And
+> > > > the explicit, stated purpose of making it be a 64-bit value (as
+> > > > stated in RFC 1813) was to reduce interoperability problems.  If
+> > > > that were the case, are you telling me that Sun (who has
+> > > > traditionally been pretty good worrying about interoperability
+> > > > concerns, and in fact employed the editors of RFC 1813) didn't get
+> > > > this right?  This seems quite.... surprising to me.
+> > > >
+> > > > I thought this was the whole point of the various NFS
+> > > > interoperability testing done at Connectathon, for which Sun was a
+> > > > major sponsor?!?  No one noticed?!?
+> > >
+> > > Beats me.  But it's not necessarily easy to replace clients running
+> > > legacy applications, so we're stuck working with the clients we have....
+> > >
+> > > The linux client does remap the server-provided cookies to small
+> > > integers, I believe exactly because older applications had trouble
+> > > with servers returning "large" cookies.  So presumably
+> > > ext4-exporting-Linux servers aren't the first to do this.
+> > >
+> > > I don't know which client versions are affected--Connectathon's next
+> > > week and I'll talk to people and make sure there's an ext4 export
+> > > with this turned on to test against.
+> >
+> > Actually, one of the main reasons for the Linux client not exporting
+> > raw readdir cookies is because the glibc-2 folks in their infinite
+> > wisdom declared that telldir()/seekdir() use an off_t. They then went
+> > yet one further and decided to declare negative offsets to be illegal
+> > so that they could use the negative values internally in their syscall
+> wrappers.
+> >
+> > The POSIX definition has none of the above rubbish
+> > (http://pubs.opengroup.org/onlinepubs/009695399/functions/telldir.html
+> > ) and so glibc brilliantly saddled Linux with a crippled readdir
+> > implementation that is _not_ POSIX compatible.
+> >
+> > No, I'm not at all bitter...
 > 
->> I'm staring at process_krb5_upcall(), just past that big block comment around line 962.  I think that logic is probably wrong to check for "service_name==NULL" but should rather check that the service_name is not "nfs".  This a fix that Veli-Matti hinted at earlier.
->> 
->> Thoughts?
+> Oh, right, I knew I'd forgotten part of the story....
 > 
-> Just blindly changing the meaning of '-n' would be wrong IMO. The whole
-> point of adding the new "v1" upcall was to enable the kernel to be
-> specific about when it requires machine credentials so that we could
-> avoid the whole auth(machine)==auth(root) brain-damage.
-
-So, we agree that the 3.7 kernel is operating as expected, and that gssd should be behaving differently in this case.  Maybe not an outright bug, but a change is needed.
-
-> Note that the old behaviour can be re-enabled by using a version of
-> rpc.gssd that only supports the 'v0' upcall. So one alternative might be
-> to simply add an option to rpc.gssd that turns off 'v1' upcall support.
+> But then you must have actually been testing against servers that were using
+> that 32nd bit?
 > 
-> Another, more future-proof alternative, may be to have rpc.gssd
-> substitute a user cred if there are no machine creds, and _if_ the admin
-> enables an option that specifies exactly which credential file should be
-> used.
+> I think ext4 actually only uses 31 bits even in the 32-bit case.  And for a server
+> that was literally using an offset inside a directory file, that would be a
+> colossal directory.
+> 
+> So I'm wondering how you ran across it.
+> 
+> Partly just pure curiosity.
 
-gssd already has "-k" to specify a different keytab.  "-k /tmp/krb5cc_0" seems easy enough.
+IIRC, XFS on IRIX used 0xFFFFF as the readdir eof marker, which caused us to generate an EIO...
 
-Should we simply add another command line option that specifies an additional entry in the machine credentials search order?
-
-root/<hostname>@<REALM> is already in that list, for example.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Cheers
+  Trond
