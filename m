@@ -1,106 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:56047 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758235Ab3BNWII (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Feb 2013 17:08:08 -0500
-Date: Thu, 14 Feb 2013 17:08:02 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/3] nfsd: break out comparator into separate function
-Message-ID: <20130214220802.GG8343@fieldses.org>
-References: <1360878315-21578-1-git-send-email-jlayton@redhat.com>
- <1360878315-21578-3-git-send-email-jlayton@redhat.com>
+Received: from relay.parallels.com ([195.214.232.42]:49389 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932687Ab3BNJuf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Feb 2013 04:50:35 -0500
+Message-ID: <511CB34C.8060409@parallels.com>
+Date: Thu, 14 Feb 2013 13:50:04 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1360878315-21578-3-git-send-email-jlayton@redhat.com>
+To: "lsf-pc@lists.linux-foundation.org"
+	<lsf-pc@lists.linux-foundation.org>
+CC: <linux-fsdevel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [ATTEND][LSF/MM TOPIC] NFS in containers + future of FUSE
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 14, 2013 at 04:45:14PM -0500, Jeff Layton wrote:
-> Break the function that compares the rqstp and checksum against a reply
-> cache entry. While we're at it, track the efficacy of the checksum over
-> the NFS data by tracking the cases where we would have incorrectly
-> matched a DRC entry if we had not tracked it or the length.
+Hi,
 
-Why the checksum and length, as opposed to just the checksum?
+I've been working actively over the past year to make NFS client and
+NFS kernel server be able to work in containers, based on network
+namespaces.
+While this work is almost done, there are still some specific issues to
+discuss and features to to be done.
+In particular, I would like to discuss:
 
-Seems to me that comparing the length is no more expensive than any of
-the other comparisons (xid, proc, etc.) that we're already doing, so
-we're less likely to wonder whether it's worth it.
+* the way to make it possible to lookup dentries from specified root in modules.
+This it required for rpciod workqueue to register SUNPRC services in desired
+container with it's own root/mount namespace.
+Currently this is impossible, because required VFS routines are not
+exported to modules.
 
---b.
+* possible solutions for NFSd UMH and Legacy trackers containerization
 
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/nfsd/nfscache.c | 37 +++++++++++++++++++++++++++----------
->  1 file changed, 27 insertions(+), 10 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-> index 2f9c2d2..bccf74f 100644
-> --- a/fs/nfsd/nfscache.c
-> +++ b/fs/nfsd/nfscache.c
-> @@ -25,6 +25,7 @@ static struct list_head 	lru_head;
->  static struct kmem_cache	*drc_slab;
->  static unsigned int		num_drc_entries;
->  static unsigned int		max_drc_entries;
-> +static unsigned int		csum_misses;
->  
->  /*
->   * Calculate the hash index from an XID.
-> @@ -272,6 +273,30 @@ nfsd_cache_csum(struct svc_rqst *rqstp)
->  	return csum;
->  }
->  
-> +static bool
-> +nfsd_cache_match(struct svc_rqst *rqstp, __wsum csum, struct svc_cacherep *rp)
-> +{
-> +	__be32			xid = rqstp->rq_xid;
-> +	u32			proto =  rqstp->rq_prot,
-> +				vers = rqstp->rq_vers,
-> +				proc = rqstp->rq_proc;
-> +
-> +	/* Check RPC header info first */
-> +	if (xid != rp->c_xid || proc != rp->c_proc ||
-> +	    proto != rp->c_prot || vers != rp->c_vers ||
-> +	    !rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) ||
-> +	    rpc_get_port(svc_addr(rqstp)) != rpc_get_port((struct sockaddr *)&rp->c_addr))
-> +		return false;
-> +
-> +	/* check contents of the NFS data */
-> +	if (rqstp->rq_arg.len != rp->c_len || csum != rp->c_csum) {
-> +		++csum_misses;
-> +		return false;
-> +	}
-> +
-> +	return true;
-> +}
-> +
->  /*
->   * Search the request hash for an entry that matches the given rqstp.
->   * Must be called with cache_lock held. Returns the found entry or
-> @@ -283,18 +308,10 @@ nfsd_cache_search(struct svc_rqst *rqstp, __wsum csum)
->  	struct svc_cacherep	*rp;
->  	struct hlist_node	*hn;
->  	struct hlist_head 	*rh;
-> -	__be32			xid = rqstp->rq_xid;
-> -	u32			proto =  rqstp->rq_prot,
-> -				vers = rqstp->rq_vers,
-> -				proc = rqstp->rq_proc;
->  
-> -	rh = &cache_hash[request_hash(xid)];
-> +	rh = &cache_hash[request_hash(rqstp->rq_xid)];
->  	hlist_for_each_entry(rp, hn, rh, c_hash) {
-> -		if (xid == rp->c_xid && proc == rp->c_proc &&
-> -		    proto == rp->c_prot && vers == rp->c_vers &&
-> -		    rqstp->rq_arg.len == rp->c_len && csum == rp->c_csum &&
-> -		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
-> -		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr))
-> +		if (nfsd_cache_match(rqstp, csum, rp))
->  			return rp;
->  	}
->  	return NULL;
-> -- 
-> 1.7.11.7
-> 
+Also, I would like to participate in discussion about future of
+FUSE file system development regarding to distributed file-systems support.
+
+-- 
+Best regards,
+Stanislav Kinsbursky
