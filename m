@@ -1,87 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36580 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:47103 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750941Ab3BTQe0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Feb 2013 11:34:26 -0500
-Date: Wed, 20 Feb 2013 11:34:24 -0500
+	id S1758408Ab3BNWDk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 14 Feb 2013 17:03:40 -0500
+Date: Thu, 14 Feb 2013 17:03:40 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Trond Myklebust <trond@netapp.com>, linux-nfs@vger.kernel.org,
-        simo@redhat.com
-Subject: Re: synchronous AF_LOCAL connect
-Message-ID: <20130220163424.GK14606@fieldses.org>
-References: <20130218225424.GD3391@fieldses.org>
- <20130220154751.GH14606@fieldses.org>
- <2F275139-9861-4414-8C9F-BD74544C9AD7@oracle.com>
- <20130220160350.GJ14606@fieldses.org>
- <EA9EE56A-73BB-4866-AA86-1EE4150AFE87@oracle.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/3] nfsd: fix comments on nfsd_cache_lookup
+Message-ID: <20130214220339.GF8343@fieldses.org>
+References: <1360878315-21578-1-git-send-email-jlayton@redhat.com>
+ <1360878315-21578-2-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <EA9EE56A-73BB-4866-AA86-1EE4150AFE87@oracle.com>
+In-Reply-To: <1360878315-21578-2-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 20, 2013 at 11:20:05AM -0500, Chuck Lever wrote:
+On Thu, Feb 14, 2013 at 04:45:13PM -0500, Jeff Layton wrote:
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+
+Applying, thanks.--b.
+
+> ---
+>  fs/nfsd/nfscache.c | 7 +++++--
+>  1 file changed, 5 insertions(+), 2 deletions(-)
 > 
-> On Feb 20, 2013, at 11:03 AM, J. Bruce Fields <bfields@fieldses.org>
-> wrote:
+> diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+> index 40db57e..2f9c2d2 100644
+> --- a/fs/nfsd/nfscache.c
+> +++ b/fs/nfsd/nfscache.c
+> @@ -302,8 +302,10 @@ nfsd_cache_search(struct svc_rqst *rqstp, __wsum csum)
+>  
+>  /*
+>   * Try to find an entry matching the current call in the cache. When none
+> - * is found, we grab the oldest unlocked entry off the LRU list.
+> - * Note that no operation within the loop may sleep.
+> + * is found, we try to grab the oldest expired entry off the LRU list. If
+> + * a suitable one isn't there, then drop the cache_lock and allocate a
+> + * new one, then search again in case one got inserted while this thread
+> + * didn't hold the lock.
+>   */
+>  int
+>  nfsd_cache_lookup(struct svc_rqst *rqstp)
+> @@ -344,6 +346,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+>  		}
+>  	}
+>  
+> +	/* Drop the lock and allocate a new entry */
+>  	spin_unlock(&cache_lock);
+>  	rp = nfsd_reply_cache_alloc();
+>  	if (!rp) {
+> -- 
+> 1.7.11.7
 > 
-> > On Wed, Feb 20, 2013 at 10:56:54AM -0500, Chuck Lever wrote:
-> >> 
-> >> On Feb 20, 2013, at 10:47 AM, "J. Bruce Fields"
-> >> <bfields@fieldses.org> wrote:
-> >> 
-> >>> On Mon, Feb 18, 2013 at 05:54:25PM -0500, bfields wrote:
-> >>>> The rpc code expects all connects to be done asynchronously by a
-> >>>> workqueue.  But that doesn't seem necessary in the AF_LOCAL case.
-> >>>> The only user (rpcbind) actually wants the connect done in the
-> >>>> context of a process with the right namespace.  (And that will be
-> >>>> true of gss proxy too, which also wants to use AF_LOCAL.)
-> >>>> 
-> >>>> But maybe I'm missing something.
-> >>>> 
-> >>>> Also, I haven't really tried to understand this code--I just
-> >>>> assumed I could basically call xs_local_setup_socket from ->setup
-> >>>> instead of the workqueue, and that seems to work based on a very
-> >>>> superficial test.  At a minimum I guess the PF_FSTRANS fiddling
-> >>>> shouldn't be there.
-> >>> 
-> >>> Here it is with that and the other extraneous xprt stuff gone.
-> >>> 
-> >>> See any problem with doing this?
-> >> 
-> >> Nothing is screaming at me.  As long as an AF_LOCAL connect
-> >> operation doesn't ever sleep, this should be safe, I think.
-> > 
-> > I'm sure it must sleep.  Why would that make any difference?
-> 
-> As I understand it, sometimes an ASYNC RPC task is driving the
-> connect, and such a task must never sleep when calling outside of
-> rpciod.
-
-AF_LOCAL is currently only used to register rpc services.  I can't see
-any case when it's called asynchronously.
-
-(And the same will be true of the gss-proxy calls, which also plan to
-use AF_LOCAL.)
-
-> rpciod must be allowed to put that task on a wait queue and
-> go do other work if the connect operation doesn't succeed immediately,
-> otherwise all ASYNC RPC operations hang (or worse, an oops occurs).
-> 
-> >> How did you test it?
-> > 
-> > I'm just doing my usual set of connectathon runs, and assuming mounts
-> > would fail if the server's rpcbind registration failed.
-> 
-> Have you tried killing rpcbind first to see how the error cases are handled?
-
-No, thanks for the suggestion, I'll check.
-
-> Does rpcbind get the registration's "owner" field correct when
-> namespaces are involved?
-
-Looking at rpcb_clnt.c....  I only ever see r_owner set to "" or "0".  I
-can't see why that would need to change in a container.
-
---b.
