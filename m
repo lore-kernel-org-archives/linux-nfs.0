@@ -1,97 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:22140 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752982Ab3BND7U convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Feb 2013 22:59:20 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "Theodore Ts'o" <tytso@mit.edu>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "sandeen@redhat.com" <sandeen@redhat.com>,
-        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        "gluster-devel@nongnu.org" <gluster-devel@nongnu.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: regressions due to 64-bit ext4 directory cookies
-Date: Thu, 14 Feb 2013 03:59:17 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91F3D6BAB@sacexcmbx05-prd.hq.netapp.com>
-References: <20130212202841.GC10267@fieldses.org>
- <20130213040003.GB2614@thunk.org> <20130213133131.GE14195@fieldses.org>
- <20130213151455.GB17431@thunk.org> <20130213151953.GJ14195@fieldses.org>
- <20130213153654.GC17431@thunk.org> <20130213162059.GL14195@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91F3D625D@sacexcmbx05-prd.hq.netapp.com>
- <20130213213346.GQ14195@fieldses.org>
-In-Reply-To: <20130213213346.GQ14195@fieldses.org>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+Received: from mail-yh0-f50.google.com ([209.85.213.50]:42881 "EHLO
+	mail-yh0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934909Ab3BNVpV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Feb 2013 16:45:21 -0500
+Received: by mail-yh0-f50.google.com with SMTP id z20so433168yhz.9
+        for <linux-nfs@vger.kernel.org>; Thu, 14 Feb 2013 13:45:20 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/3] nfsd: better stats gathering for nfsd DRC
+Date: Thu, 14 Feb 2013 16:45:12 -0500
+Message-Id: <1360878315-21578-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> -----Original Message-----
-> From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> Sent: Wednesday, February 13, 2013 4:34 PM
-> To: Myklebust, Trond
-> Cc: Theodore Ts'o; linux-ext4@vger.kernel.org; sandeen@redhat.com;
-> Bernd Schubert; gluster-devel@nongnu.org; linux-nfs@vger.kernel.org
-> Subject: Re: regressions due to 64-bit ext4 directory cookies
-> 
-> On Wed, Feb 13, 2013 at 04:43:05PM +0000, Myklebust, Trond wrote:
-> > On Wed, 2013-02-13 at 11:20 -0500, J. Bruce Fields wrote:
-> > > Oops, probably should have cc'd linux-nfs.
-> > >
-> > > On Wed, Feb 13, 2013 at 10:36:54AM -0500, Theodore Ts'o wrote:
-> > > > The other thing that I'd note is that the readdir cookie has been
-> > > > 64-bit since NFSv3, which was released in June ***1995***.  And
-> > > > the explicit, stated purpose of making it be a 64-bit value (as
-> > > > stated in RFC 1813) was to reduce interoperability problems.  If
-> > > > that were the case, are you telling me that Sun (who has
-> > > > traditionally been pretty good worrying about interoperability
-> > > > concerns, and in fact employed the editors of RFC 1813) didn't get
-> > > > this right?  This seems quite.... surprising to me.
-> > > >
-> > > > I thought this was the whole point of the various NFS
-> > > > interoperability testing done at Connectathon, for which Sun was a
-> > > > major sponsor?!?  No one noticed?!?
-> > >
-> > > Beats me.  But it's not necessarily easy to replace clients running
-> > > legacy applications, so we're stuck working with the clients we have....
-> > >
-> > > The linux client does remap the server-provided cookies to small
-> > > integers, I believe exactly because older applications had trouble
-> > > with servers returning "large" cookies.  So presumably
-> > > ext4-exporting-Linux servers aren't the first to do this.
-> > >
-> > > I don't know which client versions are affected--Connectathon's next
-> > > week and I'll talk to people and make sure there's an ext4 export
-> > > with this turned on to test against.
-> >
-> > Actually, one of the main reasons for the Linux client not exporting
-> > raw readdir cookies is because the glibc-2 folks in their infinite
-> > wisdom declared that telldir()/seekdir() use an off_t. They then went
-> > yet one further and decided to declare negative offsets to be illegal
-> > so that they could use the negative values internally in their syscall
-> wrappers.
-> >
-> > The POSIX definition has none of the above rubbish
-> > (http://pubs.opengroup.org/onlinepubs/009695399/functions/telldir.html
-> > ) and so glibc brilliantly saddled Linux with a crippled readdir
-> > implementation that is _not_ POSIX compatible.
-> >
-> > No, I'm not at all bitter...
-> 
-> Oh, right, I knew I'd forgotten part of the story....
-> 
-> But then you must have actually been testing against servers that were using
-> that 32nd bit?
-> 
-> I think ext4 actually only uses 31 bits even in the 32-bit case.  And for a server
-> that was literally using an offset inside a directory file, that would be a
-> colossal directory.
-> 
-> So I'm wondering how you ran across it.
-> 
-> Partly just pure curiosity.
+These patches are some follow-on patches for the overhaul of the nfsd
+DRC. They add a bit of extra stats gathering to the DRC code, and add a
+new /proc/fs/nfsd/reply_cache_stats file to present them.
 
-IIRC, XFS on IRIX used 0xFFFFF as the readdir eof marker, which caused us to generate an EIO...
+I had briefly considered just adding more fields to the "nfsd" stats
+file that nfsstat scrapes, but doing that would have been problematic
+since older kernels presented extra info on the "rc" line.
 
-Cheers
-  Trond
+These patches are based on top of the ones that add the checksum
+tracking to the DRC code. They're fairly simple and are probably
+reasonable for 3.9, unless anyone objects.
+
+Comments and suggestions welcome.
+
+Jeff Layton (3):
+  nfsd: fix comments on nfsd_cache_lookup
+  nfsd: break out comparator into separate function
+  nfsd: add new reply_cache_stats file in nfsdfs
+
+ fs/nfsd/cache.h    |  1 +
+ fs/nfsd/nfscache.c | 62 +++++++++++++++++++++++++++++++++++++++++++-----------
+ fs/nfsd/nfsctl.c   |  9 ++++++++
+ 3 files changed, 60 insertions(+), 12 deletions(-)
+
+-- 
+1.7.11.7
+
