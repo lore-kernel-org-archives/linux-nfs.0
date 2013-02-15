@@ -1,82 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ia0-f176.google.com ([209.85.210.176]:58622 "EHLO
-	mail-ia0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754500Ab3BDUS5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2013 15:18:57 -0500
-Received: by mail-ia0-f176.google.com with SMTP id i18so8395889iac.7
-        for <linux-nfs@vger.kernel.org>; Mon, 04 Feb 2013 12:18:56 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v3 0/9] Dynamically load GSS pseudoflavors by OID
-To: trond.myklebust@netapp.com
+Received: from mail-yh0-f51.google.com ([209.85.213.51]:63124 "EHLO
+	mail-yh0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754135Ab3BORXU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Feb 2013 12:23:20 -0500
+Received: by mail-yh0-f51.google.com with SMTP id q1so566358yhf.24
+        for <linux-nfs@vger.kernel.org>; Fri, 15 Feb 2013 09:23:18 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Date: Mon, 04 Feb 2013 15:18:52 -0500
-Message-ID: <20130204201458.1518.12931.stgit@seurat.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Subject: [PATCH v2 3/3] nfsd: add new reply_cache_stats file in nfsdfs
+Date: Fri, 15 Feb 2013 12:23:10 -0500
+Message-Id: <1360948990-2265-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1360948990-2265-1-git-send-email-jlayton@redhat.com>
+References: <1360948990-2265-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently the RPC client is able to dynamically load GSS security
-flavor support by name or pseudoflavor number, but not by
-[OID, qop, service] tuple.  Such a tuple can be provided by an NFSv4
-server in a SECINFO reply, for example.
+For presenting statistics relating to duplicate reply cache.
 
-This means that if an NFSv4 server lists a tuple for, say, krb5p, in
-a SECINFO reply, our client will pretend it doesn't support krb5p if
-the rpc-auth-gss-krb5 module is available on the system but does not
-happen to be loaded at that moment.
-
-This series implements support for loading the correct GSS
-pseudoflavor module before searching by GSS tuple.
-
-This version of the series seems ready for linux-next or 3.9.
-
-Changes since v2:
-
- 1.  Some polish
- 2.  Server-side [9/9] rewritten based on testing results
-
-Changes since v1:
-
- 1.  Simplify function and method names
- 2.  Add an equivalent server-side interface
- 3.  Improve automatic loading of the auth_rpcgss module
- 4.  nfs_find_best_sec() also verifies non-GSS flavors against
-     RPC client's list of registered flavors
- 5.  Search for (qop, svc) pair without adding a new function
- 6.  Clean up GSS mech switch
- 7.  Remove dprintk() calls
- 8.  Improve patch descriptions
- 9.  Numerous small improvements and fixes
-
-
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
+ fs/nfsd/cache.h    |  1 +
+ fs/nfsd/nfscache.c | 37 +++++++++++++++++++++++++++++++++----
+ fs/nfsd/nfsctl.c   |  9 +++++++++
+ 3 files changed, 43 insertions(+), 4 deletions(-)
 
-Chuck Lever (9):
-      SUNRPC: Remove EXPORT_SYMBOL_GPL() from GSS mech switch
-      SUNRPC: Make gss_mech_get() static
-      SUNRPC: Refactor nfsd4_do_encode_secinfo()
-      SUNRPC: Consider qop when looking up pseudoflavors
-      SUNRPC: Load GSS kernel module by OID
-      SUNRPC: Introduce rpcauth_get_pseudoflavor()
-      SUNRPC: Define rpcsec_gss_info structure
-      NFS: Remove unneeded forward declaration
-      SUNRPC: Missing module alias for auth_rpcgss.ko
-
-
- fs/nfs/nfs4namespace.c                |   43 +++++++-----
- fs/nfs/nfs4xdr.c                      |   20 +++---
- fs/nfsd/nfs4xdr.c                     |   24 +++----
- include/linux/nfs_xdr.h               |   24 +------
- include/linux/sunrpc/auth.h           |    6 ++
- include/linux/sunrpc/gss_api.h        |   29 ++++++--
- net/sunrpc/Kconfig                    |    1 
- net/sunrpc/auth.c                     |   68 +++++++++++++++++++
- net/sunrpc/auth_gss/auth_gss.c        |    3 +
- net/sunrpc/auth_gss/gss_krb5_mech.c   |    6 +-
- net/sunrpc/auth_gss/gss_mech_switch.c |  117 +++++++++++++++++++++++++--------
- net/sunrpc/auth_gss/svcauth_gss.c     |    4 +
- 12 files changed, 245 insertions(+), 100 deletions(-)
-
+diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
+index 87fd141..d5c5b3e 100644
+--- a/fs/nfsd/cache.h
++++ b/fs/nfsd/cache.h
+@@ -82,6 +82,7 @@ int	nfsd_reply_cache_init(void);
+ void	nfsd_reply_cache_shutdown(void);
+ int	nfsd_cache_lookup(struct svc_rqst *);
+ void	nfsd_cache_update(struct svc_rqst *, int, __be32 *);
++int	nfsd_reply_cache_stats_open(struct inode *, struct file *);
+ 
+ #ifdef CONFIG_NFSD_V4
+ void	nfsd4_set_statp(struct svc_rqst *rqstp, __be32 *statp);
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index ad1d069..b155afa 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -23,12 +23,17 @@
+ static struct hlist_head *	cache_hash;
+ static struct list_head 	lru_head;
+ static struct kmem_cache	*drc_slab;
+-static unsigned int		num_drc_entries;
+-static unsigned int		max_drc_entries;
+-static unsigned int		drc_mem_usage;
+-static unsigned int		csum_misses;
+ 
+ /*
++ * Stats on the duplicate reply cache code. All of these and the "rc" fields
++ * in nfsdstats are protected by the cache_lock
++ */
++static unsigned int		num_drc_entries; /* number of entries */
++static unsigned int		max_drc_entries; /* max number of entries */
++static unsigned int		drc_mem_usage;   /* memory used by cache */
++static unsigned int		csum_misses;     /* cache misses due only to
++						    csum comparison failures */
++/*
+  * Calculate the hash index from an XID.
+  */
+ static inline u32 request_hash(u32 xid)
+@@ -545,3 +550,27 @@ nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *data)
+ 	vec->iov_len += data->iov_len;
+ 	return 1;
+ }
++
++/*
++ * Note that fields may be added, removed or reordered in the future. Programs
++ * scraping this file for info should test the labels to ensure they're
++ * getting the correct field.
++ */
++static int nfsd_reply_cache_stats_show(struct seq_file *m, void *v)
++{
++	spin_lock(&cache_lock);
++	seq_printf(m, "max entries:     %u\n", max_drc_entries);
++	seq_printf(m, "num entries:     %u\n", num_drc_entries);
++	seq_printf(m, "mem usage:       %u\n", drc_mem_usage);
++	seq_printf(m, "cache hits:      %u\n", nfsdstats.rchits);
++	seq_printf(m, "cache misses:    %u\n", nfsdstats.rcmisses);
++	seq_printf(m, "not cached:      %u\n", nfsdstats.rcnocache);
++	seq_printf(m, "checksum misses: %u\n", csum_misses);
++	spin_unlock(&cache_lock);
++	return 0;
++}
++
++int nfsd_reply_cache_stats_open(struct inode *inode, struct file *file)
++{
++	return single_open(file, nfsd_reply_cache_stats_show, NULL);
++}
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 29c3f0d..5dea5af 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -35,6 +35,7 @@ enum {
+ 	NFSD_Threads,
+ 	NFSD_Pool_Threads,
+ 	NFSD_Pool_Stats,
++	NFSD_Reply_Cache_Stats,
+ 	NFSD_Versions,
+ 	NFSD_Ports,
+ 	NFSD_MaxBlkSize,
+@@ -194,6 +195,13 @@ static const struct file_operations pool_stats_operations = {
+ 	.owner		= THIS_MODULE,
+ };
+ 
++static struct file_operations reply_cache_stats_operations = {
++	.open		= nfsd_reply_cache_stats_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= single_release,
++};
++
+ /*----------------------------------------------------------------------------*/
+ /*
+  * payload - write methods
+@@ -1024,6 +1032,7 @@ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
+ 		[NFSD_Threads] = {"threads", &transaction_ops, S_IWUSR|S_IRUSR},
+ 		[NFSD_Pool_Threads] = {"pool_threads", &transaction_ops, S_IWUSR|S_IRUSR},
+ 		[NFSD_Pool_Stats] = {"pool_stats", &pool_stats_operations, S_IRUGO},
++		[NFSD_Reply_Cache_Stats] = {"reply_cache_stats", &reply_cache_stats_operations, S_IRUGO},
+ 		[NFSD_Versions] = {"versions", &transaction_ops, S_IWUSR|S_IRUSR},
+ 		[NFSD_Ports] = {"portlist", &transaction_ops, S_IWUSR|S_IRUGO},
+ 		[NFSD_MaxBlkSize] = {"max_block_size", &transaction_ops, S_IWUSR|S_IRUGO},
 -- 
-Chuck Lever
+1.7.11.7
+
