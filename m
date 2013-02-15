@@ -1,62 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f49.google.com ([209.85.215.49]:50241 "EHLO
-	mail-la0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757549Ab3BYPVL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Feb 2013 10:21:11 -0500
+Received: from mx12.netapp.com ([216.240.18.77]:17515 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756829Ab3BOS03 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 15 Feb 2013 13:26:29 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Sven Geggus <lists@fuchsschwanzdomain.de>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: NFS4: "Value too large for defined data type" problem
+Date: Fri, 15 Feb 2013 18:26:27 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91F3DA465@sacexcmbx05-prd.hq.netapp.com>
+References: <kfkvll$adm$1@ultimate100.geggus.net>
+In-Reply-To: <kfkvll$adm$1@ultimate100.geggus.net>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9235DE4C7@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1361744605-28235-1-git-send-email-s.syam@samsung.com>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA9235DE4C7@SACEXCMBX04-PRD.hq.netapp.com>
-Date: Mon, 25 Feb 2013 20:51:09 +0530
-Message-ID: <CAFBvHifgLh7W58mw64Ycnn7qT6_3isYGpJAkRXuOV7KZFdSniQ@mail.gmail.com>
-Subject: Re: [PATCH] SUNRPC: Fix possible NULL pointer dereference
-From: Syam Sidhardhan <syamsidhardh@gmail.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "davem@davemloft.net" <davem@davemloft.net>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
-
-On Mon, Feb 25, 2013 at 4:05 AM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> On Mon, 2013-02-25 at 03:53 +0530, Syam Sidhardhan wrote:
->> Check for cred == NULL has to be done before accessing cred.
->>
->> Signed-off-by: Syam Sidhardhan <s.syam@samsung.com>
->> ---
->>  net/sunrpc/auth.c |    7 +++++--
->>  1 file changed, 5 insertions(+), 2 deletions(-)
->>
->> diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
->> index f529404..18678a6 100644
->> --- a/net/sunrpc/auth.c
->> +++ b/net/sunrpc/auth.c
->> @@ -695,10 +695,13 @@ rpcauth_invalcred(struct rpc_task *task)
->>  {
->>       struct rpc_cred *cred = task->tk_rqstp->rq_cred;
->>
->> +     if (cred == NULL)
->> +             return;
->> +
->>       dprintk("RPC: %5u invalidating %s cred %p\n",
->>               task->tk_pid, cred->cr_auth->au_ops->au_name, cred);
->> -     if (cred)
->> -             clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags);
->> +
->> +     clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags);
->>  }
->>
->>  int
->
-> Do we need that check at all?
-
-I'm not sure whether we need that check or not. However
-similar functions such as rpcauth_refreshcred(), rpcauth_uptodatecred() etc
-are doing the same check inside. Cppcheck is throwing an error too.
-
-Regards,
-Syam
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
+ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLQ0KPiBvd25lckB2Z2VyLmtlcm5lbC5vcmdd
+IE9uIEJlaGFsZiBPZiBTdmVuIEdlZ2d1cw0KPiBTZW50OiBGcmlkYXksIEZlYnJ1YXJ5IDE1LCAy
+MDEzIDQ6MzggQU0NCj4gVG86IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcNCj4gU3ViamVjdDog
+TkZTNDogIlZhbHVlIHRvbyBsYXJnZSBmb3IgZGVmaW5lZCBkYXRhIHR5cGUiIHByb2JsZW0NCj4g
+DQo+IEhlbGxvLA0KPiANCj4gaXMgdGhlcmUgc29tZXRoaW5nIHdoaWNoIGNhbiBiZSBkb25lIHNl
+cnZlci1zaWRlIHRvIHdvcmsgYXJvdW5kIHRoZSAiVmFsdWUNCj4gdG9vIGxhcmdlIGZvciBkZWZp
+bmVkIGRhdGEgdHlwZSIgcHJvYmxlbSB3aXRoIGh1Z2UgaW5vZGUgTnVtYmVycz8NCj4gDQo+IEZp
+cnN0IG9mIGFsbCwgSSdtIG5vdCBzaHVyZSBpZiB0aGlzIGlzIGFuIE5GUyBwcm9ibGVtIG9yIG9u
+ZSBvZiB0aGUgdW5kZXJseWluZw0KPiBmaWxlc3lzdGVtLg0KPiANCj4gQmFja2dyb3VuZDoNCj4g
+SSBzZXQgdXAgYSBuZXcgTkZTLXNlcnZlciAoTkZTNCkgcmVjZW50bHkuIFRoZSBzZXJ2ZXIgd29y
+a3MgZmluZSBzbyBmYXIgd2l0aA0KPiA2NCBiaXQgTGludXggY2xpZW50cy4NCj4gDQo+IEl0IGFs
+c28gbW9zdGx5IHdvcmtzIHdpdGggMzIgYml0IExpbnV4IGNsaWVudHMgd2hlbiBlaXRoZXIgdGhl
+IHN0YXQgc3lzdGVtIGNhbGwNCj4gaXMgbm90IHVzZWQgb3IgIi1EX0ZJTEVfT0ZGU0VUX0JJVFM9
+NjQiIGhhcyBiZWVuIHVzZWQuDQo+IA0KPiBUaGlzIGlzIGJlY2F1c2Ugb24gMzIgYml0IExpbnV4
+IGlub190IGlzIG5vdCA2NC1iaXQgb3RoZXJ3aXNlLg0KPiANCj4gVW5mb3J0dW5hdGVseSBhdCBs
+ZWFzdCB0aGUgMzJiaXQgVmVyc2lvbiBvZiBEZWJpYW4gc3RhYmxlICg2LjApIHNlZW1zIHRvDQo+
+IGJyZWFrIGFsbCBvdmVyIHRoZSBwbGFjZS4gRS5nLiBpbiBnbm9tZSB3aGVuIHN0YXQgfi8uZ25v
+bWUyX3ByaXZhdGUvIGZhaWxzIGl0DQo+IGlzIGFzc3VtZWQgdGhhdCB0aGUgZGlyZWN0b3J5IGhh
+cyB0byBiZSBjcmVhdGVkIHdoaWNoIHdpbGwgb2YgY291cnNlIG1ha2UgdGhlDQo+IHN1YnNlcXVl
+bnQgY2FsbCB0byBta2RpciBhbHNvIGZhaWwgYW5kIGJyZWFrIHRoZSB3aG9sZSBkZXNrdG9wIGVu
+dmlyb25tZW50DQo+IGFmdGVyd29yZHMuDQo+IA0KPiBSZWdhcmRzDQo+IA0KPiBTdmVuDQo+IA0K
+DQpJZiB5b3VyIGFwcGxpY2F0aW9ucyBhcmUgdW5hYmxlIHRvIGNvcGUgd2l0aCA2NC1iaXQgaW5v
+ZGUgbnVtYmVycywgdGhlbiB5b3UgY2FuIHR1cm4gYmFjayBvbiB0aGUgaW5vZGUgbnVtYmVyIG1h
+cHBpbmcgb24gdGhlIG5mcyBjbGllbnQ6DQoNCmVjaG8gIm9wdGlvbnMgbmZzIGVuYWJsZV9pbm82
+ND1OIiA+L2V0Yy9tb2Rwcm9iZS5kL29wdGlvbnMtbG9jYWwuY29uZg0KDQphbmQgdGhlbiBlaXRo
+ZXIgcmVib290LCBvciB1bmxvYWQgYW5kIHJlbG9hZCB5b3VyIG5mcyBtb2R1bGUuDQpUcm9uZA0K
