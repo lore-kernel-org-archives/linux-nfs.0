@@ -1,64 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57725 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:6507 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752919Ab3BQUt7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 17 Feb 2013 15:49:59 -0500
-Date: Sun, 17 Feb 2013 15:49:38 -0500
-To: Michael Monnerie <lists.michael.monnerie@is.it-management.at>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: How to make clients NOT block
-Message-ID: <20130217204938.GF11441@fieldses.org>
-References: <680509590.JPpPf8D3KZ@saturn>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <680509590.JPpPf8D3KZ@saturn>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1750742Ab3BOVDw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 15 Feb 2013 16:03:52 -0500
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH] NFSv4.1: Don't decode skipped layoutgets
+Date: Fri, 15 Feb 2013 16:03:46 -0500
+Message-Id: <1360962226-23166-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Feb 16, 2013 at 12:30:07PM +0100, Michael Monnerie wrote:
-> Dear list,
-> 
-> we've had several servers block today because they all have a NFS mount point 
-> from a linux kernel 3.7.6 server. This is the fstab entry:
-> 
-> 1.1.1.1:/nfsshare/all /shared nfs4 defaults,tcp,intr,relatime,async,acl 0 9
-> 
-> The NFS server crashed and was offline, that made all clients block.
+layoutget's prepare hook can call rpc_exit with status = NFS4_OK (0).
+Because of this, nfs4_proc_layoutget can't depend on a 0 status to mean
+that the RPC was successfully sent, received and parsed.
 
-That's expected.
+To fix this, use the result's len member to see if parsing took place.
 
-> Even 
-> after the NFS server was up again, most clients were stuck to the point they 
-> had to be rebooted.
+This fixes the following OOPS -- calling xdr_init_decode() with a buffer length
+0 doesn't set the stream's 'p' member and ends up using uninitialized memory
+in filelayout_decode_layout.
 
-But that sounds like a bug, on either client or server.
+BUG: unable to handle kernel paging request at 0000000000008050
+IP: [<ffffffff81282e78>] memcpy+0x18/0x120
+PGD 0
+Oops: 0000 [#1] SMP
+last sysfs file: /sys/devices/pci0000:00/0000:00:11.0/0000:02:01.0/irq
+CPU 1
+Modules linked in: nfs_layout_nfsv41_files nfs lockd fscache auth_rpcgss nfs_acl autofs4 sunrpc ipt_REJECT nf_conntrack_ipv4 nf_defrag_ipv4 iptable_filter ip_tables ip6t_REJECT nf_conntrack_ipv6 nf_defrag_ipv6 xt_state nf_conntrack ip6table_filter ip6_tables ipv6 dm_mirror dm_region_hash dm_log dm_mod ppdev parport_pc parport snd_ens1371 snd_rawmidi snd_ac97_codec ac97_bus snd_seq snd_seq_device snd_pcm snd_timer snd soundcore snd_page_alloc e1000 microcode vmware_balloon i2c_piix4 i2c_core sg shpchp ext4 mbcache jbd2 sr_mod cdrom sd_mod crc_t10dif pata_acpi ata_generic ata_piix mptspi mptscsih mptbase scsi_transport_spi [last unloaded: speedstep_lib]
 
-> What mount options should we use so clients don't block 
-> completely when the NFS server is gone?
+Pid: 1665, comm: flush-0:22 Not tainted 2.6.32-356-test-2 #2 VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform
+RIP: 0010:[<ffffffff81282e78>]  [<ffffffff81282e78>] memcpy+0x18/0x120
+RSP: 0018:ffff88003dfab588  EFLAGS: 00010206
+RAX: ffff88003dc42000 RBX: ffff88003dfab610 RCX: 0000000000000009
+RDX: 000000003f807ff0 RSI: 0000000000008050 RDI: ffff88003dc42000
+RBP: ffff88003dfab5b0 R08: 0000000000000000 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000080 R12: 0000000000000024
+R13: ffff88003dc42000 R14: ffff88003f808030 R15: ffff88003dfab6a0
+FS:  0000000000000000(0000) GS:ffff880003420000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0018 ES: 0018 CR0: 000000008005003b
+CR2: 0000000000008050 CR3: 000000003bc92000 CR4: 00000000001407e0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+Process flush-0:22 (pid: 1665, threadinfo ffff88003dfaa000, task ffff880037f77540)
+Stack:
+ffffffffa0398ac1 ffff8800397c5940 ffff88003dfab610 ffff88003dfab6a0
+<d> ffff88003dfab5d0 ffff88003dfab680 ffffffffa01c150b ffffea0000d82e70
+<d> 000000508116713b 0000000000000000 0000000000000000 0000000000000000
+Call Trace:
+[<ffffffffa0398ac1>] ? xdr_inline_decode+0xb1/0x120 [sunrpc]
+[<ffffffffa01c150b>] filelayout_decode_layout+0xeb/0x350 [nfs_layout_nfsv41_files]
+[<ffffffffa01c17fc>] filelayout_alloc_lseg+0x8c/0x3c0 [nfs_layout_nfsv41_files]
+[<ffffffff8150e6ce>] ? __wait_on_bit+0x7e/0x90
 
-As Boaz says, you can mount with "soft"--but there are good reasons it
-isn't the default.  (Worst case it can cause data corruption if your
-applications aren't extremely careful.)
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ fs/nfs/nfs4proc.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
---b.
-
-> It's no problem to unmount the NFS 
-> share, or get errors, but the clients must not stop their work.
-> 
-> -- 
-> mit freundlichen Grüssen,
-> Michael Monnerie, Ing. BSc | Tel: +43 660 415 6531
-> 
-> XING: https://www.xing.com/profile/Michael_Monnerie
-> Facebook: https://www.facebook.com/michael.monnerie
-> Twitter: @MichaelMonnerie https://twitter.com/MichaelMonnerie
-> LinkedIn: http://lnkd.in/uGx6ug
-> Google+: https://plus.google.com/u/0/100598203632716687928/
-> 
-> Protéger.at Internet Services Austria [gesprochen: Prot-e-schee]
-> http://protéger.at | http://proteger.at
-> Facebook: https://www.facebook.com/protegerat
-> Mitglied im it-management Netzwerk http://it-management.at
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index cf252df..eae83bf 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6184,7 +6184,8 @@ nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
+ 	status = nfs4_wait_for_completion_rpc_task(task);
+ 	if (status == 0)
+ 		status = task->tk_status;
+-	if (status == 0)
++	/* if layoutp->len is 0, nfs4_layoutget_prepare called rpc_exit */
++	if (status == 0 && lgp->res.layoutp->len)
+ 		lseg = pnfs_layout_process(lgp);
+ 	rpc_put_task(task);
+ 	dprintk("<-- %s status=%d\n", __func__, status);
+-- 
+1.7.12.4 (Apple Git-37)
 
