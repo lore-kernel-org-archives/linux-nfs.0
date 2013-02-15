@@ -1,319 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f50.google.com ([209.85.215.50]:34887 "EHLO
-	mail-la0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760676Ab3B1PWu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Feb 2013 10:22:50 -0500
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: linux-kernel@vger.kernel.org
-Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, wine-devel@winehq.org
-Subject: [PATCH v3 2/7] vfs: Add O_DENYREAD/WRITE flags support for open syscall
-Date: Thu, 28 Feb 2013 19:25:28 +0400
-Message-Id: <1362065133-9490-3-git-send-email-piastry@etersoft.ru>
-In-Reply-To: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
-References: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
+Received: from mx1.redhat.com ([209.132.183.28]:36629 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751080Ab3BOWVF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 15 Feb 2013 17:21:05 -0500
+Date: Fri, 15 Feb 2013 17:20:58 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH RFC] nfsd: report length of the largest hash chain in
+ reply cache stats
+Message-ID: <20130215172058.29941a54@tlielax.poochiereds.net>
+In-Reply-To: <299C8DF9-5BFC-4E26-8F7E-CE3415D1140F@oracle.com>
+References: <20130215133406.20b1ef09@tlielax.poochiereds.net>
+	<1360958672-5692-1-git-send-email-jlayton@redhat.com>
+	<299C8DF9-5BFC-4E26-8F7E-CE3415D1140F@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If O_DENYMAND flag is specified, O_DENYREAD/WRITE/MAND flags are
-translated to flock's flags:
+On Fri, 15 Feb 2013 16:14:56 -0500
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-!O_DENYREAD  -> LOCK_READ
-!O_DENYWRITE -> LOCK_WRITE
-O_DENYMAND   -> LOCK_MAND
+> 
+> On Feb 15, 2013, at 3:04 PM, Jeff Layton <jlayton@redhat.com> wrote:
+> 
+> > So we can get a feel for how effective the hashing function is.
+> > 
+> > As Chuck Lever pointed out to me, it's generally acceptable to do
+> > "expensive" stuff when reading the stats since that's a relatively
+> > rare activity.
+> 
+> A good measure of the efficacy of a hash function is the ratio of the maximum chain length to the optimal chain length (which can be computed by dividing the total number of cache entries by the number of hash chains).
+> 
 
-and set through flock_lock_file on a file.
+Right, the number of chains is always 64 for now (maybe we should print
+that out in the stats too), so you can compute that from the values
+provided here.
 
-This change affects opens that use O_DENYMAND flag - all other
-native Linux opens don't care about these flags. It allow us to
-enable this feature for applications that need it (e.g. NFS and
-Samba servers that export the same directory for Windows clients,
-or Wine applications that access the same files simultaneously).
+> If we plan to stick with a hash table for this cache, there should be some indication when the hash function falls over.  This will matter because the DRC can now grow much larger, which is turning out to be the real fundamental change with this work.
+> 
 
-Create codepath is slightly changed to prevent data races on
-newely created files: when open with O_CREAT can return with -ETXTBSY
-error for successfully created files due to a deny lock set by
-another task.
+That's the kicker. With the patch below, computing the max chain length
+on the fly is somewhat expensive since you have to walk every entry.
+It's certainly possible though (even likely) that the real max length
+will occur at some point when we're not looking at this file. So how to
+best gauge that?
 
-Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
----
- fs/locks.c         | 116 +++++++++++++++++++++++++++++++++++++++++++++++------
- fs/namei.c         |  44 ++++++++++++++++++--
- include/linux/fs.h |   6 +++
- 3 files changed, 151 insertions(+), 15 deletions(-)
+Maybe we should just punt and move it all to a rbtree or something. A
+self-balancing structure is nice and simple to deal with, even if the
+insertion penalty is a bit higher...
 
-diff --git a/fs/locks.c b/fs/locks.c
-index a94e331..0cc7d1b 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -605,20 +605,81 @@ static int posix_locks_conflict(struct file_lock *caller_fl, struct file_lock *s
- 	return (locks_conflict(caller_fl, sys_fl));
- }
- 
--/* Determine if lock sys_fl blocks lock caller_fl. FLOCK specific
-- * checking before calling the locks_conflict().
-+static unsigned int
-+deny_flags_to_cmd(unsigned int flags)
-+{
-+	unsigned int cmd = LOCK_MAND;
-+
-+	if (!(flags & O_DENYREAD))
-+		cmd |= LOCK_READ;
-+	if (!(flags & O_DENYWRITE))
-+		cmd |= LOCK_WRITE;
-+
-+	return cmd;
-+}
-+
-+/*
-+ * locks_mand_conflict - Determine if there's a share reservation conflict
-+ * @caller_fl: lock we're attempting to acquire
-+ * @sys_fl: lock already present on system that we're checking against
-+ *
-+ * Check to see if there's a share_reservation conflict. LOCK_READ/LOCK_WRITE
-+ * tell us whether the reservation allows other readers and writers.
-+ *
-+ * We only check against other LOCK_MAND locks, so applications that want to
-+ * use share mode locking will only conflict against one another. "normal"
-+ * applications that open files won't be affected by and won't themselves
-+ * affect the share reservations.
-  */
--static int flock_locks_conflict(struct file_lock *caller_fl, struct file_lock *sys_fl)
-+static int
-+locks_mand_conflict(struct file_lock *caller_fl, struct file_lock *sys_fl)
- {
--	/* FLOCK locks referring to the same filp do not conflict with
-+	unsigned char caller_type = caller_fl->fl_type;
-+	unsigned char sys_type = sys_fl->fl_type;
-+	fmode_t caller_fmode = caller_fl->fl_file->f_mode;
-+	fmode_t sys_fmode = sys_fl->fl_file->f_mode;
-+
-+	/* they can only conflict if they're both LOCK_MAND */
-+	if (!(caller_type & LOCK_MAND) || !(sys_type & LOCK_MAND))
-+		return 0;
-+
-+	if (!(caller_type & LOCK_READ) && (sys_fmode & FMODE_READ))
-+		return 1;
-+	if (!(caller_type & LOCK_WRITE) && (sys_fmode & FMODE_WRITE))
-+		return 1;
-+	if (!(sys_type & LOCK_READ) && (caller_fmode & FMODE_READ))
-+		return 1;
-+	if (!(sys_type & LOCK_WRITE) && (caller_fmode & FMODE_WRITE))
-+		return 1;
-+
-+	return 0;
-+}
-+
-+/*
-+ * Determine if lock sys_fl blocks lock caller_fl. FLOCK specific checking
-+ * before calling the locks_conflict(). Boolean is_mand indicates whether
-+ * we should use a share reservation scheme or not.
-+ */
-+static int
-+flock_locks_conflict(struct file_lock *caller_fl, struct file_lock *sys_fl,
-+		     bool is_mand)
-+{
-+	/*
-+	 * FLOCK locks referring to the same filp do not conflict with
- 	 * each other.
- 	 */
--	if (!IS_FLOCK(sys_fl) || (caller_fl->fl_file == sys_fl->fl_file))
--		return (0);
--	if ((caller_fl->fl_type & LOCK_MAND) || (sys_fl->fl_type & LOCK_MAND))
-+	if (!IS_FLOCK(sys_fl))
-+		return 0;
-+	if ((caller_fl->fl_type & LOCK_MAND) || (sys_fl->fl_type & LOCK_MAND)) {
-+		if (is_mand)
-+			return locks_mand_conflict(caller_fl, sys_fl);
-+		else
-+			return 0;
-+	}
-+	if (caller_fl->fl_file == sys_fl->fl_file)
- 		return 0;
- 
--	return (locks_conflict(caller_fl, sys_fl));
-+	return locks_conflict(caller_fl, sys_fl);
- }
- 
- void
-@@ -697,14 +758,19 @@ static int posix_locks_deadlock(struct file_lock *caller_fl,
- 	return 0;
- }
- 
--/* Try to create a FLOCK lock on filp. We always insert new FLOCK locks
-+/*
-+ * Try to create a FLOCK lock on filp. We always insert new FLOCK locks
-  * after any leases, but before any posix locks.
-  *
-  * Note that if called with an FL_EXISTS argument, the caller may determine
-  * whether or not a lock was successfully freed by testing the return
-  * value for -ENOENT.
-+ *
-+ * Take @is_conflict callback that determines how to check if locks have
-+ * conflicts or not.
-  */
--static int flock_lock_file(struct file *filp, struct file_lock *request)
-+static int
-+flock_lock_file(struct file *filp, struct file_lock *request, bool is_mand)
- {
- 	struct file_lock *new_fl = NULL;
- 	struct file_lock **before;
-@@ -760,7 +826,7 @@ find_conflict:
- 			break;
- 		if (IS_LEASE(fl))
- 			continue;
--		if (!flock_locks_conflict(request, fl))
-+		if (!flock_locks_conflict(request, fl, is_mand))
- 			continue;
- 		error = -EAGAIN;
- 		if (!(request->fl_flags & FL_SLEEP))
-@@ -783,6 +849,32 @@ out:
- 	return error;
- }
- 
-+/*
-+ * Determine if a file is allowed to be opened with specified access and deny
-+ * modes. Lock the file and return 0 if checks passed, otherwise return a error
-+ * code.
-+ */
-+int
-+deny_lock_file(struct file *filp)
-+{
-+	struct file_lock *lock;
-+	int error = 0;
-+
-+	if (!(filp->f_flags & O_DENYMAND))
-+		return error;
-+
-+	error = flock_make_lock(filp, &lock, deny_flags_to_cmd(filp->f_flags));
-+	if (error)
-+		return error;
-+
-+	error = flock_lock_file(filp, lock, true);
-+	if (error == -EAGAIN)
-+		error = -ETXTBSY;
-+
-+	locks_free_lock(lock);
-+	return error;
-+}
-+
- static int __posix_lock_file(struct inode *inode, struct file_lock *request, struct file_lock *conflock)
- {
- 	struct file_lock *fl;
-@@ -1589,7 +1681,7 @@ int flock_lock_file_wait(struct file *filp, struct file_lock *fl)
- 	int error;
- 	might_sleep();
- 	for (;;) {
--		error = flock_lock_file(filp, fl);
-+		error = flock_lock_file(filp, fl, false);
- 		if (error != FILE_LOCK_DEFERRED)
- 			break;
- 		error = wait_event_interruptible(fl->fl_wait, !fl->fl_next);
-diff --git a/fs/namei.c b/fs/namei.c
-index 43a97ee..c1f7e08 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -2559,9 +2559,14 @@ static int atomic_open(struct nameidata *nd, struct dentry *dentry,
- 	 * here.
- 	 */
- 	error = may_open(&file->f_path, acc_mode, open_flag);
--	if (error)
-+	if (error) {
- 		fput(file);
-+		goto out;
-+	}
- 
-+	error = deny_lock_file(file);
-+	if (error)
-+		fput(file);
- out:
- 	dput(dentry);
- 	return error;
-@@ -2771,9 +2776,9 @@ retry_lookup:
- 	}
- 	mutex_lock(&dir->d_inode->i_mutex);
- 	error = lookup_open(nd, path, file, op, got_write, opened);
--	mutex_unlock(&dir->d_inode->i_mutex);
- 
- 	if (error <= 0) {
-+		mutex_unlock(&dir->d_inode->i_mutex);
- 		if (error)
- 			goto out;
- 
-@@ -2791,8 +2796,32 @@ retry_lookup:
- 		will_truncate = false;
- 		acc_mode = MAY_OPEN;
- 		path_to_nameidata(path, nd);
--		goto finish_open_created;
-+
-+		/*
-+		 * Unlock parent i_mutex later when the open finishes - prevent
-+		 * races when a file can be locked with a deny lock by another
-+		 * task that opens the file.
-+		 */
-+		error = may_open(&nd->path, acc_mode, open_flag);
-+		if (error) {
-+			mutex_unlock(&dir->d_inode->i_mutex);
-+			goto out;
-+		}
-+		file->f_path.mnt = nd->path.mnt;
-+		error = finish_open(file, nd->path.dentry, NULL, opened);
-+		if (error) {
-+			mutex_unlock(&dir->d_inode->i_mutex);
-+			if (error == -EOPENSTALE)
-+				goto stale_open;
-+			goto out;
-+		}
-+		error = deny_lock_file(file);
-+		mutex_unlock(&dir->d_inode->i_mutex);
-+		if (error)
-+			goto exit_fput;
-+		goto opened;
- 	}
-+	mutex_unlock(&dir->d_inode->i_mutex);
- 
- 	/*
- 	 * create/update audit record if it already exists.
-@@ -2885,6 +2914,15 @@ finish_open_created:
- 			goto stale_open;
- 		goto out;
- 	}
-+	/*
-+	 * Lock parent i_mutex to prevent races with deny locks on newely
-+	 * created files.
-+	 */
-+	mutex_lock(&dir->d_inode->i_mutex);
-+	error = deny_lock_file(file);
-+	mutex_unlock(&dir->d_inode->i_mutex);
-+	if (error)
-+		goto exit_fput;
- opened:
- 	error = open_check_o_direct(file);
- 	if (error)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 7617ee0..347e1de 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1005,6 +1005,7 @@ extern int lease_modify(struct file_lock **, int);
- extern int lock_may_read(struct inode *, loff_t start, unsigned long count);
- extern int lock_may_write(struct inode *, loff_t start, unsigned long count);
- extern void locks_delete_block(struct file_lock *waiter);
-+extern int deny_lock_file(struct file *);
- extern void lock_flocks(void);
- extern void unlock_flocks(void);
- #else /* !CONFIG_FILE_LOCKING */
-@@ -1153,6 +1154,11 @@ static inline void locks_delete_block(struct file_lock *waiter)
- {
- }
- 
-+static inline int deny_lock_file(struct file *filp)
-+{
-+	return 0;
-+}
-+
- static inline void lock_flocks(void)
- {
- }
+> A philosophical question though is "How can we know when the DRC is large enough?"
+> 
+
+An excellent question, and not an easy one to answer. Clearly 1024
+entries was not enough. We now cap the size as a function of the
+available low memory, which I think is a reasonable way to keep it from
+ballooning so large that the box falls over. We also have a shrinker
+and periodic cache cleaner to prune off entries that have expired.
+
+Of course one thing I haven't really considered enough is the
+performance implications of walking the potentially much longer hash
+chains here.
+
+If that is a problem, then one way to counter that without moving to a
+different structure altogether might be to alter the hash function
+based on the max size of the cache. IOW, grow the number of hash buckets
+as the max cache size grows?
+
 -- 
-1.8.1.2
-
+Jeff Layton <jlayton@redhat.com>
