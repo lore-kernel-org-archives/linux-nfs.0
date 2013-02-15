@@ -1,99 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39332 "EHLO fieldses.org"
+Received: from minas.ics.muni.cz ([147.251.4.40]:40081 "EHLO minas.ics.muni.cz"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751494Ab3BMWlp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Feb 2013 17:41:45 -0500
-Date: Wed, 13 Feb 2013 17:41:41 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Anand Avati <anand.avati@gmail.com>,
-        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>, sandeen@redhat.com,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        gluster-devel@nongnu.org
-Subject: Re: [Gluster-devel] regressions due to 64-bit ext4 directory cookies
-Message-ID: <20130213224141.GU14195@fieldses.org>
-References: <20130212202841.GC10267@fieldses.org>
- <20130213040003.GB2614@thunk.org>
- <20130213133131.GE14195@fieldses.org>
- <20130213151455.GB17431@thunk.org>
- <20130213151953.GJ14195@fieldses.org>
- <20130213153654.GC17431@thunk.org>
- <20130213162059.GL14195@fieldses.org>
- <CAFboF2wXvP+vttiff8iRE9rAgvV8UWGbFprgVp8p7kE43TU=PA@mail.gmail.com>
- <20130213222052.GD5938@thunk.org>
+	id S1751160Ab3BOQwE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 15 Feb 2013 11:52:04 -0500
+Received: from anubis.ics.muni.cz (anubis.ics.muni.cz [147.251.17.147])
+	(authenticated user=xhejtman@META bits=0)
+	by minas.ics.muni.cz (8.13.8/8.13.8/SuSE Linux 0.8) with ESMTP id r1FGZ687021364
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Fri, 15 Feb 2013 17:35:07 +0100
+Received: from xhejtman by anubis.ics.muni.cz with local (Exim 4.80)
+	(envelope-from <xhejtman@ics.muni.cz>)
+	id 1U6OFd-0003HR-2H
+	for linux-nfs@vger.kernel.org; Fri, 15 Feb 2013 17:35:05 +0100
+Date: Fri, 15 Feb 2013 17:35:05 +0100
+From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+To: linux-nfs@vger.kernel.org
+Subject: gssd - expired credentials problem
+Message-ID: <20130215163505.GQ22743@ics.muni.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130213222052.GD5938@thunk.org>
+Content-Type: text/plain; charset=iso-8859-2
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 13, 2013 at 05:20:52PM -0500, Theodore Ts'o wrote:
-> On Wed, Feb 13, 2013 at 01:21:06PM -0800, Anand Avati wrote:
-> > 
-> > NFS uses the term cookies, while man pages of readdir/seekdir/telldir calls
-> > them "offsets". 
-> 
-> Unfortunately, telldir and seekdir are part of the "unspeakable Unix
-> design horrors" which has been with us for 25+ years.  To quote from
-> the rationale section from the Single Unix Specification v3 (there is
-> similar language in the Posix spec).
-> 
->     The original standard developers perceived that there were
->     restrictions on the use of the seekdir() and telldir() functions
->     related to implementation details, and for that reason these
->     functions need not be supported on all POSIX-conforming
->     systems. They are required on implementations supporting the XSI
->     extension.
-> 
->     One of the perceived problems of implementation is that returning
->     to a given point in a directory is quite difficult to describe
->     formally, in spite of its intuitive appeal, when systems that use
->     B-trees, hashing functions, or other similar mechanisms to order
->     their directories are considered. The definition of seekdir() and
->     telldir() does not specify whether, when using these interfaces, a
->     given directory entry will be seen at all, or more than once.
-> 
->     On systems not supporting these functions, their capability can
->     sometimes be accomplished by saving a filename found by readdir()
->     and later using rewinddir() and a loop on readdir() to relocate
->     the position from which the filename was saved.
-> 
-> 
-> Telldir() and seekdir() are basically implementation horrors for any
-> file system that is using anything other than a simple array of
-> directory entries ala the V7 Unix file system or the BSD FFS.  For any
-> file system which is using a more advanced data structure, like
-> b-trees hash trees, etc, there **can't** possibly be a "offset" into a
-> readdir stream.  This is why ext3/ext4 uses a telldir cookie, and it's
-> why the NFS specifications refer to it as a cookie.  If you are using
-> a modern file system, it can't possibly be an offset.
-> 
-> > You can always say "this is your fault" for interpreting the man pages
-> > differently and punish us by leaving things as they are (and unfortunately
-> > a big chunk of users who want both ext4 and gluster jeapordized). Or you
-> > can be kind, generous and be considerate to the legacy apps and users (of
-> > which gluster is only a subset) and only provide a mount option to control
-> > the large d_off behavior.
-> 
-> The problem is that we made this change to fix real problems that take
-> place when you have hash collisions.  And if you are using a 31-bit
-> cookie, the birthday paradox means that by the time you have a
-> directory with 2**16 entries, the chances of hash collisions are very
-> real.  This could result in NFS readdir getting stuck in loops where
-> it constantly gets the file "foo.c", and then when it passes the
-> 31-bit cookie for "bar.c", since there is a hash collision, it gets
-> "foo.c" again, and the readdir never terminates.
-> 
-> So the problem is that you are effectively asking me to penalize
-> well-behaved programs that don't try to steel bits from the top of the
-> telldir cookie, just for the benefit of gluster.
-> 
-> What if we have an ioctl or a process personality flag where a broken
-> application can tell the file system "I'm broken, please give me a
-> degraded telldir/seekdir cookie"?  That way we don't penalize programs
-> that are doing the right thing, while providing some accomodation for
-> programs who are abusing the telldir cookie.
+Hi,
 
-Yeah, if there's a simple way to do that, maybe it would be worth it.
+I noticed that there is a problem with expired credentials if NFS client's
+time is even few seconds behind KDC's or NFS server's time. Client's kernel
+requests new GSS context but rpc.gssd is happy with existing krb cache as it
+valid according to local time.
 
---b.
+Is there any reason for gssd to check validity of existing cache when kernel
+requests a new context?
+
+However, it seems that this trivial patch solves this issue:
+
+diff -rNu nfs-utils-1.2.7.orig/utils/gssd/krb5_util.c nfs-utils-1.2.7/utils/gssd/krb5_util.c
+--- nfs-utils-1.2.7.orig/utils/gssd/krb5_util.c 2012-11-12 00:01:23.000000000 +0100
++++ nfs-utils-1.2.7/utils/gssd/krb5_util.c      2013-02-15 16:35:35.652482164 +0100
+@@ -343,7 +343,7 @@
+        char kt_name[BUFSIZ];
+        char cc_name[BUFSIZ];
+        int code;
+-       time_t now = time(0);
++       time_t now = time(0)+300; // workaround for clock skew among NFS server, NFS client and KDC
+        char *cache_type;
+        char *pname = NULL;
+        char *k5err = NULL;
+
+300 is because I believe that clock skew must be within 300sec for kerberos.
+
+-- 
+Luká¹ Hejtmánek
