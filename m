@@ -1,78 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:32914 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:58623 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757236Ab3BVP2p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Feb 2013 10:28:45 -0500
-Date: Fri, 22 Feb 2013 10:28:44 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFSv4.2: Added NFS v4.2 support to the NFS client
-Message-ID: <20130222152834.GC10157@pad.fieldses.org>
-References: <1361484911-17537-1-git-send-email-steved@redhat.com>
- <1361484911-17537-2-git-send-email-steved@redhat.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9235DAEC7@SACEXCMBX04-PRD.hq.netapp.com>
- <5126AA24.5070908@RedHat.com>
+	id S1755870Ab3BOQay (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 15 Feb 2013 11:30:54 -0500
+Date: Fri, 15 Feb 2013 11:30:51 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Tim Gardner <tim.gardner@canonical.com>, linux-kernel@vger.kernel.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH linux-next v2] lockd: nlmclnt_reclaim(): avoid stack
+ overflow
+Message-ID: <20130215163050.GL8343@fieldses.org>
+References: <20130212211800.GG10267@fieldses.org>
+ <1360770016-69586-1-git-send-email-tim.gardner@canonical.com>
+ <20130214102038.52b1d292@tlielax.poochiereds.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5126AA24.5070908@RedHat.com>
+In-Reply-To: <20130214102038.52b1d292@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 21, 2013 at 06:13:40PM -0500, Steve Dickson wrote:
+On Thu, Feb 14, 2013 at 10:20:38AM -0500, Jeff Layton wrote:
+> On Wed, 13 Feb 2013 08:40:16 -0700
+> Tim Gardner <tim.gardner@canonical.com> wrote:
 > 
+> > Even though nlmclnt_reclaim() is only one call into the stack frame,
+> > 928 bytes on the stack seems like a lot. Recode to dynamically
+> > allocate the request structure once from within the reclaimer task,
+> > then pass this pointer into nlmclnt_reclaim() for reuse on
+> > subsequent calls.
+> > 
+> > smatch analysis:
+> > 
+> > fs/lockd/clntproc.c:620 nlmclnt_reclaim() warn: 'reqst' puts
+> >  928 bytes on stack
+> > 
+> > Also remove redundant assignment of 0 after memset.
+> > 
+> > Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > Cc: "J. Bruce Fields" <bfields@fieldses.org>
+> > Cc: linux-nfs@vger.kernel.org
+> > Signed-off-by: Tim Gardner <tim.gardner@canonical.com>
+> > ---
+> > 
+> > Changes from v1 -- don't return -ENOMEM from a task thread because it is
+> > not propagated to the task creator. Instead print an error message and return.
+...
+> Oops, just noticed there was a later version of this patch. Please
+> disregard my earlier mail...
 > 
-> On 21/02/13 17:22, Myklebust, Trond wrote:
-> > On Thu, 2013-02-21 at 17:15 -0500, Steve Dickson wrote:
-> >> > This enable NFSv4.2 support. To enable this code the
-> >> > CONFIG_NFS_V4_2 Kconfig define needs to be set and
-> >> > the -o v4.2 mount option need to be used.
-> >> > 
-> >> > Signed-off-by: Steve Dickson <steved@redhat.com>
-> >> > ---
-> >> >  fs/nfs/Kconfig       | 11 ++++++++++-
-> >> >  fs/nfs/callback.c    |  3 +++
-> >> >  fs/nfs/nfs4client.c  |  5 +++++
-> >> >  fs/nfs/nfs4proc.c    |  3 +++
-> >> >  fs/nfs/super.c       |  7 ++++++-
-> >> >  include/linux/nfs4.h |  4 ++++
-> >> >  6 files changed, 31 insertions(+), 2 deletions(-)
-> >> > 
-> >> > diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-> >> > index 3861a1f..247db6d 100644
-> >> > --- a/fs/nfs/Kconfig
-> >> > +++ b/fs/nfs/Kconfig
-> >> > @@ -104,6 +104,15 @@ config NFS_V4_1
-> >> >  
-> >> >  	  If unsure, say N.
-> >> >  
-> >> > +config NFS_V4_2
-> >> > +	bool "NFS client support for NFSv4.2"
-> >> > +	depends on NFS_V4_1
-> >> > +	help
-> >> > +	  This option enables support for minor version 1 of the NFSv4 protocol
-> >> > +	  (RFC 5661) in the kernel's NFS client.
-> >> > +
-> >> > +	  If unsure, say N.
-> >> > +
-> >> >  config PNFS_FILE_LAYOUT
-> >> >  	tristate
-> >> >  	depends on NFS_V4_1
-> >> > @@ -133,7 +142,7 @@ config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
-> >> >  
-> >> >  config NFS_V4_SECURITY_LABEL
-> >> >  	bool "Provide Security Label support for NFSv4 client"
-> >> > -	depends on NFS_V4 && SECURITY
-> >> > +	depends on NFS_V4_2 && SECURITY
-> >> >  	help
-> > Just have NFS_V4_SECURITY_LABEL be automatically selected by NFS_V4_2.
-> > Requiring users to manually select both makes little sense...
-> > 
-> > 
-> Yeah... that make sense... 
+> Reviewed-by: Jeff Layton <jlayton@redhat.com>
 
-Why do we even need the two config options (both NFS_SECURITY_LABEL and
-NFS_V4_2)?  Until we have more 4.2 features it seems redundant.
-
---b.
+Thanks, applying.--b.
