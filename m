@@ -1,32 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 121.242.182.195.static-bangalore.vsnl.net.in ([121.242.182.195]:58634
-	"EHLO mail.in.fiorano.com" rhost-flags-OK-FAIL-OK-OK)
-	by vger.kernel.org with ESMTP id S1753844Ab3BUPUk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Feb 2013 10:20:40 -0500
-Received: from localhost.localdomain (unknown [121.242.182.200])
-	by mail.in.fiorano.com (Postfix) with ESMTPA id 884CE7FFA3
-	for <linux-nfs@vger.kernel.org>; Thu, 21 Feb 2013 19:49:30 +0530 (IST)
-Message-ID: <5126396E.5030905@in.fiorano.com>
-Date: Thu, 21 Feb 2013 20:42:46 +0530
-From: Nibhrit Vij <nibhrit.vij@in.fiorano.com>
+Received: from mx1.redhat.com ([209.132.183.28]:53664 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754228Ab3BPU3T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 16 Feb 2013 15:29:19 -0500
+Message-ID: <511FEC09.5040809@RedHat.com>
+Date: Sat, 16 Feb 2013 15:28:57 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: [nfs] Problems faced while auto mounting
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 09/15] NFS: Add label lifecycle management
+References: <1360327163-20360-1-git-send-email-SteveD@redhat.com> <1360327163-20360-10-git-send-email-SteveD@redhat.com> <20130212222659.GK10267@fieldses.org>
+In-Reply-To: <20130212222659.GK10267@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi
 
-We were trying to mount a filesystem over our LAN, shared a directory 
-from one machine and set up a client on another. While rebooting the 
-client machine, NFSFilesystemMounting 'failed'. Can you help?
 
--- 
-Thanks&  Regards
-Nibhrit Vij
-Software Engineer
-Fiorano Software Technologies Pvt. Ltd.
-Ph. +91-9901937220
-Skype. nibhrit.vij.fiorano
+On 12/02/13 17:27, J. Bruce Fields wrote:
+>> @@ -2922,6 +2969,7 @@ static int _nfs4_proc_remove(struct inode *dir, struct qstr *name)
+>> >  	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 1);
+>> >  	if (status == 0)
+>> >  		update_changeattr(dir, &res.cinfo);
+>> > +
+>> >  	return status;
+>> >  }
+>> >  
+>> > @@ -2965,6 +3013,7 @@ static int nfs4_proc_unlink_done(struct rpc_task *task, struct inode *dir)
+>> >  	if (nfs4_async_handle_error(task, res->server, NULL) == -EAGAIN)
+>> >  		return 0;
+>> >  	update_changeattr(dir, &res->cinfo);
+>> > +
+>> >  	return 1;
+>> >  }
+>> >  
+> How'd these two hunks end up in here?
+I have no idea.. but they are gone..
 
+steved.
