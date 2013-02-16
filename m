@@ -1,67 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38697 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:61279 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754203Ab3BDRB6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Feb 2013 12:01:58 -0500
-Date: Mon, 4 Feb 2013 12:01:54 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] sunrpc: move address copy/cmp/convert routines and
- prototypes from clnt.h to addr.h
-Message-ID: <20130204170154.GG815@fieldses.org>
-References: <1359991431-25579-1-git-send-email-jlayton@redhat.com>
- <20130204160955.GD815@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91835C73B@SACEXCMBX04-PRD.hq.netapp.com>
- <20130204161825.GF815@fieldses.org>
+	id S1754403Ab3BPUgW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 16 Feb 2013 15:36:22 -0500
+Message-ID: <511FEDB7.9000505@RedHat.com>
+Date: Sat, 16 Feb 2013 15:36:07 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130204161825.GF815@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 12/15] lnfs: Do not sleep holding the inode spin lock
+References: <1360327163-20360-1-git-send-email-SteveD@redhat.com> <1360327163-20360-13-git-send-email-SteveD@redhat.com> <20130213151610.GI14195@fieldses.org>
+In-Reply-To: <20130213151610.GI14195@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 04, 2013 at 11:18:25AM -0500, J. Bruce Fields wrote:
-> On Mon, Feb 04, 2013 at 04:15:43PM +0000, Myklebust, Trond wrote:
-> > On Mon, 2013-02-04 at 11:09 -0500, J. Bruce Fields wrote:
-> > > On Mon, Feb 04, 2013 at 10:23:51AM -0500, Jeff Layton wrote:
-> > > > These routines are used by server and client code, so having them in a
-> > > > separate header would be best.
-> > > 
-> > > I'll apply this and the scope id patch if it gets Trond's ACK.
-> > > 
-> > > (Or they have my ACK if Trond wants to take them.)
-> > 
-> > Feel free to take them through the nfsd tree.
-> > 
-> > Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> 
-> Thanks.  I needed to add the following.
-> 
-> We should make sure none of the other files including clnt.h might also
-> need one of these.
 
-Eh, pretty sure that was the only one.  Applied.--b.
 
-> 
-> --b.
-> 
-> commit a487a5ec9e2f37472097a3ff3535c87c6af334e9
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Mon Feb 4 11:13:24 2013 -0500
-> 
->     foldme
-> 
-> diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-> index e761ee9..255ae32 100644
-> --- a/fs/nfsd/fault_inject.c
-> +++ b/fs/nfsd/fault_inject.c
-> @@ -10,6 +10,7 @@
->  #include <linux/module.h>
->  #include <linux/nsproxy.h>
->  #include <linux/sunrpc/clnt.h>
-> +#include <linux/sunrpc/addr.h>
->  #include <asm/uaccess.h>
->  
->  #include "state.h"
+On 13/02/13 10:16, J. Bruce Fields wrote:
+> On Fri, Feb 08, 2013 at 07:39:20AM -0500, Steve Dickson wrote:
+>> > From: Dave Quigley <dpquigl@taiga.selinuxproject.org>
+>> > 
+>> > The nfs_setsecurity code can sleep while allocating memory
+>> > so the inode spin lock can not be held while during this call.
+> If this is the right fix, it needs to be folded into patch 10/15, where
+> the problem was introduced.
+Gone! 
+
+steved.
