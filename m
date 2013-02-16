@@ -1,89 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42636 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:42829 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755656Ab3BGQTt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Feb 2013 11:19:49 -0500
-Date: Thu, 7 Feb 2013 11:19:48 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Pavel Shilovsky <piastry@etersoft.ru>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        wine-devel@winehq.org
-Subject: Re: [PATCH v2 3/8] vfs: Add O_DENYREAD/WRITE flags support for open
- syscall
-Message-ID: <20130207161948.GG3222@fieldses.org>
-References: <1358441584-8783-1-git-send-email-piastry@etersoft.ru>
- <1358441584-8783-3-git-send-email-piastry@etersoft.ru>
- <20130130221602.GC15584@fieldses.org>
- <CAKywueRh++TBazK8_kRN7AUb=EFhGv=Sv2CV0BESkfLFy+g5wA@mail.gmail.com>
- <20130205143514.GA9886@fieldses.org>
- <CAKywueS6oGNu9r_bypu32A89pOoiGb47kjXqw2ZcZQhZK+JV3g@mail.gmail.com>
- <20130207141832.GA3222@fieldses.org>
- <CAKywueTmU_L5cwwJSoUY6753eHf_38VtHadZGt9tcLS59sqmOA@mail.gmail.com>
- <20130207144156.GB3222@fieldses.org>
- <CAKywueShbPd9b+WmJwnfwPR_vzk_atBVRBZNTf-HpS7N2CK+AA@mail.gmail.com>
+	id S1750792Ab3BPFRr convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 16 Feb 2013 00:17:47 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Steve Dickson <SteveD@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: V4 unmount causes a GETATTR
+Date: Sat, 16 Feb 2013 05:17:45 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91F3DA928@sacexcmbx05-prd.hq.netapp.com>
+References: <511E5838.2020103@RedHat.com>
+ <20130215182531.GB19923@fieldses.org> <511EAC8B.3050403@RedHat.com>
+In-Reply-To: <511EAC8B.3050403@RedHat.com>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAKywueShbPd9b+WmJwnfwPR_vzk_atBVRBZNTf-HpS7N2CK+AA@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 07, 2013 at 08:00:13PM +0400, Pavel Shilovsky wrote:
-> 2013/2/7 J. Bruce Fields <bfields@fieldses.org>:
-> > On Thu, Feb 07, 2013 at 06:32:38PM +0400, Pavel Shilovsky wrote:
-> >> 2013/2/7 J. Bruce Fields <bfields@fieldses.org>:
-> >> > On Thu, Feb 07, 2013 at 01:53:46PM +0400, Pavel Shilovsky wrote:
-> >> >> Nothing prevents it. If somebody grabbed a share mode lock on a file
-> >> >> before we call deny_lock_file, we simply close this file and return
-> >> >> -ETXTBSY.
-> >> >
-> >> > But leave the newly-created file there--ugh.
-> >> >
-> >> >> We can't grab it before atomic_open because we don't have an
-> >> >> inode there.
-> >> >
-> >> > If you can get the lock while still holding the directory i_mutex can't
-> >> > you prevent anyone else from looking up the new file until you've gotten
-> >> > the lock?
-> >> >
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> owner@vger.kernel.org] On Behalf Of Steve Dickson
+> Sent: Friday, February 15, 2013 4:46 PM
+> To: J. Bruce Fields
+> Cc: linux-nfs@vger.kernel.org
+> Subject: Re: V4 unmount causes a GETATTR
+> 
+> 
+> 
+> On 15/02/13 13:25, J. Bruce Fields wrote:
+> > On Fri, Feb 15, 2013 at 10:46:00AM -0500, Steve Dickson wrote:
+> >> Hello,
 > >>
-> >> Hm..., seems you are right, I missed this part:
-> >> mutex_lock
-> >> lookup_open -> atomic_open -> deny_lock_file
-> >> mutex_unlock
+> >> I have not tracked down as to the exact reason, but it appears umount
+> >> of v4 file system cause the directory to be revalidating causing the
+> >> GETATTR.
 > >>
-> >> that means that nobody can open and of course set flock on the newly
-> >> created file (because flock is done through file descriptor). So, it
-> >> should be fine to call flock after f_ops->atomic_open in atomic_open
-> >> function. Thanks.
+> >> Is this revalidation really necessary on an unmount?
 > >
-> > Whether that works may also depend on how the new dentry is set up?  If
-> > it's hashed before you call flock then I suppose it's already visible to
-> > others.
+> > I don't know, maybe not.  But even if it's not, there are other things
+> > (like cleaning up state) that the client will likely try to do on
+> > unmount.  In the presence of delegations it could have dirty data that
+> > it's required to write back even if applications don't currently hold
+> > any open files.
+> Understood with dirty data... but what I as seeing was a v4 mount and then a
+> reboot with no activity on the mount point...
 > 
-> It seems it should be hashed in f_ops->atomic_open() (at least cifs
-> and nfs do it this way). In do_last when we do an ordinary open, we
-> don't hit parent i_mutex if lookup is succeeded through lookup_fast.
-> lookup_fast can catch newly created dentry and set it's share mode
-> before atomic_open codepath hits deny_lock_file.
-> 
-> Also, I noted that: atomic open does f_ops->atomic_open and then it
-> processes may_open check; if may_open fails, the file is closed and
-> open returns with a error code (but file is created anyway).
+> >
+> > So I don't think we can promise umount will work without the network.
+> Again with open files (aka activity on the mount point) I agree but with no
+> activity or open files, I'm think that GETATTR is simply not necessary...
 
-That would be a bug, I think.  E.g. "man 3posix open":
+You'd need to add a lookup intent specifically for umount. Otherwise the filesystem will not be able distinguish between path lookups for umount and other activity.
 
-	No  files  shall  be created or modified if the function returns
-	-1.
+Also note that "no activity or open files" is no guarantee that you won't be holding delegations or pNFS layouts to return; you may still see hangs.
 
-Looking at the code...  See the references to FILE_CREATED in
-atomic_open--looks like that's trying to prevent may_open from failing
-in this case.
-
-> I think
-> there is no difference between this case and the situation with
-> deny_lock_file there.
-
-Looks to me like it would be a bug in either case.
-
---b.
+Cheers,
+  Trond
