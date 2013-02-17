@@ -1,53 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:46753 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:58579 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755760Ab3BVU0s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Feb 2013 15:26:48 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] SUNRPC: Don't start the retransmission timer when out of socket space
-Date: Fri, 22 Feb 2013 15:26:44 -0500
-Message-Id: <1361564804-18901-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1754809Ab3BQBsH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 16 Feb 2013 20:48:07 -0500
+Message-ID: <512036AC.4010404@RedHat.com>
+Date: Sat, 16 Feb 2013 20:47:24 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Steve Dickson <SteveD@redhat.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 10/15] NFS: Client implementation of Labeled-NFS
+References: <1360327163-20360-1-git-send-email-SteveD@redhat.com> <1360327163-20360-11-git-send-email-SteveD@redhat.com> <20130212230346.GN10267@fieldses.org> <511FED8E.7020308@RedHat.com> <20130216223035.GB28824@fieldses.org> <51203168.7050204@RedHat.com>
+In-Reply-To: <51203168.7050204@RedHat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the socket is full, we're better off just waiting until it empties,
-or until the connection is broken. The reason why we generally don't
-want to time out is that the call to xprt->ops->release_xprt() will
-trigger a connection reset, which isn't helpful...
 
-Let's make an exception for soft RPC calls, since they have to provide
-timeout guarantees.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: stable@vger.kernel.org
----
- net/sunrpc/xprt.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+On 16/02/13 20:24, Steve Dickson wrote:
+>> > You may want to just remove nfs4_label_init() entirely.  This is the
+>> > only caller, and it doesn't seem very useful.
+> Its a useful way to reset len back to NFS4_MAXLABELLEN as well as 
+> lfs and pi back to zero... 
+On second thought... It is useless... I'll remove it... 
 
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 846c34f..b7478d5 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -487,13 +487,17 @@ EXPORT_SYMBOL_GPL(xprt_wake_pending_tasks);
-  * xprt_wait_for_buffer_space - wait for transport output buffer to clear
-  * @task: task to be put to sleep
-  * @action: function pointer to be executed after wait
-+ *
-+ * Note that we only set the timer for the case of RPC_IS_SOFT(), since
-+ * we don't in general want to force a socket disconnection due to
-+ * an incomplete RPC call transmission.
-  */
- void xprt_wait_for_buffer_space(struct rpc_task *task, rpc_action action)
- {
- 	struct rpc_rqst *req = task->tk_rqstp;
- 	struct rpc_xprt *xprt = req->rq_xprt;
- 
--	task->tk_timeout = req->rq_timeout;
-+	task->tk_timeout = RPC_IS_SOFT(task) ? req->rq_timeout : 0;
- 	rpc_sleep_on(&xprt->pending, task, action);
- }
- EXPORT_SYMBOL_GPL(xprt_wait_for_buffer_space);
--- 
-1.8.1.2
-
+steved.
