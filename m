@@ -1,37 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41449 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753642Ab3BLXLU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Feb 2013 18:11:20 -0500
-Date: Tue, 12 Feb 2013 18:11:13 -0500
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 00/15] lnfs: 3.8-rc6 release
-Message-ID: <20130212231113.GQ10267@fieldses.org>
-References: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
+Received: from natasha.panasas.com ([67.152.220.90]:38264 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754393Ab3BQOgx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 17 Feb 2013 09:36:53 -0500
+Message-ID: <5120EABE.1040207@panasas.com>
+Date: Sun, 17 Feb 2013 16:35:42 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Michael Monnerie <lists.michael.monnerie@is.it-management.at>
+CC: <linux-nfs@vger.kernel.org>
+Subject: Re: How to make clients NOT block
+References: <680509590.JPpPf8D3KZ@saturn>
+In-Reply-To: <680509590.JPpPf8D3KZ@saturn>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-So originally I thought Dave was saying we'd try to get the label change
-attribute in the initial submission.  I guess it'll be coming later
-instead?
+On 02/16/2013 01:30 PM, Michael Monnerie wrote:
+> Dear list,
+> 
+> we've had several servers block today because they all have a NFS mount point 
+> from a linux kernel 3.7.6 server. This is the fstab entry:
+> 
+> 1.1.1.1:/nfsshare/all /shared nfs4 defaults,tcp,intr,relatime,async,acl 0 9
+> 
+> The NFS server crashed and was offline, that made all clients block. Even 
+> after the NFS server was up again, most clients were stuck to the point they 
+> had to be rebooted. What mount options should we use so clients don't block 
+> completely when the NFS server is gone? It's no problem to unmount the NFS 
+> share, or get errors, but the clients must not stop their work.
+> 
 
-This is going to be a part of NFSv4.2, so shouldn't this really come
-with patches to implement minor version 2?  (Should be totally trivial
-as it doesn't have to do anything other than labeled NFS for now.)
+It's the "-o soft" mount option to mount or fstab. Note that it will unstuck
+you at most operations, after a timeout the Applications will receive EIO.
 
-If not, that's another reason why we don't want to recommend building
-this by default.  Though maybe advertising labeled NFS support in v4.1
-won't cause a problem for any implementation in practice, I don't know.
+("most", because rarely it'll D state anyway)
 
---b.
+Cheers
+Boaz
+
