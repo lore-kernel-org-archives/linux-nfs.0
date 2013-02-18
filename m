@@ -1,101 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cn.fujitsu.com ([222.73.24.84]:29075 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1754062Ab3BDNOl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Feb 2013 08:14:41 -0500
-Message-ID: <510FB456.6040208@cn.fujitsu.com>
-Date: Mon, 04 Feb 2013 21:15:02 +0800
-From: fanchaoting <fanchaoting@cn.fujitsu.com>
-MIME-Version: 1.0
-To: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH] umount oops when remove  blocklayoutdriver first
-Content-Type: text/plain; charset=ISO-2022-JP
+Received: from mx1.redhat.com ([209.132.183.28]:52214 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751406Ab3BROjy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Feb 2013 09:39:54 -0500
+Date: Mon, 18 Feb 2013 09:39:48 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH RFC] nfsd: report length of the largest hash chain in
+ reply cache stats
+Message-ID: <20130218093948.670ddb06@tlielax.poochiereds.net>
+In-Reply-To: <BA5562CC-9236-4EC1-BC7A-341387B9F452@oracle.com>
+References: <20130215133406.20b1ef09@tlielax.poochiereds.net>
+	<1360958672-5692-1-git-send-email-jlayton@redhat.com>
+	<299C8DF9-5BFC-4E26-8F7E-CE3415D1140F@oracle.com>
+	<20130215172058.29941a54@tlielax.poochiereds.net>
+	<20130216133927.GA28824@fieldses.org>
+	<BA5562CC-9236-4EC1-BC7A-341387B9F452@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-now pnfs client uses block layout, maybe we can remove
-blocklayoutdriver first. if we umount later,
-it can cause oops in unset_pnfs_layoutdriver.
-because nfss->pnfs_curr_ld->clear_layoutdriver is invalid.
+On Sat, 16 Feb 2013 12:18:18 -0500
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-reproduce it:
- modprobe  blocklayoutdriver
- mount -t nfs4 -o minorversion=1 pnfsip:/ /mnt/
- rmmod blocklayoutdriver
- umount /mnt
+> 
+> On Feb 16, 2013, at 8:39 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> 
+> > On Fri, Feb 15, 2013 at 05:20:58PM -0500, Jeff Layton wrote:
+> >> An excellent question, and not an easy one to answer. Clearly 1024
+> >> entries was not enough. We now cap the size as a function of the
+> >> available low memory, which I think is a reasonable way to keep it from
+> >> ballooning so large that the box falls over. We also have a shrinker
+> >> and periodic cache cleaner to prune off entries that have expired.
+> >> 
+> >> Of course one thing I haven't really considered enough is the
+> >> performance implications of walking the potentially much longer hash
+> >> chains here.
+> >> 
+> >> If that is a problem, then one way to counter that without moving to a
+> >> different structure altogether might be to alter the hash function
+> >> based on the max size of the cache. IOW, grow the number of hash buckets
+> >> as the max cache size grows?
+> 
+> The trouble with a hash table is that once you've allocated it, it's a heavy lift to increase the table size.  That sort of logic adds complexity and additional locking, and is often difficult to test.
+> 
 
-then you can see following
+I wasn't suggesting that we resize/rebalance the table on the fly. We
+determine the max allowable number of cache entries when the server
+starts. We could also determine the number of buckets at the same time,
+and alter the hashing function to take that number into account.
 
-#############################################################
-CPU 0
-Pid: 17023, comm: umount.nfs4 Tainted: GF          O 3.7.0-rc6-pnfs #1 VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform
-RIP: 0010:[<ffffffffa04cfe6d>]  [<ffffffffa04cfe6d>] unset_pnfs_layoutdriver+0x1d/0x70 [nfsv4]
-RSP: 0018:ffff8800022d9e48  EFLAGS: 00010286
-RAX: ffffffffa04a1b00 RBX: ffff88000b013800 RCX: 0000000000000001
-RDX: ffffffff81ae8ee0 RSI: ffff880001ee94b8 RDI: ffff88000b013800
-RBP: ffff8800022d9e58 R08: 0000000000000001 R09: 0000000000000000
-R10: 0000000000000000 R11: 0000000000000000 R12: ffff880001ee9400
-R13: ffff8800105978c0 R14: 00007fff25846c08 R15: 0000000001bba550
-FS:  00007f45ae7f0700(0000) GS:ffff880012c00000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-CR2: ffffffffa04a1b38 CR3: 0000000002c0c000 CR4: 00000000000006f0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Process umount.nfs4 (pid: 17023, threadinfo ffff8800022d8000, task ffff880006e48aa0)
-Stack:
-ffff8800105978c0 ffff88000b013800 ffff8800022d9e78 ffffffffa04cd0ce
-ffff8800022d9e78 ffff88000b013800 ffff8800022d9ea8 ffffffffa04755a7
-ffff8800022d9ea8 ffff880002f96400 ffff88000b013800 ffff880002f96400
-Call Trace:
-[<ffffffffa04cd0ce>] nfs4_destroy_server+0x1e/0x30 [nfsv4]
-[<ffffffffa04755a7>] nfs_free_server+0xb7/0x150 [nfs]
-[<ffffffffa047d4d5>] nfs_kill_super+0x35/0x40 [nfs]
-[<ffffffff81178d35>] deactivate_locked_super+0x45/0x70
-[<ffffffff8117986a>] deactivate_super+0x4a/0x70
-[<ffffffff81193ee2>] mntput_no_expire+0xd2/0x130
-[<ffffffff81194d62>] sys_umount+0x72/0xe0
-[<ffffffff8154af59>] system_call_fastpath+0x16/0x1b
-Code: 06 e1 b8 ea ff ff ff eb 9e 0f 1f 44 00 00 55 48 89 e5 53 48 83 ec 08 66 66 66 66 90 48 8b 87 80 03 00 00 48 89 fb 48 85 c0 74 29 <48> 8b 40 38 48 85 c0 74 02 ff d0 48 8b 03 3e ff 48 04 0f 94 c2
-RIP  [<ffffffffa04cfe6d>] unset_pnfs_layoutdriver+0x1d/0x70 [nfsv4]
-RSP <ffff8800022d9e48>
-CR2: ffffffffa04a1b38
----[ end trace 29f75aaedda058bf ]---
+Of course, more buckets may not help if the hash function just sucks.
 
-#############################################################
+> > Another reason to organize the cache per client address?
+> 
+> 
+> In theory, an active single client could evict all entries for other clients, but do we know this happens in practice?
+> 
 
+I'm pretty sure that's what's been happening to our QA group. They have
+some shared NFS servers set up in the test lab for client testing. When
+things get busy, they the DRC just plain doesn't appear to work. It's
+hard to know for sure though since the problem only crops up very
+rarely.
 
-Signed-off-by: fanchaoting<fanchaoting@cn.fujitsu.com>
----
- fs/nfs/blocklayout/blocklayout.c |    1 +
- fs/nfs/objlayout/objio_osd.c     |    1 +
- 2 files changed, 2 insertions(+), 0 deletions(-)
+My hope is that the massive increase in the size of the DRC should
+prevent that from occurring now.
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index f1027b0..1e481c5 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -1272,6 +1272,7 @@ static const struct nfs_pageio_ops bl_pg_write_ops = {
- static struct pnfs_layoutdriver_type blocklayout_type = {
- 	.id				= LAYOUT_BLOCK_VOLUME,
- 	.name				= "LAYOUT_BLOCK_VOLUME",
-+	.owner				= THIS_MODULE,
- 	.read_pagelist			= bl_read_pagelist,
- 	.write_pagelist			= bl_write_pagelist,
- 	.alloc_layout_hdr		= bl_alloc_layout_hdr,
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index c6f9906..88f9611 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -647,6 +647,7 @@ static struct pnfs_layoutdriver_type objlayout_type = {
- 	.flags                   = PNFS_LAYOUTRET_ON_SETATTR |
- 				   PNFS_LAYOUTRET_ON_ERROR,
- 
-+	.owner		       	 = THIS_MODULE,
- 	.alloc_layout_hdr        = objlayout_alloc_layout_hdr,
- 	.free_layout_hdr         = objlayout_free_layout_hdr,
- 
+> > With a per-client maximum number of entries, sizing the hash tables
+> > should be easier.
+> 
+> 
+> When a server has only one client, should that client be allowed to maximize the use of a server's resources (eg, use all of the DRC resource the server has available)?  How about when a server has one active client and multiple quiescent clients?
+> 
+
+Again, we have two "problems" to solve, and we need to take care not to
+conflate them too much.
+
+1) how do we best organize the cache for efficient lookups?
+
+2) what cache eviction policy should we use?
+
+Organizing the cache based on client address might help both of those,
+but we'll need to determine whether it's worth the extra complexity.
 -- 
-1.7.1
-
+Jeff Layton <jlayton@redhat.com>
