@@ -1,134 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:32736 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758188Ab3BNPUr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Feb 2013 10:20:47 -0500
-Date: Thu, 14 Feb 2013 10:20:38 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Tim Gardner <tim.gardner@canonical.com>
-Cc: linux-kernel@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH linux-next v2] lockd: nlmclnt_reclaim(): avoid stack
- overflow
-Message-ID: <20130214102038.52b1d292@tlielax.poochiereds.net>
-In-Reply-To: <1360770016-69586-1-git-send-email-tim.gardner@canonical.com>
-References: <20130212211800.GG10267@fieldses.org>
-	<1360770016-69586-1-git-send-email-tim.gardner@canonical.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from aserp1040.oracle.com ([141.146.126.69]:26851 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757469Ab3BRWsj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Feb 2013 17:48:39 -0500
+Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
+Subject: Re: Kernels 3.7 and newer break rpc.gssd -n
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <73594034-4F9D-4DA6-A979-1E2745BCDF05@oracle.com>
+Date: Mon, 18 Feb 2013 17:48:29 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <CFDAB21B-48E2-4567-A579-DEB6BC77890F@oracle.com>
+References: <127351146.98508.1360769367943.JavaMail.root@opinsys.fi> <73594034-4F9D-4DA6-A979-1E2745BCDF05@oracle.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 13 Feb 2013 08:40:16 -0700
-Tim Gardner <tim.gardner@canonical.com> wrote:
 
-> Even though nlmclnt_reclaim() is only one call into the stack frame,
-> 928 bytes on the stack seems like a lot. Recode to dynamically
-> allocate the request structure once from within the reclaimer task,
-> then pass this pointer into nlmclnt_reclaim() for reuse on
-> subsequent calls.
-> 
-> smatch analysis:
-> 
-> fs/lockd/clntproc.c:620 nlmclnt_reclaim() warn: 'reqst' puts
->  928 bytes on stack
-> 
-> Also remove redundant assignment of 0 after memset.
-> 
-> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Cc: "J. Bruce Fields" <bfields@fieldses.org>
-> Cc: linux-nfs@vger.kernel.org
-> Signed-off-by: Tim Gardner <tim.gardner@canonical.com>
-> ---
-> 
-> Changes from v1 -- don't return -ENOMEM from a task thread because it is
-> not propagated to the task creator. Instead print an error message and return.
-> 
->  fs/lockd/clntlock.c         |   12 +++++++++++-
->  fs/lockd/clntproc.c         |    6 ++----
->  include/linux/lockd/lockd.h |    3 ++-
->  3 files changed, 15 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/lockd/clntlock.c b/fs/lockd/clntlock.c
-> index 4885b53..6cd673d 100644
-> --- a/fs/lockd/clntlock.c
-> +++ b/fs/lockd/clntlock.c
-> @@ -220,10 +220,19 @@ reclaimer(void *ptr)
->  {
->  	struct nlm_host	  *host = (struct nlm_host *) ptr;
->  	struct nlm_wait	  *block;
-> +	struct nlm_rqst   *req;
->  	struct file_lock *fl, *next;
->  	u32 nsmstate;
->  	struct net *net = host->net;
->  
-> +	req = kmalloc(sizeof(*req), GFP_KERNEL);
-> +	if (!req) {
-> +		printk(KERN_ERR "lockd: reclaimer unable to alloc memory."
-> +				" Locks for %s won't be reclaimed!\n",
-> +				host->h_name);
-> +		return 0;
-> +	}
-> +
->  	allow_signal(SIGKILL);
->  
->  	down_write(&host->h_rwsem);
-> @@ -253,7 +262,7 @@ restart:
->  		 */
->  		if (signalled())
->  			continue;
-> -		if (nlmclnt_reclaim(host, fl) != 0)
-> +		if (nlmclnt_reclaim(host, fl, req) != 0)
->  			continue;
->  		list_add_tail(&fl->fl_u.nfs_fl.list, &host->h_granted);
->  		if (host->h_nsmstate != nsmstate) {
-> @@ -279,5 +288,6 @@ restart:
->  	/* Release host handle after use */
->  	nlmclnt_release_host(host);
->  	lockd_down(net);
-> +	kfree(req);
->  	return 0;
->  }
-> diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-> index 54f9e6c..b43114c 100644
-> --- a/fs/lockd/clntproc.c
-> +++ b/fs/lockd/clntproc.c
-> @@ -615,17 +615,15 @@ out_unlock:
->   * RECLAIM: Try to reclaim a lock
->   */
->  int
-> -nlmclnt_reclaim(struct nlm_host *host, struct file_lock *fl)
-> +nlmclnt_reclaim(struct nlm_host *host, struct file_lock *fl,
-> +		struct nlm_rqst *req)
->  {
-> -	struct nlm_rqst reqst, *req;
->  	int		status;
->  
-> -	req = &reqst;
->  	memset(req, 0, sizeof(*req));
->  	locks_init_lock(&req->a_args.lock.fl);
->  	locks_init_lock(&req->a_res.lock.fl);
->  	req->a_host  = host;
-> -	req->a_flags = 0;
->  
->  	/* Set up the argument struct */
->  	nlmclnt_setlockargs(req, fl);
-> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-> index f5a051a..a395f1e 100644
-> --- a/include/linux/lockd/lockd.h
-> +++ b/include/linux/lockd/lockd.h
-> @@ -212,7 +212,8 @@ int		  nlmclnt_block(struct nlm_wait *block, struct nlm_rqst *req, long timeout)
->  __be32		  nlmclnt_grant(const struct sockaddr *addr,
->  				const struct nlm_lock *lock);
->  void		  nlmclnt_recovery(struct nlm_host *);
-> -int		  nlmclnt_reclaim(struct nlm_host *, struct file_lock *);
-> +int		  nlmclnt_reclaim(struct nlm_host *, struct file_lock *,
-> +				  struct nlm_rqst *);
->  void		  nlmclnt_next_cookie(struct nlm_cookie *);
->  
->  /*
+On Feb 18, 2013, at 4:16 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
 
-Oops, just noticed there was a later version of this patch. Please
-disregard my earlier mail...
+> 
+> On Feb 13, 2013, at 10:29 AM, Veli-Matti Lintu <veli-matti.lintu@opinsys.fi> wrote:
+> 
+>> I've been using kerberized nfs4 mounts without machine credentials for 
+>> quite some time by running rpc.gssd with the -n option. This has 
+>> resulted rpc.gssd in using ccache in /tmp/krb5cc_0 when doing the mount 
+>> instead of machine credentials. This functionality seems to break when 
+>> using kernel 3.7 or newer. 3.6.11 and earlier work like expected.
+>> 
+>> The use case for this is diskless workstations that do not have machine 
+>> credentials stored on them as they have no secure storage medium. When a 
+>> user logs in, the home directory is mounted using the user's credentials 
+>> only.
+>> 
+>> Steps to reproduce the problem:
+>> 
+>> # kinit user (this creates /tmp/krb5cc_0)
+>> # rpc.gssd -f -n -vvvv
+>> # mount -t nfs4 -o sec=krb5 server.example.org:/home /mnt
+>> 
+>> The mount works when using kernel 3.6.11 or earlier and fails on 3.7-rc1 
+>> or later. Testing was done on Ubuntu 12.04 and 12.10 using Ubuntu kernels
+>> and kernel.org kernels (up to 3.8-rc7) with similar results.
+>> 
+>> nfs-utils versions 1.2.5 and the latest version from git master head 
+>> (git://linux-nfs.org/nfs-utils) behave the same way.
+> 
+> Reproduced.  Not clear yet if this is a kernel regression or a latent gssd bug.
 
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
+With pre-3.7 kernels, kernel upcalls with "service=<null>" because the first operation is a LOOKUP_ROOT, and a machine credential is not needed.  With 3.7, kernel is upcalling to get a context to perform SETCLIENTID, and it's specifying "service='*'" as a way to get machine credentials.
+
+In the case where there is no keytab and rpc.gssd is invoked with "-n", gssd is trying to use /etc/krb5.keytab anyway, and failing.
+
+"man rpc.gssd" says this about "-n":
+
+> By default, rpc.gssd treats accesses by the user with UID 0  specially,
+> and  uses  "machine  credentials"  for  all accesses by that user which
+> require Kerberos authentication.  With the -n option, "machine  creden‐
+> tials"  will  not  be used for accesses by UID 0.  Instead, credentials
+> must be obtained manually like all other users.   Use  of  this  option
+> means  that  "root"  must  manually  obtain Kerberos credentials before
+> attempting to mount an nfs filesystem  requiring  Kerberos  authentica‐
+> tion.
+
+It seems to me that if the kernel asks for "service='*'" and gssd was invoked with "-n", gssd should retrieve the manually-obtained Kerberos credentials in that case.
+
+I'm staring at process_krb5_upcall(), just past that big block comment around line 962.  I think that logic is probably wrong to check for "service_name==NULL" but should rather check that the service_name is not "nfs".  This a fix that Veli-Matti hinted at earlier.
+
+Thoughts?
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
