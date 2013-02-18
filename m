@@ -1,296 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46541 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:19717 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753413Ab3BCQbk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 3 Feb 2013 11:31:40 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>,
-        David Howells <dhowells@redhat.com>,
-        Tyler Hicks <tyhicks@canonical.com>,
-        Dustin Kirkland <dustin.kirkland@gazzang.com>
-Subject: [PATCH 12/12] locks: break delegations on any attribute modification
-Date: Sun,  3 Feb 2013 11:31:32 -0500
-Message-Id: <1359909092-24857-13-git-send-email-bfields@redhat.com>
-In-Reply-To: <1359909092-24857-1-git-send-email-bfields@redhat.com>
-References: <1359909092-24857-1-git-send-email-bfields@redhat.com>
+	id S1753820Ab3BRXOl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Feb 2013 18:14:41 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Kernels 3.7 and newer break rpc.gssd -n
+Date: Mon, 18 Feb 2013 23:14:40 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9235D18B2@SACEXCMBX04-PRD.hq.netapp.com>
+References: <127351146.98508.1360769367943.JavaMail.root@opinsys.fi>
+	 <73594034-4F9D-4DA6-A979-1E2745BCDF05@oracle.com>
+	 <CFDAB21B-48E2-4567-A579-DEB6BC77890F@oracle.com>
+In-Reply-To: <CFDAB21B-48E2-4567-A579-DEB6BC77890F@oracle.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
-
-NFSv4 uses leases to guarantee that clients can cache metadata as well
-as data.
-
-Cc: Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>
-Cc: David Howells <dhowells@redhat.com>
-Cc: Tyler Hicks <tyhicks@canonical.com>
-Cc: Dustin Kirkland <dustin.kirkland@gazzang.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- drivers/base/devtmpfs.c   |    4 ++--
- fs/attr.c                 |    5 ++++-
- fs/cachefiles/interface.c |    4 ++--
- fs/ecryptfs/inode.c       |    2 +-
- fs/hpfs/namei.c           |    2 +-
- fs/inode.c                |    6 +++++-
- fs/nfsd/vfs.c             |    8 ++++++--
- fs/open.c                 |   21 +++++++++++++++++----
- fs/utimes.c               |    9 ++++++++-
- include/linux/fs.h        |    2 +-
- 10 files changed, 47 insertions(+), 16 deletions(-)
-
-diff --git a/drivers/base/devtmpfs.c b/drivers/base/devtmpfs.c
-index 5ed94f7..e4cc3cf 100644
---- a/drivers/base/devtmpfs.c
-+++ b/drivers/base/devtmpfs.c
-@@ -210,7 +210,7 @@ static int handle_create(const char *nodename, umode_t mode, struct device *dev)
- 		newattrs.ia_mode = mode;
- 		newattrs.ia_valid = ATTR_MODE;
- 		mutex_lock(&dentry->d_inode->i_mutex);
--		notify_change(dentry, &newattrs);
-+		notify_change(dentry, &newattrs, NULL);
- 		mutex_unlock(&dentry->d_inode->i_mutex);
- 
- 		/* mark as kernel-created inode */
-@@ -315,7 +315,7 @@ static int handle_remove(const char *nodename, struct device *dev)
- 			newattrs.ia_valid =
- 				ATTR_UID|ATTR_GID|ATTR_MODE;
- 			mutex_lock(&dentry->d_inode->i_mutex);
--			notify_change(dentry, &newattrs);
-+			notify_change(dentry, &newattrs, NULL);
- 			mutex_unlock(&dentry->d_inode->i_mutex);
- 			err = vfs_unlink(parent.dentry->d_inode, dentry, NULL);
- 			if (!err || err == -ENOENT)
-diff --git a/fs/attr.c b/fs/attr.c
-index 1449adb..261f5c9 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -167,7 +167,7 @@ void setattr_copy(struct inode *inode, const struct iattr *attr)
- }
- EXPORT_SYMBOL(setattr_copy);
- 
--int notify_change(struct dentry * dentry, struct iattr * attr)
-+int notify_change(struct dentry * dentry, struct iattr * attr, struct inode **delegated_inode)
- {
- 	struct inode *inode = dentry->d_inode;
- 	umode_t mode = inode->i_mode;
-@@ -243,6 +243,9 @@ int notify_change(struct dentry * dentry, struct iattr * attr)
- 	error = security_inode_setattr(dentry, attr);
- 	if (error)
- 		return error;
-+	error = try_break_deleg(inode, delegated_inode);
-+	if (error)
-+		return error;
- 
- 	if (inode->i_op->setattr)
- 		error = inode->i_op->setattr(dentry, attr);
-diff --git a/fs/cachefiles/interface.c b/fs/cachefiles/interface.c
-index 746ce53..40f5917 100644
---- a/fs/cachefiles/interface.c
-+++ b/fs/cachefiles/interface.c
-@@ -417,14 +417,14 @@ static int cachefiles_attr_changed(struct fscache_object *_object)
- 		_debug("discard tail %llx", oi_size);
- 		newattrs.ia_valid = ATTR_SIZE;
- 		newattrs.ia_size = oi_size & PAGE_MASK;
--		ret = notify_change(object->backer, &newattrs);
-+		ret = notify_change(object->backer, &newattrs, NULL);
- 		if (ret < 0)
- 			goto truncate_failed;
- 	}
- 
- 	newattrs.ia_valid = ATTR_SIZE;
- 	newattrs.ia_size = ni_size;
--	ret = notify_change(object->backer, &newattrs);
-+	ret = notify_change(object->backer, &newattrs, NULL);
- 
- truncate_failed:
- 	mutex_unlock(&object->backer->d_inode->i_mutex);
-diff --git a/fs/ecryptfs/inode.c b/fs/ecryptfs/inode.c
-index a3b2b08..d751d8a 100644
---- a/fs/ecryptfs/inode.c
-+++ b/fs/ecryptfs/inode.c
-@@ -992,7 +992,7 @@ static int ecryptfs_setattr(struct dentry *dentry, struct iattr *ia)
- 		lower_ia.ia_valid &= ~ATTR_MODE;
- 
- 	mutex_lock(&lower_dentry->d_inode->i_mutex);
--	rc = notify_change(lower_dentry, &lower_ia);
-+	rc = notify_change(lower_dentry, &lower_ia, NULL);
- 	mutex_unlock(&lower_dentry->d_inode->i_mutex);
- out:
- 	fsstack_copy_attr_all(inode, lower_inode);
-diff --git a/fs/hpfs/namei.c b/fs/hpfs/namei.c
-index 345713d..1b39afd 100644
---- a/fs/hpfs/namei.c
-+++ b/fs/hpfs/namei.c
-@@ -407,7 +407,7 @@ again:
- 			/*printk("HPFS: truncating file before delete.\n");*/
- 			newattrs.ia_size = 0;
- 			newattrs.ia_valid = ATTR_SIZE | ATTR_CTIME;
--			err = notify_change(dentry, &newattrs);
-+			err = notify_change(dentry, &newattrs, NULL);
- 			put_write_access(inode);
- 			if (!err)
- 				goto again;
-diff --git a/fs/inode.c b/fs/inode.c
-index c57c551..549feba 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -1638,7 +1638,11 @@ static int __remove_suid(struct dentry *dentry, int kill)
- 	struct iattr newattrs;
- 
- 	newattrs.ia_valid = ATTR_FORCE | kill;
--	return notify_change(dentry, &newattrs);
-+	/*
-+	 * Note we call this on write, so notify_change will not
-+	 * encounter any conflicting delegations:
-+	 */
-+	return notify_change(dentry, &newattrs, NULL);
- }
- 
- int file_remove_suid(struct file *file)
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 99ec672..eb38ca3 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -426,7 +426,7 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
- 			goto out_nfserr;
- 		fh_lock(fhp);
- 
--		host_err = notify_change(dentry, iap);
-+		host_err = notify_change(dentry, iap, NULL);
- 		err = nfserrno(host_err);
- 		fh_unlock(fhp);
- 	}
-@@ -959,7 +959,11 @@ static void kill_suid(struct dentry *dentry)
- 	ia.ia_valid = ATTR_KILL_SUID | ATTR_KILL_SGID | ATTR_KILL_PRIV;
- 
- 	mutex_lock(&dentry->d_inode->i_mutex);
--	notify_change(dentry, &ia);
-+	/*
-+	 * Note we call this on write, so notify_change will not
-+	 * encounter any conflicting delegations:
-+	 */
-+	notify_change(dentry, &ia, NULL);
- 	mutex_unlock(&dentry->d_inode->i_mutex);
- }
- 
-diff --git a/fs/open.c b/fs/open.c
-index 9b33c0c..7436919 100644
---- a/fs/open.c
-+++ b/fs/open.c
-@@ -56,7 +56,7 @@ int do_truncate(struct dentry *dentry, loff_t length, unsigned int time_attrs,
- 		newattrs.ia_valid |= ret | ATTR_FORCE;
- 
- 	mutex_lock(&dentry->d_inode->i_mutex);
--	ret = notify_change(dentry, &newattrs);
-+	ret = notify_change(dentry, &newattrs, NULL);
- 	mutex_unlock(&dentry->d_inode->i_mutex);
- 	return ret;
- }
-@@ -477,21 +477,28 @@ out:
- static int chmod_common(struct path *path, umode_t mode)
- {
- 	struct inode *inode = path->dentry->d_inode;
-+	struct inode *delegated_inode = NULL;
- 	struct iattr newattrs;
- 	int error;
- 
- 	error = mnt_want_write(path->mnt);
- 	if (error)
- 		return error;
-+retry_deleg:
- 	mutex_lock(&inode->i_mutex);
- 	error = security_path_chmod(path, mode);
- 	if (error)
- 		goto out_unlock;
- 	newattrs.ia_mode = (mode & S_IALLUGO) | (inode->i_mode & ~S_IALLUGO);
- 	newattrs.ia_valid = ATTR_MODE | ATTR_CTIME;
--	error = notify_change(path->dentry, &newattrs);
-+	error = notify_change(path->dentry, &newattrs, &delegated_inode);
- out_unlock:
- 	mutex_unlock(&inode->i_mutex);
-+	if (delegated_inode) {
-+		error = break_deleg_wait(&delegated_inode);
-+		if (!error)
-+			goto retry_deleg;
-+	}
- 	mnt_drop_write(path->mnt);
- 	return error;
- }
-@@ -536,6 +543,7 @@ SYSCALL_DEFINE2(chmod, const char __user *, filename, umode_t, mode)
- static int chown_common(struct path *path, uid_t user, gid_t group)
- {
- 	struct inode *inode = path->dentry->d_inode;
-+	struct inode *delegated_inode = NULL;
- 	int error;
- 	struct iattr newattrs;
- 	kuid_t uid;
-@@ -560,12 +568,17 @@ static int chown_common(struct path *path, uid_t user, gid_t group)
- 	if (!S_ISDIR(inode->i_mode))
- 		newattrs.ia_valid |=
- 			ATTR_KILL_SUID | ATTR_KILL_SGID | ATTR_KILL_PRIV;
-+retry_deleg:
- 	mutex_lock(&inode->i_mutex);
- 	error = security_path_chown(path, uid, gid);
- 	if (!error)
--		error = notify_change(path->dentry, &newattrs);
-+		error = notify_change(path->dentry, &newattrs, &delegated_inode);
- 	mutex_unlock(&inode->i_mutex);
--
-+	if (delegated_inode) {
-+		error = break_deleg_wait(&delegated_inode);
-+		if (!error)
-+			goto retry_deleg;
-+	}
- 	return error;
- }
- 
-diff --git a/fs/utimes.c b/fs/utimes.c
-index f4fb7ec..aa138d6 100644
---- a/fs/utimes.c
-+++ b/fs/utimes.c
-@@ -53,6 +53,7 @@ static int utimes_common(struct path *path, struct timespec *times)
- 	int error;
- 	struct iattr newattrs;
- 	struct inode *inode = path->dentry->d_inode;
-+	struct inode *delegated_inode = NULL;
- 
- 	error = mnt_want_write(path->mnt);
- 	if (error)
-@@ -101,9 +102,15 @@ static int utimes_common(struct path *path, struct timespec *times)
- 				goto mnt_drop_write_and_out;
- 		}
- 	}
-+retry_deleg:
- 	mutex_lock(&inode->i_mutex);
--	error = notify_change(path->dentry, &newattrs);
-+	error = notify_change(path->dentry, &newattrs, &delegated_inode);
- 	mutex_unlock(&inode->i_mutex);
-+	if (delegated_inode) {
-+		error = break_deleg_wait(&delegated_inode);
-+		if (!error)
-+			goto retry_deleg;
-+	}
- 
- mnt_drop_write_and_out:
- 	mnt_drop_write(path->mnt);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index cf5758e..3cb7f24 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2258,7 +2258,7 @@ extern void emergency_remount(void);
- #ifdef CONFIG_BLOCK
- extern sector_t bmap(struct inode *, sector_t);
- #endif
--extern int notify_change(struct dentry *, struct iattr *);
-+extern int notify_change(struct dentry *, struct iattr *, struct inode **);
- extern int inode_permission(struct inode *, int);
- extern int generic_permission(struct inode *, int);
- 
--- 
-1.7.9.5
-
+T24gTW9uLCAyMDEzLTAyLTE4IGF0IDE3OjQ4IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+T24gRmViIDE4LCAyMDEzLCBhdCA0OjE2IFBNLCBDaHVjayBMZXZlciA8Y2h1Y2subGV2ZXJAb3Jh
+Y2xlLmNvbT4gd3JvdGU6DQo+IA0KPiA+IA0KPiA+IE9uIEZlYiAxMywgMjAxMywgYXQgMTA6Mjkg
+QU0sIFZlbGktTWF0dGkgTGludHUgPHZlbGktbWF0dGkubGludHVAb3BpbnN5cy5maT4gd3JvdGU6
+DQo+ID4gDQo+ID4+IEkndmUgYmVlbiB1c2luZyBrZXJiZXJpemVkIG5mczQgbW91bnRzIHdpdGhv
+dXQgbWFjaGluZSBjcmVkZW50aWFscyBmb3IgDQo+ID4+IHF1aXRlIHNvbWUgdGltZSBieSBydW5u
+aW5nIHJwYy5nc3NkIHdpdGggdGhlIC1uIG9wdGlvbi4gVGhpcyBoYXMgDQo+ID4+IHJlc3VsdGVk
+IHJwYy5nc3NkIGluIHVzaW5nIGNjYWNoZSBpbiAvdG1wL2tyYjVjY18wIHdoZW4gZG9pbmcgdGhl
+IG1vdW50IA0KPiA+PiBpbnN0ZWFkIG9mIG1hY2hpbmUgY3JlZGVudGlhbHMuIFRoaXMgZnVuY3Rp
+b25hbGl0eSBzZWVtcyB0byBicmVhayB3aGVuIA0KPiA+PiB1c2luZyBrZXJuZWwgMy43IG9yIG5l
+d2VyLiAzLjYuMTEgYW5kIGVhcmxpZXIgd29yayBsaWtlIGV4cGVjdGVkLg0KPiA+PiANCj4gPj4g
+VGhlIHVzZSBjYXNlIGZvciB0aGlzIGlzIGRpc2tsZXNzIHdvcmtzdGF0aW9ucyB0aGF0IGRvIG5v
+dCBoYXZlIG1hY2hpbmUgDQo+ID4+IGNyZWRlbnRpYWxzIHN0b3JlZCBvbiB0aGVtIGFzIHRoZXkg
+aGF2ZSBubyBzZWN1cmUgc3RvcmFnZSBtZWRpdW0uIFdoZW4gYSANCj4gPj4gdXNlciBsb2dzIGlu
+LCB0aGUgaG9tZSBkaXJlY3RvcnkgaXMgbW91bnRlZCB1c2luZyB0aGUgdXNlcidzIGNyZWRlbnRp
+YWxzIA0KPiA+PiBvbmx5Lg0KPiA+PiANCj4gPj4gU3RlcHMgdG8gcmVwcm9kdWNlIHRoZSBwcm9i
+bGVtOg0KPiA+PiANCj4gPj4gIyBraW5pdCB1c2VyICh0aGlzIGNyZWF0ZXMgL3RtcC9rcmI1Y2Nf
+MCkNCj4gPj4gIyBycGMuZ3NzZCAtZiAtbiAtdnZ2dg0KPiA+PiAjIG1vdW50IC10IG5mczQgLW8g
+c2VjPWtyYjUgc2VydmVyLmV4YW1wbGUub3JnOi9ob21lIC9tbnQNCj4gPj4gDQo+ID4+IFRoZSBt
+b3VudCB3b3JrcyB3aGVuIHVzaW5nIGtlcm5lbCAzLjYuMTEgb3IgZWFybGllciBhbmQgZmFpbHMg
+b24gMy43LXJjMSANCj4gPj4gb3IgbGF0ZXIuIFRlc3Rpbmcgd2FzIGRvbmUgb24gVWJ1bnR1IDEy
+LjA0IGFuZCAxMi4xMCB1c2luZyBVYnVudHUga2VybmVscw0KPiA+PiBhbmQga2VybmVsLm9yZyBr
+ZXJuZWxzICh1cCB0byAzLjgtcmM3KSB3aXRoIHNpbWlsYXIgcmVzdWx0cy4NCj4gPj4gDQo+ID4+
+IG5mcy11dGlscyB2ZXJzaW9ucyAxLjIuNSBhbmQgdGhlIGxhdGVzdCB2ZXJzaW9uIGZyb20gZ2l0
+IG1hc3RlciBoZWFkIA0KPiA+PiAoZ2l0Oi8vbGludXgtbmZzLm9yZy9uZnMtdXRpbHMpIGJlaGF2
+ZSB0aGUgc2FtZSB3YXkuDQo+ID4gDQo+ID4gUmVwcm9kdWNlZC4gIE5vdCBjbGVhciB5ZXQgaWYg
+dGhpcyBpcyBhIGtlcm5lbCByZWdyZXNzaW9uIG9yIGEgbGF0ZW50IGdzc2QgYnVnLg0KPiANCj4g
+V2l0aCBwcmUtMy43IGtlcm5lbHMsIGtlcm5lbCB1cGNhbGxzIHdpdGggInNlcnZpY2U9PG51bGw+
+IiBiZWNhdXNlIHRoZSBmaXJzdCBvcGVyYXRpb24gaXMgYSBMT09LVVBfUk9PVCwgYW5kIGEgbWFj
+aGluZSBjcmVkZW50aWFsIGlzIG5vdCBuZWVkZWQuICBXaXRoIDMuNywga2VybmVsIGlzIHVwY2Fs
+bGluZyB0byBnZXQgYSBjb250ZXh0IHRvIHBlcmZvcm0gU0VUQ0xJRU5USUQsIGFuZCBpdCdzIHNw
+ZWNpZnlpbmcgInNlcnZpY2U9JyonIiBhcyBhIHdheSB0byBnZXQgbWFjaGluZSBjcmVkZW50aWFs
+cy4NCj4gDQo+IEluIHRoZSBjYXNlIHdoZXJlIHRoZXJlIGlzIG5vIGtleXRhYiBhbmQgcnBjLmdz
+c2QgaXMgaW52b2tlZCB3aXRoICItbiIsIGdzc2QgaXMgdHJ5aW5nIHRvIHVzZSAvZXRjL2tyYjUu
+a2V5dGFiIGFueXdheSwgYW5kIGZhaWxpbmcuDQo+IA0KPiAibWFuIHJwYy5nc3NkIiBzYXlzIHRo
+aXMgYWJvdXQgIi1uIjoNCj4gDQo+ID4gQnkgZGVmYXVsdCwgcnBjLmdzc2QgdHJlYXRzIGFjY2Vz
+c2VzIGJ5IHRoZSB1c2VyIHdpdGggVUlEIDAgIHNwZWNpYWxseSwNCj4gPiBhbmQgIHVzZXMgICJt
+YWNoaW5lICBjcmVkZW50aWFscyIgIGZvciAgYWxsIGFjY2Vzc2VzIGJ5IHRoYXQgdXNlciB3aGlj
+aA0KPiA+IHJlcXVpcmUgS2VyYmVyb3MgYXV0aGVudGljYXRpb24uICBXaXRoIHRoZSAtbiBvcHRp
+b24sICJtYWNoaW5lICBjcmVkZW7igJANCj4gPiB0aWFscyIgIHdpbGwgIG5vdCAgYmUgdXNlZCBm
+b3IgYWNjZXNzZXMgYnkgVUlEIDAuICBJbnN0ZWFkLCBjcmVkZW50aWFscw0KPiA+IG11c3QgYmUg
+b2J0YWluZWQgbWFudWFsbHkgbGlrZSBhbGwgb3RoZXIgdXNlcnMuICAgVXNlICBvZiAgdGhpcyAg
+b3B0aW9uDQo+ID4gbWVhbnMgIHRoYXQgICJyb290IiAgbXVzdCAgbWFudWFsbHkgIG9idGFpbiBL
+ZXJiZXJvcyBjcmVkZW50aWFscyBiZWZvcmUNCj4gPiBhdHRlbXB0aW5nIHRvIG1vdW50IGFuIG5m
+cyBmaWxlc3lzdGVtICByZXF1aXJpbmcgIEtlcmJlcm9zICBhdXRoZW50aWNh4oCQDQo+ID4gdGlv
+bi4NCj4gDQo+IEl0IHNlZW1zIHRvIG1lIHRoYXQgaWYgdGhlIGtlcm5lbCBhc2tzIGZvciAic2Vy
+dmljZT0nKiciIGFuZCBnc3NkIHdhcyBpbnZva2VkIHdpdGggIi1uIiwgZ3NzZCBzaG91bGQgcmV0
+cmlldmUgdGhlIG1hbnVhbGx5LW9idGFpbmVkIEtlcmJlcm9zIGNyZWRlbnRpYWxzIGluIHRoYXQg
+Y2FzZS4NCg0KV2h5PyBUaGF0IGlzIG5vdCB3aGF0IHRoZSBkb2N1bWVudGF0aW9uIGFib3ZlIHNh
+eXMuIEFzIEkgcmVhZCBpdCwgdGhlDQpkb2N1bWVudGF0aW9uIHN0YXRlcyB0aGF0IGFjY2Vzc2Vz
+IGJ5IHVpZCBfMF8gd2lsbCBubyBsb25nZXIgdXNlIG1hY2hpbmUNCmNyZWRzLiBJdCBzYXlzIG5v
+dGhpbmcgYWJvdXQgYWNjZXNzZXMgdGhhdCBhY3R1YWxseSByZXF1ZXN0IHRoZSB1c2Ugb2YNCm1h
+Y2hpbmUgY3JlZHMsIHN1Y2ggYXMgTkZTdjQgc3RhdGUgb3duZXJzaGlwLi4uDQoNCj4gSSdtIHN0
+YXJpbmcgYXQgcHJvY2Vzc19rcmI1X3VwY2FsbCgpLCBqdXN0IHBhc3QgdGhhdCBiaWcgYmxvY2sg
+Y29tbWVudCBhcm91bmQgbGluZSA5NjIuICBJIHRoaW5rIHRoYXQgbG9naWMgaXMgcHJvYmFibHkg
+d3JvbmcgdG8gY2hlY2sgZm9yICJzZXJ2aWNlX25hbWU9PU5VTEwiIGJ1dCBzaG91bGQgcmF0aGVy
+IGNoZWNrIHRoYXQgdGhlIHNlcnZpY2VfbmFtZSBpcyBub3QgIm5mcyIuICBUaGlzIGEgZml4IHRo
+YXQgVmVsaS1NYXR0aSBoaW50ZWQgYXQgZWFybGllci4NCj4gDQo+IFRob3VnaHRzPw0KDQpKdXN0
+IGJsaW5kbHkgY2hhbmdpbmcgdGhlIG1lYW5pbmcgb2YgJy1uJyB3b3VsZCBiZSB3cm9uZyBJTU8u
+IFRoZSB3aG9sZQ0KcG9pbnQgb2YgYWRkaW5nIHRoZSBuZXcgInYxIiB1cGNhbGwgd2FzIHRvIGVu
+YWJsZSB0aGUga2VybmVsIHRvIGJlDQpzcGVjaWZpYyBhYm91dCB3aGVuIGl0IHJlcXVpcmVzIG1h
+Y2hpbmUgY3JlZGVudGlhbHMgc28gdGhhdCB3ZSBjb3VsZA0KYXZvaWQgdGhlIHdob2xlIGF1dGgo
+bWFjaGluZSk9PWF1dGgocm9vdCkgYnJhaW4tZGFtYWdlLg0KDQpOb3RlIHRoYXQgdGhlIG9sZCBi
+ZWhhdmlvdXIgY2FuIGJlIHJlLWVuYWJsZWQgYnkgdXNpbmcgYSB2ZXJzaW9uIG9mDQpycGMuZ3Nz
+ZCB0aGF0IG9ubHkgc3VwcG9ydHMgdGhlICd2MCcgdXBjYWxsLiBTbyBvbmUgYWx0ZXJuYXRpdmUg
+bWlnaHQgYmUNCnRvIHNpbXBseSBhZGQgYW4gb3B0aW9uIHRvIHJwYy5nc3NkIHRoYXQgdHVybnMg
+b2ZmICd2MScgdXBjYWxsIHN1cHBvcnQuDQoNCkFub3RoZXIsIG1vcmUgZnV0dXJlLXByb29mIGFs
+dGVybmF0aXZlLCBtYXkgYmUgdG8gaGF2ZSBycGMuZ3NzZA0Kc3Vic3RpdHV0ZSBhIHVzZXIgY3Jl
+ZCBpZiB0aGVyZSBhcmUgbm8gbWFjaGluZSBjcmVkcywgYW5kIF9pZl8gdGhlIGFkbWluDQplbmFi
+bGVzIGFuIG9wdGlvbiB0aGF0IHNwZWNpZmllcyBleGFjdGx5IHdoaWNoIGNyZWRlbnRpYWwgZmls
+ZSBzaG91bGQgYmUNCnVzZWQuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xp
+ZW50IG1haW50YWluZXINCg0KTmV0QXBwDQpUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbQ0Kd3d3
+Lm5ldGFwcC5jb20NCg==
