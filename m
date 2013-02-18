@@ -1,104 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:17171 "EHLO mx12.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:40184 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758303Ab3BZC1w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Feb 2013 21:27:52 -0500
-From: Weston Andros Adamson <dros@netapp.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>,
-        stable@kernel.org
-Subject: [PATCH] NFSv4.1: Hold reference to layout hdr in layoutget
-Date: Mon, 25 Feb 2013 21:27:33 -0500
-Message-Id: <1361845653-63782-1-git-send-email-dros@netapp.com>
+	id S1753117Ab3BRSmH convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Feb 2013 13:42:07 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v3 1/9] SUNRPC: Missing module alias for auth_rpcgss.ko
+Date: Mon, 18 Feb 2013 18:42:05 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9235CF1F8@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20130204201458.1518.12931.stgit@seurat.1015granger.net>
+	 <20130204201903.1518.91133.stgit@seurat.1015granger.net>
+In-Reply-To: <20130204201903.1518.91133.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This fixes an oops where a LAYOUTGET is in still in the rpciod queue,
-but the requesting processes has been killed.  Without this, killing
-the process does the final pnfs_put_layout_hdr() and sets NFS_I(inode)->layout
-to NULL while the LAYOUTGET rpc task still references it.
+On Mon, 2013-02-04 at 15:19 -0500, Chuck Lever wrote:
+> Commit f344f6df "SUNRPC: Auto-load RPC authentication kernel
+> modules", Mon Mar 20 13:44:08 2006, adds a request_module() call
+> in rpcauth_create() to auto-load RPC security modules when a ULP
+> tries to create a credential of that flavor.
+> 
+> In rpcauth_create(), the name of the module to load is built like
+> this:
+> 
+> 	request_module("rpc-auth-%u", flavor);
+> 
+> This means that for, say, RPC_AUTH_GSS, request_module() is looking
+> for a module or alias called "rpc-auth-6".
+> 
+> The GSS module is named "auth_rpcgss", and commit f344f6df does not
+> add any new module aliases.  There is also no such alias provided in
+> /etc/modprobe.d on my system (Fedora 16).  Without this alias, the
+> GSS module is not loaded on demand.
 
-Example oops:
+Wait... Why do we want to load the auth_rpcgss module on its own? It
+doesn't provide any authentication or security mechanisms of its own.
+All it does is to provide support for the other security mechanisms.
 
-BUG: unable to handle kernel NULL pointer dereference at 0000000000000080
-IP: [<ffffffffa01bd586>] pnfs_choose_layoutget_stateid+0x37/0xef [nfsv4]
-PGD 7365b067 PUD 7365d067 PMD 0
-Oops: 0000 [#1] SMP DEBUG_PAGEALLOC
-Modules linked in: nfs_layout_nfsv41_files nfsv4 auth_rpcgss nfs lockd sunrpc ipt_MASQUERADE ip6table_mangle ip6t_REJECT nf_conntrack_ipv6 nf_defrag_ipv6 iptable_nat nf_nat_ipv4 nf_nat iptable_mangle ip6table_filter ip6_tables ppdev e1000 i2c_piix4 i2c_core shpchp parport_pc parport crc32c_intel aesni_intel xts aes_x86_64 lrw gf128mul ablk_helper cryptd mptspi scsi_transport_spi mptscsih mptbase floppy autofs4
-CPU 0
-Pid: 27, comm: kworker/0:1 Not tainted 3.8.0-dros_cthon2013+ #4 VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform
-RIP: 0010:[<ffffffffa01bd586>]  [<ffffffffa01bd586>] pnfs_choose_layoutget_stateid+0x37/0xef [nfsv4]
-RSP: 0018:ffff88007b0c1c88  EFLAGS: 00010246
-RAX: ffff88006ed36678 RBX: 0000000000000000 RCX: 0000000ea877e3bc
-RDX: ffff88007a729da8 RSI: 0000000000000000 RDI: ffff88007a72b958
-RBP: ffff88007b0c1ca8 R08: 0000000000000002 R09: 0000000000000000
-R10: 0000000000000000 R11: 0000000000000000 R12: ffff88007a72b958
-R13: ffff88007a729da8 R14: 0000000000000000 R15: ffffffffa011077e
-FS:  0000000000000000(0000) GS:ffff88007f600000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 0000000000000080 CR3: 00000000735f8000 CR4: 00000000001407f0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Process kworker/0:1 (pid: 27, threadinfo ffff88007b0c0000, task ffff88007c2fa0c0)
-Stack:
- ffff88006fc05388 ffff88007a72b908 ffff88007b240900 ffff88006fc05388
- ffff88007b0c1cd8 ffffffffa01a2170 ffff88007b240900 ffff88007b240900
- ffff88007b240970 ffffffffa011077e ffff88007b0c1ce8 ffffffffa0110791
-Call Trace:
- [<ffffffffa01a2170>] nfs4_layoutget_prepare+0x7b/0x92 [nfsv4]
- [<ffffffffa011077e>] ? __rpc_atrun+0x15/0x15 [sunrpc]
- [<ffffffffa0110791>] rpc_prepare_task+0x13/0x15 [sunrpc]
+As far as I can see, calling rpcauth_create() with a pseudoflavour value
+of '6' is a bug...
 
-Reported-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
-Cc: stable@kernel.org
----
- fs/nfs/nfs4proc.c | 13 +++++++++++--
- 1 file changed, 11 insertions(+), 2 deletions(-)
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  net/sunrpc/auth_gss/auth_gss.c |    1 +
+>  1 files changed, 1 insertions(+), 0 deletions(-)
+> 
+> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+> index 6e5c824..4db065d 100644
+> --- a/net/sunrpc/auth_gss/auth_gss.c
+> +++ b/net/sunrpc/auth_gss/auth_gss.c
+> @@ -1721,6 +1721,7 @@ static void __exit exit_rpcsec_gss(void)
+>  	rcu_barrier(); /* Wait for completion of call_rcu()'s */
+>  }
+>  
+> +MODULE_ALIAS("rpc-auth-6");
+>  MODULE_LICENSE("GPL");
+>  module_param_named(expired_cred_retry_delay,
+>  		   gss_expired_cred_retry_delay,
+> 
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index eae83bf..a2de760 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6129,12 +6129,14 @@ static struct page **nfs4_alloc_pages(size_t size, gfp_t gfp_flags)
- static void nfs4_layoutget_release(void *calldata)
- {
- 	struct nfs4_layoutget *lgp = calldata;
--	struct nfs_server *server = NFS_SERVER(lgp->args.inode);
-+	struct inode *inode = lgp->args.inode;
-+	struct nfs_server *server = NFS_SERVER(inode);
- 	size_t max_pages = max_response_pages(server);
- 
- 	dprintk("--> %s\n", __func__);
- 	nfs4_free_pages(lgp->args.layout.pages, max_pages);
- 	put_nfs_open_context(lgp->args.ctx);
-+	pnfs_put_layout_hdr(NFS_I(inode)->layout);
- 	kfree(calldata);
- 	dprintk("<-- %s\n", __func__);
- }
-@@ -6148,7 +6150,8 @@ static const struct rpc_call_ops nfs4_layoutget_call_ops = {
- struct pnfs_layout_segment *
- nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
- {
--	struct nfs_server *server = NFS_SERVER(lgp->args.inode);
-+	struct inode *inode = lgp->args.inode;
-+	struct nfs_server *server = NFS_SERVER(inode);
- 	size_t max_pages = max_response_pages(server);
- 	struct rpc_task *task;
- 	struct rpc_message msg = {
-@@ -6178,6 +6181,12 @@ nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
- 	lgp->res.layoutp = &lgp->args.layout;
- 	lgp->res.seq_res.sr_slot = NULL;
- 	nfs41_init_sequence(&lgp->args.seq_args, &lgp->res.seq_res, 0);
-+
-+	spin_lock(&inode->i_lock);
-+	/* nfs4_layoutget_release calls pnfs_put_layout_hdr */
-+	pnfs_get_layout_hdr(NFS_I(inode)->layout);
-+	spin_unlock(&inode->i_lock);
-+
- 	task = rpc_run_task(&task_setup_data);
- 	if (IS_ERR(task))
- 		return ERR_CAST(task);
 -- 
-1.7.12.4 (Apple Git-37)
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
