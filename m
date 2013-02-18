@@ -1,126 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43430 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:34633 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1947115Ab3BHVNs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Feb 2013 16:13:48 -0500
-Date: Fri, 8 Feb 2013 16:13:45 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Subject: Re: [PATCH v2 1/6] NFS: use SUNRPC cache creation and destruction
- helper for DNS cache
-Message-ID: <20130208211345.GA22748@fieldses.org>
-References: <20130204105728.11633.53621.stgit@localhost.localdomain>
- <20130204110235.11633.59600.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130204110235.11633.59600.stgit@localhost.localdomain>
+	id S1754753Ab3BRSsU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Feb 2013 13:48:20 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 12/14] Kconfig: Add Kconfig entry for Labeled NFS V4 client
+Date: Mon, 18 Feb 2013 13:47:54 -0500
+Message-Id: <1361213276-17962-13-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1361213276-17962-1-git-send-email-SteveD@redhat.com>
+References: <1361213276-17962-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 04, 2013 at 02:02:35PM +0300, Stanislav Kinsbursky wrote:
-> This cache was the first containerized and doesn't use net-aware cache
-> creation and destruction helpers.
-> This is a cleanup patch which just makes code looks clearer and reduce amount
-> of lines of code.
+From: Steve Dickson <steved@redhat.com>
 
-This looks like uncontroversial cleanup, and should probably go in
-with the rest through my tree, so I'm inclined to just merge it.
+This patch adds the NFS_V4_SECURITY_LABEL entry which
+enables security label support for the NFSv4 client
 
-But an "ACK" from Trond would be reassuring.--b.
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ fs/nfs/Kconfig | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
 
-> 
-> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> ---
->  fs/nfs/dns_resolve.c |   60 +++++++++++++++++++++-----------------------------
->  1 files changed, 25 insertions(+), 35 deletions(-)
-> 
-> diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
-> index ca4b11e..5015447 100644
-> --- a/fs/nfs/dns_resolve.c
-> +++ b/fs/nfs/dns_resolve.c
-> @@ -351,48 +351,39 @@ ssize_t nfs_dns_resolve_name(struct net *net, char *name,
->  }
->  EXPORT_SYMBOL_GPL(nfs_dns_resolve_name);
->  
-> +static struct cache_detail nfs_dns_resolve_template = {
-> +	.owner		= THIS_MODULE,
-> +	.hash_size	= NFS_DNS_HASHTBL_SIZE,
-> +	.name		= "dns_resolve",
-> +	.cache_put	= nfs_dns_ent_put,
-> +	.cache_upcall	= nfs_dns_upcall,
-> +	.cache_parse	= nfs_dns_parse,
-> +	.cache_show	= nfs_dns_show,
-> +	.match		= nfs_dns_match,
-> +	.init		= nfs_dns_ent_init,
-> +	.update		= nfs_dns_ent_update,
-> +	.alloc		= nfs_dns_ent_alloc,
-> +};
-> +
-> +
->  int nfs_dns_resolver_cache_init(struct net *net)
->  {
-> -	int err = -ENOMEM;
-> +	int err;
->  	struct nfs_net *nn = net_generic(net, nfs_net_id);
-> -	struct cache_detail *cd;
-> -	struct cache_head **tbl;
->  
-> -	cd = kzalloc(sizeof(struct cache_detail), GFP_KERNEL);
-> -	if (cd == NULL)
-> -		goto err_cd;
-> -
-> -	tbl = kzalloc(NFS_DNS_HASHTBL_SIZE * sizeof(struct cache_head *),
-> -			GFP_KERNEL);
-> -	if (tbl == NULL)
-> -		goto err_tbl;
-> -
-> -	cd->owner = THIS_MODULE,
-> -	cd->hash_size = NFS_DNS_HASHTBL_SIZE,
-> -	cd->hash_table = tbl,
-> -	cd->name = "dns_resolve",
-> -	cd->cache_put = nfs_dns_ent_put,
-> -	cd->cache_upcall = nfs_dns_upcall,
-> -	cd->cache_parse = nfs_dns_parse,
-> -	cd->cache_show = nfs_dns_show,
-> -	cd->match = nfs_dns_match,
-> -	cd->init = nfs_dns_ent_init,
-> -	cd->update = nfs_dns_ent_update,
-> -	cd->alloc = nfs_dns_ent_alloc,
-> -
-> -	nfs_cache_init(cd);
-> -	err = nfs_cache_register_net(net, cd);
-> +	nn->nfs_dns_resolve = cache_create_net(&nfs_dns_resolve_template, net);
-> +	if (IS_ERR(nn->nfs_dns_resolve))
-> +		return PTR_ERR(nn->nfs_dns_resolve);
-> +
-> +	nfs_cache_init(nn->nfs_dns_resolve);
-> +	err = nfs_cache_register_net(net, nn->nfs_dns_resolve);
->  	if (err)
->  		goto err_reg;
-> -	nn->nfs_dns_resolve = cd;
->  	return 0;
->  
->  err_reg:
-> -	nfs_cache_destroy(cd);
-> -	kfree(cd->hash_table);
-> -err_tbl:
-> -	kfree(cd);
-> -err_cd:
-> +	nfs_cache_destroy(nn->nfs_dns_resolve);
-> +	cache_destroy_net(nn->nfs_dns_resolve, net);
->  	return err;
->  }
->  
-> @@ -403,8 +394,7 @@ void nfs_dns_resolver_cache_destroy(struct net *net)
->  
->  	nfs_cache_unregister_net(net, cd);
->  	nfs_cache_destroy(cd);
-> -	kfree(cd->hash_table);
-> -	kfree(cd);
-> +	cache_destroy_net(nn->nfs_dns_resolve, net);
->  }
->  
->  static int rpc_pipefs_event(struct notifier_block *nb, unsigned long event,
-> 
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 13ca196..3861a1f 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -131,6 +131,24 @@ config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
+ 	  If the NFS client is unchanged from the upstream kernel, this
+ 	  option should be set to the default "kernel.org".
+ 
++config NFS_V4_SECURITY_LABEL
++	bool "Provide Security Label support for NFSv4 client"
++	depends on NFS_V4 && SECURITY
++	help
++
++	Say Y here if you want enable fine-grained security label attribute
++	support for NFS version 4.  Security labels allow security modules like
++	SELinux and Smack to label files to facilitate enforcement of their policies.
++	Without this an NFSv4 mount will have the same label on each file.
++
++	If you do not wish to enable fine-grained security labels SELinux or
++	Smack policies on NFSv4 files, say N.
++
++	WARNING: there is still a chance of backwards-incompatible protocol changes.  
++	For now we recommend "Y" only for developers and testers."
++
++	If unsure, say N.
++
+ config ROOT_NFS
+ 	bool "Root file system on NFS"
+ 	depends on NFS_FS=y && IP_PNP
+-- 
+1.8.1.2
+
