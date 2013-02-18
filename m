@@ -1,217 +1,138 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:44735 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:38509 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934234Ab3BTQDz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Feb 2013 11:03:55 -0500
-Date: Wed, 20 Feb 2013 11:03:50 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1756757Ab3BRV6i (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Feb 2013 16:58:38 -0500
+Date: Mon, 18 Feb 2013 16:58:29 -0500
 To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Trond Myklebust <trond@netapp.com>, linux-nfs@vger.kernel.org,
-        simo@redhat.com
-Subject: Re: synchronous AF_LOCAL connect
-Message-ID: <20130220160350.GJ14606@fieldses.org>
-References: <20130218225424.GD3391@fieldses.org>
- <20130220154751.GH14606@fieldses.org>
- <2F275139-9861-4414-8C9F-BD74544C9AD7@oracle.com>
+Cc: Jeff Layton <jlayton@redhat.com>, NeilBrown <neilb@suse.de>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        NFS <linux-nfs@vger.kernel.org>, steved@redhat.com
+Subject: Re: More fun with unmounting ESTALE directories.
+Message-ID: <20130218215829.GC3391@fieldses.org>
+References: <20130212113813.427b8e05@notabene.brown>
+ <20130214104230.013b7f71@tlielax.poochiereds.net>
+ <20130218132509.0ce779de@notabene.brown>
+ <20130218074105.38cf49ea@tlielax.poochiereds.net>
+ <343C8851-62FD-448D-BFD6-5CBAB8C9DCB5@oracle.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <2F275139-9861-4414-8C9F-BD74544C9AD7@oracle.com>
+In-Reply-To: <343C8851-62FD-448D-BFD6-5CBAB8C9DCB5@oracle.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 20, 2013 at 10:56:54AM -0500, Chuck Lever wrote:
+On Mon, Feb 18, 2013 at 10:36:52AM -0500, Chuck Lever wrote:
+> Before removing FS_REVAL_DOT, I recommend some archaeology:  find out what was fixed by adding that for NFS.  I worked on something related years ago and have a vague recollection about this that there is a situation where revalidating dot is important.
 > 
-> On Feb 20, 2013, at 10:47 AM, "J. Bruce Fields" <bfields@fieldses.org>
-> wrote:
-> 
-> > On Mon, Feb 18, 2013 at 05:54:25PM -0500, bfields wrote:
-> >> The rpc code expects all connects to be done asynchronously by a
-> >> workqueue.  But that doesn't seem necessary in the AF_LOCAL case.
-> >> The only user (rpcbind) actually wants the connect done in the
-> >> context of a process with the right namespace.  (And that will be
-> >> true of gss proxy too, which also wants to use AF_LOCAL.)
-> >> 
-> >> But maybe I'm missing something.
-> >> 
-> >> Also, I haven't really tried to understand this code--I just
-> >> assumed I could basically call xs_local_setup_socket from ->setup
-> >> instead of the workqueue, and that seems to work based on a very
-> >> superficial test.  At a minimum I guess the PF_FSTRANS fiddling
-> >> shouldn't be there.
-> > 
-> > Here it is with that and the other extraneous xprt stuff gone.
-> > 
-> > See any problem with doing this?
-> 
-> Nothing is screaming at me.  As long as an AF_LOCAL connect operation
-> doesn't ever sleep, this should be safe, I think.
+> Unfortunately I don't see it in a quick browse through the commit log for fs/nfs/dir.c.  It may be in BitKeeper.
 
-I'm sure it must sleep.  Why would that make any difference?
+Everybody should have one of these historical git repos set up--they're
+awesome.
 
-> How did you test it?
-
-I'm just doing my usual set of connectathon runs, and assuming mounts
-would fail if the server's rpcbind registration failed.
+(No idea if this is helpful, I just note this seems to be where
+FS_REVAL_DOT got added to fs_flags.)
 
 --b.
 
-> 
-> 
-> > (This is basically my attempt to implement Trond's solution to the
-> > AF_LOCAL-connect-in-a-namespace problem:
-> > 
-> > 	http://mid.gmane.org/<4FA345DA4F4AE44899BD2B03EEEC2FA9092E0A40@SACEXCMBX04-PRD.hq.netapp.com>
-> > 
-> > )
-> > 
-> > --b.
-> > 
-> > commit 49413f389f7b38b4cbeb2d1c7f25ebcbf00f25f6
-> > Author: J. Bruce Fields <bfields@redhat.com>
-> > Date:   Fri Feb 15 17:54:26 2013 -0500
-> > 
-> >    rpc: simplify AF_LOCAL connect
-> > 
-> >    It doesn't appear that anyone actually needs to connect asynchronously.
-> > 
-> >    Also, using a workqueue for the connect means we lose the namespace
-> >    information from the original process.  This is a problem since there's
-> >    no way to explicitly pass in a filesystem namespace for resolution of an
-> >    AF_LOCAL address.
-> > 
-> >    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > 
-> > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> > index bbc0915..b7d60e4 100644
-> > --- a/net/sunrpc/xprtsock.c
-> > +++ b/net/sunrpc/xprtsock.c
-> > @@ -1866,57 +1866,14 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
-> >  * @xprt: RPC transport to connect
-> >  * @transport: socket transport to connect
-> >  * @create_sock: function to create a socket of the correct type
-> > - *
-> > - * Invoked by a work queue tasklet.
-> >  */
-> > static void xs_local_setup_socket(struct work_struct *work)
-> > {
-> > 	struct sock_xprt *transport =
-> > 		container_of(work, struct sock_xprt, connect_worker.work);
-> > 	struct rpc_xprt *xprt = &transport->xprt;
-> > -	struct socket *sock;
-> > -	int status = -EIO;
-> > -
-> > -	current->flags |= PF_FSTRANS;
-> > -
-> > -	clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
-> > -	status = __sock_create(xprt->xprt_net, AF_LOCAL,
-> > -					SOCK_STREAM, 0, &sock, 1);
-> > -	if (status < 0) {
-> > -		dprintk("RPC:       can't create AF_LOCAL "
-> > -			"transport socket (%d).\n", -status);
-> > -		goto out;
-> > -	}
-> > -	xs_reclassify_socketu(sock);
-> > 
-> > -	dprintk("RPC:       worker connecting xprt %p via AF_LOCAL to %s\n",
-> > -			xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
-> > -
-> > -	status = xs_local_finish_connecting(xprt, sock);
-> > -	switch (status) {
-> > -	case 0:
-> > -		dprintk("RPC:       xprt %p connected to %s\n",
-> > -				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
-> > -		xprt_set_connected(xprt);
-> > -		break;
-> > -	case -ENOENT:
-> > -		dprintk("RPC:       xprt %p: socket %s does not exist\n",
-> > -				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
-> > -		break;
-> > -	case -ECONNREFUSED:
-> > -		dprintk("RPC:       xprt %p: connection refused for %s\n",
-> > -				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
-> > -		break;
-> > -	default:
-> > -		printk(KERN_ERR "%s: unhandled error (%d) connecting to %s\n",
-> > -				__func__, -status,
-> > -				xprt->address_strings[RPC_DISPLAY_ADDR]);
-> > -	}
-> > -
-> > -out:
-> > -	xprt_clear_connecting(xprt);
-> > -	xprt_wake_pending_tasks(xprt, status);
-> > -	current->flags &= ~PF_FSTRANS;
-> > +	xprt_wake_pending_tasks(xprt, -EIO);
-> > }
-> > 
-> > #ifdef CONFIG_SUNRPC_SWAP
-> > @@ -2588,6 +2545,48 @@ static const struct rpc_timeout xs_local_default_timeout = {
-> > 	.to_retries = 2,
-> > };
-> > 
-> > +
-> > +static int xs_local_connect(struct sock_xprt *transport)
-> > +{
-> > +	struct rpc_xprt *xprt = &transport->xprt;
-> > +	struct socket *sock;
-> > +	int status = -EIO;
-> > +
-> > +	status = __sock_create(xprt->xprt_net, AF_LOCAL,
-> > +					SOCK_STREAM, 0, &sock, 1);
-> > +	if (status < 0) {
-> > +		dprintk("RPC:       can't create AF_LOCAL "
-> > +			"transport socket (%d).\n", -status);
-> > +		return status;
-> > +	}
-> > +	xs_reclassify_socketu(sock);
-> > +
-> > +	dprintk("RPC:       worker connecting xprt %p via AF_LOCAL to %s\n",
-> > +			xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
-> > +
-> > +	status = xs_local_finish_connecting(xprt, sock);
-> > +	switch (status) {
-> > +	case 0:
-> > +		dprintk("RPC:       xprt %p connected to %s\n",
-> > +				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
-> > +		xprt_set_connected(xprt);
-> > +		break;
-> > +	case -ENOENT:
-> > +		dprintk("RPC:       xprt %p: socket %s does not exist\n",
-> > +				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
-> > +		break;
-> > +	case -ECONNREFUSED:
-> > +		dprintk("RPC:       xprt %p: connection refused for %s\n",
-> > +				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
-> > +		break;
-> > +	default:
-> > +		printk(KERN_ERR "%s: unhandled error (%d) connecting to %s\n",
-> > +				__func__, -status,
-> > +				xprt->address_strings[RPC_DISPLAY_ADDR]);
-> > +	}
-> > +	return status;
-> > +}
-> > +
-> > /**
-> >  * xs_setup_local - Set up transport to use an AF_LOCAL socket
-> >  * @args: rpc transport creation arguments
-> > @@ -2630,6 +2629,9 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
-> > 		INIT_DELAYED_WORK(&transport->connect_worker,
-> > 					xs_local_setup_socket);
-> > 		xs_format_peer_addresses(xprt, "local", RPCBIND_NETID_LOCAL);
-> > +		ret = ERR_PTR(xs_local_connect(transport));
-> > +		if (ret)
-> > +			goto out_err;
-> > 		break;
-> > 	default:
-> > 		ret = ERR_PTR(-EAFNOSUPPORT);
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> -- 
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-> 
+commit e14720a157f5d8745006f44520dfa3b8ac498328
+Author: Trond Myklebust <trond.myklebust@fys.uio.no>
+Date:   Tue Aug 19 21:35:45 2003 -0700
+
+    [PATCH] Support dentry revalidation under open(".")
+    
+    link_path_walk() currently treats the special filenames ".", ".."
+    and "/" differently in that it does not call down to the filesystem in
+    order to revalidate the cached dentry, but just assumes that it is
+    fine.
+    
+      For most filesystems this is OK, but it the case of the stateless
+    NFS, this means that it circumvents path staleness detection, and the
+    attribute+data cache revalidation code on such common commands as
+    opendir(".").
+    
+    This change provides a way to do such revalidation for NFS without
+    impacting other filesystems.
+    
+    Note: the failure to revalidate the path here does not result in a
+    call to d_invalidate() unlike (all?) other calls to d_revalidate(). It
+    only results in an ESTALE error being returned to the caller.
+
+diff --git a/fs/namei.c b/fs/namei.c
+index f922236..9e1fcb9 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -572,7 +572,7 @@ int link_path_walk(const char * name, struct nameidata *nd)
+ 	while (*name=='/')
+ 		name++;
+ 	if (!*name)
+-		goto return_base;
++		goto return_reval;
+ 
+ 	inode = nd->dentry->d_inode;
+ 	if (current->link_count)
+@@ -693,7 +693,7 @@ last_component:
+ 				inode = nd->dentry->d_inode;
+ 				/* fallthrough */
+ 			case 1:
+-				goto return_base;
++				goto return_reval;
+ 		}
+ 		if (nd->dentry->d_op && nd->dentry->d_op->d_hash) {
+ 			err = nd->dentry->d_op->d_hash(nd->dentry, &this);
+@@ -737,6 +737,20 @@ lookup_parent:
+ 			nd->last_type = LAST_DOT;
+ 		else if (this.len == 2 && this.name[1] == '.')
+ 			nd->last_type = LAST_DOTDOT;
++		else
++			goto return_base;
++return_reval:
++		/*
++		 * We bypassed the ordinary revalidation routines.
++		 * We may need to check the cached dentry for staleness.
++		 */
++		if (nd->dentry && nd->dentry->d_sb &&
++		    (nd->dentry->d_sb->s_type->fs_flags & FS_REVAL_DOT)) {
++			err = -ESTALE;
++			/* Note: we do not d_invalidate() */
++			if (!nd->dentry->d_op->d_revalidate(nd->dentry, nd))
++				break;
++		}
+ return_base:
+ 		return 0;
+ out_dput:
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 1bae8c1..c8e3191 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1343,7 +1343,7 @@ static struct file_system_type nfs_fs_type = {
+ 	.name		= "nfs",
+ 	.get_sb		= nfs_get_sb,
+ 	.kill_sb	= nfs_kill_super,
+-	.fs_flags	= FS_ODD_RENAME,
++	.fs_flags	= FS_ODD_RENAME|FS_REVAL_DOT,
+ };
+ 
+ #ifdef CONFIG_NFS_V4
+@@ -1575,7 +1575,7 @@ static struct file_system_type nfs4_fs_type = {
+ 	.name		= "nfs4",
+ 	.get_sb		= nfs4_get_sb,
+ 	.kill_sb	= nfs_kill_super,
+-	.fs_flags	= FS_ODD_RENAME,
++	.fs_flags	= FS_ODD_RENAME|FS_REVAL_DOT,
+ };
+ 
+ #define nfs4_zero_state(nfsi) \
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 8df205c..a9e02e3 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -89,6 +89,7 @@ extern int leases_enable, dir_notify_enable, lease_break_time;
+ 
+ /* public flags for file_system_type */
+ #define FS_REQUIRES_DEV 1 
++#define FS_REVAL_DOT	16384	/* Check the paths ".", ".." for staleness */
+ #define FS_ODD_RENAME	32768	/* Temporary stuff; will go away as soon
+ 				  * as nfs_rename() will be cleaned up
+ 				  */
