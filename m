@@ -1,75 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f172.google.com ([209.85.223.172]:58627 "EHLO
-	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754325Ab3BGQAO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Feb 2013 11:00:14 -0500
+Received: from ax13.adsl.tnnet.fi ([217.112.254.13]:51530 "EHLO
+	mail.opinsys.fi" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751297Ab3BRI1Y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Feb 2013 03:27:24 -0500
+Date: Mon, 18 Feb 2013 08:23:12 +0000 (UTC)
+From: Veli-Matti Lintu <veli-matti.lintu@opinsys.fi>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Tuomas =?utf-8?B?UsOkc8OkbmVu?= <tuomasjjrasanen@opinsys.fi>,
+        linux-nfs@vger.kernel.org
+Message-ID: <505003638.18320.1361175792539.JavaMail.root@opinsys.fi>
+In-Reply-To: <74874B5C-CDDE-4F77-B69D-FC40FF5DD933@oracle.com>
+References: <127351146.98508.1360769367943.JavaMail.root@opinsys.fi> <1117889154.119108.1360851840169.JavaMail.root@opinsys.fi> <CED6E6AF-B551-4099-89CE-861E5F46D31A@oracle.com> <654867786.10283.1360929631448.JavaMail.root@opinsys.fi> <74874B5C-CDDE-4F77-B69D-FC40FF5DD933@oracle.com>
+Subject: Re: Kernels 3.7 and newer break rpc.gssd -n
 MIME-Version: 1.0
-In-Reply-To: <20130207144156.GB3222@fieldses.org>
-References: <1358441584-8783-1-git-send-email-piastry@etersoft.ru>
-	<1358441584-8783-3-git-send-email-piastry@etersoft.ru>
-	<20130130221602.GC15584@fieldses.org>
-	<CAKywueRh++TBazK8_kRN7AUb=EFhGv=Sv2CV0BESkfLFy+g5wA@mail.gmail.com>
-	<20130205143514.GA9886@fieldses.org>
-	<CAKywueS6oGNu9r_bypu32A89pOoiGb47kjXqw2ZcZQhZK+JV3g@mail.gmail.com>
-	<20130207141832.GA3222@fieldses.org>
-	<CAKywueTmU_L5cwwJSoUY6753eHf_38VtHadZGt9tcLS59sqmOA@mail.gmail.com>
-	<20130207144156.GB3222@fieldses.org>
-Date: Thu, 7 Feb 2013 20:00:13 +0400
-Message-ID: <CAKywueShbPd9b+WmJwnfwPR_vzk_atBVRBZNTf-HpS7N2CK+AA@mail.gmail.com>
-Subject: Re: [PATCH v2 3/8] vfs: Add O_DENYREAD/WRITE flags support for open syscall
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        wine-devel@winehq.org
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2013/2/7 J. Bruce Fields <bfields@fieldses.org>:
-> On Thu, Feb 07, 2013 at 06:32:38PM +0400, Pavel Shilovsky wrote:
->> 2013/2/7 J. Bruce Fields <bfields@fieldses.org>:
->> > On Thu, Feb 07, 2013 at 01:53:46PM +0400, Pavel Shilovsky wrote:
->> >> Nothing prevents it. If somebody grabbed a share mode lock on a file
->> >> before we call deny_lock_file, we simply close this file and return
->> >> -ETXTBSY.
->> >
->> > But leave the newly-created file there--ugh.
->> >
->> >> We can't grab it before atomic_open because we don't have an
->> >> inode there.
->> >
->> > If you can get the lock while still holding the directory i_mutex can't
->> > you prevent anyone else from looking up the new file until you've gotten
->> > the lock?
->> >
->>
->> Hm..., seems you are right, I missed this part:
->> mutex_lock
->> lookup_open -> atomic_open -> deny_lock_file
->> mutex_unlock
->>
->> that means that nobody can open and of course set flock on the newly
->> created file (because flock is done through file descriptor). So, it
->> should be fine to call flock after f_ops->atomic_open in atomic_open
->> function. Thanks.
->
-> Whether that works may also depend on how the new dentry is set up?  If
-> it's hashed before you call flock then I suppose it's already visible to
-> others.
+> > Yes. With commit 05f4c350 + the compilation fix, the problem occurs, but
+> > without
+> > 05f4c350, the parent (6f2ea7f) works as expected, requesting for service
+> > <null>.
 
-It seems it should be hashed in f_ops->atomic_open() (at least cifs
-and nfs do it this way). In do_last when we do an ordinary open, we
-don't hit parent i_mutex if lookup is succeeded through lookup_fast.
-lookup_fast can catch newly created dentry and set it's share mode
-before atomic_open codepath hits deny_lock_file.
+> >> When the mount operation fails, is it the first time this client attempts
+> >> to
+> >> mount a share on server.example.org, or does the client already have
+> >> mounts
+> >> of server.example.org, possibly using other security flavors?
 
-Also, I noted that: atomic open does f_ops->atomic_open and then it
-processes may_open check; if may_open fails, the file is closed and
-open returns with a error code (but file is created anyway) . I think
-there is no difference between this case and the situation with
-deny_lock_file there.
+> > Yes, the problem occurs on the very first mount attempt.
+> 
+> Thanks for confirming.  Did you try updating nfs-utils on your NFS client to
+> 1.2.8-rc1 or later (specifically to replace rpc.gssd)?
 
--- 
-Best regards,
-Pavel Shilovsky.
+Yes, gssd from nfs-utils 1.2.8-rc3 behaves the same way and fails when service 
+name is not null.
+
+The code in gssd that checks for the service name seems to be the same if I
+understand the code correctly.
+
+http://git.linux-nfs.org/?p=steved/nfs-utils.git;a=blob;f=utils/gssd/gssd_proc.c;h=c17ab3bf914526f433fb6c76ace1daa63c10d921;hb=HEAD#l985
+
+---------------------------------------------------------------------------------
+        if (uid != 0 || (uid == 0 && root_uses_machine_creds == 0 &&
+                                service == NULL)) {
+                /* Tell krb5 gss which credentials cache to use */
+                for (dirname = ccachesearch; *dirname != NULL; dirname++) {
+                        err = gssd_setup_krb5_user_gss_ccache(uid, clp->servername, *dirname);
+                        if (err == -EKEYEXPIRED)
+                                downcall_err = -EKEYEXPIRED;
+                        else if (!err)
+                                create_resp = create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
+                                                             AUTHTYPE_KRB5);
+                        if (create_resp == 0)
+                                break;
+                }
+        }
+---------------------------------------------------------------------------------
+
+Veli-Matti
