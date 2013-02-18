@@ -1,108 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:46524 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757236Ab3BVPaM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Feb 2013 10:30:12 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-CC: Steve Dickson <steved@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] NFSDv4.2: Added NFS v4.2 support to the NFS server
-Date: Fri, 22 Feb 2013 15:30:08 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9235DBFBA@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1361484911-17537-1-git-send-email-steved@redhat.com>
-	 <1361484911-17537-3-git-send-email-steved@redhat.com>
-	 <20130222152548.GB10157@pad.fieldses.org>
-In-Reply-To: <20130222152548.GB10157@pad.fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:27255 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753600Ab3BRVQO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Feb 2013 16:16:14 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
+Subject: Re: Kernels 3.7 and newer break rpc.gssd -n
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <127351146.98508.1360769367943.JavaMail.root@opinsys.fi>
+Date: Mon, 18 Feb 2013 16:16:05 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <73594034-4F9D-4DA6-A979-1E2745BCDF05@oracle.com>
+References: <127351146.98508.1360769367943.JavaMail.root@opinsys.fi>
+To: Veli-Matti Lintu <veli-matti.lintu@opinsys.fi>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2013-02-22 at 10:26 -0500, J. Bruce Fields wrote:
-> On Thu, Feb 21, 2013 at 05:15:11PM -0500, Steve Dickson wrote:
-> > This enable NFSv4.2 support for the server. To enable this
-> > code do the following:
-> >   echo "+4.2" >/proc/fs/nfsd/versions
-> > 
-> > after the nfsd kernel module is loaded.
-> > 
-> > Signed-off-by: Steve Dickson <steved@redhat.com>
-> > ---
-> >  fs/nfsd/nfs4xdr.c | 1 +
-> >  fs/nfsd/nfsd.h    | 2 +-
-> >  2 files changed, 2 insertions(+), 1 deletion(-)
-> > 
-> > diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> > index d2ae8db..86be853 100644
-> > --- a/fs/nfsd/nfs4xdr.c
-> > +++ b/fs/nfsd/nfs4xdr.c
-> > @@ -1621,6 +1621,7 @@ struct nfsd4_minorversion_ops {
-> >  static struct nfsd4_minorversion_ops nfsd4_minorversion[] = {
-> >  	[0] = { nfsd4_dec_ops, ARRAY_SIZE(nfsd4_dec_ops) },
-> >  	[1] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
-> > +	[2] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
-> >  };
-> >  
-> >  static __be32
-> > diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-> > index 26a457b..0e3ccd1 100644
-> > --- a/fs/nfsd/nfsd.h
-> > +++ b/fs/nfsd/nfsd.h
-> > @@ -24,7 +24,7 @@
-> >  /*
-> >   * nfsd version
-> >   */
-> > -#define NFSD_SUPPORTED_MINOR_VERSION	1
-> > +#define NFSD_SUPPORTED_MINOR_VERSION	2
-> >  /*
-> >   * Maximum blocksizes supported by daemon under various circumstances.
-> >   */
-> 
-> Looks OK to me, except this should be behind a config for now.
-> 
-> On a grep for "minorversion" I notice two oversights, below: one just a
-> comment, one might result in getting the wrong minorversion on
-> callbacks.
-> 
-> --b.
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 503e15e..b86cf07 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1665,7 +1665,7 @@ out_new:
->  		status = nfserr_jukebox;
->  		goto out;
->  	}
-> -	new->cl_minorversion = 1;
-> +	new->cl_minorversion = cstate->minorversion;
->  
->  	gen_clid(new);
->  	add_to_unconfirmed(new, strhashval);
-> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-> index e036894..28d41ef 100644
-> --- a/fs/nfsd/state.h
-> +++ b/fs/nfsd/state.h
-> @@ -108,7 +108,7 @@ struct nfs4_cb_conn {
->  	u32                     cb_prog; /* used only in 4.0 case;
->  					    per-session otherwise */
->  	u32                     cb_ident;	/* minorversion 0 only */
-> -	struct svc_xprt		*cb_xprt;	/* minorversion 1 only */
-> +	struct svc_xprt		*cb_xprt;	/* minorversion >=1 only */
 
-Tagging things as being particlar to a give minorversion means that
-we'll never stop having to change the comments. Why not just label it as
-being the session back channel?
+On Feb 13, 2013, at 10:29 AM, Veli-Matti Lintu <veli-matti.lintu@opinsys.fi> wrote:
 
->  };
->  
->  static inline struct nfs4_delegation *delegstateid(struct nfs4_stid *s)
+> I've been using kerberized nfs4 mounts without machine credentials for 
+> quite some time by running rpc.gssd with the -n option. This has 
+> resulted rpc.gssd in using ccache in /tmp/krb5cc_0 when doing the mount 
+> instead of machine credentials. This functionality seems to break when 
+> using kernel 3.7 or newer. 3.6.11 and earlier work like expected.
+> 
+> The use case for this is diskless workstations that do not have machine 
+> credentials stored on them as they have no secure storage medium. When a 
+> user logs in, the home directory is mounted using the user's credentials 
+> only.
+> 
+> Steps to reproduce the problem:
+> 
+> # kinit user (this creates /tmp/krb5cc_0)
+> # rpc.gssd -f -n -vvvv
+> # mount -t nfs4 -o sec=krb5 server.example.org:/home /mnt
+> 
+> The mount works when using kernel 3.6.11 or earlier and fails on 3.7-rc1 
+> or later. Testing was done on Ubuntu 12.04 and 12.10 using Ubuntu kernels
+> and kernel.org kernels (up to 3.8-rc7) with similar results.
+> 
+> nfs-utils versions 1.2.5 and the latest version from git master head 
+> (git://linux-nfs.org/nfs-utils) behave the same way.
+
+Reproduced.  Not clear yet if this is a kernel regression or a latent gssd bug.
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+
+
+
