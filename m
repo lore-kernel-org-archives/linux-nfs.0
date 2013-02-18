@@ -1,85 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:42927 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753287Ab3BUVAa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Feb 2013 16:00:30 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
-Subject: Re: [nfsv4] Connectathon 2013 talks
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <51267179.6060002@panasas.com>
-Date: Thu, 21 Feb 2013 16:00:20 -0500
-Cc: NFSv4 on Linux on Linux mailing mailing list <nfsv4@ietf.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <3ED82945-279D-49E4-92B4-AF4AA6363F2F@oracle.com>
-References: <8BD8BE06-E201-4704-AD4E-DB768F37255F@oracle.com> <51267179.6060002@panasas.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
+Received: from relay.parallels.com ([195.214.232.42]:50400 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751888Ab3BRFK6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Feb 2013 00:10:58 -0500
+Message-ID: <5121B7BA.7020509@parallels.com>
+Date: Mon, 18 Feb 2013 09:10:18 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>, <Trond.Myklebust@netapp.com>,
+        <linux-kernel@vger.kernel.org>, <devel@openvz.org>
+Subject: Re: [PATCH v2 0/4] nfsd: make is works in a container
+References: <20130201125210.3257.46454.stgit@localhost.localdomain> <20130215162021.GK8343@fieldses.org>
+In-Reply-To: <20130215162021.GK8343@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+15.02.2013 20:20, J. Bruce Fields пишет:
+> On Fri, Feb 01, 2013 at 03:56:05PM +0300, Stanislav Kinsbursky wrote:
+>> This patch set finally enables NFSd in container.
+>> I've tested it in container with it's own root, and also pid, net and mount
+>> namespaces.
+>
+> Thanks, these look fine to me; applying.  They should show up in my
+> for-3.9 branch sometime today.
+>
 
-On Feb 21, 2013, at 2:11 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+Thanks!
 
-> On 01/25/2013 06:00 PM, Chuck Lever wrote:
->> Hi-
->> 
->> I'm organizing the talks at this year's Connectathon event.  
->> 
->>  http://hub.opensolaris.org/bin/view/Community+Group+nfs/Connectathon13
->> 
->> If you are interested in presenting, please contact me with details
->> before Monday, February 25 (but the sooner the better). Remember that
->> the Connectathon test floor is covered by NDA, but the talks are open
->> to the public.
->> 
-> 
-> Hi Chuck, as we said at the con-call here is my email
-
-Captured.  Should appear on the web site next time we update (a day or two?).
-
-
-> 
->> 
->> For each talk, please provide:
->> 
->> o  A title
->> 
-> 
-> title: How to solve the Linux-Client LAYOUT_COMMIT vs LAYOUT_GET deadlock
-> 
->> o  An abstract (a couple of sentences or so)
->> 
-> 
-> abstract:
-> 	* I will describe the current problem we have since Kernel 3.5.
-> 	* I will show how I fix it for now, though in a way that violates the STD
-> 	  (It actually does works with all current pnfs servers I know of)
-> 	* I will introduce two possible solutions I can see, for this.
-> 
-> 	And would like people to:
-> 		1. See if there are more possible solutions
-> 		2. Choose (Trond) which way we would like to go, and I can start
-> 		   coding for that.
-> 
->> o  Who exactly is going to present (with e-mail if possible)
->> 
-> 
-> presentor: Me
-> 
->> o  How long you think you need
->> 
-> 
-> I hope not more then 1 hour at most, or even less
-> 
->> o  Whether you need more than just a projector
->> 
-> 
-> No that will be just fine.
 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+Best regards,
+Stanislav Kinsbursky
