@@ -1,253 +1,175 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:18951 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754288Ab3BGQX2 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Feb 2013 11:23:28 -0500
+Received: from fieldses.org ([174.143.236.118]:56545 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757512Ab3BRWy2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Feb 2013 17:54:28 -0500
+Date: Mon, 18 Feb 2013 17:54:25 -0500
+To: Trond Myklebust <trond@netapp.com>, Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org, simo@redhat.com
+Subject: synchronous AF_LOCAL connect
+Message-ID: <20130218225424.GD3391@fieldses.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
-Subject: Re: [PATCH v3 2/2] nfsd: keep a checksum of the first 256 bytes of request
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20130207160032.GF3222@fieldses.org>
-Date: Thu, 7 Feb 2013 11:23:17 -0500
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
-Message-Id: <7AE3520E-0F1E-4BDF-9977-B110180E99E3@oracle.com>
-References: <1360248701-23963-1-git-send-email-jlayton@redhat.com> <1360248701-23963-3-git-send-email-jlayton@redhat.com> <DF2DA489-3D72-4DBF-8C65-1B7DA9866B63@oracle.com> <20130207160032.GF3222@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The rpc code expects all connects to be done asynchronously by a
+workqueue.  But that doesn't seem necessary in the AF_LOCAL case.  The
+only user (rpcbind) actually wants the connect done in the context of a
+process with the right namespace.  (And that will be true of gss proxy
+too, which also wants to use AF_LOCAL.)
 
-On Feb 7, 2013, at 11:00 AM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+But maybe I'm missing something.
 
-> On Thu, Feb 07, 2013 at 10:51:02AM -0500, Chuck Lever wrote:
->> 
->> On Feb 7, 2013, at 9:51 AM, Jeff Layton <jlayton@redhat.com> wrote:
->> 
->>> Now that we're allowing more DRC entries, it becomes a lot easier to
->>> hit problems with XID collisions. In order to mitigate those,
->>> calculate the crc32 of up to the first 256 bytes of each request
->>> coming in and store that in the cache entry, along with the total
->>> length of the request.
->> 
->> I'm happy to see a checksummed DRC finally become reality for the
->> Linux NFS server.
->> 
->> Have you measured the CPU utilization impact and CPU cache footprint
->> of performing a CRC computation for every incoming RPC?
-> 
-> Note this is over the first 256 bytes of the request--which we're
-> probably just about to read for xdr decoding anyway.
+Also, I haven't really tried to understand this code--I just assumed I
+could basically call xs_local_setup_socket from ->setup instead of the
+workqueue, and that seems to work based on a very superficial test.  At
+a minimum I guess the PF_FSTRANS fiddling shouldn't be there.
 
-XDR decoding is copying and branching.  Computing a CRC involves real math, which tends to be significantly more expensive than successfully predicted branches, especially on low-power CPUs that might be found in SOHO NAS products.
+--b.
 
+commit 93713cdf3ba42789b4e960ad457d2d802746b3ff
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Fri Feb 15 17:54:26 2013 -0500
 
-> 
->> I'm wondering if a simpler checksum might be just as useful but less
->> costly to compute.
-> 
-> What would be an example of a simpler checksum?
+    rpc: simplify AF_LOCAL connect
+    
+    It doesn't appear that anyone actually needs to connect asynchronously.
+    
+    Also, using a workqueue for the connect means we lose the namespace
+    information from the original process.  This is a problem since there's
+    no way to explicitly pass in a filesystem namespace for resolution of an
+    AF_LOCAL address.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-The same one TCP uses, like a simple additive sum, or an XOR.  Is a heavyweight checksum needed because checksums generated with a simple function are more likely to collide?
-
-Not that this should hold up merging Jeff's work!  We can easily tweak or replace the checksum algorithm after it's upstream.  It's not kABI.
-
-But someone should assess the impact of the additional checksum computation.  CRC seems to me heavier than is needed here.
-
-
-Possible tweaks:
-
-Why 256 bytes?  Is that too much?  Or not enough for some NFSv4 compounds that might often start with the same data?  Could we, for instance, use fewer bytes for NFSv2 and NFSv3?  Or even a variable checksum length depending on the NFS operation?  Is 256 bytes enough for NFSv4.1, whose compounds always start with the same operation?
-
-If integrity or privacy is in play, can we use that information in place of a separate DRC checksum?
-
-
-
-> 
-> --b.
-> 
->> 
->> 
->>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
->>> ---
->>> fs/nfsd/cache.h    |  5 +++++
->>> fs/nfsd/nfscache.c | 53 +++++++++++++++++++++++++++++++++++++++++++++++++----
->>> 2 files changed, 54 insertions(+), 4 deletions(-)
->>> 
->>> diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
->>> index 9c7232b..4822db3 100644
->>> --- a/fs/nfsd/cache.h
->>> +++ b/fs/nfsd/cache.h
->>> @@ -29,6 +29,8 @@ struct svc_cacherep {
->>> 	u32			c_prot;
->>> 	u32			c_proc;
->>> 	u32			c_vers;
->>> +	unsigned int		c_len;
->>> +	u32			c_crc;
->>> 	unsigned long		c_timestamp;
->>> 	union {
->>> 		struct kvec	u_vec;
->>> @@ -73,6 +75,9 @@ enum {
->>> /* Cache entries expire after this time period */
->>> #define RC_EXPIRE		(120 * HZ)
->>> 
->>> +/* Checksum this amount of the request */
->>> +#define RC_CSUMLEN		(256U)
->>> +
->>> int	nfsd_reply_cache_init(void);
->>> void	nfsd_reply_cache_shutdown(void);
->>> int	nfsd_cache_lookup(struct svc_rqst *);
->>> diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
->>> index f754469..a8c3f1e 100644
->>> --- a/fs/nfsd/nfscache.c
->>> +++ b/fs/nfsd/nfscache.c
->>> @@ -11,6 +11,8 @@
->>> #include <linux/slab.h>
->>> #include <linux/sunrpc/addr.h>
->>> #include <linux/highmem.h>
->>> +#include <linux/crc32.h>
->>> +#include <linux/sunrpc/svcauth_gss.h>
->>> 
->>> #include "nfsd.h"
->>> #include "cache.h"
->>> @@ -24,6 +26,7 @@ static struct list_head 	lru_head;
->>> static struct kmem_cache	*drc_slab;
->>> static unsigned int		num_drc_entries;
->>> static unsigned int		max_drc_entries;
->>> +static u32			crc_seed;
->>> 
->>> /*
->>> * Calculate the hash index from an XID.
->>> @@ -130,6 +133,9 @@ int nfsd_reply_cache_init(void)
->>> 	INIT_LIST_HEAD(&lru_head);
->>> 	max_drc_entries = nfsd_cache_size_limit();
->>> 	num_drc_entries = 0;
->>> +
->>> +	/* Is a random seed any better than some well-defined constant? */
->>> +	get_random_bytes(&crc_seed, sizeof(crc_seed));
->>> 	return 0;
->>> out_nomem:
->>> 	printk(KERN_ERR "nfsd: failed to allocate reply cache\n");
->>> @@ -238,12 +244,45 @@ nfsd_reply_cache_shrink(struct shrinker *shrink, struct shrink_control *sc)
->>> }
->>> 
->>> /*
->>> + * Walk an xdr_buf and get a CRC for at most the first RC_CSUMLEN bytes
->>> + */
->>> +static u32
->>> +nfsd_cache_crc(struct svc_rqst *rqstp)
->>> +{
->>> +	int idx;
->>> +	unsigned int base;
->>> +	u32 crc;
->>> +	struct xdr_buf *buf = &rqstp->rq_arg;
->>> +	const unsigned char *p = buf->head[0].iov_base;
->>> +	size_t csum_len = min_t(size_t, buf->head[0].iov_len + buf->page_len,
->>> +				RC_CSUMLEN);
->>> +	size_t len = min(buf->head[0].iov_len, csum_len);
->>> +
->>> +	/* rq_arg.head first */
->>> +	crc = crc32(crc_seed, p, len);
->>> +	csum_len -= len;
->>> +
->>> +	/* Continue into page array */
->>> +	idx = buf->page_base / PAGE_SIZE;
->>> +	base = buf->page_base & ~PAGE_MASK;
->>> +	while (csum_len) {
->>> +		p = page_address(buf->pages[idx]) + base;
->>> +		len = min(PAGE_SIZE - base, csum_len);
->>> +		crc = crc32(crc, p, len);
->>> +		csum_len -= len;
->>> +		base = 0;
->>> +		++idx;
->>> +	}
->>> +	return crc;
->>> +}
->>> +
->>> +/*
->>> * Search the request hash for an entry that matches the given rqstp.
->>> * Must be called with cache_lock held. Returns the found entry or
->>> * NULL on failure.
->>> */
->>> static struct svc_cacherep *
->>> -nfsd_cache_search(struct svc_rqst *rqstp)
->>> +nfsd_cache_search(struct svc_rqst *rqstp, u32 crc)
->>> {
->>> 	struct svc_cacherep	*rp;
->>> 	struct hlist_node	*hn;
->>> @@ -257,6 +296,7 @@ nfsd_cache_search(struct svc_rqst *rqstp)
->>> 	hlist_for_each_entry(rp, hn, rh, c_hash) {
->>> 		if (xid == rp->c_xid && proc == rp->c_proc &&
->>> 		    proto == rp->c_prot && vers == rp->c_vers &&
->>> +		    rqstp->rq_arg.len == rp->c_len && crc == rp->c_crc &&
->>> 		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
->>> 		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr))
->>> 			return rp;
->>> @@ -276,7 +316,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
->>> 	__be32			xid = rqstp->rq_xid;
->>> 	u32			proto =  rqstp->rq_prot,
->>> 				vers = rqstp->rq_vers,
->>> -				proc = rqstp->rq_proc;
->>> +				proc = rqstp->rq_proc,
->>> +				crc;
->>> 	unsigned long		age;
->>> 	int type = rqstp->rq_cachetype;
->>> 	int rtn;
->>> @@ -287,10 +328,12 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
->>> 		return RC_DOIT;
->>> 	}
->>> 
->>> +	crc = nfsd_cache_crc(rqstp);
->>> +
->>> 	spin_lock(&cache_lock);
->>> 	rtn = RC_DOIT;
->>> 
->>> -	rp = nfsd_cache_search(rqstp);
->>> +	rp = nfsd_cache_search(rqstp, crc);
->>> 	if (rp)
->>> 		goto found_entry;
->>> 
->>> @@ -318,7 +361,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
->>> 	 * Must search again just in case someone inserted one
->>> 	 * after we dropped the lock above.
->>> 	 */
->>> -	found = nfsd_cache_search(rqstp);
->>> +	found = nfsd_cache_search(rqstp, crc);
->>> 	if (found) {
->>> 		nfsd_reply_cache_free_locked(rp);
->>> 		rp = found;
->>> @@ -344,6 +387,8 @@ setup_entry:
->>> 	rpc_set_port((struct sockaddr *)&rp->c_addr, rpc_get_port(svc_addr(rqstp)));
->>> 	rp->c_prot = proto;
->>> 	rp->c_vers = vers;
->>> +	rp->c_len = rqstp->rq_arg.len;
->>> +	rp->c_crc = crc;
->>> 
->>> 	hash_refile(rp);
->>> 	lru_put_end(rp);
->>> -- 
->>> 1.7.11.7
->>> 
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
->> -- 
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
->> 
->> 
->> 
->> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index bbc0915..72765f1 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1866,57 +1866,14 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
+  * @xprt: RPC transport to connect
+  * @transport: socket transport to connect
+  * @create_sock: function to create a socket of the correct type
+- *
+- * Invoked by a work queue tasklet.
+  */
+ static void xs_local_setup_socket(struct work_struct *work)
+ {
+ 	struct sock_xprt *transport =
+ 		container_of(work, struct sock_xprt, connect_worker.work);
+ 	struct rpc_xprt *xprt = &transport->xprt;
+-	struct socket *sock;
+-	int status = -EIO;
+-
+-	current->flags |= PF_FSTRANS;
+-
+-	clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
+-	status = __sock_create(xprt->xprt_net, AF_LOCAL,
+-					SOCK_STREAM, 0, &sock, 1);
+-	if (status < 0) {
+-		dprintk("RPC:       can't create AF_LOCAL "
+-			"transport socket (%d).\n", -status);
+-		goto out;
+-	}
+-	xs_reclassify_socketu(sock);
+-
+-	dprintk("RPC:       worker connecting xprt %p via AF_LOCAL to %s\n",
+-			xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
+ 
+-	status = xs_local_finish_connecting(xprt, sock);
+-	switch (status) {
+-	case 0:
+-		dprintk("RPC:       xprt %p connected to %s\n",
+-				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
+-		xprt_set_connected(xprt);
+-		break;
+-	case -ENOENT:
+-		dprintk("RPC:       xprt %p: socket %s does not exist\n",
+-				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
+-		break;
+-	case -ECONNREFUSED:
+-		dprintk("RPC:       xprt %p: connection refused for %s\n",
+-				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
+-		break;
+-	default:
+-		printk(KERN_ERR "%s: unhandled error (%d) connecting to %s\n",
+-				__func__, -status,
+-				xprt->address_strings[RPC_DISPLAY_ADDR]);
+-	}
+-
+-out:
+-	xprt_clear_connecting(xprt);
+-	xprt_wake_pending_tasks(xprt, status);
+-	current->flags &= ~PF_FSTRANS;
++	xprt_wake_pending_tasks(xprt, -EIO);
+ }
+ 
+ #ifdef CONFIG_SUNRPC_SWAP
+@@ -2588,6 +2545,55 @@ static const struct rpc_timeout xs_local_default_timeout = {
+ 	.to_retries = 2,
+ };
+ 
++
++static int xs_local_connect(struct sock_xprt *transport)
++{
++	struct rpc_xprt *xprt = &transport->xprt;
++	struct socket *sock;
++	int status = -EIO;
++
++	current->flags |= PF_FSTRANS;
++
++	clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
++	status = __sock_create(xprt->xprt_net, AF_LOCAL,
++					SOCK_STREAM, 0, &sock, 1);
++	if (status < 0) {
++		dprintk("RPC:       can't create AF_LOCAL "
++			"transport socket (%d).\n", -status);
++		goto out;
++	}
++	xs_reclassify_socketu(sock);
++
++	dprintk("RPC:       worker connecting xprt %p via AF_LOCAL to %s\n",
++			xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
++
++	status = xs_local_finish_connecting(xprt, sock);
++	switch (status) {
++	case 0:
++		dprintk("RPC:       xprt %p connected to %s\n",
++				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
++		xprt_set_connected(xprt);
++		break;
++	case -ENOENT:
++		dprintk("RPC:       xprt %p: socket %s does not exist\n",
++				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
++		break;
++	case -ECONNREFUSED:
++		dprintk("RPC:       xprt %p: connection refused for %s\n",
++				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
++		break;
++	default:
++		printk(KERN_ERR "%s: unhandled error (%d) connecting to %s\n",
++				__func__, -status,
++				xprt->address_strings[RPC_DISPLAY_ADDR]);
++	}
++out:
++	xprt_clear_connecting(xprt);
++	xprt_wake_pending_tasks(xprt, status);
++	current->flags &= ~PF_FSTRANS;
++	return status;
++}
++
+ /**
+  * xs_setup_local - Set up transport to use an AF_LOCAL socket
+  * @args: rpc transport creation arguments
+@@ -2630,6 +2636,9 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
+ 		INIT_DELAYED_WORK(&transport->connect_worker,
+ 					xs_local_setup_socket);
+ 		xs_format_peer_addresses(xprt, "local", RPCBIND_NETID_LOCAL);
++		ret = ERR_PTR(xs_local_connect(transport));
++		if (ret)
++			goto out_err;
+ 		break;
+ 	default:
+ 		ret = ERR_PTR(-EAFNOSUPPORT);
