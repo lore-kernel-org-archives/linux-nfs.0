@@ -1,56 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:32011 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48391 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1030205Ab3BGSDY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Feb 2013 13:03:24 -0500
-Date: Thu, 7 Feb 2013 13:03:16 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 2/2] nfsd: keep a checksum of the first 256 bytes of
- request
-Message-ID: <20130207130316.0cf29993@corrin.poochiereds.net>
-In-Reply-To: <DF2DA489-3D72-4DBF-8C65-1B7DA9866B63@oracle.com>
-References: <1360248701-23963-1-git-send-email-jlayton@redhat.com>
-	<1360248701-23963-3-git-send-email-jlayton@redhat.com>
-	<DF2DA489-3D72-4DBF-8C65-1B7DA9866B63@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1754510Ab3BRSsM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Feb 2013 13:48:12 -0500
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 05/14] NFSv4: Add label recommended attribute and NFSv4 flags
+Date: Mon, 18 Feb 2013 13:47:47 -0500
+Message-Id: <1361213276-17962-6-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1361213276-17962-1-git-send-email-SteveD@redhat.com>
+References: <1361213276-17962-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 7 Feb 2013 10:51:02 -0500
-Chuck Lever <chuck.lever@oracle.com> wrote:
+From: David Quigley <dpquigl@davequigley.com>
 
-> 
-> On Feb 7, 2013, at 9:51 AM, Jeff Layton <jlayton@redhat.com> wrote:
-> 
-> > Now that we're allowing more DRC entries, it becomes a lot easier to hit
-> > problems with XID collisions. In order to mitigate those, calculate the
-> > crc32 of up to the first 256 bytes of each request coming in and store
-> > that in the cache entry, along with the total length of the request.
-> 
-> I'm happy to see a checksummed DRC finally become reality for the Linux NFS server.
-> 
-> Have you measured the CPU utilization impact and CPU cache footprint of performing a CRC computation for every incoming RPC?  I'm wondering if a simpler checksum might be just as useful but less costly to compute.
-> 
+This patch adds several new flags to allow the NFS client and server to
+determine if this attribute is supported and if it is being sent over the wire.
 
-No, I haven't, at least not in any sort of rigorous way. It's pretty
-negligible on "normal" PC hardware, but I think most intel and amd cpus
-have instructions for handling crc32. I'm ok with a different checksum,
-we don't need anything cryptographically secure here. I simply chose
-crc32 since it has an easily available API, and I figured it would be
-fairly lightweight.
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+---
+ include/linux/nfs4.h      | 1 +
+ include/linux/nfs_fs_sb.h | 1 +
+ include/linux/nfs_xdr.h   | 4 +++-
+ 3 files changed, 5 insertions(+), 1 deletion(-)
 
-I originally had hopes of just using the checksum in the TCP/UDP
-header, but that's handled in hw by some cards and so isn't available.
-There are also things that change during a retransmit (like GSS sequence
-numbers), so we can't just scrape those out anyway.
-
-As far as why 256 bytes, we had had a bug opened a while back (by
-Oracle, I think), that asked us to add this capability and suggested
-200 bytes. I like powers of 2 so I rounded up. We could easily extend
-that though by just changing RC_CSUMLEN if we think it's not enough.
-
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index e111fa4..f9235b4 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -373,6 +373,7 @@ enum lock_type4 {
+ #define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
+ #define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
+ #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
++#define FATTR4_WORD2_SECURITY_LABEL     (1UL << 17)
+ #define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
+ 
+ /* MDS threshold bitmap bits */
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 6c6ed15..d507357 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -197,5 +197,6 @@ struct nfs_server {
+ #define NFS_CAP_MTIME		(1U << 13)
+ #define NFS_CAP_POSIX_LOCK	(1U << 14)
+ #define NFS_CAP_UIDGID_NOMAP	(1U << 15)
++#define NFS_CAP_SECURITY_LABEL	(1U << 16)
+ 
+ #endif
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 29adb12..ac9ba69 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -104,6 +104,7 @@ struct nfs_fattr {
+ #define NFS_ATTR_FATTR_MOUNTED_ON_FILEID (1U << 22)
+ #define NFS_ATTR_FATTR_OWNER_NAME	(1U << 23)
+ #define NFS_ATTR_FATTR_GROUP_NAME	(1U << 24)
++#define NFS_ATTR_FATTR_V4_SECURITY_LABEL (1U << 25)
+ 
+ #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
+ 		| NFS_ATTR_FATTR_MODE \
+@@ -123,7 +124,8 @@ struct nfs_fattr {
+ #define NFS_ATTR_FATTR_V3 (NFS_ATTR_FATTR \
+ 		| NFS_ATTR_FATTR_SPACE_USED)
+ #define NFS_ATTR_FATTR_V4 (NFS_ATTR_FATTR \
+-		| NFS_ATTR_FATTR_SPACE_USED)
++		| NFS_ATTR_FATTR_SPACE_USED \
++		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
+ 
+ /*
+  * Info on the file system
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.8.1.2
+
