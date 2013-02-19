@@ -1,34 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:25124 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:13773 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758613Ab3BTPIi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Feb 2013 10:08:38 -0500
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r1KF8c78024825
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 20 Feb 2013 10:08:38 -0500
-Received: from smallhat.bos.devel.redhat.com ([10.16.60.65])
-	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r1KF8bGh008343
-	for <linux-nfs@vger.kernel.org>; Wed, 20 Feb 2013 10:08:38 -0500
-Message-ID: <5124E6F5.4070605@RedHat.com>
-Date: Wed, 20 Feb 2013 10:08:37 -0500
+	id S932551Ab3BSPKV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 Feb 2013 10:10:21 -0500
+Message-ID: <512395D7.5010205@RedHat.com>
+Date: Tue, 19 Feb 2013 10:10:15 -0500
 From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Linux NFS town hall  meeting 02/20/13
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 00/14] lnfs: 3.8-rc7 release
+References: <1361213276-17962-1-git-send-email-SteveD@redhat.com> <20130218195834.GA3391@fieldses.org>
+In-Reply-To: <20130218195834.GA3391@fieldses.org>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A reminder....  There will be a town hall meeting tomorrow (Thur Feb 20th)
 
-Time: 9:30 AM PST (12:30 PM EST)
 
-The call in numbers are:
-U.S. and Canada: (800) 451-8679
-International dial-in number: (212) 729-5016
-Israel Toll-Free: 1-809-462-557
-Conference code: 564.272.1552
+On 18/02/13 14:58, J. Bruce Fields wrote:
+> On Mon, Feb 18, 2013 at 01:47:42PM -0500, Steve Dickson wrote:
+>> > From: Steve Dickson <steved@redhat.com>
+>> > 
+>> > Here is the next release of the Label NFS patches, forward 
+>> > ported to linux-3.8-rc7
+>> > 
+>> > I believe I've  incorporated all code review that were made
+>> > from the last release,
+> Except I think this doesn't turn on minor version 2?
+Are you saying we need a -o v4.2 mount option to enable this feature?
+
+> 
+> Also: did you figure out why NFSv4 wasn't working when the labeled NFS
+> support is configured out?
+I'll look into this but this was not the case the last time I checked...
 
 steved.
 
