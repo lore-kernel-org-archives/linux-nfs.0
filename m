@@ -1,300 +1,173 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:1660 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:24927 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1946435Ab3BHMjd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Feb 2013 07:39:33 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 06/15] NFSv4: Introduce new label structure
-Date: Fri,  8 Feb 2013 07:39:14 -0500
-Message-Id: <1360327163-20360-7-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
-References: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
+	id S932828Ab3BSOAz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 Feb 2013 09:00:55 -0500
+From: Dave Wysochanski <dwysocha@redhat.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, jlayton@redhat.com,
+        Dave Wysochanski <dwysocha@redhat.com>
+Subject: [PATCH] nfs: Don't allow NFS silly-renamed files to be deleted, no signal
+Date: Tue, 19 Feb 2013 08:59:51 -0500
+Message-Id: <1361282391-6578-1-git-send-email-dwysocha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+Commit 73ca100 broke the code that prevents the client from deleting
+a silly renamed dentry.  This affected "delete on last close"
+semantics as after that commit, nothing prevented removal of
+silly-renamed files.  As a result, a process holding a file open
+could easily get an ESTALE on the file in a directory where some
+other process issued 'rm -rf some_dir_containing_the_file' twice.
+Before the commit, any attempt at unlinking silly renamed files would
+fail inside may_delete() with -EBUSY because of the
+DCACHE_NFSFS_RENAMED flag.  The following testcase demonstrates
+the problem:
+  tail -f /nfsmnt/dir/file &
+  rm -rf /nfsmnt/dir
+  rm -rf /nfsmnt/dir
+  # second removal does not fail, 'tail' process receives ESTALE
 
-In order to mimic the way that NFSv4 ACLs are implemented we have created a
-structure to be used to pass label data up and down the call chain. This patch
-adds the new structure and new members to the required NFSv4 call structures.
+The problem with the above commit is that it unhashes the old and
+new dentries from the lookup path, even in the normal case when
+a signal is not encountered and it would have been safe to call
+d_move.  Unfortunately the old dentry has the special
+DCACHE_NFSFS_RENAMED flag set on it.  Unhashing has the
+side-effect that future lookups call d_alloc(), allocating a new
+dentry without the special flag for any silly-renamed files.  As a
+result, subsequent calls to unlink silly renamed files do not fail
+but allow the removal to go through.  This will result in ESTALE
+errors for any other process doing operations on the file.
 
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+To fix this, go back to using d_move.  However, to use d_move safely,
+we have to isolate the special case where we receive a signal.
+To handle this, we add two flags to nfs_renamedata,
+NFS_RENAME_CANCELLED and NFS_RENAME_CALLBACK_IN_PROGRESS.
+
+If a signal occurs, inside nfs_sillyrename() we first set
+NFS_RENAME_CANCELLED and then wait for NFS_RENAME_CALLBACK_IN_PROGRESS
+to clear.  Inside nfs_async_rename_done(), we set
+NFS_RENAME_CALLBACK_IN_PROGRESS at the top and clear at the bottom,
+waking up anyone sleeping on the bit.  Before calling d_move, we
+check NFS_RENAME_CANCELLED and if set, we d_drop instead of calling
+d_move.  If this case is hit, and we have to d_drop, a process will
+still receive an ESTALE, but the non-signal case is not affected.
+
+For the signal case, it's unclear what we may safely do beyond d_drop
+as we've dropped the mutexes, and to call d_move we must reacquire
+them.  I made an attempt at reacquiring mutexes and then checking
+for various scenarios, but the testcases and the code quickly became
+fairly complex and seemed like the wrong approach.
+
+Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/inode.c            | 33 +++++++++++++++++++++++++++++++++
- include/linux/nfs4.h      |  7 +++++++
- include/linux/nfs_fs.h    | 17 +++++++++++++++++
- include/linux/nfs_xdr.h   | 21 +++++++++++++++++++++
- include/uapi/linux/nfs4.h |  2 +-
- 5 files changed, 79 insertions(+), 1 deletion(-)
+ fs/nfs/unlink.c         |   39 +++++++++++++++++++++++++++++++++++++--
+ include/linux/nfs_xdr.h |    3 +++
+ 2 files changed, 40 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index ebeb94c..8d5f01b 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -255,6 +255,39 @@ nfs_init_locked(struct inode *inode, void *opaque)
- 	return 0;
+diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
+index 3f79c77..4e2d81d 100644
+--- a/fs/nfs/unlink.c
++++ b/fs/nfs/unlink.c
+@@ -323,6 +323,19 @@ nfs_cancel_async_unlink(struct dentry *dentry)
+ 	spin_unlock(&dentry->d_lock);
  }
  
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags)
++static int nfs_async_rename_wait_bit(void *flags)
 +{
-+	struct nfs4_label *label = NULL;
-+
-+	if (!(server->caps & NFS_CAP_SECURITY_LABEL))
-+		return label;
-+
-+	label = kzalloc(NFS4_MAXLABELLEN, flags);
-+	if (label == NULL)
-+		return ERR_PTR(-ENOMEM);
-+
-+	label->label = (char *)(label + 1);
-+	label->len = NFS4_MAXLABELLEN;
-+
-+	return label;
++	schedule();
++	return 0;
 +}
-+EXPORT_SYMBOL_GPL(nfs4_label_alloc);
-+
-+void nfs4_label_init(struct nfs4_label *label)
++static inline void nfs_async_rename_wake_up(struct nfs_renamedata *data)
 +{
-+	if (label && label->label) {
-+		/* 0 is the null format meaning that the data is not
-+		to be translated */
-+		label->lfs = 0;
-+		label->pi = 0;
-+		label->len = NFS4_MAXLABELLEN;
++	smp_mb__before_clear_bit();
++	clear_bit(NFS_RENAME_CALLBACK_IN_PROGRESS, &data->flags);
++	smp_mb__after_clear_bit();
++	wake_up_bit(&data->flags, NFS_RENAME_CALLBACK_IN_PROGRESS);
++}
++
+ /**
+  * nfs_async_rename_done - Sillyrename post-processing
+  * @task: rpc_task of the sillyrename
+@@ -338,18 +351,32 @@ static void nfs_async_rename_done(struct rpc_task *task, void *calldata)
+ 	struct dentry *old_dentry = data->old_dentry;
+ 	struct dentry *new_dentry = data->new_dentry;
+ 
++	set_bit(NFS_RENAME_CALLBACK_IN_PROGRESS, &data->flags);
++	/* ensure the read of NFS_RENAME_CANCELLED is not reordered */
++	smp_mb();
++
+ 	if (!NFS_PROTO(old_dir)->rename_done(task, old_dir, new_dir)) {
+ 		rpc_restart_call_prepare(task);
++		nfs_async_rename_wake_up(data);
+ 		return;
+ 	}
+ 
+ 	if (task->tk_status != 0) {
+ 		nfs_cancel_async_unlink(old_dentry);
++		nfs_async_rename_wake_up(data);
++		return;
 +	}
-+	return;
-+}
-+EXPORT_SYMBOL_GPL(nfs4_label_init);
-+#endif
 +
- /*
-  * This is our front-end to iget that looks up inodes by file handle
-  * instead of inode number.
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index f9235b4..aab8bd8 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -28,6 +28,13 @@ struct nfs4_acl {
- 	struct nfs4_ace	aces[0];
- };
++	if (test_bit(NFS_RENAME_CANCELLED, &data->flags)) {
++		d_drop(old_dentry);
++		d_drop(new_dentry);
++		nfs_async_rename_wake_up(data);
+ 		return;
+ 	}
  
-+struct nfs4_label {
-+	uint32_t	lfs;
-+	uint32_t	pi;
-+	u32		len;
-+	char	*label;
-+};
-+
- typedef struct { char data[NFS4_VERIFIER_SIZE]; } nfs4_verifier;
+-	d_drop(old_dentry);
+-	d_drop(new_dentry);
++	nfs_set_verifier(data->old_dentry, nfs_save_change_attribute(old_dir));
++	d_move(data->old_dentry, data->new_dentry);
++	nfs_async_rename_wake_up(data);
+ }
  
- struct nfs_stateid4 {
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 1cc2568..1c55373 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -489,6 +489,23 @@ extern int nfs_mountpoint_expiry_timeout;
- extern void nfs_release_automount_timer(void);
+ /**
+@@ -483,6 +510,7 @@ nfs_sillyrename(struct inode *dir, struct dentry *dentry)
+ 	struct dentry *sdentry;
+ 	struct rpc_task *task;
+ 	int            error = -EIO;
++	struct nfs_renamedata *data;
  
- /*
-+ * linux/fs/nfs/nfs4proc.c
-+ */
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+extern struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags);
-+extern void nfs4_label_init(struct nfs4_label *label);
-+static inline void nfs4_label_free(struct nfs4_label *label)
-+{
-+	kfree(label);
-+	return;
-+}
-+#else
-+static inline struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags) { return NULL; }
-+static inline void nfs4_label_init(void *label) {}
-+static inline void nfs4_label_free(void *label) {}
-+#endif
-+
-+/*
-  * linux/fs/nfs/unlink.c
-  */
- extern void nfs_complete_unlink(struct dentry *dentry, struct inode *);
+ 	dfprintk(VFS, "NFS: silly-rename(%s/%s, ct=%d)\n",
+ 		dentry->d_parent->d_name.name, dentry->d_name.name,
+@@ -550,6 +578,13 @@ nfs_sillyrename(struct inode *dir, struct dentry *dentry)
+ 	error = rpc_wait_for_completion_task(task);
+ 	if (error == 0)
+ 		error = task->tk_status;
++	else if (error == -ERESTARTSYS) /* We got a signal */ {
++		data = (struct nfs_renamedata *)task->tk_calldata;
++		set_bit(NFS_RENAME_CANCELLED, &data->flags);
++		/* barrier inside wait_on_bit before we read the bit */
++		wait_on_bit(&data->flags, NFS_RENAME_CALLBACK_IN_PROGRESS,
++			    nfs_async_rename_wait_bit, TASK_UNINTERRUPTIBLE);
++	}
+ 	rpc_put_task(task);
+ out_dput:
+ 	dput(sdentry);
 diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index ac9ba69..7e86290 100644
+index 29adb12..136e3d4 100644
 --- a/include/linux/nfs_xdr.h
 +++ b/include/linux/nfs_xdr.h
-@@ -350,6 +350,7 @@ struct nfs_openargs {
- 	const u32 *		bitmask;
- 	const u32 *		open_bitmap;
- 	__u32			claim;
-+	const struct nfs4_label *label;
+@@ -1339,6 +1339,8 @@ struct nfs_unlinkdata {
+ 	struct nfs_fattr dir_attr;
  };
  
- struct nfs_openres {
-@@ -359,6 +360,7 @@ struct nfs_openres {
- 	struct nfs4_change_info	cinfo;
- 	__u32                   rflags;
- 	struct nfs_fattr *      f_attr;
-+	struct nfs4_label	*f_label;
- 	struct nfs_seqid *	seqid;
- 	const struct nfs_server *server;
- 	fmode_t			delegation_type;
-@@ -403,6 +405,7 @@ struct nfs_closeres {
- 	struct nfs4_sequence_res	seq_res;
- 	nfs4_stateid            stateid;
- 	struct nfs_fattr *	fattr;
-+	struct nfs4_label	*label;
- 	struct nfs_seqid *	seqid;
- 	const struct nfs_server *server;
- };
-@@ -476,6 +479,7 @@ struct nfs4_delegreturnargs {
- struct nfs4_delegreturnres {
- 	struct nfs4_sequence_res	seq_res;
- 	struct nfs_fattr * fattr;
-+	struct nfs4_label	*label;
- 	const struct nfs_server *server;
++#define NFS_RENAME_CANCELLED			(1U << 0)
++#define NFS_RENAME_CALLBACK_IN_PROGRESS		(1U << 1)
+ struct nfs_renamedata {
+ 	struct nfs_renameargs	args;
+ 	struct nfs_renameres	res;
+@@ -1349,6 +1351,7 @@ struct nfs_renamedata {
+ 	struct inode		*new_dir;
+ 	struct dentry		*new_dentry;
+ 	struct nfs_fattr	new_fattr;
++	unsigned long		flags;
  };
  
-@@ -496,6 +500,7 @@ struct nfs_readargs {
- struct nfs_readres {
- 	struct nfs4_sequence_res	seq_res;
- 	struct nfs_fattr *	fattr;
-+	struct nfs4_label	*label;
- 	__u32			count;
- 	int                     eof;
- };
-@@ -564,6 +569,7 @@ struct nfs_removeres {
- 	struct nfs4_sequence_res 	seq_res;
- 	const struct nfs_server *server;
- 	struct nfs_fattr	*dir_attr;
-+	struct nfs4_label	*dir_label;
- 	struct nfs4_change_info	cinfo;
- };
- 
-@@ -576,6 +582,8 @@ struct nfs_renameargs {
- 	const struct nfs_fh		*new_dir;
- 	const struct qstr		*old_name;
- 	const struct qstr		*new_name;
-+	const struct nfs4_label		*old_label;
-+	const struct nfs4_label		*new_label;
- };
- 
- struct nfs_renameres {
-@@ -583,8 +591,10 @@ struct nfs_renameres {
- 	const struct nfs_server		*server;
- 	struct nfs4_change_info		old_cinfo;
- 	struct nfs_fattr		*old_fattr;
-+	struct nfs4_label		*old_label;
- 	struct nfs4_change_info		new_cinfo;
- 	struct nfs_fattr		*new_fattr;
-+	struct nfs4_label		*new_label;
- };
- 
- /*
-@@ -599,6 +609,7 @@ struct nfs_entry {
- 	int			eof;
- 	struct nfs_fh *		fh;
- 	struct nfs_fattr *	fattr;
-+	struct nfs4_label  *label;
- 	unsigned char		d_type;
- 	struct nfs_server *	server;
- };
-@@ -631,6 +642,7 @@ struct nfs_setattrargs {
- 	struct iattr *                  iap;
- 	const struct nfs_server *	server; /* Needed for name mapping */
- 	const u32 *			bitmask;
-+	const struct nfs4_label		*label;
- };
- 
- struct nfs_setaclargs {
-@@ -666,6 +678,7 @@ struct nfs_getaclres {
- struct nfs_setattrres {
- 	struct nfs4_sequence_res	seq_res;
- 	struct nfs_fattr *              fattr;
-+	struct nfs4_label		*label;
- 	const struct nfs_server *	server;
- };
- 
-@@ -711,6 +724,7 @@ struct nfs3_setaclargs {
- struct nfs_diropok {
- 	struct nfs_fh *		fh;
- 	struct nfs_fattr *	fattr;
-+	struct nfs4_label	*label;
- };
- 
- struct nfs_readlinkargs {
-@@ -841,6 +855,7 @@ struct nfs4_accessres {
- 	struct nfs4_sequence_res	seq_res;
- 	const struct nfs_server *	server;
- 	struct nfs_fattr *		fattr;
-+	struct nfs4_label		*label;
- 	u32				supported;
- 	u32				access;
- };
-@@ -863,6 +878,7 @@ struct nfs4_create_arg {
- 	const struct iattr *		attrs;
- 	const struct nfs_fh *		dir_fh;
- 	const u32 *			bitmask;
-+	const struct nfs4_label		*label;
- };
- 
- struct nfs4_create_res {
-@@ -870,6 +886,7 @@ struct nfs4_create_res {
- 	const struct nfs_server *	server;
- 	struct nfs_fh *			fh;
- 	struct nfs_fattr *		fattr;
-+	struct nfs4_label		*label;
- 	struct nfs4_change_info		dir_cinfo;
- };
- 
-@@ -894,6 +911,7 @@ struct nfs4_getattr_res {
- 	struct nfs4_sequence_res	seq_res;
- 	const struct nfs_server *	server;
- 	struct nfs_fattr *		fattr;
-+	struct nfs4_label		*label;
- };
- 
- struct nfs4_link_arg {
-@@ -908,8 +926,10 @@ struct nfs4_link_res {
- 	struct nfs4_sequence_res	seq_res;
- 	const struct nfs_server *	server;
- 	struct nfs_fattr *		fattr;
-+	struct nfs4_label		*label;
- 	struct nfs4_change_info		cinfo;
- 	struct nfs_fattr *		dir_attr;
-+	struct nfs4_label		*dir_label;
- };
- 
- 
-@@ -925,6 +945,7 @@ struct nfs4_lookup_res {
- 	const struct nfs_server *	server;
- 	struct nfs_fattr *		fattr;
- 	struct nfs_fh *			fh;
-+	struct nfs4_label		*label;
- };
- 
- struct nfs4_lookup_root_arg {
-diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
-index 788128e..b8014a2 100644
---- a/include/uapi/linux/nfs4.h
-+++ b/include/uapi/linux/nfs4.h
-@@ -25,7 +25,7 @@
- #define NFS4_MAXNAMLEN		NAME_MAX
- #define NFS4_OPAQUE_LIMIT	1024
- #define NFS4_MAX_SESSIONID_LEN	16
--
-+#define NFS4_MAXLABELLEN (4095 - offsetof(struct nfs4_label , label))
- #define NFS4_ACCESS_READ        0x0001
- #define NFS4_ACCESS_LOOKUP      0x0002
- #define NFS4_ACCESS_MODIFY      0x0004
+ struct nfs_access_entry;
 -- 
-1.7.11.7
+1.7.1
 
