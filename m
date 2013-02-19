@@ -1,136 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f179.google.com ([74.125.82.179]:48028 "EHLO
-	mail-we0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754977Ab3BYK3l (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Feb 2013 05:29:41 -0500
-Received: by mail-we0-f179.google.com with SMTP id p43so2360488wea.10
-        for <linux-nfs@vger.kernel.org>; Mon, 25 Feb 2013 02:29:39 -0800 (PST)
-Message-ID: <512B3D10.20406@tonian.com>
-Date: Mon, 25 Feb 2013 12:29:36 +0200
-From: Benny Halevy <bhalevy@tonian.com>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] pnfs: fix resend_to_mds for directio
-References: <1361712947-1778-1-git-send-email-bhalevy@tonian.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9235DDE9E@SACEXCMBX04-PRD.hq.netapp.com> <512B3A98.4020602@tonian.com>
-In-Reply-To: <512B3A98.4020602@tonian.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from userp1040.oracle.com ([156.151.31.81]:33321 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933885Ab3BSTQ3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Feb 2013 14:16:29 -0500
+Content-Type: text/plain; charset=US-ASCII
+Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
+Subject: Re: [PATCH [rpcbind]] fix building one systems w/out nss.h
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <201302191414.51958.vapier@gentoo.org>
+Date: Tue, 19 Feb 2013 14:16:18 -0500
+Cc: libtirpc-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org
+Message-Id: <88E7D0D7-8F5A-42D2-B535-DB19A004945E@oracle.com>
+References: <1361299690-19402-1-git-send-email-vapier@gentoo.org> <D1025EAD-8EEB-40A4-8EA4-0D21ECC16B66@oracle.com> <201302191414.51958.vapier@gentoo.org>
+To: Mike Frysinger <vapier@gentoo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-02-25 12:19, Benny Halevy wrote:
-> On 2013-02-24 17:09, Myklebust, Trond wrote:
->> On Sun, 2013-02-24 at 15:35 +0200, Benny Halevy wrote:
->>> Pass the directio request on pageio_init to clean up the API.
->>>
->>> Percolate pg_dreq from original nfs_pageio_descriptor to the
->>> pnfs_{read,write}_done_resend_to_mds and use it on respective
->>> call to nfs_pageio_init_{read,write} on the newly created
->>> nfs_pageio_descriptor.
->>>
->>> Reproduced by:
->>>
->>> Server: linux-pnfs pnfs-all-3.7 42aba94
->>>
->>> Client: linux-nfs/bugfixes 666b3d8
->>>
->>> Command:
->>> # mount -o minorversion=1 server:/ /mnt
->>> # dd bs=128k count=8 if=/dev/zero of=/mnt/dd.out oflag=direct
->>>
->>> BUG: unable to handle kernel NULL pointer dereference at 0000000000000028
->>> IP: [<ffffffffa021a3a8>] atomic_inc+0x4/0x9 [nfs]
->>> PGD 34786067 PUD 34794067 PMD 0 
->>> Oops: 0002 [#1] SMP 
->>> Modules linked in: nfs_layout_nfsv41_files nfsv4 nfs nfsd lockd nfs_acl auth_rpcgss exportfs sunrpc btrfs zlib_deflate libcrc32c ipv6 autofs4
->>> CPU 1 
->>> Pid: 259, comm: kworker/1:2 Not tainted 3.8.0-rc6 #2 Bochs Bochs
->>> RIP: 0010:[<ffffffffa021a3a8>]  [<ffffffffa021a3a8>] atomic_inc+0x4/0x9 [nfs]
->>> RSP: 0018:ffff880038f8fa68  EFLAGS: 00010206
->>> RAX: ffffffffa021a6a9 RBX: ffff880038f8fb48 RCX: 00000000000a0000
->>> RDX: ffffffffa021e616 RSI: ffff8800385e9a40 RDI: 0000000000000028
->>> RBP: ffff880038f8fa68 R08: ffffffff81ad6720 R09: ffff8800385e9510
->>> R10: ffffffffa0228450 R11: ffff880038e87418 R12: ffff8800385e9a40
->>> R13: ffff8800385e9a70 R14: ffff880038f8fb38 R15: ffffffffa0148878
->>> FS:  0000000000000000(0000) GS:ffff88003e400000(0000) knlGS:0000000000000000
->>> CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
->>> CR2: 0000000000000028 CR3: 0000000034789000 CR4: 00000000000006e0
->>> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
->>> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
->>> Process kworker/1:2 (pid: 259, threadinfo ffff880038f8e000, task ffff880038302480)
->>> Stack:
->>>  ffff880038f8fa78 ffffffffa021a6bf ffff880038f8fa88 ffffffffa021bb82
->>>  ffff880038f8fae8 ffffffffa021f454 ffff880038f8fae8 ffffffff8109689d
->>>  ffff880038f8fab8 ffffffff00000006 0000000000000000 ffff880038f8fb48
->>> Call Trace:
->>>  [<ffffffffa021a6bf>] nfs_direct_pgio_init+0x16/0x18 [nfs]
->>>  [<ffffffffa021bb82>] nfs_pgheader_init+0x6a/0x6c [nfs]
->>>  [<ffffffffa021f454>] nfs_generic_pg_writepages+0x51/0xf8 [nfs]
->>>  [<ffffffff8109689d>] ? mark_held_locks+0x71/0x99
->>>  [<ffffffffa0148878>] ? rpc_release_resources_task+0x37/0x37 [sunrpc]
->>>  [<ffffffffa021bc25>] nfs_pageio_doio+0x1a/0x43 [nfs]
->>>  [<ffffffffa021be7c>] nfs_pageio_complete+0x16/0x2c [nfs]
->>>  [<ffffffffa02608be>] pnfs_write_done_resend_to_mds+0x95/0xc5 [nfsv4]
->>>  [<ffffffffa0148878>] ? rpc_release_resources_task+0x37/0x37 [sunrpc]
->>>  [<ffffffffa028e27f>] filelayout_reset_write+0x8c/0x99 [nfs_layout_nfsv41_files]
->>>  [<ffffffffa028e5f9>] filelayout_write_done_cb+0x4d/0xc1 [nfs_layout_nfsv41_files]
->>>  [<ffffffffa024587a>] nfs4_write_done+0x36/0x49 [nfsv4]
->>>  [<ffffffffa021f996>] nfs_writeback_done+0x53/0x1cc [nfs]
->>>  [<ffffffffa021fb1d>] nfs_writeback_done_common+0xe/0x10 [nfs]
->>>  [<ffffffffa028e03d>] filelayout_write_call_done+0x28/0x2a [nfs_layout_nfsv41_files]
->>>  [<ffffffffa01488a1>] rpc_exit_task+0x29/0x87 [sunrpc]
->>>  [<ffffffffa014a0c9>] __rpc_execute+0x11d/0x3cc [sunrpc]
->>>  [<ffffffff810969dc>] ? trace_hardirqs_on_caller+0x117/0x173
->>>  [<ffffffffa014a39f>] rpc_async_schedule+0x27/0x32 [sunrpc]
->>>  [<ffffffffa014a378>] ? __rpc_execute+0x3cc/0x3cc [sunrpc]
->>>  [<ffffffff8105f8c1>] process_one_work+0x226/0x422
->>>  [<ffffffff8105f7f4>] ? process_one_work+0x159/0x422
->>>  [<ffffffff81094757>] ? lock_acquired+0x210/0x249
->>>  [<ffffffffa014a378>] ? __rpc_execute+0x3cc/0x3cc [sunrpc]
->>>  [<ffffffff810600d8>] worker_thread+0x126/0x1c4
->>>  [<ffffffff8105ffb2>] ? manage_workers+0x240/0x240
->>>  [<ffffffff81064ef8>] kthread+0xb1/0xb9
->>>  [<ffffffff81064e47>] ? __kthread_parkme+0x65/0x65
->>>  [<ffffffff815206ec>] ret_from_fork+0x7c/0xb0
->>>  [<ffffffff81064e47>] ? __kthread_parkme+0x65/0x65
->>> Code: 00 83 38 02 74 12 48 81 4b 50 00 00 01 00 c7 83 60 07 00 00 01 00 00 00 48 89 df e8 55 fe ff ff 5b 41 5c 5d c3 66 90 55 48 89 e5 <f0> ff 07 5d c3 55 48 89 e5 f0 ff 0f 0f 94 c0 84 c0 0f 95 c0 0f 
->>> RIP  [<ffffffffa021a3a8>] atomic_inc+0x4/0x9 [nfs]
->>>  RSP <ffff880038f8fa68>
->>> CR2: 0000000000000028
->>>
->>> Cc: Since 3.6 <stable@kernel.org>
->>> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
->>> ---
->>>  fs/nfs/direct.c          |  9 +++------
->>>  fs/nfs/internal.h        |  6 ++++--
->>>  fs/nfs/nfs4filelayout.c  |  6 ++++--
->>>  fs/nfs/pagelist.c        |  5 +++--
->>>  fs/nfs/pnfs.c            | 30 ++++++++++++++++++------------
->>>  fs/nfs/pnfs.h            | 12 ++++++++----
->>>  fs/nfs/read.c            |  9 +++++----
->>>  fs/nfs/write.c           | 10 ++++++----
->>>  include/linux/nfs_page.h |  3 ++-
->>>  include/linux/nfs_xdr.h  |  6 ++++--
->>>  10 files changed, 57 insertions(+), 39 deletions(-)
->>>
->>
->> Hi Benny,
->>
->> Can we please trim away the cleanups if this is a stable patch? As far
->> as I can see, we can achieve the same result without having to propagate
->> the dreq argument all the way to nfs_pageio_init.
->>
->> How about the following?
-> 
-> Looks good.
-> Testing...
 
-Passed :)
+On Feb 19, 2013, at 2:14 PM, Mike Frysinger <vapier@gentoo.org> wrote:
+
+> On Tuesday 19 February 2013 13:54:19 Chuck Lever wrote:
+>> On Feb 19, 2013, at 1:48 PM, Mike Frysinger <vapier@gentoo.org> wrote:
+>>> The nss.h header is glibc-specific, so use the existing HAVE_NSS_H define
+>>> to avoid including/using it when it is not available.
+>>> --- a/src/rpcbind.c
+>>> +++ b/src/rpcbind.c
+>>> @@ -67,7 +67,11 @@
+>>> #include <pwd.h>
+>>> #include <string.h>
+>>> #include <errno.h>
+>>> +#ifdef HAVE_NSS_H
+>>> #include <nss.h>
+>>> +#else
+>>> +static inline void __nss_configure_lookup(const char *db, const char *s)
+>>> {} +#endif
+>> 
+>> Where is rpcbind getting the __nss_configure_lookup() function in this
+>> case?  I don't see that the call sites are ifdef-d out if HAVE_NSS_H is
+>> not defined.
+> 
+> i'm not sure what you mean.
+> 
+> if nss.h exists, then HAVE_NSS_H is defined, and the nss.h header provides the 
+> __nss_configure_lookup prototype (and presumably, the C library provides that 
+> func).
+> 
+> if nss.h doesn't exist, then HAVE_NSS_H is not defined, so we have to stub out 
+> the __nss_configure_lookup func.  i could have put "#ifdef HAVE_NSS_H" around 
+> all the call sites, but i think this version is cleaner and less error prone.
+
+OK, clear.  Sorry to be dense.
 
 > 
-> Benny
-> 
->>
->> Cheers
->>   Trond
->>
+> also, i typoed the subject name ("one" vs "on").
+> -mike
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
