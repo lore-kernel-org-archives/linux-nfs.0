@@ -1,175 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:46465 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:51135 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757324Ab3BVPN7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Feb 2013 10:13:59 -0500
-Date: Fri, 22 Feb 2013 10:13:57 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Steve Dickson <steved@redhat.com>
+	id S1757174Ab3BSUYr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 Feb 2013 15:24:47 -0500
+Date: Tue, 19 Feb 2013 15:24:43 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Steve Dickson <SteveD@redhat.com>
 Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFSv4.2: Added NFS v4.2 support to the NFS client
-Message-ID: <20130222151339.GA10157@pad.fieldses.org>
-References: <1361484911-17537-1-git-send-email-steved@redhat.com>
- <1361484911-17537-2-git-send-email-steved@redhat.com>
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
+        Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: Re: [PATCH 00/14] lnfs: 3.8-rc7 release
+Message-ID: <20130219202443.GA14606@fieldses.org>
+References: <1361213276-17962-1-git-send-email-SteveD@redhat.com>
+ <20130218195834.GA3391@fieldses.org>
+ <512395D7.5010205@RedHat.com>
+ <20130219151808.GE3391@fieldses.org>
+ <51239CFF.9000600@RedHat.com>
+ <5123DE7F.7050803@RedHat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1361484911-17537-2-git-send-email-steved@redhat.com>
+In-Reply-To: <5123DE7F.7050803@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 21, 2013 at 05:15:10PM -0500, Steve Dickson wrote:
-> This enable NFSv4.2 support. To enable this code the
-> CONFIG_NFS_V4_2 Kconfig define needs to be set and
-> the -o v4.2 mount option need to be used.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  fs/nfs/Kconfig       | 11 ++++++++++-
->  fs/nfs/callback.c    |  3 +++
->  fs/nfs/nfs4client.c  |  5 +++++
->  fs/nfs/nfs4proc.c    |  3 +++
->  fs/nfs/super.c       |  7 ++++++-
->  include/linux/nfs4.h |  4 ++++
->  6 files changed, 31 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-> index 3861a1f..247db6d 100644
-> --- a/fs/nfs/Kconfig
-> +++ b/fs/nfs/Kconfig
-> @@ -104,6 +104,15 @@ config NFS_V4_1
->  
->  	  If unsure, say N.
->  
-> +config NFS_V4_2
-> +	bool "NFS client support for NFSv4.2"
-> +	depends on NFS_V4_1
-> +	help
-> +	  This option enables support for minor version 1 of the NFSv4 protocol
-> +	  (RFC 5661) in the kernel's NFS client.
-> +
-> +	  If unsure, say N.
-> +
->  config PNFS_FILE_LAYOUT
->  	tristate
->  	depends on NFS_V4_1
-> @@ -133,7 +142,7 @@ config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
->  
->  config NFS_V4_SECURITY_LABEL
->  	bool "Provide Security Label support for NFSv4 client"
-> -	depends on NFS_V4 && SECURITY
-> +	depends on NFS_V4_2 && SECURITY
->  	help
->  
->  	Say Y here if you want enable fine-grained security label attribute
-> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> index 5088b57..4058ec8 100644
-> --- a/fs/nfs/callback.c
-> +++ b/fs/nfs/callback.c
-> @@ -281,6 +281,9 @@ static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct n
->  		case 1:
->  			ret = nfs41_callback_up_net(serv, net);
->  			break;
-> +		case 2:
-> +			ret = nfs41_callback_up_net(serv, net);
-> +			break;
->  		default:
->  			printk(KERN_ERR "NFS: unknown callback version: %d\n",
->  					minorversion);
-> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-> index 2e9779b..2987fd6 100644
-> --- a/fs/nfs/nfs4client.c
-> +++ b/fs/nfs/nfs4client.c
-> @@ -66,6 +66,11 @@ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
->  	if (err)
->  		goto error;
->  
-> +	if (cl_init->minorversion > NFS4_MAX_MINOR_VERSION) {
-> +		err = -EINVAL;
-> +		goto error;
-> +	}
+On Tue, Feb 19, 2013 at 03:20:15PM -0500, Steve Dickson wrote:
+> On 19/02/13 10:40, Steve Dickson wrote:
+> >>>> >>> Also: did you figure out why NFSv4 wasn't working when the labeled NFS
+> >>>> >>> support is configured out?
+> >>> >> I'll look into this but this was not the case the last time I checked...
+> >> > 
+> >> > Let me know how I can help reproduce the problem.  All I did was:
+> >> > 
+> >> > 	- build a kernel with CONFIG_NFS_V4_SECURITY_LABEL and
+> >> > 	  CONFIG_NFSD_V4_SECURITY_LABEL both off.
+> >> > 	- attempt a v4 mount between client and server both running that
+> >> > 	  kernel.
+> The bug is due to the fact the the bit masked used when labels are not
+> wanted (attr_bitmask_nl) was not being initialized when CONFIG_NFS_V4_SECURITY_LABEL
+> is not defined. Nice catch!
 
-Why wasn't this check needed before?
-
-> +		
->  	spin_lock_init(&clp->cl_lock);
->  	INIT_DELAYED_WORK(&clp->cl_renewd, nfs4_renew_state);
->  	rpc_init_wait_queue(&clp->cl_rpcwaitq, "NFS client");
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 40c1d1f..08fc8e2 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -7136,6 +7136,9 @@ const struct nfs4_minor_version_ops *nfs_v4_minor_ops[] = {
->  #if defined(CONFIG_NFS_V4_1)
->  	[1] = &nfs_v4_1_minor_ops,
->  #endif
-> +#if defined(CONFIG_NFS_V4_2)
-> +	[2] = &nfs_v4_1_minor_ops,
-
-But then nfs_v4_minor_ops[2]->minor_version = 1.
-
-I think you want to create another structure--just define an
-nfs_v4_2_minor_ops field that's the same as nfs_v4_1_minor_ops except
-for the minor_version field.
+Oh, OK, that would explain the 0-bitmask getattr.  Thanks!
 
 --b.
-
-> +#endif
->  };
->  
->  const struct inode_operations nfs4_dir_inode_operations = {
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index 4e78f93..d35582c 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -269,7 +269,7 @@ static match_table_t nfs_local_lock_tokens = {
->  
->  enum {
->  	Opt_vers_2, Opt_vers_3, Opt_vers_4, Opt_vers_4_0,
-> -	Opt_vers_4_1,
-> +	Opt_vers_4_1, Opt_vers_4_2,
->  
->  	Opt_vers_err
->  };
-> @@ -280,6 +280,7 @@ static match_table_t nfs_vers_tokens = {
->  	{ Opt_vers_4, "4" },
->  	{ Opt_vers_4_0, "4.0" },
->  	{ Opt_vers_4_1, "4.1" },
-> +	{ Opt_vers_4_2, "4.2" },
->  
->  	{ Opt_vers_err, NULL }
->  };
-> @@ -1143,6 +1144,10 @@ static int nfs_parse_version_string(char *string,
->  		mnt->version = 4;
->  		mnt->minorversion = 1;
->  		break;
-> +	case Opt_vers_4_2:
-> +		mnt->version = 4;
-> +		mnt->minorversion = 2;
-> +		break;
->  	default:
->  		return 0;
->  	}
-> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-> index aab8bd8..e9c040a 100644
-> --- a/include/linux/nfs4.h
-> +++ b/include/linux/nfs4.h
-> @@ -394,11 +394,15 @@ enum lock_type4 {
->  #define NFS4_VERSION 4
->  #define NFS4_MINOR_VERSION 0
->  
-> +#if defined(CONFIG_NFS_V4_2)
-> +#define NFS4_MAX_MINOR_VERSION 2
-> +#else
->  #if defined(CONFIG_NFS_V4_1)
->  #define NFS4_MAX_MINOR_VERSION 1
->  #else
->  #define NFS4_MAX_MINOR_VERSION 0
->  #endif /* CONFIG_NFS_V4_1 */
-> +#endif /* CONFIG_NFS_V4_2 */
->  
->  #define NFS4_DEBUG 1
->  
-> -- 
-> 1.8.1.2
-> 
