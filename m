@@ -1,292 +1,139 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:47055 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754304Ab3BRSsN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Feb 2013 13:48:13 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 06/14] NFSv4: Introduce new label structure
-Date: Mon, 18 Feb 2013 13:47:48 -0500
-Message-Id: <1361213276-17962-7-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1361213276-17962-1-git-send-email-SteveD@redhat.com>
-References: <1361213276-17962-1-git-send-email-SteveD@redhat.com>
+Received: from dgate10.ts.fujitsu.com ([80.70.172.49]:15519 "EHLO
+	dgate10.ts.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933005Ab3BSRSY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Feb 2013 12:18:24 -0500
+Message-Id: <d6437a$431fr1@dgate10u.abg.fsc.net>
+Date: 19 Feb 2013 18:08:40 +0100
+From: bstroesser@ts.fujitsu.com
+To: neilb@suse.de, bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, bstroesser@ts.fujitsu.com
+Subject: [PATCH] sunrpc.ko: RPC cache fix races
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+U2Vjb25kIGF0dGVtcHQgdXNpbmcgdGhlIGNvcnJlY3QgRlJPTS4gU29ycnkgZm9yIHRoZSBu
+b2lzZS4KCgpIaSwKCkkgZm91bmQgYSBwcm9ibGVtIGluIHN1bnJwYy5rbyBvbiBhIFNMRVMx
+MSBTUDEgKDIuNi4zMi41OS0wLDcuMSkKYW5kIGZpeGVkIGl0IChzZWUgZmlyc3QgcGF0Y2gg
+aWZvciAyLjYuMzIuNjAgYmVsb3cpLgpGb3IgdXMgdGhlIHBhdGNoIHdvcmtzIGZpbmUgKHRl
+c3RlZCBvbiAyLjYuMzIuNTktMC43LjEpLgoKQUZBSUNTIGZyb20gdGhlIGNvZGUsIHRoZSBw
+cm9ibGVtIHNlZW1zIHRvIHBlcnNpc3QgaW4gY3VycmVudAprZXJuZWwgdmVyc2lvbnMgYWxz
+by4gVGh1cywgSSBhZGRlZCB0aGUgc2Vjb25kIHBhdGNoIGZvciAzLjcuOS4KQXMgdGhlIHNl
+dHVwIHRvIHJlcHJvZHVjZSB0aGUgcHJvYmxlbSBpcyBxdWl0ZSBjb21wbGV4LCBJIGNvdWxk
+bid0CnRlc3QgdGhlIHNlY29uZCBwYXRjaCB5ZXQuIFNvIGNvbnNpZGVyIHRoaXMgb25lIGFz
+IGEgUkZDLgoKQmVzdCByZWdhcmRzLApCb2RvCgpQbGVhc2UgQ0MgbWUsIEknbSBub3Qgb24g
+dGhlIGxpc3QuCgo9PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PQpG
+cm9tOiBCb2RvIFN0cm9lc3NlciA8YnN0cm9lc3NlckB0cy5mdWppdHN1LmNvbT4KRGF0ZTog
+RnJpLCAwOCBGZWIgMjAxMwpTdWJqZWN0OiBbUEFUQ0hdIG5ldDogc3VucnBjOiBmaXggcmFj
+ZXMgaW4gUlBDIGNhY2hlCgpXZSBmb3VuZCB0aGUgcHJvYmxlbSBhbmQgdGVzdGVkIHRoZSBw
+YXRjaCBvbiBhIFNMRVMxMSBTUDEgMi42LjMyLjU5LTAuNy4xCgpUaGlzIHBhdGNoIGFwcGxp
+ZXMgdG8gbGludXgtMi42LjMyLjYwIChjaGFuZ2VkIG1vbm90b25pY19zZWNvbmRzIC0tPgpn
+ZXRfc2Vjb25kcygpKQoKU3BvcmFkaWNhbGx5IE5GUzMgUlBDIHJlcXVlc3RzIHRvIHRoZSBu
+ZnMgc2VydmVyIGFyZSBkcm9wcGVkIGR1ZSB0bwpjYWNoZV9jaGVjaygpIChuZXQvc3VucnBj
+L2NhY2hlLmMpIHJldHVybmluZyAtRVRJTUVET1VUIGZvciBhbiBlbnRyeQpvZiB0aGUgImF1
+dGgudW5peC5naWQiIGNhY2hlLgpJbiB0aGlzIGNhc2UsIG5vIE5GUyByZXBseSBpcyBzZW50
+IHRvIHRoZSBjbGllbnQuCgpUaGUgcmVhc29uIGZvciB0aGUgZHJvcHBlZCByZXF1ZXN0cyBh
+cmUgcmFjZXMgaW4gY2FjaGVfY2hlY2soKSB3aGVuCmNhY2hlX21ha2VfdXBjYWxsKCkgcmV0
+dXJucyAtRUlOVkFMIChiZWNhdXNlIGl0IGlzIGNhbGxlZCBmb3IgYSBjYWNoZQp3aXRob3V0
+IHJlYWRlcnMpIGFuZCBjYWNoZV9jaGVjaygpIHRoZXJlZm9yZSByZWZyZXNoZXMgdGhlIGNh
+Y2hlIGVudHJ5IAoocnYgPT0gLUVBR0FJTikuCgpUaGVyZSBhcmUgdGhyZWUgZGV0YWlscyB0
+aGF0IG5lZWQgdG8gYmUgY2hhbmdlZDoKIDEpIGNhY2hlX3JldmlzaXRfcmVxdWVzdCgpIG11
+c3Qgbm90IGJlIGNhbGxlZCBiZWZvcmUgY2FjaGVfZnJlc2hfbG9ja2VkKCkKICAgIGhhcyB1
+cGRhdGVkIHRoZSBjYWNoZSBlbnRyeSwgYXMgY2FjaGVfcmV2aXNpdF9yZXF1ZXN0KCkgd2Fr
+ZXMgdXAKICAgIHRocmVhZHMgd2FpdGluZyBmb3IgdGhlIGNhY2hlIGVudHJ5IHRvIGJlIHVw
+ZGF0ZWQuCiAgICBUaGUgZXhwbGljaXQgY2FsbCB0byBjYWNoZV9yZXZpc2l0X3JlcXVlc3Qo
+KSBpcyBub3QgbmVlZGVkLCBhcwogICAgY2FjaGVfZnJlc2hfdW5sb2NrZWQoKSBjYWxscyBp
+dCBhbnl3YXkuCiAgICAoQnV0IGluIGNhc2Ugb2Ygbm90IHVwZGF0aW5nIHRoZSBjYWNoZSBl
+bnRyeSwgY2FjaGVfcmV2aXNpdF9yZXF1ZXN0KCkKICAgIG11c3QgYmUgY2FsbGVkLiBUaHVz
+LCB3ZSB1c2UgYSBmYWxsIHRocm91Z2ggaW4gdGhlICJjYXNlIikuCiAyKSBDQUNIRV9QRU5E
+SU5HIG11c3Qgbm90IGJlIGNsZWFyZWQgYmVmb3JlIGNhY2hlX2ZyZXNoX2xvY2tlZCgpIGhh
+cwogICAgdXBkYXRlZCB0aGUgY2FjaGUgZW50cnksIGFzIGNhY2hlX2RlZmVyX3JlcSgpIGNh
+biByZXR1cm4gd2l0aG91dCByZWFsbHkKICAgIHNsZWVwaW5nIGlmIGl0IGRldGVjdHMgQ0FD
+SEVfUEVORElORyB1bnNldC4KICAgIChJbiBjYXNlIG9mIG5vdCB1cGRhdGluZyB0aGUgY2Fj
+aGUgZW50cnkgYWdhaW4gd2UgdXNlIHRoZSBmYWxsIHRocm91Z2gpCiAzKSBJbWFnaW5lIGEg
+dGhyZWFkIHRoYXQgY2FsbHMgY2FjaGVfY2hlY2soKSBhbmQgZ2V0cyBydiA9IC1FTk9FTlQg
+ZnJvbQogICAgY2FjaGVfaXNfdmFsaWQoKS4gVGhlbiBpdCBzZXRzIENBQ0hFX1BFTkRJTkdz
+IGFuZCBjYWxscwogICAgY2FjaGVfbWFrZV91cGNhbGwoKS4KICAgIFdlIGFzc3VtZSB0aGF0
+IG1lYW53aGlsZSBnZXRfc2Vjb25kcygpIGFkdmFuY2VzIHRvIHRoZSBuZXh0CiAgICBzZWMu
+IGFuZCBhIHNlY29uZCB0aHJlYWQgYWxzbyBjYWxscyBjYWNoZV9jaGVjaygpLiBJdCBnZXRz
+IC1FQUdBSU4gZnJvbQogICAgY2FjaGVfaXNfdmFsaWQoKSBmb3IgdGhlIHNhbWUgY2FjaGUg
+ZW50cnkuIEFzIENBQ0hFX1BFTkRJTkcgc3RpbGwgaXMKICAgIHNldCwgaXQgY2FsbHMgY2Fj
+aGVfZGVmZXJfcmVxKCkgaW1tZWRpYXRlbHkgYW5kIHdhaXRzIGZvciBhIHdha2V1cCBmcm9t
+CiAgICB0aGUgZmlyc3QgdGhyZWFkLgogICAgQWZ0ZXIgY2FjaGVfbWFrZV91cGNhbGwoKSBy
+ZXR1cm5lZCAtRUlOVkFMLCB0aGUgZmlyc3QgdGhyZWFkIGRvZXMgbm90CiAgICB1cGRhdGUg
+dGhlIGNhY2hlIGVudHJ5IGFzIGl0IGhhZCBnb3QgcnYgPSAtRU5PRU5ULCBidXQgd2FrZXMg
+dXAgdGhlCiAgICBzZWNvbmQgdGhyZWFkIGJ5IGNhbGxpbmcgY2FjaGVfcmV2aXNpdF9yZXF1
+ZXN0KCkuCiAgICBUaHJlYWQgdHdvIHdha2VzIHVwLCBjYWxscyBjYWNoZV9pc192YWxpZCgp
+IGFuZCBhZ2FpbiBnZXRzIC1FQUdBSU4uCiAgICBUaHVzLCB0aGUgcmVzdWx0IG9mIHRoZSBz
+ZWNvbmQgY2FjaGVfY2hlY2soKSBpcyAtRVRJTUVET1VUIGFuZCB0aGUKICAgIE5GUyByZXF1
+ZXN0IGlzIGRyb3BwZWQuCiAgICBUbyBzb2x2ZSB0aGlzLCB0aGUgY2FjaGUgZW50cnkgbm93
+IGlzIHVwZGF0ZWQgbm90IG9ubHkgaWYgcnYgPT0gLUVBR0FJTgogICAgYnV0IGlmIHJ2ID09
+IC1FTk9FTlQgYWxzby4gVGhpcyBpcyBhIHN1ZmZpY2llbnQgd29ya2Fyb3VuZCwgYXMgdGhl
+CiAgICBmaXJzdCB0aHJlYWQgd291bGQgaGF2ZSB0byBzdGF5IGluIGNhY2hlX2NoZWNrKCkg
+YmV0d2VlbiBpdHMgY2FsbCB0bwogICAgY2FjaGVfaXNfdmFsaWQoKSBhbmQgY2xlYXJpbmcg
+Q0FDSEVfUEVORElORyBmb3IgbW9yZSB0aGFuIDYwIHNlY29uZHMKICAgIHRvIGJyZWFrIHRo
+ZSB3b3JrYXJvdW5kLgogICAgClNpZ25lZC1vZmYtYnk6IEJvZG8gU3Ryb2Vzc2VyIDxic3Ry
+b2Vzc2VyQHRzLmZ1aml0c3UuY29tPgotLS0KCi0tLSBhL25ldC9zdW5ycGMvY2FjaGUuYwky
+MDEyLTA4LTA4IDIxOjM1OjA5LjAwMDAwMDAwMCArMDIwMAorKysgYi9uZXQvc3VucnBjL2Nh
+Y2hlLmMJMjAxMy0wMi0wOCAxNDoyOTo0MS4wMDAwMDAwMDAgKzAxMDAKQEAgLTIzMywxNSAr
+MjMzLDE0IEBAIGludCBjYWNoZV9jaGVjayhzdHJ1Y3QgY2FjaGVfZGV0YWlsICpkZXQKIAkJ
+aWYgKCF0ZXN0X2FuZF9zZXRfYml0KENBQ0hFX1BFTkRJTkcsICZoLT5mbGFncykpIHsKIAkJ
+CXN3aXRjaCAoY2FjaGVfbWFrZV91cGNhbGwoZGV0YWlsLCBoKSkgewogCQkJY2FzZSAtRUlO
+VkFMOgotCQkJCWNsZWFyX2JpdChDQUNIRV9QRU5ESU5HLCAmaC0+ZmxhZ3MpOwotCQkJCWNh
+Y2hlX3JldmlzaXRfcmVxdWVzdChoKTsKLQkJCQlpZiAocnYgPT0gLUVBR0FJTikgeworCQkJ
+CWlmIChydiA9PSAtRUFHQUlOIHx8IHJ2ID09IC1FTk9FTlQpIHsKIAkJCQkJc2V0X2JpdChD
+QUNIRV9ORUdBVElWRSwgJmgtPmZsYWdzKTsKIAkJCQkJY2FjaGVfZnJlc2hfbG9ja2VkKGgs
+IGdldF9zZWNvbmRzKCkrQ0FDSEVfTkVXX0VYUElSWSk7CisJCQkJCWNsZWFyX2JpdChDQUNI
+RV9QRU5ESU5HLCAmaC0+ZmxhZ3MpOwogCQkJCQljYWNoZV9mcmVzaF91bmxvY2tlZChoLCBk
+ZXRhaWwpOwogCQkJCQlydiA9IC1FTk9FTlQ7CisJCQkJCWJyZWFrOwogCQkJCX0KLQkJCQli
+cmVhazsKIAogCQkJY2FzZSAtRUFHQUlOOgogCQkJCWNsZWFyX2JpdChDQUNIRV9QRU5ESU5H
+LCAmaC0+ZmxhZ3MpOwo9PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
+PQpGcm9tOiBCb2RvIFN0cm9lc3NlciA8YnN0cm9lc3NlckB0cy5mdWppdHN1LmNvbT4KRGF0
+ZTogRnJpLCAwOCBGZWIgMjAxMwpTdWJqZWN0OiBbUEFUQ0hdIG5ldDogc3VucnBjOiBmaXgg
+cmFjZXMgaW4gUlBDIGNhY2hlCgpUaGlzIHBhdGNoIGFwcGxpZXMgdG8gU0xFUyAxMSBTUDIg
+bGludXgtMy4wLjUxLTAuNy45IGFuZCBhbHNvIHRvCnZhbmlsbGEgbGludXgtMy43LjkKCkl0
+IGlzIHVudGVzdGVkIGFuZCBpcyBvbmx5IGJhc2VkIG9uIGEgY29kZSByZXZpZXcgYWZ0ZXIg
+d2UKYW5hbHl6ZWQgdGhlIHJlYXNvbiBmb3IgTkZTIHJlcXVlc3RzIGJlaW5nIGRyb3BwZWQg
+b24gYQpTTEVTMTEgU1AxIChsaW51eC0yLjYuMzIuNTktMC43LjEpCgpTcG9yYWRpY2FsbHkg
+TkZTMyBSUEMgcmVxdWVzdHMgdG8gdGhlIG5mcyBzZXJ2ZXIgYXJlIGRyb3BwZWQgZHVlIHRv
+CmNhY2hlX2NoZWNrKCkgKG5ldC9zdW5ycGMvY2FjaGUuYykgcmV0dXJuaW5nIC1FVElNRURP
+VVQgZm9yIGFuIGVudHJ5Cm9mIHRoZSAiYXV0aC51bml4LmdpZCIgY2FjaGUuCkluIHRoaXMg
+Y2FzZSwgbm8gTkZTIHJlcGx5IGlzIHNlbnQgdG8gdGhlIGNsaWVudC4KClRoZSByZWFzb24g
+Zm9yIHRoZSBkcm9wcGVkIHJlcXVlc3RzIGFyZSByYWNlcyBpbiBjYWNoZV9jaGVjaygpIHdo
+ZW4KY2FjaGVfbWFrZV91cGNhbGwoKSByZXR1cm5zIC1FSU5WQUwgKGJlY2F1c2UgaXQgaXMg
+Y2FsbGVkIGZvciBhIGNhY2hlCndpdGhvdXQgcmVhZGVycykgYW5kIGNhY2hlX2NoZWNrKCkg
+dGhlcmVmb3JlIHJlZnJlc2hlcyB0aGUgY2FjaGUgZW50cnkgCihydiA9PSAtRUFHQUlOKS4K
+ClRoZXJlIGFyZSB0d28gZGV0YWlscyB0aGF0IG5lZWQgdG8gYmUgY2hhbmdlZDoKIDEpIGNh
+Y2hlX3JldmlzaXRfcmVxdWVzdCgpIG11c3Qgbm90IGJlIGNhbGxlZCBiZWZvcmUgY2FjaGVf
+ZnJlc2hfbG9ja2VkKCkKICAgIGhhcyB1cGRhdGVkIHRoZSBjYWNoZSBlbnRyeSwgYXMgY2Fj
+aGVfcmV2aXNpdF9yZXF1ZXN0KCkgd2FrZXMgdXAKICAgIHRocmVhZHMgd2FpdGluZyBmb3Ig
+dGhlIGNhY2hlIGVudHJ5IHRvIGJlIHVwZGF0ZWQuCiAgICBUaGUgZXhwbGljaXQgY2FsbCB0
+byBjYWNoZV9yZXZpc2l0X3JlcXVlc3QoKSBpcyBub3QgbmVlZGVkLCBhcwogICAgY2FjaGVf
+ZnJlc2hfdW5sb2NrZWQoKSBjYWxscyBpdCBhbnl3YXkuCiAgICAoQnV0IGluIGNhc2Ugb2Yg
+bm90IHVwZGF0aW5nIHRoZSBjYWNoZSBlbnRyeSwgY2FjaGVfcmV2aXNpdF9yZXF1ZXN0KCkK
+ICAgIG11c3QgYmUgY2FsbGVkKS4KIDIpIENBQ0hFX1BFTkRJTkcgbXVzdCBub3QgYmUgY2xl
+YXJlZCBiZWZvcmUgY2FjaGVfZnJlc2hfbG9ja2VkKCkgaGFzCiAgICB1cGRhdGVkIHRoZSBj
+YWNoZSBlbnRyeSwgYXMgY2FjaGVfd2FpdF9yZXEoKSBjYWxsZWQgYnkKICAgIGNhY2hlX2Rl
+ZmVyX3JlcSgpIGNhbiByZXR1cm4gd2l0aG91dCByZWFsbHkgc2xlZXBpbmcgaWYgaXQgZGV0
+ZWN0cwogICAgQ0FDSEVfUEVORElORyB1bnNldC4KClNpZ25lZC1vZmYtYnk6IEJvZG8gU3Ry
+b2Vzc2VyIDxic3Ryb2Vzc2VyQHRzLmZ1aml0c3UuY29tPgotLS0KCi0tLSBhL25ldC9zdW5y
+cGMvY2FjaGUuYwkyMDEzLTAyLTA4IDE1OjU2OjA3LjAwMDAwMDAwMCArMDEwMAorKysgYi9u
+ZXQvc3VucnBjL2NhY2hlLmMJMjAxMy0wMi0wOCAxNjowNDozMi4wMDAwMDAwMDAgKzAxMDAK
+QEAgLTIzMCwxMSArMjMwLDE0IEBAIHN0YXRpYyBpbnQgdHJ5X3RvX25lZ2F0ZV9lbnRyeShz
+dHJ1Y3QgY2EKIAlydiA9IGNhY2hlX2lzX3ZhbGlkKGRldGFpbCwgaCk7CiAJaWYgKHJ2ICE9
+IC1FQUdBSU4pIHsKIAkJd3JpdGVfdW5sb2NrKCZkZXRhaWwtPmhhc2hfbG9jayk7CisJCWNs
+ZWFyX2JpdChDQUNIRV9QRU5ESU5HLCAmaC0+ZmxhZ3MpOworCQljYWNoZV9yZXZpc2l0X3Jl
+cXVlc3QoaCk7CiAJCXJldHVybiBydjsKIAl9CiAJc2V0X2JpdChDQUNIRV9ORUdBVElWRSwg
+JmgtPmZsYWdzKTsKIAljYWNoZV9mcmVzaF9sb2NrZWQoaCwgc2Vjb25kc19zaW5jZV9ib290
+KCkrQ0FDSEVfTkVXX0VYUElSWSk7CiAJd3JpdGVfdW5sb2NrKCZkZXRhaWwtPmhhc2hfbG9j
+ayk7CisJY2xlYXJfYml0KENBQ0hFX1BFTkRJTkcsICZoLT5mbGFncyk7CiAJY2FjaGVfZnJl
+c2hfdW5sb2NrZWQoaCwgZGV0YWlsKTsKIAlyZXR1cm4gLUVOT0VOVDsKIH0KQEAgLTI3NSw4
+ICsyNzgsNiBAQCBpbnQgY2FjaGVfY2hlY2soc3RydWN0IGNhY2hlX2RldGFpbCAqZGV0CiAJ
+CWlmICghdGVzdF9hbmRfc2V0X2JpdChDQUNIRV9QRU5ESU5HLCAmaC0+ZmxhZ3MpKSB7CiAJ
+CQlzd2l0Y2ggKGNhY2hlX21ha2VfdXBjYWxsKGRldGFpbCwgaCkpIHsKIAkJCWNhc2UgLUVJ
+TlZBTDoKLQkJCQljbGVhcl9iaXQoQ0FDSEVfUEVORElORywgJmgtPmZsYWdzKTsKLQkJCQlj
+YWNoZV9yZXZpc2l0X3JlcXVlc3QoaCk7CiAJCQkJcnYgPSB0cnlfdG9fbmVnYXRlX2VudHJ5
+KGRldGFpbCwgaCk7CiAJCQkJYnJlYWs7CiAJCQljYXNlIC1FQUdBSU46Cg==
 
-In order to mimic the way that NFSv4 ACLs are implemented we have created a
-structure to be used to pass label data up and down the call chain. This patch
-adds the new structure and new members to the required NFSv4 call structures.
-
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- fs/nfs/inode.c            | 24 ++++++++++++++++++++++++
- include/linux/nfs4.h      |  7 +++++++
- include/linux/nfs_fs.h    | 18 ++++++++++++++++++
- include/linux/nfs_xdr.h   | 21 +++++++++++++++++++++
- include/uapi/linux/nfs4.h |  2 +-
- 5 files changed, 71 insertions(+), 1 deletion(-)
-
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index ebeb94c..2a61eba 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -255,6 +255,30 @@ nfs_init_locked(struct inode *inode, void *opaque)
- 	return 0;
- }
- 
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags)
-+{
-+	struct nfs4_label *label = NULL;
-+
-+	if (!(server->caps & NFS_CAP_SECURITY_LABEL))
-+		return label;
-+
-+	label = kzalloc(sizeof(struct nfs4_label), flags);
-+	if (label == NULL)
-+		return ERR_PTR(-ENOMEM);
-+
-+	label->label = kzalloc(NFS4_MAXLABELLEN, flags);
-+	if (label->label == NULL) {
-+		kfree(label);
-+		return ERR_PTR(-ENOMEM);
-+	}
-+	label->len = NFS4_MAXLABELLEN;
-+
-+	return label;
-+}
-+EXPORT_SYMBOL_GPL(nfs4_label_alloc);
-+#endif
-+
- /*
-  * This is our front-end to iget that looks up inodes by file handle
-  * instead of inode number.
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index f9235b4..aab8bd8 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -28,6 +28,13 @@ struct nfs4_acl {
- 	struct nfs4_ace	aces[0];
- };
- 
-+struct nfs4_label {
-+	uint32_t	lfs;
-+	uint32_t	pi;
-+	u32		len;
-+	char	*label;
-+};
-+
- typedef struct { char data[NFS4_VERIFIER_SIZE]; } nfs4_verifier;
- 
- struct nfs_stateid4 {
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 1cc2568..e0e1806 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -489,6 +489,24 @@ extern int nfs_mountpoint_expiry_timeout;
- extern void nfs_release_automount_timer(void);
- 
- /*
-+ * linux/fs/nfs/nfs4proc.c
-+ */
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+extern struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags);
-+static inline void nfs4_label_free(struct nfs4_label *label)
-+{
-+	if (label) {
-+		kfree(label->label);
-+		kfree(label);
-+	}
-+	return;
-+}
-+#else
-+static inline struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags) { return NULL; }
-+static inline void nfs4_label_free(void *label) {}
-+#endif
-+
-+/*
-  * linux/fs/nfs/unlink.c
-  */
- extern void nfs_complete_unlink(struct dentry *dentry, struct inode *);
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index ac9ba69..7e86290 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -350,6 +350,7 @@ struct nfs_openargs {
- 	const u32 *		bitmask;
- 	const u32 *		open_bitmap;
- 	__u32			claim;
-+	const struct nfs4_label *label;
- };
- 
- struct nfs_openres {
-@@ -359,6 +360,7 @@ struct nfs_openres {
- 	struct nfs4_change_info	cinfo;
- 	__u32                   rflags;
- 	struct nfs_fattr *      f_attr;
-+	struct nfs4_label	*f_label;
- 	struct nfs_seqid *	seqid;
- 	const struct nfs_server *server;
- 	fmode_t			delegation_type;
-@@ -403,6 +405,7 @@ struct nfs_closeres {
- 	struct nfs4_sequence_res	seq_res;
- 	nfs4_stateid            stateid;
- 	struct nfs_fattr *	fattr;
-+	struct nfs4_label	*label;
- 	struct nfs_seqid *	seqid;
- 	const struct nfs_server *server;
- };
-@@ -476,6 +479,7 @@ struct nfs4_delegreturnargs {
- struct nfs4_delegreturnres {
- 	struct nfs4_sequence_res	seq_res;
- 	struct nfs_fattr * fattr;
-+	struct nfs4_label	*label;
- 	const struct nfs_server *server;
- };
- 
-@@ -496,6 +500,7 @@ struct nfs_readargs {
- struct nfs_readres {
- 	struct nfs4_sequence_res	seq_res;
- 	struct nfs_fattr *	fattr;
-+	struct nfs4_label	*label;
- 	__u32			count;
- 	int                     eof;
- };
-@@ -564,6 +569,7 @@ struct nfs_removeres {
- 	struct nfs4_sequence_res 	seq_res;
- 	const struct nfs_server *server;
- 	struct nfs_fattr	*dir_attr;
-+	struct nfs4_label	*dir_label;
- 	struct nfs4_change_info	cinfo;
- };
- 
-@@ -576,6 +582,8 @@ struct nfs_renameargs {
- 	const struct nfs_fh		*new_dir;
- 	const struct qstr		*old_name;
- 	const struct qstr		*new_name;
-+	const struct nfs4_label		*old_label;
-+	const struct nfs4_label		*new_label;
- };
- 
- struct nfs_renameres {
-@@ -583,8 +591,10 @@ struct nfs_renameres {
- 	const struct nfs_server		*server;
- 	struct nfs4_change_info		old_cinfo;
- 	struct nfs_fattr		*old_fattr;
-+	struct nfs4_label		*old_label;
- 	struct nfs4_change_info		new_cinfo;
- 	struct nfs_fattr		*new_fattr;
-+	struct nfs4_label		*new_label;
- };
- 
- /*
-@@ -599,6 +609,7 @@ struct nfs_entry {
- 	int			eof;
- 	struct nfs_fh *		fh;
- 	struct nfs_fattr *	fattr;
-+	struct nfs4_label  *label;
- 	unsigned char		d_type;
- 	struct nfs_server *	server;
- };
-@@ -631,6 +642,7 @@ struct nfs_setattrargs {
- 	struct iattr *                  iap;
- 	const struct nfs_server *	server; /* Needed for name mapping */
- 	const u32 *			bitmask;
-+	const struct nfs4_label		*label;
- };
- 
- struct nfs_setaclargs {
-@@ -666,6 +678,7 @@ struct nfs_getaclres {
- struct nfs_setattrres {
- 	struct nfs4_sequence_res	seq_res;
- 	struct nfs_fattr *              fattr;
-+	struct nfs4_label		*label;
- 	const struct nfs_server *	server;
- };
- 
-@@ -711,6 +724,7 @@ struct nfs3_setaclargs {
- struct nfs_diropok {
- 	struct nfs_fh *		fh;
- 	struct nfs_fattr *	fattr;
-+	struct nfs4_label	*label;
- };
- 
- struct nfs_readlinkargs {
-@@ -841,6 +855,7 @@ struct nfs4_accessres {
- 	struct nfs4_sequence_res	seq_res;
- 	const struct nfs_server *	server;
- 	struct nfs_fattr *		fattr;
-+	struct nfs4_label		*label;
- 	u32				supported;
- 	u32				access;
- };
-@@ -863,6 +878,7 @@ struct nfs4_create_arg {
- 	const struct iattr *		attrs;
- 	const struct nfs_fh *		dir_fh;
- 	const u32 *			bitmask;
-+	const struct nfs4_label		*label;
- };
- 
- struct nfs4_create_res {
-@@ -870,6 +886,7 @@ struct nfs4_create_res {
- 	const struct nfs_server *	server;
- 	struct nfs_fh *			fh;
- 	struct nfs_fattr *		fattr;
-+	struct nfs4_label		*label;
- 	struct nfs4_change_info		dir_cinfo;
- };
- 
-@@ -894,6 +911,7 @@ struct nfs4_getattr_res {
- 	struct nfs4_sequence_res	seq_res;
- 	const struct nfs_server *	server;
- 	struct nfs_fattr *		fattr;
-+	struct nfs4_label		*label;
- };
- 
- struct nfs4_link_arg {
-@@ -908,8 +926,10 @@ struct nfs4_link_res {
- 	struct nfs4_sequence_res	seq_res;
- 	const struct nfs_server *	server;
- 	struct nfs_fattr *		fattr;
-+	struct nfs4_label		*label;
- 	struct nfs4_change_info		cinfo;
- 	struct nfs_fattr *		dir_attr;
-+	struct nfs4_label		*dir_label;
- };
- 
- 
-@@ -925,6 +945,7 @@ struct nfs4_lookup_res {
- 	const struct nfs_server *	server;
- 	struct nfs_fattr *		fattr;
- 	struct nfs_fh *			fh;
-+	struct nfs4_label		*label;
- };
- 
- struct nfs4_lookup_root_arg {
-diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
-index 788128e..19a7b6d 100644
---- a/include/uapi/linux/nfs4.h
-+++ b/include/uapi/linux/nfs4.h
-@@ -25,7 +25,7 @@
- #define NFS4_MAXNAMLEN		NAME_MAX
- #define NFS4_OPAQUE_LIMIT	1024
- #define NFS4_MAX_SESSIONID_LEN	16
--
-+#define NFS4_MAXLABELLEN	128 
- #define NFS4_ACCESS_READ        0x0001
- #define NFS4_ACCESS_LOOKUP      0x0002
- #define NFS4_ACCESS_MODIFY      0x0004
--- 
-1.8.1.2
 
