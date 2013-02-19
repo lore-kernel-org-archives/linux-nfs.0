@@ -1,44 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f41.google.com ([209.85.160.41]:34239 "EHLO
-	mail-pb0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760723Ab3B1Vx2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Feb 2013 16:53:28 -0500
-Received: by mail-pb0-f41.google.com with SMTP id um15so1327522pbc.28
-        for <linux-nfs@vger.kernel.org>; Thu, 28 Feb 2013 13:53:28 -0800 (PST)
-Message-ID: <512FD1D5.3010106@mit.edu>
-Date: Thu, 28 Feb 2013 13:53:25 -0800
-From: Andy Lutomirski <luto@amacapital.net>
-MIME-Version: 1.0
-To: Pavel Shilovsky <piastry@etersoft.ru>
-CC: linux-kernel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        wine-devel@winehq.org
-Subject: Re: [PATCH v3 0/7] Add O_DENY* support for VFS and CIFS/NFS
-References: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
-In-Reply-To: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from aserp1040.oracle.com ([141.146.126.69]:29053 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933677Ab3BSSyi convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Feb 2013 13:54:38 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
+Subject: Re: [PATCH [rpcbind]] fix building one systems w/out nss.h
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1361299690-19402-1-git-send-email-vapier@gentoo.org>
+Date: Tue, 19 Feb 2013 13:54:19 -0500
+Cc: libtirpc-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org
+Message-Id: <D1025EAD-8EEB-40A4-8EA4-0D21ECC16B66@oracle.com>
+References: <1361299690-19402-1-git-send-email-vapier@gentoo.org>
+To: Mike Frysinger <vapier@gentoo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-[possible resend -- sorry]
+Hi-
 
-On 02/28/2013 07:25 AM, Pavel Shilovsky wrote:
-> This patchset adds support of O_DENY* flags for Linux fs layer. These flags can be used by any application that needs share reservations to organize a file access. VFS already has some sort of this capability - now it's done through flock/LOCK_MAND mechanis, but that approach is non-atomic. This patchset build new capabilities on top of the existing one but doesn't bring any changes into the flock call semantic.
+On Feb 19, 2013, at 1:48 PM, Mike Frysinger <vapier@gentoo.org> wrote:
+
+> The nss.h header is glibc-specific, so use the existing HAVE_NSS_H define
+> to avoid including/using it when it is not available.
 > 
-> These flags can be used by NFS (built-in-kernel) and CIFS (Samba) servers and Wine applications through VFS (for local filesystems) or CIFS/NFS modules. This will help when e.g. Samba and NFS server share the same directory for Windows and Linux users or Wine applications use Samba/NFS share to access the same data from different clients.
+> URL: http://bugs.gentoo.org/458024
+> Reported-by: Mark Reiche <porphyr@gmx.de>
+> Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+> ---
+> src/rpcbind.c | 4 ++++
+> 1 file changed, 4 insertions(+)
 > 
-> According to the previous discussions the most problematic question is how to prevent situations like DoS attacks where e.g /lib/liba.so file can be open with DENYREAD, or smth like this. That's why one extra flag O_DENYMAND is added. It indicates to underlying layer that an application want to use O_DENY* flags semantic. It allows us not affect native Linux applications (that don't use O_DENYMAND flag) - so, these flags (and the semantic of open syscall that they bring) are used only for those applications that really want it proccessed that way.
+> diff --git a/src/rpcbind.c b/src/rpcbind.c
+> index 9a0504d..83dbe93 100644
+> --- a/src/rpcbind.c
+> +++ b/src/rpcbind.c
+> @@ -67,7 +67,11 @@
+> #include <pwd.h>
+> #include <string.h>
+> #include <errno.h>
+> +#ifdef HAVE_NSS_H
+> #include <nss.h>
+> +#else
+> +static inline void __nss_configure_lookup(const char *db, const char *s) {}
+> +#endif
+
+Where is rpcbind getting the __nss_configure_lookup() function in this case?  I don't see that the call sites are ifdef-d out if HAVE_NSS_H is not defined.
+
+> #include "rpcbind.h"
 > 
-> So, we have four new flags:
-> O_DENYREAD - to prevent other opens with read access,
-> O_DENYWRITE - to prevent other opens with write access,
-> O_DENYDELETE - to prevent delete operations (this flag is not implemented in VFS and NFS part and only suitable for CIFS module),
-> O_DENYMAND - to switch on/off three flags above.
+> /*#define RPCBIND_DEBUG*/
 
-O_DENYMAND doesn't deny anything.  Would a name like O_RESPECT_DENY be
-better?
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Other than that, this seems like a sensible mechanism.
 
---Andy
+
 
