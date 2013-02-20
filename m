@@ -1,131 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34324 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755015Ab3BUQi2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Feb 2013 11:38:28 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond.Myklebust@netapp.com, chuck.lever@oracle.com, simo@redhat.com,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 4/6] SUNRPC: conditionally return endtime from import_sec_context
-Date: Thu, 21 Feb 2013 11:38:23 -0500
-Message-Id: <1361464705-12340-5-git-send-email-bfields@redhat.com>
-In-Reply-To: <1361464705-12340-1-git-send-email-bfields@redhat.com>
-References: <1361464705-12340-1-git-send-email-bfields@redhat.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:44506 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S935493Ab3BTQUR convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Feb 2013 11:20:17 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
+Subject: Re: synchronous AF_LOCAL connect
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20130220160350.GJ14606@fieldses.org>
+Date: Wed, 20 Feb 2013 11:20:05 -0500
+Cc: Trond Myklebust <trond@netapp.com>, linux-nfs@vger.kernel.org,
+        simo@redhat.com
+Message-Id: <EA9EE56A-73BB-4866-AA86-1EE4150AFE87@oracle.com>
+References: <20130218225424.GD3391@fieldses.org> <20130220154751.GH14606@fieldses.org> <2F275139-9861-4414-8C9F-BD74544C9AD7@oracle.com> <20130220160350.GJ14606@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Simo Sorce <simo@redhat.com>
 
-We expose this parameter for a future caller.
-It will be used to extract the endtime from the gss-proxy upcall mechanism,
-in order to set the rsc cache expiration time.
+On Feb 20, 2013, at 11:03 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
 
-Signed-off-by: Simo Sorce <simo@redhat.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- include/linux/sunrpc/gss_api.h        |    2 ++
- net/sunrpc/auth_gss/auth_gss.c        |    2 +-
- net/sunrpc/auth_gss/gss_krb5_mech.c   |    7 +++++--
- net/sunrpc/auth_gss/gss_mech_switch.c |    5 +++--
- net/sunrpc/auth_gss/svcauth_gss.c     |    3 ++-
- 5 files changed, 13 insertions(+), 6 deletions(-)
+> On Wed, Feb 20, 2013 at 10:56:54AM -0500, Chuck Lever wrote:
+>> 
+>> On Feb 20, 2013, at 10:47 AM, "J. Bruce Fields" <bfields@fieldses.org>
+>> wrote:
+>> 
+>>> On Mon, Feb 18, 2013 at 05:54:25PM -0500, bfields wrote:
+>>>> The rpc code expects all connects to be done asynchronously by a
+>>>> workqueue.  But that doesn't seem necessary in the AF_LOCAL case.
+>>>> The only user (rpcbind) actually wants the connect done in the
+>>>> context of a process with the right namespace.  (And that will be
+>>>> true of gss proxy too, which also wants to use AF_LOCAL.)
+>>>> 
+>>>> But maybe I'm missing something.
+>>>> 
+>>>> Also, I haven't really tried to understand this code--I just
+>>>> assumed I could basically call xs_local_setup_socket from ->setup
+>>>> instead of the workqueue, and that seems to work based on a very
+>>>> superficial test.  At a minimum I guess the PF_FSTRANS fiddling
+>>>> shouldn't be there.
+>>> 
+>>> Here it is with that and the other extraneous xprt stuff gone.
+>>> 
+>>> See any problem with doing this?
+>> 
+>> Nothing is screaming at me.  As long as an AF_LOCAL connect operation
+>> doesn't ever sleep, this should be safe, I think.
+> 
+> I'm sure it must sleep.  Why would that make any difference?
 
-diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
-index a19e254..04d03bb 100644
---- a/include/linux/sunrpc/gss_api.h
-+++ b/include/linux/sunrpc/gss_api.h
-@@ -37,6 +37,7 @@ int gss_import_sec_context(
- 		size_t			bufsize,
- 		struct gss_api_mech	*mech,
- 		struct gss_ctx		**ctx_id,
-+		time_t			*endtime,
- 		gfp_t			gfp_mask);
- u32 gss_get_mic(
- 		struct gss_ctx		*ctx_id,
-@@ -92,6 +93,7 @@ struct gss_api_ops {
- 			const void		*input_token,
- 			size_t			bufsize,
- 			struct gss_ctx		*ctx_id,
-+			time_t			*endtime,
- 			gfp_t			gfp_mask);
- 	u32 (*gss_get_mic)(
- 			struct gss_ctx		*ctx_id,
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 6e5c824..7edfda5 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -238,7 +238,7 @@ gss_fill_context(const void *p, const void *end, struct gss_cl_ctx *ctx, struct
- 		p = ERR_PTR(-EFAULT);
- 		goto err;
- 	}
--	ret = gss_import_sec_context(p, seclen, gm, &ctx->gc_gss_ctx, GFP_NOFS);
-+	ret = gss_import_sec_context(p, seclen, gm, &ctx->gc_gss_ctx, NULL, GFP_NOFS);
- 	if (ret < 0) {
- 		p = ERR_PTR(ret);
- 		goto err;
-diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
-index d3611f1..3bc4a23 100644
---- a/net/sunrpc/auth_gss/gss_krb5_mech.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
-@@ -679,6 +679,7 @@ out_err:
- static int
- gss_import_sec_context_kerberos(const void *p, size_t len,
- 				struct gss_ctx *ctx_id,
-+				time_t *endtime,
- 				gfp_t gfp_mask)
- {
- 	const void *end = (const void *)((const char *)p + len);
-@@ -694,9 +695,11 @@ gss_import_sec_context_kerberos(const void *p, size_t len,
- 	else
- 		ret = gss_import_v2_context(p, end, ctx, gfp_mask);
- 
--	if (ret == 0)
-+	if (ret == 0) {
- 		ctx_id->internal_ctx_id = ctx;
--	else
-+		if (endtime)
-+			*endtime = ctx->endtime;
-+	} else
- 		kfree(ctx);
- 
- 	dprintk("RPC:       %s: returning %d\n", __func__, ret);
-diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
-index b174fcd..cfed709 100644
---- a/net/sunrpc/auth_gss/gss_mech_switch.c
-+++ b/net/sunrpc/auth_gss/gss_mech_switch.c
-@@ -325,14 +325,15 @@ int
- gss_import_sec_context(const void *input_token, size_t bufsize,
- 		       struct gss_api_mech	*mech,
- 		       struct gss_ctx		**ctx_id,
-+		       time_t			*endtime,
- 		       gfp_t gfp_mask)
- {
- 	if (!(*ctx_id = kzalloc(sizeof(**ctx_id), gfp_mask)))
- 		return -ENOMEM;
- 	(*ctx_id)->mech_type = gss_mech_get(mech);
- 
--	return mech->gm_ops
--		->gss_import_sec_context(input_token, bufsize, *ctx_id, gfp_mask);
-+	return mech->gm_ops->gss_import_sec_context(input_token, bufsize,
-+						*ctx_id, endtime, gfp_mask);
- }
- 
- /* gss_get_mic: compute a mic over message and return mic_token. */
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index eb2b1f7..8fff637 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -485,7 +485,8 @@ static int rsc_parse(struct cache_detail *cd,
- 		len = qword_get(&mesg, buf, mlen);
- 		if (len < 0)
- 			goto out;
--		status = gss_import_sec_context(buf, len, gm, &rsci.mechctx, GFP_KERNEL);
-+		status = gss_import_sec_context(buf, len, gm, &rsci.mechctx,
-+						NULL, GFP_KERNEL);
- 		if (status)
- 			goto out;
- 
+As I understand it, sometimes an ASYNC RPC task is driving the connect, and such a task must never sleep when calling outside of rpciod.  rpciod must be allowed to put that task on a wait queue and go do other work if the connect operation doesn't succeed immediately, otherwise all ASYNC RPC operations hang (or worse, an oops occurs).
+
+
+>> How did you test it?
+> 
+> I'm just doing my usual set of connectathon runs, and assuming mounts
+> would fail if the server's rpcbind registration failed.
+
+Have you tried killing rpcbind first to see how the error cases are handled?
+
+Does rpcbind get the registration's "owner" field correct when namespaces are involved?
+
 -- 
-1.7.9.5
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
