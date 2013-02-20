@@ -1,39 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:32079 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:25124 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753719Ab3BUVBm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Feb 2013 16:01:42 -0500
-Date: Thu, 21 Feb 2013 16:01:39 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond.Myklebust@netapp.com, chuck.lever@oracle.com, simo@redhat.com
-Subject: Re: [PATCH 6/6] SUNRPC: Use gssproxy upcall for server RPCGSS
- authentication.
-Message-ID: <20130221210139.GF3531@pad.fieldses.org>
-References: <1361464705-12340-1-git-send-email-bfields@redhat.com>
- <1361464705-12340-7-git-send-email-bfields@redhat.com>
+	id S1758613Ab3BTPIi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Feb 2013 10:08:38 -0500
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r1KF8c78024825
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 20 Feb 2013 10:08:38 -0500
+Received: from smallhat.bos.devel.redhat.com ([10.16.60.65])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r1KF8bGh008343
+	for <linux-nfs@vger.kernel.org>; Wed, 20 Feb 2013 10:08:38 -0500
+Message-ID: <5124E6F5.4070605@RedHat.com>
+Date: Wed, 20 Feb 2013 10:08:37 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1361464705-12340-7-git-send-email-bfields@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Linux NFS town hall  meeting 02/20/13
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 21, 2013 at 11:38:25AM -0500, J. Bruce Fields wrote:
-> +NFS Server New RPC Upcall Mechanism
-> +-----------------------------------
-> +
-> +The newer upcall mechanism uses RPC over a unix socket to a daemon
-> +called gss-proxy, implemented by a userspace program called Gssproxy.
-> +
-> +The gss_proxy RPC protocol is currently documented here:
-> +
-> +	https://fedorahosted.org/gss-proxy/wiki/ProtocolDocumentation
+A reminder....  There will be a town hall meeting tomorrow (Thur Feb 20th)
 
-By the way, Simo, that still says "The protocol is not stable yet and it
-is being revised while we progress prototyping client and server code."
+Time: 9:30 AM PST (12:30 PM EST)
 
-I'm assuming that web page is just out of date--once this is in the
-kernel we're *not* making backwards-incompatible changes to the
-protocol.
+The call in numbers are:
+U.S. and Canada: (800) 451-8679
+International dial-in number: (212) 729-5016
+Israel Toll-Free: 1-809-462-557
+Conference code: 564.272.1552
 
---b.
+steved.
+
