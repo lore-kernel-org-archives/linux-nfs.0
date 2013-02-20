@@ -1,58 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:40910 "EHLO mx1.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759491Ab3BXWfM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Feb 2013 17:35:12 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Syam Sidhardhan <syamsidhardh@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "davem@davemloft.net" <davem@davemloft.net>
-Subject: Re: [PATCH] SUNRPC: Fix possible NULL pointer dereference
-Date: Sun, 24 Feb 2013 22:35:08 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9235DE4C7@SACEXCMBX04-PRD.hq.netapp.com>
-References: <1361744605-28235-1-git-send-email-s.syam@samsung.com>
-In-Reply-To: <1361744605-28235-1-git-send-email-s.syam@samsung.com>
-Content-Type: text/plain; charset=US-ASCII
+Received: from smtp.cdf.toronto.edu ([128.100.31.106]:43949 "HELO
+	smtp.cdf.toronto.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1759327Ab3BTVZL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Feb 2013 16:25:11 -0500
+Message-ID: <51253F36.40501@cdf.toronto.edu>
+Date: Wed, 20 Feb 2013 16:25:10 -0500
+From: Iordan Iordanov <iordan@cdf.toronto.edu>
 MIME-Version: 1.0
+To: linux-nfs@vger.kernel.org
+Subject: Re: NFS v3 hangs with kernel version v3.2.0, 32-bit
+References: <511BFB74.3060803@cdf.toronto.edu>
+In-Reply-To: <511BFB74.3060803@cdf.toronto.edu>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2013-02-25 at 03:53 +0530, Syam Sidhardhan wrote:
-> Check for cred == NULL has to be done before accessing cred.
-> 
-> Signed-off-by: Syam Sidhardhan <s.syam@samsung.com>
-> ---
->  net/sunrpc/auth.c |    7 +++++--
->  1 file changed, 5 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-> index f529404..18678a6 100644
-> --- a/net/sunrpc/auth.c
-> +++ b/net/sunrpc/auth.c
-> @@ -695,10 +695,13 @@ rpcauth_invalcred(struct rpc_task *task)
->  {
->  	struct rpc_cred *cred = task->tk_rqstp->rq_cred;
->  
-> +	if (cred == NULL)
-> +		return;
-> +
->  	dprintk("RPC: %5u invalidating %s cred %p\n",
->  		task->tk_pid, cred->cr_auth->au_ops->au_name, cred);
-> -	if (cred)
-> -		clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags);
-> +
-> +	clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags);
->  }
->  
->  int
+Hello,
 
-Do we need that check at all?
+I've put the broken server back into production (we need the capacity), 
+however, we are open to enabling whatever RPC/NFS debugging would help 
+to get to the source of this problem. Can anybody suggest which kernel 
+parameters would be most beneficial to determining the cause of the 
+problem? I am talking about one of these, or something else which I'm 
+not aware of:
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+sunrpc.rpc_debug
+sunrpc.nfs_debug
+sunrpc.nfsd_debug
+sunrpc.nlm_debug
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+If somebody suggests any options to be enabled, can you also comment on 
+whether there would be any performance hit related to enabling the option?
+
+Thanks!
+Iordan Iordanov
+
+
+On 02/13/13 15:45, Iordan Iordanov wrote:
+> Hello!
+>
+> We've been suffering from NFS mounts and data transfers hanging on our
+> Ubuntu Precise 12.04 32-bit shared servers since last summer. The
+> problem has reoccurred over TCP and UDP.
+>
+> Every month or so, some of our more heavily used shared servers would
+> see its NFS mounts hang, and a bunch of flush-(major:minor) processes
+> would sit at 100% in top. If the hang occurred while NFS over TCP was
+> being used, mounting over UDP would still work, but mounting over TCP
+> would hang (indefinitely). The reverse is also true. When we experienced
+> the hang while using UDP, mounts over TCP would work on the affected
+> system.
+>
+> I've located a very similar discussion/bug-report for v3.1-rc4 which
+> ended seemingly without a resolution here:
+> http://lkml.indiana.edu/hypermail/linux/kernel/1109.1/00728.html
+>
+> We're also seeing the:
+>
+> [3121466.072728] RPC: 43506 failed to lock transport e030a000
+>
+> errors when RPC debugging is enabled. In addition, we're also seeing the
+> socket in CLOSE_WAIT state symptom in netstat's output:
+>
+> tcp 0 0 x.x.x.x:967 y.y.y.y:2049     CLOSE_WAIT
+>
+> Running tcpdump on our file-server and specifying the hung host in
+> question results in NO NFS-related traffic unless a mount request is
+> executed on the nfs client. I've attached two tcpdumps representing a
+> successful mount over UDP and an unsuccessful mount over TCP in case
+> they are useful. The tcpdumps were captured on the fileserver.
+>
+> The machine in question is currently in this hung state, and we would be
+> happy to provide any additional information you may need!
+>
+> Here is the result of uname -a on the hung machine:
+>
+> Linux gambo 3.2.0-35-generic-pae #55-Ubuntu SMP Wed Dec 5 18:04:39 UTC
+> 2012 i686 athlon i386 GNU/Linux
+>
+> Our NFS server is an up-to-date Debian Squeeze 6.0 box, and we would be
+> happy to provide information on that machine if you think it is relevant.
+>
+> Any help in resolving this would be greatly appreciated, as we are
+> constantly suffering from this issue.
+>
+> Many thanks in advance!
+> Iordan
