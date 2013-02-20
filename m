@@ -1,72 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:40184 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:5596 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753117Ab3BRSmH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Feb 2013 13:42:07 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 1/9] SUNRPC: Missing module alias for auth_rpcgss.ko
-Date: Mon, 18 Feb 2013 18:42:05 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9235CF1F8@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20130204201458.1518.12931.stgit@seurat.1015granger.net>
-	 <20130204201903.1518.91133.stgit@seurat.1015granger.net>
-In-Reply-To: <20130204201903.1518.91133.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset=US-ASCII
+	id S933631Ab3BTPza (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Feb 2013 10:55:30 -0500
+Message-ID: <5124F1EA.2090902@RedHat.com>
+Date: Wed, 20 Feb 2013 10:55:22 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 00/14] lnfs: 3.8-rc7 release
+References: <1361213276-17962-1-git-send-email-SteveD@redhat.com> <20130218195834.GA3391@fieldses.org> <512395D7.5010205@RedHat.com> <20130219151808.GE3391@fieldses.org> <51239CFF.9000600@RedHat.com> <20130219205608.GB14606@fieldses.org>
+In-Reply-To: <20130219205608.GB14606@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2013-02-04 at 15:19 -0500, Chuck Lever wrote:
-> Commit f344f6df "SUNRPC: Auto-load RPC authentication kernel
-> modules", Mon Mar 20 13:44:08 2006, adds a request_module() call
-> in rpcauth_create() to auto-load RPC security modules when a ULP
-> tries to create a credential of that flavor.
-> 
-> In rpcauth_create(), the name of the module to load is built like
-> this:
-> 
-> 	request_module("rpc-auth-%u", flavor);
-> 
-> This means that for, say, RPC_AUTH_GSS, request_module() is looking
-> for a module or alias called "rpc-auth-6".
-> 
-> The GSS module is named "auth_rpcgss", and commit f344f6df does not
-> add any new module aliases.  There is also no such alias provided in
-> /etc/modprobe.d on my system (Fedora 16).  Without this alias, the
-> GSS module is not loaded on demand.
+Trimming the cc list to just Linux NFS list since I'm
+sure they will not care about this part of the discussion.
+I'll add them back on my next release...   
 
-Wait... Why do we want to load the auth_rpcgss module on its own? It
-doesn't provide any authentication or security mechanisms of its own.
-All it does is to provide support for the other security mechanisms.
-
-As far as I can see, calling rpcauth_create() with a pseudoflavour value
-of '6' is a bug...
-
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
+On 19/02/13 15:56, J. Bruce Fields wrote:
+> On Tue, Feb 19, 2013 at 10:40:47AM -0500, Steve Dickson wrote:
+>> On 19/02/13 10:18, J. Bruce Fields wrote:
+>>> On Tue, Feb 19, 2013 at 10:10:15AM -0500, Steve Dickson wrote:
+>>>>
+>>>>
+>>>> On 18/02/13 14:58, J. Bruce Fields wrote:
+>>>>> On Mon, Feb 18, 2013 at 01:47:42PM -0500, Steve Dickson wrote:
+>>>>>>> From: Steve Dickson <steved@redhat.com>
+>>>>>>>
+>>>>>>> Here is the next release of the Label NFS patches, forward 
+>>>>>>> ported to linux-3.8-rc7
+>>>>>>>
+>>>>>>> I believe I've  incorporated all code review that were made
+>>>>>>> from the last release,
+>>>>> Except I think this doesn't turn on minor version 2?
+>>>> Are you saying we need a -o v4.2 mount option to enable this feature?
+>>> Yes.  And the client needs to send requests with minor version 2, and
+>>> server needs to accept such requests.
+>> Boy this puts a damper on the party.... ;-)
 > 
->  net/sunrpc/auth_gss/auth_gss.c |    1 +
->  1 files changed, 1 insertions(+), 0 deletions(-)
+> I'm hoping it's not that much work: we already have two minor versions
+> (0 and 1), in theory adding a third should be pretty straightforward.
 > 
-> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-> index 6e5c824..4db065d 100644
-> --- a/net/sunrpc/auth_gss/auth_gss.c
-> +++ b/net/sunrpc/auth_gss/auth_gss.c
-> @@ -1721,6 +1721,7 @@ static void __exit exit_rpcsec_gss(void)
->  	rcu_barrier(); /* Wait for completion of call_rcu()'s */
->  }
->  
-> +MODULE_ALIAS("rpc-auth-6");
->  MODULE_LICENSE("GPL");
->  module_param_named(expired_cred_retry_delay,
->  		   gss_expired_cred_retry_delay,
+> Labeled NFS will be our only 4.2 feature for now, so there's nothing
+> else to do other than turn on support for the new minor version number.
 > 
+> I think so?
+On the client the actual change is very straightforward. Simply added
+another case to the switch in  nfs_parse_version_string() and set the
+minorversion to 2
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+    case Opt_vers_4_2:
+        mnt->version = 4;
+        mnt->minorversion = 2;
+        break;
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+But my question is what type of ramification well there be bumping 
+minorversion from 1 to 2?  I bet servers are not going to like this
+too much... ;-) and not to mention all the xdr and callback routines
+that look at minorversion... a bit worrisome...   
+
+Speaking of servers... Do you think its about time to rpc.nfsd the
+ability to enable 4.x versions?
+
+steved.
+
+
