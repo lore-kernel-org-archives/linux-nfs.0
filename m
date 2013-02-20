@@ -1,76 +1,203 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:12735 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933100Ab3BTRcp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Feb 2013 12:32:45 -0500
+Received: from userp1040.oracle.com ([156.151.31.81]:27218 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S935905Ab3BTP5L convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Feb 2013 10:57:11 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
 Subject: Re: synchronous AF_LOCAL connect
-From: Simo Sorce <simo@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9235D7E49@SACEXCMBX04-PRD.hq.netapp.com>
-References: <20130218225424.GD3391@fieldses.org>
-	 <20130220154751.GH14606@fieldses.org>
-	 <2F275139-9861-4414-8C9F-BD74544C9AD7@oracle.com>
-	 <20130220160350.GJ14606@fieldses.org>
-	 <EA9EE56A-73BB-4866-AA86-1EE4150AFE87@oracle.com>
-	 <20130220163424.GK14606@fieldses.org>
-	 <FB21B277-FA7D-490C-B389-58A91C46B490@oracle.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9235D7E49@SACEXCMBX04-PRD.hq.netapp.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 20 Feb 2013 12:32:41 -0500
-Message-ID: <1361381561.12328.441.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20130220154751.GH14606@fieldses.org>
+Date: Wed, 20 Feb 2013 10:56:54 -0500
+Cc: Trond Myklebust <trond@netapp.com>, linux-nfs@vger.kernel.org,
+        simo@redhat.com
+Message-Id: <2F275139-9861-4414-8C9F-BD74544C9AD7@oracle.com>
+References: <20130218225424.GD3391@fieldses.org> <20130220154751.GH14606@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2013-02-20 at 17:27 +0000, Myklebust, Trond wrote:
-> On Wed, 2013-02-20 at 12:04 -0500, Chuck Lever wrote:
+
+On Feb 20, 2013, at 10:47 AM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Mon, Feb 18, 2013 at 05:54:25PM -0500, bfields wrote:
+>> The rpc code expects all connects to be done asynchronously by a
+>> workqueue.  But that doesn't seem necessary in the AF_LOCAL case.  The
+>> only user (rpcbind) actually wants the connect done in the context of a
+>> process with the right namespace.  (And that will be true of gss proxy
+>> too, which also wants to use AF_LOCAL.)
+>> 
+>> But maybe I'm missing something.
+>> 
+>> Also, I haven't really tried to understand this code--I just assumed I
+>> could basically call xs_local_setup_socket from ->setup instead of the
+>> workqueue, and that seems to work based on a very superficial test.  At
+>> a minimum I guess the PF_FSTRANS fiddling shouldn't be there.
 > 
-> > Yes, but AF_LOCAL is supposed to be a generic transport for RPC.  This is not a feature we just made up, it's actually a well-defined API that exists on other platforms (it's even specified in RFCs).  Right now I would hesitate to restrict the use of AF_LOCAL upcalls to only synchronous contexts, because eventually we may want to use the transport in asynchronous contexts.
+> Here it is with that and the other extraneous xprt stuff gone.
 > 
-> The whole problem is that it is a piss-poorly defined feature in an
-> asynchronous kernel context.
+> See any problem with doing this?
+
+Nothing is screaming at me.  As long as an AF_LOCAL connect operation doesn't ever sleep, this should be safe, I think.
+
+How did you test it?
+
+
+> (This is basically my attempt to implement Trond's solution to the
+> AF_LOCAL-connect-in-a-namespace problem:
 > 
-> Sockets carry around a well defined net namespace context that allow
-> them to resolve IP addresses. However they carry none of the file
-> namespace context information that is required to make sense of AF_LOCAL
-> "addresses".
+> 	http://mid.gmane.org/<4FA345DA4F4AE44899BD2B03EEEC2FA9092E0A40@SACEXCMBX04-PRD.hq.netapp.com>
 > 
-> IOW we have 3 options:
+> )
 > 
->      1. Drop AF_LOCAL support altogether
->      2. Add file namespace context to the RPC or socket layers
->      3. Drop asynchronous support, so that we have a reliable
->         userspace-defined context.
+> --b.
 > 
-> 1) involves a user space api change, which will bring down the iron fist
-> of the Finn.
-> 2) involves cooperation from the VFS and socket folks which doesn't seem
-> to be happening.
+> commit 49413f389f7b38b4cbeb2d1c7f25ebcbf00f25f6
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Fri Feb 15 17:54:26 2013 -0500
 > 
-> so that leaves (3), which is perfectly doable since we do _not_ want to
-> expose the rpc layer to anything outside the kernel. It's not intended
-> as a generic libtirpc...
+>    rpc: simplify AF_LOCAL connect
 > 
-> > If we were to go with using a synchronous connect, however, I think there should be some kind of safety check to make sure the xs connect function is not being invoked from an asynchronous context.  This is a restriction that does not exist for other transports supported by the kernel RPC client, so it should be underscored in the code.
+>    It doesn't appear that anyone actually needs to connect asynchronously.
 > 
-> void xs_connect_local(struct rpc_task *task)
+>    Also, using a workqueue for the connect means we lose the namespace
+>    information from the original process.  This is a problem since there's
+>    no way to explicitly pass in a filesystem namespace for resolution of an
+>    AF_LOCAL address.
+> 
+>    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> 
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index bbc0915..b7d60e4 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -1866,57 +1866,14 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
+>  * @xprt: RPC transport to connect
+>  * @transport: socket transport to connect
+>  * @create_sock: function to create a socket of the correct type
+> - *
+> - * Invoked by a work queue tasklet.
+>  */
+> static void xs_local_setup_socket(struct work_struct *work)
 > {
-> 	if (RPC_IS_ASYNC(task))
-> 		rpc_exit(task, -ENOTCONN);
-> .....
+> 	struct sock_xprt *transport =
+> 		container_of(work, struct sock_xprt, connect_worker.work);
+> 	struct rpc_xprt *xprt = &transport->xprt;
+> -	struct socket *sock;
+> -	int status = -EIO;
+> -
+> -	current->flags |= PF_FSTRANS;
+> -
+> -	clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
+> -	status = __sock_create(xprt->xprt_net, AF_LOCAL,
+> -					SOCK_STREAM, 0, &sock, 1);
+> -	if (status < 0) {
+> -		dprintk("RPC:       can't create AF_LOCAL "
+> -			"transport socket (%d).\n", -status);
+> -		goto out;
+> -	}
+> -	xs_reclassify_socketu(sock);
+> 
+> -	dprintk("RPC:       worker connecting xprt %p via AF_LOCAL to %s\n",
+> -			xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
+> -
+> -	status = xs_local_finish_connecting(xprt, sock);
+> -	switch (status) {
+> -	case 0:
+> -		dprintk("RPC:       xprt %p connected to %s\n",
+> -				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
+> -		xprt_set_connected(xprt);
+> -		break;
+> -	case -ENOENT:
+> -		dprintk("RPC:       xprt %p: socket %s does not exist\n",
+> -				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
+> -		break;
+> -	case -ECONNREFUSED:
+> -		dprintk("RPC:       xprt %p: connection refused for %s\n",
+> -				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
+> -		break;
+> -	default:
+> -		printk(KERN_ERR "%s: unhandled error (%d) connecting to %s\n",
+> -				__func__, -status,
+> -				xprt->address_strings[RPC_DISPLAY_ADDR]);
+> -	}
+> -
+> -out:
+> -	xprt_clear_connecting(xprt);
+> -	xprt_wake_pending_tasks(xprt, status);
+> -	current->flags &= ~PF_FSTRANS;
+> +	xprt_wake_pending_tasks(xprt, -EIO);
 > }
 > 
-> ...done.
+> #ifdef CONFIG_SUNRPC_SWAP
+> @@ -2588,6 +2545,48 @@ static const struct rpc_timeout xs_local_default_timeout = {
+> 	.to_retries = 2,
+> };
 > 
-
-This seems the most reasonable approach to me too, and makes the code
-simpler for now.
-
-Simo.
+> +
+> +static int xs_local_connect(struct sock_xprt *transport)
+> +{
+> +	struct rpc_xprt *xprt = &transport->xprt;
+> +	struct socket *sock;
+> +	int status = -EIO;
+> +
+> +	status = __sock_create(xprt->xprt_net, AF_LOCAL,
+> +					SOCK_STREAM, 0, &sock, 1);
+> +	if (status < 0) {
+> +		dprintk("RPC:       can't create AF_LOCAL "
+> +			"transport socket (%d).\n", -status);
+> +		return status;
+> +	}
+> +	xs_reclassify_socketu(sock);
+> +
+> +	dprintk("RPC:       worker connecting xprt %p via AF_LOCAL to %s\n",
+> +			xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
+> +
+> +	status = xs_local_finish_connecting(xprt, sock);
+> +	switch (status) {
+> +	case 0:
+> +		dprintk("RPC:       xprt %p connected to %s\n",
+> +				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
+> +		xprt_set_connected(xprt);
+> +		break;
+> +	case -ENOENT:
+> +		dprintk("RPC:       xprt %p: socket %s does not exist\n",
+> +				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
+> +		break;
+> +	case -ECONNREFUSED:
+> +		dprintk("RPC:       xprt %p: connection refused for %s\n",
+> +				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
+> +		break;
+> +	default:
+> +		printk(KERN_ERR "%s: unhandled error (%d) connecting to %s\n",
+> +				__func__, -status,
+> +				xprt->address_strings[RPC_DISPLAY_ADDR]);
+> +	}
+> +	return status;
+> +}
+> +
+> /**
+>  * xs_setup_local - Set up transport to use an AF_LOCAL socket
+>  * @args: rpc transport creation arguments
+> @@ -2630,6 +2629,9 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
+> 		INIT_DELAYED_WORK(&transport->connect_worker,
+> 					xs_local_setup_socket);
+> 		xs_format_peer_addresses(xprt, "local", RPCBIND_NETID_LOCAL);
+> +		ret = ERR_PTR(xs_local_connect(transport));
+> +		if (ret)
+> +			goto out_err;
+> 		break;
+> 	default:
+> 		ret = ERR_PTR(-EAFNOSUPPORT);
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 -- 
-Simo Sorce * Red Hat, Inc * New York
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
