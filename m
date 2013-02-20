@@ -1,99 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46243 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:12735 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934984Ab3BNVqn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Feb 2013 16:46:43 -0500
-Date: Thu, 14 Feb 2013 16:46:38 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Anand Avati <anand.avati@gmail.com>,
-        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>, sandeen@redhat.com,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        gluster-devel@nongnu.org
-Subject: Re: [Gluster-devel] regressions due to 64-bit ext4 directory cookies
-Message-ID: <20130214214638.GB8343@fieldses.org>
-References: <20130213151953.GJ14195@fieldses.org>
- <20130213153654.GC17431@thunk.org>
- <20130213162059.GL14195@fieldses.org>
- <CAFboF2wXvP+vttiff8iRE9rAgvV8UWGbFprgVp8p7kE43TU=PA@mail.gmail.com>
- <20130213222052.GD5938@thunk.org>
- <20130213224141.GU14195@fieldses.org>
- <20130213224720.GE5938@thunk.org>
- <CAFboF2z1akN_edrY_fT915xfehfHGioA2M=PSHv0Fp3rD-5v5A@mail.gmail.com>
- <20130213230511.GW14195@fieldses.org>
- <20130213234430.GF5938@thunk.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130213234430.GF5938@thunk.org>
+	id S933100Ab3BTRcp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Feb 2013 12:32:45 -0500
+Subject: Re: synchronous AF_LOCAL connect
+From: Simo Sorce <simo@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9235D7E49@SACEXCMBX04-PRD.hq.netapp.com>
+References: <20130218225424.GD3391@fieldses.org>
+	 <20130220154751.GH14606@fieldses.org>
+	 <2F275139-9861-4414-8C9F-BD74544C9AD7@oracle.com>
+	 <20130220160350.GJ14606@fieldses.org>
+	 <EA9EE56A-73BB-4866-AA86-1EE4150AFE87@oracle.com>
+	 <20130220163424.GK14606@fieldses.org>
+	 <FB21B277-FA7D-490C-B389-58A91C46B490@oracle.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9235D7E49@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 20 Feb 2013 12:32:41 -0500
+Message-ID: <1361381561.12328.441.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 13, 2013 at 06:44:30PM -0500, Theodore Ts'o wrote:
-> On Wed, Feb 13, 2013 at 06:05:11PM -0500, J. Bruce Fields wrote:
-> > 
-> > Would it be possible to make something work like, for example, a 31-bit
-> > hash plus an offset into a hash bucket?
-> > 
-> > I have trouble thinking about this, partly because I can't remember
-> > where to find the requirements for readdir on concurrently modified
-> > directories....
+On Wed, 2013-02-20 at 17:27 +0000, Myklebust, Trond wrote:
+> On Wed, 2013-02-20 at 12:04 -0500, Chuck Lever wrote:
 > 
-> The requires are that for a directory entry which has not been
-> modified since the last opendir() or rewindir(), readdir() must return
-> that directory entry exactly once.
+> > Yes, but AF_LOCAL is supposed to be a generic transport for RPC.  This is not a feature we just made up, it's actually a well-defined API that exists on other platforms (it's even specified in RFCs).  Right now I would hesitate to restrict the use of AF_LOCAL upcalls to only synchronous contexts, because eventually we may want to use the transport in asynchronous contexts.
 > 
-> For a directory entry which has been added or removed since the last
-> opendir() or rewinddir() call, it is undefined whether the directory
-> entry is returned once or not at all.  And a rename is defined as a
-> add/remove, so it's OK for the old filename and the new file name to
-> appear in the readdir() stream; it would also be OK if neither
-> appeared in the readdir() stream.
+> The whole problem is that it is a piss-poorly defined feature in an
+> asynchronous kernel context.
+> 
+> Sockets carry around a well defined net namespace context that allow
+> them to resolve IP addresses. However they carry none of the file
+> namespace context information that is required to make sense of AF_LOCAL
+> "addresses".
+> 
+> IOW we have 3 options:
+> 
+>      1. Drop AF_LOCAL support altogether
+>      2. Add file namespace context to the RPC or socket layers
+>      3. Drop asynchronous support, so that we have a reliable
+>         userspace-defined context.
+> 
+> 1) involves a user space api change, which will bring down the iron fist
+> of the Finn.
+> 2) involves cooperation from the VFS and socket folks which doesn't seem
+> to be happening.
+> 
+> so that leaves (3), which is perfectly doable since we do _not_ want to
+> expose the rpc layer to anything outside the kernel. It's not intended
+> as a generic libtirpc...
+> 
+> > If we were to go with using a synchronous connect, however, I think there should be some kind of safety check to make sure the xs connect function is not being invoked from an asynchronous context.  This is a restriction that does not exist for other transports supported by the kernel RPC client, so it should be underscored in the code.
+> 
+> void xs_connect_local(struct rpc_task *task)
+> {
+> 	if (RPC_IS_ASYNC(task))
+> 		rpc_exit(task, -ENOTCONN);
+> .....
+> }
+> 
+> ...done.
+> 
 
-That's what I couldn't remember, thanks!
+This seems the most reasonable approach to me too, and makes the code
+simpler for now.
 
---b.
+Simo.
 
-> 
-> The SUSv3 definition of readdir() can be found here:
-> 
->    http://pubs.opengroup.org/onlinepubs/009695399/functions/readdir.html
-> 
-> Note also that if you look at the SuSv3 definition of seekdir(), it
-> explicitly states that the value returned by telldir() is not
-> guaranteed to be valid after a rewinddir() or across another opendir():
-> 
->    If the value of loc was not obtained from an earlier call to
->    telldir(), or if a call to rewinddir() occurred between the call to
->    telldir() and the call to seekdir(), the results of subsequent
->    calls to readdir() are unspecified.
-> 
-> Hence, it would be legal, and arguably more correct, if we created an
-> internal array of pointers into the directory structure, where the
-> first call to telldir() return 1, and the second call to telldir()
-> returned 2, and the third call to telldir() returned 3, regardless of
-> the position in the directory, and this number was used by seekdir()
-> to index into the array of pointers to return the exact location in
-> the b-tree.  This would completely eliminate the possibility of hash
-> collisions, and guarantee that readdir() would never drop or return a
-> directory entry multiple times after seekdir().
-> 
-> This implementation approach would have a potential denial of service
-> potential since each call to telldir() would potentially be allocating
-> kernel memory, but as long as we make sure the OOM killler kills the
-> nasty process which is calling telldir() a lot, this would probably be
-> OK.
-> 
-> It would also be legal to throw away this array after a call to
-> rewinddir() and closedir(), since telldir() cookies and not guaranteed
-> to valid indefinitely.  See:
-> 
->    http://pubs.opengroup.org/onlinepubs/009695399/functions/seekdir.html
-> 
-> I suspect this would seriously screw over Gluster, though, and this
-> wouldn't be a solution for NFSv3, since NFS needs long-lived directory
-> cookies, and not the short-lived cookies which is all POSIX/SuSv3 guarantees.
-> 
-> Regards,
-> 
-> 					- Ted
-> 
+-- 
+Simo Sorce * Red Hat, Inc * New York
+
