@@ -1,94 +1,213 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:56348 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:36081 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755473Ab3BAP0r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Feb 2013 10:26:47 -0500
-Date: Fri, 1 Feb 2013 10:26:40 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 08/16] nfsd: break out hashtable search into separate
- function
-Message-ID: <20130201102640.6b1898cb@tlielax.poochiereds.net>
-In-Reply-To: <20130201131409.GB30668@fieldses.org>
-References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
-	<1359402082-29195-9-git-send-email-jlayton@redhat.com>
-	<20130201131409.GB30668@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1753836Ab3BUQVo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Feb 2013 11:21:44 -0500
+Date: Thu, 21 Feb 2013 11:21:39 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Simo Sorce <simo@redhat.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: synchronous AF_LOCAL connect
+Message-ID: <20130221162139.GB9743@fieldses.org>
+References: <20130218225424.GD3391@fieldses.org>
+ <20130220154751.GH14606@fieldses.org>
+ <2F275139-9861-4414-8C9F-BD74544C9AD7@oracle.com>
+ <20130220160350.GJ14606@fieldses.org>
+ <EA9EE56A-73BB-4866-AA86-1EE4150AFE87@oracle.com>
+ <20130220163424.GK14606@fieldses.org>
+ <FB21B277-FA7D-490C-B389-58A91C46B490@oracle.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9235D7E49@SACEXCMBX04-PRD.hq.netapp.com>
+ <1361381561.12328.441.camel@willson.li.ssimo.org>
+ <20130220230337.GC3575@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130220230337.GC3575@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 1 Feb 2013 08:14:09 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Mon, Jan 28, 2013 at 02:41:14PM -0500, Jeff Layton wrote:
-> > Later, we'll need more than one call site for this, so break it out
-> > into a new function.
+On Wed, Feb 20, 2013 at 06:03:37PM -0500, J. Bruce Fields wrote:
+> OK, I've added that check and fixed some other bugs (thanks to Chuck for
+> some help in IRC).
 > 
-> I'm applying these first 8 to the for-3.9 branch at:
+> I think that gets rpcbind working in containers fine.
 > 
-> 	git://linux-nfs.org/~bfields/linux.git for-3.9
+> gss-proxy has one more problem: it needs to do upcalls from nfsd threads
+> which won't have the right filesystem namespace.
 > 
-> --b.
+> I get a write from gss-proxy when it starts and can do an initial
+> connect then using its context.  But if we disconnect after that I'm
+> stuck.
 > 
+> Does it cause any problems if I just set the idle_timeout to 0 for
+> AF_LOCAL?
 
-Thanks Bruce. I rebased the remaining patches on top of these, and now
-I'm seeing this when I try to test against it. I don't think it's due
-to the DRC patches, but I haven't started tracking it down yet:
+That gives me the following three patches.  They work for me.
 
-[10607.327785] BUG: unable to handle kernel NULL pointer dereference at           (null)
-[10607.328033] IP: [<ffffffffa0164f95>] qword_add+0x5/0xd0 [sunrpc]
-[10607.328033] PGD 0 
-[10607.328033] Oops: 0000 [#1] SMP 
-[10607.328033] Modules linked in: nfsd(OF) auth_rpcgss nfs_acl lockd sunrpc kvm_amd kvm microcode virtio_balloon virtio_net i2c_piix4 cirrus drm_kms_helper ttm drm virtio_blk i2c_core
-[10607.328033] CPU 0 
-[10607.328033] Pid: 5209, comm: nfsd Tainted: GF          O 3.8.0-0.rc5.git2.1.fc19.x86_64 #1 Bochs Bochs
-[10607.328033] RIP: 0010:[<ffffffffa0164f95>]  [<ffffffffa0164f95>] qword_add+0x5/0xd0 [sunrpc]
-[10607.328033] RSP: 0018:ffff88000307db58  EFLAGS: 00010286
-[10607.328033] RAX: ffff8800644e3a08 RBX: 000000000a5a51ab RCX: 0000000000000000
-[10607.328033] RDX: ffff88004367ee70 RSI: 0000000000000000 RDI: 000000000a5a51ab
-[10607.328033] RBP: ffff88000307db80 R08: 0000000000000000 R09: 0000000000000000
-[10607.328033] R10: ffff8800436c0000 R11: 0000000000000000 R12: ffff8800644bf730
-[10607.328033] R13: 0000000000000000 R14: ffff88000307db98 R15: ffff880002f5dd40
-[10607.328033] FS:  00007fb85bea8740(0000) GS:ffff88007fc00000(0000) knlGS:0000000000000000
-[10607.328033] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-[10607.328033] CR2: 0000000000000000 CR3: 00000000030ba000 CR4: 00000000000006f0
-[10607.328033] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-[10607.328033] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-[10607.328033] Process nfsd (pid: 5209, threadinfo ffff88000307c000, task ffff8800436c0000)
-[10607.328033] Stack:
-[10607.328033]  ffffffffa01b56de ffff88000307db78 ffff8800644bf730 00000000fffffff5
-[10607.328033]  ffff880005e409d8 ffff88000307dbd0 ffffffffa0166ee7 0000000000000078
-[10607.328033]  00000000510bb440 000000000a5a51ab ffff880005e43138 ffff8800644e3a08
-[10607.328033] Call Trace:
-[10607.328033]  [<ffffffffa01b56de>] ? expkey_request+0x2e/0x90 [nfsd]
-[10607.328033]  [<ffffffffa0166ee7>] cache_check+0xe7/0x350 [sunrpc]
-[10607.328033]  [<ffffffffa01b613e>] exp_find+0x17e/0x350 [nfsd]
-[10607.328033]  [<ffffffffa01b5fc5>] ? exp_find+0x5/0x350 [nfsd]
-[10607.328033]  [<ffffffffa01b76d5>] ? rqst_exp_find+0x5/0x300 [nfsd]
-[10607.328033]  [<ffffffffa01b77ee>] rqst_exp_find+0x11e/0x300 [nfsd]
-[10607.328033]  [<ffffffffa01b76d5>] ? rqst_exp_find+0x5/0x300 [nfsd]
-[10607.328033]  [<ffffffffa01b7a82>] rqst_find_fsidzero_export+0x22/0x30 [nfsd]
-[10607.328033]  [<ffffffffa01b7aaa>] exp_pseudoroot+0x1a/0xb0 [nfsd]
-[10607.328033]  [<ffffffffa01bf565>] nfsd4_putrootfh+0x25/0x30 [nfsd]
-[10607.328033]  [<ffffffffa01c00f3>] nfsd4_proc_compound+0x573/0x790 [nfsd]
-[10607.328033]  [<ffffffffa01abedb>] nfsd_dispatch+0xbb/0x200 [nfsd]
-[10607.328033]  [<ffffffffa015aadd>] svc_process_common+0x46d/0x6e0 [sunrpc]
-[10607.328033]  [<ffffffffa015ae57>] svc_process+0x107/0x170 [sunrpc]
-[10607.328033]  [<ffffffffa01ab28f>] nfsd+0xbf/0x130 [nfsd]
-[10607.328033]  [<ffffffffa01ab1d0>] ? nfsd_destroy+0x220/0x220 [nfsd]
-[10607.328033]  [<ffffffff81090cea>] kthread+0xea/0xf0
-[10607.328033]  [<ffffffff81090c00>] ? insert_kthread_work+0x80/0x80
-[10607.328033]  [<ffffffff816e086c>] ret_from_fork+0x7c/0xb0
-[10607.328033]  [<ffffffff81090c00>] ? insert_kthread_work+0x80/0x80
-[10607.328033] Code: 4c c3 81 e8 9e cd f6 e0 85 c0 0f 85 0d fe ff ff e9 5a ff ff ff 0f 0b 0f 0b 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 00 66 66 66 66 90 <8b> 0e 55 4c 8b 07 48 89 e5 85 c9 78 56 66 0f 1f 44 00 00 48 83 
-[10607.328033] RIP  [<ffffffffa0164f95>] qword_add+0x5/0xd0 [sunrpc]
-[10607.328033]  RSP <ffff88000307db58>
-[10607.328033] CR2: 0000000000000000
-[10607.961841] ---[ end trace b5a4adf462b23e9a ]---
+Would it make more sense to make the idle timeout configurable?  I
+couldn't see why disconnecting idle AF_LOCAL rpcbind connections would
+be particularly important anyway.
 
-Does it look familiar at all?
+--b.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+commit 6656841afa0602f7aae3e42648eb44bfe79f7389
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Wed Feb 20 17:52:19 2013 -0500
+
+    SUNRPC: make AF_LOCAL connect synchronous
+    
+    It doesn't appear that anyone actually needs to connect asynchronously.
+    
+    Also, using a workqueue for the connect means we lose the namespace
+    information from the original process.  This is a problem since there's
+    no way to explicitly pass in a filesystem namespace for resolution of an
+    AF_LOCAL address.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index bbc0915..b1df874 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1866,13 +1866,9 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
+  * @xprt: RPC transport to connect
+  * @transport: socket transport to connect
+  * @create_sock: function to create a socket of the correct type
+- *
+- * Invoked by a work queue tasklet.
+  */
+-static void xs_local_setup_socket(struct work_struct *work)
++static void xs_local_setup_socket(struct sock_xprt *transport)
+ {
+-	struct sock_xprt *transport =
+-		container_of(work, struct sock_xprt, connect_worker.work);
+ 	struct rpc_xprt *xprt = &transport->xprt;
+ 	struct socket *sock;
+ 	int status = -EIO;
+@@ -1919,6 +1915,31 @@ out:
+ 	current->flags &= ~PF_FSTRANS;
+ }
+ 
++static void xs_local_connect(struct rpc_task *task)
++{
++	struct rpc_xprt *xprt = task->tk_xprt;
++	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
++	unsigned long timeout;
++
++	 if (RPC_IS_ASYNC(task))
++	 	rpc_exit(task, -ENOTCONN);
++
++	if (transport->sock != NULL && !RPC_IS_SOFTCONN(task)) {
++		dprintk("RPC:       xs_connect delayed xprt %p for %lu "
++				"seconds\n",
++				xprt, xprt->reestablish_timeout / HZ);
++		timeout = xprt->reestablish_timeout;
++		xprt->reestablish_timeout <<= 1;
++		if (xprt->reestablish_timeout < XS_TCP_INIT_REEST_TO)
++			xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
++		if (xprt->reestablish_timeout > XS_TCP_MAX_REEST_TO)
++			xprt->reestablish_timeout = XS_TCP_MAX_REEST_TO;
++		rpc_delay(task, timeout);
++	} else
++		dprintk("RPC:       xs_connect scheduled xprt %p\n", xprt);
++	xs_local_setup_socket(transport);
++}
++
+ #ifdef CONFIG_SUNRPC_SWAP
+ static void xs_set_memalloc(struct rpc_xprt *xprt)
+ {
+@@ -2454,7 +2475,7 @@ static struct rpc_xprt_ops xs_local_ops = {
+ 	.alloc_slot		= xprt_alloc_slot,
+ 	.rpcbind		= xs_local_rpcbind,
+ 	.set_port		= xs_local_set_port,
+-	.connect		= xs_connect,
++	.connect		= xs_local_connect,
+ 	.buf_alloc		= rpc_malloc,
+ 	.buf_free		= rpc_free,
+ 	.send_request		= xs_local_send_request,
+@@ -2627,8 +2648,6 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
+ 			goto out_err;
+ 		}
+ 		xprt_set_bound(xprt);
+-		INIT_DELAYED_WORK(&transport->connect_worker,
+-					xs_local_setup_socket);
+ 		xs_format_peer_addresses(xprt, "local", RPCBIND_NETID_LOCAL);
+ 		break;
+ 	default:
+
+commit 3d622fe729b9b4382785c3ef2ef61e484df1b3ec
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Thu Feb 21 10:14:22 2013 -0500
+
+    SUNRPC: attempt AF_LOCAL connect on setup
+    
+    In the gss-proxy case, setup time is when I know I'll have the right
+    namespace for the connect.
+    
+    In other cases, it might be useful to get any connection errors
+    earlier--though actually in practice it doesn't make any difference for
+    rpcbind.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index b1df874..f2cf652 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1867,7 +1867,7 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
+  * @transport: socket transport to connect
+  * @create_sock: function to create a socket of the correct type
+  */
+-static void xs_local_setup_socket(struct sock_xprt *transport)
++static int xs_local_setup_socket(struct sock_xprt *transport)
+ {
+ 	struct rpc_xprt *xprt = &transport->xprt;
+ 	struct socket *sock;
+@@ -1913,6 +1913,7 @@ out:
+ 	xprt_clear_connecting(xprt);
+ 	xprt_wake_pending_tasks(xprt, status);
+ 	current->flags &= ~PF_FSTRANS;
++	return status;
+ }
+ 
+ static void xs_local_connect(struct rpc_task *task)
+@@ -2649,6 +2650,9 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
+ 		}
+ 		xprt_set_bound(xprt);
+ 		xs_format_peer_addresses(xprt, "local", RPCBIND_NETID_LOCAL);
++		ret = ERR_PTR(xs_local_setup_socket(transport));
++		if (ret)
++			goto out_err;
+ 		break;
+ 	default:
+ 		ret = ERR_PTR(-EAFNOSUPPORT);
+
+commit 1a67db92015506ca07e6fc7a24583917adcbb43d
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Wed Feb 20 18:08:52 2013 -0500
+
+    SUNRPC: no idle timeout for AF_LOCAL sockets
+    
+    In the gss-proxy case I don't want to have to reconnect at random--I
+    want to connect only on gss-proxy startup when I can steal gss-proxy's
+    context to do the connect in the right namespace.
+    
+    And surely an AF_LOCAL socket isn't a ton of state to keep around--how
+    about we just turn off the idle timeout for AF_LOCAL sockets.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index f2cf652..a32227e 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2635,7 +2635,7 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
+ 
+ 	xprt->bind_timeout = XS_BIND_TO;
+ 	xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
+-	xprt->idle_timeout = XS_IDLE_DISC_TO;
++	xprt->idle_timeout = 0;
+ 
+ 	xprt->ops = &xs_local_ops;
+ 	xprt->timeout = &xs_local_default_timeout;
