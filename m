@@ -1,71 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ye0-f178.google.com ([209.85.213.178]:48935 "EHLO
-	mail-ye0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750729Ab3BOUEm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Feb 2013 15:04:42 -0500
-Received: by mail-ye0-f178.google.com with SMTP id j12so614241yeg.37
-        for <linux-nfs@vger.kernel.org>; Fri, 15 Feb 2013 12:04:40 -0800 (PST)
+Received: from mail-qa0-f53.google.com ([209.85.216.53]:49953 "EHLO
+	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756449Ab3BUS2p (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Feb 2013 13:28:45 -0500
+Received: by mail-qa0-f53.google.com with SMTP id z4so3168166qan.19
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Feb 2013 10:28:45 -0800 (PST)
 From: Jeff Layton <jlayton@redhat.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com
-Subject: [PATCH RFC] nfsd: report length of the largest hash chain in reply cache stats
-Date: Fri, 15 Feb 2013 15:04:32 -0500
-Message-Id: <1360958672-5692-1-git-send-email-jlayton@redhat.com>
-In-Reply-To: <20130215133406.20b1ef09@tlielax.poochiereds.net>
-References: <20130215133406.20b1ef09@tlielax.poochiereds.net>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 1/5] nfsd: break out comparator into separate function
+Date: Thu, 21 Feb 2013 13:28:34 -0500
+Message-Id: <1361471318-17971-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1361471318-17971-1-git-send-email-jlayton@redhat.com>
+References: <1361471318-17971-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-So we can get a feel for how effective the hashing function is.
+Break out the function that compares the rqstp and checksum against a
+reply cache entry. While we're at it, track the efficacy of the checksum
+over the NFS data by tracking the cases where we would have incorrectly
+matched a DRC entry if we had not tracked it or the length.
 
-As Chuck Lever pointed out to me, it's generally acceptable to do
-"expensive" stuff when reading the stats since that's a relatively
-rare activity.
-
-Cc: Chuck Lever <chuck.lever@oracle.com>
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/nfscache.c | 20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
+ fs/nfsd/nfscache.c | 33 +++++++++++++++++++++++----------
+ 1 file changed, 23 insertions(+), 10 deletions(-)
 
 diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index a5ac9ab..172e211 100644
+index ca43664..8986568 100644
 --- a/fs/nfsd/nfscache.c
 +++ b/fs/nfsd/nfscache.c
-@@ -551,6 +551,25 @@ nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *data)
- 	return 1;
+@@ -25,6 +25,7 @@ static struct list_head 	lru_head;
+ static struct kmem_cache	*drc_slab;
+ static unsigned int		num_drc_entries;
+ static unsigned int		max_drc_entries;
++static unsigned int		csum_misses;
+ 
+ /*
+  * Calculate the hash index from an XID.
+@@ -272,6 +273,26 @@ nfsd_cache_csum(struct svc_rqst *rqstp)
+ 	return csum;
  }
  
-+/* Get stats on the hashtable itself */
-+static unsigned int
-+nfsd_repcache_max_chain_len(void)
++static bool
++nfsd_cache_match(struct svc_rqst *rqstp, __wsum csum, struct svc_cacherep *rp)
 +{
-+	int i;
-+	struct hlist_node *pos;
-+	unsigned int max = 0;
++	/* Check RPC header info first */
++	if (rqstp->rq_xid != rp->c_xid || rqstp->rq_proc != rp->c_proc ||
++	    rqstp->rq_prot != rp->c_prot || rqstp->rq_vers != rp->c_vers ||
++	    rqstp->rq_arg.len != rp->c_len ||
++	    !rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) ||
++	    rpc_get_port(svc_addr(rqstp)) != rpc_get_port((struct sockaddr *)&rp->c_addr))
++		return false;
 +
-+	for (i = 0; i < HASHSIZE; ++i) {
-+		unsigned int cur = 0;
-+
-+		hlist_for_each(pos, &cache_hash[i])
-+			++cur;
-+		max = max(cur, max);
++	/* compare checksum of NFS data */
++	if (csum != rp->c_csum) {
++		++csum_misses;
++		return false;
 +	}
 +
-+	return max;
++	return true;
 +}
 +
  /*
-  * Note that fields may be added, removed or reordered in the future. Programs
-  * scraping this file for info should test the labels to ensure they're
-@@ -566,6 +585,7 @@ static int nfsd_reply_cache_stats_show(struct seq_file *m, void *v)
- 	seq_printf(m, "cache misses:    %u\n", nfsdstats.rcmisses);
- 	seq_printf(m, "not cached:      %u\n", nfsdstats.rcnocache);
- 	seq_printf(m, "checksum misses: %u\n", csum_misses);
-+	seq_printf(m, "max chain len:   %u\n", nfsd_repcache_max_chain_len());
- 	spin_unlock(&cache_lock);
- 	return 0;
- }
+  * Search the request hash for an entry that matches the given rqstp.
+  * Must be called with cache_lock held. Returns the found entry or
+@@ -283,18 +304,10 @@ nfsd_cache_search(struct svc_rqst *rqstp, __wsum csum)
+ 	struct svc_cacherep	*rp;
+ 	struct hlist_node	*hn;
+ 	struct hlist_head 	*rh;
+-	__be32			xid = rqstp->rq_xid;
+-	u32			proto =  rqstp->rq_prot,
+-				vers = rqstp->rq_vers,
+-				proc = rqstp->rq_proc;
+ 
+-	rh = &cache_hash[request_hash(xid)];
++	rh = &cache_hash[request_hash(rqstp->rq_xid)];
+ 	hlist_for_each_entry(rp, hn, rh, c_hash) {
+-		if (xid == rp->c_xid && proc == rp->c_proc &&
+-		    proto == rp->c_prot && vers == rp->c_vers &&
+-		    rqstp->rq_arg.len == rp->c_len && csum == rp->c_csum &&
+-		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
+-		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr))
++		if (nfsd_cache_match(rqstp, csum, rp))
+ 			return rp;
+ 	}
+ 	return NULL;
 -- 
 1.7.11.7
 
