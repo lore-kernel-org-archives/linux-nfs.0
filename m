@@ -1,124 +1,735 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:52092 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:34335 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759345Ab3BXXrh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 24 Feb 2013 18:47:37 -0500
-Date: Mon, 25 Feb 2013 09:52:41 +1100
-From: NeilBrown <neilb@suse.de>
-To: Bodo Stroesser <bstroesser@ts.fujitsu.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] sunrpc.ko: RPC cache fix races
-Message-ID: <20130225095241.7e2313af@notabene.brown>
-In-Reply-To: <61eb00$3f9tb7@dgate20u.abg.fsc.net>
-References: <61eb00$3f9tb7@dgate20u.abg.fsc.net>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/=27/O6fye5Ujn=WLkfhNXlf"; protocol="application/pgp-signature"
+	id S1755043Ab3BUQi3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Feb 2013 11:38:29 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond.Myklebust@netapp.com, chuck.lever@oracle.com, simo@redhat.com,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 6/6] SUNRPC: Use gssproxy upcall for server RPCGSS authentication.
+Date: Thu, 21 Feb 2013 11:38:25 -0500
+Message-Id: <1361464705-12340-7-git-send-email-bfields@redhat.com>
+In-Reply-To: <1361464705-12340-1-git-send-email-bfields@redhat.com>
+References: <1361464705-12340-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/=27/O6fye5Ujn=WLkfhNXlf
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+From: Simo Sorce <simo@redhat.com>
 
-On 21 Feb 2013 16:44:41 +0100 Bodo Stroesser <bstroesser@ts.fujitsu.com>
-wrote:
+The main advantge of this new upcall mechanism is that it can handle
+big tickets as seen in Kerberos implementations where tickets carry
+authorization data like the MS-PAC buffer with AD or the Posix Authorization
+Data being discussed in IETF on the krbwg working group.
 
-> On 21 Feb 2013 00:55:00 +0100 neilb@suse.de wrote:
->=20
-> > On 20 Feb 2013 14:57:07 +0100 bstroesser@ts.fujitsu.com wrote:
-> >=20
-> > > On 20 Feb 2013 04:09:00 +0100 neilb@suse.de wrote:
->=20
-> snip
->=20
-> > > > Maybe:
-> > > >=20
-> > > >   switch(cache_make_upcall(detail, h)) {
-> > > >   case -EINVAL:
-> > > >         if (rv) {
-> > > > 		set_bit(CACHE_NEGATIVE, &h->flags);
-> > > > 		cache_fresh_locked(h, get_seconds() + CACHE_NEW_EXPIRY);
-> > > > 		rv =3D -ENOENT;
-> > > > 	}
-> > > > 	/* FALLTHROUGH */
-> > > >   case -EAGAIN:
-> > > > 	cache_fresh_unlocked(h, detail);
-> > > >   }
-> > >=20
-> > > I agree, your patch is obviously better than the mine.
-> > > But let me suggest one little change: I would like to substitute
-> > > cache_fresh_unlocked() by clear_bit() and cache_revisit_request(),
-> > > as the call to cache_dequeue() in cache_fresh_unlocked() seems to
-> > > be obsolete here:
-> >=20
-> > It is exactly this sort of thinking (on my part) that got us into this =
-mess
-> > in the first place.  I reasoned that the full locking/testing/whatever =
-wasn't
-> > necessary and took a short cut.  It wasn't a good idea.
->=20
-> Maybe I'm totally wrong, but AFAICS, calling cache_dequeue() here in extr=
-eme
-> situations (two threads in parallel calling check_cache() while a first r=
-eader
-> is going to open cache access) could again cause a race (?)
+The Gssproxy program is used to perform the accept_sec_context call on the
+kernel's behalf. The code is changed to also pass the input buffer straight
+to upcall mechanism to avoid allocating and copying many pages as tokens can
+be as big (potentially more in future) as 64KiB.
 
-Can you explain the race you see?
+Signed-off-by: Simo Sorce <simo@redhat.com>
+[bfields: containerization, concurrent upcalls, negotiation api]
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ Documentation/filesystems/nfs/00-INDEX           |    2 +
+ Documentation/filesystems/nfs/rpc-server-gss.txt |   91 ++++++
+ net/sunrpc/auth_gss/gss_rpc_upcall.c             |   75 ++---
+ net/sunrpc/auth_gss/gss_rpc_upcall.h             |    4 +
+ net/sunrpc/auth_gss/svcauth_gss.c                |  347 +++++++++++++++++++++-
+ net/sunrpc/clnt.c                                |    1 +
+ net/sunrpc/netns.h                               |    6 +
+ 7 files changed, 483 insertions(+), 43 deletions(-)
+ create mode 100644 Documentation/filesystems/nfs/rpc-server-gss.txt
 
->=20
-> BTW: if there is a reader for a cache, is there any protection against ma=
-ny
-> upcalls being queued for the same cache entry?
+diff --git a/Documentation/filesystems/nfs/00-INDEX b/Documentation/filesystems/nfs/00-INDEX
+index 1716874..66eb6c8 100644
+--- a/Documentation/filesystems/nfs/00-INDEX
++++ b/Documentation/filesystems/nfs/00-INDEX
+@@ -20,3 +20,5 @@ rpc-cache.txt
+ 	- introduction to the caching mechanisms in the sunrpc layer.
+ idmapper.txt
+ 	- information for configuring request-keys to be used by idmapper
++knfsd-rpcgss.txt
++	- Information on GSS authentication support in the NFS Server
+diff --git a/Documentation/filesystems/nfs/rpc-server-gss.txt b/Documentation/filesystems/nfs/rpc-server-gss.txt
+new file mode 100644
+index 0000000..716f4be
+--- /dev/null
++++ b/Documentation/filesystems/nfs/rpc-server-gss.txt
+@@ -0,0 +1,91 @@
++
++rpcsec_gss support for kernel RPC servers
++=========================================
++
++This document gives references to the standards and protocols used to
++implement RPCGSS authentication in kernel RPC servers such as the NFS
++server and the NFS client's NFSv4.0 callback server.  (But note that
++NFSv4.1 and higher don't require the client to act as a server for the
++purposes of authentication.)
++
++RPCGSS is specified in a few IETF documents:
++ - RFC2203 v1: http://tools.ietf.org/rfc/rfc2203.txt
++ - RFC5403 v2: http://tools.ietf.org/rfc/rfc5403.txt
++and there is a 3rd version  being proposed:
++ - http://tools.ietf.org/id/draft-williams-rpcsecgssv3.txt
++   (At draft n. 02 at the time of writing)
++
++Background
++----------
++
++The RPCGSS Authentication method describes a way to perform GSSAPI
++Authentication for NFS.  Although GSSAPI is itself completely mechanism
++agnostic, in many cases only the KRB5 mechanism is supported by NFS
++implementations.
++
++The Linux kernel, at the moment, supports only the KRB5 mechanism, and
++depends on GSSAPI extensions that are KRB5 specific.
++
++GSSAPI is a complex library, and implementing it completely in kernel is
++unwarranted. However GSSAPI operations are fundementally separable in 2
++parts:
++- initial context establishment
++- integrity/privacy protection (signing and encrypting of individual
++  packets)
++
++The former is more complex and policy-independent, but less
++performance-sensitive.  The latter is simpler and needs to be very fast.
++
++Therefore, we perform per-packet integrity and privacy protection in the
++kernel, but leave the initial context establishment to userspace.  We
++need upcalls to request userspace to perform context establishment.
++
++NFS Server Legacy Upcall Mechanism
++----------------------------------
++
++The classic upcall mechanism uses a custom text based upcall mechanism
++to talk to a custom daemon called rpc.svcgssd that is provide by the
++nfs-utils package.
++
++This upcall mechanism has 2 limitations:
++
++A) It can handle tokens that are no bigger than 2KiB
++
++In some Kerberos deployment GSSAPI tokens can be quite big, up and
++beyond 64KiB in size due to various authorization extensions attacked to
++the Kerberos tickets, that needs to be sent through the GSS layer in
++order to perform context establishment.
++
++B) It does not properly handle creds where the user is member of more
++than a few housand groups (the current hard limit in the kernel is 65K
++groups) due to limitation on the size of the buffer that can be send
++back to the kernel (4KiB).
++
++NFS Server New RPC Upcall Mechanism
++-----------------------------------
++
++The newer upcall mechanism uses RPC over a unix socket to a daemon
++called gss-proxy, implemented by a userspace program called Gssproxy.
++
++The gss_proxy RPC protocol is currently documented here:
++
++	https://fedorahosted.org/gss-proxy/wiki/ProtocolDocumentation
++
++This upcall mechanism uses the kernel rpc client and connects to the gssproxy
++userspace program over a regular unix socket. The gssproxy protocol does not
++suffer from the size limitations of the legacy protocol.
++
++Negotiating Upcall Mechanisms
++-----------------------------
++
++To provide backward compatibility, the kernel defaults to using the
++legacy mechanism.  To switch to the new mechanism, gss-proxy must bind
++to /var/run/gssproxy.sock and then write "1" to
++/proc/net/rpc/use-gss-proxy.  If gss-proxy dies, it must repeat both
++steps.
++
++Once the upcall mechanism is chosen, it cannot be changed.  To prevent
++locking into the legacy mechanisms, the above steps must be performed
++before starting nfsd.  Whoever starts nfsd can guarantee this by reading
++from /proc/net/rpc/use-gss-proxy and checking that it contains a
++"1"--the read will block until gss-proxy has done its write to the file.
+diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.c b/net/sunrpc/auth_gss/gss_rpc_upcall.c
+index 5fd8c91..229f941 100644
+--- a/net/sunrpc/auth_gss/gss_rpc_upcall.c
++++ b/net/sunrpc/auth_gss/gss_rpc_upcall.c
+@@ -29,9 +29,6 @@
+ #define GSSPROXY_PROGRAM	(400112u)
+ #define GSSPROXY_VERS_1		(1u)
+ 
+-DEFINE_MUTEX(gssp_clnt_mutex);
+-struct rpc_clnt *gssp_clnt;
+-
+ /*
+  * Encoding/Decoding functions
+  */
+@@ -129,49 +126,62 @@ out:
+ 	return result;
+ }
+ 
+-static struct rpc_clnt *get_clnt(struct net *net, bool global_clnt)
++void init_gssp_clnt(struct sunrpc_net *sn)
+ {
+-	struct rpc_clnt *clnt;
+-	int err;
+-
+-	mutex_lock(&gssp_clnt_mutex);
++	mutex_init(&sn->gssp_lock);
++	sn->gssp_clnt = NULL;
++	init_waitqueue_head(&sn->gssp_wq);
++}
+ 
+-	if (global_clnt && gssp_clnt)
+-		return gssp_clnt;
++int set_gssp_clnt(struct net *net)
++{
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++	struct rpc_clnt *clnt;
++	int ret;
+ 
+-	err = gssp_rpc_create(net, &clnt);
+-	if (err) {
+-		mutex_unlock(&gssp_clnt_mutex);
+-		return NULL;
++	mutex_lock(&sn->gssp_lock);
++	ret = gssp_rpc_create(net, &clnt);
++	if (!ret) {
++		if (sn->gssp_clnt)
++			rpc_shutdown_client(sn->gssp_clnt);
++		sn->gssp_clnt = clnt;
+ 	}
+-	if (global_clnt)
+-		gssp_clnt = clnt;
+-
+-	mutex_unlock(&gssp_clnt_mutex);
+-	return clnt;
++	mutex_unlock(&sn->gssp_lock);
++	wake_up(&sn->gssp_wq);
++	return ret;
+ }
+ 
+-static void kill_clnt(struct rpc_clnt *clnt)
++void clear_gssp_clnt(struct sunrpc_net *sn)
+ {
+-	BUG_ON(clnt == NULL);
+-
+-	mutex_lock(&gssp_clnt_mutex);
++	mutex_lock(&sn->gssp_lock);
++	if (sn->gssp_clnt) {
++		rpc_shutdown_client(sn->gssp_clnt);
++		sn->gssp_clnt = NULL;
++	}
++	mutex_unlock(&sn->gssp_lock);
++}
+ 
+-	rpc_shutdown_client(clnt);
+-	if (clnt == gssp_clnt)
+-		gssp_clnt = NULL;
++static struct rpc_clnt *get_gssp_clnt(struct sunrpc_net *sn)
++{
++	struct rpc_clnt *clnt;
+ 
+-	mutex_unlock(&gssp_clnt_mutex);
++	mutex_lock(&sn->gssp_lock);
++	clnt = sn->gssp_clnt;
++	if (clnt)
++		atomic_inc(&clnt->cl_count);
++	mutex_unlock(&sn->gssp_lock);
++	return clnt;
+ }
+ 
+ static int gssp_call(struct net *net, struct rpc_message *msg)
+ {
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 	struct rpc_clnt *clnt;
+ 	int status;
+ 
+-	/* for now always create new one */
+-	clnt = get_clnt(net, false);
+-
++	clnt = get_gssp_clnt(sn);
++	if (!clnt)
++		return -EIO;
+ 	status = rpc_call_sync(clnt, msg, 0);
+ 	if (status < 0) {
+ 		dprintk("gssp: rpc_call returned error %d\n", -status);
+@@ -192,10 +202,7 @@ static int gssp_call(struct net *net, struct rpc_message *msg)
+ 			break;
+ 		}
+ 	}
+-
+-	/* always kill connection for now */
+-	kill_clnt(clnt);
+-
++	rpc_release_client(clnt);
+ 	return status;
+ }
+ 
+diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.h b/net/sunrpc/auth_gss/gss_rpc_upcall.h
+index 83aca5a..4c2caaa 100644
+--- a/net/sunrpc/auth_gss/gss_rpc_upcall.h
++++ b/net/sunrpc/auth_gss/gss_rpc_upcall.h
+@@ -23,6 +23,7 @@
+ 
+ #include <linux/sunrpc/auth_gss.h>
+ #include "gss_rpc_xdr.h"
++#include "../netns.h"
+ 
+ struct gssp_upcall_data {
+ 	struct xdr_netobj in_handle;
+@@ -40,4 +41,7 @@ int gssp_accept_sec_context_upcall(struct net *net,
+ 				struct gssp_upcall_data *data);
+ void gssp_free_upcall_data(struct gssp_upcall_data *data);
+ 
++void init_gssp_clnt(struct sunrpc_net *);
++int set_gssp_clnt(struct net *);
++void clear_gssp_clnt(struct sunrpc_net *);
+ #endif /* _GSS_RPC_UPCALL_H */
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 8fff637..94e6fff 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -48,8 +48,8 @@
+ #include <linux/sunrpc/svcauth.h>
+ #include <linux/sunrpc/svcauth_gss.h>
+ #include <linux/sunrpc/cache.h>
++#include "gss_rpc_upcall.h"
+ 
+-#include "../netns.h"
+ 
+ #ifdef RPC_DEBUG
+ # define RPCDBG_FACILITY	RPCDBG_AUTH
+@@ -976,13 +976,10 @@ gss_write_init_verf(struct cache_detail *cd, struct svc_rqst *rqstp,
+ }
+ 
+ static inline int
+-gss_read_verf(struct rpc_gss_wire_cred *gc,
+-	      struct kvec *argv, __be32 *authp,
+-	      struct xdr_netobj *in_handle,
+-	      struct xdr_netobj *in_token)
++gss_read_common_verf(struct rpc_gss_wire_cred *gc,
++		     struct kvec *argv, __be32 *authp,
++		     struct xdr_netobj *in_handle)
+ {
+-	struct xdr_netobj tmpobj;
+-
+ 	/* Read the verifier; should be NULL: */
+ 	*authp = rpc_autherr_badverf;
+ 	if (argv->iov_len < 2 * 4)
+@@ -998,6 +995,23 @@ gss_read_verf(struct rpc_gss_wire_cred *gc,
+ 	if (dup_netobj(in_handle, &gc->gc_ctx))
+ 		return SVC_CLOSE;
+ 	*authp = rpc_autherr_badverf;
++
++	return 0;
++}
++
++static inline int
++gss_read_verf(struct rpc_gss_wire_cred *gc,
++	      struct kvec *argv, __be32 *authp,
++	      struct xdr_netobj *in_handle,
++	      struct xdr_netobj *in_token)
++{
++	struct xdr_netobj tmpobj;
++	int res;
++
++	res = gss_read_common_verf(gc, argv, authp, in_handle);
++	if (res)
++		return res;
++
+ 	if (svc_safe_getnetobj(argv, &tmpobj)) {
+ 		kfree(in_handle->data);
+ 		return SVC_DENIED;
+@@ -1010,6 +1024,40 @@ gss_read_verf(struct rpc_gss_wire_cred *gc,
+ 	return 0;
+ }
+ 
++/* Ok this is really heavily depending on a set of semantics in
++ * how rqstp is set up by svc_recv and pages laid down by the
++ * server when reading a request. We are basically guaranteed that
++ * the token lays all down linearly across a set of pages, starting
++ * at iov_base in rq_arg.head[0] which happens to be the first of a
++ * set of pages stored in rq_pages[].
++ * rq_arg.head[0].iov_base will provide us the page_base to pass
++ * to the upcall.
++ */
++static inline int
++gss_read_proxy_verf(struct svc_rqst *rqstp,
++		    struct rpc_gss_wire_cred *gc, __be32 *authp,
++		    struct xdr_netobj *in_handle,
++		    struct gssp_in_token *in_token)
++{
++	struct kvec *argv = &rqstp->rq_arg.head[0];
++	u32 inlen;
++	int res;
++
++	res = gss_read_common_verf(gc, argv, authp, in_handle);
++	if (res)
++		return res;
++
++	inlen = svc_getnl(argv);
++	if (inlen > (argv->iov_len + rqstp->rq_arg.page_len))
++		return SVC_DENIED;
++
++	in_token->pages = rqstp->rq_pages;
++	in_token->page_base = (ulong)argv->iov_base & ~PAGE_MASK;
++	in_token->page_len = inlen;
++
++	return 0;
++}
++
+ static inline int
+ gss_write_resv(struct kvec *resv, size_t size_limit,
+ 	       struct xdr_netobj *out_handle, struct xdr_netobj *out_token,
+@@ -1037,7 +1085,7 @@ gss_write_resv(struct kvec *resv, size_t size_limit,
+  * the upcall results are available, write the verifier and result.
+  * Otherwise, drop the request pending an answer to the upcall.
+  */
+-static int svcauth_gss_handle_init(struct svc_rqst *rqstp,
++static int svcauth_gss_legacy_init(struct svc_rqst *rqstp,
+ 			struct rpc_gss_wire_cred *gc, __be32 *authp)
+ {
+ 	struct kvec *argv = &rqstp->rq_arg.head[0];
+@@ -1077,6 +1125,278 @@ out:
+ 	return ret;
+ }
+ 
++static int gss_proxy_save_rsc(struct cache_detail *cd,
++				struct gssp_upcall_data *ud,
++				uint64_t *handle)
++{
++	struct rsc rsci, *rscp = NULL;
++	static atomic64_t ctxhctr;
++	long long ctxh;
++	struct gss_api_mech *gm = NULL;
++	time_t expiry;
++	int status = -EINVAL;
++
++	memset(&rsci, 0, sizeof(rsci));
++	/* context handle */
++	status = -ENOMEM;
++	/* the handle needs to be just a unique id,
++	 * use a static counter */
++	ctxh = atomic64_inc_return(&ctxhctr);
++
++	/* make a copy for the caller */
++	*handle = ctxh;
++
++	/* make a copy for the rsc cache */
++	if (dup_to_netobj(&rsci.handle, (char *)handle, sizeof(uint64_t)))
++		goto out;
++	rscp = rsc_lookup(cd, &rsci);
++	if (!rscp)
++		goto out;
++
++	/* creds */
++	if (!ud->found_creds) {
++		/* userspace seem buggy, we should always get at least a
++		 * mapping to nobody */
++		dprintk("RPC:       No creds found, marking Negative!\n");
++		set_bit(CACHE_NEGATIVE, &rsci.h.flags);
++	} else {
++
++		/* steal creds */
++		rsci.cred = ud->creds;
++		memset(&ud->creds, 0, sizeof(struct svc_cred));
++
++		status = -EOPNOTSUPP;
++		/* get mech handle from OID */
++		gm = gss_mech_get_by_OID(&ud->mech_oid);
++		if (!gm)
++			goto out;
++
++		status = -EINVAL;
++		/* mech-specific data: */
++		status = gss_import_sec_context(ud->out_handle.data,
++						ud->out_handle.len,
++						gm, &rsci.mechctx,
++						&expiry, GFP_KERNEL);
++		if (status)
++			goto out;
++	}
++
++	rsci.h.expiry_time = expiry;
++	rscp = rsc_update(cd, &rsci, rscp);
++	status = 0;
++out:
++	gss_mech_put(gm);
++	rsc_free(&rsci);
++	if (rscp)
++		cache_put(&rscp->h, cd);
++	else
++		status = -ENOMEM;
++	return status;
++}
++
++static int svcauth_gss_proxy_init(struct svc_rqst *rqstp,
++			struct rpc_gss_wire_cred *gc, __be32 *authp)
++{
++	struct kvec *resv = &rqstp->rq_res.head[0];
++	struct xdr_netobj cli_handle;
++	struct gssp_upcall_data ud;
++	uint64_t handle;
++	int status;
++	int ret;
++	struct net *net = rqstp->rq_xprt->xpt_net;
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++
++	memset(&ud, 0, sizeof(ud));
++	ret = gss_read_proxy_verf(rqstp, gc, authp,
++				  &ud.in_handle, &ud.in_token);
++	if (ret)
++		return ret;
++
++	ret = SVC_CLOSE;
++
++	/* Perform synchronous upcall to gss-proxy */
++	status = gssp_accept_sec_context_upcall(net, &ud);
++	if (status)
++		goto out;
++
++	dprintk("RPC:       svcauth_gss: gss major status = %d\n",
++			ud.major_status);
++
++	switch (ud.major_status) {
++	case GSS_S_CONTINUE_NEEDED:
++		cli_handle = ud.out_handle;
++		break;
++	case GSS_S_COMPLETE:
++		status = gss_proxy_save_rsc(sn->rsc_cache, &ud, &handle);
++		if (status)
++			goto out;
++		cli_handle.data = (u8 *)&handle;
++		cli_handle.len = sizeof(handle);
++		break;
++	default:
++		ret = SVC_CLOSE;
++		goto out;
++	}
++
++	/* Got an answer to the upcall; use it: */
++	if (gss_write_init_verf(sn->rsc_cache, rqstp,
++				&cli_handle, &ud.major_status))
++		goto out;
++	if (gss_write_resv(resv, PAGE_SIZE,
++			   &cli_handle, &ud.out_token,
++			   ud.major_status, ud.minor_status))
++		goto out;
++
++	ret = SVC_COMPLETE;
++out:
++	gssp_free_upcall_data(&ud);
++	return ret;
++}
++
++DEFINE_SPINLOCK(use_gssp_lock);
++
++static bool use_gss_proxy(struct net *net)
++{
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++
++	if (sn->use_gss_proxy != -1)
++		return sn->use_gss_proxy;
++	spin_lock(&use_gssp_lock);
++	/*
++	 * If you wanted gss-proxy, you should have said so before
++	 * starting to accept requests:
++	 */
++	sn->use_gss_proxy = 0;
++	spin_unlock(&use_gssp_lock);
++	return 0;
++}
++
++static bool set_gss_proxy(struct net *net, int type)
++{
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++	int ret = 0;
++
++	WARN_ON_ONCE(type != 0 && type != 1);
++	spin_lock(&use_gssp_lock);
++	if (sn->use_gss_proxy == -1 || sn->use_gss_proxy == type)
++		sn->use_gss_proxy = type;
++	else
++		ret = -EBUSY;
++	spin_unlock(&use_gssp_lock);
++	wake_up(&sn->gssp_wq);
++	return ret;
++}
++
++static inline bool gssp_ready(struct sunrpc_net *sn)
++{
++	switch (sn->use_gss_proxy) {
++		case -1:
++			return false;
++		case 0:
++			return true;
++		case 1:
++			return sn->gssp_clnt;
++	}
++	WARN_ON_ONCE(1);
++	return false;
++}
++
++static int wait_for_gss_proxy(struct net *net)
++{
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++
++	return wait_event_interruptible(sn->gssp_wq, gssp_ready(sn));
++}
++
++#ifdef CONFIG_PROC_FS
++
++static ssize_t write_gssp(struct file *file, const char __user *buf,
++			 size_t count, loff_t *ppos)
++{
++	struct net *net = PDE(file->f_path.dentry->d_inode)->data;
++	char tbuf[20];
++	unsigned long i;
++	int res;
++
++	if (*ppos || count > sizeof(tbuf)-1)
++		return -EINVAL;
++	if (copy_from_user(tbuf, buf, count))
++		return -EFAULT;
++
++	tbuf[count] = 0;
++	res = kstrtoul(tbuf, 0, &i);
++	if (res)
++		return res;
++	if (i != 1)
++		return -EINVAL;
++	res = set_gss_proxy(net, 1);
++	if (res)
++		return res;
++	res = set_gssp_clnt(net);
++	if (res)
++		return res;
++	return count;
++}
++
++static ssize_t read_gssp(struct file *file, char __user *buf,
++			 size_t count, loff_t *ppos)
++{
++	struct net *net = PDE(file->f_path.dentry->d_inode)->data;
++	unsigned long p = *ppos;
++	char tbuf[10];
++	size_t len;
++	int ret;
++
++	ret = wait_for_gss_proxy(net);
++	if (ret)
++		return ret;
++
++	snprintf(tbuf, sizeof(tbuf), "%d\n", use_gss_proxy(net));
++	len = strlen(tbuf);
++	if (p >= len)
++		return 0;
++	len -= p;
++	if (len > count)
++		len = count;
++	if (copy_to_user(buf, (void *)(tbuf+p), len))
++		return -EFAULT;
++	*ppos += len;
++	return len;
++}
++
++static const struct file_operations use_gss_proxy_ops = {
++	.open = nonseekable_open,
++	.write = write_gssp,
++	.read = read_gssp,
++};
++
++static int create_use_gss_proxy_proc_entry(struct net *net)
++{
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++	struct proc_dir_entry **p = &sn->use_gssp_proc;
++
++	sn->use_gss_proxy = -1;
++	*p = proc_create_data("use-gss-proxy", S_IFREG|S_IRUSR|S_IWUSR,
++			      sn->proc_net_rpc,
++			      &use_gss_proxy_ops, net);
++	if (!*p)
++		return -ENOMEM;
++	init_gssp_clnt(sn);
++	return 0;
++}
++
++static void destroy_use_gss_proxy_proc_entry(struct net *net)
++{
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++
++	if (sn->use_gssp_proc) {
++		remove_proc_entry("use-gss-proxy", sn->proc_net_rpc); 
++		clear_gssp_clnt(sn);
++	}
++}
++
++#endif /* CONFIG_PROC_FS */
++
+ /*
+  * Accept an rpcsec packet.
+  * If context establishment, punt to user space
+@@ -1143,7 +1463,10 @@ svcauth_gss_accept(struct svc_rqst *rqstp, __be32 *authp)
+ 	switch (gc->gc_proc) {
+ 	case RPC_GSS_PROC_INIT:
+ 	case RPC_GSS_PROC_CONTINUE_INIT:
+-		return svcauth_gss_handle_init(rqstp, gc, authp);
++		if (use_gss_proxy(SVC_NET(rqstp)))
++			return svcauth_gss_proxy_init(rqstp, gc, authp);
++		else
++			return svcauth_gss_legacy_init(rqstp, gc, authp);
+ 	case RPC_GSS_PROC_DATA:
+ 	case RPC_GSS_PROC_DESTROY:
+ 		/* Look up the context, and check the verifier: */
+@@ -1518,7 +1841,12 @@ gss_svc_init_net(struct net *net)
+ 	rv = rsi_cache_create_net(net);
+ 	if (rv)
+ 		goto out1;
++	rv = create_use_gss_proxy_proc_entry(net);
++	if (rv)
++		goto out2;
+ 	return 0;
++out2:
++	destroy_use_gss_proxy_proc_entry(net);
+ out1:
+ 	rsc_cache_destroy_net(net);
+ 	return rv;
+@@ -1527,6 +1855,7 @@ out1:
+ void
+ gss_svc_shutdown_net(struct net *net)
+ {
++	destroy_use_gss_proxy_proc_entry(net);
+ 	rsi_cache_destroy_net(net);
+ 	rsc_cache_destroy_net(net);
+ }
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index c8193ce..8f68c28 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -689,6 +689,7 @@ rpc_release_client(struct rpc_clnt *clnt)
+ 	if (atomic_dec_and_test(&clnt->cl_count))
+ 		rpc_free_auth(clnt);
+ }
++EXPORT_SYMBOL_GPL(rpc_release_client);
+ 
+ /**
+  * rpc_bind_new_program - bind a new RPC program to an existing client
+diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
+index ce7bd44..7111a4c 100644
+--- a/net/sunrpc/netns.h
++++ b/net/sunrpc/netns.h
+@@ -23,6 +23,12 @@ struct sunrpc_net {
+ 	struct rpc_clnt *rpcb_local_clnt4;
+ 	spinlock_t rpcb_clnt_lock;
+ 	unsigned int rpcb_users;
++
++	struct mutex gssp_lock;
++	wait_queue_head_t gssp_wq;
++	struct rpc_clnt *gssp_clnt;
++	int use_gss_proxy;
++	struct proc_dir_entry *use_gssp_proc;
+ };
+ 
+ extern int sunrpc_net_id;
+-- 
+1.7.9.5
 
-The CACHE_PENDING flag should provide that protection.  We only queue an
-upcall after "test_and_set", and always dequeue after "clear_bit".
-
-NeilBrown
-
-
->=20
-> Bodo
->=20
-> >=20
-> > Given that this is obviously difficult code to get right, we should mak=
-e it
-> > as easy to review as possible.  Have "cache_fresh_unlocked" makes it mo=
-re
-> > obviously correct, and that is a good thing.
-> > Maybe cache_dequeue isn't needed here, but it won't hurt so I'd much ra=
-ther
-> > have the clearer code.
-> > In fact, I'd also like to change
-> >=20
-> > 			if (test_and_clear_bit(CACHE_PENDING, &ch->flags))
-> > 				cache_dequeue(current_detail, ch);
-> > 			cache_revisit_request(ch);
-> >=20
-> > near the end of cache_clean to call  cache_fresh_unlocked().
-> >=20
-
-
---Sig_/=27/O6fye5Ujn=WLkfhNXlf
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.19 (GNU/Linux)
-
-iQIVAwUBUSqZuTnsnt1WYoG5AQI2rRAAnNubWuJ4dwl9WwVS6j2FupZ16D4Xo8xj
-LYaIRUS7J3+Jy0M9o8YwEsZXgjr74n1Ou4SQjBmS64nlX5Mvqh6txMSAqsMucKO9
-4LjLgoJl1PDpnGFpcL1Tash5XnpYxa9hc3wU3QxIrTvwIsxtdFzQlFJQjA7rEO4X
-Cf0DcZPHt6lCJ2mkbEdDOA/fXTB4GgyFrutGIJ5xsJvUlWSLCJ4lHiwpjJVMAP2q
-k7gcyDK0dV5KTEiELLODQq20IkkgrcOUIEjRtqm9ue4PLPaQFBXfO9olJ25PraSN
-YQOkYaQgBPdczJeRk62gkBkjqB68uWdKwClqo80vsA3u/FhRp/WKzj/rwk6nPjMF
-X18ken+/iK7wOQFaj4TSKz8HL1GRXZYp1P8qOH1Ckig0HzLXwZ87ZY1NpN5KSbcV
-tdzd4Uph12Wib4lJ4uJl1a6iug0Ofj/N6lTzebB6wWyTGTm01OOUj2YdNguGpBRY
-pihEhvb/Da2IwK3ZYMogej8gumRwJsYEovh6EswavkXVnKT47f363V0j56mPoHAv
-npQOEhRUpHw8qpnzn9hPL5hq4RpI5Ud5YJUY2T4hRvMDv6bQd+v0PeHBiRIiW6jN
-Nl+D6QsZWZA7D0POQwmiGtna73gCv0vSSIiK7whSae9a58sRjJENmzo4DESMsC6N
-MhxP331gJns=
-=ajzk
------END PGP SIGNATURE-----
-
---Sig_/=27/O6fye5Ujn=WLkfhNXlf--
