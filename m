@@ -1,73 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-da0-f48.google.com ([209.85.210.48]:57201 "EHLO
-	mail-da0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751887Ab3B1IXx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Feb 2013 03:23:53 -0500
-Received: by mail-da0-f48.google.com with SMTP id w4so746378dam.35
-        for <linux-nfs@vger.kernel.org>; Thu, 28 Feb 2013 00:23:53 -0800 (PST)
-Date: Thu, 28 Feb 2013 16:23:49 +0800
-From: majianpeng <majianpeng@gmail.com>
-To: bfields <bfields@redhat.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Reply-To: majianpeng <majianpeng@gmail.com>
-Subject: BUG: rpc.nfsd/5066 still has locks held!
-Mime-Version: 1.0
-Message-ID: <201302281623470389097@gmail.com>
-Content-Type: text/plain;
-	charset="gb2312"
+Received: from mx12.netapp.com ([216.240.18.77]:3644 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752786Ab3BUUCz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Feb 2013 15:02:55 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "simo@redhat.com" <simo@redhat.com>
+Subject: Re: [PATCH 1/6] SUNRPC: make AF_LOCAL connect synchronous
+Date: Thu, 21 Feb 2013 20:02:30 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9235DA946@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1361464705-12340-1-git-send-email-bfields@redhat.com>
+	 <1361464705-12340-2-git-send-email-bfields@redhat.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9235DA5F3@SACEXCMBX04-PRD.hq.netapp.com>
+	 <20130221194804.GC3531@pad.fieldses.org>
+In-Reply-To: <20130221194804.GC3531@pad.fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-QWZ0ZXIgIGkgdXBkYXRlZCB0aGUgbGFzdGVzdCBjb2RlLCB0aG9zZSBtZXNzYWdlcyBvY2N1cmVk
-LiBFdmVyeSByZWJvb3QsIGl0IGNhbiBvY2N1ciBhdCBsZWFzdCAxMCB0aW1lcy4NCg0KWyAgIDE3
-Ljc2MzkzOV0gPT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PQ0KWyAgIDE3Ljc2
-Mzk0Ml0gWyBCVUc6IHJwYy5uZnNkLzUwNjYgc3RpbGwgaGFzIGxvY2tzIGhlbGQhIF0NClsgICAx
-Ny43NjM5NDRdIDMuOC4wKyAjMTMxIE5vdCB0YWludGVkDQpbICAgMTcuNzYzOTQ1XSAtLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpbICAgMTcuNzYzOTQ3XSAyIGxvY2tzIGhl
-bGQgYnkgcnBjLm5mc2QvNTA2NjoNClsgICAxNy43NjM5NDhdICAjMDogIChuZnNkX211dGV4KXsu
-Li4uLi59LCBhdDogWzxmZmZmZmZmZmEwMTJiNDVmPl0gd3JpdGVfcG9ydHMrMHgyZi8weDNmMCBb
-bmZzZF0NClsgICAxNy43NjM5NjNdICAjMTogIChycGNiX2NyZWF0ZV9sb2NhbF9tdXRleCl7Li4u
-Li4ufSwgYXQ6IFs8ZmZmZmZmZmZhMDA4MjRmZT5dIHJwY2JfY3JlYXRlX2xvY2FsKzB4M2UvMHg5
-MCBbc3VucnBjXQ0KWyAgIDE3Ljc2Mzk4Nl0gDQpbICAgMTcuNzYzOTg2XSBzdGFjayBiYWNrdHJh
-Y2U6DQpbICAgMTcuNzYzOTg5XSBQaWQ6IDUwNjYsIGNvbW06IHJwYy5uZnNkIE5vdCB0YWludGVk
-IDMuOC4wKyAjMTMxDQpbICAgMTcuNzYzOTkwXSBDYWxsIFRyYWNlOg0KWyAgIDE3Ljc2Mzk5Nl0g
-IFs8ZmZmZmZmZmY4MTA5MTdlYT5dIGRlYnVnX2NoZWNrX25vX2xvY2tzX2hlbGQrMHg5YS8weGEw
-DQpbICAgMTcuNzY0MDAzXSAgWzxmZmZmZmZmZmEwMDc2YTM1Pl0gcnBjX3dhaXRfYml0X2tpbGxh
-YmxlKzB4NzUvMHhhMCBbc3VucnBjXQ0KWyAgIDE3Ljc2NDAyMl0gIFs8ZmZmZmZmZmY4MTZmMmRk
-Nz5dIF9fd2FpdF9vbl9iaXQrMHg1Ny8weDgwDQpbICAgMTcuNzY0MDMxXSAgWzxmZmZmZmZmZmEw
-MDc2OWMwPl0gPyBycGNfcXVldWVfZW1wdHkrMHg0MC8weDQwIFtzdW5ycGNdDQpbICAgMTcuNzY0
-MDM4XSAgWzxmZmZmZmZmZmEwMDZjZTEwPl0gPyBjYWxsX2JpbmRfc3RhdHVzKzB4MmYwLzB4MmYw
-IFtzdW5ycGNdDQpbICAgMTcuNzY0MDY0XSAgWzxmZmZmZmZmZjgxNmYyZTc3Pl0gb3V0X29mX2xp
-bmVfd2FpdF9vbl9iaXQrMHg3Ny8weDkwDQpbICAgMTcuNzY0MDY4XSAgWzxmZmZmZmZmZjgxMDYw
-ZDgwPl0gPyBhdXRvcmVtb3ZlX3dha2VfZnVuY3Rpb24rMHg0MC8weDQwDQpbICAgMTcuNzY0MDc1
-XSAgWzxmZmZmZmZmZmEwMDZjZTEwPl0gPyBjYWxsX2JpbmRfc3RhdHVzKzB4MmYwLzB4MmYwIFtz
-dW5ycGNdDQpbICAgMTcuNzY0MDg0XSAgWzxmZmZmZmZmZmEwMDc3ZjZjPl0gX19ycGNfZXhlY3V0
-ZSsweDExYy8weDQwMCBbc3VucnBjXQ0KWyAgIDE3Ljc2NDA4N10gIFs8ZmZmZmZmZmY4MTA2MDlk
-OT5dID8gd2FrZV91cF9iaXQrMHgyOS8weDQwDQpbICAgMTcuNzY0MDk2XSAgWzxmZmZmZmZmZmEw
-MDc4OTE4Pl0gcnBjX2V4ZWN1dGUrMHg2OC8weGMwIFtzdW5ycGNdDQpbICAgMTcuNzY0MTA0XSAg
-WzxmZmZmZmZmZmEwMDZmNGYwPl0gcnBjX3J1bl90YXNrKzB4NzAvMHg5MCBbc3VucnBjXQ0KWyAg
-IDE3Ljc2NDExMl0gIFs8ZmZmZmZmZmZhMDA2ZjVmZT5dIHJwY19jYWxsX3N5bmMrMHgzZS8weGEw
-IFtzdW5ycGNdDQpbICAgMTcuNzY0MTIwXSAgWzxmZmZmZmZmZmEwMDZmNmFkPl0gcnBjX3Bpbmcr
-MHg0ZC8weDcwIFtzdW5ycGNdDQpbICAgMTcuNzY0MTI3XSAgWzxmZmZmZmZmZmEwMDZmOGE4Pl0g
-cnBjX2NyZWF0ZSsweDE1OC8weDFmMCBbc3VucnBjXQ0KWyAgIDE3Ljc2NDEzN10gIFs8ZmZmZmZm
-ZmZhMDA4MjM2YT5dID8gcnBjYl9nZXRfbG9jYWwrMHhhYS8weGQwIFtzdW5ycGNdDQpbICAgMTcu
-NzY0MTQ3XSAgWzxmZmZmZmZmZmEwMDgyMTQ3Pl0gcnBjYl9jcmVhdGVfbG9jYWxfdW5peCsweDU3
-LzB4ZTAgW3N1bnJwY10NClsgICAxNy43NjQxNzNdICBbPGZmZmZmZmZmYTAwODI1MzA+XSBycGNi
-X2NyZWF0ZV9sb2NhbCsweDcwLzB4OTAgW3N1bnJwY10NClsgICAxNy43NjQxODJdICBbPGZmZmZm
-ZmZmYTAwN2I0OWU+XSBzdmNfcnBjYl9zZXR1cCsweDFlLzB4NDAgW3N1bnJwY10NClsgICAxNy43
-NjQxOTFdICBbPGZmZmZmZmZmYTAwN2I0ZWY+XSBzdmNfYmluZCsweDJmLzB4NDAgW3N1bnJwY10N
-ClsgICAxNy43NjQxOThdICBbPGZmZmZmZmZmYTAxMjk1NDY+XSBuZnNkX2NyZWF0ZV9zZXJ2KzB4
-MTA2LzB4MWUwIFtuZnNkXQ0KWyAgIDE3Ljc2NDIxMF0gIFs8ZmZmZmZmZmZhMDEyOTQ0MD5dID8g
-bmZzZF9yZXNldF92ZXJzaW9ucysweDgwLzB4ODAgW25mc2RdDQpbICAgMTcuNzY0MjE2XSAgWzxm
-ZmZmZmZmZmEwMTJiNzRjPl0gd3JpdGVfcG9ydHMrMHgzMWMvMHgzZjAgW25mc2RdDQpbICAgMTcu
-NzY0MjIyXSAgWzxmZmZmZmZmZmEwMTJiNjgwPl0gPyB3cml0ZV9wb3J0cysweDI1MC8weDNmMCBb
-bmZzZF0NClsgICAxNy43NjQyMzBdICBbPGZmZmZmZmZmODE2ZjY0MTY+XSA/IF9yYXdfc3Bpbl91
-bmxvY2srMHgyNi8weDMwDQpbICAgMTcuNzY0MjM0XSAgWzxmZmZmZmZmZjgxMTY2MGIzPl0gPyBz
-aW1wbGVfdHJhbnNhY3Rpb25fZ2V0KzB4YzMvMHhlMA0KWyAgIDE3Ljc2NDI0MF0gIFs8ZmZmZmZm
-ZmZhMDEyYjQzMD5dID8gZXhwb3J0c19vcGVuKzB4YjAvMHhiMCBbbmZzZF0NClsgICAxNy43NjQy
-NTBdICBbPGZmZmZmZmZmYTAxMmEzZmM+XSBuZnNjdGxfdHJhbnNhY3Rpb25fd3JpdGUrMHg1Yy8w
-eDgwIFtuZnNkXQ0KWyAgIDE3Ljc2NDI1NF0gIFs8ZmZmZmZmZmY4MTE0MDY0MT5dIHZmc193cml0
-ZSsweGIxLzB4MTgwDQpbICAgMTcuNzY0MjU3XSAgWzxmZmZmZmZmZjgxMTQwOTgwPl0gc3lzX3dy
-aXRlKzB4NTAvMHhhMA0KWyAgIDE3Ljc2NDI2NV0gIFs8ZmZmZmZmZmY4MTZmZTI1Mj5dIHN5c3Rl
-bV9jYWxsX2Zhc3RwYXRoKzB4MTYvMHgxYg==
+On Thu, 2013-02-21 at 14:48 -0500, J. Bruce Fields wrote:
+> On Thu, Feb 21, 2013 at 06:17:47PM +0000, Myklebust, Trond wrote:
+> > On Thu, 2013-02-21 at 11:38 -0500, J. Bruce Fields wrote:
+> > > From: "J. Bruce Fields" <bfields@redhat.com>
+> > > 
+> > > It doesn't appear that anyone actually needs to connect asynchronously.
+> > > 
+> > > Also, using a workqueue for the connect means we lose the namespace
+> > > information from the original process.  This is a problem since there's
+> > > no way to explicitly pass in a filesystem namespace for resolution of an
+> > > AF_LOCAL address.
+> > > 
+> > > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > > ---
+> > >  net/sunrpc/xprtsock.c |   35 +++++++++++++++++++++++++++--------
+> > >  1 file changed, 27 insertions(+), 8 deletions(-)
+> > > 
+> > > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> > > index bbc0915..b1df874 100644
+> > > --- a/net/sunrpc/xprtsock.c
+> > > +++ b/net/sunrpc/xprtsock.c
+> > > @@ -1866,13 +1866,9 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
+> > >   * @xprt: RPC transport to connect
+> > >   * @transport: socket transport to connect
+> > >   * @create_sock: function to create a socket of the correct type
+> > > - *
+> > > - * Invoked by a work queue tasklet.
+> > >   */
+> > > -static void xs_local_setup_socket(struct work_struct *work)
+> > > +static void xs_local_setup_socket(struct sock_xprt *transport)
+> > >  {
+> > > -	struct sock_xprt *transport =
+> > > -		container_of(work, struct sock_xprt, connect_worker.work);
+> > >  	struct rpc_xprt *xprt = &transport->xprt;
+> > >  	struct socket *sock;
+> > >  	int status = -EIO;
+> > > @@ -1919,6 +1915,31 @@ out:
+> > >  	current->flags &= ~PF_FSTRANS;
+> > >  }
+> > >  
+> > > +static void xs_local_connect(struct rpc_task *task)
+> > > +{
+> > > +	struct rpc_xprt *xprt = task->tk_xprt;
+> > > +	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+> > > +	unsigned long timeout;
+> > > +
+> > > +	 if (RPC_IS_ASYNC(task))
+> > > +	 	rpc_exit(task, -ENOTCONN);
+> > 
+> > Needs a "return"...
+> 
+> Fixed, thanks.
+> 
+> > 
+> > 
+> > > +
+> > > +	if (transport->sock != NULL && !RPC_IS_SOFTCONN(task)) {
+> > > +		dprintk("RPC:       xs_connect delayed xprt %p for %lu "
+> > > +				"seconds\n",
+> > > +				xprt, xprt->reestablish_timeout / HZ);
+> > > +		timeout = xprt->reestablish_timeout;
+> > > +		xprt->reestablish_timeout <<= 1;
+> > > +		if (xprt->reestablish_timeout < XS_TCP_INIT_REEST_TO)
+> > > +			xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
+> > > +		if (xprt->reestablish_timeout > XS_TCP_MAX_REEST_TO)
+> > > +			xprt->reestablish_timeout = XS_TCP_MAX_REEST_TO;
+> > > +		rpc_delay(task, timeout);
+> > 
+> > This too needs to exit in order to sleep.
+> 
+> Oops, so maybe simplest would be just to connect first and then delay if
+> there's a failure.
+> 
+> (Or is there any problem just making that rpc_delay() an msleep() since
+> we know we're in the synchronous case?)
 
+A 5 minute msleep() is probably a bit excessive. Making it interruptible
+might help, but ...
+That does however raise the issue of why we need exponential back off
+here? An AF_LOCAL connect call is pretty efficient.
+
+Cheers
+  Trond
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
