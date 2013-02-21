@@ -1,184 +1,163 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:42735 "EHLO mx1.redhat.com"
+Received: from mail.bytecamp.net ([212.204.60.9]:63651 "EHLO mail.bytecamp.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1946438Ab3BHMj3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Feb 2013 07:39:29 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 02/15] Security: Add Hook to test if the particular xattr is part of a MAC model.
-Date: Fri,  8 Feb 2013 07:39:10 -0500
-Message-Id: <1360327163-20360-3-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
-References: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
+	id S1752355Ab3BUMfF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Feb 2013 07:35:05 -0500
+From: Thomas Wunder <thomas.wunder@swt-bamberg.de>
+To: linux-nfs@vger.kernel.org
+Subject: NFSv4 mount fails with 'No such file or directory'
+Date: Thu, 21 Feb 2013 13:35:02 +0100
+MIME-Version: 1.0
+Message-Id: <201302211335.03123.thomas.wunder@swt-bamberg.de>
+Content-Type: text/plain;
+  charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+Hey,
+I'm trying to mount a NFSv4 Kerberos secured share using linux as well as on OS X and in both cases I get a "No such file or directory" error while the server log messages differ and the share is definitely in the right (specified) place. Here's some config stuff from my server (swtnas2) that you might be interested in:
 
-The interface to request security labels from user space is the xattr
-interface. When requesting the security label from an NFS server it is
-important to make sure the requested xattr actually is a MAC label. This allows
-us to make sure that we get the desired semantics from the attribute instead of
-something else such as capabilities or a time based LSM.
+# grep -v '^#' /etc/exports 
+/backups                     gss/krb5(rw,async,fsid=0,no_subtree_check,crossmnt,insecure,no_root_squash)
+/backups/testusr1            gss/krb5(rw,async,nohide,no_subtree_check,insecure,no_root_squash)
+#
 
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- include/linux/security.h   | 14 ++++++++++++++
- security/capability.c      |  6 ++++++
- security/security.c        |  6 ++++++
- security/selinux/hooks.c   |  6 ++++++
- security/smack/smack_lsm.c | 11 +++++++++++
- 5 files changed, 43 insertions(+)
+# grep -v '^#' /etc/idmapd.conf 
+[General]
+Verbosity = 3
+Pipefs-Directory = /var/lib/nfs/rpc_pipefs
+Domain = staff.swt.wiai.uni-bamberg.de
+Local-Realms = SWT.WIAI.UNI-BAMBERG.DE
+[Mapping]
+Nobody-User = nobody
+Nobody-Group = nogroup
+#
+(the idmapd.conf of the linux client looks exactly the same, for the OSX client I can't seem to find an equivalent)
+I also added 'allow_weak_crypto = true' to my /etc/krb5.conf cranked up the log level wherever I could. 
 
-diff --git a/include/linux/security.h b/include/linux/security.h
-index a957e7a..8a6faff 100644
---- a/include/linux/security.h
-+++ b/include/linux/security.h
-@@ -1319,6 +1319,13 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
-  *	@pages contains the number of pages.
-  *	Return 0 if permission is granted.
-  *
-+ * @ismaclabel:
-+ *	Check if the extended attribute specified by @name
-+ *	represents a MAC label. Returns 0 if name is a MAC
-+ *	attribute otherwise returns non-zero.
-+ *	@name full extended attribute name to check against
-+ *	LSM as a MAC label.
-+ *
-  * @secid_to_secctx:
-  *	Convert secid to security context.  If secdata is NULL the length of
-  *	the result will be returned in seclen, but no secdata will be returned.
-@@ -1600,6 +1607,7 @@ struct security_operations {
- 
- 	int (*getprocattr) (struct task_struct *p, char *name, char **value);
- 	int (*setprocattr) (struct task_struct *p, char *name, void *value, size_t size);
-+	int (*ismaclabel) (const char *name);
- 	int (*secid_to_secctx) (u32 secid, char **secdata, u32 *seclen);
- 	int (*secctx_to_secid) (const char *secdata, u32 seclen, u32 *secid);
- 	void (*release_secctx) (char *secdata, u32 seclen);
-@@ -1852,6 +1860,7 @@ void security_d_instantiate(struct dentry *dentry, struct inode *inode);
- int security_getprocattr(struct task_struct *p, char *name, char **value);
- int security_setprocattr(struct task_struct *p, char *name, void *value, size_t size);
- int security_netlink_send(struct sock *sk, struct sk_buff *skb);
-+int security_ismaclabel(const char *name);
- int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen);
- int security_secctx_to_secid(const char *secdata, u32 seclen, u32 *secid);
- void security_release_secctx(char *secdata, u32 seclen);
-@@ -2540,6 +2549,11 @@ static inline int security_netlink_send(struct sock *sk, struct sk_buff *skb)
- 	return cap_netlink_send(sk, skb);
- }
- 
-+static inline int security_ismaclabel(const char *name)
-+{
-+	return 0;
-+}
-+
- static inline int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return -EOPNOTSUPP;
-diff --git a/security/capability.c b/security/capability.c
-index 456bd9d..07a6484 100644
---- a/security/capability.c
-+++ b/security/capability.c
-@@ -817,6 +817,11 @@ static int cap_setprocattr(struct task_struct *p, char *name, void *value,
- 	return -EINVAL;
- }
- 
-+static int cap_ismaclabel(const char *name)
-+{
-+	return 0;
-+}
-+
- static int cap_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return -EOPNOTSUPP;
-@@ -1036,6 +1041,7 @@ void __init security_fixup_ops(struct security_operations *ops)
- 	set_to_cap_if_null(ops, d_instantiate);
- 	set_to_cap_if_null(ops, getprocattr);
- 	set_to_cap_if_null(ops, setprocattr);
-+	set_to_cap_if_null(ops, ismaclabel);
- 	set_to_cap_if_null(ops, secid_to_secctx);
- 	set_to_cap_if_null(ops, secctx_to_secid);
- 	set_to_cap_if_null(ops, release_secctx);
-diff --git a/security/security.c b/security/security.c
-index 723a10c..6d7389c 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -1057,6 +1057,12 @@ int security_netlink_send(struct sock *sk, struct sk_buff *skb)
- 	return security_ops->netlink_send(sk, skb);
- }
- 
-+int security_ismaclabel(const char *name)
-+{
-+	return security_ops->ismaclabel(name);
-+}
-+EXPORT_SYMBOL(security_ismaclabel);
-+
- int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return security_ops->secid_to_secctx(secid, secdata, seclen);
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index 2664ed3..03659ab 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -5426,6 +5426,11 @@ abort_change:
- 	return error;
- }
- 
-+static int selinux_ismaclabel(const char *name)
-+{
-+	return (strcmp(name, XATTR_SELINUX_SUFFIX) == 0);
-+}
-+
- static int selinux_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return security_sid_to_context(secid, secdata, seclen);
-@@ -5664,6 +5669,7 @@ static struct security_operations selinux_ops = {
- 	.getprocattr =			selinux_getprocattr,
- 	.setprocattr =			selinux_setprocattr,
- 
-+	.ismaclabel =			selinux_ismaclabel,
- 	.secid_to_secctx =		selinux_secid_to_secctx,
- 	.secctx_to_secid =		selinux_secctx_to_secid,
- 	.release_secctx =		selinux_release_secctx,
-diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
-index 38be92c..82c3c72 100644
---- a/security/smack/smack_lsm.c
-+++ b/security/smack/smack_lsm.c
-@@ -3335,6 +3335,16 @@ static void smack_audit_rule_free(void *vrule)
- #endif /* CONFIG_AUDIT */
- 
- /**
-+ * smack_ismaclabel - check if xattr @name references a smack MAC label
-+ * @name: Full xattr name to check.
-+ */
-+static int smack_ismaclabel(const char *name)
-+{
-+	return (strcmp(name, XATTR_SMACK_SUFFIX) == 0);
-+}
-+
-+
-+/**
-  * smack_secid_to_secctx - return the smack label for a secid
-  * @secid: incoming integer
-  * @secdata: destination
-@@ -3530,6 +3540,7 @@ struct security_operations smack_ops = {
- 	.audit_rule_free =		smack_audit_rule_free,
- #endif /* CONFIG_AUDIT */
- 
-+	.ismaclabel =			smack_ismaclabel,
- 	.secid_to_secctx = 		smack_secid_to_secctx,
- 	.secctx_to_secid = 		smack_secctx_to_secid,
- 	.release_secctx = 		smack_release_secctx,
--- 
-1.7.11.7
 
+
+I.  Trying to mount from the linux client:
+# date; mount -vvv -t nfs4 -o sec=krb5,soft,intr swtnas2:/backups/testusr1 /mnt/nfs2/
+Thu Feb 21 12:23:59 CET 2013
+mount: fstab path: "/etc/fstab"
+mount: mtab path:  "/etc/mtab"
+mount: lock path:  "/etc/mtab~"
+mount: temp path:  "/etc/mtab.tmp"
+mount: UID:        0
+mount: eUID:       0
+mount: spec:  "swtnas2:/backups/testusr1"
+mount: node:  "/mnt/nfs2/"
+mount: types: "nfs4"
+mount: opts:  "sec=krb5,soft,intr"
+mount: external mount: argv[0] = "/sbin/mount.nfs4"
+mount: external mount: argv[1] = "swtnas2:/backups/testusr1"
+mount: external mount: argv[2] = "/mnt/nfs2/"
+mount: external mount: argv[3] = "-v"
+mount: external mount: argv[4] = "-o"
+mount: external mount: argv[5] = "rw,sec=krb5,soft,intr"
+mount.nfs4: timeout set for Thu Feb 21 12:25:59 2013
+mount.nfs4: trying text-based options 'sec=krb5,soft,intr,addr=141.13.106.118,clientaddr=141.13.106.66'
+mount.nfs4: mount(2): No such file or directory
+mount.nfs4: mounting swtnas2:/backups/testusr1 failed, reason given by server:
+  No such file or directory
+#
+
+These are the client side log-messages of gssd and idmapd:
+---snip---
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: dir_notify_handler: sig 37 si 0x7fffc21daa70 data 0x7fffc21da940
+Feb 21 12:23:59 tomsbox2 rpc.idmapd[16766]: New client: c5
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: dir_notify_handler: sig 37 si 0x7fffc21daa70 data 0x7fffc21da940
+Feb 21 12:23:59 tomsbox2 rpc.idmapd[16766]: Opened /var/lib/nfs/rpc_pipefs/nfs/clntc5/idmap
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: dir_notify_handler: sig 37 si 0x7fffc21daa70 data 0x7fffc21da940
+Feb 21 12:23:59 tomsbox2 rpc.idmapd[16766]: New client: c6
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: handling gssd upcall (/var/lib/nfs/rpc_pipefs/nfs/clntc5)
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: handle_gssd_upcall: 'mech=krb5 uid=0 enctypes=18,17,16,23,3,1,2 '
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: handling krb5 upcall (/var/lib/nfs/rpc_pipefs/nfs/clntc5)
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: process_krb5_upcall: service is '<null>'
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: Full hostname for 'swtnas2.staff.swt.wiai.uni-bamberg.de' is 'swtnas2.staff.swt.wiai.uni-bamberg.de'
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: Full hostname for 'tomsbox2.staff.swt.wiai.uni-bamberg.de' is 'tomsbox2.staff.swt.wiai.uni-bamberg.de'
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: No key table entry found for TOMSBOX2$@SWT.WIAI.UNI-BAMBERG.DE while getting keytab entry for 'TOMSBOX2$@SWT.WIAI.UNI-BAMBERG.DE'
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: No key table entry found for root/tomsbox2.staff.swt.wiai.uni-bamberg.de@SWT.WIAI.UNI-BAMBERG.DE while getting keytab entry for 'root/tomsbox2.staff.swt.wiai.uni-bamberg.de@SWT.WIAI.UNI-BAMBERG.DE'
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: Success getting keytab entry for 'nfs/tomsbox2.staff.swt.wiai.uni-bamberg.de@SWT.WIAI.UNI-BAMBERG.DE'
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: INFO: Credentials in CC 'FILE:/tmp/krb5cc_machine_SWT.WIAI.UNI-BAMBERG.DE' are good until 1361527573
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: INFO: Credentials in CC 'FILE:/tmp/krb5cc_machine_SWT.WIAI.UNI-BAMBERG.DE' are good until 1361527573
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: using FILE:/tmp/krb5cc_machine_SWT.WIAI.UNI-BAMBERG.DE as credentials cache for machine creds
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: using environment variable to select krb5 ccache FILE:/tmp/krb5cc_machine_SWT.WIAI.UNI-BAMBERG.DE
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: creating context using fsuid 0 (save_uid 0)
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: creating tcp client for server swtnas2.staff.swt.wiai.uni-bamberg.de
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: DEBUG: port already set to 2049
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: creating context with server nfs@swtnas2.staff.swt.wiai.uni-bamberg.de
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: DEBUG: serialize_krb5_ctx: lucid version!
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: prepare_krb5_rfc4121_buffer: protocol 1
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: prepare_krb5_rfc4121_buffer: serializing key with enctype 18 and size 32
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: doing downcall
+Feb 21 12:23:59 tomsbox2 rpc.idmapd[16766]: Client c5: (user) name "root@staff.swt.wiai.uni-bamberg.de" -> id "0"
+Feb 21 12:23:59 tomsbox2 rpc.idmapd[16766]: Client c5: (group) name "root@staff.swt.wiai.uni-bamberg.de" -> id "0"
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: dir_notify_handler: sig 37 si 0x7fffc21daa70 data 0x7fffc21da940
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: dir_notify_handler: sig 37 si 0x7fffc21daa70 data 0x7fffc21da940
+Feb 21 12:23:59 tomsbox2 rpc.idmapd[16766]: Stale client: c6
+Feb 21 12:23:59 tomsbox2 rpc.idmapd[16766]: #011-> closed /var/lib/nfs/rpc_pipefs/nfs/clntc6/idmap
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: destroying client /var/lib/nfs/rpc_pipefs/nfs/clntc6
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: dir_notify_handler: sig 37 si 0x7fffc21daa70 data 0x7fffc21da940
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: dir_notify_handler: sig 37 si 0x7fffc21daa70 data 0x7fffc21da940
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: dir_notify_handler: sig 37 si 0x7fffc21daa70 data 0x7fffc21da940
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: dir_notify_handler: sig 37 si 0x7fffc21daa70 data 0x7fffc21da940
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: dir_notify_handler: sig 37 si 0x7fffc21daa70 data 0x7fffc21da940
+Feb 21 12:23:59 tomsbox2 rpc.idmapd[16766]: Stale client: c5
+Feb 21 12:23:59 tomsbox2 rpc.idmapd[16766]: #011-> closed /var/lib/nfs/rpc_pipefs/nfs/clntc5/idmap
+Feb 21 12:23:59 tomsbox2 rpc.gssd[16825]: destroying client /var/lib/nfs/rpc_pipefs/nfs/clntc5
+---snap---
+
+This is what I get in the server's log when I try to mount from the linux client:
+---snip---
+Feb 21 12:23:59 swtnas2 rpc.svcgssd[27492]: leaving poll
+Feb 21 12:23:59 swtnas2 rpc.svcgssd[27492]: handling null request
+Feb 21 12:23:59 swtnas2 rpc.svcgssd[27492]: svcgssd_limit_krb5_enctypes: Calling gss_set_allowable_enctypes with 7 enctypes from the kernel
+Feb 21 12:23:59 swtnas2 rpc.svcgssd[27492]: sname = nfs/tomsbox2.staff.swt.wiai.uni-bamberg.de@SWT.WIAI.UNI-BAMBERG.DE
+Feb 21 12:23:59 swtnas2 rpc.svcgssd[27492]: DEBUG: serialize_krb5_ctx: lucid version!
+Feb 21 12:23:59 swtnas2 rpc.svcgssd[27492]: prepare_krb5_rfc4121_buffer: protocol 1
+Feb 21 12:23:59 swtnas2 rpc.svcgssd[27492]: prepare_krb5_rfc4121_buffer: serializing key with enctype 18 and size 32
+Feb 21 12:23:59 swtnas2 rpc.svcgssd[27492]: doing downcall
+Feb 21 12:23:59 swtnas2 rpc.svcgssd[27492]: mech: krb5, hndl len: 4, ctx len 52, timeout: 1361527573 (81734 from now), clnt: nfs@tomsbox2.staff.swt.wiai.uni-bamberg.de, uid: -1, gid: -1, num aux grps: 0:
+Feb 21 12:23:59 swtnas2 rpc.svcgssd[27492]: sending null reply
+Feb 21 12:23:59 swtnas2 rpc.svcgssd[27492]: writing message: **SHORTENED BECAUSE I DON'T KNOW WHETHER IT CONTAINS CONFIDENTIAL INFORMATION**
+Feb 21 12:23:59 swtnas2 rpc.svcgssd[27492]: finished handling null request
+Feb 21 12:23:59 swtnas2 rpc.svcgssd[27492]: entering poll
+Feb 21 12:23:59 swtnas2 rpc.idmapd[27564]: nfsdcb: authbuf=gss/krb5 authtype=user
+Feb 21 12:23:59 swtnas2 rpc.idmapd[27564]: Server : (user) id "0" -> name "root@staff.swt.wiai.uni-bamberg.de"
+Feb 21 12:23:59 swtnas2 rpc.idmapd[27564]: nfsdcb: authbuf=gss/krb5 authtype=group
+Feb 21 12:23:59 swtnas2 rpc.idmapd[27564]: Server : (group) id "0" -> name "root@staff.swt.wiai.uni-bamberg.de"
+---snap---
+
+
+II.  Trying to mount from the OS X client:
+# date; mount -t nfs -o vers=4,sec=krb5,intr,soft swtnas2:/backups/testusr1 /Users/myuser/Desktop/nfs/
+mount_nfs: cant't mount /backups/testusr1 from swtnas2 onto /Users/myuser/Desktop/nfs: No such file or directory
+#
+
+(I'm no MAC expert thus I have no clue how to get more detailed debugging information here)
+
+
+This is what I get in the server's log when I try to mount from the OS X client:
+---snip---
+Feb 21 12:35:18 swtnas2 rpc.svcgssd[27492]: leaving poll
+Feb 21 12:35:18 swtnas2 rpc.svcgssd[27492]: handling null request
+Feb 21 12:35:18 swtnas2 rpc.svcgssd[27492]: svcgssd_limit_krb5_enctypes: Calling gss_set_allowable_enctypes with 7 enctypes from the kernel
+Feb 21 12:35:18 swtnas2 rpc.svcgssd[27492]: sname = root@SWT.WIAI.UNI-BAMBERG.DE
+Feb 21 12:35:18 swtnas2 rpc.svcgssd[27492]: DEBUG: serialize_krb5_ctx: lucid version!
+Feb 21 12:35:18 swtnas2 rpc.svcgssd[27492]: prepare_krb5_rfc1964_buffer: serializing keys with enctype 4 and length 8
+Feb 21 12:35:18 swtnas2 rpc.svcgssd[27492]: doing downcall
+Feb 21 12:35:18 swtnas2 rpc.svcgssd[27492]: mech: krb5, hndl len: 4, ctx len 85, timeout: 1361472669 (26151 from now), clnt: <null>, uid: 0, gid: 0, num aux grps: 1:
+Feb 21 12:35:18 swtnas2 rpc.svcgssd[27492]:   (   1) 0
+Feb 21 12:35:18 swtnas2 rpc.svcgssd[27492]: sending null reply
+Feb 21 12:35:18 swtnas2 rpc.svcgssd[27492]: writing message: **SHORTENED BECAUSE I DON'T KNOW WHETHER IT CONTAINS CONFIDENTIAL INFORMATION**
+Feb 21 12:35:18 swtnas2 rpc.svcgssd[27492]: finished handling null request
+Feb 21 12:35:18 swtnas2 rpc.svcgssd[27492]: entering poll
+---snap---
+
+
+
+The clients obviously work quite different, however (if I got that right) it seems it's no authentication issue as I suspected initially. I don't really have an idea of what the log output should look like upon a successful mount so I don't have a plan where to go from here. Can you give me a hand?
+
+Thanks!
