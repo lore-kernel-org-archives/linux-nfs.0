@@ -1,51 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:36387 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751137Ab3BEFgy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Feb 2013 00:36:54 -0500
-Message-ID: <51109A64.8010904@parallels.com>
-Date: Tue, 5 Feb 2013 09:36:36 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from fieldses.org ([174.143.236.118]:60204 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755202Ab3BUQjx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Feb 2013 11:39:53 -0500
+Date: Thu, 21 Feb 2013 11:39:52 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Simo Sorce <simo@redhat.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: synchronous AF_LOCAL connect
+Message-ID: <20130221163952.GD9743@fieldses.org>
+References: <20130220154751.GH14606@fieldses.org>
+ <2F275139-9861-4414-8C9F-BD74544C9AD7@oracle.com>
+ <20130220160350.GJ14606@fieldses.org>
+ <EA9EE56A-73BB-4866-AA86-1EE4150AFE87@oracle.com>
+ <20130220163424.GK14606@fieldses.org>
+ <FB21B277-FA7D-490C-B389-58A91C46B490@oracle.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9235D7E49@SACEXCMBX04-PRD.hq.netapp.com>
+ <1361381561.12328.441.camel@willson.li.ssimo.org>
+ <20130220230337.GC3575@fieldses.org>
+ <20130221162139.GB9743@fieldses.org>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
-CC: <Trond.Myklebust@netapp.com>, <linux-kernel@vger.kernel.org>,
-        <devel@openvz.org>
-Subject: Re: [PATCH v2 0/6] SUNRPC: rework cache upcall to avoid NFSd root
-References: <20130204105728.11633.53621.stgit@localhost.localdomain> <20130204141719.GA815@fieldses.org>
-In-Reply-To: <20130204141719.GA815@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130221162139.GB9743@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-04.02.2013 18:17, J. Bruce Fields пишет:
-> On Mon, Feb 04, 2013 at 02:02:29PM +0300, Stanislav Kinsbursky wrote:
->> swapping
->>
->> The main idea of this patch set is to call cache request not on kthread
->> upcall, but on userspace daemon cache_read call. This fixes the problem with
->> gaining of wrong dentry path after calling d_path() in kthread root context
->> (svc_export_request() callback), which always work in init root context, but
->> containers can work in "root jail" - i.e. have it's own nested root.
->>
->> v2:
->> 1) NFS DNS cache update wasn't done in the firest version. So this patch set
->> does preparation cleanup of the NFS DNS cache routines.
->> 2) Also, this patch set doesn't remove cache_upcall helper anymore, because
->> it's still required for NFS DNS cache.
->
-> Argh--I really prefer incremental patches once I've already committed
-> something, but OK.
->
+On Thu, Feb 21, 2013 at 11:21:39AM -0500, J. Bruce Fields wrote:
+> On Wed, Feb 20, 2013 at 06:03:37PM -0500, J. Bruce Fields wrote:
+> > OK, I've added that check and fixed some other bugs (thanks to Chuck for
+> > some help in IRC).
+> > 
+> > I think that gets rpcbind working in containers fine.
+> > 
+> > gss-proxy has one more problem: it needs to do upcalls from nfsd threads
+> > which won't have the right filesystem namespace.
+> > 
+> > I get a write from gss-proxy when it starts and can do an initial
+> > connect then using its context.  But if we disconnect after that I'm
+> > stuck.
+> > 
+> > Does it cause any problems if I just set the idle_timeout to 0 for
+> > AF_LOCAL?
+> 
+> That gives me the following three patches.  They work for me.
+> 
+> Would it make more sense to make the idle timeout configurable?  I
+> couldn't see why disconnecting idle AF_LOCAL rpcbind connections would
+> be particularly important anyway.
 
-Sorry. I was thinking about incremental patches. Next time I'll do so.
+Also posted a new version of the gss-proxy series including these
+patches.
 
-> Backing out the old patches, I'll take a look at these.  The first two
-> should probably get an ACK from Trond.
->
-
-Trond, could you review first two patches, please?
-They are just clean-ups, actually. Nothing special. Required to unify the interfaces for latter patches in the series.
-
--- 
-Best regards,
-Stanislav Kinsbursky
+--b.
