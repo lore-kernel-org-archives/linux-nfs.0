@@ -1,119 +1,120 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:35715 "EHLO mx1.redhat.com"
+Received: from mx1.netapp.com ([216.240.18.38]:24283 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754823Ab3BRSsU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Feb 2013 13:48:20 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 11/14] NFS: Extend NFS xattr handlers to accept the security namespace
-Date: Mon, 18 Feb 2013 13:47:53 -0500
-Message-Id: <1361213276-17962-12-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1361213276-17962-1-git-send-email-SteveD@redhat.com>
-References: <1361213276-17962-1-git-send-email-SteveD@redhat.com>
+	id S1754994Ab3BUSRu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Feb 2013 13:17:50 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "simo@redhat.com" <simo@redhat.com>
+Subject: Re: [PATCH 1/6] SUNRPC: make AF_LOCAL connect synchronous
+Date: Thu, 21 Feb 2013 18:17:47 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9235DA5F3@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1361464705-12340-1-git-send-email-bfields@redhat.com>
+	 <1361464705-12340-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1361464705-12340-2-git-send-email-bfields@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+On Thu, 2013-02-21 at 11:38 -0500, J. Bruce Fields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> It doesn't appear that anyone actually needs to connect asynchronously.
+> 
+> Also, using a workqueue for the connect means we lose the namespace
+> information from the original process.  This is a problem since there's
+> no way to explicitly pass in a filesystem namespace for resolution of an
+> AF_LOCAL address.
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  net/sunrpc/xprtsock.c |   35 +++++++++++++++++++++++++++--------
+>  1 file changed, 27 insertions(+), 8 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index bbc0915..b1df874 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -1866,13 +1866,9 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
+>   * @xprt: RPC transport to connect
+>   * @transport: socket transport to connect
+>   * @create_sock: function to create a socket of the correct type
+> - *
+> - * Invoked by a work queue tasklet.
+>   */
+> -static void xs_local_setup_socket(struct work_struct *work)
+> +static void xs_local_setup_socket(struct sock_xprt *transport)
+>  {
+> -	struct sock_xprt *transport =
+> -		container_of(work, struct sock_xprt, connect_worker.work);
+>  	struct rpc_xprt *xprt = &transport->xprt;
+>  	struct socket *sock;
+>  	int status = -EIO;
+> @@ -1919,6 +1915,31 @@ out:
+>  	current->flags &= ~PF_FSTRANS;
+>  }
+>  
+> +static void xs_local_connect(struct rpc_task *task)
+> +{
+> +	struct rpc_xprt *xprt = task->tk_xprt;
+> +	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+> +	unsigned long timeout;
+> +
+> +	 if (RPC_IS_ASYNC(task))
+> +	 	rpc_exit(task, -ENOTCONN);
 
-The existing NFSv4 xattr handlers do not accept xattr calls to the security
-namespace. This patch extends these handlers to accept xattrs from the security
-namespace in addition to the default NFSv4 ACL namespace.
+Needs a "return"...
 
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- fs/nfs/nfs4proc.c   | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
- security/security.c |  1 +
- 2 files changed, 51 insertions(+)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 1c063e5..40c1d1f 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5450,6 +5450,53 @@ static size_t nfs4_xattr_list_nfs4_acl(struct dentry *dentry, char *list,
- 	return len;
- }
- 
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+static inline int nfs4_server_supports_labels(struct nfs_server *server)
-+{
-+	return server->caps & NFS_CAP_SECURITY_LABEL;
-+}
-+
-+static int nfs4_xattr_set_nfs4_label(struct dentry *dentry, const char *key,
-+				   const void *buf, size_t buflen,
-+				   int flags, int type)
-+{
-+	if (security_ismaclabel(key))
-+		return nfs4_set_security_label(dentry, buf, buflen);
-+
-+	return -EOPNOTSUPP;
-+}
-+
-+static int nfs4_xattr_get_nfs4_label(struct dentry *dentry, const char *key,
-+				   void *buf, size_t buflen, int type)
-+{
-+	if (security_ismaclabel(key))
-+		return nfs4_get_security_label(dentry->d_inode, buf, buflen);
-+	return -EOPNOTSUPP;
-+}
-+
-+static size_t nfs4_xattr_list_nfs4_label(struct dentry *dentry, char *list,
-+				       size_t list_len, const char *name,
-+				       size_t name_len, int type)
-+{
-+	size_t len = 0;
-+
-+	if (nfs_server_capable(dentry->d_inode, NFS_CAP_SECURITY_LABEL)) {
-+		len = security_inode_listsecurity(dentry->d_inode, NULL, 0);
-+		if (list && len <= list_len)
-+			security_inode_listsecurity(dentry->d_inode, list, len);
-+	}
-+	return len;
-+}
-+
-+static const struct xattr_handler nfs4_xattr_nfs4_label_handler = {
-+	.prefix = XATTR_SECURITY_PREFIX,
-+	.list	= nfs4_xattr_list_nfs4_label,
-+	.get	= nfs4_xattr_get_nfs4_label,
-+	.set	= nfs4_xattr_set_nfs4_label,
-+};
-+#endif
-+
-+
- /*
-  * nfs_fhget will use either the mounted_on_fileid or the fileid
-  */
-@@ -7188,6 +7235,9 @@ static const struct xattr_handler nfs4_xattr_nfs4_acl_handler = {
- 
- const struct xattr_handler *nfs4_xattr_handlers[] = {
- 	&nfs4_xattr_nfs4_acl_handler,
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	&nfs4_xattr_nfs4_label_handler,
-+#endif
- 	NULL
- };
- 
-diff --git a/security/security.c b/security/security.c
-index dd9e4c8..af835e3 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -660,6 +660,7 @@ int security_inode_listsecurity(struct inode *inode, char *buffer, size_t buffer
- 		return 0;
- 	return security_ops->inode_listsecurity(inode, buffer, buffer_size);
- }
-+EXPORT_SYMBOL(security_inode_listsecurity);
- 
- void security_inode_getsecid(const struct inode *inode, u32 *secid)
- {
+> +
+> +	if (transport->sock != NULL && !RPC_IS_SOFTCONN(task)) {
+> +		dprintk("RPC:       xs_connect delayed xprt %p for %lu "
+> +				"seconds\n",
+> +				xprt, xprt->reestablish_timeout / HZ);
+> +		timeout = xprt->reestablish_timeout;
+> +		xprt->reestablish_timeout <<= 1;
+> +		if (xprt->reestablish_timeout < XS_TCP_INIT_REEST_TO)
+> +			xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
+> +		if (xprt->reestablish_timeout > XS_TCP_MAX_REEST_TO)
+> +			xprt->reestablish_timeout = XS_TCP_MAX_REEST_TO;
+> +		rpc_delay(task, timeout);
+
+This too needs to exit in order to sleep.
+
+> +	} else
+> +		dprintk("RPC:       xs_connect scheduled xprt %p\n", xprt);
+> +	xs_local_setup_socket(transport);
+> +}
+> +
+>  #ifdef CONFIG_SUNRPC_SWAP
+>  static void xs_set_memalloc(struct rpc_xprt *xprt)
+>  {
+> @@ -2454,7 +2475,7 @@ static struct rpc_xprt_ops xs_local_ops = {
+>  	.alloc_slot		= xprt_alloc_slot,
+>  	.rpcbind		= xs_local_rpcbind,
+>  	.set_port		= xs_local_set_port,
+> -	.connect		= xs_connect,
+> +	.connect		= xs_local_connect,
+>  	.buf_alloc		= rpc_malloc,
+>  	.buf_free		= rpc_free,
+>  	.send_request		= xs_local_send_request,
+> @@ -2627,8 +2648,6 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
+>  			goto out_err;
+>  		}
+>  		xprt_set_bound(xprt);
+> -		INIT_DELAYED_WORK(&transport->connect_worker,
+> -					xs_local_setup_socket);
+>  		xs_format_peer_addresses(xprt, "local", RPCBIND_NETID_LOCAL);
+>  		break;
+>  	default:
+
 -- 
-1.8.1.2
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
