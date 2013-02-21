@@ -1,99 +1,242 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54700 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:23652 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758860Ab3BVSFS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Feb 2013 13:05:18 -0500
-Date: Fri, 22 Feb 2013 13:05:15 -0500
-To: Steve Dickson <steved@redhat.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] NFSDv4.2: Added NFS v4.2 support to the NFS server
-Message-ID: <20130222180515.GA30856@fieldses.org>
-References: <1361552981-29385-1-git-send-email-steved@redhat.com>
- <1361552981-29385-3-git-send-email-steved@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1361552981-29385-3-git-send-email-steved@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1752722Ab3BUQSY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Feb 2013 11:18:24 -0500
+Date: Thu, 21 Feb 2013 11:17:38 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: NeilBrown <neilb@suse.de>
+Cc: viro@ZenIV.linux.org.uk, trond.myklebust@netapp.com,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH v1] vfs: kill FS_REVAL_DOT by adding a d_reval_jumped
+ dentry op
+Message-ID: <20130221111738.7592bec4@tlielax.poochiereds.net>
+In-Reply-To: <20130221093225.5390bb77@notabene.brown>
+References: <1361377145-28094-1-git-send-email-jlayton@redhat.com>
+	<20130221093225.5390bb77@notabene.brown>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/2uiW+meMVrfeDAS=7Py4lWd"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 22, 2013 at 12:09:41PM -0500, Steve Dickson wrote:
-> This enable NFSv4.2 support for the server. To enable this
-> code do the following:
->   echo "+4.2" >/proc/fs/nfsd/versions
+--Sig_/2uiW+meMVrfeDAS=7Py4lWd
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
 
-Give it a config option and we're set....
+On Thu, 21 Feb 2013 09:32:25 +1100
+NeilBrown <neilb@suse.de> wrote:
 
---b.
+> On Wed, 20 Feb 2013 11:19:05 -0500 Jeff Layton <jlayton@redhat.com> wrote:
+>=20
+> > The following set of operations on a NFS client and server will cause
+> >=20
+> >     server# mkdir a
+> >     client# cd a
+> >     server# mv a a.bak
+> >     client# sleep 30  # (or whatever the dir attrcache timeout is)
+> >     client# stat .
+> >     stat: cannot stat =E2=80=98.=E2=80=99: Stale NFS file handle
+> >=20
+> > Obviously, we should not be getting an ESTALE error back there since the
+> > inode still exists on the server. The problem is that the lookup code
+> > will call d_revalidate on the dentry that "." refers to, because NFS has
+> > FS_REVAL_DOT set.
+> >=20
+> > nfs_lookup_revalidate will see that the parent directory has changed and
+> > will try to reverify the dentry by redoing a LOOKUP. That of course
+> > fails, so the lookup code returns ESTALE.
+> >=20
+> > The problem here is that d_revalidate is really a bad fit for this case.
+> > What we really want to know at this point is whether the inode is still
+> > good or not, but we don't really care what name it goes by or whether
+> > the dcache is still valid.
+> >=20
+> > Add a new d_op->d_reval_jumped operation and have complete_walk call
+> > that instead of d_revalidate. The intent there is to allow for a
+> > "weaker" d_revalidate that just checks to see whether the inode is still
+> > good. This is also gives us an opportunity to kill off the FS_REVAL_DOT
+> > special casing.
+> >=20
+> > In a perfect world, this would be a new inode operation instead, but
+> > I don't see a way to cleanly handle that for 9p, which needs a
+> > dentry in order to get a fid.
+>=20
+> The earlier i_op->revalidate inode operation took a 'dentry', not an inod=
+e.
+> If you look at struct inode_operations, you will see that 8 of them take a
+> dentry as their first argument.
+>=20
+> Never the less, I would leave it in dentry_operations.  It makes it easie=
+r to
+> use the DCACHE_OP_ optimisation.
+>=20
 
-> 
-> after the nfsd kernel module is loaded.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  fs/nfsd/nfs4state.c | 2 +-
->  fs/nfsd/nfs4xdr.c   | 1 +
->  fs/nfsd/nfsd.h      | 2 +-
->  fs/nfsd/state.h     | 2 +-
->  4 files changed, 4 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index ac8ed96..947c550 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1678,7 +1678,7 @@ out_new:
->  		status = nfserr_jukebox;
->  		goto out;
->  	}
-> -	new->cl_minorversion = 1;
-> +	new->cl_minorversion = cstate->minorversion;
->  
->  	gen_clid(new, nn);
->  	add_to_unconfirmed(new);
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index d2ae8db..86be853 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -1621,6 +1621,7 @@ struct nfsd4_minorversion_ops {
->  static struct nfsd4_minorversion_ops nfsd4_minorversion[] = {
->  	[0] = { nfsd4_dec_ops, ARRAY_SIZE(nfsd4_dec_ops) },
->  	[1] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
-> +	[2] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
->  };
->  
->  static __be32
-> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-> index 26a457b..0e3ccd1 100644
-> --- a/fs/nfsd/nfsd.h
-> +++ b/fs/nfsd/nfsd.h
-> @@ -24,7 +24,7 @@
->  /*
->   * nfsd version
->   */
-> -#define NFSD_SUPPORTED_MINOR_VERSION	1
-> +#define NFSD_SUPPORTED_MINOR_VERSION	2
->  /*
->   * Maximum blocksizes supported by daemon under various circumstances.
->   */
-> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-> index d1c229f..de9416b 100644
-> --- a/fs/nfsd/state.h
-> +++ b/fs/nfsd/state.h
-> @@ -108,7 +108,7 @@ struct nfs4_cb_conn {
->  	u32                     cb_prog; /* used only in 4.0 case;
->  					    per-session otherwise */
->  	u32                     cb_ident;	/* minorversion 0 only */
-> -	struct svc_xprt		*cb_xprt;	/* minorversion 1 only */
-> +	struct svc_xprt		*cb_xprt;	/* minorversion >= 1 only */
->  };
->  
->  static inline struct nfs4_delegation *delegstateid(struct nfs4_stid *s)
-> -- 
-> 1.8.1.2
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Good point. I guess my thinking was that we aren't really interested in
+the dentry, per-se. But for some filesystems, having the dentry may
+make this easier to deal with.
+
+>=20
+> >=20
+> > Cc: NeilBrown <neilb@suse.de>
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  Documentation/filesystems/Locking |  2 ++
+> >  Documentation/filesystems/vfs.txt | 32 ++++++++++++++++++++++++++--
+> >  fs/9p/vfs_dentry.c                |  1 +
+> >  fs/9p/vfs_super.c                 |  2 +-
+> >  fs/dcache.c                       |  3 +++
+> >  fs/namei.c                        |  8 ++-----
+> >  fs/nfs/dir.c                      | 45 +++++++++++++++++++++++++++++++=
+++++++++
+> >  fs/nfs/nfs4super.c                |  6 +++---
+> >  fs/nfs/super.c                    |  6 +++---
+> >  include/linux/dcache.h            |  3 +++
+> >  include/linux/fs.h                |  1 -
+> >  11 files changed, 93 insertions(+), 16 deletions(-)
+> >=20
+> > diff --git a/Documentation/filesystems/Locking b/Documentation/filesyst=
+ems/Locking
+> > index f48e0c6..9718b667 100644
+> > --- a/Documentation/filesystems/Locking
+> > +++ b/Documentation/filesystems/Locking
+> > @@ -10,6 +10,7 @@ be able to use diff(1).
+> >  --------------------------- dentry_operations ------------------------=
+--
+> >  prototypes:
+> >  	int (*d_revalidate)(struct dentry *, unsigned int);
+> > +	int (*d_reval_jumped)(struct dentry *, unsigned int);
+> >  	int (*d_hash)(const struct dentry *, const struct inode *,
+> >  			struct qstr *);
+> >  	int (*d_compare)(const struct dentry *, const struct inode *,
+>=20
+> I cannot get excited about the name "d_reval_jumped" .... though once you
+> read the explanation in the doco (thanks for that) it makes sense.  I gue=
+ss
+> I'll get used to it.
+>=20
+
+Me neither. I think Al mentioned that he's renamed this to
+"d_weak_revalidate" in his tree. Neither name really does it for me,
+so I'm open to suggestions.
+
+> >  /*
+> > + * A weaker form of d_revalidate for revalidating just the dentry->d_i=
+node
+> > + * when we don't really care about the dentry name. This is called whe=
+n a
+> > + * pathwalk ends on a dentry that was not found via a normal lookup in=
+ the
+> > + * parent dir (e.g.: ".", "..", procfs symlinks or mountpoint traversa=
+ls).
+> > + *
+> > + * In this situation, we just want to verify that the inode itself is =
+OK
+> > + * since the dentry might have changed on the server.
+> > + */
+> > +static int nfs_reval_jumped(struct dentry *dentry, unsigned int flags)
+> > +{
+> > +	int error;
+> > +	struct inode *inode =3D dentry->d_inode;
+> > +
+> > +	if (flags & LOOKUP_RCU)
+> > +		return -ECHILD;
+> > +
+> > +	/*
+> > +	 * I believe we can only get a negative dentry here in the case of a
+> > +	 * procfs-style symlink. Just assume it's correct for now, but we may
+> > +	 * eventually need to do something more here.
+> > +	 */
+> > +	if (!inode) {
+> > +		dfprintk(LOOKUPCACHE, "%s: %s/%s has negative inode\n",
+> > +				__func__, dentry->d_parent->d_name.name,
+> > +				dentry->d_name.name);
+> > +		return 1;
+> > +	}
+> > +
+> > +	if (is_bad_inode(inode)) {
+> > +		dfprintk(LOOKUPCACHE, "%s: %s/%s has dud inode\n",
+> > +				__func__, dentry->d_parent->d_name.name,
+> > +				dentry->d_name.name);
+> > +		return 0;
+> > +	}
+> > +
+> > +	error =3D nfs_revalidate_inode(NFS_SERVER(inode), inode);
+> > +	dfprintk(LOOKUPCACHE, "NFS: %s: inode %lu is %s\n",
+> > +			__func__, inode->i_ino, error ? "invalid" : "valid");
+> > +	if (error)
+> > +		return 0;
+> > +	return 1;
+> > +}
+>=20
+> I wonder if we can delay the "-ECHILD" return a bit.
+> Leaving it to after the first two tests should be safe, but doesn't gain =
+us
+> anything.
+>=20
+> Open-coding the nfs_revalidate_inode as:
+> 	if (!(NFS_I(inode)->cache_validity & NFS_INO_INVALID_ATTR)
+> 			&& !nfs_attribute_cache_expired(inode))
+> 		return NFS_STALE(inode) ? 0 : 1;
+> 	error =3D __nfs_revalidate_inode(server, inode);
+>=20
+> and then inserting the -ECHILD code in before the __nfs_revalidate_inode
+> should be safe, and means we still benefit from the RCU path in the common
+> case.
+> Of course, for that to be really useful, nfs_lookup_revalidate would need=
+ to
+> be changed to only return -ECHILD if it really needed to block, and  maybe
+> that is too hard, or at least is a job for another day.
+>=20
+> Otherwise, looks good - thanks.
+>=20
+> Reviewed-by: NeilBrown <neilb@suse.de>
+>=20
+>=20
+
+I don't know that much about rcuwalk mode, but the vfs.txt doc says
+this:
+
+        If in rcu-walk mode, the filesystem must revalidate the dentry
+        without blocking or storing to the dentry, d_parent and d_inode
+        should not be used without care (because they can change and,
+        in d_inode case, even become NULL under us).
+
+If we assume that d_inode does become NULL after we set the "inode"
+pointer, do we still hold a reference to it? Or do we need to ensure
+that we take one when we set that pointer?
+
+Also, since this is the last component of the path, I suspect that
+we're almost never going to be in rcu-walk mode here, right?
+
+In any case, I think we ought to do that sort of optimization
+separately on top of this patch. We probably ought to consider similar
+optimization in the d_revalidate routines too. I think we might get
+even more gain there anyway.
+
+--=20
+Jeff Layton <jlayton@redhat.com>
+
+--Sig_/2uiW+meMVrfeDAS=7Py4lWd
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIcBAEBAgAGBQJRJkiiAAoJEAAOaEEZVoIVDDoP/RBrYW1PSnyrmQArP5tU5IzF
+h1t+ZhJwfybAziuUh0jNytVMa7Nwl56wjmSD1mGfILYchVvroD6Xr250PNYXFDzn
+Zs0J+Rr+ww8ETCC79FzdAE+zHhMrI74trjaaC8ITVehBk/TxynOAubbwJkTZMhNI
+zn0+eILL+E8tHtahRev31Fh+r+IcTZbUQQVcJXRYsFVZ+khcqByPx/3uf8ETTTS5
+vx/EwLejA/f3b6R8IYyIkbmypeSy4rs3omivEa7HGTKM26+hWxrolXdYqxcXre1T
+OaTXt1Tbm24RQWjPvxPmtuZiBw6IUlwhfninaT0Tgk81Rrl090BfEcKGtthEvt0i
+FUfbGtupRsfbmDJzNwBLJS2dP4TzjVjPRAkwF+h2gdw4SvMo5XujBemrvkuzdWgb
+ltLh8ItT252Gan86ytk5Hofbf4fWwiF5AjM6Neqsgii3k1P98dc78T5q/8ZstqIc
+xRtZBkZHr0PKw0hUpzIEjGyWbSC0exICwuMsK+FWddwNJ5WCD2quHhzEnaPqohTv
+KzKtYSlRcuq5FVUVXWjv9KLZmOfNQOSNawlBv+dCGPN2Ix3l+i01SNbpIj98xTnf
+XaFBUwx7j9N7TgZViErZ1ldXXf0MlLuqfmtcWmueO2zxCG0lIqKasmV5sItcBiTH
+5kqwN+Goq+3il1EI+Gpq
+=9uyf
+-----END PGP SIGNATURE-----
+
+--Sig_/2uiW+meMVrfeDAS=7Py4lWd--
