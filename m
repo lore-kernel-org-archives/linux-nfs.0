@@ -1,119 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:53275 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:36631 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753494Ab3BRXKu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Feb 2013 18:10:50 -0500
-Date: Tue, 19 Feb 2013 10:10:31 +1100
-From: NeilBrown <neilb@suse.de>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        NFS <linux-nfs@vger.kernel.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: More fun with unmounting ESTALE directories.
-Message-ID: <20130219101031.123b1eb0@notabene.brown>
-In-Reply-To: <20130218184609.GF4503@ZenIV.linux.org.uk>
-References: <20130212113813.427b8e05@notabene.brown>
-	<20130214104230.013b7f71@tlielax.poochiereds.net>
-	<20130218132509.0ce779de@notabene.brown>
-	<20130218184609.GF4503@ZenIV.linux.org.uk>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/N1N.nRAQ8Fnq2k4beO5zwL2"; protocol="application/pgp-signature"
+	id S1759814Ab3BUUgH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Feb 2013 15:36:07 -0500
+Date: Thu, 21 Feb 2013 15:36:04 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "simo@redhat.com" <simo@redhat.com>
+Subject: Re: [PATCH 1/6] SUNRPC: make AF_LOCAL connect synchronous
+Message-ID: <20130221203603.GE3531@pad.fieldses.org>
+References: <1361464705-12340-1-git-send-email-bfields@redhat.com>
+ <1361464705-12340-2-git-send-email-bfields@redhat.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9235DA5F3@SACEXCMBX04-PRD.hq.netapp.com>
+ <20130221194804.GC3531@pad.fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9235DA946@SACEXCMBX04-PRD.hq.netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9235DA946@SACEXCMBX04-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/N1N.nRAQ8Fnq2k4beO5zwL2
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Thu, Feb 21, 2013 at 08:02:30PM +0000, Myklebust, Trond wrote:
+> On Thu, 2013-02-21 at 14:48 -0500, J. Bruce Fields wrote:
+> > On Thu, Feb 21, 2013 at 06:17:47PM +0000, Myklebust, Trond wrote:
+> > > On Thu, 2013-02-21 at 11:38 -0500, J. Bruce Fields wrote:
+> > > > From: "J. Bruce Fields" <bfields@redhat.com>
+> > > > 
+> > > > It doesn't appear that anyone actually needs to connect asynchronously.
+> > > > 
+> > > > Also, using a workqueue for the connect means we lose the namespace
+> > > > information from the original process.  This is a problem since there's
+> > > > no way to explicitly pass in a filesystem namespace for resolution of an
+> > > > AF_LOCAL address.
+> > > > 
+> > > > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > > > ---
+> > > >  net/sunrpc/xprtsock.c |   35 +++++++++++++++++++++++++++--------
+> > > >  1 file changed, 27 insertions(+), 8 deletions(-)
+> > > > 
+> > > > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> > > > index bbc0915..b1df874 100644
+> > > > --- a/net/sunrpc/xprtsock.c
+> > > > +++ b/net/sunrpc/xprtsock.c
+> > > > @@ -1866,13 +1866,9 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
+> > > >   * @xprt: RPC transport to connect
+> > > >   * @transport: socket transport to connect
+> > > >   * @create_sock: function to create a socket of the correct type
+> > > > - *
+> > > > - * Invoked by a work queue tasklet.
+> > > >   */
+> > > > -static void xs_local_setup_socket(struct work_struct *work)
+> > > > +static void xs_local_setup_socket(struct sock_xprt *transport)
+> > > >  {
+> > > > -	struct sock_xprt *transport =
+> > > > -		container_of(work, struct sock_xprt, connect_worker.work);
+> > > >  	struct rpc_xprt *xprt = &transport->xprt;
+> > > >  	struct socket *sock;
+> > > >  	int status = -EIO;
+> > > > @@ -1919,6 +1915,31 @@ out:
+> > > >  	current->flags &= ~PF_FSTRANS;
+> > > >  }
+> > > >  
+> > > > +static void xs_local_connect(struct rpc_task *task)
+> > > > +{
+> > > > +	struct rpc_xprt *xprt = task->tk_xprt;
+> > > > +	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+> > > > +	unsigned long timeout;
+> > > > +
+> > > > +	 if (RPC_IS_ASYNC(task))
+> > > > +	 	rpc_exit(task, -ENOTCONN);
+> > > 
+> > > Needs a "return"...
+> > 
+> > Fixed, thanks.
+> > 
+> > > 
+> > > 
+> > > > +
+> > > > +	if (transport->sock != NULL && !RPC_IS_SOFTCONN(task)) {
+> > > > +		dprintk("RPC:       xs_connect delayed xprt %p for %lu "
+> > > > +				"seconds\n",
+> > > > +				xprt, xprt->reestablish_timeout / HZ);
+> > > > +		timeout = xprt->reestablish_timeout;
+> > > > +		xprt->reestablish_timeout <<= 1;
+> > > > +		if (xprt->reestablish_timeout < XS_TCP_INIT_REEST_TO)
+> > > > +			xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
+> > > > +		if (xprt->reestablish_timeout > XS_TCP_MAX_REEST_TO)
+> > > > +			xprt->reestablish_timeout = XS_TCP_MAX_REEST_TO;
+> > > > +		rpc_delay(task, timeout);
+> > > 
+> > > This too needs to exit in order to sleep.
+> > 
+> > Oops, so maybe simplest would be just to connect first and then delay if
+> > there's a failure.
+> > 
+> > (Or is there any problem just making that rpc_delay() an msleep() since
+> > we know we're in the synchronous case?)
+> 
+> A 5 minute msleep() is probably a bit excessive. Making it interruptible
+> might help, but ...
+> That does however raise the issue of why we need exponential back off
+> here? An AF_LOCAL connect call is pretty efficient.
 
-On Mon, 18 Feb 2013 18:46:09 +0000 Al Viro <viro@ZenIV.linux.org.uk> wrote:
+And the only excuse for the connect not succeeding is, what, rpcbind
+just crashed or something?  In which case I think our only
+responsibility is just not to spin furiously.  How about just something
+like
 
-> On Mon, Feb 18, 2013 at 01:25:09PM +1100, NeilBrown wrote:
->=20
-> > I would be really nice if sys_unmount used a LOOKUP_MOUNTPOINT flag that
-> > works a bit like LOOKUP_PARENT and LOOKUP_NOFOLLOW in that it skips the=
- very
-> > last step and returns the mounted-on directory, not the mountpoint that=
- is
-> > mounted there - or at least makes sure not revalidate happens on that f=
-inal
-> > mounted directory.
->=20
-> I don't think LOOKUP_MOUNTPOINT is a good idea.  For one thing, we have
-> fairly few places that might want it, all of them in core VFS.  Might as
-> well provide a separate function for them, a-la path_lookupat() vs.
-> path_openat().
->=20
-> For another, we need to decide what to do with a really nasty corner case:
-> 	a/b is a mountpoint, with c/d bound on it.
-> 	c/d is a symlink to c/e
-> 	c/e is a mountpoint
-> What should umount("a/b", 0) do?  There are two possibilities - removing
-> vfsmount on top of a/b or one on top of c/e...
->=20
-> We have the latter semantics; _that_ is what this GETATTR is about.  It's
-> a fairly obscure corner case - the question is not even whether to follow
-> symlinks, it's whether to follow _mounts_ on the last component.  Hell
-> knows; I'm seriously tempted to change it "don't follow mounts" and see if
-> anyone complains.  The only case when behaviour would change would be
-> a symlink mounted somewhere (note that this is _not_ something that can e=
-asily
-> happen; e.g. mount --bind does follow symlinks) and umount(2) given the
-> path resolving to the mountpoint of that symlink.
+	ret = xs_local_setup_socket(transport);
+	if (ret && !RPC_IS_SOFTCONN(task))
+		msleep_interruptible(1000);
+	return;
 
-Thinking about this some more, I now realise that my LOOKUP_MOUNTPOINT idea
-was too simplistic and missed the real point.
+?
 
-The real point is that for unmount, we want to resolve the the path without
-any reference to any filesystem at all - the lookup should be handled
-entirely by the dcache.
-Any mountpoint is pinned in the dcache, and consequently any ancestor of any
-mount point also is.  So the dcache will lead us to the dentry that we want.
+Or we could keep the same exponential timeout logic and just adjust the
+min/max.
 
-And the dentry is *all* we want.  It doesn't really matter what the inode is
-like, or whether the filesystem thinks that the inode or name still exist.
-All we need to do is find a dentry that must be  in the cache, and detach t=
-he
-mount that is there.
+I have no strong opinions here....
 
-Whether that is achieved by a LOOKUP_ flag or a separate lookup function
-doesn't matter much to me.
-
-I suspect we need to allow for passing a symlink to unmount, and the symlink
-might not be in cache, so we cannot insist uniformly on only using the dcac=
-he.
-However if a name is in the cache, and the cached data suggests that it is a
-directory, then we should trust that and avoid referring to the filesystem.
-
-umount is really quite unique in this.  All other times we lookup a path we
-want to use the thing we found.  With umount, we want to stop using it.
-
-???
-
-NeilBrown
-
-
---Sig_/N1N.nRAQ8Fnq2k4beO5zwL2
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.19 (GNU/Linux)
-
-iQIVAwUBUSK05znsnt1WYoG5AQLK/Q/6AqixXUY83P2BozDbUoN8Y9M4cs1mkBSz
-tuGrnnG3R4+JqfI2JekKQ4UOdAPAITw6OxvjQMAsXnW0gO8SISNzOdemM546pUTN
-HsP3B8feH8GxXbB64cu1x2HMjrEnaOrdLIx0rUgQbc5ptCDnozaLRr2Mc1uQg1V3
-DUtE7NYFkVtS581XB/4PFwDSBqOt8lyl+pjl8a+RVUPEY7tdjF7R3yS7ZhU/+7MD
-5UgNbkDSWNN8/Ezu0ykoTZgvzDfdLrfBx2kQxs2ySsg9Ng6VttTNcTBJ3WUlj+50
-whbrFVKR47PDHX+h2Z2gXLBhQOHChMwAgRBRECion3xFIMT/nf4JsFnMlskYZA9I
-UsZBmvqZUjeKBZAHadvSD6oN1B0na+RPHggngm8s/4Dg+kcHQqguuXI6X8nvXg4q
-wBrgVnxdQqrE83ppANBkmF7KYe8jZ0zRSH7B9J/WLnNWtQnLFB6qqnDV2VaVip29
-If2+9JWl8Ey5sqthjaEgOjn59qDnTfD8Ywt4tsjZ0wqd1RAjBWegRK+Nd4MCCmqD
-MJxqoFm53lEJ8AR6tNs3Vw6eKsr9Iq1/JlVK3P2QXzpNF/7VF3HdLlH0UBpJYjqe
-YYZFTMLhB92VHYGzkCzAauxqIyYkknq9ka085yEKEbWfj6wGKI9C7zQu76H/Sq/v
-Qxt+tEAsvYo=
-=ga2U
------END PGP SIGNATURE-----
-
---Sig_/N1N.nRAQ8Fnq2k4beO5zwL2--
+--b.
