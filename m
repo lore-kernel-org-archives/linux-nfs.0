@@ -1,47 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38545 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:5824 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754703Ab3BPWeP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 16 Feb 2013 17:34:15 -0500
-Date: Sat, 16 Feb 2013 17:34:07 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 14/15] NFSD: Server implementation of MAC Labeling
-Message-ID: <20130216223407.GC28824@fieldses.org>
-References: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
- <1360327163-20360-15-git-send-email-SteveD@redhat.com>
- <20130212225425.GM10267@fieldses.org>
- <511FEFCB.2090002@RedHat.com>
+	id S1755813Ab3BUUmQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Feb 2013 15:42:16 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "simo@redhat.com" <simo@redhat.com>
+Subject: Re: [PATCH 1/6] SUNRPC: make AF_LOCAL connect synchronous
+Date: Thu, 21 Feb 2013 20:42:14 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9235DAA19@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1361464705-12340-1-git-send-email-bfields@redhat.com>
+	 <1361464705-12340-2-git-send-email-bfields@redhat.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9235DA5F3@SACEXCMBX04-PRD.hq.netapp.com>
+	 <20130221194804.GC3531@pad.fieldses.org>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9235DA946@SACEXCMBX04-PRD.hq.netapp.com>
+	 <20130221203603.GE3531@pad.fieldses.org>
+In-Reply-To: <20130221203603.GE3531@pad.fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <511FEFCB.2090002@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Feb 16, 2013 at 03:44:59PM -0500, Steve Dickson wrote:
-> On 12/02/13 17:54, J. Bruce Fields wrote:
+On Thu, 2013-02-21 at 15:36 -0500, J. Bruce Fields wrote:
+> On Thu, Feb 21, 2013 at 08:02:30PM +0000, Myklebust, Trond wrote:
+> > On Thu, 2013-02-21 at 14:48 -0500, J. Bruce Fields wrote:
+> > > On Thu, Feb 21, 2013 at 06:17:47PM +0000, Myklebust, Trond wrote:
+> > > > On Thu, 2013-02-21 at 11:38 -0500, J. Bruce Fields wrote:
+> > > > > From: "J. Bruce Fields" <bfields@redhat.com>
+> > > > > 
+> > > > > It doesn't appear that anyone actually needs to connect asynchronously.
+> > > > > 
+> > > > > Also, using a workqueue for the connect means we lose the namespace
+> > > > > information from the original process.  This is a problem since there's
+> > > > > no way to explicitly pass in a filesystem namespace for resolution of an
+> > > > > AF_LOCAL address.
+> > > > > 
+> > > > > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > > > > ---
+> > > > >  net/sunrpc/xprtsock.c |   35 +++++++++++++++++++++++++++--------
+> > > > >  1 file changed, 27 insertions(+), 8 deletions(-)
+> > > > > 
+> > > > > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> > > > > index bbc0915..b1df874 100644
+> > > > > --- a/net/sunrpc/xprtsock.c
+> > > > > +++ b/net/sunrpc/xprtsock.c
+> > > > > @@ -1866,13 +1866,9 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
+> > > > >   * @xprt: RPC transport to connect
+> > > > >   * @transport: socket transport to connect
+> > > > >   * @create_sock: function to create a socket of the correct type
+> > > > > - *
+> > > > > - * Invoked by a work queue tasklet.
+> > > > >   */
+> > > > > -static void xs_local_setup_socket(struct work_struct *work)
+> > > > > +static void xs_local_setup_socket(struct sock_xprt *transport)
+> > > > >  {
+> > > > > -	struct sock_xprt *transport =
+> > > > > -		container_of(work, struct sock_xprt, connect_worker.work);
+> > > > >  	struct rpc_xprt *xprt = &transport->xprt;
+> > > > >  	struct socket *sock;
+> > > > >  	int status = -EIO;
+> > > > > @@ -1919,6 +1915,31 @@ out:
+> > > > >  	current->flags &= ~PF_FSTRANS;
+> > > > >  }
+> > > > >  
+> > > > > +static void xs_local_connect(struct rpc_task *task)
+> > > > > +{
+> > > > > +	struct rpc_xprt *xprt = task->tk_xprt;
+> > > > > +	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+> > > > > +	unsigned long timeout;
+> > > > > +
+> > > > > +	 if (RPC_IS_ASYNC(task))
+> > > > > +	 	rpc_exit(task, -ENOTCONN);
+> > > > 
+> > > > Needs a "return"...
+> > > 
+> > > Fixed, thanks.
+> > > 
+> > > > 
+> > > > 
+> > > > > +
+> > > > > +	if (transport->sock != NULL && !RPC_IS_SOFTCONN(task)) {
+> > > > > +		dprintk("RPC:       xs_connect delayed xprt %p for %lu "
+> > > > > +				"seconds\n",
+> > > > > +				xprt, xprt->reestablish_timeout / HZ);
+> > > > > +		timeout = xprt->reestablish_timeout;
+> > > > > +		xprt->reestablish_timeout <<= 1;
+> > > > > +		if (xprt->reestablish_timeout < XS_TCP_INIT_REEST_TO)
+> > > > > +			xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
+> > > > > +		if (xprt->reestablish_timeout > XS_TCP_MAX_REEST_TO)
+> > > > > +			xprt->reestablish_timeout = XS_TCP_MAX_REEST_TO;
+> > > > > +		rpc_delay(task, timeout);
+> > > > 
+> > > > This too needs to exit in order to sleep.
+> > > 
+> > > Oops, so maybe simplest would be just to connect first and then delay if
+> > > there's a failure.
+> > > 
+> > > (Or is there any problem just making that rpc_delay() an msleep() since
+> > > we know we're in the synchronous case?)
 > > 
-> > Although: don't we need to check whether the exported filesystem
-> > supports security labels?
-> I took a quick look around and didn't see any interface to do that.
-> Is it even possible to do this?
+> > A 5 minute msleep() is probably a bit excessive. Making it interruptible
+> > might help, but ...
+> > That does however raise the issue of why we need exponential back off
+> > here? An AF_LOCAL connect call is pretty efficient.
+> 
+> And the only excuse for the connect not succeeding is, what, rpcbind
+> just crashed or something?  In which case I think our only
+> responsibility is just not to spin furiously.  How about just something
+> like
+> 
+> 	ret = xs_local_setup_socket(transport);
+> 	if (ret && !RPC_IS_SOFTCONN(task))
+> 		msleep_interruptible(1000);
+> 	return;
 
-Try fetching a security label and check whether the response is
-EOPNOTSUPP, I think.  That's what the ACL code does.
+This general approach works for me...
 
-> >> +	/* XXX: should we have a MAY_SSECCTX? */
-> > 
-> > I don't know, should we?
-> I vote no! ;-) What is that? 
+> ?
+> 
+> Or we could keep the same exponential timeout logic and just adjust the
+> min/max.
+> 
+> I have no strong opinions here....
 
-Maybe this is a question for Dave--who wrote that comment?  How should
-we be checking for permissions to set the security label?
+I'm fine with just using a fixed timeout, as long as it is not too
+short. 15 seconds, perhaps?
 
---b.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
