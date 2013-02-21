@@ -1,184 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:8433 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:9999 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754304Ab3BRSsK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Feb 2013 13:48:10 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 02/14] Security: Add Hook to test if the particular xattr is part of a MAC model.
-Date: Mon, 18 Feb 2013 13:47:44 -0500
-Message-Id: <1361213276-17962-3-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1361213276-17962-1-git-send-email-SteveD@redhat.com>
-References: <1361213276-17962-1-git-send-email-SteveD@redhat.com>
+	id S1754136Ab3BUVhe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Feb 2013 16:37:34 -0500
+Date: Thu, 21 Feb 2013 16:37:31 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "simo@redhat.com" <simo@redhat.com>
+Subject: Re: [PATCH 5/6] SUNRPC: Add RPC based upcall mechanism for RPCGSS
+ auth
+Message-ID: <20130221213731.GG3531@pad.fieldses.org>
+References: <1361464705-12340-1-git-send-email-bfields@redhat.com>
+ <1361464705-12340-6-git-send-email-bfields@redhat.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9235DA682@SACEXCMBX04-PRD.hq.netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9235DA682@SACEXCMBX04-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+On Thu, Feb 21, 2013 at 06:35:46PM +0000, Myklebust, Trond wrote:
+> On Thu, 2013-02-21 at 11:38 -0500, J. Bruce Fields wrote:
+> > +int gssp_accept_sec_context_upcall(struct net *net,
+> > +				struct gssp_upcall_data *data)
+> > +{
+> > +	struct gssx_arg_accept_sec_context arg;
+> > +	struct gssx_res_accept_sec_context res;
+> > +	struct gssx_ctx ctxh;
+> > +	struct gssx_ctx rctxh;
+> > +	struct gssx_cred delegcred;
+> > +	struct rpc_message msg = {
+> > +		.rpc_proc = &gssp_procedures[GSSX_ACCEPT_SEC_CONTEXT],
+> > +		.rpc_argp = &arg,
+> > +		.rpc_resp = &res,
+> > +		.rpc_cred = NULL, /* FIXME ? */
+> > +	};
+> > +	struct xdr_netobj client_name = { 0 , NULL };
+> > +	int ret;
+> > +
+> > +	/* fill in arg */
+> > +	memset(&arg, 0, sizeof(arg));
+> > +	if (data->in_handle.len != 0) {
+> > +		memset(&ctxh, 0, sizeof(ctxh));
+> > +		arg.context_handle = &ctxh;
+> > +		ctxh.state = data->in_handle;
+> > +	}
+> > +	arg.input_token = data->in_token;
+> > +
+> > +	/* use nfs/ for targ_name ? */
+> > +
+> > +	/* prepare res */
+> > +	memset(&res, 0, sizeof(res));
+> > +	memset(&rctxh, 0, sizeof(rctxh));
+> > +	res.context_handle = &rctxh;
+> > +
+> > +	/* pass in the max length we expect for each of these
+> > +	 * buffers but let the xdr code kmalloc them */
+> > +	rctxh.exported_context_token.len = GSSX_max_output_handle_sz;
+> > +	rctxh.mech.len = GSSX_max_oid_sz;
+> > +	rctxh.src_name.display_name.len = GSSX_max_princ_sz;
+> > +
+> > +	res.output_token = &data->out_token;
+> > +	res.output_token->len = GSSX_max_output_token_sz;
+> 
+> 
+> C99 initialisers for arg, and res would clean this up nicely... Main
+> question is how much stack does all the above eat?
 
-The interface to request security labels from user space is the xattr
-interface. When requesting the security label from an NFS server it is
-important to make sure the requested xattr actually is a MAC label. This allows
-us to make sure that we get the desired semantics from the attribute instead of
-something else such as capabilities or a time based LSM.
+It's about 1k, yuch.  I don't think that's going to cause problems here
+in practice, but I'll see if I can trim it down, at least some of it
+doesn't look like it's really used.
 
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- include/linux/security.h   | 14 ++++++++++++++
- security/capability.c      |  6 ++++++
- security/security.c        |  6 ++++++
- security/selinux/hooks.c   |  6 ++++++
- security/smack/smack_lsm.c | 11 +++++++++++
- 5 files changed, 43 insertions(+)
+> > +static int gssx_dec_buffer(struct xdr_stream *xdr,
+> > +			   gssx_buffer *buf)
+> > +{
+> > +	u32 length;
+> > +	__be32 *p;
+> > +
+> > +	p = xdr_inline_decode(xdr, 4);
+> > +	if (unlikely(p == NULL))
+> > +		return -ENOSPC;
+> > +
+> > +	length = be32_to_cpup(p);
+> > +	p = xdr_inline_decode(xdr, length);
+> 
+> combine for efficiency with the 4 byte allocation above.
 
-diff --git a/include/linux/security.h b/include/linux/security.h
-index a957e7a..8a6faff 100644
---- a/include/linux/security.h
-+++ b/include/linux/security.h
-@@ -1319,6 +1319,13 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
-  *	@pages contains the number of pages.
-  *	Return 0 if permission is granted.
-  *
-+ * @ismaclabel:
-+ *	Check if the extended attribute specified by @name
-+ *	represents a MAC label. Returns 0 if name is a MAC
-+ *	attribute otherwise returns non-zero.
-+ *	@name full extended attribute name to check against
-+ *	LSM as a MAC label.
-+ *
-  * @secid_to_secctx:
-  *	Convert secid to security context.  If secdata is NULL the length of
-  *	the result will be returned in seclen, but no secdata will be returned.
-@@ -1600,6 +1607,7 @@ struct security_operations {
- 
- 	int (*getprocattr) (struct task_struct *p, char *name, char **value);
- 	int (*setprocattr) (struct task_struct *p, char *name, void *value, size_t size);
-+	int (*ismaclabel) (const char *name);
- 	int (*secid_to_secctx) (u32 secid, char **secdata, u32 *seclen);
- 	int (*secctx_to_secid) (const char *secdata, u32 seclen, u32 *secid);
- 	void (*release_secctx) (char *secdata, u32 seclen);
-@@ -1852,6 +1860,7 @@ void security_d_instantiate(struct dentry *dentry, struct inode *inode);
- int security_getprocattr(struct task_struct *p, char *name, char **value);
- int security_setprocattr(struct task_struct *p, char *name, void *value, size_t size);
- int security_netlink_send(struct sock *sk, struct sk_buff *skb);
-+int security_ismaclabel(const char *name);
- int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen);
- int security_secctx_to_secid(const char *secdata, u32 seclen, u32 *secid);
- void security_release_secctx(char *secdata, u32 seclen);
-@@ -2540,6 +2549,11 @@ static inline int security_netlink_send(struct sock *sk, struct sk_buff *skb)
- 	return cap_netlink_send(sk, skb);
- }
- 
-+static inline int security_ismaclabel(const char *name)
-+{
-+	return 0;
-+}
-+
- static inline int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return -EOPNOTSUPP;
-diff --git a/security/capability.c b/security/capability.c
-index 456bd9d..07a6484 100644
---- a/security/capability.c
-+++ b/security/capability.c
-@@ -817,6 +817,11 @@ static int cap_setprocattr(struct task_struct *p, char *name, void *value,
- 	return -EINVAL;
- }
- 
-+static int cap_ismaclabel(const char *name)
-+{
-+	return 0;
-+}
-+
- static int cap_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return -EOPNOTSUPP;
-@@ -1036,6 +1041,7 @@ void __init security_fixup_ops(struct security_operations *ops)
- 	set_to_cap_if_null(ops, d_instantiate);
- 	set_to_cap_if_null(ops, getprocattr);
- 	set_to_cap_if_null(ops, setprocattr);
-+	set_to_cap_if_null(ops, ismaclabel);
- 	set_to_cap_if_null(ops, secid_to_secctx);
- 	set_to_cap_if_null(ops, secctx_to_secid);
- 	set_to_cap_if_null(ops, release_secctx);
-diff --git a/security/security.c b/security/security.c
-index 723a10c..6d7389c 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -1057,6 +1057,12 @@ int security_netlink_send(struct sock *sk, struct sk_buff *skb)
- 	return security_ops->netlink_send(sk, skb);
- }
- 
-+int security_ismaclabel(const char *name)
-+{
-+	return security_ops->ismaclabel(name);
-+}
-+EXPORT_SYMBOL(security_ismaclabel);
-+
- int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return security_ops->secid_to_secctx(secid, secdata, seclen);
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index 2664ed3..03659ab 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -5426,6 +5426,11 @@ abort_change:
- 	return error;
- }
- 
-+static int selinux_ismaclabel(const char *name)
-+{
-+	return (strcmp(name, XATTR_SELINUX_SUFFIX) == 0);
-+}
-+
- static int selinux_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return security_sid_to_context(secid, secdata, seclen);
-@@ -5664,6 +5669,7 @@ static struct security_operations selinux_ops = {
- 	.getprocattr =			selinux_getprocattr,
- 	.setprocattr =			selinux_setprocattr,
- 
-+	.ismaclabel =			selinux_ismaclabel,
- 	.secid_to_secctx =		selinux_secid_to_secctx,
- 	.secctx_to_secid =		selinux_secctx_to_secid,
- 	.release_secctx =		selinux_release_secctx,
-diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
-index 38be92c..82c3c72 100644
---- a/security/smack/smack_lsm.c
-+++ b/security/smack/smack_lsm.c
-@@ -3335,6 +3335,16 @@ static void smack_audit_rule_free(void *vrule)
- #endif /* CONFIG_AUDIT */
- 
- /**
-+ * smack_ismaclabel - check if xattr @name references a smack MAC label
-+ * @name: Full xattr name to check.
-+ */
-+static int smack_ismaclabel(const char *name)
-+{
-+	return (strcmp(name, XATTR_SMACK_SUFFIX) == 0);
-+}
-+
-+
-+/**
-  * smack_secid_to_secctx - return the smack label for a secid
-  * @secid: incoming integer
-  * @secdata: destination
-@@ -3530,6 +3540,7 @@ struct security_operations smack_ops = {
- 	.audit_rule_free =		smack_audit_rule_free,
- #endif /* CONFIG_AUDIT */
- 
-+	.ismaclabel =			smack_ismaclabel,
- 	.secid_to_secctx = 		smack_secid_to_secctx,
- 	.secctx_to_secid = 		smack_secctx_to_secid,
- 	.release_secctx = 		smack_release_secctx,
--- 
-1.8.1.2
+I don't understand what you're asking for.  If you're suggesting a
+single xdr_inline_decode(xdr, 4 + length)--I don't see how we can do
+that with the length not known yet.
 
+--b.
