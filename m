@@ -1,127 +1,175 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:48257 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:43999 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754838Ab3BDUUr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Feb 2013 15:20:47 -0500
-Date: Mon, 4 Feb 2013 15:20:46 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 8/8] nfsd: keep a checksum of the first 256 bytes of
- request
-Message-ID: <20130204202046.GB8709@fieldses.org>
-References: <1359983887-28535-1-git-send-email-jlayton@redhat.com>
- <1359983887-28535-9-git-send-email-jlayton@redhat.com>
+	id S1757781Ab3BUWWv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Feb 2013 17:22:51 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Steve Dickson <steved@redhat.com>
+CC: "J. Bruce Fields" <bfields@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] NFSv4.2: Added NFS v4.2 support to the NFS client
+Date: Thu, 21 Feb 2013 22:22:49 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9235DAEC7@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1361484911-17537-1-git-send-email-steved@redhat.com>
+	 <1361484911-17537-2-git-send-email-steved@redhat.com>
+In-Reply-To: <1361484911-17537-2-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1359983887-28535-9-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 04, 2013 at 08:18:07AM -0500, Jeff Layton wrote:
-> @@ -238,12 +243,37 @@ nfsd_reply_cache_shrink(struct shrinker *shrink, struct shrink_control *sc)
->  }
->  
->  /*
-> + * Walk an xdr_buf and get a CRC for at most the first RC_CSUMLEN bytes
-> + */
-> +static u32
-> +nfsd_cache_crc(struct xdr_buf *buf)
-> +{
-> +	u32 crc;
-> +	const unsigned char *p = buf->head[0].iov_base;
-> +	size_t csum_len = min_t(size_t, buf->head[0].iov_len + buf->page_len,
-> +					RC_CSUMLEN);
-> +	size_t len = min(buf->head[0].iov_len, csum_len);
-> +
-> +	/* rq_arg.head first */
-> +	crc = crc32(crc_seed, p, len);
-> +	csum_len -= len;
-
-I'm getting a RPLY14 failure from pynfs --security=krb5i.
-
-I suspect what's happening here is that the data you're checksumming
-over includes the gss sequence number and the krbi integrity checksum.
-Both those change, even on resends, to prevent an attacker from doing
-something nefarious by resending an old rpc.
-
-I think we really want to checksum just over the nfs-level data.  Our
-checks for xid, program number, etc., already cover most of the rpc
-header anyway.
-
---b.
-
-> +
-> +	/* Nothing left */
-> +	if (!csum_len)
-> +		return crc;
-> +
-> +	/* checksum the rest from the page_array */
-> +	p = page_address(buf->pages[0]) + buf->page_base;
-> +	return crc32(crc, p, csum_len);
-> +}
-> +
-> +/*
->   * Search the request hash for an entry that matches the given rqstp.
->   * Must be called with cache_lock held. Returns the found entry or
->   * NULL on failure.
->   */
->  static struct svc_cacherep *
-> -nfsd_cache_search(struct svc_rqst *rqstp)
-> +nfsd_cache_search(struct svc_rqst *rqstp, u32 crc)
->  {
->  	struct svc_cacherep	*rp;
->  	struct hlist_node	*hn;
-> @@ -257,6 +287,7 @@ nfsd_cache_search(struct svc_rqst *rqstp)
->  	hlist_for_each_entry(rp, hn, rh, c_hash) {
->  		if (xid == rp->c_xid && proc == rp->c_proc &&
->  		    proto == rp->c_prot && vers == rp->c_vers &&
-> +		    rqstp->rq_arg.len == rp->c_len && crc == rp->c_crc &&
->  		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
->  		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr))
->  			return rp;
-> @@ -276,7 +307,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
->  	__be32			xid = rqstp->rq_xid;
->  	u32			proto =  rqstp->rq_prot,
->  				vers = rqstp->rq_vers,
-> -				proc = rqstp->rq_proc;
-> +				proc = rqstp->rq_proc,
-> +				crc;
->  	unsigned long		age;
->  	int type = rqstp->rq_cachetype;
->  	int rtn;
-> @@ -287,10 +319,12 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
->  		return RC_DOIT;
->  	}
->  
-> +	crc = nfsd_cache_crc(&rqstp->rq_arg);
-> +
->  	spin_lock(&cache_lock);
->  	rtn = RC_DOIT;
->  
-> -	rp = nfsd_cache_search(rqstp);
-> +	rp = nfsd_cache_search(rqstp, crc);
->  	if (rp)
->  		goto found_entry;
->  
-> @@ -318,7 +352,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
->  	 * Must search again just in case someone inserted one
->  	 * after we dropped the lock above.
->  	 */
-> -	found = nfsd_cache_search(rqstp);
-> +	found = nfsd_cache_search(rqstp, crc);
->  	if (found) {
->  		nfsd_reply_cache_free_locked(rp);
->  		rp = found;
-> @@ -344,6 +378,8 @@ setup_entry:
->  	rpc_set_port((struct sockaddr *)&rp->c_addr, rpc_get_port(svc_addr(rqstp)));
->  	rp->c_prot = proto;
->  	rp->c_vers = vers;
-> +	rp->c_len = rqstp->rq_arg.len;
-> +	rp->c_crc = crc;
->  
->  	hash_refile(rp);
->  	lru_put_end(rp);
-> -- 
-> 1.7.11.7
+On Thu, 2013-02-21 at 17:15 -0500, Steve Dickson wrote:
+> This enable NFSv4.2 support. To enable this code the
+> CONFIG_NFS_V4_2 Kconfig define needs to be set and
+> the -o v4.2 mount option need to be used.
 > 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  fs/nfs/Kconfig       | 11 ++++++++++-
+>  fs/nfs/callback.c    |  3 +++
+>  fs/nfs/nfs4client.c  |  5 +++++
+>  fs/nfs/nfs4proc.c    |  3 +++
+>  fs/nfs/super.c       |  7 ++++++-
+>  include/linux/nfs4.h |  4 ++++
+>  6 files changed, 31 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+> index 3861a1f..247db6d 100644
+> --- a/fs/nfs/Kconfig
+> +++ b/fs/nfs/Kconfig
+> @@ -104,6 +104,15 @@ config NFS_V4_1
+>  
+>  	  If unsure, say N.
+>  
+> +config NFS_V4_2
+> +	bool "NFS client support for NFSv4.2"
+> +	depends on NFS_V4_1
+> +	help
+> +	  This option enables support for minor version 1 of the NFSv4 protocol
+> +	  (RFC 5661) in the kernel's NFS client.
+> +
+> +	  If unsure, say N.
+> +
+>  config PNFS_FILE_LAYOUT
+>  	tristate
+>  	depends on NFS_V4_1
+> @@ -133,7 +142,7 @@ config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
+>  
+>  config NFS_V4_SECURITY_LABEL
+>  	bool "Provide Security Label support for NFSv4 client"
+> -	depends on NFS_V4 && SECURITY
+> +	depends on NFS_V4_2 && SECURITY
+>  	help
+
+Just have NFS_V4_SECURITY_LABEL be automatically selected by NFS_V4_2.
+Requiring users to manually select both makes little sense...
+
+
+>  	Say Y here if you want enable fine-grained security label attribute
+> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+> index 5088b57..4058ec8 100644
+> --- a/fs/nfs/callback.c
+> +++ b/fs/nfs/callback.c
+> @@ -281,6 +281,9 @@ static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct n
+>  		case 1:
+
+		case 2:
+
+>  			ret = nfs41_callback_up_net(serv, net);
+>  			break;
+> +		case 2:
+> +			ret = nfs41_callback_up_net(serv, net);
+> +			break;
+>  		default:
+>  			printk(KERN_ERR "NFS: unknown callback version: %d\n",
+>  					minorversion);
+> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+> index 2e9779b..2987fd6 100644
+> --- a/fs/nfs/nfs4client.c
+> +++ b/fs/nfs/nfs4client.c
+> @@ -66,6 +66,11 @@ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
+>  	if (err)
+>  		goto error;
+>  
+> +	if (cl_init->minorversion > NFS4_MAX_MINOR_VERSION) {
+> +		err = -EINVAL;
+> +		goto error;
+> +	}
+> +		
+>  	spin_lock_init(&clp->cl_lock);
+>  	INIT_DELAYED_WORK(&clp->cl_renewd, nfs4_renew_state);
+>  	rpc_init_wait_queue(&clp->cl_rpcwaitq, "NFS client");
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 40c1d1f..08fc8e2 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -7136,6 +7136,9 @@ const struct nfs4_minor_version_ops *nfs_v4_minor_ops[] = {
+>  #if defined(CONFIG_NFS_V4_1)
+>  	[1] = &nfs_v4_1_minor_ops,
+>  #endif
+> +#if defined(CONFIG_NFS_V4_2)
+> +	[2] = &nfs_v4_1_minor_ops,
+> +#endif
+>  };
+>  
+>  const struct inode_operations nfs4_dir_inode_operations = {
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index 4e78f93..d35582c 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -269,7 +269,7 @@ static match_table_t nfs_local_lock_tokens = {
+>  
+>  enum {
+>  	Opt_vers_2, Opt_vers_3, Opt_vers_4, Opt_vers_4_0,
+> -	Opt_vers_4_1,
+> +	Opt_vers_4_1, Opt_vers_4_2,
+>  
+>  	Opt_vers_err
+>  };
+> @@ -280,6 +280,7 @@ static match_table_t nfs_vers_tokens = {
+>  	{ Opt_vers_4, "4" },
+>  	{ Opt_vers_4_0, "4.0" },
+>  	{ Opt_vers_4_1, "4.1" },
+> +	{ Opt_vers_4_2, "4.2" },
+>  
+>  	{ Opt_vers_err, NULL }
+>  };
+> @@ -1143,6 +1144,10 @@ static int nfs_parse_version_string(char *string,
+>  		mnt->version = 4;
+>  		mnt->minorversion = 1;
+>  		break;
+> +	case Opt_vers_4_2:
+> +		mnt->version = 4;
+> +		mnt->minorversion = 2;
+> +		break;
+>  	default:
+>  		return 0;
+>  	}
+> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+> index aab8bd8..e9c040a 100644
+> --- a/include/linux/nfs4.h
+> +++ b/include/linux/nfs4.h
+> @@ -394,11 +394,15 @@ enum lock_type4 {
+>  #define NFS4_VERSION 4
+>  #define NFS4_MINOR_VERSION 0
+>  
+> +#if defined(CONFIG_NFS_V4_2)
+> +#define NFS4_MAX_MINOR_VERSION 2
+> +#else
+>  #if defined(CONFIG_NFS_V4_1)
+>  #define NFS4_MAX_MINOR_VERSION 1
+>  #else
+>  #define NFS4_MAX_MINOR_VERSION 0
+>  #endif /* CONFIG_NFS_V4_1 */
+> +#endif /* CONFIG_NFS_V4_2 */
+>  
+>  #define NFS4_DEBUG 1
+>  
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
