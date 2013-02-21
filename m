@@ -1,106 +1,159 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:40866 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753891Ab3BGRMe convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Feb 2013 12:12:34 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
-Subject: Re: [PATCH] SUNRPC: Refactor nfsd4_do_encode_secinfo()
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <436D6F2C-E520-4375-A518-2E55031E70F7@oracle.com>
-Date: Thu, 7 Feb 2013 12:12:24 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <A98AFAD6-2E43-4646-8287-8C023DFA65DF@oracle.com>
-References: <20130201220308.13518.82164.stgit@seurat.1015granger.net> <20130207150213.GC3222@fieldses.org> <87316F41-4E5E-473C-A372-0AFC6721A355@oracle.com> <20130207162308.GI3222@fieldses.org> <F0DAA0C6-DBA2-457B-8C68-13A2BC3CB4AC@oracle.com> <20130207165509.GM3222@fieldses.org> <436D6F2C-E520-4375-A518-2E55031E70F7@oracle.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:58408 "EHLO
+	Dobby.4dicksons.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753202Ab3BUWPR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Feb 2013 17:15:17 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/2] NFSv4.2: Added NFS v4.2 support to the NFS client
+Date: Thu, 21 Feb 2013 17:15:10 -0500
+Message-Id: <1361484911-17537-2-git-send-email-steved@redhat.com>
+In-Reply-To: <1361484911-17537-1-git-send-email-steved@redhat.com>
+References: <1361484911-17537-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This enable NFSv4.2 support. To enable this code the
+CONFIG_NFS_V4_2 Kconfig define needs to be set and
+the -o v4.2 mount option need to be used.
 
-On Feb 7, 2013, at 12:03 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ fs/nfs/Kconfig       | 11 ++++++++++-
+ fs/nfs/callback.c    |  3 +++
+ fs/nfs/nfs4client.c  |  5 +++++
+ fs/nfs/nfs4proc.c    |  3 +++
+ fs/nfs/super.c       |  7 ++++++-
+ include/linux/nfs4.h |  4 ++++
+ 6 files changed, 31 insertions(+), 2 deletions(-)
 
-> 
-> On Feb 7, 2013, at 11:55 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> 
->> On Thu, Feb 07, 2013 at 11:26:43AM -0500, Chuck Lever wrote:
->>> 
->>> On Feb 7, 2013, at 11:23 AM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
->>> 
->>>> On Thu, Feb 07, 2013 at 10:58:25AM -0500, Chuck Lever wrote:
->>>>> 
->>>>> On Feb 7, 2013, at 10:02 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
->>>>> 
->>>>>> On Fri, Feb 01, 2013 at 05:43:44PM -0500, Chuck Lever wrote:
->>>>>>> Clean up.  This matches a similar API for the client side, and
->>>>>>> keeps ULP fingers out the of the GSS mech switch.
->>>>>>> 
->>>>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>>>>> Acked-by: J. Bruce Fields <bfields@redhat.com>
->>>>>>> ---
->>>>>>> 
->>>>>>> Bruce-
->>>>>>> 
->>>>>>> This version of the patch follows the existing logic in
->>>>>>> nfsd4_do_encode_secinfo(): If the RPC layer can't find GSS info
->>>>>>> that matches an export security flavor, it assumes the flavor is
->>>>>>> not a GSS pseudoflavor, and simply puts it on the wire.
->>>>>>> 
->>>>>>> However, if the below XDR encoding logic is given a legitimate GSS
->>>>>>> pseudoflavor but the RPC layer says it does not support that
->>>>>>> pseudoflavor for some reason, then we leak GSS pseudoflavor numbers
->>>>>>> onto the wire.
->>>>>>> 
->>>>>>> I confirmed this happens by blacklisting rpcsec_gss_krb5, then
->>>>>>> attempted a client transition from the pseudo-fs to a Kerberos-only
->>>>>>> share.  The client received a flavor list containing the Kerberos
->>>>>>> pseudoflavor numbers, rather than GSS tuples.
->>>>>>> 
->>>>>>> The encoder logic can check that each pseudoflavor is less than
->>>>>>> MAXFLAVOR before writing it into the buffer, to prevent this.  But
->>>>>>> after "nflavs" is written into the XDR buffer, the encoder can't
->>>>>>> skip writing flavor information into the buffer when it discovers
->>>>>>> the RPC layer doesn't support that flavor.
->>>>>>> 
->>>>>>> Is there some way of writing "nflavs" into the XDR buffer after
->>>>>>> the loop that writes the flavor information is complete?
->>>>>> 
->>>>>> Yes, you can save a pointer and then go back and fill that in--see
->>>>>> encode_fattr for an example.
->>>>> 
->>>>> Thanks, I will submit an additional patch that describes this issue and fixes it.
->>>>> 
->>>>> I asked David Noveck, as one of the authors of RFC 3530, whether an NFS server should return a zero-length flavor list or an error if SECINFO can't find any flavors a client is allowed to use. His opinion was to return NFS4_OK and a zero-length flavor list.
->>>> 
->>>> Fine with me for this code.
->>> 
->>> OK, will go with that.
->>> 
->>>> (In practice though we should probably be warning somewhere (exportfs?)
->>>> if somebody creates an export like that.)
->>> 
->>> The problem can also arise because gssd isn't running or auth_rpcgss.ko or rpcsec_gss_krb5.ko are not loadable for some reason.  In other words, an empty flavor list might also be the result of a transient server misconfiguration.
->> 
->> OK.  Do you think the kernel could help by providing a once-only warning
->> in such a case?  (Or in the case when we're not able to find support for
->> a security flavor set on the export.)
-> 
-> I've thought a little about that.  There is already a logged warning if a gssd upcall times out.  But it's hard to tell inside the kernel why a module doesn't load.  These all look pretty much the same to the RPC layer:
-> 
->   -  module is blacklisted or not installed?
->   -  GSS support wasn't built?
->   -  filesystem corruption?
->   -  export specifies a security flavor the RPC client doesn't recognize?
-> 
-> I suppose I could add something here, but I wonder about the false alarms.
-
-How about this:
-
-  "Warning: export specifies a security flavor that isn't supported"
-
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 3861a1f..247db6d 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -104,6 +104,15 @@ config NFS_V4_1
+ 
+ 	  If unsure, say N.
+ 
++config NFS_V4_2
++	bool "NFS client support for NFSv4.2"
++	depends on NFS_V4_1
++	help
++	  This option enables support for minor version 1 of the NFSv4 protocol
++	  (RFC 5661) in the kernel's NFS client.
++
++	  If unsure, say N.
++
+ config PNFS_FILE_LAYOUT
+ 	tristate
+ 	depends on NFS_V4_1
+@@ -133,7 +142,7 @@ config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
+ 
+ config NFS_V4_SECURITY_LABEL
+ 	bool "Provide Security Label support for NFSv4 client"
+-	depends on NFS_V4 && SECURITY
++	depends on NFS_V4_2 && SECURITY
+ 	help
+ 
+ 	Say Y here if you want enable fine-grained security label attribute
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 5088b57..4058ec8 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -281,6 +281,9 @@ static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct n
+ 		case 1:
+ 			ret = nfs41_callback_up_net(serv, net);
+ 			break;
++		case 2:
++			ret = nfs41_callback_up_net(serv, net);
++			break;
+ 		default:
+ 			printk(KERN_ERR "NFS: unknown callback version: %d\n",
+ 					minorversion);
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 2e9779b..2987fd6 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -66,6 +66,11 @@ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
+ 	if (err)
+ 		goto error;
+ 
++	if (cl_init->minorversion > NFS4_MAX_MINOR_VERSION) {
++		err = -EINVAL;
++		goto error;
++	}
++		
+ 	spin_lock_init(&clp->cl_lock);
+ 	INIT_DELAYED_WORK(&clp->cl_renewd, nfs4_renew_state);
+ 	rpc_init_wait_queue(&clp->cl_rpcwaitq, "NFS client");
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 40c1d1f..08fc8e2 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -7136,6 +7136,9 @@ const struct nfs4_minor_version_ops *nfs_v4_minor_ops[] = {
+ #if defined(CONFIG_NFS_V4_1)
+ 	[1] = &nfs_v4_1_minor_ops,
+ #endif
++#if defined(CONFIG_NFS_V4_2)
++	[2] = &nfs_v4_1_minor_ops,
++#endif
+ };
+ 
+ const struct inode_operations nfs4_dir_inode_operations = {
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 4e78f93..d35582c 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -269,7 +269,7 @@ static match_table_t nfs_local_lock_tokens = {
+ 
+ enum {
+ 	Opt_vers_2, Opt_vers_3, Opt_vers_4, Opt_vers_4_0,
+-	Opt_vers_4_1,
++	Opt_vers_4_1, Opt_vers_4_2,
+ 
+ 	Opt_vers_err
+ };
+@@ -280,6 +280,7 @@ static match_table_t nfs_vers_tokens = {
+ 	{ Opt_vers_4, "4" },
+ 	{ Opt_vers_4_0, "4.0" },
+ 	{ Opt_vers_4_1, "4.1" },
++	{ Opt_vers_4_2, "4.2" },
+ 
+ 	{ Opt_vers_err, NULL }
+ };
+@@ -1143,6 +1144,10 @@ static int nfs_parse_version_string(char *string,
+ 		mnt->version = 4;
+ 		mnt->minorversion = 1;
+ 		break;
++	case Opt_vers_4_2:
++		mnt->version = 4;
++		mnt->minorversion = 2;
++		break;
+ 	default:
+ 		return 0;
+ 	}
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index aab8bd8..e9c040a 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -394,11 +394,15 @@ enum lock_type4 {
+ #define NFS4_VERSION 4
+ #define NFS4_MINOR_VERSION 0
+ 
++#if defined(CONFIG_NFS_V4_2)
++#define NFS4_MAX_MINOR_VERSION 2
++#else
+ #if defined(CONFIG_NFS_V4_1)
+ #define NFS4_MAX_MINOR_VERSION 1
+ #else
+ #define NFS4_MAX_MINOR_VERSION 0
+ #endif /* CONFIG_NFS_V4_1 */
++#endif /* CONFIG_NFS_V4_2 */
+ 
+ #define NFS4_DEBUG 1
+ 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.8.1.2
 
