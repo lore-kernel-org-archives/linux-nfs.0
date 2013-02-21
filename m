@@ -1,47 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37906 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:34330 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750752Ab3BQQA6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 17 Feb 2013 11:00:58 -0500
-Date: Sun, 17 Feb 2013 11:00:56 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC] nfsd: report length of the largest hash chain in
- reply cache stats
-Message-ID: <20130217160056.GC11441@fieldses.org>
-References: <20130215133406.20b1ef09@tlielax.poochiereds.net>
- <1360958672-5692-1-git-send-email-jlayton@redhat.com>
- <299C8DF9-5BFC-4E26-8F7E-CE3415D1140F@oracle.com>
- <20130215172058.29941a54@tlielax.poochiereds.net>
- <20130216133927.GA28824@fieldses.org>
- <BA5562CC-9236-4EC1-BC7A-341387B9F452@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <BA5562CC-9236-4EC1-BC7A-341387B9F452@oracle.com>
+	id S1755027Ab3BUQi2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Feb 2013 11:38:28 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond.Myklebust@netapp.com, chuck.lever@oracle.com, simo@redhat.com,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 1/6] SUNRPC: make AF_LOCAL connect synchronous
+Date: Thu, 21 Feb 2013 11:38:20 -0500
+Message-Id: <1361464705-12340-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1361464705-12340-1-git-send-email-bfields@redhat.com>
+References: <1361464705-12340-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Feb 16, 2013 at 12:18:18PM -0500, Chuck Lever wrote:
-> 
-> On Feb 16, 2013, at 8:39 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > With a per-client maximum number of entries, sizing the hash tables
-> > should be easier.
-> When a server has only one client, should that client be allowed to
-> maximize the use of a server's resources (eg, use all of the DRC
-> resource the server has available)?
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-I've been assuming there's rapidly diminishing returns to caching a lot
-of replies to a single client.  But that might not be true--I guess a
-busy UDP client with a long retry timeout might benefit from a large
-cache?
+It doesn't appear that anyone actually needs to connect asynchronously.
 
-> How about when a server has one active client and multiple quiescent
-> clients?
+Also, using a workqueue for the connect means we lose the namespace
+information from the original process.  This is a problem since there's
+no way to explicitly pass in a filesystem namespace for resolution of an
+AF_LOCAL address.
 
-I think there's a chance in that case that one of the quiescent clients
-is experiencing a temporary network problem, in which case we may want
-to preserve a few entries for them even if the active client's activity
-would normally evict them.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/xprtsock.c |   35 +++++++++++++++++++++++++++--------
+ 1 file changed, 27 insertions(+), 8 deletions(-)
 
---b.
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index bbc0915..b1df874 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1866,13 +1866,9 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
+  * @xprt: RPC transport to connect
+  * @transport: socket transport to connect
+  * @create_sock: function to create a socket of the correct type
+- *
+- * Invoked by a work queue tasklet.
+  */
+-static void xs_local_setup_socket(struct work_struct *work)
++static void xs_local_setup_socket(struct sock_xprt *transport)
+ {
+-	struct sock_xprt *transport =
+-		container_of(work, struct sock_xprt, connect_worker.work);
+ 	struct rpc_xprt *xprt = &transport->xprt;
+ 	struct socket *sock;
+ 	int status = -EIO;
+@@ -1919,6 +1915,31 @@ out:
+ 	current->flags &= ~PF_FSTRANS;
+ }
+ 
++static void xs_local_connect(struct rpc_task *task)
++{
++	struct rpc_xprt *xprt = task->tk_xprt;
++	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
++	unsigned long timeout;
++
++	 if (RPC_IS_ASYNC(task))
++	 	rpc_exit(task, -ENOTCONN);
++
++	if (transport->sock != NULL && !RPC_IS_SOFTCONN(task)) {
++		dprintk("RPC:       xs_connect delayed xprt %p for %lu "
++				"seconds\n",
++				xprt, xprt->reestablish_timeout / HZ);
++		timeout = xprt->reestablish_timeout;
++		xprt->reestablish_timeout <<= 1;
++		if (xprt->reestablish_timeout < XS_TCP_INIT_REEST_TO)
++			xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
++		if (xprt->reestablish_timeout > XS_TCP_MAX_REEST_TO)
++			xprt->reestablish_timeout = XS_TCP_MAX_REEST_TO;
++		rpc_delay(task, timeout);
++	} else
++		dprintk("RPC:       xs_connect scheduled xprt %p\n", xprt);
++	xs_local_setup_socket(transport);
++}
++
+ #ifdef CONFIG_SUNRPC_SWAP
+ static void xs_set_memalloc(struct rpc_xprt *xprt)
+ {
+@@ -2454,7 +2475,7 @@ static struct rpc_xprt_ops xs_local_ops = {
+ 	.alloc_slot		= xprt_alloc_slot,
+ 	.rpcbind		= xs_local_rpcbind,
+ 	.set_port		= xs_local_set_port,
+-	.connect		= xs_connect,
++	.connect		= xs_local_connect,
+ 	.buf_alloc		= rpc_malloc,
+ 	.buf_free		= rpc_free,
+ 	.send_request		= xs_local_send_request,
+@@ -2627,8 +2648,6 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
+ 			goto out_err;
+ 		}
+ 		xprt_set_bound(xprt);
+-		INIT_DELAYED_WORK(&transport->connect_worker,
+-					xs_local_setup_socket);
+ 		xs_format_peer_addresses(xprt, "local", RPCBIND_NETID_LOCAL);
+ 		break;
+ 	default:
+-- 
+1.7.9.5
+
