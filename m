@@ -1,157 +1,131 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46513 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:34324 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753377Ab3BCQbi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 3 Feb 2013 11:31:38 -0500
+	id S1755015Ab3BUQi2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Feb 2013 11:38:28 -0500
 From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        David Howells <dhowells@redhat.com>
-Subject: [PATCH 10/12] locks: break delegations on rename
-Date: Sun,  3 Feb 2013 11:31:30 -0500
-Message-Id: <1359909092-24857-11-git-send-email-bfields@redhat.com>
-In-Reply-To: <1359909092-24857-1-git-send-email-bfields@redhat.com>
-References: <1359909092-24857-1-git-send-email-bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond.Myklebust@netapp.com, chuck.lever@oracle.com, simo@redhat.com,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 4/6] SUNRPC: conditionally return endtime from import_sec_context
+Date: Thu, 21 Feb 2013 11:38:23 -0500
+Message-Id: <1361464705-12340-5-git-send-email-bfields@redhat.com>
+In-Reply-To: <1361464705-12340-1-git-send-email-bfields@redhat.com>
+References: <1361464705-12340-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Simo Sorce <simo@redhat.com>
 
-Cc: David Howells <dhowells@redhat.com>
+We expose this parameter for a future caller.
+It will be used to extract the endtime from the gss-proxy upcall mechanism,
+in order to set the rsc cache expiration time.
+
+Signed-off-by: Simo Sorce <simo@redhat.com>
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/cachefiles/namei.c |    2 +-
- fs/namei.c            |   26 ++++++++++++++++++++++----
- fs/nfsd/vfs.c         |    2 +-
- include/linux/fs.h    |    2 +-
- 4 files changed, 25 insertions(+), 7 deletions(-)
+ include/linux/sunrpc/gss_api.h        |    2 ++
+ net/sunrpc/auth_gss/auth_gss.c        |    2 +-
+ net/sunrpc/auth_gss/gss_krb5_mech.c   |    7 +++++--
+ net/sunrpc/auth_gss/gss_mech_switch.c |    5 +++--
+ net/sunrpc/auth_gss/svcauth_gss.c     |    3 ++-
+ 5 files changed, 13 insertions(+), 6 deletions(-)
 
-diff --git a/fs/cachefiles/namei.c b/fs/cachefiles/namei.c
-index d61d884..678a8af 100644
---- a/fs/cachefiles/namei.c
-+++ b/fs/cachefiles/namei.c
-@@ -396,7 +396,7 @@ try_again:
- 		cachefiles_io_error(cache, "Rename security error %d", ret);
- 	} else {
- 		ret = vfs_rename(dir->d_inode, rep,
--				 cache->graveyard->d_inode, grave);
-+				 cache->graveyard->d_inode, grave, NULL);
- 		if (ret != 0 && ret != -ENOMEM)
- 			cachefiles_io_error(cache,
- 					    "Rename failed with error %d", ret);
-diff --git a/fs/namei.c b/fs/namei.c
-index b8d0e31..939e81a 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3774,7 +3774,8 @@ out:
- }
- 
- static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
--			    struct inode *new_dir, struct dentry *new_dentry)
-+			    struct inode *new_dir, struct dentry *new_dentry,
-+			    struct inode **delegated_inode)
- {
- 	struct inode *target = new_dentry->d_inode;
- 	struct inode *source = old_dentry->d_inode;
-@@ -3794,6 +3795,14 @@ static int vfs_rename_other(struct inode *old_dir, struct dentry *old_dentry,
- 	if (d_mountpoint(old_dentry)||d_mountpoint(new_dentry))
- 		goto out;
- 
-+	error = try_break_deleg(source, delegated_inode);
-+	if (error)
-+		goto out;
-+	if (target) {
-+		error = try_break_deleg(target, delegated_inode);
-+		if (error)
-+			goto out;
-+	}
- 	error = old_dir->i_op->rename(old_dir, old_dentry, new_dir, new_dentry);
- 	if (error)
- 		goto out;
-@@ -3812,7 +3821,8 @@ out:
- }
- 
- int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
--	       struct inode *new_dir, struct dentry *new_dentry)
-+	       struct inode *new_dir, struct dentry *new_dentry,
-+	       struct inode **delegated_inode)
- {
- 	int error;
- 	int is_dir = S_ISDIR(old_dentry->d_inode->i_mode);
-@@ -3840,7 +3850,7 @@ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	if (is_dir)
- 		error = vfs_rename_dir(old_dir,old_dentry,new_dir,new_dentry);
- 	else
--		error = vfs_rename_other(old_dir,old_dentry,new_dir,new_dentry);
-+		error = vfs_rename_other(old_dir,old_dentry,new_dir,new_dentry,delegated_inode);
- 	if (!error)
- 		fsnotify_move(old_dir, new_dir, old_name, is_dir,
- 			      new_dentry->d_inode, old_dentry);
-@@ -3856,6 +3866,7 @@ SYSCALL_DEFINE4(renameat, int, olddfd, const char __user *, oldname,
- 	struct dentry *old_dentry, *new_dentry;
- 	struct dentry *trap;
- 	struct nameidata oldnd, newnd;
-+	struct inode *delegated_inode = NULL;
- 	struct filename *from;
- 	struct filename *to;
- 	unsigned int lookup_flags = 0;
-@@ -3895,6 +3906,7 @@ retry:
- 	newnd.flags &= ~LOOKUP_PARENT;
- 	newnd.flags |= LOOKUP_RENAME_TARGET;
- 
-+retry_deleg:
- 	trap = lock_rename(new_dir, old_dir);
- 
- 	old_dentry = lookup_hash(&oldnd);
-@@ -3931,13 +3943,19 @@ retry:
- 	if (error)
- 		goto exit5;
- 	error = vfs_rename(old_dir->d_inode, old_dentry,
--				   new_dir->d_inode, new_dentry);
-+				   new_dir->d_inode, new_dentry,
-+				   &delegated_inode);
- exit5:
- 	dput(new_dentry);
- exit4:
- 	dput(old_dentry);
- exit3:
- 	unlock_rename(new_dir, old_dir);
-+	if (delegated_inode) {
-+		error = break_deleg_wait(&delegated_inode);
-+		if (!error)
-+			goto retry_deleg;
-+	}
- 	mnt_drop_write(oldnd.path.mnt);
- exit2:
- 	if (retry_estale(error, lookup_flags))
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 9d10a92..4011028 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1810,7 +1810,7 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
- 		if (host_err)
- 			goto out_dput_new;
+diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
+index a19e254..04d03bb 100644
+--- a/include/linux/sunrpc/gss_api.h
++++ b/include/linux/sunrpc/gss_api.h
+@@ -37,6 +37,7 @@ int gss_import_sec_context(
+ 		size_t			bufsize,
+ 		struct gss_api_mech	*mech,
+ 		struct gss_ctx		**ctx_id,
++		time_t			*endtime,
+ 		gfp_t			gfp_mask);
+ u32 gss_get_mic(
+ 		struct gss_ctx		*ctx_id,
+@@ -92,6 +93,7 @@ struct gss_api_ops {
+ 			const void		*input_token,
+ 			size_t			bufsize,
+ 			struct gss_ctx		*ctx_id,
++			time_t			*endtime,
+ 			gfp_t			gfp_mask);
+ 	u32 (*gss_get_mic)(
+ 			struct gss_ctx		*ctx_id,
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 6e5c824..7edfda5 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -238,7 +238,7 @@ gss_fill_context(const void *p, const void *end, struct gss_cl_ctx *ctx, struct
+ 		p = ERR_PTR(-EFAULT);
+ 		goto err;
  	}
--	host_err = vfs_rename(fdir, odentry, tdir, ndentry);
-+	host_err = vfs_rename(fdir, odentry, tdir, ndentry, NULL);
- 	if (!host_err) {
- 		host_err = commit_metadata(tfhp);
- 		if (!host_err)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 62d374f..64ee5f6 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1462,7 +1462,7 @@ extern int vfs_symlink(struct inode *, struct dentry *, const char *);
- extern int vfs_link(struct dentry *, struct inode *, struct dentry *);
- extern int vfs_rmdir(struct inode *, struct dentry *);
- extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
--extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *);
-+extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *, struct inode **);
+-	ret = gss_import_sec_context(p, seclen, gm, &ctx->gc_gss_ctx, GFP_NOFS);
++	ret = gss_import_sec_context(p, seclen, gm, &ctx->gc_gss_ctx, NULL, GFP_NOFS);
+ 	if (ret < 0) {
+ 		p = ERR_PTR(ret);
+ 		goto err;
+diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
+index d3611f1..3bc4a23 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_mech.c
++++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
+@@ -679,6 +679,7 @@ out_err:
+ static int
+ gss_import_sec_context_kerberos(const void *p, size_t len,
+ 				struct gss_ctx *ctx_id,
++				time_t *endtime,
+ 				gfp_t gfp_mask)
+ {
+ 	const void *end = (const void *)((const char *)p + len);
+@@ -694,9 +695,11 @@ gss_import_sec_context_kerberos(const void *p, size_t len,
+ 	else
+ 		ret = gss_import_v2_context(p, end, ctx, gfp_mask);
  
- /*
-  * VFS dentry helper functions.
+-	if (ret == 0)
++	if (ret == 0) {
+ 		ctx_id->internal_ctx_id = ctx;
+-	else
++		if (endtime)
++			*endtime = ctx->endtime;
++	} else
+ 		kfree(ctx);
+ 
+ 	dprintk("RPC:       %s: returning %d\n", __func__, ret);
+diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
+index b174fcd..cfed709 100644
+--- a/net/sunrpc/auth_gss/gss_mech_switch.c
++++ b/net/sunrpc/auth_gss/gss_mech_switch.c
+@@ -325,14 +325,15 @@ int
+ gss_import_sec_context(const void *input_token, size_t bufsize,
+ 		       struct gss_api_mech	*mech,
+ 		       struct gss_ctx		**ctx_id,
++		       time_t			*endtime,
+ 		       gfp_t gfp_mask)
+ {
+ 	if (!(*ctx_id = kzalloc(sizeof(**ctx_id), gfp_mask)))
+ 		return -ENOMEM;
+ 	(*ctx_id)->mech_type = gss_mech_get(mech);
+ 
+-	return mech->gm_ops
+-		->gss_import_sec_context(input_token, bufsize, *ctx_id, gfp_mask);
++	return mech->gm_ops->gss_import_sec_context(input_token, bufsize,
++						*ctx_id, endtime, gfp_mask);
+ }
+ 
+ /* gss_get_mic: compute a mic over message and return mic_token. */
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index eb2b1f7..8fff637 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -485,7 +485,8 @@ static int rsc_parse(struct cache_detail *cd,
+ 		len = qword_get(&mesg, buf, mlen);
+ 		if (len < 0)
+ 			goto out;
+-		status = gss_import_sec_context(buf, len, gm, &rsci.mechctx, GFP_KERNEL);
++		status = gss_import_sec_context(buf, len, gm, &rsci.mechctx,
++						NULL, GFP_KERNEL);
+ 		if (status)
+ 			goto out;
+ 
 -- 
 1.7.9.5
 
