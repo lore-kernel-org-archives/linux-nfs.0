@@ -1,84 +1,237 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f177.google.com ([209.85.223.177]:36338 "EHLO
-	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757907Ab3BFXaR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Feb 2013 18:30:17 -0500
-Received: by mail-ie0-f177.google.com with SMTP id 16so2626405iea.8
-        for <linux-nfs@vger.kernel.org>; Wed, 06 Feb 2013 15:30:17 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v1 2/4] NFS: Clean up nfs4_proc_get_rootfh
-To: linux-nfs@vger.kernel.org
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Bryan Schumaker <bjschuma@netapp.com>
-Date: Wed, 06 Feb 2013 18:30:15 -0500
-Message-ID: <20130206233015.1535.8265.stgit@seurat.1015granger.net>
-In-Reply-To: <20130206230045.1535.48770.stgit@seurat.1015granger.net>
-References: <20130206230045.1535.48770.stgit@seurat.1015granger.net>
+Received: from fieldses.org ([174.143.236.118]:34771 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753816Ab3BUQae (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Feb 2013 11:30:34 -0500
+Date: Thu, 21 Feb 2013 11:30:30 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Simo Sorce <simo@redhat.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: synchronous AF_LOCAL connect
+Message-ID: <20130221163030.GC9743@fieldses.org>
+References: <2F275139-9861-4414-8C9F-BD74544C9AD7@oracle.com>
+ <20130220160350.GJ14606@fieldses.org>
+ <EA9EE56A-73BB-4866-AA86-1EE4150AFE87@oracle.com>
+ <20130220163424.GK14606@fieldses.org>
+ <FB21B277-FA7D-490C-B389-58A91C46B490@oracle.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9235D7E49@SACEXCMBX04-PRD.hq.netapp.com>
+ <1361381561.12328.441.camel@willson.li.ssimo.org>
+ <20130220230337.GC3575@fieldses.org>
+ <20130221162139.GB9743@fieldses.org>
+ <AE0D7DE2-FA4A-4F0D-89F9-71E22024EB5A@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <AE0D7DE2-FA4A-4F0D-89F9-71E22024EB5A@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The long lines with no vertical white space make this function
-difficult for humans to read.  Add a proper documenting comment
-while we're here.
+On Thu, Feb 21, 2013 at 11:27:29AM -0500, Chuck Lever wrote:
+> 
+> On Feb 21, 2013, at 11:21 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> 
+> > On Wed, Feb 20, 2013 at 06:03:37PM -0500, J. Bruce Fields wrote:
+> >> OK, I've added that check and fixed some other bugs (thanks to Chuck for
+> >> some help in IRC).
+> >> 
+> >> I think that gets rpcbind working in containers fine.
+> >> 
+> >> gss-proxy has one more problem: it needs to do upcalls from nfsd threads
+> >> which won't have the right filesystem namespace.
+> >> 
+> >> I get a write from gss-proxy when it starts and can do an initial
+> >> connect then using its context.  But if we disconnect after that I'm
+> >> stuck.
+> >> 
+> >> Does it cause any problems if I just set the idle_timeout to 0 for
+> >> AF_LOCAL?
+> > 
+> > That gives me the following three patches.  They work for me.
+> > 
+> > Would it make more sense to make the idle timeout configurable?  I
+> > couldn't see why disconnecting idle AF_LOCAL rpcbind connections would
+> > be particularly important anyway.
+> 
+> I was expecting you to add a new flag to the rpc_clnt (like "disconnect on retry") that would disable the transport idle timeout.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: Bryan Schumaker <bjschuma@netapp.com>
----
+That would be OK with me too.  What's best?
 
- fs/nfs/nfs4proc.c |   32 ++++++++++++++++++++++----------
- 1 files changed, 22 insertions(+), 10 deletions(-)
+--b.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index debeb2d..ad86cfa 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2449,24 +2449,36 @@ static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
- 	return status;
- }
- 
--/*
-- * get the file handle for the "/" directory on the server
-+static int nfs4_do_find_root_sec(struct nfs_server *server,
-+		struct nfs_fh *fhandle, struct nfs_fsinfo *info)
-+{
-+	int mv = server->nfs_client->cl_minorversion;
-+	return nfs_v4_minor_ops[mv]->find_root_sec(server, fhandle, info);
-+}
-+
-+/**
-+ * nfs4_proc_get_rootfh - get file handle for server's pseudoroot
-+ * @server: initialized nfs_server handle 
-+ * @fhandle: we fill in the pseudo-fs root file handle
-+ * @info: we fill in an FSINFO struct
-+ *
-+ * Returns zero on success, or a negative errno.
-  */
- int nfs4_proc_get_rootfh(struct nfs_server *server, struct nfs_fh *fhandle,
- 			 struct nfs_fsinfo *info)
- {
--	int minor_version = server->nfs_client->cl_minorversion;
--	int status = nfs4_lookup_root(server, fhandle, info);
--	if ((status == -NFS4ERR_WRONGSEC) && !(server->flags & NFS_MOUNT_SECFLAVOUR))
--		/*
--		 * A status of -NFS4ERR_WRONGSEC will be mapped to -EPERM
--		 * by nfs4_map_errors() as this function exits.
--		 */
--		status = nfs_v4_minor_ops[minor_version]->find_root_sec(server, fhandle, info);
-+	int status;
-+
-+	status = nfs4_lookup_root(server, fhandle, info);
-+	if ((status == -NFS4ERR_WRONGSEC) &&
-+	    !(server->flags & NFS_MOUNT_SECFLAVOUR))
-+		status = nfs4_do_find_root_sec(server, fhandle, info);
-+
- 	if (status == 0)
- 		status = nfs4_server_capabilities(server, fhandle);
- 	if (status == 0)
- 		status = nfs4_do_fsinfo(server, fhandle, info);
-+
- 	return nfs4_map_errors(status);
- }
- 
-
+> 
+> 
+> > --b.
+> > 
+> > commit 6656841afa0602f7aae3e42648eb44bfe79f7389
+> > Author: J. Bruce Fields <bfields@redhat.com>
+> > Date:   Wed Feb 20 17:52:19 2013 -0500
+> > 
+> >    SUNRPC: make AF_LOCAL connect synchronous
+> > 
+> >    It doesn't appear that anyone actually needs to connect asynchronously.
+> > 
+> >    Also, using a workqueue for the connect means we lose the namespace
+> >    information from the original process.  This is a problem since there's
+> >    no way to explicitly pass in a filesystem namespace for resolution of an
+> >    AF_LOCAL address.
+> > 
+> >    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > 
+> > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> > index bbc0915..b1df874 100644
+> > --- a/net/sunrpc/xprtsock.c
+> > +++ b/net/sunrpc/xprtsock.c
+> > @@ -1866,13 +1866,9 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
+> >  * @xprt: RPC transport to connect
+> >  * @transport: socket transport to connect
+> >  * @create_sock: function to create a socket of the correct type
+> > - *
+> > - * Invoked by a work queue tasklet.
+> >  */
+> > -static void xs_local_setup_socket(struct work_struct *work)
+> > +static void xs_local_setup_socket(struct sock_xprt *transport)
+> > {
+> > -	struct sock_xprt *transport =
+> > -		container_of(work, struct sock_xprt, connect_worker.work);
+> > 	struct rpc_xprt *xprt = &transport->xprt;
+> > 	struct socket *sock;
+> > 	int status = -EIO;
+> > @@ -1919,6 +1915,31 @@ out:
+> > 	current->flags &= ~PF_FSTRANS;
+> > }
+> > 
+> > +static void xs_local_connect(struct rpc_task *task)
+> > +{
+> > +	struct rpc_xprt *xprt = task->tk_xprt;
+> > +	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+> > +	unsigned long timeout;
+> > +
+> > +	 if (RPC_IS_ASYNC(task))
+> > +	 	rpc_exit(task, -ENOTCONN);
+> > +
+> > +	if (transport->sock != NULL && !RPC_IS_SOFTCONN(task)) {
+> > +		dprintk("RPC:       xs_connect delayed xprt %p for %lu "
+> > +				"seconds\n",
+> > +				xprt, xprt->reestablish_timeout / HZ);
+> > +		timeout = xprt->reestablish_timeout;
+> > +		xprt->reestablish_timeout <<= 1;
+> > +		if (xprt->reestablish_timeout < XS_TCP_INIT_REEST_TO)
+> > +			xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
+> > +		if (xprt->reestablish_timeout > XS_TCP_MAX_REEST_TO)
+> > +			xprt->reestablish_timeout = XS_TCP_MAX_REEST_TO;
+> > +		rpc_delay(task, timeout);
+> > +	} else
+> > +		dprintk("RPC:       xs_connect scheduled xprt %p\n", xprt);
+> > +	xs_local_setup_socket(transport);
+> > +}
+> > +
+> > #ifdef CONFIG_SUNRPC_SWAP
+> > static void xs_set_memalloc(struct rpc_xprt *xprt)
+> > {
+> > @@ -2454,7 +2475,7 @@ static struct rpc_xprt_ops xs_local_ops = {
+> > 	.alloc_slot		= xprt_alloc_slot,
+> > 	.rpcbind		= xs_local_rpcbind,
+> > 	.set_port		= xs_local_set_port,
+> > -	.connect		= xs_connect,
+> > +	.connect		= xs_local_connect,
+> > 	.buf_alloc		= rpc_malloc,
+> > 	.buf_free		= rpc_free,
+> > 	.send_request		= xs_local_send_request,
+> > @@ -2627,8 +2648,6 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
+> > 			goto out_err;
+> > 		}
+> > 		xprt_set_bound(xprt);
+> > -		INIT_DELAYED_WORK(&transport->connect_worker,
+> > -					xs_local_setup_socket);
+> > 		xs_format_peer_addresses(xprt, "local", RPCBIND_NETID_LOCAL);
+> > 		break;
+> > 	default:
+> > 
+> > commit 3d622fe729b9b4382785c3ef2ef61e484df1b3ec
+> > Author: J. Bruce Fields <bfields@redhat.com>
+> > Date:   Thu Feb 21 10:14:22 2013 -0500
+> > 
+> >    SUNRPC: attempt AF_LOCAL connect on setup
+> > 
+> >    In the gss-proxy case, setup time is when I know I'll have the right
+> >    namespace for the connect.
+> > 
+> >    In other cases, it might be useful to get any connection errors
+> >    earlier--though actually in practice it doesn't make any difference for
+> >    rpcbind.
+> > 
+> >    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > 
+> > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> > index b1df874..f2cf652 100644
+> > --- a/net/sunrpc/xprtsock.c
+> > +++ b/net/sunrpc/xprtsock.c
+> > @@ -1867,7 +1867,7 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
+> >  * @transport: socket transport to connect
+> >  * @create_sock: function to create a socket of the correct type
+> >  */
+> > -static void xs_local_setup_socket(struct sock_xprt *transport)
+> > +static int xs_local_setup_socket(struct sock_xprt *transport)
+> > {
+> > 	struct rpc_xprt *xprt = &transport->xprt;
+> > 	struct socket *sock;
+> > @@ -1913,6 +1913,7 @@ out:
+> > 	xprt_clear_connecting(xprt);
+> > 	xprt_wake_pending_tasks(xprt, status);
+> > 	current->flags &= ~PF_FSTRANS;
+> > +	return status;
+> > }
+> > 
+> > static void xs_local_connect(struct rpc_task *task)
+> > @@ -2649,6 +2650,9 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
+> > 		}
+> > 		xprt_set_bound(xprt);
+> > 		xs_format_peer_addresses(xprt, "local", RPCBIND_NETID_LOCAL);
+> > +		ret = ERR_PTR(xs_local_setup_socket(transport));
+> > +		if (ret)
+> > +			goto out_err;
+> > 		break;
+> > 	default:
+> > 		ret = ERR_PTR(-EAFNOSUPPORT);
+> > 
+> > commit 1a67db92015506ca07e6fc7a24583917adcbb43d
+> > Author: J. Bruce Fields <bfields@redhat.com>
+> > Date:   Wed Feb 20 18:08:52 2013 -0500
+> > 
+> >    SUNRPC: no idle timeout for AF_LOCAL sockets
+> > 
+> >    In the gss-proxy case I don't want to have to reconnect at random--I
+> >    want to connect only on gss-proxy startup when I can steal gss-proxy's
+> >    context to do the connect in the right namespace.
+> > 
+> >    And surely an AF_LOCAL socket isn't a ton of state to keep around--how
+> >    about we just turn off the idle timeout for AF_LOCAL sockets.
+> > 
+> >    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > 
+> > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> > index f2cf652..a32227e 100644
+> > --- a/net/sunrpc/xprtsock.c
+> > +++ b/net/sunrpc/xprtsock.c
+> > @@ -2635,7 +2635,7 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
+> > 
+> > 	xprt->bind_timeout = XS_BIND_TO;
+> > 	xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
+> > -	xprt->idle_timeout = XS_IDLE_DISC_TO;
+> > +	xprt->idle_timeout = 0;
+> > 
+> > 	xprt->ops = &xs_local_ops;
+> > 	xprt->timeout = &xs_local_default_timeout;
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> -- 
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
+> 
