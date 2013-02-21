@@ -1,272 +1,134 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:36508 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750867Ab3BEFiH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Feb 2013 00:38:07 -0500
-Message-ID: <51109AAE.5000502@parallels.com>
-Date: Tue, 5 Feb 2013 09:37:50 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from mx1.redhat.com ([209.132.183.28]:22171 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752368Ab3BUTsH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Feb 2013 14:48:07 -0500
+Date: Thu, 21 Feb 2013 14:48:04 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "simo@redhat.com" <simo@redhat.com>
+Subject: Re: [PATCH 1/6] SUNRPC: make AF_LOCAL connect synchronous
+Message-ID: <20130221194804.GC3531@pad.fieldses.org>
+References: <1361464705-12340-1-git-send-email-bfields@redhat.com>
+ <1361464705-12340-2-git-send-email-bfields@redhat.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9235DA5F3@SACEXCMBX04-PRD.hq.netapp.com>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>,
-        <Trond.Myklebust@netapp.com>, <linux-kernel@vger.kernel.org>,
-        <devel@openvz.org>
-Subject: Re: [PATCH 2/4] SUNRPC: remove cache_detail->cache_upcall callback
-References: <20130115080402.2996.74320.stgit@localhost.localdomain> <20130115080936.2996.1659.stgit@localhost.localdomain> <20130204115002.7eec67fc@tlielax.poochiereds.net>
-In-Reply-To: <20130204115002.7eec67fc@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9235DA5F3@SACEXCMBX04-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-04.02.2013 20:50, Jeff Layton пишет:
-> On Tue, 15 Jan 2013 11:09:36 +0300
-> Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
->
->> This callback is redundant since all that its' implementations are doing is
->> calling sunrpc_cache_pipe_upcall() with proper function address argument. This
->> function address is now stored on cache_detail structure and thus all the code
->> can be simplified.
->>
->> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
->> ---
->>   fs/nfsd/export.c                  |   12 ------------
->>   fs/nfsd/nfs4idmap.c               |   14 --------------
->>   include/linux/sunrpc/cache.h      |    3 ---
->>   net/sunrpc/auth_gss/svcauth_gss.c |    7 -------
->>   net/sunrpc/cache.c                |    6 +++---
->>   net/sunrpc/svcauth_unix.c         |   12 ------------
->>   6 files changed, 3 insertions(+), 51 deletions(-)
->>
->> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
->> index 63ee3bc..6f030a5 100644
->> --- a/fs/nfsd/export.c
->> +++ b/fs/nfsd/export.c
->> @@ -67,11 +67,6 @@ static void expkey_request(struct cache_detail *cd,
->>   	(*bpp)[-1] = '\n';
->>   }
->>
->> -static int expkey_upcall(struct cache_detail *cd, struct cache_head *h)
->> -{
->> -	return sunrpc_cache_pipe_upcall(cd, h, cd->cache_request);
->> -}
->> -
->>   static struct svc_expkey *svc_expkey_update(struct cache_detail *cd, struct svc_expkey *new,
->>   					    struct svc_expkey *old);
->>   static struct svc_expkey *svc_expkey_lookup(struct cache_detail *cd, struct svc_expkey *);
->> @@ -245,7 +240,6 @@ static struct cache_detail svc_expkey_cache_template = {
->>   	.hash_size	= EXPKEY_HASHMAX,
->>   	.name		= "nfsd.fh",
->>   	.cache_put	= expkey_put,
->> -	.cache_upcall	= expkey_upcall,
->>   	.cache_request	= expkey_request,
->>   	.cache_parse	= expkey_parse,
->>   	.cache_show	= expkey_show,
->> @@ -338,11 +332,6 @@ static void svc_export_request(struct cache_detail *cd,
->>   	(*bpp)[-1] = '\n';
->>   }
->>
->> -static int svc_export_upcall(struct cache_detail *cd, struct cache_head *h)
->> -{
->> -	return sunrpc_cache_pipe_upcall(cd, h, cd->cache_request);
->> -}
->> -
->>   static struct svc_export *svc_export_update(struct svc_export *new,
->>   					    struct svc_export *old);
->>   static struct svc_export *svc_export_lookup(struct svc_export *);
->> @@ -712,7 +701,6 @@ static struct cache_detail svc_export_cache_template = {
->>   	.hash_size	= EXPORT_HASHMAX,
->>   	.name		= "nfsd.export",
->>   	.cache_put	= svc_export_put,
->> -	.cache_upcall	= svc_export_upcall,
->>   	.cache_request	= svc_export_request,
->>   	.cache_parse	= svc_export_parse,
->>   	.cache_show	= svc_export_show,
->> diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
->> index 9033dfd..d9402ea 100644
->> --- a/fs/nfsd/nfs4idmap.c
->> +++ b/fs/nfsd/nfs4idmap.c
->> @@ -140,12 +140,6 @@ idtoname_request(struct cache_detail *cd, struct cache_head *ch, char **bpp,
->>   }
->>
->>   static int
->> -idtoname_upcall(struct cache_detail *cd, struct cache_head *ch)
->> -{
->> -	return sunrpc_cache_pipe_upcall(cd, ch, cd->cache_request);
->> -}
->> -
->> -static int
->>   idtoname_match(struct cache_head *ca, struct cache_head *cb)
->>   {
->>   	struct ent *a = container_of(ca, struct ent, h);
->> @@ -192,7 +186,6 @@ static struct cache_detail idtoname_cache_template = {
->>   	.hash_size	= ENT_HASHMAX,
->>   	.name		= "nfs4.idtoname",
->>   	.cache_put	= ent_put,
->> -	.cache_upcall	= idtoname_upcall,
->>   	.cache_request	= idtoname_request,
->>   	.cache_parse	= idtoname_parse,
->>   	.cache_show	= idtoname_show,
->> @@ -322,12 +315,6 @@ nametoid_request(struct cache_detail *cd, struct cache_head *ch, char **bpp,
->>   }
->>
->>   static int
->> -nametoid_upcall(struct cache_detail *cd, struct cache_head *ch)
->> -{
->> -	return sunrpc_cache_pipe_upcall(cd, ch, cd->cache_request);
->> -}
->> -
->> -static int
->>   nametoid_match(struct cache_head *ca, struct cache_head *cb)
->>   {
->>   	struct ent *a = container_of(ca, struct ent, h);
->> @@ -366,7 +353,6 @@ static struct cache_detail nametoid_cache_template = {
->>   	.hash_size	= ENT_HASHMAX,
->>   	.name		= "nfs4.nametoid",
->>   	.cache_put	= ent_put,
->> -	.cache_upcall	= nametoid_upcall,
->>   	.cache_request	= nametoid_request,
->>   	.cache_parse	= nametoid_parse,
->>   	.cache_show	= nametoid_show,
->> diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
->> index 4f1c858..249e73a 100644
->> --- a/include/linux/sunrpc/cache.h
->> +++ b/include/linux/sunrpc/cache.h
->> @@ -80,9 +80,6 @@ struct cache_detail {
->>   	char			*name;
->>   	void			(*cache_put)(struct kref *);
->>
->> -	int			(*cache_upcall)(struct cache_detail *,
->> -						struct cache_head *);
->> -
->>   	void			(*cache_request)(struct cache_detail *cd,
->>   						 struct cache_head *ch,
->>   						 char **bpp, int *blen);
->> diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
->> index 82437f9..1bd18af 100644
->> --- a/net/sunrpc/auth_gss/svcauth_gss.c
->> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
->> @@ -182,12 +182,6 @@ static void rsi_request(struct cache_detail *cd,
->>   	(*bpp)[-1] = '\n';
->>   }
->>
->> -static int rsi_upcall(struct cache_detail *cd, struct cache_head *h)
->> -{
->> -	return sunrpc_cache_pipe_upcall(cd, h, cd->cache_request);
->> -}
->> -
->> -
->>   static int rsi_parse(struct cache_detail *cd,
->>   		    char *mesg, int mlen)
->>   {
->> @@ -275,7 +269,6 @@ static struct cache_detail rsi_cache_template = {
->>   	.hash_size	= RSI_HASHMAX,
->>   	.name           = "auth.rpcsec.init",
->>   	.cache_put      = rsi_put,
->> -	.cache_upcall   = rsi_upcall,
->>   	.cache_request  = rsi_request,
->>   	.cache_parse    = rsi_parse,
->>   	.match		= rsi_match,
->> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
->> index fc2f7aa..ee6b5dd 100644
->> --- a/net/sunrpc/cache.c
->> +++ b/net/sunrpc/cache.c
->> @@ -196,9 +196,9 @@ EXPORT_SYMBOL_GPL(sunrpc_cache_update);
->>
->>   static int cache_make_upcall(struct cache_detail *cd, struct cache_head *h)
->>   {
->> -	if (!cd->cache_upcall)
->> +	if (!cd->cache_request)
->>   		return -EINVAL;
->> -	return cd->cache_upcall(cd, h);
->> +	return sunrpc_cache_pipe_upcall(cd, h, cd->cache_request);
->>   }
->>
->>   static inline int cache_is_valid(struct cache_detail *detail, struct cache_head *h)
->> @@ -1605,7 +1605,7 @@ static int create_cache_proc_entries(struct cache_detail *cd, struct net *net)
->>   	if (p == NULL)
->>   		goto out_nomem;
->>
->> -	if (cd->cache_upcall || cd->cache_parse) {
->> +	if (cd->cache_request || cd->cache_parse) {
->>   		p = proc_create_data("channel", S_IFREG|S_IRUSR|S_IWUSR,
->>   				     cd->u.procfs.proc_ent,
->>   				     &cache_file_operations_procfs, cd);
->> diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
->> index 6b03cc1..002ddd9 100644
->> --- a/net/sunrpc/svcauth_unix.c
->> +++ b/net/sunrpc/svcauth_unix.c
->> @@ -157,11 +157,6 @@ static void ip_map_request(struct cache_detail *cd,
->>   	(*bpp)[-1] = '\n';
->>   }
->>
->> -static int ip_map_upcall(struct cache_detail *cd, struct cache_head *h)
->> -{
->> -	return sunrpc_cache_pipe_upcall(cd, h, cd->cache_request);
->> -}
->> -
->>   static struct ip_map *__ip_map_lookup(struct cache_detail *cd, char *class, struct in6_addr *addr);
->>   static int __ip_map_update(struct cache_detail *cd, struct ip_map *ipm, struct unix_domain *udom, time_t expiry);
->>
->> @@ -470,11 +465,6 @@ static void unix_gid_request(struct cache_detail *cd,
->>   	(*bpp)[-1] = '\n';
->>   }
->>
->> -static int unix_gid_upcall(struct cache_detail *cd, struct cache_head *h)
->> -{
->> -	return sunrpc_cache_pipe_upcall(cd, h, cd->cache_request);
->> -}
->> -
->>   static struct unix_gid *unix_gid_lookup(struct cache_detail *cd, uid_t uid);
->>
->>   static int unix_gid_parse(struct cache_detail *cd,
->> @@ -577,7 +567,6 @@ static struct cache_detail unix_gid_cache_template = {
->>   	.hash_size	= GID_HASHMAX,
->>   	.name		= "auth.unix.gid",
->>   	.cache_put	= unix_gid_put,
->> -	.cache_upcall	= unix_gid_upcall,
->>   	.cache_request	= unix_gid_request,
->>   	.cache_parse	= unix_gid_parse,
->>   	.cache_show	= unix_gid_show,
->> @@ -875,7 +864,6 @@ static struct cache_detail ip_map_cache_template = {
->>   	.hash_size	= IP_HASHMAX,
->>   	.name		= "auth.unix.ip",
->>   	.cache_put	= ip_map_put,
->> -	.cache_upcall	= ip_map_upcall,
->>   	.cache_request	= ip_map_request,
->>   	.cache_parse	= ip_map_parse,
->>   	.cache_show	= ip_map_show,
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
-> I'm seeing a build break from this patch when CONFIG_NFS_USE_KERNEL_DNS
-> is not set:
->
->    CC [M]  fs/nfs/dns_resolve.o
-> fs/nfs/dns_resolve.c: In function ‘nfs_dns_resolver_cache_init’:
-> fs/nfs/dns_resolve.c:377:4: error: ‘struct cache_detail’ has no member named ‘cache_upcall’
-> fs/nfs/dns_resolve.c:377:35: warning: left-hand operand of comma expression has no effect [-Wunused-value]
-> fs/nfs/dns_resolve.c:377:35: warning: value computed is not used [-Wunused-value]
-> fs/nfs/dns_resolve.c:377:35: warning: value computed is not used [-Wunused-value]
-> fs/nfs/dns_resolve.c:377:35: warning: value computed is not used [-Wunused-value]
-> fs/nfs/dns_resolve.c:377:35: warning: value computed is not used [-Wunused-value]
-> fs/nfs/dns_resolve.c:377:35: warning: value computed is not used [-Wunused-value]
-> fs/nfs/dns_resolve.c:377:35: warning: value computed is not used [-Wunused-value]
-> fs/nfs/dns_resolve.c: At top level:
-> fs/nfs/dns_resolve.c:129:13: warning: ‘nfs_dns_request’ defined but not used [-Wunused-function]
-> make[1]: *** [fs/nfs/dns_resolve.o] Error 1
-> make: *** [_module_fs/nfs] Error 2
->
-> ...looks like you need to convert that cache_detail to use your new
-> scheme as well?
->
+On Thu, Feb 21, 2013 at 06:17:47PM +0000, Myklebust, Trond wrote:
+> On Thu, 2013-02-21 at 11:38 -0500, J. Bruce Fields wrote:
+> > From: "J. Bruce Fields" <bfields@redhat.com>
+> > 
+> > It doesn't appear that anyone actually needs to connect asynchronously.
+> > 
+> > Also, using a workqueue for the connect means we lose the namespace
+> > information from the original process.  This is a problem since there's
+> > no way to explicitly pass in a filesystem namespace for resolution of an
+> > AF_LOCAL address.
+> > 
+> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > ---
+> >  net/sunrpc/xprtsock.c |   35 +++++++++++++++++++++++++++--------
+> >  1 file changed, 27 insertions(+), 8 deletions(-)
+> > 
+> > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> > index bbc0915..b1df874 100644
+> > --- a/net/sunrpc/xprtsock.c
+> > +++ b/net/sunrpc/xprtsock.c
+> > @@ -1866,13 +1866,9 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
+> >   * @xprt: RPC transport to connect
+> >   * @transport: socket transport to connect
+> >   * @create_sock: function to create a socket of the correct type
+> > - *
+> > - * Invoked by a work queue tasklet.
+> >   */
+> > -static void xs_local_setup_socket(struct work_struct *work)
+> > +static void xs_local_setup_socket(struct sock_xprt *transport)
+> >  {
+> > -	struct sock_xprt *transport =
+> > -		container_of(work, struct sock_xprt, connect_worker.work);
+> >  	struct rpc_xprt *xprt = &transport->xprt;
+> >  	struct socket *sock;
+> >  	int status = -EIO;
+> > @@ -1919,6 +1915,31 @@ out:
+> >  	current->flags &= ~PF_FSTRANS;
+> >  }
+> >  
+> > +static void xs_local_connect(struct rpc_task *task)
+> > +{
+> > +	struct rpc_xprt *xprt = task->tk_xprt;
+> > +	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+> > +	unsigned long timeout;
+> > +
+> > +	 if (RPC_IS_ASYNC(task))
+> > +	 	rpc_exit(task, -ENOTCONN);
+> 
+> Needs a "return"...
 
-Yes, thanks, Jeff!
-Have a look at the second version of this series.
+Fixed, thanks.
 
--- 
-Best regards,
-Stanislav Kinsbursky
+> 
+> 
+> > +
+> > +	if (transport->sock != NULL && !RPC_IS_SOFTCONN(task)) {
+> > +		dprintk("RPC:       xs_connect delayed xprt %p for %lu "
+> > +				"seconds\n",
+> > +				xprt, xprt->reestablish_timeout / HZ);
+> > +		timeout = xprt->reestablish_timeout;
+> > +		xprt->reestablish_timeout <<= 1;
+> > +		if (xprt->reestablish_timeout < XS_TCP_INIT_REEST_TO)
+> > +			xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
+> > +		if (xprt->reestablish_timeout > XS_TCP_MAX_REEST_TO)
+> > +			xprt->reestablish_timeout = XS_TCP_MAX_REEST_TO;
+> > +		rpc_delay(task, timeout);
+> 
+> This too needs to exit in order to sleep.
+
+Oops, so maybe simplest would be just to connect first and then delay if
+there's a failure.
+
+(Or is there any problem just making that rpc_delay() an msleep() since
+we know we're in the synchronous case?)
+
+--b.
+
+> 
+> > +	} else
+> > +		dprintk("RPC:       xs_connect scheduled xprt %p\n", xprt);
+> > +	xs_local_setup_socket(transport);
+> > +}
+> > +
+> >  #ifdef CONFIG_SUNRPC_SWAP
+> >  static void xs_set_memalloc(struct rpc_xprt *xprt)
+> >  {
+> > @@ -2454,7 +2475,7 @@ static struct rpc_xprt_ops xs_local_ops = {
+> >  	.alloc_slot		= xprt_alloc_slot,
+> >  	.rpcbind		= xs_local_rpcbind,
+> >  	.set_port		= xs_local_set_port,
+> > -	.connect		= xs_connect,
+> > +	.connect		= xs_local_connect,
+> >  	.buf_alloc		= rpc_malloc,
+> >  	.buf_free		= rpc_free,
+> >  	.send_request		= xs_local_send_request,
+> > @@ -2627,8 +2648,6 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
+> >  			goto out_err;
+> >  		}
+> >  		xprt_set_bound(xprt);
+> > -		INIT_DELAYED_WORK(&transport->connect_worker,
+> > -					xs_local_setup_socket);
+> >  		xs_format_peer_addresses(xprt, "local", RPCBIND_NETID_LOCAL);
+> >  		break;
+> >  	default:
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
