@@ -1,39 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:22214 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932757Ab3BTQ3L convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Feb 2013 11:29:11 -0500
+Received: from userp1040.oracle.com ([156.151.31.81]:42927 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753287Ab3BUVAa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Feb 2013 16:00:30 -0500
 Content-Type: text/plain; charset=us-ascii
 Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
-Subject: Re: RDMA, el6, kernel panic
+Subject: Re: [nfsv4] Connectathon 2013 talks
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <alpine.DEB.1.00.1302191536430.5816@shell>
-Date: Wed, 20 Feb 2013 11:29:04 -0500
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <E409C539-688A-414F-A2A8-1F03EA7F2741@oracle.com>
-References: <alpine.DEB.1.00.1302191536430.5816@shell>
-To: Mark Lehrer <mark@tpsit.com>
+In-Reply-To: <51267179.6060002@panasas.com>
+Date: Thu, 21 Feb 2013 16:00:20 -0500
+Cc: NFSv4 on Linux on Linux mailing mailing list <nfsv4@ietf.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <3ED82945-279D-49E4-92B4-AF4AA6363F2F@oracle.com>
+References: <8BD8BE06-E201-4704-AD4E-DB768F37255F@oracle.com> <51267179.6060002@panasas.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Feb 19, 2013, at 6:05 PM, Mark Lehrer <mark@tpsit.com> wrote:
+On Feb 21, 2013, at 2:11 PM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+
+> On 01/25/2013 06:00 PM, Chuck Lever wrote:
+>> Hi-
+>> 
+>> I'm organizing the talks at this year's Connectathon event.  
+>> 
+>>  http://hub.opensolaris.org/bin/view/Community+Group+nfs/Connectathon13
+>> 
+>> If you are interested in presenting, please contact me with details
+>> before Monday, February 25 (but the sooner the better). Remember that
+>> the Connectathon test floor is covered by NDA, but the talks are open
+>> to the public.
+>> 
+> 
+> Hi Chuck, as we said at the con-call here is my email
+
+Captured.  Should appear on the web site next time we update (a day or two?).
+
 
 > 
-> I have an easily-reproduceable kernel panic with RDMA on el6,
-> kernel version 2.6.32-279.19.1.el6.x86_64
+>> 
+>> For each talk, please provide:
+>> 
+>> o  A title
+>> 
 > 
-> If a client has an NFS filesystem mounted via RDMA, and the Infiniband
-> connection goes away on the client without disconnecting from the NFS
-> server, the NFS server gives a kernel panic.
+> title: How to solve the Linux-Client LAYOUT_COMMIT vs LAYOUT_GET deadlock
 > 
-> Is this a known problem, or should I email the panic output to this
-> list?  If it is an unknown problem, I will try on a more recent kernel
-> too.
-
-The usual process for seeking help with Enterprise kernels is to contact your distributor and open a bug.
-
-If you want to reproduce with a current upstream kernel (like 3.7), then we are more likely to be able to help.  However, it's possible your distributor has added IB drivers to their el6 kernel that are not available upstream.
+>> o  An abstract (a couple of sentences or so)
+>> 
+> 
+> abstract:
+> 	* I will describe the current problem we have since Kernel 3.5.
+> 	* I will show how I fix it for now, though in a way that violates the STD
+> 	  (It actually does works with all current pnfs servers I know of)
+> 	* I will introduce two possible solutions I can see, for this.
+> 
+> 	And would like people to:
+> 		1. See if there are more possible solutions
+> 		2. Choose (Trond) which way we would like to go, and I can start
+> 		   coding for that.
+> 
+>> o  Who exactly is going to present (with e-mail if possible)
+>> 
+> 
+> presentor: Me
+> 
+>> o  How long you think you need
+>> 
+> 
+> I hope not more then 1 hour at most, or even less
+> 
+>> o  Whether you need more than just a projector
+>> 
+> 
+> No that will be just fine.
 
 -- 
 Chuck Lever
