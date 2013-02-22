@@ -1,203 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:27218 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S935905Ab3BTP5L convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Feb 2013 10:57:11 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
-Subject: Re: synchronous AF_LOCAL connect
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20130220154751.GH14606@fieldses.org>
-Date: Wed, 20 Feb 2013 10:56:54 -0500
-Cc: Trond Myklebust <trond@netapp.com>, linux-nfs@vger.kernel.org,
-        simo@redhat.com
-Message-Id: <2F275139-9861-4414-8C9F-BD74544C9AD7@oracle.com>
-References: <20130218225424.GD3391@fieldses.org> <20130220154751.GH14606@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mx12.netapp.com ([216.240.18.77]:18977 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758134Ab3BVSCI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Feb 2013 13:02:08 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Dave Wysochanski <dwysocha@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "jlayton@redhat.com" <jlayton@redhat.com>
+Subject: Re: [PATCH] nfs: Don't allow NFS silly-renamed files to be deleted,
+ no signal
+Date: Fri, 22 Feb 2013 18:02:06 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9235DC4AF@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1361282391-6578-1-git-send-email-dwysocha@redhat.com>
+In-Reply-To: <1361282391-6578-1-git-send-email-dwysocha@redhat.com>
+Content-Type: multipart/mixed;
+	boundary="_002_4FA345DA4F4AE44899BD2B03EEEC2FA9235DC4AFSACEXCMBX04PRDh_"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--_002_4FA345DA4F4AE44899BD2B03EEEC2FA9235DC4AFSACEXCMBX04PRDh_
+Content-Type: text/plain; charset="iso-8859-1"
+Content-ID: <05F7C4AE8D0BF3489DF170EE550D3B76@tahoe.netapp.com>
+Content-Transfer-Encoding: quoted-printable
 
-On Feb 20, 2013, at 10:47 AM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+On Tue, 2013-02-19 at 08:59 -0500, Dave Wysochanski wrote:
+> Commit 73ca100 broke the code that prevents the client from deleting
+> a silly renamed dentry.  This affected "delete on last close"
+> semantics as after that commit, nothing prevented removal of
+> silly-renamed files.  As a result, a process holding a file open
+> could easily get an ESTALE on the file in a directory where some
+> other process issued 'rm -rf some_dir_containing_the_file' twice.
+> Before the commit, any attempt at unlinking silly renamed files would
+> fail inside may_delete() with -EBUSY because of the
+> DCACHE_NFSFS_RENAMED flag.  The following testcase demonstrates
+> the problem:
+>   tail -f /nfsmnt/dir/file &
+>   rm -rf /nfsmnt/dir
+>   rm -rf /nfsmnt/dir
+>   # second removal does not fail, 'tail' process receives ESTALE
 
-> On Mon, Feb 18, 2013 at 05:54:25PM -0500, bfields wrote:
->> The rpc code expects all connects to be done asynchronously by a
->> workqueue.  But that doesn't seem necessary in the AF_LOCAL case.  The
->> only user (rpcbind) actually wants the connect done in the context of a
->> process with the right namespace.  (And that will be true of gss proxy
->> too, which also wants to use AF_LOCAL.)
->> 
->> But maybe I'm missing something.
->> 
->> Also, I haven't really tried to understand this code--I just assumed I
->> could basically call xs_local_setup_socket from ->setup instead of the
->> workqueue, and that seems to work based on a very superficial test.  At
->> a minimum I guess the PF_FSTRANS fiddling shouldn't be there.
-> 
-> Here it is with that and the other extraneous xprt stuff gone.
-> 
-> See any problem with doing this?
+Hi Dave,
 
-Nothing is screaming at me.  As long as an AF_LOCAL connect operation doesn't ever sleep, this should be safe, I think.
+I'm not sure I understand why we must do the dropping/moving of the
+dentries inside nfs_async_rename_done. Why isn't something like the
+attached patch sufficient?
 
-How did you test it?
+Cheers,
+  Trond
 
+--=20
+Trond Myklebust
+Linux NFS client maintainer
 
-> (This is basically my attempt to implement Trond's solution to the
-> AF_LOCAL-connect-in-a-namespace problem:
-> 
-> 	http://mid.gmane.org/<4FA345DA4F4AE44899BD2B03EEEC2FA9092E0A40@SACEXCMBX04-PRD.hq.netapp.com>
-> 
-> )
-> 
-> --b.
-> 
-> commit 49413f389f7b38b4cbeb2d1c7f25ebcbf00f25f6
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Fri Feb 15 17:54:26 2013 -0500
-> 
->    rpc: simplify AF_LOCAL connect
-> 
->    It doesn't appear that anyone actually needs to connect asynchronously.
-> 
->    Also, using a workqueue for the connect means we lose the namespace
->    information from the original process.  This is a problem since there's
->    no way to explicitly pass in a filesystem namespace for resolution of an
->    AF_LOCAL address.
-> 
->    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index bbc0915..b7d60e4 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -1866,57 +1866,14 @@ static int xs_local_finish_connecting(struct rpc_xprt *xprt,
->  * @xprt: RPC transport to connect
->  * @transport: socket transport to connect
->  * @create_sock: function to create a socket of the correct type
-> - *
-> - * Invoked by a work queue tasklet.
->  */
-> static void xs_local_setup_socket(struct work_struct *work)
-> {
-> 	struct sock_xprt *transport =
-> 		container_of(work, struct sock_xprt, connect_worker.work);
-> 	struct rpc_xprt *xprt = &transport->xprt;
-> -	struct socket *sock;
-> -	int status = -EIO;
-> -
-> -	current->flags |= PF_FSTRANS;
-> -
-> -	clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
-> -	status = __sock_create(xprt->xprt_net, AF_LOCAL,
-> -					SOCK_STREAM, 0, &sock, 1);
-> -	if (status < 0) {
-> -		dprintk("RPC:       can't create AF_LOCAL "
-> -			"transport socket (%d).\n", -status);
-> -		goto out;
-> -	}
-> -	xs_reclassify_socketu(sock);
-> 
-> -	dprintk("RPC:       worker connecting xprt %p via AF_LOCAL to %s\n",
-> -			xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
-> -
-> -	status = xs_local_finish_connecting(xprt, sock);
-> -	switch (status) {
-> -	case 0:
-> -		dprintk("RPC:       xprt %p connected to %s\n",
-> -				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
-> -		xprt_set_connected(xprt);
-> -		break;
-> -	case -ENOENT:
-> -		dprintk("RPC:       xprt %p: socket %s does not exist\n",
-> -				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
-> -		break;
-> -	case -ECONNREFUSED:
-> -		dprintk("RPC:       xprt %p: connection refused for %s\n",
-> -				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
-> -		break;
-> -	default:
-> -		printk(KERN_ERR "%s: unhandled error (%d) connecting to %s\n",
-> -				__func__, -status,
-> -				xprt->address_strings[RPC_DISPLAY_ADDR]);
-> -	}
-> -
-> -out:
-> -	xprt_clear_connecting(xprt);
-> -	xprt_wake_pending_tasks(xprt, status);
-> -	current->flags &= ~PF_FSTRANS;
-> +	xprt_wake_pending_tasks(xprt, -EIO);
-> }
-> 
-> #ifdef CONFIG_SUNRPC_SWAP
-> @@ -2588,6 +2545,48 @@ static const struct rpc_timeout xs_local_default_timeout = {
-> 	.to_retries = 2,
-> };
-> 
-> +
-> +static int xs_local_connect(struct sock_xprt *transport)
-> +{
-> +	struct rpc_xprt *xprt = &transport->xprt;
-> +	struct socket *sock;
-> +	int status = -EIO;
-> +
-> +	status = __sock_create(xprt->xprt_net, AF_LOCAL,
-> +					SOCK_STREAM, 0, &sock, 1);
-> +	if (status < 0) {
-> +		dprintk("RPC:       can't create AF_LOCAL "
-> +			"transport socket (%d).\n", -status);
-> +		return status;
-> +	}
-> +	xs_reclassify_socketu(sock);
-> +
-> +	dprintk("RPC:       worker connecting xprt %p via AF_LOCAL to %s\n",
-> +			xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
-> +
-> +	status = xs_local_finish_connecting(xprt, sock);
-> +	switch (status) {
-> +	case 0:
-> +		dprintk("RPC:       xprt %p connected to %s\n",
-> +				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
-> +		xprt_set_connected(xprt);
-> +		break;
-> +	case -ENOENT:
-> +		dprintk("RPC:       xprt %p: socket %s does not exist\n",
-> +				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
-> +		break;
-> +	case -ECONNREFUSED:
-> +		dprintk("RPC:       xprt %p: connection refused for %s\n",
-> +				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
-> +		break;
-> +	default:
-> +		printk(KERN_ERR "%s: unhandled error (%d) connecting to %s\n",
-> +				__func__, -status,
-> +				xprt->address_strings[RPC_DISPLAY_ADDR]);
-> +	}
-> +	return status;
-> +}
-> +
-> /**
->  * xs_setup_local - Set up transport to use an AF_LOCAL socket
->  * @args: rpc transport creation arguments
-> @@ -2630,6 +2629,9 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
-> 		INIT_DELAYED_WORK(&transport->connect_worker,
-> 					xs_local_setup_socket);
-> 		xs_format_peer_addresses(xprt, "local", RPCBIND_NETID_LOCAL);
-> +		ret = ERR_PTR(xs_local_connect(transport));
-> +		if (ret)
-> +			goto out_err;
-> 		break;
-> 	default:
-> 		ret = ERR_PTR(-EAFNOSUPPORT);
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+--_002_4FA345DA4F4AE44899BD2B03EEEC2FA9235DC4AFSACEXCMBX04PRDh_
+Content-Type: text/x-patch;
+	name="0001-NFS-Don-t-allow-NFS-silly-renamed-files-to-be-delete.patch"
+Content-Description: 0001-NFS-Don-t-allow-NFS-silly-renamed-files-to-be-delete.patch
+Content-Disposition: attachment;
+	filename="0001-NFS-Don-t-allow-NFS-silly-renamed-files-to-be-delete.patch";
+	size=3148; creation-date="Fri, 22 Feb 2013 18:02:06 GMT";
+	modification-date="Fri, 22 Feb 2013 18:02:06 GMT"
+Content-ID: <F07318F72ED0714982B7BD7621B527D4@tahoe.netapp.com>
+Content-Transfer-Encoding: base64
 
+RnJvbSA5MDc2OTgxN2E4MDUyOTI2NDY2MjNjZWRkOWQ1NDU1ZDMxYjYzYmMyIE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
+YXBwLmNvbT4NCkRhdGU6IEZyaSwgMjIgRmViIDIwMTMgMTI6NTM6NDMgLTA1MDANClN1YmplY3Q6
+IFtQQVRDSF0gTkZTOiBEb24ndCBhbGxvdyBORlMgc2lsbHktcmVuYW1lZCBmaWxlcyB0byBiZSBk
+ZWxldGVkLCBubw0KIHNpZ25hbA0KDQpDb21taXQgNzNjYTEwMCBicm9rZSB0aGUgY29kZSB0aGF0
+IHByZXZlbnRzIHRoZSBjbGllbnQgZnJvbSBkZWxldGluZw0KYSBzaWxseSByZW5hbWVkIGRlbnRy
+eS4gIFRoaXMgYWZmZWN0ZWQgImRlbGV0ZSBvbiBsYXN0IGNsb3NlIg0Kc2VtYW50aWNzIGFzIGFm
+dGVyIHRoYXQgY29tbWl0LCBub3RoaW5nIHByZXZlbnRlZCByZW1vdmFsIG9mDQpzaWxseS1yZW5h
+bWVkIGZpbGVzLiAgQXMgYSByZXN1bHQsIGEgcHJvY2VzcyBob2xkaW5nIGEgZmlsZSBvcGVuDQpj
+b3VsZCBlYXNpbHkgZ2V0IGFuIEVTVEFMRSBvbiB0aGUgZmlsZSBpbiBhIGRpcmVjdG9yeSB3aGVy
+ZSBzb21lDQpvdGhlciBwcm9jZXNzIGlzc3VlZCAncm0gLXJmIHNvbWVfZGlyX2NvbnRhaW5pbmdf
+dGhlX2ZpbGUnIHR3aWNlLg0KQmVmb3JlIHRoZSBjb21taXQsIGFueSBhdHRlbXB0IGF0IHVubGlu
+a2luZyBzaWxseSByZW5hbWVkIGZpbGVzIHdvdWxkDQpmYWlsIGluc2lkZSBtYXlfZGVsZXRlKCkg
+d2l0aCAtRUJVU1kgYmVjYXVzZSBvZiB0aGUNCkRDQUNIRV9ORlNGU19SRU5BTUVEIGZsYWcuICBU
+aGUgZm9sbG93aW5nIHRlc3RjYXNlIGRlbW9uc3RyYXRlcw0KdGhlIHByb2JsZW06DQogIHRhaWwg
+LWYgL25mc21udC9kaXIvZmlsZSAmDQogIHJtIC1yZiAvbmZzbW50L2Rpcg0KICBybSAtcmYgL25m
+c21udC9kaXINCiAgIyBzZWNvbmQgcmVtb3ZhbCBkb2VzIG5vdCBmYWlsLCAndGFpbCcgcHJvY2Vz
+cyByZWNlaXZlcyBFU1RBTEUNCg0KVGhlIHByb2JsZW0gd2l0aCB0aGUgYWJvdmUgY29tbWl0IGlz
+IHRoYXQgaXQgdW5oYXNoZXMgdGhlIG9sZCBhbmQNCm5ldyBkZW50cmllcyBmcm9tIHRoZSBsb29r
+dXAgcGF0aCwgZXZlbiBpbiB0aGUgbm9ybWFsIGNhc2Ugd2hlbg0KYSBzaWduYWwgaXMgbm90IGVu
+Y291bnRlcmVkIGFuZCBpdCB3b3VsZCBoYXZlIGJlZW4gc2FmZSB0byBjYWxsDQpkX21vdmUuICBV
+bmZvcnR1bmF0ZWx5IHRoZSBvbGQgZGVudHJ5IGhhcyB0aGUgc3BlY2lhbA0KRENBQ0hFX05GU0ZT
+X1JFTkFNRUQgZmxhZyBzZXQgb24gaXQuICBVbmhhc2hpbmcgaGFzIHRoZQ0Kc2lkZS1lZmZlY3Qg
+dGhhdCBmdXR1cmUgbG9va3VwcyBjYWxsIGRfYWxsb2MoKSwgYWxsb2NhdGluZyBhIG5ldw0KZGVu
+dHJ5IHdpdGhvdXQgdGhlIHNwZWNpYWwgZmxhZyBmb3IgYW55IHNpbGx5LXJlbmFtZWQgZmlsZXMu
+ICBBcyBhDQpyZXN1bHQsIHN1YnNlcXVlbnQgY2FsbHMgdG8gdW5saW5rIHNpbGx5IHJlbmFtZWQg
+ZmlsZXMgZG8gbm90IGZhaWwNCmJ1dCBhbGxvdyB0aGUgcmVtb3ZhbCB0byBnbyB0aHJvdWdoLiAg
+VGhpcyB3aWxsIHJlc3VsdCBpbiBFU1RBTEUNCmVycm9ycyBmb3IgYW55IG90aGVyIHByb2Nlc3Mg
+ZG9pbmcgb3BlcmF0aW9ucyBvbiB0aGUgZmlsZS4NCg0KVG8gZml4IHRoaXMsIGdvIGJhY2sgdG8g
+dXNpbmcgZF9tb3ZlIG9uIHN1Y2Nlc3MuDQpGb3IgdGhlIHNpZ25hbCBjYXNlLCBpdCdzIHVuY2xl
+YXIgd2hhdCB3ZSBtYXkgc2FmZWx5IGRvIGJleW9uZCBkX2Ryb3AuDQoNClJlcG9ydGVkLWJ5OiBE
+YXZlIFd5c29jaGFuc2tpIDxkd3lzb2NoYUByZWRoYXQuY29tPg0KU2lnbmVkLW9mZi1ieTogVHJv
+bmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0YXBwLmNvbT4NCkNjOiBzdGFibGVAdmdl
+ci5rZXJuZWwub3JnDQotLS0NCiBmcy9uZnMvdW5saW5rLmMgfCAxNyArKysrKysrKysrLS0tLS0t
+LQ0KIDEgZmlsZSBjaGFuZ2VkLCAxMCBpbnNlcnRpb25zKCspLCA3IGRlbGV0aW9ucygtKQ0KDQpk
+aWZmIC0tZ2l0IGEvZnMvbmZzL3VubGluay5jIGIvZnMvbmZzL3VubGluay5jDQppbmRleCBkMjZh
+MzJmLi42YTgzNjhlIDEwMDY0NA0KLS0tIGEvZnMvbmZzL3VubGluay5jDQorKysgYi9mcy9uZnMv
+dW5saW5rLmMNCkBAIC0zMzUsMjAgKzMzNSwxNCBAQCBzdGF0aWMgdm9pZCBuZnNfYXN5bmNfcmVu
+YW1lX2RvbmUoc3RydWN0IHJwY190YXNrICp0YXNrLCB2b2lkICpjYWxsZGF0YSkNCiAJc3RydWN0
+IGlub2RlICpvbGRfZGlyID0gZGF0YS0+b2xkX2RpcjsNCiAJc3RydWN0IGlub2RlICpuZXdfZGly
+ID0gZGF0YS0+bmV3X2RpcjsNCiAJc3RydWN0IGRlbnRyeSAqb2xkX2RlbnRyeSA9IGRhdGEtPm9s
+ZF9kZW50cnk7DQotCXN0cnVjdCBkZW50cnkgKm5ld19kZW50cnkgPSBkYXRhLT5uZXdfZGVudHJ5
+Ow0KIA0KIAlpZiAoIU5GU19QUk9UTyhvbGRfZGlyKS0+cmVuYW1lX2RvbmUodGFzaywgb2xkX2Rp
+ciwgbmV3X2RpcikpIHsNCiAJCXJwY19yZXN0YXJ0X2NhbGxfcHJlcGFyZSh0YXNrKTsNCiAJCXJl
+dHVybjsNCiAJfQ0KIA0KLQlpZiAodGFzay0+dGtfc3RhdHVzICE9IDApIHsNCisJaWYgKHRhc2st
+PnRrX3N0YXR1cyAhPSAwKQ0KIAkJbmZzX2NhbmNlbF9hc3luY191bmxpbmsob2xkX2RlbnRyeSk7
+DQotCQlyZXR1cm47DQotCX0NCi0NCi0JZF9kcm9wKG9sZF9kZW50cnkpOw0KLQlkX2Ryb3AobmV3
+X2RlbnRyeSk7DQogfQ0KIA0KIC8qKg0KQEAgLTU0OSw2ICs1NDMsMTUgQEAgbmZzX3NpbGx5cmVu
+YW1lKHN0cnVjdCBpbm9kZSAqZGlyLCBzdHJ1Y3QgZGVudHJ5ICpkZW50cnkpDQogCWVycm9yID0g
+cnBjX3dhaXRfZm9yX2NvbXBsZXRpb25fdGFzayh0YXNrKTsNCiAJaWYgKGVycm9yID09IDApDQog
+CQllcnJvciA9IHRhc2stPnRrX3N0YXR1czsNCisJc3dpdGNoIChlcnJvcikgew0KKwljYXNlIDA6
+DQorCQluZnNfc2V0X3ZlcmlmaWVyKGRlbnRyeSwgbmZzX3NhdmVfY2hhbmdlX2F0dHJpYnV0ZShk
+aXIpKTsNCisJCWRfbW92ZShkZW50cnksIHNkZW50cnkpOw0KKwkJYnJlYWs7DQorCWNhc2UgLUVS
+RVNUQVJUU1lTOg0KKwkJZF9kcm9wKGRlbnRyeSk7DQorCQlkX2Ryb3Aoc2RlbnRyeSk7DQorCX0N
+CiAJcnBjX3B1dF90YXNrKHRhc2spOw0KIG91dF9kcHV0Og0KIAlkcHV0KHNkZW50cnkpOw0KLS0g
+DQoxLjguMS4yDQoNCg==
 
-
-
+--_002_4FA345DA4F4AE44899BD2B03EEEC2FA9235DC4AFSACEXCMBX04PRDh_--
