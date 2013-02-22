@@ -1,87 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35765 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:46524 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751861Ab3BMVdy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Feb 2013 16:33:54 -0500
-Date: Wed, 13 Feb 2013 16:33:46 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-        "sandeen@redhat.com" <sandeen@redhat.com>,
-        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        "gluster-devel@nongnu.org" <gluster-devel@nongnu.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: regressions due to 64-bit ext4 directory cookies
-Message-ID: <20130213213346.GQ14195@fieldses.org>
-References: <20130212202841.GC10267@fieldses.org>
- <20130213040003.GB2614@thunk.org>
- <20130213133131.GE14195@fieldses.org>
- <20130213151455.GB17431@thunk.org>
- <20130213151953.GJ14195@fieldses.org>
- <20130213153654.GC17431@thunk.org>
- <20130213162059.GL14195@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91F3D625D@sacexcmbx05-prd.hq.netapp.com>
+	id S1757236Ab3BVPaM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Feb 2013 10:30:12 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+CC: Steve Dickson <steved@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/2] NFSDv4.2: Added NFS v4.2 support to the NFS server
+Date: Fri, 22 Feb 2013 15:30:08 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9235DBFBA@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1361484911-17537-1-git-send-email-steved@redhat.com>
+	 <1361484911-17537-3-git-send-email-steved@redhat.com>
+	 <20130222152548.GB10157@pad.fieldses.org>
+In-Reply-To: <20130222152548.GB10157@pad.fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91F3D625D@sacexcmbx05-prd.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 13, 2013 at 04:43:05PM +0000, Myklebust, Trond wrote:
-> On Wed, 2013-02-13 at 11:20 -0500, J. Bruce Fields wrote:
-> > Oops, probably should have cc'd linux-nfs.
+On Fri, 2013-02-22 at 10:26 -0500, J. Bruce Fields wrote:
+> On Thu, Feb 21, 2013 at 05:15:11PM -0500, Steve Dickson wrote:
+> > This enable NFSv4.2 support for the server. To enable this
+> > code do the following:
+> >   echo "+4.2" >/proc/fs/nfsd/versions
 > > 
-> > On Wed, Feb 13, 2013 at 10:36:54AM -0500, Theodore Ts'o wrote:
-> > > The other thing that I'd note is that the readdir cookie has been
-> > > 64-bit since NFSv3, which was released in June ***1995***.  And the
-> > > explicit, stated purpose of making it be a 64-bit value (as stated in
-> > > RFC 1813) was to reduce interoperability problems.  If that were the
-> > > case, are you telling me that Sun (who has traditionally been pretty
-> > > good worrying about interoperability concerns, and in fact employed
-> > > the editors of RFC 1813) didn't get this right?  This seems
-> > > quite.... surprising to me.
-> > > 
-> > > I thought this was the whole point of the various NFS interoperability
-> > > testing done at Connectathon, for which Sun was a major sponsor?!?  No
-> > > one noticed?!?
+> > after the nfsd kernel module is loaded.
 > > 
-> > Beats me.  But it's not necessarily easy to replace clients running
-> > legacy applications, so we're stuck working with the clients we have....
+> > Signed-off-by: Steve Dickson <steved@redhat.com>
+> > ---
+> >  fs/nfsd/nfs4xdr.c | 1 +
+> >  fs/nfsd/nfsd.h    | 2 +-
+> >  2 files changed, 2 insertions(+), 1 deletion(-)
 > > 
-> > The linux client does remap the server-provided cookies to small
-> > integers, I believe exactly because older applications had trouble with
-> > servers returning "large" cookies.  So presumably ext4-exporting-Linux
-> > servers aren't the first to do this.
-> > 
-> > I don't know which client versions are affected--Connectathon's next
-> > week and I'll talk to people and make sure there's an ext4 export with
-> > this turned on to test against.
+> > diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> > index d2ae8db..86be853 100644
+> > --- a/fs/nfsd/nfs4xdr.c
+> > +++ b/fs/nfsd/nfs4xdr.c
+> > @@ -1621,6 +1621,7 @@ struct nfsd4_minorversion_ops {
+> >  static struct nfsd4_minorversion_ops nfsd4_minorversion[] = {
+> >  	[0] = { nfsd4_dec_ops, ARRAY_SIZE(nfsd4_dec_ops) },
+> >  	[1] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
+> > +	[2] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
+> >  };
+> >  
+> >  static __be32
+> > diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+> > index 26a457b..0e3ccd1 100644
+> > --- a/fs/nfsd/nfsd.h
+> > +++ b/fs/nfsd/nfsd.h
+> > @@ -24,7 +24,7 @@
+> >  /*
+> >   * nfsd version
+> >   */
+> > -#define NFSD_SUPPORTED_MINOR_VERSION	1
+> > +#define NFSD_SUPPORTED_MINOR_VERSION	2
+> >  /*
+> >   * Maximum blocksizes supported by daemon under various circumstances.
+> >   */
 > 
-> Actually, one of the main reasons for the Linux client not exporting raw
-> readdir cookies is because the glibc-2 folks in their infinite wisdom
-> declared that telldir()/seekdir() use an off_t. They then went yet one
-> further and decided to declare negative offsets to be illegal so that
-> they could use the negative values internally in their syscall wrappers.
+> Looks OK to me, except this should be behind a config for now.
 > 
-> The POSIX definition has none of the above rubbish
-> (http://pubs.opengroup.org/onlinepubs/009695399/functions/telldir.html)
-> and so glibc brilliantly saddled Linux with a crippled readdir
-> implementation that is _not_ POSIX compatible.
+> On a grep for "minorversion" I notice two oversights, below: one just a
+> comment, one might result in getting the wrong minorversion on
+> callbacks.
 > 
-> No, I'm not at all bitter...
+> --b.
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 503e15e..b86cf07 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1665,7 +1665,7 @@ out_new:
+>  		status = nfserr_jukebox;
+>  		goto out;
+>  	}
+> -	new->cl_minorversion = 1;
+> +	new->cl_minorversion = cstate->minorversion;
+>  
+>  	gen_clid(new);
+>  	add_to_unconfirmed(new, strhashval);
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index e036894..28d41ef 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -108,7 +108,7 @@ struct nfs4_cb_conn {
+>  	u32                     cb_prog; /* used only in 4.0 case;
+>  					    per-session otherwise */
+>  	u32                     cb_ident;	/* minorversion 0 only */
+> -	struct svc_xprt		*cb_xprt;	/* minorversion 1 only */
+> +	struct svc_xprt		*cb_xprt;	/* minorversion >=1 only */
 
-Oh, right, I knew I'd forgotten part of the story....
+Tagging things as being particlar to a give minorversion means that
+we'll never stop having to change the comments. Why not just label it as
+being the session back channel?
 
-But then you must have actually been testing against servers that were
-using that 32nd bit?
+>  };
+>  
+>  static inline struct nfs4_delegation *delegstateid(struct nfs4_stid *s)
 
-I think ext4 actually only uses 31 bits even in the 32-bit case.  And
-for a server that was literally using an offset inside a directory file,
-that would be a colossal directory.
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-So I'm wondering how you ran across it.
-
-Partly just pure curiosity.
-
---b.
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
