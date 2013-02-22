@@ -1,61 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:8059 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:58713 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754854Ab3BRSsV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Feb 2013 13:48:21 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+	id S1757094Ab3BVPjQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Feb 2013 10:39:16 -0500
+Date: Fri, 22 Feb 2013 10:39:13 -0500
+To: Steve Dickson <steved@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
         "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 14/14] Kconfig: Add Kconfig entry for Labeled NFS V4 server
-Date: Mon, 18 Feb 2013 13:47:56 -0500
-Message-Id: <1361213276-17962-15-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1361213276-17962-1-git-send-email-SteveD@redhat.com>
-References: <1361213276-17962-1-git-send-email-SteveD@redhat.com>
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/2] NFS v4.2 support to both the server and client (take
+ 2)
+Message-ID: <20130222153913.GE20588@fieldses.org>
+References: <1361522832-11177-1-git-send-email-steved@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1361522832-11177-1-git-send-email-steved@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Steve Dickson <steved@redhat.com>
+On Fri, Feb 22, 2013 at 03:47:10AM -0500, Steve Dickson wrote:
+> These patche added v4.2 support to both the server and client. 
+> Basically the v4.1 code is reused, but the minor version is 
+> needed to enable features like label NFS.
 
-This patch adds the NFSd_V4_SECURITY_LABEL entry which
-enables security label support for the NFSv4 server
+Same comments as on previous patches.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- fs/nfsd/Kconfig | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+(Sorry didn't notice there was another posting!)
 
-diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-index 8df1ea4..a569dc1 100644
---- a/fs/nfsd/Kconfig
-+++ b/fs/nfsd/Kconfig
-@@ -81,6 +81,22 @@ config NFSD_V4
- 
- 	  If unsure, say N.
- 
-+config NFSD_V4_SECURITY_LABEL
-+	bool "Provide Security Label support for NFSv4 server"
-+	depends on NFSD_V4 && SECURITY
-+	help
-+
-+	Say Y here if you want enable fine-grained security label attribute
-+	support for NFS version 4.  Security labels allow security modules like
-+	SELinux and Smack to label files to facilitate enforcement of their policies.
-+	Without this an NFSv4 mount will have the same label on each file.
-+
-+	If you do not wish to enable fine-grained security labels SELinux or
-+	Smack policies on NFSv4 files, say N.
-+
-+	WARNING: there is still a chance of backwards-incompatible protocol changes.  
-+	For now we recommend "Y" only for developers and testers."
-+
- config NFSD_FAULT_INJECTION
- 	bool "NFS server manual fault injection"
- 	depends on NFSD_V4 && DEBUG_KERNEL
--- 
-1.8.1.2
+--b.
 
+> 
+> Note, these patch apply on top of the lNFS: 3.8-rc3 release
+> patches. Although the only conflict if applied without those patches
+> would be in the Kconfig files 
+> 
+> Steve Dickson (2):
+>   NFSv4.2: Added NFS v4.2 support to the NFS client
+>   NFSDv4.2: Added NFS v4.2 support to the NFS server
+> 
+>  fs/nfs/Kconfig       | 12 +++++++++++-
+>  fs/nfs/callback.c    |  3 +++
+>  fs/nfs/nfs4client.c  |  5 +++++
+>  fs/nfs/nfs4proc.c    |  3 +++
+>  fs/nfs/super.c       |  7 ++++++-
+>  fs/nfsd/nfs4xdr.c    |  1 +
+>  fs/nfsd/nfsd.h       |  2 +-
+>  include/linux/nfs4.h |  4 ++++
+>  8 files changed, 34 insertions(+), 3 deletions(-)
+> 
+> -- 
+> 1.8.1.2
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
