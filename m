@@ -1,456 +1,147 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46879 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:57246 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752623Ab3BLW1C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Feb 2013 17:27:02 -0500
-Date: Tue, 12 Feb 2013 17:27:00 -0500
+	id S1757926Ab3BVQ7A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Feb 2013 11:59:00 -0500
+Date: Fri, 22 Feb 2013 11:58:58 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
 To: Steve Dickson <SteveD@redhat.com>
 Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 09/15] NFS: Add label lifecycle management
-Message-ID: <20130212222659.GK10267@fieldses.org>
-References: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
- <1360327163-20360-10-git-send-email-SteveD@redhat.com>
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] NFSv4.2: Added NFS v4.2 support to the NFS client
+Message-ID: <20130222165858.GB10846@pad.fieldses.org>
+References: <1361484911-17537-1-git-send-email-steved@redhat.com>
+ <1361484911-17537-2-git-send-email-steved@redhat.com>
+ <20130222151339.GA10157@pad.fieldses.org>
+ <51279F01.2020000@RedHat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1360327163-20360-10-git-send-email-SteveD@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <51279F01.2020000@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 08, 2013 at 07:39:17AM -0500, Steve Dickson wrote:
-> From: Dave Quigley <dpquigl@taiga.selinuxproject.org>
+On Fri, Feb 22, 2013 at 11:38:25AM -0500, Steve Dickson wrote:
 > 
-> >From David Quigley <dpquigl@davequigley.com>
 > 
-> This patch adds the lifecycle management for the security label structure
-> introduced in an earlier patch. The label is not used yet but allocations and
-> freeing of the structure is handled.
-> 
-> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
-> ---
->  fs/nfs/dir.c      |  23 +++++++++++-
->  fs/nfs/inode.c    |  15 ++++++--
->  fs/nfs/nfs4proc.c | 102 ++++++++++++++++++++++++++++++++++++++++++++++++++----
->  3 files changed, 129 insertions(+), 11 deletions(-)
-> 
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index 7003931..d81b7e3 100644
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -585,10 +585,16 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
->  	if (entry.fh == NULL || entry.fattr == NULL)
->  		goto out;
->  
-> +	entry.label = nfs4_label_alloc(NFS_SERVER(inode), GFP_NOWAIT);
-> +	if (IS_ERR(entry.label)) {
-> +		status = PTR_ERR(entry.label);
-> +		goto out;
-> +	}
-> +
->  	array = nfs_readdir_get_array(page);
->  	if (IS_ERR(array)) {
->  		status = PTR_ERR(array);
-> -		goto out;
-> +		goto out_label_free;
->  	}
->  	memset(array, 0, sizeof(struct nfs_cache_array));
->  	array->eof_index = -1;
-> @@ -614,6 +620,8 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
->  	nfs_readdir_free_large_page(pages_ptr, pages, array_size);
->  out_release_array:
->  	nfs_readdir_release_array(page);
-> +out_label_free:
-> +	nfs4_label_free(entry.label);
->  out:
->  	nfs_free_fattr(entry.fattr);
->  	nfs_free_fhandle(entry.fh);
-> @@ -1083,6 +1091,10 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
->  	if (fhandle == NULL || fattr == NULL)
->  		goto out_error;
->  
-> +	label = nfs4_label_alloc(NFS_SERVER(inode), GFP_NOWAIT);
-> +	if (IS_ERR(label))
-> +		goto out_error;
-> +
->  	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr, label);
->  	if (error)
->  		goto out_bad;
-> @@ -1093,6 +1105,8 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
->  
->  	nfs_free_fattr(fattr);
->  	nfs_free_fhandle(fhandle);
-> +	nfs4_label_free(label);
-> +
->  out_set_verifier:
->  	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
->   out_valid:
-> @@ -1109,6 +1123,7 @@ out_zap_parent:
->   out_bad:
->  	nfs_free_fattr(fattr);
->  	nfs_free_fhandle(fhandle);
-> +	nfs4_label_free(label);
->  	nfs_mark_for_revalidate(dir);
->  	if (inode && S_ISDIR(inode->i_mode)) {
->  		/* Purge readdir caches. */
-> @@ -1129,6 +1144,7 @@ out_zap_parent:
->  out_error:
->  	nfs_free_fattr(fattr);
->  	nfs_free_fhandle(fhandle);
-> +	nfs4_label_free(label);
->  	dput(parent);
->  	dfprintk(LOOKUPCACHE, "NFS: %s(%s/%s) lookup returned error %d\n",
->  			__func__, dentry->d_parent->d_name.name,
-> @@ -1244,6 +1260,10 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
->  	if (fhandle == NULL || fattr == NULL)
->  		goto out;
->  
-> +	label = nfs4_label_alloc(NFS_SERVER(dir), GFP_NOWAIT);
-> +	if (IS_ERR(label))
-> +		goto out;
-> +
->  	parent = dentry->d_parent;
->  	/* Protect against concurrent sillydeletes */
->  	nfs_block_sillyrename(parent);
-> @@ -1272,6 +1292,7 @@ no_entry:
->  	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
->  out_unblock_sillyrename:
->  	nfs_unblock_sillyrename(parent);
-> +	nfs4_label_free(label);
->  out:
->  	nfs_free_fattr(fattr);
->  	nfs_free_fhandle(fhandle);
-> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> index 6b315a0..0cb67cf 100644
-> --- a/fs/nfs/inode.c
-> +++ b/fs/nfs/inode.c
-> @@ -840,6 +840,13 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
->  		goto out;
->  
->  	nfs_inc_stats(inode, NFSIOS_INODEREVALIDATE);
-> +
-> +	label = nfs4_label_alloc(NFS_SERVER(inode), GFP_KERNEL);
-> +	if (IS_ERR(label)) {
-> +		status = PTR_ERR(label);
-> +		goto out;
-> +	}
-> +
->  	status = NFS_PROTO(inode)->getattr(server, NFS_FH(inode), fattr, label);
->  	if (status != 0) {
->  		dfprintk(PAGECACHE, "nfs_revalidate_inode: (%s/%Ld) getattr failed, error=%d\n",
-> @@ -850,7 +857,7 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
->  			if (!S_ISDIR(inode->i_mode))
->  				set_bit(NFS_INO_STALE, &NFS_I(inode)->flags);
->  		}
-> -		goto out;
-> +		goto err_out;
->  	}
->  
->  	status = nfs_refresh_inode(inode, fattr, label);
-> @@ -858,7 +865,7 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
->  		dfprintk(PAGECACHE, "nfs_revalidate_inode: (%s/%Ld) refresh failed, error=%d\n",
->  			 inode->i_sb->s_id,
->  			 (long long)NFS_FILEID(inode), status);
-> -		goto out;
-> +		goto err_out;
->  	}
->  
->  	if (nfsi->cache_validity & NFS_INO_INVALID_ACL)
-> @@ -868,7 +875,9 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
->  		inode->i_sb->s_id,
->  		(long long)NFS_FILEID(inode));
->  
-> - out:
-> +err_out:
-> +	nfs4_label_free(label);
-> +out:
->  	nfs_free_fattr(fattr);
->  	return status;
->  }
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 4488373..5c9233d1 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -786,9 +786,14 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
->  	p = kzalloc(sizeof(*p), gfp_mask);
->  	if (p == NULL)
->  		goto err;
-> +
-> +	p->f_label = nfs4_label_alloc(server, gfp_mask);
-> +	if (IS_ERR(p->f_label))
-> +		goto err_free_p;
-> +
->  	p->o_arg.seqid = nfs_alloc_seqid(&sp->so_seqid, gfp_mask);
->  	if (p->o_arg.seqid == NULL)
-> -		goto err_free;
-> +		goto err_free_label;
->  	nfs_sb_active(dentry->d_sb);
->  	p->dentry = dget(dentry);
->  	p->dir = parent;
-> @@ -831,7 +836,10 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
->  	nfs4_init_opendata_res(p);
->  	kref_init(&p->kref);
->  	return p;
-> -err_free:
-> +
-> +err_free_label:
-> +	nfs4_label_free(p->f_label);
-> +err_free_p:
->  	kfree(p);
->  err:
->  	dput(parent);
-> @@ -848,6 +856,9 @@ static void nfs4_opendata_free(struct kref *kref)
->  	if (p->state != NULL)
->  		nfs4_put_open_state(p->state);
->  	nfs4_put_state_owner(p->owner);
-> +
-> +	nfs4_label_free(p->f_label);
-> +
->  	dput(p->dir);
->  	dput(p->dentry);
->  	nfs_sb_deactive(sb);
-> @@ -1886,6 +1897,14 @@ static int _nfs4_do_open(struct inode *dir,
->  	if (opendata == NULL)
->  		goto err_put_state_owner;
->  
-> +	if (label) {
-> +		olabel = nfs4_label_alloc(server, GFP_KERNEL);
-> +		if (IS_ERR(olabel)) {
-> +			status = PTR_ERR(olabel);
-> +			goto err_opendata_put;
-> +		}
-> +	}
-> +
->  	if (ctx_th && server->attr_bitmask[2] & FATTR4_WORD2_MDSTHRESHOLD) {
->  		opendata->f_attr.mdsthreshold = pnfs_mdsthreshold_alloc();
->  		if (!opendata->f_attr.mdsthreshold)
-> @@ -1897,18 +1916,18 @@ static int _nfs4_do_open(struct inode *dir,
->  
->  	status = _nfs4_proc_open(opendata);
->  	if (status != 0)
-> -		goto err_opendata_put;
-> +		goto err_free_label;
->  
->  	state = nfs4_opendata_to_nfs4_state(opendata);
->  	status = PTR_ERR(state);
->  	if (IS_ERR(state))
-> -		goto err_opendata_put;
-> +		goto err_free_label;
->  	if (server->caps & NFS_CAP_POSIX_LOCK)
->  		set_bit(NFS_STATE_POSIX_LOCKS, &state->flags);
->  
->  	status = nfs4_opendata_access(cred, opendata, state, fmode, flags);
->  	if (status != 0)
-> -		goto err_opendata_put;
-> +		goto err_free_label;
->  
->  	if (opendata->o_arg.open_flags & O_EXCL) {
->  		nfs4_exclusive_attrset(opendata, sattr);
-> @@ -1929,10 +1948,14 @@ static int _nfs4_do_open(struct inode *dir,
->  		kfree(opendata->f_attr.mdsthreshold);
->  	opendata->f_attr.mdsthreshold = NULL;
->  
-> +	nfs4_label_free(olabel);
-> +
->  	nfs4_opendata_put(opendata);
->  	nfs4_put_state_owner(sp);
->  	*res = state;
->  	return 0;
-> +err_free_label:
-> +	nfs4_label_free(olabel);
->  err_opendata_put:
->  	kfree(opendata->f_attr.mdsthreshold);
->  	nfs4_opendata_put(opendata);
-> @@ -2496,16 +2519,23 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *mntfh,
->  		return error;
->  	}
->  
-> +	label = nfs4_label_alloc(server, GFP_KERNEL);
-> +	if (IS_ERR(label))
-> +		return PTR_ERR(label);
-> +
->  	error = nfs4_proc_getattr(server, mntfh, fattr, label);
->  	if (error < 0) {
->  		dprintk("nfs4_get_root: getattr error = %d\n", -error);
-> -		return error;
-> +		goto err_free_label;
->  	}
->  
->  	if (fattr->valid & NFS_ATTR_FATTR_FSID &&
->  	    !nfs_fsid_equal(&server->fsid, &fattr->fsid))
->  		memcpy(&server->fsid, &fattr->fsid, sizeof(server->fsid));
->  
-> +err_free_label:
-> +	nfs4_label_free(label);
-> +
->  	return error;
->  }
->  
-> @@ -2611,6 +2641,7 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
->  	struct inode *inode = dentry->d_inode;
->  	struct rpc_cred *cred = NULL;
->  	struct nfs4_state *state = NULL;
-> +	struct nfs4_label *label = NULL;
->  	int status;
->  
->  	if (pnfs_ld_layoutret_on_setattr(inode))
-> @@ -2637,9 +2668,15 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
->  		}
->  	}
->  
-> -	status = nfs4_do_setattr(inode, cred, fattr, sattr, state, NULL, NULL);
-> +	label = nfs4_label_alloc(NFS_SERVER(inode), GFP_KERNEL);
-> +	if (IS_ERR(label))
-> +		return PTR_ERR(label);
-> +
-> +	status = nfs4_do_setattr(inode, cred, fattr, sattr, state, NULL, label);
->  	if (status == 0)
->  		nfs_setattr_update_inode(inode, sattr);
-> +
-> +	nfs4_label_free(label);
->  	return status;
->  }
->  
-> @@ -2794,11 +2831,21 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
->  	if (res.fattr == NULL)
->  		return -ENOMEM;
->  
-> +	res.label = nfs4_label_alloc(server, GFP_KERNEL);
-> +	if (IS_ERR(res.label)) {
-> +		status = PTR_ERR(res.label);
-> +		goto out;
-> +	}
-> +
->  	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
->  	if (!status) {
->  		nfs_access_set_mask(entry, res.access);
->  		nfs_refresh_inode(inode, res.fattr, res.label);
->  	}
-> +
-> +	nfs4_label_free(res.label);
-> +
-> +out:
->  	nfs_free_fattr(res.fattr);
->  	return status;
->  }
-> @@ -2922,6 +2969,7 @@ static int _nfs4_proc_remove(struct inode *dir, struct qstr *name)
->  	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 1);
->  	if (status == 0)
->  		update_changeattr(dir, &res.cinfo);
-> +
->  	return status;
->  }
->  
-> @@ -2965,6 +3013,7 @@ static int nfs4_proc_unlink_done(struct rpc_task *task, struct inode *dir)
->  	if (nfs4_async_handle_error(task, res->server, NULL) == -EAGAIN)
->  		return 0;
->  	update_changeattr(dir, &res->cinfo);
-> +
->  	return 1;
->  }
->  
+> On 22/02/13 10:13, J. Bruce Fields wrote:
+> > On Thu, Feb 21, 2013 at 05:15:10PM -0500, Steve Dickson wrote:
+> >> This enable NFSv4.2 support. To enable this code the
+> >> CONFIG_NFS_V4_2 Kconfig define needs to be set and
+> >> the -o v4.2 mount option need to be used.
+> >>
+> >> Signed-off-by: Steve Dickson <steved@redhat.com>
+> >> ---
+> >>  fs/nfs/Kconfig       | 11 ++++++++++-
+> >>  fs/nfs/callback.c    |  3 +++
+> >>  fs/nfs/nfs4client.c  |  5 +++++
+> >>  fs/nfs/nfs4proc.c    |  3 +++
+> >>  fs/nfs/super.c       |  7 ++++++-
+> >>  include/linux/nfs4.h |  4 ++++
+> >>  6 files changed, 31 insertions(+), 2 deletions(-)
+> >>
+> >> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+> >> index 3861a1f..247db6d 100644
+> >> --- a/fs/nfs/Kconfig
+> >> +++ b/fs/nfs/Kconfig
+> >> @@ -104,6 +104,15 @@ config NFS_V4_1
+> >>  
+> >>  	  If unsure, say N.
+> >>  
+> >> +config NFS_V4_2
+> >> +	bool "NFS client support for NFSv4.2"
+> >> +	depends on NFS_V4_1
+> >> +	help
+> >> +	  This option enables support for minor version 1 of the NFSv4 protocol
+> >> +	  (RFC 5661) in the kernel's NFS client.
+> >> +
+> >> +	  If unsure, say N.
+> >> +
+> >>  config PNFS_FILE_LAYOUT
+> >>  	tristate
+> >>  	depends on NFS_V4_1
+> >> @@ -133,7 +142,7 @@ config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
+> >>  
+> >>  config NFS_V4_SECURITY_LABEL
+> >>  	bool "Provide Security Label support for NFSv4 client"
+> >> -	depends on NFS_V4 && SECURITY
+> >> +	depends on NFS_V4_2 && SECURITY
+> >>  	help
+> >>  
+> >>  	Say Y here if you want enable fine-grained security label attribute
+> >> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+> >> index 5088b57..4058ec8 100644
+> >> --- a/fs/nfs/callback.c
+> >> +++ b/fs/nfs/callback.c
+> >> @@ -281,6 +281,9 @@ static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct n
+> >>  		case 1:
+> >>  			ret = nfs41_callback_up_net(serv, net);
+> >>  			break;
+> >> +		case 2:
+> >> +			ret = nfs41_callback_up_net(serv, net);
+> >> +			break;
+> >>  		default:
+> >>  			printk(KERN_ERR "NFS: unknown callback version: %d\n",
+> >>  					minorversion);
+> >> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+> >> index 2e9779b..2987fd6 100644
+> >> --- a/fs/nfs/nfs4client.c
+> >> +++ b/fs/nfs/nfs4client.c
+> >> @@ -66,6 +66,11 @@ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
+> >>  	if (err)
+> >>  		goto error;
+> >>  
+> >> +	if (cl_init->minorversion > NFS4_MAX_MINOR_VERSION) {
+> >> +		err = -EINVAL;
+> >> +		goto error;
+> >> +	}
+> > 
+> > Why wasn't this check needed before?
+> It was not needed because the checks in nfs_parse_version_string caught
+> the mismatch minor version... but since minor version 2 is no longer
+> a mismatch and those checks in nfs_parse_version_string are not
+> covered by an ifdef this check is now needed... 
 
-How'd these two hunks end up in here?
+NFSv4.1 could be configured out too.  How did it manage to return an
+error for minorversion == 1 in the !CONFIG_NFS_V4_1 case before?
+
+> >> +		
+> >>  	spin_lock_init(&clp->cl_lock);
+> >>  	INIT_DELAYED_WORK(&clp->cl_renewd, nfs4_renew_state);
+> >>  	rpc_init_wait_queue(&clp->cl_rpcwaitq, "NFS client");
+> >> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> >> index 40c1d1f..08fc8e2 100644
+> >> --- a/fs/nfs/nfs4proc.c
+> >> +++ b/fs/nfs/nfs4proc.c
+> >> @@ -7136,6 +7136,9 @@ const struct nfs4_minor_version_ops *nfs_v4_minor_ops[] = {
+> >>  #if defined(CONFIG_NFS_V4_1)
+> >>  	[1] = &nfs_v4_1_minor_ops,
+> >>  #endif
+> >> +#if defined(CONFIG_NFS_V4_2)
+> >> +	[2] = &nfs_v4_1_minor_ops,
+> > 
+> > But then nfs_v4_minor_ops[2]->minor_version = 1.
+> > 
+> > I think you want to create another structure--just define an
+> > nfs_v4_2_minor_ops field that's the same as nfs_v4_1_minor_ops except
+> > for the minor_version field.
+> That's how I started out: 
+> 
+> #if defined(CONFIG_NFS_V4_2)
+> static const struct nfs4_minor_version_ops nfs_v4_2_minor_ops = {
+>     .minor_version = 2,
+>     .call_sync = nfs4_call_sync_sequence,
+>     .match_stateid = nfs41_match_stateid,
+>     .find_root_sec = nfs41_find_root_sec,
+>     .reboot_recovery_ops = &nfs41_reboot_recovery_ops,
+>     .nograce_recovery_ops = &nfs41_nograce_recovery_ops,
+>     .state_renewal_ops = &nfs41_state_renewal_ops,
+> };
+> #endif
+> 
+> but it just seem like such a big waste of space...
+
+Correctness first....
 
 --b.
 
-> @@ -3023,12 +3072,33 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
->  		.rpc_resp = &res,
->  	};
->  	int status = -ENOMEM;
-> +
-> +
-> +	if (server->caps & NFS_CAP_SECURITY_LABEL) {
-> +		res.old_label = nfs4_label_alloc(server, GFP_NOWAIT);
-> +		if (IS_ERR(res.old_label)) {
-> +			status = PTR_ERR(res.old_label);
-> +			goto out;
-> +		}
-> +		res.new_label = nfs4_label_alloc(server, GFP_NOWAIT);
-> +		if (IS_ERR(res.new_label)) {
-> +			status = PTR_ERR(res.new_label);
-> +			nfs4_label_free(res.old_label);
-> +			goto out;
-> +		}
-> +	}
-> +
->  	
->  	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
->  	if (!status) {
->  		update_changeattr(old_dir, &res.old_cinfo);
->  		update_changeattr(new_dir, &res.new_cinfo);
->  	}
-> +
-> +	nfs4_label_free(res.old_label);
-> +	nfs4_label_free(res.new_label);
-> +
-> +out:
->  	return status;
->  }
->  
-> @@ -3070,11 +3140,21 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, struct qstr *
->  	if (res.fattr == NULL)
->  		goto out;
->  
-> +	res.label = nfs4_label_alloc(server, GFP_KERNEL);
-> +	if (IS_ERR(res.label)) {
-> +		status = PTR_ERR(res.label);
-> +		goto out;
-> +	}
-> +
->  	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
->  	if (!status) {
->  		update_changeattr(dir, &res.cinfo);
->  		nfs_post_op_update_inode(inode, res.fattr, res.label);
->  	}
-> +
-> +
-> +	nfs4_label_free(res.label);
-> +
->  out:
->  	nfs_free_fattr(res.fattr);
->  	return status;
-> @@ -3110,6 +3190,10 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
->  	if (data != NULL) {
->  		struct nfs_server *server = NFS_SERVER(dir);
->  
-> +		data->label = nfs4_label_alloc(server, GFP_KERNEL);
-> +		if (IS_ERR(data->label))
-> +			goto out_free;
-> +
->  		data->msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CREATE];
->  		data->msg.rpc_argp = &data->arg;
->  		data->msg.rpc_resp = &data->res;
-> @@ -3126,6 +3210,9 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
->  		nfs_fattr_init(data->res.fattr);
->  	}
->  	return data;
-> +out_free:
-> +	kfree(data);
-> +	return NULL;
->  }
->  
->  static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_createdata *data)
-> @@ -3141,6 +3228,7 @@ static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_
->  
->  static void nfs4_free_createdata(struct nfs4_createdata *data)
->  {
-> +	nfs4_label_free(data->label);
->  	kfree(data);
->  }
->  
-> -- 
-> 1.7.11.7
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> I could switch back... 
