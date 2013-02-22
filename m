@@ -1,45 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:17515 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:34024 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756829Ab3BOS03 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Feb 2013 13:26:29 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Sven Geggus <lists@fuchsschwanzdomain.de>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: NFS4: "Value too large for defined data type" problem
-Date: Fri, 15 Feb 2013 18:26:27 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA91F3DA465@sacexcmbx05-prd.hq.netapp.com>
-References: <kfkvll$adm$1@ultimate100.geggus.net>
-In-Reply-To: <kfkvll$adm$1@ultimate100.geggus.net>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+	id S1754860Ab3BVM3D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Feb 2013 07:29:03 -0500
+Date: Fri, 22 Feb 2013 07:28:18 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Cc: NeilBrown <neilb@suse.de>, trond.myklebust@netapp.com,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH v1] vfs: kill FS_REVAL_DOT by adding a d_reval_jumped
+ dentry op
+Message-ID: <20130222072818.215d16ee@tlielax.poochiereds.net>
+In-Reply-To: <20130221215114.GL4503@ZenIV.linux.org.uk>
+References: <1361377145-28094-1-git-send-email-jlayton@redhat.com>
+	<20130221093225.5390bb77@notabene.brown>
+	<20130221111738.7592bec4@tlielax.poochiereds.net>
+	<20130221215114.GL4503@ZenIV.linux.org.uk>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
-ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLQ0KPiBvd25lckB2Z2VyLmtlcm5lbC5vcmdd
-IE9uIEJlaGFsZiBPZiBTdmVuIEdlZ2d1cw0KPiBTZW50OiBGcmlkYXksIEZlYnJ1YXJ5IDE1LCAy
-MDEzIDQ6MzggQU0NCj4gVG86IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcNCj4gU3ViamVjdDog
-TkZTNDogIlZhbHVlIHRvbyBsYXJnZSBmb3IgZGVmaW5lZCBkYXRhIHR5cGUiIHByb2JsZW0NCj4g
-DQo+IEhlbGxvLA0KPiANCj4gaXMgdGhlcmUgc29tZXRoaW5nIHdoaWNoIGNhbiBiZSBkb25lIHNl
-cnZlci1zaWRlIHRvIHdvcmsgYXJvdW5kIHRoZSAiVmFsdWUNCj4gdG9vIGxhcmdlIGZvciBkZWZp
-bmVkIGRhdGEgdHlwZSIgcHJvYmxlbSB3aXRoIGh1Z2UgaW5vZGUgTnVtYmVycz8NCj4gDQo+IEZp
-cnN0IG9mIGFsbCwgSSdtIG5vdCBzaHVyZSBpZiB0aGlzIGlzIGFuIE5GUyBwcm9ibGVtIG9yIG9u
-ZSBvZiB0aGUgdW5kZXJseWluZw0KPiBmaWxlc3lzdGVtLg0KPiANCj4gQmFja2dyb3VuZDoNCj4g
-SSBzZXQgdXAgYSBuZXcgTkZTLXNlcnZlciAoTkZTNCkgcmVjZW50bHkuIFRoZSBzZXJ2ZXIgd29y
-a3MgZmluZSBzbyBmYXIgd2l0aA0KPiA2NCBiaXQgTGludXggY2xpZW50cy4NCj4gDQo+IEl0IGFs
-c28gbW9zdGx5IHdvcmtzIHdpdGggMzIgYml0IExpbnV4IGNsaWVudHMgd2hlbiBlaXRoZXIgdGhl
-IHN0YXQgc3lzdGVtIGNhbGwNCj4gaXMgbm90IHVzZWQgb3IgIi1EX0ZJTEVfT0ZGU0VUX0JJVFM9
-NjQiIGhhcyBiZWVuIHVzZWQuDQo+IA0KPiBUaGlzIGlzIGJlY2F1c2Ugb24gMzIgYml0IExpbnV4
-IGlub190IGlzIG5vdCA2NC1iaXQgb3RoZXJ3aXNlLg0KPiANCj4gVW5mb3J0dW5hdGVseSBhdCBs
-ZWFzdCB0aGUgMzJiaXQgVmVyc2lvbiBvZiBEZWJpYW4gc3RhYmxlICg2LjApIHNlZW1zIHRvDQo+
-IGJyZWFrIGFsbCBvdmVyIHRoZSBwbGFjZS4gRS5nLiBpbiBnbm9tZSB3aGVuIHN0YXQgfi8uZ25v
-bWUyX3ByaXZhdGUvIGZhaWxzIGl0DQo+IGlzIGFzc3VtZWQgdGhhdCB0aGUgZGlyZWN0b3J5IGhh
-cyB0byBiZSBjcmVhdGVkIHdoaWNoIHdpbGwgb2YgY291cnNlIG1ha2UgdGhlDQo+IHN1YnNlcXVl
-bnQgY2FsbCB0byBta2RpciBhbHNvIGZhaWwgYW5kIGJyZWFrIHRoZSB3aG9sZSBkZXNrdG9wIGVu
-dmlyb25tZW50DQo+IGFmdGVyd29yZHMuDQo+IA0KPiBSZWdhcmRzDQo+IA0KPiBTdmVuDQo+IA0K
-DQpJZiB5b3VyIGFwcGxpY2F0aW9ucyBhcmUgdW5hYmxlIHRvIGNvcGUgd2l0aCA2NC1iaXQgaW5v
-ZGUgbnVtYmVycywgdGhlbiB5b3UgY2FuIHR1cm4gYmFjayBvbiB0aGUgaW5vZGUgbnVtYmVyIG1h
-cHBpbmcgb24gdGhlIG5mcyBjbGllbnQ6DQoNCmVjaG8gIm9wdGlvbnMgbmZzIGVuYWJsZV9pbm82
-ND1OIiA+L2V0Yy9tb2Rwcm9iZS5kL29wdGlvbnMtbG9jYWwuY29uZg0KDQphbmQgdGhlbiBlaXRo
-ZXIgcmVib290LCBvciB1bmxvYWQgYW5kIHJlbG9hZCB5b3VyIG5mcyBtb2R1bGUuDQpUcm9uZA0K
+On Thu, 21 Feb 2013 21:51:14 +0000
+Al Viro <viro@ZenIV.linux.org.uk> wrote:
+
+> On Thu, Feb 21, 2013 at 11:17:38AM -0500, Jeff Layton wrote:
+> 
+> > Also, since this is the last component of the path, I suspect that
+> > we're almost never going to be in rcu-walk mode here, right?
+> 
+> Take a look at complete_walk(); it starts with leaving RCU mode.  Before
+> it gets anywhere near that call.
+
+Ahh good point...so that check is unnecessary with the current caller.
+
+Should we remove it and fix vfs.txt to mention that this should never
+be called in RCU mode, or leave it in as a defensive coding measure in
+case we add other callers in the future?
+
+I do sort of wonder whether we might eventually change some of the
+other places that call d_revalidate now to call to call this instead
+when LOOKUP_JUMPED is set.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
