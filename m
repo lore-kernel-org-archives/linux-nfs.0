@@ -1,99 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:47017 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758919Ab3BGRD3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Feb 2013 12:03:29 -0500
+Received: from fieldses.org ([174.143.236.118]:58710 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757066Ab3BVPiD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Feb 2013 10:38:03 -0500
+Date: Fri, 22 Feb 2013 10:38:01 -0500
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, Steve Dickson <steved@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/2] NFSDv4.2: Added NFS v4.2 support to the NFS server
+Message-ID: <20130222153801.GD20588@fieldses.org>
+References: <1361484911-17537-1-git-send-email-steved@redhat.com>
+ <1361484911-17537-3-git-send-email-steved@redhat.com>
+ <20130222152548.GB10157@pad.fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9235DBFBA@SACEXCMBX04-PRD.hq.netapp.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
-Subject: Re: [PATCH] SUNRPC: Refactor nfsd4_do_encode_secinfo()
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20130207165509.GM3222@fieldses.org>
-Date: Thu, 7 Feb 2013 12:03:18 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <436D6F2C-E520-4375-A518-2E55031E70F7@oracle.com>
-References: <20130201220308.13518.82164.stgit@seurat.1015granger.net> <20130207150213.GC3222@fieldses.org> <87316F41-4E5E-473C-A372-0AFC6721A355@oracle.com> <20130207162308.GI3222@fieldses.org> <F0DAA0C6-DBA2-457B-8C68-13A2BC3CB4AC@oracle.com> <20130207165509.GM3222@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9235DBFBA@SACEXCMBX04-PRD.hq.netapp.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Feb 7, 2013, at 11:55 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-
-> On Thu, Feb 07, 2013 at 11:26:43AM -0500, Chuck Lever wrote:
->> 
->> On Feb 7, 2013, at 11:23 AM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
->> 
->>> On Thu, Feb 07, 2013 at 10:58:25AM -0500, Chuck Lever wrote:
->>>> 
->>>> On Feb 7, 2013, at 10:02 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
->>>> 
->>>>> On Fri, Feb 01, 2013 at 05:43:44PM -0500, Chuck Lever wrote:
->>>>>> Clean up.  This matches a similar API for the client side, and
->>>>>> keeps ULP fingers out the of the GSS mech switch.
->>>>>> 
->>>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>>>> Acked-by: J. Bruce Fields <bfields@redhat.com>
->>>>>> ---
->>>>>> 
->>>>>> Bruce-
->>>>>> 
->>>>>> This version of the patch follows the existing logic in
->>>>>> nfsd4_do_encode_secinfo(): If the RPC layer can't find GSS info
->>>>>> that matches an export security flavor, it assumes the flavor is
->>>>>> not a GSS pseudoflavor, and simply puts it on the wire.
->>>>>> 
->>>>>> However, if the below XDR encoding logic is given a legitimate GSS
->>>>>> pseudoflavor but the RPC layer says it does not support that
->>>>>> pseudoflavor for some reason, then we leak GSS pseudoflavor numbers
->>>>>> onto the wire.
->>>>>> 
->>>>>> I confirmed this happens by blacklisting rpcsec_gss_krb5, then
->>>>>> attempted a client transition from the pseudo-fs to a Kerberos-only
->>>>>> share.  The client received a flavor list containing the Kerberos
->>>>>> pseudoflavor numbers, rather than GSS tuples.
->>>>>> 
->>>>>> The encoder logic can check that each pseudoflavor is less than
->>>>>> MAXFLAVOR before writing it into the buffer, to prevent this.  But
->>>>>> after "nflavs" is written into the XDR buffer, the encoder can't
->>>>>> skip writing flavor information into the buffer when it discovers
->>>>>> the RPC layer doesn't support that flavor.
->>>>>> 
->>>>>> Is there some way of writing "nflavs" into the XDR buffer after
->>>>>> the loop that writes the flavor information is complete?
->>>>> 
->>>>> Yes, you can save a pointer and then go back and fill that in--see
->>>>> encode_fattr for an example.
->>>> 
->>>> Thanks, I will submit an additional patch that describes this issue and fixes it.
->>>> 
->>>> I asked David Noveck, as one of the authors of RFC 3530, whether an NFS server should return a zero-length flavor list or an error if SECINFO can't find any flavors a client is allowed to use. His opinion was to return NFS4_OK and a zero-length flavor list.
->>> 
->>> Fine with me for this code.
->> 
->> OK, will go with that.
->> 
->>> (In practice though we should probably be warning somewhere (exportfs?)
->>> if somebody creates an export like that.)
->> 
->> The problem can also arise because gssd isn't running or auth_rpcgss.ko or rpcsec_gss_krb5.ko are not loadable for some reason.  In other words, an empty flavor list might also be the result of a transient server misconfiguration.
+On Fri, Feb 22, 2013 at 03:30:08PM +0000, Myklebust, Trond wrote:
+> On Fri, 2013-02-22 at 10:26 -0500, J. Bruce Fields wrote:
+> > On Thu, Feb 21, 2013 at 05:15:11PM -0500, Steve Dickson wrote:
+> > > This enable NFSv4.2 support for the server. To enable this
+> > > code do the following:
+> > >   echo "+4.2" >/proc/fs/nfsd/versions
+> > > 
+> > > after the nfsd kernel module is loaded.
+> > > 
+> > > Signed-off-by: Steve Dickson <steved@redhat.com>
+> > > ---
+> > >  fs/nfsd/nfs4xdr.c | 1 +
+> > >  fs/nfsd/nfsd.h    | 2 +-
+> > >  2 files changed, 2 insertions(+), 1 deletion(-)
+> > > 
+> > > diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> > > index d2ae8db..86be853 100644
+> > > --- a/fs/nfsd/nfs4xdr.c
+> > > +++ b/fs/nfsd/nfs4xdr.c
+> > > @@ -1621,6 +1621,7 @@ struct nfsd4_minorversion_ops {
+> > >  static struct nfsd4_minorversion_ops nfsd4_minorversion[] = {
+> > >  	[0] = { nfsd4_dec_ops, ARRAY_SIZE(nfsd4_dec_ops) },
+> > >  	[1] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
+> > > +	[2] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
+> > >  };
+> > >  
+> > >  static __be32
+> > > diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+> > > index 26a457b..0e3ccd1 100644
+> > > --- a/fs/nfsd/nfsd.h
+> > > +++ b/fs/nfsd/nfsd.h
+> > > @@ -24,7 +24,7 @@
+> > >  /*
+> > >   * nfsd version
+> > >   */
+> > > -#define NFSD_SUPPORTED_MINOR_VERSION	1
+> > > +#define NFSD_SUPPORTED_MINOR_VERSION	2
+> > >  /*
+> > >   * Maximum blocksizes supported by daemon under various circumstances.
+> > >   */
+> > 
+> > Looks OK to me, except this should be behind a config for now.
+> > 
+> > On a grep for "minorversion" I notice two oversights, below: one just a
+> > comment, one might result in getting the wrong minorversion on
+> > callbacks.
+> > 
+> > --b.
+> > 
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > index 503e15e..b86cf07 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+> > @@ -1665,7 +1665,7 @@ out_new:
+> >  		status = nfserr_jukebox;
+> >  		goto out;
+> >  	}
+> > -	new->cl_minorversion = 1;
+> > +	new->cl_minorversion = cstate->minorversion;
+> >  
+> >  	gen_clid(new);
+> >  	add_to_unconfirmed(new, strhashval);
+> > diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> > index e036894..28d41ef 100644
+> > --- a/fs/nfsd/state.h
+> > +++ b/fs/nfsd/state.h
+> > @@ -108,7 +108,7 @@ struct nfs4_cb_conn {
+> >  	u32                     cb_prog; /* used only in 4.0 case;
+> >  					    per-session otherwise */
+> >  	u32                     cb_ident;	/* minorversion 0 only */
+> > -	struct svc_xprt		*cb_xprt;	/* minorversion 1 only */
+> > +	struct svc_xprt		*cb_xprt;	/* minorversion >=1 only */
 > 
-> OK.  Do you think the kernel could help by providing a once-only warning
-> in such a case?  (Or in the case when we're not able to find support for
-> a security flavor set on the export.)
+> Tagging things as being particlar to a give minorversion means that
+> we'll never stop having to change the comments.
 
-I've thought a little about that.  There is already a logged warning if a gssd upcall times out.  But it's hard to tell inside the kernel why a module doesn't load.  These all look pretty much the same to the RPC layer:
+I don't see how "minorversion >=1 only" is likely to become untrue.  Are
+we really expecting to remove the session back channel in a future minor
+version?
 
-   -  module is blacklisted or not installed?
-   -  GSS support wasn't built?
-   -  filesystem corruption?
-   -  export specifies a security flavor the RPC client doesn't recognize?
+> Why not just label it as being the session back channel?
 
-I suppose I could add something here, but I wonder about the false alarms.
+I don't really care.  Happy to take alternate text if you want to
+suggest something.
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+--b.
