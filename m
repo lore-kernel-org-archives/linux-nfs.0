@@ -1,61 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:11385 "EHLO mx1.redhat.com"
+Received: from mx1.netapp.com ([216.240.18.38]:55636 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752686Ab3BAQBd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Feb 2013 11:01:33 -0500
-Date: Fri, 1 Feb 2013 11:01:18 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>
-Subject: Re: [PATCH v1 08/16] nfsd: break out hashtable search into separate
- function
-Message-ID: <20130201110118.210f428a@tlielax.poochiereds.net>
-In-Reply-To: <20130201155131.GA6508@fieldses.org>
-References: <1359402082-29195-1-git-send-email-jlayton@redhat.com>
-	<1359402082-29195-9-git-send-email-jlayton@redhat.com>
-	<20130201131409.GB30668@fieldses.org>
-	<20130201102640.6b1898cb@tlielax.poochiereds.net>
-	<20130201155131.GA6508@fieldses.org>
-Mime-Version: 1.0
+	id S1756894Ab3BVPec convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Feb 2013 10:34:32 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+CC: Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] NFSv4.2: Added NFS v4.2 support to the NFS client
+Date: Fri, 22 Feb 2013 15:34:31 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9235DC00E@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1361484911-17537-1-git-send-email-steved@redhat.com>
+	 <1361484911-17537-2-git-send-email-steved@redhat.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9235DAEC7@SACEXCMBX04-PRD.hq.netapp.com>
+	 <5126AA24.5070908@RedHat.com> <20130222152834.GC10157@pad.fieldses.org>
+In-Reply-To: <20130222152834.GC10157@pad.fieldses.org>
 Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 1 Feb 2013 10:51:31 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Fri, Feb 01, 2013 at 10:26:40AM -0500, Jeff Layton wrote:
-> > On Fri, 1 Feb 2013 08:14:09 -0500
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+On Fri, 2013-02-22 at 10:28 -0500, J. Bruce Fields wrote:
+> On Thu, Feb 21, 2013 at 06:13:40PM -0500, Steve Dickson wrote:
 > > 
-> > > On Mon, Jan 28, 2013 at 02:41:14PM -0500, Jeff Layton wrote:
-> > > > Later, we'll need more than one call site for this, so break it out
-> > > > into a new function.
-> > > 
-> > > I'm applying these first 8 to the for-3.9 branch at:
-> > > 
-> > > 	git://linux-nfs.org/~bfields/linux.git for-3.9
-> > > 
-> > > --b.
-> > > 
 > > 
-> > Thanks Bruce. I rebased the remaining patches on top of these, and now
-> > I'm seeing this when I try to test against it. I don't think it's due
-> > to the DRC patches, but I haven't started tracking it down yet:
+> > On 21/02/13 17:22, Myklebust, Trond wrote:
+> > > On Thu, 2013-02-21 at 17:15 -0500, Steve Dickson wrote:
+> > >> > This enable NFSv4.2 support. To enable this code the
+> > >> > CONFIG_NFS_V4_2 Kconfig define needs to be set and
+> > >> > the -o v4.2 mount option need to be used.
+> > >> > 
+> > >> > Signed-off-by: Steve Dickson <steved@redhat.com>
+> > >> > ---
+> > >> >  fs/nfs/Kconfig       | 11 ++++++++++-
+> > >> >  fs/nfs/callback.c    |  3 +++
+> > >> >  fs/nfs/nfs4client.c  |  5 +++++
+> > >> >  fs/nfs/nfs4proc.c    |  3 +++
+> > >> >  fs/nfs/super.c       |  7 ++++++-
+> > >> >  include/linux/nfs4.h |  4 ++++
+> > >> >  6 files changed, 31 insertions(+), 2 deletions(-)
+> > >> > 
+> > >> > diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+> > >> > index 3861a1f..247db6d 100644
+> > >> > --- a/fs/nfs/Kconfig
+> > >> > +++ b/fs/nfs/Kconfig
+> > >> > @@ -104,6 +104,15 @@ config NFS_V4_1
+> > >> >  
+> > >> >  	  If unsure, say N.
+> > >> >  
+> > >> > +config NFS_V4_2
+> > >> > +	bool "NFS client support for NFSv4.2"
+> > >> > +	depends on NFS_V4_1
+> > >> > +	help
+> > >> > +	  This option enables support for minor version 1 of the NFSv4 protocol
+> > >> > +	  (RFC 5661) in the kernel's NFS client.
+> > >> > +
+> > >> > +	  If unsure, say N.
+> > >> > +
+> > >> >  config PNFS_FILE_LAYOUT
+> > >> >  	tristate
+> > >> >  	depends on NFS_V4_1
+> > >> > @@ -133,7 +142,7 @@ config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
+> > >> >  
+> > >> >  config NFS_V4_SECURITY_LABEL
+> > >> >  	bool "Provide Security Label support for NFSv4 client"
+> > >> > -	depends on NFS_V4 && SECURITY
+> > >> > +	depends on NFS_V4_2 && SECURITY
+> > >> >  	help
+> > > Just have NFS_V4_SECURITY_LABEL be automatically selected by NFS_V4_2.
+> > > Requiring users to manually select both makes little sense...
+> > > 
+> > > 
+> > Yeah... that make sense... 
 > 
-> Probably Stanislav's latest patches to the cache upcall code.  I'm
-> surprised I didn't hit it.
-> 
-> --b.
-> 
+> Why do we even need the two config options (both NFS_SECURITY_LABEL and
+> NFS_V4_2)?  Until we have more 4.2 features it seems redundant.
 
-My apologies... it was a kABI issue ;)
+Not really. CONFIG_NFS_SECURITY_LABEL has a dependency on
+CONFIG_SECURITY that I don't expect copy offload and other future
+NFSv4.2 features to have.
 
-I had built a nfsd.ko module to test my changes, but didn't build
-sunrpc.ko to make sure that I got Stanislav's changes. When I did that,
-the oops went away...
-
-Sorry for the noise!
 -- 
-Jeff Layton <jlayton@redhat.com>
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
