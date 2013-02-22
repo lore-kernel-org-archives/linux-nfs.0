@@ -1,65 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46506 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753258Ab3BCQbh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 3 Feb 2013 11:31:37 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 07/12] namei: minor vfs_unlink cleanup
-Date: Sun,  3 Feb 2013 11:31:27 -0500
-Message-Id: <1359909092-24857-8-git-send-email-bfields@redhat.com>
-In-Reply-To: <1359909092-24857-1-git-send-email-bfields@redhat.com>
-References: <1359909092-24857-1-git-send-email-bfields@redhat.com>
+Received: from mail-bk0-f52.google.com ([209.85.214.52]:45386 "EHLO
+	mail-bk0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753416Ab3BVSZ1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Feb 2013 13:25:27 -0500
+Received: by mail-bk0-f52.google.com with SMTP id jk13so415426bkc.25
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Feb 2013 10:25:26 -0800 (PST)
+Message-ID: <5127B813.5040601@gmail.com>
+Date: Fri, 22 Feb 2013 19:25:23 +0100
+From: poma <pomidorabelisima@gmail.com>
+MIME-Version: 1.0
+To: Community support for Fedora users <users@lists.fedoraproject.org>
+CC: Greg Scott <GregScott@infrasupport.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: What does "mapping=identity" mean in /etc/exports?
+References: <1470031369de4d60a0d5965ec6bede10@mail2013.infrasupport.local>
+In-Reply-To: <1470031369de4d60a0d5965ec6bede10@mail2013.infrasupport.local>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On 02/16/13 22:09, Greg Scott wrote:
+> Hello -
+> 
+> I'm migrating an old NFS server to newer hardware.  /etc/exports in the old environment looks like this:
+> 
+> /shares/IMSHCS01        *(rw,insecure,sync,no_root_squash,all_squash,mapping=identity,anonuid=0,anongid=0
+> 
+> So the old system is exporting the directory, /shares/IMSHCS01 to anyone and everyone who wants to connect, with a bunch of switches essentially making it wide open.
+> 
+> Wonderful.  
+> 
+> But on the new system, when I set up  /etc/exports the same way, I get this error: 
+> 
+> [root@nfs2013 etc]# exportfs -av
+> exportfs: /etc/exports:1: unknown keyword "mapping=identity"
+> 
+> [root@nfs2013 etc]#
+> 
+> Getting rid of "mapping=identity", my shared directory exports just fine.  
+> 
+> I can find no mention of "mapping=identity" in any man pages, but several google references show this option in pasted-in copies of /etc/exports files.  My hunch is, this is an obsolete option and no longer supported - but what did it do in case my new server needs to behave the same way the old server behaved?
+> 
 
-We'll be using dentry->d_inode in one more place.
+Probably related to the unfsd[1].
+iSeries? ;)
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/namei.c |    7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+[1]
+http://git.linux-nfs.org/?p=steved/nfs-utils.git;a=commitdiff;h=74a8f33de5f26d6bab11d5299318035d65bd60d0;hp=afc841a1f2a62645ec2dfaa333baf07e44a03c08
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 6ca5b11..bd38624 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3397,6 +3397,7 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
- 
- int vfs_unlink(struct inode *dir, struct dentry *dentry)
- {
-+	struct inode *target = dentry->d_inode;
- 	int error = may_delete(dir, dentry, 0);
- 
- 	if (error)
-@@ -3405,7 +3406,7 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
- 	if (!dir->i_op->unlink)
- 		return -EPERM;
- 
--	mutex_lock(&dentry->d_inode->i_mutex);
-+	mutex_lock(&target->i_mutex);
- 	if (d_mountpoint(dentry))
- 		error = -EBUSY;
- 	else {
-@@ -3416,11 +3417,11 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry)
- 				dont_mount(dentry);
- 		}
- 	}
--	mutex_unlock(&dentry->d_inode->i_mutex);
-+	mutex_unlock(&target->i_mutex);
- 
- 	/* We don't d_delete() NFS sillyrenamed files--they still exist. */
- 	if (!error && !(dentry->d_flags & DCACHE_NFSFS_RENAMED)) {
--		fsnotify_link_count(dentry->d_inode);
-+		fsnotify_link_count(target);
- 		d_delete(dentry);
- 	}
- 
--- 
-1.7.9.5
+
+Cheers,
+poma
 
