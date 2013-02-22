@@ -1,97 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:19696 "EHLO relay.sw.ru"
+Received: from mx12.netapp.com ([216.240.18.77]:46753 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753885Ab3BAMzZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Feb 2013 07:55:25 -0500
-Subject: [PATCH 2/4] nfsd: use proper net while reading "exports" file
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Fri, 01 Feb 2013 15:56:17 +0300
-Message-ID: <20130201125617.3257.30957.stgit@localhost.localdomain>
-In-Reply-To: <20130201125210.3257.46454.stgit@localhost.localdomain>
-References: <20130201125210.3257.46454.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1755760Ab3BVU0s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Feb 2013 15:26:48 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] SUNRPC: Don't start the retransmission timer when out of socket space
+Date: Fri, 22 Feb 2013 15:26:44 -0500
+Message-Id: <1361564804-18901-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Functuon "exports_open" is used for both "/proc/fs/nfs/exports" and
-"/proc/fs/nfsd/exports" files.
-Now NFSd filesystem is containerised, so proper net can be taken from
-superblock for "/proc/fs/nfsd/exports" reader.
-But for "/proc/fs/nfsd/exports" only current->nsproxy->net_ns can be used.
+If the socket is full, we're better off just waiting until it empties,
+or until the connection is broken. The reason why we generally don't
+want to time out is that the call to xprt->ops->release_xprt() will
+trigger a connection reset, which isn't helpful...
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Let's make an exception for soft RPC calls, since they have to provide
+timeout guarantees.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: stable@vger.kernel.org
 ---
- fs/nfsd/nfsctl.c |   31 +++++++++++++++++++++++++------
- 1 files changed, 25 insertions(+), 6 deletions(-)
+ net/sunrpc/xprt.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 2eb03c1..1825f72 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -125,11 +125,11 @@ static const struct file_operations transaction_ops = {
- 	.llseek		= default_llseek,
- };
- 
--static int exports_open(struct inode *inode, struct file *file)
-+static int exports_net_open(struct net *net, struct file *file)
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 846c34f..b7478d5 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -487,13 +487,17 @@ EXPORT_SYMBOL_GPL(xprt_wake_pending_tasks);
+  * xprt_wait_for_buffer_space - wait for transport output buffer to clear
+  * @task: task to be put to sleep
+  * @action: function pointer to be executed after wait
++ *
++ * Note that we only set the timer for the case of RPC_IS_SOFT(), since
++ * we don't in general want to force a socket disconnection due to
++ * an incomplete RPC call transmission.
+  */
+ void xprt_wait_for_buffer_space(struct rpc_task *task, rpc_action action)
  {
- 	int err;
- 	struct seq_file *seq;
--	struct nfsd_net *nn = net_generic(&init_net, nfsd_net_id);
-+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 	struct rpc_rqst *req = task->tk_rqstp;
+ 	struct rpc_xprt *xprt = req->rq_xprt;
  
- 	err = seq_open(file, &nfs_exports_op);
- 	if (err)
-@@ -140,8 +140,26 @@ static int exports_open(struct inode *inode, struct file *file)
- 	return 0;
+-	task->tk_timeout = req->rq_timeout;
++	task->tk_timeout = RPC_IS_SOFT(task) ? req->rq_timeout : 0;
+ 	rpc_sleep_on(&xprt->pending, task, action);
  }
- 
--static const struct file_operations exports_operations = {
--	.open		= exports_open,
-+static int exports_proc_open(struct inode *inode, struct file *file)
-+{
-+	return exports_net_open(current->nsproxy->net_ns, file);
-+}
-+
-+static const struct file_operations exports_proc_operations = {
-+	.open		= exports_proc_open,
-+	.read		= seq_read,
-+	.llseek		= seq_lseek,
-+	.release	= seq_release,
-+	.owner		= THIS_MODULE,
-+};
-+
-+static int exports_nfsd_open(struct inode *inode, struct file *file)
-+{
-+	return exports_net_open(inode->i_sb->s_fs_info, file);
-+}
-+
-+static const struct file_operations exports_nfsd_operations = {
-+	.open		= exports_nfsd_open,
- 	.read		= seq_read,
- 	.llseek		= seq_lseek,
- 	.release	= seq_release,
-@@ -1018,7 +1036,7 @@ static ssize_t write_recoverydir(struct file *file, char *buf, size_t size)
- static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
- {
- 	static struct tree_descr nfsd_files[] = {
--		[NFSD_List] = {"exports", &exports_operations, S_IRUGO},
-+		[NFSD_List] = {"exports", &exports_nfsd_operations, S_IRUGO},
- 		[NFSD_Export_features] = {"export_features",
- 					&export_features_operations, S_IRUGO},
- 		[NFSD_FO_UnlockIP] = {"unlock_ip",
-@@ -1081,7 +1099,8 @@ static int create_proc_exports_entry(void)
- 	entry = proc_mkdir("fs/nfs", NULL);
- 	if (!entry)
- 		return -ENOMEM;
--	entry = proc_create("exports", 0, entry, &exports_operations);
-+	entry = proc_create("exports", 0, entry,
-+				 &exports_proc_operations);
- 	if (!entry)
- 		return -ENOMEM;
- 	return 0;
+ EXPORT_SYMBOL_GPL(xprt_wait_for_buffer_space);
+-- 
+1.8.1.2
 
