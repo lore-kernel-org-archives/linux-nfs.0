@@ -1,163 +1,175 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41343 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:46465 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752214Ab3BLWc3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Feb 2013 17:32:29 -0500
-Date: Tue, 12 Feb 2013 17:32:26 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Steve Dickson <SteveD@redhat.com>, "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 06/15] NFSv4: Introduce new label structure
-Message-ID: <20130212223226.GL10267@fieldses.org>
-References: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
- <1360327163-20360-7-git-send-email-SteveD@redhat.com>
- <20130212220741.GJ10267@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91F3CE55C@sacexcmbx05-prd.hq.netapp.com>
+	id S1757324Ab3BVPN7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Feb 2013 10:13:59 -0500
+Date: Fri, 22 Feb 2013 10:13:57 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Steve Dickson <steved@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] NFSv4.2: Added NFS v4.2 support to the NFS client
+Message-ID: <20130222151339.GA10157@pad.fieldses.org>
+References: <1361484911-17537-1-git-send-email-steved@redhat.com>
+ <1361484911-17537-2-git-send-email-steved@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA91F3CE55C@sacexcmbx05-prd.hq.netapp.com>
+In-Reply-To: <1361484911-17537-2-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Feb 12, 2013 at 10:28:16PM +0000, Myklebust, Trond wrote:
-> On Tue, 2013-02-12 at 17:07 -0500, J. Bruce Fields wrote:
-> > On Fri, Feb 08, 2013 at 07:39:14AM -0500, Steve Dickson wrote:
-> > > From: David Quigley <dpquigl@davequigley.com>
-> > > 
-> > > In order to mimic the way that NFSv4 ACLs are implemented we have created a
-> > > structure to be used to pass label data up and down the call chain. This patch
-> > > adds the new structure and new members to the required NFSv4 call structures.
-> > > 
-> > > Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-> > > Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-> > > Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-> > > Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
-> > > ---
-> > >  fs/nfs/inode.c            | 33 +++++++++++++++++++++++++++++++++
-> > >  include/linux/nfs4.h      |  7 +++++++
-> > >  include/linux/nfs_fs.h    | 17 +++++++++++++++++
-> > >  include/linux/nfs_xdr.h   | 21 +++++++++++++++++++++
-> > >  include/uapi/linux/nfs4.h |  2 +-
-> > >  5 files changed, 79 insertions(+), 1 deletion(-)
-> > > 
-> > > diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> > > index ebeb94c..8d5f01b 100644
-> > > --- a/fs/nfs/inode.c
-> > > +++ b/fs/nfs/inode.c
-> > > @@ -255,6 +255,39 @@ nfs_init_locked(struct inode *inode, void *opaque)
-> > >  	return 0;
-> > >  }
-> > >  
-> > > +#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-> > > +struct nfs4_label *nfs4_label_alloc(struct nfs_server *server, gfp_t flags)
-> > > +{
-> > > +	struct nfs4_label *label = NULL;
-> > > +
-> > > +	if (!(server->caps & NFS_CAP_SECURITY_LABEL))
-> > > +		return label;
-> > > +
-> > > +	label = kzalloc(NFS4_MAXLABELLEN, flags);
-> > > +	if (label == NULL)
-> > > +		return ERR_PTR(-ENOMEM);
-> > > +
-> > > +	label->label = (char *)(label + 1);
-> > > +	label->len = NFS4_MAXLABELLEN;
-> > 
-> > If you're expecting to be able to store up to NFS4_MAXLABELLEN of data
-> > after the end of the struct, then you want:
-> > 
-> > 	label = kzalloc(sizeof(struct nfs4_label) + NFS4_MAXLABELLEN, flags);
+On Thu, Feb 21, 2013 at 05:15:10PM -0500, Steve Dickson wrote:
+> This enable NFSv4.2 support. To enable this code the
+> CONFIG_NFS_V4_2 Kconfig define needs to be set and
+> the -o v4.2 mount option need to be used.
 > 
-> Sigh... No.
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  fs/nfs/Kconfig       | 11 ++++++++++-
+>  fs/nfs/callback.c    |  3 +++
+>  fs/nfs/nfs4client.c  |  5 +++++
+>  fs/nfs/nfs4proc.c    |  3 +++
+>  fs/nfs/super.c       |  7 ++++++-
+>  include/linux/nfs4.h |  4 ++++
+>  6 files changed, 31 insertions(+), 2 deletions(-)
 > 
-> I keep telling Steve that the 'label' needs to be defined as an array,
+> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+> index 3861a1f..247db6d 100644
+> --- a/fs/nfs/Kconfig
+> +++ b/fs/nfs/Kconfig
+> @@ -104,6 +104,15 @@ config NFS_V4_1
+>  
+>  	  If unsure, say N.
+>  
+> +config NFS_V4_2
+> +	bool "NFS client support for NFSv4.2"
+> +	depends on NFS_V4_1
+> +	help
+> +	  This option enables support for minor version 1 of the NFSv4 protocol
+> +	  (RFC 5661) in the kernel's NFS client.
+> +
+> +	  If unsure, say N.
+> +
+>  config PNFS_FILE_LAYOUT
+>  	tristate
+>  	depends on NFS_V4_1
+> @@ -133,7 +142,7 @@ config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
+>  
+>  config NFS_V4_SECURITY_LABEL
+>  	bool "Provide Security Label support for NFSv4 client"
+> -	depends on NFS_V4 && SECURITY
+> +	depends on NFS_V4_2 && SECURITY
+>  	help
+>  
+>  	Say Y here if you want enable fine-grained security label attribute
+> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+> index 5088b57..4058ec8 100644
+> --- a/fs/nfs/callback.c
+> +++ b/fs/nfs/callback.c
+> @@ -281,6 +281,9 @@ static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct n
+>  		case 1:
+>  			ret = nfs41_callback_up_net(serv, net);
+>  			break;
+> +		case 2:
+> +			ret = nfs41_callback_up_net(serv, net);
+> +			break;
+>  		default:
+>  			printk(KERN_ERR "NFS: unknown callback version: %d\n",
+>  					minorversion);
+> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+> index 2e9779b..2987fd6 100644
+> --- a/fs/nfs/nfs4client.c
+> +++ b/fs/nfs/nfs4client.c
+> @@ -66,6 +66,11 @@ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
+>  	if (err)
+>  		goto error;
+>  
+> +	if (cl_init->minorversion > NFS4_MAX_MINOR_VERSION) {
+> +		err = -EINVAL;
+> +		goto error;
+> +	}
 
-Yeah, I know, he said in 0/15 that he couldn't do that, so I've been
-reading through these on the assumption I'll find out why not at some
-point....  (Still not seeing it, though.)
+Why wasn't this check needed before?
+
+> +		
+>  	spin_lock_init(&clp->cl_lock);
+>  	INIT_DELAYED_WORK(&clp->cl_renewd, nfs4_renew_state);
+>  	rpc_init_wait_queue(&clp->cl_rpcwaitq, "NFS client");
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 40c1d1f..08fc8e2 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -7136,6 +7136,9 @@ const struct nfs4_minor_version_ops *nfs_v4_minor_ops[] = {
+>  #if defined(CONFIG_NFS_V4_1)
+>  	[1] = &nfs_v4_1_minor_ops,
+>  #endif
+> +#if defined(CONFIG_NFS_V4_2)
+> +	[2] = &nfs_v4_1_minor_ops,
+
+But then nfs_v4_minor_ops[2]->minor_version = 1.
+
+I think you want to create another structure--just define an
+nfs_v4_2_minor_ops field that's the same as nfs_v4_1_minor_ops except
+for the minor_version field.
 
 --b.
 
-> not a pointer. Having it be a pointer gives rise to a completely
-> unnecessary extra indirection (the CPU first needs to look up the
-> content of 'label->label', then dereference that pointer)...
+> +#endif
+>  };
+>  
+>  const struct inode_operations nfs4_dir_inode_operations = {
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index 4e78f93..d35582c 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -269,7 +269,7 @@ static match_table_t nfs_local_lock_tokens = {
+>  
+>  enum {
+>  	Opt_vers_2, Opt_vers_3, Opt_vers_4, Opt_vers_4_0,
+> -	Opt_vers_4_1,
+> +	Opt_vers_4_1, Opt_vers_4_2,
+>  
+>  	Opt_vers_err
+>  };
+> @@ -280,6 +280,7 @@ static match_table_t nfs_vers_tokens = {
+>  	{ Opt_vers_4, "4" },
+>  	{ Opt_vers_4_0, "4.0" },
+>  	{ Opt_vers_4_1, "4.1" },
+> +	{ Opt_vers_4_2, "4.2" },
+>  
+>  	{ Opt_vers_err, NULL }
+>  };
+> @@ -1143,6 +1144,10 @@ static int nfs_parse_version_string(char *string,
+>  		mnt->version = 4;
+>  		mnt->minorversion = 1;
+>  		break;
+> +	case Opt_vers_4_2:
+> +		mnt->version = 4;
+> +		mnt->minorversion = 2;
+> +		break;
+>  	default:
+>  		return 0;
+>  	}
+> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+> index aab8bd8..e9c040a 100644
+> --- a/include/linux/nfs4.h
+> +++ b/include/linux/nfs4.h
+> @@ -394,11 +394,15 @@ enum lock_type4 {
+>  #define NFS4_VERSION 4
+>  #define NFS4_MINOR_VERSION 0
+>  
+> +#if defined(CONFIG_NFS_V4_2)
+> +#define NFS4_MAX_MINOR_VERSION 2
+> +#else
+>  #if defined(CONFIG_NFS_V4_1)
+>  #define NFS4_MAX_MINOR_VERSION 1
+>  #else
+>  #define NFS4_MAX_MINOR_VERSION 0
+>  #endif /* CONFIG_NFS_V4_1 */
+> +#endif /* CONFIG_NFS_V4_2 */
+>  
+>  #define NFS4_DEBUG 1
+>  
+> -- 
+> 1.8.1.2
 > 
-> IOW: we should just be defining struct nfs4_label as
-> 
-> struct nfs4_label {
-> 
-> 	.... lots of definitions ...
-> 
-> 	char label[NFS4_MAXLABELLEN];
-> };
-> 
-> in which case the above allocation becomes a trivial
-> 
-> 	label = kzalloc(sizeof(*label), flags);
-> 
-> 
-> 
-> > > +
-> > > +	return label;
-> > > +}
-> > > +EXPORT_SYMBOL_GPL(nfs4_label_alloc);
-> > > +
-> > > +void nfs4_label_init(struct nfs4_label *label)
-> > > +{
-> > > +	if (label && label->label) {
-> > > +		/* 0 is the null format meaning that the data is not
-> > > +		to be translated */
-> > > +		label->lfs = 0;
-> > > +		label->pi = 0;
-> > > +		label->len = NFS4_MAXLABELLEN;
-> > 
-> > This logic seems a little odd to me; why would we pass NULL to this?
-> > Why would we skip the other initialization in the !label->label case?
-> > Why is NFS4_MAXLABELLEN the default?  (And wasn't that just set in
-> > nfs4_label_alloc?)
-> > 
-> > But OK maybe I need to read the rest of the patches.
-> > 
-> > > +	}
-> > > +	return;
-> > > +}
-> > > +EXPORT_SYMBOL_GPL(nfs4_label_init);
-> > > +#endif
-> > 
-> > > diff --git a/include/uapi/linux/nfs4.h b/include/uapi/linux/nfs4.h
-> > > index 788128e..b8014a2 100644
-> > > --- a/include/uapi/linux/nfs4.h
-> > > +++ b/include/uapi/linux/nfs4.h
-> > > @@ -25,7 +25,7 @@
-> > >  #define NFS4_MAXNAMLEN		NAME_MAX
-> > >  #define NFS4_OPAQUE_LIMIT	1024
-> > >  #define NFS4_MAX_SESSIONID_LEN	16
-> > > -
-> > > +#define NFS4_MAXLABELLEN (4095 - offsetof(struct nfs4_label , label))
-> > 
-> > The way you've defined things, that should be just
-> > 
-> > 			    (4095 - sizeof(struct nfs4_label))
-> 
-> No. See above. If the 'label' field is an array, then the offsetof() is
-> 100% correct.
-> 
-> > (Is there typically some more alloc overhead that would push this
-> > allocation over 4k?  I don't know well enough how the allocator(s) work
-> > to answer that.)
-> > 
-> > --b.
-> > 
-> > >  #define NFS4_ACCESS_READ        0x0001
-> > >  #define NFS4_ACCESS_LOOKUP      0x0002
-> > >  #define NFS4_ACCESS_MODIFY      0x0004
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
