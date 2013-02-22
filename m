@@ -1,70 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ye0-f175.google.com ([209.85.213.175]:52335 "EHLO
-	mail-ye0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755041Ab3BDSHp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Feb 2013 13:07:45 -0500
-Received: by mail-ye0-f175.google.com with SMTP id q7so1594238yen.34
-        for <linux-nfs@vger.kernel.org>; Mon, 04 Feb 2013 10:07:44 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 9/8] nfsd: handle arbitrary page array layouts in nfsd_cache_crc
-Date: Mon,  4 Feb 2013 13:07:38 -0500
-Message-Id: <1360001258-13320-1-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1359983887-28535-1-git-send-email-jlayton@redhat.com>
-References: <1359983887-28535-1-git-send-email-jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:32914 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757236Ab3BVP2p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Feb 2013 10:28:45 -0500
+Date: Fri, 22 Feb 2013 10:28:44 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] NFSv4.2: Added NFS v4.2 support to the NFS client
+Message-ID: <20130222152834.GC10157@pad.fieldses.org>
+References: <1361484911-17537-1-git-send-email-steved@redhat.com>
+ <1361484911-17537-2-git-send-email-steved@redhat.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9235DAEC7@SACEXCMBX04-PRD.hq.netapp.com>
+ <5126AA24.5070908@RedHat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5126AA24.5070908@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The original code didn't handle the case where the page_base was close
-to the end of the page. In practice, page_base is always 0 on receive,
-so it's not a problem today, but let's future-proof this in the event
-that it ever is.
+On Thu, Feb 21, 2013 at 06:13:40PM -0500, Steve Dickson wrote:
+> 
+> 
+> On 21/02/13 17:22, Myklebust, Trond wrote:
+> > On Thu, 2013-02-21 at 17:15 -0500, Steve Dickson wrote:
+> >> > This enable NFSv4.2 support. To enable this code the
+> >> > CONFIG_NFS_V4_2 Kconfig define needs to be set and
+> >> > the -o v4.2 mount option need to be used.
+> >> > 
+> >> > Signed-off-by: Steve Dickson <steved@redhat.com>
+> >> > ---
+> >> >  fs/nfs/Kconfig       | 11 ++++++++++-
+> >> >  fs/nfs/callback.c    |  3 +++
+> >> >  fs/nfs/nfs4client.c  |  5 +++++
+> >> >  fs/nfs/nfs4proc.c    |  3 +++
+> >> >  fs/nfs/super.c       |  7 ++++++-
+> >> >  include/linux/nfs4.h |  4 ++++
+> >> >  6 files changed, 31 insertions(+), 2 deletions(-)
+> >> > 
+> >> > diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+> >> > index 3861a1f..247db6d 100644
+> >> > --- a/fs/nfs/Kconfig
+> >> > +++ b/fs/nfs/Kconfig
+> >> > @@ -104,6 +104,15 @@ config NFS_V4_1
+> >> >  
+> >> >  	  If unsure, say N.
+> >> >  
+> >> > +config NFS_V4_2
+> >> > +	bool "NFS client support for NFSv4.2"
+> >> > +	depends on NFS_V4_1
+> >> > +	help
+> >> > +	  This option enables support for minor version 1 of the NFSv4 protocol
+> >> > +	  (RFC 5661) in the kernel's NFS client.
+> >> > +
+> >> > +	  If unsure, say N.
+> >> > +
+> >> >  config PNFS_FILE_LAYOUT
+> >> >  	tristate
+> >> >  	depends on NFS_V4_1
+> >> > @@ -133,7 +142,7 @@ config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
+> >> >  
+> >> >  config NFS_V4_SECURITY_LABEL
+> >> >  	bool "Provide Security Label support for NFSv4 client"
+> >> > -	depends on NFS_V4 && SECURITY
+> >> > +	depends on NFS_V4_2 && SECURITY
+> >> >  	help
+> > Just have NFS_V4_SECURITY_LABEL be automatically selected by NFS_V4_2.
+> > Requiring users to manually select both makes little sense...
+> > 
+> > 
+> Yeah... that make sense... 
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/nfscache.c | 21 ++++++++++++++-------
- 1 file changed, 14 insertions(+), 7 deletions(-)
+Why do we even need the two config options (both NFS_SECURITY_LABEL and
+NFS_V4_2)?  Until we have more 4.2 features it seems redundant.
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index cb655f3..e705fea 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -248,6 +248,8 @@ nfsd_reply_cache_shrink(struct shrinker *shrink, struct shrink_control *sc)
- static u32
- nfsd_cache_crc(struct xdr_buf *buf)
- {
-+	int idx;
-+	unsigned int base;
- 	u32 crc;
- 	const unsigned char *p = buf->head[0].iov_base;
- 	size_t csum_len = min_t(size_t, buf->head[0].iov_len + buf->page_len,
-@@ -258,13 +260,18 @@ nfsd_cache_crc(struct xdr_buf *buf)
- 	crc = crc32(crc_seed, p, len);
- 	csum_len -= len;
- 
--	/* Nothing left */
--	if (!csum_len)
--		return crc;
--
--	/* checksum the rest from the page_array */
--	p = page_address(buf->pages[0]) + buf->page_base;
--	return crc32(crc, p, csum_len);
-+	/* Continue into page array */
-+	idx = buf->page_base / PAGE_SIZE;
-+	base = buf->page_base & ~PAGE_MASK;
-+	while (csum_len) {
-+		p = page_address(buf->pages[idx]) + base;
-+		len = min(PAGE_SIZE - base, csum_len);
-+		crc = crc32(crc, p, len);
-+		csum_len -= len;
-+		base = 0;
-+		++idx;
-+	}
-+	return crc;
- }
- 
- /*
--- 
-1.7.11.7
-
+--b.
