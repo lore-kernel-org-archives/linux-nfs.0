@@ -1,117 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:58825 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:42630 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932219Ab3BKVlp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Feb 2013 16:41:45 -0500
-Date: Mon, 11 Feb 2013 16:41:44 -0500
+	id S1755605Ab3BWNBW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 23 Feb 2013 08:01:22 -0500
+Date: Sat, 23 Feb 2013 08:01:19 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jiri Horky <jiri.horky@gmail.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4 server ignores local filesystem's POSIX ACL
-Message-ID: <20130211214144.GA32745@fieldses.org>
-References: <51190E62.5090304@gmail.com>
- <20130211182212.GB30117@fieldses.org>
- <4FA345DA4F4AE44899BD2B03EEEC2FA91F3C2047@sacexcmbx05-prd.hq.netapp.com>
- <20130211184936.GC30117@fieldses.org>
- <5119572C.3080000@gmail.com>
- <20130211210133.GF30117@fieldses.org>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/2] NFSDv4.2: Added NFS v4.2 support to the NFS server
+Message-ID: <20130223130119.GB5710@fieldses.org>
+References: <1361552981-29385-1-git-send-email-steved@redhat.com>
+ <1361552981-29385-3-git-send-email-steved@redhat.com>
+ <20130222180515.GA30856@fieldses.org>
+ <5128B97F.6040301@RedHat.com>
+ <20130223130056.GA5710@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130211210133.GF30117@fieldses.org>
+In-Reply-To: <20130223130056.GA5710@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 11, 2013 at 04:01:33PM -0500, J. Bruce Fields wrote:
-> On Mon, Feb 11, 2013 at 09:40:12PM +0100, Jiri Horky wrote:
-> > Hi all,
-> > On 02/11/2013 07:49 PM, J. Bruce Fields wrote:
-> > >On Mon, Feb 11, 2013 at 06:32:26PM +0000, Myklebust, Trond wrote:
-> > >>>-----Original Message-----
-> > >>>From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> > >>>owner@vger.kernel.org] On Behalf Of J. Bruce Fields
-> > >>>Sent: Monday, February 11, 2013 1:22 PM
-> > >>>To: Jiri Horky
-> > >>>Cc: linux-nfs@vger.kernel.org
-> > >>>Subject: Re: NFSv4 server ignores local filesystem's POSIX ACL
-> > >>>
-> > >>>On Mon, Feb 11, 2013 at 04:29:38PM +0100, Jiri Horky wrote:
-> > >>>>Hi all,
-> > >>>>
-> > >>>>we use NFSv4 with Kerberos and a custom idmap mapping plugin. The
-> > >>>>mapping is configured in a way that all principals that are not
-> > >>>>explicitly defined are mapped to nobody/nogroup on a server.
-> > >>>>Recently, the kerberos infrastructure within our organization expanded
-> > >>>>by crossrealming with other parties which should not be allowed to use
-> > >>>>our NFSv4 mounts.
-> > >>>>It is my understanding that everybody who is able to authenticate
-> > >>>>against the used kerberos infrastructure can mount the filesystems but
-> > >>>>nonauthorized users will be mapped to user nobody/nogroup and
-> > >>>>according to server's filesystem rights can do other actions. Now, I
-> > >>>>would like to set deny ACL for user nobody to the server's /exports
-> > >>>>directory to restrict nobody user access. But it seems this ACL is
-> > >>>>ignored. In fact, local POSIX ACL's on any directory seems to
-> > >>>>ignored:
-> > >>>>
-> > >>>>SERVER:
-> > >>>>root@store4 /exports # mkdir local_tmp
-> > >>>>root@store4 /exports # chmod 777 local_tmp/
-> > >>>>root@store4 /exports # setfacl -m u:nobody:--- /exports/local_tmp/
-> > >>>>root@store4 /exports # getfacl /exports/local_tmp/
-> > >>>>getfacl: Removing leading '/' from absolute path names # file:
-> > >>>>exports/local_tmp/ # owner: root # group: root user::rwx
-> > >>>>user:nobody:---
-> > >>>>group::rwx
-> > >>>>mask::rwx
-> > >>>>other::rwx
-> > >>>>root@store4 /exports # su nobody -c "touch /exports/local_tmp/filelocal"
-> > >>>>touch: cannot touch `/exports/local_tmp/filelocal': Permission denied
-> > >>>>
-> > >>>>so far so good, now on a client:
-> > >>>>
-> > >>>>CLIENT:
-> > >>>>metex-1:~# mount -t nfs4 -o sec=krb5 store4.du1.cesnet.cz:/ /mnt
-> > >>>>metex-1:~# touch /mnt/local_tmp/a metex-1:~# ls -l /mnt/local_tmp/a
-> > >>>>-rw-r--r-- 1 nobody nogroup 0 Feb 11 15:23 /mnt/local_tmp/a
-> > >>>>
-> > >>>>and on the SERVER again:
-> > >>>>root@store4 /exports # ls -l /exports/local_tmp/a
-> > >>>>-rw-r--r-- 1 nobody nogroup 0 Feb 11 15:23 /exports/local_tmp/a
-> > >>>>
-> > >>>>So the ACL is ignored when accessing through NFS. Is it the expected
-> > >>>>behavior and I am just doing something terribly wrong?
-> > >>>That looks like a bug, but I'm at a loss to explain how it could have happened.
-> > >>>A network trace (tcpdump -s0 -wtmp.pcap, then send me
-> > >>>tmp.pcap) taken during the file creation above might be interesting.
-> > >>If everyone is being squashed to user, nobody and the 'nobody' user owns the file, isn't that just expected behaviour? NFSv3 servers are always supposed to allow reads and writes from the owner, since the protocol itself has no stateful equivalent of open("foo", O_RDWR|O_CREAT, 0);
-> > >Oops, I was assuming the second touch above was doing a create--based on
-> > >the timestamps in the two ls's, you're right the second touch wasn't
-> > >creating.
-> > >
-> > >So, agreed, this looks normal.
-> > I am a bit lost here. The second  touch (the one from nfs client)
-> > actually was creating the file.
+On Sat, Feb 23, 2013 at 08:00:56AM -0500, J. Bruce Fields wrote:
+> On Sat, Feb 23, 2013 at 07:43:43AM -0500, Steve Dickson wrote:
+> > 
+> > 
+> > On 22/02/13 13:05, J. Bruce Fields wrote:
+> > > On Fri, Feb 22, 2013 at 12:09:41PM -0500, Steve Dickson wrote:
+> > >> > This enable NFSv4.2 support for the server. To enable this
+> > >> > code do the following:
+> > >> >   echo "+4.2" >/proc/fs/nfsd/versions
+> > > Give it a config option and we're set....
+> > I didn't a config option in fs/nfsd/Kconfig for 4.1 which is 
+> > the reason I didn't add one for 4.2... Should I add both?
 > 
-> Oops, OK.
-> 
-> > What I wanted to show is that
-> > creating a file on the server itself failed with permission denied
-> > whereas through NFS, it worked just fine and created the file as
-> > user nobody on the server, which should not be possible as nobody
-> > user should not be able to enter the directory. Are you pointing to
-> > the fact that on the client, the "local_tmp" directory seems to be
-> > owned by user nobody?
-> 
-> That shouldn't matter (assuming it's not actually owned by "nobody" on
-> the server.)
+> Well.... I guess if it defaults to off at runtime, and if there's a
+> config option for labeled NFS--maybe there's no harm to it.  At worst
+> somebody turns on 4.2 by option but hey it should be fully
+> spec-compliant as 4.2 is only optional stuff.
 
-Beats me.  The network trace does indeed seem to show a succesful create
-(and a preceding access op that allows access that I would have expected
-to fail).
-
-I don't see how that could have happened--the server doesn't actually
-enforce the ACL itself, it depends on common vfs code for that, so
-there's probably something obvious we're overlooking.  You're positive
-the file's being created in the same directory that you set that acl on?
+(In other words: OK, OK, never mind, we can do without!)
 
 --b.
