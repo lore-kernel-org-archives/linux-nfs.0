@@ -1,84 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:48391 "EHLO mx1.redhat.com"
+Received: from mx1.netapp.com ([216.240.18.38]:40910 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754510Ab3BRSsM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Feb 2013 13:48:12 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 05/14] NFSv4: Add label recommended attribute and NFSv4 flags
-Date: Mon, 18 Feb 2013 13:47:47 -0500
-Message-Id: <1361213276-17962-6-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1361213276-17962-1-git-send-email-SteveD@redhat.com>
-References: <1361213276-17962-1-git-send-email-SteveD@redhat.com>
+	id S1759491Ab3BXWfM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Feb 2013 17:35:12 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Syam Sidhardhan <syamsidhardh@gmail.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "davem@davemloft.net" <davem@davemloft.net>
+Subject: Re: [PATCH] SUNRPC: Fix possible NULL pointer dereference
+Date: Sun, 24 Feb 2013 22:35:08 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9235DE4C7@SACEXCMBX04-PRD.hq.netapp.com>
+References: <1361744605-28235-1-git-send-email-s.syam@samsung.com>
+In-Reply-To: <1361744605-28235-1-git-send-email-s.syam@samsung.com>
+Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+On Mon, 2013-02-25 at 03:53 +0530, Syam Sidhardhan wrote:
+> Check for cred == NULL has to be done before accessing cred.
+> 
+> Signed-off-by: Syam Sidhardhan <s.syam@samsung.com>
+> ---
+>  net/sunrpc/auth.c |    7 +++++--
+>  1 file changed, 5 insertions(+), 2 deletions(-)
+> 
+> diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+> index f529404..18678a6 100644
+> --- a/net/sunrpc/auth.c
+> +++ b/net/sunrpc/auth.c
+> @@ -695,10 +695,13 @@ rpcauth_invalcred(struct rpc_task *task)
+>  {
+>  	struct rpc_cred *cred = task->tk_rqstp->rq_cred;
+>  
+> +	if (cred == NULL)
+> +		return;
+> +
+>  	dprintk("RPC: %5u invalidating %s cred %p\n",
+>  		task->tk_pid, cred->cr_auth->au_ops->au_name, cred);
+> -	if (cred)
+> -		clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags);
+> +
+> +	clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags);
+>  }
+>  
+>  int
 
-This patch adds several new flags to allow the NFS client and server to
-determine if this attribute is supported and if it is being sent over the wire.
+Do we need that check at all?
 
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- include/linux/nfs4.h      | 1 +
- include/linux/nfs_fs_sb.h | 1 +
- include/linux/nfs_xdr.h   | 4 +++-
- 3 files changed, 5 insertions(+), 1 deletion(-)
-
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index e111fa4..f9235b4 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -373,6 +373,7 @@ enum lock_type4 {
- #define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
- #define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
- #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
-+#define FATTR4_WORD2_SECURITY_LABEL     (1UL << 17)
- #define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
- 
- /* MDS threshold bitmap bits */
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 6c6ed15..d507357 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -197,5 +197,6 @@ struct nfs_server {
- #define NFS_CAP_MTIME		(1U << 13)
- #define NFS_CAP_POSIX_LOCK	(1U << 14)
- #define NFS_CAP_UIDGID_NOMAP	(1U << 15)
-+#define NFS_CAP_SECURITY_LABEL	(1U << 16)
- 
- #endif
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 29adb12..ac9ba69 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -104,6 +104,7 @@ struct nfs_fattr {
- #define NFS_ATTR_FATTR_MOUNTED_ON_FILEID (1U << 22)
- #define NFS_ATTR_FATTR_OWNER_NAME	(1U << 23)
- #define NFS_ATTR_FATTR_GROUP_NAME	(1U << 24)
-+#define NFS_ATTR_FATTR_V4_SECURITY_LABEL (1U << 25)
- 
- #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
- 		| NFS_ATTR_FATTR_MODE \
-@@ -123,7 +124,8 @@ struct nfs_fattr {
- #define NFS_ATTR_FATTR_V3 (NFS_ATTR_FATTR \
- 		| NFS_ATTR_FATTR_SPACE_USED)
- #define NFS_ATTR_FATTR_V4 (NFS_ATTR_FATTR \
--		| NFS_ATTR_FATTR_SPACE_USED)
-+		| NFS_ATTR_FATTR_SPACE_USED \
-+		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
- 
- /*
-  * Info on the file system
 -- 
-1.8.1.2
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
