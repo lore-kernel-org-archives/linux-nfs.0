@@ -1,158 +1,151 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ax13.adsl.tnnet.fi ([217.112.254.13]:60215 "EHLO
-	mail.opinsys.fi" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S933950Ab3BNO1o convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Feb 2013 09:27:44 -0500
-Received: from localhost (localhost [127.0.0.1])
-	by mail.opinsys.fi (Postfix) with ESMTP id D817D281F16
-	for <linux-nfs@vger.kernel.org>; Thu, 14 Feb 2013 14:24:01 +0000 (UTC)
-Received: from mail.opinsys.fi ([127.0.0.1])
-	by localhost (mail.opinsys.fi [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id hg5bnGkaohgg for <linux-nfs@vger.kernel.org>;
-	Thu, 14 Feb 2013 14:24:01 +0000 (UTC)
-Received: from localhost (localhost [127.0.0.1])
-	by mail.opinsys.fi (Postfix) with ESMTP id 217FD281F11
-	for <linux-nfs@vger.kernel.org>; Thu, 14 Feb 2013 14:24:01 +0000 (UTC)
-Received: from mail.opinsys.fi ([127.0.0.1])
-	by localhost (mail.opinsys.fi [127.0.0.1]) (amavisd-new, port 10026)
-	with ESMTP id 4v3omtVzpVTH for <linux-nfs@vger.kernel.org>;
-	Thu, 14 Feb 2013 14:24:00 +0000 (UTC)
-Received: from mail.opinsys.fi (mail.opinsys.fi [10.246.133.21])
-	by mail.opinsys.fi (Postfix) with ESMTP id 6EDE4281F16
-	for <linux-nfs@vger.kernel.org>; Thu, 14 Feb 2013 14:24:00 +0000 (UTC)
-Date: Thu, 14 Feb 2013 14:24:00 +0000 (UTC)
-From: Veli-Matti Lintu <veli-matti.lintu@opinsys.fi>
-To: linux-nfs@vger.kernel.org
-Message-ID: <1117889154.119108.1360851840169.JavaMail.root@opinsys.fi>
-In-Reply-To: <127351146.98508.1360769367943.JavaMail.root@opinsys.fi>
-References: <127351146.98508.1360769367943.JavaMail.root@opinsys.fi>
-Subject: Re: Kernels 3.7 and newer break rpc.gssd -n
+Received: from mx12.netapp.com ([216.240.18.77]:18184 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754729Ab3BYRme convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Feb 2013 12:42:34 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@tonian.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: [PATCH] pnfs: fix resend_to_mds for directio
+Date: Mon, 25 Feb 2013 17:42:32 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9286956B2@sacexcmbx05-prd.hq.netapp.com>
+References: <1361712947-1778-1-git-send-email-bhalevy@tonian.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9235DDE9E@SACEXCMBX04-PRD.hq.netapp.com>
+ <512B3A98.4020602@tonian.com> <512B3D10.20406@tonian.com>
+In-Reply-To: <512B3D10.20406@tonian.com>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> I've been using kerberized nfs4 mounts without machine credentials for
-> quite some time by running rpc.gssd with the -n option. This has
-> resulted rpc.gssd in using ccache in /tmp/krb5cc_0 when doing the mount
-> instead of machine credentials. This functionality seems to break when
-> using kernel 3.7 or newer. 3.6.11 and earlier work like expected.
+> -----Original Message-----
+> From: Benny Halevy [mailto:bhalevy@tonian.com]
+> Sent: Monday, February 25, 2013 5:30 AM
+> To: Myklebust, Trond
+> Cc: linux-nfs@vger.kernel.org
+> Subject: Re: [PATCH] pnfs: fix resend_to_mds for directio
 > 
-> The use case for this is diskless workstations that do not have machine
-> credentials stored on them as they have no secure storage medium. When a
-> user logs in, the home directory is mounted using the user's credentials
-> only.
+> On 2013-02-25 12:19, Benny Halevy wrote:
+> > On 2013-02-24 17:09, Myklebust, Trond wrote:
+> >> On Sun, 2013-02-24 at 15:35 +0200, Benny Halevy wrote:
+> >>> Pass the directio request on pageio_init to clean up the API.
+> >>>
+> >>> Percolate pg_dreq from original nfs_pageio_descriptor to the
+> >>> pnfs_{read,write}_done_resend_to_mds and use it on respective call
+> >>> to nfs_pageio_init_{read,write} on the newly created
+> >>> nfs_pageio_descriptor.
+> >>>
+> >>> Reproduced by:
+> >>>
+> >>> Server: linux-pnfs pnfs-all-3.7 42aba94
+> >>>
+> >>> Client: linux-nfs/bugfixes 666b3d8
+> >>>
+> >>> Command:
+> >>> # mount -o minorversion=1 server:/ /mnt # dd bs=128k count=8
+> >>> if=/dev/zero of=/mnt/dd.out oflag=direct
+> >>>
+> >>> BUG: unable to handle kernel NULL pointer dereference at
+> >>> 0000000000000028
+> >>> IP: [<ffffffffa021a3a8>] atomic_inc+0x4/0x9 [nfs] PGD 34786067 PUD
+> >>> 34794067 PMD 0
+> >>> Oops: 0002 [#1] SMP
+> >>> Modules linked in: nfs_layout_nfsv41_files nfsv4 nfs nfsd lockd
+> >>> nfs_acl auth_rpcgss exportfs sunrpc btrfs zlib_deflate libcrc32c
+> >>> ipv6 autofs4 CPU 1
+> >>> Pid: 259, comm: kworker/1:2 Not tainted 3.8.0-rc6 #2 Bochs Bochs
+> >>> RIP: 0010:[<ffffffffa021a3a8>]  [<ffffffffa021a3a8>]
+> >>> atomic_inc+0x4/0x9 [nfs]
+> >>> RSP: 0018:ffff880038f8fa68  EFLAGS: 00010206
+> >>> RAX: ffffffffa021a6a9 RBX: ffff880038f8fb48 RCX: 00000000000a0000
+> >>> RDX: ffffffffa021e616 RSI: ffff8800385e9a40 RDI: 0000000000000028
+> >>> RBP: ffff880038f8fa68 R08: ffffffff81ad6720 R09: ffff8800385e9510
+> >>> R10: ffffffffa0228450 R11: ffff880038e87418 R12: ffff8800385e9a40
+> >>> R13: ffff8800385e9a70 R14: ffff880038f8fb38 R15: ffffffffa0148878
+> >>> FS:  0000000000000000(0000) GS:ffff88003e400000(0000)
+> >>> knlGS:0000000000000000
+> >>> CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+> >>> CR2: 0000000000000028 CR3: 0000000034789000 CR4: 00000000000006e0
+> >>> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> >>> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> >>> Process kworker/1:2 (pid: 259, threadinfo ffff880038f8e000, task
+> >>> ffff880038302480)
+> >>> Stack:
+> >>>  ffff880038f8fa78 ffffffffa021a6bf ffff880038f8fa88 ffffffffa021bb82
+> >>>  ffff880038f8fae8 ffffffffa021f454 ffff880038f8fae8 ffffffff8109689d
+> >>>  ffff880038f8fab8 ffffffff00000006 0000000000000000 ffff880038f8fb48
+> >>> Call Trace:
+> >>>  [<ffffffffa021a6bf>] nfs_direct_pgio_init+0x16/0x18 [nfs]
+> >>> [<ffffffffa021bb82>] nfs_pgheader_init+0x6a/0x6c [nfs]
+> >>> [<ffffffffa021f454>] nfs_generic_pg_writepages+0x51/0xf8 [nfs]
+> >>> [<ffffffff8109689d>] ? mark_held_locks+0x71/0x99
+> >>> [<ffffffffa0148878>] ? rpc_release_resources_task+0x37/0x37 [sunrpc]
+> >>> [<ffffffffa021bc25>] nfs_pageio_doio+0x1a/0x43 [nfs]
+> >>> [<ffffffffa021be7c>] nfs_pageio_complete+0x16/0x2c [nfs]
+> >>> [<ffffffffa02608be>] pnfs_write_done_resend_to_mds+0x95/0xc5
+> [nfsv4]
+> >>> [<ffffffffa0148878>] ? rpc_release_resources_task+0x37/0x37 [sunrpc]
+> >>> [<ffffffffa028e27f>] filelayout_reset_write+0x8c/0x99
+> >>> [nfs_layout_nfsv41_files]  [<ffffffffa028e5f9>]
+> >>> filelayout_write_done_cb+0x4d/0xc1 [nfs_layout_nfsv41_files]
+> >>> [<ffffffffa024587a>] nfs4_write_done+0x36/0x49 [nfsv4]
+> >>> [<ffffffffa021f996>] nfs_writeback_done+0x53/0x1cc [nfs]
+> >>> [<ffffffffa021fb1d>] nfs_writeback_done_common+0xe/0x10 [nfs]
+> >>> [<ffffffffa028e03d>] filelayout_write_call_done+0x28/0x2a
+> >>> [nfs_layout_nfsv41_files]  [<ffffffffa01488a1>]
+> >>> rpc_exit_task+0x29/0x87 [sunrpc]  [<ffffffffa014a0c9>]
+> >>> __rpc_execute+0x11d/0x3cc [sunrpc]  [<ffffffff810969dc>] ?
+> >>> trace_hardirqs_on_caller+0x117/0x173
+> >>>  [<ffffffffa014a39f>] rpc_async_schedule+0x27/0x32 [sunrpc]
+> >>> [<ffffffffa014a378>] ? __rpc_execute+0x3cc/0x3cc [sunrpc]
+> >>> [<ffffffff8105f8c1>] process_one_work+0x226/0x422
+> >>> [<ffffffff8105f7f4>] ? process_one_work+0x159/0x422
+> >>> [<ffffffff81094757>] ? lock_acquired+0x210/0x249
+> >>> [<ffffffffa014a378>] ? __rpc_execute+0x3cc/0x3cc [sunrpc]
+> >>> [<ffffffff810600d8>] worker_thread+0x126/0x1c4  [<ffffffff8105ffb2>]
+> >>> ? manage_workers+0x240/0x240  [<ffffffff81064ef8>]
+> kthread+0xb1/0xb9
+> >>> [<ffffffff81064e47>] ? __kthread_parkme+0x65/0x65
+> >>> [<ffffffff815206ec>] ret_from_fork+0x7c/0xb0  [<ffffffff81064e47>] ?
+> >>> __kthread_parkme+0x65/0x65
+> >>> Code: 00 83 38 02 74 12 48 81 4b 50 00 00 01 00 c7 83 60 07 00 00 01
+> >>> 00 00 00 48 89 df e8 55 fe ff ff 5b 41 5c 5d c3 66 90 55 48 89 e5
+> >>> <f0> ff 07 5d c3 55 48 89 e5 f0 ff 0f 0f 94 c0 84 c0 0f 95 c0 0f RIP
+> >>> [<ffffffffa021a3a8>] atomic_inc+0x4/0x9 [nfs]  RSP
+> >>> <ffff880038f8fa68>
+> >>> CR2: 0000000000000028
+> >>>
+> >>> Cc: Since 3.6 <stable@kernel.org>
+> >>> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+> >>> ---
+> >>>  fs/nfs/direct.c          |  9 +++------
+> >>>  fs/nfs/internal.h        |  6 ++++--
+> >>>  fs/nfs/nfs4filelayout.c  |  6 ++++--
+> >>>  fs/nfs/pagelist.c        |  5 +++--
+> >>>  fs/nfs/pnfs.c            | 30 ++++++++++++++++++------------
+> >>>  fs/nfs/pnfs.h            | 12 ++++++++----
+> >>>  fs/nfs/read.c            |  9 +++++----
+> >>>  fs/nfs/write.c           | 10 ++++++----
+> >>>  include/linux/nfs_page.h |  3 ++-
+> >>>  include/linux/nfs_xdr.h  |  6 ++++--
+> >>>  10 files changed, 57 insertions(+), 39 deletions(-)
+> >>>
+> >>
+> >> Hi Benny,
+> >>
+> >> Can we please trim away the cleanups if this is a stable patch? As
+> >> far as I can see, we can achieve the same result without having to
+> >> propagate the dreq argument all the way to nfs_pageio_init.
+> >>
+> >> How about the following?
+> >
+> > Looks good.
+> > Testing...
 > 
-> Steps to reproduce the problem:
+> Passed :)
 > 
-> # kinit user (this creates /tmp/krb5cc_0)
-> # rpc.gssd -f -n -vvvv
-> # mount -t nfs4 -o sec=krb5 server.example.org:/home /mnt
-> 
-> The mount works when using kernel 3.6.11 or earlier and fails on 3.7-rc1
-> or later. Testing was done on Ubuntu 12.04 and 12.10 using Ubuntu kernels
-> and kernel.org kernels (up to 3.8-rc7) with similar results.
-> 
-> nfs-utils versions 1.2.5 and the latest version from git master head
-> (git://linux-nfs.org/nfs-utils) behave the same way.
 
-...
+Thank you Benny! I'll push it to the cthon testing branch...
 
-> It seems like the kernel now asks rpc.gssd to fetch credentials for
-> service '*' instead of NULL like with 3.6 and earlier.
-
-I got some bisecting help from Tuomas Räsänen who managed to find the 
-commit that introduces the change. Here's what he found. I haven't 
-yet figured out what in the commit causes the change in behaviour. 
-Before that patch the kernel asks rpc.gssd for service <null>, but 
-with the patch applied, it requests for service '*' when doing the 
-initial mount with sec=krb5.
-
-Veli-Matti
-
---------------------------------------------------------------
-
-I bisected between v3.6 (good) and v3.7-rc1 (bad) and it seems
-that the first commit which introduces the change Veli-Matti
-described in his mail is:
-
-  commit 05f4c350ee02e9461c6ae3a880ea326a06835e37
-  Author: Chuck Lever <chuck.lever@oracle.com>
-  Date:   Fri Sep 14 17:24:32 2012 -0400
-  
-      NFS: Discover NFSv4 server trunking when mounting
-
-That very same commit introduces also a compilation error, which is
-fixed in the merge commit a bit later in the tree
-(9f62387d6e26532bcbfb15606956074192ee526a). Therefore the bisect log
-below results in multiple skips. I picked the patch from
-9f62387d6e26532bcbfb15606956074192ee526a and applied it to
-05f4c350ee02e9461c6ae3a880ea326a06835e37, and then bisected the rest.
-
-git bisect start
-# bad: [ddffeb8c4d0331609ef2581d84de4d763607bd37] Linux 3.7-rc1
-git bisect bad ddffeb8c4d0331609ef2581d84de4d763607bd37
-# good: [a0d271cbfed1dd50278c6b06bead3d00ba0a88f9] Linux 3.6
-git bisect good a0d271cbfed1dd50278c6b06bead3d00ba0a88f9
-# good: [24d7b40a60cf19008334bcbcbd98da374d4d9c64] ARM: OMAP2+: PM: MPU DVFS: use generic CPU device for MPU-SS
-git bisect good 24d7b40a60cf19008334bcbcbd98da374d4d9c64
-# good: [21c8715f0a1f4df8bfa2bd6f3915e5e33c1c2e6e] ARM: integrator: use __iomem pointers for MMIO, part 2
-git bisect good 21c8715f0a1f4df8bfa2bd6f3915e5e33c1c2e6e
-# good: [23d5385f382a7c7d8b6bf19b0c2cfb3acbb12d31] Merge git://git.kernel.org/pub/scm/linux/kernel/git/davem/sparc
-git bisect good 23d5385f382a7c7d8b6bf19b0c2cfb3acbb12d31
-# bad: [35e9a274fdc9c8feb763e4970a32d7089f51393c] Merge branch 'kconfig' of git://git.kernel.org/pub/scm/linux/kernel/git/mmarek/kbuild
-git bisect bad 35e9a274fdc9c8feb763e4970a32d7089f51393c
-# bad: [ba0a5a36f60e4c1152af3a2ae2813251974405bf] Merge tag 'firewire-fix' of git://git.kernel.org/pub/scm/linux/kernel/git/ieee1394/linux1394
-git bisect bad ba0a5a36f60e4c1152af3a2ae2813251974405bf
-# good: [a188e7e93a36627fb3f0013f41857ab54f076d04] Merge branch 'for-next' of git://git.kernel.org/pub/scm/linux/kernel/git/nab/target-pending
-git bisect good a188e7e93a36627fb3f0013f41857ab54f076d04
-# bad: [ca57ccc48f6a9a3ec655f87acebab82bf01088e7] nfs: include NFSv4 header in netns.h
-git bisect bad ca57ccc48f6a9a3ec655f87acebab82bf01088e7
-# skip: [fcb6d9c6b719b633e9b98d26d8a7937209e8bf21] NFS: Always use the open stateid when checking for expired opens
-git bisect skip fcb6d9c6b719b633e9b98d26d8a7937209e8bf21
-# skip: [78e4e05c643768af170e5a4b21712d9a7a26cce5] NFSv4.1: Replace get_device_info() with filelayout_get_device_info()
-git bisect skip 78e4e05c643768af170e5a4b21712d9a7a26cce5
-# skip: [c8ceb4124b53a439edfe3fe89a646be1e067ef17] NFS: pass net to nfs_callback_down()
-git bisect skip c8ceb4124b53a439edfe3fe89a646be1e067ef17
-# skip: [e984a55a7418f777407c7edbb2bdf5eb9559b5e2] NFS: Use the same nfs_client_id4 for every server
-git bisect skip e984a55a7418f777407c7edbb2bdf5eb9559b5e2
-# skip: [65857d5768f7716da539933c2075d384b117812d] NFSv4.1: _pnfs_return_layout() shouldn't invalidate the layout on failure
-git bisect skip 65857d5768f7716da539933c2075d384b117812d
-# good: [896526174ce2b6a773e187ebe5a047b68230e2c4] NFS: Introduce "migration" mount option
-git bisect good 896526174ce2b6a773e187ebe5a047b68230e2c4
-# skip: [4e266229dbb0782d91b75633322edd632794b86d] pnfsblock: use list_move_tail instead of list_del/list_add_tail
-git bisect skip 4e266229dbb0782d91b75633322edd632794b86d
-# skip: [758201e2c94b7d26ea0ac64e55cab1d53742780a] NFSv4: Fix the minor version callback channel startup
-git bisect skip 758201e2c94b7d26ea0ac64e55cab1d53742780a
-# skip: [7297cb682acb506ada2e01fbc9b447b04d69936c] nfs: replace strict_strto* with kstrto*
-git bisect skip 7297cb682acb506ada2e01fbc9b447b04d69936c
-# skip: [6f2ea7f2a3ff3cd342bface43f8b4bf5e431cf36] NFS: Add nfs4_unique_id boot parameter
-git bisect skip 6f2ea7f2a3ff3cd342bface43f8b4bf5e431cf36
-# skip: [96c9eae638765c2bf2ca4f5a6325484f9bb69aa7] pnfsblock: fix non-aligned DIO write
-git bisect skip 96c9eae638765c2bf2ca4f5a6325484f9bb69aa7
-# good: [0cac120233305b614cfe3ad419f3655876066017] NFSv4: Ensure that idmap_pipe_downcall sanity-checks the downcall data
-git bisect good 0cac120233305b614cfe3ad419f3655876066017
-# skip: [f742dc4a32587bff50b13dde9d8894b96851951a] pnfsblock: fix non-aligned DIO read
-git bisect skip f742dc4a32587bff50b13dde9d8894b96851951a
-# skip: [7acdb026818455638543b04b68d4a580c367fba8] NFSv41: fix DIO write_io calculation
-git bisect skip 7acdb026818455638543b04b68d4a580c367fba8
-# skip: [ee34e13620d0678d420ce50101aaef94ab81fc74] NFS: Remove unnecessary semicolons (fs/nfs/client.c)
-git bisect skip ee34e13620d0678d420ce50101aaef94ab81fc74
-# skip: [dc182549d439f60c332bf74d7f220a1bccf37da6] NFS41: fix error of setting blocklayoutdriver
-git bisect skip dc182549d439f60c332bf74d7f220a1bccf37da6
-# skip: [fe6e1e8d9fad86873eb74a26e80a8f91f9e870b5] pnfsblock: fix partial page buffer wirte
-git bisect skip fe6e1e8d9fad86873eb74a26e80a8f91f9e870b5
-# skip: [05f4c350ee02e9461c6ae3a880ea326a06835e37] NFS: Discover NFSv4 server trunking when mounting
-git bisect skip 05f4c350ee02e9461c6ae3a880ea326a06835e37
-# skip: [5d0e3a004f02bffab51f542fa1d5b2e2854d8545] Revert "pnfsblock: bail out partial page IO"
-git bisect skip 5d0e3a004f02bffab51f542fa1d5b2e2854d8545
-# bad: [9f62387d6e26532bcbfb15606956074192ee526a] NFSv4: Fix up a merge conflict between migration and container changes
-git bisect bad 9f62387d6e26532bcbfb15606956074192ee526a
-# skip: [2afdfa5a846246de50e1881f71ba5c0aac0b415f] Merge branch 'bugfixes' into nfs-for-next
-git bisect skip 2afdfa5a846246de50e1881f71ba5c0aac0b415f
-
--- 
-Tuomas
-
---------------------------------------------------------------
+Cheers
+  Trond
