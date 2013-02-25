@@ -1,79 +1,136 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gh0-f170.google.com ([209.85.160.170]:62848 "EHLO
-	mail-gh0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756008Ab3BBKzV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Feb 2013 05:55:21 -0500
-Received: by mail-gh0-f170.google.com with SMTP id g14so1201658ghb.15
-        for <linux-nfs@vger.kernel.org>; Sat, 02 Feb 2013 02:55:20 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, majianpeng@gmail.com
-Subject: [PATCH] nfsd: initialize the exp->ex_uuid field in svc_export_init
-Date: Sat,  2 Feb 2013 05:55:08 -0500
-Message-Id: <1359802508-28622-1-git-send-email-jlayton@redhat.com>
+Received: from mail-we0-f179.google.com ([74.125.82.179]:48028 "EHLO
+	mail-we0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754977Ab3BYK3l (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Feb 2013 05:29:41 -0500
+Received: by mail-we0-f179.google.com with SMTP id p43so2360488wea.10
+        for <linux-nfs@vger.kernel.org>; Mon, 25 Feb 2013 02:29:39 -0800 (PST)
+Message-ID: <512B3D10.20406@tonian.com>
+Date: Mon, 25 Feb 2013 12:29:36 +0200
+From: Benny Halevy <bhalevy@tonian.com>
+MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] pnfs: fix resend_to_mds for directio
+References: <1361712947-1778-1-git-send-email-bhalevy@tonian.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9235DDE9E@SACEXCMBX04-PRD.hq.netapp.com> <512B3A98.4020602@tonian.com>
+In-Reply-To: <512B3A98.4020602@tonian.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-commit 885c91f7466 in Bruce's tree was causing oopses for me:
+On 2013-02-25 12:19, Benny Halevy wrote:
+> On 2013-02-24 17:09, Myklebust, Trond wrote:
+>> On Sun, 2013-02-24 at 15:35 +0200, Benny Halevy wrote:
+>>> Pass the directio request on pageio_init to clean up the API.
+>>>
+>>> Percolate pg_dreq from original nfs_pageio_descriptor to the
+>>> pnfs_{read,write}_done_resend_to_mds and use it on respective
+>>> call to nfs_pageio_init_{read,write} on the newly created
+>>> nfs_pageio_descriptor.
+>>>
+>>> Reproduced by:
+>>>
+>>> Server: linux-pnfs pnfs-all-3.7 42aba94
+>>>
+>>> Client: linux-nfs/bugfixes 666b3d8
+>>>
+>>> Command:
+>>> # mount -o minorversion=1 server:/ /mnt
+>>> # dd bs=128k count=8 if=/dev/zero of=/mnt/dd.out oflag=direct
+>>>
+>>> BUG: unable to handle kernel NULL pointer dereference at 0000000000000028
+>>> IP: [<ffffffffa021a3a8>] atomic_inc+0x4/0x9 [nfs]
+>>> PGD 34786067 PUD 34794067 PMD 0 
+>>> Oops: 0002 [#1] SMP 
+>>> Modules linked in: nfs_layout_nfsv41_files nfsv4 nfs nfsd lockd nfs_acl auth_rpcgss exportfs sunrpc btrfs zlib_deflate libcrc32c ipv6 autofs4
+>>> CPU 1 
+>>> Pid: 259, comm: kworker/1:2 Not tainted 3.8.0-rc6 #2 Bochs Bochs
+>>> RIP: 0010:[<ffffffffa021a3a8>]  [<ffffffffa021a3a8>] atomic_inc+0x4/0x9 [nfs]
+>>> RSP: 0018:ffff880038f8fa68  EFLAGS: 00010206
+>>> RAX: ffffffffa021a6a9 RBX: ffff880038f8fb48 RCX: 00000000000a0000
+>>> RDX: ffffffffa021e616 RSI: ffff8800385e9a40 RDI: 0000000000000028
+>>> RBP: ffff880038f8fa68 R08: ffffffff81ad6720 R09: ffff8800385e9510
+>>> R10: ffffffffa0228450 R11: ffff880038e87418 R12: ffff8800385e9a40
+>>> R13: ffff8800385e9a70 R14: ffff880038f8fb38 R15: ffffffffa0148878
+>>> FS:  0000000000000000(0000) GS:ffff88003e400000(0000) knlGS:0000000000000000
+>>> CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+>>> CR2: 0000000000000028 CR3: 0000000034789000 CR4: 00000000000006e0
+>>> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+>>> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+>>> Process kworker/1:2 (pid: 259, threadinfo ffff880038f8e000, task ffff880038302480)
+>>> Stack:
+>>>  ffff880038f8fa78 ffffffffa021a6bf ffff880038f8fa88 ffffffffa021bb82
+>>>  ffff880038f8fae8 ffffffffa021f454 ffff880038f8fae8 ffffffff8109689d
+>>>  ffff880038f8fab8 ffffffff00000006 0000000000000000 ffff880038f8fb48
+>>> Call Trace:
+>>>  [<ffffffffa021a6bf>] nfs_direct_pgio_init+0x16/0x18 [nfs]
+>>>  [<ffffffffa021bb82>] nfs_pgheader_init+0x6a/0x6c [nfs]
+>>>  [<ffffffffa021f454>] nfs_generic_pg_writepages+0x51/0xf8 [nfs]
+>>>  [<ffffffff8109689d>] ? mark_held_locks+0x71/0x99
+>>>  [<ffffffffa0148878>] ? rpc_release_resources_task+0x37/0x37 [sunrpc]
+>>>  [<ffffffffa021bc25>] nfs_pageio_doio+0x1a/0x43 [nfs]
+>>>  [<ffffffffa021be7c>] nfs_pageio_complete+0x16/0x2c [nfs]
+>>>  [<ffffffffa02608be>] pnfs_write_done_resend_to_mds+0x95/0xc5 [nfsv4]
+>>>  [<ffffffffa0148878>] ? rpc_release_resources_task+0x37/0x37 [sunrpc]
+>>>  [<ffffffffa028e27f>] filelayout_reset_write+0x8c/0x99 [nfs_layout_nfsv41_files]
+>>>  [<ffffffffa028e5f9>] filelayout_write_done_cb+0x4d/0xc1 [nfs_layout_nfsv41_files]
+>>>  [<ffffffffa024587a>] nfs4_write_done+0x36/0x49 [nfsv4]
+>>>  [<ffffffffa021f996>] nfs_writeback_done+0x53/0x1cc [nfs]
+>>>  [<ffffffffa021fb1d>] nfs_writeback_done_common+0xe/0x10 [nfs]
+>>>  [<ffffffffa028e03d>] filelayout_write_call_done+0x28/0x2a [nfs_layout_nfsv41_files]
+>>>  [<ffffffffa01488a1>] rpc_exit_task+0x29/0x87 [sunrpc]
+>>>  [<ffffffffa014a0c9>] __rpc_execute+0x11d/0x3cc [sunrpc]
+>>>  [<ffffffff810969dc>] ? trace_hardirqs_on_caller+0x117/0x173
+>>>  [<ffffffffa014a39f>] rpc_async_schedule+0x27/0x32 [sunrpc]
+>>>  [<ffffffffa014a378>] ? __rpc_execute+0x3cc/0x3cc [sunrpc]
+>>>  [<ffffffff8105f8c1>] process_one_work+0x226/0x422
+>>>  [<ffffffff8105f7f4>] ? process_one_work+0x159/0x422
+>>>  [<ffffffff81094757>] ? lock_acquired+0x210/0x249
+>>>  [<ffffffffa014a378>] ? __rpc_execute+0x3cc/0x3cc [sunrpc]
+>>>  [<ffffffff810600d8>] worker_thread+0x126/0x1c4
+>>>  [<ffffffff8105ffb2>] ? manage_workers+0x240/0x240
+>>>  [<ffffffff81064ef8>] kthread+0xb1/0xb9
+>>>  [<ffffffff81064e47>] ? __kthread_parkme+0x65/0x65
+>>>  [<ffffffff815206ec>] ret_from_fork+0x7c/0xb0
+>>>  [<ffffffff81064e47>] ? __kthread_parkme+0x65/0x65
+>>> Code: 00 83 38 02 74 12 48 81 4b 50 00 00 01 00 c7 83 60 07 00 00 01 00 00 00 48 89 df e8 55 fe ff ff 5b 41 5c 5d c3 66 90 55 48 89 e5 <f0> ff 07 5d c3 55 48 89 e5 f0 ff 0f 0f 94 c0 84 c0 0f 95 c0 0f 
+>>> RIP  [<ffffffffa021a3a8>] atomic_inc+0x4/0x9 [nfs]
+>>>  RSP <ffff880038f8fa68>
+>>> CR2: 0000000000000028
+>>>
+>>> Cc: Since 3.6 <stable@kernel.org>
+>>> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+>>> ---
+>>>  fs/nfs/direct.c          |  9 +++------
+>>>  fs/nfs/internal.h        |  6 ++++--
+>>>  fs/nfs/nfs4filelayout.c  |  6 ++++--
+>>>  fs/nfs/pagelist.c        |  5 +++--
+>>>  fs/nfs/pnfs.c            | 30 ++++++++++++++++++------------
+>>>  fs/nfs/pnfs.h            | 12 ++++++++----
+>>>  fs/nfs/read.c            |  9 +++++----
+>>>  fs/nfs/write.c           | 10 ++++++----
+>>>  include/linux/nfs_page.h |  3 ++-
+>>>  include/linux/nfs_xdr.h  |  6 ++++--
+>>>  10 files changed, 57 insertions(+), 39 deletions(-)
+>>>
+>>
+>> Hi Benny,
+>>
+>> Can we please trim away the cleanups if this is a stable patch? As far
+>> as I can see, we can achieve the same result without having to propagate
+>> the dreq argument all the way to nfs_pageio_init.
+>>
+>> How about the following?
+> 
+> Looks good.
+> Testing...
 
-general protection fault: 0000 [#1] SMP
-Modules linked in: nfsd(OF) nfs_acl(OF) auth_rpcgss(OF) lockd(OF) sunrpc(OF) kvm_amd kvm microcode i2c_piix4 virtio_net virtio_balloon cirrus drm_kms_helper ttm drm virtio_blk i2c_core
-CPU 0
-Pid: 564, comm: exportfs Tainted: GF          O 3.8.0-0.rc5.git2.1.fc19.x86_64 #1 Bochs Bochs
-RIP: 0010:[<ffffffff811b1509>]  [<ffffffff811b1509>] kfree+0x49/0x280
-RSP: 0018:ffff88007a3d7c50  EFLAGS: 00010203
-RAX: 01adaf8dadadad80 RBX: 6b6b6b6b6b6b6b6b RCX: 0000000000000001
-RDX: ffffffff7fffffff RSI: 0000000000000000 RDI: 6b6b6b6b6b6b6b6b
-RBP: ffff88007a3d7c80 R08: 6b6b6b6b6b6b6b6b R09: 0000000000000000
-R10: 0000000000000018 R11: 0000000000000000 R12: ffff88006a117b50
-R13: ffffffffa01a589c R14: ffff8800631b0f50 R15: 01ad998dadadad80
-FS:  00007fcaa3616740(0000) GS:ffff88007fc00000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-CR2: 00007f5d84b6fdd8 CR3: 0000000064db4000 CR4: 00000000000006f0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Process exportfs (pid: 564, threadinfo ffff88007a3d6000, task ffff88006af28000)
-Stack:
- ffff88007a3d7c80 ffff88006a117b68 ffff88006a117b50 0000000000000000
- ffff8800631b0f50 ffff88006a117b50 ffff88007a3d7ca0 ffffffffa01a589c
- ffff880036be1148 ffff88007a3d7cf8 ffff88007a3d7e28 ffffffffa01a6a98
-Call Trace:
- [<ffffffffa01a589c>] svc_export_put+0x5c/0x70 [nfsd]
- [<ffffffffa01a6a98>] svc_export_parse+0x328/0x7e0 [nfsd]
- [<ffffffffa016f1c7>] cache_do_downcall+0x57/0x70 [sunrpc]
- [<ffffffffa016f25e>] cache_downcall+0x7e/0x100 [sunrpc]
- [<ffffffffa016f338>] cache_write_procfs+0x58/0x90 [sunrpc]
- [<ffffffffa016f2e0>] ? cache_downcall+0x100/0x100 [sunrpc]
- [<ffffffff8123b0e5>] proc_reg_write+0x75/0xb0
- [<ffffffff811ccecf>] vfs_write+0x9f/0x170
- [<ffffffff811cd089>] sys_write+0x49/0xa0
- [<ffffffff816e0919>] system_call_fastpath+0x16/0x1b
-Code: 66 66 66 90 48 83 fb 10 0f 86 c3 00 00 00 48 89 df 49 bf 00 00 00 00 00 ea ff ff e8 f2 12 ea ff 48 c1 e8 0c 48 c1 e0 06 49 01 c7 <49> 8b 07 f6 c4 80 0f 85 1d 02 00 00 49 8b 07 a8 80 0f 84 ee 01
-RIP  [<ffffffff811b1509>] kfree+0x49/0x280
- RSP <ffff88007a3d7c50>
+Passed :)
 
-I think Majianpeng's patch is correct, but incomplete. In order for it
-to be safe to free the ex_uuid unconditionally in svc_export_put, we
-need to make sure it's initialized to NULL in the init routine.
-
-Cc: majianpeng <majianpeng@gmail.com>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/export.c | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index 30a572d..15ebf91 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -661,6 +661,7 @@ static void svc_export_init(struct cache_head *cnew, struct cache_head *citem)
- 	new->ex_fslocs.locations = NULL;
- 	new->ex_fslocs.locations_count = 0;
- 	new->ex_fslocs.migrated = 0;
-+	new->ex_uuid = NULL;
- 	new->cd = item->cd;
- }
- 
--- 
-1.7.11.7
-
+> 
+> Benny
+> 
+>>
+>> Cheers
+>>   Trond
+>>
