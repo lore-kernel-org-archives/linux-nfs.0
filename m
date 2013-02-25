@@ -1,37 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ax13.adsl.tnnet.fi ([217.112.254.13]:36971 "EHLO
-	mail.opinsys.fi" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S932773Ab3BOMNw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Feb 2013 07:13:52 -0500
-Date: Fri, 15 Feb 2013 12:00:31 +0000 (UTC)
-From: Tuomas =?utf-8?B?UsOkc8OkbmVu?= <tuomasjjrasanen@opinsys.fi>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Veli-Matti Lintu <veli-matti.lintu@opinsys.fi>, linux-nfs@vger.kernel.org
-Message-ID: <654867786.10283.1360929631448.JavaMail.root@opinsys.fi>
-In-Reply-To: <CED6E6AF-B551-4099-89CE-861E5F46D31A@oracle.com>
-References: <127351146.98508.1360769367943.JavaMail.root@opinsys.fi> <1117889154.119108.1360851840169.JavaMail.root@opinsys.fi> <CED6E6AF-B551-4099-89CE-861E5F46D31A@oracle.com>
-Subject: Re: Kernels 3.7 and newer break rpc.gssd -n
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Received: from dgate20.ts.fujitsu.com ([80.70.172.51]:23353 "EHLO
+	dgate20.ts.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759348Ab3BYTzv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Feb 2013 14:55:51 -0500
+Message-Id: <61eb00$3fie44@dgate20u.abg.fsc.net>
+Date: 25 Feb 2013 20:55:50 +0100
+From: Bodo Stroesser <bstroesser@ts.fujitsu.com>
+To: neilb@suse.de
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, bstroesser@ts.fujitsu.com
+Subject: Re: [PATCH] sunrpc.ko: RPC cache fix races
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
------ Original Message -----
-> From: "Chuck Lever" <chuck.lever@oracle.com>
-> 
-> Have you tried a kernel at commit 05f4c350 but with the compilation fix
-> applied, then one with 05f4c350 removed, to confirm that this indeed is the
-> commit that introduces the problem?
+T24gMjQgRmViIDIwMTMgMjM6NTM6MDAgKzAxMDAgbmVpbGJAc3VzZS5kZSB3cm90ZToKCj4g
+T24gMjEgRmViIDIwMTMgMTY6NDQ6NDEgKzAxMDAgQm9kbyBTdHJvZXNzZXIgPGJzdHJvZXNz
+ZXJAdHMuZnVqaXRzdS5jb20+Cj4gd3JvdGU6Cj4gCj4gPiBPbiAyMSBGZWIgMjAxMyAwMDo1
+NTowMCArMDEwMCBuZWlsYkBzdXNlLmRlIHdyb3RlOgo+ID4gCj4gPiA+IE9uIDIwIEZlYiAy
+MDEzIDE0OjU3OjA3ICswMTAwIGJzdHJvZXNzZXJAdHMuZnVqaXRzdS5jb20gd3JvdGU6Cj4g
+PiA+IAo+ID4gPiA+IE9uIDIwIEZlYiAyMDEzIDA0OjA5OjAwICswMTAwIG5laWxiQHN1c2Uu
+ZGUgd3JvdGU6Cj4gPiAKPiA+IHNuaXAKPiA+IAo+ID4gPiA+ID4gTWF5YmU6Cj4gPiA+ID4g
+PiAKPiA+ID4gPiA+ICAgc3dpdGNoKGNhY2hlX21ha2VfdXBjYWxsKGRldGFpbCwgaCkpIHsK
+PiA+ID4gPiA+ICAgY2FzZSAtRUlOVkFMOgo+ID4gPiA+ID4gICAgICAgICBpZiAocnYpIHsK
+PiA+ID4gPiA+IAkJc2V0X2JpdChDQUNIRV9ORUdBVElWRSwgJmgtPmZsYWdzKTsKPiA+ID4g
+PiA+IAkJY2FjaGVfZnJlc2hfbG9ja2VkKGgsIGdldF9zZWNvbmRzKCkgKyBDQUNIRV9ORVdf
+RVhQSVJZKTsKPiA+ID4gPiA+IAkJcnYgPSAtRU5PRU5UOwo+ID4gPiA+ID4gCX0KPiA+ID4g
+PiA+IAkvKiBGQUxMVEhST1VHSCAqLwo+ID4gPiA+ID4gICBjYXNlIC1FQUdBSU46Cj4gPiA+
+ID4gPiAJY2FjaGVfZnJlc2hfdW5sb2NrZWQoaCwgZGV0YWlsKTsKPiA+ID4gPiA+ICAgfQo+
+ID4gPiA+IAo+ID4gPiA+IEkgYWdyZWUsIHlvdXIgcGF0Y2ggaXMgb2J2aW91c2x5IGJldHRl
+ciB0aGFuIHRoZSBtaW5lLgo+ID4gPiA+IEJ1dCBsZXQgbWUgc3VnZ2VzdCBvbmUgbGl0dGxl
+IGNoYW5nZTogSSB3b3VsZCBsaWtlIHRvIHN1YnN0aXR1dGUKPiA+ID4gPiBjYWNoZV9mcmVz
+aF91bmxvY2tlZCgpIGJ5IGNsZWFyX2JpdCgpIGFuZCBjYWNoZV9yZXZpc2l0X3JlcXVlc3Qo
+KSwKPiA+ID4gPiBhcyB0aGUgY2FsbCB0byBjYWNoZV9kZXF1ZXVlKCkgaW4gY2FjaGVfZnJl
+c2hfdW5sb2NrZWQoKSBzZWVtcyB0bwo+ID4gPiA+IGJlIG9ic29sZXRlIGhlcmU6Cj4gPiA+
+IAo+ID4gPiBJdCBpcyBleGFjdGx5IHRoaXMgc29ydCBvZiB0aGlua2luZyAob24gbXkgcGFy
+dCkgdGhhdCBnb3QgdXMgaW50byB0aGlzIG1lc3MKPiA+ID4gaW4gdGhlIGZpcnN0IHBsYWNl
+LiAgSSByZWFzb25lZCB0aGF0IHRoZSBmdWxsIGxvY2tpbmcvdGVzdGluZy93aGF0ZXZlciB3
+YXNuJ3QKPiA+ID4gbmVjZXNzYXJ5IGFuZCB0b29rIGEgc2hvcnQgY3V0LiAgSXQgd2Fzbid0
+IGEgZ29vZCBpZGVhLgo+ID4gCj4gPiBNYXliZSBJJ20gdG90YWxseSB3cm9uZywgYnV0IEFG
+QUlDUywgY2FsbGluZyBjYWNoZV9kZXF1ZXVlKCkgaGVyZSBpbiBleHRyZW1lCj4gPiBzaXR1
+YXRpb25zICh0d28gdGhyZWFkcyBpbiBwYXJhbGxlbCBjYWxsaW5nIGNoZWNrX2NhY2hlKCkg
+d2hpbGUgYSBmaXJzdCByZWFkZXIKPiA+IGlzIGdvaW5nIHRvIG9wZW4gY2FjaGUgYWNjZXNz
+KSBjb3VsZCBhZ2FpbiBjYXVzZSBhIHJhY2UgKD8pCj4gCj4gQ2FuIHlvdSBleHBsYWluIHRo
+ZSByYWNlIHlvdSBzZWU/CgpPLmsuLCBsZXQgbWUgdHJ5IC4uLgoKU3VwcHBvc2VkIHRoZXJl
+IGFyZSAyIHRocmVhZHMgY2FsbGluZyBjYWNoZV9jaGVjayBjb25jdXJyZW50bHkgYW5kIGEK
+dXNlciBwcm9jZXNzIHRoYXQgaXMgZ29pbmcgdG8gYmVjb21lIGEgcmVhZGVyIGZvciB0aGUg
+aW52b2x2ZWQgY2FjaGUuCgpUaGUgZmlyc3QgdGhyZWFkIGNhbGxzIGNhY2hlX2lzX3ZhbGlk
+KCkgYW5kIGdldHMgLUVBR0FJTi4KTmV4dCwgaXQgc2V0cyBDQUNIRV9QRU5ESU5HIGFuZCBj
+YWxscyBjYWNoZV9tYWtlX3VwY2FsbCgpLCB3aGljaApyZXR1cm5zIC1FSU5WQUwsIGFzIHRo
+ZXJlIGlzIG5vIHJlYWRlciB5ZXQuCgpNZWFud2hpbGUgdGhlIHNlY29uZCB0aHJlYWQgYWxz
+byBjYWxscyBjYWNoZV9pc192YWxpZCgpLCBhbHNvIGdldHMKLUVBR0FJTiwgYnV0IG5vdyBp
+cyBpbnRlcnJ1cHRlZCBhbmQgZGVsYXllZCBmb3IgYSB3aGlsZS4KClRoZSBmaXJzdCB0aHJl
+YWQgY29udGludWVzIGl0cyB3b3JrLCBuZWdhdGVzIHRoZSBlbnRyeSBhbmQgY2FsbHMKY2Fj
+aGVfZnJlc2hfbG9ja2VkKCkgZm9sbG93ZWQgYnkgY2FjaGVfZnJlc2hfdW5sb2NrZWQoKS4K
+SW4gY2FjaGVfZnJlc2hfdW5sb2NrZWQgaXQgcmVzZXRzIENBQ0hFX1BFTkRJTkcgYW5kIGNh
+bGxzCmNhY2hlX3JldmlzaXRfcmVxdWVzdCgpLiBXaGlsZSB0aGlzLCBpdCBpcyBpbnRlcnJ1
+cHRlZCBhbmQgZGVsYXllZC4KClRoZSB1c2VyIHByb2Nlc3MgaXMgc2NoZWR1bGVkIGFuZCBv
+cGVucyB0aGUgY2hhbm5lbCB0byBiZWNvbWUgYSByZWFkZXIuCgpUaGUgc2Vjb25kIHRocmVh
+ZCB3YWtlcyB1cCBhZ2FpbiBhbmQgc2V0cyBDQUNIRV9QRU5ESU5HLiBOZXh0IGl0IGNhbGxz
+CmNhY2hlX21ha2VfdXBjYWxsKCksIHdoaWNoIHJlc3VsdHMgaW4gYSByZXF1ZXN0IGJlaW5n
+IHF1ZXVlZCwgYXMgdGhlcmUKaXMgYSByZWFkZXIgbm93LgoKVGhlIGZpcnN0IHRocmVhZCB3
+YWtlcyB1cCBhbmQgY29udGludWVzIGl0cyB3b3JrIGNhbGxpbmcgY2FjaGVfZGVxdWV1ZSgp
+LgpNYXliZSB0aGUgcmVxdWVzdCBpcyBkcm9wcGVkIGJlZm9yZSB0aGUgcmVhZGVyIGNvdWxk
+IHByb2Nlc3MgaXQuCgpEbyB5b3UgYWdyZWUgb3IgZGlkIEkgbWlzcyBzb21ldGhpbmc/CgoK
+PiAKPiA+IAo+ID4gQlRXOiBpZiB0aGVyZSBpcyBhIHJlYWRlciBmb3IgYSBjYWNoZSwgaXMg
+dGhlcmUgYW55IHByb3RlY3Rpb24gYWdhaW5zdCBtYW55Cj4gPiB1cGNhbGxzIGJlaW5nIHF1
+ZXVlZCBmb3IgdGhlIHNhbWUgY2FjaGUgZW50cnk/Cj4gCj4gVGhlIENBQ0hFX1BFTkRJTkcg
+ZmxhZyBzaG91bGQgcHJvdmlkZSB0aGF0IHByb3RlY3Rpb24uICBXZSBvbmx5IHF1ZXVlIGFu
+Cj4gdXBjYWxsIGFmdGVyICJ0ZXN0X2FuZF9zZXQiLCBhbmQgYWx3YXlzIGRlcXVldWUgYWZ0
+ZXIgImNsZWFyX2JpdCIuCgpTb3JyeSwgbXkgcXVlc3Rpb24gd2Fzbid0IHZlcnkgY2xlYXIu
+IENBQ0hFX1BFTkRJTkcgKmRvZXMqIHByb3ZpZGUgdGhlCnByb3RlY3Rpb24gYWdhaW5zdCBw
+YXJhbGxlbCB1cGNhbGxzLgoKT1RPSCwgYXMgY2FjaGVfaXNfdmFsaWQoKSBpcyBjYWxsZWQg
+YmVmb3JlIHRlc3RfYW5kX3NldF9iaXQoQ0FDSEVfUEVORElORykKYW5kIHRoZW4gdGhlIHVw
+Y2FsbCBpcyBtYWRlIHdpdGhvdXQgYWdhaW4gY2FsbGluZyBjYWNoZV9pc192YWxpZCgpLApJ
+IHNlZSBhIHNtYWxsIGNoYW5jZSBvZiBhIHNlY29uZCByZXF1ZXN0IGJlaW5nIHF1ZXVlZCB1
+bm5lY2Vzc2FyaWx5IGp1c3QKYWZ0ZXIgdGhlIGZpcnN0IHJlcXVlc3Qgd2FzIGFuc3dlcmVk
+LiAKCkJvZG8KCj4gCj4gTmVpbEJyb3duCj4gCj4gCj4gPiAKPiA+IEJvZG8KPiA+IAo+ID4g
+PiAKPiA+ID4gR2l2ZW4gdGhhdCB0aGlzIGlzIG9idmlvdXNseSBkaWZmaWN1bHQgY29kZSB0
+byBnZXQgcmlnaHQsIHdlIHNob3VsZCBtYWtlIGl0Cj4gPiA+IGFzIGVhc3kgdG8gcmV2aWV3
+IGFzIHBvc3NpYmxlLiAgSGF2ZSAiY2FjaGVfZnJlc2hfdW5sb2NrZWQiIG1ha2VzIGl0IG1v
+cmUKPiA+ID4gb2J2aW91c2x5IGNvcnJlY3QsIGFuZCB0aGF0IGlzIGEgZ29vZCB0aGluZy4K
+PiA+ID4gTWF5YmUgY2FjaGVfZGVxdWV1ZSBpc24ndCBuZWVkZWQgaGVyZSwgYnV0IGl0IHdv
+bid0IGh1cnQgc28gSSdkIG11Y2ggcmF0aGVyCj4gPiA+IGhhdmUgdGhlIGNsZWFyZXIgY29k
+ZS4KPiA+ID4gSW4gZmFjdCwgSSdkIGFsc28gbGlrZSB0byBjaGFuZ2UKPiA+ID4gCj4gPiA+
+IAkJCWlmICh0ZXN0X2FuZF9jbGVhcl9iaXQoQ0FDSEVfUEVORElORywgJmNoLT5mbGFncykp
+Cj4gPiA+IAkJCQljYWNoZV9kZXF1ZXVlKGN1cnJlbnRfZGV0YWlsLCBjaCk7Cj4gPiA+IAkJ
+CWNhY2hlX3JldmlzaXRfcmVxdWVzdChjaCk7Cj4gPiA+IAo+ID4gPiBuZWFyIHRoZSBlbmQg
+b2YgY2FjaGVfY2xlYW4gdG8gY2FsbCAgY2FjaGVfZnJlc2hfdW5sb2NrZWQoKS4KPiA+ID4g
+Cg==
 
-Yes. With commit 05f4c350 + the compilation fix, the problem occurs, but without
-05f4c350, the parent (6f2ea7f) works as expected, requesting for service <null>.
 
-> 
-> When the mount operation fails, is it the first time this client attempts to
-> mount a share on server.example.org, or does the client already have mounts
-> of server.example.org, possibly using other security flavors?
-
-Yes, the problem occurs on the very first mount attempt.
-
--- 
-Tuomas
