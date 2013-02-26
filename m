@@ -1,44 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:9316 "EHLO mx12.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:13716 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752238Ab3BSRgZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Feb 2013 12:36:25 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] NLM: Ensure that we resend all pending blocking locks after a reclaim
-Date: Tue, 19 Feb 2013 12:36:09 -0500
-Message-Id: <1361295369-11804-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1754761Ab3BZCkb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Feb 2013 21:40:31 -0500
+Received: from vmwexceht02-prd.hq.netapp.com (vmwexceht02-prd.hq.netapp.com [10.106.76.240])
+	by smtp1.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id r1Q2eVkT005743
+	for <linux-nfs@vger.kernel.org>; Mon, 25 Feb 2013 18:40:31 -0800 (PST)
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Dros" <Weston.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4.1: Hold reference to layout hdr in layoutget
+Date: Tue, 26 Feb 2013 02:40:29 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA92869D572@sacexcmbx05-prd.hq.netapp.com>
+References: <1361845653-63782-1-git-send-email-dros@netapp.com>
+In-Reply-To: <1361845653-63782-1-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, nlmclnt_lock will break out of the for(;;) loop when
-the reclaimer wakes up the blocking lock thread by setting
-nlm_lck_denied_grace_period. This causes the lock request to fail
-with an ENOLCK error.
-The intention was always to ensure that we resend the lock request
-after the grace period has expired.
+On Mon, 2013-02-25 at 21:27 -0500, Weston Andros Adamson wrote:
+> This fixes an oops where a LAYOUTGET is in still in the rpciod queue,
+> but the requesting processes has been killed.  Without this, killing
+> the process does the final pnfs_put_layout_hdr() and sets NFS_I(inode)->layout
+> to NULL while the LAYOUTGET rpc task still references it.
+> 
+> Example oops:
+> 
+> BUG: unable to handle kernel NULL pointer dereference at 0000000000000080
+> IP: [<ffffffffa01bd586>] pnfs_choose_layoutget_stateid+0x37/0xef [nfsv4]
+> PGD 7365b067 PUD 7365d067 PMD 0
+> Oops: 0000 [#1] SMP DEBUG_PAGEALLOC
+> Modules linked in: nfs_layout_nfsv41_files nfsv4 auth_rpcgss nfs lockd sunrpc ipt_MASQUERADE ip6table_mangle ip6t_REJECT nf_conntrack_ipv6 nf_defrag_ipv6 iptable_nat nf_nat_ipv4 nf_nat iptable_mangle ip6table_filter ip6_tables ppdev e1000 i2c_piix4 i2c_core shpchp parport_pc parport crc32c_intel aesni_intel xts aes_x86_64 lrw gf128mul ablk_helper cryptd mptspi scsi_transport_spi mptscsih mptbase floppy autofs4
+> CPU 0
+> Pid: 27, comm: kworker/0:1 Not tainted 3.8.0-dros_cthon2013+ #4 VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform
+> RIP: 0010:[<ffffffffa01bd586>]  [<ffffffffa01bd586>] pnfs_choose_layoutget_stateid+0x37/0xef [nfsv4]
+> RSP: 0018:ffff88007b0c1c88  EFLAGS: 00010246
+> RAX: ffff88006ed36678 RBX: 0000000000000000 RCX: 0000000ea877e3bc
+> RDX: ffff88007a729da8 RSI: 0000000000000000 RDI: ffff88007a72b958
+> RBP: ffff88007b0c1ca8 R08: 0000000000000002 R09: 0000000000000000
+> R10: 0000000000000000 R11: 0000000000000000 R12: ffff88007a72b958
+> R13: ffff88007a729da8 R14: 0000000000000000 R15: ffffffffa011077e
+> FS:  0000000000000000(0000) GS:ffff88007f600000(0000) knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> CR2: 0000000000000080 CR3: 00000000735f8000 CR4: 00000000001407f0
+> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+> Process kworker/0:1 (pid: 27, threadinfo ffff88007b0c0000, task ffff88007c2fa0c0)
+> Stack:
+>  ffff88006fc05388 ffff88007a72b908 ffff88007b240900 ffff88006fc05388
+>  ffff88007b0c1cd8 ffffffffa01a2170 ffff88007b240900 ffff88007b240900
+>  ffff88007b240970 ffffffffa011077e ffff88007b0c1ce8 ffffffffa0110791
+> Call Trace:
+>  [<ffffffffa01a2170>] nfs4_layoutget_prepare+0x7b/0x92 [nfsv4]
+>  [<ffffffffa011077e>] ? __rpc_atrun+0x15/0x15 [sunrpc]
+>  [<ffffffffa0110791>] rpc_prepare_task+0x13/0x15 [sunrpc]
+> 
+> Reported-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+> Cc: stable@kernel.org
+> ---
+>  fs/nfs/nfs4proc.c | 13 +++++++++++--
+>  1 file changed, 11 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index eae83bf..a2de760 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -6129,12 +6129,14 @@ static struct page **nfs4_alloc_pages(size_t size, gfp_t gfp_flags)
+>  static void nfs4_layoutget_release(void *calldata)
+>  {
+>  	struct nfs4_layoutget *lgp = calldata;
+> -	struct nfs_server *server = NFS_SERVER(lgp->args.inode);
+> +	struct inode *inode = lgp->args.inode;
+> +	struct nfs_server *server = NFS_SERVER(inode);
+>  	size_t max_pages = max_response_pages(server);
+>  
+>  	dprintk("--> %s\n", __func__);
+>  	nfs4_free_pages(lgp->args.layout.pages, max_pages);
+>  	put_nfs_open_context(lgp->args.ctx);
+> +	pnfs_put_layout_hdr(NFS_I(inode)->layout);
+>  	kfree(calldata);
+>  	dprintk("<-- %s\n", __func__);
+>  }
+> @@ -6148,7 +6150,8 @@ static const struct rpc_call_ops nfs4_layoutget_call_ops = {
+>  struct pnfs_layout_segment *
+>  nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
+>  {
+> -	struct nfs_server *server = NFS_SERVER(lgp->args.inode);
+> +	struct inode *inode = lgp->args.inode;
+> +	struct nfs_server *server = NFS_SERVER(inode);
+>  	size_t max_pages = max_response_pages(server);
+>  	struct rpc_task *task;
+>  	struct rpc_message msg = {
+> @@ -6178,6 +6181,12 @@ nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
+>  	lgp->res.layoutp = &lgp->args.layout;
+>  	lgp->res.seq_res.sr_slot = NULL;
+>  	nfs41_init_sequence(&lgp->args.seq_args, &lgp->res.seq_res, 0);
+> +
+> +	spin_lock(&inode->i_lock);
+> +	/* nfs4_layoutget_release calls pnfs_put_layout_hdr */
+> +	pnfs_get_layout_hdr(NFS_I(inode)->layout);
+> +	spin_unlock(&inode->i_lock);
+> +
+>  	task = rpc_run_task(&task_setup_data);
+>  	if (IS_ERR(task))
+>  		return ERR_CAST(task);
 
-Reported-by: Wangyuan Zhang <Wangyuan.Zhang@netapp.com>
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: stable@vger.kernel.org
----
- fs/lockd/clntproc.c | 3 +++
- 1 file changed, 3 insertions(+)
+Thanks! Added to the bugfixes and cthon2013 branch...
 
-diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-index 54f9e6c..52e5120 100644
---- a/fs/lockd/clntproc.c
-+++ b/fs/lockd/clntproc.c
-@@ -550,6 +550,9 @@ again:
- 		status = nlmclnt_block(block, req, NLMCLNT_POLL_TIMEOUT);
- 		if (status < 0)
- 			break;
-+		/* Resend the blocking lock request after a server reboot */
-+		if (resp->status ==  nlm_lck_denied_grace_period)
-+			continue;
- 		if (resp->status != nlm_lck_blocked)
- 			break;
- 	}
 -- 
-1.8.1.2
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
