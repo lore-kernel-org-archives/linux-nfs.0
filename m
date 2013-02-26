@@ -1,33 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57696 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:38551 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751437Ab3BEOnS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Feb 2013 09:43:18 -0500
-Date: Tue, 5 Feb 2013 09:43:16 -0500
-From: bfields <bfields@fieldses.org>
-To: Tejun Heo <tj@kernel.org>
-Cc: majianpeng <majianpeng@gmail.com>, linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] nfsd: Fix memleak.
-Message-ID: <20130205144316.GC9886@fieldses.org>
-References: <201301291315585633212@gmail.com>
- <20130129222926.GA6219@fieldses.org>
- <20130204192905.GY27963@mtj.dyndns.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130204192905.GY27963@mtj.dyndns.org>
+	id S1755559Ab3BZN2A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Feb 2013 08:28:00 -0500
+Subject: Re: [PATCH 6/6] SUNRPC: Use gssproxy upcall for server RPCGSS
+ authentication.
+From: Simo Sorce <simo@redhat.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        chuck.lever@oracle.com
+In-Reply-To: <20130221210139.GF3531@pad.fieldses.org>
+References: <1361464705-12340-1-git-send-email-bfields@redhat.com>
+	 <1361464705-12340-7-git-send-email-bfields@redhat.com>
+	 <20130221210139.GF3531@pad.fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 26 Feb 2013 08:27:51 -0500
+Message-ID: <1361885271.2962.1.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 04, 2013 at 11:29:44AM -0800, Tejun Heo wrote:
-> Hello,
+On Thu, 2013-02-21 at 16:01 -0500, J. Bruce Fields wrote:
+> On Thu, Feb 21, 2013 at 11:38:25AM -0500, J. Bruce Fields wrote:
+> > +NFS Server New RPC Upcall Mechanism
+> > +-----------------------------------
+> > +
+> > +The newer upcall mechanism uses RPC over a unix socket to a daemon
+> > +called gss-proxy, implemented by a userspace program called Gssproxy.
+> > +
+> > +The gss_proxy RPC protocol is currently documented here:
+> > +
+> > +	https://fedorahosted.org/gss-proxy/wiki/ProtocolDocumentation
 > 
-> On Tue, Jan 29, 2013 at 05:29:26PM -0500, bfields wrote:
-> > Tejun, maybe this could be added to your series?
-> > 
-> > (Or should I just take it without the idr_remove_all()?)
+> By the way, Simo, that still says "The protocol is not stable yet and it
+> is being revised while we progress prototyping client and server code."
 > 
-> There are gonna be other related nfs changes anyway, so I think it
-> would be better to just route it through the usual nfs channel.  We
-> can deal with conflicts / conversion later.
+> I'm assuming that web page is just out of date--once this is in the
+> kernel we're *not* making backwards-incompatible changes to the
+> protocol.
 
-Thanks, applying for 3.9.--b
+The part that is used by the kernel is already marked as unchangeable in
+my mind, I will try to take some time in the next few weeks to update
+the page.
+
+Simo.
+
+-- 
+Simo Sorce * Red Hat, Inc * New York
+
