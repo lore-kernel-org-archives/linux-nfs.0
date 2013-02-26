@@ -1,34 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:15295 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:17171 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750951Ab3BFN5r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Feb 2013 08:57:47 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r16DvkUY032247
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 6 Feb 2013 08:57:46 -0500
-Received: from smallhat.bos.devel.redhat.com (vpn-224-167.phx2.redhat.com [10.3.224.167])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r16DvkmM031460
-	for <linux-nfs@vger.kernel.org>; Wed, 6 Feb 2013 08:57:46 -0500
-Message-ID: <5112615A.4090204@RedHat.com>
-Date: Wed, 06 Feb 2013 08:57:46 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Linux NFS status meeting 02/07/13
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1758303Ab3BZC1w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Feb 2013 21:27:52 -0500
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>,
+        stable@kernel.org
+Subject: [PATCH] NFSv4.1: Hold reference to layout hdr in layoutget
+Date: Mon, 25 Feb 2013 21:27:33 -0500
+Message-Id: <1361845653-63782-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A reminder....  There will be a status meeting tomorrow (Thur Feb 7)
+This fixes an oops where a LAYOUTGET is in still in the rpciod queue,
+but the requesting processes has been killed.  Without this, killing
+the process does the final pnfs_put_layout_hdr() and sets NFS_I(inode)->layout
+to NULL while the LAYOUTGET rpc task still references it.
 
-Time: 9:30 AM PST (12:30 PM EST)
+Example oops:
 
-The call in numbers are:
-U.S. and Canada: (800) 451-8679
-International dial-in number: (212) 729-5016
-Israel Toll-Free: 1-809-462-557
-Conference code: 564.272.1552
+BUG: unable to handle kernel NULL pointer dereference at 0000000000000080
+IP: [<ffffffffa01bd586>] pnfs_choose_layoutget_stateid+0x37/0xef [nfsv4]
+PGD 7365b067 PUD 7365d067 PMD 0
+Oops: 0000 [#1] SMP DEBUG_PAGEALLOC
+Modules linked in: nfs_layout_nfsv41_files nfsv4 auth_rpcgss nfs lockd sunrpc ipt_MASQUERADE ip6table_mangle ip6t_REJECT nf_conntrack_ipv6 nf_defrag_ipv6 iptable_nat nf_nat_ipv4 nf_nat iptable_mangle ip6table_filter ip6_tables ppdev e1000 i2c_piix4 i2c_core shpchp parport_pc parport crc32c_intel aesni_intel xts aes_x86_64 lrw gf128mul ablk_helper cryptd mptspi scsi_transport_spi mptscsih mptbase floppy autofs4
+CPU 0
+Pid: 27, comm: kworker/0:1 Not tainted 3.8.0-dros_cthon2013+ #4 VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform
+RIP: 0010:[<ffffffffa01bd586>]  [<ffffffffa01bd586>] pnfs_choose_layoutget_stateid+0x37/0xef [nfsv4]
+RSP: 0018:ffff88007b0c1c88  EFLAGS: 00010246
+RAX: ffff88006ed36678 RBX: 0000000000000000 RCX: 0000000ea877e3bc
+RDX: ffff88007a729da8 RSI: 0000000000000000 RDI: ffff88007a72b958
+RBP: ffff88007b0c1ca8 R08: 0000000000000002 R09: 0000000000000000
+R10: 0000000000000000 R11: 0000000000000000 R12: ffff88007a72b958
+R13: ffff88007a729da8 R14: 0000000000000000 R15: ffffffffa011077e
+FS:  0000000000000000(0000) GS:ffff88007f600000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 0000000000000080 CR3: 00000000735f8000 CR4: 00000000001407f0
+DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+Process kworker/0:1 (pid: 27, threadinfo ffff88007b0c0000, task ffff88007c2fa0c0)
+Stack:
+ ffff88006fc05388 ffff88007a72b908 ffff88007b240900 ffff88006fc05388
+ ffff88007b0c1cd8 ffffffffa01a2170 ffff88007b240900 ffff88007b240900
+ ffff88007b240970 ffffffffa011077e ffff88007b0c1ce8 ffffffffa0110791
+Call Trace:
+ [<ffffffffa01a2170>] nfs4_layoutget_prepare+0x7b/0x92 [nfsv4]
+ [<ffffffffa011077e>] ? __rpc_atrun+0x15/0x15 [sunrpc]
+ [<ffffffffa0110791>] rpc_prepare_task+0x13/0x15 [sunrpc]
 
-steved.
+Reported-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+Cc: stable@kernel.org
+---
+ fs/nfs/nfs4proc.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index eae83bf..a2de760 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6129,12 +6129,14 @@ static struct page **nfs4_alloc_pages(size_t size, gfp_t gfp_flags)
+ static void nfs4_layoutget_release(void *calldata)
+ {
+ 	struct nfs4_layoutget *lgp = calldata;
+-	struct nfs_server *server = NFS_SERVER(lgp->args.inode);
++	struct inode *inode = lgp->args.inode;
++	struct nfs_server *server = NFS_SERVER(inode);
+ 	size_t max_pages = max_response_pages(server);
+ 
+ 	dprintk("--> %s\n", __func__);
+ 	nfs4_free_pages(lgp->args.layout.pages, max_pages);
+ 	put_nfs_open_context(lgp->args.ctx);
++	pnfs_put_layout_hdr(NFS_I(inode)->layout);
+ 	kfree(calldata);
+ 	dprintk("<-- %s\n", __func__);
+ }
+@@ -6148,7 +6150,8 @@ static const struct rpc_call_ops nfs4_layoutget_call_ops = {
+ struct pnfs_layout_segment *
+ nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
+ {
+-	struct nfs_server *server = NFS_SERVER(lgp->args.inode);
++	struct inode *inode = lgp->args.inode;
++	struct nfs_server *server = NFS_SERVER(inode);
+ 	size_t max_pages = max_response_pages(server);
+ 	struct rpc_task *task;
+ 	struct rpc_message msg = {
+@@ -6178,6 +6181,12 @@ nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
+ 	lgp->res.layoutp = &lgp->args.layout;
+ 	lgp->res.seq_res.sr_slot = NULL;
+ 	nfs41_init_sequence(&lgp->args.seq_args, &lgp->res.seq_res, 0);
++
++	spin_lock(&inode->i_lock);
++	/* nfs4_layoutget_release calls pnfs_put_layout_hdr */
++	pnfs_get_layout_hdr(NFS_I(inode)->layout);
++	spin_unlock(&inode->i_lock);
++
+ 	task = rpc_run_task(&task_setup_data);
+ 	if (IS_ERR(task))
+ 		return ERR_CAST(task);
+-- 
+1.7.12.4 (Apple Git-37)
 
