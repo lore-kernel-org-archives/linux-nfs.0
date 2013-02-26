@@ -1,133 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f47.google.com ([209.85.215.47]:43745 "EHLO
-	mail-la0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933025Ab3B1PXC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Feb 2013 10:23:02 -0500
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: linux-kernel@vger.kernel.org
-Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, wine-devel@winehq.org
-Subject: [PATCH v3 7/7] NFSD: Pass share reservations flags to VFS
-Date: Thu, 28 Feb 2013 19:25:33 +0400
-Message-Id: <1362065133-9490-8-git-send-email-piastry@etersoft.ru>
-In-Reply-To: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
-References: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
+Received: from dgate10.ts.fujitsu.com ([80.70.172.49]:24408 "EHLO
+	dgate10.ts.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751542Ab3BZOCE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Feb 2013 09:02:04 -0500
+Message-Id: <d6437a$43m5jr@dgate10u.abg.fsc.net>
+Date: 26 Feb 2013 15:02:00 +0100
+From: Bodo Stroesser <bstroesser@ts.fujitsu.com>
+To: neilb@suse.de
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, bstroesser@ts.fujitsu.com
+Subject: Re: [PATCH 1/2] sunrpc/cache: remove races with queuing an upcall.
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-that maps them into O_DENY flags and make them visible for
-applications that use O_DENYMAND opens.
+T24gMjYgRmViIDIwMTMgMDc6Mzc6MDAgKzAxMDAgTmVpbEJyb3duIDxuZWlsYkBzdXNlLmRl
+PiB3cm90ZToKCj4gV2UgY3VycmVudGx5IHF1ZXVlIGFuIHVwY2FsbCBhZnRlciBzZXR0aW5n
+IENBQ0hFX1BFTkRJTkcsIGFuZCBkZXF1ZXVlIGFmdGVyIGNsZWFyaW5nIENBQ0hFX1BFTkRJ
+TkcuCj4gU28gYSByZXF1ZXN0IHNob3VsZCBvbmx5IGJlIHByZXNlbnQgd2hlbiBDQUNIRV9Q
+RU5ESU5HIGlzIHNldC4KPiAKPiBIb3dldmVyIHdlIGRvbid0IGNvbWJpbmUgdGhlIHRlc3Qg
+YW5kIHRoZSBlbnF1ZXVlL2RlcXVldWUgaW4gYSBwcm90ZWN0ZWQgcmVnaW9uLCBzbyBpdCBp
+cyBwb3NzaWJsZSAoaWYgdW5saWtlbHkpIGZvciBhIHJhY2UgdG8gcmVzdWx0IGluIGEgcmVx
+dWVzdCBiZWluZyBxdWV1ZWQgd2l0aG91dCBDQUNIRV9QRU5ESU5HIHNldCwgb3IgYSByZXF1
+ZXN0IHRvIGJlIGFic2VudCBkZXNwaXRlIENBQ0hFX1BFTkRJTkcuCj4gCj4gU286IGluY2x1
+ZGUgYSB0ZXN0IGZvciBDQUNIRV9QRU5ESU5HIGluc2lkZSB0aGUgcmVnaW9ucyBvZiBlbnF1
+ZXVlIGFuZCBkZXF1ZXVlIHdoZXJlIHF1ZXVlX2xvY2sgaXMgaGVsZCwgYW5kIGFib3J0IHRo
+ZSBvcGVyYXRpb24gaWYgdGhlIHZhbHVlIGlzIG5vdCBhcyBleHBlY3RlZC4KPiAKPiBXaXRo
+IHRoaXMsIGl0IHBlcmZlY3RseSBzYWZlIGFuZCBjb3JyZWN0IHRvOgo+ICAtIGNhbGwgY2Fj
+aGVfZGVxdWV1ZSgpIGlmIGFuZCBvbmx5IGlmIHdlIGhhdmUganVzdAo+ICAgIGNsZWFyZWQg
+Q0FDSEVfUEVORElORwo+ICAtIGNhbGwgc3VucnBjX2NhY2hlX3BpcGVfdXBjYWxsKCkgKHZp
+YSBjYWNoZV9tYWtlX3VwY2FsbCkKPiAgICBpZiBhbmQgb25seSBpZiB3ZSBoYXZlIGp1c3Qg
+c2V0IENBQ0hFX1BFTkRJTkcuCj4gCj4gUmVwb3J0ZWQtYnk6IEJvZG8gU3Ryb2Vzc2VyIDxi
+c3Ryb2Vzc2VyQHRzLmZ1aml0c3UuY29tPgo+IFNpZ25lZC1vZmYtYnk6IE5laWxCcm93biA8
+bmVpbGJAc3VzZS5kZT4KClNvcnJ5LCBJIGRvbid0IGFncmVlIHdpdGggdGhpcyBwYXRjaCwg
+YXMgaXQgZml4ZXMgdGhlIGZpcnN0IHNjZW5hcmlvIG9mIG15IG1haWwKZnJvbSAyNCBGZWIg
+MjAxMywgYnV0IEFGQUlDUyBjaGFuZ2VzIHRoZSBzZWNvbmQgb25lICh3aGljaCBoYXMgYmVl
+biBhIG1pbm9yCnBvaW50IHRoYXQgZGlkbid0IG5lZWQgZml4aW5nIG5lY2Vzc2FyaWx5KSB0
+byBhIG1lbW9yeSBsZWFrLgoKSSdsbCB0cnkgdG8gZXhwYWluIG15IGRvdWJ0czoKCkFnYWlu
+LCBhc3N1bWUgdHdvIHRocmVhZHMgY2FsbGluZyBjYWNoZV9jaGVjaygpIGNvbmN1cnJlbnRs
+eSBmb3IgdGhlIHNhbWUgY2FjaGUKZW50cnkgb2YgYSBjYWNoZSB0aGF0IGhhcyBhIHJlYWRl
+ci4KQm90aCB0aHJlYWRzIGdldCByZXN1bHQgLUVBR0FJTiBmcm9tIGNhY2hlX2lzX3ZhbGlk
+KCkuIFRoZSBzZWNvbmQgdGhyZWFkIGF0IHRoYXQKbW9tZW50IGlzIGludGVycnVwdGVkIGFu
+ZCBzdXNwZW5kZWQgZm9yIGEgd2hpbGUuClRoZSBmaXJzdCB0aHJlYWQgc2V0cyBDQUNIRV9Q
+RU5ESU5HIGFuZCBxdWV1ZXMgYW4gdXBjYWxsIHJlcXVlc3QgYW5kIHNsZWVwcwp3YWl0aW5n
+IGZvciB0aGUgcmVwbHkuClRoZSByZWFkZXIgcmVhZHMgdGhlIHJlcXVlc3QgYW5kIHJlcGxp
+ZXMgYWNjb3JkaW5nbHkuIEluIHN1bnJwY19jYWNoZV91cGRhdGUoKQp0aGUgcmVhZGVyIGNo
+YW5nZXMgdGhlIGVudHJ5IHRvIENBQ0hFX1ZBTElEIGFuZCBjYWxscyBjYWNoZV9mcmVzaF91
+bmxvY2tlZCgpLgpJbiBjYWNoZV9mcmVzaF91bmxvY2tlZCgpIGl0IHJlc2V0cyBDQUNIRV9Q
+RU5ESU5HLiBBdCB0aGlzIG1vbWVudCBpdCBpcwppbnRlcnJ1cHRlZCBhbmQgc3VzcGVuZGVk
+LgpOb3cgdGhlIHNlY29uZCB0aHJlYWQgd2FrZXMgdXAsIHNldHMgQ0FDSEVfUEVORElORyBh
+Z2FpbiBhbmQgcXVldWVzIGEgbmV3IHVwY2FsbApyZXF1ZXN0LgpUaGUgcmVhZGVyIHdha2Vz
+IHVwIGFuZCBzZWVzLCB0aGF0IENBQ0hFX1BFTkRJTkcgaXMgc2V0IGFnYWluIGFuZCBkb2Vz
+IG5vdApkZXF1ZXVlIHRoZSBvbGQgcmVxdWVzdC4gLS0+IG1lbW9yeSBsZWFrICg/KQoKSW4g
+bXkgb3BpbmlvbiwgdGhlcmUgYXJlIHR3byBwb3NzaWJsZSBmaXhlcyB0aGF0IGNvdWxkIHJl
+cGxhY2UgdGhpcyBwYXRjaDoKCjEpIERvbid0IGNhbGwgY2FjaGVfZGVxdWV1ZSgpIGZyb20g
+Y2FjaGVfY2hlY2soKS4gVHJ5aW5nIHRvIGRlcXVldWUgc29tZXRoaW5nCiAgIGV2ZW4gaWYg
+d2Uga25vdywgdGhhdCB3ZSBoYXZlbid0IHF1ZXVlZCwgbG9va3Mgc3RyYW5nZSB0byBtZS4g
+KEFuZCB5ZXMsIEkKICAgdW5kZXJzdGFuZCB0aGUgcmVhc29uLCB3aHkgeW91IGRvbid0IGxp
+a2UgaXQsIGJ1dCBuZXZlcnRoZWxlc3MgSSBjb25zaWRlcgogICB0aGlzIHRoZSBiZXN0IHNv
+bHV0aW9uLikKICAgVGhpcyBvbmUgd291bGQgZml4IG15IGZpcnN0IHNjZW5hcmlvcCBvbmx5
+LCBidXQgbm90IHRoZSBzZWNvbmQuCgoyKSBJIHRoaW5rLCB0aGUgc3RhcnRpbmcgcG9pbnQg
+b2YgYWxsIHRyb3VibGUgaXMgaW4gY2FjaGVfY2hlY2soKS4KICAgQ3VycmVudGx5LCBpZiBh
+IHRocmVhZCBoYXMgc2V0IENBQ0hFX1BFTkRJTkcsIGlzIHdvcmtzIHVzaW5nIGEgCiAgIHBv
+c3NpYmx5IG5vIGxvbmdlciB2YWxpZCBzdGF0ZSBvZiB0aGUgY2FjaGUgZW50cnkgKHJ2KS4K
+ICAgQUZBSUNTLCBpdCB3b3VsZCBmaXggbW9zdCBvZiB0aGUgcHJvYmxlbXMgdG8gcmUtY2hl
+Y2sgdGhlCiAgIGNhY2hlIGVudHJ5J3Mgc3RhdGUgYmV0d2VlbiBzZXR0aW5nIENBQ0hFX1BF
+TkRJTkcgYW5kIHRoZSB1cGNhbGwuCiAgIFRoZSB1cGNhbGwgc2hvdWxkIGJlIGRvbmUgb25s
+eSwgaWYgc3RpbGwgbmVjZXNzYXJ5LgogICBUaGlzIG9uZSBjb3VsZCBiZSBjb21iaW5lZCB3
+aXRoIGEgbmV3IGJpdCBpbiB0aGUgZW50cnkncyBzdGF0ZSwgdGhhdCBpcwogICBzZXQgaWYg
+YSB2YWxpZCBlbnRyeSBpcyB1cGRhdGVkICh0aGF0IGlzOiByZXBsYWNlZCkuIENoZWNraW5n
+IHRoaXMKICAgYml0IGFsc28gaW1tZWRpYXRlbHkgYmVmb3JlIGNhY2hlX21ha2VfdXBjYWxs
+KCkgaXMgY2FsbGVkIHdvdWxkCiAgIGFsc28gZml4IG15IHNlY29uZCBzY2VuYXJpbyBmdWxs
+eSBpbiB0aGF0IGl0IGF2b2lkcyB1bm5lY2Vzc2FyeQogICB1cGNhbGxzLgoKQm9kbwoKCgo+
+IC0tLQo+ICBuZXQvc3VucnBjL2NhY2hlLmMgfCAgIDE2ICsrKysrKysrKysrKysrLS0KPiAg
+MSBmaWxlIGNoYW5nZWQsIDE0IGluc2VydGlvbnMoKyksIDIgZGVsZXRpb25zKC0pCj4gCj4g
+ZGlmZiAtLWdpdCBhL25ldC9zdW5ycGMvY2FjaGUuYyBiL25ldC9zdW5ycGMvY2FjaGUuYyBp
+bmRleCA5YWZhNDM5Li5iNDhjOGVmIDEwMDY0NAo+IC0tLSBhL25ldC9zdW5ycGMvY2FjaGUu
+Ywo+ICsrKyBiL25ldC9zdW5ycGMvY2FjaGUuYwo+IEBAIC0xMDIyLDYgKzEwMjIsOSBAQCBz
+dGF0aWMgdm9pZCBjYWNoZV9kZXF1ZXVlKHN0cnVjdCBjYWNoZV9kZXRhaWwgKmRldGFpbCwg
+c3RydWN0IGNhY2hlX2hlYWQgKmNoKQo+ICAJCQlzdHJ1Y3QgY2FjaGVfcmVxdWVzdCAqY3Ig
+PSBjb250YWluZXJfb2YoY3EsIHN0cnVjdCBjYWNoZV9yZXF1ZXN0LCBxKTsKPiAgCQkJaWYg
+KGNyLT5pdGVtICE9IGNoKQo+ICAJCQkJY29udGludWU7Cj4gKwkJCWlmICh0ZXN0X2JpdChD
+QUNIRV9QRU5ESU5HLCAmY2gtPmZsYWdzKSkKPiArCQkJCS8qIExvc3QgYSByYWNlIGFuZCBp
+dCBpcyBwZW5kaW5nIGFnYWluICovCj4gKwkJCQlicmVhazsKPiAgCQkJaWYgKGNyLT5yZWFk
+ZXJzICE9IDApCj4gIAkJCQljb250aW51ZTsKPiAgCQkJbGlzdF9kZWwoJmNyLT5xLmxpc3Qp
+Owo+IEBAIC0xMTUxLDYgKzExNTQsNyBAQCBpbnQgc3VucnBjX2NhY2hlX3BpcGVfdXBjYWxs
+KHN0cnVjdCBjYWNoZV9kZXRhaWwgKmRldGFpbCwgc3RydWN0IGNhY2hlX2hlYWQgKmgsCj4g
+IAlzdHJ1Y3QgY2FjaGVfcmVxdWVzdCAqY3JxOwo+ICAJY2hhciAqYnA7Cj4gIAlpbnQgbGVu
+Owo+ICsJaW50IHJldCA9IDA7Cj4gIAo+ICAJaWYgKCFjYWNoZV9saXN0ZW5lcnNfZXhpc3Qo
+ZGV0YWlsKSkgewo+ICAJCXdhcm5fbm9fbGlzdGVuZXIoZGV0YWlsKTsKPiBAQCAtMTE4Miwx
+MCArMTE4NiwxOCBAQCBpbnQgc3VucnBjX2NhY2hlX3BpcGVfdXBjYWxsKHN0cnVjdCBjYWNo
+ZV9kZXRhaWwgKmRldGFpbCwgc3RydWN0IGNhY2hlX2hlYWQgKmgsCj4gIAljcnEtPmxlbiA9
+IFBBR0VfU0laRSAtIGxlbjsKPiAgCWNycS0+cmVhZGVycyA9IDA7Cj4gIAlzcGluX2xvY2so
+JnF1ZXVlX2xvY2spOwo+IC0JbGlzdF9hZGRfdGFpbCgmY3JxLT5xLmxpc3QsICZkZXRhaWwt
+PnF1ZXVlKTsKPiArCWlmICh0ZXN0X2JpdChDQUNIRV9QRU5ESU5HLCAmaC0+ZmxhZ3MpKQo+
+ICsJCWxpc3RfYWRkX3RhaWwoJmNycS0+cS5saXN0LCAmZGV0YWlsLT5xdWV1ZSk7Cj4gKwll
+bHNlCj4gKwkJLyogTG9zdCBhIHJhY2UsIG5vIGxvbmdlciBQRU5ESU5HLCBzbyBkb24ndCBl
+bnF1ZXVlICovCj4gKwkJcmV0ID0gLUVBR0FJTjsKPiAgCXNwaW5fdW5sb2NrKCZxdWV1ZV9s
+b2NrKTsKPiAgCXdha2VfdXAoJnF1ZXVlX3dhaXQpOwo+IC0JcmV0dXJuIDA7Cj4gKwlpZiAo
+cmV0ID09IC1FQUdBSU4pIHsKPiArCQlrZnJlZShidWYpOwo+ICsJCWtmcmVlKGNycSk7Cj4g
+Kwl9Cj4gKwlyZXR1cm4gcmV0Owo+ICB9Cj4gIEVYUE9SVF9TWU1CT0xfR1BMKHN1bnJwY19j
+YWNoZV9waXBlX3VwY2FsbCk7Cj4gIAo+IAo=
 
-Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
----
- fs/locks.c          |  1 +
- fs/nfsd/nfs4state.c | 46 +++++++++++++++++++++++++++++++++++++++++++++-
- 2 files changed, 46 insertions(+), 1 deletion(-)
-
-diff --git a/fs/locks.c b/fs/locks.c
-index 0cc7d1b..593d464 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -874,6 +874,7 @@ deny_lock_file(struct file *filp)
- 	locks_free_lock(lock);
- 	return error;
- }
-+EXPORT_SYMBOL(deny_lock_file);
- 
- static int __posix_lock_file(struct inode *inode, struct file_lock *request, struct file_lock *conflock)
- {
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index ac8ed96c..766256a 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -476,6 +476,19 @@ test_deny(u32 access, struct nfs4_ol_stateid *stp)
- 	return test_bit(access, &stp->st_deny_bmap);
- }
- 
-+static int nfs4_deny_to_odeny(u32 access)
-+{
-+	switch (access & NFS4_SHARE_DENY_BOTH) {
-+	case NFS4_SHARE_DENY_READ:
-+		return O_DENYMAND | O_DENYREAD;
-+	case NFS4_SHARE_DENY_WRITE:
-+		return O_DENYWRITE | O_DENYMAND;
-+	case NFS4_SHARE_DENY_BOTH:
-+		return O_DENYREAD | O_DENYWRITE | O_DENYMAND;
-+	}
-+	return O_DENYMAND;
-+}
-+
- static int nfs4_access_to_omode(u32 access)
- {
- 	switch (access & NFS4_SHARE_ACCESS_BOTH) {
-@@ -2793,6 +2806,21 @@ nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
- }
- 
- static __be32
-+nfs4_vfs_set_deny(struct nfs4_file *fp, unsigned long share_access,
-+		  unsigned long deny_access)
-+{
-+	int oflag, rc;
-+	__be32 status = nfs_ok;
-+
-+	oflag = nfs4_access_to_omode(share_access);
-+	fp->fi_fds[oflag]->f_flags |= nfs4_deny_to_odeny(deny_access);
-+	rc = deny_lock_file(fp->fi_fds[oflag]);
-+	if (rc)
-+		status = nfserrno(rc);
-+	return status;
-+}
-+
-+static __be32
- nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *cur_fh, struct nfs4_ol_stateid *stp, struct nfsd4_open *open)
- {
- 	u32 op_share_access = open->op_share_access;
-@@ -2813,6 +2841,14 @@ nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *c
- 		}
- 		return status;
- 	}
-+	status = nfs4_vfs_set_deny(fp, op_share_access, open->op_share_deny);
-+	if (status) {
-+		if (new_access) {
-+			int oflag = nfs4_access_to_omode(op_share_access);
-+			nfs4_file_put_access(fp, oflag);
-+		}
-+		return status;
-+	}
- 	/* remember the open */
- 	set_access(op_share_access, stp);
- 	set_deny(open->op_share_deny, stp);
-@@ -3046,7 +3082,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 
- 	/*
- 	 * OPEN the file, or upgrade an existing OPEN.
--	 * If truncate fails, the OPEN fails.
-+	 * If truncate or setting deny fails, the OPEN fails.
- 	 */
- 	if (stp) {
- 		/* Stateid was found, this is an OPEN upgrade */
-@@ -3060,6 +3096,10 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 		status = nfsd4_truncate(rqstp, current_fh, open);
- 		if (status)
- 			goto out;
-+		status = nfs4_vfs_set_deny(fp, open->op_share_access,
-+					   open->op_share_deny);
-+		if (status)
-+			goto out;
- 		stp = open->op_stp;
- 		open->op_stp = NULL;
- 		init_open_stateid(stp, fp, open);
-@@ -3758,6 +3798,10 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
- 	}
- 	nfs4_stateid_downgrade(stp, od->od_share_access);
- 
-+	status = nfs4_vfs_set_deny(stp->st_file, od->od_share_access,
-+				   od->od_share_deny);
-+	if (status)
-+		goto out;
- 	reset_union_bmap_deny(od->od_share_deny, stp);
- 
- 	update_stateid(&stp->st_stid.sc_stateid);
--- 
-1.8.1.2
 
