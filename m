@@ -1,112 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ia0-f169.google.com ([209.85.210.169]:36822 "EHLO
-	mail-ia0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1947086Ab3BHV2I (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Feb 2013 16:28:08 -0500
-Received: by mail-ia0-f169.google.com with SMTP id j5so4822169iaf.0
-        for <linux-nfs@vger.kernel.org>; Fri, 08 Feb 2013 13:28:05 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v1 2/3] NFSD: SECINFO doesn't handle unsupported pseudoflavors
- correctly
-To: linux-nfs@vger.kernel.org
-Date: Fri, 08 Feb 2013 16:28:03 -0500
-Message-ID: <20130208212803.2234.60073.stgit@seurat.1015granger.net>
-In-Reply-To: <20130208212007.2234.35721.stgit@seurat.1015granger.net>
-References: <20130208212007.2234.35721.stgit@seurat.1015granger.net>
+Received: from cantor2.suse.de ([195.135.220.15]:55245 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755915Ab3BZGiv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Feb 2013 01:38:51 -0500
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Date: Tue, 26 Feb 2013 17:36:42 +1100
+Subject: [PATCH 1/2] sunrpc/cache: remove races with queuing an upcall.
+Cc: Bodo Stroesser <bstroesser@ts.fujitsu.com>, linux-nfs@vger.kernel.org
+Message-ID: <20130226063641.6063.80045.stgit@notabene.brown>
+In-Reply-To: <20130226063637.6063.34934.stgit@notabene.brown>
+References: <20130226063637.6063.34934.stgit@notabene.brown>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If nfsd4_do_encode_secinfo() can't find GSS info that matches an
-export security flavor, it assumes the flavor is not a GSS
-pseudoflavor, and simply puts it on the wire.
+We currently queue an upcall after setting CACHE_PENDING,
+and dequeue after clearing CACHE_PENDING.
+So a request should only be present when CACHE_PENDING is set.
 
-However, if this XDR encoding logic is given a legitimate GSS
-pseudoflavor but the RPC layer says it does not support that
-pseudoflavor for some reason, then the server leaks GSS pseudoflavor
-numbers onto the wire.
+However we don't combine the test and the enqueue/dequeue in
+a protected region, so it is possible (if unlikely) for a race
+to result in a request being queued without CACHE_PENDING set,
+or a request to be absent despite CACHE_PENDING.
 
-I confirmed this happens by blacklisting rpcsec_gss_krb5, then
-attempted a client transition from the pseudo-fs to a Kerberos-only
-share.  The client received a flavor list containing the Kerberos
-pseudoflavor numbers, rather than GSS tuples.
+So: include a test for CACHE_PENDING inside the regions of
+enqueue and dequeue where queue_lock is held, and abort
+the operation if the value is not as expected.
 
-The encoder logic can check that each pseudoflavor in flavs[] is
-less than MAXFLAVOR before writing it into the buffer, to prevent
-this.  But after "nflavs" is written into the XDR buffer, the
-encoder can't skip writing flavor information into the buffer when
-it discovers the RPC layer doesn't support that flavor.
+With this, it perfectly safe and correct to:
+ - call cache_dequeue() if and only if we have just
+   cleared CACHE_PENDING
+ - call sunrpc_cache_pipe_upcall() (via cache_make_upcall)
+   if and only if we have just set CACHE_PENDING.
 
-So count the number of valid flavors as they are written into the
-XDR buffer, then write that count into the XDR buffer when all
-recognized flavors have been encoded.
+Reported-by: Bodo Stroesser <bstroesser@ts.fujitsu.com>
+Signed-off-by: NeilBrown <neilb@suse.de>
 ---
+ net/sunrpc/cache.c |   16 ++++++++++++++--
+ 1 file changed, 14 insertions(+), 2 deletions(-)
 
- fs/nfsd/nfs4xdr.c |   26 ++++++++++++++++++++------
- 1 files changed, 20 insertions(+), 6 deletions(-)
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 9afa439..b48c8ef 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -1022,6 +1022,9 @@ static void cache_dequeue(struct cache_detail *detail, struct cache_head *ch)
+ 			struct cache_request *cr = container_of(cq, struct cache_request, q);
+ 			if (cr->item != ch)
+ 				continue;
++			if (test_bit(CACHE_PENDING, &ch->flags))
++				/* Lost a race and it is pending again */
++				break;
+ 			if (cr->readers != 0)
+ 				continue;
+ 			list_del(&cr->q.list);
+@@ -1151,6 +1154,7 @@ int sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h,
+ 	struct cache_request *crq;
+ 	char *bp;
+ 	int len;
++	int ret = 0;
+ 
+ 	if (!cache_listeners_exist(detail)) {
+ 		warn_no_listener(detail);
+@@ -1182,10 +1186,18 @@ int sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h,
+ 	crq->len = PAGE_SIZE - len;
+ 	crq->readers = 0;
+ 	spin_lock(&queue_lock);
+-	list_add_tail(&crq->q.list, &detail->queue);
++	if (test_bit(CACHE_PENDING, &h->flags))
++		list_add_tail(&crq->q.list, &detail->queue);
++	else
++		/* Lost a race, no longer PENDING, so don't enqueue */
++		ret = -EAGAIN;
+ 	spin_unlock(&queue_lock);
+ 	wake_up(&queue_wait);
+-	return 0;
++	if (ret == -EAGAIN) {
++		kfree(buf);
++		kfree(crq);
++	}
++	return ret;
+ }
+ EXPORT_SYMBOL_GPL(sunrpc_cache_pipe_upcall);
+ 
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 0c1ae2c..4e9f0b5 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3129,10 +3129,11 @@ static __be32
- nfsd4_do_encode_secinfo(struct nfsd4_compoundres *resp,
- 			 __be32 nfserr, struct svc_export *exp)
- {
--	u32 i, nflavs;
-+	u32 i, nflavs, supported;
- 	struct exp_flavor_info *flavs;
- 	struct exp_flavor_info def_flavs[2];
--	__be32 *p;
-+	__be32 *p, *flavorsp;
-+	static bool report = true;
- 
- 	if (nfserr)
- 		goto out;
-@@ -3156,13 +3157,17 @@ nfsd4_do_encode_secinfo(struct nfsd4_compoundres *resp,
- 		}
- 	}
- 
-+	supported = 0;
- 	RESERVE_SPACE(4);
--	WRITE32(nflavs);
-+	flavorsp = p++;		/* to be backfilled later */
- 	ADJUST_ARGS();
-+
- 	for (i = 0; i < nflavs; i++) {
-+		rpc_authflavor_t pf = flavs[i].pseudoflavor;
- 		struct rpcsec_gss_info info;
- 
--		if (rpcauth_get_gssinfo(flavs[i].pseudoflavor, &info) == 0) {
-+		if (rpcauth_get_gssinfo(pf, &info) == 0) {
-+			supported++;
- 			RESERVE_SPACE(4 + 4 + info.oid.len + 4 + 4);
- 			WRITE32(RPC_AUTH_GSS);
- 			WRITE32(info.oid.len);
-@@ -3170,13 +3175,22 @@ nfsd4_do_encode_secinfo(struct nfsd4_compoundres *resp,
- 			WRITE32(info.qop);
- 			WRITE32(info.service);
- 			ADJUST_ARGS();
--		} else {
-+		} else if (pf < RPC_AUTH_MAXFLAVOR) {
-+			supported++;
- 			RESERVE_SPACE(4);
--			WRITE32(flavs[i].pseudoflavor);
-+			WRITE32(pf);
- 			ADJUST_ARGS();
-+		} else {
-+			if (report)
-+				pr_warn("NFS: SECINFO: security flavor %u "
-+					"is not supported\n", pf);
- 		}
- 	}
- 
-+	if (nflavs != supported)
-+		report = false;
-+	*flavorsp = htonl(supported);
-+
- out:
- 	if (exp)
- 		exp_put(exp);
 
