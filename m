@@ -1,57 +1,114 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:42884 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753639Ab3BPRS3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 16 Feb 2013 12:18:29 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
-Subject: Re: [PATCH RFC] nfsd: report length of the largest hash chain in reply cache stats
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20130216133927.GA28824@fieldses.org>
-Date: Sat, 16 Feb 2013 12:18:18 -0500
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
-Message-Id: <BA5562CC-9236-4EC1-BC7A-341387B9F452@oracle.com>
-References: <20130215133406.20b1ef09@tlielax.poochiereds.net> <1360958672-5692-1-git-send-email-jlayton@redhat.com> <299C8DF9-5BFC-4E26-8F7E-CE3415D1140F@oracle.com> <20130215172058.29941a54@tlielax.poochiereds.net> <20130216133927.GA28824@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-yh0-f48.google.com ([209.85.213.48]:40409 "EHLO
+	mail-yh0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751541Ab3B1BKk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Feb 2013 20:10:40 -0500
+Received: by mail-yh0-f48.google.com with SMTP id q12so193387yhf.21
+        for <linux-nfs@vger.kernel.org>; Wed, 27 Feb 2013 17:10:39 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: bhalevy@tonian.com, linux-nfs@vger.kernel.org
+Subject: [PATCH] nfs: don't allow nfs_find_actor to match inodes of the wrong type
+Date: Wed, 27 Feb 2013 20:10:34 -0500
+Message-Id: <1362013834-29600-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Benny Halevy reported the following oops when testing RHEL6:
 
-On Feb 16, 2013, at 8:39 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+<7>nfs_update_inode: inode 892950 mode changed, 0040755 to 0100644
+<1>BUG: unable to handle kernel NULL pointer dereference at (null)
+<1>IP: [<ffffffffa02a52c5>] nfs_closedir+0x15/0x30 [nfs]
+<4>PGD 81448a067 PUD 831632067 PMD 0
+<4>Oops: 0000 [#1] SMP
+<4>last sysfs file: /sys/kernel/mm/redhat_transparent_hugepage/enabled
+<4>CPU 6
+<4>Modules linked in: fuse bonding 8021q garp ebtable_nat ebtables be2iscsi iscsi_boot_sysfs bnx2i cnic uio cxgb4i cxgb4 cxgb3i libcxgbi cxgb3 mdio ib_iser rdma_cm ib_cm iw_cm ib_sa ib_mad ib_core ib_addr iscsi_tcp libiscsi_tcp libiscsi scsi_transport_iscsi softdog bridge stp llc xt_physdev ipt_REJECT nf_conntrack_ipv4 nf_defrag_ipv4 xt_multiport iptable_filter ip_tables ip6t_REJECT nf_conntrack_ipv6 nf_defrag_ipv6 xt_state nf_conntrack ip6table_filter ip6_tables ipv6 dm_round_robin dm_multipath objlayoutdriver2(U) nfs(U) lockd fscache auth_rpcgss nfs_acl sunrpc vhost_net macvtap macvlan tun kvm_intel kvm be2net igb dca ptp pps_core microcode serio_raw sg iTCO_wdt iTCO_vendor_support i7core_edac edac_core shpchp ext4 mbcache jbd2 sd_mod crc_t10dif ahci dm_mirror dm_region_hash dm_log dm_mod [last unloaded: scsi_wait_scan]
+<4>
+<4>Pid: 6332, comm: dd Not tainted 2.6.32-358.el6.x86_64 #1 HP ProLiant DL170e G6  /ProLiant DL170e G6
+<4>RIP: 0010:[<ffffffffa02a52c5>]  [<ffffffffa02a52c5>] nfs_closedir+0x15/0x30 [nfs]
+<4>RSP: 0018:ffff88081458bb98  EFLAGS: 00010292
+<4>RAX: ffffffffa02a52b0 RBX: 0000000000000000 RCX: 0000000000000003
+<4>RDX: ffffffffa02e45a0 RSI: ffff88081440b300 RDI: ffff88082d5f5760
+<4>RBP: ffff88081458bba8 R08: 0000000000000000 R09: 0000000000000000
+<4>R10: 0000000000000772 R11: 0000000000400004 R12: 0000000040000008
+<4>R13: ffff88082d5f5760 R14: ffff88082d6e8800 R15: ffff88082f12d780
+<4>FS:  00007f728f37e700(0000) GS:ffff8800456c0000(0000) knlGS:0000000000000000
+<4>CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+<4>CR2: 0000000000000000 CR3: 0000000831279000 CR4: 00000000000007e0
+<4>DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+<4>DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+<4>Process dd (pid: 6332, threadinfo ffff88081458a000, task ffff88082fa0e040)
+<4>Stack:
+<4> 0000000040000008 ffff88081440b300 ffff88081458bbf8 ffffffff81182745
+<4><d> ffff88082d5f5760 ffff88082d6e8800 ffff88081458bbf8 ffffffffffffffea
+<4><d> ffff88082f12d780 ffff88082d6e8800 ffffffffa02a50a0 ffff88082d5f5760
+<4>Call Trace:
+<4> [<ffffffff81182745>] __fput+0xf5/0x210
+<4> [<ffffffffa02a50a0>] ? do_open+0x0/0x20 [nfs]
+<4> [<ffffffff81182885>] fput+0x25/0x30
+<4> [<ffffffff8117e23e>] __dentry_open+0x27e/0x360
+<4> [<ffffffff811c397a>] ? inotify_d_instantiate+0x2a/0x60
+<4> [<ffffffff8117e4b9>] lookup_instantiate_filp+0x69/0x90
+<4> [<ffffffffa02a6679>] nfs_intent_set_file+0x59/0x90 [nfs]
+<4> [<ffffffffa02a686b>] nfs_atomic_lookup+0x1bb/0x310 [nfs]
+<4> [<ffffffff8118e0c2>] __lookup_hash+0x102/0x160
+<4> [<ffffffff81225052>] ? selinux_inode_permission+0x72/0xb0
+<4> [<ffffffff8118e76a>] lookup_hash+0x3a/0x50
+<4> [<ffffffff81192a4b>] do_filp_open+0x2eb/0xdd0
+<4> [<ffffffff8104757c>] ? __do_page_fault+0x1ec/0x480
+<4> [<ffffffff8119f562>] ? alloc_fd+0x92/0x160
+<4> [<ffffffff8117de79>] do_sys_open+0x69/0x140
+<4> [<ffffffff811811f6>] ? sys_lseek+0x66/0x80
+<4> [<ffffffff8117df90>] sys_open+0x20/0x30
+<4> [<ffffffff8100b072>] system_call_fastpath+0x16/0x1b
+<4>Code: 65 48 8b 04 25 c8 cb 00 00 83 a8 44 e0 ff ff 01 5b 41 5c c9 c3 90 55 48 89 e5 53 48 83 ec 08 0f 1f 44 00 00 48 8b 9e a0 00 00 00 <48> 8b 3b e8 13 0c f7 ff 48 89 df e8 ab 3d ec e0 48 83 c4 08 31
+<1>RIP  [<ffffffffa02a52c5>] nfs_closedir+0x15/0x30 [nfs]
+<4> RSP <ffff88081458bb98>
+<4>CR2: 0000000000000000
 
-> On Fri, Feb 15, 2013 at 05:20:58PM -0500, Jeff Layton wrote:
->> An excellent question, and not an easy one to answer. Clearly 1024
->> entries was not enough. We now cap the size as a function of the
->> available low memory, which I think is a reasonable way to keep it from
->> ballooning so large that the box falls over. We also have a shrinker
->> and periodic cache cleaner to prune off entries that have expired.
->> 
->> Of course one thing I haven't really considered enough is the
->> performance implications of walking the potentially much longer hash
->> chains here.
->> 
->> If that is a problem, then one way to counter that without moving to a
->> different structure altogether might be to alter the hash function
->> based on the max size of the cache. IOW, grow the number of hash buckets
->> as the max cache size grows?
+I think this is ultimately due to a bug on the server. The client had
+previously found a directory dentry. It then later tried to do an atomic
+open on a new (regular file) dentry. The attributes it got back had the
+same filehandle as the previously found directory inode. It then tried
+to put the filp because it failed the aops tests for O_DIRECT opens, and
+oopsed here because the ctx was still NULL.
 
-The trouble with a hash table is that once you've allocated it, it's a heavy lift to increase the table size.  That sort of logic adds complexity and additional locking, and is often difficult to test.
+Obviously the root cause here is a server issue, but we can take steps
+to mitigate this on the client. When nfs_fhget is called, we always know
+what type of inode it is. In the event that there's a broken or
+malicious server on the other end of the wire, the client can end up
+crashing because the wrong ops are set on it.
 
-> Another reason to organize the cache per client address?
+Have nfs_find_actor check that the inode type is correct after checking
+the fileid. The fileid check should rarely ever match, so it should only
+rarely ever get to this check. In the case where we have a broken
+server, we may see two different inodes with the same i_ino, but the
+client should be able to cope with them without crashing.
 
+This should fix the oops reported here:
 
-In theory, an active single client could evict all entries for other clients, but do we know this happens in practice?
+    https://bugzilla.redhat.com/show_bug.cgi?id=913660
 
-> With a per-client maximum number of entries, sizing the hash tables
-> should be easier.
+Reported-by: Benny Halevy <bhalevy@tonian.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/inode.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-
-When a server has only one client, should that client be allowed to maximize the use of a server's resources (eg, use all of the DRC resource the server has available)?  How about when a server has one active client and multiple quiescent clients?
-
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 6acc73c..f52c99f 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -237,6 +237,8 @@ nfs_find_actor(struct inode *inode, void *opaque)
+ 
+ 	if (NFS_FILEID(inode) != fattr->fileid)
+ 		return 0;
++	if ((S_IFMT & inode->i_mode) != (S_IFMT & fattr->mode))
++		return 0;
+ 	if (nfs_compare_fh(NFS_FH(inode), fh))
+ 		return 0;
+ 	if (is_bad_inode(inode) || NFS_STALE(inode))
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.7.11.7
 
