@@ -1,55 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:33129 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758635Ab3BGOcj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Feb 2013 09:32:39 -0500
+Received: from mailhub.sw.ru ([195.214.232.25]:43805 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752040Ab3B1MJH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Feb 2013 07:09:07 -0500
+Subject: [PATCH] nfsd: check client tracker initialization result
+To: bfields@fieldses.org
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Date: Thu, 28 Feb 2013 15:09:59 +0300
+Message-ID: <20130228120959.6764.17787.stgit@localhost.localdomain>
 MIME-Version: 1.0
-In-Reply-To: <20130207141832.GA3222@fieldses.org>
-References: <1358441584-8783-1-git-send-email-piastry@etersoft.ru>
-	<1358441584-8783-3-git-send-email-piastry@etersoft.ru>
-	<20130130221602.GC15584@fieldses.org>
-	<CAKywueRh++TBazK8_kRN7AUb=EFhGv=Sv2CV0BESkfLFy+g5wA@mail.gmail.com>
-	<20130205143514.GA9886@fieldses.org>
-	<CAKywueS6oGNu9r_bypu32A89pOoiGb47kjXqw2ZcZQhZK+JV3g@mail.gmail.com>
-	<20130207141832.GA3222@fieldses.org>
-Date: Thu, 7 Feb 2013 18:32:38 +0400
-Message-ID: <CAKywueTmU_L5cwwJSoUY6753eHf_38VtHadZGt9tcLS59sqmOA@mail.gmail.com>
-Subject: Re: [PATCH v2 3/8] vfs: Add O_DENYREAD/WRITE flags support for open syscall
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        wine-devel@winehq.org
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2013/2/7 J. Bruce Fields <bfields@fieldses.org>:
-> On Thu, Feb 07, 2013 at 01:53:46PM +0400, Pavel Shilovsky wrote:
->> Nothing prevents it. If somebody grabbed a share mode lock on a file
->> before we call deny_lock_file, we simply close this file and return
->> -ETXTBSY.
->
-> But leave the newly-created file there--ugh.
->
->> We can't grab it before atomic_open because we don't have an
->> inode there.
->
-> If you can get the lock while still holding the directory i_mutex can't
-> you prevent anyone else from looking up the new file until you've gotten
-> the lock?
->
+Function nfsd4_client_tracking_init() can return error.
 
-Hm..., seems you are right, I missed this part:
-mutex_lock
-lookup_open -> atomic_open -> deny_lock_file
-mutex_unlock
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+---
+ fs/nfsd/nfs4state.c |    9 ++++++++-
+ 1 files changed, 8 insertions(+), 1 deletions(-)
 
-that means that nobody can open and of course set flock on the newly
-created file (because flock is done through file descriptor). So, it
-should be fine to call flock after f_ops->atomic_open in atomic_open
-function. Thanks.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index f194f86..fc4b81b 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -69,6 +69,7 @@ static u64 current_sessionid = 1;
+ 
+ /* forward declarations */
+ static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
++void nfs4_state_shutdown_net(struct net *net);
+ 
+ /* Locking: */
+ 
+@@ -4942,7 +4943,9 @@ nfs4_state_start_net(struct net *net)
+ 	ret = nfs4_state_create_net(net);
+ 	if (ret)
+ 		return ret;
+-	nfsd4_client_tracking_init(net);
++	ret = nfsd4_client_tracking_init(net);
++	if (ret)
++		goto out_tracking;
+ 	nn->boot_time = get_seconds();
+ 	locks_start_grace(net, &nn->nfsd4_manager);
+ 	nn->grace_ended = false;
+@@ -4950,6 +4953,10 @@ nfs4_state_start_net(struct net *net)
+ 	       nn->nfsd4_grace, net);
+ 	queue_delayed_work(laundry_wq, &nn->laundromat_work, nn->nfsd4_grace * HZ);
+ 	return 0;
++
++out_tracking:
++	nfs4_state_destroy_net(net);
++	return ret;
+ }
+ 
+ /* initialization to perform when the nfsd service is started: */
 
--- 
-Best regards,
-Pavel Shilovsky.
