@@ -1,56 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50734 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934098Ab3BMPde (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Feb 2013 10:33:34 -0500
-Date: Wed, 13 Feb 2013 10:33:26 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 00/15] lnfs: 3.8-rc6 release
-Message-ID: <20130213153326.GK14195@fieldses.org>
-References: <1360327163-20360-1-git-send-email-SteveD@redhat.com>
- <20130213001141.GA14195@fieldses.org>
- <20130213002117.GB14195@fieldses.org>
- <511ADE41.2040904@RedHat.com>
- <20130213150509.GH14195@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130213150509.GH14195@fieldses.org>
+Received: from mail-lb0-f172.google.com ([209.85.217.172]:51965 "EHLO
+	mail-lb0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757377Ab3B1PW4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Feb 2013 10:22:56 -0500
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: linux-kernel@vger.kernel.org
+Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wine-devel@winehq.org
+Subject: [PATCH v3 5/7] CIFS: Translate SHARING_VIOLATION to -ETXTBSY error code for SMB2
+Date: Thu, 28 Feb 2013 19:25:31 +0400
+Message-Id: <1362065133-9490-6-git-send-email-piastry@etersoft.ru>
+In-Reply-To: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
+References: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 13, 2013 at 10:05:09AM -0500, J. Bruce Fields wrote:
-> On Tue, Feb 12, 2013 at 07:28:49PM -0500, Steve Dickson wrote:
-> > 
-> > 
-> > On 12/02/13 19:21, J. Bruce Fields wrote:
-> > > On Tue, Feb 12, 2013 at 07:11:41PM -0500, J. Bruce Fields wrote:
-> > >> I get failures on NFSv4 mounts after applying these patches.
-> > >>
-> > >> 	# mount -tnfs4  pip1:/exports/ext4 /mnt/
-> > >> 	mount.nfs4: mounting pip1:/exports/ext4 failed, reason given by server: No such file or directory
-> > >>
-> > >> In wireshark I don't see an error, but I do notice that the final
-> > >> rpc request and reply is a getattr with bitmap 0, which is odd.
-> > > 
-> > > Oh, and that was a build with labeled nfs configured out.
-> > Drop the -tnfs4 option...
-> 
-> Well, sure, then it'll negotiate down to v3 and the mount will succeed.
-> 
-> But if you request v4 (either with -tnfs4 or -onfsvers=4), it fails.
-> 
-> In other words, these patches break NFSv4 mounts in the default
-> (CONFIG_NFS_V4_SECURITY_LABEL=n) case.
+to make it match CIFS and VFS variants.
 
-Also, the problem starts with "NFS: Client Implementation of
-Labeled-NFS".
+Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
+---
+ fs/cifs/smb2maperror.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
---b.
+diff --git a/fs/cifs/smb2maperror.c b/fs/cifs/smb2maperror.c
+index 494c912..11e589e 100644
+--- a/fs/cifs/smb2maperror.c
++++ b/fs/cifs/smb2maperror.c
+@@ -356,7 +356,7 @@ static const struct status_to_posix_error smb2_error_map_table[] = {
+ 	{STATUS_PORT_CONNECTION_REFUSED, -ECONNREFUSED,
+ 	"STATUS_PORT_CONNECTION_REFUSED"},
+ 	{STATUS_INVALID_PORT_HANDLE, -EIO, "STATUS_INVALID_PORT_HANDLE"},
+-	{STATUS_SHARING_VIOLATION, -EBUSY, "STATUS_SHARING_VIOLATION"},
++	{STATUS_SHARING_VIOLATION, -ETXTBSY, "STATUS_SHARING_VIOLATION"},
+ 	{STATUS_QUOTA_EXCEEDED, -EDQUOT, "STATUS_QUOTA_EXCEEDED"},
+ 	{STATUS_INVALID_PAGE_PROTECTION, -EIO,
+ 	"STATUS_INVALID_PAGE_PROTECTION"},
+-- 
+1.8.1.2
+
