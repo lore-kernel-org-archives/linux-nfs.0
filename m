@@ -1,159 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 183.141.211.66.inaddr.G4.NET ([66.211.141.183]:58408 "EHLO
-	Dobby.4dicksons.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753202Ab3BUWPR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Feb 2013 17:15:17 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/2] NFSv4.2: Added NFS v4.2 support to the NFS client
-Date: Thu, 21 Feb 2013 17:15:10 -0500
-Message-Id: <1361484911-17537-2-git-send-email-steved@redhat.com>
-In-Reply-To: <1361484911-17537-1-git-send-email-steved@redhat.com>
-References: <1361484911-17537-1-git-send-email-steved@redhat.com>
+Received: from mail-la0-f52.google.com ([209.85.215.52]:62780 "EHLO
+	mail-la0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755321Ab3B1PWy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Feb 2013 10:22:54 -0500
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: linux-kernel@vger.kernel.org
+Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wine-devel@winehq.org
+Subject: [PATCH v3 4/7] CIFS: Use NT_CREATE_ANDX command for forcemand mounts
+Date: Thu, 28 Feb 2013 19:25:30 +0400
+Message-Id: <1362065133-9490-5-git-send-email-piastry@etersoft.ru>
+In-Reply-To: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
+References: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This enable NFSv4.2 support. To enable this code the
-CONFIG_NFS_V4_2 Kconfig define needs to be set and
-the -o v4.2 mount option need to be used.
+forcemand mount option now lets us use Windows mandatory style of
+byte-range locks even if server supports posix ones - switches on
+Windows locking mechanism. Share flags is another locking mehanism
+provided by Windows semantic that can be used by NT_CREATE_ANDX
+command. This patch combines all Windows locking mechanism in one
+mount option by using NT_CREATE_ANDX to open files if forcemand is on.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
 ---
- fs/nfs/Kconfig       | 11 ++++++++++-
- fs/nfs/callback.c    |  3 +++
- fs/nfs/nfs4client.c  |  5 +++++
- fs/nfs/nfs4proc.c    |  3 +++
- fs/nfs/super.c       |  7 ++++++-
- include/linux/nfs4.h |  4 ++++
- 6 files changed, 31 insertions(+), 2 deletions(-)
+ fs/cifs/dir.c  | 1 +
+ fs/cifs/file.c | 6 ++++--
+ 2 files changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-index 3861a1f..247db6d 100644
---- a/fs/nfs/Kconfig
-+++ b/fs/nfs/Kconfig
-@@ -104,6 +104,15 @@ config NFS_V4_1
- 
- 	  If unsure, say N.
- 
-+config NFS_V4_2
-+	bool "NFS client support for NFSv4.2"
-+	depends on NFS_V4_1
-+	help
-+	  This option enables support for minor version 1 of the NFSv4 protocol
-+	  (RFC 5661) in the kernel's NFS client.
-+
-+	  If unsure, say N.
-+
- config PNFS_FILE_LAYOUT
- 	tristate
- 	depends on NFS_V4_1
-@@ -133,7 +142,7 @@ config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
- 
- config NFS_V4_SECURITY_LABEL
- 	bool "Provide Security Label support for NFSv4 client"
--	depends on NFS_V4 && SECURITY
-+	depends on NFS_V4_2 && SECURITY
- 	help
- 
- 	Say Y here if you want enable fine-grained security label attribute
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 5088b57..4058ec8 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -281,6 +281,9 @@ static int nfs_callback_up_net(int minorversion, struct svc_serv *serv, struct n
- 		case 1:
- 			ret = nfs41_callback_up_net(serv, net);
- 			break;
-+		case 2:
-+			ret = nfs41_callback_up_net(serv, net);
-+			break;
- 		default:
- 			printk(KERN_ERR "NFS: unknown callback version: %d\n",
- 					minorversion);
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 2e9779b..2987fd6 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -66,6 +66,11 @@ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
- 	if (err)
- 		goto error;
- 
-+	if (cl_init->minorversion > NFS4_MAX_MINOR_VERSION) {
-+		err = -EINVAL;
-+		goto error;
-+	}
-+		
- 	spin_lock_init(&clp->cl_lock);
- 	INIT_DELAYED_WORK(&clp->cl_renewd, nfs4_renew_state);
- 	rpc_init_wait_queue(&clp->cl_rpcwaitq, "NFS client");
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 40c1d1f..08fc8e2 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -7136,6 +7136,9 @@ const struct nfs4_minor_version_ops *nfs_v4_minor_ops[] = {
- #if defined(CONFIG_NFS_V4_1)
- 	[1] = &nfs_v4_1_minor_ops,
- #endif
-+#if defined(CONFIG_NFS_V4_2)
-+	[2] = &nfs_v4_1_minor_ops,
-+#endif
- };
- 
- const struct inode_operations nfs4_dir_inode_operations = {
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 4e78f93..d35582c 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -269,7 +269,7 @@ static match_table_t nfs_local_lock_tokens = {
- 
- enum {
- 	Opt_vers_2, Opt_vers_3, Opt_vers_4, Opt_vers_4_0,
--	Opt_vers_4_1,
-+	Opt_vers_4_1, Opt_vers_4_2,
- 
- 	Opt_vers_err
- };
-@@ -280,6 +280,7 @@ static match_table_t nfs_vers_tokens = {
- 	{ Opt_vers_4, "4" },
- 	{ Opt_vers_4_0, "4.0" },
- 	{ Opt_vers_4_1, "4.1" },
-+	{ Opt_vers_4_2, "4.2" },
- 
- 	{ Opt_vers_err, NULL }
- };
-@@ -1143,6 +1144,10 @@ static int nfs_parse_version_string(char *string,
- 		mnt->version = 4;
- 		mnt->minorversion = 1;
- 		break;
-+	case Opt_vers_4_2:
-+		mnt->version = 4;
-+		mnt->minorversion = 2;
-+		break;
- 	default:
- 		return 0;
+diff --git a/fs/cifs/dir.c b/fs/cifs/dir.c
+index 6975072..139c8bc 100644
+--- a/fs/cifs/dir.c
++++ b/fs/cifs/dir.c
+@@ -217,6 +217,7 @@ cifs_do_create(struct inode *inode, struct dentry *direntry, unsigned int xid,
  	}
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index aab8bd8..e9c040a 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -394,11 +394,15 @@ enum lock_type4 {
- #define NFS4_VERSION 4
- #define NFS4_MINOR_VERSION 0
  
-+#if defined(CONFIG_NFS_V4_2)
-+#define NFS4_MAX_MINOR_VERSION 2
-+#else
- #if defined(CONFIG_NFS_V4_1)
- #define NFS4_MAX_MINOR_VERSION 1
- #else
- #define NFS4_MAX_MINOR_VERSION 0
- #endif /* CONFIG_NFS_V4_1 */
-+#endif /* CONFIG_NFS_V4_2 */
+ 	if (tcon->unix_ext && cap_unix(tcon->ses) && !tcon->broken_posix_open &&
++	    ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NOPOSIXBRL) == 0) &&
+ 	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
+ 			le64_to_cpu(tcon->fsUnixInfo.Capability))) {
+ 		rc = cifs_posix_open(full_path, &newinode, inode->i_sb, mode,
+diff --git a/fs/cifs/file.c b/fs/cifs/file.c
+index 3ad484c..05191da 100644
+--- a/fs/cifs/file.c
++++ b/fs/cifs/file.c
+@@ -454,8 +454,9 @@ int cifs_open(struct inode *inode, struct file *file)
+ 	else
+ 		oplock = 0;
  
- #define NFS4_DEBUG 1
+-	if (!tcon->broken_posix_open && tcon->unix_ext &&
+-	    cap_unix(tcon->ses) && (CIFS_UNIX_POSIX_PATH_OPS_CAP &
++	if (!tcon->broken_posix_open && tcon->unix_ext && cap_unix(tcon->ses)
++	    && ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NOPOSIXBRL) == 0) &&
++	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
+ 				le64_to_cpu(tcon->fsUnixInfo.Capability))) {
+ 		/* can not refresh inode info since size could be stale */
+ 		rc = cifs_posix_open(full_path, &inode, inode->i_sb,
+@@ -623,6 +624,7 @@ cifs_reopen_file(struct cifsFileInfo *cfile, bool can_flush)
+ 		oplock = 0;
  
+ 	if (tcon->unix_ext && cap_unix(tcon->ses) &&
++	    ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NOPOSIXBRL) == 0) &&
+ 	    (CIFS_UNIX_POSIX_PATH_OPS_CAP &
+ 				le64_to_cpu(tcon->fsUnixInfo.Capability))) {
+ 		/*
 -- 
 1.8.1.2
 
