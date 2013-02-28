@@ -1,56 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37594 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750755Ab3BOTWe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Feb 2013 14:22:34 -0500
-Date: Fri, 15 Feb 2013 14:22:29 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mark Lord <kernel@start.ca>
-Cc: Mark Lord <kernel@teksavvy.com>,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        linux-nfs@vger.kernel.org, Linux Kernel <linux-kernel@vger.kernel.org>,
-        =?utf-8?B?UGF3ZcWC?= Sikora <pawel.sikora@agmk.net>,
-        Tom Horsley <horsley1953@gmail.com>,
-        Jason Tibbitts <tibbs@math.uh.edu>
-Subject: Re: BUG at net/sunrpc/svc_xprt.c:921 (another one)
-Message-ID: <20130215192229.GC19923@fieldses.org>
-References: <50F63882.8000607@parallels.com>
- <50F72F03.5070806@teksavvy.com>
- <50F786AF.4070107@parallels.com>
- <20130117130335.GD6598@fieldses.org>
- <50F7FB7E.2020503@parallels.com>
- <50F88C14.7030903@teksavvy.com>
- <50F8DF7E.8080107@parallels.com>
- <50FC74E0.20305@teksavvy.com>
- <20130212205216.GE10267@fieldses.org>
- <511BAAAA.9040804@start.ca>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <511BAAAA.9040804@start.ca>
+Received: from mail-da0-f48.google.com ([209.85.210.48]:57201 "EHLO
+	mail-da0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751887Ab3B1IXx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Feb 2013 03:23:53 -0500
+Received: by mail-da0-f48.google.com with SMTP id w4so746378dam.35
+        for <linux-nfs@vger.kernel.org>; Thu, 28 Feb 2013 00:23:53 -0800 (PST)
+Date: Thu, 28 Feb 2013 16:23:49 +0800
+From: majianpeng <majianpeng@gmail.com>
+To: bfields <bfields@redhat.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Reply-To: majianpeng <majianpeng@gmail.com>
+Subject: BUG: rpc.nfsd/5066 still has locks held!
+Mime-Version: 1.0
+Message-ID: <201302281623470389097@gmail.com>
+Content-Type: text/plain;
+	charset="gb2312"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 13, 2013 at 10:00:58AM -0500, Mark Lord wrote:
-> On 13-02-12 03:52 PM, J. Bruce Fields wrote:
-> > On Sun, Jan 20, 2013 at 05:51:12PM -0500, Mark Lord wrote:
-> >> Got it again, this time on a different system
-> >> running mostly the same software.
-> > 
-> > Mark, Paweł, Tom, could any of you confirm whether this helps?
-> ..
-> 
-> No, I cannot confirm one way or the other,
-> because I haven't noticed it again since the most recent
-> couple of occurrences I posted earlier here.
+QWZ0ZXIgIGkgdXBkYXRlZCB0aGUgbGFzdGVzdCBjb2RlLCB0aG9zZSBtZXNzYWdlcyBvY2N1cmVk
+LiBFdmVyeSByZWJvb3QsIGl0IGNhbiBvY2N1ciBhdCBsZWFzdCAxMCB0aW1lcy4NCg0KWyAgIDE3
+Ljc2MzkzOV0gPT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PQ0KWyAgIDE3Ljc2
+Mzk0Ml0gWyBCVUc6IHJwYy5uZnNkLzUwNjYgc3RpbGwgaGFzIGxvY2tzIGhlbGQhIF0NClsgICAx
+Ny43NjM5NDRdIDMuOC4wKyAjMTMxIE5vdCB0YWludGVkDQpbICAgMTcuNzYzOTQ1XSAtLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpbICAgMTcuNzYzOTQ3XSAyIGxvY2tzIGhl
+bGQgYnkgcnBjLm5mc2QvNTA2NjoNClsgICAxNy43NjM5NDhdICAjMDogIChuZnNkX211dGV4KXsu
+Li4uLi59LCBhdDogWzxmZmZmZmZmZmEwMTJiNDVmPl0gd3JpdGVfcG9ydHMrMHgyZi8weDNmMCBb
+bmZzZF0NClsgICAxNy43NjM5NjNdICAjMTogIChycGNiX2NyZWF0ZV9sb2NhbF9tdXRleCl7Li4u
+Li4ufSwgYXQ6IFs8ZmZmZmZmZmZhMDA4MjRmZT5dIHJwY2JfY3JlYXRlX2xvY2FsKzB4M2UvMHg5
+MCBbc3VucnBjXQ0KWyAgIDE3Ljc2Mzk4Nl0gDQpbICAgMTcuNzYzOTg2XSBzdGFjayBiYWNrdHJh
+Y2U6DQpbICAgMTcuNzYzOTg5XSBQaWQ6IDUwNjYsIGNvbW06IHJwYy5uZnNkIE5vdCB0YWludGVk
+IDMuOC4wKyAjMTMxDQpbICAgMTcuNzYzOTkwXSBDYWxsIFRyYWNlOg0KWyAgIDE3Ljc2Mzk5Nl0g
+IFs8ZmZmZmZmZmY4MTA5MTdlYT5dIGRlYnVnX2NoZWNrX25vX2xvY2tzX2hlbGQrMHg5YS8weGEw
+DQpbICAgMTcuNzY0MDAzXSAgWzxmZmZmZmZmZmEwMDc2YTM1Pl0gcnBjX3dhaXRfYml0X2tpbGxh
+YmxlKzB4NzUvMHhhMCBbc3VucnBjXQ0KWyAgIDE3Ljc2NDAyMl0gIFs8ZmZmZmZmZmY4MTZmMmRk
+Nz5dIF9fd2FpdF9vbl9iaXQrMHg1Ny8weDgwDQpbICAgMTcuNzY0MDMxXSAgWzxmZmZmZmZmZmEw
+MDc2OWMwPl0gPyBycGNfcXVldWVfZW1wdHkrMHg0MC8weDQwIFtzdW5ycGNdDQpbICAgMTcuNzY0
+MDM4XSAgWzxmZmZmZmZmZmEwMDZjZTEwPl0gPyBjYWxsX2JpbmRfc3RhdHVzKzB4MmYwLzB4MmYw
+IFtzdW5ycGNdDQpbICAgMTcuNzY0MDY0XSAgWzxmZmZmZmZmZjgxNmYyZTc3Pl0gb3V0X29mX2xp
+bmVfd2FpdF9vbl9iaXQrMHg3Ny8weDkwDQpbICAgMTcuNzY0MDY4XSAgWzxmZmZmZmZmZjgxMDYw
+ZDgwPl0gPyBhdXRvcmVtb3ZlX3dha2VfZnVuY3Rpb24rMHg0MC8weDQwDQpbICAgMTcuNzY0MDc1
+XSAgWzxmZmZmZmZmZmEwMDZjZTEwPl0gPyBjYWxsX2JpbmRfc3RhdHVzKzB4MmYwLzB4MmYwIFtz
+dW5ycGNdDQpbICAgMTcuNzY0MDg0XSAgWzxmZmZmZmZmZmEwMDc3ZjZjPl0gX19ycGNfZXhlY3V0
+ZSsweDExYy8weDQwMCBbc3VucnBjXQ0KWyAgIDE3Ljc2NDA4N10gIFs8ZmZmZmZmZmY4MTA2MDlk
+OT5dID8gd2FrZV91cF9iaXQrMHgyOS8weDQwDQpbICAgMTcuNzY0MDk2XSAgWzxmZmZmZmZmZmEw
+MDc4OTE4Pl0gcnBjX2V4ZWN1dGUrMHg2OC8weGMwIFtzdW5ycGNdDQpbICAgMTcuNzY0MTA0XSAg
+WzxmZmZmZmZmZmEwMDZmNGYwPl0gcnBjX3J1bl90YXNrKzB4NzAvMHg5MCBbc3VucnBjXQ0KWyAg
+IDE3Ljc2NDExMl0gIFs8ZmZmZmZmZmZhMDA2ZjVmZT5dIHJwY19jYWxsX3N5bmMrMHgzZS8weGEw
+IFtzdW5ycGNdDQpbICAgMTcuNzY0MTIwXSAgWzxmZmZmZmZmZmEwMDZmNmFkPl0gcnBjX3Bpbmcr
+MHg0ZC8weDcwIFtzdW5ycGNdDQpbICAgMTcuNzY0MTI3XSAgWzxmZmZmZmZmZmEwMDZmOGE4Pl0g
+cnBjX2NyZWF0ZSsweDE1OC8weDFmMCBbc3VucnBjXQ0KWyAgIDE3Ljc2NDEzN10gIFs8ZmZmZmZm
+ZmZhMDA4MjM2YT5dID8gcnBjYl9nZXRfbG9jYWwrMHhhYS8weGQwIFtzdW5ycGNdDQpbICAgMTcu
+NzY0MTQ3XSAgWzxmZmZmZmZmZmEwMDgyMTQ3Pl0gcnBjYl9jcmVhdGVfbG9jYWxfdW5peCsweDU3
+LzB4ZTAgW3N1bnJwY10NClsgICAxNy43NjQxNzNdICBbPGZmZmZmZmZmYTAwODI1MzA+XSBycGNi
+X2NyZWF0ZV9sb2NhbCsweDcwLzB4OTAgW3N1bnJwY10NClsgICAxNy43NjQxODJdICBbPGZmZmZm
+ZmZmYTAwN2I0OWU+XSBzdmNfcnBjYl9zZXR1cCsweDFlLzB4NDAgW3N1bnJwY10NClsgICAxNy43
+NjQxOTFdICBbPGZmZmZmZmZmYTAwN2I0ZWY+XSBzdmNfYmluZCsweDJmLzB4NDAgW3N1bnJwY10N
+ClsgICAxNy43NjQxOThdICBbPGZmZmZmZmZmYTAxMjk1NDY+XSBuZnNkX2NyZWF0ZV9zZXJ2KzB4
+MTA2LzB4MWUwIFtuZnNkXQ0KWyAgIDE3Ljc2NDIxMF0gIFs8ZmZmZmZmZmZhMDEyOTQ0MD5dID8g
+bmZzZF9yZXNldF92ZXJzaW9ucysweDgwLzB4ODAgW25mc2RdDQpbICAgMTcuNzY0MjE2XSAgWzxm
+ZmZmZmZmZmEwMTJiNzRjPl0gd3JpdGVfcG9ydHMrMHgzMWMvMHgzZjAgW25mc2RdDQpbICAgMTcu
+NzY0MjIyXSAgWzxmZmZmZmZmZmEwMTJiNjgwPl0gPyB3cml0ZV9wb3J0cysweDI1MC8weDNmMCBb
+bmZzZF0NClsgICAxNy43NjQyMzBdICBbPGZmZmZmZmZmODE2ZjY0MTY+XSA/IF9yYXdfc3Bpbl91
+bmxvY2srMHgyNi8weDMwDQpbICAgMTcuNzY0MjM0XSAgWzxmZmZmZmZmZjgxMTY2MGIzPl0gPyBz
+aW1wbGVfdHJhbnNhY3Rpb25fZ2V0KzB4YzMvMHhlMA0KWyAgIDE3Ljc2NDI0MF0gIFs8ZmZmZmZm
+ZmZhMDEyYjQzMD5dID8gZXhwb3J0c19vcGVuKzB4YjAvMHhiMCBbbmZzZF0NClsgICAxNy43NjQy
+NTBdICBbPGZmZmZmZmZmYTAxMmEzZmM+XSBuZnNjdGxfdHJhbnNhY3Rpb25fd3JpdGUrMHg1Yy8w
+eDgwIFtuZnNkXQ0KWyAgIDE3Ljc2NDI1NF0gIFs8ZmZmZmZmZmY4MTE0MDY0MT5dIHZmc193cml0
+ZSsweGIxLzB4MTgwDQpbICAgMTcuNzY0MjU3XSAgWzxmZmZmZmZmZjgxMTQwOTgwPl0gc3lzX3dy
+aXRlKzB4NTAvMHhhMA0KWyAgIDE3Ljc2NDI2NV0gIFs8ZmZmZmZmZmY4MTZmZTI1Mj5dIHN5c3Rl
+bV9jYWxsX2Zhc3RwYXRoKzB4MTYvMHgxYg==
 
-OK, I do have at least one report of someone who saw the bug before
-running for a day without seeing it:
-
-	https://bugzilla.redhat.com/show_bug.cgi?id=910457
-
-Any more reports positive or negative welcome.
-
-This looks like it should solve the problem, so for now I intend to
-commit the following.
-
---b.
