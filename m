@@ -1,193 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:3206 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:51358 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754669Ab3BRSsO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Feb 2013 13:48:14 -0500
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 07/14] NFSv4: Extend fattr bitmaps to support all 3 words
-Date: Mon, 18 Feb 2013 13:47:49 -0500
-Message-Id: <1361213276-17962-8-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1361213276-17962-1-git-send-email-SteveD@redhat.com>
-References: <1361213276-17962-1-git-send-email-SteveD@redhat.com>
+	id S1759595Ab3B1R3R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Feb 2013 12:29:17 -0500
+Date: Thu, 28 Feb 2013 12:29:16 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Iordan Iordanov <iordan@cdf.toronto.edu>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFS v3 hangs with kernel version v3.2.0, 32-bit
+Message-ID: <20130228172916.GA29852@fieldses.org>
+References: <511BFB74.3060803@cdf.toronto.edu>
+ <51253F36.40501@cdf.toronto.edu>
+ <20130222150158.GB20588@fieldses.org>
+ <512F84AC.1020705@cdf.toronto.edu>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <512F84AC.1020705@cdf.toronto.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+On Thu, Feb 28, 2013 at 11:24:12AM -0500, Iordan Iordanov wrote:
+> Hi Bruce,
+> 
+> On 02/22/13 10:01, J. Bruce Fields wrote:
+> >Some of that debugging is extremely verbose, yes.
+> >
+> >Since this list is for upstream (not ubuntu) development, most useful
+> >would probably be if you could work out whether the problem is
+> >reproduceable on the latest upstream kernel.
+> 
+> Understandable.
+> 
+> We've been unable to pin down what triggers this bug, so we are
+> unable to reproduce it synthetically. It only appears to happen on
+> shared servers with lots of NFS traffic, and in all cases it
+> happened with more than a month of uptime. Also, we are unable to
+> put an upstream kernel on a production machine.
+> 
+> These two conditions will make it exceedingly unlikely that we would
+> be able to work this out with an upstream kernel.
+> 
+> Even if we were able to reproduce this with an upstream kernel, if
+> it takes such a long time to reproduce could that have aged the
+> kernel we're testing enough to invalidate our testing results?
 
-The fattr handling bitmap code only uses the first two fattr words sofar. This
-patch adds the 3rd word to being sent but doesn't populate it yet.
+Yes, it's certainly harder to know what to do with a fix that can't be
+confirmed for months.
 
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- fs/nfs/nfs4_fs.h          |  6 +++---
- fs/nfs/nfs4proc.c         | 10 +++++-----
- fs/nfs/nfs4xdr.c          | 20 ++++++++++++--------
- fs/nfs/super.c            |  1 +
- include/linux/nfs_fs_sb.h |  2 +-
- 5 files changed, 22 insertions(+), 17 deletions(-)
+But there's certainly no harm in continuing to report any further
+symptoms; eventually somebody may recognize the problem.
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index a3f488b..dfaee53 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -291,10 +291,10 @@ is_ds_client(struct nfs_client *clp)
- extern const struct nfs4_minor_version_ops *nfs_v4_minor_ops[];
- 
- extern const u32 nfs4_fattr_bitmap[3];
--extern const u32 nfs4_statfs_bitmap[2];
--extern const u32 nfs4_pathconf_bitmap[2];
-+extern const u32 nfs4_statfs_bitmap[3];
-+extern const u32 nfs4_pathconf_bitmap[3];
- extern const u32 nfs4_fsinfo_bitmap[3];
--extern const u32 nfs4_fs_locations_bitmap[2];
-+extern const u32 nfs4_fs_locations_bitmap[3];
- 
- void nfs4_free_client(struct nfs_client *);
- 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index cf747ef..7723f8c 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -157,7 +157,7 @@ static const u32 nfs4_open_noattr_bitmap[3] = {
- 	| FATTR4_WORD0_FILEID,
- };
- 
--const u32 nfs4_statfs_bitmap[2] = {
-+const u32 nfs4_statfs_bitmap[3] = {
- 	FATTR4_WORD0_FILES_AVAIL
- 	| FATTR4_WORD0_FILES_FREE
- 	| FATTR4_WORD0_FILES_TOTAL,
-@@ -166,7 +166,7 @@ const u32 nfs4_statfs_bitmap[2] = {
- 	| FATTR4_WORD1_SPACE_TOTAL
- };
- 
--const u32 nfs4_pathconf_bitmap[2] = {
-+const u32 nfs4_pathconf_bitmap[3] = {
- 	FATTR4_WORD0_MAXLINK
- 	| FATTR4_WORD0_MAXNAME,
- 	0
-@@ -181,7 +181,7 @@ const u32 nfs4_fsinfo_bitmap[3] = { FATTR4_WORD0_MAXFILESIZE
- 			FATTR4_WORD2_LAYOUT_BLKSIZE
- };
- 
--const u32 nfs4_fs_locations_bitmap[2] = {
-+const u32 nfs4_fs_locations_bitmap[3] = {
- 	FATTR4_WORD0_TYPE
- 	| FATTR4_WORD0_CHANGE
- 	| FATTR4_WORD0_SIZE
-@@ -197,7 +197,7 @@ const u32 nfs4_fs_locations_bitmap[2] = {
- 	| FATTR4_WORD1_TIME_ACCESS
- 	| FATTR4_WORD1_TIME_METADATA
- 	| FATTR4_WORD1_TIME_MODIFY
--	| FATTR4_WORD1_MOUNTED_ON_FILEID
-+	| FATTR4_WORD1_MOUNTED_ON_FILEID,
- };
- 
- static void nfs4_setup_readdir(u64 cookie, __be32 *verifier, struct dentry *dentry,
-@@ -5082,7 +5082,7 @@ static int _nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
- 				   struct page *page)
- {
- 	struct nfs_server *server = NFS_SERVER(dir);
--	u32 bitmask[2] = {
-+	u32 bitmask[3] = {
- 		[0] = FATTR4_WORD0_FSID | FATTR4_WORD0_FS_LOCATIONS,
- 	};
- 	struct nfs4_fs_locations_arg args = {
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 26b1439..a9353d1 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -983,15 +983,16 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
- 	int len;
- 	uint32_t bmval0 = 0;
- 	uint32_t bmval1 = 0;
-+	uint32_t bmval2 = 0;
- 
- 	/*
- 	 * We reserve enough space to write the entire attribute buffer at once.
- 	 * In the worst-case, this would be
--	 *   12(bitmap) + 4(attrlen) + 8(size) + 4(mode) + 4(atime) + 4(mtime)
--	 *          = 36 bytes, plus any contribution from variable-length fields
-+	 * 16(bitmap) + 4(attrlen) + 8(size) + 4(mode) + 4(atime) + 4(mtime)
-+	 * = 40 bytes, plus any contribution from variable-length fields
- 	 *            such as owner/group.
- 	 */
--	len = 16;
-+	len = 20;
- 
- 	/* Sigh */
- 	if (iap->ia_valid & ATTR_SIZE)
-@@ -1035,9 +1036,9 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
- 	 * We write the bitmap length now, but leave the bitmap and the attribute
- 	 * buffer length to be backfilled at the end of this routine.
- 	 */
--	*p++ = cpu_to_be32(2);
-+	*p++ = cpu_to_be32(3);
- 	q = p;
--	p += 3;
-+	p += 4;
- 
- 	if (iap->ia_valid & ATTR_SIZE) {
- 		bmval0 |= FATTR4_WORD0_SIZE;
-@@ -1086,9 +1087,10 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap, const
- 				len, ((char *)p - (char *)q) + 4);
- 		BUG();
- 	}
--	len = (char *)p - (char *)q - 12;
-+	len = (char *)p - (char *)q - 16;
- 	*q++ = htonl(bmval0);
- 	*q++ = htonl(bmval1);
-+	*q++ = htonl(bmval2);
- 	*q = htonl(len);
- 
- /* out: */
-@@ -1194,8 +1196,10 @@ encode_getattr_three(struct xdr_stream *xdr,
- 
- static void encode_getfattr(struct xdr_stream *xdr, const u32* bitmask, struct compound_hdr *hdr)
- {
--	encode_getattr_two(xdr, bitmask[0] & nfs4_fattr_bitmap[0],
--			   bitmask[1] & nfs4_fattr_bitmap[1], hdr);
-+	encode_getattr_three(xdr, bitmask[0] & nfs4_fattr_bitmap[0],
-+			   bitmask[1] & nfs4_fattr_bitmap[1],
-+			   bitmask[2] & nfs4_fattr_bitmap[2],
-+			   hdr);
- }
- 
- static void encode_getfattr_open(struct xdr_stream *xdr, const u32 *bitmask,
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 623c216..c98b434 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -877,6 +877,7 @@ int nfs_show_stats(struct seq_file *m, struct dentry *root)
- 		seq_printf(m, "\n\tnfsv4:\t");
- 		seq_printf(m, "bm0=0x%x", nfss->attr_bitmask[0]);
- 		seq_printf(m, ",bm1=0x%x", nfss->attr_bitmask[1]);
-+		seq_printf(m, ",bm2=0x%x", nfss->attr_bitmask[2]);
- 		seq_printf(m, ",acl=0x%x", nfss->acl_bitmask);
- 		show_sessions(m, nfss);
- 		show_pnfs(m, nfss);
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index d507357..e6ed3c2 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -145,7 +145,7 @@ struct nfs_server {
- 	u32			attr_bitmask[3];/* V4 bitmask representing the set
- 						   of attributes supported on this
- 						   filesystem */
--	u32			cache_consistency_bitmask[2];
-+	u32			cache_consistency_bitmask[3];
- 						/* V4 bitmask representing the subset
- 						   of change attribute, size, ctime
- 						   and mtime attributes supported by
--- 
-1.8.1.2
-
+--b.
