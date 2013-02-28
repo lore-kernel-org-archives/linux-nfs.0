@@ -1,59 +1,319 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:43805 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752040Ab3B1MJH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Feb 2013 07:09:07 -0500
-Subject: [PATCH] nfsd: check client tracker initialization result
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Thu, 28 Feb 2013 15:09:59 +0300
-Message-ID: <20130228120959.6764.17787.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-la0-f50.google.com ([209.85.215.50]:34887 "EHLO
+	mail-la0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760676Ab3B1PWu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Feb 2013 10:22:50 -0500
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: linux-kernel@vger.kernel.org
+Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wine-devel@winehq.org
+Subject: [PATCH v3 2/7] vfs: Add O_DENYREAD/WRITE flags support for open syscall
+Date: Thu, 28 Feb 2013 19:25:28 +0400
+Message-Id: <1362065133-9490-3-git-send-email-piastry@etersoft.ru>
+In-Reply-To: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
+References: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Function nfsd4_client_tracking_init() can return error.
+If O_DENYMAND flag is specified, O_DENYREAD/WRITE/MAND flags are
+translated to flock's flags:
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+!O_DENYREAD  -> LOCK_READ
+!O_DENYWRITE -> LOCK_WRITE
+O_DENYMAND   -> LOCK_MAND
+
+and set through flock_lock_file on a file.
+
+This change affects opens that use O_DENYMAND flag - all other
+native Linux opens don't care about these flags. It allow us to
+enable this feature for applications that need it (e.g. NFS and
+Samba servers that export the same directory for Windows clients,
+or Wine applications that access the same files simultaneously).
+
+Create codepath is slightly changed to prevent data races on
+newely created files: when open with O_CREAT can return with -ETXTBSY
+error for successfully created files due to a deny lock set by
+another task.
+
+Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
 ---
- fs/nfsd/nfs4state.c |    9 ++++++++-
- 1 files changed, 8 insertions(+), 1 deletions(-)
+ fs/locks.c         | 116 +++++++++++++++++++++++++++++++++++++++++++++++------
+ fs/namei.c         |  44 ++++++++++++++++++--
+ include/linux/fs.h |   6 +++
+ 3 files changed, 151 insertions(+), 15 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index f194f86..fc4b81b 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -69,6 +69,7 @@ static u64 current_sessionid = 1;
- 
- /* forward declarations */
- static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
-+void nfs4_state_shutdown_net(struct net *net);
- 
- /* Locking: */
- 
-@@ -4942,7 +4943,9 @@ nfs4_state_start_net(struct net *net)
- 	ret = nfs4_state_create_net(net);
- 	if (ret)
- 		return ret;
--	nfsd4_client_tracking_init(net);
-+	ret = nfsd4_client_tracking_init(net);
-+	if (ret)
-+		goto out_tracking;
- 	nn->boot_time = get_seconds();
- 	locks_start_grace(net, &nn->nfsd4_manager);
- 	nn->grace_ended = false;
-@@ -4950,6 +4953,10 @@ nfs4_state_start_net(struct net *net)
- 	       nn->nfsd4_grace, net);
- 	queue_delayed_work(laundry_wq, &nn->laundromat_work, nn->nfsd4_grace * HZ);
- 	return 0;
-+
-+out_tracking:
-+	nfs4_state_destroy_net(net);
-+	return ret;
+diff --git a/fs/locks.c b/fs/locks.c
+index a94e331..0cc7d1b 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -605,20 +605,81 @@ static int posix_locks_conflict(struct file_lock *caller_fl, struct file_lock *s
+ 	return (locks_conflict(caller_fl, sys_fl));
  }
  
- /* initialization to perform when the nfsd service is started: */
+-/* Determine if lock sys_fl blocks lock caller_fl. FLOCK specific
+- * checking before calling the locks_conflict().
++static unsigned int
++deny_flags_to_cmd(unsigned int flags)
++{
++	unsigned int cmd = LOCK_MAND;
++
++	if (!(flags & O_DENYREAD))
++		cmd |= LOCK_READ;
++	if (!(flags & O_DENYWRITE))
++		cmd |= LOCK_WRITE;
++
++	return cmd;
++}
++
++/*
++ * locks_mand_conflict - Determine if there's a share reservation conflict
++ * @caller_fl: lock we're attempting to acquire
++ * @sys_fl: lock already present on system that we're checking against
++ *
++ * Check to see if there's a share_reservation conflict. LOCK_READ/LOCK_WRITE
++ * tell us whether the reservation allows other readers and writers.
++ *
++ * We only check against other LOCK_MAND locks, so applications that want to
++ * use share mode locking will only conflict against one another. "normal"
++ * applications that open files won't be affected by and won't themselves
++ * affect the share reservations.
+  */
+-static int flock_locks_conflict(struct file_lock *caller_fl, struct file_lock *sys_fl)
++static int
++locks_mand_conflict(struct file_lock *caller_fl, struct file_lock *sys_fl)
+ {
+-	/* FLOCK locks referring to the same filp do not conflict with
++	unsigned char caller_type = caller_fl->fl_type;
++	unsigned char sys_type = sys_fl->fl_type;
++	fmode_t caller_fmode = caller_fl->fl_file->f_mode;
++	fmode_t sys_fmode = sys_fl->fl_file->f_mode;
++
++	/* they can only conflict if they're both LOCK_MAND */
++	if (!(caller_type & LOCK_MAND) || !(sys_type & LOCK_MAND))
++		return 0;
++
++	if (!(caller_type & LOCK_READ) && (sys_fmode & FMODE_READ))
++		return 1;
++	if (!(caller_type & LOCK_WRITE) && (sys_fmode & FMODE_WRITE))
++		return 1;
++	if (!(sys_type & LOCK_READ) && (caller_fmode & FMODE_READ))
++		return 1;
++	if (!(sys_type & LOCK_WRITE) && (caller_fmode & FMODE_WRITE))
++		return 1;
++
++	return 0;
++}
++
++/*
++ * Determine if lock sys_fl blocks lock caller_fl. FLOCK specific checking
++ * before calling the locks_conflict(). Boolean is_mand indicates whether
++ * we should use a share reservation scheme or not.
++ */
++static int
++flock_locks_conflict(struct file_lock *caller_fl, struct file_lock *sys_fl,
++		     bool is_mand)
++{
++	/*
++	 * FLOCK locks referring to the same filp do not conflict with
+ 	 * each other.
+ 	 */
+-	if (!IS_FLOCK(sys_fl) || (caller_fl->fl_file == sys_fl->fl_file))
+-		return (0);
+-	if ((caller_fl->fl_type & LOCK_MAND) || (sys_fl->fl_type & LOCK_MAND))
++	if (!IS_FLOCK(sys_fl))
++		return 0;
++	if ((caller_fl->fl_type & LOCK_MAND) || (sys_fl->fl_type & LOCK_MAND)) {
++		if (is_mand)
++			return locks_mand_conflict(caller_fl, sys_fl);
++		else
++			return 0;
++	}
++	if (caller_fl->fl_file == sys_fl->fl_file)
+ 		return 0;
+ 
+-	return (locks_conflict(caller_fl, sys_fl));
++	return locks_conflict(caller_fl, sys_fl);
+ }
+ 
+ void
+@@ -697,14 +758,19 @@ static int posix_locks_deadlock(struct file_lock *caller_fl,
+ 	return 0;
+ }
+ 
+-/* Try to create a FLOCK lock on filp. We always insert new FLOCK locks
++/*
++ * Try to create a FLOCK lock on filp. We always insert new FLOCK locks
+  * after any leases, but before any posix locks.
+  *
+  * Note that if called with an FL_EXISTS argument, the caller may determine
+  * whether or not a lock was successfully freed by testing the return
+  * value for -ENOENT.
++ *
++ * Take @is_conflict callback that determines how to check if locks have
++ * conflicts or not.
+  */
+-static int flock_lock_file(struct file *filp, struct file_lock *request)
++static int
++flock_lock_file(struct file *filp, struct file_lock *request, bool is_mand)
+ {
+ 	struct file_lock *new_fl = NULL;
+ 	struct file_lock **before;
+@@ -760,7 +826,7 @@ find_conflict:
+ 			break;
+ 		if (IS_LEASE(fl))
+ 			continue;
+-		if (!flock_locks_conflict(request, fl))
++		if (!flock_locks_conflict(request, fl, is_mand))
+ 			continue;
+ 		error = -EAGAIN;
+ 		if (!(request->fl_flags & FL_SLEEP))
+@@ -783,6 +849,32 @@ out:
+ 	return error;
+ }
+ 
++/*
++ * Determine if a file is allowed to be opened with specified access and deny
++ * modes. Lock the file and return 0 if checks passed, otherwise return a error
++ * code.
++ */
++int
++deny_lock_file(struct file *filp)
++{
++	struct file_lock *lock;
++	int error = 0;
++
++	if (!(filp->f_flags & O_DENYMAND))
++		return error;
++
++	error = flock_make_lock(filp, &lock, deny_flags_to_cmd(filp->f_flags));
++	if (error)
++		return error;
++
++	error = flock_lock_file(filp, lock, true);
++	if (error == -EAGAIN)
++		error = -ETXTBSY;
++
++	locks_free_lock(lock);
++	return error;
++}
++
+ static int __posix_lock_file(struct inode *inode, struct file_lock *request, struct file_lock *conflock)
+ {
+ 	struct file_lock *fl;
+@@ -1589,7 +1681,7 @@ int flock_lock_file_wait(struct file *filp, struct file_lock *fl)
+ 	int error;
+ 	might_sleep();
+ 	for (;;) {
+-		error = flock_lock_file(filp, fl);
++		error = flock_lock_file(filp, fl, false);
+ 		if (error != FILE_LOCK_DEFERRED)
+ 			break;
+ 		error = wait_event_interruptible(fl->fl_wait, !fl->fl_next);
+diff --git a/fs/namei.c b/fs/namei.c
+index 43a97ee..c1f7e08 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2559,9 +2559,14 @@ static int atomic_open(struct nameidata *nd, struct dentry *dentry,
+ 	 * here.
+ 	 */
+ 	error = may_open(&file->f_path, acc_mode, open_flag);
+-	if (error)
++	if (error) {
+ 		fput(file);
++		goto out;
++	}
+ 
++	error = deny_lock_file(file);
++	if (error)
++		fput(file);
+ out:
+ 	dput(dentry);
+ 	return error;
+@@ -2771,9 +2776,9 @@ retry_lookup:
+ 	}
+ 	mutex_lock(&dir->d_inode->i_mutex);
+ 	error = lookup_open(nd, path, file, op, got_write, opened);
+-	mutex_unlock(&dir->d_inode->i_mutex);
+ 
+ 	if (error <= 0) {
++		mutex_unlock(&dir->d_inode->i_mutex);
+ 		if (error)
+ 			goto out;
+ 
+@@ -2791,8 +2796,32 @@ retry_lookup:
+ 		will_truncate = false;
+ 		acc_mode = MAY_OPEN;
+ 		path_to_nameidata(path, nd);
+-		goto finish_open_created;
++
++		/*
++		 * Unlock parent i_mutex later when the open finishes - prevent
++		 * races when a file can be locked with a deny lock by another
++		 * task that opens the file.
++		 */
++		error = may_open(&nd->path, acc_mode, open_flag);
++		if (error) {
++			mutex_unlock(&dir->d_inode->i_mutex);
++			goto out;
++		}
++		file->f_path.mnt = nd->path.mnt;
++		error = finish_open(file, nd->path.dentry, NULL, opened);
++		if (error) {
++			mutex_unlock(&dir->d_inode->i_mutex);
++			if (error == -EOPENSTALE)
++				goto stale_open;
++			goto out;
++		}
++		error = deny_lock_file(file);
++		mutex_unlock(&dir->d_inode->i_mutex);
++		if (error)
++			goto exit_fput;
++		goto opened;
+ 	}
++	mutex_unlock(&dir->d_inode->i_mutex);
+ 
+ 	/*
+ 	 * create/update audit record if it already exists.
+@@ -2885,6 +2914,15 @@ finish_open_created:
+ 			goto stale_open;
+ 		goto out;
+ 	}
++	/*
++	 * Lock parent i_mutex to prevent races with deny locks on newely
++	 * created files.
++	 */
++	mutex_lock(&dir->d_inode->i_mutex);
++	error = deny_lock_file(file);
++	mutex_unlock(&dir->d_inode->i_mutex);
++	if (error)
++		goto exit_fput;
+ opened:
+ 	error = open_check_o_direct(file);
+ 	if (error)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 7617ee0..347e1de 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1005,6 +1005,7 @@ extern int lease_modify(struct file_lock **, int);
+ extern int lock_may_read(struct inode *, loff_t start, unsigned long count);
+ extern int lock_may_write(struct inode *, loff_t start, unsigned long count);
+ extern void locks_delete_block(struct file_lock *waiter);
++extern int deny_lock_file(struct file *);
+ extern void lock_flocks(void);
+ extern void unlock_flocks(void);
+ #else /* !CONFIG_FILE_LOCKING */
+@@ -1153,6 +1154,11 @@ static inline void locks_delete_block(struct file_lock *waiter)
+ {
+ }
+ 
++static inline int deny_lock_file(struct file *filp)
++{
++	return 0;
++}
++
+ static inline void lock_flocks(void)
+ {
+ }
+-- 
+1.8.1.2
 
