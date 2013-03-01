@@ -1,159 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:19500 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752030Ab3CTXxt convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Mar 2013 19:53:49 -0400
-From: "Haynes, Tom" <Tom.Haynes@netapp.com>
-To: Christopher T Vogan <cvogan@us.ibm.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        nfsv4 list <nfsv4@ietf.org>
-Subject: Re: What is NFSv4 READDIR doesn't return a filehandle....
-Date: Wed, 20 Mar 2013 23:53:47 +0000
-Message-ID: <39CEE4C6-A2A5-4D16-84BD-E1610FE67F36@netapp.com>
-References: <OF5A466E86.6A319FE3-ON87257B34.007C6188-86257B34.007C87C8@us.ibm.com>
-In-Reply-To: <OF5A466E86.6A319FE3-ON87257B34.007C6188-86257B34.007C87C8@us.ibm.com>
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+Received: from mail-pb0-f48.google.com ([209.85.160.48]:59358 "EHLO
+	mail-pb0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750758Ab3CAFU3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Mar 2013 00:20:29 -0500
+Received: by mail-pb0-f48.google.com with SMTP id wy12so1509588pbc.7
+        for <linux-nfs@vger.kernel.org>; Thu, 28 Feb 2013 21:20:29 -0800 (PST)
+Date: Fri, 1 Mar 2013 13:20:15 +0800
+From: majianpeng <majianpeng@gmail.com>
+To: bfields <bfields@redhat.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Reply-To: majianpeng <majianpeng@gmail.com>
+Subject: Re: Re: BUG: rpc.nfsd/5066 still has locks held!
+References: <201302281623470389097@gmail.com>,
+	<20130228165623.GA14856@pad.fieldses.org>
+Mime-Version: 1.0
+Message-ID: <201303011319565894011@gmail.com>
+Content-Type: text/plain;
+	charset="gb2312"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please note that I have cc'ed the NFSv4 list over at the IETF.
-
-On Mar 20, 2013, at 3:40 PM, Christopher T Vogan <cvogan@us.ibm.com> wrote:
-
-> All,
-> 
-> Sorry for this late posting, a coworker was made aware of this thread 
-> recently and
-> has these replies to make.  Our server implementation is the one being
-> complained about in this thread.
-> 
-> 
-> Quoted text is from various entries in this forum.
-> 
-> 
-> Neil Brown:
-> ===========
->> Just a thought: while coping with broken servers would not be a good 
-> path to
->> follow, detecting protocol violations and reporting an error might be...
->> should the NFS client treat a missing filehandle and a malformed reply?
-> 
-> The server is allowed to remove an attribute bit from an entry in the 
-> readdir
-> reply, this is not "broken" nor is the reply "malformed".  The lack of a 
-> filehandle in the reply is deterministic.
-> 
-> 
-> 
-> Trond Myklebust:
-> ================
->>> A customer has come across a server which does not return the 
-> filehandle
->>> information (is that allowed?).
->> 
->> The filehandle attribute is a mandatory attribute according to RFC3530, 
-> so I believe that the answer is "no".
-> 
-> Mandatory is described in RFS 3530 as that the server must return the 
-> attribute
-> on a GETATTR.  (Section 5, page 36).  There is nothing saying that it is
-> mandatory to return on a READDIR.  Our server will return the filehandle
-> on a LOOKUP/GETATTR every time.
-
-
-
-GETATTR and READDIR both return attributes. To be precise, they return
-a fattr4.
-
-Looking at Section 15.26.4 (roughly pages 277-279 of the most recent copy)
-of 3530bis (3530 is on the way to being replaced), READDIR states:
-
-   The READDIR operation retrieves a variable number of entries from a
-   filesystem directory and returns client requested attributes for each
-   entry along with information to allow the client to request
-   additional directory entries in a subsequent READDIR.
-...
-   On successful return, the server's response will provide a list of
-   directory entries.  Each of these entries contains the name of the
-   directory entry, a cookie value for that entry, and the associated
-   attributes as requested.  The "eof" flag has a value of TRUE if there
-   are no more entries in the directory.
-
-Any client implementation has no way to request that any server implementation
-return the filehandle because the filehandle is not an attribute which
-can be requested. I.e., it is mandatory.
-
-If the intent was to allow the server to not return a filehandle for READDIR but to
-allow it to return one for GETATTR, then it would have been made
-OPTIONAL.
-
-Whether or not the client used to work with such a server implementation
-or not is immaterial as far as standard compliance is concerned.
-
-If you like, we can clean up the corresponding language in 3530bis to
-explicitly state that REQUIRED attributes are indeed required whether
-in response to GETATTR or READDIR.
-
-
-
-
-
-
-> 
-> 
-> Trond Myklebust:
-> ================
->> My concern is that the client can't objectively judge what constitutes a
->> valid filehandle and what does not until it tries to use it in an RPC
->> call.
-> 
-> Sure it can.  In the context of this discussion, if the readdir entry
-> has the filehandle attribute bit off in the reply, there is no filehandle.
-> 
-> I would note in the scenario we sent a trace for, the Linux client had 
-> a filehandle for the node in question, and "misplaced" it after a 
-> readdir to the directory containing that node did not return the 
-> filehandle
-> for that entry.  So calling the server "broken" is objectively inaccurate.
-> 
-> I would also note that this problem occurred after we upgraded to RHEL 
-> 6.3;
-> the prior version did not have this issue, and our server did not change 
-> its
-> behavior.  My conclusion is that the means to obtain the filehandle was 
-> either broken by the client adding logic to assume a filehandle and 
-> obliterate 
-> the prior value after a readdir reply chose not to return it, or 
-> previously 
-> had a code path to lookup the node and obtain the filehandle, and removed 
-> that code path for some reason.  So again, pointing to server "breakage" 
-> is objectively inaccurate.
-> 
-> There are many references to "brokenness" or "server bugs" in this 
-> thread, and I take exception to it from a design and protocol conformance 
-> point of view.
-> 
-> This condition is easily recoverable, as ANY missing attribute on a 
-> readdir
-> is with a lookup/readdir.  Our decision to not return the FH on a readdir 
-> reply under certain narrow conditions is not one of convenience but of 
-> limitations of some underlying filesystem types, and if "convenience" is
-> to be used as an accusative, it can easily be returned to the client's 
-> refusal to deal with the legal withholding of an attribute on a readdir
-> reply.
-> 
-> 
-> Signed,
-> Steve Huntington
-> IBM z/OS NFS
-> 
-> 
-> Christopher Vogan
-> Dept. W98 NFS Development & Test
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Pk9uIFRodSwgRmViIDI4LCAyMDEzIGF0IDA0OjIzOjQ5UE0gKzA4MDAsIG1hamlhbnBlbmcgd3Jv
+dGU6DQo+PiBBZnRlciAgaSB1cGRhdGVkIHRoZSBsYXN0ZXN0IGNvZGUsDQo+DQo+U29ycnksIEkg
+ZG9uJ3Qga25vdyB3aGF0IHlvdSBtZWFuIGJ5ICJ1cGRhdGVkIHRoZSBsYXN0ZXN0IGNvZGUiLiAg
+V2hhdA0KPmtlcm5lbCB2ZXJzaW9uIHdlcmUgeW91IHJ1bm5pbmcgcHJldmlvdXNseSwgYW5kIHdo
+YXQgdmVyc2lvbiBhcmUgeW91DQo+cnVubmluZyBub3c/DQo+DQpTb3JyeSBteSBmdXp6eSBkZXNj
+cmlwdGlvbi4NCkkgdXNlZCBnaXQtYmlzZWN0IHRvIHRlc3QgYW5kIGZvdW5kIGNvbW1pdCA2YWE5
+NzA3MDk5YzRiMjU3MC4NClVzaW5nIHRoaXMgY29tbWl0LCB0aGUga2VybmVsIG11c3QgcHJpbnQg
+dGhlIG1lc3NhZ2UuDQpJIHRoaW5rIHRoZSBwcm9ibGVtIGlzbid0ICB0aGlzIG1lc3NhZ2UuSXQg
+YWxyZWFkeSBleGlzdGVkLkJlY2F1c2UgdGhlIGNvbW1pdCxpdCBjYW4gcHJpbnQuDQoNClRoYW5r
+cyENCj4tLWIuDQo+DQo+PiB0aG9zZSBtZXNzYWdlcyBvY2N1cmVkLiBFdmVyeSByZWJvb3QsIGl0
+IGNhbiBvY2N1ciBhdCBsZWFzdCAxMCB0aW1lcy4NCj4+IA0KPj4gWyAgIDE3Ljc2MzkzOV0gPT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PQ0KPj4gWyAgIDE3Ljc2Mzk0Ml0gWyBC
+VUc6IHJwYy5uZnNkLzUwNjYgc3RpbGwgaGFzIGxvY2tzIGhlbGQhIF0NCj4+IFsgICAxNy43NjM5
+NDRdIDMuOC4wKyAjMTMxIE5vdCB0YWludGVkDQo+PiBbICAgMTcuNzYzOTQ1XSAtLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+PiBbICAgMTcuNzYzOTQ3XSAyIGxvY2tzIGhl
+bGQgYnkgcnBjLm5mc2QvNTA2NjoNCj4+IFsgICAxNy43NjM5NDhdICAjMDogIChuZnNkX211dGV4
+KXsuLi4uLi59LCBhdDogWzxmZmZmZmZmZmEwMTJiNDVmPl0gd3JpdGVfcG9ydHMrMHgyZi8weDNm
+MCBbbmZzZF0NCj4+IFsgICAxNy43NjM5NjNdICAjMTogIChycGNiX2NyZWF0ZV9sb2NhbF9tdXRl
+eCl7Li4uLi4ufSwgYXQ6IFs8ZmZmZmZmZmZhMDA4MjRmZT5dIHJwY2JfY3JlYXRlX2xvY2FsKzB4
+M2UvMHg5MCBbc3VucnBjXQ0KPj4gWyAgIDE3Ljc2Mzk4Nl0gDQo+PiBbICAgMTcuNzYzOTg2XSBz
+dGFjayBiYWNrdHJhY2U6DQo+PiBbICAgMTcuNzYzOTg5XSBQaWQ6IDUwNjYsIGNvbW06IHJwYy5u
+ZnNkIE5vdCB0YWludGVkIDMuOC4wKyAjMTMxDQo+PiBbICAgMTcuNzYzOTkwXSBDYWxsIFRyYWNl
+Og0KPj4gWyAgIDE3Ljc2Mzk5Nl0gIFs8ZmZmZmZmZmY4MTA5MTdlYT5dIGRlYnVnX2NoZWNrX25v
+X2xvY2tzX2hlbGQrMHg5YS8weGEwDQo+PiBbICAgMTcuNzY0MDAzXSAgWzxmZmZmZmZmZmEwMDc2
+YTM1Pl0gcnBjX3dhaXRfYml0X2tpbGxhYmxlKzB4NzUvMHhhMCBbc3VucnBjXQ0KPj4gWyAgIDE3
+Ljc2NDAyMl0gIFs8ZmZmZmZmZmY4MTZmMmRkNz5dIF9fd2FpdF9vbl9iaXQrMHg1Ny8weDgwDQo+
+PiBbICAgMTcuNzY0MDMxXSAgWzxmZmZmZmZmZmEwMDc2OWMwPl0gPyBycGNfcXVldWVfZW1wdHkr
+MHg0MC8weDQwIFtzdW5ycGNdDQo+PiBbICAgMTcuNzY0MDM4XSAgWzxmZmZmZmZmZmEwMDZjZTEw
+Pl0gPyBjYWxsX2JpbmRfc3RhdHVzKzB4MmYwLzB4MmYwIFtzdW5ycGNdDQo+PiBbICAgMTcuNzY0
+MDY0XSAgWzxmZmZmZmZmZjgxNmYyZTc3Pl0gb3V0X29mX2xpbmVfd2FpdF9vbl9iaXQrMHg3Ny8w
+eDkwDQo+PiBbICAgMTcuNzY0MDY4XSAgWzxmZmZmZmZmZjgxMDYwZDgwPl0gPyBhdXRvcmVtb3Zl
+X3dha2VfZnVuY3Rpb24rMHg0MC8weDQwDQo+PiBbICAgMTcuNzY0MDc1XSAgWzxmZmZmZmZmZmEw
+MDZjZTEwPl0gPyBjYWxsX2JpbmRfc3RhdHVzKzB4MmYwLzB4MmYwIFtzdW5ycGNdDQo+PiBbICAg
+MTcuNzY0MDg0XSAgWzxmZmZmZmZmZmEwMDc3ZjZjPl0gX19ycGNfZXhlY3V0ZSsweDExYy8weDQw
+MCBbc3VucnBjXQ0KPj4gWyAgIDE3Ljc2NDA4N10gIFs8ZmZmZmZmZmY4MTA2MDlkOT5dID8gd2Fr
+ZV91cF9iaXQrMHgyOS8weDQwDQo+PiBbICAgMTcuNzY0MDk2XSAgWzxmZmZmZmZmZmEwMDc4OTE4
+Pl0gcnBjX2V4ZWN1dGUrMHg2OC8weGMwIFtzdW5ycGNdDQo+PiBbICAgMTcuNzY0MTA0XSAgWzxm
+ZmZmZmZmZmEwMDZmNGYwPl0gcnBjX3J1bl90YXNrKzB4NzAvMHg5MCBbc3VucnBjXQ0KPj4gWyAg
+IDE3Ljc2NDExMl0gIFs8ZmZmZmZmZmZhMDA2ZjVmZT5dIHJwY19jYWxsX3N5bmMrMHgzZS8weGEw
+IFtzdW5ycGNdDQo+PiBbICAgMTcuNzY0MTIwXSAgWzxmZmZmZmZmZmEwMDZmNmFkPl0gcnBjX3Bp
+bmcrMHg0ZC8weDcwIFtzdW5ycGNdDQo+PiBbICAgMTcuNzY0MTI3XSAgWzxmZmZmZmZmZmEwMDZm
+OGE4Pl0gcnBjX2NyZWF0ZSsweDE1OC8weDFmMCBbc3VucnBjXQ0KPj4gWyAgIDE3Ljc2NDEzN10g
+IFs8ZmZmZmZmZmZhMDA4MjM2YT5dID8gcnBjYl9nZXRfbG9jYWwrMHhhYS8weGQwIFtzdW5ycGNd
+DQo+PiBbICAgMTcuNzY0MTQ3XSAgWzxmZmZmZmZmZmEwMDgyMTQ3Pl0gcnBjYl9jcmVhdGVfbG9j
+YWxfdW5peCsweDU3LzB4ZTAgW3N1bnJwY10NCj4+IFsgICAxNy43NjQxNzNdICBbPGZmZmZmZmZm
+YTAwODI1MzA+XSBycGNiX2NyZWF0ZV9sb2NhbCsweDcwLzB4OTAgW3N1bnJwY10NCj4+IFsgICAx
+Ny43NjQxODJdICBbPGZmZmZmZmZmYTAwN2I0OWU+XSBzdmNfcnBjYl9zZXR1cCsweDFlLzB4NDAg
+W3N1bnJwY10NCj4+IFsgICAxNy43NjQxOTFdICBbPGZmZmZmZmZmYTAwN2I0ZWY+XSBzdmNfYmlu
+ZCsweDJmLzB4NDAgW3N1bnJwY10NCj4+IFsgICAxNy43NjQxOThdICBbPGZmZmZmZmZmYTAxMjk1
+NDY+XSBuZnNkX2NyZWF0ZV9zZXJ2KzB4MTA2LzB4MWUwIFtuZnNkXQ0KPj4gWyAgIDE3Ljc2NDIx
+MF0gIFs8ZmZmZmZmZmZhMDEyOTQ0MD5dID8gbmZzZF9yZXNldF92ZXJzaW9ucysweDgwLzB4ODAg
+W25mc2RdDQo+PiBbICAgMTcuNzY0MjE2XSAgWzxmZmZmZmZmZmEwMTJiNzRjPl0gd3JpdGVfcG9y
+dHMrMHgzMWMvMHgzZjAgW25mc2RdDQo+PiBbICAgMTcuNzY0MjIyXSAgWzxmZmZmZmZmZmEwMTJi
+NjgwPl0gPyB3cml0ZV9wb3J0cysweDI1MC8weDNmMCBbbmZzZF0NCj4+IFsgICAxNy43NjQyMzBd
+ICBbPGZmZmZmZmZmODE2ZjY0MTY+XSA/IF9yYXdfc3Bpbl91bmxvY2srMHgyNi8weDMwDQo+PiBb
+ICAgMTcuNzY0MjM0XSAgWzxmZmZmZmZmZjgxMTY2MGIzPl0gPyBzaW1wbGVfdHJhbnNhY3Rpb25f
+Z2V0KzB4YzMvMHhlMA0KPj4gWyAgIDE3Ljc2NDI0MF0gIFs8ZmZmZmZmZmZhMDEyYjQzMD5dID8g
+ZXhwb3J0c19vcGVuKzB4YjAvMHhiMCBbbmZzZF0NCj4+IFsgICAxNy43NjQyNTBdICBbPGZmZmZm
+ZmZmYTAxMmEzZmM+XSBuZnNjdGxfdHJhbnNhY3Rpb25fd3JpdGUrMHg1Yy8weDgwIFtuZnNkXQ0K
+Pj4gWyAgIDE3Ljc2NDI1NF0gIFs8ZmZmZmZmZmY4MTE0MDY0MT5dIHZmc193cml0ZSsweGIxLzB4
+MTgwDQo+PiBbICAgMTcuNzY0MjU3XSAgWzxmZmZmZmZmZjgxMTQwOTgwPl0gc3lzX3dyaXRlKzB4
+NTAvMHhhMA0KPj4gWyAgIDE3Ljc2NDI2NV0gIFs8ZmZmZmZmZmY4MTZmZTI1Mj5dIHN5c3RlbV9j
+YWxsX2Zhc3RwYXRoKzB4MTYvMHgxYg==
 
