@@ -1,83 +1,32 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:13449 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756109Ab3C1N50 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Mar 2013 09:57:26 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 05/14] NFSv4: Add label recommended attribute and NFSv4 flags
-Date: Thu, 28 Mar 2013 09:53:56 -0400
-Message-Id: <1364478845-29796-6-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
-References: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
+Received: from 82-69-66-36.dsl.in-addr.zen.co.uk ([82.69.66.36]:64544 "EHLO
+	gateway.l8s.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751973Ab3CAI0N (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Mar 2013 03:26:13 -0500
+Date: Fri, 1 Mar 2013 08:17:29 +0000
+From: David Laight <david@l8s.co.uk>
+To: Andy Lutomirski <luto@amacapital.net>
+Cc: Pavel Shilovsky <piastry@etersoft.ru>, linux-fsdevel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, wine-devel@winehq.org
+Subject: Re: [PATCH v3 0/7] Add O_DENY* support for VFS and CIFS/NFS
+Message-ID: <20130301081729.GT5181@snowdrop.l8s.co.uk>
+References: <1362065133-9490-1-git-send-email-piastry@etersoft.ru> <512FD1D5.3010106@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <512FD1D5.3010106@mit.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+On Thu, Feb 28, 2013 at 01:53:25PM -0800, Andy Lutomirski wrote:
+> > O_DENYMAND - to switch on/off three flags above.
+> 
+> O_DENYMAND doesn't deny anything.  Would a name like O_RESPECT_DENY be
+> better?
 
-This patch adds several new flags to allow the NFS client and server to
-determine if this attribute is supported and if it is being sent over the wire.
+Possibly rename to O_CHECK_DENY ?
 
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- include/linux/nfs4.h      | 1 +
- include/linux/nfs_fs_sb.h | 1 +
- include/linux/nfs_xdr.h   | 4 +++-
- 3 files changed, 5 insertions(+), 1 deletion(-)
+	David
 
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 7b8fc73..0fa29f4 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -377,6 +377,7 @@ enum lock_type4 {
- #define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
- #define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
- #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
-+#define FATTR4_WORD2_SECURITY_LABEL     (1UL << 17)
- #define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
- 
- /* MDS threshold bitmap bits */
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 6c6ed15..d507357 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -197,5 +197,6 @@ struct nfs_server {
- #define NFS_CAP_MTIME		(1U << 13)
- #define NFS_CAP_POSIX_LOCK	(1U << 14)
- #define NFS_CAP_UIDGID_NOMAP	(1U << 15)
-+#define NFS_CAP_SECURITY_LABEL	(1U << 16)
- 
- #endif
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 4b993d3..9f2dba3 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -104,6 +104,7 @@ struct nfs_fattr {
- #define NFS_ATTR_FATTR_MOUNTED_ON_FILEID (1U << 22)
- #define NFS_ATTR_FATTR_OWNER_NAME	(1U << 23)
- #define NFS_ATTR_FATTR_GROUP_NAME	(1U << 24)
-+#define NFS_ATTR_FATTR_V4_SECURITY_LABEL (1U << 25)
- 
- #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
- 		| NFS_ATTR_FATTR_MODE \
-@@ -123,7 +124,8 @@ struct nfs_fattr {
- #define NFS_ATTR_FATTR_V3 (NFS_ATTR_FATTR \
- 		| NFS_ATTR_FATTR_SPACE_USED)
- #define NFS_ATTR_FATTR_V4 (NFS_ATTR_FATTR \
--		| NFS_ATTR_FATTR_SPACE_USED)
-+		| NFS_ATTR_FATTR_SPACE_USED \
-+		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
- 
- /*
-  * Info on the file system
 -- 
-1.8.1.4
-
+David Laight: david@l8s.co.uk
