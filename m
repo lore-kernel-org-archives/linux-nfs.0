@@ -1,71 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42643 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:49591 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754325Ab3BGQXJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Feb 2013 11:23:09 -0500
-Date: Thu, 7 Feb 2013 11:23:08 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] SUNRPC: Refactor nfsd4_do_encode_secinfo()
-Message-ID: <20130207162308.GI3222@fieldses.org>
-References: <20130201220308.13518.82164.stgit@seurat.1015granger.net>
- <20130207150213.GC3222@fieldses.org>
- <87316F41-4E5E-473C-A372-0AFC6721A355@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87316F41-4E5E-473C-A372-0AFC6721A355@oracle.com>
+	id S1750985Ab3CAAZE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Feb 2013 19:25:04 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org, andros@netapp.com
+Subject: [PATCH] NFSv4: Fix another open/open_recovery deadlock
+Date: Thu, 28 Feb 2013 16:24:58 -0800
+Message-Id: <1362097498-32641-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 07, 2013 at 10:58:25AM -0500, Chuck Lever wrote:
-> 
-> On Feb 7, 2013, at 10:02 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> 
-> > On Fri, Feb 01, 2013 at 05:43:44PM -0500, Chuck Lever wrote:
-> >> Clean up.  This matches a similar API for the client side, and
-> >> keeps ULP fingers out the of the GSS mech switch.
-> >> 
-> >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> >> Acked-by: J. Bruce Fields <bfields@redhat.com>
-> >> ---
-> >> 
-> >> Bruce-
-> >> 
-> >> This version of the patch follows the existing logic in
-> >> nfsd4_do_encode_secinfo(): If the RPC layer can't find GSS info
-> >> that matches an export security flavor, it assumes the flavor is
-> >> not a GSS pseudoflavor, and simply puts it on the wire.
-> >> 
-> >> However, if the below XDR encoding logic is given a legitimate GSS
-> >> pseudoflavor but the RPC layer says it does not support that
-> >> pseudoflavor for some reason, then we leak GSS pseudoflavor numbers
-> >> onto the wire.
-> >> 
-> >> I confirmed this happens by blacklisting rpcsec_gss_krb5, then
-> >> attempted a client transition from the pseudo-fs to a Kerberos-only
-> >> share.  The client received a flavor list containing the Kerberos
-> >> pseudoflavor numbers, rather than GSS tuples.
-> >> 
-> >> The encoder logic can check that each pseudoflavor is less than
-> >> MAXFLAVOR before writing it into the buffer, to prevent this.  But
-> >> after "nflavs" is written into the XDR buffer, the encoder can't
-> >> skip writing flavor information into the buffer when it discovers
-> >> the RPC layer doesn't support that flavor.
-> >> 
-> >> Is there some way of writing "nflavs" into the XDR buffer after
-> >> the loop that writes the flavor information is complete?
-> > 
-> > Yes, you can save a pointer and then go back and fill that in--see
-> > encode_fattr for an example.
-> 
-> Thanks, I will submit an additional patch that describes this issue and fixes it.
-> 
-> I asked David Noveck, as one of the authors of RFC 3530, whether an NFS server should return a zero-length flavor list or an error if SECINFO can't find any flavors a client is allowed to use. His opinion was to return NFS4_OK and a zero-length flavor list.
+If we don't release the open seqid before we wait for state recovery,
+then we may end up deadlocking the state recovery thread.
+This patch addresses a new deadlock that was introduced by
+commit c21443c2c792cd9b463646d982b0fe48aa6feb0f (NFSv4: Fix a reboot
+recovery race when opening a file)
 
-Fine with me for this code.
+Reported-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4proc.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-(In practice though we should probably be warning somewhere (exportfs?)
-if somebody creates an export like that.)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 655237f..37eb385 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1158,6 +1158,7 @@ _nfs4_opendata_to_nfs4_state(struct nfs4_opendata *data)
+ 			data->o_arg.fmode);
+ 	iput(inode);
+ out:
++	nfs_release_seqid(data->o_arg.seqid);
+ 	return state;
+ err_put_inode:
+ 	iput(inode);
+-- 
+1.8.1.2
 
---b.
