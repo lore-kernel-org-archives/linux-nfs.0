@@ -1,72 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:58090 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:19247 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932521Ab3CYSNP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Mar 2013 14:13:15 -0400
-Date: Mon, 25 Mar 2013 14:13:14 -0400
-To: Steve Dickson <steved@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] mountd: regression in crossmounts
-Message-ID: <20130325181314.GA10120@fieldses.org>
-References: <1364049149-3751-1-git-send-email-steved@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1364049149-3751-1-git-send-email-steved@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1750884Ab3CANKT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Mar 2013 08:10:19 -0500
+Date: Fri, 1 Mar 2013 08:09:11 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, devel@openvz.org,
+        Trond.Myklebust@netapp.com, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] nfsd: try nfsdcld client tracker in containers
+Message-ID: <20130301080911.2a1a28a2@corrin.poochiereds.net>
+In-Reply-To: <20130301082423.21663.37825.stgit@localhost.localdomain>
+References: <20130301082423.21663.37825.stgit@localhost.localdomain>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Mar 23, 2013 at 10:32:29AM -0400, Steve Dickson wrote:
-> commit 8e2fb3fc cause a regression in mount export
-> that are on different local file system.
-> Exports like (all on different filesystems)
+On Fri, 01 Mar 2013 11:24:23 +0300
+Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+
+> Currently, UMH and Legacy trackers are disabled in containers.
+> But existent logic can lookup nfs4_recoverydir in a container, and in this
+> case will try to init Legacy tracker and skip nfsdcld client tracker.
+> This actually means, that no client tracker will be started in a container at
+> all, because Legacy tracker init will return -EINVAL for a container.
+> So, let's change "-EINVAL" on "-ENOTSUPP" for legacy tracker init call in a
+> container and in case of this error code, try nfsdcld client tracker instead
+> of returning a error.
 > 
-> /home *(rw,fsid=0,crossmnt)
-> /home/fs1 *(rw,crossmnt)
-> /home/fs1/fs2/fs3 *(rw,nohide)
-> 
-> and then a mount of the root 'mount /home /mnt'
-> would end up mounting /home/fs1/fs2/fs3 not /home
-
-That's strange.
-
-> Reverting the logic of commit 8e2fb3fc until
-> a better solution can be found for the original
-> problem.
-
-I can't figure out why the patch below would help.  The only change I
-can see is to the way that an export of "/" would be handled.
-
---b.
-
-> 
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 > ---
->  utils/mountd/cache.c | 5 ++++-
->  1 file changed, 4 insertions(+), 1 deletion(-)
+>  fs/nfsd/nfs4recover.c |   12 ++++++++----
+>  1 files changed, 8 insertions(+), 4 deletions(-)
 > 
-> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> index c8aa46f..978698d 100644
-> --- a/utils/mountd/cache.c
-> +++ b/utils/mountd/cache.c
-> @@ -371,8 +371,11 @@ export_matches(nfs_export *exp, char *dom, char *path, struct addrinfo *ai)
->  static bool subexport(struct exportent *e1, struct exportent *e2)
->  {
->  	char *p1 = e1->e_path, *p2 = e2->e_path;
-> +	size_t l2 = strlen(p2);
-> +
->  	return e2->e_flags & NFSEXP_CROSSMOUNT
-> -		&& is_subdirectory(p1, p2);
-> +		&& strncmp(p1, p2, l2) == 0
-> +		&& p1[l2] == '/';
->  }
+> diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+> index e0ae1cf..8aa069a 100644
+> --- a/fs/nfsd/nfs4recover.c
+> +++ b/fs/nfsd/nfs4recover.c
+> @@ -524,7 +524,7 @@ nfsd4_legacy_tracking_init(struct net *net)
+>  	if (net != &init_net) {
+>  		WARN(1, KERN_ERR "NFSD: attempt to initialize legacy client "
+>  			"tracking in a container!\n");
+> -		return -EINVAL;
+> +		return -ENOTSUPP;
+>  	}
 >  
->  struct parsed_fsid {
-> -- 
-> 1.8.1.4
+>  	status = nfs4_legacy_state_init(net);
+> @@ -1285,14 +1285,17 @@ nfsd4_client_tracking_init(struct net *net)
+>  	/*
+>  	 * See if the recoverydir exists and is a directory. If it is,
+>  	 * then use the legacy ops.
+> +	 * If legacy ops init return -ENOSUPP, then we are in a container and
+> +	 * should try nfsdcld client tracking.
+>  	 */
+>  	nn->client_tracking_ops = &nfsd4_legacy_tracking_ops;
+>  	status = kern_path(nfs4_recoverydir(), LOOKUP_FOLLOW, &path);
+>  	if (!status) {
+> -		status = S_ISDIR(path.dentry->d_inode->i_mode);
+> +		if (S_ISDIR(path.dentry->d_inode->i_mode))
+> +			status = nn->client_tracking_ops->init(net);
+>  		path_put(&path);
+> -		if (status)
+> -			goto do_init;
+> +		if (status != -ENOTSUPP)
+> +			goto do_exit;
+>  	}
+>  
+>  	/* Finally, try to use nfsdcld */
+> @@ -1302,6 +1305,7 @@ nfsd4_client_tracking_init(struct net *net)
+>  			"nfsdcltrack.\n");
+>  do_init:
+>  	status = nn->client_tracking_ops->init(net);
+> +do_exit:
+>  	if (status) {
+>  		printk(KERN_WARNING "NFSD: Unable to initialize client "
+>  				    "recovery tracking! (%d)\n", status);
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+Seems OK as a stopgap fix. We're removing nfsdcld in 3.10 though so
+this won't help prospective users of nfsd in a container for
+long...particularly since our expectation is that no one has actually
+ever deployed nfsdcld.
+
+This is something that really needs to be fixed the right way since a
+NFS server that doesn't allow clients to reclaim state after a reboot is
+potentially dangerous...
+
+I'm afraid I haven't been following along as closely as I should have
+been. What's the rationale for disabling the UMH upcall? Is there no
+way to make it so that new processes it spawns are done within the
+correct container?
+
+-- 
+Jeff Layton <jlayton@redhat.com>
