@@ -1,40 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-da0-f54.google.com ([209.85.210.54]:50489 "EHLO
-	mail-da0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753533Ab3CKCzt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Mar 2013 22:55:49 -0400
-From: ycnian@gmail.com
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Yanchuan Nian <ycnian@gmail.com>
-Subject: [PATCH v2] nfsd: rmmove unused macro in nfsv4
-Date: Mon, 11 Mar 2013 10:43:26 +0800
-Message-Id: <1362969806-23907-1-git-send-email-ycnian@gmail.com>
+Received: from ares07.inai.de ([5.9.24.206]:54027 "EHLO ares07.inai.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751911Ab3CALoC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Mar 2013 06:44:02 -0500
+Date: Fri, 1 Mar 2013 12:43:58 +0100 (CET)
+From: Jan Engelhardt <jengelh@inai.de>
+To: "J. Bruce Fields" <bfields@redhat.com>
+cc: linux-nfs@vger.kernel.org
+Subject: Inconsistent error codes between NFSv4 and v3 on network issues
+Message-ID: <alpine.LNX.2.01.1303011240350.11154@nerf07.vanv.qr>
+MIME-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Yanchuan Nian <ycnian@gmail.com>
+Hi.
 
-lk_rflags is never used anywhere, and rflags is not defined in struct
-nfsd4_lock. Very sorry for my negligence in last version. Maybe I am tired.
 
-Signed-off-by: Yanchuan Nian <ycnian@gmail.com>
----
- fs/nfsd/xdr4.h |    1 -
- 1 files changed, 0 insertions(+), 1 deletions(-)
+I had here a case with a Linux 3.7.9 system, a virtual machine in a
+RFC1918 range, that did not want to mount NFS.
 
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 0889bfb..326724a 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -184,7 +184,6 @@ struct nfsd4_lock {
- #define lk_old_lock_stateid     v.old.lock_stateid
- #define lk_old_lock_seqid       v.old.lock_seqid
- 
--#define lk_rflags       u.ok.rflags
- #define lk_resp_stateid u.ok.stateid
- #define lk_denied       u.denied
- 
--- 
-1.7.4.4
+linux-3lzm:~ # strace -fe mount mount -t nfs 134.76.12.5:/X /mnt
+Process 1477 attached
+[pid  1515] mount("134.76.12.5:/X", "/mnt", "nfs", 0, "vers=4,addr=134.76.12.5,clientaddr=0.0.0.0") = -1 EIO (Input/output error)
+mount.nfs: mount system call failed
+[pid  1477] +++ exited with 32 +++
+--- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=1477, si_status=32, si_utime=0, si_stime=0} ---
++++ exited with 32 +++
 
+Nothing in dmesg...
+
+[   84.202243] RPC: Registered named UNIX socket transport module.
+[   84.202246] RPC: Registered udp transport module.
+[   84.202248] RPC: Registered tcp transport module.
+[   84.202249] RPC: Registered tcp NFSv4.1 backchannel transport module.
+[   84.205909] FS-Cache: Loaded
+[   84.208782] FS-Cache: Netfs 'nfs' registered for caching
+[   84.215733] NFS: Registering the id_resolver key type
+[   84.215762] Key type id_resolver registered
+[   84.215763] Key type id_legacy registered
+
+When mounting with NFSv3, the error became clear:
+
+# strace -fe mount -s 65536 mount -t nfs 134.76.12.5:/X /mnt -o nfsvers=3,nolock
+Process 1550 attached
+mount.nfs: Network is unreachable
+[pid  1550] +++ exited with 32 +++
+--- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=1550, si_status=32, si_utime=0, si_stime=0} ---
++++ exited with 32 +++
+
+Can NFSv4 be made to return -ENETUNREACH as well?
