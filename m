@@ -1,96 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:16310 "EHLO relay.sw.ru"
+Received: from mx12.netapp.com ([216.240.18.77]:29862 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754254Ab3BDLCF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Feb 2013 06:02:05 -0500
-Subject: [PATCH v2 5/6] SUNRPC: remove "cache_request" argument in
-	sunrpc_cache_pipe_upcall() function
-To: bfields@fieldses.org
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Date: Mon, 04 Feb 2013 14:02:55 +0300
-Message-ID: <20130204110255.11633.3726.stgit@localhost.localdomain>
-In-Reply-To: <20130204105728.11633.53621.stgit@localhost.localdomain>
-References: <20130204105728.11633.53621.stgit@localhost.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1751571Ab3CABaP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Feb 2013 20:30:15 -0500
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 3/3] NFSv4.1: LAYOUTGET EDELAY loops timeout to the MDS
+Date: Thu, 28 Feb 2013 20:30:10 -0500
+Message-Id: <1362101410-22544-3-git-send-email-dros@netapp.com>
+In-Reply-To: <1362101410-22544-1-git-send-email-dros@netapp.com>
+References: <1362101410-22544-1-git-send-email-dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Passing this pointer is redundant since it's stored on cache_detail structure,
-which is also passed to sunrpc_cache_pipe_upcall () function.
+The client will currently try LAYOUTGETs forever if a server is returning
+NFS4ERR_LAYOUTTRYLATER or NFS4ERR_RECALLCONFLICT - even if the client no
+longer needs the layout (ie process killed, unmounted).
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+This patch uses the DS timeout value (module parameter 'dataserver_timeo'
+via rpc layer) to set an upper limit of how long the client tries LATOUTGETs
+in this situation.  Once the timeout is reached, IO is redirected to the MDS.
+
+This also changes how the client checks if a layout is on the clp list
+to avoid a double list_add.
+
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
 ---
- fs/nfs/dns_resolve.c         |    2 +-
- include/linux/sunrpc/cache.h |    6 +-----
- net/sunrpc/cache.c           |   10 +++-------
- 3 files changed, 5 insertions(+), 13 deletions(-)
+ fs/nfs/nfs4proc.c       | 9 ++++++++-
+ fs/nfs/pnfs.c           | 7 +++----
+ include/linux/nfs_xdr.h | 1 +
+ 3 files changed, 12 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
-index 53109f0..88b46c7 100644
---- a/fs/nfs/dns_resolve.c
-+++ b/fs/nfs/dns_resolve.c
-@@ -142,7 +142,7 @@ static int nfs_dns_upcall(struct cache_detail *cd,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 37eb385..b2671cb 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -93,6 +93,8 @@ static int nfs4_map_errors(int err)
+ 		return err;
+ 	switch (err) {
+ 	case -NFS4ERR_RESOURCE:
++	case -NFS4ERR_LAYOUTTRYLATER:
++	case -NFS4ERR_RECALLCONFLICT:
+ 		return -EREMOTEIO;
+ 	case -NFS4ERR_WRONGSEC:
+ 		return -EPERM;
+@@ -6046,6 +6048,7 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
+ 	struct nfs_server *server = NFS_SERVER(inode);
+ 	struct pnfs_layout_hdr *lo;
+ 	struct nfs4_state *state = NULL;
++	unsigned long timeo, giveup;
  
- 	ret = nfs_cache_upcall(cd, key->hostname);
- 	if (ret)
--		ret = sunrpc_cache_pipe_upcall(cd, ch, cd->cache_request);
-+		ret = sunrpc_cache_pipe_upcall(cd, ch);
- 	return ret;
- }
+ 	dprintk("--> %s\n", __func__);
  
-diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index 4f1c858..303399b 100644
---- a/include/linux/sunrpc/cache.h
-+++ b/include/linux/sunrpc/cache.h
-@@ -161,11 +161,7 @@ sunrpc_cache_update(struct cache_detail *detail,
- 		    struct cache_head *new, struct cache_head *old, int hash);
+@@ -6057,7 +6060,10 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
+ 		goto out;
+ 	case -NFS4ERR_LAYOUTTRYLATER:
+ 	case -NFS4ERR_RECALLCONFLICT:
+-		task->tk_status = -NFS4ERR_DELAY;
++		timeo = rpc_get_timeout(task->tk_client);
++		giveup = lgp->args.timestamp + timeo;
++		if (time_after(giveup, jiffies))
++			task->tk_status = -NFS4ERR_DELAY;
+ 		break;
+ 	case -NFS4ERR_EXPIRED:
+ 	case -NFS4ERR_BAD_STATEID:
+@@ -6178,6 +6184,7 @@ nfs4_proc_layoutget(struct nfs4_layoutget *lgp, gfp_t gfp_flags)
+ 		return ERR_PTR(-ENOMEM);
+ 	}
+ 	lgp->args.layout.pglen = max_pages * PAGE_SIZE;
++	lgp->args.timestamp = jiffies;
  
- extern int
--sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h,
--		void (*cache_request)(struct cache_detail *,
--				      struct cache_head *,
--				      char **,
--				      int *));
-+sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h);
+ 	lgp->res.layoutp = &lgp->args.layout;
+ 	lgp->res.seq_res.sr_slot = NULL;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 97767c8..7e9e897 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1181,7 +1181,7 @@ pnfs_update_layout(struct inode *ino,
+ 	struct nfs_client *clp = server->nfs_client;
+ 	struct pnfs_layout_hdr *lo;
+ 	struct pnfs_layout_segment *lseg = NULL;
+-	bool first = false;
++	bool first;
  
+ 	if (!pnfs_enabled_sb(NFS_SERVER(ino)))
+ 		goto out;
+@@ -1215,10 +1215,9 @@ pnfs_update_layout(struct inode *ino,
+ 		goto out_unlock;
+ 	atomic_inc(&lo->plh_outstanding);
  
- extern void cache_clean_deferred(void *owner);
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 51853d8..8ffec5a 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -198,7 +198,7 @@ static int cache_make_upcall(struct cache_detail *cd, struct cache_head *h)
- {
- 	if (cd->cache_upcall)
- 		return cd->cache_upcall(cd, h);
--	return sunrpc_cache_pipe_upcall(cd, h, cd->cache_request);
-+	return sunrpc_cache_pipe_upcall(cd, h);
- }
+-	if (list_empty(&lo->plh_segs))
+-		first = true;
+-
++	first = list_empty(&lo->plh_layouts);
+ 	spin_unlock(&ino->i_lock);
++
+ 	if (first) {
+ 		/* The lo must be on the clp list if there is any
+ 		 * chance of a CB_LAYOUTRECALL(FILE) coming in.
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 29adb12..2250cab 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -233,6 +233,7 @@ struct nfs4_layoutget_args {
+ 	struct inode *inode;
+ 	struct nfs_open_context *ctx;
+ 	nfs4_stateid stateid;
++	unsigned long timestamp;
+ 	struct nfs4_layoutdriver_data layout;
+ };
  
- static inline int cache_is_valid(struct cache_detail *detail, struct cache_head *h)
-@@ -1140,11 +1140,7 @@ static bool cache_listeners_exist(struct cache_detail *detail)
-  *
-  * Each request is at most one page long.
-  */
--int sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h,
--		void (*cache_request)(struct cache_detail *,
--				      struct cache_head *,
--				      char **,
--				      int *))
-+int sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h)
- {
- 
- 	char *buf;
-@@ -1172,7 +1168,7 @@ int sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h,
- 
- 	bp = buf; len = PAGE_SIZE;
- 
--	cache_request(detail, h, &bp, &len);
-+	detail->cache_request(detail, h, &bp, &len);
- 
- 	if (len < 0) {
- 		kfree(buf);
+-- 
+1.7.12.4 (Apple Git-37)
 
