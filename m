@@ -1,53 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ia0-f179.google.com ([209.85.210.179]:64475 "EHLO
-	mail-ia0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753918Ab3CUATm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Mar 2013 20:19:42 -0400
-Received: by mail-ia0-f179.google.com with SMTP id x24so1918574iak.38
-        for <linux-nfs@vger.kernel.org>; Wed, 20 Mar 2013 17:19:42 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v2 2/3] SUNRPC: Don't recognize RPC_AUTH_MAXFLAVOR
-To: linux-nfs@vger.kernel.org
-Date: Wed, 20 Mar 2013 20:19:40 -0400
-Message-ID: <20130321001940.12106.84531.stgit@seurat.1015granger.net>
-In-Reply-To: <20130321001753.12106.50688.stgit@seurat.1015granger.net>
-References: <20130321001753.12106.50688.stgit@seurat.1015granger.net>
+Received: from mx12.netapp.com ([216.240.18.77]:51276 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752112Ab3CAVHf convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Mar 2013 16:07:35 -0500
+Received: from vmwexceht01-prd.hq.netapp.com (vmwexceht01-prd.hq.netapp.com [10.106.76.239])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id r21L7WPe021971
+	for <linux-nfs@vger.kernel.org>; Fri, 1 Mar 2013 13:07:33 -0800 (PST)
+From: "Adamson, Dros" <Weston.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/3] SUNRPC: add call to get configured timeout
+Date: Fri, 1 Mar 2013 21:07:32 +0000
+Message-ID: <0EC8763B847DB24D9ADF5EBD9CD7B4192BC8AD6B@SACEXCMBX02-PRD.hq.netapp.com>
+References: <1362101410-22544-1-git-send-email-dros@netapp.com>
+ <1362101410-22544-2-git-send-email-dros@netapp.com>
+In-Reply-To: <1362101410-22544-2-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-RPC_AUTH_MAXFLAVOR is an invalid flavor, on purpose.  Don't allow
-any processing whatsoever if a caller passes it to rpcauth_create()
-or rpcauth_get_gssinfo().
+Hey Trond,
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+One minor fixup here: the comment is wrong.  rpc_get_timeout returns the timeout in HZ.
 
- net/sunrpc/auth.c |    5 ++++-
- 1 files changed, 4 insertions(+), 1 deletions(-)
+Thanks!
 
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index 2bc0cc2..ed2fdd2 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -82,7 +82,7 @@ MODULE_PARM_DESC(auth_hashtable_size, "RPC credential cache hashtable size");
- 
- static u32
- pseudoflavor_to_flavor(u32 flavor) {
--	if (flavor >= RPC_AUTH_MAXFLAVOR)
-+	if (flavor > RPC_AUTH_MAXFLAVOR)
- 		return RPC_AUTH_GSS;
- 	return flavor;
- }
-@@ -173,6 +173,9 @@ rpcauth_get_gssinfo(rpc_authflavor_t pseudoflavor, struct rpcsec_gss_info *info)
- 	const struct rpc_authops *ops;
- 	int result;
- 
-+	if (flavor >= RPC_AUTH_MAXFLAVOR)
-+		return -EINVAL;
-+
- 	ops = auth_flavors[flavor];
- 	if (ops == NULL)
- 		request_module("rpc-auth-%u", flavor);
+-dros
+
+On Feb 28, 2013, at 8:30 PM, Weston Andros Adamson <dros@netapp.com> wrote:
+
+> Returns the configured timeout for the xprt of the rpc client.
+> 
+> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+> ---
+> include/linux/sunrpc/clnt.h |  1 +
+> net/sunrpc/clnt.c           | 15 +++++++++++++++
+> 2 files changed, 16 insertions(+)
+> 
+> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+> index 34206b8..21d52d0 100644
+> --- a/include/linux/sunrpc/clnt.h
+> +++ b/include/linux/sunrpc/clnt.h
+> @@ -160,6 +160,7 @@ void		rpc_setbufsize(struct rpc_clnt *, unsigned int, unsigned int);
+> int		rpc_protocol(struct rpc_clnt *);
+> struct net *	rpc_net_ns(struct rpc_clnt *);
+> size_t		rpc_max_payload(struct rpc_clnt *);
+> +unsigned long	rpc_get_timeout(struct rpc_clnt *clnt);
+> void		rpc_force_rebind(struct rpc_clnt *);
+> size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
+> const char	*rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_format_t);
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index a9f7906..09dc0c2 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -1196,6 +1196,21 @@ size_t rpc_max_payload(struct rpc_clnt *clnt)
+> EXPORT_SYMBOL_GPL(rpc_max_payload);
+> 
+> /**
+> + * rpc_get_timeout - Get timeout for transport in tenths of seconds
+> + * @clnt: RPC client to query
+> + */
+> +unsigned long rpc_get_timeout(struct rpc_clnt *clnt)
+> +{
+> +	unsigned long ret;
+> +
+> +	rcu_read_lock();
+> +	ret = rcu_dereference(clnt->cl_xprt)->timeout->to_initval;
+> +	rcu_read_unlock();
+> +	return ret;
+> +}
+> +EXPORT_SYMBOL_GPL(rpc_get_timeout);
+> +
+> +/**
+>  * rpc_force_rebind - force transport to check that remote port is unchanged
+>  * @clnt: client to rebind
+>  *
+> -- 
+> 1.7.12.4 (Apple Git-37)
+> 
 
