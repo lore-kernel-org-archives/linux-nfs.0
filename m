@@ -1,195 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:48531 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:50192 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756483Ab3BLUwT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Feb 2013 15:52:19 -0500
-Date: Tue, 12 Feb 2013 15:52:17 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mark Lord <kernel@teksavvy.com>
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        linux-nfs@vger.kernel.org, Linux Kernel <linux-kernel@vger.kernel.org>,
-        =?utf-8?B?UGF3ZcWC?= Sikora <pawel.sikora@agmk.net>,
-        Tom Horsley <horsley1953@gmail.com>
-Subject: Re: BUG at net/sunrpc/svc_xprt.c:921 (another one)
-Message-ID: <20130212205216.GE10267@fieldses.org>
-References: <50F4D800.5040703@teksavvy.com>
- <20130115205625.GH4940@fieldses.org>
- <50F63882.8000607@parallels.com>
- <50F72F03.5070806@teksavvy.com>
- <50F786AF.4070107@parallels.com>
- <20130117130335.GD6598@fieldses.org>
- <50F7FB7E.2020503@parallels.com>
- <50F88C14.7030903@teksavvy.com>
- <50F8DF7E.8080107@parallels.com>
- <50FC74E0.20305@teksavvy.com>
+	id S1753948Ab3CAAan (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Feb 2013 19:30:43 -0500
+Date: Thu, 28 Feb 2013 19:30:38 -0500
+From: Dave Jones <davej@redhat.com>
+To: Linux Kernel <linux-kernel@vger.kernel.org>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: lockdep trace from nfsd
+Message-ID: <20130301003038.GA26533@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <50FC74E0.20305@teksavvy.com>
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Jan 20, 2013 at 05:51:12PM -0500, Mark Lord wrote:
-> Got it again, this time on a different system
-> running mostly the same software.
+[   39.878535] =====================================
+[   39.879670] [ BUG: rpc.nfsd/666 still has locks held! ]
+[   39.880871] 3.8.0+ #3 Not tainted
+[   39.881858] -------------------------------------
+[   39.882850] 2 locks on stack by rpc.nfsd/666:
+[   39.883868]  #0: held:     (nfsd_mutex){+.+.+.}, instance: ffffffffa01cf0b8, at: [<ffffffffa0193d57>] write_ports+0x37/0x7a0 [nfsd]
+[   39.884750]  #1: held:     (rpcb_create_local_mutex){+.+.+.}, instance: ffffffffa016d878, at: [<ffffffffa0153916>] rpcb_create_local+0x46/0x90 [sunrpc]
+[   39.885903] 
+stack backtrace:
+[   39.897044] Pid: 666, comm: rpc.nfsd Not tainted 3.8.0+ #3
+[   39.898186] Call Trace:
+[   39.900755]  [<ffffffff810b9c6a>] debug_check_no_locks_held+0x9a/0xa0
+[   39.901823]  [<ffffffffa0145965>] rpc_wait_bit_killable+0x85/0xb0 [sunrpc]
+[   39.902866]  [<ffffffff8161bf10>] __wait_on_bit+0x60/0x90
+[   39.903879]  [<ffffffffa0147860>] ? __rpc_execute+0x170/0x5a0 [sunrpc]
+[   39.904900]  [<ffffffffa01458e0>] ? __rpc_wait_for_completion_task+0x30/0x30 [sunrpc]
+[   39.905969]  [<ffffffff8161bfbc>] out_of_line_wait_on_bit+0x7c/0x90
+[   39.907010]  [<ffffffffa0147860>] ? __rpc_execute+0x170/0x5a0 [sunrpc]
+[   39.908070]  [<ffffffff81075f00>] ? autoremove_wake_function+0x50/0x50
+[   39.909124]  [<ffffffffa0139b50>] ? call_connect+0xa0/0xa0 [sunrpc]
+[   39.910154]  [<ffffffffa0147891>] __rpc_execute+0x1a1/0x5a0 [sunrpc]
+[   39.911176]  [<ffffffff81075e9e>] ? wake_up_bit+0x2e/0x40
+[   39.912058]  [<ffffffffa0147d49>] rpc_execute+0x59/0x180 [sunrpc]
+[   39.912745]  [<ffffffffa013da00>] rpc_run_task+0x70/0x90 [sunrpc]
+[   39.913446]  [<ffffffffa013db23>] rpc_call_sync+0x43/0xa0 [sunrpc]
+[   39.914280]  [<ffffffffa013dbd2>] rpc_ping+0x52/0x70 [sunrpc]
+[   39.914992]  [<ffffffffa013de08>] rpc_create+0x188/0x230 [sunrpc]
+[   39.915735]  [<ffffffff8100a4a9>] ? sched_clock+0x9/0x10
+[   39.916577]  [<ffffffff810b807e>] ? put_lock_stats.isra.25+0xe/0x40
+[   39.917635]  [<ffffffff810b871c>] ? lock_release_holdtime.part.26+0xcc/0x140
+[   39.918667]  [<ffffffffa015331c>] rpcb_create_local_unix+0x5c/0xe0 [sunrpc]
+[   39.919669]  [<ffffffffa0153948>] rpcb_create_local+0x78/0x90 [sunrpc]
+[   39.920705]  [<ffffffffa014a653>] svc_rpcb_setup+0x23/0x50 [sunrpc]
+[   39.921725]  [<ffffffffa014a6b4>] svc_bind+0x34/0x50 [sunrpc]
+[   39.921733]  [<ffffffffa01909ed>] nfsd_create_serv+0x1cd/0x320 [nfsd]
+[   39.921738]  [<ffffffffa0190825>] ? nfsd_create_serv+0x5/0x320 [nfsd]
+[   39.921742]  [<ffffffffa019424a>] write_ports+0x52a/0x7a0 [nfsd]
+[   39.921746]  [<ffffffffa0194138>] ? write_ports+0x418/0x7a0 [nfsd]
+[   39.921750]  [<ffffffff816203c5>] ? _raw_spin_unlock+0x35/0x60
+[   39.921754]  [<ffffffff811de09a>] ? simple_transaction_get+0xca/0xe0
+[   39.921759]  [<ffffffffa0193d20>] ? write_maxblksize+0x2e0/0x2e0 [nfsd]
+[   39.921764]  [<ffffffffa0192367>] nfsctl_transaction_write+0x57/0x90 [nfsd]
+[   39.921768]  [<ffffffff811b45ff>] vfs_write+0xaf/0x190
+[   39.921771]  [<ffffffff811b4955>] sys_write+0x55/0xa0
+[   39.921775]  [<ffffffff81628b99>] system_call_fastpath+0x16/0x1b
 
-Mark, Paweł, Tom, could any of you confirm whether this helps?
-
---b.
-
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index dbf12ac..2d34b6b 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -515,15 +515,6 @@ EXPORT_SYMBOL_GPL(svc_create_pooled);
- 
- void svc_shutdown_net(struct svc_serv *serv, struct net *net)
- {
--	/*
--	 * The set of xprts (contained in the sv_tempsocks and
--	 * sv_permsocks lists) is now constant, since it is modified
--	 * only by accepting new sockets (done by service threads in
--	 * svc_recv) or aging old ones (done by sv_temptimer), or
--	 * configuration changes (excluded by whatever locking the
--	 * caller is using--nfsd_mutex in the case of nfsd).  So it's
--	 * safe to traverse those lists and shut everything down:
--	 */
- 	svc_close_net(serv, net);
- 
- 	if (serv->sv_shutdown)
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index b8e47fa..ca71056 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -856,7 +856,6 @@ static void svc_age_temp_xprts(unsigned long closure)
- 	struct svc_serv *serv = (struct svc_serv *)closure;
- 	struct svc_xprt *xprt;
- 	struct list_head *le, *next;
--	LIST_HEAD(to_be_aged);
- 
- 	dprintk("svc_age_temp_xprts\n");
- 
-@@ -877,25 +876,15 @@ static void svc_age_temp_xprts(unsigned long closure)
- 		if (atomic_read(&xprt->xpt_ref.refcount) > 1 ||
- 		    test_bit(XPT_BUSY, &xprt->xpt_flags))
- 			continue;
--		svc_xprt_get(xprt);
--		list_move(le, &to_be_aged);
-+		list_del_init(le);
- 		set_bit(XPT_CLOSE, &xprt->xpt_flags);
- 		set_bit(XPT_DETACHED, &xprt->xpt_flags);
--	}
--	spin_unlock_bh(&serv->sv_lock);
--
--	while (!list_empty(&to_be_aged)) {
--		le = to_be_aged.next;
--		/* fiddling the xpt_list node is safe 'cos we're XPT_DETACHED */
--		list_del_init(le);
--		xprt = list_entry(le, struct svc_xprt, xpt_list);
--
- 		dprintk("queuing xprt %p for closing\n", xprt);
- 
- 		/* a thread will dequeue and close it soon */
- 		svc_xprt_enqueue(xprt);
--		svc_xprt_put(xprt);
- 	}
-+	spin_unlock_bh(&serv->sv_lock);
- 
- 	mod_timer(&serv->sv_temptimer, jiffies + svc_conn_age_period * HZ);
- }
-@@ -959,21 +948,24 @@ void svc_close_xprt(struct svc_xprt *xprt)
- }
- EXPORT_SYMBOL_GPL(svc_close_xprt);
- 
--static void svc_close_list(struct svc_serv *serv, struct list_head *xprt_list, struct net *net)
-+static int svc_close_list(struct svc_serv *serv, struct list_head *xprt_list, struct net *net)
- {
- 	struct svc_xprt *xprt;
-+	int ret = 0;
- 
- 	spin_lock(&serv->sv_lock);
- 	list_for_each_entry(xprt, xprt_list, xpt_list) {
- 		if (xprt->xpt_net != net)
- 			continue;
-+		ret++;
- 		set_bit(XPT_CLOSE, &xprt->xpt_flags);
--		set_bit(XPT_BUSY, &xprt->xpt_flags);
-+		svc_xprt_enqueue(xprt);
- 	}
- 	spin_unlock(&serv->sv_lock);
-+	return ret;
- }
- 
--static void svc_clear_pools(struct svc_serv *serv, struct net *net)
-+static struct svc_xprt *svc_dequeue_net(struct svc_serv *serv, struct net *net)
- {
- 	struct svc_pool *pool;
- 	struct svc_xprt *xprt;
-@@ -988,42 +980,46 @@ static void svc_clear_pools(struct svc_serv *serv, struct net *net)
- 			if (xprt->xpt_net != net)
- 				continue;
- 			list_del_init(&xprt->xpt_ready);
-+			spin_unlock_bh(&pool->sp_lock);
-+			return xprt;
- 		}
- 		spin_unlock_bh(&pool->sp_lock);
- 	}
-+	return NULL;
- }
- 
--static void svc_clear_list(struct svc_serv *serv, struct list_head *xprt_list, struct net *net)
-+static void svc_clean_up_xprts(struct svc_serv *serv, struct net *net)
- {
- 	struct svc_xprt *xprt;
--	struct svc_xprt *tmp;
--	LIST_HEAD(victims);
--
--	spin_lock(&serv->sv_lock);
--	list_for_each_entry_safe(xprt, tmp, xprt_list, xpt_list) {
--		if (xprt->xpt_net != net)
--			continue;
--		list_move(&xprt->xpt_list, &victims);
--	}
--	spin_unlock(&serv->sv_lock);
- 
--	list_for_each_entry_safe(xprt, tmp, &victims, xpt_list)
-+	while ((xprt = svc_dequeue_net(serv, net))) {
-+		set_bit(XPT_CLOSE, &xprt->xpt_flags);
- 		svc_delete_xprt(xprt);
-+	}
- }
- 
-+/*
-+ * Server threads may still be running (especially in the case where the
-+ * service is still running in other network namespaces).
-+ *
-+ * So we shut down sockets the same way we would on a running server, by
-+ * setting XPT_CLOSE, enqueuing, and letting a thread pick it up to do
-+ * the close.  In the case there are no such other threads,
-+ * threads running, svc_clean_up_xprts() does a simple version of a
-+ * server's main event loop, and in the case where there are other
-+ * threads, we may need to wait a little while and then check again to
-+ * see if they're done.
-+ */
- void svc_close_net(struct svc_serv *serv, struct net *net)
- {
--	svc_close_list(serv, &serv->sv_tempsocks, net);
--	svc_close_list(serv, &serv->sv_permsocks, net);
-+	int delay = 0;
- 
--	svc_clear_pools(serv, net);
--	/*
--	 * At this point the sp_sockets lists will stay empty, since
--	 * svc_xprt_enqueue will not add new entries without taking the
--	 * sp_lock and checking XPT_BUSY.
--	 */
--	svc_clear_list(serv, &serv->sv_tempsocks, net);
--	svc_clear_list(serv, &serv->sv_permsocks, net);
-+	while (svc_close_list(serv, &serv->sv_permsocks, net) +
-+	       svc_close_list(serv, &serv->sv_tempsocks, net)) {
-+
-+		svc_clean_up_xprts(serv, net);
-+		msleep(delay++);
-+	}
- }
- 
- /*
