@@ -1,133 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from dgate20.ts.fujitsu.com ([80.70.172.51]:45026 "EHLO
-	dgate20.ts.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755229Ab3COUfI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Mar 2013 16:35:08 -0400
-Message-Id: <61eb00$3h8m17@dgate20u.abg.fsc.net>
-Date: 15 Mar 2013 21:35:06 +0100
-From: Bodo Stroesser <bstroesser@ts.fujitsu.com>
-To: neilb@suse.de
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, bstroesser@ts.fujitsu.com
-Subject: Re: sunrpc/cache.c: races while updating cache entries
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-ia0-f179.google.com ([209.85.210.179]:57240 "EHLO
+	mail-ia0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751448Ab3CBAIp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Mar 2013 19:08:45 -0500
+MIME-Version: 1.0
+In-Reply-To: <20130301003038.GA26533@redhat.com>
+References: <20130301003038.GA26533@redhat.com>
+Date: Fri, 1 Mar 2013 16:08:45 -0800
+Message-ID: <CAE9FiQVNUJaWKJfsv=xzrTLTfeosjNVFJ7sNnYu0dTM7QSDhfA@mail.gmail.com>
+Subject: Re: lockdep trace from nfsd
+From: Yinghai Lu <yinghai@kernel.org>
+To: Dave Jones <davej@redhat.com>, Linux Kernel <linux-kernel@vger.kernel.org>,
+        bfields@fieldses.org, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGksCgpoZXJlIGlzIGEgcGF0Y2ggaW4gdHdvIHZlcnNpb25zLCBvbmUgZm9yIG1haW5saW5l
-IGFuZAp0aGUgc2Vjb25kIGZvciBTTEVTMTEgU1AxLiBJIGRvbid0IGtub3csIHdoZXRoZXIg
-dGhpcwppcyB0aGUgYmVzdCBzb2x1dGlvbiwgYnV0IHRoZSB2ZXJzaW9uIGZvciBTTEVTMTEg
-Zml4ZXMKdGhlIHByb2JsZW0gZm9yIG1lLiBJdCBhbHJlYWR5IGlzIHRlc3RlZCBmb3IgYWJv
-dXQgMTIKaG91cnMgYW5kIEkganVzdCBzdGFydGVkIHRoZSB0ZXN0IGFnYWluIHRvIGhhdmUg
-aXQgcnVuCmZvciB0aGUgZW50aXJlIHdlZWtlbmQuCgpUaGUgcGF0Y2ggZm9yIG1haW5saW5l
-IGlzIHVudGVzdGVkLgoKQm9kbwoKIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMK
-CkZyb206IEJvZG8gU3Ryb2Vzc2VyIDxic3Ryb2Vzc2VyQHRzLmZ1aml0c3UuY29tPgpEYXRl
-OiBGcmksIDE1IE1hciAyMDEzClN1YmplY3Q6IFtQQVRDSF0gbmV0OiBzdW5ycGM6IGZpeCBy
-YWNlIGluIFJQQyBjYWNoZQoKVGhpcyBwYXRjaCBhcHBsaWVzIHRvIGxpbnV4LTMuNy42IHBs
-dXMgMiBlYXJsaWVyCnBhdGNoZXMgdGhhdCBhbHNvIGZpeCByYWNlcwoKSWYgYmV0d2VlbiBh
-IHRocmVhZCdzIGNhbGxzIHRvIHN1bnJwY19jYWNoZV9sb29rdXAoKQphbmQgY2FjaGVfY2hl
-Y2soKSB0aGUgY2FjaGUgZW50cnkgcmV0dXJuZWQgYnkgbG9va3VwCmlzIG1vZGlmaWVkIGJ5
-CmEpIHN1bnJwY19jYWNoZV91cGRhdGUoKSBzZXR0aW5nIGV4cGlyeV90aW1lIGlzIHNldCB0
-byAwCmIpIGNhY2hlX2NsZWFuKCkgdW5oYXNoaW5nIGl0LCBhcyBpdCBub3cgaXMgZXhwaXJl
-ZAp0aGVuIHRoZSB0aHJlYWQgd2lsbCBwZXJmb3JtIGFuIHVwY2FsbCBmb3IgdGhlIG91dGRh
-dGVkCmNhY2hlIGVudHJ5LiBUaGF0IGNhY2hlX3JlcXVlc3Qgd2lsbCBzdGF5IG9uIHRoZSBx
-dWV1ZQpmb3IgZXZlciwgYXMgYSByZXBseSB0byB0aGUgcmVxdWVzdCB3aWxsIGFsd2F5cyBt
-YXRjaAphIG5ld2VyIGNhY2hlIGVudHJ5IGFuZCB0aGUgcmVxdWVzdCBpc24ndCBkZXF1ZXVl
-ZC4KT1RPSCwgY2FjaGVfY2xlYW4oKSBhbHJlYWR5IHVuaGFzaGVkIHRoZSBvbGQgZW50cnks
-IHRodXMKY2FjaGVfY2xlYW4oKSB3b24ndCBkZXF1ZXVlIHRoZSByZXF1ZXN0IGFsc28uCgpU
-byBmaXggdGhlIHByb2JsZW0sIGluIGNhY2hlX2NoZWNrKCkgd2UgcmVjaGVjayB0aGUgc3Rh
-dGUKb2YgdGhlIGNhY2hlIGVudHJ5IGFmdGVyIGhhdmluZyBzZXQgQ0FDSEVfUEVORElORy4g
-U28gd2UKYXJlIHN1cmUgdG8gbmV2ZXIgZG8gYW4gdXBjYWxsIGZvciBhbiBvdXRkYXRlZCBl
-bnRyeS4KClNpZ25lZC1vZmYtYnk6IEJvZG8gU3Ryb2Vzc2VyIDxic3Ryb2Vzc2VyQHRzLmZ1
-aml0c3UuY29tPgotLS0KCi0tLSBhL25ldC9zdW5ycGMvY2FjaGUuYwkyMDEzLTAzLTE1IDIx
-OjE0OjU0LjAwMDAwMDAwMCArMDEwMAorKysgYi9uZXQvc3VucnBjL2NhY2hlLmMJMjAxMy0w
-My0xNSAyMToyOTowOS4wMDAwMDAwMDAgKzAxMDAKQEAgLTIyMiw2ICsyMjIsMTcgQEAgc3Rh
-dGljIGlubGluZSBpbnQgY2FjaGVfaXNfdmFsaWQoc3RydWN0CiAJfQogfQogCitzdGF0aWMg
-aW5saW5lIGludCBjYWNoZV93YW50c191cGNhbGwoc3RydWN0IGNhY2hlX2hlYWQgKmgsIGlu
-dCBmaW5hbCkKK3sKKwlsb25nIHJlZnJlc2hfYWdlID0gKGgtPmV4cGlyeV90aW1lIC0gaC0+
-bGFzdF9yZWZyZXNoKTsKKwlsb25nIGFnZSA9IHNlY29uZHNfc2luY2VfYm9vdCgpIC0gaC0+
-bGFzdF9yZWZyZXNoOworCisJaWYgKGZpbmFsKQorCQlkcHJpbnRrKCJSUEM6ICAgICAgIFdh
-bnQgdXBkYXRlLCByZWZhZ2U9JWxkLCBhZ2U9JWxkXG4iLCByZWZyZXNoX2FnZSwgYWdlKTsK
-KworCXJldHVybiBoLT5leHBpcnlfdGltZSAmJiBhZ2UgPiByZWZyZXNoX2FnZS8yOworfQor
-CiBzdGF0aWMgaW50IHRyeV90b19uZWdhdGVfZW50cnkoc3RydWN0IGNhY2hlX2RldGFpbCAq
-ZGV0YWlsLCBzdHJ1Y3QgY2FjaGVfaGVhZCAqaCkKIHsKIAlpbnQgcnY7CkBAIC0yNTUsMjQg
-KzI2NiwyMiBAQCBzdGF0aWMgaW50IHRyeV90b19uZWdhdGVfZW50cnkoc3RydWN0IGNhCiBp
-bnQgY2FjaGVfY2hlY2soc3RydWN0IGNhY2hlX2RldGFpbCAqZGV0YWlsLAogCQkgICAgc3Ry
-dWN0IGNhY2hlX2hlYWQgKmgsIHN0cnVjdCBjYWNoZV9yZXEgKnJxc3RwKQogewotCWludCBy
-djsKLQlsb25nIHJlZnJlc2hfYWdlLCBhZ2U7CisJaW50IHJ2LCByYzsKIAogCS8qIEZpcnN0
-IGRlY2lkZSByZXR1cm4gc3RhdHVzIGFzIGJlc3Qgd2UgY2FuICovCiAJcnYgPSBjYWNoZV9p
-c192YWxpZChkZXRhaWwsIGgpOwogCi0JLyogbm93IHNlZSBpZiB3ZSB3YW50IHRvIHN0YXJ0
-IGFuIHVwY2FsbCAqLwotCXJlZnJlc2hfYWdlID0gKGgtPmV4cGlyeV90aW1lIC0gaC0+bGFz
-dF9yZWZyZXNoKTsKLQlhZ2UgPSBzZWNvbmRzX3NpbmNlX2Jvb3QoKSAtIGgtPmxhc3RfcmVm
-cmVzaDsKLQogCWlmIChycXN0cCA9PSBOVUxMKSB7CiAJCWlmIChydiA9PSAtRUFHQUlOKQog
-CQkJcnYgPSAtRU5PRU5UOwotCX0gZWxzZSBpZiAocnYgPT0gLUVBR0FJTiB8fCBhZ2UgPiBy
-ZWZyZXNoX2FnZS8yKSB7Ci0JCWRwcmludGsoIlJQQzogICAgICAgV2FudCB1cGRhdGUsIHJl
-ZmFnZT0lbGQsIGFnZT0lbGRcbiIsCi0JCQkJcmVmcmVzaF9hZ2UsIGFnZSk7CisJfSBlbHNl
-IGlmIChydiA9PSAtRUFHQUlOIHx8IGNhY2hlX3dhbnRzX3VwY2FsbChoLCAwKSkgewogCQlp
-ZiAoIXRlc3RfYW5kX3NldF9iaXQoQ0FDSEVfUEVORElORywgJmgtPmZsYWdzKSkgewotCQkJ
-c3dpdGNoIChjYWNoZV9tYWtlX3VwY2FsbChkZXRhaWwsIGgpKSB7CisJCQlydiA9IGNhY2hl
-X2lzX3ZhbGlkKGRldGFpbCwgaCk7CisJCQlpZiAocnYgPT0gLUVBR0FJTiB8fCBjYWNoZV93
-YW50c191cGNhbGwoaCwgMSkpCisJCQkJcmMgPSBjYWNoZV9tYWtlX3VwY2FsbChkZXRhaWws
-IGgpOworCQkJZWxzZQorCQkJCXJjID0gLUVBR0FJTjsKKwkJCXN3aXRjaCAocmMpIHsKIAkJ
-CWNhc2UgLUVJTlZBTDoKIAkJCQlydiA9IHRyeV90b19uZWdhdGVfZW50cnkoZGV0YWlsLCBo
-KTsKIAkJCQlicmVhazsKCiMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjCgpGcm9t
-OiBCb2RvIFN0cm9lc3NlciA8YnN0cm9lc3NlckB0cy5mdWppdHN1LmNvbT4KRGF0ZTogRnJp
-LCAxNSBNYXIgMjAxMwpTdWJqZWN0OiBbUEFUQ0hdIG5ldDogc3VucnBjOiBmaXggcmFjZSBp
-biBSUEMgY2FjaGUKClRoaXMgcGF0Y2ggYXBwbGllcyB0byBsaW51eC0yLjYuMzIuNTktMC43
-LjEuNDU0My4wLlBURgpwbHVzIDIgZWFybGllciBwYXRjaGVzIHRoYXQgYWxzbyBmaXggcmFj
-ZXMKCklmIGJldHdlZW4gYSB0aHJlYWQncyBjYWxscyB0byBzdW5ycGNfY2FjaGVfbG9va3Vw
-KCkKYW5kIGNhY2hlX2NoZWNrKCkgdGhlIGNhY2hlIGVudHJ5IHJldHVybmVkIGJ5IGxvb2t1
-cAppcyBtb2RpZmllZCBieQphKSBzdW5ycGNfY2FjaGVfdXBkYXRlKCkgc2V0dGluZyBleHBp
-cnlfdGltZSBpcyBzZXQgdG8gMApiKSBjYWNoZV9jbGVhbigpIHVuaGFzaGluZyBpdCwgYXMg
-aXQgbm93IGlzIGV4cGlyZWQKdGhlbiB0aGUgdGhyZWFkIHdpbGwgcGVyZm9ybSBhbiB1cGNh
-bGwgZm9yIHRoZSBvdXRkYXRlZApjYWNoZSBlbnRyeS4gVGhhdCBjYWNoZV9yZXF1ZXN0IHdp
-bGwgc3RheSBvbiB0aGUgcXVldWUKZm9yIGV2ZXIsIGFzIGEgcmVwbHkgdG8gdGhlIHJlcXVl
-c3Qgd2lsbCBhbHdheXMgbWF0Y2gKYSBuZXdlciBjYWNoZSBlbnRyeSBhbmQgdGhlIHJlcXVl
-c3QgaXNuJ3QgZGVxdWV1ZWQuCk9UT0gsIGNhY2hlX2NsZWFuKCkgYWxyZWFkeSB1bmhhc2hl
-ZCB0aGUgb2xkIGVudHJ5LCB0aHVzCmNhY2hlX2NsZWFuKCkgd29uJ3QgZGVxdWV1ZSB0aGUg
-cmVxdWVzdCBhbHNvLgoKT24gdGhpcyBvbGRlciBTVyB2ZXJzaW9uLCB0aGUgcHJvYmxlbSBh
-ZGRpdGlvbmFsbHkgbGVhZHMKdG8gUlBDIHJlcXVlc3RzIGJlaW5nIGRyb3BwZWQuCgpUbyBm
-aXggdGhlIHByb2JsZW0sIGluIGNhY2hlX2NoZWNrKCkgd2UgcmVjaGVjayB0aGUgc3RhdGUK
-b2YgdGhlIGNhY2hlIGVudHJ5IGFmdGVyIGhhdmluZyBzZXQgQ0FDSEVfUEVORElORy4gU28g
-d2UKYXJlIHN1cmUgdG8gbmV2ZXIgZG8gYW4gdXBjYWxsIGZvciBhbiBvdXRkYXRlZCBlbnRy
-eS4KClNpZ25lZC1vZmYtYnk6IEJvZG8gU3Ryb2Vzc2VyIDxic3Ryb2Vzc2VyQHRzLmZ1aml0
-c3UuY29tPgotLS0KCi0tLSBhL25ldC9zdW5ycGMvY2FjaGUuYwkyMDEzLTAzLTE1IDIwOjAz
-OjU0LjAwMDAwMDAwMCArMDEwMAorKysgYi9uZXQvc3VucnBjL2NhY2hlLmMJMjAxMy0wMy0x
-NSAyMDoxNDoxMy4wMDAwMDAwMDAgKzAxMDAKQEAgLTE4NCw3ICsxODQsNyBAQCBzdGF0aWMg
-aW50IGNhY2hlX21ha2VfdXBjYWxsKHN0cnVjdCBjYWNoCiBzdGF0aWMgaW5saW5lIGludCBj
-YWNoZV9pc192YWxpZChzdHJ1Y3QgY2FjaGVfZGV0YWlsICpkZXRhaWwsIHN0cnVjdCBjYWNo
-ZV9oZWFkICpoKQogewogCWlmICghdGVzdF9iaXQoQ0FDSEVfVkFMSUQsICZoLT5mbGFncykg
-fHwKLQkgICAgaC0+ZXhwaXJ5X3RpbWUgPCBtb25vdG9uaWNfc2Vjb25kcygpKQorCSAgICAo
-aC0+ZXhwaXJ5X3RpbWUgJiYgaC0+ZXhwaXJ5X3RpbWUgPCBtb25vdG9uaWNfc2Vjb25kcygp
-KSkKIAkJcmV0dXJuIC1FQUdBSU47CiAJZWxzZSBpZiAoZGV0YWlsLT5mbHVzaF90aW1lID4g
-aC0+bGFzdF9yZWZyZXNoKQogCQlyZXR1cm4gLUVBR0FJTjsKQEAgLTE5Nyw2ICsxOTcsMTcg
-QEAgc3RhdGljIGlubGluZSBpbnQgY2FjaGVfaXNfdmFsaWQoc3RydWN0CiAJfQogfQogCitz
-dGF0aWMgaW5saW5lIGludCBjYWNoZV93YW50c191cGNhbGwoc3RydWN0IGNhY2hlX2hlYWQg
-KmgsIGludCBmaW5hbCkKK3sKKwlsb25nIHJlZnJlc2hfYWdlID0gKGgtPmV4cGlyeV90aW1l
-IC0gaC0+bGFzdF9yZWZyZXNoKTsKKwlsb25nIGFnZSA9IG1vbm90b25pY19zZWNvbmRzKCkg
-LSBoLT5sYXN0X3JlZnJlc2g7CisKKwlpZiAoZmluYWwpCisJCWRwcmludGsoIlJQQzogICAg
-ICAgV2FudCB1cGRhdGUsIHJlZmFnZT0lbGQsIGFnZT0lbGRcbiIsIHJlZnJlc2hfYWdlLCBh
-Z2UpOworCisJcmV0dXJuIGgtPmV4cGlyeV90aW1lICYmIGFnZSA+IHJlZnJlc2hfYWdlLzI7
-Cit9CisKIC8qCiAgKiBUaGlzIGlzIHRoZSBnZW5lcmljIGNhY2hlIG1hbmFnZW1lbnQgcm91
-dGluZSBmb3IgYWxsCiAgKiB0aGUgYXV0aGVudGljYXRpb24gY2FjaGVzLgpAQCAtMjE0LDI0
-ICsyMjUsMjIgQEAgc3RhdGljIGlubGluZSBpbnQgY2FjaGVfaXNfdmFsaWQoc3RydWN0CiBp
-bnQgY2FjaGVfY2hlY2soc3RydWN0IGNhY2hlX2RldGFpbCAqZGV0YWlsLAogCQkgICAgc3Ry
-dWN0IGNhY2hlX2hlYWQgKmgsIHN0cnVjdCBjYWNoZV9yZXEgKnJxc3RwKQogewotCWludCBy
-djsKLQlsb25nIHJlZnJlc2hfYWdlLCBhZ2U7CisJaW50IHJ2LCByYzsKIAogCS8qIEZpcnN0
-IGRlY2lkZSByZXR1cm4gc3RhdHVzIGFzIGJlc3Qgd2UgY2FuICovCiAJcnYgPSBjYWNoZV9p
-c192YWxpZChkZXRhaWwsIGgpOwogCi0JLyogbm93IHNlZSBpZiB3ZSB3YW50IHRvIHN0YXJ0
-IGFuIHVwY2FsbCAqLwotCXJlZnJlc2hfYWdlID0gKGgtPmV4cGlyeV90aW1lIC0gaC0+bGFz
-dF9yZWZyZXNoKTsKLQlhZ2UgPSBtb25vdG9uaWNfc2Vjb25kcygpIC0gaC0+bGFzdF9yZWZy
-ZXNoOwotCiAJaWYgKHJxc3RwID09IE5VTEwpIHsKIAkJaWYgKHJ2ID09IC1FQUdBSU4pCiAJ
-CQlydiA9IC1FTk9FTlQ7Ci0JfSBlbHNlIGlmIChydiA9PSAtRUFHQUlOIHx8IGFnZSA+IHJl
-ZnJlc2hfYWdlLzIpIHsKLQkJZHByaW50aygiUlBDOiAgICAgICBXYW50IHVwZGF0ZSwgcmVm
-YWdlPSVsZCwgYWdlPSVsZFxuIiwKLQkJCQlyZWZyZXNoX2FnZSwgYWdlKTsKKwl9IGVsc2Ug
-aWYgKHJ2ID09IC1FQUdBSU4gfHwgY2FjaGVfd2FudHNfdXBjYWxsKGgsIDApKSB7CiAJCWlm
-ICghdGVzdF9hbmRfc2V0X2JpdChDQUNIRV9QRU5ESU5HLCAmaC0+ZmxhZ3MpKSB7Ci0JCQlz
-d2l0Y2ggKGNhY2hlX21ha2VfdXBjYWxsKGRldGFpbCwgaCkpIHsKKwkJCXJ2ID0gY2FjaGVf
-aXNfdmFsaWQoZGV0YWlsLCBoKTsKKwkJCWlmIChydiA9PSAtRUFHQUlOIHx8IGNhY2hlX3dh
-bnRzX3VwY2FsbChoLCAxKSkKKwkJCQlyYyA9IGNhY2hlX21ha2VfdXBjYWxsKGRldGFpbCwg
-aCk7CisJCQllbHNlCisJCQkJcmMgPSAtRUFHQUlOOworCQkJc3dpdGNoIChyYykgewogCQkJ
-Y2FzZSAtRUlOVkFMOgogCQkJCXdyaXRlX2xvY2soJmRldGFpbC0+aGFzaF9sb2NrKTsKIAkJ
-CQlpZiAocnYpIHsK
+On Thu, Feb 28, 2013 at 4:30 PM, Dave Jones <davej@redhat.com> wrote:
+> [   39.878535] =====================================
+> [   39.879670] [ BUG: rpc.nfsd/666 still has locks held! ]
+> [   39.880871] 3.8.0+ #3 Not tainted
+> [   39.881858] -------------------------------------
+> [   39.882850] 2 locks on stack by rpc.nfsd/666:
+> [   39.883868]  #0: held:     (nfsd_mutex){+.+.+.}, instance: ffffffffa01cf0b8, at: [<ffffffffa0193d57>] write_ports+0x37/0x7a0 [nfsd]
+> [   39.884750]  #1: held:     (rpcb_create_local_mutex){+.+.+.}, instance: ffffffffa016d878, at: [<ffffffffa0153916>] rpcb_create_local+0x46/0x90 [sunrpc]
+> [   39.885903]
+> stack backtrace:
+> [   39.897044] Pid: 666, comm: rpc.nfsd Not tainted 3.8.0+ #3
+> [   39.898186] Call Trace:
+> [   39.900755]  [<ffffffff810b9c6a>] debug_check_no_locks_held+0x9a/0xa0
+> [   39.901823]  [<ffffffffa0145965>] rpc_wait_bit_killable+0x85/0xb0 [sunrpc]
+> [   39.902866]  [<ffffffff8161bf10>] __wait_on_bit+0x60/0x90
+> [   39.903879]  [<ffffffffa0147860>] ? __rpc_execute+0x170/0x5a0 [sunrpc]
+> [   39.904900]  [<ffffffffa01458e0>] ? __rpc_wait_for_completion_task+0x30/0x30 [sunrpc]
+> [   39.905969]  [<ffffffff8161bfbc>] out_of_line_wait_on_bit+0x7c/0x90
+> [   39.907010]  [<ffffffffa0147860>] ? __rpc_execute+0x170/0x5a0 [sunrpc]
+> [   39.908070]  [<ffffffff81075f00>] ? autoremove_wake_function+0x50/0x50
+> [   39.909124]  [<ffffffffa0139b50>] ? call_connect+0xa0/0xa0 [sunrpc]
+> [   39.910154]  [<ffffffffa0147891>] __rpc_execute+0x1a1/0x5a0 [sunrpc]
+> [   39.911176]  [<ffffffff81075e9e>] ? wake_up_bit+0x2e/0x40
+> [   39.912058]  [<ffffffffa0147d49>] rpc_execute+0x59/0x180 [sunrpc]
+> [   39.912745]  [<ffffffffa013da00>] rpc_run_task+0x70/0x90 [sunrpc]
+> [   39.913446]  [<ffffffffa013db23>] rpc_call_sync+0x43/0xa0 [sunrpc]
+> [   39.914280]  [<ffffffffa013dbd2>] rpc_ping+0x52/0x70 [sunrpc]
+> [   39.914992]  [<ffffffffa013de08>] rpc_create+0x188/0x230 [sunrpc]
+> [   39.915735]  [<ffffffff8100a4a9>] ? sched_clock+0x9/0x10
+> [   39.916577]  [<ffffffff810b807e>] ? put_lock_stats.isra.25+0xe/0x40
+> [   39.917635]  [<ffffffff810b871c>] ? lock_release_holdtime.part.26+0xcc/0x140
+> [   39.918667]  [<ffffffffa015331c>] rpcb_create_local_unix+0x5c/0xe0 [sunrpc]
+> [   39.919669]  [<ffffffffa0153948>] rpcb_create_local+0x78/0x90 [sunrpc]
+> [   39.920705]  [<ffffffffa014a653>] svc_rpcb_setup+0x23/0x50 [sunrpc]
+> [   39.921725]  [<ffffffffa014a6b4>] svc_bind+0x34/0x50 [sunrpc]
+> [   39.921733]  [<ffffffffa01909ed>] nfsd_create_serv+0x1cd/0x320 [nfsd]
+> [   39.921738]  [<ffffffffa0190825>] ? nfsd_create_serv+0x5/0x320 [nfsd]
+> [   39.921742]  [<ffffffffa019424a>] write_ports+0x52a/0x7a0 [nfsd]
+> [   39.921746]  [<ffffffffa0194138>] ? write_ports+0x418/0x7a0 [nfsd]
+> [   39.921750]  [<ffffffff816203c5>] ? _raw_spin_unlock+0x35/0x60
+> [   39.921754]  [<ffffffff811de09a>] ? simple_transaction_get+0xca/0xe0
+> [   39.921759]  [<ffffffffa0193d20>] ? write_maxblksize+0x2e0/0x2e0 [nfsd]
+> [   39.921764]  [<ffffffffa0192367>] nfsctl_transaction_write+0x57/0x90 [nfsd]
+> [   39.921768]  [<ffffffff811b45ff>] vfs_write+0xaf/0x190
+> [   39.921771]  [<ffffffff811b4955>] sys_write+0x55/0xa0
+> [   39.921775]  [<ffffffff81628b99>] system_call_fastpath+0x16/0x1b
+>
 
 
+when try to mount nfs dir, got
+
+[ 1341.534971] INFO: trying to register non-static key.
+[ 1341.535279] the code is fine but needs lockdep annotation.
+[ 1341.535599] turning off the locking correctness validator.
+[ 1341.548353] Pid: 15681, comm: mount.nfs Not tainted
+3.8.0-yh-07300-gdae94c7-dirty #1287
+[ 1341.568229] Call Trace:
+[ 1341.568356]  [<ffffffff81100d4d>] __lock_acquire+0x37d/0xc90
+[ 1341.568673]  [<ffffffff810fb778>] ? trace_hardirqs_off_caller+0x28/0x160
+[ 1341.588437]  [<ffffffff810668e5>] ? native_sched_clock+0x35/0x80
+[ 1341.608187]  [<ffffffff81101c8a>] lock_acquire+0xaa/0x130
+[ 1341.608460]  [<ffffffff810bcfa5>] ? flush_work+0x5/0x270
+[ 1341.628195]  [<ffffffff810bcfec>] flush_work+0x4c/0x270
+[ 1341.628468]  [<ffffffff810bcfa5>] ? flush_work+0x5/0x270
+[ 1341.628729]  [<ffffffff810bd008>] ? flush_work+0x68/0x270
+[ 1341.648425]  [<ffffffff810bcfa5>] ? flush_work+0x5/0x270
+[ 1341.648696]  [<ffffffff810fed93>] ? mark_held_locks+0x123/0x140
+[ 1341.668484]  [<ffffffff810be73d>] ? __cancel_work_timer+0x9d/0xe0
+[ 1341.688225]  [<ffffffff810be750>] __cancel_work_timer+0xb0/0xe0
+[ 1341.688515]  [<ffffffff810be793>] cancel_delayed_work_sync+0x13/0x20
+[ 1341.708312]  [<ffffffff8208200f>] xs_destroy+0x3f/0x90
+[ 1341.708587]  [<ffffffff8207ec8e>] xprt_destroy+0x8e/0xa0
+[ 1341.728280]  [<ffffffff82080de8>] xprt_put+0x18/0x20
+[ 1341.728540]  [<ffffffff8207ddf4>] rpc_free_client+0x164/0x180
+[ 1341.748282]  [<ffffffff8207dd21>] ? rpc_free_client+0x91/0x180
+[ 1341.748667]  [<ffffffff8207dc54>] rpc_release_client+0x74/0xb0
+[ 1341.768339]  [<ffffffff8207df51>] rpc_shutdown_client+0x141/0x150
+[ 1341.768706]  [<ffffffff8207e62d>] ? rpc_ping+0x5d/0x70
+[ 1341.788331]  [<ffffffff8207e820>] rpc_create+0x150/0x200
+[ 1341.788710]  [<ffffffff8209148f>] ? rpcb_get_local+0xbf/0xd0
+[ 1341.808378]  [<ffffffff820914fc>] rpcb_create_local_unix+0x5c/0xf0
+[ 1341.808792]  [<ffffffff82091800>] rpcb_create_local+0x50/0x80
+[ 1341.828434]  [<ffffffff8208aef3>] svc_rpcb_setup+0x23/0x50
+[ 1341.828791]  [<ffffffff8208af54>] svc_bind+0x34/0x50
+[ 1341.848377]  [<ffffffff81373a62>] lockd_up+0x152/0x360
+[ 1341.848698]  [<ffffffff813739d8>] ? lockd_up+0xc8/0x360
+[ 1341.874014]  [<ffffffff8133a08b>] ? nfs_init_client+0x5b/0xb0
+[ 1341.874415]  [<ffffffff8136f9f7>] nlmclnt_init+0x27/0x80
+[ 1341.890014]  [<ffffffff81338e13>] nfs_start_lockd+0xa3/0xd0
+[ 1341.890364]  [<ffffffff8133a708>] nfs_create_server+0x288/0x520
+[ 1341.908405]  [<ffffffff8135288e>] nfs3_create_server+0xe/0x30
+[ 1341.908779]  [<ffffffff81343ef9>] nfs_try_mount+0x59/0x90
+[ 1341.928405]  [<ffffffff8134648c>] nfs_fs_mount+0xacc/0xb40
+[ 1341.928770]  [<ffffffff813435d0>] ? nfs_clone_super+0x140/0x140
+[ 1341.948439]  [<ffffffff81342db0>] ? nfs_sb_active+0x30/0x30
+[ 1341.948843]  [<ffffffff811ccf90>] mount_fs+0x20/0xf0
+[ 1341.968413]  [<ffffffff811e77d6>] vfs_kern_mount+0x76/0x100
+[ 1341.968747]  [<ffffffff811e9d00>] do_mount+0x810/0x9e0
+[ 1341.988421]  [<ffffffff811e936a>] ? copy_mount_options+0x3a/0x170
+[ 1341.988824]  [<ffffffff811e9f6c>] sys_mount+0x9c/0xe0
+[ 1342.008444]  [<ffffffff821d7419>] system_call_fastpath+0x16/0x1b
+
+
+so that is same problem ?
