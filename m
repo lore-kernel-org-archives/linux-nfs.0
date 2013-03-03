@@ -1,61 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:44855 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:16891 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756809Ab3CYLoY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Mar 2013 07:44:24 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 14/14] Kconfig: Add Kconfig entry for Labeled NFS V4 server
-Date: Mon, 25 Mar 2013 07:42:58 -0400
-Message-Id: <1364211778-29172-15-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1364211778-29172-1-git-send-email-SteveD@redhat.com>
-References: <1364211778-29172-1-git-send-email-SteveD@redhat.com>
+	id S1751247Ab3CCAIh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Mar 2013 19:08:37 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>
+Subject: [GIT PULL] Please pull NFS client bugfixes
+Date: Sun, 3 Mar 2013 00:08:34 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9286AB5FC@sacexcmbx05-prd.hq.netapp.com>
+Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Steve Dickson <steved@redhat.com>
+Hi Linus,
 
-This patch adds the NFSd_V4_SECURITY_LABEL entry which
-enables security label support for the NFSv4 server
+We've just concluded another Connectathon interoperability testing week,
+and so here are the fixes for the bugs that were discovered.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- fs/nfsd/Kconfig | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+Cheers,
+  Trond
 
-diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-index 430b687..c37a046 100644
---- a/fs/nfsd/Kconfig
-+++ b/fs/nfsd/Kconfig
-@@ -81,6 +81,22 @@ config NFSD_V4
- 
- 	  If unsure, say N.
- 
-+config NFSD_V4_SECURITY_LABEL
-+	bool "Provide Security Label support for NFSv4 server"
-+	depends on NFSD_V4 && SECURITY
-+	help
-+
-+	Say Y here if you want enable fine-grained security label attribute
-+	support for NFS version 4.  Security labels allow security modules like
-+	SELinux and Smack to label files to facilitate enforcement of their policies.
-+	Without this an NFSv4 mount will have the same label on each file.
-+
-+	If you do not wish to enable fine-grained security labels SELinux or
-+	Smack policies on NFSv4 files, say N.
-+
-+	WARNING: there is still a chance of backwards-incompatible protocol changes.  
-+	For now we recommend "Y" only for developers and testers."
-+
- config NFSD_FAULT_INJECTION
- 	bool "NFS server manual fault injection"
- 	depends on NFSD_V4 && DEBUG_KERNEL
+The following changes since commit 666b3d803a511fbc9bc5e5ea8ce66010cf03ea13:
+
+  NLM: Ensure that we resend all pending blocking locks after a reclaim (2013-02-19 12:18:27 -0500)
+
+are available in the git repository at:
+
+  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-3.9-2
+
+for you to fetch changes up to 512e4b291c0e97af24619a91f3e8963697da00d8:
+
+  SUNRPC: One line comment fix (2013-03-02 15:54:11 -0800)
+
+----------------------------------------------------------------
+NFS client bugfixes for Linux 3.9
+
+- Don't allow NFS silly-renamed files to be deleted
+- Don't start the retransmission timer when out of socket space
+- Fix a couple of pnfs-related Oopses.
+- Fix one more NFSv4 state recovery deadlock
+- Don't loop forever when LAYOUTGET returns NFS4ERR_LAYOUTTRYLATER
+
+----------------------------------------------------------------
+Benny Halevy (1):
+      pnfs: fix resend_to_mds for directio
+
+Jeff Layton (1):
+      nfs: don't allow nfs_find_actor to match inodes of the wrong type
+
+Trond Myklebust (4):
+      NFS: Don't allow NFS silly-renamed files to be deleted, no signal
+      SUNRPC: Don't start the retransmission timer when out of socket space
+      NFSv4: Fix another open/open_recovery deadlock
+      SUNRPC: One line comment fix
+
+Weston Andros Adamson (4):
+      NFSv4.1: Hold reference to layout hdr in layoutget
+      PNFS: set the default DS timeout to 60 seconds
+      SUNRPC: add call to get configured timeout
+      NFSv4.1: LAYOUTGET EDELAY loops timeout to the MDS
+
+ fs/nfs/inode.c              |  2 ++
+ fs/nfs/nfs4filelayout.c     |  6 ++++--
+ fs/nfs/nfs4filelayout.h     |  2 +-
+ fs/nfs/nfs4proc.c           | 21 ++++++++++++++++++---
+ fs/nfs/pnfs.c               | 21 +++++++++++++--------
+ fs/nfs/pnfs.h               |  6 ++++--
+ fs/nfs/unlink.c             | 20 +++++++++++++-------
+ include/linux/nfs_xdr.h     |  1 +
+ include/linux/sunrpc/clnt.h |  1 +
+ net/sunrpc/clnt.c           | 15 +++++++++++++++
+ net/sunrpc/xprt.c           |  6 +++++-
+ 11 files changed, 77 insertions(+), 24 deletions(-)
+
 -- 
-1.8.1.4
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
