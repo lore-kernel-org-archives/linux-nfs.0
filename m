@@ -1,83 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60976 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752845Ab3CUO4W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Mar 2013 10:56:22 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 3/9] nfsd4: remove some dprintk's
-Date: Thu, 21 Mar 2013 10:56:14 -0400
-Message-Id: <1363877780-28825-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <1363877780-28825-1-git-send-email-bfields@redhat.com>
-References: <1363877780-28825-1-git-send-email-bfields@redhat.com>
+Received: from mail-pa0-f54.google.com ([209.85.220.54]:60351 "EHLO
+	mail-pa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752634Ab3CCJCY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Mar 2013 04:02:24 -0500
+Received: by mail-pa0-f54.google.com with SMTP id fa10so2597212pad.27
+        for <linux-nfs@vger.kernel.org>; Sun, 03 Mar 2013 01:02:23 -0800 (PST)
+Date: Sun, 3 Mar 2013 17:02:11 +0800
+From: Yanchuan Nian <ycnian@gmail.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd: Correct read access checking
+Message-ID: <20130303090211.GA29550@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=gb2312
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+NFS4_SHARE_ACCESS_WRITE should not be tested in access_permit_read() for this
+function just tests read permission, so remove it.
 
-E.g. printk's that just report the return value from an op are
-uninteresting as we already do that in the main proc_compound loop.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Yanchuan Nian <ycnian@gmail.com>
 ---
- fs/nfsd/nfs4state.c |    9 +--------
- 1 file changed, 1 insertion(+), 8 deletions(-)
+ fs/nfsd/nfs4state.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index cfd4430..91ad066 100644
+index 16d39c6..75c873d 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1839,15 +1839,13 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 	/* cache solo and embedded create sessions under the state lock */
- 	nfsd4_cache_create_session(cr_ses, cs_slot, status);
- 	nfs4_unlock_state();
--out:
--	dprintk("%s returns %d\n", __func__, ntohl(status));
- 	return status;
- out_free_conn:
- 	nfs4_unlock_state();
- 	free_conn(conn);
- out_free_session:
- 	__free_session(new);
--	goto out;
-+	return status;
+@@ -3322,8 +3322,7 @@ static inline int
+ access_permit_read(struct nfs4_ol_stateid *stp)
+ {
+ 	return test_access(NFS4_SHARE_ACCESS_READ, stp) ||
+-		test_access(NFS4_SHARE_ACCESS_BOTH, stp) ||
+-		test_access(NFS4_SHARE_ACCESS_WRITE, stp);
++		test_access(NFS4_SHARE_ACCESS_BOTH, stp);
  }
  
- static __be32 nfsd4_map_bcts_dir(u32 *dir)
-@@ -1959,7 +1957,6 @@ nfsd4_destroy_session(struct svc_rqst *r,
- 	spin_unlock(&nn->client_lock);
- 	status = nfs_ok;
- out:
--	dprintk("%s returns %d\n", __func__, ntohl(status));
- 	return status;
- }
- 
-@@ -2112,7 +2109,6 @@ out:
- 	}
- 	kfree(conn);
- 	spin_unlock(&nn->client_lock);
--	dprintk("%s: return %d\n", __func__, ntohl(status));
- 	return status;
- }
- 
-@@ -2151,7 +2147,6 @@ nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
- 	expire_client(clp);
- out:
- 	nfs4_unlock_state();
--	dprintk("%s return %d\n", __func__, ntohl(status));
- 	return status;
- }
- 
-@@ -2528,8 +2523,6 @@ nfs4_share_conflict(struct svc_fh *current_fh, unsigned int deny_type)
- 	struct nfs4_ol_stateid *stp;
- 	__be32 ret;
- 
--	dprintk("NFSD: nfs4_share_conflict\n");
--
- 	fp = find_file(ino);
- 	if (!fp)
- 		return nfs_ok;
+ static inline int
 -- 
-1.7.9.5
+1.8.0.1
 
