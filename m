@@ -1,85 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.gentoo.org ([140.211.166.183]:42278 "EHLO smtp.gentoo.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758531Ab3CYQOp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Mar 2013 12:14:45 -0400
-From: Mike Frysinger <vapier@gentoo.org>
-To: Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH [nfs-utils]] locktes/rpcgen: tweak how we override compiler settings
-Date: Mon, 25 Mar 2013 12:19:05 -0400
-Cc: linux-nfs@vger.kernel.org
-References: <1364163668-15490-1-git-send-email-vapier@gentoo.org> <51504638.8020408@RedHat.com>
-In-Reply-To: <51504638.8020408@RedHat.com>
-MIME-Version: 1.0
-Content-Type: multipart/signed;
-  boundary="nextPart3340351.MxZjtEEMHr";
-  protocol="application/pgp-signature";
-  micalg=pgp-sha1
-Message-Id: <201303251219.06502.vapier@gentoo.org>
+Received: from mail-vb0-f50.google.com ([209.85.212.50]:47358 "EHLO
+	mail-vb0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758441Ab3CDS4x (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Mar 2013 13:56:53 -0500
+Received: by mail-vb0-f50.google.com with SMTP id ft2so994934vbb.37
+        for <linux-nfs@vger.kernel.org>; Mon, 04 Mar 2013 10:56:52 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
+Subject: [PATCH v2 5/5] nfsd: keep stats on worst hash balancing seen so far
+Date: Mon,  4 Mar 2013 13:56:40 -0500
+Message-Id: <1362423400-24380-6-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1362423400-24380-1-git-send-email-jlayton@redhat.com>
+References: <1362423400-24380-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---nextPart3340351.MxZjtEEMHr
-Content-Type: Text/Plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
+The typical case with the DRC is a cache miss, so if we keep track of
+the max number of entries that we've ever walked over in a search, then
+we should have a reasonable estimate of the longest hash chain that
+we've ever seen.
 
-On Monday 25 March 2013 08:42:32 Steve Dickson wrote:
-> On 24/03/13 18:21, Mike Frysinger wrote:
-> > Newer autotools will use both CFLAGS and <target>_CFLAGS when compiling
-> > the <target>.  Adding the build settings to the target-specific flags no
-> > longer works as a way to compile build-time tools.
-> >=20
-> > Instead, clobber the global flags.  This triggers an automake warning,
-> > but the end result actually works (unlike the existing code).
->=20
-> This patch is causing the following warnings:
-> ...
-> You didn't see these in your testing?
+With that, we'll also keep track of the total size of the cache when we
+see the longest chain. In the case of a tie, we prefer to track the
+smallest total cache size in order to properly gauge the worst-case
+ratio of max vs. avg chain length.
 
-in my summary:
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfscache.c | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
 
-	Instead, clobber the global flags.  This triggers an automake warning,
-	but the end result actually works (unlike the existing code).
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index 7640e80..3af1767 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -50,6 +50,12 @@ static u64			num_searches;
+ /* longest time we spent doing a single search */
+ static s64			max_search_time;
+ 
++/* longest hash chain seen */
++static unsigned int		longest_chain;
++
++/* size of cache when we saw the longest hash chain */
++static unsigned int		longest_chain_cachesize;
++
+ /*
+  * Calculate the hash index from an XID.
+  */
+@@ -330,11 +336,13 @@ nfsd_cache_search(struct svc_rqst *rqstp, __wsum csum)
+ 	struct svc_cacherep	*rp, *ret = NULL;
+ 	struct hlist_head 	*rh;
+ 	ktime_t			start;
++	unsigned int		entries = 0;
+ 	s64			delta;
+ 
+ 	start = ktime_get();
+ 	rh = &cache_hash[request_hash(rqstp->rq_xid)];
+ 	hlist_for_each_entry(rp, rh, c_hash) {
++		++entries;
+ 		if (nfsd_cache_match(rqstp, csum, rp)) {
+ 			ret = rp;
+ 			break;
+@@ -343,6 +351,17 @@ nfsd_cache_search(struct svc_rqst *rqstp, __wsum csum)
+ 	delta = ktime_to_ns(ktime_sub(ktime_get(), start));
+ 	time_in_search += delta;
+ 	max_search_time = max(max_search_time, delta);
++
++	/* tally hash chain length stats */
++	if (entries >= longest_chain) {
++		longest_chain = entries;
++		if (!longest_chain_cachesize)
++			longest_chain_cachesize = num_drc_entries;
++		else
++			longest_chain_cachesize = min(longest_chain_cachesize,
++							num_drc_entries);
++	}
++
+ 	++num_searches;
+ 
+ 	return ret;
+@@ -603,6 +622,8 @@ static int nfsd_reply_cache_stats_show(struct seq_file *m, void *v)
+ 	seq_printf(m, "payload misses:        %u\n", payload_misses);
+ 	seq_printf(m, "avg search time:       %lldns\n", avg_search_time());
+ 	seq_printf(m, "max search time:       %lldns\n", max_search_time);
++	seq_printf(m, "longest chain len:     %u\n", longest_chain);
++	seq_printf(m, "cachesize at longest:  %u\n", longest_chain_cachesize);
+ 	spin_unlock(&cache_lock);
+ 	return 0;
+ }
+-- 
+1.7.11.7
 
-> Also what exactly broke that this patch fixes?
-
-also in my summary:
-
-	Newer autotools will use both CFLAGS and <target>_CFLAGS when compiling
-	the <target>.
-
-so when you cross-compile (e.g. --build=3Dx86_64-linux-gnu --host=3Darm-lin=
-ux-
-gnu), and you set CFLAGS to include settings which are valid only for the h=
-ost=20
-(e.g. -mfloat-abi=3Dhard -mfp=3Dneon), those flags will also get passed to =
-the build=20
-compiler when compiling these tools and they'll error out (because the buil=
-d=20
-gcc doesn't recognize these flags).
-=2Dmike
-
---nextPart3340351.MxZjtEEMHr
-Content-Type: application/pgp-signature; name=signature.asc 
-Content-Description: This is a digitally signed message part.
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.17 (GNU/Linux)
-
-iQIcBAABAgAGBQJRUHj6AAoJEEFjO5/oN/WBDPoP/AoxsY1KqXi1Qo+/2+tKE3jN
-mPmxv+jklcQbg4m5+W8La7yFJyldG/IBD9M17n6BSLjNi3kLCTCyxSfKrifVFrLg
-ThF9m08jRpZ2xtu5cRAxzL6v32Nc7O4KARVkIHKKAU65o3ZZL0rWd3DczhWNXNvZ
-lRt4DyTAMTArCrRpjmJtsxb/f+mVas4UdBqEDEu8P9NiSbEpyzYMPkJHUlWnThYc
-2LnXbZl+HmxZsl1tiKq4OyO/DbsyoMEojDDyzkZDDoDilMj2UVlF3KO/oILZBFyy
-epBb+aTT+Mv0W/RttpVBRFFNL32LqUvzxx/JlwF108vlILqL5GQXCsMQbbzT7UK0
-Oj7Bxa9JT8AAgrwNpkm6RdzddEKSV2Fe+1DfQnvKCzfpqgZVMXDCrQW4mj2L8aY/
-98soPdmpNQWJpdE91PfmkEcDReu/Rle/gSU7oRLdFh85kE3NRyMjAt3adqIJQDZ8
-AIIergpzdsAAzW/zsf8JV8dah7YfVBFibVpaFMRpd4rvKiEOJwhcMLhy8A2Cm11C
-J/vN9pRcE8QdLE2uTtGd3XaCWpjKZedNeR+Enoek0KQg9CmMmcza8c4uhylPtizF
-x7a/ezvHOSZeaqhgS6g/681pmljnJonY8j6JRCHmcBrDqSegp09SLlka8wi7Cc33
-S0ll/SPxJS4XVMHCD9py
-=u454
------END PGP SIGNATURE-----
-
---nextPart3340351.MxZjtEEMHr--
