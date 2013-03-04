@@ -1,190 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:54543 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755094Ab3C2New (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Mar 2013 09:34:52 -0400
-Subject: Re: [PATCH] Fix compilation against Heimdal kerberos implementation
-From: Simo Sorce <simo@redhat.com>
-To: oakad@yahoo.com
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-In-Reply-To: <1364550512-14832-1-git-send-email-oakad@yahoo.com>
-References: <1364550512-14832-1-git-send-email-oakad@yahoo.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 29 Mar 2013 09:34:50 -0400
-Message-ID: <1364564090.2660.303.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+Received: from mail-ve0-f181.google.com ([209.85.128.181]:39514 "EHLO
+	mail-ve0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932160Ab3CDS4w (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Mar 2013 13:56:52 -0500
+Received: by mail-ve0-f181.google.com with SMTP id d10so5034676vea.12
+        for <linux-nfs@vger.kernel.org>; Mon, 04 Mar 2013 10:56:51 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
+Subject: [PATCH v2 4/5] nfsd: keep track of the max and average time to search the cache
+Date: Mon,  4 Mar 2013 13:56:39 -0500
+Message-Id: <1362423400-24380-5-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1362423400-24380-1-git-send-email-jlayton@redhat.com>
+References: <1362423400-24380-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2013-03-29 at 20:48 +1100, oakad@yahoo.com wrote:
-> From: Alex Dubov <oakad@yahoo.com>
-> 
-> There appear to be only 3 issues remaining with Heimdal after removal of
-> compulsory dependency on libgssglue:
-> 
-> 1. On some systems, only libroken.so is available (small fix to kerberos5.m4)
-> 
-> 2. krb5_util.c:check_for_target - Heimdal variant constructs a "pattern"
->    principal and uses krb5_cc_retrieve_cred to get a matching credential.
->    This should work on mit-krb5, so old method of iterating over every
->    credential in cache may possibly be dropped outright and "#$if" guard
->    omitted.
->    For the sake of the above I reformatted the old approach to make it a bit
->    more clear what's going on there.
-> 
-> 3. krb5_util.c:gssd_k5_err_msg - krb5_get_err_text is marked as deprecated,
->    at least on Heimdal. If krb5_get_error_message is available, it should not
->    be reached at all, thus "#elif" guard.
-> 
-> Signed-off-by: Alex Dubov <oakad@yahoo.com>
-> ---
->  aclocal/kerberos5.m4   |    7 +++--
->  utils/gssd/krb5_util.c |   55 ++++++++++++++++++++++++++++++++++++-----------
->  2 files changed, 46 insertions(+), 16 deletions(-)
-> 
-> diff --git a/aclocal/kerberos5.m4 b/aclocal/kerberos5.m4
-> index 0bf35d3..ebf6f20 100644
-> --- a/aclocal/kerberos5.m4
-> +++ b/aclocal/kerberos5.m4
-> @@ -56,9 +56,10 @@ AC_DEFUN([AC_KERBEROS_V5],[
->           break
->        dnl The following ugly hack brought on by the split installation
->        dnl of Heimdal Kerberos on SuSe
-> -      elif test \( -f $dir/include/heim_err.h -o\
-> -      		 -f $dir/include/heimdal/heim_err.h \) -a \
-> -                -f $dir/lib/libroken.a; then
-> +      elif test \( \( -f $dir/include/heim_err.h -o\
-> +                      -f $dir/include/heimdal/heim_err.h \) -a \
-> +                   \( -f $dir/lib/libroken.a -o\
-> +                      -f $dir/lib/libroken.so \) \) ; then
->           AC_DEFINE(HAVE_HEIMDAL, 1, [Define this if you have Heimdal Kerberos libraries])
->           KRBDIR="$dir"
->           gssapi_lib=gssapi
+Since we're moderately concerned about the potential increase in hash
+chain lengths, keep a running average of the time and the max time to
+search.
 
-This hunk looks good.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfscache.c | 37 +++++++++++++++++++++++++++++++++----
+ 1 file changed, 33 insertions(+), 4 deletions(-)
 
-> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-> index 20b55b3..adef268 100644
-> --- a/utils/gssd/krb5_util.c
-> +++ b/utils/gssd/krb5_util.c
-> @@ -958,29 +958,57 @@ check_for_tgt(krb5_context context, krb5_ccache ccache,
->  {
->  	krb5_error_code ret;
->  	krb5_creds creds;
-> -	krb5_cc_cursor cur;
->  	int found = 0;
->  
-> +#if HAVE_HEIMDAL
-> +	krb5_creds pattern;
-> +	krb5_const_realm client_realm;
-> +
-> +	krb5_cc_clear_mcred(&pattern);
-> +
-> +	client_realm = krb5_principal_get_realm(context, principal);
-> +
-> +	ret = krb5_make_principal(context, &pattern.server,
-> +				  client_realm, KRB5_TGS_NAME, client_realm,
-> +				  NULL);
-> +	if (ret) {
-> +		krb5_err(context, 1, ret, "krb5_make_principal");
-> +		return 0;
-> +	}
-> +
-> +	pattern.client = principal;
-> +
-> +	ret = krb5_cc_retrieve_cred(context, ccache, 0, &pattern, &creds);
-> +	krb5_free_principal(context, pattern.server);
-> +
-> +	if (ret) {
-> +		if (ret != KRB5_CC_END)
-> +			krb5_err(context, 1, ret, "krb5_cc_retrieve_cred");
-> +	} else
-> +		found = creds.times.endtime > time(NULL);
-> +
-> +	krb5_free_cred_contents(context, &creds);
-> +#else
-> +	krb5_cc_cursor cur;
->  	ret = krb5_cc_start_seq_get(context, ccache, &cur);
->  	if (ret) 
->  		return 0;
-
-krb5_cc_retrieve_cred is available in MIT too, I would try to avoid
-using ifedfs here and come up with common code that works for both to
-avoid bugs that may cause different behavior in parallel code paths
-depending on which library is used.
-
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index 24ac996..7640e80 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -41,6 +41,15 @@ static unsigned int		payload_misses;
+ /* amount of memory (in bytes) currently consumed by the DRC */
+ static unsigned int		drc_mem_usage;
  
->  	while (!found &&
->  		(ret = krb5_cc_next_cred(context, ccache, &cur, &creds)) == 0) {
-> -		if (creds.server->length == 2 &&
-> -				data_is_equal(creds.server->realm,
-> -					      principal->realm) &&
-> -				creds.server->data[0].length == 6 &&
-> -				memcmp(creds.server->data[0].data,
-> -						"krbtgt", 6) == 0 &&
-> -				data_is_equal(creds.server->data[1],
-> -					      principal->realm) &&
-> -				creds.times.endtime > time(NULL))
-> -			found = 1;
-> +		if (
-> +			creds.server->length == 2
-> +			&& data_is_equal(creds.server->realm, principal->realm)
-> +			&& creds.server->data[0].length == 6
-> +			&& memcmp(creds.server->data[0].data, "krbtgt", 6) == 0
-> +			&& data_is_equal(creds.server->data[1],
-> +					 principal->realm)
-> +			&& creds.times.endtime > time(NULL)
-> +		) found = 1;
-
-This looks like just gratuitous re-indentation, I would drop it it's not
-needed and makes the patch bigger.
-
->  		krb5_free_cred_contents(context, &creds);
->  	}
->  	krb5_cc_end_seq_get(context, ccache, &cur);
-> -
-> +#endif
->  	return found;
->  }
->  
-> @@ -1326,12 +1354,13 @@ gssd_k5_err_msg(krb5_context context, krb5_error_code code)
->  		return msg;
->  #if HAVE_KRB5
->  	return strdup(error_message(code));
-> -#else
-> +#elif !HAVE_KRB5_GET_ERROR_MESSAGE
->  	if (context != NULL)
->  		return strdup(krb5_get_err_text(context, code));
->  	else
->  		return strdup(error_message(code));
->  #endif
-> +	return NULL;
-
-MIT doesn't have krb5_get_err_text at all so it shouldn't be tried out
-at all if MIT is available.
-
-I think you should ratrher add a keberos.m4 macro to check for
-krb5_get_err_text then change this to something like:
-
-char *msg = NULL;
-
-#if HAVE_KRB5_GET_ERROR_MESSAGE
-	... <- same code as in the current tree
-#elif HAVE_KRB_GET_ERR_TEXT
-	... <- code in current else branch of 'if HAVE_KRB5'
-#else
-	msg = strdup(error_message(code));
-#endif
-	return msg;
-
->  }
->  
->  /*
-
-
-HTH,
-Simo.
-
++/* total time spent searching the cache */
++static s64			time_in_search;
++
++/* total number of times we searched the cache */
++static u64			num_searches;
++
++/* longest time we spent doing a single search */
++static s64			max_search_time;
++
+ /*
+  * Calculate the hash index from an XID.
+  */
+@@ -318,15 +327,25 @@ nfsd_cache_match(struct svc_rqst *rqstp, __wsum csum, struct svc_cacherep *rp)
+ static struct svc_cacherep *
+ nfsd_cache_search(struct svc_rqst *rqstp, __wsum csum)
+ {
+-	struct svc_cacherep	*rp;
++	struct svc_cacherep	*rp, *ret = NULL;
+ 	struct hlist_head 	*rh;
++	ktime_t			start;
++	s64			delta;
+ 
++	start = ktime_get();
+ 	rh = &cache_hash[request_hash(rqstp->rq_xid)];
+ 	hlist_for_each_entry(rp, rh, c_hash) {
+-		if (nfsd_cache_match(rqstp, csum, rp))
+-			return rp;
++		if (nfsd_cache_match(rqstp, csum, rp)) {
++			ret = rp;
++			break;
++		}
+ 	}
+-	return NULL;
++	delta = ktime_to_ns(ktime_sub(ktime_get(), start));
++	time_in_search += delta;
++	max_search_time = max(max_search_time, delta);
++	++num_searches;
++
++	return ret;
+ }
+ 
+ /*
+@@ -558,6 +577,14 @@ nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *data)
+ 	return 1;
+ }
+ 
++static s64
++avg_search_time(void)
++{
++	if (!num_searches)
++		return 0;
++	return time_in_search / num_searches;
++}
++
+ /*
+  * Note that fields may be added, removed or reordered in the future. Programs
+  * scraping this file for info should test the labels to ensure they're
+@@ -574,6 +601,8 @@ static int nfsd_reply_cache_stats_show(struct seq_file *m, void *v)
+ 	seq_printf(m, "cache misses:          %u\n", nfsdstats.rcmisses);
+ 	seq_printf(m, "not cached:            %u\n", nfsdstats.rcnocache);
+ 	seq_printf(m, "payload misses:        %u\n", payload_misses);
++	seq_printf(m, "avg search time:       %lldns\n", avg_search_time());
++	seq_printf(m, "max search time:       %lldns\n", max_search_time);
+ 	spin_unlock(&cache_lock);
+ 	return 0;
+ }
 -- 
-Simo Sorce * Red Hat, Inc * New York
+1.7.11.7
 
