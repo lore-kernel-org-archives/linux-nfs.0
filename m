@@ -1,211 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from plane.gmane.org ([80.91.229.3]:58470 "EHLO plane.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753183Ab3C0OUc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Mar 2013 10:20:32 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1UKrDf-0002Z9-8s
-	for linux-nfs@vger.kernel.org; Wed, 27 Mar 2013 15:20:52 +0100
-Received: from 60-241-78-133.static.tpgi.com.au ([60.241.78.133])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Wed, 27 Mar 2013 15:20:51 +0100
-Received: from oakad by 60-241-78-133.static.tpgi.com.au with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Wed, 27 Mar 2013 15:20:51 +0100
-To: linux-nfs@vger.kernel.org
-From: Alex Dubov <oakad@yahoo.com>
-Subject: [PATCH] gssd: fix build against Heimdal and remove dependency on  libgssglue
-Date: Wed, 27 Mar 2013 14:20:08 +0000 (UTC)
-Message-ID: <loom.20130327T151933-617@post.gmane.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from youngberry.canonical.com ([91.189.89.112]:58680 "EHLO
+	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757041Ab3CDPdv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Mar 2013 10:33:51 -0500
+MIME-Version: 1.0
+In-Reply-To: <20130304100432.5c7ea704@tlielax.poochiereds.net>
+References: <CACVXFVMKN6aeCvJcn7dyuonJYJDfYxWeW5KE6gfKRKJKFj2M4A@mail.gmail.com>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA9286AD113@sacexcmbx05-prd.hq.netapp.com>
+	<CACVXFVM5VhU_ZgYr1KxERY7DXxMQpkWoiTyjyar91Hz=vU4-ug@mail.gmail.com>
+	<20130304100432.5c7ea704@tlielax.poochiereds.net>
+Date: Mon, 4 Mar 2013 23:33:49 +0800
+Message-ID: <CACVXFVPvTnfH98KqAQxDzMi5Pbf1fbi5HEGb=ggWWg4FX_4G=g@mail.gmail.com>
+Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
+From: Ming Lei <ming.lei@canonical.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>, Ben Chan <benchan@chromium.org>,
+        Oleg Nesterov <oleg@redhat.com>, Ingo Molnar <mingo@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a preliminary patch, aiming to enable a clean build of gssd
-on systems with Heimdal kerberos flavour. A major part of Heimdal
-breakage until now was caused by problems with gssglue. Now that
-libtirpc can be build independently from libgssglue, why not gssd?
+Hi,
 
-Unfortunately, I could not test this patch againts mit-krb5, hopefully
-somebody can give me a hand here.
+CC guys who introduced the lockdep change.
 
-Signed-off-by: Alex Dubov <oakad@yahoo.com>
----
- aclocal/kerberos5.m4       |    5 ++-
- aclocal/rpcsec_vers.m4     |    2 +-
- utils/gssd/context_lucid.c |   10 ++++----
- utils/gssd/krb5_util.c     |   45 ++++++++++++++++++++++++++++++++++++-------
- utils/gssd/svcgssd_krb5.c  |    2 +-
- 5 files changed, 47 insertions(+), 17 deletions(-)
+On Mon, Mar 4, 2013 at 11:04 PM, Jeff Layton <jlayton@redhat.com> wrote:
 
-diff --git a/aclocal/kerberos5.m4 b/aclocal/kerberos5.m4
-index 7574e2d..76914d6 100644
---- a/aclocal/kerberos5.m4
-+++ b/aclocal/kerberos5.m4
-@@ -54,9 +54,10 @@ AC_DEFUN([AC_KERBEROS_V5],[
-          break
-       dnl The following ugly hack brought on by the split installation
-       dnl of Heimdal Kerberos on SuSe
--      elif test \( -f $dir/include/heim_err.h -o\
-+      elif test \( \( -f $dir/include/heim_err.h -o\
-       		 -f $dir/include/heimdal/heim_err.h \) -a \
--                -f $dir/lib/libroken.a; then
-+                 \( -f $dir/lib/libroken.a -o\
-+                 -f $dir/lib/libroken.so \) \) ; then
-          AC_DEFINE(HAVE_HEIMDAL, 1, [Define this if you have Heimdal Kerberos
-libraries])
-          KRBDIR="$dir"
-          gssapi_lib=gssapi
-diff --git a/aclocal/rpcsec_vers.m4 b/aclocal/rpcsec_vers.m4
-index 8218372..9cf7556 100644
---- a/aclocal/rpcsec_vers.m4
-+++ b/aclocal/rpcsec_vers.m4
-@@ -1,7 +1,7 @@
- dnl Checks librpcsec version
- AC_DEFUN([AC_RPCSEC_VERSION], [
- 
--  PKG_CHECK_MODULES([GSSGLUE], [libgssglue >= 0.3])
-+#  PKG_CHECK_MODULES([GSSGLUE], [libgssglue >= 0.3])
- 
-   dnl TI-RPC replaces librpcsecgss
-   if test "$enable_tirpc" = no; then
-diff --git a/utils/gssd/context_lucid.c b/utils/gssd/context_lucid.c
-index 64146d7..82171da 100644
---- a/utils/gssd/context_lucid.c
-+++ b/utils/gssd/context_lucid.c
-@@ -266,10 +266,10 @@ serialize_krb5_ctx(gss_ctx_id_t ctx, gss_buffer_desc *buf,
-int32_t *endtime)
- 	int retcode = 0;
- 
- 	printerr(2, "DEBUG: %s: lucid version!\n", __FUNCTION__);
--	maj_stat = gss_export_lucid_sec_context(&min_stat, &ctx,
--						1, &return_ctx);
-+	maj_stat = gss_krb5_export_lucid_sec_context(&min_stat, &ctx,
-+							1, &return_ctx);
- 	if (maj_stat != GSS_S_COMPLETE) {
--		pgsserr("gss_export_lucid_sec_context",
-+		pgsserr("gss_krb5_export_lucid_sec_context",
- 			maj_stat, min_stat, &krb5oid);
- 		goto out_err;
- 	}
-@@ -302,9 +302,9 @@ serialize_krb5_ctx(gss_ctx_id_t ctx, gss_buffer_desc *buf,
-int32_t *endtime)
- 	else
- 		retcode = prepare_krb5_rfc4121_buffer(lctx, buf, endtime);
- 
--	maj_stat = gss_free_lucid_sec_context(&min_stat, ctx, return_ctx);
-+	maj_stat = gss_krb5_free_lucid_sec_context(&min_stat, ctx);
- 	if (maj_stat != GSS_S_COMPLETE) {
--		pgsserr("gss_free_lucid_sec_context",
-+		pgsserr("gss_krb5_free_lucid_sec_context",
- 			maj_stat, min_stat, &krb5oid);
- 		printerr(0, "WARN: failed to free lucid sec context\n");
- 	}
-diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index 20b55b3..958ed57 100644
---- a/utils/gssd/krb5_util.c
-+++ b/utils/gssd/krb5_util.c
-@@ -115,7 +115,7 @@
- #include <errno.h>
- #include <time.h>
- #include <gssapi/gssapi.h>
--#ifdef USE_PRIVATE_KRB5_FUNCTIONS
-+#if defined(USE_PRIVATE_KRB5_FUNCTIONS) || defined(HAVE_HEIMDAL)
- #include <gssapi/gssapi_krb5.h>
- #endif
- #include <krb5.h>
-@@ -958,9 +958,38 @@ check_for_tgt(krb5_context context, krb5_ccache ccache,
- {
- 	krb5_error_code ret;
- 	krb5_creds creds;
--	krb5_cc_cursor cur;
- 	int found = 0;
- 
-+#if defined (HAVE_HEIMDAL)
-+	krb5_creds pattern;
-+	krb5_const_realm client_realm;
-+
-+	krb5_cc_clear_mcred(&pattern);
-+
-+	client_realm = krb5_principal_get_realm(context, principal);
-+
-+	ret = krb5_make_principal(context, &pattern.server,
-+				  client_realm, KRB5_TGS_NAME, client_realm,
-+				  NULL);
-+	if (ret)
-+	  krb5_err(context, 1, ret, "krb5_make_principal");
-+	pattern.client = principal;
-+
-+	ret = krb5_cc_retrieve_cred(context, ccache, 0, &pattern, &creds);
-+	krb5_free_principal(context, pattern.server);
-+	if (ret) {
-+	  if (ret == KRB5_CC_END)
-+            return 1;
-+	  krb5_err(context, 1, ret, "krb5_cc_retrieve_cred");
-+	}
-+
-+	found = creds.times.endtime > time(NULL);
-+
-+	krb5_free_cred_contents (context, &creds);
-+#else
-+	krb5_cc_cursor cur;
-+
-+
- 	ret = krb5_cc_start_seq_get(context, ccache, &cur);
- 	if (ret) 
- 		return 0;
-@@ -980,7 +1009,7 @@ check_for_tgt(krb5_context context, krb5_ccache ccache,
- 		krb5_free_cred_contents(context, &creds);
- 	}
- 	krb5_cc_end_seq_get(context, ccache, &cur);
--
-+#endif
- 	return found;
- }
- 
-@@ -1328,7 +1357,7 @@ gssd_k5_err_msg(krb5_context context, krb5_error_code code)
- 	return strdup(error_message(code));
- #else
- 	if (context != NULL)
--		return strdup(krb5_get_err_text(context, code));
-+		return strdup(krb5_get_error_message(context, code));
- 	else
- 		return strdup(error_message(code));
- #endif
-@@ -1397,11 +1426,11 @@ limit_krb5_enctypes(struct rpc_gss_sec *sec)
- 	 * list of supported enctypes, use local default here.
- 	 */
- 	if (krb5_enctypes == NULL || limit_to_legacy_enctypes)
--		maj_stat = gss_set_allowable_enctypes(&min_stat, credh,
--					&krb5oid, num_enctypes, enctypes);
-+		maj_stat = gss_krb5_set_allowable_enctypes(&min_stat, credh,
-+					num_enctypes, enctypes);
- 	else
--		maj_stat = gss_set_allowable_enctypes(&min_stat, credh,
--					&krb5oid, num_krb5_enctypes, krb5_enctypes);
-+		maj_stat = gss_krb5_set_allowable_enctypes(&min_stat, credh,
-+					num_krb5_enctypes, krb5_enctypes);
- 
- 	if (maj_stat != GSS_S_COMPLETE) {
- 		pgsserr("gss_set_allowable_enctypes",
-diff --git a/utils/gssd/svcgssd_krb5.c b/utils/gssd/svcgssd_krb5.c
-index 1d44d34..3b10bde 100644
---- a/utils/gssd/svcgssd_krb5.c
-+++ b/utils/gssd/svcgssd_krb5.c
-@@ -217,7 +217,7 @@ svcgssd_limit_krb5_enctypes(void)
- 			"enctypes from defaults\n", __func__, num_enctypes);
- 	}
- 
--	maj_stat = gss_set_allowable_enctypes(&min_stat, gssd_creds,
-+	maj_stat = gss_krb5_set_allowable_enctypes(&min_stat, gssd_creds,
- 			&krb5oid, num_enctypes, enctypes);
- 	if (maj_stat != GSS_S_COMPLETE) {
- 		printerr(1, "WARNING: gss_set_allowable_enctypes failed\n");
--- 
-1.7.4.5
+>
+> I don't get it -- why is it bad to hold a lock across a freeze event?
+
+At least this may deadlock another mount.nfs during freezing, :-)
+
+See detailed explanation in the commit log:
+
+commit 6aa9707099c4b25700940eb3d016f16c4434360d
+Author: Mandeep Singh Baines <msb@chromium.org>
+Date:   Wed Feb 27 17:03:18 2013 -0800
+
+    lockdep: check that no locks held at freeze time
+
+    We shouldn't try_to_freeze if locks are held.  Holding a lock can cause a
+    deadlock if the lock is later acquired in the suspend or hibernate path
+    (e.g.  by dpm).  Holding a lock can also cause a deadlock in the case of
+    cgroup_freezer if a lock is held inside a frozen cgroup that is later
+    acquired by a process outside that group.
+
+> The problem that we have is that we must often hold locks across
+> long-running syscalls (consider something like sync()). In the event
+> that there is a lot of dirty data, it might take a long time for that
+> to finish.
+>
+> There's also the problem that it's not uncommon for the freezer to take
+> down userland processes (such as NetworkManager) which in turn take
+> down network interfaces that we need to talk to the server.
+>
+> The fix from a couple of years ago (which admittedly needs more work)
+> was to allow the freezing of tasks that are waiting on a reply from the
+> server. That sort of necessitates that we are allowed to hold our locks
+> across the try_to_freeze call though.
+>
+> If that's no longer allowed then we're back to square one with laptops
+> that fail to suspend when they have NFS mounts. Is there some other
+> solution we should pursue instead?
 
 
-
+Thanks,
+--
+Ming Lei
