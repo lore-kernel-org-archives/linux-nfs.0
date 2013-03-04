@@ -1,50 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.tpi.com ([70.99.223.143]:4013 "EHLO mail.tpi.com"
+Received: from mx12.netapp.com ([216.240.18.77]:53985 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754591Ab3CLCxa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Mar 2013 22:53:30 -0400
-Message-ID: <513E989E.8060206@canonical.com>
-Date: Mon, 11 Mar 2013 20:53:18 -0600
-From: Tim Gardner <tim.gardner@canonical.com>
+	id S1758783Ab3CDWhR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Mar 2013 17:37:17 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jan Engelhardt <jengelh@inai.de>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Inconsistent error codes between NFSv4 and v3 on network issues
+Date: Mon, 4 Mar 2013 22:37:15 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9286AF064@sacexcmbx05-prd.hq.netapp.com>
+References: <alpine.LNX.2.01.1303011240350.11154@nerf07.vanv.qr>
+	 <6AADB1AD-6FB9-42AD-8BF2-6B0B706927E5@oracle.com>
+	 <alpine.LNX.2.01.1303041957050.18372@nerf07.vanv.qr>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9286ADBED@sacexcmbx05-prd.hq.netapp.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9286ADBED@sacexcmbx05-prd.hq.netapp.com>
+Content-Type: multipart/mixed;
+	boundary="_002_4FA345DA4F4AE44899BD2B03EEEC2FA9286AF064sacexcmbx05prdh_"
 MIME-Version: 1.0
-To: Tom Tucker <tom@opengridcomputing.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David S. Miller" <davem@davemloft.net>, Tom Tucker <tom@ogc.us>,
-        Haggai Eran <haggaie@mellanox.com>, Or Gerlitz <ogerlitz@mellanox.com>,
-        Shani Michaeli <shanim@mellanox.com>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org
-Subject: Re: [PATCH linux-next v3] SUNRPC: rpcrdma_register_default_external:
- Dynamically allocate ib_phys_buf
-References: <4FA345DA4F4AE44899BD2B03EEEC2FA9286BA156@sacexcmbx05-prd.hq.netapp.com> <1363036508-24935-1-git-send-email-tim.gardner@canonical.com> <20130311212535.GG642@fieldses.org> <513E6271.3060107@opengridcomputing.com>
-In-Reply-To: <513E6271.3060107@opengridcomputing.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/11/2013 05:02 PM, Tom Tucker wrote:
-> On 3/11/13 4:25 PM, J. Bruce Fields wrote:
+--_002_4FA345DA4F4AE44899BD2B03EEEC2FA9286AF064sacexcmbx05prdh_
+Content-Type: text/plain; charset="iso-8859-1"
+Content-ID: <D8CCE9204EE1554084717FFE8A247814@tahoe.netapp.com>
+Content-Transfer-Encoding: quoted-printable
 
-<snip>
+On Mon, 2013-03-04 at 20:43 +0000, Myklebust, Trond wrote:
+> On Mon, 2013-03-04 at 20:10 +0100, Jan Engelhardt wrote:
+> > Just nuke your default route, and it should be easily reproducible.
+> >=20
+>=20
+> The problem is that call_connect_status() is converting that ENETUNREACH
+> into a EIO. We shouldn't be doing that, but should leave it up to the
+> caller (i.e. the NFS layer) to perform that kind of mapping.
 
->> Looks good to me; wish we could get it tested....
->
-> I will test it. Tim could you please send me a final version that you'd
-> like tested as a single message?
->
+Could you please check if the attached patch helps.
+--=20
+Trond Myklebust
+Linux NFS client maintainer
 
-I'm a little confused about what you are asking. I think v3 of the patch 
-is the final version (unless you find bugs with it).
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
-> Would someone (like Tim maybe ... hint hint) look at tearing out all
-> those dead registration strategies? I don't think we need or will ever
-> use bounce-buffers, memory windows, or mlnx fmr.  The only two that are
-> used and tested are all-phys and FRMR (the default).
->
+--_002_4FA345DA4F4AE44899BD2B03EEEC2FA9286AF064sacexcmbx05prdh_
+Content-Type: text/x-patch;
+	name="0001-SUNRPC-Report-network-connection-errors-correctly-fo.patch"
+Content-Description: 0001-SUNRPC-Report-network-connection-errors-correctly-fo.patch
+Content-Disposition: attachment;
+	filename="0001-SUNRPC-Report-network-connection-errors-correctly-fo.patch";
+	size=2560; creation-date="Mon, 04 Mar 2013 22:37:15 GMT";
+	modification-date="Mon, 04 Mar 2013 22:37:15 GMT"
+Content-ID: <213495B8EE1399498A1C3380486AED87@tahoe.netapp.com>
+Content-Transfer-Encoding: base64
 
-Dunno if I'll get time for that. I had a one day window where I could 
-hack out some simple patches. Now I'm back to the usual grindstone.
+RnJvbSA3MjRiZjdhNzFiNDQxNDU4MTFhMWZlYzNiMjBhMjZiZDFlZGFlNTFiIE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
+YXBwLmNvbT4NCkRhdGU6IE1vbiwgNCBNYXIgMjAxMyAxNzoyOTozMyAtMDUwMA0KU3ViamVjdDog
+W1BBVENIXSBTVU5SUEM6IFJlcG9ydCBuZXR3b3JrL2Nvbm5lY3Rpb24gZXJyb3JzIGNvcnJlY3Rs
+eSBmb3INCiBTT0ZUQ09OTiBycGMgdGFza3MNCg0KSW4gdGhlIGNhc2Ugb2YgYSBTT0ZUQ09OTiBy
+cGMgdGFzaywgd2UgcmVhbGx5IHdhbnQgdG8gZW5zdXJlIHRoYXQgaXQNCnJlcG9ydHMgZXJyb3Jz
+IGxpa2UgRU5FVFVOUkVBQ0ggYmFjayB0byB0aGUgY2FsbGVyLiBDdXJyZW50bHksIG9ubHkNCnNv
+bWUgb2YgdGhlc2UgZXJyb3JzIGFyZSBiZWluZyByZXBvcnRlZCBiYWNrIChjb25uZWN0IGVycm9y
+cyBhcmUgbm90KSwNCmFuZCB0aGV5IGFyZSBiZWluZyBjb252ZXJ0ZWQgYnkgdGhlIFJQQyBsYXll
+ciBpbnRvIEVJTy4NCg0KUmVwb3J0ZWQtYnk6IEphbiBFbmdlbGhhcmR0IDxqZW5nZWxoQGluYWku
+ZGU+DQpTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRh
+cHAuY29tPg0KLS0tDQogbmV0L3N1bnJwYy9jbG50LmMgICAgIHwgMjQgKysrKysrKysrKysrKyst
+LS0tLS0tLS0tDQogbmV0L3N1bnJwYy94cHJ0c29jay5jIHwgIDggKysrKy0tLS0NCiAyIGZpbGVz
+IGNoYW5nZWQsIDE4IGluc2VydGlvbnMoKyksIDE0IGRlbGV0aW9ucygtKQ0KDQpkaWZmIC0tZ2l0
+IGEvbmV0L3N1bnJwYy9jbG50LmMgYi9uZXQvc3VucnBjL2NsbnQuYw0KaW5kZXggZGNjNDQ2ZS4u
+Yjk1YTBhMiAxMDA2NDQNCi0tLSBhL25ldC9zdW5ycGMvY2xudC5jDQorKysgYi9uZXQvc3VucnBj
+L2NsbnQuYw0KQEAgLTE2NDQsMjIgKzE2NDQsMjYgQEAgY2FsbF9jb25uZWN0X3N0YXR1cyhzdHJ1
+Y3QgcnBjX3Rhc2sgKnRhc2spDQogDQogCWRwcmludF9zdGF0dXModGFzayk7DQogDQotCXRhc2st
+PnRrX3N0YXR1cyA9IDA7DQotCWlmIChzdGF0dXMgPj0gMCB8fCBzdGF0dXMgPT0gLUVBR0FJTikg
+ew0KLQkJY2xudC0+Y2xfc3RhdHMtPm5ldHJlY29ubisrOw0KLQkJdGFzay0+dGtfYWN0aW9uID0g
+Y2FsbF90cmFuc21pdDsNCi0JCXJldHVybjsNCi0JfQ0KLQ0KIAl0cmFjZV9ycGNfY29ubmVjdF9z
+dGF0dXModGFzaywgc3RhdHVzKTsNCiAJc3dpdGNoIChzdGF0dXMpIHsNCiAJCS8qIGlmIHNvZnQg
+bW91bnRlZCwgdGVzdCBpZiB3ZSd2ZSB0aW1lZCBvdXQgKi8NCiAJY2FzZSAtRVRJTUVET1VUOg0K
+IAkJdGFzay0+dGtfYWN0aW9uID0gY2FsbF90aW1lb3V0Ow0KLQkJYnJlYWs7DQotCWRlZmF1bHQ6
+DQotCQlycGNfZXhpdCh0YXNrLCAtRUlPKTsNCisJCXJldHVybjsNCisJY2FzZSAtRUNPTk5SRUZV
+U0VEOg0KKwljYXNlIC1FQ09OTlJFU0VUOg0KKwljYXNlIC1FTkVUVU5SRUFDSDoNCisJCWlmIChS
+UENfSVNfU09GVENPTk4odGFzaykpDQorCQkJYnJlYWs7DQorCQkvKiByZXRyeSB3aXRoIGV4aXN0
+aW5nIHNvY2tldCwgYWZ0ZXIgYSBkZWxheSAqLw0KKwljYXNlIDA6DQorCWNhc2UgLUVBR0FJTjoN
+CisJCXRhc2stPnRrX3N0YXR1cyA9IDA7DQorCQljbG50LT5jbF9zdGF0cy0+bmV0cmVjb25uKys7
+DQorCQl0YXNrLT50a19hY3Rpb24gPSBjYWxsX3RyYW5zbWl0Ow0KKwkJcmV0dXJuOw0KIAl9DQor
+CXJwY19leGl0KHRhc2ssIHN0YXR1cyk7DQogfQ0KIA0KIC8qDQpkaWZmIC0tZ2l0IGEvbmV0L3N1
+bnJwYy94cHJ0c29jay5jIGIvbmV0L3N1bnJwYy94cHJ0c29jay5jDQppbmRleCBjMWQ4NDc2Li4z
+MDgxNjIwIDEwMDY0NA0KLS0tIGEvbmV0L3N1bnJwYy94cHJ0c29jay5jDQorKysgYi9uZXQvc3Vu
+cnBjL3hwcnRzb2NrLmMNCkBAIC0yMjAyLDEwICsyMjAyLDYgQEAgc3RhdGljIHZvaWQgeHNfdGNw
+X3NldHVwX3NvY2tldChzdHJ1Y3Qgd29ya19zdHJ1Y3QgKndvcmspDQogCQkgKi8NCiAJCXhzX3Rj
+cF9mb3JjZV9jbG9zZSh4cHJ0KTsNCiAJCWJyZWFrOw0KLQljYXNlIC1FQ09OTlJFRlVTRUQ6DQot
+CWNhc2UgLUVDT05OUkVTRVQ6DQotCWNhc2UgLUVORVRVTlJFQUNIOg0KLQkJLyogcmV0cnkgd2l0
+aCBleGlzdGluZyBzb2NrZXQsIGFmdGVyIGEgZGVsYXkgKi8NCiAJY2FzZSAwOg0KIAljYXNlIC1F
+SU5QUk9HUkVTUzoNCiAJY2FzZSAtRUFMUkVBRFk6DQpAQCAtMjIxNiw2ICsyMjEyLDEwIEBAIHN0
+YXRpYyB2b2lkIHhzX3RjcF9zZXR1cF9zb2NrZXQoc3RydWN0IHdvcmtfc3RydWN0ICp3b3JrKQ0K
+IAkJLyogSGFwcGVucywgZm9yIGluc3RhbmNlLCBpZiB0aGUgdXNlciBzcGVjaWZpZWQgYSBsaW5r
+DQogCQkgKiBsb2NhbCBJUHY2IGFkZHJlc3Mgd2l0aG91dCBhIHNjb3BlLWlkLg0KIAkJICovDQor
+CWNhc2UgLUVDT05OUkVGVVNFRDoNCisJY2FzZSAtRUNPTk5SRVNFVDoNCisJY2FzZSAtRU5FVFVO
+UkVBQ0g6DQorCQkvKiByZXRyeSB3aXRoIGV4aXN0aW5nIHNvY2tldCwgYWZ0ZXIgYSBkZWxheSAq
+Lw0KIAkJZ290byBvdXQ7DQogCX0NCiBvdXRfZWFnYWluOg0KLS0gDQoxLjguMS40DQoNCg==
 
-rtg
--- 
-Tim Gardner tim.gardner@canonical.com
+--_002_4FA345DA4F4AE44899BD2B03EEEC2FA9286AF064sacexcmbx05prdh_--
