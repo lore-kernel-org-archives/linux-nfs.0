@@ -1,120 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f178.google.com ([209.85.214.178]:56602 "EHLO
-	mail-ob0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750899Ab3CRM6z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Mar 2013 08:58:55 -0400
-Received: by mail-ob0-f178.google.com with SMTP id wd20so5164166obb.23
-        for <linux-nfs@vger.kernel.org>; Mon, 18 Mar 2013 05:58:54 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: eliminate one of the DRC cache searches
-Date: Mon, 18 Mar 2013 08:58:48 -0400
-Message-Id: <1363611528-21522-1-git-send-email-jlayton@redhat.com>
+Received: from cantor2.suse.de ([195.135.220.15]:54556 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755042Ab3CDGKr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Mar 2013 01:10:47 -0500
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Date: Mon, 04 Mar 2013 17:09:32 +1100
+Subject: [PATCH 1/2] sunrpc/cache: remove races with queuing an upcall.
+Cc: Bodo Stroesser <bstroesser@ts.fujitsu.com>, linux-nfs@vger.kernel.org
+Message-ID: <20130304060932.1352.33927.stgit@notabene.brown>
+In-Reply-To: <20130304060801.1352.97857.stgit@notabene.brown>
+References: <20130304060801.1352.97857.stgit@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The most common case is to do a search of the cache, followed by an
-insert. In the case where we have to allocate an entry off the slab,
-then we end up having to redo the search, which is wasteful.
+We currently queue an upcall after setting CACHE_PENDING,
+and dequeue after clearing CACHE_PENDING.
+So a request should only be present when CACHE_PENDING is set.
 
-Better optimize the code for the common case by eliminating the initial
-search of the cache and always preallocating an entry. In the case of a
-cache hit, we'll end up just freeing that entry but that's preferable to
-an extra search.
+However we don't combine the test and the enqueue/dequeue in
+a protected region, so it is possible (if unlikely) for a race
+to result in a request being queued without CACHE_PENDING set,
+or a request to be absent despite CACHE_PENDING.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+So: include a test for CACHE_PENDING inside the regions of
+enqueue and dequeue where queue_lock is held, and abort
+the operation if the value is not as expected.
+
+Also remove the 'return' from cache_dequeue() to ensure it always
+removes all entries:  As there is no locking between setting
+CACHE_PENDING and calling sunrpc_cache_pipe_upcall it is not
+inconceivable for some other thread to clear CACHE_PENDING and then
+someone else to set it can call sunrpc_cache_pipe_upcall, both before
+the original thread completed the call.
+
+With this, it perfectly safe and correct to:
+ - call cache_dequeue() if and only if we have just
+   cleared CACHE_PENDING
+ - call sunrpc_cache_pipe_upcall() (via cache_make_upcall)
+   if and only if we have just set CACHE_PENDING.
+
+Reported-by: Bodo Stroesser <bstroesser@ts.fujitsu.com>
+Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/nfsd/nfscache.c | 41 +++++++++++++++++++----------------------
- 1 file changed, 19 insertions(+), 22 deletions(-)
+ net/sunrpc/cache.c |   17 ++++++++++++++---
+ 1 file changed, 14 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index f5ad28e..1c4e95e 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -317,55 +317,53 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- 	__wsum			csum;
- 	unsigned long		age;
- 	int type = rqstp->rq_cachetype;
--	int rtn;
-+	int rtn = RC_DOIT;
- 
- 	rqstp->rq_cacherep = NULL;
- 	if (type == RC_NOCACHE) {
- 		nfsdstats.rcnocache++;
--		return RC_DOIT;
-+		return rtn;
- 	}
- 
- 	csum = nfsd_cache_csum(rqstp);
- 
-+	/*
-+	 * Since the common case is a cache miss followed by an insert,
-+	 * preallocate an entry. First, try to reuse the first entry on the LRU
-+	 * if it works, then go ahead and prune the LRU list.
-+	 */
- 	spin_lock(&cache_lock);
--	rtn = RC_DOIT;
--
--	rp = nfsd_cache_search(rqstp, csum);
--	if (rp)
--		goto found_entry;
--
--	/* Try to use the first entry on the LRU */
- 	if (!list_empty(&lru_head)) {
- 		rp = list_first_entry(&lru_head, struct svc_cacherep, c_lru);
- 		if (nfsd_cache_entry_expired(rp) ||
- 		    num_drc_entries >= max_drc_entries) {
- 			lru_put_end(rp);
- 			prune_cache_entries();
--			goto setup_entry;
-+			goto search_cache;
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 9afa439..0400a92 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -1022,6 +1022,9 @@ static void cache_dequeue(struct cache_detail *detail, struct cache_head *ch)
+ 			struct cache_request *cr = container_of(cq, struct cache_request, q);
+ 			if (cr->item != ch)
+ 				continue;
++			if (test_bit(CACHE_PENDING, &ch->flags))
++				/* Lost a race and it is pending again */
++				break;
+ 			if (cr->readers != 0)
+ 				continue;
+ 			list_del(&cr->q.list);
+@@ -1029,7 +1032,6 @@ static void cache_dequeue(struct cache_detail *detail, struct cache_head *ch)
+ 			cache_put(cr->item, detail);
+ 			kfree(cr->buf);
+ 			kfree(cr);
+-			return;
  		}
- 	}
+ 	spin_unlock(&queue_lock);
+ }
+@@ -1151,6 +1153,7 @@ int sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h,
+ 	struct cache_request *crq;
+ 	char *bp;
+ 	int len;
++	int ret = 0;
  
--	/* Drop the lock and allocate a new entry */
-+	/* No expired ones available, allocate a new one. */
- 	spin_unlock(&cache_lock);
- 	rp = nfsd_reply_cache_alloc();
--	if (!rp) {
--		dprintk("nfsd: unable to allocate DRC entry!\n");
--		return RC_DOIT;
--	}
- 	spin_lock(&cache_lock);
--	++num_drc_entries;
-+	if (likely(rp))
-+		++num_drc_entries;
- 
--	/*
--	 * Must search again just in case someone inserted one
--	 * after we dropped the lock above.
--	 */
-+search_cache:
- 	found = nfsd_cache_search(rqstp, csum);
- 	if (found) {
--		nfsd_reply_cache_free_locked(rp);
-+		if (likely(rp))
-+			nfsd_reply_cache_free_locked(rp);
- 		rp = found;
- 		goto found_entry;
- 	}
- 
-+	if (!rp) {
-+		dprintk("nfsd: unable to allocate DRC entry!\n");
-+		goto out;
+ 	if (!cache_listeners_exist(detail)) {
+ 		warn_no_listener(detail);
+@@ -1182,10 +1185,18 @@ int sunrpc_cache_pipe_upcall(struct cache_detail *detail, struct cache_head *h,
+ 	crq->len = PAGE_SIZE - len;
+ 	crq->readers = 0;
+ 	spin_lock(&queue_lock);
+-	list_add_tail(&crq->q.list, &detail->queue);
++	if (test_bit(CACHE_PENDING, &h->flags))
++		list_add_tail(&crq->q.list, &detail->queue);
++	else
++		/* Lost a race, no longer PENDING, so don't enqueue */
++		ret = -EAGAIN;
+ 	spin_unlock(&queue_lock);
+ 	wake_up(&queue_wait);
+-	return 0;
++	if (ret == -EAGAIN) {
++		kfree(buf);
++		kfree(crq);
 +	}
-+
- 	/*
- 	 * We're keeping the one we just allocated. Are we now over the
- 	 * limit? Prune one off the tip of the LRU in trade for the one we
-@@ -375,7 +373,6 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- 		nfsd_reply_cache_free_locked(list_first_entry(&lru_head,
- 						struct svc_cacherep, c_lru));
++	return ret;
+ }
+ EXPORT_SYMBOL_GPL(sunrpc_cache_pipe_upcall);
  
--setup_entry:
- 	nfsdstats.rcmisses++;
- 	rqstp->rq_cacherep = rp;
- 	rp->c_state = RC_INPROG;
--- 
-1.7.11.7
+
 
