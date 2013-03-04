@@ -1,90 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.gmx.net ([212.227.15.18]:63144 "EHLO mout.gmx.net"
+Received: from cantor2.suse.de ([195.135.220.15]:54562 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751457Ab3C0RUt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Mar 2013 13:20:49 -0400
-Received: from mailout-de.gmx.net ([10.1.76.24]) by mrigmx.server.lan
- (mrigmx001) with ESMTP (Nemesis) id 0MTuW7-1UBraR34ML-00QnjL for
- <linux-nfs@vger.kernel.org>; Wed, 27 Mar 2013 18:20:46 +0100
-Message-ID: <51532A6A.4040307@gmx.de>
-Date: Wed, 27 Mar 2013 18:20:42 +0100
-From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
-MIME-Version: 1.0
+	id S1755155Ab3CDGKz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Mar 2013 01:10:55 -0500
+From: NeilBrown <neilb@suse.de>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Linux Kernel <linux-kernel@vger.kernel.org>
-Subject: Re: kernel 3.8.4 : kernel BUG at fs/locks.c:2093!   part #2
-References: <514F31AF.3080709@gmx.de> <20130325220143.GD10887@fieldses.org> <20130326144640.GB3353@fieldses.org> <5151DEF7.3060003@gmx.de> <20130326181717.GA8978@fieldses.org>
-In-Reply-To: <20130326181717.GA8978@fieldses.org>
-Content-Type: text/plain; charset=UTF-8
+Date: Mon, 04 Mar 2013 17:09:32 +1100
+Subject: [PATCH 2/2] sunrpc/cache: use cache_fresh_unlocked consistently and
+ correctly.
+Cc: Bodo Stroesser <bstroesser@ts.fujitsu.com>, linux-nfs@vger.kernel.org
+Message-ID: <20130304060932.1352.81674.stgit@notabene.brown>
+In-Reply-To: <20130304060801.1352.97857.stgit@notabene.brown>
+References: <20130304060801.1352.97857.stgit@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/26/2013 07:17 PM, J. Bruce Fields wrote:
-> 
-> Bah, too bad.  That patch was definitely not a fix, so there may be some
-> race here.
-> 
->> What I get at the host is now :
->>
->> 2013-03-26T18:32:17.487+01:00 n22 kernel: ------------[ cut here ]------------
->> 2013-03-26T18:32:17.487+01:00 n22 kernel: WARNING: at mm/page_alloc.c:2376 __alloc_pages_nodemask+0x262/0x7c0()
-> ...
->> 2013-03-26T18:32:17.487+01:00 n22 kernel: [<c110f149>] __kmalloc+0x1b9/0x1e0
->> 2013-03-26T18:32:17.487+01:00 n22 kernel: [<f85835bf>] ? cache_check+0x22f/0x340 [sunrpc]
->> 2013-03-26T18:32:17.487+01:00 n22 kernel: [<f90a0b1c>] nfs4_acl_new+0x1c/0x30 [nfsd]
->> 2013-03-26T18:32:17.488+01:00 n22 kernel: [<f9095482>] nfsd4_decode_fattr+0x302/0x6c0 [nfsd]
-> ...
-> 
-> A different bug, but thanks for catching it, I suspect the following is
-> all we need.
-> 
-> --b.
-> 
-> commit 814d9d4f9164c3d778dadd093a54bb55d9a0c576
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Tue Mar 26 14:11:13 2013 -0400
-> 
->     nfsd4: reject "negative" acl lengths
->     
->     Since we only enforce an upper bound, not a lower bound, a "negative"
->     length can get through here.
->     
->     The symptom seen was a warning when we attempt to a kmalloc with an
->     excessive size.
->     
->     Reported-by: Toralf Förster <toralf.foerster@gmx.de>
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 0dc1158..d1dd710 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -264,7 +264,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
->  		iattr->ia_valid |= ATTR_SIZE;
->  	}
->  	if (bmval[0] & FATTR4_WORD0_ACL) {
-> -		int nace;
-> +		u32 nace;
->  		struct nfs4_ace *ace;
->  
->  		READ_BUF(4); len += 4;
-> 
+cache_fresh_unlocked() is called when a cache entry
+has been updated and ensures that if there were any
+pending upcalls, they are cleared.
 
-I applied that patach on top of 3.8.4 and wonders now, whether the
-following is the consequence :
+So every time we update a cache entry, we should call this,
+and this should be the only way that we try to clear
+pending calls (that sort of uniformity makes code sooo much
+easier to read).
 
-$ df -m /tmp/forT/victims/
-Filesystem     1M-blocks  Used Available Use% Mounted on
-/dev/sdb3         183851 34907    139599  21% /
+try_to_negate_entry() will (possibly) mark an entry as
+negative.  If it doesn't, it is because the entry already
+is VALID.
+So the entry will be valid on exit, so it is appropriate to
+call cache_fresh_unlocked().
+So tidy up try_to_negate_entry() to do that, and remove
+partial open-coded cache_fresh_unlocked() from the one
+call-site of try_to_negate_entry().
 
-$ sudo ls -lh --color /tmp/forT/victims/f062
----xr-S--T 2 tfoerste users 985G Mar 27 18:15 /tmp/forT/victims/f062
+In the other branch of the 'switch(cache_make_upcall())',
+we again have a partial open-coded version of cache_fresh_unlocked().
+Replace that with a real call.
 
-ls shows a 1 TB file within a partition where just 34 MB are used at all
-(its only one partition in that system and a separate small /boot too).
+And again in cache_clean(), use a real call to cache_fresh_unlocked().
 
--- 
-MfG/Sincerely
-Toralf Förster
-pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
+These call sites might previously have called
+cache_revisit_request() if CACHE_PENDING wasn't set.
+This is never necessary because cache_revisit_request() can
+only do anything if the item is in the cache_defer_hash,
+However any time that an item is added to the cache_defer_hash
+(setup_deferral), the code immediately tests CACHE_PENDING,
+and removes the entry again if it is clear.  So all other
+places we only need to 'cache_revisit_request' if we've
+just cleared CACHE_PENDING.
+
+Reported-by: Bodo Stroesser <bstroesser@ts.fujitsu.com>
+Signed-off-by: NeilBrown  <neilb@suse.de>
+---
+ net/sunrpc/cache.c |   20 +++++++-------------
+ 1 file changed, 7 insertions(+), 13 deletions(-)
+
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index 0400a92..2e07ba1 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -228,15 +228,14 @@ static int try_to_negate_entry(struct cache_detail *detail, struct cache_head *h
+ 
+ 	write_lock(&detail->hash_lock);
+ 	rv = cache_is_valid(detail, h);
+-	if (rv != -EAGAIN) {
+-		write_unlock(&detail->hash_lock);
+-		return rv;
++	if (rv == -EAGAIN) {
++		set_bit(CACHE_NEGATIVE, &h->flags);
++		cache_fresh_locked(h, seconds_since_boot()+CACHE_NEW_EXPIRY);
++		rv = -ENOENT;
+ 	}
+-	set_bit(CACHE_NEGATIVE, &h->flags);
+-	cache_fresh_locked(h, seconds_since_boot()+CACHE_NEW_EXPIRY);
+ 	write_unlock(&detail->hash_lock);
+ 	cache_fresh_unlocked(h, detail);
+-	return -ENOENT;
++	return rv;
+ }
+ 
+ /*
+@@ -275,13 +274,10 @@ int cache_check(struct cache_detail *detail,
+ 		if (!test_and_set_bit(CACHE_PENDING, &h->flags)) {
+ 			switch (cache_make_upcall(detail, h)) {
+ 			case -EINVAL:
+-				clear_bit(CACHE_PENDING, &h->flags);
+-				cache_revisit_request(h);
+ 				rv = try_to_negate_entry(detail, h);
+ 				break;
+ 			case -EAGAIN:
+-				clear_bit(CACHE_PENDING, &h->flags);
+-				cache_revisit_request(h);
++				cache_fresh_unlocked(h, detail);
+ 				break;
+ 			}
+ 		}
+@@ -457,9 +453,7 @@ static int cache_clean(void)
+ 			current_index ++;
+ 		spin_unlock(&cache_list_lock);
+ 		if (ch) {
+-			if (test_and_clear_bit(CACHE_PENDING, &ch->flags))
+-				cache_dequeue(current_detail, ch);
+-			cache_revisit_request(ch);
++			cache_fresh_unlocked(ch, d);
+ 			cache_put(ch, d);
+ 		}
+ 	} else
+
+
