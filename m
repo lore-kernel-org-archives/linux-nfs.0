@@ -1,233 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:60318 "EHLO mx1.netapp.com"
+Received: from mx2.netapp.com ([216.240.18.37]:6043 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933158Ab3CSR3k convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Mar 2013 13:29:40 -0400
-Received: from vmwexceht05-prd.hq.netapp.com (exchsmtp.hq.netapp.com [10.106.77.35])
-	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id r2JHTd0T003889
-	for <linux-nfs@vger.kernel.org>; Tue, 19 Mar 2013 10:29:39 -0700 (PDT)
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 10/11] NFSv4.1: Enable open-by-filehandle
-Date: Tue, 19 Mar 2013 17:29:37 +0000
-Message-ID: <A0468A45-044E-45E1-8256-38AD5814B6D8@netapp.com>
-References: <1363698463-3681-1-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-2-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-3-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-4-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-5-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-6-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-7-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-8-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-9-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-10-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1363698463-3681-10-git-send-email-Trond.Myklebust@netapp.com>
-Content-Type: text/plain; charset="us-ascii"
+	id S1757587Ab3CDOO0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Mar 2013 09:14:26 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Ming Lei <ming.lei@canonical.com>, Jeff Layton <jlayton@redhat.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
+Date: Mon, 4 Mar 2013 14:14:23 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9286AD113@sacexcmbx05-prd.hq.netapp.com>
+References: <CACVXFVMKN6aeCvJcn7dyuonJYJDfYxWeW5KE6gfKRKJKFj2M4A@mail.gmail.com>
+In-Reply-To: <CACVXFVMKN6aeCvJcn7dyuonJYJDfYxWeW5KE6gfKRKJKFj2M4A@mail.gmail.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond
+On Mon, 2013-03-04 at 21:57 +0800, Ming Lei wrote:
+> Hi,
+> 
+> The below warning can be triggered each time when mount.nfs is
+> running on 3.9-rc1.
+> 
+> Not sure if freezable_schedule() inside rpc_wait_bit_killable should
+> be changed to schedule() since nfs_clid_init_mutex is held in the path.
 
-You need to declare the new NFS_OPEN_CLAIMs.
+Cc:ing Jeff, who added freezable_schedule(), and applied it to
+rpc_wait_bit_killable.
 
-From: Andy Adamson <andros@netapp.com>
-Date: Tue, 19 Mar 2013 13:03:36 -0400
-Subject: [PATCH 17/21] NFSv4.1 declare new NFS4_OPEN_CLAIM * FH
+So this is occurring when the kernel enters the freeze state?
+Why does it occur only with nfs_clid_init_mutex, and not with all the
+other mutexes that we hold across RPC calls? We hold inode->i_mutex
+across RPC calls all the time when doing renames, unlinks, file
+creation,...
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- include/linux/nfs4.h |    5 ++++-
- 1 files changed, 4 insertions(+), 1 deletions(-)
-
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 7552bb5..380d944 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -388,7 +388,10 @@ enum open_claim_type4 {
-        NFS4_OPEN_CLAIM_NULL = 0,
-        NFS4_OPEN_CLAIM_PREVIOUS = 1,
-        NFS4_OPEN_CLAIM_DELEGATE_CUR = 2,
--       NFS4_OPEN_CLAIM_DELEGATE_PREV = 3
-+       NFS4_OPEN_CLAIM_DELEGATE_PREV = 3,
-+       NFS4_OPEN_CLAIM_FH = 4,
-+       NFS4_OPEN_CLAIM_DELEG_CUR_FH = 5,
-+       NFS4_OPEN_CLAIM_DELEG_PREV_FH = 6
- };
-
- enum opentype4 {
-
--->Andy
-
-On Mar 19, 2013, at 9:07 AM, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
-
-> Sometimes, we actually _want_ to do open-by-filehandle, for instance
-> when recovering opens after a network partition, or when called
-> from nfs4_file_open.
-> Enable that functionality using a new capability NFS_CAP_ATOMIC_OPEN_V1,
-> and which is only enabled for NFSv4.1 servers that support it.
+> [   41.387939] =====================================
+> [   41.392913] [ BUG: mount.nfs/643 still has locks held! ]
+> [   41.398559] 3.9.0-rc1+ #1740 Not tainted
+> [   41.402709] -------------------------------------
+> [   41.407714] 1 lock held by mount.nfs/643:
+> [   41.411956]  #0:  (nfs_clid_init_mutex){+.+...}, at: [<c0226d6c>]
+> nfs4_discover_server_trunking+0x60/0x1d4
+> [   41.422363]
+> [   41.422363] stack backtrace:
+> [   41.427032] [<c0014dd4>] (unwind_backtrace+0x0/0xe0) from
+> [<c04a8300>] (rpc_wait_bit_killable+0x38/0xc8)
+> [   41.437103] [<c04a8300>] (rpc_wait_bit_killable+0x38/0xc8) from
+> [<c054e454>] (__wait_on_bit+0x54/0x9c)
+> [   41.446990] [<c054e454>] (__wait_on_bit+0x54/0x9c) from
+> [<c054e514>] (out_of_line_wait_on_bit+0x78/0x84)
+> [   41.457061] [<c054e514>] (out_of_line_wait_on_bit+0x78/0x84) from
+> [<c04a8f88>] (__rpc_execute+0x170/0x348)
+> [   41.467407] [<c04a8f88>] (__rpc_execute+0x170/0x348) from
+> [<c04a250c>] (rpc_run_task+0x9c/0xa4)
+> [   41.476715] [<c04a250c>] (rpc_run_task+0x9c/0xa4) from [<c04a265c>]
+> (rpc_call_sync+0x70/0xb0)
+> [   41.485778] [<c04a265c>] (rpc_call_sync+0x70/0xb0) from
+> [<c021af54>] (nfs4_proc_setclientid+0x1a0/0x1c8)
+> [   41.495819] [<c021af54>] (nfs4_proc_setclientid+0x1a0/0x1c8) from
+> [<c0224eb4>] (nfs40_discover_server_trunki
+> ng+0xec/0x148)
+> [   41.507507] [<c0224eb4>]
+> (nfs40_discover_server_trunking+0xec/0x148) from [<c0226da0>]
+> (nfs4_discover_server
+> _trunking+0x94/0x1d4)
+> [   41.519866] [<c0226da0>] (nfs4_discover_server_trunking+0x94/0x1d4)
+> from [<c022c664>] (nfs4_init_client+0x15
+> 0/0x1b0)
+> [   41.531036] [<c022c664>] (nfs4_init_client+0x150/0x1b0) from
+> [<c01fe954>] (nfs_get_client+0x2cc/0x320)
+> [   41.540863] [<c01fe954>] (nfs_get_client+0x2cc/0x320) from
+> [<c022c080>] (nfs4_set_client+0x80/0xb0)
+> [   41.550476] [<c022c080>] (nfs4_set_client+0x80/0xb0) from
+> [<c022cef8>] (nfs4_create_server+0xb0/0x21c)
+> [   41.560333] [<c022cef8>] (nfs4_create_server+0xb0/0x21c) from
+> [<c0227524>] (nfs4_remote_mount+0x28/0x54)
+> [   41.570373] [<c0227524>] (nfs4_remote_mount+0x28/0x54) from
+> [<c0113a8c>] (mount_fs+0x6c/0x160)
+> [   41.579498] [<c0113a8c>] (mount_fs+0x6c/0x160) from [<c012a47c>]
+> (vfs_kern_mount+0x4c/0xc0)
+> [   41.588378] [<c012a47c>] (vfs_kern_mount+0x4c/0xc0) from
+> [<c022734c>] (nfs_do_root_mount+0x74/0x90)
+> [   41.597961] [<c022734c>] (nfs_do_root_mount+0x74/0x90) from
+> [<c0227574>] (nfs4_try_mount+0x24/0x3c)
+> [   41.607513] [<c0227574>] (nfs4_try_mount+0x24/0x3c) from
+> [<c02070f8>] (nfs_fs_mount+0x6dc/0x7a0)
+> [   41.616821] [<c02070f8>] (nfs_fs_mount+0x6dc/0x7a0) from
+> [<c0113a8c>] (mount_fs+0x6c/0x160)
+> [   41.625701] [<c0113a8c>] (mount_fs+0x6c/0x160) from [<c012a47c>]
+> (vfs_kern_mount+0x4c/0xc0)
+> [   41.634582] [<c012a47c>] (vfs_kern_mount+0x4c/0xc0) from
+> [<c012c330>] (do_mount+0x710/0x81c)
+> [   41.643524] [<c012c330>] (do_mount+0x710/0x81c) from [<c012c4c0>]
+> (sys_mount+0x84/0xb8)
+> [   41.652008] [<c012c4c0>] (sys_mount+0x84/0xb8) from [<c000d6c0>]
+> (ret_fast_syscall+0x0/0x48)
+> [   41.715911] device: '0:28': device_add
+> [   41.720062] PM: Adding info for No Bus:0:28
+> [   41.746887] device: '0:29': device_add
+> [   41.751037] PM: Adding info for No Bus:0:29
+> [   41.780700] device: '0:28': device_unregister
+> [   41.785400] PM: Removing info for No Bus:0:28
+> [   41.790344] device: '0:28': device_create_release
 > 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
-> fs/nfs/dir.c              |  2 ++
-> fs/nfs/nfs4proc.c         | 53 ++++++++++++++++++++++++++++++++++++++++-------
-> include/linux/nfs_fs_sb.h |  1 +
-> 3 files changed, 49 insertions(+), 7 deletions(-)
 > 
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index f23f455..e093e73 100644
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -1486,6 +1486,8 @@ static int nfs4_lookup_revalidate(struct dentry *dentry, unsigned int flags)
-> 		goto no_open;
-> 	if (d_mountpoint(dentry))
-> 		goto no_open;
-> +	if (NFS_SB(dentry->d_sb)->caps & NFS_CAP_ATOMIC_OPEN_V1)
-> +		goto no_open;
-> 
-> 	inode = dentry->d_inode;
-> 	parent = dget_parent(dentry);
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 712eb70..480b5d0 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -767,6 +767,35 @@ struct nfs4_opendata {
-> 	int cancelled;
-> };
-> 
-> +static bool nfs4_clear_cap_atomic_open_v1(struct nfs_server *server,
-> +		int err, struct nfs4_exception *exception)
-> +{
-> +	if (err != -EINVAL)
-> +		return false;
-> +	if (!(server->caps & NFS_CAP_ATOMIC_OPEN_V1))
-> +		return false;
-> +	server->caps &= ~NFS_CAP_ATOMIC_OPEN_V1;
-> +	exception->retry = 1;
-> +	return true;
-> +}
-> +
-> +static enum open_claim_type4
-> +nfs4_map_atomic_open_claim(struct nfs_server *server,
-> +		enum open_claim_type4 claim)
-> +{
-> +	if (server->caps & NFS_CAP_ATOMIC_OPEN_V1)
-> +		return claim;
-> +	switch (claim) {
-> +	default:
-> +		return claim;
-> +	case NFS4_OPEN_CLAIM_FH:
-> +		return NFS4_OPEN_CLAIM_NULL;
-> +	case NFS4_OPEN_CLAIM_DELEG_CUR_FH:
-> +		return NFS4_OPEN_CLAIM_DELEGATE_CUR;
-> +	case NFS4_OPEN_CLAIM_DELEG_PREV_FH:
-> +		return NFS4_OPEN_CLAIM_DELEGATE_PREV;
-> +	}
-> +}
-> 
-> static void nfs4_init_opendata_res(struct nfs4_opendata *p)
-> {
-> @@ -818,8 +847,8 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
-> 	p->o_arg.server = server;
-> 	p->o_arg.bitmask = server->attr_bitmask;
-> 	p->o_arg.open_bitmap = &nfs4_fattr_bitmap[0];
-> -	p->o_arg.claim = claim;
-> -	switch (claim) {
-> +	p->o_arg.claim = nfs4_map_atomic_open_claim(server, claim);
-> +	switch (p->o_arg.claim) {
-> 	case NFS4_OPEN_CLAIM_NULL:
-> 	case NFS4_OPEN_CLAIM_DELEGATE_CUR:
-> 	case NFS4_OPEN_CLAIM_DELEGATE_PREV:
-> @@ -1326,6 +1355,8 @@ static int nfs4_do_open_reclaim(struct nfs_open_context *ctx, struct nfs4_state
-> 	int err;
-> 	do {
-> 		err = _nfs4_do_open_reclaim(ctx, state);
-> +		if (nfs4_clear_cap_atomic_open_v1(server, err, &exception))
-> +			continue;
-> 		if (err != -NFS4ERR_DELAY)
-> 			break;
-> 		nfs4_handle_exception(server, err, &exception);
-> @@ -1741,7 +1772,7 @@ static int _nfs4_open_expired(struct nfs_open_context *ctx, struct nfs4_state *s
-> 	int ret;
-> 
-> 	opendata = nfs4_open_recoverdata_alloc(ctx, state,
-> -			NFS4_OPEN_CLAIM_NULL);
-> +			NFS4_OPEN_CLAIM_FH);
-> 	if (IS_ERR(opendata))
-> 		return PTR_ERR(opendata);
-> 	ret = nfs4_open_recover(opendata, state);
-> @@ -1759,6 +1790,8 @@ static int nfs4_do_open_expired(struct nfs_open_context *ctx, struct nfs4_state
-> 
-> 	do {
-> 		err = _nfs4_open_expired(ctx, state);
-> +		if (nfs4_clear_cap_atomic_open_v1(server, err, &exception))
-> +			continue;
-> 		switch (err) {
-> 		default:
-> 			goto out;
-> @@ -1926,6 +1959,7 @@ static int _nfs4_do_open(struct inode *dir,
-> 	struct nfs4_state     *state = NULL;
-> 	struct nfs_server       *server = NFS_SERVER(dir);
-> 	struct nfs4_opendata *opendata;
-> +	enum open_claim_type4 claim = NFS4_OPEN_CLAIM_NULL;
-> 	int status;
-> 
-> 	/* Protect against reboot recovery conflicts */
-> @@ -1941,9 +1975,10 @@ static int _nfs4_do_open(struct inode *dir,
-> 	if (dentry->d_inode != NULL)
-> 		nfs4_return_incompatible_delegation(dentry->d_inode, fmode);
-> 	status = -ENOMEM;
-> +	if (dentry->d_inode)
-> +		claim = NFS4_OPEN_CLAIM_FH;
-> 	opendata = nfs4_opendata_alloc(dentry, sp, fmode, flags, sattr,
-> -			NFS4_OPEN_CLAIM_NULL,
-> -			GFP_KERNEL);
-> +			claim, GFP_KERNEL);
-> 	if (opendata == NULL)
-> 		goto err_put_state_owner;
-> 
-> @@ -2001,6 +2036,7 @@ static struct nfs4_state *nfs4_do_open(struct inode *dir,
-> 					struct rpc_cred *cred,
-> 					struct nfs4_threshold **ctx_th)
-> {
-> +	struct nfs_server *server = NFS_SERVER(dir);
-> 	struct nfs4_exception exception = { };
-> 	struct nfs4_state *res;
-> 	int status;
-> @@ -2044,7 +2080,9 @@ static struct nfs4_state *nfs4_do_open(struct inode *dir,
-> 			exception.retry = 1;
-> 			continue;
-> 		}
-> -		res = ERR_PTR(nfs4_handle_exception(NFS_SERVER(dir),
-> +		if (nfs4_clear_cap_atomic_open_v1(server, status, &exception))
-> +			continue;
-> +		res = ERR_PTR(nfs4_handle_exception(server,
-> 					status, &exception));
-> 	} while (exception.retry);
-> 	return res;
-> @@ -6872,7 +6910,8 @@ static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
-> 		| NFS_CAP_ATOMIC_OPEN
-> 		| NFS_CAP_CHANGE_ATTR
-> 		| NFS_CAP_POSIX_LOCK
-> -		| NFS_CAP_STATEID_NFSV41,
-> +		| NFS_CAP_STATEID_NFSV41
-> +		| NFS_CAP_ATOMIC_OPEN_V1,
-> 	.call_sync = nfs4_call_sync_sequence,
-> 	.match_stateid = nfs41_match_stateid,
-> 	.find_root_sec = nfs41_find_root_sec,
-> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-> index 74c9e52..d8fdfdc 100644
-> --- a/include/linux/nfs_fs_sb.h
-> +++ b/include/linux/nfs_fs_sb.h
-> @@ -198,5 +198,6 @@ struct nfs_server {
-> #define NFS_CAP_POSIX_LOCK	(1U << 14)
-> #define NFS_CAP_UIDGID_NOMAP	(1U << 15)
-> #define NFS_CAP_STATEID_NFSV41	(1U << 16)
-> +#define NFS_CAP_ATOMIC_OPEN_V1	(1U << 17)
-> 
-> #endif
-> -- 
-> 1.8.1.4
-> 
+> Thanks,
+> --
+> Ming Lei
 
