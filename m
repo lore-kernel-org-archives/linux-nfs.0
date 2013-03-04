@@ -1,118 +1,175 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:53432 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1755028Ab3C2Otp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Mar 2013 10:49:45 -0400
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Date: Fri, 29 Mar 2013 10:49:44 -0400
-From: David Quigley <dpquigl@davequigley.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Steve Dickson <steved@redhat.com>,
-        Trond Myklebust <trond.myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 13/14] NFSD: Server implementation of MAC Labeling
-In-Reply-To: <20130329144050.GB22307@fieldses.org>
-References: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
- <1364478845-29796-14-git-send-email-SteveD@redhat.com>
- <20130328161444.GF7080@fieldses.org> <51550C03.1000107@davequigley.com>
- <20130329144050.GB22307@fieldses.org>
-Message-ID: <001ff69afd411b0318d7122bf07bd218@countercultured.net>
+Received: from mx1.redhat.com ([209.132.183.28]:46078 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932117Ab3CDUEd convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Mar 2013 15:04:33 -0500
+Date: Mon, 4 Mar 2013 15:04:22 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>, <devel@openvz.org>,
+        <Trond.Myklebust@netapp.com>, <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] nfsd: try nfsdcld client tracker in containers
+Message-ID: <20130304150422.0a1743f4@tlielax.poochiereds.net>
+In-Reply-To: <5134E043.70609@parallels.com>
+References: <20130301082423.21663.37825.stgit@localhost.localdomain>
+	<20130301080911.2a1a28a2@corrin.poochiereds.net>
+	<51344175.40503@parallels.com>
+	<20130304094736.57a288b9@tlielax.poochiereds.net>
+	<5134E043.70609@parallels.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/29/2013 10:40, J. Bruce Fields wrote:
-> On Thu, Mar 28, 2013 at 11:35:31PM -0400, Dave Quigley wrote:
->> On 3/28/2013 12:14 PM, J. Bruce Fields wrote:
->> >On Thu, Mar 28, 2013 at 09:54:04AM -0400, Steve Dickson wrote:
->> >>From: David Quigley <dpquigl@davequigley.com>
->> >>
->> >>This patch adds the ability to encode and decode file labels on 
->> the server for
->> >>the purpose of sending them to the client and also to process 
->> label change
->> >>requests from the client.
->> >>
->> >>Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
->> >>Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
->> >>Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
->> >>Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
->> >>---
->> >>  fs/nfsd/nfs4proc.c |  41 +++++++++++++++++++
->> >>  fs/nfsd/nfs4xdr.c  | 116 
->> ++++++++++++++++++++++++++++++++++++++++++++++++++---
->> >>  fs/nfsd/nfsd.h     |   6 ++-
->> >>  fs/nfsd/vfs.c      |  29 ++++++++++++++
->> >>  fs/nfsd/vfs.h      |   2 +
->> >>  fs/nfsd/xdr4.h     |   3 ++
->> >>  6 files changed, 191 insertions(+), 6 deletions(-)
->> >>
->> >>diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->> >>index ae73175..bb17589 100644
->> >>--- a/fs/nfsd/nfs4proc.c
->> >>+++ b/fs/nfsd/nfs4proc.c
->> >>@@ -42,6 +42,36 @@
->> >>  #include "current_stateid.h"
->> >>  #include "netns.h"
->> >>
->> >>+#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
->> >>+#include <linux/security.h>
->> >>+
->> >>+static inline void
->> >>+nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct 
->> nfs4_label *label, u32 *bmval)
->> >>+{
->> >>+	struct inode *inode = resfh->fh_dentry->d_inode;
->> >>+	int status;
->> >>+
->> >>+	mutex_lock(&inode->i_mutex);
->> >>+	status = security_inode_setsecctx(resfh->fh_dentry,
->> >>+		label->label, label->len);
->> >>+	mutex_unlock(&inode->i_mutex);
->> >>+
->> >>+	if (status)
->> >>+		/*
->> >>+		 * We should probably fail the whole open at this point,
->> >>+		 * but we've already created or opened the file, so it's
->> >>+		 * too late; So this seems the least of evils:
->> >>+		 */
->> >>+		bmval[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
->> >
->> >Is there any way to avoid this?
->> >
->> >How does the vfs open code handle this?  It has to be able to set a
->> >security contexts atomically on open(O_CREAT), doesn't it?
->> >
->>
->> I believe the way this is handled is that the inode is created and
->> labeled and then only after that is it bound to the namespace.
->> Because of that ordering we can fail and release the inode without
->> it ever having a dentry in the namespace.
->
-> Grepping around....  Looks like that's done by
-> security_inode_init_security(), from the filesystem's create method.
->
-> So we'd need to be able to pass something down to there.
->
-> Is the current client actually expected to use this?  (So are we 
-> going
-> to see a lot of opens that set the label?)
->
-> --b.
+On Mon, 4 Mar 2013 21:56:19 +0400
+Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
 
-I don't have all the code infront of me but we have a different hook to 
-do that. The call to nfsd4_security_inode_setsecctx is supposed to be 
-used from the setattr handlers to do the equivalent of a setxattr on the 
-file over NFS. The actual creation gets done with something like 
-security_dentry_init_security which should be in an earlier patch. I'd 
-have to look more clearly at the code to find out. Also where did we 
-come up with 128 for label length? The SELinux code assumes a starting 
-point of 255 and goes up from there as needed. The MLS policies will 
-definitely exceed a 128 byte label.
+> 04.03.2013 18:47, Jeff Layton пишет:
+> > On Mon, 4 Mar 2013 10:38:45 +0400
+> > Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+> >
+> >> 01.03.2013 17:09, Jeff Layton пишет:
+> >>> On Fri, 01 Mar 2013 11:24:23 +0300
+> >>> Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+> >>>
+> >>>> Currently, UMH and Legacy trackers are disabled in containers.
+> >>>> But existent logic can lookup nfs4_recoverydir in a container, and in this
+> >>>> case will try to init Legacy tracker and skip nfsdcld client tracker.
+> >>>> This actually means, that no client tracker will be started in a container at
+> >>>> all, because Legacy tracker init will return -EINVAL for a container.
+> >>>> So, let's change "-EINVAL" on "-ENOTSUPP" for legacy tracker init call in a
+> >>>> container and in case of this error code, try nfsdcld client tracker instead
+> >>>> of returning a error.
+> >>>>
+> >>>> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> >>>> ---
+> >>>>    fs/nfsd/nfs4recover.c |   12 ++++++++----
+> >>>>    1 files changed, 8 insertions(+), 4 deletions(-)
+> >>>>
+> >>>> diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+> >>>> index e0ae1cf..8aa069a 100644
+> >>>> --- a/fs/nfsd/nfs4recover.c
+> >>>> +++ b/fs/nfsd/nfs4recover.c
+> >>>> @@ -524,7 +524,7 @@ nfsd4_legacy_tracking_init(struct net *net)
+> >>>>    	if (net != &init_net) {
+> >>>>    		WARN(1, KERN_ERR "NFSD: attempt to initialize legacy client "
+> >>>>    			"tracking in a container!\n");
+> >>>> -		return -EINVAL;
+> >>>> +		return -ENOTSUPP;
+> >>>>    	}
+> >>>>
+> >>>>    	status = nfs4_legacy_state_init(net);
+> >>>> @@ -1285,14 +1285,17 @@ nfsd4_client_tracking_init(struct net *net)
+> >>>>    	/*
+> >>>>    	 * See if the recoverydir exists and is a directory. If it is,
+> >>>>    	 * then use the legacy ops.
+> >>>> +	 * If legacy ops init return -ENOSUPP, then we are in a container and
+> >>>> +	 * should try nfsdcld client tracking.
+> >>>>    	 */
+> >>>>    	nn->client_tracking_ops = &nfsd4_legacy_tracking_ops;
+> >>>>    	status = kern_path(nfs4_recoverydir(), LOOKUP_FOLLOW, &path);
+> >>>>    	if (!status) {
+> >>>> -		status = S_ISDIR(path.dentry->d_inode->i_mode);
+> >>>> +		if (S_ISDIR(path.dentry->d_inode->i_mode))
+> >>>> +			status = nn->client_tracking_ops->init(net);
+> >>>>    		path_put(&path);
+> >>>> -		if (status)
+> >>>> -			goto do_init;
+> >>>> +		if (status != -ENOTSUPP)
+> >>>> +			goto do_exit;
+> >>>>    	}
+> >>>>
+> >>>>    	/* Finally, try to use nfsdcld */
+> >>>> @@ -1302,6 +1305,7 @@ nfsd4_client_tracking_init(struct net *net)
+> >>>>    			"nfsdcltrack.\n");
+> >>>>    do_init:
+> >>>>    	status = nn->client_tracking_ops->init(net);
+> >>>> +do_exit:
+> >>>>    	if (status) {
+> >>>>    		printk(KERN_WARNING "NFSD: Unable to initialize client "
+> >>>>    				    "recovery tracking! (%d)\n", status);
+> >>>>
+> >>> Seems OK as a stopgap fix. We're removing nfsdcld in 3.10 though so
+> >>> this won't help prospective users of nfsd in a container for
+> >>> long...particularly since our expectation is that no one has actually
+> >>> ever deployed nfsdcld.
+> >>>
+> >>> This is something that really needs to be fixed the right way since a
+> >>> NFS server that doesn't allow clients to reclaim state after a reboot is
+> >>> potentially dangerous...
+> >>>
+> >>> I'm afraid I haven't been following along as closely as I should have
+> >>> been. What's the rationale for disabling the UMH upcall? Is there no
+> >>> way to make it so that new processes it spawns are done within the
+> >>> correct container?
+> >>>
+> >> Straight answer is "no, there is no way to do so": UMH threads are spawned in "init" context.
+> >> But we solve the problem in a slightly different way.
+> >>
+> >> So, here are my ideas about all the trackers (I haven't shared them yet, so I do it now):
+> >>
+> >> 1) nfsdcld uses SUNRPC pipefs, which is containerised already. So it was very easy to containerise it.
+> >>
+> > Right, but we want this one to just go away. It got superceded by the
+> > UMH upcall and probably shouldn't have been merged in the first place
+> > (mea culpa). That'll get ripped out when the 3.10 merge window opens,
+> > so we don't really want to encourage anyone to use it.
+> >
+> >> 2) Legacy tracker uses path. All is great and simple until we imagine two containers with the same root. In this case we have to make sure, that we can start
+> >> only one NFSd with this path (I don't care about user-space problems).
+> >> I was thinking about global in-kernel RB tree for all paths. But maybe even a simple global list is enough (not so many NFSd can be started, and it not a
+> >> fast-path to optimise the search over all used paths).
+> >>
+> > Well, you have a path, sure. In principle you could make that path
+> > relative to the correct namespace for each server, and maybe allow this
+> > to be settable on a per-namespace basis.
+> >
+> > That said, it's probably best not to put to much effort into this
+> > either. We want to eventually deprecate the legacy tracker too. So
+> > limiting its use to the "init" namespace seems like a reasonable
+> > stopgap fix, IMO...
+> 
+> Ok, let's leave it for a while...
+> 
+> >
+> >> 3) UMH lookup and execute binary from current root. This problem just chasing all the containerisation work. So, either UHM logic have to updated (which is not
+> >> trivial or easy to implement and push upstream), or process root have to swapped to the right (container's) one. This, BTW, not that hard, because UMH call
+> >> accept "init" callback, which can be used to swap the root right before do_execve() is called.
+> >>
+> >> What do you, guys, think about all this?
+> >>
+> > You mean just change to use call_usermodehelper_fns() and pasn the
+> > correct namespace info? Yeah that looks like the easiest fix and sounds
+> > quite reasonable.
+> >
+> 
+> Nope. The problem here is not a namespace, but root path:
+> mount point + dentry.
+> do_execve() uses root path from current for search for any string path.
+> And this root path is inherited from the kernel thread. Which means,
+> that this is global "init" root path.
+> Thus, if is we want to search for path in a container (which could
+> have it's own nested root), we have to swap the root in usermode
+> helper thread before do_execve() call.
+> We can use call_usermodehelper_fns() to pass init callback and swap root 
+> in it.
+> But the problem here is that root swaping is not that... gentle.
+> I.e. we were trying to avoid it. For example, local SUNRPC transports
+> now connects synchronously (to make sure, that connection will be done in
+> proper root environment).
+> Nevertheless, I don't see any other way to containerize UMH so far.
+> 
+> Bruce, what's your opinion about this?
+> 
+> 
 
-Dave
+It doesn't seem all that awful here. Once we've spawned this new
+process it'll just run to completion and exit within the container. We
+shouldn't ever need to go back to the original root.
+
+In the sunrpc layer, it's a little more complicated since you're
+working with kernel threads and workqueues that may be shared between
+containers (right?).
+
+-- 
+Jeff Layton <jlayton@redhat.com>
