@@ -1,96 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:49465 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1754409Ab3C2Dje (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Mar 2013 23:39:34 -0400
-Message-ID: <51550B67.40108@davequigley.com>
-Date: Thu, 28 Mar 2013 23:32:55 -0400
-From: Dave Quigley <dpquigl@davequigley.com>
+Received: from mail-vc0-f176.google.com ([209.85.220.176]:60157 "EHLO
+	mail-vc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932354Ab3CDUKG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Mar 2013 15:10:06 -0500
+Received: by mail-vc0-f176.google.com with SMTP id fk10so3614579vcb.21
+        for <linux-nfs@vger.kernel.org>; Mon, 04 Mar 2013 12:10:05 -0800 (PST)
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Steve Dickson <SteveD@redhat.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 13/14] NFSD: Server implementation of MAC Labeling
-References: <1364478845-29796-1-git-send-email-SteveD@redhat.com> <1364478845-29796-14-git-send-email-SteveD@redhat.com> <20130328185845.GI7080@fieldses.org> <20130328191918.GA14748@fieldses.org>
-In-Reply-To: <20130328191918.GA14748@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+In-Reply-To: <CACBanvqfW7P-TfKnVGgsumPdLhx-Z4ZS8wUHyUNRA9mM=txK8A@mail.gmail.com>
+References: <CACVXFVMKN6aeCvJcn7dyuonJYJDfYxWeW5KE6gfKRKJKFj2M4A@mail.gmail.com>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA9286AD113@sacexcmbx05-prd.hq.netapp.com>
+	<CACVXFVM5VhU_ZgYr1KxERY7DXxMQpkWoiTyjyar91Hz=vU4-ug@mail.gmail.com>
+	<20130304100432.5c7ea704@tlielax.poochiereds.net>
+	<CACVXFVPvTnfH98KqAQxDzMi5Pbf1fbi5HEGb=ggWWg4FX_4G=g@mail.gmail.com>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA9286AD381@sacexcmbx05-prd.hq.netapp.com>
+	<CACBanvqfW7P-TfKnVGgsumPdLhx-Z4ZS8wUHyUNRA9mM=txK8A@mail.gmail.com>
+Date: Mon, 4 Mar 2013 12:10:05 -0800
+Message-ID: <CACBanvroaxd-nAJd+7o6eJMW7gOLT+=Dq2fbNPR7adZpXOEN8g@mail.gmail.com>
+Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
+From: Mandeep Singh Baines <msb@chromium.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Ming Lei <ming.lei@canonical.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Al Viro <viro@zeniv.linux.org.uk>, Jeff Layton <jlayton@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>, Ben Chan <benchan@chromium.org>,
+        Oleg Nesterov <oleg@redhat.com>, Ingo Molnar <mingo@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 3/28/2013 3:19 PM, J. Bruce Fields wrote:
-> Dave, I think these are both questions for you?
->
-> --b.
->
-> On Thu, Mar 28, 2013 at 02:58:45PM -0400, bfields wrote:
->> On Thu, Mar 28, 2013 at 09:54:04AM -0400, Steve Dickson wrote:
->>> @@ -1988,6 +2044,50 @@ nfsd4_encode_aclname(struct svc_rqst *rqstp, struct nfs4_ace *ace,
->>>   			      FATTR4_WORD0_RDATTR_ERROR)
->>>   #define WORD1_ABSENT_FS_ATTRS FATTR4_WORD1_MOUNTED_ON_FILEID
+On Mon, Mar 4, 2013 at 12:09 PM, Mandeep Singh Baines <msb@chromium.org> wrote:
+> On Mon, Mar 4, 2013 at 7:53 AM, Myklebust, Trond
+> <Trond.Myklebust@netapp.com> wrote:
+>> On Mon, 2013-03-04 at 23:33 +0800, Ming Lei wrote:
+>>> Hi,
 >>>
->>> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
->>> +static inline __be32
->>> +nfsd4_encode_security_label(struct svc_rqst *rqstp, struct dentry *dentry, __be32 **pp, int *buflen)
->>> +{
->>> +	void *context;
->>> +	int err;
->>> +	int len;
->>> +	uint32_t pi = 0;
->>> +	uint32_t lfs = 0;
->>> +	__be32 *p = *pp;
->>> +
->>> +	err = 0;
->>> +	(void)security_inode_getsecctx(dentry->d_inode, &context, &len);
->>> +	if (len < 0)
->>> +		return nfserrno(len);
->>> +
->>> +	if (*buflen < ((XDR_QUADLEN(len) << 2) + 4 + 4 + 4)) {
->>> +		err = nfserr_resource;
->>> +		goto out;
->>> +	}
->>> +
->>> +	/* XXX: A call to the translation code should be placed here
->>> +	 * for now send 0  until we have that to indicate the null
->>> +	 * translation */
+>>> CC guys who introduced the lockdep change.
+>>>
+>>> On Mon, Mar 4, 2013 at 11:04 PM, Jeff Layton <jlayton@redhat.com> wrote:
+>>>
+>>> >
+>>> > I don't get it -- why is it bad to hold a lock across a freeze event?
+>>>
+>>> At least this may deadlock another mount.nfs during freezing, :-)
+>>>
+>>> See detailed explanation in the commit log:
+>>>
+>>> commit 6aa9707099c4b25700940eb3d016f16c4434360d
+>>> Author: Mandeep Singh Baines <msb@chromium.org>
+>>> Date:   Wed Feb 27 17:03:18 2013 -0800
+>>>
+>>>     lockdep: check that no locks held at freeze time
+>>>
+>>>     We shouldn't try_to_freeze if locks are held.  Holding a lock can cause a
+>>>     deadlock if the lock is later acquired in the suspend or hibernate path
+>>>     (e.g.  by dpm).  Holding a lock can also cause a deadlock in the case of
+>>>     cgroup_freezer if a lock is held inside a frozen cgroup that is later
+>>>     acquired by a process outside that group.
+>>>
 >>
->> Could we better a better comment here?
-
-We could remove this comment all together if you want. We're trying to 
-indicate that at some point in the future there will be a label 
-translation facility like idmapd but for labels instead. This is where 
-the call would go if we had it. I had a basic version of the code a long 
-time ago and that is where I had the call but there was way too much 
-work to make it usable for now. Instead I just pass the null translation 
-indicator on the wire and we wave our hands and say don't look at the 
-man behind the curtain.
-
-> ...
->>> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
->>> +__be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
->>> +		struct nfs4_label *label)
->>> +{
->>> +	__be32 error;
->>> +	int host_error;
->>> +	struct dentry *dentry;
->>> +
->>> +	/* XXX: should we have a MAY_SSECCTX? */
+>> This is bloody ridiculous... If you want to add functionality to
+>> implement cgroup or per-process freezing, then do it through some other
+>> api instead of trying to push your problems onto others by adding new
+>> global locking rules.
 >>
->> Again: could we get an answer to this question?
-
-I'm pretty sure we can just remove that comment. It was a question from 
-about 5 years ago now and I never found a compelling reason to say yes 
-to it.
-
+>> Filesystems are a shared resource that have _nothing_ to do with process
+>> cgroups. They need to be suspended when the network goes down or other
+>> resources that they depend on are suspended. At that point, there is no
+>> "what if I launch a new mount command?" scenario.
 >>
->> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 >
+> Hi Trond,
+>
+> My intention was to introduce new rules. My change simply introduces a
 
+D'oh.
+
+s/was/was not/
+
+Regards,
+Mandeep
+
+> check for a deadlock case that can already happen.
+>
+> I think a deadlock could happen under the following scenario:
+>
+> 1) An administrator wants to freeze a container. Perhaps to checkpoint
+> it and it migrate it some place else.
+> 2) An nfs mount was in progress so we hit this code path and freeze
+> with a lock held.
+> 3) Another container tries to nfs mount.
+> 4) Deadlock.
+>
+> Regards,
+> Mandeep
+>
+>> Trond
+>> --
+>> Trond Myklebust
+>> Linux NFS client maintainer
+>>
+>> NetApp
+>> Trond.Myklebust@netapp.com
+>> www.netapp.com
