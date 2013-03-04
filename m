@@ -1,99 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from youngberry.canonical.com ([91.189.89.112]:58057 "EHLO
-	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756992Ab3CDN5j (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Mar 2013 08:57:39 -0500
-MIME-Version: 1.0
-Date: Mon, 4 Mar 2013 21:57:36 +0800
-Message-ID: <CACVXFVMKN6aeCvJcn7dyuonJYJDfYxWeW5KE6gfKRKJKFj2M4A@mail.gmail.com>
-Subject: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
-From: Ming Lei <ming.lei@canonical.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from userp1040.oracle.com ([156.151.31.81]:39205 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758085Ab3CDRrX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Mar 2013 12:47:23 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
+Subject: Re: Inconsistent error codes between NFSv4 and v3 on network issues
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <alpine.LNX.2.01.1303011240350.11154@nerf07.vanv.qr>
+Date: Mon, 4 Mar 2013 12:47:15 -0500
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Message-Id: <6AADB1AD-6FB9-42AD-8BF2-6B0B706927E5@oracle.com>
+References: <alpine.LNX.2.01.1303011240350.11154@nerf07.vanv.qr>
+To: Jan Engelhardt <jengelh@inai.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
 
-The below warning can be triggered each time when mount.nfs is
-running on 3.9-rc1.
+On Mar 1, 2013, at 6:43 AM, Jan Engelhardt <jengelh@inai.de> wrote:
 
-Not sure if freezable_schedule() inside rpc_wait_bit_killable should
-be changed to schedule() since nfs_clid_init_mutex is held in the path.
+> Hi.
+> 
+> 
+> I had here a case with a Linux 3.7.9 system, a virtual machine in a
+> RFC1918 range, that did not want to mount NFS.
+> 
+> linux-3lzm:~ # strace -fe mount mount -t nfs 134.76.12.5:/X /mnt
+> Process 1477 attached
+> [pid  1515] mount("134.76.12.5:/X", "/mnt", "nfs", 0, "vers=4,addr=134.76.12.5,clientaddr=0.0.0.0") = -1 EIO (Input/output error)
 
-[   41.387939] =====================================
-[   41.392913] [ BUG: mount.nfs/643 still has locks held! ]
-[   41.398559] 3.9.0-rc1+ #1740 Not tainted
-[   41.402709] -------------------------------------
-[   41.407714] 1 lock held by mount.nfs/643:
-[   41.411956]  #0:  (nfs_clid_init_mutex){+.+...}, at: [<c0226d6c>]
-nfs4_discover_server_trunking+0x60/0x1d4
-[   41.422363]
-[   41.422363] stack backtrace:
-[   41.427032] [<c0014dd4>] (unwind_backtrace+0x0/0xe0) from
-[<c04a8300>] (rpc_wait_bit_killable+0x38/0xc8)
-[   41.437103] [<c04a8300>] (rpc_wait_bit_killable+0x38/0xc8) from
-[<c054e454>] (__wait_on_bit+0x54/0x9c)
-[   41.446990] [<c054e454>] (__wait_on_bit+0x54/0x9c) from
-[<c054e514>] (out_of_line_wait_on_bit+0x78/0x84)
-[   41.457061] [<c054e514>] (out_of_line_wait_on_bit+0x78/0x84) from
-[<c04a8f88>] (__rpc_execute+0x170/0x348)
-[   41.467407] [<c04a8f88>] (__rpc_execute+0x170/0x348) from
-[<c04a250c>] (rpc_run_task+0x9c/0xa4)
-[   41.476715] [<c04a250c>] (rpc_run_task+0x9c/0xa4) from [<c04a265c>]
-(rpc_call_sync+0x70/0xb0)
-[   41.485778] [<c04a265c>] (rpc_call_sync+0x70/0xb0) from
-[<c021af54>] (nfs4_proc_setclientid+0x1a0/0x1c8)
-[   41.495819] [<c021af54>] (nfs4_proc_setclientid+0x1a0/0x1c8) from
-[<c0224eb4>] (nfs40_discover_server_trunki
-ng+0xec/0x148)
-[   41.507507] [<c0224eb4>]
-(nfs40_discover_server_trunking+0xec/0x148) from [<c0226da0>]
-(nfs4_discover_server
-_trunking+0x94/0x1d4)
-[   41.519866] [<c0226da0>] (nfs4_discover_server_trunking+0x94/0x1d4)
-from [<c022c664>] (nfs4_init_client+0x15
-0/0x1b0)
-[   41.531036] [<c022c664>] (nfs4_init_client+0x150/0x1b0) from
-[<c01fe954>] (nfs_get_client+0x2cc/0x320)
-[   41.540863] [<c01fe954>] (nfs_get_client+0x2cc/0x320) from
-[<c022c080>] (nfs4_set_client+0x80/0xb0)
-[   41.550476] [<c022c080>] (nfs4_set_client+0x80/0xb0) from
-[<c022cef8>] (nfs4_create_server+0xb0/0x21c)
-[   41.560333] [<c022cef8>] (nfs4_create_server+0xb0/0x21c) from
-[<c0227524>] (nfs4_remote_mount+0x28/0x54)
-[   41.570373] [<c0227524>] (nfs4_remote_mount+0x28/0x54) from
-[<c0113a8c>] (mount_fs+0x6c/0x160)
-[   41.579498] [<c0113a8c>] (mount_fs+0x6c/0x160) from [<c012a47c>]
-(vfs_kern_mount+0x4c/0xc0)
-[   41.588378] [<c012a47c>] (vfs_kern_mount+0x4c/0xc0) from
-[<c022734c>] (nfs_do_root_mount+0x74/0x90)
-[   41.597961] [<c022734c>] (nfs_do_root_mount+0x74/0x90) from
-[<c0227574>] (nfs4_try_mount+0x24/0x3c)
-[   41.607513] [<c0227574>] (nfs4_try_mount+0x24/0x3c) from
-[<c02070f8>] (nfs_fs_mount+0x6dc/0x7a0)
-[   41.616821] [<c02070f8>] (nfs_fs_mount+0x6dc/0x7a0) from
-[<c0113a8c>] (mount_fs+0x6c/0x160)
-[   41.625701] [<c0113a8c>] (mount_fs+0x6c/0x160) from [<c012a47c>]
-(vfs_kern_mount+0x4c/0xc0)
-[   41.634582] [<c012a47c>] (vfs_kern_mount+0x4c/0xc0) from
-[<c012c330>] (do_mount+0x710/0x81c)
-[   41.643524] [<c012c330>] (do_mount+0x710/0x81c) from [<c012c4c0>]
-(sys_mount+0x84/0xb8)
-[   41.652008] [<c012c4c0>] (sys_mount+0x84/0xb8) from [<c000d6c0>]
-(ret_fast_syscall+0x0/0x48)
-[   41.715911] device: '0:28': device_add
-[   41.720062] PM: Adding info for No Bus:0:28
-[   41.746887] device: '0:29': device_add
-[   41.751037] PM: Adding info for No Bus:0:29
-[   41.780700] device: '0:28': device_unregister
-[   41.785400] PM: Removing info for No Bus:0:28
-[   41.790344] device: '0:28': device_create_release
+"clientaddr=0.0.0.0" is interesting: perhaps the mount.nfs command should have failed right there.
 
+But, let's find out why the kernel is returning EIO.  Enter:
 
-Thanks,
---
-Ming Lei
+ # rpcdebug -m nfs -s all
+ # rpcdebug -m rpc -s call xprt
+
+Try your NFSv4 mount command again, then post relevant excerpts from the kernel log.
+
+By the way, does this happen on older kernels?
+
+> mount.nfs: mount system call failed
+> [pid  1477] +++ exited with 32 +++
+> --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=1477, si_status=32, si_utime=0, si_stime=0} ---
+> +++ exited with 32 +++
+> 
+> Nothing in dmesg...
+> 
+> [   84.202243] RPC: Registered named UNIX socket transport module.
+> [   84.202246] RPC: Registered udp transport module.
+> [   84.202248] RPC: Registered tcp transport module.
+> [   84.202249] RPC: Registered tcp NFSv4.1 backchannel transport module.
+> [   84.205909] FS-Cache: Loaded
+> [   84.208782] FS-Cache: Netfs 'nfs' registered for caching
+> [   84.215733] NFS: Registering the id_resolver key type
+> [   84.215762] Key type id_resolver registered
+> [   84.215763] Key type id_legacy registered
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
