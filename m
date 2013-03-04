@@ -1,56 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f46.google.com ([74.125.83.46]:47459 "EHLO
-	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751857Ab3CRJBr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Mar 2013 05:01:47 -0400
-Received: by mail-ee0-f46.google.com with SMTP id e49so2528606eek.33
-        for <linux-nfs@vger.kernel.org>; Mon, 18 Mar 2013 02:01:45 -0700 (PDT)
-Message-ID: <5146D7F6.3010607@tonian.com>
-Date: Mon, 18 Mar 2013 11:01:42 +0200
-From: Benny Halevy <bhalevy@tonian.com>
-MIME-Version: 1.0
-To: chenditang <chendt.fnst@cn.fujitsu.com>
-CC: linux-nfs@vger.kernel.org, LINE <fnst-xmlinux@cn.fujitsu.com>,
-        Trond Myklebust <trond.myklebust@netapp.com>
-Subject: Re: pnfs: WRITE operation will not send LAYOUTCOMMI OP to MDS if
- use filelayout
-References: <5146BE38.2060004@cn.fujitsu.com>
-In-Reply-To: <5146BE38.2060004@cn.fujitsu.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-pb0-f49.google.com ([209.85.160.49]:38889 "EHLO
+	mail-pb0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758044Ab3CDM7s (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Mar 2013 07:59:48 -0500
+From: Akinobu Mita <akinobu.mita@gmail.com>
+To: linux-kernel@vger.kernel.org, akpm@linux-foundation.org
+Cc: Akinobu Mita <akinobu.mita@gmail.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>, netdev@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH -v3 17/23] net/sunrpc: rename random32() to prandom_u32()
+Date: Mon,  4 Mar 2013 21:58:25 +0900
+Message-Id: <1362401911-14074-18-git-send-email-akinobu.mita@gmail.com>
+In-Reply-To: <1362401911-14074-1-git-send-email-akinobu.mita@gmail.com>
+References: <1362401911-14074-1-git-send-email-akinobu.mita@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-03-18 09:11, chenditang wrote:
-> In the recent pnfs kernel versions, WRITE operation will not send
-> LAYOUTCOMMI OP to MDS if use filelayout.
+Use more preferable function name which implies using a pseudo-random
+number generator.
 
-I presume that the file server sets NFL4_UFLG_COMMIT_THRU_MDS
-and that the DS is returning how=FILE_SYNC and that the client
-is implementing the behavior described in  Errata ID: 2751
-http://www.rfc-editor.org/errata_search.php?rfc=5661
+Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: netdev@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org
+---
 
-Do you have a tcp dump of client, MDS, and DS traffic?
+No change from v2
 
-> 
-> In nfs_write_rpcsetup function, the value of the variable 'stable' will
-> always be NFS_FILE_SYNC(ncommit is 0). so NFS_INO_LAYOUTCOMMIT 
-> flag will not be set.
+ net/sunrpc/auth_gss/gss_krb5_wrap.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-What's the value of the "how" arg to nfs_write_rpcsetup that you see?
-At any rate, if you look at filelayout_set_layoutcommit, it will not
-call pnfs_set_layoutcommit in the following cases:
-
-        if (FILELAYOUT_LSEG(hdr->lseg)->commit_through_mds ||
-            wdata->res.verf->committed == NFS_FILE_SYNC)
-                return;
-
-Benny
-
-> 
-> The value of the variable ncommit' will be ++ in the later process
-> (nfs_writeback_release_common function).
-> 
-> 
-> Thanks!
-> 
+diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+index 88edec9..1da52d1 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
++++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+@@ -130,8 +130,8 @@ gss_krb5_make_confounder(char *p, u32 conflen)
+ 
+ 	/* initialize to random value */
+ 	if (i == 0) {
+-		i = random32();
+-		i = (i << 32) | random32();
++		i = prandom_u32();
++		i = (i << 32) | prandom_u32();
+ 	}
+ 
+ 	switch (conflen) {
+-- 
+1.8.1.2
 
