@@ -1,76 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39796 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:38510 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755467Ab3CESNL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Mar 2013 13:13:11 -0500
-Date: Tue, 5 Mar 2013 13:13:06 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Simo <simo@samba.org>
-Cc: Andy Lutomirski <luto@amacapital.net>,
-        Pavel Shilovsky <piastry@etersoft.ru>, linux-kernel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, wine-devel@winehq.org
-Subject: Re: [PATCH v3 0/7] Add O_DENY* support for VFS and CIFS/NFS
-Message-ID: <20130305181306.GA15816@fieldses.org>
-References: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
- <512FD1D5.3010106@mit.edu>
- <20130304211923.GI20389@fieldses.org>
- <5135250A.30604@samba.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5135250A.30604@samba.org>
+	id S932114Ab3CDV5K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Mar 2013 16:57:10 -0500
+Date: Tue, 5 Mar 2013 08:57:00 +1100
+From: NeilBrown <neilb@suse.de>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: [PATCH - nfs-utils] gssd: don't krb5_free_context if
+ krb5_init_context fails
+Message-ID: <20130305085700.56921777@notabene.brown>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/LV775wLNyx2rFrl+BeLHV_D"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 04, 2013 at 05:49:46PM -0500, Simo wrote:
-> On 03/04/2013 04:19 PM, J. Bruce Fields wrote:
-> >On Thu, Feb 28, 2013 at 01:53:25PM -0800, Andy Lutomirski wrote:
-> >>[possible resend -- sorry]
-> >>
-> >>On 02/28/2013 07:25 AM, Pavel Shilovsky wrote:
-> >>>This patchset adds support of O_DENY* flags for Linux fs layer. These flags can be used by any application that needs share reservations to organize a file access. VFS already has some sort of this capability - now it's done through flock/LOCK_MAND mechanis, but that approach is non-atomic. This patchset build new capabilities on top of the existing one but doesn't bring any changes into the flock call semantic.
-> >>>
-> >>>These flags can be used by NFS (built-in-kernel) and CIFS (Samba) servers and Wine applications through VFS (for local filesystems) or CIFS/NFS modules. This will help when e.g. Samba and NFS server share the same directory for Windows and Linux users or Wine applications use Samba/NFS share to access the same data from different clients.
-> >>>
-> >>>According to the previous discussions the most problematic question is how to prevent situations like DoS attacks where e.g /lib/liba.so file can be open with DENYREAD, or smth like this. That's why one extra flag O_DENYMAND is added. It indicates to underlying layer that an application want to use O_DENY* flags semantic. It allows us not affect native Linux applications (that don't use O_DENYMAND flag) - so, these flags (and the semantic of open syscall that they bring) are used only for those applications that really want it proccessed that way.
-> >>>
-> >>>So, we have four new flags:
-> >>>O_DENYREAD - to prevent other opens with read access,
-> >>>O_DENYWRITE - to prevent other opens with write access,
-> >>>O_DENYDELETE - to prevent delete operations (this flag is not implemented in VFS and NFS part and only suitable for CIFS module),
-> >>>O_DENYMAND - to switch on/off three flags above.
-> >>O_DENYMAND doesn't deny anything.  Would a name like O_RESPECT_DENY be
-> >>better?
-> >>
-> >>Other than that, this seems like a sensible mechanism.
-> >I'm a little more worried: these are mandatory locks, and applications
-> >that use them are used to the locks being enforced correctly.  Are we
-> >sure that an application that opens a file O_DENYWRITE won't crash if it
-> >sees the file data change while it holds the open?
-> 
-> The redirector may simply assume it has full control of that part of
-> the file and not read nor send data until the lock is released too,
-> so you get conflicting views of the file contents between different
-> clients if you let a mandatory lock not be mandatory.
-> 
-> >In general the idea of making a mandatory lock opt-in makes me nervous.
-> >I'd prefer something like a mount option, so that we know that everyone
-> >on that one filesystem is playing by the same rules, but we can still
-> >mount filesystems like / without the option.
-> 
-> +1
-> 
-> >But I'll admit I'm definitely not an expert on Windows locking and may
-> >be missing something about how these locks are meant to work.
-> 
-> Mandatory locks really are mandatory in Windows.
-> That may not be nice to a Unix system but what can you do ?
+--Sig_/LV775wLNyx2rFrl+BeLHV_D
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-I wonder if we could repurpose the existing -omand mount option?
 
-That would be a problem for anyone that wants to allow mandatory fcntl
-locks without allowing share locks.  I doubt anyone sane actually uses
-mandatory fcntl locks, but still I suppose it would probably be better
-to play it safe and use a new mount option.
+Most places that call krb5_init_context() abort cleanly on failure.
+However these two then try to free the non-existent context, which
+doesn't end well.
 
---b.
+Signed-off-by: NeilBrown <neilb@suse.de>
+
+diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+index aeb8f70..4befa72 100644
+--- a/utils/gssd/krb5_util.c
++++ b/utils/gssd/krb5_util.c
+@@ -1212,9 +1212,9 @@ gssd_destroy_krb5_machine_creds(void)
+ 				    "cache '%s'\n", k5err, ple->ccname);
+ 		}
+ 	}
++	krb5_free_context(context);
+   out:
+ 	free(k5err);
+-	krb5_free_context(context);
+ }
+=20
+ /*
+@@ -1257,7 +1257,7 @@ gssd_refresh_krb5_machine_credential(char *hostname,
+ 		k5err =3D gssd_k5_err_msg(context, code);
+ 		printerr(0, "ERROR: %s: %s while resolving keytab '%s'\n",
+ 			 __func__, k5err, keytabfile);
+-		goto out;
++		goto out_free_context;
+ 	}
+=20
+ 	if (ple =3D=3D NULL) {
+@@ -1272,7 +1272,7 @@ gssd_refresh_krb5_machine_credential(char *hostname,
+ 				 "in keytab %s for connection with host %s\n",
+ 				 __FUNCTION__, keytabfile, hostname);
+ 			retval =3D code;
+-			goto out;
++			goto out_free_kt;
+ 		}
+=20
+ 		ple =3D get_ple_by_princ(context, kte.principal);
+@@ -1288,14 +1288,15 @@ gssd_refresh_krb5_machine_credential(char *hostname,
+ 				 __FUNCTION__, pname ? pname : "<unparsable>",
+ 				 hostname);
+ 			if (pname) k5_free_unparsed_name(context, pname);
+-			goto out;
++			goto out_free_kt;
+ 		}
+ 	}
+ 	retval =3D gssd_get_single_krb5_cred(context, kt, ple, 0);
+-out:
+-	if (kt)
+-		krb5_kt_close(context, kt);
++out_free_kt:
++	krb5_kt_close(context, kt);
++out_free_context:
+ 	krb5_free_context(context);
++out:
+ 	free(k5err);
+ 	return retval;
+ }
+
+--Sig_/LV775wLNyx2rFrl+BeLHV_D
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIVAwUBUTUYrDnsnt1WYoG5AQKImA/9HZ237X2D1zKvJ5/1IsocnFU6bGFg7bzE
+uE46sjllYKAQ77ze2xUSSvxD1XbCEUg4mBxV9+HgGIoz2PNmg5TYWaRmhVZKyXV1
+ScJsxbuZesSo+wkhMggBYtxTim+FwB2bssgojR/OZ3ZeWVRzuip32DNUPbO2HX8D
+JsN612WeBh+zug2ig2SLf5k/NnmdGXqDonmfCH4BkkX8RvEOQXrKW+3ddY7Ib/uo
+ycTJ5UTYmvUhw3kSQVHOg74icDik56EkBkHPd1A8XI1qKh1q13YK+FNEyhkYs2R4
+AEwrYlxnkO51L9SWynB7PVIut0avYOpT0Bycq4DD+fbGPRXmNM2CenDBGi6tJHMZ
+NlSTt9Dsr6A1Xl6BnnBkI8jIc+9YoSDcvBTNCA7rdvtwXOuFz6TgnVtkfGedKI84
+9emY9cyVwLjlfxFBru49bNFIxMwXudV4D0fVvsLVSz75sHGT21xQ1KH8J7PzMA2n
+DkgVcAI+KbywysfZQWfD0RvOl7UQgrCVI+x6XBMNvQ5WUUN9oEZ3/6iO8CVMPzYi
+wCcvdp0bxVW5hvawDRw4d60g0MXWgRU/QR/TgUUH47lkLBrIk6UkvjmWCzXANDie
+8sUAVVTpi0utOxRdJAeuQ8GwH2PWuJBW11uKtolMelQIGFwEupme4dUz0IFu7bbc
++LDLYgl2WZM=
+=FfWN
+-----END PGP SIGNATURE-----
+
+--Sig_/LV775wLNyx2rFrl+BeLHV_D--
