@@ -1,84 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45985 "EHLO fieldses.org"
+Received: from fn.samba.org ([216.83.154.106]:32768 "EHLO mail.samba.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757617Ab3CEUFV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Mar 2013 15:05:21 -0500
-Date: Tue, 5 Mar 2013 15:05:11 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tejun Heo <tj@kernel.org>
-Cc: akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        jackm@dev.mellanox.co.il, ogerlitz@mellanox.com,
-        roland@purestorage.com, dan.magenheimer@oracle.com,
-        gregkh@linuxfoundation.org, vjaquez@igalia.com, rene.sapiens@ti.com,
-        x0095078@ti.com, omar.ramirez@ti.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/7] nfsd: remove unused get_new_stid()
-Message-ID: <20130305200511.GB15816@fieldses.org>
-References: <1362513772-15174-1-git-send-email-tj@kernel.org>
- <1362513772-15174-2-git-send-email-tj@kernel.org>
+	id S1758788Ab3CDW5B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Mar 2013 17:57:01 -0500
+Message-ID: <5135250A.30604@samba.org>
+Date: Mon, 04 Mar 2013 17:49:46 -0500
+From: Simo <simo@samba.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1362513772-15174-2-git-send-email-tj@kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Andy Lutomirski <luto@amacapital.net>,
+        Pavel Shilovsky <piastry@etersoft.ru>, linux-kernel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wine-devel@winehq.org
+Subject: Re: [PATCH v3 0/7] Add O_DENY* support for VFS and CIFS/NFS
+References: <1362065133-9490-1-git-send-email-piastry@etersoft.ru> <512FD1D5.3010106@mit.edu> <20130304211923.GI20389@fieldses.org>
+In-Reply-To: <20130304211923.GI20389@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 05, 2013 at 12:02:46PM -0800, Tejun Heo wrote:
-> get_new_stid() is no longer used since 3abdb607125 ("nfsd4: simplify
-> idr allocation").  Remove it.
+On 03/04/2013 04:19 PM, J. Bruce Fields wrote:
+> On Thu, Feb 28, 2013 at 01:53:25PM -0800, Andy Lutomirski wrote:
+>> [possible resend -- sorry]
+>>
+>> On 02/28/2013 07:25 AM, Pavel Shilovsky wrote:
+>>> This patchset adds support of O_DENY* flags for Linux fs layer. These flags can be used by any application that needs share reservations to organize a file access. VFS already has some sort of this capability - now it's done through flock/LOCK_MAND mechanis, but that approach is non-atomic. This patchset build new capabilities on top of the existing one but doesn't bring any changes into the flock call semantic.
+>>>
+>>> These flags can be used by NFS (built-in-kernel) and CIFS (Samba) servers and Wine applications through VFS (for local filesystems) or CIFS/NFS modules. This will help when e.g. Samba and NFS server share the same directory for Windows and Linux users or Wine applications use Samba/NFS share to access the same data from different clients.
+>>>
+>>> According to the previous discussions the most problematic question is how to prevent situations like DoS attacks where e.g /lib/liba.so file can be open with DENYREAD, or smth like this. That's why one extra flag O_DENYMAND is added. It indicates to underlying layer that an application want to use O_DENY* flags semantic. It allows us not affect native Linux applications (that don't use O_DENYMAND flag) - so, these flags (and the semantic of open syscall that they bring) are used only for those applications that really want it proccessed that way.
+>>>
+>>> So, we have four new flags:
+>>> O_DENYREAD - to prevent other opens with read access,
+>>> O_DENYWRITE - to prevent other opens with write access,
+>>> O_DENYDELETE - to prevent delete operations (this flag is not implemented in VFS and NFS part and only suitable for CIFS module),
+>>> O_DENYMAND - to switch on/off three flags above.
+>> O_DENYMAND doesn't deny anything.  Would a name like O_RESPECT_DENY be
+>> better?
+>>
+>> Other than that, this seems like a sensible mechanism.
+> I'm a little more worried: these are mandatory locks, and applications
+> that use them are used to the locks being enforced correctly.  Are we
+> sure that an application that opens a file O_DENYWRITE won't crash if it
+> sees the file data change while it holds the open?
 
-Whoops, thanks for catching that.
+The redirector may simply assume it has full control of that part of the 
+file and not read nor send data until the lock is released too, so you 
+get conflicting views of the file contents between different clients if 
+you let a mandatory lock not be mandatory.
 
-Acked-by: J. Bruce Fields <bfields@redhat.com>
+> In general the idea of making a mandatory lock opt-in makes me nervous.
+> I'd prefer something like a mount option, so that we know that everyone
+> on that one filesystem is playing by the same rules, but we can still
+> mount filesystems like / without the option.
 
-> 
-> Signed-off-by: Tejun Heo <tj@kernel.org>
-> Cc: "J. Bruce Fields" <bfields@fieldses.org>
-> Cc: linux-nfs@vger.kernel.org
-> ---
->  fs/nfsd/nfs4state.c | 31 -------------------------------
->  1 file changed, 31 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 16d39c6..d91d6db 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -230,37 +230,6 @@ static void nfs4_file_put_access(struct nfs4_file *fp, int oflag)
->  		__nfs4_file_put_access(fp, oflag);
->  }
->  
-> -static inline int get_new_stid(struct nfs4_stid *stid)
-> -{
-> -	static int min_stateid = 0;
-> -	struct idr *stateids = &stid->sc_client->cl_stateids;
-> -	int new_stid;
-> -	int error;
-> -
-> -	error = idr_get_new_above(stateids, stid, min_stateid, &new_stid);
-> -	/*
-> -	 * Note: the necessary preallocation was done in
-> -	 * nfs4_alloc_stateid().  The idr code caps the number of
-> -	 * preallocations that can exist at a time, but the state lock
-> -	 * prevents anyone from using ours before we get here:
-> -	 */
-> -	WARN_ON_ONCE(error);
-> -	/*
-> -	 * It shouldn't be a problem to reuse an opaque stateid value.
-> -	 * I don't think it is for 4.1.  But with 4.0 I worry that, for
-> -	 * example, a stray write retransmission could be accepted by
-> -	 * the server when it should have been rejected.  Therefore,
-> -	 * adopt a trick from the sctp code to attempt to maximize the
-> -	 * amount of time until an id is reused, by ensuring they always
-> -	 * "increase" (mod INT_MAX):
-> -	 */
-> -
-> -	min_stateid = new_stid+1;
-> -	if (min_stateid == INT_MAX)
-> -		min_stateid = 0;
-> -	return new_stid;
-> -}
-> -
->  static struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct
->  kmem_cache *slab)
->  {
-> -- 
-> 1.8.1.4
-> 
++1
+
+> But I'll admit I'm definitely not an expert on Windows locking and may
+> be missing something about how these locks are meant to work.
+
+Mandatory locks really are mandatory in Windows.
+That may not be nice to a Unix system but what can you do ?
+
+Simo.
