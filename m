@@ -1,64 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42289 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:55453 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755717Ab3CSOci (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Mar 2013 10:32:38 -0400
-Date: Tue, 19 Mar 2013 10:32:36 -0400
+	id S1758738Ab3CDUSv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Mar 2013 15:18:51 -0500
+Date: Mon, 4 Mar 2013 15:18:46 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 10/11] NFSv4.1: Enable open-by-filehandle
-Message-ID: <20130319143236.GD7912@fieldses.org>
-References: <1363698463-3681-3-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-4-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-5-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-6-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-7-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-8-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-9-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-10-git-send-email-Trond.Myklebust@netapp.com>
- <20130319140901.GB7912@fieldses.org>
- <1363702570.7515.6.camel@leira.trondhjem.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        linux-nfs@vger.kernel.org, devel@openvz.org,
+        Trond.Myklebust@netapp.com, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] nfsd: try nfsdcld client tracker in containers
+Message-ID: <20130304201846.GH20389@fieldses.org>
+References: <20130301082423.21663.37825.stgit@localhost.localdomain>
+ <20130301080911.2a1a28a2@corrin.poochiereds.net>
+ <51344175.40503@parallels.com>
+ <20130304094736.57a288b9@tlielax.poochiereds.net>
+ <5134E043.70609@parallels.com>
+ <20130304150422.0a1743f4@tlielax.poochiereds.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1363702570.7515.6.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20130304150422.0a1743f4@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 19, 2013 at 02:16:15PM +0000, Myklebust, Trond wrote:
-> On Tue, 2013-03-19 at 10:09 -0400, J. Bruce Fields wrote:
-> > On Tue, Mar 19, 2013 at 09:07:42AM -0400, Trond Myklebust wrote:
-> > > Sometimes, we actually _want_ to do open-by-filehandle, for instance
-> > > when recovering opens after a network partition, or when called
-> > > from nfs4_file_open.
-> > > Enable that functionality using a new capability NFS_CAP_ATOMIC_OPEN_V1,
-> > > and which is only enabled for NFSv4.1 servers that support it.
+On Mon, Mar 04, 2013 at 03:04:22PM -0500, Jeff Layton wrote:
+> On Mon, 4 Mar 2013 21:56:19 +0400
+> Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+> 
+> > 04.03.2013 18:47, Jeff Layton пишет:
+> > > On Mon, 4 Mar 2013 10:38:45 +0400
+> > > Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+> > >> 3) UMH lookup and execute binary from current root. This problem just chasing all the containerisation work. So, either UHM logic have to updated (which is not
+> > >> trivial or easy to implement and push upstream), or process root have to swapped to the right (container's) one. This, BTW, not that hard, because UMH call
+> > >> accept "init" callback, which can be used to swap the root right before do_execve() is called.
+> > >>
+> > >> What do you, guys, think about all this?
+> > >>
+> > > You mean just change to use call_usermodehelper_fns() and pasn the
+> > > correct namespace info? Yeah that looks like the easiest fix and sounds
+> > > quite reasonable.
+> > >
 > > 
-> > So you're assuming NFS4ERR_INVAL is how the server indicates lack of
-> > support?
+> > Nope. The problem here is not a namespace, but root path:
+> > mount point + dentry.
+> > do_execve() uses root path from current for search for any string path.
+> > And this root path is inherited from the kernel thread. Which means,
+> > that this is global "init" root path.
+> > Thus, if is we want to search for path in a container (which could
+> > have it's own nested root), we have to swap the root in usermode
+> > helper thread before do_execve() call.
+> > We can use call_usermodehelper_fns() to pass init callback and swap root 
+> > in it.
+> > But the problem here is that root swaping is not that... gentle.
+> > I.e. we were trying to avoid it. For example, local SUNRPC transports
+> > now connects synchronously (to make sure, that connection will be done in
+> > proper root environment).
+> > Nevertheless, I don't see any other way to containerize UMH so far.
+> > 
+> > Bruce, what's your opinion about this?
+> > 
+> > 
 > 
-> Looking at the list of valid errors for OPEN in section 15.2 of RFC5661,
-> I don't see what else fits the bill.
-
-OK, fair enough.
-
-> > Looking back at NFS server history.... I think that's what it did before
-> > supporting these types, but I wonder if that was really right.  Possibly
-> > it's just a bug not to support the new claim types in a 4.1 server.
+> It doesn't seem all that awful here. Once we've spawned this new
+> process it'll just run to completion and exit within the container. We
+> shouldn't ever need to go back to the original root.
 > 
-> I've assumed that it isn't. NFSv4.1 is the very first minor version, so
-> it's not supposed to contain any mandatory new features. Yes, I know we
-> broke the rules on that one in spectacular fashion with sessions, but
-> I'm assuming that is the only exception...
+> In the sunrpc layer, it's a little more complicated since you're
+> working with kernel threads and workqueues that may be shared between
+> containers (right?).
 
-It's really unclear.  There's a lot of stuff like this that aren't
-clearly identified as optional or given an obvious way to negotiate.
-And which sessions features are mandatory?  Even where the spec clearly
-makes things mandatory for servers to implement (SSV, trunking) I wonder
-whether servers are actually complying.
+Also, is this really the only place that needs this?
 
-(Sorry for the digression, I was just trying to decide whether I can get
-away with turning on 4.1 by default before implementing SP4_MACH_CRED or
-GSS on the backchannel....)
+I guess NFS for now allows mounts only in the initial namespace, so the
+idmap upcalls can always be done there.  Module lookup and any usermode
+helpers used for hardware setup probably also only happen in the initial
+namespace.  Hrm.  Still, seems likely to be useful to someone
+eventually.
 
 --b.
