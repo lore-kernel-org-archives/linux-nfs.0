@@ -1,67 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:33793 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753448Ab3CSPQt convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Mar 2013 11:16:49 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 10/11] NFSv4.1: Enable open-by-filehandle
-Date: Tue, 19 Mar 2013 15:16:46 +0000
-Message-ID: <1363706205.7515.43.camel@leira.trondhjem.org>
-References: <1363698463-3681-5-git-send-email-Trond.Myklebust@netapp.com>
-	 <1363698463-3681-6-git-send-email-Trond.Myklebust@netapp.com>
-	 <1363698463-3681-7-git-send-email-Trond.Myklebust@netapp.com>
-	 <1363698463-3681-8-git-send-email-Trond.Myklebust@netapp.com>
-	 <1363698463-3681-9-git-send-email-Trond.Myklebust@netapp.com>
-	 <1363698463-3681-10-git-send-email-Trond.Myklebust@netapp.com>
-	 <20130319140901.GB7912@fieldses.org>
-	 <1363702570.7515.6.camel@leira.trondhjem.org>
-	 <20130319143236.GD7912@fieldses.org>
-	 <1363704100.7515.12.camel@leira.trondhjem.org>
-	 <20130319145035.GE7912@fieldses.org>
-In-Reply-To: <20130319145035.GE7912@fieldses.org>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+Received: from mail-vc0-f173.google.com ([209.85.220.173]:57978 "EHLO
+	mail-vc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758210Ab3CDS4v (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Mar 2013 13:56:51 -0500
+Received: by mail-vc0-f173.google.com with SMTP id fy27so3603577vcb.18
+        for <linux-nfs@vger.kernel.org>; Mon, 04 Mar 2013 10:56:50 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
+Subject: [PATCH v2 3/5] nfsd: add new reply_cache_stats file in nfsdfs
+Date: Mon,  4 Mar 2013 13:56:38 -0500
+Message-Id: <1362423400-24380-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1362423400-24380-1-git-send-email-jlayton@redhat.com>
+References: <1362423400-24380-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-03-19 at 10:50 -0400, J. Bruce Fields wrote:
-> On Tue, Mar 19, 2013 at 02:41:42PM +0000, Myklebust, Trond wrote:
-> > On Tue, 2013-03-19 at 10:32 -0400, J. Bruce Fields wrote:
-> > > (Sorry for the digression, I was just trying to decide whether I can get
-> > > away with turning on 4.1 by default before implementing SP4_MACH_CRED or
-> > > GSS on the backchannel....)
-> > 
-> > If you don't, could you please at least offer up a module parameter that
-> > allows me to do that? The current thing is a PITA, since it isn't
-> > supported by any distro scripts, and it requires you to switch off the
-> > server in order to change the version pseudofile contents.
-> 
-> The module parameter on its own wouldn't help with that.
-> 
-> We could probably fix the pseudofile interface to allow changing the
-> version on the fly.
-> 
-> My vague plan was to teach rpc.nfsd to read this (and other parameters)
-> from a config file, so then it'd be "vi /etc/nfsd && service nfsd
-> restart" or equivalent.
-> 
-> So is the main thing you want a more convenient interface or a way to
-> change it without rebooting?
+For presenting statistics relating to duplicate reply cache.
 
-Basically, all I want is to enable 4.1 permanently on those servers that
-I want to use for NFSv4.1 testing.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/cache.h    |  1 +
+ fs/nfsd/nfscache.c | 25 +++++++++++++++++++++++++
+ fs/nfsd/nfsctl.c   |  9 +++++++++
+ 3 files changed, 35 insertions(+)
 
-An --enable-nfs-version option for rpc.nfsd that acts together with
---no-nfs-version as a convenient interface for /proc/fs/nfsd/versions
-would work fine too. All distro configuration scripts that I'm aware of
-allow you to specify optional arguments to rpc.nfsd.
-
+diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
+index 87fd141..d5c5b3e 100644
+--- a/fs/nfsd/cache.h
++++ b/fs/nfsd/cache.h
+@@ -82,6 +82,7 @@ int	nfsd_reply_cache_init(void);
+ void	nfsd_reply_cache_shutdown(void);
+ int	nfsd_cache_lookup(struct svc_rqst *);
+ void	nfsd_cache_update(struct svc_rqst *, int, __be32 *);
++int	nfsd_reply_cache_stats_open(struct inode *, struct file *);
+ 
+ #ifdef CONFIG_NFSD_V4
+ void	nfsd4_set_statp(struct svc_rqst *rqstp, __be32 *statp);
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index bcbbe6b..24ac996 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -557,3 +557,28 @@ nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *data)
+ 	vec->iov_len += data->iov_len;
+ 	return 1;
+ }
++
++/*
++ * Note that fields may be added, removed or reordered in the future. Programs
++ * scraping this file for info should test the labels to ensure they're
++ * getting the correct field.
++ */
++static int nfsd_reply_cache_stats_show(struct seq_file *m, void *v)
++{
++	spin_lock(&cache_lock);
++	seq_printf(m, "max entries:           %u\n", max_drc_entries);
++	seq_printf(m, "num entries:           %u\n", num_drc_entries);
++	seq_printf(m, "hash buckets:          %u\n", HASHSIZE);
++	seq_printf(m, "mem usage:             %u\n", drc_mem_usage);
++	seq_printf(m, "cache hits:            %u\n", nfsdstats.rchits);
++	seq_printf(m, "cache misses:          %u\n", nfsdstats.rcmisses);
++	seq_printf(m, "not cached:            %u\n", nfsdstats.rcnocache);
++	seq_printf(m, "payload misses:        %u\n", payload_misses);
++	spin_unlock(&cache_lock);
++	return 0;
++}
++
++int nfsd_reply_cache_stats_open(struct inode *inode, struct file *file)
++{
++	return single_open(file, nfsd_reply_cache_stats_show, NULL);
++}
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 13a21c8..2baaa5a 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -35,6 +35,7 @@ enum {
+ 	NFSD_Threads,
+ 	NFSD_Pool_Threads,
+ 	NFSD_Pool_Stats,
++	NFSD_Reply_Cache_Stats,
+ 	NFSD_Versions,
+ 	NFSD_Ports,
+ 	NFSD_MaxBlkSize,
+@@ -212,6 +213,13 @@ static const struct file_operations pool_stats_operations = {
+ 	.owner		= THIS_MODULE,
+ };
+ 
++static struct file_operations reply_cache_stats_operations = {
++	.open		= nfsd_reply_cache_stats_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= single_release,
++};
++
+ /*----------------------------------------------------------------------------*/
+ /*
+  * payload - write methods
+@@ -1047,6 +1055,7 @@ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
+ 		[NFSD_Threads] = {"threads", &transaction_ops, S_IWUSR|S_IRUSR},
+ 		[NFSD_Pool_Threads] = {"pool_threads", &transaction_ops, S_IWUSR|S_IRUSR},
+ 		[NFSD_Pool_Stats] = {"pool_stats", &pool_stats_operations, S_IRUGO},
++		[NFSD_Reply_Cache_Stats] = {"reply_cache_stats", &reply_cache_stats_operations, S_IRUGO},
+ 		[NFSD_Versions] = {"versions", &transaction_ops, S_IWUSR|S_IRUSR},
+ 		[NFSD_Ports] = {"portlist", &transaction_ops, S_IWUSR|S_IRUGO},
+ 		[NFSD_MaxBlkSize] = {"max_block_size", &transaction_ops, S_IWUSR|S_IRUGO},
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.7.11.7
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
