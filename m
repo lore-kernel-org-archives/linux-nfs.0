@@ -1,56 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40387 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:60780 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752059Ab3CEXLQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Mar 2013 18:11:16 -0500
-Date: Tue, 5 Mar 2013 18:11:10 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tejun Heo <tj@kernel.org>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Oleg Nesterov <oleg@redhat.com>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Ming Lei <ming.lei@canonical.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Ingo Molnar <mingo@redhat.com>
-Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
-Message-ID: <20130305231110.GK15816@fieldses.org>
-References: <CACVXFVMKN6aeCvJcn7dyuonJYJDfYxWeW5KE6gfKRKJKFj2M4A@mail.gmail.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9286AD113@sacexcmbx05-prd.hq.netapp.com>
- <20130304092310.1d21100c@tlielax.poochiereds.net>
- <CACBanvrc0orXGZ1v+gKHtVPKWYKGEFx46dwoDCjTU78+nPtZyg@mail.gmail.com>
- <20130304205307.GA13527@redhat.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9286AEEB0@sacexcmbx05-prd.hq.netapp.com>
- <20130305082308.6607d4db@tlielax.poochiereds.net>
- <20130305174648.GF12795@htj.dyndns.org>
- <20130305174954.GG12795@htj.dyndns.org>
+	id S1757156Ab3CDOQE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Mar 2013 09:16:04 -0500
+Date: Mon, 4 Mar 2013 09:16:00 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Jan Engelhardt <jengelh@inai.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Inconsistent error codes between NFSv4 and v3 on network issues
+Message-ID: <20130304141600.GA16732@pad.fieldses.org>
+References: <alpine.LNX.2.01.1303011240350.11154@nerf07.vanv.qr>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130305174954.GG12795@htj.dyndns.org>
+In-Reply-To: <alpine.LNX.2.01.1303011240350.11154@nerf07.vanv.qr>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 05, 2013 at 09:49:54AM -0800, Tejun Heo wrote:
-> On Tue, Mar 05, 2013 at 09:46:48AM -0800, Tejun Heo wrote:
-> > So, I think this is why implementing freezer as a separate blocking
-> > mechanism isn't such a good idea.  We're effectively introducing a
-> > completely new waiting state to a lot of unsuspecting paths which
-> > generates a lot of risks and eventually extra complexity to work
-> > around those.  I think we really should update freezer to re-use the
-> > blocking points we already have - the ones used for signal delivery
-> > and ptracing.  That way, other code paths don't have to worry about an
-> > extra stop state and we can confine most complexities to freezer
-> > proper.
-> 
-> Also, consolidating those wait states means that we can solve the
-> event-to-response latency problem for all three cases - signal, ptrace
-> and freezer, rather than adding separate backing-out strategy for
-> freezer.
-
-Meanwhile, as none of this sounds likely to be done this time
-around--are we backing out the new lockdep warnings?
+Adding Chuck to cc:, as he's probably done the most mucking with the
+mount code in recent years?
 
 --b.
+
+On Fri, Mar 01, 2013 at 12:43:58PM +0100, Jan Engelhardt wrote:
+> Hi.
+> 
+> 
+> I had here a case with a Linux 3.7.9 system, a virtual machine in a
+> RFC1918 range, that did not want to mount NFS.
+> 
+> linux-3lzm:~ # strace -fe mount mount -t nfs 134.76.12.5:/X /mnt
+> Process 1477 attached
+> [pid  1515] mount("134.76.12.5:/X", "/mnt", "nfs", 0, "vers=4,addr=134.76.12.5,clientaddr=0.0.0.0") = -1 EIO (Input/output error)
+> mount.nfs: mount system call failed
+> [pid  1477] +++ exited with 32 +++
+> --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=1477, si_status=32, si_utime=0, si_stime=0} ---
+> +++ exited with 32 +++
+> 
+> Nothing in dmesg...
+> 
+> [   84.202243] RPC: Registered named UNIX socket transport module.
+> [   84.202246] RPC: Registered udp transport module.
+> [   84.202248] RPC: Registered tcp transport module.
+> [   84.202249] RPC: Registered tcp NFSv4.1 backchannel transport module.
+> [   84.205909] FS-Cache: Loaded
+> [   84.208782] FS-Cache: Netfs 'nfs' registered for caching
+> [   84.215733] NFS: Registering the id_resolver key type
+> [   84.215762] Key type id_resolver registered
+> [   84.215763] Key type id_legacy registered
+> 
+> When mounting with NFSv3, the error became clear:
+> 
+> # strace -fe mount -s 65536 mount -t nfs 134.76.12.5:/X /mnt -o nfsvers=3,nolock
+> Process 1550 attached
+> mount.nfs: Network is unreachable
+> [pid  1550] +++ exited with 32 +++
+> --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=1550, si_status=32, si_utime=0, si_stime=0} ---
+> +++ exited with 32 +++
+> 
+> Can NFSv4 be made to return -ENETUNREACH as well?
