@@ -1,160 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:21097 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:40648 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751919Ab3CKTFs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Mar 2013 15:05:48 -0400
-Date: Mon, 11 Mar 2013 15:05:40 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Pavel Shilovsky <piastry@etersoft.ru>
-Cc: linux-kernel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        wine-devel@winehq.org, bfields@fieldses.org
-Subject: Re: [PATCH v3 7/7] NFSD: Pass share reservations flags to VFS
-Message-ID: <20130311150540.119abd63@corrin.poochiereds.net>
-In-Reply-To: <1362065133-9490-8-git-send-email-piastry@etersoft.ru>
-References: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
-	<1362065133-9490-8-git-send-email-piastry@etersoft.ru>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1756385Ab3CEVUJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Mar 2013 16:20:09 -0500
+Date: Tue, 5 Mar 2013 16:20:01 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: linux-nfs@vger.kernel.org, Trond.Myklebust@netapp.com,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Subject: Re: [PATCH] nfsd: check client tracker initialization result
+Message-ID: <20130305212001.GD15816@fieldses.org>
+References: <20130228120959.6764.17787.stgit@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130228120959.6764.17787.stgit@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 28 Feb 2013 19:25:33 +0400
-Pavel Shilovsky <piastry@etersoft.ru> wrote:
+On Thu, Feb 28, 2013 at 03:09:59PM +0300, Stanislav Kinsbursky wrote:
+> Function nfsd4_client_tracking_init() can return error.
 
-> that maps them into O_DENY flags and make them visible for
-> applications that use O_DENYMAND opens.
+Before, I think that we the nfsd4_client_* functions just became no-ops
+in this case.  With the result that no client records get written, and
+so clients are unable to reclaim on the next boot.
+
+Which is annoying, but possibly not as annoying as your server
+completely refusing to start.
+
+It's arguably more helpful in the long run to fail immediately when we
+recognize reboot recovery isn't going to work.  But in practice this may
+mean people that never knew they had a problem suddenly have servers
+that don't start at all.
+
+So I'm inclined to be more forgiving and leave this as it is.  But maybe
+something like a warning printk would be appropriate.
+
+--b.
+
 > 
-> Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
 > ---
->  fs/locks.c          |  1 +
->  fs/nfsd/nfs4state.c | 46 +++++++++++++++++++++++++++++++++++++++++++++-
->  2 files changed, 46 insertions(+), 1 deletion(-)
+>  fs/nfsd/nfs4state.c |    9 ++++++++-
+>  1 files changed, 8 insertions(+), 1 deletions(-)
 > 
-> diff --git a/fs/locks.c b/fs/locks.c
-> index 0cc7d1b..593d464 100644
-> --- a/fs/locks.c
-> +++ b/fs/locks.c
-> @@ -874,6 +874,7 @@ deny_lock_file(struct file *filp)
->  	locks_free_lock(lock);
->  	return error;
->  }
-> +EXPORT_SYMBOL(deny_lock_file);
->  
->  static int __posix_lock_file(struct inode *inode, struct file_lock *request, struct file_lock *conflock)
->  {
 > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index ac8ed96c..766256a 100644
+> index f194f86..fc4b81b 100644
 > --- a/fs/nfsd/nfs4state.c
 > +++ b/fs/nfsd/nfs4state.c
-> @@ -476,6 +476,19 @@ test_deny(u32 access, struct nfs4_ol_stateid *stp)
->  	return test_bit(access, &stp->st_deny_bmap);
+> @@ -69,6 +69,7 @@ static u64 current_sessionid = 1;
+>  
+>  /* forward declarations */
+>  static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
+> +void nfs4_state_shutdown_net(struct net *net);
+>  
+>  /* Locking: */
+>  
+> @@ -4942,7 +4943,9 @@ nfs4_state_start_net(struct net *net)
+>  	ret = nfs4_state_create_net(net);
+>  	if (ret)
+>  		return ret;
+> -	nfsd4_client_tracking_init(net);
+> +	ret = nfsd4_client_tracking_init(net);
+> +	if (ret)
+> +		goto out_tracking;
+>  	nn->boot_time = get_seconds();
+>  	locks_start_grace(net, &nn->nfsd4_manager);
+>  	nn->grace_ended = false;
+> @@ -4950,6 +4953,10 @@ nfs4_state_start_net(struct net *net)
+>  	       nn->nfsd4_grace, net);
+>  	queue_delayed_work(laundry_wq, &nn->laundromat_work, nn->nfsd4_grace * HZ);
+>  	return 0;
+> +
+> +out_tracking:
+> +	nfs4_state_destroy_net(net);
+> +	return ret;
 >  }
 >  
-> +static int nfs4_deny_to_odeny(u32 access)
-> +{
-> +	switch (access & NFS4_SHARE_DENY_BOTH) {
-> +	case NFS4_SHARE_DENY_READ:
-> +		return O_DENYMAND | O_DENYREAD;
-> +	case NFS4_SHARE_DENY_WRITE:
-> +		return O_DENYWRITE | O_DENYMAND;
-> +	case NFS4_SHARE_DENY_BOTH:
-> +		return O_DENYREAD | O_DENYWRITE | O_DENYMAND;
-> +	}
-> +	return O_DENYMAND;
-> +}
-> +
->  static int nfs4_access_to_omode(u32 access)
->  {
->  	switch (access & NFS4_SHARE_ACCESS_BOTH) {
-> @@ -2793,6 +2806,21 @@ nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
->  }
->  
->  static __be32
-> +nfs4_vfs_set_deny(struct nfs4_file *fp, unsigned long share_access,
-> +		  unsigned long deny_access)
-> +{
-> +	int oflag, rc;
-> +	__be32 status = nfs_ok;
-> +
-> +	oflag = nfs4_access_to_omode(share_access);
-> +	fp->fi_fds[oflag]->f_flags |= nfs4_deny_to_odeny(deny_access);
-> +	rc = deny_lock_file(fp->fi_fds[oflag]);
-> +	if (rc)
-> +		status = nfserrno(rc);
-> +	return status;
-> +}
-> +
-> +static __be32
->  nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *cur_fh, struct nfs4_ol_stateid *stp, struct nfsd4_open *open)
->  {
->  	u32 op_share_access = open->op_share_access;
-> @@ -2813,6 +2841,14 @@ nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *c
->  		}
->  		return status;
->  	}
-> +	status = nfs4_vfs_set_deny(fp, op_share_access, open->op_share_deny);
-> +	if (status) {
-> +		if (new_access) {
-> +			int oflag = nfs4_access_to_omode(op_share_access);
-> +			nfs4_file_put_access(fp, oflag);
-> +		}
-> +		return status;
-> +	}
->  	/* remember the open */
->  	set_access(op_share_access, stp);
->  	set_deny(open->op_share_deny, stp);
-> @@ -3046,7 +3082,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
->  
->  	/*
->  	 * OPEN the file, or upgrade an existing OPEN.
-> -	 * If truncate fails, the OPEN fails.
-> +	 * If truncate or setting deny fails, the OPEN fails.
->  	 */
->  	if (stp) {
->  		/* Stateid was found, this is an OPEN upgrade */
-> @@ -3060,6 +3096,10 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
->  		status = nfsd4_truncate(rqstp, current_fh, open);
->  		if (status)
->  			goto out;
-> +		status = nfs4_vfs_set_deny(fp, open->op_share_access,
-> +					   open->op_share_deny);
-> +		if (status)
-> +			goto out;
->  		stp = open->op_stp;
->  		open->op_stp = NULL;
->  		init_open_stateid(stp, fp, open);
-> @@ -3758,6 +3798,10 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
->  	}
->  	nfs4_stateid_downgrade(stp, od->od_share_access);
->  
-> +	status = nfs4_vfs_set_deny(stp->st_file, od->od_share_access,
-> +				   od->od_share_deny);
-> +	if (status)
-> +		goto out;
->  	reset_union_bmap_deny(od->od_share_deny, stp);
->  
->  	update_stateid(&stp->st_stid.sc_stateid);
-
-knfsd has some code already to handle share reservations internally.
-Nothing outside of knfsd is aware of these reservations, of course so
-moving to a vfs-level object for it would be a marked improvement.
-
-It doesn't look like this patch removes any of that old code though. I
-think it probably should, or there ought to be some consideration of
-how this new stuff will mesh with it.
-
-I think you have 2 choices here:
-
-1/ rip out the old share reservation code altogether and require that
-filesystems mount with -o sharemand or whatever if they want to allow
-their enforcement
-
-2/ make knfsd fall back to using the internal share reservation code
-when the mount option isn't enabled
-
-Personally, I think #1 would be fine, but Bruce may want to weigh in on
-what he'd prefer.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+>  /* initialization to perform when the nfsd service is started: */
+> 
