@@ -1,56 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f51.google.com ([74.125.82.51]:54184 "EHLO
-	mail-wg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755414Ab3CSUiq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Mar 2013 16:38:46 -0400
-Received: by mail-wg0-f51.google.com with SMTP id 8so724495wgl.6
-        for <linux-nfs@vger.kernel.org>; Tue, 19 Mar 2013 13:38:45 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:55853 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754728Ab3CEWU3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Mar 2013 17:20:29 -0500
+Date: Tue, 5 Mar 2013 17:20:27 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 0/5] nfsd: add a reply_cache_stats file to nfsd for
+ tracking DRC performance
+Message-ID: <20130305222027.GG15816@fieldses.org>
+References: <1362423400-24380-1-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <CADnza46Npnn=GquO8s7TPPSGZq9Cs11JJdj6t8ejDh5gYeeTYg@mail.gmail.com>
-References: <1363617532-24172-1-git-send-email-bhalevy@tonian.com>
- <1363622128.4351.15.camel@leira.trondhjem.org> <51473F46.10401@tonian.com>
- <CADnza476e0FpXJJfE8OmXLRQUR3Zm_aZkX7JZRB=vGyZ-U2yDg@mail.gmail.com>
- <5148BE0B.9080802@tonian.com> <CADnza46Npnn=GquO8s7TPPSGZq9Cs11JJdj6t8ejDh5gYeeTYg@mail.gmail.com>
-From: Benny Halevy <bhalevy@tonian.com>
-Date: Tue, 19 Mar 2013 22:38:25 +0200
-Message-ID: <CAEMWVhthWLg5r7mnQp3WTsFHxKieu55dszuka=PGSO58ZdiKOw@mail.gmail.com>
-Subject: Re: [PATCH] pnfs: do not reset to mds if wb_offset != wb_pgbase
-To: Fred Isaman <faisaman4@gmail.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "Isaman, Fred" <Fred.Isaman@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "stable@kernel.org" <stable@kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1362423400-24380-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 19, 2013 at 10:28 PM, Fred Isaman <faisaman4@gmail.com> wrote:
-> On Tue, Mar 19, 2013 at 3:35 PM, Benny Halevy <bhalevy@tonian.com> wrote:
->> On 2013-03-18 19:04, Fred Isaman wrote:
->>> A problem case is if the layout ends within the page request, which
->>> can happen due to the misalignment.
->>
->> First, the file layout currently supports only whole file layouts so I don't see
->> how that's a problem.
->> Regardless, I'd rather trim the layout segment to PAGE_SIZE boundaries
->> and get a new layout from the page aligned offset and on with minlength = PAGE_SIZE
->> (as we do today).
->>
->> Benny
->>
->
-> Yes, but consider....
->
-> let P = PAGE_SIZE
->
-> assume you have a layout from 0 to 4P, and you try to do a WRITE from
-> 2P to 6P.  Now if the buffer is not page aligned, one of the nfs_page
-> requests will contain the file's logical 4P offset at a random
-> location within the nfs_page.  What happens then?
+On Mon, Mar 04, 2013 at 01:56:35PM -0500, Jeff Layton wrote:
+> This patchset adds some stats tracking to the DRC to hopefully allow
+> us to make better-informed decisions in the future on performance
+> improvements.
+> 
+> Some of these I've already posted, but reposting them now as a set
+> to allow Bruce to more easily merge them. I think these would be good
+> for 3.9, but they're obviously not critical.
 
-Since we're using one layout segment at a time this should be handled
-as short I/O
-doing the remainder with another lseg.
+OK, thanks.  I'll queue them up for 3.10.
 
->
-> Fred
+--b.
+
+> 
+> Jeff Layton (5):
+>   nfsd: break out comparator into separate function
+>   nfsd: track memory utilization in the DRC
+>   nfsd: add new reply_cache_stats file in nfsdfs
+>   nfsd: keep track of the max and average time to search the cache
+>   nfsd: keep stats on worst hash balancing seen so far
+> 
+>  fs/nfsd/cache.h    |   1 +
+>  fs/nfsd/nfscache.c | 144 ++++++++++++++++++++++++++++++++++++++++++++++-------
+>  fs/nfsd/nfsctl.c   |   9 ++++
+>  3 files changed, 137 insertions(+), 17 deletions(-)
+> 
+> -- 
+> 1.7.11.7
+> 
