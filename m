@@ -1,60 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-da0-f41.google.com ([209.85.210.41]:58601 "EHLO
-	mail-da0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751677Ab3CVDJP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Mar 2013 23:09:15 -0400
-From: ycnian@gmail.com
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Yanchuan Nian <ycnian@gmail.com>
-Subject: nfsv4.1 client refuses to suspend
-Date: Fri, 22 Mar 2013 10:57:21 +0800
-Message-Id: <1363921041-5042-1-git-send-email-ycnian@gmail.com>
+Received: from mail-ye0-f182.google.com ([209.85.213.182]:63356 "EHLO
+	mail-ye0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753391Ab3CEXrE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Mar 2013 18:47:04 -0500
+Date: Tue, 5 Mar 2013 15:47:00 -0800
+From: Tejun Heo <tj@kernel.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Oleg Nesterov <oleg@redhat.com>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Ming Lei <ming.lei@canonical.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Ingo Molnar <mingo@redhat.com>, Al Viro <viro@ZenIV.linux.org.uk>
+Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
+Message-ID: <20130305234700.GE1227@htj.dyndns.org>
+References: <20130304092310.1d21100c@tlielax.poochiereds.net>
+ <CACBanvrc0orXGZ1v+gKHtVPKWYKGEFx46dwoDCjTU78+nPtZyg@mail.gmail.com>
+ <20130304205307.GA13527@redhat.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9286AEEB0@sacexcmbx05-prd.hq.netapp.com>
+ <20130305082308.6607d4db@tlielax.poochiereds.net>
+ <20130305174648.GF12795@htj.dyndns.org>
+ <20130305174954.GG12795@htj.dyndns.org>
+ <20130305140312.243cb094@tlielax.poochiereds.net>
+ <20130305190923.GI12795@htj.dyndns.org>
+ <20130305183941.19ff39ce@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130305183941.19ff39ce@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfsv4.1 client suspending fails with such info
+Hello, Jeff.
 
-Freezing of tasks failed after 20.00 seconds (1 tasks refusing to freeze, wq_busy=0):
-nfsv4.1-svc     S ffff88007889f2e0     0  3191      2 0x00000080   
- ffff88007b2f3e28 0000000000000046 ffff88007b2f2010 00000000000127c0
- ffff880079b08000 00000000000127c0 ffff88007b2f3fd8 00000000000127c0
- ffff88007b2f3fd8 00000000000127c0 ffffffff81a14410 ffff880079b08000
-Call Trace:
- [<ffffffff81441396>] schedule+0x64/0x66
- [<ffffffffa06a6892>] nfs41_callback_svc+0x100/0x129 [nfsv4]
- [<ffffffff8104fdb8>] ? wake_up_bit+0x2a/0x2a
- [<ffffffffa06a6792>] ? nfs_callback_up+0x548/0x548 [nfsv4]
- [<ffffffff8104f7e0>] kthread+0xb5/0xbd
- [<ffffffff8104f72b>] ? kthread_freezable_should_stop+0x65/0x65
- [<ffffffff8144912c>] ret_from_fork+0x7c/0xb0
- [<ffffffff8104f72b>] ? kthread_freezable_should_stop+0x65/0x65
+On Tue, Mar 05, 2013 at 06:39:41PM -0500, Jeff Layton wrote:
+> Al was in the middle of his signal handling/execve rework though and I
+> ran the idea past him. He pointedly told me that I was crazy for even
+> considering it. This is rather non-trivial to handle since it means
+> mucking around in a bunch of arch-specific code and dealing with all of
+> the weirdo corner cases.
 
-I read such threads
-[1] nfs/sunrpc: allow freezing of tasks with NFS calls in flight
-[2] LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
-and then modify nfs41_callback_svc(). It works on my machine. I don't know
-the details of freezing, so I'm not sure if the modification is reasonable.
-This is not a formal patch. Thanks.
+Hmmm... I tried it a couple years ago while I was working on ptrace
+improvements to support checkpoint-restart in userland (PTRACE_SEIZE
+and friends) and had a half-working code.  At the time, Oleg was
+against the idea and something else came up so I didn't push it all
+the way but IIRC it didn't need to touch any arch code.  It should be
+able to just share the existing trap path with ptrace.
 
-Signed-off-by: Yanchuan Nian <ycnian@gmail.com>
----
- fs/nfs/callback.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+> Anyone up for working out how to handle a freeze event on a process
+> that already has a pending signal, while it's being ptraced? It's
+> probably best to chat with Al (cc'ed here) before you embark on this
+> plan since he was just in that code recently.
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 5088b57..8addb7b 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -138,7 +138,7 @@ nfs41_callback_svc(void *vrqstp)
- 				error);
- 		} else {
- 			spin_unlock_bh(&serv->sv_cb_lock);
--			schedule();
-+			freezable_schedule();
- 		}
- 		finish_wait(&serv->sv_cb_waitq, &wq);
- 	}
+Maybe Al sees something that I don't but AFAICS it should be doable in
+generic code proper and I don't think it's gonna be that hard.
+
+Oleg, are you still opposed to the idea of making freezer share trap
+points with ptrace?
+
+Thanks.
+
 -- 
-1.7.4.4
-
+tejun
