@@ -1,96 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:62372 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:41559 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751383Ab3CRPzb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Mar 2013 11:55:31 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Benny Halevy <bhalevy@tonian.com>, "Isaman, Fred" <Fred.Isaman@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "stable@kernel.org" <stable@kernel.org>
-Subject: Re: [PATCH] pnfs: do not reset to mds if wb_offset != wb_pgbase
-Date: Mon, 18 Mar 2013 15:55:29 +0000
-Message-ID: <1363622128.4351.15.camel@leira.trondhjem.org>
-References: <1363617532-24172-1-git-send-email-bhalevy@tonian.com>
-In-Reply-To: <1363617532-24172-1-git-send-email-bhalevy@tonian.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S1753864Ab3CEWRX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Mar 2013 17:17:23 -0500
+Received: from bfields by fieldses.org with local (Exim 4.76)
+	(envelope-from <bfields@fieldses.org>)
+	id 1UD0Ak-0004rZ-UH
+	for linux-nfs@vger.kernel.org; Tue, 05 Mar 2013 17:17:23 -0500
+Date: Tue, 5 Mar 2013 17:17:22 -0500
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] nfsd4: remove BUG_ON
+Message-ID: <20130305221722.GE15816@fieldses.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2013-03-18 at 16:38 +0200, Benny Halevy wrote:
-> We're seeing roughly 20% of the I/Os going to the MDS
-> when installing a VM over KVM in "none" caching mode (O_DIRECT).
-> Instrumenting the client reveled that this is caused by buffer
-> alignment vs. file offset alignment.
-> Besides being a performance problem, when the MDS caches data
-> this is also manifested as data corruption when data is written
-> first via the MDS, then via the DS, eventually the stale data is
-> read back from the MDS.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-That's why we should return the layout.
+This BUG_ON just crashes the thread a little earlier than it would
+otherwise--it doesn't seem useful.
 
-> Note that this check exists also for the file layout specific
-> pg_init_* functions.  The objects (ORE) and block
-> (bl_{read,write}_pagelist) layouts seem to deal correctly with
-> splitting IOs in the case where req->wb_offset != req->wb_pgbase
-> though this hasn't been tested wen submitting this patch.
-> 
-> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
-> Cc: stable@kernel.org [>= 3.5]
-> Cc: Boaz Harrosh <bharrosh@panasas.com>
-> Cc: Peng Tao <tao.peng@emc.com>
-> ---
->  fs/nfs/pnfs.c | 18 ++++++++++--------
->  1 file changed, 10 insertions(+), 8 deletions(-)
-> 
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index 483bd94..f12e456 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -1322,10 +1322,11 @@ struct pnfs_layout_segment *
->  
->  	WARN_ON_ONCE(pgio->pg_lseg != NULL);
->  
-> -	if (req->wb_offset != req->wb_pgbase) {
-> -		nfs_pageio_reset_read_mds(pgio);
-> -		return;
-> -	}
-> +	if (req->wb_offset != req->wb_pgbase)
-> +		dprintk("%s: inode=%ld: offset=%llu wb_bytes=%u wb_offset=%u wb_pgbase=%u\n",
-> +			__func__, pgio->pg_inode->i_ino,
-> +			(((unsigned long long)req->wb_index) << PAGE_CACHE_SHIFT) + req->wb_offset,
-> +			req->wb_bytes, req->wb_offset, req->wb_pgbase);
->  
->  	if (pgio->pg_dreq == NULL)
->  		rd_size = i_size_read(pgio->pg_inode) - req_offset(req);
-> @@ -1351,10 +1352,11 @@ struct pnfs_layout_segment *
->  {
->  	WARN_ON_ONCE(pgio->pg_lseg != NULL);
->  
-> -	if (req->wb_offset != req->wb_pgbase) {
-> -		nfs_pageio_reset_write_mds(pgio);
-> -		return;
-> -	}
-> +	if (req->wb_offset != req->wb_pgbase)
-> +		dprintk("%s: inode=%ld: offset=%llu wb_bytes=%u wb_offset=%u wb_pgbase=%u\n",
-> +			__func__, pgio->pg_inode->i_ino,
-> +			(((unsigned long long)req->wb_index) << PAGE_CACHE_SHIFT) + req->wb_offset,
-> +			req->wb_bytes, req->wb_offset, req->wb_pgbase);
->  
->  	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
->  					   req->wb_context,
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4proc.c |    9 +++------
+ 1 file changed, 3 insertions(+), 6 deletions(-)
 
-NACK. I see no evidence that we've addressed the issues that were raised
-by Fred in commit 1825a0d08f22463e5a8f4b1636473efd057a3479 (NFS: prepare
-coalesce testing for directio).
-If you think that his concerns about the coalescing assumptions are no
-longer true, then please point to why this is the case. AFAICR that
-patch was added to fix corruption issues.
-
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index ae73175..c7e4e8c 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1282,12 +1282,9 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 		if (op->status)
+ 			goto encode_op;
+ 
+-		if (opdesc->op_func) {
+-			if (opdesc->op_get_currentstateid)
+-				opdesc->op_get_currentstateid(cstate, &op->u);
+-			op->status = opdesc->op_func(rqstp, cstate, &op->u);
+-		} else
+-			BUG_ON(op->status == nfs_ok);
++		if (opdesc->op_get_currentstateid)
++			opdesc->op_get_currentstateid(cstate, &op->u);
++		op->status = opdesc->op_func(rqstp, cstate, &op->u);
+ 
+ 		if (!op->status) {
+ 			if (opdesc->op_set_currentstateid)
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.7.9.5
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
