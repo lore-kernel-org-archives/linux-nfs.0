@@ -1,71 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:19812 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:52293 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754664Ab3CSNHx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Mar 2013 09:07:53 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 09/11] NFSv4.1: Add xdr support for CLAIM_FH and CLAIM_DELEG_CUR_FH opens
-Date: Tue, 19 Mar 2013 09:07:41 -0400
-Message-Id: <1363698463-3681-9-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1363698463-3681-8-git-send-email-Trond.Myklebust@netapp.com>
-References: <1363698463-3681-1-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-2-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-3-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-4-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-5-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-6-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-7-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-8-git-send-email-Trond.Myklebust@netapp.com>
+	id S1756428Ab3CEVLF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Mar 2013 16:11:05 -0500
+Date: Tue, 5 Mar 2013 16:10:59 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Yanchuan Nian <ycnian@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: Correct read access checking
+Message-ID: <20130305211059.GC15816@fieldses.org>
+References: <20130303090211.GA29550@localhost.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130303090211.GA29550@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4xdr.c | 23 +++++++++++++++++++++++
- 1 file changed, 23 insertions(+)
+On Sun, Mar 03, 2013 at 05:02:11PM +0800, Yanchuan Nian wrote:
+> NFS4_SHARE_ACCESS_WRITE should not be tested in access_permit_read() for this
+> function just tests read permission, so remove it.
+> 
+> Signed-off-by: Yanchuan Nian <ycnian@gmail.com>
+> ---
+>  fs/nfsd/nfs4state.c | 3 +--
+>  1 file changed, 1 insertion(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 16d39c6..75c873d 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -3322,8 +3322,7 @@ static inline int
+>  access_permit_read(struct nfs4_ol_stateid *stp)
+>  {
+>  	return test_access(NFS4_SHARE_ACCESS_READ, stp) ||
+> -		test_access(NFS4_SHARE_ACCESS_BOTH, stp) ||
+> -		test_access(NFS4_SHARE_ACCESS_WRITE, stp);
+> +		test_access(NFS4_SHARE_ACCESS_BOTH, stp);
+>  }
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 9d32877..650fa32 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -1459,6 +1459,23 @@ static inline void encode_claim_delegate_cur(struct xdr_stream *xdr, const struc
- 	encode_string(xdr, name->len, name->name);
- }
- 
-+static inline void encode_claim_fh(struct xdr_stream *xdr)
-+{
-+	__be32 *p;
-+
-+	p = reserve_space(xdr, 4);
-+	*p = cpu_to_be32(NFS4_OPEN_CLAIM_FH);
-+}
-+
-+static inline void encode_claim_delegate_cur_fh(struct xdr_stream *xdr, const nfs4_stateid *stateid)
-+{
-+	__be32 *p;
-+
-+	p = reserve_space(xdr, 4);
-+	*p = cpu_to_be32(NFS4_OPEN_CLAIM_DELEG_CUR_FH);
-+	encode_nfs4_stateid(xdr, stateid);
-+}
-+
- static void encode_open(struct xdr_stream *xdr, const struct nfs_openargs *arg, struct compound_hdr *hdr)
- {
- 	encode_op_hdr(xdr, OP_OPEN, decode_open_maxsz, hdr);
-@@ -1474,6 +1491,12 @@ static void encode_open(struct xdr_stream *xdr, const struct nfs_openargs *arg,
- 	case NFS4_OPEN_CLAIM_DELEGATE_CUR:
- 		encode_claim_delegate_cur(xdr, arg->name, &arg->u.delegation);
- 		break;
-+	case NFS4_OPEN_CLAIM_FH:
-+		encode_claim_fh(xdr);
-+		break;
-+	case NFS4_OPEN_CLAIM_DELEG_CUR_FH:
-+		encode_claim_delegate_cur_fh(xdr, &arg->u.delegation);
-+		break;
- 	default:
- 		BUG();
- 	}
--- 
-1.8.1.4
+This was introduced by a patch from 2005:
 
+    [PATCH] nfsd4: allow read on open for write
+    
+    The rfc recommends allowing read using stateid's from opens that only
+    requested write access, as clients may in some cases be unable to write
+    without doing reads.
+
+So I think it's correct.
+
+That said, I don't understand why we still have this function at all:
+can it ever return anything other than true?
+
+--b.
