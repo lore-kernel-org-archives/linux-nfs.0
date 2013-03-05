@@ -1,51 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:19812 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:55854 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754870Ab3CSNH4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Mar 2013 09:07:56 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+	id S1755116Ab3CEWWu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Mar 2013 17:22:50 -0500
+Received: from bfields by fieldses.org with local (Exim 4.76)
+	(envelope-from <bfields@fieldses.org>)
+	id 1UD0G2-0004ti-FZ
+	for linux-nfs@vger.kernel.org; Tue, 05 Mar 2013 17:22:50 -0500
+Date: Tue, 5 Mar 2013 17:22:50 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 11/11] NFSv4.1: Use CLAIM_DELEG_CUR_FH opens when available
-Date: Tue, 19 Mar 2013 09:07:43 -0400
-Message-Id: <1363698463-3681-11-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1363698463-3681-10-git-send-email-Trond.Myklebust@netapp.com>
-References: <1363698463-3681-1-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-2-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-3-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-4-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-5-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-6-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-7-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-8-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-9-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-10-git-send-email-Trond.Myklebust@netapp.com>
+Subject: Re: [PATCH 2/2] nfsd4: handle seqid-mutating open errors from xdr
+ decoding
+Message-ID: <20130305222250.GH15816@fieldses.org>
+References: <20130305221722.GE15816@fieldses.org>
+ <20130305221759.GF15816@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130305221759.GF15816@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that we do CLAIM_FH opens, we may run into situations where we
-get a delegation but don't have perfect knowledge of the file path.
-When returning the delegation, we might therefore not be able to
-us CLAIM_DELEGATE_CUR opens to convert the delegation into OPEN
-stateids and locks.
+On Tue, Mar 05, 2013 at 05:17:59PM -0500, J. Bruce Fields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> If a client sets an owner (or group_owner or acl) attribute on open for
+> create, and the mapping of that owner to an id fails, then we return
+> BAD_OWNER.  But BAD_OWNER is a seqid-mutating error, so we can't
+> shortcut the open processing that case: we have to at least look up the
+> owner so we can find the seqid to bump.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4proc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+This seems like an awful hack.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 480b5d0..88c4015 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1383,7 +1383,7 @@ static int _nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs
- 	int ret;
- 
- 	opendata = nfs4_open_recoverdata_alloc(ctx, state,
--			NFS4_OPEN_CLAIM_DELEGATE_CUR);
-+			NFS4_OPEN_CLAIM_DELEG_CUR_FH);
- 	if (IS_ERR(opendata))
- 		return PTR_ERR(opendata);
- 	nfs4_stateid_copy(&opendata->o_arg.u.delegation, stateid);
--- 
-1.8.1.4
+Better might be to move idmapping out of xdr decoding, but that's a
+bigger change and I wonder if it would break anything else.
 
+--b.
+
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/nfsd/nfs4proc.c |   27 ++++++++++++++++++++++++++-
+>  fs/nfsd/nfs4xdr.c  |    1 +
+>  fs/nfsd/xdr4.h     |    1 +
+>  3 files changed, 28 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index c7e4e8c..42c498c 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -351,6 +351,10 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	}
+>  	if (status)
+>  		goto out;
+> +	if (open->op_xdr_error) {
+> +		status = open->op_xdr_error;
+> +		goto out;
+> +	}
+>  
+>  	status = nfsd4_check_open_attributes(rqstp, cstate, open);
+>  	if (status)
+> @@ -417,6 +421,24 @@ out:
+>  }
+>  
+>  /*
+> + * OPEN is the only seqid-mutating operation whose decoding can fail
+> + * with a seqid-mutating error (specifically, decoding of user names in
+> + * the attributes).  Therefore we have to do some processing to look up
+> + * the stateowner so that we can bump the seqid.
+> + */
+> +static __be32 nfsd4_open_omfg(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_op *op)
+> +{
+> +	struct nfsd4_open *open = (struct nfsd4_open *)&op->u;
+> +
+> +	if (!seqid_mutating_err(ntohl(op->status)))
+> +		return op->status;
+> +	if (nfsd4_has_session(cstate))
+> +		return op->status;
+> +	open->op_xdr_error = op->status;
+> +	return nfsd4_open(rqstp, cstate, open);
+> +}
+> +
+> +/*
+>   * filehandle-manipulating ops.
+>   */
+>  static __be32
+> @@ -1244,8 +1266,11 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+>  		 * for example, if there is a miscellaneous XDR error
+>  		 * it will be set to nfserr_bad_xdr.
+>  		 */
+> -		if (op->status)
+> +		if (op->status) {
+> +			if (op->opnum == OP_OPEN)
+> +				op->status = nfsd4_open_omfg(rqstp, cstate, op);
+>  			goto encode_op;
+> +		}
+>  
+>  		/* We must be able to encode a successful response to
+>  		 * this operation, with enough room left over to encode a
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 0116886..a82df26 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -804,6 +804,7 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
+>  	open->op_iattr.ia_valid = 0;
+>  	open->op_openowner = NULL;
+>  
+> +	open->op_xdr_error = 0;
+>  	/* seqid, share_access, share_deny, clientid, ownerlen */
+>  	READ_BUF(4);
+>  	READ32(open->op_seqid);
+> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> index 546f898..be0a79d 100644
+> --- a/fs/nfsd/xdr4.h
+> +++ b/fs/nfsd/xdr4.h
+> @@ -237,6 +237,7 @@ struct nfsd4_open {
+>  	u32		op_share_deny;      /* request */
+>  	u32		op_deleg_want;      /* request */
+>  	stateid_t	op_stateid;         /* response */
+> +	__be32		op_xdr_error;       /* see nfsd4_open_omfg() */
+>  	u32		op_recall;          /* recall */
+>  	struct nfsd4_change_info  op_cinfo; /* response */
+>  	u32		op_rflags;          /* response */
+> -- 
+> 1.7.9.5
+> 
