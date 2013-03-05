@@ -1,117 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:55671 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756109Ab3C1N5b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Mar 2013 09:57:31 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 11/14] NFS: Extend NFS xattr handlers to accept the security namespace
-Date: Thu, 28 Mar 2013 09:54:02 -0400
-Message-Id: <1364478845-29796-12-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
-References: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
+Received: from mail-qc0-f175.google.com ([209.85.216.175]:58147 "EHLO
+	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751244Ab3CEUDE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Mar 2013 15:03:04 -0500
+From: Tejun Heo <tj@kernel.org>
+To: akpm@linux-foundation.org
+Cc: linux-kernel@vger.kernel.org, bfields@fieldses.org,
+        jackm@dev.mellanox.co.il, ogerlitz@mellanox.com,
+        roland@purestorage.com, dan.magenheimer@oracle.com,
+        gregkh@linuxfoundation.org, vjaquez@igalia.com, rene.sapiens@ti.com,
+        x0095078@ti.com, omar.ramirez@ti.com, Tejun Heo <tj@kernel.org>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH 1/7] nfsd: remove unused get_new_stid()
+Date: Tue,  5 Mar 2013 12:02:46 -0800
+Message-Id: <1362513772-15174-2-git-send-email-tj@kernel.org>
+In-Reply-To: <1362513772-15174-1-git-send-email-tj@kernel.org>
+References: <1362513772-15174-1-git-send-email-tj@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+get_new_stid() is no longer used since 3abdb607125 ("nfsd4: simplify
+idr allocation").  Remove it.
 
-The existing NFSv4 xattr handlers do not accept xattr calls to the security
-namespace. This patch extends these handlers to accept xattrs from the security
-namespace in addition to the default NFSv4 ACL namespace.
-
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+Signed-off-by: Tejun Heo <tj@kernel.org>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
 ---
- fs/nfs/nfs4proc.c   | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
- security/security.c |  1 +
- 2 files changed, 51 insertions(+)
+ fs/nfsd/nfs4state.c | 31 -------------------------------
+ 1 file changed, 31 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index d383ca0..535d475 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5505,6 +5505,53 @@ static size_t nfs4_xattr_list_nfs4_acl(struct dentry *dentry, char *list,
- 	return len;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 16d39c6..d91d6db 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -230,37 +230,6 @@ static void nfs4_file_put_access(struct nfs4_file *fp, int oflag)
+ 		__nfs4_file_put_access(fp, oflag);
  }
  
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+static inline int nfs4_server_supports_labels(struct nfs_server *server)
-+{
-+	return server->caps & NFS_CAP_SECURITY_LABEL;
-+}
-+
-+static int nfs4_xattr_set_nfs4_label(struct dentry *dentry, const char *key,
-+				   const void *buf, size_t buflen,
-+				   int flags, int type)
-+{
-+	if (security_ismaclabel(key))
-+		return nfs4_set_security_label(dentry, buf, buflen);
-+
-+	return -EOPNOTSUPP;
-+}
-+
-+static int nfs4_xattr_get_nfs4_label(struct dentry *dentry, const char *key,
-+				   void *buf, size_t buflen, int type)
-+{
-+	if (security_ismaclabel(key))
-+		return nfs4_get_security_label(dentry->d_inode, buf, buflen);
-+	return -EOPNOTSUPP;
-+}
-+
-+static size_t nfs4_xattr_list_nfs4_label(struct dentry *dentry, char *list,
-+				       size_t list_len, const char *name,
-+				       size_t name_len, int type)
-+{
-+	size_t len = 0;
-+
-+	if (nfs_server_capable(dentry->d_inode, NFS_CAP_SECURITY_LABEL)) {
-+		len = security_inode_listsecurity(dentry->d_inode, NULL, 0);
-+		if (list && len <= list_len)
-+			security_inode_listsecurity(dentry->d_inode, list, len);
-+	}
-+	return len;
-+}
-+
-+static const struct xattr_handler nfs4_xattr_nfs4_label_handler = {
-+	.prefix = XATTR_SECURITY_PREFIX,
-+	.list	= nfs4_xattr_list_nfs4_label,
-+	.get	= nfs4_xattr_get_nfs4_label,
-+	.set	= nfs4_xattr_set_nfs4_label,
-+};
-+#endif
-+
-+
- /*
-  * nfs_fhget will use either the mounted_on_fileid or the fileid
-  */
-@@ -7242,6 +7289,9 @@ static const struct xattr_handler nfs4_xattr_nfs4_acl_handler = {
- 
- const struct xattr_handler *nfs4_xattr_handlers[] = {
- 	&nfs4_xattr_nfs4_acl_handler,
-+#ifdef CONFIG_NFS_V4_SECURITY_LABEL
-+	&nfs4_xattr_nfs4_label_handler,
-+#endif
- 	NULL
- };
- 
-diff --git a/security/security.c b/security/security.c
-index dd9e4c8..af835e3 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -660,6 +660,7 @@ int security_inode_listsecurity(struct inode *inode, char *buffer, size_t buffer
- 		return 0;
- 	return security_ops->inode_listsecurity(inode, buffer, buffer_size);
- }
-+EXPORT_SYMBOL(security_inode_listsecurity);
- 
- void security_inode_getsecid(const struct inode *inode, u32 *secid)
+-static inline int get_new_stid(struct nfs4_stid *stid)
+-{
+-	static int min_stateid = 0;
+-	struct idr *stateids = &stid->sc_client->cl_stateids;
+-	int new_stid;
+-	int error;
+-
+-	error = idr_get_new_above(stateids, stid, min_stateid, &new_stid);
+-	/*
+-	 * Note: the necessary preallocation was done in
+-	 * nfs4_alloc_stateid().  The idr code caps the number of
+-	 * preallocations that can exist at a time, but the state lock
+-	 * prevents anyone from using ours before we get here:
+-	 */
+-	WARN_ON_ONCE(error);
+-	/*
+-	 * It shouldn't be a problem to reuse an opaque stateid value.
+-	 * I don't think it is for 4.1.  But with 4.0 I worry that, for
+-	 * example, a stray write retransmission could be accepted by
+-	 * the server when it should have been rejected.  Therefore,
+-	 * adopt a trick from the sctp code to attempt to maximize the
+-	 * amount of time until an id is reused, by ensuring they always
+-	 * "increase" (mod INT_MAX):
+-	 */
+-
+-	min_stateid = new_stid+1;
+-	if (min_stateid == INT_MAX)
+-		min_stateid = 0;
+-	return new_stid;
+-}
+-
+ static struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct
+ kmem_cache *slab)
  {
 -- 
 1.8.1.4
