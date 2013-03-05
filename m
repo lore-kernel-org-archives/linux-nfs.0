@@ -1,109 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-oa0-f49.google.com ([209.85.219.49]:48987 "EHLO
-	mail-oa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755161Ab3CSNL4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Mar 2013 09:11:56 -0400
-Received: by mail-oa0-f49.google.com with SMTP id j6so408331oag.8
-        for <linux-nfs@vger.kernel.org>; Tue, 19 Mar 2013 06:11:56 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:22585 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755429Ab3CETDZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Mar 2013 14:03:25 -0500
+Date: Tue, 5 Mar 2013 14:03:12 -0500
 From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 4/6] nfsd: add new reply_cache_stats file in nfsdfs
-Date: Tue, 19 Mar 2013 09:11:44 -0400
-Message-Id: <1363698706-22036-5-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1363698706-22036-1-git-send-email-jlayton@redhat.com>
-References: <1363698706-22036-1-git-send-email-jlayton@redhat.com>
+To: Tejun Heo <tj@kernel.org>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Oleg Nesterov <oleg@redhat.com>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Ming Lei <ming.lei@canonical.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Ingo Molnar <mingo@redhat.com>
+Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
+Message-ID: <20130305140312.243cb094@tlielax.poochiereds.net>
+In-Reply-To: <20130305174954.GG12795@htj.dyndns.org>
+References: <CACVXFVMKN6aeCvJcn7dyuonJYJDfYxWeW5KE6gfKRKJKFj2M4A@mail.gmail.com>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA9286AD113@sacexcmbx05-prd.hq.netapp.com>
+	<20130304092310.1d21100c@tlielax.poochiereds.net>
+	<CACBanvrc0orXGZ1v+gKHtVPKWYKGEFx46dwoDCjTU78+nPtZyg@mail.gmail.com>
+	<20130304205307.GA13527@redhat.com>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA9286AEEB0@sacexcmbx05-prd.hq.netapp.com>
+	<20130305082308.6607d4db@tlielax.poochiereds.net>
+	<20130305174648.GF12795@htj.dyndns.org>
+	<20130305174954.GG12795@htj.dyndns.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-For presenting statistics relating to duplicate reply cache.
+On Tue, 5 Mar 2013 09:49:54 -0800
+Tejun Heo <tj@kernel.org> wrote:
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/cache.h    |  1 +
- fs/nfsd/nfscache.c | 25 +++++++++++++++++++++++++
- fs/nfsd/nfsctl.c   |  9 +++++++++
- 3 files changed, 35 insertions(+)
+> On Tue, Mar 05, 2013 at 09:46:48AM -0800, Tejun Heo wrote:
+> > So, I think this is why implementing freezer as a separate blocking
+> > mechanism isn't such a good idea.  We're effectively introducing a
+> > completely new waiting state to a lot of unsuspecting paths which
+> > generates a lot of risks and eventually extra complexity to work
+> > around those.  I think we really should update freezer to re-use the
+> > blocking points we already have - the ones used for signal delivery
+> > and ptracing.  That way, other code paths don't have to worry about an
+> > extra stop state and we can confine most complexities to freezer
+> > proper.
+> 
+> Also, consolidating those wait states means that we can solve the
+> event-to-response latency problem for all three cases - signal, ptrace
+> and freezer, rather than adding separate backing-out strategy for
+> freezer.
+> 
 
-diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
-index 87fd141..d5c5b3e 100644
---- a/fs/nfsd/cache.h
-+++ b/fs/nfsd/cache.h
-@@ -82,6 +82,7 @@ int	nfsd_reply_cache_init(void);
- void	nfsd_reply_cache_shutdown(void);
- int	nfsd_cache_lookup(struct svc_rqst *);
- void	nfsd_cache_update(struct svc_rqst *, int, __be32 *);
-+int	nfsd_reply_cache_stats_open(struct inode *, struct file *);
- 
- #ifdef CONFIG_NFSD_V4
- void	nfsd4_set_statp(struct svc_rqst *rqstp, __be32 *statp);
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index 1f45b33..fd81ca7 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -556,3 +556,28 @@ nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *data)
- 	vec->iov_len += data->iov_len;
- 	return 1;
- }
-+
-+/*
-+ * Note that fields may be added, removed or reordered in the future. Programs
-+ * scraping this file for info should test the labels to ensure they're
-+ * getting the correct field.
-+ */
-+static int nfsd_reply_cache_stats_show(struct seq_file *m, void *v)
-+{
-+	spin_lock(&cache_lock);
-+	seq_printf(m, "max entries:           %u\n", max_drc_entries);
-+	seq_printf(m, "num entries:           %u\n", num_drc_entries);
-+	seq_printf(m, "hash buckets:          %u\n", HASHSIZE);
-+	seq_printf(m, "mem usage:             %u\n", drc_mem_usage);
-+	seq_printf(m, "cache hits:            %u\n", nfsdstats.rchits);
-+	seq_printf(m, "cache misses:          %u\n", nfsdstats.rcmisses);
-+	seq_printf(m, "not cached:            %u\n", nfsdstats.rcnocache);
-+	seq_printf(m, "payload misses:        %u\n", payload_misses);
-+	spin_unlock(&cache_lock);
-+	return 0;
-+}
-+
-+int nfsd_reply_cache_stats_open(struct inode *inode, struct file *file)
-+{
-+	return single_open(file, nfsd_reply_cache_stats_show, NULL);
-+}
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index f33455b..a830f33 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -35,6 +35,7 @@ enum {
- 	NFSD_Threads,
- 	NFSD_Pool_Threads,
- 	NFSD_Pool_Stats,
-+	NFSD_Reply_Cache_Stats,
- 	NFSD_Versions,
- 	NFSD_Ports,
- 	NFSD_MaxBlkSize,
-@@ -212,6 +213,13 @@ static const struct file_operations pool_stats_operations = {
- 	.owner		= THIS_MODULE,
- };
- 
-+static struct file_operations reply_cache_stats_operations = {
-+	.open		= nfsd_reply_cache_stats_open,
-+	.read		= seq_read,
-+	.llseek		= seq_lseek,
-+	.release	= single_release,
-+};
-+
- /*----------------------------------------------------------------------------*/
- /*
-  * payload - write methods
-@@ -1047,6 +1055,7 @@ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
- 		[NFSD_Threads] = {"threads", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_Pool_Threads] = {"pool_threads", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_Pool_Stats] = {"pool_stats", &pool_stats_operations, S_IRUGO},
-+		[NFSD_Reply_Cache_Stats] = {"reply_cache_stats", &reply_cache_stats_operations, S_IRUGO},
- 		[NFSD_Versions] = {"versions", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_Ports] = {"portlist", &transaction_ops, S_IWUSR|S_IRUGO},
- 		[NFSD_MaxBlkSize] = {"max_block_size", &transaction_ops, S_IWUSR|S_IRUGO},
+Sounds intriguing...
+
+I'm not sure what this really means for something like NFS though. How
+would you envision this working when we have long running syscalls that
+might sit waiting in the kernel indefinitely?
+
+Here's my blue-sky, poorly-thought-out idea...
+
+We could add a signal (e.g. SIGFREEZE) that allows the sleeps in
+NFS/RPC layer to be interrupted. Those would return back toward
+userland with a particular type of error (sort of like ERESTARTSYS).
+
+Before returning from the kernel though, we could freeze the process.
+When it wakes up, then we could go back down and retry the call again
+(much like an ERESTARTSYS kind of thing).
+
+The tricky part here is that we'd need to distinguish between the case
+where we caught SIGFREEZE before sending an RPC vs. after. If we sent
+the call before freezing, then we don't want to resend it again. It
+might be a non-idempotent operation.
+
+Sounds horrific to code up though... :)
+
 -- 
-1.7.11.7
-
+Jeff Layton <jlayton@redhat.com>
