@@ -1,95 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:10021 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:36040 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753751Ab3CKMCV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Mar 2013 08:02:21 -0400
-Date: Mon, 11 Mar 2013 08:02:18 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 08/11] rpc.gssd: Clean up
- gssd_setup_krb5_user_gss_ccache()
-Message-ID: <20130311080218.184602ff@tlielax.poochiereds.net>
-In-Reply-To: <20130308194714.5656.24670.stgit@seurat.1015granger.net>
-References: <20130308193830.5656.44184.stgit@seurat.1015granger.net>
-	<20130308194714.5656.24670.stgit@seurat.1015granger.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1754114Ab3CFVbl convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Mar 2013 16:31:41 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Simon Kirby <sim@hostway.ca>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: NFSv3 TCP socket stuck when all slots used and server goes away
+Date: Wed, 6 Mar 2013 21:31:40 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9286B4288@sacexcmbx05-prd.hq.netapp.com>
+References: <20130306095138.GC4736@hostway.ca>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9286B1981@sacexcmbx05-prd.hq.netapp.com>
+ <20130306212043.GA7653@hostway.ca>
+In-Reply-To: <20130306212043.GA7653@hostway.ca>
+Content-Type: text/plain; charset="Windows-1252"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 08 Mar 2013 14:47:14 -0500
-Chuck Lever <chuck.lever@oracle.com> wrote:
+> -----Original Message-----
+> From: Simon Kirby [mailto:sim@hostway.ca]
+> Sent: Wednesday, March 06, 2013 4:21 PM
+> To: Myklebust, Trond
+> Cc: linux-nfs@vger.kernel.org
+> Subject: Re: NFSv3 TCP socket stuck when all slots used and server goes
+> away
+> 
+> On Wed, Mar 06, 2013 at 02:06:01PM +0000, Myklebust, Trond wrote:
+> 
+> > > -----Original Message-----
+> > > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> > > owner@vger.kernel.org] On Behalf Of Simon Kirby
+> > > Sent: Wednesday, March 06, 2013 4:52 AM
+> > > To: linux-nfs@vger.kernel.org
+> > > Subject: NFSv3 TCP socket stuck when all slots used and server goes
+> > > away
+> > >
+> > > We had an issue with an Pacemaker/CRM HA-NFSv3 setup where one
+> > > particular export hit an XFS locking issue on one node and got
+> > > completely stuck.
+> > > Upon failing over, service recovered for all clients that hadn't hit
+> > > the mount since the issue occurred, but almost all of the usual
+> > > clients (which also statfs commonly as a monitoring check) sat
+> > > forever (>20
+> > > minutes) without reconnecting.
+> > >
+> > > It seems that the clients filled the RPC slots with requests over
+> > > the TCP socket to the NFS VIP and the server ack'd everything at the
+> > > TCP layer, but was not able to reply to anything due to the FS
+> > > locking issue. When we failed over the VIP to the other node,
+> > > service was restored, but the clients stuck this way continued to
+> > > sit with nothing to tickle the TCP layer. netstat shows a socket
+> > > with no send-queue, in ESTABLISHED state, and with no timer
+> > > enabled:
+> > >
+> > > tcp        0      0 c:724         s:2049       ESTABLISHED -                off (0.00/0/0)
+> > >
+> > > The mountpoint options used are: rw,hard,intr,tcp,vers=3
+> > >
+> > > The export options are:
+> > > rw,async,hide,no_root_squash,no_subtree_check,mp
+> > >
+> > > Is this expected behaviour? I suspect if TCP keepalived were
+> > > enabled, the socket would eventually get torn down as soon as the
+> > > client tries to send something to the (effectively rebooted /
+> > > swapped) NFS server and gets an RST. However, as-is, there seems to
+> > > be nothing here that would eventually cause anything to happen. Am I
+> missing something?
+> >
+> > Which client? Did the server close the connection?
+> 
+> Oh. 3.2.16 knfsd server, 3.2.36 - 3.2.39 clients (about 20 of them).
+> 
+> The server did not close the connection but got stonith'd by the other node
+> (equivalent to a hard reboot of a single node). The socket doesn't get a FIN
+> or anything, because the server just goes away. When it comes back, there is
+> nothing on the server to know that the socket ever existed. With no send-
+> queue and nothing un-acked on the client's view, and no keepalive timer or
+> anything else, the client never seems to send anything, so it doesn't ever
+> poke the server and get back an RST to tear down the socket on the client
+> side, allowing it to reconnect.
+> 
+> I have dmesg saved from an "rpcdebug -m rpc -c" after this occurred, but I
+> didn't paste it originally because I am wondering if the client _is_ supposed to
+> re-issue requests the RPC TCP socket if no response is received after this
+> long. With no timeo specified, /proc/mounts shows the default timeo is 600
+> seconds, retrans 2. Is it supposed to send something over the socket again
+> every 600 seconds if all slots were previously used to issue NFS requests but
+> nothing has been answered?
+> 
+> http://0x.ca/sim/ref/3.2.39/rpcdebug.txt
+> 
+> Cheers,
 
-> Remove a contradictory portion of the block comment documenting
-> gssd_find_existing_krb5_ccache().  This should have been removed by
-> commit 289ad31e, which reversed the meaning of the function's return
-> values.
-> 
-> Note that, in user space, typically errno's are positive.  But here
-> we follow the kernel convention of using negative values to return
-> error codes.  Make the documenting comments explicit about the sign
-> of an error return -- it will never be positive in the case of an
-> error.
-> 
-> And a nit: At the last return statement in
-> gssd_setup_krb5_user_gss_ccache(), "err" always contains zero, as
-> far as I can tell.  Make it explicit (to human readers) that when
-> execution reaches this point, gssd_setup_krb5_user_gss_ccache() is
-> going to return "success."
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> Cc: Jeff Layton <jlayton@redhat.com>
-> ---
-> 
->  utils/gssd/krb5_util.c |   13 +++++--------
->  1 files changed, 5 insertions(+), 8 deletions(-)
-> 
-> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-> index aeb8f70..6c37094 100644
-> --- a/utils/gssd/krb5_util.c
-> +++ b/utils/gssd/krb5_util.c
-> @@ -169,13 +169,10 @@ select_krb5_ccache(const struct dirent *d)
->  
->  /*
->   * Look in directory "dirname" for files that look like they
-> - * are Kerberos Credential Cache files for a given UID.  Return
-> - * non-zero and the dirent pointer for the entry most likely to be
-> - * what we want. Otherwise, return zero and no dirent pointer.
-> - * The caller is responsible for freeing the dirent if one is returned.
-> + * are Kerberos Credential Cache files for a given UID.
+The client should normally retransmit after the timeout, at which point it will discover that the other end is disconnected. It might take a few minutes though; your timeouts appear to have hit the maximum of 3 minutes between retries.
 
-Why trim out the info about "d" being set to a valid dirent here?
-Rather than doing that, I'd prefer adding some verbiage about cctype
-also being set on a valid return.
+Is there no traffic seen on the wire at all?
 
->   *
-> - * Returns 0 if a valid-looking entry was found and a non-zero error
-> - * code otherwise.
-> + * Returns 0 if a valid-looking entry was found, or a negative
-> + * errno code otherwise.
->   */
->  static int
->  gssd_find_existing_krb5_ccache(uid_t uid, char *dirname,
-> @@ -1037,7 +1034,7 @@ err_cache:
->   * given only a UID.  We really need more information, but we
->   * do the best we can.
->   *
-> - * Returns 0 if a ccache was found, and a non-zero error code otherwise.
-> + * Returns 0 if a ccache was found, or a negative errno otherwise.
->   */
->  int
->  gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername, char *dirpattern)
-> @@ -1082,7 +1079,7 @@ gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername, char *dirpattern)
->  	printerr(2, "using %s as credentials cache for client with "
->  		    "uid %u for server %s\n", buf, uid, servername);
->  	gssd_set_krb5_ccache_name(buf);
-> -	return err;
-> +	return 0;
->  }
->  
->  /*
-> 
-
--- 
-Jeff Layton <jlayton@redhat.com>
+Cheers
+  Trond
