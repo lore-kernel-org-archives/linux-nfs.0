@@ -1,79 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:21164 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757741Ab3CDPEg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Mar 2013 10:04:36 -0500
-Date: Mon, 4 Mar 2013 10:04:32 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Ming Lei <ming.lei@canonical.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+Received: from mail-yh0-f52.google.com ([209.85.213.52]:46394 "EHLO
+	mail-yh0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750731Ab3CFBd7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Mar 2013 20:33:59 -0500
+Date: Tue, 5 Mar 2013 17:28:00 -0800
+From: Tejun Heo <tj@kernel.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Jeff Layton <jlayton@redhat.com>, Oleg Nesterov <oleg@redhat.com>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Ming Lei <ming.lei@canonical.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Ingo Molnar <mingo@redhat.com>
 Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
-Message-ID: <20130304100432.5c7ea704@tlielax.poochiereds.net>
-In-Reply-To: <CACVXFVM5VhU_ZgYr1KxERY7DXxMQpkWoiTyjyar91Hz=vU4-ug@mail.gmail.com>
-References: <CACVXFVMKN6aeCvJcn7dyuonJYJDfYxWeW5KE6gfKRKJKFj2M4A@mail.gmail.com>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA9286AD113@sacexcmbx05-prd.hq.netapp.com>
-	<CACVXFVM5VhU_ZgYr1KxERY7DXxMQpkWoiTyjyar91Hz=vU4-ug@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Message-ID: <20130306012800.GH1227@htj.dyndns.org>
+References: <20130304092310.1d21100c@tlielax.poochiereds.net>
+ <CACBanvrc0orXGZ1v+gKHtVPKWYKGEFx46dwoDCjTU78+nPtZyg@mail.gmail.com>
+ <20130304205307.GA13527@redhat.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9286AEEB0@sacexcmbx05-prd.hq.netapp.com>
+ <20130305082308.6607d4db@tlielax.poochiereds.net>
+ <20130305174648.GF12795@htj.dyndns.org>
+ <20130305174954.GG12795@htj.dyndns.org>
+ <20130305140312.243cb094@tlielax.poochiereds.net>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9286B1246@sacexcmbx05-prd.hq.netapp.com>
+ <20130306011423.GF1227@htj.dyndns.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130306011423.GF1227@htj.dyndns.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 4 Mar 2013 22:40:02 +0800
-Ming Lei <ming.lei@canonical.com> wrote:
-
-> On Mon, Mar 4, 2013 at 10:14 PM, Myklebust, Trond
-> <Trond.Myklebust@netapp.com> wrote:
-> > On Mon, 2013-03-04 at 21:57 +0800, Ming Lei wrote:
-> >> Hi,
-> >>
-> >> The below warning can be triggered each time when mount.nfs is
-> >> running on 3.9-rc1.
-> >>
-> >> Not sure if freezable_schedule() inside rpc_wait_bit_killable should
-> >> be changed to schedule() since nfs_clid_init_mutex is held in the path.
-> >
-> > Cc:ing Jeff, who added freezable_schedule(), and applied it to
-> > rpc_wait_bit_killable.
-> >
-> > So this is occurring when the kernel enters the freeze state?
+On Tue, Mar 05, 2013 at 05:14:23PM -0800, Tejun Heo wrote:
+> Then, the operation simply isn't freezable while in progress and
+> should be on the receiving end of failed-to-freeze error message and
+> users who depend on suspend/hibernation working properly should be
+> advised away from using nfs.
 > 
-> No, but the situation can really be triggered in freeze case, so
-> lockdep forecasts the problem correctly, :-)
-> 
-> > Why does it occur only with nfs_clid_init_mutex, and not with all the
-> > other mutexes that we hold across RPC calls? We hold inode->i_mutex
-> > across RPC calls all the time when doing renames, unlinks, file
-> > creation,...
-> 
-> At least in the mount.nfs context, only nfs_clid_init_mutex is held.
-> 
-> IMO, if locks might be held in the path, it isn't wise to call
-> freezable_schedule
-> inside rpc_wait_bit_killable().
-> 
+> It doesn't really changes anything.  The current code is buggy.  We're
+> just not enforcing the rules strictly and people aren't hitting the
+> bug often enough.
 
-I don't get it -- why is it bad to hold a lock across a freeze event?
+Just one more thing.  Also, not being able to do retries without
+side-effect doesn't mean it can't do retries at all.  There are
+syscalls which need to do things differently on re-entry (forgot which
+one but there are several).  They record the necessary state in the
+restart block and resume from where they left off on re-entry.  It
+sure is hairy but is doable and we already have supporting
+infrastructure.  Not sure whether that would be worthwhile tho.
 
-The problem that we have is that we must often hold locks across
-long-running syscalls (consider something like sync()). In the event
-that there is a lot of dirty data, it might take a long time for that
-to finish.
-
-There's also the problem that it's not uncommon for the freezer to take
-down userland processes (such as NetworkManager) which in turn take
-down network interfaces that we need to talk to the server.
-
-The fix from a couple of years ago (which admittedly needs more work)
-was to allow the freezing of tasks that are waiting on a reply from the
-server. That sort of necessitates that we are allowed to hold our locks
-across the try_to_freeze call though.
-
-If that's no longer allowed then we're back to square one with laptops
-that fail to suspend when they have NFS mounts. Is there some other
-solution we should pursue instead?
+Thanks.
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+tejun
