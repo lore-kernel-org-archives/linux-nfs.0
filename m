@@ -1,49 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from plane.gmane.org ([80.91.229.3]:59475 "EHLO plane.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751360Ab3C0Onp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Mar 2013 10:43:45 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1UKraA-00055u-FU
-	for linux-nfs@vger.kernel.org; Wed, 27 Mar 2013 15:44:06 +0100
-Received: from 60-241-78-133.static.tpgi.com.au ([60.241.78.133])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Wed, 27 Mar 2013 15:44:06 +0100
-Received: from oakad by 60-241-78-133.static.tpgi.com.au with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Wed, 27 Mar 2013 15:44:06 +0100
-To: linux-nfs@vger.kernel.org
-From: Alex Dubov <oakad@yahoo.com>
-Subject: Re: Allow building nfs-utils directly against GSSAPI
-Date: Wed, 27 Mar 2013 14:43:27 +0000 (UTC)
-Message-ID: <loom.20130327T154155-192@post.gmane.org>
-References: <1364317202.2660.132.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+Received: from mail-gg0-f169.google.com ([209.85.161.169]:56121 "EHLO
+	mail-gg0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752794Ab3CFSpc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Mar 2013 13:45:32 -0500
+Date: Wed, 6 Mar 2013 10:45:26 -0800
+From: Tejun Heo <tj@kernel.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Oleg Nesterov <oleg@redhat.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Ming Lei <ming.lei@canonical.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Ingo Molnar <mingo@redhat.com>, Al Viro <viro@ZenIV.linux.org.uk>
+Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
+Message-ID: <20130306184526.GL1227@htj.dyndns.org>
+References: <20130304205307.GA13527@redhat.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9286AEEB0@sacexcmbx05-prd.hq.netapp.com>
+ <20130305082308.6607d4db@tlielax.poochiereds.net>
+ <20130305174648.GF12795@htj.dyndns.org>
+ <20130305174954.GG12795@htj.dyndns.org>
+ <20130305140312.243cb094@tlielax.poochiereds.net>
+ <20130305190923.GI12795@htj.dyndns.org>
+ <20130305183941.19ff39ce@tlielax.poochiereds.net>
+ <20130306181735.GB18687@redhat.com>
+ <20130306134004.16252a21@tlielax.poochiereds.net>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130306134004.16252a21@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Simo Sorce <simo@...> writes:
+Hello,
 
-> 
-> Libgssglue is not really useful anymore, it is a sort of middleman that
-> wraps the actual GSSAPI that is already pluggable/extensible via shared
-> modules.
-> 
-> In particular libgssglue interferes with the workings of gss-proxy in my
-> case.
-> 
-> The attached patch makes building against libgssglue optional and
-> defaults to not build against libgssglue and instead builds directly
-> against the native GSSAPI.
-> 
+On Wed, Mar 06, 2013 at 01:40:04PM -0500, Jeff Layton wrote:
+> Though when I said that, it was before Tejun mentioned hooking this up
+> to ptrace. I'll confess that I don't fully understand what he's
+> proposing either though...
 
-I have tried your patch with my Heimdal setup and it would not build properly
-with it.
+Oh, they're all just pretty closely related.  All signal and ptrace
+traps run off get_signal_to_deliver().  It is still a bit hairy but in
+much better shape after cleanups which accompanied PTRACE_SEIZE and I
+don't really think it'll be too difficult to extend it so that
+freezing is implemented as a type of jobctl trap.
 
-I can augment my patch to make use of your changes. Would you be willing to
-consider it?
+Thanks.
 
-
+-- 
+tejun
