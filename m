@@ -1,151 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:41536 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752994Ab3CKXCK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Mar 2013 19:02:10 -0400
-Message-ID: <513E6271.3060107@opengridcomputing.com>
-Date: Mon, 11 Mar 2013 18:02:09 -0500
-From: Tom Tucker <tom@opengridcomputing.com>
+Received: from mail-vb0-f49.google.com ([209.85.212.49]:37571 "EHLO
+	mail-vb0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752304Ab3CFUPX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Mar 2013 15:15:23 -0500
+Received: by mail-vb0-f49.google.com with SMTP id s24so1824986vbi.8
+        for <linux-nfs@vger.kernel.org>; Wed, 06 Mar 2013 12:15:22 -0800 (PST)
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Tim Gardner <tim.gardner@canonical.com>, linux-kernel@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "David S. Miller" <davem@davemloft.net>, Tom Tucker <tom@ogc.us>,
-        Haggai Eran <haggaie@mellanox.com>, Or Gerlitz <ogerlitz@mellanox.com>,
-        Shani Michaeli <shanim@mellanox.com>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org
-Subject: Re: [PATCH linux-next v3] SUNRPC: rpcrdma_register_default_external:
- Dynamically allocate ib_phys_buf
-References: <4FA345DA4F4AE44899BD2B03EEEC2FA9286BA156@sacexcmbx05-prd.hq.netapp.com> <1363036508-24935-1-git-send-email-tim.gardner@canonical.com> <20130311212535.GG642@fieldses.org>
-In-Reply-To: <20130311212535.GG642@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9286B3C74@sacexcmbx05-prd.hq.netapp.com>
+References: <20130304205307.GA13527@redhat.com>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA9286AEEB0@sacexcmbx05-prd.hq.netapp.com>
+	<20130305082308.6607d4db@tlielax.poochiereds.net>
+	<20130305174648.GF12795@htj.dyndns.org>
+	<20130305174954.GG12795@htj.dyndns.org>
+	<20130305231110.GK15816@fieldses.org>
+	<CACBanvo+JDCFVRQeTQwnwRRxr8bdqxdsgeEr8fqgJhGQJEEQ-Q@mail.gmail.com>
+	<20130306010507.GL15816@fieldses.org>
+	<20130306011623.GG1227@htj.dyndns.org>
+	<CACBanvqVpi45TVNGXgXXO0BCSRuPEDsiNuHj0OBsvgr2UXZfsg@mail.gmail.com>
+	<20130306090914.GA6030@gmail.com>
+	<20130306070631.0f326014@tlielax.poochiereds.net>
+	<CACBanvo77MrvcWgVJqFjjj-7wL6BHxaoQcQ5YRfjeCtjaOeqAw@mail.gmail.com>
+	<20130306132322.52f47d7b@tlielax.poochiereds.net>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA9286B3C74@sacexcmbx05-prd.hq.netapp.com>
+Date: Wed, 6 Mar 2013 12:15:21 -0800
+Message-ID: <CACBanvrFAiYb-Guz9OYWceW4xj-0EciHVWsN=8=e=7oKnsp6xA@mail.gmail.com>
+Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
+From: Mandeep Singh Baines <msb@chromium.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Jeff Layton <jlayton@redhat.com>, Ingo Molnar <mingo@kernel.org>,
+        Tejun Heo <tj@kernel.org>, "J. Bruce Fields" <bfields@fieldses.org>,
+        Oleg Nesterov <oleg@redhat.com>, Ming Lei <ming.lei@canonical.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Thomas Gleixner <tglx@linutronix.de>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 3/11/13 4:25 PM, J. Bruce Fields wrote:
-> On Mon, Mar 11, 2013 at 03:15:08PM -0600, Tim Gardner wrote:
->> rpcrdma_register_default_external() is several frames into the call stack which
->> goes deeper yet. You run the risk of stack corruption by declaring such a large
->> automatic variable, so move the array of 'struct ib_phys_buf' objects into the
->> transport structure 'struct rpcrdma_xprt' (which is dynamically allocated) in
->> order to silence the frame-larger-than warning. Access to each struct
->> rpcrdma_xprt is serialized by XPRT_LOCKED in xprt_reserve_xprt(), so there is
->> no danger of multiple accessors to the array of struct ib_phys_buf objects.
+On Wed, Mar 6, 2013 at 10:37 AM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+> On Wed, 2013-03-06 at 13:23 -0500, Jeff Layton wrote:
+>> On Wed, 6 Mar 2013 07:59:01 -0800
+>> Mandeep Singh Baines <msb@chromium.org> wrote:
+>> > In general, holding a lock and freezing can cause a deadlock if:
+>> >
+>> > 1) you froze via the cgroup_freezer subsystem and a task in another
+>> > cgroup tried to acquire the same lock
+>> > 2) the lock was needed later is suspend/hibernate. For example, if the
+>> > lock was needed in dpm_suspend by one of the device callbacks. For
+>> > hibernate, you also need to worry about any locks that need to be
+>> > acquired in order to write to the swap device.
+>> > 3) another freezing task blocked on this lock and held other locks
+>> > needed later in suspend. If that task were skipped by the freezer, you
+>> > would deadlock
+>> >
+>> > You will block/prevent suspend if:
+>> >
+>> > 4) another freezing task blocked on this lock and was unable to freeze
+>> >
+>> > I think 1) and 4) can happen for the NFS/RPC case. Case 1) requires
+>> > cgroup freezer. Case 4) while not causing a deadlock could prevent
+>> > your laptop/phone from sleeping and end up burning all your battery.
+>> > If suspend is initiated via lid close you won't even know about the
+>> > failure.
+>> >
 >>
->> net/sunrpc/xprtrdma/verbs.c: In function 'rpcrdma_register_default_external':
->> net/sunrpc/xprtrdma/verbs.c:1774:1: warning: the frame size of 1056 bytes is larger than 1024 bytes [-Wframe-larger-than=]
+>> We're aware of #4. That was the intent of adding try_to_freeze() into
+>> this codepath in the first place. It's not a great solution for obvious
+>> reasons, but we don't have another at the moment.
 >>
->> gcc version 4.6.3
+>> For #1 I'm not sure what to do. I'm that familiar with cgroups or how
+>> the freezer works.
 >>
->> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
->> Cc: "J. Bruce Fields" <bfields@fieldses.org>
->> Cc: "David S. Miller" <davem@davemloft.net>
->> Cc: Tom Tucker <tom@ogc.us>
->> Cc: Haggai Eran <haggaie@mellanox.com>
->> Cc: Or Gerlitz <ogerlitz@mellanox.com>
->> Cc: Shani Michaeli <shanim@mellanox.com>
->> Cc: linux-nfs@vger.kernel.org
->> Cc: netdev@vger.kernel.org
->> Signed-off-by: Tim Gardner <tim.gardner@canonical.com>
->> ---
->> v1 - Use kmalloc() to dynamically allocate and free the array of 'struct
->> ib_phys_buf' objects
+>> The bottom line is that we have a choice -- we can either rip out this
+>> new lockdep warning, or rip out the code that causes it to fire.
 >>
->> v2 - Move the array of 'struct ib_phys_buf' objects into struct rpcrdma_req
->> and pass this request down through rpcrdma_register_external() and
->> rpcrdma_register_default_external(). This is less overhead then using
->> kmalloc() and requires no extra error checking as the allocation burden is
->> shifted to the transport client.
+>> If we rip out the warning we may miss some legit cases where we might
+>> possibly have hit a deadlock.
 >>
->> v3 - Move the array of 'struct ib_phys_buf' objects into struct rpcrdma_xprt.
->> Pass a pointer to this transport structure into rpcrdma_register_default_external().
->> This is less overhead then using kmalloc() and requires no extra error checking
->> as the allocation burden is shifted to the transport client.
-> Looks good to me; wish we could get it tested....
-
-I will test it. Tim could you please send me a final version that you'd 
-like tested as a single message?
-
-Would someone (like Tim maybe ... hint hint) look at tearing out all those 
-dead registration strategies? I don't think we need or will ever use 
-bounce-buffers, memory windows, or mlnx fmr.  The only two that are used 
-and tested are all-phys and FRMR (the default).
-
-Tom
-
-> In future if we do decide to also increase the size of that array we may
-> need to allocate it separately from struct rpcrdma_xprt itself, which
-> looks already fairly large without it; on x86_64:
+>> If we rip out the code that causes it to fire, then we exacerbate the
+>> #4 problem above. That will effectively make it so that you can't
+>> suspend the host whenever NFS is doing anything moderately active.
 >
-> 	$ gdb net/sunrpc/xprtrdma/xprtrdma.ko
-> 	...
-> 	(gdb) p sizeof(struct rpcrdma_xprt)
-> 	$1 = 2912
+> #4 is probably the only case where we might want to freeze.
 >
-> But that shouldn't be a big deal to do.
+> Unless we're in a situation where the network is going down, we can
+> usually always make progress with completing the RPC call and finishing
+> the system call. So in the case of cgroup_freezer, we only care if the
+> freezing cgroup also owns the network device (or net namespace) that NFS
+> is using to talk to the server.
 >
-> --b.
+> As I said, the alternative is to notify NFS that the device is going
+> down, and to give it a chance to quiesce itself before that happens.
+> This is also the only way to ensure that processes which own locks on
+> the server (e.g. posix file locks) have a chance to release them before
+> being suspended.
 >
->>   net/sunrpc/xprtrdma/verbs.c     |   10 ++++++----
->>   net/sunrpc/xprtrdma/xprt_rdma.h |    5 ++++-
->>   2 files changed, 10 insertions(+), 5 deletions(-)
->>
->> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
->> index 93726560..c7aa3da 100644
->> --- a/net/sunrpc/xprtrdma/verbs.c
->> +++ b/net/sunrpc/xprtrdma/verbs.c
->> @@ -1730,13 +1730,14 @@ rpcrdma_deregister_memwin_external(struct rpcrdma_mr_seg *seg,
->>   }
->>   
->>   static int
->> -rpcrdma_register_default_external(struct rpcrdma_mr_seg *seg,
->> -			int *nsegs, int writing, struct rpcrdma_ia *ia)
->> +rpcrdma_register_default_external(struct rpcrdma_xprt *r_xprt,
->> +			struct rpcrdma_mr_seg *seg, int *nsegs, int writing,
->> +			struct rpcrdma_ia *ia)
->>   {
->>   	int mem_priv = (writing ? IB_ACCESS_REMOTE_WRITE :
->>   				  IB_ACCESS_REMOTE_READ);
->>   	struct rpcrdma_mr_seg *seg1 = seg;
->> -	struct ib_phys_buf ipb[RPCRDMA_MAX_DATA_SEGS];
->> +	struct ib_phys_buf *ipb = r_xprt->ipb;
->>   	int len, i, rc = 0;
->>   
->>   	if (*nsegs > RPCRDMA_MAX_DATA_SEGS)
->> @@ -1827,7 +1828,8 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
->>   
->>   	/* Default registration each time */
->>   	default:
->> -		rc = rpcrdma_register_default_external(seg, &nsegs, writing, ia);
->> +		rc = rpcrdma_register_default_external(r_xprt, seg, &nsegs,
->> +			writing, ia);
->>   		break;
->>   	}
->>   	if (rc)
->> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
->> index cc1445d..d7b440f 100644
->> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
->> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
->> @@ -269,7 +269,8 @@ struct rpcrdma_stats {
->>    * for convenience. This structure need not be visible externally.
->>    *
->>    * It is allocated and initialized during mount, and released
->> - * during unmount.
->> + * during unmount. Access to this structure is serialized by XPRT_LOCKED
->> + * in xprt_reserve_xprt().
->>    */
->>   struct rpcrdma_xprt {
->>   	struct rpc_xprt		xprt;
->> @@ -279,6 +280,8 @@ struct rpcrdma_xprt {
->>   	struct rpcrdma_create_data_internal rx_data;
->>   	struct delayed_work	rdma_connect;
->>   	struct rpcrdma_stats	rx_stats;
->> +	/* temp work array */
->> +	struct ib_phys_buf	ipb[RPCRDMA_MAX_DATA_SEGS];
->>   };
->>   
->>   #define rpcx_to_rdmax(x) container_of(x, struct rpcrdma_xprt, xprt)
->> -- 
->> 1.7.9.5
->>
 
+So if I'm understanding correctly, the locks are held for bounded time
+so under normal situation you don't really need to freeze here. But if
+the task that is going to wake you were to freeze then this code path
+could block suspend if PF_FREEZER_SKIP were not set.
+
+For this particular case (not in general), instead of calling
+try_to_freeze(), what if you only cleared PF_FREEZER_SKIP. For case
+#1, you wouldn't block suspend if you're stuck waiting. If you
+received the event while processes were freezing, you'd just
+try_to_freeze() some place else. Probably on the way back up from the
+system call. For case #4, you'd eventually complete the rpc and then
+freeze some place else. If you're stuck waiting for the bit because
+the process that was going to wake you also got frozen, then the
+container would be stuck in the THAWING state. Not catastrophic and
+something the administrator could workaround by sequencing things
+right.
+
+Does this sound like a reasonable workaround?
+
+Regards,
+Mandeep
+
+>
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+>
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
