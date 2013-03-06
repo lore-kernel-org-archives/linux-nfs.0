@@ -1,183 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:49109 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:50577 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756109Ab3C1N5X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Mar 2013 09:57:23 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 02/14] Security: Add Hook to test if the particular xattr is part of a MAC model.
-Date: Thu, 28 Mar 2013 09:53:53 -0400
-Message-Id: <1364478845-29796-3-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
-References: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
+	id S1755692Ab3CFBKW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Mar 2013 20:10:22 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: Tejun Heo <tj@kernel.org>, Oleg Nesterov <oleg@redhat.com>,
+        "Mandeep Singh Baines" <msb@chromium.org>,
+        Ming Lei <ming.lei@canonical.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Ingo Molnar <mingo@redhat.com>
+Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
+Date: Wed, 6 Mar 2013 01:10:07 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9286B1246@sacexcmbx05-prd.hq.netapp.com>
+References: <CACVXFVMKN6aeCvJcn7dyuonJYJDfYxWeW5KE6gfKRKJKFj2M4A@mail.gmail.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9286AD113@sacexcmbx05-prd.hq.netapp.com>
+	 <20130304092310.1d21100c@tlielax.poochiereds.net>
+	 <CACBanvrc0orXGZ1v+gKHtVPKWYKGEFx46dwoDCjTU78+nPtZyg@mail.gmail.com>
+	 <20130304205307.GA13527@redhat.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9286AEEB0@sacexcmbx05-prd.hq.netapp.com>
+	 <20130305082308.6607d4db@tlielax.poochiereds.net>
+	 <20130305174648.GF12795@htj.dyndns.org>
+	 <20130305174954.GG12795@htj.dyndns.org>
+	 <20130305140312.243cb094@tlielax.poochiereds.net>
+In-Reply-To: <20130305140312.243cb094@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+On Tue, 2013-03-05 at 14:03 -0500, Jeff Layton wrote:
+> On Tue, 5 Mar 2013 09:49:54 -0800
+> Tejun Heo <tj@kernel.org> wrote:
+> 
+> > On Tue, Mar 05, 2013 at 09:46:48AM -0800, Tejun Heo wrote:
+> > > So, I think this is why implementing freezer as a separate blocking
+> > > mechanism isn't such a good idea.  We're effectively introducing a
+> > > completely new waiting state to a lot of unsuspecting paths which
+> > > generates a lot of risks and eventually extra complexity to work
+> > > around those.  I think we really should update freezer to re-use the
+> > > blocking points we already have - the ones used for signal delivery
+> > > and ptracing.  That way, other code paths don't have to worry about an
+> > > extra stop state and we can confine most complexities to freezer
+> > > proper.
+> > 
+> > Also, consolidating those wait states means that we can solve the
+> > event-to-response latency problem for all three cases - signal, ptrace
+> > and freezer, rather than adding separate backing-out strategy for
+> > freezer.
+> > 
+> 
+> Sounds intriguing...
+> 
+> I'm not sure what this really means for something like NFS though. How
+> would you envision this working when we have long running syscalls that
+> might sit waiting in the kernel indefinitely?
+> 
+> Here's my blue-sky, poorly-thought-out idea...
+> 
+> We could add a signal (e.g. SIGFREEZE) that allows the sleeps in
+> NFS/RPC layer to be interrupted. Those would return back toward
+> userland with a particular type of error (sort of like ERESTARTSYS).
+> 
+> Before returning from the kernel though, we could freeze the process.
+> When it wakes up, then we could go back down and retry the call again
+> (much like an ERESTARTSYS kind of thing).
 
-The interface to request security labels from user space is the xattr
-interface. When requesting the security label from an NFS server it is
-important to make sure the requested xattr actually is a MAC label. This allows
-us to make sure that we get the desired semantics from the attribute instead of
-something else such as capabilities or a time based LSM.
+Two (three?) show stopper words for you: "non-idempotent operations".
 
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- include/linux/security.h   | 14 ++++++++++++++
- security/capability.c      |  6 ++++++
- security/security.c        |  6 ++++++
- security/selinux/hooks.c   |  6 ++++++
- security/smack/smack_lsm.c | 11 +++++++++++
- 5 files changed, 43 insertions(+)
+Not all RPC calls can just be interrupted and restarted. Something like
+an exclusive file create, unlink, file locking attempt, etc may give
+rise to different results when replayed in the above scenario.
+Interrupting an RPC call is not equivalent to cancelling its effects...
 
-diff --git a/include/linux/security.h b/include/linux/security.h
-index a957e7a..8a6faff 100644
---- a/include/linux/security.h
-+++ b/include/linux/security.h
-@@ -1319,6 +1319,13 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
-  *	@pages contains the number of pages.
-  *	Return 0 if permission is granted.
-  *
-+ * @ismaclabel:
-+ *	Check if the extended attribute specified by @name
-+ *	represents a MAC label. Returns 0 if name is a MAC
-+ *	attribute otherwise returns non-zero.
-+ *	@name full extended attribute name to check against
-+ *	LSM as a MAC label.
-+ *
-  * @secid_to_secctx:
-  *	Convert secid to security context.  If secdata is NULL the length of
-  *	the result will be returned in seclen, but no secdata will be returned.
-@@ -1600,6 +1607,7 @@ struct security_operations {
- 
- 	int (*getprocattr) (struct task_struct *p, char *name, char **value);
- 	int (*setprocattr) (struct task_struct *p, char *name, void *value, size_t size);
-+	int (*ismaclabel) (const char *name);
- 	int (*secid_to_secctx) (u32 secid, char **secdata, u32 *seclen);
- 	int (*secctx_to_secid) (const char *secdata, u32 seclen, u32 *secid);
- 	void (*release_secctx) (char *secdata, u32 seclen);
-@@ -1852,6 +1860,7 @@ void security_d_instantiate(struct dentry *dentry, struct inode *inode);
- int security_getprocattr(struct task_struct *p, char *name, char **value);
- int security_setprocattr(struct task_struct *p, char *name, void *value, size_t size);
- int security_netlink_send(struct sock *sk, struct sk_buff *skb);
-+int security_ismaclabel(const char *name);
- int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen);
- int security_secctx_to_secid(const char *secdata, u32 seclen, u32 *secid);
- void security_release_secctx(char *secdata, u32 seclen);
-@@ -2540,6 +2549,11 @@ static inline int security_netlink_send(struct sock *sk, struct sk_buff *skb)
- 	return cap_netlink_send(sk, skb);
- }
- 
-+static inline int security_ismaclabel(const char *name)
-+{
-+	return 0;
-+}
-+
- static inline int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return -EOPNOTSUPP;
-diff --git a/security/capability.c b/security/capability.c
-index 456bd9d..07a6484 100644
---- a/security/capability.c
-+++ b/security/capability.c
-@@ -817,6 +817,11 @@ static int cap_setprocattr(struct task_struct *p, char *name, void *value,
- 	return -EINVAL;
- }
- 
-+static int cap_ismaclabel(const char *name)
-+{
-+	return 0;
-+}
-+
- static int cap_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return -EOPNOTSUPP;
-@@ -1036,6 +1041,7 @@ void __init security_fixup_ops(struct security_operations *ops)
- 	set_to_cap_if_null(ops, d_instantiate);
- 	set_to_cap_if_null(ops, getprocattr);
- 	set_to_cap_if_null(ops, setprocattr);
-+	set_to_cap_if_null(ops, ismaclabel);
- 	set_to_cap_if_null(ops, secid_to_secctx);
- 	set_to_cap_if_null(ops, secctx_to_secid);
- 	set_to_cap_if_null(ops, release_secctx);
-diff --git a/security/security.c b/security/security.c
-index 723a10c..6d7389c 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -1057,6 +1057,12 @@ int security_netlink_send(struct sock *sk, struct sk_buff *skb)
- 	return security_ops->netlink_send(sk, skb);
- }
- 
-+int security_ismaclabel(const char *name)
-+{
-+	return security_ops->ismaclabel(name);
-+}
-+EXPORT_SYMBOL(security_ismaclabel);
-+
- int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return security_ops->secid_to_secctx(secid, secdata, seclen);
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index c7f1905..97231a0 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -5417,6 +5417,11 @@ abort_change:
- 	return error;
- }
- 
-+static int selinux_ismaclabel(const char *name)
-+{
-+	return (strcmp(name, XATTR_SELINUX_SUFFIX) == 0);
-+}
-+
- static int selinux_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return security_sid_to_context(secid, secdata, seclen);
-@@ -5655,6 +5660,7 @@ static struct security_operations selinux_ops = {
- 	.getprocattr =			selinux_getprocattr,
- 	.setprocattr =			selinux_setprocattr,
- 
-+	.ismaclabel =			selinux_ismaclabel,
- 	.secid_to_secctx =		selinux_secid_to_secctx,
- 	.secctx_to_secid =		selinux_secctx_to_secid,
- 	.release_secctx =		selinux_release_secctx,
-diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
-index fa64740..ca01d71 100644
---- a/security/smack/smack_lsm.c
-+++ b/security/smack/smack_lsm.c
-@@ -3329,6 +3329,16 @@ static void smack_audit_rule_free(void *vrule)
- #endif /* CONFIG_AUDIT */
- 
- /**
-+ * smack_ismaclabel - check if xattr @name references a smack MAC label
-+ * @name: Full xattr name to check.
-+ */
-+static int smack_ismaclabel(const char *name)
-+{
-+	return (strcmp(name, XATTR_SMACK_SUFFIX) == 0);
-+}
-+
-+
-+/**
-  * smack_secid_to_secctx - return the smack label for a secid
-  * @secid: incoming integer
-  * @secdata: destination
-@@ -3524,6 +3534,7 @@ struct security_operations smack_ops = {
- 	.audit_rule_free =		smack_audit_rule_free,
- #endif /* CONFIG_AUDIT */
- 
-+	.ismaclabel =			smack_ismaclabel,
- 	.secid_to_secctx = 		smack_secid_to_secctx,
- 	.secctx_to_secid = 		smack_secctx_to_secid,
- 	.release_secctx = 		smack_release_secctx,
 -- 
-1.8.1.4
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
