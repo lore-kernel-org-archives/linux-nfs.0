@@ -1,105 +1,136 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:53985 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:23662 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758783Ab3CDWhR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Mar 2013 17:37:17 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jan Engelhardt <jengelh@inai.de>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Inconsistent error codes between NFSv4 and v3 on network issues
-Date: Mon, 4 Mar 2013 22:37:15 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9286AF064@sacexcmbx05-prd.hq.netapp.com>
-References: <alpine.LNX.2.01.1303011240350.11154@nerf07.vanv.qr>
-	 <6AADB1AD-6FB9-42AD-8BF2-6B0B706927E5@oracle.com>
-	 <alpine.LNX.2.01.1303041957050.18372@nerf07.vanv.qr>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9286ADBED@sacexcmbx05-prd.hq.netapp.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9286ADBED@sacexcmbx05-prd.hq.netapp.com>
-Content-Type: multipart/mixed;
-	boundary="_002_4FA345DA4F4AE44899BD2B03EEEC2FA9286AF064sacexcmbx05prdh_"
-MIME-Version: 1.0
+	id S1753567Ab3CFSXt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 6 Mar 2013 13:23:49 -0500
+Date: Wed, 6 Mar 2013 13:23:22 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Mandeep Singh Baines <msb@chromium.org>
+Cc: Ingo Molnar <mingo@kernel.org>, Tejun Heo <tj@kernel.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Oleg Nesterov <oleg@redhat.com>, Ming Lei <ming.lei@canonical.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>,
+        Thomas Gleixner <tglx@linutronix.de>
+Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
+Message-ID: <20130306132322.52f47d7b@tlielax.poochiereds.net>
+In-Reply-To: <CACBanvo77MrvcWgVJqFjjj-7wL6BHxaoQcQ5YRfjeCtjaOeqAw@mail.gmail.com>
+References: <20130304205307.GA13527@redhat.com>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA9286AEEB0@sacexcmbx05-prd.hq.netapp.com>
+	<20130305082308.6607d4db@tlielax.poochiereds.net>
+	<20130305174648.GF12795@htj.dyndns.org>
+	<20130305174954.GG12795@htj.dyndns.org>
+	<20130305231110.GK15816@fieldses.org>
+	<CACBanvo+JDCFVRQeTQwnwRRxr8bdqxdsgeEr8fqgJhGQJEEQ-Q@mail.gmail.com>
+	<20130306010507.GL15816@fieldses.org>
+	<20130306011623.GG1227@htj.dyndns.org>
+	<CACBanvqVpi45TVNGXgXXO0BCSRuPEDsiNuHj0OBsvgr2UXZfsg@mail.gmail.com>
+	<20130306090914.GA6030@gmail.com>
+	<20130306070631.0f326014@tlielax.poochiereds.net>
+	<CACBanvo77MrvcWgVJqFjjj-7wL6BHxaoQcQ5YRfjeCtjaOeqAw@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---_002_4FA345DA4F4AE44899BD2B03EEEC2FA9286AF064sacexcmbx05prdh_
-Content-Type: text/plain; charset="iso-8859-1"
-Content-ID: <D8CCE9204EE1554084717FFE8A247814@tahoe.netapp.com>
-Content-Transfer-Encoding: quoted-printable
+On Wed, 6 Mar 2013 07:59:01 -0800
+Mandeep Singh Baines <msb@chromium.org> wrote:
 
-On Mon, 2013-03-04 at 20:43 +0000, Myklebust, Trond wrote:
-> On Mon, 2013-03-04 at 20:10 +0100, Jan Engelhardt wrote:
-> > Just nuke your default route, and it should be easily reproducible.
-> >=20
->=20
-> The problem is that call_connect_status() is converting that ENETUNREACH
-> into a EIO. We shouldn't be doing that, but should leave it up to the
-> caller (i.e. the NFS layer) to perform that kind of mapping.
+> On Wed, Mar 6, 2013 at 4:06 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> > On Wed, 6 Mar 2013 10:09:14 +0100
+> > Ingo Molnar <mingo@kernel.org> wrote:
+> >
+> >>
+> >> * Mandeep Singh Baines <msb@chromium.org> wrote:
+> >>
+> >> > On Tue, Mar 5, 2013 at 5:16 PM, Tejun Heo <tj@kernel.org> wrote:
+> >> > > On Tue, Mar 05, 2013 at 08:05:07PM -0500, J. Bruce Fields wrote:
+> >> > >> If it's really just a 2-line patch to try_to_freeze(), could it just be
+> >> > >> carried out-of-tree by people that are specifically working on tracking
+> >> > >> down these problems?
+> >> > >>
+> >> > >> But I don't have strong feelings about it--as long as it doesn't result
+> >> > >> in the same known issues getting reported again and again....
+> >> > >
+> >> > > Agreed, I don't think a Kconfig option is justified for this.  If this
+> >> > > is really important, annotate broken paths so that it doesn't trigger
+> >> > > spuriously; otherwise, please just remove it.
+> >> > >
+> >> >
+> >> > Fair enough. Let's revert then. I'll rework to use a lockdep annotation.
+> >> >
+> >> > Maybe, add a new lockdep API:
+> >> >
+> >> > lockdep_set_held_during_freeze(lock);
+> >> >
+> >> > Then when we do the check, ignore any locks that set this bit.
+> >> >
+> >> > Ingo, does this seem like a reasonable design to you?
+> >>
+> >> Am I reading the discussion correctly that the new warnings show REAL potential
+> >> deadlock scenarios, which can hit real users and can lock their box up in entirely
+> >> real usage scenarios?
+> >>
+> >> If yes then guys we _really_ don't want to use lockdep annotation to _HIDE_ bugs.
+> >> We typically use them to teach lockdep about things it does not know about.
+> >>
+> >> How about fixing the deadlocks instead?
+> >>
+> >
+> > I do see how the freezer might fail to suspend certain tasks, but I
+> > don't see the deadlock scenario here in the NFS/RPC case. Can someone
+> > outline a situation where this might end up deadlocking? If not, then
+> > I'd be inclined to say that while this may be a problem, the warning is
+> > excessive...
+> >
+> 
+> In general, holding a lock and freezing can cause a deadlock if:
+> 
+> 1) you froze via the cgroup_freezer subsystem and a task in another
+> cgroup tried to acquire the same lock
+> 2) the lock was needed later is suspend/hibernate. For example, if the
+> lock was needed in dpm_suspend by one of the device callbacks. For
+> hibernate, you also need to worry about any locks that need to be
+> acquired in order to write to the swap device.
+> 3) another freezing task blocked on this lock and held other locks
+> needed later in suspend. If that task were skipped by the freezer, you
+> would deadlock
+> 
+> You will block/prevent suspend if:
+> 
+> 4) another freezing task blocked on this lock and was unable to freeze
+> 
+> I think 1) and 4) can happen for the NFS/RPC case. Case 1) requires
+> cgroup freezer. Case 4) while not causing a deadlock could prevent
+> your laptop/phone from sleeping and end up burning all your battery.
+> If suspend is initiated via lid close you won't even know about the
+> failure.
+> 
 
-Could you please check if the attached patch helps.
---=20
-Trond Myklebust
-Linux NFS client maintainer
+We're aware of #4. That was the intent of adding try_to_freeze() into
+this codepath in the first place. It's not a great solution for obvious
+reasons, but we don't have another at the moment.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+For #1 I'm not sure what to do. I'm that familiar with cgroups or how
+the freezer works.
 
---_002_4FA345DA4F4AE44899BD2B03EEEC2FA9286AF064sacexcmbx05prdh_
-Content-Type: text/x-patch;
-	name="0001-SUNRPC-Report-network-connection-errors-correctly-fo.patch"
-Content-Description: 0001-SUNRPC-Report-network-connection-errors-correctly-fo.patch
-Content-Disposition: attachment;
-	filename="0001-SUNRPC-Report-network-connection-errors-correctly-fo.patch";
-	size=2560; creation-date="Mon, 04 Mar 2013 22:37:15 GMT";
-	modification-date="Mon, 04 Mar 2013 22:37:15 GMT"
-Content-ID: <213495B8EE1399498A1C3380486AED87@tahoe.netapp.com>
-Content-Transfer-Encoding: base64
+The bottom line is that we have a choice -- we can either rip out this
+new lockdep warning, or rip out the code that causes it to fire.
 
-RnJvbSA3MjRiZjdhNzFiNDQxNDU4MTFhMWZlYzNiMjBhMjZiZDFlZGFlNTFiIE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
-YXBwLmNvbT4NCkRhdGU6IE1vbiwgNCBNYXIgMjAxMyAxNzoyOTozMyAtMDUwMA0KU3ViamVjdDog
-W1BBVENIXSBTVU5SUEM6IFJlcG9ydCBuZXR3b3JrL2Nvbm5lY3Rpb24gZXJyb3JzIGNvcnJlY3Rs
-eSBmb3INCiBTT0ZUQ09OTiBycGMgdGFza3MNCg0KSW4gdGhlIGNhc2Ugb2YgYSBTT0ZUQ09OTiBy
-cGMgdGFzaywgd2UgcmVhbGx5IHdhbnQgdG8gZW5zdXJlIHRoYXQgaXQNCnJlcG9ydHMgZXJyb3Jz
-IGxpa2UgRU5FVFVOUkVBQ0ggYmFjayB0byB0aGUgY2FsbGVyLiBDdXJyZW50bHksIG9ubHkNCnNv
-bWUgb2YgdGhlc2UgZXJyb3JzIGFyZSBiZWluZyByZXBvcnRlZCBiYWNrIChjb25uZWN0IGVycm9y
-cyBhcmUgbm90KSwNCmFuZCB0aGV5IGFyZSBiZWluZyBjb252ZXJ0ZWQgYnkgdGhlIFJQQyBsYXll
-ciBpbnRvIEVJTy4NCg0KUmVwb3J0ZWQtYnk6IEphbiBFbmdlbGhhcmR0IDxqZW5nZWxoQGluYWku
-ZGU+DQpTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBuZXRh
-cHAuY29tPg0KLS0tDQogbmV0L3N1bnJwYy9jbG50LmMgICAgIHwgMjQgKysrKysrKysrKysrKyst
-LS0tLS0tLS0tDQogbmV0L3N1bnJwYy94cHJ0c29jay5jIHwgIDggKysrKy0tLS0NCiAyIGZpbGVz
-IGNoYW5nZWQsIDE4IGluc2VydGlvbnMoKyksIDE0IGRlbGV0aW9ucygtKQ0KDQpkaWZmIC0tZ2l0
-IGEvbmV0L3N1bnJwYy9jbG50LmMgYi9uZXQvc3VucnBjL2NsbnQuYw0KaW5kZXggZGNjNDQ2ZS4u
-Yjk1YTBhMiAxMDA2NDQNCi0tLSBhL25ldC9zdW5ycGMvY2xudC5jDQorKysgYi9uZXQvc3VucnBj
-L2NsbnQuYw0KQEAgLTE2NDQsMjIgKzE2NDQsMjYgQEAgY2FsbF9jb25uZWN0X3N0YXR1cyhzdHJ1
-Y3QgcnBjX3Rhc2sgKnRhc2spDQogDQogCWRwcmludF9zdGF0dXModGFzayk7DQogDQotCXRhc2st
-PnRrX3N0YXR1cyA9IDA7DQotCWlmIChzdGF0dXMgPj0gMCB8fCBzdGF0dXMgPT0gLUVBR0FJTikg
-ew0KLQkJY2xudC0+Y2xfc3RhdHMtPm5ldHJlY29ubisrOw0KLQkJdGFzay0+dGtfYWN0aW9uID0g
-Y2FsbF90cmFuc21pdDsNCi0JCXJldHVybjsNCi0JfQ0KLQ0KIAl0cmFjZV9ycGNfY29ubmVjdF9z
-dGF0dXModGFzaywgc3RhdHVzKTsNCiAJc3dpdGNoIChzdGF0dXMpIHsNCiAJCS8qIGlmIHNvZnQg
-bW91bnRlZCwgdGVzdCBpZiB3ZSd2ZSB0aW1lZCBvdXQgKi8NCiAJY2FzZSAtRVRJTUVET1VUOg0K
-IAkJdGFzay0+dGtfYWN0aW9uID0gY2FsbF90aW1lb3V0Ow0KLQkJYnJlYWs7DQotCWRlZmF1bHQ6
-DQotCQlycGNfZXhpdCh0YXNrLCAtRUlPKTsNCisJCXJldHVybjsNCisJY2FzZSAtRUNPTk5SRUZV
-U0VEOg0KKwljYXNlIC1FQ09OTlJFU0VUOg0KKwljYXNlIC1FTkVUVU5SRUFDSDoNCisJCWlmIChS
-UENfSVNfU09GVENPTk4odGFzaykpDQorCQkJYnJlYWs7DQorCQkvKiByZXRyeSB3aXRoIGV4aXN0
-aW5nIHNvY2tldCwgYWZ0ZXIgYSBkZWxheSAqLw0KKwljYXNlIDA6DQorCWNhc2UgLUVBR0FJTjoN
-CisJCXRhc2stPnRrX3N0YXR1cyA9IDA7DQorCQljbG50LT5jbF9zdGF0cy0+bmV0cmVjb25uKys7
-DQorCQl0YXNrLT50a19hY3Rpb24gPSBjYWxsX3RyYW5zbWl0Ow0KKwkJcmV0dXJuOw0KIAl9DQor
-CXJwY19leGl0KHRhc2ssIHN0YXR1cyk7DQogfQ0KIA0KIC8qDQpkaWZmIC0tZ2l0IGEvbmV0L3N1
-bnJwYy94cHJ0c29jay5jIGIvbmV0L3N1bnJwYy94cHJ0c29jay5jDQppbmRleCBjMWQ4NDc2Li4z
-MDgxNjIwIDEwMDY0NA0KLS0tIGEvbmV0L3N1bnJwYy94cHJ0c29jay5jDQorKysgYi9uZXQvc3Vu
-cnBjL3hwcnRzb2NrLmMNCkBAIC0yMjAyLDEwICsyMjAyLDYgQEAgc3RhdGljIHZvaWQgeHNfdGNw
-X3NldHVwX3NvY2tldChzdHJ1Y3Qgd29ya19zdHJ1Y3QgKndvcmspDQogCQkgKi8NCiAJCXhzX3Rj
-cF9mb3JjZV9jbG9zZSh4cHJ0KTsNCiAJCWJyZWFrOw0KLQljYXNlIC1FQ09OTlJFRlVTRUQ6DQot
-CWNhc2UgLUVDT05OUkVTRVQ6DQotCWNhc2UgLUVORVRVTlJFQUNIOg0KLQkJLyogcmV0cnkgd2l0
-aCBleGlzdGluZyBzb2NrZXQsIGFmdGVyIGEgZGVsYXkgKi8NCiAJY2FzZSAwOg0KIAljYXNlIC1F
-SU5QUk9HUkVTUzoNCiAJY2FzZSAtRUFMUkVBRFk6DQpAQCAtMjIxNiw2ICsyMjEyLDEwIEBAIHN0
-YXRpYyB2b2lkIHhzX3RjcF9zZXR1cF9zb2NrZXQoc3RydWN0IHdvcmtfc3RydWN0ICp3b3JrKQ0K
-IAkJLyogSGFwcGVucywgZm9yIGluc3RhbmNlLCBpZiB0aGUgdXNlciBzcGVjaWZpZWQgYSBsaW5r
-DQogCQkgKiBsb2NhbCBJUHY2IGFkZHJlc3Mgd2l0aG91dCBhIHNjb3BlLWlkLg0KIAkJICovDQor
-CWNhc2UgLUVDT05OUkVGVVNFRDoNCisJY2FzZSAtRUNPTk5SRVNFVDoNCisJY2FzZSAtRU5FVFVO
-UkVBQ0g6DQorCQkvKiByZXRyeSB3aXRoIGV4aXN0aW5nIHNvY2tldCwgYWZ0ZXIgYSBkZWxheSAq
-Lw0KIAkJZ290byBvdXQ7DQogCX0NCiBvdXRfZWFnYWluOg0KLS0gDQoxLjguMS40DQoNCg==
+If we rip out the warning we may miss some legit cases where we might
+possibly have hit a deadlock.
 
---_002_4FA345DA4F4AE44899BD2B03EEEC2FA9286AF064sacexcmbx05prdh_--
+If we rip out the code that causes it to fire, then we exacerbate the
+#4 problem above. That will effectively make it so that you can't
+suspend the host whenever NFS is doing anything moderately active.
+
+Ripping out the warning seems like the best course of action in the
+near term, but it's not my call...
+
+-- 
+Jeff Layton <jlayton@redhat.com>
