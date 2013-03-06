@@ -1,74 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from youngberry.canonical.com ([91.189.89.112]:58680 "EHLO
-	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757041Ab3CDPdv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Mar 2013 10:33:51 -0500
+Received: from relay.parallels.com ([195.214.232.42]:41436 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750788Ab3CFFH4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Mar 2013 00:07:56 -0500
+Message-ID: <5136CEEB.5090505@parallels.com>
+Date: Wed, 6 Mar 2013 09:06:51 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-In-Reply-To: <20130304100432.5c7ea704@tlielax.poochiereds.net>
-References: <CACVXFVMKN6aeCvJcn7dyuonJYJDfYxWeW5KE6gfKRKJKFj2M4A@mail.gmail.com>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA9286AD113@sacexcmbx05-prd.hq.netapp.com>
-	<CACVXFVM5VhU_ZgYr1KxERY7DXxMQpkWoiTyjyar91Hz=vU4-ug@mail.gmail.com>
-	<20130304100432.5c7ea704@tlielax.poochiereds.net>
-Date: Mon, 4 Mar 2013 23:33:49 +0800
-Message-ID: <CACVXFVPvTnfH98KqAQxDzMi5Pbf1fbi5HEGb=ggWWg4FX_4G=g@mail.gmail.com>
-Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
-From: Ming Lei <ming.lei@canonical.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>, Ben Chan <benchan@chromium.org>,
-        Oleg Nesterov <oleg@redhat.com>, Ingo Molnar <mingo@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>, <Trond.Myklebust@netapp.com>,
+        <linux-kernel@vger.kernel.org>, <devel@openvz.org>
+Subject: Re: [PATCH] nfsd: check client tracker initialization result
+References: <20130228120959.6764.17787.stgit@localhost.localdomain> <20130305212001.GD15816@fieldses.org>
+In-Reply-To: <20130305212001.GD15816@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
-
-CC guys who introduced the lockdep change.
-
-On Mon, Mar 4, 2013 at 11:04 PM, Jeff Layton <jlayton@redhat.com> wrote:
-
+06.03.2013 01:20, J. Bruce Fields пишет:
+> On Thu, Feb 28, 2013 at 03:09:59PM +0300, Stanislav Kinsbursky wrote:
+>> Function nfsd4_client_tracking_init() can return error.
 >
-> I don't get it -- why is it bad to hold a lock across a freeze event?
-
-At least this may deadlock another mount.nfs during freezing, :-)
-
-See detailed explanation in the commit log:
-
-commit 6aa9707099c4b25700940eb3d016f16c4434360d
-Author: Mandeep Singh Baines <msb@chromium.org>
-Date:   Wed Feb 27 17:03:18 2013 -0800
-
-    lockdep: check that no locks held at freeze time
-
-    We shouldn't try_to_freeze if locks are held.  Holding a lock can cause a
-    deadlock if the lock is later acquired in the suspend or hibernate path
-    (e.g.  by dpm).  Holding a lock can also cause a deadlock in the case of
-    cgroup_freezer if a lock is held inside a frozen cgroup that is later
-    acquired by a process outside that group.
-
-> The problem that we have is that we must often hold locks across
-> long-running syscalls (consider something like sync()). In the event
-> that there is a lot of dirty data, it might take a long time for that
-> to finish.
+> Before, I think that we the nfsd4_client_* functions just became no-ops
+> in this case.  With the result that no client records get written, and
+> so clients are unable to reclaim on the next boot.
 >
-> There's also the problem that it's not uncommon for the freezer to take
-> down userland processes (such as NetworkManager) which in turn take
-> down network interfaces that we need to talk to the server.
+> Which is annoying, but possibly not as annoying as your server
+> completely refusing to start.
 >
-> The fix from a couple of years ago (which admittedly needs more work)
-> was to allow the freezing of tasks that are waiting on a reply from the
-> server. That sort of necessitates that we are allowed to hold our locks
-> across the try_to_freeze call though.
+> It's arguably more helpful in the long run to fail immediately when we
+> recognize reboot recovery isn't going to work.  But in practice this may
+> mean people that never knew they had a problem suddenly have servers
+> that don't start at all.
 >
-> If that's no longer allowed then we're back to square one with laptops
-> that fail to suspend when they have NFS mounts. Is there some other
-> solution we should pursue instead?
+> So I'm inclined to be more forgiving and leave this as it is.  But maybe
+> something like a warning printk would be appropriate.
+>
+
+Ok then.
+I'll add the warning anf convert the function to be "void" rather then "int".
+Thanks!
+
+> --b.
+>
+>>
+>> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+>> ---
+>>   fs/nfsd/nfs4state.c |    9 ++++++++-
+>>   1 files changed, 8 insertions(+), 1 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index f194f86..fc4b81b 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -69,6 +69,7 @@ static u64 current_sessionid = 1;
+>>
+>>   /* forward declarations */
+>>   static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
+>> +void nfs4_state_shutdown_net(struct net *net);
+>>
+>>   /* Locking: */
+>>
+>> @@ -4942,7 +4943,9 @@ nfs4_state_start_net(struct net *net)
+>>   	ret = nfs4_state_create_net(net);
+>>   	if (ret)
+>>   		return ret;
+>> -	nfsd4_client_tracking_init(net);
+>> +	ret = nfsd4_client_tracking_init(net);
+>> +	if (ret)
+>> +		goto out_tracking;
+>>   	nn->boot_time = get_seconds();
+>>   	locks_start_grace(net, &nn->nfsd4_manager);
+>>   	nn->grace_ended = false;
+>> @@ -4950,6 +4953,10 @@ nfs4_state_start_net(struct net *net)
+>>   	       nn->nfsd4_grace, net);
+>>   	queue_delayed_work(laundry_wq, &nn->laundromat_work, nn->nfsd4_grace * HZ);
+>>   	return 0;
+>> +
+>> +out_tracking:
+>> +	nfs4_state_destroy_net(net);
+>> +	return ret;
+>>   }
+>>
+>>   /* initialization to perform when the nfsd service is started: */
+>>
 
 
-Thanks,
---
-Ming Lei
+-- 
+Best regards,
+Stanislav Kinsbursky
