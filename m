@@ -1,110 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:61005 "EHLO mx1.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:33885 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757636Ab3CUONH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Mar 2013 10:13:07 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Benny Halevy <bhalevy@tonian.com>, Boaz Harrosh <bharrosh@panasas.com>,
-        Peng Tao <bergwolf@gmail.com>
-Subject: [PATCH v2 3/3] NFSv4.1: Add a helper pnfs_commit_and_return_layout
-Date: Thu, 21 Mar 2013 10:13:01 -0400
-Message-Id: <1363875181-7147-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1363875181-7147-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1363875181-7147-1-git-send-email-Trond.Myklebust@netapp.com>
- <1363875181-7147-2-git-send-email-Trond.Myklebust@netapp.com>
+	id S1752175Ab3CFBFQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Mar 2013 20:05:16 -0500
+Date: Tue, 5 Mar 2013 20:05:07 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mandeep Singh Baines <msb@chromium.org>
+Cc: Tejun Heo <tj@kernel.org>, Jeff Layton <jlayton@redhat.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Oleg Nesterov <oleg@redhat.com>, Ming Lei <ming.lei@canonical.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Ingo Molnar <mingo@redhat.com>
+Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
+Message-ID: <20130306010507.GL15816@fieldses.org>
+References: <4FA345DA4F4AE44899BD2B03EEEC2FA9286AD113@sacexcmbx05-prd.hq.netapp.com>
+ <20130304092310.1d21100c@tlielax.poochiereds.net>
+ <CACBanvrc0orXGZ1v+gKHtVPKWYKGEFx46dwoDCjTU78+nPtZyg@mail.gmail.com>
+ <20130304205307.GA13527@redhat.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9286AEEB0@sacexcmbx05-prd.hq.netapp.com>
+ <20130305082308.6607d4db@tlielax.poochiereds.net>
+ <20130305174648.GF12795@htj.dyndns.org>
+ <20130305174954.GG12795@htj.dyndns.org>
+ <20130305231110.GK15816@fieldses.org>
+ <CACBanvo+JDCFVRQeTQwnwRRxr8bdqxdsgeEr8fqgJhGQJEEQ-Q@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CACBanvo+JDCFVRQeTQwnwRRxr8bdqxdsgeEr8fqgJhGQJEEQ-Q@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In order to be able to safely return the layout in nfs4_proc_setattr,
-we need to block new uses of the layout, wait for all outstanding
-users of the layout to complete, commit the layout and then return it.
+On Tue, Mar 05, 2013 at 04:59:00PM -0800, Mandeep Singh Baines wrote:
+> On Tue, Mar 5, 2013 at 3:11 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > On Tue, Mar 05, 2013 at 09:49:54AM -0800, Tejun Heo wrote:
+> >> On Tue, Mar 05, 2013 at 09:46:48AM -0800, Tejun Heo wrote:
+> >> > So, I think this is why implementing freezer as a separate blocking
+> >> > mechanism isn't such a good idea.  We're effectively introducing a
+> >> > completely new waiting state to a lot of unsuspecting paths which
+> >> > generates a lot of risks and eventually extra complexity to work
+> >> > around those.  I think we really should update freezer to re-use the
+> >> > blocking points we already have - the ones used for signal delivery
+> >> > and ptracing.  That way, other code paths don't have to worry about an
+> >> > extra stop state and we can confine most complexities to freezer
+> >> > proper.
+> >>
+> >> Also, consolidating those wait states means that we can solve the
+> >> event-to-response latency problem for all three cases - signal, ptrace
+> >> and freezer, rather than adding separate backing-out strategy for
+> >> freezer.
+> >
+> > Meanwhile, as none of this sounds likely to be done this time
+> > around--are we backing out the new lockdep warnings?
+> >
+> > --b.
+> 
+> What if we hide it behind a Kconfig? Its finding real bugs.
+> 
+> http://lkml.org/lkml/2013/3/5/583
 
-This patch adds a helper in order to do all this safely.
+If it's really just a 2-line patch to try_to_freeze(), could it just be
+carried out-of-tree by people that are specifically working on tracking
+down these problems?
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/nfs/nfs4proc.c |  2 +-
- fs/nfs/pnfs.c     | 27 +++++++++++++++++++++++++++
- fs/nfs/pnfs.h     |  6 ++++++
- 3 files changed, 34 insertions(+), 1 deletion(-)
+But I don't have strong feelings about it--as long as it doesn't result
+in the same known issues getting reported again and again....
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6ccdd4f..26431cf 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2632,7 +2632,7 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- 	int status;
- 
- 	if (pnfs_ld_layoutret_on_setattr(inode))
--		pnfs_return_layout(inode);
-+		pnfs_commit_and_return_layout(inode);
- 
- 	nfs_fattr_init(fattr);
- 	
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index b9d0682..2b5d98e 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -866,6 +866,33 @@ out:
- }
- EXPORT_SYMBOL_GPL(_pnfs_return_layout);
- 
-+int
-+pnfs_commit_and_return_layout(struct inode *inode)
-+{
-+	struct pnfs_layout_hdr *lo;
-+	int ret;
-+
-+	spin_lock(&inode->i_lock);
-+	lo = NFS_I(inode)->layout;
-+	if (lo == NULL) {
-+		spin_unlock(&inode->i_lock);
-+		return 0;
-+	}
-+	pnfs_get_layout_hdr(lo);
-+	/* Block new layoutgets and read/write to ds */
-+	lo->plh_block_lgets++;
-+	spin_unlock(&inode->i_lock);
-+	filemap_fdatawait(inode->i_mapping);
-+	ret = pnfs_layoutcommit_inode(inode, true);
-+	if (ret == 0)
-+		ret = _pnfs_return_layout(inode);
-+	spin_lock(&inode->i_lock);
-+	lo->plh_block_lgets--;
-+	spin_unlock(&inode->i_lock);
-+	pnfs_put_layout_hdr(lo);
-+	return ret;
-+}
-+
- bool pnfs_roc(struct inode *ino)
- {
- 	struct pnfs_layout_hdr *lo;
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 94ba804..f5f8a47 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -219,6 +219,7 @@ void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
- void pnfs_cleanup_layoutcommit(struct nfs4_layoutcommit_data *data);
- int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
- int _pnfs_return_layout(struct inode *);
-+int pnfs_commit_and_return_layout(struct inode *);
- void pnfs_ld_write_done(struct nfs_write_data *);
- void pnfs_ld_read_done(struct nfs_read_data *);
- struct pnfs_layout_segment *pnfs_update_layout(struct inode *ino,
-@@ -407,6 +408,11 @@ static inline int pnfs_return_layout(struct inode *ino)
- 	return 0;
- }
- 
-+static inline int pnfs_commit_and_return_layout(struct inode *inode)
-+{
-+	return 0;
-+}
-+
- static inline bool
- pnfs_ld_layoutret_on_setattr(struct inode *inode)
- {
--- 
-1.8.1.4
-
+--b.
