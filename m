@@ -1,70 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:61854 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932634Ab3CDWIv convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Mar 2013 17:08:51 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Oleg Nesterov <oleg@redhat.com>
-CC: Mandeep Singh Baines <msb@chromium.org>, Jeff Layton <jlayton@redhat.com>,
-        Ming Lei <ming.lei@canonical.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
+Received: from mail-oa0-f51.google.com ([209.85.219.51]:34473 "EHLO
+	mail-oa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751087Ab3CFA7B (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Mar 2013 19:59:01 -0500
+Received: by mail-oa0-f51.google.com with SMTP id h2so11946705oag.10
+        for <linux-nfs@vger.kernel.org>; Tue, 05 Mar 2013 16:59:00 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <20130305231110.GK15816@fieldses.org>
+References: <CACVXFVMKN6aeCvJcn7dyuonJYJDfYxWeW5KE6gfKRKJKFj2M4A@mail.gmail.com>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA9286AD113@sacexcmbx05-prd.hq.netapp.com>
+	<20130304092310.1d21100c@tlielax.poochiereds.net>
+	<CACBanvrc0orXGZ1v+gKHtVPKWYKGEFx46dwoDCjTU78+nPtZyg@mail.gmail.com>
+	<20130304205307.GA13527@redhat.com>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA9286AEEB0@sacexcmbx05-prd.hq.netapp.com>
+	<20130305082308.6607d4db@tlielax.poochiereds.net>
+	<20130305174648.GF12795@htj.dyndns.org>
+	<20130305174954.GG12795@htj.dyndns.org>
+	<20130305231110.GK15816@fieldses.org>
+Date: Tue, 5 Mar 2013 16:59:00 -0800
+Message-ID: <CACBanvo+JDCFVRQeTQwnwRRxr8bdqxdsgeEr8fqgJhGQJEEQ-Q@mail.gmail.com>
+Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
+From: Mandeep Singh Baines <msb@chromium.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Tejun Heo <tj@kernel.org>, Jeff Layton <jlayton@redhat.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Oleg Nesterov <oleg@redhat.com>, Ming Lei <ming.lei@canonical.com>,
         Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Andrew Morton <akpm@linux-foundation.org>, Tejun Heo <tj@kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
         Ingo Molnar <mingo@redhat.com>
-Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
-Date: Mon, 4 Mar 2013 22:08:34 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9286AEEB0@sacexcmbx05-prd.hq.netapp.com>
-References: <CACVXFVMKN6aeCvJcn7dyuonJYJDfYxWeW5KE6gfKRKJKFj2M4A@mail.gmail.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9286AD113@sacexcmbx05-prd.hq.netapp.com>
-	 <20130304092310.1d21100c@tlielax.poochiereds.net>
-	 <CACBanvrc0orXGZ1v+gKHtVPKWYKGEFx46dwoDCjTU78+nPtZyg@mail.gmail.com>
-	 <20130304205307.GA13527@redhat.com>
-In-Reply-To: <20130304205307.GA13527@redhat.com>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2013-03-04 at 21:53 +0100, Oleg Nesterov wrote:
-> On 03/04, Mandeep Singh Baines wrote:
-> >
-> > The problem is that freezer_count() calls try_to_freeze(). In this
-> > case, try_to_freeze() is not really adding any value.
-> 
-> Well, I tend to agree.
-> 
-> If a task calls __refrigerator() holding a lock which another freezable
-> task can wait for, this is not freezer-friendly.
-> 
-> freezable_schedule/freezer_do_not_count/etc not only means "I won't be
-> active if freezing()", it should also mean "I won't block suspend/etc".
+On Tue, Mar 5, 2013 at 3:11 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Tue, Mar 05, 2013 at 09:49:54AM -0800, Tejun Heo wrote:
+>> On Tue, Mar 05, 2013 at 09:46:48AM -0800, Tejun Heo wrote:
+>> > So, I think this is why implementing freezer as a separate blocking
+>> > mechanism isn't such a good idea.  We're effectively introducing a
+>> > completely new waiting state to a lot of unsuspecting paths which
+>> > generates a lot of risks and eventually extra complexity to work
+>> > around those.  I think we really should update freezer to re-use the
+>> > blocking points we already have - the ones used for signal delivery
+>> > and ptracing.  That way, other code paths don't have to worry about an
+>> > extra stop state and we can confine most complexities to freezer
+>> > proper.
+>>
+>> Also, consolidating those wait states means that we can solve the
+>> event-to-response latency problem for all three cases - signal, ptrace
+>> and freezer, rather than adding separate backing-out strategy for
+>> freezer.
+>
+> Meanwhile, as none of this sounds likely to be done this time
+> around--are we backing out the new lockdep warnings?
+>
+> --b.
 
-If suspend for some reason requires a re-entrant mount, then yes, I can
-see how it might be a problem that we're holding a mount-related lock.
-The question is why is that necessary?
+What if we hide it behind a Kconfig? Its finding real bugs.
 
-> OTOH, I understand that probably it is not trivial to change this code
-> to make it freezer-friendly. But at least  I disagree with "push your
-> problems onto others".
-
-That code can't be made freezer-friendly if it isn't allowed to hold
-basic filesystem-related locks across RPC calls. A number of those RPC
-calls do things that need to be protected by VFS or MM-level locks.
-i.e.: lookups, file creation/deletion, page fault in/out, ...
- 
-IOW: the problem would need to be solved differently, possibly by adding
-a new FIFREEZE-like call to allow the filesystem to quiesce itself
-_before_ NetworkManager pulls the rug out from underneath it. There
-would still be plenty of corner cases to keep people entertained (e.g.
-the server goes down before the quiesce call is invoked) but at least
-the top 90% of cases would be solved.
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+http://lkml.org/lkml/2013/3/5/583
