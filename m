@@ -1,99 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34848 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754636Ab3C2Okx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Mar 2013 10:40:53 -0400
-Date: Fri, 29 Mar 2013 10:40:50 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Dave Quigley <dpquigl@davequigley.com>
-Cc: Steve Dickson <SteveD@redhat.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 13/14] NFSD: Server implementation of MAC Labeling
-Message-ID: <20130329144050.GB22307@fieldses.org>
-References: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
- <1364478845-29796-14-git-send-email-SteveD@redhat.com>
- <20130328161444.GF7080@fieldses.org>
- <51550C03.1000107@davequigley.com>
+Received: from mail-ea0-f182.google.com ([209.85.215.182]:61663 "EHLO
+	mail-ea0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751008Ab3CGMDK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Mar 2013 07:03:10 -0500
+Message-ID: <513881FA.5090601@gmail.com>
+Date: Thu, 07 Mar 2013 13:03:06 +0100
+From: Maarten Lankhorst <m.b.lankhorst@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <51550C03.1000107@davequigley.com>
+To: Mandeep Singh Baines <msb@chromium.org>
+CC: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Tejun Heo <tj@kernel.org>, Jeff Layton <jlayton@redhat.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Oleg Nesterov <oleg@redhat.com>, Ming Lei <ming.lei@canonical.com>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Ingo Molnar <mingo@redhat.com>
+Subject: Re: [PATCH] lockdep: make lock held while freezing check optional
+References: <20130305231110.GK15816@fieldses.org> <1362529819-19076-1-git-send-email-msb@chromium.org>
+In-Reply-To: <1362529819-19076-1-git-send-email-msb@chromium.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 28, 2013 at 11:35:31PM -0400, Dave Quigley wrote:
-> On 3/28/2013 12:14 PM, J. Bruce Fields wrote:
-> >On Thu, Mar 28, 2013 at 09:54:04AM -0400, Steve Dickson wrote:
-> >>From: David Quigley <dpquigl@davequigley.com>
-> >>
-> >>This patch adds the ability to encode and decode file labels on the server for
-> >>the purpose of sending them to the client and also to process label change
-> >>requests from the client.
-> >>
-> >>Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-> >>Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-> >>Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-> >>Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
-> >>---
-> >>  fs/nfsd/nfs4proc.c |  41 +++++++++++++++++++
-> >>  fs/nfsd/nfs4xdr.c  | 116 ++++++++++++++++++++++++++++++++++++++++++++++++++---
-> >>  fs/nfsd/nfsd.h     |   6 ++-
-> >>  fs/nfsd/vfs.c      |  29 ++++++++++++++
-> >>  fs/nfsd/vfs.h      |   2 +
-> >>  fs/nfsd/xdr4.h     |   3 ++
-> >>  6 files changed, 191 insertions(+), 6 deletions(-)
-> >>
-> >>diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> >>index ae73175..bb17589 100644
-> >>--- a/fs/nfsd/nfs4proc.c
-> >>+++ b/fs/nfsd/nfs4proc.c
-> >>@@ -42,6 +42,36 @@
-> >>  #include "current_stateid.h"
-> >>  #include "netns.h"
-> >>
-> >>+#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
-> >>+#include <linux/security.h>
-> >>+
-> >>+static inline void
-> >>+nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct nfs4_label *label, u32 *bmval)
-> >>+{
-> >>+	struct inode *inode = resfh->fh_dentry->d_inode;
-> >>+	int status;
-> >>+
-> >>+	mutex_lock(&inode->i_mutex);
-> >>+	status = security_inode_setsecctx(resfh->fh_dentry,
-> >>+		label->label, label->len);
-> >>+	mutex_unlock(&inode->i_mutex);
-> >>+
-> >>+	if (status)
-> >>+		/*
-> >>+		 * We should probably fail the whole open at this point,
-> >>+		 * but we've already created or opened the file, so it's
-> >>+		 * too late; So this seems the least of evils:
-> >>+		 */
-> >>+		bmval[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
-> >
-> >Is there any way to avoid this?
-> >
-> >How does the vfs open code handle this?  It has to be able to set a
-> >security contexts atomically on open(O_CREAT), doesn't it?
-> >
-> 
-> I believe the way this is handled is that the inode is created and
-> labeled and then only after that is it bound to the namespace.
-> Because of that ordering we can fail and release the inode without
-> it ever having a dentry in the namespace.
+Op 06-03-13 01:30, Mandeep Singh Baines schreef:
+> This check is turning up a lot of code paths which need to be
+> fixed so while those paths are fixed, let's make this check
+> optional so that folks can still use lockdep.
+I think the config option should be inverted, and make it more clear that
+you're not just not reporting some real bugs by disabling a check that should be on by default.
+> CC: Tejun Heo <tj@kernel.org>
+> CC: Jeff Layton <jlayton@redhat.com>
+> CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+> CC: Oleg Nesterov <oleg@redhat.com>
+> CC: Ming Lei <ming.lei@canonical.com>
+> CC: "Rafael J. Wysocki" <rjw@sisk.pl>
+> CC: Andrew Morton <akpm@linux-foundation.org>
+> CC: Ingo Molnar <mingo@redhat.com>
+> ---
+>  include/linux/freezer.h |  2 ++
+>  lib/Kconfig.debug       | 12 ++++++++++++
+>  2 files changed, 14 insertions(+)
+>
+> diff --git a/include/linux/freezer.h b/include/linux/freezer.h
+> index 043a5cf..03bdc54 100644
+> --- a/include/linux/freezer.h
+> +++ b/include/linux/freezer.h
+> @@ -49,8 +49,10 @@ extern void thaw_kernel_threads(void);
+>  
+>  static inline bool try_to_freeze(void)
+>  {
+> +#ifdef CONFIG_DEBUG_LOCK_HELD_FREEZING
+>  	if (!(current->flags & PF_NOFREEZE))
+>  		debug_check_no_locks_held();
+> +#endif
+>  	might_sleep();
+>  	if (likely(!freezing(current)))
+>  		return false;
+> diff --git a/lib/Kconfig.debug b/lib/Kconfig.debug
+> index 28be08c..bddda5f 100644
+> --- a/lib/Kconfig.debug
+> +++ b/lib/Kconfig.debug
+> @@ -547,6 +547,18 @@ config DEBUG_MUTEXES
+>  	 This feature allows mutex semantics violations to be detected and
+>  	 reported.
+>  
+> +config DEBUG_LOCK_HELD_FREEZING
+> +	bool "Lock debugging: detect when locks are held during freeze"
+> +	depends on DEBUG_KERNEL && TRACE_IRQFLAGS_SUPPORT && STACKTRACE_SUPPORT && LOCKDEP_SUPPORT
+> +	select DEBUG_SPINLOCK
+> +	select DEBUG_MUTEXES
+> +	select LOCKDEP
+> +	help
+> +	 This feature will check whether any lock is incorrectly held
+> +	 while freezing. If a task freezes with a lock held it will
+> +	 block any other task that is waiting on that lock from freezing.
+> +	 In the case of cgroup_freezer, this can cause a deadlock.
+> +
+>  config DEBUG_LOCK_ALLOC
+>  	bool "Lock debugging: detect incorrect freeing of live locks"
+>  	depends on DEBUG_KERNEL && TRACE_IRQFLAGS_SUPPORT && STACKTRACE_SUPPORT && LOCKDEP_SUPPORT
 
-Grepping around....  Looks like that's done by
-security_inode_init_security(), from the filesystem's create method.
-
-So we'd need to be able to pass something down to there.
-
-Is the current client actually expected to use this?  (So are we going
-to see a lot of opens that set the label?)
-
---b.
