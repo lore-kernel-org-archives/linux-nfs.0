@@ -1,53 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:13344 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:6471 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753545Ab3CFSSC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Mar 2013 13:18:02 -0500
-Date: Wed, 6 Mar 2013 19:16:08 +0100
-From: Oleg Nesterov <oleg@redhat.com>
-To: Tejun Heo <tj@kernel.org>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+	id S1755155Ab3CGQpV convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Mar 2013 11:45:21 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+CC: Jeff Layton <jlayton@redhat.com>, Tejun Heo <tj@kernel.org>,
+        Oleg Nesterov <oleg@redhat.com>,
         Mandeep Singh Baines <msb@chromium.org>,
         Ming Lei <ming.lei@canonical.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        "Linux Kernel Mailing List" <linux-kernel@vger.kernel.org>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         "Rafael J. Wysocki" <rjw@sisk.pl>,
         Andrew Morton <akpm@linux-foundation.org>,
-        Ingo Molnar <mingo@redhat.com>, Al Viro <viro@ZenIV.linux.org.uk>
+        Ingo Molnar <mingo@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>
 Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
-Message-ID: <20130306181608.GA18687@redhat.com>
-References: <CACBanvrc0orXGZ1v+gKHtVPKWYKGEFx46dwoDCjTU78+nPtZyg@mail.gmail.com> <20130304205307.GA13527@redhat.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9286AEEB0@sacexcmbx05-prd.hq.netapp.com> <20130305082308.6607d4db@tlielax.poochiereds.net> <20130305174648.GF12795@htj.dyndns.org> <20130305174954.GG12795@htj.dyndns.org> <20130305140312.243cb094@tlielax.poochiereds.net> <20130305190923.GI12795@htj.dyndns.org> <20130305183941.19ff39ce@tlielax.poochiereds.net> <20130305234700.GE1227@htj.dyndns.org>
+Date: Thu, 7 Mar 2013 16:45:17 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9286B52F1@sacexcmbx05-prd.hq.netapp.com>
+References: <20130305174954.GG12795@htj.dyndns.org>
+	 <20130305140312.243cb094@tlielax.poochiereds.net>
+	 <20130305190923.GI12795@htj.dyndns.org>
+	 <20130305183941.19ff39ce@tlielax.poochiereds.net>
+	 <20130305234700.GE1227@htj.dyndns.org> <20130306181608.GA18687@redhat.com>
+	 <20130306185304.GM1227@htj.dyndns.org>
+	 <CA+55aFwDogteVd=vwGHXDSASnga-nZZnKaQz9aO1yBU2CPKSbA@mail.gmail.com>
+	 <20130306212452.GO1227@htj.dyndns.org>
+	 <CA+55aFy49AWptMcvEzJxg95ikf-dC+-vcCPq-cnaCCwje3tyoQ@mail.gmail.com>
+	 <20130306213636.GP1227@htj.dyndns.org>
+	 <20130307064140.71c0936b@tlielax.poochiereds.net>
+	 <CA+55aFxe1_x8wvVYciiX8tuee+VsmXGKqEbONQdFM4s4W2iuPg@mail.gmail.com>
+	 <4FA345DA4F4AE44899BD2B03EEEC2FA9286B511E@sacexcmbx05-prd.hq.netapp.com>
+	 <CA+55aFySyBP8q5AvPrt-s_ZPdgamfoX-dERw4EJ21EcsDLBjYA@mail.gmail.com>
+In-Reply-To: <CA+55aFySyBP8q5AvPrt-s_ZPdgamfoX-dERw4EJ21EcsDLBjYA@mail.gmail.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130305234700.GE1227@htj.dyndns.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/05, Tejun Heo wrote:
->
-> Oleg, are you still opposed to the idea of making freezer share trap
-> points with ptrace?
+On Thu, 2013-03-07 at 08:25 -0800, Linus Torvalds wrote:
+> On Thu, Mar 7, 2013 at 7:59 AM, Myklebust, Trond
+> <Trond.Myklebust@netapp.com> wrote:
+> >
+> > It _shouldn't_ be an interruption unless the filesystem can't make
+> > progress.
+> 
+> So how can we tell? Calling "freezable_schedule()" if you're not ready
+> to be frozen is not good. And nobody but the NFS code can know.
+> 
+> You might want to introduce some counter that counts number of
+> outstanding non-interruptible events, and only call the "freezable"
+> version if that counter is zero.
+> 
+> A better alternative might be to *never* call the freezable version.
+> Because those freezable_*() things are really quite disgusting, and
+> are wrong - they don't actually freeze the process, they say "I don't
+> care if you freeze me while I sleep", and you might actually wake up
+> *while* the system is being frozen. I think the whole concept is
+> broken. Rafaei - comments? The function really is crap, regardless of
+> any unrelated NFS problems.
+> 
+> So what NFS could do instead is actually check the "do I need to
+> freeze" flag, and if you need to freeze you consider it an abort - and
+> do *not* try to continue. Just freeze, and then act as if the machine
+> got rebooted as far as NFS was concerned. That should work anyway, no?
+> 
+> That does sound a lot more complex, though.
 
-My memory can fool me, but iirc I wasn't actually opposed... I guess
-you mean the previous discussion about vfork/ptrace/etc which I forgot
-completely.
+The problem there is that we get into the whole 'hard' vs 'soft' mount
+problem. We're supposed to guarantee data integrity for 'hard' mounts,
+so no funny business is allowed. OTOH, 'soft' mounts time out and return
+EIO to the application anyway, and so shouldn't be a problem.
 
-But I can recall the main problem with your idea (with me): I simply
-wasn't able to understand it ;)
+Perhaps we could add a '-oslushy' mount option :-) that guarantees data
+integrity for all situations _except_ ENETDOWN/ENETUNREACH?
 
-Likewise, I can't really understand the ideas discussed in this thread.
-At least when it come to this particular problem, rpc_wait_bit_killable()
-is not interruptible...
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-And how SIGFREEZE can help? If we want to interrupt the sleeps in NFS/RPC
-layer we can simply add TASK_WAKEFREEZE (can be used with TASK_KILLABLE)
-and change freeze_task() to do signal_wake_up_state(TASK_WAKEFREEZE).
-
-But if we can do this, then it should be possible so simply make these
-sleeps TASK_INTERRUPTIBLE ? But it seems that we can't just because we
-can't always restart, so I am totally confused.
-
-Oleg.
-
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
