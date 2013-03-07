@@ -1,47 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from peace.netnation.com ([204.174.223.2]:50409 "EHLO
-	peace.netnation.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755230Ab3CFKHu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Mar 2013 05:07:50 -0500
-Received: from sim by peace.netnation.com with local (Exim 4.80)
-	(envelope-from <sim@netnation.com>)
-	id 1UDB0c-0006Q1-GZ
-	for linux-nfs@vger.kernel.org; Wed, 06 Mar 2013 01:51:38 -0800
-Date: Wed, 6 Mar 2013 01:51:38 -0800
-From: Simon Kirby <sim@hostway.ca>
-To: linux-nfs@vger.kernel.org
-Subject: NFSv3 TCP socket stuck when all slots used and server goes away
-Message-ID: <20130306095138.GC4736@hostway.ca>
+Received: from mail-vc0-f182.google.com ([209.85.220.182]:51952 "EHLO
+	mail-vc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755076Ab3CGQZL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Mar 2013 11:25:11 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9286B511E@sacexcmbx05-prd.hq.netapp.com>
+References: <20130305174954.GG12795@htj.dyndns.org>
+	<20130305140312.243cb094@tlielax.poochiereds.net>
+	<20130305190923.GI12795@htj.dyndns.org>
+	<20130305183941.19ff39ce@tlielax.poochiereds.net>
+	<20130305234700.GE1227@htj.dyndns.org>
+	<20130306181608.GA18687@redhat.com>
+	<20130306185304.GM1227@htj.dyndns.org>
+	<CA+55aFwDogteVd=vwGHXDSASnga-nZZnKaQz9aO1yBU2CPKSbA@mail.gmail.com>
+	<20130306212452.GO1227@htj.dyndns.org>
+	<CA+55aFy49AWptMcvEzJxg95ikf-dC+-vcCPq-cnaCCwje3tyoQ@mail.gmail.com>
+	<20130306213636.GP1227@htj.dyndns.org>
+	<20130307064140.71c0936b@tlielax.poochiereds.net>
+	<CA+55aFxe1_x8wvVYciiX8tuee+VsmXGKqEbONQdFM4s4W2iuPg@mail.gmail.com>
+	<4FA345DA4F4AE44899BD2B03EEEC2FA9286B511E@sacexcmbx05-prd.hq.netapp.com>
+Date: Thu, 7 Mar 2013 08:25:10 -0800
+Message-ID: <CA+55aFySyBP8q5AvPrt-s_ZPdgamfoX-dERw4EJ21EcsDLBjYA@mail.gmail.com>
+Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
+From: Linus Torvalds <torvalds@linux-foundation.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Jeff Layton <jlayton@redhat.com>, Tejun Heo <tj@kernel.org>,
+        Oleg Nesterov <oleg@redhat.com>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Ming Lei <ming.lei@canonical.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Ingo Molnar <mingo@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We had an issue with an Pacemaker/CRM HA-NFSv3 setup where one particular
-export hit an XFS locking issue on one node and got completely stuck.
-Upon failing over, service recovered for all clients that hadn't hit the
-mount since the issue occurred, but almost all of the usual clients
-(which also statfs commonly as a monitoring check) sat forever (>20
-minutes) without reconnecting.
+On Thu, Mar 7, 2013 at 7:59 AM, Myklebust, Trond
+<Trond.Myklebust@netapp.com> wrote:
+>
+> It _shouldn't_ be an interruption unless the filesystem can't make
+> progress.
 
-It seems that the clients filled the RPC slots with requests over the TCP
-socket to the NFS VIP and the server ack'd everything at the TCP layer,
-but was not able to reply to anything due to the FS locking issue. When
-we failed over the VIP to the other node, service was restored, but the
-clients stuck this way continued to sit with nothing to tickle the TCP
-layer. netstat shows a socket with no send-queue, in ESTABLISHED state,
-and with no timer enabled:
+So how can we tell? Calling "freezable_schedule()" if you're not ready
+to be frozen is not good. And nobody but the NFS code can know.
 
-tcp        0      0 c:724         s:2049       ESTABLISHED -                off (0.00/0/0)
+You might want to introduce some counter that counts number of
+outstanding non-interruptible events, and only call the "freezable"
+version if that counter is zero.
 
-The mountpoint options used are: rw,hard,intr,tcp,vers=3
+A better alternative might be to *never* call the freezable version.
+Because those freezable_*() things are really quite disgusting, and
+are wrong - they don't actually freeze the process, they say "I don't
+care if you freeze me while I sleep", and you might actually wake up
+*while* the system is being frozen. I think the whole concept is
+broken. Rafaei - comments? The function really is crap, regardless of
+any unrelated NFS problems.
 
-The export options are: rw,async,hide,no_root_squash,no_subtree_check,mp
+So what NFS could do instead is actually check the "do I need to
+freeze" flag, and if you need to freeze you consider it an abort - and
+do *not* try to continue. Just freeze, and then act as if the machine
+got rebooted as far as NFS was concerned. That should work anyway, no?
 
-Is this expected behaviour? I suspect if TCP keepalived were enabled, the
-socket would eventually get torn down as soon as the client tries to send
-something to the (effectively rebooted / swapped) NFS server and gets an
-RST. However, as-is, there seems to be nothing here that would eventually
-cause anything to happen. Am I missing something?
+That does sound a lot more complex, though.
 
-Simon-
+                 Linus
