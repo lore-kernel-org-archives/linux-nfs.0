@@ -1,111 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vb0-f41.google.com ([209.85.212.41]:40314 "EHLO
-	mail-vb0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751647Ab3CKSSg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Mar 2013 14:18:36 -0400
-Received: by mail-vb0-f41.google.com with SMTP id l22so1826704vbn.28
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Mar 2013 11:18:35 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <51364285.4040406@samba.org>
-References: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
- <512FD1D5.3010106@mit.edu> <20130304211923.GI20389@fieldses.org>
- <5135250A.30604@samba.org> <20130305181306.GA15816@fieldses.org> <51364285.4040406@samba.org>
-From: Andy Lutomirski <luto@amacapital.net>
-Date: Mon, 11 Mar 2013 11:18:15 -0700
-Message-ID: <CALCETrXvyXqx+R2wSROEOb+qrSBpPeCGT_9Z6N+QJOU=1aikPw@mail.gmail.com>
-Subject: Re: [PATCH v3 0/7] Add O_DENY* support for VFS and CIFS/NFS
-To: Simo <simo@samba.org>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Pavel Shilovsky <piastry@etersoft.ru>, linux-kernel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, wine-devel@winehq.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx1.redhat.com ([209.132.183.28]:23293 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932455Ab3CGLmF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Mar 2013 06:42:05 -0500
+Date: Thu, 7 Mar 2013 06:41:40 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Tejun Heo <tj@kernel.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        Oleg Nesterov <oleg@redhat.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Ming Lei <ming.lei@canonical.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Ingo Molnar <mingo@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>
+Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
+Message-ID: <20130307064140.71c0936b@tlielax.poochiereds.net>
+In-Reply-To: <20130306213636.GP1227@htj.dyndns.org>
+References: <20130305174954.GG12795@htj.dyndns.org>
+	<20130305140312.243cb094@tlielax.poochiereds.net>
+	<20130305190923.GI12795@htj.dyndns.org>
+	<20130305183941.19ff39ce@tlielax.poochiereds.net>
+	<20130305234700.GE1227@htj.dyndns.org>
+	<20130306181608.GA18687@redhat.com>
+	<20130306185304.GM1227@htj.dyndns.org>
+	<CA+55aFwDogteVd=vwGHXDSASnga-nZZnKaQz9aO1yBU2CPKSbA@mail.gmail.com>
+	<20130306212452.GO1227@htj.dyndns.org>
+	<CA+55aFy49AWptMcvEzJxg95ikf-dC+-vcCPq-cnaCCwje3tyoQ@mail.gmail.com>
+	<20130306213636.GP1227@htj.dyndns.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 5, 2013 at 11:07 AM, Simo <simo@samba.org> wrote:
-> On 03/05/2013 01:13 PM, J. Bruce Fields wrote:
->>
->> On Mon, Mar 04, 2013 at 05:49:46PM -0500, Simo wrote:
->>>
->>> On 03/04/2013 04:19 PM, J. Bruce Fields wrote:
->>>>
->>>> On Thu, Feb 28, 2013 at 01:53:25PM -0800, Andy Lutomirski wrote:
->>>>>
->>>>> [possible resend -- sorry]
->>>>>
->>>>> On 02/28/2013 07:25 AM, Pavel Shilovsky wrote:
->>>>>>
->>>>>> This patchset adds support of O_DENY* flags for Linux fs layer. These
->>>>>> flags can be used by any application that needs share reservations to
->>>>>> organize a file access. VFS already has some sort of this capability - now
->>>>>> it's done through flock/LOCK_MAND mechanis, but that approach is non-atomic.
->>>>>> This patchset build new capabilities on top of the existing one but doesn't
->>>>>> bring any changes into the flock call semantic.
->>>>>>
->>>>>> These flags can be used by NFS (built-in-kernel) and CIFS (Samba)
->>>>>> servers and Wine applications through VFS (for local filesystems) or
->>>>>> CIFS/NFS modules. This will help when e.g. Samba and NFS server share the
->>>>>> same directory for Windows and Linux users or Wine applications use
->>>>>> Samba/NFS share to access the same data from different clients.
->>>>>>
->>>>>> According to the previous discussions the most problematic question is
->>>>>> how to prevent situations like DoS attacks where e.g /lib/liba.so file can
->>>>>> be open with DENYREAD, or smth like this. That's why one extra flag
->>>>>> O_DENYMAND is added. It indicates to underlying layer that an application
->>>>>> want to use O_DENY* flags semantic. It allows us not affect native Linux
->>>>>> applications (that don't use O_DENYMAND flag) - so, these flags (and the
->>>>>> semantic of open syscall that they bring) are used only for those
->>>>>> applications that really want it proccessed that way.
->>>>>>
->>>>>> So, we have four new flags:
->>>>>> O_DENYREAD - to prevent other opens with read access,
->>>>>> O_DENYWRITE - to prevent other opens with write access,
->>>>>> O_DENYDELETE - to prevent delete operations (this flag is not
->>>>>> implemented in VFS and NFS part and only suitable for CIFS module),
->>>>>> O_DENYMAND - to switch on/off three flags above.
->>>>>
->>>>> O_DENYMAND doesn't deny anything.  Would a name like O_RESPECT_DENY be
->>>>> better?
->>>>>
->>>>> Other than that, this seems like a sensible mechanism.
->>>>
->>>> I'm a little more worried: these are mandatory locks, and applications
->>>> that use them are used to the locks being enforced correctly.  Are we
->>>> sure that an application that opens a file O_DENYWRITE won't crash if it
->>>> sees the file data change while it holds the open?
->>>
->>> The redirector may simply assume it has full control of that part of
->>> the file and not read nor send data until the lock is released too,
->>> so you get conflicting views of the file contents between different
->>> clients if you let a mandatory lock not be mandatory.
->>>
->>>> In general the idea of making a mandatory lock opt-in makes me nervous.
->>>> I'd prefer something like a mount option, so that we know that everyone
->>>> on that one filesystem is playing by the same rules, but we can still
->>>> mount filesystems like / without the option.
->>>
->>> +1
->>>
->>>> But I'll admit I'm definitely not an expert on Windows locking and may
->>>> be missing something about how these locks are meant to work.
->>>
->>> Mandatory locks really are mandatory in Windows.
->>> That may not be nice to a Unix system but what can you do ?
->>
->> I wonder if we could repurpose the existing -omand mount option?
->>
->> That would be a problem for anyone that wants to allow mandatory fcntl
->> locks without allowing share locks.  I doubt anyone sane actually uses
->> mandatory fcntl locks, but still I suppose it would probably be better
->> to play it safe and use a new mount option.
->
->
-> Maybe we should have a -o win_semantics option :-)
->
+On Wed, 6 Mar 2013 13:36:36 -0800
+Tejun Heo <tj@kernel.org> wrote:
 
-It's not entirely obvious to me that allowing programs to bypass this
-kind of locking is a bad idea.  It's hard to do on Windows, but
-presumably network filesystems on Windows already have this issue.
+> On Wed, Mar 06, 2013 at 01:31:10PM -0800, Linus Torvalds wrote:
+> > So I do agree that we probably have *too* many of the stupid "let's
+> > check if we can freeze", and I suspect that the NFS code should get
+> > rid of the "freezable_schedule()" that is causing this warning
+> > (because I also agree that you should *not* freeze while holding
+> > locks, because it really can cause deadlocks), but I do suspect that
+> > network filesystems do need to have a few places where they check for
+> > freezing on their own... Exactly because freezing isn't *quite* like a
+> > signal.
+> 
+> Well, I don't really know much about nfs so I can't really tell, but
+> for most other cases, dealing with freezing like a signal should work
+> fine from what I've seen although I can't be sure before actually
+> trying.  Trond, Bruce, can you guys please chime in?
+> 
+> Thanks.
+> 
 
---Andy
+(hopefully this isn't tl;dr)
+
+It's not quite that simple...
+
+The problem (as Trond already mentioned) is non-idempotent operations.
+You can't just restart certain operations from scratch once you reach a
+certain point. Here's an example:
+
+Suppose I call unlink("somefile"); on an NFS mount. We take all of the
+VFS locks, go down into the NFS layer. That marshals up the UNLINK
+call, sends it off to the server, and waits for the reply. While we're
+waiting, a freeze event comes in and we start returning from the
+kernel with our new -EFREEZE return code that works sort of like
+-ERESTARTSYS. Meanwhile, the server is processing the UNLINK call and
+removes the file. A little while later we wake up the machine and it
+goes to try and pick up where it left off.
+
+What do we do now?
+
+Suppose we pretend we never sent the call in the first place, marshal
+up a new RPC and send it again. This is problematic -- the server will
+probably send back the equivalent of ENOENT. How do we know whether the
+file never existed in the first place, or whether the server processed
+the original call and removed the file then?
+
+Do we instead try and keep track of whether the RPC has been sent and
+just wait for the reply on the original call? That's tricky too -- it
+means adding an extra codepath to check for these sorts of restarts in
+a bunch of different ops vectors into the filesystem. We also have to
+somehow keep track of this state too (I guess by hanging something off
+the task_struct).
+
+Note too that the above is the simple case. We're dropping the parent's
+i_mutex during the freeze. Suppose when we restart the call that the
+parent directory has changed in such a way that the original lookup we
+did to do the original RPC is no longer valid?
+
+I think Trond may be on the right track. We probably need some
+mechanism to quiesce the filesystem ahead of any sort of freezer
+event. That quiesce could simply wait on any in flight RPCs to come
+back, and not allow any new ones to go out. On syscalls where the RPC
+didn't go out, we'd just return -EFREEZE or whatever and let the upper
+layers restart the call after waking back up. Writeback would be
+tricky, but that can be handled too.
+
+The catch here is that it's quite possible that when we need to quiesce
+that we've lost communications with the server. We don't want to hold
+up the freezer at that point so the wait for replies has to be bounded
+in time somehow. If that times out, we probably just have to return all
+calls with our new -EFREEZE return and hope for the best when the
+machine wakes back up.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
