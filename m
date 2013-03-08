@@ -1,298 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.gentoo.org ([140.211.166.183]:36221 "EHLO smtp.gentoo.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754664Ab3CXT5F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 24 Mar 2013 15:57:05 -0400
-Received: from localhost.localdomain (localhost [127.0.0.1])
-	by smtp.gentoo.org (Postfix) with ESMTP id 390F333DB34
-	for <linux-nfs@vger.kernel.org>; Sun, 24 Mar 2013 19:57:03 +0000 (UTC)
-From: Mike Frysinger <vapier@gentoo.org>
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:39797 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750851Ab3CHTqP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Mar 2013 14:46:15 -0500
+Received: by mail-ie0-f174.google.com with SMTP id k10so2503181iea.5
+        for <linux-nfs@vger.kernel.org>; Fri, 08 Mar 2013 11:46:14 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 01/11] mountd: remove unused variable
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsiostat: make it work w/python3
-Date: Sun, 24 Mar 2013 16:01:17 -0400
-Message-Id: <1364155277-30394-1-git-send-email-vapier@gentoo.org>
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Date: Fri, 08 Mar 2013 14:46:12 -0500
+Message-ID: <20130308194612.5656.52628.stgit@seurat.1015granger.net>
+In-Reply-To: <20130308193830.5656.44184.stgit@seurat.1015granger.net>
+References: <20130308193830.5656.44184.stgit@seurat.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Simple fixes here to work with python 2 & 3:
- - use print() everywhere
- - dict.iteritems() -> dict.items()
- - file() -> open()
- - sys.maxint -> sys.maxsize
+Clean up:
 
-Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+Making all in mountd
+cache.c: In function ‘subexport’:
+cache.c:374:9: warning: unused variable ‘l2’ [-Wunused-variable]
+
+Commit 8e2fb3fc removed the last use of "l2" in the subexport()
+function.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- tools/nfs-iostat/nfs-iostat.py | 130 +++++++++++++++++++++--------------------
- 1 file changed, 66 insertions(+), 64 deletions(-)
 
-diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
-index d909632..dfbef87 100644
---- a/tools/nfs-iostat/nfs-iostat.py
-+++ b/tools/nfs-iostat/nfs-iostat.py
-@@ -3,6 +3,8 @@
- """Emulate iostat for NFS mount points using /proc/self/mountstats
- """
- 
-+from __future__ import print_function
-+
- __copyright__ = """
- Copyright (C) 2005, Chuck Lever <cel@netapp.com>
- 
-@@ -201,9 +203,9 @@ class DeviceData:
-         result = DeviceData()
- 
-         # copy self into result
--        for key, value in self.__nfs_data.iteritems():
-+        for key, value in self.__nfs_data.items():
-             result.__nfs_data[key] = value
--        for key, value in self.__rpc_data.iteritems():
-+        for key, value in self.__rpc_data.items():
-             result.__rpc_data[key] = value
- 
-         # compute the difference of each item in the list
-@@ -233,9 +235,9 @@ class DeviceData:
-             client_bytes_read = float(nfs_stats['serverreadbytes'] - nfs_stats['directreadbytes'])
-             ratio = ((app_bytes_read - client_bytes_read) * 100) / app_bytes_read
- 
--            print
--            print 'app bytes: %f  client bytes %f' % (app_bytes_read, client_bytes_read)
--            print 'Data cache hit ratio: %4.2f%%' % ratio
-+            print()
-+            print('app bytes: %f  client bytes %f' % (app_bytes_read, client_bytes_read))
-+            print('Data cache hit ratio: %4.2f%%' % ratio)
- 
-     def __print_attr_cache_stats(self, sample_time):
-         """Print attribute cache efficiency stats
-@@ -255,13 +257,13 @@ class DeviceData:
-             data_invalidates = float(nfs_stats['datainvalidates'])
-             attr_invalidates = float(nfs_stats['attrinvalidates'])
- 
--            print
--            print '%d inode revalidations, hitting in cache %4.2f%% of the time' % \
--                (revalidates, ratio)
--            print '%d open operations (mandatory GETATTR requests)' % opens
-+            print()
-+            print('%d inode revalidations, hitting in cache %4.2f%% of the time' % \
-+                (revalidates, ratio))
-+            print('%d open operations (mandatory GETATTR requests)' % opens)
-             if getattr_ops != 0:
--                print '%4.2f%% of GETATTRs resulted in data cache invalidations' % \
--                   ((data_invalidates * 100) / getattr_ops)
-+                print('%4.2f%% of GETATTRs resulted in data cache invalidations' % \
-+                   ((data_invalidates * 100) / getattr_ops))
- 
-     def __print_dir_cache_stats(self, sample_time):
-         """Print directory stats
-@@ -277,13 +279,13 @@ class DeviceData:
-         lookups = nfs_stats['vfslookup']
-         getdents = nfs_stats['vfsreaddir']
- 
--        print
--        print '%d open operations (pathname lookups)' % opens
--        print '%d dentry revalidates and %d vfs lookup requests' % \
--            (dentry_revals, lookups),
--        print 'resulted in %d LOOKUPs on the wire' % lookup_ops
--        print '%d vfs getdents calls resulted in %d READDIRs on the wire' % \
--            (getdents, readdir_ops)
-+        print()
-+        print('%d open operations (pathname lookups)' % opens)
-+        print('%d dentry revalidates and %d vfs lookup requests' % \
-+            (dentry_revals, lookups))
-+        print('resulted in %d LOOKUPs on the wire' % lookup_ops)
-+        print('%d vfs getdents calls resulted in %d READDIRs on the wire' % \
-+            (getdents, readdir_ops))
- 
-     def __print_page_stats(self, sample_time):
-         """Print page cache stats
-@@ -297,33 +299,33 @@ class DeviceData:
-         vfswritepages = nfs_stats['vfswritepages']
-         pages_written = nfs_stats['writepages']
- 
--        print
--        print '%d nfs_readpage() calls read %d pages' % \
--            (vfsreadpage, vfsreadpage)
--        print '%d nfs_readpages() calls read %d pages' % \
--            (vfsreadpages, pages_read - vfsreadpage),
-+        print()
-+        print('%d nfs_readpage() calls read %d pages' % \
-+            (vfsreadpage, vfsreadpage))
-+        print('%d nfs_readpages() calls read %d pages' % \
-+            (vfsreadpages, pages_read - vfsreadpage))
-         if vfsreadpages != 0:
--            print '(%.1f pages per call)' % \
--                (float(pages_read - vfsreadpage) / vfsreadpages)
-+            print('(%.1f pages per call)' % \
-+                (float(pages_read - vfsreadpage) / vfsreadpages))
-         else:
--            print
+ utils/mountd/cache.c |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
+
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index 45012be..c8aa46f 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -371,8 +371,6 @@ export_matches(nfs_export *exp, char *dom, char *path, struct addrinfo *ai)
+ static bool subexport(struct exportent *e1, struct exportent *e2)
+ {
+ 	char *p1 = e1->e_path, *p2 = e2->e_path;
+-	size_t l2 = strlen(p2);
 -
--        print
--        print '%d nfs_updatepage() calls' % nfs_stats['vfsupdatepage']
--        print '%d nfs_writepage() calls wrote %d pages' % \
--            (vfswritepage, vfswritepage)
--        print '%d nfs_writepages() calls wrote %d pages' % \
--            (vfswritepages, pages_written - vfswritepage),
-+            print()
-+
-+        print()
-+        print('%d nfs_updatepage() calls' % nfs_stats['vfsupdatepage'])
-+        print('%d nfs_writepage() calls wrote %d pages' % \
-+            (vfswritepage, vfswritepage))
-+        print('%d nfs_writepages() calls wrote %d pages' % \
-+            (vfswritepages, pages_written - vfswritepage))
-         if (vfswritepages) != 0:
--            print '(%.1f pages per call)' % \
--                (float(pages_written - vfswritepage) / vfswritepages)
-+            print('(%.1f pages per call)' % \
-+                (float(pages_written - vfswritepage) / vfswritepages))
-         else:
--            print
-+            print()
- 
-         congestionwaits = nfs_stats['congestionwait']
-         if congestionwaits != 0:
--            print
--            print '%d congestion waits' % congestionwaits
-+            print()
-+            print('%d congestion waits' % congestionwaits)
- 
-     def __print_rpc_op_stats(self, op, sample_time):
-         """Print generic stats for one RPC op
-@@ -351,15 +353,15 @@ class DeviceData:
-             exe_per_op = 0.0
- 
-         op += ':'
--        print '%s' % op.lower().ljust(15),
--        print '  ops/s\t\t   kB/s\t\t  kB/op\t\tretrans\t\tavg RTT (ms)\tavg exe (ms)'
-+        print('%s' % op.lower().ljust(15))
-+        print('  ops/s\t\t   kB/s\t\t  kB/op\t\tretrans\t\tavg RTT (ms)\tavg exe (ms)')
- 
--        print '\t\t%7.3f' % (ops / sample_time),
--        print '\t%7.3f' % (kilobytes / sample_time),
--        print '\t%7.3f' % kb_per_op,
--        print ' %7d (%3.1f%%)' % (retrans, retrans_percent),
--        print '\t%7.3f' % rtt_per_op,
--        print '\t%7.3f' % exe_per_op
-+        print('\t\t%7.3f' % (ops / sample_time))
-+        print('\t%7.3f' % (kilobytes / sample_time))
-+        print('\t%7.3f' % kb_per_op)
-+        print(' %7d (%3.1f%%)' % (retrans, retrans_percent))
-+        print('\t%7.3f' % rtt_per_op)
-+        print('\t%7.3f' % exe_per_op)
- 
-     def ops(self, sample_time):
-         sends = float(self.__rpc_data['rpcsends'])
-@@ -384,14 +386,14 @@ class DeviceData:
-         else:
-             backlog = 0.0
- 
--        print
--        print '%s mounted on %s:' % \
--            (self.__nfs_data['export'], self.__nfs_data['mountpoint'])
--        print
-+        print()
-+        print('%s mounted on %s:' % \
-+            (self.__nfs_data['export'], self.__nfs_data['mountpoint']))
-+        print()
- 
--        print '   op/s\t\trpc bklog'
--        print '%7.2f' % (sends / sample_time), 
--        print '\t%7.2f' % backlog
-+        print('   op/s\t\trpc bklog')
-+        print('%7.2f' % (sends / sample_time))
-+        print('\t%7.2f' % backlog)
- 
-         if which == 0:
-             self.__print_rpc_op_stats('READ', sample_time)
-@@ -424,7 +426,7 @@ def parse_stats_file(filename):
-     ms_dict = dict()
-     key = ''
- 
--    f = file(filename)
-+    f = open(filename)
-     for line in f.readlines():
-         words = line.split()
-         if len(words) == 0:
-@@ -494,7 +496,7 @@ def list_nfs_mounts(givenlist, mountstats):
-             if stats.is_nfs_mountpoint():
-                 list += [device]
-     else:
--        for device, descr in mountstats.iteritems():
-+        for device, descr in mountstats.items():
-             stats = DeviceData()
-             stats.parse_stats(descr)
-             if stats.is_nfs_mountpoint():
-@@ -527,7 +529,7 @@ client are listed.
-         usage="usage: %prog [ <interval> [ <count> ] ] [ <options> ] [ <mount point> ]",
-         description=mydescription,
-         version='version %s' % Iostats_version)
--    parser.set_defaults(which=0, sort=False, list=sys.maxint)
-+    parser.set_defaults(which=0, sort=False, list=sys.maxsize)
- 
-     statgroup = OptionGroup(parser, "Statistics Options",
-                             'File I/O is displayed unless one of the following is specified:')
-@@ -572,29 +574,29 @@ client are listed.
-             try:
-                 interval = int(arg)
-             except:
--                print 'Illegal <interval> value %s' % arg
-+                print('Illegal <interval> value %s' % arg)
-                 return
-             if interval > 0:
-                 interval_seen = True
-             else:
--                print 'Illegal <interval> value %s' % arg
-+                print('Illegal <interval> value %s' % arg)
-                 return
-         elif not count_seen:
-             try:
-                 count = int(arg)
-             except:
--                print 'Ilegal <count> value %s' % arg
-+                print('Ilegal <count> value %s' % arg)
-                 return
-             if count > 0:
-                 count_seen = True
-             else:
--                print 'Illegal <count> value %s' % arg
-+                print('Illegal <count> value %s' % arg)
-                 return
- 
-     # make certain devices contains only NFS mount points
-     devices = list_nfs_mounts(origdevices, mountstats)
-     if len(devices) == 0:
--        print 'No NFS mount points were found'
-+        print('No NFS mount points were found')
-         return
- 
- 
-@@ -616,7 +618,7 @@ client are listed.
-             # we need to recheck the devices list when reparsing
-             devices = list_nfs_mounts(origdevices,mountstats)
-             if len(devices) == 0:
--                print 'No NFS mount points were found'
-+                print('No NFS mount points were found')
-                 return
-             count -= 1
-     else: 
-@@ -630,7 +632,7 @@ client are listed.
-             # we need to recheck the devices list when reparsing
-             devices = list_nfs_mounts(origdevices,mountstats)
-             if len(devices) == 0:
--                print 'No NFS mount points were found'
-+                print('No NFS mount points were found')
-                 return
- 
- #
-@@ -641,7 +643,7 @@ prog = os.path.basename(sys.argv[0])
- try:
-     iostat_command(prog)
- except KeyboardInterrupt:
--    print 'Caught ^C... exiting'
-+    print('Caught ^C... exiting')
-     sys.exit(1)
- 
- sys.exit(0)
--- 
-1.8.1.2
+ 	return e2->e_flags & NFSEXP_CROSSMOUNT
+ 		&& is_subdirectory(p1, p2);
+ }
 
