@@ -1,55 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from hop-nat-141.emc.com ([168.159.213.141]:35263 "EHLO
-	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S932127Ab3CLK2Q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Mar 2013 06:28:16 -0400
-From: "Peng, Tao" <tao.peng@emc.com>
-To: fanchaoting <fanchaoting@cn.fujitsu.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Subject: RE: [PATCH] pnfs-block: may be return NULL when find a extent
-Date: Tue, 12 Mar 2013 10:27:34 +0000
-Message-ID: <1882637210201641A747464075FFC649025986A4@MX101CL02.corp.emc.com>
-References: <513EC692.4090907@cn.fujitsu.com>
-In-Reply-To: <513EC692.4090907@cn.fujitsu.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ie0-f175.google.com ([209.85.223.175]:42405 "EHLO
+	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753778Ab3CHTqc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Mar 2013 14:46:32 -0500
+Received: by mail-ie0-f175.google.com with SMTP id c12so2502785ieb.6
+        for <linux-nfs@vger.kernel.org>; Fri, 08 Mar 2013 11:46:32 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 03/11] gssd: Use italics for option values and pathnames
+To: linux-nfs@vger.kernel.org
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Date: Fri, 08 Mar 2013 14:46:30 -0500
+Message-ID: <20130308194630.5656.81032.stgit@seurat.1015granger.net>
+In-Reply-To: <20130308193830.5656.44184.stgit@seurat.1015granger.net>
+References: <20130308193830.5656.44184.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
-ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10gT24g
-QmVoYWxmIE9mDQo+IGZhbmNoYW90aW5nDQo+IFNlbnQ6IFR1ZXNkYXksIE1hcmNoIDEyLCAyMDEz
-IDI6MDkgUE0NCj4gVG86IE15a2xlYnVzdCwgVHJvbmQNCj4gQ2M6IGxpbnV4LW5mc0B2Z2VyLmtl
-cm5lbC5vcmcNCj4gU3ViamVjdDogW1BBVENIXSBwbmZzLWJsb2NrOiBtYXkgYmUgcmV0dXJuIE5V
-TEwgd2hlbiBmaW5kIGEgZXh0ZW50DQo+IA0KPiBtYXliZSByZXR1cm4gTlVMTCB3aGVuIGZpbmQg
-YSBleHRlbnQsIGlmIHdlIHVzZSBpdCBsYXRlciwNCj4gaXQgd2lsbCBjYXVzZSBvb3BzLg0KPiAN
-CmFoLCBJIHdvdWxkIHNheSBpdCBpcyBpbnRlbnRpb25hbCBiZWNhdXNlIHRoZSBsb29rdXAgY2Fu
-bm90IGZhaWwgaGVyZS4gSWYgd2UgYXJlIGNvbW1pdHRpbmcgYW4gZXh0ZW50IGJ1dCBjYW5ub3Qg
-ZmluZCBpdCBpbiBjbGllbnQncyBleHRlbnQgY2FjaGUsIGl0IGNlcnRhaW5seSBpcyBhIGJ1ZyBz
-b21ld2hlcmUgZWxzZS4gSSByZW1lbWJlciB0aGVyZSBhcmUgb3RoZXIgcGxhY2VzIGxpa2UgdGhp
-cyBpbiBibG9jayBsYXlvdXQgY29kZSBhcyB3ZWxsIGFuZCB3ZSB1c2VkIHRvIHB1dCBhIEJVR19P
-TigpIHRoZXJlLiBCdXQgc2luY2Ugd2UgYXJlIHVzaW5nIHRoZSBwb2ludGVyIHJpZ2h0IGF3YXkg
-YW5kIGNyYXNoIG9uIE5VTEwgcG9pbnRlciBkZXJlZmVyZW5jZSBhbnl3YXksIGl0IHdhcyBzdWdn
-ZXN0ZWQgdG8gcmVtb3ZlIHRoZXNlIEJVR19PTigpcyBkdXJpbmcgY29kZSByZXZpZXcuDQoNCkFy
-ZSB5b3UgZml4aW5nIHRoaXMgYmVjYXVzZSB5b3Ugc2F3IGEgY3Jhc2ggb3IgYmVjYXVzZSBzb21l
-IHN0YXRpYyBjb2RlIGFuYWx5emVyIGNvbXBsYWlucz8NCg0KVGhhbmtzLA0KVGFvDQoNCj4gIFNp
-Z25lZC1vZmYtYnk6IGZhbmNoYW90aW5nPGZhbmNoYW90aW5nQGNuLmZ1aml0c3UuY29tPg0KPiAt
-LS0NCj4gIGZzL25mcy9ibG9ja2xheW91dC9leHRlbnRzLmMgfCAgICA1ICsrKysrDQo+ICAxIGZp
-bGVzIGNoYW5nZWQsIDUgaW5zZXJ0aW9ucygrKSwgMCBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYg
-LS1naXQgYS9mcy9uZnMvYmxvY2tsYXlvdXQvZXh0ZW50cy5jIGIvZnMvbmZzL2Jsb2NrbGF5b3V0
-L2V4dGVudHMuYw0KPiBpbmRleCA5YzNlMTE3Li4xMzFlYTU5IDEwMDY0NA0KPiAtLS0gYS9mcy9u
-ZnMvYmxvY2tsYXlvdXQvZXh0ZW50cy5jDQo+ICsrKyBiL2ZzL25mcy9ibG9ja2xheW91dC9leHRl
-bnRzLmMNCj4gQEAgLTc2Miw2ICs3NjIsMTEgQEAgc2V0X3RvX3J3KHN0cnVjdCBwbmZzX2Jsb2Nr
-X2xheW91dCAqYmwsIHU2NCBvZmZzZXQsIHU2NCBsZW5ndGgpDQo+IA0KPiAgICAgICAgIHNwaW5f
-bG9jaygmYmwtPmJsX2V4dF9sb2NrKTsNCj4gICAgICAgICBiZSA9IGJsX2ZpbmRfZ2V0X2V4dGVu
-dF9sb2NrZWQoYmwsIG9mZnNldCk7DQo+ICsgICAgICAgaWYgKCFiZSkgew0KPiArICAgICAgICAg
-ICAgICAgc3Bpbl91bmxvY2soJmJsLT5ibF9leHRfbG9jayk7DQo+ICsgICAgICAgICAgICAgICBn
-b3RvIG91dF9ub3NwbGl0Ow0KPiArICAgICAgIH0NCj4gKw0KPiAgICAgICAgIHJ2ID0gYmUtPmJl
-X2Zfb2Zmc2V0ICsgYmUtPmJlX2xlbmd0aDsNCj4gICAgICAgICBpZiAoYmUtPmJlX3N0YXRlICE9
-IFBORlNfQkxPQ0tfSU5WQUxJRF9EQVRBKSB7DQo+ICAgICAgICAgICAgICAgICBzcGluX3VubG9j
-aygmYmwtPmJsX2V4dF9sb2NrKTsNCj4gLS0NCj4gMS43LjENCj4gDQo+IC0tDQo+IFRvIHVuc3Vi
-c2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1u
-ZnMiIGluDQo+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwu
-b3JnDQo+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFq
-b3Jkb21vLWluZm8uaHRtbA0KDQo=
+Clean up: The usual convention for the values of command line
+options and for pathnames is for them to appear italicized,
+rather than emboldened or in double quotes.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ utils/gssd/gssd.man |   30 +++++++++++++++++++++---------
+ 1 files changed, 21 insertions(+), 9 deletions(-)
+
+diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
+index c74b7e8..0cc7bf4 100644
+--- a/utils/gssd/gssd.man
++++ b/utils/gssd/gssd.man
+@@ -6,7 +6,18 @@
+ .SH NAME
+ rpc.gssd \- rpcsec_gss daemon
+ .SH SYNOPSIS
+-.B "rpc.gssd [-f] [-n] [-k keytab] [-l] [-p pipefsdir] [-v] [-r] [-d ccachedir]"
++.B rpc.gssd
++.RB [ \-fnlvr ]
++.RB [ \-k
++.IR keytab ]
++.RB [ \-p
++.IR pipefsdir ]
++.RB [ \-d
++.IR ccachedir ]
++.RB [ \-t
++.IR timeout ]
++.RB [ \-R
++.IR realm ]
+ .SH DESCRIPTION
+ The rpcsec_gss protocol gives a means of using the gss-api generic security
+ api to provide security for protocols using rpc (in particular, nfs).  Before
+@@ -38,13 +49,14 @@ manually like all other users.  Use of this option means that
+ attempting to mount an nfs filesystem requiring Kerberos
+ authentication.
+ .TP
+-.B -k keytab
++.BI "-k " keytab
+ Tells
+ .B rpc.gssd
+ to use the keys found in
+ .I keytab
+ to obtain "machine credentials".
+-The default value is "/etc/krb5.keytab".
++The default value is
++.I /etc/krb5.keytab.
+ .IP
+ Previous versions of
+ .B rpc.gssd
+@@ -94,17 +106,17 @@ encryption.
+ This option is only available with Kerberos libraries that 
+ support setable encryption types.
+ .TP
+-.B -p path
++.BI "-p " path
+ Tells
+ .B rpc.gssd
+ where to look for the rpc_pipefs filesystem.  The default value is
+-"/var/lib/nfs/rpc_pipefs".
++.IR /var/lib/nfs/rpc_pipefs .
+ .TP
+-.B -d directory
++.BI "-d " directory
+ Tells
+ .B rpc.gssd
+ where to look for Kerberos credential files.  The default value is
+-"/tmp:/run/user/%U".
++.IR /tmp:/run/user/%U .
+ This can also be a colon separated list of directories to be searched for
+ Kerberos credential files.  The sequence "%U", if used, is replaced with
+ the UID of the user for whom credentials are being searched.
+@@ -119,14 +131,14 @@ Increases the verbosity of the output (can be specified multiple times).
+ If the rpcsec_gss library supports setting debug level,
+ increases the verbosity of the output (can be specified multiple times).
+ .TP
+-.B -R realm
++.BI "-R " realm
+ Kerberos tickets from this
+ .I realm
+ will be preferred when scanning available credentials cache files to be
+ used to create a context.  By default, the default realm, as configured
+ in the Kerberos configuration file, is preferred.
+ .TP
+-.B -t timeout
++.BI "-t " timeout
+ Timeout, in seconds, for kernel gss contexts. This option allows you to force 
+ new kernel contexts to be negotiated after
+ .I timeout
+
