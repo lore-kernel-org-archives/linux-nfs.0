@@ -1,127 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55854 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755116Ab3CEWWu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Mar 2013 17:22:50 -0500
-Received: from bfields by fieldses.org with local (Exim 4.76)
-	(envelope-from <bfields@fieldses.org>)
-	id 1UD0G2-0004ti-FZ
-	for linux-nfs@vger.kernel.org; Tue, 05 Mar 2013 17:22:50 -0500
-Date: Tue, 5 Mar 2013 17:22:50 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] nfsd4: handle seqid-mutating open errors from xdr
- decoding
-Message-ID: <20130305222250.GH15816@fieldses.org>
-References: <20130305221722.GE15816@fieldses.org>
- <20130305221759.GF15816@fieldses.org>
+Received: from youngberry.canonical.com ([91.189.89.112]:54922 "EHLO
+	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755096Ab3CHVCk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Mar 2013 16:02:40 -0500
+Message-ID: <513A517F.2040501@canonical.com>
+Date: Fri, 08 Mar 2013 15:00:47 -0600
+From: Dave Chiluk <dave.chiluk@canonical.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130305221759.GF15816@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4 setattr null-terminates strings
+References: <513A1BD1.6060709@canonical.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9286B6F80@sacexcmbx05-prd.hq.netapp.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9286B6F80@sacexcmbx05-prd.hq.netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 05, 2013 at 05:17:59PM -0500, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> If a client sets an owner (or group_owner or acl) attribute on open for
-> create, and the mapping of that owner to an id fails, then we return
-> BAD_OWNER.  But BAD_OWNER is a seqid-mutating error, so we can't
-> shortcut the open processing that case: we have to at least look up the
-> owner so we can find the seqid to bump.
+The patch definitely fixes the null termination issue.  Hopefully that
+is the only issue with AIX.
 
-This seems like an awful hack.
+Thanks,
+Dave.
 
-Better might be to move idmapping out of xdr decoding, but that's a
-bigger change and I wonder if it would break anything else.
+On 03/08/2013 12:33 PM, Myklebust, Trond wrote:
+> On Fri, 2013-03-08 at 11:11 -0600, Dave Chiluk wrote:
+>> As of commit 57e62324e469e092ecc6c94a7a86fe4bd6ac5172, the SETATTR nfsv4
+>> command now null terminates fattr_owner and fattr_owner_group.
+>>
+>> Here is an example excerpt from a tcpdump
+>> Opcode: SETATTR (34)
+>>     stateid
+>>         [StateID Hash: 0xafa9]
+>>         seqid: 0x00000000
+>>         Data: 000000000000000000000000
+>>     obj_attributes
+>>         attrmask
+>>             recc_attr: FATTR4_OWNER_GROUP (37)
+>>                 fattr4_owner_group: groupname@domainname.com
+>>                     length: 25
+>>
+>> This means that even though there are actually 24 characters in
+>> groupname@domainname.com, we now send 24 characters + 1 null character.
+>> Hence the total length of 25.  Previously the client would send just the
+>> 24 characters and set length to 24.
+>>
+>> This isn't an issue for communication with other Linux machines, but it
+>> is an issue for interaction with AIX machines.  As is discussed here.
+>> https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1101292
+>>
+>> I attempted to read the RFC available here
+>> http://tools.ietf.org/html/rfc5661, but have not been able to find a
+>> statement instructing one way or the other.
+>>
+>> So the question becomes, is it correct for linux to be sending this null
+>> terminator when read against the RFC, or is it AIX's responsibility to
+>> handle null-terminated strings?
+> 
+> The client is definitely in error here according to RFC3530. Please
+> check if the attached patch fixes the issue for you.
+> 
+> Cheers
+>   Trond
+> 
 
---b.
-
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/nfsd/nfs4proc.c |   27 ++++++++++++++++++++++++++-
->  fs/nfsd/nfs4xdr.c  |    1 +
->  fs/nfsd/xdr4.h     |    1 +
->  3 files changed, 28 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index c7e4e8c..42c498c 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -351,6 +351,10 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	}
->  	if (status)
->  		goto out;
-> +	if (open->op_xdr_error) {
-> +		status = open->op_xdr_error;
-> +		goto out;
-> +	}
->  
->  	status = nfsd4_check_open_attributes(rqstp, cstate, open);
->  	if (status)
-> @@ -417,6 +421,24 @@ out:
->  }
->  
->  /*
-> + * OPEN is the only seqid-mutating operation whose decoding can fail
-> + * with a seqid-mutating error (specifically, decoding of user names in
-> + * the attributes).  Therefore we have to do some processing to look up
-> + * the stateowner so that we can bump the seqid.
-> + */
-> +static __be32 nfsd4_open_omfg(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_op *op)
-> +{
-> +	struct nfsd4_open *open = (struct nfsd4_open *)&op->u;
-> +
-> +	if (!seqid_mutating_err(ntohl(op->status)))
-> +		return op->status;
-> +	if (nfsd4_has_session(cstate))
-> +		return op->status;
-> +	open->op_xdr_error = op->status;
-> +	return nfsd4_open(rqstp, cstate, open);
-> +}
-> +
-> +/*
->   * filehandle-manipulating ops.
->   */
->  static __be32
-> @@ -1244,8 +1266,11 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
->  		 * for example, if there is a miscellaneous XDR error
->  		 * it will be set to nfserr_bad_xdr.
->  		 */
-> -		if (op->status)
-> +		if (op->status) {
-> +			if (op->opnum == OP_OPEN)
-> +				op->status = nfsd4_open_omfg(rqstp, cstate, op);
->  			goto encode_op;
-> +		}
->  
->  		/* We must be able to encode a successful response to
->  		 * this operation, with enough room left over to encode a
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 0116886..a82df26 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -804,6 +804,7 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
->  	open->op_iattr.ia_valid = 0;
->  	open->op_openowner = NULL;
->  
-> +	open->op_xdr_error = 0;
->  	/* seqid, share_access, share_deny, clientid, ownerlen */
->  	READ_BUF(4);
->  	READ32(open->op_seqid);
-> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-> index 546f898..be0a79d 100644
-> --- a/fs/nfsd/xdr4.h
-> +++ b/fs/nfsd/xdr4.h
-> @@ -237,6 +237,7 @@ struct nfsd4_open {
->  	u32		op_share_deny;      /* request */
->  	u32		op_deleg_want;      /* request */
->  	stateid_t	op_stateid;         /* response */
-> +	__be32		op_xdr_error;       /* see nfsd4_open_omfg() */
->  	u32		op_recall;          /* recall */
->  	struct nfsd4_change_info  op_cinfo; /* response */
->  	u32		op_rflags;          /* response */
-> -- 
-> 1.7.9.5
-> 
