@@ -1,135 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:15830 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750940Ab3CTRjP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Mar 2013 13:39:15 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from youngberry.canonical.com ([91.189.89.112]:54047 "EHLO
+	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759804Ab3CHRLu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Mar 2013 12:11:50 -0500
+Received: from cpe-70-124-70-187.austin.res.rr.com ([70.124.70.187] helo=[192.168.1.73])
+	by youngberry.canonical.com with esmtpsa (TLS1.0:DHE_RSA_AES_256_CBC_SHA1:32)
+	(Exim 4.71)
+	(envelope-from <dave.chiluk@canonical.com>)
+	id 1UE0pg-0006yy-Jp
+	for linux-nfs@vger.kernel.org; Fri, 08 Mar 2013 17:11:48 +0000
+Message-ID: <513A1BD1.6060709@canonical.com>
+Date: Fri, 08 Mar 2013 11:11:45 -0600
+From: Dave Chiluk <dave.chiluk@canonical.com>
+MIME-Version: 1.0
 To: linux-nfs@vger.kernel.org
-Cc: Benny Halevy <bhalevy@tonian.com>, Boaz Harrosh <bharrosh@panasas.com>,
-        Peng Tao <bergwolf@gmail.com>
-Subject: [PATCH 2/3] NFSv4.1: Always clear the NFS_INO_LAYOUTCOMMIT in layoutreturn
-Date: Wed, 20 Mar 2013 13:39:07 -0400
-Message-Id: <1363801148-29998-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1363801148-29998-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1363801148-29998-1-git-send-email-Trond.Myklebust@netapp.com>
+Subject: NFSv4 setattr null-terminates strings
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Note that clearing NFS_INO_LAYOUTCOMMIT is tricky, since it requires
-you to also clear the NFS_LSEG_LAYOUTCOMMIT bits from the layout
-segments.
-The only two sites that need to do this are the ones that call
-pnfs_return_layout() without first doing a layout commit.
+As of commit 57e62324e469e092ecc6c94a7a86fe4bd6ac5172, the SETATTR nfsv4
+command now null terminates fattr_owner and fattr_owner_group.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Benny Halevy <bhalevy@tonian.com>
-Cc: stable@vger.kernel.org
----
- fs/nfs/nfs4filelayout.c |  1 -
- fs/nfs/pnfs.c           | 35 +++++++++++++++++++++++++++--------
- 2 files changed, 27 insertions(+), 9 deletions(-)
+Here is an example excerpt from a tcpdump
+Opcode: SETATTR (34)
+    stateid
+        [StateID Hash: 0xafa9]
+        seqid: 0x00000000
+        Data: 000000000000000000000000
+    obj_attributes
+        attrmask
+            recc_attr: FATTR4_OWNER_GROUP (37)
+                fattr4_owner_group: groupname@domainname.com
+                    length: 25
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index c5656c5..22d1062 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -129,7 +129,6 @@ static void filelayout_fenceme(struct inode *inode, struct pnfs_layout_hdr *lo)
- {
- 	if (!test_and_clear_bit(NFS_LAYOUT_RETURN, &lo->plh_flags))
- 		return;
--	clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags);
- 	pnfs_return_layout(inode);
- }
- 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 6f6b356..45badca 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -417,6 +417,16 @@ should_free_lseg(struct pnfs_layout_range *lseg_range,
- 	       lo_seg_intersecting(lseg_range, recall_range);
- }
- 
-+static bool lseg_dec_and_remove_zero(struct pnfs_layout_segment *lseg,
-+		struct list_head *tmp_list)
-+{
-+	if (!atomic_dec_and_test(&lseg->pls_refcount))
-+		return false;
-+	pnfs_layout_remove_lseg(lseg->pls_layout, lseg);
-+	list_add(&lseg->pls_list, tmp_list);
-+	return true;
-+}
-+
- /* Returns 1 if lseg is removed from list, 0 otherwise */
- static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
- 			     struct list_head *tmp_list)
-@@ -430,11 +440,8 @@ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
- 		 */
- 		dprintk("%s: lseg %p ref %d\n", __func__, lseg,
- 			atomic_read(&lseg->pls_refcount));
--		if (atomic_dec_and_test(&lseg->pls_refcount)) {
--			pnfs_layout_remove_lseg(lseg->pls_layout, lseg);
--			list_add(&lseg->pls_list, tmp_list);
-+		if (lseg_dec_and_remove_zero(lseg, tmp_list))
- 			rv = 1;
--		}
- 	}
- 	return rv;
- }
-@@ -779,6 +786,21 @@ send_layoutget(struct pnfs_layout_hdr *lo,
- 	return lseg;
- }
- 
-+static void pnfs_clear_layoutcommit(struct inode *inode,
-+		struct list_head *head)
-+{
-+	struct nfs_inode *nfsi = NFS_I(inode);
-+	struct pnfs_layout_segment *lseg, *tmp;
-+
-+	if (!test_and_clear_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags))
-+		return;
-+	list_for_each_entry_safe(lseg, tmp, &nfsi->layout->plh_segs, pls_list) {
-+		if (!test_and_clear_bit(NFS_LSEG_LAYOUTCOMMIT, &lseg->pls_flags))
-+			continue;
-+		lseg_dec_and_remove_zero(lseg, head);
-+	}
-+}
-+
- /*
-  * Initiates a LAYOUTRETURN(FILE), and removes the pnfs_layout_hdr
-  * when the layout segment list is empty.
-@@ -810,6 +832,7 @@ _pnfs_return_layout(struct inode *ino)
- 	/* Reference matched in nfs4_layoutreturn_release */
- 	pnfs_get_layout_hdr(lo);
- 	empty = list_empty(&lo->plh_segs);
-+	pnfs_clear_layoutcommit(ino, &tmp_list);
- 	pnfs_mark_matching_lsegs_invalid(lo, &tmp_list, NULL);
- 	/* Don't send a LAYOUTRETURN if list was initially empty */
- 	if (empty) {
-@@ -822,8 +845,6 @@ _pnfs_return_layout(struct inode *ino)
- 	spin_unlock(&ino->i_lock);
- 	pnfs_free_lseg_list(&tmp_list);
- 
--	WARN_ON(test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags));
--
- 	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
- 	if (unlikely(lrp == NULL)) {
- 		status = -ENOMEM;
-@@ -1460,7 +1481,6 @@ static void pnfs_ld_handle_write_error(struct nfs_write_data *data)
- 	dprintk("pnfs write error = %d\n", hdr->pnfs_error);
- 	if (NFS_SERVER(hdr->inode)->pnfs_curr_ld->flags &
- 	    PNFS_LAYOUTRET_ON_ERROR) {
--		clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(hdr->inode)->flags);
- 		pnfs_return_layout(hdr->inode);
- 	}
- 	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags))
-@@ -1615,7 +1635,6 @@ static void pnfs_ld_handle_read_error(struct nfs_read_data *data)
- 	dprintk("pnfs read error = %d\n", hdr->pnfs_error);
- 	if (NFS_SERVER(hdr->inode)->pnfs_curr_ld->flags &
- 	    PNFS_LAYOUTRET_ON_ERROR) {
--		clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(hdr->inode)->flags);
- 		pnfs_return_layout(hdr->inode);
- 	}
- 	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags))
--- 
-1.8.1.4
+This means that even though there are actually 24 characters in
+groupname@domainname.com, we now send 24 characters + 1 null character.
+Hence the total length of 25.  Previously the client would send just the
+24 characters and set length to 24.
 
+This isn't an issue for communication with other Linux machines, but it
+is an issue for interaction with AIX machines.  As is discussed here.
+https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1101292
+
+I attempted to read the RFC available here
+http://tools.ietf.org/html/rfc5661, but have not been able to find a
+statement instructing one way or the other.
+
+So the question becomes, is it correct for linux to be sending this null
+terminator when read against the RFC, or is it AIX's responsibility to
+handle null-terminated strings?
+
+Thank you,
+Dave.
