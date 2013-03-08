@@ -1,183 +1,150 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from dgate10.ts.fujitsu.com ([80.70.172.49]:2551 "EHLO
-	dgate10.ts.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751208Ab3CTSpt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Mar 2013 14:45:49 -0400
-Message-Id: <d6437a$461h79@dgate10u.abg.fsc.net>
-Date: 20 Mar 2013 19:45:48 +0100
-From: Bodo Stroesser <bstroesser@ts.fujitsu.com>
-To: neilb@suse.de
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, bstroesser@ts.fujitsu.com
-Subject: Re: sunrpc/cache.c: races while updating cache entries
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-ie0-f177.google.com ([209.85.223.177]:44811 "EHLO
+	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751788Ab3CHTqu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Mar 2013 14:46:50 -0500
+Received: by mail-ie0-f177.google.com with SMTP id 16so2464128iea.8
+        for <linux-nfs@vger.kernel.org>; Fri, 08 Mar 2013 11:46:49 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 05/11] gssd: Provide an introduction in gssd(8)
+To: linux-nfs@vger.kernel.org
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Date: Fri, 08 Mar 2013 14:46:47 -0500
+Message-ID: <20130308194647.5656.13713.stgit@seurat.1015granger.net>
+In-Reply-To: <20130308193830.5656.44184.stgit@seurat.1015granger.net>
+References: <20130308193830.5656.44184.stgit@seurat.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gMTkgTWFyIDIwMTMgMDQ6MjQ6MDAgKzAxMDAgTmVpbEJyb3duIDxuZWlsYkBzdXNlLmRl
-PiB3cm90ZToKCj4gT24gMTQgTWFyIDIwMTMgMTg6MzE6MzggKzAxMDAgQm9kbyBTdHJvZXNz
-ZXIgPGJzdHJvZXNzZXJAdHMuZnVqaXRzdS5jb20+Cj4gd3JvdGU6Cj4gCj4gPiBPbiAxMyBN
-YXIgMjAxMyAwNzo1NTowMCArMDEwMCBOZWlsQnJvd24gPG5laWxiQHN1c2UuZGU+IHdyb3Rl
-Ogo+ID4gCj4gPiA+IE9uIDExIE1hciAyMDEzIDE3OjEzOjQxICswMTAwIEJvZG8gU3Ryb2Vz
-c2VyIDxic3Ryb2Vzc2VyQHRzLmZ1aml0c3UuY29tPgo+ID4gPiB3cm90ZToKPiA+ID4gCj4g
-PiA+ID4gSGksCj4gPiA+ID4gCj4gPiA+ID4gQUZBSUNTLCB0aGVyZSBpcyBvbmUgbW9yZSBy
-YWNlIGluIFJQQyBjYWNoZS4KPiA+ID4gPiAKPiA+ID4gPiBUaGUgcHJvYmxlbSBzaG93ZWQg
-dXAgZm9yIHRoZSAiYXV0aC51bml4LmlwIiBjYWNoZSwgdGhhdAo+ID4gPiA+IGhhcyBhIHJl
-YWRlci4KPiA+ID4gPiAKPiA+ID4gPiBJZiBhIHNlcnZlciB0aHJlYWQgdHJpZXMgdG8gZmlu
-ZCBhIGNhY2hlIGVudHJ5LCBpdCBmaXJzdAo+ID4gPiA+IGRvZXMgYSBsb29rdXAgKG9yIGNh
-bGxzIGlwX21hcF9jYWNoZWRfZ2V0KCkgaW4gdGhpcyBzcGVjaWZpYwo+ID4gPiA+IGNhc2Up
-LiBUaGVuLCBpdCBjYWxscyBjYWNoZV9jaGVjaygpIGZvciB0aGlzIGVudHJ5Lgo+ID4gPiA+
-IAo+ID4gPiA+IElmIHRoZSByZWFkZXIgdXBkYXRlcyB0aGUgY2FjaGUgZW50cnkganVzdCBi
-ZXR3ZWVuIHRoZQo+ID4gPiA+IHRocmVhZCdzIGxvb2t1cCBhbmQgY2FjaGVfY2hlY2soKSBl
-eGVjdXRpb24sIGNhY2hlX2NoZWNrKCkKPiA+ID4gPiB3aWxsIGRvIGFuIHVwY2FsbCBmb3Ig
-dGhpcyBjYWNoZSBlbnRyeS4gVGhpcyBpcywgYmVjYXVzZQo+ID4gPiA+IHN1bnJwY19jYWNo
-ZV91cGRhdGUoKSBjYWxscyBjYWNoZV9mcmVzaF9sb2NrZWQob2xkLCAwKSwKPiA+ID4gPiB3
-aGljaCBzZXRzIGV4cGlyeV90aW1lIHRvIDAuCj4gPiA+ID4gCj4gPiA+ID4gVW5mb3J0dW5h
-dGVseSwgdGhlIHJlcGx5IHRvIHRoZSB1cGNhbGwgd2lsbCBub3QgZGVxdWV1ZQo+ID4gPiA+
-IHRoZSBxdWV1ZWQgY2FjaGVfcmVxdWVzdCwgYXMgdGhlIHJlcGx5IHdpbGwgYmUgYXNzaWdu
-ZWQgdG8KPiA+ID4gPiB0aGUgY2FjaGUgZW50cnkgbmV3bHkgY3JlYXRlZCBieSB0aGUgYWJv
-dmUgY2FjaGUgdXBkYXRlLgo+ID4gPiA+IAo+ID4gPiA+IFRoZSByZXN1bHQgaXMgYSBncm93
-aW5nIHF1ZXVlIG9mIG9ycGhhbmVkIGNhY2hlX3JlcXVlc3QKPiA+ID4gPiBzdHJ1Y3R1cmVz
-IC0tPiBtZW1vcnkgbGVhay4KPiA+ID4gPiAKPiA+ID4gPiBJIGZvdW5kIHRoaXMgb24gYSBT
-TEVTMTEgU1AxIHdpdGggYSBiYWNrcG9ydCBvZiB0aGUgbGF0ZXN0Cj4gPiA+ID4gcGF0Y2hl
-cyB0aGF0IGZpeCB0aGUgb3RoZXIgUlBDIHJhY2VzLiBPbiB0aGlzIG9sZCBrZXJuZWwsCj4g
-PiA+ID4gdGhlIHByb2JsZW0gYWxzbyBsZWFkcyB0byBzdmNfZHJvcCgpIGJlaW5nIGNhbGxl
-ZCBmb3IgdGhlCj4gPiA+ID4gYWZmZWN0ZWQgUlBDIHJlcXVlc3QgKGFmdGVyIHN2Y19kZWZl
-cigpKS4KPiA+ID4gPiAKPiA+ID4gPiBCZXN0IFJlZ2FyZHMKPiA+ID4gPiBCb2RvCj4gPiA+
-IAo+ID4gPiBJIGRvbid0IHRoaW5rIHRoaXMgaXMgYSByZWFsIHByb2JsZW0uCj4gPiA+IFRo
-ZSBwZXJpb2RpYyBjYWxsIHRvICJjYWNoZV9jbGVhbiIgc2hvdWxkIGZpbmQgdGhlc2Ugb3Jw
-aGFuZWQgcmVxdWVzdHMgYW5kCj4gPiA+IHB1cmdlIHRoZW0uICBTbyB5b3UgY291bGQgZ2V0
-IGEgc2hvcnQgdGVybSBtZW1vcnkgbGVhaywgYnV0IGl0IHNob3VsZAo+ID4gPiBjb3JyZWN0
-IGl0c2VsZi4KPiA+ID4gRG8geW91IGFncmVlPwo+ID4gPiAKPiA+ID4gVGhhbmtzLAo+ID4g
-PiBOZWlsQnJvd24KPiA+IAo+ID4gTWVhbndoaWxlIEkgZm91bmQgdGhlIG1pc3NpbmcgcGFy
-dCBvZiB0aGUgcmFjZSEKPiA+IAo+ID4gSXQncyBqdXN0IHdoYXQgSSB3cm90ZSBhYm92ZSBi
-dXQgYWRkaXRpb25hbGx5LCBpbW1lZGlhdGVseSBhZnRlcgo+ID4gdGhlIHJlYWRlciB1cGRh
-dGVkIHRoZSBjYWNoZSwgY2FjaGVfY2xlYW4oKSB1bmhhc2hlcyB0aGUgb2xkIGNhY2hlCj4g
-PiBlbnRyeS4gSW4gdGhhdCBjYXNlOgo+ID4gMSkgdGhlIHRocmVhZCB3aWxsIHF1ZXVlIGEg
-cmVxdWVzdCBmb3IgYSBjYWNoZSBlbnRyeSwgdGhhdCBpc24ndAo+ID4gICAgaW4gdGhlIGhh
-c2ggbGlzdHMuCj4gPiAyKSBjYWNoZV9jbGVhbigpIG5ldmVyIHdpbGwgYWNjZXNzIHRoaXMg
-b2xkIGNhY2hlIGVudHJ5IGFnYWluCj4gPiAzKSBldmVyeSBmdXJ0aGVyIGNhY2hlIHVwZGF0
-ZSB3aWxsIGNhbGwgY2FjaGVfZGVxdWV1ZSgpIGZvciBhIG5ld2VyCj4gPiAgICBjYWNoZSBl
-bnRyeSwgdGhlIHJlcXVlc3QgaXMgbmV2ZXIgZGVxdWV1ZWQKPiA+IAo+ID4gLS0+IG1lbW9y
-eSBsZWFrLgo+IAo+IFllcywgSSBzZWUgdGhhdCBub3cuICBUaGFua3MuCj4gCj4gSSBzdXNw
-ZWN0IHRoYXQgYnVnIHdhcyBpbnRyb2R1Y2VkIGJ5IGNvbW1pdCAzYWY0OTc0ZWIyYzc4Njdk
-NmUxNi4KPiBQcmlvciB0byB0aGVuLCBjYWNoZV9jbGVhbiB3b3VsZCBuZXZlciByZW1vdmUg
-YW55dGhpbmcgd2l0aCBhbiBhY3RpdmUKPiByZWZlcmVuY2UuICBJZiBzb21ldGhpbmcgd2Fz
-IGFib3V0IHRvIGdldCBDQUNIRV9QRU5ESU5HLCBpdCB3b3VsZCBoYXZlIGEKPiByZWZlcmVu
-Y2Ugc28gY2FjaGVfY2xlYW4gd291bGQgbGVhdmUgaXQgYWxvbmUuCj4gCj4gSSB3YW50ZWQg
-dG8gZml4IHRoaXMgYnkgZ2V0dGluZyB0aGUgbGFzdCAncHV0JyB0byBjYWxsIGNhY2hlX2Rl
-cXVldWUoKSBpZgo+IENBQ0hFX1BFTkRJTkcgd2FzIHN0aWxsIHNldC4gIEhvd2V2ZXIgSSBj
-b3VsZG4ndCBnZXQgYWNjZXNzIHRvIHRoZQo+IENBQ0hFX1BFTkRJTkcgZmxhZyBhbmQgdGhl
-IGNhY2hlX2RldGFpbCBhdCB0aGUgc2FtZSBwbGFjZSAtIHNvIEkgZ2F2ZSB1cCBvbgo+IHRo
-YXQuCj4gCj4gVGhlIHBhdGNoIEkgaGF2ZSBpbmNsdWRlZCBiZWxvdyBzZXRzIGEgZmxhZyB3
-aGVuIGFuIGNhY2hlIGl0ZW0gaXMgcmVtb3ZlZAo+IGZyb20gdGhlIGNhY2hlIChieSBjYWNo
-ZV9jbGVhbikgYW5kIHJlZnVzZXMgdG8gbG9kZ2UgYW4gdXBjYWxsIGlmIHRoZSBmbGFnIGlz
-Cj4gc2V0LiAgVGhhdCB3aWxsIGVuc3VyZSB0aGVyZSBpcyBuZXZlciBhIHBlbmRpbmcgdXBj
-YWxsIHdoZW4gdGhlIGl0ZW0gaXMKPiBmaW5hbGx5IGZyZWVkLgo+IAo+IFlvdSBwYXRjaCBv
-bmx5IGFkZHJlc3NlcyB0aGUgcGFydGljdWxhciBzaXR1YXRpb24gdGhhdCB5b3UgaGFkIGZv
-dW5kLiAgSQo+IHRoaW5rIGl0IGlzIHBvc3NpYmxlIHRoYXQgdGhlcmUgbWlnaHQgYmUgb3Ro
-ZXIgc2l0dWF0aW9ucyB0aGF0IGFsc28gbGVhZCB0bwo+IG1lbW9yeSBsZWFrcywgc28gSSB3
-YW50ZWQgYSBzb2x1dGlvbiB0aGF0IHdvdWxkIGd1YXJhbnRlZSB0aGF0IHRoZXJlIGNvdWxk
-bid0Cj4gYmUgYSBsZWFrLgo+IAo+ID4gCj4gPiBJIHZlcmlmaWVkIHRoaXMgaW5zZXJ0aW5n
-IHNvbWUgZGVidWcgaW5zdHJ1Y3Rpb25zLiBJbiBhIHRlc3RydW4KPiA+IHRoYXQgdHJpZ2dl
-cmVkIDYgdGltZXMsIGFuZCB0aGUgcXVldWUgcHJpbnRlZCBieSBjcmFzaCBhZnRlciB0aGUK
-PiA+IHJ1biBoYWQgNiBvcnBoYW5lZCBlbnRyaWVzLgo+ID4gCj4gPiBBcyBJIHdyb3RlIHll
-c3RlcmRheSwgSSBoYXZlIGEgcGF0Y2ggdGhhdCBzb2x2ZXMgdGhlIHByb2JsZW0gYnkKPiA+
-IHJldGVzdGluZyB0aGUgc3RhdGUgb2YgdGhlIGNhY2hlIGVudHJ5IGFmdGVyIHNldHRpbmcg
-Q0FDSEVfUEVORElORwo+ID4gaW4gY2FjaGVfY2hlY2soKS4gSSBjYW4gc2VuZCBpdCBpZiB5
-b3UgbGlrZS4KPiA+IAo+ID4gQm9kbwo+ID4gCj4gPiBQLlMuOgo+ID4gTWF5YmUgSSdtIHdy
-b25nLCBidXQgQUZBSUNTLCB0aGVyZSBhcmUgdHdvIGZ1cnRoZXIgbWlub3IgcHJvYmxlbXMK
-PiA+IHJlZ2FyZGluZyAobmVhcmx5KSBleHBpcmVkIGNhY2hlIGVudHJpZXM6Cj4gPiBhKSBp
-cF9tYXBfY2FjaGVkX2dldCgpIGluIHNvbWUgc2l0dWF0aW9ucyBjYW4gcmV0dXJuIGFuIGFs
-cmVhZHkKPiA+ICAgIG91dGRhdGVkIChpdCB1c2VzIGNhY2hlX3ZhbGlkIHRoYXQgbm90IGZ1
-bGx5IGNoZWNrcyB0aGUgc3RhdGUpCj4gPiAgICBjYWNoZSBlbnRyeS4gSWYgY2FjaGVfY2hl
-Y2soKSBpcyBjYWNsbGVkIGZvciB0aGF0IGVudHJ5LCBpdCB3aWxsCj4gPiAgICBmYWlsLCBJ
-IHRoaW5rCj4gPiBiKSBHZW5lcmFsbHksIGlmIGEgY2FjaGUgZW50cnkgaXMgcmV0dXJuZWQg
-Ynkgc3VucnBjX2NhY2hlX2xvb2t1cCgpCj4gPiAgICBhbmQgdGhlIGVudHJ5IGlzIGluIHRo
-ZSBsYXN0IHNlY29uZCBvZiBpdCdzIGV4cGlyeV90aW1lLCB0aGUgCj4gPiAgICBjbG9jayBt
-aWdodCBtb3ZlIHRvIHRoZSBuZXh0IHNlY29uZCBiZWZvcmUgY2FjaGVfY2hlY2sgaXMgY2Fs
-bGVkLgo+ID4gICAgSWYgdGhpcyBoYXBwZW5zLCBjYWNoZV9jaGVjayB3aWxsIGZhaWwsIEkg
-dGhpbmsuCj4gPiBEbyB5b3UgYWdyZWU/Cj4gCj4gWWVzLCBidXQgSSdtIG5vdCBzdXJlIGhv
-dyBpbXBvcnRhbnQgdGhpcyBpcy4KPiBOb3JtYWxseSBjYWNoZSBlbnRyaWVzIHNob3VsZCBi
-ZSByZWZyZXNoZWQgd2VsbCBiZWZvcmUgdGhleSBleHBpcmUsIHNvIHdlCj4gc2hvdWxkIG5v
-cm1hbGx5IGZpbmQgYW4gZW50cnkgd2l0aCBtb3JlIHRoYW4gaGFsZiBvZiBpdHMgbGlmZXRp
-bWUgbGVmdC4KPiAKPiBJbiB0aGUgcmFyZSBjYXNlIHdoZXJlIHRoZSBzY2VuYXJpbyB5b3Ug
-ZGVzY3JpYmUgaGFwcGVucywgY2FjaGVfY2hlY2soKSB3aWxsCj4gcmV0dXJuIC1FVElNRURP
-VVQuCj4gSW4gbWFpbmxpbmUsIHRoYXQgd2lsbCBjYXVzZSB0aGUgcmVxdWVzdCB0byBiZSBk
-cm9wcGVkIGFuZCB0aGUgY29ubmVjdGlvbgo+IGNsb3NlZCBzbyB0aGUgY2xpZW50IHdpbGwg
-dHJ5IGFnYWluIGFuZCB3b24ndCBoaXQgYW55IHJhY2UgYW5kIHNvIHNob3VsZCBnZXQKPiBh
-IGNvcnJlY3QgcmVzdWx0Lgo+IEluIFNMRVMxMVNQMSwgd2UgcmV0cnkgdGhlIGxvb2t1cCBh
-bmQgd2lsbCBob3BlZnVsbHkgZ2V0IGEgYmV0dGVyIHJlc3VsdAo+IHdpdGhvdXQgaGF2aW5n
-IHRvIGNsb3NlIHRoZSBjb25uZWN0aW9uLgo+IAo+IFNvIHRoaXMgc2hvdWxkIGJlIHJhcmUg
-YW5kIHNob3VsZCBmYWlsLXNhZmUuCj4gCj4gRG9lcyB0aGF0IGFncmVlIHdpdGggeW91ciB1
-bmRlcnN0YW5kaW5nPwo+IAo+IAo+IFRoYW5rcywKPiBOZWlsQnJvd24KPiAKPiAKPiBGcm9t
-IGU3NmU2NTgzNDA1YTNiNWZmOWM4ZDJhZTExODQ3MDRlZmIyMDllZjAgTW9uIFNlcCAxNyAw
-MDowMDowMCAyMDAxCj4gRnJvbTogTmVpbEJyb3duIDxuZWlsYkBzdXNlLmRlPgo+IERhdGU6
-IFR1ZSwgMTkgTWFyIDIwMTMgMTM6NTg6NTggKzExMDAKPiBTdWJqZWN0OiBbUEFUQ0hdIHN1
-bnJwYy9jYWNoZTogZW5zdXJlIGl0ZW1zIHJlbW92ZWQgZnJvbSBjYWNoZSBkbyBub3QgaGF2
-ZQo+ICBwZW5kaW5nIHVwY2FsbHMuCj4gCj4gSXQgaXMgcG9zc2libGUgZm9yIGEgcmFjZSB0
-byBzZXQgQ0FDSEVfUEVORElORyBhZnRlciBjYWNoZV9jbGVhbigpCj4gaGFzIHJlbW92ZWQg
-YSBjYWNoZSBlbnRyeSBmcm9tIHRoZSBjYWNoZS4KPiBJZiBDQUNIRV9QRU5ESU5HIGlzIHN0
-aWxsIHNldCB3aGVuIHRoZSBlbnRyeSBpcyBmaW5hbGx5ICdwdXQnLAo+IHRoZSBjYWNoZV9k
-ZXF1ZXVlKCkgd2lsbCBuZXZlciBoYXBwZW4gYW5kIHdlIGNhbiBsZWFrIG1lbW9yeS4KPiAK
-PiBTbyBzZXQgYSBuZXcgZmxhZyAnQ0FDSEVfQ0xFQU5FRCcgd2hlbiB3ZSByZW1vdmUgc29t
-ZXRoaW5nIGZyb20KPiB0aGUgY2FjaGUsIGFuZCBkb24ndCBxdWV1ZSBhbmQgdXBjYWxsIGlm
-IGl0IGlzIHNldC4KPiAKPiBJZiBDQUNIRV9QRU5ESU5HIGlzIHNldCBiZWZvcmUgQ0FDSEVf
-Q0xFQU5FRCwgdGhlIGNhbGwgdGhhdAo+IGNhY2hlX2NsZWFuKCkgbWFrZXMgdG8gY2FjaGVf
-ZnJlc2hfdW5sb2NrZWQoKSB3aWxsIGZyZWUgbWVtb3J5Cj4gYXMgbmVlZGVkLiAgSWYgQ0FD
-SEVfUEVORElORyBpcyBzZXQgYWZ0ZXIgQ0FDSEVfQ0xFQU5FRCwgdGhlCj4gdGVzdCBpbiBz
-dW5ycGNfY2FjaGVfcGlwZV91cGNhbGwgd2lsbCBlbnN1cmUgdGhhdCB0aGUgbWVtb3J5Cj4g
-aXMgbm90IGFsbG9jYXRlZC4KPiAKPiBSZXBvcnRlZC1ieTogPGJzdHJvZXNzZXJAdHMuZnVq
-aXRzdS5jb20+Cj4gU2lnbmVkLW9mZi1ieTogTmVpbEJyb3duIDxuZWlsYkBzdXNlLmRlPgo+
-IAo+IGRpZmYgLS1naXQgYS9pbmNsdWRlL2xpbnV4L3N1bnJwYy9jYWNoZS5oIGIvaW5jbHVk
-ZS9saW51eC9zdW5ycGMvY2FjaGUuaAo+IGluZGV4IDMwMzM5OWIuLjg0MTlmN2QgMTAwNjQ0
-Cj4gLS0tIGEvaW5jbHVkZS9saW51eC9zdW5ycGMvY2FjaGUuaAo+ICsrKyBiL2luY2x1ZGUv
-bGludXgvc3VucnBjL2NhY2hlLmgKPiBAQCAtNTcsNiArNTcsNyBAQCBzdHJ1Y3QgY2FjaGVf
-aGVhZCB7Cj4gICNkZWZpbmUJQ0FDSEVfVkFMSUQJMAkvKiBFbnRyeSBjb250YWlucyB2YWxp
-ZCBkYXRhICovCj4gICNkZWZpbmUJQ0FDSEVfTkVHQVRJVkUJMQkvKiBOZWdhdGl2ZSBlbnRy
-eSAtIHRoZXJlIGlzIG5vIG1hdGNoIGZvciB0aGUga2V5ICovCj4gICNkZWZpbmUJQ0FDSEVf
-UEVORElORwkyCS8qIEFuIHVwY2FsbCBoYXMgYmVlbiBzZW50IGJ1dCBubyByZXBseSByZWNl
-aXZlZCB5ZXQqLwo+ICsjZGVmaW5lCUNBQ0hFX0NMRUFORUQJMwkvKiBFbnRyeSBoYXMgYmVl
-biBjbGVhbmVkIGZyb20gY2FjaGUgKi8KPiAgCj4gICNkZWZpbmUJQ0FDSEVfTkVXX0VYUElS
-WSAxMjAJLyoga2VlcCBuZXcgdGhpbmdzIHBlbmRpbmcgY29uZmlybWF0aW9uIGZvciAxMjAg
-c2Vjb25kcyAqLwo+ICAKPiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy9jYWNoZS5jIGIvbmV0
-L3N1bnJwYy9jYWNoZS5jCj4gaW5kZXggMTY3N2NmZS4uOGU3Y2NiYiAxMDA2NDQKPiAtLS0g
-YS9uZXQvc3VucnBjL2NhY2hlLmMKPiArKysgYi9uZXQvc3VucnBjL2NhY2hlLmMKPiBAQCAt
-MzA2LDcgKzMwNiw3IEBAIEVYUE9SVF9TWU1CT0xfR1BMKGNhY2hlX2NoZWNrKTsKPiAgICog
-YSBjdXJyZW50IHBvaW50ZXIgaW50byB0aGF0IGxpc3QgYW5kIGludG8gdGhlIHRhYmxlCj4g
-ICAqIGZvciB0aGF0IGVudHJ5Lgo+ICAgKgo+IC0gKiBFYWNoIHRpbWUgY2xlYW5fY2FjaGUg
-aXMgY2FsbGVkIGl0IGZpbmRzIHRoZSBuZXh0IG5vbi1lbXB0eSBlbnRyeQo+ICsgKiBFYWNo
-IHRpbWUgY2FjaGVfY2xlYW4gaXMgY2FsbGVkIGl0IGZpbmRzIHRoZSBuZXh0IG5vbi1lbXB0
-eSBlbnRyeQo+ICAgKiBpbiB0aGUgY3VycmVudCB0YWJsZSBhbmQgd2Fsa3MgdGhlIGxpc3Qg
-aW4gdGhhdCBlbnRyeQo+ICAgKiBsb29raW5nIGZvciBlbnRyaWVzIHRoYXQgY2FuIGJlIHJl
-bW92ZWQuCj4gICAqCj4gQEAgLTQ1Myw2ICs0NTMsNyBAQCBzdGF0aWMgaW50IGNhY2hlX2Ns
-ZWFuKHZvaWQpCj4gIAkJCWN1cnJlbnRfaW5kZXggKys7Cj4gIAkJc3Bpbl91bmxvY2soJmNh
-Y2hlX2xpc3RfbG9jayk7Cj4gIAkJaWYgKGNoKSB7Cj4gKwkJCXNldF9iaXQoQ0FDSEVfQ0xF
-QU5FRCwgJmNoLT5mbGFncyk7Cj4gIAkJCWNhY2hlX2ZyZXNoX3VubG9ja2VkKGNoLCBkKTsK
-PiAgCQkJY2FjaGVfcHV0KGNoLCBkKTsKPiAgCQl9Cj4gQEAgLTExNzYsNiArMTE3Nyw5IEBA
-IGludCBzdW5ycGNfY2FjaGVfcGlwZV91cGNhbGwoc3RydWN0IGNhY2hlX2RldGFpbCAqZGV0
-YWlsLCBzdHJ1Y3QgY2FjaGVfaGVhZCAqaCkKPiAgCQl3YXJuX25vX2xpc3RlbmVyKGRldGFp
-bCk7Cj4gIAkJcmV0dXJuIC1FSU5WQUw7Cj4gIAl9Cj4gKwlpZiAodGVzdF9iaXQoQ0FDSEVf
-Q0xFQU5FRCwgJmgtPmZsYWdzKSkKPiArCQkvKiBUb28gbGF0ZSB0byBtYWtlIGFuIHVwY2Fs
-bCAqLwo+ICsJCXJldHVybiAtRUFHQUlOOwo+ICAKPiAgCWJ1ZiA9IGttYWxsb2MoUEFHRV9T
-SVpFLCBHRlBfS0VSTkVMKTsKPiAgCWlmICghYnVmKQo+IAoKSSBhZGRlZCB0aGlzIHBhdGNo
-IHRvIG15IFNMRVMxMSBTUDEgYW5kIHN0aWxsIGhhZCBkcm9wcGVkIFJQQyByZXF1ZXN0cywK
-YnV0IG5vIGxlYWtlZCBtZW1vcnkuCgpUaGUgZHJvcHMgb2NjdXIsIGJlY2F1c2UgY2FjaGVf
-Y2hlY2soKSBhbGxvd3MgdG8gbWFrZSB1cGNhbGxzIGZvciBjYWNoZQplbnRyaWVzLCB0aGF0
-IGFyZSBzdWJzdGl0dXRlZCB3aXRoIG5ldyBvbmVzIGJ5IHN1bnJwY19jYWNoZV91cGRhdGUo
-KS4KSWYgY2FjaGVfY2xlYW4oKSBjb21lcyB0b28gbGF0ZSB0byB3YWtlIHVwIHRoZSB0aHJl
-YWQgd2FpdGluZyBmb3IgYW4KdXBkYXRlIG9mIHRoZSBvbGQgY2FjaGUgZW50cnksIGEgdGlt
-ZW91dCB3aWxsIG9jY3VyIGFuZCB0aGUgUlBDIHJlcXVlc3QKaXMgZHJvcHBlZC4KClRoaXMg
-d2lsbCBub3QgaGFwcGVuIG9uIG1haW5saW5lLCBidXQgd2h5IHNob3VsZCB3ZSBhbGxvdyB1
-cGNhbGxzIHRvIGJlCnF1ZXVlZCBmb3IgcmVwbGFjZWQgY2FjaGUgZW50cmllcz8gVGhpcyB3
-aWxsIGNyZWF0ZSB1bm5lY2Vzc2FyeSB0cmFmZmljCm9uIHRoZSBjaGFubmVsIHRvIHRoZSBy
-ZWFkZXIgYW5kIGFzIGEgcmVzdWx0IHVubmVjZXNzYXJ5IGNhbGxzIHRvCnN1bnJwY19jYWNo
-ZV91cGRhdGUoKQoKQnkgYWRkaXRpb25hbGx5IHRvIHRoZSBhYm92ZSBwYXRjaCBpbnNlcnRp
-bmcKICAgICJzZXRiaXQoQ0FDSEVfQ0xFQU5FRCwgJm9sZC0+ZmxhZ3MpOyIKaW50byBzdW5y
-cGNfY2FjaGVfdXBkYXRlKCkgYmV0d2VlbiB0aGUgdHdvIGxpbmVzCiAgICAiY2FjaGVfZnJl
-c2hfdW5sb2NrZWQodG1wLCBkZXRhaWwpOyIKICAgICJjYWNoZV9mcmVzaF91bmxvY2tlZChv
-bGQsIGRldGFpbCk7Igp0aGlzIHVuY2xlYW4gYmVoYXZpb3IgY2FuIGJlIGF2b2lkZWQuCgpJ
-ZiB3ZSBkbyBzbywgbWF5YmUgQ0FDSEVfQ0xFQU4gc2hvdWxkIGJldHRlciBiZSBuYW1lZCBD
-QUNIRV9PTEQgb3IKc29tZXRoaW5nIGVsc2UgdGhhdCByZWZsZWN0cyBib3RoIHVzZXMgb2Yg
-dGhlIGJpdC4KCkRvIHlvdSBhZ3JlZT8KCkJvZG8KCg==
+It's good practice in user documentation to define terms before they
+are used.  Add an INTRODUCTION section that defines important terms
+that are used in the DESCRIPTION and OPTIONS sections.  The key
+concepts are GSS context, user credential, machine credential, and
+keytab.
 
+The RFCs I looked at capitalize both "gss" and "rpcsec_gss".  For
+consistency I changed this throughout the man page.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ utils/gssd/gssd.man |   73 +++++++++++++++++++++++++++++++++++++++++----------
+ 1 files changed, 59 insertions(+), 14 deletions(-)
+
+diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
+index dbbfbbb..fb3ab97 100644
+--- a/utils/gssd/gssd.man
++++ b/utils/gssd/gssd.man
+@@ -2,9 +2,10 @@
+ .\" rpc.gssd(8)
+ .\"
+ .\" Copyright (C) 2003 J. Bruce Fields <bfields@umich.edu>
+-.TH rpc.gssd 8 "14 Mar 2007"
++.\"
++.TH rpc.gssd 8 "20 Feb 2013"
+ .SH NAME
+-rpc.gssd \- rpcsec_gss daemon
++rpc.gssd \- RPCSEC_GSS daemon
+ .SH SYNOPSIS
+ .B rpc.gssd
+ .RB [ \-fMnlvr ]
+@@ -18,17 +19,58 @@ rpc.gssd \- rpcsec_gss daemon
+ .IR timeout ]
+ .RB [ \-R
+ .IR realm ]
++.SH INTRODUCTION
++The RPCSEC_GSS protocol, defined in RFC 5403, is used to provide
++strong security for RPC-based protocols such as NFS.
++.P
++Before exchanging RPC requests using RPCSEC_GSS, an RPC client must
++establish a GSS
++.IR "security context" .
++A security context is shared state on each
++end of a network transport that enables GSS-API security services.
++.P
++Security contexts are established using
++.IR "security credentials" .
++A credential grants temporary access to a secure network service,
++much as a railway ticket grants temporary access to use a rail service.
++.P
++A user typically obtains a credential by providing a password to the
++.BR kinit (1)
++command, or via a PAM library at login time.
++A credential acquired with a
++.I user principal
++is known as a
++.I user credential
++(see
++.BR kerberos (1)
++for more on principals).
++.P
++For certain operations, a credential is required
++which represents no user,
++is otherwise unprivileged,
++and is always available.
++This is referred to as a
++.IR "machine credential" .
++.P
++Machine credentials are typically established using a
++.IR "service principal" ,
++whose encrypted password, called its
++.IR key ,
++is stored in a file, called a
++.IR keytab ,
++to avoid requiring a user prompt.
++A machine credential effectively does not expire because the system
++can renew it as needed without user intervention.
++.P
++Once obtained, credentials are typically stored in local temporary files
++with well-known pathnames.
+ .SH DESCRIPTION
+-The rpcsec_gss protocol gives a means of using the gss-api generic security
+-api to provide security for protocols using rpc (in particular, nfs).  Before
+-exchanging any rpc requests using rpcsec_gss, the rpc client must first
+-establish a security context.  The linux kernel's implementation of rpcsec_gss
+-depends on the userspace daemon
+-.B rpc.gssd
+-to establish security contexts.  The
++To establish GSS security contexts using these credential files,
++the Linux kernel RPC client depends on a userspace daemon called
++.BR rpc.gssd .
++The
+ .B rpc.gssd
+-daemon uses files in the rpc_pipefs filesystem to communicate with the kernel.
+-
++daemon uses the rpc_pipefs filesystem to communicate with the kernel.
+ .SH OPTIONS
+ .TP
+ .B -f
+@@ -134,7 +176,7 @@ stores machine credentials in memory instead.
+ Increases the verbosity of the output (can be specified multiple times).
+ .TP
+ .B -r
+-If the rpcsec_gss library supports setting debug level,
++If the RPCSEC_GSS library supports setting debug level,
+ increases the verbosity of the output (can be specified multiple times).
+ .TP
+ .BI "-R " realm
+@@ -145,14 +187,17 @@ used to create a context.  By default, the default realm, as configured
+ in the Kerberos configuration file, is preferred.
+ .TP
+ .BI "-t " timeout
+-Timeout, in seconds, for kernel gss contexts. This option allows you to force 
++Timeout, in seconds, for kernel GSS contexts. This option allows you to force 
+ new kernel contexts to be negotiated after
+ .I timeout
+ seconds, which allows changing Kerberos tickets and identities frequently.
+ The default is no explicit timeout, which means the kernel context will live
+ the lifetime of the Kerberos service ticket used in its creation.
+ .SH SEE ALSO
+-.BR rpc.svcgssd(8)
++.BR rpc.svcgssd (8),
++.BR kerberos (1),
++.BR kinit (1),
++.BR krb5.conf (5)
+ .SH AUTHORS
+ .br
+ Dug Song <dugsong@umich.edu>
 
