@@ -1,44 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f41.google.com ([209.85.213.41]:47765 "EHLO
-	mail-yh0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933294Ab3CZNGp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Mar 2013 09:06:45 -0400
-Received: by mail-yh0-f41.google.com with SMTP id 47so575431yhr.14
-        for <linux-nfs@vger.kernel.org>; Tue, 26 Mar 2013 06:06:44 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@netapp.com
-Cc: ycnian@gmail.com, linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH] nfs: allow the v4.1 callback thread to freeze
-Date: Tue, 26 Mar 2013 09:06:39 -0400
-Message-Id: <1364303199-13295-1-git-send-email-jlayton@redhat.com>
+Received: from mail-ia0-f182.google.com ([209.85.210.182]:56789 "EHLO
+	mail-ia0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753918Ab3CHTre (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Mar 2013 14:47:34 -0500
+Received: by mail-ia0-f182.google.com with SMTP id b35so83211iac.41
+        for <linux-nfs@vger.kernel.org>; Fri, 08 Mar 2013 11:47:34 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 10/11] gssd: gethostname(3) returns zero or -1, not an errno
+To: linux-nfs@vger.kernel.org
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Date: Fri, 08 Mar 2013 14:47:32 -0500
+Message-ID: <20130308194731.5656.51395.stgit@seurat.1015granger.net>
+In-Reply-To: <20130308193830.5656.44184.stgit@seurat.1015granger.net>
+References: <20130308193830.5656.44184.stgit@seurat.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The v4.1 callback thread has set_freezable() at the top, but it doesn't
-ever try to freeze within the loop. Have it call try_to_freeze() at the
-top of the loop. If a freeze event occurs, recheck kthread_should_stop()
-after thawing.
+According to "man gethostname," gssd is handling the return value of
+gethostname(3) incorrectly.  It looks like other gethostname(3) call
+sites in nfs-utils are already correct.
 
-Reported-and-Tested-by: Yanchuan Nian <ycnian@gmail.com>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/callback.c | 3 +++
- 1 file changed, 3 insertions(+)
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 5088b57..cff089a 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -125,6 +125,9 @@ nfs41_callback_svc(void *vrqstp)
- 	set_freezable();
+ utils/gssd/krb5_util.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+index 6c37094..215c0a4 100644
+--- a/utils/gssd/krb5_util.c
++++ b/utils/gssd/krb5_util.c
+@@ -802,8 +802,8 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *tgtname,
+ 		goto out;
  
- 	while (!kthread_should_stop()) {
-+		if (try_to_freeze())
-+			continue;
-+
- 		prepare_to_wait(&serv->sv_cb_waitq, &wq, TASK_INTERRUPTIBLE);
- 		spin_lock_bh(&serv->sv_cb_lock);
- 		if (!list_empty(&serv->sv_cb_list)) {
--- 
-1.7.11.7
+ 	/* Get full local hostname */
+-	retval = gethostname(myhostname, sizeof(myhostname));
+-	if (retval) {
++	if (gethostname(myhostname, sizeof(myhostname)) == -1) {
++		retval = errno;
+ 		k5err = gssd_k5_err_msg(context, retval);
+ 		printerr(1, "%s while getting local hostname\n", k5err);
+ 		goto out;
 
