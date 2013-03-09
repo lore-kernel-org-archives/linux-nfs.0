@@ -1,61 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f182.google.com ([209.85.212.182]:51949 "EHLO
-	mail-wi0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755522Ab3CYJeV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Mar 2013 05:34:21 -0400
-Received: by mail-wi0-f182.google.com with SMTP id hi18so6357838wib.9
-        for <linux-nfs@vger.kernel.org>; Mon, 25 Mar 2013 02:34:20 -0700 (PDT)
-Message-ID: <51501A18.7050504@tonian.com>
-Date: Mon, 25 Mar 2013 11:34:16 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from mx12.netapp.com ([216.240.18.77]:63575 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757489Ab3CIOcu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 9 Mar 2013 09:32:50 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>, Dave Jones <davej@redhat.com>,
+        Linux Kernel <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: sunrpc ODEBUG assertion.
+Date: Sat, 9 Mar 2013 14:32:47 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9286B7D85@sacexcmbx05-prd.hq.netapp.com>
+References: <20130309025949.GA14176@redhat.com>
+ <20130309140107.GI31448@fieldses.org>
+In-Reply-To: <20130309140107.GI31448@fieldses.org>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-To: fanchaoting <fanchaoting@cn.fujitsu.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] ctl: should return NULL when dmsetup fail in find_dm_name
-References: <513DC8BF.5060503@cn.fujitsu.com>
-In-Reply-To: <513DC8BF.5060503@cn.fujitsu.com>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-03-11 14:06, fanchaoting wrote:
-> when dmsetup fail in find_dm_name, it should return NULL,if don't
-> do it. it will cause core dump in get_dm when do free(name).
-
-Thanks, but what version are you using?
-This was already fixed here:
-http://git.linux-nfs.org/?p=bhalevy/pnfsd-block-ctl.git;a=commitdiff;h=9082efe1dc12248e530d4200d7150a286abea922
-
-Please update to the latest version
-git://linux-nfs.org/~bhalevy/pnfsd-block-ctl.git
-
-Benny
-
+> -----Original Message-----
+> From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> Sent: Saturday, March 09, 2013 9:01 AM
+> To: Dave Jones; Linux Kernel; linux-nfs@vger.kernel.org; Myklebust, Trond
+> Subject: Re: sunrpc ODEBUG assertion.
 > 
-> Signed-off-by: fanchaoting<fanchaoting@cn.fujitsu.com>
+> On Fri, Mar 08, 2013 at 09:59:49PM -0500, Dave Jones wrote:
+> > restarted my nfs server, and mounted it from a Mac, and got this..
+> >
+> >
+> > [47433.585266] WARNING: at lib/debugobjects.c:260
+> > debug_print_object+0x8c/0xb0()
 > 
-> ---
->  ctl.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
+> Thanks for the report.  It's a known issue.  I'd like Trond to either take this or
+> ACK (or NAK) this.
+
+
+Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+ 
+> --b.
 > 
-> diff --git a/ctl.c b/ctl.c
-> index 2071b0e..0ac1c44 100644
-> --- a/ctl.c
-> +++ b/ctl.c
-> @@ -489,7 +489,7 @@ find_dm_name(int major, int minor)
->         if (((fd = get_output("/sbin/dmsetup", argv)) == -1) ||
->             ((fp = fdopen(fd, "r")) == NULL)) {
->                 printf("%s: get_output/fdopen failed\n", __func__);
-> -               return;
-> +               return NULL;
->         }
->         while (fgets(buf, sizeof (buf), fp) != NULL) {
->                 t = __token_init(buf, '\t');
-> --
-> 1.7.1
+> commit dc329cfb5c68c62db56b78b67ee45c3ef24df7d6
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Fri Mar 8 13:13:08 2013 -0500
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>     sunrpc: don't attempt to cancel unitialized work
+> 
+>     As of dc107402ae06286a9ed33c32daf3f35514a7cb8d "SUNRPC: make
+> AF_LOCAL connect synchronous", we no longer initialize connect_worker in
+> the
+>     AF_LOCAL case, resulting in warnings like:
+> 
+>         WARNING: at lib/debugobjects.c:261 debug_print_object+0x8c/0xb0()
+> Hardware name: Bochs
+>         ODEBUG: assert_init not available (active state 0) object type: timer_list
+> hint: stub_timer+0x0/0x20
+>         Modules linked in: iscsi_tcp libiscsi_tcp libiscsi scsi_transport_iscsi nfsd
+> auth_rpcgss nfs_acl lockd sunrpc
+>         Pid: 4816, comm: nfsd Tainted: G        W    3.8.0-rc2-00049-gdc10740 #801
+>         Call Trace:
+>          [<ffffffff8156ec00>] ? free_obj_work+0x60/0xa0
+>          [<ffffffff81046aaf>] warn_slowpath_common+0x7f/0xc0
+>          [<ffffffff81046ba6>] warn_slowpath_fmt+0x46/0x50
+>          [<ffffffff8156eccc>] debug_print_object+0x8c/0xb0
+>          [<ffffffff81055030>] ? timer_debug_hint+0x10/0x10
+>          [<ffffffff8156f7e3>] debug_object_assert_init+0xe3/0x120
+>          [<ffffffff81057ebb>] del_timer+0x2b/0x80
+>          [<ffffffff8109c4e6>] ? mark_held_locks+0x86/0x110
+>          [<ffffffff81065a29>] try_to_grab_pending+0xd9/0x150
+>          [<ffffffff81065b57>] __cancel_work_timer+0x27/0xc0
+>          [<ffffffff81065c03>] cancel_delayed_work_sync+0x13/0x20
+>          [<ffffffffa0007067>] xs_destroy+0x27/0x80 [sunrpc]
+>          [<ffffffffa00040d8>] xprt_destroy+0x78/0xa0 [sunrpc]
+>          [<ffffffffa0006241>] xprt_put+0x21/0x30 [sunrpc]
+>          [<ffffffffa00030cf>] rpc_free_client+0x10f/0x1a0 [sunrpc]
+>          [<ffffffffa0002ff3>] ? rpc_free_client+0x33/0x1a0 [sunrpc]
+>          [<ffffffffa0002f7e>] rpc_release_client+0x6e/0xb0 [sunrpc]
+>          [<ffffffffa000325d>] rpc_shutdown_client+0xfd/0x1b0 [sunrpc]
+>          [<ffffffffa0017196>] rpcb_put_local+0x106/0x130 [sunrpc]
+>         ...
+> 
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> 
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c index
+> c1d8476..35fc805 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -849,6 +849,14 @@ static void xs_tcp_close(struct rpc_xprt *xprt)
+>  		xs_tcp_shutdown(xprt);
+>  }
+> 
+> +xs_local_destroy(struct rpc_xprt *xprt) {
+> +	xs_close(xprt);
+> +	xs_free_peer_addresses(xprt);
+> +	xprt_free(xprt);
+> +	module_put(THIS_MODULE);
+> +}
+> +
+>  /**
+>   * xs_destroy - prepare to shutdown a transport
+>   * @xprt: doomed transport
+> @@ -862,10 +870,7 @@ static void xs_destroy(struct rpc_xprt *xprt)
+> 
+>  	cancel_delayed_work_sync(&transport->connect_worker);
+> 
+> -	xs_close(xprt);
+> -	xs_free_peer_addresses(xprt);
+> -	xprt_free(xprt);
+> -	module_put(THIS_MODULE);
+> +	xs_local_destroy(xprt);
+>  }
+> 
+>  static inline struct rpc_xprt *xprt_from_sock(struct sock *sk) @@ -2482,7
+> +2487,7 @@ static struct rpc_xprt_ops xs_local_ops = {
+>  	.send_request		= xs_local_send_request,
+>  	.set_retrans_timeout	= xprt_set_retrans_timeout_def,
+>  	.close			= xs_close,
+> -	.destroy		= xs_destroy,
+> +	.destroy		= xs_local_destroy,
+>  	.print_stats		= xs_local_print_stats,
+>  };
 > 
