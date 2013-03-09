@@ -1,54 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f46.google.com ([74.125.82.46]:62919 "EHLO
-	mail-wg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754415Ab3CLAOD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Mar 2013 20:14:03 -0400
-Received: by mail-wg0-f46.google.com with SMTP id fg15so5420287wgb.1
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Mar 2013 17:14:01 -0700 (PDT)
-MIME-Version: 1.0
-Date: Mon, 11 Mar 2013 17:07:31 -0700
-Message-ID: <CAENQ-b9N0un-VNCdw7m9b4TPuVR39TL4NTPcFjF9F+hXU=3i9A@mail.gmail.com>
-Subject: nfs.idmapd not being consulted? (different nobody:nobody uid:gid issue)
-From: Amritpal Bath <amrit@transamrit.net>
+Received: from fieldses.org ([174.143.236.118]:57404 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759994Ab3CIAdn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Mar 2013 19:33:43 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
 To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/2] nfsd4: fix use-after-free of 4.1 client on connection loss
+Date: Fri,  8 Mar 2013 19:33:40 -0500
+Message-Id: <1362789221-4246-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1362789221-4246-1-git-send-email-bfields@redhat.com>
+References: <1362789221-4246-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-[ I haven't found an answer to this - the usual nobody:nobody issues
-appear to be domainname related and not in play here... ]
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-What are the conditions where rpc.idmapd should be queried on an NFS
-client?  I have a few that appears to be completely ignored, resulting
-in /home/* being presented as belonging to nobody:nobody.  The same
-configuration is fine on other identically configured boxes.
+Once we drop the lock here there's nothing keeping the client around:
+the only lock still held is the xpt_lock on this socket, but this socket
+no longer has any connection with the client so there's no way for other
+code to know we're still using the client.
 
-On two identically configured boxes, the following:
-    killall rpc.idmapd && rpc.idmapd -f -vvvv
+The solution is simple: all nfsd4_probe_callback does is set a few
+variables and queue some work, so there's no reason we can't just keep
+it under the lock.
 
-shows queries during "ls -l /home" on box A, but nothing (ever) on box
-B (which is the problematic box).
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-I have many details from an investigation a few weeks ago, but think
-it's prudent to keep the initial email brief.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index aa928b0..b52b32e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -793,8 +793,8 @@ static void nfsd4_conn_lost(struct svc_xpt_user *u)
+ 		list_del(&c->cn_persession);
+ 		free_conn(c);
+ 	}
+-	spin_unlock(&clp->cl_lock);
+ 	nfsd4_probe_callback(clp);
++	spin_unlock(&clp->cl_lock);
+ }
+ 
+ static struct nfsd4_conn *alloc_conn(struct svc_rqst *rqstp, u32 flags)
+-- 
+1.7.9.5
 
-Here are some of those details:
-    - 1 NFS server
-    - 10 NFS clients
-    - 6 (initially deployed boxes) list /home/* fine.
-    - 4 (added later) have the nobody:nobody issue.
-    - All CentOS 6.3 (64 bit)
-    - All clients installed via same kickstart configs (w/ diff hostname)
-    - All servers were reinstalled after the 4 newer nodes were added,
-so they should be identical.
-    - diff'ing /etc dirs from good vs bad boxes reveals nothing significant.
-
-
-Thanks
-
-
---
-Amrit
-AIM: ThatComputerGuy
-ICQ: 3173735
-http://transamrit.net/
