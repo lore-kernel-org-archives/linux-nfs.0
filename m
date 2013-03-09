@@ -1,74 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.gmx.net ([212.227.17.20]:51029 "EHLO mout.gmx.net"
+Received: from mx1.redhat.com ([209.132.183.28]:26847 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751656Ab3CZRqn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Mar 2013 13:46:43 -0400
-Received: from mailout-de.gmx.net ([10.1.76.17]) by mrigmx.server.lan
- (mrigmx001) with ESMTP (Nemesis) id 0MZANm-1U6AN30VFk-00Kze4 for
- <linux-nfs@vger.kernel.org>; Tue, 26 Mar 2013 18:46:41 +0100
-Message-ID: <5151DEF7.3060003@gmx.de>
-Date: Tue, 26 Mar 2013 18:46:31 +0100
-From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
+	id S1760092Ab3CIC76 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Mar 2013 21:59:58 -0500
+Date: Fri, 8 Mar 2013 21:59:49 -0500
+From: Dave Jones <davej@redhat.com>
+To: Linux Kernel <linux-kernel@vger.kernel.org>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: sunrpc ODEBUG assertion.
+Message-ID: <20130309025949.GA14176@redhat.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Linux Kernel <linux-kernel@vger.kernel.org>
-Subject: Re: kernel 3.8.4 : kernel BUG at fs/locks.c:2093!   part #2
-References: <514F31AF.3080709@gmx.de> <20130325220143.GD10887@fieldses.org> <20130326144640.GB3353@fieldses.org>
-In-Reply-To: <20130326144640.GB3353@fieldses.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/26/2013 03:46 PM, J. Bruce Fields wrote:
-> Can you run with test patches?
-> 
-> This just makes nfsd's fput calls synchronous so that we see in the
-> backtrace who called them.
-
-Well - the patched 3.8.4 host kernel now survives the stress test of the UML system.
-What I get at the host is now :
-
-2013-03-26T18:32:17.487+01:00 n22 kernel: ------------[ cut here ]------------
-2013-03-26T18:32:17.487+01:00 n22 kernel: WARNING: at mm/page_alloc.c:2376 __alloc_pages_nodemask+0x262/0x7c0()
-2013-03-26T18:32:17.487+01:00 n22 kernel: Hardware name: 4180F65
-2013-03-26T18:32:17.487+01:00 n22 kernel: Modules linked in: md5 nfsd auth_rpcgss ipt_MASQUERADE xt_owner xt_multiport ipt_REJECT xt_tcpudp xt_recent xt_conntrack nf_conntrack_ftp xt_limit xt_LOG iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack iptable_filter ip_tables x_tables af_packet pppoe pppox ppp_generic slhc bridge stp llc tun msr snd_hda_codec_conexant snd_hda_intel uvcvideo i915 usblp snd_hda_codec sdhci_pci snd_pcm cfbfillrect videobuf2_vmalloc arc4 iwldvm cfbimgblt i2c_algo_bit cfbcopyarea intel_agp videobuf2_memops sdhci coretemp videobuf2_core mac80211 snd_page_alloc kvm_intel acpi_cpufreq fbcon mperf bitblit softcursor font intel_gtt videodev mmc_core snd_timer kvm drm_kms_helper thinkpad_acpi drm nvram agpgart fb snd i2c_i801 video i2c_core tpm_tis soundcore processor 8250_pci 8250_core iwlwifi thermal battery cfg80211 fbdev ac tpm rfkill psmouse serial_core e1000e evdev thermal_sys button tpm_bios wmi hwmon aesni_intel ablk_helper!
-  cryptd lr
-w aes_i586 xts gf128mul cbc sha256_generic fuse nfs lockd sunrpc dm_crypt dm_mod hid_monterey hid_microsoft hid_logitech hid_ezkey hid_cypress hid_chicony hid_cherry hid_belkin hid_apple hid_a4tech hid_generic usbhid hid sr_mod cdrom sg [last unloaded: microcode]
-2013-03-26T18:32:17.487+01:00 n22 kernel: Pid: 6614, comm: nfsd Not tainted 3.8.4 #9
-2013-03-26T18:32:17.487+01:00 n22 kernel: Call Trace:
-2013-03-26T18:32:17.487+01:00 n22 kernel: [<c1033ba2>] warn_slowpath_common+0x72/0xa0
-2013-03-26T18:32:17.487+01:00 n22 kernel: [<c10db802>] ? __alloc_pages_nodemask+0x262/0x7c0
-2013-03-26T18:32:17.487+01:00 n22 kernel: [<c10db802>] ? __alloc_pages_nodemask+0x262/0x7c0
-2013-03-26T18:32:17.487+01:00 n22 kernel: [<c1033bf2>] warn_slowpath_null+0x22/0x30
-2013-03-26T18:32:17.487+01:00 n22 kernel: [<c10db802>] __alloc_pages_nodemask+0x262/0x7c0
-2013-03-26T18:32:17.487+01:00 n22 kernel: [<c1069758>] ? dequeue_task_fair+0x258/0x6f0
-2013-03-26T18:32:17.487+01:00 n22 kernel: [<c13a8803>] ? inet_recvmsg+0x73/0x90
-2013-03-26T18:32:17.487+01:00 n22 kernel: [<c10dbd7c>] __get_free_pages+0x1c/0x30
-2013-03-26T18:32:17.487+01:00 n22 kernel: [<c110e0f9>] kmalloc_order_trace+0x29/0xb0
-2013-03-26T18:32:17.487+01:00 n22 kernel: [<f857e480>] ? ip_map_request+0xd0/0xd0 [sunrpc]
-2013-03-26T18:32:17.487+01:00 n22 kernel: [<f85824d6>] ? cache_revisit_request+0x26/0xd0 [sunrpc]
-2013-03-26T18:32:17.487+01:00 n22 kernel: [<c110f149>] __kmalloc+0x1b9/0x1e0
-2013-03-26T18:32:17.487+01:00 n22 kernel: [<f85835bf>] ? cache_check+0x22f/0x340 [sunrpc]
-2013-03-26T18:32:17.487+01:00 n22 kernel: [<f90a0b1c>] nfs4_acl_new+0x1c/0x30 [nfsd]
-2013-03-26T18:32:17.488+01:00 n22 kernel: [<f9095482>] nfsd4_decode_fattr+0x302/0x6c0 [nfsd]
-2013-03-26T18:32:17.488+01:00 n22 kernel: [<c110f068>] ? __kmalloc+0xd8/0x1e0
-2013-03-26T18:32:17.488+01:00 n22 kernel: [<f9095871>] nfsd4_decode_setattr+0x31/0x40 [nfsd]
-2013-03-26T18:32:17.488+01:00 n22 kernel: [<f909804d>] nfs4svc_decode_compoundargs+0x23d/0x280 [nfsd]
-2013-03-26T18:32:17.488+01:00 n22 kernel: [<f9097e10>] ? nfsd4_release_compoundargs+0x70/0x70 [nfsd]
-2013-03-26T18:32:17.488+01:00 n22 kernel: [<f9081b3f>] nfsd_dispatch+0x3f/0x1b0 [nfsd]
-2013-03-26T18:32:17.488+01:00 n22 kernel: [<f857b8a8>] svc_process+0x3f8/0x6d0 [sunrpc]
-2013-03-26T18:32:17.488+01:00 n22 kernel: [<f8586d5e>] ? svc_xprt_received+0x3e/0x80 [sunrpc]
-2013-03-26T18:32:17.488+01:00 n22 kernel: [<f85879e1>] ? svc_recv+0x2d1/0x3c0 [sunrpc]
-2013-03-26T18:32:17.488+01:00 n22 kernel: [<f908165d>] nfsd+0xad/0x110 [nfsd]
-2013-03-26T18:32:17.488+01:00 n22 kernel: [<f90815b0>] ? nfsd_destroy+0x70/0x70 [nfsd]
-2013-03-26T18:32:17.488+01:00 n22 kernel: [<c1053b94>] kthread+0x94/0xa0
-2013-03-26T18:32:17.488+01:00 n22 kernel: [<c13d0f77>] ret_from_kernel_thread+0x1b/0x28
-2013-03-26T18:32:17.488+01:00 n22 kernel: [<c1053b00>] ? flush_kthread_work+0xd0/0xd0
-2013-03-26T18:32:17.488+01:00 n22 kernel: ---[ end trace 82b96ff8bcd5453f ]---
+restarted my nfs server, and mounted it from a Mac, and got this..
 
 
--- 
-MfG/Sincerely
-Toralf Förster
-pgp finger print: 7B1A 07F4 EC82 0F90 D4C2 8936 872A E508 7DB6 9DA3
+[47433.585266] WARNING: at lib/debugobjects.c:260 debug_print_object+0x8c/0xb0()
+[47433.585269] Hardware name:         
+[47433.585273] ODEBUG: assert_init not available (active state 0) object type: timer_list hint: stub_timer+0x0/0x20
+[47433.585275] Modules linked in: ip6t_REJECT nf_conntrack_ipv6 nf_defrag_ipv6 xt_conntrack nf_conntrack ip6table_filter ip6_tables coretemp microcode pcspkr snd_emu10k1 snd_hwdep snd_util_mem snd_ac97_codec ac97_bus snd_rawmidi snd_seq snd_seq_device snd_pcm snd_page_alloc snd_timer snd e1000e soundcore ptp pps_core vhost_net tun macvtap macvlan kvm_intel kvm nfsd binfmt_misc auth_rpcgss nfs_acl lockd sunrpc btrfs libcrc32c xor lzo_compress zlib_deflate raid6_pq firewire_ohci firewire_core sata_sil crc_itu_t ata_piix radeon i2c_algo_bit hwmon drm_kms_helper ttm drm i2c_core floppy
+[47433.585324] Pid: 611, comm: nfsd Not tainted 3.9.0-rc1+ #80
+[47433.585326] Call Trace:
+[47433.585330]  [<ffffffff8104abd5>] warn_slowpath_common+0x75/0xa0
+[47433.585334]  [<ffffffff8104acb6>] warn_slowpath_fmt+0x46/0x50
+[47433.585337]  [<ffffffff8105c326>] ? do_init_timer+0x66/0x70
+[47433.585340]  [<ffffffff8134e27c>] debug_print_object+0x8c/0xb0
+[47433.585343]  [<ffffffff8105b0f0>] ? timer_debug_hint+0x10/0x10
+[47433.585346]  [<ffffffff8134ed93>] debug_object_assert_init+0xe3/0x120
+[47433.585349]  [<ffffffff8105d65b>] del_timer+0x2b/0x80
+[47433.585353]  [<ffffffff8106fe99>] try_to_grab_pending+0xd9/0x1a0
+[47433.585356]  [<ffffffff810700f7>] __cancel_work_timer+0x27/0xf0
+[47433.585359]  [<ffffffff810701d3>] cancel_delayed_work_sync+0x13/0x20
+[47433.585373]  [<ffffffffa02c9647>] xs_destroy+0x27/0x80 [sunrpc]
+[47433.585381]  [<ffffffffa02c65d8>] xprt_destroy+0x78/0xa0 [sunrpc]
+[47433.585390]  [<ffffffffa02c8ab1>] xprt_put+0x21/0x30 [sunrpc]
+[47433.585398]  [<ffffffffa02c515b>] rpc_free_client+0x16b/0x320 [sunrpc]
+[47433.585406]  [<ffffffffa02c5023>] ? rpc_free_client+0x33/0x320 [sunrpc]
+[47433.585414]  [<ffffffffa02c4fae>] rpc_release_client+0x6e/0xb0 [sunrpc]
+[47433.585423]  [<ffffffffa02c53f5>] rpc_shutdown_client+0xe5/0x170 [sunrpc]
+[47433.585427]  [<ffffffff8108ce81>] ? get_parent_ip+0x11/0x50
+[47433.585431]  [<ffffffff816ae519>] ? sub_preempt_count+0x79/0xd0
+[47433.585442]  [<ffffffffa02db871>] rpcb_put_local+0x141/0x250 [sunrpc]
+[47433.585452]  [<ffffffffa02db735>] ? rpcb_put_local+0x5/0x250 [sunrpc]
+[47433.585461]  [<ffffffffa02d270e>] svc_rpcb_cleanup+0x1e/0x30 [sunrpc]
+[47433.585471]  [<ffffffffa030b444>] nfsd_last_thread+0x1e4/0x210 [nfsd]
+[47433.585477]  [<ffffffffa030b265>] ? nfsd_last_thread+0x5/0x210 [nfsd]
+[47433.585487]  [<ffffffffa02d2494>] svc_shutdown_net+0x34/0x40 [sunrpc]
+[47433.585493]  [<ffffffffa030c0b0>] nfsd_destroy+0x170/0x210 [nfsd]
+[47433.585500]  [<ffffffffa030bf45>] ? nfsd_destroy+0x5/0x210 [nfsd]
+[47433.585509]  [<ffffffffa02d2859>] ? svc_exit_thread+0x99/0xb0 [sunrpc]
+[47433.585516]  [<ffffffffa030c286>] nfsd+0x136/0x160 [nfsd]
+[47433.585522]  [<ffffffffa030c150>] ? nfsd_destroy+0x210/0x210 [nfsd]
+[47433.585526]  [<ffffffff8107a5fd>] kthread+0xed/0x100
+[47433.585529]  [<ffffffff810b3b2e>] ? put_lock_stats.isra.25+0xe/0x40
+[47433.585533]  [<ffffffff8107a510>] ? kthread_create_on_node+0x160/0x160
+[47433.585536]  [<ffffffff816b2b1c>] ret_from_fork+0x7c/0xb0
+[47433.585539]  [<ffffffff8107a510>] ? kthread_create_on_node+0x160/0x160
+[47433.585542] ---[ end trace 0ffae049d68a07e1 ]---
+[47433.585687] nfsd: last server has exited, flushing export cache
+[47433.904483] NFSD: starting 90-second grace period (net ffffffff81cc9380)
+[47461.093051] ------------[ cut here ]------------
+[47461.093061] WARNING: at lib/debugobjects.c:260 debug_print_object+0x8c/0xb0()
+[47461.093063] Hardware name:         
+[47461.093067] ODEBUG: assert_init not available (active state 0) object type: timer_list hint: stub_timer+0x0/0x20
+[47461.093069] Modules linked in: ip6t_REJECT nf_conntrack_ipv6 nf_defrag_ipv6 xt_conntrack nf_conntrack ip6table_filter ip6_tables coretemp microcode pcspkr snd_emu10k1 snd_hwdep snd_util_mem snd_ac97_codec ac97_bus snd_rawmidi snd_seq snd_seq_device snd_pcm snd_page_alloc snd_timer snd e1000e soundcore ptp pps_core vhost_net tun macvtap macvlan kvm_intel kvm nfsd binfmt_misc auth_rpcgss nfs_acl lockd sunrpc btrfs libcrc32c xor lzo_compress zlib_deflate raid6_pq firewire_ohci firewire_core sata_sil crc_itu_t ata_piix radeon i2c_algo_bit hwmon drm_kms_helper ttm drm i2c_core floppy
+[47461.093117] Pid: 9956, comm: nfsd Tainted: G        W    3.9.0-rc1+ #80
+[47461.093119] Call Trace:
+[47461.093124]  [<ffffffff8104abd5>] warn_slowpath_common+0x75/0xa0
+[47461.093127]  [<ffffffff8104acb6>] warn_slowpath_fmt+0x46/0x50
+[47461.093130]  [<ffffffff8105c326>] ? do_init_timer+0x66/0x70
+[47461.093133]  [<ffffffff8134e27c>] debug_print_object+0x8c/0xb0
+[47461.093136]  [<ffffffff8105b0f0>] ? timer_debug_hint+0x10/0x10
+[47461.093139]  [<ffffffff8134ed93>] debug_object_assert_init+0xe3/0x120
+[47461.093142]  [<ffffffff8105d65b>] del_timer+0x2b/0x80
+[47461.093146]  [<ffffffff8106fe99>] try_to_grab_pending+0xd9/0x1a0
+[47461.093149]  [<ffffffff810700f7>] __cancel_work_timer+0x27/0xf0
+[47461.093152]  [<ffffffff810701d3>] cancel_delayed_work_sync+0x13/0x20
+[47461.093166]  [<ffffffffa02c9647>] xs_destroy+0x27/0x80 [sunrpc]
+[47461.093174]  [<ffffffffa02c65d8>] xprt_destroy+0x78/0xa0 [sunrpc]
+[47461.093183]  [<ffffffffa02c8ab1>] xprt_put+0x21/0x30 [sunrpc]
+[47461.093191]  [<ffffffffa02c515b>] rpc_free_client+0x16b/0x320 [sunrpc]
+[47461.093200]  [<ffffffffa02c5023>] ? rpc_free_client+0x33/0x320 [sunrpc]
+[47461.093209]  [<ffffffffa02c4fae>] rpc_release_client+0x6e/0xb0 [sunrpc]
+[47461.093217]  [<ffffffffa02c53f5>] rpc_shutdown_client+0xe5/0x170 [sunrpc]
+[47461.093221]  [<ffffffff8108ce81>] ? get_parent_ip+0x11/0x50
+[47461.093226]  [<ffffffff816ae519>] ? sub_preempt_count+0x79/0xd0
+[47461.093237]  [<ffffffffa02db871>] rpcb_put_local+0x141/0x250 [sunrpc]
+[47461.093246]  [<ffffffffa02db735>] ? rpcb_put_local+0x5/0x250 [sunrpc]
+[47461.093257]  [<ffffffffa02d270e>] svc_rpcb_cleanup+0x1e/0x30 [sunrpc]
+[47461.093266]  [<ffffffffa030b444>] nfsd_last_thread+0x1e4/0x210 [nfsd]
+[47461.093272]  [<ffffffffa030b265>] ? nfsd_last_thread+0x5/0x210 [nfsd]
+[47461.093283]  [<ffffffffa02d2494>] svc_shutdown_net+0x34/0x40 [sunrpc]
+[47461.093289]  [<ffffffffa030c0b0>] nfsd_destroy+0x170/0x210 [nfsd]
+[47461.093296]  [<ffffffffa030bf45>] ? nfsd_destroy+0x5/0x210 [nfsd]
+[47461.093305]  [<ffffffffa02d2859>] ? svc_exit_thread+0x99/0xb0 [sunrpc]
+[47461.093312]  [<ffffffffa030c286>] nfsd+0x136/0x160 [nfsd]
+[47461.093318]  [<ffffffffa030c150>] ? nfsd_destroy+0x210/0x210 [nfsd]
+[47461.093322]  [<ffffffff8107a5fd>] kthread+0xed/0x100
+[47461.093325]  [<ffffffff8107a510>] ? kthread_create_on_node+0x160/0x160
+[47461.093328]  [<ffffffff816b2b1c>] ret_from_fork+0x7c/0xb0
+[47461.093331]  [<ffffffff8107a510>] ? kthread_create_on_node+0x160/0x160
+[47461.093334] ---[ end trace 0ffae049d68a07e2 ]---
+[47461.093474] nfsd: last server has exited, flushing export cache
+[47461.352324] NFSD: starting 90-second grace period (net ffffffff81cc9380)
+
