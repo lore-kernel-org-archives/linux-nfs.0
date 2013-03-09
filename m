@@ -1,57 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ea0-f177.google.com ([209.85.215.177]:42753 "EHLO
-	mail-ea0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932918Ab3CSTfo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Mar 2013 15:35:44 -0400
-Received: by mail-ea0-f177.google.com with SMTP id r16so415438ead.8
-        for <linux-nfs@vger.kernel.org>; Tue, 19 Mar 2013 12:35:42 -0700 (PDT)
-Message-ID: <5148BE0B.9080802@tonian.com>
-Date: Tue, 19 Mar 2013 21:35:39 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from minas.ics.muni.cz ([147.251.4.40]:41004 "EHLO minas.ics.muni.cz"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756755Ab3CILZl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 9 Mar 2013 06:25:41 -0500
+Received: from anubis.ics.muni.cz (igw1.zrnko.net [94.112.253.31])
+	(authenticated user=xhejtman@META bits=0)
+	by minas.ics.muni.cz (8.13.8/8.13.8/SuSE Linux 0.8) with ESMTP id r29BPaRb001683
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Sat, 9 Mar 2013 12:25:38 +0100
+Received: from xhejtman by anubis.ics.muni.cz with local (Exim 4.80)
+	(envelope-from <xhejtman@ics.muni.cz>)
+	id 1UEHu7-0003Rx-5u
+	for linux-nfs@vger.kernel.org; Sat, 09 Mar 2013 12:25:31 +0100
+Date: Sat, 9 Mar 2013 12:25:31 +0100
+From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] gssd - expired credentials problem
+Message-ID: <20130309112531.GA13250@ics.muni.cz>
 MIME-Version: 1.0
-To: Fred Isaman <faisaman4@gmail.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "Isaman, Fred" <Fred.Isaman@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "stable@kernel.org" <stable@kernel.org>
-Subject: Re: [PATCH] pnfs: do not reset to mds if wb_offset != wb_pgbase
-References: <1363617532-24172-1-git-send-email-bhalevy@tonian.com> <1363622128.4351.15.camel@leira.trondhjem.org> <51473F46.10401@tonian.com> <CADnza476e0FpXJJfE8OmXLRQUR3Zm_aZkX7JZRB=vGyZ-U2yDg@mail.gmail.com>
-In-Reply-To: <CADnza476e0FpXJJfE8OmXLRQUR3Zm_aZkX7JZRB=vGyZ-U2yDg@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=iso-8859-2
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-03-18 19:04, Fred Isaman wrote:
-> On Mon, Mar 18, 2013 at 12:22 PM, Benny Halevy <bhalevy@tonian.com> wrote:
-> 
->>> NACK. I see no evidence that we've addressed the issues that were raised
->>> by Fred in commit 1825a0d08f22463e5a8f4b1636473efd057a3479 (NFS: prepare
->>> coalesce testing for directio).
->>> If you think that his concerns about the coalescing assumptions are no
->>> longer true, then please point to why this is the case. AFAICR that
->>> patch was added to fix corruption issues.
->>>
->>
->> We see no problems with this patch with the workloads we're testing.
->> Do you have a test that reproduces the original problem that we can try running?
->>
->> Benny
-> 
-> A problem case is if the layout ends within the page request, which
-> can happen due to the misalignment.
+Hi,
 
-First, the file layout currently supports only whole file layouts so I don't see
-how that's a problem.
-Regardless, I'd rather trim the layout segment to PAGE_SIZE boundaries
-and get a new layout from the page aligned offset and on with minlength = PAGE_SIZE
-(as we do today).
+I noticed that there is a problem with expired credentials if NFS client's
+time is even few seconds behind KDC's or NFS server's time. Client's kernel
+requests new GSS context but rpc.gssd is happy with existing krb cache as it
+valid according to local time.
 
-Benny
+Is there any reason for gssd to check validity of existing cache when kernel
+requests a new context?
 
-> 
-> Fred
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+However, it seems that this trivial patch solves this issue.
+
+300 is because I believe that clock skew must be within 300sec for kerberos.
+
+Signed-off-by: Lukas Hejtmanek <xhejtman@gmail.com>
+
+diff -rNu nfs-utils-1.2.7.orig/utils/gssd/krb5_util.c nfs-utils-1.2.7/utils/gssd/krb5_util.c
+--- nfs-utils-1.2.7.orig/utils/gssd/krb5_util.c 2012-11-12 00:01:23.000000000 +0100
++++ nfs-utils-1.2.7/utils/gssd/krb5_util.c      2013-02-15 16:35:35.652482164 +0100
+@@ -343,7 +343,7 @@
+        char kt_name[BUFSIZ];
+        char cc_name[BUFSIZ];
+        int code;
+-       time_t now = time(0);
++       time_t now = time(0)+300; // workaround for clock skew among NFS server, NFS client and KDC
+        char *cache_type;
+        char *pname = NULL;
+        char *k5err = NULL;
+
+
+-- 
+Luká¹ Hejtmánek
