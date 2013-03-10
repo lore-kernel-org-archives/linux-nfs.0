@@ -1,133 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from nm15-vm0.access.bullet.mail.sp2.yahoo.com ([98.139.44.164]:45535
-	"EHLO nm15-vm0.access.bullet.mail.sp2.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754908Ab3C2PZG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Mar 2013 11:25:06 -0400
-Message-ID: <5155B0E3.9040108@schaufler-ca.com>
-Date: Fri, 29 Mar 2013 08:18:59 -0700
-From: Casey Schaufler <casey@schaufler-ca.com>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:39669 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751619Ab3CJRQH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Mar 2013 13:16:07 -0400
+Message-ID: <513CBFD6.1000504@opengridcomputing.com>
+Date: Sun, 10 Mar 2013 12:16:06 -0500
+From: Tom Tucker <tom@opengridcomputing.com>
 MIME-Version: 1.0
-To: David Quigley <dpquigl@davequigley.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Steve Dickson <steved@redhat.com>,
-        Trond Myklebust <trond.myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>,
-        Casey Schaufler <casey@schaufler-ca.com>
-Subject: Re: [PATCH 13/14] NFSD: Server implementation of MAC Labeling
-References: <1364478845-29796-1-git-send-email-SteveD@redhat.com> <1364478845-29796-14-git-send-email-SteveD@redhat.com> <20130328161444.GF7080@fieldses.org> <51550C03.1000107@davequigley.com> <20130329144050.GB22307@fieldses.org> <001ff69afd411b0318d7122bf07bd218@countercultured.net>
-In-Reply-To: <001ff69afd411b0318d7122bf07bd218@countercultured.net>
-Content-Type: text/plain; charset=UTF-8
+To: Tim Gardner <tim.gardner@canonical.com>
+CC: linux-kernel@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "David S. Miller" <davem@davemloft.net>, Tom Tucker <tom@ogc.us>,
+        Haggai Eran <haggaie@mellanox.com>, Or Gerlitz <ogerlitz@mellanox.com>,
+        Shani Michaeli <shanim@mellanox.com>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH linux-next] SUNRPC: rpcrdma_register_default_external:
+ Dynamically allocate ib_phys_buf
+References: <1362929953-63785-1-git-send-email-tim.gardner@canonical.com>
+In-Reply-To: <1362929953-63785-1-git-send-email-tim.gardner@canonical.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 3/29/2013 7:49 AM, David Quigley wrote:
-> On 03/29/2013 10:40, J. Bruce Fields wrote:
->> On Thu, Mar 28, 2013 at 11:35:31PM -0400, Dave Quigley wrote:
->>> On 3/28/2013 12:14 PM, J. Bruce Fields wrote:
->>> >On Thu, Mar 28, 2013 at 09:54:04AM -0400, Steve Dickson wrote:
->>> >>From: David Quigley <dpquigl@davequigley.com>
->>> >>
->>> >>This patch adds the ability to encode and decode file labels on
->>> the server for
->>> >>the purpose of sending them to the client and also to process
->>> label change
->>> >>requests from the client.
->>> >>
->>> >>Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
->>> >>Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
->>> >>Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
->>> >>Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
->>> >>---
->>> >>  fs/nfsd/nfs4proc.c |  41 +++++++++++++++++++
->>> >>  fs/nfsd/nfs4xdr.c  | 116
->>> ++++++++++++++++++++++++++++++++++++++++++++++++++---
->>> >>  fs/nfsd/nfsd.h     |   6 ++-
->>> >>  fs/nfsd/vfs.c      |  29 ++++++++++++++
->>> >>  fs/nfsd/vfs.h      |   2 +
->>> >>  fs/nfsd/xdr4.h     |   3 ++
->>> >>  6 files changed, 191 insertions(+), 6 deletions(-)
->>> >>
->>> >>diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->>> >>index ae73175..bb17589 100644
->>> >>--- a/fs/nfsd/nfs4proc.c
->>> >>+++ b/fs/nfsd/nfs4proc.c
->>> >>@@ -42,6 +42,36 @@
->>> >>  #include "current_stateid.h"
->>> >>  #include "netns.h"
->>> >>
->>> >>+#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
->>> >>+#include <linux/security.h>
->>> >>+
->>> >>+static inline void
->>> >>+nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct
->>> nfs4_label *label, u32 *bmval)
->>> >>+{
->>> >>+    struct inode *inode = resfh->fh_dentry->d_inode;
->>> >>+    int status;
->>> >>+
->>> >>+    mutex_lock(&inode->i_mutex);
->>> >>+    status = security_inode_setsecctx(resfh->fh_dentry,
->>> >>+        label->label, label->len);
->>> >>+    mutex_unlock(&inode->i_mutex);
->>> >>+
->>> >>+    if (status)
->>> >>+        /*
->>> >>+         * We should probably fail the whole open at this point,
->>> >>+         * but we've already created or opened the file, so it's
->>> >>+         * too late; So this seems the least of evils:
->>> >>+         */
->>> >>+        bmval[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
->>> >
->>> >Is there any way to avoid this?
->>> >
->>> >How does the vfs open code handle this?  It has to be able to set a
->>> >security contexts atomically on open(O_CREAT), doesn't it?
->>> >
->>>
->>> I believe the way this is handled is that the inode is created and
->>> labeled and then only after that is it bound to the namespace.
->>> Because of that ordering we can fail and release the inode without
->>> it ever having a dentry in the namespace.
->>
->> Grepping around....  Looks like that's done by
->> security_inode_init_security(), from the filesystem's create method.
->>
->> So we'd need to be able to pass something down to there.
->>
->> Is the current client actually expected to use this?  (So are we going
->> to see a lot of opens that set the label?)
->>
->> --b.
+
+This is the result of 2773395b34883fe54418de188733a63bb38e0ad6. Steve 
+might want to weigh in on this since it was done for performance reasons.
+
+Tom
+
+On 3/10/13 10:39 AM, Tim Gardner wrote:
+> rpcrdma_register_default_external() is several frames into
+> the call stack which goes deeper yet. You run the risk of stack
+> corruption by declaring such a large automatic variable,
+> so dynamically allocate the array of 'struct ib_phys_buf' objects in
+> order to silence the frame-larger-than warning.
 >
-> I don't have all the code infront of me but we have a different hook
-> to do that. The call to nfsd4_security_inode_setsecctx is supposed to
-> be used from the setattr handlers to do the equivalent of a setxattr
-> on the file over NFS. The actual creation gets done with something
-> like security_dentry_init_security which should be in an earlier
-> patch. I'd have to look more clearly at the code to find out. Also
-> where did we come up with 128 for label length? The SELinux code
-> assumes a starting point of 255 and goes up from there as needed. The
-> MLS policies will definitely exceed a 128 byte label.
-
-If anyone cares, Smack labels can (now) be 255 characters.
-Also, when (if) we get multiple concurrent LSMs the
-"security context" may include information for more than
-one LSM. 128 bytes is going to look pretty tiny then.
-
-smack='com.corportation.service'selinux='system_u:object_r:bin_t:s0'
-
-
-
+> net/sunrpc/xprtrdma/verbs.c: In function 'rpcrdma_register_default_external':
+> net/sunrpc/xprtrdma/verbs.c:1774:1: warning: the frame size of 1056 bytes is larger than 1024 bytes [-Wframe-larger-than=]
 >
-> Dave
-> -- 
-> To unsubscribe from this list: send the line "unsubscribe
-> linux-security-module" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> gcc version 4.6.3
 >
+> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Cc: "J. Bruce Fields" <bfields@fieldses.org>
+> Cc: "David S. Miller" <davem@davemloft.net>
+> Cc: Tom Tucker <tom@ogc.us>
+> Cc: Haggai Eran <haggaie@mellanox.com>
+> Cc: Or Gerlitz <ogerlitz@mellanox.com>
+> Cc: Shani Michaeli <shanim@mellanox.com>
+> Cc: linux-nfs@vger.kernel.org
+> Cc: netdev@vger.kernel.org
+> Signed-off-by: Tim Gardner <tim.gardner@canonical.com>
+> ---
+>   net/sunrpc/xprtrdma/verbs.c |    7 ++++++-
+>   1 file changed, 6 insertions(+), 1 deletion(-)
+>
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index 93726560..0916467 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -1736,9 +1736,13 @@ rpcrdma_register_default_external(struct rpcrdma_mr_seg *seg,
+>   	int mem_priv = (writing ? IB_ACCESS_REMOTE_WRITE :
+>   				  IB_ACCESS_REMOTE_READ);
+>   	struct rpcrdma_mr_seg *seg1 = seg;
+> -	struct ib_phys_buf ipb[RPCRDMA_MAX_DATA_SEGS];
+> +	struct ib_phys_buf *ipb;
+>   	int len, i, rc = 0;
+>   
+> +	ipb = kmalloc(sizeof(*ipb) * RPCRDMA_MAX_DATA_SEGS, GFP_KERNEL);
+> +	if (!ipb)
+> +		return -ENOMEM;
+> +
+>   	if (*nsegs > RPCRDMA_MAX_DATA_SEGS)
+>   		*nsegs = RPCRDMA_MAX_DATA_SEGS;
+>   	for (len = 0, i = 0; i < *nsegs;) {
+> @@ -1770,6 +1774,7 @@ rpcrdma_register_default_external(struct rpcrdma_mr_seg *seg,
+>   		seg1->mr_len = len;
+>   	}
+>   	*nsegs = i;
+> +	kfree(ipb);
+>   	return rc;
+>   }
+>   
 
