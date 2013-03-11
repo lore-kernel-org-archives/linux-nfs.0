@@ -1,116 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:45867 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:34208 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751891Ab3CUAdp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Mar 2013 20:33:45 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Haynes, Tom" <Tom.Haynes@netapp.com>
-CC: Christopher T Vogan <cvogan@us.ibm.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        nfsv4 list <nfsv4@ietf.org>, Neil Brown <neilb@suse.de>
-Subject: Re: What is NFSv4 READDIR doesn't return a filehandle....
-Date: Thu, 21 Mar 2013 00:33:44 +0000
-Message-ID: <1363826022.4790.89.camel@leira.trondhjem.org>
-References: <OF5A466E86.6A319FE3-ON87257B34.007C6188-86257B34.007C87C8@us.ibm.com>
-	 <39CEE4C6-A2A5-4D16-84BD-E1610FE67F36@netapp.com>
-In-Reply-To: <39CEE4C6-A2A5-4D16-84BD-E1610FE67F36@netapp.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S1753020Ab3CKULK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Mar 2013 16:11:10 -0400
+Date: Mon, 11 Mar 2013 16:11:08 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Pavel Shilovsky <piastry@etersoft.ru>, linux-kernel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wine-devel@winehq.org
+Subject: Re: [PATCH v3 7/7] NFSD: Pass share reservations flags to VFS
+Message-ID: <20130311201108.GE642@fieldses.org>
+References: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
+ <1362065133-9490-8-git-send-email-piastry@etersoft.ru>
+ <20130311150540.119abd63@corrin.poochiereds.net>
+ <20130311193638.GB642@fieldses.org>
+ <20130311160844.7dedf15a@corrin.poochiereds.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130311160844.7dedf15a@corrin.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2013-03-20 at 23:53 +0000, Haynes, Tom wrote:
-> Please note that I have cc'ed the NFSv4 list over at the IETF.
+On Mon, Mar 11, 2013 at 04:08:44PM -0400, Jeff Layton wrote:
+> On Mon, 11 Mar 2013 15:36:38 -0400
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
 > 
-> On Mar 20, 2013, at 3:40 PM, Christopher T Vogan <cvogan@us.ibm.com> wrote:
-> 
-> > All,
+> > On Mon, Mar 11, 2013 at 03:05:40PM -0400, Jeff Layton wrote:
+> > > knfsd has some code already to handle share reservations internally.
+> > > Nothing outside of knfsd is aware of these reservations, of course so
+> > > moving to a vfs-level object for it would be a marked improvement.
+> > > 
+> > > It doesn't look like this patch removes any of that old code though. I
+> > > think it probably should, or there ought to be some consideration of
+> > > how this new stuff will mesh with it.
+> > > 
+> > > I think you have 2 choices here:
+> > > 
+> > > 1/ rip out the old share reservation code altogether and require that
+> > > filesystems mount with -o sharemand or whatever if they want to allow
+> > > their enforcement
+> > > 
+> > > 2/ make knfsd fall back to using the internal share reservation code
+> > > when the mount option isn't enabled
+> > > 
+> > > Personally, I think #1 would be fine, but Bruce may want to weigh in on
+> > > what he'd prefer.
 > > 
-> > Sorry for this late posting, a coworker was made aware of this thread 
-> > recently and
-> > has these replies to make.  Our server implementation is the one being
-> > complained about in this thread.
+> > #1 sounds good.  Clients that use deny bits are few.  My preference
+> > would be to return an error to such clients in the case share locks
+> > aren't available.
 > > 
+> > (We're a little out of spec there, so I'm not sure which error.  I think
+> > the goal is to notify a human there's a problem with minimal collateral
+> > damange.
 > > 
-> > Quoted text is from various entries in this forum.
+> > NFS4ERR_SERVERFAULT ("I'm a buggy server, sorry about that!") would
+> > probably result in an IO error to the application.
 > > 
+> > SHARE_DENIED strikes me as unsafe: an application would be in its rights
+> > not to even check for that e.g. in the case of an exclusive create.
 > > 
-> > Neil Brown:
-> > ===========
-> >> Just a thought: while coping with broken servers would not be a good 
-> > path to
-> >> follow, detecting protocol violations and reporting an error might be...
-> >> should the NFS client treat a missing filehandle and a malformed reply?
+> > Maybe DELAY?  Kind of ridiculous, but blocking the application
+> > indefinitely would probably get someone's attention quickly enough
+> > without doing any damnage.)
 > > 
-> > The server is allowed to remove an attribute bit from an entry in the 
-> > readdir
-> > reply, this is not "broken" nor is the reply "malformed".  The lack of a 
-> > filehandle in the reply is deterministic.
-> > 
-> > 
-> > 
-> > Trond Myklebust:
-> > ================
-> >>> A customer has come across a server which does not return the 
-> > filehandle
-> >>> information (is that allowed?).
-> >> 
-> >> The filehandle attribute is a mandatory attribute according to RFC3530, 
-> > so I believe that the answer is "no".
-> > 
-> > Mandatory is described in RFS 3530 as that the server must return the 
-> > attribute
-> > on a GETATTR.  (Section 5, page 36).  There is nothing saying that it is
-> > mandatory to return on a READDIR.  Our server will return the filehandle
-> > on a LOOKUP/GETATTR every time.
 > 
-> 
-> 
-> GETATTR and READDIR both return attributes. To be precise, they return
-> a fattr4.
-> 
-> Looking at Section 15.26.4 (roughly pages 277-279 of the most recent copy)
-> of 3530bis (3530 is on the way to being replaced), READDIR states:
-> 
->    The READDIR operation retrieves a variable number of entries from a
->    filesystem directory and returns client requested attributes for each
->    entry along with information to allow the client to request
->    additional directory entries in a subsequent READDIR.
-> ...
->    On successful return, the server's response will provide a list of
->    directory entries.  Each of these entries contains the name of the
->    directory entry, a cookie value for that entry, and the associated
->    attributes as requested.  The "eof" flag has a value of TRUE if there
->    are no more entries in the directory.
-> 
-> Any client implementation has no way to request that any server implementation
-> return the filehandle because the filehandle is not an attribute which
-> can be requested. I.e., it is mandatory.
-> 
-> If the intent was to allow the server to not return a filehandle for READDIR but to
-> allow it to return one for GETATTR, then it would have been made
-> OPTIONAL.
-> 
-> Whether or not the client used to work with such a server implementation
-> or not is immaterial as far as standard compliance is concerned.
-> 
-> If you like, we can clean up the corresponding language in 3530bis to
-> explicitly state that REQUIRED attributes are indeed required whether
-> in response to GETATTR or READDIR.
+> I agree that we should return an error, but hadn't considered what
+> error. Given that hardly any NFS clients use them, I'd probably just go
+> with NFS4ERR_SERVERFAULT, and maybe throw a printk or something on the
+> server about enabling share reservations for superblock x:y.
 
-It might rather be useful to add language to point out that the
-"filehandle" attribute SHOULD NOT be used for the GETATTR case. We have
-GETFH, and AFAICR, all the language around referrals etc is written with
-the assumption that clients _won't_ use GETATTR to retrieve the
-filehandle.
+Sounds reasonable.
 
-Ditto for the case of "rdattr_error", which makes absolutely no sense
-whatsoever in a GETATTR request.
+> Pavel, as a side note, you may want to consider adding a patch to hook
+> this stuff up in the NFS client as well.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Definitely.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+--b.
