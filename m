@@ -1,105 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:15891 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:41966 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753845Ab3CFShb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Mar 2013 13:37:31 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: Mandeep Singh Baines <msb@chromium.org>, Ingo Molnar <mingo@kernel.org>,
-        Tejun Heo <tj@kernel.org>, "J. Bruce Fields" <bfields@fieldses.org>,
-        "Oleg Nesterov" <oleg@redhat.com>, Ming Lei <ming.lei@canonical.com>,
-        "Linux Kernel Mailing List" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Thomas Gleixner <tglx@linutronix.de>
-Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
-Date: Wed, 6 Mar 2013 18:37:16 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9286B3C74@sacexcmbx05-prd.hq.netapp.com>
-References: <20130304205307.GA13527@redhat.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9286AEEB0@sacexcmbx05-prd.hq.netapp.com>
-	 <20130305082308.6607d4db@tlielax.poochiereds.net>
-	 <20130305174648.GF12795@htj.dyndns.org>
-	 <20130305174954.GG12795@htj.dyndns.org>
-	 <20130305231110.GK15816@fieldses.org>
-	 <CACBanvo+JDCFVRQeTQwnwRRxr8bdqxdsgeEr8fqgJhGQJEEQ-Q@mail.gmail.com>
-	 <20130306010507.GL15816@fieldses.org>
-	 <20130306011623.GG1227@htj.dyndns.org>
-	 <CACBanvqVpi45TVNGXgXXO0BCSRuPEDsiNuHj0OBsvgr2UXZfsg@mail.gmail.com>
-	 <20130306090914.GA6030@gmail.com>
-	 <20130306070631.0f326014@tlielax.poochiereds.net>
-	 <CACBanvo77MrvcWgVJqFjjj-7wL6BHxaoQcQ5YRfjeCtjaOeqAw@mail.gmail.com>
-	 <20130306132322.52f47d7b@tlielax.poochiereds.net>
-In-Reply-To: <20130306132322.52f47d7b@tlielax.poochiereds.net>
+	id S1752479Ab3CKSfM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Mar 2013 14:35:12 -0400
+Date: Mon, 11 Mar 2013 14:35:07 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Pavel Shilovsky <piastry@etersoft.ru>
+Cc: linux-kernel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        wine-devel@winehq.org, sprabhu@redhat.com
+Subject: Re: [PATCH v3 5/7] CIFS: Translate SHARING_VIOLATION to -ETXTBSY
+ error code for SMB2
+Message-ID: <20130311143507.737f2ab0@corrin.poochiereds.net>
+In-Reply-To: <1362065133-9490-6-git-send-email-piastry@etersoft.ru>
+References: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
+	<1362065133-9490-6-git-send-email-piastry@etersoft.ru>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2013-03-06 at 13:23 -0500, Jeff Layton wrote:
-> On Wed, 6 Mar 2013 07:59:01 -0800
-> Mandeep Singh Baines <msb@chromium.org> wrote:
-> > In general, holding a lock and freezing can cause a deadlock if:
-> > 
-> > 1) you froze via the cgroup_freezer subsystem and a task in another
-> > cgroup tried to acquire the same lock
-> > 2) the lock was needed later is suspend/hibernate. For example, if the
-> > lock was needed in dpm_suspend by one of the device callbacks. For
-> > hibernate, you also need to worry about any locks that need to be
-> > acquired in order to write to the swap device.
-> > 3) another freezing task blocked on this lock and held other locks
-> > needed later in suspend. If that task were skipped by the freezer, you
-> > would deadlock
-> > 
-> > You will block/prevent suspend if:
-> > 
-> > 4) another freezing task blocked on this lock and was unable to freeze
-> > 
-> > I think 1) and 4) can happen for the NFS/RPC case. Case 1) requires
-> > cgroup freezer. Case 4) while not causing a deadlock could prevent
-> > your laptop/phone from sleeping and end up burning all your battery.
-> > If suspend is initiated via lid close you won't even know about the
-> > failure.
-> > 
-> 
-> We're aware of #4. That was the intent of adding try_to_freeze() into
-> this codepath in the first place. It's not a great solution for obvious
-> reasons, but we don't have another at the moment.
-> 
-> For #1 I'm not sure what to do. I'm that familiar with cgroups or how
-> the freezer works.
-> 
-> The bottom line is that we have a choice -- we can either rip out this
-> new lockdep warning, or rip out the code that causes it to fire.
-> 
-> If we rip out the warning we may miss some legit cases where we might
-> possibly have hit a deadlock.
-> 
-> If we rip out the code that causes it to fire, then we exacerbate the
-> #4 problem above. That will effectively make it so that you can't
-> suspend the host whenever NFS is doing anything moderately active.
+On Thu, 28 Feb 2013 19:25:31 +0400
+Pavel Shilovsky <piastry@etersoft.ru> wrote:
 
-#4 is probably the only case where we might want to freeze.
+> to make it match CIFS and VFS variants.
+> 
+> Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
+> ---
+>  fs/cifs/smb2maperror.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/cifs/smb2maperror.c b/fs/cifs/smb2maperror.c
+> index 494c912..11e589e 100644
+> --- a/fs/cifs/smb2maperror.c
+> +++ b/fs/cifs/smb2maperror.c
+> @@ -356,7 +356,7 @@ static const struct status_to_posix_error smb2_error_map_table[] = {
+>  	{STATUS_PORT_CONNECTION_REFUSED, -ECONNREFUSED,
+>  	"STATUS_PORT_CONNECTION_REFUSED"},
+>  	{STATUS_INVALID_PORT_HANDLE, -EIO, "STATUS_INVALID_PORT_HANDLE"},
+> -	{STATUS_SHARING_VIOLATION, -EBUSY, "STATUS_SHARING_VIOLATION"},
+> +	{STATUS_SHARING_VIOLATION, -ETXTBSY, "STATUS_SHARING_VIOLATION"},
+>  	{STATUS_QUOTA_EXCEEDED, -EDQUOT, "STATUS_QUOTA_EXCEEDED"},
+>  	{STATUS_INVALID_PAGE_PROTECTION, -EIO,
+>  	"STATUS_INVALID_PAGE_PROTECTION"},
 
-Unless we're in a situation where the network is going down, we can
-usually always make progress with completing the RPC call and finishing
-the system call. So in the case of cgroup_freezer, we only care if the
-freezing cgroup also owns the network device (or net namespace) that NFS
-is using to talk to the server.
-
-As I said, the alternative is to notify NFS that the device is going
-down, and to give it a chance to quiesce itself before that happens.
-This is also the only way to ensure that processes which own locks on
-the server (e.g. posix file locks) have a chance to release them before
-being suspended.
-
+Actually, I think Sachin is converting the CIFS
+STATUS_SHARING_VIOLATION to translate to EBUSY, since that seems to
+better reflect the situation. I'd suggest dropping this patch, unless
+you have a specific need for this error return here.
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+Jeff Layton <jlayton@redhat.com>
