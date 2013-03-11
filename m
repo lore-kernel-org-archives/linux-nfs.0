@@ -1,72 +1,151 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55459 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754523Ab3C1Sb6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Mar 2013 14:31:58 -0400
-Date: Thu, 28 Mar 2013 14:31:53 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Anand Avati <anand.avati@gmail.com>
-Cc: Zach Brown <zab@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>,
-        Eric Sandeen <sandeen@redhat.com>,
-        Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        gluster-devel@nongnu.org
-Subject: Re: [Gluster-devel] regressions due to 64-bit ext4 directory cookies
-Message-ID: <20130328183153.GG7080@fieldses.org>
-References: <20130213224720.GE5938@thunk.org>
- <CAFboF2z1akN_edrY_fT915xfehfHGioA2M=PSHv0Fp3rD-5v5A@mail.gmail.com>
- <20130213230511.GW14195@fieldses.org>
- <20130213234430.GF5938@thunk.org>
- <CAFboF2zS+YAa0uUxMFUAbqgPh3Kb4xZu40WUjLyGn8qPoP+Oyw@mail.gmail.com>
- <5151BD5F.30607@itwm.fraunhofer.de>
- <5151C33E.2070008@redhat.com>
- <20130328140744.GA4989@thunk.org>
- <20130328175205.GD16651@lenny.home.zabbo.net>
- <CAFboF2ztc06G00z8ga35NrxgnT2YgBiDECgU_9kvVA_Go1_Bww@mail.gmail.com>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:41536 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752994Ab3CKXCK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Mar 2013 19:02:10 -0400
+Message-ID: <513E6271.3060107@opengridcomputing.com>
+Date: Mon, 11 Mar 2013 18:02:09 -0500
+From: Tom Tucker <tom@opengridcomputing.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAFboF2ztc06G00z8ga35NrxgnT2YgBiDECgU_9kvVA_Go1_Bww@mail.gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Tim Gardner <tim.gardner@canonical.com>, linux-kernel@vger.kernel.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>, Tom Tucker <tom@ogc.us>,
+        Haggai Eran <haggaie@mellanox.com>, Or Gerlitz <ogerlitz@mellanox.com>,
+        Shani Michaeli <shanim@mellanox.com>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org
+Subject: Re: [PATCH linux-next v3] SUNRPC: rpcrdma_register_default_external:
+ Dynamically allocate ib_phys_buf
+References: <4FA345DA4F4AE44899BD2B03EEEC2FA9286BA156@sacexcmbx05-prd.hq.netapp.com> <1363036508-24935-1-git-send-email-tim.gardner@canonical.com> <20130311212535.GG642@fieldses.org>
+In-Reply-To: <20130311212535.GG642@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 28, 2013 at 11:05:41AM -0700, Anand Avati wrote:
-> On Thu, Mar 28, 2013 at 10:52 AM, Zach Brown <zab@redhat.com> wrote:
-> 
-> > On Thu, Mar 28, 2013 at 10:07:44AM -0400, Theodore Ts'o wrote:
-> > > On Tue, Mar 26, 2013 at 10:48:14AM -0500, Eric Sandeen wrote:
-> > > > > We don't have reached a conclusion so far, do we? What about the
-> > > > > ioctl approach, but a bit differently? Would it work to specify the
-> > > > > allowed upper bits for ext4 (for example 16 additional bit) and the
-> > > > > remaining part for gluster? One of the mails had the calculation
-> > > > > formula:
-> > > >
-> > > > I did throw together an ioctl patch last week, but I think Anand has a
-> > new
-> > > > approach he's trying out which won't require ext4 code changes.  I'll
-> > let
-> > > > him reply when he has a moment.  :)
-> > >
-> > > Any update about whether Gluster can address this without needing the
-> > > ioctl patch?  Or should we push the ioctl patch into ext4 for the next
-> > > merge window?
-> >
-> > They're testing a work-around:
-> >
-> >   http://review.gluster.org/#change,4711
-> >
-> > I'm not sure if they've decided that they're going to go with it, or
-> > not.
-> >
-> 
-> Jeff reported that the approach did not work in his testing. I haven't had
-> a chance to look into the failure yet. Independent of the fix, it would
-> certainly be good have the ioctl() support
+On 3/11/13 4:25 PM, J. Bruce Fields wrote:
+> On Mon, Mar 11, 2013 at 03:15:08PM -0600, Tim Gardner wrote:
+>> rpcrdma_register_default_external() is several frames into the call stack which
+>> goes deeper yet. You run the risk of stack corruption by declaring such a large
+>> automatic variable, so move the array of 'struct ib_phys_buf' objects into the
+>> transport structure 'struct rpcrdma_xprt' (which is dynamically allocated) in
+>> order to silence the frame-larger-than warning. Access to each struct
+>> rpcrdma_xprt is serialized by XPRT_LOCKED in xprt_reserve_xprt(), so there is
+>> no danger of multiple accessors to the array of struct ib_phys_buf objects.
+>>
+>> net/sunrpc/xprtrdma/verbs.c: In function 'rpcrdma_register_default_external':
+>> net/sunrpc/xprtrdma/verbs.c:1774:1: warning: the frame size of 1056 bytes is larger than 1024 bytes [-Wframe-larger-than=]
+>>
+>> gcc version 4.6.3
+>>
+>> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+>> Cc: "J. Bruce Fields" <bfields@fieldses.org>
+>> Cc: "David S. Miller" <davem@davemloft.net>
+>> Cc: Tom Tucker <tom@ogc.us>
+>> Cc: Haggai Eran <haggaie@mellanox.com>
+>> Cc: Or Gerlitz <ogerlitz@mellanox.com>
+>> Cc: Shani Michaeli <shanim@mellanox.com>
+>> Cc: linux-nfs@vger.kernel.org
+>> Cc: netdev@vger.kernel.org
+>> Signed-off-by: Tim Gardner <tim.gardner@canonical.com>
+>> ---
+>> v1 - Use kmalloc() to dynamically allocate and free the array of 'struct
+>> ib_phys_buf' objects
+>>
+>> v2 - Move the array of 'struct ib_phys_buf' objects into struct rpcrdma_req
+>> and pass this request down through rpcrdma_register_external() and
+>> rpcrdma_register_default_external(). This is less overhead then using
+>> kmalloc() and requires no extra error checking as the allocation burden is
+>> shifted to the transport client.
+>>
+>> v3 - Move the array of 'struct ib_phys_buf' objects into struct rpcrdma_xprt.
+>> Pass a pointer to this transport structure into rpcrdma_register_default_external().
+>> This is less overhead then using kmalloc() and requires no extra error checking
+>> as the allocation burden is shifted to the transport client.
+> Looks good to me; wish we could get it tested....
 
-The one advantage of your scheme is that it keeps more of the hash bits;
-the chance of 31-bit cookie collisions is much higher.
+I will test it. Tim could you please send me a final version that you'd 
+like tested as a single message?
 
-> Samba could use it too, if it wanted.
+Would someone (like Tim maybe ... hint hint) look at tearing out all those 
+dead registration strategies? I don't think we need or will ever use 
+bounce-buffers, memory windows, or mlnx fmr.  The only two that are used 
+and tested are all-phys and FRMR (the default).
 
-It'd be useful to understand their situation.
+Tom
 
---b.
+> In future if we do decide to also increase the size of that array we may
+> need to allocate it separately from struct rpcrdma_xprt itself, which
+> looks already fairly large without it; on x86_64:
+>
+> 	$ gdb net/sunrpc/xprtrdma/xprtrdma.ko
+> 	...
+> 	(gdb) p sizeof(struct rpcrdma_xprt)
+> 	$1 = 2912
+>
+> But that shouldn't be a big deal to do.
+>
+> --b.
+>
+>>   net/sunrpc/xprtrdma/verbs.c     |   10 ++++++----
+>>   net/sunrpc/xprtrdma/xprt_rdma.h |    5 ++++-
+>>   2 files changed, 10 insertions(+), 5 deletions(-)
+>>
+>> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+>> index 93726560..c7aa3da 100644
+>> --- a/net/sunrpc/xprtrdma/verbs.c
+>> +++ b/net/sunrpc/xprtrdma/verbs.c
+>> @@ -1730,13 +1730,14 @@ rpcrdma_deregister_memwin_external(struct rpcrdma_mr_seg *seg,
+>>   }
+>>   
+>>   static int
+>> -rpcrdma_register_default_external(struct rpcrdma_mr_seg *seg,
+>> -			int *nsegs, int writing, struct rpcrdma_ia *ia)
+>> +rpcrdma_register_default_external(struct rpcrdma_xprt *r_xprt,
+>> +			struct rpcrdma_mr_seg *seg, int *nsegs, int writing,
+>> +			struct rpcrdma_ia *ia)
+>>   {
+>>   	int mem_priv = (writing ? IB_ACCESS_REMOTE_WRITE :
+>>   				  IB_ACCESS_REMOTE_READ);
+>>   	struct rpcrdma_mr_seg *seg1 = seg;
+>> -	struct ib_phys_buf ipb[RPCRDMA_MAX_DATA_SEGS];
+>> +	struct ib_phys_buf *ipb = r_xprt->ipb;
+>>   	int len, i, rc = 0;
+>>   
+>>   	if (*nsegs > RPCRDMA_MAX_DATA_SEGS)
+>> @@ -1827,7 +1828,8 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
+>>   
+>>   	/* Default registration each time */
+>>   	default:
+>> -		rc = rpcrdma_register_default_external(seg, &nsegs, writing, ia);
+>> +		rc = rpcrdma_register_default_external(r_xprt, seg, &nsegs,
+>> +			writing, ia);
+>>   		break;
+>>   	}
+>>   	if (rc)
+>> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+>> index cc1445d..d7b440f 100644
+>> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
+>> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+>> @@ -269,7 +269,8 @@ struct rpcrdma_stats {
+>>    * for convenience. This structure need not be visible externally.
+>>    *
+>>    * It is allocated and initialized during mount, and released
+>> - * during unmount.
+>> + * during unmount. Access to this structure is serialized by XPRT_LOCKED
+>> + * in xprt_reserve_xprt().
+>>    */
+>>   struct rpcrdma_xprt {
+>>   	struct rpc_xprt		xprt;
+>> @@ -279,6 +280,8 @@ struct rpcrdma_xprt {
+>>   	struct rpcrdma_create_data_internal rx_data;
+>>   	struct delayed_work	rdma_connect;
+>>   	struct rpcrdma_stats	rx_stats;
+>> +	/* temp work array */
+>> +	struct ib_phys_buf	ipb[RPCRDMA_MAX_DATA_SEGS];
+>>   };
+>>   
+>>   #define rpcx_to_rdmax(x) container_of(x, struct rpcrdma_xprt, xprt)
+>> -- 
+>> 1.7.9.5
+>>
+
