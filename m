@@ -1,55 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:15680 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:46767 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756358Ab3CYOQh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Mar 2013 10:16:37 -0400
-Message-ID: <51505C0C.7080906@RedHat.com>
-Date: Mon, 25 Mar 2013 10:15:40 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1751319Ab3CKSV0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Mar 2013 14:21:26 -0400
+Date: Mon, 11 Mar 2013 14:21:23 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Andy Lutomirski <luto@amacapital.net>
+Cc: Simo <simo@samba.org>, Pavel Shilovsky <piastry@etersoft.ru>,
+        linux-kernel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        wine-devel@winehq.org
+Subject: Re: [PATCH v3 0/7] Add O_DENY* support for VFS and CIFS/NFS
+Message-ID: <20130311182123.GE30618@fieldses.org>
+References: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
+ <512FD1D5.3010106@mit.edu>
+ <20130304211923.GI20389@fieldses.org>
+ <5135250A.30604@samba.org>
+ <20130305181306.GA15816@fieldses.org>
+ <51364285.4040406@samba.org>
+ <CALCETrXvyXqx+R2wSROEOb+qrSBpPeCGT_9Z6N+QJOU=1aikPw@mail.gmail.com>
 MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>
-CC: NFS <linux-nfs@vger.kernel.org>, Leonardo Chiquitto <lchiquitto@suse.com>
-Subject: Re: [PATCH - nfs-utils] gssd:  use correct test for success of getrlimit()
-References: <20130219113102.265d9d03@notabene.brown>
-In-Reply-To: <20130219113102.265d9d03@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CALCETrXvyXqx+R2wSROEOb+qrSBpPeCGT_9Z6N+QJOU=1aikPw@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, Mar 11, 2013 at 11:18:15AM -0700, Andy Lutomirski wrote:
+> On Tue, Mar 5, 2013 at 11:07 AM, Simo <simo@samba.org> wrote:
+> > On 03/05/2013 01:13 PM, J. Bruce Fields wrote:
+> >>
+> >> On Mon, Mar 04, 2013 at 05:49:46PM -0500, Simo wrote:
+> >>>
+> >>> On 03/04/2013 04:19 PM, J. Bruce Fields wrote:
+> >>>>
+> >>>> On Thu, Feb 28, 2013 at 01:53:25PM -0800, Andy Lutomirski wrote:
+> >>>>>
+> >>>>> [possible resend -- sorry]
+> >>>>>
+> >>>>> On 02/28/2013 07:25 AM, Pavel Shilovsky wrote:
+> >>>>>>
+> >>>>>> This patchset adds support of O_DENY* flags for Linux fs layer. These
+> >>>>>> flags can be used by any application that needs share reservations to
+> >>>>>> organize a file access. VFS already has some sort of this capability - now
+> >>>>>> it's done through flock/LOCK_MAND mechanis, but that approach is non-atomic.
+> >>>>>> This patchset build new capabilities on top of the existing one but doesn't
+> >>>>>> bring any changes into the flock call semantic.
+> >>>>>>
+> >>>>>> These flags can be used by NFS (built-in-kernel) and CIFS (Samba)
+> >>>>>> servers and Wine applications through VFS (for local filesystems) or
+> >>>>>> CIFS/NFS modules. This will help when e.g. Samba and NFS server share the
+> >>>>>> same directory for Windows and Linux users or Wine applications use
+> >>>>>> Samba/NFS share to access the same data from different clients.
+> >>>>>>
+> >>>>>> According to the previous discussions the most problematic question is
+> >>>>>> how to prevent situations like DoS attacks where e.g /lib/liba.so file can
+> >>>>>> be open with DENYREAD, or smth like this. That's why one extra flag
+> >>>>>> O_DENYMAND is added. It indicates to underlying layer that an application
+> >>>>>> want to use O_DENY* flags semantic. It allows us not affect native Linux
+> >>>>>> applications (that don't use O_DENYMAND flag) - so, these flags (and the
+> >>>>>> semantic of open syscall that they bring) are used only for those
+> >>>>>> applications that really want it proccessed that way.
+> >>>>>>
+> >>>>>> So, we have four new flags:
+> >>>>>> O_DENYREAD - to prevent other opens with read access,
+> >>>>>> O_DENYWRITE - to prevent other opens with write access,
+> >>>>>> O_DENYDELETE - to prevent delete operations (this flag is not
+> >>>>>> implemented in VFS and NFS part and only suitable for CIFS module),
+> >>>>>> O_DENYMAND - to switch on/off three flags above.
+> >>>>>
+> >>>>> O_DENYMAND doesn't deny anything.  Would a name like O_RESPECT_DENY be
+> >>>>> better?
+> >>>>>
+> >>>>> Other than that, this seems like a sensible mechanism.
+> >>>>
+> >>>> I'm a little more worried: these are mandatory locks, and applications
+> >>>> that use them are used to the locks being enforced correctly.  Are we
+> >>>> sure that an application that opens a file O_DENYWRITE won't crash if it
+> >>>> sees the file data change while it holds the open?
+> >>>
+> >>> The redirector may simply assume it has full control of that part of
+> >>> the file and not read nor send data until the lock is released too,
+> >>> so you get conflicting views of the file contents between different
+> >>> clients if you let a mandatory lock not be mandatory.
+> >>>
+> >>>> In general the idea of making a mandatory lock opt-in makes me nervous.
+> >>>> I'd prefer something like a mount option, so that we know that everyone
+> >>>> on that one filesystem is playing by the same rules, but we can still
+> >>>> mount filesystems like / without the option.
+> >>>
+> >>> +1
+> >>>
+> >>>> But I'll admit I'm definitely not an expert on Windows locking and may
+> >>>> be missing something about how these locks are meant to work.
+> >>>
+> >>> Mandatory locks really are mandatory in Windows.
+> >>> That may not be nice to a Unix system but what can you do ?
+> >>
+> >> I wonder if we could repurpose the existing -omand mount option?
+> >>
+> >> That would be a problem for anyone that wants to allow mandatory fcntl
+> >> locks without allowing share locks.  I doubt anyone sane actually uses
+> >> mandatory fcntl locks, but still I suppose it would probably be better
+> >> to play it safe and use a new mount option.
+> >
+> >
+> > Maybe we should have a -o win_semantics option :-)
+> >
+> 
+> It's not entirely obvious to me that allowing programs to bypass this
+> kind of locking is a bad idea.  It's hard to do on Windows, but
+> presumably network filesystems on Windows already have this issue.
 
+Could be, but I'd like to see evidence of that.
 
-On 18/02/13 19:31, NeilBrown wrote:
-> 
-> commit 7c5cb5e732a4b8704f8c79ec819c5d271e040339
->     gssd: base the size of the fd array on the RLIMIT_NOFILE limit.
-> 
-> didn't actually work as claimed.  It only uses the returned value
-> if getrlimit() returns -1  -- which of course it only does when
-> there was an error.
-> 
-> So change the test to "== 0".
-> 
-> Reported-by: Leonardo Chiquitto< lchiquitto@suse.com>
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> 
-> --
-> hangs head in shame .... NeilBrown
-Committed... 
-
-steved.
-
-> 
-> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-> index c17ab3b..e10bda6 100644
-> --- a/utils/gssd/gssd_proc.c
-> +++ b/utils/gssd/gssd_proc.c
-> @@ -477,7 +477,7 @@ init_client_list(void)
->  	TAILQ_INIT(&clnt_list);
->  	/* Eventually plan to grow/shrink poll array: */
->  	pollsize = FD_ALLOC_BLOCK;
-> -	if (getrlimit(RLIMIT_NOFILE, &rlim) < 0 &&
-> +	if (getrlimit(RLIMIT_NOFILE, &rlim) == 0 &&
->  	    rlim.rlim_cur != RLIM_INFINITY)
->  		pollsize = rlim.rlim_cur;
->  	pollarray = calloc(pollsize, sizeof(struct pollfd));
-> 
+--b.
