@@ -1,53 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ia0-f173.google.com ([209.85.210.173]:55181 "EHLO
-	mail-ia0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756507Ab3CSTBx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Mar 2013 15:01:53 -0400
-Received: by mail-ia0-f173.google.com with SMTP id h37so711626iak.32
-        for <linux-nfs@vger.kernel.org>; Tue, 19 Mar 2013 12:01:52 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/3] SUNRPC: Don't recognize RPC_AUTH_MAXFLAVOR
-To: linux-nfs@vger.kernel.org
-Date: Tue, 19 Mar 2013 15:01:37 -0400
-Message-ID: <20130319190137.1203.1269.stgit@seurat.1015granger.net>
-In-Reply-To: <20130319185944.1203.38377.stgit@seurat.1015granger.net>
-References: <20130319185944.1203.38377.stgit@seurat.1015granger.net>
+Received: from mail-vb0-f41.google.com ([209.85.212.41]:40314 "EHLO
+	mail-vb0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751647Ab3CKSSg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Mar 2013 14:18:36 -0400
+Received: by mail-vb0-f41.google.com with SMTP id l22so1826704vbn.28
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Mar 2013 11:18:35 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <51364285.4040406@samba.org>
+References: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
+ <512FD1D5.3010106@mit.edu> <20130304211923.GI20389@fieldses.org>
+ <5135250A.30604@samba.org> <20130305181306.GA15816@fieldses.org> <51364285.4040406@samba.org>
+From: Andy Lutomirski <luto@amacapital.net>
+Date: Mon, 11 Mar 2013 11:18:15 -0700
+Message-ID: <CALCETrXvyXqx+R2wSROEOb+qrSBpPeCGT_9Z6N+QJOU=1aikPw@mail.gmail.com>
+Subject: Re: [PATCH v3 0/7] Add O_DENY* support for VFS and CIFS/NFS
+To: Simo <simo@samba.org>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Pavel Shilovsky <piastry@etersoft.ru>, linux-kernel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wine-devel@winehq.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-RPC_AUTH_MAXFLAVOR is an invalid flavor, on purpose.  Don't allow
-any processing whatsoever if a caller passes it to rpcauth_create()
-or rpcauth_get_gssinfo().
+On Tue, Mar 5, 2013 at 11:07 AM, Simo <simo@samba.org> wrote:
+> On 03/05/2013 01:13 PM, J. Bruce Fields wrote:
+>>
+>> On Mon, Mar 04, 2013 at 05:49:46PM -0500, Simo wrote:
+>>>
+>>> On 03/04/2013 04:19 PM, J. Bruce Fields wrote:
+>>>>
+>>>> On Thu, Feb 28, 2013 at 01:53:25PM -0800, Andy Lutomirski wrote:
+>>>>>
+>>>>> [possible resend -- sorry]
+>>>>>
+>>>>> On 02/28/2013 07:25 AM, Pavel Shilovsky wrote:
+>>>>>>
+>>>>>> This patchset adds support of O_DENY* flags for Linux fs layer. These
+>>>>>> flags can be used by any application that needs share reservations to
+>>>>>> organize a file access. VFS already has some sort of this capability - now
+>>>>>> it's done through flock/LOCK_MAND mechanis, but that approach is non-atomic.
+>>>>>> This patchset build new capabilities on top of the existing one but doesn't
+>>>>>> bring any changes into the flock call semantic.
+>>>>>>
+>>>>>> These flags can be used by NFS (built-in-kernel) and CIFS (Samba)
+>>>>>> servers and Wine applications through VFS (for local filesystems) or
+>>>>>> CIFS/NFS modules. This will help when e.g. Samba and NFS server share the
+>>>>>> same directory for Windows and Linux users or Wine applications use
+>>>>>> Samba/NFS share to access the same data from different clients.
+>>>>>>
+>>>>>> According to the previous discussions the most problematic question is
+>>>>>> how to prevent situations like DoS attacks where e.g /lib/liba.so file can
+>>>>>> be open with DENYREAD, or smth like this. That's why one extra flag
+>>>>>> O_DENYMAND is added. It indicates to underlying layer that an application
+>>>>>> want to use O_DENY* flags semantic. It allows us not affect native Linux
+>>>>>> applications (that don't use O_DENYMAND flag) - so, these flags (and the
+>>>>>> semantic of open syscall that they bring) are used only for those
+>>>>>> applications that really want it proccessed that way.
+>>>>>>
+>>>>>> So, we have four new flags:
+>>>>>> O_DENYREAD - to prevent other opens with read access,
+>>>>>> O_DENYWRITE - to prevent other opens with write access,
+>>>>>> O_DENYDELETE - to prevent delete operations (this flag is not
+>>>>>> implemented in VFS and NFS part and only suitable for CIFS module),
+>>>>>> O_DENYMAND - to switch on/off three flags above.
+>>>>>
+>>>>> O_DENYMAND doesn't deny anything.  Would a name like O_RESPECT_DENY be
+>>>>> better?
+>>>>>
+>>>>> Other than that, this seems like a sensible mechanism.
+>>>>
+>>>> I'm a little more worried: these are mandatory locks, and applications
+>>>> that use them are used to the locks being enforced correctly.  Are we
+>>>> sure that an application that opens a file O_DENYWRITE won't crash if it
+>>>> sees the file data change while it holds the open?
+>>>
+>>> The redirector may simply assume it has full control of that part of
+>>> the file and not read nor send data until the lock is released too,
+>>> so you get conflicting views of the file contents between different
+>>> clients if you let a mandatory lock not be mandatory.
+>>>
+>>>> In general the idea of making a mandatory lock opt-in makes me nervous.
+>>>> I'd prefer something like a mount option, so that we know that everyone
+>>>> on that one filesystem is playing by the same rules, but we can still
+>>>> mount filesystems like / without the option.
+>>>
+>>> +1
+>>>
+>>>> But I'll admit I'm definitely not an expert on Windows locking and may
+>>>> be missing something about how these locks are meant to work.
+>>>
+>>> Mandatory locks really are mandatory in Windows.
+>>> That may not be nice to a Unix system but what can you do ?
+>>
+>> I wonder if we could repurpose the existing -omand mount option?
+>>
+>> That would be a problem for anyone that wants to allow mandatory fcntl
+>> locks without allowing share locks.  I doubt anyone sane actually uses
+>> mandatory fcntl locks, but still I suppose it would probably be better
+>> to play it safe and use a new mount option.
+>
+>
+> Maybe we should have a -o win_semantics option :-)
+>
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+It's not entirely obvious to me that allowing programs to bypass this
+kind of locking is a bad idea.  It's hard to do on Windows, but
+presumably network filesystems on Windows already have this issue.
 
- net/sunrpc/auth.c |    5 ++++-
- 1 files changed, 4 insertions(+), 1 deletions(-)
-
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index 2bc0cc2..ed2fdd2 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -82,7 +82,7 @@ MODULE_PARM_DESC(auth_hashtable_size, "RPC credential cache hashtable size");
- 
- static u32
- pseudoflavor_to_flavor(u32 flavor) {
--	if (flavor >= RPC_AUTH_MAXFLAVOR)
-+	if (flavor > RPC_AUTH_MAXFLAVOR)
- 		return RPC_AUTH_GSS;
- 	return flavor;
- }
-@@ -173,6 +173,9 @@ rpcauth_get_gssinfo(rpc_authflavor_t pseudoflavor, struct rpcsec_gss_info *info)
- 	const struct rpc_authops *ops;
- 	int result;
- 
-+	if (flavor >= RPC_AUTH_MAXFLAVOR)
-+		return -EINVAL;
-+
- 	ops = auth_flavors[flavor];
- 	if (ops == NULL)
- 		request_module("rpc-auth-%u", flavor);
-
+--Andy
