@@ -1,86 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:50577 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:19305 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755692Ab3CFBKW convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Mar 2013 20:10:22 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: Tejun Heo <tj@kernel.org>, Oleg Nesterov <oleg@redhat.com>,
-        "Mandeep Singh Baines" <msb@chromium.org>,
-        Ming Lei <ming.lei@canonical.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Ingo Molnar <mingo@redhat.com>
-Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
-Date: Wed, 6 Mar 2013 01:10:07 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9286B1246@sacexcmbx05-prd.hq.netapp.com>
-References: <CACVXFVMKN6aeCvJcn7dyuonJYJDfYxWeW5KE6gfKRKJKFj2M4A@mail.gmail.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9286AD113@sacexcmbx05-prd.hq.netapp.com>
-	 <20130304092310.1d21100c@tlielax.poochiereds.net>
-	 <CACBanvrc0orXGZ1v+gKHtVPKWYKGEFx46dwoDCjTU78+nPtZyg@mail.gmail.com>
-	 <20130304205307.GA13527@redhat.com>
-	 <4FA345DA4F4AE44899BD2B03EEEC2FA9286AEEB0@sacexcmbx05-prd.hq.netapp.com>
-	 <20130305082308.6607d4db@tlielax.poochiereds.net>
-	 <20130305174648.GF12795@htj.dyndns.org>
-	 <20130305174954.GG12795@htj.dyndns.org>
-	 <20130305140312.243cb094@tlielax.poochiereds.net>
-In-Reply-To: <20130305140312.243cb094@tlielax.poochiereds.net>
+	id S1752994Ab3CKSyi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Mar 2013 14:54:38 -0400
+Date: Mon, 11 Mar 2013 14:54:34 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Pavel Shilovsky <piastry@etersoft.ru>
+Cc: linux-kernel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        wine-devel@winehq.org
+Subject: Re: [PATCH v3 6/7] NFSv4: Add O_DENY* open flags support
+Message-ID: <20130311145434.707f5ed1@corrin.poochiereds.net>
+In-Reply-To: <1362065133-9490-7-git-send-email-piastry@etersoft.ru>
+References: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
+	<1362065133-9490-7-git-send-email-piastry@etersoft.ru>
+Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-03-05 at 14:03 -0500, Jeff Layton wrote:
-> On Tue, 5 Mar 2013 09:49:54 -0800
-> Tejun Heo <tj@kernel.org> wrote:
-> 
-> > On Tue, Mar 05, 2013 at 09:46:48AM -0800, Tejun Heo wrote:
-> > > So, I think this is why implementing freezer as a separate blocking
-> > > mechanism isn't such a good idea.  We're effectively introducing a
-> > > completely new waiting state to a lot of unsuspecting paths which
-> > > generates a lot of risks and eventually extra complexity to work
-> > > around those.  I think we really should update freezer to re-use the
-> > > blocking points we already have - the ones used for signal delivery
-> > > and ptracing.  That way, other code paths don't have to worry about an
-> > > extra stop state and we can confine most complexities to freezer
-> > > proper.
-> > 
-> > Also, consolidating those wait states means that we can solve the
-> > event-to-response latency problem for all three cases - signal, ptrace
-> > and freezer, rather than adding separate backing-out strategy for
-> > freezer.
-> > 
-> 
-> Sounds intriguing...
-> 
-> I'm not sure what this really means for something like NFS though. How
-> would you envision this working when we have long running syscalls that
-> might sit waiting in the kernel indefinitely?
-> 
-> Here's my blue-sky, poorly-thought-out idea...
-> 
-> We could add a signal (e.g. SIGFREEZE) that allows the sleeps in
-> NFS/RPC layer to be interrupted. Those would return back toward
-> userland with a particular type of error (sort of like ERESTARTSYS).
-> 
-> Before returning from the kernel though, we could freeze the process.
-> When it wakes up, then we could go back down and retry the call again
-> (much like an ERESTARTSYS kind of thing).
+On Thu, 28 Feb 2013 19:25:32 +0400
+Pavel Shilovsky <piastry@etersoft.ru> wrote:
 
-Two (three?) show stopper words for you: "non-idempotent operations".
+> by passing these flags to NFSv4 open request.
+> 
+> Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
+> ---
+>  fs/nfs/nfs4xdr.c | 24 ++++++++++++++++++++----
+>  1 file changed, 20 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index 26b1439..58ddc74 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -1325,7 +1325,8 @@ static void encode_lookup(struct xdr_stream *xdr, const struct qstr *name, struc
+>  	encode_string(xdr, name->len, name->name);
+>  }
+>  
+> -static void encode_share_access(struct xdr_stream *xdr, fmode_t fmode)
+> +static void encode_share_access(struct xdr_stream *xdr, fmode_t fmode,
+> +				int open_flags)
+>  {
+>  	__be32 *p;
+>  
+> @@ -1343,7 +1344,22 @@ static void encode_share_access(struct xdr_stream *xdr, fmode_t fmode)
+>  	default:
+>  		*p++ = cpu_to_be32(0);
+>  	}
+> -	*p = cpu_to_be32(0);		/* for linux, share_deny = 0 always */
+> +	if (open_flags & O_DENYMAND) {
 
-Not all RPC calls can just be interrupted and restarted. Something like
-an exclusive file create, unlink, file locking attempt, etc may give
-rise to different results when replayed in the above scenario.
-Interrupting an RPC call is not equivalent to cancelling its effects...
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+As Bruce mentioned, I think a mount option to enable this on a per-fs
+basis would be a better approach than this new O_DENYMAND flag. 
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+
+> +		switch (open_flags & (O_DENYREAD|O_DENYWRITE)) {
+> +		case O_DENYREAD:
+> +			*p = cpu_to_be32(NFS4_SHARE_DENY_READ);
+> +			break;
+> +		case O_DENYWRITE:
+> +			*p = cpu_to_be32(NFS4_SHARE_DENY_WRITE);
+> +			break;
+> +		case O_DENYREAD|O_DENYWRITE:
+> +			*p = cpu_to_be32(NFS4_SHARE_DENY_BOTH);
+> +			break;
+> +		default:
+> +			*p = cpu_to_be32(0);
+> +		}
+> +	} else
+> +		*p = cpu_to_be32(0);
+>  }
+>  
+>  static inline void encode_openhdr(struct xdr_stream *xdr, const struct nfs_openargs *arg)
+> @@ -1354,7 +1370,7 @@ static inline void encode_openhdr(struct xdr_stream *xdr, const struct nfs_opena
+>   * owner 4 = 32
+>   */
+>  	encode_nfs4_seqid(xdr, arg->seqid);
+> -	encode_share_access(xdr, arg->fmode);
+> +	encode_share_access(xdr, arg->fmode, arg->open_flags);
+>  	p = reserve_space(xdr, 36);
+>  	p = xdr_encode_hyper(p, arg->clientid);
+>  	*p++ = cpu_to_be32(24);
+> @@ -1491,7 +1507,7 @@ static void encode_open_downgrade(struct xdr_stream *xdr, const struct nfs_close
+>  	encode_op_hdr(xdr, OP_OPEN_DOWNGRADE, decode_open_downgrade_maxsz, hdr);
+>  	encode_nfs4_stateid(xdr, arg->stateid);
+>  	encode_nfs4_seqid(xdr, arg->seqid);
+> -	encode_share_access(xdr, arg->fmode);
+> +	encode_share_access(xdr, arg->fmode, 0);
+>  }
+>  
+>  static void
+
+
+Other than that, this seems reasonable.
+
+Acked-by: Jeff Layton <jlayton@redhat.com>
