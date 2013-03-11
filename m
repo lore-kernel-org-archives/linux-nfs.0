@@ -1,175 +1,367 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:46078 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932117Ab3CDUEd convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Mar 2013 15:04:33 -0500
-Date: Mon, 4 Mar 2013 15:04:22 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>, <devel@openvz.org>,
-        <Trond.Myklebust@netapp.com>, <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] nfsd: try nfsdcld client tracker in containers
-Message-ID: <20130304150422.0a1743f4@tlielax.poochiereds.net>
-In-Reply-To: <5134E043.70609@parallels.com>
-References: <20130301082423.21663.37825.stgit@localhost.localdomain>
-	<20130301080911.2a1a28a2@corrin.poochiereds.net>
-	<51344175.40503@parallels.com>
-	<20130304094736.57a288b9@tlielax.poochiereds.net>
-	<5134E043.70609@parallels.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-ia0-f177.google.com ([209.85.210.177]:55996 "EHLO
+	mail-ia0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753491Ab3CKS52 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Mar 2013 14:57:28 -0400
+MIME-Version: 1.0
+In-Reply-To: <20130311144609.2ba86964@corrin.poochiereds.net>
+References: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
+	<1362065133-9490-3-git-send-email-piastry@etersoft.ru>
+	<20130311144609.2ba86964@corrin.poochiereds.net>
+Date: Mon, 11 Mar 2013 22:57:27 +0400
+Message-ID: <CAKywueTEXOH3s0z2X7e=QugJaQAZ6JPoaYmYPnFLHMOTC7_y4w@mail.gmail.com>
+Subject: Re: [PATCH v3 2/7] vfs: Add O_DENYREAD/WRITE flags support for open syscall
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-kernel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        wine-devel@winehq.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 4 Mar 2013 21:56:19 +0400
-Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+2013/3/11 Jeff Layton <jlayton@redhat.com>:
+> On Thu, 28 Feb 2013 19:25:28 +0400
+> Pavel Shilovsky <piastry@etersoft.ru> wrote:
+>
+>> If O_DENYMAND flag is specified, O_DENYREAD/WRITE/MAND flags are
+>> translated to flock's flags:
+>>
+>> !O_DENYREAD  -> LOCK_READ
+>> !O_DENYWRITE -> LOCK_WRITE
+>> O_DENYMAND   -> LOCK_MAND
+>>
+>> and set through flock_lock_file on a file.
+>>
+>> This change affects opens that use O_DENYMAND flag - all other
+>> native Linux opens don't care about these flags. It allow us to
+>> enable this feature for applications that need it (e.g. NFS and
+>> Samba servers that export the same directory for Windows clients,
+>> or Wine applications that access the same files simultaneously).
+>>
+>> Create codepath is slightly changed to prevent data races on
+>> newely created files: when open with O_CREAT can return with -ETXTBSY
+>> error for successfully created files due to a deny lock set by
+>> another task.
+>>
+>> Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
+>> ---
+>>  fs/locks.c         | 116 +++++++++++++++++++++++++++++++++++++++++++++++------
+>>  fs/namei.c         |  44 ++++++++++++++++++--
+>>  include/linux/fs.h |   6 +++
+>>  3 files changed, 151 insertions(+), 15 deletions(-)
+>>
+>> diff --git a/fs/locks.c b/fs/locks.c
+>> index a94e331..0cc7d1b 100644
+>> --- a/fs/locks.c
+>> +++ b/fs/locks.c
+>> @@ -605,20 +605,81 @@ static int posix_locks_conflict(struct file_lock *caller_fl, struct file_lock *s
+>>       return (locks_conflict(caller_fl, sys_fl));
+>>  }
+>>
+>> -/* Determine if lock sys_fl blocks lock caller_fl. FLOCK specific
+>> - * checking before calling the locks_conflict().
+>> +static unsigned int
+>> +deny_flags_to_cmd(unsigned int flags)
+>> +{
+>> +     unsigned int cmd = LOCK_MAND;
+>> +
+>> +     if (!(flags & O_DENYREAD))
+>> +             cmd |= LOCK_READ;
+>> +     if (!(flags & O_DENYWRITE))
+>> +             cmd |= LOCK_WRITE;
+>> +
+>> +     return cmd;
+>> +}
+>> +
+>> +/*
+>> + * locks_mand_conflict - Determine if there's a share reservation conflict
+>> + * @caller_fl: lock we're attempting to acquire
+>> + * @sys_fl: lock already present on system that we're checking against
+>> + *
+>> + * Check to see if there's a share_reservation conflict. LOCK_READ/LOCK_WRITE
+>> + * tell us whether the reservation allows other readers and writers.
+>> + *
+>> + * We only check against other LOCK_MAND locks, so applications that want to
+>> + * use share mode locking will only conflict against one another. "normal"
+>> + * applications that open files won't be affected by and won't themselves
+>> + * affect the share reservations.
+>>   */
+>> -static int flock_locks_conflict(struct file_lock *caller_fl, struct file_lock *sys_fl)
+>> +static int
+>> +locks_mand_conflict(struct file_lock *caller_fl, struct file_lock *sys_fl)
+>>  {
+>> -     /* FLOCK locks referring to the same filp do not conflict with
+>> +     unsigned char caller_type = caller_fl->fl_type;
+>> +     unsigned char sys_type = sys_fl->fl_type;
+>> +     fmode_t caller_fmode = caller_fl->fl_file->f_mode;
+>> +     fmode_t sys_fmode = sys_fl->fl_file->f_mode;
+>> +
+>> +     /* they can only conflict if they're both LOCK_MAND */
+>> +     if (!(caller_type & LOCK_MAND) || !(sys_type & LOCK_MAND))
+>> +             return 0;
+>> +
+>> +     if (!(caller_type & LOCK_READ) && (sys_fmode & FMODE_READ))
+>> +             return 1;
+>> +     if (!(caller_type & LOCK_WRITE) && (sys_fmode & FMODE_WRITE))
+>> +             return 1;
+>> +     if (!(sys_type & LOCK_READ) && (caller_fmode & FMODE_READ))
+>> +             return 1;
+>> +     if (!(sys_type & LOCK_WRITE) && (caller_fmode & FMODE_WRITE))
+>> +             return 1;
+>> +
+>> +     return 0;
+>> +}
+>> +
+>> +/*
+>> + * Determine if lock sys_fl blocks lock caller_fl. FLOCK specific checking
+>> + * before calling the locks_conflict(). Boolean is_mand indicates whether
+>> + * we should use a share reservation scheme or not.
+>> + */
+>> +static int
+>> +flock_locks_conflict(struct file_lock *caller_fl, struct file_lock *sys_fl,
+>> +                  bool is_mand)
+>
+> I'm not sure you really need to add this new is_mand bool. Won't that
+> be equivalent to (caller_fl->fl_type & LOCK_MAND)?
 
-> 04.03.2013 18:47, Jeff Layton пишет:
-> > On Mon, 4 Mar 2013 10:38:45 +0400
-> > Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
-> >
-> >> 01.03.2013 17:09, Jeff Layton пишет:
-> >>> On Fri, 01 Mar 2013 11:24:23 +0300
-> >>> Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
-> >>>
-> >>>> Currently, UMH and Legacy trackers are disabled in containers.
-> >>>> But existent logic can lookup nfs4_recoverydir in a container, and in this
-> >>>> case will try to init Legacy tracker and skip nfsdcld client tracker.
-> >>>> This actually means, that no client tracker will be started in a container at
-> >>>> all, because Legacy tracker init will return -EINVAL for a container.
-> >>>> So, let's change "-EINVAL" on "-ENOTSUPP" for legacy tracker init call in a
-> >>>> container and in case of this error code, try nfsdcld client tracker instead
-> >>>> of returning a error.
-> >>>>
-> >>>> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> >>>> ---
-> >>>>    fs/nfsd/nfs4recover.c |   12 ++++++++----
-> >>>>    1 files changed, 8 insertions(+), 4 deletions(-)
-> >>>>
-> >>>> diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-> >>>> index e0ae1cf..8aa069a 100644
-> >>>> --- a/fs/nfsd/nfs4recover.c
-> >>>> +++ b/fs/nfsd/nfs4recover.c
-> >>>> @@ -524,7 +524,7 @@ nfsd4_legacy_tracking_init(struct net *net)
-> >>>>    	if (net != &init_net) {
-> >>>>    		WARN(1, KERN_ERR "NFSD: attempt to initialize legacy client "
-> >>>>    			"tracking in a container!\n");
-> >>>> -		return -EINVAL;
-> >>>> +		return -ENOTSUPP;
-> >>>>    	}
-> >>>>
-> >>>>    	status = nfs4_legacy_state_init(net);
-> >>>> @@ -1285,14 +1285,17 @@ nfsd4_client_tracking_init(struct net *net)
-> >>>>    	/*
-> >>>>    	 * See if the recoverydir exists and is a directory. If it is,
-> >>>>    	 * then use the legacy ops.
-> >>>> +	 * If legacy ops init return -ENOSUPP, then we are in a container and
-> >>>> +	 * should try nfsdcld client tracking.
-> >>>>    	 */
-> >>>>    	nn->client_tracking_ops = &nfsd4_legacy_tracking_ops;
-> >>>>    	status = kern_path(nfs4_recoverydir(), LOOKUP_FOLLOW, &path);
-> >>>>    	if (!status) {
-> >>>> -		status = S_ISDIR(path.dentry->d_inode->i_mode);
-> >>>> +		if (S_ISDIR(path.dentry->d_inode->i_mode))
-> >>>> +			status = nn->client_tracking_ops->init(net);
-> >>>>    		path_put(&path);
-> >>>> -		if (status)
-> >>>> -			goto do_init;
-> >>>> +		if (status != -ENOTSUPP)
-> >>>> +			goto do_exit;
-> >>>>    	}
-> >>>>
-> >>>>    	/* Finally, try to use nfsdcld */
-> >>>> @@ -1302,6 +1305,7 @@ nfsd4_client_tracking_init(struct net *net)
-> >>>>    			"nfsdcltrack.\n");
-> >>>>    do_init:
-> >>>>    	status = nn->client_tracking_ops->init(net);
-> >>>> +do_exit:
-> >>>>    	if (status) {
-> >>>>    		printk(KERN_WARNING "NFSD: Unable to initialize client "
-> >>>>    				    "recovery tracking! (%d)\n", status);
-> >>>>
-> >>> Seems OK as a stopgap fix. We're removing nfsdcld in 3.10 though so
-> >>> this won't help prospective users of nfsd in a container for
-> >>> long...particularly since our expectation is that no one has actually
-> >>> ever deployed nfsdcld.
-> >>>
-> >>> This is something that really needs to be fixed the right way since a
-> >>> NFS server that doesn't allow clients to reclaim state after a reboot is
-> >>> potentially dangerous...
-> >>>
-> >>> I'm afraid I haven't been following along as closely as I should have
-> >>> been. What's the rationale for disabling the UMH upcall? Is there no
-> >>> way to make it so that new processes it spawns are done within the
-> >>> correct container?
-> >>>
-> >> Straight answer is "no, there is no way to do so": UMH threads are spawned in "init" context.
-> >> But we solve the problem in a slightly different way.
-> >>
-> >> So, here are my ideas about all the trackers (I haven't shared them yet, so I do it now):
-> >>
-> >> 1) nfsdcld uses SUNRPC pipefs, which is containerised already. So it was very easy to containerise it.
-> >>
-> > Right, but we want this one to just go away. It got superceded by the
-> > UMH upcall and probably shouldn't have been merged in the first place
-> > (mea culpa). That'll get ripped out when the 3.10 merge window opens,
-> > so we don't really want to encourage anyone to use it.
-> >
-> >> 2) Legacy tracker uses path. All is great and simple until we imagine two containers with the same root. In this case we have to make sure, that we can start
-> >> only one NFSd with this path (I don't care about user-space problems).
-> >> I was thinking about global in-kernel RB tree for all paths. But maybe even a simple global list is enough (not so many NFSd can be started, and it not a
-> >> fast-path to optimise the search over all used paths).
-> >>
-> > Well, you have a path, sure. In principle you could make that path
-> > relative to the correct namespace for each server, and maybe allow this
-> > to be settable on a per-namespace basis.
-> >
-> > That said, it's probably best not to put to much effort into this
-> > either. We want to eventually deprecate the legacy tracker too. So
-> > limiting its use to the "init" namespace seems like a reasonable
-> > stopgap fix, IMO...
-> 
-> Ok, let's leave it for a while...
-> 
-> >
-> >> 3) UMH lookup and execute binary from current root. This problem just chasing all the containerisation work. So, either UHM logic have to updated (which is not
-> >> trivial or easy to implement and push upstream), or process root have to swapped to the right (container's) one. This, BTW, not that hard, because UMH call
-> >> accept "init" callback, which can be used to swap the root right before do_execve() is called.
-> >>
-> >> What do you, guys, think about all this?
-> >>
-> > You mean just change to use call_usermodehelper_fns() and pasn the
-> > correct namespace info? Yeah that looks like the easiest fix and sounds
-> > quite reasonable.
-> >
-> 
-> Nope. The problem here is not a namespace, but root path:
-> mount point + dentry.
-> do_execve() uses root path from current for search for any string path.
-> And this root path is inherited from the kernel thread. Which means,
-> that this is global "init" root path.
-> Thus, if is we want to search for path in a container (which could
-> have it's own nested root), we have to swap the root in usermode
-> helper thread before do_execve() call.
-> We can use call_usermodehelper_fns() to pass init callback and swap root 
-> in it.
-> But the problem here is that root swaping is not that... gentle.
-> I.e. we were trying to avoid it. For example, local SUNRPC transports
-> now connects synchronously (to make sure, that connection will be done in
-> proper root environment).
-> Nevertheless, I don't see any other way to containerize UMH so far.
-> 
-> Bruce, what's your opinion about this?
-> 
-> 
+This function is already used by flock system call that can pass
+LOCK_MAND flag to caller_fl->fl_type. I don't want to affect existing
+flock behavior by introduing new denylocking strategy - so, we need to
+let flock_locks_conflict function know if we are in flock or open
+codepath - in open codepath it will call locks_mand_conflict to check
+if there is any other open that prevents us.
 
-It doesn't seem all that awful here. Once we've spawned this new
-process it'll just run to completion and exit within the container. We
-shouldn't ever need to go back to the original root.
+>
+>> +{
+>> +     /*
+>> +      * FLOCK locks referring to the same filp do not conflict with
+>>        * each other.
+>>        */
+>> -     if (!IS_FLOCK(sys_fl) || (caller_fl->fl_file == sys_fl->fl_file))
+>> -             return (0);
+>> -     if ((caller_fl->fl_type & LOCK_MAND) || (sys_fl->fl_type & LOCK_MAND))
+>> +     if (!IS_FLOCK(sys_fl))
+>> +             return 0;
+>> +     if ((caller_fl->fl_type & LOCK_MAND) || (sys_fl->fl_type & LOCK_MAND)) {
+>> +             if (is_mand)
+>> +                     return locks_mand_conflict(caller_fl, sys_fl);
+>> +             else
+>> +                     return 0;
+>> +     }
+>> +     if (caller_fl->fl_file == sys_fl->fl_file)
+>>               return 0;
+>>
+>> -     return (locks_conflict(caller_fl, sys_fl));
+>> +     return locks_conflict(caller_fl, sys_fl);
+>>  }
+>>
+>>  void
+>> @@ -697,14 +758,19 @@ static int posix_locks_deadlock(struct file_lock *caller_fl,
+>>       return 0;
+>>  }
+>>
+>> -/* Try to create a FLOCK lock on filp. We always insert new FLOCK locks
+>> +/*
+>> + * Try to create a FLOCK lock on filp. We always insert new FLOCK locks
+>>   * after any leases, but before any posix locks.
+>>   *
+>>   * Note that if called with an FL_EXISTS argument, the caller may determine
+>>   * whether or not a lock was successfully freed by testing the return
+>>   * value for -ENOENT.
+>> + *
+>> + * Take @is_conflict callback that determines how to check if locks have
+>> + * conflicts or not.
+>>   */
+>> -static int flock_lock_file(struct file *filp, struct file_lock *request)
+>> +static int
+>> +flock_lock_file(struct file *filp, struct file_lock *request, bool is_mand)
+>
+> Ditto here on the is_mand bool. I think you can determine that from
+> request->fl_type. Right?
 
-In the sunrpc layer, it's a little more complicated since you're
-working with kernel threads and workqueues that may be shared between
-containers (right?).
+The same suggestions are applied to this place too.
+
+>
+>>  {
+>>       struct file_lock *new_fl = NULL;
+>>       struct file_lock **before;
+>> @@ -760,7 +826,7 @@ find_conflict:
+>>                       break;
+>>               if (IS_LEASE(fl))
+>>                       continue;
+>> -             if (!flock_locks_conflict(request, fl))
+>> +             if (!flock_locks_conflict(request, fl, is_mand))
+>>                       continue;
+>>               error = -EAGAIN;
+>>               if (!(request->fl_flags & FL_SLEEP))
+>> @@ -783,6 +849,32 @@ out:
+>>       return error;
+>>  }
+>>
+>> +/*
+>> + * Determine if a file is allowed to be opened with specified access and deny
+>> + * modes. Lock the file and return 0 if checks passed, otherwise return a error
+>> + * code.
+>> + */
+>> +int
+>> +deny_lock_file(struct file *filp)
+>> +{
+>> +     struct file_lock *lock;
+>> +     int error = 0;
+>> +
+>> +     if (!(filp->f_flags & O_DENYMAND))
+>> +             return error;
+>> +
+>> +     error = flock_make_lock(filp, &lock, deny_flags_to_cmd(filp->f_flags));
+>> +     if (error)
+>> +             return error;
+>> +
+>> +     error = flock_lock_file(filp, lock, true);
+>> +     if (error == -EAGAIN)
+>> +             error = -ETXTBSY;
+>> +
+>
+> I think EBUSY would be a better return code here. ETXTBSY is returned
+> in more specific circumstances -- mostly when you're opening a file for
+> write that is being executed.
+
+Yes, I agree. This work was done before the discussion in linux-cifs@
+about a error code for STATUS_SHARING_VIOLATION.
+
+>
+>> +     locks_free_lock(lock);
+>> +     return error;
+>> +}
+>> +
+>>  static int __posix_lock_file(struct inode *inode, struct file_lock *request, struct file_lock *conflock)
+>>  {
+>>       struct file_lock *fl;
+>> @@ -1589,7 +1681,7 @@ int flock_lock_file_wait(struct file *filp, struct file_lock *fl)
+>>       int error;
+>>       might_sleep();
+>>       for (;;) {
+>> -             error = flock_lock_file(filp, fl);
+>> +             error = flock_lock_file(filp, fl, false);
+>>               if (error != FILE_LOCK_DEFERRED)
+>>                       break;
+>>               error = wait_event_interruptible(fl->fl_wait, !fl->fl_next);
+>> diff --git a/fs/namei.c b/fs/namei.c
+>> index 43a97ee..c1f7e08 100644
+>> --- a/fs/namei.c
+>> +++ b/fs/namei.c
+>> @@ -2559,9 +2559,14 @@ static int atomic_open(struct nameidata *nd, struct dentry *dentry,
+>>        * here.
+>>        */
+>>       error = may_open(&file->f_path, acc_mode, open_flag);
+>> -     if (error)
+>> +     if (error) {
+>>               fput(file);
+>> +             goto out;
+>> +     }
+>>
+>> +     error = deny_lock_file(file);
+>> +     if (error)
+>> +             fput(file);
+>>  out:
+>>       dput(dentry);
+>>       return error;
+>> @@ -2771,9 +2776,9 @@ retry_lookup:
+>>       }
+>>       mutex_lock(&dir->d_inode->i_mutex);
+>>       error = lookup_open(nd, path, file, op, got_write, opened);
+>> -     mutex_unlock(&dir->d_inode->i_mutex);
+>>
+>>       if (error <= 0) {
+>> +             mutex_unlock(&dir->d_inode->i_mutex);
+>>               if (error)
+>>                       goto out;
+>>
+>> @@ -2791,8 +2796,32 @@ retry_lookup:
+>>               will_truncate = false;
+>>               acc_mode = MAY_OPEN;
+>>               path_to_nameidata(path, nd);
+>> -             goto finish_open_created;
+>> +
+>> +             /*
+>> +              * Unlock parent i_mutex later when the open finishes - prevent
+>> +              * races when a file can be locked with a deny lock by another
+>> +              * task that opens the file.
+>> +              */
+>> +             error = may_open(&nd->path, acc_mode, open_flag);
+>> +             if (error) {
+>> +                     mutex_unlock(&dir->d_inode->i_mutex);
+>> +                     goto out;
+>> +             }
+>> +             file->f_path.mnt = nd->path.mnt;
+>> +             error = finish_open(file, nd->path.dentry, NULL, opened);
+>> +             if (error) {
+>> +                     mutex_unlock(&dir->d_inode->i_mutex);
+>> +                     if (error == -EOPENSTALE)
+>> +                             goto stale_open;
+>> +                     goto out;
+>> +             }
+>> +             error = deny_lock_file(file);
+>> +             mutex_unlock(&dir->d_inode->i_mutex);
+>> +             if (error)
+>> +                     goto exit_fput;
+>> +             goto opened;
+>>       }
+>> +     mutex_unlock(&dir->d_inode->i_mutex);
+>>
+>>       /*
+>>        * create/update audit record if it already exists.
+>> @@ -2885,6 +2914,15 @@ finish_open_created:
+>>                       goto stale_open;
+>>               goto out;
+>>       }
+>> +     /*
+>> +      * Lock parent i_mutex to prevent races with deny locks on newely
+>> +      * created files.
+>> +      */
+>> +     mutex_lock(&dir->d_inode->i_mutex);
+>> +     error = deny_lock_file(file);
+>> +     mutex_unlock(&dir->d_inode->i_mutex);
+>> +     if (error)
+>> +             goto exit_fput;
+>>  opened:
+>>       error = open_check_o_direct(file);
+>>       if (error)
+>> diff --git a/include/linux/fs.h b/include/linux/fs.h
+>> index 7617ee0..347e1de 100644
+>> --- a/include/linux/fs.h
+>> +++ b/include/linux/fs.h
+>> @@ -1005,6 +1005,7 @@ extern int lease_modify(struct file_lock **, int);
+>>  extern int lock_may_read(struct inode *, loff_t start, unsigned long count);
+>>  extern int lock_may_write(struct inode *, loff_t start, unsigned long count);
+>>  extern void locks_delete_block(struct file_lock *waiter);
+>> +extern int deny_lock_file(struct file *);
+>>  extern void lock_flocks(void);
+>>  extern void unlock_flocks(void);
+>>  #else /* !CONFIG_FILE_LOCKING */
+>> @@ -1153,6 +1154,11 @@ static inline void locks_delete_block(struct file_lock *waiter)
+>>  {
+>>  }
+>>
+>> +static inline int deny_lock_file(struct file *filp)
+>> +{
+>> +     return 0;
+>> +}
+>> +
+>>  static inline void lock_flocks(void)
+>>  {
+>>  }
+>
+>
+> --
+> Jeff Layton <jlayton@redhat.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-cifs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Best regards,
+Pavel Shilovsky.
