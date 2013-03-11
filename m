@@ -1,51 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:60197 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:37787 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752286Ab3CSOpC convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Mar 2013 10:45:02 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 10/11] NFSv4.1: Enable open-by-filehandle
-Date: Tue, 19 Mar 2013 14:45:00 +0000
-Message-ID: <1363704300.7515.16.camel@leira.trondhjem.org>
-References: <1363698463-3681-3-git-send-email-Trond.Myklebust@netapp.com>
-	 <1363698463-3681-4-git-send-email-Trond.Myklebust@netapp.com>
-	 <1363698463-3681-5-git-send-email-Trond.Myklebust@netapp.com>
-	 <1363698463-3681-6-git-send-email-Trond.Myklebust@netapp.com>
-	 <1363698463-3681-7-git-send-email-Trond.Myklebust@netapp.com>
-	 <1363698463-3681-8-git-send-email-Trond.Myklebust@netapp.com>
-	 <1363698463-3681-9-git-send-email-Trond.Myklebust@netapp.com>
-	 <1363698463-3681-10-git-send-email-Trond.Myklebust@netapp.com>
-	 <20130319140901.GB7912@fieldses.org>
-	 <1363702570.7515.6.camel@leira.trondhjem.org>
-	 <20130319143236.GD7912@fieldses.org>
-	 <1363704100.7515.12.camel@leira.trondhjem.org>
-In-Reply-To: <1363704100.7515.12.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset=US-ASCII
+	id S1753313Ab3CKUbO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Mar 2013 16:31:14 -0400
+Date: Mon, 11 Mar 2013 16:31:10 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Frank S Filz <ffilz@us.ibm.com>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-cifs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-nfs-owner@vger.kernel.org,
+        Pavel Shilovsky <piastry@etersoft.ru>, wine-devel@winehq.org
+Subject: Re: [PATCH v3 7/7] NFSD: Pass share reservations flags to VFS
+Message-ID: <20130311203110.GF642@fieldses.org>
+References: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
+ <1362065133-9490-8-git-send-email-piastry@etersoft.ru>
+ <20130311150540.119abd63@corrin.poochiereds.net>
+ <20130311193638.GB642@fieldses.org>
+ <20130311160844.7dedf15a@corrin.poochiereds.net>
+ <20130311201108.GE642@fieldses.org>
+ <OF1D20435B.D7D7B48E-ON87257B2B.006FB8C9-88257B2B.00702F2E@us.ibm.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <OF1D20435B.D7D7B48E-ON87257B2B.006FB8C9-88257B2B.00702F2E@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-03-19 at 10:41 -0400, Trond Myklebust wrote:
-> On Tue, 2013-03-19 at 10:32 -0400, J. Bruce Fields wrote:
-> > (Sorry for the digression, I was just trying to decide whether I can get
-> > away with turning on 4.1 by default before implementing SP4_MACH_CRED or
-> > GSS on the backchannel....)
+On Mon, Mar 11, 2013 at 01:25:20PM -0700, Frank S Filz wrote:
 > 
-> If you don't, could you please at least offer up a module parameter that
-> allows me to do that? The current thing is a PITA, since it isn't
-> supported by any distro scripts, and it requires you to switch off the
-> server in order to change the version pseudofile contents.
+> "J. Bruce Fields" <bfields@fieldses.org>  wrote
+> > On Mon, Mar 11, 2013 at 04:08:44PM -0400, Jeff Layton wrote:
+> > > On Mon, 11 Mar 2013 15:36:38 -0400
+> > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > > > It doesn't look like this patch removes any of that old code
+> though. I
+> > > > > think it probably should, or there ought to be some consideration
+> of
+> > > > > how this new stuff will mesh with it.
+> > > > >
+> > > > > I think you have 2 choices here:
+> > > > >
+> > > > > 1/ rip out the old share reservation code altogether and require
+> that
+> > > > > filesystems mount with -o sharemand or whatever if they want to
+> allow
+> > > > > their enforcement
+> > > > >
+> > > > > 2/ make knfsd fall back to using the internal share reservation
+> code
+> > > > > when the mount option isn't enabled
+> > > > >
+> > > > > Personally, I think #1 would be fine, but Bruce may want to weigh
+> in on
+> > > > > what he'd prefer.
+> > > >
+> > > > #1 sounds good.  Clients that use deny bits are few.  My preference
+> > > > would be to return an error to such clients in the case share locks
+> > > > aren't available.
+> > > >
+> > > > (We're a little out of spec there, so I'm not sure which error.  I
+> think
+> > > > the goal is to notify a human there's a problem with minimal
+> collateral
+> > > > damange.
+> > > >
+> > > > NFS4ERR_SERVERFAULT ("I'm a buggy server, sorry about that!") would
+> > > > probably result in an IO error to the application.
+> > > >
+> > > > SHARE_DENIED strikes me as unsafe: an application would be in its
+> rights
+> > > > not to even check for that e.g. in the case of an exclusive create.
 > 
-BTW: you may recall that SPKM3 and UTF-8 support was mandatory in
-RFC3530, as was RPCSEC_GSS support on the back channel. That didn't stop
-anybody from shipping clients and servers that didn't support them...
+> Hmm, shouldn't the client catch that with a "default" case at least?
+> 
+> > > > Maybe DELAY?  Kind of ridiculous, but blocking the application
+> > > > indefinitely would probably get someone's attention quickly enough
+> > > > without doing any damnage.)
+> > > >
+> > >
+> > > I agree that we should return an error, but hadn't considered what
+> > > error. Given that hardly any NFS clients use them, I'd probably just go
+> > > with NFS4ERR_SERVERFAULT, and maybe throw a printk or something on the
+> > > server about enabling share reservations for superblock x:y.
+> >
+> > Sounds reasonable.
+> 
+> If I'm understanding, the suggestion is a mount option to enable share
+> reservations and if so, they will be mandatory?
+> 
+> In that case, perhaps we want to keep the existing knfsd code as a
+> fallback, someone might want to support them, but not have them be
+> mandatory (if nothing else, you may cause consternation from folks running
+> pynfs against a default configured knfsd server....).
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Understood, but the benefit is slight and the cost (in complexity) is
+rather large.  On balance I'd far prefer to get rid of any fallback code
+entirely.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+> In the Ganesha project, we provide an internal implementation of share
+> reservations for when the underlying system can not support them.
+> 
+> Another bit to consider, does lockd provide share reservations for NLM?
+
+Yes.  I don't know if anyone's tested them in recent memory!  But it
+might be interesting to write a few simple tests for them and hook them
+up to this on the server side.  (I don't know if they'd be worth
+implementing on the client side?)
+
+--b.
