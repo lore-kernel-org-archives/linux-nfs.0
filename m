@@ -1,95 +1,141 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39088 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:53070 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754538Ab3C0Rq1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Mar 2013 13:46:27 -0400
-Date: Wed, 27 Mar 2013 13:46:25 -0400
+	id S1754702Ab3CKVZk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Mar 2013 17:25:40 -0400
+Date: Mon, 11 Mar 2013 17:25:35 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Linux Kernel <linux-kernel@vger.kernel.org>
-Subject: Re: kernel 3.8.4 : kernel BUG at fs/locks.c:2093!   part #2
-Message-ID: <20130327174625.GA27426@fieldses.org>
-References: <514F31AF.3080709@gmx.de>
- <20130325220143.GD10887@fieldses.org>
- <20130326144640.GB3353@fieldses.org>
- <5151DEF7.3060003@gmx.de>
- <20130326181717.GA8978@fieldses.org>
- <51532A6A.4040307@gmx.de>
+To: Tim Gardner <tim.gardner@canonical.com>
+Cc: linux-kernel@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>, Tom Tucker <tom@ogc.us>,
+        Haggai Eran <haggaie@mellanox.com>, Or Gerlitz <ogerlitz@mellanox.com>,
+        Shani Michaeli <shanim@mellanox.com>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org
+Subject: Re: [PATCH linux-next v3] SUNRPC: rpcrdma_register_default_external:
+ Dynamically allocate ib_phys_buf
+Message-ID: <20130311212535.GG642@fieldses.org>
+References: <4FA345DA4F4AE44899BD2B03EEEC2FA9286BA156@sacexcmbx05-prd.hq.netapp.com>
+ <1363036508-24935-1-git-send-email-tim.gardner@canonical.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <51532A6A.4040307@gmx.de>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1363036508-24935-1-git-send-email-tim.gardner@canonical.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 27, 2013 at 06:20:42PM +0100, Toralf Förster wrote:
-> On 03/26/2013 07:17 PM, J. Bruce Fields wrote:
-> > 
-> > Bah, too bad.  That patch was definitely not a fix, so there may be some
-> > race here.
-> > 
-> >> What I get at the host is now :
-> >>
-> >> 2013-03-26T18:32:17.487+01:00 n22 kernel: ------------[ cut here ]------------
-> >> 2013-03-26T18:32:17.487+01:00 n22 kernel: WARNING: at mm/page_alloc.c:2376 __alloc_pages_nodemask+0x262/0x7c0()
-> > ...
-> >> 2013-03-26T18:32:17.487+01:00 n22 kernel: [<c110f149>] __kmalloc+0x1b9/0x1e0
-> >> 2013-03-26T18:32:17.487+01:00 n22 kernel: [<f85835bf>] ? cache_check+0x22f/0x340 [sunrpc]
-> >> 2013-03-26T18:32:17.487+01:00 n22 kernel: [<f90a0b1c>] nfs4_acl_new+0x1c/0x30 [nfsd]
-> >> 2013-03-26T18:32:17.488+01:00 n22 kernel: [<f9095482>] nfsd4_decode_fattr+0x302/0x6c0 [nfsd]
-> > ...
-> > 
-> > A different bug, but thanks for catching it, I suspect the following is
-> > all we need.
-> > 
-> > --b.
-> > 
-> > commit 814d9d4f9164c3d778dadd093a54bb55d9a0c576
-> > Author: J. Bruce Fields <bfields@redhat.com>
-> > Date:   Tue Mar 26 14:11:13 2013 -0400
-> > 
-> >     nfsd4: reject "negative" acl lengths
-> >     
-> >     Since we only enforce an upper bound, not a lower bound, a "negative"
-> >     length can get through here.
-> >     
-> >     The symptom seen was a warning when we attempt to a kmalloc with an
-> >     excessive size.
-> >     
-> >     Reported-by: Toralf Förster <toralf.foerster@gmx.de>
-> >     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > 
-> > diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> > index 0dc1158..d1dd710 100644
-> > --- a/fs/nfsd/nfs4xdr.c
-> > +++ b/fs/nfsd/nfs4xdr.c
-> > @@ -264,7 +264,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
-> >  		iattr->ia_valid |= ATTR_SIZE;
-> >  	}
-> >  	if (bmval[0] & FATTR4_WORD0_ACL) {
-> > -		int nace;
-> > +		u32 nace;
-> >  		struct nfs4_ace *ace;
-> >  
-> >  		READ_BUF(4); len += 4;
-> > 
+On Mon, Mar 11, 2013 at 03:15:08PM -0600, Tim Gardner wrote:
+> rpcrdma_register_default_external() is several frames into the call stack which
+> goes deeper yet. You run the risk of stack corruption by declaring such a large
+> automatic variable, so move the array of 'struct ib_phys_buf' objects into the
+> transport structure 'struct rpcrdma_xprt' (which is dynamically allocated) in
+> order to silence the frame-larger-than warning. Access to each struct
+> rpcrdma_xprt is serialized by XPRT_LOCKED in xprt_reserve_xprt(), so there is
+> no danger of multiple accessors to the array of struct ib_phys_buf objects.
 > 
-> I applied that patach on top of 3.8.4 and wonders now, whether the
-> following is the consequence :
+> net/sunrpc/xprtrdma/verbs.c: In function 'rpcrdma_register_default_external':
+> net/sunrpc/xprtrdma/verbs.c:1774:1: warning: the frame size of 1056 bytes is larger than 1024 bytes [-Wframe-larger-than=]
 > 
-> $ df -m /tmp/forT/victims/
-> Filesystem     1M-blocks  Used Available Use% Mounted on
-> /dev/sdb3         183851 34907    139599  21% /
+> gcc version 4.6.3
 > 
-> $ sudo ls -lh --color /tmp/forT/victims/f062
-> ---xr-S--T 2 tfoerste users 985G Mar 27 18:15 /tmp/forT/victims/f062
+> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Cc: "J. Bruce Fields" <bfields@fieldses.org>
+> Cc: "David S. Miller" <davem@davemloft.net>
+> Cc: Tom Tucker <tom@ogc.us>
+> Cc: Haggai Eran <haggaie@mellanox.com>
+> Cc: Or Gerlitz <ogerlitz@mellanox.com>
+> Cc: Shani Michaeli <shanim@mellanox.com>
+> Cc: linux-nfs@vger.kernel.org
+> Cc: netdev@vger.kernel.org
+> Signed-off-by: Tim Gardner <tim.gardner@canonical.com>
+> ---
+> v1 - Use kmalloc() to dynamically allocate and free the array of 'struct
+> ib_phys_buf' objects
 > 
-> ls shows a 1 TB file within a partition where just 34 MB are used at all
-> (its only one partition in that system and a separate small /boot too).
+> v2 - Move the array of 'struct ib_phys_buf' objects into struct rpcrdma_req
+> and pass this request down through rpcrdma_register_external() and
+> rpcrdma_register_default_external(). This is less overhead then using
+> kmalloc() and requires no extra error checking as the allocation burden is
+> shifted to the transport client.
+> 
+> v3 - Move the array of 'struct ib_phys_buf' objects into struct rpcrdma_xprt.
+> Pass a pointer to this transport structure into rpcrdma_register_default_external().
+> This is less overhead then using kmalloc() and requires no extra error checking
+> as the allocation burden is shifted to the transport client.
 
-It's completely normal for a large file to only take up a small amount
-of space, if the file is sparse.  Is that what you're asking about?
+Looks good to me; wish we could get it tested....
 
-Otherwise, are you seeing any problems or any backtraces in the logs?
+In future if we do decide to also increase the size of that array we may
+need to allocate it separately from struct rpcrdma_xprt itself, which
+looks already fairly large without it; on x86_64:
+
+	$ gdb net/sunrpc/xprtrdma/xprtrdma.ko
+	...
+	(gdb) p sizeof(struct rpcrdma_xprt)
+	$1 = 2912
+
+But that shouldn't be a big deal to do.
 
 --b.
+
+> 
+>  net/sunrpc/xprtrdma/verbs.c     |   10 ++++++----
+>  net/sunrpc/xprtrdma/xprt_rdma.h |    5 ++++-
+>  2 files changed, 10 insertions(+), 5 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index 93726560..c7aa3da 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -1730,13 +1730,14 @@ rpcrdma_deregister_memwin_external(struct rpcrdma_mr_seg *seg,
+>  }
+>  
+>  static int
+> -rpcrdma_register_default_external(struct rpcrdma_mr_seg *seg,
+> -			int *nsegs, int writing, struct rpcrdma_ia *ia)
+> +rpcrdma_register_default_external(struct rpcrdma_xprt *r_xprt,
+> +			struct rpcrdma_mr_seg *seg, int *nsegs, int writing,
+> +			struct rpcrdma_ia *ia)
+>  {
+>  	int mem_priv = (writing ? IB_ACCESS_REMOTE_WRITE :
+>  				  IB_ACCESS_REMOTE_READ);
+>  	struct rpcrdma_mr_seg *seg1 = seg;
+> -	struct ib_phys_buf ipb[RPCRDMA_MAX_DATA_SEGS];
+> +	struct ib_phys_buf *ipb = r_xprt->ipb;
+>  	int len, i, rc = 0;
+>  
+>  	if (*nsegs > RPCRDMA_MAX_DATA_SEGS)
+> @@ -1827,7 +1828,8 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
+>  
+>  	/* Default registration each time */
+>  	default:
+> -		rc = rpcrdma_register_default_external(seg, &nsegs, writing, ia);
+> +		rc = rpcrdma_register_default_external(r_xprt, seg, &nsegs,
+> +			writing, ia);
+>  		break;
+>  	}
+>  	if (rc)
+> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+> index cc1445d..d7b440f 100644
+> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
+> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+> @@ -269,7 +269,8 @@ struct rpcrdma_stats {
+>   * for convenience. This structure need not be visible externally.
+>   *
+>   * It is allocated and initialized during mount, and released
+> - * during unmount.
+> + * during unmount. Access to this structure is serialized by XPRT_LOCKED
+> + * in xprt_reserve_xprt().
+>   */
+>  struct rpcrdma_xprt {
+>  	struct rpc_xprt		xprt;
+> @@ -279,6 +280,8 @@ struct rpcrdma_xprt {
+>  	struct rpcrdma_create_data_internal rx_data;
+>  	struct delayed_work	rdma_connect;
+>  	struct rpcrdma_stats	rx_stats;
+> +	/* temp work array */
+> +	struct ib_phys_buf	ipb[RPCRDMA_MAX_DATA_SEGS];
+>  };
+>  
+>  #define rpcx_to_rdmax(x) container_of(x, struct rpcrdma_xprt, xprt)
+> -- 
+> 1.7.9.5
+> 
