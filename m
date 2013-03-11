@@ -1,108 +1,285 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:26847 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:42898 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760092Ab3CIC76 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Mar 2013 21:59:58 -0500
-Date: Fri, 8 Mar 2013 21:59:49 -0500
-From: Dave Jones <davej@redhat.com>
-To: Linux Kernel <linux-kernel@vger.kernel.org>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: sunrpc ODEBUG assertion.
-Message-ID: <20130309025949.GA14176@redhat.com>
+	id S1751868Ab3CKR6e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Mar 2013 13:58:34 -0400
+Date: Mon, 11 Mar 2013 13:58:33 -0400
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 11/11] gssd: Add "-c" command line option
+Message-ID: <20130311175833.GA30618@fieldses.org>
+References: <20130308193830.5656.44184.stgit@seurat.1015granger.net>
+ <20130308194741.5656.56599.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130308194741.5656.56599.stgit@seurat.1015granger.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-restarted my nfs server, and mounted it from a Mac, and got this..
+On Fri, Mar 08, 2013 at 02:47:41PM -0500, Chuck Lever wrote:
+> When a system does not have a keytab, it has no way to obtain
+> machine credentials.  In the past, we've fudged it by simply using
+> root's user credential as the machine credential.  (root must kinit
+> in this case, of course).
+> 
+> Since v1 of the kernel's GSS upcall was introduced, rpc.gssd can
+> tell when the kernel requests a machine credential specifically,
+> say, for NFSv4 operations that are required to use one
+> (SETCLIENTID).
+> 
+> Since I moved SETCLIENTID to the first operation performed against
+> a new server, this means a sec=krb5 NFSv4 mount can't succeed at all
+> if there is no machine credential.  Previously, this kind of mount
+> could work at least until a SETCLIENTID was done, as the kernel
+> could use root's user credential for housekeeping like grabbing the
+> server's root FH.  (Or maybe there is some kind of gssd bug that
+> allowed it to keep working?).
+> 
+> In any event, what we want to do is provide a clean and secure way
+> for rpc.gssd to substitute a specific user credential if there is no
+> machine credential available.  (I'm actually not clear on why this
+> is OK to do).
+> 
+> Recent work to add Active Directory support to rpc.gssd gives us a
+> potential user principal that can be used for this purpose:
+> 
+>   HOSTNAME$@REALM
+> 
+> We have a specific user principal then.  We have to tell rpc.gssd
+> where to look for the credential file.  Introduce a command line
+> option that specifies exactly where the file containing the
+> credential for this principal can be found.  This credential would
+> be used only if no other machine credential is available.
+> 
+> One might then use it this way:
+> 
+>   # /usr/sbin/rpc.gssd -n -c /tmp/krb5cc_0
+>   # kinit <hostname>$@<REALM>
+>   Password for <hostname>$@<REALM>:
+>   # mount -t nfs4 -o sec=krb5 server:/export /mnt
 
+Say my university gives me a kerberos identity bfields@example.edu and
+a home directory files.example.edu:/home/bfields.
 
-[47433.585266] WARNING: at lib/debugobjects.c:260 debug_print_object+0x8c/0xb0()
-[47433.585269] Hardware name:         
-[47433.585273] ODEBUG: assert_init not available (active state 0) object type: timer_list hint: stub_timer+0x0/0x20
-[47433.585275] Modules linked in: ip6t_REJECT nf_conntrack_ipv6 nf_defrag_ipv6 xt_conntrack nf_conntrack ip6table_filter ip6_tables coretemp microcode pcspkr snd_emu10k1 snd_hwdep snd_util_mem snd_ac97_codec ac97_bus snd_rawmidi snd_seq snd_seq_device snd_pcm snd_page_alloc snd_timer snd e1000e soundcore ptp pps_core vhost_net tun macvtap macvlan kvm_intel kvm nfsd binfmt_misc auth_rpcgss nfs_acl lockd sunrpc btrfs libcrc32c xor lzo_compress zlib_deflate raid6_pq firewire_ohci firewire_core sata_sil crc_itu_t ata_piix radeon i2c_algo_bit hwmon drm_kms_helper ttm drm i2c_core floppy
-[47433.585324] Pid: 611, comm: nfsd Not tainted 3.9.0-rc1+ #80
-[47433.585326] Call Trace:
-[47433.585330]  [<ffffffff8104abd5>] warn_slowpath_common+0x75/0xa0
-[47433.585334]  [<ffffffff8104acb6>] warn_slowpath_fmt+0x46/0x50
-[47433.585337]  [<ffffffff8105c326>] ? do_init_timer+0x66/0x70
-[47433.585340]  [<ffffffff8134e27c>] debug_print_object+0x8c/0xb0
-[47433.585343]  [<ffffffff8105b0f0>] ? timer_debug_hint+0x10/0x10
-[47433.585346]  [<ffffffff8134ed93>] debug_object_assert_init+0xe3/0x120
-[47433.585349]  [<ffffffff8105d65b>] del_timer+0x2b/0x80
-[47433.585353]  [<ffffffff8106fe99>] try_to_grab_pending+0xd9/0x1a0
-[47433.585356]  [<ffffffff810700f7>] __cancel_work_timer+0x27/0xf0
-[47433.585359]  [<ffffffff810701d3>] cancel_delayed_work_sync+0x13/0x20
-[47433.585373]  [<ffffffffa02c9647>] xs_destroy+0x27/0x80 [sunrpc]
-[47433.585381]  [<ffffffffa02c65d8>] xprt_destroy+0x78/0xa0 [sunrpc]
-[47433.585390]  [<ffffffffa02c8ab1>] xprt_put+0x21/0x30 [sunrpc]
-[47433.585398]  [<ffffffffa02c515b>] rpc_free_client+0x16b/0x320 [sunrpc]
-[47433.585406]  [<ffffffffa02c5023>] ? rpc_free_client+0x33/0x320 [sunrpc]
-[47433.585414]  [<ffffffffa02c4fae>] rpc_release_client+0x6e/0xb0 [sunrpc]
-[47433.585423]  [<ffffffffa02c53f5>] rpc_shutdown_client+0xe5/0x170 [sunrpc]
-[47433.585427]  [<ffffffff8108ce81>] ? get_parent_ip+0x11/0x50
-[47433.585431]  [<ffffffff816ae519>] ? sub_preempt_count+0x79/0xd0
-[47433.585442]  [<ffffffffa02db871>] rpcb_put_local+0x141/0x250 [sunrpc]
-[47433.585452]  [<ffffffffa02db735>] ? rpcb_put_local+0x5/0x250 [sunrpc]
-[47433.585461]  [<ffffffffa02d270e>] svc_rpcb_cleanup+0x1e/0x30 [sunrpc]
-[47433.585471]  [<ffffffffa030b444>] nfsd_last_thread+0x1e4/0x210 [nfsd]
-[47433.585477]  [<ffffffffa030b265>] ? nfsd_last_thread+0x5/0x210 [nfsd]
-[47433.585487]  [<ffffffffa02d2494>] svc_shutdown_net+0x34/0x40 [sunrpc]
-[47433.585493]  [<ffffffffa030c0b0>] nfsd_destroy+0x170/0x210 [nfsd]
-[47433.585500]  [<ffffffffa030bf45>] ? nfsd_destroy+0x5/0x210 [nfsd]
-[47433.585509]  [<ffffffffa02d2859>] ? svc_exit_thread+0x99/0xb0 [sunrpc]
-[47433.585516]  [<ffffffffa030c286>] nfsd+0x136/0x160 [nfsd]
-[47433.585522]  [<ffffffffa030c150>] ? nfsd_destroy+0x210/0x210 [nfsd]
-[47433.585526]  [<ffffffff8107a5fd>] kthread+0xed/0x100
-[47433.585529]  [<ffffffff810b3b2e>] ? put_lock_stats.isra.25+0xe/0x40
-[47433.585533]  [<ffffffff8107a510>] ? kthread_create_on_node+0x160/0x160
-[47433.585536]  [<ffffffff816b2b1c>] ret_from_fork+0x7c/0xb0
-[47433.585539]  [<ffffffff8107a510>] ? kthread_create_on_node+0x160/0x160
-[47433.585542] ---[ end trace 0ffae049d68a07e1 ]---
-[47433.585687] nfsd: last server has exited, flushing export cache
-[47433.904483] NFSD: starting 90-second grace period (net ffffffff81cc9380)
-[47461.093051] ------------[ cut here ]------------
-[47461.093061] WARNING: at lib/debugobjects.c:260 debug_print_object+0x8c/0xb0()
-[47461.093063] Hardware name:         
-[47461.093067] ODEBUG: assert_init not available (active state 0) object type: timer_list hint: stub_timer+0x0/0x20
-[47461.093069] Modules linked in: ip6t_REJECT nf_conntrack_ipv6 nf_defrag_ipv6 xt_conntrack nf_conntrack ip6table_filter ip6_tables coretemp microcode pcspkr snd_emu10k1 snd_hwdep snd_util_mem snd_ac97_codec ac97_bus snd_rawmidi snd_seq snd_seq_device snd_pcm snd_page_alloc snd_timer snd e1000e soundcore ptp pps_core vhost_net tun macvtap macvlan kvm_intel kvm nfsd binfmt_misc auth_rpcgss nfs_acl lockd sunrpc btrfs libcrc32c xor lzo_compress zlib_deflate raid6_pq firewire_ohci firewire_core sata_sil crc_itu_t ata_piix radeon i2c_algo_bit hwmon drm_kms_helper ttm drm i2c_core floppy
-[47461.093117] Pid: 9956, comm: nfsd Tainted: G        W    3.9.0-rc1+ #80
-[47461.093119] Call Trace:
-[47461.093124]  [<ffffffff8104abd5>] warn_slowpath_common+0x75/0xa0
-[47461.093127]  [<ffffffff8104acb6>] warn_slowpath_fmt+0x46/0x50
-[47461.093130]  [<ffffffff8105c326>] ? do_init_timer+0x66/0x70
-[47461.093133]  [<ffffffff8134e27c>] debug_print_object+0x8c/0xb0
-[47461.093136]  [<ffffffff8105b0f0>] ? timer_debug_hint+0x10/0x10
-[47461.093139]  [<ffffffff8134ed93>] debug_object_assert_init+0xe3/0x120
-[47461.093142]  [<ffffffff8105d65b>] del_timer+0x2b/0x80
-[47461.093146]  [<ffffffff8106fe99>] try_to_grab_pending+0xd9/0x1a0
-[47461.093149]  [<ffffffff810700f7>] __cancel_work_timer+0x27/0xf0
-[47461.093152]  [<ffffffff810701d3>] cancel_delayed_work_sync+0x13/0x20
-[47461.093166]  [<ffffffffa02c9647>] xs_destroy+0x27/0x80 [sunrpc]
-[47461.093174]  [<ffffffffa02c65d8>] xprt_destroy+0x78/0xa0 [sunrpc]
-[47461.093183]  [<ffffffffa02c8ab1>] xprt_put+0x21/0x30 [sunrpc]
-[47461.093191]  [<ffffffffa02c515b>] rpc_free_client+0x16b/0x320 [sunrpc]
-[47461.093200]  [<ffffffffa02c5023>] ? rpc_free_client+0x33/0x320 [sunrpc]
-[47461.093209]  [<ffffffffa02c4fae>] rpc_release_client+0x6e/0xb0 [sunrpc]
-[47461.093217]  [<ffffffffa02c53f5>] rpc_shutdown_client+0xe5/0x170 [sunrpc]
-[47461.093221]  [<ffffffff8108ce81>] ? get_parent_ip+0x11/0x50
-[47461.093226]  [<ffffffff816ae519>] ? sub_preempt_count+0x79/0xd0
-[47461.093237]  [<ffffffffa02db871>] rpcb_put_local+0x141/0x250 [sunrpc]
-[47461.093246]  [<ffffffffa02db735>] ? rpcb_put_local+0x5/0x250 [sunrpc]
-[47461.093257]  [<ffffffffa02d270e>] svc_rpcb_cleanup+0x1e/0x30 [sunrpc]
-[47461.093266]  [<ffffffffa030b444>] nfsd_last_thread+0x1e4/0x210 [nfsd]
-[47461.093272]  [<ffffffffa030b265>] ? nfsd_last_thread+0x5/0x210 [nfsd]
-[47461.093283]  [<ffffffffa02d2494>] svc_shutdown_net+0x34/0x40 [sunrpc]
-[47461.093289]  [<ffffffffa030c0b0>] nfsd_destroy+0x170/0x210 [nfsd]
-[47461.093296]  [<ffffffffa030bf45>] ? nfsd_destroy+0x5/0x210 [nfsd]
-[47461.093305]  [<ffffffffa02d2859>] ? svc_exit_thread+0x99/0xb0 [sunrpc]
-[47461.093312]  [<ffffffffa030c286>] nfsd+0x136/0x160 [nfsd]
-[47461.093318]  [<ffffffffa030c150>] ? nfsd_destroy+0x210/0x210 [nfsd]
-[47461.093322]  [<ffffffff8107a5fd>] kthread+0xed/0x100
-[47461.093325]  [<ffffffff8107a510>] ? kthread_create_on_node+0x160/0x160
-[47461.093328]  [<ffffffff816b2b1c>] ret_from_fork+0x7c/0xb0
-[47461.093331]  [<ffffffff8107a510>] ? kthread_create_on_node+0x160/0x160
-[47461.093334] ---[ end trace 0ffae049d68a07e2 ]---
-[47461.093474] nfsd: last server has exited, flushing export cache
-[47461.352324] NFSD: starting 90-second grace period (net ffffffff81cc9380)
+Then previously I could access my home directory from my personal laptop
+with
 
+	# kinit bfields@umich.edu
+	# mount -tnfs4 -osec=krb5 files.example.edu:/home/bfields /u-home
+
+But now if I want to do that I have to talk example.u's IT department
+into issuing me bfields$@umich.edu?
+
+If so, haven't we lost a useful feature?
+
+--b.
+
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  utils/gssd/gssd.c      |   14 +++++++++-
+>  utils/gssd/gssd.h      |    1 +
+>  utils/gssd/gssd.man    |   18 +++++++++++++
+>  utils/gssd/krb5_util.c |   67 ++++++++++++++++++++++++++++++++++++++++++++++++
+>  4 files changed, 98 insertions(+), 2 deletions(-)
+> 
+> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+> index 0be2517..7537a97 100644
+> --- a/utils/gssd/gssd.c
+> +++ b/utils/gssd/gssd.c
+> @@ -58,6 +58,7 @@
+>  char pipefs_dir[PATH_MAX] = GSSD_PIPEFS_DIR;
+>  char keytabfile[PATH_MAX] = GSSD_DEFAULT_KEYTAB_FILE;
+>  char ccachedir[PATH_MAX] = GSSD_DEFAULT_CRED_DIR ":" GSSD_USER_CRED_DIR;
+> +char mach_cred_file[PATH_MAX] = "";
+>  char *ccachesearch[GSSD_MAX_CCACHE_SEARCH + 1];
+>  int  use_memcache = 0;
+>  int  root_uses_machine_creds = 1;
+> @@ -85,7 +86,9 @@ sig_hup(int signal)
+>  static void
+>  usage(char *progname)
+>  {
+> -	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm]\n",
+> +	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] "
+> +		"[-p pipefsdir] [-k keytab] [-d ccachedir] "
+> +		"[-t timeout] [-R preferred realm] [-c credfile]\n",
+>  		progname);
+>  	exit(1);
+>  }
+> @@ -102,7 +105,7 @@ main(int argc, char *argv[])
+>  	char *progname;
+>  
+>  	memset(ccachesearch, 0, sizeof(ccachesearch));
+> -	while ((opt = getopt(argc, argv, "fvrlmnMp:k:d:t:R")) != -1) {
+> +	while ((opt = getopt(argc, argv, "fvrlmnMp:k:d:t:R:c:")) != -1) {
+>  		switch (opt) {
+>  			case 'f':
+>  				fg = 1;
+> @@ -122,6 +125,11 @@ main(int argc, char *argv[])
+>  			case 'r':
+>  				rpc_verbosity++;
+>  				break;
+> +			case 'c':
+> +				strncpy(mach_cred_file, optarg, sizeof(mach_cred_file));
+> +				if (mach_cred_file[sizeof(mach_cred_file)-1] != '\0')
+> +					errx(1, "credential file name too long");
+> +				break;
+>  			case 'p':
+>  				strncpy(pipefs_dir, optarg, sizeof(pipefs_dir));
+>  				if (pipefs_dir[sizeof(pipefs_dir)-1] != '\0')
+> @@ -156,6 +164,8 @@ main(int argc, char *argv[])
+>  		}
+>  	}
+>  
+> +	if (mach_cred_file[0] != '\0' && use_memcache)
+> +		errx(1, "Cannot use memcache and credential file together");
+>  	i = 0;
+>  	ccachesearch[i++] = strtok(ccachedir, ":");
+>  	do {
+> diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
+> index 86472a1..e76bad1 100644
+> --- a/utils/gssd/gssd.h
+> +++ b/utils/gssd/gssd.h
+> @@ -62,6 +62,7 @@ enum {AUTHTYPE_KRB5, AUTHTYPE_LIPKEY};
+>  
+>  extern char			pipefs_dir[PATH_MAX];
+>  extern char			keytabfile[PATH_MAX];
+> +extern char			mach_cred_file[PATH_MAX];
+>  extern char			*ccachesearch[];
+>  extern int			use_memcache;
+>  extern int			root_uses_machine_creds;
+> diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
+> index 79d9bf9..ef26577 100644
+> --- a/utils/gssd/gssd.man
+> +++ b/utils/gssd/gssd.man
+> @@ -19,6 +19,8 @@ rpc.gssd \- RPCSEC_GSS daemon
+>  .IR timeout ]
+>  .RB [ \-R
+>  .IR realm ]
+> +.RB [ \-c
+> +.IR file ]
+>  .SH INTRODUCTION
+>  The RPCSEC_GSS protocol, defined in RFC 5403, is used to provide
+>  strong security for RPC-based protocols such as NFS.
+> @@ -146,6 +148,18 @@ You can specify another keytab by using the
+>  option if
+>  .I /etc/krb5.keytab
+>  does not exist or does not provide one of these principals.
+> +.P
+> +If no keytab is found, the
+> +.B -c
+> +option can specify a file containing a credential that
+> +.B rpc.gssd
+> +should use as a machine credential.
+> +The principal must be of the form
+> +.sp
+> +   <HOSTNAME>$@<REALM>
+> +.sp
+> +Where <HOSTNAME> is the hostname of the local system, and <REALM> is the
+> +system's Kerberos realm.
+>  .SS Credentials for UID 0
+>  UID 0 is a special case.
+>  By default
+> @@ -213,6 +227,10 @@ to obtain machine credentials.
+>  The default value is
+>  .IR /etc/krb5.keytab .
+>  .TP
+> +.BI "-c " file
+> +Specifies a file in which to find a credential that can be used
+> +as a machine credential, if the local system has no keytab.
+> +.TP
+>  .B -l
+>  When specified, restricts
+>  .B rpc.gssd
+> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+> index 215c0a4..c49aed9 100644
+> --- a/utils/gssd/krb5_util.c
+> +++ b/utils/gssd/krb5_util.c
+> @@ -937,6 +937,63 @@ out:
+>  	return retval;
+>  }
+>  
+> +/*
+> + * Returns zero if credential cache file can be used for a machine credential
+> + */
+> +static int
+> +verify_mach_cc(const char *ccache)
+> +{
+> +	char *hostname = NULL;
+> +	char *default_realm = NULL;
+> +	char *buf = NULL;
+> +	char *princname = NULL;
+> +	char *realm = NULL;
+> +	int retval;
+> +
+> +	retval = ENOMEM;
+> +	buf = malloc(PATH_MAX + 5);
+> +	if (buf == NULL)
+> +		goto out;
+> +
+> +	hostname = malloc(NI_MAXHOST + 1);
+> +	if (hostname == NULL)
+> +		goto out;
+> +	if (gethostname(hostname, NI_MAXHOST) == -1) {
+> +		retval = errno;
+> +		goto out;
+> +	}
+> +	strcat(hostname, "$");
+> +
+> +	retval = EKEYEXPIRED;
+> +	gssd_k5_get_default_realm(&default_realm);
+> +	if (default_realm == NULL)
+> +		goto out;
+> +
+> +	printerr(2, "looking for machine credentials in %s\n", ccache);
+> +	snprintf(buf, PATH_MAX + 5, "FILE:%s", ccache);
+> +	if (!query_krb5_ccache(buf, &princname, &realm))
+> +		goto out;
+> +
+> +	if (strcasecmp(princname, hostname) != 0) {
+> +		printerr(2, "ERROR: found principal name %s in %s\n",
+> +				princname, ccache);
+> +		goto out;
+> +	}
+> +	if (strcasecmp(realm, default_realm) != 0) {
+> +		printerr(2, "ERROR: found realm name %s in %s\n",
+> +				realm, ccache);
+> +		goto out;
+> +	}
+> +	retval = 0;
+> +
+> +out:
+> +	free(realm);
+> +	free(princname);
+> +	free(default_realm);
+> +	free(buf);
+> +	free(hostname);
+> +	return retval;
+> +}
+>  
+>  static inline int data_is_equal(krb5_data d1, krb5_data d2)
+>  {
+> @@ -1147,6 +1204,16 @@ gssd_get_krb5_machine_cred_list(char ***list)
+>  			}
+>  		}
+>  	}
+> +	if (i == 0 && mach_cred_file[0] != '\0') {
+> +		if (verify_mach_cc(mach_cred_file)) {
+> +			retval = EKEYEXPIRED;
+> +			goto out;
+> +		}
+> +		if ((l[i++] = strdup(mach_cred_file)) == NULL) {
+> +			retval = ENOMEM;
+> +			goto out;
+> +		}
+> +	}
+>  	if (i > 0) {
+>  		l[i] = NULL;
+>  		*list = l;
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
