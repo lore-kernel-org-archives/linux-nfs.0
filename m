@@ -1,62 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35256 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:10021 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755197Ab3CEWbp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Mar 2013 17:31:45 -0500
-Date: Tue, 5 Mar 2013 17:31:35 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tejun Heo <tj@kernel.org>
-Cc: akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-        jackm@dev.mellanox.co.il, ogerlitz@mellanox.com,
-        roland@purestorage.com, dan.magenheimer@oracle.com,
-        gregkh@linuxfoundation.org, vjaquez@igalia.com, rene.sapiens@ti.com,
-        x0095078@ti.com, omar.ramirez@ti.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/7] nfsd: convert to idr_alloc()
-Message-ID: <20130305223135.GI15816@fieldses.org>
-References: <1362513772-15174-1-git-send-email-tj@kernel.org>
- <1362513772-15174-3-git-send-email-tj@kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1362513772-15174-3-git-send-email-tj@kernel.org>
+	id S1753751Ab3CKMCV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Mar 2013 08:02:21 -0400
+Date: Mon, 11 Mar 2013 08:02:18 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 08/11] rpc.gssd: Clean up
+ gssd_setup_krb5_user_gss_ccache()
+Message-ID: <20130311080218.184602ff@tlielax.poochiereds.net>
+In-Reply-To: <20130308194714.5656.24670.stgit@seurat.1015granger.net>
+References: <20130308193830.5656.44184.stgit@seurat.1015granger.net>
+	<20130308194714.5656.24670.stgit@seurat.1015granger.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 05, 2013 at 12:02:47PM -0800, Tejun Heo wrote:
-> idr_get_new*() and friends are about to be deprecated.  Convert to the
-> new idr_alloc() interface.
+On Fri, 08 Mar 2013 14:47:14 -0500
+Chuck Lever <chuck.lever@oracle.com> wrote:
+
+> Remove a contradictory portion of the block comment documenting
+> gssd_find_existing_krb5_ccache().  This should have been removed by
+> commit 289ad31e, which reversed the meaning of the function's return
+> values.
 > 
-> Only compile-tested.
-
-Runs fine too--thanks.
-
-Acked-by: J. Bruce Fields <bfields@redhat.com>
-
---b.
-
+> Note that, in user space, typically errno's are positive.  But here
+> we follow the kernel convention of using negative values to return
+> error codes.  Make the documenting comments explicit about the sign
+> of an error return -- it will never be positive in the case of an
+> error.
 > 
-> Signed-off-by: Tejun Heo <tj@kernel.org>
-> Cc: "J. Bruce Fields" <bfields@fieldses.org>
-> Cc: linux-nfs@vger.kernel.org
+> And a nit: At the last return statement in
+> gssd_setup_krb5_user_gss_ccache(), "err" always contains zero, as
+> far as I can tell.  Make it explicit (to human readers) that when
+> execution reaches this point, gssd_setup_krb5_user_gss_ccache() is
+> going to return "success."
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> Cc: Jeff Layton <jlayton@redhat.com>
 > ---
->  fs/nfsd/nfs4state.c | 5 ++---
->  1 file changed, 2 insertions(+), 3 deletions(-)
 > 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index d91d6db..2e27430 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -242,9 +242,8 @@ kmem_cache *slab)
->  	if (!stid)
->  		return NULL;
+>  utils/gssd/krb5_util.c |   13 +++++--------
+>  1 files changed, 5 insertions(+), 8 deletions(-)
+> 
+> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+> index aeb8f70..6c37094 100644
+> --- a/utils/gssd/krb5_util.c
+> +++ b/utils/gssd/krb5_util.c
+> @@ -169,13 +169,10 @@ select_krb5_ccache(const struct dirent *d)
 >  
-> -	if (!idr_pre_get(stateids, GFP_KERNEL))
-> -		goto out_free;
-> -	if (idr_get_new_above(stateids, stid, min_stateid, &new_id))
-> +	new_id = idr_alloc(stateids, stid, min_stateid, 0, GFP_KERNEL);
-> +	if (new_id < 0)
->  		goto out_free;
->  	stid->sc_client = cl;
->  	stid->sc_type = 0;
-> -- 
-> 1.8.1.4
+>  /*
+>   * Look in directory "dirname" for files that look like they
+> - * are Kerberos Credential Cache files for a given UID.  Return
+> - * non-zero and the dirent pointer for the entry most likely to be
+> - * what we want. Otherwise, return zero and no dirent pointer.
+> - * The caller is responsible for freeing the dirent if one is returned.
+> + * are Kerberos Credential Cache files for a given UID.
+
+Why trim out the info about "d" being set to a valid dirent here?
+Rather than doing that, I'd prefer adding some verbiage about cctype
+also being set on a valid return.
+
+>   *
+> - * Returns 0 if a valid-looking entry was found and a non-zero error
+> - * code otherwise.
+> + * Returns 0 if a valid-looking entry was found, or a negative
+> + * errno code otherwise.
+>   */
+>  static int
+>  gssd_find_existing_krb5_ccache(uid_t uid, char *dirname,
+> @@ -1037,7 +1034,7 @@ err_cache:
+>   * given only a UID.  We really need more information, but we
+>   * do the best we can.
+>   *
+> - * Returns 0 if a ccache was found, and a non-zero error code otherwise.
+> + * Returns 0 if a ccache was found, or a negative errno otherwise.
+>   */
+>  int
+>  gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername, char *dirpattern)
+> @@ -1082,7 +1079,7 @@ gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername, char *dirpattern)
+>  	printerr(2, "using %s as credentials cache for client with "
+>  		    "uid %u for server %s\n", buf, uid, servername);
+>  	gssd_set_krb5_ccache_name(buf);
+> -	return err;
+> +	return 0;
+>  }
+>  
+>  /*
 > 
+
+-- 
+Jeff Layton <jlayton@redhat.com>
