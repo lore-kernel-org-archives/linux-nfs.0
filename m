@@ -1,174 +1,154 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from esa-jnhn.mail.uoguelph.ca ([131.104.91.44]:7579 "EHLO
-	esa-jnhn.mail.uoguelph.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754062Ab3CUBvP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Mar 2013 21:51:15 -0400
-Date: Wed, 20 Mar 2013 21:41:40 -0400 (EDT)
-From: Rick Macklem <rmacklem@uoguelph.ca>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Christopher T Vogan <cvogan@us.ibm.com>, Neil Brown <neilb@suse.de>,
-        linux-nfs@vger.kernel.org, nfsv4 list <nfsv4@ietf.org>,
-        Tom Haynes <Tom.Haynes@netapp.com>
-Message-ID: <1533754809.4129999.1363830100661.JavaMail.root@erie.cs.uoguelph.ca>
-In-Reply-To: <1363826022.4790.89.camel@leira.trondhjem.org>
-Subject: Re: [nfsv4] What is NFSv4 READDIR doesn't return a filehandle....
+Received: from fieldses.org ([174.143.236.118]:41358 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753889Ab3CKSO4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Mar 2013 14:14:56 -0400
+Date: Mon, 11 Mar 2013 14:14:50 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Tim Gardner <tim.gardner@canonical.com>
+Cc: linux-kernel@vger.kernel.org, Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>, Tom Tucker <tom@ogc.us>,
+        Haggai Eran <haggaie@mellanox.com>, Or Gerlitz <ogerlitz@mellanox.com>,
+        Shani Michaeli <shanim@mellanox.com>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org
+Subject: Re: [PATCH linux-next v2] SUNRPC: rpcrdma_register_default_external:
+ Dynamically allocate ib_phys_buf
+Message-ID: <20130311181450.GC30618@fieldses.org>
+References: <20130310202838.GL31448@fieldses.org>
+ <1363023447-22453-1-git-send-email-tim.gardner@canonical.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1363023447-22453-1-git-send-email-tim.gardner@canonical.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust wrote:
-> On Wed, 2013-03-20 at 23:53 +0000, Haynes, Tom wrote:
-> > Please note that I have cc'ed the NFSv4 list over at the IETF.
-> >
-> > On Mar 20, 2013, at 3:40 PM, Christopher T Vogan <cvogan@us.ibm.com>
-> > wrote:
-> >
-> > > All,
-> > >
-> > > Sorry for this late posting, a coworker was made aware of this
-> > > thread
-> > > recently and
-> > > has these replies to make. Our server implementation is the one
-> > > being
-> > > complained about in this thread.
-> > >
-> > >
-> > > Quoted text is from various entries in this forum.
-> > >
-> > >
-> > > Neil Brown:
-> > > ===========
-> > >> Just a thought: while coping with broken servers would not be a
-> > >> good
-> > > path to
-> > >> follow, detecting protocol violations and reporting an error
-> > >> might be...
-> > >> should the NFS client treat a missing filehandle and a malformed
-> > >> reply?
-> > >
-> > > The server is allowed to remove an attribute bit from an entry in
-> > > the
-> > > readdir
-> > > reply, this is not "broken" nor is the reply "malformed". The lack
-> > > of a
-> > > filehandle in the reply is deterministic.
-> > >
-> > >
-> > >
-> > > Trond Myklebust:
-> > > ================
-> > >>> A customer has come across a server which does not return the
-> > > filehandle
-> > >>> information (is that allowed?).
-> > >>
-> > >> The filehandle attribute is a mandatory attribute according to
-> > >> RFC3530,
-> > > so I believe that the answer is "no".
-> > >
-> > > Mandatory is described in RFS 3530 as that the server must return
-> > > the
-> > > attribute
-> > > on a GETATTR. (Section 5, page 36). There is nothing saying that
-> > > it is
-> > > mandatory to return on a READDIR. Our server will return the
-> > > filehandle
-> > > on a LOOKUP/GETATTR every time.
-> >
-> >
-> >
-> > GETATTR and READDIR both return attributes. To be precise, they
-> > return
-> > a fattr4.
-> >
-> > Looking at Section 15.26.4 (roughly pages 277-279 of the most recent
-> > copy)
-> > of 3530bis (3530 is on the way to being replaced), READDIR states:
-> >
-> >    The READDIR operation retrieves a variable number of entries from
-> >    a
-> >    filesystem directory and returns client requested attributes for
-> >    each
-> >    entry along with information to allow the client to request
-> >    additional directory entries in a subsequent READDIR.
-> > ...
-> >    On successful return, the server's response will provide a list
-> >    of
-> >    directory entries. Each of these entries contains the name of the
-> >    directory entry, a cookie value for that entry, and the
-> >    associated
-> >    attributes as requested. The "eof" flag has a value of TRUE if
-> >    there
-> >    are no more entries in the directory.
-> >
-> > Any client implementation has no way to request that any server
-> > implementation
-> > return the filehandle because the filehandle is not an attribute
-> > which
-> > can be requested. I.e., it is mandatory.
-> >
-> > If the intent was to allow the server to not return a filehandle for
-> > READDIR but to
-> > allow it to return one for GETATTR, then it would have been made
-> > OPTIONAL.
-> >
-Well, I don't see any difference between a mandatory attribute and a
-recommended attribute that the server claims to support via the
-supported_attributes attribute.
+On Mon, Mar 11, 2013 at 11:37:27AM -0600, Tim Gardner wrote:
+> rpcrdma_register_default_external() is several frames into the call stack which
+> goes deeper yet. You run the risk of stack corruption by declaring such a large
+> automatic variable, so move the array of 'struct ib_phys_buf' objects into the
+> requestor structure 'struct rpcrdma_req' (which is dynamically allocated) in
+> order to silence the frame-larger-than warning.
+> 
+> net/sunrpc/xprtrdma/verbs.c: In function 'rpcrdma_register_default_external':
+> net/sunrpc/xprtrdma/verbs.c:1774:1: warning: the frame size of 1056 bytes is larger than 1024 bytes [-Wframe-larger-than=]
+> 
+> gcc version 4.6.3
+> 
+> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Cc: "J. Bruce Fields" <bfields@fieldses.org>
+> Cc: "David S. Miller" <davem@davemloft.net>
+> Cc: Tom Tucker <tom@ogc.us>
+> Cc: Haggai Eran <haggaie@mellanox.com>
+> Cc: Or Gerlitz <ogerlitz@mellanox.com>
+> Cc: Shani Michaeli <shanim@mellanox.com>
+> Cc: linux-nfs@vger.kernel.org
+> Cc: netdev@vger.kernel.org
+> 
+> Signed-off-by: Tim Gardner <tim.gardner@canonical.com>
+> ---
+> 
+> v1 - Use kmalloc() to dynamically allocate and free the array of 'struct
+> ib_phys_buf' objects
+> 
+> v2 - Move the array of 'struct ib_phys_buf' objects into struct rpcrdma_req
+> and pass this request down through rpcrdma_register_external() and
+> rpcrdma_register_default_external(). This is less overhead then using
+> kmalloc() and requires no extra error checking as the allocation burden is
+> shifted to the transport client.
 
-I do believe that the server can choose not to return all of the
-mandatory and supported recommended attributes in the readdir reply.
-(If not, why have a bitmap of returned attributes?)
+Oh good--so that works, and the req is the right place to put this?  How
+are you testing this?
 
-One example here is the mounted_on_fileid, which some servers choose
-to only "support" for server mount points. (The FreeBSD server returns
-this attribute for all file handles, setting it to the same value as
-fileid for non-mount-points, but I am pretty sure some other servers
-do not return mounted_on_fileid for non-mount-points.)
+(Just want to make it clear: I'm *not* an expert on the rdma code, so my
+suggestion to put this in the rpcrdma_req was a suggestion for something
+to look into, not a claim that it's correct.)
 
-> > Whether or not the client used to work with such a server
-> > implementation
-> > or not is immaterial as far as standard compliance is concerned.
-> >
-> > If you like, we can clean up the corresponding language in 3530bis
-> > to
-> > explicitly state that REQUIRED attributes are indeed required
-> > whether
-> > in response to GETATTR or READDIR.
-I assume that by REQUIRED you are referring to "mandatory attributes".
+--b.
 
 > 
-> It might rather be useful to add language to point out that the
-> "filehandle" attribute SHOULD NOT be used for the GETATTR case. We
-> have
-> GETFH, and AFAICR, all the language around referrals etc is written
-> with
-> the assumption that clients _won't_ use GETATTR to retrieve the
-> filehandle.
+>  net/sunrpc/xprtrdma/rpc_rdma.c  |    2 +-
+>  net/sunrpc/xprtrdma/verbs.c     |   11 ++++++-----
+>  net/sunrpc/xprtrdma/xprt_rdma.h |    3 ++-
+>  3 files changed, 9 insertions(+), 7 deletions(-)
 > 
-> Ditto for the case of "rdattr_error", which makes absolutely no sense
-> whatsoever in a GETATTR request.
+> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+> index e03725b..c89448b 100644
+> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
+> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+> @@ -203,7 +203,7 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
+>  
+>  	do {
+>  		/* bind/register the memory, then build chunk from result. */
+> -		int n = rpcrdma_register_external(seg, nsegs,
+> +		int n = rpcrdma_register_external(req, seg, nsegs,
+>  						cur_wchunk != NULL, r_xprt);
+>  		if (n <= 0)
+>  			goto out;
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index 93726560..5b439ed 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -1730,13 +1730,14 @@ rpcrdma_deregister_memwin_external(struct rpcrdma_mr_seg *seg,
+>  }
+>  
+>  static int
+> -rpcrdma_register_default_external(struct rpcrdma_mr_seg *seg,
+> -			int *nsegs, int writing, struct rpcrdma_ia *ia)
+> +rpcrdma_register_default_external(struct rpcrdma_req *req,
+> +			struct rpcrdma_mr_seg *seg, int *nsegs, int writing,
+> +			struct rpcrdma_ia *ia)
+>  {
+>  	int mem_priv = (writing ? IB_ACCESS_REMOTE_WRITE :
+>  				  IB_ACCESS_REMOTE_READ);
+>  	struct rpcrdma_mr_seg *seg1 = seg;
+> -	struct ib_phys_buf ipb[RPCRDMA_MAX_DATA_SEGS];
+> +	struct ib_phys_buf *ipb = req->rl_ipb;
+>  	int len, i, rc = 0;
+>  
+>  	if (*nsegs > RPCRDMA_MAX_DATA_SEGS)
+> @@ -1791,7 +1792,7 @@ rpcrdma_deregister_default_external(struct rpcrdma_mr_seg *seg,
+>  }
+>  
+>  int
+> -rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
+> +rpcrdma_register_external(struct rpcrdma_req *req, struct rpcrdma_mr_seg *seg,
+>  			int nsegs, int writing, struct rpcrdma_xprt *r_xprt)
+>  {
+>  	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
+> @@ -1827,7 +1828,7 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
+>  
+>  	/* Default registration each time */
+>  	default:
+> -		rc = rpcrdma_register_default_external(seg, &nsegs, writing, ia);
+> +		rc = rpcrdma_register_default_external(req, seg, &nsegs, writing, ia);
+>  		break;
+>  	}
+>  	if (rc)
+> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+> index cc1445d..b10ed34 100644
+> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
+> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+> @@ -192,6 +192,7 @@ struct rpcrdma_req {
+>  	struct ib_sge	rl_send_iov[4];	/* for active requests */
+>  	struct ib_sge	rl_iov;		/* for posting */
+>  	struct ib_mr	*rl_handle;	/* handle for mem in rl_iov */
+> +	struct ib_phys_buf rl_ipb[RPCRDMA_MAX_DATA_SEGS]; /* temp work array */
+>  	char		rl_base[MAX_RPCRDMAHDR]; /* start of actual buffer */
+>  	__u32 		rl_xdr_buf[0];	/* start of returned rpc rq_buffer */
+>  };
+> @@ -327,7 +328,7 @@ int rpcrdma_register_internal(struct rpcrdma_ia *, void *, int,
+>  int rpcrdma_deregister_internal(struct rpcrdma_ia *,
+>  				struct ib_mr *, struct ib_sge *);
+>  
+> -int rpcrdma_register_external(struct rpcrdma_mr_seg *,
+> +int rpcrdma_register_external(struct rpcrdma_req *, struct rpcrdma_mr_seg *,
+>  				int, int, struct rpcrdma_xprt *);
+>  int rpcrdma_deregister_external(struct rpcrdma_mr_seg *,
+>  				struct rpcrdma_xprt *, void *);
+> -- 
+> 1.7.9.5
 > 
-And as I mentioned above, can a server choose to return mounted_on_fileid
-for only some FHs when it claims to support the attribute? (I think that
-is allowed and since I don't see a difference between mandatory and supported
-recommended attributes I think the same applies to FH.)
-
-Btw, when a server chooses to not return an FH in the readdir reply although
-it was requested, the FreeBSD client "readdirplus" essentially falls back to
-a basic "readdir" for the file name (ie. it doesn't prime the name and attribute
-caches for it).
-
-rick
-
 > --
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> _______________________________________________
-> nfsv4 mailing list
-> nfsv4@ietf.org
-> https://www.ietf.org/mailman/listinfo/nfsv4
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
