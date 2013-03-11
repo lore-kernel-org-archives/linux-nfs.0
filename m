@@ -1,166 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f173.google.com ([209.85.214.173]:38617 "EHLO
-	mail-ob0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755161Ab3CSNL6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Mar 2013 09:11:58 -0400
-Received: by mail-ob0-f173.google.com with SMTP id dn14so393617obc.32
-        for <linux-nfs@vger.kernel.org>; Tue, 19 Mar 2013 06:11:58 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 6/6] nfsd: scale up the number of DRC hash buckets with cache size
-Date: Tue, 19 Mar 2013 09:11:46 -0400
-Message-Id: <1363698706-22036-7-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1363698706-22036-1-git-send-email-jlayton@redhat.com>
-References: <1363698706-22036-1-git-send-email-jlayton@redhat.com>
+Received: from mail.tpi.com ([70.99.223.143]:2901 "EHLO mail.tpi.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754767Ab3CKVPV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Mar 2013 17:15:21 -0400
+From: Tim Gardner <tim.gardner@canonical.com>
+To: linux-kernel@vger.kernel.org
+Cc: Tim Gardner <tim.gardner@canonical.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "David S. Miller" <davem@davemloft.net>, Tom Tucker <tom@ogc.us>,
+        Haggai Eran <haggaie@mellanox.com>, Or Gerlitz <ogerlitz@mellanox.com>,
+        Shani Michaeli <shanim@mellanox.com>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org
+Subject: [PATCH linux-next v3] SUNRPC: rpcrdma_register_default_external: Dynamically allocate ib_phys_buf
+Date: Mon, 11 Mar 2013 15:15:08 -0600
+Message-Id: <1363036508-24935-1-git-send-email-tim.gardner@canonical.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9286BA156@sacexcmbx05-prd.hq.netapp.com>
+References: <4FA345DA4F4AE44899BD2B03EEEC2FA9286BA156@sacexcmbx05-prd.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We've now increased the size of the duplicate reply cache by quite a
-bit, but the number of hash buckets has not changed. So, we've gone from
-an average hash chain length of 16 in the old code to 4096 when the
-cache is its largest. Change the code to scale out the number of buckets
-with the max size of the cache.
+rpcrdma_register_default_external() is several frames into the call stack which
+goes deeper yet. You run the risk of stack corruption by declaring such a large
+automatic variable, so move the array of 'struct ib_phys_buf' objects into the
+transport structure 'struct rpcrdma_xprt' (which is dynamically allocated) in
+order to silence the frame-larger-than warning. Access to each struct
+rpcrdma_xprt is serialized by XPRT_LOCKED in xprt_reserve_xprt(), so there is
+no danger of multiple accessors to the array of struct ib_phys_buf objects.
 
-At the same time, we also need to fix the hash function since the
-existing one isn't really suitable when there are more than 256 buckets.
-Move instead to use the stock hash_32 function for this. Testing on a
-machine that had 2048 buckets showed that this gave a smaller
-longest:average ratio than the existing hash function:
+net/sunrpc/xprtrdma/verbs.c: In function 'rpcrdma_register_default_external':
+net/sunrpc/xprtrdma/verbs.c:1774:1: warning: the frame size of 1056 bytes is larger than 1024 bytes [-Wframe-larger-than=]
 
-The formula here is longest hash bucket searched divided by average
-number of entries per bucket at the time that we saw that longest
-bucket:
+gcc version 4.6.3
 
-    old hash: 68/(39258/2048) == 3.547404
-    hash_32:  45/(33773/2048) == 2.728807
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: Tom Tucker <tom@ogc.us>
+Cc: Haggai Eran <haggaie@mellanox.com>
+Cc: Or Gerlitz <ogerlitz@mellanox.com>
+Cc: Shani Michaeli <shanim@mellanox.com>
+Cc: linux-nfs@vger.kernel.org
+Cc: netdev@vger.kernel.org
+Signed-off-by: Tim Gardner <tim.gardner@canonical.com>
 ---
- fs/nfsd/nfscache.c | 44 +++++++++++++++++++++++++++++---------------
- 1 file changed, 29 insertions(+), 15 deletions(-)
+v1 - Use kmalloc() to dynamically allocate and free the array of 'struct
+ib_phys_buf' objects
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index 17cb0d6..eb25877 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -11,6 +11,8 @@
- #include <linux/slab.h>
- #include <linux/sunrpc/addr.h>
- #include <linux/highmem.h>
-+#include <linux/log2.h>
-+#include <linux/hash.h>
- #include <net/checksum.h>
- 
- #include "nfsd.h"
-@@ -18,7 +20,12 @@
- 
- #define NFSDDBG_FACILITY	NFSDDBG_REPCACHE
- 
--#define HASHSIZE		64
-+/*
-+ * We use this value to determine the number of hash buckets from the max
-+ * cache size, the idea being that when the cache is at its maximum number
-+ * of entries, then this should be the average number of entries per bucket.
-+ */
-+#define TARGET_BUCKET_SIZE	64
- 
- static struct hlist_head *	cache_hash;
- static struct list_head 	lru_head;
-@@ -27,6 +34,9 @@ static struct kmem_cache	*drc_slab;
- /* max number of entries allowed in the cache */
- static unsigned int		max_drc_entries;
- 
-+/* number of significant bits in the hash value */
-+static unsigned int		maskbits;
-+
- /*
-  * Stats and other tracking of on the duplicate reply cache. All of these and
-  * the "rc" fields in nfsdstats are protected by the cache_lock
-@@ -47,16 +57,6 @@ static unsigned int		longest_chain;
- /* size of cache when we saw the longest hash chain */
- static unsigned int		longest_chain_cachesize;
- 
--/*
-- * Calculate the hash index from an XID.
-- */
--static inline u32 request_hash(u32 xid)
--{
--	u32 h = xid;
--	h ^= (xid >> 24);
--	return h & (HASHSIZE-1);
--}
--
- static int	nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *vec);
- static void	cache_cleaner_func(struct work_struct *unused);
- static int 	nfsd_reply_cache_shrink(struct shrinker *shrink,
-@@ -103,6 +103,16 @@ nfsd_cache_size_limit(void)
- 	return min_t(unsigned int, limit, 256*1024);
+v2 - Move the array of 'struct ib_phys_buf' objects into struct rpcrdma_req
+and pass this request down through rpcrdma_register_external() and
+rpcrdma_register_default_external(). This is less overhead then using
+kmalloc() and requires no extra error checking as the allocation burden is
+shifted to the transport client.
+
+v3 - Move the array of 'struct ib_phys_buf' objects into struct rpcrdma_xprt.
+Pass a pointer to this transport structure into rpcrdma_register_default_external().
+This is less overhead then using kmalloc() and requires no extra error checking
+as the allocation burden is shifted to the transport client.
+
+ net/sunrpc/xprtrdma/verbs.c     |   10 ++++++----
+ net/sunrpc/xprtrdma/xprt_rdma.h |    5 ++++-
+ 2 files changed, 10 insertions(+), 5 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 93726560..c7aa3da 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1730,13 +1730,14 @@ rpcrdma_deregister_memwin_external(struct rpcrdma_mr_seg *seg,
  }
  
-+/*
-+ * Compute the number of hash buckets we need. Divide the max cachesize by
-+ * the "target" max bucket size, and round up to next power of two.
-+ */
-+static unsigned int
-+nfsd_hashsize(unsigned int limit)
-+{
-+	return roundup_pow_of_two(limit / TARGET_BUCKET_SIZE);
-+}
-+
- static struct svc_cacherep *
- nfsd_reply_cache_alloc(void)
+ static int
+-rpcrdma_register_default_external(struct rpcrdma_mr_seg *seg,
+-			int *nsegs, int writing, struct rpcrdma_ia *ia)
++rpcrdma_register_default_external(struct rpcrdma_xprt *r_xprt,
++			struct rpcrdma_mr_seg *seg, int *nsegs, int writing,
++			struct rpcrdma_ia *ia)
  {
-@@ -143,9 +153,13 @@ nfsd_reply_cache_free(struct svc_cacherep *rp)
+ 	int mem_priv = (writing ? IB_ACCESS_REMOTE_WRITE :
+ 				  IB_ACCESS_REMOTE_READ);
+ 	struct rpcrdma_mr_seg *seg1 = seg;
+-	struct ib_phys_buf ipb[RPCRDMA_MAX_DATA_SEGS];
++	struct ib_phys_buf *ipb = r_xprt->ipb;
+ 	int len, i, rc = 0;
  
- int nfsd_reply_cache_init(void)
- {
-+	unsigned int hashsize;
-+
- 	INIT_LIST_HEAD(&lru_head);
- 	max_drc_entries = nfsd_cache_size_limit();
- 	num_drc_entries = 0;
-+	hashsize = nfsd_hashsize(max_drc_entries);
-+	maskbits = ilog2(hashsize);
+ 	if (*nsegs > RPCRDMA_MAX_DATA_SEGS)
+@@ -1827,7 +1828,8 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
  
- 	register_shrinker(&nfsd_reply_cache_shrinker);
- 	drc_slab = kmem_cache_create("nfsd_drc", sizeof(struct svc_cacherep),
-@@ -153,7 +167,7 @@ int nfsd_reply_cache_init(void)
- 	if (!drc_slab)
- 		goto out_nomem;
+ 	/* Default registration each time */
+ 	default:
+-		rc = rpcrdma_register_default_external(seg, &nsegs, writing, ia);
++		rc = rpcrdma_register_default_external(r_xprt, seg, &nsegs,
++			writing, ia);
+ 		break;
+ 	}
+ 	if (rc)
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index cc1445d..d7b440f 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -269,7 +269,8 @@ struct rpcrdma_stats {
+  * for convenience. This structure need not be visible externally.
+  *
+  * It is allocated and initialized during mount, and released
+- * during unmount.
++ * during unmount. Access to this structure is serialized by XPRT_LOCKED
++ * in xprt_reserve_xprt().
+  */
+ struct rpcrdma_xprt {
+ 	struct rpc_xprt		xprt;
+@@ -279,6 +280,8 @@ struct rpcrdma_xprt {
+ 	struct rpcrdma_create_data_internal rx_data;
+ 	struct delayed_work	rdma_connect;
+ 	struct rpcrdma_stats	rx_stats;
++	/* temp work array */
++	struct ib_phys_buf	ipb[RPCRDMA_MAX_DATA_SEGS];
+ };
  
--	cache_hash = kcalloc(HASHSIZE, sizeof(struct hlist_head), GFP_KERNEL);
-+	cache_hash = kcalloc(hashsize, sizeof(struct hlist_head), GFP_KERNEL);
- 	if (!cache_hash)
- 		goto out_nomem;
- 
-@@ -204,7 +218,7 @@ static void
- hash_refile(struct svc_cacherep *rp)
- {
- 	hlist_del_init(&rp->c_hash);
--	hlist_add_head(&rp->c_hash, cache_hash + request_hash(rp->c_xid));
-+	hlist_add_head(&rp->c_hash, cache_hash + hash_32(rp->c_xid, maskbits));
- }
- 
- static inline bool
-@@ -329,7 +343,7 @@ nfsd_cache_search(struct svc_rqst *rqstp, __wsum csum)
- 	struct hlist_head 	*rh;
- 	unsigned int		entries = 0;
- 
--	rh = &cache_hash[request_hash(rqstp->rq_xid)];
-+	rh = &cache_hash[hash_32(rqstp->rq_xid, maskbits)];
- 	hlist_for_each_entry(rp, rh, c_hash) {
- 		++entries;
- 		if (nfsd_cache_match(rqstp, csum, rp)) {
-@@ -588,7 +602,7 @@ static int nfsd_reply_cache_stats_show(struct seq_file *m, void *v)
- 	spin_lock(&cache_lock);
- 	seq_printf(m, "max entries:           %u\n", max_drc_entries);
- 	seq_printf(m, "num entries:           %u\n", num_drc_entries);
--	seq_printf(m, "hash buckets:          %u\n", HASHSIZE);
-+	seq_printf(m, "hash buckets:          %u\n", 1 << maskbits);
- 	seq_printf(m, "mem usage:             %u\n", drc_mem_usage);
- 	seq_printf(m, "cache hits:            %u\n", nfsdstats.rchits);
- 	seq_printf(m, "cache misses:          %u\n", nfsdstats.rcmisses);
+ #define rpcx_to_rdmax(x) container_of(x, struct rpcrdma_xprt, xprt)
 -- 
-1.7.11.7
+1.7.9.5
 
