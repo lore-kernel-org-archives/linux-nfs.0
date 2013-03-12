@@ -1,61 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-oa0-f41.google.com ([209.85.219.41]:46101 "EHLO
-	mail-oa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754287Ab3C0T3s (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Mar 2013 15:29:48 -0400
-Received: by mail-oa0-f41.google.com with SMTP id f4so6765009oah.0
-        for <linux-nfs@vger.kernel.org>; Wed, 27 Mar 2013 12:29:47 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:4071 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755329Ab3CLXhQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Mar 2013 19:37:16 -0400
+Date: Tue, 12 Mar 2013 19:37:13 -0400
 From: Jeff Layton <jlayton@redhat.com>
-To: akpm@linux-foundation.org
-Cc: linux-kernel@vger.kernel.org, tj@kernel.org,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH v2 4/6] nfsd: convert nfs4_alloc_stid to use idr_alloc_cyclic
-Date: Wed, 27 Mar 2013 15:29:36 -0400
-Message-Id: <1364412578-7462-5-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1364412578-7462-1-git-send-email-jlayton@redhat.com>
-References: <1364412578-7462-1-git-send-email-jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 08/10] gssd: Clean up
+ gssd_setup_krb5_user_gss_ccache()
+Message-ID: <20130312193713.69eb4586@tlielax.poochiereds.net>
+In-Reply-To: <20130312203747.2478.64215.stgit@seurat.1015granger.net>
+References: <20130312203105.2478.88903.stgit@seurat.1015granger.net>
+	<20130312203747.2478.64215.stgit@seurat.1015granger.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
----
- fs/nfsd/nfs4state.c | 7 +------
- 1 file changed, 1 insertion(+), 6 deletions(-)
+On Tue, 12 Mar 2013 16:37:48 -0400
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2e27430..417c848 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -234,7 +234,6 @@ static struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct
- kmem_cache *slab)
- {
- 	struct idr *stateids = &cl->cl_stateids;
--	static int min_stateid = 0;
- 	struct nfs4_stid *stid;
- 	int new_id;
- 
-@@ -242,7 +241,7 @@ kmem_cache *slab)
- 	if (!stid)
- 		return NULL;
- 
--	new_id = idr_alloc(stateids, stid, min_stateid, 0, GFP_KERNEL);
-+	new_id = idr_alloc_cyclic(stateids, stid, 0, 0, GFP_KERNEL);
- 	if (new_id < 0)
- 		goto out_free;
- 	stid->sc_client = cl;
-@@ -261,10 +260,6 @@ kmem_cache *slab)
- 	 * amount of time until an id is reused, by ensuring they always
- 	 * "increase" (mod INT_MAX):
- 	 */
--
--	min_stateid = new_id+1;
--	if (min_stateid == INT_MAX)
--		min_stateid = 0;
- 	return stid;
- out_free:
- 	kfree(stid);
--- 
-1.7.11.7
+> Remove a contradictory portion of the block comment documenting
+> gssd_find_existing_krb5_ccache().  This should have been removed by
+> commit 289ad31e, which reversed the meaning of the function's return
+> values.
+> 
+> Note that, in user space, typically errno's are positive.  But here
+> we follow the kernel convention of using negative values to return
+> error codes.  Make the documenting comments explicit about the sign
+> of an error return -- it will never be positive in the case of an
+> error.
+> 
+> And a nit: At the last return statement in
+> gssd_setup_krb5_user_gss_ccache(), "err" always contains zero, as
+> far as I can tell.  Make it explicit (to human readers) that when
+> execution reaches this point, gssd_setup_krb5_user_gss_ccache() is
+> going to return "success."
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> Cc: Jeff Layton <jlayton@redhat.com>
+> ---
+> 
+>  utils/gssd/krb5_util.c |   16 ++++++++--------
+>  1 files changed, 8 insertions(+), 8 deletions(-)
+> 
+> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+> index aeb8f70..940f7cd 100644
+> --- a/utils/gssd/krb5_util.c
+> +++ b/utils/gssd/krb5_util.c
+> @@ -169,13 +169,13 @@ select_krb5_ccache(const struct dirent *d)
+>  
+>  /*
+>   * Look in directory "dirname" for files that look like they
+> - * are Kerberos Credential Cache files for a given UID.  Return
+> - * non-zero and the dirent pointer for the entry most likely to be
+> - * what we want. Otherwise, return zero and no dirent pointer.
+> - * The caller is responsible for freeing the dirent if one is returned.
+> + * are Kerberos Credential Cache files for a given UID.
+>   *
+> - * Returns 0 if a valid-looking entry was found and a non-zero error
+> - * code otherwise.
+> + * Returns 0 if a valid-looking entry is found.  "*cctype" is
+> + * set to the name of the cache type.  A pointer to the dirent
+> + * is planted in "*d".  Caller must free "*d" with free(3).
+> + *
+> + * Otherwise, a negative errno is returned.
+>   */
+>  static int
+>  gssd_find_existing_krb5_ccache(uid_t uid, char *dirname,
+> @@ -1037,7 +1037,7 @@ err_cache:
+>   * given only a UID.  We really need more information, but we
+>   * do the best we can.
+>   *
+> - * Returns 0 if a ccache was found, and a non-zero error code otherwise.
+> + * Returns 0 if a ccache was found, or a negative errno otherwise.
+>   */
+>  int
+>  gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername, char *dirpattern)
+> @@ -1082,7 +1082,7 @@ gssd_setup_krb5_user_gss_ccache(uid_t uid, char *servername, char *dirpattern)
+>  	printerr(2, "using %s as credentials cache for client with "
+>  		    "uid %u for server %s\n", buf, uid, servername);
+>  	gssd_set_krb5_ccache_name(buf);
+> -	return err;
+> +	return 0;
+>  }
+>  
+>  /*
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
+Thanks for cleaning that up...
+
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
