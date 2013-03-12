@@ -1,95 +1,304 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:58133 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759955Ab3CIAgR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Mar 2013 19:36:17 -0500
-Date: Fri, 8 Mar 2013 19:36:15 -0500
-To: Trond Myklebust <trond@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] sunrpc: don't attempt to cancel unitialized work
-Message-ID: <20130309003615.GH31448@fieldses.org>
-MIME-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:37679 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932746Ab3CLTFS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Mar 2013 15:05:18 -0400
 Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Mime-Version: 1.0 (Mac OS X Mail 6.2 \(1499\))
+Subject: Re: [PATCH 11/11] gssd: Add "-c" command line option
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20130311175833.GA30618@fieldses.org>
+Date: Tue, 12 Mar 2013 15:05:08 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <F5EB177F-4FE3-48DC-A4E9-A9129CB63EB1@oracle.com>
+References: <20130308193830.5656.44184.stgit@seurat.1015granger.net> <20130308194741.5656.56599.stgit@seurat.1015granger.net> <20130311175833.GA30618@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
 
-As of dc107402ae06286a9ed33c32daf3f35514a7cb8d "SUNRPC: make AF_LOCAL connect synchronous", we no longer initialize connect_worker in the
-AF_LOCAL case, resulting in warnings like:
+On Mar 11, 2013, at 1:58 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
 
-    WARNING: at lib/debugobjects.c:261 debug_print_object+0x8c/0xb0() Hardware name: Bochs
-    ODEBUG: assert_init not available (active state 0) object type: timer_list hint: stub_timer+0x0/0x20
-    Modules linked in: iscsi_tcp libiscsi_tcp libiscsi scsi_transport_iscsi nfsd auth_rpcgss nfs_acl lockd sunrpc
-    Pid: 4816, comm: nfsd Tainted: G        W    3.8.0-rc2-00049-gdc10740 #801
-    Call Trace:
-     [<ffffffff8156ec00>] ? free_obj_work+0x60/0xa0
-     [<ffffffff81046aaf>] warn_slowpath_common+0x7f/0xc0
-     [<ffffffff81046ba6>] warn_slowpath_fmt+0x46/0x50
-     [<ffffffff8156eccc>] debug_print_object+0x8c/0xb0
-     [<ffffffff81055030>] ? timer_debug_hint+0x10/0x10
-     [<ffffffff8156f7e3>] debug_object_assert_init+0xe3/0x120
-     [<ffffffff81057ebb>] del_timer+0x2b/0x80
-     [<ffffffff8109c4e6>] ? mark_held_locks+0x86/0x110
-     [<ffffffff81065a29>] try_to_grab_pending+0xd9/0x150
-     [<ffffffff81065b57>] __cancel_work_timer+0x27/0xc0
-     [<ffffffff81065c03>] cancel_delayed_work_sync+0x13/0x20
-     [<ffffffffa0007067>] xs_destroy+0x27/0x80 [sunrpc]
-     [<ffffffffa00040d8>] xprt_destroy+0x78/0xa0 [sunrpc]
-     [<ffffffffa0006241>] xprt_put+0x21/0x30 [sunrpc]
-     [<ffffffffa00030cf>] rpc_free_client+0x10f/0x1a0 [sunrpc]
-     [<ffffffffa0002ff3>] ? rpc_free_client+0x33/0x1a0 [sunrpc]
-     [<ffffffffa0002f7e>] rpc_release_client+0x6e/0xb0 [sunrpc]
-     [<ffffffffa000325d>] rpc_shutdown_client+0xfd/0x1b0 [sunrpc]
-     [<ffffffffa0017196>] rpcb_put_local+0x106/0x130 [sunrpc]
-    ...
+> On Fri, Mar 08, 2013 at 02:47:41PM -0500, Chuck Lever wrote:
+>> When a system does not have a keytab, it has no way to obtain
+>> machine credentials.  In the past, we've fudged it by simply using
+>> root's user credential as the machine credential.  (root must kinit
+>> in this case, of course).
+>> 
+>> Since v1 of the kernel's GSS upcall was introduced, rpc.gssd can
+>> tell when the kernel requests a machine credential specifically,
+>> say, for NFSv4 operations that are required to use one
+>> (SETCLIENTID).
+>> 
+>> Since I moved SETCLIENTID to the first operation performed against
+>> a new server, this means a sec=krb5 NFSv4 mount can't succeed at all
+>> if there is no machine credential.  Previously, this kind of mount
+>> could work at least until a SETCLIENTID was done, as the kernel
+>> could use root's user credential for housekeeping like grabbing the
+>> server's root FH.  (Or maybe there is some kind of gssd bug that
+>> allowed it to keep working?).
+>> 
+>> In any event, what we want to do is provide a clean and secure way
+>> for rpc.gssd to substitute a specific user credential if there is no
+>> machine credential available.  (I'm actually not clear on why this
+>> is OK to do).
+>> 
+>> Recent work to add Active Directory support to rpc.gssd gives us a
+>> potential user principal that can be used for this purpose:
+>> 
+>>  HOSTNAME$@REALM
+>> 
+>> We have a specific user principal then.  We have to tell rpc.gssd
+>> where to look for the credential file.  Introduce a command line
+>> option that specifies exactly where the file containing the
+>> credential for this principal can be found.  This credential would
+>> be used only if no other machine credential is available.
+>> 
+>> One might then use it this way:
+>> 
+>>  # /usr/sbin/rpc.gssd -n -c /tmp/krb5cc_0
+>>  # kinit <hostname>$@<REALM>
+>>  Password for <hostname>$@<REALM>:
+>>  # mount -t nfs4 -o sec=krb5 server:/export /mnt
+> 
+> Say my university gives me a kerberos identity bfields@example.edu and
+> a home directory files.example.edu:/home/bfields.
+> 
+> Then previously I could access my home directory from my personal laptop
+> with
+> 
+> 	# kinit bfields@umich.edu
+> 	# mount -tnfs4 -osec=krb5 files.example.edu:/home/bfields /u-home
+> 
+> But now if I want to do that I have to talk example.u's IT department
+> into issuing me bfields$@umich.edu?
+> 
+> If so, haven't we lost a useful feature?
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- net/sunrpc/xprtsock.c |   15 ++++++++++-----
- 1 file changed, 10 insertions(+), 5 deletions(-)
+I agree this is a cumbersome solution.  I have a kernel-side solution that might be a better approach which I will post later this week.
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index c1d8476..35fc805 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -849,6 +849,14 @@ static void xs_tcp_close(struct rpc_xprt *xprt)
- 		xs_tcp_shutdown(xprt);
- }
- 
-+xs_local_destroy(struct rpc_xprt *xprt)
-+{
-+	xs_close(xprt);
-+	xs_free_peer_addresses(xprt);
-+	xprt_free(xprt);
-+	module_put(THIS_MODULE);
-+}
-+
- /**
-  * xs_destroy - prepare to shutdown a transport
-  * @xprt: doomed transport
-@@ -862,10 +870,7 @@ static void xs_destroy(struct rpc_xprt *xprt)
- 
- 	cancel_delayed_work_sync(&transport->connect_worker);
- 
--	xs_close(xprt);
--	xs_free_peer_addresses(xprt);
--	xprt_free(xprt);
--	module_put(THIS_MODULE);
-+	xs_local_destroy(xprt);
- }
- 
- static inline struct rpc_xprt *xprt_from_sock(struct sock *sk)
-@@ -2482,7 +2487,7 @@ static struct rpc_xprt_ops xs_local_ops = {
- 	.send_request		= xs_local_send_request,
- 	.set_retrans_timeout	= xprt_set_retrans_timeout_def,
- 	.close			= xs_close,
--	.destroy		= xs_destroy,
-+	.destroy		= xs_local_destroy,
- 	.print_stats		= xs_local_print_stats,
- };
- 
+Meanwhile, I'll drop this patch from the present series.  We can revisit if needed.
+
+> 
+> --b.
+> 
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> 
+>> utils/gssd/gssd.c      |   14 +++++++++-
+>> utils/gssd/gssd.h      |    1 +
+>> utils/gssd/gssd.man    |   18 +++++++++++++
+>> utils/gssd/krb5_util.c |   67 ++++++++++++++++++++++++++++++++++++++++++++++++
+>> 4 files changed, 98 insertions(+), 2 deletions(-)
+>> 
+>> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+>> index 0be2517..7537a97 100644
+>> --- a/utils/gssd/gssd.c
+>> +++ b/utils/gssd/gssd.c
+>> @@ -58,6 +58,7 @@
+>> char pipefs_dir[PATH_MAX] = GSSD_PIPEFS_DIR;
+>> char keytabfile[PATH_MAX] = GSSD_DEFAULT_KEYTAB_FILE;
+>> char ccachedir[PATH_MAX] = GSSD_DEFAULT_CRED_DIR ":" GSSD_USER_CRED_DIR;
+>> +char mach_cred_file[PATH_MAX] = "";
+>> char *ccachesearch[GSSD_MAX_CCACHE_SEARCH + 1];
+>> int  use_memcache = 0;
+>> int  root_uses_machine_creds = 1;
+>> @@ -85,7 +86,9 @@ sig_hup(int signal)
+>> static void
+>> usage(char *progname)
+>> {
+>> -	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm]\n",
+>> +	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] "
+>> +		"[-p pipefsdir] [-k keytab] [-d ccachedir] "
+>> +		"[-t timeout] [-R preferred realm] [-c credfile]\n",
+>> 		progname);
+>> 	exit(1);
+>> }
+>> @@ -102,7 +105,7 @@ main(int argc, char *argv[])
+>> 	char *progname;
+>> 
+>> 	memset(ccachesearch, 0, sizeof(ccachesearch));
+>> -	while ((opt = getopt(argc, argv, "fvrlmnMp:k:d:t:R")) != -1) {
+>> +	while ((opt = getopt(argc, argv, "fvrlmnMp:k:d:t:R:c:")) != -1) {
+>> 		switch (opt) {
+>> 			case 'f':
+>> 				fg = 1;
+>> @@ -122,6 +125,11 @@ main(int argc, char *argv[])
+>> 			case 'r':
+>> 				rpc_verbosity++;
+>> 				break;
+>> +			case 'c':
+>> +				strncpy(mach_cred_file, optarg, sizeof(mach_cred_file));
+>> +				if (mach_cred_file[sizeof(mach_cred_file)-1] != '\0')
+>> +					errx(1, "credential file name too long");
+>> +				break;
+>> 			case 'p':
+>> 				strncpy(pipefs_dir, optarg, sizeof(pipefs_dir));
+>> 				if (pipefs_dir[sizeof(pipefs_dir)-1] != '\0')
+>> @@ -156,6 +164,8 @@ main(int argc, char *argv[])
+>> 		}
+>> 	}
+>> 
+>> +	if (mach_cred_file[0] != '\0' && use_memcache)
+>> +		errx(1, "Cannot use memcache and credential file together");
+>> 	i = 0;
+>> 	ccachesearch[i++] = strtok(ccachedir, ":");
+>> 	do {
+>> diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
+>> index 86472a1..e76bad1 100644
+>> --- a/utils/gssd/gssd.h
+>> +++ b/utils/gssd/gssd.h
+>> @@ -62,6 +62,7 @@ enum {AUTHTYPE_KRB5, AUTHTYPE_LIPKEY};
+>> 
+>> extern char			pipefs_dir[PATH_MAX];
+>> extern char			keytabfile[PATH_MAX];
+>> +extern char			mach_cred_file[PATH_MAX];
+>> extern char			*ccachesearch[];
+>> extern int			use_memcache;
+>> extern int			root_uses_machine_creds;
+>> diff --git a/utils/gssd/gssd.man b/utils/gssd/gssd.man
+>> index 79d9bf9..ef26577 100644
+>> --- a/utils/gssd/gssd.man
+>> +++ b/utils/gssd/gssd.man
+>> @@ -19,6 +19,8 @@ rpc.gssd \- RPCSEC_GSS daemon
+>> .IR timeout ]
+>> .RB [ \-R
+>> .IR realm ]
+>> +.RB [ \-c
+>> +.IR file ]
+>> .SH INTRODUCTION
+>> The RPCSEC_GSS protocol, defined in RFC 5403, is used to provide
+>> strong security for RPC-based protocols such as NFS.
+>> @@ -146,6 +148,18 @@ You can specify another keytab by using the
+>> option if
+>> .I /etc/krb5.keytab
+>> does not exist or does not provide one of these principals.
+>> +.P
+>> +If no keytab is found, the
+>> +.B -c
+>> +option can specify a file containing a credential that
+>> +.B rpc.gssd
+>> +should use as a machine credential.
+>> +The principal must be of the form
+>> +.sp
+>> +   <HOSTNAME>$@<REALM>
+>> +.sp
+>> +Where <HOSTNAME> is the hostname of the local system, and <REALM> is the
+>> +system's Kerberos realm.
+>> .SS Credentials for UID 0
+>> UID 0 is a special case.
+>> By default
+>> @@ -213,6 +227,10 @@ to obtain machine credentials.
+>> The default value is
+>> .IR /etc/krb5.keytab .
+>> .TP
+>> +.BI "-c " file
+>> +Specifies a file in which to find a credential that can be used
+>> +as a machine credential, if the local system has no keytab.
+>> +.TP
+>> .B -l
+>> When specified, restricts
+>> .B rpc.gssd
+>> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+>> index 215c0a4..c49aed9 100644
+>> --- a/utils/gssd/krb5_util.c
+>> +++ b/utils/gssd/krb5_util.c
+>> @@ -937,6 +937,63 @@ out:
+>> 	return retval;
+>> }
+>> 
+>> +/*
+>> + * Returns zero if credential cache file can be used for a machine credential
+>> + */
+>> +static int
+>> +verify_mach_cc(const char *ccache)
+>> +{
+>> +	char *hostname = NULL;
+>> +	char *default_realm = NULL;
+>> +	char *buf = NULL;
+>> +	char *princname = NULL;
+>> +	char *realm = NULL;
+>> +	int retval;
+>> +
+>> +	retval = ENOMEM;
+>> +	buf = malloc(PATH_MAX + 5);
+>> +	if (buf == NULL)
+>> +		goto out;
+>> +
+>> +	hostname = malloc(NI_MAXHOST + 1);
+>> +	if (hostname == NULL)
+>> +		goto out;
+>> +	if (gethostname(hostname, NI_MAXHOST) == -1) {
+>> +		retval = errno;
+>> +		goto out;
+>> +	}
+>> +	strcat(hostname, "$");
+>> +
+>> +	retval = EKEYEXPIRED;
+>> +	gssd_k5_get_default_realm(&default_realm);
+>> +	if (default_realm == NULL)
+>> +		goto out;
+>> +
+>> +	printerr(2, "looking for machine credentials in %s\n", ccache);
+>> +	snprintf(buf, PATH_MAX + 5, "FILE:%s", ccache);
+>> +	if (!query_krb5_ccache(buf, &princname, &realm))
+>> +		goto out;
+>> +
+>> +	if (strcasecmp(princname, hostname) != 0) {
+>> +		printerr(2, "ERROR: found principal name %s in %s\n",
+>> +				princname, ccache);
+>> +		goto out;
+>> +	}
+>> +	if (strcasecmp(realm, default_realm) != 0) {
+>> +		printerr(2, "ERROR: found realm name %s in %s\n",
+>> +				realm, ccache);
+>> +		goto out;
+>> +	}
+>> +	retval = 0;
+>> +
+>> +out:
+>> +	free(realm);
+>> +	free(princname);
+>> +	free(default_realm);
+>> +	free(buf);
+>> +	free(hostname);
+>> +	return retval;
+>> +}
+>> 
+>> static inline int data_is_equal(krb5_data d1, krb5_data d2)
+>> {
+>> @@ -1147,6 +1204,16 @@ gssd_get_krb5_machine_cred_list(char ***list)
+>> 			}
+>> 		}
+>> 	}
+>> +	if (i == 0 && mach_cred_file[0] != '\0') {
+>> +		if (verify_mach_cc(mach_cred_file)) {
+>> +			retval = EKEYEXPIRED;
+>> +			goto out;
+>> +		}
+>> +		if ((l[i++] = strdup(mach_cred_file)) == NULL) {
+>> +			retval = ENOMEM;
+>> +			goto out;
+>> +		}
+>> +	}
+>> 	if (i > 0) {
+>> 		l[i] = NULL;
+>> 		*list = l;
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 -- 
-1.7.9.5
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
