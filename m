@@ -1,44 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f182.google.com ([209.85.223.182]:47650 "EHLO
-	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751133Ab3CPT4N (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 16 Mar 2013 15:56:13 -0400
-Received: by mail-ie0-f182.google.com with SMTP id k14so5666971iea.27
-        for <linux-nfs@vger.kernel.org>; Sat, 16 Mar 2013 12:56:13 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v1 14/15] NFS: Try AUTH_UNIX when PUTROOTFH gets
- NFS4ERR_WRONGSEC
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
-Date: Sat, 16 Mar 2013 15:56:11 -0400
-Message-ID: <20130316195611.27329.97676.stgit@seurat.1015granger.net>
-In-Reply-To: <20130316195044.27329.11666.stgit@seurat.1015granger.net>
-References: <20130316195044.27329.11666.stgit@seurat.1015granger.net>
+Received: from mail-wg0-f46.google.com ([74.125.82.46]:62919 "EHLO
+	mail-wg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754415Ab3CLAOD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Mar 2013 20:14:03 -0400
+Received: by mail-wg0-f46.google.com with SMTP id fg15so5420287wgb.1
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Mar 2013 17:14:01 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Date: Mon, 11 Mar 2013 17:07:31 -0700
+Message-ID: <CAENQ-b9N0un-VNCdw7m9b4TPuVR39TL4NTPcFjF9F+hXU=3i9A@mail.gmail.com>
+Subject: nfs.idmapd not being consulted? (different nobody:nobody uid:gid issue)
+From: Amritpal Bath <amrit@transamrit.net>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Most NFSv4 servers implement AUTH_UNIX, and administrators will
-prefer this over AUTH_NULL.  It is harmless for our client to try
-this flavor in addition to the flavors mandated by RFC 3530/5661.
+[ I haven't found an answer to this - the usual nobody:nobody issues
+appear to be domainname related and not in play here... ]
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+What are the conditions where rpc.idmapd should be queried on an NFS
+client?  I have a few that appears to be completely ignored, resulting
+in /home/* being presented as belonging to nobody:nobody.  The same
+configuration is fine on other identically configured boxes.
 
- fs/nfs/nfs4proc.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+On two identically configured boxes, the following:
+    killall rpc.idmapd && rpc.idmapd -f -vvvv
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ddbebfe..12f7318 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2468,6 +2468,7 @@ static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
- 		RPC_AUTH_GSS_KRB5P,
- 		RPC_AUTH_GSS_KRB5I,
- 		RPC_AUTH_GSS_KRB5,
-+		RPC_AUTH_UNIX,			/* courtesy */
- 		RPC_AUTH_NULL,
- 	};
- 	int status = -EPERM;
+shows queries during "ls -l /home" on box A, but nothing (ever) on box
+B (which is the problematic box).
 
+I have many details from an investigation a few weeks ago, but think
+it's prudent to keep the initial email brief.
+
+Here are some of those details:
+    - 1 NFS server
+    - 10 NFS clients
+    - 6 (initially deployed boxes) list /home/* fine.
+    - 4 (added later) have the nobody:nobody issue.
+    - All CentOS 6.3 (64 bit)
+    - All clients installed via same kickstart configs (w/ diff hostname)
+    - All servers were reinstalled after the 4 newer nodes were added,
+so they should be identical.
+    - diff'ing /etc dirs from good vs bad boxes reveals nothing significant.
+
+
+Thanks
+
+
+--
+Amrit
+AIM: ThatComputerGuy
+ICQ: 3173735
+http://transamrit.net/
