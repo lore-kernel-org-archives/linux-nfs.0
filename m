@@ -1,66 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:27901 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:27408 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750960Ab3C0NGV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Mar 2013 09:06:21 -0400
-Message-ID: <5152EED1.3070303@RedHat.com>
-Date: Wed, 27 Mar 2013 09:06:25 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] mountd: regression in crossmounts
-References: <1364049149-3751-1-git-send-email-steved@redhat.com> <20130325181314.GA10120@fieldses.org> <5150B1FD.1070405@RedHat.com> <20130325212736.GC10887@fieldses.org> <20130325233649.GF10887@fieldses.org>
-In-Reply-To: <20130325233649.GF10887@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S932391Ab3CMPRn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Mar 2013 11:17:43 -0400
+Date: Wed, 13 Mar 2013 11:17:27 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Tejun Heo <tj@kernel.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        Oleg Nesterov <oleg@redhat.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Mandeep Singh Baines <msb@chromium.org>,
+        Ming Lei <ming.lei@canonical.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Rafael J. Wysocki" <rjw@sisk.pl>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Ingo Molnar <mingo@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        linux-cifs@vger.kernel.org
+Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
+Message-ID: <20130313111727.63391672@tlielax.poochiereds.net>
+In-Reply-To: <20130306214016.GQ1227@htj.dyndns.org>
+References: <20130305140312.243cb094@tlielax.poochiereds.net>
+	<20130305190923.GI12795@htj.dyndns.org>
+	<20130305183941.19ff39ce@tlielax.poochiereds.net>
+	<20130305234700.GE1227@htj.dyndns.org>
+	<20130306181608.GA18687@redhat.com>
+	<20130306185304.GM1227@htj.dyndns.org>
+	<CA+55aFwDogteVd=vwGHXDSASnga-nZZnKaQz9aO1yBU2CPKSbA@mail.gmail.com>
+	<20130306212452.GO1227@htj.dyndns.org>
+	<CA+55aFy49AWptMcvEzJxg95ikf-dC+-vcCPq-cnaCCwje3tyoQ@mail.gmail.com>
+	<20130306213636.GP1227@htj.dyndns.org>
+	<20130306214016.GQ1227@htj.dyndns.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, 6 Mar 2013 13:40:16 -0800
+Tejun Heo <tj@kernel.org> wrote:
 
-
-On 25/03/13 19:36, J. Bruce Fields wrote:
-> On Mon, Mar 25, 2013 at 05:27:36PM -0400, J. Bruce Fields wrote:
->> On Mon, Mar 25, 2013 at 04:22:21PM -0400, Steve Dickson wrote:
->>>
->>>
->>> On 25/03/13 14:13, J. Bruce Fields wrote:
->>>> On Sat, Mar 23, 2013 at 10:32:29AM -0400, Steve Dickson wrote:
->>>>> commit 8e2fb3fc cause a regression in mount export
->>>>> that are on different local file system.
->>>>> Exports like (all on different filesystems)
->>>>>
->>>>> /home *(rw,fsid=0,crossmnt)
->>>>> /home/fs1 *(rw,crossmnt)
->>>>> /home/fs1/fs2/fs3 *(rw,nohide)
->>>>>
->>>>> and then a mount of the root 'mount /home /mnt'
->>>>> would end up mounting /home/fs1/fs2/fs3 not /home
->>>>
->>>> That's strange.
->>> Yeah... I had this guy reporting from day one that the 
->>> latest nfs-utils broke his export world... 
->>>  
->>>>
->>>>> Reverting the logic of commit 8e2fb3fc until
->>>>> a better solution can be found for the original
->>>>> problem.
->>>>
->>>> I can't figure out why the patch below would help.  The only change I
->>>> can see is to the way that an export of "/" would be handled.
->>> The reason I didn't debug this further was I did not know how to 
->>> reproduce the original problem the patch was trying to fix... 
->>
->> Could you remind me where the bug report for this is?
+> On Wed, Mar 06, 2013 at 01:36:36PM -0800, Tejun Heo wrote:
+> > On Wed, Mar 06, 2013 at 01:31:10PM -0800, Linus Torvalds wrote:
+> > > So I do agree that we probably have *too* many of the stupid "let's
+> > > check if we can freeze", and I suspect that the NFS code should get
+> > > rid of the "freezable_schedule()" that is causing this warning
+> > > (because I also agree that you should *not* freeze while holding
+> > > locks, because it really can cause deadlocks), but I do suspect that
+> > > network filesystems do need to have a few places where they check for
+> > > freezing on their own... Exactly because freezing isn't *quite* like a
+> > > signal.
+> > 
+> > Well, I don't really know much about nfs so I can't really tell, but
+> > for most other cases, dealing with freezing like a signal should work
+> > fine from what I've seen although I can't be sure before actually
+> > trying.  Trond, Bruce, can you guys please chime in?
 > 
-> Oh, right, it was https://bugzilla.redhat.com/show_bug.cgi?id=909882
+> So, I think the question here would be, in nfs, how many of the
+> current freezer check points would be difficult to conver to signal
+> handling model after excluding the ones which are performed while
+> holding some locks which we need to get rid of anyway?
 > 
-> I'm not seeing why you think this helps.
-Because it does... ;-) 
-     https://bugzilla.redhat.com/show_bug.cgi?id=909882#c10
-     https://admin.fedoraproject.org/updates/FEDORA-2013-4396/nfs-utils-1.2.7-5.fc18
 
-What I would like to is how to reproduce the original problem so
-we can fix it without creating this regression.... 
+I think we can do this, but it isn't trivial. Here's what I'd envision,
+but there are still many details that would need to be worked out...
 
-steved.
- 
+Basically what we'd need is a way to go into TASK_KILLABLE sleep, but
+still allow the freezer to wake these processes up. I guess that likely
+means we need a new sleep state (TASK_FREEZABLE?).
+
+We'd also need a way to return an -ERESTARTSYS like error (-EFREEZING?)
+that tells the upper syscall handling layers to freeze the task and
+then restart the syscall after waking back up. Maybe we don't need a
+new error at all and -ERESTARTSYS is fine here? We also need to
+consider the effects vs. audit code here, but that may be OK with the
+overhaul that Al merged a few months ago.
+
+Assuming we have those, then we need to fix up the NFS and RPC layers
+to use this stuff:
+
+1/ Prior to submitting a new RPC, we'd look and see whether "current"
+is being frozen. If it is, then return -EFREEZING immediately without
+doing anything.
+
+2/ We might also need to retrofit certain stages in the RPC FSM to
+return -EFREEZING too if it's a synchronous RPC and the task is being
+frozen.
+
+3/ A task is waiting for an RPC reply on an async RPC, we'd need to use
+this new sleep state. If the process wakes up because something wants
+it to freeze, then have it go back to sleep for a short period of time
+to try and wait for the reply (up to 15s or so?). If we get the reply,
+great -- return to userland and freeze the task there. If the reply
+never comes in, give up on it and just return -EFREEZE and hope for the
+best.
+
+We might have to make this latter behavior contingent on a new mount
+option (maybe "-o slushy" like Trond recommended). The current "hard"
+and "soft" semantics don't really fit this situation correctly.
+
+Of course, this is all a lot of work, and not something we can shove
+into the kernel for 3.9 at this point. In the meantime, while Mandeep's
+warning is correctly pointing out a problem, I think we ought to back
+it out until we can fix this properly.
+
+We're already getting a ton of reports on the mailing lists and in the
+fedora bug tracker for this warning. Part of the problem is the
+verbiage -- "BUG" makes people think "Oops", but this is really just a
+warning.
+
+We should also note that this is a problem too in the CIFS code since
+it uses a similar mechanism for allowing the kernel to suspend while
+waiting on SMB replies.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
