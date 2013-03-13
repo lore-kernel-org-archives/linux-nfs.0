@@ -1,40 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ia0-f180.google.com ([209.85.210.180]:53569 "EHLO
-	mail-ia0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752816Ab3CUATZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Mar 2013 20:19:25 -0400
-Received: by mail-ia0-f180.google.com with SMTP id f27so1969857iae.11
-        for <linux-nfs@vger.kernel.org>; Wed, 20 Mar 2013 17:19:24 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v2 0/3] Negotiate NFSv3 mount security flavor
-To: linux-nfs@vger.kernel.org
-Date: Wed, 20 Mar 2013 20:19:23 -0400
-Message-ID: <20130321001753.12106.50688.stgit@seurat.1015granger.net>
+Received: from cantor2.suse.de ([195.135.220.15]:56827 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753833Ab3CMKIV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Mar 2013 06:08:21 -0400
+Date: Wed, 13 Mar 2013 10:08:17 +0000
+From: Mel Gorman <mgorman@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Paul Bolle <pebolle@tiscali.nl>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] sunrpc: drop "select NETVM"
+Message-ID: <20130313100817.GB10369@suse.de>
+References: <1362844951.3137.3.camel@x61.thuisdomein>
+ <20130309175118.GJ31448@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=iso-8859-15
+In-Reply-To: <20130309175118.GJ31448@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-For review, here is an implementation of NFSv3 security flavor
-negotiation.
+On Sat, Mar 09, 2013 at 12:51:18PM -0500, J. Bruce Fields wrote:
+> ACK.
+> 
+> On Sat, Mar 09, 2013 at 05:02:31PM +0100, Paul Bolle wrote:
+> > The Kconfig entry for SUNRPC_SWAP selects NETVM. That select statement
+> > was added in commit a564b8f0398636ba30b07c0eaebdef7ff7837249 ("nfs:
+> > enable swap on NFS").
+> 
+> Cc'ing Mel Gorman just in case there was something else going on there.
+> 
+> --b.
+> 
+> > But there's no Kconfig symbol NETVM. It apparently
+> > was only in used in development versions of the swap over nfs
+> > functionality but never entered mainline. Anyhow, it is a nop and can
+> > safely be dropped.
+> > 
 
-Changes since v1:
-
-  o  Corrected a typo in the third patch
-
----
-
-Chuck Lever (3):
-      NFS: Use server-recommended security flavor by default (NFSv3)
-      SUNRPC: Don't recognize RPC_AUTH_MAXFLAVOR
-      SUNRPC: Remove extra xprt_put()
-
-
- fs/nfs/nfs4super.c |    2 +
- fs/nfs/super.c     |   80 +++++++++++++++++++++++++++-------------------------
- net/sunrpc/auth.c  |    5 +++
- net/sunrpc/clnt.c  |    4 +--
- 4 files changed, 49 insertions(+), 42 deletions(-)
+Correct, the NETVM symbol existed in an early version of swap-over-nfs
+that I failed to clean up properly. Thanks.
 
 -- 
-Chuck Lever
+Mel Gorman
+SUSE Labs
