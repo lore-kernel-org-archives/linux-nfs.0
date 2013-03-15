@@ -1,75 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:53283 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753024Ab3CVMX6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Mar 2013 08:23:58 -0400
-Date: Fri, 22 Mar 2013 07:40:03 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: ycnian@gmail.com
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: nfsv4.1 client refuses to suspend
-Message-ID: <20130322074003.616911b6@tlielax.poochiereds.net>
-In-Reply-To: <1363921041-5042-1-git-send-email-ycnian@gmail.com>
-References: <1363921041-5042-1-git-send-email-ycnian@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from dgate20.ts.fujitsu.com ([80.70.172.51]:45026 "EHLO
+	dgate20.ts.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755229Ab3COUfI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Mar 2013 16:35:08 -0400
+Message-Id: <61eb00$3h8m17@dgate20u.abg.fsc.net>
+Date: 15 Mar 2013 21:35:06 +0100
+From: Bodo Stroesser <bstroesser@ts.fujitsu.com>
+To: neilb@suse.de
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, bstroesser@ts.fujitsu.com
+Subject: Re: sunrpc/cache.c: races while updating cache entries
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 22 Mar 2013 10:57:21 +0800
-ycnian@gmail.com wrote:
+SGksCgpoZXJlIGlzIGEgcGF0Y2ggaW4gdHdvIHZlcnNpb25zLCBvbmUgZm9yIG1haW5saW5l
+IGFuZAp0aGUgc2Vjb25kIGZvciBTTEVTMTEgU1AxLiBJIGRvbid0IGtub3csIHdoZXRoZXIg
+dGhpcwppcyB0aGUgYmVzdCBzb2x1dGlvbiwgYnV0IHRoZSB2ZXJzaW9uIGZvciBTTEVTMTEg
+Zml4ZXMKdGhlIHByb2JsZW0gZm9yIG1lLiBJdCBhbHJlYWR5IGlzIHRlc3RlZCBmb3IgYWJv
+dXQgMTIKaG91cnMgYW5kIEkganVzdCBzdGFydGVkIHRoZSB0ZXN0IGFnYWluIHRvIGhhdmUg
+aXQgcnVuCmZvciB0aGUgZW50aXJlIHdlZWtlbmQuCgpUaGUgcGF0Y2ggZm9yIG1haW5saW5l
+IGlzIHVudGVzdGVkLgoKQm9kbwoKIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMK
+CkZyb206IEJvZG8gU3Ryb2Vzc2VyIDxic3Ryb2Vzc2VyQHRzLmZ1aml0c3UuY29tPgpEYXRl
+OiBGcmksIDE1IE1hciAyMDEzClN1YmplY3Q6IFtQQVRDSF0gbmV0OiBzdW5ycGM6IGZpeCBy
+YWNlIGluIFJQQyBjYWNoZQoKVGhpcyBwYXRjaCBhcHBsaWVzIHRvIGxpbnV4LTMuNy42IHBs
+dXMgMiBlYXJsaWVyCnBhdGNoZXMgdGhhdCBhbHNvIGZpeCByYWNlcwoKSWYgYmV0d2VlbiBh
+IHRocmVhZCdzIGNhbGxzIHRvIHN1bnJwY19jYWNoZV9sb29rdXAoKQphbmQgY2FjaGVfY2hl
+Y2soKSB0aGUgY2FjaGUgZW50cnkgcmV0dXJuZWQgYnkgbG9va3VwCmlzIG1vZGlmaWVkIGJ5
+CmEpIHN1bnJwY19jYWNoZV91cGRhdGUoKSBzZXR0aW5nIGV4cGlyeV90aW1lIGlzIHNldCB0
+byAwCmIpIGNhY2hlX2NsZWFuKCkgdW5oYXNoaW5nIGl0LCBhcyBpdCBub3cgaXMgZXhwaXJl
+ZAp0aGVuIHRoZSB0aHJlYWQgd2lsbCBwZXJmb3JtIGFuIHVwY2FsbCBmb3IgdGhlIG91dGRh
+dGVkCmNhY2hlIGVudHJ5LiBUaGF0IGNhY2hlX3JlcXVlc3Qgd2lsbCBzdGF5IG9uIHRoZSBx
+dWV1ZQpmb3IgZXZlciwgYXMgYSByZXBseSB0byB0aGUgcmVxdWVzdCB3aWxsIGFsd2F5cyBt
+YXRjaAphIG5ld2VyIGNhY2hlIGVudHJ5IGFuZCB0aGUgcmVxdWVzdCBpc24ndCBkZXF1ZXVl
+ZC4KT1RPSCwgY2FjaGVfY2xlYW4oKSBhbHJlYWR5IHVuaGFzaGVkIHRoZSBvbGQgZW50cnks
+IHRodXMKY2FjaGVfY2xlYW4oKSB3b24ndCBkZXF1ZXVlIHRoZSByZXF1ZXN0IGFsc28uCgpU
+byBmaXggdGhlIHByb2JsZW0sIGluIGNhY2hlX2NoZWNrKCkgd2UgcmVjaGVjayB0aGUgc3Rh
+dGUKb2YgdGhlIGNhY2hlIGVudHJ5IGFmdGVyIGhhdmluZyBzZXQgQ0FDSEVfUEVORElORy4g
+U28gd2UKYXJlIHN1cmUgdG8gbmV2ZXIgZG8gYW4gdXBjYWxsIGZvciBhbiBvdXRkYXRlZCBl
+bnRyeS4KClNpZ25lZC1vZmYtYnk6IEJvZG8gU3Ryb2Vzc2VyIDxic3Ryb2Vzc2VyQHRzLmZ1
+aml0c3UuY29tPgotLS0KCi0tLSBhL25ldC9zdW5ycGMvY2FjaGUuYwkyMDEzLTAzLTE1IDIx
+OjE0OjU0LjAwMDAwMDAwMCArMDEwMAorKysgYi9uZXQvc3VucnBjL2NhY2hlLmMJMjAxMy0w
+My0xNSAyMToyOTowOS4wMDAwMDAwMDAgKzAxMDAKQEAgLTIyMiw2ICsyMjIsMTcgQEAgc3Rh
+dGljIGlubGluZSBpbnQgY2FjaGVfaXNfdmFsaWQoc3RydWN0CiAJfQogfQogCitzdGF0aWMg
+aW5saW5lIGludCBjYWNoZV93YW50c191cGNhbGwoc3RydWN0IGNhY2hlX2hlYWQgKmgsIGlu
+dCBmaW5hbCkKK3sKKwlsb25nIHJlZnJlc2hfYWdlID0gKGgtPmV4cGlyeV90aW1lIC0gaC0+
+bGFzdF9yZWZyZXNoKTsKKwlsb25nIGFnZSA9IHNlY29uZHNfc2luY2VfYm9vdCgpIC0gaC0+
+bGFzdF9yZWZyZXNoOworCisJaWYgKGZpbmFsKQorCQlkcHJpbnRrKCJSUEM6ICAgICAgIFdh
+bnQgdXBkYXRlLCByZWZhZ2U9JWxkLCBhZ2U9JWxkXG4iLCByZWZyZXNoX2FnZSwgYWdlKTsK
+KworCXJldHVybiBoLT5leHBpcnlfdGltZSAmJiBhZ2UgPiByZWZyZXNoX2FnZS8yOworfQor
+CiBzdGF0aWMgaW50IHRyeV90b19uZWdhdGVfZW50cnkoc3RydWN0IGNhY2hlX2RldGFpbCAq
+ZGV0YWlsLCBzdHJ1Y3QgY2FjaGVfaGVhZCAqaCkKIHsKIAlpbnQgcnY7CkBAIC0yNTUsMjQg
+KzI2NiwyMiBAQCBzdGF0aWMgaW50IHRyeV90b19uZWdhdGVfZW50cnkoc3RydWN0IGNhCiBp
+bnQgY2FjaGVfY2hlY2soc3RydWN0IGNhY2hlX2RldGFpbCAqZGV0YWlsLAogCQkgICAgc3Ry
+dWN0IGNhY2hlX2hlYWQgKmgsIHN0cnVjdCBjYWNoZV9yZXEgKnJxc3RwKQogewotCWludCBy
+djsKLQlsb25nIHJlZnJlc2hfYWdlLCBhZ2U7CisJaW50IHJ2LCByYzsKIAogCS8qIEZpcnN0
+IGRlY2lkZSByZXR1cm4gc3RhdHVzIGFzIGJlc3Qgd2UgY2FuICovCiAJcnYgPSBjYWNoZV9p
+c192YWxpZChkZXRhaWwsIGgpOwogCi0JLyogbm93IHNlZSBpZiB3ZSB3YW50IHRvIHN0YXJ0
+IGFuIHVwY2FsbCAqLwotCXJlZnJlc2hfYWdlID0gKGgtPmV4cGlyeV90aW1lIC0gaC0+bGFz
+dF9yZWZyZXNoKTsKLQlhZ2UgPSBzZWNvbmRzX3NpbmNlX2Jvb3QoKSAtIGgtPmxhc3RfcmVm
+cmVzaDsKLQogCWlmIChycXN0cCA9PSBOVUxMKSB7CiAJCWlmIChydiA9PSAtRUFHQUlOKQog
+CQkJcnYgPSAtRU5PRU5UOwotCX0gZWxzZSBpZiAocnYgPT0gLUVBR0FJTiB8fCBhZ2UgPiBy
+ZWZyZXNoX2FnZS8yKSB7Ci0JCWRwcmludGsoIlJQQzogICAgICAgV2FudCB1cGRhdGUsIHJl
+ZmFnZT0lbGQsIGFnZT0lbGRcbiIsCi0JCQkJcmVmcmVzaF9hZ2UsIGFnZSk7CisJfSBlbHNl
+IGlmIChydiA9PSAtRUFHQUlOIHx8IGNhY2hlX3dhbnRzX3VwY2FsbChoLCAwKSkgewogCQlp
+ZiAoIXRlc3RfYW5kX3NldF9iaXQoQ0FDSEVfUEVORElORywgJmgtPmZsYWdzKSkgewotCQkJ
+c3dpdGNoIChjYWNoZV9tYWtlX3VwY2FsbChkZXRhaWwsIGgpKSB7CisJCQlydiA9IGNhY2hl
+X2lzX3ZhbGlkKGRldGFpbCwgaCk7CisJCQlpZiAocnYgPT0gLUVBR0FJTiB8fCBjYWNoZV93
+YW50c191cGNhbGwoaCwgMSkpCisJCQkJcmMgPSBjYWNoZV9tYWtlX3VwY2FsbChkZXRhaWws
+IGgpOworCQkJZWxzZQorCQkJCXJjID0gLUVBR0FJTjsKKwkJCXN3aXRjaCAocmMpIHsKIAkJ
+CWNhc2UgLUVJTlZBTDoKIAkJCQlydiA9IHRyeV90b19uZWdhdGVfZW50cnkoZGV0YWlsLCBo
+KTsKIAkJCQlicmVhazsKCiMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjCgpGcm9t
+OiBCb2RvIFN0cm9lc3NlciA8YnN0cm9lc3NlckB0cy5mdWppdHN1LmNvbT4KRGF0ZTogRnJp
+LCAxNSBNYXIgMjAxMwpTdWJqZWN0OiBbUEFUQ0hdIG5ldDogc3VucnBjOiBmaXggcmFjZSBp
+biBSUEMgY2FjaGUKClRoaXMgcGF0Y2ggYXBwbGllcyB0byBsaW51eC0yLjYuMzIuNTktMC43
+LjEuNDU0My4wLlBURgpwbHVzIDIgZWFybGllciBwYXRjaGVzIHRoYXQgYWxzbyBmaXggcmFj
+ZXMKCklmIGJldHdlZW4gYSB0aHJlYWQncyBjYWxscyB0byBzdW5ycGNfY2FjaGVfbG9va3Vw
+KCkKYW5kIGNhY2hlX2NoZWNrKCkgdGhlIGNhY2hlIGVudHJ5IHJldHVybmVkIGJ5IGxvb2t1
+cAppcyBtb2RpZmllZCBieQphKSBzdW5ycGNfY2FjaGVfdXBkYXRlKCkgc2V0dGluZyBleHBp
+cnlfdGltZSBpcyBzZXQgdG8gMApiKSBjYWNoZV9jbGVhbigpIHVuaGFzaGluZyBpdCwgYXMg
+aXQgbm93IGlzIGV4cGlyZWQKdGhlbiB0aGUgdGhyZWFkIHdpbGwgcGVyZm9ybSBhbiB1cGNh
+bGwgZm9yIHRoZSBvdXRkYXRlZApjYWNoZSBlbnRyeS4gVGhhdCBjYWNoZV9yZXF1ZXN0IHdp
+bGwgc3RheSBvbiB0aGUgcXVldWUKZm9yIGV2ZXIsIGFzIGEgcmVwbHkgdG8gdGhlIHJlcXVl
+c3Qgd2lsbCBhbHdheXMgbWF0Y2gKYSBuZXdlciBjYWNoZSBlbnRyeSBhbmQgdGhlIHJlcXVl
+c3QgaXNuJ3QgZGVxdWV1ZWQuCk9UT0gsIGNhY2hlX2NsZWFuKCkgYWxyZWFkeSB1bmhhc2hl
+ZCB0aGUgb2xkIGVudHJ5LCB0aHVzCmNhY2hlX2NsZWFuKCkgd29uJ3QgZGVxdWV1ZSB0aGUg
+cmVxdWVzdCBhbHNvLgoKT24gdGhpcyBvbGRlciBTVyB2ZXJzaW9uLCB0aGUgcHJvYmxlbSBh
+ZGRpdGlvbmFsbHkgbGVhZHMKdG8gUlBDIHJlcXVlc3RzIGJlaW5nIGRyb3BwZWQuCgpUbyBm
+aXggdGhlIHByb2JsZW0sIGluIGNhY2hlX2NoZWNrKCkgd2UgcmVjaGVjayB0aGUgc3RhdGUK
+b2YgdGhlIGNhY2hlIGVudHJ5IGFmdGVyIGhhdmluZyBzZXQgQ0FDSEVfUEVORElORy4gU28g
+d2UKYXJlIHN1cmUgdG8gbmV2ZXIgZG8gYW4gdXBjYWxsIGZvciBhbiBvdXRkYXRlZCBlbnRy
+eS4KClNpZ25lZC1vZmYtYnk6IEJvZG8gU3Ryb2Vzc2VyIDxic3Ryb2Vzc2VyQHRzLmZ1aml0
+c3UuY29tPgotLS0KCi0tLSBhL25ldC9zdW5ycGMvY2FjaGUuYwkyMDEzLTAzLTE1IDIwOjAz
+OjU0LjAwMDAwMDAwMCArMDEwMAorKysgYi9uZXQvc3VucnBjL2NhY2hlLmMJMjAxMy0wMy0x
+NSAyMDoxNDoxMy4wMDAwMDAwMDAgKzAxMDAKQEAgLTE4NCw3ICsxODQsNyBAQCBzdGF0aWMg
+aW50IGNhY2hlX21ha2VfdXBjYWxsKHN0cnVjdCBjYWNoCiBzdGF0aWMgaW5saW5lIGludCBj
+YWNoZV9pc192YWxpZChzdHJ1Y3QgY2FjaGVfZGV0YWlsICpkZXRhaWwsIHN0cnVjdCBjYWNo
+ZV9oZWFkICpoKQogewogCWlmICghdGVzdF9iaXQoQ0FDSEVfVkFMSUQsICZoLT5mbGFncykg
+fHwKLQkgICAgaC0+ZXhwaXJ5X3RpbWUgPCBtb25vdG9uaWNfc2Vjb25kcygpKQorCSAgICAo
+aC0+ZXhwaXJ5X3RpbWUgJiYgaC0+ZXhwaXJ5X3RpbWUgPCBtb25vdG9uaWNfc2Vjb25kcygp
+KSkKIAkJcmV0dXJuIC1FQUdBSU47CiAJZWxzZSBpZiAoZGV0YWlsLT5mbHVzaF90aW1lID4g
+aC0+bGFzdF9yZWZyZXNoKQogCQlyZXR1cm4gLUVBR0FJTjsKQEAgLTE5Nyw2ICsxOTcsMTcg
+QEAgc3RhdGljIGlubGluZSBpbnQgY2FjaGVfaXNfdmFsaWQoc3RydWN0CiAJfQogfQogCitz
+dGF0aWMgaW5saW5lIGludCBjYWNoZV93YW50c191cGNhbGwoc3RydWN0IGNhY2hlX2hlYWQg
+KmgsIGludCBmaW5hbCkKK3sKKwlsb25nIHJlZnJlc2hfYWdlID0gKGgtPmV4cGlyeV90aW1l
+IC0gaC0+bGFzdF9yZWZyZXNoKTsKKwlsb25nIGFnZSA9IG1vbm90b25pY19zZWNvbmRzKCkg
+LSBoLT5sYXN0X3JlZnJlc2g7CisKKwlpZiAoZmluYWwpCisJCWRwcmludGsoIlJQQzogICAg
+ICAgV2FudCB1cGRhdGUsIHJlZmFnZT0lbGQsIGFnZT0lbGRcbiIsIHJlZnJlc2hfYWdlLCBh
+Z2UpOworCisJcmV0dXJuIGgtPmV4cGlyeV90aW1lICYmIGFnZSA+IHJlZnJlc2hfYWdlLzI7
+Cit9CisKIC8qCiAgKiBUaGlzIGlzIHRoZSBnZW5lcmljIGNhY2hlIG1hbmFnZW1lbnQgcm91
+dGluZSBmb3IgYWxsCiAgKiB0aGUgYXV0aGVudGljYXRpb24gY2FjaGVzLgpAQCAtMjE0LDI0
+ICsyMjUsMjIgQEAgc3RhdGljIGlubGluZSBpbnQgY2FjaGVfaXNfdmFsaWQoc3RydWN0CiBp
+bnQgY2FjaGVfY2hlY2soc3RydWN0IGNhY2hlX2RldGFpbCAqZGV0YWlsLAogCQkgICAgc3Ry
+dWN0IGNhY2hlX2hlYWQgKmgsIHN0cnVjdCBjYWNoZV9yZXEgKnJxc3RwKQogewotCWludCBy
+djsKLQlsb25nIHJlZnJlc2hfYWdlLCBhZ2U7CisJaW50IHJ2LCByYzsKIAogCS8qIEZpcnN0
+IGRlY2lkZSByZXR1cm4gc3RhdHVzIGFzIGJlc3Qgd2UgY2FuICovCiAJcnYgPSBjYWNoZV9p
+c192YWxpZChkZXRhaWwsIGgpOwogCi0JLyogbm93IHNlZSBpZiB3ZSB3YW50IHRvIHN0YXJ0
+IGFuIHVwY2FsbCAqLwotCXJlZnJlc2hfYWdlID0gKGgtPmV4cGlyeV90aW1lIC0gaC0+bGFz
+dF9yZWZyZXNoKTsKLQlhZ2UgPSBtb25vdG9uaWNfc2Vjb25kcygpIC0gaC0+bGFzdF9yZWZy
+ZXNoOwotCiAJaWYgKHJxc3RwID09IE5VTEwpIHsKIAkJaWYgKHJ2ID09IC1FQUdBSU4pCiAJ
+CQlydiA9IC1FTk9FTlQ7Ci0JfSBlbHNlIGlmIChydiA9PSAtRUFHQUlOIHx8IGFnZSA+IHJl
+ZnJlc2hfYWdlLzIpIHsKLQkJZHByaW50aygiUlBDOiAgICAgICBXYW50IHVwZGF0ZSwgcmVm
+YWdlPSVsZCwgYWdlPSVsZFxuIiwKLQkJCQlyZWZyZXNoX2FnZSwgYWdlKTsKKwl9IGVsc2Ug
+aWYgKHJ2ID09IC1FQUdBSU4gfHwgY2FjaGVfd2FudHNfdXBjYWxsKGgsIDApKSB7CiAJCWlm
+ICghdGVzdF9hbmRfc2V0X2JpdChDQUNIRV9QRU5ESU5HLCAmaC0+ZmxhZ3MpKSB7Ci0JCQlz
+d2l0Y2ggKGNhY2hlX21ha2VfdXBjYWxsKGRldGFpbCwgaCkpIHsKKwkJCXJ2ID0gY2FjaGVf
+aXNfdmFsaWQoZGV0YWlsLCBoKTsKKwkJCWlmIChydiA9PSAtRUFHQUlOIHx8IGNhY2hlX3dh
+bnRzX3VwY2FsbChoLCAxKSkKKwkJCQlyYyA9IGNhY2hlX21ha2VfdXBjYWxsKGRldGFpbCwg
+aCk7CisJCQllbHNlCisJCQkJcmMgPSAtRUFHQUlOOworCQkJc3dpdGNoIChyYykgewogCQkJ
+Y2FzZSAtRUlOVkFMOgogCQkJCXdyaXRlX2xvY2soJmRldGFpbC0+aGFzaF9sb2NrKTsKIAkJ
+CQlpZiAocnYpIHsK
 
-> nfsv4.1 client suspending fails with such info
-> 
-> Freezing of tasks failed after 20.00 seconds (1 tasks refusing to freeze, wq_busy=0):
-> nfsv4.1-svc     S ffff88007889f2e0     0  3191      2 0x00000080   
->  ffff88007b2f3e28 0000000000000046 ffff88007b2f2010 00000000000127c0
->  ffff880079b08000 00000000000127c0 ffff88007b2f3fd8 00000000000127c0
->  ffff88007b2f3fd8 00000000000127c0 ffffffff81a14410 ffff880079b08000
-> Call Trace:
->  [<ffffffff81441396>] schedule+0x64/0x66
->  [<ffffffffa06a6892>] nfs41_callback_svc+0x100/0x129 [nfsv4]
->  [<ffffffff8104fdb8>] ? wake_up_bit+0x2a/0x2a
->  [<ffffffffa06a6792>] ? nfs_callback_up+0x548/0x548 [nfsv4]
->  [<ffffffff8104f7e0>] kthread+0xb5/0xbd
->  [<ffffffff8104f72b>] ? kthread_freezable_should_stop+0x65/0x65
->  [<ffffffff8144912c>] ret_from_fork+0x7c/0xb0
->  [<ffffffff8104f72b>] ? kthread_freezable_should_stop+0x65/0x65
-> 
-> I read such threads
-> [1] nfs/sunrpc: allow freezing of tasks with NFS calls in flight
-> [2] LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
-> and then modify nfs41_callback_svc(). It works on my machine. I don't know
-> the details of freezing, so I'm not sure if the modification is reasonable.
-> This is not a formal patch. Thanks.
-> 
-> Signed-off-by: Yanchuan Nian <ycnian@gmail.com>
-> ---
->  fs/nfs/callback.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> index 5088b57..8addb7b 100644
-> --- a/fs/nfs/callback.c
-> +++ b/fs/nfs/callback.c
-> @@ -138,7 +138,7 @@ nfs41_callback_svc(void *vrqstp)
->  				error);
->  		} else {
->  			spin_unlock_bh(&serv->sv_cb_lock);
-> -			schedule();
-> +			freezable_schedule();
->  		}
->  		finish_wait(&serv->sv_cb_waitq, &wq);
->  	}
 
-I think it'd be better to have that thread call try_to_freeze()
-directly instead of doing this. There are some problems with
-freezable_schedule() that still need to be resolved and I suspect that
-it will eventually go away entirely.
-
-It's may be sufficient to simply call try_to_freeze() at the top of
-the loop, but that would need to be tested.
-
--- 
-Jeff Layton <jlayton@redhat.com>
