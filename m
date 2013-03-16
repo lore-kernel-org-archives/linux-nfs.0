@@ -1,91 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:41436 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750788Ab3CFFH4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Mar 2013 00:07:56 -0500
-Message-ID: <5136CEEB.5090505@parallels.com>
-Date: Wed, 6 Mar 2013 09:06:51 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from mail-ia0-f181.google.com ([209.85.210.181]:58254 "EHLO
+	mail-ia0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751439Ab3CPTzr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 16 Mar 2013 15:55:47 -0400
+Received: by mail-ia0-f181.google.com with SMTP id o25so1906226iad.26
+        for <linux-nfs@vger.kernel.org>; Sat, 16 Mar 2013 12:55:46 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v1 11/15] NFS: Clean up nfs4_proc_get_rootfh
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>,
+        Bryan Schumaker <bjschuma@netapp.com>
+Date: Sat, 16 Mar 2013 15:55:45 -0400
+Message-ID: <20130316195545.27329.86881.stgit@seurat.1015granger.net>
+In-Reply-To: <20130316195044.27329.11666.stgit@seurat.1015granger.net>
+References: <20130316195044.27329.11666.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: <linux-nfs@vger.kernel.org>, <Trond.Myklebust@netapp.com>,
-        <linux-kernel@vger.kernel.org>, <devel@openvz.org>
-Subject: Re: [PATCH] nfsd: check client tracker initialization result
-References: <20130228120959.6764.17787.stgit@localhost.localdomain> <20130305212001.GD15816@fieldses.org>
-In-Reply-To: <20130305212001.GD15816@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-06.03.2013 01:20, J. Bruce Fields пишет:
-> On Thu, Feb 28, 2013 at 03:09:59PM +0300, Stanislav Kinsbursky wrote:
->> Function nfsd4_client_tracking_init() can return error.
->
-> Before, I think that we the nfsd4_client_* functions just became no-ops
-> in this case.  With the result that no client records get written, and
-> so clients are unable to reclaim on the next boot.
->
-> Which is annoying, but possibly not as annoying as your server
-> completely refusing to start.
->
-> It's arguably more helpful in the long run to fail immediately when we
-> recognize reboot recovery isn't going to work.  But in practice this may
-> mean people that never knew they had a problem suddenly have servers
-> that don't start at all.
->
-> So I'm inclined to be more forgiving and leave this as it is.  But maybe
-> something like a warning printk would be appropriate.
->
+The long lines with no vertical white space make this function
+difficult for humans to read.  Add a proper documenting comment
+while we're here.
 
-Ok then.
-I'll add the warning anf convert the function to be "void" rather then "int".
-Thanks!
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: Bryan Schumaker <bjschuma@netapp.com>
+---
 
-> --b.
->
->>
->> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
->> ---
->>   fs/nfsd/nfs4state.c |    9 ++++++++-
->>   1 files changed, 8 insertions(+), 1 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index f194f86..fc4b81b 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -69,6 +69,7 @@ static u64 current_sessionid = 1;
->>
->>   /* forward declarations */
->>   static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
->> +void nfs4_state_shutdown_net(struct net *net);
->>
->>   /* Locking: */
->>
->> @@ -4942,7 +4943,9 @@ nfs4_state_start_net(struct net *net)
->>   	ret = nfs4_state_create_net(net);
->>   	if (ret)
->>   		return ret;
->> -	nfsd4_client_tracking_init(net);
->> +	ret = nfsd4_client_tracking_init(net);
->> +	if (ret)
->> +		goto out_tracking;
->>   	nn->boot_time = get_seconds();
->>   	locks_start_grace(net, &nn->nfsd4_manager);
->>   	nn->grace_ended = false;
->> @@ -4950,6 +4953,10 @@ nfs4_state_start_net(struct net *net)
->>   	       nn->nfsd4_grace, net);
->>   	queue_delayed_work(laundry_wq, &nn->laundromat_work, nn->nfsd4_grace * HZ);
->>   	return 0;
->> +
->> +out_tracking:
->> +	nfs4_state_destroy_net(net);
->> +	return ret;
->>   }
->>
->>   /* initialization to perform when the nfsd service is started: */
->>
+ fs/nfs/nfs4proc.c |   32 ++++++++++++++++++++++----------
+ 1 files changed, 22 insertions(+), 10 deletions(-)
 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index c05e78b..addcdaf 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2484,24 +2484,36 @@ static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	return status;
+ }
+ 
+-/*
+- * get the file handle for the "/" directory on the server
++static int nfs4_do_find_root_sec(struct nfs_server *server,
++		struct nfs_fh *fhandle, struct nfs_fsinfo *info)
++{
++	int mv = server->nfs_client->cl_minorversion;
++	return nfs_v4_minor_ops[mv]->find_root_sec(server, fhandle, info);
++}
++
++/**
++ * nfs4_proc_get_rootfh - get file handle for server's pseudoroot
++ * @server: initialized nfs_server handle
++ * @fhandle: we fill in the pseudo-fs root file handle
++ * @info: we fill in an FSINFO struct
++ *
++ * Returns zero on success, or a negative errno.
+  */
+ int nfs4_proc_get_rootfh(struct nfs_server *server, struct nfs_fh *fhandle,
+ 			 struct nfs_fsinfo *info)
+ {
+-	int minor_version = server->nfs_client->cl_minorversion;
+-	int status = nfs4_lookup_root(server, fhandle, info);
+-	if ((status == -NFS4ERR_WRONGSEC) && !(server->flags & NFS_MOUNT_SECFLAVOUR))
+-		/*
+-		 * A status of -NFS4ERR_WRONGSEC will be mapped to -EPERM
+-		 * by nfs4_map_errors() as this function exits.
+-		 */
+-		status = nfs_v4_minor_ops[minor_version]->find_root_sec(server, fhandle, info);
++	int status;
++
++	status = nfs4_lookup_root(server, fhandle, info);
++	if ((status == -NFS4ERR_WRONGSEC) &&
++	    !(server->flags & NFS_MOUNT_SECFLAVOUR))
++		status = nfs4_do_find_root_sec(server, fhandle, info);
++
+ 	if (status == 0)
+ 		status = nfs4_server_capabilities(server, fhandle);
+ 	if (status == 0)
+ 		status = nfs4_do_fsinfo(server, fhandle, info);
++
+ 	return nfs4_map_errors(status);
+ }
+ 
 
--- 
-Best regards,
-Stanislav Kinsbursky
