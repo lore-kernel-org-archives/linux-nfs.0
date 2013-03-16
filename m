@@ -1,212 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from esa-jnhn.mail.uoguelph.ca ([131.104.91.44]:34146 "EHLO
-	esa-jnhn.mail.uoguelph.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753011Ab3CUEE3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Mar 2013 00:04:29 -0400
-Date: Thu, 21 Mar 2013 00:04:28 -0400 (EDT)
-From: Rick Macklem <rmacklem@uoguelph.ca>
-To: Tom Haynes <Tom.Haynes@netapp.com>
-Cc: linux-nfs@vger.kernel.org, nfsv4 list <nfsv4@ietf.org>,
-        Christopher T Vogan <cvogan@us.ibm.com>
-Message-ID: <2092551082.4133350.1363838668301.JavaMail.root@erie.cs.uoguelph.ca>
-In-Reply-To: <39CEE4C6-A2A5-4D16-84BD-E1610FE67F36@netapp.com>
-Subject: Re: [nfsv4] What is NFSv4 READDIR doesn't return a filehandle....
+Received: from mail-ia0-f180.google.com ([209.85.210.180]:51179 "EHLO
+	mail-ia0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754612Ab3CPT4W (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 16 Mar 2013 15:56:22 -0400
+Received: by mail-ia0-f180.google.com with SMTP id f27so4125770iae.25
+        for <linux-nfs@vger.kernel.org>; Sat, 16 Mar 2013 12:56:21 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v1 15/15] NFS: Use "krb5i" to establish NFSv4 state whenever
+ possible
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
+Date: Sat, 16 Mar 2013 15:56:20 -0400
+Message-ID: <20130316195620.27329.83818.stgit@seurat.1015granger.net>
+In-Reply-To: <20130316195044.27329.11666.stgit@seurat.1015granger.net>
+References: <20130316195044.27329.11666.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Tom Haynes wrote:
-> Please note that I have cc'ed the NFSv4 list over at the IETF.
-> 
-> On Mar 20, 2013, at 3:40 PM, Christopher T Vogan <cvogan@us.ibm.com>
-> wrote:
-> 
-> > All,
-> >
-> > Sorry for this late posting, a coworker was made aware of this
-> > thread
-> > recently and
-> > has these replies to make. Our server implementation is the one
-> > being
-> > complained about in this thread.
-> >
-> >
-> > Quoted text is from various entries in this forum.
-> >
-> >
-> > Neil Brown:
-> > ===========
-> >> Just a thought: while coping with broken servers would not be a
-> >> good
-> > path to
-> >> follow, detecting protocol violations and reporting an error might
-> >> be...
-> >> should the NFS client treat a missing filehandle and a malformed
-> >> reply?
-> >
-> > The server is allowed to remove an attribute bit from an entry in
-> > the
-> > readdir
-> > reply, this is not "broken" nor is the reply "malformed". The lack
-> > of a
-> > filehandle in the reply is deterministic.
-> >
-> >
-> >
-> > Trond Myklebust:
-> > ================
-> >>> A customer has come across a server which does not return the
-> > filehandle
-> >>> information (is that allowed?).
-> >>
-> >> The filehandle attribute is a mandatory attribute according to
-> >> RFC3530,
-> > so I believe that the answer is "no".
-> >
-> > Mandatory is described in RFS 3530 as that the server must return
-> > the
-> > attribute
-> > on a GETATTR. (Section 5, page 36). There is nothing saying that it
-> > is
-> > mandatory to return on a READDIR. Our server will return the
-> > filehandle
-> > on a LOOKUP/GETATTR every time.
-> 
-> 
-> 
-> GETATTR and READDIR both return attributes. To be precise, they return
-> a fattr4.
-> 
-> Looking at Section 15.26.4 (roughly pages 277-279 of the most recent
-> copy)
-> of 3530bis (3530 is on the way to being replaced), READDIR states:
-> 
-> The READDIR operation retrieves a variable number of entries from a
-> filesystem directory and returns client requested attributes for each
-> entry along with information to allow the client to request
-> additional directory entries in a subsequent READDIR.
-> ...
-> On successful return, the server's response will provide a list of
-> directory entries. Each of these entries contains the name of the
-> directory entry, a cookie value for that entry, and the associated
-> attributes as requested. The "eof" flag has a value of TRUE if there
-> are no more entries in the directory.
-> 
-> Any client implementation has no way to request that any server
-> implementation
-> return the filehandle because the filehandle is not an attribute which
-> can be requested. I.e., it is mandatory.
-> 
-When I read this, all I think "requested" refers to is whether or not
-the client sets the bit "requesting" that attribute.
+Currently our client uses AUTH_UNIX for state management on Kerberos
+NFS mounts in some cases.  For example, if the first mount of a
+server specifies "sec=sys," the SETCLIENTID operation is performed
+with AUTH_UNIX.  Subsequent mounts using stronger security flavors
+can not change the flavor used for lease establishment.  This might
+be less security than an administrator was expecting.
 
-> If the intent was to allow the server to not return a filehandle for
-> READDIR but to
-> allow it to return one for GETATTR, then it would have been made
-> OPTIONAL.
-> 
-I don't know what the author's intent was, but since 5.1 only refers
-to GETATTR, nothing in RFC3530 indicates that the same rule applies
-to READDIR (ie. MANDATORY-->must always return it for READDIR).
+Dave Noveck's migration issues draft recommends the use of an
+integrity-protecting security flavor for the SETCLIENTID operation.
+Let's ignore the mount's sec= setting and use krb5i as the default
+security flavor for SETCLIENTID.
 
-> Whether or not the client used to work with such a server
-> implementation
-> or not is immaterial as far as standard compliance is concerned.
-> 
-> If you like, we can clean up the corresponding language in 3530bis to
-> explicitly state that REQUIRED attributes are indeed required whether
-> in response to GETATTR or READDIR.
-> 
-Personally, I think it should be "clarified" that for READDIR, the server
-can choose to not reply any of the attributes. That allows the server implementor
-more flexibility and since the old spec. didn't clearly require the REQUIRED
-ones, I don't see why the new spec. should, unless it in impractical for clients
-to allow this flexibility (and that is where the implementation evidence is
-relevent, imho).
+If our client can't establish a GSS context (eg. because it doesn't
+have a keytab or the server doesn't support Kerberos) we fall back
+to using AUTH_NULL.  For an operation that requires a
+machine credential (which never represents a particular user)
+AUTH_NULL is as secure as AUTH_UNIX.
 
-rick
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-> 
-> 
-> 
-> 
-> 
-> >
-> >
-> > Trond Myklebust:
-> > ================
-> >> My concern is that the client can't objectively judge what
-> >> constitutes a
-> >> valid filehandle and what does not until it tries to use it in an
-> >> RPC
-> >> call.
-> >
-> > Sure it can. In the context of this discussion, if the readdir entry
-> > has the filehandle attribute bit off in the reply, there is no
-> > filehandle.
-> >
-> > I would note in the scenario we sent a trace for, the Linux client
-> > had
-> > a filehandle for the node in question, and "misplaced" it after a
-> > readdir to the directory containing that node did not return the
-> > filehandle
-> > for that entry. So calling the server "broken" is objectively
-> > inaccurate.
-> >
-> > I would also note that this problem occurred after we upgraded to
-> > RHEL
-> > 6.3;
-> > the prior version did not have this issue, and our server did not
-> > change
-> > its
-> > behavior. My conclusion is that the means to obtain the filehandle
-> > was
-> > either broken by the client adding logic to assume a filehandle and
-> > obliterate
-> > the prior value after a readdir reply chose not to return it, or
-> > previously
-> > had a code path to lookup the node and obtain the filehandle, and
-> > removed
-> > that code path for some reason. So again, pointing to server
-> > "breakage"
-> > is objectively inaccurate.
-> >
-> > There are many references to "brokenness" or "server bugs" in this
-> > thread, and I take exception to it from a design and protocol
-> > conformance
-> > point of view.
-> >
-> > This condition is easily recoverable, as ANY missing attribute on a
-> > readdir
-> > is with a lookup/readdir. Our decision to not return the FH on a
-> > readdir
-> > reply under certain narrow conditions is not one of convenience but
-> > of
-> > limitations of some underlying filesystem types, and if
-> > "convenience" is
-> > to be used as an accusative, it can easily be returned to the
-> > client's
-> > refusal to deal with the legal withholding of an attribute on a
-> > readdir
-> > reply.
-> >
-> >
-> > Signed,
-> > Steve Huntington
-> > IBM z/OS NFS
-> >
-> >
-> > Christopher Vogan
-> > Dept. W98 NFS Development & Test
-> >
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs"
-> > in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at http://vger.kernel.org/majordomo-info.html
-> 
-> _______________________________________________
-> nfsv4 mailing list
-> nfsv4@ietf.org
-> https://www.ietf.org/mailman/listinfo/nfsv4
+ fs/nfs/nfs4client.c |    2 +-
+ fs/nfs/nfs4state.c  |   37 +++++--------------------------------
+ 2 files changed, 6 insertions(+), 33 deletions(-)
+
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index ac4fc9a..0194cab 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -199,7 +199,7 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+ 	clp->rpc_ops = &nfs_v4_clientops;
+ 
+ 	__set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
+-	error = nfs_create_rpc_client(clp, timeparms, authflavour);
++	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_GSS_KRB5I);
+ 	if (error < 0)
+ 		goto error;
+ 
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 6ace365..3e30e85 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1823,26 +1823,13 @@ int nfs4_discover_server_trunking(struct nfs_client *clp,
+ {
+ 	const struct nfs4_state_recovery_ops *ops =
+ 				clp->cl_mvops->reboot_recovery_ops;
+-	rpc_authflavor_t *flavors, flav, save;
+ 	struct rpc_clnt *clnt;
+ 	struct rpc_cred *cred;
+-	int i, len, status;
++	int i, status;
+ 
+ 	dprintk("NFS: %s: testing '%s'\n", __func__, clp->cl_hostname);
+ 
+-	len = NFS_MAX_SECFLAVORS;
+-	flavors = kcalloc(len, sizeof(*flavors), GFP_KERNEL);
+-	if (flavors == NULL) {
+-		status = -ENOMEM;
+-		goto out;
+-	}
+-	len = rpcauth_list_flavors(flavors, len);
+-	if (len < 0) {
+-		status = len;
+-		goto out_free;
+-	}
+ 	clnt = clp->cl_rpcclient;
+-	save = clnt->cl_auth->au_flavor;
+ 	i = 0;
+ 
+ 	mutex_lock(&nfs_clid_init_mutex);
+@@ -1857,12 +1844,6 @@ again:
+ 	switch (status) {
+ 	case 0:
+ 		break;
+-
+-	case -EACCES:
+-		if (clp->cl_machine_cred == NULL)
+-			break;
+-		/* Handle case where the user hasn't set up machine creds */
+-		nfs4_clear_machine_cred(clp);
+ 	case -NFS4ERR_DELAY:
+ 	case -ETIMEDOUT:
+ 	case -EAGAIN:
+@@ -1871,17 +1852,12 @@ again:
+ 		dprintk("NFS: %s after status %d, retrying\n",
+ 			__func__, status);
+ 		goto again;
+-
++	case -EACCES:
++		if (i++)
++			break;
+ 	case -NFS4ERR_CLID_INUSE:
+ 	case -NFS4ERR_WRONGSEC:
+-		status = -EPERM;
+-		if (i >= len)
+-			break;
+-
+-		flav = flavors[i++];
+-		if (flav == save)
+-			flav = flavors[i++];
+-		clnt = rpc_clone_client_set_auth(clnt, flav);
++		clnt = rpc_clone_client_set_auth(clnt, RPC_AUTH_NULL);
+ 		if (IS_ERR(clnt)) {
+ 			status = PTR_ERR(clnt);
+ 			break;
+@@ -1901,9 +1877,6 @@ again:
+ 
+ out_unlock:
+ 	mutex_unlock(&nfs_clid_init_mutex);
+-out_free:
+-	kfree(flavors);
+-out:
+ 	dprintk("NFS: %s: status = %d\n", __func__, status);
+ 	return status;
+ }
+
