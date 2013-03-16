@@ -1,79 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60987 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752845Ab3CUO4X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Mar 2013 10:56:23 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 7/9] nfsd4: simplify bind_conn_to_session locking
-Date: Thu, 21 Mar 2013 10:56:18 -0400
-Message-Id: <1363877780-28825-8-git-send-email-bfields@redhat.com>
-In-Reply-To: <1363877780-28825-1-git-send-email-bfields@redhat.com>
-References: <1363877780-28825-1-git-send-email-bfields@redhat.com>
+Received: from mail-ie0-f182.google.com ([209.85.223.182]:53870 "EHLO
+	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751240Ab3CPTy1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 16 Mar 2013 15:54:27 -0400
+Received: by mail-ie0-f182.google.com with SMTP id k14so5623141iea.41
+        for <linux-nfs@vger.kernel.org>; Sat, 16 Mar 2013 12:54:27 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v1 02/15] NFS: Remove unneeded forward declaration
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
+Date: Sat, 16 Mar 2013 15:54:25 -0400
+Message-ID: <20130316195425.27329.28528.stgit@seurat.1015granger.net>
+In-Reply-To: <20130316195044.27329.11666.stgit@seurat.1015granger.net>
+References: <20130316195044.27329.11666.stgit@seurat.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+I've built with NFSv4 enabled and disabled.  This forward
+declaration does not seem to be required.
 
-The locking here is very fiddly, and there's no reason for us to be
-setting cstate->session, since this is the only op in the compound.
-Let's just take the state lock and drop the reference counting.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4state.c |   28 ++++++++++++++--------------
- 1 file changed, 14 insertions(+), 14 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 05ebcf5..0ff616f 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1883,30 +1883,30 @@ __be32 nfsd4_bind_conn_to_session(struct svc_rqst *rqstp,
- {
- 	__be32 status;
- 	struct nfsd4_conn *conn;
-+	struct nfsd4_session *session;
- 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+ include/linux/nfs_xdr.h |    3 ---
+ 1 files changed, 0 insertions(+), 3 deletions(-)
+
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 4b993d3..94b0406 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -14,9 +14,6 @@
+ #define NFS_DEF_FILE_IO_SIZE	(4096U)
+ #define NFS_MIN_FILE_IO_SIZE	(1024U)
  
- 	if (!nfsd4_last_compound_op(rqstp))
- 		return nfserr_not_only_op;
-+	nfs4_lock_state();
- 	spin_lock(&nn->client_lock);
--	cstate->session = find_in_sessionid_hashtbl(&bcts->sessionid, SVC_NET(rqstp));
--	/* Sorta weird: we only need the refcnt'ing because new_conn acquires
--	 * client_lock iself: */
--	if (cstate->session) {
--		nfsd4_get_session(cstate->session);
--		atomic_inc(&cstate->session->se_client->cl_refcount);
--	}
-+	session = find_in_sessionid_hashtbl(&bcts->sessionid, SVC_NET(rqstp));
- 	spin_unlock(&nn->client_lock);
--	if (!cstate->session)
--		return nfserr_badsession;
+-/* Forward declaration for NFS v3 */
+-struct nfs4_secinfo_flavors;
 -
-+	status = nfserr_badsession;
-+	if (!session)
-+		goto out;
- 	status = nfsd4_map_bcts_dir(&bcts->dir);
- 	if (status)
--		return status;
-+		goto out;
- 	conn = alloc_conn(rqstp, bcts->dir);
-+	status = nfserr_jukebox;
- 	if (!conn)
--		return nfserr_jukebox;
--	nfsd4_init_conn(rqstp, conn, cstate->session);
--	return nfs_ok;
-+		goto out;
-+	nfsd4_init_conn(rqstp, conn, session);
-+	status = nfs_ok;
-+out:
-+	nfs4_unlock_state();
-+	return status;
- }
- 
- static bool nfsd4_compound_in_session(struct nfsd4_session *session, struct nfs4_sessionid *sid)
--- 
-1.7.9.5
+ struct nfs4_string {
+ 	unsigned int len;
+ 	char *data;
 
