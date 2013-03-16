@@ -1,42 +1,164 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-oa0-f45.google.com ([209.85.219.45]:60309 "EHLO
-	mail-oa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753202Ab3CROtM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Mar 2013 10:49:12 -0400
-Received: by mail-oa0-f45.google.com with SMTP id o6so5735490oag.32
-        for <linux-nfs@vger.kernel.org>; Mon, 18 Mar 2013 07:49:12 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: only unhash DRC entries that are in the hashtable
-Date: Mon, 18 Mar 2013 10:49:07 -0400
-Message-Id: <1363618147-24676-1-git-send-email-jlayton@redhat.com>
+Received: from mail-ia0-f174.google.com ([209.85.210.174]:57567 "EHLO
+	mail-ia0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751480Ab3CPTzD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 16 Mar 2013 15:55:03 -0400
+Received: by mail-ia0-f174.google.com with SMTP id b35so131849iac.19
+        for <linux-nfs@vger.kernel.org>; Sat, 16 Mar 2013 12:55:02 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v1 06/15] SUNRPC: Consider qop when looking up pseudoflavors
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
+Date: Sat, 16 Mar 2013 15:55:01 -0400
+Message-ID: <20130316195501.27329.46418.stgit@seurat.1015granger.net>
+In-Reply-To: <20130316195044.27329.11666.stgit@seurat.1015granger.net>
+References: <20130316195044.27329.11666.stgit@seurat.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It's not safe to call hlist_del() on a newly initialized hlist_node.
-That leads to a NULL pointer dereference. Only do that if the entry
-is hashed.
+The NFSv4 SECINFO operation returns a list of security flavors that
+the server supports for a particular share.  An NFSv4 client is
+supposed to pick a pseudoflavor it supports that corresponds to one
+of the flavors returned by the server.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+GSS flavors in this list have a GSS tuple that identify a specific
+GSS pseudoflavor.
+
+Currently our client ignores the GSS tuple's "qop" value.  A
+matching pseudoflavor is chosen based only on the OID and service
+value.
+
+So far this omission has not had much effect on Linux.  The NFSv4
+protocol currently supports only one qop value: GSS_C_QOP_DEFAULT,
+also known as zero.
+
+However, if an NFSv4 server happens to return something other than
+zero in the qop field, our client won't notice.  This could cause
+the client to behave in incorrect ways that could have security
+implications.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfscache.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index f5ad28e..ca05f6d 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -102,7 +102,8 @@ nfsd_reply_cache_free_locked(struct svc_cacherep *rp)
+ include/linux/sunrpc/gss_api.h        |    5 ++++-
+ net/sunrpc/auth_gss/gss_krb5_mech.c   |    3 +++
+ net/sunrpc/auth_gss/gss_mech_switch.c |   20 ++++++++++++++------
+ net/sunrpc/auth_gss/svcauth_gss.c     |    4 +++-
+ 4 files changed, 24 insertions(+), 8 deletions(-)
+
+diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
+index aba7687..96e5a81 100644
+--- a/include/linux/sunrpc/gss_api.h
++++ b/include/linux/sunrpc/gss_api.h
+@@ -25,6 +25,7 @@ struct gss_ctx {
+ 
+ #define GSS_C_NO_BUFFER		((struct xdr_netobj) 0)
+ #define GSS_C_NO_CONTEXT	((struct gss_ctx *) 0)
++#define GSS_C_QOP_DEFAULT	(0)
+ 
+ /*XXX  arbitrary length - is this set somewhere? */
+ #define GSS_OID_MAX_LEN 32
+@@ -68,12 +69,14 @@ u32 gss_unwrap(
+ u32 gss_delete_sec_context(
+ 		struct gss_ctx		**ctx_id);
+ 
+-u32 gss_svc_to_pseudoflavor(struct gss_api_mech *, u32 service);
++rpc_authflavor_t gss_svc_to_pseudoflavor(struct gss_api_mech *, u32 qop,
++					u32 service);
+ u32 gss_pseudoflavor_to_service(struct gss_api_mech *, u32 pseudoflavor);
+ char *gss_service_to_auth_domain_name(struct gss_api_mech *, u32 service);
+ 
+ struct pf_desc {
+ 	u32	pseudoflavor;
++	u32	qop;
+ 	u32	service;
+ 	char	*name;
+ 	char	*auth_domain_name;
+diff --git a/net/sunrpc/auth_gss/gss_krb5_mech.c b/net/sunrpc/auth_gss/gss_krb5_mech.c
+index b822ec5..33255ff 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_mech.c
++++ b/net/sunrpc/auth_gss/gss_krb5_mech.c
+@@ -729,16 +729,19 @@ static const struct gss_api_ops gss_kerberos_ops = {
+ static struct pf_desc gss_kerberos_pfs[] = {
+ 	[0] = {
+ 		.pseudoflavor = RPC_AUTH_GSS_KRB5,
++		.qop = GSS_C_QOP_DEFAULT,
+ 		.service = RPC_GSS_SVC_NONE,
+ 		.name = "krb5",
+ 	},
+ 	[1] = {
+ 		.pseudoflavor = RPC_AUTH_GSS_KRB5I,
++		.qop = GSS_C_QOP_DEFAULT,
+ 		.service = RPC_GSS_SVC_INTEGRITY,
+ 		.name = "krb5i",
+ 	},
+ 	[2] = {
+ 		.pseudoflavor = RPC_AUTH_GSS_KRB5P,
++		.qop = GSS_C_QOP_DEFAULT,
+ 		.service = RPC_GSS_SVC_PRIVACY,
+ 		.name = "krb5p",
+ 	},
+diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
+index 92a7240..81fb6f3 100644
+--- a/net/sunrpc/auth_gss/gss_mech_switch.c
++++ b/net/sunrpc/auth_gss/gss_mech_switch.c
+@@ -271,19 +271,27 @@ int gss_mech_list_pseudoflavors(rpc_authflavor_t *array_ptr, int size)
+ 	return i;
+ }
+ 
+-u32
+-gss_svc_to_pseudoflavor(struct gss_api_mech *gm, u32 service)
++/**
++ * gss_svc_to_pseudoflavor - map a GSS service number to a pseudoflavor
++ * @gm: GSS mechanism handle
++ * @qop: GSS quality-of-protection value
++ * @service: GSS service value
++ *
++ * Returns a matching security flavor, or RPC_AUTH_MAXFLAVOR if none is found.
++ */
++rpc_authflavor_t gss_svc_to_pseudoflavor(struct gss_api_mech *gm, u32 qop,
++					 u32 service)
  {
- 	if (rp->c_type == RC_REPLBUFF)
- 		kfree(rp->c_replvec.iov_base);
--	hlist_del(&rp->c_hash);
-+	if (!hlist_unhashed(&rp->c_hash))
-+		hlist_del(&rp->c_hash);
- 	list_del(&rp->c_lru);
- 	--num_drc_entries;
- 	kmem_cache_free(drc_slab, rp);
--- 
-1.7.11.7
+ 	int i;
+ 
+ 	for (i = 0; i < gm->gm_pf_num; i++) {
+-		if (gm->gm_pfs[i].service == service) {
++		if (gm->gm_pfs[i].qop == qop &&
++		    gm->gm_pfs[i].service == service) {
+ 			return gm->gm_pfs[i].pseudoflavor;
+ 		}
+ 	}
+-	return RPC_AUTH_MAXFLAVOR; /* illegal value */
++	return RPC_AUTH_MAXFLAVOR;
+ }
+-EXPORT_SYMBOL_GPL(gss_svc_to_pseudoflavor);
+ 
+ /**
+  * gss_mech_info2flavor - look up a pseudoflavor given a GSS tuple
+@@ -301,7 +309,7 @@ rpc_authflavor_t gss_mech_info2flavor(struct rpcsec_gss_info *info)
+ 	if (gm == NULL)
+ 		return RPC_AUTH_MAXFLAVOR;
+ 
+-	pseudoflavor = gss_svc_to_pseudoflavor(gm, info->service);
++	pseudoflavor = gss_svc_to_pseudoflavor(gm, info->qop, info->service);
+ 
+ 	gss_mech_put(gm);
+ 	return pseudoflavor;
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index f7d34e7..74f6d30 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -1216,7 +1216,9 @@ svcauth_gss_accept(struct svc_rqst *rqstp, __be32 *authp)
+ 		svcdata->rsci = rsci;
+ 		cache_get(&rsci->h);
+ 		rqstp->rq_cred.cr_flavor = gss_svc_to_pseudoflavor(
+-					rsci->mechctx->mech_type, gc->gc_svc);
++					rsci->mechctx->mech_type,
++					GSS_C_QOP_DEFAULT,
++					gc->gc_svc);
+ 		ret = SVC_OK;
+ 		goto out;
+ 	}
 
