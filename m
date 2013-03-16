@@ -1,135 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:47379 "EHLO mx1.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757777Ab3CUONG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Mar 2013 10:13:06 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Benny Halevy <bhalevy@tonian.com>, Boaz Harrosh <bharrosh@panasas.com>,
-        Peng Tao <bergwolf@gmail.com>
-Subject: [PATCH v2 2/3] NFSv4.1: Always clear the NFS_INO_LAYOUTCOMMIT in layoutreturn
-Date: Thu, 21 Mar 2013 10:13:00 -0400
-Message-Id: <1363875181-7147-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1363875181-7147-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1363875181-7147-1-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-ia0-f174.google.com ([209.85.210.174]:47734 "EHLO
+	mail-ia0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751439Ab3CPTz3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 16 Mar 2013 15:55:29 -0400
+Received: by mail-ia0-f174.google.com with SMTP id b35so132021iac.19
+        for <linux-nfs@vger.kernel.org>; Sat, 16 Mar 2013 12:55:29 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v1 09/15] SUNRPC: Remove EXPORT_SYMBOL_GPL() from GSS mech
+ switch
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
+Date: Sat, 16 Mar 2013 15:55:27 -0400
+Message-ID: <20130316195527.27329.8603.stgit@seurat.1015granger.net>
+In-Reply-To: <20130316195044.27329.11666.stgit@seurat.1015granger.net>
+References: <20130316195044.27329.11666.stgit@seurat.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Note that clearing NFS_INO_LAYOUTCOMMIT is tricky, since it requires
-you to also clear the NFS_LSEG_LAYOUTCOMMIT bits from the layout
-segments.
-The only two sites that need to do this are the ones that call
-pnfs_return_layout() without first doing a layout commit.
+Clean up: Reduce the symbol table footprint for auth_rpcgss.ko by
+removing exported symbols for functions that are no longer used
+outside of auth_rpcgss.ko.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Acked-by: Benny Halevy <bhalevy@tonian.com>
-Cc: stable@vger.kernel.org
+The remaining two EXPORTs in gss_mech_switch.c get documenting
+comments.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/nfs4filelayout.c |  1 -
- fs/nfs/pnfs.c           | 35 +++++++++++++++++++++++++++--------
- 2 files changed, 27 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 49eeb04..4fb234d 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -129,7 +129,6 @@ static void filelayout_fenceme(struct inode *inode, struct pnfs_layout_hdr *lo)
+ net/sunrpc/auth_gss/gss_mech_switch.c |   26 +++++++++++++-------------
+ 1 files changed, 13 insertions(+), 13 deletions(-)
+
+diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
+index 8941652..79881d6 100644
+--- a/net/sunrpc/auth_gss/gss_mech_switch.c
++++ b/net/sunrpc/auth_gss/gss_mech_switch.c
+@@ -103,8 +103,13 @@ out:
+ 	return status;
+ }
+ 
+-int
+-gss_mech_register(struct gss_api_mech *gm)
++/**
++ * gss_mech_register - register a GSS mechanism
++ * @gm: GSS mechanism handle
++ *
++ * Returns zero if successful, or a negative errno.
++ */
++int gss_mech_register(struct gss_api_mech *gm)
  {
- 	if (!test_and_clear_bit(NFS_LAYOUT_RETURN, &lo->plh_flags))
- 		return;
--	clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags);
- 	pnfs_return_layout(inode);
- }
+ 	int status;
  
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index c6bbb53..b9d0682 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -417,6 +417,16 @@ should_free_lseg(struct pnfs_layout_range *lseg_range,
- 	       lo_seg_intersecting(lseg_range, recall_range);
+@@ -117,11 +122,14 @@ gss_mech_register(struct gss_api_mech *gm)
+ 	dprintk("RPC:       registered gss mechanism %s\n", gm->gm_name);
+ 	return 0;
  }
- 
-+static bool lseg_dec_and_remove_zero(struct pnfs_layout_segment *lseg,
-+		struct list_head *tmp_list)
-+{
-+	if (!atomic_dec_and_test(&lseg->pls_refcount))
-+		return false;
-+	pnfs_layout_remove_lseg(lseg->pls_layout, lseg);
-+	list_add(&lseg->pls_list, tmp_list);
-+	return true;
-+}
-+
- /* Returns 1 if lseg is removed from list, 0 otherwise */
- static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
- 			     struct list_head *tmp_list)
-@@ -430,11 +440,8 @@ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
- 		 */
- 		dprintk("%s: lseg %p ref %d\n", __func__, lseg,
- 			atomic_read(&lseg->pls_refcount));
--		if (atomic_dec_and_test(&lseg->pls_refcount)) {
--			pnfs_layout_remove_lseg(lseg->pls_layout, lseg);
--			list_add(&lseg->pls_list, tmp_list);
-+		if (lseg_dec_and_remove_zero(lseg, tmp_list))
- 			rv = 1;
--		}
- 	}
- 	return rv;
- }
-@@ -777,6 +784,21 @@ send_layoutget(struct pnfs_layout_hdr *lo,
- 	return lseg;
- }
- 
-+static void pnfs_clear_layoutcommit(struct inode *inode,
-+		struct list_head *head)
-+{
-+	struct nfs_inode *nfsi = NFS_I(inode);
-+	struct pnfs_layout_segment *lseg, *tmp;
-+
-+	if (!test_and_clear_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags))
-+		return;
-+	list_for_each_entry_safe(lseg, tmp, &nfsi->layout->plh_segs, pls_list) {
-+		if (!test_and_clear_bit(NFS_LSEG_LAYOUTCOMMIT, &lseg->pls_flags))
-+			continue;
-+		lseg_dec_and_remove_zero(lseg, head);
-+	}
-+}
-+
- /*
-  * Initiates a LAYOUTRETURN(FILE), and removes the pnfs_layout_hdr
-  * when the layout segment list is empty.
-@@ -808,6 +830,7 @@ _pnfs_return_layout(struct inode *ino)
- 	/* Reference matched in nfs4_layoutreturn_release */
- 	pnfs_get_layout_hdr(lo);
- 	empty = list_empty(&lo->plh_segs);
-+	pnfs_clear_layoutcommit(ino, &tmp_list);
- 	pnfs_mark_matching_lsegs_invalid(lo, &tmp_list, NULL);
- 	/* Don't send a LAYOUTRETURN if list was initially empty */
- 	if (empty) {
-@@ -820,8 +843,6 @@ _pnfs_return_layout(struct inode *ino)
- 	spin_unlock(&ino->i_lock);
- 	pnfs_free_lseg_list(&tmp_list);
- 
--	WARN_ON(test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags));
 -
- 	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
- 	if (unlikely(lrp == NULL)) {
- 		status = -ENOMEM;
-@@ -1458,7 +1479,6 @@ static void pnfs_ld_handle_write_error(struct nfs_write_data *data)
- 	dprintk("pnfs write error = %d\n", hdr->pnfs_error);
- 	if (NFS_SERVER(hdr->inode)->pnfs_curr_ld->flags &
- 	    PNFS_LAYOUTRET_ON_ERROR) {
--		clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(hdr->inode)->flags);
- 		pnfs_return_layout(hdr->inode);
+ EXPORT_SYMBOL_GPL(gss_mech_register);
+ 
+-void
+-gss_mech_unregister(struct gss_api_mech *gm)
++/**
++ * gss_mech_unregister - release a GSS mechanism
++ * @gm: GSS mechanism handle
++ *
++ */
++void gss_mech_unregister(struct gss_api_mech *gm)
+ {
+ 	spin_lock(&registered_mechs_lock);
+ 	list_del(&gm->gm_list);
+@@ -129,7 +137,6 @@ gss_mech_unregister(struct gss_api_mech *gm)
+ 	dprintk("RPC:       unregistered gss mechanism %s\n", gm->gm_name);
+ 	gss_mech_free(gm);
+ }
+-
+ EXPORT_SYMBOL_GPL(gss_mech_unregister);
+ 
+ static struct gss_api_mech *gss_mech_get(struct gss_api_mech *gm)
+@@ -167,7 +174,6 @@ struct gss_api_mech * gss_mech_get_by_name(const char *name)
  	}
- 	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags))
-@@ -1613,7 +1633,6 @@ static void pnfs_ld_handle_read_error(struct nfs_read_data *data)
- 	dprintk("pnfs read error = %d\n", hdr->pnfs_error);
- 	if (NFS_SERVER(hdr->inode)->pnfs_curr_ld->flags &
- 	    PNFS_LAYOUTRET_ON_ERROR) {
--		clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(hdr->inode)->flags);
- 		pnfs_return_layout(hdr->inode);
- 	}
- 	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags))
--- 
-1.8.1.4
+ 	return gm;
+ }
+-EXPORT_SYMBOL_GPL(gss_mech_get_by_name);
+ 
+ static struct gss_api_mech *gss_mech_get_by_OID(struct rpcsec_gss_oid *obj)
+ {
+@@ -355,8 +361,6 @@ gss_pseudoflavor_to_service(struct gss_api_mech *gm, u32 pseudoflavor)
+ 	return 0;
+ }
+ 
+-EXPORT_SYMBOL_GPL(gss_pseudoflavor_to_service);
+-
+ char *
+ gss_service_to_auth_domain_name(struct gss_api_mech *gm, u32 service)
+ {
+@@ -369,8 +373,6 @@ gss_service_to_auth_domain_name(struct gss_api_mech *gm, u32 service)
+ 	return NULL;
+ }
+ 
+-EXPORT_SYMBOL_GPL(gss_service_to_auth_domain_name);
+-
+ void
+ gss_mech_put(struct gss_api_mech * gm)
+ {
+@@ -378,8 +380,6 @@ gss_mech_put(struct gss_api_mech * gm)
+ 		module_put(gm->gm_owner);
+ }
+ 
+-EXPORT_SYMBOL_GPL(gss_mech_put);
+-
+ /* The mech could probably be determined from the token instead, but it's just
+  * as easy for now to pass it in. */
+ int
 
