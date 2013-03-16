@@ -1,104 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42743 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754025Ab3C2OXf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Mar 2013 10:23:35 -0400
-Date: Fri, 29 Mar 2013 10:23:31 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Dave Quigley <dpquigl@davequigley.com>
-Cc: Steve Dickson <SteveD@redhat.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 13/14] NFSD: Server implementation of MAC Labeling
-Message-ID: <20130329142331.GA22307@fieldses.org>
-References: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
- <1364478845-29796-14-git-send-email-SteveD@redhat.com>
- <20130328185845.GI7080@fieldses.org>
- <20130328191918.GA14748@fieldses.org>
- <51550B67.40108@davequigley.com>
+Received: from mail-ie0-f175.google.com ([209.85.223.175]:49383 "EHLO
+	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751439Ab3CPTzU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 16 Mar 2013 15:55:20 -0400
+Received: by mail-ie0-f175.google.com with SMTP id c12so5572541ieb.20
+        for <linux-nfs@vger.kernel.org>; Sat, 16 Mar 2013 12:55:20 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v1 08/15] SUNRPC: Make gss_mech_get() static
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
+Date: Sat, 16 Mar 2013 15:55:19 -0400
+Message-ID: <20130316195518.27329.80288.stgit@seurat.1015granger.net>
+In-Reply-To: <20130316195044.27329.11666.stgit@seurat.1015granger.net>
+References: <20130316195044.27329.11666.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <51550B67.40108@davequigley.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 28, 2013 at 11:32:55PM -0400, Dave Quigley wrote:
-> On 3/28/2013 3:19 PM, J. Bruce Fields wrote:
-> >Dave, I think these are both questions for you?
-> >
-> >--b.
-> >
-> >On Thu, Mar 28, 2013 at 02:58:45PM -0400, bfields wrote:
-> >>On Thu, Mar 28, 2013 at 09:54:04AM -0400, Steve Dickson wrote:
-> >>>@@ -1988,6 +2044,50 @@ nfsd4_encode_aclname(struct svc_rqst *rqstp, struct nfs4_ace *ace,
-> >>>  			      FATTR4_WORD0_RDATTR_ERROR)
-> >>>  #define WORD1_ABSENT_FS_ATTRS FATTR4_WORD1_MOUNTED_ON_FILEID
-> >>>
-> >>>+#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
-> >>>+static inline __be32
-> >>>+nfsd4_encode_security_label(struct svc_rqst *rqstp, struct dentry *dentry, __be32 **pp, int *buflen)
-> >>>+{
-> >>>+	void *context;
-> >>>+	int err;
-> >>>+	int len;
-> >>>+	uint32_t pi = 0;
-> >>>+	uint32_t lfs = 0;
-> >>>+	__be32 *p = *pp;
-> >>>+
-> >>>+	err = 0;
-> >>>+	(void)security_inode_getsecctx(dentry->d_inode, &context, &len);
-> >>>+	if (len < 0)
-> >>>+		return nfserrno(len);
-> >>>+
-> >>>+	if (*buflen < ((XDR_QUADLEN(len) << 2) + 4 + 4 + 4)) {
-> >>>+		err = nfserr_resource;
-> >>>+		goto out;
-> >>>+	}
-> >>>+
-> >>>+	/* XXX: A call to the translation code should be placed here
-> >>>+	 * for now send 0  until we have that to indicate the null
-> >>>+	 * translation */
-> >>
-> >>Could we better a better comment here?
-> 
-> We could remove this comment all together if you want. We're trying
-> to indicate that at some point in the future there will be a label
-> translation facility like idmapd but for labels instead. This is
-> where the call would go if we had it. I had a basic version of the
-> code a long time ago and that is where I had the call but there was
-> way too much work to make it usable for now. Instead I just pass the
-> null translation indicator on the wire and we wave our hands and say
-> don't look at the man behind the curtain.
+gss_mech_get() is no longer used outside of gss_mech_switch.c.
 
-So how about just:
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-	/*
-	 * For now we use a 0 here to indicate the null translation; in
-	 * the future we may place a call to translation code here.
-	 */
+ include/linux/sunrpc/gss_api.h        |    3 ---
+ net/sunrpc/auth_gss/gss_mech_switch.c |    5 +----
+ 2 files changed, 1 insertions(+), 7 deletions(-)
 
-> 
-> >...
-> >>>+#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
-> >>>+__be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
-> >>>+		struct nfs4_label *label)
-> >>>+{
-> >>>+	__be32 error;
-> >>>+	int host_error;
-> >>>+	struct dentry *dentry;
-> >>>+
-> >>>+	/* XXX: should we have a MAY_SSECCTX? */
-> >>
-> >>Again: could we get an answer to this question?
-> 
-> I'm pretty sure we can just remove that comment. It was a question
-> from about 5 years ago now and I never found a compelling reason to
-> say yes to it.
+diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
+index fca2338..f32b7a4 100644
+--- a/include/linux/sunrpc/gss_api.h
++++ b/include/linux/sunrpc/gss_api.h
+@@ -145,9 +145,6 @@ struct gss_api_mech *gss_mech_get_by_pseudoflavor(u32);
+ /* Fill in an array with a list of supported pseudoflavors */
+ int gss_mech_list_pseudoflavors(rpc_authflavor_t *, int);
+ 
+-/* Just increments the mechanism's reference count and returns its input: */
+-struct gss_api_mech * gss_mech_get(struct gss_api_mech *);
+-
+ /* For every successful gss_mech_get or gss_mech_get_by_* call there must be a
+  * corresponding call to gss_mech_put. */
+ void gss_mech_put(struct gss_api_mech *);
+diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
+index deaa7ae..8941652 100644
+--- a/net/sunrpc/auth_gss/gss_mech_switch.c
++++ b/net/sunrpc/auth_gss/gss_mech_switch.c
+@@ -132,15 +132,12 @@ gss_mech_unregister(struct gss_api_mech *gm)
+ 
+ EXPORT_SYMBOL_GPL(gss_mech_unregister);
+ 
+-struct gss_api_mech *
+-gss_mech_get(struct gss_api_mech *gm)
++static struct gss_api_mech *gss_mech_get(struct gss_api_mech *gm)
+ {
+ 	__module_get(gm->gm_owner);
+ 	return gm;
+ }
+ 
+-EXPORT_SYMBOL_GPL(gss_mech_get);
+-
+ static struct gss_api_mech *
+ _gss_mech_get_by_name(const char *name)
+ {
 
-OK, let's remove the comment.
-
---b.
