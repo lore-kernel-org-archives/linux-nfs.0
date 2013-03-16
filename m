@@ -1,101 +1,276 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ea0-f178.google.com ([209.85.215.178]:41296 "EHLO
-	mail-ea0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751250Ab3CRQWf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Mar 2013 12:22:35 -0400
-Received: by mail-ea0-f178.google.com with SMTP id g14so2673964eak.23
-        for <linux-nfs@vger.kernel.org>; Mon, 18 Mar 2013 09:22:34 -0700 (PDT)
-Message-ID: <51473F46.10401@tonian.com>
-Date: Mon, 18 Mar 2013 18:22:30 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from mail-ie0-f175.google.com ([209.85.223.175]:59994 "EHLO
+	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751240Ab3CPTyp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 16 Mar 2013 15:54:45 -0400
+Received: by mail-ie0-f175.google.com with SMTP id c12so5692705ieb.34
+        for <linux-nfs@vger.kernel.org>; Sat, 16 Mar 2013 12:54:45 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v1 04/15] SUNRPC: Introduce rpcauth_get_pseudoflavor()
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
+Date: Sat, 16 Mar 2013 15:54:43 -0400
+Message-ID: <20130316195443.27329.94118.stgit@seurat.1015granger.net>
+In-Reply-To: <20130316195044.27329.11666.stgit@seurat.1015granger.net>
+References: <20130316195044.27329.11666.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Isaman, Fred" <Fred.Isaman@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "stable@kernel.org" <stable@kernel.org>
-Subject: Re: [PATCH] pnfs: do not reset to mds if wb_offset != wb_pgbase
-References: <1363617532-24172-1-git-send-email-bhalevy@tonian.com> <1363622128.4351.15.camel@leira.trondhjem.org>
-In-Reply-To: <1363622128.4351.15.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-03-18 17:55, Myklebust, Trond wrote:
-> On Mon, 2013-03-18 at 16:38 +0200, Benny Halevy wrote:
->> We're seeing roughly 20% of the I/Os going to the MDS
->> when installing a VM over KVM in "none" caching mode (O_DIRECT).
->> Instrumenting the client reveled that this is caused by buffer
->> alignment vs. file offset alignment.
->> Besides being a performance problem, when the MDS caches data
->> this is also manifested as data corruption when data is written
->> first via the MDS, then via the DS, eventually the stale data is
->> read back from the MDS.
-> 
-> That's why we should return the layout.
-> 
+A SECINFO reply may contain flavors whose kernel module is not
+yet loaded by the client's kernel.  A new RPC client API, called
+rpcauth_get_pseudoflavor(), is introduced to do proper checking
+for support of a security flavor.
 
-We are not in this case.
+When this API is invoked, the RPC client now tries to load the
+module for each flavor first before performing the "is this
+supported?" check.  This means if a module is available on the
+client, but has not been loaded yet, it will be loaded and
+registered automatically when the SECINFO reply is processed.
 
->> Note that this check exists also for the file layout specific
->> pg_init_* functions.  The objects (ORE) and block
->> (bl_{read,write}_pagelist) layouts seem to deal correctly with
->> splitting IOs in the case where req->wb_offset != req->wb_pgbase
->> though this hasn't been tested wen submitting this patch.
->>
->> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
->> Cc: stable@kernel.org [>= 3.5]
->> Cc: Boaz Harrosh <bharrosh@panasas.com>
->> Cc: Peng Tao <tao.peng@emc.com>
->> ---
->>  fs/nfs/pnfs.c | 18 ++++++++++--------
->>  1 file changed, 10 insertions(+), 8 deletions(-)
->>
->> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->> index 483bd94..f12e456 100644
->> --- a/fs/nfs/pnfs.c
->> +++ b/fs/nfs/pnfs.c
->> @@ -1322,10 +1322,11 @@ struct pnfs_layout_segment *
->>  
->>  	WARN_ON_ONCE(pgio->pg_lseg != NULL);
->>  
->> -	if (req->wb_offset != req->wb_pgbase) {
->> -		nfs_pageio_reset_read_mds(pgio);
->> -		return;
->> -	}
->> +	if (req->wb_offset != req->wb_pgbase)
->> +		dprintk("%s: inode=%ld: offset=%llu wb_bytes=%u wb_offset=%u wb_pgbase=%u\n",
->> +			__func__, pgio->pg_inode->i_ino,
->> +			(((unsigned long long)req->wb_index) << PAGE_CACHE_SHIFT) + req->wb_offset,
->> +			req->wb_bytes, req->wb_offset, req->wb_pgbase);
->>  
->>  	if (pgio->pg_dreq == NULL)
->>  		rd_size = i_size_read(pgio->pg_inode) - req_offset(req);
->> @@ -1351,10 +1352,11 @@ struct pnfs_layout_segment *
->>  {
->>  	WARN_ON_ONCE(pgio->pg_lseg != NULL);
->>  
->> -	if (req->wb_offset != req->wb_pgbase) {
->> -		nfs_pageio_reset_write_mds(pgio);
->> -		return;
->> -	}
->> +	if (req->wb_offset != req->wb_pgbase)
->> +		dprintk("%s: inode=%ld: offset=%llu wb_bytes=%u wb_offset=%u wb_pgbase=%u\n",
->> +			__func__, pgio->pg_inode->i_ino,
->> +			(((unsigned long long)req->wb_index) << PAGE_CACHE_SHIFT) + req->wb_offset,
->> +			req->wb_bytes, req->wb_offset, req->wb_pgbase);
->>  
->>  	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
->>  					   req->wb_context,
-> 
-> NACK. I see no evidence that we've addressed the issues that were raised
-> by Fred in commit 1825a0d08f22463e5a8f4b1636473efd057a3479 (NFS: prepare
-> coalesce testing for directio).
-> If you think that his concerns about the coalescing assumptions are no
-> longer true, then please point to why this is the case. AFAICR that
-> patch was added to fix corruption issues.
-> 
+The new API can take a full GSS tuple (OID, QoP, and service).
+Previously only the OID and service were considered.
 
-We see no problems with this patch with the workloads we're testing.
-Do you have a test that reproduces the original problem that we can try running?
+nfs_find_best_sec() is updated to verify all flavors requested in a
+SECINFO reply, including AUTH_NULL and AUTH_UNIX.  Previously these
+two flavors were simply assumed to be supported without consulting
+the RPC client.
 
-Benny
+Note that the replaced version of nfs_find_best_sec() can return
+RPC_AUTH_MAXFLAVOR if the server returns a recognized OID but an
+unsupported "service" value.  nfs_find_best_sec() now returns
+RPC_AUTH_UNIX in this case.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ fs/nfs/nfs4namespace.c                |   41 +++++++++++++++++++--------------
+ include/linux/sunrpc/auth.h           |    5 ++++
+ include/linux/sunrpc/gss_api.h        |    5 ++--
+ net/sunrpc/auth.c                     |   35 ++++++++++++++++++++++++++++
+ net/sunrpc/auth_gss/auth_gss.c        |    1 +
+ net/sunrpc/auth_gss/gss_mech_switch.c |   28 +++++++++++++++++++----
+ 6 files changed, 89 insertions(+), 26 deletions(-)
+
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index 88231c9..cdb0b41 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -134,33 +134,38 @@ static size_t nfs_parse_server_name(char *string, size_t len,
+ 	return ret;
+ }
+ 
++/**
++ * nfs_find_best_sec - Find a security mechanism supported locally
++ * @flavors: List of security tuples returned by SECINFO procedure
++ *
++ * Return the pseudoflavor of the first security mechanism in
++ * "flavors" that is locally supported.  Return RPC_AUTH_UNIX if
++ * no matching flavor is found in the array.  The "flavors" array
++ * is searched in the order returned from the server, per RFC 3530
++ * recommendation.
++ */
+ rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors)
+ {
+-	struct gss_api_mech *mech;
+-	struct xdr_netobj oid;
++	rpc_authflavor_t pseudoflavor;
++	struct nfs4_secinfo4 *secinfo;
+ 	unsigned int i;
+-	rpc_authflavor_t pseudoflavor = RPC_AUTH_UNIX;
+ 
+ 	for (i = 0; i < flavors->num_flavors; i++) {
+-		struct nfs4_secinfo4 *flavor = &flavors->flavors[i];
+-
+-		if (flavor->flavor == RPC_AUTH_NULL || flavor->flavor == RPC_AUTH_UNIX) {
+-			pseudoflavor = flavor->flavor;
+-			break;
+-		} else if (flavor->flavor == RPC_AUTH_GSS) {
+-			oid.len  = flavor->flavor_info.oid.len;
+-			oid.data = flavor->flavor_info.oid.data;
+-			mech = gss_mech_get_by_OID(&oid);
+-			if (!mech)
+-				continue;
+-			pseudoflavor = gss_svc_to_pseudoflavor(mech,
+-						flavor->flavor_info.service);
+-			gss_mech_put(mech);
++		secinfo = &flavors->flavors[i];
++
++		switch (secinfo->flavor) {
++		case RPC_AUTH_NULL:
++		case RPC_AUTH_UNIX:
++		case RPC_AUTH_GSS:
++			pseudoflavor = rpcauth_get_pseudoflavor(secinfo->flavor,
++							&secinfo->flavor_info);
++			if (pseudoflavor != RPC_AUTH_MAXFLAVOR)
++				return pseudoflavor;
+ 			break;
+ 		}
+ 	}
+ 
+-	return pseudoflavor;
++	return RPC_AUTH_UNIX;
+ }
+ 
+ static rpc_authflavor_t nfs4_negotiate_security(struct inode *inode, struct qstr *name)
+diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
+index 58fda1c..6851da4 100644
+--- a/include/linux/sunrpc/auth.h
++++ b/include/linux/sunrpc/auth.h
+@@ -22,6 +22,8 @@
+ /* size of the nodename buffer */
+ #define UNX_MAXNODENAME	32
+ 
++struct rpcsec_gss_info;
++
+ /* Work around the lack of a VFS credential */
+ struct auth_cred {
+ 	kuid_t	uid;
+@@ -103,6 +105,7 @@ struct rpc_authops {
+ 	int			(*pipes_create)(struct rpc_auth *);
+ 	void			(*pipes_destroy)(struct rpc_auth *);
+ 	int			(*list_pseudoflavors)(rpc_authflavor_t *, int);
++	rpc_authflavor_t	(*info2flavor)(struct rpcsec_gss_info *);
+ };
+ 
+ struct rpc_credops {
+@@ -137,6 +140,8 @@ int			rpcauth_register(const struct rpc_authops *);
+ int			rpcauth_unregister(const struct rpc_authops *);
+ struct rpc_auth *	rpcauth_create(rpc_authflavor_t, struct rpc_clnt *);
+ void			rpcauth_release(struct rpc_auth *);
++rpc_authflavor_t	rpcauth_get_pseudoflavor(rpc_authflavor_t,
++				struct rpcsec_gss_info *);
+ int			rpcauth_list_flavors(rpc_authflavor_t *, int);
+ struct rpc_cred *	rpcauth_lookup_credcache(struct rpc_auth *, struct auth_cred *, int);
+ void			rpcauth_init_cred(struct rpc_cred *, const struct auth_cred *, struct rpc_auth *, const struct rpc_credops *);
+diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
+index 98950e5..aba7687 100644
+--- a/include/linux/sunrpc/gss_api.h
++++ b/include/linux/sunrpc/gss_api.h
+@@ -127,9 +127,8 @@ struct gss_api_ops {
+ int gss_mech_register(struct gss_api_mech *);
+ void gss_mech_unregister(struct gss_api_mech *);
+ 
+-/* returns a mechanism descriptor given an OID, and increments the mechanism's
+- * reference count. */
+-struct gss_api_mech * gss_mech_get_by_OID(struct xdr_netobj *);
++/* Given a GSS security tuple, look up a pseudoflavor */
++rpc_authflavor_t gss_mech_info2flavor(struct rpcsec_gss_info *);
+ 
+ /* Returns a reference to a mechanism, given a name like "krb5" etc. */
+ struct gss_api_mech *gss_mech_get_by_name(const char *);
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index f529404..9b81be8 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -124,6 +124,41 @@ rpcauth_unregister(const struct rpc_authops *ops)
+ EXPORT_SYMBOL_GPL(rpcauth_unregister);
+ 
+ /**
++ * rpcauth_get_pseudoflavor - check if security flavor is supported
++ * @flavor: a security flavor
++ * @info: a GSS mech OID, quality of protection, and service value
++ *
++ * Verifies that an appropriate kernel module is available or already loaded.
++ * Returns an equivalent pseudoflavor, or RPC_AUTH_MAXFLAVOR if "flavor" is
++ * not supported locally.
++ */
++rpc_authflavor_t
++rpcauth_get_pseudoflavor(rpc_authflavor_t flavor, struct rpcsec_gss_info *info)
++{
++	const struct rpc_authops *ops;
++	rpc_authflavor_t pseudoflavor;
++
++	ops = auth_flavors[flavor];
++	if (ops == NULL)
++		request_module("rpc-auth-%u", flavor);
++	spin_lock(&rpc_authflavor_lock);
++	ops = auth_flavors[flavor];
++	if (ops == NULL || !try_module_get(ops->owner)) {
++		spin_unlock(&rpc_authflavor_lock);
++		return RPC_AUTH_MAXFLAVOR;
++	}
++	spin_unlock(&rpc_authflavor_lock);
++
++	pseudoflavor = flavor;
++	if (ops->info2flavor != NULL)
++		pseudoflavor = ops->info2flavor(info);
++
++	module_put(ops->owner);
++	return pseudoflavor;
++}
++EXPORT_SYMBOL_GPL(rpcauth_get_pseudoflavor);
++
++/**
+  * rpcauth_list_flavors - discover registered flavors and pseudoflavors
+  * @array: array to fill in
+  * @size: size of "array"
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 282dfb1..a742007 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -1641,6 +1641,7 @@ static const struct rpc_authops authgss_ops = {
+ 	.pipes_create	= gss_pipes_dentries_create,
+ 	.pipes_destroy	= gss_pipes_dentries_destroy,
+ 	.list_pseudoflavors = gss_mech_list_pseudoflavors,
++	.info2flavor	= gss_mech_info2flavor,
+ };
+ 
+ static const struct rpc_credops gss_credops = {
+diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
+index f0f4eee..4db66f5 100644
+--- a/net/sunrpc/auth_gss/gss_mech_switch.c
++++ b/net/sunrpc/auth_gss/gss_mech_switch.c
+@@ -171,8 +171,7 @@ struct gss_api_mech * gss_mech_get_by_name(const char *name)
+ }
+ EXPORT_SYMBOL_GPL(gss_mech_get_by_name);
+ 
+-struct gss_api_mech *
+-gss_mech_get_by_OID(struct xdr_netobj *obj)
++static struct gss_api_mech *gss_mech_get_by_OID(struct rpcsec_gss_oid *obj)
+ {
+ 	struct gss_api_mech	*pos, *gm = NULL;
+ 
+@@ -188,11 +187,8 @@ gss_mech_get_by_OID(struct xdr_netobj *obj)
+ 	}
+ 	spin_unlock(&registered_mechs_lock);
+ 	return gm;
+-
+ }
+ 
+-EXPORT_SYMBOL_GPL(gss_mech_get_by_OID);
+-
+ static inline int
+ mech_supports_pseudoflavor(struct gss_api_mech *gm, u32 pseudoflavor)
+ {
+@@ -282,6 +278,28 @@ gss_svc_to_pseudoflavor(struct gss_api_mech *gm, u32 service)
+ }
+ EXPORT_SYMBOL_GPL(gss_svc_to_pseudoflavor);
+ 
++/**
++ * gss_mech_info2flavor - look up a pseudoflavor given a GSS tuple
++ * @info: a GSS mech OID, quality of protection, and service value
++ *
++ * Returns a matching pseudoflavor, or RPC_AUTH_MAXFLAVOR if the tuple is
++ * not supported.
++ */
++rpc_authflavor_t gss_mech_info2flavor(struct rpcsec_gss_info *info)
++{
++	rpc_authflavor_t pseudoflavor;
++	struct gss_api_mech *gm;
++
++	gm = gss_mech_get_by_OID(&info->oid);
++	if (gm == NULL)
++		return RPC_AUTH_MAXFLAVOR;
++
++	pseudoflavor = gss_svc_to_pseudoflavor(gm, info->service);
++
++	gss_mech_put(gm);
++	return pseudoflavor;
++}
++
+ u32
+ gss_pseudoflavor_to_service(struct gss_api_mech *gm, u32 pseudoflavor)
+ {
+
