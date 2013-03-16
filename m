@@ -1,67 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:57494 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757816Ab3CYOSQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Mar 2013 10:18:16 -0400
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r2PEIGBc029626
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 25 Mar 2013 10:18:16 -0400
-Message-ID: <51505CA6.7050306@RedHat.com>
-Date: Mon, 25 Mar 2013 10:18:14 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-ia0-f180.google.com ([209.85.210.180]:63579 "EHLO
+	mail-ia0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754511Ab3CPT4F (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 16 Mar 2013 15:56:05 -0400
+Received: by mail-ia0-f180.google.com with SMTP id f27so4252559iae.11
+        for <linux-nfs@vger.kernel.org>; Sat, 16 Mar 2013 12:56:04 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v1 13/15] NFS: Use static list of security flavors during root
+ FH lookup recovery
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>,
+        Bryan Schumaker <bjschuma@netapp.com>
+Date: Sat, 16 Mar 2013 15:56:02 -0400
+Message-ID: <20130316195602.27329.24465.stgit@seurat.1015granger.net>
+In-Reply-To: <20130316195044.27329.11666.stgit@seurat.1015granger.net>
+References: <20130316195044.27329.11666.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-To: Steve Dickson <steved@redhat.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] mountd: regression in crossmounts
-References: <1364049149-3751-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1364049149-3751-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+If the Linux NFS client receives an NFS4ERR_WRONGSEC error while
+trying to look up an NFS server's root file handle, it retries the
+lookup operation with various security flavors to see what flavor
+the NFS server will accept for pseudo-fs access.
 
+The list of flavors the client uses during retry consists only of
+flavors that are currently registered in the kernel RPC client.
+This list may not include any GSS pseudoflavors if auth_rpcgss.ko
+has not yet been loaded.
 
-On 23/03/13 10:32, Steve Dickson wrote:
-> commit 8e2fb3fc cause a regression in mount export
-> that are on different local file system.
-> Exports like (all on different filesystems)
-> 
-> /home *(rw,fsid=0,crossmnt)
-> /home/fs1 *(rw,crossmnt)
-> /home/fs1/fs2/fs3 *(rw,nohide)
-> 
-> and then a mount of the root 'mount /home /mnt'
-> would end up mounting /home/fs1/fs2/fs3 not /home
-> 
-> Reverting the logic of commit 8e2fb3fc until
-> a better solution can be found for the original
-> problem.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-Committed...
+Let's instead use a static list of security flavors that the NFS
+standard requires the server to implement (RFC 3530bis, section
+3.2.1).  The RPC client should now be able to load support for
+these dynamically; if not, they are skipped.
 
-steved.
+Recovery behavior here is prescribed by RFC 3530bis, section
+15.33.5:
 
-> ---
->  utils/mountd/cache.c | 5 ++++-
->  1 file changed, 4 insertions(+), 1 deletion(-)
-> 
-> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> index c8aa46f..978698d 100644
-> --- a/utils/mountd/cache.c
-> +++ b/utils/mountd/cache.c
-> @@ -371,8 +371,11 @@ export_matches(nfs_export *exp, char *dom, char *path, struct addrinfo *ai)
->  static bool subexport(struct exportent *e1, struct exportent *e2)
->  {
->  	char *p1 = e1->e_path, *p2 = e2->e_path;
-> +	size_t l2 = strlen(p2);
-> +
->  	return e2->e_flags & NFSEXP_CROSSMOUNT
-> -		&& is_subdirectory(p1, p2);
-> +		&& strncmp(p1, p2, l2) == 0
-> +		&& p1[l2] == '/';
->  }
->  
->  struct parsed_fsid {
-> 
+> For LOOKUPP, PUTROOTFH and PUTPUBFH, the client will be unable to
+> use the SECINFO operation since SECINFO requires a current
+> filehandle and none exist for these two [sic] operations.  Therefore,
+> the client must iterate through the security triples available at
+> the client and reattempt the PUTROOTFH or PUTPUBFH operation.  In
+> the unfortunate event none of the MANDATORY security triples are
+> supported by the client and server, the client SHOULD try using
+> others that support integrity.  Failing that, the client can try
+> using AUTH_NONE, but because such forms lack integrity checks,
+> this puts the client at risk.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: Bryan Schumaker <bjschuma@netapp.com>
+---
+
+ fs/nfs/nfs4proc.c |   32 ++++++++++++++++++++------------
+ 1 files changed, 20 insertions(+), 12 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index b83fddf..ddbebfe 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2451,27 +2451,35 @@ out:
+ 	return ret;
+ }
+ 
++/*
++ * Retry pseudoroot lookup with various security flavors.  We do this when:
++ *
++ *   NFSv4.0: the PUTROOTFH operation returns NFS4ERR_WRONGSEC
++ *   NFSv4.1: the server does not support the SECINFO_NO_NAME operation
++ *
++ * Returns zero on success, or a negative NFS4ERR value, or a
++ * negative errno value.
++ */
+ static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
+ 			      struct nfs_fsinfo *info)
+ {
+-	int i, len, status = 0;
+-	rpc_authflavor_t flav_array[NFS_MAX_SECFLAVORS];
+-
+-	len = rpcauth_list_flavors(flav_array, ARRAY_SIZE(flav_array));
+-	if (len < 0)
+-		return len;
+-
+-	for (i = 0; i < len; i++) {
+-		/* AUTH_UNIX is the default flavor if none was specified,
+-		 * thus has already been tried. */
+-		if (flav_array[i] == RPC_AUTH_UNIX)
+-			continue;
++	/* Per 3530bis 15.33.5 */
++	static const rpc_authflavor_t flav_array[] = {
++		RPC_AUTH_GSS_KRB5P,
++		RPC_AUTH_GSS_KRB5I,
++		RPC_AUTH_GSS_KRB5,
++		RPC_AUTH_NULL,
++	};
++	int status = -EPERM;
++	size_t i;
+ 
++	for (i = 0; i < ARRAY_SIZE(flav_array); i++) {
+ 		status = nfs4_lookup_root_sec(server, fhandle, info, flav_array[i]);
+ 		if (status == -NFS4ERR_WRONGSEC || status == -EACCES)
+ 			continue;
+ 		break;
+ 	}
++
+ 	/*
+ 	 * -EACCESS could mean that the user doesn't have correct permissions
+ 	 * to access the mount.  It could also mean that we tried to mount
+
