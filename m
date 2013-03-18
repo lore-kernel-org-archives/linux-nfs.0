@@ -1,142 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f169.google.com ([209.85.212.169]:50721 "EHLO
-	mail-wi0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757488Ab3CULZJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Mar 2013 07:25:09 -0400
-Received: by mail-wi0-f169.google.com with SMTP id hi8so1181872wib.4
-        for <linux-nfs@vger.kernel.org>; Thu, 21 Mar 2013 04:25:08 -0700 (PDT)
-Message-ID: <514AEE11.1030705@tonian.com>
-Date: Thu, 21 Mar 2013 13:25:05 +0200
-From: Benny Halevy <bhalevy@tonian.com>
+Received: from mx12.netapp.com ([216.240.18.77]:30178 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752760Ab3CRRKG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Mar 2013 13:10:06 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@tonian.com>
+CC: "Mora, Jorge" <Jorge.Mora@netapp.com>,
+        "Isaman, Fred" <Fred.Isaman@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] pnfs: do not reset to mds if wb_offset != wb_pgbase
+Date: Mon, 18 Mar 2013 17:09:27 +0000
+Message-ID: <1363626566.4351.47.camel@leira.trondhjem.org>
+References: <1363617532-24172-1-git-send-email-bhalevy@tonian.com>
+	  <1363622128.4351.15.camel@leira.trondhjem.org> <51473F46.10401@tonian.com>
+	 <1363624756.4351.30.camel@leira.trondhjem.org>
+	 <514744BD.6000205@tonian.com>
+In-Reply-To: <514744BD.6000205@tonian.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-CC: linux-nfs@vger.kernel.org, Boaz Harrosh <bharrosh@panasas.com>,
-        Peng Tao <bergwolf@gmail.com>
-Subject: Re: [PATCH 2/3] NFSv4.1: Always clear the NFS_INO_LAYOUTCOMMIT in
- layoutreturn
-References: <1363801148-29998-1-git-send-email-Trond.Myklebust@netapp.com> <1363801148-29998-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1363801148-29998-2-git-send-email-Trond.Myklebust@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-03-20 19:39, Trond Myklebust wrote:
-> Note that clearing NFS_INO_LAYOUTCOMMIT is tricky, since it requires
-> you to also clear the NFS_LSEG_LAYOUTCOMMIT bits from the layout
-> segments.
-> The only two sites that need to do this are the ones that call
-> pnfs_return_layout() without first doing a layout commit.
+On Mon, 2013-03-18 at 18:45 +0200, Benny Halevy wrote:
+> On 2013-03-18 18:39, Myklebust, Trond wrote:
+> > On Mon, 2013-03-18 at 18:22 +0200, Benny Halevy wrote:
+> >> On 2013-03-18 17:55, Myklebust, Trond wrote:
+> >>> On Mon, 2013-03-18 at 16:38 +0200, Benny Halevy wrote:
+> >>>> We're seeing roughly 20% of the I/Os going to the MDS
+> >>>> when installing a VM over KVM in "none" caching mode (O_DIRECT).
+> >>>> Instrumenting the client reveled that this is caused by buffer
+> >>>> alignment vs. file offset alignment.
+> >>>> Besides being a performance problem, when the MDS caches data
+> >>>> this is also manifested as data corruption when data is written
+> >>>> first via the MDS, then via the DS, eventually the stale data is
+> >>>> read back from the MDS.
+> >>>
+> >>> That's why we should return the layout.
+> >>
+> >> We are not in this case.
+> > 
+> > Doh! I was thinking it was a case where we need to fence...
+> > 
+> > Actually, it shouldn't be needed: we will always do a _stable_ write of
+> > the data before we try to read it back in from the server, so MDS
+> > caching shouldn't be a problem.
+> > 
 > 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Cc: Benny Halevy <bhalevy@tonian.com>
+> Writing stable to the MDS does not solve all cases.
+> The corruption we've seen happens like this:
+> 
+> write(A) to MDS
+> write(B) to DS
+> read(A) from MDS - since the MDS is caching the last data written to it.
 
-ACK
+That looks like a server bug to me. If I write the data to stable
+storage in both the A and B case above, then I expect READs the MDS and
+the DS to return the same data.
+That's particularly true in the case of O_DIRECT reads and writes; the
+server can't make assumptions as to whether or not the next client to
+read the data will use the DS or the MDS.
 
-> Cc: stable@vger.kernel.org
-> ---
->  fs/nfs/nfs4filelayout.c |  1 -
->  fs/nfs/pnfs.c           | 35 +++++++++++++++++++++++++++--------
->  2 files changed, 27 insertions(+), 9 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-> index c5656c5..22d1062 100644
-> --- a/fs/nfs/nfs4filelayout.c
-> +++ b/fs/nfs/nfs4filelayout.c
-> @@ -129,7 +129,6 @@ static void filelayout_fenceme(struct inode *inode, struct pnfs_layout_hdr *lo)
->  {
->  	if (!test_and_clear_bit(NFS_LAYOUT_RETURN, &lo->plh_flags))
->  		return;
-> -	clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags);
->  	pnfs_return_layout(inode);
->  }
->  
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index 6f6b356..45badca 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -417,6 +417,16 @@ should_free_lseg(struct pnfs_layout_range *lseg_range,
->  	       lo_seg_intersecting(lseg_range, recall_range);
->  }
->  
-> +static bool lseg_dec_and_remove_zero(struct pnfs_layout_segment *lseg,
-> +		struct list_head *tmp_list)
-> +{
-> +	if (!atomic_dec_and_test(&lseg->pls_refcount))
-> +		return false;
-> +	pnfs_layout_remove_lseg(lseg->pls_layout, lseg);
-> +	list_add(&lseg->pls_list, tmp_list);
-> +	return true;
-> +}
-> +
->  /* Returns 1 if lseg is removed from list, 0 otherwise */
->  static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
->  			     struct list_head *tmp_list)
-> @@ -430,11 +440,8 @@ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
->  		 */
->  		dprintk("%s: lseg %p ref %d\n", __func__, lseg,
->  			atomic_read(&lseg->pls_refcount));
-> -		if (atomic_dec_and_test(&lseg->pls_refcount)) {
-> -			pnfs_layout_remove_lseg(lseg->pls_layout, lseg);
-> -			list_add(&lseg->pls_list, tmp_list);
-> +		if (lseg_dec_and_remove_zero(lseg, tmp_list))
->  			rv = 1;
-> -		}
->  	}
->  	return rv;
->  }
-> @@ -779,6 +786,21 @@ send_layoutget(struct pnfs_layout_hdr *lo,
->  	return lseg;
->  }
->  
-> +static void pnfs_clear_layoutcommit(struct inode *inode,
-> +		struct list_head *head)
-> +{
-> +	struct nfs_inode *nfsi = NFS_I(inode);
-> +	struct pnfs_layout_segment *lseg, *tmp;
-> +
-> +	if (!test_and_clear_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags))
-> +		return;
-> +	list_for_each_entry_safe(lseg, tmp, &nfsi->layout->plh_segs, pls_list) {
-> +		if (!test_and_clear_bit(NFS_LSEG_LAYOUTCOMMIT, &lseg->pls_flags))
-> +			continue;
-> +		lseg_dec_and_remove_zero(lseg, head);
-> +	}
-> +}
-> +
->  /*
->   * Initiates a LAYOUTRETURN(FILE), and removes the pnfs_layout_hdr
->   * when the layout segment list is empty.
-> @@ -810,6 +832,7 @@ _pnfs_return_layout(struct inode *ino)
->  	/* Reference matched in nfs4_layoutreturn_release */
->  	pnfs_get_layout_hdr(lo);
->  	empty = list_empty(&lo->plh_segs);
-> +	pnfs_clear_layoutcommit(ino, &tmp_list);
->  	pnfs_mark_matching_lsegs_invalid(lo, &tmp_list, NULL);
->  	/* Don't send a LAYOUTRETURN if list was initially empty */
->  	if (empty) {
-> @@ -822,8 +845,6 @@ _pnfs_return_layout(struct inode *ino)
->  	spin_unlock(&ino->i_lock);
->  	pnfs_free_lseg_list(&tmp_list);
->  
-> -	WARN_ON(test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags));
-> -
->  	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
->  	if (unlikely(lrp == NULL)) {
->  		status = -ENOMEM;
-> @@ -1460,7 +1481,6 @@ static void pnfs_ld_handle_write_error(struct nfs_write_data *data)
->  	dprintk("pnfs write error = %d\n", hdr->pnfs_error);
->  	if (NFS_SERVER(hdr->inode)->pnfs_curr_ld->flags &
->  	    PNFS_LAYOUTRET_ON_ERROR) {
-> -		clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(hdr->inode)->flags);
->  		pnfs_return_layout(hdr->inode);
->  	}
->  	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags))
-> @@ -1615,7 +1635,6 @@ static void pnfs_ld_handle_read_error(struct nfs_read_data *data)
->  	dprintk("pnfs read error = %d\n", hdr->pnfs_error);
->  	if (NFS_SERVER(hdr->inode)->pnfs_curr_ld->flags &
->  	    PNFS_LAYOUTRET_ON_ERROR) {
-> -		clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(hdr->inode)->flags);
->  		pnfs_return_layout(hdr->inode);
->  	}
->  	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags))
-> 
+Note that I'm happy to accept that our client may not be meeting the
+requirements of "write to stable storage" here if, say, we're failing to
+issue a LAYOUTCOMMIT after the WRITE(B). If that's the case, then we
+need to fix that.
+My beef is rather with the notion that _if_ the client meets the stable
+storage criterion, then the MDS can somehow still lie to us.
+
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
