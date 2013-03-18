@@ -1,51 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45180 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756830Ab3CSOug (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Mar 2013 10:50:36 -0400
-Date: Tue, 19 Mar 2013 10:50:35 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 10/11] NFSv4.1: Enable open-by-filehandle
-Message-ID: <20130319145035.GE7912@fieldses.org>
-References: <1363698463-3681-5-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-6-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-7-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-8-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-9-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-10-git-send-email-Trond.Myklebust@netapp.com>
- <20130319140901.GB7912@fieldses.org>
- <1363702570.7515.6.camel@leira.trondhjem.org>
- <20130319143236.GD7912@fieldses.org>
- <1363704100.7515.12.camel@leira.trondhjem.org>
+Received: from mail-oa0-f50.google.com ([209.85.219.50]:61643 "EHLO
+	mail-oa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753484Ab3CRSqt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Mar 2013 14:46:49 -0400
+Received: by mail-oa0-f50.google.com with SMTP id l20so5898748oag.23
+        for <linux-nfs@vger.kernel.org>; Mon, 18 Mar 2013 11:46:48 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1363704100.7515.12.camel@leira.trondhjem.org>
+Date: Mon, 18 Mar 2013 14:46:48 -0400
+Message-ID: <CAPCnwUeMeQuZo1ygbXAB-KXJbv71wtTsTbaELcT=ombWVSG4mg@mail.gmail.com>
+Subject: Excessive group membership causes permission denied
+From: Norman Elton <normelton@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 19, 2013 at 02:41:42PM +0000, Myklebust, Trond wrote:
-> On Tue, 2013-03-19 at 10:32 -0400, J. Bruce Fields wrote:
-> > (Sorry for the digression, I was just trying to decide whether I can get
-> > away with turning on 4.1 by default before implementing SP4_MACH_CRED or
-> > GSS on the backchannel....)
-> 
-> If you don't, could you please at least offer up a module parameter that
-> allows me to do that? The current thing is a PITA, since it isn't
-> supported by any distro scripts, and it requires you to switch off the
-> server in order to change the version pseudofile contents.
+There is a fairly well documented bug that we've run against. When
+using Active Directory as a KDC, users with a large number of group
+memberships can overrun a UDP packet, causing Kerberos to fall back to
+TCP. When a user logs into the system, they have a kerberos ticket,
+but get a "permission denied" when accessing the NFS share. We've
+reproduced this by taking a functioning user, adding tons of group
+membership. The error message pops right up.
 
-The module parameter on its own wouldn't help with that.
+The traditional fix is to set NO_AUTH_DATA_REQUIRED on the NFS
+server's machine account, as explained here:
+http://theether.net/kb/100205.
 
-We could probably fix the pseudofile interface to allow changing the
-version on the fly.
+While this seems to work, it's a bit of a dirty hack. Any thoughts on
+a root-cause? We're happy to serve as a guinea pig if anyone can point
+us in the right direction.
 
-My vague plan was to teach rpc.nfsd to read this (and other parameters)
-from a config file, so then it'd be "vi /etc/nfsd && service nfsd
-restart" or equivalent.
+Thanks,
 
-So is the main thing you want a more convenient interface or a way to
-change it without rebooting?
-
---b.
+Norman
