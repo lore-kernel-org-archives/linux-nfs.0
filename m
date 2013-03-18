@@ -1,73 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from dgate20.ts.fujitsu.com ([80.70.172.51]:65393 "EHLO
-	dgate20.ts.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755902Ab3CNRbk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Mar 2013 13:31:40 -0400
-Message-Id: <61eb00$3h5801@dgate20u.abg.fsc.net>
-Date: 14 Mar 2013 18:31:39 +0100
-From: Bodo Stroesser <bstroesser@ts.fujitsu.com>
-To: neilb@suse.de
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, bstroesser@ts.fujitsu.com
-Subject: Re: sunrpc/cache.c: races while updating cache entries
-Content-Type: text/plain; charset=us-ascii
+Received: from mx12.netapp.com ([216.240.18.77]:62372 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751383Ab3CRPzb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Mar 2013 11:55:31 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@tonian.com>, "Isaman, Fred" <Fred.Isaman@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "stable@kernel.org" <stable@kernel.org>
+Subject: Re: [PATCH] pnfs: do not reset to mds if wb_offset != wb_pgbase
+Date: Mon, 18 Mar 2013 15:55:29 +0000
+Message-ID: <1363622128.4351.15.camel@leira.trondhjem.org>
+References: <1363617532-24172-1-git-send-email-bhalevy@tonian.com>
+In-Reply-To: <1363617532-24172-1-git-send-email-bhalevy@tonian.com>
+Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gMTMgTWFyIDIwMTMgMDc6NTU6MDAgKzAxMDAgTmVpbEJyb3duIDxuZWlsYkBzdXNlLmRl
-PiB3cm90ZToKCj4gT24gMTEgTWFyIDIwMTMgMTc6MTM6NDEgKzAxMDAgQm9kbyBTdHJvZXNz
-ZXIgPGJzdHJvZXNzZXJAdHMuZnVqaXRzdS5jb20+Cj4gd3JvdGU6Cj4gCj4gPiBIaSwKPiA+
-IAo+ID4gQUZBSUNTLCB0aGVyZSBpcyBvbmUgbW9yZSByYWNlIGluIFJQQyBjYWNoZS4KPiA+
-IAo+ID4gVGhlIHByb2JsZW0gc2hvd2VkIHVwIGZvciB0aGUgImF1dGgudW5peC5pcCIgY2Fj
-aGUsIHRoYXQKPiA+IGhhcyBhIHJlYWRlci4KPiA+IAo+ID4gSWYgYSBzZXJ2ZXIgdGhyZWFk
-IHRyaWVzIHRvIGZpbmQgYSBjYWNoZSBlbnRyeSwgaXQgZmlyc3QKPiA+IGRvZXMgYSBsb29r
-dXAgKG9yIGNhbGxzIGlwX21hcF9jYWNoZWRfZ2V0KCkgaW4gdGhpcyBzcGVjaWZpYwo+ID4g
-Y2FzZSkuIFRoZW4sIGl0IGNhbGxzIGNhY2hlX2NoZWNrKCkgZm9yIHRoaXMgZW50cnkuCj4g
-PiAKPiA+IElmIHRoZSByZWFkZXIgdXBkYXRlcyB0aGUgY2FjaGUgZW50cnkganVzdCBiZXR3
-ZWVuIHRoZQo+ID4gdGhyZWFkJ3MgbG9va3VwIGFuZCBjYWNoZV9jaGVjaygpIGV4ZWN1dGlv
-biwgY2FjaGVfY2hlY2soKQo+ID4gd2lsbCBkbyBhbiB1cGNhbGwgZm9yIHRoaXMgY2FjaGUg
-ZW50cnkuIFRoaXMgaXMsIGJlY2F1c2UKPiA+IHN1bnJwY19jYWNoZV91cGRhdGUoKSBjYWxs
-cyBjYWNoZV9mcmVzaF9sb2NrZWQob2xkLCAwKSwKPiA+IHdoaWNoIHNldHMgZXhwaXJ5X3Rp
-bWUgdG8gMC4KPiA+IAo+ID4gVW5mb3J0dW5hdGVseSwgdGhlIHJlcGx5IHRvIHRoZSB1cGNh
-bGwgd2lsbCBub3QgZGVxdWV1ZQo+ID4gdGhlIHF1ZXVlZCBjYWNoZV9yZXF1ZXN0LCBhcyB0
-aGUgcmVwbHkgd2lsbCBiZSBhc3NpZ25lZCB0bwo+ID4gdGhlIGNhY2hlIGVudHJ5IG5ld2x5
-IGNyZWF0ZWQgYnkgdGhlIGFib3ZlIGNhY2hlIHVwZGF0ZS4KPiA+IAo+ID4gVGhlIHJlc3Vs
-dCBpcyBhIGdyb3dpbmcgcXVldWUgb2Ygb3JwaGFuZWQgY2FjaGVfcmVxdWVzdAo+ID4gc3Ry
-dWN0dXJlcyAtLT4gbWVtb3J5IGxlYWsuCj4gPiAKPiA+IEkgZm91bmQgdGhpcyBvbiBhIFNM
-RVMxMSBTUDEgd2l0aCBhIGJhY2twb3J0IG9mIHRoZSBsYXRlc3QKPiA+IHBhdGNoZXMgdGhh
-dCBmaXggdGhlIG90aGVyIFJQQyByYWNlcy4gT24gdGhpcyBvbGQga2VybmVsLAo+ID4gdGhl
-IHByb2JsZW0gYWxzbyBsZWFkcyB0byBzdmNfZHJvcCgpIGJlaW5nIGNhbGxlZCBmb3IgdGhl
-Cj4gPiBhZmZlY3RlZCBSUEMgcmVxdWVzdCAoYWZ0ZXIgc3ZjX2RlZmVyKCkpLgo+ID4gCj4g
-PiBCZXN0IFJlZ2FyZHMKPiA+IEJvZG8KPiAKPiBJIGRvbid0IHRoaW5rIHRoaXMgaXMgYSBy
-ZWFsIHByb2JsZW0uCj4gVGhlIHBlcmlvZGljIGNhbGwgdG8gImNhY2hlX2NsZWFuIiBzaG91
-bGQgZmluZCB0aGVzZSBvcnBoYW5lZCByZXF1ZXN0cyBhbmQKPiBwdXJnZSB0aGVtLiAgU28g
-eW91IGNvdWxkIGdldCBhIHNob3J0IHRlcm0gbWVtb3J5IGxlYWssIGJ1dCBpdCBzaG91bGQK
-PiBjb3JyZWN0IGl0c2VsZi4KPiBEbyB5b3UgYWdyZWU/Cj4gCj4gVGhhbmtzLAo+IE5laWxC
-cm93bgoKTWVhbndoaWxlIEkgZm91bmQgdGhlIG1pc3NpbmcgcGFydCBvZiB0aGUgcmFjZSEK
-Ckl0J3MganVzdCB3aGF0IEkgd3JvdGUgYWJvdmUgYnV0IGFkZGl0aW9uYWxseSwgaW1tZWRp
-YXRlbHkgYWZ0ZXIKdGhlIHJlYWRlciB1cGRhdGVkIHRoZSBjYWNoZSwgY2FjaGVfY2xlYW4o
-KSB1bmhhc2hlcyB0aGUgb2xkIGNhY2hlCmVudHJ5LiBJbiB0aGF0IGNhc2U6CjEpIHRoZSB0
-aHJlYWQgd2lsbCBxdWV1ZSBhIHJlcXVlc3QgZm9yIGEgY2FjaGUgZW50cnksIHRoYXQgaXNu
-J3QKICAgaW4gdGhlIGhhc2ggbGlzdHMuCjIpIGNhY2hlX2NsZWFuKCkgbmV2ZXIgd2lsbCBh
-Y2Nlc3MgdGhpcyBvbGQgY2FjaGUgZW50cnkgYWdhaW4KMykgZXZlcnkgZnVydGhlciBjYWNo
-ZSB1cGRhdGUgd2lsbCBjYWxsIGNhY2hlX2RlcXVldWUoKSBmb3IgYSBuZXdlcgogICBjYWNo
-ZSBlbnRyeSwgdGhlIHJlcXVlc3QgaXMgbmV2ZXIgZGVxdWV1ZWQKCi0tPiBtZW1vcnkgbGVh
-ay4KCkkgdmVyaWZpZWQgdGhpcyBpbnNlcnRpbmcgc29tZSBkZWJ1ZyBpbnN0cnVjdGlvbnMu
-IEluIGEgdGVzdHJ1bgp0aGF0IHRyaWdnZXJlZCA2IHRpbWVzLCBhbmQgdGhlIHF1ZXVlIHBy
-aW50ZWQgYnkgY3Jhc2ggYWZ0ZXIgdGhlCnJ1biBoYWQgNiBvcnBoYW5lZCBlbnRyaWVzLgoK
-QXMgSSB3cm90ZSB5ZXN0ZXJkYXksIEkgaGF2ZSBhIHBhdGNoIHRoYXQgc29sdmVzIHRoZSBw
-cm9ibGVtIGJ5CnJldGVzdGluZyB0aGUgc3RhdGUgb2YgdGhlIGNhY2hlIGVudHJ5IGFmdGVy
-IHNldHRpbmcgQ0FDSEVfUEVORElORwppbiBjYWNoZV9jaGVjaygpLiBJIGNhbiBzZW5kIGl0
-IGlmIHlvdSBsaWtlLgoKQm9kbwoKUC5TLjoKTWF5YmUgSSdtIHdyb25nLCBidXQgQUZBSUNT
-LCB0aGVyZSBhcmUgdHdvIGZ1cnRoZXIgbWlub3IgcHJvYmxlbXMKcmVnYXJkaW5nIChuZWFy
-bHkpIGV4cGlyZWQgY2FjaGUgZW50cmllczoKYSkgaXBfbWFwX2NhY2hlZF9nZXQoKSBpbiBz
-b21lIHNpdHVhdGlvbnMgY2FuIHJldHVybiBhbiBhbHJlYWR5CiAgIG91dGRhdGVkIChpdCB1
-c2VzIGNhY2hlX3ZhbGlkIHRoYXQgbm90IGZ1bGx5IGNoZWNrcyB0aGUgc3RhdGUpCiAgIGNh
-Y2hlIGVudHJ5LiBJZiBjYWNoZV9jaGVjaygpIGlzIGNhY2xsZWQgZm9yIHRoYXQgZW50cnks
-IGl0IHdpbGwKICAgZmFpbCwgSSB0aGluawpiKSBHZW5lcmFsbHksIGlmIGEgY2FjaGUgZW50
-cnkgaXMgcmV0dXJuZWQgYnkgc3VucnBjX2NhY2hlX2xvb2t1cCgpCiAgIGFuZCB0aGUgZW50
-cnkgaXMgaW4gdGhlIGxhc3Qgc2Vjb25kIG9mIGl0J3MgZXhwaXJ5X3RpbWUsIHRoZSAKICAg
-Y2xvY2sgbWlnaHQgbW92ZSB0byB0aGUgbmV4dCBzZWNvbmQgYmVmb3JlIGNhY2hlX2NoZWNr
-IGlzIGNhbGxlZC4KICAgSWYgdGhpcyBoYXBwZW5zLCBjYWNoZV9jaGVjayB3aWxsIGZhaWws
-IEkgdGhpbmsuCkRvIHlvdSBhZ3JlZT8K
+On Mon, 2013-03-18 at 16:38 +0200, Benny Halevy wrote:
+> We're seeing roughly 20% of the I/Os going to the MDS
+> when installing a VM over KVM in "none" caching mode (O_DIRECT).
+> Instrumenting the client reveled that this is caused by buffer
+> alignment vs. file offset alignment.
+> Besides being a performance problem, when the MDS caches data
+> this is also manifested as data corruption when data is written
+> first via the MDS, then via the DS, eventually the stale data is
+> read back from the MDS.
 
+That's why we should return the layout.
 
+> Note that this check exists also for the file layout specific
+> pg_init_* functions.  The objects (ORE) and block
+> (bl_{read,write}_pagelist) layouts seem to deal correctly with
+> splitting IOs in the case where req->wb_offset != req->wb_pgbase
+> though this hasn't been tested wen submitting this patch.
+> 
+> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+> Cc: stable@kernel.org [>= 3.5]
+> Cc: Boaz Harrosh <bharrosh@panasas.com>
+> Cc: Peng Tao <tao.peng@emc.com>
+> ---
+>  fs/nfs/pnfs.c | 18 ++++++++++--------
+>  1 file changed, 10 insertions(+), 8 deletions(-)
+> 
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 483bd94..f12e456 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -1322,10 +1322,11 @@ struct pnfs_layout_segment *
+>  
+>  	WARN_ON_ONCE(pgio->pg_lseg != NULL);
+>  
+> -	if (req->wb_offset != req->wb_pgbase) {
+> -		nfs_pageio_reset_read_mds(pgio);
+> -		return;
+> -	}
+> +	if (req->wb_offset != req->wb_pgbase)
+> +		dprintk("%s: inode=%ld: offset=%llu wb_bytes=%u wb_offset=%u wb_pgbase=%u\n",
+> +			__func__, pgio->pg_inode->i_ino,
+> +			(((unsigned long long)req->wb_index) << PAGE_CACHE_SHIFT) + req->wb_offset,
+> +			req->wb_bytes, req->wb_offset, req->wb_pgbase);
+>  
+>  	if (pgio->pg_dreq == NULL)
+>  		rd_size = i_size_read(pgio->pg_inode) - req_offset(req);
+> @@ -1351,10 +1352,11 @@ struct pnfs_layout_segment *
+>  {
+>  	WARN_ON_ONCE(pgio->pg_lseg != NULL);
+>  
+> -	if (req->wb_offset != req->wb_pgbase) {
+> -		nfs_pageio_reset_write_mds(pgio);
+> -		return;
+> -	}
+> +	if (req->wb_offset != req->wb_pgbase)
+> +		dprintk("%s: inode=%ld: offset=%llu wb_bytes=%u wb_offset=%u wb_pgbase=%u\n",
+> +			__func__, pgio->pg_inode->i_ino,
+> +			(((unsigned long long)req->wb_index) << PAGE_CACHE_SHIFT) + req->wb_offset,
+> +			req->wb_bytes, req->wb_offset, req->wb_pgbase);
+>  
+>  	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+>  					   req->wb_context,
+
+NACK. I see no evidence that we've addressed the issues that were raised
+by Fred in commit 1825a0d08f22463e5a8f4b1636473efd057a3479 (NFS: prepare
+coalesce testing for directio).
+If you think that his concerns about the coalescing assumptions are no
+longer true, then please point to why this is the case. AFAICR that
+patch was added to fix corruption issues.
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
