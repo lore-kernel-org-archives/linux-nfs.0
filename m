@@ -1,210 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43817 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753780Ab3CSOJD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Mar 2013 10:09:03 -0400
-Date: Tue, 19 Mar 2013 10:09:01 -0400
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 10/11] NFSv4.1: Enable open-by-filehandle
-Message-ID: <20130319140901.GB7912@fieldses.org>
-References: <1363698463-3681-1-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-2-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-3-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-4-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-5-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-6-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-7-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-8-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-9-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-10-git-send-email-Trond.Myklebust@netapp.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:15159 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751724Ab3CRKvF convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Mar 2013 06:51:05 -0400
+Message-ID: <5146F0A6.2090103@cn.fujitsu.com>
+Date: Mon, 18 Mar 2013 18:47:02 +0800
+From: chenditang <chendt.fnst@cn.fujitsu.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1363698463-3681-10-git-send-email-Trond.Myklebust@netapp.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Benny Halevy <bhalevy@tonian.com>
+CC: linux-nfs@vger.kernel.org, Trond Myklebust <trond.myklebust@netapp.com>
+Subject: Re: pnfs: WRITE operation will not send LAYOUTCOMMI OP to MDS if
+ use filelayout
+References: <5146BE38.2060004@cn.fujitsu.com> <5146D7F6.3010607@tonian.com>
+In-Reply-To: <5146D7F6.3010607@tonian.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 19, 2013 at 09:07:42AM -0400, Trond Myklebust wrote:
-> Sometimes, we actually _want_ to do open-by-filehandle, for instance
-> when recovering opens after a network partition, or when called
-> from nfs4_file_open.
-> Enable that functionality using a new capability NFS_CAP_ATOMIC_OPEN_V1,
-> and which is only enabled for NFSv4.1 servers that support it.
+于 2013年03月18日 17:01, Benny Halevy 写道:
+> On 2013-03-18 09:11, chenditang wrote:
+>> In the recent pnfs kernel versions, WRITE operation will not send
+>> LAYOUTCOMMI OP to MDS if use filelayout.
+> I presume that the file server sets NFL4_UFLG_COMMIT_THRU_MDS
+> and that the DS is returning how=FILE_SYNC and that the client
+> is implementing the behavior described in  Errata ID: 2751
+> http://www.rfc-editor.org/errata_search.php?rfc=5661
+>
+> Do you have a tcp dump of client, MDS, and DS traffic?
+NFL4_UFLG_COMMIT_THRU_MDS is not set, "nfl_util" is 8192 and "commit_through_mds" is 0 to filelayout_decode_layout.
 
-So you're assuming NFS4ERR_INVAL is how the server indicates lack of
-support?
+>> In nfs_write_rpcsetup function, the value of the variable 'stable' will
+>> always be NFS_FILE_SYNC(ncommit is 0). so NFS_INO_LAYOUTCOMMIT
+>> flag will not be set.
+> What's the value of the "how" arg to nfs_write_rpcsetup that you see?
+> At any rate, if you look at filelayout_set_layoutcommit, it will not
+> call pnfs_set_layoutcommit in the following cases:
+>
+>          if (FILELAYOUT_LSEG(hdr->lseg)->commit_through_mds ||
+>              wdata->res.verf->committed == NFS_FILE_SYNC)
+>                  return;
+"how" is 32, and "cinfo->mds->ncommit" is 0. pnfs_set_layoutcommit has 
+not beeb called.
+I think "cinfo->mds->ncommit" can not be used here.
 
-Looking back at NFS server history.... I think that's what it did before
-supporting these types, but I wonder if that was really right.  Possibly
-it's just a bug not to support the new claim types in a 4.1 server.
+I dump the stack, and the initial value of "ncommit" is 0, then it to be 
+used in nfs_write_rpcsetup function,
+but "ncommit++" in nfs_writeback_release_common function(if 
+NFS_FILE_SYNC is not set).
 
---b.
+static const struct rpc_call_ops nfs_write_common_ops = {
+.rpc_call_prepare = nfs_write_prepare,
+.rpc_call_done = nfs_writeback_done_common,
+.rpc_release = nfs_writeback_release_common,
+};
 
-> 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
->  fs/nfs/dir.c              |  2 ++
->  fs/nfs/nfs4proc.c         | 53 ++++++++++++++++++++++++++++++++++++++++-------
->  include/linux/nfs_fs_sb.h |  1 +
->  3 files changed, 49 insertions(+), 7 deletions(-)
-> 
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index f23f455..e093e73 100644
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -1486,6 +1486,8 @@ static int nfs4_lookup_revalidate(struct dentry *dentry, unsigned int flags)
->  		goto no_open;
->  	if (d_mountpoint(dentry))
->  		goto no_open;
-> +	if (NFS_SB(dentry->d_sb)->caps & NFS_CAP_ATOMIC_OPEN_V1)
-> +		goto no_open;
->  
->  	inode = dentry->d_inode;
->  	parent = dget_parent(dentry);
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 712eb70..480b5d0 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -767,6 +767,35 @@ struct nfs4_opendata {
->  	int cancelled;
->  };
->  
-> +static bool nfs4_clear_cap_atomic_open_v1(struct nfs_server *server,
-> +		int err, struct nfs4_exception *exception)
-> +{
-> +	if (err != -EINVAL)
-> +		return false;
-> +	if (!(server->caps & NFS_CAP_ATOMIC_OPEN_V1))
-> +		return false;
-> +	server->caps &= ~NFS_CAP_ATOMIC_OPEN_V1;
-> +	exception->retry = 1;
-> +	return true;
-> +}
-> +
-> +static enum open_claim_type4
-> +nfs4_map_atomic_open_claim(struct nfs_server *server,
-> +		enum open_claim_type4 claim)
-> +{
-> +	if (server->caps & NFS_CAP_ATOMIC_OPEN_V1)
-> +		return claim;
-> +	switch (claim) {
-> +	default:
-> +		return claim;
-> +	case NFS4_OPEN_CLAIM_FH:
-> +		return NFS4_OPEN_CLAIM_NULL;
-> +	case NFS4_OPEN_CLAIM_DELEG_CUR_FH:
-> +		return NFS4_OPEN_CLAIM_DELEGATE_CUR;
-> +	case NFS4_OPEN_CLAIM_DELEG_PREV_FH:
-> +		return NFS4_OPEN_CLAIM_DELEGATE_PREV;
-> +	}
-> +}
->  
->  static void nfs4_init_opendata_res(struct nfs4_opendata *p)
->  {
-> @@ -818,8 +847,8 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
->  	p->o_arg.server = server;
->  	p->o_arg.bitmask = server->attr_bitmask;
->  	p->o_arg.open_bitmap = &nfs4_fattr_bitmap[0];
-> -	p->o_arg.claim = claim;
-> -	switch (claim) {
-> +	p->o_arg.claim = nfs4_map_atomic_open_claim(server, claim);
-> +	switch (p->o_arg.claim) {
->  	case NFS4_OPEN_CLAIM_NULL:
->  	case NFS4_OPEN_CLAIM_DELEGATE_CUR:
->  	case NFS4_OPEN_CLAIM_DELEGATE_PREV:
-> @@ -1326,6 +1355,8 @@ static int nfs4_do_open_reclaim(struct nfs_open_context *ctx, struct nfs4_state
->  	int err;
->  	do {
->  		err = _nfs4_do_open_reclaim(ctx, state);
-> +		if (nfs4_clear_cap_atomic_open_v1(server, err, &exception))
-> +			continue;
->  		if (err != -NFS4ERR_DELAY)
->  			break;
->  		nfs4_handle_exception(server, err, &exception);
-> @@ -1741,7 +1772,7 @@ static int _nfs4_open_expired(struct nfs_open_context *ctx, struct nfs4_state *s
->  	int ret;
->  
->  	opendata = nfs4_open_recoverdata_alloc(ctx, state,
-> -			NFS4_OPEN_CLAIM_NULL);
-> +			NFS4_OPEN_CLAIM_FH);
->  	if (IS_ERR(opendata))
->  		return PTR_ERR(opendata);
->  	ret = nfs4_open_recover(opendata, state);
-> @@ -1759,6 +1790,8 @@ static int nfs4_do_open_expired(struct nfs_open_context *ctx, struct nfs4_state
->  
->  	do {
->  		err = _nfs4_open_expired(ctx, state);
-> +		if (nfs4_clear_cap_atomic_open_v1(server, err, &exception))
-> +			continue;
->  		switch (err) {
->  		default:
->  			goto out;
-> @@ -1926,6 +1959,7 @@ static int _nfs4_do_open(struct inode *dir,
->  	struct nfs4_state     *state = NULL;
->  	struct nfs_server       *server = NFS_SERVER(dir);
->  	struct nfs4_opendata *opendata;
-> +	enum open_claim_type4 claim = NFS4_OPEN_CLAIM_NULL;
->  	int status;
->  
->  	/* Protect against reboot recovery conflicts */
-> @@ -1941,9 +1975,10 @@ static int _nfs4_do_open(struct inode *dir,
->  	if (dentry->d_inode != NULL)
->  		nfs4_return_incompatible_delegation(dentry->d_inode, fmode);
->  	status = -ENOMEM;
-> +	if (dentry->d_inode)
-> +		claim = NFS4_OPEN_CLAIM_FH;
->  	opendata = nfs4_opendata_alloc(dentry, sp, fmode, flags, sattr,
-> -			NFS4_OPEN_CLAIM_NULL,
-> -			GFP_KERNEL);
-> +			claim, GFP_KERNEL);
->  	if (opendata == NULL)
->  		goto err_put_state_owner;
->  
-> @@ -2001,6 +2036,7 @@ static struct nfs4_state *nfs4_do_open(struct inode *dir,
->  					struct rpc_cred *cred,
->  					struct nfs4_threshold **ctx_th)
->  {
-> +	struct nfs_server *server = NFS_SERVER(dir);
->  	struct nfs4_exception exception = { };
->  	struct nfs4_state *res;
->  	int status;
-> @@ -2044,7 +2080,9 @@ static struct nfs4_state *nfs4_do_open(struct inode *dir,
->  			exception.retry = 1;
->  			continue;
->  		}
-> -		res = ERR_PTR(nfs4_handle_exception(NFS_SERVER(dir),
-> +		if (nfs4_clear_cap_atomic_open_v1(server, status, &exception))
-> +			continue;
-> +		res = ERR_PTR(nfs4_handle_exception(server,
->  					status, &exception));
->  	} while (exception.retry);
->  	return res;
-> @@ -6872,7 +6910,8 @@ static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
->  		| NFS_CAP_ATOMIC_OPEN
->  		| NFS_CAP_CHANGE_ATTR
->  		| NFS_CAP_POSIX_LOCK
-> -		| NFS_CAP_STATEID_NFSV41,
-> +		| NFS_CAP_STATEID_NFSV41
-> +		| NFS_CAP_ATOMIC_OPEN_V1,
->  	.call_sync = nfs4_call_sync_sequence,
->  	.match_stateid = nfs41_match_stateid,
->  	.find_root_sec = nfs41_find_root_sec,
-> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-> index 74c9e52..d8fdfdc 100644
-> --- a/include/linux/nfs_fs_sb.h
-> +++ b/include/linux/nfs_fs_sb.h
-> @@ -198,5 +198,6 @@ struct nfs_server {
->  #define NFS_CAP_POSIX_LOCK	(1U << 14)
->  #define NFS_CAP_UIDGID_NOMAP	(1U << 15)
->  #define NFS_CAP_STATEID_NFSV41	(1U << 16)
-> +#define NFS_CAP_ATOMIC_OPEN_V1	(1U << 17)
->  
->  #endif
-> -- 
-> 1.8.1.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The code processes:
+step1: init_once --> nfsi->commit_info.ncommit = 0;
+setp2: nfs_flush_one --> nfs_write_rpcsetup
+setp3: nfs_writeback_done --> nfs_writeback_done --> 
+filelayout_write_done_cb --> filelayout_set_layoutcommit
+setp4: nfs_writeback_release_common--> ...-->nfs_write_completion --> 
+.... --> cinfo->mds->ncommit++;
+>
+>
+> Benny
+>
+>> The value of the variable ncommit' will be ++ in the later process
+>> (nfs_writeback_release_common function).
+>>
+>>
+>> Thanks!
+>>
+
+
+
