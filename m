@@ -1,65 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f45.google.com ([74.125.83.45]:59270 "EHLO
-	mail-ee0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755416Ab3CHOBj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Mar 2013 09:01:39 -0500
-Date: Fri, 8 Mar 2013 15:01:34 +0100
-From: Ingo Molnar <mingo@kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Jeff Layton <jlayton@redhat.com>, Tejun Heo <tj@kernel.org>,
-        Oleg Nesterov <oleg@redhat.com>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Ming Lei <ming.lei@canonical.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Ingo Molnar <mingo@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>
-Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
-Message-ID: <20130308140134.GA28413@gmail.com>
-References: <CA+55aFwDogteVd=vwGHXDSASnga-nZZnKaQz9aO1yBU2CPKSbA@mail.gmail.com>
- <20130306212452.GO1227@htj.dyndns.org>
- <CA+55aFy49AWptMcvEzJxg95ikf-dC+-vcCPq-cnaCCwje3tyoQ@mail.gmail.com>
- <20130306213636.GP1227@htj.dyndns.org>
- <20130307064140.71c0936b@tlielax.poochiereds.net>
- <CA+55aFxe1_x8wvVYciiX8tuee+VsmXGKqEbONQdFM4s4W2iuPg@mail.gmail.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9286B511E@sacexcmbx05-prd.hq.netapp.com>
- <CA+55aFySyBP8q5AvPrt-s_ZPdgamfoX-dERw4EJ21EcsDLBjYA@mail.gmail.com>
- <4FA345DA4F4AE44899BD2B03EEEC2FA9286B52F1@sacexcmbx05-prd.hq.netapp.com>
- <CA+55aFwB4Pjki8zg9idwbQbE-TOtTdD5o8d_r1=NY3veVqmPHg@mail.gmail.com>
+Received: from mx12.netapp.com ([216.240.18.77]:29592 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751651Ab3CRM5m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Mar 2013 08:57:42 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: chenditang <chendt.fnst@cn.fujitsu.com>,
+        "bhalevy@tonian.com" <bhalevy@tonian.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        LINE <fnst-xmlinux@cn.fujitsu.com>
+Subject: RE: pnfs: WRITE operation will not send LAYOUTCOMMI OP to MDS if
+ use filelayout
+Date: Mon, 18 Mar 2013 12:57:40 +0000
+Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9286D8004@SACEXCMBX04-PRD.hq.netapp.com>
+References: <5146BE38.2060004@cn.fujitsu.com>
+In-Reply-To: <5146BE38.2060004@cn.fujitsu.com>
+Content-Type: text/plain; charset="gb2312"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CA+55aFwB4Pjki8zg9idwbQbE-TOtTdD5o8d_r1=NY3veVqmPHg@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-* Linus Torvalds <torvalds@linux-foundation.org> wrote:
-
->  - the "freeezer for suspend/resume on a laptop"
-> 
-> [...]
-> 
-> The second one is unlikely to really use NFS anyway. [...]
-
-<me raises a hand>
-
-Incidentally I use NFS to a file server on my laptop, over wifi, and I close the lid 
-for the night. It's NFS mounted soft.
-
-If it was mounted hard I wouldn't expect the lid close event to result in a 
-successful suspend if wifi went down - but with soft I would be pretty sad in the 
-morning if batteries drained if I closed the lid after there's a power outage which 
-took down both wifi and the laptop power supply.
-
-Closing the lid while on battery is a pretty strong command from the user.
-
-Arguably this is a special case on several levels as on desktop distros it's not at 
-all easy mount NFS shares (all point & click automation goes to Samba shares), just 
-wanted to mention it.
-
-Thanks,
-
-	Ingo
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
+ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLQ0KPiBvd25lckB2Z2VyLmtlcm5lbC5vcmdd
+IE9uIEJlaGFsZiBPZiBjaGVuZGl0YW5nDQo+IFNlbnQ6IE1vbmRheSwgTWFyY2ggMTgsIDIwMTMg
+MzoxMiBBTQ0KPiBUbzogYmhhbGV2eUB0b25pYW4uY29tDQo+IENjOiBsaW51eC1uZnNAdmdlci5r
+ZXJuZWwub3JnOyBMSU5FDQo+IFN1YmplY3Q6IHBuZnM6IFdSSVRFIG9wZXJhdGlvbiB3aWxsIG5v
+dCBzZW5kIExBWU9VVENPTU1JIE9QIHRvIE1EUyBpZg0KPiB1c2UgZmlsZWxheW91dA0KPiANCj4g
+SW4gdGhlIHJlY2VudCBwbmZzIGtlcm5lbCB2ZXJzaW9ucywgV1JJVEUgb3BlcmF0aW9uIHdpbGwg
+bm90IHNlbmQNCj4gTEFZT1VUQ09NTUkgT1AgdG8gTURTIGlmIHVzZSBmaWxlbGF5b3V0Lg0KPiAN
+Cj4gSW4gbmZzX3dyaXRlX3JwY3NldHVwIGZ1bmN0aW9uLCB0aGUgdmFsdWUgb2YgdGhlIHZhcmlh
+YmxlICdzdGFibGUnIHdpbGwgYWx3YXlzDQo+IGJlIE5GU19GSUxFX1NZTkMobmNvbW1pdCBpcyAw
+KS4gc28gTkZTX0lOT19MQVlPVVRDT01NSVQgZmxhZyB3aWxsIG5vdA0KPiBiZSBzZXQuDQoNCklm
+IHRoZXNlIGFyZSBzbWFsbCBmaWxlcywgdGhlbiB0aGF0IGlzIGV4cGVjdGVkIGJlaGF2aW91ci4g
+VGhlIHBORlMgc3BlYyBkb2VzIG5vdCBleGVtcHQgdGhlIERTIGZyb20gaGF2aW5nIHRvIGhvbm91
+ciB0aGUgJ3N0YWJsZScgZmxhZy4NCg0KQ2hlZXJzDQogIFRyb25kDQo=
