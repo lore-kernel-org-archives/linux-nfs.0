@@ -1,200 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f171.google.com ([209.85.223.171]:33214 "EHLO
-	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753918Ab3CUATv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Mar 2013 20:19:51 -0400
-Received: by mail-ie0-f171.google.com with SMTP id e14so1053452iej.16
-        for <linux-nfs@vger.kernel.org>; Wed, 20 Mar 2013 17:19:50 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v2 3/3] NFS: Use server-recommended security flavor by default
- (NFSv3)
-To: linux-nfs@vger.kernel.org
-Date: Wed, 20 Mar 2013 20:19:49 -0400
-Message-ID: <20130321001949.12106.16804.stgit@seurat.1015granger.net>
-In-Reply-To: <20130321001753.12106.50688.stgit@seurat.1015granger.net>
-References: <20130321001753.12106.50688.stgit@seurat.1015granger.net>
+Received: from mail-ee0-f41.google.com ([74.125.83.41]:34062 "EHLO
+	mail-ee0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754254Ab3CRQkv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Mar 2013 12:40:51 -0400
+Received: by mail-ee0-f41.google.com with SMTP id c13so2775454eek.0
+        for <linux-nfs@vger.kernel.org>; Mon, 18 Mar 2013 09:40:49 -0700 (PDT)
+Message-ID: <5147438E.6040106@tonian.com>
+Date: Mon, 18 Mar 2013 18:40:46 +0200
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] pnfs: clear NFS_INO_LAYOUTCOMMIT* flags on destroy_layout
+References: <1363617514-24102-1-git-send-email-bhalevy@tonian.com> <1363621707.4351.11.camel@leira.trondhjem.org>
+In-Reply-To: <1363621707.4351.11.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since commit ec88f28d in 2009, checking if the user-specified flavor
-is in the server's flavor list has been the source of a few
-noticeable regressions (now fixed), but there is one that is still
-vexing.
+On 2013-03-18 17:48, Myklebust, Trond wrote:
+> Hi Benny,
+> 
+> On Mon, 2013-03-18 at 16:38 +0200, Benny Halevy wrote:
+>> When writing a large file over pNFS, the MDS rebooted and then the client crashed with the following stack trace over RHEL 2.6.32-358.el6.x86_64
+>>
+> 
+> You might want to note that this Oops applies to upstream too. :-)
+> 
 
-An NFS server can list AUTH_NULL in its flavor list, which suggests
-a client should try to mount the server with the flavor of the
-client's choice, but the server will squash all accesses.  In some
-cases, our client fails to mount a server because of this check,
-when the mount could have proceeded successfully.
+True.
 
-Skip this check if the user has specified "sec=" on the mount
-command line.  But do consult the server-provided flavor list to
-choose a security flavor if no sec= option is specified on the mount
-command.
+>> <4>RIP: 0010:[<ffffffffa0474f35>]  [<ffffffffa0474f35>] pnfs_layoutcommit_inode+0x115/0x310 [nfs]
+>> <4>RSP: 0018:ffff8801bab4db60  EFLAGS: 00010286
+>> <4>RAX: ffff8802290755a8 RBX: ffff8802297756a0 RCX: 0000000000000000
+>> <4>RDX: 0000000000000000 RSI: 0000000000000000 RDI: ffff880229775750
+>> <4>RBP: ffff8801bab4dba0 R08: 0000000000000000 R09: 0000000000000000
+>> <4>R10: 0000000000000003 R11: 0000000000000000 R12: ffff8802297754d8
+>> <4>R13: ffff880229075400 R14: 0000000000000000 R15: ffff880229775568
+>> <4>FS:  0000000000000000(0000) GS:ffff880028380000(0000) knlGS:0000000000000000
+>> <4>CS:  0010 DS: 0018 ES: 0018 CR0: 000000008005003b
+>> <4>CR2: 0000000000000028 CR3: 000000020158a000 CR4: 00000000000027e0
+>> <4>DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+>> <4>DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+>> <4>Process flush-0:30 (pid: 3806, threadinfo ffff8801bab4c000, task ffff880228c76ae0)
+>> <4>Stack:
+>> <4> ffff8802290755a8 ffff880229775750 ffffffffa047ae20 ffff8802297756a0
+>> <4><d> ffff8801bab4dd20 0000000000000000 ffff8801bab4dd20 ffff8802297757c0
+>> <4><d> ffff8801bab4dbd0 ffffffffa0451217 ffff8801bab4dd20 ffff8802297757c0
+>> <4>Call Trace:
+>> <4> [<ffffffffa0451217>] nfs_write_inode+0x87/0x100 [nfs]
+>> <4> [<ffffffff811ac81c>] writeback_single_inode+0x20c/0x290
+>> <4> [<ffffffff811acafe>] writeback_sb_inodes+0xce/0x180
+>> <4> [<ffffffff811acc5b>] writeback_inodes_wb+0xab/0x1b0
+>> <4> [<ffffffff811acffb>] wb_writeback+0x29b/0x3f0
+>> <4> [<ffffffff8150d6e0>] ? thread_return+0x4e/0x76e
+>> <4> [<ffffffff81081ac2>] ? del_timer_sync+0x22/0x30
+>> <4> [<ffffffff811ad2e9>] wb_do_writeback+0x199/0x240
+>> <4> [<ffffffff811ad3f3>] bdi_writeback_task+0x63/0x1b0
+>> <4> [<ffffffff81096b47>] ? bit_waitqueue+0x17/0xd0
+>> <4> [<ffffffff8113ca40>] ? bdi_start_fn+0x0/0x100
+>> <4> [<ffffffff8113cac6>] bdi_start_fn+0x86/0x100
+>> <4> [<ffffffff8113ca40>] ? bdi_start_fn+0x0/0x100
+>> <4> [<ffffffff81096916>] kthread+0x96/0xa0
+>> <4> [<ffffffff8100c0ca>] child_rip+0xa/0x20
+>> <4> [<ffffffff81096880>] ? kthread+0x0/0xa0
+>> <4> [<ffffffff8100c0c0>] ? child_rip+0x0/0x20
+>> <4>Code: 01 00 00 48 89 d7 48 89 55 c8 48 89 45 c0 e8 93 b0 09 e1 f0 41 0f ba 37 09 19 d2 85 d2 48 8b 45 c0 0f 84 af 01 00 00 48 8b 53 f0 <4c> 8b 7a 28 48 8d 4a 28 49 39 cf 75 26 e9 e1 00 00 00 66 0f 1f
+>> <1>RIP  [<ffffffffa0474f35>] pnfs_layoutcommit_inode+0x115/0x310 [nfs]
+>> <4> RSP <ffff8801bab4db60>
+>> <4>CR2: 0000000000000028
+>>
+>> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+>> ---
+>>  fs/nfs/pnfs.c | 11 +++++++++--
+>>  1 file changed, 9 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>> index 48ac5aa..483bd94 100644
+>> --- a/fs/nfs/pnfs.c
+>> +++ b/fs/nfs/pnfs.c
+>> @@ -497,6 +497,8 @@ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
+>>  		pnfs_get_layout_hdr(lo);
+>>  		pnfs_layout_clear_fail_bit(lo, NFS_LAYOUT_RO_FAILED);
+>>  		pnfs_layout_clear_fail_bit(lo, NFS_LAYOUT_RW_FAILED);
+>> +		clear_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags);
+>> +		clear_bit(NFS_INO_LAYOUTCOMMITTING, &nfsi->flags);
+>>  		spin_unlock(&nfsi->vfs_inode.i_lock);
+>>  		pnfs_free_lseg_list(&tmp_list);
+>>  		pnfs_put_layout_hdr(lo);
+>> @@ -1813,11 +1815,16 @@ void pnfs_cleanup_layoutcommit(struct nfs4_layoutcommit_data *data)
+>>  	loff_t end_pos;
+>>  	int status = 0;
+>>  
+>> -	dprintk("--> %s inode %lu\n", __func__, inode->i_ino);
+>> +	if (!test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
+>> +		dprintk("%s: inode %lu: not required\n", __func__, inode->i_ino);
+>> +		return 0;
+>> +	}
+>>  
+>> -	if (!test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags))
+>> +	if (WARN_ON(!nfsi->layout))
+>>  		return 0;
+> 
+> 
+> This looks like the wrong thing to do. We know how the system got here:
+> someone called fsync() or sync(), and NFS_INO_LAYOUTCOMMIT was set.
+> What we don't know is why the layout was freed before
+> pnfs_layoutcommit_inode() was called.
+> 
 
-If a server lists Kerberos pseudoflavors before "sys" in its export
-options, our client now chooses Kerberos over AUTH_UNIX for mount
-points, when no security flavor is specified by the mount command.
-This could be surprising to some administrators or users, who would
-then need to have Kerberos credentials to access the export.
+I believe that this happens by pnfs_destroy_all_layouts called from
+nfs4_establish_lease.
 
-Or, a client administrator may not have enabled rpc.gssd.  In this
-case, auth_rpcgss.ko might still be loadable, which is enough for
-the new logic to choose Kerberos over AUTH_UNIX.  But the mount
-would fail since no GSS context can be created without rpc.gssd
-running.
+> I suggest that we rather put a
+> 
+> 	WARN_ON_ONCE(test_and_clear_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags));
+> 	WARN_ON_ONCE(test_and_clear_bit(NFS_INO_LAYOUTCOMMITTING, &nfsi->flags));
+> 
+> inside pnfs_detach_layout_hdr(). That should stand a better chance of
+> catching the sort of bug you found above.
+> 
 
-To retain the use of AUTH_UNIX by default:
+Sounds good.
 
-  o  The server administrator can ensure that "sys" is listed before
-     Kerberos flavors in its export security options (see
-     exports(5)),
+> BTW: shouldn't pnfs_return_layout() always call
+> pnfs_layoutcommit_inode()?
+> 
 
-  o  The client administrator can explicitly specify "sec=sys" on
-     its mount command line (see nfs(5)),
+Good point.
 
-  o  The client administrator can use "Sec=sys" in an appropriate
-     section of /etc/nfsmount.conf (see nfsmount.conf(5)), or
-
-  o  The client administrator can blacklist auth_rpcgss.ko.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- fs/nfs/nfs4super.c |    2 +
- fs/nfs/super.c     |   80 +++++++++++++++++++++++++++-------------------------
- 2 files changed, 44 insertions(+), 38 deletions(-)
-
-diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-index 569b166..a175dad 100644
---- a/fs/nfs/nfs4super.c
-+++ b/fs/nfs/nfs4super.c
-@@ -252,6 +252,8 @@ struct dentry *nfs4_try_mount(int flags, const char *dev_name,
- 
- 	dfprintk(MOUNT, "--> nfs4_try_mount()\n");
- 
-+	if (data->arg_flavors[0] == RPC_AUTH_MAXFLAVOR)
-+		data->arg_flavors[0] = RPC_AUTH_UNIX;
- 	export_path = data->nfs_server.export_path;
- 	data->nfs_server.export_path = "/";
- 	root_mnt = nfs_do_root_mount(&nfs4_remote_fs_type, flags, mount_info,
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 95cdcb2..cc858f6 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -919,7 +919,7 @@ static struct nfs_parsed_mount_data *nfs_alloc_parsed_mount_data(void)
- 		data->mount_server.port	= NFS_UNSPEC_PORT;
- 		data->nfs_server.port	= NFS_UNSPEC_PORT;
- 		data->nfs_server.protocol = XPRT_TRANSPORT_TCP;
--		data->auth_flavors[0]	= RPC_AUTH_UNIX;
-+		data->auth_flavors[0]	= RPC_AUTH_MAXFLAVOR;
- 		data->auth_flavor_len	= 1;
- 		data->minorversion	= 0;
- 		data->need_mount	= true;
-@@ -1607,49 +1607,57 @@ out_security_failure:
- }
- 
- /*
-- * Match the requested auth flavors with the list returned by
-- * the server.  Returns zero and sets the mount's authentication
-- * flavor on success; returns -EACCES if server does not support
-- * the requested flavor.
-+ * Select a security flavor for this mount.  The selected flavor
-+ * is planted in args->auth_flavors[0].
-  */
--static int nfs_walk_authlist(struct nfs_parsed_mount_data *args,
--			     struct nfs_mount_request *request)
-+static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
-+			      struct nfs_mount_request *request)
- {
--	unsigned int i, j, server_authlist_len = *(request->auth_flav_len);
-+	unsigned int i, count = *(request->auth_flav_len);
-+	rpc_authflavor_t flavor;
-+
-+	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR)
-+		goto out;
-+
-+	/*
-+	 * The NFSv2 MNT operation does not return a flavor list.
-+	 */
-+	if (args->mount_server.version != NFS_MNT3_VERSION)
-+		goto out_default;
- 
- 	/*
- 	 * Certain releases of Linux's mountd return an empty
--	 * flavor list.  To prevent behavioral regression with
--	 * these servers (ie. rejecting mounts that used to
--	 * succeed), revert to pre-2.6.32 behavior (no checking)
--	 * if the returned flavor list is empty.
-+	 * flavor list in some cases.
- 	 */
--	if (server_authlist_len == 0)
--		return 0;
-+	if (count == 0)
-+		goto out_default;
- 
- 	/*
--	 * We avoid sophisticated negotiating here, as there are
--	 * plenty of cases where we can get it wrong, providing
--	 * either too little or too much security.
--	 *
- 	 * RFC 2623, section 2.7 suggests we SHOULD prefer the
- 	 * flavor listed first.  However, some servers list
--	 * AUTH_NULL first.  Our caller plants AUTH_SYS, the
--	 * preferred default, in args->auth_flavors[0] if user
--	 * didn't specify sec= mount option.
-+	 * AUTH_NULL first.  Avoid ever choosing AUTH_NULL.
- 	 */
--	for (i = 0; i < args->auth_flavor_len; i++)
--		for (j = 0; j < server_authlist_len; j++)
--			if (args->auth_flavors[i] == request->auth_flavs[j]) {
--				dfprintk(MOUNT, "NFS: using auth flavor %d\n",
--					request->auth_flavs[j]);
--				args->auth_flavors[0] = request->auth_flavs[j];
--				return 0;
--			}
-+	for (i = 0; i < count; i++) {
-+		struct rpcsec_gss_info info;
-+
-+		flavor = request->auth_flavs[i];
-+		switch (flavor) {
-+		case RPC_AUTH_UNIX:
-+			goto out_set;
-+		case RPC_AUTH_NULL:
-+			continue;
-+		default:
-+			if (rpcauth_get_gssinfo(flavor, &info) == 0)
-+				goto out_set;
-+		}
-+	}
- 
--	dfprintk(MOUNT, "NFS: server does not support requested auth flavor\n");
--	nfs_umount(request);
--	return -EACCES;
-+out_default:
-+	flavor = RPC_AUTH_UNIX;
-+out_set:
-+	args->auth_flavors[0] = flavor;
-+out:
-+	dfprintk(MOUNT, "NFS: using auth flavor %d\n", args->auth_flavors[0]);
- }
- 
- /*
-@@ -1712,12 +1720,8 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
- 		return status;
- 	}
- 
--	/*
--	 * MNTv1 (NFSv2) does not support auth flavor negotiation.
--	 */
--	if (args->mount_server.version != NFS_MNT3_VERSION)
--		return 0;
--	return nfs_walk_authlist(args, &request);
-+	nfs_select_flavor(args, &request);
-+	return 0;
- }
- 
- struct dentry *nfs_try_mount(int flags, const char *dev_name,
+Benny
 
