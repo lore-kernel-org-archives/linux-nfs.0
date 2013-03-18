@@ -1,105 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:15830 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750940Ab3CTRjQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Mar 2013 13:39:16 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: linux-nfs@vger.kernel.org
-Cc: Benny Halevy <bhalevy@tonian.com>, Boaz Harrosh <bharrosh@panasas.com>,
-        Peng Tao <bergwolf@gmail.com>
-Subject: [PATCH 3/3] NFSv4.1: Add a helper pnfs_commit_and_return_layout
-Date: Wed, 20 Mar 2013 13:39:08 -0400
-Message-Id: <1363801148-29998-3-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1363801148-29998-2-git-send-email-Trond.Myklebust@netapp.com>
-References: <1363801148-29998-1-git-send-email-Trond.Myklebust@netapp.com>
- <1363801148-29998-2-git-send-email-Trond.Myklebust@netapp.com>
+Received: from mail-ea0-f171.google.com ([209.85.215.171]:36416 "EHLO
+	mail-ea0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751470Ab3CROij (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Mar 2013 10:38:39 -0400
+Received: by mail-ea0-f171.google.com with SMTP id b15so2619842eae.16
+        for <linux-nfs@vger.kernel.org>; Mon, 18 Mar 2013 07:38:38 -0700 (PDT)
+From: Benny Halevy <bhalevy@tonian.com>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@tonian.com>
+Subject: [PATCH] pnfs: clear NFS_INO_LAYOUTCOMMIT* flags on destroy_layout
+Date: Mon, 18 Mar 2013 16:38:34 +0200
+Message-Id: <1363617514-24102-1-git-send-email-bhalevy@tonian.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In order to be able to safely return the layout in nfs4_proc_setattr,
-we need to block new uses of the layout, wait for all outstanding
-users of the layout to complete, commit the layout and then return it.
+When writing a large file over pNFS, the MDS rebooted and then the client crashed with the following stack trace over RHEL 2.6.32-358.el6.x86_64
 
-This patch adds a helper in order to do all this safely.
+<4>RIP: 0010:[<ffffffffa0474f35>]  [<ffffffffa0474f35>] pnfs_layoutcommit_inode+0x115/0x310 [nfs]
+<4>RSP: 0018:ffff8801bab4db60  EFLAGS: 00010286
+<4>RAX: ffff8802290755a8 RBX: ffff8802297756a0 RCX: 0000000000000000
+<4>RDX: 0000000000000000 RSI: 0000000000000000 RDI: ffff880229775750
+<4>RBP: ffff8801bab4dba0 R08: 0000000000000000 R09: 0000000000000000
+<4>R10: 0000000000000003 R11: 0000000000000000 R12: ffff8802297754d8
+<4>R13: ffff880229075400 R14: 0000000000000000 R15: ffff880229775568
+<4>FS:  0000000000000000(0000) GS:ffff880028380000(0000) knlGS:0000000000000000
+<4>CS:  0010 DS: 0018 ES: 0018 CR0: 000000008005003b
+<4>CR2: 0000000000000028 CR3: 000000020158a000 CR4: 00000000000027e0
+<4>DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+<4>DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+<4>Process flush-0:30 (pid: 3806, threadinfo ffff8801bab4c000, task ffff880228c76ae0)
+<4>Stack:
+<4> ffff8802290755a8 ffff880229775750 ffffffffa047ae20 ffff8802297756a0
+<4><d> ffff8801bab4dd20 0000000000000000 ffff8801bab4dd20 ffff8802297757c0
+<4><d> ffff8801bab4dbd0 ffffffffa0451217 ffff8801bab4dd20 ffff8802297757c0
+<4>Call Trace:
+<4> [<ffffffffa0451217>] nfs_write_inode+0x87/0x100 [nfs]
+<4> [<ffffffff811ac81c>] writeback_single_inode+0x20c/0x290
+<4> [<ffffffff811acafe>] writeback_sb_inodes+0xce/0x180
+<4> [<ffffffff811acc5b>] writeback_inodes_wb+0xab/0x1b0
+<4> [<ffffffff811acffb>] wb_writeback+0x29b/0x3f0
+<4> [<ffffffff8150d6e0>] ? thread_return+0x4e/0x76e
+<4> [<ffffffff81081ac2>] ? del_timer_sync+0x22/0x30
+<4> [<ffffffff811ad2e9>] wb_do_writeback+0x199/0x240
+<4> [<ffffffff811ad3f3>] bdi_writeback_task+0x63/0x1b0
+<4> [<ffffffff81096b47>] ? bit_waitqueue+0x17/0xd0
+<4> [<ffffffff8113ca40>] ? bdi_start_fn+0x0/0x100
+<4> [<ffffffff8113cac6>] bdi_start_fn+0x86/0x100
+<4> [<ffffffff8113ca40>] ? bdi_start_fn+0x0/0x100
+<4> [<ffffffff81096916>] kthread+0x96/0xa0
+<4> [<ffffffff8100c0ca>] child_rip+0xa/0x20
+<4> [<ffffffff81096880>] ? kthread+0x0/0xa0
+<4> [<ffffffff8100c0c0>] ? child_rip+0x0/0x20
+<4>Code: 01 00 00 48 89 d7 48 89 55 c8 48 89 45 c0 e8 93 b0 09 e1 f0 41 0f ba 37 09 19 d2 85 d2 48 8b 45 c0 0f 84 af 01 00 00 48 8b 53 f0 <4c> 8b 7a 28 48 8d 4a 28 49 39 cf 75 26 e9 e1 00 00 00 66 0f 1f
+<1>RIP  [<ffffffffa0474f35>] pnfs_layoutcommit_inode+0x115/0x310 [nfs]
+<4> RSP <ffff8801bab4db60>
+<4>CR2: 0000000000000028
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Benny Halevy <bhalevy@tonian.com>
 ---
- fs/nfs/nfs4proc.c |  2 +-
- fs/nfs/pnfs.c     | 22 ++++++++++++++++++++++
- fs/nfs/pnfs.h     |  6 ++++++
- 3 files changed, 29 insertions(+), 1 deletion(-)
+ fs/nfs/pnfs.c | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 5122753..c560c8f 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2695,7 +2695,7 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- 	int status;
- 
- 	if (pnfs_ld_layoutret_on_setattr(inode))
--		pnfs_return_layout(inode);
-+		pnfs_commit_and_return_layout(inode);
- 
- 	nfs_fattr_init(fattr);
- 	
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 45badca..5a5e14d 100644
+index 48ac5aa..483bd94 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -868,6 +868,28 @@ out:
- }
- EXPORT_SYMBOL_GPL(_pnfs_return_layout);
+@@ -497,6 +497,8 @@ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
+ 		pnfs_get_layout_hdr(lo);
+ 		pnfs_layout_clear_fail_bit(lo, NFS_LAYOUT_RO_FAILED);
+ 		pnfs_layout_clear_fail_bit(lo, NFS_LAYOUT_RW_FAILED);
++		clear_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags);
++		clear_bit(NFS_INO_LAYOUTCOMMITTING, &nfsi->flags);
+ 		spin_unlock(&nfsi->vfs_inode.i_lock);
+ 		pnfs_free_lseg_list(&tmp_list);
+ 		pnfs_put_layout_hdr(lo);
+@@ -1813,11 +1815,16 @@ void pnfs_cleanup_layoutcommit(struct nfs4_layoutcommit_data *data)
+ 	loff_t end_pos;
+ 	int status = 0;
  
-+int
-+pnfs_commit_and_return_layout(struct inode *inode)
-+{
-+	struct pnfs_layout_hdr *lo;
-+	int ret;
-+
-+	spin_lock(&inode->i_lock);
-+	lo = NFS_I(inode)->layout;
-+	if (lo == NULL) {
-+		spin_unlock(&inode->i_lock);
+-	dprintk("--> %s inode %lu\n", __func__, inode->i_ino);
++	if (!test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) {
++		dprintk("%s: inode %lu: not required\n", __func__, inode->i_ino);
 +		return 0;
 +	}
-+	/* Block new layoutgets and read/write to ds */
-+	lo->plh_block_lgets++;
-+	spin_unlock(&inode->i_lock);
-+	filemap_fdatawait(inode->i_mapping);
-+	ret = pnfs_layoutcommit_inode(inode, true);
-+	if (ret == 0)
-+		ret = _pnfs_return_layout(inode);
-+	return ret;
-+}
-+
- bool pnfs_roc(struct inode *ino)
- {
- 	struct pnfs_layout_hdr *lo;
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 94ba804..f5f8a47 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -219,6 +219,7 @@ void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
- void pnfs_cleanup_layoutcommit(struct nfs4_layoutcommit_data *data);
- int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
- int _pnfs_return_layout(struct inode *);
-+int pnfs_commit_and_return_layout(struct inode *);
- void pnfs_ld_write_done(struct nfs_write_data *);
- void pnfs_ld_read_done(struct nfs_read_data *);
- struct pnfs_layout_segment *pnfs_update_layout(struct inode *ino,
-@@ -407,6 +408,11 @@ static inline int pnfs_return_layout(struct inode *ino)
- 	return 0;
- }
  
-+static inline int pnfs_commit_and_return_layout(struct inode *inode)
-+{
-+	return 0;
-+}
+-	if (!test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags))
++	if (WARN_ON(!nfsi->layout))
+ 		return 0;
+ 
++	dprintk("--> %s inode %lu\n", __func__, inode->i_ino);
 +
- static inline bool
- pnfs_ld_layoutret_on_setattr(struct inode *inode)
- {
+ 	/* Note kzalloc ensures data->res.seq_res.sr_slot == NULL */
+ 	data = kzalloc(sizeof(*data), GFP_NOFS);
+ 	if (!data) {
 -- 
-1.8.1.4
+1.7.11.7
 
