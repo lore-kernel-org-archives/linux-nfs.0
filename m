@@ -1,64 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:51333 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757156Ab3CDOQo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Mar 2013 09:16:44 -0500
-Date: Mon, 4 Mar 2013 09:16:40 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Jan Engelhardt <jengelh@inai.de>
-Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com
-Subject: Re: Inconsistent error codes between NFSv4 and v3 on network issues
-Message-ID: <20130304141639.GB16732@pad.fieldses.org>
-References: <alpine.LNX.2.01.1303011240350.11154@nerf07.vanv.qr>
- <20130304141600.GA16732@pad.fieldses.org>
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:47459 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751857Ab3CRJBr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Mar 2013 05:01:47 -0400
+Received: by mail-ee0-f46.google.com with SMTP id e49so2528606eek.33
+        for <linux-nfs@vger.kernel.org>; Mon, 18 Mar 2013 02:01:45 -0700 (PDT)
+Message-ID: <5146D7F6.3010607@tonian.com>
+Date: Mon, 18 Mar 2013 11:01:42 +0200
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130304141600.GA16732@pad.fieldses.org>
+To: chenditang <chendt.fnst@cn.fujitsu.com>
+CC: linux-nfs@vger.kernel.org, LINE <fnst-xmlinux@cn.fujitsu.com>,
+        Trond Myklebust <trond.myklebust@netapp.com>
+Subject: Re: pnfs: WRITE operation will not send LAYOUTCOMMI OP to MDS if
+ use filelayout
+References: <5146BE38.2060004@cn.fujitsu.com>
+In-Reply-To: <5146BE38.2060004@cn.fujitsu.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Um, for real this time.
+On 2013-03-18 09:11, chenditang wrote:
+> In the recent pnfs kernel versions, WRITE operation will not send
+> LAYOUTCOMMI OP to MDS if use filelayout.
 
-On Mon, Mar 04, 2013 at 09:16:00AM -0500, J. Bruce Fields wrote:
-> Adding Chuck to cc:, as he's probably done the most mucking with the
-> mount code in recent years?
+I presume that the file server sets NFL4_UFLG_COMMIT_THRU_MDS
+and that the DS is returning how=FILE_SYNC and that the client
+is implementing the behavior described in  Errata ID: 2751
+http://www.rfc-editor.org/errata_search.php?rfc=5661
+
+Do you have a tcp dump of client, MDS, and DS traffic?
+
 > 
-> --b.
+> In nfs_write_rpcsetup function, the value of the variable 'stable' will
+> always be NFS_FILE_SYNC(ncommit is 0). so NFS_INO_LAYOUTCOMMIT 
+> flag will not be set.
+
+What's the value of the "how" arg to nfs_write_rpcsetup that you see?
+At any rate, if you look at filelayout_set_layoutcommit, it will not
+call pnfs_set_layoutcommit in the following cases:
+
+        if (FILELAYOUT_LSEG(hdr->lseg)->commit_through_mds ||
+            wdata->res.verf->committed == NFS_FILE_SYNC)
+                return;
+
+Benny
+
 > 
-> On Fri, Mar 01, 2013 at 12:43:58PM +0100, Jan Engelhardt wrote:
-> > Hi.
-> > 
-> > 
-> > I had here a case with a Linux 3.7.9 system, a virtual machine in a
-> > RFC1918 range, that did not want to mount NFS.
-> > 
-> > linux-3lzm:~ # strace -fe mount mount -t nfs 134.76.12.5:/X /mnt
-> > Process 1477 attached
-> > [pid  1515] mount("134.76.12.5:/X", "/mnt", "nfs", 0, "vers=4,addr=134.76.12.5,clientaddr=0.0.0.0") = -1 EIO (Input/output error)
-> > mount.nfs: mount system call failed
-> > [pid  1477] +++ exited with 32 +++
-> > --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=1477, si_status=32, si_utime=0, si_stime=0} ---
-> > +++ exited with 32 +++
-> > 
-> > Nothing in dmesg...
-> > 
-> > [   84.202243] RPC: Registered named UNIX socket transport module.
-> > [   84.202246] RPC: Registered udp transport module.
-> > [   84.202248] RPC: Registered tcp transport module.
-> > [   84.202249] RPC: Registered tcp NFSv4.1 backchannel transport module.
-> > [   84.205909] FS-Cache: Loaded
-> > [   84.208782] FS-Cache: Netfs 'nfs' registered for caching
-> > [   84.215733] NFS: Registering the id_resolver key type
-> > [   84.215762] Key type id_resolver registered
-> > [   84.215763] Key type id_legacy registered
-> > 
-> > When mounting with NFSv3, the error became clear:
-> > 
-> > # strace -fe mount -s 65536 mount -t nfs 134.76.12.5:/X /mnt -o nfsvers=3,nolock
-> > Process 1550 attached
-> > mount.nfs: Network is unreachable
-> > [pid  1550] +++ exited with 32 +++
-> > --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=1550, si_status=32, si_utime=0, si_stime=0} ---
-> > +++ exited with 32 +++
-> > 
-> > Can NFSv4 be made to return -ENETUNREACH as well?
+> The value of the variable ncommit' will be ++ in the later process
+> (nfs_writeback_release_common function).
+> 
+> 
+> Thanks!
+> 
+
