@@ -1,45 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f174.google.com ([209.85.192.174]:59131 "EHLO
-	mail-pd0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750939Ab3CURNW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Mar 2013 13:13:22 -0400
-Received: by mail-pd0-f174.google.com with SMTP id 10so1186512pdi.19
-        for <linux-nfs@vger.kernel.org>; Thu, 21 Mar 2013 10:13:22 -0700 (PDT)
-Date: Fri, 22 Mar 2013 01:06:14 +0800
-From: Peng Tao <bergwolf@gmail.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@tonian.com>,
-        Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [PATCH v2 2/3] NFSv4.1: Always clear the NFS_INO_LAYOUTCOMMIT in
- layoutreturn
-Message-ID: <20130321170614.GA4581@X61>
-References: <1363875181-7147-1-git-send-email-Trond.Myklebust@netapp.com>
- <1363875181-7147-2-git-send-email-Trond.Myklebust@netapp.com>
+Received: from fieldses.org ([174.143.236.118]:36138 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751884Ab3CRO5D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Mar 2013 10:57:03 -0400
+Date: Mon, 18 Mar 2013 10:57:02 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: only unhash DRC entries that are in the hashtable
+Message-ID: <20130318145702.GC6350@fieldses.org>
+References: <1363618147-24676-1-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1363875181-7147-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1363618147-24676-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 21, 2013 at 10:13:00AM -0400, Trond Myklebust wrote:
-<snip>
-> @@ -1458,7 +1479,6 @@ static void pnfs_ld_handle_write_error(struct nfs_write_data *data)
->  	dprintk("pnfs write error = %d\n", hdr->pnfs_error);
->  	if (NFS_SERVER(hdr->inode)->pnfs_curr_ld->flags &
->  	    PNFS_LAYOUTRET_ON_ERROR) {
-> -		clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(hdr->inode)->flags);
-Hi Trond and Boaz,
+On Mon, Mar 18, 2013 at 10:49:07AM -0400, Jeff Layton wrote:
+> It's not safe to call hlist_del() on a newly initialized hlist_node.
+> That leads to a NULL pointer dereference. Only do that if the entry
+> is hashed.
 
-If object layout requires layout being committed before returned (as fixed in
-the 3/3 patch), is it a potential problem to directly return layout here as
-well? e.g., if one lseg is successfully written and pending layoutcommit,
-then another lseg of the same file failed read/write, then layout will be
-returned w/o layoutcommit. For blocklayout, it is a potential data corruption
-and that's why block layout doesn't set PNFS_LAYOUTRET_ON_ERROR bit. So
-I'm wondering if object will suffer from the same issue?
+Thanks!  Applying for 3.9.--b.
 
-Thanks,
-Tao
-
--- 
-Here lieth one whos name was writ on water.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/nfsd/nfscache.c | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+> index f5ad28e..ca05f6d 100644
+> --- a/fs/nfsd/nfscache.c
+> +++ b/fs/nfsd/nfscache.c
+> @@ -102,7 +102,8 @@ nfsd_reply_cache_free_locked(struct svc_cacherep *rp)
+>  {
+>  	if (rp->c_type == RC_REPLBUFF)
+>  		kfree(rp->c_replvec.iov_base);
+> -	hlist_del(&rp->c_hash);
+> +	if (!hlist_unhashed(&rp->c_hash))
+> +		hlist_del(&rp->c_hash);
+>  	list_del(&rp->c_lru);
+>  	--num_drc_entries;
+>  	kmem_cache_free(drc_slab, rp);
+> -- 
+> 1.7.11.7
+> 
