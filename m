@@ -1,92 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:59263 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752818Ab3CENXZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Mar 2013 08:23:25 -0500
-Date: Tue, 5 Mar 2013 08:23:08 -0500
-From: Jeff Layton <jlayton@redhat.com>
+Received: from mail-ea0-f178.google.com ([209.85.215.178]:41296 "EHLO
+	mail-ea0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751250Ab3CRQWf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Mar 2013 12:22:35 -0400
+Received: by mail-ea0-f178.google.com with SMTP id g14so2673964eak.23
+        for <linux-nfs@vger.kernel.org>; Mon, 18 Mar 2013 09:22:34 -0700 (PDT)
+Message-ID: <51473F46.10401@tonian.com>
+Date: Mon, 18 Mar 2013 18:22:30 +0200
+From: Benny Halevy <bhalevy@tonian.com>
+MIME-Version: 1.0
 To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Oleg Nesterov <oleg@redhat.com>, Mandeep Singh Baines <msb@chromium.org>,
-        Ming Lei <ming.lei@canonical.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+CC: "Isaman, Fred" <Fred.Isaman@netapp.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Andrew Morton <akpm@linux-foundation.org>, Tejun Heo <tj@kernel.org>,
-        Ingo Molnar <mingo@redhat.com>
-Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
-Message-ID: <20130305082308.6607d4db@tlielax.poochiereds.net>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9286AEEB0@sacexcmbx05-prd.hq.netapp.com>
-References: <CACVXFVMKN6aeCvJcn7dyuonJYJDfYxWeW5KE6gfKRKJKFj2M4A@mail.gmail.com>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA9286AD113@sacexcmbx05-prd.hq.netapp.com>
-	<20130304092310.1d21100c@tlielax.poochiereds.net>
-	<CACBanvrc0orXGZ1v+gKHtVPKWYKGEFx46dwoDCjTU78+nPtZyg@mail.gmail.com>
-	<20130304205307.GA13527@redhat.com>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA9286AEEB0@sacexcmbx05-prd.hq.netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+        "stable@kernel.org" <stable@kernel.org>
+Subject: Re: [PATCH] pnfs: do not reset to mds if wb_offset != wb_pgbase
+References: <1363617532-24172-1-git-send-email-bhalevy@tonian.com> <1363622128.4351.15.camel@leira.trondhjem.org>
+In-Reply-To: <1363622128.4351.15.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 4 Mar 2013 22:08:34 +0000
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-
-> On Mon, 2013-03-04 at 21:53 +0100, Oleg Nesterov wrote:
-> > On 03/04, Mandeep Singh Baines wrote:
-> > >
-> > > The problem is that freezer_count() calls try_to_freeze(). In this
-> > > case, try_to_freeze() is not really adding any value.
-> > 
-> > Well, I tend to agree.
-> > 
-> > If a task calls __refrigerator() holding a lock which another freezable
-> > task can wait for, this is not freezer-friendly.
-> > 
-> > freezable_schedule/freezer_do_not_count/etc not only means "I won't be
-> > active if freezing()", it should also mean "I won't block suspend/etc".
+On 2013-03-18 17:55, Myklebust, Trond wrote:
+> On Mon, 2013-03-18 at 16:38 +0200, Benny Halevy wrote:
+>> We're seeing roughly 20% of the I/Os going to the MDS
+>> when installing a VM over KVM in "none" caching mode (O_DIRECT).
+>> Instrumenting the client reveled that this is caused by buffer
+>> alignment vs. file offset alignment.
+>> Besides being a performance problem, when the MDS caches data
+>> this is also manifested as data corruption when data is written
+>> first via the MDS, then via the DS, eventually the stale data is
+>> read back from the MDS.
 > 
-> If suspend for some reason requires a re-entrant mount, then yes, I can
-> see how it might be a problem that we're holding a mount-related lock.
-> The question is why is that necessary?
-> 
-> > OTOH, I understand that probably it is not trivial to change this code
-> > to make it freezer-friendly. But at least  I disagree with "push your
-> > problems onto others".
-> 
-> That code can't be made freezer-friendly if it isn't allowed to hold
-> basic filesystem-related locks across RPC calls. A number of those RPC
-> calls do things that need to be protected by VFS or MM-level locks.
-> i.e.: lookups, file creation/deletion, page fault in/out, ...
->  
-> IOW: the problem would need to be solved differently, possibly by adding
-> a new FIFREEZE-like call to allow the filesystem to quiesce itself
-> _before_ NetworkManager pulls the rug out from underneath it. There
-> would still be plenty of corner cases to keep people entertained (e.g.
-> the server goes down before the quiesce call is invoked) but at least
-> the top 90% of cases would be solved.
+> That's why we should return the layout.
 > 
 
-Ok, I think I'm starting to get it. It doesn't necessarily need a
-reentrant mount or anything like that. Consider this case (which is not
-even that unlikely):
+We are not in this case.
 
-Suppose there are two tasks calling unlink() on files in the same NFS
-directory.
+>> Note that this check exists also for the file layout specific
+>> pg_init_* functions.  The objects (ORE) and block
+>> (bl_{read,write}_pagelist) layouts seem to deal correctly with
+>> splitting IOs in the case where req->wb_offset != req->wb_pgbase
+>> though this hasn't been tested wen submitting this patch.
+>>
+>> Signed-off-by: Benny Halevy <bhalevy@tonian.com>
+>> Cc: stable@kernel.org [>= 3.5]
+>> Cc: Boaz Harrosh <bharrosh@panasas.com>
+>> Cc: Peng Tao <tao.peng@emc.com>
+>> ---
+>>  fs/nfs/pnfs.c | 18 ++++++++++--------
+>>  1 file changed, 10 insertions(+), 8 deletions(-)
+>>
+>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>> index 483bd94..f12e456 100644
+>> --- a/fs/nfs/pnfs.c
+>> +++ b/fs/nfs/pnfs.c
+>> @@ -1322,10 +1322,11 @@ struct pnfs_layout_segment *
+>>  
+>>  	WARN_ON_ONCE(pgio->pg_lseg != NULL);
+>>  
+>> -	if (req->wb_offset != req->wb_pgbase) {
+>> -		nfs_pageio_reset_read_mds(pgio);
+>> -		return;
+>> -	}
+>> +	if (req->wb_offset != req->wb_pgbase)
+>> +		dprintk("%s: inode=%ld: offset=%llu wb_bytes=%u wb_offset=%u wb_pgbase=%u\n",
+>> +			__func__, pgio->pg_inode->i_ino,
+>> +			(((unsigned long long)req->wb_index) << PAGE_CACHE_SHIFT) + req->wb_offset,
+>> +			req->wb_bytes, req->wb_offset, req->wb_pgbase);
+>>  
+>>  	if (pgio->pg_dreq == NULL)
+>>  		rd_size = i_size_read(pgio->pg_inode) - req_offset(req);
+>> @@ -1351,10 +1352,11 @@ struct pnfs_layout_segment *
+>>  {
+>>  	WARN_ON_ONCE(pgio->pg_lseg != NULL);
+>>  
+>> -	if (req->wb_offset != req->wb_pgbase) {
+>> -		nfs_pageio_reset_write_mds(pgio);
+>> -		return;
+>> -	}
+>> +	if (req->wb_offset != req->wb_pgbase)
+>> +		dprintk("%s: inode=%ld: offset=%llu wb_bytes=%u wb_offset=%u wb_pgbase=%u\n",
+>> +			__func__, pgio->pg_inode->i_ino,
+>> +			(((unsigned long long)req->wb_index) << PAGE_CACHE_SHIFT) + req->wb_offset,
+>> +			req->wb_bytes, req->wb_offset, req->wb_pgbase);
+>>  
+>>  	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+>>  					   req->wb_context,
+> 
+> NACK. I see no evidence that we've addressed the issues that were raised
+> by Fred in commit 1825a0d08f22463e5a8f4b1636473efd057a3479 (NFS: prepare
+> coalesce testing for directio).
+> If you think that his concerns about the coalescing assumptions are no
+> longer true, then please point to why this is the case. AFAICR that
+> patch was added to fix corruption issues.
+> 
 
-First task takes the i_mutex on the parent directory and goes to ask
-the server to remove the file. Second task calls unlink just
-afterward and blocks on the parent's i_mutex.
+We see no problems with this patch with the workloads we're testing.
+Do you have a test that reproduces the original problem that we can try running?
 
-Now, a suspend event comes in and freezes the first task while it's
-waiting on the response. It still holds the parent's i_mutex. Freezer
-now gets to the second task and can't freeze it because the sleep on
-that mutex isn't freezable.
-
-So, not a deadlock per-se in this case but it does prevent the freezer
-from running to completion. I don't see any way to solve it though w/o
-making all mutexes freezable. Note that I don't think this is really
-limited to NFS either -- a lot of other filesystems will have similar
-problems: CIFS, some FUSE variants, etc...
-
--- 
-Jeff Layton <jlayton@redhat.com>
+Benny
