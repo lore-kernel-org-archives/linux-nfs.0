@@ -1,175 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:47654 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756527Ab3CYLoP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Mar 2013 07:44:15 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 04/14] SELinux: Add new labeling type native labels
-Date: Mon, 25 Mar 2013 07:42:48 -0400
-Message-Id: <1364211778-29172-5-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1364211778-29172-1-git-send-email-SteveD@redhat.com>
-References: <1364211778-29172-1-git-send-email-SteveD@redhat.com>
+Received: from mail-ob0-f178.google.com ([209.85.214.178]:39968 "EHLO
+	mail-ob0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752078Ab3CSNLy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Mar 2013 09:11:54 -0400
+Received: by mail-ob0-f178.google.com with SMTP id wd20so382879obb.23
+        for <linux-nfs@vger.kernel.org>; Tue, 19 Mar 2013 06:11:53 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/6] nfsd: break out comparator into separate function
+Date: Tue, 19 Mar 2013 09:11:42 -0400
+Message-Id: <1363698706-22036-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1363698706-22036-1-git-send-email-jlayton@redhat.com>
+References: <1363698706-22036-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+Break out the function that compares the rqstp and checksum against a
+reply cache entry. While we're at it, track the efficacy of the checksum
+over the NFS data by tracking the cases where we would have incorrectly
+matched a DRC entry if we had not tracked it or the length.
 
-There currently doesn't exist a labeling type that is adequate for use with
-labeled NFS. Since NFS doesn't really support xattrs we can't use the use xattr
-labeling behavior. For this we developed a new labeling type. The native
-labeling type is used solely by NFS to ensure NFS inodes are labeled at runtime
-by the NFS code instead of relying on the SELinux security server on the client
-end.
-
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- include/linux/security.h            |  3 +++
- security/selinux/hooks.c            | 35 ++++++++++++++++++++++++++---------
- security/selinux/include/security.h |  2 ++
- security/selinux/ss/policydb.c      |  5 ++++-
- 4 files changed, 35 insertions(+), 10 deletions(-)
+ fs/nfsd/nfscache.c | 46 +++++++++++++++++++++++++++++++++++-----------
+ 1 file changed, 35 insertions(+), 11 deletions(-)
 
-diff --git a/include/linux/security.h b/include/linux/security.h
-index 5c4179a..9dc244e 100644
---- a/include/linux/security.h
-+++ b/include/linux/security.h
-@@ -61,6 +61,9 @@ struct mm_struct;
- #define SECURITY_CAP_NOAUDIT 0
- #define SECURITY_CAP_AUDIT 1
- 
-+/* LSM Agnostic defines for sb_set_mnt_opts */
-+#define SECURITY_LSM_NATIVE_LABELS	1
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index c61391e..48f5ef9 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -23,10 +23,22 @@
+ static struct hlist_head *	cache_hash;
+ static struct list_head 	lru_head;
+ static struct kmem_cache	*drc_slab;
+-static unsigned int		num_drc_entries;
 +
- struct ctl_table;
- struct audit_krule;
- struct user_namespace;
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index f9db857..c6d0932 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -80,6 +80,7 @@
- #include <linux/syslog.h>
- #include <linux/user_namespace.h>
- #include <linux/export.h>
-+#include <linux/security.h>
- #include <linux/msg.h>
- #include <linux/shm.h>
++/* max number of entries allowed in the cache */
+ static unsigned int		max_drc_entries;
  
-@@ -283,13 +284,14 @@ static void superblock_free_security(struct super_block *sb)
+ /*
++ * Stats and other tracking of on the duplicate reply cache. All of these and
++ * the "rc" fields in nfsdstats are protected by the cache_lock
++ */
++
++/* total number of entries */
++static unsigned int		num_drc_entries;
++
++/* cache misses due only to checksum comparison failures */
++static unsigned int		payload_misses;
++
++/*
+  * Calculate the hash index from an XID.
+  */
+ static inline u32 request_hash(u32 xid)
+@@ -273,6 +285,26 @@ nfsd_cache_csum(struct svc_rqst *rqstp)
+ 	return csum;
+ }
  
- /* The file system's label must be initialized prior to use. */
- 
--static const char *labeling_behaviors[6] = {
-+static const char *labeling_behaviors[7] = {
- 	"uses xattr",
- 	"uses transition SIDs",
- 	"uses task SIDs",
- 	"uses genfs_contexts",
- 	"not configured for labeling",
- 	"uses mountpoint labeling",
-+	"uses native labeling",
- };
- 
- static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dentry);
-@@ -677,14 +679,21 @@ static int selinux_set_mnt_opts(struct super_block *sb,
- 	if (strcmp(sb->s_type->name, "proc") == 0)
- 		sbsec->flags |= SE_SBPROC;
- 
--	/* Determine the labeling behavior to use for this filesystem type. */
--	rc = security_fs_use((sbsec->flags & SE_SBPROC) ? "proc" : sb->s_type->name, &sbsec->behavior, &sbsec->sid);
--	if (rc) {
--		printk(KERN_WARNING "%s: security_fs_use(%s) returned %d\n",
--		       __func__, sb->s_type->name, rc);
--		goto out;
-+	if (!sbsec->behavior) {
-+		/*
-+		 * Determine the labeling behavior to use for this
-+		 * filesystem type.
-+		 */
-+		rc = security_fs_use((sbsec->flags & SE_SBPROC) ?
-+					"proc" : sb->s_type->name,
-+					&sbsec->behavior, &sbsec->sid);
-+		if (rc) {
-+			printk(KERN_WARNING
-+				"%s: security_fs_use(%s) returned %d\n",
-+					__func__, sb->s_type->name, rc);
-+			goto out;
-+		}
- 	}
--
- 	/* sets the context of the superblock for the fs being mounted. */
- 	if (fscontext_sid) {
- 		rc = may_context_mount_sb_relabel(fscontext_sid, sbsec, cred);
-@@ -699,6 +708,11 @@ static int selinux_set_mnt_opts(struct super_block *sb,
- 	 * sets the label used on all file below the mountpoint, and will set
- 	 * the superblock context if not already set.
- 	 */
-+	if (kern_flags & SECURITY_LSM_NATIVE_LABELS && !context_sid) {
-+		sbsec->behavior = SECURITY_FS_USE_NATIVE;
-+		*set_kern_flags |= SECURITY_LSM_NATIVE_LABELS;
++static bool
++nfsd_cache_match(struct svc_rqst *rqstp, __wsum csum, struct svc_cacherep *rp)
++{
++	/* Check RPC header info first */
++	if (rqstp->rq_xid != rp->c_xid || rqstp->rq_proc != rp->c_proc ||
++	    rqstp->rq_prot != rp->c_prot || rqstp->rq_vers != rp->c_vers ||
++	    rqstp->rq_arg.len != rp->c_len ||
++	    !rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) ||
++	    rpc_get_port(svc_addr(rqstp)) != rpc_get_port((struct sockaddr *)&rp->c_addr))
++		return false;
++
++	/* compare checksum of NFS data */
++	if (csum != rp->c_csum) {
++		++payload_misses;
++		return false;
 +	}
 +
- 	if (context_sid) {
- 		if (!fscontext_sid) {
- 			rc = may_context_mount_sb_relabel(context_sid, sbsec,
-@@ -730,7 +744,8 @@ static int selinux_set_mnt_opts(struct super_block *sb,
++	return true;
++}
++
+ /*
+  * Search the request hash for an entry that matches the given rqstp.
+  * Must be called with cache_lock held. Returns the found entry or
+@@ -283,18 +315,10 @@ nfsd_cache_search(struct svc_rqst *rqstp, __wsum csum)
+ {
+ 	struct svc_cacherep	*rp;
+ 	struct hlist_head 	*rh;
+-	__be32			xid = rqstp->rq_xid;
+-	u32			proto =  rqstp->rq_prot,
+-				vers = rqstp->rq_vers,
+-				proc = rqstp->rq_proc;
+ 
+-	rh = &cache_hash[request_hash(xid)];
++	rh = &cache_hash[request_hash(rqstp->rq_xid)];
+ 	hlist_for_each_entry(rp, rh, c_hash) {
+-		if (xid == rp->c_xid && proc == rp->c_proc &&
+-		    proto == rp->c_prot && vers == rp->c_vers &&
+-		    rqstp->rq_arg.len == rp->c_len && csum == rp->c_csum &&
+-		    rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) &&
+-		    rpc_get_port(svc_addr(rqstp)) == rpc_get_port((struct sockaddr *)&rp->c_addr))
++		if (nfsd_cache_match(rqstp, csum, rp))
+ 			return rp;
  	}
- 
- 	if (defcontext_sid) {
--		if (sbsec->behavior != SECURITY_FS_USE_XATTR) {
-+		if (sbsec->behavior != SECURITY_FS_USE_XATTR &&
-+			sbsec->behavior != SECURITY_FS_USE_NATIVE) {
- 			rc = -EINVAL;
- 			printk(KERN_WARNING "SELinux: defcontext option is "
- 			       "invalid for this filesystem type\n");
-@@ -1198,6 +1213,8 @@ static int inode_doinit_with_dentry(struct inode *inode, struct dentry *opt_dent
- 	}
- 
- 	switch (sbsec->behavior) {
-+	case SECURITY_FS_USE_NATIVE:
-+		break;
- 	case SECURITY_FS_USE_XATTR:
- 		if (!inode->i_op->getxattr) {
- 			isec->sid = sbsec->def_sid;
-diff --git a/security/selinux/include/security.h b/security/selinux/include/security.h
-index 6d38851..8fd8e18 100644
---- a/security/selinux/include/security.h
-+++ b/security/selinux/include/security.h
-@@ -169,6 +169,8 @@ int security_get_allow_unknown(void);
- #define SECURITY_FS_USE_GENFS		4 /* use the genfs support */
- #define SECURITY_FS_USE_NONE		5 /* no labeling support */
- #define SECURITY_FS_USE_MNTPOINT	6 /* use mountpoint labeling */
-+#define SECURITY_FS_USE_NATIVE		7 /* use native label support */
-+#define SECURITY_FS_USE_MAX		7 /* Highest SECURITY_FS_USE_XXX */
- 
- int security_fs_use(const char *fstype, unsigned int *behavior,
- 	u32 *sid);
-diff --git a/security/selinux/ss/policydb.c b/security/selinux/ss/policydb.c
-index 9cd9b7c..c8adde3 100644
---- a/security/selinux/ss/policydb.c
-+++ b/security/selinux/ss/policydb.c
-@@ -2168,7 +2168,10 @@ static int ocontext_read(struct policydb *p, struct policydb_compat_info *info,
- 
- 				rc = -EINVAL;
- 				c->v.behavior = le32_to_cpu(buf[0]);
--				if (c->v.behavior > SECURITY_FS_USE_NONE)
-+				/* Determined at runtime, not in policy DB. */
-+				if (c->v.behavior == SECURITY_FS_USE_MNTPOINT)
-+					goto out;
-+				if (c->v.behavior > SECURITY_FS_USE_MAX)
- 					goto out;
- 
- 				rc = -ENOMEM;
+ 	return NULL;
 -- 
-1.8.1.4
+1.7.11.7
 
