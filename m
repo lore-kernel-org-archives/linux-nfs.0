@@ -1,39 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ve0-f175.google.com ([209.85.128.175]:50856 "EHLO
-	mail-ve0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758210Ab3CDS4r (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Mar 2013 13:56:47 -0500
-Received: by mail-ve0-f175.google.com with SMTP id cy12so4922811veb.6
-        for <linux-nfs@vger.kernel.org>; Mon, 04 Mar 2013 10:56:46 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
-Subject: [PATCH v2 0/5] nfsd: add a reply_cache_stats file to nfsd for tracking DRC performance
-Date: Mon,  4 Mar 2013 13:56:35 -0500
-Message-Id: <1362423400-24380-1-git-send-email-jlayton@redhat.com>
+Received: from mail-ie0-f173.google.com ([209.85.223.173]:57522 "EHLO
+	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756482Ab3CSTBo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Mar 2013 15:01:44 -0400
+Received: by mail-ie0-f173.google.com with SMTP id 9so1097574iec.4
+        for <linux-nfs@vger.kernel.org>; Tue, 19 Mar 2013 12:01:44 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/3] SUNRPC: Remove extra xprt_put()
+To: linux-nfs@vger.kernel.org
+Date: Tue, 19 Mar 2013 15:01:28 -0400
+Message-ID: <20130319190128.1203.29390.stgit@seurat.1015granger.net>
+In-Reply-To: <20130319185944.1203.38377.stgit@seurat.1015granger.net>
+References: <20130319185944.1203.38377.stgit@seurat.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patchset adds some stats tracking to the DRC to hopefully allow
-us to make better-informed decisions in the future on performance
-improvements.
+While testing error cases where rpc_new_client() fails, I saw
+some oopses.
 
-Some of these I've already posted, but reposting them now as a set
-to allow Bruce to more easily merge them. I think these would be good
-for 3.9, but they're obviously not critical.
+If rpc_new_client() fails, it already invokes xprt_put().  Thus
+__rpc_clone_client() does not need to invoke it again.
 
-Jeff Layton (5):
-  nfsd: break out comparator into separate function
-  nfsd: track memory utilization in the DRC
-  nfsd: add new reply_cache_stats file in nfsdfs
-  nfsd: keep track of the max and average time to search the cache
-  nfsd: keep stats on worst hash balancing seen so far
+Introduced by commit 1b63a751 "SUNRPC: Refactor rpc_clone_client()"
+Fri Sep 14, 2012.
 
- fs/nfsd/cache.h    |   1 +
- fs/nfsd/nfscache.c | 144 ++++++++++++++++++++++++++++++++++++++++++++++-------
- fs/nfsd/nfsctl.c   |   9 ++++
- 3 files changed, 137 insertions(+), 17 deletions(-)
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: stable@kernel.org
+---
 
--- 
-1.7.11.7
+ net/sunrpc/clnt.c |    4 +---
+ 1 files changed, 1 insertions(+), 3 deletions(-)
+
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index dcc446e..9df26b7 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -512,7 +512,7 @@ static struct rpc_clnt *__rpc_clone_client(struct rpc_create_args *args,
+ 	new = rpc_new_client(args, xprt);
+ 	if (IS_ERR(new)) {
+ 		err = PTR_ERR(new);
+-		goto out_put;
++		goto out_err;
+ 	}
+ 
+ 	atomic_inc(&clnt->cl_count);
+@@ -525,8 +525,6 @@ static struct rpc_clnt *__rpc_clone_client(struct rpc_create_args *args,
+ 	new->cl_chatty = clnt->cl_chatty;
+ 	return new;
+ 
+-out_put:
+-	xprt_put(xprt);
+ out_err:
+ 	dprintk("RPC:       %s: returned error %d\n", __func__, err);
+ 	return ERR_PTR(err);
 
