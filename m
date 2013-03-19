@@ -1,89 +1,200 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:46040 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758655Ab3CDWoQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Mar 2013 17:44:16 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Akinobu Mita <akinobu.mita@gmail.com>
-CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH -v3 17/23] net/sunrpc: rename random32() to prandom_u32()
-Date: Mon, 4 Mar 2013 22:44:13 +0000
-Message-ID: <4FA345DA4F4AE44899BD2B03EEEC2FA9286AF0DB@sacexcmbx05-prd.hq.netapp.com>
-References: <1362401911-14074-1-git-send-email-akinobu.mita@gmail.com>
-	 <1362401911-14074-18-git-send-email-akinobu.mita@gmail.com>
-In-Reply-To: <1362401911-14074-18-git-send-email-akinobu.mita@gmail.com>
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="=-SQIidN/DRVZ2+Ig/p9iA"
+Received: from mail-ie0-f176.google.com ([209.85.223.176]:56268 "EHLO
+	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756482Ab3CSTCC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Mar 2013 15:02:02 -0400
+Received: by mail-ie0-f176.google.com with SMTP id x14so1073539ief.7
+        for <linux-nfs@vger.kernel.org>; Tue, 19 Mar 2013 12:02:01 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 3/3] NFS: Use server-recommended security flavor by default
+ (NFSv3)
+To: linux-nfs@vger.kernel.org
+Date: Tue, 19 Mar 2013 15:01:46 -0400
+Message-ID: <20130319190145.1203.55879.stgit@seurat.1015granger.net>
+In-Reply-To: <20130319185944.1203.38377.stgit@seurat.1015granger.net>
+References: <20130319185944.1203.38377.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-SQIidN/DRVZ2+Ig/p9iA
-Content-Type: text/plain; charset="ISO-8859-1"
-Content-Transfer-Encoding: quoted-printable
+Since commit ec88f28d in 2009, checking if the user-specified flavor
+is in the server's flavor list has been the source of a few
+noticeable regressions (now fixed), but there is one that is still
+vexing.
 
-On Mon, 2013-03-04 at 21:58 +0900, Akinobu Mita wrote:
-> Use more preferable function name which implies using a pseudo-random
-> number generator.
->=20
-> Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
-> Cc: "J. Bruce Fields" <bfields@fieldses.org>
-> Cc: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Cc: "David S. Miller" <davem@davemloft.net>
-> Cc: netdev@vger.kernel.org
-> Cc: linux-nfs@vger.kernel.org
-> ---
->=20
-> No change from v2
->=20
->  net/sunrpc/auth_gss/gss_krb5_wrap.c | 4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
->=20
-> diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gs=
-s_krb5_wrap.c
-> index 88edec9..1da52d1 100644
-> --- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
-> +++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-> @@ -130,8 +130,8 @@ gss_krb5_make_confounder(char *p, u32 conflen)
-> =20
->  	/* initialize to random value */
->  	if (i =3D=3D 0) {
-> -		i =3D random32();
-> -		i =3D (i << 32) | random32();
-> +		i =3D prandom_u32();
-> +		i =3D (i << 32) | prandom_u32();
->  	}
-> =20
->  	switch (conflen) {
+An NFS server can list AUTH_NULL in its flavor list, which suggests
+a client should try to mount the server with the flavor of the
+client's choice, but the server will squash all accesses.  In some
+cases, our client fails to mount a server because of this check,
+when the mount could have proceeded successfully.
 
-Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Skip this check if the user has specified "sec=" on the mount
+command line.  But do consult the server-provided flavor list to
+choose a security flavor if no sec= option is specified on the mount
+command.
 
---=-SQIidN/DRVZ2+Ig/p9iA
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-Content-Transfer-Encoding: 7bit
+If a server lists Kerberos pseudoflavors before "sys" in its export
+options, our client now chooses Kerberos over AUTH_UNIX for mount
+points, when no security flavor is specified by the mount command.
+This could be surprising to some administrators or users, who would
+need to have Kerberos credentials to access the export.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.13 (GNU/Linux)
+Or, a client administrator may not have enabled
+"nfs-secure.service".  In this case, auth_rpcgss.ko might be
+loadable, which is enough for the new logic to choose Kerberos over
+AUTH_UNIX.  But the mount would fail since no GSS context can be
+created without rpc.gssd running.
 
-iQIcBAABAgAGBQJRNSPAAAoJEGcL54qWCgDywo0P+gJT0QdtovcdlKjovq/XK/kY
-HvzP26Z0Agri5kA5xLdQvhWEjUe+G1j+rraNLO6iUMF09EwG4rqnlYSAMHq0SsL5
-f9SuBNFdRK7Vd/jvnQjyL2Sf05PFT9OEAYplMcMgI0Cew5NMMYXtI7GQU4y+ucxF
-vyzw7WeKqbYrUsQV99plJ5fpq63lSmEgn4uzURudzbIq0cuz8uYGkWTfQllZRdaa
-bJ3Ov375udPvNHN696s+KopVelg28TEA9ooBufwJr7ynUzNjSs9VgyJPPvpB/+NA
-QFVfdbpCrh/n4/cucmtLh6OBoCl1I0uzHZCXU9Px/thR7Nr2lZ78jaTE1qR8QJh1
-MYQOe3ugzc4IFouhgKYic+MgTrRtEALa/8sZ7rYjx2/rz/gHCkc6CSzuZy5w7jf0
-FJ4a8hBSz0fEGkgz5NcgGPsCG8xOOjA9uQnB2GcyN4Ni2p3USAaSoriLT+gr8zqX
-oC05AU5IaxO29c+wYC7EyKLJjfGJeDR6I/7CKfRnjBmvFg+2/4fwAnoI0vGd03US
-o99gDvGEQ3S9uw4zMGuwirBEP73V5OhqENpqEMn39F0+nuG0u4QXpOsB5IXRTiNT
-UXmvQWCG4kdGK98/Ra+z8TrBL+JpowuKGhaoMgQgLNW0wp+wJW8Ftw7nLAAbL4Ed
-/8LAEAJGld12kQ+CiiXN
-=K/Tl
------END PGP SIGNATURE-----
+To retain the use of AUTH_UNIX by default:
 
---=-SQIidN/DRVZ2+Ig/p9iA--
+  o  The server administrator can ensure that "sys" is listed before
+     Kerberos flavors in its export security options (see
+     exports(5)),
+
+  o  The client administrator can explicitly specify "sec=sys" on
+     its mount command line (see nfs(5)),
+
+  o  The client administrator can use "Sec=sys" in an appropriate
+     section of /etc/nfsmount.conf (see nfsmount.conf(5)), or
+
+  o  The client administrator can blacklist auth_rpcgss.ko.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ fs/nfs/nfs4super.c |    2 +
+ fs/nfs/super.c     |   80 +++++++++++++++++++++++++++-------------------------
+ 2 files changed, 44 insertions(+), 38 deletions(-)
+
+diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+index 569b166..3df6c03 100644
+--- a/fs/nfs/nfs4super.c
++++ b/fs/nfs/nfs4super.c
+@@ -252,6 +252,8 @@ struct dentry *nfs4_try_mount(int flags, const char *dev_name,
+ 
+ 	dfprintk(MOUNT, "--> nfs4_try_mount()\n");
+ 
++	if (data->args_flavors[0] == RPC_AUTH_MAXFLAVOR)
++		data->args_flavors[0] = RPC_AUTH_UNIX;
+ 	export_path = data->nfs_server.export_path;
+ 	data->nfs_server.export_path = "/";
+ 	root_mnt = nfs_do_root_mount(&nfs4_remote_fs_type, flags, mount_info,
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 95cdcb2..cc858f6 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -919,7 +919,7 @@ static struct nfs_parsed_mount_data *nfs_alloc_parsed_mount_data(void)
+ 		data->mount_server.port	= NFS_UNSPEC_PORT;
+ 		data->nfs_server.port	= NFS_UNSPEC_PORT;
+ 		data->nfs_server.protocol = XPRT_TRANSPORT_TCP;
+-		data->auth_flavors[0]	= RPC_AUTH_UNIX;
++		data->auth_flavors[0]	= RPC_AUTH_MAXFLAVOR;
+ 		data->auth_flavor_len	= 1;
+ 		data->minorversion	= 0;
+ 		data->need_mount	= true;
+@@ -1607,49 +1607,57 @@ out_security_failure:
+ }
+ 
+ /*
+- * Match the requested auth flavors with the list returned by
+- * the server.  Returns zero and sets the mount's authentication
+- * flavor on success; returns -EACCES if server does not support
+- * the requested flavor.
++ * Select a security flavor for this mount.  The selected flavor
++ * is planted in args->auth_flavors[0].
+  */
+-static int nfs_walk_authlist(struct nfs_parsed_mount_data *args,
+-			     struct nfs_mount_request *request)
++static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
++			      struct nfs_mount_request *request)
+ {
+-	unsigned int i, j, server_authlist_len = *(request->auth_flav_len);
++	unsigned int i, count = *(request->auth_flav_len);
++	rpc_authflavor_t flavor;
++
++	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR)
++		goto out;
++
++	/*
++	 * The NFSv2 MNT operation does not return a flavor list.
++	 */
++	if (args->mount_server.version != NFS_MNT3_VERSION)
++		goto out_default;
+ 
+ 	/*
+ 	 * Certain releases of Linux's mountd return an empty
+-	 * flavor list.  To prevent behavioral regression with
+-	 * these servers (ie. rejecting mounts that used to
+-	 * succeed), revert to pre-2.6.32 behavior (no checking)
+-	 * if the returned flavor list is empty.
++	 * flavor list in some cases.
+ 	 */
+-	if (server_authlist_len == 0)
+-		return 0;
++	if (count == 0)
++		goto out_default;
+ 
+ 	/*
+-	 * We avoid sophisticated negotiating here, as there are
+-	 * plenty of cases where we can get it wrong, providing
+-	 * either too little or too much security.
+-	 *
+ 	 * RFC 2623, section 2.7 suggests we SHOULD prefer the
+ 	 * flavor listed first.  However, some servers list
+-	 * AUTH_NULL first.  Our caller plants AUTH_SYS, the
+-	 * preferred default, in args->auth_flavors[0] if user
+-	 * didn't specify sec= mount option.
++	 * AUTH_NULL first.  Avoid ever choosing AUTH_NULL.
+ 	 */
+-	for (i = 0; i < args->auth_flavor_len; i++)
+-		for (j = 0; j < server_authlist_len; j++)
+-			if (args->auth_flavors[i] == request->auth_flavs[j]) {
+-				dfprintk(MOUNT, "NFS: using auth flavor %d\n",
+-					request->auth_flavs[j]);
+-				args->auth_flavors[0] = request->auth_flavs[j];
+-				return 0;
+-			}
++	for (i = 0; i < count; i++) {
++		struct rpcsec_gss_info info;
++
++		flavor = request->auth_flavs[i];
++		switch (flavor) {
++		case RPC_AUTH_UNIX:
++			goto out_set;
++		case RPC_AUTH_NULL:
++			continue;
++		default:
++			if (rpcauth_get_gssinfo(flavor, &info) == 0)
++				goto out_set;
++		}
++	}
+ 
+-	dfprintk(MOUNT, "NFS: server does not support requested auth flavor\n");
+-	nfs_umount(request);
+-	return -EACCES;
++out_default:
++	flavor = RPC_AUTH_UNIX;
++out_set:
++	args->auth_flavors[0] = flavor;
++out:
++	dfprintk(MOUNT, "NFS: using auth flavor %d\n", args->auth_flavors[0]);
+ }
+ 
+ /*
+@@ -1712,12 +1720,8 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
+ 		return status;
+ 	}
+ 
+-	/*
+-	 * MNTv1 (NFSv2) does not support auth flavor negotiation.
+-	 */
+-	if (args->mount_server.version != NFS_MNT3_VERSION)
+-		return 0;
+-	return nfs_walk_authlist(args, &request);
++	nfs_select_flavor(args, &request);
++	return 0;
+ }
+ 
+ struct dentry *nfs_try_mount(int flags, const char *dev_name,
+
