@@ -1,48 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:51389 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751600Ab3CYUWX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Mar 2013 16:22:23 -0400
-Message-ID: <5150B1FD.1070405@RedHat.com>
-Date: Mon, 25 Mar 2013 16:22:21 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-ia0-f179.google.com ([209.85.210.179]:40959 "EHLO
+	mail-ia0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755387Ab3CSTBg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Mar 2013 15:01:36 -0400
+Received: by mail-ia0-f179.google.com with SMTP id x24so701036iak.38
+        for <linux-nfs@vger.kernel.org>; Tue, 19 Mar 2013 12:01:35 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 0/3] Negotiate NFSv3 mount security flavor
+To: linux-nfs@vger.kernel.org
+Date: Tue, 19 Mar 2013 15:01:19 -0400
+Message-ID: <20130319185944.1203.38377.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] mountd: regression in crossmounts
-References: <1364049149-3751-1-git-send-email-steved@redhat.com> <20130325181314.GA10120@fieldses.org>
-In-Reply-To: <20130325181314.GA10120@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+For review, here is an implementation of NFSv3 security flavor
+negotiation.
+
+---
+
+Chuck Lever (3):
+      NFS: Use server-recommended security flavor by default (NFSv3)
+      SUNRPC: Don't recognize RPC_AUTH_MAXFLAVOR
+      SUNRPC: Remove extra xprt_put()
 
 
-On 25/03/13 14:13, J. Bruce Fields wrote:
-> On Sat, Mar 23, 2013 at 10:32:29AM -0400, Steve Dickson wrote:
->> commit 8e2fb3fc cause a regression in mount export
->> that are on different local file system.
->> Exports like (all on different filesystems)
->>
->> /home *(rw,fsid=0,crossmnt)
->> /home/fs1 *(rw,crossmnt)
->> /home/fs1/fs2/fs3 *(rw,nohide)
->>
->> and then a mount of the root 'mount /home /mnt'
->> would end up mounting /home/fs1/fs2/fs3 not /home
-> 
-> That's strange.
-Yeah... I had this guy reporting from day one that the 
-latest nfs-utils broke his export world... 
- 
-> 
->> Reverting the logic of commit 8e2fb3fc until
->> a better solution can be found for the original
->> problem.
-> 
-> I can't figure out why the patch below would help.  The only change I
-> can see is to the way that an export of "/" would be handled.
-The reason I didn't debug this further was I did not know how to 
-reproduce the original problem the patch was trying to fix... 
+ fs/nfs/nfs4super.c |    2 +
+ fs/nfs/super.c     |   80 +++++++++++++++++++++++++++-------------------------
+ net/sunrpc/auth.c  |    5 +++
+ net/sunrpc/clnt.c  |    4 +--
+ 4 files changed, 49 insertions(+), 42 deletions(-)
 
-steved.
+-- 
+Chuck Lever
