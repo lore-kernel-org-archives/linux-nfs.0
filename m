@@ -1,196 +1,179 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:25291 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754711Ab3CaAXZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 30 Mar 2013 20:23:25 -0400
-Message-ID: <515781F6.1070701@RedHat.com>
-Date: Sat, 30 Mar 2013 20:23:18 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 13/14] NFSD: Server implementation of MAC Labeling
-References: <1364478845-29796-1-git-send-email-SteveD@redhat.com> <1364478845-29796-14-git-send-email-SteveD@redhat.com> <20130328185845.GI7080@fieldses.org> <51575E1D.7000605@RedHat.com> <20130330220759.GB12025@fieldses.org> <51576BEF.50001@RedHat.com> <20130331000230.GJ22307@fieldses.org>
-In-Reply-To: <20130331000230.GJ22307@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from dgate20.ts.fujitsu.com ([80.70.172.51]:6667 "EHLO
+	dgate20.ts.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757413Ab3CST6z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Mar 2013 15:58:55 -0400
+Message-Id: <61eb00$3hhkq0@dgate20u.abg.fsc.net>
+Date: 19 Mar 2013 20:58:53 +0100
+From: Bodo Stroesser <bstroesser@ts.fujitsu.com>
+To: neilb@suse.de
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, bstroesser@ts.fujitsu.com
+Subject: Re: sunrpc/cache.c: races while updating cache entries
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 30/03/13 20:02, J. Bruce Fields wrote:
-> On Sat, Mar 30, 2013 at 06:49:19PM -0400, Steve Dickson wrote:
->>
->>
->> On 30/03/13 18:08, J. Bruce Fields wrote:
->>> On Sat, Mar 30, 2013 at 05:50:21PM -0400, Steve Dickson wrote:
->>>>
->>>>
->>>> On 28/03/13 14:58, J. Bruce Fields wrote:
->>>>> On Thu, Mar 28, 2013 at 09:54:04AM -0400, Steve Dickson wrote:
->>>>>> From: David Quigley <dpquigl@davequigley.com>
->>>>>>
->>>>>> This patch adds the ability to encode and decode file labels on the server for
->>>>>> the purpose of sending them to the client and also to process label change
->>>>>> requests from the client.
->>>>>>
->>>>>> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
->>>>>> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
->>>>>> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
->>>>>> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
->>>>>> ---
->>>>>>  fs/nfsd/nfs4proc.c |  41 +++++++++++++++++++
->>>>>>  fs/nfsd/nfs4xdr.c  | 116 ++++++++++++++++++++++++++++++++++++++++++++++++++---
->>>>>>  fs/nfsd/nfsd.h     |   6 ++-
->>>>>>  fs/nfsd/vfs.c      |  29 ++++++++++++++
->>>>>>  fs/nfsd/vfs.h      |   2 +
->>>>>>  fs/nfsd/xdr4.h     |   3 ++
->>>>>>  6 files changed, 191 insertions(+), 6 deletions(-)
->>>>>>
->>>>>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->>>>>> index ae73175..bb17589 100644
->>>>>> --- a/fs/nfsd/nfs4proc.c
->>>>>> +++ b/fs/nfsd/nfs4proc.c
->>>>>> @@ -42,6 +42,36 @@
->>>>>>  #include "current_stateid.h"
->>>>>>  #include "netns.h"
->>>>>>  
->>>>>> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
->>>>>> +#include <linux/security.h>
->>>>>> +
->>>>>> +static inline void
->>>>>> +nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct nfs4_label *label, u32 *bmval)
->>>>>> +{
->>>>>> +	struct inode *inode = resfh->fh_dentry->d_inode;
->>>>>> +	int status;
->>>>>> +
->>>>>> +	mutex_lock(&inode->i_mutex);
->>>>>> +	status = security_inode_setsecctx(resfh->fh_dentry,
->>>>>> +		label->label, label->len);
->>>>>> +	mutex_unlock(&inode->i_mutex);
->>>>>> +
->>>>>> +	if (status)
->>>>>> +		/*
->>>>>> +		 * We should probably fail the whole open at this point,
->>>>>> +		 * but we've already created or opened the file, so it's 
->>>>>> +		 * too late; So this seems the least of evils:
->>>>>> +		 */
->>>>>> +		bmval[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
->>>>>> +		
->>>>>> +	return;
->>>>>> +}
->>>>>> +#else 
->>>>>> +static inline void 
->>>>>> +nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct nfs4_label *label, u32 *bmval)
->>>>>> +{ }
->>>>>> +#endif
->>>>>> +
->>>>>>  #define NFSDDBG_FACILITY		NFSDDBG_PROC
->>>>>>  
->>>>>>  static u32 nfsd_attrmask[] = {
->>>>>> @@ -230,6 +260,9 @@ do_open_lookup(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_o
->>>>>>  					(u32 *)open->op_verf.data,
->>>>>>  					&open->op_truncate, &open->op_created);
->>>>>>  
->>>>>> +		if (!status && open->op_label != NULL) 
->>>>>> +			nfsd4_security_inode_setsecctx(resfh, open->op_label, open->op_bmval);
->>>>>> +
->>>>>>  		/*
->>>>>>  		 * Following rfc 3530 14.2.16, use the returned bitmask
->>>>>>  		 * to indicate which attributes we used to store the
->>>>>> @@ -599,6 +632,9 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>>>>>  	if (status)
->>>>>>  		goto out;
->>>>>>  
->>>>>> +	if (create->cr_label != NULL)
->>>>>> +		nfsd4_security_inode_setsecctx(&resfh, create->cr_label, create->cr_bmval);
->>>>>> +
->>>>>>  	if (create->cr_acl != NULL)
->>>>>>  		do_set_nfs4_acl(rqstp, &resfh, create->cr_acl,
->>>>>>  				create->cr_bmval);
->>>>>> @@ -888,6 +924,11 @@ nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>>>>>  					    setattr->sa_acl);
->>>>>>  	if (status)
->>>>>>  		goto out;
->>>>>> +	if (setattr->sa_label != NULL)
->>>>>> +		status = nfsd4_set_nfs4_label(rqstp, &cstate->current_fh,
->>>>>> +				setattr->sa_label);
->>>>>> +	if (status)
->>>>>> +		goto out;
->>>>>>  	status = nfsd_setattr(rqstp, &cstate->current_fh, &setattr->sa_iattr,
->>>>>>  				0, (time_t)0);
->>>>>>  out:
->>>>>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
->>>>>> index 0116886..52e219c 100644
->>>>>> --- a/fs/nfsd/nfs4xdr.c
->>>>>> +++ b/fs/nfsd/nfs4xdr.c
->>>>>> @@ -55,6 +55,11 @@
->>>>>>  #include "cache.h"
->>>>>>  #include "netns.h"
->>>>>>  
->>>>>> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
->>>>>> +#include <linux/security.h>
->>>>>> +#endif
->>>>>> +
->>>>>> +
->>>>>>  #define NFSDDBG_FACILITY		NFSDDBG_XDR
->>>>>>  
->>>>>>  /*
->>>>>> @@ -79,6 +84,24 @@ check_filename(char *str, int len)
->>>>>>  			return nfserr_badname;
->>>>>>  	return 0;
->>>>>>  } 
->>>>>> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
->>>>>> +static struct nfs4_label *nfsd4_label_alloc(u32 len)
->>>>>> +{
->>>>>> +	struct nfs4_label *label = NULL;
->>>>>> +
->>>>>> +	if (len > NFS4_MAXLABELLEN)
->>>>>> +		return ERR_PTR(-ENAMETOOLONG);
->>>>>
->>>>> This is returned as NFS4ERR_NAMETOOLONG.
->>>>>
->>>>> The 4.2 spec should note this case, if it's the right error.  rfc 5661
->>>>> says that error's only for filenames, and doesn't allow it for setattr
->>>>> (which doesn't take a filename).
->>>> The 4.2 spec (draft-ietf-nfsv4-minorversion2-19.txt) defines two Labeled 
->>>> NFS errors:
->>>> NFS4ERR_BADLABEL  (Error Code 10093)
->>>> NFS4ERR_WRONG_LFS (Error Code 10092)
->>>>
->>>> and we currently don't define either one of them... So I guess that
->>>> will have to change... 
->>>
->>> http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-19#section-11.1.3.1
->>> just says "The label specified is invalid in some manner" for
->>> NFS4ERR_BADLABEL.
->>>
->>> Anyway, that sounds like the right one for this case....
->>>
->>>> So what should NFS4ERR_BADLABEL map to in nfserrno()?
->>>
->>> I don't know; I guess I'd check out what errors can be returned from the
->>> code that sets a context.
->> Looking looking at the code under security/selinux, the popular returns 
->> seem to be are
->> -EOPNOTSUPP, -EACCES, -EPERM and -EINVAL. 
->>
->> I say we go with -EINVAL....
-> 
-> Note nfserrno() converts from -ERR to nfs4 errors.  You may be thinking
-> of the client side nfs4_stat_to_errno().
-I was looking at nfsd4_decode_fattr()... If nfsd4_label_alloc() does fail,
-host_err is set and we jump to out_nfserr:. Then status is then set by the
-return value of nfserrno(host_err); I'm thinking that status should be set 
-to -EINVAL
-
-steved.
-
-
+T24gMTkgTWFyIDIwMTMgMDQ6MjQ6MDAgKzAxMDAgTmVpbEJyb3duIDxuZWlsYkBzdXNlLmRl
+PiB3cm90ZToKCj4gT24gMTQgTWFyIDIwMTMgMTg6MzE6MzggKzAxMDAgQm9kbyBTdHJvZXNz
+ZXIgPGJzdHJvZXNzZXJAdHMuZnVqaXRzdS5jb20+Cj4gd3JvdGU6Cj4gCj4gPiBPbiAxMyBN
+YXIgMjAxMyAwNzo1NTowMCArMDEwMCBOZWlsQnJvd24gPG5laWxiQHN1c2UuZGU+IHdyb3Rl
+Ogo+ID4gCj4gPiA+IE9uIDExIE1hciAyMDEzIDE3OjEzOjQxICswMTAwIEJvZG8gU3Ryb2Vz
+c2VyIAo+ID4gPiA8YnN0cm9lc3NlckB0cy5mdWppdHN1LmNvbT4KPiA+ID4gd3JvdGU6Cj4g
+PiA+IAo+ID4gPiA+IEhpLAo+ID4gPiA+IAo+ID4gPiA+IEFGQUlDUywgdGhlcmUgaXMgb25l
+IG1vcmUgcmFjZSBpbiBSUEMgY2FjaGUuCj4gPiA+ID4gCj4gPiA+ID4gVGhlIHByb2JsZW0g
+c2hvd2VkIHVwIGZvciB0aGUgImF1dGgudW5peC5pcCIgY2FjaGUsIHRoYXQgaGFzIGEgCj4g
+PiA+ID4gcmVhZGVyLgo+ID4gPiA+IAo+ID4gPiA+IElmIGEgc2VydmVyIHRocmVhZCB0cmll
+cyB0byBmaW5kIGEgY2FjaGUgZW50cnksIGl0IGZpcnN0IGRvZXMgYSAKPiA+ID4gPiBsb29r
+dXAgKG9yIGNhbGxzIGlwX21hcF9jYWNoZWRfZ2V0KCkgaW4gdGhpcyBzcGVjaWZpYyBjYXNl
+KS4gVGhlbiwgCj4gPiA+ID4gaXQgY2FsbHMgY2FjaGVfY2hlY2soKSBmb3IgdGhpcyBlbnRy
+eS4KPiA+ID4gPiAKPiA+ID4gPiBJZiB0aGUgcmVhZGVyIHVwZGF0ZXMgdGhlIGNhY2hlIGVu
+dHJ5IGp1c3QgYmV0d2VlbiB0aGUgdGhyZWFkJ3MgCj4gPiA+ID4gbG9va3VwIGFuZCBjYWNo
+ZV9jaGVjaygpIGV4ZWN1dGlvbiwgY2FjaGVfY2hlY2soKSB3aWxsIGRvIGFuIAo+ID4gPiA+
+IHVwY2FsbCBmb3IgdGhpcyBjYWNoZSBlbnRyeS4gVGhpcyBpcywgYmVjYXVzZQo+ID4gPiA+
+IHN1bnJwY19jYWNoZV91cGRhdGUoKSBjYWxscyBjYWNoZV9mcmVzaF9sb2NrZWQob2xkLCAw
+KSwgd2hpY2ggc2V0cyAKPiA+ID4gPiBleHBpcnlfdGltZSB0byAwLgo+ID4gPiA+IAo+ID4g
+PiA+IFVuZm9ydHVuYXRlbHksIHRoZSByZXBseSB0byB0aGUgdXBjYWxsIHdpbGwgbm90IGRl
+cXVldWUgdGhlIHF1ZXVlZCAKPiA+ID4gPiBjYWNoZV9yZXF1ZXN0LCBhcyB0aGUgcmVwbHkg
+d2lsbCBiZSBhc3NpZ25lZCB0byB0aGUgY2FjaGUgZW50cnkgCj4gPiA+ID4gbmV3bHkgY3Jl
+YXRlZCBieSB0aGUgYWJvdmUgY2FjaGUgdXBkYXRlLgo+ID4gPiA+IAo+ID4gPiA+IFRoZSBy
+ZXN1bHQgaXMgYSBncm93aW5nIHF1ZXVlIG9mIG9ycGhhbmVkIGNhY2hlX3JlcXVlc3Qgc3Ry
+dWN0dXJlcyAKPiA+ID4gPiAtLT4gbWVtb3J5IGxlYWsuCj4gPiA+ID4gCj4gPiA+ID4gSSBm
+b3VuZCB0aGlzIG9uIGEgU0xFUzExIFNQMSB3aXRoIGEgYmFja3BvcnQgb2YgdGhlIGxhdGVz
+dCBwYXRjaGVzIAo+ID4gPiA+IHRoYXQgZml4IHRoZSBvdGhlciBSUEMgcmFjZXMuIE9uIHRo
+aXMgb2xkIGtlcm5lbCwgdGhlIHByb2JsZW0gYWxzbyAKPiA+ID4gPiBsZWFkcyB0byBzdmNf
+ZHJvcCgpIGJlaW5nIGNhbGxlZCBmb3IgdGhlIGFmZmVjdGVkIFJQQyByZXF1ZXN0IAo+ID4g
+PiA+IChhZnRlciBzdmNfZGVmZXIoKSkuCj4gPiA+ID4gCj4gPiA+ID4gQmVzdCBSZWdhcmRz
+Cj4gPiA+ID4gQm9kbwo+ID4gPiAKPiA+ID4gSSBkb24ndCB0aGluayB0aGlzIGlzIGEgcmVh
+bCBwcm9ibGVtLgo+ID4gPiBUaGUgcGVyaW9kaWMgY2FsbCB0byAiY2FjaGVfY2xlYW4iIHNo
+b3VsZCBmaW5kIHRoZXNlIG9ycGhhbmVkIAo+ID4gPiByZXF1ZXN0cyBhbmQgcHVyZ2UgdGhl
+bS4gIFNvIHlvdSBjb3VsZCBnZXQgYSBzaG9ydCB0ZXJtIG1lbW9yeSBsZWFrLCAKPiA+ID4g
+YnV0IGl0IHNob3VsZCBjb3JyZWN0IGl0c2VsZi4KPiA+ID4gRG8geW91IGFncmVlPwo+ID4g
+PiAKPiA+ID4gVGhhbmtzLAo+ID4gPiBOZWlsQnJvd24KPiA+IAo+ID4gTWVhbndoaWxlIEkg
+Zm91bmQgdGhlIG1pc3NpbmcgcGFydCBvZiB0aGUgcmFjZSEKPiA+IAo+ID4gSXQncyBqdXN0
+IHdoYXQgSSB3cm90ZSBhYm92ZSBidXQgYWRkaXRpb25hbGx5LCBpbW1lZGlhdGVseSBhZnRl
+ciB0aGUgCj4gPiByZWFkZXIgdXBkYXRlZCB0aGUgY2FjaGUsIGNhY2hlX2NsZWFuKCkgdW5o
+YXNoZXMgdGhlIG9sZCBjYWNoZSBlbnRyeS4gCj4gPiBJbiB0aGF0IGNhc2U6Cj4gPiAxKSB0
+aGUgdGhyZWFkIHdpbGwgcXVldWUgYSByZXF1ZXN0IGZvciBhIGNhY2hlIGVudHJ5LCB0aGF0
+IGlzbid0Cj4gPiAgICBpbiB0aGUgaGFzaCBsaXN0cy4KPiA+IDIpIGNhY2hlX2NsZWFuKCkg
+bmV2ZXIgd2lsbCBhY2Nlc3MgdGhpcyBvbGQgY2FjaGUgZW50cnkgYWdhaW4KPiA+IDMpIGV2
+ZXJ5IGZ1cnRoZXIgY2FjaGUgdXBkYXRlIHdpbGwgY2FsbCBjYWNoZV9kZXF1ZXVlKCkgZm9y
+IGEgbmV3ZXIKPiA+ICAgIGNhY2hlIGVudHJ5LCB0aGUgcmVxdWVzdCBpcyBuZXZlciBkZXF1
+ZXVlZAo+ID4gCj4gPiAtLT4gbWVtb3J5IGxlYWsuCj4gCj4gWWVzLCBJIHNlZSB0aGF0IG5v
+dy4gIFRoYW5rcy4KPiAKPiBJIHN1c3BlY3QgdGhhdCBidWcgd2FzIGludHJvZHVjZWQgYnkg
+Y29tbWl0IDNhZjQ5NzRlYjJjNzg2N2Q2ZTE2Lgo+IFByaW9yIHRvIHRoZW4sIGNhY2hlX2Ns
+ZWFuIHdvdWxkIG5ldmVyIHJlbW92ZSBhbnl0aGluZyB3aXRoIGFuIGFjdGl2ZSByZWZlcmVu
+Y2UuICBJZiBzb21ldGhpbmcgd2FzIGFib3V0IHRvIGdldCBDQUNIRV9QRU5ESU5HLCBpdCB3
+b3VsZCBoYXZlIGEgcmVmZXJlbmNlIHNvIGNhY2hlX2NsZWFuIHdvdWxkIGxlYXZlIGl0IGFs
+b25lLgo+IAo+IEkgd2FudGVkIHRvIGZpeCB0aGlzIGJ5IGdldHRpbmcgdGhlIGxhc3QgJ3B1
+dCcgdG8gY2FsbCBjYWNoZV9kZXF1ZXVlKCkgaWYgQ0FDSEVfUEVORElORyB3YXMgc3RpbGwg
+c2V0LiAgSG93ZXZlciBJIGNvdWxkbid0IGdldCBhY2Nlc3MgdG8gdGhlIENBQ0hFX1BFTkRJ
+TkcgZmxhZyBhbmQgdGhlIGNhY2hlX2RldGFpbCBhdCB0aGUgc2FtZSBwbGFjZSAtIHNvIEkg
+Z2F2ZSB1cCBvbiB0aGF0Lgo+IAo+IFRoZSBwYXRjaCBJIGhhdmUgaW5jbHVkZWQgYmVsb3cg
+c2V0cyBhIGZsYWcgd2hlbiBhbiBjYWNoZSBpdGVtIGlzIHJlbW92ZWQgZnJvbSB0aGUgY2Fj
+aGUgKGJ5IGNhY2hlX2NsZWFuKSBhbmQgcmVmdXNlcyB0byBsb2RnZSBhbiB1cGNhbGwgaWYg
+dGhlIGZsYWcgaXMgc2V0LiAgVGhhdCB3aWxsIGVuc3VyZSB0aGVyZSBpcyBuZXZlciBhIHBl
+bmRpbmcgdXBjYWxsIHdoZW4gdGhlIGl0ZW0gaXMgZmluYWxseSBmcmVlZC4KPiAKPiBZb3Ug
+cGF0Y2ggb25seSBhZGRyZXNzZXMgdGhlIHBhcnRpY3VsYXIgc2l0dWF0aW9uIHRoYXQgeW91
+IGhhZCBmb3VuZC4gIEkgdGhpbmsgaXQgaXMgcG9zc2libGUgdGhhdCB0aGVyZSBtaWdodCBi
+ZSBvdGhlciBzaXR1YXRpb25zIHRoYXQgYWxzbyBsZWFkIHRvIG1lbW9yeSBsZWFrcywgc28g
+SSB3YW50ZWQgYSBzb2x1dGlvbiB0aGF0IHdvdWxkIGd1YXJhbnRlZSB0aGF0IHRoZXJlIGNv
+dWxkbid0IGJlIGEgbGVhay4KPiAKCkkgdGhpbmssIHlvdXIgcGF0Y2ggaXMgc2FmZSAoQW5k
+IEkndmUgdHJpZWQgdG8gdGhpbmsgb2YgYSByZW1haW5pbmcgcmFjZSwKYnV0IGNvdWxkbid0
+IGZpbmQgOy0pCkkndmUgaW5zZXJ0ZWQgaXQgaW50byBTTEVTMTEgU1AxIGluc3RlYWQgb2Yg
+bXkgcGF0Y2ggYW5kIHN0YXJ0ZWQgdGhlIHRlc3QuCgoKPiA+IAo+ID4gSSB2ZXJpZmllZCB0
+aGlzIGluc2VydGluZyBzb21lIGRlYnVnIGluc3RydWN0aW9ucy4gSW4gYSB0ZXN0cnVuIHRo
+YXQgCj4gPiB0cmlnZ2VyZWQgNiB0aW1lcywgYW5kIHRoZSBxdWV1ZSBwcmludGVkIGJ5IGNy
+YXNoIGFmdGVyIHRoZSBydW4gaGFkIDYgCj4gPiBvcnBoYW5lZCBlbnRyaWVzLgo+ID4gCj4g
+PiBBcyBJIHdyb3RlIHllc3RlcmRheSwgSSBoYXZlIGEgcGF0Y2ggdGhhdCBzb2x2ZXMgdGhl
+IHByb2JsZW0gYnkgCj4gPiByZXRlc3RpbmcgdGhlIHN0YXRlIG9mIHRoZSBjYWNoZSBlbnRy
+eSBhZnRlciBzZXR0aW5nIENBQ0hFX1BFTkRJTkcgaW4gCj4gPiBjYWNoZV9jaGVjaygpLiBJ
+IGNhbiBzZW5kIGl0IGlmIHlvdSBsaWtlLgo+ID4gCj4gPiBCb2RvCj4gPiAKPiA+IFAuUy46
+Cj4gPiBNYXliZSBJJ20gd3JvbmcsIGJ1dCBBRkFJQ1MsIHRoZXJlIGFyZSB0d28gZnVydGhl
+ciBtaW5vciBwcm9ibGVtcyAKPiA+IHJlZ2FyZGluZyAobmVhcmx5KSBleHBpcmVkIGNhY2hl
+IGVudHJpZXM6Cj4gPiBhKSBpcF9tYXBfY2FjaGVkX2dldCgpIGluIHNvbWUgc2l0dWF0aW9u
+cyBjYW4gcmV0dXJuIGFuIGFscmVhZHkKPiA+ICAgIG91dGRhdGVkIChpdCB1c2VzIGNhY2hl
+X3ZhbGlkIHRoYXQgbm90IGZ1bGx5IGNoZWNrcyB0aGUgc3RhdGUpCj4gPiAgICBjYWNoZSBl
+bnRyeS4gSWYgY2FjaGVfY2hlY2soKSBpcyBjYWNsbGVkIGZvciB0aGF0IGVudHJ5LCBpdCB3
+aWxsCj4gPiAgICBmYWlsLCBJIHRoaW5rCj4gPiBiKSBHZW5lcmFsbHksIGlmIGEgY2FjaGUg
+ZW50cnkgaXMgcmV0dXJuZWQgYnkgc3VucnBjX2NhY2hlX2xvb2t1cCgpCj4gPiAgICBhbmQg
+dGhlIGVudHJ5IGlzIGluIHRoZSBsYXN0IHNlY29uZCBvZiBpdCdzIGV4cGlyeV90aW1lLCB0
+aGUgCj4gPiAgICBjbG9jayBtaWdodCBtb3ZlIHRvIHRoZSBuZXh0IHNlY29uZCBiZWZvcmUg
+Y2FjaGVfY2hlY2sgaXMgY2FsbGVkLgo+ID4gICAgSWYgdGhpcyBoYXBwZW5zLCBjYWNoZV9j
+aGVjayB3aWxsIGZhaWwsIEkgdGhpbmsuCj4gPiBEbyB5b3UgYWdyZWU/Cj4gCj4gWWVzLCBi
+dXQgSSdtIG5vdCBzdXJlIGhvdyBpbXBvcnRhbnQgdGhpcyBpcy4KPiBOb3JtYWxseSBjYWNo
+ZSBlbnRyaWVzIHNob3VsZCBiZSByZWZyZXNoZWQgd2VsbCBiZWZvcmUgdGhleSBleHBpcmUs
+IHNvIHdlIHNob3VsZCBub3JtYWxseSBmaW5kIGFuIGVudHJ5IHdpdGggbW9yZSB0aGFuIGhh
+bGYgb2YgaXRzIGxpZmV0aW1lIGxlZnQuCj4gCj4gSW4gdGhlIHJhcmUgY2FzZSB3aGVyZSB0
+aGUgc2NlbmFyaW8geW91IGRlc2NyaWJlIGhhcHBlbnMsIGNhY2hlX2NoZWNrKCkgd2lsbCBy
+ZXR1cm4gLUVUSU1FRE9VVC4KPiBJbiBtYWlubGluZSwgdGhhdCB3aWxsIGNhdXNlIHRoZSBy
+ZXF1ZXN0IHRvIGJlIGRyb3BwZWQgYW5kIHRoZSBjb25uZWN0aW9uIGNsb3NlZCBzbyB0aGUg
+Y2xpZW50IHdpbGwgdHJ5IGFnYWluIGFuZCB3b24ndCBoaXQgYW55IHJhY2UgYW5kIHNvIHNo
+b3VsZCBnZXQgYSBjb3JyZWN0IHJlc3VsdC4KPiBJbiBTTEVTMTFTUDEsIHdlIHJldHJ5IHRo
+ZSBsb29rdXAgYW5kIHdpbGwgaG9wZWZ1bGx5IGdldCBhIGJldHRlciByZXN1bHQgd2l0aG91
+dCBoYXZpbmcgdG8gY2xvc2UgdGhlIGNvbm5lY3Rpb24uCj4gCj4gU28gdGhpcyBzaG91bGQg
+YmUgcmFyZSBhbmQgc2hvdWxkIGZhaWwtc2FmZS4KPiAKPiBEb2VzIHRoYXQgYWdyZWUgd2l0
+aCB5b3VyIHVuZGVyc3RhbmRpbmc/CgpPbmx5IHBhcnRseSwgYmVjYXVzZSBJIHdhcyB3cm9u
+Zy4KCk9uIFNMRVMxMSBTUDEsIGFzIHlvdSBzYXksIGNhY2hlX2lzX3ZhbGlkKCkgZXhhbWlu
+ZXMgZXhwaXJ5X3RpbWUsIGJ1dAp0aGUgcmV0cnkgd2lsbCBhdm9pZCB0byBtYWtlIGEgUlBD
+IHJlcXVlc3QgZmFpbC4KCk9uIGEgbWFpbmxpbmUga2VybmVsLCBjYWNoZV9pc192YWxpZCgp
+IGRvZXMgbm90IGV2YWx1YXRlIHRoZSBleHBpcnlfdGltZS4KU28sIGFuIG9sZCBlbnRyeSBt
+aWdodCBzdGFydCBhbiB1cGNhbGwsIGJ1dCBhcyB0aGUgcmVzdWx0IG9mIGNhY2hlX2lzX3Zh
+bGlkCnN0aWxsIGlzIDAsIG5vdGhpbmcgd2lsbCBmYWlsIG9uIG1haW5saW5lLgoKVGhlIG9u
+bHkgbGl0dGxlIGlzc3VlIHJlbWFpbmluZyBpcyB0aGUgZmFjdCwgdGhhdCBpcF9tYXBfY2Fj
+aGVkX2dldCgpIHdpbGwKYWNjZXB0IG91dGRhdGVkIGNhY2hlIGVudHJpZXMgYXMgbG9uZyBh
+cyB0aGV5IGFyZSBub3QgeWV0IGNsZWFuZWQuCkluIG1haW5saW5lIHRoaXMgZW50cnkgd2ls
+bCBldmVuIGJlIGFjY2VwdGVkIGJ5IGNhY2hlX2NoZWNrKCkuCkRvIHlvdSB0aGluayBpdCB3
+b3VsZCBiZSBhIGdvb2QgaWRlYSB0byByZXBsYWNlIGNhY2hlX3ZhbGlkKCkgYnkKY2FjaGVf
+aXNfdmFsaWQoKT8KClRoYW5rIHlvdQpCb2RvCiAKCj4gCj4gCj4gVGhhbmtzLAo+IE5laWxC
+cm93bgo+IAo+IAo+IEZyb20gZTc2ZTY1ODM0MDVhM2I1ZmY5YzhkMmFlMTE4NDcwNGVmYjIw
+OWVmMCBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDEKPiBGcm9tOiBOZWlsQnJvd24gPG5laWxi
+QHN1c2UuZGU+Cj4gRGF0ZTogVHVlLCAxOSBNYXIgMjAxMyAxMzo1ODo1OCArMTEwMAo+IFN1
+YmplY3Q6IFtQQVRDSF0gc3VucnBjL2NhY2hlOiBlbnN1cmUgaXRlbXMgcmVtb3ZlZCBmcm9t
+IGNhY2hlIGRvIG5vdCBoYXZlICBwZW5kaW5nIHVwY2FsbHMuCj4gCj4gSXQgaXMgcG9zc2li
+bGUgZm9yIGEgcmFjZSB0byBzZXQgQ0FDSEVfUEVORElORyBhZnRlciBjYWNoZV9jbGVhbigp
+IGhhcyByZW1vdmVkIGEgY2FjaGUgZW50cnkgZnJvbSB0aGUgY2FjaGUuCj4gSWYgQ0FDSEVf
+UEVORElORyBpcyBzdGlsbCBzZXQgd2hlbiB0aGUgZW50cnkgaXMgZmluYWxseSAncHV0Jywg
+dGhlIGNhY2hlX2RlcXVldWUoKSB3aWxsIG5ldmVyIGhhcHBlbiBhbmQgd2UgY2FuIGxlYWsg
+bWVtb3J5Lgo+IAo+IFNvIHNldCBhIG5ldyBmbGFnICdDQUNIRV9DTEVBTkVEJyB3aGVuIHdl
+IHJlbW92ZSBzb21ldGhpbmcgZnJvbSB0aGUgY2FjaGUsIGFuZCBkb24ndCBxdWV1ZSBhbmQg
+dXBjYWxsIGlmIGl0IGlzIHNldC4KPiAKPiBJZiBDQUNIRV9QRU5ESU5HIGlzIHNldCBiZWZv
+cmUgQ0FDSEVfQ0xFQU5FRCwgdGhlIGNhbGwgdGhhdAo+IGNhY2hlX2NsZWFuKCkgbWFrZXMg
+dG8gY2FjaGVfZnJlc2hfdW5sb2NrZWQoKSB3aWxsIGZyZWUgbWVtb3J5IGFzIG5lZWRlZC4g
+IElmIENBQ0hFX1BFTkRJTkcgaXMgc2V0IGFmdGVyIENBQ0hFX0NMRUFORUQsIHRoZSB0ZXN0
+IGluIHN1bnJwY19jYWNoZV9waXBlX3VwY2FsbCB3aWxsIGVuc3VyZSB0aGF0IHRoZSBtZW1v
+cnkgaXMgbm90IGFsbG9jYXRlZC4KPiAKPiBSZXBvcnRlZC1ieTogPGJzdHJvZXNzZXJAdHMu
+ZnVqaXRzdS5jb20+Cj4gU2lnbmVkLW9mZi1ieTogTmVpbEJyb3duIDxuZWlsYkBzdXNlLmRl
+Pgo+IAo+IGRpZmYgLS1naXQgYS9pbmNsdWRlL2xpbnV4L3N1bnJwYy9jYWNoZS5oIGIvaW5j
+bHVkZS9saW51eC9zdW5ycGMvY2FjaGUuaCBpbmRleCAzMDMzOTliLi44NDE5ZjdkIDEwMDY0
+NAo+IC0tLSBhL2luY2x1ZGUvbGludXgvc3VucnBjL2NhY2hlLmgKPiArKysgYi9pbmNsdWRl
+L2xpbnV4L3N1bnJwYy9jYWNoZS5oCj4gQEAgLTU3LDYgKzU3LDcgQEAgc3RydWN0IGNhY2hl
+X2hlYWQgewo+ICAjZGVmaW5lCUNBQ0hFX1ZBTElECTAJLyogRW50cnkgY29udGFpbnMgdmFs
+aWQgZGF0YSAqLwo+ICAjZGVmaW5lCUNBQ0hFX05FR0FUSVZFCTEJLyogTmVnYXRpdmUgZW50
+cnkgLSB0aGVyZSBpcyBubyBtYXRjaCBmb3IgdGhlIGtleSAqLwo+ICAjZGVmaW5lCUNBQ0hF
+X1BFTkRJTkcJMgkvKiBBbiB1cGNhbGwgaGFzIGJlZW4gc2VudCBidXQgbm8gcmVwbHkgcmVj
+ZWl2ZWQgeWV0Ki8KPiArI2RlZmluZQlDQUNIRV9DTEVBTkVECTMJLyogRW50cnkgaGFzIGJl
+ZW4gY2xlYW5lZCBmcm9tIGNhY2hlICovCj4gIAo+ICAjZGVmaW5lCUNBQ0hFX05FV19FWFBJ
+UlkgMTIwCS8qIGtlZXAgbmV3IHRoaW5ncyBwZW5kaW5nIGNvbmZpcm1hdGlvbiBmb3IgMTIw
+IHNlY29uZHMgKi8KPiAgCj4gZGlmZiAtLWdpdCBhL25ldC9zdW5ycGMvY2FjaGUuYyBiL25l
+dC9zdW5ycGMvY2FjaGUuYyBpbmRleCAxNjc3Y2ZlLi44ZTdjY2JiIDEwMDY0NAo+IC0tLSBh
+L25ldC9zdW5ycGMvY2FjaGUuYwo+ICsrKyBiL25ldC9zdW5ycGMvY2FjaGUuYwo+IEBAIC0z
+MDYsNyArMzA2LDcgQEAgRVhQT1JUX1NZTUJPTF9HUEwoY2FjaGVfY2hlY2spOwo+ICAgKiBh
+IGN1cnJlbnQgcG9pbnRlciBpbnRvIHRoYXQgbGlzdCBhbmQgaW50byB0aGUgdGFibGUKPiAg
+ICogZm9yIHRoYXQgZW50cnkuCj4gICAqCj4gLSAqIEVhY2ggdGltZSBjbGVhbl9jYWNoZSBp
+cyBjYWxsZWQgaXQgZmluZHMgdGhlIG5leHQgbm9uLWVtcHR5IGVudHJ5Cj4gKyAqIEVhY2gg
+dGltZSBjYWNoZV9jbGVhbiBpcyBjYWxsZWQgaXQgZmluZHMgdGhlIG5leHQgbm9uLWVtcHR5
+IGVudHJ5Cj4gICAqIGluIHRoZSBjdXJyZW50IHRhYmxlIGFuZCB3YWxrcyB0aGUgbGlzdCBp
+biB0aGF0IGVudHJ5Cj4gICAqIGxvb2tpbmcgZm9yIGVudHJpZXMgdGhhdCBjYW4gYmUgcmVt
+b3ZlZC4KPiAgICoKPiBAQCAtNDUzLDYgKzQ1Myw3IEBAIHN0YXRpYyBpbnQgY2FjaGVfY2xl
+YW4odm9pZCkKPiAgCQkJY3VycmVudF9pbmRleCArKzsKPiAgCQlzcGluX3VubG9jaygmY2Fj
+aGVfbGlzdF9sb2NrKTsKPiAgCQlpZiAoY2gpIHsKPiArCQkJc2V0X2JpdChDQUNIRV9DTEVB
+TkVELCAmY2gtPmZsYWdzKTsKPiAgCQkJY2FjaGVfZnJlc2hfdW5sb2NrZWQoY2gsIGQpOwo+
+ICAJCQljYWNoZV9wdXQoY2gsIGQpOwo+ICAJCX0KPiBAQCAtMTE3Niw2ICsxMTc3LDkgQEAg
+aW50IHN1bnJwY19jYWNoZV9waXBlX3VwY2FsbChzdHJ1Y3QgY2FjaGVfZGV0YWlsICpkZXRh
+aWwsIHN0cnVjdCBjYWNoZV9oZWFkICpoKQo+ICAJCXdhcm5fbm9fbGlzdGVuZXIoZGV0YWls
+KTsKPiAgCQlyZXR1cm4gLUVJTlZBTDsKPiAgCX0KPiArCWlmICh0ZXN0X2JpdChDQUNIRV9D
+TEVBTkVELCAmaC0+ZmxhZ3MpKQo+ICsJCS8qIFRvbyBsYXRlIHRvIG1ha2UgYW4gdXBjYWxs
+ICovCj4gKwkJcmV0dXJuIC1FQUdBSU47Cj4gIAo+ICAJYnVmID0ga21hbGxvYyhQQUdFX1NJ
+WkUsIEdGUF9LRVJORUwpOwo+ICAJaWYgKCFidWYpCj4gCg==
 
 
