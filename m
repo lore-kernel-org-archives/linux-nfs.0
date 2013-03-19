@@ -1,62 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f182.google.com ([209.85.223.182]:43926 "EHLO
-	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751240Ab3CPTyK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 16 Mar 2013 15:54:10 -0400
-Received: by mail-ie0-f182.google.com with SMTP id k14so5622993iea.41
-        for <linux-nfs@vger.kernel.org>; Sat, 16 Mar 2013 12:54:09 -0700 (PDT)
+Received: from mail-ia0-f173.google.com ([209.85.210.173]:55181 "EHLO
+	mail-ia0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756507Ab3CSTBx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Mar 2013 15:01:53 -0400
+Received: by mail-ia0-f173.google.com with SMTP id h37so711626iak.32
+        for <linux-nfs@vger.kernel.org>; Tue, 19 Mar 2013 12:01:52 -0700 (PDT)
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v1 00/15] Security flavor negotiation fixes
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Sat, 16 Mar 2013 15:54:07 -0400
-Message-ID: <20130316195044.27329.11666.stgit@seurat.1015granger.net>
+Subject: [PATCH 2/3] SUNRPC: Don't recognize RPC_AUTH_MAXFLAVOR
+To: linux-nfs@vger.kernel.org
+Date: Tue, 19 Mar 2013 15:01:37 -0400
+Message-ID: <20130319190137.1203.1269.stgit@seurat.1015granger.net>
+In-Reply-To: <20130319185944.1203.38377.stgit@seurat.1015granger.net>
+References: <20130319185944.1203.38377.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please consider these for 3.10.  With the exception of 15/15, similar
-or the same patches have been posted here before.
+RPC_AUTH_MAXFLAVOR is an invalid flavor, on purpose.  Don't allow
+any processing whatsoever if a caller passes it to rpcauth_create()
+or rpcauth_get_gssinfo().
 
-The NFSv3 MNT changes we discussed at the pub will appear soon.
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
-Chuck Lever (15):
-      NFS: Use "krb5i" to establish NFSv4 state whenever possible
-      NFS: Try AUTH_UNIX when PUTROOTFH gets NFS4ERR_WRONGSEC
-      NFS: Use static list of security flavors during root FH lookup recovery
-      NFS: Avoid PUTROOTFH when managing leases
-      NFS: Clean up nfs4_proc_get_rootfh
-      NFS: Handle missing rpc.gssd when looking up root FH
-      SUNRPC: Remove EXPORT_SYMBOL_GPL() from GSS mech switch
-      SUNRPC: Make gss_mech_get() static
-      SUNRPC: Refactor nfsd4_do_encode_secinfo()
-      SUNRPC: Consider qop when looking up pseudoflavors
-      SUNRPC: Load GSS kernel module by OID
-      SUNRPC: Introduce rpcauth_get_pseudoflavor()
-      SUNRPC: Define rpcsec_gss_info structure
-      NFS: Remove unneeded forward declaration
-      SUNRPC: Missing module alias for auth_rpcgss.ko
+ net/sunrpc/auth.c |    5 ++++-
+ 1 files changed, 4 insertions(+), 1 deletions(-)
 
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index 2bc0cc2..ed2fdd2 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -82,7 +82,7 @@ MODULE_PARM_DESC(auth_hashtable_size, "RPC credential cache hashtable size");
+ 
+ static u32
+ pseudoflavor_to_flavor(u32 flavor) {
+-	if (flavor >= RPC_AUTH_MAXFLAVOR)
++	if (flavor > RPC_AUTH_MAXFLAVOR)
+ 		return RPC_AUTH_GSS;
+ 	return flavor;
+ }
+@@ -173,6 +173,9 @@ rpcauth_get_gssinfo(rpc_authflavor_t pseudoflavor, struct rpcsec_gss_info *info)
+ 	const struct rpc_authops *ops;
+ 	int result;
+ 
++	if (flavor >= RPC_AUTH_MAXFLAVOR)
++		return -EINVAL;
++
+ 	ops = auth_flavors[flavor];
+ 	if (ops == NULL)
+ 		request_module("rpc-auth-%u", flavor);
 
- fs/nfs/nfs4client.c                   |    2 -
- fs/nfs/nfs4namespace.c                |   43 +++++++-----
- fs/nfs/nfs4proc.c                     |   92 ++++++++++++++++----------
- fs/nfs/nfs4state.c                    |   37 +---------
- fs/nfs/nfs4xdr.c                      |   39 ++++-------
- fs/nfsd/nfs4xdr.c                     |   24 +++----
- include/linux/nfs_xdr.h               |   24 +------
- include/linux/sunrpc/auth.h           |    9 ++
- include/linux/sunrpc/gss_api.h        |   30 ++++++--
- net/sunrpc/Kconfig                    |    1 
- net/sunrpc/auth.c                     |   70 +++++++++++++++++++
- net/sunrpc/auth_gss/auth_gss.c        |    3 +
- net/sunrpc/auth_gss/gss_krb5_mech.c   |    6 +-
- net/sunrpc/auth_gss/gss_mech_switch.c |  119 +++++++++++++++++++++++++--------
- net/sunrpc/auth_gss/svcauth_gss.c     |    4 +
- 15 files changed, 319 insertions(+), 184 deletions(-)
-
--- 
-Chuck Lever
