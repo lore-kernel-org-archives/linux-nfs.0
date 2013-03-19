@@ -1,276 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f175.google.com ([209.85.223.175]:59994 "EHLO
-	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751240Ab3CPTyp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 16 Mar 2013 15:54:45 -0400
-Received: by mail-ie0-f175.google.com with SMTP id c12so5692705ieb.34
-        for <linux-nfs@vger.kernel.org>; Sat, 16 Mar 2013 12:54:45 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v1 04/15] SUNRPC: Introduce rpcauth_get_pseudoflavor()
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
-Date: Sat, 16 Mar 2013 15:54:43 -0400
-Message-ID: <20130316195443.27329.94118.stgit@seurat.1015granger.net>
-In-Reply-To: <20130316195044.27329.11666.stgit@seurat.1015granger.net>
-References: <20130316195044.27329.11666.stgit@seurat.1015granger.net>
+Received: from fieldses.org ([174.143.236.118]:47917 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755982Ab3CSPXH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 Mar 2013 11:23:07 -0400
+Date: Tue, 19 Mar 2013 11:23:05 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 10/11] NFSv4.1: Enable open-by-filehandle
+Message-ID: <20130319152304.GG7912@fieldses.org>
+References: <1363698463-3681-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1363698463-3681-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1363698463-3681-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1363698463-3681-10-git-send-email-Trond.Myklebust@netapp.com>
+ <20130319140901.GB7912@fieldses.org>
+ <1363702570.7515.6.camel@leira.trondhjem.org>
+ <20130319143236.GD7912@fieldses.org>
+ <1363704100.7515.12.camel@leira.trondhjem.org>
+ <20130319145035.GE7912@fieldses.org>
+ <1363706205.7515.43.camel@leira.trondhjem.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1363706205.7515.43.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A SECINFO reply may contain flavors whose kernel module is not
-yet loaded by the client's kernel.  A new RPC client API, called
-rpcauth_get_pseudoflavor(), is introduced to do proper checking
-for support of a security flavor.
+On Tue, Mar 19, 2013 at 03:16:46PM +0000, Myklebust, Trond wrote:
+> On Tue, 2013-03-19 at 10:50 -0400, J. Bruce Fields wrote:
+> > On Tue, Mar 19, 2013 at 02:41:42PM +0000, Myklebust, Trond wrote:
+> > > On Tue, 2013-03-19 at 10:32 -0400, J. Bruce Fields wrote:
+> > > > (Sorry for the digression, I was just trying to decide whether I can get
+> > > > away with turning on 4.1 by default before implementing SP4_MACH_CRED or
+> > > > GSS on the backchannel....)
+> > > 
+> > > If you don't, could you please at least offer up a module parameter that
+> > > allows me to do that? The current thing is a PITA, since it isn't
+> > > supported by any distro scripts, and it requires you to switch off the
+> > > server in order to change the version pseudofile contents.
+> > 
+> > The module parameter on its own wouldn't help with that.
+> > 
+> > We could probably fix the pseudofile interface to allow changing the
+> > version on the fly.
+> > 
+> > My vague plan was to teach rpc.nfsd to read this (and other parameters)
+> > from a config file, so then it'd be "vi /etc/nfsd && service nfsd
+> > restart" or equivalent.
+> > 
+> > So is the main thing you want a more convenient interface or a way to
+> > change it without rebooting?
+> 
+> Basically, all I want is to enable 4.1 permanently on those servers that
+> I want to use for NFSv4.1 testing.
+> 
+> An --enable-nfs-version option for rpc.nfsd that acts together with
+> --no-nfs-version as a convenient interface for /proc/fs/nfsd/versions
+> would work fine too. All distro configuration scripts that I'm aware of
+> allow you to specify optional arguments to rpc.nfsd.
 
-When this API is invoked, the RPC client now tries to load the
-module for each flavor first before performing the "is this
-supported?" check.  This means if a module is available on the
-client, but has not been loaded yet, it will be loaded and
-registered automatically when the SECINFO reply is processed.
+Right, got it.  Yes, that's on my todo list.
 
-The new API can take a full GSS tuple (OID, QoP, and service).
-Previously only the OID and service were considered.
+(But, of course, patches welcomed if someone wants to beat me to it.)
 
-nfs_find_best_sec() is updated to verify all flavors requested in a
-SECINFO reply, including AUTH_NULL and AUTH_UNIX.  Previously these
-two flavors were simply assumed to be supported without consulting
-the RPC client.
-
-Note that the replaced version of nfs_find_best_sec() can return
-RPC_AUTH_MAXFLAVOR if the server returns a recognized OID but an
-unsupported "service" value.  nfs_find_best_sec() now returns
-RPC_AUTH_UNIX in this case.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- fs/nfs/nfs4namespace.c                |   41 +++++++++++++++++++--------------
- include/linux/sunrpc/auth.h           |    5 ++++
- include/linux/sunrpc/gss_api.h        |    5 ++--
- net/sunrpc/auth.c                     |   35 ++++++++++++++++++++++++++++
- net/sunrpc/auth_gss/auth_gss.c        |    1 +
- net/sunrpc/auth_gss/gss_mech_switch.c |   28 +++++++++++++++++++----
- 6 files changed, 89 insertions(+), 26 deletions(-)
-
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index 88231c9..cdb0b41 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -134,33 +134,38 @@ static size_t nfs_parse_server_name(char *string, size_t len,
- 	return ret;
- }
- 
-+/**
-+ * nfs_find_best_sec - Find a security mechanism supported locally
-+ * @flavors: List of security tuples returned by SECINFO procedure
-+ *
-+ * Return the pseudoflavor of the first security mechanism in
-+ * "flavors" that is locally supported.  Return RPC_AUTH_UNIX if
-+ * no matching flavor is found in the array.  The "flavors" array
-+ * is searched in the order returned from the server, per RFC 3530
-+ * recommendation.
-+ */
- rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors)
- {
--	struct gss_api_mech *mech;
--	struct xdr_netobj oid;
-+	rpc_authflavor_t pseudoflavor;
-+	struct nfs4_secinfo4 *secinfo;
- 	unsigned int i;
--	rpc_authflavor_t pseudoflavor = RPC_AUTH_UNIX;
- 
- 	for (i = 0; i < flavors->num_flavors; i++) {
--		struct nfs4_secinfo4 *flavor = &flavors->flavors[i];
--
--		if (flavor->flavor == RPC_AUTH_NULL || flavor->flavor == RPC_AUTH_UNIX) {
--			pseudoflavor = flavor->flavor;
--			break;
--		} else if (flavor->flavor == RPC_AUTH_GSS) {
--			oid.len  = flavor->flavor_info.oid.len;
--			oid.data = flavor->flavor_info.oid.data;
--			mech = gss_mech_get_by_OID(&oid);
--			if (!mech)
--				continue;
--			pseudoflavor = gss_svc_to_pseudoflavor(mech,
--						flavor->flavor_info.service);
--			gss_mech_put(mech);
-+		secinfo = &flavors->flavors[i];
-+
-+		switch (secinfo->flavor) {
-+		case RPC_AUTH_NULL:
-+		case RPC_AUTH_UNIX:
-+		case RPC_AUTH_GSS:
-+			pseudoflavor = rpcauth_get_pseudoflavor(secinfo->flavor,
-+							&secinfo->flavor_info);
-+			if (pseudoflavor != RPC_AUTH_MAXFLAVOR)
-+				return pseudoflavor;
- 			break;
- 		}
- 	}
- 
--	return pseudoflavor;
-+	return RPC_AUTH_UNIX;
- }
- 
- static rpc_authflavor_t nfs4_negotiate_security(struct inode *inode, struct qstr *name)
-diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
-index 58fda1c..6851da4 100644
---- a/include/linux/sunrpc/auth.h
-+++ b/include/linux/sunrpc/auth.h
-@@ -22,6 +22,8 @@
- /* size of the nodename buffer */
- #define UNX_MAXNODENAME	32
- 
-+struct rpcsec_gss_info;
-+
- /* Work around the lack of a VFS credential */
- struct auth_cred {
- 	kuid_t	uid;
-@@ -103,6 +105,7 @@ struct rpc_authops {
- 	int			(*pipes_create)(struct rpc_auth *);
- 	void			(*pipes_destroy)(struct rpc_auth *);
- 	int			(*list_pseudoflavors)(rpc_authflavor_t *, int);
-+	rpc_authflavor_t	(*info2flavor)(struct rpcsec_gss_info *);
- };
- 
- struct rpc_credops {
-@@ -137,6 +140,8 @@ int			rpcauth_register(const struct rpc_authops *);
- int			rpcauth_unregister(const struct rpc_authops *);
- struct rpc_auth *	rpcauth_create(rpc_authflavor_t, struct rpc_clnt *);
- void			rpcauth_release(struct rpc_auth *);
-+rpc_authflavor_t	rpcauth_get_pseudoflavor(rpc_authflavor_t,
-+				struct rpcsec_gss_info *);
- int			rpcauth_list_flavors(rpc_authflavor_t *, int);
- struct rpc_cred *	rpcauth_lookup_credcache(struct rpc_auth *, struct auth_cred *, int);
- void			rpcauth_init_cred(struct rpc_cred *, const struct auth_cred *, struct rpc_auth *, const struct rpc_credops *);
-diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
-index 98950e5..aba7687 100644
---- a/include/linux/sunrpc/gss_api.h
-+++ b/include/linux/sunrpc/gss_api.h
-@@ -127,9 +127,8 @@ struct gss_api_ops {
- int gss_mech_register(struct gss_api_mech *);
- void gss_mech_unregister(struct gss_api_mech *);
- 
--/* returns a mechanism descriptor given an OID, and increments the mechanism's
-- * reference count. */
--struct gss_api_mech * gss_mech_get_by_OID(struct xdr_netobj *);
-+/* Given a GSS security tuple, look up a pseudoflavor */
-+rpc_authflavor_t gss_mech_info2flavor(struct rpcsec_gss_info *);
- 
- /* Returns a reference to a mechanism, given a name like "krb5" etc. */
- struct gss_api_mech *gss_mech_get_by_name(const char *);
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index f529404..9b81be8 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -124,6 +124,41 @@ rpcauth_unregister(const struct rpc_authops *ops)
- EXPORT_SYMBOL_GPL(rpcauth_unregister);
- 
- /**
-+ * rpcauth_get_pseudoflavor - check if security flavor is supported
-+ * @flavor: a security flavor
-+ * @info: a GSS mech OID, quality of protection, and service value
-+ *
-+ * Verifies that an appropriate kernel module is available or already loaded.
-+ * Returns an equivalent pseudoflavor, or RPC_AUTH_MAXFLAVOR if "flavor" is
-+ * not supported locally.
-+ */
-+rpc_authflavor_t
-+rpcauth_get_pseudoflavor(rpc_authflavor_t flavor, struct rpcsec_gss_info *info)
-+{
-+	const struct rpc_authops *ops;
-+	rpc_authflavor_t pseudoflavor;
-+
-+	ops = auth_flavors[flavor];
-+	if (ops == NULL)
-+		request_module("rpc-auth-%u", flavor);
-+	spin_lock(&rpc_authflavor_lock);
-+	ops = auth_flavors[flavor];
-+	if (ops == NULL || !try_module_get(ops->owner)) {
-+		spin_unlock(&rpc_authflavor_lock);
-+		return RPC_AUTH_MAXFLAVOR;
-+	}
-+	spin_unlock(&rpc_authflavor_lock);
-+
-+	pseudoflavor = flavor;
-+	if (ops->info2flavor != NULL)
-+		pseudoflavor = ops->info2flavor(info);
-+
-+	module_put(ops->owner);
-+	return pseudoflavor;
-+}
-+EXPORT_SYMBOL_GPL(rpcauth_get_pseudoflavor);
-+
-+/**
-  * rpcauth_list_flavors - discover registered flavors and pseudoflavors
-  * @array: array to fill in
-  * @size: size of "array"
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 282dfb1..a742007 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -1641,6 +1641,7 @@ static const struct rpc_authops authgss_ops = {
- 	.pipes_create	= gss_pipes_dentries_create,
- 	.pipes_destroy	= gss_pipes_dentries_destroy,
- 	.list_pseudoflavors = gss_mech_list_pseudoflavors,
-+	.info2flavor	= gss_mech_info2flavor,
- };
- 
- static const struct rpc_credops gss_credops = {
-diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
-index f0f4eee..4db66f5 100644
---- a/net/sunrpc/auth_gss/gss_mech_switch.c
-+++ b/net/sunrpc/auth_gss/gss_mech_switch.c
-@@ -171,8 +171,7 @@ struct gss_api_mech * gss_mech_get_by_name(const char *name)
- }
- EXPORT_SYMBOL_GPL(gss_mech_get_by_name);
- 
--struct gss_api_mech *
--gss_mech_get_by_OID(struct xdr_netobj *obj)
-+static struct gss_api_mech *gss_mech_get_by_OID(struct rpcsec_gss_oid *obj)
- {
- 	struct gss_api_mech	*pos, *gm = NULL;
- 
-@@ -188,11 +187,8 @@ gss_mech_get_by_OID(struct xdr_netobj *obj)
- 	}
- 	spin_unlock(&registered_mechs_lock);
- 	return gm;
--
- }
- 
--EXPORT_SYMBOL_GPL(gss_mech_get_by_OID);
--
- static inline int
- mech_supports_pseudoflavor(struct gss_api_mech *gm, u32 pseudoflavor)
- {
-@@ -282,6 +278,28 @@ gss_svc_to_pseudoflavor(struct gss_api_mech *gm, u32 service)
- }
- EXPORT_SYMBOL_GPL(gss_svc_to_pseudoflavor);
- 
-+/**
-+ * gss_mech_info2flavor - look up a pseudoflavor given a GSS tuple
-+ * @info: a GSS mech OID, quality of protection, and service value
-+ *
-+ * Returns a matching pseudoflavor, or RPC_AUTH_MAXFLAVOR if the tuple is
-+ * not supported.
-+ */
-+rpc_authflavor_t gss_mech_info2flavor(struct rpcsec_gss_info *info)
-+{
-+	rpc_authflavor_t pseudoflavor;
-+	struct gss_api_mech *gm;
-+
-+	gm = gss_mech_get_by_OID(&info->oid);
-+	if (gm == NULL)
-+		return RPC_AUTH_MAXFLAVOR;
-+
-+	pseudoflavor = gss_svc_to_pseudoflavor(gm, info->service);
-+
-+	gss_mech_put(gm);
-+	return pseudoflavor;
-+}
-+
- u32
- gss_pseudoflavor_to_service(struct gss_api_mech *gm, u32 pseudoflavor)
- {
-
+--b.
