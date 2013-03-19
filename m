@@ -1,111 +1,233 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ia0-f180.google.com ([209.85.210.180]:63579 "EHLO
-	mail-ia0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754511Ab3CPT4F (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 16 Mar 2013 15:56:05 -0400
-Received: by mail-ia0-f180.google.com with SMTP id f27so4252559iae.11
-        for <linux-nfs@vger.kernel.org>; Sat, 16 Mar 2013 12:56:04 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v1 13/15] NFS: Use static list of security flavors during root
- FH lookup recovery
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>,
-        Bryan Schumaker <bjschuma@netapp.com>
-Date: Sat, 16 Mar 2013 15:56:02 -0400
-Message-ID: <20130316195602.27329.24465.stgit@seurat.1015granger.net>
-In-Reply-To: <20130316195044.27329.11666.stgit@seurat.1015granger.net>
-References: <20130316195044.27329.11666.stgit@seurat.1015granger.net>
+Received: from mx1.netapp.com ([216.240.18.38]:60318 "EHLO mx1.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933158Ab3CSR3k convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Mar 2013 13:29:40 -0400
+Received: from vmwexceht05-prd.hq.netapp.com (exchsmtp.hq.netapp.com [10.106.77.35])
+	by smtp2.corp.netapp.com (8.13.1/8.13.1/NTAP-1.6) with ESMTP id r2JHTd0T003889
+	for <linux-nfs@vger.kernel.org>; Tue, 19 Mar 2013 10:29:39 -0700 (PDT)
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 10/11] NFSv4.1: Enable open-by-filehandle
+Date: Tue, 19 Mar 2013 17:29:37 +0000
+Message-ID: <A0468A45-044E-45E1-8256-38AD5814B6D8@netapp.com>
+References: <1363698463-3681-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1363698463-3681-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1363698463-3681-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1363698463-3681-4-git-send-email-Trond.Myklebust@netapp.com>
+ <1363698463-3681-5-git-send-email-Trond.Myklebust@netapp.com>
+ <1363698463-3681-6-git-send-email-Trond.Myklebust@netapp.com>
+ <1363698463-3681-7-git-send-email-Trond.Myklebust@netapp.com>
+ <1363698463-3681-8-git-send-email-Trond.Myklebust@netapp.com>
+ <1363698463-3681-9-git-send-email-Trond.Myklebust@netapp.com>
+ <1363698463-3681-10-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1363698463-3681-10-git-send-email-Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the Linux NFS client receives an NFS4ERR_WRONGSEC error while
-trying to look up an NFS server's root file handle, it retries the
-lookup operation with various security flavors to see what flavor
-the NFS server will accept for pseudo-fs access.
+Hi Trond
 
-The list of flavors the client uses during retry consists only of
-flavors that are currently registered in the kernel RPC client.
-This list may not include any GSS pseudoflavors if auth_rpcgss.ko
-has not yet been loaded.
+You need to declare the new NFS_OPEN_CLAIMs.
 
-Let's instead use a static list of security flavors that the NFS
-standard requires the server to implement (RFC 3530bis, section
-3.2.1).  The RPC client should now be able to load support for
-these dynamically; if not, they are skipped.
+From: Andy Adamson <andros@netapp.com>
+Date: Tue, 19 Mar 2013 13:03:36 -0400
+Subject: [PATCH 17/21] NFSv4.1 declare new NFS4_OPEN_CLAIM * FH
 
-Recovery behavior here is prescribed by RFC 3530bis, section
-15.33.5:
-
-> For LOOKUPP, PUTROOTFH and PUTPUBFH, the client will be unable to
-> use the SECINFO operation since SECINFO requires a current
-> filehandle and none exist for these two [sic] operations.  Therefore,
-> the client must iterate through the security triples available at
-> the client and reattempt the PUTROOTFH or PUTPUBFH operation.  In
-> the unfortunate event none of the MANDATORY security triples are
-> supported by the client and server, the client SHOULD try using
-> others that support integrity.  Failing that, the client can try
-> using AUTH_NONE, but because such forms lack integrity checks,
-> this puts the client at risk.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: Bryan Schumaker <bjschuma@netapp.com>
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
+ include/linux/nfs4.h |    5 ++++-
+ 1 files changed, 4 insertions(+), 1 deletions(-)
 
- fs/nfs/nfs4proc.c |   32 ++++++++++++++++++++------------
- 1 files changed, 20 insertions(+), 12 deletions(-)
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 7552bb5..380d944 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -388,7 +388,10 @@ enum open_claim_type4 {
+        NFS4_OPEN_CLAIM_NULL = 0,
+        NFS4_OPEN_CLAIM_PREVIOUS = 1,
+        NFS4_OPEN_CLAIM_DELEGATE_CUR = 2,
+-       NFS4_OPEN_CLAIM_DELEGATE_PREV = 3
++       NFS4_OPEN_CLAIM_DELEGATE_PREV = 3,
++       NFS4_OPEN_CLAIM_FH = 4,
++       NFS4_OPEN_CLAIM_DELEG_CUR_FH = 5,
++       NFS4_OPEN_CLAIM_DELEG_PREV_FH = 6
+ };
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index b83fddf..ddbebfe 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2451,27 +2451,35 @@ out:
- 	return ret;
- }
- 
-+/*
-+ * Retry pseudoroot lookup with various security flavors.  We do this when:
-+ *
-+ *   NFSv4.0: the PUTROOTFH operation returns NFS4ERR_WRONGSEC
-+ *   NFSv4.1: the server does not support the SECINFO_NO_NAME operation
-+ *
-+ * Returns zero on success, or a negative NFS4ERR value, or a
-+ * negative errno value.
-+ */
- static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
- 			      struct nfs_fsinfo *info)
- {
--	int i, len, status = 0;
--	rpc_authflavor_t flav_array[NFS_MAX_SECFLAVORS];
--
--	len = rpcauth_list_flavors(flav_array, ARRAY_SIZE(flav_array));
--	if (len < 0)
--		return len;
--
--	for (i = 0; i < len; i++) {
--		/* AUTH_UNIX is the default flavor if none was specified,
--		 * thus has already been tried. */
--		if (flav_array[i] == RPC_AUTH_UNIX)
--			continue;
-+	/* Per 3530bis 15.33.5 */
-+	static const rpc_authflavor_t flav_array[] = {
-+		RPC_AUTH_GSS_KRB5P,
-+		RPC_AUTH_GSS_KRB5I,
-+		RPC_AUTH_GSS_KRB5,
-+		RPC_AUTH_NULL,
-+	};
-+	int status = -EPERM;
-+	size_t i;
- 
-+	for (i = 0; i < ARRAY_SIZE(flav_array); i++) {
- 		status = nfs4_lookup_root_sec(server, fhandle, info, flav_array[i]);
- 		if (status == -NFS4ERR_WRONGSEC || status == -EACCES)
- 			continue;
- 		break;
- 	}
-+
- 	/*
- 	 * -EACCESS could mean that the user doesn't have correct permissions
- 	 * to access the mount.  It could also mean that we tried to mount
+ enum opentype4 {
+
+-->Andy
+
+On Mar 19, 2013, at 9:07 AM, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+
+> Sometimes, we actually _want_ to do open-by-filehandle, for instance
+> when recovering opens after a network partition, or when called
+> from nfs4_file_open.
+> Enable that functionality using a new capability NFS_CAP_ATOMIC_OPEN_V1,
+> and which is only enabled for NFSv4.1 servers that support it.
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+> fs/nfs/dir.c              |  2 ++
+> fs/nfs/nfs4proc.c         | 53 ++++++++++++++++++++++++++++++++++++++++-------
+> include/linux/nfs_fs_sb.h |  1 +
+> 3 files changed, 49 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index f23f455..e093e73 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -1486,6 +1486,8 @@ static int nfs4_lookup_revalidate(struct dentry *dentry, unsigned int flags)
+> 		goto no_open;
+> 	if (d_mountpoint(dentry))
+> 		goto no_open;
+> +	if (NFS_SB(dentry->d_sb)->caps & NFS_CAP_ATOMIC_OPEN_V1)
+> +		goto no_open;
+> 
+> 	inode = dentry->d_inode;
+> 	parent = dget_parent(dentry);
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 712eb70..480b5d0 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -767,6 +767,35 @@ struct nfs4_opendata {
+> 	int cancelled;
+> };
+> 
+> +static bool nfs4_clear_cap_atomic_open_v1(struct nfs_server *server,
+> +		int err, struct nfs4_exception *exception)
+> +{
+> +	if (err != -EINVAL)
+> +		return false;
+> +	if (!(server->caps & NFS_CAP_ATOMIC_OPEN_V1))
+> +		return false;
+> +	server->caps &= ~NFS_CAP_ATOMIC_OPEN_V1;
+> +	exception->retry = 1;
+> +	return true;
+> +}
+> +
+> +static enum open_claim_type4
+> +nfs4_map_atomic_open_claim(struct nfs_server *server,
+> +		enum open_claim_type4 claim)
+> +{
+> +	if (server->caps & NFS_CAP_ATOMIC_OPEN_V1)
+> +		return claim;
+> +	switch (claim) {
+> +	default:
+> +		return claim;
+> +	case NFS4_OPEN_CLAIM_FH:
+> +		return NFS4_OPEN_CLAIM_NULL;
+> +	case NFS4_OPEN_CLAIM_DELEG_CUR_FH:
+> +		return NFS4_OPEN_CLAIM_DELEGATE_CUR;
+> +	case NFS4_OPEN_CLAIM_DELEG_PREV_FH:
+> +		return NFS4_OPEN_CLAIM_DELEGATE_PREV;
+> +	}
+> +}
+> 
+> static void nfs4_init_opendata_res(struct nfs4_opendata *p)
+> {
+> @@ -818,8 +847,8 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+> 	p->o_arg.server = server;
+> 	p->o_arg.bitmask = server->attr_bitmask;
+> 	p->o_arg.open_bitmap = &nfs4_fattr_bitmap[0];
+> -	p->o_arg.claim = claim;
+> -	switch (claim) {
+> +	p->o_arg.claim = nfs4_map_atomic_open_claim(server, claim);
+> +	switch (p->o_arg.claim) {
+> 	case NFS4_OPEN_CLAIM_NULL:
+> 	case NFS4_OPEN_CLAIM_DELEGATE_CUR:
+> 	case NFS4_OPEN_CLAIM_DELEGATE_PREV:
+> @@ -1326,6 +1355,8 @@ static int nfs4_do_open_reclaim(struct nfs_open_context *ctx, struct nfs4_state
+> 	int err;
+> 	do {
+> 		err = _nfs4_do_open_reclaim(ctx, state);
+> +		if (nfs4_clear_cap_atomic_open_v1(server, err, &exception))
+> +			continue;
+> 		if (err != -NFS4ERR_DELAY)
+> 			break;
+> 		nfs4_handle_exception(server, err, &exception);
+> @@ -1741,7 +1772,7 @@ static int _nfs4_open_expired(struct nfs_open_context *ctx, struct nfs4_state *s
+> 	int ret;
+> 
+> 	opendata = nfs4_open_recoverdata_alloc(ctx, state,
+> -			NFS4_OPEN_CLAIM_NULL);
+> +			NFS4_OPEN_CLAIM_FH);
+> 	if (IS_ERR(opendata))
+> 		return PTR_ERR(opendata);
+> 	ret = nfs4_open_recover(opendata, state);
+> @@ -1759,6 +1790,8 @@ static int nfs4_do_open_expired(struct nfs_open_context *ctx, struct nfs4_state
+> 
+> 	do {
+> 		err = _nfs4_open_expired(ctx, state);
+> +		if (nfs4_clear_cap_atomic_open_v1(server, err, &exception))
+> +			continue;
+> 		switch (err) {
+> 		default:
+> 			goto out;
+> @@ -1926,6 +1959,7 @@ static int _nfs4_do_open(struct inode *dir,
+> 	struct nfs4_state     *state = NULL;
+> 	struct nfs_server       *server = NFS_SERVER(dir);
+> 	struct nfs4_opendata *opendata;
+> +	enum open_claim_type4 claim = NFS4_OPEN_CLAIM_NULL;
+> 	int status;
+> 
+> 	/* Protect against reboot recovery conflicts */
+> @@ -1941,9 +1975,10 @@ static int _nfs4_do_open(struct inode *dir,
+> 	if (dentry->d_inode != NULL)
+> 		nfs4_return_incompatible_delegation(dentry->d_inode, fmode);
+> 	status = -ENOMEM;
+> +	if (dentry->d_inode)
+> +		claim = NFS4_OPEN_CLAIM_FH;
+> 	opendata = nfs4_opendata_alloc(dentry, sp, fmode, flags, sattr,
+> -			NFS4_OPEN_CLAIM_NULL,
+> -			GFP_KERNEL);
+> +			claim, GFP_KERNEL);
+> 	if (opendata == NULL)
+> 		goto err_put_state_owner;
+> 
+> @@ -2001,6 +2036,7 @@ static struct nfs4_state *nfs4_do_open(struct inode *dir,
+> 					struct rpc_cred *cred,
+> 					struct nfs4_threshold **ctx_th)
+> {
+> +	struct nfs_server *server = NFS_SERVER(dir);
+> 	struct nfs4_exception exception = { };
+> 	struct nfs4_state *res;
+> 	int status;
+> @@ -2044,7 +2080,9 @@ static struct nfs4_state *nfs4_do_open(struct inode *dir,
+> 			exception.retry = 1;
+> 			continue;
+> 		}
+> -		res = ERR_PTR(nfs4_handle_exception(NFS_SERVER(dir),
+> +		if (nfs4_clear_cap_atomic_open_v1(server, status, &exception))
+> +			continue;
+> +		res = ERR_PTR(nfs4_handle_exception(server,
+> 					status, &exception));
+> 	} while (exception.retry);
+> 	return res;
+> @@ -6872,7 +6910,8 @@ static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
+> 		| NFS_CAP_ATOMIC_OPEN
+> 		| NFS_CAP_CHANGE_ATTR
+> 		| NFS_CAP_POSIX_LOCK
+> -		| NFS_CAP_STATEID_NFSV41,
+> +		| NFS_CAP_STATEID_NFSV41
+> +		| NFS_CAP_ATOMIC_OPEN_V1,
+> 	.call_sync = nfs4_call_sync_sequence,
+> 	.match_stateid = nfs41_match_stateid,
+> 	.find_root_sec = nfs41_find_root_sec,
+> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+> index 74c9e52..d8fdfdc 100644
+> --- a/include/linux/nfs_fs_sb.h
+> +++ b/include/linux/nfs_fs_sb.h
+> @@ -198,5 +198,6 @@ struct nfs_server {
+> #define NFS_CAP_POSIX_LOCK	(1U << 14)
+> #define NFS_CAP_UIDGID_NOMAP	(1U << 15)
+> #define NFS_CAP_STATEID_NFSV41	(1U << 16)
+> +#define NFS_CAP_ATOMIC_OPEN_V1	(1U << 17)
+> 
+> #endif
+> -- 
+> 1.8.1.4
+> 
 
