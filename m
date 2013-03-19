@@ -1,127 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:19796 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754664Ab3CSNHv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Mar 2013 09:07:51 -0400
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from e35.co.us.ibm.com ([32.97.110.153]:44536 "EHLO
+	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932275Ab3CSVdX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Mar 2013 17:33:23 -0400
+Received: from /spool/local
+	by e35.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <cvogan@us.ibm.com>;
+	Tue, 19 Mar 2013 15:33:21 -0600
+Received: from d03relay01.boulder.ibm.com (d03relay01.boulder.ibm.com [9.17.195.226])
+	by d03dlp03.boulder.ibm.com (Postfix) with ESMTP id A0ECC19D8042
+	for <linux-nfs@vger.kernel.org>; Tue, 19 Mar 2013 15:32:49 -0600 (MDT)
+Received: from d03av05.boulder.ibm.com (d03av05.boulder.ibm.com [9.17.195.85])
+	by d03relay01.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id r2JLWkjH085510
+	for <linux-nfs@vger.kernel.org>; Tue, 19 Mar 2013 15:32:47 -0600
+Received: from d03av05.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av05.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id r2JLWf3C017693
+	for <linux-nfs@vger.kernel.org>; Tue, 19 Mar 2013 15:32:42 -0600
+Received: from d03nm116.boulder.ibm.com (d03nm116.boulder.ibm.com [9.63.40.222])
+	by d03av05.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id r2JLWfxI017519
+	for <linux-nfs@vger.kernel.org>; Tue, 19 Mar 2013 15:32:41 -0600
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 06/11] NFSv4: Prepare for minorversion-specific nfs_server capabilities
-Date: Tue, 19 Mar 2013 09:07:38 -0400
-Message-Id: <1363698463-3681-6-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1363698463-3681-5-git-send-email-Trond.Myklebust@netapp.com>
-References: <1363698463-3681-1-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-2-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-3-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-4-git-send-email-Trond.Myklebust@netapp.com>
- <1363698463-3681-5-git-send-email-Trond.Myklebust@netapp.com>
+MIME-Version: 1.0
+Subject: NFS man page patch that moves nordirplus/rdirplus
+Message-ID: <OF0365F8D8.55071FDA-ON87257B33.00762456-86257B33.00765660@us.ibm.com>
+From: Christopher T Vogan <cvogan@us.ibm.com>
+Date: Tue, 19 Mar 2013 16:32:33 -0500
+Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up the setting of the nfs_server->caps, by shoving it all
-into nfs4_server_common_setup().
-Then add an 'initial capabilities' field into struct nfs4_minor_version_ops.
+NFS man page patch that moves nordirplus/rdirplus from "Options for NFS 
+versions 2 and 3 only" to "Options supported by all versions".  Its a 
+better fit here since this option is also needed for some NFSv4 servers.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- fs/nfs/nfs4_fs.h    |  1 +
- fs/nfs/nfs4client.c | 24 +++++++++++++-----------
- fs/nfs/nfs4proc.c   |  8 ++++++++
- 3 files changed, 22 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 627a74f..7ef19ce 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -36,6 +36,7 @@ enum nfs4_client_state {
- 
- struct nfs4_minor_version_ops {
- 	u32	minor_version;
-+	unsigned init_caps;
- 
- 	int	(*call_sync)(struct rpc_clnt *clnt,
- 			struct nfs_server *server,
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index ac4fc9a..17b34b2 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -717,6 +717,19 @@ static int nfs4_server_common_setup(struct nfs_server *server,
- 	if (error < 0)
- 		goto out;
- 
-+	/* Set the basic capabilities */
-+	server->caps |= server->nfs_client->cl_mvops->init_caps;
-+	if (server->flags & NFS_MOUNT_NORDIRPLUS)
-+			server->caps &= ~NFS_CAP_READDIRPLUS;
-+	/*
-+	 * Don't use NFS uid/gid mapping if we're using AUTH_SYS or lower
-+	 * authentication.
-+	 */
-+	if (nfs4_disable_idmapping &&
-+			server->client->cl_auth->au_flavor == RPC_AUTH_UNIX)
-+		server->caps |= NFS_CAP_UIDGID_NOMAP;
-+
-+
- 	/* Probe the root fh to retrieve its FSID and filehandle */
- 	error = nfs4_get_rootfh(server, mntfh);
- 	if (error < 0)
-@@ -760,9 +773,6 @@ static int nfs4_init_server(struct nfs_server *server,
- 
- 	/* Initialise the client representation from the mount data */
- 	server->flags = data->flags;
--	server->caps |= NFS_CAP_ATOMIC_OPEN|NFS_CAP_CHANGE_ATTR|NFS_CAP_POSIX_LOCK;
--	if (!(data->flags & NFS_MOUNT_NORDIRPLUS))
--			server->caps |= NFS_CAP_READDIRPLUS;
- 	server->options = data->options;
- 
- 	/* Get a client record */
-@@ -779,13 +789,6 @@ static int nfs4_init_server(struct nfs_server *server,
- 	if (error < 0)
- 		goto error;
- 
--	/*
--	 * Don't use NFS uid/gid mapping if we're using AUTH_SYS or lower
--	 * authentication.
--	 */
--	if (nfs4_disable_idmapping && data->auth_flavors[0] == RPC_AUTH_UNIX)
--		server->caps |= NFS_CAP_UIDGID_NOMAP;
--
- 	if (data->rsize)
- 		server->rsize = nfs_block_size(data->rsize, NULL);
- 	if (data->wsize)
-@@ -863,7 +866,6 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
- 
- 	/* Initialise the client representation from the parent server */
- 	nfs_server_copy_userdata(server, parent_server);
--	server->caps |= NFS_CAP_ATOMIC_OPEN|NFS_CAP_CHANGE_ATTR;
- 
- 	/* Get a client representation.
- 	 * Note: NFSv4 always uses TCP, */
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 028bd52..4fc1496 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6837,6 +6837,10 @@ static const struct nfs4_state_maintenance_ops nfs41_state_renewal_ops = {
- 
- static const struct nfs4_minor_version_ops nfs_v4_0_minor_ops = {
- 	.minor_version = 0,
-+	.init_caps = NFS_CAP_READDIRPLUS
-+		| NFS_CAP_ATOMIC_OPEN
-+		| NFS_CAP_CHANGE_ATTR
-+		| NFS_CAP_POSIX_LOCK,
- 	.call_sync = _nfs4_call_sync,
- 	.match_stateid = nfs4_match_stateid,
- 	.find_root_sec = nfs4_find_root_sec,
-@@ -6848,6 +6852,10 @@ static const struct nfs4_minor_version_ops nfs_v4_0_minor_ops = {
- #if defined(CONFIG_NFS_V4_1)
- static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
- 	.minor_version = 1,
-+	.init_caps = NFS_CAP_READDIRPLUS
-+		| NFS_CAP_ATOMIC_OPEN
-+		| NFS_CAP_CHANGE_ATTR
-+		| NFS_CAP_POSIX_LOCK,
- 	.call_sync = nfs4_call_sync_sequence,
- 	.match_stateid = nfs41_match_stateid,
- 	.find_root_sec = nfs41_find_root_sec,
--- 
-1.8.1.4
+Author: Chris Vogan <cvogan@us.ibm.com>
+Date:   Fri Feb 28 14:40:11 2013 -0700
+
+    NFS man page needs updating to clarify that nordirplus mount option
+    is also valid for NFSv4. Also should be moved to the section
+    "Options supported by all versions".
+
+    Signed-off-by: Chris Vogan <cvogan@gmail.com>
+--- nfs.man.save        2013-02-28 14:40:11.530103375 -0700
++++ nfs.man     2013-02-28 14:42:48.028996087 -0700
+@@ -345,6 +345,13 @@
+ .BR automount (8)
+ for details).
+ .TP 1.5i
++.BR rdirplus " / " nordirplus
++Selects whether to use NFS v3 or v4 READDIRPLUS requests.
++If this option is not specified, the NFS client uses READDIRPLUS requests
++on NFS v3 or v4 mounts to read small directories.
++Some applications perform better if the client uses only READDIR requests
++for all directories.
++.TP 1.5i
+ .BI retry= n
+ The number of minutes that the
+ .BR mount (8)
+@@ -710,13 +717,6 @@
+ Disabling the NFSACL sideband protocol may be necessary
+ if the negotiation causes problems on the client or server.
+ Refer to the SECURITY CONSIDERATIONS section for more details.
+-.TP 1.5i
+-.BR rdirplus " / " nordirplus
+-Selects whether to use NFS version 3 READDIRPLUS requests.
+-If this option is not specified, the NFS client uses READDIRPLUS requests
+-on NFS version 3 mounts to read small directories.
+-Some applications perform better if the client uses only READDIR requests
+-for all directories.
+ .SS "Options for version 4 only"
+ Use these options, along with the options in the first subsection above,
+ for NFSv4 only. They will be ignored with older versions.
+
+
+Christopher Vogan
+Dept. W98 NFS Development & Test
 
