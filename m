@@ -1,88 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35781 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755777Ab3CUNUH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Mar 2013 09:20:07 -0400
-Date: Thu, 21 Mar 2013 09:20:07 -0400
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] mountd: Add a default flavor to an export's e_secinfo
- list
-Message-ID: <20130321132007.GA27838@fieldses.org>
-References: <20130320223129.11659.35205.stgit@seurat.1015granger.net>
+Received: from mail-ve0-f181.google.com ([209.85.128.181]:34131 "EHLO
+	mail-ve0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933296Ab3CSU2y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Mar 2013 16:28:54 -0400
+Received: by mail-ve0-f181.google.com with SMTP id d10so787791vea.26
+        for <linux-nfs@vger.kernel.org>; Tue, 19 Mar 2013 13:28:54 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130320223129.11659.35205.stgit@seurat.1015granger.net>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <5148BE0B.9080802@tonian.com>
+References: <1363617532-24172-1-git-send-email-bhalevy@tonian.com>
+	<1363622128.4351.15.camel@leira.trondhjem.org>
+	<51473F46.10401@tonian.com>
+	<CADnza476e0FpXJJfE8OmXLRQUR3Zm_aZkX7JZRB=vGyZ-U2yDg@mail.gmail.com>
+	<5148BE0B.9080802@tonian.com>
+Date: Tue, 19 Mar 2013 16:28:53 -0400
+Message-ID: <CADnza46Npnn=GquO8s7TPPSGZq9Cs11JJdj6t8ejDh5gYeeTYg@mail.gmail.com>
+Subject: Re: [PATCH] pnfs: do not reset to mds if wb_offset != wb_pgbase
+From: Fred Isaman <faisaman4@gmail.com>
+To: Benny Halevy <bhalevy@tonian.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "Isaman, Fred" <Fred.Isaman@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "stable@kernel.org" <stable@kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 20, 2013 at 06:31:30PM -0400, Chuck Lever wrote:
-> The list of security flavors that mountd allows for the NFSv4
-> pseudo-fs is constructed from the union of flavors of all current
-> exports.
-> 
-> exports(5) documents that the default security flavor for an
-> export, if "sec=" is not specified, is "sys".  Suppose
-> /etc/exports contains:
-> 
-> /a	*(rw)
-> /b	*(rw,sec=krb5:krb5i:krb5p)
-> 
-> The resulting security flavor list for the pseudo-fs is missing
-> "sec=sys".  /proc/net/rpc/nfsd.export/content contains:
-> 
-> /a	*(rw,root_squash,sync,wdelay,no_subtree_check,
-> 		uuid=095c95bc:08e4407a:91ab8601:05fe0bbf)
-> /b	*(rw,root_squash,sync,wdelay,no_subtree_check,
-> 		uuid=2a6fe811:0cf044a7:8fc75ebe:65180068,
-> 		sec=390003:390004:390005)
-> /	*(ro,root_squash,sync,no_wdelay,v4root,fsid=0,
-> 		uuid=2a6fe811:0cf044a7:8fc75ebe:65180068,
-> 		sec=390003:390004:390005)
-> 
-> The root entry is not correct, as there does exist an export whose
-> unspecified default security flavor is "sys".  The security settings
-> on the root cause sec=sys mount attempts to be incorrectly rejected.
-> 
-> The reason is that when the line in /etc/exports for "/a" is parsed,
-> the e_secinfo list for that exportent is left empty.  Thus the union
-> of e_secinfo lists created by set_pseudofs_security() is
-> "krb5:krb5i:krb5p".
-> 
-> I fixed this by ensuring that if no "sec=" option is specified for
-> an export, its e_secinfo list gets at least an entry for AUTH_UNIX.
-> 
-> [ Yes, we could make the security flavors allowed for the pseudo-fs
-> a fixed list of all flavors the server supports.  That becomes
-> complicated by the special meaning of AUTH_NULL, and we still have
-> to check /etc/exports for whether Kerberos flavors should be listed.
-> I opted for a simple approach for now. ]
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+On Tue, Mar 19, 2013 at 3:35 PM, Benny Halevy <bhalevy@tonian.com> wrote:
+> On 2013-03-18 19:04, Fred Isaman wrote:
+>> A problem case is if the layout ends within the page request, which
+>> can happen due to the misalignment.
+>
+> First, the file layout currently supports only whole file layouts so I don't see
+> how that's a problem.
+> Regardless, I'd rather trim the layout segment to PAGE_SIZE boundaries
+> and get a new layout from the page aligned offset and on with minlength = PAGE_SIZE
+> (as we do today).
+>
+> Benny
+>
 
-Makes sense to me.--b.
+Yes, but consider....
 
-> ---
-> 
->  support/nfs/exports.c |    2 ++
->  1 files changed, 2 insertions(+), 0 deletions(-)
-> 
-> diff --git a/support/nfs/exports.c b/support/nfs/exports.c
-> index 84a2b08..6c08a2b 100644
-> --- a/support/nfs/exports.c
-> +++ b/support/nfs/exports.c
-> @@ -643,6 +643,8 @@ bad_option:
->  			cp++;
->  	}
->  
-> +	if (ep->e_secinfo[0].flav == NULL)
-> +		secinfo_addflavor(find_flavor("sys"), ep);
->  	fix_pseudoflavor_flags(ep);
->  	ep->e_squids = squids;
->  	ep->e_sqgids = sqgids;
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+let P = PAGE_SIZE
+
+assume you have a layout from 0 to 4P, and you try to do a WRITE from
+2P to 6P.  Now if the buffer is not page aligned, one of the nfs_page
+requests will contain the file's logical 4P offset at a random
+location within the nfs_page.  What happens then?
+
+Fred
