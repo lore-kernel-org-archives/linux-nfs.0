@@ -1,167 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:31572 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:47795 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755733Ab3C1N5Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Mar 2013 09:57:24 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 03/14] LSM: Add flags field to security_sb_set_mnt_opts for in kernel mount data.
-Date: Thu, 28 Mar 2013 09:53:54 -0400
-Message-Id: <1364478845-29796-4-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
-References: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
+	id S1753152Ab3CSOQV convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Mar 2013 10:16:21 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 10/11] NFSv4.1: Enable open-by-filehandle
+Date: Tue, 19 Mar 2013 14:16:15 +0000
+Message-ID: <1363702570.7515.6.camel@leira.trondhjem.org>
+References: <1363698463-3681-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1363698463-3681-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <1363698463-3681-3-git-send-email-Trond.Myklebust@netapp.com>
+	 <1363698463-3681-4-git-send-email-Trond.Myklebust@netapp.com>
+	 <1363698463-3681-5-git-send-email-Trond.Myklebust@netapp.com>
+	 <1363698463-3681-6-git-send-email-Trond.Myklebust@netapp.com>
+	 <1363698463-3681-7-git-send-email-Trond.Myklebust@netapp.com>
+	 <1363698463-3681-8-git-send-email-Trond.Myklebust@netapp.com>
+	 <1363698463-3681-9-git-send-email-Trond.Myklebust@netapp.com>
+	 <1363698463-3681-10-git-send-email-Trond.Myklebust@netapp.com>
+	 <20130319140901.GB7912@fieldses.org>
+In-Reply-To: <20130319140901.GB7912@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+On Tue, 2013-03-19 at 10:09 -0400, J. Bruce Fields wrote:
+> On Tue, Mar 19, 2013 at 09:07:42AM -0400, Trond Myklebust wrote:
+> > Sometimes, we actually _want_ to do open-by-filehandle, for instance
+> > when recovering opens after a network partition, or when called
+> > from nfs4_file_open.
+> > Enable that functionality using a new capability NFS_CAP_ATOMIC_OPEN_V1,
+> > and which is only enabled for NFSv4.1 servers that support it.
+> 
+> So you're assuming NFS4ERR_INVAL is how the server indicates lack of
+> support?
 
-There is no way to differentiate if a text mount option is passed from user
-space or the kernel. A flags field is being added to the
-security_sb_set_mnt_opts hook to allow for in kernel security flags to be sent
-to the LSM for processing in addition to the text options received from mount.
-This patch also updated existing code to fix compilation errors.
+Looking at the list of valid errors for OPEN in section 15.2 of RFC5661,
+I don't see what else fits the bill.
 
-Signed-off-by: David P. Quigley <dpquigl@tycho.nsa.gov>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- fs/nfs/super.c           |  3 ++-
- include/linux/security.h | 13 ++++++++++---
- security/capability.c    |  5 ++++-
- security/security.c      |  7 +++++--
- security/selinux/hooks.c | 12 ++++++++++--
- 5 files changed, 31 insertions(+), 9 deletions(-)
+> Looking back at NFS server history.... I think that's what it did before
+> supporting these types, but I wonder if that was really right.  Possibly
+> it's just a bug not to support the new claim types in a 4.1 server.
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 2f8a29d..56e9963 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2373,7 +2373,8 @@ static int nfs_bdi_register(struct nfs_server *server)
- int nfs_set_sb_security(struct super_block *s, struct dentry *mntroot,
- 			struct nfs_mount_info *mount_info)
- {
--	return security_sb_set_mnt_opts(s, &mount_info->parsed->lsm_opts);
-+	return security_sb_set_mnt_opts(s, &mount_info->parsed->lsm_opts,
-+								0, NULL);
- }
- EXPORT_SYMBOL_GPL(nfs_set_sb_security);
- 
-diff --git a/include/linux/security.h b/include/linux/security.h
-index 8a6faff..5c4179a 100644
---- a/include/linux/security.h
-+++ b/include/linux/security.h
-@@ -1452,7 +1452,9 @@ struct security_operations {
- 	int (*sb_pivotroot) (struct path *old_path,
- 			     struct path *new_path);
- 	int (*sb_set_mnt_opts) (struct super_block *sb,
--				struct security_mnt_opts *opts);
-+				struct security_mnt_opts *opts,
-+				unsigned long kern_flags,
-+				unsigned long *set_kern_flags);
- 	void (*sb_clone_mnt_opts) (const struct super_block *oldsb,
- 				   struct super_block *newsb);
- 	int (*sb_parse_opts_str) (char *options, struct security_mnt_opts *opts);
-@@ -1742,7 +1744,10 @@ int security_sb_mount(const char *dev_name, struct path *path,
- 		      const char *type, unsigned long flags, void *data);
- int security_sb_umount(struct vfsmount *mnt, int flags);
- int security_sb_pivotroot(struct path *old_path, struct path *new_path);
--int security_sb_set_mnt_opts(struct super_block *sb, struct security_mnt_opts *opts);
-+int security_sb_set_mnt_opts(struct super_block *sb,
-+				struct security_mnt_opts *opts,
-+				unsigned long kern_flags,
-+				unsigned long *set_kern_flags);
- void security_sb_clone_mnt_opts(const struct super_block *oldsb,
- 				struct super_block *newsb);
- int security_sb_parse_opts_str(char *options, struct security_mnt_opts *opts);
-@@ -2032,7 +2037,9 @@ static inline int security_sb_pivotroot(struct path *old_path,
- }
- 
- static inline int security_sb_set_mnt_opts(struct super_block *sb,
--					   struct security_mnt_opts *opts)
-+					   struct security_mnt_opts *opts,
-+					   unsigned long kern_flags,
-+					   unsigned long *set_kern_flags)
- {
- 	return 0;
- }
-diff --git a/security/capability.c b/security/capability.c
-index 07a6484..59b82d0 100644
---- a/security/capability.c
-+++ b/security/capability.c
-@@ -91,7 +91,10 @@ static int cap_sb_pivotroot(struct path *old_path, struct path *new_path)
- }
- 
- static int cap_sb_set_mnt_opts(struct super_block *sb,
--			       struct security_mnt_opts *opts)
-+			       struct security_mnt_opts *opts,
-+			       unsigned long kern_flags,
-+			       unsigned long *set_kern_flags)
-+
- {
- 	if (unlikely(opts->num_mnt_opts))
- 		return -EOPNOTSUPP;
-diff --git a/security/security.c b/security/security.c
-index 6d7389c..dd9e4c8 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -294,9 +294,12 @@ int security_sb_pivotroot(struct path *old_path, struct path *new_path)
- }
- 
- int security_sb_set_mnt_opts(struct super_block *sb,
--				struct security_mnt_opts *opts)
-+				struct security_mnt_opts *opts,
-+				unsigned long kern_flags,
-+				unsigned long *set_kern_flags)
- {
--	return security_ops->sb_set_mnt_opts(sb, opts);
-+	return security_ops->sb_set_mnt_opts(sb, opts, kern_flags,
-+						set_kern_flags);
- }
- EXPORT_SYMBOL(security_sb_set_mnt_opts);
- 
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index 97231a0..f9db857 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -551,7 +551,9 @@ static int bad_option(struct superblock_security_struct *sbsec, char flag,
-  * labeling information.
-  */
- static int selinux_set_mnt_opts(struct super_block *sb,
--				struct security_mnt_opts *opts)
-+				struct security_mnt_opts *opts,
-+				unsigned long kern_flags,
-+				unsigned long *set_kern_flags)
- {
- 	const struct cred *cred = current_cred();
- 	int rc = 0, i;
-@@ -579,6 +581,12 @@ static int selinux_set_mnt_opts(struct super_block *sb,
- 			"before the security server is initialized\n");
- 		goto out;
- 	}
-+	if (kern_flags && !set_kern_flags) {
-+		/* Specifying internal flags without providing a place to
-+		 * place the results is not allowed */
-+		rc = -EINVAL;
-+		goto out;
-+	}
- 
- 	/*
- 	 * Binary mount data FS will come through this function twice.  Once
-@@ -948,7 +956,7 @@ static int superblock_doinit(struct super_block *sb, void *data)
- 		goto out_err;
- 
- out:
--	rc = selinux_set_mnt_opts(sb, &opts);
-+	rc = selinux_set_mnt_opts(sb, &opts, 0, NULL);
- 
- out_err:
- 	security_free_mnt_opts(&opts);
+I've assumed that it isn't. NFSv4.1 is the very first minor version, so
+it's not supposed to contain any mandatory new features. Yes, I know we
+broke the rules on that one in spectacular fashion with sessions, but
+I'm assuming that is the only exception...
+
 -- 
-1.8.1.4
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
