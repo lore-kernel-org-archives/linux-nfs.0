@@ -1,136 +1,145 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:23662 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753567Ab3CFSXt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Mar 2013 13:23:49 -0500
-Date: Wed, 6 Mar 2013 13:23:22 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Mandeep Singh Baines <msb@chromium.org>
-Cc: Ingo Molnar <mingo@kernel.org>, Tejun Heo <tj@kernel.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Oleg Nesterov <oleg@redhat.com>, Ming Lei <ming.lei@canonical.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Thomas Gleixner <tglx@linutronix.de>
-Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
-Message-ID: <20130306132322.52f47d7b@tlielax.poochiereds.net>
-In-Reply-To: <CACBanvo77MrvcWgVJqFjjj-7wL6BHxaoQcQ5YRfjeCtjaOeqAw@mail.gmail.com>
-References: <20130304205307.GA13527@redhat.com>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA9286AEEB0@sacexcmbx05-prd.hq.netapp.com>
-	<20130305082308.6607d4db@tlielax.poochiereds.net>
-	<20130305174648.GF12795@htj.dyndns.org>
-	<20130305174954.GG12795@htj.dyndns.org>
-	<20130305231110.GK15816@fieldses.org>
-	<CACBanvo+JDCFVRQeTQwnwRRxr8bdqxdsgeEr8fqgJhGQJEEQ-Q@mail.gmail.com>
-	<20130306010507.GL15816@fieldses.org>
-	<20130306011623.GG1227@htj.dyndns.org>
-	<CACBanvqVpi45TVNGXgXXO0BCSRuPEDsiNuHj0OBsvgr2UXZfsg@mail.gmail.com>
-	<20130306090914.GA6030@gmail.com>
-	<20130306070631.0f326014@tlielax.poochiereds.net>
-	<CACBanvo77MrvcWgVJqFjjj-7wL6BHxaoQcQ5YRfjeCtjaOeqAw@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from youngberry.canonical.com ([91.189.89.112]:48507 "EHLO
+	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756396Ab3CSQ4w (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Mar 2013 12:56:52 -0400
+Message-ID: <514898C0.8050101@canonical.com>
+Date: Tue, 19 Mar 2013 11:56:32 -0500
+From: Dave Chiluk <dave.chiluk@canonical.com>
+MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4 setattr null-terminates strings
+References: <513A1BD1.6060709@canonical.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9286B6F80@sacexcmbx05-prd.hq.netapp.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9286B6F80@sacexcmbx05-prd.hq.netapp.com>
+Content-Type: multipart/mixed;
+ boundary="------------000604000908090000020408"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 6 Mar 2013 07:59:01 -0800
-Mandeep Singh Baines <msb@chromium.org> wrote:
+This is a multi-part message in MIME format.
+--------------000604000908090000020408
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 
-> On Wed, Mar 6, 2013 at 4:06 AM, Jeff Layton <jlayton@redhat.com> wrote:
-> > On Wed, 6 Mar 2013 10:09:14 +0100
-> > Ingo Molnar <mingo@kernel.org> wrote:
-> >
-> >>
-> >> * Mandeep Singh Baines <msb@chromium.org> wrote:
-> >>
-> >> > On Tue, Mar 5, 2013 at 5:16 PM, Tejun Heo <tj@kernel.org> wrote:
-> >> > > On Tue, Mar 05, 2013 at 08:05:07PM -0500, J. Bruce Fields wrote:
-> >> > >> If it's really just a 2-line patch to try_to_freeze(), could it just be
-> >> > >> carried out-of-tree by people that are specifically working on tracking
-> >> > >> down these problems?
-> >> > >>
-> >> > >> But I don't have strong feelings about it--as long as it doesn't result
-> >> > >> in the same known issues getting reported again and again....
-> >> > >
-> >> > > Agreed, I don't think a Kconfig option is justified for this.  If this
-> >> > > is really important, annotate broken paths so that it doesn't trigger
-> >> > > spuriously; otherwise, please just remove it.
-> >> > >
-> >> >
-> >> > Fair enough. Let's revert then. I'll rework to use a lockdep annotation.
-> >> >
-> >> > Maybe, add a new lockdep API:
-> >> >
-> >> > lockdep_set_held_during_freeze(lock);
-> >> >
-> >> > Then when we do the check, ignore any locks that set this bit.
-> >> >
-> >> > Ingo, does this seem like a reasonable design to you?
-> >>
-> >> Am I reading the discussion correctly that the new warnings show REAL potential
-> >> deadlock scenarios, which can hit real users and can lock their box up in entirely
-> >> real usage scenarios?
-> >>
-> >> If yes then guys we _really_ don't want to use lockdep annotation to _HIDE_ bugs.
-> >> We typically use them to teach lockdep about things it does not know about.
-> >>
-> >> How about fixing the deadlocks instead?
-> >>
-> >
-> > I do see how the freezer might fail to suspend certain tasks, but I
-> > don't see the deadlock scenario here in the NFS/RPC case. Can someone
-> > outline a situation where this might end up deadlocking? If not, then
-> > I'd be inclined to say that while this may be a problem, the warning is
-> > excessive...
-> >
+On 03/08/2013 12:33 PM, Myklebust, Trond wrote:
+> On Fri, 2013-03-08 at 11:11 -0600, Dave Chiluk wrote:
+>> As of commit 57e62324e469e092ecc6c94a7a86fe4bd6ac5172, the SETATTR nfsv4
+>> command now null terminates fattr_owner and fattr_owner_group.
+>>
+>> Here is an example excerpt from a tcpdump
+>> Opcode: SETATTR (34)
+>>     stateid
+>>         [StateID Hash: 0xafa9]
+>>         seqid: 0x00000000
+>>         Data: 000000000000000000000000
+>>     obj_attributes
+>>         attrmask
+>>             recc_attr: FATTR4_OWNER_GROUP (37)
+>>                 fattr4_owner_group: groupname@domainname.com
+>>                     length: 25
+>>
+>> This means that even though there are actually 24 characters in
+>> groupname@domainname.com, we now send 24 characters + 1 null character.
+>> Hence the total length of 25.  Previously the client would send just the
+>> 24 characters and set length to 24.
+>>
+>> This isn't an issue for communication with other Linux machines, but it
+>> is an issue for interaction with AIX machines.  As is discussed here.
+>> https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1101292
+>>
+>> I attempted to read the RFC available here
+>> http://tools.ietf.org/html/rfc5661, but have not been able to find a
+>> statement instructing one way or the other.
+>>
+>> So the question becomes, is it correct for linux to be sending this null
+>> terminator when read against the RFC, or is it AIX's responsibility to
+>> handle null-terminated strings?
 > 
-> In general, holding a lock and freezing can cause a deadlock if:
+> The client is definitely in error here according to RFC3530. Please
+> check if the attached patch fixes the issue for you.
 > 
-> 1) you froze via the cgroup_freezer subsystem and a task in another
-> cgroup tried to acquire the same lock
-> 2) the lock was needed later is suspend/hibernate. For example, if the
-> lock was needed in dpm_suspend by one of the device callbacks. For
-> hibernate, you also need to worry about any locks that need to be
-> acquired in order to write to the swap device.
-> 3) another freezing task blocked on this lock and held other locks
-> needed later in suspend. If that task were skipped by the freezer, you
-> would deadlock
-> 
-> You will block/prevent suspend if:
-> 
-> 4) another freezing task blocked on this lock and was unable to freeze
-> 
-> I think 1) and 4) can happen for the NFS/RPC case. Case 1) requires
-> cgroup freezer. Case 4) while not causing a deadlock could prevent
-> your laptop/phone from sleeping and end up burning all your battery.
-> If suspend is initiated via lid close you won't even know about the
-> failure.
+> Cheers
+>   Trond
 > 
 
-We're aware of #4. That was the intent of adding try_to_freeze() into
-this codepath in the first place. It's not a great solution for obvious
-reasons, but we don't have another at the moment.
+Thanks again for the patch.  When will this get pushed upstream?  I'm
+blocked by the upstream commit, since I don't want to pull this in as a
+SAUCE patch.
 
-For #1 I'm not sure what to do. I'm that familiar with cgroups or how
-the freezer works.
+Dave.
 
-The bottom line is that we have a choice -- we can either rip out this
-new lockdep warning, or rip out the code that causes it to fire.
+--------------000604000908090000020408
+Content-Type: text/x-patch;
+ name="0001-NFSv4-Fix-the-string-length-returned-by-the-idmapper.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename*0="0001-NFSv4-Fix-the-string-length-returned-by-the-idmapper.pa";
+ filename*1="tch"
 
-If we rip out the warning we may miss some legit cases where we might
-possibly have hit a deadlock.
+>From 90eabc5dfde58de5c37de3866f427da02e86ce17 Mon Sep 17 00:00:00 2001
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date: Fri, 8 Mar 2013 12:56:37 -0500
+Subject: [PATCH] NFSv4: Fix the string length returned by the idmapper
 
-If we rip out the code that causes it to fire, then we exacerbate the
-#4 problem above. That will effectively make it so that you can't
-suspend the host whenever NFS is doing anything moderately active.
+Functions like nfs_map_uid_to_name() and nfs_map_gid_to_group() are
+expected to return a string without any terminating NUL character.
+Regression introduced by commit 57e62324e469e092ecc6c94a7a86fe4bd6ac5172
+(NFS: Store the legacy idmapper result in the keyring).
 
-Ripping out the warning seems like the best course of action in the
-near term, but it's not my call...
+Reported-by: Dave Chiluk <dave.chiluk@canonical.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Bryan Schumaker <bjschuma@netapp.com>
+Cc: stable@vger.kernel.org [>=3.4]
+---
+ fs/nfs/idmap.c | 13 ++++++++-----
+ 1 file changed, 8 insertions(+), 5 deletions(-)
 
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index dc0f98d..c516da5 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -726,9 +726,9 @@ out1:
+ 	return ret;
+ }
+ 
+-static int nfs_idmap_instantiate(struct key *key, struct key *authkey, char *data)
++static int nfs_idmap_instantiate(struct key *key, struct key *authkey, char *data, size_t datalen)
+ {
+-	return key_instantiate_and_link(key, data, strlen(data) + 1,
++	return key_instantiate_and_link(key, data, datalen,
+ 					id_resolver_cache->thread_keyring,
+ 					authkey);
+ }
+@@ -738,6 +738,7 @@ static int nfs_idmap_read_and_verify_message(struct idmap_msg *im,
+ 		struct key *key, struct key *authkey)
+ {
+ 	char id_str[NFS_UINT_MAXLEN];
++	size_t len;
+ 	int ret = -ENOKEY;
+ 
+ 	/* ret = -ENOKEY */
+@@ -747,13 +748,15 @@ static int nfs_idmap_read_and_verify_message(struct idmap_msg *im,
+ 	case IDMAP_CONV_NAMETOID:
+ 		if (strcmp(upcall->im_name, im->im_name) != 0)
+ 			break;
+-		sprintf(id_str, "%d", im->im_id);
+-		ret = nfs_idmap_instantiate(key, authkey, id_str);
++		/* Note: here we store the NUL terminator too */
++		len = sprintf(id_str, "%d", im->im_id) + 1;
++		ret = nfs_idmap_instantiate(key, authkey, id_str, len);
+ 		break;
+ 	case IDMAP_CONV_IDTONAME:
+ 		if (upcall->im_id != im->im_id)
+ 			break;
+-		ret = nfs_idmap_instantiate(key, authkey, im->im_name);
++		len = strlen(im->im_name);
++		ret = nfs_idmap_instantiate(key, authkey, im->im_name, len);
+ 		break;
+ 	default:
+ 		ret = -EINVAL;
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.8.1.4
+
+
+--------------000604000908090000020408--
