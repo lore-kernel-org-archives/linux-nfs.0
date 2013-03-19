@@ -1,74 +1,214 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fn.samba.org ([216.83.154.106]:54567 "EHLO mail.samba.org"
+Received: from mx12.netapp.com ([216.240.18.77]:19796 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754911Ab3CETHv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Mar 2013 14:07:51 -0500
-Message-ID: <51364285.4040406@samba.org>
-Date: Tue, 05 Mar 2013 14:07:49 -0500
-From: Simo <simo@samba.org>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Andy Lutomirski <luto@amacapital.net>,
-        Pavel Shilovsky <piastry@etersoft.ru>, linux-kernel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, wine-devel@winehq.org
-Subject: Re: [PATCH v3 0/7] Add O_DENY* support for VFS and CIFS/NFS
-References: <1362065133-9490-1-git-send-email-piastry@etersoft.ru> <512FD1D5.3010106@mit.edu> <20130304211923.GI20389@fieldses.org> <5135250A.30604@samba.org> <20130305181306.GA15816@fieldses.org>
-In-Reply-To: <20130305181306.GA15816@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+	id S1754389Ab3CSNHu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 Mar 2013 09:07:50 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 04/11] NFSv4: The stateid must remain the same for replayed RPC calls
+Date: Tue, 19 Mar 2013 09:07:36 -0400
+Message-Id: <1363698463-3681-4-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1363698463-3681-3-git-send-email-Trond.Myklebust@netapp.com>
+References: <1363698463-3681-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1363698463-3681-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1363698463-3681-3-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/05/2013 01:13 PM, J. Bruce Fields wrote:
-> On Mon, Mar 04, 2013 at 05:49:46PM -0500, Simo wrote:
->> On 03/04/2013 04:19 PM, J. Bruce Fields wrote:
->>> On Thu, Feb 28, 2013 at 01:53:25PM -0800, Andy Lutomirski wrote:
->>>> [possible resend -- sorry]
->>>>
->>>> On 02/28/2013 07:25 AM, Pavel Shilovsky wrote:
->>>>> This patchset adds support of O_DENY* flags for Linux fs layer. These flags can be used by any application that needs share reservations to organize a file access. VFS already has some sort of this capability - now it's done through flock/LOCK_MAND mechanis, but that approach is non-atomic. This patchset build new capabilities on top of the existing one but doesn't bring any changes into the flock call semantic.
->>>>>
->>>>> These flags can be used by NFS (built-in-kernel) and CIFS (Samba) servers and Wine applications through VFS (for local filesystems) or CIFS/NFS modules. This will help when e.g. Samba and NFS server share the same directory for Windows and Linux users or Wine applications use Samba/NFS share to access the same data from different clients.
->>>>>
->>>>> According to the previous discussions the most problematic question is how to prevent situations like DoS attacks where e.g /lib/liba.so file can be open with DENYREAD, or smth like this. That's why one extra flag O_DENYMAND is added. It indicates to underlying layer that an application want to use O_DENY* flags semantic. It allows us not affect native Linux applications (that don't use O_DENYMAND flag) - so, these flags (and the semantic of open syscall that they bring) are used only for those applications that really want it proccessed that way.
->>>>>
->>>>> So, we have four new flags:
->>>>> O_DENYREAD - to prevent other opens with read access,
->>>>> O_DENYWRITE - to prevent other opens with write access,
->>>>> O_DENYDELETE - to prevent delete operations (this flag is not implemented in VFS and NFS part and only suitable for CIFS module),
->>>>> O_DENYMAND - to switch on/off three flags above.
->>>> O_DENYMAND doesn't deny anything.  Would a name like O_RESPECT_DENY be
->>>> better?
->>>>
->>>> Other than that, this seems like a sensible mechanism.
->>> I'm a little more worried: these are mandatory locks, and applications
->>> that use them are used to the locks being enforced correctly.  Are we
->>> sure that an application that opens a file O_DENYWRITE won't crash if it
->>> sees the file data change while it holds the open?
->> The redirector may simply assume it has full control of that part of
->> the file and not read nor send data until the lock is released too,
->> so you get conflicting views of the file contents between different
->> clients if you let a mandatory lock not be mandatory.
->>
->>> In general the idea of making a mandatory lock opt-in makes me nervous.
->>> I'd prefer something like a mount option, so that we know that everyone
->>> on that one filesystem is playing by the same rules, but we can still
->>> mount filesystems like / without the option.
->> +1
->>
->>> But I'll admit I'm definitely not an expert on Windows locking and may
->>> be missing something about how these locks are meant to work.
->> Mandatory locks really are mandatory in Windows.
->> That may not be nice to a Unix system but what can you do ?
-> I wonder if we could repurpose the existing -omand mount option?
->
-> That would be a problem for anyone that wants to allow mandatory fcntl
-> locks without allowing share locks.  I doubt anyone sane actually uses
-> mandatory fcntl locks, but still I suppose it would probably be better
-> to play it safe and use a new mount option.
+If we replay a READ or WRITE call, we should not be changing the
+stateid. Currently, we may end up doing so, because the stateid
+is only selected at xdr encode time.
 
-Maybe we should have a -o win_semantics option :-)
+This patch ensures that we select the stateid after we get an NFSv4.1
+session slot, and that we keep that same stateid across retries.
 
-/me runs
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ fs/nfs/nfs4_fs.h        |  4 ++++
+ fs/nfs/nfs4filelayout.c | 14 ++++++++++----
+ fs/nfs/nfs4proc.c       | 27 +++++++++++++++++++++++----
+ fs/nfs/nfs4xdr.c        | 28 ++--------------------------
+ include/linux/nfs_xdr.h |  2 ++
+ 5 files changed, 41 insertions(+), 34 deletions(-)
 
-Simo.
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 9ce9013..8309e98 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -234,6 +234,10 @@ extern struct rpc_clnt *nfs4_proc_lookup_mountpoint(struct inode *, struct qstr
+ extern int nfs4_proc_secinfo(struct inode *, const struct qstr *, struct nfs4_secinfo_flavors *);
+ extern int nfs4_release_lockowner(struct nfs4_lock_state *);
+ extern const struct xattr_handler *nfs4_xattr_handlers[];
++extern void nfs4_set_rw_stateid(nfs4_stateid *stateid,
++		const struct nfs_open_context *ctx,
++		const struct nfs_lock_context *l_ctx,
++		fmode_t fmode);
+ 
+ #if defined(CONFIG_NFS_V4_1)
+ static inline struct nfs4_session *nfs4_get_session(const struct nfs_server *server)
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 2533ad4..c5656c5 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -318,10 +318,13 @@ static void filelayout_read_prepare(struct rpc_task *task, void *data)
+ 	}
+ 	rdata->read_done_cb = filelayout_read_done_cb;
+ 
+-	nfs41_setup_sequence(rdata->ds_clp->cl_session,
++	if (nfs41_setup_sequence(rdata->ds_clp->cl_session,
+ 			&rdata->args.seq_args,
+ 			&rdata->res.seq_res,
+-			task);
++			task))
++		return;
++	nfs4_set_rw_stateid(&rdata->args.stateid, rdata->args.context,
++			rdata->args.lock_context, FMODE_READ);
+ }
+ 
+ static void filelayout_read_call_done(struct rpc_task *task, void *data)
+@@ -422,10 +425,13 @@ static void filelayout_write_prepare(struct rpc_task *task, void *data)
+ 		rpc_exit(task, 0);
+ 		return;
+ 	}
+-	nfs41_setup_sequence(wdata->ds_clp->cl_session,
++	if (nfs41_setup_sequence(wdata->ds_clp->cl_session,
+ 			&wdata->args.seq_args,
+ 			&wdata->res.seq_res,
+-			task);
++			task))
++		return;
++	nfs4_set_rw_stateid(&wdata->args.stateid, wdata->args.context,
++			wdata->args.lock_context, FMODE_WRITE);
+ }
+ 
+ static void filelayout_write_call_done(struct rpc_task *task, void *data)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 5a6b3c9..aaf935b 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3454,6 +3454,19 @@ static int nfs4_proc_pathconf(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	return err;
+ }
+ 
++void nfs4_set_rw_stateid(nfs4_stateid *stateid,
++		const struct nfs_open_context *ctx,
++		const struct nfs_lock_context *l_ctx,
++		fmode_t fmode)
++{
++	const struct nfs_lockowner *lockowner = NULL;
++
++	if (l_ctx != NULL)
++		lockowner = &l_ctx->lockowner;
++	nfs4_select_rw_stateid(stateid, ctx->state, fmode, lockowner);
++}
++EXPORT_SYMBOL_GPL(nfs4_set_rw_stateid);
++
+ void __nfs4_read_done_cb(struct nfs_read_data *data)
+ {
+ 	nfs_invalidate_atime(data->header->inode);
+@@ -3496,10 +3509,13 @@ static void nfs4_proc_read_setup(struct nfs_read_data *data, struct rpc_message
+ 
+ static void nfs4_proc_read_rpc_prepare(struct rpc_task *task, struct nfs_read_data *data)
+ {
+-	nfs4_setup_sequence(NFS_SERVER(data->header->inode),
++	if (nfs4_setup_sequence(NFS_SERVER(data->header->inode),
+ 			&data->args.seq_args,
+ 			&data->res.seq_res,
+-			task);
++			task))
++		return;
++	nfs4_set_rw_stateid(&data->args.stateid, data->args.context,
++			data->args.lock_context, FMODE_READ);
+ }
+ 
+ static int nfs4_write_done_cb(struct rpc_task *task, struct nfs_write_data *data)
+@@ -3560,10 +3576,13 @@ static void nfs4_proc_write_setup(struct nfs_write_data *data, struct rpc_messag
+ 
+ static void nfs4_proc_write_rpc_prepare(struct rpc_task *task, struct nfs_write_data *data)
+ {
+-	nfs4_setup_sequence(NFS_SERVER(data->header->inode),
++	if (nfs4_setup_sequence(NFS_SERVER(data->header->inode),
+ 			&data->args.seq_args,
+ 			&data->res.seq_res,
+-			task);
++			task))
++		return;
++	nfs4_set_rw_stateid(&data->args.stateid, data->args.context,
++			data->args.lock_context, FMODE_WRITE);
+ }
+ 
+ static void nfs4_proc_commit_rpc_prepare(struct rpc_task *task, struct nfs_commit_data *data)
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index e3edda5..9d32877 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1506,35 +1506,12 @@ static void encode_putrootfh(struct xdr_stream *xdr, struct compound_hdr *hdr)
+ 	encode_op_hdr(xdr, OP_PUTROOTFH, decode_putrootfh_maxsz, hdr);
+ }
+ 
+-static void encode_open_stateid(struct xdr_stream *xdr,
+-		const struct nfs_open_context *ctx,
+-		const struct nfs_lock_context *l_ctx,
+-		fmode_t fmode,
+-		int zero_seqid)
+-{
+-	nfs4_stateid stateid;
+-
+-	if (ctx->state != NULL) {
+-		const struct nfs_lockowner *lockowner = NULL;
+-
+-		if (l_ctx != NULL)
+-			lockowner = &l_ctx->lockowner;
+-		nfs4_select_rw_stateid(&stateid, ctx->state,
+-				fmode, lockowner);
+-		if (zero_seqid)
+-			stateid.seqid = 0;
+-		encode_nfs4_stateid(xdr, &stateid);
+-	} else
+-		encode_nfs4_stateid(xdr, &zero_stateid);
+-}
+-
+ static void encode_read(struct xdr_stream *xdr, const struct nfs_readargs *args, struct compound_hdr *hdr)
+ {
+ 	__be32 *p;
+ 
+ 	encode_op_hdr(xdr, OP_READ, decode_read_maxsz, hdr);
+-	encode_open_stateid(xdr, args->context, args->lock_context,
+-			FMODE_READ, hdr->minorversion);
++	encode_nfs4_stateid(xdr, &args->stateid);
+ 
+ 	p = reserve_space(xdr, 12);
+ 	p = xdr_encode_hyper(p, args->offset);
+@@ -1670,8 +1647,7 @@ static void encode_write(struct xdr_stream *xdr, const struct nfs_writeargs *arg
+ 	__be32 *p;
+ 
+ 	encode_op_hdr(xdr, OP_WRITE, decode_write_maxsz, hdr);
+-	encode_open_stateid(xdr, args->context, args->lock_context,
+-			FMODE_WRITE, hdr->minorversion);
++	encode_nfs4_stateid(xdr, &args->stateid);
+ 
+ 	p = reserve_space(xdr, 16);
+ 	p = xdr_encode_hyper(p, args->offset);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 4b993d3..90a4aa1 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -486,6 +486,7 @@ struct nfs_readargs {
+ 	struct nfs_fh *		fh;
+ 	struct nfs_open_context *context;
+ 	struct nfs_lock_context *lock_context;
++	nfs4_stateid		stateid;
+ 	__u64			offset;
+ 	__u32			count;
+ 	unsigned int		pgbase;
+@@ -507,6 +508,7 @@ struct nfs_writeargs {
+ 	struct nfs_fh *		fh;
+ 	struct nfs_open_context *context;
+ 	struct nfs_lock_context *lock_context;
++	nfs4_stateid		stateid;
+ 	__u64			offset;
+ 	__u32			count;
+ 	enum nfs3_stable_how	stable;
+-- 
+1.8.1.4
+
