@@ -1,39 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f43.google.com ([209.85.160.43]:42106 "EHLO
-	mail-pb0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753467Ab3CKAlj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Mar 2013 20:41:39 -0400
-From: ycnian@gmail.com
-To: bfields@fieldses.org
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: fix bug on nfs4 stateid deallocation
-Date: Mon, 11 Mar 2013 08:29:46 +0800
-Message-Id: <1362961786-4452-1-git-send-email-ycnian@gmail.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:1565 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751685Ab3CTIAk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Mar 2013 04:00:40 -0400
+Message-ID: <51496CC5.7040400@cn.fujitsu.com>
+Date: Wed, 20 Mar 2013 16:01:09 +0800
+From: fanchaoting <fanchaoting@cn.fujitsu.com>
+MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH] pnfs-block: removing DM device maybe cause oops when call
+ dev_remove
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFS4_OO_PURGE_CLOSE is not handled properly. To avoid memory leak, nfs4 
-stateid which is pointed by oo_last_closed_stid is freed in nfsd4_close(),
-but NFS4_OO_PURGE_CLOSE isn't cleared meanwhile. So the stateid released 
-in THIS close procedure may be freed immediately in the coming encoding
-function.
+when pnfs block using device mapper,if umounting later,it maybe
+cause oops. we apply "1 + sizeof(bl_umount_request)" memory for
+msg->data, the memory maybe overflow when we do "memcpy(&dataptr
+[sizeof(bl_msg)], &bl_umount_request, sizeof(bl_umount_request))",
+because the size of bl_msg is more than 1 byte.
+
+   Signed-off-by: fanchaoting<fanchaoting@cn.fujitsu.com>
 
 ---
- fs/nfsd/nfs4state.c | 1 +
- 1 file changed, 1 insertion(+)
+ fs/nfs/blocklayout/blocklayoutdm.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 75c873d..7499c91 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3850,6 +3850,7 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 
- 	nfsd4_close_open_stateid(stp);
- 	release_last_closed_stateid(oo);
-+	oo->oo_flags &= ~NFS4_OO_PURGE_CLOSE;
- 	oo->oo_last_closed_stid = stp;
- 
- 	if (list_empty(&oo->oo_owner.so_stateids)) {
--- 
-1.8.0.1
+diff --git a/fs/nfs/blocklayout/blocklayoutdm.c b/fs/nfs/blocklayout/blocklayoutdm.c
+index 737d839..8df9afa 100644
+--- a/fs/nfs/blocklayout/blocklayoutdm.c
++++ b/fs/nfs/blocklayout/blocklayoutdm.c
+@@ -55,7 +55,7 @@ static void dev_remove(struct net *net, dev_t dev)
+
+        bl_pipe_msg.bl_wq = &nn->bl_wq;
+        memset(msg, 0, sizeof(*msg));
+-       msg->data = kzalloc(1 + sizeof(bl_umount_request), GFP_NOFS);
++       msg->data = kzalloc(sizeof(bl_msg) + sizeof(bl_umount_request), GFP_NOFS);
+        if (!msg->data)
+                goto out;
+
+--
+1.7.1
 
