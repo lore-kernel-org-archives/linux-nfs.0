@@ -1,60 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:18258 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:15830 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751164Ab3CWOe7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 23 Mar 2013 10:34:59 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r2NEYwg5031826
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Sat, 23 Mar 2013 10:34:59 -0400
-Received: from bighat.boston.devel.redhat.com ([10.16.60.55])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r2NEYwVu013034
-	for <linux-nfs@vger.kernel.org>; Sat, 23 Mar 2013 10:34:58 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] mountd: regression in crossmounts
-Date: Sat, 23 Mar 2013 10:32:29 -0400
-Message-Id: <1364049149-3751-1-git-send-email-steved@redhat.com>
+	id S1750940Ab3CTRjO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Mar 2013 13:39:14 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Benny Halevy <bhalevy@tonian.com>, Boaz Harrosh <bharrosh@panasas.com>,
+        Peng Tao <bergwolf@gmail.com>
+Subject: [PATCH 1/3] NFSv4.1: Fix a race in pNFS layoutcommit
+Date: Wed, 20 Mar 2013 13:39:06 -0400
+Message-Id: <1363801148-29998-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-commit 8e2fb3fc cause a regression in mount export
-that are on different local file system.
-Exports like (all on different filesystems)
+We need to clear the NFS_LSEG_LAYOUTCOMMIT bits atomically with the
+NFS_INO_LAYOUTCOMMIT bit, otherwise we may end up with situations
+where the two are out of sync.
+The first half of the problem is to ensure that pnfs_layoutcommit_inode
+clears the NFS_LSEG_LAYOUTCOMMIT bit through pnfs_list_write_lseg.
+We still need to keep the reference to those segments until the RPC call
+is finished, so in order to make it clear _where_ those references come
+from, we add a helper pnfs_list_write_lseg_done() that cleans up after
+pnfs_list_write_lseg.
 
-/home *(rw,fsid=0,crossmnt)
-/home/fs1 *(rw,crossmnt)
-/home/fs1/fs2/fs3 *(rw,nohide)
-
-and then a mount of the root 'mount /home /mnt'
-would end up mounting /home/fs1/fs2/fs3 not /home
-
-Reverting the logic of commit 8e2fb3fc until
-a better solution can be found for the original
-problem.
-
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Benny Halevy <bhalevy@tonian.com>
+Cc: stable@vger.kernel.org
 ---
- utils/mountd/cache.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ fs/nfs/nfs4proc.c | 14 --------------
+ fs/nfs/pnfs.c     | 19 ++++++++++++++++++-
+ 2 files changed, 18 insertions(+), 15 deletions(-)
 
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index c8aa46f..978698d 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -371,8 +371,11 @@ export_matches(nfs_export *exp, char *dom, char *path, struct addrinfo *ai)
- static bool subexport(struct exportent *e1, struct exportent *e2)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index dcda2fa..5122753 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6568,22 +6568,8 @@ nfs4_layoutcommit_done(struct rpc_task *task, void *calldata)
+ static void nfs4_layoutcommit_release(void *calldata)
  {
- 	char *p1 = e1->e_path, *p2 = e2->e_path;
-+	size_t l2 = strlen(p2);
-+
- 	return e2->e_flags & NFSEXP_CROSSMOUNT
--		&& is_subdirectory(p1, p2);
-+		&& strncmp(p1, p2, l2) == 0
-+		&& p1[l2] == '/';
+ 	struct nfs4_layoutcommit_data *data = calldata;
+-	struct pnfs_layout_segment *lseg, *tmp;
+-	unsigned long *bitlock = &NFS_I(data->args.inode)->flags;
+ 
+ 	pnfs_cleanup_layoutcommit(data);
+-	/* Matched by references in pnfs_set_layoutcommit */
+-	list_for_each_entry_safe(lseg, tmp, &data->lseg_list, pls_lc_list) {
+-		list_del_init(&lseg->pls_lc_list);
+-		if (test_and_clear_bit(NFS_LSEG_LAYOUTCOMMIT,
+-				       &lseg->pls_flags))
+-			pnfs_put_lseg(lseg);
+-	}
+-
+-	clear_bit_unlock(NFS_INO_LAYOUTCOMMITTING, bitlock);
+-	smp_mb__after_clear_bit();
+-	wake_up_bit(bitlock, NFS_INO_LAYOUTCOMMITTING);
+-
+ 	put_rpccred(data->cred);
+ 	kfree(data);
+ }
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index e86e35f..6f6b356 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1748,11 +1748,27 @@ static void pnfs_list_write_lseg(struct inode *inode, struct list_head *listp)
+ 
+ 	list_for_each_entry(lseg, &NFS_I(inode)->layout->plh_segs, pls_list) {
+ 		if (lseg->pls_range.iomode == IOMODE_RW &&
+-		    test_bit(NFS_LSEG_LAYOUTCOMMIT, &lseg->pls_flags))
++		    test_and_clear_bit(NFS_LSEG_LAYOUTCOMMIT, &lseg->pls_flags))
+ 			list_add(&lseg->pls_lc_list, listp);
+ 	}
  }
  
- struct parsed_fsid {
++void pnfs_list_write_lseg_done(struct inode *inode, struct list_head *listp)
++{
++	struct pnfs_layout_segment *lseg, *tmp;
++	unsigned long *bitlock = &NFS_I(inode)->flags;
++
++	/* Matched by references in pnfs_set_layoutcommit */
++	list_for_each_entry_safe(lseg, tmp, listp, pls_lc_list) {
++		list_del_init(&lseg->pls_lc_list);
++		pnfs_put_lseg(lseg);
++	}
++
++	clear_bit_unlock(NFS_INO_LAYOUTCOMMITTING, bitlock);
++	smp_mb__after_clear_bit();
++	wake_up_bit(bitlock, NFS_INO_LAYOUTCOMMITTING);
++}
++
+ void pnfs_set_lo_fail(struct pnfs_layout_segment *lseg)
+ {
+ 	pnfs_layout_io_set_failed(lseg->pls_layout, lseg->pls_range.iomode);
+@@ -1797,6 +1813,7 @@ void pnfs_cleanup_layoutcommit(struct nfs4_layoutcommit_data *data)
+ 
+ 	if (nfss->pnfs_curr_ld->cleanup_layoutcommit)
+ 		nfss->pnfs_curr_ld->cleanup_layoutcommit(data);
++	pnfs_list_write_lseg_done(data->args.inode, &data->lseg_list);
+ }
+ 
+ /*
 -- 
 1.8.1.4
 
