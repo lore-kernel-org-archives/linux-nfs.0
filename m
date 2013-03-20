@@ -1,64 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f177.google.com ([209.85.223.177]:36989 "EHLO
-	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750851Ab3CHTqH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Mar 2013 14:46:07 -0500
-Received: by mail-ie0-f177.google.com with SMTP id 16so2566991iea.36
-        for <linux-nfs@vger.kernel.org>; Fri, 08 Mar 2013 11:46:05 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 00/11] gssd clean-ups for nfs-utils
-To: linux-nfs@vger.kernel.org
-Date: Fri, 08 Mar 2013 14:46:03 -0500
-Message-ID: <20130308193830.5656.44184.stgit@seurat.1015granger.net>
-MIME-Version: 1.0
+Received: from hop-nat-141.emc.com ([168.159.213.141]:42802 "EHLO
+	mexforward.lss.emc.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751213Ab3CTI2q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Mar 2013 04:28:46 -0400
+From: "Peng, Tao" <tao.peng@emc.com>
+To: fanchaoting <fanchaoting@cn.fujitsu.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: [PATCH] pnfs-block: removing DM device maybe cause oops when
+ call dev_remove
+Date: Wed, 20 Mar 2013 08:28:18 +0000
+Message-ID: <1882637210201641A747464075FFC649025A37EA@MX101CL02.corp.emc.com>
+References: <51496CC5.7040400@cn.fujitsu.com>
+In-Reply-To: <51496CC5.7040400@cn.fujitsu.com>
 Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I've been working on several fixes and clean-ups in response to an
-issue reported by Veli-Matti Lintu <veli-matti.lintu@opinsys.fi>.
-The thread is archived here:
-
-  http://www.spinics.net/lists/linux-nfs/msg35306.html
-
-There were two suggestions in that thread:
-
-  1.  Clarify rpc.gssd(8)
-
-  2.  Implement a gssd option to name a credential file where
-      machine credentials can be found
-
-This series implements both suggestions along with a number of
-clean-ups I found while working on this code.
-
-I had this series with me at Connectathon, and did some light
-testing there.  I think they are ready for broader review and
-comment.
-
----
-
-Chuck Lever (11):
-      gssd: Add "-c" command line option
-      gssd: gethostname(3) returns zero or -1, not an errno
-      gssd: Fix whitespace nits
-      rpc.gssd: Clean up gssd_setup_krb5_user_gss_ccache()
-      gssd: Update description of "-l" option
-      gssd: Clarify use of the term "machine credentials" in rpc.gssd(8)
-      gssd: Provide an introduction in gssd(8)
-      gssd: gssd.man is missing a description of the "-M" option
-      gssd: Use italics for option values and pathnames
-      mountd: make local functions in v4root.c static
-      mountd: remove unused variable
-
-
- utils/gssd/gssd.c      |   16 ++
- utils/gssd/gssd.h      |    1 
- utils/gssd/gssd.man    |  328 +++++++++++++++++++++++++++++++++++-------------
- utils/gssd/gssd_proc.c |   12 +-
- utils/gssd/krb5_util.c |   84 +++++++++++-
- utils/mountd/cache.c   |    2 
- utils/mountd/v4root.c  |    6 +
- 7 files changed, 339 insertions(+), 110 deletions(-)
-
--- 
-Chuck Lever
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdl
+ci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZ10gT24g
+QmVoYWxmIE9mDQo+IGZhbmNoYW90aW5nDQo+IFNlbnQ6IFdlZG5lc2RheSwgTWFyY2ggMjAsIDIw
+MTMgNDowMSBQTQ0KPiBUbzogTXlrbGVidXN0LCBUcm9uZA0KPiBDYzogbGludXgtbmZzQHZnZXIu
+a2VybmVsLm9yZw0KPiBTdWJqZWN0OiBbUEFUQ0hdIHBuZnMtYmxvY2s6IHJlbW92aW5nIERNIGRl
+dmljZSBtYXliZSBjYXVzZSBvb3BzIHdoZW4gY2FsbCBkZXZfcmVtb3ZlDQo+IA0KPiB3aGVuIHBu
+ZnMgYmxvY2sgdXNpbmcgZGV2aWNlIG1hcHBlcixpZiB1bW91bnRpbmcgbGF0ZXIsaXQgbWF5YmUN
+Cj4gY2F1c2Ugb29wcy4gd2UgYXBwbHkgIjEgKyBzaXplb2YoYmxfdW1vdW50X3JlcXVlc3QpIiBt
+ZW1vcnkgZm9yDQo+IG1zZy0+ZGF0YSwgdGhlIG1lbW9yeSBtYXliZSBvdmVyZmxvdyB3aGVuIHdl
+IGRvICJtZW1jcHkoJmRhdGFwdHINCj4gW3NpemVvZihibF9tc2cpXSwgJmJsX3Vtb3VudF9yZXF1
+ZXN0LCBzaXplb2YoYmxfdW1vdW50X3JlcXVlc3QpKSIsDQo+IGJlY2F1c2UgdGhlIHNpemUgb2Yg
+YmxfbXNnIGlzIG1vcmUgdGhhbiAxIGJ5dGUuDQo+IA0KTmljZSBjYXRjaCEgSSB0aGluayB3ZSBk
+aWRuJ3QgY3Jhc2ggYmVmb3JlIGp1c3QgYmVjYXVzZSBvZiBkYXRhIGFsaWdubWVudCAoYW5kIGx1
+Y2sgZm9yIHN1cmUgOi0pLg0KDQpUaGFua3MsDQpUYW8NCj4gICAgU2lnbmVkLW9mZi1ieTogZmFu
+Y2hhb3Rpbmc8ZmFuY2hhb3RpbmdAY24uZnVqaXRzdS5jb20+DQo+IA0KPiAtLS0NCj4gIGZzL25m
+cy9ibG9ja2xheW91dC9ibG9ja2xheW91dGRtLmMgfCAgICAyICstDQo+ICAxIGZpbGVzIGNoYW5n
+ZWQsIDEgaW5zZXJ0aW9ucygrKSwgMSBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9m
+cy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXRkbS5jIGIvZnMvbmZzL2Jsb2NrbGF5b3V0L2Js
+b2NrbGF5b3V0ZG0uYw0KPiBpbmRleCA3MzdkODM5Li44ZGY5YWZhIDEwMDY0NA0KPiAtLS0gYS9m
+cy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXRkbS5jDQo+ICsrKyBiL2ZzL25mcy9ibG9ja2xh
+eW91dC9ibG9ja2xheW91dGRtLmMNCj4gQEAgLTU1LDcgKzU1LDcgQEAgc3RhdGljIHZvaWQgZGV2
+X3JlbW92ZShzdHJ1Y3QgbmV0ICpuZXQsIGRldl90IGRldikNCj4gDQo+ICAgICAgICAgYmxfcGlw
+ZV9tc2cuYmxfd3EgPSAmbm4tPmJsX3dxOw0KPiAgICAgICAgIG1lbXNldChtc2csIDAsIHNpemVv
+ZigqbXNnKSk7DQo+IC0gICAgICAgbXNnLT5kYXRhID0ga3phbGxvYygxICsgc2l6ZW9mKGJsX3Vt
+b3VudF9yZXF1ZXN0KSwgR0ZQX05PRlMpOw0KPiArICAgICAgIG1zZy0+ZGF0YSA9IGt6YWxsb2Mo
+c2l6ZW9mKGJsX21zZykgKyBzaXplb2YoYmxfdW1vdW50X3JlcXVlc3QpLCBHRlBfTk9GUyk7DQo+
+ICAgICAgICAgaWYgKCFtc2ctPmRhdGEpDQo+ICAgICAgICAgICAgICAgICBnb3RvIG91dDsNCj4g
+DQo+IC0tDQo+IDEuNy4xDQo+IA0KPiAtLQ0KPiBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlz
+dDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBpbg0KPiB0aGUgYm9keSBv
+ZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0KPiBNb3JlIG1ham9yZG9t
+byBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCg0K
