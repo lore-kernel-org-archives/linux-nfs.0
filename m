@@ -1,60 +1,135 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:21798 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:15830 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756242Ab3C1N5d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Mar 2013 09:57:33 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 14/14] Kconfig: Add Kconfig entry for Labeled NFS V4 server
-Date: Thu, 28 Mar 2013 09:54:05 -0400
-Message-Id: <1364478845-29796-15-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
-References: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
+	id S1750940Ab3CTRjP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Mar 2013 13:39:15 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: linux-nfs@vger.kernel.org
+Cc: Benny Halevy <bhalevy@tonian.com>, Boaz Harrosh <bharrosh@panasas.com>,
+        Peng Tao <bergwolf@gmail.com>
+Subject: [PATCH 2/3] NFSv4.1: Always clear the NFS_INO_LAYOUTCOMMIT in layoutreturn
+Date: Wed, 20 Mar 2013 13:39:07 -0400
+Message-Id: <1363801148-29998-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1363801148-29998-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1363801148-29998-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Steve Dickson <steved@redhat.com>
+Note that clearing NFS_INO_LAYOUTCOMMIT is tricky, since it requires
+you to also clear the NFS_LSEG_LAYOUTCOMMIT bits from the layout
+segments.
+The only two sites that need to do this are the ones that call
+pnfs_return_layout() without first doing a layout commit.
 
-This patch adds the NFSd_V4_SECURITY_LABEL entry which
-enables security label support for the NFSv4 server
-
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Benny Halevy <bhalevy@tonian.com>
+Cc: stable@vger.kernel.org
 ---
- fs/nfsd/Kconfig | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+ fs/nfs/nfs4filelayout.c |  1 -
+ fs/nfs/pnfs.c           | 35 +++++++++++++++++++++++++++--------
+ 2 files changed, 27 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-index 430b687..c37a046 100644
---- a/fs/nfsd/Kconfig
-+++ b/fs/nfsd/Kconfig
-@@ -81,6 +81,22 @@ config NFSD_V4
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index c5656c5..22d1062 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -129,7 +129,6 @@ static void filelayout_fenceme(struct inode *inode, struct pnfs_layout_hdr *lo)
+ {
+ 	if (!test_and_clear_bit(NFS_LAYOUT_RETURN, &lo->plh_flags))
+ 		return;
+-	clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags);
+ 	pnfs_return_layout(inode);
+ }
  
- 	  If unsure, say N.
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 6f6b356..45badca 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -417,6 +417,16 @@ should_free_lseg(struct pnfs_layout_range *lseg_range,
+ 	       lo_seg_intersecting(lseg_range, recall_range);
+ }
  
-+config NFSD_V4_SECURITY_LABEL
-+	bool "Provide Security Label support for NFSv4 server"
-+	depends on NFSD_V4 && SECURITY
-+	help
++static bool lseg_dec_and_remove_zero(struct pnfs_layout_segment *lseg,
++		struct list_head *tmp_list)
++{
++	if (!atomic_dec_and_test(&lseg->pls_refcount))
++		return false;
++	pnfs_layout_remove_lseg(lseg->pls_layout, lseg);
++	list_add(&lseg->pls_list, tmp_list);
++	return true;
++}
 +
-+	Say Y here if you want enable fine-grained security label attribute
-+	support for NFS version 4.  Security labels allow security modules like
-+	SELinux and Smack to label files to facilitate enforcement of their policies.
-+	Without this an NFSv4 mount will have the same label on each file.
+ /* Returns 1 if lseg is removed from list, 0 otherwise */
+ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
+ 			     struct list_head *tmp_list)
+@@ -430,11 +440,8 @@ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
+ 		 */
+ 		dprintk("%s: lseg %p ref %d\n", __func__, lseg,
+ 			atomic_read(&lseg->pls_refcount));
+-		if (atomic_dec_and_test(&lseg->pls_refcount)) {
+-			pnfs_layout_remove_lseg(lseg->pls_layout, lseg);
+-			list_add(&lseg->pls_list, tmp_list);
++		if (lseg_dec_and_remove_zero(lseg, tmp_list))
+ 			rv = 1;
+-		}
+ 	}
+ 	return rv;
+ }
+@@ -779,6 +786,21 @@ send_layoutget(struct pnfs_layout_hdr *lo,
+ 	return lseg;
+ }
+ 
++static void pnfs_clear_layoutcommit(struct inode *inode,
++		struct list_head *head)
++{
++	struct nfs_inode *nfsi = NFS_I(inode);
++	struct pnfs_layout_segment *lseg, *tmp;
 +
-+	If you do not wish to enable fine-grained security labels SELinux or
-+	Smack policies on NFSv4 files, say N.
++	if (!test_and_clear_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags))
++		return;
++	list_for_each_entry_safe(lseg, tmp, &nfsi->layout->plh_segs, pls_list) {
++		if (!test_and_clear_bit(NFS_LSEG_LAYOUTCOMMIT, &lseg->pls_flags))
++			continue;
++		lseg_dec_and_remove_zero(lseg, head);
++	}
++}
 +
-+	WARNING: there is still a chance of backwards-incompatible protocol changes.  
-+	For now we recommend "Y" only for developers and testers."
-+
- config NFSD_FAULT_INJECTION
- 	bool "NFS server manual fault injection"
- 	depends on NFSD_V4 && DEBUG_KERNEL
+ /*
+  * Initiates a LAYOUTRETURN(FILE), and removes the pnfs_layout_hdr
+  * when the layout segment list is empty.
+@@ -810,6 +832,7 @@ _pnfs_return_layout(struct inode *ino)
+ 	/* Reference matched in nfs4_layoutreturn_release */
+ 	pnfs_get_layout_hdr(lo);
+ 	empty = list_empty(&lo->plh_segs);
++	pnfs_clear_layoutcommit(ino, &tmp_list);
+ 	pnfs_mark_matching_lsegs_invalid(lo, &tmp_list, NULL);
+ 	/* Don't send a LAYOUTRETURN if list was initially empty */
+ 	if (empty) {
+@@ -822,8 +845,6 @@ _pnfs_return_layout(struct inode *ino)
+ 	spin_unlock(&ino->i_lock);
+ 	pnfs_free_lseg_list(&tmp_list);
+ 
+-	WARN_ON(test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags));
+-
+ 	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
+ 	if (unlikely(lrp == NULL)) {
+ 		status = -ENOMEM;
+@@ -1460,7 +1481,6 @@ static void pnfs_ld_handle_write_error(struct nfs_write_data *data)
+ 	dprintk("pnfs write error = %d\n", hdr->pnfs_error);
+ 	if (NFS_SERVER(hdr->inode)->pnfs_curr_ld->flags &
+ 	    PNFS_LAYOUTRET_ON_ERROR) {
+-		clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(hdr->inode)->flags);
+ 		pnfs_return_layout(hdr->inode);
+ 	}
+ 	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags))
+@@ -1615,7 +1635,6 @@ static void pnfs_ld_handle_read_error(struct nfs_read_data *data)
+ 	dprintk("pnfs read error = %d\n", hdr->pnfs_error);
+ 	if (NFS_SERVER(hdr->inode)->pnfs_curr_ld->flags &
+ 	    PNFS_LAYOUTRET_ON_ERROR) {
+-		clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(hdr->inode)->flags);
+ 		pnfs_return_layout(hdr->inode);
+ 	}
+ 	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags))
 -- 
 1.8.1.4
 
