@@ -1,65 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fn.samba.org ([216.83.154.106]:32768 "EHLO mail.samba.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758788Ab3CDW5B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Mar 2013 17:57:01 -0500
-Message-ID: <5135250A.30604@samba.org>
-Date: Mon, 04 Mar 2013 17:49:46 -0500
-From: Simo <simo@samba.org>
+Received: from e34.co.us.ibm.com ([32.97.110.152]:44620 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752466Ab3CTWkQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Mar 2013 18:40:16 -0400
+Received: from /spool/local
+	by e34.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <cvogan@us.ibm.com>;
+	Wed, 20 Mar 2013 16:40:15 -0600
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by d03dlp02.boulder.ibm.com (Postfix) with ESMTP id 5ADE03E4004E
+	for <linux-nfs@vger.kernel.org>; Wed, 20 Mar 2013 16:40:02 -0600 (MDT)
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id r2KMeDXD166084
+	for <linux-nfs@vger.kernel.org>; Wed, 20 Mar 2013 16:40:13 -0600
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id r2KMeC2s010409
+	for <linux-nfs@vger.kernel.org>; Wed, 20 Mar 2013 16:40:13 -0600
+Received: from d03nm116.boulder.ibm.com (d03nm116.boulder.ibm.com [9.63.40.222])
+	by d03av01.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVin) with ESMTP id r2KMeC5H010406
+	for <linux-nfs@vger.kernel.org>; Wed, 20 Mar 2013 16:40:12 -0600
+To: linux-nfs@vger.kernel.org
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Andy Lutomirski <luto@amacapital.net>,
-        Pavel Shilovsky <piastry@etersoft.ru>, linux-kernel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, wine-devel@winehq.org
-Subject: Re: [PATCH v3 0/7] Add O_DENY* support for VFS and CIFS/NFS
-References: <1362065133-9490-1-git-send-email-piastry@etersoft.ru> <512FD1D5.3010106@mit.edu> <20130304211923.GI20389@fieldses.org>
-In-Reply-To: <20130304211923.GI20389@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Subject: Re: What is NFSv4 READDIR doesn't return a filehandle....
+Message-ID: <OF5A466E86.6A319FE3-ON87257B34.007C6188-86257B34.007C87C8@us.ibm.com>
+From: Christopher T Vogan <cvogan@us.ibm.com>
+Date: Wed, 20 Mar 2013 17:40:11 -0500
+Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/04/2013 04:19 PM, J. Bruce Fields wrote:
-> On Thu, Feb 28, 2013 at 01:53:25PM -0800, Andy Lutomirski wrote:
->> [possible resend -- sorry]
->>
->> On 02/28/2013 07:25 AM, Pavel Shilovsky wrote:
->>> This patchset adds support of O_DENY* flags for Linux fs layer. These flags can be used by any application that needs share reservations to organize a file access. VFS already has some sort of this capability - now it's done through flock/LOCK_MAND mechanis, but that approach is non-atomic. This patchset build new capabilities on top of the existing one but doesn't bring any changes into the flock call semantic.
->>>
->>> These flags can be used by NFS (built-in-kernel) and CIFS (Samba) servers and Wine applications through VFS (for local filesystems) or CIFS/NFS modules. This will help when e.g. Samba and NFS server share the same directory for Windows and Linux users or Wine applications use Samba/NFS share to access the same data from different clients.
->>>
->>> According to the previous discussions the most problematic question is how to prevent situations like DoS attacks where e.g /lib/liba.so file can be open with DENYREAD, or smth like this. That's why one extra flag O_DENYMAND is added. It indicates to underlying layer that an application want to use O_DENY* flags semantic. It allows us not affect native Linux applications (that don't use O_DENYMAND flag) - so, these flags (and the semantic of open syscall that they bring) are used only for those applications that really want it proccessed that way.
->>>
->>> So, we have four new flags:
->>> O_DENYREAD - to prevent other opens with read access,
->>> O_DENYWRITE - to prevent other opens with write access,
->>> O_DENYDELETE - to prevent delete operations (this flag is not implemented in VFS and NFS part and only suitable for CIFS module),
->>> O_DENYMAND - to switch on/off three flags above.
->> O_DENYMAND doesn't deny anything.  Would a name like O_RESPECT_DENY be
->> better?
->>
->> Other than that, this seems like a sensible mechanism.
-> I'm a little more worried: these are mandatory locks, and applications
-> that use them are used to the locks being enforced correctly.  Are we
-> sure that an application that opens a file O_DENYWRITE won't crash if it
-> sees the file data change while it holds the open?
+All,
 
-The redirector may simply assume it has full control of that part of the 
-file and not read nor send data until the lock is released too, so you 
-get conflicting views of the file contents between different clients if 
-you let a mandatory lock not be mandatory.
+Sorry for this late posting, a coworker was made aware of this thread 
+recently and
+has these replies to make.  Our server implementation is the one being
+complained about in this thread.
 
-> In general the idea of making a mandatory lock opt-in makes me nervous.
-> I'd prefer something like a mount option, so that we know that everyone
-> on that one filesystem is playing by the same rules, but we can still
-> mount filesystems like / without the option.
 
-+1
+Quoted text is from various entries in this forum.
 
-> But I'll admit I'm definitely not an expert on Windows locking and may
-> be missing something about how these locks are meant to work.
 
-Mandatory locks really are mandatory in Windows.
-That may not be nice to a Unix system but what can you do ?
+Neil Brown:
+===========
+> Just a thought: while coping with broken servers would not be a good 
+path to
+> follow, detecting protocol violations and reporting an error might be...
+> should the NFS client treat a missing filehandle and a malformed reply?
 
-Simo.
+The server is allowed to remove an attribute bit from an entry in the 
+readdir
+reply, this is not "broken" nor is the reply "malformed".  The lack of a 
+filehandle in the reply is deterministic.
+
+
+
+Trond Myklebust:
+================
+> > A customer has come across a server which does not return the 
+filehandle
+> > information (is that allowed?).
+> 
+> The filehandle attribute is a mandatory attribute according to RFC3530, 
+so I believe that the answer is "no".
+
+Mandatory is described in RFS 3530 as that the server must return the 
+attribute
+on a GETATTR.  (Section 5, page 36).  There is nothing saying that it is
+mandatory to return on a READDIR.  Our server will return the filehandle
+on a LOOKUP/GETATTR every time.
+
+
+Trond Myklebust:
+================
+> My concern is that the client can't objectively judge what constitutes a
+> valid filehandle and what does not until it tries to use it in an RPC
+> call.
+
+Sure it can.  In the context of this discussion, if the readdir entry
+has the filehandle attribute bit off in the reply, there is no filehandle.
+
+I would note in the scenario we sent a trace for, the Linux client had 
+a filehandle for the node in question, and "misplaced" it after a 
+readdir to the directory containing that node did not return the 
+filehandle
+for that entry.  So calling the server "broken" is objectively inaccurate.
+
+I would also note that this problem occurred after we upgraded to RHEL 
+6.3;
+the prior version did not have this issue, and our server did not change 
+its
+behavior.  My conclusion is that the means to obtain the filehandle was 
+either broken by the client adding logic to assume a filehandle and 
+obliterate 
+the prior value after a readdir reply chose not to return it, or 
+previously 
+had a code path to lookup the node and obtain the filehandle, and removed 
+that code path for some reason.  So again, pointing to server "breakage" 
+is objectively inaccurate.
+
+There are many references to "brokenness" or "server bugs" in this 
+thread, and I take exception to it from a design and protocol conformance 
+point of view.
+
+This condition is easily recoverable, as ANY missing attribute on a 
+readdir
+is with a lookup/readdir.  Our decision to not return the FH on a readdir 
+reply under certain narrow conditions is not one of convenience but of 
+limitations of some underlying filesystem types, and if "convenience" is
+to be used as an accusative, it can easily be returned to the client's 
+refusal to deal with the legal withholding of an attribute on a readdir
+reply.
+
+
+Signed,
+Steve Huntington
+IBM z/OS NFS
+
+
+Christopher Vogan
+Dept. W98 NFS Development & Test
+
