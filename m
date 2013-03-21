@@ -1,138 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e8.ny.us.ibm.com ([32.97.182.138]:51669 "EHLO e8.ny.us.ibm.com"
+Received: from fieldses.org ([174.143.236.118]:60980 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755532Ab3CaCrO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 30 Mar 2013 22:47:14 -0400
-Received: from /spool/local
-	by e8.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <zohar@linux.vnet.ibm.com>;
-	Sat, 30 Mar 2013 22:47:13 -0400
-Message-ID: <1364698027.2580.243.camel@falcor1.watson.ibm.com>
-Subject: Re: [PATCH 13/14] NFSD: Server implementation of MAC Labeling
-From: Mimi Zohar <zohar@linux.vnet.ibm.com>
-To: David Quigley <dpquigl@davequigley.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Steve Dickson <steved@redhat.com>,
-        Trond Myklebust <trond.myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Date: Sat, 30 Mar 2013 22:47:07 -0400
-In-Reply-To: <001ff69afd411b0318d7122bf07bd218@countercultured.net>
-References: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
-	 <1364478845-29796-14-git-send-email-SteveD@redhat.com>
-	 <20130328161444.GF7080@fieldses.org> <51550C03.1000107@davequigley.com>
-	 <20130329144050.GB22307@fieldses.org>
-	 <001ff69afd411b0318d7122bf07bd218@countercultured.net>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1752884Ab3CUO4W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Mar 2013 10:56:22 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/9] nfsd4: STALE_STATEID cleanup
+Date: Thu, 21 Mar 2013 10:56:13 -0400
+Message-Id: <1363877780-28825-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1363877780-28825-1-git-send-email-bfields@redhat.com>
+References: <1363877780-28825-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2013-03-29 at 10:49 -0400, David Quigley wrote:
-> On 03/29/2013 10:40, J. Bruce Fields wrote:
-> > On Thu, Mar 28, 2013 at 11:35:31PM -0400, Dave Quigley wrote:
-> >> On 3/28/2013 12:14 PM, J. Bruce Fields wrote:
-> >> >On Thu, Mar 28, 2013 at 09:54:04AM -0400, Steve Dickson wrote:
-> >> >>From: David Quigley <dpquigl@davequigley.com>
-> >> >>
-> >> >>This patch adds the ability to encode and decode file labels on 
-> >> the server for
-> >> >>the purpose of sending them to the client and also to process 
-> >> label change
-> >> >>requests from the client.
-> >> >>
-> >> >>Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-> >> >>Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-> >> >>Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-> >> >>Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
-> >> >>---
-> >> >>  fs/nfsd/nfs4proc.c |  41 +++++++++++++++++++
-> >> >>  fs/nfsd/nfs4xdr.c  | 116 
-> >> ++++++++++++++++++++++++++++++++++++++++++++++++++---
-> >> >>  fs/nfsd/nfsd.h     |   6 ++-
-> >> >>  fs/nfsd/vfs.c      |  29 ++++++++++++++
-> >> >>  fs/nfsd/vfs.h      |   2 +
-> >> >>  fs/nfsd/xdr4.h     |   3 ++
-> >> >>  6 files changed, 191 insertions(+), 6 deletions(-)
-> >> >>
-> >> >>diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> >> >>index ae73175..bb17589 100644
-> >> >>--- a/fs/nfsd/nfs4proc.c
-> >> >>+++ b/fs/nfsd/nfs4proc.c
-> >> >>@@ -42,6 +42,36 @@
-> >> >>  #include "current_stateid.h"
-> >> >>  #include "netns.h"
-> >> >>
-> >> >>+#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
-> >> >>+#include <linux/security.h>
-> >> >>+
-> >> >>+static inline void
-> >> >>+nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct 
-> >> nfs4_label *label, u32 *bmval)
-> >> >>+{
-> >> >>+	struct inode *inode = resfh->fh_dentry->d_inode;
-> >> >>+	int status;
-> >> >>+
-> >> >>+	mutex_lock(&inode->i_mutex);
-> >> >>+	status = security_inode_setsecctx(resfh->fh_dentry,
-> >> >>+		label->label, label->len);
-> >> >>+	mutex_unlock(&inode->i_mutex);
-> >> >>+
-> >> >>+	if (status)
-> >> >>+		/*
-> >> >>+		 * We should probably fail the whole open at this point,
-> >> >>+		 * but we've already created or opened the file, so it's
-> >> >>+		 * too late; So this seems the least of evils:
-> >> >>+		 */
-> >> >>+		bmval[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
-> >> >
-> >> >Is there any way to avoid this?
-> >> >
-> >> >How does the vfs open code handle this?  It has to be able to set a
-> >> >security contexts atomically on open(O_CREAT), doesn't it?
-> >> >
-> >>
-> >> I believe the way this is handled is that the inode is created and
-> >> labeled and then only after that is it bound to the namespace.
-> >> Because of that ordering we can fail and release the inode without
-> >> it ever having a dentry in the namespace.
-> >
-> > Grepping around....  Looks like that's done by
-> > security_inode_init_security(), from the filesystem's create method.
-> >
-> > So we'd need to be able to pass something down to there.
-> >
-> > Is the current client actually expected to use this?  (So are we 
-> > going
-> > to see a lot of opens that set the label?)
-> >
-> > --b.
-> 
-> I don't have all the code infront of me but we have a different hook to 
-> do that. The call to nfsd4_security_inode_setsecctx is supposed to be 
-> used from the setattr handlers to do the equivalent of a setxattr on the 
-> file over NFS. The actual creation gets done with something like 
-> security_dentry_init_security which should be in an earlier patch. I'd 
-> have to look more clearly at the code to find out. 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Anytime an EVM 'protected' xattr is created/modified/deleted, EVM needs
-to be called to calculate and write the 'security.evm' hmac.  It looks
-like the security_inode_setsecctx() hook is missing the EVM call.
-Instead of writing the LSM label, immediately followed by the EVM label,
-security_inode_init_security() creates the list of xattrs to be written.
-Only then, it calls the fs to write them.  I would think that
-security_inode_setsecctx() would need to do something similar.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   21 ++++++---------------
+ 1 file changed, 6 insertions(+), 15 deletions(-)
 
-thanks,
-
-Mimi
-
-> Also where did we 
-> come up with 128 for label length? The SELinux code assumes a starting 
-> point of 255 and goes up from there as needed. The MLS policies will 
-> definitely exceed a 128 byte label.
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index c5af45d..cfd4430 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3278,16 +3278,6 @@ static inline __be32 nfs4_check_fh(struct svc_fh *fhp, struct nfs4_ol_stateid *s
+ 	return nfs_ok;
+ }
+ 
+-static int
+-STALE_STATEID(stateid_t *stateid, struct nfsd_net *nn)
+-{
+-	if (stateid->si_opaque.so_clid.cl_boot == nn->boot_time)
+-		return 0;
+-	dprintk("NFSD: stale stateid " STATEID_FMT "!\n",
+-		STATEID_VAL(stateid));
+-	return 1;
+-}
+-
+ static inline int
+ access_permit_read(struct nfs4_ol_stateid *stp)
+ {
+@@ -3418,19 +3408,20 @@ static __be32 nfsd4_lookup_stateid(stateid_t *stateid, unsigned char typemask,
+ 				   struct nfsd_net *nn)
+ {
+ 	struct nfs4_client *cl;
++	__be32 status;
+ 
+ 	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
+ 		return nfserr_bad_stateid;
+-	if (STALE_STATEID(stateid, nn))
++	status = lookup_clientid(&stateid->si_opaque.so_clid, sessions,
++							nn, &cl);
++	if (status == nfserr_stale_clientid)
+ 		return nfserr_stale_stateid;
+-	cl = find_confirmed_client(&stateid->si_opaque.so_clid, sessions, nn);
+-	if (!cl)
+-		return nfserr_expired;
++	if (status)
++		return status;
+ 	*s = find_stateid_by_type(cl, stateid, typemask);
+ 	if (!*s)
+ 		return nfserr_bad_stateid;
+ 	return nfs_ok;
+-
+ }
+ 
+ /*
+-- 
+1.7.9.5
 
