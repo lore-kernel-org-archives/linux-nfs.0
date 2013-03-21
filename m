@@ -1,87 +1,135 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60982 "EHLO fieldses.org"
+Received: from mx1.netapp.com ([216.240.18.38]:47379 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752929Ab3CUO4W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Mar 2013 10:56:22 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
+	id S1757777Ab3CUONG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Mar 2013 10:13:06 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 6/9] nfsd4: fix destroy_session race
-Date: Thu, 21 Mar 2013 10:56:17 -0400
-Message-Id: <1363877780-28825-7-git-send-email-bfields@redhat.com>
-In-Reply-To: <1363877780-28825-1-git-send-email-bfields@redhat.com>
-References: <1363877780-28825-1-git-send-email-bfields@redhat.com>
+Cc: Benny Halevy <bhalevy@tonian.com>, Boaz Harrosh <bharrosh@panasas.com>,
+        Peng Tao <bergwolf@gmail.com>
+Subject: [PATCH v2 2/3] NFSv4.1: Always clear the NFS_INO_LAYOUTCOMMIT in layoutreturn
+Date: Thu, 21 Mar 2013 10:13:00 -0400
+Message-Id: <1363875181-7147-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1363875181-7147-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1363875181-7147-1-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Note that clearing NFS_INO_LAYOUTCOMMIT is tricky, since it requires
+you to also clear the NFS_LSEG_LAYOUTCOMMIT bits from the layout
+segments.
+The only two sites that need to do this are the ones that call
+pnfs_return_layout() without first doing a layout commit.
 
-destroy_session uses the session and client without continuously holding
-any reference or locks.
-
-Put the whole thing under the state lock for now.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Acked-by: Benny Halevy <bhalevy@tonian.com>
+Cc: stable@vger.kernel.org
 ---
- fs/nfsd/nfs4state.c |   26 ++++++++++----------------
- 1 file changed, 10 insertions(+), 16 deletions(-)
+ fs/nfs/nfs4filelayout.c |  1 -
+ fs/nfs/pnfs.c           | 35 +++++++++++++++++++++++++++--------
+ 2 files changed, 27 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 1464d62..05ebcf5 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1922,41 +1922,35 @@ nfsd4_destroy_session(struct svc_rqst *r,
- 		      struct nfsd4_destroy_session *sessionid)
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 49eeb04..4fb234d 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -129,7 +129,6 @@ static void filelayout_fenceme(struct inode *inode, struct pnfs_layout_hdr *lo)
  {
- 	struct nfsd4_session *ses;
--	__be32 status = nfserr_badsession;
-+	__be32 status;
- 	struct nfsd_net *nn = net_generic(SVC_NET(r), nfsd_net_id);
- 
--	/* Notes:
--	 * - The confirmed nfs4_client->cl_sessionid holds destroyed sessinid
--	 * - Should we return nfserr_back_chan_busy if waiting for
--	 *   callbacks on to-be-destroyed session?
--	 * - Do we need to clear any callback info from previous session?
--	 */
--
-+	nfs4_lock_state();
-+	status = nfserr_not_only_op;
- 	if (nfsd4_compound_in_session(cstate->session, &sessionid->sessionid)) {
- 		if (!nfsd4_last_compound_op(r))
--			return nfserr_not_only_op;
-+			goto out;
- 	}
- 	dump_sessionid(__func__, &sessionid->sessionid);
- 	spin_lock(&nn->client_lock);
- 	ses = find_in_sessionid_hashtbl(&sessionid->sessionid, SVC_NET(r));
--	if (!ses) {
--		spin_unlock(&nn->client_lock);
--		goto out;
--	}
-+	status = nfserr_badsession;
-+	if (!ses)
-+		goto out_client_lock;
- 
- 	unhash_session(ses);
- 	spin_unlock(&nn->client_lock);
- 
--	nfs4_lock_state();
- 	nfsd4_probe_callback_sync(ses->se_client);
--	nfs4_unlock_state();
- 
- 	spin_lock(&nn->client_lock);
- 	nfsd4_del_conns(ses);
- 	nfsd4_put_session_locked(ses);
--	spin_unlock(&nn->client_lock);
- 	status = nfs_ok;
-+out_client_lock:
-+	spin_unlock(&nn->client_lock);
- out:
-+	nfs4_unlock_state();
- 	return status;
+ 	if (!test_and_clear_bit(NFS_LAYOUT_RETURN, &lo->plh_flags))
+ 		return;
+-	clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags);
+ 	pnfs_return_layout(inode);
  }
  
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index c6bbb53..b9d0682 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -417,6 +417,16 @@ should_free_lseg(struct pnfs_layout_range *lseg_range,
+ 	       lo_seg_intersecting(lseg_range, recall_range);
+ }
+ 
++static bool lseg_dec_and_remove_zero(struct pnfs_layout_segment *lseg,
++		struct list_head *tmp_list)
++{
++	if (!atomic_dec_and_test(&lseg->pls_refcount))
++		return false;
++	pnfs_layout_remove_lseg(lseg->pls_layout, lseg);
++	list_add(&lseg->pls_list, tmp_list);
++	return true;
++}
++
+ /* Returns 1 if lseg is removed from list, 0 otherwise */
+ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
+ 			     struct list_head *tmp_list)
+@@ -430,11 +440,8 @@ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
+ 		 */
+ 		dprintk("%s: lseg %p ref %d\n", __func__, lseg,
+ 			atomic_read(&lseg->pls_refcount));
+-		if (atomic_dec_and_test(&lseg->pls_refcount)) {
+-			pnfs_layout_remove_lseg(lseg->pls_layout, lseg);
+-			list_add(&lseg->pls_list, tmp_list);
++		if (lseg_dec_and_remove_zero(lseg, tmp_list))
+ 			rv = 1;
+-		}
+ 	}
+ 	return rv;
+ }
+@@ -777,6 +784,21 @@ send_layoutget(struct pnfs_layout_hdr *lo,
+ 	return lseg;
+ }
+ 
++static void pnfs_clear_layoutcommit(struct inode *inode,
++		struct list_head *head)
++{
++	struct nfs_inode *nfsi = NFS_I(inode);
++	struct pnfs_layout_segment *lseg, *tmp;
++
++	if (!test_and_clear_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags))
++		return;
++	list_for_each_entry_safe(lseg, tmp, &nfsi->layout->plh_segs, pls_list) {
++		if (!test_and_clear_bit(NFS_LSEG_LAYOUTCOMMIT, &lseg->pls_flags))
++			continue;
++		lseg_dec_and_remove_zero(lseg, head);
++	}
++}
++
+ /*
+  * Initiates a LAYOUTRETURN(FILE), and removes the pnfs_layout_hdr
+  * when the layout segment list is empty.
+@@ -808,6 +830,7 @@ _pnfs_return_layout(struct inode *ino)
+ 	/* Reference matched in nfs4_layoutreturn_release */
+ 	pnfs_get_layout_hdr(lo);
+ 	empty = list_empty(&lo->plh_segs);
++	pnfs_clear_layoutcommit(ino, &tmp_list);
+ 	pnfs_mark_matching_lsegs_invalid(lo, &tmp_list, NULL);
+ 	/* Don't send a LAYOUTRETURN if list was initially empty */
+ 	if (empty) {
+@@ -820,8 +843,6 @@ _pnfs_return_layout(struct inode *ino)
+ 	spin_unlock(&ino->i_lock);
+ 	pnfs_free_lseg_list(&tmp_list);
+ 
+-	WARN_ON(test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags));
+-
+ 	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
+ 	if (unlikely(lrp == NULL)) {
+ 		status = -ENOMEM;
+@@ -1458,7 +1479,6 @@ static void pnfs_ld_handle_write_error(struct nfs_write_data *data)
+ 	dprintk("pnfs write error = %d\n", hdr->pnfs_error);
+ 	if (NFS_SERVER(hdr->inode)->pnfs_curr_ld->flags &
+ 	    PNFS_LAYOUTRET_ON_ERROR) {
+-		clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(hdr->inode)->flags);
+ 		pnfs_return_layout(hdr->inode);
+ 	}
+ 	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags))
+@@ -1613,7 +1633,6 @@ static void pnfs_ld_handle_read_error(struct nfs_read_data *data)
+ 	dprintk("pnfs read error = %d\n", hdr->pnfs_error);
+ 	if (NFS_SERVER(hdr->inode)->pnfs_curr_ld->flags &
+ 	    PNFS_LAYOUTRET_ON_ERROR) {
+-		clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(hdr->inode)->flags);
+ 		pnfs_return_layout(hdr->inode);
+ 	}
+ 	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags))
 -- 
-1.7.9.5
+1.8.1.4
 
