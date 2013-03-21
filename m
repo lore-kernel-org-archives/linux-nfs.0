@@ -1,137 +1,200 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:28430 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756242Ab3C3VJc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 30 Mar 2013 17:09:32 -0400
-Message-ID: <51575481.9030702@RedHat.com>
-Date: Sat, 30 Mar 2013 17:09:21 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-ie0-f171.google.com ([209.85.223.171]:33214 "EHLO
+	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753918Ab3CUATv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Mar 2013 20:19:51 -0400
+Received: by mail-ie0-f171.google.com with SMTP id e14so1053452iej.16
+        for <linux-nfs@vger.kernel.org>; Wed, 20 Mar 2013 17:19:50 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v2 3/3] NFS: Use server-recommended security flavor by default
+ (NFSv3)
+To: linux-nfs@vger.kernel.org
+Date: Wed, 20 Mar 2013 20:19:49 -0400
+Message-ID: <20130321001949.12106.16804.stgit@seurat.1015granger.net>
+In-Reply-To: <20130321001753.12106.50688.stgit@seurat.1015granger.net>
+References: <20130321001753.12106.50688.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
-To: Casey Schaufler <casey@schaufler-ca.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        David Quigley <dpquigl@davequigley.com>,
-        Trond Myklebust <trond.myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 13/14] NFSD: Server implementation of MAC Labeling
-References: <1364478845-29796-1-git-send-email-SteveD@redhat.com> <1364478845-29796-14-git-send-email-SteveD@redhat.com> <20130328161444.GF7080@fieldses.org> <51550C03.1000107@davequigley.com> <20130329144050.GB22307@fieldses.org> <001ff69afd411b0318d7122bf07bd218@countercultured.net> <5155B0E3.9040108@schaufler-ca.com> <20130329184219.GG22307@fieldses.org> <5155F51E.8020603@schaufler-ca.com>
-In-Reply-To: <5155F51E.8020603@schaufler-ca.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Since commit ec88f28d in 2009, checking if the user-specified flavor
+is in the server's flavor list has been the source of a few
+noticeable regressions (now fixed), but there is one that is still
+vexing.
 
+An NFS server can list AUTH_NULL in its flavor list, which suggests
+a client should try to mount the server with the flavor of the
+client's choice, but the server will squash all accesses.  In some
+cases, our client fails to mount a server because of this check,
+when the mount could have proceeded successfully.
 
-On 29/03/13 16:10, Casey Schaufler wrote:
-> On 3/29/2013 11:42 AM, J. Bruce Fields wrote:
->> On Fri, Mar 29, 2013 at 08:18:59AM -0700, Casey Schaufler wrote:
->>> On 3/29/2013 7:49 AM, David Quigley wrote:
->>>> On 03/29/2013 10:40, J. Bruce Fields wrote:
->>>>> On Thu, Mar 28, 2013 at 11:35:31PM -0400, Dave Quigley wrote:
->>>>>> On 3/28/2013 12:14 PM, J. Bruce Fields wrote:
->>>>>>> On Thu, Mar 28, 2013 at 09:54:04AM -0400, Steve Dickson wrote:
->>>>>>>> From: David Quigley <dpquigl@davequigley.com>
->>>>>>>>
->>>>>>>> This patch adds the ability to encode and decode file labels on
->>>>>> the server for
->>>>>>>> the purpose of sending them to the client and also to process
->>>>>> label change
->>>>>>>> requests from the client.
->>>>>>>>
->>>>>>>> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
->>>>>>>> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
->>>>>>>> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
->>>>>>>> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
->>>>>>>> ---
->>>>>>>>  fs/nfsd/nfs4proc.c |  41 +++++++++++++++++++
->>>>>>>>  fs/nfsd/nfs4xdr.c  | 116
->>>>>> ++++++++++++++++++++++++++++++++++++++++++++++++++---
->>>>>>>>  fs/nfsd/nfsd.h     |   6 ++-
->>>>>>>>  fs/nfsd/vfs.c      |  29 ++++++++++++++
->>>>>>>>  fs/nfsd/vfs.h      |   2 +
->>>>>>>>  fs/nfsd/xdr4.h     |   3 ++
->>>>>>>>  6 files changed, 191 insertions(+), 6 deletions(-)
->>>>>>>>
->>>>>>>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->>>>>>>> index ae73175..bb17589 100644
->>>>>>>> --- a/fs/nfsd/nfs4proc.c
->>>>>>>> +++ b/fs/nfsd/nfs4proc.c
->>>>>>>> @@ -42,6 +42,36 @@
->>>>>>>>  #include "current_stateid.h"
->>>>>>>>  #include "netns.h"
->>>>>>>>
->>>>>>>> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
->>>>>>>> +#include <linux/security.h>
->>>>>>>> +
->>>>>>>> +static inline void
->>>>>>>> +nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct
->>>>>> nfs4_label *label, u32 *bmval)
->>>>>>>> +{
->>>>>>>> +    struct inode *inode = resfh->fh_dentry->d_inode;
->>>>>>>> +    int status;
->>>>>>>> +
->>>>>>>> +    mutex_lock(&inode->i_mutex);
->>>>>>>> +    status = security_inode_setsecctx(resfh->fh_dentry,
->>>>>>>> +        label->label, label->len);
->>>>>>>> +    mutex_unlock(&inode->i_mutex);
->>>>>>>> +
->>>>>>>> +    if (status)
->>>>>>>> +        /*
->>>>>>>> +         * We should probably fail the whole open at this point,
->>>>>>>> +         * but we've already created or opened the file, so it's
->>>>>>>> +         * too late; So this seems the least of evils:
->>>>>>>> +         */
->>>>>>>> +        bmval[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
->>>>>>> Is there any way to avoid this?
->>>>>>>
->>>>>>> How does the vfs open code handle this?  It has to be able to set a
->>>>>>> security contexts atomically on open(O_CREAT), doesn't it?
->>>>>>>
->>>>>> I believe the way this is handled is that the inode is created and
->>>>>> labeled and then only after that is it bound to the namespace.
->>>>>> Because of that ordering we can fail and release the inode without
->>>>>> it ever having a dentry in the namespace.
->>>>> Grepping around....  Looks like that's done by
->>>>> security_inode_init_security(), from the filesystem's create method.
->>>>>
->>>>> So we'd need to be able to pass something down to there.
->>>>>
->>>>> Is the current client actually expected to use this?  (So are we going
->>>>> to see a lot of opens that set the label?)
->>>>>
->>>>> --b.
->>>> I don't have all the code infront of me but we have a different hook
->>>> to do that. The call to nfsd4_security_inode_setsecctx is supposed to
->>>> be used from the setattr handlers to do the equivalent of a setxattr
->>>> on the file over NFS. The actual creation gets done with something
->>>> like security_dentry_init_security which should be in an earlier
->>>> patch. I'd have to look more clearly at the code to find out. Also
->>>> where did we come up with 128 for label length? The SELinux code
->>>> assumes a starting point of 255 and goes up from there as needed. The
->>>> MLS policies will definitely exceed a 128 byte label.
->>> If anyone cares, Smack labels can (now) be 255 characters.
->>> Also, when (if) we get multiple concurrent LSMs the
->>> "security context" may include information for more than
->>> one LSM. 128 bytes is going to look pretty tiny then.
->>>
->>> smack='com.corportation.service'selinux='system_u:object_r:bin_t:s0'
->> OK.  We need a number.  2k?
-> 
-> Consider some of the kinds of attributes we are likely to
-> see in the not to distant future:
-> 
-> Permitted access times, at around 100 bytes each.
-> Bell & LaPadula labels at 500 bytes each.
-> Signatures of various sizes and flavors.
-> HEPA restrictions
-> 
-> I think 2k will do for a while. I think that in the long run
-> it will come up short. I think the real question is whether
-> NFS will remain viable long enough for it to matter.
+Skip this check if the user has specified "sec=" on the mount
+command line.  But do consult the server-provided flavor list to
+choose a security flavor if no sec= option is specified on the mount
+command.
 
-2k it is! 
+If a server lists Kerberos pseudoflavors before "sys" in its export
+options, our client now chooses Kerberos over AUTH_UNIX for mount
+points, when no security flavor is specified by the mount command.
+This could be surprising to some administrators or users, who would
+then need to have Kerberos credentials to access the export.
 
-steved.
+Or, a client administrator may not have enabled rpc.gssd.  In this
+case, auth_rpcgss.ko might still be loadable, which is enough for
+the new logic to choose Kerberos over AUTH_UNIX.  But the mount
+would fail since no GSS context can be created without rpc.gssd
+running.
+
+To retain the use of AUTH_UNIX by default:
+
+  o  The server administrator can ensure that "sys" is listed before
+     Kerberos flavors in its export security options (see
+     exports(5)),
+
+  o  The client administrator can explicitly specify "sec=sys" on
+     its mount command line (see nfs(5)),
+
+  o  The client administrator can use "Sec=sys" in an appropriate
+     section of /etc/nfsmount.conf (see nfsmount.conf(5)), or
+
+  o  The client administrator can blacklist auth_rpcgss.ko.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ fs/nfs/nfs4super.c |    2 +
+ fs/nfs/super.c     |   80 +++++++++++++++++++++++++++-------------------------
+ 2 files changed, 44 insertions(+), 38 deletions(-)
+
+diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+index 569b166..a175dad 100644
+--- a/fs/nfs/nfs4super.c
++++ b/fs/nfs/nfs4super.c
+@@ -252,6 +252,8 @@ struct dentry *nfs4_try_mount(int flags, const char *dev_name,
+ 
+ 	dfprintk(MOUNT, "--> nfs4_try_mount()\n");
+ 
++	if (data->arg_flavors[0] == RPC_AUTH_MAXFLAVOR)
++		data->arg_flavors[0] = RPC_AUTH_UNIX;
+ 	export_path = data->nfs_server.export_path;
+ 	data->nfs_server.export_path = "/";
+ 	root_mnt = nfs_do_root_mount(&nfs4_remote_fs_type, flags, mount_info,
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 95cdcb2..cc858f6 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -919,7 +919,7 @@ static struct nfs_parsed_mount_data *nfs_alloc_parsed_mount_data(void)
+ 		data->mount_server.port	= NFS_UNSPEC_PORT;
+ 		data->nfs_server.port	= NFS_UNSPEC_PORT;
+ 		data->nfs_server.protocol = XPRT_TRANSPORT_TCP;
+-		data->auth_flavors[0]	= RPC_AUTH_UNIX;
++		data->auth_flavors[0]	= RPC_AUTH_MAXFLAVOR;
+ 		data->auth_flavor_len	= 1;
+ 		data->minorversion	= 0;
+ 		data->need_mount	= true;
+@@ -1607,49 +1607,57 @@ out_security_failure:
+ }
+ 
+ /*
+- * Match the requested auth flavors with the list returned by
+- * the server.  Returns zero and sets the mount's authentication
+- * flavor on success; returns -EACCES if server does not support
+- * the requested flavor.
++ * Select a security flavor for this mount.  The selected flavor
++ * is planted in args->auth_flavors[0].
+  */
+-static int nfs_walk_authlist(struct nfs_parsed_mount_data *args,
+-			     struct nfs_mount_request *request)
++static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
++			      struct nfs_mount_request *request)
+ {
+-	unsigned int i, j, server_authlist_len = *(request->auth_flav_len);
++	unsigned int i, count = *(request->auth_flav_len);
++	rpc_authflavor_t flavor;
++
++	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR)
++		goto out;
++
++	/*
++	 * The NFSv2 MNT operation does not return a flavor list.
++	 */
++	if (args->mount_server.version != NFS_MNT3_VERSION)
++		goto out_default;
+ 
+ 	/*
+ 	 * Certain releases of Linux's mountd return an empty
+-	 * flavor list.  To prevent behavioral regression with
+-	 * these servers (ie. rejecting mounts that used to
+-	 * succeed), revert to pre-2.6.32 behavior (no checking)
+-	 * if the returned flavor list is empty.
++	 * flavor list in some cases.
+ 	 */
+-	if (server_authlist_len == 0)
+-		return 0;
++	if (count == 0)
++		goto out_default;
+ 
+ 	/*
+-	 * We avoid sophisticated negotiating here, as there are
+-	 * plenty of cases where we can get it wrong, providing
+-	 * either too little or too much security.
+-	 *
+ 	 * RFC 2623, section 2.7 suggests we SHOULD prefer the
+ 	 * flavor listed first.  However, some servers list
+-	 * AUTH_NULL first.  Our caller plants AUTH_SYS, the
+-	 * preferred default, in args->auth_flavors[0] if user
+-	 * didn't specify sec= mount option.
++	 * AUTH_NULL first.  Avoid ever choosing AUTH_NULL.
+ 	 */
+-	for (i = 0; i < args->auth_flavor_len; i++)
+-		for (j = 0; j < server_authlist_len; j++)
+-			if (args->auth_flavors[i] == request->auth_flavs[j]) {
+-				dfprintk(MOUNT, "NFS: using auth flavor %d\n",
+-					request->auth_flavs[j]);
+-				args->auth_flavors[0] = request->auth_flavs[j];
+-				return 0;
+-			}
++	for (i = 0; i < count; i++) {
++		struct rpcsec_gss_info info;
++
++		flavor = request->auth_flavs[i];
++		switch (flavor) {
++		case RPC_AUTH_UNIX:
++			goto out_set;
++		case RPC_AUTH_NULL:
++			continue;
++		default:
++			if (rpcauth_get_gssinfo(flavor, &info) == 0)
++				goto out_set;
++		}
++	}
+ 
+-	dfprintk(MOUNT, "NFS: server does not support requested auth flavor\n");
+-	nfs_umount(request);
+-	return -EACCES;
++out_default:
++	flavor = RPC_AUTH_UNIX;
++out_set:
++	args->auth_flavors[0] = flavor;
++out:
++	dfprintk(MOUNT, "NFS: using auth flavor %d\n", args->auth_flavors[0]);
+ }
+ 
+ /*
+@@ -1712,12 +1720,8 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
+ 		return status;
+ 	}
+ 
+-	/*
+-	 * MNTv1 (NFSv2) does not support auth flavor negotiation.
+-	 */
+-	if (args->mount_server.version != NFS_MNT3_VERSION)
+-		return 0;
+-	return nfs_walk_authlist(args, &request);
++	nfs_select_flavor(args, &request);
++	return 0;
+ }
+ 
+ struct dentry *nfs_try_mount(int flags, const char *dev_name,
+
