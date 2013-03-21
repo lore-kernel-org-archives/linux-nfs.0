@@ -1,56 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from minas.ics.muni.cz ([147.251.4.40]:41004 "EHLO minas.ics.muni.cz"
+Received: from fieldses.org ([174.143.236.118]:60978 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756755Ab3CILZl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 9 Mar 2013 06:25:41 -0500
-Received: from anubis.ics.muni.cz (igw1.zrnko.net [94.112.253.31])
-	(authenticated user=xhejtman@META bits=0)
-	by minas.ics.muni.cz (8.13.8/8.13.8/SuSE Linux 0.8) with ESMTP id r29BPaRb001683
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Sat, 9 Mar 2013 12:25:38 +0100
-Received: from xhejtman by anubis.ics.muni.cz with local (Exim 4.80)
-	(envelope-from <xhejtman@ics.muni.cz>)
-	id 1UEHu7-0003Rx-5u
-	for linux-nfs@vger.kernel.org; Sat, 09 Mar 2013 12:25:31 +0100
-Date: Sat, 9 Mar 2013 12:25:31 +0100
-From: Lukas Hejtmanek <xhejtman@ics.muni.cz>
+	id S1752865Ab3CUO4W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Mar 2013 10:56:22 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH] gssd - expired credentials problem
-Message-ID: <20130309112531.GA13250@ics.muni.cz>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-2
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 4/9] nfsd4: destroy_clientid simplification
+Date: Thu, 21 Mar 2013 10:56:15 -0400
+Message-Id: <1363877780-28825-5-git-send-email-bfields@redhat.com>
+In-Reply-To: <1363877780-28825-1-git-send-email-bfields@redhat.com>
+References: <1363877780-28825-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-I noticed that there is a problem with expired credentials if NFS client's
-time is even few seconds behind KDC's or NFS server's time. Client's kernel
-requests new GSS context but rpc.gssd is happy with existing krb cache as it
-valid according to local time.
+I'm not sure what the check for clientid expiry was meant to do here.
 
-Is there any reason for gssd to check validity of existing cache when kernel
-requests a new context?
+The check for a matching session is redundant given the previous check
+for state: a client without state is, in particular, a client without
+sessions.
 
-However, it seems that this trivial patch solves this issue.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |    8 +-------
+ 1 file changed, 1 insertion(+), 7 deletions(-)
 
-300 is because I believe that clock skew must be within 300sec for kerberos.
-
-Signed-off-by: Lukas Hejtmanek <xhejtman@gmail.com>
-
-diff -rNu nfs-utils-1.2.7.orig/utils/gssd/krb5_util.c nfs-utils-1.2.7/utils/gssd/krb5_util.c
---- nfs-utils-1.2.7.orig/utils/gssd/krb5_util.c 2012-11-12 00:01:23.000000000 +0100
-+++ nfs-utils-1.2.7/utils/gssd/krb5_util.c      2013-02-15 16:35:35.652482164 +0100
-@@ -343,7 +343,7 @@
-        char kt_name[BUFSIZ];
-        char cc_name[BUFSIZ];
-        int code;
--       time_t now = time(0);
-+       time_t now = time(0)+300; // workaround for clock skew among NFS server, NFS client and KDC
-        char *cache_type;
-        char *pname = NULL;
-        char *k5err = NULL;
-
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 91ad066..ef0337d 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2127,13 +2127,7 @@ nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
+ 	if (conf) {
+ 		clp = conf;
+ 
+-		if (!is_client_expired(conf) && client_has_state(conf)) {
+-			status = nfserr_clientid_busy;
+-			goto out;
+-		}
+-
+-		/* rfc5661 18.50.3 */
+-		if (cstate->session && conf == cstate->session->se_client) {
++		if (client_has_state(conf)) {
+ 			status = nfserr_clientid_busy;
+ 			goto out;
+ 		}
 -- 
-Luká¹ Hejtmánek
+1.7.9.5
+
