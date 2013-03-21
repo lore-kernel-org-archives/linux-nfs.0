@@ -1,60 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f178.google.com ([209.85.220.178]:35207 "EHLO
-	mail-vc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753288Ab3CFVAE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Mar 2013 16:00:04 -0500
+Received: from mail-ve0-f177.google.com ([209.85.128.177]:61203 "EHLO
+	mail-ve0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753007Ab3CUUut (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Mar 2013 16:50:49 -0400
+Received: by mail-ve0-f177.google.com with SMTP id m1so2811224ves.22
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Mar 2013 13:50:48 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <20130306185304.GM1227@htj.dyndns.org>
-References: <20130304205307.GA13527@redhat.com>
-	<4FA345DA4F4AE44899BD2B03EEEC2FA9286AEEB0@sacexcmbx05-prd.hq.netapp.com>
-	<20130305082308.6607d4db@tlielax.poochiereds.net>
-	<20130305174648.GF12795@htj.dyndns.org>
-	<20130305174954.GG12795@htj.dyndns.org>
-	<20130305140312.243cb094@tlielax.poochiereds.net>
-	<20130305190923.GI12795@htj.dyndns.org>
-	<20130305183941.19ff39ce@tlielax.poochiereds.net>
-	<20130305234700.GE1227@htj.dyndns.org>
-	<20130306181608.GA18687@redhat.com>
-	<20130306185304.GM1227@htj.dyndns.org>
-Date: Wed, 6 Mar 2013 13:00:02 -0800
-Message-ID: <CA+55aFwDogteVd=vwGHXDSASnga-nZZnKaQz9aO1yBU2CPKSbA@mail.gmail.com>
-Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
-From: Linus Torvalds <torvalds@linux-foundation.org>
-To: Tejun Heo <tj@kernel.org>
-Cc: Oleg Nesterov <oleg@redhat.com>, Jeff Layton <jlayton@redhat.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Ming Lei <ming.lei@canonical.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Ingo Molnar <mingo@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <CAHVgHyU3ujt=5vrHezitHmGe070UU-b3-bAi+aY3zyOJUTKFAg@mail.gmail.com>
+References: <CAHVgHyU3ujt=5vrHezitHmGe070UU-b3-bAi+aY3zyOJUTKFAg@mail.gmail.com>
+Date: Thu, 21 Mar 2013 16:50:48 -0400
+Message-ID: <CAHVgHyVNet4sDknzTsCQR_9zm5LBBbhqND7WwCJ+Vki2VBbe7Q@mail.gmail.com>
+Subject: Proposed change in date for June 2013 Bakeathon in Ann Arbor
+From: Andy Adamson <androsadamson@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 6, 2013 at 10:53 AM, Tejun Heo <tj@kernel.org> wrote:
-> Hello, Oleg.
+Oops! fat fingered the email address....
+
+---------- Forwarded message ----------
+From: Andy Adamson <androsadamson@gmail.com>
+Date: Thu, Mar 21, 2013 at 4:48 PM
+Subject: Proposed change in date for June 2013 Bakeathon in Ann Arbor
+To: NFSv4 <nfsv4@ietf.org>
+Cc: linux-nfs@vgers.kernel.org
+
+
+It turns out that the Red Hat 2013 Summit is scheduled for the week of
+June 10th.
+I've asked the Workantile if the week of June 17th is available, and
+so far I have a positive response.
+
+So the question is: Are there any issues with moving the June 2013
+Bakeathon to June 17 - 21st?
+
+Please let me know ASAP.
+
+-->Andy
+
+On Tue, Mar 19, 2013 at 1:59 PM, Andy Adamson <androsadamson@gmail.com> wrote:
+> NetApp is pleased to announce that it is hosting the an NFSv4
+> Bakeathon June 10-14 downtown Ann Arbor at the Workantile
 >
-> On Wed, Mar 06, 2013 at 07:16:08PM +0100, Oleg Nesterov wrote:
->> And how SIGFREEZE can help? If we want to interrupt the sleeps in NFS/RPC
->> layer we can simply add TASK_WAKEFREEZE (can be used with TASK_KILLABLE)
->> and change freeze_task() to do signal_wake_up_state(TASK_WAKEFREEZE).
+> Details and registration info is here:
 >
-> Oh yeah, we don't need another signal.  We just need sigpending state
-> and a wakeup.  I wasn't really going into details.  The important
-> point is that for code paths outside signal/ptrace, freezing could
-> look and behave about the same as signal delivery.
-
-Don't we already do that? The whole "try_to_freeze()" in
-get_signal_to_deliver() is about exactly this. See
-fake_signal_wake_up().
-
-You still have kernel threads (that don't do signals) to worry about,
-so it doesn't make things go away. And you still have issues with
-latency of disk wait, which is, I think, the reason for that
-"freezable_schedule()" in the NFS code to begin with.
-
-               Linus
+> http://nfsv4bat.org/src/bat0613.html
+>
+> Please register soon as we need to have a good idea of head count. I
+> will notify the list with details when a hotel block of rooms is
+> reserved.
+>
+> Thanks
+>
+> -->Andy
