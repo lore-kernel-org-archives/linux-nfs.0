@@ -1,104 +1,195 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ve0-f181.google.com ([209.85.128.181]:39514 "EHLO
-	mail-ve0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932160Ab3CDS4w (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Mar 2013 13:56:52 -0500
-Received: by mail-ve0-f181.google.com with SMTP id d10so5034676vea.12
-        for <linux-nfs@vger.kernel.org>; Mon, 04 Mar 2013 10:56:51 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
-Subject: [PATCH v2 4/5] nfsd: keep track of the max and average time to search the cache
-Date: Mon,  4 Mar 2013 13:56:39 -0500
-Message-Id: <1362423400-24380-5-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1362423400-24380-1-git-send-email-jlayton@redhat.com>
-References: <1362423400-24380-1-git-send-email-jlayton@redhat.com>
+Received: from mx1.netapp.com ([216.240.18.38]:21858 "EHLO mx1.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751755Ab3CUCFA convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Mar 2013 22:05:00 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Rick Macklem <rmacklem@uoguelph.ca>
+CC: Christopher T Vogan <cvogan@us.ibm.com>, Neil Brown <neilb@suse.de>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        nfsv4 list <nfsv4@ietf.org>, "Haynes, Tom" <Tom.Haynes@netapp.com>
+Subject: Re: [nfsv4] What is NFSv4 READDIR doesn't return a filehandle....
+Date: Thu, 21 Mar 2013 02:04:59 +0000
+Message-ID: <1363831497.4790.114.camel@leira.trondhjem.org>
+References: <1533754809.4129999.1363830100661.JavaMail.root@erie.cs.uoguelph.ca>
+In-Reply-To: <1533754809.4129999.1363830100661.JavaMail.root@erie.cs.uoguelph.ca>
+Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since we're moderately concerned about the potential increase in hash
-chain lengths, keep a running average of the time and the max time to
-search.
+On Wed, 2013-03-20 at 21:41 -0400, Rick Macklem wrote:
+> Trond Myklebust wrote:
+> > On Wed, 2013-03-20 at 23:53 +0000, Haynes, Tom wrote:
+> > > Please note that I have cc'ed the NFSv4 list over at the IETF.
+> > >
+> > > On Mar 20, 2013, at 3:40 PM, Christopher T Vogan <cvogan@us.ibm.com>
+> > > wrote:
+> > >
+> > > > All,
+> > > >
+> > > > Sorry for this late posting, a coworker was made aware of this
+> > > > thread
+> > > > recently and
+> > > > has these replies to make. Our server implementation is the one
+> > > > being
+> > > > complained about in this thread.
+> > > >
+> > > >
+> > > > Quoted text is from various entries in this forum.
+> > > >
+> > > >
+> > > > Neil Brown:
+> > > > ===========
+> > > >> Just a thought: while coping with broken servers would not be a
+> > > >> good
+> > > > path to
+> > > >> follow, detecting protocol violations and reporting an error
+> > > >> might be...
+> > > >> should the NFS client treat a missing filehandle and a malformed
+> > > >> reply?
+> > > >
+> > > > The server is allowed to remove an attribute bit from an entry in
+> > > > the
+> > > > readdir
+> > > > reply, this is not "broken" nor is the reply "malformed". The lack
+> > > > of a
+> > > > filehandle in the reply is deterministic.
+> > > >
+> > > >
+> > > >
+> > > > Trond Myklebust:
+> > > > ================
+> > > >>> A customer has come across a server which does not return the
+> > > > filehandle
+> > > >>> information (is that allowed?).
+> > > >>
+> > > >> The filehandle attribute is a mandatory attribute according to
+> > > >> RFC3530,
+> > > > so I believe that the answer is "no".
+> > > >
+> > > > Mandatory is described in RFS 3530 as that the server must return
+> > > > the
+> > > > attribute
+> > > > on a GETATTR. (Section 5, page 36). There is nothing saying that
+> > > > it is
+> > > > mandatory to return on a READDIR. Our server will return the
+> > > > filehandle
+> > > > on a LOOKUP/GETATTR every time.
+> > >
+> > >
+> > >
+> > > GETATTR and READDIR both return attributes. To be precise, they
+> > > return
+> > > a fattr4.
+> > >
+> > > Looking at Section 15.26.4 (roughly pages 277-279 of the most recent
+> > > copy)
+> > > of 3530bis (3530 is on the way to being replaced), READDIR states:
+> > >
+> > >    The READDIR operation retrieves a variable number of entries from
+> > >    a
+> > >    filesystem directory and returns client requested attributes for
+> > >    each
+> > >    entry along with information to allow the client to request
+> > >    additional directory entries in a subsequent READDIR.
+> > > ...
+> > >    On successful return, the server's response will provide a list
+> > >    of
+> > >    directory entries. Each of these entries contains the name of the
+> > >    directory entry, a cookie value for that entry, and the
+> > >    associated
+> > >    attributes as requested. The "eof" flag has a value of TRUE if
+> > >    there
+> > >    are no more entries in the directory.
+> > >
+> > > Any client implementation has no way to request that any server
+> > > implementation
+> > > return the filehandle because the filehandle is not an attribute
+> > > which
+> > > can be requested. I.e., it is mandatory.
+> > >
+> > > If the intent was to allow the server to not return a filehandle for
+> > > READDIR but to
+> > > allow it to return one for GETATTR, then it would have been made
+> > > OPTIONAL.
+> > >
+> Well, I don't see any difference between a mandatory attribute and a
+> recommended attribute that the server claims to support via the
+> supported_attributes attribute.
+> 
+> I do believe that the server can choose not to return all of the
+> mandatory and supported recommended attributes in the readdir reply.
+> (If not, why have a bitmap of returned attributes?)
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/nfscache.c | 37 +++++++++++++++++++++++++++++++++----
- 1 file changed, 33 insertions(+), 4 deletions(-)
+That's for dealing with OPTIONAL attributes. Section 5.2 of RFC3530
+states:
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index 24ac996..7640e80 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -41,6 +41,15 @@ static unsigned int		payload_misses;
- /* amount of memory (in bytes) currently consumed by the DRC */
- static unsigned int		drc_mem_usage;
- 
-+/* total time spent searching the cache */
-+static s64			time_in_search;
-+
-+/* total number of times we searched the cache */
-+static u64			num_searches;
-+
-+/* longest time we spent doing a single search */
-+static s64			max_search_time;
-+
- /*
-  * Calculate the hash index from an XID.
-  */
-@@ -318,15 +327,25 @@ nfsd_cache_match(struct svc_rqst *rqstp, __wsum csum, struct svc_cacherep *rp)
- static struct svc_cacherep *
- nfsd_cache_search(struct svc_rqst *rqstp, __wsum csum)
- {
--	struct svc_cacherep	*rp;
-+	struct svc_cacherep	*rp, *ret = NULL;
- 	struct hlist_head 	*rh;
-+	ktime_t			start;
-+	s64			delta;
- 
-+	start = ktime_get();
- 	rh = &cache_hash[request_hash(rqstp->rq_xid)];
- 	hlist_for_each_entry(rp, rh, c_hash) {
--		if (nfsd_cache_match(rqstp, csum, rp))
--			return rp;
-+		if (nfsd_cache_match(rqstp, csum, rp)) {
-+			ret = rp;
-+			break;
-+		}
- 	}
--	return NULL;
-+	delta = ktime_to_ns(ktime_sub(ktime_get(), start));
-+	time_in_search += delta;
-+	max_search_time = max(max_search_time, delta);
-+	++num_searches;
-+
-+	return ret;
- }
- 
- /*
-@@ -558,6 +577,14 @@ nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *data)
- 	return 1;
- }
- 
-+static s64
-+avg_search_time(void)
-+{
-+	if (!num_searches)
-+		return 0;
-+	return time_in_search / num_searches;
-+}
-+
- /*
-  * Note that fields may be added, removed or reordered in the future. Programs
-  * scraping this file for info should test the labels to ensure they're
-@@ -574,6 +601,8 @@ static int nfsd_reply_cache_stats_show(struct seq_file *m, void *v)
- 	seq_printf(m, "cache misses:          %u\n", nfsdstats.rcmisses);
- 	seq_printf(m, "not cached:            %u\n", nfsdstats.rcnocache);
- 	seq_printf(m, "payload misses:        %u\n", payload_misses);
-+	seq_printf(m, "avg search time:       %lldns\n", avg_search_time());
-+	seq_printf(m, "max search time:       %lldns\n", max_search_time);
- 	spin_unlock(&cache_lock);
- 	return 0;
- }
+"A client may ask for any of these attributes to be returned by setting
+a bit in the GETATTR request but must handle the case where the server
+does not return them."
+
+Section 5.1 says:
+
+"These MUST be supported by every NFS version 4 client and server in
+order to ensure a minimum level of interoperability." There are no
+exceptions made for READDIR.
+
+> One example here is the mounted_on_fileid, which some servers choose
+> to only "support" for server mount points. (The FreeBSD server returns
+> this attribute for all file handles, setting it to the same value as
+> fileid for non-mount-points, but I am pretty sure some other servers
+> do not return mounted_on_fileid for non-mount-points.)
+> 
+> > > Whether or not the client used to work with such a server
+> > > implementation
+> > > or not is immaterial as far as standard compliance is concerned.
+> > >
+> > > If you like, we can clean up the corresponding language in 3530bis
+> > > to
+> > > explicitly state that REQUIRED attributes are indeed required
+> > > whether
+> > > in response to GETATTR or READDIR.
+> I assume that by REQUIRED you are referring to "mandatory attributes".
+
+I'm using the language from RFC5661 and RFC3530-bis, since that is the
+most up-to-date.
+
+> > It might rather be useful to add language to point out that the
+> > "filehandle" attribute SHOULD NOT be used for the GETATTR case. We
+> > have
+> > GETFH, and AFAICR, all the language around referrals etc is written
+> > with
+> > the assumption that clients _won't_ use GETATTR to retrieve the
+> > filehandle.
+> > 
+> > Ditto for the case of "rdattr_error", which makes absolutely no sense
+> > whatsoever in a GETATTR request.
+> > 
+> And as I mentioned above, can a server choose to return mounted_on_fileid
+> for only some FHs when it claims to support the attribute? (I think that
+> is allowed and since I don't see a difference between mandatory and supported
+> recommended attributes I think the same applies to FH.)
+
+The fileid and mounted_on_fileid are both OPTIONAL attributes, and as
+section 5.2 says, the client is required to be able to deal with the
+case where the server does not return them. As stated earlier, there is
+no such exception in 5.1.
+
+> Btw, when a server chooses to not return an FH in the readdir reply although
+> it was requested, the FreeBSD client "readdirplus" essentially falls back to
+> a basic "readdir" for the file name (ie. it doesn't prime the name and attribute
+> caches for it).
+
+Implementations are only relevant here in as far as they limit the
+protocol changes that RFC3530bis can make. Given that there are clients
+out there that assume a strict interpretation of RFC3530, then it is too
+late to have RFC3530bis relax that interpretation.
+
 -- 
-1.7.11.7
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
