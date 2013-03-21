@@ -1,44 +1,142 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f174.google.com ([209.85.220.174]:44263 "EHLO
-	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751431Ab3CRREc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Mar 2013 13:04:32 -0400
-Received: by mail-vc0-f174.google.com with SMTP id hx10so3097509vcb.5
-        for <linux-nfs@vger.kernel.org>; Mon, 18 Mar 2013 10:04:32 -0700 (PDT)
+Received: from mail-wi0-f169.google.com ([209.85.212.169]:50721 "EHLO
+	mail-wi0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757488Ab3CULZJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Mar 2013 07:25:09 -0400
+Received: by mail-wi0-f169.google.com with SMTP id hi8so1181872wib.4
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Mar 2013 04:25:08 -0700 (PDT)
+Message-ID: <514AEE11.1030705@tonian.com>
+Date: Thu, 21 Mar 2013 13:25:05 +0200
+From: Benny Halevy <bhalevy@tonian.com>
 MIME-Version: 1.0
-In-Reply-To: <51473F46.10401@tonian.com>
-References: <1363617532-24172-1-git-send-email-bhalevy@tonian.com>
-	<1363622128.4351.15.camel@leira.trondhjem.org>
-	<51473F46.10401@tonian.com>
-Date: Mon, 18 Mar 2013 13:04:31 -0400
-Message-ID: <CADnza476e0FpXJJfE8OmXLRQUR3Zm_aZkX7JZRB=vGyZ-U2yDg@mail.gmail.com>
-Subject: Re: [PATCH] pnfs: do not reset to mds if wb_offset != wb_pgbase
-From: Fred Isaman <faisaman4@gmail.com>
-To: Benny Halevy <bhalevy@tonian.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "Isaman, Fred" <Fred.Isaman@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "stable@kernel.org" <stable@kernel.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: linux-nfs@vger.kernel.org, Boaz Harrosh <bharrosh@panasas.com>,
+        Peng Tao <bergwolf@gmail.com>
+Subject: Re: [PATCH 2/3] NFSv4.1: Always clear the NFS_INO_LAYOUTCOMMIT in
+ layoutreturn
+References: <1363801148-29998-1-git-send-email-Trond.Myklebust@netapp.com> <1363801148-29998-2-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1363801148-29998-2-git-send-email-Trond.Myklebust@netapp.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 18, 2013 at 12:22 PM, Benny Halevy <bhalevy@tonian.com> wrote:
+On 2013-03-20 19:39, Trond Myklebust wrote:
+> Note that clearing NFS_INO_LAYOUTCOMMIT is tricky, since it requires
+> you to also clear the NFS_LSEG_LAYOUTCOMMIT bits from the layout
+> segments.
+> The only two sites that need to do this are the ones that call
+> pnfs_return_layout() without first doing a layout commit.
+> 
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Cc: Benny Halevy <bhalevy@tonian.com>
 
->> NACK. I see no evidence that we've addressed the issues that were raised
->> by Fred in commit 1825a0d08f22463e5a8f4b1636473efd057a3479 (NFS: prepare
->> coalesce testing for directio).
->> If you think that his concerns about the coalescing assumptions are no
->> longer true, then please point to why this is the case. AFAICR that
->> patch was added to fix corruption issues.
->>
->
-> We see no problems with this patch with the workloads we're testing.
-> Do you have a test that reproduces the original problem that we can try running?
->
-> Benny
+ACK
 
-A problem case is if the layout ends within the page request, which
-can happen due to the misalignment.
-
-Fred
+> Cc: stable@vger.kernel.org
+> ---
+>  fs/nfs/nfs4filelayout.c |  1 -
+>  fs/nfs/pnfs.c           | 35 +++++++++++++++++++++++++++--------
+>  2 files changed, 27 insertions(+), 9 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+> index c5656c5..22d1062 100644
+> --- a/fs/nfs/nfs4filelayout.c
+> +++ b/fs/nfs/nfs4filelayout.c
+> @@ -129,7 +129,6 @@ static void filelayout_fenceme(struct inode *inode, struct pnfs_layout_hdr *lo)
+>  {
+>  	if (!test_and_clear_bit(NFS_LAYOUT_RETURN, &lo->plh_flags))
+>  		return;
+> -	clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags);
+>  	pnfs_return_layout(inode);
+>  }
+>  
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 6f6b356..45badca 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -417,6 +417,16 @@ should_free_lseg(struct pnfs_layout_range *lseg_range,
+>  	       lo_seg_intersecting(lseg_range, recall_range);
+>  }
+>  
+> +static bool lseg_dec_and_remove_zero(struct pnfs_layout_segment *lseg,
+> +		struct list_head *tmp_list)
+> +{
+> +	if (!atomic_dec_and_test(&lseg->pls_refcount))
+> +		return false;
+> +	pnfs_layout_remove_lseg(lseg->pls_layout, lseg);
+> +	list_add(&lseg->pls_list, tmp_list);
+> +	return true;
+> +}
+> +
+>  /* Returns 1 if lseg is removed from list, 0 otherwise */
+>  static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
+>  			     struct list_head *tmp_list)
+> @@ -430,11 +440,8 @@ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
+>  		 */
+>  		dprintk("%s: lseg %p ref %d\n", __func__, lseg,
+>  			atomic_read(&lseg->pls_refcount));
+> -		if (atomic_dec_and_test(&lseg->pls_refcount)) {
+> -			pnfs_layout_remove_lseg(lseg->pls_layout, lseg);
+> -			list_add(&lseg->pls_list, tmp_list);
+> +		if (lseg_dec_and_remove_zero(lseg, tmp_list))
+>  			rv = 1;
+> -		}
+>  	}
+>  	return rv;
+>  }
+> @@ -779,6 +786,21 @@ send_layoutget(struct pnfs_layout_hdr *lo,
+>  	return lseg;
+>  }
+>  
+> +static void pnfs_clear_layoutcommit(struct inode *inode,
+> +		struct list_head *head)
+> +{
+> +	struct nfs_inode *nfsi = NFS_I(inode);
+> +	struct pnfs_layout_segment *lseg, *tmp;
+> +
+> +	if (!test_and_clear_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags))
+> +		return;
+> +	list_for_each_entry_safe(lseg, tmp, &nfsi->layout->plh_segs, pls_list) {
+> +		if (!test_and_clear_bit(NFS_LSEG_LAYOUTCOMMIT, &lseg->pls_flags))
+> +			continue;
+> +		lseg_dec_and_remove_zero(lseg, head);
+> +	}
+> +}
+> +
+>  /*
+>   * Initiates a LAYOUTRETURN(FILE), and removes the pnfs_layout_hdr
+>   * when the layout segment list is empty.
+> @@ -810,6 +832,7 @@ _pnfs_return_layout(struct inode *ino)
+>  	/* Reference matched in nfs4_layoutreturn_release */
+>  	pnfs_get_layout_hdr(lo);
+>  	empty = list_empty(&lo->plh_segs);
+> +	pnfs_clear_layoutcommit(ino, &tmp_list);
+>  	pnfs_mark_matching_lsegs_invalid(lo, &tmp_list, NULL);
+>  	/* Don't send a LAYOUTRETURN if list was initially empty */
+>  	if (empty) {
+> @@ -822,8 +845,6 @@ _pnfs_return_layout(struct inode *ino)
+>  	spin_unlock(&ino->i_lock);
+>  	pnfs_free_lseg_list(&tmp_list);
+>  
+> -	WARN_ON(test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags));
+> -
+>  	lrp = kzalloc(sizeof(*lrp), GFP_KERNEL);
+>  	if (unlikely(lrp == NULL)) {
+>  		status = -ENOMEM;
+> @@ -1460,7 +1481,6 @@ static void pnfs_ld_handle_write_error(struct nfs_write_data *data)
+>  	dprintk("pnfs write error = %d\n", hdr->pnfs_error);
+>  	if (NFS_SERVER(hdr->inode)->pnfs_curr_ld->flags &
+>  	    PNFS_LAYOUTRET_ON_ERROR) {
+> -		clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(hdr->inode)->flags);
+>  		pnfs_return_layout(hdr->inode);
+>  	}
+>  	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags))
+> @@ -1615,7 +1635,6 @@ static void pnfs_ld_handle_read_error(struct nfs_read_data *data)
+>  	dprintk("pnfs read error = %d\n", hdr->pnfs_error);
+>  	if (NFS_SERVER(hdr->inode)->pnfs_curr_ld->flags &
+>  	    PNFS_LAYOUTRET_ON_ERROR) {
+> -		clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(hdr->inode)->flags);
+>  		pnfs_return_layout(hdr->inode);
+>  	}
+>  	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags))
+> 
