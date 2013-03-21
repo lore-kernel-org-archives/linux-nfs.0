@@ -1,76 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f177.google.com ([209.85.220.177]:60585 "EHLO
-	mail-vc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753478Ab3CGPzl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Mar 2013 10:55:41 -0500
+Received: from natasha.panasas.com ([67.152.220.90]:55407 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757506Ab3CUL0G (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Mar 2013 07:26:06 -0400
+Message-ID: <514AEE40.5040007@panasas.com>
+Date: Thu, 21 Mar 2013 13:25:52 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-In-Reply-To: <20130307064140.71c0936b@tlielax.poochiereds.net>
-References: <20130305174954.GG12795@htj.dyndns.org>
-	<20130305140312.243cb094@tlielax.poochiereds.net>
-	<20130305190923.GI12795@htj.dyndns.org>
-	<20130305183941.19ff39ce@tlielax.poochiereds.net>
-	<20130305234700.GE1227@htj.dyndns.org>
-	<20130306181608.GA18687@redhat.com>
-	<20130306185304.GM1227@htj.dyndns.org>
-	<CA+55aFwDogteVd=vwGHXDSASnga-nZZnKaQz9aO1yBU2CPKSbA@mail.gmail.com>
-	<20130306212452.GO1227@htj.dyndns.org>
-	<CA+55aFy49AWptMcvEzJxg95ikf-dC+-vcCPq-cnaCCwje3tyoQ@mail.gmail.com>
-	<20130306213636.GP1227@htj.dyndns.org>
-	<20130307064140.71c0936b@tlielax.poochiereds.net>
-Date: Thu, 7 Mar 2013 07:55:39 -0800
-Message-ID: <CA+55aFxe1_x8wvVYciiX8tuee+VsmXGKqEbONQdFM4s4W2iuPg@mail.gmail.com>
-Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
-From: Linus Torvalds <torvalds@linux-foundation.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Tejun Heo <tj@kernel.org>, Oleg Nesterov <oleg@redhat.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Ming Lei <ming.lei@canonical.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Ingo Molnar <mingo@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>
-Content-Type: text/plain; charset=UTF-8
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, Benny Halevy <bhalevy@tonian.com>,
+        Peng Tao <bergwolf@gmail.com>
+Subject: Re: [PATCH 3/3] NFSv4.1: Add a helper pnfs_commit_and_return_layout
+References: <1363801148-29998-1-git-send-email-Trond.Myklebust@netapp.com> <1363801148-29998-2-git-send-email-Trond.Myklebust@netapp.com> <1363801148-29998-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1363801148-29998-3-git-send-email-Trond.Myklebust@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 7, 2013 at 3:41 AM, Jeff Layton <jlayton@redhat.com> wrote:
->
-> I think Trond may be on the right track. We probably need some
-> mechanism to quiesce the filesystem ahead of any sort of freezer
-> event.
+On 03/20/2013 07:39 PM, Trond Myklebust wrote:
+> In order to be able to safely return the layout in nfs4_proc_setattr,
+> we need to block new uses of the layout, wait for all outstanding
+> users of the layout to complete, commit the layout and then return it.
+> 
+> This patch adds a helper in order to do all this safely.
+> 
 
-No, guys. That cannot work. It's a completely moronic idea. Let me
-count the way:
+Hi Trond
 
- (a) it's just another form of saying "lock". But since other things
-are (by definition) going on when it happens, it will just cause
-deadlocks.
+It looks like this patchset might actually fix my problem as well.
 
- (b) the freeze event might not even be system-global. So *some*
-processes (a cgroup) might freeze, others would not. You can't shut
-off the filesystem just because some processes migth freeze.
+I've been super swamped with internal work at Panasas, and never got
+a chance to cleanup and review my experimental fixes. So it looks like
+you bit me to it. Your work looks much better, and deeper then what I
+had. Though one concern I have is that I need those for @stable so my
+change was as minimal as possible, single patch.
 
- (c) it just moves the same issue somewhere else. If you have some
-operation that must be done under the lock, then such an operation
-must be completed before you've quiesced the filesystem, which is your
-whole point of that "quiesce" event. BUT THAT'S THE EXACT SAME ISSUE
-AS NOT ALLOWING THE FREEZE TO HAPPEN DURING THAT TIME.
+I have just arrived back to Israel today, and will only have time to test
+all this Next week. I have just the right setup for this. I understand that
+for you it might be harder because Files-layout does not support segments and
+my deadlock can only happen with two segments and up.
 
-In other words, that suggestion not only introduces new problems (a),
-it's fundamentally broken anyway (b) *AND* it doesn't even solve
-anything, it just moves it around.
+[BTW: I did not even reviewed the code yet will do ASAP]
 
-The solution is damn simple: if you're in some kind of "atomic
-region", then you cannot freeze. Seriously. SO DON'T CALL
-"freezable_schedule()", FOR CHRISSAKE! You clearly aren't freezable!
+Thanks
+Boaz
 
-Which is exactly what the new lockdep warning was all about. Don't try
-to move the problem around, when it's quite clear where the problem
-is. If you need to do something uninterruptible, you do not say "oh,
-I'm freezable". Because freezing is by definition an interruption.
-Seriously, it's that simple.
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> Cc: Boaz Harrosh <bharrosh@panasas.com>
+> ---
+>  fs/nfs/nfs4proc.c |  2 +-
+>  fs/nfs/pnfs.c     | 22 ++++++++++++++++++++++
+>  fs/nfs/pnfs.h     |  6 ++++++
+>  3 files changed, 29 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 5122753..c560c8f 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -2695,7 +2695,7 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+>  	int status;
+>  
+>  	if (pnfs_ld_layoutret_on_setattr(inode))
+> -		pnfs_return_layout(inode);
+> +		pnfs_commit_and_return_layout(inode);
+>  
+>  	nfs_fattr_init(fattr);
+>  	
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 45badca..5a5e14d 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -868,6 +868,28 @@ out:
+>  }
+>  EXPORT_SYMBOL_GPL(_pnfs_return_layout);
+>  
+> +int
+> +pnfs_commit_and_return_layout(struct inode *inode)
+> +{
+> +	struct pnfs_layout_hdr *lo;
+> +	int ret;
+> +
+> +	spin_lock(&inode->i_lock);
+> +	lo = NFS_I(inode)->layout;
+> +	if (lo == NULL) {
+> +		spin_unlock(&inode->i_lock);
+> +		return 0;
+> +	}
+> +	/* Block new layoutgets and read/write to ds */
+> +	lo->plh_block_lgets++;
+> +	spin_unlock(&inode->i_lock);
+> +	filemap_fdatawait(inode->i_mapping);
+> +	ret = pnfs_layoutcommit_inode(inode, true);
+> +	if (ret == 0)
+> +		ret = _pnfs_return_layout(inode);
+> +	return ret;
+> +}
+> +
+>  bool pnfs_roc(struct inode *ino)
+>  {
+>  	struct pnfs_layout_hdr *lo;
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index 94ba804..f5f8a47 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -219,6 +219,7 @@ void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
+>  void pnfs_cleanup_layoutcommit(struct nfs4_layoutcommit_data *data);
+>  int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
+>  int _pnfs_return_layout(struct inode *);
+> +int pnfs_commit_and_return_layout(struct inode *);
+>  void pnfs_ld_write_done(struct nfs_write_data *);
+>  void pnfs_ld_read_done(struct nfs_read_data *);
+>  struct pnfs_layout_segment *pnfs_update_layout(struct inode *ino,
+> @@ -407,6 +408,11 @@ static inline int pnfs_return_layout(struct inode *ino)
+>  	return 0;
+>  }
+>  
+> +static inline int pnfs_commit_and_return_layout(struct inode *inode)
+> +{
+> +	return 0;
+> +}
+> +
+>  static inline bool
+>  pnfs_ld_layoutret_on_setattr(struct inode *inode)
+>  {
+> 
 
-                Linus
