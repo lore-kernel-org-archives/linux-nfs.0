@@ -1,75 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60984 "EHLO fieldses.org"
+Received: from mx1.netapp.com ([216.240.18.38]:61005 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753311Ab3CUO4W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Mar 2013 10:56:22 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
+	id S1757636Ab3CUONH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Mar 2013 10:13:07 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
 To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 5/9] nfsd4: clientid lookup cleanup
-Date: Thu, 21 Mar 2013 10:56:16 -0400
-Message-Id: <1363877780-28825-6-git-send-email-bfields@redhat.com>
-In-Reply-To: <1363877780-28825-1-git-send-email-bfields@redhat.com>
-References: <1363877780-28825-1-git-send-email-bfields@redhat.com>
+Cc: Benny Halevy <bhalevy@tonian.com>, Boaz Harrosh <bharrosh@panasas.com>,
+        Peng Tao <bergwolf@gmail.com>
+Subject: [PATCH v2 3/3] NFSv4.1: Add a helper pnfs_commit_and_return_layout
+Date: Thu, 21 Mar 2013 10:13:01 -0400
+Message-Id: <1363875181-7147-3-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1363875181-7147-2-git-send-email-Trond.Myklebust@netapp.com>
+References: <1363875181-7147-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1363875181-7147-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+In order to be able to safely return the layout in nfs4_proc_setattr,
+we need to block new uses of the layout, wait for all outstanding
+users of the layout to complete, commit the layout and then return it.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+This patch adds a helper in order to do all this safely.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>
 ---
- fs/nfsd/nfs4state.c |   24 ++++++++++++------------
- 1 file changed, 12 insertions(+), 12 deletions(-)
+ fs/nfs/nfs4proc.c |  2 +-
+ fs/nfs/pnfs.c     | 27 +++++++++++++++++++++++++++
+ fs/nfs/pnfs.h     |  6 ++++++
+ 3 files changed, 34 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index ef0337d..1464d62 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1376,12 +1376,12 @@ move_to_confirmed(struct nfs4_client *clp)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 6ccdd4f..26431cf 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2632,7 +2632,7 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 	int status;
+ 
+ 	if (pnfs_ld_layoutret_on_setattr(inode))
+-		pnfs_return_layout(inode);
++		pnfs_commit_and_return_layout(inode);
+ 
+ 	nfs_fattr_init(fattr);
+ 	
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index b9d0682..2b5d98e 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -866,6 +866,33 @@ out:
  }
+ EXPORT_SYMBOL_GPL(_pnfs_return_layout);
  
- static struct nfs4_client *
--find_confirmed_client(clientid_t *clid, bool sessions, struct nfsd_net *nn)
-+find_client_in_id_table(struct list_head *tbl, clientid_t *clid, bool sessions)
- {
- 	struct nfs4_client *clp;
- 	unsigned int idhashval = clientid_hashval(clid->cl_id);
- 
--	list_for_each_entry(clp, &nn->conf_id_hashtbl[idhashval], cl_idhash) {
-+	list_for_each_entry(clp, &tbl[idhashval], cl_idhash) {
- 		if (same_clid(&clp->cl_clientid, clid)) {
- 			if ((bool)clp->cl_minorversion != sessions)
- 				return NULL;
-@@ -1393,19 +1393,19 @@ find_confirmed_client(clientid_t *clid, bool sessions, struct nfsd_net *nn)
- }
- 
- static struct nfs4_client *
-+find_confirmed_client(clientid_t *clid, bool sessions, struct nfsd_net *nn)
++int
++pnfs_commit_and_return_layout(struct inode *inode)
 +{
-+	struct list_head *tbl = nn->conf_id_hashtbl;
++	struct pnfs_layout_hdr *lo;
++	int ret;
 +
-+	return find_client_in_id_table(tbl, clid, sessions);
++	spin_lock(&inode->i_lock);
++	lo = NFS_I(inode)->layout;
++	if (lo == NULL) {
++		spin_unlock(&inode->i_lock);
++		return 0;
++	}
++	pnfs_get_layout_hdr(lo);
++	/* Block new layoutgets and read/write to ds */
++	lo->plh_block_lgets++;
++	spin_unlock(&inode->i_lock);
++	filemap_fdatawait(inode->i_mapping);
++	ret = pnfs_layoutcommit_inode(inode, true);
++	if (ret == 0)
++		ret = _pnfs_return_layout(inode);
++	spin_lock(&inode->i_lock);
++	lo->plh_block_lgets--;
++	spin_unlock(&inode->i_lock);
++	pnfs_put_layout_hdr(lo);
++	return ret;
 +}
 +
-+static struct nfs4_client *
- find_unconfirmed_client(clientid_t *clid, bool sessions, struct nfsd_net *nn)
+ bool pnfs_roc(struct inode *ino)
  {
--	struct nfs4_client *clp;
--	unsigned int idhashval = clientid_hashval(clid->cl_id);
-+	struct list_head *tbl = nn->unconf_id_hashtbl;
- 
--	list_for_each_entry(clp, &nn->unconf_id_hashtbl[idhashval], cl_idhash) {
--		if (same_clid(&clp->cl_clientid, clid)) {
--			if ((bool)clp->cl_minorversion != sessions)
--				return NULL;
--			return clp;
--		}
--	}
--	return NULL;
-+	return find_client_in_id_table(tbl, clid, sessions);
+ 	struct pnfs_layout_hdr *lo;
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 94ba804..f5f8a47 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -219,6 +219,7 @@ void pnfs_set_layoutcommit(struct nfs_write_data *wdata);
+ void pnfs_cleanup_layoutcommit(struct nfs4_layoutcommit_data *data);
+ int pnfs_layoutcommit_inode(struct inode *inode, bool sync);
+ int _pnfs_return_layout(struct inode *);
++int pnfs_commit_and_return_layout(struct inode *);
+ void pnfs_ld_write_done(struct nfs_write_data *);
+ void pnfs_ld_read_done(struct nfs_read_data *);
+ struct pnfs_layout_segment *pnfs_update_layout(struct inode *ino,
+@@ -407,6 +408,11 @@ static inline int pnfs_return_layout(struct inode *ino)
+ 	return 0;
  }
  
- static bool clp_used_exchangeid(struct nfs4_client *clp)
++static inline int pnfs_commit_and_return_layout(struct inode *inode)
++{
++	return 0;
++}
++
+ static inline bool
+ pnfs_ld_layoutret_on_setattr(struct inode *inode)
+ {
 -- 
-1.7.9.5
+1.8.1.4
 
