@@ -1,126 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from dgate10.ts.fujitsu.com ([80.70.172.49]:35883 "EHLO
-	dgate10.ts.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755978Ab3CEN5W (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Mar 2013 08:57:22 -0500
-Message-Id: <d6437a$44cril@dgate10u.abg.fsc.net>
-Date: 05 Mar 2013 14:57:21 +0100
-From: Bodo Stroesser <bstroesser@ts.fujitsu.com>
-To: neilb@suse.de
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, bstroesser@ts.fujitsu.com
-Subject: Re: [PATCH 1/2] sunrpc/cache: remove races with queuing an upcall.
-Content-Type: text/plain; charset=us-ascii
+Received: from fieldses.org ([174.143.236.118]:60982 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752929Ab3CUO4W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Mar 2013 10:56:22 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 6/9] nfsd4: fix destroy_session race
+Date: Thu, 21 Mar 2013 10:56:17 -0400
+Message-Id: <1363877780-28825-7-git-send-email-bfields@redhat.com>
+In-Reply-To: <1363877780-28825-1-git-send-email-bfields@redhat.com>
+References: <1363877780-28825-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gMDQgTWFyIDIwMTMgMDc6MTA6MDAgKzAxMDAgTmVpbEJyb3duIDxuZWlsYkBzdXNlLmRl
-PiB3cm90ZToKCj4gV2UgY3VycmVudGx5IHF1ZXVlIGFuIHVwY2FsbCBhZnRlciBzZXR0aW5n
-IENBQ0hFX1BFTkRJTkcsCj4gYW5kIGRlcXVldWUgYWZ0ZXIgY2xlYXJpbmcgQ0FDSEVfUEVO
-RElORy4KPiBTbyBhIHJlcXVlc3Qgc2hvdWxkIG9ubHkgYmUgcHJlc2VudCB3aGVuIENBQ0hF
-X1BFTkRJTkcgaXMgc2V0Lgo+IAo+IEhvd2V2ZXIgd2UgZG9uJ3QgY29tYmluZSB0aGUgdGVz
-dCBhbmQgdGhlIGVucXVldWUvZGVxdWV1ZSBpbgo+IGEgcHJvdGVjdGVkIHJlZ2lvbiwgc28g
-aXQgaXMgcG9zc2libGUgKGlmIHVubGlrZWx5KSBmb3IgYSByYWNlCj4gdG8gcmVzdWx0IGlu
-IGEgcmVxdWVzdCBiZWluZyBxdWV1ZWQgd2l0aG91dCBDQUNIRV9QRU5ESU5HIHNldCwKPiBv
-ciBhIHJlcXVlc3QgdG8gYmUgYWJzZW50IGRlc3BpdGUgQ0FDSEVfUEVORElORy4KPiAKPiBT
-bzogaW5jbHVkZSBhIHRlc3QgZm9yIENBQ0hFX1BFTkRJTkcgaW5zaWRlIHRoZSByZWdpb25z
-IG9mCj4gZW5xdWV1ZSBhbmQgZGVxdWV1ZSB3aGVyZSBxdWV1ZV9sb2NrIGlzIGhlbGQsIGFu
-ZCBhYm9ydAo+IHRoZSBvcGVyYXRpb24gaWYgdGhlIHZhbHVlIGlzIG5vdCBhcyBleHBlY3Rl
-ZC4KPiAKPiBBbHNvIHJlbW92ZSB0aGUgJ3JldHVybicgZnJvbSBjYWNoZV9kZXF1ZXVlKCkg
-dG8gZW5zdXJlIGl0IGFsd2F5cwo+IHJlbW92ZXMgYWxsIGVudHJpZXM6ICBBcyB0aGVyZSBp
-cyBubyBsb2NraW5nIGJldHdlZW4gc2V0dGluZwo+IENBQ0hFX1BFTkRJTkcgYW5kIGNhbGxp
-bmcgc3VucnBjX2NhY2hlX3BpcGVfdXBjYWxsIGl0IGlzIG5vdAo+IGluY29uY2VpdmFibGUg
-Zm9yIHNvbWUgb3RoZXIgdGhyZWFkIHRvIGNsZWFyIENBQ0hFX1BFTkRJTkcgYW5kIHRoZW4K
-PiBzb21lb25lIGVsc2UgdG8gc2V0IGl0IGNhbiBjYWxsIHN1bnJwY19jYWNoZV9waXBlX3Vw
-Y2FsbCwgYm90aCBiZWZvcmUKPiB0aGUgb3JpZ2luYWwgdGhyZWFkIGNvbXBsZXRlZCB0aGUg
-Y2FsbC4KPiAKPiBXaXRoIHRoaXMsIGl0IHBlcmZlY3RseSBzYWZlIGFuZCBjb3JyZWN0IHRv
-Ogo+ICAtIGNhbGwgY2FjaGVfZGVxdWV1ZSgpIGlmIGFuZCBvbmx5IGlmIHdlIGhhdmUganVz
-dAo+ICAgIGNsZWFyZWQgQ0FDSEVfUEVORElORwo+ICAtIGNhbGwgc3VucnBjX2NhY2hlX3Bp
-cGVfdXBjYWxsKCkgKHZpYSBjYWNoZV9tYWtlX3VwY2FsbCkKPiAgICBpZiBhbmQgb25seSBp
-ZiB3ZSBoYXZlIGp1c3Qgc2V0IENBQ0hFX1BFTkRJTkcuCj4gCj4gUmVwb3J0ZWQtYnk6IEJv
-ZG8gU3Ryb2Vzc2VyIDxic3Ryb2Vzc2VyQHRzLmZ1aml0c3UuY29tPgo+IFNpZ25lZC1vZmYt
-Ynk6IE5laWxCcm93biA8bmVpbGJAc3VzZS5kZT4KPiAtLS0KPiAgbmV0L3N1bnJwYy9jYWNo
-ZS5jIHwgICAxNyArKysrKysrKysrKysrKy0tLQo+ICAxIGZpbGUgY2hhbmdlZCwgMTQgaW5z
-ZXJ0aW9ucygrKSwgMyBkZWxldGlvbnMoLSkKPiAKPiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJw
-Yy9jYWNoZS5jIGIvbmV0L3N1bnJwYy9jYWNoZS5jCj4gaW5kZXggOWFmYTQzOS4uMDQwMGE5
-MiAxMDA2NDQKPiAtLS0gYS9uZXQvc3VucnBjL2NhY2hlLmMKPiArKysgYi9uZXQvc3VucnBj
-L2NhY2hlLmMKPiBAQCAtMTAyMiw2ICsxMDIyLDkgQEAgc3RhdGljIHZvaWQgY2FjaGVfZGVx
-dWV1ZShzdHJ1Y3QgY2FjaGVfZGV0YWlsICpkZXRhaWwsIHN0cnVjdCBjYWNoZV9oZWFkICpj
-aCkKPiAgCQkJc3RydWN0IGNhY2hlX3JlcXVlc3QgKmNyID0gY29udGFpbmVyX29mKGNxLCBz
-dHJ1Y3QgY2FjaGVfcmVxdWVzdCwgcSk7Cj4gIAkJCWlmIChjci0+aXRlbSAhPSBjaCkKPiAg
-CQkJCWNvbnRpbnVlOwo+ICsJCQlpZiAodGVzdF9iaXQoQ0FDSEVfUEVORElORywgJmNoLT5m
-bGFncykpCj4gKwkJCQkvKiBMb3N0IGEgcmFjZSBhbmQgaXQgaXMgcGVuZGluZyBhZ2FpbiAq
-Lwo+ICsJCQkJYnJlYWs7Cj4gIAkJCWlmIChjci0+cmVhZGVycyAhPSAwKQo+ICAJCQkJY29u
-dGludWU7Cj4gIAkJCWxpc3RfZGVsKCZjci0+cS5saXN0KTsKPiBAQCAtMTAyOSw3ICsxMDMy
-LDYgQEAgc3RhdGljIHZvaWQgY2FjaGVfZGVxdWV1ZShzdHJ1Y3QgY2FjaGVfZGV0YWlsICpk
-ZXRhaWwsIHN0cnVjdCBjYWNoZV9oZWFkICpjaCkKPiAgCQkJY2FjaGVfcHV0KGNyLT5pdGVt
-LCBkZXRhaWwpOwo+ICAJCQlrZnJlZShjci0+YnVmKTsKPiAgCQkJa2ZyZWUoY3IpOwo+IC0J
-CQlyZXR1cm47CgpKdXN0IHJlbW92aW5nICJyZXR1cm4iIGlzIG5vdCBlbm91Z2guIElmIHRo
-ZSBsb29wIG5vIGxvbmdlciBzdG9wcwphZnRlciBkZXF1ZXVlaW5nIHRoZSBmaXJzdCBlbnRy
-eSBmb3VuZCwgc29tZSBvdGhlciBjaGFuZ2VzIGFyZQpuZWNlc3NhcnkgYWxzbzoKCjEpIHVz
-ZSBsaXN0X2Zvcl9lYWNoX2VudHJ5X3NhZmUoKSBpbnN0ZWFkIG9mIGxpc3RfZm9yX2VhY2hf
-ZW50cnkoKQoKMikgZG9uJ3QgY2FsbCBzcGluX3VubG9jaygpIGluIHRoZSBsb29wLgoKVGh1
-cywgYXQgdGhlIGVuZCBvZiB0aGlzIG1haWwgSSBhZGRlZCBhIHJldmlzZWQgcGF0Y2guIFdp
-dGggdGhpcwpwYXRjaCBjYWNoZV9kZXF1ZXVlKCkgbm8gbG9uZ2VyIGZyZWVzIHRoZSByZXF1
-ZXN0cyBpbiB0aGUgbG9vcCwKYnV0IG1vdmVzIHRoZW0gdG8gYSB0ZW1wb3JhcnkgcXVldWUu
-CkFmdGVyIHRoZSBsb29wIGl0IGNhbGxzIHNwaW5fdW5sb2NrKCkgYW5kIGRvZXMgdGhlIGtm
-cmVlKCkgYW5kCmNhY2hlX3B1dCgpIGluIGEgc2Vjb25kIGxvb3AuCgpUaGUgcGF0Y2ggaXMg
-bm90IHRlc3RlZCBvbiBhIG1haW5saW5lIGtlcm5lbC4gSW5zdGVhZCwgSQpwb3J0ZWQgaXQg
-dG8gU0xFUzExIFNQMSAyLjYuMzIuNTktMC43LjEuIE9uIFNMRVMgMTEgdGhlIHRlc3QKaXMg
-c3RpbGwgcnVubmluZyBmaW5lLgoKQmVzdCBSZWdhcmRzLApCb2RvCgo+ICAJCX0KPiAgCXNw
-aW5fdW5sb2NrKCZxdWV1ZV9sb2NrKTsKPiAgfQo+IEBAIC0xMTUxLDYgKzExNTMsNyBAQCBp
-bnQgc3VucnBjX2NhY2hlX3BpcGVfdXBjYWxsKHN0cnVjdCBjYWNoZV9kZXRhaWwgKmRldGFp
-bCwgc3RydWN0IGNhY2hlX2hlYWQgKmgsCj4gIAlzdHJ1Y3QgY2FjaGVfcmVxdWVzdCAqY3Jx
-Owo+ICAJY2hhciAqYnA7Cj4gIAlpbnQgbGVuOwo+ICsJaW50IHJldCA9IDA7Cj4gIAo+ICAJ
-aWYgKCFjYWNoZV9saXN0ZW5lcnNfZXhpc3QoZGV0YWlsKSkgewo+ICAJCXdhcm5fbm9fbGlz
-dGVuZXIoZGV0YWlsKTsKPiBAQCAtMTE4MiwxMCArMTE4NSwxOCBAQCBpbnQgc3VucnBjX2Nh
-Y2hlX3BpcGVfdXBjYWxsKHN0cnVjdCBjYWNoZV9kZXRhaWwgKmRldGFpbCwgc3RydWN0IGNh
-Y2hlX2hlYWQgKmgsCj4gIAljcnEtPmxlbiA9IFBBR0VfU0laRSAtIGxlbjsKPiAgCWNycS0+
-cmVhZGVycyA9IDA7Cj4gIAlzcGluX2xvY2soJnF1ZXVlX2xvY2spOwo+IC0JbGlzdF9hZGRf
-dGFpbCgmY3JxLT5xLmxpc3QsICZkZXRhaWwtPnF1ZXVlKTsKPiArCWlmICh0ZXN0X2JpdChD
-QUNIRV9QRU5ESU5HLCAmaC0+ZmxhZ3MpKQo+ICsJCWxpc3RfYWRkX3RhaWwoJmNycS0+cS5s
-aXN0LCAmZGV0YWlsLT5xdWV1ZSk7Cj4gKwllbHNlCj4gKwkJLyogTG9zdCBhIHJhY2UsIG5v
-IGxvbmdlciBQRU5ESU5HLCBzbyBkb24ndCBlbnF1ZXVlICovCj4gKwkJcmV0ID0gLUVBR0FJ
-TjsKPiAgCXNwaW5fdW5sb2NrKCZxdWV1ZV9sb2NrKTsKPiAgCXdha2VfdXAoJnF1ZXVlX3dh
-aXQpOwo+IC0JcmV0dXJuIDA7Cj4gKwlpZiAocmV0ID09IC1FQUdBSU4pIHsKPiArCQlrZnJl
-ZShidWYpOwo+ICsJCWtmcmVlKGNycSk7Cj4gKwl9Cj4gKwlyZXR1cm4gcmV0Owo+ICB9Cj4g
-IEVYUE9SVF9TWU1CT0xfR1BMKHN1bnJwY19jYWNoZV9waXBlX3VwY2FsbCk7Cj4gIAo+IAoK
-Ci4uLi4uCgpSZXBvcnRlZC1ieTogQm9kbyBTdHJvZXNzZXIgPGJzdHJvZXNzZXJAdHMuZnVq
-aXRzdS5jb20+ClNpZ25lZC1vZmYtYnk6IE5laWxCcm93biA8bmVpbGJAc3VzZS5kZT4KU2ln
-bmVkLW9mZi1ieTogQm9kbyBTdHJvZXNzZXIgPGJzdHJvZXNzZXJAdHMuZnVqaXRzdS5jb20+
-Ci0tLQoKLS0tIGEvbmV0L3N1bnJwYy9jYWNoZS5jCTIwMTMtMDItMjAgMTQ6MDU6MDguMDAw
-MDAwMDAwICswMTAwCisrKyBiL25ldC9zdW5ycGMvY2FjaGUuYwkyMDEzLTAzLTA1IDEzOjMw
-OjEzLjAwMDAwMDAwMCArMDEwMApAQCAtMTAxNSwyMyArMTAxNSwzMSBAQAogCiBzdGF0aWMg
-dm9pZCBjYWNoZV9kZXF1ZXVlKHN0cnVjdCBjYWNoZV9kZXRhaWwgKmRldGFpbCwgc3RydWN0
-IGNhY2hlX2hlYWQgKmNoKQogewotCXN0cnVjdCBjYWNoZV9xdWV1ZSAqY3E7CisJc3RydWN0
-IGNhY2hlX3JlcXVlc3QgKmNyLCAqdG1wOworCXN0cnVjdCBsaXN0X2hlYWQgZGVxdWV1ZWQ7
-CisKKwlJTklUX0xJU1RfSEVBRCgmZGVxdWV1ZWQpOwogCXNwaW5fbG9jaygmcXVldWVfbG9j
-ayk7Ci0JbGlzdF9mb3JfZWFjaF9lbnRyeShjcSwgJmRldGFpbC0+cXVldWUsIGxpc3QpCi0J
-CWlmICghY3EtPnJlYWRlcikgewotCQkJc3RydWN0IGNhY2hlX3JlcXVlc3QgKmNyID0gY29u
-dGFpbmVyX29mKGNxLCBzdHJ1Y3QgY2FjaGVfcmVxdWVzdCwgcSk7CisJbGlzdF9mb3JfZWFj
-aF9lbnRyeV9zYWZlKGNyLCB0bXAsICZkZXRhaWwtPnF1ZXVlLCBxLmxpc3QpCisJCWlmICgh
-Y3ItPnEucmVhZGVyKSB7CiAJCQlpZiAoY3ItPml0ZW0gIT0gY2gpCiAJCQkJY29udGludWU7
-CisJCQlpZiAodGVzdF9iaXQoQ0FDSEVfUEVORElORywgJmNoLT5mbGFncykpCisJCQkJLyog
-TG9zdCBhIHJhY2UgYW5kIGl0IGlzIHBlbmRpbmcgYWdhaW4gKi8KKwkJCQlicmVhazsKIAkJ
-CWlmIChjci0+cmVhZGVycyAhPSAwKQogCQkJCWNvbnRpbnVlOwotCQkJbGlzdF9kZWwoJmNy
-LT5xLmxpc3QpOwotCQkJc3Bpbl91bmxvY2soJnF1ZXVlX2xvY2spOwotCQkJY2FjaGVfcHV0
-KGNyLT5pdGVtLCBkZXRhaWwpOwotCQkJa2ZyZWUoY3ItPmJ1Zik7Ci0JCQlrZnJlZShjcik7
-Ci0JCQlyZXR1cm47CisJCQlsaXN0X21vdmUoJmNyLT5xLmxpc3QsICZkZXF1ZXVlZCk7CiAJ
-CX0KIAlzcGluX3VubG9jaygmcXVldWVfbG9jayk7CisKKwl3aGlsZSAoIWxpc3RfZW1wdHko
-JmRlcXVldWVkKSkgeworCQljciA9IGxpc3RfZW50cnkoZGVxdWV1ZWQubmV4dCwgc3RydWN0
-IGNhY2hlX3JlcXVlc3QsIHEubGlzdCk7CisJCWxpc3RfZGVsKCZjci0+cS5saXN0KTsKKwkJ
-Y2FjaGVfcHV0KGNyLT5pdGVtLCBkZXRhaWwpOworCQlrZnJlZShjci0+YnVmKTsKKwkJa2Zy
-ZWUoY3IpOworCX0KIH0KIAogLyoKQEAgLTExNTEsNiArMTE1OSw3IEBACiAJc3RydWN0IGNh
-Y2hlX3JlcXVlc3QgKmNycTsKIAljaGFyICpicDsKIAlpbnQgbGVuOworCWludCByZXQgPSAw
-OwogCiAJaWYgKCFjYWNoZV9saXN0ZW5lcnNfZXhpc3QoZGV0YWlsKSkgewogCQl3YXJuX25v
-X2xpc3RlbmVyKGRldGFpbCk7CkBAIC0xMTgyLDEwICsxMTkxLDE4IEBACiAJY3JxLT5sZW4g
-PSBQQUdFX1NJWkUgLSBsZW47CiAJY3JxLT5yZWFkZXJzID0gMDsKIAlzcGluX2xvY2soJnF1
-ZXVlX2xvY2spOwotCWxpc3RfYWRkX3RhaWwoJmNycS0+cS5saXN0LCAmZGV0YWlsLT5xdWV1
-ZSk7CisJaWYgKHRlc3RfYml0KENBQ0hFX1BFTkRJTkcsICZoLT5mbGFncykpCisJCWxpc3Rf
-YWRkX3RhaWwoJmNycS0+cS5saXN0LCAmZGV0YWlsLT5xdWV1ZSk7CisJZWxzZQorCQkvKiBM
-b3N0IGEgcmFjZSwgbm8gbG9uZ2VyIFBFTkRJTkcsIHNvIGRvbid0IGVucXVldWUgKi8KKwkJ
-cmV0ID0gLUVBR0FJTjsKIAlzcGluX3VubG9jaygmcXVldWVfbG9jayk7CiAJd2FrZV91cCgm
-cXVldWVfd2FpdCk7Ci0JcmV0dXJuIDA7CisJaWYgKHJldCA9PSAtRUFHQUlOKSB7CisJCWtm
-cmVlKGJ1Zik7CisJCWtmcmVlKGNycSk7CisJfQorCXJldHVybiByZXQ7CiB9CiBFWFBPUlRf
-U1lNQk9MX0dQTChzdW5ycGNfY2FjaGVfcGlwZV91cGNhbGwpOwogCg==
+From: "J. Bruce Fields" <bfields@redhat.com>
 
+destroy_session uses the session and client without continuously holding
+any reference or locks.
+
+Put the whole thing under the state lock for now.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   26 ++++++++++----------------
+ 1 file changed, 10 insertions(+), 16 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 1464d62..05ebcf5 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1922,41 +1922,35 @@ nfsd4_destroy_session(struct svc_rqst *r,
+ 		      struct nfsd4_destroy_session *sessionid)
+ {
+ 	struct nfsd4_session *ses;
+-	__be32 status = nfserr_badsession;
++	__be32 status;
+ 	struct nfsd_net *nn = net_generic(SVC_NET(r), nfsd_net_id);
+ 
+-	/* Notes:
+-	 * - The confirmed nfs4_client->cl_sessionid holds destroyed sessinid
+-	 * - Should we return nfserr_back_chan_busy if waiting for
+-	 *   callbacks on to-be-destroyed session?
+-	 * - Do we need to clear any callback info from previous session?
+-	 */
+-
++	nfs4_lock_state();
++	status = nfserr_not_only_op;
+ 	if (nfsd4_compound_in_session(cstate->session, &sessionid->sessionid)) {
+ 		if (!nfsd4_last_compound_op(r))
+-			return nfserr_not_only_op;
++			goto out;
+ 	}
+ 	dump_sessionid(__func__, &sessionid->sessionid);
+ 	spin_lock(&nn->client_lock);
+ 	ses = find_in_sessionid_hashtbl(&sessionid->sessionid, SVC_NET(r));
+-	if (!ses) {
+-		spin_unlock(&nn->client_lock);
+-		goto out;
+-	}
++	status = nfserr_badsession;
++	if (!ses)
++		goto out_client_lock;
+ 
+ 	unhash_session(ses);
+ 	spin_unlock(&nn->client_lock);
+ 
+-	nfs4_lock_state();
+ 	nfsd4_probe_callback_sync(ses->se_client);
+-	nfs4_unlock_state();
+ 
+ 	spin_lock(&nn->client_lock);
+ 	nfsd4_del_conns(ses);
+ 	nfsd4_put_session_locked(ses);
+-	spin_unlock(&nn->client_lock);
+ 	status = nfs_ok;
++out_client_lock:
++	spin_unlock(&nn->client_lock);
+ out:
++	nfs4_unlock_state();
+ 	return status;
+ }
+ 
+-- 
+1.7.9.5
 
