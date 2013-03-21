@@ -1,80 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34250 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:46112 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757131Ab3C1QOr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 28 Mar 2013 12:14:47 -0400
-Date: Thu, 28 Mar 2013 12:14:44 -0400
-To: Steve Dickson <SteveD@redhat.com>
+	id S1756329Ab3CUNhR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Mar 2013 09:37:17 -0400
+Date: Thu, 21 Mar 2013 09:37:13 -0400
+To: Rick Macklem <rmacklem@uoguelph.ca>
 Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 13/14] NFSD: Server implementation of MAC Labeling
-Message-ID: <20130328161444.GF7080@fieldses.org>
-References: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
- <1364478845-29796-14-git-send-email-SteveD@redhat.com>
+        Christopher T Vogan <cvogan@us.ibm.com>, Neil Brown <neilb@suse.de>,
+        linux-nfs@vger.kernel.org, nfsv4 list <nfsv4@ietf.org>,
+        Tom Haynes <Tom.Haynes@netapp.com>
+Subject: Re: [nfsv4] What is NFSv4 READDIR doesn't return a filehandle....
+Message-ID: <20130321133713.GB27838@fieldses.org>
+References: <1363826022.4790.89.camel@leira.trondhjem.org>
+ <1533754809.4129999.1363830100661.JavaMail.root@erie.cs.uoguelph.ca>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1364478845-29796-14-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1533754809.4129999.1363830100661.JavaMail.root@erie.cs.uoguelph.ca>
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 28, 2013 at 09:54:04AM -0400, Steve Dickson wrote:
-> From: David Quigley <dpquigl@davequigley.com>
+On Wed, Mar 20, 2013 at 09:41:40PM -0400, Rick Macklem wrote:
+> Well, I don't see any difference between a mandatory attribute and a
+> recommended attribute that the server claims to support via the
+> supported_attributes attribute.
 > 
-> This patch adds the ability to encode and decode file labels on the server for
-> the purpose of sending them to the client and also to process label change
-> requests from the client.
+> I do believe that the server can choose not to return all of the
+> mandatory and supported recommended attributes in the readdir reply.
+> (If not, why have a bitmap of returned attributes?)
 > 
-> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
-> ---
->  fs/nfsd/nfs4proc.c |  41 +++++++++++++++++++
->  fs/nfsd/nfs4xdr.c  | 116 ++++++++++++++++++++++++++++++++++++++++++++++++++---
->  fs/nfsd/nfsd.h     |   6 ++-
->  fs/nfsd/vfs.c      |  29 ++++++++++++++
->  fs/nfsd/vfs.h      |   2 +
->  fs/nfsd/xdr4.h     |   3 ++
->  6 files changed, 191 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index ae73175..bb17589 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -42,6 +42,36 @@
->  #include "current_stateid.h"
->  #include "netns.h"
->  
-> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
-> +#include <linux/security.h>
-> +
-> +static inline void
-> +nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct nfs4_label *label, u32 *bmval)
-> +{
-> +	struct inode *inode = resfh->fh_dentry->d_inode;
-> +	int status;
-> +
-> +	mutex_lock(&inode->i_mutex);
-> +	status = security_inode_setsecctx(resfh->fh_dentry,
-> +		label->label, label->len);
-> +	mutex_unlock(&inode->i_mutex);
-> +
-> +	if (status)
-> +		/*
-> +		 * We should probably fail the whole open at this point,
-> +		 * but we've already created or opened the file, so it's 
-> +		 * too late; So this seems the least of evils:
-> +		 */
-> +		bmval[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
+> One example here is the mounted_on_fileid, which some servers choose
+> to only "support" for server mount points. (The FreeBSD server returns
+> this attribute for all file handles, setting it to the same value as
+> fileid for non-mount-points, but I am pretty sure some other servers
+> do not return mounted_on_fileid for non-mount-points.)
 
-Is there any way to avoid this?
+That doesn't sound like traditional unix readdir behavior, and isn't the
+behavior described by the spec; looking at 5661 5.8.2.23 (haven't
+compared other rfcs):
 
-How does the vfs open code handle this?  It has to be able to set a
-security contexts atomically on open(O_CREAT), doesn't it?
+	"If the server detects that there is no mounted point at the
+	target file object, then the value for mounted_on_fileid that it
+	returns is the same as that of the fileid attribute."
+
+Also, the supported_attrs attribute is a filesystem-wide attribute.  I
+don't think we generally allow attributes to vary between "supported"
+and "unsupported" on a single filesystem.
 
 --b.
