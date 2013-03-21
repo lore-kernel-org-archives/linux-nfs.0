@@ -1,184 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:11371 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:25984 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756540Ab3CYLoO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Mar 2013 07:44:14 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 02/14] Security: Add Hook to test if the particular xattr is part of a MAC model.
-Date: Mon, 25 Mar 2013 07:42:46 -0400
-Message-Id: <1364211778-29172-3-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1364211778-29172-1-git-send-email-SteveD@redhat.com>
-References: <1364211778-29172-1-git-send-email-SteveD@redhat.com>
+	id S1754095Ab3CUBkr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Mar 2013 21:40:47 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: fanchaoting <fanchaoting@cn.fujitsu.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] pnfs-block: removing DM device maybe cause oops when
+ call dev_remove
+Date: Thu, 21 Mar 2013 01:40:45 +0000
+Message-ID: <1363830044.4790.97.camel@leira.trondhjem.org>
+References: <51496CC5.7040400@cn.fujitsu.com>
+	 <1363807637.4790.63.camel@leira.trondhjem.org>
+	 <514A5F32.2020603@cn.fujitsu.com>
+In-Reply-To: <514A5F32.2020603@cn.fujitsu.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
-
-The interface to request security labels from user space is the xattr
-interface. When requesting the security label from an NFS server it is
-important to make sure the requested xattr actually is a MAC label. This allows
-us to make sure that we get the desired semantics from the attribute instead of
-something else such as capabilities or a time based LSM.
-
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- include/linux/security.h   | 14 ++++++++++++++
- security/capability.c      |  6 ++++++
- security/security.c        |  6 ++++++
- security/selinux/hooks.c   |  6 ++++++
- security/smack/smack_lsm.c | 11 +++++++++++
- 5 files changed, 43 insertions(+)
-
-diff --git a/include/linux/security.h b/include/linux/security.h
-index a957e7a..8a6faff 100644
---- a/include/linux/security.h
-+++ b/include/linux/security.h
-@@ -1319,6 +1319,13 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
-  *	@pages contains the number of pages.
-  *	Return 0 if permission is granted.
-  *
-+ * @ismaclabel:
-+ *	Check if the extended attribute specified by @name
-+ *	represents a MAC label. Returns 0 if name is a MAC
-+ *	attribute otherwise returns non-zero.
-+ *	@name full extended attribute name to check against
-+ *	LSM as a MAC label.
-+ *
-  * @secid_to_secctx:
-  *	Convert secid to security context.  If secdata is NULL the length of
-  *	the result will be returned in seclen, but no secdata will be returned.
-@@ -1600,6 +1607,7 @@ struct security_operations {
- 
- 	int (*getprocattr) (struct task_struct *p, char *name, char **value);
- 	int (*setprocattr) (struct task_struct *p, char *name, void *value, size_t size);
-+	int (*ismaclabel) (const char *name);
- 	int (*secid_to_secctx) (u32 secid, char **secdata, u32 *seclen);
- 	int (*secctx_to_secid) (const char *secdata, u32 seclen, u32 *secid);
- 	void (*release_secctx) (char *secdata, u32 seclen);
-@@ -1852,6 +1860,7 @@ void security_d_instantiate(struct dentry *dentry, struct inode *inode);
- int security_getprocattr(struct task_struct *p, char *name, char **value);
- int security_setprocattr(struct task_struct *p, char *name, void *value, size_t size);
- int security_netlink_send(struct sock *sk, struct sk_buff *skb);
-+int security_ismaclabel(const char *name);
- int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen);
- int security_secctx_to_secid(const char *secdata, u32 seclen, u32 *secid);
- void security_release_secctx(char *secdata, u32 seclen);
-@@ -2540,6 +2549,11 @@ static inline int security_netlink_send(struct sock *sk, struct sk_buff *skb)
- 	return cap_netlink_send(sk, skb);
- }
- 
-+static inline int security_ismaclabel(const char *name)
-+{
-+	return 0;
-+}
-+
- static inline int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return -EOPNOTSUPP;
-diff --git a/security/capability.c b/security/capability.c
-index 456bd9d..07a6484 100644
---- a/security/capability.c
-+++ b/security/capability.c
-@@ -817,6 +817,11 @@ static int cap_setprocattr(struct task_struct *p, char *name, void *value,
- 	return -EINVAL;
- }
- 
-+static int cap_ismaclabel(const char *name)
-+{
-+	return 0;
-+}
-+
- static int cap_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return -EOPNOTSUPP;
-@@ -1036,6 +1041,7 @@ void __init security_fixup_ops(struct security_operations *ops)
- 	set_to_cap_if_null(ops, d_instantiate);
- 	set_to_cap_if_null(ops, getprocattr);
- 	set_to_cap_if_null(ops, setprocattr);
-+	set_to_cap_if_null(ops, ismaclabel);
- 	set_to_cap_if_null(ops, secid_to_secctx);
- 	set_to_cap_if_null(ops, secctx_to_secid);
- 	set_to_cap_if_null(ops, release_secctx);
-diff --git a/security/security.c b/security/security.c
-index 723a10c..6d7389c 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -1057,6 +1057,12 @@ int security_netlink_send(struct sock *sk, struct sk_buff *skb)
- 	return security_ops->netlink_send(sk, skb);
- }
- 
-+int security_ismaclabel(const char *name)
-+{
-+	return security_ops->ismaclabel(name);
-+}
-+EXPORT_SYMBOL(security_ismaclabel);
-+
- int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return security_ops->secid_to_secctx(secid, secdata, seclen);
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index c7f1905..97231a0 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -5417,6 +5417,11 @@ abort_change:
- 	return error;
- }
- 
-+static int selinux_ismaclabel(const char *name)
-+{
-+	return (strcmp(name, XATTR_SELINUX_SUFFIX) == 0);
-+}
-+
- static int selinux_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
- {
- 	return security_sid_to_context(secid, secdata, seclen);
-@@ -5655,6 +5660,7 @@ static struct security_operations selinux_ops = {
- 	.getprocattr =			selinux_getprocattr,
- 	.setprocattr =			selinux_setprocattr,
- 
-+	.ismaclabel =			selinux_ismaclabel,
- 	.secid_to_secctx =		selinux_secid_to_secctx,
- 	.secctx_to_secid =		selinux_secctx_to_secid,
- 	.release_secctx =		selinux_release_secctx,
-diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
-index fa64740..ca01d71 100644
---- a/security/smack/smack_lsm.c
-+++ b/security/smack/smack_lsm.c
-@@ -3329,6 +3329,16 @@ static void smack_audit_rule_free(void *vrule)
- #endif /* CONFIG_AUDIT */
- 
- /**
-+ * smack_ismaclabel - check if xattr @name references a smack MAC label
-+ * @name: Full xattr name to check.
-+ */
-+static int smack_ismaclabel(const char *name)
-+{
-+	return (strcmp(name, XATTR_SMACK_SUFFIX) == 0);
-+}
-+
-+
-+/**
-  * smack_secid_to_secctx - return the smack label for a secid
-  * @secid: incoming integer
-  * @secdata: destination
-@@ -3524,6 +3534,7 @@ struct security_operations smack_ops = {
- 	.audit_rule_free =		smack_audit_rule_free,
- #endif /* CONFIG_AUDIT */
- 
-+	.ismaclabel =			smack_ismaclabel,
- 	.secid_to_secctx = 		smack_secid_to_secctx,
- 	.secctx_to_secid = 		smack_secctx_to_secid,
- 	.release_secctx = 		smack_release_secctx,
--- 
-1.8.1.4
-
+T24gVGh1LCAyMDEzLTAzLTIxIGF0IDA5OjE1ICswODAwLCBmYW5jaGFvdGluZyB3cm90ZToNCj4g
+TXlrbGVidXN0LCBUcm9uZCDlhpnpgZM6DQo+ID4gT24gV2VkLCAyMDEzLTAzLTIwIGF0IDE2OjAx
+ICswODAwLCBmYW5jaGFvdGluZyB3cm90ZToNCj4gPj4gd2hlbiBwbmZzIGJsb2NrIHVzaW5nIGRl
+dmljZSBtYXBwZXIsaWYgdW1vdW50aW5nIGxhdGVyLGl0IG1heWJlDQo+ID4+IGNhdXNlIG9vcHMu
+IHdlIGFwcGx5ICIxICsgc2l6ZW9mKGJsX3Vtb3VudF9yZXF1ZXN0KSIgbWVtb3J5IGZvcg0KPiA+
+PiBtc2ctPmRhdGEsIHRoZSBtZW1vcnkgbWF5YmUgb3ZlcmZsb3cgd2hlbiB3ZSBkbyAibWVtY3B5
+KCZkYXRhcHRyDQo+ID4+IFtzaXplb2YoYmxfbXNnKV0sICZibF91bW91bnRfcmVxdWVzdCwgc2l6
+ZW9mKGJsX3Vtb3VudF9yZXF1ZXN0KSkiLA0KPiA+PiBiZWNhdXNlIHRoZSBzaXplIG9mIGJsX21z
+ZyBpcyBtb3JlIHRoYW4gMSBieXRlLg0KPiA+Pg0KPiA+PiAgICBTaWduZWQtb2ZmLWJ5OiBmYW5j
+aGFvdGluZzxmYW5jaGFvdGluZ0Bjbi5mdWppdHN1LmNvbT4NCj4gPj4NCj4gPj4gLS0tDQo+ID4+
+ICBmcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXRkbS5jIHwgICAgMiArLQ0KPiA+PiAgMSBm
+aWxlcyBjaGFuZ2VkLCAxIGluc2VydGlvbnMoKyksIDEgZGVsZXRpb25zKC0pDQo+ID4+DQo+ID4+
+IGRpZmYgLS1naXQgYS9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXRkbS5jIGIvZnMvbmZz
+L2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0ZG0uYw0KPiA+PiBpbmRleCA3MzdkODM5Li44ZGY5YWZh
+IDEwMDY0NA0KPiA+PiAtLS0gYS9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXRkbS5jDQo+
+ID4+ICsrKyBiL2ZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xheW91dGRtLmMNCj4gPj4gQEAgLTU1
+LDcgKzU1LDcgQEAgc3RhdGljIHZvaWQgZGV2X3JlbW92ZShzdHJ1Y3QgbmV0ICpuZXQsIGRldl90
+IGRldikNCj4gPj4NCj4gPj4gICAgICAgICBibF9waXBlX21zZy5ibF93cSA9ICZubi0+Ymxfd3E7
+DQo+ID4+ICAgICAgICAgbWVtc2V0KG1zZywgMCwgc2l6ZW9mKCptc2cpKTsNCj4gPj4gLSAgICAg
+ICBtc2ctPmRhdGEgPSBremFsbG9jKDEgKyBzaXplb2YoYmxfdW1vdW50X3JlcXVlc3QpLCBHRlBf
+Tk9GUyk7DQo+ID4+ICsgICAgICAgbXNnLT5kYXRhID0ga3phbGxvYyhzaXplb2YoYmxfbXNnKSAr
+IHNpemVvZihibF91bW91bnRfcmVxdWVzdCksIEdGUF9OT0ZTKTsNCj4gPj4gICAgICAgICBpZiAo
+IW1zZy0+ZGF0YSkNCj4gPj4gICAgICAgICAgICAgICAgIGdvdG8gb3V0Ow0KPiA+Pg0KPiA+IA0K
+PiA+IFdoeSBub3QganVzdCBtb3ZlIHRoZSBjYWxjdWxhdGlvbiBvZiBtc2ctPmxlbiwgYW5kIHRo
+ZW4gdXNlIG1zZy0+bGVuIGluDQo+ID4gdGhlIGFib3ZlIGFsbG9jYXRpb24/DQo+ID4gDQo+IA0K
+PiB5ZXMsIHlvdSBhcmUgcmlnaHQsIHRoYW5rcyBmb3IgcmV2aWV3aW5nLCBoZXJlIGlzIHRoZSBj
+aGFuZ2UgcGF0Y2guDQo+IA0KPiANCj4gd2hlbiBwbmZzIGJsb2NrIHVzaW5nIGRldmljZSBtYXBw
+ZXIsaWYgdW1vdW50aW5nIGxhdGVyLGl0IG1heWJlDQo+IGNhdXNlIG9vcHMuIHdlIGFwcGx5ICIx
+ICsgc2l6ZW9mKGJsX3Vtb3VudF9yZXF1ZXN0KSIgbWVtb3J5IGZvcg0KPiBtc2ctPmRhdGEsIHRo
+ZSBtZW1vcnkgbWF5YmUgb3ZlcmZsb3cgd2hlbiB3ZSBkbyAibWVtY3B5KCZkYXRhcHRyDQo+IFtz
+aXplb2YoYmxfbXNnKV0sICZibF91bW91bnRfcmVxdWVzdCwgc2l6ZW9mKGJsX3Vtb3VudF9yZXF1
+ZXN0KSkiLA0KPiBiZWNhdXNlIHRoZSBzaXplIG9mIGJsX21zZyBpcyBtb3JlIHRoYW4gMSBieXRl
+Lg0KPiANCj4gU2lnbmVkLW9mZi1ieTogZmFuY2hhb3Rpbmc8ZmFuY2hhb3RpbmdAY24uZnVqaXRz
+dS5jb20+DQo+IFJldmlld2VkLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBu
+ZXRhcHAuY29tPg0KPiANCj4gLS0tDQo+ICBmcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2tsYXlvdXRk
+bS5jIHwgICAgNCArKy0tDQo+ICAxIGZpbGVzIGNoYW5nZWQsIDIgaW5zZXJ0aW9ucygrKSwgMiBk
+ZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2ts
+YXlvdXRkbS5jIGIvZnMvbmZzL2Jsb2NrbGF5b3V0L2Jsb2NrbGF5b3V0ZG0uYw0KPiBpbmRleCA3
+MzdkODM5Li42ZmM3YjVjIDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvYmxvY2tsYXlvdXQvYmxvY2ts
+YXlvdXRkbS5jDQo+ICsrKyBiL2ZzL25mcy9ibG9ja2xheW91dC9ibG9ja2xheW91dGRtLmMNCj4g
+QEAgLTU1LDcgKzU1LDggQEAgc3RhdGljIHZvaWQgZGV2X3JlbW92ZShzdHJ1Y3QgbmV0ICpuZXQs
+IGRldl90IGRldikNCj4gDQo+ICAgICAgICAgYmxfcGlwZV9tc2cuYmxfd3EgPSAmbm4tPmJsX3dx
+Ow0KPiAgICAgICAgIG1lbXNldChtc2csIDAsIHNpemVvZigqbXNnKSk7DQo+IC0gICAgICAgbXNn
+LT5kYXRhID0ga3phbGxvYygxICsgc2l6ZW9mKGJsX3Vtb3VudF9yZXF1ZXN0KSwgR0ZQX05PRlMp
+Ow0KPiArICAgICAgIG1zZy0+bGVuID0gc2l6ZW9mKGJsX21zZykgKyBibF9tc2cudG90YWxsZW47
+DQo+ICsgICAgICAgbXNnLT5kYXRhID0ga3phbGxvYyhtc2ctPmxlbiwgR0ZQX05PRlMpOw0KPiAg
+ICAgICAgIGlmICghbXNnLT5kYXRhKQ0KPiAgICAgICAgICAgICAgICAgZ290byBvdXQ7DQo+IA0K
+PiBAQCAtNjYsNyArNjcsNiBAQCBzdGF0aWMgdm9pZCBkZXZfcmVtb3ZlKHN0cnVjdCBuZXQgKm5l
+dCwgZGV2X3QgZGV2KQ0KPiAgICAgICAgIG1lbWNweShtc2ctPmRhdGEsICZibF9tc2csIHNpemVv
+ZihibF9tc2cpKTsNCj4gICAgICAgICBkYXRhcHRyID0gKHVpbnQ4X3QgKikgbXNnLT5kYXRhOw0K
+PiAgICAgICAgIG1lbWNweSgmZGF0YXB0cltzaXplb2YoYmxfbXNnKV0sICZibF91bW91bnRfcmVx
+dWVzdCwgc2l6ZW9mKGJsX3Vtb3VudF9yZXF1ZXN0KSk7DQo+IC0gICAgICAgbXNnLT5sZW4gPSBz
+aXplb2YoYmxfbXNnKSArIGJsX21zZy50b3RhbGxlbjsNCj4gDQo+ICAgICAgICAgYWRkX3dhaXRf
+cXVldWUoJm5uLT5ibF93cSwgJndxKTsNCj4gICAgICAgICBpZiAocnBjX3F1ZXVlX3VwY2FsbChu
+bi0+YmxfZGV2aWNlX3BpcGUsIG1zZykgPCAwKSB7DQoNCllvdXIgZW1haWwgY2xpZW50IGFwcGVh
+cnMgdG8gaGF2ZSByZXBsYWNlZCB0aGUgdGFicyB3aXRoIHNwYWNlDQpjaGFyYWN0ZXJzLiBQbGVh
+c2Ugbm90ZSB0aGF0IHRoZXJlIGFyZSBzdWdnZXN0aW9ucyBpbg0KbGludXgvRG9jdW1lbnRhdGlv
+bi9lbWFpbC1jbGllbnRzLnR4dCBmb3IgaG93IHRvIGNvZXJjZSBUaHVuZGVyYmlyZCB0bw0KY29v
+cGVyYXRlIHdoZW4geW91IGFyZSBzZW5kaW5nIHBhdGNoZXMuDQoNCkFueWhvdywgSSd2ZSBmaXhl
+ZCB1cCB0aGUgd2hpdGVzcGFjZSBkYW1hZ2UsIGFuZCBoYXZlIGFkZGVkIGEgQ2M6DQpzdGFibGVA
+dmdlci5rZXJuZWwub3JnIGJlZm9yZSBhcHBseWluZy4NCg0KVGhhbmtzIQ0KICBUcm9uZA0KLS0g
+DQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lcg0KDQpOZXRBcHAN
+ClRyb25kLk15a2xlYnVzdEBuZXRhcHAuY29tDQp3d3cubmV0YXBwLmNvbQ0K
