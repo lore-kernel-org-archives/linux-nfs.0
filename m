@@ -1,76 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f175.google.com ([209.85.216.175]:58147 "EHLO
-	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751244Ab3CEUDE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Mar 2013 15:03:04 -0500
-From: Tejun Heo <tj@kernel.org>
-To: akpm@linux-foundation.org
-Cc: linux-kernel@vger.kernel.org, bfields@fieldses.org,
-        jackm@dev.mellanox.co.il, ogerlitz@mellanox.com,
-        roland@purestorage.com, dan.magenheimer@oracle.com,
-        gregkh@linuxfoundation.org, vjaquez@igalia.com, rene.sapiens@ti.com,
-        x0095078@ti.com, omar.ramirez@ti.com, Tejun Heo <tj@kernel.org>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH 1/7] nfsd: remove unused get_new_stid()
-Date: Tue,  5 Mar 2013 12:02:46 -0800
-Message-Id: <1362513772-15174-2-git-send-email-tj@kernel.org>
-In-Reply-To: <1362513772-15174-1-git-send-email-tj@kernel.org>
-References: <1362513772-15174-1-git-send-email-tj@kernel.org>
+Received: from mx12.netapp.com ([216.240.18.77]:39814 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755858Ab3CUN7e convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Mar 2013 09:59:34 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Benny Halevy <bhalevy@tonian.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Boaz Harrosh <bharrosh@panasas.com>, Peng Tao <bergwolf@gmail.com>
+Subject: Re: [PATCH 3/3] NFSv4.1: Add a helper pnfs_commit_and_return_layout
+Date: Thu, 21 Mar 2013 13:59:32 +0000
+Message-ID: <1363874371.3557.3.camel@leira.trondhjem.org>
+References: <1363801148-29998-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1363801148-29998-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <1363801148-29998-3-git-send-email-Trond.Myklebust@netapp.com>
+	 <514AEE9A.3090907@tonian.com>
+In-Reply-To: <514AEE9A.3090907@tonian.com>
+Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-get_new_stid() is no longer used since 3abdb607125 ("nfsd4: simplify
-idr allocation").  Remove it.
+On Thu, 2013-03-21 at 13:27 +0200, Benny Halevy wrote:
+> On 2013-03-20 19:39, Trond Myklebust wrote:
+> > In order to be able to safely return the layout in nfs4_proc_setattr,
+> > we need to block new uses of the layout, wait for all outstanding
+> > users of the layout to complete, commit the layout and then return it.
+> > 
+> > This patch adds a helper in order to do all this safely.
+> > 
+> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > Cc: Boaz Harrosh <bharrosh@panasas.com>
+> > ---
+> >  fs/nfs/nfs4proc.c |  2 +-
+> >  fs/nfs/pnfs.c     | 22 ++++++++++++++++++++++
+> >  fs/nfs/pnfs.h     |  6 ++++++
+> >  3 files changed, 29 insertions(+), 1 deletion(-)
+> > 
+> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> > index 5122753..c560c8f 100644
+> > --- a/fs/nfs/nfs4proc.c
+> > +++ b/fs/nfs/nfs4proc.c
+> > @@ -2695,7 +2695,7 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+> >  	int status;
+> >  
+> >  	if (pnfs_ld_layoutret_on_setattr(inode))
+> > -		pnfs_return_layout(inode);
+> > +		pnfs_commit_and_return_layout(inode);
+> >  
+> >  	nfs_fattr_init(fattr);
+> >  	
+> > diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> > index 45badca..5a5e14d 100644
+> > --- a/fs/nfs/pnfs.c
+> > +++ b/fs/nfs/pnfs.c
+> > @@ -868,6 +868,28 @@ out:
+> >  }
+> >  EXPORT_SYMBOL_GPL(_pnfs_return_layout);
+> >  
+> > +int
+> > +pnfs_commit_and_return_layout(struct inode *inode)
+> > +{
+> > +	struct pnfs_layout_hdr *lo;
+> > +	int ret;
+> > +
+> > +	spin_lock(&inode->i_lock);
+> > +	lo = NFS_I(inode)->layout;
+> > +	if (lo == NULL) {
+> > +		spin_unlock(&inode->i_lock);
+> > +		return 0;
+> > +	}
+> > +	/* Block new layoutgets and read/write to ds */
+> > +	lo->plh_block_lgets++;
+> > +	spin_unlock(&inode->i_lock);
+> > +	filemap_fdatawait(inode->i_mapping);
+> > +	ret = pnfs_layoutcommit_inode(inode, true);
+> > +	if (ret == 0)
+> > +		ret = _pnfs_return_layout(inode);
+> 
+> else {
+> 	spin_lock(&inode->i_lock);
+> 	lo->plh_block_lgets--;
+> 	spin_unlock(&inode->i_lock);
+> }
+> 
+> ?
 
-Signed-off-by: Tejun Heo <tj@kernel.org>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
----
- fs/nfsd/nfs4state.c | 31 -------------------------------
- 1 file changed, 31 deletions(-)
+Yeah... We should probably do that unconditionally. That means we need
+to pin the layout, though. I'll fix and resend.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 16d39c6..d91d6db 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -230,37 +230,6 @@ static void nfs4_file_put_access(struct nfs4_file *fp, int oflag)
- 		__nfs4_file_put_access(fp, oflag);
- }
- 
--static inline int get_new_stid(struct nfs4_stid *stid)
--{
--	static int min_stateid = 0;
--	struct idr *stateids = &stid->sc_client->cl_stateids;
--	int new_stid;
--	int error;
--
--	error = idr_get_new_above(stateids, stid, min_stateid, &new_stid);
--	/*
--	 * Note: the necessary preallocation was done in
--	 * nfs4_alloc_stateid().  The idr code caps the number of
--	 * preallocations that can exist at a time, but the state lock
--	 * prevents anyone from using ours before we get here:
--	 */
--	WARN_ON_ONCE(error);
--	/*
--	 * It shouldn't be a problem to reuse an opaque stateid value.
--	 * I don't think it is for 4.1.  But with 4.0 I worry that, for
--	 * example, a stray write retransmission could be accepted by
--	 * the server when it should have been rejected.  Therefore,
--	 * adopt a trick from the sctp code to attempt to maximize the
--	 * amount of time until an id is reused, by ensuring they always
--	 * "increase" (mod INT_MAX):
--	 */
--
--	min_stateid = new_stid+1;
--	if (min_stateid == INT_MAX)
--		min_stateid = 0;
--	return new_stid;
--}
--
- static struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct
- kmem_cache *slab)
- {
 -- 
-1.8.1.4
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
