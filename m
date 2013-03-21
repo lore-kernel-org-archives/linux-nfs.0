@@ -1,17 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from szxga01-in.huawei.com ([119.145.14.64]:14875 "EHLO
-	szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753412Ab3CRJNu convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Mar 2013 05:13:50 -0400
-From: "Liujun (A)" <liujun09@huawei.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: about nfs lock in distribute environment
-Date: Mon, 18 Mar 2013 09:13:46 +0000
-Message-ID: <37479D5B0014824F8D723EAFFF2473B225BAE3D9@szxeml548-mbx.china.huawei.com>
-Content-Type: text/plain; charset="iso-8859-1"
+Received: from mail-ie0-f169.google.com ([209.85.223.169]:38310 "EHLO
+	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753197Ab3CUATd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Mar 2013 20:19:33 -0400
+Received: by mail-ie0-f169.google.com with SMTP id qd14so1386793ieb.14
+        for <linux-nfs@vger.kernel.org>; Wed, 20 Mar 2013 17:19:33 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v2 1/3] SUNRPC: Remove extra xprt_put()
+To: linux-nfs@vger.kernel.org
+Date: Wed, 20 Mar 2013 20:19:32 -0400
+Message-ID: <20130321001932.12106.498.stgit@seurat.1015granger.net>
+In-Reply-To: <20130321001753.12106.50688.stgit@seurat.1015granger.net>
+References: <20130321001753.12106.50688.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+While testing error cases where rpc_new_client() fails, I saw
+some oopses.
 
-Hi, all .  I face a problem for nfs3 lock.  If one node ip failover to othe node,how lock failover action, the under filesystem is gfs2. Thanks.
+If rpc_new_client() fails, it already invokes xprt_put().  Thus
+__rpc_clone_client() does not need to invoke it again.
+
+Introduced by commit 1b63a751 "SUNRPC: Refactor rpc_clone_client()"
+Fri Sep 14, 2012.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: stable@kernel.org
+---
+
+ net/sunrpc/clnt.c |    4 +---
+ 1 files changed, 1 insertions(+), 3 deletions(-)
+
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index dcc446e..9df26b7 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -512,7 +512,7 @@ static struct rpc_clnt *__rpc_clone_client(struct rpc_create_args *args,
+ 	new = rpc_new_client(args, xprt);
+ 	if (IS_ERR(new)) {
+ 		err = PTR_ERR(new);
+-		goto out_put;
++		goto out_err;
+ 	}
+ 
+ 	atomic_inc(&clnt->cl_count);
+@@ -525,8 +525,6 @@ static struct rpc_clnt *__rpc_clone_client(struct rpc_create_args *args,
+ 	new->cl_chatty = clnt->cl_chatty;
+ 	return new;
+ 
+-out_put:
+-	xprt_put(xprt);
+ out_err:
+ 	dprintk("RPC:       %s: returned error %d\n", __func__, err);
+ 	return ERR_PTR(err);
+
