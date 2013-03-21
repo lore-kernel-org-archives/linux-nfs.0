@@ -1,97 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f179.google.com ([209.85.214.179]:64331 "EHLO
-	mail-ob0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752078Ab3CSNL5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Mar 2013 09:11:57 -0400
-Received: by mail-ob0-f179.google.com with SMTP id un3so392490obb.10
-        for <linux-nfs@vger.kernel.org>; Tue, 19 Mar 2013 06:11:57 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 5/6] nfsd: keep stats on worst hash balancing seen so far
-Date: Tue, 19 Mar 2013 09:11:45 -0400
-Message-Id: <1363698706-22036-6-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1363698706-22036-1-git-send-email-jlayton@redhat.com>
-References: <1363698706-22036-1-git-send-email-jlayton@redhat.com>
+Received: from mx12.netapp.com ([216.240.18.77]:57497 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933405Ab3CUOHa convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Mar 2013 10:07:30 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Benny Halevy <bhalevy@tonian.com>, Peng Tao <bergwolf@gmail.com>
+Subject: Re: [PATCH 3/3] NFSv4.1: Add a helper pnfs_commit_and_return_layout
+Date: Thu, 21 Mar 2013 14:07:05 +0000
+Message-ID: <1363874824.3557.9.camel@leira.trondhjem.org>
+References: <1363801148-29998-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <1363801148-29998-2-git-send-email-Trond.Myklebust@netapp.com>
+	 <1363801148-29998-3-git-send-email-Trond.Myklebust@netapp.com>
+	 <514AEE40.5040007@panasas.com>
+In-Reply-To: <514AEE40.5040007@panasas.com>
+Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The typical case with the DRC is a cache miss, so if we keep track of
-the max number of entries that we've ever walked over in a search, then
-we should have a reasonable estimate of the longest hash chain that
-we've ever seen.
+On Thu, 2013-03-21 at 13:25 +0200, Boaz Harrosh wrote:
+> On 03/20/2013 07:39 PM, Trond Myklebust wrote:
+> > In order to be able to safely return the layout in nfs4_proc_setattr,
+> > we need to block new uses of the layout, wait for all outstanding
+> > users of the layout to complete, commit the layout and then return it.
+> > 
+> > This patch adds a helper in order to do all this safely.
+> > 
+> 
+> Hi Trond
+> 
+> It looks like this patchset might actually fix my problem as well.
+> 
+> I've been super swamped with internal work at Panasas, and never got
+> a chance to cleanup and review my experimental fixes. So it looks like
+> you bit me to it. Your work looks much better, and deeper then what I
+> had. Though one concern I have is that I need those for @stable so my
+> change was as minimal as possible, single patch.
 
-With that, we'll also keep track of the total size of the cache when we
-see the longest chain. In the case of a tie, we prefer to track the
-smallest total cache size in order to properly gauge the worst-case
-ratio of max vs. avg chain length.
+I chose to split it into 3 patches because these are really 3 different
+problems. The first patch (hopefully) fixes Benny's Oops. The second
+fixes a memory leak, while the last one fixes a potential data
+corruption.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfsd/nfscache.c | 31 +++++++++++++++++++++++++++----
- 1 file changed, 27 insertions(+), 4 deletions(-)
+> I have just arrived back to Israel today, and will only have time to test
+> all this Next week. I have just the right setup for this. I understand that
+> for you it might be harder because Files-layout does not support segments and
+> my deadlock can only happen with two segments and up.
+> 
+> [BTW: I did not even reviewed the code yet will do ASAP]
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index fd81ca7..17cb0d6 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -41,6 +41,12 @@ static unsigned int		payload_misses;
- /* amount of memory (in bytes) currently consumed by the DRC */
- static unsigned int		drc_mem_usage;
- 
-+/* longest hash chain seen */
-+static unsigned int		longest_chain;
-+
-+/* size of cache when we saw the longest hash chain */
-+static unsigned int		longest_chain_cachesize;
-+
- /*
-  * Calculate the hash index from an XID.
-  */
-@@ -319,15 +325,30 @@ nfsd_cache_match(struct svc_rqst *rqstp, __wsum csum, struct svc_cacherep *rp)
- static struct svc_cacherep *
- nfsd_cache_search(struct svc_rqst *rqstp, __wsum csum)
- {
--	struct svc_cacherep	*rp;
-+	struct svc_cacherep	*rp, *ret = NULL;
- 	struct hlist_head 	*rh;
-+	unsigned int		entries = 0;
- 
- 	rh = &cache_hash[request_hash(rqstp->rq_xid)];
- 	hlist_for_each_entry(rp, rh, c_hash) {
--		if (nfsd_cache_match(rqstp, csum, rp))
--			return rp;
-+		++entries;
-+		if (nfsd_cache_match(rqstp, csum, rp)) {
-+			ret = rp;
-+			break;
-+		}
-+	}
-+
-+	/* tally hash chain length stats */
-+	if (entries > longest_chain) {
-+		longest_chain = entries;
-+		longest_chain_cachesize = num_drc_entries;
-+	} else if (entries == longest_chain) {
-+		/* prefer to keep the smallest cachesize possible here */
-+		longest_chain_cachesize = min(longest_chain_cachesize,
-+						num_drc_entries);
- 	}
--	return NULL;
-+
-+	return ret;
- }
- 
- /*
-@@ -573,6 +594,8 @@ static int nfsd_reply_cache_stats_show(struct seq_file *m, void *v)
- 	seq_printf(m, "cache misses:          %u\n", nfsdstats.rcmisses);
- 	seq_printf(m, "not cached:            %u\n", nfsdstats.rcnocache);
- 	seq_printf(m, "payload misses:        %u\n", payload_misses);
-+	seq_printf(m, "longest chain len:     %u\n", longest_chain);
-+	seq_printf(m, "cachesize at longest:  %u\n", longest_chain_cachesize);
- 	spin_unlock(&cache_lock);
- 	return 0;
- }
+Thanks!
+
 -- 
-1.7.11.7
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
