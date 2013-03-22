@@ -1,94 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:49487 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1754953Ab3C2DmL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Mar 2013 23:42:11 -0400
-Message-ID: <51550C03.1000107@davequigley.com>
-Date: Thu, 28 Mar 2013 23:35:31 -0400
-From: Dave Quigley <dpquigl@davequigley.com>
-MIME-Version: 1.0
+Received: from mail-pa0-f53.google.com ([209.85.220.53]:46246 "EHLO
+	mail-pa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1423295Ab3CVV0l (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Mar 2013 17:26:41 -0400
+Received: by mail-pa0-f53.google.com with SMTP id bh2so65866pad.26
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Mar 2013 14:26:40 -0700 (PDT)
+Date: Fri, 22 Mar 2013 14:21:13 -0700
+From: Kent Overstreet <koverstreet@google.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Steve Dickson <SteveD@redhat.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: Re: [PATCH 13/14] NFSD: Server implementation of MAC Labeling
-References: <1364478845-29796-1-git-send-email-SteveD@redhat.com> <1364478845-29796-14-git-send-email-SteveD@redhat.com> <20130328161444.GF7080@fieldses.org>
-In-Reply-To: <20130328161444.GF7080@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Zach Brown <zab@redhat.com>
+Subject: Re: [PATCH] nfsd: fix bad offset use
+Message-ID: <20130322212113.GD19091@google.com>
+References: <1363976304-26093-1-git-send-email-koverstreet@google.com>
+ <20130322205353.GA14438@fieldses.org>
+ <20130322205434.GB14438@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20130322205434.GB14438@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 3/28/2013 12:14 PM, J. Bruce Fields wrote:
-> On Thu, Mar 28, 2013 at 09:54:04AM -0400, Steve Dickson wrote:
->> From: David Quigley <dpquigl@davequigley.com>
->>
->> This patch adds the ability to encode and decode file labels on the server for
->> the purpose of sending them to the client and also to process label change
->> requests from the client.
->>
->> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
->> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
->> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
->> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
->> ---
->>   fs/nfsd/nfs4proc.c |  41 +++++++++++++++++++
->>   fs/nfsd/nfs4xdr.c  | 116 ++++++++++++++++++++++++++++++++++++++++++++++++++---
->>   fs/nfsd/nfsd.h     |   6 ++-
->>   fs/nfsd/vfs.c      |  29 ++++++++++++++
->>   fs/nfsd/vfs.h      |   2 +
->>   fs/nfsd/xdr4.h     |   3 ++
->>   6 files changed, 191 insertions(+), 6 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->> index ae73175..bb17589 100644
->> --- a/fs/nfsd/nfs4proc.c
->> +++ b/fs/nfsd/nfs4proc.c
->> @@ -42,6 +42,36 @@
->>   #include "current_stateid.h"
->>   #include "netns.h"
->>
->> +#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
->> +#include <linux/security.h>
->> +
->> +static inline void
->> +nfsd4_security_inode_setsecctx(struct svc_fh *resfh, struct nfs4_label *label, u32 *bmval)
->> +{
->> +	struct inode *inode = resfh->fh_dentry->d_inode;
->> +	int status;
->> +
->> +	mutex_lock(&inode->i_mutex);
->> +	status = security_inode_setsecctx(resfh->fh_dentry,
->> +		label->label, label->len);
->> +	mutex_unlock(&inode->i_mutex);
->> +
->> +	if (status)
->> +		/*
->> +		 * We should probably fail the whole open at this point,
->> +		 * but we've already created or opened the file, so it's
->> +		 * too late; So this seems the least of evils:
->> +		 */
->> +		bmval[2] &= ~FATTR4_WORD2_SECURITY_LABEL;
->
-> Is there any way to avoid this?
->
-> How does the vfs open code handle this?  It has to be able to set a
-> security contexts atomically on open(O_CREAT), doesn't it?
->
+On Fri, Mar 22, 2013 at 04:54:34PM -0400, J. Bruce Fields wrote:
+> On Fri, Mar 22, 2013 at 04:53:53PM -0400, J. Bruce Fields wrote:
+> > On Fri, Mar 22, 2013 at 11:18:24AM -0700, Kent Overstreet wrote:
+> > > vfs_writev() updates the offset argument - but the code then passes the
+> > > offset to vfs_fsync_range(). Since offset now points to the offset after
+> > > what was just written, this is probably not what was intended
+> > 
+> > Whoops--thanks!  Looks like this was introduced by my
+> > face15025ffdf664de95e86ae831544154d26c9c "nfsd: use vfs_fsync_range(),
+> > not O_SYNC, for stable writes", in 3.8.
+> > 
+> > I'll queue up for 3.9 and stable.
+> 
+> (By the way, out of curiosity: how did you stumble across this?)
 
-I believe the way this is handled is that the inode is created and 
-labeled and then only after that is it bound to the namespace. Because 
-of that ordering we can fail and release the inode without it ever 
-having a dentry in the namespace.
-
+Just reading code - I've been trying to figure out how to improve the
+way *pos pointers are passed around everywhere and I was looking at all
+the users of various vfs code.
 
 > --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
-
+> 
+> > 
+> > --b.
+> > 
+> > > 
+> > > Signed-off-by: Kent Overstreet <koverstreet@google.com>
+> > > Cc: "J. Bruce Fields" <bfields@fieldses.org>
+> > > Cc: Al Viro <viro@zeniv.linux.org.uk>
+> > > Cc: "Eric W. Biederman" <ebiederm@xmission.com>
+> > > Cc: Zach Brown <zab@redhat.com>
+> > > ---
+> > >  fs/nfsd/vfs.c | 3 ++-
+> > >  1 file changed, 2 insertions(+), 1 deletion(-)
+> > > 
+> > > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> > > index 2a7eb53..2b2e239 100644
+> > > --- a/fs/nfsd/vfs.c
+> > > +++ b/fs/nfsd/vfs.c
+> > > @@ -1013,6 +1013,7 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
+> > >  	int			host_err;
+> > >  	int			stable = *stablep;
+> > >  	int			use_wgather;
+> > > +	loff_t			pos = offset;
+> > >  
+> > >  	dentry = file->f_path.dentry;
+> > >  	inode = dentry->d_inode;
+> > > @@ -1025,7 +1026,7 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
+> > >  
+> > >  	/* Write the data. */
+> > >  	oldfs = get_fs(); set_fs(KERNEL_DS);
+> > > -	host_err = vfs_writev(file, (struct iovec __user *)vec, vlen, &offset);
+> > > +	host_err = vfs_writev(file, (struct iovec __user *)vec, vlen, &pos);
+> > >  	set_fs(oldfs);
+> > >  	if (host_err < 0)
+> > >  		goto out_nfserr;
+> > > -- 
+> > > 1.8.1.3
+> > > 
