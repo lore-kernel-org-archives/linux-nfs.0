@@ -1,164 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38318 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933497Ab3CZOql (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Mar 2013 10:46:41 -0400
-Date: Tue, 26 Mar 2013 10:46:40 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Linux Kernel <linux-kernel@vger.kernel.org>
-Subject: Re: kernel 3.8.4 : kernel BUG at fs/locks.c:2093!   part #2
-Message-ID: <20130326144640.GB3353@fieldses.org>
-References: <514F31AF.3080709@gmx.de>
- <20130325220143.GD10887@fieldses.org>
+Received: from mail-wg0-f42.google.com ([74.125.82.42]:61530 "EHLO
+	mail-wg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932150Ab3CVB2k (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Mar 2013 21:28:40 -0400
+Received: by mail-wg0-f42.google.com with SMTP id 12so1770474wgh.1
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Mar 2013 18:28:39 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20130325220143.GD10887@fieldses.org>
+In-Reply-To: <514B82C0.2020401@panasas.com>
+References: <1363875181-7147-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1363875181-7147-2-git-send-email-Trond.Myklebust@netapp.com>
+ <20130321170614.GA4581@X61> <514B82C0.2020401@panasas.com>
+From: Peng Tao <bergwolf@gmail.com>
+Date: Fri, 22 Mar 2013 09:28:18 +0800
+Message-ID: <CA+a=Yy4kck6qny-46VkzzpaV6RKWYBHrxoFRZYG1MqF+PZcOJw@mail.gmail.com>
+Subject: Re: [PATCH v2 2/3] NFSv4.1: Always clear the NFS_INO_LAYOUTCOMMIT in layoutreturn
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>, linux-nfs@vger.kernel.org,
+        Benny Halevy <bhalevy@tonian.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 25, 2013 at 06:01:43PM -0400, bfields wrote:
-> On Sun, Mar 24, 2013 at 06:02:39PM +0100, Toralf Förster wrote:
-> > The following bug was triggered twice under a stable 3.8.4 kernel if I export a NFS (v4) directory
-> > and mount it within a user mode linux (running at the same system) and run within that UML trinity
-> > (16 UML trinity processes at a 4-core host CPU) with victim files+directories within that NFS directory.
-> > 
-> > I could not trigger that bug at the host kernel if I run trinity within UML without victim files
-> > - therefore the issue seems to be tied to NFS. The syslog messages are :
-> 
-> Thanks!
-> 
-> fs/locks.c:2093 says that we did the final fput of a file that still had
-> posix locks held on it.
-> 
-> I can't see how that would happen, but admittedly the nfsd4 code here is
-> much too complicated for its own good.
-> 
-> If it were possible it would be useful to know what lead up to this.  A
-> network trace (tcpdump -s0 -wtmp.pcap, then send me tmp.pcap) would be
-> useful for that, but I fear it's probably too huge by the time you hit
-> the bug.
-> 
-> (The following warning ("rcu_sched self-detected stall") looks like the
-> result of BUGing while holding file_lock_lock.  That BUG should probably
-> be downgraded to a WARN_ON_ONCE.)
+On Fri, Mar 22, 2013 at 5:59 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+> On 03/21/2013 07:06 PM, Peng Tao wrote:
+>> On Thu, Mar 21, 2013 at 10:13:00AM -0400, Trond Myklebust wrote:
+>> <snip>
+>>> @@ -1458,7 +1479,6 @@ static void pnfs_ld_handle_write_error(struct nfs_write_data *data)
+>>>      dprintk("pnfs write error = %d\n", hdr->pnfs_error);
+>>>      if (NFS_SERVER(hdr->inode)->pnfs_curr_ld->flags &
+>>>          PNFS_LAYOUTRET_ON_ERROR) {
+>>> -            clear_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(hdr->inode)->flags);
+>> Hi Trond and Boaz,
+>>
+>> If object layout requires layout being committed before returned (as fixed in
+>> the 3/3 patch), is it a potential problem to directly return layout here as
+>> well? e.g., if one lseg is successfully written and pending layoutcommit,
+>> then another lseg of the same file failed read/write, then layout will be
+>> returned w/o layoutcommit. For blocklayout, it is a potential data corruption
+>> and that's why block layout doesn't set PNFS_LAYOUTRET_ON_ERROR bit. So
+>> I'm wondering if object will suffer from the same issue?
+>>
+>
+> Hi Tao
+>
+> No, not at all. The objects layout has error reported as part of the
+> layout_return OPT. With exact devices that failed and why. In fact the
+> data should not be "committed" per ce, but a recovery process must be
+> preformed because we know that not all data of a stripe was committed
+> including parity, and the raid5 check-some is surly wrong. This is why
+> there is an error bit in layout_commit OPT to denote that this is not
+> a true commit and that there is an Error report on the way, for those
+> clients that must always lo_commit before lo_return even on Error.
+>
+Thanks for explaining. I learned more about objects :)
 
-Can you run with test patches?
-
-This just makes nfsd's fput calls synchronous so that we see in the
-backtrace who called them.
-
-(But assuming it does turn out to be one of these callers, we may then
-need some more printk's in the nfsd code...).
-
---b.
-
-commit 27a3395a72e1d9be121f5493e7a330d60b3d1de3
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Tue Mar 26 09:37:07 2013 -0400
-
-    nfsd4: convert fput to fput_sync for debugging purposes
-    
-    Just a temporary hack to get backtraces out of __fput failures.
-    
-    Also, demote a BUG to a WARN_ON_ONCE.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/file_table.c b/fs/file_table.c
-index de9e965..79cb999 100644
---- a/fs/file_table.c
-+++ b/fs/file_table.c
-@@ -337,6 +337,8 @@ void __fput_sync(struct file *file)
- 	}
- }
- 
-+EXPORT_SYMBOL(__fput_sync);
-+
- EXPORT_SYMBOL(fput);
- 
- void put_filp(struct file *file)
-diff --git a/fs/locks.c b/fs/locks.c
-index a94e331..c962161 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -2090,7 +2090,7 @@ void locks_remove_flock(struct file *filp)
- 				continue;
- 			}
- 			/* What? */
--			BUG();
-+			WARN_ON_ONCE(1);
-  		}
- 		before = &fl->fl_next;
- 	}
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 9d1c5db..c01c60c 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -951,7 +951,7 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 			     write->wr_offset, rqstp->rq_vec, nvecs,
- 			     &cnt, &write->wr_how_written);
- 	if (filp)
--		fput(filp);
-+		__fput_sync(filp);
- 
- 	write->wr_bytes_written = cnt;
- 
-@@ -1325,7 +1325,7 @@ encode_op:
- 		}
- 		/* XXX Ugh, we need to get rid of this kind of special case: */
- 		if (op->opnum == OP_READ && op->u.read.rd_filp)
--			fput(op->u.read.rd_filp);
-+			__fput_sync(op->u.read.rd_filp);
- 
- 		nfsd4_increment_op_stats(op->opnum);
- 	}
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index ba6fdd4..dfdf54c 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -546,7 +546,7 @@ nfsd4_shutdown_recdir(struct nfsd_net *nn)
- {
- 	if (!nn->rec_file)
- 		return;
--	fput(nn->rec_file);
-+	__fput_sync(nn->rec_file);
- 	nn->rec_file = NULL;
- }
- 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index a8309c6..0f38b39 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -201,7 +201,7 @@ static void nfs4_file_get_access(struct nfs4_file *fp, int oflag)
- static void nfs4_file_put_fd(struct nfs4_file *fp, int oflag)
- {
- 	if (fp->fi_fds[oflag]) {
--		fput(fp->fi_fds[oflag]);
-+		__fput_sync(fp->fi_fds[oflag]);
- 		fp->fi_fds[oflag] = NULL;
- 	}
- }
-@@ -353,7 +353,7 @@ static void nfs4_put_deleg_lease(struct nfs4_file *fp)
- 	if (atomic_dec_and_test(&fp->fi_delegees)) {
- 		vfs_setlease(fp->fi_deleg_file, F_UNLCK, &fp->fi_lease);
- 		fp->fi_lease = NULL;
--		fput(fp->fi_deleg_file);
-+		__fput_sync(fp->fi_deleg_file);
- 		fp->fi_deleg_file = NULL;
- 	}
- }
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index d586117..76bb67c 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -826,7 +826,7 @@ out:
- void
- nfsd_close(struct file *filp)
- {
--	fput(filp);
-+	__fput_sync(filp);
- }
- 
- /*
+Cheers,
+Tao
