@@ -1,142 +1,200 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:19360 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756641Ab3CDOro convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Mar 2013 09:47:44 -0500
-Date: Mon, 4 Mar 2013 09:47:36 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>, <devel@openvz.org>,
-        <Trond.Myklebust@netapp.com>, <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] nfsd: try nfsdcld client tracker in containers
-Message-ID: <20130304094736.57a288b9@tlielax.poochiereds.net>
-In-Reply-To: <51344175.40503@parallels.com>
-References: <20130301082423.21663.37825.stgit@localhost.localdomain>
-	<20130301080911.2a1a28a2@corrin.poochiereds.net>
-	<51344175.40503@parallels.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-ia0-f176.google.com ([209.85.210.176]:35569 "EHLO
+	mail-ia0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964772Ab3CVQxO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Mar 2013 12:53:14 -0400
+Received: by mail-ia0-f176.google.com with SMTP id i1so3702900iaa.35
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Mar 2013 09:53:14 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v3 3/3] NFS: Use server-recommended security flavor by default
+ (NFSv3)
+To: linux-nfs@vger.kernel.org
+Date: Fri, 22 Mar 2013 12:53:17 -0400
+Message-ID: <20130322165317.1678.68496.stgit@seurat.1015granger.net>
+In-Reply-To: <20130322165119.1678.97556.stgit@seurat.1015granger.net>
+References: <20130322165119.1678.97556.stgit@seurat.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 4 Mar 2013 10:38:45 +0400
-Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
+Since commit ec88f28d in 2009, checking if the user-specified flavor
+is in the server's flavor list has been the source of a few
+noticeable regressions (now fixed), but there is one that is still
+vexing.
 
-> 01.03.2013 17:09, Jeff Layton пишет:
-> > On Fri, 01 Mar 2013 11:24:23 +0300
-> > Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
-> >
-> >> Currently, UMH and Legacy trackers are disabled in containers.
-> >> But existent logic can lookup nfs4_recoverydir in a container, and in this
-> >> case will try to init Legacy tracker and skip nfsdcld client tracker.
-> >> This actually means, that no client tracker will be started in a container at
-> >> all, because Legacy tracker init will return -EINVAL for a container.
-> >> So, let's change "-EINVAL" on "-ENOTSUPP" for legacy tracker init call in a
-> >> container and in case of this error code, try nfsdcld client tracker instead
-> >> of returning a error.
-> >>
-> >> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> >> ---
-> >>   fs/nfsd/nfs4recover.c |   12 ++++++++----
-> >>   1 files changed, 8 insertions(+), 4 deletions(-)
-> >>
-> >> diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-> >> index e0ae1cf..8aa069a 100644
-> >> --- a/fs/nfsd/nfs4recover.c
-> >> +++ b/fs/nfsd/nfs4recover.c
-> >> @@ -524,7 +524,7 @@ nfsd4_legacy_tracking_init(struct net *net)
-> >>   	if (net != &init_net) {
-> >>   		WARN(1, KERN_ERR "NFSD: attempt to initialize legacy client "
-> >>   			"tracking in a container!\n");
-> >> -		return -EINVAL;
-> >> +		return -ENOTSUPP;
-> >>   	}
-> >>
-> >>   	status = nfs4_legacy_state_init(net);
-> >> @@ -1285,14 +1285,17 @@ nfsd4_client_tracking_init(struct net *net)
-> >>   	/*
-> >>   	 * See if the recoverydir exists and is a directory. If it is,
-> >>   	 * then use the legacy ops.
-> >> +	 * If legacy ops init return -ENOSUPP, then we are in a container and
-> >> +	 * should try nfsdcld client tracking.
-> >>   	 */
-> >>   	nn->client_tracking_ops = &nfsd4_legacy_tracking_ops;
-> >>   	status = kern_path(nfs4_recoverydir(), LOOKUP_FOLLOW, &path);
-> >>   	if (!status) {
-> >> -		status = S_ISDIR(path.dentry->d_inode->i_mode);
-> >> +		if (S_ISDIR(path.dentry->d_inode->i_mode))
-> >> +			status = nn->client_tracking_ops->init(net);
-> >>   		path_put(&path);
-> >> -		if (status)
-> >> -			goto do_init;
-> >> +		if (status != -ENOTSUPP)
-> >> +			goto do_exit;
-> >>   	}
-> >>
-> >>   	/* Finally, try to use nfsdcld */
-> >> @@ -1302,6 +1305,7 @@ nfsd4_client_tracking_init(struct net *net)
-> >>   			"nfsdcltrack.\n");
-> >>   do_init:
-> >>   	status = nn->client_tracking_ops->init(net);
-> >> +do_exit:
-> >>   	if (status) {
-> >>   		printk(KERN_WARNING "NFSD: Unable to initialize client "
-> >>   				    "recovery tracking! (%d)\n", status);
-> >>
-> >
-> > Seems OK as a stopgap fix. We're removing nfsdcld in 3.10 though so
-> > this won't help prospective users of nfsd in a container for
-> > long...particularly since our expectation is that no one has actually
-> > ever deployed nfsdcld.
-> >
-> > This is something that really needs to be fixed the right way since a
-> > NFS server that doesn't allow clients to reclaim state after a reboot is
-> > potentially dangerous...
-> >
-> > I'm afraid I haven't been following along as closely as I should have
-> > been. What's the rationale for disabling the UMH upcall? Is there no
-> > way to make it so that new processes it spawns are done within the
-> > correct container?
-> >
-> 
-> Straight answer is "no, there is no way to do so": UMH threads are spawned in "init" context.
-> But we solve the problem in a slightly different way.
-> 
-> So, here are my ideas about all the trackers (I haven't shared them yet, so I do it now):
-> 
-> 1) nfsdcld uses SUNRPC pipefs, which is containerised already. So it was very easy to containerise it.
-> 
+An NFS server can list AUTH_NULL in its flavor list, which suggests
+a client should try to mount the server with the flavor of the
+client's choice, but the server will squash all accesses.  In some
+cases, our client fails to mount a server because of this check,
+when the mount could have proceeded successfully.
 
-Right, but we want this one to just go away. It got superceded by the
-UMH upcall and probably shouldn't have been merged in the first place
-(mea culpa). That'll get ripped out when the 3.10 merge window opens,
-so we don't really want to encourage anyone to use it.
+Skip this check if the user has specified "sec=" on the mount
+command line.  But do consult the server-provided flavor list to
+choose a security flavor if no sec= option is specified on the mount
+command.
 
-> 2) Legacy tracker uses path. All is great and simple until we imagine two containers with the same root. In this case we have to make sure, that we can start 
-> only one NFSd with this path (I don't care about user-space problems).
-> I was thinking about global in-kernel RB tree for all paths. But maybe even a simple global list is enough (not so many NFSd can be started, and it not a 
-> fast-path to optimise the search over all used paths).
-> 
+If a server lists Kerberos pseudoflavors before "sys" in its export
+options, our client now chooses Kerberos over AUTH_UNIX for mount
+points, when no security flavor is specified by the mount command.
+This could be surprising to some administrators or users, who would
+then need to have Kerberos credentials to access the export.
 
-Well, you have a path, sure. In principle you could make that path
-relative to the correct namespace for each server, and maybe allow this
-to be settable on a per-namespace basis.
+Or, a client administrator may not have enabled rpc.gssd.  In this
+case, auth_rpcgss.ko might still be loadable, which is enough for
+the new logic to choose Kerberos over AUTH_UNIX.  But the mount
+would fail since no GSS context can be created without rpc.gssd
+running.
 
-That said, it's probably best not to put to much effort into this
-either. We want to eventually deprecate the legacy tracker too. So
-limiting its use to the "init" namespace seems like a reasonable
-stopgap fix, IMO...
+To retain the use of AUTH_UNIX by default:
 
-> 3) UMH lookup and execute binary from current root. This problem just chasing all the containerisation work. So, either UHM logic have to updated (which is not 
-> trivial or easy to implement and push upstream), or process root have to swapped to the right (container's) one. This, BTW, not that hard, because UMH call 
-> accept "init" callback, which can be used to swap the root right before do_execve() is called.
-> 
-> What do you, guys, think about all this?
-> 
+  o  The server administrator can ensure that "sys" is listed before
+     Kerberos flavors in its export security options (see
+     exports(5)),
 
-You mean just change to use call_usermodehelper_fns() and pass in the
-correct namespace info? Yeah that looks like the easiest fix and sounds
-quite reasonable.
+  o  The client administrator can explicitly specify "sec=sys" on
+     its mount command line (see nfs(5)),
 
--- 
-Jeff Layton <jlayton@redhat.com>
+  o  The client administrator can use "Sec=sys" in an appropriate
+     section of /etc/nfsmount.conf (see nfsmount.conf(5)), or
+
+  o  The client administrator can blacklist auth_rpcgss.ko.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ fs/nfs/nfs4super.c |    2 +
+ fs/nfs/super.c     |   80 +++++++++++++++++++++++++++-------------------------
+ 2 files changed, 44 insertions(+), 38 deletions(-)
+
+diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+index 569b166..a5e1a30 100644
+--- a/fs/nfs/nfs4super.c
++++ b/fs/nfs/nfs4super.c
+@@ -252,6 +252,8 @@ struct dentry *nfs4_try_mount(int flags, const char *dev_name,
+ 
+ 	dfprintk(MOUNT, "--> nfs4_try_mount()\n");
+ 
++	if (data->auth_flavors[0] == RPC_AUTH_MAXFLAVOR)
++		data->auth_flavors[0] = RPC_AUTH_UNIX;
+ 	export_path = data->nfs_server.export_path;
+ 	data->nfs_server.export_path = "/";
+ 	root_mnt = nfs_do_root_mount(&nfs4_remote_fs_type, flags, mount_info,
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 95cdcb2..cc858f6 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -919,7 +919,7 @@ static struct nfs_parsed_mount_data *nfs_alloc_parsed_mount_data(void)
+ 		data->mount_server.port	= NFS_UNSPEC_PORT;
+ 		data->nfs_server.port	= NFS_UNSPEC_PORT;
+ 		data->nfs_server.protocol = XPRT_TRANSPORT_TCP;
+-		data->auth_flavors[0]	= RPC_AUTH_UNIX;
++		data->auth_flavors[0]	= RPC_AUTH_MAXFLAVOR;
+ 		data->auth_flavor_len	= 1;
+ 		data->minorversion	= 0;
+ 		data->need_mount	= true;
+@@ -1607,49 +1607,57 @@ out_security_failure:
+ }
+ 
+ /*
+- * Match the requested auth flavors with the list returned by
+- * the server.  Returns zero and sets the mount's authentication
+- * flavor on success; returns -EACCES if server does not support
+- * the requested flavor.
++ * Select a security flavor for this mount.  The selected flavor
++ * is planted in args->auth_flavors[0].
+  */
+-static int nfs_walk_authlist(struct nfs_parsed_mount_data *args,
+-			     struct nfs_mount_request *request)
++static void nfs_select_flavor(struct nfs_parsed_mount_data *args,
++			      struct nfs_mount_request *request)
+ {
+-	unsigned int i, j, server_authlist_len = *(request->auth_flav_len);
++	unsigned int i, count = *(request->auth_flav_len);
++	rpc_authflavor_t flavor;
++
++	if (args->auth_flavors[0] != RPC_AUTH_MAXFLAVOR)
++		goto out;
++
++	/*
++	 * The NFSv2 MNT operation does not return a flavor list.
++	 */
++	if (args->mount_server.version != NFS_MNT3_VERSION)
++		goto out_default;
+ 
+ 	/*
+ 	 * Certain releases of Linux's mountd return an empty
+-	 * flavor list.  To prevent behavioral regression with
+-	 * these servers (ie. rejecting mounts that used to
+-	 * succeed), revert to pre-2.6.32 behavior (no checking)
+-	 * if the returned flavor list is empty.
++	 * flavor list in some cases.
+ 	 */
+-	if (server_authlist_len == 0)
+-		return 0;
++	if (count == 0)
++		goto out_default;
+ 
+ 	/*
+-	 * We avoid sophisticated negotiating here, as there are
+-	 * plenty of cases where we can get it wrong, providing
+-	 * either too little or too much security.
+-	 *
+ 	 * RFC 2623, section 2.7 suggests we SHOULD prefer the
+ 	 * flavor listed first.  However, some servers list
+-	 * AUTH_NULL first.  Our caller plants AUTH_SYS, the
+-	 * preferred default, in args->auth_flavors[0] if user
+-	 * didn't specify sec= mount option.
++	 * AUTH_NULL first.  Avoid ever choosing AUTH_NULL.
+ 	 */
+-	for (i = 0; i < args->auth_flavor_len; i++)
+-		for (j = 0; j < server_authlist_len; j++)
+-			if (args->auth_flavors[i] == request->auth_flavs[j]) {
+-				dfprintk(MOUNT, "NFS: using auth flavor %d\n",
+-					request->auth_flavs[j]);
+-				args->auth_flavors[0] = request->auth_flavs[j];
+-				return 0;
+-			}
++	for (i = 0; i < count; i++) {
++		struct rpcsec_gss_info info;
++
++		flavor = request->auth_flavs[i];
++		switch (flavor) {
++		case RPC_AUTH_UNIX:
++			goto out_set;
++		case RPC_AUTH_NULL:
++			continue;
++		default:
++			if (rpcauth_get_gssinfo(flavor, &info) == 0)
++				goto out_set;
++		}
++	}
+ 
+-	dfprintk(MOUNT, "NFS: server does not support requested auth flavor\n");
+-	nfs_umount(request);
+-	return -EACCES;
++out_default:
++	flavor = RPC_AUTH_UNIX;
++out_set:
++	args->auth_flavors[0] = flavor;
++out:
++	dfprintk(MOUNT, "NFS: using auth flavor %d\n", args->auth_flavors[0]);
+ }
+ 
+ /*
+@@ -1712,12 +1720,8 @@ static int nfs_request_mount(struct nfs_parsed_mount_data *args,
+ 		return status;
+ 	}
+ 
+-	/*
+-	 * MNTv1 (NFSv2) does not support auth flavor negotiation.
+-	 */
+-	if (args->mount_server.version != NFS_MNT3_VERSION)
+-		return 0;
+-	return nfs_walk_authlist(args, &request);
++	nfs_select_flavor(args, &request);
++	return 0;
+ }
+ 
+ struct dentry *nfs_try_mount(int flags, const char *dev_name,
+
