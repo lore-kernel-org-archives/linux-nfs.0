@@ -1,40 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:54554 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752351Ab3CDGKk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Mar 2013 01:10:40 -0500
-From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Mon, 04 Mar 2013 17:09:32 +1100
-Subject: [PATCH 0/2] two fixes for races in SUNRPC. - Take 2.
-Cc: Bodo Stroesser <bstroesser@ts.fujitsu.com>
-Cc: linux-nfs@vger.kernel.org
-Message-ID: <20130304060801.1352.97857.stgit@notabene.brown>
+Received: from mail-ie0-f177.google.com ([209.85.223.177]:36489 "EHLO
+	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1161033Ab3CVQw5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Mar 2013 12:52:57 -0400
+Received: by mail-ie0-f177.google.com with SMTP id tp5so731003ieb.36
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Mar 2013 09:52:57 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v3 1/3] SUNRPC: Remove extra xprt_put()
+To: linux-nfs@vger.kernel.org
+Date: Fri, 22 Mar 2013 12:52:59 -0400
+Message-ID: <20130322165259.1678.54960.stgit@seurat.1015granger.net>
+In-Reply-To: <20130322165119.1678.97556.stgit@seurat.1015granger.net>
+References: <20130322165119.1678.97556.stgit@seurat.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-hi,
- these two patches fix (I believe) the races recently reported
-by Bodo Stroesser.
+While testing error cases where rpc_new_client() fails, I saw
+some oopses.
 
-This version removes the 'return' from cache_deqeue() as discussed.
+If rpc_new_client() fails, it already invokes xprt_put().  Thus
+__rpc_clone_client() does not need to invoke it again.
 
-Thanks,
-NeilBrown
+Introduced by commit 1b63a751 "SUNRPC: Refactor rpc_clone_client()"
+Fri Sep 14, 2012.
 
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: stable@vger.kernel.org [>=3.7]
 ---
 
-NeilBrown (2):
-      sunrpc/cache: remove races with queuing an upcall.
-      sunrpc/cache: use cache_fresh_unlocked consistently and correctly.
+ net/sunrpc/clnt.c |    4 +---
+ 1 files changed, 1 insertions(+), 3 deletions(-)
 
-
- net/sunrpc/cache.c |   37 +++++++++++++++++++++----------------
- 1 file changed, 21 insertions(+), 16 deletions(-)
-
--- 
-Signature
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index dcc446e..9df26b7 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -512,7 +512,7 @@ static struct rpc_clnt *__rpc_clone_client(struct rpc_create_args *args,
+ 	new = rpc_new_client(args, xprt);
+ 	if (IS_ERR(new)) {
+ 		err = PTR_ERR(new);
+-		goto out_put;
++		goto out_err;
+ 	}
+ 
+ 	atomic_inc(&clnt->cl_count);
+@@ -525,8 +525,6 @@ static struct rpc_clnt *__rpc_clone_client(struct rpc_create_args *args,
+ 	new->cl_chatty = clnt->cl_chatty;
+ 	return new;
+ 
+-out_put:
+-	xprt_put(xprt);
+ out_err:
+ 	dprintk("RPC:       %s: returned error %d\n", __func__, err);
+ 	return ERR_PTR(err);
 
