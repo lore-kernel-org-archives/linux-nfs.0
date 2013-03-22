@@ -1,84 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:10927 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:53283 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756531Ab3CYLoQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Mar 2013 07:44:16 -0400
-From: Steve Dickson <SteveD@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>
-Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
-        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
-        Linux Security List <linux-security-module@vger.kernel.org>,
-        SELinux List <selinux@tycho.nsa.gov>
-Subject: [PATCH 05/14] NFSv4: Add label recommended attribute and NFSv4 flags
-Date: Mon, 25 Mar 2013 07:42:49 -0400
-Message-Id: <1364211778-29172-6-git-send-email-SteveD@redhat.com>
-In-Reply-To: <1364211778-29172-1-git-send-email-SteveD@redhat.com>
-References: <1364211778-29172-1-git-send-email-SteveD@redhat.com>
+	id S1753024Ab3CVMX6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Mar 2013 08:23:58 -0400
+Date: Fri, 22 Mar 2013 07:40:03 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: ycnian@gmail.com
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: nfsv4.1 client refuses to suspend
+Message-ID: <20130322074003.616911b6@tlielax.poochiereds.net>
+In-Reply-To: <1363921041-5042-1-git-send-email-ycnian@gmail.com>
+References: <1363921041-5042-1-git-send-email-ycnian@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: David Quigley <dpquigl@davequigley.com>
+On Fri, 22 Mar 2013 10:57:21 +0800
+ycnian@gmail.com wrote:
 
-This patch adds several new flags to allow the NFS client and server to
-determine if this attribute is supported and if it is being sent over the wire.
+> nfsv4.1 client suspending fails with such info
+> 
+> Freezing of tasks failed after 20.00 seconds (1 tasks refusing to freeze, wq_busy=0):
+> nfsv4.1-svc     S ffff88007889f2e0     0  3191      2 0x00000080   
+>  ffff88007b2f3e28 0000000000000046 ffff88007b2f2010 00000000000127c0
+>  ffff880079b08000 00000000000127c0 ffff88007b2f3fd8 00000000000127c0
+>  ffff88007b2f3fd8 00000000000127c0 ffffffff81a14410 ffff880079b08000
+> Call Trace:
+>  [<ffffffff81441396>] schedule+0x64/0x66
+>  [<ffffffffa06a6892>] nfs41_callback_svc+0x100/0x129 [nfsv4]
+>  [<ffffffff8104fdb8>] ? wake_up_bit+0x2a/0x2a
+>  [<ffffffffa06a6792>] ? nfs_callback_up+0x548/0x548 [nfsv4]
+>  [<ffffffff8104f7e0>] kthread+0xb5/0xbd
+>  [<ffffffff8104f72b>] ? kthread_freezable_should_stop+0x65/0x65
+>  [<ffffffff8144912c>] ret_from_fork+0x7c/0xb0
+>  [<ffffffff8104f72b>] ? kthread_freezable_should_stop+0x65/0x65
+> 
+> I read such threads
+> [1] nfs/sunrpc: allow freezing of tasks with NFS calls in flight
+> [2] LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
+> and then modify nfs41_callback_svc(). It works on my machine. I don't know
+> the details of freezing, so I'm not sure if the modification is reasonable.
+> This is not a formal patch. Thanks.
+> 
+> Signed-off-by: Yanchuan Nian <ycnian@gmail.com>
+> ---
+>  fs/nfs/callback.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+> index 5088b57..8addb7b 100644
+> --- a/fs/nfs/callback.c
+> +++ b/fs/nfs/callback.c
+> @@ -138,7 +138,7 @@ nfs41_callback_svc(void *vrqstp)
+>  				error);
+>  		} else {
+>  			spin_unlock_bh(&serv->sv_cb_lock);
+> -			schedule();
+> +			freezable_schedule();
+>  		}
+>  		finish_wait(&serv->sv_cb_waitq, &wq);
+>  	}
 
-Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
----
- include/linux/nfs4.h      | 1 +
- include/linux/nfs_fs_sb.h | 1 +
- include/linux/nfs_xdr.h   | 4 +++-
- 3 files changed, 5 insertions(+), 1 deletion(-)
+I think it'd be better to have that thread call try_to_freeze()
+directly instead of doing this. There are some problems with
+freezable_schedule() that still need to be resolved and I suspect that
+it will eventually go away entirely.
 
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 7b8fc73..0fa29f4 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -377,6 +377,7 @@ enum lock_type4 {
- #define FATTR4_WORD1_MOUNTED_ON_FILEID  (1UL << 23)
- #define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
- #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
-+#define FATTR4_WORD2_SECURITY_LABEL     (1UL << 17)
- #define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
- 
- /* MDS threshold bitmap bits */
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 6c6ed15..d507357 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -197,5 +197,6 @@ struct nfs_server {
- #define NFS_CAP_MTIME		(1U << 13)
- #define NFS_CAP_POSIX_LOCK	(1U << 14)
- #define NFS_CAP_UIDGID_NOMAP	(1U << 15)
-+#define NFS_CAP_SECURITY_LABEL	(1U << 16)
- 
- #endif
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 4b993d3..9f2dba3 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -104,6 +104,7 @@ struct nfs_fattr {
- #define NFS_ATTR_FATTR_MOUNTED_ON_FILEID (1U << 22)
- #define NFS_ATTR_FATTR_OWNER_NAME	(1U << 23)
- #define NFS_ATTR_FATTR_GROUP_NAME	(1U << 24)
-+#define NFS_ATTR_FATTR_V4_SECURITY_LABEL (1U << 25)
- 
- #define NFS_ATTR_FATTR (NFS_ATTR_FATTR_TYPE \
- 		| NFS_ATTR_FATTR_MODE \
-@@ -123,7 +124,8 @@ struct nfs_fattr {
- #define NFS_ATTR_FATTR_V3 (NFS_ATTR_FATTR \
- 		| NFS_ATTR_FATTR_SPACE_USED)
- #define NFS_ATTR_FATTR_V4 (NFS_ATTR_FATTR \
--		| NFS_ATTR_FATTR_SPACE_USED)
-+		| NFS_ATTR_FATTR_SPACE_USED \
-+		| NFS_ATTR_FATTR_V4_SECURITY_LABEL)
- 
- /*
-  * Info on the file system
+It's may be sufficient to simply call try_to_freeze() at the top of
+the loop, but that would need to be tested.
+
 -- 
-1.8.1.4
-
+Jeff Layton <jlayton@redhat.com>
