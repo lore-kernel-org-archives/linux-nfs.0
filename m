@@ -1,57 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f44.google.com ([209.85.160.44]:58688 "EHLO
-	mail-pb0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1422796Ab3CVSS3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Mar 2013 14:18:29 -0400
-Received: by mail-pb0-f44.google.com with SMTP id wz12so3255906pbc.31
-        for <linux-nfs@vger.kernel.org>; Fri, 22 Mar 2013 11:18:29 -0700 (PDT)
-From: Kent Overstreet <koverstreet@google.com>
-To: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Cc: Kent Overstreet <koverstreet@google.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Zach Brown <zab@redhat.com>
-Subject: [PATCH] nfsd: fix bad offset use
-Date: Fri, 22 Mar 2013 11:18:24 -0700
-Message-Id: <1363976304-26093-1-git-send-email-koverstreet@google.com>
+Received: from mail-ie0-f177.google.com ([209.85.223.177]:45258 "EHLO
+	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964770Ab3CVQxG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Mar 2013 12:53:06 -0400
+Received: by mail-ie0-f177.google.com with SMTP id tp5so722763ieb.22
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Mar 2013 09:53:05 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v3 2/3] SUNRPC: Don't recognize RPC_AUTH_MAXFLAVOR
+To: linux-nfs@vger.kernel.org
+Date: Fri, 22 Mar 2013 12:53:08 -0400
+Message-ID: <20130322165308.1678.75427.stgit@seurat.1015granger.net>
+In-Reply-To: <20130322165119.1678.97556.stgit@seurat.1015granger.net>
+References: <20130322165119.1678.97556.stgit@seurat.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-vfs_writev() updates the offset argument - but the code then passes the
-offset to vfs_fsync_range(). Since offset now points to the offset after
-what was just written, this is probably not what was intended
+RPC_AUTH_MAXFLAVOR is an invalid flavor, on purpose.  Don't allow
+any processing whatsoever if a caller passes it to rpcauth_create()
+or rpcauth_get_gssinfo().
 
-Signed-off-by: Kent Overstreet <koverstreet@google.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Al Viro <viro@zeniv.linux.org.uk>
-Cc: "Eric W. Biederman" <ebiederm@xmission.com>
-Cc: Zach Brown <zab@redhat.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/vfs.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 2a7eb53..2b2e239 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1013,6 +1013,7 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
- 	int			host_err;
- 	int			stable = *stablep;
- 	int			use_wgather;
-+	loff_t			pos = offset;
+ net/sunrpc/auth.c |    5 ++++-
+ 1 files changed, 4 insertions(+), 1 deletions(-)
+
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index 2bc0cc2..ed2fdd2 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -82,7 +82,7 @@ MODULE_PARM_DESC(auth_hashtable_size, "RPC credential cache hashtable size");
  
- 	dentry = file->f_path.dentry;
- 	inode = dentry->d_inode;
-@@ -1025,7 +1026,7 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
+ static u32
+ pseudoflavor_to_flavor(u32 flavor) {
+-	if (flavor >= RPC_AUTH_MAXFLAVOR)
++	if (flavor > RPC_AUTH_MAXFLAVOR)
+ 		return RPC_AUTH_GSS;
+ 	return flavor;
+ }
+@@ -173,6 +173,9 @@ rpcauth_get_gssinfo(rpc_authflavor_t pseudoflavor, struct rpcsec_gss_info *info)
+ 	const struct rpc_authops *ops;
+ 	int result;
  
- 	/* Write the data. */
- 	oldfs = get_fs(); set_fs(KERNEL_DS);
--	host_err = vfs_writev(file, (struct iovec __user *)vec, vlen, &offset);
-+	host_err = vfs_writev(file, (struct iovec __user *)vec, vlen, &pos);
- 	set_fs(oldfs);
- 	if (host_err < 0)
- 		goto out_nfserr;
--- 
-1.8.1.3
++	if (flavor >= RPC_AUTH_MAXFLAVOR)
++		return -EINVAL;
++
+ 	ops = auth_flavors[flavor];
+ 	if (ops == NULL)
+ 		request_module("rpc-auth-%u", flavor);
 
