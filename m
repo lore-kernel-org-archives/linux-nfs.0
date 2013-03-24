@@ -1,207 +1,298 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:36702 "EHLO e9.ny.us.ibm.com"
+Received: from smtp.gentoo.org ([140.211.166.183]:36221 "EHLO smtp.gentoo.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753826Ab3C2LnG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Mar 2013 07:43:06 -0400
-Received: from /spool/local
-	by e9.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <zohar@linux.vnet.ibm.com>;
-	Fri, 29 Mar 2013 07:43:05 -0400
-Received: from d01relay01.pok.ibm.com (d01relay01.pok.ibm.com [9.56.227.233])
-	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 764C438C8054
-	for <linux-nfs@vger.kernel.org>; Fri, 29 Mar 2013 07:43:02 -0400 (EDT)
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay01.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id r2TBh2j7297604
-	for <linux-nfs@vger.kernel.org>; Fri, 29 Mar 2013 07:43:02 -0400
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id r2TBh1X4027915
-	for <linux-nfs@vger.kernel.org>; Fri, 29 Mar 2013 08:43:02 -0300
-Message-ID: <1364557380.2580.189.camel@falcor1.watson.ibm.com>
-Subject: Re: [PATCH 02/14] Security: Add Hook to test if the particular
- xattr is part of a MAC model.
-From: Mimi Zohar <zohar@linux.vnet.ibm.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        "David P. Quigley" <dpquigl@tycho.nsa.gov>,
-        Linux NFS list <linux-nfs@vger.kernel.org>
-Date: Fri, 29 Mar 2013 07:43:00 -0400
-In-Reply-To: <1364478845-29796-3-git-send-email-SteveD@redhat.com>
-References: <1364478845-29796-1-git-send-email-SteveD@redhat.com>
-	 <1364478845-29796-3-git-send-email-SteveD@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1754664Ab3CXT5F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 24 Mar 2013 15:57:05 -0400
+Received: from localhost.localdomain (localhost [127.0.0.1])
+	by smtp.gentoo.org (Postfix) with ESMTP id 390F333DB34
+	for <linux-nfs@vger.kernel.org>; Sun, 24 Mar 2013 19:57:03 +0000 (UTC)
+From: Mike Frysinger <vapier@gentoo.org>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsiostat: make it work w/python3
+Date: Sun, 24 Mar 2013 16:01:17 -0400
+Message-Id: <1364155277-30394-1-git-send-email-vapier@gentoo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-03-28 at 09:53 -0400, Steve Dickson wrote:
-> From: David Quigley <dpquigl@davequigley.com>
-> 
-> The interface to request security labels from user space is the xattr
-> interface. When requesting the security label from an NFS server it is
-> important to make sure the requested xattr actually is a MAC label. This allows
-> us to make sure that we get the desired semantics from the attribute instead of
-> something else such as capabilities or a time based LSM.
-> 
-> Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
-> Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
-> Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
-> Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
-> ---
->  include/linux/security.h   | 14 ++++++++++++++
->  security/capability.c      |  6 ++++++
->  security/security.c        |  6 ++++++
->  security/selinux/hooks.c   |  6 ++++++
->  security/smack/smack_lsm.c | 11 +++++++++++
->  5 files changed, 43 insertions(+)
-> 
-> diff --git a/include/linux/security.h b/include/linux/security.h
-> index a957e7a..8a6faff 100644
-> --- a/include/linux/security.h
-> +++ b/include/linux/security.h
-> @@ -1319,6 +1319,13 @@ static inline void security_free_mnt_opts(struct security_mnt_opts *opts)
->   *	@pages contains the number of pages.
->   *	Return 0 if permission is granted.
->   *
-> + * @ismaclabel:
-> + *	Check if the extended attribute specified by @name
-> + *	represents a MAC label. Returns 0 if name is a MAC
-> + *	attribute otherwise returns non-zero.
+Simple fixes here to work with python 2 & 3:
+ - use print() everywhere
+ - dict.iteritems() -> dict.items()
+ - file() -> open()
+ - sys.maxint -> sys.maxsize
 
-Sorry, the comment doesn't match the code.
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ tools/nfs-iostat/nfs-iostat.py | 130 +++++++++++++++++++++--------------------
+ 1 file changed, 66 insertions(+), 64 deletions(-)
 
-Mimi
-
-> + *	@name full extended attribute name to check against
-> + *	LSM as a MAC label.
-> + *
-
-
->   * @secid_to_secctx:
->   *	Convert secid to security context.  If secdata is NULL the length of
->   *	the result will be returned in seclen, but no secdata will be returned.
-> @@ -1600,6 +1607,7 @@ struct security_operations {
-> 
->  	int (*getprocattr) (struct task_struct *p, char *name, char **value);
->  	int (*setprocattr) (struct task_struct *p, char *name, void *value, size_t size);
-> +	int (*ismaclabel) (const char *name);
->  	int (*secid_to_secctx) (u32 secid, char **secdata, u32 *seclen);
->  	int (*secctx_to_secid) (const char *secdata, u32 seclen, u32 *secid);
->  	void (*release_secctx) (char *secdata, u32 seclen);
-> @@ -1852,6 +1860,7 @@ void security_d_instantiate(struct dentry *dentry, struct inode *inode);
->  int security_getprocattr(struct task_struct *p, char *name, char **value);
->  int security_setprocattr(struct task_struct *p, char *name, void *value, size_t size);
->  int security_netlink_send(struct sock *sk, struct sk_buff *skb);
-> +int security_ismaclabel(const char *name);
->  int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen);
->  int security_secctx_to_secid(const char *secdata, u32 seclen, u32 *secid);
->  void security_release_secctx(char *secdata, u32 seclen);
-> @@ -2540,6 +2549,11 @@ static inline int security_netlink_send(struct sock *sk, struct sk_buff *skb)
->  	return cap_netlink_send(sk, skb);
->  }
-> 
-> +static inline int security_ismaclabel(const char *name)
-> +{
-> +	return 0;
-> +}
-> +
->  static inline int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
->  {
->  	return -EOPNOTSUPP;
-> diff --git a/security/capability.c b/security/capability.c
-> index 456bd9d..07a6484 100644
-> --- a/security/capability.c
-> +++ b/security/capability.c
-> @@ -817,6 +817,11 @@ static int cap_setprocattr(struct task_struct *p, char *name, void *value,
->  	return -EINVAL;
->  }
-> 
-> +static int cap_ismaclabel(const char *name)
-> +{
-> +	return 0;
-> +}
-> +
->  static int cap_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
->  {
->  	return -EOPNOTSUPP;
-> @@ -1036,6 +1041,7 @@ void __init security_fixup_ops(struct security_operations *ops)
->  	set_to_cap_if_null(ops, d_instantiate);
->  	set_to_cap_if_null(ops, getprocattr);
->  	set_to_cap_if_null(ops, setprocattr);
-> +	set_to_cap_if_null(ops, ismaclabel);
->  	set_to_cap_if_null(ops, secid_to_secctx);
->  	set_to_cap_if_null(ops, secctx_to_secid);
->  	set_to_cap_if_null(ops, release_secctx);
-> diff --git a/security/security.c b/security/security.c
-> index 723a10c..6d7389c 100644
-> --- a/security/security.c
-> +++ b/security/security.c
-> @@ -1057,6 +1057,12 @@ int security_netlink_send(struct sock *sk, struct sk_buff *skb)
->  	return security_ops->netlink_send(sk, skb);
->  }
-> 
-> +int security_ismaclabel(const char *name)
-> +{
-> +	return security_ops->ismaclabel(name);
-> +}
-> +EXPORT_SYMBOL(security_ismaclabel);
-> +
->  int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
->  {
->  	return security_ops->secid_to_secctx(secid, secdata, seclen);
-> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-> index c7f1905..97231a0 100644
-> --- a/security/selinux/hooks.c
-> +++ b/security/selinux/hooks.c
-> @@ -5417,6 +5417,11 @@ abort_change:
->  	return error;
->  }
-> 
-> +static int selinux_ismaclabel(const char *name)
-> +{
-> +	return (strcmp(name, XATTR_SELINUX_SUFFIX) == 0);
-> +}
-> +
->  static int selinux_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
->  {
->  	return security_sid_to_context(secid, secdata, seclen);
-> @@ -5655,6 +5660,7 @@ static struct security_operations selinux_ops = {
->  	.getprocattr =			selinux_getprocattr,
->  	.setprocattr =			selinux_setprocattr,
-> 
-> +	.ismaclabel =			selinux_ismaclabel,
->  	.secid_to_secctx =		selinux_secid_to_secctx,
->  	.secctx_to_secid =		selinux_secctx_to_secid,
->  	.release_secctx =		selinux_release_secctx,
-> diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
-> index fa64740..ca01d71 100644
-> --- a/security/smack/smack_lsm.c
-> +++ b/security/smack/smack_lsm.c
-> @@ -3329,6 +3329,16 @@ static void smack_audit_rule_free(void *vrule)
->  #endif /* CONFIG_AUDIT */
-> 
->  /**
-> + * smack_ismaclabel - check if xattr @name references a smack MAC label
-> + * @name: Full xattr name to check.
-> + */
-> +static int smack_ismaclabel(const char *name)
-> +{
-> +	return (strcmp(name, XATTR_SMACK_SUFFIX) == 0);
-> +}
-> +
-> +
-> +/**
->   * smack_secid_to_secctx - return the smack label for a secid
->   * @secid: incoming integer
->   * @secdata: destination
-> @@ -3524,6 +3534,7 @@ struct security_operations smack_ops = {
->  	.audit_rule_free =		smack_audit_rule_free,
->  #endif /* CONFIG_AUDIT */
-> 
-> +	.ismaclabel =			smack_ismaclabel,
->  	.secid_to_secctx = 		smack_secid_to_secctx,
->  	.secctx_to_secid = 		smack_secctx_to_secid,
->  	.release_secctx = 		smack_release_secctx,
-
-
+diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
+index d909632..dfbef87 100644
+--- a/tools/nfs-iostat/nfs-iostat.py
++++ b/tools/nfs-iostat/nfs-iostat.py
+@@ -3,6 +3,8 @@
+ """Emulate iostat for NFS mount points using /proc/self/mountstats
+ """
+ 
++from __future__ import print_function
++
+ __copyright__ = """
+ Copyright (C) 2005, Chuck Lever <cel@netapp.com>
+ 
+@@ -201,9 +203,9 @@ class DeviceData:
+         result = DeviceData()
+ 
+         # copy self into result
+-        for key, value in self.__nfs_data.iteritems():
++        for key, value in self.__nfs_data.items():
+             result.__nfs_data[key] = value
+-        for key, value in self.__rpc_data.iteritems():
++        for key, value in self.__rpc_data.items():
+             result.__rpc_data[key] = value
+ 
+         # compute the difference of each item in the list
+@@ -233,9 +235,9 @@ class DeviceData:
+             client_bytes_read = float(nfs_stats['serverreadbytes'] - nfs_stats['directreadbytes'])
+             ratio = ((app_bytes_read - client_bytes_read) * 100) / app_bytes_read
+ 
+-            print
+-            print 'app bytes: %f  client bytes %f' % (app_bytes_read, client_bytes_read)
+-            print 'Data cache hit ratio: %4.2f%%' % ratio
++            print()
++            print('app bytes: %f  client bytes %f' % (app_bytes_read, client_bytes_read))
++            print('Data cache hit ratio: %4.2f%%' % ratio)
+ 
+     def __print_attr_cache_stats(self, sample_time):
+         """Print attribute cache efficiency stats
+@@ -255,13 +257,13 @@ class DeviceData:
+             data_invalidates = float(nfs_stats['datainvalidates'])
+             attr_invalidates = float(nfs_stats['attrinvalidates'])
+ 
+-            print
+-            print '%d inode revalidations, hitting in cache %4.2f%% of the time' % \
+-                (revalidates, ratio)
+-            print '%d open operations (mandatory GETATTR requests)' % opens
++            print()
++            print('%d inode revalidations, hitting in cache %4.2f%% of the time' % \
++                (revalidates, ratio))
++            print('%d open operations (mandatory GETATTR requests)' % opens)
+             if getattr_ops != 0:
+-                print '%4.2f%% of GETATTRs resulted in data cache invalidations' % \
+-                   ((data_invalidates * 100) / getattr_ops)
++                print('%4.2f%% of GETATTRs resulted in data cache invalidations' % \
++                   ((data_invalidates * 100) / getattr_ops))
+ 
+     def __print_dir_cache_stats(self, sample_time):
+         """Print directory stats
+@@ -277,13 +279,13 @@ class DeviceData:
+         lookups = nfs_stats['vfslookup']
+         getdents = nfs_stats['vfsreaddir']
+ 
+-        print
+-        print '%d open operations (pathname lookups)' % opens
+-        print '%d dentry revalidates and %d vfs lookup requests' % \
+-            (dentry_revals, lookups),
+-        print 'resulted in %d LOOKUPs on the wire' % lookup_ops
+-        print '%d vfs getdents calls resulted in %d READDIRs on the wire' % \
+-            (getdents, readdir_ops)
++        print()
++        print('%d open operations (pathname lookups)' % opens)
++        print('%d dentry revalidates and %d vfs lookup requests' % \
++            (dentry_revals, lookups))
++        print('resulted in %d LOOKUPs on the wire' % lookup_ops)
++        print('%d vfs getdents calls resulted in %d READDIRs on the wire' % \
++            (getdents, readdir_ops))
+ 
+     def __print_page_stats(self, sample_time):
+         """Print page cache stats
+@@ -297,33 +299,33 @@ class DeviceData:
+         vfswritepages = nfs_stats['vfswritepages']
+         pages_written = nfs_stats['writepages']
+ 
+-        print
+-        print '%d nfs_readpage() calls read %d pages' % \
+-            (vfsreadpage, vfsreadpage)
+-        print '%d nfs_readpages() calls read %d pages' % \
+-            (vfsreadpages, pages_read - vfsreadpage),
++        print()
++        print('%d nfs_readpage() calls read %d pages' % \
++            (vfsreadpage, vfsreadpage))
++        print('%d nfs_readpages() calls read %d pages' % \
++            (vfsreadpages, pages_read - vfsreadpage))
+         if vfsreadpages != 0:
+-            print '(%.1f pages per call)' % \
+-                (float(pages_read - vfsreadpage) / vfsreadpages)
++            print('(%.1f pages per call)' % \
++                (float(pages_read - vfsreadpage) / vfsreadpages))
+         else:
+-            print
+-
+-        print
+-        print '%d nfs_updatepage() calls' % nfs_stats['vfsupdatepage']
+-        print '%d nfs_writepage() calls wrote %d pages' % \
+-            (vfswritepage, vfswritepage)
+-        print '%d nfs_writepages() calls wrote %d pages' % \
+-            (vfswritepages, pages_written - vfswritepage),
++            print()
++
++        print()
++        print('%d nfs_updatepage() calls' % nfs_stats['vfsupdatepage'])
++        print('%d nfs_writepage() calls wrote %d pages' % \
++            (vfswritepage, vfswritepage))
++        print('%d nfs_writepages() calls wrote %d pages' % \
++            (vfswritepages, pages_written - vfswritepage))
+         if (vfswritepages) != 0:
+-            print '(%.1f pages per call)' % \
+-                (float(pages_written - vfswritepage) / vfswritepages)
++            print('(%.1f pages per call)' % \
++                (float(pages_written - vfswritepage) / vfswritepages))
+         else:
+-            print
++            print()
+ 
+         congestionwaits = nfs_stats['congestionwait']
+         if congestionwaits != 0:
+-            print
+-            print '%d congestion waits' % congestionwaits
++            print()
++            print('%d congestion waits' % congestionwaits)
+ 
+     def __print_rpc_op_stats(self, op, sample_time):
+         """Print generic stats for one RPC op
+@@ -351,15 +353,15 @@ class DeviceData:
+             exe_per_op = 0.0
+ 
+         op += ':'
+-        print '%s' % op.lower().ljust(15),
+-        print '  ops/s\t\t   kB/s\t\t  kB/op\t\tretrans\t\tavg RTT (ms)\tavg exe (ms)'
++        print('%s' % op.lower().ljust(15))
++        print('  ops/s\t\t   kB/s\t\t  kB/op\t\tretrans\t\tavg RTT (ms)\tavg exe (ms)')
+ 
+-        print '\t\t%7.3f' % (ops / sample_time),
+-        print '\t%7.3f' % (kilobytes / sample_time),
+-        print '\t%7.3f' % kb_per_op,
+-        print ' %7d (%3.1f%%)' % (retrans, retrans_percent),
+-        print '\t%7.3f' % rtt_per_op,
+-        print '\t%7.3f' % exe_per_op
++        print('\t\t%7.3f' % (ops / sample_time))
++        print('\t%7.3f' % (kilobytes / sample_time))
++        print('\t%7.3f' % kb_per_op)
++        print(' %7d (%3.1f%%)' % (retrans, retrans_percent))
++        print('\t%7.3f' % rtt_per_op)
++        print('\t%7.3f' % exe_per_op)
+ 
+     def ops(self, sample_time):
+         sends = float(self.__rpc_data['rpcsends'])
+@@ -384,14 +386,14 @@ class DeviceData:
+         else:
+             backlog = 0.0
+ 
+-        print
+-        print '%s mounted on %s:' % \
+-            (self.__nfs_data['export'], self.__nfs_data['mountpoint'])
+-        print
++        print()
++        print('%s mounted on %s:' % \
++            (self.__nfs_data['export'], self.__nfs_data['mountpoint']))
++        print()
+ 
+-        print '   op/s\t\trpc bklog'
+-        print '%7.2f' % (sends / sample_time), 
+-        print '\t%7.2f' % backlog
++        print('   op/s\t\trpc bklog')
++        print('%7.2f' % (sends / sample_time))
++        print('\t%7.2f' % backlog)
+ 
+         if which == 0:
+             self.__print_rpc_op_stats('READ', sample_time)
+@@ -424,7 +426,7 @@ def parse_stats_file(filename):
+     ms_dict = dict()
+     key = ''
+ 
+-    f = file(filename)
++    f = open(filename)
+     for line in f.readlines():
+         words = line.split()
+         if len(words) == 0:
+@@ -494,7 +496,7 @@ def list_nfs_mounts(givenlist, mountstats):
+             if stats.is_nfs_mountpoint():
+                 list += [device]
+     else:
+-        for device, descr in mountstats.iteritems():
++        for device, descr in mountstats.items():
+             stats = DeviceData()
+             stats.parse_stats(descr)
+             if stats.is_nfs_mountpoint():
+@@ -527,7 +529,7 @@ client are listed.
+         usage="usage: %prog [ <interval> [ <count> ] ] [ <options> ] [ <mount point> ]",
+         description=mydescription,
+         version='version %s' % Iostats_version)
+-    parser.set_defaults(which=0, sort=False, list=sys.maxint)
++    parser.set_defaults(which=0, sort=False, list=sys.maxsize)
+ 
+     statgroup = OptionGroup(parser, "Statistics Options",
+                             'File I/O is displayed unless one of the following is specified:')
+@@ -572,29 +574,29 @@ client are listed.
+             try:
+                 interval = int(arg)
+             except:
+-                print 'Illegal <interval> value %s' % arg
++                print('Illegal <interval> value %s' % arg)
+                 return
+             if interval > 0:
+                 interval_seen = True
+             else:
+-                print 'Illegal <interval> value %s' % arg
++                print('Illegal <interval> value %s' % arg)
+                 return
+         elif not count_seen:
+             try:
+                 count = int(arg)
+             except:
+-                print 'Ilegal <count> value %s' % arg
++                print('Ilegal <count> value %s' % arg)
+                 return
+             if count > 0:
+                 count_seen = True
+             else:
+-                print 'Illegal <count> value %s' % arg
++                print('Illegal <count> value %s' % arg)
+                 return
+ 
+     # make certain devices contains only NFS mount points
+     devices = list_nfs_mounts(origdevices, mountstats)
+     if len(devices) == 0:
+-        print 'No NFS mount points were found'
++        print('No NFS mount points were found')
+         return
+ 
+ 
+@@ -616,7 +618,7 @@ client are listed.
+             # we need to recheck the devices list when reparsing
+             devices = list_nfs_mounts(origdevices,mountstats)
+             if len(devices) == 0:
+-                print 'No NFS mount points were found'
++                print('No NFS mount points were found')
+                 return
+             count -= 1
+     else: 
+@@ -630,7 +632,7 @@ client are listed.
+             # we need to recheck the devices list when reparsing
+             devices = list_nfs_mounts(origdevices,mountstats)
+             if len(devices) == 0:
+-                print 'No NFS mount points were found'
++                print('No NFS mount points were found')
+                 return
+ 
+ #
+@@ -641,7 +643,7 @@ prog = os.path.basename(sys.argv[0])
+ try:
+     iostat_command(prog)
+ except KeyboardInterrupt:
+-    print 'Caught ^C... exiting'
++    print('Caught ^C... exiting')
+     sys.exit(1)
+ 
+ sys.exit(0)
+-- 
+1.8.1.2
 
