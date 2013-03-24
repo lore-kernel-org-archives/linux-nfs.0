@@ -1,47 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41047 "EHLO fieldses.org"
+Received: from smtp.gentoo.org ([140.211.166.183]:46576 "EHLO smtp.gentoo.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750872Ab3CKOnn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Mar 2013 10:43:43 -0400
-Date: Mon, 11 Mar 2013 10:43:41 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: ycnian@gmail.com
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2] nfsd: rmmove unused macro in nfsv4
-Message-ID: <20130311144341.GA16309@fieldses.org>
-References: <1362969806-23907-1-git-send-email-ycnian@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1362969806-23907-1-git-send-email-ycnian@gmail.com>
+	id S1754767Ab3CXWBO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 24 Mar 2013 18:01:14 -0400
+Received: from localhost.localdomain (localhost [127.0.0.1])
+	by smtp.gentoo.org (Postfix) with ESMTP id 4B2EC33BE3D
+	for <linux-nfs@vger.kernel.org>; Sun, 24 Mar 2013 22:01:13 +0000 (UTC)
+From: Mike Frysinger <vapier@gentoo.org>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH [nfs-utils]] rpcdebug: do not use build toolchain
+Date: Sun, 24 Mar 2013 18:05:28 -0400
+Message-Id: <1364162728-3032-1-git-send-email-vapier@gentoo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 11, 2013 at 10:43:26AM +0800, ycnian@gmail.com wrote:
-> From: Yanchuan Nian <ycnian@gmail.com>
-> 
-> lk_rflags is never used anywhere, and rflags is not defined in struct
-> nfsd4_lock. Very sorry for my negligence in last version. Maybe I am tired.
+The rpcdebug program gets installed, so we don't want to use the build
+toolchain to compile it.  I can't find any scripts in the build system
+that try to execute it, so this shouldn't be a problem.
 
-Applying for 3.10, thanks.--b.
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ tools/rpcdebug/Makefile.am | 6 ------
+ 1 file changed, 6 deletions(-)
 
-> 
-> Signed-off-by: Yanchuan Nian <ycnian@gmail.com>
-> ---
->  fs/nfsd/xdr4.h |    1 -
->  1 files changed, 0 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-> index 0889bfb..326724a 100644
-> --- a/fs/nfsd/xdr4.h
-> +++ b/fs/nfsd/xdr4.h
-> @@ -184,7 +184,6 @@ struct nfsd4_lock {
->  #define lk_old_lock_stateid     v.old.lock_stateid
->  #define lk_old_lock_seqid       v.old.lock_seqid
->  
-> -#define lk_rflags       u.ok.rflags
->  #define lk_resp_stateid u.ok.stateid
->  #define lk_denied       u.denied
->  
-> -- 
-> 1.7.4.4
-> 
+diff --git a/tools/rpcdebug/Makefile.am b/tools/rpcdebug/Makefile.am
+index 39b70c9..b0a3e1f 100644
+--- a/tools/rpcdebug/Makefile.am
++++ b/tools/rpcdebug/Makefile.am
+@@ -1,15 +1,9 @@
+ ## Process this file with automake to produce Makefile.in
+ 
+-CC=$(CC_FOR_BUILD)
+-LIBTOOL = @LIBTOOL@ --tag=CC
+-
+ man8_MANS = rpcdebug.man
+ EXTRA_DIST = $(man8_MANS)
+ 
+ sbin_PROGRAMS = rpcdebug
+ rpcdebug_SOURCES = rpcdebug.c
+-rpcdebug_CFLAGS=$(CFLAGS_FOR_BUILD)
+-rpcdebug_CPPFLAGS=$(CPPFLAGS_FOR_BUILD) -I$(top_srcdir)/support/include
+-rpcdebug_LDFLAGS=$(LDFLAGS_FOR_BUILD)
+ 
+ MAINTAINERCLEANFILES = Makefile.in
+-- 
+1.8.1.2
+
