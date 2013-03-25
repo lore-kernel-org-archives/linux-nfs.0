@@ -1,58 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f173.google.com ([209.85.223.173]:57522 "EHLO
-	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756482Ab3CSTBo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Mar 2013 15:01:44 -0400
-Received: by mail-ie0-f173.google.com with SMTP id 9so1097574iec.4
-        for <linux-nfs@vger.kernel.org>; Tue, 19 Mar 2013 12:01:44 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/3] SUNRPC: Remove extra xprt_put()
-To: linux-nfs@vger.kernel.org
-Date: Tue, 19 Mar 2013 15:01:28 -0400
-Message-ID: <20130319190128.1203.29390.stgit@seurat.1015granger.net>
-In-Reply-To: <20130319185944.1203.38377.stgit@seurat.1015granger.net>
-References: <20130319185944.1203.38377.stgit@seurat.1015granger.net>
+Received: from mx1.redhat.com ([209.132.183.28]:30746 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757816Ab3CYOTu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Mar 2013 10:19:50 -0400
+Message-ID: <51505D03.6000903@RedHat.com>
+Date: Mon, 25 Mar 2013 10:19:47 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Mike Frysinger <vapier@gentoo.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH [nfs-utils]] rpcdebug: do not use build toolchain
+References: <1364162728-3032-1-git-send-email-vapier@gentoo.org>
+In-Reply-To: <1364162728-3032-1-git-send-email-vapier@gentoo.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-While testing error cases where rpc_new_client() fails, I saw
-some oopses.
 
-If rpc_new_client() fails, it already invokes xprt_put().  Thus
-__rpc_clone_client() does not need to invoke it again.
 
-Introduced by commit 1b63a751 "SUNRPC: Refactor rpc_clone_client()"
-Fri Sep 14, 2012.
+On 24/03/13 18:05, Mike Frysinger wrote:
+> The rpcdebug program gets installed, so we don't want to use the build
+> toolchain to compile it.  I can't find any scripts in the build system
+> that try to execute it, so this shouldn't be a problem.
+> 
+> Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+Committed...
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: stable@kernel.org
----
-
- net/sunrpc/clnt.c |    4 +---
- 1 files changed, 1 insertions(+), 3 deletions(-)
-
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index dcc446e..9df26b7 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -512,7 +512,7 @@ static struct rpc_clnt *__rpc_clone_client(struct rpc_create_args *args,
- 	new = rpc_new_client(args, xprt);
- 	if (IS_ERR(new)) {
- 		err = PTR_ERR(new);
--		goto out_put;
-+		goto out_err;
- 	}
- 
- 	atomic_inc(&clnt->cl_count);
-@@ -525,8 +525,6 @@ static struct rpc_clnt *__rpc_clone_client(struct rpc_create_args *args,
- 	new->cl_chatty = clnt->cl_chatty;
- 	return new;
- 
--out_put:
--	xprt_put(xprt);
- out_err:
- 	dprintk("RPC:       %s: returned error %d\n", __func__, err);
- 	return ERR_PTR(err);
-
+steved
+> ---
+>  tools/rpcdebug/Makefile.am | 6 ------
+>  1 file changed, 6 deletions(-)
+> 
+> diff --git a/tools/rpcdebug/Makefile.am b/tools/rpcdebug/Makefile.am
+> index 39b70c9..b0a3e1f 100644
+> --- a/tools/rpcdebug/Makefile.am
+> +++ b/tools/rpcdebug/Makefile.am
+> @@ -1,15 +1,9 @@
+>  ## Process this file with automake to produce Makefile.in
+>  
+> -CC=$(CC_FOR_BUILD)
+> -LIBTOOL = @LIBTOOL@ --tag=CC
+> -
+>  man8_MANS = rpcdebug.man
+>  EXTRA_DIST = $(man8_MANS)
+>  
+>  sbin_PROGRAMS = rpcdebug
+>  rpcdebug_SOURCES = rpcdebug.c
+> -rpcdebug_CFLAGS=$(CFLAGS_FOR_BUILD)
+> -rpcdebug_CPPFLAGS=$(CPPFLAGS_FOR_BUILD) -I$(top_srcdir)/support/include
+> -rpcdebug_LDFLAGS=$(LDFLAGS_FOR_BUILD)
+>  
+>  MAINTAINERCLEANFILES = Makefile.in
+> 
