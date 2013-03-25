@@ -1,54 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:52293 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:35818 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756428Ab3CEVLF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Mar 2013 16:11:05 -0500
-Date: Tue, 5 Mar 2013 16:10:59 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Yanchuan Nian <ycnian@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: Correct read access checking
-Message-ID: <20130305211059.GC15816@fieldses.org>
-References: <20130303090211.GA29550@localhost.localdomain>
+	id S1757934Ab3CYOQt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Mar 2013 10:16:49 -0400
+Message-ID: <51505C4F.2060803@RedHat.com>
+Date: Mon, 25 Mar 2013 10:16:47 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130303090211.GA29550@localhost.localdomain>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 00/10] gssd clean-ups for nfs-utils
+References: <20130312203105.2478.88903.stgit@seurat.1015granger.net>
+In-Reply-To: <20130312203105.2478.88903.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Mar 03, 2013 at 05:02:11PM +0800, Yanchuan Nian wrote:
-> NFS4_SHARE_ACCESS_WRITE should not be tested in access_permit_read() for this
-> function just tests read permission, so remove it.
+
+
+On 12/03/13 16:36, Chuck Lever wrote:
+> I've been working on several fixes and clean-ups in response to an
+> issue reported by Veli-Matti Lintu <veli-matti.lintu@opinsys.fi>.
+> The thread is archived here:
 > 
-> Signed-off-by: Yanchuan Nian <ycnian@gmail.com>
+>  http://www.spinics.net/lists/linux-nfs/msg35306.html
+> 
+> There were two suggestions in that thread:
+> 
+>  1.  Clarify rpc.gssd(8)
+> 
+>  2.  Implement a gssd option to name a credential file where
+>      machine credentials can be found
+> 
+> This series implements the first suggestion along with a number of
+> clean-ups I found while working on this code.  The second suggestion
+> has been dropped for the moment.
+>       
+> I had this series with me at Connectathon, and did some light
+> testing there.  This series is ready to be merged into
+> nfs-utils.
+> 
+> Changes since v1:
+> 
+>   o  Acks from Bruce
+>   o  Restored part of the comment documenting
+>      gssd_find_existing_krb5_ccache()
+>   o  Dropped the patch adding the "-c" option to rpc.gssd.
+>      This issue will be revisited soon.
+> 
 > ---
->  fs/nfsd/nfs4state.c | 3 +--
->  1 file changed, 1 insertion(+), 2 deletions(-)
 > 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 16d39c6..75c873d 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -3322,8 +3322,7 @@ static inline int
->  access_permit_read(struct nfs4_ol_stateid *stp)
->  {
->  	return test_access(NFS4_SHARE_ACCESS_READ, stp) ||
-> -		test_access(NFS4_SHARE_ACCESS_BOTH, stp) ||
-> -		test_access(NFS4_SHARE_ACCESS_WRITE, stp);
-> +		test_access(NFS4_SHARE_ACCESS_BOTH, stp);
->  }
+> Chuck Lever (10):
+>       gssd: gethostname(3) returns zero or -1, not an errno
+>       gssd: Fix whitespace nits
+>       gssd: Clean up gssd_setup_krb5_user_gss_ccache()
+>       gssd: Update description of "-l" option
+>       gssd: Clarify use of the term "machine credentials" in rpc.gssd(8)
+>       gssd: Provide an introduction in gssd(8)
+>       gssd: gssd.man is missing a description of the "-M" option
+>       gssd: Use italics for option values and pathnames
+>       mountd: make local functions in v4root.c static
+>       mountd: remove unused variable
+> 
+> 
+>  utils/gssd/gssd.c      |    2 
+>  utils/gssd/gssd.man    |  310 +++++++++++++++++++++++++++++++++++-------------
+>  utils/gssd/gssd_proc.c |   12 +-
+>  utils/gssd/krb5_util.c |   20 ++-
+>  utils/mountd/cache.c   |    2 
+>  utils/mountd/v4root.c  |    6 +
+>  6 files changed, 244 insertions(+), 108 deletions(-)
+> 
+All Committed...
 
-This was introduced by a patch from 2005:
-
-    [PATCH] nfsd4: allow read on open for write
-    
-    The rfc recommends allowing read using stateid's from opens that only
-    requested write access, as clients may in some cases be unable to write
-    without doing reads.
-
-So I think it's correct.
-
-That said, I don't understand why we still have this function at all:
-can it ever return anything other than true?
-
---b.
+steved.
