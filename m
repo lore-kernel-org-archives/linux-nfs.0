@@ -1,81 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34208 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:11799 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753020Ab3CKULK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Mar 2013 16:11:10 -0400
-Date: Mon, 11 Mar 2013 16:11:08 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Pavel Shilovsky <piastry@etersoft.ru>, linux-kernel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, wine-devel@winehq.org
-Subject: Re: [PATCH v3 7/7] NFSD: Pass share reservations flags to VFS
-Message-ID: <20130311201108.GE642@fieldses.org>
-References: <1362065133-9490-1-git-send-email-piastry@etersoft.ru>
- <1362065133-9490-8-git-send-email-piastry@etersoft.ru>
- <20130311150540.119abd63@corrin.poochiereds.net>
- <20130311193638.GB642@fieldses.org>
- <20130311160844.7dedf15a@corrin.poochiereds.net>
+	id S1757816Ab3CYORv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Mar 2013 10:17:51 -0400
+Message-ID: <51505C6D.2080402@RedHat.com>
+Date: Mon, 25 Mar 2013 10:17:17 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130311160844.7dedf15a@corrin.poochiereds.net>
+To: Christopher T Vogan <cvogan@us.ibm.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: NFS man page patch that moves nordirplus/rdirplus
+References: <OF0365F8D8.55071FDA-ON87257B33.00762456-86257B33.00765660@us.ibm.com>
+In-Reply-To: <OF0365F8D8.55071FDA-ON87257B33.00762456-86257B33.00765660@us.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 11, 2013 at 04:08:44PM -0400, Jeff Layton wrote:
-> On Mon, 11 Mar 2013 15:36:38 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+
+On 19/03/13 17:32, Christopher T Vogan wrote:
+> NFS man page patch that moves nordirplus/rdirplus from "Options for NFS 
+> versions 2 and 3 only" to "Options supported by all versions".  Its a 
+> better fit here since this option is also needed for some NFSv4 servers.
 > 
-> > On Mon, Mar 11, 2013 at 03:05:40PM -0400, Jeff Layton wrote:
-> > > knfsd has some code already to handle share reservations internally.
-> > > Nothing outside of knfsd is aware of these reservations, of course so
-> > > moving to a vfs-level object for it would be a marked improvement.
-> > > 
-> > > It doesn't look like this patch removes any of that old code though. I
-> > > think it probably should, or there ought to be some consideration of
-> > > how this new stuff will mesh with it.
-> > > 
-> > > I think you have 2 choices here:
-> > > 
-> > > 1/ rip out the old share reservation code altogether and require that
-> > > filesystems mount with -o sharemand or whatever if they want to allow
-> > > their enforcement
-> > > 
-> > > 2/ make knfsd fall back to using the internal share reservation code
-> > > when the mount option isn't enabled
-> > > 
-> > > Personally, I think #1 would be fine, but Bruce may want to weigh in on
-> > > what he'd prefer.
-> > 
-> > #1 sounds good.  Clients that use deny bits are few.  My preference
-> > would be to return an error to such clients in the case share locks
-> > aren't available.
-> > 
-> > (We're a little out of spec there, so I'm not sure which error.  I think
-> > the goal is to notify a human there's a problem with minimal collateral
-> > damange.
-> > 
-> > NFS4ERR_SERVERFAULT ("I'm a buggy server, sorry about that!") would
-> > probably result in an IO error to the application.
-> > 
-> > SHARE_DENIED strikes me as unsafe: an application would be in its rights
-> > not to even check for that e.g. in the case of an exclusive create.
-> > 
-> > Maybe DELAY?  Kind of ridiculous, but blocking the application
-> > indefinitely would probably get someone's attention quickly enough
-> > without doing any damnage.)
-> > 
 > 
-> I agree that we should return an error, but hadn't considered what
-> error. Given that hardly any NFS clients use them, I'd probably just go
-> with NFS4ERR_SERVERFAULT, and maybe throw a printk or something on the
-> server about enabling share reservations for superblock x:y.
+> Author: Chris Vogan <cvogan@us.ibm.com>
+> Date:   Fri Feb 28 14:40:11 2013 -0700
+> 
+>     NFS man page needs updating to clarify that nordirplus mount option
+>     is also valid for NFSv4. Also should be moved to the section
+>     "Options supported by all versions".
+> 
+>     Signed-off-by: Chris Vogan <cvogan@gmail.com>
+Committed...
 
-Sounds reasonable.
-
-> Pavel, as a side note, you may want to consider adding a patch to hook
-> this stuff up in the NFS client as well.
-
-Definitely.
-
---b.
+steved.
+> --- nfs.man.save        2013-02-28 14:40:11.530103375 -0700
+> +++ nfs.man     2013-02-28 14:42:48.028996087 -0700
+> @@ -345,6 +345,13 @@
+>  .BR automount (8)
+>  for details).
+>  .TP 1.5i
+> +.BR rdirplus " / " nordirplus
+> +Selects whether to use NFS v3 or v4 READDIRPLUS requests.
+> +If this option is not specified, the NFS client uses READDIRPLUS requests
+> +on NFS v3 or v4 mounts to read small directories.
+> +Some applications perform better if the client uses only READDIR requests
+> +for all directories.
+> +.TP 1.5i
+>  .BI retry= n
+>  The number of minutes that the
+>  .BR mount (8)
+> @@ -710,13 +717,6 @@
+>  Disabling the NFSACL sideband protocol may be necessary
+>  if the negotiation causes problems on the client or server.
+>  Refer to the SECURITY CONSIDERATIONS section for more details.
+> -.TP 1.5i
+> -.BR rdirplus " / " nordirplus
+> -Selects whether to use NFS version 3 READDIRPLUS requests.
+> -If this option is not specified, the NFS client uses READDIRPLUS requests
+> -on NFS version 3 mounts to read small directories.
+> -Some applications perform better if the client uses only READDIR requests
+> -for all directories.
+>  .SS "Options for version 4 only"
+>  Use these options, along with the options in the first subsection above,
+>  for NFSv4 only. They will be ignored with older versions.
+> 
+> 
+> Christopher Vogan
+> Dept. W98 NFS Development & Test
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
