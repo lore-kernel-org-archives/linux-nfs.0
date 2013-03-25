@@ -1,86 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:20855 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757934Ab3CYOQm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Mar 2013 10:16:42 -0400
-Message-ID: <51505C21.4010006@RedHat.com>
-Date: Mon, 25 Mar 2013 10:16:01 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:19634 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1757325Ab3CYK56 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Mar 2013 06:57:58 -0400
+Message-ID: <51502DB7.1010508@cn.fujitsu.com>
+Date: Mon, 25 Mar 2013 18:57:59 +0800
+From: fanchaoting <fanchaoting@cn.fujitsu.com>
 MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH - nfs-utils] gssd: don't krb5_free_context if krb5_init_context
- fails
-References: <20130305085700.56921777@notabene.brown>
-In-Reply-To: <20130305085700.56921777@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-1
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH] nfs: nfs client decode fslocations oops if server cheating
+ it
+Content-Type: text/plain; charset=ISO-2022-JP
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+now nfs server will return wrong nlocations,nservers, ncomponents to the client.
+for example if the nlocations is NFS4_FS_LOCATIONS_MAXENTRIES, the nfs client
+will decode oops when run "struct nfs4_fs_location *loc = &res->locations[res->nlocations]"
+
+Signed-off-by: fanchaoting<fanchaoting@cn.fujitsu.com>
+Reviewed-by: chendt.fnst@cn.fujitsu.com
+
+---
+ fs/nfs/nfs4xdr.c |   13 ++++++++++++-
+ 1 files changed, 12 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index e3edda5..25f1769 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -3496,6 +3496,10 @@ static int decode_pathname(struct xdr_stream *xdr, struct nfs4_pathname *path)
+ 	n = be32_to_cpup(p);
+ 	if (n == 0)
+ 		goto root_path;
++	if (n > NFS4_PATHNAME_MAXCOMPONENTS) {
++		dprintk("%s: server cheating client ncomponents :%d\n", __func__, n);
++		goto out_eio;
++	}
+ 	dprintk("pathname4: ");
+ 	path->ncomponents = 0;
+ 	while (path->ncomponents < n) {
+@@ -3557,6 +3561,10 @@ static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, st
+ 	n = be32_to_cpup(p);
+ 	if (n <= 0)
+ 		goto out_eio;
++	if (n > NFS4_FS_LOCATIONS_MAXENTRIES) {
++		dprintk("%s: server cheating client nlocations :%d\n", __func__, n);
++		goto out_eio;
++	}
+ 	res->nlocations = 0;
+ 	while (res->nlocations < n) {
+ 		u32 m;
+@@ -3566,7 +3574,10 @@ static int decode_attr_fs_locations(struct xdr_stream *xdr, uint32_t *bitmap, st
+ 		if (unlikely(!p))
+ 			goto out_overflow;
+ 		m = be32_to_cpup(p);
+-
++		if (m > NFS4_FS_LOCATION_MAXSERVERS) {
++			dprintk("%s: server cheating client nservers :%d\n", __func__, m);
++			goto out_eio;
++		}
+ 		loc->nservers = 0;
+ 		dprintk("%s: servers:\n", __func__);
+ 		while (loc->nservers < m) {
+-- 
+1.7.1
 
 
-On 04/03/13 16:57, NeilBrown wrote:
-> 
-> Most places that call krb5_init_context() abort cleanly on failure.
-> However these two then try to free the non-existent context, which
-> doesn't end well.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-Committed....
-
-steved.
-> 
-> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-> index aeb8f70..4befa72 100644
-> --- a/utils/gssd/krb5_util.c
-> +++ b/utils/gssd/krb5_util.c
-> @@ -1212,9 +1212,9 @@ gssd_destroy_krb5_machine_creds(void)
->  				    "cache '%s'\n", k5err, ple->ccname);
->  		}
->  	}
-> +	krb5_free_context(context);
->    out:
->  	free(k5err);
-> -	krb5_free_context(context);
->  }
->  
->  /*
-> @@ -1257,7 +1257,7 @@ gssd_refresh_krb5_machine_credential(char *hostname,
->  		k5err = gssd_k5_err_msg(context, code);
->  		printerr(0, "ERROR: %s: %s while resolving keytab '%s'\n",
->  			 __func__, k5err, keytabfile);
-> -		goto out;
-> +		goto out_free_context;
->  	}
->  
->  	if (ple == NULL) {
-> @@ -1272,7 +1272,7 @@ gssd_refresh_krb5_machine_credential(char *hostname,
->  				 "in keytab %s for connection with host %s\n",
->  				 __FUNCTION__, keytabfile, hostname);
->  			retval = code;
-> -			goto out;
-> +			goto out_free_kt;
->  		}
->  
->  		ple = get_ple_by_princ(context, kte.principal);
-> @@ -1288,14 +1288,15 @@ gssd_refresh_krb5_machine_credential(char *hostname,
->  				 __FUNCTION__, pname ? pname : "<unparsable>",
->  				 hostname);
->  			if (pname) k5_free_unparsed_name(context, pname);
-> -			goto out;
-> +			goto out_free_kt;
->  		}
->  	}
->  	retval = gssd_get_single_krb5_cred(context, kt, ple, 0);
-> -out:
-> -	if (kt)
-> -		krb5_kt_close(context, kt);
-> +out_free_kt:
-> +	krb5_kt_close(context, kt);
-> +out_free_context:
->  	krb5_free_context(context);
-> +out:
->  	free(k5err);
->  	return retval;
->  }
-> 
