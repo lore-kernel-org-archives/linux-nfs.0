@@ -1,137 +1,418 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ia0-f180.google.com ([209.85.210.180]:51179 "EHLO
-	mail-ia0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754612Ab3CPT4W (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 16 Mar 2013 15:56:22 -0400
-Received: by mail-ia0-f180.google.com with SMTP id f27so4125770iae.25
-        for <linux-nfs@vger.kernel.org>; Sat, 16 Mar 2013 12:56:21 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v1 15/15] NFS: Use "krb5i" to establish NFSv4 state whenever
- possible
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
-Date: Sat, 16 Mar 2013 15:56:20 -0400
-Message-ID: <20130316195620.27329.83818.stgit@seurat.1015granger.net>
-In-Reply-To: <20130316195044.27329.11666.stgit@seurat.1015granger.net>
-References: <20130316195044.27329.11666.stgit@seurat.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:63803 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756628Ab3CYLoU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Mar 2013 07:44:20 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 09/14] NFS: Add label lifecycle management
+Date: Mon, 25 Mar 2013 07:42:53 -0400
+Message-Id: <1364211778-29172-10-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1364211778-29172-1-git-send-email-SteveD@redhat.com>
+References: <1364211778-29172-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently our client uses AUTH_UNIX for state management on Kerberos
-NFS mounts in some cases.  For example, if the first mount of a
-server specifies "sec=sys," the SETCLIENTID operation is performed
-with AUTH_UNIX.  Subsequent mounts using stronger security flavors
-can not change the flavor used for lease establishment.  This might
-be less security than an administrator was expecting.
+From: Dave Quigley <dpquigl@taiga.selinuxproject.org>
 
-Dave Noveck's migration issues draft recommends the use of an
-integrity-protecting security flavor for the SETCLIENTID operation.
-Let's ignore the mount's sec= setting and use krb5i as the default
-security flavor for SETCLIENTID.
+>From David Quigley <dpquigl@davequigley.com>
 
-If our client can't establish a GSS context (eg. because it doesn't
-have a keytab or the server doesn't support Kerberos) we fall back
-to using AUTH_NULL.  For an operation that requires a
-machine credential (which never represents a particular user)
-AUTH_NULL is as secure as AUTH_UNIX.
+This patch adds the lifecycle management for the security label structure
+introduced in an earlier patch. The label is not used yet but allocations and
+freeing of the structure is handled.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Matthew N. Dodd <Matthew.Dodd@sparta.com>
+Signed-off-by: Miguel Rodel Felipe <Rodel_FM@dsi.a-star.edu.sg>
+Signed-off-by: Phua Eu Gene <PHUA_Eu_Gene@dsi.a-star.edu.sg>
+Signed-off-by: Khin Mi Mi Aung <Mi_Mi_AUNG@dsi.a-star.edu.sg>
 ---
+ fs/nfs/dir.c      | 23 ++++++++++++-
+ fs/nfs/inode.c    | 15 +++++++--
+ fs/nfs/nfs4proc.c | 98 +++++++++++++++++++++++++++++++++++++++++++++++++++----
+ 3 files changed, 126 insertions(+), 10 deletions(-)
 
- fs/nfs/nfs4client.c |    2 +-
- fs/nfs/nfs4state.c  |   37 +++++--------------------------------
- 2 files changed, 6 insertions(+), 33 deletions(-)
-
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index ac4fc9a..0194cab 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -199,7 +199,7 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
- 	clp->rpc_ops = &nfs_v4_clientops;
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index e85753b..b911195 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -585,10 +585,16 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
+ 	if (entry.fh == NULL || entry.fattr == NULL)
+ 		goto out;
  
- 	__set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
--	error = nfs_create_rpc_client(clp, timeparms, authflavour);
-+	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_GSS_KRB5I);
- 	if (error < 0)
- 		goto error;
- 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 6ace365..3e30e85 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1823,26 +1823,13 @@ int nfs4_discover_server_trunking(struct nfs_client *clp,
- {
- 	const struct nfs4_state_recovery_ops *ops =
- 				clp->cl_mvops->reboot_recovery_ops;
--	rpc_authflavor_t *flavors, flav, save;
- 	struct rpc_clnt *clnt;
- 	struct rpc_cred *cred;
--	int i, len, status;
-+	int i, status;
- 
- 	dprintk("NFS: %s: testing '%s'\n", __func__, clp->cl_hostname);
- 
--	len = NFS_MAX_SECFLAVORS;
--	flavors = kcalloc(len, sizeof(*flavors), GFP_KERNEL);
--	if (flavors == NULL) {
--		status = -ENOMEM;
++	entry.label = nfs4_label_alloc(NFS_SERVER(inode), GFP_NOWAIT);
++	if (IS_ERR(entry.label)) {
++		status = PTR_ERR(entry.label);
++		goto out;
++	}
++
+ 	array = nfs_readdir_get_array(page);
+ 	if (IS_ERR(array)) {
+ 		status = PTR_ERR(array);
 -		goto out;
--	}
--	len = rpcauth_list_flavors(flavors, len);
--	if (len < 0) {
--		status = len;
--		goto out_free;
--	}
- 	clnt = clp->cl_rpcclient;
--	save = clnt->cl_auth->au_flavor;
- 	i = 0;
++		goto out_label_free;
+ 	}
+ 	memset(array, 0, sizeof(struct nfs_cache_array));
+ 	array->eof_index = -1;
+@@ -614,6 +620,8 @@ int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page,
+ 	nfs_readdir_free_large_page(pages_ptr, pages, array_size);
+ out_release_array:
+ 	nfs_readdir_release_array(page);
++out_label_free:
++	nfs4_label_free(entry.label);
+ out:
+ 	nfs_free_fattr(entry.fattr);
+ 	nfs_free_fhandle(entry.fh);
+@@ -1083,6 +1091,10 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
+ 	if (fhandle == NULL || fattr == NULL)
+ 		goto out_error;
  
- 	mutex_lock(&nfs_clid_init_mutex);
-@@ -1857,12 +1844,6 @@ again:
- 	switch (status) {
- 	case 0:
- 		break;
--
--	case -EACCES:
--		if (clp->cl_machine_cred == NULL)
--			break;
--		/* Handle case where the user hasn't set up machine creds */
--		nfs4_clear_machine_cred(clp);
- 	case -NFS4ERR_DELAY:
- 	case -ETIMEDOUT:
- 	case -EAGAIN:
-@@ -1871,17 +1852,12 @@ again:
- 		dprintk("NFS: %s after status %d, retrying\n",
- 			__func__, status);
- 		goto again;
--
-+	case -EACCES:
-+		if (i++)
-+			break;
- 	case -NFS4ERR_CLID_INUSE:
- 	case -NFS4ERR_WRONGSEC:
--		status = -EPERM;
--		if (i >= len)
--			break;
--
--		flav = flavors[i++];
--		if (flav == save)
--			flav = flavors[i++];
--		clnt = rpc_clone_client_set_auth(clnt, flav);
-+		clnt = rpc_clone_client_set_auth(clnt, RPC_AUTH_NULL);
- 		if (IS_ERR(clnt)) {
- 			status = PTR_ERR(clnt);
- 			break;
-@@ -1901,9 +1877,6 @@ again:
++	label = nfs4_label_alloc(NFS_SERVER(inode), GFP_NOWAIT);
++	if (IS_ERR(label))
++		goto out_error;
++
+ 	error = NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr, label);
+ 	if (error)
+ 		goto out_bad;
+@@ -1093,6 +1105,8 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
  
- out_unlock:
- 	mutex_unlock(&nfs_clid_init_mutex);
--out_free:
--	kfree(flavors);
--out:
- 	dprintk("NFS: %s: status = %d\n", __func__, status);
+ 	nfs_free_fattr(fattr);
+ 	nfs_free_fhandle(fhandle);
++	nfs4_label_free(label);
++
+ out_set_verifier:
+ 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
+  out_valid:
+@@ -1109,6 +1123,7 @@ out_zap_parent:
+  out_bad:
+ 	nfs_free_fattr(fattr);
+ 	nfs_free_fhandle(fhandle);
++	nfs4_label_free(label);
+ 	nfs_mark_for_revalidate(dir);
+ 	if (inode && S_ISDIR(inode->i_mode)) {
+ 		/* Purge readdir caches. */
+@@ -1129,6 +1144,7 @@ out_zap_parent:
+ out_error:
+ 	nfs_free_fattr(fattr);
+ 	nfs_free_fhandle(fhandle);
++	nfs4_label_free(label);
+ 	dput(parent);
+ 	dfprintk(LOOKUPCACHE, "NFS: %s(%s/%s) lookup returned error %d\n",
+ 			__func__, dentry->d_parent->d_name.name,
+@@ -1284,6 +1300,10 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
+ 	if (fhandle == NULL || fattr == NULL)
+ 		goto out;
+ 
++	label = nfs4_label_alloc(NFS_SERVER(dir), GFP_NOWAIT);
++	if (IS_ERR(label))
++		goto out;
++
+ 	parent = dentry->d_parent;
+ 	/* Protect against concurrent sillydeletes */
+ 	nfs_block_sillyrename(parent);
+@@ -1312,6 +1332,7 @@ no_entry:
+ 	nfs_set_verifier(dentry, nfs_save_change_attribute(dir));
+ out_unblock_sillyrename:
+ 	nfs_unblock_sillyrename(parent);
++	nfs4_label_free(label);
+ out:
+ 	nfs_free_fattr(fattr);
+ 	nfs_free_fhandle(fhandle);
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 26e92b9..9a5c72f 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -830,6 +830,13 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+ 		goto out;
+ 
+ 	nfs_inc_stats(inode, NFSIOS_INODEREVALIDATE);
++
++	label = nfs4_label_alloc(NFS_SERVER(inode), GFP_KERNEL);
++	if (IS_ERR(label)) {
++		status = PTR_ERR(label);
++		goto out;
++	}
++
+ 	status = NFS_PROTO(inode)->getattr(server, NFS_FH(inode), fattr, label);
+ 	if (status != 0) {
+ 		dfprintk(PAGECACHE, "nfs_revalidate_inode: (%s/%Ld) getattr failed, error=%d\n",
+@@ -840,7 +847,7 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+ 			if (!S_ISDIR(inode->i_mode))
+ 				set_bit(NFS_INO_STALE, &NFS_I(inode)->flags);
+ 		}
+-		goto out;
++		goto err_out;
+ 	}
+ 
+ 	status = nfs_refresh_inode(inode, fattr, label);
+@@ -848,7 +855,7 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+ 		dfprintk(PAGECACHE, "nfs_revalidate_inode: (%s/%Ld) refresh failed, error=%d\n",
+ 			 inode->i_sb->s_id,
+ 			 (long long)NFS_FILEID(inode), status);
+-		goto out;
++		goto err_out;
+ 	}
+ 
+ 	if (nfsi->cache_validity & NFS_INO_INVALID_ACL)
+@@ -858,7 +865,9 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+ 		inode->i_sb->s_id,
+ 		(long long)NFS_FILEID(inode));
+ 
+- out:
++err_out:
++	nfs4_label_free(label);
++out:
+ 	nfs_free_fattr(fattr);
  	return status;
  }
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 57b13c5..dad938f 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -788,9 +788,14 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	p = kzalloc(sizeof(*p), gfp_mask);
+ 	if (p == NULL)
+ 		goto err;
++
++	p->f_label = nfs4_label_alloc(server, gfp_mask);
++	if (IS_ERR(p->f_label))
++		goto err_free_p;
++
+ 	p->o_arg.seqid = nfs_alloc_seqid(&sp->so_seqid, gfp_mask);
+ 	if (p->o_arg.seqid == NULL)
+-		goto err_free;
++		goto err_free_label;
+ 	nfs_sb_active(dentry->d_sb);
+ 	p->dentry = dget(dentry);
+ 	p->dir = parent;
+@@ -833,7 +838,10 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	nfs4_init_opendata_res(p);
+ 	kref_init(&p->kref);
+ 	return p;
+-err_free:
++
++err_free_label:
++	nfs4_label_free(p->f_label);
++err_free_p:
+ 	kfree(p);
+ err:
+ 	dput(parent);
+@@ -850,6 +858,9 @@ static void nfs4_opendata_free(struct kref *kref)
+ 	if (p->state != NULL)
+ 		nfs4_put_open_state(p->state);
+ 	nfs4_put_state_owner(p->owner);
++
++	nfs4_label_free(p->f_label);
++
+ 	dput(p->dir);
+ 	dput(p->dentry);
+ 	nfs_sb_deactive(sb);
+@@ -1930,10 +1941,18 @@ static int _nfs4_do_open(struct inode *dir,
+ 	if (opendata == NULL)
+ 		goto err_put_state_owner;
+ 
++	if (label) {
++		olabel = nfs4_label_alloc(server, GFP_KERNEL);
++		if (IS_ERR(olabel)) {
++			status = PTR_ERR(olabel);
++			goto err_opendata_put;
++		}
++	}
++
+ 	if (ctx_th && server->attr_bitmask[2] & FATTR4_WORD2_MDSTHRESHOLD) {
+ 		opendata->f_attr.mdsthreshold = pnfs_mdsthreshold_alloc();
+ 		if (!opendata->f_attr.mdsthreshold)
+-			goto err_opendata_put;
++			goto err_free_label;
+ 		opendata->o_arg.open_bitmap = &nfs4_pnfs_open_bitmap[0];
+ 	}
+ 	if (dentry->d_inode != NULL)
+@@ -1941,7 +1960,7 @@ static int _nfs4_do_open(struct inode *dir,
+ 
+ 	status = _nfs4_open_and_get_state(opendata, fmode, flags, &state);
+ 	if (status != 0)
+-		goto err_opendata_put;
++		goto err_free_label;
+ 
+ 	if (opendata->o_arg.open_flags & O_EXCL) {
+ 		nfs4_exclusive_attrset(opendata, sattr);
+@@ -1962,10 +1981,14 @@ static int _nfs4_do_open(struct inode *dir,
+ 		kfree(opendata->f_attr.mdsthreshold);
+ 	opendata->f_attr.mdsthreshold = NULL;
+ 
++	nfs4_label_free(olabel);
++
+ 	nfs4_opendata_put(opendata);
+ 	nfs4_put_state_owner(sp);
+ 	*res = state;
+ 	return 0;
++err_free_label:
++	nfs4_label_free(olabel);
+ err_opendata_put:
+ 	kfree(opendata->f_attr.mdsthreshold);
+ 	nfs4_opendata_put(opendata);
+@@ -2531,16 +2554,23 @@ static int nfs4_proc_get_root(struct nfs_server *server, struct nfs_fh *mntfh,
+ 		return error;
+ 	}
+ 
++	label = nfs4_label_alloc(server, GFP_KERNEL);
++	if (IS_ERR(label))
++		return PTR_ERR(label);
++
+ 	error = nfs4_proc_getattr(server, mntfh, fattr, label);
+ 	if (error < 0) {
+ 		dprintk("nfs4_get_root: getattr error = %d\n", -error);
+-		return error;
++		goto err_free_label;
+ 	}
+ 
+ 	if (fattr->valid & NFS_ATTR_FATTR_FSID &&
+ 	    !nfs_fsid_equal(&server->fsid, &fattr->fsid))
+ 		memcpy(&server->fsid, &fattr->fsid, sizeof(server->fsid));
+ 
++err_free_label:
++	nfs4_label_free(label);
++
+ 	return error;
+ }
+ 
+@@ -2646,6 +2676,7 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 	struct inode *inode = dentry->d_inode;
+ 	struct rpc_cred *cred = NULL;
+ 	struct nfs4_state *state = NULL;
++	struct nfs4_label *label = NULL;
+ 	int status;
+ 
+ 	if (pnfs_ld_layoutret_on_setattr(inode))
+@@ -2672,9 +2703,15 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 		}
+ 	}
+ 
+-	status = nfs4_do_setattr(inode, cred, fattr, sattr, state, NULL, NULL);
++	label = nfs4_label_alloc(NFS_SERVER(inode), GFP_KERNEL);
++	if (IS_ERR(label))
++		return PTR_ERR(label);
++
++	status = nfs4_do_setattr(inode, cred, fattr, sattr, state, NULL, label);
+ 	if (status == 0)
+ 		nfs_setattr_update_inode(inode, sattr);
++
++	nfs4_label_free(label);
+ 	return status;
+ }
+ 
+@@ -2829,11 +2866,21 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
+ 	if (res.fattr == NULL)
+ 		return -ENOMEM;
+ 
++	res.label = nfs4_label_alloc(server, GFP_KERNEL);
++	if (IS_ERR(res.label)) {
++		status = PTR_ERR(res.label);
++		goto out;
++	}
++
+ 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
+ 	if (!status) {
+ 		nfs_access_set_mask(entry, res.access);
+ 		nfs_refresh_inode(inode, res.fattr, res.label);
+ 	}
++
++	nfs4_label_free(res.label);
++
++out:
+ 	nfs_free_fattr(res.fattr);
+ 	return status;
+ }
+@@ -3058,12 +3105,33 @@ static int _nfs4_proc_rename(struct inode *old_dir, struct qstr *old_name,
+ 		.rpc_resp = &res,
+ 	};
+ 	int status = -ENOMEM;
++
++
++	if (server->caps & NFS_CAP_SECURITY_LABEL) {
++		res.old_label = nfs4_label_alloc(server, GFP_NOWAIT);
++		if (IS_ERR(res.old_label)) {
++			status = PTR_ERR(res.old_label);
++			goto out;
++		}
++		res.new_label = nfs4_label_alloc(server, GFP_NOWAIT);
++		if (IS_ERR(res.new_label)) {
++			status = PTR_ERR(res.new_label);
++			nfs4_label_free(res.old_label);
++			goto out;
++		}
++	}
++
+ 	
+ 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	if (!status) {
+ 		update_changeattr(old_dir, &res.old_cinfo);
+ 		update_changeattr(new_dir, &res.new_cinfo);
+ 	}
++
++	nfs4_label_free(res.old_label);
++	nfs4_label_free(res.new_label);
++
++out:
+ 	return status;
+ }
+ 
+@@ -3105,11 +3173,21 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, struct qstr *
+ 	if (res.fattr == NULL)
+ 		goto out;
+ 
++	res.label = nfs4_label_alloc(server, GFP_KERNEL);
++	if (IS_ERR(res.label)) {
++		status = PTR_ERR(res.label);
++		goto out;
++	}
++
+ 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	if (!status) {
+ 		update_changeattr(dir, &res.cinfo);
+ 		nfs_post_op_update_inode(inode, res.fattr, res.label);
+ 	}
++
++
++	nfs4_label_free(res.label);
++
+ out:
+ 	nfs_free_fattr(res.fattr);
+ 	return status;
+@@ -3145,6 +3223,10 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
+ 	if (data != NULL) {
+ 		struct nfs_server *server = NFS_SERVER(dir);
+ 
++		data->label = nfs4_label_alloc(server, GFP_KERNEL);
++		if (IS_ERR(data->label))
++			goto out_free;
++
+ 		data->msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_CREATE];
+ 		data->msg.rpc_argp = &data->arg;
+ 		data->msg.rpc_resp = &data->res;
+@@ -3161,6 +3243,9 @@ static struct nfs4_createdata *nfs4_alloc_createdata(struct inode *dir,
+ 		nfs_fattr_init(data->res.fattr);
+ 	}
+ 	return data;
++out_free:
++	kfree(data);
++	return NULL;
+ }
+ 
+ static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_createdata *data)
+@@ -3176,6 +3261,7 @@ static int nfs4_do_create(struct inode *dir, struct dentry *dentry, struct nfs4_
+ 
+ static void nfs4_free_createdata(struct nfs4_createdata *data)
+ {
++	nfs4_label_free(data->label);
+ 	kfree(data);
+ }
+ 
+-- 
+1.8.1.4
 
