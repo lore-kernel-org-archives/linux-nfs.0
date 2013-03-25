@@ -1,35 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:31402 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:24172 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753567Ab3CFST3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Mar 2013 13:19:29 -0500
-Date: Wed, 6 Mar 2013 19:17:35 +0100
-From: Oleg Nesterov <oleg@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Tejun Heo <tj@kernel.org>, "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Mandeep Singh Baines <msb@chromium.org>,
-        Ming Lei <ming.lei@canonical.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Rafael J. Wysocki" <rjw@sisk.pl>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Ingo Molnar <mingo@redhat.com>, Al Viro <viro@ZenIV.linux.org.uk>
-Subject: Re: LOCKDEP: 3.9-rc1: mount.nfs/4272 still has locks held!
-Message-ID: <20130306181735.GB18687@redhat.com>
-References: <20130304092310.1d21100c@tlielax.poochiereds.net> <CACBanvrc0orXGZ1v+gKHtVPKWYKGEFx46dwoDCjTU78+nPtZyg@mail.gmail.com> <20130304205307.GA13527@redhat.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9286AEEB0@sacexcmbx05-prd.hq.netapp.com> <20130305082308.6607d4db@tlielax.poochiereds.net> <20130305174648.GF12795@htj.dyndns.org> <20130305174954.GG12795@htj.dyndns.org> <20130305140312.243cb094@tlielax.poochiereds.net> <20130305190923.GI12795@htj.dyndns.org> <20130305183941.19ff39ce@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130305183941.19ff39ce@tlielax.poochiereds.net>
+	id S1756750Ab3CYLoW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Mar 2013 07:44:22 -0400
+From: Steve Dickson <SteveD@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        "David P. Quigley" <dpquigl@tycho.nsa.gov>
+Cc: Linux NFS list <linux-nfs@vger.kernel.org>,
+        Linux FS devel list <linux-fsdevel@vger.kernel.org>,
+        Linux Security List <linux-security-module@vger.kernel.org>,
+        SELinux List <selinux@tycho.nsa.gov>
+Subject: [PATCH 12/14] Kconfig: Add Kconfig entry for Labeled NFS V4 client
+Date: Mon, 25 Mar 2013 07:42:56 -0400
+Message-Id: <1364211778-29172-13-git-send-email-SteveD@redhat.com>
+In-Reply-To: <1364211778-29172-1-git-send-email-SteveD@redhat.com>
+References: <1364211778-29172-1-git-send-email-SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/05, Jeff Layton wrote:
->
-> Anyone up for working out how to handle a freeze event on a process
-> that already has a pending signal, while it's being ptraced?
+From: Steve Dickson <steved@redhat.com>
 
-Could you explain the problem?
+This patch adds the NFS_V4_SECURITY_LABEL entry which
+enables security label support for the NFSv4 client
 
-Oleg.
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ fs/nfs/Kconfig | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
+
+diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
+index 13ca196..3861a1f 100644
+--- a/fs/nfs/Kconfig
++++ b/fs/nfs/Kconfig
+@@ -131,6 +131,24 @@ config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
+ 	  If the NFS client is unchanged from the upstream kernel, this
+ 	  option should be set to the default "kernel.org".
+ 
++config NFS_V4_SECURITY_LABEL
++	bool "Provide Security Label support for NFSv4 client"
++	depends on NFS_V4 && SECURITY
++	help
++
++	Say Y here if you want enable fine-grained security label attribute
++	support for NFS version 4.  Security labels allow security modules like
++	SELinux and Smack to label files to facilitate enforcement of their policies.
++	Without this an NFSv4 mount will have the same label on each file.
++
++	If you do not wish to enable fine-grained security labels SELinux or
++	Smack policies on NFSv4 files, say N.
++
++	WARNING: there is still a chance of backwards-incompatible protocol changes.  
++	For now we recommend "Y" only for developers and testers."
++
++	If unsure, say N.
++
+ config ROOT_NFS
+ 	bool "Root file system on NFS"
+ 	depends on NFS_FS=y && IP_PNP
+-- 
+1.8.1.4
 
